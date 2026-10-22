@@ -4,7 +4,7 @@
 
 [最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)已全部通过：302项源码（admin147／API155）、106项独立PG、001→005隔离执行／复跑、37表实际PG18.6重启、12Mock及12真实API官方Chromium151.0.7922.34浏览器。浏览器每project使用独立随机测试子库，正常／故意失败流程均只清理本次拥有的库，保留base；前三轮失败／取消和修复见[TESTING](TESTING.md)。没有生产部署或生产DB。
 
-P06-A完整源码现已本地整合至`19d5801b91bdbb8af0df0403c99c331b41800629`；本地372源码（admin171／API201）、strict／构建／格式、native153的12Mock与19状态合成布局通过。远端仅DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`，main文档仍为ca68dea、业务仍为P05-B；尚无PR7、P06真实PG／重启／API浏览器验收或MAIN交付。P06调试见第7节，不能仅拉main或DTO就宣称可运行本卡。
+P06-A完整源码现已发布至feature `7ba9d01bb46d8c4b7a5ce72081aef50719d05539`；本地372源码（admin171／API201）、strict／构建／格式、native153的12Mock与19状态合成布局通过。早期DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`已由完整源码7ba9d01取代，main文档仍为ca68dea、业务仍为P05-B；PR7及首CI39756976748已建立，整体API浏览器验收及MAIN交付仍待完成。P06调试见第7节，不能仅拉main或DTO就宣称可运行本卡。
 
 ## 1. 获取与安装
 
@@ -162,3 +162,8 @@ P03-A只交付Web报名／独立审核／名单冻结；完整P03的保险文件
 8. 源每次完成后2秒串行读取、8秒超时。断网立即陈旧，完整snapshot成功超过30秒清除比分和队名；硬截止按performance发送锚扣完整RTT且只提前，404／到期终止并拒绝迟到200。恢复网络只在重新取得完整权威snapshot后显示，OBS关闭不阻断记分。
 
 网页和管理缩放预览复用同一1920×1080 renderer；加入OBS时明确宽1920、高1080并保持透明。native Chromium153的19状态／三张PNG只证明合成HTTP布局及浏览器alpha透明，不证明原生OBS／CEF合成、隐藏卸载／刷新、保存源后重启或实际推流。真实API浏览器／数据库及重启扩展已编写但未运行，执行入口沿第5节，由集成人CI记录当前head结果；预计123PG和14API不能写成通过。接口见[API第10节](API_CONTRACTS.md)，证据边界见[TESTING](TESTING.md)及[P06-A布局记录](evidence/P06-A/README.md)。
+
+
+### P06-A远端恢复点与首CI结果
+
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。

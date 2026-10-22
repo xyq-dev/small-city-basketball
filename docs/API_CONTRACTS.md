@@ -1,6 +1,6 @@
 # API 契约
 
-目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A、P04-A、P05-A及P05-B已整合main，DONE / MAIN。[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)合并提交 `bd38318fdfdbaeb9cfee1033c0d025e79c6cc797`，验收source `d9161e965b367ed8cb445482d57759bd34e89629`、tree `554284a604f3b0027d5b0eedc7dbbee20eab3119`。身份、报名冻结、单循环排赛、在线基础记分／独立确认及第9节有限排名／可撤销公开观赛，均经[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)通过真实隔离PostgreSQL、实际重启及官方浏览器验收。前三轮失败／取消与修复保留[TESTING](TESTING.md)。完整P05尚未完成；可靠离线、专业统计、其他排赛赛制、改期、P03附件／小程序及OBS仍未交付。P06-A四条HTTP入口及包装页面已在本地19d5801实施，尚未真实PG／重启／API浏览器验收、PR合并或MAIN，见第10节；原生OBS／CEF未验证。
+目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A、P04-A、P05-A及P05-B已整合main，DONE / MAIN。[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)合并提交 `bd38318fdfdbaeb9cfee1033c0d025e79c6cc797`，验收source `d9161e965b367ed8cb445482d57759bd34e89629`、tree `554284a604f3b0027d5b0eedc7dbbee20eab3119`。身份、报名冻结、单循环排赛、在线基础记分／独立确认及第9节有限排名／可撤销公开观赛，均经[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)通过真实隔离PostgreSQL、实际重启及官方浏览器验收。前三轮失败／取消与修复保留[TESTING](TESTING.md)。完整P05尚未完成；可靠离线、专业统计、其他排赛赛制、改期、P03附件／小程序及OBS仍未交付。P06-A四条HTTP入口及包装页面已在远端7ba9d01实施，尚未真实PG／重启／API浏览器验收、PR合并或MAIN，见第10节；原生OBS／CEF未验证。
 
 ## 1. 通用约定
 
@@ -284,7 +284,7 @@ DISABLE不依赖榜单来源健康：授权、CAS、撤销及audit成功后返�
 
 ## 10. P06-A独立比分包装合同（本地实施，未真实验收／MAIN）
 
-文档源码检查点`19d5801b91bdbb8af0df0403c99c331b41800629`含完整API/UI/PG；远端仅DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`，main仍为P05-B。共享类型见[contracts](../packages/contracts/index.d.ts)。本地372源码（admin171／API201）、strict／构建／格式及native153的12Mock通过；006仅静态CLEAR，真实PG、39表重启及14API浏览器尚未执行。不能把上游CI39751848322当作本卡通过。
+文档源码检查点`7ba9d01bb46d8c4b7a5ce72081aef50719d05539`含完整API/UI/PG；早期DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`已由完整源码7ba9d01取代，main仍为P05-B。共享类型见[contracts](../packages/contracts/index.d.ts)。本地372源码（admin171／API201）、strict／构建／格式及native153的12Mock通过；006仅静态CLEAR，真实PG、39表重启及14API浏览器尚未执行。不能把上游CI39751848322当作本卡通过。
 
 ### 四条实际入口
 
@@ -335,3 +335,8 @@ OverlayPreviewData逐层白名单完整为：eventName、home/away各`{teamName}
 前端每次请求完成后2秒串行轮询、单请求8秒超时，避免2秒poll反复取消慢请求。只有完整有效且非降matchVersion的snapshot重置30秒陈旧期限，bootstrap不算；断网立即陈旧，30秒清比分和队名。Grant硬截止从请求发送performance锚保守扣完整RTT，已知截止只提前；404／到期终止、取消请求并拒绝迟到200重新点亮，409来源故障清屏但继续核对。scope变化／卸载清理请求与timer。原生OBS／CEF行为另验，不能把网页透明渲染称为“OBS已连接”。
 
 实际错误：422 VALIDATION_ERROR；409 VERSION_CONFLICT／OVERLAY_ALREADY_ISSUED／OVERLAY_GRANT_NOT_CURRENT／OVERLAY_GRANT_VERSION_CONFLICT／RESULT_SOURCE_INVALID；私有未知／跨scope或无赛事可见权404 RESOURCE_NOT_FOUND、可见只读staff写403 FORBIDDEN、私人未认证401；独立授权失败统一404，不暴露撤销／过期／错secret／错Grant差异。POST Origin拒绝403 ORIGIN_REJECTED。schema与未执行边界见[DATA_MODEL第11节](DATA_MODEL.md)、[TESTING](TESTING.md)。
+
+
+### P06-A远端恢复点与首CI结果
+
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。

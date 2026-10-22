@@ -23,7 +23,7 @@
 | P05-B验证范围 | 302项源码（admin147＋API155）、106项独立真实PG、12Mock＋12API官方Chromium151.0.7922.34桌面／手机流程；迁移001→005隔离执行及复跑校验，实际PG18.6重启核对37表，正常与故意失败子库清理均通过；重启不是备份恢复 |
 | P05-B审查及历史 | d9161e9自动CodeReview completed无finding（comment6336377538），security未运行；首CI39748395765手机注册429，第二39750130208的admin成功、API因新head替代而取消，第三39750653647业务检查通过但附加cleanup检查SQL绑定08P01失败，修复后最终CI全部通过，详见[P05-B交接](handoffs/P05-B.md) |
 | 未完成能力 | 全P03仍有保险文件、小程序等后续范围；全P04仍有其他赛制、自动优化与发布后改期；全P05仍缺可靠离线及专业统计；P06、微信、云服务、OBS、生产部署和生产数据库均未完成 |
-| P06-A本地检查点 | IN_PROGRESS；维护读取19d5801，完整API／UI／PG用例源码已本地整合，远端feature检查点331d2c3仅DTO；main文档基线ca68dea仍为P05-B。本卡尚无PR7或MAIN交付 |
+| P06-A feature检查点 | REVIEW；维护读取7ba9d01，完整API／UI／PG用例源码已本地整合，当前完整远端source为7ba9d01，331d2c3为早期DTO；main文档基线ca68dea仍为P05-B。本卡PR7及首CI已建立，尚未MAIN交付 |
 | P06-A已执行检查 | 本地372源码（admin171＋API201）、格式／完整strict／两端build、nativeChromium153的12Mock通过；API／UI／PG用例及006独立静态审查CLEAR，bootstrap外键等待跨截止修复delta CLEAR；19种合成HTTP布局及3PNG通过，详见[证据](evidence/P06-A/README.md) |
 | P06-A未执行验收 | 006已编写／静态CLEAR，未实际PG执行；新增17项PG源码，预计原106＋17＝123；39表实际重启、14API浏览器及完整CI尚未运行，不能用预计计数或布局替代；无原生OBS／CEF、推流或生产验收 |
 | 接续方向 | 完成P06-A真实PG、API浏览器、实际重启与完整CI／审查／合并；本地透明网页包装不等于OBS客户端或云视频交付 |
@@ -127,3 +127,8 @@ P01、P02、P03-A、P04-A、P05-A、P05-B已整合为DONE / MAIN。P03-A冻结�
 ## 9. 当前重要未决项
 
 具体定价、资金流与退款、保险供应商及验证责任、微信及云账号、后续赛制的同分／晋级细则、生产域名、云直播供应商和预算尚未确认。它们按任务阻断程度逐项解决；P01、P02、P03-A、P04-A、P05-A、P05-B已交付，本卡显式积分／同分规则不再列为未定项；微信或云服务未接入不阻断Web报名、排赛、记分及有限数据观赛。既有开发授权不代表已签约、付费或配置真实外部设施。
+
+
+### P06-A远端恢复点与首CI结果
+
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。

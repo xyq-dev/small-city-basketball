@@ -91,7 +91,7 @@ P05-B已随PR #6整合main。[最终CI39751848322](https://github.com/xyq-dev/sm
 
 ## 7. P06-A本地实施与独立包装边界（未验收）
 
-P06-A完整源码在本地检查点`19d5801b91bdbb8af0df0403c99c331b41800629`已整合，尚未真实CI／PR合并／MAIN；远端仅共享DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`，main文档基线仍为`ca68dea89f1625c86e2a90e43ffa936c49fd6186`（业务P05-B）。本地已通过372项源码检查（admin171／API201）、完整strict／格式／两端构建、native Chromium153的原12Mock及19状态合成布局／三张PNG。006仅静态CLEAR；新增17项PG源码、预计合计123项PG、39表真实重启及14项真实API浏览器均待执行，不标记DONE。历史P05-B的真实验收原样保留；本节不是生产发布说明。
+P06-A完整源码在远端源码检查点`7ba9d01bb46d8c4b7a5ce72081aef50719d05539`已整合，首CI39756976748进行中，尚未PR合并／MAIN；早期DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`已由完整源码7ba9d01取代，main文档基线仍为`ca68dea89f1625c86e2a90e43ffa936c49fd6186`（业务P05-B）。本地已通过372项源码检查（admin171／API201）、完整strict／格式／两端构建、native Chromium153的原12Mock及19状态合成布局／三张PNG。006仅静态CLEAR；新增17项PG源码、预计合计123项PG、39表真实重启及14项真实API浏览器均待执行，不标记DONE。历史P05-B的真实验收原样保留；本节不是生产发布说明。
 
 OverlayService浅复用ApplicationService的连接池、当前身份／机构授权、事务与审计helpers，与ScoringService、StandingsService独立；OverlayController提供私有管理两入口，OverlaySourceController提供bootstrap和snapshot。没有微服务、SSE或新依赖。单场来源用一条SQL取match/state、当前confirmation、最后event／receipt及规则后复用confirmedResult证明，不依赖排名规则或public publication，不改变原记分状态机、比赛版本、lease或正式计划；媒体PTS尚未接入。
 
@@ -102,3 +102,8 @@ OverlayService浅复用ApplicationService的连接池、当前身份／机构授
 浏览器源URL采用`/overlay/{overlayId}#token=…`，首次layout effect立即清fragment并保留history.state/path/query，secret仅本次内存。Runtime在私人会话及邀请处理前分流；专用host-only HttpOnly／Strict Cookie的Path限定单源API，生产Secure。Path不是同源脚本安全边界，同源可信部署仍是前提。DTO逐层重建，无内部资源ID、名单、人员、确认人、事件／收据或控制凭据；坏FINAL源严格409，私有preview:null＋previewError仍可管理、撤销且不回滚成功授权命令。
 
 管理页索引复用现有可见event列表→正式matches全分页，不使用含match-only用户的scoring-matches。弹框固定审阅版本；未知结果先GET核对，secret丢失需显式轮换，无盲目重签。源和预览共用透明1920×1080 renderer；源每次完成后2秒串行读取，单请求8秒超时，只有完整有效snapshot刷新30秒陈旧期限；请求发送performance锚扣完整RTT计算硬截止，已知截止只提前。404／到期终止且拒绝迟到200，409清屏继续核对，卸载清理请求／timer／透明模式class。原生OBS／CEF透明合成、保存源及隐藏／刷新仍待客户端另验。精确合同见[API第10节](API_CONTRACTS.md)，数据库与验证边界见[DATA_MODEL](DATA_MODEL.md)、[TESTING](TESTING.md)。
+
+
+### P06-A远端恢复点与首CI结果
+
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。

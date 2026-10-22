@@ -163,3 +163,8 @@ P05-B已通过[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)�
 P01 至少验证：创建合法草稿、结束日期错误、空标题、重复点击保存、取消、列表搜索和清空、详情编辑、不存在的 ID、窄屏导航，以及刷新后重置提示。P02已验证真实API身份及赛事持久化；P03-A另通过领队邀请接受、球队报名、独立审核及冻结的桌面/手机真实流程，P04-A另通过机构场地创建、显式规则／窗口、三队对阵、冲突保存及发布拒绝、修复后确认发布和重新加载只读流程。P05-A另通过显式规则／人员、无EventStaff的场次记分员、主写控制、已提交失ACK后的原收据核对、断网停写、时钟／修正／结束、独立确认／重开／重确认及原P04 FINAL读取。首轮原生label失败及修复不删除，第二轮[CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)的12Mock＋10API真实浏览器全部通过。完整证据见[TESTING](TESTING.md)。手机为官方Chromium151.0.7922.34模拟尺寸与输入，不等同Safari或微信真机。只按实际实现的命令和交互报告验证结果；截图不等于交互通过。
 
 P05-B已完成相应源码、真实PG及桌面／手机API浏览器验证：显式规则保存／锁定、无赛果及共享名次、重开退出／重确认、匿名无session直达、未准备null、原始时钟锚点只扣一次、撤销404清空、全新链接和晚响应隔离。首CI手机注册429、第二CI取消、第三CI附加cleanup检查SQL绑定失败及最终修复均保留交接，不能将前三轮写成全部成功。手机仍为Chromium模拟，不等同Safari／微信真机；P06-A本地源码已整合，尚未真实PG／API浏览器或原生OBS／CEF验证，检查点见上文及[P06-A交接](handoffs/P06-A.md)。本次文档维护未重复运行应用测试。
+
+
+### P06-A远端恢复点与首CI结果
+
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。

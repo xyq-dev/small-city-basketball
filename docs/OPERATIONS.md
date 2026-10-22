@@ -68,7 +68,7 @@ RESULT_SOURCE_INVALID表示当前确认指针、规则、版本／事件／收�
 
 ## P06-A本地包装运行边界（未验收／未MAIN）
 
-本地source检查点19d5801含API/UI/PG与根接线，远端仅DTO331d2c3，main文档仍为ca68dea、业务P05-B；尚无PR7或本卡真实CI。已执行本地372源码（admin171／API201）、strict／格式／两端构建、native153原12Mock及19状态合成布局／三张PNG；006仅静态CLEAR，新增17项PG（预计总123）、39表实际重启及14真实API浏览器待执行。保持上游P05-B已验收记录，不把图片透明或静态CLEAR视为原生OBS已连接。
+远端source检查点7ba9d01含API/UI/PG与根接线，完整远端source为7ba9d01，331d2c3仅为早期DTO，main文档仍为ca68dea、业务P05-B；PR7及首CI39756976748已建立，尚无本卡完整CI结论。已执行本地372源码（admin171／API201）、strict／格式／两端构建、native153原12Mock及19状态合成布局／三张PNG；006仅静态CLEAR，新增17项PG（预计总123）、39表实际重启及14真实API浏览器待执行。保持上游P05-B已验收记录，不把图片透明或静态CLEAR视为原生OBS已连接。
 
 006的SHA-256为`94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6`，两表overlay_grants／overlay_sessions及其复合FK、固定截止、一次撤销／不可变守卫尚未数据库执行；完整分支后须按001→006在隔离库执行／复跑checksum，001–005不改。无生产DB、生产Migration、反向恢复或灾备演练。新增session INSERT的正式match FK可能等待记分锁，服务已补INSERT后fresh DB时间精确判期，跨截止404并回滚；真实竞争用例已写但未运行。
 
@@ -93,3 +93,8 @@ P02至P05-B的数据库重启持久化检查不是备份恢复演练，正式灾
 每届交付清单包括确认赛果、成绩册、榜单及宣传素材；视频服务另列录像、集锦、保存期限与失败补交方式。记录视频转码、存储、分发流量和人工支持成本，限制未经批准的高成本任务。赞助报告区分真实观看、曝光、点击及统计口径，不把模板展示或演示数值当成交付成果。
 
 建议以青锋杯验证流程，再争取三家无关联主办方付费试点，记录交付工时、成本、付费与续用反馈。该试点尚未实施；收入、客户和指标不得写成既有成果。
+
+
+### P06-A远端恢复点与首CI结果
+
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。

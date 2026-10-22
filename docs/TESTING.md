@@ -4,7 +4,7 @@
 
 ## P06-A本地检查与待执行验证（未完成／未MAIN）
 
-完整本地检查点`19d5801b91bdbb8af0df0403c99c331b41800629`，远端仅DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`，main文档仍为ca68dea、业务P05-B。尚无PR7或本卡远端CI／MAIN结果；下文P05-B的真实成功不替代P06验收。全部使用合成身份和资料，没有生产、原生OBS／CEF或灾备恢复结论。
+完整远端源码检查点`7ba9d01bb46d8c4b7a5ce72081aef50719d05539`，早期DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`已由完整源码7ba9d01取代，main文档仍为ca68dea、业务P05-B。PR7及首CI39756976748已建立，尚无完整CI／MAIN结论；下文P05-B的真实成功不替代P06验收。全部使用合成身份和资料，没有生产、原生OBS／CEF或灾备恢复结论。
 
 | P06-A当前检查 | 状态 | 实际计数／范围 |
 |---|---|---|
@@ -18,7 +18,7 @@
 | 独立真实PG | 新17项已编写，未运行 | 主suite8＋sessions9，保留原106，预计合计123；不是已通过数 |
 | 实际PG18.6重启 | 39表扩展已编写，未运行 | 目标为原37＋Grant/session两表；不能借用上游37表重启结果 |
 | 真实API浏览器 | 新2项已编写，未运行 | 保留原12，预计桌面／手机合计14；未获得本卡官方Chromium端到端结果 |
-| 远端自动CodeReview／security | 本卡未取得结果 | 尚无PR7，不把上游P05-B的completed或NOT RUN状态混记成本卡审查 |
+| 远端自动CodeReview／security | 本卡未取得结果 | 首head自动CodeReview已完成并指出恢复点引用问题；修复待新head审查，security未运行，不混记上游结论 |
 | 原生OBS／CEF、生产、备份恢复 | 未执行 | 透明合成、保存源重启、隐藏卸载／刷新、推流及生产设施均未验收 |
 
 UI源码覆盖StrictMode首次fragment清除／内存、独立Runtime入口及无Storage、递归有限DTO、显式TTL／理由、固定Event／Grant CAS、bad-preview仍可管理、lostACK先读元数据、一次性credential遮罩、串行慢请求／8秒超时、完整RTT硬截止只提前、仅完整snapshot重置30秒、404／到期终止、409清屏可恢复、换scope／卸载及迟到200保护。19状态合成布局与PNG详见[P06-A证据](evidence/P06-A/README.md)，临时字体不成为产品依赖。
@@ -213,3 +213,8 @@ P01代码819818d经PR #1合并为f15adb4，[原CI run 39728632742](https://githu
 小范围文档修改检查链接、事实状态及术语一致性即可；代码变更执行直接覆盖行为的检查和项目必要构建。认证授权、Migration、记分状态机需独立审查与失败场景验证；不为普通文案变更反复运行全套测试。
 
 任务报告逐项使用“通过／失败／未执行／不适用”，失败附复现步骤；未执行说明原因及影响。阻断缺陷未关闭不得标记完成，非阻断问题进入任务清单并注明归属。P01、P02、P03-A、P04-A、P05-A及P05-B已各自提供代码、实际执行及整合证据；后续阶段不能借用既有结果宣称新增能力完成。
+
+
+### P06-A远端恢复点与首CI结果
+
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。

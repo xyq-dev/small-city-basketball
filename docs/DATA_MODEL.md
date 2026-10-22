@@ -163,7 +163,7 @@ deferred提交守卫读取不可变P04 revision.source.entries：要求2–32个
 
 ## 11. P06-A包装授权模型（本地已编写，006未执行）
 
-P06-A完整源码在本地检查点`19d5801b91bdbb8af0df0403c99c331b41800629`已整合，尚未真实CI／PR合并／MAIN；远端仅共享DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`，main文档基线仍为`ca68dea89f1625c86e2a90e43ffa936c49fd6186`（业务P05-B）。`apps/api/migrations/006_p06_overlay.sql` SHA-256为`94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6`。独立静态CLEAR只允许进入空隔离库测试，不代表006或其约束已经执行；001–005未修改，已执行事实仍属上游P05-B。原37表加本卡两表的39表实际重启尚待CI，无生产数据库或反向恢复证据。
+P06-A完整源码在远端源码检查点`7ba9d01bb46d8c4b7a5ce72081aef50719d05539`已整合，首CI39756976748进行中，尚未PR合并／MAIN；早期DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`已由完整源码7ba9d01取代，main文档基线仍为`ca68dea89f1625c86e2a90e43ffa936c49fd6186`（业务P05-B）。`apps/api/migrations/006_p06_overlay.sql` SHA-256为`94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6`。独立静态CLEAR只允许进入空隔离库测试，不代表006或其约束已经执行；001–005未修改，已执行事实仍属上游P05-B。原37表加本卡两表的39表实际重启尚待CI，无生产数据库或反向恢复证据。
 
 | 本地DDL新表 | 主键、归属与约束 |
 |---|---|
@@ -177,3 +177,8 @@ overlayId、bootstrap secret及专用session token都由服务端随机256bit生
 应用管理锁序actor/session→org/member→Event UPDATE→eventstaff→Grant；当前资格、Event CAS、ROTATE／REVOKE的Grant CAS、Event.version递增及audit同事务，不改Match.version。独立读解析overlayId后按org SHARE→Event SHARE→Grant SHARE→session SHARE重查机构、撤销及锁后DB截止。独立复读发现session INSERT的正式match FK可能等待记分锁；已补INSERT后MATERIALIZED clock_timestamp精确判Grant/session共同期限，若跨截止则404并回滚新session，不出Cookie。该补丁静态CLEAR，真实FK等待回归已编写但尚未执行。
 
 DDL保证归属、固定截止及不可变历史；实际STREAMER／当前成员授权、secret校验、来源投影、审计和等锁后时间由应用守卫证明。单场来源SQL复用P05-B有效FINAL证明，合法staff升版本不使结果失效。私有坏预览保留元数据和freshEvent CAS，公开包装快照仍409。详见[API第10节](API_CONTRACTS.md)及[TESTING](TESTING.md)；P06媒体、视频、云推流及权益账本没有因此建表或完成。
+
+
+### P06-A远端恢复点与首CI结果
+
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。

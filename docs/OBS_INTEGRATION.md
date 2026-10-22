@@ -73,7 +73,7 @@ P05-B经[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)合并ma
 
 ## 8. P06-A本地实施范围及待验收条件
 
-维护读取基线为本地19d5801，main文档基线ca68dea仍只有P05-B已交付；远端feature331d2c3检查点仅DTO。当前本卡为IN_PROGRESS，尚无PR7或MAIN整合。精确范围见[任务卡](tasks/P06-A.md)，进度见[交接](handoffs/P06-A.md)，布局见[证据](evidence/P06-A/README.md)。
+维护读取基线为远端7ba9d01，main文档基线ca68dea仍只有P05-B已交付；当前完整远端source为7ba9d01，331d2c3为早期DTO。当前本卡为REVIEW，PR7及首CI已建立，尚未MAIN整合。精确范围见[任务卡](tasks/P06-A.md)，进度见[交接](handoffs/P06-A.md)，布局见[证据](evidence/P06-A/README.md)。
 
 | 本地已实施入口 | 行为与边界 |
 |---|---|
@@ -97,3 +97,8 @@ secret与只读session仅hash存库。secret只在成功签发／轮换时交付
 已执行：本地372源码（admin171＋API201）、格式／strict／两端build、nativeChromium153的12Mock；API／UI／PG用例及006独立静态CLEAR，外键等待补丁delta CLEAR。19种合成HTTP布局、3张PNG检查通过，透明PNG只证明Chromium渲染，非OBS／CEF合成。
 
 尚未执行：006真实PG；新增17项PG源码保留原106，预计123；39表实际重启、14API浏览器及完整CI待运行。006 SHA256为`94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6`，不能把静态CLEAR写成迁移已执行。原生OBS／CEF透明合成、保存源后重启、隐藏卸载与激活刷新均须真实客户端另验。本卡没有obs-websocket、推流、录像、视频云服务或生产部署，完整P05／P06仍未完成。
+
+
+### P06-A远端恢复点与首CI结果
+
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。
