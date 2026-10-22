@@ -59,7 +59,7 @@ export interface ApiEnvelope<T> {
   meta: {
     requestId: string;
     nextCursor?: string | null;
-    capabilities?: { canCreateTeam: boolean };
+    capabilities?: { canCreateTeam?: boolean; canCreateCourt?: boolean };
   };
 }
 
@@ -263,3 +263,152 @@ export interface TeamRegistrationEventData {
   entry: EntrySummary | null;
   capabilities: { canCreateEntry: boolean };
 }
+
+export type ScheduleAlgorithmVersion = 'RR_CIRCLE_V1';
+export type ScheduleRevisionStatus = 'DRAFT' | 'SUPERSEDED' | 'PUBLISHED';
+export interface CourtData {
+  id: string;
+  orgId: string;
+  name: string;
+  status: 'ACTIVE' | 'DISABLED';
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  capabilities: { canManage: boolean };
+}
+export interface CreateCourtInput {
+  name: string;
+}
+export interface UpdateCourtInput {
+  expectedVersion: number;
+  name: string;
+  status: 'ACTIVE' | 'DISABLED';
+}
+export interface SchedulePolicy {
+  slotDurationMinutes: number;
+  minRestMinutes: number;
+  minLocalDayGap: number;
+  courtWindows: { courtId: string; startsAt: string; endsAt: string }[];
+}
+export interface ScheduleParticipant {
+  entryId: string;
+  teamId: string;
+  teamName: string;
+  rosterRevisionId: string;
+}
+export interface ScheduleRoundData {
+  roundNo: number;
+  byeEntryId: string | null;
+}
+export interface ScheduleFixtureData {
+  fixtureKey: string;
+  roundNo: number;
+  positionNo: number;
+  homeEntryId: string;
+  awayEntryId: string;
+  courtId: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+}
+export interface ScheduleFreezeSummary {
+  id: string;
+  rulesetId: string;
+  rulesetVersion: number;
+  eventVersion: number;
+  entryCount: number;
+}
+export interface ScheduleRevisionSummary {
+  id: string;
+  eventId: string;
+  freezeId: string;
+  algorithmVersion: ScheduleAlgorithmVersion;
+  seed: string;
+  inputHash: string;
+  pairingHash: string;
+  status: ScheduleRevisionStatus;
+  version: number;
+  redrawReason: string | null;
+  previousRevisionId: string | null;
+  createdAt: string;
+}
+export interface ScheduleRevisionData extends ScheduleRevisionSummary {
+  eventVersion: number;
+  isCurrent: boolean;
+  policy: SchedulePolicy;
+  source: RegistrationFreezeData;
+  participants: ScheduleParticipant[];
+  rounds: ScheduleRoundData[];
+  fixtures: ScheduleFixtureData[];
+  capabilities: { canEditAllocations: boolean; canValidate: boolean; canPublish: boolean };
+}
+export interface SchedulePublicationData {
+  id: string;
+  eventId: string;
+  revisionId: string;
+  publicationHash: string;
+  publishedAt: string;
+  matchCount: number;
+}
+export interface EventSchedulingData {
+  event: EventData;
+  freeze: ScheduleFreezeSummary | null;
+  currentRevision: ScheduleRevisionSummary | null;
+  publication: SchedulePublicationData | null;
+  support: { supported: boolean; reason: string | null };
+  capabilities: { canGenerate: boolean; canRedraw: boolean; canReadMatches: boolean };
+}
+export interface CreateScheduleRevisionInput {
+  expectedEventVersion: number;
+  freezeId: string;
+  algorithmVersion: ScheduleAlgorithmVersion;
+  policy: SchedulePolicy;
+  redrawReason?: string;
+}
+export interface ScheduleVersionInput {
+  expectedEventVersion: number;
+  expectedRevisionVersion: number;
+}
+export interface UpdateScheduleAllocationsInput extends ScheduleVersionInput {
+  allocations: { fixtureKey: string; courtId: string | null; startsAt: string | null }[];
+}
+export type ScheduleConflictCode =
+  | 'UNASSIGNED'
+  | 'OUTSIDE_WINDOW'
+  | 'OUTSIDE_EVENT_DATES'
+  | 'COURT_DISABLED'
+  | 'COURT_OVERLAP'
+  | 'TEAM_OVERLAP'
+  | 'MIN_REST'
+  | 'MIN_LOCAL_DAY_GAP';
+export interface ScheduleConflict {
+  code: ScheduleConflictCode;
+  fixtureKeys: string[];
+  resourceId?: string;
+  startsAt?: string;
+  endsAt?: string;
+  external?: boolean;
+}
+export interface ScheduleValidationData extends ScheduleVersionInput {
+  revisionId: string;
+  valid: boolean;
+  checkedAt: string;
+  conflicts: ScheduleConflict[];
+}
+export interface ScheduledMatchData {
+  id: string;
+  eventId: string;
+  publicationId: string;
+  fixtureKey: string;
+  roundNo: number;
+  positionNo: number;
+  home: ScheduleParticipant;
+  away: ScheduleParticipant;
+  courtId: string;
+  courtName: string;
+  startsAt: string;
+  endsAt: string;
+  status: 'SCHEDULED';
+  version: number;
+}
+
+export const SCHEDULE_ALGORITHM_VERSION: 'RR_CIRCLE_V1';

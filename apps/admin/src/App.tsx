@@ -60,6 +60,9 @@ import { TeamsPage, TeamDetailPage } from './registration/TeamsPages';
 import { RegistrationIndexPage, EventRegistrationPage } from './registration/StaffPages';
 import { LeaderHomePage, EntryDetailPage } from './registration/EntryPages';
 import './registration/registration.css';
+import { CourtsPage } from './scheduling/CourtsPage';
+import { EventSchedulingPage, SchedulingIndexPage } from './scheduling/SchedulePages';
+import './scheduling/scheduling.css';
 
 const RepositoryContext = createContext<EventRepository>(eventRepository);
 const useRepository = () => useContext(RepositoryContext);
@@ -600,7 +603,12 @@ function Dashboard() {
                   icon: UsersRound,
                   active: Boolean(workspace.registration),
                 },
-                { title: '抽签排赛', note: 'P04 规划中', icon: CalendarDays },
+                {
+                  title: '抽签排赛',
+                  note: workspace.registration ? '单循环 · 手工安排' : 'P04 规划中',
+                  icon: CalendarDays,
+                  active: Boolean(workspace.registration),
+                },
                 { title: '现场记分', note: 'P05 规划中', icon: ClipboardCheck },
                 { title: '直播与交付', note: 'P06 规划中', icon: Video },
               ].map(({ title, note, icon: Icon, active }, index) => (
@@ -1334,7 +1342,10 @@ function EventDetailPage() {
                 title: '球队报名与名单',
                 note: workspace.registration ? '进入报名审核配置与处理' : 'P03 规划中',
               },
-              { title: '抽签与赛程', note: 'P04 规划中' },
+              {
+                title: '抽签与赛程',
+                note: workspace.registration ? '单循环与正式发布已开放' : 'P04 规划中',
+              },
             ].map(({ title, note }) => (
               <div className="prepared-item muted-item" key={title}>
                 <span className="prepared-icon">
@@ -1362,7 +1373,7 @@ function EventDetailPage() {
           title="赛事功能"
           note={
             workspace.registration
-              ? '报名规则、审核和名单冻结已开放，其他模块按计划推进。'
+              ? '报名审核、名单冻结与单循环排赛已开放，其他模块按计划推进。'
               : '以下模块按项目计划逐步开放，当前仅展示规划入口。'
           }
         />
@@ -1376,7 +1387,11 @@ function EventDetailPage() {
                 to={
                   key === 'registration' && workspace.registration
                     ? `/events/${event.id}/registration`
-                    : `/roadmap/${key}`
+                    : key === 'schedule' &&
+                        workspace.registration &&
+                        !workspace.registration.teamContext
+                      ? `/events/${event.id}/scheduling`
+                      : `/roadmap/${key}`
                 }
                 key={key}
               >
@@ -1388,7 +1403,9 @@ function EventDetailPage() {
                   <span>
                     {key === 'registration' && workspace.registration
                       ? '规则 · 审核 · 冻结'
-                      : `${item.phase} · 规划中`}
+                      : key === 'schedule' && workspace.registration
+                        ? '单循环 · 安排 · 发布'
+                        : `${item.phase} · 规划中`}
                   </span>
                 </div>
                 <ChevronRight size={16} />
@@ -1480,29 +1497,36 @@ function WorkspaceLayout() {
           ? { ...item, to: '/teams', planned: false }
           : registration && item.to === '/roadmap/registration'
             ? { ...item, to: '/registration', planned: false }
-            : item,
+            : registration && item.to === '/roadmap/schedule'
+              ? { ...item, to: '/scheduling', planned: false }
+              : item,
       );
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const currentLabel = location.pathname.startsWith('/entries/')
-    ? '报名详情'
-    : location.pathname === '/my-team' || teamWorkspace
-      ? '我的球队'
-      : location.pathname.startsWith('/teams')
-        ? '球队与球员'
-        : location.pathname === '/registration' || location.pathname.endsWith('/registration')
-          ? '报名审核'
-          : location.pathname === '/'
-            ? '工作总览'
-            : location.pathname === '/events/new'
-              ? '创建赛事'
-              : location.pathname.startsWith('/events/')
-                ? '赛事详情'
-                : location.pathname === '/events'
-                  ? '赛事管理'
-                  : (roadmap[location.pathname.split('/')[2] ?? '']?.title ?? '页面');
+  const currentLabel =
+    location.pathname === '/courts'
+      ? '机构场地'
+      : location.pathname === '/scheduling' || /\/scheduling(?:\/|$)/.test(location.pathname)
+        ? '抽签排赛'
+        : location.pathname.startsWith('/entries/')
+          ? '报名详情'
+          : location.pathname === '/my-team' || teamWorkspace
+            ? '我的球队'
+            : location.pathname.startsWith('/teams')
+              ? '球队与球员'
+              : location.pathname === '/registration' || location.pathname.endsWith('/registration')
+                ? '报名审核'
+                : location.pathname === '/'
+                  ? '工作总览'
+                  : location.pathname === '/events/new'
+                    ? '创建赛事'
+                    : location.pathname.startsWith('/events/')
+                      ? '赛事详情'
+                      : location.pathname === '/events'
+                        ? '赛事管理'
+                        : (roadmap[location.pathname.split('/')[2] ?? '']?.title ?? '页面');
   useEffect(() => {
     setMenuOpen(false);
     document.title = `${currentLabel} · 小城市篮球`;
@@ -1604,13 +1628,21 @@ function WorkspaceLayout() {
                 location.pathname.startsWith('/entries/'));
             const teamDetail =
               teamWorkspace && (location.pathname.startsWith('/teams/') || nestedRegistration);
-            const selected = teamDetail
-              ? to === '/my-team'
-              : nestedRegistration
-                ? to === '/registration'
-                : to === '/'
-                  ? location.pathname === '/'
-                  : location.pathname === to || location.pathname.startsWith(`${to}/`);
+            const nestedScheduling =
+              registration &&
+              !teamWorkspace &&
+              (location.pathname === '/courts' ||
+                location.pathname === '/scheduling' ||
+                /\/events\/[^/]+\/scheduling(?:\/|$)/.test(location.pathname));
+            const selected = nestedScheduling
+              ? to === '/scheduling'
+              : teamDetail
+                ? to === '/my-team'
+                : nestedRegistration
+                  ? to === '/registration'
+                  : to === '/'
+                    ? location.pathname === '/'
+                    : location.pathname === to || location.pathname.startsWith(`${to}/`);
             return (
               <Link
                 key={to}
@@ -1739,6 +1771,46 @@ function WorkspaceLayout() {
                       <Navigate to="/my-team" replace />
                     ) : (
                       <EventRegistrationPage context={registration} />
+                    )
+                  }
+                />
+                <Route
+                  path="/scheduling"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <SchedulingIndexPage context={registration} repository={repository} />
+                    )
+                  }
+                />
+                <Route
+                  path="/courts"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <CourtsPage context={registration} />
+                    )
+                  }
+                />
+                <Route
+                  path="/events/:eventId/scheduling"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <EventSchedulingPage context={registration} />
+                    )
+                  }
+                />
+                <Route
+                  path="/events/:eventId/scheduling/history/:revisionId"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <EventSchedulingPage context={registration} />
                     )
                   }
                 />

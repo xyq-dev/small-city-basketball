@@ -23,6 +23,8 @@ import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
 import { RegistrationService } from './registration-service.js';
+import { SchedulingService } from './scheduling-service.js';
+import { SchedulingController } from './scheduling-controller.js';
 import {
   RegistrationController,
   InvitationAcceptanceController,
@@ -32,6 +34,7 @@ import { clearedSessionCookie, sessionCookie } from './security.js';
 import { objectInput } from './validation.js';
 
 const SERVICE = 'SCB_APPLICATION_SERVICE';
+const SCHEDULING_SERVICE = 'SCB_SCHEDULING_SERVICE';
 const envelope = <T>(request: ApiRequest, data: T, extra: Record<string, unknown> = {}) => ({
   data,
   meta: { requestId: request.requestId, ...extra },
@@ -206,6 +209,7 @@ export async function createApi(
   pool.on('error', () => console.error('Database idle connection error'));
   try {
     const service = new RegistrationService(pool, options);
+    const scheduling = new SchedulingService(pool, options);
     @Module({
       controllers: [
         AuthController,
@@ -213,8 +217,12 @@ export async function createApi(
         HealthController,
         RegistrationController,
         InvitationAcceptanceController,
+        SchedulingController,
       ],
-      providers: [{ provide: SERVICE, useValue: service }],
+      providers: [
+        { provide: SERVICE, useValue: service },
+        { provide: SCHEDULING_SERVICE, useValue: scheduling },
+      ],
     })
     class ApiModule {}
     const app = await NestFactory.create(ApiModule, { logger: false, bodyParser: true });
