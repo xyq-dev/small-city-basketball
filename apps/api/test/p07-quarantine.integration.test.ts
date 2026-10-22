@@ -1,0 +1,426 @@
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import type { Pool } from 'pg';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { quarantineRestoredDatabase } from '../../../ops/recovery/quarantine.mjs';
+import { createApi } from '../src/app.js';
+import { hashPassword, verifyPassword } from '../src/security.js';
+import { call, createEvent, data, login, ORIGIN, PASSWORD } from './support.js';
+import type { User } from './support.js';
+import { acceptPath, invitationsPath, invite, team } from './p03-support.js';
+import { acquire, assign, commandsPath, prepare, published, renew } from './p05-support.js';
+import type { Harness } from './p05-support.js';
+import {
+  anonymous,
+  confirmMatch,
+  disable,
+  enable,
+  publicEventPath,
+  savePublishRules,
+} from './p05b-support.js';
+import { bootstrap, issue, overlayCookie, overlaySnapshot, rotate } from './p06-support.js';
+import { createOwnedRestoreDatabase } from './p07-support.js';
+
+type Target = Awaited<ReturnType<typeof createOwnedRestoreDatabase>>;
+const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+const opaque = () => randomBytes(32).toString('base64url');
+const quote = (identifier: string) => `"${identifier.replaceAll('"', '""')}"`;
+
+async function fingerprints(pool: Pool, selected?: readonly string[]) {
+  const tables = selected
+    ? [...selected]
+    : (
+        await pool.query<{ tablename: string }>(
+          "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename",
+        )
+      ).rows.map((row) => row.tablename);
+  const result: Record<string, string> = {};
+  for (const tableName of tables) {
+    const row = (
+      await pool.query<{ content: unknown }>(
+        `SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]'::jsonb) AS content FROM public.${quote(tableName)} t`,
+      )
+    ).rows[0]!;
+    // Failure output contains aggregate digests, never restored credentials or row bodies.
+    result[tableName] = hash(JSON.stringify(row.content));
+  }
+  return result;
+}
+
+async function fixture(target: Target) {
+  const api = await createApi({ databaseUrl: target.databaseUrl, appOrigin: ORIGIN });
+  try {
+    const actors: User[] = [];
+    for (const label of ['owner', 'scorer', 'leader']) {
+      const actor: User = {
+        id: randomUUID(),
+        orgId: label === 'leader' ? '' : randomUUID(),
+        email: `p07-${label}-${randomUUID()}@example.test`,
+        cookie: '',
+      };
+      await api.pool.query(
+        'INSERT INTO users(id,email,display_name,password_hash) VALUES($1,$2,$3,$4)',
+        [actor.id, actor.email, `隔离恢复合成 ${label}`, await hashPassword(PASSWORD)],
+      );
+      if (actor.orgId) {
+        await api.pool.query('INSERT INTO organizations(id,name) VALUES($1,$2)', [
+          actor.orgId,
+          `恢复合成机构 ${label}`,
+        ]);
+        await api.pool.query(
+          "INSERT INTO organization_memberships(org_id,user_id,role) VALUES($1,$2,'ORG_OWNER')",
+          [actor.orgId, actor.id],
+        );
+      }
+      actor.cookie = await login(api, actor);
+      actors.push(actor);
+    }
+    const [owner, otherOwner, leader] = actors as [User, User, User];
+    await api.pool.query(
+      "INSERT INTO organization_memberships(org_id,user_id,role) VALUES($1,$2,'EVENT_MANAGER')",
+      [owner.orgId, otherOwner.id],
+    );
+    const h: Harness = {
+      api,
+      owner,
+      otherOwner,
+      leader,
+      teams: [],
+      otherTeams: [],
+      databaseUrl: target.databaseUrl,
+      nextDate: 0,
+    };
+    for (let index = 0; index < 4; index++) {
+      h.teams.push(await team(api, owner, `恢复球队 ${index}`, leader, ['合成甲', '合成乙']));
+    }
+    const schedule = await published(h);
+    const final = await confirmMatch(h, schedule, 0, 2, 1);
+    const activeLease = final.lease;
+    // Explicit fixture times make both the live and expired lease branches deterministic.
+    await api.pool.query(
+      "UPDATE scoring_leases SET expires_at=clock_timestamp()+interval '10 minutes' WHERE org_id=$1 AND match_id=$2",
+      [owner.orgId, final.matchId],
+    );
+    const expiredLeaseMatch = schedule.matches[1]!.id;
+    await assign(h, expiredLeaseMatch, otherOwner);
+    await prepare(h, expiredLeaseMatch);
+    await acquire(h, expiredLeaseMatch, otherOwner);
+    await api.pool.query(
+      "UPDATE scoring_leases SET expires_at=clock_timestamp()-interval '1 minute' WHERE org_id=$1 AND match_id=$2",
+      [owner.orgId, expiredLeaseMatch],
+    );
+    const emptyLeaseMatch = schedule.matches[2]!.id;
+    await api.pool.query('INSERT INTO scoring_leases(org_id,event_id,match_id) VALUES($1,$2,$3)', [
+      owner.orgId,
+      schedule.event.event.id,
+      emptyLeaseMatch,
+    ]);
+    await savePublishRules(h, schedule.event.event.id);
+    await enable(h, schedule.event.event.id);
+    await disable(h, schedule.event.event.id);
+    const publicViewing = await enable(h, schedule.event.event.id);
+    const publicId = publicViewing.publication!.publicEventId;
+    const firstOverlay = await issue(h, final.matchId);
+    if (!firstOverlay.credential) throw new Error('Synthetic overlay fixture has no credential');
+    const firstBootstrap = await bootstrap(
+      h,
+      firstOverlay.credential.overlayId,
+      firstOverlay.credential.token,
+    );
+    expect(firstBootstrap.status).toBe(200);
+    const currentOverlay = await rotate(h, final.matchId);
+    if (!currentOverlay.credential) throw new Error('Synthetic overlay fixture has no credential');
+    const currentBootstrap = await bootstrap(
+      h,
+      currentOverlay.credential.overlayId,
+      currentOverlay.credential.token,
+    );
+    expect(currentBootstrap.status).toBe(200);
+    const sourceCookie = overlayCookie(currentBootstrap);
+    // An expired-but-unrevoked grant must be closed too, without changing its immutable TTL.
+    await api.pool.query(
+      `INSERT INTO overlay_grants(id,org_id,event_id,match_id,overlay_id,secret_hash,issuer_id,created_at,expires_at)
+       SELECT $1,$2,$3,$4,$5,$6,$7,t-interval '2 hours',t-interval '1 hour' FROM (SELECT clock_timestamp() AS t) clock`,
+      [
+        randomUUID(),
+        owner.orgId,
+        schedule.event.event.id,
+        schedule.matches[3]!.id,
+        opaque(),
+        hash(opaque()),
+        owner.id,
+      ],
+    );
+    const pending = await invite(api, owner, h.teams[0]!, leader);
+    const consumed = await invite(api, owner, h.teams[0]!, leader);
+    data(
+      await call(api, 'post', acceptPath(consumed.invitation.id), {
+        cookie: leader.cookie,
+        body: { token: consumed.token },
+      }),
+    );
+    const revoked = await invite(api, owner, h.teams[0]!, leader);
+    data(
+      await call(
+        api,
+        'post',
+        `${invitationsPath(owner.orgId, h.teams[0]!.id)}/${revoked.invitation.id}/revoke`,
+        {
+          cookie: owner.cookie,
+          body: {},
+        },
+      ),
+    );
+    await createEvent(api, otherOwner, '另一机构隔离草稿');
+    return {
+      h,
+      pending,
+      consumedId: consumed.invitation.id,
+      revokedId: revoked.invitation.id,
+      publicId,
+      overlayCredential: currentOverlay.credential,
+      sourceCookie,
+      activeLease,
+      activeLeaseMatch: final.matchId,
+      expiredLeaseMatch,
+      emptyLeaseMatch,
+    };
+  } catch (error) {
+    await api.app.close();
+    await api.pool.end();
+    throw error;
+  }
+}
+
+describe('P07 owned restore quarantine on the real migrated PostgreSQL schema', () => {
+  let target: Target;
+  let seeded: Awaited<ReturnType<typeof fixture>>;
+
+  beforeAll(async () => {
+    target = await createOwnedRestoreDatabase();
+    seeded = await fixture(target);
+  }, 120000);
+
+  afterAll(async () => {
+    if (seeded) {
+      await seeded.h.api.app.close();
+      await seeded.h.api.pool.end();
+    }
+    await target?.close();
+  });
+
+  test('rejects a wrong database name, OID or owner nonce without changing restored data', async () => {
+    const before = await fingerprints(target.pool);
+    for (const ownership of [
+      { ...target.ownership, databaseName: 'scb_test_production_control' },
+      { ...target.ownership, databaseOid: target.ownership.databaseOid + 1 },
+      { ...target.ownership, nonce: randomUUID() },
+    ]) {
+      await expect(quarantineRestoredDatabase({ pool: target.pool, ownership })).rejects.toThrow(
+        'Restore quarantine failed',
+      );
+    }
+    expect(await fingerprints(target.pool)).toEqual(before);
+  });
+
+  test('an audit failure rolls back every credential, version, organization and system actor change', async () => {
+    const before = await fingerprints(target.pool);
+    await target.pool
+      .query(`CREATE FUNCTION p07_quarantine_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.action='RESTORE_QUARANTINE' THEN RAISE EXCEPTION 'Synthetic P07 audit rejection'; END IF; RETURN NEW; END; $$`);
+    await target.pool.query(`CREATE TRIGGER p07_quarantine_fail_audit BEFORE INSERT ON audit_logs
+      FOR EACH ROW EXECUTE FUNCTION p07_quarantine_fail_audit()`);
+    try {
+      await expect(quarantineRestoredDatabase(target)).rejects.toThrow('Restore quarantine failed');
+      expect(await fingerprints(target.pool)).toEqual(before);
+    } finally {
+      await target.pool.query('DROP TRIGGER p07_quarantine_fail_audit ON audit_logs');
+      await target.pool.query('DROP FUNCTION p07_quarantine_fail_audit()');
+    }
+  });
+
+  test('closes old access atomically while preserving immutable results, empty leases and counters', async () => {
+    const mutable = new Set([
+      'users',
+      'sessions',
+      'organizations',
+      'events',
+      'team_invitations',
+      'public_event_publications',
+      'overlay_grants',
+      'scoring_leases',
+      'audit_logs',
+    ]);
+    const all = await fingerprints(target.pool);
+    const protectedNames = Object.keys(all).filter((name) => !mutable.has(name));
+    const protectedBefore = await fingerprints(target.pool, protectedNames);
+    const historicalBefore = await target.pool.query(
+      `SELECT (SELECT jsonb_agg(to_jsonb(p) ORDER BY id) FROM public_event_publications p WHERE revoked_at IS NOT NULL) AS public,
+       (SELECT jsonb_agg(to_jsonb(g) ORDER BY id) FROM overlay_grants g WHERE revoked_at IS NOT NULL) AS overlay,
+       (SELECT jsonb_agg(to_jsonb(i) ORDER BY id) FROM team_invitations i WHERE accepted_at IS NOT NULL OR revoked_at IS NOT NULL) AS invitations`,
+    );
+    const historyDigest = hash(JSON.stringify(historicalBefore.rows));
+    const leasesBefore = (
+      await target.pool.query(
+        'SELECT *,expires_at::text AS exact_expiry FROM scoring_leases ORDER BY match_id',
+      )
+    ).rows;
+    const eventsBefore = (await target.pool.query('SELECT id,version FROM events')).rows;
+    const result = await quarantineRestoredDatabase(target);
+    expect(result.status).toBe('quarantined');
+    expect(result.counts).toMatchObject({
+      pendingInvitationsRevoked: 1,
+      publicPublicationsRevoked: 1,
+      overlayGrantsRevoked: 2,
+      activeLeasesExpired: 1,
+      organizationsDisabled: 2,
+      eventsTouched: eventsBefore.length,
+    });
+    expect(result.counts.sessionsRevoked).toBeGreaterThanOrEqual(3);
+    const system = (
+      await target.pool.query('SELECT * FROM users WHERE id=$1', [result.systemUserId])
+    ).rows[0]!;
+    expect(system.status).toBe('DISABLED');
+    expect(system.password_hash.length >= 80 && system.password_hash.length <= 256).toBe(true);
+    expect(system.password_hash.startsWith('scrypt$')).toBe(false);
+    expect(await verifyPassword(PASSWORD, system.password_hash)).toBe(false);
+    expect(
+      (
+        await target.pool.query(
+          'SELECT count(*)::int AS n FROM organization_memberships WHERE user_id=$1',
+          [system.id],
+        )
+      ).rows[0]!.n,
+    ).toBe(0);
+    expect(
+      (
+        await target.pool.query(
+          "SELECT count(*)::int AS n FROM organizations WHERE status<>'DISABLED'",
+        )
+      ).rows[0]!.n,
+    ).toBe(0);
+    expect(
+      (await target.pool.query('SELECT count(*)::int AS n FROM sessions WHERE revoked_at IS NULL'))
+        .rows[0]!.n,
+    ).toBe(0);
+    expect(
+      (
+        await target.pool.query(
+          'SELECT count(*)::int AS n FROM overlay_grants WHERE revoked_at IS NULL',
+        )
+      ).rows[0]!.n,
+    ).toBe(0);
+    for (const event of eventsBefore) {
+      expect(
+        (await target.pool.query('SELECT version FROM events WHERE id=$1', [event.id])).rows[0]!
+          .version,
+      ).toBe(event.version + 1);
+    }
+    expect(await fingerprints(target.pool, protectedNames)).toEqual(protectedBefore);
+    const historicalAfter = await target.pool.query(
+      `SELECT (SELECT jsonb_agg(to_jsonb(p) ORDER BY id) FROM public_event_publications p WHERE id=ANY($1::uuid[])) AS public,
+       (SELECT jsonb_agg(to_jsonb(g) ORDER BY id) FROM overlay_grants g WHERE id=ANY($2::uuid[])) AS overlay,
+       (SELECT jsonb_agg(to_jsonb(i) ORDER BY id) FROM team_invitations i WHERE accepted_at IS NOT NULL OR id=$3) AS invitations`,
+      [
+        historicalBefore.rows[0]!.public.map((row: { id: string }) => row.id),
+        historicalBefore.rows[0]!.overlay.map((row: { id: string }) => row.id),
+        seeded.revokedId,
+      ],
+    );
+    expect(hash(JSON.stringify(historicalAfter.rows))).toBe(historyDigest);
+    const leasesAfter = (
+      await target.pool.query(
+        'SELECT *,expires_at::text AS exact_expiry FROM scoring_leases ORDER BY match_id',
+      )
+    ).rows;
+    for (const before of leasesBefore) {
+      const after = leasesAfter.find((row) => row.match_id === before.match_id)!;
+      const { expires_at: ignoredBefore, exact_expiry: exactBefore, ...beforeIdentity } = before;
+      const { expires_at: ignoredAfter, exact_expiry: exactAfter, ...afterIdentity } = after;
+      expect(afterIdentity).toEqual(beforeIdentity);
+      if (before.match_id === seeded.activeLeaseMatch) {
+        expect(Date.parse(exactAfter)).toBeLessThan(Date.parse(exactBefore));
+      } else expect(exactAfter).toBe(exactBefore);
+    }
+    expect(
+      (await call(seeded.h.api, 'get', '/v1/auth/session', { cookie: seeded.h.owner.cookie }))
+        .status,
+    ).toBe(401);
+    expect((await anonymous(seeded.h, publicEventPath(seeded.publicId))).status).toBe(404);
+    expect(
+      (await overlaySnapshot(seeded.h, seeded.overlayCredential.overlayId, seeded.sourceCookie))
+        .status,
+    ).toBe(404);
+    expect(
+      (
+        await bootstrap(
+          seeded.h,
+          seeded.overlayCredential.overlayId,
+          seeded.overlayCredential.token,
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await call(seeded.h.api, 'post', acceptPath(seeded.pending.invitation.id), {
+          cookie: seeded.h.leader.cookie,
+          body: { token: seeded.pending.token },
+        })
+      ).status,
+    ).toBe(401);
+    expect(
+      (await renew(seeded.h, seeded.activeLeaseMatch, seeded.h.otherOwner, seeded.activeLease))
+        .status,
+    ).toBe(401);
+    const relogged = await login(seeded.h.api, seeded.h.owner);
+    const session = data<{ organizations: unknown[]; teamContexts: unknown[] }>(
+      await call(seeded.h.api, 'get', '/v1/auth/session', { cookie: relogged }),
+    );
+    expect(session.organizations).toEqual([]);
+    expect(session.teamContexts).toEqual([]);
+    expect(
+      (
+        await call(
+          seeded.h.api,
+          'post',
+          commandsPath(seeded.h.owner.orgId, seeded.activeLeaseMatch),
+          {
+            cookie: relogged,
+            body: {
+              commandId: randomUUID(),
+              expectedVersion: 1,
+              type: 'CONFIRM_RESULT',
+              payload: {},
+              capturedAt: new Date().toISOString(),
+            },
+          },
+        )
+      ).status,
+    ).toBe(404);
+  });
+
+  test('a repeated quarantine never mutates already revoked histories or immutable session/lease facts', async () => {
+    const names = [
+      'public_event_publications',
+      'overlay_grants',
+      'overlay_sessions',
+      'scoring_leases',
+      'published_matches',
+      'scoring_states',
+      'scoring_events',
+      'scoring_commands',
+      'result_confirmations',
+      'events',
+    ];
+    const before = await fingerprints(target.pool, names);
+    const result = await quarantineRestoredDatabase(target);
+    expect(result.counts).toMatchObject({
+      pendingInvitationsRevoked: 0,
+      publicPublicationsRevoked: 0,
+      overlayGrantsRevoked: 0,
+      activeLeasesExpired: 0,
+      organizationsDisabled: 0,
+      eventsTouched: 0,
+    });
+    expect(await fingerprints(target.pool, names)).toEqual(before);
+  });
+});

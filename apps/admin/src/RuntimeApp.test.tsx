@@ -35,6 +35,7 @@ function ok(data: unknown) {
     status: 200,
   });
 }
+const openRegistration = { canRegisterOrganization: true, canRegisterParticipant: true };
 function failed(status: number, message: string) {
   return new Response(
     JSON.stringify({
@@ -59,6 +60,7 @@ describe('API模式登录与机构边界', () => {
     let attempts = 0;
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => {
       if (url === '/v1/auth/session') return failed(401, '未登录');
+      if (url === '/v1/auth/capabilities') return ok(openRegistration);
       if (url === '/v1/auth/login')
         return ++attempts === 1 ? failed(401, '邮箱或密码错误') : ok(session);
       return ok([event('机构甲赛事')]);
@@ -148,11 +150,13 @@ describe('API模式登录与机构边界', () => {
       .mockImplementation(async (url) =>
         url === '/v1/auth/session'
           ? failed(401, '未登录')
-          : url === '/v1/auth/register'
-            ? ok(session)
-            : url === '/v1/auth/logout'
-              ? ok(null)
-              : ok([]),
+          : url === '/v1/auth/capabilities'
+            ? ok(openRegistration)
+            : url === '/v1/auth/register'
+              ? ok(session)
+              : url === '/v1/auth/logout'
+                ? ok(null)
+                : ok([]),
       );
     render(<RuntimeApp mode="api" client={createApiClient({ fetcher })} />);
     const user = userEvent.setup();
@@ -188,6 +192,7 @@ describe('API模式登录与机构边界', () => {
     let checks = 0;
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => {
       if (url === '/v1/auth/session') return ++checks === 1 ? first : failed(401, '未登录');
+      if (url === '/v1/auth/capabilities') return ok(openRegistration);
       if (url === '/v1/auth/login') return ok(session);
       return ok([event('新身份的赛事')]);
     });
@@ -405,7 +410,11 @@ describe('领队个人账号与绑定邀请', () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockImplementation(async (url) =>
-        url === '/v1/auth/session' ? failed(401, '未登录') : ok(participant),
+        url === '/v1/auth/session'
+          ? failed(401, '未登录')
+          : url === '/v1/auth/capabilities'
+            ? ok(openRegistration)
+            : ok(participant),
       );
     render(<RuntimeApp mode="api" client={createApiClient({ fetcher })} />);
     const user = userEvent.setup();

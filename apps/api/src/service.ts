@@ -1,6 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import type { EventData, OrgRole, SessionData, StaffRole } from '@small-city-basketball/contracts';
+import type {
+  AuthCapabilitiesData,
+  EventData,
+  OrgRole,
+  SessionData,
+  StaffRole,
+} from '@small-city-basketball/contracts';
+import { resolveApiOptions } from './runtime-config.js';
+import type { ResolvedApiOptions } from './runtime-config.js';
 import { ApiError, forbidden, notFound, unauthenticated } from './errors.js';
 import {
   hashPassword,
@@ -74,22 +82,26 @@ export const isAdministrator = (role: OrgRole) => role === 'ORG_OWNER' || role =
 export class ApplicationService {
   readonly sessionTtlSeconds: number;
   readonly secureCookies: boolean;
-  readonly registrationEnabled: boolean;
+  readonly organizationRegistrationEnabled: boolean;
+  readonly participantRegistrationEnabled: boolean;
+  readonly options: ResolvedApiOptions;
 
   constructor(
     readonly pool: Pool,
-    readonly options: ApiOptions,
+    options: ApiOptions,
   ) {
-    this.sessionTtlSeconds = options.sessionTtlSeconds ?? 12 * 60 * 60;
-    if (
-      !Number.isInteger(this.sessionTtlSeconds) ||
-      this.sessionTtlSeconds < 1 ||
-      this.sessionTtlSeconds > 30 * 24 * 60 * 60
-    ) {
-      throw new Error('sessionTtlSeconds must be an integer from 1 to 2592000');
-    }
-    this.secureCookies = process.env.NODE_ENV === 'production' || options.secureCookies === true;
-    this.registrationEnabled = options.registrationEnabled ?? true;
+    this.options = resolveApiOptions(options);
+    this.sessionTtlSeconds = this.options.sessionTtlSeconds;
+    this.secureCookies = this.options.secureCookies;
+    this.organizationRegistrationEnabled = this.options.organizationRegistrationEnabled;
+    this.participantRegistrationEnabled = this.options.participantRegistrationEnabled;
+  }
+
+  authCapabilities(): AuthCapabilitiesData {
+    return {
+      canRegisterOrganization: this.organizationRegistrationEnabled,
+      canRegisterParticipant: this.participantRegistrationEnabled,
+    };
   }
 
   protected async transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -127,6 +139,20 @@ export class ApplicationService {
   }
 
   protected async rateLimit(key: string, maximum: number, windowSeconds: number) {
+    // All current windows are at most one hour. Retain that full horizon so
+    // cleanup cannot reset a still-active registration/IP/account limit.
+    // Commit cleanup before the counter update so concurrent requests never
+    // carry locks on each other's expired keys into their own upserts.
+    await this.pool.query(`
+      WITH expired AS (
+        SELECT key FROM auth_rate_limits
+        WHERE window_start <= statement_timestamp()-interval '1 hour'
+        LIMIT 100 FOR UPDATE SKIP LOCKED
+      )
+      DELETE FROM auth_rate_limits limits USING expired
+      WHERE limits.key=expired.key
+        AND limits.window_start <= statement_timestamp()-interval '1 hour'
+    `);
     const result = await this.pool.query<{ attempts: number }>(
       `
       INSERT INTO auth_rate_limits(key,window_start,attempts) VALUES($1,clock_timestamp(),1)
@@ -223,7 +249,7 @@ export class ApplicationService {
   }
 
   async register(body: unknown, ip: string): Promise<{ data: SessionData; token: string }> {
-    if (!this.registrationEnabled)
+    if (!this.organizationRegistrationEnabled)
       throw new ApiError(403, 'REGISTRATION_DISABLED', '当前环境未开放自主注册');
     await this.rateLimit(`register:${hashToken(ip)}`, 20, 3600);
     const input = objectInput(body, ['email', 'password', 'displayName', 'organizationName']);

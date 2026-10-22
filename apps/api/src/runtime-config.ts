@@ -1,4 +1,6 @@
 import type { ApiOptions } from './service.js';
+import { isIP } from 'node:net';
+import { readRequiredSecret } from './env.js';
 
 export interface ResolvedApiOptions {
   databaseUrl: string;
@@ -14,6 +16,42 @@ export interface RuntimeConfig {
   apiOptions: ResolvedApiOptions;
   host: string;
   port: number;
+}
+
+function booleanEnv(name: string): boolean | undefined {
+  const value = process.env[name];
+  if (value === undefined) return undefined;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new Error('Boolean runtime configuration must be true or false');
+}
+
+export function readDatabaseUrl(): string {
+  return validateDatabaseUrl(readRequiredSecret('DATABASE_URL'));
+}
+
+export function readRuntimeConfig(): RuntimeConfig {
+  const rawPort = process.env.PORT ?? '3000';
+  if (!/^[1-9]\d{0,4}$/.test(rawPort) || Number(rawPort) > 65535)
+    throw new Error('PORT must be from 1 to 65535');
+  const host = process.env.HOST ?? '127.0.0.1';
+  if (host !== 'localhost' && !isIP(host))
+    throw new Error('HOST must be an IP address or localhost');
+  const rawHops = process.env.TRUST_PROXY_HOPS ?? '0';
+  if (rawHops !== '0' && rawHops !== '1') throw new Error('TRUST_PROXY_HOPS must be 0 or 1');
+  return {
+    host,
+    port: Number(rawPort),
+    apiOptions: resolveApiOptions({
+      databaseUrl: readDatabaseUrl(),
+      appOrigin: process.env.APP_ORIGIN ?? '',
+      secureCookies: booleanEnv('COOKIE_SECURE'),
+      registrationEnabled: booleanEnv('REGISTRATION_ENABLED'),
+      organizationRegistrationEnabled: booleanEnv('ORGANIZATION_REGISTRATION_ENABLED'),
+      participantRegistrationEnabled: booleanEnv('PARTICIPANT_REGISTRATION_ENABLED'),
+      trustProxyHops: Number(rawHops) as 0 | 1,
+    }),
+  };
 }
 
 export function isProduction(): boolean {

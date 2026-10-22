@@ -132,7 +132,7 @@ export class RegistrationService extends ApplicationService {
     body: unknown,
     ip: string,
   ): Promise<{ data: SessionData; token: string }> {
-    if (!this.registrationEnabled)
+    if (!this.participantRegistrationEnabled)
       throw new ApiError(403, 'REGISTRATION_DISABLED', '当前环境未开放自主注册');
     await this.rateLimit(`register:${hashToken(ip)}`, 20, 3600);
     const input = objectInput(body, ['email', 'password', 'displayName']);

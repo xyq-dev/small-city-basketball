@@ -40,6 +40,8 @@ import {
 import type { ApiOptions } from './service.js';
 import { clearedSessionCookie, sessionCookie } from './security.js';
 import { objectInput } from './validation.js';
+import { resolveApiOptions } from './runtime-config.js';
+import { assertRuntimeReadiness } from './readiness.js';
 
 const SERVICE = 'SCB_APPLICATION_SERVICE';
 const SCHEDULING_SERVICE = 'SCB_SCHEDULING_SERVICE';
@@ -52,6 +54,11 @@ const peerIp = (request: ApiRequest) => request.ip || request.socket.remoteAddre
 @Controller('v1/auth')
 class AuthController {
   constructor(@Inject(SERVICE) private readonly service: RegistrationService) {}
+
+  @Get('capabilities')
+  capabilities(@Req() request: ApiRequest) {
+    return envelope(request, this.service.authCapabilities());
+  }
 
   @Post('register-participant')
   async registerParticipant(
@@ -193,22 +200,15 @@ class HealthController {
     }
     return envelope(request, { status: 'ok' });
   }
+  @Get('ready')
+  async ready(@Req() request: ApiRequest) {
+    await assertRuntimeReadiness(this.service.pool);
+    return envelope(request, { status: 'ready' });
+  }
 }
 
-export async function createApi(
-  options: ApiOptions,
-): Promise<{ app: INestApplication; pool: Pool }> {
-  if (!options.databaseUrl) throw new Error('databaseUrl is required');
-  let origin: URL;
-  try {
-    origin = new URL(options.appOrigin);
-  } catch {
-    throw new Error('appOrigin must be an HTTP(S) origin');
-  }
-  if (!['http:', 'https:'].includes(origin.protocol) || origin.origin !== options.appOrigin)
-    throw new Error('appOrigin must be an HTTP(S) origin without a path');
-  if (process.env.NODE_ENV === 'production' && origin.protocol !== 'https:')
-    throw new Error('Production appOrigin must use HTTPS');
+export async function createApi(input: ApiOptions): Promise<{ app: INestApplication; pool: Pool }> {
+  const options = resolveApiOptions(input);
   const pool = new Pool({
     connectionString: options.databaseUrl,
     max: 12,
@@ -216,6 +216,7 @@ export async function createApi(
   });
   pool.on('error', () => console.error('Database idle connection error'));
   try {
+    if (options.production) await assertRuntimeReadiness(pool);
     const service = new RegistrationService(pool, options);
     const scheduling = new SchedulingService(pool, options);
     const scoring = new ScoringService(pool, options);
@@ -246,6 +247,7 @@ export async function createApi(
     class ApiModule {}
     const app = await NestFactory.create(ApiModule, { logger: false, bodyParser: true });
     app.getHttpAdapter().getInstance().disable('x-powered-by');
+    app.getHttpAdapter().getInstance().set('trust proxy', options.trustProxyHops);
     app.use((request: ApiRequest, response: Response, next: NextFunction) => {
       request.requestId = randomUUID();
       response.setHeader('X-Request-ID', request.requestId);

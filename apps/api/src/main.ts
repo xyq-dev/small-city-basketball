@@ -1,31 +1,38 @@
 import { createApi } from './app.js';
-import { loadRootEnv, requiredEnv } from './env.js';
+import { loadRootEnv } from './env.js';
+import { readRuntimeConfig } from './runtime-config.js';
 
-loadRootEnv();
-const port = Number(process.env.PORT ?? 3000);
-if (!Number.isInteger(port) || port < 1 || port > 65535)
-  throw new Error('PORT must be from 1 to 65535');
-const { app, pool } = await createApi({
-  databaseUrl: requiredEnv('DATABASE_URL'),
-  appOrigin: requiredEnv('APP_ORIGIN'),
-  secureCookies: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
-  registrationEnabled:
-    process.env.REGISTRATION_ENABLED === undefined
-      ? process.env.NODE_ENV !== 'production'
-      : process.env.REGISTRATION_ENABLED === 'true',
-});
-await app.listen(port, process.env.HOST ?? '127.0.0.1');
-console.log(`小城市篮球 API listening on port ${port}`);
+let instance: Awaited<ReturnType<typeof createApi>> | undefined;
 let closing = false;
 async function close() {
-  if (closing) return;
+  if (closing || !instance) return;
   closing = true;
-  await app.close();
-  await pool.end();
+  try {
+    await instance.app.close();
+  } finally {
+    await instance.pool.end();
+  }
 }
-process.once('SIGINT', () => {
-  void close();
-});
-process.once('SIGTERM', () => {
-  void close();
-});
+try {
+  loadRootEnv();
+  const config = readRuntimeConfig();
+  instance = await createApi(config.apiOptions);
+  await instance.app.listen(config.port, config.host);
+  console.log(`小城市篮球 API listening on port ${config.port}`);
+  const stop = () => {
+    void close().catch(() => {
+      console.error('API shutdown failed');
+      process.exitCode = 1;
+    });
+  };
+  process.once('SIGINT', stop);
+  process.once('SIGTERM', stop);
+} catch {
+  try {
+    await close();
+  } catch {
+    /* Only fixed startup failure is logged. */
+  }
+  console.error('API startup failed');
+  process.exitCode = 1;
+}

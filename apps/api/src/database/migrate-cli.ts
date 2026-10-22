@@ -1,16 +1,7 @@
-import { Pool } from 'pg';
-import { loadRootEnv, requiredEnv } from '../env.js';
-import { migrate } from './migrate.js';
-
-loadRootEnv();
-const pool = new Pool({ connectionString: requiredEnv('DATABASE_URL') });
+import { runMigrationCli } from './migrate.js';
 try {
-  const applied = await migrate(pool);
-  console.log(
-    applied.length
-      ? `Applied migrations: ${applied.join(', ')}`
-      : 'Migration checksums verified; no new migrations.',
-  );
-} finally {
-  await pool.end();
+  await runMigrationCli();
+} catch {
+  console.error('Database migration failed');
+  process.exitCode = 1;
 }

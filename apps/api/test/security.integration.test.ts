@@ -4,6 +4,7 @@ import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createApi } from '../src/app.js';
 import { migrate } from '../src/database/migrate.js';
+import { ApplicationService } from '../src/service.js';
 import {
   ORIGIN,
   PASSWORD,
@@ -875,4 +876,60 @@ describe('P02 HTTP + real PostgreSQL security boundaries', { concurrent: false }
     }
     expect(limited).toBe(true);
   }, 30000);
+
+  test('purges expired auth keys without clearing active limits or racing a current-key reset', async () => {
+    class RateLimitProbe extends ApplicationService {
+      consume(key: string, maximum = 10, windowSeconds = 900) {
+        return this.rateLimit(key, maximum, windowSeconds);
+      }
+    }
+    const limiter = new RateLimitProbe(api.pool, { databaseUrl, appOrigin: ORIGIN });
+    const prefix = `expiry-${RUN_ID}`;
+    const expired = [`login-account:${prefix}`, `login-ip:${prefix}`, `register:${prefix}`];
+    const active = `register:active-${prefix}`;
+    const current = `login-account:current-${prefix}`;
+    await api.pool.query(
+      `INSERT INTO auth_rate_limits(key,window_start,attempts)
+       SELECT unnest($1::text[]),clock_timestamp()-interval '2 hours',10`,
+      [[...expired, current]],
+    );
+    await api.pool.query(
+      `INSERT INTO auth_rate_limits(key,window_start,attempts)
+       VALUES($1,clock_timestamp()-interval '30 minutes',20)`,
+      [active],
+    );
+    await limiter.consume(current);
+    expect(
+      (await api.pool.query('SELECT key FROM auth_rate_limits WHERE key=ANY($1)', [expired])).rows,
+    ).toEqual([]);
+    expect(
+      (await api.pool.query('SELECT attempts FROM auth_rate_limits WHERE key=$1', [current]))
+        .rows[0]?.attempts,
+    ).toBe(1);
+    await expect(limiter.consume(active, 20, 3600)).rejects.toMatchObject({
+      status: 429,
+      code: 'RATE_LIMITED',
+    });
+    expect(
+      (await api.pool.query('SELECT attempts FROM auth_rate_limits WHERE key=$1', [active])).rows[0]
+        ?.attempts,
+    ).toBe(21);
+    await Promise.all([limiter.consume(current), limiter.consume(current)]);
+    expect(
+      (await api.pool.query('SELECT attempts FROM auth_rate_limits WHERE key=$1', [current]))
+        .rows[0]?.attempts,
+    ).toBe(3);
+    const competing = [`login-account:race-a-${prefix}`, `login-account:race-b-${prefix}`];
+    await api.pool.query(
+      `INSERT INTO auth_rate_limits(key,window_start,attempts)
+       SELECT unnest($1::text[]),clock_timestamp()-interval '2 hours',10`,
+      [competing],
+    );
+    await Promise.all(competing.map((key) => limiter.consume(key)));
+    expect(
+      (
+        await api.pool.query('SELECT attempts FROM auth_rate_limits WHERE key=ANY($1)', [competing])
+      ).rows.map((row) => row.attempts),
+    ).toEqual([1, 1]);
+  });
 });

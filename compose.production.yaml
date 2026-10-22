@@ -1,0 +1,236 @@
+# File-backed secrets retain host UID/mode. See ops/templates/README.md before up.
+x-db-tools: &db-tools
+  image: ${SCB_IMAGE_PREFIX:-small-city-basketball}/db-tools:local
+  build:
+    context: .
+    target: db-tools
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+
+services:
+  postgres:
+    image: postgres:18.6-alpine3.24
+    environment:
+      POSTGRES_USER: scb_admin
+      POSTGRES_DB: ${POSTGRES_DB:-scb}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+    secrets:
+      - postgres_admin_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks: [backend]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U scb_admin -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  provision:
+    <<: *db-tools
+    command: [node, ops/db/provision.mjs]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_admin_url
+      DATABASE_MIGRATOR_URL_FILE: /run/secrets/database_migrator_url
+      DATABASE_RUNTIME_URL_FILE: /run/secrets/database_runtime_url
+      DATABASE_BACKUP_URL_FILE: /run/secrets/database_backup_url
+    secrets:
+      - database_admin_url
+      - database_migrator_url
+      - database_runtime_url
+      - database_backup_url
+    networks: [backend]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  migrate:
+    <<: *db-tools
+    command: [node, ops/db/migrate-and-grant.mjs]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_migrator_url
+    secrets:
+      - database_migrator_url
+    networks: [backend]
+    depends_on:
+      provision:
+        condition: service_completed_successfully
+    restart: 'no'
+
+  api:
+    image: ${SCB_IMAGE_PREFIX:-small-city-basketball}/api:local
+    build:
+      context: .
+      target: api
+    init: true
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3300'
+      APP_ORIGIN: ${APP_ORIGIN:?Set an explicit canonical HTTPS APP_ORIGIN}
+      ORGANIZATION_REGISTRATION_ENABLED: 'false'
+      PARTICIPANT_REGISTRATION_ENABLED: 'true'
+      TRUST_PROXY_HOPS: '1'
+      DATABASE_URL_FILE: /run/secrets/database_runtime_url
+    secrets:
+      - database_runtime_url
+    networks: [frontend, backend]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3300/ready',{signal:AbortSignal.timeout(2500)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 10s
+      timeout: 4s
+      retries: 12
+      start_period: 10s
+    stop_grace_period: 30s
+
+  web:
+    image: ${SCB_IMAGE_PREFIX:-small-city-basketball}/web:local
+    build:
+      context: .
+      target: web
+    init: true
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?Set an explicit canonical HTTPS APP_ORIGIN}
+    secrets:
+      - tls_certificate
+      - tls_private_key
+    ports:
+      - '${SCB_HTTPS_PORT:-8443}:8443'
+    networks: [frontend]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  bootstrap-owner:
+    <<: *db-tools
+    profiles: [ops]
+    command: [node, apps/api/dist/bootstrap-owner.js]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_migrator_url
+      BOOTSTRAP_OWNER_INPUT_FILE: /run/secrets/bootstrap_owner_input
+    secrets:
+      - database_migrator_url
+      - bootstrap_owner_input
+    networks: [backend]
+    restart: 'no'
+
+  backup:
+    <<: *db-tools
+    profiles: [ops]
+    command: [node, ops/recovery/backup.mjs]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_backup_url
+      ARCHIVE_PATH: ${ARCHIVE_PATH:-/backups/application.dump}
+    secrets:
+      - database_backup_url
+    volumes:
+      - type: bind
+        source: ${SCB_BACKUP_DIR:?Set an absolute private SCB_BACKUP_DIR}
+        target: /backups
+        bind:
+          create_host_path: false
+    networks: [backend]
+    restart: 'no'
+
+  restore:
+    <<: *db-tools
+    profiles: [ops]
+    command: [node, ops/recovery/restore.mjs]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_restore_url
+      DATABASE_MIGRATOR_URL_FILE: /run/secrets/database_migrator_url
+      ARCHIVE_PATH: ${ARCHIVE_PATH:-/backups/application.dump}
+      RESTORE_DATABASE_NAME: ${RESTORE_DATABASE_NAME:-}
+      RESTORE_RECEIPT_PATH: ${RESTORE_RECEIPT_PATH:-/backups/restore-receipt.json}
+    secrets:
+      - database_restore_url
+      - source: database_restore_migrator_url
+        target: database_migrator_url
+    volumes:
+      - type: bind
+        source: ${SCB_BACKUP_DIR:?Set an absolute private SCB_BACKUP_DIR}
+        target: /backups
+        bind:
+          create_host_path: false
+    networks: [recovery]
+    restart: 'no'
+
+  quarantine:
+    <<: *db-tools
+    profiles: [ops]
+    command: [node, ops/recovery/quarantine.mjs]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_restore_url
+      DATABASE_MIGRATOR_URL_FILE: /run/secrets/database_migrator_url
+      RESTORE_RECEIPT_PATH: ${RESTORE_RECEIPT_PATH:-/backups/restore-receipt.json}
+    secrets:
+      - database_restore_url
+      - source: database_restore_migrator_url
+        target: database_migrator_url
+    volumes:
+      - type: bind
+        source: ${SCB_BACKUP_DIR:?Set an absolute private SCB_BACKUP_DIR}
+        target: /backups
+        bind:
+          create_host_path: false
+    networks: [recovery]
+    restart: 'no'
+
+secrets:
+  postgres_admin_password:
+    file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/postgres_admin_password
+  database_admin_url:
+    file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/database_admin_url
+  database_migrator_url:
+    file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/database_migrator_url
+  database_runtime_url:
+    file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/database_runtime_url
+  database_backup_url:
+    file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/database_backup_url
+  bootstrap_owner_input:
+    file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/bootstrap_owner_input
+  tls_certificate:
+    file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/tls_certificate
+  tls_private_key:
+    file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/tls_private_key
+  # Deliberately separate from the source cluster's credentials. These files are
+  # mounted only by explicitly invoked recovery jobs, never by normal startup.
+  database_restore_url:
+    file: ${SCB_RESTORE_SECRET_DIR:-/run/scb-restore-secrets}/database_restore_url
+  database_restore_migrator_url:
+    file: ${SCB_RESTORE_SECRET_DIR:-/run/scb-restore-secrets}/database_migrator_url
+
+volumes:
+  postgres_data:
+
+networks:
+  frontend:
+    internal: true
+  backend:
+    internal: true
+  recovery:

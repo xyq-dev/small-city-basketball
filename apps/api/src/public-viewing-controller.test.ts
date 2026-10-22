@@ -11,7 +11,7 @@ import { PublicViewingController } from './public-viewing-controller.js';
 import { StandingsService } from './standings-service.js';
 const pool = new Pool({ connectionString: 'postgresql://unused:unused@127.0.0.1:1/unused' });
 const service = new StandingsService(pool, {
-  databaseUrl: 'unused',
+  databaseUrl: 'postgresql://unused:unused@127.0.0.1:1/unused',
   appOrigin: 'http://localhost',
 });
 @Module({

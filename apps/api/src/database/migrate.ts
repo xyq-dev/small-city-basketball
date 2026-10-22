@@ -2,6 +2,9 @@ import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type { Pool } from 'pg';
+import { Pool as PgPool } from 'pg';
+import { isDirectExecution, loadRootEnv } from '../env.js';
+import { readDatabaseUrl } from '../runtime-config.js';
 
 export async function migrate(pool: Pool): Promise<string[]> {
   const directory = fileURLToPath(new URL('../../migrations/', import.meta.url));
@@ -46,5 +49,29 @@ export async function migrate(pool: Pool): Promise<string[]> {
     throw error;
   } finally {
     client.release();
+  }
+}
+
+export async function runMigrationCli(): Promise<void> {
+  if (process.argv.length > 2) throw new Error('Migration does not accept connection arguments');
+  loadRootEnv();
+  const pool = new PgPool({ connectionString: readDatabaseUrl(), connectionTimeoutMillis: 5000 });
+  try {
+    const applied = await migrate(pool);
+    console.log(
+      applied.length
+        ? `Applied migrations: ${applied.join(', ')}`
+        : 'Migration checksums verified; no new migrations.',
+    );
+  } finally {
+    await pool.end();
+  }
+}
+if (isDirectExecution(import.meta.url)) {
+  try {
+    await runMigrationCli();
+  } catch {
+    console.error('Database migration failed');
+    process.exitCode = 1;
   }
 }

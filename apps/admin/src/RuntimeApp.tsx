@@ -26,6 +26,7 @@ import type { ApiClient, AuthApi, AuthSession } from './api/client';
 import { createHttpEventRepository } from './api/events';
 import './runtime.css';
 import { OverlayEntry } from './overlay/Entry';
+import { useRegistrationCapabilities } from './auth/useRegistrationCapabilities';
 
 const PublicViewingApp = lazy(() =>
   import('./viewing/PublicPages').then((viewing) => ({ default: viewing.PublicViewingApp })),
@@ -45,14 +46,18 @@ function message(error: unknown) {
 
 function AuthForm({
   auth,
+  client,
   onSession,
   pendingInvitation,
 }: {
   auth: AuthApi;
+  client: ApiClient;
   onSession: (session: AuthSession) => void;
   pendingInvitation?: boolean;
 }) {
   const [intent, setIntent] = useState<'login' | 'organization' | 'participant'>('login');
+  const registration = useRegistrationCapabilities(client);
+  const capabilities = registration.capabilities;
   const register = intent !== 'login';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,9 +74,27 @@ function AuthForm({
       mounted.current = false;
     };
   }, []);
+  useEffect(() => {
+    if (
+      (intent === 'organization' && !capabilities?.canRegisterOrganization) ||
+      (intent === 'participant' && !capabilities?.canRegisterParticipant)
+    ) {
+      setIntent('login');
+      setPassword('');
+      setError('');
+      setFieldErrors({});
+    }
+  }, [intent, capabilities]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (lock.current) return;
+    if (
+      (intent === 'organization' && !capabilities?.canRegisterOrganization) ||
+      (intent === 'participant' && !capabilities?.canRegisterParticipant)
+    ) {
+      setError('当前注册入口未开放，请返回登录或重新读取注册状态。');
+      return;
+    }
     const errors: Record<string, string> = {};
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       errors.email = '请填写有效邮箱';
@@ -181,8 +204,12 @@ function AuthForm({
           </p>
           {pendingInvitation && (
             <p className="runtime-invitation-hint">
-              已读取球队邀请。请登录邀请所绑定的个人账号；新用户请先创建账号，将个人 ID
-              提供给机构签发邀请。
+              已读取球队邀请。请登录邀请所绑定的个人账号。
+              {capabilities?.canRegisterParticipant
+                ? '新用户可先创建个人账号，将个人 ID 提供给机构签发邀请。'
+                : registration.phase === 'ready'
+                  ? '本站当前未开放个人注册，请联系赛事主办方。'
+                  : '个人注册是否开放，需等待站点配置核验。'}
             </p>
           )}
           <form
@@ -264,39 +291,80 @@ function AuthForm({
               {busy ? '正在处理…' : register ? '创建账号并进入' : '登录工作台'}
             </button>
           </form>
-          <button
-            className="runtime-auth-toggle"
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              setIntent(register ? 'login' : 'organization');
-              setPassword('');
-              setError('');
-              setFieldErrors({});
-            }}
-          >
-            {register ? '已有账号？返回登录' : '首次使用？创建机构账号'}
-          </button>
-          {!register && (
+          {register ? (
             <button
-              className="runtime-auth-toggle runtime-participant-toggle"
+              className="runtime-auth-toggle"
               type="button"
               disabled={busy}
               onClick={() => {
-                setIntent('participant');
+                setIntent('login');
                 setPassword('');
                 setError('');
                 setFieldErrors({});
               }}
             >
-              球队领队？创建个人账号
+              已有账号？返回登录
             </button>
+          ) : (
+            <>
+              {capabilities?.canRegisterOrganization && (
+                <button
+                  className="runtime-auth-toggle"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setIntent('organization');
+                    setPassword('');
+                    setError('');
+                    setFieldErrors({});
+                  }}
+                >
+                  首次使用？创建机构账号
+                </button>
+              )}
+              {capabilities?.canRegisterParticipant && (
+                <button
+                  className="runtime-auth-toggle runtime-participant-toggle"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setIntent('participant');
+                    setPassword('');
+                    setError('');
+                    setFieldErrors({});
+                  }}
+                >
+                  球队领队？创建个人账号
+                </button>
+              )}
+            </>
           )}
+          {registration.phase === 'loading' && (
+            <p className="runtime-input-hint" role="status">
+              正在读取注册开放状态…
+            </p>
+          )}
+          {registration.phase === 'error' && (
+            <div className="runtime-error" role="alert">
+              <p>暂时无法读取注册开放状态；已有账号仍可登录。</p>
+              <button
+                className="button button-secondary"
+                type="button"
+                disabled={busy}
+                onClick={registration.reload}
+              >
+                重新读取注册状态
+              </button>
+            </div>
+          )}
+          {registration.phase === 'ready' &&
+            !capabilities?.canRegisterOrganization &&
+            !capabilities?.canRegisterParticipant && (
+              <p className="runtime-input-hint">本站暂未开放自助注册。已有账号可继续登录。</p>
+            )}
           <div className="runtime-auth-note">
             <ShieldCheck size={16} />
-            <span>
-              个人账号仅通过绑定本人 ID 的邀请获取球队权限。直播、身份验证、保险及支付尚未接入。
-            </span>
+            <span>个人账号仅通过绑定本人 ID 的邀请获取球队权限。本站尚无邮件投递或邮箱验证。</span>
           </div>
         </section>
       </main>
@@ -661,7 +729,12 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
     );
   if (phase === 'signedOut' || !session)
     return (
-      <AuthForm auth={auth} onSession={accept} pendingInvitation={Boolean(pendingInvitation)} />
+      <AuthForm
+        auth={auth}
+        client={client}
+        onSession={accept}
+        pendingInvitation={Boolean(pendingInvitation)}
+      />
     );
   const workspaceType = (
     <label className="runtime-context-label">

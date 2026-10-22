@@ -1,14 +1,40 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import { ApiError } from './errors.js';
 
 const COST = { N: 131072, r: 8, p: 1, maxmem: 256 * 1024 * 1024 };
 const KEY_LENGTH = 64;
+// One derivation uses roughly 128 MiB. All login, signup and owner-bootstrap
+// paths share this process-wide slot; the queue also has a fixed memory bound.
+const MAX_WAITING_DERIVATIONS = 16;
+let derivationActive = false;
+const waitingDerivations: (() => void)[] = [];
+const passwordUnavailable = () => new ApiError(503, 'AUTH_UNAVAILABLE', '认证服务繁忙，请稍后重试');
 
-function derive(password: string, salt: Buffer): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    scrypt(password, salt, KEY_LENGTH, COST, (error, key) =>
-      error ? reject(error) : resolve(key),
-    );
-  });
+async function passwordSlot(): Promise<() => void> {
+  if (derivationActive) {
+    if (waitingDerivations.length >= MAX_WAITING_DERIVATIONS) throw passwordUnavailable();
+    await new Promise<void>((resolve) => waitingDerivations.push(resolve));
+  } else derivationActive = true;
+  return () => {
+    const next = waitingDerivations.shift();
+    if (next) next();
+    else derivationActive = false;
+  };
+}
+
+async function derive(password: string, salt: Buffer): Promise<Buffer> {
+  const release = await passwordSlot();
+  try {
+    return await new Promise<Buffer>((resolve, reject) => {
+      scrypt(password, salt, KEY_LENGTH, COST, (error, key) =>
+        error ? reject(error) : resolve(key),
+      );
+    });
+  } catch {
+    throw passwordUnavailable();
+  } finally {
+    release();
+  }
 }
 
 export async function hashPassword(password: string): Promise<string> {

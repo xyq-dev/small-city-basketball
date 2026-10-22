@@ -1,0 +1,19 @@
+# P07-A PG / 恢复交接
+
+状态：REVIEW / LOCAL_ONLY。2026-10-23（Asia/Shanghai）由 `/root/resume_recovery` 接续原 `/root/p01_browser_tests` 工作，实际目录 `/workspace/scratch/93747c9ad2cb/p07-db`，分支 `feat/P07-recovery`。从远端 main `f2bf36585f09a0e55df41328a1d25f33e479e012`、tree `80a9b297e780840914ab5f27c6c8cccd9fa3a45d` 核验开工；接续基线 `d942b63a794585418647efc25525c8173c683e2e`，原 ops、P07 quarantine/support 与本交接未跟踪，均完整保留后继续。已读 AGENTS、CURRENT_STATUS、TASKS、COLLABORATION 与 P07-A 全卡。
+
+已独立提交权限 manifest `d942b63a794585418647efc25525c8173c683e2e`，固定 39 表、列级 UPDATE，audit_logs 仅 INSERT、schema_migrations 仅 SELECT；不授未来表或 sequence。root/API 已收到接口。
+
+当前检查点：角色 provision、compiled migrate→grant、私有文件/passfile、恢复 ownership proof、完整 custom backup/restore、39表与schema/checksum fingerprint、quarantine 均已实现。quarantine 和 4 项 PG 测试为原工作成果；接续新增 10 项 `p07-runtime.integration.test.ts`，覆盖真实 PostgreSQL 双初始化行锁等待、首owner唯一成功、既有个人账号不提升/密码不替换、审计拒绝全回滚、runtime/backup最小权限、缺失/过宽ACL及重新应用、角色高权或migrator成员关系、migration缺失/extra/checksum漂移、readiness固定503及缺btree_gist。运行阶段须由CI实际执行，不把发现用例写成通过。
+
+所有 PG Pool 连接设5秒超时，provision连接失败也关闭Pool。001–006与39表权限manifest未改变，无新业务Migration。
+
+接口：各 job 主 DSN 为 DATABASE_URL(_FILE)，严格二选一；provision 另读 DATABASE_MIGRATOR_URL、DATABASE_RUNTIME_URL、DATABASE_BACKUP_URL 各自 FILE 或 inline。backup 读 ARCHIVE_PATH，自动伴随 `${ARCHIVE_PATH}.manifest.json`，两者 0600／父目录0700。restore 使用目标 admin/control DSN 与目标 migrator/control DSN，RESTORE_DATABASE_NAME 必须全新 scb_restore_*，RESTORE_RECEIPT_PATH 新建0600，OID+随机 nonce 数据库 COMMENT 证明自有目标。quarantine 通过相同 receipt 复核，只用 migrator 身份维护，不修改 overlay_sessions，不删除已有库。
+
+P07 PG 使用独立 provisioned 集群及 TEST_P07_{ADMIN,MIGRATOR,RUNTIME,BACKUP}_DATABASE_URL_FILE，control DB 仅 scb_test_production_*，每 fixture 新建自有 scb_restore_UUID；不依赖/不清理旧123场景数据库。测试库初始化可调用 migrate；生产 restore 不先 migrate，必须完整 pg_restore。
+
+本地已执行：所有8个 `.mjs` 的 `node --check`、API完整strict类型检查（包含本卡PG测试）、独占ops/P07测试Prettier、`git diff --check`；均通过。`vitest list test/p07` 实际发现14项，执行0项。另20项私有路径/权限、独占输出、防符号链接/覆盖、错误secret来源、不安全DSN/目标名/receipt的guard探针通过，明确没有打开数据库连接。
+
+为类型及发现验证，按root授权先整合API冻结 `5df73bb` →本分支 `771a1fc`，再整合API实现 `2cad137` →本分支 `a64611c`；这两提交为测试依赖，root已集成同源实现，最终只挑选本交接对应的PG提交，不重复挑上述API提交。最初直接挑实现提交遇到缺冻结前置的modify/delete冲突，已仅撤销该次未完成cherry-pick，再按前置顺序重放；没有丢失原PG文件。
+
+本地尚未运行 PostgreSQL、Docker、dump/restore 或 PG 场景；本环境 UID0，不绕过保护。真实 PG18.6、第二新实例/卷、TLS/镜像/完整业务链、阶段一39表指纹及阶段二凭据隔离均由 root CI 验收。当前任何本地静态检查不代表真库通过。未 push、未执行生产Migration或部署。下一步root整合本分支PG交付提交并做独立审查后，使用 `vitest run test/p07` 在独立provisioned集群执行14项；保留源/control，仅清理各fixture nonce+OID+数据库comment证实为自身创建的目标。

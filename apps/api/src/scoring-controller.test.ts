@@ -10,7 +10,10 @@ import { ScoringController, SCB_SCORING_SERVICE } from './scoring-controller.js'
 import { ScoringService } from './scoring-service.js';
 
 const pool = new Pool({ connectionString: 'postgresql://unused:unused@127.0.0.1:1/unused' });
-const service = new ScoringService(pool, { databaseUrl: 'unused', appOrigin: 'http://localhost' });
+const service = new ScoringService(pool, {
+  databaseUrl: 'postgresql://unused:unused@127.0.0.1:1/unused',
+  appOrigin: 'http://localhost',
+});
 @Module({
   controllers: [ScoringController],
   providers: [{ provide: SCB_SCORING_SERVICE, useValue: service }],
