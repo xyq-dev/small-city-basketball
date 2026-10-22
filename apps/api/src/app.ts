@@ -22,6 +22,11 @@ import type { Response, NextFunction } from 'express';
 import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
+import { RegistrationService } from './registration-service.js';
+import {
+  RegistrationController,
+  InvitationAcceptanceController,
+} from './registration-controller.js';
 import type { ApiOptions } from './service.js';
 import { clearedSessionCookie, sessionCookie } from './security.js';
 import { objectInput } from './validation.js';
@@ -35,7 +40,21 @@ const peerIp = (request: ApiRequest) => request.ip || request.socket.remoteAddre
 
 @Controller('v1/auth')
 class AuthController {
-  constructor(@Inject(SERVICE) private readonly service: ApplicationService) {}
+  constructor(@Inject(SERVICE) private readonly service: RegistrationService) {}
+
+  @Post('register-participant')
+  async registerParticipant(
+    @Body() body: unknown,
+    @Req() request: ApiRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.service.registerParticipant(body, peerIp(request));
+    response.setHeader(
+      'Set-Cookie',
+      sessionCookie(result.token, this.service.sessionTtlSeconds, this.service.secureCookies),
+    );
+    return envelope(request, result.data);
+  }
 
   @Post('register')
   async register(
@@ -186,9 +205,15 @@ export async function createApi(
   });
   pool.on('error', () => console.error('Database idle connection error'));
   try {
-    const service = new ApplicationService(pool, options);
+    const service = new RegistrationService(pool, options);
     @Module({
-      controllers: [AuthController, OrganizationController, HealthController],
+      controllers: [
+        AuthController,
+        OrganizationController,
+        HealthController,
+        RegistrationController,
+        InvitationAcceptanceController,
+      ],
       providers: [{ provide: SERVICE, useValue: service }],
     })
     class ApiModule {}

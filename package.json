@@ -13,10 +13,10 @@
   "scripts": {
     "dev": "npm run dev --workspace @small-city-basketball/admin",
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc --project tsconfig.tests.json",
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "playwright test",
-    "format:check": "prettier --check apps/admin/src apps/admin/index.html apps/admin/vite.config.ts apps/admin/tsconfig.json apps/admin/package.json apps/api/src apps/api/test apps/api/package.json apps/api/tsconfig.json apps/api/tsconfig.build.json apps/api/vitest.config.ts packages/contracts playwright.config.ts playwright.api.config.ts tests/e2e tests/api-e2e package.json .github/workflows/ci.yml compose.yaml scripts",
+    "format:check": "prettier --check apps/admin/src apps/admin/index.html apps/admin/vite.config.ts apps/admin/tsconfig.json apps/admin/package.json apps/api/src apps/api/test apps/api/package.json apps/api/tsconfig.json apps/api/tsconfig.build.json apps/api/vitest.config.ts packages/contracts playwright.config.ts playwright.api.config.ts tests/e2e tests/api-e2e package.json .github/workflows/ci.yml compose.yaml scripts tsconfig.tests.json",
     "dev:api": "npm run dev --workspace @small-city-basketball/api",
     "dev:admin": "npm run dev --workspace @small-city-basketball/admin",
     "test:integration": "npm run test:integration --workspace @small-city-basketball/api",

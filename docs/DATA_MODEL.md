@@ -73,3 +73,13 @@ Migration `apps/api/migrations/001_p02_foundation.sql` 已编写、审查并在�
 写事务内锁会话/用户、机构、成员、赛事及必要分配；被撤权对象的更新与在途业务写按数据库锁串行。赛事FOR UPDATE后检查expectedVersion，成功递增version并同事务追加审计，审计失败回滚赛事变更。登录/退出也记录最小审计引用，不记录密码、令牌或完整请求。
 
 Migration runner使用事务advisory lock、文件名白名单及SHA-256校验和，重复执行核验并跳过，不在API启动自动运行。开发seed需显式DEV_SEED_PASSWORD，禁止production，幂等不清库、不重置已有密码；生产凭据与开发合成数据分开。GitHub CI隔离PostgreSQL18.6已完成真实验证；数据库重启后会话、赛事、version、授权、审计及迁移校验和保留。当前没有生产数据库；重启持久化不是备份恢复或生产可用性验收。
+
+## 7. P03-A分支持久化（隔离测试库已执行）
+
+`002_p03_registration.sql` 已发布于[PR3首个代码提交dac9ebc](https://github.com/xyq-dev/small-city-basketball/commit/dac9ebcffb69eca7f01fee9133ccb310e4c37f31)；独立静态审查允许在空隔离测试库按001→002验证，SHA256 `13f3729b86305745c5e1a986f7cd533eb99f9cd96052d630de6607e8394576e4`。首轮CI39733327804已在隔离测试库执行并通过43项PG及实际重启验证；API浏览器未通过，仍未合并或生产执行。
+
+新增teams、team_members、team_access_grants、team_invitations、event_rulesets、entries、entry_roster_revisions、entry_roster_players、entry_review_history及registration_freezes。事件追加可空当前/锁定规则指针，兼容001已有赛事；复合FK约束同机构、赛事、球队、报名revision及来源成员。
+
+长期成员移出归档；每次报名名单保存新revision和姓名/号码快照。规则、roster revision/players、review history和freeze通过触发器拒绝UPDATE/DELETE；API只能向刚建立的新revision插入players，不提供向旧revision追加球员接口。名单锁与冻结JSON的一致性仍需应用事务及真实PG验证。
+
+报名/审核/冻结写均持同一Event UPDATE锁，再按Team→grant→Entry顺序处理；全部grant创建、启用、撤销及邀请接受持同Team UPDATE锁，审核在锁内检查当前非领队。邀请接受还锁住邀请人的有效membership到提交。freeze由服务端批准entry当前revision及锁定规则生成，与审计同事务；长期成员变动不能回写旧名单。

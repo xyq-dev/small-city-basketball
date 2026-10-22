@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '../domain/repository';
-import { ApiError, createApiClient } from './client';
+import { ApiError, createApiClient, createAuthApi } from './client';
 import { createHttpEventRepository } from './events';
 import type { EventRecord } from '../domain/types';
 
@@ -171,5 +171,41 @@ describe('赛事API适配器', () => {
     await expect(
       createHttpEventRepository(createApiClient({ fetcher }), 'org-a').get('event-a'),
     ).rejects.toMatchObject({ apiCode: 'INVALID_EVENT_RESPONSE' });
+  });
+});
+
+describe('个人账号与球队上下文', () => {
+  const participant = {
+    user: { id: 'leader-a', email: 'leader@example.test', displayName: '球队领队' },
+    organizations: [],
+    teamContexts: [
+      { orgId: 'org-a', organizationName: '赛事机构', teamId: 'team-a', teamName: '城市队' },
+    ],
+  };
+  it('外部注册只发送个人字段并保留独立球队上下文', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(participant));
+    const auth = createAuthApi(createApiClient({ fetcher }));
+    const result = await auth.registerParticipant({
+      email: participant.user.email,
+      password: 'strong-test-password',
+      displayName: participant.user.displayName,
+    });
+    expect(result.organizations).toEqual([]);
+    expect(result.teamContexts).toEqual(participant.teamContexts);
+    expect(fetcher.mock.calls[0]?.[0]).toBe('/v1/auth/register-participant');
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual({
+      email: participant.user.email,
+      password: 'strong-test-password',
+      displayName: participant.user.displayName,
+    });
+  });
+  it('畸形球队上下文使会话明确失败，旧P02响应缺字段保持兼容', async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ ...participant, teamContexts: [{ teamId: 'team-a' }] }))
+      .mockResolvedValueOnce(response({ user: participant.user, organizations: [] }));
+    const auth = createAuthApi(createApiClient({ fetcher }));
+    await expect(auth.session()).rejects.toMatchObject({ apiCode: 'INVALID_SESSION' });
+    expect(await auth.session()).toMatchObject({ organizations: [] });
   });
 });

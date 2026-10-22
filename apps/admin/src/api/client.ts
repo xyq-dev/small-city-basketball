@@ -1,6 +1,7 @@
 import type { ApiEnvelope, SessionData } from '@small-city-basketball/contracts';
 import { AppError } from '../domain/repository';
 import type { CreateEventInput, EventFieldErrors } from '../domain/types';
+import type { TeamContext } from '../registration/shared';
 
 type Fetcher = typeof fetch;
 type JsonObject = Record<string, unknown>;
@@ -116,14 +117,16 @@ export interface RegisterInput {
   displayName: string;
   organizationName: string;
 }
+export type AuthSession = Omit<SessionData, 'teamContexts'> & { teamContexts: TeamContext[] };
 export interface AuthApi {
-  session(): Promise<SessionData>;
-  login(email: string, password: string): Promise<SessionData>;
-  register(input: RegisterInput): Promise<SessionData>;
+  session(): Promise<AuthSession>;
+  login(email: string, password: string): Promise<AuthSession>;
+  register(input: RegisterInput): Promise<AuthSession>;
+  registerParticipant(input: Omit<RegisterInput, 'organizationName'>): Promise<AuthSession>;
   logout(): Promise<void>;
 }
 
-function sessionData(value: unknown): SessionData {
+function sessionData(value: unknown): AuthSession {
   if (
     !object(value) ||
     !object(value.user) ||
@@ -150,7 +153,20 @@ function sessionData(value: unknown): SessionData {
       !roles.has(org.role)
     )
       throw new ApiError(200, 'INVALID_SESSION', '服务返回的机构资料不完整');
-  return value as unknown as SessionData;
+  if (value.teamContexts !== undefined) {
+    if (!Array.isArray(value.teamContexts))
+      throw new ApiError(200, 'INVALID_SESSION', '服务返回的球队授权资料不完整');
+    for (const team of value.teamContexts)
+      if (
+        !object(team) ||
+        typeof team.orgId !== 'string' ||
+        typeof team.organizationName !== 'string' ||
+        typeof team.teamId !== 'string' ||
+        typeof team.teamName !== 'string'
+      )
+        throw new ApiError(200, 'INVALID_SESSION', '服务返回的球队授权资料不完整');
+  }
+  return { ...value, teamContexts: value.teamContexts ?? [] } as unknown as AuthSession;
 }
 
 export function createAuthApi(client: ApiClient): AuthApi {
@@ -172,6 +188,16 @@ export function createAuthApi(client: ApiClient): AuthApi {
       return sessionData(
         (
           await client.request<unknown>('/v1/auth/register', {
+            method: 'POST',
+            body: JSON.stringify(input),
+          })
+        ).data,
+      );
+    },
+    async registerParticipant(input) {
+      return sessionData(
+        (
+          await client.request<unknown>('/v1/auth/register-participant', {
             method: 'POST',
             body: JSON.stringify(input),
           })

@@ -39,6 +39,16 @@ async function fingerprint() {
     ['sessions', 'id'],
     ['events', 'id'],
     ['event_staff', 'org_id,event_id,user_id'],
+    ['teams', 'id'],
+    ['team_members', 'id'],
+    ['team_access_grants', 'org_id,team_id,user_id'],
+    ['team_invitations', 'id'],
+    ['event_rulesets', 'id'],
+    ['entries', 'id'],
+    ['entry_roster_revisions', 'id'],
+    ['entry_roster_players', 'org_id,revision_id,member_id'],
+    ['entry_review_history', 'id'],
+    ['registration_freezes', 'id'],
     ['audit_logs', 'id'],
     ['schema_migrations', 'name'],
   ]) {
@@ -47,6 +57,151 @@ async function fingerprint() {
     hash.update(table + '\n' + JSON.stringify(rows.rows) + '\n');
   }
   return hash.digest('hex');
+}
+async function captureRegistration(orgId, ownerCookie, suffix) {
+  const root = `/v1/orgs/${orgId}`;
+  const leader = await call('/v1/auth/register-participant', {
+    method: 'POST',
+    body: {
+      email: `restart-leader-${suffix}@example.test`,
+      password: randomBytes(24).toString('base64url'),
+      displayName: '重启验证领队',
+    },
+  });
+  assert.deepEqual(leader.data.organizations, []);
+  const leaderCookie = leader.response.headers.getSetCookie()[0]?.split(';')[0];
+  assert.ok(leaderCookie, 'Participant registration must create a persistent session');
+  const event = await call(`${root}/events`, {
+    method: 'POST',
+    cookie: ownerCookie,
+    body: {
+      name: `冻结重启验证-${suffix}`,
+      startDate: '2026-12-01',
+      endDate: '2026-12-02',
+      timezone: 'Asia/Shanghai',
+      format: 'ROUND_ROBIN',
+    },
+  });
+  const path = `${root}/events/${event.data.id}`;
+  let workspace = (
+    await call(`${path}/registration-rules`, {
+      method: 'PUT',
+      cookie: ownerCookie,
+      body: {
+        expectedVersion: event.data.version,
+        minPlayers: 2,
+        maxPlayers: 3,
+        zeroAndDoubleZeroDistinct: true,
+        requireIdentity: false,
+        requireInsurance: false,
+      },
+    })
+  ).data;
+  async function eventCommand(type) {
+    workspace = (
+      await call(`${path}/registration-commands`, {
+        method: 'POST',
+        cookie: ownerCookie,
+        body: { type, expectedVersion: workspace.event.version },
+      })
+    ).data;
+  }
+  await eventCommand('OPEN_REGISTRATION');
+  const entries = [];
+  const teams = [];
+  for (let index = 0; index < 2; index += 1) {
+    let team = (
+      await call(`${root}/teams`, {
+        method: 'POST',
+        cookie: ownerCookie,
+        body: { name: `重启验证球队${index + 1}` },
+      })
+    ).data;
+    team = (
+      await call(`${root}/teams/${team.id}/members`, {
+        method: 'PUT',
+        cookie: ownerCookie,
+        body: {
+          expectedVersion: team.version,
+          members: [{ name: '合成球员甲' }, { name: '合成球员乙' }],
+        },
+      })
+    ).data;
+    teams.push(team);
+    const issued = await call(`${root}/teams/${team.id}/invitations`, {
+      method: 'POST',
+      cookie: ownerCookie,
+      body: { targetUserId: leader.data.user.id, expiresInHours: 1 },
+    });
+    await call(`/v1/invitations/${issued.data.invitation.id}/accept`, {
+      method: 'POST',
+      cookie: leaderCookie,
+      body: { token: issued.data.token },
+    });
+    let entry = (
+      await call(`${path}/entries`, {
+        method: 'POST',
+        cookie: leaderCookie,
+        body: { teamId: team.id },
+      })
+    ).data;
+    const entryPath = `${root}/entries/${entry.id}`;
+    entry = (
+      await call(`${entryPath}/roster`, {
+        method: 'PUT',
+        cookie: leaderCookie,
+        body: {
+          expectedVersion: entry.version,
+          players: team.members.map((member, memberIndex) => ({
+            memberId: member.id,
+            jerseyNo: memberIndex === 0 ? '0' : '00',
+          })),
+        },
+      })
+    ).data;
+    entry = (
+      await call(`${entryPath}/commands`, {
+        method: 'POST',
+        cookie: leaderCookie,
+        body: { type: 'SUBMIT', expectedVersion: entry.version },
+      })
+    ).data;
+    await call(`${entryPath}/commands`, {
+      method: 'POST',
+      cookie: ownerCookie,
+      body: { type: 'APPROVE', expectedVersion: entry.version },
+    });
+    entries.push((await call(entryPath, { cookie: ownerCookie })).data);
+  }
+  // Each new entry is serialized on the event but does not change its command version.
+  workspace = (await call(`${path}/registration`, { cookie: ownerCookie })).data;
+  await eventCommand('CLOSE_REGISTRATION');
+  await eventCommand('FREEZE_REGISTRATION');
+  assert.equal(workspace.freeze.entries.length, 2);
+  const snapshot = structuredClone(workspace.freeze);
+  const team = teams[0];
+  await call(`${root}/teams/${team.id}/members`, {
+    method: 'PUT',
+    cookie: leaderCookie,
+    body: {
+      expectedVersion: team.version,
+      members: team.members.map((member) => ({ id: member.id, name: '更名后的合成球员' })),
+    },
+  });
+  workspace = (await call(`${path}/registration`, { cookie: ownerCookie })).data;
+  assert.deepEqual(workspace.freeze, snapshot, 'Long-term member changes must preserve the freeze');
+  // Capabilities change at freeze time; capture the final, authoritative response.
+  for (let index = 0; index < entries.length; index += 1) {
+    entries[index] = (
+      await call(`${root}/entries/${entries[index].id}`, { cookie: ownerCookie })
+    ).data;
+  }
+  return {
+    leaderCookie,
+    leaderSession: (await call('/v1/auth/session', { cookie: leaderCookie })).data,
+    workspace,
+    entries,
+  };
 }
 try {
   if (mode === 'capture') {
@@ -79,11 +234,12 @@ try {
       userId: registration.data.user.id,
       orgId,
       event: created.data,
+      registration: await captureRegistration(orgId, cookie, suffix),
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
     console.log(
-      'Captured an authenticated event and database fingerprint for the isolated restart check.',
+      'Captured authenticated events, a frozen registration and the isolated database fingerprint.',
     );
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
@@ -93,9 +249,23 @@ try {
       cookie: state.cookie,
     });
     assert.deepEqual(event.data, state.event);
+    const registration = state.registration;
+    const teamSession = await call('/v1/auth/session', { cookie: registration.leaderCookie });
+    assert.deepEqual(teamSession.data, registration.leaderSession);
+    const workspace = await call(
+      `/v1/orgs/${state.orgId}/events/${registration.workspace.event.id}/registration`,
+      { cookie: state.cookie },
+    );
+    assert.deepEqual(workspace.data, registration.workspace);
+    for (const saved of registration.entries) {
+      const entry = await call(`/v1/orgs/${state.orgId}/entries/${saved.id}`, {
+        cookie: state.cookie,
+      });
+      assert.deepEqual(entry.data, saved);
+    }
     assert.equal(await fingerprint(), state.fingerprint);
     console.log(
-      'PostgreSQL restart retained the session, event, versions, permissions, audit history and migration checksum.',
+      'PostgreSQL restart retained sessions, events, grants, immutable rosters, the registration freeze, audit history and migration checksums.',
     );
   }
 } finally {
