@@ -1,7 +1,16 @@
 import { Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
-import type { ScheduleFixtureData } from '@small-city-basketball/contracts';
+import type { MatchStatus, ScheduleFixtureData } from '@small-city-basketball/contracts';
 import type { RegistrationWorkspace } from '../registration/shared';
+export const matchStatusLabels: Record<MatchStatus, string> = {
+  SCHEDULED: '待准备',
+  READY: '已准备',
+  LIVE: '进行中',
+  PENDING_CONFIRMATION: '待确认',
+  FINAL: '已确认',
+  POSTPONED: '已延期',
+  CANCELLED: '已取消',
+};
 export function organizationContext(
   context: RegistrationWorkspace,
 ): context is RegistrationWorkspace & { organizationId: string } {

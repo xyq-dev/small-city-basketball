@@ -351,3 +351,13 @@ OverlayPreviewData逐层白名单完整为：eventName、home/away各`{teamName}
 scrypt保留既有参数及哈希格式，所有API实例共用进程内1槽与最多16等待，超载/底层计算失败固定503 AUTH_UNAVAILABLE，错误释放槽位。限流每次独立自动提交清理最多100条超过1小时的旧key，再执行原窗口原子计数，不携带其它key锁进入upsert，不删除仍有效计数。
 
 首owner由独立compiled CLI输入私有JSON四字段email/password/displayName/organizationName，组织非空即拒绝、既有email不提升，用户/机构/OWNER/BOOTSTRAP_OWNER审计同事务；无HTTP bootstrap接口，不创建session或返回登录凭据。详见[P07-A任务](tasks/P07-A.md)及[运行说明](../ops/templates/README.md)。原公开/Overlay/管理/记分授权边界不变。
+
+## 12. P04-B正式单场改期合同（REVIEW / BRANCH_ONLY）
+
+本节是[任务卡](tasks/P04-B.md)冻结合同，新验收未执行，不是已合并能力。私有前缀`/v1/orgs/{orgId}`；GET `/matches/{matchId}/rescheduling`和POST `/matches/{matchId}/reschedule-commands`均返回200标准no-store envelope。POST精确`{type:'RESCHEDULE',expectedEventVersion,expectedMatchVersion,courtId,startsAt,reason}`，版本正整数、startsAt有效带offset ISO、reason trim后1–500字符。服务端按原policy计算结束时间，客户端不能换球队/时长/策略或写比赛状态。
+
+data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、history（最近20条）、historyLimit:20、historyTruncated、capabilities.canReschedule。history仅id/fromMatchVersion/toMatchVersion/from/to/reason/createdAt；from/to仅courtId/courtName/startsAt/endsAt，不带数据库事务标识或操作者私密资料。原publication/revision/fixtures/hash独立只读，不把改期后的当前安排冒充原发布快照。
+
+读按当前event实际工作人员/管理员，写限OWNER/ADMIN或本event实际EVENT_MANAGER，未分配global role/单场SCORER/球队grant不授改期权。Event SCHEDULED/RUNNING、比赛SCHEDULED/READY且无START_MATCH历史才允许。CAS/授权、当前计划复检、history/三预约/Match与Event版本/已有scoring source_version/audit原子完成；READY的分数、时钟、流水和lease/fence不变。私有matches游标绑定Event.version；公开schedule游标绑定本届改期历史版本，不携内部身份ID，改期后旧cursor拒绝而不混合分页结果。
+
+错误沿用401/403 FORBIDDEN/ORIGIN_REJECTED、隐藏或跨scope404 RESOURCE_NOT_FOUND；422 VALIDATION_ERROR；409 VERSION_CONFLICT/RESCHEDULE_UNCHANGED/SCHEDULE_CONFLICT/INVALID_EVENT_STATE/MATCH_CANNOT_RESCHEDULE/RESCHEDULE_SOURCE_INVALID。冲突仅目标fixture及必要Court/Team/时间，不能泄露不可见外部赛事详情。响应未知或版本冲突须fresh GET核对，不自动重放。007将精确运行/恢复期望扩为40表、7Migration，历史P07-A的39表证据仍仅属于该版本。

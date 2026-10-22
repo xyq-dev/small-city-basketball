@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   CalendarDays,
@@ -11,7 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import type {
-  MatchStatus,
+  CourtData,
   SchedulePolicy,
   ScheduledMatchData,
 } from '@small-city-basketball/contracts';
@@ -19,6 +19,7 @@ import type { EventRepository } from '../domain/types';
 import { EVENT_FORMAT_LABELS, EVENT_STATUS_LABELS } from '../domain/types';
 import { ApiError } from '../api/client';
 import { createSchedulingApi } from '../api/scheduling';
+import type { SchedulingApi } from '../api/scheduling';
 import {
   ActionNotice,
   PageHeading,
@@ -29,17 +30,14 @@ import {
 import type { RegistrationWorkspace } from '../registration/shared';
 import { PolicyForm, PolicySummary } from './PolicyForm';
 import { ScheduleEditor } from './ScheduleEditor';
-import { organizationContext, SchedulingAccessRequired, timeLabel } from './shared';
-
-const matchStatusLabels: Record<MatchStatus, string> = {
-  SCHEDULED: '待准备',
-  READY: '已准备',
-  LIVE: '进行中',
-  PENDING_CONFIRMATION: '待确认',
-  FINAL: '已确认',
-  POSTPONED: '已延期',
-  CANCELLED: '已取消',
-};
+import { Rescheduling } from './Rescheduling';
+import {
+  fixtureLabel,
+  matchStatusLabels,
+  organizationContext,
+  SchedulingAccessRequired,
+  timeLabel,
+} from './shared';
 
 export function SchedulingIndexPage({
   context,
@@ -157,7 +155,7 @@ function EventSchedulingContent({
     )
       throw new ApiError(409, 'VERSION_CONFLICT', '赛事资料刚刚发生变化，请重新读取以取得一致版本');
     const matches =
-      overview.publication && overview.capabilities.canReadMatches
+      !revisionId && overview.publication && overview.capabilities.canReadMatches
         ? await api.matches(eventId)
         : [];
     return { overview, revision, courts: courts.data, matches };
@@ -165,6 +163,7 @@ function EventSchedulingContent({
   const resource = useResource(read);
   const action = useAction();
   const [formOpen, setFormOpen] = useState<boolean | undefined>();
+  const [reschedulingOpen, setReschedulingOpen] = useState(false);
   async function generate(policy: SchedulePolicy, reason?: string) {
     const current = resource.data;
     if (!current?.overview.freeze) return;
@@ -223,7 +222,7 @@ function EventSchedulingContent({
       >
         <button
           className="button button-secondary"
-          disabled={action.busy}
+          disabled={action.busy || reschedulingOpen}
           onClick={resource.reload}
         >
           <RefreshCw size={16} />
@@ -356,7 +355,10 @@ function EventSchedulingContent({
                 当前身份没有生成或重新生成此赛事对阵的权限，赛事状态与实际工作人员授权由服务核验。
               </p>
             )}
-          {published && overview.publication && revision?.id === overview.publication.revisionId ? (
+          {!historical &&
+          published &&
+          overview.publication &&
+          revision?.id === overview.publication.revisionId ? (
             <>
               <section className="sc-publication-banner">
                 <CheckCheck size={28} />
@@ -365,14 +367,26 @@ function EventSchedulingContent({
                   <p>
                     已于{timeLabel(overview.publication.publishedAt)}正式发布 ·{' '}
                     {overview.publication.matchCount}
-                    场比赛。此计划只读，当前不提供重新生成、重复发布或改期。
+                    场比赛。原发布快照保留；当前正式安排的改期通过独立记录追踪。
                   </p>
                 </div>
               </section>
+              <Link
+                className="sc-original-plan-link"
+                to={`/events/${eventId}/scheduling/history/${overview.publication.revisionId}`}
+              >
+                查看原始发布快照
+              </Link>
               <PolicySummary policy={revision.policy} courts={data.courts} />
               <PublishedMatches
                 matches={data.matches}
                 canRead={overview.capabilities.canReadMatches}
+                courts={data.courts}
+                api={api}
+                onActiveChange={setReschedulingOpen}
+                onSaved={() =>
+                  void action.run(async () => resource.reload(), '正式安排已更新，改期记录已保存')
+                }
               />
             </>
           ) : revision && !showForm ? (
@@ -405,7 +419,7 @@ function EventSchedulingContent({
           <div className="sc-note">
             <ShieldCheck size={18} />
             <p>
-              计划占用检查不保证实际比赛准时结束。记分和赛果在独立工作台处理，公开观赛与直播导播待后续接入。
+              计划占用检查不保证实际比赛准时结束。记分和赛果在独立工作台处理，公开观赛与比分包装使用同一比赛事实；实际直播导播另行验收。
             </p>
           </div>
         </>
@@ -416,64 +430,124 @@ function EventSchedulingContent({
 function PublishedMatches({
   matches,
   canRead,
+  courts,
+  api,
+  onSaved,
+  onActiveChange,
 }: {
   matches: ScheduledMatchData[];
   canRead: boolean;
+  courts: CourtData[];
+  api: SchedulingApi;
+  onSaved: () => void;
+  onActiveChange: (active: boolean) => void;
 }) {
   const [round, setRound] = useState('all');
+  const [selectedId, setSelectedId] = useState<string>();
+  const cards = useRef<Record<string, HTMLElement | null>>({});
+  const selected = matches.find((match) => match.id === selectedId);
   const rounds = [...new Set(matches.map((match) => match.roundNo))];
+  function locate(key: string) {
+    const match = matches.find((match) => match.fixtureKey === key);
+    if (!match) return;
+    setRound(String(match.roundNo));
+    window.requestAnimationFrame(() => {
+      cards.current[key]?.scrollIntoView?.({ block: 'center' });
+      cards.current[key]?.focus({ preventScroll: true });
+    });
+  }
   return (
-    <section className="panel sc-panel">
-      <div className="section-heading">
-        <div>
-          <h2>正式比赛安排</h2>
-          <p>球队名称、场地与开赛时间按发布时的版本保留。</p>
+    <>
+      <section className="panel sc-panel">
+        <div className="section-heading">
+          <div>
+            <h2>正式比赛安排</h2>
+            <p>这里显示当前正式安排；原始发布快照与每次改期记录分别保留。</p>
+          </div>
+          {matches.length > 0 && (
+            <label className="sc-round-select">
+              查看正式轮次
+              <select value={round} onChange={(event) => setRound(event.target.value)}>
+                <option value="all">全部轮次</option>
+                {rounds.map((value) => (
+                  <option key={value} value={String(value)}>
+                    第{value}轮
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
-        {matches.length > 0 && (
-          <label className="sc-round-select">
-            查看正式轮次
-            <select value={round} onChange={(event) => setRound(event.target.value)}>
-              <option value="all">全部轮次</option>
-              {rounds.map((value) => (
-                <option key={value} value={String(value)}>
-                  第{value}轮
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </div>
-      {!canRead ? (
-        <p className="sc-hint">当前身份没有正式比赛读取权限。</p>
-      ) : matches.length === 0 ? (
-        <p className="sc-hint">当前没有读取到正式比赛，请重新读取资料。</p>
-      ) : (
-        <div className="sc-published-list">
-          {matches
-            .filter((match) => round === 'all' || String(match.roundNo) === round)
-            .map((match) => (
-              <article key={match.id}>
-                <span className="sc-match-round">
-                  第{match.roundNo}轮 · 第{match.positionNo}场
-                </span>
-                <span className="status-badge neutral">{matchStatusLabels[match.status]}</span>
-                <div className="sc-matchup">
-                  <strong>{match.home.teamName}</strong>
-                  <span>VS</span>
-                  <strong>{match.away.teamName}</strong>
-                </div>
-                <div className="sc-match-venue">
-                  <MapPin size={16} />
-                  <strong>{match.courtName}</strong>
-                  <span>
-                    {timeLabel(match.startsAt)} — {timeLabel(match.endsAt)}
+        {!canRead ? (
+          <p className="sc-hint">当前身份没有正式比赛读取权限。</p>
+        ) : matches.length === 0 ? (
+          <p className="sc-hint">当前没有读取到正式比赛，请重新读取资料。</p>
+        ) : (
+          <div className="sc-published-list">
+            {matches
+              .filter((match) => round === 'all' || String(match.roundNo) === round)
+              .map((match) => (
+                <article
+                  key={match.id}
+                  tabIndex={-1}
+                  ref={(node) => {
+                    cards.current[match.fixtureKey] = node;
+                  }}
+                >
+                  <span className="sc-match-round">
+                    第{match.roundNo}轮 · 第{match.positionNo}场
                   </span>
-                </div>
-                <Link to={`/matches/${match.id}/scoring`}>记分与赛果 →</Link>
-              </article>
-            ))}
-        </div>
+                  <span className="status-badge neutral">{matchStatusLabels[match.status]}</span>
+                  <div className="sc-matchup">
+                    <strong>{match.home.teamName}</strong>
+                    <span>VS</span>
+                    <strong>{match.away.teamName}</strong>
+                  </div>
+                  <div className="sc-match-venue">
+                    <MapPin size={16} />
+                    <strong>{match.courtName}</strong>
+                    <span>
+                      {timeLabel(match.startsAt)} — {timeLabel(match.endsAt)}
+                    </span>
+                  </div>
+                  <div className="sc-published-actions">
+                    <Link to={`/matches/${match.id}/scoring`}>记分与赛果 →</Link>
+                    <button
+                      className="button button-secondary"
+                      aria-label={`${fixtureLabel(match)} 改期与记录`}
+                      disabled={Boolean(selectedId) && selectedId !== match.id}
+                      onClick={() => {
+                        setSelectedId(match.id);
+                        onActiveChange(true);
+                      }}
+                    >
+                      改期与记录
+                    </button>
+                  </div>
+                </article>
+              ))}
+          </div>
+        )}
+      </section>
+      {selected && (
+        <Rescheduling
+          key={selected.id}
+          match={selected}
+          courts={courts}
+          api={api}
+          onSaved={() => {
+            setSelectedId(undefined);
+            onActiveChange(false);
+            onSaved();
+          }}
+          onLocate={locate}
+          onClose={() => {
+            setSelectedId(undefined);
+            onActiveChange(false);
+            cards.current[selected.fixtureKey]?.querySelector<HTMLButtonElement>('button')?.focus();
+          }}
+        />
       )}
-    </section>
+    </>
   );
 }

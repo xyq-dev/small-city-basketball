@@ -543,7 +543,7 @@ export class StandingsService extends ApplicationService {
   private cursor(
     raw: string | undefined,
     scope: string,
-  ): { time: string; publicMatchId: string } | null {
+  ): { scope: string; time: string; publicMatchId: string } | null {
     if (!raw) return null;
     try {
       const v = objectInput(JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')), [
@@ -552,7 +552,9 @@ export class StandingsService extends ApplicationService {
         'publicMatchId',
       ]);
       if (
-        v.scope !== scope ||
+        typeof v.scope !== 'string' ||
+        !v.scope.startsWith(`${scope}:`) ||
+        !/^(0|[1-9][0-9]*)$/.test(v.scope.slice(scope.length + 1)) ||
         typeof v.time !== 'string' ||
         !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(v.time) ||
         typeof v.publicMatchId !== 'string' ||
@@ -562,7 +564,7 @@ export class StandingsService extends ApplicationService {
       calendarDate(v.time.slice(0, 10), 'cursor');
       const t = v.time.slice(11, 19).split(':').map(Number);
       if (t[0]! > 23 || t[1]! > 59 || t[2]! > 59) invalid('无效公开分页游标');
-      return { time: v.time, publicMatchId: v.publicMatchId };
+      return { scope: v.scope, time: v.time, publicMatchId: v.publicMatchId };
     } catch {
       return invalid('无效或不匹配的公开分页游标');
     }
@@ -579,10 +581,20 @@ export class StandingsService extends ApplicationService {
     )
       invalid('无效公开比赛状态');
     const status = input.status as string | undefined;
-    const scope = `public-schedule:${publicId(id)}:${status ?? ''}`;
-    const cursor = this.cursor(q.cursor, scope);
+    const baseScope = `public-schedule:${publicId(id)}:${status ?? ''}`;
+    const cursor = this.cursor(q.cursor, baseScope);
     return this.transaction(async (c) => {
       const b = await this.publicBundle(c, id);
+      // The event SHARE lock in publicBundle keeps this revision and all match times stable.
+      // Only a count is exposed in the cursor; no internal event or match identifiers leak.
+      const revision = (
+        await c.query<{ revision: string }>(
+          'SELECT count(*)::text AS revision FROM match_reschedules WHERE org_id=$1 AND event_id=$2',
+          [b.event.org_id, b.event.id],
+        )
+      ).rows[0]!.revision;
+      const scope = `${baseScope}:${revision}`;
+      if (cursor && cursor.scope !== scope) invalid('赛程已改期，请从首页重新读取');
       const rows = b.rows
         .filter(
           (r) =>

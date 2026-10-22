@@ -645,7 +645,9 @@ describe(
           firstCursor ??= cursor;
           const decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as unknown;
           const boundary = exact(decoded, ['scope', 'time', 'publicMatchId']);
-          expect(boundary.scope).toBe(`public-schedule:${key}:`);
+          // P04-B binds the public cursor to this event's rescheduling history version.
+          // This fixture has no reschedules; the scope still contains no private identity.
+          expect(boundary.scope).toBe(`public-schedule:${key}::0`);
           expect(boundary.time).toEqual(expect.any(String));
           expect(all.some((match) => match.publicMatchId === boundary.publicMatchId)).toBe(true);
           noPrivateValues(decoded, markers);

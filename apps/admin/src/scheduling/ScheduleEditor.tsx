@@ -15,7 +15,7 @@ import { fixtureLabel, localInput, offsetTime, timeLabel } from './shared';
 import { PolicySummary } from './PolicyForm';
 
 type Allocation = { fixtureKey: string; courtId: string; localStart: string };
-const conflictTitles: Record<ScheduleConflictCode, string> = {
+export const conflictTitles: Record<ScheduleConflictCode, string> = {
   UNASSIGNED: '尚未安排场地和时间',
   OUTSIDE_WINDOW: '比赛未完整落在可用窗口',
   OUTSIDE_EVENT_DATES: '比赛超出赛事日期',
@@ -190,7 +190,7 @@ export function ScheduleEditor({
       <section className="panel sc-panel">
         <div className="section-heading">
           <div>
-            <h2>{published ? '已发布对阵' : historical ? '历史对阵与安排' : '按轮安排比赛'}</h2>
+            <h2>{published ? '原始发布快照' : historical ? '历史对阵与安排' : '按轮安排比赛'}</h2>
             <p>
               {revision.rounds.length}轮 · {revision.fixtures.length}场 · {assigned}场
               {dirty ? '已在本地配置，尚未保存' : '已有保存安排'}。时间统一为中国标准时间。

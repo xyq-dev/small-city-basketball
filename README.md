@@ -36,6 +36,6 @@ OBS 负责采集、导播和推流。平台提供只读的赛事比分包装页�
 - [当前状态与下一项任务](docs/CURRENT_STATUS.md)
 - [开发协作规则](AGENTS.md)
 
-**接续任务：P07-A同源HTTPS自托管包与隔离备份恢复**，按[任务卡](docs/tasks/P07-A.md)实施。尚无原生OBS／CEF或生产验收。完整P03/P04仍有资料、小程序、其他赛制／自动排时／改期；可靠离线、专业统计和真实视频另卡。用户已授权项目范围内开发与同步，见AGENTS；Mock刷新重置，API失败不回Mock。
+**当前分支任务：P04-B正式单场改期与冲突复检（REVIEW / BRANCH_ONLY）**，按[任务卡](docs/tasks/P04-B.md)实施，尚无新验收或main整合结论。用户要求暂缓原生OBS并先推进其余能力；尚无原生OBS／CEF或生产验收。完整P03/P04仍有资料、小程序、其他赛制／自动排时；可靠离线、专业统计和真实视频另卡。用户已授权项目范围内开发与同步，见AGENTS；Mock刷新重置，API失败不回Mock。
 
 新 AI 会话先读 `AGENTS.md`、`docs/CURRENT_STATUS.md`、`docs/TASKS.md`，再读取分配到的任务卡；不要凭旧对话判断当前进度。

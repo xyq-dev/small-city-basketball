@@ -410,6 +410,38 @@ export interface ScheduledMatchData {
   status: MatchStatus;
   version: number;
 }
+export interface MatchReschedulePlan {
+  courtId: string;
+  courtName: string;
+  startsAt: string;
+  endsAt: string;
+}
+export interface MatchRescheduleRecord {
+  id: string;
+  fromMatchVersion: number;
+  toMatchVersion: number;
+  from: MatchReschedulePlan;
+  to: MatchReschedulePlan;
+  reason: string;
+  createdAt: string;
+}
+export interface RescheduleMatchInput {
+  type: 'RESCHEDULE';
+  expectedEventVersion: number;
+  expectedMatchVersion: number;
+  courtId: string;
+  startsAt: string;
+  reason: string;
+}
+export interface MatchReschedulingData {
+  event: EventData;
+  match: ScheduledMatchData;
+  policy: SchedulePolicy;
+  history: MatchRescheduleRecord[];
+  historyLimit: 20;
+  historyTruncated: boolean;
+  capabilities: { canReschedule: boolean };
+}
 
 export const SCHEDULE_ALGORITHM_VERSION: 'RR_CIRCLE_V1';
 

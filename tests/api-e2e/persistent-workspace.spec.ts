@@ -6,9 +6,13 @@ const origin = 'http://127.0.0.1:4273';
 
 async function chooseOrganization(page: Page, id: string) {
   const selector = page.getByLabel('切换机构', { exact: true });
+  // A full navigation checks the session before mounting the workspace shell.
+  // Wait for that shell before deciding whether the mobile menu is closed.
+  await expect(selector).toBeAttached();
   if (!(await selector.isVisible()))
     await page.getByRole('button', { name: '打开导航', exact: true }).click();
   await selector.selectOption(id);
+  await expect(selector).toHaveValue(id);
   const close = page.getByRole('button', { name: '关闭导航', exact: true });
   if (await close.isVisible()) await close.click();
 }

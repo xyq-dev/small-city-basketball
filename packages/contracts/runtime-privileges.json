@@ -9,7 +9,10 @@
       "privileges": ["SELECT", "INSERT", "DELETE"],
       "updateColumns": ["window_start", "attempts"]
     },
-    "court_reservations": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "court_reservations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["court_id", "starts_at", "ends_at"]
+    },
     "courts": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["name", "status", "version", "updated_at"]
@@ -58,6 +61,7 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["role", "status", "updated_at"]
     },
+    "match_reschedules": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
     "org_schedule_mutex": { "privileges": ["SELECT", "INSERT"], "updateColumns": ["org_id"] },
     "organization_memberships": {
       "privileges": ["SELECT", "INSERT"],
@@ -76,7 +80,7 @@
     "public_match_links": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
     "published_matches": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": ["status", "version"]
+      "updateColumns": ["status", "version", "court_id", "court_name", "starts_at", "ends_at"]
     },
     "registration_freezes": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
     "result_confirmations": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
@@ -140,7 +144,10 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["name", "status", "updated_at"]
     },
-    "team_reservations": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "team_reservations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["starts_at", "ends_at"]
+    },
     "teams": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["name", "version", "updated_at"]

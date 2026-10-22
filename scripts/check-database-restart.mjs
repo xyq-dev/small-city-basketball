@@ -5,7 +5,7 @@ import { createApi } from '../apps/api/dist/app.js';
 import pg from 'pg';
 
 // The production package runs this same synthetic business chain against its real TLS API.
-// SQL remains read-only here; use the separately scoped backup role for the 39-table digest.
+// SQL remains read-only here; use the separately scoped backup role for the 40-table digest.
 async function privateValue(name) {
   const inline = process.env[name];
   const file = process.env[name + '_FILE'];
@@ -68,7 +68,8 @@ async function call(route, { method = 'GET', body, cookie } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   assert.ok(response.ok, `Restart check ${method} ${route} returned ${response.status}`);
-  return { response, data: (await response.json()).data };
+  const payload = await response.json();
+  return { response, data: payload.data, meta: payload.meta };
 }
 async function fingerprint() {
   const hash = createHash('sha256');
@@ -96,6 +97,7 @@ async function fingerprint() {
     ['schedule_fixtures', 'org_id,revision_id,fixture_key'],
     ['schedule_publications', 'id'],
     ['published_matches', 'id'],
+    ['match_reschedules', 'id'],
     ['court_reservations', 'org_id,match_id'],
     ['team_reservations', 'org_id,team_id,match_id'],
     ['scoring_rulesets', 'id'],
@@ -566,6 +568,85 @@ async function captureViewing(orgId, cookie, scheduling) {
   return { workspace, publicId, revokedId, revokedMatchId, overview, schedule, standings, matches };
 }
 
+async function captureRescheduling(orgId, cookie, scheduling, viewing, overlays) {
+  const currentMatches = (
+    await call(`/v1/orgs/${orgId}/events/${scheduling.workspace.event.id}/matches`, { cookie })
+  ).data;
+  const match = currentMatches.find((item) => item.status === 'SCHEDULED');
+  assert.ok(match, 'Rescheduling proof needs an unprepared match');
+  const path = `/v1/orgs/${orgId}/matches/${match.id}/rescheduling`;
+  const original = (await call(path, { cookie })).data;
+  const publicPath = `/v1/public/events/${viewing.publicId}`;
+  const oldPage = await call(`${publicPath}/schedule?limit=1`);
+  assert.ok(oldPage.meta.nextCursor, 'Capture a real public cursor before changing ordering');
+  const savedOverlay = overlays.active.find((item) => item.matchId === match.id);
+  const credentialBefore = structuredClone(savedOverlay.workspace.currentGrant);
+  const snapshotBefore = savedOverlay.snapshot;
+  let current = original;
+  for (const [startsAt, reason] of [
+    ['2026-12-01T07:00:00.000Z', '隔离重启验证首次改期'],
+    ['2026-12-01T08:00:00.000Z', '隔离恢复验证再次改期'],
+  ]) {
+    current = (
+      await call(`/v1/orgs/${orgId}/matches/${match.id}/reschedule-commands`, {
+        method: 'POST',
+        cookie,
+        body: {
+          type: 'RESCHEDULE',
+          expectedEventVersion: current.event.version,
+          expectedMatchVersion: current.match.version,
+          courtId: match.courtId,
+          startsAt,
+          reason,
+        },
+      })
+    ).data;
+  }
+  assert.equal(current.match.version, original.match.version + 2);
+  assert.equal(current.event.version, original.event.version + 2);
+  assert.equal(current.history.length, 2);
+  assert.equal(current.history[0].from.startsAt, current.history[1].to.startsAt);
+  assert.equal(current.match.startsAt, '2026-12-01T08:00:00.000Z');
+  assert.equal(current.match.endsAt, '2026-12-01T09:00:00.000Z');
+  assert.deepEqual(
+    (await call(`/v1/orgs/${orgId}/schedule-revisions/${scheduling.revision.id}`, { cookie })).data,
+    { ...scheduling.revision, eventVersion: current.event.version },
+    'Original publication source, fixtures and hashes remain immutable',
+  );
+  const stale = await fetch(
+    `${baseUrl}${publicPath}/schedule?limit=1&cursor=${encodeURIComponent(oldPage.meta.nextCursor)}`,
+  );
+  assert.equal(stale.status, 422, 'A pre-reschedule pagination cursor must not skip matches');
+  viewing.workspace = (
+    await call(`/v1/orgs/${orgId}/events/${match.eventId}/standings`, { cookie })
+  ).data;
+  const schedule = (await call(`${publicPath}/schedule`)).data;
+  assert.deepEqual(
+    schedule.map((item) => item.publicMatchId).sort(),
+    viewing.schedule.map((item) => item.publicMatchId).sort(),
+    'Rescheduling retains public identities',
+  );
+  const publicMatch = schedule.find((item) => item.status === 'SCHEDULED');
+  assert.equal(publicMatch.startsAt, current.match.startsAt);
+  assert.equal(publicMatch.version, current.match.version);
+  viewing.schedule = schedule;
+  viewing.matches = await Promise.all(
+    schedule.map(async (item) => (await call(`${publicPath}/matches/${item.publicMatchId}`)).data),
+  );
+  savedOverlay.workspace = (
+    await call(`/v1/orgs/${orgId}/matches/${match.id}/overlay`, { cookie })
+  ).data;
+  savedOverlay.snapshot = (
+    await call(`/v1/overlays/${savedOverlay.overlayId}/snapshot`, { cookie: savedOverlay.cookie })
+  ).data;
+  assert.deepEqual(savedOverlay.workspace.currentGrant, credentialBefore);
+  const { serverTime: oldTime, matchVersion: oldVersion, ...before } = snapshotBefore;
+  const { serverTime: newTime, matchVersion: newVersion, ...after } = savedOverlay.snapshot;
+  assert.deepEqual(after, before, 'Existing read grant and scoring facts remain unchanged');
+  assert.equal(newVersion, oldVersion + 2);
+  return current;
+}
+
 async function assertOverlayRevoked(saved) {
   assert.equal(
     (
@@ -709,6 +790,7 @@ try {
     const scoring = await captureScoring(orgId, cookie, scheduling, suffix);
     const overlays = await captureOverlays(orgId, cookie, scheduling);
     const viewing = await captureViewing(orgId, cookie, scheduling);
+    const rescheduling = await captureRescheduling(orgId, cookie, scheduling, viewing, overlays);
     const scheduledEventPath = `/v1/orgs/${orgId}/events/${scheduling.workspace.event.id}`;
     scoring.rules = (await call(`${scheduledEventPath}/scoring`, { cookie })).data;
     scheduling.workspace = (await call(`${scheduledEventPath}/scheduling`, { cookie })).data;
@@ -734,6 +816,7 @@ try {
       scoring,
       viewing,
       overlays,
+      rescheduling,
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
@@ -745,7 +828,7 @@ try {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     state.fingerprint = await fingerprint();
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
-    console.log('Captured the quiescent 39-table backup baseline.');
+    console.log('Captured the quiescent 40-table backup baseline.');
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     const session = await call('/v1/auth/session', { cookie: state.cookie });
@@ -781,6 +864,15 @@ try {
     assert.deepEqual(revision.data, scheduling.revision);
     const matches = await call(`${scheduledEventPath}/matches`, { cookie: state.cookie });
     assert.deepEqual(matches.data, scheduling.matches);
+    assert.deepEqual(
+      (
+        await call(`/v1/orgs/${state.orgId}/matches/${state.rescheduling.match.id}/rescheduling`, {
+          cookie: state.cookie,
+        })
+      ).data,
+      state.rescheduling,
+      'Current plan, versions and both immutable reschedules survive restart and full restore',
+    );
     const courts = await call(`/v1/orgs/${state.orgId}/courts`, { cookie: state.cookie });
     assert.deepEqual(courts.data, [scheduling.court]);
     const scoring = state.scoring;
@@ -876,7 +968,7 @@ try {
       'Lease fence remains monotonic across PostgreSQL restart',
     );
     console.log(
-      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, audit and migration checksums across all 39 tables.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, audit and migration checksums across all 40 tables.',
     );
   }
 } finally {
