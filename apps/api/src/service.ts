@@ -28,7 +28,11 @@ export interface ApiOptions {
   appOrigin: string;
   sessionTtlSeconds?: number;
   secureCookies?: boolean;
+  /** Legacy explicit fallback for both registration switches. */
   registrationEnabled?: boolean;
+  organizationRegistrationEnabled?: boolean;
+  participantRegistrationEnabled?: boolean;
+  trustProxyHops?: 0 | 1;
 }
 
 export interface DbUser {

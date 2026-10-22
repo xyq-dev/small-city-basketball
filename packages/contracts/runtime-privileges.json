@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "schema": "public",
+  "runtimeRole": "scb_runtime",
+  "backupRole": "scb_backup",
+  "tables": {
+    "audit_logs": { "privileges": ["INSERT"], "updateColumns": [] },
+    "auth_rate_limits": {
+      "privileges": ["SELECT", "INSERT", "DELETE"],
+      "updateColumns": ["window_start", "attempts"]
+    },
+    "court_reservations": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "courts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["name", "status", "version", "updated_at"]
+    },
+    "entries": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "status",
+        "version",
+        "roster_revision_id",
+        "last_submitted_by",
+        "latest_review_reason",
+        "updated_at"
+      ]
+    },
+    "entry_review_history": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "entry_roster_players": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "entry_roster_revisions": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "event_rulesets": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "event_staff": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["role", "status", "updated_at"]
+    },
+    "events": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "name",
+        "start_date",
+        "end_date",
+        "timezone",
+        "venue_name",
+        "format",
+        "status",
+        "version",
+        "updated_at",
+        "current_ruleset_id",
+        "locked_ruleset_id",
+        "current_schedule_revision_id",
+        "current_scoring_ruleset_id",
+        "locked_scoring_ruleset_id",
+        "current_standings_ruleset_id",
+        "locked_standings_ruleset_id"
+      ]
+    },
+    "match_staff": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["role", "status", "updated_at"]
+    },
+    "org_schedule_mutex": { "privileges": ["SELECT", "INSERT"], "updateColumns": ["org_id"] },
+    "organization_memberships": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["role", "status", "updated_at"]
+    },
+    "organizations": { "privileges": ["SELECT", "INSERT"], "updateColumns": ["id"] },
+    "overlay_grants": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["version", "revoked_at", "revocation_reason"]
+    },
+    "overlay_sessions": { "privileges": ["SELECT", "INSERT"], "updateColumns": ["id"] },
+    "public_event_publications": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["revoked_at", "revoked_by"]
+    },
+    "public_match_links": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "published_matches": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "version"]
+    },
+    "registration_freezes": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "result_confirmations": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "schedule_fixtures": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["court_id", "starts_at", "ends_at"]
+    },
+    "schedule_publications": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "schedule_revisions": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "version", "updated_at"]
+    },
+    "schema_migrations": { "privileges": ["SELECT"], "updateColumns": [] },
+    "scoring_commands": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "scoring_events": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "scoring_leases": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "lease_id",
+        "holder_user_id",
+        "holder_session_id",
+        "client_instance_id",
+        "fencing_token",
+        "expires_at"
+      ]
+    },
+    "scoring_rulesets": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "scoring_states": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "source_version",
+        "last_event_seq",
+        "home_score",
+        "away_score",
+        "home_fouls",
+        "away_fouls",
+        "home_timeouts",
+        "away_timeouts",
+        "period_stats",
+        "period",
+        "remaining_ms",
+        "clock_running",
+        "anchor_server_time",
+        "clock_version",
+        "latest_confirmation_id",
+        "requires_reconfirmation",
+        "updated_at"
+      ]
+    },
+    "sessions": { "privileges": ["SELECT", "INSERT"], "updateColumns": ["revoked_at"] },
+    "standings_rulesets": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "team_access_grants": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "updated_at"]
+    },
+    "team_invitations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["accepted_at", "revoked_at"]
+    },
+    "team_members": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["name", "status", "updated_at"]
+    },
+    "team_reservations": { "privileges": ["SELECT", "INSERT"], "updateColumns": [] },
+    "teams": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["name", "version", "updated_at"]
+    },
+    "users": { "privileges": ["SELECT", "INSERT"], "updateColumns": ["id"] }
+  }
+}

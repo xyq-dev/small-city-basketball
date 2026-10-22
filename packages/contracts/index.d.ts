@@ -855,3 +855,8 @@ export interface OverlayBootstrapData {
   expiresAt: string;
   serverTime: string;
 }
+
+export interface AuthCapabilitiesData {
+  canRegisterOrganization: boolean;
+  canRegisterParticipant: boolean;
+}
