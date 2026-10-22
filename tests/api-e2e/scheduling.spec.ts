@@ -6,6 +6,7 @@ import type {
   EventData,
   EventRegistrationData,
   EventSchedulingData,
+  MatchReschedulingData,
   ScheduleRevisionData,
   ScheduledMatchData,
   SessionData,
@@ -33,7 +34,10 @@ async function read<T>(request: APIRequestContext, path: string): Promise<T> {
   return (await response.json()).data as T;
 }
 
-test('冻结名单生成赛程、修正冲突并一次发布到真实数据库', async ({ page, playwright }, testInfo) => {
+test('冻结名单排赛发布、单场改期与版本冲突恢复使用真实数据库', async ({
+  page,
+  playwright,
+}, testInfo) => {
   test.setTimeout(90000);
   const suffix = `${testInfo.project.name}-${Date.now()}`;
   const errors: string[] = [];
@@ -203,6 +207,88 @@ test('冻结名单生成赛程、修正冲突并一次发布到真实数据库',
       '2026-12-01T03:00:00.000Z',
       '2026-12-01T05:00:00.000Z',
     ]);
+
+    const target = matches[0]!;
+    const recordButton = `第${target.roundNo}轮第${target.positionNo}场 改期与记录`;
+    const changedReason = '合成现场调整开赛时间';
+    await page.getByRole('button', { name: recordButton, exact: true }).click();
+    let panel = page.getByRole('region', { name: '单场改期与记录', exact: true });
+    await expect(panel).toBeVisible();
+    await panel.getByLabel('改期开赛时间（UTC+8）', { exact: true }).fill('2026-12-01T11:00');
+    await panel.getByLabel('改期原因', { exact: true }).fill(changedReason);
+    await panel.getByRole('button', { name: '核对改期', exact: true }).click();
+    await panel.getByRole('button', { name: '确认改期', exact: true }).click();
+    await expect(panel.getByRole('region', { name: '改期冲突', exact: true })).toBeVisible();
+    expect((await read<ScheduledMatchData[]>(page.request, `${eventPath}/matches`))[0]!.id).toBe(
+      target.id,
+    );
+    await panel.getByLabel('改期开赛时间（UTC+8）', { exact: true }).fill('2026-12-01T15:00');
+    await panel.getByRole('button', { name: '核对改期', exact: true }).click();
+    await panel.getByRole('button', { name: '确认改期', exact: true }).click();
+    await expect(panel).toBeHidden();
+    await expect(page.getByText('正式安排已更新，改期记录已保存', { exact: true })).toBeVisible();
+    let workbench = await read<MatchReschedulingData>(
+      page.request,
+      `${root}/matches/${target.id}/rescheduling`,
+    );
+    expect(workbench.match.startsAt).toBe('2026-12-01T07:00:00.000Z');
+    expect(workbench.history).toHaveLength(1);
+    expect(workbench.history[0]!.reason).toBe(changedReason);
+    expect(
+      (await read<ScheduledMatchData[]>(page.request, `${eventPath}/matches`)).at(-1)!.id,
+    ).toBe(target.id);
+    expect((await read<ScheduleRevisionData>(page.request, revisionPath)).fixtures).toEqual(
+      saved.fixtures,
+    );
+    progress(
+      'rescheduling conflict rejected then current plan updated without rewriting publication',
+    );
+
+    await page.getByRole('button', { name: recordButton, exact: true }).click();
+    panel = page.getByRole('region', { name: '单场改期与记录', exact: true });
+    await expect(panel.getByLabel('改期开赛时间（UTC+8）', { exact: true })).toHaveValue(
+      '2026-12-01T15:00',
+    );
+    await panel.getByLabel('改期开赛时间（UTC+8）', { exact: true }).fill('2026-12-01T16:00');
+    await panel.getByLabel('改期原因', { exact: true }).fill('并发核对后调整');
+    await write<MatchReschedulingData>(
+      page.request,
+      'POST',
+      `${root}/matches/${target.id}/reschedule-commands`,
+      {
+        type: 'RESCHEDULE',
+        expectedEventVersion: workbench.event.version,
+        expectedMatchVersion: workbench.match.version,
+        courtId: court.id,
+        startsAt: '2026-12-01T17:00:00+08:00',
+        reason: '另一位合成管理员调整',
+      },
+    );
+    await panel.getByRole('button', { name: '核对改期', exact: true }).click();
+    await panel.getByRole('button', { name: '确认改期', exact: true }).click();
+    await expect(panel.getByText('提交已锁定，输入仍保留', { exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name: '核对改期', exact: true })).toBeDisabled();
+    await expect(panel.getByLabel('改期开赛时间（UTC+8）', { exact: true })).toHaveValue(
+      '2026-12-01T16:00',
+    );
+    await panel.getByRole('button', { name: '重新读取当前安排', exact: true }).click();
+    await expect(panel.getByRole('button', { name: '核对改期', exact: true })).toBeDisabled();
+    await panel.getByRole('button', { name: '已核对最新安排，继续编辑', exact: true }).click();
+    await panel.getByRole('button', { name: '核对改期', exact: true }).click();
+    await panel.getByRole('button', { name: '确认改期', exact: true }).click();
+    await expect(panel).toBeHidden();
+    await expect(page.getByText('正式安排已更新，改期记录已保存', { exact: true })).toBeVisible();
+    workbench = await read<MatchReschedulingData>(
+      page.request,
+      `${root}/matches/${target.id}/rescheduling`,
+    );
+    expect(workbench.match.startsAt).toBe('2026-12-01T08:00:00.000Z');
+    expect(workbench.history).toHaveLength(3);
+    expect(workbench.history[0]!.reason).toBe('并发核对后调整');
+    expect(
+      (await read<EventSchedulingData>(page.request, `${eventPath}/scheduling`)).publication,
+    ).toEqual(published.publication);
+    progress('stale-version form retained, explicitly reloaded and applied with fresh versions');
     await page.reload();
     await expect(page.getByRole('heading', { name: '正式赛程', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '保存全部安排', exact: true })).toHaveCount(0);

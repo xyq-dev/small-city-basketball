@@ -2,6 +2,12 @@
 
 更新：2026-10-23（Asia/Shanghai）。本文区分P07-A、P06-A最终验收及P05-B/P05-A/P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
 
+## P04-B分支验收（REVIEW / BRANCH_ONLY）
+
+2026-10-23（Asia/Shanghai），main仍abfca48，当前改期任务未合并。root独立本地API260及最终admin237合计497源码/组件/HTTP、完整strict、格式和两端构建通过；实际Node24.19.0。API/007、PG场景和E2E必要增量独立静态审查通过，UI最终复核进行中。测试源码/计划不是执行证据：25项新PG与旧124、P07的16、12Mock/14真实API/4HTTPS及40表重启/完整恢复待独立CI。007已编写未执行，001–006未改，生产执行0。
+
+恢复入口、分支/原始改动/目录与完整失败检查点记录见[P04-B交接](handoffs/P04-B.md)，冻结验收见[任务卡](tasks/P04-B.md)。OBS/CEF、真机Safari/微信和生产均未验证。
+
 ## P07-A最终验收（DONE / MAIN）
 
 2026-10-23（Asia/Shanghai），[PR8](https://github.com/xyq-dev/small-city-basketball/pull/8)合并`82a3705001da50f60655b07d6174b50f4d84266f`，source`8809d67a568b86d3ef530ec92785877c29fab80a`／tree`fcb777848e666aac9f81097bca1ddffc3130e543`。[CI39827535301](https://github.com/xyq-dev/small-city-basketball/actions/runs/39827535301)的admin119995169199、api119995168877、production119995169422全部SUCCESS，完整日志已读。

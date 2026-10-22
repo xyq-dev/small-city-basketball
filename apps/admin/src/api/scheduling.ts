@@ -10,8 +10,10 @@ import type {
   ScheduleValidationData,
   ScheduledMatchData,
   ScheduleConflict,
+  MatchReschedulingData,
+  RescheduleMatchInput,
 } from '@small-city-basketball/contracts';
-import { MATCH_STATUSES } from '@small-city-basketball/contracts';
+import { EVENT_FORMATS, EVENT_STATUSES, MATCH_STATUSES } from '@small-city-basketball/contracts';
 import { ApiError } from './client';
 import type { ApiClient } from './client';
 
@@ -162,6 +164,101 @@ function match(value: unknown) {
     MATCH_STATUSES.includes(value.status as (typeof MATCH_STATUSES)[number])
   );
 }
+const positiveVersion = (value: unknown) => Number.isInteger(value) && Number(value) > 0;
+const timestamp = (value: unknown): value is string =>
+  typeof value === 'string' && Number.isFinite(Date.parse(value));
+function reschedulePlan(value: unknown) {
+  return (
+    strings(value, ['courtId', 'courtName']) &&
+    object(value) &&
+    timestamp(value.startsAt) &&
+    timestamp(value.endsAt) &&
+    Date.parse(value.endsAt) > Date.parse(value.startsAt)
+  );
+}
+function rescheduling(value: unknown) {
+  if (!object(value) || !object(value.event) || !object(value.match)) return false;
+  const event = value.event;
+  const current = value.match;
+  const policy = value.policy;
+  return (
+    strings(event, ['id', 'name', 'startDate', 'endDate', 'timezone', 'createdAt', 'updatedAt']) &&
+    positiveVersion(event.version) &&
+    EVENT_STATUSES.includes(event.status as (typeof EVENT_STATUSES)[number]) &&
+    EVENT_FORMATS.includes(event.format as (typeof EVENT_FORMATS)[number]) &&
+    (event.venueName === null || typeof event.venueName === 'string') &&
+    match(current) &&
+    positiveVersion(current.version) &&
+    current.eventId === event.id &&
+    reschedulePlan(current) &&
+    object(policy) &&
+    Number.isInteger(policy.slotDurationMinutes) &&
+    Number(policy.slotDurationMinutes) >= 1 &&
+    Number(policy.slotDurationMinutes) <= 1440 &&
+    Number.isInteger(policy.minRestMinutes) &&
+    Number(policy.minRestMinutes) >= 0 &&
+    Number(policy.minRestMinutes) <= 43200 &&
+    Number.isInteger(policy.minLocalDayGap) &&
+    Number(policy.minLocalDayGap) >= 0 &&
+    Number(policy.minLocalDayGap) <= 365 &&
+    Array.isArray(policy.courtWindows) &&
+    policy.courtWindows.length >= 1 &&
+    policy.courtWindows.length <= 200 &&
+    policy.courtWindows.every(
+      (window) =>
+        object(window) &&
+        typeof window.courtId === 'string' &&
+        timestamp(window.startsAt) &&
+        timestamp(window.endsAt) &&
+        Date.parse(window.endsAt) > Date.parse(window.startsAt),
+    ) &&
+    value.historyLimit === 20 &&
+    typeof value.historyTruncated === 'boolean' &&
+    Array.isArray(value.history) &&
+    value.history.length <= 20 &&
+    (!value.historyTruncated || value.history.length === 20) &&
+    value.history.every(
+      (record) =>
+        object(record) &&
+        strings(record, ['id', 'reason']) &&
+        typeof record.reason === 'string' &&
+        record.reason.trim().length >= 1 &&
+        record.reason.length <= 500 &&
+        timestamp(record.createdAt) &&
+        positiveVersion(record.fromMatchVersion) &&
+        record.toMatchVersion === Number(record.fromMatchVersion) + 1 &&
+        Number(record.toMatchVersion) <= Number(current.version) &&
+        reschedulePlan(record.from) &&
+        reschedulePlan(record.to),
+    ) &&
+    bools(value.capabilities, ['canReschedule']) &&
+    object(value.capabilities) &&
+    (!value.capabilities.canReschedule ||
+      (['SCHEDULED', 'READY'].includes(String(current.status)) &&
+        ['SCHEDULED', 'RUNNING'].includes(String(event.status))))
+  );
+}
+function rescheduled(value: unknown, matchId: string, input: RescheduleMatchInput) {
+  if (!rescheduling(value)) return false;
+  const data = value as MatchReschedulingData;
+  return (
+    data.match.id === matchId &&
+    data.match.version === input.expectedMatchVersion + 1 &&
+    data.event.version === input.expectedEventVersion + 1 &&
+    data.match.courtId === input.courtId &&
+    Date.parse(data.match.startsAt) === Date.parse(input.startsAt) &&
+    data.history.some(
+      (record) =>
+        record.fromMatchVersion === input.expectedMatchVersion &&
+        record.toMatchVersion === data.match.version &&
+        record.reason === input.reason.trim() &&
+        record.to.courtId === data.match.courtId &&
+        record.to.courtName === data.match.courtName &&
+        Date.parse(record.to.startsAt) === Date.parse(data.match.startsAt) &&
+        Date.parse(record.to.endsAt) === Date.parse(data.match.endsAt),
+    )
+  );
+}
 function checked<T>(value: unknown, guard: (value: unknown) => boolean): T {
   if (!guard(value))
     throw new ApiError(200, 'INVALID_RESPONSE', '服务返回的排赛资料或操作权限不完整，请重新读取');
@@ -171,17 +268,27 @@ export function createSchedulingApi(client: ApiClient, organizationId: string) {
   if (!organizationId.trim())
     throw new ApiError(0, 'INVALID_ORGANIZATION', '请先选择有排赛权限的机构');
   const base = `/v1/orgs/${encodeURIComponent(organizationId)}`;
-  async function read<T>(path: string, guard: (value: unknown) => boolean) {
-    return checked<T>((await client.request<unknown>(base + path)).data, guard);
+  async function read<T>(path: string, guard: (value: unknown) => boolean, signal?: AbortSignal) {
+    return checked<T>(
+      (await client.request<unknown>(base + path, signal ? { signal } : undefined)).data,
+      guard,
+    );
   }
   async function write<T>(
     path: string,
     method: string,
     input: unknown,
     guard: (value: unknown) => boolean,
+    signal?: AbortSignal,
   ) {
     return checked<T>(
-      (await client.request<unknown>(base + path, { method, body: JSON.stringify(input) })).data,
+      (
+        await client.request<unknown>(base + path, {
+          method,
+          body: JSON.stringify(input),
+          ...(signal ? { signal } : {}),
+        })
+      ).data,
       guard,
     );
   }
@@ -254,6 +361,21 @@ export function createSchedulingApi(client: ApiClient, organizationId: string) {
     matches: async (eventId: string) =>
       (await pages<ScheduledMatchData>(`/events/${encodeURIComponent(eventId)}/matches`, match))
         .data,
+    rescheduling: (matchId: string, signal?: AbortSignal) =>
+      read<MatchReschedulingData>(
+        `/matches/${encodeURIComponent(matchId)}/rescheduling`,
+        (value) =>
+          rescheduling(value) && object(value) && object(value.match) && value.match.id === matchId,
+        signal,
+      ),
+    reschedule: (matchId: string, input: RescheduleMatchInput, signal?: AbortSignal) =>
+      write<MatchReschedulingData>(
+        `/matches/${encodeURIComponent(matchId)}/reschedule-commands`,
+        'POST',
+        input,
+        (value) => rescheduled(value, matchId, input),
+        signal,
+      ),
   };
 }
 export type SchedulingApi = ReturnType<typeof createSchedulingApi>;

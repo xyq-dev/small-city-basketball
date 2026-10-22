@@ -1044,3 +1044,130 @@
     transition: none;
   }
 }
+.sc-original-plan-link {
+  display: inline-flex;
+  margin: 0 0 20px;
+  color: #9f431e;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sc-published-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.sc-rescheduling {
+  scroll-margin-top: 24px;
+}
+.sc-rescheduling h2:focus,
+.sc-published-list article:focus {
+  outline: 2px solid #d45c2b;
+  outline-offset: 5px;
+}
+.sc-reschedule-current,
+.sc-reschedule-history li {
+  border: 1px solid #dce5ee;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 16px 0;
+  background: #f7f9fc;
+}
+.sc-reschedule-current > .status-badge {
+  margin-bottom: 15px;
+}
+.sc-reschedule-plan > strong {
+  display: block;
+  color: #173658;
+  margin-bottom: 12px;
+}
+.sc-reschedule-plan dl {
+  margin: 0;
+}
+.sc-reschedule-plan dl > div {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.8;
+  margin: 5px 0;
+}
+.sc-reschedule-plan dt {
+  color: #64748b;
+}
+.sc-reschedule-plan dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.sc-reschedule-fields,
+.sc-reschedule-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.sc-reschedule-recovery {
+  padding: 18px;
+  margin: 20px 0;
+  background: #fff4e7;
+  border: 1px solid #efc792;
+  border-radius: 10px;
+  color: #855026;
+  line-height: 1.8;
+}
+.sc-reschedule-confirm {
+  margin-top: 22px;
+}
+.sc-reschedule-conflicts {
+  margin-top: 24px;
+  border-left: 3px solid #c4572d;
+  padding: 1px 0 1px 18px;
+}
+.sc-reschedule-conflicts ul,
+.sc-reschedule-history ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sc-reschedule-conflicts li {
+  padding: 12px 0;
+}
+.sc-reschedule-conflicts li > p {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.sc-reschedule-history {
+  margin-top: 32px;
+}
+.sc-reschedule-history h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sc-reschedule-history li > p {
+  font-size: 14px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.sc-reschedule-reason {
+  white-space: pre-wrap;
+}
+@media (max-width: 700px) {
+  .sc-reschedule-fields,
+  .sc-reschedule-comparison {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+  .sc-rescheduling .section-heading {
+    flex-wrap: wrap;
+  }
+  .sc-rescheduling .section-heading > button,
+  .sc-rescheduling .sc-actions > button,
+  .sc-reschedule-recovery > button {
+    width: 100%;
+  }
+  .sc-reschedule-current,
+  .sc-reschedule-history li {
+    padding: 16px;
+  }
+}
