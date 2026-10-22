@@ -21,7 +21,7 @@
 | 编号 | 基线与理由 | 验证或变更入口 |
 |---|---|---|
 | D006 | Taro + React + TypeScript 小程序；React + Vite 后台与工作台；NestJS + PostgreSQL 模块化单体 | 搭建时核验依赖、运行环境和小程序能力；不提前拆微服务，不猜测已安装版本 |
-| D007 | P01 先做后台四页 Mock 原型，随后建设机构权限、报名、排赛、记分、OBS 与交付 | 各阶段依据任务验收推进；P01、P02均已整合main并通过各自验收；P03-A Web报名已认领实施、尚未验收，P03–P06尚未完成 |
+| D007 | P01 先做后台四页 Mock 原型，随后建设机构权限、报名、排赛、记分、OBS 与交付 | 各阶段依据任务验收推进；P01、P02均已整合main并通过各自验收；P03-A Web报名已通过PR3/CI39735150535整合main；全P03、P04–P06仍未完成 |
 | D008 | 球队长期档案和每届报名名单分离；比赛事件及更正可追溯；无采集数据标“未统计” | 数据模型、事件接口与测试保持一致，禁止更正比分后留下失真的关联统计 |
 | D009 | OBS 通过只读包装页面获取赛事数据；采集、导播、推流由 OBS 负责，观众分发另接服务 | 包装权限不包含记分或个人敏感资料；远控后置，OBS 断开不阻断比赛记录 |
 | D010 | 初期按届服务，套餐可人工开通，视频用量与人工支持范围分别明确 | 属于商业建议基线，价格及外部客户付费意愿尚未验证，不宣称已有订单 |
@@ -47,6 +47,9 @@
 
 - D014（已实施／已验证）：NestJS12.2 + pg参数化SQL + PostgreSQL，版本化SQL Migration；不引入ORM、Redis或微服务。GitHub CI隔离PostgreSQL18.6已验证机构隔离、授权锁、CAS、审计原子性和重启持久化；迁移001仅在隔离测试库执行，没有生产数据库。
 - D015（已实施／已验证）：账号与随机持久会话，令牌仅hash入库，每请求检查当前授权。密码scrypt按[OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)参数基线N131072/r8/p1；生产配置要求HTTPS、Secure Cookie和精确Origin。P02不表示邮箱已验证或微信已接通，生产未部署。
-- D016（已实施／已验证）：私有赛事DTO提供逐赛事permissions.canEditDraft，机构角色与赛事分配分开；HTTP失败不退Mock，后页失败不返回部分列表。已通过真实API浏览器闭环，P03-A Web报名已认领实施、尚未验收，不从P02完成推定报名或保险文件已完成。
+- D016（已实施／已验证）：私有赛事DTO提供逐赛事permissions.canEditDraft，机构角色与赛事分配分开；HTTP失败不退Mock，后页失败不返回部分列表。已通过真实API浏览器闭环，P03-A Web报名现已独立通过PR3/CI39735150535，不从已有检查推定保险文件或微信已完成。
 
 锁语义参考[PostgreSQL行锁文档](https://www.postgresql.org/docs/current/explicit-locking.html)，密码原语参考[Node.js crypto文档](https://nodejs.org/api/crypto.html)。这些资料支持设计选择，实际通过与否以本项目运行记录为准。
+
+- D017（已实施／已验证，P03-A）：外部领队账号与独立球队grant、单次绑定邀请、追加不可变名单、独立审核及最终freeze。首轮/第二轮浏览器失败已修正，100项、44PG、重启及12Mock+6API均于CI39735150535通过，PR3合并1c4b352。列表仅摘要，详情独立授权；邀请消费含同文档导航及旧响应保护。保险文件/微信尚未连接。
+- D018（已批准设计／待实施，P04-A）：单循环2–32队，server seed的可复现RR_CIRCLE_V1，冻结来源及独立排赛policy，canonical机构Court和Team跨赛事时间约束，org_schedule_mutex与DB排他防并发冲突。当前工作稿及CAS、重抽保留旧稿、一次不可变正式发布；独立SchedulingService复用基础ApplicationService，不进行大范围认证重构。精确批准合同、时长/休息边界和分工见P04-A第11节；其他赛制、自动排时及发布后改期后续分卡，不能因计划存在宣称实现。

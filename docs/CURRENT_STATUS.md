@@ -1,27 +1,25 @@
 # 当前状态
 
-更新时间：2026-10-22（Asia/Shanghai）。集成人：当前 Codex 会话。
+更新时间：2026-10-22（Asia/Shanghai）。集成人：当前Codex会话。
 
-## main 已整合
+## main已整合
 
-「小城市篮球」私有仓库 `xyq-dev/small-city-basketball`。当前业务基线为 `main@29c4ee4cf588e911b2e087224522b832b726d18e`；后续文档提交从 Git 历史读取，不把本 SHA 当作永久最新 HEAD。
+「小城市篮球」私有仓库 `xyq-dev/small-city-basketball`。当前业务基线为 `main@1c4b352e4277af6a418ae46908d1aed0fcb01827`；后续文档提交从Git历史读取。
 
-- 开发文档、四组 UI 概念图、多 AI 认领和交接规范已建立。
-- P01 四页机构后台原型已通过 [PR #1](https://github.com/xyq-dev/small-city-basketball/pull/1) 整合。
-- P02 身份、机构与赛事基础后端已通过 [PR #2](https://github.com/xyq-dev/small-city-basketball/pull/2) 整合，状态 **DONE / MAIN**。代码 `63b94beee51d51b02f4bade7f36baba92edceb11`；注册/登录/退出、持久会话、当前授权、机构隔离、赛事草稿保存及并发版本检查均已实施。后台可选真实 API 模式；默认 Mock 仍明确刷新重置，不能混用两者验收。
+- 开发总文档、四组UI概念图、多AI认领和交接规范已建立。
+- P01机构后台四页Mock原型已通过PR1整合；P02持久身份、机构、赛事基础及API模式已通过PR2整合。
+- **P03-A Web球队、报名审核与名单冻结已通过[PR3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并，DONE / MAIN。** 代码c2d96b2f2b3801bedcb7e73258b48f5d05c88a83。外部领队个人账号及球队grant独立于机构成员；一次邀请、长期成员、不可变报名版本、独立审核、关闭后指定补交、名单冻结和撤权均已实施。当前领队及最近提交人不能自审，OWNER也不例外。
 
-[Application checks run 39730670229](https://github.com/xyq-dev/small-city-basketball/actions/runs/39730670229) 全部成功：格式、类型、71 项单元/组件/HTTP 检查、20 项独立 PostgreSQL 集成场景、12 项 Mock 与4项真实 API 桌面/手机浏览器测试、两端构建。实际 PostgreSQL18.6 重启后会话、赛事、版本、权限、审计历史及 Migration 校验和保留。官方 Chromium151；手机为模拟尺寸与输入，未做 Safari/真机验证。
+[Application checks 39735150535](https://github.com/xyq-dev/small-city-basketball/actions/runs/39735150535)全部成功：格式、完整类型、100项单元/组件/HTTP检查（admin75+api25）、44项独立真实PG场景（P02原20+P03新增24）、12项Mock与6项真实API桌面/手机浏览器、两端构建。实际PostgreSQL18.6重启后会话、赛事、授权、不可变名单、freeze、审计及迁移校验和保留；官方Chromium151，手机为模拟尺寸与输入，未验证Safari/微信真机。
 
-Migration001已在隔离测试库执行并重复运行核验；未操作生产数据库。独立代码/安全审查无开放阻断；GitHub 自动 Codex Review 在核验时仍运行中，不能写成自动审查通过。首轮失败、修复及完整证据见 [P02交接](handoffs/P02.md)及[证据](evidence/P02/README.md)。
+Migration001/002已在隔离测试库执行、复跑及核验校验和，未操作生产数据库。首两轮浏览器失败、定位修复、自动review三项意见处理及独立最终审查见[P03-A交接](handoffs/P03-A.md)。自动review状态以PR为准，不能把运行中或无新增finding当作通过。视觉截图仅是合成HTTP布局证据，不能替代真实业务检查。
 
 ## 当前重点
 
-P02 已关闭；当前 **P03-A：Web 球队、报名审核及名单冻结** 已提交[PR#3](https://github.com/xyq-dev/small-city-basketball/pull/3)，状态REVIEW / BRANCH_ONLY。代码dac9ebcffb69eca7f01fee9133ccb310e4c37f31，分支feat/P03-registration；本地97项检查、严格类型与两端构建通过，1440/390界面已检查。真实PG与官方浏览器正在[CI39733327804](https://github.com/xyq-dev/small-city-basketball/actions/runs/39733327804)运行，尚未验收或合并；Migration002已编写审查，执行结果待CI。主分支任务卡保留开工基线，最新代码、任务检查点及截图见PR分支；不能用P02结果替代P03。外部领队授权必须独立于机构成员，长期成员不能改写历史报名名单，提交与审核分权。P03–P06仍未完成；保险文件、微信、云直播、OBS 尚未连接，完整办赛闭环和生产部署未验收。
+接续 **P04-A：单循环对阵、手工排时与一次正式发布**，范围与开工状态见[任务卡](tasks/P04-A.md)。P03整体仍部分完成；身份证/保险文件、微信、云直播及OBS未连接。P04其余赛制、记分/赛果与内容交付尚未实施，完整办赛闭环及生产部署未验收。默认Mock与显式API模式分别验收；API错误不能回退Mock。
 
-用户已明确“全部授权你”，项目范围内开发、Git、审查后合并、测试库迁移及可用环境发布可继续，不重复索要已有授权。没有配置的生产设施、账号及付费预算不作为已有条件。
-
-文档在开工、接口变化、检查点、验证和整合时更新；不存在无人值守自动同步服务。
+用户已明确“全部授权你”，项目范围内开发、Git、审查后合并、测试库迁移及可用环境发布可继续，不重复请求已有授权；未配置生产设施、真实第三方账号和付费预算不视为已有条件。文档在开工、接口变化、检查点、验证与整合时更新，不存在无人值守自动同步服务。
 
 ## 接手入口
 
-先核验实际目录、远端、分支、HEAD及dirty，读 `AGENTS.md`、[任务看板](TASKS.md)、当前任务卡，再按[开发说明](DEVELOPMENT.md)运行。产品/架构/数据/OBS统一入口为[项目开发总文档](PROJECT_DEVELOPMENT.md)。
+先核验实际目录、远端、分支、HEAD和dirty，读AGENTS、[任务看板](TASKS.md)与当前卡，再按[开发说明](DEVELOPMENT.md)运行。产品、架构、数据与OBS统一入口为[项目开发总文档](PROJECT_DEVELOPMENT.md)。

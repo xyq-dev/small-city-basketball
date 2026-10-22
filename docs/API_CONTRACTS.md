@@ -1,13 +1,13 @@
 # API 契约
 
-目标契约：v0.2；更新：2026-10-22。P01、P02已整合main，P02身份／机构／赛事API及真实PostgreSQL验收通过；PR #2整合提交29c4ee4。以下通用目标路由中P03–P06仍为规划；本轮实际边界见第5节。
+目标契约：v0.2；更新：2026-10-22。P01、P02及P03-A已整合main；[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并提交为 `1c4b352e4277af6a418ae46908d1aed0fcb01827`。身份、机构、赛事及Web球队报名／独立审核／名单冻结已通过真实PostgreSQL与浏览器验收，实际契约见第5、6节。P03附件与小程序、P04–P06及其他目标路由仍未实现。
 
 ## 1. 通用约定
 
 - 私有路由前缀 `/v1/orgs/{orgId}`，每次验证登录身份、资源归属及具体动作权限。工作人员还验证机构成员状态和赛事分配；领队/球员验证球队授权、本人绑定或有效邀请，不要求成为机构工作人员。路径 orgId 不构成授权。未知或跨租户资源返回 404；已可见资源但无动作权限返回 403。
 - JSON 成功响应 `{data, meta:{requestId}}`；列表为 `{data:[],meta:{requestId,nextCursor}}`。游标分页默认 `limit=20`、最大100；允许的筛选/排序由各路由白名单限定，不能接收任意 SQL 字段。
 - 错误响应 `{error:{code,message,requestId,details?}}`；details 不回显证件、密钥及内部查询。401 未认证；403 无权限；404 资源不可见；409 并发/幂等/租约冲突；422 字段或业务守卫失败；429 限流。
-- 修改已有资源发送 `expectedVersion`，成功响应返回新 `version`。记分及其他需防重复命令发送 `Idempotency-Key`；同作用域同键同载荷返回原结果，同键不同载荷返回 `IDEMPOTENCY_CONFLICT`。即使重放也重新认证、授权，不返回已失去权限的历史响应。
+- 有版本的修改发送 `expectedVersion`，成功响应返回新 `version`。后续记分等需防重复命令规划使用 `Idempotency-Key`，同作用域同键同载荷返回原结果，同键不同载荷返回 `IDEMPOTENCY_CONFLICT`；该通用机制尚未实现。P03邀请的安全重复接受语义见第6节，重放仍重新认证、授权，不返回已失去权限的历史响应。
 - 时间戳采用 ISO 8601 UTC；赛事日期用 `YYYY-MM-DD`，另带有效 IANA timezone。所有枚举大写；客户端不能自行提交创建者、审批人、角色或资源归属为权威值。
 
 角色：`ORG_OWNER / ORG_ADMIN` 管理机构；`EVENT_MANAGER` 管指定赛事；`REVIEWER` 审报名；`SCORER` 管指定场次记分；`STREAMER` 管直播包装；`TEAM_MANAGER` 管自己的球队报名；`PLAYER` 仅管理本人资料。平台运营权限独立，公开 VIEWER 无私有写权限。
@@ -34,7 +34,7 @@ type CreateEventInput = {
 
 ## 3. 目标路由清单
 
-除P02已实现路由外，下表仍是长期目标；P03-A尚未开工。实际P02权限与输入以第5节和共享契约为准，不推定报名、保险文件或邀请已可调用。
+下表同时列出已实现入口与长期目标；P02及P03-A的实际权限、输入和响应以第5、6节及共享契约为准。人员私密资料、保险附件、排赛、记分和OBS等目标入口尚不可调用。
 
 下表私有路径均省略 `/v1/orgs/{orgId}`；资源 ID 需按其所属赛事/机构重新校验。
 
@@ -42,11 +42,11 @@ type CreateEventInput = {
 |---|---|---|
 | GET/POST `/events`；GET `/events/{eventId}` | 列表、创建草稿、详情 | 按授权赛事范围读取，列表也裁剪范围；有机构创建权限者建草稿；P02 |
 | PATCH `/events/{eventId}` | 编辑草稿 | EVENT_MANAGER，版本匹配且 DRAFT；P02 |
-| POST `/events/{eventId}/commands` | 开报名/关报名/发布赛程/结束/归档 | 对应管理动作与状态守卫；P03起 |
-| GET/POST `/teams`；PATCH `/teams/{teamId}` | 长期球队资料 | 管理者或被授权的本队领队；P03 |
-| POST `/teams/{teamId}/invitations` | 创建有用途和范围的球队/球员邀请 | 本队领队或授权工作人员，仅允许授予自身可授予的资源权限；P03 |
-| POST `/events/{eventId}/entries` | 建立球队参赛草稿 | TEAM_MANAGER 或管理者；P03 |
-| PUT `/entries/{entryId}/players` | 更新本届名单 | 本队领队，版本和名单锁定检查；P03 |
+| POST `/events/{eventId}/commands` | 发布赛程/结束/归档等后续目标 | 尚未实现；P03-A开关报名及冻结使用第6节的registration-commands |
+| GET/POST `/teams`；GET/PATCH `/teams/{teamId}` | 长期球队资料 | OWNER/ADMIN创建；管理资料须OWNER/ADMIN或本队有效领队；P03-A已实现 |
+| POST `/teams/{teamId}/invitations` | 邀请既有用户管理球队 | 仅OWNER/ADMIN，绑定targetUserId；P03-A已实现 |
+| POST `/events/{eventId}/entries` | 建立球队参赛草稿 | 本队有效TEAM_MANAGER；工作人员也须另有该队grant；P03-A已实现 |
+| PUT `/entries/{entryId}/roster` | 更新本届名单 | 本队领队，版本和名单锁定检查；P03-A已实现 |
 | GET/PATCH `/participants/{playerId}/profile` | 读取/补充本人参赛资料 | 本人绑定；领队仅在赛事规则允许的受托字段范围内代填，不能默认读取全部证件；P03 |
 | POST `/entries/{entryId}/commands` | 提交/撤回/审核/退回补齐 | 领队或独立 REVIEWER 按具体命令；P03 |
 | POST `/participants/{playerId}/insurance-evidence` | 登记受控上传凭证引用 | 本人/本队领队；P03 |
@@ -88,7 +88,7 @@ P02状态DONE / MAIN，范围已通过真实数据库和API浏览器验收；CI�
 |---|---|
 | POST `/v1/auth/register` | `{email,password,displayName,organizationName}`，201返回SessionData并建会话；机构初始OWNER。生产默认关闭自主注册，没有邮箱验证/微信身份声明 |
 | POST `/v1/auth/login` | `{email,password}`，200返回SessionData并轮换浏览器Cookie；错误登录401通用文案 |
-| GET `/v1/auth/session` | `{user:{id,email,displayName},organizations:[{id,name,role}]}`，仅本人当前有效范围 |
+| GET `/v1/auth/session` | `{user:{id,email,displayName},organizations:[{id,name,role}],teamContexts:[{orgId,organizationName,teamId,teamName}]}`；teamContexts由P03-A增加，仅本人当前有效范围 |
 | POST `/v1/auth/logout` | 200 `data:null`，撤销当前令牌并清Cookie；无Cookie幂等退出 |
 | GET/POST `/v1/orgs/{orgId}/events` | 列表先授权裁剪，创建仅OWNER/ADMIN，初始DRAFT |
 | GET/PATCH `/v1/orgs/{orgId}/events/{id}` | OWNER/ADMIN管理本机构赛事；其他仅分配赛事可读，具体EVENT_MANAGER分配可编辑草稿；PATCH是完整CreateEventInput+expectedVersion |
@@ -105,31 +105,34 @@ P02状态DONE / MAIN，范围已通过真实数据库和API浏览器验收；CI�
 
 P02没有删除、任意改赛事status、邮件验证、密码重置、工作人员邀请或平台管理接口。第3节的 `/v1/me*` 是后续目标入口；P02以 `/v1/auth/session` 提供当前上下文，不同时伪造两套已实现路由。
 
-## 6. P03-A Web报名实施契约（LOCAL_ONLY，尚未验收）
+## 6. P03-A Web报名实施契约（DONE / MAIN）
 
-共享类型已在 `packages/contracts/index.d.ts` 落地；API及合同源码已发布于[PR3首个代码提交dac9ebc](https://github.com/xyq-dev/small-city-basketball/commit/dac9ebcffb69eca7f01fee9133ccb310e4c37f31)。首轮43项真实PG及重启验证通过，真实API浏览器仍待验收，不属于当前main已完成能力。下列业务路径均在 `/v1/orgs/{orgId}` 下，身份及接受邀请入口除外。
+共享类型以 `packages/contracts/index.d.ts` 为准。代码head `c2d96b2f2b3801bedcb7e73258b48f5d05c88a83` 经[CI39735150535](https://github.com/xyq-dev/small-city-basketball/actions/runs/39735150535)全部通过并由PR #3合并main：100项单元／组件／HTTP检查、44项独立PG场景、实际PG重启，以及12项Mock和6项真实API浏览器场景。下列业务路径均在 `/v1/orgs/{orgId}` 下，身份及接受邀请入口除外；此交付不代表生产部署。
 
 | 方法与路径 | 行为与授权 |
 |---|---|
 | POST `/v1/auth/register-participant` | email/password/displayName；只创建User+Session，没有机构或工作人员成员；返回SessionData |
 | GET `/v1/auth/session` | P03新增teamContexts，和organizations分别返回；不因接受邀请获得机构后台权限 |
-| GET/POST `/teams`；GET/PATCH `/teams/{id}` | OWNER/ADMIN创建，初始不自动授领队；工作人员管理范围与当前本队领队分别校验 |
+| GET/POST `/teams`；GET/PATCH `/teams/{id}` | OWNER/ADMIN创建，初始不自动授领队；OWNER/ADMIN或当前本队领队读取和管理，其他工作人员身份不自动授予球队管理权 |
 | PUT `/teams/{id}/members` | `{expectedVersion,members:[{id?,name}]}`；最多60人，新人服务端生成id，移出归档，旧报名快照不变 |
 | GET/POST `/teams/{id}/invitations` | 仅OWNER/ADMIN签发明确existing targetUserId；expiresInHours整数1–168；创建一次返回`{invitation,token}`，读取不返回token/hash |
 | POST `/teams/{id}/invitations/{inviteId}/revoke`；PUT `/teams/{id}/grants/{userId}` | OWNER/ADMIN分别撤销未消费邀请或改grant ACTIVE/DISABLED；撤销邀请不代替停用已接受的授权 |
-| POST `/v1/invitations/{id}/accept` | 已登录明确target，body仅token；检查用途/hash/期限/撤销/邀请人当前资格；已消费不能复活后来停用的grant |
+| POST `/v1/invitations/{id}/accept` | 已登录明确target，body仅token；检查用途/hash/期限/撤销/邀请人当前资格；已消费且当前grant仍ACTIVE时安全返回既有TeamContext，不更新邀请、grant或审计；当前grant缺失/DISABLED则409，不恢复授权 |
 | GET `/teams/{id}/registration-events` | 领队可见已开放赛事及本队已有报名；不泄露其他球队名单或未公开草稿 |
 | GET `/events/{id}/registration` | 授权工作人员读取event/rules/counts/freeze/capabilities |
 | PUT `/events/{id}/registration-rules` | DRAFT及赛事管理权，expectedVersion为event.version；人数上下限、0/00规则、是否要求身份/保险，追加不可变规则版本 |
 | POST `/events/{id}/registration-commands` | OPEN_REGISTRATION / CLOSE_REGISTRATION / FREEZE_REGISTRATION，CAS及具体状态守卫；不支持任意改状态 |
-| GET/POST `/events/{id}/entries`；GET `/entries/{id}` | 工作人员范围或本队grant范围读取；创建仅有效领队、OPEN、同赛事同队唯一 |
+| GET `/events/{id}/entries` | 按工作人员赛事范围或本队grant范围返回分页EntrySummary；筛选与授权在分页前执行 |
+| POST `/events/{id}/entries`；GET `/entries/{id}` | 创建仅有效领队、OPEN、同赛事同队唯一；详情按工作人员赛事范围或本队grant范围返回完整EntryData |
 | PUT `/entries/{id}/roster` | expectedVersion+memberId/jerseyNo；从当前有效本队成员快照姓名，始终新建不可变revision |
 | POST `/entries/{id}/commands` | SUBMIT/WITHDRAW/APPROVE/REQUEST_CHANGES/REJECT，CAS；退回及拒绝reason1–500必填 |
 
-列表默认20、最多100，nextCursor绑定当前用户/机构/资源/筛选。UI逐页读取，后页失败整个读取报错；动作依赖每资源capabilities并由服务器再次守卫。
+列表默认20、最多100，nextCursor绑定当前用户/机构/资源/筛选。EntrySummary仅含 `id/eventId/teamId/teamName/status/version/rosterRevisionId/lastSubmittedBy/latestReviewReason` 九字段，不展开players、rules、history或动作capabilities；这些仅在独立鉴权的EntryData详情读取。其他带动作的资源DTO显式返回capabilities。UI逐页取完才返回成功，后页失败、非法或循环游标整体报错；具体操作依赖服务端资源权限并再次鉴权。
 
 规则minPlayers1–60，maxPlayers不低于min且不超过60。号码仅0、00、1–99，零号等价性按锁定规则检查。要求身份或保险为true时阻止开放，不能因本卡未接供应商而自动豁免。
 
 提交名单只读；审核者不得是当前领队或lastSubmittedBy，OWNER也不例外。APPROVED修改先被独立审核者退回，再保存新revision并重提。CLOSED仅CHANGES_REQUESTED可补交，保存保持该状态；DRAFT不能关闭后新提交。REJECTED/WITHDRAWN终态，不隐式重建。
 
-冻结要求CLOSED、至少2批准、没有SUBMITTED/CHANGES_REQUESTED。DRAFT/REJECTED/WITHDRAWN排除数显式返回；服务端查询批准revision生成不可变freeze，客户端不能提供名单清单作为权威。冻结后停止全部报名与审核写入，不自动发布赛程。邀请token只在URL fragment传递并在读取后移除，不进入localStorage。
+冻结要求CLOSED、至少2批准、没有SUBMITTED/CHANGES_REQUESTED。DRAFT/REJECTED/WITHDRAWN排除数显式返回；服务端查询批准revision生成不可变freeze，客户端不能提供名单清单作为权威。冻结后停止全部报名与审核写入，不自动发布赛程。
+
+邀请token只在URL fragment传递，首次加载及hashchange读取后立即清除，不进入localStorage/sessionStorage；后收到的邀请不会被旧接受请求的晚返回清除。用户主动切换机构／球队工作空间进入对应首页，后台刷新授权保留合法详情路径，球队上下文不会显示另一球队资料。邮箱尚未验证，不能按email认领邀请；没有邮件发送、微信身份、身份证核验、保险文件上传、支付或OBS服务。

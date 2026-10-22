@@ -1,10 +1,39 @@
 # 测试与验收
 
-更新：2026-10-22（Asia/Shanghai）。本文记录P02已执行验收、历史证据边界及后续测试要求；计划不等于已经执行。
+更新：2026-10-22（Asia/Shanghai）。本文记录P03-A最终验收、P02/P01历史证据及后续测试要求；计划不等于已经执行。
 
 ## 当前交付与证据
 
-P01、P02为 **DONE / MAIN**。P02代码head `63b94beee51d51b02f4bade7f36baba92edceb11` 经[Application checks run 39730670229](https://github.com/xyq-dev/small-city-basketball/actions/runs/39730670229)全部通过，[PR #2](https://github.com/xyq-dev/small-city-basketball/pull/2)已合并，main整合提交为 `29c4ee4cf588e911b2e087224522b832b726d18e`。
+P01、P02及P03-A为 **DONE / MAIN**。P03-A代码head `c2d96b2f2b3801bedcb7e73258b48f5d05c88a83` 经[Application checks run 39735150535](https://github.com/xyq-dev/small-city-basketball/actions/runs/39735150535)全部通过，[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)已合并，main整合提交为 `1c4b352e4277af6a418ae46908d1aed0fcb01827`。
+
+| P03-A最终已执行检查 | 结果 | 计数或证据边界 |
+|---|---|---|
+| 安装、格式、严格类型、构建 | 通过 | Node24、已提交锁文件、admin与api；类型检查包含浏览器测试及配置 |
+| `npm test` | 100项通过 | admin75＋api25项单元／组件／HTTP检查，无真实DB依赖 |
+| `npm run test:integration` | 44项独立PG场景通过 | 原P02 20＋P03-A 24；脚本限定`vitest run test/`，不重复计入API源码单测 |
+| Migration001/002 | 隔离测试库执行通过 | 001→002顺序执行，重复运行核验SHA-256并跳过已应用迁移；非生产执行 |
+| PostgreSQL重启持久化 | 通过 | 真实PostgreSQL18.6重启后session、授权、roster revisions、freeze、审计及迁移校验和保留 |
+| `npm run test:e2e` | 12/12通过 | 显式Mock，桌面／手机Chromium模拟 |
+| `npm run test:api:e2e` | 6/6通过 | 真实API＋独立隔离PG；每种尺寸覆盖持久草稿、报名审核冻结及API失败不退Mock |
+| 官方Playwright浏览器 | Chromium151安装和执行通过 | 桌面与手机模拟，不等于Safari、微信或真机 |
+| 独立静态审查及自动finding修正 | 无开放阻断 | 权限／锁／摘要响应／工作空间／邀请竞态及标签修正；具体记录见PR和交接 |
+| 生产及第三方服务 | 未执行 | 无生产部署、备份恢复演练、微信、身份证核验、保险文件或OBS接入 |
+
+P03-A真实PG场景覆盖外部账号不建机构、租户／球队隔离、邀请目标及安全重试、过期／撤销／撤权、自审禁止、规则锁定、CLOSED补交、名单版本、并发CAS与grant／审核／freeze串行、审计回滚，以及列表仅含EntrySummary而详情保留完整资料。真实浏览器保留`leader.goto(invitationLink)`，完成个人注册、指定账号接受邀请、名单提交、独立退回、关闭后补交、审核、冻结、历史保留和旧Cookie撤权；请求URL不含邀请token，浏览器不写localStorage。
+
+### P03-A失败与修复记录
+
+| 运行 | 实际结果 | 修复及证据边界 |
+|---|---|---|
+| [首轮39733327804](https://github.com/xyq-dev/small-city-basketball/actions/runs/39733327804)，dac9ebc | 97项检查、43项PG及实际重启、12项Mock通过；真实API浏览器3成功3超时 | 清理错误曾遮蔽首个等待位置；补固定阶段日志、动作限时和保留原错的cleanup。独立复现已登录同文档邀请hash未被消费，修复首次／hashchange处理；不把该缺陷称为所有超时的唯一原因 |
+| [第二轮39734744498](https://github.com/xyq-dev/small-city-basketball/actions/runs/39734744498)，d9c8b5d | 98项检查、43项PG及重启通过；真实API浏览器4成功2失败 | 原持久化场景均通过，新报名均停在精确读取“邀请链接”；本地真实Chromium最小DOM复现label含textarea初值，补显式aria-label。保留精确定位及所有后续业务断言 |
+| [最终39735150535](https://github.com/xyq-dev/small-city-basketball/actions/runs/39735150535)，c2d96b2 | 100项检查、44项独立PG、实际PG重启、12项Mock及6项API浏览器全部通过 | 包含工作空间路由、旧邀请晚回、列表摘要及可远端恢复交接引用修正；据此验收并合并PR #3 |
+
+首两轮与修复的详细过程保留于[P03-A交接](handoffs/P03-A.md)，截图的合成HTTP fixture／临时字体边界见[P03-A证据](evidence/P03-A/README.md)。这些历史记录不替代最终成功运行，也不证明生产可用。完整P03的保险附件、球员身份及小程序尚未交付；P04–P06仍待各自验收。
+
+## 历史P02证据
+
+P02代码head `63b94beee51d51b02f4bade7f36baba92edceb11` 经[Application checks run 39730670229](https://github.com/xyq-dev/small-city-basketball/actions/runs/39730670229)全部通过，[PR #2](https://github.com/xyq-dev/small-city-basketball/pull/2)已合并，main整合提交为 `29c4ee4cf588e911b2e087224522b832b726d18e`。下表仅记录当时计数。
 
 | 已执行检查 | 结果 | 计数或证据边界 |
 |---|---|---|
@@ -20,7 +49,7 @@ P01、P02为 **DONE / MAIN**。P02代码head `63b94beee51d51b02f4bade7f36baba92e
 
 GitHub自动CodexReview在本次整合记录时仍运行中、尚无finding，不能据此写成“自动审查通过”。其状态以后以PR记录为准。首次失败运行及修复顺序由[P02交接](handoffs/P02.md)记录，当前验收以上述成功运行和代码head为准。
 
-Migration001已编写、审查并在隔离测试库执行，重复运行及校验和验证通过；不是生产执行。P03-A Web报名闭环已认领、尚未验收，P03整体、保险文件和微信能力未验收。启动与命令前提统一见[DEVELOPMENT](DEVELOPMENT.md)。
+Migration001当时已编写、审查并在隔离测试库执行，重复运行及校验和验证通过；不是生产执行。P03-A的新增结果单列在上文，不改写P02历史计数。启动与命令前提统一见[DEVELOPMENT](DEVELOPMENT.md)。
 
 ## 历史P01证据
 
@@ -54,4 +83,4 @@ P01代码819818d经PR #1合并为f15adb4，[原CI run 39728632742](https://githu
 
 小范围文档修改检查链接、事实状态及术语一致性即可；代码变更执行直接覆盖行为的检查和项目必要构建。认证授权、Migration、记分状态机需独立审查与失败场景验证；不为普通文案变更反复运行全套测试。
 
-任务报告逐项使用“通过／失败／未执行／不适用”，失败附复现步骤；未执行说明原因及影响。阻断缺陷未关闭不得标记完成，非阻断问题进入任务清单并注明归属。P01、P02已各自提供代码、真实执行及整合证据；P03-A及后续阶段不能借用既有结果宣称新增能力完成。
+任务报告逐项使用“通过／失败／未执行／不适用”，失败附复现步骤；未执行说明原因及影响。阻断缺陷未关闭不得标记完成，非阻断问题进入任务清单并注明归属。P01、P02、P03-A已各自提供代码、实际执行及整合证据；后续阶段不能借用既有结果宣称新增能力完成。

@@ -1,6 +1,6 @@
 # 数据模型与状态
 
-设计版本：0.1；更新：2026-10-22；状态：P02最小SQL模型已合并main并在隔离测试库真实执行；其他实体仍为长期逻辑设计，尚未建表。实际边界见第6节。
+设计版本：0.1；更新：2026-10-22；状态：P02及P03-A SQL模型已合并main并在隔离测试库真实执行。第2–5节包含长期逻辑设计，实际已建表和验收边界见第6、7节；排赛、记分、保险附件和OBS等后续实体尚未建表。
 
 ## 1. 通用约束
 
@@ -44,7 +44,7 @@ P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引�
 
 ## 3. 规则快照
 
-`format` 固定为 `ROUND_ROBIN`、`GROUP_KNOCKOUT`、`SINGLE_ELIMINATION`。规则版本包含报名人数、参赛资格、节次/时长、加时、犯规/暂停、积分及同分排序、赛制晋级、最低休息间隔和排赛约束等。实际赛事逐项设置并确认，不能全平台固定“8队16场”“19:30/20:15”或某届的户籍条件。
+`format` 固定为 `ROUND_ROBIN`、`GROUP_KNOCKOUT`、`SINGLE_ELIMINATION`。长期规则版本将包含报名人数、参赛资格、节次/时长、加时、犯规/暂停、积分及同分排序、赛制晋级、最低休息间隔和排赛约束等；P03-A只实现第7节列出的报名规则，不表示三种赛制已可排赛。实际赛事逐项设置并确认，不能全平台固定“8队16场”“19:30/20:15”或某届的户籍条件。
 
 排赛规则区分硬约束与可提示的偏好；系统无解时输出冲突证据及可放宽项，不偷偷放宽。手动调赛生成新版本并重跑校验；已开赛或已确认场次不能被普通排赛覆盖。
 
@@ -62,7 +62,7 @@ P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引�
 
 优先建立成员 `(orgId,userId,status)`、赛事 `(orgId,status,startDate)`、报名 `(orgId,eventId,status)`、比赛 `(orgId,eventId,startsAt)`、场地时间检索及事件 `(matchId,seq)`。幂等唯一键包含机构、操作者、命令作用域及幂等键；只存业务所需的最小响应。具体数据库排他约束与锁策略在排赛实施前通过并发用例验证。
 
-必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。后续Migration仍按独立任务编写、审查和授权执行。P02迁移001已执行的事实见下节，不把其他规划实体也标成已建表。
+必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。P02/P03-A适用范围已执行，后续记分等行为仍待相应阶段验证。Migration001/002的执行事实见下文，不把规划实体也标成已建表。
 
 ## 6. P02 最小持久化实施
 
@@ -74,12 +74,16 @@ Migration `apps/api/migrations/001_p02_foundation.sql` 已编写、审查并在�
 
 Migration runner使用事务advisory lock、文件名白名单及SHA-256校验和，重复执行核验并跳过，不在API启动自动运行。开发seed需显式DEV_SEED_PASSWORD，禁止production，幂等不清库、不重置已有密码；生产凭据与开发合成数据分开。GitHub CI隔离PostgreSQL18.6已完成真实验证；数据库重启后会话、赛事、version、授权、审计及迁移校验和保留。当前没有生产数据库；重启持久化不是备份恢复或生产可用性验收。
 
-## 7. P03-A分支持久化（隔离测试库已执行）
+## 7. P03-A报名持久化（DONE / MAIN，隔离测试库已执行）
 
-`002_p03_registration.sql` 已发布于[PR3首个代码提交dac9ebc](https://github.com/xyq-dev/small-city-basketball/commit/dac9ebcffb69eca7f01fee9133ccb310e4c37f31)；独立静态审查允许在空隔离测试库按001→002验证，SHA256 `13f3729b86305745c5e1a986f7cd533eb99f9cd96052d630de6607e8394576e4`。首轮CI39733327804已在隔离测试库执行并通过43项PG及实际重启验证；API浏览器未通过，仍未合并或生产执行。
+P03-A经[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并main `1c4b352e4277af6a418ae46908d1aed0fcb01827`。`002_p03_registration.sql` 的SHA256为 `13f3729b86305745c5e1a986f7cd533eb99f9cd96052d630de6607e8394576e4`。[最终CI39735150535](https://github.com/xyq-dev/small-city-basketball/actions/runs/39735150535)在隔离PostgreSQL18.6执行001→002，复跑核验并跳过已匹配的迁移，44项独立PG场景通过；真实数据库重启后会话、球队授权、名单版本、freeze、审计及校验和保留。前两轮失败及最终浏览器通过见[TESTING](TESTING.md)；没有生产执行。
 
 新增teams、team_members、team_access_grants、team_invitations、event_rulesets、entries、entry_roster_revisions、entry_roster_players、entry_review_history及registration_freezes。事件追加可空当前/锁定规则指针，兼容001已有赛事；复合FK约束同机构、赛事、球队、报名revision及来源成员。
 
-长期成员移出归档；每次报名名单保存新revision和姓名/号码快照。规则、roster revision/players、review history和freeze通过触发器拒绝UPDATE/DELETE；API只能向刚建立的新revision插入players，不提供向旧revision追加球员接口。名单锁与冻结JSON的一致性仍需应用事务及真实PG验证。
+长期成员移出归档；每次报名名单保存新revision和姓名/号码快照。规则、roster revision/players、review history和freeze通过触发器拒绝UPDATE/DELETE；API只能向刚建立的新revision插入players，不提供向旧revision追加球员接口。名单锁与冻结JSON的一致性由应用事务保证，已通过真实PG并发、审计回滚及重启验证。
 
 报名/审核/冻结写均持同一Event UPDATE锁，再按Team→grant→Entry顺序处理；全部grant创建、启用、撤销及邀请接受持同Team UPDATE锁，审核在锁内检查当前非领队。邀请接受还锁住邀请人的有效membership到提交。freeze由服务端批准entry当前revision及锁定规则生成，与审计同事务；长期成员变动不能回写旧名单。
+
+本卡规则字段为min_players、max_players、zero_and_double_zero_distinct、require_identity、require_insurance；同赛事版本唯一，开放报名后锁定规则指针。后两项要求为true时拒绝开放，因为核验与保险附件尚未集成。TeamAccessGrant只有TEAM_MANAGER，与organization_memberships独立；team_invitations绑定已存在target_user_id，数据库只存令牌hash及用途、期限、消费／撤销时间。已消费邀请仅在全部验证通过且当前grant仍ACTIVE时安全重读上下文，缺失或DISABLED不会复活。
+
+报名列表投影仅返回EntrySummary九字段；完整roster、rules、history由独立鉴权的详情接口返回。这是响应裁剪，不删除数据库中的历史。名单冻结后事件保持REGISTRATION_CLOSED，尚不生成赛程、比赛、公开观赛或OBS投影。

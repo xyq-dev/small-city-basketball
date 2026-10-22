@@ -1,35 +1,35 @@
 # 技术架构
 
-设计版本：0.1；更新：2026-10-22；状态：P01、P02已整合到main，DONE / MAIN；真实身份、机构授权及赛事持久化已验收，P03–P06为目标设计。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
+设计版本：0.1；更新：2026-10-22；状态：P01、P02、P03-A已整合main，DONE / MAIN；真实Web球队报名、审核及冻结已验收。全P03尚未完成，P04无业务代码，P05/P06为目标设计。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
 
 ## 1. 结构与实施边界
 
-采用TypeScript模块化单体。P01机构后台四页保留显式Mock模式；P02已接通NestJS、pg参数化SQL和真实PostgreSQL，完成注册／登录／退出、持久会话、机构与赛事授权、草稿创建／读取／编辑及审计。实时记分、直播与报名仍为后续能力，不能因基础后端通过而宣称完整办赛平台完成。
+采用TypeScript模块化单体。P01机构后台四页保留显式Mock模式；P02已接通NestJS、pg参数化SQL和真实PostgreSQL，完成注册／登录／退出、持久会话、机构与赛事授权、草稿创建／读取／编辑及审计。P03-A进一步实现外部领队授权、球队/成员、不可变报名revision、独立审核及freeze。保险文件、球员本人资料绑定、小程序、排赛、记分与直播仍未实现，不能据此宣称完整办赛平台完成。
 
-当前交付基线为PR #2的main整合提交 `29c4ee4cf588e911b2e087224522b832b726d18e`；代码head `63b94beee51d51b02f4bade7f36baba92edceb11` 经远端CI通过。启动见[开发说明](DEVELOPMENT.md)，验证边界见[TESTING](TESTING.md)。没有生产部署或生产数据库。
+当前交付基线为PR #3的main整合提交 `1c4b352e4277af6a418ae46908d1aed0fcb01827`；代码head `c2d96b2f2b3801bedcb7e73258b48f5d05c88a83` 经CI39735150535通过。启动见[开发说明](DEVELOPMENT.md)，验证边界见[TESTING](TESTING.md)。没有生产部署或生产数据库。
 
 | 部分 | 选择 | 边界 |
 |---|---|---|
 | 小程序 | Taro + React + TypeScript | 观赛、球队、报名、个人资料 |
-| 机构后台 | React + Vite + TypeScript | 四页支持显式Mock和真实API模式；API失败不退回演示数据 |
+| 机构后台 | React + Vite + TypeScript | 赛事四页保留Mock；真实API模式另有球队、领队及报名审核/冻结，失败不退Mock |
 | 现场工作台 | React + Vite + TypeScript | 记分、赛事操作；与普通观众界面分开 |
 | 包装页面 | Web 透明页面 | OBS 浏览器源及大屏，只读公开投影 |
-| API | NestJS；P02采用pg参数化SQL | P02身份、授权、赛事与审计已验收；报名及比赛模块后续实现 |
+| API | NestJS；P02采用pg参数化SQL | 身份、授权、赛事及P03-A报名/冻结已验收；比赛模块后续实现 |
 | 数据 | PostgreSQL | 事务、版本、约束；存储真实业务事实 |
 | 文件与视频 | 后续选择对象存储、云直播及点播 | 业务保存文件元数据及授权引用，不将视频存入数据库 |
 
 main包含 `apps/admin`、`apps/api`、`packages/contracts`、根workspace及锁文件、测试和CI。Mock通过 `apps/admin/src/domain` 的内存repository运行并刷新重置；API模式通过会话与HTTP adapter读写真实数据，令牌使用HttpOnly Cookie，不存浏览器脚本可读存储。逐赛事 `permissions.canEditDraft` 来自服务端，客户端不以全局角色代替实际授权。
 
-`apps/scorekeeper`、`apps/miniprogram`、`apps/overlay`仍为后续规划。`apps/admin`当前为机构工作台，平台运营后台未实现；`packages/contracts`已承载会话、机构和赛事DTO，`packages/ui`待实际复用时建立。P03-A Web报名闭环尚未开工，不预建无用模块或过早拆微服务。
+`apps/scorekeeper`、`apps/miniprogram`、`apps/overlay`仍为后续规划。`apps/admin`当前为机构工作台，平台运营后台未实现；`packages/contracts`已承载会话、机构、赛事及球队/报名/冻结DTO，`packages/ui`待实际复用时建立。P03-A落地于registration服务/控制器、admin registration页面及迁移002；P04截至当前交付基线没有代码，不预建无用模块或过早拆微服务。
 
-后端逻辑模块：Identity、Organizations、Events、Teams、Registration、Scheduling、Scoring、PublicRead、Broadcast、Entitlements、Audit。模块通过明确的应用接口调用；领域模块不依赖 HTTP 控制器、数据库 ORM 或前端组件。统一契约只放 DTO、枚举和公开类型，不打包凭据及数据库内部模型。
+目标逻辑模块为Identity、Organizations、Events、Teams、Registration、Scheduling、Scoring、PublicRead、Broadcast、Entitlements、Audit。其中身份、机构、赛事、球队及Web报名/审计已有实现，Scheduling等后续模块不能因出现在此列表而视为已落地。模块通过明确的应用接口调用；领域模块不依赖 HTTP 控制器、数据库 ORM 或前端组件。统一契约只放 DTO、枚举和公开类型，不打包凭据及数据库内部模型。
 
 ## 2. 身份与机构隔离
 
-P02已实现工作人员的机构及赛事授权。下列外部参赛者、公开投影和附件授权是后续目标，不表示已经有球员邀请或保险文件服务。
+P02已实现工作人员机构/赛事授权；P03-A已实现外部个人账号及独立TeamAccessGrant、明确目标账号的领队邀请，不创建机构成员。ParticipantLink、球员邀请、公开投影及附件授权仍是后续目标，没有保险文件服务。
 
 - User 是登录身份；OrganizationMembership 是机构身份；EventStaff 是指定赛事或比赛的工作授权。平台权限、机构权限和球队身份不能互相替代。
-- 工作人员走机构成员及赛事分配授权；外部领队、球员走 `TeamAccessGrant`、本人参赛身份绑定及有效邀请授权，不要求先成为机构工作人员。接受球队/球员邀请不产生机构后台权限。每个动作明确允许哪条授权路径，不能把所有机构私有接口都写成“机构成员才可进入”。
+- 工作人员走机构成员及实际赛事分配；P03-A领队通过有效TeamAccessGrant管理本队，撤权后每请求重新校验。邀请消费核验目标账号、令牌、时效、用途及邀请人当前资格，不复活已停用grant，不产生机构后台权限。后续球员本人绑定另行实现；不能把全部机构私有接口都套用工作人员成员守卫。
 - 机构范围的私有业务资源都有 `orgId`，全局身份与平台配置单独建模。服务器从可信会话取得操作者，再验证路径机构、资源归属及具体动作权限；不信任客户端传入的角色或 `orgId`。
 - 同一事务内的赛事、报名、名单、场次等引用必须属于同一机构。数据库复合外键与应用查询同时约束归属；跨机构访问按不存在处理。
 - 首版长期球队档案由机构维护。跨机构参赛通过明确授权导入参赛快照，不开放任意跨租户 JOIN；全平台统一球队身份不是首版前置条件。
@@ -38,7 +38,7 @@ P02已实现工作人员的机构及赛事授权。下列外部参赛者、公�
 
 ## 3. 写入、事件与实时读取
 
-P02已验证普通赛事编辑的版本CAS、授权撤销锁及审计同事务；以下比赛事件、主记分租约和实时投影属于P05目标，尚未实现。
+P02已验证赛事CAS及审计原子性；P03-A报名/审核/冻结持Event锁，名单和grant操作按统一Team锁序串行，冻结由服务端获批revision生成并与审计同事务提交。PG/API重启后授权、名单及freeze保留，具体SQL和证据见DATA_MODEL与TESTING。以下比赛事件、主记分租约和实时投影属于P05目标，尚未实现。
 
 普通编辑使用资源 `version` 做乐观并发控制。比赛写入额外要求主记分租约、幂等键和连续的比赛版本；一个时刻仅一个有效主写端。租约转移递增 `fencingToken`，旧端即使重连也不能继续写入。
 
@@ -48,7 +48,7 @@ P02已验证普通赛事编辑的版本CAS、授权撤销锁及审计同事务�
 
 ## 4. 计时与断网
 
-本节为P05/P06设计，不是P02已交付能力。
+本节为P05/P06设计，不是P01/P02/P03-A已交付能力。
 
 比赛计时保存 `period`、`remainingMs`、`running`、`anchorServerTime`、`clockVersion`。客户端根据服务器时差及锚点平滑显示，暂停和校时均产生可追溯的命令；不能每秒写一次数据库，也不能让 OBS 的本地计时成为权威。
 
