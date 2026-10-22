@@ -83,7 +83,7 @@ jobs:
       - run: npm ci
       - run: npm run test:integration
       - run: npm run build --workspace @small-city-basketball/api
-      - name: Capture sessions, schedule, running clock and result history
+      - name: Capture sessions, scoring, standings and public identities
         run: node scripts/check-database-restart.mjs capture
         env:
           SCB_PERSISTENCE_FILE: ${{ runner.temp }}/application-restart-state.json
@@ -99,13 +99,17 @@ jobs:
             sleep 1
           done
           exit 1
-      - name: Verify registration, schedule and scoring after restart
+      - name: Verify registration, scoring and public viewing after restart
         run: node scripts/check-database-restart.mjs verify
         env:
           SCB_PERSISTENCE_FILE: ${{ runner.temp }}/application-restart-state.json
-      - name: Create isolated browser test database
+      - name: Create isolated browser check control database
         run: node --input-type=module -e "import pg from 'pg'; const p=new pg.Pool({connectionString:process.env.TEST_DATABASE_URL}); try { await p.query('CREATE DATABASE scb_test_browser'); } finally { await p.end(); }"
       - run: npx playwright install --with-deps chromium
       - run: npm run test:api:e2e
+        env:
+          DATABASE_URL: postgresql://scb:ci-isolated-test-password@127.0.0.1:5432/scb_test_browser
+      - name: Verify owned browser database cleanup on child failure
+        run: node scripts/check-browser-database-isolation.mjs
         env:
           DATABASE_URL: postgresql://scb:ci-isolated-test-password@127.0.0.1:5432/scb_test_browser

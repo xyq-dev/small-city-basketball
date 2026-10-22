@@ -1,6 +1,6 @@
 # 环境、发布与商业运营
 
-版本：0.1；更新：2026-10-22（Asia/Shanghai）。P02基础服务、P03-A Web报名、P04-A单循环排赛／一次发布及P05-A基础在线记分／独立确认／私有快照已整合main并通过隔离测试；以下生产与商业运营条目仍为建设规范，没有已部署生产服务、生产数据库或付费套餐系统。
+版本：0.1；更新：2026-10-22（Asia/Shanghai）。P02基础服务、P03-A Web报名、P04-A单循环排赛／一次发布及P05-A基础在线记分／独立确认／私有快照已整合main并通过隔离测试。P05-B排名／公开API及005在feature已实施、未MAIN／未真实验收，UI已整合feature，见本页分支运行边界；以下生产与商业运营条目仍为建设规范，没有已部署生产服务、生产数据库或付费套餐系统。
 
 ## 环境与配置
 
@@ -48,9 +48,23 @@ P05-A要求显式篮球基础规则，首次READY后赛事规则锁定。OWNER/A
 
 控制租约为30秒，客户端10秒续约；session、每tab内存身份、leaseId及fence共同限定主写端。控制凭据不持久到浏览器存储；过期心跳／释放不能复活旧租约。刷新或退出后重新取得控制，不能复制另一tab凭据继续写。停用已有但机构成员／用户已失效的assignment可清理残留授权并使该人员租约失效，启用仍要求有效成员。租约过期与人员离线不会自动暂停正在运行的比赛时钟。
 
-raw clock的remainingMs对应anchorServerTime，而非每次读取时重新存下的倒计时；显示按serverTime及锚点扣时一次，最低0。DB重启后同一锚点继续计时，剩余0不自动FINAL；暂停、校时及换节都须显式命令。事件按服务器seq而非客户端capturedAt排序。FINAL只表示本场独立确认；不会自动COMPLETED赛事、产生正式榜单、开放匿名观赛或接通OBS。当前读取是经过授权的私有快照／分页历史，没有SSE/outbox或直播推送服务。
+raw clock的remainingMs对应anchorServerTime，而非每次读取时重新存下的倒计时；显示按serverTime及锚点扣时一次，最低0。DB重启后同一锚点继续计时，剩余0不自动FINAL；暂停、校时及换节都须显式命令。事件按服务器seq而非客户端capturedAt排序。FINAL只表示本场独立确认；不会自动COMPLETED赛事或接通OBS。P05-A仅授权私有快照／历史；P05-B feature另行显式发布排名规则、启用有限公开观赛，尚未验收，不会因记分工作台存在而自动启用。没有SSE/outbox或直播推送服务。
 
 超时／5xx／断网时停止新写，保留本页原envelope及commandId并先核对原身份的receipt和当前snapshot；查无回执不是永久失败证明，不自动换ID、改版本或用新fence重放旧加分。已提交重试重新鉴权，同内容返回原receipt及当前snapshot，不再写分；receipt.appliedVersion与当前snapshot.version可以不同。基线／控制或权限变化时人工核对后恢复。未确认命令仅在页面内存中，页面销毁或浏览器进程崩溃后不承诺恢复；本卡不提供可靠离线队列。操作步骤见[开发说明](DEVELOPMENT.md)。
+
+## P05-B分支公开观赛运行边界（未验收）
+
+本卡经PR6进入真实CI。首CI39748395765已通过300源码、106独立PG、005隔离执行／复跑、实际PG18.6重启及12Mock；真实API的10项通过，最后2项手机场景在注册夹具触发同IP20次／小时限流429，尚未完整验收／MAIN。测试入口现改为每个浏览器project新建随机隔离库，保留生产限流，等待第二轮CI。 005 SHA-256保持e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221；没有生产执行。隔离脚本仅创建及清理本次拥有的随机scb_test_*子库，不删除base、不改注册限制；控制连接须有测试CREATEDB权限。
+
+新分支依赖001→005，不修改已经应用的001–004或通过删除公开历史回退。005增加不可变standings_rulesets、只可有效→撤销的public_event_publications及全部public_match_links；规则首次正式发布后永久锁定，每event最多一条有效公开发布，同事务完整映射由复合FK、created_xid及deferred守卫保护。没有生产数据库、生产Migration或反向恢复演练。
+
+启用公开是主办方主动操作，须有本届实际管理权、有效机构成员及当前Event CAS；仅MatchStaff的人员无整届管理权。随机公开URL只允许有限GET，不能写分或获取后台身份，也不是OBS控制／overlay grant。公开DTO和游标不含内部ID、名单、工作人员、确认人、事件／receipt、私密报名资料或session/lease/fence/control；不用Cookie决定公开字段，不加入第三方跟踪。网络端响应no-store，尚无缓存、CDN、公开SSE或容量保障。
+
+需要停止公开时，用当前赛事详情取得Event.version，调用DISABLE并核验新版本／审计与旧URL404；此操作跳过榜单计算，坏FINAL来源也不能阻止撤销，成功响应standings:null。重新启用必建新publication及全部新event/match/team公开身份，旧ID不删除、不恢复、不复用。已打开页在下次轮询404后清除旧内容；服务不承诺所有页面零延迟消失，也无法收回观看者已经另存的内容。
+
+RESULT_SOURCE_INVALID表示当前确认指针、规则、版本／事件／收据、统计或终局时钟无法核验，服务拒绝整张榜单／公开投影，不能静默漏算或用0掩盖。保留来源、版本和审计；必要时先撤销公开，再通过已支持的重开／修正／独立重确认流程处理。不能直接改比分、confirmation或历史event“修复”榜单。合法FINAL staff变更不撤销既有正式确认；重开立即撤出本场，重确认仅计最新一次。全部FINAL不代表整届COMPLETED或唯一冠军，其他赛制、处罚／弃权、晋级仍未实现。
+
+未准备比赛统计与clock为null，已准备0与未统计区分；公开时钟沿用raw anchor，只扣一次，离线／失败标陈旧而不自动暂停记分。重启扩展已编写：指纹覆盖三张新表、公开有效与撤销身份、来源hash及原全部数据，排除动态serverTime/asOf后比较业务，再取得新lease核验fence；尚未实际运行，不能当作灾备或生产恢复证据。完整状态见[TESTING](TESTING.md)，接口见[API第9节](API_CONTRACTS.md)。微信、保险文件、真实视频与OBS仍未集成。
 
 ## 备份、恢复与故障处理
 

@@ -2,6 +2,8 @@
 
 更新：2026-10-22（Asia/Shanghai）。适用范围：已整合的P01 Mock、P02真实API、P03-A Web报名、P04-A单循环排赛／一次发布及P05-A基础在线记分／独立确认／私有快照。P05-A为DONE / MAIN，经[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并为 `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`；验收代码为 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`，tree为 `9f23899a9e118304db2749b8505d04c5468c5dfe`。后续开工仍核验最新HEAD和dirty。P01–P04历史基线与证据见[TESTING](TESTING.md)。
 
+P05-B代码检查点2c42bfd3已提交PR6。首CI39748395765已通过300源码、106独立PG、005隔离执行／复跑、实际PG18.6重启及12Mock；真实API的10项通过，最后2项手机场景在注册夹具触发同IP20次／小时限流429，尚未完整验收／MAIN。测试入口现改为每个浏览器project新建随机隔离库，保留生产限流，等待第二轮CI。
+
 ## 1. 获取与安装
 
 新目录可执行：
@@ -48,7 +50,7 @@ npm run dev:admin
 
 .env默认 `VITE_DATA_MODE=api`，API为 `127.0.0.1:3000`，Web为 `127.0.0.1:5173`。APP_ORIGIN必须精确匹配浏览器origin；改API端口时同步API_PROXY_TARGET。数据库凭据仅供服务端使用，不进入前端包。Compose是本地运行选项；已执行的真实数据库验收来自CI隔离PostgreSQL18.6，不把当前容器未执行的Compose命令写成已通过。
 
-`npm run db:migrate`依次应用001→002→003→004；既有数据库的已应用文件只校验并跳过，不修改历史Migration。四条迁移均已在CI隔离测试库执行及复跑校验；P05代码即使沿用旧赛事也依赖004，不能跳过。命令在自己的环境是否成功仍以本次输出为准。
+P05-B feature的`npm run db:migrate`按001→005应用；五条均在首CI39748395765隔离执行及复跑校验，实际PG18.6重启成功。runner核验checksum并跳过已应用文件，API启动不自动迁移。不修改001–004；生产尚未执行。005 hash见[DATA_MODEL第10节](DATA_MODEL.md)。
 
 在Web登录页可注册机构账号，进入空赛事空间；“球队领队？创建个人账号”只建立User和Session，不创建机构或工作人员。个人页面显示本人ID，机构OWNER/ADMIN用该existingUserId签发球队邀请；领队登录目标账号后接受，并刷新独立teamContexts。邮箱尚未验证，不能用email自动认领邀请；微信登录和密码重置未实现。
 
@@ -90,7 +92,20 @@ API模式的注册、登录、退出、机构／球队切换和会话恢复在�
 
 超时、5xx或连接断开可能发生在命令已提交之后。停止新写并保留本页原envelope与commandId，先用原身份查询命令收据及当前快照；原receipt.appliedVersion与当前snapshot.version可以不同，已接受命令不能再当新加分应用。查无收据也不证明永远失败；继续核对，若需重发，必须保持同一完整命令及有效的原控制／版本条件，不换ID、不自动重算基线或重放。授权、fence或基线变化时先人工核对再恢复操作。页面销毁、进程崩溃或清理浏览器存储不承诺恢复未持久命令；本卡没有可靠离线队列，断网期间不继续写分。
 
-私有快照及事件／确认历史按当前授权读取，完整翻页失败会整体报错。快照不含主写凭据；尚无匿名观赛、正式排名、SSE/outbox或OBS接入，不能把工作台已显示比分当成这些服务已经可用。详细命令及守卫见[P05-A任务卡](tasks/P05-A.md)和[API契约](API_CONTRACTS.md)。
+私有快照及事件／确认历史按当前授权读取，完整翻页失败会整体报错。快照不含主写凭据；P05-A不含匿名观赛或排名，P05-B分支扩展见下文，尚无SSE/outbox或OBS接入。详细命令及守卫见[P05-A任务卡](tasks/P05-A.md)和[API契约](API_CONTRACTS.md)。
+
+### P05-B分支调试合同（UI已整合feature，真实验收待执行）
+
+feature中的私有入口为`/standings`及`/events/{eventId}/standings`；匿名入口为`/watch/{publicEventId}`及`/watch/{publicEventId}/matches/{publicMatchId}`。当前main不包含此卡，复制这些路径不构成交付验证。先按各分支实际HEAD确认源码，再用合成2–32队单循环正式赛程、三种独立身份验证：领队提交，独立审核者批准，场次记分员实际记分，满足独立条件的确认者确认。
+
+1. 有赛事管理权者显式填win/loss/draw积分（各0–1000）和有序同分项（可为空），保存草稿后再单独发布当前规则；发布永久锁定。预览标草稿，不把零确认时rank=null显示成冠军。
+2. 主办方主动ENABLE公开观赛后才分享随机publicEventId链接。仅有MatchStaff的人员不能读取私有整届排名；公开链接仅提供有限只读投影，不赋予后台身份或写分权。
+3. 匿名页面在Runtime入口独立分流，不先请求auth/session或org，public fetch为credentials:omit；公开页与工作台之间可整页导航，不复用私人Cookie错误处理，也不破坏原Mock／邀请fragment流程。此入口仍待真实浏览器网络请求验收。
+4. 未准备比赛的score/totals/periods/rules/clock为null；READY的真实0须区分“尚未开赛”。时钟沿用原始remainingMs＋anchorServerTime和serverTime，只扣一次；页面离线只标陈旧，不继续写分或自动暂停服务器时钟。
+5. 独立确认后本场计入榜单；重开立即整场退出，重确认只计最新一次。FINAL后的合法staff元数据变化不使旧正式确认失效，也不改变业务sourceHash。全部FINAL不自动推进赛事COMPLETED、宣布唯一冠军或淘汰晋级。
+6. DISABLE与Event CAS／audit同事务；即使FINAL来源损坏也可撤销，响应standings:null。下一次公开读取404后清屏，重新ENABLE生成全新event/match/team公开身份，旧URL永久失效。轮询不是即时推送，不承诺所有已打开页面零延迟消失。
+
+API可用四个私有管理路由及四个公开GET读取，完整输入／DTO／错误码见[API第9节](API_CONTRACTS.md)。RESULT_SOURCE_INVALID时不要伪造0或直接改数据库历史，先保留证据，必要时撤销公开；不实现公开SSE、缓存worker、OBS、可靠离线或生产部署。
 
 ## 5. 验证命令
 
@@ -105,7 +120,7 @@ npm run test:e2e
 
 `npm test`覆盖不依赖数据库的单测、组件和HTTP行为。`npm run test:e2e`使用显式Mock模式，固定4173端口且不复用其他服务器；桌面与手机项目均为Chromium，手机是设备模拟，不等于Safari、微信或真机。
 
-真实数据库集成另执行 `npm run test:integration`：必须设置TEST_DATABASE_URL且数据库名以 `scb_test_` 开头，使用专门隔离库，禁止指向真实业务数据；当前脚本限定test/下的88项独立PG场景（20＋24＋24＋20）。API浏览器检查执行 `npm run test:api:e2e`，使用另一个隔离DATABASE_URL；配置先迁移并启动API3300和Web4273，APP_ORIGIN固定为 `http://127.0.0.1:4273`，不能复用其他服务。实际PG重启检查由CI的capture→docker restart→verify步骤执行，普通集成命令本身不等于执行了数据库重启。
+真实数据库集成执行`npm run test:integration`，TEST_DATABASE_URL必须指向scb_test_*隔离库；首CI已106项通过。`npm run test:api:e2e`现在使用独立project包装脚本：DATABASE_URL指向一个已存在的scb_test_*控制库，账号须有测试CREATEDB权限，desktop-api/mobile-api各创建随机独立子库并依次迁移／启动API3300及Web4273，退出后只删除本次成功创建的子库。可加`-- --project=mobile-api`或文件filter；`--list`只列用例不连接DB。拒绝生产库名、production模式和自定义config；不改变同IP注册20次／小时防护。首CI在共享库累计注册使最后2手机夹具429，修复后完整12真实API待第二轮。实际数据库重启须CI capture→docker restart→verify，不把普通集成当重启。
 
 构建输出包含admin与api。仅预览admin静态构建可用：
 
@@ -115,10 +130,10 @@ npm run preview --workspace @small-city-basketball/admin -- --host 127.0.0.1 --p
 
 静态预览不等于部署，API模式还需要相应同源代理及后端服务。[最终CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)在1cb8e414全部成功：212项源码／组件／HTTP（admin125＋api87）、88项独立PG、12项Mock及10项API浏览器、完整类型／格式／两端构建及真实PG18.6重启。浏览器为官方Chromium151.0.7922.34，手机仅模拟尺寸／输入。结果见[TESTING](TESTING.md)和[P05-A交接](handoffs/P05-A.md)；P04/P03历史分别保留于对应交接。
 
-[首轮CI39742003544](https://github.com/xyq-dev/small-city-basketball/actions/runs/39742003544)在c2c0e834通过207项源码检查、87PG、真实重启、12Mock及原8API；新增2项记分浏览器因native select label失败，修复后才获得上述最终通过。旧3条审查finding已修复且threads resolved；1cb8e414的新自动CodeReview在本次交接时仍running，security review未运行，不把这些状态称为审查通过。文档收口不重复执行应用、PG或浏览器测试。
+[首轮CI39742003544](https://github.com/xyq-dev/small-city-basketball/actions/runs/39742003544)在c2c0e834通过207项源码检查、87PG、真实重启、12Mock及原8API；新增2项记分浏览器因native select label失败，修复后才获得上述最终通过。旧3条审查finding已修复且threads resolved；1cb8e414的新自动CodeReview之后已completed无finding，security review未运行，两类检查不混记。文档收口不重复执行应用、PG或浏览器测试。
 
 ## 6. 当前边界与接续
 
 P01、P02、P03-A、P04-A、P05-A为DONE / MAIN。迁移001–004已在隔离测试库执行、复跑校验；真实PG重启保留运行中时钟锚点、已释放租约／fence、事件、收据、两份确认历史及原赛程／名单／审计。没有生产数据库或生产部署，不把重启验证当成灾备恢复。生产默认关闭机构及个人自主注册，要求HTTPS及Secure Cookie，但生产环境尚未配置。
 
-P03-A只交付Web报名／独立审核／名单冻结；完整P03的保险文件、本人身份与小程序尚未完成，P04其他赛制／自动排时／改期、P05正式排名／公开观赛／可靠离线及P06尚未交付，微信、云服务及真实OBS均未接入。接续先读[当前状态](CURRENT_STATUS.md)、[任务看板](TASKS.md)和分配任务卡，再在独立任务分支实施。
+P03-A只交付Web报名／独立审核／名单冻结；完整P03的保险文件、本人身份与小程序尚未完成，P04其他赛制／自动排时／改期、可靠离线及P06尚未交付，微信、云服务及真实OBS均未接入。P05-B排名／公开观赛API和005已在feature实施但未MAIN／未真实验收；UI已整合feature，根完整本地复验已通过（f082fa1），不能沿用P05-A证据标完成。接续先读[当前状态](CURRENT_STATUS.md)、[任务看板](TASKS.md)和分配任务卡，再在独立任务分支实施。

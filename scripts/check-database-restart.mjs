@@ -37,6 +37,7 @@ async function fingerprint() {
     ['organizations', 'id'],
     ['organization_memberships', 'org_id,user_id'],
     ['sessions', 'id'],
+    ['auth_rate_limits', 'key'],
     ['events', 'id'],
     ['event_staff', 'org_id,event_id,user_id'],
     ['teams', 'id'],
@@ -64,6 +65,9 @@ async function fingerprint() {
     ['scoring_commands', 'org_id,actor_id,match_id,command_id'],
     ['scoring_events', 'id'],
     ['result_confirmations', 'id'],
+    ['standings_rulesets', 'id'],
+    ['public_event_publications', 'id'],
+    ['public_match_links', 'publication_id,match_id'],
     ['audit_logs', 'id'],
     ['schema_migrations', 'name'],
   ]) {
@@ -431,6 +435,92 @@ async function captureScoring(orgId, ownerCookie, scheduling, suffix) {
   assert.equal(rules.locked, true);
   return { rules, saved, writerCookie, receipts, previousFence: controls[0].fencingToken };
 }
+
+// Public projections have fresh read timestamps; all persisted business fields,
+// including raw running-clock anchors, public identities and source hashes, must match.
+function withoutReadTimes(value) {
+  if (Array.isArray(value)) return value.map(withoutReadTimes);
+  if (value && typeof value === 'object')
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => key !== 'serverTime' && key !== 'asOf')
+        .map(([key, nested]) => [key, withoutReadTimes(nested)]),
+    );
+  return value;
+}
+async function assertPublicMissing(path) {
+  assert.equal(
+    (await fetch(baseUrl + path)).status,
+    404,
+    'Revoked public identity must stay unavailable',
+  );
+}
+async function captureViewing(orgId, cookie, scheduling) {
+  const eventPath = `/v1/orgs/${orgId}/events/${scheduling.workspace.event.id}`;
+  let workspace = (await call(`${eventPath}/standings`, { cookie })).data;
+  workspace = (
+    await call(`${eventPath}/standings-rules`, {
+      method: 'PUT',
+      cookie,
+      body: {
+        expectedEventVersion: workspace.event.version,
+        winPoints: 3,
+        lossPoints: 0,
+        drawPoints: 1,
+        tiebreakers: ['SCORE_DIFFERENCE', 'POINTS_FOR'],
+      },
+    })
+  ).data;
+  workspace = (
+    await call(`${eventPath}/standings-rule-commands`, {
+      method: 'POST',
+      cookie,
+      body: {
+        type: 'PUBLISH_STANDINGS_RULES',
+        rulesetId: workspace.rules.id,
+        expectedEventVersion: workspace.event.version,
+      },
+    })
+  ).data;
+  async function publicationCommand(type) {
+    workspace = (
+      await call(`${eventPath}/public-viewing-commands`, {
+        method: 'POST',
+        cookie,
+        body: { type, expectedEventVersion: workspace.event.version },
+      })
+    ).data;
+  }
+  await publicationCommand('ENABLE');
+  const revokedId = workspace.publication.publicEventId;
+  const revokedMatchId = (await call(`/v1/public/events/${revokedId}/schedule`)).data[0]
+    .publicMatchId;
+  await publicationCommand('DISABLE');
+  await publicationCommand('ENABLE');
+  const publicId = workspace.publication.publicEventId;
+  assert.notEqual(publicId, revokedId);
+  await assertPublicMissing(`/v1/public/events/${revokedId}`);
+  await assertPublicMissing(`/v1/public/events/${revokedId}/matches/${revokedMatchId}`);
+  workspace = (await call(`${eventPath}/standings`, { cookie })).data;
+  const publicPath = `/v1/public/events/${publicId}`;
+  const overview = (await call(publicPath)).data;
+  const schedule = (await call(`${publicPath}/schedule`)).data;
+  const standings = (await call(`${publicPath}/standings`)).data;
+  const matches = [];
+  for (const match of schedule)
+    matches.push((await call(`${publicPath}/matches/${match.publicMatchId}`)).data);
+  assert.equal(workspace.locked, true);
+  assert.equal(standings.confirmedMatchCount, 1);
+  assert.equal(standings.totalMatchCount, 3);
+  assert.equal(standings.isComplete, false);
+  assert.equal(matches.find((match) => match.status === 'LIVE').clock.running, true);
+  assert.equal(matches.find((match) => match.status === 'FINAL').resultStatus, 'CONFIRMED');
+  const unprepared = matches.find((match) => match.status === 'SCHEDULED');
+  assert.equal(unprepared.score, null);
+  assert.equal(unprepared.clock, null);
+  assert.equal(unprepared.collected.teamScore, false);
+  return { workspace, publicId, revokedId, revokedMatchId, overview, schedule, standings, matches };
+}
 try {
   if (mode === 'capture') {
     const suffix = randomUUID();
@@ -460,7 +550,9 @@ try {
     const frozenRegistration = await captureRegistration(orgId, cookie, suffix);
     const scheduling = await captureScheduling(orgId, cookie, frozenRegistration);
     const scoring = await captureScoring(orgId, cookie, scheduling, suffix);
+    const viewing = await captureViewing(orgId, cookie, scheduling);
     const scheduledEventPath = `/v1/orgs/${orgId}/events/${scheduling.workspace.event.id}`;
+    scoring.rules = (await call(`${scheduledEventPath}/scoring`, { cookie })).data;
     scheduling.workspace = (await call(`${scheduledEventPath}/scheduling`, { cookie })).data;
     scheduling.revision = (
       await call(`/v1/orgs/${orgId}/schedule-revisions/${scheduling.revision.id}`, { cookie })
@@ -477,11 +569,12 @@ try {
       registration: frozenRegistration,
       scheduling,
       scoring,
+      viewing,
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
     console.log(
-      'Captured sessions, frozen registration, published schedule, running clock, confirmed result history and isolated database fingerprint.',
+      'Captured sessions, frozen registration, published schedule, running clock, result history, locked standings, active/revoked public identities and isolated database fingerprint.',
     );
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
@@ -560,6 +653,25 @@ try {
       assert.deepEqual(response.receipt, saved.receipt);
       assert.equal(response.snapshot.matchId, saved.matchId);
     }
+    const viewing = state.viewing;
+    const publicPath = `/v1/public/events/${viewing.publicId}`;
+    const comparisons = [
+      [
+        (await call(`${scheduledEventPath}/standings`, { cookie: state.cookie })).data,
+        viewing.workspace,
+      ],
+      [(await call(publicPath)).data, viewing.overview],
+      [(await call(`${publicPath}/schedule`)).data, viewing.schedule],
+      [(await call(`${publicPath}/standings`)).data, viewing.standings],
+    ];
+    for (const saved of viewing.matches)
+      comparisons.push([(await call(`${publicPath}/matches/${saved.publicMatchId}`)).data, saved]);
+    for (const [current, saved] of comparisons)
+      assert.deepEqual(withoutReadTimes(current), withoutReadTimes(saved));
+    await assertPublicMissing(`/v1/public/events/${viewing.revokedId}`);
+    await assertPublicMissing(
+      `/v1/public/events/${viewing.revokedId}/matches/${viewing.revokedMatchId}`,
+    );
     assert.equal(await fingerprint(), state.fingerprint);
     const acquired = (
       await call(`/v1/orgs/${state.orgId}/matches/${scoring.saved[0].id}/scorekeeper-lease`, {
@@ -573,7 +685,7 @@ try {
       'Lease fence remains monotonic across PostgreSQL restart',
     );
     console.log(
-      'PostgreSQL restart retained sessions, grants, frozen rosters, published schedule/reservations, scoring rules/events/receipts/result history, running clock anchor, monotonic fence, audit and migration checksums.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, published schedule/reservations, scoring rules/events/receipts/result history, running clock anchor, monotonic fence, locked standings/source hashes, active and permanently revoked public identities, audit and migration checksums.',
     );
   }
 } finally {

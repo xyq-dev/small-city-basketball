@@ -10,6 +10,8 @@
 
 [CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)通过212项源码/组件/HTTP、88项独立真实PG、12Mock+10API官方桌面/手机浏览器及两端构建。实际PG18.6重启保留授权/名单/赛程、运行时钟、事件/收据、赛果历史、fence和审计/checksum。证据见[P05-A交接](docs/handoffs/P05-A.md)及[TESTING](docs/TESTING.md)。001–004只在隔离测试库执行，没有生产、保险文件、微信、OBS或云服务接入。
 
+P05-B开发分支已整合显式排名、当前有效确认赛果与可撤销匿名观赛，见[PR6](https://github.com/xyq-dev/small-city-basketball/pull/6)。首CI39748395765已通过300源码、106独立PG、005隔离执行／复跑、实际PG18.6重启及12Mock；真实API的10项通过，最后2项手机场景在注册夹具触发同IP20次／小时限流429，尚未完整验收／MAIN。测试入口现改为每个浏览器project新建随机隔离库，保留生产限流，等待第二轮CI。 [交接](docs/handoffs/P05-B.md)保留失败与修复。
+
 ## 首版目标范围
 
 - 多机构与赛事管理，机构数据隔离、工作人员权限。

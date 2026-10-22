@@ -1,6 +1,6 @@
 # 数据模型与状态
 
-设计版本：0.1；更新：2026-10-22；状态：P02、P03-A、P04-A及P05-A SQL模型已合并main，001–004已在隔离PostgreSQL18.6测试库执行及复跑校验，无生产执行。第2–5节包含长期逻辑设计，实际已建表和验收边界见第6–9节；正式排名、公开观赛、保险附件和OBS等实体尚未建表。
+设计版本：0.1；更新：2026-10-22；状态：P02至P05-A已MAIN，P05-B005已在首CI隔离执行／复跑及重启验证，尚未MAIN／完整浏览器验收；保险附件和OBS实体未建表。无生产执行。
 
 ## 1. 通用约束
 
@@ -54,7 +54,7 @@ P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引�
 - **赛事**：`DRAFT → REGISTRATION_OPEN → REGISTRATION_CLOSED → SCHEDULED → RUNNING → COMPLETED → ARCHIVED`；允许受控 `CANCELLED`。P01 仅创建/编辑 DRAFT。开放报名、发布赛程、结束和归档分阶段实施；COMPLETED 要求必要比赛已确认或有明确取消/弃权处置，不仅是比分已填。
 - **报名**：`DRAFT → SUBMITTED → APPROVED / CHANGES_REQUESTED / REJECTED`；CHANGES_REQUESTED 补齐后重新提交；未锁定前可按规则 WITHDRAWN。审批操作者、理由和版本需保留。
 - **保险凭证**：`PENDING → APPROVED / REJECTED`，规则不要求保险时可标 `NOT_REQUIRED`。凭证批准只表示本赛事审核结论，不保证理赔或替代承保方判断。
-- **比赛**：`SCHEDULED → READY → LIVE → PENDING_CONFIRMATION → FINAL`；另有 `POSTPONED / CANCELLED`。不能从 LIVE 直接成为正式赛果。READY 校验名单、规则及工作人员；结束计分进入待确认。FINAL 更正需有权限的重开命令回到 PENDING_CONFIRMATION，该状态只允许受控更正及确认，不继续正常实时计分。后续正式榜单只消费有效确认；榜单及下游晋级尚未实现。未来若更正影响已排定或已开赛的下游晋级场次，应阻断自动改写并交赛事管理员处置。延期恢复、弃权、争议处置必须记录原因，不直接删除比赛。
+- **比赛**：`SCHEDULED → READY → LIVE → PENDING_CONFIRMATION → FINAL`；另有 `POSTPONED / CANCELLED`。不能从 LIVE 直接成为正式赛果。READY 校验名单、规则及工作人员；结束计分进入待确认。FINAL 更正需有权限的重开命令回到 PENDING_CONFIRMATION，该状态只允许受控更正及确认，不继续正常实时计分。P05-B分支榜单只消费有效确认，尚未验收；下游晋级未实现。未来若更正影响已排定或已开赛的下游晋级场次，应阻断自动改写并交赛事管理员处置。延期恢复、弃权、争议处置必须记录原因，不直接删除比赛。
 - **赛程版本**：P04-A只有当前`DRAFT → PUBLISHED`，重抽把旧DRAFT变为SUPERSEDED并创建新DRAFT；已发布版本不能变为SUPERSEDED或被替换。发布校验冻结球队、时间、场地及规则来源；后续发布后改期另开有恢复方案的任务。
 
 删除已参赛球队、已使用规则或已开赛场次应拒绝或归档，不能级联删除历史。个人数据保留、注销和匿名化策略在真实资料上线前确定，业务历史与敏感原文分别处理。
@@ -63,7 +63,7 @@ P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引�
 
 优先建立成员 `(orgId,userId,status)`、赛事 `(orgId,status,startDate)`、报名 `(orgId,eventId,status)`、比赛 `(orgId,eventId,startsAt)`、场地时间检索及事件 `(matchId,seq)`。幂等唯一键包含机构、操作者、命令作用域及幂等键；只存业务所需的最小响应。P04-A已用GiST排他约束、机构mutex及真实并发用例验证本机构Court/Team占用；P05-A的同场连续seq、幂等唯一键、永久fence及projection版本约束见第9节。
 
-必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。P02/P03-A/P04-A/P05-A适用范围已执行；正式榜单等未来行为仍待相应阶段验证。Migration001–004的执行事实见下文，不把规划实体也标成已建表。
+必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。P02/P03-A/P04-A/P05-A适用范围已执行；P05-B榜单／公开身份测试源码已编写但首CI106PG通过。Migration001–004的执行事实见下文，005三表已在隔离CI建立，不能把规划实体当已建表。
 
 ## 6. P02 最小持久化实施
 
@@ -135,6 +135,28 @@ ACTIVE分配要求target当前用户及成员有效；DISABLED只UPDATE已有本
 
 STAT_RECORDED保存kind/side/value/period及可选reason；更正用STAT_VOIDED关联同场仍有效事件，替换原子追加VOID＋新STAT并保留kind/period。原统计和确认历史永不覆盖。确认前按全部事件重放并核验projection，结果source_match_version及last_event_seq取确认前的版本／序列；确认命令自身新增生命周期event与appliedVersion。FINAL后合法staff调整可增加当前match/sourceVersion而不使既有统计确认失效，不能将两种版本直接判等。
 
-重开仅FINAL→PENDING_CONFIRMATION，保留旧latest确认并设置requires_reconfirmation；修正后重新确认新增结果，不恢复LIVE。OVERTIME平分拒绝结束／确认，待确认修正产生平分时也不伪造正式结果，本卡无恢复LIVE补加时流程。Event不自动COMPLETED；正式排名、公开读授权、SSE/outbox、可靠离线、专业球员统计、延期／弃权／争议、晋级及OBS数据模型均待后续任务。
+重开仅FINAL→PENDING_CONFIRMATION，保留旧latest确认并设置requires_reconfirmation；修正后重新确认新增结果，不恢复LIVE。OVERTIME平分拒绝结束／确认，待确认修正产生平分时也不伪造正式结果，本卡无恢复LIVE补加时流程。Event不自动COMPLETED；正式排名／公开读身份的分支模型见第10节，SSE/outbox、可靠离线、专业球员统计、延期／弃权／争议、晋级及OBS仍待后续任务。
 
 私有ScoreSnapshot白名单不含lease/session/control或身份／保险材料；工作人员及受控lease摘要仅在Workbench。P05-A没有匿名读或OverlayGrant，后续公开／OBS须独立授权并使用有限投影，不能直接序列化本节实体。精确HTTP行为见[API契约第8节](API_CONTRACTS.md)，验收与审查状态见[TESTING](TESTING.md)。
+
+## 10. P05-B排名与公开身份模型（feature已实施，005隔离验证成功）
+
+`apps/api/migrations/005_p05_standings_public.sql` SHA-256为`e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221`。独立静态CLEAR后，首CI39748395765按001→005隔离执行／复跑，106独立PG及实际PG18.6重启通过，含本卡三表／规则锁／公开映射／来源hash；完整浏览器待复验，尚未MAIN，无生产执行。
+
+| 新表 | 主键、引用与约束 |
+|---|---|
+| standings_rulesets | UUID id；org_id/event_id/version唯一，复合FK指向本届Event；algorithm_version固定RR_STANDINGS_V1，三种积分各0–1000，tiebreakers允许空或三个受支持项的不重复有序子集；规则禁止UPDATE/DELETE |
+| public_event_publications | UUID id及org/event/schedule_publication_id/ruleset_id；复合FK绑定同届正式赛程和排名规则。public_event_id为全历史唯一43字符公开身份；team_keys为entryId→22字符随机公开teamKey映射，仅服务端内部保存。created_by/at、created_xid、revoked_by/at留历史；同event仅一条revoked_at为空的有效publication |
+| public_match_links | 主键(publication_id,match_id)；org/event/publication/schedule组合FK指向公开publication，org/event/match及org/schedule_publication/match两条复合FK共同绑定本届同一次正式赛程的比赛；public_match_id全历史唯一43字符，禁止UPDATE/DELETE |
+
+events增加current_standings_ruleset_id及locked_standings_ruleset_id，同org/event复合FK引用规则；locked一旦非null就不能清除／替换，CHECK要求current等于locked。保存追加新草稿并CAS更新current，单独发布当前规则后永久锁定；首次READY锁的是P05-A记分规则，两类指针不能混用。积分和排序策略不改变原记分／报名／正式计划。
+
+公开publication插入时必须有效、created_xid等于`pg_current_xact_id()`。仅允许一次有效→撤销，编码为revoked_at/revoked_by从同时null变为同时非null；其他字段不可变，撤销后任何更新／删除／回活均拒绝。created_xid为内部事务标记，不是公开ID或HTTP字段。mapping插入要求publication的created_xid仍为本事务且未撤销，不能在之后事务补链。
+
+deferred提交守卫读取不可变P04 revision.source.entries：要求2–32个不同entry，team_keys精确覆盖全部entry且值格式正确／本次不重复；官方场数须等于n×(n−1)/2，公开links数量等于全部官方场次。结合主键／复合FK和不可变保护，初始事务不能漏场、重复绑定、串赛事或追加另一正式赛程的比赛。索引包括每event最多一条有效发布的部分唯一索引、按event/created_at/id查询历史；两类public ID的唯一约束覆盖已撤销历史，旧ID不得复用。公开随机性由服务端CSPRNG生成，不把DB字符格式校验误称为熵证明。
+
+私有操作锁序为session/user→org/member→Event UPDATE→规则/publication/映射；public ENABLE同事务写publication、全部links、Event版本和audit，DISABLE同事务撤销并写版本／audit，COMMIT约束失败整体回滚。匿名解析公开身份后按org SHARE→Event SHARE→publication SHARE重查有效性，与P05-A Event SHARE记分及Event UPDATE管理兼容，不占排赛mutex。DISABLE响应跳过榜单计算返回standings:null，损坏FINAL不能阻止撤销。规则锁、动作授权和审计由应用事务执行，DDL不替代身份鉴权。
+
+排名只按同一条批量SQL的全部正式match及LEFT JOIN的state/current confirmation/最后event/receipt/scoring rules计算，无逐场N+1或缓存worker。FINAL必须满足当前state版本、确认指针／规则、完整总数及按节合计、最后CONFIRM_RESULT与receipt来源证明；还必须暂停且剩余0、已完成常规节。独立审查发现的终局三条件缺口已修复并补源码反例。staff合法变更增加match/state版本但不改事件／统计，所以不以confirmation.source_match_version等于当前版本判定，也不把staff时间或当前运行版本加入sourceHash。重开退出榜单，重确认只消费最新一份；坏FINAL整体RESULT_SOURCE_INVALID，不静默略过。
+
+无确认时全队rank=null；有确认后积分及显式排序项均相同则共享1,1,3，冻结来源顺序只稳定显示。公开投影只取随机公开键和冻结展示名、官方时间场地、有限基础统计／规则及raw clock；未准备值为null，不伪造已采集0。嵌套白名单和游标不泄露内部org/event/match/entry/team/user ID、roster、工作人员、确认人、事件／receipt或控制凭据。没有OverlayGrant、公开SSE、可靠离线、微信或生产发布，精确DTO见[API契约第9节](API_CONTRACTS.md)。
