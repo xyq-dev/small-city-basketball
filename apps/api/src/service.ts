@@ -31,22 +31,22 @@ export interface ApiOptions {
   registrationEnabled?: boolean;
 }
 
-interface DbUser {
+export interface DbUser {
   id: string;
   email: string;
   display_name: string;
   password_hash: string;
   status: string;
 }
-interface Actor {
+export interface Actor {
   sessionId: string;
   user: DbUser;
 }
-interface OrgActor extends Actor {
+export interface OrgActor extends Actor {
   orgId: string;
   role: OrgRole;
 }
-interface EventRow {
+export interface EventRow {
   id: string;
   org_id: string;
   name: string;
@@ -63,9 +63,9 @@ interface EventRow {
   staff_role?: StaffRole | null;
 }
 
-const EVENT_SELECT = `e.*, e.start_date::text AS start_date, e.end_date::text AS end_date,
+export const EVENT_SELECT = `e.*, e.start_date::text AS start_date, e.end_date::text AS end_date,
   to_char(e.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at`;
-const isAdministrator = (role: OrgRole) => role === 'ORG_OWNER' || role === 'ORG_ADMIN';
+export const isAdministrator = (role: OrgRole) => role === 'ORG_OWNER' || role === 'ORG_ADMIN';
 
 export class ApplicationService {
   readonly sessionTtlSeconds: number;
@@ -88,7 +88,7 @@ export class ApplicationService {
     this.registrationEnabled = options.registrationEnabled ?? true;
   }
 
-  private async transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+  protected async transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -107,7 +107,7 @@ export class ApplicationService {
     }
   }
 
-  private async audit(
+  protected async audit(
     client: PoolClient,
     actorId: string,
     orgId: string | null,
@@ -122,7 +122,7 @@ export class ApplicationService {
     );
   }
 
-  private async rateLimit(key: string, maximum: number, windowSeconds: number) {
+  protected async rateLimit(key: string, maximum: number, windowSeconds: number) {
     const result = await this.pool.query<{ attempts: number }>(
       `
       INSERT INTO auth_rate_limits(key,window_start,attempts) VALUES($1,clock_timestamp(),1)
@@ -138,7 +138,7 @@ export class ApplicationService {
       });
   }
 
-  private async createSession(
+  protected async createSession(
     client: PoolClient,
     userId: string,
   ): Promise<{ token: string; id: string }> {
@@ -151,7 +151,7 @@ export class ApplicationService {
     return { token, id };
   }
 
-  private async lockActor(client: PoolClient, cookie?: string): Promise<Actor> {
+  protected async lockActor(client: PoolClient, cookie?: string): Promise<Actor> {
     const token = readSessionToken(cookie);
     if (!token) throw unauthenticated();
     const session = await client.query<{ id: string; user_id: string }>(
@@ -168,7 +168,7 @@ export class ApplicationService {
     return { sessionId: row.id, user: user.rows[0] };
   }
 
-  private async ensureFreshSession(client: PoolClient, actor: Actor) {
+  protected async ensureFreshSession(client: PoolClient, actor: Actor) {
     const result = await client.query(
       'SELECT id FROM sessions WHERE id=$1 AND revoked_at IS NULL AND expires_at>clock_timestamp()',
       [actor.sessionId],
@@ -176,7 +176,11 @@ export class ApplicationService {
     if (!result.rowCount) throw unauthenticated();
   }
 
-  private async lockOrganization(client: PoolClient, actor: Actor, id: string): Promise<OrgActor> {
+  protected async lockOrganization(
+    client: PoolClient,
+    actor: Actor,
+    id: string,
+  ): Promise<OrgActor> {
     const orgId = resourceId(id);
     const organization = await client.query(
       'SELECT id FROM organizations WHERE id=$1 AND status=$2 FOR SHARE',
@@ -191,16 +195,26 @@ export class ApplicationService {
     return { ...actor, orgId, role: membership.rows[0].role };
   }
 
-  private async sessionData(client: PoolClient, user: DbUser): Promise<SessionData> {
+  protected async sessionData(client: PoolClient, user: DbUser): Promise<SessionData> {
     const memberships = await client.query<{ id: string; name: string; role: OrgRole }>(
       `
       SELECT o.id,o.name,m.role FROM organizations o JOIN organization_memberships m ON m.org_id=o.id
       WHERE m.user_id=$1 AND m.status='ACTIVE' AND o.status='ACTIVE' ORDER BY o.created_at,o.id`,
       [user.id],
     );
+    const teamContexts = await client.query<SessionData['teamContexts'][number]>(
+      `
+      SELECT o.id AS "orgId",o.name AS "organizationName",t.id AS "teamId",t.name AS "teamName"
+      FROM team_access_grants g JOIN teams t ON t.org_id=g.org_id AND t.id=g.team_id
+      JOIN organizations o ON o.id=g.org_id
+      WHERE g.user_id=$1 AND g.status='ACTIVE' AND o.status='ACTIVE'
+      ORDER BY o.created_at,o.id,t.created_at,t.id`,
+      [user.id],
+    );
     return {
       user: { id: user.id, email: user.email, displayName: user.display_name },
       organizations: memberships.rows,
+      teamContexts: teamContexts.rows,
     };
   }
 

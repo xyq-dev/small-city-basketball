@@ -4,6 +4,7 @@ import {
   BrowserRouter,
   Link,
   NavLink,
+  Navigate,
   Route,
   Routes,
   useLocation,
@@ -54,6 +55,11 @@ import {
 } from './domain/types';
 import { AppError, eventRepository } from './domain/repository';
 import { validateEventInput } from './domain/validation';
+import type { RegistrationWorkspace } from './registration/shared';
+import { TeamsPage, TeamDetailPage } from './registration/TeamsPages';
+import { RegistrationIndexPage, EventRegistrationPage } from './registration/StaffPages';
+import { LeaderHomePage, EntryDetailPage } from './registration/EntryPages';
+import './registration/registration.css';
 
 const RepositoryContext = createContext<EventRepository>(eventRepository);
 const useRepository = () => useContext(RepositoryContext);
@@ -65,6 +71,7 @@ export interface WorkspaceConfiguration {
   role?: OrgRole;
   organizationSwitcher?: ReactNode;
   headerActions?: ReactNode;
+  registration?: RegistrationWorkspace;
 }
 const defaultWorkspace: WorkspaceConfiguration = {
   mode: 'mock',
@@ -576,7 +583,9 @@ function Dashboard() {
               )}
               <div className="small-note">
                 <Info size={14} />
-                当前开放赛事草稿创建与编辑
+                {workspace.registration
+                  ? '赛事、球队报名与独立审核已开放'
+                  : '当前开放赛事草稿创建与编辑'}
               </div>
             </section>
           </div>
@@ -585,7 +594,12 @@ function Dashboard() {
             <div className="workflow-steps">
               {[
                 { title: '创建赛事', note: '当前可体验', icon: Trophy, active: true },
-                { title: '球队报名', note: 'P03 规划中', icon: UsersRound },
+                {
+                  title: '球队报名',
+                  note: workspace.registration ? '规则、审核与冻结' : 'P03 规划中',
+                  icon: UsersRound,
+                  active: Boolean(workspace.registration),
+                },
                 { title: '抽签排赛', note: 'P04 规划中', icon: CalendarDays },
                 { title: '现场记分', note: 'P05 规划中', icon: ClipboardCheck },
                 { title: '直播与交付', note: 'P06 规划中', icon: Video },
@@ -755,7 +769,11 @@ function EventsPage() {
       </section>
       <div className="tip-strip">
         <Info size={16} />
-        <p>新建赛事将保存为草稿，可以在详情页继续编辑。报名、排赛和正式发布将在后续阶段开放。</p>
+        <p>
+          {workspace.registration
+            ? '新建赛事先保存为草稿。进入报名审核设置规则，再按权限开放球队报名。'
+            : '新建赛事将保存为草稿，可以在详情页继续编辑。报名、排赛和正式发布将在后续阶段开放。'}
+        </p>
       </div>
     </>
   );
@@ -1308,8 +1326,14 @@ function EventDetailPage() {
               <span className="prepared-tag">可体验</span>
             </div>
             {[
-              { title: '机构与工作人员', note: 'P02 规划中' },
-              { title: '球队报名与名单', note: 'P03 规划中' },
+              {
+                title: '机构与工作人员',
+                note: workspace.mode === 'api' ? '身份与赛事授权已接入' : 'P02 规划中',
+              },
+              {
+                title: '球队报名与名单',
+                note: workspace.registration ? '进入报名审核配置与处理' : 'P03 规划中',
+              },
               { title: '抽签与赛程', note: 'P04 规划中' },
             ].map(({ title, note }) => (
               <div className="prepared-item muted-item" key={title}>
@@ -1334,19 +1358,38 @@ function EventDetailPage() {
         </aside>
       </div>
       <section className="panel event-modules">
-        <SectionTitle title="赛事功能" note="以下模块按项目计划逐步开放，当前仅展示规划入口。" />
+        <SectionTitle
+          title="赛事功能"
+          note={
+            workspace.registration
+              ? '报名规则、审核和名单冻结已开放，其他模块按计划推进。'
+              : '以下模块按项目计划逐步开放，当前仅展示规划入口。'
+          }
+        />
         <div className="module-grid">
           {(['registration', 'schedule', 'broadcast', 'delivery'] as const).map((key) => {
             const item = roadmap[key]!;
             const Icon = item.icon;
             return (
-              <Link className="module-card" to={`/roadmap/${key}`} key={key}>
+              <Link
+                className="module-card"
+                to={
+                  key === 'registration' && workspace.registration
+                    ? `/events/${event.id}/registration`
+                    : `/roadmap/${key}`
+                }
+                key={key}
+              >
                 <span className="module-icon">
                   <Icon size={21} />
                 </span>
                 <div>
                   <h3>{item.title}</h3>
-                  <span>{item.phase} · 规划中</span>
+                  <span>
+                    {key === 'registration' && workspace.registration
+                      ? '规则 · 审核 · 冻结'
+                      : `${item.phase} · 规划中`}
+                  </span>
                 </div>
                 <ChevronRight size={16} />
               </Link>
@@ -1426,21 +1469,40 @@ const primaryNav: { label: string; to: string; icon: LucideIcon; planned?: boole
 
 function WorkspaceLayout() {
   const workspace = useWorkspace();
+  const repository = useRepository();
   const api = workspace.mode === 'api';
+  const registration = workspace.registration;
+  const teamWorkspace = Boolean(registration?.teamContext);
+  const nav = teamWorkspace
+    ? [{ label: '我的球队', to: '/my-team', icon: UsersRound, planned: false }]
+    : primaryNav.map((item) =>
+        registration && item.to === '/roadmap/teams'
+          ? { ...item, to: '/teams', planned: false }
+          : registration && item.to === '/roadmap/registration'
+            ? { ...item, to: '/registration', planned: false }
+            : item,
+      );
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const currentLabel =
-    location.pathname === '/'
-      ? '工作总览'
-      : location.pathname === '/events/new'
-        ? '创建赛事'
-        : location.pathname.startsWith('/events/')
-          ? '赛事详情'
-          : location.pathname === '/events'
-            ? '赛事管理'
-            : (roadmap[location.pathname.split('/')[2] ?? '']?.title ?? '页面');
+  const currentLabel = location.pathname.startsWith('/entries/')
+    ? '报名详情'
+    : location.pathname === '/my-team' || teamWorkspace
+      ? '我的球队'
+      : location.pathname.startsWith('/teams')
+        ? '球队与球员'
+        : location.pathname === '/registration' || location.pathname.endsWith('/registration')
+          ? '报名审核'
+          : location.pathname === '/'
+            ? '工作总览'
+            : location.pathname === '/events/new'
+              ? '创建赛事'
+              : location.pathname.startsWith('/events/')
+                ? '赛事详情'
+                : location.pathname === '/events'
+                  ? '赛事管理'
+                  : (roadmap[location.pathname.split('/')[2] ?? '']?.title ?? '页面');
   useEffect(() => {
     setMenuOpen(false);
     document.title = `${currentLabel} · 小城市篮球`;
@@ -1533,21 +1595,36 @@ function WorkspaceLayout() {
             </>
           )}
         </div>
-        <div className="nav-label">机构工作台</div>
+        <div className="nav-label">{teamWorkspace ? '领队工作台' : '机构工作台'}</div>
         <nav aria-label="主要导航">
-          {primaryNav.map(({ label, to, icon: Icon, planned }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              onClick={() => setMenuOpen(false)}
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-              {planned && <span className="nav-planned">规划</span>}
-            </NavLink>
-          ))}
+          {nav.map(({ label, to, icon: Icon, planned }) => {
+            const nestedRegistration =
+              registration &&
+              (/^\/events\/[^/]+\/registration$/.test(location.pathname) ||
+                location.pathname.startsWith('/entries/'));
+            const teamDetail =
+              teamWorkspace && (location.pathname.startsWith('/teams/') || nestedRegistration);
+            const selected = teamDetail
+              ? to === '/my-team'
+              : nestedRegistration
+                ? to === '/registration'
+                : to === '/'
+                  ? location.pathname === '/'
+                  : location.pathname === to || location.pathname.startsWith(`${to}/`);
+            return (
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setMenuOpen(false)}
+                aria-current={selected ? 'page' : undefined}
+                className={`nav-item ${selected ? 'active' : ''}`}
+              >
+                <Icon size={19} />
+                <span>{label}</span>
+                {planned && <span className="nav-planned">规划</span>}
+              </Link>
+            );
+          })}
         </nav>
         <div className="sidebar-bottom">
           <NavLink className="nav-item" to="/roadmap/plan" onClick={() => setMenuOpen(false)}>
@@ -1577,7 +1654,7 @@ function WorkspaceLayout() {
               <Menu size={22} />
             </button>
             <Link className="topbar-home" to="/">
-              机构工作台
+              {teamWorkspace ? '领队工作台' : '机构工作台'}
             </Link>
             <ChevronRight size={14} />
             <span className="breadcrumb-current">{currentLabel}</span>
@@ -1585,7 +1662,7 @@ function WorkspaceLayout() {
           <div className="topbar-right">
             <span className="demo-badge">
               <span />
-              {api ? '本地 API' : '演示模式'}
+              {api ? '业务服务' : '演示模式'}
             </span>
             <div className="topbar-divider" />
             <div className="user-profile">
@@ -1601,17 +1678,86 @@ function WorkspaceLayout() {
             <strong>{api ? '业务服务 · 数据持久保存' : '演示模式 · Mock 数据'}</strong>
             <span className="notice-separator">—</span>
             {api
-              ? '赛事数据通过本地 API 保存，刷新后保留；直播等后续模块尚未接入。'
+              ? '赛事资料刷新后保留。直播、身份核验和保险凭证仍在建设中。'
               : '本次演示数据保存在内存中，刷新页面后重置。'}
           </span>
-          <span className="notice-stage">{api ? 'P02 · 机构工作台' : 'P01 · 前端原型'}</span>
+          <span className="notice-stage">
+            {api ? (teamWorkspace ? '球队报名' : '机构工作台') : '前端演示'}
+          </span>
         </div>
         <main className="main-content" id="main-content" tabIndex={-1}>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/events" element={<EventsPage />} />
-            <Route path="/events/new" element={<NewEventPage />} />
-            <Route path="/events/:id" element={<EventDetailPage />} />
+            <Route
+              path="/"
+              element={
+                teamWorkspace && registration ? (
+                  <LeaderHomePage context={registration} />
+                ) : (
+                  <Dashboard />
+                )
+              }
+            />
+            <Route
+              path="/events"
+              element={teamWorkspace ? <Navigate to="/my-team" replace /> : <EventsPage />}
+            />
+            <Route
+              path="/events/new"
+              element={teamWorkspace ? <Navigate to="/my-team" replace /> : <NewEventPage />}
+            />
+            <Route
+              path="/events/:id"
+              element={teamWorkspace ? <Navigate to="/my-team" replace /> : <EventDetailPage />}
+            />
+            {registration && (
+              <>
+                <Route
+                  path="/teams"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <TeamsPage context={registration} />
+                    )
+                  }
+                />
+                <Route path="/teams/:teamId" element={<TeamDetailPage context={registration} />} />
+                <Route
+                  path="/registration"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <RegistrationIndexPage context={registration} repository={repository} />
+                    )
+                  }
+                />
+                <Route
+                  path="/events/:eventId/registration"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <EventRegistrationPage context={registration} />
+                    )
+                  }
+                />
+                <Route
+                  path="/my-team"
+                  element={
+                    teamWorkspace ? (
+                      <LeaderHomePage context={registration} />
+                    ) : (
+                      <Navigate to="/teams" replace />
+                    )
+                  }
+                />
+                <Route
+                  path="/entries/:entryId"
+                  element={<EntryDetailPage context={registration} />}
+                />
+              </>
+            )}
             <Route path="/roadmap/:module" element={<RoadmapPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
@@ -1622,9 +1768,7 @@ function WorkspaceLayout() {
           </span>
           <span>
             <ShieldCheck size={13} />
-            {api
-              ? '本地 API 与权限校验已接入，尚未部署生产服务'
-              : '当前为前端演示，尚无真实登录与权限服务'}
+            {api ? '业务功能已接入，当前为开发验证版本' : '当前为前端演示，尚无真实登录与权限服务'}
           </span>
         </footer>
       </div>

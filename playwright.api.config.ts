@@ -1,5 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Browser checks migrate their database. Require an explicit isolated target before
+// starting either server; never inherit a developer or production .env implicitly.
+try {
+  const database = new URL(process.env.DATABASE_URL ?? '');
+  if (
+    !['postgres:', 'postgresql:'].includes(database.protocol) ||
+    !/^scb_test_[A-Za-z0-9_]+$/.test(decodeURIComponent(database.pathname.slice(1)))
+  )
+    throw new Error('Not an isolated test database');
+} catch {
+  throw new Error('API browser checks require an explicit DATABASE_URL named scb_test_*');
+}
+
 export default defineConfig({
   testDir: './tests/api-e2e',
   fullyParallel: false,
