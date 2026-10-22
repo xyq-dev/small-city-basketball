@@ -92,6 +92,35 @@ export function CorrectionDialog({
   const active = activeStats(events),
     selected = active.find((event) => event.id === target),
     effectiveKind = mode === 'REPLACE_STAT' ? selected?.payload.kind : kind;
+  function initializeOriginal(eventId: string) {
+    setTarget(eventId);
+    const original = active.find((item) => item.id === eventId);
+    if (!original) {
+      setValue('');
+      return;
+    }
+    const {
+      side: originalSide,
+      kind: originalKind,
+      value: originalValue,
+      period: originalPeriod,
+    } = original.payload;
+    if (
+      (originalSide !== 'HOME' && originalSide !== 'AWAY') ||
+      (originalKind !== 'SCORE' && originalKind !== 'FOUL' && originalKind !== 'TIMEOUT') ||
+      typeof originalValue !== 'number' ||
+      typeof originalPeriod !== 'number'
+    ) {
+      setTarget('');
+      setValue('');
+      setError('原始统计资料不完整，请重新读取比赛');
+      return;
+    }
+    setSide(originalSide);
+    setKind(originalKind);
+    setValue(String(originalValue));
+    setPeriod(String(originalPeriod));
+  }
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
@@ -149,11 +178,13 @@ export function CorrectionDialog({
         <label className="score-field">
           修正方式
           <select
+            aria-label="修正方式"
             value={mode}
             onChange={(event) => {
               setMode(event.target.value);
               setError('');
-              setValue('');
+              if (event.target.value === 'REPLACE_STAT') initializeOriginal(target);
+              else setValue('');
             }}
           >
             <option value="ADD_CORRECTION">补录统计</option>
@@ -164,7 +195,14 @@ export function CorrectionDialog({
         {mode !== 'ADD_CORRECTION' && (
           <label className="score-field">
             原始统计记录
-            <select value={target} onChange={(e) => setTarget(e.target.value)}>
+            <select
+              aria-label="原始统计记录"
+              value={target}
+              onChange={(e) => {
+                setError('');
+                initializeOriginal(e.target.value);
+              }}
+            >
               <option value="">请选择原始记录</option>
               {active.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -176,11 +214,22 @@ export function CorrectionDialog({
             </select>
           </label>
         )}
+        {mode === 'REPLACE_STAT' && selected && (
+          <div className="score-confirm-summary">
+            <span>原统计项目：{statName(selected.payload.kind)}</span>
+            <span>原统计节次：第{String(selected.payload.period)}节</span>
+            <span>替换保留原项目与节次；所属球队和数值可明确修改。</span>
+          </div>
+        )}
         {mode === 'ADD_CORRECTION' && (
           <div className="score-fields">
             <label className="score-field">
               统计项目
-              <select value={kind} onChange={(e) => setKind(e.target.value as ScoringStatKind)}>
+              <select
+                aria-label="统计项目"
+                value={kind}
+                onChange={(e) => setKind(e.target.value as ScoringStatKind)}
+              >
                 <option value="SCORE">得分</option>
                 <option value="FOUL">犯规</option>
                 <option value="TIMEOUT">暂停</option>
@@ -202,7 +251,11 @@ export function CorrectionDialog({
           <div className="score-fields">
             <label className="score-field">
               所属球队
-              <select value={side} onChange={(e) => setSide(e.target.value as ScoringSide)}>
+              <select
+                aria-label="所属球队"
+                value={side}
+                onChange={(e) => setSide(e.target.value as ScoringSide)}
+              >
                 <option value="HOME">主队</option>
                 <option value="AWAY">客队</option>
               </select>
@@ -220,7 +273,12 @@ export function CorrectionDialog({
         )}
         <label className="score-field">
           修正理由
-          <textarea value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
+          <textarea
+            aria-label="修正理由"
+            value={reason}
+            maxLength={500}
+            onChange={(e) => setReason(e.target.value)}
+          />
         </label>
         {(error || serverError) && (
           <div role="alert" className="score-note score-error">
@@ -292,7 +350,12 @@ export function ClockDialog({
         </label>
         <label className="score-field">
           校时理由
-          <textarea value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
+          <textarea
+            aria-label="校时理由"
+            value={reason}
+            maxLength={500}
+            onChange={(e) => setReason(e.target.value)}
+          />
         </label>
         {(error || serverError) && (
           <div role="alert" className="score-note score-error">

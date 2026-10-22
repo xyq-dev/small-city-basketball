@@ -2,7 +2,7 @@
 
 ## 当前上下文
 
-- 更新：2026-10-22T03:36:26-04:00。
+- 更新：2026-10-22T03:51:23-04:00。
 - 负责人：`/root/p01_browser_tests`；集成人 `/root`。
 - 目录：`/workspace/scratch/93747c9ad2cb/p05-tests`。
 - 远端：`https://github.com/xyq-dev/small-city-basketball.git`。
@@ -46,9 +46,9 @@
 |---|---|
 | 仓库/分支/HEAD/clean/合同读取 | 已执行，见上述上下文 |
 | P05 格式/严格类型 | 2026-10-22T03:34:52-04:00，三个 P05 测试文件的 Prettier、TS7 NodeNext strict/noUncheckedIndexedAccess/noEmit、git diff --check 均通过；未做运行时通过声明 |
-| P05 真实 HTTP + PG | 未执行；本机仅 UID0，禁止绕过 PostgreSQL 非 root 运行保护，交 root 的 PostgreSQL 18.6 隔离 CI |
+| P05 真实 HTTP + PG | 本地未执行；root 回报 CI39742003544 的 87 条真实 PG 已全部通过，包含原 19 条 P05；本次新增第 20 条仍待 CI |
 | Migration 004 | API 负责人独占；本分工未编写或执行 |
-| PG 重启、浏览器与远端 CI | root 负责，尚未执行本卡验证 |
+| PG 重启、浏览器与远端 CI | root 回报上述首轮 CI 的真实 PG 重启通过，原 8 条 API 浏览器通过；本分工未独立运行这些检查 |
 
 ## 2026-10-22T03:31:14-04:00 检查点
 
@@ -66,3 +66,11 @@
 - API 最新确认采用确认前的 `sourceMatchVersion`/`lastEventSeq`；严格断言保留。root 已提供源码整合完成信息，本分工不重复 cherry-pick 业务实现。
 - 本次只提交 `apps/api/test/p05-support.ts`、`p05-scoring.integration.test.ts`、`p05-control.integration.test.ts` 与本记录。工作区 node_modules 是本地依赖符号链接，不纳入提交。
 - 本地没有可安全启动的 PostgreSQL，因此未执行 P05 真实 HTTP/PG、重启或浏览器测试；未声称这些验证通过。下一步由 root 进行 PostgreSQL 18.6 完整 CI，若出现真实失败再独立修复提交。
+
+## 2026-10-22T03:51:23-04:00 自动审查回归补充
+
+- root 回报首轮 CI39742003544：87 条真实 PostgreSQL 场景及真实数据库重启全部成功。本地没有运行 PG，不将该结果冒写为本地执行。
+- 按自动审查 finding 补 1 条独立场景，原 19 条不改。先停用机构成员，再以大写 UUID 路径停用本场既有 SCORER；无需临时恢复成员。验证旧 CAS 拒绝、match/source 版本一致加一、审计仅加一、原 lease 身份/fence 不变且期限立即失效。恢复机构成员后，原控制凭据仍不能续约或新增命令。
+- 同场验证停用 membership/user 时不能 ACTIVE，以及未知 UUID、仅机构成员但未获本场分配、无机构成员资格、跨机构不能凭空创建 DISABLED。拒绝前后比较整个场次 scoring fingerprint，证明没有 staff/lease/版本/投影/事件/收据/审计副作用。
+- 新场景在 finally 恢复合成账号及共享 membership，旧 68 条及原 P05 19 条保持原样。整合后预期 88 条独立 PG（旧 68 + P05 20），新场景真实执行待 root 后续 CI。
+- 本次 delta 的 Prettier、三个 P05 文件的严格 NodeNext TypeScript/noUncheckedIndexedAccess/noEmit、git diff --check 均通过。只改 `p05-control.integration.test.ts` 与本记录；不改 API/DTO/迁移，不 push。

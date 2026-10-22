@@ -39,3 +39,11 @@
 - 本地尚未执行真实API／PG／浏览器、CI或生产验证，不能将组件模拟当作真实业务验收；没有生产环境、付费服务、公开观赛、正式榜单、可靠离线队列或OBS能力。
 - 本UI不涉及Migration编写／执行。待核对命令内存会随页面销毁丢失，界面已明确提示；重新进入以权威快照、事件和收据核对。
 - 交付源commit见Git本提交及root消息；未push，尚未PR／MAIN整合。提交后工作区仅保留未跟踪node_modules软链接。
+
+## 原生表单与自动审查修复检查点
+
+2026-10-22T15:50:30+08:00：root报告CI39742003544的既有检查通过，新增记分浏览器流程在“平局处理”精确label选择处超时；本分支未将该报告当成本地浏览器通过。原生嵌套label会混入select选项文本，本delta为全部8个P05 select显式提供aria-label，并为3个理由textarea提供稳定名称。新增精确getByLabelText、combobox可访问名称和选项／模式变化回归，不放宽E2E匹配。
+
+自动CodeReview comments 4345763932、4345763952由root裁定有效：移除MatchCard无条件赛事规则链接，保留本场工作台入口，避免仅场次授权者被导向无权赛事资料；替换统计选择原记录时同步原球队、数值、项目及节次，切换目标或重新进入替换方式重新同步，用户仍可明确修改球队。回归覆盖客队原记录、显式改主队、切换主队犯规目标、模式切换后恢复原值，界面展示保留的原项目／节次。
+
+实际复跑 `npm run test -w @small-city-basketball/admin -- src/scoring/ScoringPages.test.tsx`：单文件13项通过（本delta新增5项）；admin strict typecheck、5个修改源文件的Prettier check和差异检查通过。按root要求未重复全量已通过检查、不改root/E2E/远端；原生Chromium与第二轮CI由root接续。此delta尚未MAIN，无Migration或生产操作。

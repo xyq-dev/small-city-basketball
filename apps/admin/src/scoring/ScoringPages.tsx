@@ -61,7 +61,11 @@ function ScoringIndex({
         </span>
         <label className="score-field">
           筛选比赛状态
-          <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+          <select
+            aria-label="筛选比赛状态"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          >
             <option value="ALL">全部状态</option>
             {Object.entries(matchStatusLabels).map(([value, label]) => (
               <option key={value} value={value}>
@@ -112,7 +116,6 @@ function MatchCard({ match }: { match: ScoringMatchSummary }) {
         </strong>
       )}
       <footer>
-        <Link to={`/events/${match.eventId}/scoring`}>查看赛事记分规则</Link>
         <Link className="button button-primary" to={`/matches/${match.matchId}/scoring`}>
           进入记分工作台
         </Link>

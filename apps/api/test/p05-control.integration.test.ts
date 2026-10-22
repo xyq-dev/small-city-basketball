@@ -8,6 +8,7 @@ import type {
   ScoringCommandInput,
   ScoringCommandResponse,
   ScoringEventData,
+  ScoringWorkbenchData,
 } from '@small-city-basketball/contracts';
 import { call, data, error, eventually, login, membersPath } from './support.js';
 import type { User } from './support.js';
@@ -718,6 +719,136 @@ describe(
       }
       expect((await workbench(h, live.matchId)).snapshot!.totals).toEqual(applied.snapshot.totals);
       expect(await commandEvents(h, live.matchId, input.commandId)).toHaveLength(1);
+    });
+
+    test('an owner can revoke existing match staff after membership disable without reactivating the target or creating disabled assignments', async () => {
+      const fixture = await published(h, h.teams.slice(0, 2));
+      const live = await liveMatch(h, fixture);
+      const before = await workbench(h, live.matchId);
+      const leaseRow = async () =>
+        (
+          await h.api.pool.query<{
+            lease_id: string;
+            fencing_token: string;
+            holder_user_id: string;
+            client_instance_id: string;
+            expired: boolean;
+          }>(
+            'SELECT lease_id,fencing_token,holder_user_id,client_instance_id,expires_at<=clock_timestamp() AS expired FROM scoring_leases WHERE org_id=$1 AND match_id=$2',
+            [h.owner.orgId, live.matchId],
+          )
+        ).rows[0]!;
+      const originalLease = await leaseRow();
+      expect(originalLease.expired).toBe(false);
+      const membership = async (status: 'ACTIVE' | 'DISABLED') =>
+        data(
+          await call(h.api, 'put', `${membersPath(h.owner.orgId)}/${h.otherOwner.id}`, {
+            cookie: h.owner.cookie,
+            body: { role: 'EVENT_MANAGER', status },
+          }),
+        );
+      const update = (userId: string, status: 'ACTIVE' | 'DISABLED', version: number) =>
+        call(h.api, 'put', staffPath(h.owner.orgId, live.matchId, userId), {
+          cookie: h.owner.cookie,
+          body: { expectedMatchVersion: version, role: 'SCORER', status },
+        });
+      const missing = (response: Response) => {
+        error(response, 404);
+        expect(response.body.error.code).toBe('RESOURCE_NOT_FOUND');
+      };
+
+      await membership('DISABLED');
+      try {
+        const untouched = await scoringFingerprint(h, fixture.event.event.id, live.matchId);
+        missing(await update(h.otherOwner.id, 'ACTIVE', before.match.version));
+        const stale = await update(h.otherOwner.id, 'DISABLED', before.match.version - 1);
+        error(stale, 409);
+        expect(stale.body.error.code).toBe('VERSION_CONFLICT');
+        expect(await scoringFingerprint(h, fixture.event.event.id, live.matchId)).toEqual(
+          untouched,
+        );
+        const auditsBefore = (
+          await h.api.pool.query<{ count: number }>(
+            "SELECT count(*)::int AS count FROM audit_logs WHERE org_id=$1 AND resource_id=$2 AND action='scoring.staff.updated'",
+            [h.owner.orgId, live.matchId],
+          )
+        ).rows[0]!.count;
+
+        const revoked = data<ScoringWorkbenchData>(
+          await update(h.otherOwner.id.toUpperCase(), 'DISABLED', before.match.version),
+        );
+        expect(revoked.match).toMatchObject({
+          status: 'LIVE',
+          version: before.match.version + 1,
+        });
+        expect(revoked.snapshot).toMatchObject({
+          version: revoked.match.version,
+          totals: before.snapshot!.totals,
+          lastEventSeq: before.snapshot!.lastEventSeq,
+          clock: { clockVersion: before.snapshot!.clock.clockVersion },
+        });
+        expect(revoked.staff).toContainEqual(
+          expect.objectContaining({ userId: h.otherOwner.id, role: 'SCORER', status: 'DISABLED' }),
+        );
+        expect(revoked.lease.held).toBe(false);
+        expect(await leaseRow()).toEqual({ ...originalLease, expired: true });
+        expect(
+          (
+            await h.api.pool.query<{ source_version: number; status: string }>(
+              'SELECT s.source_version,m.status FROM scoring_states s JOIN organization_memberships m ON m.org_id=s.org_id AND m.user_id=$3 WHERE s.org_id=$1 AND s.match_id=$2',
+              [h.owner.orgId, live.matchId, h.otherOwner.id],
+            )
+          ).rows,
+        ).toEqual([{ source_version: revoked.match.version, status: 'DISABLED' }]);
+        const audits = await h.api.pool.query<{ actor_id: string; metadata: unknown }>(
+          "SELECT actor_id,metadata FROM audit_logs WHERE org_id=$1 AND resource_id=$2 AND action='scoring.staff.updated' ORDER BY created_at,id",
+          [h.owner.orgId, live.matchId],
+        );
+        expect(audits.rows).toHaveLength(auditsBefore + 1);
+        expect(audits.rows.at(-1)).toEqual({
+          actor_id: h.owner.id,
+          metadata: { userId: h.otherOwner.id, role: 'SCORER', status: 'DISABLED' },
+        });
+
+        // Restoring organization access must not restore the revoked assignment or control.
+        await membership('ACTIVE');
+        missing(await renew(h, live.matchId, h.otherOwner, live.lease));
+        missing(
+          await sendCommand(
+            h,
+            live.matchId,
+            h.otherOwner,
+            envelope(
+              revoked.match.version,
+              { type: 'RECORD_STAT', payload: { kind: 'SCORE', side: 'HOME', value: 1 } },
+              live.lease,
+            ),
+          ),
+        );
+        const rejectedBaseline = await scoringFingerprint(h, fixture.event.event.id, live.matchId);
+        await h.api.pool.query("UPDATE users SET status='DISABLED' WHERE id=$1", [h.otherOwner.id]);
+        missing(await update(h.otherOwner.id, 'ACTIVE', revoked.match.version));
+        await h.api.pool.query("UPDATE users SET status='ACTIVE' WHERE id=$1", [h.otherOwner.id]);
+        missing(await update(randomUUID(), 'DISABLED', revoked.match.version));
+        missing(await update(h.owner.id, 'DISABLED', revoked.match.version));
+        missing(await update(h.leader.id, 'DISABLED', revoked.match.version));
+        missing(
+          await call(h.api, 'put', staffPath(h.otherOwner.orgId, live.matchId, h.otherOwner.id), {
+            cookie: h.otherOwner.cookie,
+            body: {
+              expectedMatchVersion: revoked.match.version,
+              role: 'SCORER',
+              status: 'DISABLED',
+            },
+          }),
+        );
+        expect(await scoringFingerprint(h, fixture.event.event.id, live.matchId)).toEqual(
+          rejectedBaseline,
+        );
+      } finally {
+        await h.api.pool.query("UPDATE users SET status='ACTIVE' WHERE id=$1", [h.otherOwner.id]);
+        await membership('ACTIVE');
+      }
     });
   },
 );

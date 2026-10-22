@@ -463,7 +463,7 @@ export class ScoringService extends ApplicationService {
       !['ACTIVE', 'DISABLED'].includes(String(input.status))
     )
       invalid('无效比赛工作人员角色或状态');
-    resourceId(userId);
+    userId = resourceId(userId);
     return this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, org);
       // Lock the target membership before the match; membership revocation cannot pass assignment.
@@ -473,23 +473,31 @@ export class ScoringService extends ApplicationService {
       );
       if (
         !target.rows[0] ||
-        target.rows[0].status !== 'ACTIVE' ||
-        target.rows[0].user_status !== 'ACTIVE'
+        (input.status === 'ACTIVE' &&
+          (target.rows[0].status !== 'ACTIVE' || target.rows[0].user_status !== 'ACTIVE'))
       )
         throw notFound();
       const a = await this.access(c, ctx, id, true);
       if (!a.manager) throw forbidden();
       checkVersion(a.match.version, version);
-      await c.query(
+      const assignments = await c.query<{ user_id: string }>(
         'SELECT user_id FROM match_staff WHERE org_id=$1 AND match_id=$2 ORDER BY user_id FOR UPDATE',
         [ctx.orgId, id],
       );
+      if (input.status === 'DISABLED' && !assignments.rows.some((row) => row.user_id === userId))
+        throw notFound();
       const l = await this.lease(c, a, true);
       const now = await this.now(c, ctx);
-      await c.query(
-        'INSERT INTO match_staff(org_id,event_id,match_id,user_id,role,status) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(org_id,match_id,user_id) DO UPDATE SET role=EXCLUDED.role,status=EXCLUDED.status,updated_at=clock_timestamp()',
-        [ctx.orgId, a.event.id, id, userId, input.role, input.status],
-      );
+      if (input.status === 'DISABLED') {
+        await c.query(
+          "UPDATE match_staff SET role=$4,status='DISABLED',updated_at=$5 WHERE org_id=$1 AND match_id=$2 AND user_id=$3",
+          [ctx.orgId, id, userId, input.role, now],
+        );
+      } else
+        await c.query(
+          'INSERT INTO match_staff(org_id,event_id,match_id,user_id,role,status) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(org_id,match_id,user_id) DO UPDATE SET role=EXCLUDED.role,status=EXCLUDED.status,updated_at=clock_timestamp()',
+          [ctx.orgId, a.event.id, id, userId, input.role, input.status],
+        );
       if (l?.holder_user_id === userId && (input.status !== 'ACTIVE' || input.role !== 'SCORER'))
         await c.query('UPDATE scoring_leases SET expires_at=$3 WHERE org_id=$1 AND match_id=$2', [
           ctx.orgId,

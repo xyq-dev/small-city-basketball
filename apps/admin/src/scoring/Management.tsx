@@ -143,7 +143,7 @@ export function RulesForm({
         <div className="score-fields">
           <label className="score-field">
             平局处理
-            <select value={tie} onChange={(e) => setTie(e.target.value)}>
+            <select aria-label="平局处理" value={tie} onChange={(e) => setTie(e.target.value)}>
               <option value="">请选择平局处理</option>
               <option value="ALLOW_DRAW">允许平局</option>
               <option value="OVERTIME">平局进入加时</option>
@@ -271,14 +271,22 @@ export function StaffPanel({
           <div className="score-fields">
             <label className="score-field">
               场次角色
-              <select value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
+              <select
+                aria-label="场次角色"
+                value={role}
+                onChange={(e) => setRole(e.target.value as typeof role)}
+              >
                 <option value="SCORER">记分员</option>
                 <option value="RESULT_REVIEWER">赛果确认员</option>
               </select>
             </label>
             <label className="score-field">
               授权状态
-              <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+              <select
+                aria-label="授权状态"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as typeof status)}
+              >
                 <option value="ACTIVE">启用</option>
                 <option value="DISABLED">停用</option>
               </select>

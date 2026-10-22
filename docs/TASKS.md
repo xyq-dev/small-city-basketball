@@ -13,7 +13,7 @@
 | P04 | 抽签、排赛与冲突检查 | IN_PROGRESS | root集成 | P03-A | P04-A已交付；其他赛制/自动优化/改期仍未完成 |
 | P04-A | 单循环对阵、手工排时与一次正式发布 | DONE | Codex集成，API/UI/PG独立分工 | P03-A | MAIN9fc9b30，PR4，CI39737812114成功；[任务卡](tasks/P04-A.md)、[交接](handoffs/P04-A.md) |
 | P05 | 基础记分、赛果与观赛 | IN_PROGRESS | root集成 | P04-A | P05-A在线基础记分开工；排名/公开观赛/可靠离线另卡 |
-| P05-A | 基础在线记分、服务器时钟与独立确认 | REVIEW | root/API/UI/PG | P04-A | BRANCH_ONLY；207本地检查通过，87PG/重启/官方浏览器待CI；[任务卡](tasks/P05-A.md)、[交接](handoffs/P05-A.md) |
+| P05-A | 基础在线记分、服务器时钟与独立确认 | REVIEW | root/API/UI/PG | P04-A | BRANCH_ONLY；212本地通过；首CI 87PG/重启通过，新浏览器失败已修，88PG/官方浏览器待重跑；[任务卡](tasks/P05-A.md)、[交接](handoffs/P05-A.md) |
 | P06 | OBS包装、直播与交付 | TODO | 未认领 | P05；真实视频需配置服务与预算 | 未实施 |
 
 

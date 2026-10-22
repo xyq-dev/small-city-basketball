@@ -25,6 +25,185 @@ const context = (fetcher: typeof fetch): RegistrationWorkspace => ({
   onSessionRefresh: async () => {},
 });
 describe('scoring controls and review boundaries', () => {
+  it('names rule and staff selects exactly, independently of selected option text', () => {
+    render(
+      <>
+        <RulesForm data={eventScoring} busy={false} onSave={vi.fn()} />
+        <StaffPanel
+          data={{ ...workbench, capabilities: { ...workbench.capabilities, canManageStaff: true } }}
+          busy={false}
+          onSave={vi.fn()}
+        />
+      </>,
+    );
+    for (const [label, value] of [
+      ['平局处理', 'OVERTIME'],
+      ['场次角色', 'RESULT_REVIEWER'],
+      ['授权状态', 'DISABLED'],
+    ]) {
+      const select = screen.getByRole('combobox', { name: label });
+      expect(select).toBe(screen.getByLabelText(label, { exact: true }));
+      expect(select).toHaveAttribute('aria-label', label);
+      fireEvent.change(select, { target: { value } });
+      expect(select).toHaveAccessibleName(label);
+      expect(screen.getByLabelText(label, { exact: true })).toHaveValue(value);
+    }
+  });
+  it('names every correction select exactly across mode and option changes', () => {
+    render(
+      <CorrectionDialog
+        snapshot={snapshot}
+        events={[
+          {
+            id: 'stat-a',
+            seq: 1,
+            type: 'STAT_RECORDED',
+            payload: { kind: 'SCORE', side: 'HOME', value: 2, period: 1 },
+            actorId: 'user-a',
+            commandId: 'command-a',
+            capturedAt: snapshot.serverTime,
+            serverTime: snapshot.serverTime,
+            targetEventId: null,
+          },
+        ]}
+        busy={false}
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const exactSelect = (label: string) => {
+      const select = screen.getByRole('combobox', { name: label });
+      expect(select).toBe(screen.getByLabelText(label, { exact: true }));
+      expect(select).toHaveAttribute('aria-label', label);
+      return select;
+    };
+    fireEvent.change(exactSelect('统计项目'), { target: { value: 'FOUL' } });
+    fireEvent.change(exactSelect('所属球队'), { target: { value: 'AWAY' } });
+    fireEvent.change(exactSelect('修正方式'), { target: { value: 'REPLACE_STAT' } });
+    fireEvent.change(exactSelect('原始统计记录'), { target: { value: 'stat-a' } });
+    expect(exactSelect('原始统计记录')).toHaveValue('stat-a');
+    expect(exactSelect('所属球队')).toHaveValue('HOME');
+    change('修正理由', '明确核对后修正');
+    expect(screen.getByLabelText('修正理由', { exact: true })).toHaveAccessibleName('修正理由');
+  });
+  it('keeps the match status filter name exact when an option is selected', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response([]));
+    render(
+      <MemoryRouter>
+        <ScoringIndexPage context={context(fetcher)} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    const filter = screen.getByRole('combobox', { name: '筛选比赛状态' });
+    expect(filter).toHaveAttribute('aria-label', '筛选比赛状态');
+    fireEvent.change(filter, { target: { value: 'LIVE' } });
+    expect(screen.getByLabelText('筛选比赛状态', { exact: true })).toHaveAccessibleName(
+      '筛选比赛状态',
+    );
+    expect(filter).toHaveValue('LIVE');
+  });
+  it('match-only assignments offer their workbench without an unauthorized event-level link', async () => {
+    const match = {
+      matchId: 'match-a',
+      eventId: 'event-a',
+      eventName: '仅场次授权赛事',
+      homeTeamName: '甲队',
+      awayTeamName: '乙队',
+      courtName: '球场',
+      startsAt: snapshot.serverTime,
+      status: 'LIVE',
+      version: 3,
+      score: { home: 0, away: 0 },
+    };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response([match]));
+    render(
+      <MemoryRouter>
+        <ScoringIndexPage context={context(fetcher)} />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('link', { name: '进入记分工作台' })).toHaveAttribute(
+      'href',
+      '/matches/match-a/scoring',
+    );
+    expect(screen.queryByRole('link', { name: '查看赛事记分规则' })).not.toBeInTheDocument();
+    expect(fetcher.mock.calls.every(([path]) => String(path).includes('/scoring-matches?'))).toBe(
+      true,
+    );
+  });
+  it('replacement initializes away statistics and resynchronizes when target or mode changes', async () => {
+    const base = {
+      seq: 1,
+      type: 'STAT_RECORDED',
+      actorId: 'user-a',
+      commandId: 'command-a',
+      capturedAt: snapshot.serverTime,
+      serverTime: snapshot.serverTime,
+      targetEventId: null,
+    };
+    const events: ScoringEventData[] = [
+      { ...base, id: 'away-score', payload: { kind: 'SCORE', side: 'AWAY', value: 3, period: 1 } },
+      {
+        ...base,
+        id: 'home-foul',
+        seq: 2,
+        payload: { kind: 'FOUL', side: 'HOME', value: 1, period: 1 },
+      },
+    ];
+    const submit = vi.fn().mockResolvedValue(false);
+    render(
+      <CorrectionDialog
+        snapshot={snapshot}
+        events={events}
+        busy={false}
+        onSubmit={submit}
+        onClose={vi.fn()}
+      />,
+    );
+    change('修正方式', 'REPLACE_STAT');
+    change('原始统计记录', 'away-score');
+    expect(screen.getByLabelText('所属球队', { exact: true })).toHaveValue('AWAY');
+    expect(screen.getByLabelText('统计数值')).toHaveValue(3);
+    expect(screen.getByText('原统计项目：得分')).toBeVisible();
+    change('修正理由', '复核原始客队记录');
+    fireEvent.click(screen.getByRole('button', { name: '提交修正' }));
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith({
+        type: 'REPLACE_STAT',
+        payload: {
+          targetEventId: 'away-score',
+          side: 'AWAY',
+          value: 3,
+          reason: '复核原始客队记录',
+        },
+      }),
+    );
+    change('所属球队', 'HOME');
+    fireEvent.click(screen.getByRole('button', { name: '提交修正' }));
+    await waitFor(() =>
+      expect(submit).toHaveBeenLastCalledWith({
+        type: 'REPLACE_STAT',
+        payload: {
+          targetEventId: 'away-score',
+          side: 'HOME',
+          value: 3,
+          reason: '复核原始客队记录',
+        },
+      }),
+    );
+    change('原始统计记录', 'home-foul');
+    expect(screen.getByLabelText('所属球队')).toHaveValue('HOME');
+    expect(screen.getByLabelText('统计数值')).toHaveValue(1);
+    expect(screen.getByText('原统计项目：犯规')).toBeVisible();
+    change('所属球队', 'AWAY');
+    change('统计数值', '2');
+    change('修正方式', 'VOID_STAT');
+    change('修正方式', 'REPLACE_STAT');
+    expect(screen.getByLabelText('所属球队')).toHaveValue('HOME');
+    expect(screen.getByLabelText('统计数值')).toHaveValue(1);
+    change('原始统计记录', 'away-score');
+    expect(screen.getByLabelText('所属球队')).toHaveValue('AWAY');
+    expect(screen.getByLabelText('统计数值')).toHaveValue(3);
+  });
   it('requires explicit rules and sends event CAS, never hidden basketball defaults', async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     render(<RulesForm data={eventScoring} busy={false} onSave={save} />);

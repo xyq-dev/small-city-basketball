@@ -585,7 +585,12 @@ export function MatchWorkbench({
           <p>原正式结果保留并标记待重新确认；不会回到比赛进行中。</p>
           <label className="score-field">
             重开理由
-            <textarea maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <textarea
+              aria-label="重开理由"
+              maxLength={500}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
           </label>
           {(reasonError || model.error) && (
             <div className="score-note score-error" role="alert">
