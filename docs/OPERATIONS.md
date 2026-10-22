@@ -98,3 +98,12 @@ P02至P06-A的数据库重启持久化检查不是备份恢复演练，正式灾
 ### P06-A两轮成功CI与恢复来源
 
 首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）也全部成功；后续15份Markdown只修可达恢复点及记录，没有业务或Migration变化。最终CI再次全部成功后合并PR7。首head文档P2已resolved／outdated，最终addeb自动CodeReview completed且无finding（comment6337630278），security未运行。恢复使用上述main合并点或最终远端source；本地19d5801仅作历史来源，不是fresh checkout恢复入口。两轮run／job与边界见[TESTING](TESTING.md)。原生OBS／CEF、生产与备份恢复仍未验收。
+
+
+## P07-A自托管包与完整恢复（DONE / MAIN，PR8）
+
+实际部署入口为[私有secret安装/启动/备份恢复说明](../ops/templates/README.md)和`compose.production.yaml`，当前没有生产主机、域名或已配置的正式证书。CI临时可信CA、合成身份与loopback HTTPS不等于生产上线。API仅持runtime凭据，DB管理员/迁移/备份/恢复凭据按job最小挂载；file-backed secret须按真实UID/权限安装，不能用Compose uid/gid声明代替宿主文件权限。
+
+source全部写者停止后采最终39表基线并完成完整custom pg_dump；归档0600，不上传dump/密钥到CI artifact。restore仅全新目标/独立卷，不覆盖源或任意现存库；正常pg_restore单事务fail-fast/no-owner/no-acl后应用同manifest，先精确一致再quarantine。源码中的真实CI恢复是隔离演练，不是线上恢复或RPO零保证。重新开放须外部当前授权清单和显式运维操作，本卡不会自动切流。
+
+CI只清唯一run/project的容器/网络/卷，故意失败时确认source/control不变；没有全局prune。pg-pool.end可能早于底层backend退出，测试库清理等待服务端client归零、重验归属后普通DROP，残留连接拒删而不强杀。完整失败修复历史及证据见[P07-A交接](handoffs/P07-A.md)。原生OBS/CEF、正式域名/证书、生产发布、微信和真实视频仍未验收。

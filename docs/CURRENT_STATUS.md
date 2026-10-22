@@ -1,27 +1,25 @@
 # 当前状态
 
-更新时间：2026-10-23（Asia/Shanghai）。集成人：root，当前Codex会话。
+更新时间：2026-10-23（Asia/Shanghai）；集成人root。
 
 ## main已整合
 
-「小城市篮球」私有仓库`xyq-dev/small-city-basketball`，最新业务基线main@f8af5c99fba294a40334c49a5d2e32f80c6acbf9；后续文档提交从Git历史读取。
+私有仓库`xyq-dev/small-city-basketball`，最新业务合并基线`82a3705001da50f60655b07d6174b50f4d84266f`（PR8）。后续纯文档提交从实际Git读取；不把聊天或历史HEAD当最新现场。
 
-P01四页Mock、P02持久身份／机构／赛事、P03-A Web球队报名审核及名单冻结、P04-A单循环排赛与一次正式发布、P05-A在线记分／服务器时钟／独立赛果确认、P05-B显式排名及可撤销匿名观赛，以及P06-A单场透明比分包装与独立只读授权，均为 **DONE / MAIN**。
+P01、P02、P03-A、P04-A、P05-A、P05-B、P06-A及P07-A均为 **DONE / MAIN**：多机构身份/权限、球队报名/独立审核/冻结、单循环排赛、单端在线计分/权威时钟/独立确认、正式排名/可撤销公开观赛、独立透明比分网页，以及非root同源HTTPS包/最小DB身份/完整隔离恢复。
 
-[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)已合并为`f8af5c99fba294a40334c49a5d2e32f80c6acbf9`，源`addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`／tree`2a719b4b3e8fd4f67996144c687f5bbb72902519`。最终[CI39758913295](https://github.com/xyq-dev/small-city-basketball/actions/runs/39758913295)两job全部成功：372源码（admin171/API201）、123独立PG、12Mock＋7桌面／7手机真实API、格式／完整strict／两端build、001→006与checksum、实际PG18.6重启39表指纹，正常及故意失败子库清理均通过且control保留。官方Chromium151.0.7922.34；完整日志已读。自动addeb CodeReview completed无finding，旧文档P2已resolved/outdated；security未运行。
+[PR8](https://github.com/xyq-dev/small-city-basketball/pull/8) source`8809d67a568b86d3ef530ec92785877c29fab80a`、tree`fcb777848e666aac9f81097bca1ddffc3130e543`与本地`dde4c27`一致；[CI39827535301](https://github.com/xyq-dev/small-city-basketball/actions/runs/39827535301)三个job全部SUCCESS，完整日志已读：432源码（admin202/API230）、140独立真实PG（124＋16）、12Mock＋14真实API＋4HTTPS浏览器、完整strict/格式/两端build、001–006/checksum/39表实际重启，以及三非root镜像/可信TLS/完整业务链/API真实换IP且Web不变/同卷重建/完整dump→第二实例恢复精确一致→旧授权隔离/正常及负向清理均通过。
 
-P06-A实际覆盖未公开赛事独立签发、fragment立即清除、Cookie刷新／原URL重复授权、透明像素、真实老化时钟、确认／重开、轮换／撤销清屏、真实1分钟到期、断网30秒清屏／恢复和迟到响应不复活。首CI39756976748同样全成功，后续仅修正文档恢复点；见[交接](handoffs/P06-A.md)。原P01证据清单不改。
+最新source自动CodeReview completed无finding/未解决线程，security未运行；API/恢复和必要delta独立静态复核通过。前五轮失败与修复完整保留于[P07-A交接](handoffs/P07-A.md)，摘要见[证据](evidence/P07-A/README.md)。合并提交同tree，合并后CI39829137241正在运行，其结果单独记录，不冒充已成功。
 
-## 当前重点
+PR2四项已按最新代码核验并完成：scrypt单槽/有限队列、过期限流清理、赛事版本冲突显式刷新恢复、独立注册能力入口；不是依据线程resolved或仅CI状态判断。
 
-接续[P07-A同源HTTPS自托管包与隔离备份恢复](tasks/P07-A.md)，合同经独立技术只读审查CLEAR，合同main f2bf36585f09a0e55df41328a1d25f33e479e012已同步；从该点建立五个独立worktree，实施分支feat/P07-production现REVIEW / BRANCH_ONLY，PR8，第二候选66a0956的CI39822735630：admin/api成功，production的14项PG断言通过但清理异常失败，修复候选待第三CI。交付目标为非root镜像、显式迁移／首owner、受审计DB身份及完整dump→全新隔离恢复；原root@0e11776及API/DB dirty已完整保留并整合，本地`3049927`与远端`8905d41`同tree；432项本地源码测试、完整类型／构建通过。三镜像已实际构建验证；124项PG及14真实API/12Mock浏览器通过，完整TLS／dump恢复仍待验收。
+## 下一步与边界
 
-没有生产主机／域名／证书、微信或视频账号／付费预算。P06-A尚无原生OBS／CEF验收，不显示“OBS已连接”。实际PG重启不等于备份恢复。完整P03/P04仍有资料文件／小程序、其他赛制／自动优化／发布后改期；完整P05仍有可靠离线和专业统计。
+优先补原生OBS/CEF现场验收；本环境没有实际OBS客户端，不显示“OBS已连接”。手机浏览器证据为Chromium手机模拟，不是Safari/微信真机。完整P03仍有文件/小程序，P04仍有其它赛制/优化/发布后改期，P05仍有可靠离线/专业统计；媒体时间、视频、商业交付和整个平台愿景未完成。
 
-用户已明确“全部授权你”，项目范围内开发、Git、审查后合并、测试库迁移及可用环境发布可继续，不重复请求已有授权；不虚构缺少的环境或凭据。文档在开工、接口变化、检查点、验证与整合时更新，停止会话后不会无人值守同步。
+P07-A只交付运行包和隔离演练，未生产上线。001–006未改，只在隔离测试库执行；没有新业务Migration。未修改生产数据库、部署生产、配置外部服务凭据/付费资源或开放公网端口。重新开放恢复库需外部当前授权清单和显式操作，不自动切流或推定旧授权仍有效。
 
 ## 接手入口
 
-先核验实际目录、远端、分支、HEAD和dirty，读AGENTS、[任务看板](TASKS.md)与当前卡，再按[开发说明](DEVELOPMENT.md)运行。统一入口为[项目开发总文档](PROJECT_DEVELOPMENT.md)。
-
-本轮接续记录见[P07-A交接](handoffs/P07-A.md)。PR2四项按最新代码核验：四项均已实现并具备源码回归；新增过期限流真实PG回归与P07共14项真实PG仍待CI。仅沿用已核实的开发/Git授权，本轮禁止生产部署、生产数据库变更、付费资源、新凭据和公网端口。
+核验实际目录/远端/分支/HEAD/dirty/进程，再读AGENTS、[看板](TASKS.md)、当前卡和最新PR/CI。root原目录`/workspace/scratch/93747c9ad2cb/small-city-basketball`，原dirty已完整保留并整合；本地历史与远端等价tree均保留，无reset/force push。开发/Git授权已核实，本轮生产操作禁令继续有效。文档随实际工作更新，停止会话后不会无人值守同步。

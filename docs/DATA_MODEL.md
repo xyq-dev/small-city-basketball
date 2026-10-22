@@ -182,3 +182,12 @@ DDL保证归属、固定截止及不可变历史；实际STREAMER／当前成员
 ### P06-A两轮成功CI与恢复来源
 
 首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）也全部成功；后续15份Markdown只修可达恢复点及记录，没有业务或Migration变化。最终CI再次全部成功后合并PR7。首head文档P2已resolved／outdated，最终addeb自动CodeReview completed且无finding（comment6337630278），security未运行。恢复使用上述main合并点或最终远端source；本地19d5801仅作历史来源，不是fresh checkout恢复入口。两轮run／job与边界见[TESTING](TESTING.md)。原生OBS／CEF、生产与备份恢复仍未验收。
+
+
+## 12. P07-A角色权限与恢复隔离（DONE / MAIN，PR8）
+
+没有新增/修改业务Migration，001–006及39张表结构保持。DB身份为初始化scb_admin、DDL owner scb_migrator、受限scb_runtime与只读scb_backup；表/列权限由`packages/contracts/runtime-privileges.json`显式声明，运行就绪精确核验。
+
+完整restore先CREATE全新scb_restore_*并记录共享数据库COMMENT内nonce及OID；归属门用shobj_description读取pg_shdescription，名称/OID/nonce均须匹配，不能采用已有库。COPY/DDL按完整pg_restore正常顺序恢复并重应用manifest，不在已迁移库data-only覆盖，也不禁用历史守卫。
+
+quarantine使用新DISABLED系统User，无机构成员权及可验证密码；不伪装原owner。撤销旧private sessions、未消费邀请和未撤销public publication；overlay仅v1未撤销→v2/非空理由，不触碰既有撤销历史或不可变overlay_sessions；只提前到期已取得且仍有效lease，保留身份/fence，空lease保持NULL/fence0。组织全部DISABLED、相关Event版本递增，RESTORE_QUARANTINE审计原子保存。第一阶段完整一致与第二阶段预期隔离变化分别验证，不能声称隔离后全库指纹仍相等或fence超过未知备份后最大值。

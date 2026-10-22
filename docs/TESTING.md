@@ -2,11 +2,22 @@
 
 更新：2026-10-22（Asia/Shanghai）。本文区分P06-A最终验收、P05-B及P05-A/P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
 
-## P07-A接续候选（REVIEW / BRANCH_ONLY，未验收）
+## P07-A最终验收（DONE / MAIN）
 
-2026-10-23（Asia/Shanghai），[PR8](https://github.com/xyq-dev/small-city-basketball/pull/8)，远端source`8905d41bb5f46ec6bd51f50bf7f76776712c0ed5`与本地`3049927`同tree`e17452fb04ccfed70a39f2b34c037928f1ebf699`。root本地独立整合检查：432源码/组件/HTTP（admin202＋API230）、完整strict类型（含新增PG和浏览器）、格式及两端build通过。API/恢复脚本独立静态审查CLEAR；不是PG或容器实测。
+2026-10-23（Asia/Shanghai），[PR8](https://github.com/xyq-dev/small-city-basketball/pull/8)合并`82a3705001da50f60655b07d6174b50f4d84266f`，source`8809d67a568b86d3ef530ec92785877c29fab80a`／tree`fcb777848e666aac9f81097bca1ddffc3130e543`。[CI39827535301](https://github.com/xyq-dev/small-city-basketball/actions/runs/39827535301)的admin119995169199、api119995168877、production119995169422全部SUCCESS，完整日志已读。
 
-[首CI39822056375](https://github.com/xyq-dev/small-city-basketball/actions/runs/39822056375)运行中：预计124既有独立PG（PR2新增1）＋14 P07 PG，12Mock＋14真实API＋4 HTTPS桌面/手机，以及非root镜像、真实TLS、动态API地址、全量dump/新实例restore与隔离，全部实际结果待运行完成再记录。001–006未修改，无新Migration，未生产执行；原生OBS/CEF仍未验证。失败与修复追加[交接](handoffs/P07-A.md)，不将历史CI替代本候选结果。
+| 证据层级 | 实际结果 |
+|---|---|
+| root本地独立整合 | 432源码/组件/HTTP、完整strict、格式及两端build通过；没有本地Docker/真实PG/OBS，不把作者报告算独立实测 |
+| 最新候选CI源码 | admin202＋API230＝432，格式/完整测试类型/两端build通过 |
+| 真实隔离PostgreSQL | 原124＋P07新增16＝140；001–006/checksum、39表实际重启、角色/owner并发/审计/就绪/恢复隔离/安全清理通过 |
+| 官方Chromium151.0.7922.34 | 12Mock＋14真实API＋4可信HTTPS；桌面及手机模拟，不是实际设备/Safari/微信/原生OBS |
+| 实际容器与可信TLS | 三非root镜像/compiled runtime/最小secret挂载与DB角色、完整业务链、Origin/Cookie/SPA/伪造header限流、SIGTERM/真实换IP/Web不变/同卷重建通过 |
+| 完整隔离恢复 | 停全部源写者，完整custom dump到第二实例/卷，39表/schema/业务/备份点fence一致；拒覆盖/旧private-public-overlay凭据失效/重登无旧机构/owned清理通过 |
+| 审查 | API/恢复及必要delta独立静态复核通过；最新8809d67自动CodeReview completed无finding/未解决线程，security未运行 |
+| 合并后CI | 39829137241正在运行，合并同验收tree；其结果另行记录 |
+
+前五轮失败与修复保留[完整交接](handoffs/P07-A.md)，汇总及镜像digest见[证据清单](evidence/P07-A/README.md)。没有新增/修改业务Migration；现有001–006仅隔离测试执行，未生产执行。原生OBS/CEF、正式生产域名/证书/部署/生产数据库均未验收，不把网页透明或CI恢复当实际OBS/线上恢复。
 
 ## P06-A最终交付与证据（DONE / MAIN）
 

@@ -6,9 +6,11 @@
 
 ## 当前状态
 
-2026-10-22：P01、P02、P03-A、P04-A、P05-A、P05-B及P06-A均为 **DONE / MAIN**。按[开发说明](docs/DEVELOPMENT.md)运行Mock或真实PostgreSQL Web后台：报名审核／冻结、单循环排赛、在线记分／服务器时钟／独立确认、显式排名及匿名观赛，并可签发1920×1080透明比分浏览器源。
+2026-10-23：P01、P02、P03-A、P04-A、P05-A、P05-B、P06-A及P07-A均为 **DONE / MAIN**。按[开发说明](docs/DEVELOPMENT.md)运行Mock或真实PostgreSQL Web后台：报名审核／冻结、单循环排赛、在线记分／服务器时钟／独立确认、显式排名及匿名观赛，并可签发1920×1080透明比分浏览器源。
 
 [PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)已合并为`f8af5c99fba294a40334c49a5d2e32f80c6acbf9`，源`addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`／tree`2a719b4b3e8fd4f67996144c687f5bbb72902519`。最终[CI39758913295](https://github.com/xyq-dev/small-city-basketball/actions/runs/39758913295)两job全部成功：372源码（admin171/API201）、123独立PG、12Mock＋7桌面／7手机真实API、格式／完整strict／两端build、001→006与checksum、实际PG18.6重启39表指纹，正常及故意失败子库清理均通过且control保留。官方Chromium151.0.7922.34；完整日志已读。自动addeb CodeReview completed无finding，旧文档P2已resolved/outdated；security未运行。 001–006只在隔离测试库执行，没有生产执行。
+
+P07-A已由[PR8](https://github.com/xyq-dev/small-city-basketball/pull/8)合并`82a3705001da50f60655b07d6174b50f4d84266f`；[CI39827535301](https://github.com/xyq-dev/small-city-basketball/actions/runs/39827535301)三job全成功：432源码、140真实PG、12Mock＋18真实API/HTTPS浏览器。交付三非root镜像、同源HTTPS、分离DB身份、显式首owner与完整隔离备份恢复；实际API换IP/Web不变、39表恢复一致及旧授权隔离通过。[自托管说明](ops/templates/README.md)。这是可运行交付包和隔离CI证据，未生产部署、未验原生OBS/CEF；合并后CI结果见当前状态。
 
 ## 首版目标范围
 

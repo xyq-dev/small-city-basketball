@@ -18,10 +18,10 @@
 | P06    | OBS包装、直播与交付                | IN_PROGRESS | root集成                     | P05-A/B；真实视频需配置服务与预算 | P06-A已交付，原生OBS／真实视频未验收                                                                                               |
 | P06-A  | 单场透明比分包装与独立只读授权     | DONE        | root/API/UI/PG               | P05-A/B                           | MAINf8af5c9，PR7，最终CI39758913295的372／123／12＋14／39表重启与清理全部成功；[任务卡](tasks/P06-A.md)、[交接](handoffs/P06-A.md) |
 
-| P07-A | 同源HTTPS自托管包与隔离备份恢复 | IN_PROGRESS | root/API/UI/PG/打包 | P06-A | PR8；第二CI源码432／PG124／12Mock＋14API通过，P07清理竞态修复待第三CI；[任务卡](tasks/P07-A.md)、[交接](handoffs/P07-A.md) |
+| P07-A | 同源HTTPS自托管包与隔离备份恢复 | DONE | root集成/API/UI/PG/打包 | P06-A | MAIN82a3705，PR8，CI39827535301的432/140/12Mock＋18真实浏览器及完整恢复通过；[任务](tasks/P07-A.md)、[交接](handoffs/P07-A.md) |
 
 ## 当前顺序
 
-P06-A已由PR7合并，最终CI及自动代码审查通过。下一步P07-A先冻结共享配置／AuthCapabilities DTO与权限manifest，再并行API、UI、DB恢复和打包，root负责实际容器/TLS/恢复CI。完整P03/P04/P05遗留不以首卡冒充完成，保险文件、微信、生产及真实视频仍需后续配置验收。
+P07-A已由PR8合并，候选完整CI及审查通过。首选补原生OBS/CEF现场验收；生产主机/正式域名证书/外部服务与预算未配置，不执行生产发布。P03/P04/P05完整范围的遗留仍按原卡单列，不以首卡冒充整个产品完成。
 
 专业统计、个人集锦、赞助报告与年度套餐另拆有验收条件的任务。阶段规划与概念图不构成完成证据。

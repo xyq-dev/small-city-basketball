@@ -107,3 +107,12 @@ OverlayService浅复用ApplicationService的连接池、当前身份／机构授
 ### P06-A两轮成功CI与恢复来源
 
 首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）也全部成功；后续15份Markdown只修可达恢复点及记录，没有业务或Migration变化。最终CI再次全部成功后合并PR7。首head文档P2已resolved／outdated，最终addeb自动CodeReview completed且无finding（comment6337630278），security未运行。恢复使用上述main合并点或最终远端source；本地19d5801仅作历史来源，不是fresh checkout恢复入口。两轮run／job与边界见[TESTING](TESTING.md)。原生OBS／CEF、生产与备份恢复仍未验收。
+
+
+## P07-A同源运行包与隔离恢复（DONE / MAIN，PR8）
+
+保留NestJS＋PostgreSQL＋Vite架构与现有比赛状态源。新增多阶段构建api/web/db-tools三生产镜像；API和工具10001:10001，Web101:101，compiled Node运行无tsx/Vite，固定SQL/真实contracts/权限manifest随镜像交付。只有Web接入可发布端口的ingress桥并同时进入internal frontend；API仅internal frontend/backend，PG仅internal backend且无host端口。CI仅绑定127.0.0.1:9443，Web覆盖外来转发头并动态解析API地址。
+
+配置与AuthCapabilities集中解析，production强制HTTPS/Secure Cookie；runtime DB secret只挂API，初始化/迁移/备份/恢复身份分开。显式作业provision→migrate-and-grant→API→Web；首owner、备份、恢复、quarantine由ops profile显式调用。生产启动和ready只检查，不执行DDL。
+
+固定runtime-privileges.json审计39表与必要列；runtime无表owner/DDL/TEMP/TRUNCATE/角色提升，backup只读。完整备份期间所有源写者先停，custom pg_dump恢复到另一个实例全新空库；先证明39表/schema/业务/备份点fence一致，再单独隔离旧授权。旧组织禁用，旧授权不能因重登录自行恢复。没有第二套比赛状态、自动切流、PITR或生产部署。实现与真实证据见[P07-A交接](handoffs/P07-A.md)。

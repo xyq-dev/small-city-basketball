@@ -8,8 +8,8 @@
 |---|---|
 | 仓库 | `xyq-dev/small-city-basketball`，私有 |
 | 默认分支 | `main`；每次执行仍须核验 |
-| 本轮维护核验业务基线 | P06-A整合 `f8af5c99fba294a40334c49a5d2e32f80c6acbf9`；不是未来永远不变的最新HEAD |
-| main 已有成果 | P01显式Mock原型、P02身份及赛事持久化、P03-A真实Web球队／外部领队邀请授权／名单版本／独立审核／不可变冻结，P04-A共享场地／单循环对阵／手工排时／冲突检查／一次正式发布，P05-A在线球队记分／服务器时钟／主写控制／独立确认及重开历史，P05-B显式排名规则／有效确认榜单／可撤销匿名有限观赛，P06-A透明比分网页／独立有限授权及管理预览；无生产部署 |
+| 本轮维护核验业务基线 | P07-A整合 `82a3705001da50f60655b07d6174b50f4d84266f`；不是未来永远不变的最新HEAD |
+| main 已有成果 | P01显式Mock原型、P02身份及赛事持久化、P03-A真实Web球队／外部领队邀请授权／名单版本／独立审核／不可变冻结，P04-A共享场地／单循环对阵／手工排时／冲突检查／一次正式发布，P05-A在线球队记分／服务器时钟／主写控制／独立确认及重开历史，P05-B显式排名规则／有效确认榜单／可撤销匿名有限观赛，P06-A透明比分网页／独立有限授权及管理预览，P07-A同源非root HTTPS运行包／最小DB身份／完整隔离恢复；无生产部署 |
 | P01 交付证据 | DONE / MAIN；代码 `819818d2f9fcee972f4c2e7854800dc6ad2415bf`，PR #1 已合并；Application checks run `39728632742` 成功，35项测试及官方 Chromium 12项 E2E 通过 |
 | P02 交付证据 | DONE / MAIN；分支head `63b94beee51d51b02f4bade7f36baba92edceb11`、PR #2、CI run `39730670229` 成功；详情见TESTING及P02交接 |
 | P03-A交付证据 | DONE / MAIN；[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)，代码 `c2d96b2f2b3801bedcb7e73258b48f5d05c88a83`；[CI 39735150535](https://github.com/xyq-dev/small-city-basketball/actions/runs/39735150535)全部通过 |
@@ -26,7 +26,8 @@
 | P06-A交付证据 | DONE / MAIN；[PR #7](https://github.com/xyq-dev/small-city-basketball/pull/7)合并`f8af5c99fba294a40334c49a5d2e32f80c6acbf9`；验收source`addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`、tree`2a719b4b3e8fd4f67996144c687f5bbb72902519`；[最终CI39758913295](https://github.com/xyq-dev/small-city-basketball/actions/runs/39758913295)的admin119757876176／api119757876592全部success |
 | P06-A验证范围 | 372源码（admin171＋API201）、格式／完整strict／两端build、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API官方Chromium151.0.7922.34；001→006隔离执行及checksum复跑、实际PG18.6重启与39表指纹、正常／故意失败子库清理且保留控制库均通过；19状态／3PNG另属合成HTTP布局 |
 | P06-A审查及历史 | 首CI39756976748同样全部成功；自动审查指出本地来源对象不可供新checkout恢复，仅15份Markdown修订后以addeb8f完成第二完整CI。旧文档P2已resolved／outdated；addeb自动CodeReview completed无finding（comment6337630278），security未运行，详见[P06-A交接](handoffs/P06-A.md) |
-| 接续方向 | 继续独立任务的自托管打包与隔离备份恢复；完整P06的原生OBS／CEF、推流／视频及媒体时间另行验收，网页交付不代表生产或全部愿景完成 |
+| P07-A交付及验证 | DONE / MAIN；PR8合并82a3705，source8809d67／treefcb7778，CI39827535301三job全成功432源码／140真实PG／12Mock＋18真实浏览器及完整dump恢复/旧授权隔离；详见[P07-A证据](evidence/P07-A/README.md) |
+| 接续方向 | 首选原生OBS/CEF现场验收；完整P06的原生OBS／CEF、推流／视频及媒体时间另行验收，网页交付不代表生产或全部愿景完成 |
 
 设计文档描述目标行为，不表示功能已实现。标记“已完成”必须在任务记录中有代码或文档、验证结果及整合状态支撑。
 
@@ -87,7 +88,7 @@
 | P06 | OBS包装、直播与交付整体目标 | 首卡网页包装之外的客户端、媒体时间及商业交付仍需分卡验收 |
 | P06-A | 已交付：透明比分网页、固定期限独立授权及管理预览 | DONE / MAIN；真实PG／API浏览器／实际重启及完整CI已验收，原生OBS／CEF另验 |
 
-P01、P02、P03-A、P04-A、P05-A、P05-B、P06-A已整合为DONE / MAIN。P03-A冻结仍不改变赛事为SCHEDULED；P04-A显式发布才将赛事转为SCHEDULED并建立正式比赛计划。P05-A首次比赛开始使赛事进入RUNNING，单场FINAL不自动完成整届赛事；全P03、全P04、全P05及完整办赛闭环仍未完成。用户已授权项目范围内开发、仓库同步和可用环境中的发布操作，执行仍须核验目标、必要检查与恢复条件，不能推定尚未配置的服务已可用。专业统计与个人集锦可以在 P06 后追加明确验收任务，不能为赶首版宣称已具备。
+P01、P02、P03-A、P04-A、P05-A、P05-B、P06-A、P07-A已整合为DONE / MAIN。P03-A冻结仍不改变赛事为SCHEDULED；P04-A显式发布才将赛事转为SCHEDULED并建立正式比赛计划。P05-A首次比赛开始使赛事进入RUNNING，单场FINAL不自动完成整届赛事；全P03、全P04、全P05及完整办赛闭环仍未完成。本轮已核实开发/Git授权，但用户明确禁止生产发布、生产数据变更、付费资源、新外部凭据及公网端口；隔离CI不构成生产上线。专业统计与个人集锦可以在 P06 后追加明确验收任务，不能为赶首版宣称已具备。
 
 ## 7. 文档导航与唯一职责
 

@@ -167,3 +167,10 @@ P03-A只交付Web报名／独立审核／名单冻结；完整P03的保险文件
 ### P06-A两轮成功CI与恢复来源
 
 首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）也全部成功；后续15份Markdown只修可达恢复点及记录，没有业务或Migration变化。最终CI再次全部成功后合并PR7。首head文档P2已resolved／outdated，最终addeb自动CodeReview completed且无finding（comment6337630278），security未运行。恢复使用上述main合并点或最终远端source；本地19d5801仅作历史来源，不是fresh checkout恢复入口。两轮run／job与边界见[TESTING](TESTING.md)。原生OBS／CEF、生产与备份恢复仍未验收。
+
+
+## P07-A编译运行与自托管验证（DONE / MAIN，PR8）
+
+保留已有dev/mock/api流程。生产包使用`Dockerfile`的api/web/db-tools targets及`compose.production.yaml`；API入口`apps/api/dist/main.js`，SQL仍在`apps/api/migrations`。环境变量/私有secret路径/显式provision、迁移、首owner、备份恢复命令见[运行包说明](../ops/templates/README.md)，不可把示例当真实凭据。
+
+新增`npm run test:production`只允许独立GitHub Actions runner，创建并清理自身资源；本地没有Docker时仅能运行源码/类型/构建检查，不能声称真实TLS或PG恢复通过。一般PG job显式排除p07-*.integration.test.ts；P07独立job使用四个TEST_P07角色的私有*_FILE及唯一scb_test_production_*控制库，16项真实PG用例不混入普通无角色环境。桌面/手机浏览器为官方Chromium及手机模拟，不是Safari/微信真机或原生OBS验收。

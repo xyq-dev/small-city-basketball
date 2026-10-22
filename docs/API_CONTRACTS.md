@@ -340,3 +340,14 @@ OverlayPreviewData逐层白名单完整为：eventName、home/away各`{teamName}
 ### P06-A两轮成功CI与恢复来源
 
 首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）也全部成功；后续15份Markdown只修可达恢复点及记录，没有业务或Migration变化。最终CI再次全部成功后合并PR7。首head文档P2已resolved／outdated，最终addeb自动CodeReview completed且无finding（comment6337630278），security未运行。恢复使用上述main合并点或最终远端source；本地19d5801仅作历史来源，不是fresh checkout恢复入口。两轮run／job与边界见[TESTING](TESTING.md)。原生OBS／CEF、生产与备份恢复仍未验收。
+
+
+## 11. P07-A运行能力与就绪合同（DONE / MAIN，PR8）
+
+`GET /v1/auth/capabilities`无需身份或DB查询，标准data envelope仅`{canRegisterOrganization:boolean,canRegisterParticipant:boolean}`，不返回用户/机构/密钥。服务构造与HTTP入口共用集中配置：production两项默认false，dev/test默认true；Compose显式机构false、个人true。配置读取失败时UI关闭注册入口并保留登录，watch/overlay独立入口不发私人初始化请求。
+
+`GET /health`仍为连接存活检查；`GET /ready`只读核验完整Migration文件名/checksum集合、btree_gist、当前runtime角色及固定39表/列ACL，成功data `{status:'ready'}`，缺失/漂移/extra migration/高权/缺权统一503 SERVICE_UNAVAILABLE，不输出SQL、role或连接字符串。production启动也先核验，不自动迁移或seed。
+
+scrypt保留既有参数及哈希格式，所有API实例共用进程内1槽与最多16等待，超载/底层计算失败固定503 AUTH_UNAVAILABLE，错误释放槽位。限流每次独立自动提交清理最多100条超过1小时的旧key，再执行原窗口原子计数，不携带其它key锁进入upsert，不删除仍有效计数。
+
+首owner由独立compiled CLI输入私有JSON四字段email/password/displayName/organizationName，组织非空即拒绝、既有email不提升，用户/机构/OWNER/BOOTSTRAP_OWNER审计同事务；无HTTP bootstrap接口，不创建session或返回登录凭据。详见[P07-A任务](tasks/P07-A.md)及[运行说明](../ops/templates/README.md)。原公开/Overlay/管理/记分授权边界不变。
