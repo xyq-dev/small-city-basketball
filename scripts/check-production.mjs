@@ -605,13 +605,22 @@ try {
         SCB_CHECK_OWNER_FILE: hostOwner,
         SCB_PERSISTENCE_FILE: hostState,
       };
-      await run(process.execPath, ['scripts/check-production-http.mjs', 'smoke'], { env });
-      await run(
+      const smoke = await run(process.execPath, ['scripts/check-production-http.mjs', 'smoke'], {
+        env,
+      });
+      console.log(smoke.output.trim());
+      const browsers = await run(
         'npx',
         ['playwright', 'test', '--config', 'tests/production/playwright.config.ts'],
         { env },
       );
-      await run(process.execPath, ['scripts/check-production-http.mjs', 'rate-limit'], { env });
+      console.log(browsers.output.trim());
+      const rateLimit = await run(
+        process.execPath,
+        ['scripts/check-production-http.mjs', 'rate-limit'],
+        { env },
+      );
+      console.log(rateLimit.output.trim());
     },
   );
   await stage(
@@ -625,7 +634,9 @@ try {
       await compose(source, sourceEnv, ['stop', '-t', '10', 'api']);
       const stopped = (await jsonCommand(['inspect', apiId]))[0];
       assert.equal(stopped.State.ExitCode, 0);
-      await compose(source, sourceEnv, ['start', 'api']);
+      // Migration/provision jobs ran explicitly and were removed. Start this
+      // existing owned container without asking Compose to rebuild that graph.
+      await run('docker', ['start', apiId]);
       await waitReady();
       await checkPrivateSession(saved);
       await compose(source, sourceEnv, ['stop', 'api']);
@@ -788,6 +799,8 @@ try {
   await stage(
     'Reject overwrites, preserve source/control, and quarantine the restored authorization',
     async () => {
+      const targetApiId = await container(target, targetEnv, 'api');
+      const targetWebId = await container(target, targetEnv, 'web');
       await compose(target, targetEnv, ['stop', 'web', 'api']);
       const collision = await compose(
         source,
@@ -839,7 +852,7 @@ try {
         'RESTORE_RECEIPT_PATH=/backups/restore-receipt.json',
         'quarantine',
       ]);
-      await compose(target, targetEnv, ['start', 'api', 'web']);
+      await run('docker', ['start', targetApiId, targetWebId]);
       await waitReady();
       await checkQuarantine(saved);
       console.log(
