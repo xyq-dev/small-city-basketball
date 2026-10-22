@@ -15,3 +15,7 @@
 ![P02桌面登录页](login-1440.png)
 
 ![P02手机注册页](register-390.png)
+
+## 首轮CI结果
+
+[PR#2](https://github.com/xyq-dev/small-city-basketball/pull/2)，[run39730422963](https://github.com/xyq-dev/small-city-basketball/actions/runs/39730422963)：71项检查与原12项Mock浏览器通过；20项真实PG集成及PG18.6重启持久化通过，Migration已在隔离测试库执行。API浏览器因嵌套npm脚本参数传递失败，4项未执行；已修正启动命令，等待重跑结果。没有生产Migration或生产数据操作。

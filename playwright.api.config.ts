@@ -28,7 +28,8 @@ export default defineConfig({
       timeout: 60000,
     },
     {
-      command: 'npm run dev:admin -- --host 127.0.0.1 --port 4273 --strictPort',
+      command:
+        'npm run dev --workspace @small-city-basketball/admin -- --host 127.0.0.1 --port 4273 --strictPort',
       url: 'http://127.0.0.1:4273',
       env: { VITE_DATA_MODE: 'api', API_PROXY_TARGET: 'http://127.0.0.1:3300' },
       reuseExistingServer: false,
