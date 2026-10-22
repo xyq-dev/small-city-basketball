@@ -774,3 +774,84 @@ export interface PublicMatchSnapshotData extends PublicScheduleMatchData {
   };
   serverTime: string;
 }
+
+export const OVERLAY_TEMPLATES: readonly ['SCOREBAR_1080P_V1'];
+export const OVERLAY_COMMANDS: readonly ['ISSUE', 'ROTATE', 'REVOKE'];
+export type OverlayTemplate = (typeof OVERLAY_TEMPLATES)[number];
+export type OverlayCommand = (typeof OVERLAY_COMMANDS)[number];
+export interface OverlayGrantData {
+  overlayId: string;
+  template: OverlayTemplate;
+  status: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+  version: number;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  revocationReason: string | null;
+}
+/** A finite projection independent of public viewing and private scoring credentials. */
+export interface OverlayPreviewData {
+  eventName: string;
+  home: { teamName: string };
+  away: { teamName: string };
+  status: MatchStatus;
+  matchVersion: number;
+  score: { home: number; away: number } | null;
+  totals: { home: ScoringTotals; away: ScoringTotals } | null;
+  periods: ScoringPeriodTotals[] | null;
+  rules: (ScoringRules & { version: number }) | null;
+  clock: ScoringClock | null;
+  collected: {
+    teamScore: boolean;
+    teamFouls: boolean;
+    teamTimeouts: boolean;
+    playerStatistics: false;
+  };
+  resultStatus: PublicResultStatus;
+  serverTime: string;
+}
+export interface OverlaySnapshotData extends OverlayPreviewData {
+  overlayId: string;
+  template: OverlayTemplate;
+  expiresAt: string;
+}
+export interface OverlayWorkbenchData {
+  event: { id: string; name: string; version: number };
+  matchId: string;
+  preview: OverlayPreviewData | null;
+  previewError: { code: 'RESULT_SOURCE_INVALID'; message: string } | null;
+  currentGrant: OverlayGrantData | null;
+  history: OverlayGrantData[];
+  historyLimit: 20;
+  historyTruncated: boolean;
+  capabilities: { canIssue: boolean; canRotate: boolean; canRevoke: boolean };
+  serverTime: string;
+}
+export type OverlayCommandInput =
+  | { type: 'ISSUE'; expectedEventVersion: number; expiresInMinutes: number }
+  | {
+      type: 'ROTATE';
+      expectedEventVersion: number;
+      overlayId: string;
+      expectedGrantVersion: number;
+      expiresInMinutes: number;
+      reason: string;
+    }
+  | {
+      type: 'REVOKE';
+      expectedEventVersion: number;
+      overlayId: string;
+      expectedGrantVersion: number;
+      reason: string;
+    };
+export interface OverlayCommandResponse extends OverlayWorkbenchData {
+  credential: { overlayId: string; token: string } | null;
+}
+export interface OverlayBootstrapInput {
+  token: string;
+}
+export interface OverlayBootstrapData {
+  overlayId: string;
+  expiresAt: string;
+  serverTime: string;
+}

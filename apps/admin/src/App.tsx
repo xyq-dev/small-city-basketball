@@ -73,6 +73,17 @@ const StandingsIndexPage = lazy(() =>
 const EventStandingsPage = lazy(() =>
   import('./viewing/PrivatePages').then((viewing) => ({ default: viewing.EventStandingsPage })),
 );
+const BroadcastIndexPage = lazy(() =>
+  import('./overlay/PrivatePages').then((m) => ({ default: m.BroadcastIndexPage })),
+);
+const MatchOverlayPage = lazy(() =>
+  import('./overlay/PrivatePages').then((m) => ({ default: m.MatchOverlayPage })),
+);
+const overlayFallback = (
+  <section className="panel registration-state" role="status">
+    正在读取比分包装…
+  </section>
+);
 const standingsFallback = (
   <section className="panel registration-state" role="status">
     正在读取排名工作台…
@@ -1512,9 +1523,11 @@ function WorkspaceLayout() {
           ? { ...item, to: '/teams', planned: false }
           : registration && item.to === '/roadmap/registration'
             ? { ...item, to: '/registration', planned: false }
-            : registration && item.to === '/roadmap/schedule'
-              ? { ...item, to: '/scheduling', planned: false }
-              : item,
+            : registration && item.to === '/roadmap/broadcast'
+              ? { ...item, to: '/broadcast', planned: false }
+              : registration && item.to === '/roadmap/schedule'
+                ? { ...item, to: '/scheduling', planned: false }
+                : item,
       );
   const nav =
     registration && !teamWorkspace
@@ -1530,32 +1543,34 @@ function WorkspaceLayout() {
   const closeRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const currentLabel =
-    location.pathname === '/standings' || location.pathname.endsWith('/standings')
-      ? '排名与观赛'
-      : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
-        ? '记分与赛果'
-        : location.pathname === '/courts'
-          ? '机构场地'
-          : location.pathname === '/scheduling' || /\/scheduling(?:\/|$)/.test(location.pathname)
-            ? '抽签排赛'
-            : location.pathname.startsWith('/entries/')
-              ? '报名详情'
-              : location.pathname === '/my-team' || teamWorkspace
-                ? '我的球队'
-                : location.pathname.startsWith('/teams')
-                  ? '球队与球员'
-                  : location.pathname === '/registration' ||
-                      location.pathname.endsWith('/registration')
-                    ? '报名审核'
-                    : location.pathname === '/'
-                      ? '工作总览'
-                      : location.pathname === '/events/new'
-                        ? '创建赛事'
-                        : location.pathname.startsWith('/events/')
-                          ? '赛事详情'
-                          : location.pathname === '/events'
-                            ? '赛事管理'
-                            : (roadmap[location.pathname.split('/')[2] ?? '']?.title ?? '页面');
+    location.pathname === '/broadcast' || location.pathname.endsWith('/overlay')
+      ? '直播与 OBS'
+      : location.pathname === '/standings' || location.pathname.endsWith('/standings')
+        ? '排名与观赛'
+        : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
+          ? '记分与赛果'
+          : location.pathname === '/courts'
+            ? '机构场地'
+            : location.pathname === '/scheduling' || /\/scheduling(?:\/|$)/.test(location.pathname)
+              ? '抽签排赛'
+              : location.pathname.startsWith('/entries/')
+                ? '报名详情'
+                : location.pathname === '/my-team' || teamWorkspace
+                  ? '我的球队'
+                  : location.pathname.startsWith('/teams')
+                    ? '球队与球员'
+                    : location.pathname === '/registration' ||
+                        location.pathname.endsWith('/registration')
+                      ? '报名审核'
+                      : location.pathname === '/'
+                        ? '工作总览'
+                        : location.pathname === '/events/new'
+                          ? '创建赛事'
+                          : location.pathname.startsWith('/events/')
+                            ? '赛事详情'
+                            : location.pathname === '/events'
+                              ? '赛事管理'
+                              : (roadmap[location.pathname.split('/')[2] ?? '']?.title ?? '页面');
   useEffect(() => {
     setMenuOpen(false);
     document.title = `${currentLabel} · 小城市篮球`;
@@ -1673,19 +1688,26 @@ function WorkspaceLayout() {
               !teamWorkspace &&
               (location.pathname === '/standings' ||
                 /\/events\/[^/]+\/standings$/.test(location.pathname));
-            const selected = nestedStandings
-              ? to === '/standings'
-              : nestedScoring
-                ? to === '/scoring'
-                : nestedScheduling
-                  ? to === '/scheduling'
-                  : teamDetail
-                    ? to === '/my-team'
-                    : nestedRegistration
-                      ? to === '/registration'
-                      : to === '/'
-                        ? location.pathname === '/'
-                        : location.pathname === to || location.pathname.startsWith(`${to}/`);
+            const nestedOverlay =
+              registration &&
+              !teamWorkspace &&
+              (location.pathname === '/broadcast' ||
+                /^\/matches\/[^/]+\/overlay$/.test(location.pathname));
+            const selected = nestedOverlay
+              ? to === '/broadcast'
+              : nestedStandings
+                ? to === '/standings'
+                : nestedScoring
+                  ? to === '/scoring'
+                  : nestedScheduling
+                    ? to === '/scheduling'
+                    : teamDetail
+                      ? to === '/my-team'
+                      : nestedRegistration
+                        ? to === '/registration'
+                        : to === '/'
+                          ? location.pathname === '/'
+                          : location.pathname === to || location.pathname.startsWith(`${to}/`);
             return (
               <Link
                 key={to}
@@ -1884,6 +1906,30 @@ function WorkspaceLayout() {
                       <Navigate to="/my-team" replace />
                     ) : (
                       <ScoringWorkbenchPage context={registration} />
+                    )
+                  }
+                />
+                <Route
+                  path="/broadcast"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={overlayFallback}>
+                        <BroadcastIndexPage context={registration} repository={repository} />
+                      </Suspense>
+                    )
+                  }
+                />
+                <Route
+                  path="/matches/:matchId/overlay"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={overlayFallback}>
+                        <MatchOverlayPage context={registration} />
+                      </Suspense>
                     )
                   }
                 />

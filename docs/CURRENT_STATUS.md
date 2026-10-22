@@ -16,7 +16,7 @@ P01四页Mock、P02持久身份／机构／赛事、P03-A Web球队报名审核�
 
 ## 当前重点
 
-下一项为[P06-A单场透明比分包装及独立只读授权](tasks/P06-A.md)。合同已独立只读审查CLEAR，READY；正式建立新worktree、分配独占路径并同步精确DTO后进入实现。目标是1920×1080透明浏览器源和管理预览；尚无P06代码／迁移／浏览器或真实OBS客户端验收，不显示“OBS已连接”。
+[P06-A单场透明比分包装及独立只读授权](tasks/P06-A.md)现为REVIEW／BRANCH_ONLY。完整远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539已进入[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 本地另有19状态合成布局及3截图。自动CodeReview指出规范引用未同步local对象作为恢复点，root已改用真实远端source，文档修正候选待完整CI及合并，业务源无变化。尚无原生OBS／CEF或生产验收，不显示“OBS已连接”。
 
 完整P03/P04仍有资料文件／小程序、其他赛制／自动优化／发布后改期；完整P05仍有可靠离线和专业统计。生产设施、保险文件、微信、视频服务和付费预算尚未配置。实际数据库重启验收不等于备份恢复验收。
 

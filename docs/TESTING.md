@@ -1,6 +1,33 @@
 # 测试与验收
 
-更新：2026-10-22（Asia/Shanghai）。本文区分P05-B最终验收及P05-A/P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
+更新：2026-10-22（Asia/Shanghai）。本文区分P06-A本地检查／待执行验证、P05-B最终验收及P05-A/P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
+
+## P06-A本地检查与待执行验证（未完成／未MAIN）
+
+完整远端源码检查点`7ba9d01bb46d8c4b7a5ce72081aef50719d05539`，早期DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`已由完整源码7ba9d01取代，main文档仍为ca68dea、业务P05-B。PR7及首CI39756976748已建立，尚无完整CI／MAIN结论；下文P05-B的真实成功不替代P06验收。全部使用合成身份和资料，没有生产、原生OBS／CEF或灾备恢复结论。
+
+| P06-A当前检查 | 状态 | 实际计数／范围 |
+|---|---|---|
+| 源码／组件／HTTP | 本地通过 | 372项：admin171＋API201，原302＋新增70（UI24／API46），不依赖真实PG |
+| 格式、完整strict、两端build | 本地通过 | 根复验包含PG／E2E测试配置；不等于数据库执行 |
+| SQL／API／UI／PG独立静态与FK补丁delta | CLEAR | 包括006及新增session INSERT后截止重检；静态结果不是运行成功 |
+| 原12Mock | 本地native Chromium153通过 | 原显式Mock桌面／手机场景；本卡官方浏览器真实API尚未执行 |
+| 合成HTTP布局 | 已检查19状态／3张PNG | 1440／390管理、轮换弹框、长队名及1920源、空值、坏FINAL／终态；无横向溢出、按钮截断或pageerror |
+| 浏览器透明与入口 | 合成布局检查通过 | native153.0.8010.0＋临时QA字体；源无auth/org/invitation请求，body透明，RGBA角落alpha0、比分条alpha255；非OBS／CEF |
+| 006执行／复跑checksum | 未执行 | 仅已编写并静态CLEAR，SHA-256为94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6；001–005未改 |
+| 独立真实PG | 新17项已编写，未运行 | 主suite8＋sessions9，保留原106，预计合计123；不是已通过数 |
+| 实际PG18.6重启 | 39表扩展已编写，未运行 | 目标为原37＋Grant/session两表；不能借用上游37表重启结果 |
+| 真实API浏览器 | 新2项已编写，未运行 | 保留原12，预计桌面／手机合计14；未获得本卡官方Chromium端到端结果 |
+| 远端自动CodeReview／security | 本卡未取得结果 | 首head自动CodeReview已完成并指出恢复点引用问题；修复待新head审查，security未运行，不混记上游结论 |
+| 原生OBS／CEF、生产、备份恢复 | 未执行 | 透明合成、保存源重启、隐藏卸载／刷新、推流及生产设施均未验收 |
+
+UI源码覆盖StrictMode首次fragment清除／内存、独立Runtime入口及无Storage、递归有限DTO、显式TTL／理由、固定Event／Grant CAS、bad-preview仍可管理、lostACK先读元数据、一次性credential遮罩、串行慢请求／8秒超时、完整RTT硬截止只提前、仅完整snapshot重置30秒、404／到期终止、409清屏可恢复、换scope／卸载及迟到200保护。19状态合成布局与PNG详见[P06-A证据](evidence/P06-A/README.md)，临时字体不成为产品依赖。
+
+17项PG源码计划验证：未public赛事独立授权，actual STREAMER而非global／match-only／球队grant，当前成员撤权与既有Grant独立；命令Event／Grant双CAS、同场ISSUE真锁竞争、过期原子SUPERSEDED、一次轮换／撤销、20条历史排序／截断、三类审计失败全回滚；有限投影／raw clock／null／有效FINAL证明、staff版本变化不误撤，坏FINAL snapshot409但metadata和管理命令200。secret／session只存hash，Cookie属性／Origin／duplicate同值／wrongGrant／私人Cookie矩阵、重复bootstrap复用或恢复、GET无写／不续期、006复合FK／不可变及一次撤销均有源码用例。
+
+并发回归使用真实外部行锁和pg_blocking_pids等待链：session外锁证明读取先持Event／Grant使撤销等待；Event外锁证明撤销先行后读404；合法历史INSERT近截止后，让snapshot／bootstrap等待跨DB clock_timestamp截止再拒绝，不UPDATE不可变期限或引入测试时钟。独立审查另发现新session INSERT可等待正式match FK锁跨截止，API已补INSERT后MATERIALIZED clock_timestamp精确重检Grant/session并回滚404；新增第9个session场景在published_matches FOR UPDATE下观察真实INSERT／KEYSHARE等待、跨截止后释放并断言没有新行／Cookie。全部尚未真实PG执行。
+
+重启capture／verify扩展拟保存当前／已撤销Grant、hash-only专用session、固定截止、Cookie读取与原全部业务指纹，并检查到期／撤销保持和fence连续性；39表实际重启尚未发生。新浏览器场景拟验证管理签发／旋转／撤销、StrictMode无auth入口、fragment／Storage、原URL重复授权／Cookie刷新、null→真实记分／时钟／确认／重开、断网30秒和硬截止／迟到响应。CI前必须实际运行并记录source／run／job与失败，不能把这些计划勾为通过。
 
 ## P05-B最终交付与证据（DONE / MAIN）
 
@@ -19,7 +46,7 @@
 | 浏览器数据库隔离／清理 | 正常及故意失败流程通过 | 每project新建随机owned子库；退出删除本次owned库、保留base；故意无效CLI仍保留非零退出码 |
 | 独立静态审查及自动CodeReview | SQL/API/UI/PG及delta CLEAR；最终source completed无finding | PR6最终自动记录comment6336377538；非RR入口P2已修，thread resolved；自动security review为NOT RUN |
 | 合成布局 | 本地native153的16状态、三图及新增入口1440／390检查通过 | 合成HTTP fixture／临时字体的布局证据，不替代PG／官方浏览器，不是原生OBS或CEF证据 |
-| 生产、灾备恢复、微信、保险文件与OBS | 未执行／未集成 | 无生产环境或生产Migration；P06-A仅合同已完成只读审查，无业务实现、原生OBS／CEF测试 |
+| 生产、灾备恢复、微信、保险文件与OBS | 未执行／未集成 | 无生产环境或生产Migration；该次P05-B验收不含P06-A；本卡本地实施及未验收状态另见上文 |
 
 ### P05-B失败、取消与修复历史
 
@@ -170,7 +197,7 @@ P01代码819818d经PR #1合并为f15adb4，[原CI run 39728632742](https://githu
 | P03 报名审核 | 外部领队/球员无需工作人员身份也能完成获授权流程；邀请冒领、重放、过期及撤销均正确处理；本人和领队的资料权限不同；重复报名及重复球员按规则处理；退回补资料能重新提交；提交、审核、名单冻结有版本冲突提示；球队长期成员变动不改变已冻结赛事名单；保险凭证只能由获授权角色读取，界面不把上传成功等同于审核通过 |
 | P04 抽签排赛 | P04-A已验2–32队单循环、可复现seed、窗口／休息／日期及跨赛事资源冲突、双CAS、重抽历史与一次发布；种子队分组、其他赛制、自动排时及发布后改期另卡验证，不能借本次结果宣称已完成 |
 | P05 记分赛果 | P05-A在线记分／独立确认／私有快照及P05-B有限单循环排名／可撤销公开观赛已独立验收；可靠离线和专业统计仍未交付，不借用旧通过结果 |
-| P06 OBS 与内容 | 只读包装不能写比分；令牌撤销后连接失效；展示字段不含个人敏感资料；断线可恢复且不会把旧比分覆盖新比分；OBS 关闭不影响记分；比赛时钟暂停时录像时间仍独立；剪辑失败和缺素材有可重试状态 |
+| P06 OBS 与内容 | P06-A本地包装源码尚未真实验收；只读包装不能写比分；令牌撤销后连接失效；展示字段不含个人敏感资料；断线可恢复且不会把旧比分覆盖新比分；OBS 关闭不影响记分；比赛时钟暂停时录像时间仍独立；剪辑失败和缺素材有可重试状态 |
 
 ## 记分系统必须证明的行为
 
@@ -186,3 +213,8 @@ P01代码819818d经PR #1合并为f15adb4，[原CI run 39728632742](https://githu
 小范围文档修改检查链接、事实状态及术语一致性即可；代码变更执行直接覆盖行为的检查和项目必要构建。认证授权、Migration、记分状态机需独立审查与失败场景验证；不为普通文案变更反复运行全套测试。
 
 任务报告逐项使用“通过／失败／未执行／不适用”，失败附复现步骤；未执行说明原因及影响。阻断缺陷未关闭不得标记完成，非阻断问题进入任务清单并注明归属。P01、P02、P03-A、P04-A、P05-A及P05-B已各自提供代码、实际执行及整合证据；后续阶段不能借用既有结果宣称新增能力完成。
+
+
+### P06-A远端恢复点与首CI结果
+
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。
