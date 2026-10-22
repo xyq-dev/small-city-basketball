@@ -1,6 +1,6 @@
 # 数据模型与状态
 
-设计版本：0.1；更新：2026-10-22；状态：P02及P03-A SQL模型已合并main并在隔离测试库真实执行。第2–5节包含长期逻辑设计，实际已建表和验收边界见第6、7节；排赛、记分、保险附件和OBS等后续实体尚未建表。
+设计版本：0.1；更新：2026-10-22；状态：P02、P03-A及P04-A SQL模型已合并main，001–003已在隔离PostgreSQL18.6测试库执行及复跑校验，无生产执行。第2–5节包含长期逻辑设计，实际已建表和验收边界见第6–8节；记分、保险附件和OBS等后续实体尚未建表。
 
 ## 1. 通用约束
 
@@ -54,15 +54,15 @@ P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引�
 - **报名**：`DRAFT → SUBMITTED → APPROVED / CHANGES_REQUESTED / REJECTED`；CHANGES_REQUESTED 补齐后重新提交；未锁定前可按规则 WITHDRAWN。审批操作者、理由和版本需保留。
 - **保险凭证**：`PENDING → APPROVED / REJECTED`，规则不要求保险时可标 `NOT_REQUIRED`。凭证批准只表示本赛事审核结论，不保证理赔或替代承保方判断。
 - **比赛**：`SCHEDULED → READY → LIVE → PENDING_CONFIRMATION → FINAL`；另有 `POSTPONED / CANCELLED`。不能从 LIVE 直接成为正式赛果。READY 校验名单、规则及工作人员；结束计分进入待确认。FINAL 更正需有权限的重开命令回到 PENDING_CONFIRMATION，该状态只允许受控更正及确认，不继续正常实时计分。再次确认后更新榜单；若更正影响已排定或已开赛的下游晋级场次，应阻断自动改写并交赛事管理员处置。延期恢复、弃权、争议处置必须记录原因，不直接删除比赛。
-- **赛程版本**：`DRAFT → PUBLISHED → SUPERSEDED`。发布时校验已批准球队、时间与场地冲突及规则版本；最新草稿不能自动替代当前发布版本。
+- **赛程版本**：P04-A只有当前`DRAFT → PUBLISHED`，重抽把旧DRAFT变为SUPERSEDED并创建新DRAFT；已发布版本不能变为SUPERSEDED或被替换。发布校验冻结球队、时间、场地及规则来源；后续发布后改期另开有恢复方案的任务。
 
 删除已参赛球队、已使用规则或已开赛场次应拒绝或归档，不能级联删除历史。个人数据保留、注销和匿名化策略在真实资料上线前确定，业务历史与敏感原文分别处理。
 
 ## 5. 必要索引与验证
 
-优先建立成员 `(orgId,userId,status)`、赛事 `(orgId,status,startDate)`、报名 `(orgId,eventId,status)`、比赛 `(orgId,eventId,startsAt)`、场地时间检索及事件 `(matchId,seq)`。幂等唯一键包含机构、操作者、命令作用域及幂等键；只存业务所需的最小响应。具体数据库排他约束与锁策略在排赛实施前通过并发用例验证。
+优先建立成员 `(orgId,userId,status)`、赛事 `(orgId,status,startDate)`、报名 `(orgId,eventId,status)`、比赛 `(orgId,eventId,startsAt)`、场地时间检索及事件 `(matchId,seq)`。幂等唯一键包含机构、操作者、命令作用域及幂等键；只存业务所需的最小响应。P04-A已用GiST排他约束、机构mutex及真实并发用例验证本机构Court/Team占用；记分等后续实体仍需各自验证。
 
-必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。P02/P03-A适用范围已执行，后续记分等行为仍待相应阶段验证。Migration001/002的执行事实见下文，不把规划实体也标成已建表。
+必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。P02/P03-A/P04-A适用范围已执行，后续记分等行为仍待相应阶段验证。Migration001–003的执行事实见下文，不把规划实体也标成已建表。
 
 ## 6. P02 最小持久化实施
 
@@ -86,12 +86,25 @@ P03-A经[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并ma
 
 本卡规则字段为min_players、max_players、zero_and_double_zero_distinct、require_identity、require_insurance；同赛事版本唯一，开放报名后锁定规则指针。后两项要求为true时拒绝开放，因为核验与保险附件尚未集成。TeamAccessGrant只有TEAM_MANAGER，与organization_memberships独立；team_invitations绑定已存在target_user_id，数据库只存令牌hash及用途、期限、消费／撤销时间。已消费邀请仅在全部验证通过且当前grant仍ACTIVE时安全重读上下文，缺失或DISABLED不会复活。
 
-报名列表投影仅返回EntrySummary九字段；完整roster、rules、history由独立鉴权的详情接口返回。这是响应裁剪，不删除数据库中的历史。名单冻结后事件保持REGISTRATION_CLOSED，尚不生成赛程、比赛、公开观赛或OBS投影。
+报名列表投影仅返回EntrySummary九字段；完整roster、rules、history由独立鉴权的详情接口返回。这是响应裁剪，不删除数据库中的历史。P03-A名单冻结后事件保持REGISTRATION_CLOSED，不自动生成赛程或比赛；P04-A再显式生成及发布，公开观赛和OBS投影仍未实现。
 
-## 8. P04-A分支排赛模型（003已编写，未执行）
+## 8. P04-A排赛持久化（DONE / MAIN，隔离测试库已执行）
 
-003_p04_scheduling.sql增加courts、org_schedule_mutex、schedule_revisions、schedule_fixtures、schedule_publications、published_matches、court_reservations、team_reservations，以及events.current_schedule_revision_id和freeze复合唯一键。独立静态审查CLEAR，SHA256`6469c7d5783ac1c025c0981addb8da77d0174169556b79e971347cd5ea78122f`；当前尚未执行003或P04真实PG验收，没有生产执行。
+[PR #4](https://github.com/xyq-dev/small-city-basketball/pull/4)合并main `9fc9b3019eeef52d5b7a66643b01f0fe993af09f`；代码 `7336bfa01a6a3b6afb08dd2c90260f8497b1239e` 经[CI39737812114](https://github.com/xyq-dev/small-city-basketball/actions/runs/39737812114)全部成功。`003_p04_scheduling.sql`的SHA256为`6469c7d5783ac1c025c0981addb8da77d0174169556b79e971347cd5ea78122f`。001→002→003已在隔离PostgreSQL18.6执行，复跑校验和并跳过已应用版本；68项独立PG场景通过（P02 20＋P03-A 24＋P04-A 24）。真实数据库重启后已发布排赛、正式场次、预约及原授权／名单／审计／校验和保持，详见[TESTING](TESTING.md)。无生产执行。
 
-canonical Court/Team跨本机构不同event统一占用；每场1Court及2Team记录，btree_gist+tstzrange半开区间排他。source/policy/seed/配对历史不可原地改写，current DRAFT仅可改分配；重抽旧稿SUPERSEDED，唯一event publication及published计划不可变。DB复合FK约束org/event/entry/team/roster归属，发布后INSERT/UPDATE/DELETE防线及deferred提交一致性，P05仅预留比赛status/version的受控变化。
+| 新增表 | 责任与关键约束 |
+|---|---|
+| courts | org共享稳定场地，规范化名称唯一、ACTIVE/DISABLED及CAS版本 |
+| org_schedule_mutex | org_id主键；写场地及发布同事务INSERT ON CONFLICT后FOR UPDATE，覆盖既有和新机构 |
+| schedule_revisions | freeze/source/policy/seed/hash/轮次及顺序、DRAFT/SUPERSEDED/PUBLISHED、版本和重抽历史；来源始终不可改 |
+| schedule_fixtures | 主键(org_id,revision_id,fixture_key)，双方entry/team及轮次固定；仅DRAFT可改场地和时间分配 |
+| schedule_publications | event唯一发布，绑定revision及publicationHash；禁止更新、删除或发布后追加篡改 |
+| published_matches | 固定双方entry/team/name/rosterRevision、courtName、时间及来源引用；初始SCHEDULED/version1，只有status/version预留给后续受控记分 |
+| court_reservations | 每场一条，主键(org_id,match_id)，正式场地及半开时间占用 |
+| team_reservations | 每场每队一条，主键(org_id,match_id,team_id)，按长期canonical Team防跨赛事重叠 |
 
-发布及Court写先同事务upsert/锁org_schedule_mutex，避免新旧机构缺行和跨赛事检查后同时发布；之后按event/revision/court固定顺序。正式matches、预约、PUBLISHED及SCHEDULED版本和审计原子提交；一次发布，不含改期/释放占用接口。真实并发、回滚、重启及DDL执行结果待[P04-A交接](handoffs/P04-A.md)追加；静态SQL通过不能代替PG运行。
+同时增加events.current_schedule_revision_id及registration_freezes复合唯一键。真实复合FK约束org/event/revision/entry/team/roster来源；每场一Court、两Team，`btree_gist`与`tstzrange(starts_at,ends_at,'[)')`GiST排他约束防同机构同资源重叠。发布后来源、fixtures、publication、reservations不可更新、删除或追加；match计划事实不可变，尚无修改status接口。P05须用独立状态实体保存比分及clock，不能借status/version接口改计划。
+
+发布及Court写按session/user→org→membership→org_schedule_mutex→event（如适用）→revision→Court顺序锁定，不升级org SHARE。发布从服务器freeze与seed重算对阵和占用；同事务写publication→matches→每场1court/2team预约→revision PUBLISHED→event SCHEDULED/version→audit。revision完整性触发器及deferred提交约束阻止半份发布。双赛事争抢Court／同Team、缺mutex行首次并发、Court停用竞态、机构隔离及审计失败整体回滚均经真实PG验证。
+
+本卡只支持2–32队单回合ROUND_ROBIN、显式占用／休息／本地日期间隔及时间窗口、手工分配和一次发布。重抽新建来源、旧稿SUPERSEDED只读；没有自动排时、淘汰／分组、改期或释放预约。机构内canonical Court/Team协调不等于跨机构物理场地共享；完整P04及P05/P06仍未完成。

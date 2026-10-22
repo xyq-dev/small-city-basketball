@@ -1,6 +1,6 @@
 # API 契约
 
-目标契约：v0.2；更新：2026-10-22。P01、P02及P03-A已整合main；[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并提交为 `1c4b352e4277af6a418ae46908d1aed0fcb01827`。身份、机构、赛事及Web球队报名／独立审核／名单冻结已通过真实PostgreSQL与浏览器验收，实际契约见第5、6节。P03附件与小程序、P04–P06及其他目标路由仍未实现。
+目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A及P04-A已整合main，P04-A为DONE / MAIN；[PR #4](https://github.com/xyq-dev/small-city-basketball/pull/4)合并提交 `9fc9b3019eeef52d5b7a66643b01f0fe993af09f`，验收代码 `7336bfa01a6a3b6afb08dd2c90260f8497b1239e`。身份、报名冻结及单循环排赛／一次发布已通过隔离PostgreSQL与浏览器验收，实际契约见第5–7节。其他排赛赛制、改期、P03附件／小程序、记分、观赛及OBS仍未实现。
 
 ## 1. 通用约定
 
@@ -34,7 +34,7 @@ type CreateEventInput = {
 
 ## 3. 目标路由清单
 
-下表同时列出已实现入口与长期目标；P02及P03-A的实际权限、输入和响应以第5、6节及共享契约为准。人员私密资料、保险附件、排赛、记分和OBS等目标入口尚不可调用。
+下表同时列出已实现入口与长期目标；P02、P03-A及P04-A的实际权限、输入和响应以第5–7节及共享契约为准。人员私密资料、保险附件、其他排赛赛制、记分和OBS等目标入口尚不可调用。
 
 下表私有路径均省略 `/v1/orgs/{orgId}`；资源 ID 需按其所属赛事/机构重新校验。
 
@@ -42,7 +42,7 @@ type CreateEventInput = {
 |---|---|---|
 | GET/POST `/events`；GET `/events/{eventId}` | 列表、创建草稿、详情 | 按授权赛事范围读取，列表也裁剪范围；有机构创建权限者建草稿；P02 |
 | PATCH `/events/{eventId}` | 编辑草稿 | EVENT_MANAGER，版本匹配且 DRAFT；P02 |
-| POST `/events/{eventId}/commands` | 发布赛程/结束/归档等后续目标 | 尚未实现；P03-A开关报名及冻结使用第6节的registration-commands |
+| POST `/events/{eventId}/commands` | 结束/归档等后续目标 | 尚未实现；P03-A开关报名及冻结使用第6节的registration-commands，P04-A发布使用第7节的revision publish |
 | GET/POST `/teams`；GET/PATCH `/teams/{teamId}` | 长期球队资料 | OWNER/ADMIN创建；管理资料须OWNER/ADMIN或本队有效领队；P03-A已实现 |
 | POST `/teams/{teamId}/invitations` | 邀请既有用户管理球队 | 仅OWNER/ADMIN，绑定targetUserId；P03-A已实现 |
 | POST `/events/{eventId}/entries` | 建立球队参赛草稿 | 本队有效TEAM_MANAGER；工作人员也须另有该队grant；P03-A已实现 |
@@ -51,10 +51,10 @@ type CreateEventInput = {
 | POST `/entries/{entryId}/commands` | 提交/撤回/审核/退回补齐 | 领队或独立 REVIEWER 按具体命令；P03 |
 | POST `/participants/{playerId}/insurance-evidence` | 登记受控上传凭证引用 | 本人/本队领队；P03 |
 | POST `/insurance-evidence/{evidenceId}/review` | 审核凭证 | REVIEWER；P03 |
-| POST `/events/{eventId}/draws` | 分组抽签或有理由的重抽 | EVENT_MANAGER，记录输入与结果；P04 |
-| POST `/events/{eventId}/schedule-revisions` | 生成或调整赛程草稿 | EVENT_MANAGER；P04 |
-| POST `/schedule-revisions/{revisionId}/validate` | 检查约束并返回冲突 | EVENT_MANAGER；P04 |
-| POST `/schedule-revisions/{revisionId}/publish` | 发布新赛程版本 | EVENT_MANAGER，验证通过；P04 |
+| POST `/events/{eventId}/draws` | 分组抽签后续目标 | 尚未实现；P04-A单循环生成及重抽使用第7节schedule-revisions |
+| POST `/events/{eventId}/schedule-revisions` | 生成或有理由重抽单循环草稿 | P04-A已实现；具体输入、权限及能力边界见第7节 |
+| POST `/schedule-revisions/{revisionId}/validate` | 检查当前草稿并返回冲突 | P04-A已实现；管理权限及双版本检查 |
+| POST `/schedule-revisions/{revisionId}/publish` | 一次正式发布当前草稿 | P04-A已实现；事务内重新校验，发布后不支持替换 |
 | POST/DELETE `/matches/{matchId}/scorekeeper-lease` | 获取/释放主记分租约 | 被分配 SCORER；P05 |
 | POST `/matches/{matchId}/scorekeeper-lease/renew` | 续约 | 同主记分端及栅栏版本；P05 |
 | POST `/matches/{matchId}/commands` | 开始/事件/校时/撤销/结束计分 | SCORER，租约、幂等、状态、版本；P05 |
@@ -137,14 +137,29 @@ P02没有删除、任意改赛事status、邮件验证、密码重置、工作�
 
 邀请token只在URL fragment传递，首次加载及hashchange读取后立即清除，不进入localStorage/sessionStorage；后收到的邀请不会被旧接受请求的晚返回清除。用户主动切换机构／球队工作空间进入对应首页，后台刷新授权保留合法详情路径，球队上下文不会显示另一球队资料。邮箱尚未验证，不能按email认领邀请；没有邮件发送、微信身份、身份证核验、保险文件上传、支付或OBS服务。
 
-## 7. P04-A排赛分支合同（尚未验收）
+## 7. P04-A单循环排赛实施契约（DONE / MAIN）
 
-精确DTO在packages/contracts/index.d.ts；P04源自已验收main bf820d8的独立分支feat/P04-scheduling。当前SchedulingService/Controller与003已本地整合，API类型/构建及69项源码检查通过；真实PG、UI和浏览器尚未完成，不能当main已交付。完整批准范围见[任务卡第11节](tasks/P04-A.md)。
+精确DTO见[共享契约](../packages/contracts/index.d.ts)。[PR #4](https://github.com/xyq-dev/small-city-basketball/pull/4)合并为main `9fc9b3019eeef52d5b7a66643b01f0fe993af09f`，代码 `7336bfa01a6a3b6afb08dd2c90260f8497b1239e` 经[首轮CI39737812114](https://github.com/xyq-dev/small-city-basketball/actions/runs/39737812114)全部成功：158项源码／组件／HTTP检查、68项独立PG、真实PG18.6重启、12项Mock和8项API浏览器。001→002→003已在隔离测试库执行及复跑校验，没有生产部署或生产Migration。历史阶段计数见[TESTING](TESTING.md)。
 
-- 仅2–32支freeze球队单回合ROUND_ROBIN；其他format明确unsupported，不降级。读取原RegistrationFreezeData，规范排序仅用于稳定hash和seed重放，长期成员不能改来源。
-- 机构共享Court分页/meta.canCreateCourt，写限OWNER/ADMIN；赛事排赛读写按实际staff/capabilities，球队grant不授后台权限。
-- /courts GET/POST、/courts/:id PATCH；/events/:eventId/scheduling GET；/events/:eventId/schedule-revisions POST；/schedule-revisions/:id GET、/allocations PUT、/validate POST、/publish POST；/events/:eventId/matches GET。均以前缀/v1/orgs/:orgId，Origin和输入白名单沿P02。
-- 创建/重抽返回ScheduleRevisionData；全量allocations精确覆盖fixtureKey，expectedEventVersion与expectedRevisionVersion各自CAS，成功两者递增；validate只读返回ScheduleValidationData，不修改版本。publish返回新的EventSchedulingData，事务内重算并检查实际占用，不能复用旧validation作为凭证。
-- 首次创建expectedEventVersion；重抽必填原因，新seed/new revision，旧SUPERSEDED只读。发布后拒绝编辑、重抽及第二份发布；未实现自动排时、完整淘汰/分组、改期或公开/小程序赛程。
-- 合法但冲突的发布409 SCHEDULE_CONFLICT，details.conflicts；validate200 valid=false；字段/时间错误422、版本/状态409、不可访问资源404。外部预约仅含本方fixture/resource/time，不返回其他赛事ID/名称/名单。
-- RR_CIRCLE_V1、inputHash/pairingHash/publicationHash序列化与已知向量以scheduling-domain.ts及独立测试为准；seed为server256bit十六进制，普通业务来源不是授权凭据。比赛预计占用与实际记分时钟分离。
+以下路径均省略 `/v1/orgs/{orgId}`，继续执行当前会话、机构成员、实际赛事分配及Origin守卫；球队grant不授后台排赛权限。OWNER/ADMIN或该场实际EVENT_MANAGER可生成、重抽、分配、校验和发布，其他已分配工作人员只读；capabilities由服务端逐资源返回。
+
+| 方法与路径 | 输入、响应与状态 |
+|---|---|
+| GET/POST `/courts`；PATCH `/courts/{id}` | 机构共享Court；仅OWNER/ADMIN创建、改名或改ACTIVE/DISABLED，name去首尾空白后1–80，机构内lower名称唯一；列表meta.capabilities.canCreateCourt。停用仍有未来或进行中正式预约的场地409 COURT_HAS_RESERVATIONS |
+| GET `/events/{eventId}/scheduling` | EventSchedulingData：event、freeze摘要、currentRevision、publication、support及capabilities |
+| POST `/events/{eventId}/schedule-revisions` | expectedEventVersion、freezeId、algorithmVersion RR_CIRCLE_V1、policy；创建／重抽201 ScheduleRevisionData。重抽必填redrawReason1–500，新seed和新revision，旧稿SUPERSEDED只读；previousRevisionId保留历史链 |
+| GET `/schedule-revisions/{id}` | 当前或历史ScheduleRevisionData，批量读取source、policy、轮次／轮空、participants和至多496场fixtures；eventVersion是当前赛事版本，不能用freeze.eventVersion替代 |
+| PUT `/schedule-revisions/{id}/allocations` | expectedEventVersion、expectedRevisionVersion及精确覆盖全部fixtureKey的allocations；每项courtId/startsAt同时null表示未分配。只能改当前DRAFT；成功递增赛事和revision版本，200返回新ScheduleRevisionData |
+| POST `/schedule-revisions/{id}/validate` | 双版本，200 ScheduleValidationData，包含精确版本、checkedAt、valid和conflicts；只读，不修改版本 |
+| POST `/schedule-revisions/{id}/publish` | 双版本，事务内重新验证后200返回新EventSchedulingData；唯一event publication，正式场次、预约、PUBLISHED和赛事REGISTRATION_CLOSED→SCHEDULED/version及audit同事务 |
+| GET `/events/{eventId}/matches` | ScheduledMatchData分页，按startsAt/id正序稳定读取正式场次；暂无公开或球队grant读取路径 |
+
+Court及matches列表默认20、最大100，游标绑定当前机构、用户和资源。前端逐页读完才成功，后页失败不退Mock。Court改名不改变已发布courtName快照，服务没有Court删除接口。
+
+仅支持2–32支不可变freeze球队单回合ROUND_ROBIN。服务端256bit十六进制seed持久化，先按entryId ASCII规范化，再按SHA256(seed+'|'+entryId)排序并用RR_CIRCLE_V1轮转；奇数轮空不生成假比赛。inputHash／pairingHash／publicationHash的固定序列化及已知向量见[算法](../apps/api/src/scheduling-domain.ts)和[源码测试](../apps/api/src/scheduling-domain.test.ts)。发布时从原freeze、policy和seed重算来源、轮次和双方，并核对预计占用时长。长期成员变化不修改来源；seed不是授权凭据。
+
+SchedulePolicy必须明确slotDurationMinutes整数1–1440、minRestMinutes整数0–43200、minLocalDayGap整数0–365及1–200个courtWindows。输入时间严格验证真实日历和明确偏移后归一UTC；同Court窗口不能重叠，server计算endsAt。场次须完整落在窗口及Asia/Shanghai赛事日期内，结束恰为末日次日00:00允许。同赛事按前场结束计算休息、按本地开赛日计算日期差；跨赛事同canonical Team只保证不重叠，不宣称协调不同休息政策。
+
+合法但未分配、越窗口或存在冲突的分配可保存草稿，草稿不占正式资源；发布必须全部通过。冲突码为UNASSIGNED、OUTSIDE_WINDOW、OUTSIDE_EVENT_DATES、COURT_DISABLED、COURT_OVERLAP、TEAM_OVERLAP、MIN_REST和MIN_LOCAL_DAY_GAP。validate返回200 valid=false；合法分配但发布冲突409 SCHEDULE_CONFLICT并附details.conflicts；双CAS错误409 VERSION_CONFLICT，旧稿409 SCHEDULE_REVISION_NOT_CURRENT，重复发布409 SCHEDULE_ALREADY_PUBLISHED；非法字段／时间422，不可见或越租户Court404。其他状态错误按具体守卫返回INVALID_SCHEDULING_STATE等稳定业务码，不能把所有状态错误一概算409。
+
+发布前重算所有内部及本机构已发布Court/Team占用；validate不是发布凭证。外部赛事冲突只返回本方fixture/resource/time，不泄露另一赛事ID、名称或名单。一次发布后不能编辑、重抽或再次发布；不实现自动排时、其他赛制、改期／取消占用、记分／赛果、公开赛程、小程序或OBS。预计场地占用与实际比赛时钟分离，机构内资源检查不覆盖跨机构同一物理球场。

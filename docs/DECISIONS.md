@@ -52,4 +52,6 @@
 锁语义参考[PostgreSQL行锁文档](https://www.postgresql.org/docs/current/explicit-locking.html)，密码原语参考[Node.js crypto文档](https://nodejs.org/api/crypto.html)。这些资料支持设计选择，实际通过与否以本项目运行记录为准。
 
 - D017（已实施／已验证，P03-A）：外部领队账号与独立球队grant、单次绑定邀请、追加不可变名单、独立审核及最终freeze。首轮/第二轮浏览器失败已修正，100项、44PG、重启及12Mock+6API均于CI39735150535通过，PR3合并1c4b352。列表仅摘要，详情独立授权；邀请消费含同文档导航及旧响应保护。保险文件/微信尚未连接。
-- D018（已批准设计／待实施，P04-A）：单循环2–32队，server seed的可复现RR_CIRCLE_V1，冻结来源及独立排赛policy，canonical机构Court和Team跨赛事时间约束，org_schedule_mutex与DB排他防并发冲突。当前工作稿及CAS、重抽保留旧稿、一次不可变正式发布；独立SchedulingService复用基础ApplicationService，不进行大范围认证重构。精确批准合同、时长/休息边界和分工见P04-A第11节；其他赛制、自动排时及发布后改期后续分卡，不能因计划存在宣称实现。
+- D018（已实施／已验证，P04-A）：单循环2–32队，server seed的可复现RR_CIRCLE_V1，冻结来源及独立排赛policy，canonical机构Court和Team跨赛事时间约束，org_schedule_mutex与DB排他防并发冲突。当前工作稿及CAS、重抽保留旧稿、一次不可变正式发布；独立SchedulingService复用基础ApplicationService，不进行大范围认证重构。精确批准合同、时长/休息边界和分工见P04-A第11节；其他赛制、自动排时及发布后改期后续分卡，不能因计划存在宣称实现。
+
+D018验收补记：PR4于main9fc9b30整合，CI39737812114首轮158项、68真实PG、实际重启与12Mock+8API浏览器全部通过。003仅隔离库执行；自动CodeReview completed无finding、独立静态审查CLEAR。完整P04不因此关闭，其他赛制/优化/改期另卡。

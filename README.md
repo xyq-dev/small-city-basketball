@@ -6,9 +6,9 @@
 
 ## 当前状态
 
-2026-10-22：P01、P02及P03-A均为 **DONE / MAIN**。[PR3](https://github.com/xyq-dev/small-city-basketball/pull/3)已合并，业务基线`1c4b352e4277af6a418ae46908d1aed0fcb01827`。按[开发说明](docs/DEVELOPMENT.md)运行显式Mock，或连接真实PostgreSQL的Web后台；身份/机构/赛事、外部领队邀请、球队成员、不可变报名名单、独立审核与冻结已验收。
+2026-10-22：P01、P02、P03-A及P04-A均为 **DONE / MAIN**。[PR4](https://github.com/xyq-dev/small-city-basketball/pull/4)已合并，业务基线`9fc9b3019eeef52d5b7a66643b01f0fe993af09f`。按[开发说明](docs/DEVELOPMENT.md)运行显式Mock或真实PostgreSQL Web后台；已支持身份/机构/赛事、外部领队邀请、报名审核/冻结，以及2–32队单循环、共享场地/时间冲突检查和一次正式发布。
 
-[最终CI39735150535](https://github.com/xyq-dev/small-city-basketball/actions/runs/39735150535)通过100项单元/组件/HTTP、44项独立真实PG、12项Mock+6项真实API桌面/手机浏览器及构建，实际PG18.6重启保留授权、名单、freeze、审计及迁移校验和。证据见[P03-A交接](docs/handoffs/P03-A.md)与[TESTING](docs/TESTING.md)。001/002只在隔离测试库执行，没有生产部署、保险文件、微信、OBS或云服务接入。
+[CI39737812114](https://github.com/xyq-dev/small-city-basketball/actions/runs/39737812114)通过158项单元/组件/HTTP、68项独立真实PG、12Mock+8API官方桌面/手机浏览器及构建，实际PG18.6重启保留授权、名单、freeze、正式赛程/预约、审计及迁移校验和。证据见[P04-A交接](docs/handoffs/P04-A.md)及[TESTING](docs/TESTING.md)。001–003只在隔离测试库执行，没有生产、保险文件、微信、OBS或云服务接入。
 
 ## 首版目标范围
 
@@ -34,6 +34,6 @@ OBS 负责采集、导播和推流。平台提供只读的赛事比分包装页�
 - [当前状态与下一项任务](docs/CURRENT_STATUS.md)
 - [开发协作规则](AGENTS.md)
 
-**接续任务：[P04-A单循环排赛](docs/tasks/P04-A.md)**，状态按任务卡实时核验，目前只完成设计合同。全P03仍有资料/小程序范围，完整排赛、记分和OBS未完成。用户已授权项目范围内开发与同步，具体边界见AGENTS。Mock刷新重置；API使用真实数据库，失败不会静默退回Mock。
+**接续任务：P05-A基础记分、独立确认与私有快照**，精确范围/状态按任务看板及当前卡核验。完整P03/P04仍有资料、小程序、其他赛制/自动排时/改期范围，记分、榜单和OBS尚未完成。用户已授权项目范围内开发与同步，见AGENTS；Mock刷新重置，API失败不回Mock。
 
 新 AI 会话先读 `AGENTS.md`、`docs/CURRENT_STATUS.md`、`docs/TASKS.md`，再读取分配到的任务卡；不要凭旧对话判断当前进度。

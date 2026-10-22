@@ -4,19 +4,21 @@
 
 ## main已整合
 
-「小城市篮球」私有仓库 `xyq-dev/small-city-basketball`。当前业务基线为 `main@1c4b352e4277af6a418ae46908d1aed0fcb01827`；后续文档提交从Git历史读取。
+「小城市篮球」私有仓库 `xyq-dev/small-city-basketball`。当前业务基线为 `main@9fc9b3019eeef52d5b7a66643b01f0fe993af09f`；后续文档提交从Git历史读取。
 
 - 开发总文档、四组UI概念图、多AI认领和交接规范已建立。
 - P01机构后台四页Mock原型已通过PR1整合；P02持久身份、机构、赛事基础及API模式已通过PR2整合。
 - **P03-A Web球队、报名审核与名单冻结已通过[PR3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并，DONE / MAIN。** 代码c2d96b2f2b3801bedcb7e73258b48f5d05c88a83。外部领队个人账号及球队grant独立于机构成员；一次邀请、长期成员、不可变报名版本、独立审核、关闭后指定补交、名单冻结和撤权均已实施。当前领队及最近提交人不能自审，OWNER也不例外。
 
-[Application checks 39735150535](https://github.com/xyq-dev/small-city-basketball/actions/runs/39735150535)全部成功：格式、完整类型、100项单元/组件/HTTP检查（admin75+api25）、44项独立真实PG场景（P02原20+P03新增24）、12项Mock与6项真实API桌面/手机浏览器、两端构建。实际PostgreSQL18.6重启后会话、赛事、授权、不可变名单、freeze、审计及迁移校验和保留；官方Chromium151，手机为模拟尺寸与输入，未验证Safari/微信真机。
+- **P04-A单循环排赛已通过[PR4](https://github.com/xyq-dev/small-city-basketball/pull/4)合并，DONE / MAIN。** 代码7336bfa01a6a3b6afb08dd2c90260f8497b1239e。2–32队可复现对阵、机构共享Court、手工时间分配、跨赛事Court/Team冲突、休息/日期差、重抽历史及一次不可变发布已实施；其他赛制、自动排时和发布后改期仍未完成。
 
-Migration001/002已在隔离测试库执行、复跑及核验校验和，未操作生产数据库。首两轮浏览器失败、定位修复、自动review三项意见处理及独立最终审查见[P03-A交接](handoffs/P03-A.md)。自动review状态以PR为准，不能把运行中或无新增finding当作通过。视觉截图仅是合成HTTP布局证据，不能替代真实业务检查。
+[Application checks 39737812114](https://github.com/xyq-dev/small-city-basketball/actions/runs/39737812114)首轮全部成功：格式、完整类型、158项单元/组件/HTTP（admin89+api69）、68项独立真实PG（P02原20+P03新增24+P04新增24）、12项Mock与8项真实API桌面/手机浏览器、两端构建。实际PG18.6重启保留session、赛事/授权、名单/freeze、正式赛程/预约、审计及迁移校验和。官方Chromium151，手机是模拟尺寸/输入，未验证Safari/微信真机。
+
+001/002/003已在隔离测试库执行、复跑核验，没有生产DB或生产执行。P04独立API/SQL/UI静态审查无开放阻断；GitHub自动CodeReview在7336bfa已completed且无finding，自动security review未运行，不能混为同一检查。P03前两轮失败及修复保留历史。完整证据见[P04-A交接](handoffs/P04-A.md)、[P03-A交接](handoffs/P03-A.md)；截图仅合成HTTP布局证据。
 
 ## 当前重点
 
-**P04-A：单循环对阵、手工排时与一次正式发布** 已从main文档bf820d8建立API/UI/PG独立worktree认领，IN_PROGRESS / LOCAL_ONLY；API先稳定合同，源码、003和验收尚未完成。范围及路径见[任务卡](tasks/P04-A.md)与[检查点](handoffs/P04-A.md)。P03整体仍部分完成；身份证/保险文件、微信、云直播及OBS未连接。P04其余赛制、记分/赛果与内容交付尚未实施，完整办赛闭环及生产部署未验收。默认Mock与显式API模式分别验收；API错误不能回退Mock。
+下一卡 **P05-A基础记分、独立确认与私有快照** 将从已发布比赛推进，精确规则、命令/租约、当前授权及恢复流程先按任务卡裁定，不把设计当代码。P03整体仍部分，P04整体仍有其他赛制/自动排时/改期；身份证/保险文件、微信、云视频及OBS未连接。记分、正式榜单、公开观赛和生产部署尚未验收。默认Mock与API分别验收，API错误不能回退Mock。
 
 用户已明确“全部授权你”，项目范围内开发、Git、审查后合并、测试库迁移及可用环境发布可继续，不重复请求已有授权；未配置生产设施、真实第三方账号和付费预算不视为已有条件。文档在开工、接口变化、检查点、验证与整合时更新，不存在无人值守自动同步服务。
 

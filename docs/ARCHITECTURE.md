@@ -1,28 +1,28 @@
 # 技术架构
 
-设计版本：0.1；更新：2026-10-22；状态：P01、P02、P03-A已整合main，DONE / MAIN；真实Web球队报名、审核及冻结已验收。全P03尚未完成，P04无业务代码，P05/P06为目标设计。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
+设计版本：0.1；更新：2026-10-22；状态：P01、P02、P03-A、P04-A已整合main，DONE / MAIN；真实Web报名冻结及单循环排赛已验收。全P03和全P04尚未完成，P05/P06为目标设计。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
 
 ## 1. 结构与实施边界
 
-采用TypeScript模块化单体。P01机构后台四页保留显式Mock模式；P02已接通NestJS、pg参数化SQL和真实PostgreSQL，完成注册／登录／退出、持久会话、机构与赛事授权、草稿创建／读取／编辑及审计。P03-A进一步实现外部领队授权、球队/成员、不可变报名revision、独立审核及freeze。保险文件、球员本人资料绑定、小程序、排赛、记分与直播仍未实现，不能据此宣称完整办赛平台完成。
+采用TypeScript模块化单体。P01机构后台四页保留显式Mock模式；P02已接通NestJS、pg参数化SQL和真实PostgreSQL，完成注册／登录／退出、持久会话、机构与赛事授权、草稿创建／读取／编辑及审计。P03-A进一步实现外部领队授权、球队/成员、不可变报名revision、独立审核及freeze。P04-A新增共享场地、可复现单循环、手工排时、冲突检查和一次正式发布。保险文件、球员本人资料绑定、小程序、记分与直播仍未实现，不能据此宣称完整办赛平台完成。
 
-当前交付基线为PR #3的main整合提交 `1c4b352e4277af6a418ae46908d1aed0fcb01827`；代码head `c2d96b2f2b3801bedcb7e73258b48f5d05c88a83` 经CI39735150535通过。启动见[开发说明](DEVELOPMENT.md)，验证边界见[TESTING](TESTING.md)。没有生产部署或生产数据库。
+当前交付基线为[PR #4](https://github.com/xyq-dev/small-city-basketball/pull/4)的main整合提交 `9fc9b3019eeef52d5b7a66643b01f0fe993af09f`；代码head `7336bfa01a6a3b6afb08dd2c90260f8497b1239e` 经[CI39737812114](https://github.com/xyq-dev/small-city-basketball/actions/runs/39737812114)通过。启动见[开发说明](DEVELOPMENT.md)，验证边界见[TESTING](TESTING.md)。没有生产部署或生产数据库。
 
 | 部分 | 选择 | 边界 |
 |---|---|---|
 | 小程序 | Taro + React + TypeScript | 观赛、球队、报名、个人资料 |
-| 机构后台 | React + Vite + TypeScript | 赛事四页保留Mock；真实API模式另有球队、领队及报名审核/冻结，失败不退Mock |
+| 机构后台 | React + Vite + TypeScript | 赛事四页保留Mock；真实API模式另有球队、报名冻结、机构场地和单循环排赛，失败不退Mock |
 | 现场工作台 | React + Vite + TypeScript | 记分、赛事操作；与普通观众界面分开 |
 | 包装页面 | Web 透明页面 | OBS 浏览器源及大屏，只读公开投影 |
-| API | NestJS；P02采用pg参数化SQL | 身份、授权、赛事及P03-A报名/冻结已验收；比赛模块后续实现 |
+| API | NestJS；P02采用pg参数化SQL | 身份、授权、报名冻结、P04-A排赛与正式计划已验收；记分与赛果后续实现 |
 | 数据 | PostgreSQL | 事务、版本、约束；存储真实业务事实 |
 | 文件与视频 | 后续选择对象存储、云直播及点播 | 业务保存文件元数据及授权引用，不将视频存入数据库 |
 
 main包含 `apps/admin`、`apps/api`、`packages/contracts`、根workspace及锁文件、测试和CI。Mock通过 `apps/admin/src/domain` 的内存repository运行并刷新重置；API模式通过会话与HTTP adapter读写真实数据，令牌使用HttpOnly Cookie，不存浏览器脚本可读存储。逐赛事 `permissions.canEditDraft` 来自服务端，客户端不以全局角色代替实际授权。
 
-`apps/scorekeeper`、`apps/miniprogram`、`apps/overlay`仍为后续规划。`apps/admin`当前为机构工作台，平台运营后台未实现；`packages/contracts`已承载会话、机构、赛事及球队/报名/冻结DTO，`packages/ui`待实际复用时建立。P03-A落地于registration服务/控制器、admin registration页面及迁移002；P04截至当前交付基线没有代码，不预建无用模块或过早拆微服务。
+`apps/scorekeeper`、`apps/miniprogram`、`apps/overlay`仍为后续规划。`apps/admin`当前为机构工作台，平台运营后台未实现；`packages/contracts`已承载会话、报名冻结、Court、排赛规则／修订／冲突及正式比赛DTO，`packages/ui`待实际复用时建立。P03-A落地于registration服务/控制器、admin registration页面及迁移002；P04-A落地于独立SchedulingService/Controller、admin scheduling页面和HTTP adapter及迁移003。SchedulingService复用ApplicationService的事务、会话、机构与审计helpers，不继承RegistrationService；仍使用现有PostgreSQL连接池，不拆分独立微服务。
 
-目标逻辑模块为Identity、Organizations、Events、Teams、Registration、Scheduling、Scoring、PublicRead、Broadcast、Entitlements、Audit。其中身份、机构、赛事、球队及Web报名/审计已有实现，Scheduling等后续模块不能因出现在此列表而视为已落地。模块通过明确的应用接口调用；领域模块不依赖 HTTP 控制器、数据库 ORM 或前端组件。统一契约只放 DTO、枚举和公开类型，不打包凭据及数据库内部模型。
+目标逻辑模块为Identity、Organizations、Events、Teams、Registration、Scheduling、Scoring、PublicRead、Broadcast、Entitlements、Audit。其中身份、机构、赛事、球队、Web报名及单循环Scheduling/审计已有实现；完整Scheduling、Scoring、PublicRead和Broadcast等仍有后续范围，不能因出现在列表中便视为完成。模块通过明确的应用接口调用；领域模块不依赖 HTTP 控制器、数据库 ORM 或前端组件。统一契约只放 DTO、枚举和公开类型，不打包凭据及数据库内部模型。
 
 ## 2. 身份与机构隔离
 
@@ -30,6 +30,7 @@ P02已实现工作人员机构/赛事授权；P03-A已实现外部个人账号�
 
 - User 是登录身份；OrganizationMembership 是机构身份；EventStaff 是指定赛事或比赛的工作授权。平台权限、机构权限和球队身份不能互相替代。
 - 工作人员走机构成员及实际赛事分配；P03-A领队通过有效TeamAccessGrant管理本队，撤权后每请求重新校验。邀请消费核验目标账号、令牌、时效、用途及邀请人当前资格，不复活已停用grant，不产生机构后台权限。后续球员本人绑定另行实现；不能把全部机构私有接口都套用工作人员成员守卫。
+- P04-A场地写仅OWNER/ADMIN；排赛写按该赛事实际EVENT_MANAGER或OWNER/ADMIN授权，其他已分配工作人员只读。仅有TeamAccessGrant的领队不能访问后台排赛；前端按资源capabilities显示动作，服务端每请求重查。
 - 机构范围的私有业务资源都有 `orgId`，全局身份与平台配置单独建模。服务器从可信会话取得操作者，再验证路径机构、资源归属及具体动作权限；不信任客户端传入的角色或 `orgId`。
 - 同一事务内的赛事、报名、名单、场次等引用必须属于同一机构。数据库复合外键与应用查询同时约束归属；跨机构访问按不存在处理。
 - 首版长期球队档案由机构维护。跨机构参赛通过明确授权导入参赛快照，不开放任意跨租户 JOIN；全平台统一球队身份不是首版前置条件。
@@ -38,7 +39,11 @@ P02已实现工作人员机构/赛事授权；P03-A已实现外部个人账号�
 
 ## 3. 写入、事件与实时读取
 
-P02已验证赛事CAS及审计原子性；P03-A报名/审核/冻结持Event锁，名单和grant操作按统一Team锁序串行，冻结由服务端获批revision生成并与审计同事务提交。PG/API重启后授权、名单及freeze保留，具体SQL和证据见DATA_MODEL与TESTING。以下比赛事件、主记分租约和实时投影属于P05目标，尚未实现。
+P02已验证赛事CAS及审计原子性；P03-A报名/审核/冻结持Event锁，名单和grant操作按统一Team锁序串行，冻结由服务端获批revision生成并与审计同事务提交。PG/API重启后授权、名单及freeze保留。
+
+P04-A工作稿引用不可变freeze，保存生成种子、完整对阵、规则与当前修订指针；编辑同时检查Event.version和revision.version。发布使用机构排赛互斥锁，并由同机构Court/Team时间排他约束共同防止跨赛事并发重复占用。服务器从已保存工作稿重新核验对阵、时间、权限和版本，同事务创建正式比赛／预约／发布快照、推进SCHEDULED并写审计；检查接口只是只读提示，不是发布凭证。一次发布后计划不可改写，场地改名不覆盖courtName快照。
+
+迁移003已在隔离测试库执行并验证；实际PG/API重启后已发布赛程、Court/Team预约及审计保留，生产库未执行。具体结构和证据见[DATA_MODEL](DATA_MODEL.md)、[TESTING](TESTING.md)及[P04-A交接](handoffs/P04-A.md)。以下比赛事件、主记分租约和实时投影属于P05目标，尚未实现。
 
 普通编辑使用资源 `version` 做乐观并发控制。比赛写入额外要求主记分租约、幂等键和连续的比赛版本；一个时刻仅一个有效主写端。租约转移递增 `fencingToken`，旧端即使重连也不能继续写入。
 
@@ -48,7 +53,7 @@ P02已验证赛事CAS及审计原子性；P03-A报名/审核/冻结持Event锁�
 
 ## 4. 计时与断网
 
-本节为P05/P06设计，不是P01/P02/P03-A已交付能力。
+本节为P05/P06设计，不是P01/P02/P03-A/P04-A已交付能力。
 
 比赛计时保存 `period`、`remainingMs`、`running`、`anchorServerTime`、`clockVersion`。客户端根据服务器时差及锚点平滑显示，暂停和校时均产生可追溯的命令；不能每秒写一次数据库，也不能让 OBS 的本地计时成为权威。
 
