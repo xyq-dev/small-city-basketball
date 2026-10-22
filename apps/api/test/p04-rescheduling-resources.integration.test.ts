@@ -228,8 +228,8 @@ describe('P04-B shared resource and scoring races on real PostgreSQL', () => {
       for (const scoringFirst of [true, false]) {
         const fixture = await published(h, h.teams.slice(0, 2), { periodDurationSeconds: 600 });
         const id = fixture.matches[0]!.id;
+        await assign(h, id, h.otherOwner);
         if (phase === 'START_MATCH') {
-          await assign(h, id, h.otherOwner);
           await prepare(h, id);
         }
         const lease = phase === 'START_MATCH' ? await acquire(h, id) : undefined;

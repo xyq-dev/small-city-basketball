@@ -548,7 +548,14 @@ describe('P04-B current scheduling and immutable history on real PostgreSQL', ()
       ),
     );
     expect(started.snapshot.status).toBe('LIVE');
-    expect(started.snapshot.clock.clockVersion).toBe(prior.snapshot!.clock.clockVersion + 1);
+    // START_MATCH admits scoring; CLOCK_START is the separate authoritative timer action.
+    expect(started.snapshot.clock).toEqual(fresh.snapshot!.clock);
+    expect(started.snapshot.version).toBe(fresh.match.version + 1);
+    expect(started.snapshot.lastEventSeq).toBe(fresh.snapshot!.lastEventSeq + 1);
+    expect(started.receipt).toMatchObject({
+      type: 'START_MATCH',
+      appliedVersion: fresh.match.version + 1,
+    });
   });
 
   test('LIVE, pending, final and reopened results cannot change the plan', async () => {
@@ -573,7 +580,15 @@ describe('P04-B current scheduling and immutable history on real PostgreSQL', ()
   test('a prior START_MATCH remains a prohibition even if a corrupted row is labelled READY again', async () => {
     const fixture = await published(h, h.teams.slice(0, 2), { periodDurationSeconds: 600 });
     const live = await liveMatch(h, fixture);
-    await act(h, live.matchId, h.otherOwner, { type: 'CLOCK_PAUSE', payload: {} }, live.lease);
+    expect(live.snapshot.clock.running).toBe(false);
+    expect(
+      (
+        await h.api.pool.query(
+          "SELECT type FROM scoring_events WHERE org_id=$1 AND match_id=$2 AND type='START_MATCH'",
+          [h.owner.orgId, live.matchId],
+        )
+      ).rows,
+    ).toEqual([{ type: 'START_MATCH' }]);
     const client = await h.api.pool.connect();
     try {
       await client.query('BEGIN');
