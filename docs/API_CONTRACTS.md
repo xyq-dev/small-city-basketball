@@ -1,6 +1,6 @@
 # API 契约
 
-目标契约：v0.2；更新：2026-10-22。P01 Mock已整合；P02身份/机构/赛事接口在分支实现并验证中，尚未完成真实数据库验收。以下通用目标路由中P03–P06仍为规划；本轮实际边界见第5节。
+目标契约：v0.2；更新：2026-10-22。P01、P02已整合main，P02身份／机构／赛事API及真实PostgreSQL验收通过；PR #2整合提交29c4ee4。以下通用目标路由中P03–P06仍为规划；本轮实际边界见第5节。
 
 ## 1. 通用约定
 
@@ -27,12 +27,14 @@ type CreateEventInput = {
   format: EventFormat;
 };
 // listEvents(filters)、getEvent(id)、createEvent(input)、updateDraftEvent(id,input,expectedVersion)
-// 返回 EventSummary/EventDetail，含 id、上述字段、status:'DRAFT'、version、createdAt、updatedAt。
+// 返回EventSummary/EventDetail，含id、上述字段、status、version、createdAt、updatedAt；新建固定DRAFT，列表/详情status使用EventStatus。
 ```
 
-`name` 去首尾空白后必填，长度1–80字符；`startDate/endDate` 必填且日期有序；`timezone` 在 P01 固定为 `Asia/Shanghai`；`format` 必填且在枚举内。`venueName` 可选，去首尾空白后最长100字符，空白或缺省归一为未设置；读取 DTO 使用 `venueName: string | null`，UI 对 null 显示“待定”。长度与显示文案跟随 [UI 规格](UI_SPEC.md)。服务端上线后重复执行相同业务校验；Mock 中的权限标签不是安全验收。创建只产生草稿，不能从表单直接发布、收费或开放报名。
+`name` 去首尾空白后必填，长度1–80字符；`startDate/endDate` 必填且日期有序；`timezone` 在 P01 固定为 `Asia/Shanghai`；`format` 必填且在枚举内。`venueName` 可选，去首尾空白后最长100字符，空白或缺省归一为未设置；读取 DTO 使用 `venueName: string | null`，UI 对 null 显示“待定”。长度与显示文案跟随 [UI 规格](UI_SPEC.md)。P02服务端已重复执行相同业务校验；Mock 中的权限标签不是安全验收。创建只产生草稿，不能从表单直接发布、收费或开放报名。
 
 ## 3. 目标路由清单
+
+除P02已实现路由外，下表仍是长期目标；P03-A尚未开工。实际P02权限与输入以第5节和共享契约为准，不推定报名、保险文件或邀请已可调用。
 
 下表私有路径均省略 `/v1/orgs/{orgId}`；资源 ID 需按其所属赛事/机构重新校验。
 
@@ -78,9 +80,9 @@ type CreateEventInput = {
 
 实时消息包含 `matchId`、`version`、`serverTime` 和有限投影。可采用 SSE 或 WebSocket，选型在 P05 定稿；有缺口、重连或模式变化时重拉完整快照。视频及 OBS 能力不成为记分命令成功的前置条件。
 
-## 5. P02 实施契约（分支中，验收随交接更新）
+## 5. P02 已整合契约
 
-使用 `packages/contracts` 的SessionData/EventData。事件字段沿P01，私有API的每个赛事额外返回 `permissions:{canEditDraft:boolean}`，依据该场真实授权及DRAFT计算；Mock允许省略。机构EVENT_MANAGER可能只分配某场SCORER，因此前端不能用全局角色推断编辑权；服务端再次执行动作授权。
+P02状态DONE / MAIN，范围已通过真实数据库和API浏览器验收；CI及交接见[TESTING](TESTING.md)。使用 `packages/contracts` 的SessionData/EventData。事件字段沿P01，私有API的每个赛事额外返回 `permissions:{canEditDraft:boolean}`，依据该场真实授权及DRAFT计算；Mock允许省略。机构EVENT_MANAGER可能只分配某场SCORER，因此前端不能用全局角色推断编辑权；服务端再次执行动作授权。
 
 | 方法与路径 | 输入/响应与权限 |
 |---|---|

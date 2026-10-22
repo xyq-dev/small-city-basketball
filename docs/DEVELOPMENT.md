@@ -1,106 +1,91 @@
 # 本地开发与验证
 
-更新：2026-10-22（Asia/Shanghai）。适用范围：P01 机构后台 Mock 原型。
+更新：2026-10-22（Asia/Shanghai）。适用范围：已整合的P01 Mock及P02真实API后台。P02通过[PR #2](https://github.com/xyq-dev/small-city-basketball/pull/2)合并，交付基线 `29c4ee4cf588e911b2e087224522b832b726d18e`；后续开工仍须核验最新HEAD和dirty。
 
-## 已整合代码与接手基线
+## 1. 获取与安装
 
-P01 代码提交为 `819818d2f9fcee972f4c2e7854800dc6ad2415bf`，任务分支 `feat/P01-organizer-console` 已推送；[PR #1](https://github.com/xyq-dev/small-city-basketball/pull/1) 已合并，`main` 整合提交为 `f15adb456c24302ce3d41587c41301e4c3931c6c`。状态 **DONE / MAIN**，仓库已包含应用、锁文件和验证工作流，可克隆运行。
-
-在自己选定的父目录执行：
+新目录可执行：
 
 ```sh
 git clone https://github.com/xyq-dev/small-city-basketball.git
 cd small-city-basketball
-git switch main
-```
-
-这是私有仓库，使用已获授权的 GitHub 身份和本机凭据；不要把凭据写进远端 URL 或聊天。已有 checkout 不重复克隆、覆盖或强制切换；先核验实际目录、分支、HEAD、dirty 和任务交接。上面的 SHA 是 P01 可复现基线，不是未来永远不变的最新 HEAD。
-
-本轮文档更新的根工作区已核验为 `feat/P02-foundation@e30bd20`，含 P02 契约初稿；后端与前端接入正通过独立 worktree 开发，尚未验收。运行稳定的 P01 时以已整合的 `main` 为准，不将活跃 P02 分支当作已交付成果。
-
-## 环境与安装
-
-本轮验证环境：Node `24.19.0`、npm `11.9.0`。根 `package.json` 声明 Node `>=22.12.0`；这不代表已对所有满足下限的版本逐一验证。当前优先沿用 Node 24，已执行的 CI 使用 Node 24。
-
-在实际项目根目录执行：
-
-```sh
 npm ci
-npm run dev
 ```
 
-浏览器打开终端实际输出的本地地址。需要固定端口时，可使用当前真实存在的 workspace 脚本：
+已有checkout先核验目录、远端、分支、HEAD、未提交改动，按任务要求更新，不重复克隆或强制覆盖。私有仓库使用已授权GitHub身份，不把凭据写入URL。使用Node24；package.json下限为22.12.0，不代表已逐一验证全部版本。
+
+## 2. 选择数据模式
+
+| 模式 | 用途 | 保存行为 |
+|---|---|---|
+| Mock | P01演示和界面验证，不需要数据库 | 内存数据，刷新重置；不采集真实人员资料 |
+| API | P02注册登录、机构授权、赛事草稿持久化 | 真实PostgreSQL；刷新和重启后仍可读取已提交数据 |
+
+无.env且未设置VITE_DATA_MODE时使用Mock，执行 `npm run dev` 即可。已有.env时先确认模式；设为 `VITE_DATA_MODE=mock` 才是明确的演示环境。API模式不能因连接失败、未授权或读取后页失败而退回Mock。
+
+## 3. 启动真实API模式
+
+复制根 `.env.example` 为 `.env`，替换密码占位值。DATABASE_URL中的密码须与POSTGRES_PASSWORD一致，DEV_SEED_PASSWORD仅用于可选开发seed；不要提交.env。
+
+准备本机PostgreSQL，或使用仓库Compose配置：
 
 ```sh
-npm run dev --workspace @small-city-basketball/admin -- --host 127.0.0.1 --port 5173 --strictPort
+docker compose up -d postgres
 ```
 
-P01 不需要 `.env`、API Key、数据库或后端服务。不要为运行演示填写真实参赛者资料。当前数据仅保存在内存，不写入 localStorage；刷新后恢复初始演示数据。
+确认数据库healthy后，在项目根目录执行：
 
-## 页面与操作检查
+```sh
+npm run db:migrate
+npm run dev:api
+```
 
-| 页面 | 路由 | 当前可用行为 |
+另一个终端执行：
+
+```sh
+npm run dev:admin
+```
+
+.env默认 `VITE_DATA_MODE=api`，API为 `127.0.0.1:3000`，Web为 `127.0.0.1:5173`。APP_ORIGIN必须精确匹配浏览器origin；改API端口时同步API_PROXY_TARGET。数据库凭据仅供服务端使用，不进入前端包。Compose是本地运行选项；已执行的真实数据库验收来自CI隔离PostgreSQL18.6，不把当前容器未执行的Compose命令写成已通过。
+
+在Web登录页注册机构账号，可进入自己的空赛事空间；P02未实现邮箱验证、微信登录或密码重置。可选执行 `npm run db:seed`，必须显式设置DEV_SEED_PASSWORD；只使用合成资料，seed幂等且不清库、不重置已有密码。API启动不自动迁移或seed。
+
+## 4. 主要页面
+
+| 页面 | 路由 | 行为 |
 |---|---|---|
-| 工作总览 | `/` | 演示指标、示例赛事、创建入口与规划模块入口 |
-| 赛事列表 | `/events` | 名称搜索、状态组合筛选、清空筛选、进入详情 |
-| 创建赛事 | `/events/new` | 必填、日期与长度校验，保存 DRAFT 草稿 |
-| 赛事详情 | `/events/{id}` | 展示本次演示记录；DRAFT 可进入编辑并保存新版本 |
+| 工作总览 | `/` | 当前模式及机构的赛事入口 |
+| 赛事列表 | `/events` | 名称/状态筛选、清空及详情导航 |
+| 创建赛事 | `/events/new` | 校验后创建DRAFT；API权限由服务端确认 |
+| 赛事详情 | `/events/{id}` | 读取草稿及按权限编辑；版本冲突有反馈 |
 
-先创建一届赛事，再核对详情、编辑及列表结果是否一致。取消创建/编辑应不保存未提交输入；不存在的赛事应给出恢复入口。新建记录刷新后消失属于已说明的内存演示行为，不是数据库写入失败。初始化的进行中/报名中赛事为合成数据，当前不提供真实状态流转。
+API模式的注册、登录、退出、机构切换和会话恢复在运行外壳中处理。Mock模式的示例赛事和刷新重置不能混入真实机构结果。报名、排赛、记分、保险文件、OBS和视频入口仍属规划，不因存在菜单而视为服务已接通。
 
-报名、排赛、人员权限、记分、支付、保险、直播与 OBS 页面目前为规划说明，不能据此认定相应服务已接通。服务失败与重试通过组件测试中的可注入 repository 验证，未增加面向真实用户的故障开关。
-
-## 本地检查命令
+## 5. 验证命令
 
 ```sh
 npm run format:check
 npm run typecheck
 npm test
 npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
-生产构建输出到 `apps/admin/dist`。如需查看构建结果，先完成 build，再执行：
+`npm test`覆盖不依赖数据库的单测、组件和HTTP行为。`npm run test:e2e`使用显式Mock模式，固定4173端口且不复用其他服务器；桌面与手机项目均为Chromium，手机是设备模拟，不等于Safari、微信或真机。
+
+真实数据库集成另执行 `npm run test:integration`：必须设置TEST_DATABASE_URL且数据库名以 `scb_test_` 开头，使用专门隔离库，禁止指向真实业务数据。API浏览器检查执行 `npm run test:api:e2e`，使用另一个隔离DATABASE_URL；配置先迁移并启动API3300和Web4273，APP_ORIGIN固定为 `http://127.0.0.1:4273`，不能复用其他服务。
+
+构建输出包含admin与api。仅预览admin静态构建可用：
 
 ```sh
 npm run preview --workspace @small-city-basketball/admin -- --host 127.0.0.1 --port 4173 --strictPort
 ```
 
-预览只在本机提供静态构建，不等于部署。用户已授权项目范围内的开发及发布操作；当前尚无已验证的真实服务器部署、持久化或生产可用性。
+静态预览不等于部署，API模式还需要相应同源代理及后端服务。实际检查数量、CI版本和持久化证据统一见[TESTING](TESTING.md)及[P02交接](handoffs/P02.md)，不在启动文档重复维护运行日志。
 
-## 端到端验证
+## 6. 当前边界与接续
 
-标准安装路径：
+P01、P02为DONE / MAIN。迁移001已在隔离测试库执行，没有生产数据库或生产部署；不把数据库重启验证当成灾备恢复。生产默认关闭自主注册，要求HTTPS及Secure Cookie，但生产环境尚未配置。
 
-```sh
-npx playwright install chromium
-npm run test:e2e
-```
-
-已通过的 Linux CI 使用 `npx playwright install --with-deps chromium`。`playwright.config.ts` 会在 `127.0.0.1:4173` 启动开发服务器；当前P02分支已显式固定Mock浏览器测试的模式并禁止复用其他服务器，避免读到API模式或旧页面；端口冲突时报告错误，不自动关闭其他服务。桌面和移动两个项目都使用 Chromium；移动项目是 iPhone 13 尺寸及输入方式模拟，不能算作 Safari 或真机验收。
-
-远端 [Application checks run 39728632742](https://github.com/xyq-dev/small-city-basketball/actions/runs/39728632742) / [job 119658281781](https://github.com/xyq-dev/small-city-basketball/actions/runs/39728632742/job/119658281781) 已成功完成官方 Chromium 安装和 E2E 12/12；不依赖 QA 浏览器替代路径。
-
-历史本地验证曾因代理返回无效 ZIP 而未能下载默认 Chromium `151`，随后用仓库外 QA Chromium `153.0.8010.0` 和 `PLAYWRIGHT_EXECUTABLE_PATH` 完成12项 E2E。保留该限制用于解释旧证据，不再作为官方路径未通过的当前结论。项目依赖与锁文件没有引入 QA Chromium。
-
-后续环境应优先使用上面的 Playwright 官方安装命令，不复制本机临时浏览器路径。若下载仍失败，记录错误和环境，不能把未安装视为测试通过。截图与失败 trace 位于测试输出目录；完整证据及本轮额外截图位置见 [P01 交接记录](handoffs/P01.md)。
-
-## 后续接入边界
-
-P02 已进入 IN_PROGRESS，当前根分支包含会话与机构基础契约；真实后端、认证、机构隔离和数据库仍未完成验收。P03–P06 尚未实施；Migration、记分同步、OBS 和云直播不在 P01 的运行链路中。后续按 [任务看板](TASKS.md) 逐项推进，不为启动 P01 提前搭建这些服务。
-
-## P02 分支运行方式（待真实数据库CI验收）
-
-只有包含P02代码的任务分支或整合后的main才有以下脚本。准备Node24及Docker，复制 `.env.example` 为 `.env`，修改两个密码占位值，并保持DATABASE_URL内密码与POSTGRES_PASSWORD一致。不要提交.env；当前容器无Docker，以下Compose启动步骤尚未在本机执行。
-
-```sh
-npm ci
-docker compose up -d postgres
-npm run db:migrate
-npm run dev:api
-```
-
-另一个终端运行 `npm run dev:admin`；根.env中的VITE_DATA_MODE=api通过同源代理访问业务服务。API默认127.0.0.1:3000，前端默认127.0.0.1:5173，APP_ORIGIN须与实际浏览器origin精确一致。更改API端口时同步API_PROXY_TARGET；环境加载不把数据库凭据打入前端包。
-
-在登录页创建机构账号即可建立自己的空赛事空间。可选执行 `npm run db:seed`，必须先显式设置DEV_SEED_PASSWORD，仅生成合成开发资料，不清库或重置已有密码。API启动不自动迁移或seed。生产默认关闭自主注册并要求HTTPS/Secure Cookie，当前没有生产部署。
-
-`npm test`仅本地纯逻辑/组件/无需DB的HTTP检查。`npm run test:integration`要求真实PostgreSQL的TEST_DATABASE_URL，数据库名必须scb_test_开头；`npm run test:api:e2e`使用另一个隔离DATABASE_URL，先迁移再启动两端，APP_ORIGIN固定http://127.0.0.1:4273。不要把这些检查指向真实业务库；执行结果见[P02交接](handoffs/P02.md)。
+下一项P03-A Web报名闭环为TODO／待开工。先读[当前状态](CURRENT_STATUS.md)、[任务看板](TASKS.md)和分配任务卡，再在独立任务分支实施；保险文件、微信、云服务及真实OBS均未接入。

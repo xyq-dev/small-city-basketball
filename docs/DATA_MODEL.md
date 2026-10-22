@@ -1,10 +1,10 @@
 # 数据模型与状态
 
-设计版本：0.1；更新：2026-10-22；状态：长期逻辑设计；P02最小SQL Migration已在任务分支编写，尚未在真实数据库执行，其他实体为目标名称。实际边界见第6节。
+设计版本：0.1；更新：2026-10-22；状态：P02最小SQL模型已合并main并在隔离测试库真实执行；其他实体仍为长期逻辑设计，尚未建表。实际边界见第6节。
 
 ## 1. 通用约束
 
-主键使用不透明 ID，具体生成策略在 P02 确定。时间戳使用 UTC，赛事保留 IANA `timezone` 用于展示和排期；`startDate/endDate` 是该时区的赛事日期，场次实际开球使用带时区时间戳。机构范围的业务资源含 `orgId`、创建/更新时间及必要的 `version`；User 等全局身份实体不强行绑定唯一机构。数据库不以本地日期字符串排序代替真实开球时间。
+P02主键使用服务端生成的UUID；后续实体沿用不透明ID原则。时间戳使用 UTC，赛事保留 IANA `timezone` 用于展示和排期；`startDate/endDate` 是该时区的赛事日期，场次实际开球使用带时区时间戳。机构范围的业务资源含 `orgId`、创建/更新时间及必要的 `version`；User 等全局身份实体不强行绑定唯一机构。数据库不以本地日期字符串排序代替真实开球时间。
 
 带机构范围的父表建立 `UNIQUE(orgId,id)`；子表用复合外键引用同机构父资源。名单、场次、事件还校验相同赛事归属。业务标识及唯一性以归一化结果约束，不只依赖前端查重。
 
@@ -62,14 +62,14 @@ P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引�
 
 优先建立成员 `(orgId,userId,status)`、赛事 `(orgId,status,startDate)`、报名 `(orgId,eventId,status)`、比赛 `(orgId,eventId,startsAt)`、场地时间检索及事件 `(matchId,seq)`。幂等唯一键包含机构、操作者、命令作用域及幂等键；只存业务所需的最小响应。具体数据库排他约束与锁策略在排赛实施前通过并发用例验证。
 
-必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。Migration 需独立任务编写、审查和授权执行，本轮均未发生。
+必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。后续Migration仍按独立任务编写、审查和授权执行。P02迁移001已执行的事实见下节，不把其他规划实体也标成已建表。
 
 ## 6. P02 最小持久化实施
 
-Migration `apps/api/migrations/001_p02_foundation.sql` 编写中已完成静态审查，允许在空隔离测试库执行；执行结果见[P02交接](handoffs/P02.md)，文件存在不代表数据库已经更新。P02使用pg参数化SQL，不引入ORM。
+Migration `apps/api/migrations/001_p02_foundation.sql` 已编写、审查并在隔离PostgreSQL18.6测试库真实执行，重复运行及校验和验证通过；PR #2已合并main。具体环境与证据见[P02交接](handoffs/P02.md)。没有生产数据库或生产执行记录，不能将测试执行称为生产已更新。P02使用pg参数化SQL，不引入ORM。
 
 实际表：users、organizations、organization_memberships、sessions、events、event_staff、audit_logs、auth_rate_limits。UUID由服务端生成，UTC时间，赛事日期读为YYYY-MM-DD字符串。角色与status有CHECK；机构内复合唯一/外键保证event_staff所属赛事和成员同机构；一个机构仅一个OWNER，P02接口禁止变更OWNER。
 
 写事务内锁会话/用户、机构、成员、赛事及必要分配；被撤权对象的更新与在途业务写按数据库锁串行。赛事FOR UPDATE后检查expectedVersion，成功递增version并同事务追加审计，审计失败回滚赛事变更。登录/退出也记录最小审计引用，不记录密码、令牌或完整请求。
 
-Migration runner使用事务advisory lock、文件名白名单及SHA-256校验和，重复执行核验并跳过，不在API启动自动运行。开发seed需显式DEV_SEED_PASSWORD，禁止production，幂等不清库、不重置已有密码；生产凭据与开发合成数据分开。当前没有生产数据库，真实PG验证将用GitHub CI隔离服务。
+Migration runner使用事务advisory lock、文件名白名单及SHA-256校验和，重复执行核验并跳过，不在API启动自动运行。开发seed需显式DEV_SEED_PASSWORD，禁止production，幂等不清库、不重置已有密码；生产凭据与开发合成数据分开。GitHub CI隔离PostgreSQL18.6已完成真实验证；数据库重启后会话、赛事、version、授权、审计及迁移校验和保留。当前没有生产数据库；重启持久化不是备份恢复或生产可用性验收。

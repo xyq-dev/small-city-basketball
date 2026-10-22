@@ -1,30 +1,32 @@
 # 技术架构
 
-设计版本：0.1；更新：2026-10-22；状态：P01 前端已整合到 main，DONE / MAIN；P02 IN_PROGRESS，后端尚未验收；P03–P06 为目标设计。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
+设计版本：0.1；更新：2026-10-22；状态：P01、P02已整合到main，DONE / MAIN；真实身份、机构授权及赛事持久化已验收，P03–P06为目标设计。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
 
 ## 1. 结构与实施边界
 
-整体目标采用 TypeScript 模块化单体。当前 P01 已在 main 建立 React + Vite + TypeScript 机构后台 Mock 原型，包含工作总览、赛事列表、创建赛事和赛事详情/草稿编辑。真正的认证、数据库、租户隔离、实时记分和直播仍在后续阶段，不能以隐藏菜单、前端筛选或内存版本校验代替服务器授权。
+采用TypeScript模块化单体。P01机构后台四页保留显式Mock模式；P02已接通NestJS、pg参数化SQL和真实PostgreSQL，完成注册／登录／退出、持久会话、机构与赛事授权、草稿创建／读取／编辑及审计。实时记分、直播与报名仍为后续能力，不能因基础后端通过而宣称完整办赛平台完成。
 
-P01 代码提交 `819818d2f9fcee972f4c2e7854800dc6ad2415bf` 已推送，PR #1 已合并，main 整合提交为 `f15adb456c24302ce3d41587c41301e4c3931c6c`。按 [本地开发说明](DEVELOPMENT.md) 可克隆并启动。当前文档工作区为 `feat/P02-foundation@e30bd20`，P02 契约已开始落地，独立 worktree 中的后端开发未完成验收；该任务分支不等于新的 main 交付。
+当前交付基线为PR #2的main整合提交 `29c4ee4cf588e911b2e087224522b832b726d18e`；代码head `63b94beee51d51b02f4bade7f36baba92edceb11` 经远端CI通过。启动见[开发说明](DEVELOPMENT.md)，验证边界见[TESTING](TESTING.md)。没有生产部署或生产数据库。
 
 | 部分 | 选择 | 边界 |
 |---|---|---|
 | 小程序 | Taro + React + TypeScript | 观赛、球队、报名、个人资料 |
-| 机构后台 | React + Vite + TypeScript | P01 四页 Mock 原型已合并 main；真实业务服务由 P02 继续接入 |
+| 机构后台 | React + Vite + TypeScript | 四页支持显式Mock和真实API模式；API失败不退回演示数据 |
 | 现场工作台 | React + Vite + TypeScript | 记分、赛事操作；与普通观众界面分开 |
 | 包装页面 | Web 透明页面 | OBS 浏览器源及大屏，只读公开投影 |
-| API | NestJS；P02采用pg参数化SQL | 统一业务规则、授权、事务和审计；当前开发中未验收 |
+| API | NestJS；P02采用pg参数化SQL | P02身份、授权、赛事与审计已验收；报名及比赛模块后续实现 |
 | 数据 | PostgreSQL | 事务、版本、约束；存储真实业务事实 |
 | 文件与视频 | 后续选择对象存储、云直播及点播 | 业务保存文件元数据及授权引用，不将视频存入数据库 |
 
-main 已建立 `apps/admin`、根 npm workspace/锁文件、单元与组件测试、`tests/e2e`、Playwright 配置及已通过远端运行的 CI 工作流。`apps/admin/src/domain` 包含接口、字段验证及内存 repository；应用通过 repository 入口读取/创建/编辑演示赛事，刷新即重置，不进行真实 API 调用，也不写浏览器持久化存储。
+main包含 `apps/admin`、`apps/api`、`packages/contracts`、根workspace及锁文件、测试和CI。Mock通过 `apps/admin/src/domain` 的内存repository运行并刷新重置；API模式通过会话与HTTP adapter读写真实数据，令牌使用HttpOnly Cookie，不存浏览器脚本可读存储。逐赛事 `permissions.canEditDraft` 来自服务端，客户端不以全局角色代替实际授权。
 
-`apps/api` 正在 P02 的独立 worktree 中开发，尚未完成验收；`apps/scorekeeper`（现场工作台）、`apps/miniprogram`、`apps/overlay` 仍为后续规划。`apps/admin` 后续承载机构与平台后台，当前仅机构后台原型。P02 任务分支已在 `packages/contracts` 建立会话、机构和赛事基础契约，尚不代表后端完成；`packages/ui` 仍在实际复用时再建立。不预建空应用或过早拆微服务。
+`apps/scorekeeper`、`apps/miniprogram`、`apps/overlay`仍为后续规划。`apps/admin`当前为机构工作台，平台运营后台未实现；`packages/contracts`已承载会话、机构和赛事DTO，`packages/ui`待实际复用时建立。P03-A Web报名闭环尚未开工，不预建无用模块或过早拆微服务。
 
 后端逻辑模块：Identity、Organizations、Events、Teams、Registration、Scheduling、Scoring、PublicRead、Broadcast、Entitlements、Audit。模块通过明确的应用接口调用；领域模块不依赖 HTTP 控制器、数据库 ORM 或前端组件。统一契约只放 DTO、枚举和公开类型，不打包凭据及数据库内部模型。
 
 ## 2. 身份与机构隔离
+
+P02已实现工作人员的机构及赛事授权。下列外部参赛者、公开投影和附件授权是后续目标，不表示已经有球员邀请或保险文件服务。
 
 - User 是登录身份；OrganizationMembership 是机构身份；EventStaff 是指定赛事或比赛的工作授权。平台权限、机构权限和球队身份不能互相替代。
 - 工作人员走机构成员及赛事分配授权；外部领队、球员走 `TeamAccessGrant`、本人参赛身份绑定及有效邀请授权，不要求先成为机构工作人员。接受球队/球员邀请不产生机构后台权限。每个动作明确允许哪条授权路径，不能把所有机构私有接口都写成“机构成员才可进入”。
@@ -36,6 +38,8 @@ main 已建立 `apps/admin`、根 npm workspace/锁文件、单元与组件测�
 
 ## 3. 写入、事件与实时读取
 
+P02已验证普通赛事编辑的版本CAS、授权撤销锁及审计同事务；以下比赛事件、主记分租约和实时投影属于P05目标，尚未实现。
+
 普通编辑使用资源 `version` 做乐观并发控制。比赛写入额外要求主记分租约、幂等键和连续的比赛版本；一个时刻仅一个有效主写端。租约转移递增 `fencingToken`，旧端即使重连也不能继续写入。
 
 比赛命令在同一事务中完成：鉴权及状态检查 → 校验租约和期望版本 → 保存追加事件 → 更新比分/统计投影 → 增加比赛版本 → 写审计及待发送事件。可采用事务 Outbox 保证提交后投递；Outbox 是后续实现方案，当前没有 worker。观众和 OBS 按单调版本消费快照/增量，发现版本缺口时重取快照，不靠消息到达顺序累加比分。
@@ -43,6 +47,8 @@ main 已建立 `apps/admin`、根 npm workspace/锁文件、单元与组件测�
 事件不直接删除或覆盖。撤销、更正追加补偿事件并引用原事件，投影统一重算受影响的数据；重复撤销被拒绝。未采集的统计字段保留 `null` 和采集模式，UI 显示“未统计”。确认赛果后才更新正式积分榜；更正已确认赛果必须重开、审计、重确认，并使受影响榜单重新计算。
 
 ## 4. 计时与断网
+
+本节为P05/P06设计，不是P02已交付能力。
 
 比赛计时保存 `period`、`remainingMs`、`running`、`anchorServerTime`、`clockVersion`。客户端根据服务器时差及锚点平滑显示，暂停和校时均产生可追溯的命令；不能每秒写一次数据库，也不能让 OBS 的本地计时成为权威。
 

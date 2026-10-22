@@ -21,7 +21,7 @@
 | 编号 | 基线与理由 | 验证或变更入口 |
 |---|---|---|
 | D006 | Taro + React + TypeScript 小程序；React + Vite 后台与工作台；NestJS + PostgreSQL 模块化单体 | 搭建时核验依赖、运行环境和小程序能力；不提前拆微服务，不猜测已安装版本 |
-| D007 | P01 先做后台四页 Mock 原型，随后建设机构权限、报名、排赛、记分、OBS 与交付 | 各阶段依据任务验收推进；P01已通过PR #1整合main，P02 IN_PROGRESS且后端未验收，P03–P06待实施 |
+| D007 | P01 先做后台四页 Mock 原型，随后建设机构权限、报名、排赛、记分、OBS 与交付 | 各阶段依据任务验收推进；P01、P02均已整合main并通过各自验收；P03-A Web报名为下一项TODO，P03–P06尚未完成 |
 | D008 | 球队长期档案和每届报名名单分离；比赛事件及更正可追溯；无采集数据标“未统计” | 数据模型、事件接口与测试保持一致，禁止更正比分后留下失真的关联统计 |
 | D009 | OBS 通过只读包装页面获取赛事数据；采集、导播、推流由 OBS 负责，观众分发另接服务 | 包装权限不包含记分或个人敏感资料；远控后置，OBS 断开不阻断比赛记录 |
 | D010 | 初期按届服务，套餐可人工开通，视频用量与人工支持范围分别明确 | 属于商业建议基线，价格及外部客户付费意愿尚未验证，不宣称已有订单 |
@@ -41,10 +41,12 @@
 
 以上问题不推翻已完成的 P01 Mock 原型；按 P02 及后续阶段的依赖逐项确认。若发现会影响机构归属、核心状态机或当前任务验收的冲突，应记录阻断和建议，由负责人协调，不自行扩大实施范围。
 
-## P02 实施决策
+## P02 已实施决策
 
-- D012（实施中）：NestJS12.2 + pg参数化SQL + PostgreSQL，版本化SQL Migration；不引入ORM、Redis或微服务。以真实数据库验证租户隔离、授权锁、CAS与审计原子性。当前容器仅单UID映射，PG无法以非root安全启动，真实验证改用GitHub CI隔离PG服务；不绕过保护，也不以Map替代。
-- D013（实施中）：账号与随机持久会话，令牌仅hash入库，每请求检查当前授权。密码scrypt采用现行[OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)参数基线N131072/r8/p1；生产HTTPS、Secure Cookie与精确Origin守卫。P02不声称邮箱已验证或微信已接通。
-- D014（实施中）：私有赛事DTO提供逐赛事permissions.canEditDraft；机构角色和赛事分配分开。HTTP适配器失败不退Mock，后页失败不返回部分列表。验收后更新[P02记录](handoffs/P02.md)。
+以下编号承接已有D012用户授权和D013 P01证据，不重复占用。P02已经PR #2合并main，整合29c4ee4，成功CI run39730670229；详细证据由[P02记录](handoffs/P02.md)维护。
+
+- D014（已实施／已验证）：NestJS12.2 + pg参数化SQL + PostgreSQL，版本化SQL Migration；不引入ORM、Redis或微服务。GitHub CI隔离PostgreSQL18.6已验证机构隔离、授权锁、CAS、审计原子性和重启持久化；迁移001仅在隔离测试库执行，没有生产数据库。
+- D015（已实施／已验证）：账号与随机持久会话，令牌仅hash入库，每请求检查当前授权。密码scrypt按[OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)参数基线N131072/r8/p1；生产配置要求HTTPS、Secure Cookie和精确Origin。P02不表示邮箱已验证或微信已接通，生产未部署。
+- D016（已实施／已验证）：私有赛事DTO提供逐赛事permissions.canEditDraft，机构角色与赛事分配分开；HTTP失败不退Mock，后页失败不返回部分列表。已通过真实API浏览器闭环，P03-A Web报名另行认领，不从P02完成推定报名或保险文件已完成。
 
 锁语义参考[PostgreSQL行锁文档](https://www.postgresql.org/docs/current/explicit-locking.html)，密码原语参考[Node.js crypto文档](https://nodejs.org/api/crypto.html)。这些资料支持设计选择，实际通过与否以本项目运行记录为准。

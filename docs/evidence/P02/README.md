@@ -1,21 +1,24 @@
 # P02 验证证据
 
-更新：2026-10-22（Asia/Shanghai）。状态IN_PROGRESS；尚未完成真实数据库验收，不能视为已上线。Git/测试最终结果见[P02交接](../../handoffs/P02.md)。
+更新：2026-10-22（Asia/Shanghai）。**DONE / MAIN**，PR#2整合29c4ee4；未上线生产。
 
-## 当前本地证据
+## 最终远端结果
 
-根集成后重新执行npm ci、格式检查、严格类型、71项测试（前端51+API20）及两端构建，全部通过；API20项含真实Nest HTTP边界，但不连接数据库。独立安全测试已编写20项真实HTTP+PG场景；根另编写桌面/手机4项真实API浏览器场景，它们目前尚未执行。
+[PR#2](https://github.com/xyq-dev/small-city-basketball/pull/2)；[Application checks39730670229](https://github.com/xyq-dev/small-city-basketball/actions/runs/39730670229)，head63b94be，admin/api两个job全部成功。
 
-原生PG18.4二进制可读版本，但容器UID映射限制阻止安全启动，真实数据库验证将在GitHub CI PostgreSQL18.6隔离服务执行；没有用内存数据库替代。Migration已编写并静态审查，尚未执行。
+- 安装、格式、类型、71项单元/组件/HTTP检查及两端构建通过。
+- 20项独立真实PostgreSQL集成场景通过；集成命令额外匹配20项源码单测，因此日志40不能重复计数。
+- 实际PostgreSQL18.6重启后，原会话、赛事、版本、授权、审计历史及迁移校验和保留，表内容指纹一致。Migration001已在隔离测试库执行并验证重复运行。
+- 官方Chromium151：12项Mock回归与4项真实API桌面/手机浏览器全部通过。真实流程覆盖注册、创建、刷新、编辑、退出/登录、两机构切换，以及故障时不回退Mock。
 
-## 界面检查
+首轮39730422963的API浏览器在服务启动时失败，尚未执行4项业务场景；指定workspace端口命令修复后，以上最终运行通过。失败及本地数据库限制保留在[P02交接](../../handoffs/P02.md)。没有生产Migration、生产部署或OBS连接验证。
 
-登录/注册页面在1440与390宽度检查无横向溢出或运行错误，输入字号16px。下图为隔离未登录状态截图，测试页将session读取拦截为401，仅用于视觉检查，不证明数据库或登录成功。容器缺字，QA页临时注入本地Noto Sans SC；产品仍用系统字体，未引入外部字体请求。
+## 视觉证据
+
+登录/注册页1440与390宽度无横向溢出或运行错误，输入字号16px。这些是隔离未登录截图，session读取拦截为401，仅用于视觉核验；真实认证结果由上面的CI证明。容器缺中文字形，QA页临时注入本地Noto Sans SC；产品仍使用系统字体，无外部字体依赖。
 
 ![P02桌面登录页](login-1440.png)
 
 ![P02手机注册页](register-390.png)
 
-## 首轮CI结果
-
-[PR#2](https://github.com/xyq-dev/small-city-basketball/pull/2)，[run39730422963](https://github.com/xyq-dev/small-city-basketball/actions/runs/39730422963)：71项检查与原12项Mock浏览器通过；20项真实PG集成及PG18.6重启持久化通过，Migration已在隔离测试库执行。API浏览器因嵌套npm脚本参数传递失败，4项未执行；已修正启动命令，等待重跑结果。没有生产Migration或生产数据操作。
+手机为Chromium尺寸/输入模拟，尚未做Safari/真机验证。

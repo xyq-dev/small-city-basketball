@@ -6,9 +6,9 @@
 
 ## 当前状态
 
-2026-10-22：P01 机构后台四页 Mock 原型已通过 [PR #1](https://github.com/xyq-dev/small-city-basketball/pull/1) 合并到 `main`，整合提交 `f15adb456c24302ce3d41587c41301e4c3931c6c`。现在可以克隆仓库，按[开发说明](docs/DEVELOPMENT.md)安装并运行。P02 机构与赛事基础后端已开始开发，尚未完成验收；没有部署或真实支付、保险、数据库及 OBS 服务接入。
+2026-10-22：P01、P02 均为 **DONE / MAIN**。[PR #2](https://github.com/xyq-dev/small-city-basketball/pull/2) 已合并，交付基线为 `29c4ee4cf588e911b2e087224522b832b726d18e`。现在可按[开发说明](docs/DEVELOPMENT.md)运行 Mock 演示或连接真实 PostgreSQL 的 Web 后台；注册登录、机构权限、赛事草稿保存与编辑已验收。
 
-已整合成果包括工作总览、赛事列表、创建草稿及详情编辑；[远端 Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/39728632742) 已通过安装、格式、类型、35项单测/组件测试、构建及官方 Chromium 的12项端到端检查。详见 [P01 验证与截图](docs/evidence/P01/README.md)、[交接记录](docs/handoffs/P01.md)和[开发说明](docs/DEVELOPMENT.md)。这只是首阶段原型，完整项目仍需 P02–P06。
+[P02 远端 CI](https://github.com/xyq-dev/small-city-basketball/actions/runs/39730670229) 已通过71项单测/组件/HTTP检查、20项独立真实数据库集成场景及12项Mock＋4项真实API浏览器测试，并验证 PostgreSQL 重启后的持久化。证据见[P02交接](docs/handoffs/P02.md)与[测试说明](docs/TESTING.md)。Migration001只在隔离测试库执行，尚无生产部署、生产数据库或真实保险、微信、OBS及云服务接入。
 
 ## 首版范围
 
@@ -34,6 +34,6 @@ OBS 负责采集、导播和推流。平台提供只读的赛事比分包装页�
 - [当前状态与下一项任务](docs/CURRENT_STATUS.md)
 - [开发协作规则](AGENTS.md)
 
-**当前交付：P01 为 DONE / MAIN；当前重点为 P02，状态 IN_PROGRESS。** 用户已授权开发与仓库同步，具体边界见 `AGENTS.md`。机构权限与基础后端尚待验证，报名、排赛、记分及 OBS 依次接入。原型使用明确标注的内存 Mock 数据，刷新重置。
+**下一项：P03-A Web 报名闭环，TODO／待开工。** P03 整体、排赛、记分和 OBS 仍未完成。用户已授权项目范围内开发与同步，具体边界见 `AGENTS.md`。Mock模式仍为刷新重置；API模式使用真实数据库，失败不会静默退回Mock。
 
 新 AI 会话先读 `AGENTS.md`、`docs/CURRENT_STATUS.md`、`docs/TASKS.md`，再读取分配到的任务卡；不要凭旧对话判断当前进度。
