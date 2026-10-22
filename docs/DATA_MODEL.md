@@ -87,3 +87,11 @@ P03-A经[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并ma
 本卡规则字段为min_players、max_players、zero_and_double_zero_distinct、require_identity、require_insurance；同赛事版本唯一，开放报名后锁定规则指针。后两项要求为true时拒绝开放，因为核验与保险附件尚未集成。TeamAccessGrant只有TEAM_MANAGER，与organization_memberships独立；team_invitations绑定已存在target_user_id，数据库只存令牌hash及用途、期限、消费／撤销时间。已消费邀请仅在全部验证通过且当前grant仍ACTIVE时安全重读上下文，缺失或DISABLED不会复活。
 
 报名列表投影仅返回EntrySummary九字段；完整roster、rules、history由独立鉴权的详情接口返回。这是响应裁剪，不删除数据库中的历史。名单冻结后事件保持REGISTRATION_CLOSED，尚不生成赛程、比赛、公开观赛或OBS投影。
+
+## 8. P04-A分支排赛模型（003已编写，未执行）
+
+003_p04_scheduling.sql增加courts、org_schedule_mutex、schedule_revisions、schedule_fixtures、schedule_publications、published_matches、court_reservations、team_reservations，以及events.current_schedule_revision_id和freeze复合唯一键。独立静态审查CLEAR，SHA256`6469c7d5783ac1c025c0981addb8da77d0174169556b79e971347cd5ea78122f`；当前尚未执行003或P04真实PG验收，没有生产执行。
+
+canonical Court/Team跨本机构不同event统一占用；每场1Court及2Team记录，btree_gist+tstzrange半开区间排他。source/policy/seed/配对历史不可原地改写，current DRAFT仅可改分配；重抽旧稿SUPERSEDED，唯一event publication及published计划不可变。DB复合FK约束org/event/entry/team/roster归属，发布后INSERT/UPDATE/DELETE防线及deferred提交一致性，P05仅预留比赛status/version的受控变化。
+
+发布及Court写先同事务upsert/锁org_schedule_mutex，避免新旧机构缺行和跨赛事检查后同时发布；之后按event/revision/court固定顺序。正式matches、预约、PUBLISHED及SCHEDULED版本和审计原子提交；一次发布，不含改期/释放占用接口。真实并发、回滚、重启及DDL执行结果待[P04-A交接](handoffs/P04-A.md)追加；静态SQL通过不能代替PG运行。

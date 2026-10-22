@@ -136,3 +136,15 @@ P02没有删除、任意改赛事status、邮件验证、密码重置、工作�
 冻结要求CLOSED、至少2批准、没有SUBMITTED/CHANGES_REQUESTED。DRAFT/REJECTED/WITHDRAWN排除数显式返回；服务端查询批准revision生成不可变freeze，客户端不能提供名单清单作为权威。冻结后停止全部报名与审核写入，不自动发布赛程。
 
 邀请token只在URL fragment传递，首次加载及hashchange读取后立即清除，不进入localStorage/sessionStorage；后收到的邀请不会被旧接受请求的晚返回清除。用户主动切换机构／球队工作空间进入对应首页，后台刷新授权保留合法详情路径，球队上下文不会显示另一球队资料。邮箱尚未验证，不能按email认领邀请；没有邮件发送、微信身份、身份证核验、保险文件上传、支付或OBS服务。
+
+## 7. P04-A排赛分支合同（尚未验收）
+
+精确DTO在packages/contracts/index.d.ts；P04源自已验收main bf820d8的独立分支feat/P04-scheduling。当前SchedulingService/Controller与003已本地整合，API类型/构建及69项源码检查通过；真实PG、UI和浏览器尚未完成，不能当main已交付。完整批准范围见[任务卡第11节](tasks/P04-A.md)。
+
+- 仅2–32支freeze球队单回合ROUND_ROBIN；其他format明确unsupported，不降级。读取原RegistrationFreezeData，规范排序仅用于稳定hash和seed重放，长期成员不能改来源。
+- 机构共享Court分页/meta.canCreateCourt，写限OWNER/ADMIN；赛事排赛读写按实际staff/capabilities，球队grant不授后台权限。
+- /courts GET/POST、/courts/:id PATCH；/events/:eventId/scheduling GET；/events/:eventId/schedule-revisions POST；/schedule-revisions/:id GET、/allocations PUT、/validate POST、/publish POST；/events/:eventId/matches GET。均以前缀/v1/orgs/:orgId，Origin和输入白名单沿P02。
+- 创建/重抽返回ScheduleRevisionData；全量allocations精确覆盖fixtureKey，expectedEventVersion与expectedRevisionVersion各自CAS，成功两者递增；validate只读返回ScheduleValidationData，不修改版本。publish返回新的EventSchedulingData，事务内重算并检查实际占用，不能复用旧validation作为凭证。
+- 首次创建expectedEventVersion；重抽必填原因，新seed/new revision，旧SUPERSEDED只读。发布后拒绝编辑、重抽及第二份发布；未实现自动排时、完整淘汰/分组、改期或公开/小程序赛程。
+- 合法但冲突的发布409 SCHEDULE_CONFLICT，details.conflicts；validate200 valid=false；字段/时间错误422、版本/状态409、不可访问资源404。外部预约仅含本方fixture/resource/time，不返回其他赛事ID/名称/名单。
+- RR_CIRCLE_V1、inputHash/pairingHash/publicationHash序列化与已知向量以scheduling-domain.ts及独立测试为准；seed为server256bit十六进制，普通业务来源不是授权凭据。比赛预计占用与实际记分时钟分离。
