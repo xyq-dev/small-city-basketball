@@ -1,6 +1,6 @@
 # 数据模型与状态
 
-设计版本：0.1；更新：2026-10-22；状态：P02至P05-B已整合main，各已交付子卡为DONE / MAIN。001→005在隔离PG18.6执行／复跑并通过37表实际重启验证；保险附件未建表，无生产执行。P06-A本地新增006及两表DDL，仅静态CLEAR、尚未执行／MAIN，见第11节；完整P05仍有可靠离线与专业统计等后续范围。
+设计版本：0.1；更新：2026-10-22；状态：P02至P06-A的已交付子卡已整合main，DONE / MAIN。001→006在隔离PG18.6执行／复跑checksum并通过39表实际重启；保险附件未建表，无生产执行。完整P05的可靠离线／专业统计、完整P06媒体／直播等仍为后续范围，原生OBS／CEF及备份恢复未验。
 
 ## 1. 通用约束
 
@@ -39,7 +39,7 @@ P02主键使用服务端生成的UUID；后续实体沿用不透明ID原则。�
 | StandingProjection | orgId、eventId、适用的divisionId/stageId/groupId、rulesetVersion、sourceResultVersion、排名数据 | 仅基于已确认赛果；重算不能混入旧版本和不同组别/小组 |
 | IdempotencyRecord / AuditLog / Outbox | 请求作用域及hash/结果；操作者及变更引用；已提交待投递事件 | 与相关业务事务一致；重放仍需重新鉴权 |
 
-BroadcastSession、MediaAnchor、SponsorPlacement、Entitlement和UsageLedger在对应阶段新增；P06-A本地OverlayGrant及session DDL见第11节，尚非已执行表。视频存引用与时长/用量，不存二进制；软件权益与视频用量分账。支付、退款、保险交易模型尚未定稿，不把报名审核状态当作支付状态。
+BroadcastSession、MediaAnchor、SponsorPlacement、Entitlement和UsageLedger在对应阶段新增；P06-A已交付的OverlayGrant及session表见第11节，已在隔离CI执行。视频存引用与时长/用量，不存二进制；软件权益与视频用量分账。支付、退款、保险交易模型尚未定稿，不把报名审核状态当作支付状态。
 
 P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引用及状态；媒体锚点所属录制分段、比赛版本、媒体偏移及误差；包装授权的比赛/字段范围、有效期及撤销状态；赞助素材的所属机构、展示位、适用赛事、排期和批准记录；权益的计量单位、限额、有效期与来源；用量台账的业务来源、数量及唯一去重键。额度与计量更正使用追加记录，不能靠覆盖历史用量解决。具体表结构和服务订单、支付状态在专项任务中定稿，不在 P01预建。
 
@@ -159,13 +159,13 @@ deferred提交守卫读取不可变P04 revision.source.entries：要求2–32个
 
 排名只按同一条批量SQL的全部正式match及LEFT JOIN的state/current confirmation/最后event/receipt/scoring rules计算，无逐场N+1或缓存worker。FINAL必须满足当前state版本、确认指针／规则、完整总数及按节合计、最后CONFIRM_RESULT与receipt来源证明；还必须暂停且剩余0、已完成常规节。独立审查发现的终局三条件缺口已修复并补源码反例。staff合法变更增加match/state版本但不改事件／统计，所以不以confirmation.source_match_version等于当前版本判定，也不把staff时间或当前运行版本加入sourceHash。重开退出榜单，重确认只消费最新一份；坏FINAL整体RESULT_SOURCE_INVALID，不静默略过。
 
-无确认时全队rank=null；有确认后积分及显式排序项均相同则共享1,1,3，冻结来源顺序只稳定显示。公开投影只取随机公开键和冻结展示名、官方时间场地、有限基础统计／规则及raw clock；未准备值为null，不伪造已采集0。嵌套白名单和游标不泄露内部org/event/match/entry/team/user ID、roster、工作人员、确认人、事件／receipt或控制凭据。本节P05-B不含OverlayGrant；本地P06-A模型见第11节。没有公开SSE、可靠离线、微信或生产发布，精确DTO见[API契约第9节](API_CONTRACTS.md)。
+无确认时全队rank=null；有确认后积分及显式排序项均相同则共享1,1,3，冻结来源顺序只稳定显示。公开投影只取随机公开键和冻结展示名、官方时间场地、有限基础统计／规则及raw clock；未准备值为null，不伪造已采集0。嵌套白名单和游标不泄露内部org/event/match/entry/team/user ID、roster、工作人员、确认人、事件／receipt或控制凭据。本节P05-B不含OverlayGrant；已交付P06-A模型见第11节。没有公开SSE、可靠离线、微信或生产发布，精确DTO见[API契约第9节](API_CONTRACTS.md)。
 
-## 11. P06-A包装授权模型（本地已编写，006未执行）
+## 11. P06-A包装授权模型（DONE / MAIN，隔离库已执行）
 
-P06-A完整源码在远端源码检查点`7ba9d01bb46d8c4b7a5ce72081aef50719d05539`已整合，首CI39756976748进行中，尚未PR合并／MAIN；早期DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`已由完整源码7ba9d01取代，main文档基线仍为`ca68dea89f1625c86e2a90e43ffa936c49fd6186`（业务P05-B）。`apps/api/migrations/006_p06_overlay.sql` SHA-256为`94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6`。独立静态CLEAR只允许进入空隔离库测试，不代表006或其约束已经执行；001–005未修改，已执行事实仍属上游P05-B。原37表加本卡两表的39表实际重启尚待CI，无生产数据库或反向恢复证据。
+P06-A已通过[PR #7](https://github.com/xyq-dev/small-city-basketball/pull/7)合并main `f8af5c99fba294a40334c49a5d2e32f80c6acbf9`，DONE / MAIN；最终验收source `addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`、tree `2a719b4b3e8fd4f67996144c687f5bbb72902519`。 `apps/api/migrations/006_p06_overlay.sql` SHA-256保持`94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6`。[最终CI39758913295](https://github.com/xyq-dev/small-city-basketball/actions/runs/39758913295)全部成功：372项源码（admin171／API201）、123项独立PG、001→006隔离执行／复跑checksum、真实PG18.6重启与39表完整指纹、12Mock及桌面7＋手机7真实API官方Chromium151.0.7922.34浏览器。正常及故意失败流程只清本次owned子库，控制库保留。 38个migration应用表及schema_migrations共39表，包含Grant／session、活跃／撤销身份、精确截止和原业务。001–005未修改；没有生产数据库、生产Migration或备份恢复证据。
 
-| 本地DDL新表 | 主键、归属与约束 |
+| 006已在隔离CI建立的表 | 主键、归属与约束 |
 |---|---|
 | overlay_grants | UUID id主键；org_id/event_id/match_id复合FK指向同机构、同赛事正式published_matches；overlay_id为全历史唯一43字符身份，secret_hash为唯一64字符SHA-256十六进制；固定SCOREBAR_1080P_V1、issuer_id→users、created_at/expires_at、version、revoked_at/revocation_reason。另有(org,event,match,id,expires_at)唯一键供session精确引用 |
 | overlay_sessions | UUID id主键；org/event/match复合FK指向正式场次，(org,event,match,grant_id,expires_at)复合FK引用Grant，截止必须完全相等，不能JS Date截断微秒后重存。token_hash全局唯一，created_at/expires_at有限且有序；UPDATE／DELETE一律拒绝 |
@@ -174,11 +174,11 @@ Grant创建固定version=1且未撤销；仅允许一次version1→2并填写撤
 
 overlayId、bootstrap secret及专用session token都由服务端随机256bit生成，DB只保存后两者hash；DDL格式校验不是随机性证明。secret可在期限内重复bootstrap，不是一次消费；正确secret先核验，随后才考虑复用Cookie。专用session不继承users session，也不能延长Grant期限；新session用INSERT SELECT直接复制PG原截止，有效既有session复用不增行、不更新访问时间。scb.sid、排名规则和public publication均不构成源授权。
 
-应用管理锁序actor/session→org/member→Event UPDATE→eventstaff→Grant；当前资格、Event CAS、ROTATE／REVOKE的Grant CAS、Event.version递增及audit同事务，不改Match.version。独立读解析overlayId后按org SHARE→Event SHARE→Grant SHARE→session SHARE重查机构、撤销及锁后DB截止。独立复读发现session INSERT的正式match FK可能等待记分锁；已补INSERT后MATERIALIZED clock_timestamp精确判Grant/session共同期限，若跨截止则404并回滚新session，不出Cookie。该补丁静态CLEAR，真实FK等待回归已编写但尚未执行。
+应用管理锁序actor/session→org/member→Event UPDATE→eventstaff→Grant；当前资格、Event CAS、ROTATE／REVOKE的Grant CAS、Event.version递增及audit同事务，不改Match.version。独立读解析overlayId后按org SHARE→Event SHARE→Grant SHARE→session SHARE重查机构、撤销及锁后DB截止。独立复读发现session INSERT的正式match FK可能等待记分锁；已补INSERT后MATERIALIZED clock_timestamp精确判Grant/session共同期限，若跨截止则404并回滚新session，不出Cookie。该补丁静态CLEAR，真实FK等待跨截止回归通过，404整事务回滚且没有新session或Cookie残留。
 
 DDL保证归属、固定截止及不可变历史；实际STREAMER／当前成员授权、secret校验、来源投影、审计和等锁后时间由应用守卫证明。单场来源SQL复用P05-B有效FINAL证明，合法staff升版本不使结果失效。私有坏预览保留元数据和freshEvent CAS，公开包装快照仍409。详见[API第10节](API_CONTRACTS.md)及[TESTING](TESTING.md)；P06媒体、视频、云推流及权益账本没有因此建表或完成。
 
 
-### P06-A远端恢复点与首CI结果
+### P06-A两轮成功CI与恢复来源
 
-首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）也全部成功；后续15份Markdown只修可达恢复点及记录，没有业务或Migration变化。最终CI再次全部成功后合并PR7。首head文档P2已resolved／outdated，最终addeb自动CodeReview completed且无finding（comment6337630278），security未运行。恢复使用上述main合并点或最终远端source；本地19d5801仅作历史来源，不是fresh checkout恢复入口。两轮run／job与边界见[TESTING](TESTING.md)。原生OBS／CEF、生产与备份恢复仍未验收。

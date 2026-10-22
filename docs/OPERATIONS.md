@@ -1,13 +1,13 @@
 # 环境、发布与商业运营
 
-版本：0.1；更新：2026-10-22（Asia/Shanghai）。P02基础服务、P03-A Web报名、P04-A单循环排赛／一次发布、P05-A基础在线记分／独立确认／私有快照及P05-B有限排名／可撤销公开观赛均已整合main并通过隔离验收。完整P05仍有可靠离线与专业统计等后续范围；P06-A包装代码／006已本地实施并静态CLEAR，尚未真实PG／重启／API浏览器验收、MAIN或原生OBS／CEF测试。以下生产与商业运营条目仍为建设规范，没有已部署生产服务、生产数据库或付费套餐系统。
+版本：0.1；更新：2026-10-22（Asia/Shanghai）。P02基础服务、P03-A Web报名、P04-A单循环排赛、P05-A在线记分／独立确认、P05-B有限排名／公开观赛及P06-A独立只读包装均已MAIN并通过隔离验收。完整P03/P04/P05/P06仍有后续范围；原生OBS／CEF、生产与备份恢复未验。以下生产与商业条目仍为规范，没有已部署生产服务、生产DB或付费套餐系统。
 
 ## 环境与配置
 
 | 环境 | 数据与用途 | 变更约束 |
 |---|---|---|
 | 开发 | Mock 或合成测试数据，个人本地调试 | 任务范围内操作；保留他人改动 |
-| 测试 | 隔离PostgreSQL18.6与合成账号已验证P02至P05-B，含记分／时钟／租约／确认历史、排名／公开身份、37表实际重启及真实API浏览器 | 不复用生产密钥和真实报名资料；存储／直播后续按需配置 |
+| 测试 | 隔离PostgreSQL18.6与合成账号已验证P02至P06-A，含记分／确认、排名／公开及独立包装授权、39表实际重启与真实API浏览器 | 不复用生产密钥和真实报名资料；存储／直播后续按需配置 |
 | 生产 | 真实机构、赛事及获授权收集的数据 | 上线前核验授权、审查、备份与回滚条件 |
 
 配置模板只列变量名和用途，不含真实值。服务端密钥、推流密钥与 OBS 控制口令不进入前端包、Git、截图或日志；必要日志使用脱敏标识。依赖版本在搭建时核验并写入锁文件，环境说明必须跟随实际安装结果更新。
@@ -40,7 +40,7 @@ P05-A为DONE / MAIN，经[PR #5](https://github.com/xyq-dev/small-city-basketbal
 
 001→002→003→004已在隔离测试库执行并复跑校验checksum。004保存版本化记分规则、场次人员、projection、lease/fence、追加事件、幂等收据及不可变确认；即使只沿用既有赛程，P05应用也需要004。真实PG重启保留运行中raw clock及锚点、已释放租约／单调fence、事件／收据、两份确认历史，以及原赛程／预约、名单／freeze、授权、审计和迁移校验和。没有生产Migration或部署，API仍不自动迁移。
 
-当前应用恢复优先依据PR #6的main合并点 `bd38318fdfdbaeb9cfee1033c0d025e79c6cc797` 或最终验收source `d9161e965b367ed8cb445482d57759bd34e89629`、tree `554284a604f3b0027d5b0eedc7dbbee20eab3119`；此前3c0bf840／1cb8e414为P05-A历史点。选择恢复点前仍须核验数据库schema及新增数据兼容性，不能将应用代码回退或重跑Migration等同数据库回滚。
+当前应用恢复优先依据PR #7的main合并点 `f8af5c99fba294a40334c49a5d2e32f80c6acbf9` 或最终验收source `addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`、tree `2a719b4b3e8fd4f67996144c687f5bbb72902519`；此前P05-B/P05-A为历史点。选择恢复点前核验数据库schema和新增数据兼容性；应用代码回退或重跑Migration不等于数据库回滚。
 
 ## 在线记分运行边界
 
@@ -56,7 +56,7 @@ raw clock的remainingMs对应anchorServerTime，而非每次读取时重新存�
 
 本卡已通过[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)合并main。[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)全部成功：302项源码（admin147／API155）、106独立PG、001→005隔离执行／复跑、37表实际PG18.6重启及12Mock＋12API官方Chromium151.0.7922.34浏览器。首CI429、第二轮取消、第三轮08P01绑定失败及最终修复见[TESTING](TESTING.md)，失败记录保留。005 SHA-256保持`e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221`，无生产执行。浏览器每project使用独立随机scb_test_*子库；最终CI实际验证正常／故意失败时仅删除本次owned子库、保留base及失败退出码。负向checker用`[[baseName, owned]]`绑定一个text[]参数；控制连接须有测试CREATEDB权限，不更改同IP20次／小时注册限制。
 
-当前版本依赖001→005，不修改已经应用的001–005或通过删除公开历史回退。005增加不可变standings_rulesets、只可有效→撤销的public_event_publications及全部public_match_links；规则首次正式发布后永久锁定，每event最多一条有效公开发布，同事务完整映射由复合FK、created_xid及deferred守卫保护。没有生产数据库、生产Migration或反向恢复演练。
+P05-B阶段依赖001→005，不修改已经应用的001–005或通过删除公开历史回退。005增加不可变standings_rulesets、只可有效→撤销的public_event_publications及全部public_match_links；规则首次正式发布后永久锁定，每event最多一条有效公开发布，同事务完整映射由复合FK、created_xid及deferred守卫保护。没有生产数据库、生产Migration或反向恢复演练。
 
 启用公开是主办方主动操作，须有本届实际管理权、有效机构成员及当前Event CAS；仅MatchStaff的人员无整届管理权。随机公开URL只允许有限GET，不能写分或获取后台身份，也不是OBS控制／overlay grant。公开DTO和游标不含内部ID、名单、工作人员、确认人、事件／receipt、私密报名资料或session/lease/fence/control；不用Cookie决定公开字段，不加入第三方跟踪。网络端响应no-store，尚无缓存、CDN、公开SSE或容量保障。
 
@@ -64,13 +64,13 @@ raw clock的remainingMs对应anchorServerTime，而非每次读取时重新存�
 
 RESULT_SOURCE_INVALID表示当前确认指针、规则、版本／事件／收据、统计或终局时钟无法核验，服务拒绝整张榜单／公开投影，不能静默漏算或用0掩盖。保留来源、版本和审计；必要时先撤销公开，再通过已支持的重开／修正／独立重确认流程处理。不能直接改比分、confirmation或历史event“修复”榜单。合法FINAL staff变更不撤销既有正式确认；重开立即撤出本场，重确认仅计最新一次。全部FINAL不代表整届COMPLETED或唯一冠军，其他赛制、处罚／弃权、晋级仍未实现。
 
-未准备比赛统计与clock为null，已准备0与未统计区分；公开时钟沿用raw anchor，只扣一次，离线／失败标陈旧而不自动暂停记分。实际重启已比较36个migration应用表及schema_migrations共37表，覆盖三张新表、公开有效／撤销身份、sourceHash及原全部数据；业务比较只排除动态serverTime/asOf，先比较指纹再取得新lease核验fence递增。它证明持久化，不能当作灾备或生产恢复证据。最终source自动CodeReview completed且无finding，security review未运行。完整状态见[TESTING](TESTING.md)，接口见[API第9节](API_CONTRACTS.md)。微信、保险文件、真实视频与OBS仍未集成。
+未准备比赛统计与clock为null，已准备0与未统计区分；公开时钟沿用raw anchor，只扣一次，离线／失败标陈旧而不自动暂停记分。实际重启已比较36个migration应用表及schema_migrations共37表，覆盖三张新表、公开有效／撤销身份、sourceHash及原全部数据；业务比较只排除动态serverTime/asOf，先比较指纹再取得新lease核验fence递增。它证明持久化，不能当作灾备或生产恢复证据。最终source自动CodeReview completed且无finding，security review未运行。完整状态见[TESTING](TESTING.md)，接口见[API第9节](API_CONTRACTS.md)。微信、保险文件、真实视频与原生OBS／CEF仍未集成／验收。
 
-## P06-A本地包装运行边界（未验收／未MAIN）
+## P06-A包装运行边界（DONE / MAIN）
 
-远端source检查点7ba9d01含API/UI/PG与根接线，完整远端source为7ba9d01，331d2c3仅为早期DTO，main文档仍为ca68dea、业务P05-B；PR7及首CI39756976748已建立，尚无本卡完整CI结论。已执行本地372源码（admin171／API201）、strict／格式／两端构建、native153原12Mock及19状态合成布局／三张PNG；006仅静态CLEAR，新增17项PG（预计总123）、39表实际重启及14真实API浏览器待执行。保持上游P05-B已验收记录，不把图片透明或静态CLEAR视为原生OBS已连接。
+P06-A已通过[PR #7](https://github.com/xyq-dev/small-city-basketball/pull/7)合并main `f8af5c99fba294a40334c49a5d2e32f80c6acbf9`，DONE / MAIN；最终验收source `addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`、tree `2a719b4b3e8fd4f67996144c687f5bbb72902519`。[最终CI39758913295](https://github.com/xyq-dev/small-city-basketball/actions/runs/39758913295)全部成功：372项源码（admin171／API201）、123项独立PG、001→006隔离执行／复跑checksum、真实PG18.6重启与39表完整指纹、12Mock及桌面7＋手机7真实API官方Chromium151.0.7922.34浏览器。正常及故意失败流程只清本次owned子库，控制库保留。 首轮CI也全部成功；后15份MD仅修可达恢复点与记录。另有native153的19状态合成布局／三张PNG，不能当作原生OBS已连接。
 
-006的SHA-256为`94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6`，两表overlay_grants／overlay_sessions及其复合FK、固定截止、一次撤销／不可变守卫尚未数据库执行；完整分支后须按001→006在隔离库执行／复跑checksum，001–005不改。无生产DB、生产Migration、反向恢复或灾备演练。新增session INSERT的正式match FK可能等待记分锁，服务已补INSERT后fresh DB时间精确判期，跨截止404并回滚；真实竞争用例已写但未运行。
+006 SHA-256保持`94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6`，两表overlay_grants／overlay_sessions及其复合FK、精确固定截止、一次撤销／不可变守卫，已在隔离CI按001→006执行／复跑checksum并经123项PG验证；001–005未改。实际重启覆盖38个migration应用表及schema_migrations共39表。新增session INSERT的正式match FK等待跨截止404／回滚已真实通过；无生产DB、生产Migration、反向恢复或灾备演练。
 
 签发、轮换、撤销必须由当前有效机构OWNER/ADMIN或本届实际EVENT_MANAGER／STREAMER操作，不能用global角色、场次身份或球队grant替代。管理只修改Event版本及Grant／审计，保持Match／赛果／lease不变；版本冲突或未知结果先GET fresh metadata，不重签恢复丢失secret，必须显式轮换。坏FINAL只清私有预览并附previewError，元数据／CAS／撤销仍可用；源snapshot严格409，不直接改历史消除错误。
 
@@ -82,7 +82,7 @@ Grant独立于签发者私人session：个人退出／撤权不自动撤销旧�
 
 ## 备份、恢复与故障处理
 
-P02至P05-B的数据库重启持久化检查不是备份恢复演练，正式灾备能力尚未验收。正式启用前确定恢复点与恢复时间目标，覆盖数据库、未来保险附件、赛事媒体元数据和配置；具体保留天数及备份频率按试点规模与成本确定。至少在隔离环境实际恢复一次，验证赛事、名单、授权、正式计划、记分事件／收据、投影、确认历史、排名规则／锁、公开有效与撤销身份／全量映射及迁移校验和一致；已释放租约和单调fence也须保留，不能恢复成可重用旧控制。后续加入附件或媒体时补相应恢复验证。仅有“备份成功”日志不足以证明可恢复。
+P02至P06-A的数据库重启持久化检查不是备份恢复演练，正式灾备能力尚未验收。正式启用前确定恢复点与恢复时间目标，覆盖数据库、未来保险附件、赛事媒体元数据和配置；具体保留天数及备份频率按试点规模与成本确定。至少在隔离环境实际恢复一次，验证赛事、名单、授权、正式计划、记分事件／收据、投影、确认历史、排名规则／锁、公开有效与撤销身份／全量映射、独立OverlayGrant/session／撤销／精确截止及迁移校验和一致；已释放租约和单调fence也须保留，不能恢复成可重用旧控制。后续加入附件或媒体时补相应恢复验证。仅有“备份成功”日志不足以证明可恢复。
 
 优先监测 API 错误、授权失败、事件积压、记分版本冲突、主端租约、同步延迟和直播用量；日志不得包含完整证件或令牌。发生记分异常时保留服务器事件、收据、版本和本页尚存的未知结果命令，暂停新写并联系赛事负责人核对，不直接修改数据库比分、删除事件或回执消除告警。清缓存、重置浏览器存储、刷新页面或重新seed都不能恢复已丢失的未确认命令，也不能替代数据库恢复；不得靠重置lease/fence或删除projection绕过控制权和历史一致性。处理结束后记录影响赛事、时间范围、修复依据和遗留任务。
 
@@ -95,6 +95,6 @@ P02至P05-B的数据库重启持久化检查不是备份恢复演练，正式灾
 建议以青锋杯验证流程，再争取三家无关联主办方付费试点，记录交付工时、成本、付费与续用反馈。该试点尚未实施；收入、客户和指标不得写成既有成果。
 
 
-### P06-A远端恢复点与首CI结果
+### P06-A两轮成功CI与恢复来源
 
-首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。
+首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）也全部成功；后续15份Markdown只修可达恢复点及记录，没有业务或Migration变化。最终CI再次全部成功后合并PR7。首head文档P2已resolved／outdated，最终addeb自动CodeReview completed且无finding（comment6337630278），security未运行。恢复使用上述main合并点或最终远端source；本地19d5801仅作历史来源，不是fresh checkout恢复入口。两轮run／job与边界见[TESTING](TESTING.md)。原生OBS／CEF、生产与备份恢复仍未验收。

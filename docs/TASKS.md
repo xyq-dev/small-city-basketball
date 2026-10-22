@@ -15,11 +15,13 @@
 | P05 | 基础记分、赛果与观赛 | IN_PROGRESS | root集成 | P04-A | P05-A/B已交付；可靠离线与专业统计另卡 |
 | P05-A | 基础在线记分、服务器时钟与独立确认 | DONE | root/API/UI/PG | P04-A | MAIN3c0bf84，PR5，CI39743710053的212/88/12+10成功；[任务卡](tasks/P05-A.md)、[交接](handoffs/P05-A.md) |
 | P05-B | 显式单循环排名与可撤销公开观赛 | DONE | root/API/UI/PG | P05-A | MAINbd38318，PR6，CI39751848322的302/106/12＋12及37表重启／清理全成功；[任务卡](tasks/P05-B.md)、[交接](handoffs/P05-B.md) |
-| P06 | OBS包装、直播与交付 | IN_PROGRESS | root集成 | P05-A/B；真实视频需配置服务与预算 | 首卡P06-A合同就绪，完整P06未交付 |
-| P06-A | 单场透明比分包装与独立只读授权 | REVIEW | root/API/UI/PG | P05-A/B | PR7首CI39756976748的372／123／12＋14／39表重启与清理成功；文档恢复点P2已修，待新head最终CI／合并；[任务卡](tasks/P06-A.md)、[交接](handoffs/P06-A.md) |
+| P06 | OBS包装、直播与交付 | IN_PROGRESS | root集成 | P05-A/B；真实视频需配置服务与预算 | P06-A已交付，原生OBS／真实视频未验收 |
+| P06-A | 单场透明比分包装与独立只读授权 | DONE | root/API/UI/PG | P05-A/B | MAINf8af5c9，PR7，最终CI39758913295的372／123／12＋14／39表重启与清理全部成功；[任务卡](tasks/P06-A.md)、[交接](handoffs/P06-A.md) |
+
+| P07-A | 同源HTTPS自托管包与隔离备份恢复 | TODO | root/API/UI/PG/打包 | P06-A | 合同独立审查CLEAR，实际main同步后新worktree认领；[任务卡](tasks/P07-A.md)、[交接](handoffs/P07-A.md) |
 
 ## 当前顺序
 
-P05-B已由PR6合并，首轮429、第二轮取消和第三轮附加checker失败保留交接；第四完整CI全部成功。下一步按P06-A先核验新worktree与路径、API优先精确DTO，再实现管理授权／透明源／真实PG及浏览器。完整P03/P04/P05遗留不以已交付首卡冒充完成。保险文件、微信、生产及真实视频仍需后续配置验收。
+P06-A已由PR7合并，最终CI及自动代码审查通过。下一步P07-A先冻结共享配置／AuthCapabilities DTO与权限manifest，再并行API、UI、DB恢复和打包，root负责实际容器/TLS/恢复CI。完整P03/P04/P05遗留不以首卡冒充完成，保险文件、微信、生产及真实视频仍需后续配置验收。
 
 专业统计、个人集锦、赞助报告与年度套餐另拆有验收条件的任务。阶段规划与概念图不构成完成证据。

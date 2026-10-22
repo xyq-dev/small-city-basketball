@@ -1,6 +1,6 @@
 # 产品需求与业务规则
 
-更新：2026-10-22｜性质：开发设计基线；P01、P02、P03-A、P04-A、P05-A、P05-B已合并main（DONE / MAIN）；真实Web报名冻结、单循环排赛、基础在线记分、独立赛果确认、显式排名与可撤销公开观赛已验收，P06-A包装与授权源码已在本地feature整合，尚未真实验收或合并；完整办赛链路尚未实现。实际完成情况以 [CURRENT_STATUS.md](CURRENT_STATUS.md) 为准。
+更新：2026-10-22｜性质：开发设计基线；P01、P02、P03-A、P04-A、P05-A、P05-B、P06-A已合并main（DONE / MAIN）；真实Web报名冻结、单循环排赛、基础在线记分、独立赛果确认、显式排名与可撤销公开观赛已验收，P06-A透明比分网页、独立授权及管理预览也已验收；完整办赛链路尚未实现。实际完成情况以 [CURRENT_STATUS.md](CURRENT_STATUS.md) 为准。
 
 ## 1. 定位与首要目标
 
@@ -40,11 +40,11 @@
 | P05-A 已交付首卡 | 在线球队得分／犯规／暂停、服务器时钟、主写租约、独立确认和私有快照 | 事件与投影一致，未知命令可核对，历史赛果保留，重启后持久化 |
 | P05-B 已交付 | 显式单循环排名规则、有效确认赛果汇总、可撤销匿名观赛 | DONE / MAIN；302源码、106真实PG、实际重启及12Mock＋12API浏览器通过 |
 | P06 内容交付整体目标 | OBS包装、直播入口、回放和事件集锦 | 仍需分卡验收，不以网页包装关闭完整P06 |
-| P06-A 开发中 | 单场1920×1080透明比分条、独立只读Grant/session及管理预览 | 本地feature已整合；真实PG、API浏览器及合并仍待完成，原生OBS／CEF另验 |
+| P06-A 已交付 | 单场1920×1080透明比分网页、独立只读Grant/session及管理预览 | DONE / MAIN；372源码／123PG／12Mock＋14API及39表实际重启通过，原生OBS／CEF另验 |
 
 专业技术统计、球员个人集锦、跨届分析、赞助效果报告和机构年费按价值分批扩展，不是 P01 验收条件。足球、开放社区和独立原生 App 暂不进入首版。
 
-P01、P02、P03-A、P04-A、P05-A、P05-B当前均为DONE / MAIN。P04-A的[PR #4](https://github.com/xyq-dev/small-city-basketball/pull/4)保留为排赛交付证据；P05-A经[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并至 `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`，发布代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079` 经[CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)验收。全P03、全P04和全P05仍未完成；保险文件、球员自助资料、小程序、微信及OBS仍未接入，也没有生产部署。P05-B经[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)合并至`bd38318fdfdbaeb9cfee1033c0d025e79c6cc797`，验收代码`d9161e965b367ed8cb445482d57759bd34e89629`；[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)通过302项源码（admin147／API155）、106项真实PG、37表实际PG18.6重启、12Mock＋12API官方Chromium151.0.7922.34流程及正常／失败子库清理。早期429、取消及附加清理检查SQL绑定失败保留于[P05-B交接](handoffs/P05-B.md)，不以最终通过抹去历史。
+P01、P02、P03-A、P04-A、P05-A、P05-B、P06-A当前均为DONE / MAIN。P04-A的[PR #4](https://github.com/xyq-dev/small-city-basketball/pull/4)保留为排赛交付证据；P05-A经[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并至 `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`，发布代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079` 经[CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)验收。全P03、全P04和全P05仍未完成；保险文件、球员自助资料、小程序、微信及原生OBS／CEF仍未接入，也没有生产部署。P05-B经[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)合并至`bd38318fdfdbaeb9cfee1033c0d025e79c6cc797`，验收代码`d9161e965b367ed8cb445482d57759bd34e89629`；[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)通过302项源码（admin147／API155）、106项真实PG、37表实际PG18.6重启、12Mock＋12API官方Chromium151.0.7922.34流程及正常／失败子库清理。早期429、取消及附加清理检查SQL绑定失败保留于[P05-B交接](handoffs/P05-B.md)，不以最终通过抹去历史。
 
 ## 4. 核心业务规则
 
@@ -110,10 +110,10 @@ P05-A的单场FINAL不是整届排名或晋级结论。P05-B只按下面明确�
 
 ### 4.6 OBS 与商业交付
 
-P06-A在本地feature已实施单场透明包装及独立授权，尚未合并main或完成真实数据库／API浏览器验收；完整P06、原生OBS／CEF、推流、云直播、录像及商业交付仍未完成。当前检查点与证据见[P06-A任务卡](tasks/P06-A.md)、[交接](handoffs/P06-A.md)及[界面记录](evidence/P06-A/README.md)。
+P06-A经[PR #7](https://github.com/xyq-dev/small-city-basketball/pull/7)合并main `f8af5c99fba294a40334c49a5d2e32f80c6acbf9`，验收source`addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`。[最终CI39758913295](https://github.com/xyq-dev/small-city-basketball/actions/runs/39758913295)全部通过372源码、123真实PG、39表实际PG18.6重启、12Mock＋桌面7／手机7真实API及正常／失败子库清理。完整P06、原生OBS／CEF、推流、云直播、录像及商业交付仍未完成。范围与证据见[P06-A任务卡](tasks/P06-A.md)、[交接](handoffs/P06-A.md)及[界面记录](evidence/P06-A/README.md)。
 
 - 只有当前有效机构OWNER／ADMIN或该赛事实际EVENT_MANAGER／STREAMER可签发、轮换及撤销；全局STREAMER、仅场次记分／审核授权及球队grant均不授管理权。其他实际赛事工作人员只读有限预览及授权状态。
-- Grant与公开观赛启停、排名发布及签发者私人登录独立。签发者退出或个人撤权不会自动停播，界面明确提示由当前管理者主动撤销；机构停用停止读取。每场最多一个未撤销身份，TTL显式1–10080整数分钟，不续长原身份；轮换或过期后重签产生全新身份，旧secret／Cookie不复活。
+- Grant与公开观赛启停、排名发布及签发者私人登录独立。签发者退出或个人撤权不会自动撤销包装读取，界面明确提示由当前管理者主动撤销；机构停用停止读取。每场最多一个未撤销身份，TTL显式1–10080整数分钟，不续长原身份；轮换或过期后重签产生全新身份，旧secret／Cookie不复活。
 - secret仅签发／轮换成功时返回一次，遮罩显示、从内存复制完整源URL；离页不能恢复，丢失需显式轮换。有效secret可重复bootstrap以支持保存原源URL后重载，不是一次消费。管理命令未知结果先读取元数据，不盲目重复签发。
 - 当前授权包括到期但未撤销记录，历史仅最近20条已撤销记录并显示截断。坏FINAL使预览为null并返回previewError，仍能取得当前赛事版本及管理授权，不让来源故障阻止撤销；独立源严格拒绝损坏来源。
 - 源每2秒串行读取，8秒超时；断网立即标陈旧，最后完整快照超过30秒或达到保守Grant硬截止清除队名／比分。404／到期终止，迟到成功不能复活；只读包装不影响记分，也不代表OBS已连接。
@@ -127,9 +127,6 @@ P06-A在本地feature已实施单场透明包装及独立授权，尚未合并ma
 
 每个模块验收至少包含成功、失败、越权、重复操作及状态变化场景；具体用例见各实施任务。P05-B已完成共享名次／空榜、重开与重确认、并发版本、有效FINAL人员更新、独立公开ID、撤销及重新启用、匿名无会话和未准备null的相应源码、真实PG及浏览器验证；手机仍为Chromium模拟，不是Safari／微信真机或OBS／CEF验收。是否已完成以代码、验证证据和仓库状态为准。
 
-后续阶段待定项（不影响已交付P01、P02、P03-A、P04-A、P05-A、P05-B）：第一批真实客户及定价、正式赛事细则、邮箱验证／微信身份接入、资料保留期限、保险服务商、支付与视频云服务商。进入依赖阶段前由负责人确认并记录决定，不能由 AI 静默补为既定事实。
+后续阶段待定项（不影响已交付P01、P02、P03-A、P04-A、P05-A、P05-B、P06-A）：第一批真实客户及定价、正式赛事细则、邮箱验证／微信身份接入、资料保留期限、保险服务商、支付与视频云服务商。进入依赖阶段前由负责人确认并记录决定，不能由 AI 静默补为既定事实。
 
-
-### P06-A远端恢复点与首CI结果
-
-首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）全部成功：372源码（admin171/API201）、123独立PG（原106＋17）、12Mock＋桌面7／手机7真实API、格式／完整strict／build、001→006与checksum、实际PG18.6重启及39表完整指纹、正常及故意失败子库清理。官方Chromium151.0.7922.34。 admin119751331489、api119751331716最终日志均已读取。完整可恢复分支为`feat/P06-overlay`，[PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)。此前19d5801仅是未同步的本地来源，不能充当fresh checkout恢复入口，当前文档已统一指向实际可访问远端source。上文“未执行”保留提交首CI前的检查点；最新以本段及交接为准。仅文档恢复点修正的下一候选仍需完整CI后合并，当前REVIEW／BRANCH_ONLY、尚未MAIN。首head自动CodeReview的文档P2已本地修复待push／resolve，security未运行。原生OBS／CEF、生产与备份恢复未验收。
+P06-A首CI39756976748及文档恢复点修正后的最终CI均全部成功；修订未改变业务代码。旧文档P2已resolved／outdated，最终自动CodeReview无finding，security未运行；阶段历史保留[P06-A交接](handoffs/P06-A.md)。数据库重启不等于备份恢复，官方Chromium手机模拟不等于原生OBS／CEF或微信真机。

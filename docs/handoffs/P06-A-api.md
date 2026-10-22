@@ -1,5 +1,7 @@
 # P06-A API交接
 
+集成人root最终更新（2026-10-22）：本模块已随PR7合并main f8af5c99fba294a40334c49a5d2e32f80c6acbf9；最终source addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11、CI39758913295全部成功372源码／123PG／12Mock＋14API／39表重启及正常／失败子库清理。模块交付为DONE / MAIN，最新接续见[总交接](P06-A.md)。下文作者原始检查点按历史保留，不代表当前未整合。原生OBS／CEF及生产没有验收。
+
 2026-10-22，负责人 `/root/p01_domain`。状态 REVIEW（源码本地完成，待整合真实CI），integration LOCAL_ONLY。
 
 ## 开工上下文
