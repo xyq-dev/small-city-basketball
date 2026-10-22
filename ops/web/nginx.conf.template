@@ -1,0 +1,82 @@
+worker_processes auto;
+pid /tmp/scb-nginx/nginx.pid;
+error_log /dev/stderr warn;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    access_log off;
+    server_tokens off;
+    sendfile on;
+    client_body_temp_path /tmp/scb-nginx/client;
+    proxy_temp_path /tmp/scb-nginx/proxy;
+    fastcgi_temp_path /tmp/scb-nginx/fastcgi;
+    uwsgi_temp_path /tmp/scb-nginx/uwsgi;
+    scgi_temp_path /tmp/scb-nginx/scgi;
+
+    # Follow Compose API address changes without restarting this Web container.
+    upstream scb_api {
+        zone scb_api 64k;
+        resolver 127.0.0.11 valid=5s ipv6=off;
+        resolver_timeout 2s;
+        server api:3300 resolve;
+    }
+
+    server {
+        listen 8443 ssl;
+        server_name _;
+        ssl_certificate /run/secrets/tls_certificate;
+        ssl_certificate_key /run/secrets/tls_private_key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_session_tickets off;
+        root /usr/share/nginx/html;
+        index index.html;
+        client_max_body_size 1m;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy no-referrer always;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host ${SCB_PUBLIC_AUTHORITY};
+        proxy_set_header X-Forwarded-Host ${SCB_PUBLIC_AUTHORITY};
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Forwarded "";
+        proxy_set_header Connection "";
+        proxy_cache off;
+
+        location = /v1 {
+            proxy_pass http://scb_api;
+        }
+        location ^~ /v1/ {
+            proxy_pass http://scb_api;
+        }
+        location = /ready {
+            proxy_pass http://scb_api;
+        }
+        location = /health {
+            proxy_pass http://scb_api;
+        }
+        location /assets/ {
+            try_files $uri =404;
+            add_header Cache-Control "public, max-age=31536000, immutable";
+            add_header X-Content-Type-Options nosniff always;
+            add_header Referrer-Policy no-referrer always;
+        }
+        location = /index.html {
+            add_header Cache-Control "no-store" always;
+            add_header X-Content-Type-Options nosniff always;
+            add_header Referrer-Policy no-referrer always;
+        }
+        location / {
+            try_files $uri $uri/ /index.html;
+            add_header Cache-Control "no-store" always;
+            add_header X-Content-Type-Options nosniff always;
+            add_header Referrer-Policy no-referrer always;
+        }
+    }
+}

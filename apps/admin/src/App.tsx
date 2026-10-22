@@ -826,11 +826,13 @@ function EventForm({
   initial,
   onSave,
   onCancel,
+  onConflictReload,
   editing = false,
 }: {
   initial?: CreateEventInput;
   onSave: (input: CreateEventInput) => Promise<void>;
   onCancel: () => void;
+  onConflictReload?: () => void;
   editing?: boolean;
 }) {
   const [input, setInput] = useState<CreateEventInput>(initial ?? emptyInput);
@@ -845,7 +847,7 @@ function EventForm({
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitLock.current) return;
+    if (submitLock.current || onConflictReload) return;
     const nextErrors = validateEventInput(input);
     setErrors(nextErrors);
     setFailure('');
@@ -1037,13 +1039,27 @@ function EventForm({
           </div>
         </aside>
       </div>
-      {failure && (
+      {(failure || onConflictReload) && (
         <div className="form-alert" role="alert">
           <CircleHelp size={19} />
           <div>
             <strong>保存未完成</strong>
-            <p>{failure}</p>
-            <span>已填写的内容仍保留，请检查后重试。</span>
+            <p>{onConflictReload ? '赛事已被其他人更新，本次修改尚未保存。' : failure}</p>
+            <span>
+              {onConflictReload
+                ? '已填写的内容仍保留。请先复制需要保留的内容，再读取最新赛事后重新编辑；取消或返回详情也会重新读取。'
+                : '已填写的内容仍保留，请检查后重试。'}
+            </span>
+            {onConflictReload && (
+              <button
+                className="button button-secondary"
+                type="button"
+                disabled={submitting}
+                onClick={onConflictReload}
+              >
+                放弃本次修改并读取最新赛事
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -1061,7 +1077,11 @@ function EventForm({
           >
             取消
           </button>
-          <button className="button button-primary" type="submit" disabled={submitting}>
+          <button
+            className="button button-primary"
+            type="submit"
+            disabled={submitting || Boolean(onConflictReload)}
+          >
             {submitting ? <LoaderCircle className="spin" size={17} /> : <Check size={17} />}{' '}
             {submitting ? '正在保存…' : editing ? '保存修改' : '保存草稿'}
           </button>
@@ -1126,6 +1146,7 @@ function EventDetailPage() {
   const [editing, setEditing] = useState(false);
   const [revision, setRevision] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [versionConflict, setVersionConflict] = useState(false);
   const requestGeneration = useRef(0);
   const created = Boolean((location.state as { created?: boolean } | null)?.created);
   useEffect(() => {
@@ -1133,6 +1154,7 @@ function EventDetailPage() {
     requestGeneration.current += 1;
     setEditing(false);
     setSaved(false);
+    setVersionConflict(false);
     setEvent(null);
     setLoading(true);
     setError('');
@@ -1160,11 +1182,21 @@ function EventDetailPage() {
     if (!mayEdit(workspace, event))
       throw new AppError('INVALID_EVENT_STATE', '当前身份没有编辑此草稿的权限');
     const generation = requestGeneration.current;
-    const updated = await repository.updateDraft(event.id, input, event.version);
-    if (generation !== requestGeneration.current) return;
-    setEvent(updated);
-    setEditing(false);
-    setSaved(true);
+    try {
+      const updated = await repository.updateDraft(event.id, input, event.version);
+      if (generation !== requestGeneration.current) return;
+      setEvent(updated);
+      setEditing(false);
+      setSaved(true);
+    } catch (cause) {
+      if (generation !== requestGeneration.current) return;
+      if (cause instanceof AppError && cause.code === 'VERSION_CONFLICT') setVersionConflict(true);
+      throw cause;
+    }
+  }
+  function cancelEditing() {
+    if (versionConflict) setRevision((n) => n + 1);
+    else setEditing(false);
   }
   if (loading)
     return (
@@ -1207,7 +1239,7 @@ function EventDetailPage() {
   if (editing && mayEdit(workspace, event))
     return (
       <>
-        <button className="back-link" onClick={() => setEditing(false)}>
+        <button className="back-link" onClick={cancelEditing}>
           <ChevronLeft size={16} />
           返回赛事详情
         </button>
@@ -1231,7 +1263,8 @@ function EventDetailPage() {
           }}
           editing
           onSave={save}
-          onCancel={() => setEditing(false)}
+          onCancel={cancelEditing}
+          onConflictReload={versionConflict ? () => setRevision((n) => n + 1) : undefined}
         />
       </>
     );

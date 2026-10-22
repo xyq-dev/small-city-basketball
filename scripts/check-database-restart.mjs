@@ -2,26 +2,66 @@ import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createApi } from '../apps/api/dist/app.js';
+import pg from 'pg';
 
-const databaseUrl = process.env.TEST_DATABASE_URL;
-if (!databaseUrl || !/^scb_test_[A-Za-z0-9_]+$/.test(new URL(databaseUrl).pathname.slice(1))) {
-  throw new Error(
-    'Database restart check requires TEST_DATABASE_URL with an isolated scb_test_* database',
-  );
+// The production package runs this same synthetic business chain against its real TLS API.
+// SQL remains read-only here; use the separately scoped backup role for the 39-table digest.
+async function privateValue(name) {
+  const inline = process.env[name];
+  const file = process.env[name + '_FILE'];
+  if (inline && file) throw new Error('Conflicting check credential configuration');
+  try {
+    return file ? (await readFile(file, 'utf8')).trimEnd() : inline;
+  } catch {
+    throw new Error('Check credential file is unavailable');
+  }
 }
+const databaseUrl = await privateValue('TEST_DATABASE_URL');
+let databaseName;
+try {
+  databaseName = new URL(databaseUrl).pathname.slice(1);
+} catch {
+  throw new Error('Database check requires an isolated database');
+}
+if (
+  !/^scb_test_[A-Za-z0-9_]+$/.test(databaseName) &&
+  !(process.env.SCB_CHECK_RECOVERY === '1' && /^scb_restore_[A-Za-z0-9_]+$/.test(databaseName))
+)
+  throw new Error('Database check requires an isolated scb_test_* or explicit recovery database');
 const stateFile = process.env.SCB_PERSISTENCE_FILE;
 if (!stateFile)
   throw new Error('SCB_PERSISTENCE_FILE must be a private temporary file outside the repository');
 const mode = process.argv[2];
-if (!['capture', 'verify'].includes(mode)) throw new Error('Use capture or verify');
-const instance = await createApi({ databaseUrl, appOrigin: 'http://127.0.0.1:5173' });
-await instance.app.listen(0, '127.0.0.1');
-const baseUrl = await instance.app.getUrl();
+if (!['capture', 'verify', 'freeze'].includes(mode))
+  throw new Error('Use capture, verify or freeze');
+const remoteUrl = process.env.SCB_CHECK_BASE_URL;
+if (remoteUrl) {
+  let url;
+  try {
+    url = new URL(remoteUrl);
+  } catch {
+    throw new Error('Invalid isolated TLS check origin');
+  }
+  if (
+    url.protocol !== 'https:' ||
+    !['localhost', '127.0.0.1', 'web'].includes(url.hostname) ||
+    url.origin !== remoteUrl
+  )
+    throw new Error('External check requires an isolated TLS origin');
+}
+const origin = process.env.APP_ORIGIN ?? 'http://127.0.0.1:5173';
+const instance = remoteUrl
+  ? { app: null, pool: new pg.Pool({ connectionString: databaseUrl }) }
+  : await createApi({ databaseUrl, appOrigin: origin });
+if (instance.app) await instance.app.listen(0, '127.0.0.1');
+const baseUrl = remoteUrl ?? (await instance.app.getUrl());
+const readUrl = await privateValue('SCB_FINGERPRINT_DATABASE_URL');
+const readPool = readUrl ? new pg.Pool({ connectionString: readUrl }) : instance.pool;
 async function call(route, { method = 'GET', body, cookie } = {}) {
   const response = await fetch(baseUrl + route, {
     method,
     headers: {
-      Origin: 'http://127.0.0.1:5173',
+      Origin: origin,
       ...(body ? { 'Content-Type': 'application/json' } : {}),
       ...(cookie ? { Cookie: cookie } : {}),
     },
@@ -74,7 +114,9 @@ async function fingerprint() {
     ['schema_migrations', 'name'],
   ]) {
     // Table and order names are fixed source constants; no request input is interpolated.
-    const rows = await instance.pool.query(`SELECT * FROM ${table} ORDER BY ${order}`);
+    const rows = await readPool.query(
+      `SELECT row_to_json(record_row)::text AS exact_row FROM (SELECT * FROM ${table} ORDER BY ${order}) record_row`,
+    );
     hash.update(table + '\n' + JSON.stringify(rows.rows) + '\n');
   }
   return hash.digest('hex');
@@ -538,7 +580,7 @@ async function assertOverlayRevoked(saved) {
     (
       await fetch(`${baseUrl}/v1/overlays/${saved.overlayId}/bootstrap`, {
         method: 'POST',
-        headers: { Origin: 'http://127.0.0.1:5173', 'Content-Type': 'application/json' },
+        headers: { Origin: origin, 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: saved.token }),
       })
     ).status,
@@ -633,13 +675,19 @@ async function captureOverlays(orgId, cookie, scheduling) {
 try {
   if (mode === 'capture') {
     const suffix = randomUUID();
-    const registration = await call('/v1/auth/register', {
+    const ownerFile = process.env.SCB_CHECK_OWNER_FILE;
+    const owner = ownerFile ? JSON.parse(await readFile(ownerFile, 'utf8')) : null;
+    const registration = await call(owner ? '/v1/auth/login' : '/v1/auth/register', {
       method: 'POST',
       body: {
-        email: `restart-${suffix}@example.test`,
-        password: randomBytes(24).toString('base64url'),
-        displayName: '重启验证员',
-        organizationName: '隔离重启验证机构',
+        ...(owner
+          ? { email: owner.email, password: owner.password }
+          : {
+              email: `restart-${suffix}@example.test`,
+              password: randomBytes(24).toString('base64url'),
+              displayName: '重启验证员',
+              organizationName: '隔离重启验证机构',
+            }),
       },
     });
     const cookie = registration.response.headers.getSetCookie()[0]?.split(';')[0];
@@ -692,6 +740,12 @@ try {
     console.log(
       'Captured sessions, frozen registration, schedule, raw clock, results, standings, public identities, independent active/revoked overlay grants and read sessions, and the isolated database fingerprint.',
     );
+  } else if (mode === 'freeze') {
+    // The caller has stopped every API writer before this point and keeps them stopped until dump finishes.
+    const state = JSON.parse(await readFile(stateFile, 'utf8'));
+    state.fingerprint = await fingerprint();
+    await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
+    console.log('Captured the quiescent 39-table backup baseline.');
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     const session = await call('/v1/auth/session', { cookie: state.cookie });
@@ -805,7 +859,8 @@ try {
       });
       assert.equal(reused.data.expiresAt, saved.snapshot.expiresAt);
       const returnedCookie = reused.response.headers.getSetCookie()[0]?.split(';')[0];
-      if (returnedCookie) assert.equal(returnedCookie, saved.cookie);
+      if (returnedCookie)
+        assert.ok(returnedCookie === saved.cookie, 'Existing overlay session must be reused');
     }
     await assertOverlayRevoked(state.overlays.revoked);
     assert.equal(await fingerprint(), state.fingerprint);
@@ -825,6 +880,7 @@ try {
     );
   }
 } finally {
-  await instance.app.close();
+  await instance.app?.close();
   await instance.pool.end();
+  if (readPool !== instance.pool) await readPool.end();
 }

@@ -21,6 +21,14 @@ const draft: EventRecord = {
   createdAt: '2026-10-22T04:00:00.000Z',
   updatedAt: '2026-10-22T04:00:00.000Z',
 };
+const draftInput: CreateEventInput = {
+  name: draft.name,
+  startDate: draft.startDate,
+  endDate: draft.endDate,
+  timezone: draft.timezone,
+  venueName: '',
+  format: draft.format,
+};
 
 function renderAt(path: string, repository: EventRepository) {
   window.history.replaceState({}, '', path);
@@ -95,6 +103,76 @@ describe('真实页面的服务失败与恢复', () => {
     expect(await screen.findByRole('heading', { level: 1, name: '可恢复的赛事' })).toBeVisible();
     expect(create).toHaveBeenCalledTimes(2);
     expect(await repository.list()).toHaveLength(1);
+  });
+
+  it('草稿冲突保留输入并阻止旧版本重试，显式读取后用最新版本重新编辑', async () => {
+    const repository = createMemoryEventRepository({ seed: [draft], latencyMs: 0 });
+    const updateDraft = vi.fn(repository.updateDraft);
+    renderAt('/events/test-draft', { ...repository, updateDraft });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '编辑草稿' }));
+    await user.clear(screen.getByLabelText(/赛事名称/));
+    await user.type(screen.getByLabelText(/赛事名称/), '我尚未保存的名称');
+    await repository.updateDraft(draft.id, { ...draftInput, name: '他人已保存的名称' }, 1);
+    await user.click(screen.getByRole('button', { name: '保存修改' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('赛事已被其他人更新');
+    expect(screen.getByLabelText(/赛事名称/)).toHaveValue('我尚未保存的名称');
+    expect(screen.getByRole('button', { name: '保存修改' })).toBeDisabled();
+    await user.type(screen.getByLabelText(/比赛地点/), '仍可整理的本地内容');
+    expect(screen.getByRole('alert')).toHaveTextContent('赛事已被其他人更新');
+    await user.click(screen.getByRole('button', { name: '保存修改' }));
+    expect(updateDraft).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: '放弃本次修改并读取最新赛事' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '他人已保存的名称' }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '编辑草稿' }));
+    expect(screen.getByLabelText(/赛事名称/)).toHaveValue('他人已保存的名称');
+    await user.clear(screen.getByLabelText(/赛事名称/));
+    await user.type(screen.getByLabelText(/赛事名称/), '核对后重新编辑的名称');
+    await user.click(screen.getByRole('button', { name: '保存修改' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '核对后重新编辑的名称' }),
+    ).toBeVisible();
+    expect(updateDraft).toHaveBeenLastCalledWith(
+      draft.id,
+      expect.objectContaining({ name: '核对后重新编辑的名称' }),
+      2,
+    );
+  });
+
+  it('冲突后取消会重新读取，读取失败时不允许重开旧赛事，重试后才恢复最新版本', async () => {
+    const repository = createMemoryEventRepository({ seed: [draft], latencyMs: 0 });
+    const get = vi.fn(repository.get);
+    const updateDraft = vi.fn(repository.updateDraft);
+    renderAt('/events/test-draft', { ...repository, get, updateDraft });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '编辑草稿' }));
+    await repository.updateDraft(draft.id, { ...draftInput, name: '取消后应读取的最新名称' }, 1);
+    await user.click(screen.getByRole('button', { name: '保存修改' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('赛事已被其他人更新');
+    get.mockRejectedValueOnce(new Error('最新赛事读取失败'));
+    await user.click(screen.getByRole('button', { name: '取消' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('最新赛事读取失败');
+    expect(screen.queryByRole('button', { name: '编辑草稿' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '保存修改' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '重新加载' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '取消后应读取的最新名称' }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '编辑草稿' }));
+    expect(screen.getByLabelText(/赛事名称/)).toHaveValue('取消后应读取的最新名称');
+    await user.type(screen.getByLabelText(/比赛地点/), '核对后的地点');
+    await user.click(screen.getByRole('button', { name: '保存修改' }));
+    await screen.findByRole('heading', { level: 1, name: '取消后应读取的最新名称' });
+    expect(updateDraft).toHaveBeenLastCalledWith(
+      draft.id,
+      expect.objectContaining({ venueName: '核对后的地点' }),
+      2,
+    );
   });
 
   it('保存请求未完成时禁用提交，重复点击不创建第二条赛事', async () => {
