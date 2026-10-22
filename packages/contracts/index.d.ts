@@ -629,3 +629,148 @@ export interface ScoringEventData {
   serverTime: string;
   targetEventId: string | null;
 }
+
+export const STANDINGS_TIEBREAKERS: readonly ['SCORE_DIFFERENCE', 'POINTS_FOR', 'WINS'];
+export const STANDINGS_ALGORITHM_VERSION: 'RR_STANDINGS_V1';
+export type StandingsTiebreaker = (typeof STANDINGS_TIEBREAKERS)[number];
+export interface StandingsRules {
+  winPoints: number;
+  lossPoints: number;
+  drawPoints: number;
+  tiebreakers: StandingsTiebreaker[];
+}
+export interface StandingsRulesetData extends StandingsRules {
+  id: string;
+  eventId: string;
+  version: number;
+  algorithmVersion: typeof STANDINGS_ALGORITHM_VERSION;
+  createdAt: string;
+}
+export interface StandingsTotals {
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  scoreDifference: number;
+  leaguePoints: number;
+}
+export interface StandingsRow extends StandingsTotals {
+  entryId: string;
+  teamId: string;
+  teamName: string;
+  rank: number | null;
+  tied: boolean;
+}
+export interface StandingsData {
+  mode: 'DRAFT_PREVIEW' | 'PUBLISHED';
+  rulesetVersion: number;
+  sourceHash: string;
+  asOf: string;
+  confirmedMatchCount: number;
+  totalMatchCount: number;
+  isComplete: boolean;
+  hasSharedRanks: boolean;
+  rows: StandingsRow[];
+}
+export interface PublicViewingPublicationData {
+  publicEventId: string;
+  status: 'ACTIVE' | 'REVOKED';
+  createdAt: string;
+  revokedAt: string | null;
+}
+export interface EventStandingsData {
+  event: EventData;
+  rules: StandingsRulesetData | null;
+  locked: boolean;
+  standings: StandingsData | null;
+  publication: PublicViewingPublicationData | null;
+  capabilities: {
+    canManageRules: boolean;
+    canPublishRules: boolean;
+    canEnablePublicViewing: boolean;
+    canDisablePublicViewing: boolean;
+  };
+}
+export interface UpdateStandingsRulesInput extends StandingsRules {
+  expectedEventVersion: number;
+}
+export interface StandingsRuleCommandInput {
+  type: 'PUBLISH_STANDINGS_RULES';
+  rulesetId: string;
+  expectedEventVersion: number;
+}
+export interface PublicViewingCommandInput {
+  type: 'ENABLE' | 'DISABLE';
+  expectedEventVersion: number;
+}
+export interface PublicStandingsRow extends StandingsTotals {
+  teamKey: string;
+  teamName: string;
+  rank: number | null;
+  tied: boolean;
+}
+export interface PublicStandingsRules extends StandingsRules {
+  version: number;
+  algorithmVersion: typeof STANDINGS_ALGORITHM_VERSION;
+}
+export interface PublicStandingsData {
+  publicEventId: string;
+  rules: PublicStandingsRules;
+  sourceHash: string;
+  asOf: string;
+  confirmedMatchCount: number;
+  totalMatchCount: number;
+  isComplete: boolean;
+  hasSharedRanks: boolean;
+  rows: PublicStandingsRow[];
+}
+export interface PublicEventData {
+  publicEventId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  timezone: string;
+  venueName: string | null;
+  status: EventStatus;
+  rules: PublicStandingsRules;
+  confirmedMatchCount: number;
+  totalMatchCount: number;
+  isComplete: boolean;
+  serverTime: string;
+}
+export interface PublicTeamData {
+  teamKey: string;
+  teamName: string;
+}
+export type PublicResultStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REQUIRES_RECONFIRMATION';
+export interface PublicScheduleMatchData {
+  publicMatchId: string;
+  roundNo: number;
+  positionNo: number;
+  home: PublicTeamData;
+  away: PublicTeamData;
+  courtName: string;
+  startsAt: string;
+  endsAt: string;
+  status: MatchStatus;
+  version: number;
+  score: { home: number; away: number } | null;
+  resultStatus: PublicResultStatus;
+}
+export interface PublicMatchSnapshotData extends PublicScheduleMatchData {
+  publicEventId: string;
+  eventName: string;
+  totals: { home: ScoringTotals; away: ScoringTotals } | null;
+  periods: ScoringPeriodTotals[] | null;
+  rules: (ScoringRules & { version: number }) | null;
+  clock: ScoringClock | null;
+  collected: {
+    teamScore: boolean;
+    teamFouls: boolean;
+    teamTimeouts: boolean;
+    playerStatistics: false;
+  };
+  serverTime: string;
+}
