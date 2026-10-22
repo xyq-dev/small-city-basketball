@@ -1,6 +1,6 @@
 # P05-B 验证与界面证据
 
-更新：2026-10-22。首CI39748395765已通过300源码、106独立PG、005隔离执行／复跑、实际PG18.6重启及12Mock；真实API的10项通过，最后2项手机场景在注册夹具触发同IP20次／小时限流429，尚未完整验收／MAIN。测试入口现改为每个浏览器project新建随机隔离库，保留生产限流，等待第二轮CI。
+更新：2026-10-22。**DONE / MAIN**。第四完整CI39751848322在代码d9161e965b367ed8cb445482d57759bd34e89629（tree554284a604f3b0027d5b0eedc7dbbee20eab3119）全部成功：302源码（admin147/API155）、106独立PG、12Mock＋12API官方Chromium151.0.7922.34、格式／完整strict／两端build、001→005执行及checksum复跑、实际PG18.6重启与37表指纹。正常桌面／手机随机子库及故意失败子进程的CREATE／DROP均已验证，失败退出码保留且控制库保留。PR6已合并为main@bd38318fdfdbaeb9cfee1033c0d025e79c6cc797。 最新d916自动CodeReview已completed、无finding（comment6336377538）；非RR入口旧线程PRRT_kwDOVTBG086vG72U已resolved/outdated。自动security未运行，不能据此声称安全审计通过。 下文先前“待执行／待修复”仅为相应检查点历史。
 
 ## 布局截图
 
@@ -36,3 +36,10 @@ root新增桌面/手机真实API流程和实际PG重启扩展已写入、strict/
 ## 第三CI业务全通过，附加校验待修复
 
 第三CI39750653647（7c70c159）已通过302源码、106PG、37表实际重启、12Mock和desktop6＋mobile6真实API；正常子库建删成功。唯一失败为额外负向清理检查最后的ANY($1::text[])误传2个参数，08P01；已修为单一嵌套数组，等待第四完整CI后合并。 API job119730621238：desktop6通过并DROP自建d库，mobile6通过并DROP自建m库；额外负向checker已完成故意child失败／DROP日志断言，在最终pg_database核验查询时错误。因此不能把整体job标成功，后续以第四CI为准。
+
+
+## 最终验收
+
+第四完整CI39751848322在代码d9161e965b367ed8cb445482d57759bd34e89629（tree554284a604f3b0027d5b0eedc7dbbee20eab3119）全部成功：302源码（admin147/API155）、106独立PG、12Mock＋12API官方Chromium151.0.7922.34、格式／完整strict／两端build、001→005执行及checksum复跑、实际PG18.6重启与37表指纹。正常桌面／手机随机子库及故意失败子进程的CREATE／DROP均已验证，失败退出码保留且控制库保留。PR6已合并为main@bd38318fdfdbaeb9cfee1033c0d025e79c6cc797。 最新d916自动CodeReview已completed、无finding（comment6336377538）；非RR入口旧线程PRRT_kwDOVTBG086vG72U已resolved/outdated。自动security未运行，不能据此声称安全审计通过。
+
+所有功能通过均指隔离测试环境；截图仍仅为合成HTTP/native153布局。没有生产、原生OBS/CEF、Safari、微信真机或备份恢复验收。

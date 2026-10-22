@@ -1,6 +1,6 @@
 # 数据模型与状态
 
-设计版本：0.1；更新：2026-10-22；状态：P02至P05-A已MAIN，P05-B005已在首CI隔离执行／复跑及重启验证，尚未MAIN／完整浏览器验收；保险附件和OBS实体未建表。无生产执行。
+设计版本：0.1；更新：2026-10-22；状态：P02至P05-B已整合main，各已交付子卡为DONE / MAIN。001→005在隔离PG18.6执行／复跑并通过37表实际重启验证；保险附件和OBS实体未建表，无生产执行。完整P05仍有可靠离线与专业统计等后续范围；P06-A仅合同已审查，尚无迁移或实现。
 
 ## 1. 通用约束
 
@@ -54,7 +54,7 @@ P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引�
 - **赛事**：`DRAFT → REGISTRATION_OPEN → REGISTRATION_CLOSED → SCHEDULED → RUNNING → COMPLETED → ARCHIVED`；允许受控 `CANCELLED`。P01 仅创建/编辑 DRAFT。开放报名、发布赛程、结束和归档分阶段实施；COMPLETED 要求必要比赛已确认或有明确取消/弃权处置，不仅是比分已填。
 - **报名**：`DRAFT → SUBMITTED → APPROVED / CHANGES_REQUESTED / REJECTED`；CHANGES_REQUESTED 补齐后重新提交；未锁定前可按规则 WITHDRAWN。审批操作者、理由和版本需保留。
 - **保险凭证**：`PENDING → APPROVED / REJECTED`，规则不要求保险时可标 `NOT_REQUIRED`。凭证批准只表示本赛事审核结论，不保证理赔或替代承保方判断。
-- **比赛**：`SCHEDULED → READY → LIVE → PENDING_CONFIRMATION → FINAL`；另有 `POSTPONED / CANCELLED`。不能从 LIVE 直接成为正式赛果。READY 校验名单、规则及工作人员；结束计分进入待确认。FINAL 更正需有权限的重开命令回到 PENDING_CONFIRMATION，该状态只允许受控更正及确认，不继续正常实时计分。P05-B分支榜单只消费有效确认，尚未验收；下游晋级未实现。未来若更正影响已排定或已开赛的下游晋级场次，应阻断自动改写并交赛事管理员处置。延期恢复、弃权、争议处置必须记录原因，不直接删除比赛。
+- **比赛**：`SCHEDULED → READY → LIVE → PENDING_CONFIRMATION → FINAL`；另有 `POSTPONED / CANCELLED`。不能从 LIVE 直接成为正式赛果。READY 校验名单、规则及工作人员；结束计分进入待确认。FINAL 更正需有权限的重开命令回到 PENDING_CONFIRMATION，该状态只允许受控更正及确认，不继续正常实时计分。P05-B已验收榜单只消费当前有效确认；下游晋级未实现。未来若更正影响已排定或已开赛的下游晋级场次，应阻断自动改写并交赛事管理员处置。延期恢复、弃权、争议处置必须记录原因，不直接删除比赛。
 - **赛程版本**：P04-A只有当前`DRAFT → PUBLISHED`，重抽把旧DRAFT变为SUPERSEDED并创建新DRAFT；已发布版本不能变为SUPERSEDED或被替换。发布校验冻结球队、时间、场地及规则来源；后续发布后改期另开有恢复方案的任务。
 
 删除已参赛球队、已使用规则或已开赛场次应拒绝或归档，不能级联删除历史。个人数据保留、注销和匿名化策略在真实资料上线前确定，业务历史与敏感原文分别处理。
@@ -63,7 +63,7 @@ P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引�
 
 优先建立成员 `(orgId,userId,status)`、赛事 `(orgId,status,startDate)`、报名 `(orgId,eventId,status)`、比赛 `(orgId,eventId,startsAt)`、场地时间检索及事件 `(matchId,seq)`。幂等唯一键包含机构、操作者、命令作用域及幂等键；只存业务所需的最小响应。P04-A已用GiST排他约束、机构mutex及真实并发用例验证本机构Court/Team占用；P05-A的同场连续seq、幂等唯一键、永久fence及projection版本约束见第9节。
 
-必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。P02/P03-A/P04-A/P05-A适用范围已执行；P05-B榜单／公开身份测试源码已编写但首CI106PG通过。Migration001–004的执行事实见下文，005三表已在隔离CI建立，不能把规划实体当已建表。
+必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。P02至P05-B适用范围已执行，最终CI106项独立PG通过；001→005执行／复跑及实际重启证据见下文与[TESTING](TESTING.md)。005三表已在隔离CI建立并保留，规划实体不因此成为已建表。
 
 ## 6. P02 最小持久化实施
 
@@ -108,7 +108,7 @@ P03-A经[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并ma
 
 发布及Court写按session/user→org→membership→org_schedule_mutex→event（如适用）→revision→Court顺序锁定，不升级org SHARE。发布从服务器freeze与seed重算对阵和占用；同事务写publication→matches→每场1court/2team预约→revision PUBLISHED→event SCHEDULED/version→audit。revision完整性触发器及deferred提交约束阻止半份发布。双赛事争抢Court／同Team、缺mutex行首次并发、Court停用竞态、机构隔离及审计失败整体回滚均经真实PG验证。
 
-本卡只支持2–32队单回合ROUND_ROBIN、显式占用／休息／本地日期间隔及时间窗口、手工分配和一次发布。重抽新建来源、旧稿SUPERSEDED只读；没有自动排时、淘汰／分组、改期或释放预约。机构内canonical Court/Team协调不等于跨机构物理场地共享；完整P04、正式排名／公开观赛及P06仍未完成。
+本卡只支持2–32队单回合ROUND_ROBIN、显式占用／休息／本地日期间隔及时间窗口、手工分配和一次发布。重抽新建来源、旧稿SUPERSEDED只读；没有自动排时、淘汰／分组、改期或释放预约。机构内canonical Court/Team协调不等于跨机构物理场地共享；本节只验收P04-A；有限正式排名／公开观赛已由第10节P05-B交付，完整P04及P06仍未完成。
 
 
 ## 9. P05-A记分持久化（DONE / MAIN，隔离测试库已执行）
@@ -135,13 +135,13 @@ ACTIVE分配要求target当前用户及成员有效；DISABLED只UPDATE已有本
 
 STAT_RECORDED保存kind/side/value/period及可选reason；更正用STAT_VOIDED关联同场仍有效事件，替换原子追加VOID＋新STAT并保留kind/period。原统计和确认历史永不覆盖。确认前按全部事件重放并核验projection，结果source_match_version及last_event_seq取确认前的版本／序列；确认命令自身新增生命周期event与appliedVersion。FINAL后合法staff调整可增加当前match/sourceVersion而不使既有统计确认失效，不能将两种版本直接判等。
 
-重开仅FINAL→PENDING_CONFIRMATION，保留旧latest确认并设置requires_reconfirmation；修正后重新确认新增结果，不恢复LIVE。OVERTIME平分拒绝结束／确认，待确认修正产生平分时也不伪造正式结果，本卡无恢复LIVE补加时流程。Event不自动COMPLETED；正式排名／公开读身份的分支模型见第10节，SSE/outbox、可靠离线、专业球员统计、延期／弃权／争议、晋级及OBS仍待后续任务。
+重开仅FINAL→PENDING_CONFIRMATION，保留旧latest确认并设置requires_reconfirmation；修正后重新确认新增结果，不恢复LIVE。OVERTIME平分拒绝结束／确认，待确认修正产生平分时也不伪造正式结果，本卡无恢复LIVE补加时流程。Event不自动COMPLETED；已交付的正式排名／公开读身份模型见第10节，SSE/outbox、可靠离线、专业球员统计、延期／弃权／争议、晋级及OBS仍待后续任务。
 
 私有ScoreSnapshot白名单不含lease/session/control或身份／保险材料；工作人员及受控lease摘要仅在Workbench。P05-A没有匿名读或OverlayGrant，后续公开／OBS须独立授权并使用有限投影，不能直接序列化本节实体。精确HTTP行为见[API契约第8节](API_CONTRACTS.md)，验收与审查状态见[TESTING](TESTING.md)。
 
-## 10. P05-B排名与公开身份模型（feature已实施，005隔离验证成功）
+## 10. P05-B排名与公开身份模型（DONE / MAIN）
 
-`apps/api/migrations/005_p05_standings_public.sql` SHA-256为`e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221`。独立静态CLEAR后，首CI39748395765按001→005隔离执行／复跑，106独立PG及实际PG18.6重启通过，含本卡三表／规则锁／公开映射／来源hash；完整浏览器待复验，尚未MAIN，无生产执行。
+`apps/api/migrations/005_p05_standings_public.sql` SHA-256保持`e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221`。独立静态CLEAR后，已随PR #6合并main `bd38318fdfdbaeb9cfee1033c0d025e79c6cc797`。[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)按001→005隔离执行／复跑checksum，106项独立PG及实际PG18.6重启通过，指纹覆盖36个migration应用表与schema_migrations共37表，含本卡三表、规则锁、有效／撤销公开身份、全量映射和sourceHash；12Mock＋12真实API官方浏览器通过。首CI429、第二轮取消、第三轮负向checker SQL绑定失败及最终修复均保留[TESTING](TESTING.md)。无生产数据库或生产执行。
 
 | 新表 | 主键、引用与约束 |
 |---|---|

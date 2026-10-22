@@ -1,6 +1,6 @@
 # API 契约
 
-目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A、P04-A及P05-A已整合main，P05-A为DONE / MAIN；[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并提交 `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`，验收代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`。身份、报名冻结、单循环排赛及在线基础记分／独立确认已通过隔离PostgreSQL与浏览器验收，实际契约见第5–8节。第9节记录P05-B在feature中的API实施合同：文档起稿检查点 `8d50cf710c5ce48265fdaf0e3dc06e986a46bf3a` 已含API及新增PG测试源码，随后UI已整合feature `5a985b6293e1ab05e42ab77cc491d47a0bf4bc92`；尚未MAIN、尚无P05-B真实PG／重启／浏览器验收。可靠离线、其他排赛赛制、改期、P03附件／小程序及OBS仍未交付。
+目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A、P04-A、P05-A及P05-B已整合main，DONE / MAIN。[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)合并提交 `bd38318fdfdbaeb9cfee1033c0d025e79c6cc797`，验收source `d9161e965b367ed8cb445482d57759bd34e89629`、tree `554284a604f3b0027d5b0eedc7dbbee20eab3119`。身份、报名冻结、单循环排赛、在线基础记分／独立确认及第9节有限排名／可撤销公开观赛，均经[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)通过真实隔离PostgreSQL、实际重启及官方浏览器验收。前三轮失败／取消与修复保留[TESTING](TESTING.md)。完整P05尚未完成；可靠离线、专业统计、其他排赛赛制、改期、P03附件／小程序及OBS仍未交付。P06-A合同已审查，尚无可调用实现或原生OBS／CEF测试。
 
 ## 1. 通用约定
 
@@ -34,7 +34,7 @@ type CreateEventInput = {
 
 ## 3. 目标路由清单
 
-下表同时列出已实现入口与长期目标；P02、P03-A、P04-A及P05-A的实际权限、输入和响应以第5–8节及共享契约为准，P05-B分支合同另见第9节。人员私密资料、保险附件、其他排赛赛制和OBS等目标入口尚不可调用。
+下表同时列出已实现入口与长期目标；P02、P03-A、P04-A及P05-A的实际权限、输入和响应以第5–8节及共享契约为准，P05-B已交付合同另见第9节。人员私密资料、保险附件、其他排赛赛制和OBS等目标入口尚不可调用。
 
 下表私有路径均省略 `/v1/orgs/{orgId}`；资源 ID 需按其所属赛事/机构重新校验。
 
@@ -68,13 +68,13 @@ type CreateEventInput = {
 
 `POST /v1/invitations/{invitationId}/accept` 是已登录受邀者接受邀请的独立入口；验证令牌hash、有效期、用途、目标受邀者和未被消费状态，事务内建立限定资源绑定并记录接受，不能凭客户端给出的userId绑定他人。重复接受仅向同一已核验身份返回既有结果；撤销、过期、越范围的邀请拒绝。机构工作人员的邀请/撤权和平台套餐开通接口在 P02/P06 对应任务细化，不从本路由表推定已经实现。文件上传另设授权申请/完成接口，下载临时链接须重新鉴权，URL 不能永久公开。
 
-P05-B分支已实施第9节的公开event及其schedule／standings／嵌套match读取，尚未完成真实验收；旧目标 `/v1/public/matches/{publicId}/snapshot` 未实现，不是本卡入口。包装读取 `/v1/overlays/{grantId}/snapshot` 和 `/stream` 仍为P06目标，使用独立只读能力令牌，不复用机构管理会话。
+P05-B已交付并验收第9节的公开event及其schedule／standings／嵌套match读取；旧目标 `/v1/public/matches/{publicId}/snapshot` 未实现，不是本卡入口。包装读取 `/v1/overlays/{grantId}/snapshot` 和 `/stream` 仍为P06目标，使用独立只读能力令牌，不复用机构管理会话。
 
 ## 4. 比赛命令和冲突
 
-P05-A实际命令为 `{commandId,expectedVersion,type,payload,capturedAt,control?}`，control嵌套包含leaseId、fencingToken及clientInstanceId，不把凭据散落顶层。精确输入、控制要求和错误见第8节及[共享契约](../packages/contracts/index.d.ts)。当前只采集球队得分、犯规、暂停；专业球员统计、一次投篮派生个人和球队统计、正式排名及公开包装均属后续范围，不能从本节推定已实现。
+P05-A实际命令为 `{commandId,expectedVersion,type,payload,capturedAt,control?}`，control嵌套包含leaseId、fencingToken及clientInstanceId，不把凭据散落顶层。精确输入、控制要求和错误见第8节及[共享契约](../packages/contracts/index.d.ts)。当前只采集球队得分、犯规、暂停；有限正式排名及公开观赛见已验收的第9节，专业球员统计、一次投篮派生个人和球队统计及OBS包装仍属后续范围。
 
-撤销和替换引用同场原统计事件；结束计分只进入PENDING_CONFIRMATION。确认使用命令expectedVersion检查精确当前match版本，并保存确认前的sourceMatchVersion／lastEventSeq。重开保留旧确认且标记待重确认，不直接返回LIVE；正式榜单的消费规则待P05-B。
+撤销和替换引用同场原统计事件；结束计分只进入PENDING_CONFIRMATION。确认使用命令expectedVersion检查精确当前match版本，并保存确认前的sourceMatchVersion／lastEventSeq。重开保留旧确认且标记待重确认，不直接返回LIVE；正式榜单的消费规则见已交付的第9节。
 
 P05-A通过私有snapshot轮询读取，不提供SSE、WebSocket或outbox。后续实时消息应带版本、serverTime和有限投影，发现缺口后重取快照；视频和OBS不成为记分成功的前置条件。
 
@@ -222,11 +222,11 @@ ScoreSnapshot含实际MatchStatus、双方冻结展示信息、已采集球队�
 
 关键实际错误：422 VALIDATION_ERROR／RULE_CONFLICT／SCORING_RULES_REQUIRED／INVALID_STAT_TARGET；409 VERSION_CONFLICT／LEASE_CONFLICT／IDEMPOTENCY_CONFLICT／INVALID_MATCH_STATE／SCORING_RULES_LOCKED／SCORER_REQUIRED／MATCH_NOT_PREPARED／PROJECTION_MISMATCH；隐藏资源404 RESOURCE_NOT_FOUND、未知收据404 COMMAND_NOT_FOUND，可见无动作权限403 FORBIDDEN。不能把长期目标中的LEASE_EXPIRED等细分码当作本卡接口。
 
-P05-A只实现在线基础记分及私有读取；共享MATCH_STATUSES为SCHEDULED、READY、LIVE、PENDING_CONFIRMATION、FINAL、POSTPONED、CANCELLED，后两者仅预留，没有变更接口。不自动COMPLETED赛事；正式积分／同分排序及公开观赛的P05-B分支实现见第9节，尚未验收。SSE/outbox、可靠离线、球员专业统计、弃权／争议、延期恢复、淘汰晋级及OBS仍待后续任务。P04正式来源、计划和预约仍不可变，FINAL场次读取返回真实状态，不回写SCHEDULED。
+P05-A只实现在线基础记分及私有读取；共享MATCH_STATUSES为SCHEDULED、READY、LIVE、PENDING_CONFIRMATION、FINAL、POSTPONED、CANCELLED，后两者仅预留，没有变更接口。不自动COMPLETED赛事；正式积分／同分排序及公开观赛的P05-B已交付实现见第9节。SSE/outbox、可靠离线、球员专业统计、弃权／争议、延期恢复、淘汰晋级及OBS仍待后续任务。P04正式来源、计划和预约仍不可变，FINAL场次读取返回真实状态，不回写SCHEDULED。
 
-## 9. P05-B排名及公开观赛分支契约（已实施，未MAIN／未验收）
+## 9. P05-B排名及公开观赛契约（DONE / MAIN）
 
-本节依据当前feature源码及[共享契约](../packages/contracts/index.d.ts)，不是生产可用声明。API的155项及admin的145项源码检查已分别在本地通过；API整合时类型／构建通过，UI整合后的根完整本地复验已通过（f082fa1）。005已独立静态CLEAR并在首CI隔离执行／复跑，106PG及实际重启成功；最后2手机夹具429待复验。完整条件见[任务卡](tasks/P05-B.md)、[TESTING](TESTING.md)。
+本节依据上述已合并source及[共享契约](../packages/contracts/index.d.ts)，不是生产可用声明。[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)通过302项源码检查（admin147／API155）、106项独立PG、001→005隔离执行／复跑、37表实际PG18.6重启及12Mock＋12API官方Chromium浏览器。005内容／SHA-256未变；限流隔离、非ROUND_ROBIN入口及负向清理checker的修复与历史见[TESTING](TESTING.md)。完整行为范围见[任务卡](tasks/P05-B.md)。
 
 ### 私有管理入口
 

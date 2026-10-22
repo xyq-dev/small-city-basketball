@@ -1,41 +1,48 @@
 # 测试与验收
 
-更新：2026-10-22（Asia/Shanghai）。本文区分P05-B feature的阶段检查、P05-A最终验收及P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
+更新：2026-10-22（Asia/Shanghai）。本文区分P05-B最终验收及P05-A/P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
 
-## P05-B首CI及修复（未MAIN／完整CI待复验）
+## P05-B最终交付与证据（DONE / MAIN）
 
-最新：第三CI39750653647（7c70c159）已通过302源码、106PG、37表实际重启、12Mock和desktop6＋mobile6真实API；正常子库建删成功。唯一失败为额外负向清理检查最后的ANY($1::text[])误传2个参数，08P01；已修为单一嵌套数组，等待第四完整CI后合并。
+[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)已合并main `bd38318fdfdbaeb9cfee1033c0d025e79c6cc797`。最终验收source `d9161e965b367ed8cb445482d57759bd34e89629`、tree `554284a604f3b0027d5b0eedc7dbbee20eab3119`；[第四轮CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)全部成功：[admin119734094378](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322/job/119734094378)、[API119734094754](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322/job/119734094754)。只验收有限单循环排名及可撤销公开观赛；完整P05仍有可靠离线和专业统计等后续范围。
 
-自动CodeReview的非RR排名入口P2已修复：两种未支持赛制显示明确非交互卡，RR导航不变；追加2前端回归。当前本地admin147、strict及build通过，既有API155源码未变，最终302源码及完整CI待新head验证。独立delta审查及新增index1440／390布局CLEAR。 失败清理checker的畸形URL已固定文案拒绝，canary验证无用户名／密码／input泄漏；最终脚本独立复核CLEAR，真实CREATE／DROP与正常／失败流程仍待最终CI。
+| 最终已执行检查 | 结果 | 计数或证据边界 |
+|---|---|---|
+| 安装、格式、完整strict、两端构建 | 通过 | 类型检查包含PG、浏览器测试及配置，使用已提交锁文件 |
+| 源码／组件／HTTP | 302项通过 | admin147＋API155；不是数据库场景计数 |
+| 独立PG | 106项通过 | P02 20＋P03-A 24＋P04-A 24＋P05-A 20＋P05-B 18；限定8个integration文件，不重复计源码 |
+| Migration001→005执行／复跑 | 隔离测试库通过 | 核验checksum并跳过已应用文件；005内容未变，SHA-256为e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221，无生产执行 |
+| 实际PostgreSQL18.6重启 | 通过 | 36个migration应用表及schema_migrations共37表，含auth_rate_limits及P05-B三表；比较业务、指纹和迁移校验和 |
+| Mock官方浏览器 | 12/12通过 | 保留原桌面／手机场景 |
+| 真实API官方浏览器 | 12/12通过 | desktop6＋mobile6，原10项及新增2项公开观赛完整流程；真实API与隔离PG |
+| 官方Playwright浏览器 | Chromium151.0.7922.34通过 | 手机为尺寸／输入模拟，未验Safari、微信或真机 |
+| 浏览器数据库隔离／清理 | 正常及故意失败流程通过 | 每project新建随机owned子库；退出删除本次owned库、保留base；故意无效CLI仍保留非零退出码 |
+| 独立静态审查及自动CodeReview | SQL/API/UI/PG及delta CLEAR；最终source completed无finding | PR6最终自动记录comment6336377538；非RR入口P2已修，thread resolved；自动security review为NOT RUN |
+| 合成布局 | 本地native153的16状态、三图及新增入口1440／390检查通过 | 合成HTTP fixture／临时字体的布局证据，不替代PG／官方浏览器，不是原生OBS或CEF证据 |
+| 生产、灾备恢复、微信、保险文件与OBS | 未执行／未集成 | 无生产环境或生产Migration；P06-A仅合同已完成只读审查，无业务实现、原生OBS／CEF测试 |
 
-首CI39748395765已通过300源码、106独立PG、005隔离执行／复跑、实际PG18.6重启及12Mock；真实API的10项通过，最后2项手机场景在注册夹具触发同IP20次／小时限流429，尚未完整验收／MAIN。测试入口现改为每个浏览器project新建随机隔离库，保留生产限流，等待第二轮CI。
+### P05-B失败、取消与修复历史
 
-代码head `2c42bfd3ac9d7478a6d7aefed96aa3a3ce9dd9aa`，tree `4794efbfbee51568f98c878201defbab117e64b7`；[PR6](https://github.com/xyq-dev/small-city-basketball/pull/6)、[首CI39748395765](https://github.com/xyq-dev/small-city-basketball/actions/runs/39748395765)。admin job119722493964成功；API job119722493657只在最后浏览器步骤失败。
+| 运行与source | 实际结果 | 修复及边界 |
+|---|---|---|
+| [首轮39748395765](https://github.com/xyq-dev/small-city-basketball/actions/runs/39748395765)，2c42bfd3ac9d7478a6d7aefed96aa3a3ce9dd9aa，tree4794efbfbee51568f98c878201defbab117e64b7 | admin119722493964成功；300源码（admin145／API155）、106PG、001→005／复跑checksum、实际PG18.6重启及12Mock通过。API119722493657最后浏览器步骤10通过、2失败 | 共用browser DB累计注册超过同IP20次／小时，旧mobile scoring的participant及新mobile viewing的owner注册429，未进入后续业务；新桌面公开完整流程已通过。新增run-api-browser-checks.mjs，desktop-api／mobile-api各用随机隔离子库；不清限流、不提高额度、不关闭Origin。首轮指纹为原36表，后续补auth_rate_limits达37表 |
+| [第二轮39750130208](https://github.com/xyq-dev/small-city-basketball/actions/runs/39750130208)，d0c920c72f91f79ba0aab483338e696ef3cd5a13 | admin119728322585成功；API119728322353的106PG及37表实际重启通过，在官方浏览器下载阶段因新head被取消 | 浏览器及额外负向清理未执行，不记完整成功。自动CodeReview发现非ROUND_ROBIN排名入口P2，改为两种未支持赛制的非交互说明卡，保留RR入口并补2项前端回归；admin由145增至147 |
+| [第三轮39750653647](https://github.com/xyq-dev/small-city-basketball/actions/runs/39750653647)，7c70c15906a3b9d69099d923531541efa5cda343 | admin119730620532成功；本轮302源码、106PG、37表实际重启、12Mock及desktop6＋mobile6真实API均通过。正常owned子库建删成功，API119730621238最后额外负向清理检查失败 | 故意失败子进程确已CREATE／DROP并非零退出；最后查询ANY($1::text[])误用`[baseName, owned]`传两个绑定参数，返回08P01，base保留的最终SQL断言尚未完成。修为单一text[]参数`[[baseName, owned]]`；保留该失败，不误报清理全通过 |
+| [最终39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)，d9161e965b367ed8cb445482d57759bd34e89629 | 两job全部成功；302源码、106PG、37表实际重启、12Mock＋12API及正常／故意失败清理检查全部通过 | 据此验收P05-B并合并PR6；真实证明仅本次owned子库被删除、base仍存在，注册防护保持原样 |
 
-| 检查 | 首CI实际结果 |
-|---|---|
-| 格式／完整strict／两端构建 | 通过 |
-| 源码／组件／HTTP | 300通过：admin145／API155，原212＋新增88 |
-| 独立PG | 106通过：原88＋P05-B18，8文件，不重复计源码 |
-| 001→005执行／复跑 | 隔离通过；005 hash e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221，无生产执行 |
-| 实际PG18.6重启 | 通过；规则锁、有效／撤销public身份、映射／sourceHash及原业务数据保留，非备份恢复 |
-| Mock官方浏览器 | 12通过 |
-| 真实API官方浏览器 | 10通过、2失败；新桌面公开完整流程通过，新手机及旧手机记分均在注册夹具429，未进入其业务流程 |
-| 合成布局 | 本地native153的16状态及三图通过；非PG／OBS证据 |
+隔离入口要求base名为scb_test_*且连接身份有测试CREATEDB权限；`--list`不连接DB，生产target／production模式／替换config拒绝，本地文件filter及exact project选择已检查。故意无效CLI验证失败退出及真实清理；畸形URL固定文案拒绝，canary检查无用户名／密码／input泄漏。最终修复不改变应用业务或生产限流规则。
 
-首失败不删除：shared browser DB累计注册超过同IP20次／小时，scoring.spec的mobile participant与viewing.spec的mobile owner返回429。修复新增run-api-browser-checks.mjs，每project新随机隔离库；不清限流、不提高额度、不关闭Origin。base须scb_test_*且有CREATEDB，退出只清本次创建库；--list无DB连接、生产target／production模式／替换配置拒绝、本地文件filter与exact project选择已检查。实际CREATE／运行／DROP仍待第二CI；另用故意无效CLI子进程验证真实失败清理、退出码及base保留。重启指纹另外补auth_rate_limits，现覆盖全部36个migration应用表及schema_migrations，共37表；首CI为原36表，新增限流表保留待第二轮证明。
+领域检查覆盖显式积分0–1000／空有序同分项、无隐式H2H／胜率、三队循环同分、1,1,3、零确认rank=null、部分完赛、确认统计守恒、来源hash已知向量／读取时间稳定、坏FINAL拒绝及staff运行版本变化不撤赛果。独立复读发现终局时钟三项缺口，已补暂停、remaining_ms=0及完成常规节条件和三个反例；API源码检查由152增至155，不能另算PG用例。
 
-领域检查覆盖显式积分0–1000／空有序同分项、无隐式H2H／胜率、三队循环同分、1,1,3、零确认rank=null、部分完赛、确认统计守恒、来源hash已知向量／读取时间稳定、坏FINAL拒绝及staff运行版本变化不撤赛果。独立复读发现终局时钟三项缺口，已补暂停、remaining_ms=0及完成常规节条件和三个反例；这使API源码检查由152增至155，不能另算为PG用例。
+新增18项真实PG覆盖规则CAS／永久锁、同一SQL来源快照及排队写入可观察性、FINAL元数据／重开／重确认、坏来源整体拒绝且DISABLE仍可用、实际赛事授权／撤权、公开身份全量／复合FK／不可变与同事务映射、匿名Cookie无关／递归白名单、公开游标、撤销竞争、重新启用及审计失败全回滚。裸SQL测试注入与业务API分开，没有禁用生产触发器制造成功。
 
-新增PG源码计划覆盖规则CAS／永久锁、同一SQL来源快照及排队写入可观察性、FINAL元数据／重开／重确认、坏来源整体拒绝且DISABLE仍可用、实际赛事授权／撤权、公开身份全量／复合FK／不可变与同事务映射、匿名Cookie无关／递归白名单、公开游标、撤销竞争、重新启用及审计失败全回滚。裸SQL测试注入与实际业务API分开，不禁用生产触发器来制造成功。
+实际重启capture保存已有LIVE raw clock、FINAL两份确认及第三场未准备状态，再保存排名规则与先撤销后重建的公开身份。verify仅排除动态serverTime/asOf，仍比较raw anchor、sourceHash及业务字段；排名／公开写推进Event版本后重新捕获registration/scheduling及scoring规则视图。fingerprint覆盖standings_rulesets、public_event_publications、public_match_links、auth_rate_limits及原全部表，先比指纹再acquire证明fence递增。这是持久化证据，不是备份恢复或生产验证。
 
-重启扩展capture保存已有LIVE raw clock、FINAL两份确认及第三场未准备状态，再保存排名规则与先撤销后重建的公开身份。verify仅排除动态serverTime/asOf，仍比较raw anchor、sourceHash和所有业务字段；排名／公开写推进Event版本后重新捕获registration/scheduling及scoring规则视图。fingerprint新增standings_rulesets、public_event_publications、public_match_links，先比指纹再acquire证明fence递增。流程和比较代码已静态复核，但没有真实执行结果。
+真实浏览器使用owner／leader／scorer等独立身份，独立无Cookie context在首次公开导航前监听私人auth/org/invitation请求；桌面／手机均验证未准备null、确认入榜、重开撤出、重确认仅一次、离线陈旧提示、撤销清屏，以及新event/match/team公开身份全换。完整分页失败不冒充部分成功。详细合同见[P05-B任务卡](tasks/P05-B.md)、[API第9节](API_CONTRACTS.md)及[数据模型第10节](DATA_MODEL.md)。
 
-浏览器扩展使用owner／leader／scorer独立身份，独立无Cookie context在首次公开导航前监听私人auth/org/invitation请求；断言未准备null、确认入榜、重开撤出、重确认仅一次、离线陈旧提示、撤销清屏，以及新event/match/team公开身份全换。完整分页失败不冒充部分成功；实际浏览器和移动布局结论仍待后续验证及CI。详细合同见[P05-B任务卡](tasks/P05-B.md)，最终运行ID、实际计数及MAIN状态由集成人取得证据后更新，不能提前勾选。
+## 历史P05-A交付与证据
 
-## 已交付P05-A与证据
-
-P01、P02、P03-A、P04-A及P05-A为DONE / MAIN。[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并main `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`；验收代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`，tree `9f23899a9e118304db2749b8505d04c5468c5dfe`。[第二轮Application checks39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)两个job全部成功：[admin119706887223](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053/job/119706887223)、[API119706886917](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053/job/119706886917)。本节新增当前结果，后面的历史阶段计数原样保留。
+P01、P02、P03-A、P04-A及P05-A为DONE / MAIN。[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并main `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`；验收代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`，tree `9f23899a9e118304db2749b8505d04c5468c5dfe`。[第二轮Application checks39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)两个job全部成功：[admin119706887223](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053/job/119706887223)、[API119706886917](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053/job/119706886917)。本节保留P05-A当时结果，当前P05-B结果见上文。
 
 | P05-A最终已执行检查 | 结果 | 计数或证据边界 |
 |---|---|---|
@@ -124,7 +131,7 @@ P03-A真实PG场景覆盖外部账号不建机构、租户／球队隔离、邀�
 | [第二轮39734744498](https://github.com/xyq-dev/small-city-basketball/actions/runs/39734744498)，d9c8b5d | 98项检查、43项PG及重启通过；真实API浏览器4成功2失败 | 原持久化场景均通过，新报名均停在精确读取“邀请链接”；本地真实Chromium最小DOM复现label含textarea初值，补显式aria-label。保留精确定位及所有后续业务断言 |
 | [最终39735150535](https://github.com/xyq-dev/small-city-basketball/actions/runs/39735150535)，c2d96b2 | 100项检查、44项独立PG、实际PG重启、12项Mock及6项API浏览器全部通过 | 包含工作空间路由、旧邀请晚回、列表摘要及可远端恢复交接引用修正；据此验收并合并PR #3 |
 
-首两轮与修复的详细过程保留于[P03-A交接](handoffs/P03-A.md)，截图的合成HTTP fixture／临时字体边界见[P03-A证据](evidence/P03-A/README.md)。这些历史记录不替代最终成功运行，也不证明生产可用。以上是P03-A当时证据；完整P03的保险附件、球员身份及小程序尚未交付。P04-A及P05-A新增验收见上文，其他P04能力、正式排名／公开观赛及P06仍待各自验收。
+首两轮与修复的详细过程保留于[P03-A交接](handoffs/P03-A.md)，截图的合成HTTP fixture／临时字体边界见[P03-A证据](evidence/P03-A/README.md)。这些历史记录不替代最终成功运行，也不证明生产可用。以上是P03-A当时证据；完整P03的保险附件、球员身份及小程序尚未交付。P04-A、P05-A及P05-B新增验收见上文，其他P04能力、完整P05后续能力及P06仍待各自验收。
 
 ## 历史P02证据
 
@@ -162,7 +169,7 @@ P01代码819818d经PR #1合并为f15adb4，[原CI run 39728632742](https://githu
 | P02 机构与权限 | 已验收适用范围：两机构、多角色、赛事详情/列表/搜索/写入授权、撤权失效、CAS及审计原子性；导出、附件、订阅等尚未实现的能力在各自阶段补专项用例 |
 | P03 报名审核 | 外部领队/球员无需工作人员身份也能完成获授权流程；邀请冒领、重放、过期及撤销均正确处理；本人和领队的资料权限不同；重复报名及重复球员按规则处理；退回补资料能重新提交；提交、审核、名单冻结有版本冲突提示；球队长期成员变动不改变已冻结赛事名单；保险凭证只能由获授权角色读取，界面不把上传成功等同于审核通过 |
 | P04 抽签排赛 | P04-A已验2–32队单循环、可复现seed、窗口／休息／日期及跨赛事资源冲突、双CAS、重抽历史与一次发布；种子队分组、其他赛制、自动排时及发布后改期另卡验证，不能借本次结果宣称已完成 |
-| P05 记分赛果 | P05-A在线记分／独立确认／私有快照已验收；P05-B排名／公开API及测试源码已在feature实施，真实验收待执行；可靠离线和专业统计仍未交付，不借用旧通过结果 |
+| P05 记分赛果 | P05-A在线记分／独立确认／私有快照及P05-B有限单循环排名／可撤销公开观赛已独立验收；可靠离线和专业统计仍未交付，不借用旧通过结果 |
 | P06 OBS 与内容 | 只读包装不能写比分；令牌撤销后连接失效；展示字段不含个人敏感资料；断线可恢复且不会把旧比分覆盖新比分；OBS 关闭不影响记分；比赛时钟暂停时录像时间仍独立；剪辑失败和缺素材有可重试状态 |
 
 ## 记分系统必须证明的行为
@@ -170,7 +177,7 @@ P01代码819818d经PR #1合并为f15adb4，[原CI run 39728632742](https://githu
 - 同一操作重发、重连重试或服务重启后重放，只计入一次；同幂等键不同内容必须拒绝。
 - 两端争抢主记分权时仅有效持有者可写；租约失效后的离线端不能继续覆盖服务端结果。
 - 并发记分使用已知版本校验；失败操作明确标记待处理，不能伪装成已同步。
-- P05-A更正采用可追溯追加事件，重放得到相同球队基础统计；球员专业统计、榜单与公开包装一致性在后续卡单独证明。
+- P05-A更正采用可追溯追加事件，重放得到相同球队基础统计；P05-B已证明有限榜单／公开投影消费当前有效确认，球员专业统计与OBS包装一致性仍在后续卡单独验证。
 - P05-A断网立即停止新写，未知提交先查原receipt与snapshot，不能自动新ID补分；可靠离线队列、页面销毁后命令恢复及补交另卡验证。
 - 跨节、暂停、恢复、校时、更换主端及页面刷新不导致重复计时；未采集的数据展示“未统计”。
 
@@ -178,4 +185,4 @@ P01代码819818d经PR #1合并为f15adb4，[原CI run 39728632742](https://githu
 
 小范围文档修改检查链接、事实状态及术语一致性即可；代码变更执行直接覆盖行为的检查和项目必要构建。认证授权、Migration、记分状态机需独立审查与失败场景验证；不为普通文案变更反复运行全套测试。
 
-任务报告逐项使用“通过／失败／未执行／不适用”，失败附复现步骤；未执行说明原因及影响。阻断缺陷未关闭不得标记完成，非阻断问题进入任务清单并注明归属。P01、P02、P03-A、P04-A、P05-A已各自提供代码、实际执行及整合证据；后续阶段不能借用既有结果宣称新增能力完成。
+任务报告逐项使用“通过／失败／未执行／不适用”，失败附复现步骤；未执行说明原因及影响。阻断缺陷未关闭不得标记完成，非阻断问题进入任务清单并注明归属。P01、P02、P03-A、P04-A、P05-A及P05-B已各自提供代码、实际执行及整合证据；后续阶段不能借用既有结果宣称新增能力完成。
