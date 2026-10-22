@@ -23,3 +23,9 @@ P07 PG 使用独立 provisioned 集群及 TEST_P07_{ADMIN,MIGRATOR,RUNTIME,BACKU
 root报告首CI `39822056375` 的production P07场景8通过、6失败；错误集中在ownership校验及fixture清理。数据库COMMENT存于共享目录 `pg_shdescription`，原三个查询误用每库 `obj_description`。已将 `ops/db/common.mjs` 两处及 `p07-support.ts` 清理门一处改为 `shobj_description`，保留数据库名、精确OID、随机nonce三重一致性，不放宽目标所有权条件。
 
 原ownership PG用例增加从控制库、目标库分别直接联接 `pg_database`／`pg_shdescription` 验证相同comment，并验证正式 `assertOwnedRestoreTarget` 对合法目标成功、对错误名称/OID/nonce仍失败。总数保持14项；本地仅类型、语法、格式、发现与diff检查通过，修复后的真实PG／dump恢复尚待下一轮CI，不能因根因明确而宣称已通过。
+
+## 第二次真实CI后的连接排空修复
+
+root报告第二CI `39822735630` 的14项P07用例全部成功，但Vitest捕获一条未处理 `57P01 terminating connection due to administrator command`，production job仍失败。核对实际安装的 `pg-pool/index.js`：`_remove` 先将idle client从 `_clients` 删除，再调用异步 `client.end(callback)`；`_pulseQueue` 见 `_clients` 为空即触发Pool结束回调，不能据此认为服务端连接已退出。原fixture随后 `DROP DATABASE ... WITH (FORCE)` 可能终止仍在关闭中的socket。
+
+测试helper现在在Pool结束后，经control连接有界轮询精确自有数据库的 `pg_stat_activity` client backend归零，再重新核对OID/nonce并执行普通DROP；5秒内未归零明确失败，不终止任何连接、不吞全局错误。新增两项真实PG回归：明确持有独立client，观察helper等待且该client仍可查询，再正常关闭client并完成清理；以及故意持续持有client超过排空期限，验证清理拒绝、client仍可查询、control保留，之后仅在原OID/nonce匹配且backend归零时普通DROP自己的负向fixture。成功清理还从独立control连接断言目标库已删除、control仍可查询。P07总计16项；本地类型、格式、diff及用例发现通过，下一CI才可确认实际资源释放与完整恢复结果。

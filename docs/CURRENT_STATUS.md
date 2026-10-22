@@ -14,7 +14,7 @@ P06-A实际覆盖未公开赛事独立签发、fragment立即清除、Cookie刷�
 
 ## 当前重点
 
-接续[P07-A同源HTTPS自托管包与隔离备份恢复](tasks/P07-A.md)，合同经独立技术只读审查CLEAR，合同main f2bf36585f09a0e55df41328a1d25f33e479e012已同步；从该点建立五个独立worktree，实施分支feat/P07-production现REVIEW / BRANCH_ONLY，PR8 source8905d41，首CI39822056375运行中。交付目标为非root镜像、显式迁移／首owner、受审计DB身份及完整dump→全新隔离恢复；原root@0e11776及API/DB dirty已完整保留并整合，本地`3049927`与远端`8905d41`同tree；432项本地源码测试、完整类型／构建通过。尚无本卡容器／TLS／恢复验收。
+接续[P07-A同源HTTPS自托管包与隔离备份恢复](tasks/P07-A.md)，合同经独立技术只读审查CLEAR，合同main f2bf36585f09a0e55df41328a1d25f33e479e012已同步；从该点建立五个独立worktree，实施分支feat/P07-production现REVIEW / BRANCH_ONLY，PR8，第二候选66a0956的CI39822735630：admin/api成功，production的14项PG断言通过但清理异常失败，修复候选待第三CI。交付目标为非root镜像、显式迁移／首owner、受审计DB身份及完整dump→全新隔离恢复；原root@0e11776及API/DB dirty已完整保留并整合，本地`3049927`与远端`8905d41`同tree；432项本地源码测试、完整类型／构建通过。三镜像已实际构建验证；124项PG及14真实API/12Mock浏览器通过，完整TLS／dump恢复仍待验收。
 
 没有生产主机／域名／证书、微信或视频账号／付费预算。P06-A尚无原生OBS／CEF验收，不显示“OBS已连接”。实际PG重启不等于备份恢复。完整P03/P04仍有资料文件／小程序、其他赛制／自动优化／发布后改期；完整P05仍有可靠离线和专业统计。
 

@@ -45,6 +45,138 @@ async function withTarget(action: (target: Target) => Promise<void>) {
 }
 
 describe('P07 real PostgreSQL first-owner initialization', () => {
+  test('owned cleanup waits for remaining client sockets instead of force-terminating them', async () => {
+    const target = await createOwnedRestoreDatabase();
+    const lingering = await rolePool(target, 'runtime');
+    const urls = await p07DatabaseUrls();
+    const control = new Pool({
+      connectionString: urls.admin.toString(),
+      connectionTimeoutMillis: 5000,
+    });
+    let closing: Promise<{ ok: true } | { ok: false; error: unknown }> | undefined;
+    let finished = false;
+    try {
+      try {
+        await lingering.query('SELECT 1');
+        closing = target.close().then(
+          () => {
+            finished = true;
+            return { ok: true };
+          },
+          (error: unknown) => {
+            finished = true;
+            return { ok: false, error };
+          },
+        );
+        await eventually(
+          async () =>
+            (
+              await target.adminPool.query<{ n: number }>(
+                `SELECT count(*)::int AS n FROM pg_stat_activity
+               WHERE datname=$1 AND backend_type='client backend'`,
+                [target.ownership.databaseName],
+              )
+            ).rows[0]!.n,
+          (n) => n === 1,
+          'Only the explicitly held client must remain while owned cleanup drains',
+          3000,
+        );
+        expect(finished).toBe(false);
+        expect((await lingering.query('SELECT 42 AS value')).rows).toEqual([{ value: 42 }]);
+      } finally {
+        await lingering.end();
+        if (closing) {
+          const result = await closing;
+          if (!result.ok) throw result.error;
+        } else await target.close();
+      }
+      expect(
+        (
+          await control.query('SELECT 1 FROM pg_database WHERE datname=$1', [
+            target.ownership.databaseName,
+          ])
+        ).rowCount,
+      ).toBe(0);
+      expect((await control.query('SELECT current_database() AS name')).rows[0]!.name).toMatch(
+        /^scb_test_production_/,
+      );
+    } finally {
+      await control.end();
+    }
+  });
+
+  test('owned cleanup rejects a leaked client without terminating it or removing the control database', async () => {
+    const target = await createOwnedRestoreDatabase();
+    const lingering = await rolePool(target, 'runtime');
+    const urls = await p07DatabaseUrls();
+    const control = new Pool({
+      connectionString: urls.admin.toString(),
+      connectionTimeoutMillis: 5000,
+    });
+    let closingStarted = false;
+    try {
+      await lingering.query('SELECT 1');
+      closingStarted = true;
+      await expect(target.close()).rejects.toThrow(
+        'Refused P07 cleanup because restore target connections remain',
+      );
+      expect((await lingering.query('SELECT 42 AS value')).rows).toEqual([{ value: 42 }]);
+      expect(
+        (
+          await control.query('SELECT 1 FROM pg_database WHERE datname=$1', [
+            target.ownership.databaseName,
+          ])
+        ).rowCount,
+      ).toBe(1);
+      expect((await control.query('SELECT current_database() AS name')).rows[0]!.name).toMatch(
+        /^scb_test_production_/,
+      );
+    } finally {
+      await lingering.end();
+      try {
+        if (!closingStarted) await target.close();
+        else {
+          await eventually(
+            async () =>
+              (
+                await control.query<{ n: number }>(
+                  `SELECT count(*)::int AS n FROM pg_stat_activity
+              WHERE datname=$1 AND backend_type='client backend'`,
+                  [target.ownership.databaseName],
+                )
+              ).rows[0]!.n,
+            (n) => n === 0,
+            'Explicitly held client must disconnect before owned negative-test cleanup',
+            5000,
+          );
+          const owned = (
+            await control.query<{ oid: number; comment: string }>(
+              "SELECT oid::int AS oid,shobj_description(oid,'pg_database') AS comment FROM pg_database WHERE datname=$1",
+              [target.ownership.databaseName],
+            )
+          ).rows[0];
+          if (
+            owned?.oid !== target.ownership.databaseOid ||
+            owned.comment !== `scb_restore_owner:${target.ownership.nonce}`
+          )
+            throw new Error(
+              'Refused negative-test cleanup because restore target ownership changed',
+            );
+          await control.query(`DROP DATABASE "${target.ownership.databaseName}"`);
+          expect(
+            (
+              await control.query('SELECT 1 FROM pg_database WHERE datname=$1', [
+                target.ownership.databaseName,
+              ])
+            ).rowCount,
+          ).toBe(0);
+        }
+      } finally {
+        await control.end();
+      }
+    }
+  });
+
   test('two actually blocked initializers create exactly one owner and no HTTP session', async () => {
     await withTarget(async (target) => {
       const blocker = await target.pool.connect();

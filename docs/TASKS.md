@@ -18,7 +18,7 @@
 | P06    | OBS包装、直播与交付                | IN_PROGRESS | root集成                     | P05-A/B；真实视频需配置服务与预算 | P06-A已交付，原生OBS／真实视频未验收                                                                                               |
 | P06-A  | 单场透明比分包装与独立只读授权     | DONE        | root/API/UI/PG               | P05-A/B                           | MAINf8af5c9，PR7，最终CI39758913295的372／123／12＋14／39表重启与清理全部成功；[任务卡](tasks/P06-A.md)、[交接](handoffs/P06-A.md) |
 
-| P07-A | 同源HTTPS自托管包与隔离备份恢复 | IN_PROGRESS | root/API/UI/PG/打包 | P06-A | PR8 source8905d41；432项本地源码回归通过，首次隔离CI39822056375进行中；[任务卡](tasks/P07-A.md)、[交接](handoffs/P07-A.md) |
+| P07-A | 同源HTTPS自托管包与隔离备份恢复 | IN_PROGRESS | root/API/UI/PG/打包 | P06-A | PR8；第二CI源码432／PG124／12Mock＋14API通过，P07清理竞态修复待第三CI；[任务卡](tasks/P07-A.md)、[交接](handoffs/P07-A.md) |
 
 ## 当前顺序
 

@@ -97,7 +97,29 @@ export async function createOwnedRestoreDatabase() {
         pool = undefined;
       }
       if (created && (await matches())) {
-        await adminPool.query(`DROP DATABASE "${databaseName}" WITH (FORCE)`);
+        // pg-pool removes idle clients and can resolve end() before their
+        // sockets finish closing. FORCE here would terminate those backends
+        // and surface a late 57P01 on the ending client. Observe server-side
+        // disconnection instead, and refuse cleanup if an unknown writer stays.
+        const deadline = Date.now() + 5000;
+        while (true) {
+          const connected = (
+            await adminPool.query<{ n: number }>(
+              `SELECT count(*)::int AS n FROM pg_stat_activity
+               WHERE datname=$1 AND backend_type='client backend'`,
+              [databaseName],
+            )
+          ).rows[0]!.n;
+          if (connected === 0) break;
+          if (Date.now() >= deadline)
+            throw new Error('Refused P07 cleanup because restore target connections remain');
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        // Recheck ownership after draining; ordinary DROP also fails safely if
+        // any new connection races this check. Never terminate another client.
+        if (!(await matches()))
+          throw new Error('Refused P07 cleanup because restore target ownership changed');
+        await adminPool.query(`DROP DATABASE "${databaseName}"`);
         created = false;
       } else if (created)
         throw new Error('Refused P07 cleanup because restore target ownership changed');
