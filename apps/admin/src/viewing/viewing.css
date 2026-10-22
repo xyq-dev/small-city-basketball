@@ -283,7 +283,7 @@
   color: #132c49;
   transition: border-color 0.15s;
 }
-.view-event-card:hover {
+a.view-event-card:hover {
   border-color: #ff6b2d;
 }
 .view-event-card h2 {

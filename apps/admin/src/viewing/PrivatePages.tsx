@@ -80,20 +80,36 @@ function StandingsIndex({ repository }: { repository: EventRepository }) {
         </section>
       ) : (
         <div className="view-event-grid">
-          {resource.data.map((event) => (
-            <Link
-              key={event.id}
-              to={`/events/${event.id}/standings`}
-              className="panel view-event-card"
-            >
-              <span className="status-badge neutral">{EVENT_FORMAT_LABELS[event.format]}</span>
-              <h2>{event.name}</h2>
-              <p>
-                {event.startDate} — {event.endDate}
-              </p>
-              <strong>查看排名与公开观赛 →</strong>
-            </Link>
-          ))}
+          {resource.data.map((event) => {
+            const supported = event.format === 'ROUND_ROBIN';
+            const content = (
+              <>
+                <span className="status-badge neutral">{EVENT_FORMAT_LABELS[event.format]}</span>
+                <h2>{event.name}</h2>
+                <p>
+                  {event.startDate} — {event.endDate}
+                </p>
+                {supported ? (
+                  <strong>查看排名与公开观赛 →</strong>
+                ) : (
+                  <p>当前赛制暂不支持排名与公开观赛</p>
+                )}
+              </>
+            );
+            return supported ? (
+              <Link
+                key={event.id}
+                to={`/events/${event.id}/standings`}
+                className="panel view-event-card"
+              >
+                {content}
+              </Link>
+            ) : (
+              <article key={event.id} className="panel view-event-card" aria-label={event.name}>
+                {content}
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

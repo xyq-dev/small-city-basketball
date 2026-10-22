@@ -4,6 +4,8 @@
 
 ## P05-B首CI及修复（未MAIN／完整CI待复验）
 
+自动CodeReview的非RR排名入口P2已修复：两种未支持赛制显示明确非交互卡，RR导航不变；追加2前端回归。当前本地admin147、strict及build通过，既有API155源码未变，最终302源码及完整CI待新head验证。独立delta审查及新增index1440／390布局CLEAR。 失败清理checker的畸形URL已固定文案拒绝，canary验证无用户名／密码／input泄漏；最终脚本独立复核CLEAR，真实CREATE／DROP与正常／失败流程仍待最终CI。
+
 首CI39748395765已通过300源码、106独立PG、005隔离执行／复跑、实际PG18.6重启及12Mock；真实API的10项通过，最后2项手机场景在注册夹具触发同IP20次／小时限流429，尚未完整验收／MAIN。测试入口现改为每个浏览器project新建随机隔离库，保留生产限流，等待第二轮CI。
 
 代码head `2c42bfd3ac9d7478a6d7aefed96aa3a3ce9dd9aa`，tree `4794efbfbee51568f98c878201defbab117e64b7`；[PR6](https://github.com/xyq-dev/small-city-basketball/pull/6)、[首CI39748395765](https://github.com/xyq-dev/small-city-basketball/actions/runs/39748395765)。admin job119722493964成功；API job119722493657只在最后浏览器步骤失败。

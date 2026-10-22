@@ -46,3 +46,9 @@
 - root第一步仅cherry-pick本UI源提交，不重复合同7cced4f；随后统一真实API／PG／重启／浏览器／CI及独立最终审查。
 - 本负责人未执行真实API／PG／浏览器或Migration；root／reviewer的报告按其证据另记。尚未MAIN／生产，不宣称Safari／微信／OBS／真实视频或生产容量验收。
 - 未解决实现阻断：无；规则、正式来源及公开权限由服务端权威判定，源损坏不可伪正常。后续专业统计、可靠离线、OBS等仍另卡。
+
+## PR6赛制入口边界修复
+
+2026-10-22T16:47:10+08:00：root裁定自动CodeReview线程 `PRRT_kwDOVTBG086vG72U` 为有效P2。排名索引原先把repository返回的所有赛制都渲染为可点击链接，导致分组后淘汰／单淘汰进入API422。现保留ROUND_ROBIN正常链接，其他两种赛制保留可见的非交互article卡片，明确“当前赛制暂不支持排名与公开观赛”，不误过滤为无权限。仅链接卡片保留hover提示，不改后端能力。
+
+新增两项参数化回归分别覆盖GROUP_KNOCKOUT与SINGLE_ELIMINATION：卡片无链接／按钮、点击不发standings请求、不显示无权限空态；同列表的循环赛仍导航正确赛事页并发唯一正确GET。受影响PrivatePages.test.tsx单文件8项、admin strict typecheck、3个修改源文件的Prettier及diff检查通过。未重跑全量／PG／浏览器／CI，不修改root脚本、证据或汇总；独立reviewer接续复核此delta，未push／MAIN。

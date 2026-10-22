@@ -4,9 +4,10 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { EventStandingsData } from '@small-city-basketball/contracts';
+import type { EventRepository } from '../domain/types';
 import { createApiClient } from '../api/client';
 import type { RegistrationWorkspace } from '../registration/shared';
-import { EventStandingsPage } from './PrivatePages';
+import { EventStandingsPage, StandingsIndexPage } from './PrivatePages';
 import { StandingsRulesForm } from './RulesForm';
 import { deferred, overview, response } from './test-fixtures';
 afterEach(() => {
@@ -31,6 +32,57 @@ function page(value: RegistrationWorkspace) {
   );
 }
 describe('declared standings rules and publication controls', () => {
+  it.each(['GROUP_KNOCKOUT', 'SINGLE_ELIMINATION'] as const)(
+    'shows %s as unsupported without a link or request, while round robin still navigates',
+    async (format) => {
+      const unsupported = {
+        ...overview.event,
+        id: `unsupported-${format}`,
+        name: `未开放赛制赛事${format}`,
+        format,
+      };
+      const repository: EventRepository = {
+        list: vi.fn().mockResolvedValue([unsupported, overview.event]),
+        get: vi.fn().mockResolvedValue(overview.event),
+        create: vi.fn().mockResolvedValue(overview.event),
+        updateDraft: vi.fn().mockResolvedValue(overview.event),
+      };
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(overview));
+      const workspace = context(fetcher);
+      render(
+        <MemoryRouter initialEntries={['/standings']}>
+          <Routes>
+            <Route
+              path="/standings"
+              element={<StandingsIndexPage context={workspace} repository={repository} />}
+            />
+            <Route
+              path="/events/:eventId/standings"
+              element={<EventStandingsPage context={workspace} />}
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+      const card = await screen.findByRole('article', { name: unsupported.name });
+      expect(
+        within(card).getByText('当前赛制暂不支持排名与公开观赛', { exact: true }),
+      ).toBeVisible();
+      expect(within(card).queryByRole('link')).not.toBeInTheDocument();
+      expect(within(card).queryByRole('button')).not.toBeInTheDocument();
+      fireEvent.click(card);
+      expect(fetcher).not.toHaveBeenCalled();
+      expect(screen.getByRole('heading', { level: 1, name: '排名与观赛' })).toBeVisible();
+      expect(screen.queryByText('暂无有权限的赛事')).not.toBeInTheDocument();
+      const roundRobin = screen.getByRole('link', { name: new RegExp(overview.event.name) });
+      expect(roundRobin).toHaveAttribute('href', `/events/${overview.event.id}/standings`);
+      fireEvent.click(roundRobin);
+      expect(
+        await screen.findByRole('heading', { level: 1, name: overview.event.name }),
+      ).toBeVisible();
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(fetcher.mock.calls[0][0]).toBe(`/v1/orgs/org-a/events/${overview.event.id}/standings`);
+    },
+  );
   it('requires all three explicit point values, accepts zero, preserves declared tiebreaker order and cancels without writing', async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     render(<StandingsRulesForm data={{ ...overview, rules: null }} busy={false} onSave={save} />);

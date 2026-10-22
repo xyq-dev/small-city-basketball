@@ -4,15 +4,21 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
 // Exercise real CREATE/failing child/DROP without launching another application.
-const database = new URL(process.env.DATABASE_URL ?? '');
-const baseName = decodeURIComponent(database.pathname.slice(1));
-if (
-  !['postgres:', 'postgresql:'].includes(database.protocol) ||
-  !/^scb_test_[A-Za-z0-9_]+$/.test(baseName) ||
-  baseName.length > 63 ||
-  process.env.NODE_ENV === 'production'
-)
+let database;
+let baseName;
+try {
+  database = new URL(process.env.DATABASE_URL ?? '');
+  baseName = decodeURIComponent(database.pathname.slice(1));
+  if (
+    !['postgres:', 'postgresql:'].includes(database.protocol) ||
+    !/^scb_test_[A-Za-z0-9_]+$/.test(baseName) ||
+    baseName.length > 63 ||
+    process.env.NODE_ENV === 'production'
+  )
+    throw new Error('Invalid test target');
+} catch {
   throw new Error('Browser database isolation check requires an isolated scb_test_* target');
+}
 const pool = new pg.Pool({
   connectionString: database.href,
   max: 1,
