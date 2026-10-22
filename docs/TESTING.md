@@ -20,7 +20,7 @@ P01、P02为 **DONE / MAIN**。P02代码head `63b94beee51d51b02f4bade7f36baba92e
 
 GitHub自动CodexReview在本次整合记录时仍运行中、尚无finding，不能据此写成“自动审查通过”。其状态以后以PR记录为准。首次失败运行及修复顺序由[P02交接](handoffs/P02.md)记录，当前验收以上述成功运行和代码head为准。
 
-Migration001已编写、审查并在隔离测试库执行，重复运行及校验和验证通过；不是生产执行。P03-A Web报名闭环仍为TODO，P03整体、保险文件和微信能力未验收。启动与命令前提统一见[DEVELOPMENT](DEVELOPMENT.md)。
+Migration001已编写、审查并在隔离测试库执行，重复运行及校验和验证通过；不是生产执行。P03-A Web报名闭环已认领、尚未验收，P03整体、保险文件和微信能力未验收。启动与命令前提统一见[DEVELOPMENT](DEVELOPMENT.md)。
 
 ## 历史P01证据
 

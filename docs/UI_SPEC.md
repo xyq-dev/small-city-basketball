@@ -1,6 +1,6 @@
 # 界面与交互规范
 
-更新：2026-10-22｜性质：实施约束与交付边界；P01、P02已合并main（DONE / MAIN）；Mock和真实API两种后台模式已验收，P03-A Web报名为下一项TODO，其余页面按阶段规划。视觉参考见 [design/README.md](design/README.md)，业务依据见 [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)。
+更新：2026-10-22｜性质：实施约束与交付边界；P01、P02已合并main（DONE / MAIN）；Mock和真实API两种后台模式已验收，P03-A Web报名已认领实施、尚未验收，其余页面按阶段规划。视觉参考见 [design/README.md](design/README.md)，业务依据见 [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)。
 
 ## 1. 统一视觉与导航
 
@@ -42,7 +42,7 @@ P02新增注册／登录／退出、当前机构切换和会话恢复。API模�
 - HTTP读取或后续分页失败时显示失败与重试，不静默退Mock或把部分列表当成功；保存失败保留输入。
 - 邮箱账号不代表邮箱已验证，也没有微信登录、密码重置或平台运营页面。
 
-P03-A Web报名闭环仍为TODO／待开工，不能把下一节页面地图描述为已实现的领队端或保险上传。
+P03-A Web报名闭环已认领、尚未验收，不能把下一节页面地图描述为已实现的领队端或保险上传。
 
 ## 4. 后续页面地图
 

@@ -34,6 +34,6 @@ OBS 负责采集、导播和推流。平台提供只读的赛事比分包装页�
 - [当前状态与下一项任务](docs/CURRENT_STATUS.md)
 - [开发协作规则](AGENTS.md)
 
-**下一项：P03-A Web 报名闭环，TODO／待开工。** P03 整体、排赛、记分和 OBS 仍未完成。用户已授权项目范围内开发与同步，具体边界见 `AGENTS.md`。Mock模式仍为刷新重置；API模式使用真实数据库，失败不会静默退回Mock。
+**当前任务：P03-A Web 报名闭环，IN_PROGRESS／LOCAL_ONLY，尚未验收。** P03 整体、排赛、记分和 OBS 仍未完成。用户已授权项目范围内开发与同步，具体边界见 `AGENTS.md`。Mock模式仍为刷新重置；API模式使用真实数据库，失败不会静默退回Mock。
 
 新 AI 会话先读 `AGENTS.md`、`docs/CURRENT_STATUS.md`、`docs/TASKS.md`，再读取分配到的任务卡；不要凭旧对话判断当前进度。

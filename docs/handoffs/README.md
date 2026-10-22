@@ -5,6 +5,7 @@
 - [统一模板](TEMPLATE.md)
 - [P01 实现、整合与验收记录](P01.md)
 - [P02 实施与接续记录](P02.md)
+- [P03-A 实施检查点](P03-A.md)
 - [DOC001 文档交付记录](DOC001.md)
 
 动态全局状态见[CURRENT_STATUS](../CURRENT_STATUS.md)，认领规则见[COLLABORATION](../COLLABORATION.md)。

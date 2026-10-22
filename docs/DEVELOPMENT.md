@@ -88,4 +88,4 @@ npm run preview --workspace @small-city-basketball/admin -- --host 127.0.0.1 --p
 
 P01、P02为DONE / MAIN。迁移001已在隔离测试库执行，没有生产数据库或生产部署；不把数据库重启验证当成灾备恢复。生产默认关闭自主注册，要求HTTPS及Secure Cookie，但生产环境尚未配置。
 
-下一项P03-A Web报名闭环为TODO／待开工。先读[当前状态](CURRENT_STATUS.md)、[任务看板](TASKS.md)和分配任务卡，再在独立任务分支实施；保险文件、微信、云服务及真实OBS均未接入。
+当前P03-A Web报名闭环为IN_PROGRESS／仅本地实施、尚未验收。先读[当前状态](CURRENT_STATUS.md)、[任务看板](TASKS.md)和分配任务卡，再在独立任务分支实施；保险文件、微信、云服务及真实OBS均未接入。
