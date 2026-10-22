@@ -214,7 +214,7 @@ export async function assertOwnedRestoreTarget(pool, ownership) {
     throw new Error('Valid restore target ownership is required');
   const row = (
     await pool.query(
-      "SELECT current_database() AS name,d.oid::int AS oid,obj_description(d.oid,'pg_database') AS comment FROM pg_database d WHERE d.datname=current_database()",
+      "SELECT current_database() AS name,d.oid::int AS oid,shobj_description(d.oid,'pg_database') AS comment FROM pg_database d WHERE d.datname=current_database()",
     )
   ).rows[0];
   if (
@@ -240,7 +240,7 @@ export async function loadRestoreTarget(env = process.env) {
   try {
     const record = (
       await control.query(
-        "SELECT oid::int AS oid,obj_description(oid,'pg_database') AS comment FROM pg_database WHERE datname=$1",
+        "SELECT oid::int AS oid,shobj_description(oid,'pg_database') AS comment FROM pg_database WHERE datname=$1",
         [ownership.databaseName],
       )
     ).rows[0];

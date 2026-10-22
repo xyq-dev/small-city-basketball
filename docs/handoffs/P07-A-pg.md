@@ -17,3 +17,9 @@ P07 PG 使用独立 provisioned 集群及 TEST_P07_{ADMIN,MIGRATOR,RUNTIME,BACKU
 为类型及发现验证，按root授权先整合API冻结 `5df73bb` →本分支 `771a1fc`，再整合API实现 `2cad137` →本分支 `a64611c`；这两提交为测试依赖，root已集成同源实现，最终只挑选本交接对应的PG提交，不重复挑上述API提交。最初直接挑实现提交遇到缺冻结前置的modify/delete冲突，已仅撤销该次未完成cherry-pick，再按前置顺序重放；没有丢失原PG文件。
 
 本地尚未运行 PostgreSQL、Docker、dump/restore 或 PG 场景；本环境 UID0，不绕过保护。真实 PG18.6、第二新实例/卷、TLS/镜像/完整业务链、阶段一39表指纹及阶段二凭据隔离均由 root CI 验收。当前任何本地静态检查不代表真库通过。未 push、未执行生产Migration或部署。下一步root整合本分支PG交付提交并做独立审查后，使用 `vitest run test/p07` 在独立provisioned集群执行14项；保留源/control，仅清理各fixture nonce+OID+数据库comment证实为自身创建的目标。
+
+## 首次真实CI后的共享目录修复
+
+root报告首CI `39822056375` 的production P07场景8通过、6失败；错误集中在ownership校验及fixture清理。数据库COMMENT存于共享目录 `pg_shdescription`，原三个查询误用每库 `obj_description`。已将 `ops/db/common.mjs` 两处及 `p07-support.ts` 清理门一处改为 `shobj_description`，保留数据库名、精确OID、随机nonce三重一致性，不放宽目标所有权条件。
+
+原ownership PG用例增加从控制库、目标库分别直接联接 `pg_database`／`pg_shdescription` 验证相同comment，并验证正式 `assertOwnedRestoreTarget` 对合法目标成功、对错误名称/OID/nonce仍失败。总数保持14项；本地仅类型、语法、格式、发现与diff检查通过，修复后的真实PG／dump恢复尚待下一轮CI，不能因根因明确而宣称已通过。

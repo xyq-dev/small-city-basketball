@@ -14,7 +14,7 @@ P06-A实际覆盖未公开赛事独立签发、fragment立即清除、Cookie刷�
 
 ## 当前重点
 
-接续[P07-A同源HTTPS自托管包与隔离备份恢复](tasks/P07-A.md)，合同经独立技术只读审查CLEAR，合同main f2bf36585f09a0e55df41328a1d25f33e479e012已同步；从该点建立五个独立worktree，实施分支feat/P07-production现IN_PROGRESS / LOCAL_ONLY。交付目标为非root镜像、显式迁移／首owner、受审计DB身份及完整dump→全新隔离恢复；实际root分支`feat/P07-production@0e11776`已有打包／UI／HTTPS检查源码及未完成CI脚本，API和DB worktree保留未提交实现；接续整合中，尚无本卡容器／TLS／恢复验收。
+接续[P07-A同源HTTPS自托管包与隔离备份恢复](tasks/P07-A.md)，合同经独立技术只读审查CLEAR，合同main f2bf36585f09a0e55df41328a1d25f33e479e012已同步；从该点建立五个独立worktree，实施分支feat/P07-production现REVIEW / BRANCH_ONLY，PR8 source8905d41，首CI39822056375运行中。交付目标为非root镜像、显式迁移／首owner、受审计DB身份及完整dump→全新隔离恢复；原root@0e11776及API/DB dirty已完整保留并整合，本地`3049927`与远端`8905d41`同tree；432项本地源码测试、完整类型／构建通过。尚无本卡容器／TLS／恢复验收。
 
 没有生产主机／域名／证书、微信或视频账号／付费预算。P06-A尚无原生OBS／CEF验收，不显示“OBS已连接”。实际PG重启不等于备份恢复。完整P03/P04仍有资料文件／小程序、其他赛制／自动优化／发布后改期；完整P05仍有可靠离线和专业统计。
 
@@ -24,4 +24,4 @@ P06-A实际覆盖未公开赛事独立签发、fragment立即清除、Cookie刷�
 
 先核验实际目录、远端、分支、HEAD和dirty，读AGENTS、[任务看板](TASKS.md)与当前卡，再按[开发说明](DEVELOPMENT.md)运行。统一入口为[项目开发总文档](PROJECT_DEVELOPMENT.md)。
 
-本轮接续记录见[P07-A交接](handoffs/P07-A.md)。PR2四项按最新代码核验：注册UI已有，API待整合；并发密码计算、冲突恢复、过期限流清理待补回归。仅沿用已核实的开发/Git授权，本轮禁止生产部署、生产数据库变更、付费资源、新凭据和公网端口。
+本轮接续记录见[P07-A交接](handoffs/P07-A.md)。PR2四项按最新代码核验：四项均已实现并具备源码回归；新增过期限流真实PG回归与P07共14项真实PG仍待CI。仅沿用已核实的开发/Git授权，本轮禁止生产部署、生产数据库变更、付费资源、新凭据和公网端口。

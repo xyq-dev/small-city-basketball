@@ -84,7 +84,7 @@ export async function createOwnedRestoreDatabase() {
     if (!ownership) return false;
     const record = (
       await adminPool.query<{ oid: number; comment: string }>(
-        "SELECT oid::int AS oid,obj_description(oid,'pg_database') AS comment FROM pg_database WHERE datname=$1",
+        "SELECT oid::int AS oid,shobj_description(oid,'pg_database') AS comment FROM pg_database WHERE datname=$1",
         [databaseName],
       )
     ).rows[0];

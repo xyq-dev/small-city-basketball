@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { assertOwnedRestoreTarget } from '../../../ops/db/common.mjs';
 import { quarantineRestoredDatabase } from '../../../ops/recovery/quarantine.mjs';
 import { createApi } from '../src/app.js';
 import { hashPassword, verifyPassword } from '../src/security.js';
@@ -208,7 +209,22 @@ describe('P07 owned restore quarantine on the real migrated PostgreSQL schema', 
     await target?.close();
   });
 
-  test('rejects a wrong database name, OID or owner nonce without changing restored data', async () => {
+  test('accepts shared-catalog ownership from either database and rejects a wrong name, OID or nonce', async () => {
+    // Database comments are cluster-shared objects, stored in pg_shdescription.
+    // Check the catalog directly from both the control and restored database;
+    // obj_description wrongly looks in the per-database description catalog.
+    for (const connection of [target.adminPool, target.pool]) {
+      const comment = (
+        await connection.query<{ description: string }>(
+          `SELECT s.description FROM pg_database d JOIN pg_shdescription s
+           ON s.objoid=d.oid AND s.classoid='pg_database'::regclass
+           WHERE d.datname=$1`,
+          [target.ownership.databaseName],
+        )
+      ).rows[0]?.description;
+      expect(comment).toBe(`scb_restore_owner:${target.ownership.nonce}`);
+    }
+    await expect(assertOwnedRestoreTarget(target.pool, target.ownership)).resolves.toBeUndefined();
     const before = await fingerprints(target.pool);
     for (const ownership of [
       { ...target.ownership, databaseName: 'scb_test_production_control' },
