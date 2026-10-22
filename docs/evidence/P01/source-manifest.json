@@ -1,0 +1,33 @@
+{
+  "task": "P01",
+  "date": "2026-10-22",
+  "baseCommit": "daea629079bfabc5e77407ae58b50b4af01c1e20",
+  "branch": "feat/P01-organizer-console",
+  "integration": "LOCAL_ONLY",
+  "algorithm": "SHA-256 over sorted lines: <file sha256><two spaces><relative path><newline>",
+  "sourceFingerprint": "b477914ccd11112225c7601f11ce995b8509b98bfdd0c78ef32ed72ed17474fa",
+  "files": {
+    ".github/workflows/ci.yml": "bcda9dd8684300ca3fbe64b22d485c99e05306968f61c9c9cb186f75044cd727",
+    ".gitignore": "76e758ea199960605d13716c49c5bd3039fed5bab7160c36135b03a84267aa37",
+    ".prettierignore": "91a25efd8497c5a831b553a5d24263336efa629f2c8bccbdf2b0d50a77a51a81",
+    ".prettierrc.json": "85378d4d734cb7d35641c44ffdf322fe0bc76a3b12841927f20aa5f0eba12695",
+    "apps/admin/index.html": "ba796eafc52d432c4873103afe7db61a38068295eacf1f4be0d3695b851b58d1",
+    "apps/admin/package.json": "f5aca16f22867c0d8a2a6f8cf02deb4d00ef0976dbb0110fe88d1f48dec6a489",
+    "apps/admin/public/favicon.svg": "fca9229ac46071a71d6992d2e455598c954404b5e132ed54aad3a129ebe00d53",
+    "apps/admin/src/App.test.tsx": "7b5d7d61536191d84ad6022a5b84f70656897ca5a67908dac3bb6efdcc451c66",
+    "apps/admin/src/App.tsx": "6950f76fbeec452e6ebf2e00b1a1501fd4bb4319ca0b6b02ddc98b1dd56ca108",
+    "apps/admin/src/domain/repository.test.ts": "99d54cd4a89322c65acff3bc6001536219f9df5b6a3fce111ca8db8370f74a82",
+    "apps/admin/src/domain/repository.ts": "c7ea1a75c13aa535cfab376244c20759e72f73712008f569a18f9683138395c8",
+    "apps/admin/src/domain/types.ts": "f59590ccbd0103f33d734d59f3f691eddbe067cf19977239bba2b7fb95dac087",
+    "apps/admin/src/domain/validation.test.ts": "d17c447b255f522068e0c08489cf1f9b40ee220e9a915fbd392f5ad89e17faf7",
+    "apps/admin/src/domain/validation.ts": "e72624bc840605e854657066e3ddd96e61c2b3e3b67e5b53e54866e16e7cff48",
+    "apps/admin/src/main.tsx": "741e2be2fb91714c6c9780235fd9f02069ed6ef6b532ff0aa914773ba352945d",
+    "apps/admin/src/styles.css": "4561f5f3f3eb4fec262c60fc0cbdf73e4ee4f99cd8701447a834912dc3da0feb",
+    "apps/admin/tsconfig.json": "b57a925a39c30d2c844569926d92480b3aceaaf0c5e7e15818a30dc0c69e1011",
+    "apps/admin/vite.config.ts": "b7016bd0df6529162c634710068d8dd6a6b3d4d4640fe7073e98e4f010644202",
+    "package-lock.json": "7b2be70516094d5b0bf1b18b14d83dd407cb4c0559d9687e89da1232a364f484",
+    "package.json": "d1a70f1d151bf22e5b43c219b12562deef4529de51b9c7e77c994a1e2d5985a9",
+    "playwright.config.ts": "19549803d05a16aa8267df732a0a142cd66752e4d335e9b70941c78077529132",
+    "tests/e2e/organizer-console.spec.ts": "9d276a76e3b035742e5cb52b4569cd2c3335a56b9744708d9c7a6c6044bc75f8"
+  }
+}
