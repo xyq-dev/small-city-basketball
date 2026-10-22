@@ -10,8 +10,8 @@
 | P02 | 身份、机构与赛事基础后端 | DONE | Codex | P01 | MAIN29c4ee4，PR#2，CI39730670229成功；[任务卡](tasks/P02.md)、[交接](handoffs/P02.md) |
 | P03 | 球队报名、资料与审核 | IN_PROGRESS | Codex集成 | P02 | 拆P03-A及后续文件/小程序；全P03未完成 |
 | P03-A | Web球队、报名审核与名单冻结 | DONE | Codex集成，API/UI/PG独立分工 | P02 | MAIN1c4b352，PR3，CI39735150535全部成功；[任务卡](tasks/P03-A.md)、[交接](handoffs/P03-A.md) |
-| P04 | 抽签、排赛与冲突检查 | TODO | root接续 | P03-A已满足，分卡验收 | 全阶段未实施，先P04-A |
-| P04-A | 单循环对阵、手工排时与一次正式发布 | TODO | 待root开工认领 | P03-A已MAIN | [任务卡](tasks/P04-A.md)，仅规划，尚无P04代码 |
+| P04 | 抽签、排赛与冲突检查 | IN_PROGRESS | root集成 | P03-A已满足，分卡验收 | 先P04-A，整体仍未完成 |
+| P04-A | 单循环对阵、手工排时与一次正式发布 | IN_PROGRESS | API/UI/独立PG分工，root集成 | P03-A已MAIN | LOCAL_ONLY，源bf820d8；[任务卡](tasks/P04-A.md)、[检查点](handoffs/P04-A.md) |
 | P05 | 基础记分、赛果与观赛 | TODO | 未认领 | P04 | 未实施 |
 | P06 | OBS包装、直播与交付 | TODO | 未认领 | P05；真实视频需配置服务与预算 | 未实施 |
 
