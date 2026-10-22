@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { FormEvent } from 'react';
 import type { OrgRole } from '@small-city-basketball/contracts';
 import {
@@ -16,6 +25,10 @@ import { ApiError, createApiClient, createAuthApi } from './api/client';
 import type { ApiClient, AuthApi, AuthSession } from './api/client';
 import { createHttpEventRepository } from './api/events';
 import './runtime.css';
+
+const PublicViewingApp = lazy(() =>
+  import('./viewing/PublicPages').then((viewing) => ({ default: viewing.PublicViewingApp })),
+);
 
 const roles: Record<OrgRole, string> = {
   ORG_OWNER: '机构负责人',
@@ -832,10 +845,24 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
 export default function RuntimeApp({
   mode = import.meta.env.VITE_DATA_MODE ?? 'mock',
   client,
+  publicFetcher,
 }: {
   mode?: string;
   client?: ApiClient;
+  publicFetcher?: typeof fetch;
 }) {
+  if (window.location.pathname === '/watch' || window.location.pathname.startsWith('/watch/'))
+    return (
+      <Suspense
+        fallback={
+          <main className="runtime-state" role="status">
+            正在读取公开观赛页面…
+          </main>
+        }
+      >
+        <PublicViewingApp fetcher={publicFetcher} />
+      </Suspense>
+    );
   if (mode === 'mock') return <App />;
   if (mode === 'api') return <ApiRuntime client={client} />;
   return (

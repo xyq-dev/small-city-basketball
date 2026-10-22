@@ -1,6 +1,6 @@
 # API 契约
 
-目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A、P04-A及P05-A已整合main，P05-A为DONE / MAIN；[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并提交 `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`，验收代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`。身份、报名冻结、单循环排赛及在线基础记分／独立确认已通过隔离PostgreSQL与浏览器验收，实际契约见第5–8节。正式排名、公开观赛、可靠离线、其他排赛赛制、改期、P03附件／小程序及OBS仍未交付。
+目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A、P04-A及P05-A已整合main，P05-A为DONE / MAIN；[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并提交 `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`，验收代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`。身份、报名冻结、单循环排赛及在线基础记分／独立确认已通过隔离PostgreSQL与浏览器验收，实际契约见第5–8节。第9节记录P05-B在feature中的API实施合同：文档起稿检查点 `8d50cf710c5ce48265fdaf0e3dc06e986a46bf3a` 已含API及新增PG测试源码，随后UI已整合feature `5a985b6293e1ab05e42ab77cc491d47a0bf4bc92`；尚未MAIN、尚无P05-B真实PG／重启／浏览器验收。可靠离线、其他排赛赛制、改期、P03附件／小程序及OBS仍未交付。
 
 ## 1. 通用约定
 
@@ -34,7 +34,7 @@ type CreateEventInput = {
 
 ## 3. 目标路由清单
 
-下表同时列出已实现入口与长期目标；P02、P03-A、P04-A及P05-A的实际权限、输入和响应以第5–8节及共享契约为准。人员私密资料、保险附件、其他排赛赛制、公开观赛和OBS等目标入口尚不可调用。
+下表同时列出已实现入口与长期目标；P02、P03-A、P04-A及P05-A的实际权限、输入和响应以第5–8节及共享契约为准，P05-B分支合同另见第9节。人员私密资料、保险附件、其他排赛赛制和OBS等目标入口尚不可调用。
 
 下表私有路径均省略 `/v1/orgs/{orgId}`；资源 ID 需按其所属赛事/机构重新校验。
 
@@ -68,7 +68,7 @@ type CreateEventInput = {
 
 `POST /v1/invitations/{invitationId}/accept` 是已登录受邀者接受邀请的独立入口；验证令牌hash、有效期、用途、目标受邀者和未被消费状态，事务内建立限定资源绑定并记录接受，不能凭客户端给出的userId绑定他人。重复接受仅向同一已核验身份返回既有结果；撤销、过期、越范围的邀请拒绝。机构工作人员的邀请/撤权和平台套餐开通接口在 P02/P06 对应任务细化，不从本路由表推定已经实现。文件上传另设授权申请/完成接口，下载临时链接须重新鉴权，URL 不能永久公开。
 
-以下公开路由仍为后续目标、尚未实现：`/v1/public/events/{publicId}`、其 `/schedule`、`/standings`，及 `/v1/public/matches/{publicId}/snapshot`。仅返回已发布可见内容。包装读取 `/v1/overlays/{grantId}/snapshot` 和 `/stream`，使用独立只读能力令牌，不复用机构管理会话。
+P05-B分支已实施第9节的公开event及其schedule／standings／嵌套match读取，尚未完成真实验收；旧目标 `/v1/public/matches/{publicId}/snapshot` 未实现，不是本卡入口。包装读取 `/v1/overlays/{grantId}/snapshot` 和 `/stream` 仍为P06目标，使用独立只读能力令牌，不复用机构管理会话。
 
 ## 4. 比赛命令和冲突
 
@@ -222,4 +222,62 @@ ScoreSnapshot含实际MatchStatus、双方冻结展示信息、已采集球队�
 
 关键实际错误：422 VALIDATION_ERROR／RULE_CONFLICT／SCORING_RULES_REQUIRED／INVALID_STAT_TARGET；409 VERSION_CONFLICT／LEASE_CONFLICT／IDEMPOTENCY_CONFLICT／INVALID_MATCH_STATE／SCORING_RULES_LOCKED／SCORER_REQUIRED／MATCH_NOT_PREPARED／PROJECTION_MISMATCH；隐藏资源404 RESOURCE_NOT_FOUND、未知收据404 COMMAND_NOT_FOUND，可见无动作权限403 FORBIDDEN。不能把长期目标中的LEASE_EXPIRED等细分码当作本卡接口。
 
-P05-A只实现在线基础记分及私有读取；共享MATCH_STATUSES为SCHEDULED、READY、LIVE、PENDING_CONFIRMATION、FINAL、POSTPONED、CANCELLED，后两者仅预留，没有变更接口。不自动COMPLETED赛事；正式积分／同分排序、公开观赛、SSE/outbox、可靠离线、球员专业统计、弃权／争议、延期恢复、淘汰晋级及OBS均待后续任务。P04正式来源、计划和预约仍不可变，FINAL场次读取返回真实状态，不回写SCHEDULED。
+P05-A只实现在线基础记分及私有读取；共享MATCH_STATUSES为SCHEDULED、READY、LIVE、PENDING_CONFIRMATION、FINAL、POSTPONED、CANCELLED，后两者仅预留，没有变更接口。不自动COMPLETED赛事；正式积分／同分排序及公开观赛的P05-B分支实现见第9节，尚未验收。SSE/outbox、可靠离线、球员专业统计、弃权／争议、延期恢复、淘汰晋级及OBS仍待后续任务。P04正式来源、计划和预约仍不可变，FINAL场次读取返回真实状态，不回写SCHEDULED。
+
+## 9. P05-B排名及公开观赛分支契约（已实施，未MAIN／未验收）
+
+本节依据当前feature源码及[共享契约](../packages/contracts/index.d.ts)，不是生产可用声明。API的155项及admin的145项源码检查已分别在本地通过；API整合时类型／构建通过，UI整合后的根完整本地复验已通过（f082fa1）。005仅编写／独立静态审查CLEAR，真实PG、重启及匿名浏览器验收未执行。完整条件见[任务卡](tasks/P05-B.md)、[TESTING](TESTING.md)。
+
+### 私有管理入口
+
+私有路径省略 `/v1/orgs/{orgId}`。读取要求当前有效机构成员，且为OWNER/ADMIN或本event实际有效工作人员；仅有MatchStaff不授予整届排名权限。写入限OWNER/ADMIN或本event实际EVENT_MANAGER，重新检查会话、成员、分配及精确Origin；全局角色不能替代赛事分配。
+
+| 方法与路径 | 精确输入与成功结果 |
+|---|---|
+| GET `/events/{eventId}/standings` | 返回EventStandingsData；尚无规则或正式赛程时standings为null，已有未锁规则及赛程时mode为DRAFT_PREVIEW |
+| PUT `/events/{eventId}/standings-rules` | `{expectedEventVersion,winPoints,lossPoints,drawPoints,tiebreakers}`；追加不可变当前草稿，递增Event.version，200返回EventStandingsData |
+| POST `/events/{eventId}/standings-rule-commands` | `{type:'PUBLISH_STANDINGS_RULES',rulesetId,expectedEventVersion}`；仅发布本届当前草稿，永久锁定规则，200返回EventStandingsData |
+| POST `/events/{eventId}/public-viewing-commands` | `{type:'ENABLE'|'DISABLE',expectedEventVersion}`；启用须已锁排名规则及正式单循环赛程；每次重新启用创建全新公开身份；200返回EventStandingsData |
+
+`winPoints/lossPoints/drawPoints`均显式必填整数0–1000；tiebreakers显式数组，可为空或为SCORE_DIFFERENCE、POINTS_FOR、WINS的不重复有序子集。仅支持2–32队单回合ROUND_ROBIN；不支持HEAD_TO_HEAD、胜率、分组／淘汰、弃权、处罚积分或净胜分封顶，不预设FIBA积分。
+
+EventStandingsData精确组成：`event:EventData`、`rules:StandingsRulesetData|null`、`locked:boolean`、`standings:StandingsData|null`、`publication:PublicViewingPublicationData|null`、capabilities。规则DTO为`{id,eventId,version,algorithmVersion:'RR_STANDINGS_V1',createdAt,winPoints,lossPoints,drawPoints,tiebreakers}`；publication仅为`{publicEventId,status:'ACTIVE'|'REVOKED',createdAt,revokedAt:string|null}`。capabilities固定包含canManageRules、canPublishRules、canEnablePublicViewing、canDisablePublicViewing四个boolean，不靠全局角色猜测。
+
+StandingsData为`{mode:'DRAFT_PREVIEW'|'PUBLISHED',rulesetVersion,sourceHash,asOf,confirmedMatchCount,totalMatchCount,isComplete,hasSharedRanks,rows}`。私有每行含entryId、teamId、teamName、rank:number|null、tied及played/wins/draws/losses/pointsFor/pointsAgainst/scoreDifference/leaguePoints。先积分降序，再按显式tiebreakers逐项降序；全相同则共享1,1,3竞赛名次，冻结顺序仅稳定展示。零有效确认时所有rank为null；部分完赛不做场次／胜率补偿，isComplete只表示正式场次全部有效确认且总数大于0，不推进Event COMPLETED或宣布唯一冠军。
+
+DISABLE不依赖榜单来源健康：授权、CAS、撤销及audit成功后返回`standings:null`，保留正确的event/rules/publication/capabilities；后续GET仍核验来源并可返回RESULT_SOURCE_INVALID。重复ENABLE或没有有效发布时DISABLE均409，不幂等创建新链接。
+
+### 匿名只读入口与DTO
+
+公开路径前缀 `/v1/public/events/{publicEventId}`，四个入口均GET，无写路由、目录搜索或登录要求。控制器不读取Cookie；相同公开身份不因调用者是否登录而扩大字段。前端独立public fetch使用`credentials:'omit'`，不触发私有会话处理；此处不授权OBS或记分。
+
+| 方法与后缀 | data及分页 |
+|---|---|
+| GET主路径 | PublicEventData |
+| GET `/schedule` | PublicScheduleMatchData[]；limit默认20／最多100，可选status和cursor；meta.nextCursor为下一页或null |
+| GET `/standings` | PublicStandingsData |
+| GET `/matches/{publicMatchId}` | PublicMatchSnapshotData；必须属于本次公开publication |
+
+公开身份独立于内部UUID：publicEventId／publicMatchId为32随机字节的43字符base64url文本，teamKey为本次publication独立16随机字节的22字符文本。重新启用后全部重新生成，旧链接永久失效。schedule按真实startsAt及publicMatchId正序；游标明文仅含`{scope:'public-schedule:<publicEventId>:<status或空>',time:<UTC六位小数时间>,publicMatchId}`再作base64url编码，不能夹带org/user/event/match/entry/team内部ID，跨父身份或筛选的游标拒绝。
+
+| 公开DTO | 完整允许字段 |
+|---|---|
+| PublicStandingsRules | version、algorithmVersion、winPoints、lossPoints、drawPoints、tiebreakers；没有私有rulesetId/eventId/createdBy |
+| PublicEventData | publicEventId、name、startDate、endDate、timezone、venueName:null或string、status、rules、confirmedMatchCount、totalMatchCount、isComplete、serverTime |
+| PublicStandingsData | publicEventId、rules、sourceHash、asOf、confirmedMatchCount、totalMatchCount、isComplete、hasSharedRanks、rows；每行仅teamKey、teamName、rank、tied及上述八项累计统计 |
+| PublicScheduleMatchData | publicMatchId、roundNo、positionNo、home/away各`{teamKey,teamName}`、courtName、startsAt、endsAt、status、version、score:null或`{home,away}`、resultStatus |
+| PublicMatchSnapshotData | schedule单场字段，再含publicEventId、eventName、totals、periods、rules、clock、collected、serverTime；totals为双方`{score,fouls,timeouts}`，periods每项为`{period,home:{score,fouls,timeouts},away:{score,fouls,timeouts}}`，两者可null |
+
+单场rules为`ScoringRules & {version}`或null，clock为`{period,remainingMs,running,anchorServerTime,clockVersion}`或null；raw remainingMs不先扣时，客户端据serverTime和锚点只插值一次。未准备比赛score/totals/periods/rules/clock为null，collected的teamScore/teamFouls/teamTimeouts为false；准备后真实0可展示，playerStatistics始终false。resultStatus仅UNCONFIRMED、CONFIRMED、REQUIRES_RECONFIRMATION。正式统计从有效确认取证，重开不展示旧确认作为当前正式结果。
+
+所有嵌套对象按白名单重建，不序列化私有Workbench／ScoreSnapshot再删字段。公开不含名单、球员姓名／号码、工作人员／确认人、事件／收据、内部ID、email、联系方式、身份／保险材料、session/lease/fence/control或写凭据。未知／撤销／跨父公开身份／不活跃机构或不可公开赛事404，读取均no-store；打开页面只能在下一次轮询发现撤销后清屏，不能承诺零延迟撤屏或推送。其他读取失败保留资料须标陈旧，不能伪造0分。
+
+### 唯一正式来源与失败处理
+
+单条批量SQL以全部正式matches为基表LEFT JOIN同场state、当前confirmation、最后event、对应receipt及scoring_rules，使用同一语句MVCC快照；不可变freeze、排名规则及正式计划另在Event锁保护下读取。任何FINAL证明不全则整张榜单／公开投影409 RESULT_SOURCE_INVALID，固定无私密详情消息，不用INNER JOIN或筛选静默漏掉坏场次。
+
+有效FINAL要求state.source_version等于当前match.version、requires_reconfirmation=false；latest确认指针／规则ID及版本／双方总数及完整按节合计一致。确认前lastEventSeq加1必须等于state.last_event_seq和最后CONFIRM_RESULT事件seq，操作者、空payload及receipt相符；receipt.appliedVersion为confirmation.sourceMatchVersion加1且不大于当前比赛版本，首末seq均为该确认事件。终局还须clock_running=false、remaining_ms=0、period不少于绑定规则的常规节数；独立审查发现的这三项缺口已修复并有反例。FINAL后合法staff变更可以增加match/state版本而不撤销赛果；它们及读取时间不参与sourceHash。重开整场退出，重确认仅计最新一次；hash绑定规则、冻结顺序及当前确认身份／统计，不能把旧记录重复累计。
+
+私有写按actor/session→org/member→Event UPDATE→规则/publication/映射，授权/CAS/Event版本/audit同事务，deferred COMMIT失败也整体回滚。匿名先解析公开身份，再按org SHARE→Event SHARE→publication SHARE取锁，重查机构、赛事和发布有效性；撤销提交后的新读取拒绝。公开GET不写访问计数、不取org_schedule_mutex、不写记分。
+
+实际错误：422 VALIDATION_ERROR／UNSUPPORTED_STANDINGS_FORMAT／STANDINGS_RULES_REQUIRED／SCHEDULE_REQUIRED；409 VERSION_CONFLICT／STANDINGS_RULES_LOCKED／STANDINGS_RULESET_NOT_CURRENT／PUBLIC_VIEWING_ALREADY_ENABLED／PUBLIC_VIEWING_NOT_ENABLED／RESULT_SOURCE_INVALID；隐藏资源404 RESOURCE_NOT_FOUND、可见无动作权403 FORBIDDEN。P05-A记分状态机和授权保持，尚无公开SSE、缓存worker、可靠离线、专业统计、微信、OBS或生产容量验收。

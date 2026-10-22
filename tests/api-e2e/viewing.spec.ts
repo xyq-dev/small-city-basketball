@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { devices, expect, test } from '@playwright/test';
 import type { APIRequestContext } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -188,6 +188,9 @@ test('公开观赛隔离会话、正式排名重开重算、撤销及新链接',
   const leader = await playwright.request.newContext();
   const scorer = await playwright.request.newContext();
   const anonymous = await browser.newContext({
+    ...(testInfo.project.name.includes('mobile')
+      ? devices['iPhone 13']
+      : devices['Desktop Chrome']),
     baseURL: origin,
     viewport: page.viewportSize()!,
     storageState: { cookies: [], origins: [] },
@@ -195,6 +198,7 @@ test('公开观赛隔离会话、正式排名重开重算、撤销及新链接',
   const viewer = await anonymous.newPage();
   const errors: string[] = [];
   const privateRequests: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
   viewer.on('pageerror', (error) => errors.push(error.message));
   viewer.on('request', (request) => {
     const path = new URL(request.url()).pathname;
@@ -237,6 +241,7 @@ test('公开观赛隔离会话、正式排名重开重算、撤销及新链接',
     await viewer.goto(publicUi);
     const overview = await read<PublicEventData>(anonymous.request, publicPath);
     await expect(viewer.getByRole('heading', { name: overview.name, exact: true })).toBeVisible();
+    await viewer.getByRole('tab', { name: '赛事排名', exact: true }).click();
     await expect(viewer.getByText('尚无已确认赛果', { exact: true }).first()).toBeVisible();
     const schedule = await read<PublicScheduleMatchData[]>(
       anonymous.request,
@@ -315,6 +320,38 @@ test('公开观赛隔离会话、正式排名重开重算、撤销及新链接',
       { type: 'RECORD_STAT', payload: { kind: 'SCORE', side: 'HOME', value: 2 } },
       control,
     );
+    await command(scorer, { type: 'CLOCK_START', payload: {} }, control);
+    // An aged raw anchor detects deducting elapsed server time twice in the UI.
+    await expect
+      .poll(async () => {
+        const live = await read<PublicMatchSnapshotData>(anonymous.request, publicMatchPath);
+        return Date.parse(live.serverTime) - Date.parse(live.clock!.anchorServerTime);
+      })
+      .toBeGreaterThanOrEqual(3000);
+    const freshClockResponse = viewer.waitForResponse(
+      (response) => new URL(response.url()).pathname === publicMatchPath && response.ok(),
+    );
+    await viewer.getByRole('button', { name: '刷新公开资料', exact: true }).click();
+    const live = (await (await freshClockResponse).json()).data as PublicMatchSnapshotData;
+    expect(live.clock!.running).toBe(true);
+    expect(live.clock!.remainingMs).toBe(60000);
+    const expectedSeconds = Math.ceil(
+      (live.clock!.remainingMs -
+        (Date.parse(live.serverTime) - Date.parse(live.clock!.anchorServerTime))) /
+        1000,
+    );
+    const clock = viewer.getByLabel('比赛剩余时间', { exact: true });
+    await expect
+      .poll(async () => {
+        const text = await clock.textContent();
+        if (!text || !/^\d+:\d{2}$/.test(text)) return Infinity;
+        const [minutes, seconds] = text.split(':').map(Number);
+        return Math.abs(minutes! * 60 + seconds! - expectedSeconds);
+      })
+      .toBeLessThanOrEqual(1);
+    const firstClock = await clock.textContent();
+    await expect.poll(() => clock.textContent()).not.toBe(firstClock);
+    await command(scorer, { type: 'CLOCK_PAUSE', payload: {} }, control);
     await command(
       scorer,
       { type: 'CLOCK_SET', payload: { remainingMs: 0, reason: '公开观赛验收节末归零' } },
@@ -336,13 +373,16 @@ test('公开观赛隔离会话、正式排名重开重算、撤销及新链接',
       .toBe('CONFIRMED');
     await expect(viewer.getByText('赛果已确认', { exact: true }).first()).toBeVisible();
     await viewer.goto(publicUi);
+    await viewer.getByRole('tab', { name: '赛事排名', exact: true }).click();
     const winner = confirmed.rows.find((row) => row.wins === 1)!;
     const ranking = viewer.getByRole('region', { name: '赛事排名', exact: true });
     const winningRow = ranking
       .getByRole(testInfo.project.name.includes('mobile') ? 'article' : 'row')
       .filter({ hasText: winner.teamName });
     await expect(winningRow).toBeVisible();
-    await expect(winningRow).toContainText('3');
+    if (testInfo.project.name.includes('mobile'))
+      await expect(winningRow.getByText('3 积分', { exact: true })).toBeVisible();
+    else await expect(winningRow.getByRole('cell').last()).toHaveText('3');
 
     progress('reopen removes result immediately; reconfirm restores only newest confirmation');
     await command(page.request, {
