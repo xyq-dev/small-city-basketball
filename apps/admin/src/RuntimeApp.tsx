@@ -501,23 +501,30 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
   const [contextMode, setContextMode] = useState<'organization' | 'team'>('organization');
   const [identityOpen, setIdentityOpen] = useState(false);
   const [pendingInvitation, setPendingInvitation] = useState<PendingInvitation | null>(null);
+  const [invitationRevision, setInvitationRevision] = useState(0);
   const [phase, setPhase] = useState<'checking' | 'ready' | 'signedOut' | 'error'>('checking');
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
   useLayoutEffect(() => {
-    const fragment = new URLSearchParams(window.location.hash.slice(1));
-    const token = fragment.get('token');
-    const id = fragment.get('invitation') ?? fragment.get('invitationId') ?? fragment.get('invite');
-    if (token !== null || id !== null) {
+    function consumeFragment() {
+      const fragment = new URLSearchParams(window.location.hash.slice(1));
+      const token = fragment.get('token');
+      const id =
+        fragment.get('invitation') ?? fragment.get('invitationId') ?? fragment.get('invite');
+      if (token === null && id === null) return;
       window.history.replaceState(
         window.history.state,
         '',
         `${window.location.pathname}${window.location.search}`,
       );
       setPendingInvitation({ id: id ?? '', token: token ?? '' });
+      setInvitationRevision((revision) => revision + 1);
       setIdentityOpen(true);
     }
+    consumeFragment();
+    window.addEventListener('hashchange', consumeFragment);
+    return () => window.removeEventListener('hashchange', consumeFragment);
   }, []);
   const unauthenticated = useCallback(() => {
     sessionEpoch.current += 1;
@@ -795,6 +802,7 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
       )}
       {identityOpen && (
         <IdentityPanel
+          key={invitationRevision}
           session={session}
           client={guardedClient}
           initialInvitation={pendingInvitation}

@@ -356,6 +356,47 @@ describe('领队个人账号与绑定邀请', () => {
     expect(screen.queryByText('演示模式 · Mock 数据')).not.toBeInTheDocument();
   });
 
+  it('已登录页面收到邀请hashchange时立即清片段并打开填写正确凭据的对话框', async () => {
+    const store = vi.spyOn(Storage.prototype, 'setItem');
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(ok(participant));
+    render(<RuntimeApp mode="api" client={createApiClient({ fetcher })} />);
+    await screen.findByRole('heading', { name: '你的球队主场，从邀请开始' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    act(() => {
+      window.history.replaceState({ usr: { retained: true } }, '', '/?source=share#section');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(window.location.hash).toBe('#section');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    act(() => {
+      window.history.replaceState(
+        window.history.state,
+        '',
+        '/?source=share#invitation=invite-live&token=live-secret',
+      );
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      expect(window.location.hash).toBe('');
+    });
+    expect(screen.getByRole('dialog', { name: '个人账号与球队邀请' })).toBeVisible();
+    expect(screen.getByLabelText('邀请 ID')).toHaveValue('invite-live');
+    expect(screen.getByLabelText('邀请令牌')).toHaveValue('live-secret');
+    expect(window.location.search).toBe('?source=share');
+    expect(window.history.state.usr).toEqual({ retained: true });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(store).not.toHaveBeenCalled();
+    act(() => {
+      window.history.replaceState(
+        window.history.state,
+        '',
+        '/?source=share#invitation=invite-next&token=next-secret',
+      );
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(window.location.hash).toBe('');
+    expect(screen.getByLabelText('邀请 ID')).toHaveValue('invite-next');
+    expect(screen.getByLabelText('邀请令牌')).toHaveValue('next-secret');
+  });
+
   it('邀请片段在登录前移除，只在当前内存保留；登录后以绑定账号接受并刷新会话', async () => {
     const store = vi.spyOn(Storage.prototype, 'setItem');
     window.history.replaceState({}, '', '/events#invitation=invite-a&token=one-time-secret');

@@ -42,6 +42,11 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
   const password = `Registration-browser-${suffix}`;
   const teamName = `报名验证队-${suffix}`;
   const eventName = `报名验证赛事-${suffix}`;
+  let phase = 'starting';
+  function progress(value: string) {
+    phase = value;
+    console.log(`[registration:${testInfo.project.name}] ${value}`);
+  }
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const owner = await write<SessionData>(page.request, 'POST', '/v1/auth/register', {
@@ -82,6 +87,7 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     expect(initial.organizations).toEqual([]);
     expect(initial.teamContexts).toEqual([]);
 
+    progress('participant registered');
     // Staff create the team and bind the invitation to that exact personal account.
     await page.goto('/teams');
     await page.getByRole('button', { name: '创建球队', exact: true }).click();
@@ -96,6 +102,7 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     const invitationId = fragment.get('invitation')!;
     const token = fragment.get('token')!;
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    progress('invitation created');
     await leader.goto(invitationLink);
     await expect(leader.getByRole('dialog', { name: '个人账号与球队邀请' })).toBeVisible();
     expect(new URL(leader.url()).hash).toBe('');
@@ -108,6 +115,7 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     expect(accepted.organizations).toEqual([]);
     expect(accepted.teamContexts.map((context) => context.teamId)).toEqual([teamId]);
 
+    progress('team access ready');
     await leader.goto(`${origin}/teams/${teamId}`);
     await leader.getByRole('button', { name: '编辑成员', exact: true }).click();
     await leader.getByRole('button', { name: '添加成员', exact: true }).click();
@@ -117,6 +125,7 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     await leader.getByRole('button', { name: '保存成员', exact: true }).click();
     await expect(leader.getByText('成员已保存', { exact: true })).toBeVisible();
 
+    progress('team members saved');
     const event = await write<EventData>(page.request, 'POST', `${root}/events`, {
       name: eventName,
       startDate: '2026-12-01',
@@ -126,6 +135,11 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     });
     const registrationPath = `${root}/events/${event.id}`;
     await page.goto(`/events/${event.id}/registration`);
+    await expect(
+      page.getByRole('heading', { level: 1, name: eventName, exact: true }),
+    ).toBeVisible();
+    const openMenu = page.getByRole('button', { name: '打开导航', exact: true });
+    if (await openMenu.isVisible()) await openMenu.click();
     await expect(page.getByRole('link', { name: '报名审核', exact: true })).toHaveAttribute(
       'aria-current',
       'page',
@@ -134,6 +148,9 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
       'aria-current',
       'page',
     );
+    const closeMenu = page.getByRole('button', { name: '关闭导航', exact: true });
+    if (await closeMenu.isVisible()) await closeMenu.click();
+    progress('registration workspace ready');
     await page.getByLabel('最少参赛人数', { exact: true }).fill('2');
     await page.getByLabel('最多参赛人数', { exact: true }).fill('3');
     await page.getByLabel('0 与 00 为不同球衣号码', { exact: false }).check();
@@ -142,6 +159,7 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     await confirm(page, '开放报名', '确认开放');
     await expect(page.getByText('报名已开放，当前规则已锁定', { exact: true })).toBeVisible();
 
+    progress('registration opened');
     await leader.goto(`${origin}/my-team`);
     await leader.getByRole('button', { name: '报名此赛事', exact: true }).click();
     await expect(leader).toHaveURL(/\/entries\/[0-9a-f-]{36}$/);
@@ -158,6 +176,7 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     await expect(leader.getByRole('button', { name: '审核通过', exact: true })).toHaveCount(0);
     await expect(leader.getByRole('button', { name: '保存名单', exact: true })).toHaveCount(0);
 
+    progress('first entry submitted');
     // Create a second approved team plus one unsubmitted entry before closing.
     async function fixture(label: string, approved: boolean) {
       let team = await write<TeamData>(page.request, 'POST', `${root}/teams`, {
@@ -200,6 +219,7 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     }
     await fixture('第二批准队', true);
     await fixture('未提交排除队', false);
+    progress('additional fixtures prepared');
     await page.goto(`/entries/${entryId}`);
     await page.getByRole('button', { name: '退回修改', exact: true }).click();
     await page.getByLabel('审核原因', { exact: true }).fill('请核对甲的本届球衣号码');
@@ -210,6 +230,7 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     await expect(page.getByText('报名已关闭', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '冻结参赛名单', exact: true })).toHaveCount(0);
 
+    progress('requested changes and closed registration');
     // Closed registration still permits this explicitly requested correction.
     await leader.reload();
     await expect(leader.getByText('待修改', { exact: true })).toBeVisible();
@@ -226,6 +247,7 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     await page.goto(`/events/${event.id}/registration`);
     await confirm(page, '冻结参赛名单', '确认冻结');
     await expect(page.getByRole('heading', { name: '冻结快照', exact: true })).toBeVisible();
+    progress('registration frozen');
     const frozen = await read<EventRegistrationData>(
       page.request,
       `${registrationPath}/registration`,
@@ -240,6 +262,7 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
     await page.reload();
     await expect(page.getByRole('heading', { name: '冻结快照', exact: true })).toBeVisible();
 
+    progress('team access ready');
     await leader.goto(`${origin}/teams/${teamId}`);
     await leader.getByRole('button', { name: '编辑成员', exact: true }).click();
     await leader.getByLabel('成员1姓名', { exact: true }).fill('长期成员后续更名');
@@ -277,7 +300,17 @@ test('领队邀请、关闭后的名单补交、独立审核、冻结与撤权�
       (await secondContext.cookies()).find((cookie) => cookie.name === 'scb.sid')?.httpOnly,
     ).toBe(true);
     expect(errors).toEqual([]);
+    progress('all assertions completed');
+  } catch (cause) {
+    console.error(
+      `[registration:${testInfo.project.name}] failed at ${phase}: ${String(cause).replace(/[A-Za-z0-9_-]{43}/g, '[redacted]')}`,
+    );
+    throw cause;
   } finally {
-    await secondContext.close();
+    progress('closing secondary context');
+    await secondContext
+      .close()
+      .catch(() => console.error('[registration] secondary context cleanup failed'));
+    progress('secondary context closed');
   }
 });

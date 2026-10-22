@@ -1,8 +1,8 @@
 # P03-A 验证证据
 
-更新2026-10-22 Asia/Shanghai；本地已整合，尚未完成真实PG或官方浏览器验收，不能视为main完成或生产上线。
+更新2026-10-22 Asia/Shanghai；本地已整合，真实PG已通过、真实API浏览器尚未通过，不能视为main完成或生产上线。
 
-根集成后npm ci（264包）、格式、完整strict typecheck（含浏览器测试/配置）、97项单元/组件/HTTP检查（admin72+api25）、两端build均通过。最终界面修复后再次完成相应admin检查、Runtime14项及admin构建；API内容不变。23项新增PG与原20项PG测试已编写，真实执行待CI；6项API与12项Mock浏览器场景待本次远端运行。
+根集成后npm ci（264包）、格式、完整strict typecheck（含浏览器测试/配置）、97项单元/组件/HTTP检查（admin72+api25）、两端build均通过。最终界面修复后再次完成相应admin检查、Runtime14项及admin构建；API内容不变。首轮CI39733327804中，23项新增PG与原20项PG共43项、实际PG18.6重启后的freeze/授权/审计保留及12项Mock浏览器通过。6项真实API浏览器3成功3超时，关闭上下文又掩盖首次等待位置，尚未验收；修复与重跑见交接。
 
 ## 视觉检查
 
@@ -13,3 +13,5 @@
 ![机构报名工作台](staff-1440.png)
 
 ![手机领队名单](leader-390.png)
+
+第二轮准备：邀请fragment同文档导航修复后，完整98项检查（admin73+api25）、类型、两端构建及格式通过；Runtime15项含新hashchange回归。官方API浏览器仍待新head CI，截图布局未变。

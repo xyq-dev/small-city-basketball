@@ -15,7 +15,7 @@ async function chooseOrganization(page: Page, id: string) {
 
 test('注册、持久草稿、重新登录和机构切换使用真实API与数据库', async ({
   page,
-  browser,
+  playwright,
 }, testInfo) => {
   const suffix = `${testInfo.project.name}-${Date.now()}`;
   const email = `browser-${suffix}@example.test`;
@@ -69,9 +69,9 @@ test('注册、持久草稿、重新登录和机构切换使用真实API与数�
   const meResponse = await page.request.get('/v1/auth/session');
   expect(meResponse.status()).toBe(200);
   const me = (await meResponse.json()).data as SessionData;
-  const other = await browser.newContext();
+  const other = await playwright.request.newContext({ baseURL: origin });
   try {
-    const registration = await other.request.post(`${origin}/v1/auth/register`, {
+    const registration = await other.post(`${origin}/v1/auth/register`, {
       headers: { Origin: origin },
       data: {
         email: `other-${suffix}@example.test`,
@@ -83,7 +83,7 @@ test('注册、持久草稿、重新登录和机构切换使用真实API与数�
     expect(registration.status()).toBe(201);
     const otherSession = (await registration.json()).data as SessionData;
     const secondOrganization = otherSession.organizations[0]!;
-    const membership = await other.request.put(
+    const membership = await other.put(
       `${origin}/v1/orgs/${secondOrganization.id}/members/${me.user.id}`,
       {
         headers: { Origin: origin },
@@ -102,7 +102,7 @@ test('注册、持久草稿、重新登录和机构切换使用真实API与数�
     await chooseOrganization(page, me.organizations[0]!.id);
     await expect(page.getByRole('link', { name: `${eventName}·修订`, exact: true })).toBeVisible();
   } finally {
-    await other.close();
+    await other.dispose().catch(() => console.error('[persistence] API context cleanup failed'));
   }
 
   expect(await page.evaluate(() => Object.keys(localStorage))).toEqual([]);
