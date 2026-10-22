@@ -1,13 +1,13 @@
 # API 契约
 
-目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A及P04-A已整合main，P04-A为DONE / MAIN；[PR #4](https://github.com/xyq-dev/small-city-basketball/pull/4)合并提交 `9fc9b3019eeef52d5b7a66643b01f0fe993af09f`，验收代码 `7336bfa01a6a3b6afb08dd2c90260f8497b1239e`。身份、报名冻结及单循环排赛／一次发布已通过隔离PostgreSQL与浏览器验收，实际契约见第5–7节。其他排赛赛制、改期、P03附件／小程序、记分、观赛及OBS仍未实现。
+目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A、P04-A及P05-A已整合main，P05-A为DONE / MAIN；[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并提交 `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`，验收代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`。身份、报名冻结、单循环排赛及在线基础记分／独立确认已通过隔离PostgreSQL与浏览器验收，实际契约见第5–8节。正式排名、公开观赛、可靠离线、其他排赛赛制、改期、P03附件／小程序及OBS仍未交付。
 
 ## 1. 通用约定
 
 - 私有路由前缀 `/v1/orgs/{orgId}`，每次验证登录身份、资源归属及具体动作权限。工作人员还验证机构成员状态和赛事分配；领队/球员验证球队授权、本人绑定或有效邀请，不要求成为机构工作人员。路径 orgId 不构成授权。未知或跨租户资源返回 404；已可见资源但无动作权限返回 403。
 - JSON 成功响应 `{data, meta:{requestId}}`；列表为 `{data:[],meta:{requestId,nextCursor}}`。游标分页默认 `limit=20`、最大100；允许的筛选/排序由各路由白名单限定，不能接收任意 SQL 字段。
 - 错误响应 `{error:{code,message,requestId,details?}}`；details 不回显证件、密钥及内部查询。401 未认证；403 无权限；404 资源不可见；409 并发/幂等/租约冲突；422 字段或业务守卫失败；429 限流。
-- 有版本的修改发送 `expectedVersion`，成功响应返回新 `version`。后续记分等需防重复命令规划使用 `Idempotency-Key`，同作用域同键同载荷返回原结果，同键不同载荷返回 `IDEMPOTENCY_CONFLICT`；该通用机制尚未实现。P03邀请的安全重复接受语义见第6节，重放仍重新认证、授权，不返回已失去权限的历史响应。
+- 有版本的修改按路由发送 `expectedVersion/expectedEventVersion/expectedMatchVersion` 等明确字段，成功返回新版本。P05-A命令使用body中的 `commandId` 实现作用域幂等，不使用HTTP `Idempotency-Key`；通用header幂等机制尚未实现。P03邀请安全重复接受见第6节，P05命令先当前动作授权再查重，均不返回已失去权限的历史响应。
 - 时间戳采用 ISO 8601 UTC；赛事日期用 `YYYY-MM-DD`，另带有效 IANA timezone。所有枚举大写；客户端不能自行提交创建者、审批人、角色或资源归属为权威值。
 
 角色：`ORG_OWNER / ORG_ADMIN` 管理机构；`EVENT_MANAGER` 管指定赛事；`REVIEWER` 审报名；`SCORER` 管指定场次记分；`STREAMER` 管直播包装；`TEAM_MANAGER` 管自己的球队报名；`PLAYER` 仅管理本人资料。平台运营权限独立，公开 VIEWER 无私有写权限。
@@ -34,7 +34,7 @@ type CreateEventInput = {
 
 ## 3. 目标路由清单
 
-下表同时列出已实现入口与长期目标；P02、P03-A及P04-A的实际权限、输入和响应以第5–7节及共享契约为准。人员私密资料、保险附件、其他排赛赛制、记分和OBS等目标入口尚不可调用。
+下表同时列出已实现入口与长期目标；P02、P03-A、P04-A及P05-A的实际权限、输入和响应以第5–8节及共享契约为准。人员私密资料、保险附件、其他排赛赛制、公开观赛和OBS等目标入口尚不可调用。
 
 下表私有路径均省略 `/v1/orgs/{orgId}`；资源 ID 需按其所属赛事/机构重新校验。
 
@@ -55,11 +55,11 @@ type CreateEventInput = {
 | POST `/events/{eventId}/schedule-revisions` | 生成或有理由重抽单循环草稿 | P04-A已实现；具体输入、权限及能力边界见第7节 |
 | POST `/schedule-revisions/{revisionId}/validate` | 检查当前草稿并返回冲突 | P04-A已实现；管理权限及双版本检查 |
 | POST `/schedule-revisions/{revisionId}/publish` | 一次正式发布当前草稿 | P04-A已实现；事务内重新校验，发布后不支持替换 |
-| POST/DELETE `/matches/{matchId}/scorekeeper-lease` | 获取/释放主记分租约 | 被分配 SCORER；P05 |
-| POST `/matches/{matchId}/scorekeeper-lease/renew` | 续约 | 同主记分端及栅栏版本；P05 |
-| POST `/matches/{matchId}/commands` | 开始/事件/校时/撤销/结束计分 | SCORER，租约、幂等、状态、版本；P05 |
-| POST `/matches/{matchId}/result-confirmations` | 确认当前版本赛果 | EVENT_MANAGER 或指定确认人；P05 |
-| POST `/matches/{matchId}/reopen` | 重开已确认赛果 | 特定管理权限，理由必填；P05 |
+| POST/DELETE `/matches/{matchId}/scorekeeper-lease` | 获取/释放主记分租约 | 本match显式有效SCORER；P05-A已实现，见第8节 |
+| POST `/matches/{matchId}/scorekeeper-lease/renew` | 续约 | 同session／tab／lease／fence绑定；P05-A已实现 |
+| POST `/matches/{matchId}/commands` | 准备／记分／时钟／确认／重开 | 每type独立授权，P05-A统一命令已实现，见第8节 |
+| POST `/matches/{matchId}/result-confirmations` | 独立确认写入口的长期目标 | 尚未实现；P05-A使用commands的CONFIRM_RESULT，GET同名路径只读历史 |
+| POST `/matches/{matchId}/reopen` | 独立重开写入口的长期目标 | 尚未实现；P05-A使用commands的REOPEN_RESULT |
 | POST `/matches/{matchId}/broadcast-sessions` | 绑定本场直播会话 | STREAMER；P06 |
 | POST `/broadcast-sessions/{sessionId}/overlay-grants` | 签发只读包装授权 | STREAMER；P06 |
 | POST `/overlay-grants/{grantId}/revoke` | 撤销包装授权 | STREAMER/机构管理员；P06 |
@@ -68,17 +68,15 @@ type CreateEventInput = {
 
 `POST /v1/invitations/{invitationId}/accept` 是已登录受邀者接受邀请的独立入口；验证令牌hash、有效期、用途、目标受邀者和未被消费状态，事务内建立限定资源绑定并记录接受，不能凭客户端给出的userId绑定他人。重复接受仅向同一已核验身份返回既有结果；撤销、过期、越范围的邀请拒绝。机构工作人员的邀请/撤权和平台套餐开通接口在 P02/P06 对应任务细化，不从本路由表推定已经实现。文件上传另设授权申请/完成接口，下载临时链接须重新鉴权，URL 不能永久公开。
 
-公开路由为 `/v1/public/events/{publicId}`、其 `/schedule`、`/standings`，及 `/v1/public/matches/{publicId}/snapshot`。仅返回已发布可见内容。包装读取 `/v1/overlays/{grantId}/snapshot` 和 `/stream`，使用独立只读能力令牌，不复用机构管理会话。
+以下公开路由仍为后续目标、尚未实现：`/v1/public/events/{publicId}`、其 `/schedule`、`/standings`，及 `/v1/public/matches/{publicId}/snapshot`。仅返回已发布可见内容。包装读取 `/v1/overlays/{grantId}/snapshot` 和 `/stream`，使用独立只读能力令牌，不复用机构管理会话。
 
 ## 4. 比赛命令和冲突
 
-统一命令包包含 `commandId`、`expectedVersion`、`leaseId`、`fencingToken`、`type`、`payload`、`capturedAt`。事件类型按统计模式限制：基础模式可记球队得分、犯规、暂停、节次及计时；专业模式增加球员命中/出手、篮板、助攻、抢断、盖帽及失误。一次球员命中事件同时产生球队和球员得分投影，不能再额外发送一次球队加分。未指定球员的基础得分不能伪造个人数据。
+P05-A实际命令为 `{commandId,expectedVersion,type,payload,capturedAt,control?}`，control嵌套包含leaseId、fencingToken及clientInstanceId，不把凭据散落顶层。精确输入、控制要求和错误见第8节及[共享契约](../packages/contracts/index.d.ts)。当前只采集球队得分、犯规、暂停；专业球员统计、一次投篮派生个人和球队统计、正式排名及公开包装均属后续范围，不能从本节推定已实现。
 
-撤销传原事件 ID，服务器校验可补偿性；结束计分只进入 PENDING_CONFIRMATION。确认必须引用精确的 matchVersion；有新写入时拒绝旧确认。重开后既有确认版本保留，公开投影标明结果待重确认。
+撤销和替换引用同场原统计事件；结束计分只进入PENDING_CONFIRMATION。确认使用命令expectedVersion检查精确当前match版本，并保存确认前的sourceMatchVersion／lastEventSeq。重开保留旧确认且标记待重确认，不直接返回LIVE；正式榜单的消费规则待P05-B。
 
-关键错误码：`VALIDATION_ERROR`、`VERSION_CONFLICT`、`IDEMPOTENCY_CONFLICT`、`LEASE_REQUIRED`、`LEASE_EXPIRED`、`LEASE_HELD_BY_OTHER`、`INVALID_EVENT_STATE`、`INVALID_MATCH_STATE`、`ROSTER_LOCKED`、`RULE_CONFLICT`、`RESULT_RECONFIRMATION_REQUIRED`、`OVERLAY_GRANT_EXPIRED`。409 返回当前可读版本及可重取快照信息，不自动覆盖；客户端不能无限重试业务冲突。
-
-实时消息包含 `matchId`、`version`、`serverTime` 和有限投影。可采用 SSE 或 WebSocket，选型在 P05 定稿；有缺口、重连或模式变化时重拉完整快照。视频及 OBS 能力不成为记分命令成功的前置条件。
+P05-A通过私有snapshot轮询读取，不提供SSE、WebSocket或outbox。后续实时消息应带版本、serverTime和有限投影，发现缺口后重取快照；视频和OBS不成为记分成功的前置条件。
 
 ## 5. P02 已整合契约
 
@@ -162,9 +160,66 @@ SchedulePolicy必须明确slotDurationMinutes整数1–1440、minRestMinutes整�
 
 合法但未分配、越窗口或存在冲突的分配可保存草稿，草稿不占正式资源；发布必须全部通过。冲突码为UNASSIGNED、OUTSIDE_WINDOW、OUTSIDE_EVENT_DATES、COURT_DISABLED、COURT_OVERLAP、TEAM_OVERLAP、MIN_REST和MIN_LOCAL_DAY_GAP。validate返回200 valid=false；合法分配但发布冲突409 SCHEDULE_CONFLICT并附details.conflicts；双CAS错误409 VERSION_CONFLICT，旧稿409 SCHEDULE_REVISION_NOT_CURRENT，重复发布409 SCHEDULE_ALREADY_PUBLISHED；非法字段／时间422，不可见或越租户Court404。其他状态错误按具体守卫返回INVALID_SCHEDULING_STATE等稳定业务码，不能把所有状态错误一概算409。
 
-发布前重算所有内部及本机构已发布Court/Team占用；validate不是发布凭证。外部赛事冲突只返回本方fixture/resource/time，不泄露另一赛事ID、名称或名单。一次发布后不能编辑、重抽或再次发布；不实现自动排时、其他赛制、改期／取消占用、记分／赛果、公开赛程、小程序或OBS。预计场地占用与实际比赛时钟分离，机构内资源检查不覆盖跨机构同一物理球场。
+发布前重算所有内部及本机构已发布Court/Team占用；validate不是发布凭证。外部赛事冲突只返回本方fixture/resource/time，不泄露另一赛事ID、名称或名单。一次发布后不能编辑、重抽或再次发布；P04-A不包含自动排时、其他赛制、改期／取消占用、公开赛程、小程序或OBS。记分／赛果已由第8节P05-A扩展，预计场地占用与实际比赛时钟仍分离，机构内资源检查不覆盖跨机构同一物理球场。
 
 
-## 8. P05-A在线记分实施合同（IN_PROGRESS）
+## 8. P05-A在线基础记分实施契约（DONE / MAIN）
 
-精确DTO先由API提交至packages/contracts后由集成人统一分发。当前行为裁决、私有路由、单端租约/幂等顺序、未知结果恢复、显式比赛时钟与独立确认见[任务卡](tasks/P05-A.md)。本卡CONFIRM_RESULT/REOPEN_RESULT走统一commands，前文独立endpoint是总设计目标，尚未实现。ScheduledMatchData统一MatchStatus消费实际运行状态，P04正式计划仍不可变。只读snapshot不含写凭据；OBS、公开推送及可靠离线尚未实施。
+[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并main `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`；验收代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079` 经[第二CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)全部成功：212项源码／组件／HTTP、88项独立PG、实际PG18.6重启、12项Mock及10项API浏览器。精确DTO以[共享契约](../packages/contracts/index.d.ts)为准；首轮失败与修复、自动审查状态及证据边界见[TESTING](TESTING.md)。没有生产执行。
+
+以下路径均省略 `/v1/orgs/{orgId}`，每请求复核session/user、机构成员、资源归属及具体动作；所有写操作继续要求精确Origin。成功写及控制操作为200，不新增另一套CONFIRM／REOPEN写入口。
+
+| 方法与路径 | 输入、响应与授权 |
+|---|---|
+| GET `/scoring-matches` | 可选eventId/status及limit/cursor；SQL先过滤OWNER/ADMIN、实际event staff或本match有效staff可见范围，再分页返回ScoringMatchSummary[] |
+| GET `/events/{eventId}/scoring` | EventScoringData：event、当前／锁定rules、locked和canManageRules；赛事管理者／实际赛事工作人员可读，只有单场分配者不因此获得整赛事资料 |
+| PUT `/events/{eventId}/scoring-rules` | 显式规则+expectedEventVersion，追加规则版本并递增Event.version；OWNER/ADMIN或实际EVENT_MANAGER，首次READY后永久锁定 |
+| GET `/matches/{matchId}/scoring` | ScoringWorkbenchData：match、当前event版本、绑定rules、可空snapshot、staff、脱敏lease占用摘要及资源capabilities；不得当作公开DTO |
+| PUT `/matches/{matchId}/staff/{userId}` | expectedMatchVersion、role SCORER/RESULT_REVIEWER、status ACTIVE/DISABLED；赛事管理权。ACTIVE要求用户及机构成员有效；DISABLED只更新既有本场分配，允许机构成员／用户已停用，不能空建DISABLED；同时使受影响旧lease过期。返回新workbench |
+| POST `/matches/{matchId}/scorekeeper-lease` | `{clientInstanceId}`；显式有效SCORER可在READY/LIVE/PENDING_CONFIRMATION取得控制，返回ScorekeeperLeaseData |
+| POST `/matches/{matchId}/scorekeeper-lease/renew`；DELETE同主路径 | `{control:{leaseId,fencingToken,clientInstanceId}}`；当前有效绑定才可续约／释放。续约返回lease，释放data:null |
+| POST `/matches/{matchId}/commands` | ScoringCommandInput，按type检查当前动作权限；返回 `{receipt,snapshot}`，原receipt.appliedVersion与当前snapshot.version分别解释 |
+| GET `/matches/{matchId}/commands/{commandId}` | 当前身份在本match的收据，match读锁等待在途写提交；返回receipt+当前snapshot，未知404 COMMAND_NOT_FOUND。重新检查对应动作权限 |
+| GET `/matches/{matchId}/snapshot` | 私有ScoreSnapshot；未准备409 MATCH_NOT_PREPARED，workbench中的snapshot此时为null |
+| GET `/matches/{matchId}/scoring-events` | ScoringEventData[]，seq正序，top-level targetEventId表示撤销目标；同场读取权限 |
+| GET `/matches/{matchId}/result-confirmations` | ResultConfirmationData[]，sourceMatchVersion/id正序，保留旧确认与确认人；私有读取，不是POST确认入口 |
+
+三个列表默认20／最多100。scoring-matches按startsAt/id正序，游标绑定org/user/event/status；事件和确认游标绑定org/user/match及资源类型。前端取完所有页才报告完整成功，后页失败不接受部分数据、不退Mock。
+
+### 规则、状态与命令
+
+规则必须显式给出regulationPeriods整数1–8、periodDurationSeconds整数1–3600、allowedScoreValues为[1,2,3]非空不重复子集、tiePolicy ALLOW_DRAW/OVERTIME；OVERTIME需overtimeDurationSeconds整数1–1800，ALLOW_DRAW为null。不暗设FIBA节长、罚球、暂停配额或排名积分。
+
+| type | payload与状态守卫 | 控制／最低授权 |
+|---|---|---|
+| PREPARE_MATCH | `{expectedEventVersion}`；SCHEDULED→READY，已有正式冻结来源、规则及至少一个仍有效SCORER；初始化第1节、暂停、完整节长并锁定规则 | 禁止control，赛事管理权 |
+| START_MATCH | `{expectedEventVersion}`；READY→LIVE，时钟仍暂停；首场开始使Event SCHEDULED→RUNNING，同事务CAS | 必须control，显式SCORER |
+| RECORD_STAT | `{kind,side,value}`；仅LIVE；kind SCORE/FOUL/TIMEOUT、side HOME/AWAY；SCORE遵循允许分值，FOUL/TIMEOUT每次1 | 必须control，显式SCORER |
+| ADD_CORRECTION | `{kind,side,value,period,reason}`；LIVE或PENDING，period须已有节次 | 必须control，显式SCORER |
+| VOID_STAT／REPLACE_STAT | 前者`{targetEventId,reason}`，后者再含side/value；只针对本场仍有效统计，替换保留原kind及period，原子追加STAT_VOIDED+STAT_RECORDED | 必须control，显式SCORER |
+| CLOCK_START／CLOCK_PAUSE | `{}`；仅LIVE；显式启动／暂停，暂停保存服务端有效剩余 | 必须control，显式SCORER |
+| CLOCK_SET | `{remainingMs,reason}`；0至本节时长，运行中校时保持running并重设锚点 | 必须control，显式SCORER |
+| NEXT_PERIOD／START_OVERTIME | `{}`；暂停且有效剩余0；前者仅下一常规节，后者仅常规／加时结束后平分且规则允许 | 必须control，显式SCORER |
+| END_MATCH | `{}`；末常规／加时已归零且暂停，OVERTIME不允许平分；LIVE→PENDING_CONFIRMATION | 必须control，显式SCORER |
+| CONFIRM_RESULT | `{}`；精确当前版本、投影按事件重放一致，PENDING→FINAL；OVERTIME平分拒绝 | 禁止control；管理者或本场RESULT_REVIEWER，且必须满足独立性 |
+| REOPEN_RESULT | `{reason}`；FINAL→PENDING，保留旧确认并requiresReconfirmation；不恢复LIVE | 禁止control，赛事管理权 |
+
+reason去首尾空白后1–500字符。命令公共字段commandId为UUID、expectedVersion为当前match版本、capturedAt为真实带时区时间；后者只作不可信采集元数据，不决定服务器计时或seq。PREPARE/START另校验payload.expectedEventVersion，其他命令不伪造Event CAS。每次业务变更增加match.version，人员变更也同步projection.sourceVersion；lease心跳不增加比赛版本，clockVersion只随实际时钟／节次动作变化。
+
+读权限为OWNER/ADMIN、任何实际有效event staff或本match有效staff；单场SCORER无需EventStaff也可读写本场，不能因此读其他比赛。OWNER/ADMIN不能自动写分。确认者不得是任何历史开始／结束／计分／时钟／更正操作者、当前主写者或双方Team当前有效领队；OWNER也不例外。准备、分配、租约和重开本身不计入实际记分历史，撤权和撤销统计不会清除历史禁自确认条件。
+
+### 幂等、租约、时钟与恢复
+
+幂等键为org/actor/match/commandId；规范内容hash相同返回原receipt及当前snapshot，不再追加事件、版本或审计；异内容409 IDEMPOTENCY_CONFLICT。当前动作授权先于查重；成功重放可跨旧lease过期或旧expectedVersion，但不能跨当前撤权。新命令必须匹配CAS及控制条件，事件、投影、match、收据和审计同事务提交，失败全回滚。
+
+租约TTL30秒、前端每10秒续约；绑定session、每tab内存UUID clientInstanceId、随机UUID leaseId及十进制int64字符串fencingToken。新持有者单调增加fence，同绑定未过期acquire可返回既有控制；过期renew/release不能复活或释放后继租约。控制凭据不写localStorage/sessionStorage，页面刷新不承诺恢复旧tab身份。释放或过期不自动暂停比赛时钟。
+
+clock.remainingMs是原始锚点剩余值，anchorServerTime保留对应服务端时间；响应serverTime供客户端插值，不能先减一次后沿旧anchor再减。写路径在锁取得后使用单次clock_timestamp()，不使用事务起点now或capturedAt。显示最低0，raw running归零仍保持true，NEXT/END前需显式暂停；不每秒写库。
+
+ScoreSnapshot含实际MatchStatus、双方冻结展示信息、已采集球队基础统计、规则、clock、当前版本、latestConfirmation和requiresReconfirmation；不含lease/session/control或私密报名资料。确认记录sourceMatchVersion／lastEventSeq绑定确认前快照，CONFIRM自身生命周期事件和receipt.appliedVersion随后增加；FINAL后合法人员变更可增加比赛版本而不改变确认统计。重开保留旧记录，待重确认不冒充当前正式结果。
+
+未知提交结果时保留原envelope与commandId，先查收据和权威快照；404不证明该请求将永远无法提交。只有完全相同原命令且当前控制／版本条件仍允许时才重发，不能自动换ID重复加分。断网停止新写，页面销毁／浏览器崩溃不承诺未持久命令恢复；本卡不实现可靠离线队列。
+
+关键实际错误：422 VALIDATION_ERROR／RULE_CONFLICT／SCORING_RULES_REQUIRED／INVALID_STAT_TARGET；409 VERSION_CONFLICT／LEASE_CONFLICT／IDEMPOTENCY_CONFLICT／INVALID_MATCH_STATE／SCORING_RULES_LOCKED／SCORER_REQUIRED／MATCH_NOT_PREPARED／PROJECTION_MISMATCH；隐藏资源404 RESOURCE_NOT_FOUND、未知收据404 COMMAND_NOT_FOUND，可见无动作权限403 FORBIDDEN。不能把长期目标中的LEASE_EXPIRED等细分码当作本卡接口。
+
+P05-A只实现在线基础记分及私有读取；共享MATCH_STATUSES为SCHEDULED、READY、LIVE、PENDING_CONFIRMATION、FINAL、POSTPONED、CANCELLED，后两者仅预留，没有变更接口。不自动COMPLETED赛事；正式积分／同分排序、公开观赛、SSE/outbox、可靠离线、球员专业统计、弃权／争议、延期恢复、淘汰晋级及OBS均待后续任务。P04正式来源、计划和预约仍不可变，FINAL场次读取返回真实状态，不回写SCHEDULED。

@@ -48,6 +48,6 @@ obs-websocket 的切场、录制和推流控制放在后续阶段。云平台不
 商业范围：软件办赛服务与直播/视频用量分别定价和计量。云厂商、套餐价格、视频保留期及分发成本尚待选定，不在 P01 引入真实扣费。
 
 
-## 6. P05-A先行契约（实施中）
+## 6. P05-A已交付的先行契约
 
-P05-A的私有ScoreSnapshot将统一规则、双方冻结展示名、球队基础统计、matchVersion、clockVersion、anchorServerTime和serverTime，并明确未采集球员统计。P06包装应从受限投影消费这些权威字段；不能把含工作人员/租约的Workbench DTO直接暴露给OBS。公开ID、OverlayGrant、匿名有限字段、模板和撤销机制仍须P06独立实施。本段是接入约束，不表示OBS或视频服务已连接。
+P05-A已通过PR5/CI39743710053验收，其私有ScoreSnapshot统一规则、双方冻结展示名、球队基础统计、matchVersion、clockVersion、anchorServerTime和serverTime，并明确未采集球员统计。P06包装应从受限投影消费这些权威字段；不能把含工作人员/租约的Workbench DTO直接暴露给OBS。公开ID、OverlayGrant、匿名有限字段、模板和撤销机制仍须P06独立实施。本段是接入约束，不表示OBS或视频服务已连接。

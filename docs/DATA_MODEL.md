@@ -1,6 +1,6 @@
 # 数据模型与状态
 
-设计版本：0.1；更新：2026-10-22；状态：P02、P03-A及P04-A SQL模型已合并main，001–003已在隔离PostgreSQL18.6测试库执行及复跑校验，无生产执行。第2–5节包含长期逻辑设计，实际已建表和验收边界见第6–8节；记分、保险附件和OBS等后续实体尚未建表。
+设计版本：0.1；更新：2026-10-22；状态：P02、P03-A、P04-A及P05-A SQL模型已合并main，001–004已在隔离PostgreSQL18.6测试库执行及复跑校验，无生产执行。第2–5节包含长期逻辑设计，实际已建表和验收边界见第6–9节；正式排名、公开观赛、保险附件和OBS等实体尚未建表。
 
 ## 1. 通用约束
 
@@ -15,7 +15,8 @@ P02主键使用服务端生成的UUID；后续实体沿用不透明ID原则。�
 | User | id、登录主体引用、公开昵称 | 登录主体唯一；私密身份资料独立保护 |
 | Organization | id、name、status | 禁用机构阻止新增写入，保留授权读取策略 |
 | OrganizationMembership | orgId、userId、role、status | 同机构同用户唯一；权限变更审计 |
-| EventStaff | orgId、eventId、userId、role、可选matchId | 授权范围不能超出所属赛事 |
+| EventStaff | orgId、eventId、userId、role、status | 已实现的赛事工作人员授权；场次授权由独立MatchStaff承担 |
+| MatchStaff | orgId、eventId、matchId、userId、role、status | P05-A显式SCORER／RESULT_REVIEWER，ACTIVE分配要求有效机构成员；不要求额外EventStaff |
 | EventSeries | orgId、name、品牌引用 | 可选的长期赛事品牌，关联多届赛事；P01 不建立 |
 | Event | orgId、可选seriesId/seasonLabel/editionLabel、name、startDate、endDate、timezone、可空venueName、format、status、version | 日期有序；format 为约定枚举；创建状态 DRAFT；P01不要求设置系列 |
 | Division / CompetitionStage / Group | orgId、eventId；组别/阶段/小组名称、顺序、规则版本与晋级来源 | P04按需新增；阶段与小组均属于同一届赛事，不能将所有小组积分混算 |
@@ -53,16 +54,16 @@ P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引�
 - **赛事**：`DRAFT → REGISTRATION_OPEN → REGISTRATION_CLOSED → SCHEDULED → RUNNING → COMPLETED → ARCHIVED`；允许受控 `CANCELLED`。P01 仅创建/编辑 DRAFT。开放报名、发布赛程、结束和归档分阶段实施；COMPLETED 要求必要比赛已确认或有明确取消/弃权处置，不仅是比分已填。
 - **报名**：`DRAFT → SUBMITTED → APPROVED / CHANGES_REQUESTED / REJECTED`；CHANGES_REQUESTED 补齐后重新提交；未锁定前可按规则 WITHDRAWN。审批操作者、理由和版本需保留。
 - **保险凭证**：`PENDING → APPROVED / REJECTED`，规则不要求保险时可标 `NOT_REQUIRED`。凭证批准只表示本赛事审核结论，不保证理赔或替代承保方判断。
-- **比赛**：`SCHEDULED → READY → LIVE → PENDING_CONFIRMATION → FINAL`；另有 `POSTPONED / CANCELLED`。不能从 LIVE 直接成为正式赛果。READY 校验名单、规则及工作人员；结束计分进入待确认。FINAL 更正需有权限的重开命令回到 PENDING_CONFIRMATION，该状态只允许受控更正及确认，不继续正常实时计分。再次确认后更新榜单；若更正影响已排定或已开赛的下游晋级场次，应阻断自动改写并交赛事管理员处置。延期恢复、弃权、争议处置必须记录原因，不直接删除比赛。
+- **比赛**：`SCHEDULED → READY → LIVE → PENDING_CONFIRMATION → FINAL`；另有 `POSTPONED / CANCELLED`。不能从 LIVE 直接成为正式赛果。READY 校验名单、规则及工作人员；结束计分进入待确认。FINAL 更正需有权限的重开命令回到 PENDING_CONFIRMATION，该状态只允许受控更正及确认，不继续正常实时计分。后续正式榜单只消费有效确认；榜单及下游晋级尚未实现。未来若更正影响已排定或已开赛的下游晋级场次，应阻断自动改写并交赛事管理员处置。延期恢复、弃权、争议处置必须记录原因，不直接删除比赛。
 - **赛程版本**：P04-A只有当前`DRAFT → PUBLISHED`，重抽把旧DRAFT变为SUPERSEDED并创建新DRAFT；已发布版本不能变为SUPERSEDED或被替换。发布校验冻结球队、时间、场地及规则来源；后续发布后改期另开有恢复方案的任务。
 
 删除已参赛球队、已使用规则或已开赛场次应拒绝或归档，不能级联删除历史。个人数据保留、注销和匿名化策略在真实资料上线前确定，业务历史与敏感原文分别处理。
 
 ## 5. 必要索引与验证
 
-优先建立成员 `(orgId,userId,status)`、赛事 `(orgId,status,startDate)`、报名 `(orgId,eventId,status)`、比赛 `(orgId,eventId,startsAt)`、场地时间检索及事件 `(matchId,seq)`。幂等唯一键包含机构、操作者、命令作用域及幂等键；只存业务所需的最小响应。P04-A已用GiST排他约束、机构mutex及真实并发用例验证本机构Court/Team占用；记分等后续实体仍需各自验证。
+优先建立成员 `(orgId,userId,status)`、赛事 `(orgId,status,startDate)`、报名 `(orgId,eventId,status)`、比赛 `(orgId,eventId,startsAt)`、场地时间检索及事件 `(matchId,seq)`。幂等唯一键包含机构、操作者、命令作用域及幂等键；只存业务所需的最小响应。P04-A已用GiST排他约束、机构mutex及真实并发用例验证本机构Court/Team占用；P05-A的同场连续seq、幂等唯一键、永久fence及projection版本约束见第9节。
 
-必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。P02/P03-A/P04-A适用范围已执行，后续记分等行为仍待相应阶段验证。Migration001–003的执行事实见下文，不把规划实体也标成已建表。
+必须验证跨租户外键、外部参与者资源授权及撤销、邀请冒领/重放/过期、重复报名/号码、规则锁定、旧版本写入、租约转移、重复事件/补偿、重开赛果与榜单重算。P02/P03-A/P04-A/P05-A适用范围已执行；正式榜单等未来行为仍待相应阶段验证。Migration001–004的执行事实见下文，不把规划实体也标成已建表。
 
 ## 6. P02 最小持久化实施
 
@@ -99,17 +100,41 @@ P03-A经[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并ma
 | schedule_revisions | freeze/source/policy/seed/hash/轮次及顺序、DRAFT/SUPERSEDED/PUBLISHED、版本和重抽历史；来源始终不可改 |
 | schedule_fixtures | 主键(org_id,revision_id,fixture_key)，双方entry/team及轮次固定；仅DRAFT可改场地和时间分配 |
 | schedule_publications | event唯一发布，绑定revision及publicationHash；禁止更新、删除或发布后追加篡改 |
-| published_matches | 固定双方entry/team/name/rosterRevision、courtName、时间及来源引用；初始SCHEDULED/version1，只有status/version预留给后续受控记分 |
+| published_matches | 固定双方entry/team/name/rosterRevision、courtName、时间及来源引用；初始SCHEDULED/version1，P05-A受控记分只更新status/version |
 | court_reservations | 每场一条，主键(org_id,match_id)，正式场地及半开时间占用 |
 | team_reservations | 每场每队一条，主键(org_id,match_id,team_id)，按长期canonical Team防跨赛事重叠 |
 
-同时增加events.current_schedule_revision_id及registration_freezes复合唯一键。真实复合FK约束org/event/revision/entry/team/roster来源；每场一Court、两Team，`btree_gist`与`tstzrange(starts_at,ends_at,'[)')`GiST排他约束防同机构同资源重叠。发布后来源、fixtures、publication、reservations不可更新、删除或追加；match计划事实不可变，尚无修改status接口。P05须用独立状态实体保存比分及clock，不能借status/version接口改计划。
+同时增加events.current_schedule_revision_id及registration_freezes复合唯一键。真实复合FK约束org/event/revision/entry/team/roster来源；每场一Court、两Team，`btree_gist`与`tstzrange(starts_at,ends_at,'[)')`GiST排他约束防同机构同资源重叠。发布后来源、fixtures、publication、reservations不可更新、删除或追加；match计划事实不可变；P05-A已通过受控commands更新status/version，以独立状态实体保存比分及clock，不能借status/version改计划。
 
 发布及Court写按session/user→org→membership→org_schedule_mutex→event（如适用）→revision→Court顺序锁定，不升级org SHARE。发布从服务器freeze与seed重算对阵和占用；同事务写publication→matches→每场1court/2team预约→revision PUBLISHED→event SCHEDULED/version→audit。revision完整性触发器及deferred提交约束阻止半份发布。双赛事争抢Court／同Team、缺mutex行首次并发、Court停用竞态、机构隔离及审计失败整体回滚均经真实PG验证。
 
-本卡只支持2–32队单回合ROUND_ROBIN、显式占用／休息／本地日期间隔及时间窗口、手工分配和一次发布。重抽新建来源、旧稿SUPERSEDED只读；没有自动排时、淘汰／分组、改期或释放预约。机构内canonical Court/Team协调不等于跨机构物理场地共享；完整P04及P05/P06仍未完成。
+本卡只支持2–32队单回合ROUND_ROBIN、显式占用／休息／本地日期间隔及时间窗口、手工分配和一次发布。重抽新建来源、旧稿SUPERSEDED只读；没有自动排时、淘汰／分组、改期或释放预约。机构内canonical Court/Team协调不等于跨机构物理场地共享；完整P04、正式排名／公开观赛及P06仍未完成。
 
 
-## P05-A实施设计（尚未迁移）
+## 9. P05-A记分持久化（DONE / MAIN，隔离测试库已执行）
 
-规则版本、match staff、lease/fence、append事件、projection、幂等receipt及不可变确认用独立表。published_matches只改status/version，计划及预约保持P04保护。首次READY锁规则、首场START改赛事RUNNING；取Event UPDATE从入口开始，普通命令Event SHARE，禁止升级死锁。确认锁双方Team并永久排除历史记分/时钟/更正人员。精确DDL随004实现，当前尚未编写/执行；合同见[任务卡](tasks/P05-A.md)。
+[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并main `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`；验收代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`、tree `9f23899a9e118304db2749b8505d04c5468c5dfe` 经[CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)全部成功。`004_p05_scoring.sql` SHA-256为 `ebf454ab7e5bcb86e9453bab0e9783d792f5c0755fd7621878aa96a3c997ab83`。001→002→003→004已在隔离PostgreSQL18.6执行及复跑校验，88项独立PG通过（P02 20＋P03-A 24＋P04-A 24＋P05-A 20）；真实PG重启保留运行中clock锚点、已释放lease及fence、追加事件／receipt、重开后两份确认，以及原授权／报名／排赛／预约／审计／checksum。没有生产数据库或生产执行。
+
+| 新增表 | 主要字段与提交约束 |
+|---|---|
+| scoring_rulesets | id、org/event、version及显式节数／节长／允许分值／平分与加时规则；同赛事版本唯一，规则不可UPDATE/DELETE |
+| match_staff | 主键(org_id,match_id,user_id)，SCORER／RESULT_REVIEWER及ACTIVE／DISABLED；复合FK绑定同机构成员与正式比赛，不把全局角色当作场次授权 |
+| scoring_states | 主键(org_id,match_id)，绑定ruleset、source_version、last_event_seq、双方score/fouls/timeouts、period_stats、clock及最新确认指针／requires_reconfirmation；绑定来源不可替换，版本不回退 |
+| scoring_leases | 主键(org_id,match_id)，holder_user_id／holder_session_id／client_instance_id／lease_id、int64 fencing_token和expires_at；永久计数，不DELETE；换绑定需新leaseId及更高fence，触发器核对session归属 |
+| scoring_commands | 主键(org_id,actor_id,match_id,command_id)，规范request_hash、type、applied_version、首末event seq、accepted_at；不可变最小收据，不保存控制凭据或整份历史workbench |
+| scoring_events | id、同场连续seq、type/payload、actor/command、captured_at/server_time、target_event_id；同场目标FK、STAT_VOIDED目标唯一、只追加；receipt关联延迟到commit验证 |
+| result_confirmations | 不可变id、org/event/match、确认人、规则id/version、确认前source_match_version／last_event_seq、双方基础统计及period_stats、confirmed_at；同场来源版本唯一 |
+
+events增加current_scoring_ruleset_id／locked_scoring_ruleset_id复合FK；首次READY后锁定指针永久不清除或替换，current必须等于locked。规则整数范围与非空不重复分值子集有CHECK；projection基础计数非负、时钟有界，所有业务引用按org/event/match组合校验。`scoring_states.source_version`必须与`published_matches.version`同事务提交，由两个表上的deferred constraint trigger验证；因此人员变更在已有projection时也同步版本，不改变比分或clockVersion。003的正式计划不可变触发器保持，只有match.status/version允许受控更新。
+
+命令在match UPDATE锁下验证CAS、追加事件并重放统计，再更新match和projection、写receipt及audit；审计或约束失败整体回滚。PREPARE/START还校验Event CAS，并从入口取得Event UPDATE，不从SHARE升级；首次START把Event推进RUNNING，普通命令取Event SHARE。会话／用户→org→membership→event→eventStaff→match→matchStaff→lease为基础锁序；工作人员变更先锁target user/membership，确认在match后按Team ID排序取UPDATE，再查双方当前ACTIVE领队grant，防止新领队穿过负向检查。历史实际记分／时钟／开始／结束／更正者不可确认，撤销统计、换角色或租约都不清除历史。
+
+ACTIVE分配要求target当前用户及成员有效；DISABLED只UPDATE已有本org/match分配，可在机构成员或用户已停用后清理，绝不创建空停用记录。目标UUID归一后参与assignment／holder比较，停用原holder使lease立即过期；当前manager权限、CAS、projection版本及审计仍同事务。该修正已有真实PG回归，并覆盖未知／跨机构／未分配目标拒绝及失败指纹不变。
+
+租约使用锁后DB时间、TTL30秒、心跳10秒，fence为十进制int64字符串对外返回。释放保留绑定和fence，仅更新expires_at；过期续约／释放不会影响继任者。租约操作不计作历史实际记分，也不递增match.version。clock保存period、原始remaining_ms、clock_running、anchor_server_time和clock_version；响应不预先扣减再沿旧锚点扣第二次，客户端据serverTime插值。到0不自动暂停，释放或过期不改clock，实际PG重启后沿同一锚点继续显示。
+
+STAT_RECORDED保存kind/side/value/period及可选reason；更正用STAT_VOIDED关联同场仍有效事件，替换原子追加VOID＋新STAT并保留kind/period。原统计和确认历史永不覆盖。确认前按全部事件重放并核验projection，结果source_match_version及last_event_seq取确认前的版本／序列；确认命令自身新增生命周期event与appliedVersion。FINAL后合法staff调整可增加当前match/sourceVersion而不使既有统计确认失效，不能将两种版本直接判等。
+
+重开仅FINAL→PENDING_CONFIRMATION，保留旧latest确认并设置requires_reconfirmation；修正后重新确认新增结果，不恢复LIVE。OVERTIME平分拒绝结束／确认，待确认修正产生平分时也不伪造正式结果，本卡无恢复LIVE补加时流程。Event不自动COMPLETED；正式排名、公开读授权、SSE/outbox、可靠离线、专业球员统计、延期／弃权／争议、晋级及OBS数据模型均待后续任务。
+
+私有ScoreSnapshot白名单不含lease/session/control或身份／保险材料；工作人员及受控lease摘要仅在Workbench。P05-A没有匿名读或OverlayGrant，后续公开／OBS须独立授权并使用有限投影，不能直接序列化本节实体。精确HTTP行为见[API契约第8节](API_CONTRACTS.md)，验收与审查状态见[TESTING](TESTING.md)。

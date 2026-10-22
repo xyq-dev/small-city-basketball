@@ -1,6 +1,6 @@
 # P05-A证据索引
 
-更新：2026-10-22（Asia/Shanghai）。当前REVIEW / BRANCH_ONLY。首CI真实PG/重启及旧浏览器通过，新记分表单失败已修复；第二轮完整验收待运行，不能标DONE。
+更新：2026-10-22（Asia/Shanghai）。DONE / MAIN。PR5合并3c0bf840，最终source1cb8e414，第二CI39743710053全部成功；保留首次失败及修复历史。
 
 ## 源码与本地检查
 
@@ -25,3 +25,10 @@
 原生Chromium153最小DOM复现nested select label精确匹配0、显式aria-label后1；修复全部8个P05 select和3个理由textarea。修复后在真实浏览器的合成HTTP页面走规则、人员、补录/替换控件的精确选择，1440/390四组全部成功；这不替代真实后端浏览器检查。
 
 GitHub CodeReview对c2c0提出三项有效finding：仅场次用户的赛事级链接会404、先停成员后无法停用场次授权、替换客队统计时默认主队。已逐项修复并独立复核CLEAR，新增5组件及1真实PG回归；大写UUID同样正确终止旧lease。修复后的212项本地检查、strict、format、build通过；88独立PG及10API浏览器待第二CI，review线程待验证后关闭。自动security review未运行。
+
+
+## 最终通过与MAIN
+
+[CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)全部成功：212源码（admin125/API87）、88独立PG、实际PG18.6重启、12Mock+10API官方Chromium151.0.7922.34、完整类型/格式/build。新增真实API桌面/手机场景约15/13秒，实际commit后丢响应→原receipt恢复→仅一条统计；断网停止新写、clock及更正/独立确认/重开历史成功。迁移001–004隔离执行/复跑checksum成功，没有生产。
+
+最终source `1cb8e41400de4e497580e98c7eb77d6a7a02e079`（tree9f23899a9e118304db2749b8505d04c5468c5dfe），[PR5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并main `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`。三条首head审查线程已resolved；新head自动CodeReview合并时仍running，后续已completed且无finding；security未run。最新结果覆盖上文“待第二CI”的历史时刻，不删除失败证据。
