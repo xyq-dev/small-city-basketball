@@ -43,7 +43,7 @@
 
 专业技术统计、球员个人集锦、跨届分析、赞助效果报告和机构年费按价值分批扩展，不是 P01 验收条件。足球、开放社区和独立原生 App 暂不进入首版。
 
-P01、P02、P03-A、P04-A、P05-A当前均为DONE / MAIN。P04-A的[PR #4](https://github.com/xyq-dev/small-city-basketball/pull/4)保留为排赛交付证据；P05-A经[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并至 `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`，发布代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079` 经[CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)验收。全P03、全P04和全P05仍未完成；保险文件、球员自助资料、小程序、微信及OBS仍未接入，也没有生产部署。P05-B当前为IN_PROGRESS：feature API源码测试155项通过，新增真实PG场景尚未执行，UI已整合feature；这些检查点不能替代合并、数据库或真实浏览器验收。
+P01、P02、P03-A、P04-A、P05-A当前均为DONE / MAIN。P04-A的[PR #4](https://github.com/xyq-dev/small-city-basketball/pull/4)保留为排赛交付证据；P05-A经[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并至 `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`，发布代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079` 经[CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)验收。全P03、全P04和全P05仍未完成；保险文件、球员自助资料、小程序、微信及OBS仍未接入，也没有生产部署。P05-B当前为IN_PROGRESS：feature API源码测试155项通过，首CI106PG及实际重启通过、手机注册限流修复待复验，UI已整合feature；这些检查点不能替代合并、数据库或真实浏览器验收。
 
 ## 4. 核心业务规则
 

@@ -37,6 +37,7 @@ async function fingerprint() {
     ['organizations', 'id'],
     ['organization_memberships', 'org_id,user_id'],
     ['sessions', 'id'],
+    ['auth_rate_limits', 'key'],
     ['events', 'id'],
     ['event_staff', 'org_id,event_id,user_id'],
     ['teams', 'id'],

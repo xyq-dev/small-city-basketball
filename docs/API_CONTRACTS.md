@@ -226,7 +226,7 @@ P05-A只实现在线基础记分及私有读取；共享MATCH_STATUSES为SCHEDUL
 
 ## 9. P05-B排名及公开观赛分支契约（已实施，未MAIN／未验收）
 
-本节依据当前feature源码及[共享契约](../packages/contracts/index.d.ts)，不是生产可用声明。API的155项及admin的145项源码检查已分别在本地通过；API整合时类型／构建通过，UI整合后的根完整本地复验已通过（f082fa1）。005仅编写／独立静态审查CLEAR，真实PG、重启及匿名浏览器验收未执行。完整条件见[任务卡](tasks/P05-B.md)、[TESTING](TESTING.md)。
+本节依据当前feature源码及[共享契约](../packages/contracts/index.d.ts)，不是生产可用声明。API的155项及admin的145项源码检查已分别在本地通过；API整合时类型／构建通过，UI整合后的根完整本地复验已通过（f082fa1）。005已独立静态CLEAR并在首CI隔离执行／复跑，106PG及实际重启成功；最后2手机夹具429待复验。完整条件见[任务卡](tasks/P05-B.md)、[TESTING](TESTING.md)。
 
 ### 私有管理入口
 

@@ -2,22 +2,24 @@
 
 更新：2026-10-22（Asia/Shanghai）。本文区分P05-B feature的阶段检查、P05-A最终验收及P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
 
-## P05-B分支检查点（未MAIN／未真实验收）
+## P05-B首CI及修复（未MAIN／完整CI待复验）
 
-本次文档基线为`feat/P05-standings-public@8d50cf710c5ce48265fdaf0e3dc06e986a46bf3a`，包含API、005及18个新增PG场景源码；随后已核验UI整合feature 5a985b6293e1ab05e42ab77cc491d47a0bf4bc92，按需加载viewing。以下本地检查结果由实施／集成人提供，本次仅文档核对，没有重复执行应用测试。截至此检查点没有P05-B CI运行结果、005实际执行、真实重启或浏览器成功记录，不能借用下文P05-A证据。
+首CI39748395765已通过300源码、106独立PG、005隔离执行／复跑、实际PG18.6重启及12Mock；真实API的10项通过，最后2项手机场景在注册夹具触发同IP20次／小时限流429，尚未完整验收／MAIN。测试入口现改为每个浏览器project新建随机隔离库，保留生产限流，等待第二轮CI。
 
-| P05-B检查 | 当前结果 | 证据与边界 |
-|---|---|---|
-| API源码单元／HTTP检查 | 本地155项通过 | 保留P05-A API87；新增63项排名领域检查及5项HTTP transport；无DB transport不能证明PG行为 |
-| admin源码单元／组件检查 | 本地145项通过 | 保留原125项，新增20项；不能替代真实API／PG浏览器验收 |
-| root完整格式／strict类型／源码检查／两端构建 | 本地通过，检查点f082fa1 | strict包含PG及E2E源码；实际300项源码检查＝admin145＋API155，不是数据库验收 |
-| 原Mock浏览器回归 | 本地12/12通过 | QA Chromium153执行原12项；不冒充官方CI或本卡匿名API浏览器验收 |
-| API及005独立静态审查 | CLEAR | 005 hash为e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221；允许空隔离库顺序迁移，不等于已执行 |
-| 新增PG场景 | 18项已编写，未执行 | 当前计划为原88＋新增18＝106项独立PG；106仅计划数，没有106项通过记录 |
-| 005执行／复跑checksum | 未执行 | 001–004已有下文历史通过；不能把005文件存在写成测试库已建表或生产已迁移 |
-| 实际PG18.6重启 | 扩展脚本已编写，未执行 | 保留原数据校验，新增排名规则、有效／撤销公开身份、公开match映射及来源hash；非备份恢复 |
-| 匿名API桌面／手机浏览器 | 新场景已编写，未执行 | 本轮完整12项真实API（原10＋新增2）尚未执行；P05-B网络请求、撤销清屏及布局仍待真实验收 |
-| UI整合／完整CI／PR及生产 | UI已整合feature；其余未取得本卡结果 | 根完整本地复验已通过（f082fa1）；无MAIN、生产DB、生产部署、Safari／微信／OBS或公开容量验收 |
+代码head `2c42bfd3ac9d7478a6d7aefed96aa3a3ce9dd9aa`，tree `4794efbfbee51568f98c878201defbab117e64b7`；[PR6](https://github.com/xyq-dev/small-city-basketball/pull/6)、[首CI39748395765](https://github.com/xyq-dev/small-city-basketball/actions/runs/39748395765)。admin job119722493964成功；API job119722493657只在最后浏览器步骤失败。
+
+| 检查 | 首CI实际结果 |
+|---|---|
+| 格式／完整strict／两端构建 | 通过 |
+| 源码／组件／HTTP | 300通过：admin145／API155，原212＋新增88 |
+| 独立PG | 106通过：原88＋P05-B18，8文件，不重复计源码 |
+| 001→005执行／复跑 | 隔离通过；005 hash e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221，无生产执行 |
+| 实际PG18.6重启 | 通过；规则锁、有效／撤销public身份、映射／sourceHash及原业务数据保留，非备份恢复 |
+| Mock官方浏览器 | 12通过 |
+| 真实API官方浏览器 | 10通过、2失败；新桌面公开完整流程通过，新手机及旧手机记分均在注册夹具429，未进入其业务流程 |
+| 合成布局 | 本地native153的16状态及三图通过；非PG／OBS证据 |
+
+首失败不删除：shared browser DB累计注册超过同IP20次／小时，scoring.spec的mobile participant与viewing.spec的mobile owner返回429。修复新增run-api-browser-checks.mjs，每project新随机隔离库；不清限流、不提高额度、不关闭Origin。base须scb_test_*且有CREATEDB，退出只清本次创建库；--list无DB连接、生产target／production模式／替换配置拒绝、本地文件filter与exact project选择已检查。实际CREATE／运行／DROP仍待第二CI；另用故意无效CLI子进程验证真实失败清理、退出码及base保留。重启指纹另外补auth_rate_limits，现覆盖全部36个migration应用表及schema_migrations，共37表；首CI为原36表，新增限流表保留待第二轮证明。
 
 领域检查覆盖显式积分0–1000／空有序同分项、无隐式H2H／胜率、三队循环同分、1,1,3、零确认rank=null、部分完赛、确认统计守恒、来源hash已知向量／读取时间稳定、坏FINAL拒绝及staff运行版本变化不撤赛果。独立复读发现终局时钟三项缺口，已补暂停、remaining_ms=0及完成常规节条件和三个反例；这使API源码检查由152增至155，不能另算为PG用例。
 

@@ -54,7 +54,7 @@ raw clock的remainingMs对应anchorServerTime，而非每次读取时重新存�
 
 ## P05-B分支公开观赛运行边界（未验收）
 
-当前文档检查点8d50cf7已含API、005及新增18项PG测试源码；API155项源码检查、本地strict／构建及独立静态复读通过，尚未MAIN。005 SHA-256为`e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221`，仅已编写／批准空隔离测试库顺序执行，尚无执行、复跑或真实重启结果；原88加新增18的106项仅为计划。UI已整合feature 5a985b6293e1ab05e42ab77cc491d47a0bf4bc92，admin145项源码检查通过；根完整本地复验已通过（f082fa1），真实匿名桌面／手机及完整CI待验证，不能把这些条目写成上线能力。
+本卡经PR6进入真实CI。首CI39748395765已通过300源码、106独立PG、005隔离执行／复跑、实际PG18.6重启及12Mock；真实API的10项通过，最后2项手机场景在注册夹具触发同IP20次／小时限流429，尚未完整验收／MAIN。测试入口现改为每个浏览器project新建随机隔离库，保留生产限流，等待第二轮CI。 005 SHA-256保持e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221；没有生产执行。隔离脚本仅创建及清理本次拥有的随机scb_test_*子库，不删除base、不改注册限制；控制连接须有测试CREATEDB权限。
 
 新分支依赖001→005，不修改已经应用的001–004或通过删除公开历史回退。005增加不可变standings_rulesets、只可有效→撤销的public_event_publications及全部public_match_links；规则首次正式发布后永久锁定，每event最多一条有效公开发布，同事务完整映射由复合FK、created_xid及deferred守卫保护。没有生产数据库、生产Migration或反向恢复演练。
 

@@ -19,7 +19,7 @@
 | P05-A交付证据 | DONE / MAIN；[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)，代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`；[CI 39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)全部通过 |
 | P05-A验证范围 | 212项源码／组件／HTTP（admin125＋api87）、88项独立真实PG、12项Mock＋10项真实API官方Chromium151.0.7922.34桌面／手机流程；实际PG18.6重启保留运行时钟、lease释放／fence、事件／收据／两次确认及原赛程／名单／审计／迁移校验和，004仅在隔离测试库执行 |
 | P05-A首轮与修复 | 代码 `c2c0e83460da2f652a656f6cae508e9c9d35a323` 的[首CI 39742003544](https://github.com/xyq-dev/small-city-basketball/actions/runs/39742003544)中207源码／87PG／重启／12Mock及旧8API成功，新2记分浏览器因原生label失败；修复及追加回归后第二轮212／88／22浏览器全部通过，详见[P05-A交接](handoffs/P05-A.md) |
-| P05-B分支检查点 | IN_PROGRESS，未合并main；feature API及迁移005／新增真实PG测试源码已整合，300项源码测试（admin145／API155）、完整strict／build及native153的12Mock通过，新增真实PG尚未执行；UI已整合feature，完整CI及真实浏览器待验收。维护读取基线8d50cf7，后续结果以动态状态／交接为准 |
+| P05-B分支检查点 | 首CI39748395765已通过300源码、106独立PG、005隔离执行／复跑、实际PG18.6重启及12Mock；真实API的10项通过，最后2项手机场景在注册夹具触发同IP20次／小时限流429，尚未完整验收／MAIN。测试入口现改为每个浏览器project新建随机隔离库，保留生产限流，等待第二轮CI。 |
 | 未完成能力 | 全P03仍有保险文件、小程序等后续范围；全P04仍有其他赛制、自动优化与发布后改期；全P05的排名／公开观赛在P05-B待验收，可靠离线及专业统计未实现；P06、微信、云服务、OBS、生产部署和生产数据库均未完成 |
 | 接续方向 | 完成P05-B显式规则／有效确认排名及可撤销匿名观赛的UI整合、真实PG／浏览器及CI，再按审查结果整合；OBS包装、OverlayGrant与视频仍需独立P06任务，不把有限公开数据页当作直播 |
 

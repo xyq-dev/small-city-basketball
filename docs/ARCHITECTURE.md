@@ -1,6 +1,6 @@
 # 技术架构
 
-设计版本：0.1；更新：2026-10-22；状态：P01、P02、P03-A、P04-A、P05-A已整合main，DONE / MAIN；真实Web报名、排赛、基础在线记分与独立确认已验收。P05-B排名／公开观赛API和005已在feature实施，未MAIN、未真实PG验收，UI已整合feature且根完整本地复验已通过（f082fa1），详见第6节。全P03、全P04和全P05尚未完成，P06仍为目标设计。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
+设计版本：0.1；更新：2026-10-22；状态：P01、P02、P03-A、P04-A、P05-A已整合main，DONE / MAIN；真实Web报名、排赛、基础在线记分与独立确认已验收。P05-B排名／公开观赛API和005已在feature实施，未MAIN，首CI106PG及实际重启通过、完整浏览器待复验，UI已整合feature且根完整本地复验已通过（f082fa1），详见第6节。全P03、全P04和全P05尚未完成，P06仍为目标设计。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
 
 ## 1. 结构与实施边界
 
@@ -77,7 +77,7 @@ P05-A已DONE / MAIN；[CI39743710053](https://github.com/xyq-dev/small-city-bask
 
 ## 6. P05-B分支实施与公开读取边界
 
-文档检查点8d50cf7已含独立StandingsService、纯standings-domain、私有StandingsController及匿名PublicViewingController，另有005和新增PG测试源码；尚未MAIN。随后UI已整合feature 5a985b6293e1ab05e42ab77cc491d47a0bf4bc92，viewing按需加载；API155项、admin145项源码检查分别通过，API整合时strict／构建通过，UI整合后的根完整本地复验已通过（f082fa1），真实PG／重启／浏览器待CI。此前MAIN的P05-A验收不能替代这些新验收。
+文档检查点8d50cf7已含独立StandingsService、纯standings-domain、私有StandingsController及匿名PublicViewingController，另有005和新增PG测试源码；尚未MAIN。随后UI已整合feature 5a985b6293e1ab05e42ab77cc491d47a0bf4bc92，viewing按需加载；API155项、admin145项源码检查分别通过，API整合时strict／构建通过，UI整合后的根完整本地复验已通过（f082fa1），首CI106PG及实际重启通过，完整浏览器待限流隔离修复复验。此前MAIN的P05-A验收不能替代这些新验收。
 
 StandingsService浅复用ApplicationService的Pool、事务、session/org与audit helpers，不继承ScoringService，也不改变记分状态机、授权、时钟或P04固定计划。规则草稿追加版本、单独显式发布后永久锁定；纯函数只支持2–32队单循环、显式0–1000积分及有序同分项、共享1,1,3和零场rank=null。全部场次确认仍不自动COMPLETED整届或宣布唯一冠军。
 

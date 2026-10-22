@@ -1,6 +1,6 @@
 # 界面与交互规范
 
-更新：2026-10-22｜性质：实施约束与交付边界；P01、P02、P03-A、P04-A、P05-A已合并main（DONE / MAIN）；真实Web报名冻结、排赛、基础在线记分与独立赛果确认已验收。P01 Mock与真实API模式分开，P05-B排名及公开观赛API已在feature实施，UI已整合feature，新增真实PG与浏览器尚未验收；保险文件、小程序、其他赛制、可靠离线、专业统计及OBS仍按阶段规划。视觉参考见 [design/README.md](design/README.md)，业务依据见 [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)。
+更新：2026-10-22｜性质：实施约束与交付边界；P01、P02、P03-A、P04-A、P05-A已合并main（DONE / MAIN）；真实Web报名冻结、排赛、基础在线记分与独立赛果确认已验收。P01 Mock与真实API模式分开，P05-B排名及公开观赛API已在feature实施，UI已整合feature，首CI106PG及实际重启通过，完整浏览器待限流隔离修复复验；保险文件、小程序、其他赛制、可靠离线、专业统计及OBS仍按阶段规划。视觉参考见 [design/README.md](design/README.md)，业务依据见 [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)。
 
 ## 1. 统一视觉与导航
 
@@ -96,7 +96,7 @@ P05-A已随[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)进�
 
 ### P05-B：开发分支的排名与公开观赛
 
-本节描述已对照API及独立UI源码的实施约束。API已整合feature、300项源码测试（admin145／API155）、完整strict／build及native153的12Mock通过；UI已整合feature，新增真实PG及真实浏览器闭环未验收，不能视为main或生产可用。Mock不模拟正式发布或公开数据。状态及最终整合证据见[P05-B任务卡](tasks/P05-B.md)。
+本节描述已对照API及独立UI源码的实施约束。API已整合feature、300项源码测试（admin145／API155）、完整strict／build及native153的12Mock通过；UI已整合feature，首CI106PG及实际重启通过，完整浏览器待限流隔离修复复验，不能视为main或生产可用。Mock不模拟正式发布或公开数据。状态及最终整合证据见[P05-B任务卡](tasks/P05-B.md)。
 
 | 页面 | 路由与内容 | 操作及权限边界 |
 |---|---|---|

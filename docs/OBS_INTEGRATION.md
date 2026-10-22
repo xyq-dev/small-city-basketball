@@ -54,7 +54,7 @@ P05-A已通过PR5/CI39743710053验收，其私有ScoreSnapshot统一规则、双
 
 ## 7. P05-B有限公开投影参考（开发中，未验收）
 
-维护读取基线为feature 8d50cf7：API已实施，300项源码测试（admin145／API155）、完整strict／build及native153的12Mock通过；迁移005及新增真实PG测试已编写但尚未真实执行，UI已整合feature，完整CI／真实浏览器尚未验收，没有生产部署。具体状态见[P05-B任务卡](tasks/P05-B.md)及[当前状态](CURRENT_STATUS.md)。以下仅说明P06可参考的字段和隔离规则，不表示已运行OBS联调。
+维护读取基线为feature 8d50cf7：API已实施，300项源码测试（admin145／API155）、完整strict／build及native153的12Mock通过；迁移005及106项真实PG已在首CI执行成功，实际重启通过，UI已整合feature，完整CI／真实浏览器尚未验收，没有生产部署。具体状态见[P05-B任务卡](tasks/P05-B.md)及[当前状态](CURRENT_STATUS.md)。以下仅说明P06可参考的字段和隔离规则，不表示已运行OBS联调。
 
 | 已有feature只读接口 | 允许公开的数据 | 对后续包装的意义 |
 |---|---|---|

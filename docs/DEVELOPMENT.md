@@ -2,7 +2,7 @@
 
 更新：2026-10-22（Asia/Shanghai）。适用范围：已整合的P01 Mock、P02真实API、P03-A Web报名、P04-A单循环排赛／一次发布及P05-A基础在线记分／独立确认／私有快照。P05-A为DONE / MAIN，经[PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并为 `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`；验收代码为 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`，tree为 `9f23899a9e118304db2749b8505d04c5468c5dfe`。后续开工仍核验最新HEAD和dirty。P01–P04历史基线与证据见[TESTING](TESTING.md)。
 
-P05-B增量以feature检查点`8d50cf710c5ce48265fdaf0e3dc06e986a46bf3a`为本次文档基线：API／005及18个新增PG场景已编写，未MAIN、未真实PG验收。随后UI已核验整合feature 5a985b6293e1ab05e42ab77cc491d47a0bf4bc92，按需加载viewing；须取得该分支源码，不能从main直接体验本卡。API155项、admin145项源码检查分别通过；API整合时strict／构建通过，UI整合后的根完整本地复验已通过（f082fa1），重启与浏览器验证待CI。
+P05-B代码检查点2c42bfd3已提交PR6。首CI39748395765已通过300源码、106独立PG、005隔离执行／复跑、实际PG18.6重启及12Mock；真实API的10项通过，最后2项手机场景在注册夹具触发同IP20次／小时限流429，尚未完整验收／MAIN。测试入口现改为每个浏览器project新建随机隔离库，保留生产限流，等待第二轮CI。
 
 ## 1. 获取与安装
 
@@ -50,7 +50,7 @@ npm run dev:admin
 
 .env默认 `VITE_DATA_MODE=api`，API为 `127.0.0.1:3000`，Web为 `127.0.0.1:5173`。APP_ORIGIN必须精确匹配浏览器origin；改API端口时同步API_PROXY_TARGET。数据库凭据仅供服务端使用，不进入前端包。Compose是本地运行选项；已执行的真实数据库验收来自CI隔离PostgreSQL18.6，不把当前容器未执行的Compose命令写成已通过。
 
-P05-A main基线的`npm run db:migrate`应用001→002→003→004，四条均已有隔离CI执行及复跑记录。当前P05-B feature还含005，runner会按文件顺序继续应用；005仅已编写／独立静态审查CLEAR，尚无真实执行记录，须先核验隔离目标再运行。P05-B即使沿用原赛事也依赖005，不能只回退应用或跳过它。已应用文件核验checksum后跳过，不修改001–004历史SQL；命令在自己的环境是否成功仍以本次输出为准。005 hash见[DATA_MODEL第10节](DATA_MODEL.md)。
+P05-B feature的`npm run db:migrate`按001→005应用；五条均在首CI39748395765隔离执行及复跑校验，实际PG18.6重启成功。runner核验checksum并跳过已应用文件，API启动不自动迁移。不修改001–004；生产尚未执行。005 hash见[DATA_MODEL第10节](DATA_MODEL.md)。
 
 在Web登录页可注册机构账号，进入空赛事空间；“球队领队？创建个人账号”只建立User和Session，不创建机构或工作人员。个人页面显示本人ID，机构OWNER/ADMIN用该existingUserId签发球队邀请；领队登录目标账号后接受，并刷新独立teamContexts。邮箱尚未验证，不能用email自动认领邀请；微信登录和密码重置未实现。
 
@@ -120,7 +120,7 @@ npm run test:e2e
 
 `npm test`覆盖不依赖数据库的单测、组件和HTTP行为。`npm run test:e2e`使用显式Mock模式，固定4173端口且不复用其他服务器；桌面与手机项目均为Chromium，手机是设备模拟，不等于Safari、微信或真机。
 
-真实数据库集成另执行 `npm run test:integration`：必须设置TEST_DATABASE_URL且数据库名以 `scb_test_` 开头，使用专门隔离库，禁止指向真实业务数据；脚本限定test/下独立PG场景，不重复计源码单测。P05-A已通过88项；feature新增18项已编写，计划合计106项但尚未真实执行，不能写成106项通过。API浏览器检查执行 `npm run test:api:e2e`，使用另一个隔离DATABASE_URL；配置先迁移并启动API3300和Web4273，APP_ORIGIN固定为 `http://127.0.0.1:4273`，不能复用其他服务。P05-B匿名桌面／手机与重启扩展已编写，完整12项真实API及实际重启均尚未执行。实际PG重启检查由CI的capture→docker restart→verify步骤执行，普通集成命令本身不等于执行了数据库重启。
+真实数据库集成执行`npm run test:integration`，TEST_DATABASE_URL必须指向scb_test_*隔离库；首CI已106项通过。`npm run test:api:e2e`现在使用独立project包装脚本：DATABASE_URL指向一个已存在的scb_test_*控制库，账号须有测试CREATEDB权限，desktop-api/mobile-api各创建随机独立子库并依次迁移／启动API3300及Web4273，退出后只删除本次成功创建的子库。可加`-- --project=mobile-api`或文件filter；`--list`只列用例不连接DB。拒绝生产库名、production模式和自定义config；不改变同IP注册20次／小时防护。首CI在共享库累计注册使最后2手机夹具429，修复后完整12真实API待第二轮。实际数据库重启须CI capture→docker restart→verify，不把普通集成当重启。
 
 构建输出包含admin与api。仅预览admin静态构建可用：
 

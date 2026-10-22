@@ -22,7 +22,7 @@
     "test:integration": "npm run test:integration --workspace @small-city-basketball/api",
     "db:migrate": "npm run migrate --workspace @small-city-basketball/api",
     "db:seed": "npm run seed --workspace @small-city-basketball/api",
-    "test:api:e2e": "playwright test --config playwright.api.config.ts"
+    "test:api:e2e": "node scripts/run-api-browser-checks.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
