@@ -4,6 +4,8 @@
 
 [最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)已全部通过：302项源码（admin147／API155）、106项独立PG、001→005隔离执行／复跑、37表实际PG18.6重启、12Mock及12真实API官方Chromium151.0.7922.34浏览器。浏览器每project使用独立随机测试子库，正常／故意失败流程均只清理本次拥有的库，保留base；前三轮失败／取消和修复见[TESTING](TESTING.md)。没有生产部署或生产DB。
 
+P06-A完整源码现已本地整合至`19d5801b91bdbb8af0df0403c99c331b41800629`；本地372源码（admin171／API201）、strict／构建／格式、native153的12Mock与19状态合成布局通过。远端仅DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`，main文档仍为ca68dea、业务仍为P05-B；尚无PR7、P06真实PG／重启／API浏览器验收或MAIN交付。P06调试见第7节，不能仅拉main或DTO就宣称可运行本卡。
+
 ## 1. 获取与安装
 
 新目录可执行：
@@ -50,7 +52,7 @@ npm run dev:admin
 
 .env默认 `VITE_DATA_MODE=api`，API为 `127.0.0.1:3000`，Web为 `127.0.0.1:5173`。APP_ORIGIN必须精确匹配浏览器origin；改API端口时同步API_PROXY_TARGET。数据库凭据仅供服务端使用，不进入前端包。Compose是本地运行选项；已执行的真实数据库验收来自CI隔离PostgreSQL18.6，不把当前容器未执行的Compose命令写成已通过。
 
-当前`npm run db:migrate`按001→005应用；五条均在最终CI隔离执行及复跑校验，实际PG18.6重启成功。runner核验checksum并跳过已应用文件，API启动不自动迁移。不修改已应用的001–005；生产尚未执行。005 hash见[DATA_MODEL第10节](DATA_MODEL.md)。
+已交付P05-B main的`npm run db:migrate`按001→005应用；五条均在最终CI隔离执行及复跑校验，实际PG18.6重启成功。runner核验checksum并跳过已应用文件，API启动不自动迁移。不修改已应用的001–005；生产尚未执行。005 hash见[DATA_MODEL第10节](DATA_MODEL.md)。
 
 在Web登录页可注册机构账号，进入空赛事空间；“球队领队？创建个人账号”只建立User和Session，不创建机构或工作人员。个人页面显示本人ID，机构OWNER/ADMIN用该existingUserId签发球队邀请；领队登录目标账号后接受，并刷新独立teamContexts。邮箱尚未验证，不能用email自动认领邀请；微信登录和密码重置未实现。
 
@@ -138,4 +140,25 @@ npm run preview --workspace @small-city-basketball/admin -- --host 127.0.0.1 --p
 
 P01、P02、P03-A、P04-A、P05-A及P05-B为DONE / MAIN。迁移001–005已在隔离测试库执行、复跑校验；真实PG18.6重启比较37表指纹及业务响应，保留运行中时钟锚点、已释放租约／fence、事件、收据、两份确认历史、排名规则／锁／sourceHash、有效／撤销公开身份与映射，以及原赛程／名单／审计。没有生产数据库或生产部署，重启验证不能当成灾备恢复。生产默认关闭机构及个人自主注册，要求HTTPS及Secure Cookie，但生产环境尚未配置。
 
-P03-A只交付Web报名／独立审核／名单冻结；完整P03的保险文件、本人身份与小程序，P04其他赛制／自动排时／改期，以及完整P05的可靠离线／专业统计仍未完成。P06-A合同已完成只读审查，但无业务代码、迁移、原生OBS／CEF测试或生产接入；微信、云服务及真实视频也未集成。接续先读[当前状态](CURRENT_STATUS.md)、[任务看板](TASKS.md)和分配任务卡，再在独立任务分支实施。
+P03-A只交付Web报名／独立审核／名单冻结；完整P03的保险文件、本人身份与小程序，P04其他赛制／自动排时／改期，以及完整P05的可靠离线／专业统计仍未完成。P06-A包装代码与006已本地实施并静态CLEAR，但未执行006、真实PG／重启／API浏览器或原生OBS／CEF测试，尚未MAIN或生产接入；微信、云服务及真实视频也未集成。接续先读[当前状态](CURRENT_STATUS.md)、[任务看板](TASKS.md)和分配任务卡，再在独立任务分支实施。
+
+## 7. P06-A本地分支调试（未真实验收）
+
+先核验完整本地source／分支／锁文件，不能把仅DTO远端检查点当完整应用。取得并整合完整代码后，新隔离环境按001→006迁移，再按第3节启动API和admin；006仅已审查，当前尚未真实执行。现有P05-B数据环境升级前核验schema/checksum，不改001–005或删除授权历史。新增配置无需云服务、OBS控制口令、付费依赖或对象存储。
+
+| 本地分支页面 | 用法与边界 |
+|---|---|
+| `/broadcast` | 当前机构可见events→所选event正式matches全分页，不用scoring-matches；仅有场次权限者不能由此获得赛事管理链接 |
+| `/matches/{matchId}/overlay` | 服务端能力决定可读或签发／轮换／撤销；球队上下文不请求空机构API |
+| `/overlay/{overlayId}#token=…` | 独立1920×1080透明源，入口先分流、不初始化私人auth／org／邀请；fragment读取后立即清除，仅保留本次内存 |
+
+1. 用合成赛事完成正式排赛。无需发布排名规则或开启公开观赛；当前有效机构OWNER/ADMIN或本届实际EVENT_MANAGER／STREAMER可以管理，global角色、MatchStaff或球队grant不替代实际分配。
+2. 在管理页读取fresh Event版本及预览，明确填写1–10080整数分钟后确认签发。ROTATE／REVOKE理由必填1–200字符，弹框固定审阅的Event／Grant版本；不能让后台新数据悄悄替换确认对象。
+3. 成功ISSUE／ROTATE只在当前页面内存提供一次完整URL，密码输入框遮罩，通过复制按钮保存进OBS源设置；离开后不能GET恢复secret。不把URL、secret、Cookie、session或截图含密钥的画面提交仓库。
+4. 原始源URL可在有效期内重复bootstrap；页面首次清fragment后，无fragment刷新依赖专用Cookie。有效同Grant Cookie复用不增session；Cookie丢失但已清fragment时，重新加载保存的原始URL，不回退私人登录。专用Cookie为HttpOnly／Strict／host-only及单源API Path，生产Secure；Path不是同源安全隔离。
+5. 无需准备比赛即可看到有限赛程展示、空比分／空时钟；实际准备后显示真实0，后续记分与时钟按原P05-A流程。坏FINAL源409清屏并继续核对；管理页preview:null及previewError仍保留元数据和撤销能力，不能直接改DB历史“修复”。
+6. 命令超时、丢失ACK或不完整响应时，暂停新授权操作，先“重新读取授权元数据”。若已签发但secret未收到，显式轮换取得新身份，不重复ISSUE。版本409同样先读fresh数据；命令没有自动重放或恢复旧secret接口。
+7. 需要停用时明确撤销，旧secret／Cookie永久失效。签发者退出或个人撤权不自动关闭既有Grant，机构inactive或固定期限到达则源拒绝；主办方应主动管理授权。已过期未撤销记录再次ISSUE时原子关闭并创建新身份。
+8. 源每次完成后2秒串行读取、8秒超时。断网立即陈旧，完整snapshot成功超过30秒清除比分和队名；硬截止按performance发送锚扣完整RTT且只提前，404／到期终止并拒绝迟到200。恢复网络只在重新取得完整权威snapshot后显示，OBS关闭不阻断记分。
+
+网页和管理缩放预览复用同一1920×1080 renderer；加入OBS时明确宽1920、高1080并保持透明。native Chromium153的19状态／三张PNG只证明合成HTTP布局及浏览器alpha透明，不证明原生OBS／CEF合成、隐藏卸载／刷新、保存源后重启或实际推流。真实API浏览器／数据库及重启扩展已编写但未运行，执行入口沿第5节，由集成人CI记录当前head结果；预计123PG和14API不能写成通过。接口见[API第10节](API_CONTRACTS.md)，证据边界见[TESTING](TESTING.md)及[P06-A布局记录](evidence/P06-A/README.md)。

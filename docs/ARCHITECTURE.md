@@ -1,6 +1,6 @@
 # 技术架构
 
-设计版本：0.1；更新：2026-10-22；状态：P01、P02、P03-A、P04-A、P05-A及P05-B已整合main，DONE / MAIN；真实Web报名、排赛、基础在线记分、独立确认、有限单循环排名与可撤销公开观赛已验收。全P03、全P04和全P05尚未完成。P06-A合同已完成只读审查，尚无业务代码或原生OBS／CEF验证。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
+设计版本：0.1；更新：2026-10-22；状态：P01、P02、P03-A、P04-A、P05-A及P05-B已整合main，DONE / MAIN；真实Web报名、排赛、基础在线记分、独立确认、有限单循环排名与可撤销公开观赛已验收。全P03、全P04和全P05尚未完成。P06-A包装源码已本地整合并完成静态审查，尚未真实PG／重启／API浏览器验收或MAIN；原生OBS／CEF仍未验证，见第7节。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
 
 ## 1. 结构与实施边界
 
@@ -13,14 +13,14 @@
 | 小程序 | Taro + React + TypeScript | 观赛、球队、报名、个人资料 |
 | 机构后台 | React + Vite + TypeScript | 赛事四页保留Mock；真实API模式另有球队、报名冻结、排赛及P05-A私有记分工作台，失败不退Mock |
 | 现场工作台 | 当前落在apps/admin的机构模式路由 | 在线球队记分、时钟、独立确认；独立scorekeeper应用与专业统计后续建设 |
-| 包装页面 | Web 透明页面 | OBS 浏览器源及大屏，只读公开投影 |
+| 包装页面 | Web透明页面，当前位于apps/admin | P06-A独立只读授权及1920×1080包装已本地实施；不是已验收的原生OBS／CEF连接 |
 | API | NestJS；P02采用pg参数化SQL | 身份、授权、报名冻结、P04-A正式计划、P05-A记分／时钟／确认已验收；P05-B有限排名与可撤销公开投影已验收 |
 | 数据 | PostgreSQL | 事务、版本、约束；存储真实业务事实 |
 | 文件与视频 | 后续选择对象存储、云直播及点播 | 业务保存文件元数据及授权引用，不将视频存入数据库 |
 
 main包含 `apps/admin`、`apps/api`、`packages/contracts`、根workspace及锁文件、测试和CI。Mock通过 `apps/admin/src/domain` 的内存repository运行并刷新重置；API模式通过会话与HTTP adapter读写真实数据，令牌使用HttpOnly Cookie，不存浏览器脚本可读存储。逐赛事 `permissions.canEditDraft` 来自服务端，客户端不以全局角色代替实际授权。
 
-`apps/scorekeeper`、`apps/miniprogram`、`apps/overlay`仍为后续规划。`apps/admin`当前为机构工作台，平台运营后台未实现；`packages/contracts`已承载会话、报名冻结、Court、排赛规则／修订／冲突、统一MatchStatus、记分／租约／收据／私有快照及排名／公开观赛DTO，`packages/ui`待实际复用时建立。P03-A落地于registration服务/控制器、admin registration页面及迁移002；P04-A落地于独立SchedulingService/Controller、admin scheduling页面和HTTP adapter及迁移003。SchedulingService复用ApplicationService的事务、会话、机构与审计helpers，不继承RegistrationService；仍使用现有PostgreSQL连接池，不拆分独立微服务。P05-A的ScoringService/Controller与Registration/Scheduling独立，复用ApplicationService鉴权及事务helpers；前端位于admin scoring页面及HTTP adapter，迁移004保存规则版本、人员、projection、lease/fence、追加事件、收据及不可变确认。
+`apps/scorekeeper`、`apps/miniprogram`、独立`apps/overlay`仍为后续规划；本地P06-A包装复用apps/admin，不预建空应用。`apps/admin`当前为机构工作台，平台运营后台未实现；`packages/contracts`已承载会话、报名冻结、Court、排赛规则／修订／冲突、统一MatchStatus、记分／租约／收据／私有快照及排名／公开观赛DTO，`packages/ui`待实际复用时建立。P03-A落地于registration服务/控制器、admin registration页面及迁移002；P04-A落地于独立SchedulingService/Controller、admin scheduling页面和HTTP adapter及迁移003。SchedulingService复用ApplicationService的事务、会话、机构与审计helpers，不继承RegistrationService；仍使用现有PostgreSQL连接池，不拆分独立微服务。P05-A的ScoringService/Controller与Registration/Scheduling独立，复用ApplicationService鉴权及事务helpers；前端位于admin scoring页面及HTTP adapter，迁移004保存规则版本、人员、projection、lease/fence、追加事件、收据及不可变确认。
 
 目标逻辑模块为Identity、Organizations、Events、Teams、Registration、Scheduling、Scoring、PublicRead、Broadcast、Entitlements、Audit。其中身份、机构、赛事、球队、Web报名、单循环Scheduling、在线基础Scoring／审计及有限PublicRead已有实现；完整Scheduling、专业Scoring、更多公开读取和Broadcast等仍有后续范围，不能因出现在列表中便视为完成。模块通过明确的应用接口调用；领域模块不依赖 HTTP 控制器、数据库 ORM 或前端组件。统一契约只放 DTO、枚举和公开类型，不打包凭据及数据库内部模型。
 
@@ -48,7 +48,7 @@ P04-A工作稿引用不可变freeze，保存生成种子、完整对阵、规则
 
 普通编辑使用资源 `version` 做乐观并发控制。P05-A实际记分与时钟动作额外要求session／tab／lease绑定及单调fencingToken；每场一个有效主写端，TTL30秒、10秒续约，心跳不增matchVersion。规则保存及准备／首次开始还检查event版本；管理、确认与重开命令不伪造记分租约。首次READY锁定赛事规则，首次LIVE推进赛事RUNNING，单场FINAL不推进整届COMPLETED。
 
-已实施命令事务：当前授权／状态核验 → 按动作检查租约和期望版本 → 追加事件／更新投影及match版本 → 保存receipt／审计；失败全部回滚。授权优先于幂等查重，同ID同内容返回原收据及当前快照，同ID不同内容拒绝。P04正式计划、冻结名单和预约不重写，统一MatchStatus保留READY／LIVE／待确认／FINAL读取。main已交付认证私有轮询及P05-B匿名轮询；SSE、Outbox、worker和OBS消费仍为后续设计。
+已实施命令事务：当前授权／状态核验 → 按动作检查租约和期望版本 → 追加事件／更新投影及match版本 → 保存receipt／审计；失败全部回滚。授权优先于幂等查重，同ID同内容返回原收据及当前快照，同ID不同内容拒绝。P04正式计划、冻结名单和预约不重写，统一MatchStatus保留READY／LIVE／待确认／FINAL读取。main已交付认证私有轮询及P05-B匿名轮询；SSE、Outbox、worker仍为后续设计；独立包装轮询的本地P06-A实施见第7节，尚未验收。
 
 事件不直接删除或覆盖；补录／撤销／替换均有理由，重复或跨场撤销被拒绝。确认前重放事件核对投影，保存精确sourceMatchVersion、lastEventSeq、规则和球队基础统计；重开回待确认，旧确认保留，新确认另存。ScoreSnapshot不含lease／session／控制凭据或身份保险材料；球员高级统计未采集，UI显示“未统计”。P05-B榜单仅消费来源核验后的当前有效确认，实现及验收状态见第6节。
 
@@ -88,3 +88,17 @@ P05-B已随PR #6整合main。[最终CI39751848322](https://github.com/xyq-dev/sm
 规则／公开写按actor/session→org/member→Event UPDATE→publication/映射，与Event版本及audit同事务。匿名解析公开身份后按org SHARE→Event SHARE→publication SHARE重查有效性；撤销后的新读取404，重新启用必须全新公开身份。DISABLE不计算损坏榜单，保证坏来源不会阻止撤销；不占org_schedule_mutex。单场SCORER分配不授予私有整届排名管理权。
 
 页面合同为私有`/standings`、`/events/{eventId}/standings`和匿名`/watch/{publicEventId}`及其matches页。viewing页面按需加载；Runtime在私人会话初始化前分流，public fetch为credentials:omit，使用独立路由且不嵌套BrowserRouter；主办后台／Mock／邀请fragment流程保留。公开页面轮询，404清旧内容，离线／读取失败标陈旧，世代及卸载保护避免旧链接响应覆盖新页；不承诺零延迟撤屏、SSE、CDN／DDoS容量或生产部署。精确DTO／错误见[API第9节](API_CONTRACTS.md)，表／锁／005hash见[数据模型第10节](DATA_MODEL.md)。
+
+## 7. P06-A本地实施与独立包装边界（未验收）
+
+P06-A完整源码在本地检查点`19d5801b91bdbb8af0df0403c99c331b41800629`已整合，尚未真实CI／PR合并／MAIN；远端仅共享DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`，main文档基线仍为`ca68dea89f1625c86e2a90e43ffa936c49fd6186`（业务P05-B）。本地已通过372项源码检查（admin171／API201）、完整strict／格式／两端构建、native Chromium153的原12Mock及19状态合成布局／三张PNG。006仅静态CLEAR；新增17项PG源码、预计合计123项PG、39表真实重启及14项真实API浏览器均待执行，不标记DONE。历史P05-B的真实验收原样保留；本节不是生产发布说明。
+
+OverlayService浅复用ApplicationService的连接池、当前身份／机构授权、事务与审计helpers，与ScoringService、StandingsService独立；OverlayController提供私有管理两入口，OverlaySourceController提供bootstrap和snapshot。没有微服务、SSE或新依赖。单场来源用一条SQL取match/state、当前confirmation、最后event／receipt及规则后复用confirmedResult证明，不依赖排名规则或public publication，不改变原记分状态机、比赛版本、lease或正式计划；媒体PTS尚未接入。
+
+管理者须为当前有效机构成员，且为OWNER/ADMIN或本赛事实际EVENT_MANAGER／STREAMER；其他实际event staff仅可读有限预览及Grant元数据。global STREAMER、单场SCORER／RESULT_REVIEWER或球队grant都不替代赛事授权。管理写从入口持Event UPDATE，随后eventstaff与Grant锁，使用Event CAS、必要Grant CAS，与版本／审计同事务，不升级Event SHARE或占排赛mutex。Grant签发后独立于签发者私人登录状态；当前管理资格仍每次重查。
+
+独立源先解析不透明overlayId，按org SHARE→Event SHARE→Grant SHARE→overlaySession SHARE取锁并以锁后DB时间验证。Grant与专用session的截止由复合FK精确绑定；可重复使用secret bootstrap，有效同Grant Cookie复用，正确secret可恢复单一无效／跨Grant Cookie，无私人scb.sid回退。session INSERT可能等待正式match FK锁，独立审查已补INSERT后单次MATERIALIZED clock_timestamp精确重检共同截止，过期404且整事务回滚，不能返回迟到Cookie。
+
+浏览器源URL采用`/overlay/{overlayId}#token=…`，首次layout effect立即清fragment并保留history.state/path/query，secret仅本次内存。Runtime在私人会话及邀请处理前分流；专用host-only HttpOnly／Strict Cookie的Path限定单源API，生产Secure。Path不是同源脚本安全边界，同源可信部署仍是前提。DTO逐层重建，无内部资源ID、名单、人员、确认人、事件／收据或控制凭据；坏FINAL源严格409，私有preview:null＋previewError仍可管理、撤销且不回滚成功授权命令。
+
+管理页索引复用现有可见event列表→正式matches全分页，不使用含match-only用户的scoring-matches。弹框固定审阅版本；未知结果先GET核对，secret丢失需显式轮换，无盲目重签。源和预览共用透明1920×1080 renderer；源每次完成后2秒串行读取，单请求8秒超时，只有完整有效snapshot刷新30秒陈旧期限；请求发送performance锚扣完整RTT计算硬截止，已知截止只提前。404／到期终止且拒绝迟到200，409清屏继续核对，卸载清理请求／timer／透明模式class。原生OBS／CEF透明合成、保存源及隐藏／刷新仍待客户端另验。精确合同见[API第10节](API_CONTRACTS.md)，数据库与验证边界见[DATA_MODEL](DATA_MODEL.md)、[TESTING](TESTING.md)。

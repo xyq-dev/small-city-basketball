@@ -30,6 +30,9 @@ import { ScoringController, SCB_SCORING_SERVICE } from './scoring-controller.js'
 import { StandingsService } from './standings-service.js';
 import { StandingsController, SCB_STANDINGS_SERVICE } from './standings-controller.js';
 import { PublicViewingController } from './public-viewing-controller.js';
+import { OverlayService } from './overlay-service.js';
+import { OverlayController, SCB_OVERLAY_SERVICE } from './overlay-controller.js';
+import { OverlaySourceController } from './overlay-bootstrap.js';
 import {
   RegistrationController,
   InvitationAcceptanceController,
@@ -217,6 +220,7 @@ export async function createApi(
     const scheduling = new SchedulingService(pool, options);
     const scoring = new ScoringService(pool, options);
     const standings = new StandingsService(pool, options);
+    const overlay = new OverlayService(pool, options);
     @Module({
       controllers: [
         AuthController,
@@ -228,12 +232,15 @@ export async function createApi(
         ScoringController,
         StandingsController,
         PublicViewingController,
+        OverlayController,
+        OverlaySourceController,
       ],
       providers: [
         { provide: SERVICE, useValue: service },
         { provide: SCHEDULING_SERVICE, useValue: scheduling },
         { provide: SCB_SCORING_SERVICE, useValue: scoring },
         { provide: SCB_STANDINGS_SERVICE, useValue: standings },
+        { provide: SCB_OVERLAY_SERVICE, useValue: overlay },
       ],
     })
     class ApiModule {}

@@ -1,6 +1,6 @@
 # API 契约
 
-目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A、P04-A、P05-A及P05-B已整合main，DONE / MAIN。[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)合并提交 `bd38318fdfdbaeb9cfee1033c0d025e79c6cc797`，验收source `d9161e965b367ed8cb445482d57759bd34e89629`、tree `554284a604f3b0027d5b0eedc7dbbee20eab3119`。身份、报名冻结、单循环排赛、在线基础记分／独立确认及第9节有限排名／可撤销公开观赛，均经[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)通过真实隔离PostgreSQL、实际重启及官方浏览器验收。前三轮失败／取消与修复保留[TESTING](TESTING.md)。完整P05尚未完成；可靠离线、专业统计、其他排赛赛制、改期、P03附件／小程序及OBS仍未交付。P06-A合同已审查，尚无可调用实现或原生OBS／CEF测试。
+目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A、P04-A、P05-A及P05-B已整合main，DONE / MAIN。[PR #6](https://github.com/xyq-dev/small-city-basketball/pull/6)合并提交 `bd38318fdfdbaeb9cfee1033c0d025e79c6cc797`，验收source `d9161e965b367ed8cb445482d57759bd34e89629`、tree `554284a604f3b0027d5b0eedc7dbbee20eab3119`。身份、报名冻结、单循环排赛、在线基础记分／独立确认及第9节有限排名／可撤销公开观赛，均经[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)通过真实隔离PostgreSQL、实际重启及官方浏览器验收。前三轮失败／取消与修复保留[TESTING](TESTING.md)。完整P05尚未完成；可靠离线、专业统计、其他排赛赛制、改期、P03附件／小程序及OBS仍未交付。P06-A四条HTTP入口及包装页面已在本地19d5801实施，尚未真实PG／重启／API浏览器验收、PR合并或MAIN，见第10节；原生OBS／CEF未验证。
 
 ## 1. 通用约定
 
@@ -68,7 +68,7 @@ type CreateEventInput = {
 
 `POST /v1/invitations/{invitationId}/accept` 是已登录受邀者接受邀请的独立入口；验证令牌hash、有效期、用途、目标受邀者和未被消费状态，事务内建立限定资源绑定并记录接受，不能凭客户端给出的userId绑定他人。重复接受仅向同一已核验身份返回既有结果；撤销、过期、越范围的邀请拒绝。机构工作人员的邀请/撤权和平台套餐开通接口在 P02/P06 对应任务细化，不从本路由表推定已经实现。文件上传另设授权申请/完成接口，下载临时链接须重新鉴权，URL 不能永久公开。
 
-P05-B已交付并验收第9节的公开event及其schedule／standings／嵌套match读取；旧目标 `/v1/public/matches/{publicId}/snapshot` 未实现，不是本卡入口。包装读取 `/v1/overlays/{grantId}/snapshot` 和 `/stream` 仍为P06目标，使用独立只读能力令牌，不复用机构管理会话。
+P05-B已交付并验收第9节的公开event及其schedule／standings／嵌套match读取；旧目标 `/v1/public/matches/{publicId}/snapshot` 未实现，不是本卡入口。本地P06-A实际使用第10节的`/v1/overlays/{overlayId}/bootstrap`及`/snapshot`，尚未MAIN；`/stream`与旧broadcast-session／overlay-grant管理目标未实现，不能混用。
 
 ## 4. 比赛命令和冲突
 
@@ -281,3 +281,57 @@ DISABLE不依赖榜单来源健康：授权、CAS、撤销及audit成功后返�
 私有写按actor/session→org/member→Event UPDATE→规则/publication/映射，授权/CAS/Event版本/audit同事务，deferred COMMIT失败也整体回滚。匿名先解析公开身份，再按org SHARE→Event SHARE→publication SHARE取锁，重查机构、赛事和发布有效性；撤销提交后的新读取拒绝。公开GET不写访问计数、不取org_schedule_mutex、不写记分。
 
 实际错误：422 VALIDATION_ERROR／UNSUPPORTED_STANDINGS_FORMAT／STANDINGS_RULES_REQUIRED／SCHEDULE_REQUIRED；409 VERSION_CONFLICT／STANDINGS_RULES_LOCKED／STANDINGS_RULESET_NOT_CURRENT／PUBLIC_VIEWING_ALREADY_ENABLED／PUBLIC_VIEWING_NOT_ENABLED／RESULT_SOURCE_INVALID；隐藏资源404 RESOURCE_NOT_FOUND、可见无动作权403 FORBIDDEN。P05-A记分状态机和授权保持，尚无公开SSE、缓存worker、可靠离线、专业统计、微信、OBS或生产容量验收。
+
+## 10. P06-A独立比分包装合同（本地实施，未真实验收／MAIN）
+
+文档源码检查点`19d5801b91bdbb8af0df0403c99c331b41800629`含完整API/UI/PG；远端仅DTO检查点`331d2c3758472ec8f739729bff4d6a4212ad4cb4`，main仍为P05-B。共享类型见[contracts](../packages/contracts/index.d.ts)。本地372源码（admin171／API201）、strict／构建／格式及native153的12Mock通过；006仅静态CLEAR，真实PG、39表重启及14API浏览器尚未执行。不能把上游CI39751848322当作本卡通过。
+
+### 四条实际入口
+
+全部成功200，采用统一`{data,meta:{requestId}}`及no-store。私有GET／命令每次验证当前私人会话、机构成员、资源归属；源入口完全独立，不调用私人登录流程。两个POST仍要求精确APP_ORIGIN，不放宽全局写Origin守卫。
+
+| 方法与完整路径 | 输入与data |
+|---|---|
+| GET `/v1/orgs/{orgId}/matches/{matchId}/overlay` | 无body，返回OverlayWorkbenchData；有本赛事实际staff或OWNER/ADMIN可读，单场授权不等于赛事权限 |
+| POST `/v1/orgs/{orgId}/matches/{matchId}/overlay-commands` | 下列ISSUE／ROTATE／REVOKE输入，返回OverlayCommandResponse；写仅OWNER/ADMIN或本event实际EVENT_MANAGER／STREAMER且当前成员有效 |
+| POST `/v1/overlays/{overlayId}/bootstrap` | `{token}`；成功data仅`{overlayId,expiresAt,serverTime}`，session只由Set-Cookie交付，不进JSON |
+| GET `/v1/overlays/{overlayId}/snapshot` | 仅认专用Cookie；返回OverlaySnapshotData，无读取计数／更新时间／续期写入 |
+
+管理写的精确body如下；未知字段422，TTL无默认值，理由去首尾空白后1–200字符。Event UPDATE从入口持有，ROTATE／REVOKE另检查精确当前overlayId及Grant版本；成功touch Event.version与audit同事务，不更改Match.version、记分projection、确认或lease。
+
+```ts
+{ type: 'ISSUE', expectedEventVersion, expiresInMinutes }
+{ type: 'ROTATE', expectedEventVersion, overlayId, expectedGrantVersion, expiresInMinutes, reason }
+{ type: 'REVOKE', expectedEventVersion, overlayId, expectedGrantVersion, reason }
+// expected*为正整数；expiresInMinutes为必填整数1–10080。
+```
+
+ISSUE仅在没有有效当前Grant时成功；已过期未撤销记录先以固定SUPERSEDED_AFTER_EXPIRY原子关闭后新建。ROTATE永久关闭当前身份再生成新overlayId／secret；REVOKE只关闭。Grant初始version1，撤销后2，到期本身不写库。当前记录包括EXPIRED，history仅最近20条REVOKED，按createdAt／overlayId降序，LIMIT21判断historyTruncated；没有未实现的历史游标。管理命令无自动重放或secret恢复：响应未知先GET核对；若已签发但secret丢失，显式ROTATE，不盲目再ISSUE。
+
+| 管理DTO | 完整允许字段 |
+|---|---|
+| OverlayGrantData | overlayId、template固定SCOREBAR_1080P_V1、status为ACTIVE／EXPIRED／REVOKED、version、createdAt、expiresAt、revokedAt:null或时间、revocationReason:null或理由 |
+| OverlayWorkbenchData | event仅`{id,name,version}`、matchId、preview:null或OverlayPreviewData、previewError:null或`{code:'RESULT_SOURCE_INVALID',message}`、currentGrant:null或未撤销Grant、history、historyLimit:20、historyTruncated、capabilities仅canIssue/canRotate/canRevoke三个boolean、serverTime |
+| OverlayCommandResponse | Workbench全部字段加credential；仅成功ISSUE／ROTATE为`{overlayId,token}`，REVOKE为null，GET不能恢复credential |
+
+坏FINAL时私有preview=null及有限previewError，仍返回freshEventVersion、Grant历史及能力；ISSUE／ROTATE／REVOKE成功响应也不能因预览来源错误回滚授权命令。仅场次SCORER／RESULT_REVIEWER、TeamAccessGrant或未实际分配的global STREAMER不能管理；其他本赛事实际staff只读，前端只按capabilities显示动作。
+
+### Secret、Cookie与固定截止
+
+overlayId、secret及session token各为服务端256bit随机值的43字符base64url，DB只存secret／session token的SHA-256。源URL为`/overlay/{overlayId}#token=…`；首次读取后立即replaceState清fragment，保留history.state/path/query，secret仅当前内存，不能进Storage、query、日志或错误。secret在Grant有效期内可重复bootstrap，OBS保存的原始源URL可以重新加载；不是一次消费。
+
+bootstrap始终先验证secret，再考虑专用Cookie。有效同Grant Cookie复用session；单一缺失／无效／过期／其他Grant Cookie在正确secret下可创建新session。重复或歧义同名Cookie即使值相同也404；错误secret不能借有效Cookie或scb.sid通过。无fragment页面直接读snapshot；Cookie失效且无内存secret时终止并提示重新加载保存的原始URL，不回退私人登录。
+
+专用Cookie为`scb.overlay`，host-only、HttpOnly、SameSite=Strict，Path精确`/v1/overlays/{overlayId}/`，生产Secure；Max-Age不超过锁后剩余期限，保守向下取整。Path只减少发送范围，不构成同源XSS隔离；同源可信部署是前提。每个session截止由复合FK精确等于Grant截止，不因刷新续期。session INSERT后可能等待正式match FK锁，服务已补最终DB clock_timestamp精确重检共同截止，过期404且回滚、不返回Cookie；成功metadata.serverTime及Max-Age采用最终fresh时间。该修复静态CLEAR，真实等锁回归尚待CI。
+
+独立读解析overlayId后按org SHARE→Event SHARE→Grant SHARE→overlaySession SHARE重查机构、撤销及截止；管理按actor/session→org/member→Event UPDATE→eventstaff→Grant取锁，资格/CAS/版本/audit同事务。Grant不依赖签发者私人session在线，个人退出／后续撤权不自动撤销既有Grant；机构inactive会拒绝源读取。公开观赛ENABLE／DISABLE与包装授权相互独立，不依赖排名规则或public publication。
+
+### 有限投影与源生命周期
+
+OverlayPreviewData逐层白名单完整为：eventName、home/away各`{teamName}`、status、matchVersion、score:null或`{home,away}`、totals:null或双方ScoringTotals、periods:null或ScoringPeriodTotals数组、rules:null或`ScoringRules & {version}`、clock:null或原始ScoringClock、collected仅teamScore/teamFouls/teamTimeouts三个boolean及playerStatistics:false、resultStatus（UNCONFIRMED／CONFIRMED／REQUIRES_RECONFIRMATION）、serverTime。OverlaySnapshotData仅再加overlayId、template:SCOREBAR_1080P_V1、expiresAt。ScoringTotals为score/fouls/timeouts；periods每项含period及双方totals；raw clock为period/remainingMs/running/anchorServerTime/clockVersion，不预扣倒计时。
+
+未准备的score/totals/periods/rules/clock均null，已准备真实0才展示，球员统计未采集。独立源不含内部org/event/match/team/entry/user／roster ID、工作人员、确认人、事件／receipt、session/lease/fence或个人资料。单条SQL快照取本场全部来源证明后复用P05-B confirmedResult；合法staff升运行版本不误撤正式赛果，坏FINAL严格409 RESULT_SOURCE_INVALID，无私密details，不能伪造0。
+
+前端每次请求完成后2秒串行轮询、单请求8秒超时，避免2秒poll反复取消慢请求。只有完整有效且非降matchVersion的snapshot重置30秒陈旧期限，bootstrap不算；断网立即陈旧，30秒清比分和队名。Grant硬截止从请求发送performance锚保守扣完整RTT，已知截止只提前；404／到期终止、取消请求并拒绝迟到200重新点亮，409来源故障清屏但继续核对。scope变化／卸载清理请求与timer。原生OBS／CEF行为另验，不能把网页透明渲染称为“OBS已连接”。
+
+实际错误：422 VALIDATION_ERROR；409 VERSION_CONFLICT／OVERLAY_ALREADY_ISSUED／OVERLAY_GRANT_NOT_CURRENT／OVERLAY_GRANT_VERSION_CONFLICT／RESULT_SOURCE_INVALID；私有未知／跨scope或无赛事可见权404 RESOURCE_NOT_FOUND、可见只读staff写403 FORBIDDEN、私人未认证401；独立授权失败统一404，不暴露撤销／过期／错secret／错Grant差异。POST Origin拒绝403 ORIGIN_REJECTED。schema与未执行边界见[DATA_MODEL第11节](DATA_MODEL.md)、[TESTING](TESTING.md)。

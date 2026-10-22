@@ -68,6 +68,8 @@ async function fingerprint() {
     ['standings_rulesets', 'id'],
     ['public_event_publications', 'id'],
     ['public_match_links', 'publication_id,match_id'],
+    ['overlay_grants', 'id'],
+    ['overlay_sessions', 'id'],
     ['audit_logs', 'id'],
     ['schema_migrations', 'name'],
   ]) {
@@ -521,6 +523,113 @@ async function captureViewing(orgId, cookie, scheduling) {
   assert.equal(unprepared.collected.teamScore, false);
   return { workspace, publicId, revokedId, revokedMatchId, overview, schedule, standings, matches };
 }
+
+async function assertOverlayRevoked(saved) {
+  assert.equal(
+    (
+      await fetch(`${baseUrl}/v1/overlays/${saved.overlayId}/snapshot`, {
+        headers: { Cookie: saved.cookie },
+      })
+    ).status,
+    404,
+    'A revoked overlay session must stay unavailable',
+  );
+  assert.equal(
+    (
+      await fetch(`${baseUrl}/v1/overlays/${saved.overlayId}/bootstrap`, {
+        method: 'POST',
+        headers: { Origin: 'http://127.0.0.1:5173', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: saved.token }),
+      })
+    ).status,
+    404,
+    'A revoked overlay secret must stay unavailable',
+  );
+}
+
+async function captureOverlays(orgId, cookie, scheduling) {
+  const root = `/v1/orgs/${orgId}`;
+  // These grants are deliberately issued before public viewing/ranking is enabled.
+  const published = await instance.pool.query(
+    'SELECT count(*)::int AS count FROM public_event_publications WHERE org_id=$1 AND event_id=$2',
+    [orgId, scheduling.workspace.event.id],
+  );
+  assert.equal(published.rows[0].count, 0);
+  const active = [];
+  let revoked;
+  for (const match of scheduling.matches) {
+    const path = `${root}/matches/${match.id}`;
+    let workspace = (await call(`${path}/overlay`, { cookie })).data;
+    let response = (
+      await call(`${path}/overlay-commands`, {
+        method: 'POST',
+        cookie,
+        body: {
+          type: 'ISSUE',
+          expectedEventVersion: workspace.event.version,
+          expiresInMinutes: 60,
+        },
+      })
+    ).data;
+    const original = response.credential;
+    assert.ok(original);
+    const first = await call(`/v1/overlays/${original.overlayId}/bootstrap`, {
+      method: 'POST',
+      body: { token: original.token },
+    });
+    const firstCookie = first.response.headers.getSetCookie()[0]?.split(';')[0];
+    assert.ok(firstCookie);
+    if (!revoked) {
+      revoked = { ...original, cookie: firstCookie };
+      response = (
+        await call(`${path}/overlay-commands`, {
+          method: 'POST',
+          cookie,
+          body: {
+            type: 'ROTATE',
+            expectedEventVersion: response.event.version,
+            overlayId: response.currentGrant.overlayId,
+            expectedGrantVersion: response.currentGrant.version,
+            expiresInMinutes: 60,
+            reason: '重启验证永久关闭旧包装身份',
+          },
+        })
+      ).data;
+      await assertOverlayRevoked(revoked);
+    }
+    const credential = response.credential;
+    assert.ok(credential);
+    const current = await call(`/v1/overlays/${credential.overlayId}/bootstrap`, {
+      method: 'POST',
+      body: { token: credential.token },
+      ...(credential.overlayId === original.overlayId ? { cookie: firstCookie } : {}),
+    });
+    const sourceCookie = current.response.headers.getSetCookie()[0]?.split(';')[0] ?? firstCookie;
+    assert.ok(sourceCookie);
+    assert.deepEqual(Object.keys(current.data).sort(), ['expiresAt', 'overlayId', 'serverTime']);
+    active.push({ matchId: match.id, ...credential, cookie: sourceCookie });
+  }
+  for (const saved of active) {
+    saved.workspace = (await call(`${root}/matches/${saved.matchId}/overlay`, { cookie })).data;
+    saved.snapshot = (
+      await call(`/v1/overlays/${saved.overlayId}/snapshot`, { cookie: saved.cookie })
+    ).data;
+    assert.equal(Object.hasOwn(saved.workspace, 'credential'), false);
+  }
+  assert.equal(
+    active.find((saved) => saved.snapshot.status === 'LIVE').snapshot.clock.running,
+    true,
+  );
+  assert.equal(
+    active.find((saved) => saved.snapshot.status === 'FINAL').snapshot.resultStatus,
+    'CONFIRMED',
+  );
+  const unprepared = active.find((saved) => saved.snapshot.status === 'SCHEDULED').snapshot;
+  assert.equal(unprepared.score, null);
+  assert.equal(unprepared.clock, null);
+  assert.equal(unprepared.collected.teamScore, false);
+  return { active, revoked };
+}
 try {
   if (mode === 'capture') {
     const suffix = randomUUID();
@@ -550,6 +659,7 @@ try {
     const frozenRegistration = await captureRegistration(orgId, cookie, suffix);
     const scheduling = await captureScheduling(orgId, cookie, frozenRegistration);
     const scoring = await captureScoring(orgId, cookie, scheduling, suffix);
+    const overlays = await captureOverlays(orgId, cookie, scheduling);
     const viewing = await captureViewing(orgId, cookie, scheduling);
     const scheduledEventPath = `/v1/orgs/${orgId}/events/${scheduling.workspace.event.id}`;
     scoring.rules = (await call(`${scheduledEventPath}/scoring`, { cookie })).data;
@@ -561,6 +671,11 @@ try {
     frozenRegistration.workspace = (
       await call(`${scheduledEventPath}/registration`, { cookie })
     ).data;
+    // Public-viewing writes also raise Event.version; retain the final metadata.
+    for (const saved of overlays.active)
+      saved.workspace = (
+        await call(`/v1/orgs/${orgId}/matches/${saved.matchId}/overlay`, { cookie })
+      ).data;
     const state = {
       cookie,
       userId: registration.data.user.id,
@@ -570,11 +685,12 @@ try {
       scheduling,
       scoring,
       viewing,
+      overlays,
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
     console.log(
-      'Captured sessions, frozen registration, published schedule, running clock, result history, locked standings, active/revoked public identities and isolated database fingerprint.',
+      'Captured sessions, frozen registration, schedule, raw clock, results, standings, public identities, independent active/revoked overlay grants and read sessions, and the isolated database fingerprint.',
     );
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
@@ -672,6 +788,26 @@ try {
     await assertPublicMissing(
       `/v1/public/events/${viewing.revokedId}/matches/${viewing.revokedMatchId}`,
     );
+    for (const saved of state.overlays.active) {
+      const workbench = (
+        await call(`/v1/orgs/${state.orgId}/matches/${saved.matchId}/overlay`, {
+          cookie: state.cookie,
+        })
+      ).data;
+      const sourcePath = `/v1/overlays/${saved.overlayId}`;
+      const snapshot = (await call(`${sourcePath}/snapshot`, { cookie: saved.cookie })).data;
+      assert.deepEqual(withoutReadTimes(workbench), withoutReadTimes(saved.workspace));
+      assert.deepEqual(withoutReadTimes(snapshot), withoutReadTimes(saved.snapshot));
+      const reused = await call(`${sourcePath}/bootstrap`, {
+        method: 'POST',
+        cookie: saved.cookie,
+        body: { token: saved.token },
+      });
+      assert.equal(reused.data.expiresAt, saved.snapshot.expiresAt);
+      const returnedCookie = reused.response.headers.getSetCookie()[0]?.split(';')[0];
+      if (returnedCookie) assert.equal(returnedCookie, saved.cookie);
+    }
+    await assertOverlayRevoked(state.overlays.revoked);
     assert.equal(await fingerprint(), state.fingerprint);
     const acquired = (
       await call(`/v1/orgs/${state.orgId}/matches/${scoring.saved[0].id}/scorekeeper-lease`, {
@@ -685,7 +821,7 @@ try {
       'Lease fence remains monotonic across PostgreSQL restart',
     );
     console.log(
-      'PostgreSQL restart retained sessions, grants, frozen rosters, published schedule/reservations, scoring rules/events/receipts/result history, running clock anchor, monotonic fence, locked standings/source hashes, active and permanently revoked public identities, audit and migration checksums.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, audit and migration checksums across all 39 tables.',
     );
   }
 } finally {

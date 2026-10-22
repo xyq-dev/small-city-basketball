@@ -1,6 +1,6 @@
 # 环境、发布与商业运营
 
-版本：0.1；更新：2026-10-22（Asia/Shanghai）。P02基础服务、P03-A Web报名、P04-A单循环排赛／一次发布、P05-A基础在线记分／独立确认／私有快照及P05-B有限排名／可撤销公开观赛均已整合main并通过隔离验收。完整P05仍有可靠离线与专业统计等后续范围；P06-A合同已审查，尚无业务代码或原生OBS／CEF测试。以下生产与商业运营条目仍为建设规范，没有已部署生产服务、生产数据库或付费套餐系统。
+版本：0.1；更新：2026-10-22（Asia/Shanghai）。P02基础服务、P03-A Web报名、P04-A单循环排赛／一次发布、P05-A基础在线记分／独立确认／私有快照及P05-B有限排名／可撤销公开观赛均已整合main并通过隔离验收。完整P05仍有可靠离线与专业统计等后续范围；P06-A包装代码／006已本地实施并静态CLEAR，尚未真实PG／重启／API浏览器验收、MAIN或原生OBS／CEF测试。以下生产与商业运营条目仍为建设规范，没有已部署生产服务、生产数据库或付费套餐系统。
 
 ## 环境与配置
 
@@ -65,6 +65,20 @@ raw clock的remainingMs对应anchorServerTime，而非每次读取时重新存�
 RESULT_SOURCE_INVALID表示当前确认指针、规则、版本／事件／收据、统计或终局时钟无法核验，服务拒绝整张榜单／公开投影，不能静默漏算或用0掩盖。保留来源、版本和审计；必要时先撤销公开，再通过已支持的重开／修正／独立重确认流程处理。不能直接改比分、confirmation或历史event“修复”榜单。合法FINAL staff变更不撤销既有正式确认；重开立即撤出本场，重确认仅计最新一次。全部FINAL不代表整届COMPLETED或唯一冠军，其他赛制、处罚／弃权、晋级仍未实现。
 
 未准备比赛统计与clock为null，已准备0与未统计区分；公开时钟沿用raw anchor，只扣一次，离线／失败标陈旧而不自动暂停记分。实际重启已比较36个migration应用表及schema_migrations共37表，覆盖三张新表、公开有效／撤销身份、sourceHash及原全部数据；业务比较只排除动态serverTime/asOf，先比较指纹再取得新lease核验fence递增。它证明持久化，不能当作灾备或生产恢复证据。最终source自动CodeReview completed且无finding，security review未运行。完整状态见[TESTING](TESTING.md)，接口见[API第9节](API_CONTRACTS.md)。微信、保险文件、真实视频与OBS仍未集成。
+
+## P06-A本地包装运行边界（未验收／未MAIN）
+
+本地source检查点19d5801含API/UI/PG与根接线，远端仅DTO331d2c3，main文档仍为ca68dea、业务P05-B；尚无PR7或本卡真实CI。已执行本地372源码（admin171／API201）、strict／格式／两端构建、native153原12Mock及19状态合成布局／三张PNG；006仅静态CLEAR，新增17项PG（预计总123）、39表实际重启及14真实API浏览器待执行。保持上游P05-B已验收记录，不把图片透明或静态CLEAR视为原生OBS已连接。
+
+006的SHA-256为`94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6`，两表overlay_grants／overlay_sessions及其复合FK、固定截止、一次撤销／不可变守卫尚未数据库执行；完整分支后须按001→006在隔离库执行／复跑checksum，001–005不改。无生产DB、生产Migration、反向恢复或灾备演练。新增session INSERT的正式match FK可能等待记分锁，服务已补INSERT后fresh DB时间精确判期，跨截止404并回滚；真实竞争用例已写但未运行。
+
+签发、轮换、撤销必须由当前有效机构OWNER/ADMIN或本届实际EVENT_MANAGER／STREAMER操作，不能用global角色、场次身份或球队grant替代。管理只修改Event版本及Grant／审计，保持Match／赛果／lease不变；版本冲突或未知结果先GET fresh metadata，不重签恢复丢失secret，必须显式轮换。坏FINAL只清私有预览并附previewError，元数据／CAS／撤销仍可用；源snapshot严格409，不直接改历史消除错误。
+
+Grant独立于签发者私人session：个人退出／撤权不自动撤销旧源，应由当前管理者显式轮换／撤销；机构inactive或固定期限到达停止读取。ISSUE TTL明确1–10080整数分钟，ROTATE／REVOKE理由1–200字符，期限不因刷新延长；到期后再次签发原子关闭旧记录，旧身份／secret／session不删除或复活。有效同Grant Cookie复用专用session，正确secret可在期限内重复bootstrap，保存的原URL可重新加载；无fragment且Cookie失效须重新加载原地址，不借私人登录续权。
+
+完整URL只在成功ISSUE／ROTATE的当前内存提供一次，密码框遮罩并复制到OBS源设置；禁止写日志、Storage、Git或含密钥截图。源入口立即清fragment，专用scb.overlay为host-only／HttpOnly／SameSite=Strict，单源API Path，生产Secure，Max-Age不超共同截止；Path不是同源脚本隔离，同源可信部署是前提。session与Grant截止由DB精确绑定，scb.sid及public publication不参与源权限。
+
+画布明确1920×1080，与管理缩放预览共用renderer。源完成后2秒串行读、8秒超时；仅完整有效snapshot刷新30秒陈旧期限，断网先标陈旧再清比分／队名，硬截止以请求发送performance锚扣完整RTT且只提前。404／到期终止并拒绝迟到200；409来源错误清屏继续核对。网络失联不能零延迟知道撤销，OBS关闭不影响计分。native153 RGBA透明仅属网页布局检查，原生OBS／CEF透明合成、保存源重启／隐藏卸载／刷新和真实推流均待另验；没有obs-websocket远控、云视频或付费基础设施。详见[API第10节](API_CONTRACTS.md)、[TESTING](TESTING.md)及[布局证据](evidence/P06-A/README.md)。
 
 ## 备份、恢复与故障处理
 

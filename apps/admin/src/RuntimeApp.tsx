@@ -25,6 +25,7 @@ import { ApiError, createApiClient, createAuthApi } from './api/client';
 import type { ApiClient, AuthApi, AuthSession } from './api/client';
 import { createHttpEventRepository } from './api/events';
 import './runtime.css';
+import { OverlayEntry } from './overlay/Entry';
 
 const PublicViewingApp = lazy(() =>
   import('./viewing/PublicPages').then((viewing) => ({ default: viewing.PublicViewingApp })),
@@ -846,11 +847,15 @@ export default function RuntimeApp({
   mode = import.meta.env.VITE_DATA_MODE ?? 'mock',
   client,
   publicFetcher,
+  overlayFetcher,
 }: {
   mode?: string;
   client?: ApiClient;
   publicFetcher?: typeof fetch;
+  overlayFetcher?: typeof fetch;
 }) {
+  if (window.location.pathname === '/overlay' || window.location.pathname.startsWith('/overlay/'))
+    return <OverlayEntry key={window.location.pathname} fetcher={overlayFetcher} />;
   if (window.location.pathname === '/watch' || window.location.pathname.startsWith('/watch/'))
     return (
       <Suspense
