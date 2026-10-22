@@ -292,6 +292,9 @@ test('真实记分单端控制、丢响应核对、断网停写及独立确认�
     await page.reload();
     await page.getByRole('button', { name: '确认当前赛果', exact: true }).click();
     await page.getByRole('button', { name: '正式确认赛果', exact: true }).click();
+    await expect
+      .poll(async () => (await read<ScoreSnapshot>(page.request, `${matchPath}/snapshot`)).status)
+      .toBe('FINAL');
     const final = await read<ScoreSnapshot>(page.request, `${matchPath}/snapshot`);
     expect(final.status).toBe('FINAL');
     expect(final.latestConfirmation?.home.score).toBe(3);
@@ -307,6 +310,9 @@ test('真实记分单端控制、丢响应核对、断网停写及独立确认�
       .toBe(true);
     await page.getByRole('button', { name: '确认当前赛果', exact: true }).click();
     await page.getByRole('button', { name: '正式确认赛果', exact: true }).click();
+    await expect
+      .poll(async () => (await read<ScoreSnapshot>(page.request, `${matchPath}/snapshot`)).status)
+      .toBe('FINAL');
     const reconfirmed = await read<ScoreSnapshot>(page.request, `${matchPath}/snapshot`);
     expect(reconfirmed.status).toBe('FINAL');
     expect(reconfirmed.latestConfirmation?.id).not.toBe(final.latestConfirmation?.id);
