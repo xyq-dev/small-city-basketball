@@ -1,26 +1,26 @@
 # 技术架构
 
-设计版本：0.1；更新：2026-10-22；状态：P01 前端已在本地实现，P02–P06 为目标设计。P01 代码及验证配置尚未提交，交付位置 LOCAL_ONLY；远端 main 仍是文档与设计基线。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
+设计版本：0.1；更新：2026-10-22；状态：P01 前端已整合到 main，DONE / MAIN；P02 IN_PROGRESS，后端尚未验收；P03–P06 为目标设计。依赖版本以实际代码及锁文件为准，不将本文当作已部署说明。
 
 ## 1. 结构与实施边界
 
-整体目标采用 TypeScript 模块化单体。当前 P01 已在本地建立 React + Vite + TypeScript 机构后台 Mock 原型，包含工作总览、赛事列表、创建赛事和赛事详情/草稿编辑。真正的认证、数据库、租户隔离、实时记分和直播仍在后续阶段，不能以隐藏菜单、前端筛选或内存版本校验代替服务器授权。
+整体目标采用 TypeScript 模块化单体。当前 P01 已在 main 建立 React + Vite + TypeScript 机构后台 Mock 原型，包含工作总览、赛事列表、创建赛事和赛事详情/草稿编辑。真正的认证、数据库、租户隔离、实时记分和直播仍在后续阶段，不能以隐藏菜单、前端筛选或内存版本校验代替服务器授权。
 
-本轮实际分支为 `feat/P01-organizer-console`，HEAD 为文档基线 `daea629079bfabc5e77407ae58b50b4af01c1e20`，业务代码保留在 dirty 工作区。拿到该完整代码快照后按 [本地开发说明](DEVELOPMENT.md) 启动；当前远端 main 暂不具备这些命令所需的应用文件。
+P01 代码提交 `819818d2f9fcee972f4c2e7854800dc6ad2415bf` 已推送，PR #1 已合并，main 整合提交为 `f15adb456c24302ce3d41587c41301e4c3931c6c`。按 [本地开发说明](DEVELOPMENT.md) 可克隆并启动。当前文档工作区为 `feat/P02-foundation@e30bd20`，P02 契约已开始落地，独立 worktree 中的后端开发未完成验收；该任务分支不等于新的 main 交付。
 
 | 部分 | 选择 | 边界 |
 |---|---|---|
 | 小程序 | Taro + React + TypeScript | 观赛、球队、报名、个人资料 |
-| 机构后台 | React + Vite + TypeScript | P01 四页 Mock 原型已本地实现，尚未提交；真实业务服务后续接入 |
+| 机构后台 | React + Vite + TypeScript | P01 四页 Mock 原型已合并 main；真实业务服务由 P02 继续接入 |
 | 现场工作台 | React + Vite + TypeScript | 记分、赛事操作；与普通观众界面分开 |
 | 包装页面 | Web 透明页面 | OBS 浏览器源及大屏，只读公开投影 |
-| API | NestJS | 统一业务规则、授权、事务和审计 |
+| API | NestJS；P02采用pg参数化SQL | 统一业务规则、授权、事务和审计；当前开发中未验收 |
 | 数据 | PostgreSQL | 事务、版本、约束；存储真实业务事实 |
 | 文件与视频 | 后续选择对象存储、云直播及点播 | 业务保存文件元数据及授权引用，不将视频存入数据库 |
 
-本地已建立 `apps/admin`、根 npm workspace/锁文件、单元与组件测试、`tests/e2e`、Playwright 配置和待同步的 CI 工作流。`apps/admin/src/domain` 包含接口、字段验证及内存 repository；应用通过 repository 入口读取/创建/编辑演示赛事，刷新即重置，不进行真实 API 调用，也不写浏览器持久化存储。
+main 已建立 `apps/admin`、根 npm workspace/锁文件、单元与组件测试、`tests/e2e`、Playwright 配置及已通过远端运行的 CI 工作流。`apps/admin/src/domain` 包含接口、字段验证及内存 repository；应用通过 repository 入口读取/创建/编辑演示赛事，刷新即重置，不进行真实 API 调用，也不写浏览器持久化存储。
 
-其余目录仍是规划：`apps/scorekeeper`（现场工作台）、`apps/miniprogram`、`apps/api`、`apps/overlay`。`apps/admin` 后续承载机构与平台后台，当前仅机构后台原型。共享契约可放 `packages/contracts`，UI 在实际复用时才建立 `packages/ui`，目前均未建立；不预建空应用或过早拆微服务。
+`apps/api` 正在 P02 的独立 worktree 中开发，尚未完成验收；`apps/scorekeeper`（现场工作台）、`apps/miniprogram`、`apps/overlay` 仍为后续规划。`apps/admin` 后续承载机构与平台后台，当前仅机构后台原型。P02 任务分支已在 `packages/contracts` 建立会话、机构和赛事基础契约，尚不代表后端完成；`packages/ui` 仍在实际复用时再建立。不预建空应用或过早拆微服务。
 
 后端逻辑模块：Identity、Organizations、Events、Teams、Registration、Scheduling、Scoring、PublicRead、Broadcast、Entitlements、Audit。模块通过明确的应用接口调用；领域模块不依赖 HTTP 控制器、数据库 ORM 或前端组件。统一契约只放 DTO、枚举和公开类型，不打包凭据及数据库内部模型。
 

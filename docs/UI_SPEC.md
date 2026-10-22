@@ -1,6 +1,6 @@
 # 界面与交互规范
 
-更新：2026-10-22｜性质：规划与实施约束；P01已本地实现并验证，代码未同步，其余页面为规划。视觉参考见 [design/README.md](design/README.md)，业务依据见 [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)。
+更新：2026-10-22｜性质：实施约束与交付边界；P01已合并main（DONE / MAIN），远端官方Chromium E2E通过；P02接入开发中，尚未验收，其余页面按阶段规划。视觉参考见 [design/README.md](design/README.md)，业务依据见 [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)。
 
 ## 1. 统一视觉与导航
 

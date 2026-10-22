@@ -2,15 +2,25 @@
 
 更新：2026-10-22（Asia/Shanghai）。适用范围：P01 机构后台 Mock 原型。
 
-## 先确认代码交付位置
+## 已整合代码与接手基线
 
-P01 当前在本地分支 `feat/P01-organizer-console`，基线 HEAD 为 `daea629079bfabc5e77407ae58b50b4af01c1e20`，业务代码及验证配置仍是未提交改动，交付位置为 **LOCAL_ONLY**。远端 `main` 目前只有文档和设计图，不能从该分支克隆后直接执行下面的应用命令。
+P01 代码提交为 `819818d2f9fcee972f4c2e7854800dc6ad2415bf`，任务分支 `feat/P01-organizer-console` 已推送；[PR #1](https://github.com/xyq-dev/small-city-basketball/pull/1) 已合并，`main` 整合提交为 `f15adb456c24302ce3d41587c41301e4c3931c6c`。状态 **DONE / MAIN**，仓库已包含应用、锁文件和验证工作流，可克隆运行。
 
-接手时先核验实际目录、分支、HEAD、dirty 和任务交接记录。只有拿到包含 `package.json`、`package-lock.json`、`apps/admin` 和测试配置的完整代码快照，或代码获得授权并同步后，才进入以下步骤。不要用旧聊天中的路径推定用户电脑目录，也不要覆盖本地未提交实现。
+在自己选定的父目录执行：
+
+```sh
+git clone https://github.com/xyq-dev/small-city-basketball.git
+cd small-city-basketball
+git switch main
+```
+
+这是私有仓库，使用已获授权的 GitHub 身份和本机凭据；不要把凭据写进远端 URL 或聊天。已有 checkout 不重复克隆、覆盖或强制切换；先核验实际目录、分支、HEAD、dirty 和任务交接。上面的 SHA 是 P01 可复现基线，不是未来永远不变的最新 HEAD。
+
+本轮文档更新的根工作区已核验为 `feat/P02-foundation@e30bd20`，含 P02 契约初稿；后端与前端接入正通过独立 worktree 开发，尚未验收。运行稳定的 P01 时以已整合的 `main` 为准，不将活跃 P02 分支当作已交付成果。
 
 ## 环境与安装
 
-本轮验证环境：Node `24.19.0`、npm `11.9.0`。根 `package.json` 声明 Node `>=22.12.0`；这不代表已对所有满足下限的版本逐一验证。当前优先沿用 Node 24，CI 草案也配置 Node 24。
+本轮验证环境：Node `24.19.0`、npm `11.9.0`。根 `package.json` 声明 Node `>=22.12.0`；这不代表已对所有满足下限的版本逐一验证。当前优先沿用 Node 24，已执行的 CI 使用 Node 24。
 
 在实际项目根目录执行：
 
@@ -55,7 +65,7 @@ npm run build
 npm run preview --workspace @small-city-basketball/admin -- --host 127.0.0.1 --port 4173 --strictPort
 ```
 
-预览只在本机提供静态构建，不等于部署。当前没有真实服务器授权、持久化或生产可用性保证。
+预览只在本机提供静态构建，不等于部署。用户已授权项目范围内的开发及发布操作；当前尚无已验证的真实服务器部署、持久化或生产可用性。
 
 ## 端到端验证
 
@@ -66,12 +76,14 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Linux CI 草案使用 `npx playwright install --with-deps chromium`。`playwright.config.ts` 会在 `127.0.0.1:4173` 启动开发服务器；本地允许复用已有服务器，运行前应确认占用此端口的是同一代码快照，避免测到旧页面。桌面和移动两个项目都使用 Chromium；移动项目是 iPhone 13 尺寸及输入方式模拟，不能算作 Safari 或真机验收。
+已通过的 Linux CI 使用 `npx playwright install --with-deps chromium`。`playwright.config.ts` 会在 `127.0.0.1:4173` 启动开发服务器；本地允许复用已有服务器，运行前应确认占用此端口的是同一代码快照，避免测到旧页面。桌面和移动两个项目都使用 Chromium；移动项目是 iPhone 13 尺寸及输入方式模拟，不能算作 Safari 或真机验收。
 
-本轮环境中 Playwright 默认 Chromium `151` 下载被代理返回无效 ZIP，标准下载路径未成功。为完成当前验证，使用仓库外的 QA Chromium `153.0.8010.0`，通过配置已有的 `PLAYWRIGHT_EXECUTABLE_PATH` 指向该可执行文件，E2E 12/12 通过。该覆盖仅供受限环境下明确核验的本地浏览器使用，不能替代默认官方浏览器的兼容性证明；项目依赖及锁文件没有引入 QA Chromium。
+远端 [Application checks run 39728632742](https://github.com/xyq-dev/small-city-basketball/actions/runs/39728632742) / [job 119658281781](https://github.com/xyq-dev/small-city-basketball/actions/runs/39728632742/job/119658281781) 已成功完成官方 Chromium 安装和 E2E 12/12；不依赖 QA 浏览器替代路径。
+
+历史本地验证曾因代理返回无效 ZIP 而未能下载默认 Chromium `151`，随后用仓库外 QA Chromium `153.0.8010.0` 和 `PLAYWRIGHT_EXECUTABLE_PATH` 完成12项 E2E。保留该限制用于解释旧证据，不再作为官方路径未通过的当前结论。项目依赖与锁文件没有引入 QA Chromium。
 
 后续环境应优先使用上面的 Playwright 官方安装命令，不复制本机临时浏览器路径。若下载仍失败，记录错误和环境，不能把未安装视为测试通过。截图与失败 trace 位于测试输出目录；完整证据及本轮额外截图位置见 [P01 交接记录](handoffs/P01.md)。
 
 ## 后续接入边界
 
-P02–P06 尚未实现；真实 API、认证、机构隔离、数据库、Migration、记分同步、OBS 和云直播均不在当前本地运行链路中。后续按 [任务看板](TASKS.md) 逐项推进，不为启动 P01 提前搭建这些服务。
+P02 已进入 IN_PROGRESS，当前根分支包含会话与机构基础契约；真实后端、认证、机构隔离和数据库仍未完成验收。P03–P06 尚未实施；Migration、记分同步、OBS 和云直播不在 P01 的运行链路中。后续按 [任务看板](TASKS.md) 逐项推进，不为启动 P01 提前搭建这些服务。

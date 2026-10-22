@@ -6,9 +6,9 @@
 
 ## 当前状态
 
-2026-10-22：仓库 `main` 保存开发文档与设计图。P01 机构后台四页原型已在本地任务分支实现并通过验证，业务代码尚未提交或同步，不能从 `main` 启动应用。未部署，未接入真实支付、保险、认证、数据库或直播服务。
+2026-10-22：P01 机构后台四页 Mock 原型已通过 [PR #1](https://github.com/xyq-dev/small-city-basketball/pull/1) 合并到 `main`，整合提交 `f15adb456c24302ce3d41587c41301e4c3931c6c`。现在可以克隆仓库，按[开发说明](docs/DEVELOPMENT.md)安装并运行。P02 机构与赛事基础后端已开始开发，尚未完成验收；没有部署或真实支付、保险、数据库及 OBS 服务接入。
 
-本地成果包括工作总览、赛事列表、创建草稿及详情编辑；35项单测/组件测试、12项桌面与手机模拟端到端测试通过。详见 [P01 验证与截图](docs/evidence/P01/README.md)、[交接记录](docs/handoffs/P01.md)和[开发说明](docs/DEVELOPMENT.md)。这只是首阶段原型，完整项目仍需 P02–P06。
+已整合成果包括工作总览、赛事列表、创建草稿及详情编辑；[远端 Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/39728632742) 已通过安装、格式、类型、35项单测/组件测试、构建及官方 Chromium 的12项端到端检查。详见 [P01 验证与截图](docs/evidence/P01/README.md)、[交接记录](docs/handoffs/P01.md)和[开发说明](docs/DEVELOPMENT.md)。这只是首阶段原型，完整项目仍需 P02–P06。
 
 ## 首版范围
 
@@ -34,6 +34,6 @@ OBS 负责采集、导播和推流。平台提供只读的赛事比分包装页�
 - [当前状态与下一项任务](docs/CURRENT_STATUS.md)
 - [开发协作规则](AGENTS.md)
 
-**当前交付：P01 本地验收通过，等待代码同步授权与整合。** 下一阶段为机构权限和赛事基础后端；报名、排赛、记分及 OBS 依次接入。原型使用明确标注的内存 Mock 数据，刷新重置。
+**当前交付：P01 为 DONE / MAIN；当前重点为 P02，状态 IN_PROGRESS。** 用户已授权开发与仓库同步，具体边界见 `AGENTS.md`。机构权限与基础后端尚待验证，报名、排赛、记分及 OBS 依次接入。原型使用明确标注的内存 Mock 数据，刷新重置。
 
 新 AI 会话先读 `AGENTS.md`、`docs/CURRENT_STATUS.md`、`docs/TASKS.md`，再读取分配到的任务卡；不要凭旧对话判断当前进度。
