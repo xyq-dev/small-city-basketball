@@ -16,7 +16,7 @@ Migration001已在隔离测试库执行并重复运行核验；未操作生产�
 
 ## 当前重点
 
-P02 已关闭；当前 **P03-A：Web 球队、报名审核及名单冻结** 已认领，状态IN_PROGRESS / LOCAL_ONLY。API、UI和独立PG测试使用互不重叠worktree实施；共享DTO已本地提交，尚未完成源码、Migration或浏览器验收。根分支feat/P03-registration，详情见[任务卡](tasks/P03-A.md)与[检查点](handoffs/P03-A.md)。外部领队授权必须独立于机构成员，长期成员不能改写历史报名名单，提交与审核分权。P03–P06仍未完成；保险文件、微信、云直播、OBS 尚未连接，完整办赛闭环和生产部署未验收。
+P02 已关闭；当前 **P03-A：Web 球队、报名审核及名单冻结** 已提交[PR#3](https://github.com/xyq-dev/small-city-basketball/pull/3)，状态REVIEW / BRANCH_ONLY。代码dac9ebcffb69eca7f01fee9133ccb310e4c37f31，分支feat/P03-registration；本地97项检查、严格类型与两端构建通过，1440/390界面已检查。真实PG与官方浏览器正在[CI39733327804](https://github.com/xyq-dev/small-city-basketball/actions/runs/39733327804)运行，尚未验收或合并；Migration002已编写审查，执行结果待CI。主分支任务卡保留开工基线，最新代码、任务检查点及截图见PR分支；不能用P02结果替代P03。外部领队授权必须独立于机构成员，长期成员不能改写历史报名名单，提交与审核分权。P03–P06仍未完成；保险文件、微信、云直播、OBS 尚未连接，完整办赛闭环和生产部署未验收。
 
 用户已明确“全部授权你”，项目范围内开发、Git、审查后合并、测试库迁移及可用环境发布可继续，不重复索要已有授权。没有配置的生产设施、账号及付费预算不作为已有条件。
 
