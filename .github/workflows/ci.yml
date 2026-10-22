@@ -83,7 +83,7 @@ jobs:
       - run: npm ci
       - run: npm run test:integration
       - run: npm run build --workspace @small-city-basketball/api
-      - name: Capture sessions, frozen registration and published schedule
+      - name: Capture sessions, schedule, running clock and result history
         run: node scripts/check-database-restart.mjs capture
         env:
           SCB_PERSISTENCE_FILE: ${{ runner.temp }}/application-restart-state.json
@@ -99,7 +99,7 @@ jobs:
             sleep 1
           done
           exit 1
-      - name: Verify sessions, registration and schedule after restart
+      - name: Verify registration, schedule and scoring after restart
         run: node scripts/check-database-restart.mjs verify
         env:
           SCB_PERSISTENCE_FILE: ${{ runner.temp }}/application-restart-state.json

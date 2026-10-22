@@ -197,6 +197,7 @@ test('真实记分单端控制、丢响应核对、断网停写及独立确认�
     for (const value of [1, 2, 3]) await page.getByLabel(`允许${value}分`, { exact: true }).check();
     await page.getByLabel('平局处理', { exact: true }).selectOption('ALLOW_DRAW');
     await page.getByRole('button', { name: '保存记分规则', exact: true }).click();
+    await expect(page.getByText('记分规则已保存', { exact: true })).toBeVisible();
     await expect(page.getByRole('alert')).toHaveCount(0);
     await page.goto(uiPath);
     await page.getByLabel('工作人员用户ID', { exact: true }).fill(fixture.writer.user.id);
@@ -245,9 +246,7 @@ test('真实记分单端控制、丢响应核对、断网停写及独立确认�
     const afterLostAck = await read<ScoreSnapshot>(scorer, `${matchPath}/snapshot`);
     expect(afterLostAck.totals.home.score).toBe(2);
     const events = await read<ScoringEventData[]>(scorer, `${matchPath}/scoring-events?limit=100`);
-    expect(
-      events.filter((event) => event.commandId === lostCommandId && event.type === 'RECORD_STAT'),
-    ).toHaveLength(1);
+    expect(events.filter((event) => event.commandId === lostCommandId)).toHaveLength(1);
 
     progress('offline prevents new writes, reconnect retains authoritative score');
     await writerContext.setOffline(true);
