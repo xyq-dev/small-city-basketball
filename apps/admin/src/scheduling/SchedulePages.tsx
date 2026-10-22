@@ -10,7 +10,11 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
-import type { SchedulePolicy, ScheduledMatchData } from '@small-city-basketball/contracts';
+import type {
+  MatchStatus,
+  SchedulePolicy,
+  ScheduledMatchData,
+} from '@small-city-basketball/contracts';
 import type { EventRepository } from '../domain/types';
 import { EVENT_FORMAT_LABELS, EVENT_STATUS_LABELS } from '../domain/types';
 import { ApiError } from '../api/client';
@@ -26,6 +30,16 @@ import type { RegistrationWorkspace } from '../registration/shared';
 import { PolicyForm, PolicySummary } from './PolicyForm';
 import { ScheduleEditor } from './ScheduleEditor';
 import { organizationContext, SchedulingAccessRequired, timeLabel } from './shared';
+
+const matchStatusLabels: Record<MatchStatus, string> = {
+  SCHEDULED: '待准备',
+  READY: '已准备',
+  LIVE: '进行中',
+  PENDING_CONFIRMATION: '待确认',
+  FINAL: '已确认',
+  POSTPONED: '已延期',
+  CANCELLED: '已取消',
+};
 
 export function SchedulingIndexPage({
   context,
@@ -391,7 +405,7 @@ function EventSchedulingContent({
           <div className="sc-note">
             <ShieldCheck size={18} />
             <p>
-              计划占用检查不保证实际比赛准时结束。当前未接入记分、赛果、公开观赛页面或直播导播。
+              计划占用检查不保证实际比赛准时结束。记分和赛果在独立工作台处理，公开观赛与直播导播待后续接入。
             </p>
           </div>
         </>
@@ -442,6 +456,7 @@ function PublishedMatches({
                 <span className="sc-match-round">
                   第{match.roundNo}轮 · 第{match.positionNo}场
                 </span>
+                <span className="status-badge neutral">{matchStatusLabels[match.status]}</span>
                 <div className="sc-matchup">
                   <strong>{match.home.teamName}</strong>
                   <span>VS</span>
@@ -454,6 +469,7 @@ function PublishedMatches({
                     {timeLabel(match.startsAt)} — {timeLabel(match.endsAt)}
                   </span>
                 </div>
+                <Link to={`/matches/${match.id}/scoring`}>记分与赛果 →</Link>
               </article>
             ))}
         </div>

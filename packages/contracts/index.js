@@ -41,3 +41,29 @@ export const REGISTRATION_COMMANDS = Object.freeze([
 ]);
 
 export const SCHEDULE_ALGORITHM_VERSION = 'RR_CIRCLE_V1';
+
+export const MATCH_STATUSES = Object.freeze([
+  'SCHEDULED',
+  'READY',
+  'LIVE',
+  'PENDING_CONFIRMATION',
+  'FINAL',
+  'POSTPONED',
+  'CANCELLED',
+]);
+export const SCORING_COMMAND_TYPES = Object.freeze([
+  'PREPARE_MATCH',
+  'START_MATCH',
+  'RECORD_STAT',
+  'ADD_CORRECTION',
+  'VOID_STAT',
+  'REPLACE_STAT',
+  'CLOCK_START',
+  'CLOCK_PAUSE',
+  'CLOCK_SET',
+  'NEXT_PERIOD',
+  'START_OVERTIME',
+  'END_MATCH',
+  'CONFIRM_RESULT',
+  'REOPEN_RESULT',
+]);

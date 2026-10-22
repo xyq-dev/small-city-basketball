@@ -108,3 +108,8 @@ P03-A经[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并ma
 发布及Court写按session/user→org→membership→org_schedule_mutex→event（如适用）→revision→Court顺序锁定，不升级org SHARE。发布从服务器freeze与seed重算对阵和占用；同事务写publication→matches→每场1court/2team预约→revision PUBLISHED→event SCHEDULED/version→audit。revision完整性触发器及deferred提交约束阻止半份发布。双赛事争抢Court／同Team、缺mutex行首次并发、Court停用竞态、机构隔离及审计失败整体回滚均经真实PG验证。
 
 本卡只支持2–32队单回合ROUND_ROBIN、显式占用／休息／本地日期间隔及时间窗口、手工分配和一次发布。重抽新建来源、旧稿SUPERSEDED只读；没有自动排时、淘汰／分组、改期或释放预约。机构内canonical Court/Team协调不等于跨机构物理场地共享；完整P04及P05/P06仍未完成。
+
+
+## P05-A实施设计（尚未迁移）
+
+规则版本、match staff、lease/fence、append事件、projection、幂等receipt及不可变确认用独立表。published_matches只改status/version，计划及预约保持P04保护。首次READY锁规则、首场START改赛事RUNNING；取Event UPDATE从入口开始，普通命令Event SHARE，禁止升级死锁。确认锁双方Team并永久排除历史记分/时钟/更正人员。精确DDL随004实现，当前尚未编写/执行；合同见[任务卡](tasks/P05-A.md)。
