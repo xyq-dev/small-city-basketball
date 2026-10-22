@@ -69,3 +69,6 @@ export const SCORING_COMMAND_TYPES = Object.freeze([
 ]);
 export const STANDINGS_TIEBREAKERS = ['SCORE_DIFFERENCE', 'POINTS_FOR', 'WINS'];
 export const STANDINGS_ALGORITHM_VERSION = 'RR_STANDINGS_V1';
+
+export const OVERLAY_TEMPLATES = Object.freeze(['SCOREBAR_1080P_V1']);
+export const OVERLAY_COMMANDS = Object.freeze(['ISSUE', 'ROTATE', 'REVOKE']);

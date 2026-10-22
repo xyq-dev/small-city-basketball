@@ -16,7 +16,7 @@
 | P05-A | 基础在线记分、服务器时钟与独立确认 | DONE | root/API/UI/PG | P04-A | MAIN3c0bf84，PR5，CI39743710053的212/88/12+10成功；[任务卡](tasks/P05-A.md)、[交接](handoffs/P05-A.md) |
 | P05-B | 显式单循环排名与可撤销公开观赛 | DONE | root/API/UI/PG | P05-A | MAINbd38318，PR6，CI39751848322的302/106/12＋12及37表重启／清理全成功；[任务卡](tasks/P05-B.md)、[交接](handoffs/P05-B.md) |
 | P06 | OBS包装、直播与交付 | IN_PROGRESS | root集成 | P05-A/B；真实视频需配置服务与预算 | 首卡P06-A合同就绪，完整P06未交付 |
-| P06-A | 单场透明比分包装与独立只读授权 | TODO | root/API/UI/PG | P05-A/B | 合同独立审查CLEAR，无代码或原生OBS验收；[任务卡](tasks/P06-A.md)、[交接](handoffs/P06-A.md) |
+| P06-A | 单场透明比分包装与独立只读授权 | IN_PROGRESS | root/API/UI/PG | P05-A/B | 合同独立审查CLEAR，新worktree基线ca68dea；API优先DTO，LOCAL_ONLY，尚无本卡验收；[任务卡](tasks/P06-A.md)、[交接](handoffs/P06-A.md) |
 
 ## 当前顺序
 
