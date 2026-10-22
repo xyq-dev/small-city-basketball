@@ -27,6 +27,9 @@ import { SchedulingService } from './scheduling-service.js';
 import { SchedulingController } from './scheduling-controller.js';
 import { ScoringService } from './scoring-service.js';
 import { ScoringController, SCB_SCORING_SERVICE } from './scoring-controller.js';
+import { StandingsService } from './standings-service.js';
+import { StandingsController, SCB_STANDINGS_SERVICE } from './standings-controller.js';
+import { PublicViewingController } from './public-viewing-controller.js';
 import {
   RegistrationController,
   InvitationAcceptanceController,
@@ -213,6 +216,7 @@ export async function createApi(
     const service = new RegistrationService(pool, options);
     const scheduling = new SchedulingService(pool, options);
     const scoring = new ScoringService(pool, options);
+    const standings = new StandingsService(pool, options);
     @Module({
       controllers: [
         AuthController,
@@ -222,11 +226,14 @@ export async function createApi(
         InvitationAcceptanceController,
         SchedulingController,
         ScoringController,
+        StandingsController,
+        PublicViewingController,
       ],
       providers: [
         { provide: SERVICE, useValue: service },
         { provide: SCHEDULING_SERVICE, useValue: scheduling },
         { provide: SCB_SCORING_SERVICE, useValue: scoring },
+        { provide: SCB_STANDINGS_SERVICE, useValue: standings },
       ],
     })
     class ApiModule {}
