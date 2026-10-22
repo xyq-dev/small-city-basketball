@@ -14,7 +14,7 @@
 | P04-A | 单循环对阵、手工排时与一次正式发布 | DONE | Codex集成，API/UI/PG独立分工 | P03-A | MAIN9fc9b30，PR4，CI39737812114成功；[任务卡](tasks/P04-A.md)、[交接](handoffs/P04-A.md) |
 | P05 | 基础记分、赛果与观赛 | IN_PROGRESS | root集成 | P04-A | P05-A已交付；P05-B排名/公开观赛与可靠离线另卡 |
 | P05-A | 基础在线记分、服务器时钟与独立确认 | DONE | root/API/UI/PG | P04-A | MAIN3c0bf84，PR5，CI39743710053的212/88/12+10成功；[任务卡](tasks/P05-A.md)、[交接](handoffs/P05-A.md) |
-| P05-B | 显式单循环排名与可撤销公开观赛 | IN_PROGRESS | root/API/UI/PG | P05-A | 源码整合，本地300/12Mock通过；首CI106PG/实际重启通过，手机429隔离与非RR入口已修，待最终302/106/12+12 CI；[任务卡](tasks/P05-B.md)、[交接](handoffs/P05-B.md) |
+| P05-B | 显式单循环排名与可撤销公开观赛 | IN_PROGRESS | root/API/UI/PG | P05-A | 源码整合，本地300/12Mock通过；首CI106PG/实际重启通过，手机429隔离与非RR入口已修，业务302/106/12+12已过，负向checker参数修复待第四CI；[任务卡](tasks/P05-B.md)、[交接](handoffs/P05-B.md) |
 | P06 | OBS包装、直播与交付 | TODO | 未认领 | P05；真实视频需配置服务与预算 | 未实施 |
 
 

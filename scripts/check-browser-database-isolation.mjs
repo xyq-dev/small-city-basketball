@@ -57,7 +57,7 @@ try {
   assert.match(outcome.output, /unknown option.*scb-deliberate-invalid-cli-option/);
   const remaining = await pool.query(
     'SELECT datname FROM pg_database WHERE datname=ANY($1::text[])',
-    [baseName, owned],
+    [[baseName, owned]],
   );
   assert.deepEqual(
     remaining.rows.map((row) => row.datname),

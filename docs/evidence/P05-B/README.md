@@ -31,3 +31,8 @@ root新增桌面/手机真实API流程和实际PG重启扩展已写入、strict/
 ## 审查增量
 
 自动CodeReview的非RR排名入口P2已修复：两种未支持赛制显示明确非交互卡，RR导航不变；追加2前端回归。当前本地admin147、strict及build通过，既有API155源码未变，最终302源码及完整CI待新head验证。独立delta审查及新增index1440／390布局CLEAR。 新index双宽度检查仍为合成HTTP/native153；原3图无变化，无需重复旧16状态。
+
+
+## 第三CI业务全通过，附加校验待修复
+
+第三CI39750653647（7c70c159）已通过302源码、106PG、37表实际重启、12Mock和desktop6＋mobile6真实API；正常子库建删成功。唯一失败为额外负向清理检查最后的ANY($1::text[])误传2个参数，08P01；已修为单一嵌套数组，等待第四完整CI后合并。 API job119730621238：desktop6通过并DROP自建d库，mobile6通过并DROP自建m库；额外负向checker已完成故意child失败／DROP日志断言，在最终pg_database核验查询时错误。因此不能把整体job标成功，后续以第四CI为准。
