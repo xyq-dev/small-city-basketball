@@ -1,19 +1,13 @@
-export const EVENT_FORMATS = ['ROUND_ROBIN', 'GROUP_KNOCKOUT', 'SINGLE_ELIMINATION'] as const;
-
-export type EventFormat = (typeof EVENT_FORMATS)[number];
-
-export const EVENT_STATUSES = [
-  'DRAFT',
-  'REGISTRATION_OPEN',
-  'REGISTRATION_CLOSED',
-  'SCHEDULED',
-  'RUNNING',
-  'COMPLETED',
-  'ARCHIVED',
-  'CANCELLED',
-] as const;
-
-export type EventStatus = (typeof EVENT_STATUSES)[number];
+import { EVENT_FORMATS, EVENT_STATUSES } from '@small-city-basketball/contracts';
+import type {
+  CreateEventInput,
+  EventData,
+  EventFormat,
+  EventStatus,
+} from '@small-city-basketball/contracts';
+export { EVENT_FORMATS, EVENT_STATUSES };
+export type { CreateEventInput, EventFormat, EventStatus };
+export type EventRecord = EventData;
 
 export const EVENT_FORMAT_LABELS: Record<EventFormat, string> = {
   ROUND_ROBIN: '循环赛',
@@ -31,29 +25,6 @@ export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   ARCHIVED: '已归档',
   CANCELLED: '已取消',
 };
-
-export interface CreateEventInput {
-  name: string;
-  startDate: string;
-  endDate: string;
-  timezone: string;
-  venueName?: string;
-  format: EventFormat;
-}
-
-export interface EventRecord {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  timezone: string;
-  venueName: string | null;
-  format: EventFormat;
-  status: EventStatus;
-  version: number;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export interface EventFilters {
   query?: string;

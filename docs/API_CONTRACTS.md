@@ -1,6 +1,6 @@
 # API 契约
 
-目标契约：v0.1；更新：2026-10-22；状态：未实现。P01 使用本地 Mock adapter，本文路由不是已经可调用的服务；之后由相同 DTO 和用例语义替换 adapter。
+目标契约：v0.2；更新：2026-10-22。P01 Mock已整合；P02身份/机构/赛事接口在分支实现并验证中，尚未完成真实数据库验收。以下通用目标路由中P03–P06仍为规划；本轮实际边界见第5节。
 
 ## 1. 通用约定
 
@@ -77,3 +77,28 @@ type CreateEventInput = {
 关键错误码：`VALIDATION_ERROR`、`VERSION_CONFLICT`、`IDEMPOTENCY_CONFLICT`、`LEASE_REQUIRED`、`LEASE_EXPIRED`、`LEASE_HELD_BY_OTHER`、`INVALID_EVENT_STATE`、`INVALID_MATCH_STATE`、`ROSTER_LOCKED`、`RULE_CONFLICT`、`RESULT_RECONFIRMATION_REQUIRED`、`OVERLAY_GRANT_EXPIRED`。409 返回当前可读版本及可重取快照信息，不自动覆盖；客户端不能无限重试业务冲突。
 
 实时消息包含 `matchId`、`version`、`serverTime` 和有限投影。可采用 SSE 或 WebSocket，选型在 P05 定稿；有缺口、重连或模式变化时重拉完整快照。视频及 OBS 能力不成为记分命令成功的前置条件。
+
+## 5. P02 实施契约（分支中，验收随交接更新）
+
+使用 `packages/contracts` 的SessionData/EventData。事件字段沿P01，私有API的每个赛事额外返回 `permissions:{canEditDraft:boolean}`，依据该场真实授权及DRAFT计算；Mock允许省略。机构EVENT_MANAGER可能只分配某场SCORER，因此前端不能用全局角色推断编辑权；服务端再次执行动作授权。
+
+| 方法与路径 | 输入/响应与权限 |
+|---|---|
+| POST `/v1/auth/register` | `{email,password,displayName,organizationName}`，201返回SessionData并建会话；机构初始OWNER。生产默认关闭自主注册，没有邮箱验证/微信身份声明 |
+| POST `/v1/auth/login` | `{email,password}`，200返回SessionData并轮换浏览器Cookie；错误登录401通用文案 |
+| GET `/v1/auth/session` | `{user:{id,email,displayName},organizations:[{id,name,role}]}`，仅本人当前有效范围 |
+| POST `/v1/auth/logout` | 200 `data:null`，撤销当前令牌并清Cookie；无Cookie幂等退出 |
+| GET/POST `/v1/orgs/{orgId}/events` | 列表先授权裁剪，创建仅OWNER/ADMIN，初始DRAFT |
+| GET/PATCH `/v1/orgs/{orgId}/events/{id}` | OWNER/ADMIN管理本机构赛事；其他仅分配赛事可读，具体EVENT_MANAGER分配可编辑草稿；PATCH是完整CreateEventInput+expectedVersion |
+| GET `/v1/orgs/{orgId}/members` | 仅OWNER列机构成员；不返回密码哈希或会话 |
+| PUT `/v1/orgs/{orgId}/members/{userId}` | OWNER对已存在用户增改 `{role,status}`；不授予或修改OWNER，status ACTIVE/DISABLED |
+| PUT `/v1/orgs/{orgId}/events/{id}/staff/{userId}` | OWNER/ADMIN对有效机构成员增改 `{role,status}`；staff role EVENT_MANAGER/REVIEWER/SCORER/STREAMER |
+| GET `/health` | 数据库探测；只返回健康状态或固定故障文案 |
+
+列表仅接收 `q/status/limit/cursor`，省略status表示全部（不传ALL）；limit默认20、范围1–100。按createdAt/id倒序稳定分页，保留PG微秒精度；cursor绑定机构、用户及筛选。前端Http adapter依次取完分页，有后页错误时整个读取失败，不返回不完整成功结果。
+
+会话Cookie `scb.sid` 为随机256bit，HttpOnly/SameSite=Lax，生产Secure；服务端仅存SHA-256。每请求重查用户、会话、机构、成员和赛事分配，前端不保存令牌。所有POST/PUT/PATCH/DELETE（含登录注册）要求Origin精确匹配APP_ORIGIN；配置必须是HTTP(S) origin，生产必须HTTPS。P02使用同源代理，无前端直传角色或用户身份授权。
+
+密码12–128 Unicode码点，不截断；scrypt N131072/r8/p1、16字节随机盐、64字节派生键，存参数与哈希而非密码。注册和登录有数据库时间窗限流，429附Retry-After。字段失败为 `error.details.fieldErrors`，保留requestId；畸形JSON400，超限413，已知编码/媒体错误415使用固定文案，不回显请求或堆栈。未知/跨范围资源 `RESOURCE_NOT_FOUND` 404；401 `UNAUTHENTICATED/INVALID_CREDENTIALS`；其他关键码沿通用契约。
+
+P02没有删除、任意改赛事status、邮件验证、密码重置、工作人员邀请或平台管理接口。第3节的 `/v1/me*` 是后续目标入口；P02以 `/v1/auth/session` 提供当前上下文，不同时伪造两套已实现路由。

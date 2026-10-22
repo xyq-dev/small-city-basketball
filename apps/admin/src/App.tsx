@@ -46,6 +46,7 @@ import {
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import type { OrgRole } from '@small-city-basketball/contracts';
 import type { CreateEventInput, EventRecord, EventRepository, EventStatus } from './domain/types';
 import {
   EVENT_FORMAT_LABELS as formatLabels,
@@ -56,6 +57,47 @@ import { validateEventInput } from './domain/validation';
 
 const RepositoryContext = createContext<EventRepository>(eventRepository);
 const useRepository = () => useContext(RepositoryContext);
+
+export interface WorkspaceConfiguration {
+  mode: 'mock' | 'api';
+  organizationName: string;
+  userDisplayName: string;
+  role?: OrgRole;
+  organizationSwitcher?: ReactNode;
+  headerActions?: ReactNode;
+}
+const defaultWorkspace: WorkspaceConfiguration = {
+  mode: 'mock',
+  organizationName: '城市体育',
+  userDisplayName: '示例管理员',
+};
+const WorkspaceContext = createContext<WorkspaceConfiguration>(defaultWorkspace);
+const useWorkspace = () => useContext(WorkspaceContext);
+function mayCreate(workspace: WorkspaceConfiguration) {
+  return (
+    workspace.mode === 'mock' || workspace.role === 'ORG_OWNER' || workspace.role === 'ORG_ADMIN'
+  );
+}
+function mayEdit(workspace: WorkspaceConfiguration, event: EventRecord) {
+  return (
+    event.status === 'DRAFT' &&
+    (workspace.mode === 'mock' || event.permissions?.canEditDraft === true)
+  );
+}
+function CreationDenied() {
+  return (
+    <section className="panel empty-state runtime-route-denied">
+      <ShieldCheck size={30} />
+      <h1>当前身份不能创建赛事</h1>
+      <p>
+        仅机构负责人和机构管理员可以创建赛事。你可以查看已分配的赛事，编辑权限由服务器按赛事授予。
+      </p>
+      <Link className="button button-secondary" to="/events">
+        查看可见赛事
+      </Link>
+    </section>
+  );
+}
 
 const statusTone: Record<EventStatus, string> = {
   DRAFT: 'neutral',
@@ -282,25 +324,36 @@ function ErrorState({ message, onRetry }: { message: string; onRetry?: () => voi
   );
 }
 function EmptyState({ filtered = false, onClear }: { filtered?: boolean; onClear?: () => void }) {
+  const canCreate = mayCreate(useWorkspace());
   return (
     <div className="empty-state">
       <span className="empty-icon">
         <FolderOpen size={30} />
       </span>
-      <h3>{filtered ? '没有找到符合条件的赛事' : '你的第一场赛事，从这里开始'}</h3>
+      <h3>
+        {filtered
+          ? '没有找到符合条件的赛事'
+          : canCreate
+            ? '你的第一场赛事，从这里开始'
+            : '当前没有可见赛事'}
+      </h3>
       <p>
-        {filtered ? '试试其他名称或状态，也可以清空筛选。' : '创建赛事草稿，逐步完善你的办赛计划。'}
+        {filtered
+          ? '试试其他名称或状态，也可以清空筛选。'
+          : canCreate
+            ? '创建赛事草稿，逐步完善你的办赛计划。'
+            : '请等待机构管理员分配赛事，或切换到其他已获授权的机构。'}
       </p>
       {filtered ? (
         <button className="button button-secondary" onClick={onClear}>
           清空筛选
         </button>
-      ) : (
+      ) : canCreate ? (
         <Link className="button button-primary" to="/events/new">
           <Plus size={17} />
           创建赛事
         </Link>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -360,8 +413,12 @@ function EventCard({ event, index }: { event: EventRecord; index: number }) {
 }
 
 function Dashboard() {
+  const workspace = useWorkspace();
+  const api = workspace.mode === 'api';
+  const canCreate = mayCreate(workspace);
   const { events, loading, error, reload } = useEvents();
   const drafts = events.filter((event) => event.status === 'DRAFT');
+  const editableDrafts = drafts.filter((event) => mayEdit(workspace, event));
   const metrics: { label: string; value: number; icon: LucideIcon; tone: string; note: string }[] =
     [
       {
@@ -369,28 +426,28 @@ function Dashboard() {
         value: events.length,
         icon: Trophy,
         tone: 'orange',
-        note: '本次演示中的赛事',
+        note: api ? '当前机构可见赛事' : '本次演示中的赛事',
       },
       {
         label: '进行中',
         value: events.filter((e) => e.status === 'RUNNING').length,
         icon: Flag,
         tone: 'green',
-        note: '示例赛事状态',
+        note: api ? '当前赛事状态' : '示例赛事状态',
       },
       {
         label: '报名中',
         value: events.filter((e) => e.status === 'REGISTRATION_OPEN').length,
         icon: UsersRound,
         tone: 'blue',
-        note: '示例赛事状态',
+        note: api ? '当前赛事状态' : '示例赛事状态',
       },
       {
         label: '待完善草稿',
         value: drafts.length,
         icon: FileText,
         tone: 'purple',
-        note: '可以继续编辑',
+        note: api ? '按赛事授权编辑' : '可以继续编辑',
       },
     ];
   return (
@@ -399,7 +456,8 @@ function Dashboard() {
         <div>
           <div className="eyebrow">ORGANIZER WORKSPACE</div>
           <h1>
-            欢迎回来，城市体育<span className="greeting-dot">。</span>
+            欢迎回来，{workspace.organizationName}
+            <span className="greeting-dot">。</span>
           </h1>
           <p>从第一届，到每一届。把每一场比赛都办得更好。</p>
         </div>
@@ -421,8 +479,8 @@ function Dashboard() {
           </span>
           <h2>小城市，也有大主场。</h2>
           <p>从一份赛事草稿开始，让热爱有章可循。</p>
-          <Link className="button button-white" to="/events/new">
-            创建一届赛事
+          <Link className="button button-white" to={canCreate ? '/events/new' : '/events'}>
+            {canCreate ? '创建一届赛事' : '查看可见赛事'}
             <ArrowUpRight size={17} />
           </Link>
         </div>
@@ -488,13 +546,15 @@ function Dashboard() {
                 <div>
                   <strong>完善赛事草稿</strong>
                   <p>
-                    {drafts.length
-                      ? `有 ${drafts.length} 届草稿可以继续编辑`
-                      : '创建属于你的第一届赛事'}
+                    {editableDrafts.length
+                      ? `有 ${editableDrafts.length} 届草稿可以继续编辑`
+                      : canCreate
+                        ? '创建属于你的第一届赛事'
+                        : '暂无可编辑草稿，请等待赛事授权'}
                   </p>
                 </div>
               </div>
-              {drafts.slice(0, 2).map((event) => (
+              {editableDrafts.slice(0, 2).map((event) => (
                 <Link className="draft-task" key={event.id} to={`/events/${event.id}`}>
                   <span>
                     <FileText size={16} />
@@ -503,13 +563,17 @@ function Dashboard() {
                   <ChevronRight size={16} />
                 </Link>
               ))}
-              <Link
-                className="button button-secondary button-full"
-                to={drafts[0] ? `/events/${drafts[0].id}` : '/events/new'}
-              >
-                {drafts.length ? '继续完善' : '创建赛事'}
-                <ArrowRight size={15} />
-              </Link>
+              {editableDrafts.length > 0 || canCreate ? (
+                <Link
+                  className="button button-secondary button-full"
+                  to={editableDrafts[0] ? `/events/${editableDrafts[0].id}` : '/events/new'}
+                >
+                  {editableDrafts.length ? '继续完善' : '创建赛事'}
+                  <ArrowRight size={15} />
+                </Link>
+              ) : (
+                <p className="runtime-readonly">当前角色不可创建赛事；仅能编辑明确授权的草稿。</p>
+              )}
               <div className="small-note">
                 <Info size={14} />
                 当前开放赛事草稿创建与编辑
@@ -546,6 +610,7 @@ function Dashboard() {
 }
 
 function EventsPage() {
+  const workspace = useWorkspace();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<EventStatus | 'ALL'>('ALL');
   const { events, loading, error, reload } = useEvents(query, status);
@@ -562,11 +627,18 @@ function EventsPage() {
           <h1>赛事管理</h1>
           <p>把每一届赛事安排妥当，让每一个主场被看见。</p>
         </div>
-        <Link className="button button-primary" to="/events/new">
-          <Plus size={18} />
-          创建赛事
-        </Link>
+        {mayCreate(workspace) && (
+          <Link className="button button-primary" to="/events/new">
+            <Plus size={18} />
+            创建赛事
+          </Link>
+        )}
       </div>
+      {workspace.mode === 'api' && !mayCreate(workspace) && (
+        <p className="runtime-readonly">
+          当前身份不能创建赛事；仅可查看分配的赛事，草稿编辑以每场授权为准。
+        </p>
+      )}
       <section className="panel events-panel">
         <div className="list-toolbar">
           <div className="list-toolbar-title">
@@ -642,7 +714,10 @@ function EventsPage() {
                     </span>
                     <div>
                       <Link to={`/events/${event.id}`}>{event.name}</Link>
-                      <span className="event-subtitle">城市体育 · 演示赛事</span>
+                      <span className="event-subtitle">
+                        {workspace.organizationName} ·{' '}
+                        {workspace.mode === 'api' ? '机构赛事' : '演示赛事'}
+                      </span>
                     </div>
                   </div>
                   <div className="table-dates">
@@ -672,7 +747,7 @@ function EventsPage() {
               </span>
               <span>
                 <ShieldCheck size={14} />
-                演示数据，仅本次会话有效
+                {workspace.mode === 'api' ? '业务服务保存，刷新保留' : '演示数据，仅本次会话有效'}
               </span>
             </div>
           </>
@@ -945,6 +1020,7 @@ function EventForm({
 }
 
 function NewEventPage() {
+  const workspace = useWorkspace();
   const repository = useRepository();
   const navigate = useNavigate();
   const requestGeneration = useRef(0);
@@ -955,12 +1031,15 @@ function NewEventPage() {
     };
   }, [repository]);
   async function save(input: CreateEventInput) {
+    if (!mayCreate(workspace))
+      throw new AppError('INVALID_EVENT_STATE', '当前身份没有创建赛事的权限');
     const generation = requestGeneration.current;
     const event = await repository.create(input);
     if (generation === requestGeneration.current) {
       navigate(`/events/${event.id}`, { state: { created: true } });
     }
   }
+  if (!mayCreate(workspace)) return <CreationDenied />;
   return (
     <>
       <Link className="back-link" to="/events">
@@ -984,6 +1063,7 @@ function NewEventPage() {
 }
 
 function EventDetailPage() {
+  const workspace = useWorkspace();
   const { id = '' } = useParams();
   const repository = useRepository();
   const location = useLocation();
@@ -1025,6 +1105,8 @@ function EventDetailPage() {
   }, [id, repository, revision]);
   async function save(input: CreateEventInput) {
     if (!event) return;
+    if (!mayEdit(workspace, event))
+      throw new AppError('INVALID_EVENT_STATE', '当前身份没有编辑此草稿的权限');
     const generation = requestGeneration.current;
     const updated = await repository.updateDraft(event.id, input, event.version);
     if (generation !== requestGeneration.current) return;
@@ -1052,7 +1134,11 @@ function EventDetailPage() {
                 <Search size={28} />
               </span>
               <h1>没有找到这届赛事</h1>
-              <p>赛事可能不存在，或演示数据已在刷新后重置。</p>
+              <p>
+                {workspace.mode === 'api'
+                  ? '赛事不存在，或当前身份没有访问此赛事的权限。'
+                  : '赛事可能不存在，或演示数据已在刷新后重置。'}
+              </p>
               <Link className="button button-primary" to="/events">
                 查看赛事列表
               </Link>
@@ -1066,7 +1152,7 @@ function EventDetailPage() {
         </div>
       </>
     );
-  if (editing)
+  if (editing && mayEdit(workspace, event))
     return (
       <>
         <button className="back-link" onClick={() => setEditing(false)}>
@@ -1113,7 +1199,7 @@ function EventDetailPage() {
         <div className="detail-hero-copy">
           <div className="detail-kicker">
             <Trophy size={15} />
-            城市体育 <span>·</span> 赛事管理
+            {workspace.organizationName} <span>·</span> 赛事管理
           </div>
           <h1>{event.name}</h1>
           <div className="detail-hero-meta">
@@ -1138,7 +1224,7 @@ function EventDetailPage() {
       <div className="detail-grid">
         <section className="panel detail-info">
           <SectionTitle title="赛事基本信息">
-            {event.status === 'DRAFT' && (
+            {mayEdit(workspace, event) && (
               <button
                 className="button button-secondary button-small"
                 onClick={() => {
@@ -1189,10 +1275,16 @@ function EventDetailPage() {
               <dd>v{event.version}</dd>
             </div>
           </dl>
-          {event.status !== 'DRAFT' && (
+          {!mayEdit(workspace, event) && (
             <div className="readonly-note">
               <Info size={16} />
-              <p>此为非草稿示例赛事，当前原型仅允许编辑草稿。正式状态流转将在后续接入。</p>
+              <p>
+                {workspace.mode === 'api'
+                  ? event.status === 'DRAFT'
+                    ? '当前身份仅可查看此赛事，没有编辑草稿的权限。'
+                    : '当前赛事不是草稿，仅可查看资料。正式状态流转将在后续开放。'
+                  : '此为非草稿示例赛事，当前原型仅允许编辑草稿。正式状态流转将在后续接入。'}
+              </p>
             </div>
           )}
         </section>
@@ -1205,7 +1297,13 @@ function EventDetailPage() {
               </span>
               <div>
                 <strong>赛事基本信息</strong>
-                <p>{event.status === 'DRAFT' ? '草稿已保存，可继续编辑' : '示例资料，只读展示'}</p>
+                <p>
+                  {mayEdit(workspace, event)
+                    ? '草稿已保存，可继续编辑'
+                    : workspace.mode === 'api'
+                      ? '机构资料，只读展示'
+                      : '示例资料，只读展示'}
+                </p>
               </div>
               <span className="prepared-tag">可体验</span>
             </div>
@@ -1227,7 +1325,11 @@ function EventDetailPage() {
           </section>
           <div className="mini-callout">
             <Info size={19} />
-            <p>本次演示数据保存在内存中，刷新页面后重置。保存草稿不会产生费用。</p>
+            <p>
+              {workspace.mode === 'api'
+                ? '赛事资料已由业务服务保存，刷新页面后保留。当前未接入收费、直播或保险购买。'
+                : '本次演示数据保存在内存中，刷新页面后重置。保存草稿不会产生费用。'}
+            </p>
           </div>
         </aside>
       </div>
@@ -1323,6 +1425,8 @@ const primaryNav: { label: string; to: string; icon: LucideIcon; planned?: boole
 ];
 
 function WorkspaceLayout() {
+  const workspace = useWorkspace();
+  const api = workspace.mode === 'api';
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -1372,7 +1476,7 @@ function WorkspaceLayout() {
     }
   }
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${api ? 'api-mode' : ''}`}>
       <a className="skip-link" href="#main-content">
         跳转至主要内容
       </a>
@@ -1418,12 +1522,16 @@ function WorkspaceLayout() {
           </button>
         </div>
         <div className="org-switcher">
-          <span className="org-avatar">城</span>
-          <div>
-            <strong>城市体育</strong>
-            <small>示例机构</small>
-          </div>
-          <span className="org-demo-label">演示</span>
+          {workspace.organizationSwitcher ?? (
+            <>
+              <span className="org-avatar">{Array.from(workspace.organizationName)[0]}</span>
+              <div>
+                <strong>{workspace.organizationName}</strong>
+                <small>{api ? '当前机构' : '示例机构'}</small>
+              </div>
+              <span className="org-demo-label">{api ? '业务服务' : '演示'}</span>
+            </>
+          )}
         </div>
         <div className="nav-label">机构工作台</div>
         <nav aria-label="主要导航">
@@ -1477,22 +1585,26 @@ function WorkspaceLayout() {
           <div className="topbar-right">
             <span className="demo-badge">
               <span />
-              演示模式
+              {api ? '本地 API' : '演示模式'}
             </span>
             <div className="topbar-divider" />
             <div className="user-profile">
               <span className="user-avatar">管</span>
-              <span>示例管理员</span>
+              <span>{workspace.userDisplayName}</span>
             </div>
+            {workspace.headerActions}
           </div>
         </header>
         <div className="demo-notice">
           <Info size={15} />
           <span>
-            <strong>演示模式 · Mock 数据</strong>
-            <span className="notice-separator">—</span>本次演示数据保存在内存中，刷新页面后重置。
+            <strong>{api ? '业务服务 · 数据持久保存' : '演示模式 · Mock 数据'}</strong>
+            <span className="notice-separator">—</span>
+            {api
+              ? '赛事数据通过本地 API 保存，刷新后保留；直播等后续模块尚未接入。'
+              : '本次演示数据保存在内存中，刷新页面后重置。'}
           </span>
-          <span className="notice-stage">P01 · 前端原型</span>
+          <span className="notice-stage">{api ? 'P02 · 机构工作台' : 'P01 · 前端原型'}</span>
         </div>
         <main className="main-content" id="main-content" tabIndex={-1}>
           <Routes>
@@ -1510,7 +1622,9 @@ function WorkspaceLayout() {
           </span>
           <span>
             <ShieldCheck size={13} />
-            当前为前端演示，尚无真实登录与权限服务
+            {api
+              ? '本地 API 与权限校验已接入，尚未部署生产服务'
+              : '当前为前端演示，尚无真实登录与权限服务'}
           </span>
         </footer>
       </div>
@@ -1518,12 +1632,20 @@ function WorkspaceLayout() {
   );
 }
 
-export default function App({ repository = eventRepository }: { repository?: EventRepository }) {
+export default function App({
+  repository = eventRepository,
+  workspace = defaultWorkspace,
+}: {
+  repository?: EventRepository;
+  workspace?: WorkspaceConfiguration;
+}) {
   return (
     <RepositoryContext.Provider value={repository}>
-      <BrowserRouter>
-        <WorkspaceLayout />
-      </BrowserRouter>
+      <WorkspaceContext.Provider value={workspace}>
+        <BrowserRouter>
+          <WorkspaceLayout />
+        </BrowserRouter>
+      </WorkspaceContext.Provider>
     </RepositoryContext.Provider>
   );
 }
