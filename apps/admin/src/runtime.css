@@ -1,0 +1,296 @@
+.runtime-auth-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 45% 55%;
+  background: #f5f7fa;
+}
+.runtime-auth-intro {
+  background: radial-gradient(circle at 90% 20%, #294d68, transparent 55%), #132c49;
+  padding: 48px 12%;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100vh;
+}
+.runtime-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 24px;
+  font-weight: 750;
+}
+.runtime-auth-brand svg {
+  color: #ff8a53;
+}
+.runtime-kicker {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: #a8bdcf;
+}
+.runtime-auth-intro h1 {
+  font-size: 50px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  margin: 18px 0;
+}
+.runtime-auth-intro p {
+  color: #b0c3d4;
+  font-size: 16px;
+  line-height: 1.9;
+}
+.runtime-auth-foot {
+  font-size: 12px;
+  color: #a8bdcf;
+}
+.runtime-auth-main {
+  display: grid;
+  place-items: center;
+  padding: 48px 30px;
+}
+.runtime-auth-card {
+  width: min(100%, 420px);
+}
+.runtime-connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #527b64;
+  background: #e9f4ed;
+  padding: 6px 10px;
+  border-radius: 5px;
+  margin-bottom: 24px;
+}
+.runtime-connection > span {
+  width: 5px;
+  height: 5px;
+  background: #5d9976;
+  border-radius: 50%;
+}
+.runtime-auth-card h2 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+.runtime-auth-card > p {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 25px;
+}
+.runtime-auth-card form {
+  display: flex;
+  flex-direction: column;
+}
+.runtime-auth-card label {
+  font-size: 14px;
+  color: #40566c;
+  margin: 16px 0 9px;
+}
+.runtime-auth-card input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #d9e3ec;
+  border-radius: 6px;
+  background: #fff;
+  color: #304960;
+  padding: 10px 13px;
+  font-size: 16px;
+}
+.runtime-auth-card form > .button {
+  margin-top: 25px;
+  width: 100%;
+  min-height: 46px;
+}
+.runtime-auth-toggle {
+  display: block;
+  min-height: 44px;
+  margin: 14px auto 20px;
+  background: transparent;
+  color: #b25c35;
+  font-size: 13px;
+}
+.runtime-auth-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.8;
+  border-top: 1px solid #e0e7ed;
+  padding-top: 20px;
+}
+.runtime-auth-note svg {
+  margin-top: 3px;
+}
+.runtime-input-hint {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 8px;
+  line-height: 1.8;
+}
+.runtime-field-error {
+  font-size: 12px;
+  color: #b44a3c;
+  margin-top: 7px;
+}
+.runtime-error {
+  margin-top: 19px;
+  padding: 12px 14px;
+  border: 1px solid #efd2c7;
+  background: #fff5ef;
+  color: #a65537;
+  border-radius: 6px;
+  line-height: 1.7;
+  font-size: 13px;
+}
+.runtime-state {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  gap: 19px;
+  padding: 35px;
+  color: #64748b;
+}
+.runtime-state h1 {
+  font-size: 25px;
+  color: #24415b;
+}
+.runtime-state p {
+  max-width: 520px;
+  font-size: 14px;
+}
+.runtime-state > .button {
+  margin-top: 6px;
+}
+.runtime-org {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  width: 100%;
+}
+.runtime-org > label {
+  min-width: 0;
+  flex: 1;
+}
+.runtime-org select {
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  border: 0;
+  background: #18344f;
+  color: #f3f7fb;
+  font-size: 13px;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  text-overflow: ellipsis;
+}
+.runtime-org small {
+  display: block;
+  font-size: 11px;
+  color: #a4b9cd;
+  margin: 4px 0 0 4px;
+}
+.runtime-logout {
+  margin-left: 3px;
+  font-size: 12px;
+}
+.runtime-global-error {
+  position: fixed;
+  right: 25px;
+  bottom: 22px;
+  max-width: min(420px, calc(100vw - 40px));
+  z-index: 50;
+  background: #fff4ed;
+  color: #a65537;
+  border: 1px solid #ebcdbc;
+  border-radius: 7px;
+  padding: 14px 18px;
+  box-shadow: 0 5px 20px #132c4910;
+  font-size: 13px;
+}
+.runtime-readonly {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.8;
+  padding: 14px 22px;
+}
+.runtime-route-denied {
+  padding: 45px 25px;
+}
+.runtime-route-denied h1 {
+  font-size: 23px;
+}
+.runtime-route-denied p {
+  margin: 15px auto 22px;
+  font-size: 14px;
+  color: #64748b;
+  max-width: 480px;
+}
+.runtime-route-denied .button {
+  font-size: 14px;
+}
+.api-mode .demo-notice {
+  background: #eef6f2;
+  border-bottom-color: #dbe8df;
+  color: #527762;
+}
+.api-mode .demo-notice strong {
+  color: #3f6c51;
+}
+.api-mode .demo-notice > svg {
+  color: #5e8a6d;
+}
+.api-mode .notice-stage {
+  color: #668172;
+}
+@media (max-width: 850px) {
+  .runtime-auth-shell {
+    grid-template-columns: 1fr;
+  }
+  .runtime-auth-intro {
+    min-height: 0;
+    padding: 28px 30px 30px;
+    gap: 22px;
+  }
+  .runtime-auth-intro h1 {
+    font-size: 31px;
+    margin: 12px 0;
+    line-height: 1.4;
+  }
+  .runtime-auth-intro h1 br {
+    display: none;
+  }
+  .runtime-auth-intro p {
+    font-size: 13px;
+  }
+  .runtime-auth-brand {
+    font-size: 21px;
+  }
+  .runtime-auth-foot {
+    display: none;
+  }
+  .runtime-auth-main {
+    padding: 32px 23px 40px;
+  }
+  .runtime-auth-card h2 {
+    font-size: 25px;
+  }
+  .runtime-auth-card form > .button {
+    font-size: 14px;
+  }
+  .runtime-connection {
+    margin-bottom: 18px;
+  }
+  .runtime-logout {
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .runtime-org select {
+    font-size: 16px;
+  }
+}

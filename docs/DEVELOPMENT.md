@@ -76,7 +76,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-已通过的 Linux CI 使用 `npx playwright install --with-deps chromium`。`playwright.config.ts` 会在 `127.0.0.1:4173` 启动开发服务器；本地允许复用已有服务器，运行前应确认占用此端口的是同一代码快照，避免测到旧页面。桌面和移动两个项目都使用 Chromium；移动项目是 iPhone 13 尺寸及输入方式模拟，不能算作 Safari 或真机验收。
+已通过的 Linux CI 使用 `npx playwright install --with-deps chromium`。`playwright.config.ts` 会在 `127.0.0.1:4173` 启动开发服务器；当前P02分支已显式固定Mock浏览器测试的模式并禁止复用其他服务器，避免读到API模式或旧页面；端口冲突时报告错误，不自动关闭其他服务。桌面和移动两个项目都使用 Chromium；移动项目是 iPhone 13 尺寸及输入方式模拟，不能算作 Safari 或真机验收。
 
 远端 [Application checks run 39728632742](https://github.com/xyq-dev/small-city-basketball/actions/runs/39728632742) / [job 119658281781](https://github.com/xyq-dev/small-city-basketball/actions/runs/39728632742/job/119658281781) 已成功完成官方 Chromium 安装和 E2E 12/12；不依赖 QA 浏览器替代路径。
 
@@ -87,3 +87,20 @@ npm run test:e2e
 ## 后续接入边界
 
 P02 已进入 IN_PROGRESS，当前根分支包含会话与机构基础契约；真实后端、认证、机构隔离和数据库仍未完成验收。P03–P06 尚未实施；Migration、记分同步、OBS 和云直播不在 P01 的运行链路中。后续按 [任务看板](TASKS.md) 逐项推进，不为启动 P01 提前搭建这些服务。
+
+## P02 分支运行方式（待真实数据库CI验收）
+
+只有包含P02代码的任务分支或整合后的main才有以下脚本。准备Node24及Docker，复制 `.env.example` 为 `.env`，修改两个密码占位值，并保持DATABASE_URL内密码与POSTGRES_PASSWORD一致。不要提交.env；当前容器无Docker，以下Compose启动步骤尚未在本机执行。
+
+```sh
+npm ci
+docker compose up -d postgres
+npm run db:migrate
+npm run dev:api
+```
+
+另一个终端运行 `npm run dev:admin`；根.env中的VITE_DATA_MODE=api通过同源代理访问业务服务。API默认127.0.0.1:3000，前端默认127.0.0.1:5173，APP_ORIGIN须与实际浏览器origin精确一致。更改API端口时同步API_PROXY_TARGET；环境加载不把数据库凭据打入前端包。
+
+在登录页创建机构账号即可建立自己的空赛事空间。可选执行 `npm run db:seed`，必须先显式设置DEV_SEED_PASSWORD，仅生成合成开发资料，不清库或重置已有密码。API启动不自动迁移或seed。生产默认关闭自主注册并要求HTTPS/Secure Cookie，当前没有生产部署。
+
+`npm test`仅本地纯逻辑/组件/无需DB的HTTP检查。`npm run test:integration`要求真实PostgreSQL的TEST_DATABASE_URL，数据库名必须scb_test_开头；`npm run test:api:e2e`使用另一个隔离DATABASE_URL，先迁移再启动两端，APP_ORIGIN固定http://127.0.0.1:4273。不要把这些检查指向真实业务库；执行结果见[P02交接](handoffs/P02.md)。

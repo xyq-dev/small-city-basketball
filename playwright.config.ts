@@ -29,7 +29,8 @@ export default defineConfig({
     command:
       'npm run dev --workspace @small-city-basketball/admin -- --host 127.0.0.1 --port 4173 --strictPort',
     url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
+    env: { VITE_DATA_MODE: 'mock' },
+    reuseExistingServer: false,
     timeout: 30000,
   },
 });

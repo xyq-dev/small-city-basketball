@@ -3,7 +3,27 @@ name: Application checks
 on:
   push:
     branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'package*.json'
+      - 'playwright*.ts'
+      - '.github/workflows/**'
+      - '.prettier*'
+      - 'compose.yaml'
   pull_request:
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'package*.json'
+      - 'playwright*.ts'
+      - '.github/workflows/**'
+      - '.prettier*'
+      - 'compose.yaml'
 
 permissions:
   contents: read
@@ -31,3 +51,59 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.6-alpine3.24
+        env:
+          POSTGRES_USER: scb
+          POSTGRES_PASSWORD: ci-isolated-test-password
+          POSTGRES_DB: scb_test_p02
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scb -d scb_test_p02"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://scb:ci-isolated-test-password@127.0.0.1:5432/scb_test_p02
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:integration
+      - run: npm run build --workspace @small-city-basketball/api
+      - name: Capture persisted API session and event
+        run: node scripts/check-database-restart.mjs capture
+        env:
+          SCB_PERSISTENCE_FILE: ${{ runner.temp }}/p02-restart-state.json
+      - name: Restart isolated PostgreSQL
+        env:
+          SCB_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker restart "$SCB_POSTGRES_CONTAINER"
+          for attempt in $(seq 1 30); do
+            if docker exec "$SCB_POSTGRES_CONTAINER" pg_isready -U scb -d scb_test_p02; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+      - name: Verify persisted API session and event after restart
+        run: node scripts/check-database-restart.mjs verify
+        env:
+          SCB_PERSISTENCE_FILE: ${{ runner.temp }}/p02-restart-state.json
+      - name: Create isolated browser test database
+        run: node --input-type=module -e "import pg from 'pg'; const p=new pg.Pool({connectionString:process.env.TEST_DATABASE_URL}); try { await p.query('CREATE DATABASE scb_test_p02_e2e'); } finally { await p.end(); }"
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:api:e2e
+        env:
+          DATABASE_URL: postgresql://scb:ci-isolated-test-password@127.0.0.1:5432/scb_test_p02_e2e
