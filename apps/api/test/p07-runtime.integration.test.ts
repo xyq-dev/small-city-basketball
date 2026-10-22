@@ -299,6 +299,11 @@ describe('P07 real PostgreSQL audited runtime and backup identities', () => {
       'SELECT * FROM public.audit_logs',
       'DELETE FROM public.users',
       'UPDATE public.events SET created_by=created_by',
+      'UPDATE public.published_matches SET home_team_name=home_team_name',
+      'UPDATE public.match_reschedules SET reason=reason',
+      'DELETE FROM public.match_reschedules',
+      'DELETE FROM public.court_reservations',
+      'UPDATE public.team_reservations SET team_id=team_id',
       'SET ROLE scb_migrator',
       'CREATE ROLE p07_forbidden',
       'ALTER ROLE scb_runtime SUPERUSER',
@@ -318,7 +323,7 @@ describe('P07 real PostgreSQL audited runtime and backup identities', () => {
     });
   });
 
-  test('the backup identity reads all 39 tables but cannot lock, write or change schema', async () => {
+  test('the backup identity reads all 40 tables but cannot lock, write or change schema', async () => {
     const manifest = await loadManifest();
     for (const name of Object.keys(manifest.tables)) {
       await expect(backup.query(`SELECT 1 FROM public."${name}" LIMIT 1`)).resolves.toBeDefined();

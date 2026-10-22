@@ -102,4 +102,19 @@ export class SchedulingController {
     const result = await this.service.listMatches(r.headers.cookie, org, id, q);
     return envelope(r, result.data, { nextCursor: result.nextCursor });
   }
+  @Get('matches/:matchId/rescheduling') async rescheduling(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Param('matchId') id: string,
+  ) {
+    return envelope(r, await this.service.getRescheduling(r.headers.cookie, org, id));
+  }
+  @Post('matches/:matchId/reschedule-commands') @HttpCode(200) async reschedule(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Param('matchId') id: string,
+    @Body() body: unknown,
+  ) {
+    return envelope(r, await this.service.rescheduleMatch(r.headers.cookie, org, id, body));
+  }
 }

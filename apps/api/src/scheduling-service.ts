@@ -4,6 +4,9 @@ import type {
   CourtData,
   EventData,
   EventSchedulingData,
+  MatchReschedulePlan,
+  MatchRescheduleRecord,
+  MatchReschedulingData,
   RegistrationFreezeData,
   ScheduleFixtureData,
   SchedulePublicationData,
@@ -26,6 +29,15 @@ import {
   publicationHash,
   validateSchedule,
 } from './scheduling-domain.js';
+import {
+  canRescheduleMatch,
+  currentFixture,
+  parseRescheduleCommand,
+  reschedulePlan,
+  targetConflicts,
+} from './rescheduling-domain.js';
+
+type MatchRow = Record<string, any>;
 
 interface EventAccess {
   row: EventRow & { current_schedule_revision_id: string | null };
@@ -867,7 +879,7 @@ export class SchedulingService extends ApplicationService {
     return this.transaction(async (client) => {
       const ctx = await this.context(client, cookie, org);
       const event = await this.event(client, ctx, eventId, false);
-      const scope = `matches:${ctx.orgId}:${ctx.user.id}:${event.row.id}`;
+      const scope = `matches:${ctx.orgId}:${ctx.user.id}:${event.row.id}:${event.row.version}`;
       const cur = this.cursor(query, scope);
       const result = await client.query(
         `SELECT m.*,to_char(starts_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at FROM published_matches m WHERE org_id=$1 AND event_id=$2 AND ($3::timestamptz IS NULL OR (starts_at,id)>($3::timestamptz,$4::uuid)) ORDER BY starts_at,id LIMIT $5`,
@@ -901,5 +913,279 @@ export class SchedulingService extends ApplicationService {
       }));
       return { data, nextCursor: this.next(result.rows, query.limit, scope) };
     });
+  }
+
+  private matchDto(r: MatchRow): ScheduledMatchData {
+    return {
+      id: r.id,
+      eventId: r.event_id,
+      publicationId: r.publication_id,
+      fixtureKey: r.fixture_key,
+      roundNo: r.round_no,
+      positionNo: r.position_no,
+      home: {
+        entryId: r.home_entry_id,
+        teamId: r.home_team_id,
+        teamName: r.home_team_name,
+        rosterRevisionId: r.home_roster_revision_id,
+      },
+      away: {
+        entryId: r.away_entry_id,
+        teamId: r.away_team_id,
+        teamName: r.away_team_name,
+        rosterRevisionId: r.away_roster_revision_id,
+      },
+      courtId: r.court_id,
+      courtName: r.court_name,
+      startsAt: r.starts_at.toISOString(),
+      endsAt: r.ends_at.toISOString(),
+      status: r.status,
+      version: r.version,
+    };
+  }
+
+  private async reschedulingAccess(
+    c: PoolClient,
+    ctx: OrgActor,
+    matchId: string,
+    writing: boolean,
+  ) {
+    const reference = await c.query<{ event_id: string }>(
+      'SELECT event_id FROM published_matches WHERE org_id=$1 AND id=$2',
+      [ctx.orgId, resourceId(matchId)],
+    );
+    if (!reference.rows[0]) throw notFound();
+    const event = await this.event(c, ctx, reference.rows[0].event_id, writing);
+    const match = (
+      await c.query<MatchRow>(
+        `SELECT * FROM published_matches WHERE org_id=$1 AND event_id=$2 AND id=$3 FOR ${writing ? 'UPDATE' : 'SHARE'}`,
+        [ctx.orgId, event.row.id, matchId],
+      )
+    ).rows[0];
+    if (!match) throw notFound();
+    const revision = (
+      await c.query<RevisionRow>(
+        "SELECT * FROM schedule_revisions WHERE org_id=$1 AND event_id=$2 AND id=$3 AND status='PUBLISHED' FOR SHARE",
+        [ctx.orgId, event.row.id, match.revision_id],
+      )
+    ).rows[0];
+    if (!revision || event.row.current_schedule_revision_id !== revision.id)
+      business('SCHEDULE_SOURCE_MISMATCH', '正式赛程来源校验失败');
+    return { event, match, revision: revision! };
+  }
+
+  private async reschedulingState(c: PoolClient, org: string, match: MatchRow, writing = false) {
+    const started =
+      (
+        await c.query(
+          "SELECT 1 FROM scoring_events WHERE org_id=$1 AND match_id=$2 AND type='START_MATCH' LIMIT 1",
+          [org, match.id],
+        )
+      ).rowCount! > 0;
+    const state = (
+      await c.query<MatchRow>(
+        `SELECT * FROM scoring_states WHERE org_id=$1 AND match_id=$2 FOR ${writing ? 'UPDATE' : 'SHARE'}`,
+        [org, match.id],
+      )
+    ).rows[0];
+    const sourceValid =
+      match.status === 'SCHEDULED'
+        ? !state
+        : match.status === 'READY'
+          ? !!state && state.source_version === match.version && state.clock_running === false
+          : false;
+    return { started, sourceValid };
+  }
+
+  private async reschedulingDto(
+    c: PoolClient,
+    ctx: OrgActor,
+    access: Awaited<ReturnType<SchedulingService['reschedulingAccess']>>,
+  ): Promise<MatchReschedulingData> {
+    const { event, match, revision } = access;
+    const rows = (
+      await c.query<MatchRow>(
+        'SELECT * FROM match_reschedules WHERE org_id=$1 AND event_id=$2 AND match_id=$3 ORDER BY to_match_version DESC LIMIT 21',
+        [ctx.orgId, event.row.id, match.id],
+      )
+    ).rows;
+    const plan = (r: MatchRow, prefix: 'old' | 'new'): MatchReschedulePlan => ({
+      courtId: r[`${prefix}_court_id`],
+      courtName: r[`${prefix}_court_name`],
+      startsAt: r[`${prefix}_starts_at`].toISOString(),
+      endsAt: r[`${prefix}_ends_at`].toISOString(),
+    });
+    const history: MatchRescheduleRecord[] = rows.slice(0, 20).map((r) => ({
+      id: r.id,
+      fromMatchVersion: r.from_match_version,
+      toMatchVersion: r.to_match_version,
+      from: plan(r, 'old'),
+      to: plan(r, 'new'),
+      reason: r.reason,
+      createdAt: r.created_at.toISOString(),
+    }));
+    const state = await this.reschedulingState(c, ctx.orgId, match);
+    return {
+      event: this.dtoEvent(event),
+      match: this.matchDto(match),
+      policy: revision.policy,
+      history,
+      historyLimit: 20,
+      historyTruncated: rows.length > 20,
+      capabilities: {
+        canReschedule:
+          event.canManage &&
+          state.sourceValid &&
+          canRescheduleMatch(event.row.status, match.status, state.started),
+      },
+    };
+  }
+
+  async getRescheduling(cookie: string | undefined, org: string, matchId: string) {
+    return this.transaction(async (c) => {
+      const ctx = await this.context(c, cookie, org);
+      const access = await this.reschedulingAccess(c, ctx, matchId, false);
+      await this.ensureFreshSession(c, ctx);
+      return this.reschedulingDto(c, ctx, access);
+    });
+  }
+
+  async rescheduleMatch(cookie: string | undefined, org: string, matchId: string, raw: unknown) {
+    const command = parseRescheduleCommand(raw);
+    try {
+      return await this.transaction(async (c) => {
+        const ctx = await this.context(c, cookie, org);
+        await this.mutex(c, ctx.orgId);
+        const access = await this.reschedulingAccess(c, ctx, matchId, true);
+        const { event, match, revision } = access;
+        if (!event.canManage) throw forbidden();
+        checkVersion(event.row.version, command.expectedEventVersion);
+        checkVersion(match.version, command.expectedMatchVersion);
+        if (!['SCHEDULED', 'RUNNING'].includes(event.row.status))
+          business('INVALID_EVENT_STATE', '赛事当前不能改期', 409);
+        const state = await this.reschedulingState(c, ctx.orgId, match, true);
+        if (!canRescheduleMatch(event.row.status, match.status, state.started))
+          business('MATCH_CANNOT_RESCHEDULE', '仅尚未开始的正式比赛可以改期', 409);
+        if (!state.sourceValid)
+          business('RESCHEDULE_SOURCE_INVALID', '当前记分来源无法校验，请联系赛事管理员', 409);
+        const current = this.matchDto(match);
+        const courts = await this.courts(c, ctx.orgId, [
+          command.courtId,
+          ...revision.policy.courtWindows.map((window) => window.courtId),
+        ]);
+        const targetCourt = courts.find((court) => court.id === command.courtId)!;
+        const next = reschedulePlan(current, command, revision.policy, targetCourt.name);
+        const frozen = await this.freeze(c, ctx.orgId, event.row.id);
+        if (!frozen || frozen.id !== revision.freeze_id)
+          business('SCHEDULE_SOURCE_MISMATCH', '正式赛程与冻结名单不一致');
+        const currentMatches = (
+          await c.query<MatchRow>(
+            'SELECT * FROM published_matches WHERE org_id=$1 AND event_id=$2 ORDER BY round_no,position_no',
+            [ctx.orgId, event.row.id],
+          )
+        ).rows.map((r) => currentFixture(this.matchDto(r)));
+        const fixtures = currentMatches.map((fixture) =>
+          fixture.fixtureKey === current.fixtureKey ? { ...fixture, ...next } : fixture,
+        );
+        const booked = (
+          await c.query<{
+            kind: 'COURT' | 'TEAM';
+            resource_id: string;
+            starts_at: Date;
+            ends_at: Date;
+          }>(
+            `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations WHERE org_id=$1 AND publication_id<>$2 AND starts_at<$4::timestamptz AND ends_at>$3::timestamptz UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations WHERE org_id=$1 AND publication_id<>$2 AND starts_at<$4::timestamptz AND ends_at>$3::timestamptz`,
+            [ctx.orgId, current.publicationId, next.startsAt, next.endsAt],
+          )
+        ).rows;
+        const conflicts = targetConflicts(
+          validateSchedule({
+            event: {
+              id: event.row.id,
+              startDate: event.row.start_date,
+              endDate: event.row.end_date,
+              timezone: event.row.timezone,
+            },
+            freeze: frozen!,
+            policy: revision.policy,
+            fixtures,
+            courts,
+            reservations: booked.map((r) => ({
+              kind: r.kind,
+              resourceId: r.resource_id,
+              startsAt: r.starts_at.toISOString(),
+              endsAt: r.ends_at.toISOString(),
+            })),
+          }),
+          current.fixtureKey,
+        );
+        if (conflicts.length)
+          throw new ApiError(409, 'SCHEDULE_CONFLICT', '改期安排存在冲突，请调整后重试', {
+            conflicts,
+          });
+        await this.ensureFreshSession(c, ctx);
+        const id = randomUUID();
+        await c.query(
+          `INSERT INTO match_reschedules(id,org_id,event_id,match_id,created_by,from_event_version,to_event_version,from_match_version,to_match_version,old_court_id,old_court_name,old_starts_at,old_ends_at,new_court_id,new_court_name,new_starts_at,new_ends_at,reason) VALUES($1,$2,$3,$4,$5,$6,$6+1,$7,$7+1,$8,$9,$10::timestamptz,$11::timestamptz,$12,$13,$14::timestamptz,$15::timestamptz,$16)`,
+          [
+            id,
+            ctx.orgId,
+            event.row.id,
+            match.id,
+            ctx.user.id,
+            event.row.version,
+            match.version,
+            current.courtId,
+            current.courtName,
+            current.startsAt,
+            current.endsAt,
+            next.courtId,
+            next.courtName,
+            next.startsAt,
+            next.endsAt,
+            command.reason,
+          ],
+        );
+        access.match = (
+          await c.query<MatchRow>(
+            'UPDATE published_matches SET court_id=$3,court_name=$4,starts_at=$5::timestamptz,ends_at=$6::timestamptz,version=version+1 WHERE org_id=$1 AND id=$2 RETURNING *',
+            [ctx.orgId, match.id, next.courtId, next.courtName, next.startsAt, next.endsAt],
+          )
+        ).rows[0]!;
+        await c.query(
+          'UPDATE court_reservations SET court_id=$3,starts_at=$4::timestamptz,ends_at=$5::timestamptz WHERE org_id=$1 AND match_id=$2',
+          [ctx.orgId, match.id, next.courtId, next.startsAt, next.endsAt],
+        );
+        await c.query(
+          'UPDATE team_reservations SET starts_at=$3::timestamptz,ends_at=$4::timestamptz WHERE org_id=$1 AND match_id=$2',
+          [ctx.orgId, match.id, next.startsAt, next.endsAt],
+        );
+        await c.query(
+          'UPDATE scoring_states SET source_version=source_version+1 WHERE org_id=$1 AND match_id=$2',
+          [ctx.orgId, match.id],
+        );
+        event.row = (
+          await c.query<EventAccess['row']>(
+            `UPDATE events e SET version=version+1,updated_at=clock_timestamp() WHERE org_id=$1 AND id=$2 RETURNING ${EVENT_SELECT}`,
+            [ctx.orgId, event.row.id],
+          )
+        ).rows[0]!;
+        await this.audit(c, ctx.user.id, ctx.orgId, 'MATCH_RESCHEDULED', 'match', match.id, {
+          rescheduleId: id,
+          fromEventVersion: command.expectedEventVersion,
+          toEventVersion: event.row.version,
+          fromMatchVersion: command.expectedMatchVersion,
+          toMatchVersion: access.match.version,
+          reason: command.reason,
+        });
+        return this.reschedulingDto(c, ctx, access);
+      });
+    } catch (error) {
+      if ((error as { code?: string }).code === '23P01')
+        throw new ApiError(409, 'SCHEDULE_CONFLICT', '正式场地或球队占用发生冲突，请重新读取', {
+          conflicts: [],
+        });
+      throw error;
+    }
   }
 }

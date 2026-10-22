@@ -118,7 +118,9 @@ docker compose --env-file /srv/scb/production.env -p scb -f compose.production.y
   -e ARCHIVE_PATH=/backups/scb-20261022-001.dump \
   -e RESTORE_DATABASE_NAME=scb_restore_20261022_001 \
   -e RESTORE_RECEIPT_PATH=/backups/scb-20261022-001.restore.json restore
-# 此时先独立完成阶段1：39表／schema／checksum／业务指纹等于同一静止备份点。
+# 此时先独立完成阶段1：40表／schema／checksum／业务指纹等于同一静止备份点。
+# 恢复使用与备份相同的代码/Migration版本；P07-A的39表旧包须用该版本恢复，
+# 不用新包隐式升级旧备份，恢复与显式Migration分开执行。
 docker compose --env-file /srv/scb/production.env -p scb -f compose.production.yaml --profile ops run --rm --no-deps \
   -e RESTORE_RECEIPT_PATH=/backups/scb-20261022-001.restore.json quarantine
 ```
