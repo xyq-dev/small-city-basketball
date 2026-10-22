@@ -641,14 +641,14 @@ try {
       await checkPrivateSession(saved);
       await compose(source, sourceEnv, ['stop', 'api']);
       await compose(source, sourceEnv, ['rm', '-f', 'api']);
-      // Occupy the old endpoint so Docker cannot silently reuse its address.
-      // This owned process has no secrets, ports, API alias or elevated privileges.
+      // Keep an owned endpoint during recreation using Docker's automatic IPAM.
+      // Explicit --ip is invalid on Compose's automatically allocated subnet.
+      // The new API address is independently asserted different below.
+      // This process has no secrets, ports, API alias or elevated privileges.
       const anchor = await run('docker', [
         'create',
         '--network',
         `${source}_frontend`,
-        '--ip',
-        previousAddress,
         '--label',
         `com.docker.compose.project=${source}`,
         '--label',
