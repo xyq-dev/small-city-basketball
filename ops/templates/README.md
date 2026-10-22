@@ -126,3 +126,5 @@ docker compose --env-file /srv/scb/production.env -p scb -f compose.production.y
 restore只CREATE全新库，完整custom archive、single transaction、no-owner/no-acl，然后重应用manifest；不覆盖已有库、不先迁移再data-only、不禁触发器。失败留目标库供当前project负责人检查／清理，不任意DROP。receipt0600含目标name／OID／nonce，quarantine核DB comment匹配后才执行。第一阶段恢复相等与第二阶段隔离的预期变化分别验收，不能将重启当恢复。
 
 quarantine撤销旧session／pending invitation／active public／active overlay，过期有效lease，禁用全部机构并保留系统主体审计；它不自动恢复当前授权、不重开机构、不修改比赛赛果／fence身份。终点是旧凭据失效的隔离目标，后续依据外部当前授权清单人工核验后另行开放与切流。不能声称fence超过备份后丢失的未知值、RPO为零或已实现生产灾备。原生OBS／CEF和真实推流仍未验收。
+
+网络边界：仅Web连接可发布主机端口的`ingress`桥，同时接入internal `frontend`反代API；API仅连接internal `frontend`/`backend`，PostgreSQL仅internal `backend`，两者均无主机端口。`internal`网络不能替代Web发布入口；隔离CI将Web绑定到`127.0.0.1:9443`，不会开放公网。

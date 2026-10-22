@@ -115,7 +115,7 @@ services:
       - tls_private_key
     ports:
       - '${SCB_HTTPS_PORT:-8443}:8443'
-    networks: [frontend]
+    networks: [ingress, frontend]
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m,mode=1777
@@ -229,6 +229,10 @@ volumes:
   postgres_data:
 
 networks:
+  # Only the reverse proxy has a network that supports host port publishing.
+  # API and PostgreSQL stay on internal-only networks with no published ports.
+  ingress:
+    driver: bridge
   frontend:
     internal: true
   backend:

@@ -577,7 +577,7 @@ try {
     await run(process.execPath, [
       '--input-type=module',
       '-e',
-      "for(let i=0;i<45;i++){try{const r=await fetch('https://localhost:9443/ready');if(r.status===200)process.exit(0)}catch{}await new Promise(r=>setTimeout(r,1000))}process.exit(1)",
+      "let last='NO_RESPONSE';for(let i=0;i<45;i++){try{const r=await fetch('https://localhost:9443/ready',{signal:AbortSignal.timeout(3000)});if(r.status===200)process.exit(0);last='HTTP_'+r.status}catch(e){const code=e.cause?.code??e.code??e.name;last=/^[A-Z0-9_]+$/i.test(code??'')?code:'CONNECTION_ERROR'}await new Promise(r=>setTimeout(r,1000))}console.error('Host readiness failed: '+last);process.exit(1)",
     ]);
   });
   await stage(
@@ -850,6 +850,31 @@ try {
   console.log(
     '[production] Production package, TLS, role, persistence, full restore and quarantine checks passed.',
   );
+} catch (error) {
+  // Capture only bounded, redacted service diagnostics before owned resources
+  // disappear. Never inspect container environment or credential mounts here.
+  for (const [started, project, env] of [
+    [sourceStarted, source, sourceEnv],
+    [targetStarted, target, targetEnv],
+  ]) {
+    if (!started) continue;
+    try {
+      const services = await compose(project, env, ['ps', '--all', '--format', 'json'], {
+        allowFailure: true,
+      });
+      console.error(redacted(services.output.slice(-6000)));
+      const logs = await compose(
+        project,
+        env,
+        ['logs', '--no-color', '--tail', '40', 'api', 'web'],
+        { allowFailure: true },
+      );
+      console.error(redacted(logs.output.slice(-8000)));
+    } catch {
+      console.error('[production] Owned service diagnostics unavailable');
+    }
+  }
+  throw error;
 } finally {
   let cleanupFailed = false;
   for (const [started, project, env] of [
