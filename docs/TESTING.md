@@ -1,6 +1,6 @@
 # 测试与验收
 
-更新：2026-10-22（Asia/Shanghai）。本文区分P06-A最终验收、P05-B及P05-A/P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
+更新：2026-10-23（Asia/Shanghai）。本文区分P07-A、P06-A最终验收及P05-B/P05-A/P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
 
 ## P07-A最终验收（DONE / MAIN）
 
@@ -15,7 +15,7 @@
 | 实际容器与可信TLS | 三非root镜像/compiled runtime/最小secret挂载与DB角色、完整业务链、Origin/Cookie/SPA/伪造header限流、SIGTERM/真实换IP/Web不变/同卷重建通过 |
 | 完整隔离恢复 | 停全部源写者，完整custom dump到第二实例/卷，39表/schema/业务/备份点fence一致；拒覆盖/旧private-public-overlay凭据失效/重登无旧机构/owned清理通过 |
 | 审查 | API/恢复及必要delta独立静态复核通过；最新8809d67自动CodeReview completed无finding/未解决线程，security未运行 |
-| 合并后CI | 39829137241正在运行，合并同验收tree；其结果另行记录 |
+| 合并后CI | [39829137241](https://github.com/xyq-dev/small-city-basketball/actions/runs/39829137241)全部SUCCESS，同验收代码tree；production/admin首次成功，api首次依赖安装耗时触及job限时取消，单任务重试120008473545通过124 PG/39表重启/14真实API浏览器/负向清理；未改代码或放宽检查 |
 
 前五轮失败与修复保留[完整交接](handoffs/P07-A.md)，汇总及镜像digest见[证据清单](evidence/P07-A/README.md)。没有新增/修改业务Migration；现有001–006仅隔离测试执行，未生产执行。原生OBS/CEF、正式生产域名/证书/部署/生产数据库均未验收，不把网页透明或CI恢复当实际OBS/线上恢复。
 

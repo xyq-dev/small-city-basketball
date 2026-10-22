@@ -2,7 +2,9 @@
 
 2026-10-23（Asia/Shanghai），root。**DONE / MAIN**；[PR8](https://github.com/xyq-dev/small-city-basketball/pull/8)候选`8809d67a568b86d3ef530ec92785877c29fab80a`，tree`fcb777848e666aac9f81097bca1ddffc3130e543`，本地`dde4c27`同tree。PR8合并`82a3705001da50f60655b07d6174b50f4d84266f`同验收tree；不是生产上线或原生OBS验收。
 
-[CI39827535301](https://github.com/xyq-dev/small-city-basketball/actions/runs/39827535301)的[production119995169422](https://github.com/xyq-dev/small-city-basketball/actions/runs/39827535301/job/119995169422)已SUCCESS，完整日志已读；同run admin119995169199、api119995168877也全部SUCCESS，完整日志已读：432源码/类型/格式/build、124常规PG、12Mock＋14真实API浏览器/39表重启与负向清理通过；加本job16 PG/4 HTTPS合计140 PG和30浏览器。合并后CI39829137241运行中，结果另记。
+[CI39827535301](https://github.com/xyq-dev/small-city-basketball/actions/runs/39827535301)的[production119995169422](https://github.com/xyq-dev/small-city-basketball/actions/runs/39827535301/job/119995169422)已SUCCESS，完整日志已读；同run admin119995169199、api119995168877也全部SUCCESS，完整日志已读：432源码/类型/格式/build、124常规PG、12Mock＋14真实API浏览器/39表重启与负向清理通过；加本job16 PG/4 HTTPS合计140 PG和30浏览器。
+
+[合并后CI39829137241](https://github.com/xyq-dev/small-city-basketball/actions/runs/39829137241)同代码tree，最终全部SUCCESS，完整实际执行日志已读。首次production120000292724与admin120000293543成功；api120000293114在124 PG/39表重启成功后，依赖安装耗时11分37秒，15分钟job时限后浏览器被取消，不计首次完整通过。仅重试[api120008473545](https://github.com/xyq-dev/small-city-basketball/actions/runs/39829137241/job/120008473545)成功，124 PG、39表重启、桌面7＋手机模拟7及故意失败清理/控制库保留全部通过。没有改代码、放宽断言或重跑已成功任务；attempt2的production/admin为复用首次结果，不重复计数。
 
 | 实际独立CI检查                | 证据与边界                                                                                                                                   |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
