@@ -68,3 +68,8 @@ P04-A工作稿引用不可变freeze，保存生成种子、完整对阵、规则
 本地、测试、生产分离。可观测项至少包含请求 ID、事件 ID、比赛版本、同步延迟、失败队列、授权拒绝和更正记录；运行告警阈值在上线准备阶段确认。付款、退款、套餐扣量和 Migration 必须经过各自设计与授权，首版不因 UI 出现入口就自动启用。
 
 关联：[数据模型](DATA_MODEL.md)、[API 契约](API_CONTRACTS.md)、[OBS 接入](OBS_INTEGRATION.md)。
+
+
+## P05-A实施边界
+
+当前认领基础在线球队记分、服务器锚点时钟、单端fence租约、幂等收据、受控更正和独立确认。ScoringService与Registration/Scheduling独立，同库事务保持事件/投影/receipt/audit一致；snapshot作为后续OBS只读投影来源。先私有轮询，未实现SSE/outbox/公开观赛或可靠离线。详情见[任务卡](tasks/P05-A.md)，设计不等于已交付。

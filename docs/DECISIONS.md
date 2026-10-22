@@ -55,3 +55,8 @@
 - D018（已实施／已验证，P04-A）：单循环2–32队，server seed的可复现RR_CIRCLE_V1，冻结来源及独立排赛policy，canonical机构Court和Team跨赛事时间约束，org_schedule_mutex与DB排他防并发冲突。当前工作稿及CAS、重抽保留旧稿、一次不可变正式发布；独立SchedulingService复用基础ApplicationService，不进行大范围认证重构。精确批准合同、时长/休息边界和分工见P04-A第11节；其他赛制、自动排时及发布后改期后续分卡，不能因计划存在宣称实现。
 
 D018验收补记：PR4于main9fc9b30整合，CI39737812114首轮158项、68真实PG、实际重启与12Mock+8API浏览器全部通过。003仅隔离库执行；自动CodeReview completed无finding、独立静态审查CLEAR。完整P04不因此关闭，其他赛制/优化/改期另卡。
+
+
+## 2026-10-22：P05-A先交付在线基础记分和独立赛果
+
+显式规则首次READY锁定，不暗设FIBA节长或排名规则；主写30秒租约/10秒续约，以session、tab identity、fence隔离控制。当前授权先于幂等重放，网络未知结果先查原receipt，不自动新ID补发。任何历史记分/时钟/更正者及当前双方领队不得确认，OWNER无例外。FINAL重开只回待确认并保留旧结果。排名/公开观赛/可靠离线及OBS分阶段验收，当前合同见[P05-A](tasks/P05-A.md)。

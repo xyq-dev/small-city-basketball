@@ -57,6 +57,13 @@ async function fingerprint() {
     ['published_matches', 'id'],
     ['court_reservations', 'org_id,match_id'],
     ['team_reservations', 'org_id,team_id,match_id'],
+    ['scoring_rulesets', 'id'],
+    ['match_staff', 'org_id,match_id,user_id'],
+    ['scoring_states', 'org_id,match_id'],
+    ['scoring_leases', 'org_id,match_id'],
+    ['scoring_commands', 'org_id,actor_id,match_id,command_id'],
+    ['scoring_events', 'id'],
+    ['result_confirmations', 'id'],
     ['audit_logs', 'id'],
     ['schema_migrations', 'name'],
   ]) {
@@ -117,7 +124,7 @@ async function captureRegistration(orgId, ownerCookie, suffix) {
   await eventCommand('OPEN_REGISTRATION');
   const entries = [];
   const teams = [];
-  for (let index = 0; index < 2; index += 1) {
+  for (let index = 0; index < 3; index += 1) {
     let team = (
       await call(`${root}/teams`, {
         method: 'POST',
@@ -185,7 +192,7 @@ async function captureRegistration(orgId, ownerCookie, suffix) {
   workspace = (await call(`${path}/registration`, { cookie: ownerCookie })).data;
   await eventCommand('CLOSE_REGISTRATION');
   await eventCommand('FREEZE_REGISTRATION');
-  assert.equal(workspace.freeze.entries.length, 2);
+  assert.equal(workspace.freeze.entries.length, 3);
   const snapshot = structuredClone(workspace.freeze);
   const team = teams[0];
   await call(`${root}/teams/${team.id}/members`, {
@@ -245,7 +252,7 @@ async function captureScheduling(orgId, cookie, registration) {
       },
     })
   ).data;
-  assert.equal(revision.fixtures.length, 1);
+  assert.equal(revision.fixtures.length, 3);
   assert.deepEqual(revision.source, registration.workspace.freeze);
   const revisionPath = `${root}/schedule-revisions/${revision.id}`;
   revision = (
@@ -255,10 +262,10 @@ async function captureScheduling(orgId, cookie, registration) {
       body: {
         expectedEventVersion: revision.eventVersion,
         expectedRevisionVersion: revision.version,
-        allocations: revision.fixtures.map((fixture) => ({
+        allocations: revision.fixtures.map((fixture, index) => ({
           fixtureKey: fixture.fixtureKey,
           courtId: court.id,
-          startsAt: '2026-12-01T01:00:00.000Z',
+          startsAt: `2026-12-01T0${1 + index * 2}:00:00.000Z`,
         })),
       },
     })
@@ -280,7 +287,7 @@ async function captureScheduling(orgId, cookie, registration) {
   const matches = (await call(`${path}/matches`, { cookie })).data;
   assert.equal(workspace.event.status, 'SCHEDULED');
   assert.equal(revision.status, 'PUBLISHED');
-  assert.equal(matches.length, 1);
+  assert.equal(matches.length, 3);
   assert.equal(matches[0].status, 'SCHEDULED');
   assert.equal(matches[0].courtId, court.id);
   assert.equal(matches[0].startsAt, '2026-12-01T01:00:00.000Z');
@@ -289,6 +296,140 @@ async function captureScheduling(orgId, cookie, registration) {
   registration.workspace = (await call(`${path}/registration`, { cookie })).data;
   assert.deepEqual(registration.workspace.freeze, frozenBefore);
   return { court, workspace, revision, matches, publication };
+}
+async function captureScoring(orgId, ownerCookie, scheduling, suffix) {
+  const root = `/v1/orgs/${orgId}`;
+  const eventPath = `${root}/events/${scheduling.workspace.event.id}`;
+  const writer = await call('/v1/auth/register-participant', {
+    method: 'POST',
+    body: {
+      email: `restart-writer-${suffix}@example.test`,
+      password: randomBytes(24).toString('base64url'),
+      displayName: '重启验证场次记分员',
+    },
+  });
+  const writerCookie = writer.response.headers.getSetCookie()[0]?.split(';')[0];
+  assert.ok(writerCookie);
+  await call(`${root}/members/${writer.data.user.id}`, {
+    method: 'PUT',
+    cookie: ownerCookie,
+    body: { role: 'SCORER', status: 'ACTIVE' },
+  });
+  await call(`${eventPath}/scoring-rules`, {
+    method: 'PUT',
+    cookie: ownerCookie,
+    body: {
+      expectedEventVersion: scheduling.workspace.event.version,
+      regulationPeriods: 1,
+      periodDurationSeconds: 3600,
+      allowedScoreValues: [1, 2, 3],
+      tiePolicy: 'ALLOW_DRAW',
+      overtimeDurationSeconds: null,
+    },
+  });
+  const receipts = [];
+  async function command(matchId, cookie, type, payload = {}, control) {
+    const path = `${root}/matches/${matchId}`;
+    const workbench = (await call(`${path}/scoring`, { cookie })).data;
+    const envelope = {
+      commandId: randomUUID(),
+      expectedVersion: workbench.match.version,
+      type,
+      payload: ['PREPARE_MATCH', 'START_MATCH'].includes(type)
+        ? { expectedEventVersion: workbench.event.version }
+        : payload,
+      capturedAt: new Date().toISOString(),
+      ...(control ? { control } : {}),
+    };
+    const response = (await call(`${path}/commands`, { method: 'POST', cookie, body: envelope }))
+      .data;
+    receipts.push({ matchId, cookie, receipt: response.receipt });
+    return response;
+  }
+  const controls = [];
+  for (const match of scheduling.matches.slice(0, 2)) {
+    await call(`${root}/matches/${match.id}/staff/${writer.data.user.id}`, {
+      method: 'PUT',
+      cookie: ownerCookie,
+      body: { expectedMatchVersion: match.version, role: 'SCORER', status: 'ACTIVE' },
+    });
+    await command(match.id, ownerCookie, 'PREPARE_MATCH');
+    const acquired = (
+      await call(`${root}/matches/${match.id}/scorekeeper-lease`, {
+        method: 'POST',
+        cookie: writerCookie,
+        body: { clientInstanceId: randomUUID() },
+      })
+    ).data;
+    const control = {
+      leaseId: acquired.leaseId,
+      fencingToken: acquired.fencingToken,
+      clientInstanceId: acquired.clientInstanceId,
+    };
+    controls.push(control);
+    await command(match.id, writerCookie, 'START_MATCH', {}, control);
+  }
+  const runningId = scheduling.matches[0].id;
+  const finalId = scheduling.matches[1].id;
+  await command(
+    runningId,
+    writerCookie,
+    'RECORD_STAT',
+    { kind: 'SCORE', side: 'HOME', value: 2 },
+    controls[0],
+  );
+  await command(runningId, writerCookie, 'CLOCK_START', {}, controls[0]);
+  await call(`${root}/matches/${runningId}/scorekeeper-lease`, {
+    method: 'DELETE',
+    cookie: writerCookie,
+    body: { control: controls[0] },
+  });
+  await command(
+    finalId,
+    writerCookie,
+    'RECORD_STAT',
+    { kind: 'SCORE', side: 'HOME', value: 3 },
+    controls[1],
+  );
+  await command(
+    finalId,
+    writerCookie,
+    'CLOCK_SET',
+    { remainingMs: 0, reason: '隔离重启验证节末归零' },
+    controls[1],
+  );
+  await command(finalId, writerCookie, 'END_MATCH', {}, controls[1]);
+  await command(finalId, ownerCookie, 'CONFIRM_RESULT');
+  await command(finalId, ownerCookie, 'REOPEN_RESULT', { reason: '隔离重启验证保留已确认历史' });
+  await command(
+    finalId,
+    writerCookie,
+    'ADD_CORRECTION',
+    { kind: 'SCORE', side: 'HOME', value: 1, period: 1, reason: '隔离重启验证补录' },
+    controls[1],
+  );
+  await command(finalId, ownerCookie, 'CONFIRM_RESULT');
+  const saved = [];
+  for (const id of [runningId, finalId]) {
+    const path = `${root}/matches/${id}`;
+    saved.push({
+      id,
+      snapshot: (await call(`${path}/snapshot`, { cookie: ownerCookie })).data,
+      events: (await call(`${path}/scoring-events?limit=100`, { cookie: ownerCookie })).data,
+      confirmations: (await call(`${path}/result-confirmations?limit=100`, { cookie: ownerCookie }))
+        .data,
+    });
+  }
+  assert.equal(saved[0].snapshot.status, 'LIVE');
+  assert.equal(saved[0].snapshot.clock.running, true);
+  assert.equal(saved[0].snapshot.totals.home.score, 2);
+  assert.equal(saved[1].snapshot.status, 'FINAL');
+  assert.equal(saved[1].snapshot.totals.home.score, 4);
+  assert.equal(saved[1].confirmations.length, 2);
+  assert.equal(saved[1].snapshot.requiresReconfirmation, false);
+  const rules = (await call(`${eventPath}/scoring`, { cookie: ownerCookie })).data;
+  assert.equal(rules.locked, true);
+  return { rules, saved, writerCookie, receipts, previousFence: controls[0].fencingToken };
 }
 try {
   if (mode === 'capture') {
@@ -318,6 +459,16 @@ try {
     });
     const frozenRegistration = await captureRegistration(orgId, cookie, suffix);
     const scheduling = await captureScheduling(orgId, cookie, frozenRegistration);
+    const scoring = await captureScoring(orgId, cookie, scheduling, suffix);
+    const scheduledEventPath = `/v1/orgs/${orgId}/events/${scheduling.workspace.event.id}`;
+    scheduling.workspace = (await call(`${scheduledEventPath}/scheduling`, { cookie })).data;
+    scheduling.revision = (
+      await call(`/v1/orgs/${orgId}/schedule-revisions/${scheduling.revision.id}`, { cookie })
+    ).data;
+    scheduling.matches = (await call(`${scheduledEventPath}/matches`, { cookie })).data;
+    frozenRegistration.workspace = (
+      await call(`${scheduledEventPath}/registration`, { cookie })
+    ).data;
     const state = {
       cookie,
       userId: registration.data.user.id,
@@ -325,11 +476,12 @@ try {
       event: created.data,
       registration: frozenRegistration,
       scheduling,
+      scoring,
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
     console.log(
-      'Captured authenticated events, a frozen registration, a published schedule and the isolated database fingerprint.',
+      'Captured sessions, frozen registration, published schedule, running clock, confirmed result history and isolated database fingerprint.',
     );
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
@@ -368,9 +520,60 @@ try {
     assert.deepEqual(matches.data, scheduling.matches);
     const courts = await call(`/v1/orgs/${state.orgId}/courts`, { cookie: state.cookie });
     assert.deepEqual(courts.data, [scheduling.court]);
+    const scoring = state.scoring;
+    assert.deepEqual(
+      (await call(`${scheduledEventPath}/scoring`, { cookie: state.cookie })).data,
+      scoring.rules,
+    );
+    const writerSession = await call('/v1/auth/session', { cookie: scoring.writerCookie });
+    assert.ok(writerSession.data.organizations.some((org) => org.id === state.orgId));
+    for (const saved of scoring.saved) {
+      const path = `/v1/orgs/${state.orgId}/matches/${saved.id}`;
+      const snapshot = (await call(`${path}/snapshot`, { cookie: state.cookie })).data;
+      const { serverTime: oldTime, ...oldSnapshot } = saved.snapshot;
+      const { serverTime: newTime, ...newSnapshot } = snapshot;
+      assert.deepEqual(newSnapshot, oldSnapshot);
+      if (snapshot.clock.running) {
+        assert.ok(Date.parse(newTime) > Date.parse(oldTime));
+        const effective = Math.max(
+          0,
+          snapshot.clock.remainingMs -
+            (Date.parse(newTime) - Date.parse(snapshot.clock.anchorServerTime)),
+        );
+        assert.ok(
+          effective < snapshot.clock.remainingMs,
+          'Running clock continues from its persisted anchor after restart',
+        );
+      }
+      assert.deepEqual(
+        (await call(`${path}/scoring-events?limit=100`, { cookie: state.cookie })).data,
+        saved.events,
+      );
+      assert.deepEqual(
+        (await call(`${path}/result-confirmations?limit=100`, { cookie: state.cookie })).data,
+        saved.confirmations,
+      );
+    }
+    for (const saved of scoring.receipts) {
+      const path = `/v1/orgs/${state.orgId}/matches/${saved.matchId}/commands/${saved.receipt.commandId}`;
+      const response = (await call(path, { cookie: saved.cookie })).data;
+      assert.deepEqual(response.receipt, saved.receipt);
+      assert.equal(response.snapshot.matchId, saved.matchId);
+    }
     assert.equal(await fingerprint(), state.fingerprint);
+    const acquired = (
+      await call(`/v1/orgs/${state.orgId}/matches/${scoring.saved[0].id}/scorekeeper-lease`, {
+        method: 'POST',
+        cookie: scoring.writerCookie,
+        body: { clientInstanceId: randomUUID() },
+      })
+    ).data;
+    assert.ok(
+      BigInt(acquired.fencingToken) > BigInt(scoring.previousFence),
+      'Lease fence remains monotonic across PostgreSQL restart',
+    );
     console.log(
-      'PostgreSQL restart retained sessions, events, grants, immutable rosters, the registration freeze, published schedule, reservations, audit history and migration checksums.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, published schedule/reservations, scoring rules/events/receipts/result history, running clock anchor, monotonic fence, audit and migration checksums.',
     );
   }
 } finally {

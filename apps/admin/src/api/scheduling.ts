@@ -11,6 +11,7 @@ import type {
   ScheduledMatchData,
   ScheduleConflict,
 } from '@small-city-basketball/contracts';
+import { MATCH_STATUSES } from '@small-city-basketball/contracts';
 import { ApiError } from './client';
 import type { ApiClient } from './client';
 
@@ -157,7 +158,8 @@ function match(value: unknown) {
     Number.isInteger(value.positionNo) &&
     strings(value.home, ['entryId', 'teamId', 'teamName', 'rosterRevisionId']) &&
     strings(value.away, ['entryId', 'teamId', 'teamName', 'rosterRevisionId']) &&
-    value.status === 'SCHEDULED'
+    Number.isInteger(value.version) &&
+    MATCH_STATUSES.includes(value.status as (typeof MATCH_STATUSES)[number])
   );
 }
 function checked<T>(value: unknown, guard: (value: unknown) => boolean): T {

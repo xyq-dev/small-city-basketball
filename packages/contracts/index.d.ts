@@ -407,8 +407,225 @@ export interface ScheduledMatchData {
   courtName: string;
   startsAt: string;
   endsAt: string;
-  status: 'SCHEDULED';
+  status: MatchStatus;
   version: number;
 }
 
 export const SCHEDULE_ALGORITHM_VERSION: 'RR_CIRCLE_V1';
+
+export const MATCH_STATUSES: readonly [
+  'SCHEDULED',
+  'READY',
+  'LIVE',
+  'PENDING_CONFIRMATION',
+  'FINAL',
+  'POSTPONED',
+  'CANCELLED',
+];
+export type MatchStatus = (typeof MATCH_STATUSES)[number];
+export type ScoringSide = 'HOME' | 'AWAY';
+export type ScoringStatKind = 'SCORE' | 'FOUL' | 'TIMEOUT';
+export interface ScoringRules {
+  regulationPeriods: number;
+  periodDurationSeconds: number;
+  allowedScoreValues: (1 | 2 | 3)[];
+  tiePolicy: 'ALLOW_DRAW' | 'OVERTIME';
+  overtimeDurationSeconds: number | null;
+}
+export interface ScoringRulesetData extends ScoringRules {
+  id: string;
+  eventId: string;
+  version: number;
+  createdAt: string;
+}
+export interface EventScoringData {
+  event: EventData;
+  rules: ScoringRulesetData | null;
+  locked: boolean;
+  capabilities: { canManageRules: boolean };
+}
+export interface UpdateScoringRulesInput extends ScoringRules {
+  expectedEventVersion: number;
+}
+export interface ScoringClock {
+  period: number;
+  remainingMs: number;
+  running: boolean;
+  anchorServerTime: string;
+  clockVersion: number;
+}
+export interface ScoringTotals {
+  score: number;
+  fouls: number;
+  timeouts: number;
+}
+export interface ScoringPeriodTotals {
+  period: number;
+  home: ScoringTotals;
+  away: ScoringTotals;
+}
+export interface ResultConfirmationData {
+  id: string;
+  matchId: string;
+  confirmingUserId: string;
+  rulesetId: string;
+  rulesetVersion: number;
+  sourceMatchVersion: number;
+  lastEventSeq: number;
+  home: ScoringTotals;
+  away: ScoringTotals;
+  periods: ScoringPeriodTotals[];
+  confirmedAt: string;
+}
+export interface ScoreSnapshot {
+  matchId: string;
+  eventId: string;
+  eventName: string;
+  status: MatchStatus;
+  version: number;
+  home: ScheduleParticipant;
+  away: ScheduleParticipant;
+  totals: { home: ScoringTotals; away: ScoringTotals };
+  periods: ScoringPeriodTotals[];
+  rules: ScoringRulesetData;
+  clock: ScoringClock;
+  lastEventSeq: number;
+  latestConfirmation: ResultConfirmationData | null;
+  requiresReconfirmation: boolean;
+  collected: { teamScore: true; teamFouls: true; teamTimeouts: true; playerStatistics: false };
+  serverTime: string;
+}
+export type MatchStaffRole = 'SCORER' | 'RESULT_REVIEWER';
+export interface MatchStaffData {
+  userId: string;
+  displayName: string;
+  role: MatchStaffRole;
+  status: 'ACTIVE' | 'DISABLED';
+}
+export interface UpdateMatchStaffInput {
+  expectedMatchVersion: number;
+  role: MatchStaffRole;
+  status: 'ACTIVE' | 'DISABLED';
+}
+export interface ScoringControl {
+  leaseId: string;
+  fencingToken: string;
+  clientInstanceId: string;
+}
+export interface ScorekeeperLeaseData extends ScoringControl {
+  expiresAt: string;
+  serverTime: string;
+}
+export interface LeaseAcquireInput {
+  clientInstanceId: string;
+}
+export interface LeaseControlInput {
+  control: ScoringControl;
+}
+export interface ScoringWorkbenchData {
+  match: ScheduledMatchData;
+  event: { id: string; name: string; status: EventStatus; version: number };
+  rules: ScoringRulesetData | null;
+  rulesLocked: boolean;
+  snapshot: ScoreSnapshot | null;
+  staff: MatchStaffData[];
+  lease: { held: boolean; expiresAt: string | null; holderUserId: string | null };
+  capabilities: {
+    canManageStaff: boolean;
+    canPrepare: boolean;
+    canAcquireControl: boolean;
+    canRecord: boolean;
+    canCorrect: boolean;
+    canConfirm: boolean;
+    canReopen: boolean;
+  };
+}
+export interface ScoringMatchSummary {
+  matchId: string;
+  eventId: string;
+  eventName: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  courtName: string;
+  startsAt: string;
+  status: MatchStatus;
+  version: number;
+  score: { home: number; away: number } | null;
+}
+export const SCORING_COMMAND_TYPES: readonly [
+  'PREPARE_MATCH',
+  'START_MATCH',
+  'RECORD_STAT',
+  'ADD_CORRECTION',
+  'VOID_STAT',
+  'REPLACE_STAT',
+  'CLOCK_START',
+  'CLOCK_PAUSE',
+  'CLOCK_SET',
+  'NEXT_PERIOD',
+  'START_OVERTIME',
+  'END_MATCH',
+  'CONFIRM_RESULT',
+  'REOPEN_RESULT',
+];
+export type ScoringCommandType = (typeof SCORING_COMMAND_TYPES)[number];
+export type ScoringCommandPayload =
+  | { type: 'PREPARE_MATCH' | 'START_MATCH'; payload: { expectedEventVersion: number } }
+  | { type: 'RECORD_STAT'; payload: { kind: ScoringStatKind; side: ScoringSide; value: number } }
+  | {
+      type: 'ADD_CORRECTION';
+      payload: {
+        kind: ScoringStatKind;
+        side: ScoringSide;
+        value: number;
+        period: number;
+        reason: string;
+      };
+    }
+  | { type: 'VOID_STAT'; payload: { targetEventId: string; reason: string } }
+  | {
+      type: 'REPLACE_STAT';
+      payload: { targetEventId: string; side: ScoringSide; value: number; reason: string };
+    }
+  | { type: 'CLOCK_SET'; payload: { remainingMs: number; reason: string } }
+  | { type: 'REOPEN_RESULT'; payload: { reason: string } }
+  | {
+      type:
+        | 'CLOCK_START'
+        | 'CLOCK_PAUSE'
+        | 'NEXT_PERIOD'
+        | 'START_OVERTIME'
+        | 'END_MATCH'
+        | 'CONFIRM_RESULT';
+      payload: Record<string, never>;
+    };
+export type ScoringCommandInput = {
+  commandId: string;
+  expectedVersion: number;
+  capturedAt: string;
+  control?: ScoringControl;
+} & ScoringCommandPayload;
+export interface ScoringCommandReceipt {
+  commandId: string;
+  matchId: string;
+  type: ScoringCommandType;
+  appliedVersion: number;
+  firstEventSeq: number | null;
+  lastEventSeq: number | null;
+  acceptedAt: string;
+}
+export interface ScoringCommandResponse {
+  receipt: ScoringCommandReceipt;
+  snapshot: ScoreSnapshot;
+}
+export interface ScoringEventData {
+  id: string;
+  seq: number;
+  type: string;
+  payload: Record<string, unknown>;
+  actorId: string;
+  commandId: string;
+  capturedAt: string;
+  serverTime: string;
+  targetEventId: string | null;
+}

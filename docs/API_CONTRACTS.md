@@ -163,3 +163,8 @@ SchedulePolicy必须明确slotDurationMinutes整数1–1440、minRestMinutes整�
 合法但未分配、越窗口或存在冲突的分配可保存草稿，草稿不占正式资源；发布必须全部通过。冲突码为UNASSIGNED、OUTSIDE_WINDOW、OUTSIDE_EVENT_DATES、COURT_DISABLED、COURT_OVERLAP、TEAM_OVERLAP、MIN_REST和MIN_LOCAL_DAY_GAP。validate返回200 valid=false；合法分配但发布冲突409 SCHEDULE_CONFLICT并附details.conflicts；双CAS错误409 VERSION_CONFLICT，旧稿409 SCHEDULE_REVISION_NOT_CURRENT，重复发布409 SCHEDULE_ALREADY_PUBLISHED；非法字段／时间422，不可见或越租户Court404。其他状态错误按具体守卫返回INVALID_SCHEDULING_STATE等稳定业务码，不能把所有状态错误一概算409。
 
 发布前重算所有内部及本机构已发布Court/Team占用；validate不是发布凭证。外部赛事冲突只返回本方fixture/resource/time，不泄露另一赛事ID、名称或名单。一次发布后不能编辑、重抽或再次发布；不实现自动排时、其他赛制、改期／取消占用、记分／赛果、公开赛程、小程序或OBS。预计场地占用与实际比赛时钟分离，机构内资源检查不覆盖跨机构同一物理球场。
+
+
+## 8. P05-A在线记分实施合同（IN_PROGRESS）
+
+精确DTO先由API提交至packages/contracts后由集成人统一分发。当前行为裁决、私有路由、单端租约/幂等顺序、未知结果恢复、显式比赛时钟与独立确认见[任务卡](tasks/P05-A.md)。本卡CONFIRM_RESULT/REOPEN_RESULT走统一commands，前文独立endpoint是总设计目标，尚未实现。ScheduledMatchData统一MatchStatus消费实际运行状态，P04正式计划仍不可变。只读snapshot不含写凭据；OBS、公开推送及可靠离线尚未实施。
