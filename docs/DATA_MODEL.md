@@ -76,7 +76,7 @@ Migration runner使用事务advisory lock、文件名白名单及SHA-256校验�
 
 ## 7. P03-A分支持久化（隔离测试库已执行）
 
-`002_p03_registration.sql` 本地整合于ac24c99；独立静态审查允许在空隔离测试库按001→002验证，SHA256 `13f3729b86305745c5e1a986f7cd533eb99f9cd96052d630de6607e8394576e4`。首轮CI39733327804已在隔离测试库执行并通过43项PG及实际重启验证；API浏览器未通过，仍未合并或生产执行。
+`002_p03_registration.sql` 已发布于[PR3首个代码提交dac9ebc](https://github.com/xyq-dev/small-city-basketball/commit/dac9ebcffb69eca7f01fee9133ccb310e4c37f31)；独立静态审查允许在空隔离测试库按001→002验证，SHA256 `13f3729b86305745c5e1a986f7cd533eb99f9cd96052d630de6607e8394576e4`。首轮CI39733327804已在隔离测试库执行并通过43项PG及实际重启验证；API浏览器未通过，仍未合并或生产执行。
 
 新增teams、team_members、team_access_grants、team_invitations、event_rulesets、entries、entry_roster_revisions、entry_roster_players、entry_review_history及registration_freezes。事件追加可空当前/锁定规则指针，兼容001已有赛事；复合FK约束同机构、赛事、球队、报名revision及来源成员。
 

@@ -4,6 +4,7 @@ import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import type {
   EntryData,
+  EntrySummary,
   EventRegistrationData,
   InvitationData,
   SessionData,
@@ -594,7 +595,7 @@ describe(
         events.some((item) => item.event.id === current.event.id && item.entry?.id === ownEntry.id),
       ).toBe(true);
       expect(events.some((item) => item.event.id === unpublished.id)).toBe(false);
-      const listing = data<EntryData[]>(
+      const listing = data<EntrySummary[]>(
         await call(api, 'get', `${entriesPath(owner.orgId, current.event.id)}?limit=100`, {
           cookie: leader.cookie,
         }),
@@ -635,6 +636,83 @@ describe(
         }),
         403,
       );
+    });
+
+    test('entry lists expose only authorized summaries while the authorized detail retains roster, rules and history', async () => {
+      const current = await openRegistration(api, owner, 'Private detail summary list');
+      const own = await submittedEntry(api, owner, current, leader, 'Summary own team');
+      const hidden = await submittedEntry(api, owner, current, otherLeader, 'Summary hidden team');
+      const summaryKeys = [
+        'id',
+        'eventId',
+        'teamId',
+        'teamName',
+        'status',
+        'version',
+        'rosterRevisionId',
+        'lastSubmittedBy',
+        'latestReviewReason',
+      ].sort();
+      const staffResponse = await call(api, 'get', entriesPath(owner.orgId, current.event.id), {
+        cookie: owner.cookie,
+      });
+      const staffSummaries = data<EntrySummary[]>(staffResponse);
+      expect(staffSummaries.map((item) => item.id).sort()).toEqual(
+        [own.entry.id, hidden.entry.id].sort(),
+      );
+      const leaderResponse = await call(api, 'get', entriesPath(owner.orgId, current.event.id), {
+        cookie: leader.cookie,
+      });
+      const leaderSummaries = data<EntrySummary[]>(leaderResponse);
+      expect(leaderSummaries).toHaveLength(1);
+      expect(leaderSummaries[0]).toMatchObject({
+        id: own.entry.id,
+        teamId: own.team.id,
+        eventId: current.event.id,
+        status: 'SUBMITTED',
+        rosterRevisionId: own.entry.rosterRevisionId,
+        lastSubmittedBy: leader.id,
+      });
+      for (const summary of [...staffSummaries, ...leaderSummaries])
+        expect(Object.keys(summary).sort()).toEqual(summaryKeys);
+      expect(staffResponse.body.meta.nextCursor).toBeNull();
+      expect(leaderResponse.body.meta.nextCursor).toBeNull();
+      error(
+        await call(
+          api,
+          'get',
+          `${entriesPath(owner.orgId, current.event.id)}?teamId=${hidden.team.id}`,
+          { cookie: leader.cookie },
+        ),
+        404,
+      );
+      error(
+        await call(api, 'get', entryPath(owner.orgId, hidden.entry.id), { cookie: leader.cookie }),
+        404,
+      );
+      error(
+        await call(api, 'get', entriesPath(otherOwner.orgId, current.event.id), {
+          cookie: otherOwner.cookie,
+        }),
+        404,
+      );
+      for (const detail of [
+        await getEntry(api, owner, own.entry.id, leader),
+        await getEntry(api, owner, hidden.entry.id),
+      ]) {
+        expect(detail.orgId).toBe(owner.orgId);
+        expect(detail.rules.id).toBe(current.rules!.id);
+        expect(detail.players).toHaveLength(2);
+        expect(detail.players[0]).toMatchObject({
+          memberId: expect.any(String),
+          name: expect.any(String),
+          jerseyNo: expect.any(String),
+        });
+        expect(detail.history).toContainEqual(
+          expect.objectContaining({ type: 'SUBMIT', rosterRevisionId: detail.rosterRevisionId }),
+        );
+        expect(detail.capabilities).toMatchObject({ canEditRoster: false, canSubmit: false });
+      }
     });
 
     test('rosters reject foreign, duplicate and archived members and enforce jersey grammar and zero equivalence', async () => {
@@ -1454,7 +1532,7 @@ describe(
         await entry(api, owner, current.event.id, lastTeam, leader),
       ];
       const hiddenEntry = await entry(api, owner, current.event.id, hiddenTeam, otherLeader);
-      const entryPages = await allPages<EntryData>(
+      const entryPages = await allPages<EntrySummary>(
         api,
         `${entriesPath(owner.orgId, current.event.id)}?limit=1`,
         leader,

@@ -215,7 +215,7 @@ function IssuedInvitation({
       </p>
       <label>
         邀请链接
-        <textarea readOnly value={link.href} rows={3} />
+        <textarea aria-label="邀请链接" readOnly value={link.href} rows={3} />
       </label>
       <div className="registration-actions">
         <button

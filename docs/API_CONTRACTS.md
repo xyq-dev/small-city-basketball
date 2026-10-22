@@ -107,7 +107,7 @@ P02没有删除、任意改赛事status、邮件验证、密码重置、工作�
 
 ## 6. P03-A Web报名实施契约（LOCAL_ONLY，尚未验收）
 
-共享类型已在 `packages/contracts/index.d.ts` 落地；API源码本地整合ac24c99，尚未完成真实PG及浏览器检查，不属于当前main已完成能力。下列业务路径均在 `/v1/orgs/{orgId}` 下，身份及接受邀请入口除外。
+共享类型已在 `packages/contracts/index.d.ts` 落地；API及合同源码已发布于[PR3首个代码提交dac9ebc](https://github.com/xyq-dev/small-city-basketball/commit/dac9ebcffb69eca7f01fee9133ccb310e4c37f31)。首轮43项真实PG及重启验证通过，真实API浏览器仍待验收，不属于当前main已完成能力。下列业务路径均在 `/v1/orgs/{orgId}` 下，身份及接受邀请入口除外。
 
 | 方法与路径 | 行为与授权 |
 |---|---|

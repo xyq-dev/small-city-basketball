@@ -282,6 +282,78 @@ describe('领队个人账号与绑定邀请', () => {
     expect(fetcher.mock.calls.some(([url]) => String(url).includes('/org-c/events?'))).toBe(false);
   });
 
+  it('双身份从机构报名详情切换工作空间时进入对应首页且不请求错误上下文', async () => {
+    window.history.replaceState(
+      { usr: { from: 'registration' } },
+      '',
+      '/events/event-a/registration',
+    );
+    const dualSession: SessionData = {
+      ...session,
+      teamContexts: [
+        { orgId: 'org-c', organizationName: '球队机构', teamId: 'team-c', teamName: '领队授权队' },
+      ],
+    };
+    const registration = {
+      event: { ...event('机构报名赛事'), id: 'event-a' },
+      rules: null,
+      freeze: null,
+      counts: {
+        DRAFT: 0,
+        SUBMITTED: 0,
+        APPROVED: 0,
+        CHANGES_REQUESTED: 0,
+        REJECTED: 0,
+        WITHDRAWN: 0,
+      },
+      capabilities: { canManageRules: true, canOpen: false, canClose: false, canFreeze: false },
+    };
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      if (url === '/v1/auth/session') return ok(dualSession);
+      if (url === '/v1/orgs/org-a/events/event-a/registration') return ok(registration);
+      if (String(url).startsWith('/v1/orgs/org-a/events/event-a/entries?')) return ok([]);
+      if (String(url).startsWith('/v1/orgs/org-a/events?')) return ok([event('机构甲赛事')]);
+      if (url === '/v1/orgs/org-c/teams/team-c')
+        return ok({
+          id: 'team-c',
+          orgId: 'org-c',
+          name: '领队授权队',
+          version: 1,
+          members: [],
+          grants: [],
+          createdAt: '2026-10-22T00:00:00Z',
+          updatedAt: '2026-10-22T00:00:00Z',
+          capabilities: { canManage: true, canInvite: false },
+        });
+      if (String(url).startsWith('/v1/orgs/org-c/teams/team-c/registration-events?')) return ok([]);
+      return failed(404, '请求了错误上下文');
+    });
+    render(<RuntimeApp mode="api" client={createApiClient({ fetcher })} />);
+    expect(await screen.findByRole('heading', { name: '机构报名赛事', level: 1 })).toBeVisible();
+    const beforeTeam = fetcher.mock.calls.length;
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText('工作空间'), 'team');
+    expect(await screen.findByRole('heading', { name: '当前暂无可报名赛事' })).toBeVisible();
+    expect(window.location.pathname).toBe('/my-team');
+    expect(screen.getByLabelText('切换球队')).toHaveValue('team-c');
+    const teamCalls = fetcher.mock.calls.slice(beforeTeam).map(([url]) => String(url));
+    expect(teamCalls).toContain('/v1/orgs/org-c/teams/team-c');
+    expect(teamCalls.some((url) => url.includes('/events/'))).toBe(false);
+    const beforeOrganization = fetcher.mock.calls.length;
+    await user.selectOptions(screen.getByLabelText('工作空间'), 'organization');
+    expect((await screen.findAllByRole('link', { name: '机构甲赛事' }))[0]).toBeVisible();
+    expect(window.location.pathname).toBe('/');
+    expect(screen.getByLabelText('切换机构')).toHaveValue('org-a');
+    expect(screen.queryByRole('heading', { name: '当前暂无可报名赛事' })).not.toBeInTheDocument();
+    const organizationCalls = fetcher.mock.calls
+      .slice(beforeOrganization)
+      .map(([url]) => String(url));
+    expect(organizationCalls.length).toBeGreaterThan(0);
+    expect(organizationCalls.every((url) => url.startsWith('/v1/orgs/org-a/events?'))).toBe(true);
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes('/orgs//'))).toBe(false);
+    expect(window.history.state.usr).toEqual({ from: 'registration' });
+  });
+
   it('直接刷新保留本队详情，显式切换同机构球队则回主场并清掉前队数据', async () => {
     window.history.replaceState({ usr: { from: 'detail' } }, '', '/teams/team-a');
     const teamsSession: SessionData = {
@@ -432,6 +504,54 @@ describe('领队个人账号与绑定邀请', () => {
     const call = fetcher.mock.calls.find(([url]) => url === '/v1/invitations/invite-a/accept');
     expect(JSON.parse(String(call?.[1]?.body))).toEqual({ token: 'one-time-secret' });
     expect(sessionReads).toBe(2);
+    expect(store).not.toHaveBeenCalled();
+  });
+
+  it('邀请A接受请求晚成功不能清除途中收到的邀请B，关闭重开仍保留B', async () => {
+    const store = vi.spyOn(Storage.prototype, 'setItem');
+    let finishAccept: (value: Response) => void = () => {
+      throw new Error('接受请求尚未开始');
+    };
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      if (url === '/v1/auth/session') return ok(participant);
+      if (url === '/v1/invitations/invite-a/accept')
+        return new Promise<Response>((resolve) => {
+          finishAccept = resolve;
+        });
+      return failed(404, '未知请求');
+    });
+    render(<RuntimeApp mode="api" client={createApiClient({ fetcher })} />);
+    await screen.findByRole('heading', { name: '你的球队主场，从邀请开始' });
+    act(() => {
+      window.history.replaceState({}, '', '/#invitation=invite-a&token=token-a');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '接受球队邀请' }));
+    expect(screen.getByRole('button', { name: '正在接受…' })).toBeDisabled();
+    act(() => {
+      window.history.replaceState({}, '', '/#invitation=invite-b&token=token-b');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(window.location.hash).toBe('');
+    expect(screen.getByLabelText('邀请 ID')).toHaveValue('invite-b');
+    expect(screen.getByLabelText('邀请令牌')).toHaveValue('token-b');
+    await act(async () => {
+      finishAccept(
+        ok({ orgId: 'org-a', organizationName: '机构', teamId: 'team-a', teamName: '甲队' }),
+      );
+    });
+    expect(screen.getByLabelText('邀请 ID')).toHaveValue('invite-b');
+    await user.click(screen.getByRole('button', { name: '关闭个人账号' }));
+    await user.click(screen.getByRole('button', { name: '个人 ID / 邀请' }));
+    expect(screen.getByLabelText('邀请 ID')).toHaveValue('invite-b');
+    expect(screen.getByLabelText('邀请令牌')).toHaveValue('token-b');
+    expect(
+      fetcher.mock.calls.filter(([url]) => url === '/v1/invitations/invite-a/accept'),
+    ).toHaveLength(1);
+    expect(fetcher.mock.calls.some(([url]) => url === '/v1/invitations/invite-b/accept')).toBe(
+      false,
+    );
     expect(store).not.toHaveBeenCalled();
   });
 

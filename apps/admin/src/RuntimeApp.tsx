@@ -656,7 +656,14 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
         aria-label="工作空间"
         value={contextMode}
         onChange={(event) => {
-          setContextMode(event.target.value as 'organization' | 'team');
+          const nextMode = event.target.value;
+          if (nextMode !== 'organization' && nextMode !== 'team') return;
+          window.history.replaceState(
+            window.history.state,
+            '',
+            nextMode === 'organization' ? '/' : '/my-team',
+          );
+          setContextMode(nextMode);
           setError('');
         }}
       >
@@ -808,7 +815,9 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
           initialInvitation={pendingInvitation}
           onClose={() => setIdentityOpen(false)}
           onRefresh={refreshSession}
-          onConsumed={() => setPendingInvitation(null)}
+          onConsumed={() =>
+            setPendingInvitation((current) => (current === pendingInvitation ? null : current))
+          }
         />
       )}
       {error && (

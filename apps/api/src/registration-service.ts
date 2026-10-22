@@ -1210,25 +1210,16 @@ export class RegistrationService extends ApplicationService {
           query.limit + 1,
         ],
       );
-      const data: EntryData[] = [];
+      const data: EntrySummary[] = [];
       // Lock teams in UUID order, not page order, to avoid two readers deadlocking with each other.
-      const teams = new Map<string, TeamRow>();
       for (const teamId of [
         ...new Set(rows.rows.slice(0, query.limit).map((row) => row.team_id)),
       ].sort())
-        teams.set(teamId, await this.team(client, ctx, teamId, false));
+        await this.team(client, ctx, teamId, false);
       for (const row of rows.rows.slice(0, query.limit)) {
         const leader = await this.leader(client, ctx, row.team_id);
         if (!event.canRead && !leader) throw notFound();
-        data.push(
-          await this.entryDto(client, {
-            ctx,
-            event,
-            team: teams.get(row.team_id)!,
-            leader,
-            entry: row,
-          }),
-        );
+        data.push(this.summary(row));
       }
       return { data, nextCursor: this.nextCursor(rows.rows, query, scope) };
     });
