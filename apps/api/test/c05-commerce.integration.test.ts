@@ -12,6 +12,7 @@ import { hashPassword } from '../src/security.js';
 import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
 import { CommerceService } from '../src/commerce/service.js';
 import { activateEventCommerce } from '../src/commerce/activation.js';
+import { createCommerceSystemActor } from '../src/commerce/system-actor.js';
 import {
   ORIGIN,
   PASSWORD,
@@ -100,6 +101,53 @@ describe(
     async function fresh(id: string) {
       return (await workspace(h.otherOwner, true)).orders.find((o) => o.id === id)!;
     }
+    test('offline operator grants persist a real disabled non-login audit actor without granting it application permissions', async () => {
+      for (const user of [h.otherOwner, reviewer]) {
+        const row = (
+          await h.api.pool.query(
+            `SELECT u.id,u.status,u.password_hash,u.login_name,a.actor_id,
+            (SELECT count(*)::int FROM organization_memberships WHERE user_id=u.id) AS memberships,
+            (SELECT count(*)::int FROM sessions WHERE user_id=u.id) AS sessions,
+            (SELECT count(*)::int FROM platform_operators WHERE user_id=u.id) AS platform_roles
+            FROM platform_operators p JOIN users u ON u.id=p.maintenance_actor_id
+            JOIN audit_logs a ON a.actor_id=u.id AND a.resource_id=p.user_id
+            WHERE p.user_id=$1 AND a.action='commerce.platform_operator.granted'`,
+            [user.id],
+          )
+        ).rows[0]!;
+        expect(row).toMatchObject({
+          status: 'DISABLED',
+          login_name: null,
+          memberships: 0,
+          sessions: 0,
+          platform_roles: 0,
+        });
+        expect(row.actor_id).toBe(row.id);
+        expect(row.id).not.toBe(user.id);
+        expect(row.password_hash).not.toMatch(/^scrypt\$/);
+      }
+    });
+    test('an audit constraint failure rolls back its system identity without leaving an orphan user', async () => {
+      const client = await h.api.pool.connect();
+      let actorId = '';
+      try {
+        await client.query('BEGIN');
+        actorId = await createCommerceSystemActor(client, 'LEDGER');
+        await expect(
+          client.query(
+            `INSERT INTO audit_logs(id,org_id,actor_id,action,resource_type,resource_id,metadata)
+          VALUES($1,NULL,$2,$3,'user',$4,'{}'::jsonb)`,
+            [randomUUID(), actorId, 'x'.repeat(81), h.owner.id],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+      } finally {
+        await client.query('ROLLBACK');
+        client.release();
+      }
+      expect((await h.api.pool.query('SELECT id FROM users WHERE id=$1', [actorId])).rowCount).toBe(
+        0,
+      );
+    });
     async function order(eventId?: string) {
       const e = eventId
         ? (await h.api.pool.query('SELECT id,version FROM events WHERE id=$1', [eventId])).rows[0]!
@@ -203,6 +251,18 @@ describe(
           )
         ).rows[0]!.n,
       ).toBe(1);
+      const audits = (
+        await h.api.pool.query(
+          `SELECT a.actor_id,u.status,u.password_hash FROM audit_logs a JOIN users u ON u.id=a.actor_id
+          WHERE a.resource_id=$1 AND a.action='commerce.order.paid'`,
+          [o.id],
+        )
+      ).rows;
+      expect(audits).toHaveLength(1);
+      expect(audits[0]!.status).toBe('DISABLED');
+      expect(audits[0]!.actor_id).not.toBe(h.owner.id);
+      expect(audits[0]!.actor_id).not.toBe(reviewer.id);
+      expect(audits[0]!.password_hash).not.toMatch(/^scrypt\$/);
       await expect(
         h.api.pool.query('UPDATE billing_orders SET amount_fen=1,version=version+1 WHERE id=$1', [
           o.id,

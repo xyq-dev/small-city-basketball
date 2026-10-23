@@ -33,6 +33,7 @@ import type {
   WechatPayBillRow,
 } from './wechatpay.js';
 import { checkPayment } from './domain.js';
+import { createCommerceSystemActor } from './system-actor.js';
 type Row = Record<string, any>;
 interface Context {
   actor: Actor;
@@ -533,9 +534,10 @@ export class CommerceService extends ApplicationService {
     });
   }
   private async systemAudit(c: PoolClient, o: Row, action: string, metadata: unknown) {
+    const actorId = await createCommerceSystemActor(c, 'LEDGER');
     await c.query(
-      "INSERT INTO audit_logs(id,org_id,actor_id,action,resource_type,resource_id,metadata) VALUES($1,$2,NULL,$3,'billing_order',$4,$5::jsonb)",
-      [randomUUID(), o.org_id, action, o.id, JSON.stringify(metadata)],
+      "INSERT INTO audit_logs(id,org_id,actor_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,'billing_order',$5,$6::jsonb)",
+      [randomUUID(), o.org_id, actorId, action, o.id, JSON.stringify(metadata)],
     );
   }
   private async bump(c: PoolClient, o: Row, status: string) {

@@ -7,6 +7,7 @@ import { ApiError } from '../errors.js';
 import { emailInput, objectInput } from '../validation.js';
 import { readAccountMaintenanceDatabaseUrl } from '../account-maintenance.js';
 import { reason } from './domain.js';
+import { createCommerceSystemActor } from './system-actor.js';
 export function parsePlatformOperatorInput(raw: unknown) {
   const v = objectInput(raw, ['email', 'status', 'reason']);
   if (v.status !== 'ACTIVE' && v.status !== 'DISABLED')
@@ -49,15 +50,16 @@ export async function maintainPlatformOperator(pool: PoolType, raw: unknown) {
       )
     ).rows[0];
     if (!target) throw new ApiError(409, 'PLATFORM_OPERATOR_REJECTED', '目标账号已变化');
-    const maintenanceActorId = randomUUID();
+    const maintenanceActorId = await createCommerceSystemActor(c, 'PLATFORM_MAINTENANCE');
     await c.query(
       'INSERT INTO platform_operators(user_id,status,maintenance_actor_id,reason) VALUES($1,$2,$3,$4) ON CONFLICT(user_id) DO UPDATE SET status=EXCLUDED.status,maintenance_actor_id=EXCLUDED.maintenance_actor_id,reason=EXCLUDED.reason,updated_at=clock_timestamp()',
       [ref.id, input.status, maintenanceActorId, input.reason],
     );
     await c.query(
-      "INSERT INTO audit_logs(id,org_id,actor_id,action,resource_type,resource_id,metadata) VALUES($1,NULL,NULL,$2,'user',$3,$4::jsonb)",
+      "INSERT INTO audit_logs(id,org_id,actor_id,action,resource_type,resource_id,metadata) VALUES($1,NULL,$2,$3,'user',$4,$5::jsonb)",
       [
         randomUUID(),
+        maintenanceActorId,
         input.status === 'ACTIVE'
           ? 'commerce.platform_operator.granted'
           : 'commerce.platform_operator.revoked',

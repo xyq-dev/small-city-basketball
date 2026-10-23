@@ -15,3 +15,7 @@ root共享`service.ts/runtime-config.ts/commerce-runtime.ts/request-body.ts/erro
 本机已完成API/admin strict与build；API源码完整测试执行结果在提交后报告，商业新增domain/activation此前9项通过，补引用边界后增1项；admin新增9项单测通过（真实组件+受控响应，不是浏览器/支付证据）。已有Vite约500KiB chunk提示不影响构建。编写两份真实PG集成文件：人工双审/隔离/CAS并发/首次ENFORCED门禁/全额退款/不可变SQL/最小runtime权限/撤销；Native真实HTTP和PG配合合成签名通知及受控transport，覆盖金额错误、幂等、早到回调、晚到不同退款ID、长审核原因、双向退款账单及错日。**本机无PG/Docker，以上PG文件与013均未执行；必须由root隔离CI实跑，不将strict、协议fixture或作者报告写成数据库/真实付款验收。**桌面/手机真实浏览器、production HTTPS、重启/备份第二实例恢复由root整合后统一执行和记录。
 
 下一位先整合本主体提交与provider311b13c，保留root共享版本，执行全部strict/build/format/source，再隔离PG/HTTPS/真实桌面手机模拟/全表恢复及独立审查。无生产部署、正式Migration/账号维护、付费资源、新外部凭据或公网端口。本轮真实微信商户付款/退款/实际日账单、真实小程序工具/真机、原生OBS均未验证，不能宣称完整商业生产验收通过。
+
+## 隔离CI审计主体修复
+
+2026-10-24（Asia/Shanghai），root真实隔离production CI39997736172在平台权限维护阶段失败。核实旧001的audit_logs.actor_id为NOT NULL且外键users；新CLI及账本systemAudit传NULL会23502，原作者本机没有PG，strict无法覆盖该错误。已统一新建commerce/system-actor.ts：调用方原事务内先插入随机唯一email/UUID、DISABLED状态、113字符不可verifyPassword的sentinel系统用户，再用真实ID写审计；不冒充普通owner、不授机构/平台权限、不放宽旧schema或runtime ACL，维护CLI保留受控错误。人工收款/退款及Native资金审计共同覆盖。2项新增unit与原domain/activation合计12项通过，API strict/build通过。真实PG新增JOIN审计主体禁用及无会话/角色、账本重放一次审计、约束失败后事务回滚无孤立actor断言；本机仍未执行PG，交root重新隔离CI，不能把最初source通过描述为资金闭环通过。root独立审查作者c05_review已读草稿无代码修改建议，最终提交后须重新核验并记录。

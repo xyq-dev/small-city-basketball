@@ -312,6 +312,20 @@ describe(
       expect(unchanged.provider_refund_id).toBe(common.refund_id);
       expect(unchanged.accepted_at.toISOString()).toBe(accepted);
       expect(unchanged.status).toBe('SUCCEEDED');
+      const audits = (
+        await api.pool.query(
+          `SELECT a.actor_id,u.status,u.password_hash FROM audit_logs a JOIN users u ON u.id=a.actor_id
+          WHERE a.resource_id=$1 AND a.action IN ('commerce.order.paid','commerce.order.refunded')`,
+          [order.id],
+        )
+      ).rows;
+      expect(audits).toHaveLength(2);
+      expect(new Set(audits.map((a) => a.actor_id)).size).toBe(2);
+      for (const audit of audits) {
+        expect(audit.status).toBe('DISABLED');
+        expect([owner.id, maker.id, checker.id]).not.toContain(audit.actor_id);
+        expect(audit.password_hash).not.toMatch(/^scrypt\$/);
+      }
     });
     test('real PostgreSQL reconciliation detects missing local rows and inconsistent refund identities, amounts and billing dates with a controlled bill provider', async () => {
       const local = (

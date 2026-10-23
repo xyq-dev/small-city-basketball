@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { Agent } from 'node:http';
 import request from 'supertest';
 import type { Response } from 'supertest';
 import type { Pool } from 'pg';
@@ -7,6 +8,11 @@ import { expect } from 'vitest';
 
 export const ORIGIN = 'http://localhost:5173';
 export const RUN_ID = randomUUID().replaceAll('-', '');
+// Each isolated Vitest file owns a real loopback source address. Larger suites
+// must not spend another file's login-IP budget. This changes TCP binding only:
+// production limits, account limits and forwarded-header handling stay intact.
+const clientAddress = `127.${[0, 2, 4].map((offset) => 1 + (parseInt(RUN_ID.slice(offset, offset + 2), 16) % 254)).join('.')}`;
+const clientAgent = new Agent({ localAddress: clientAddress, keepAlive: false });
 export const PASSWORD = 'Scb integration password 🏀 2026';
 
 // Fail closed before creating a pool. These tests intentionally create schema,
@@ -43,7 +49,7 @@ export async function call(
   path: string,
   options: CallOptions = {},
 ): Promise<Response> {
-  let pending = request(api.app.getHttpServer())[method](path);
+  let pending = request(api.app.getHttpServer())[method](path).agent(clientAgent);
   if (method !== 'get' && options.origin !== null)
     pending = pending.set('Origin', options.origin ?? ORIGIN);
   if (options.cookie) pending = pending.set('Cookie', options.cookie);
