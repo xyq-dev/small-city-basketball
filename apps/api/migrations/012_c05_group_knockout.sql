@@ -82,7 +82,7 @@ BEGIN
   SELECT * INTO c FROM result_confirmations WHERE org_id=scope_org AND match_id=m.id AND id=(item->>'confirmationId')::uuid;
   IF NOT FOUND OR s.latest_confirmation_id IS DISTINCT FROM c.id OR s.source_version IS DISTINCT FROM m.version OR s.requires_reconfirmation IS DISTINCT FROM false OR s.clock_running IS DISTINCT FROM false OR
    c.source_match_version+1 IS DISTINCT FROM (item->>'matchVersion')::integer OR c.source_match_version+1>m.version OR c.home_score=c.away_score OR c.home_score IS DISTINCT FROM s.home_score OR c.away_score IS DISTINCT FROM s.away_score OR c.last_event_seq+1 IS DISTINCT FROM s.last_event_seq OR
-   (item->>'winnerEntryId')::uuid IS DISTINCT FROM CASE WHEN c.home_score>c.away_score THEN m.home_entry_id ELSE m.away_entry_id END THEN
+   (item->>'winnerEntryId')::uuid IS DISTINCT FROM (CASE WHEN c.home_score>c.away_score THEN m.home_entry_id ELSE m.away_entry_id END) THEN
    RAISE EXCEPTION 'Group source confirmation must be effective and unchanged' USING ERRCODE='23514';END IF;
  END LOOP;
 END;
@@ -105,7 +105,7 @@ END;
 $$;
 CREATE TRIGGER group_tiebreak_draws_insert_guard BEFORE INSERT ON group_tiebreak_draws FOR EACH ROW EXECUTE FUNCTION c05_draw_guard();
 CREATE FUNCTION c05_qualification_guard() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE e events%ROWTYPE;r schedule_revisions%ROWTYPE;g integer;k integer;max_size integer;group_index integer;group_key_value text;top_entries jsonb;top_by_group jsonb:='{}';fixed_slots jsonb:='[]';half integer;pair_index integer;fixture jsonb;used_draws jsonb:='[]';participant jsonb;side integer;position integer;d group_tiebreak_draws%ROWTYPE;tie jsonb;subset jsonb;
+DECLARE e events%ROWTYPE;r schedule_revisions%ROWTYPE;g integer;k integer;max_size integer;group_index integer;group_key_value text;top_entries jsonb;top_by_group jsonb:='{}';fixed_slots jsonb:='[]';half integer;pair_index integer;fixture jsonb;used_draws jsonb:='[]';participant jsonb;side integer;fixture_position integer;d group_tiebreak_draws%ROWTYPE;tie jsonb;subset jsonb;
 BEGIN
  IF NEW.transaction_id IS DISTINCT FROM pg_current_xact_id() THEN RAISE EXCEPTION 'Qualification proof must belong to current transaction' USING ERRCODE='23514';END IF;
  PERFORM org_id FROM org_schedule_mutex WHERE org_id=NEW.org_id FOR UPDATE;
@@ -146,9 +146,9 @@ BEGIN
  IF NEW.slots IS DISTINCT FROM fixed_slots OR (SELECT count(DISTINCT value->>'fixtureKey') FROM jsonb_array_elements(NEW.fixtures))<>g OR (SELECT count(DISTINCT value->>'matchId') FROM jsonb_array_elements(NEW.fixtures))<>g THEN
  RAISE EXCEPTION 'Qualification seats must follow current top two and fixed cross-group bracket' USING ERRCODE='23514';END IF;
  FOR fixture IN SELECT value FROM jsonb_array_elements(NEW.fixtures) LOOP
-  position:=(fixture->>'positionNo')::integer;
-  IF position NOT BETWEEN 1 AND g OR (fixture->>'roundNo')::integer IS DISTINCT FROM NEW.round_no OR fixture->>'fixtureKey' IS DISTINCT FROM 'R'||NEW.round_no||'-P'||position OR
-    fixture->>'homeEntryId' IS DISTINCT FROM NEW.slots->>((position-1)*2) OR fixture->>'awayEntryId' IS DISTINCT FROM NEW.slots->>((position-1)*2+1) THEN
+  fixture_position:=(fixture->>'positionNo')::integer;
+  IF fixture_position NOT BETWEEN 1 AND g OR (fixture->>'roundNo')::integer IS DISTINCT FROM NEW.round_no OR fixture->>'fixtureKey' IS DISTINCT FROM 'R'||NEW.round_no||'-P'||fixture_position OR
+    fixture->>'homeEntryId' IS DISTINCT FROM NEW.slots->>((fixture_position-1)*2) OR fixture->>'awayEntryId' IS DISTINCT FROM NEW.slots->>((fixture_position-1)*2+1) THEN
     RAISE EXCEPTION 'Qualification fixtures must match every fixed seat' USING ERRCODE='23514';END IF;
   FOR side IN 0..1 LOOP
    SELECT value INTO participant FROM jsonb_array_elements(r.source->'entries') WHERE value->>'entryId'=fixture->>(CASE WHEN side=0 THEN 'homeEntryId' ELSE 'awayEntryId' END);

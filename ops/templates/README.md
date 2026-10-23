@@ -131,7 +131,6 @@ quarantine撤销旧session／pending invitation／active public／active overlay
 
 网络边界：仅Web连接可发布主机端口的`ingress`桥，同时接入internal `frontend`反代API；API仅连接internal `frontend`/`backend`，PostgreSQL仅internal `backend`，两者均无主机端口。`internal`网络不能替代Web发布入口；隔离CI将Web绑定到`127.0.0.1:9443`，不会开放公网。
 
-
 ## C05 商业、微信与媒体运行接口
 
 默认 `COMMERCE_MODE=OFF`，保留既有办赛使用；每次首次正式发布记录 UNMETERED 激活。开启 `ENFORCED` 后，首次发布需要与本届绑定、有效且覆盖整届队数/预计场次的已付软件服务权益；已激活赛事不因后续到期中断。013 为升级前已发布赛事写 LEGACY 激活。这里仅处理平台按届软件服务费，没有报名费、保证金、钱包或托管资金。

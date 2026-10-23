@@ -1,6 +1,6 @@
 # 任务看板
 
-当前C05：`IN_PROGRESS / LOCAL_ONLY`，root集成四域；[任务](tasks/C05.md)、[交接](handoffs/C05.md)。不把作者局部测试视为联合PG/浏览器或生产证据。
+当前C05：`IN_PROGRESS / PR13 / CI_FIXING`，root集成四域；[任务](tasks/C05.md)、[交接](handoffs/C05.md)。不把作者局部测试视为联合PG/浏览器或生产证据。
 
 更新：2026-10-23（Asia/Shanghai）。集成人单写汇总；细节与证据见任务卡/交接。
 

@@ -1,6 +1,6 @@
 # C05 GROUP 分组接淘汰后端交接
 
-更新时间2026-10-24T01:25:24+08:00。负责人 c04_bracket_design；集成人 root；REVIEW / LOCAL_ONLY，未生产部署。
+更新时间2026-10-24T01:42:39+08:00。负责人 c04_bracket_design；集成人 root；REVIEW / LOCAL_ONLY，未生产部署。
 
 ## 现场与权限
 
@@ -50,3 +50,9 @@ Migration仅已编写，未在本机执行。当前无Docker/psql入口，真实
 5. 两新表最小ACL/manifest/完整恢复/指纹及15Migration总数由root与其它模块共同整合。真实PG/浏览器/完整恢复未过前不能标DONE/MAIN。
 
 没有push/PR/merge或生产变更；后续准确Git提交由实际commit记录获取。旧007已落库FINAL全赛事升级夹具缺口未在本子项补验，不把本项新schema PG计划当旧库升级证据。
+
+## PR13 首轮迁移语法修复
+
+root回报隔离CI39996944016的API job120562825083与production migrate均因012的PostgreSQL42601失败。原SQL字符9539位于第85行`IF`条件内部裸`CASE WHEN ... THEN ... END`的内层`THEN`；PL/pgSQL在此提前终止条件，导致不完整SQL表达式。已将该CASE整体括号化；资格guard的局部变量`position`同时改名`fixture_position`避免与SQL词法冲突，后者是预防性改名，并非已证实的第二个报错。独立c05_review确认首因与其余CASE上下文；没有放宽来源、确认、席位或事务guards，未改001–011及测试。
+
+本次012 SHA256为`df3400bd351fc9d9d7816bd2933e0d8d94f3e517152a8912771689cbc3acb2df`，替代上文首版`3abc4b3...`。本机仅`git diff --check`通过与完整差异复核，仍无PostgreSQL/Docker或PL/pgSQL解析器，不能记作迁移/PG测试通过。root下一步cherry-pick本修复后重跑真实隔离CI；只有新CI实际执行通过才能关闭迁移阻塞。共享index依赖镜像及三个node_modules symlink继续原样保留，不纳提交。
