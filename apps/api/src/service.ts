@@ -23,6 +23,7 @@ import {
   eventInput,
   eventQuery,
   invalid,
+  loginIdentifierInput,
   membershipInput,
   objectInput,
   passwordInput,
@@ -287,26 +288,41 @@ export class ApplicationService {
 
   async login(body: unknown, ip: string): Promise<{ data: SessionData; token: string }> {
     const input = objectInput(body, ['email', 'password']);
-    const email = emailInput(input.email);
+    const identifier = loginIdentifierInput(input.email);
     const password = passwordInput(input.password);
     await this.rateLimit(`login-ip:${hashToken(ip)}`, 100, 900);
-    const accountKey = `login-account:${hashToken(`${email}\n${ip}`)}`;
-    await this.rateLimit(accountKey, 10, 900);
-    const lookup = await this.pool.query<DbUser>(
-      'SELECT id,email,display_name,password_hash,status FROM users WHERE email=$1',
-      [email],
+    const lookup = await this.pool.query<DbUser & { login_name: string | null }>(
+      identifier.includes('@')
+        ? 'SELECT id,email,login_name,display_name,password_hash,status FROM users WHERE email=$1'
+        : 'SELECT id,email,login_name,display_name,password_hash,status FROM users WHERE login_name=$1',
+      [identifier],
     );
     const candidate = lookup.rows[0];
+    // Both identifiers share the pre-existing email/IP budget. Alternating a
+    // user's email and alias must not double the available password attempts.
+    const accountKey = `login-account:${hashToken(`${candidate?.email ?? identifier}\n${ip}`)}`;
+    await this.rateLimit(accountKey, 10, 900);
     const matches = await verifyPassword(password, candidate?.password_hash);
-    const invalidCredentials = () => new ApiError(401, 'INVALID_CREDENTIALS', '邮箱或密码不正确');
+    const invalidCredentials = () => new ApiError(401, 'INVALID_CREDENTIALS', '账号或密码不正确');
     if (!candidate || !matches || candidate.status !== 'ACTIVE') throw invalidCredentials();
     return this.transaction(async (client) => {
-      const current = await client.query<DbUser>(
-        'SELECT id,email,display_name,password_hash,status FROM users WHERE id=$1 FOR SHARE',
+      // Offline credential maintenance takes this key exclusively before
+      // enumerating sessions. A preceding login must finish first, and a later
+      // login cannot create a session that escapes that complete enumeration.
+      await client.query('SELECT pg_advisory_xact_lock_shared(hashtextextended($1,0))', [
+        `scb-account-maintenance:${candidate.id}`,
+      ]);
+      const current = await client.query<DbUser & { login_name: string | null }>(
+        'SELECT id,email,login_name,display_name,password_hash,status FROM users WHERE id=$1 FOR SHARE',
         [candidate.id],
       );
       const user = current.rows[0];
-      if (!user || user.status !== 'ACTIVE' || user.password_hash !== candidate.password_hash)
+      if (
+        !user ||
+        user.status !== 'ACTIVE' ||
+        user.password_hash !== candidate.password_hash ||
+        (user.email !== identifier && user.login_name !== identifier)
+      )
         throw invalidCredentials();
       const session = await this.createSession(client, user.id);
       await client.query('DELETE FROM auth_rate_limits WHERE key=$1', [accountKey]);

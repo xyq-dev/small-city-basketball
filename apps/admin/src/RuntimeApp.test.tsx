@@ -56,6 +56,29 @@ afterEach(() => {
 });
 
 describe('API模式登录与机构边界', () => {
+  it('用户名可登录并保留email请求字段', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      if (url === '/v1/auth/session') return failed(401, '未登录');
+      if (url === '/v1/auth/capabilities') return ok(openRegistration);
+      if (url === '/v1/auth/login') return ok(session);
+      return ok([]);
+    });
+    render(<RuntimeApp mode="api" client={createApiClient({ fetcher })} />);
+    const user = userEvent.setup();
+    const identity = await screen.findByLabelText('邮箱或用户名');
+    expect(identity).toHaveAttribute('type', 'text');
+    expect(identity).toHaveAttribute('autocomplete', 'username');
+    await user.type(identity, 'admin_26');
+    await user.type(screen.getByLabelText('密码'), 'strong-test-password');
+    await user.click(screen.getByRole('button', { name: '登录工作台' }));
+    expect(await screen.findByText('业务服务 · 数据持久保存')).toBeVisible();
+    const request = fetcher.mock.calls.find(([url]) => url === '/v1/auth/login');
+    expect(JSON.parse(String(request?.[1]?.body))).toEqual({
+      email: 'admin_26',
+      password: 'strong-test-password',
+    });
+  });
+
   it('登录失败显示错误且不渲染Mock，成功后显示真实机构与资料', async () => {
     let attempts = 0;
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => {
@@ -69,7 +92,7 @@ describe('API模式登录与机构边界', () => {
     const user = userEvent.setup();
     expect(await screen.findByRole('heading', { name: '欢迎回到你的主场' })).toBeVisible();
     expect(screen.queryByText('青锋杯篮球邀请赛')).not.toBeInTheDocument();
-    await user.type(screen.getByLabelText('邮箱'), session.user.email);
+    await user.type(screen.getByLabelText(/邮箱/), session.user.email);
     await user.type(screen.getByLabelText('密码'), 'wrong-password');
     await user.click(screen.getByRole('button', { name: '登录工作台' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('邮箱或密码错误');
@@ -161,7 +184,7 @@ describe('API模式登录与机构边界', () => {
     render(<RuntimeApp mode="api" client={createApiClient({ fetcher })} />);
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: '首次使用？创建机构账号' }));
-    await user.type(screen.getByLabelText('邮箱'), 'new@example.test');
+    await user.type(screen.getByLabelText(/邮箱/), 'new@example.test');
     await user.type(screen.getByLabelText('密码'), 'short');
     await user.type(screen.getByLabelText('称呼'), '新用户');
     await user.type(screen.getByLabelText('机构名称'), '新机构');
@@ -204,7 +227,7 @@ describe('API模式登录与机构边界', () => {
     );
     const user = userEvent.setup();
     expect(await screen.findByRole('heading', { name: '欢迎回到你的主场' })).toBeVisible();
-    await user.type(screen.getByLabelText('邮箱'), session.user.email);
+    await user.type(screen.getByLabelText(/邮箱/), session.user.email);
     await user.type(screen.getByLabelText('密码'), 'correct-password');
     await user.click(screen.getByRole('button', { name: '登录工作台' }));
     expect(await screen.findByRole('link', { name: '新身份的赛事' })).toBeVisible();
@@ -421,7 +444,7 @@ describe('领队个人账号与绑定邀请', () => {
     await user.click(await screen.findByRole('button', { name: '球队领队？创建个人账号' }));
     expect(screen.getByRole('heading', { name: '创建领队账号' })).toBeVisible();
     expect(screen.queryByLabelText('机构名称')).not.toBeInTheDocument();
-    await user.type(screen.getByLabelText('邮箱'), participant.user.email);
+    await user.type(screen.getByLabelText(/邮箱/), participant.user.email);
     await user.type(screen.getByLabelText('密码'), 'strong-test-password');
     await user.type(screen.getByLabelText('称呼'), participant.user.displayName);
     await user.click(screen.getByRole('button', { name: '创建账号并进入' }));
@@ -499,7 +522,7 @@ describe('领队个人账号与绑定邀请', () => {
     expect(window.location.hash).toBe('');
     expect(await screen.findByText(/已读取球队邀请/)).toBeVisible();
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText('邮箱'), participant.user.email);
+    await user.type(screen.getByLabelText(/邮箱/), participant.user.email);
     await user.type(screen.getByLabelText('密码'), 'strong-test-password');
     await user.click(screen.getByRole('button', { name: '登录工作台' }));
     expect(await screen.findByRole('dialog', { name: '个人账号与球队邀请' })).toBeVisible();

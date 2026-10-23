@@ -18,6 +18,7 @@ import type {
   ScoringControl,
   ScorekeeperLeaseData,
   ScoringMatchSummary,
+  MatchPlayerRoster,
 } from '@small-city-basketball/contracts';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
 import type { EventRow, OrgActor } from './service.js';
@@ -32,6 +33,12 @@ import {
   planCommand,
   replayStats,
 } from './scoring-domain.js';
+import {
+  playerStatisticsDto,
+  projectPlayerStatistics,
+  recordedCollectionMode,
+  scoringCollectionMode,
+} from './player-statistics.js';
 
 type Row = Record<string, any>;
 interface Access {
@@ -190,6 +197,29 @@ export class ScoringService extends ApplicationService {
       createdAt: iso(r.created_at),
     };
   }
+  private async playerRoster(c: PoolClient, a: Access): Promise<MatchPlayerRoster> {
+    const result = await c.query<Row>(
+      `SELECT entry_id,revision_id,member_id,name,jersey_no FROM entry_roster_players WHERE org_id=$1 AND ((entry_id=$2 AND revision_id=$3) OR (entry_id=$4 AND revision_id=$5)) ORDER BY CASE WHEN jersey_no='00' THEN 0 ELSE jersey_no::int END,jersey_no,member_id`,
+      [
+        a.ctx.orgId,
+        a.match.home_entry_id,
+        a.match.home_roster_revision_id,
+        a.match.away_entry_id,
+        a.match.away_roster_revision_id,
+      ],
+    );
+    const side = (entryId: string, revisionId: string) =>
+      result.rows
+        .filter((row) => row.entry_id === entryId && row.revision_id === revisionId)
+        .map((row) => ({ memberId: row.member_id, name: row.name, jerseyNo: row.jersey_no }));
+    const roster = {
+      home: side(a.match.home_entry_id, a.match.home_roster_revision_id),
+      away: side(a.match.away_entry_id, a.match.away_roster_revision_id),
+    };
+    if (!roster.home.length || !roster.away.length)
+      conflict('MATCH_ROSTER_INVALID', '本场冻结名单不可用');
+    return roster;
+  }
   private async state(c: PoolClient, a: Access): Promise<Row | null> {
     return (
       (
@@ -210,6 +240,22 @@ export class ScoringService extends ApplicationService {
     };
   }
   private confirmation(r: Row): ResultConfirmationData {
+    const mode = scoringCollectionMode(r.collection_mode);
+    const playerStatistics = playerStatisticsDto(r.player_stats);
+    if ((mode === 'TEAM_ONLY') !== (playerStatistics === null))
+      conflict('PROJECTION_MISMATCH', '确认赛果的球员统计模式不一致');
+    if (playerStatistics) {
+      for (const [side, score, fouls] of [
+        [playerStatistics.home, r.home_score, r.home_fouls],
+        [playerStatistics.away, r.away_score, r.away_fouls],
+      ] as const) {
+        if (
+          side.players.reduce((sum, row) => sum + row.score, side.unassigned.score) !== score ||
+          side.players.reduce((sum, row) => sum + row.fouls, side.unassigned.fouls) !== fouls
+        )
+          conflict('PROJECTION_MISMATCH', '确认赛果的球队与球员统计不一致');
+      }
+    }
     return {
       id: r.id,
       matchId: r.match_id,
@@ -221,6 +267,7 @@ export class ScoringService extends ApplicationService {
       home: { score: r.home_score, fouls: r.home_fouls, timeouts: r.home_timeouts },
       away: { score: r.away_score, fouls: r.away_fouls, timeouts: r.away_timeouts },
       periods: r.period_stats,
+      playerStatistics,
       confirmedAt: iso(r.confirmed_at),
     };
   }
@@ -234,13 +281,34 @@ export class ScoringService extends ApplicationService {
     if (!s) return null;
     const rules = await this.rules(c, a.ctx.orgId, s.ruleset_id);
     if (!rules) throw notFound();
+    const mode = scoringCollectionMode(s.collection_mode);
+    const history = await this.events(c, a);
+    const roster = mode === 'PLAYER_BASIC' ? await this.playerRoster(c, a) : { home: [], away: [] };
+    const playerStatistics = projectPlayerStatistics(
+      mode,
+      replayStats(history, rules, s.period),
+      roster,
+    );
+    if (
+      recordedCollectionMode(history) !== mode ||
+      !isDeepStrictEqual(s.player_stats, playerStatistics)
+    )
+      conflict('PROJECTION_MISMATCH', '记分流水与球员统计投影不一致');
     let latestConfirmation: ResultConfirmationData | null = null;
     if (s.latest_confirmation_id) {
       const r = await c.query<Row>(
         'SELECT * FROM result_confirmations WHERE org_id=$1 AND match_id=$2 AND id=$3',
         [a.ctx.orgId, a.match.id, s.latest_confirmation_id],
       );
-      if (r.rows[0]) latestConfirmation = this.confirmation(r.rows[0]);
+      if (r.rows[0]) {
+        latestConfirmation = this.confirmation(r.rows[0]);
+        if (
+          a.match.status === 'FINAL' &&
+          !s.requires_reconfirmation &&
+          !isDeepStrictEqual(latestConfirmation.playerStatistics, playerStatistics)
+        )
+          conflict('PROJECTION_MISMATCH', '当前有效确认与球员统计投影不一致');
+      }
     }
     const m = this.matchDto(a.match);
     return {
@@ -261,7 +329,13 @@ export class ScoringService extends ApplicationService {
       lastEventSeq: s.last_event_seq,
       latestConfirmation,
       requiresReconfirmation: s.requires_reconfirmation,
-      collected: { teamScore: true, teamFouls: true, teamTimeouts: true, playerStatistics: false },
+      playerStatistics,
+      collected: {
+        teamScore: true,
+        teamFouls: true,
+        teamTimeouts: true,
+        playerStatistics: mode === 'PLAYER_BASIC',
+      },
       serverTime: now,
     };
   }
@@ -329,6 +403,7 @@ export class ScoringService extends ApplicationService {
       ),
       rulesLocked: !!a.event.locked_scoring_ruleset_id,
       snapshot: await this.snapshot(c, a, now),
+      playerRoster: await this.playerRoster(c, a),
       staff: staff.rows.map((r) => ({
         userId: r.user_id,
         displayName: r.display_name,
@@ -734,6 +809,20 @@ export class ScoringService extends ApplicationService {
       if (!rules) throw notFound();
       const history = await this.events(c, a);
       const projection = replayStats(history, rules, st?.period ?? 1);
+      const mode = st
+        ? scoringCollectionMode(st.collection_mode)
+        : command.type === 'PREPARE_MATCH'
+          ? (command.payload.collectionMode ?? 'TEAM_ONLY')
+          : 'TEAM_ONLY';
+      const roster =
+        mode === 'PLAYER_BASIC' ? await this.playerRoster(c, a) : { home: [], away: [] };
+      const previousPlayerStatistics = projectPlayerStatistics(mode, projection, roster);
+      if (
+        st &&
+        (recordedCollectionMode(history) !== mode ||
+          !isDeepStrictEqual(st.player_stats, previousPlayerStatistics))
+      )
+        conflict('PROJECTION_MISMATCH', '记分流水与球员统计投影不一致');
       if (
         st &&
         (history.length !== st.last_event_seq ||
@@ -791,12 +880,13 @@ export class ScoringService extends ApplicationService {
         history.push(event);
       }
       const totals = replayStats(history, rules, plan.clock.period);
+      const playerStatistics = projectPlayerStatistics(mode, totals, roster);
       let confirmationId = st?.latest_confirmation_id ?? null;
       let requires = !!st?.requires_reconfirmation || plan.isReopen;
       if (plan.isConfirmation) {
         confirmationId = randomUUID();
         await c.query(
-          'INSERT INTO result_confirmations(id,org_id,event_id,match_id,confirming_user_id,ruleset_id,ruleset_version,source_match_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,confirmed_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17)',
+          'INSERT INTO result_confirmations(id,org_id,event_id,match_id,confirming_user_id,ruleset_id,ruleset_version,source_match_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,confirmed_at,collection_mode,player_stats) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19::jsonb)',
           [
             confirmationId,
             ctx.orgId,
@@ -815,6 +905,8 @@ export class ScoringService extends ApplicationService {
             totals.away.timeouts,
             JSON.stringify(totals.periods),
             now,
+            mode,
+            playerStatistics === null ? null : JSON.stringify(playerStatistics),
           ],
         );
         requires = false;
@@ -844,7 +936,7 @@ export class ScoringService extends ApplicationService {
       a.match.status = plan.status;
       a.match.version = newVersion;
       await c.query(
-        'INSERT INTO scoring_states(org_id,event_id,match_id,ruleset_id,source_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,period,remaining_ms,clock_running,anchor_server_time,clock_version,latest_confirmation_id,requires_reconfirmation,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21) ON CONFLICT(org_id,match_id) DO UPDATE SET source_version=EXCLUDED.source_version,last_event_seq=EXCLUDED.last_event_seq,home_score=EXCLUDED.home_score,away_score=EXCLUDED.away_score,home_fouls=EXCLUDED.home_fouls,away_fouls=EXCLUDED.away_fouls,home_timeouts=EXCLUDED.home_timeouts,away_timeouts=EXCLUDED.away_timeouts,period_stats=EXCLUDED.period_stats,period=EXCLUDED.period,remaining_ms=EXCLUDED.remaining_ms,clock_running=EXCLUDED.clock_running,anchor_server_time=EXCLUDED.anchor_server_time,clock_version=EXCLUDED.clock_version,latest_confirmation_id=EXCLUDED.latest_confirmation_id,requires_reconfirmation=EXCLUDED.requires_reconfirmation,updated_at=EXCLUDED.updated_at',
+        'INSERT INTO scoring_states(org_id,event_id,match_id,ruleset_id,source_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,period,remaining_ms,clock_running,anchor_server_time,clock_version,latest_confirmation_id,requires_reconfirmation,updated_at,collection_mode,player_stats) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23::jsonb) ON CONFLICT(org_id,match_id) DO UPDATE SET source_version=EXCLUDED.source_version,last_event_seq=EXCLUDED.last_event_seq,home_score=EXCLUDED.home_score,away_score=EXCLUDED.away_score,home_fouls=EXCLUDED.home_fouls,away_fouls=EXCLUDED.away_fouls,home_timeouts=EXCLUDED.home_timeouts,away_timeouts=EXCLUDED.away_timeouts,period_stats=EXCLUDED.period_stats,period=EXCLUDED.period,remaining_ms=EXCLUDED.remaining_ms,clock_running=EXCLUDED.clock_running,anchor_server_time=EXCLUDED.anchor_server_time,clock_version=EXCLUDED.clock_version,latest_confirmation_id=EXCLUDED.latest_confirmation_id,requires_reconfirmation=EXCLUDED.requires_reconfirmation,updated_at=EXCLUDED.updated_at,player_stats=EXCLUDED.player_stats',
         [
           ctx.orgId,
           a.event.id,
@@ -867,6 +959,8 @@ export class ScoringService extends ApplicationService {
           confirmationId,
           requires,
           now,
+          mode,
+          playerStatistics === null ? null : JSON.stringify(playerStatistics),
         ],
       );
       const receiptRow = await c.query<Row>(

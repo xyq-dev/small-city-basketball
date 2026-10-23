@@ -13,6 +13,8 @@ import type {
   ScoringSide,
   ScoringStatKind,
   ScoreSnapshot,
+  ScoringCollectionMode,
+  MatchPlayerRoster,
 } from '@small-city-basketball/contracts';
 import type { RegistrationWorkspace } from '../registration/shared';
 import { PageHeading, ResourceState } from '../registration/shared';
@@ -23,6 +25,7 @@ import { RulesSummary, StaffPanel } from './Management';
 import { ClockDialog, CorrectionDialog, Modal } from './Dialogs';
 import { localMoment, matchStatusLabels, shortUser } from './shared';
 import { clockRemaining } from './clock';
+import { PlayerSelector, PlayerStatisticsPanel } from './PlayerStatistics';
 export function MatchWorkbench({
   context,
   matchId,
@@ -44,6 +47,12 @@ export function MatchWorkbench({
     if (model.pending) setDialog(null);
   }, [model.pending]);
   const [reviewedSnapshot, setReviewedSnapshot] = useState<ScoreSnapshot | null>(null);
+  const [collectionMode, setCollectionMode] = useState<ScoringCollectionMode>('TEAM_ONLY');
+  const [selectedPlayers, setSelectedPlayers] = useState({ HOME: '', AWAY: '' });
+  useEffect(() => {
+    setCollectionMode('TEAM_ONLY');
+    setSelectedPlayers({ HOME: '', AWAY: '' });
+  }, [matchId]);
   const wb = model.data?.workbench,
     snapshot = wb?.snapshot;
   const confirmationExpired = Boolean(
@@ -68,7 +77,19 @@ export function MatchWorkbench({
     return model.send(command, controlled, expectedVersion);
   }
   async function stat(side: ScoringSide, kind: ScoringStatKind, value: number) {
-    await send({ type: 'RECORD_STAT', payload: { side, kind, value } });
+    const roster = side === 'HOME' ? wb?.playerRoster?.home : wb?.playerRoster?.away;
+    const memberId = roster?.some((player) => player.memberId === selectedPlayers[side])
+      ? selectedPlayers[side]
+      : null;
+    await send({
+      type: 'RECORD_STAT',
+      payload: {
+        side,
+        kind,
+        value,
+        ...(snapshot?.playerStatistics && kind !== 'TIMEOUT' ? { memberId } : {}),
+      },
+    });
   }
   function open(value: typeof dialog) {
     if (value === 'confirm') setReviewedSnapshot(snapshot ?? null);
@@ -186,6 +207,27 @@ export function MatchWorkbench({
                 </Link>
               )}
               {wb.capabilities.canPrepare && (
+                <label className="score-field score-collection-mode">
+                  统计采集模式
+                  <select
+                    aria-label="统计采集模式"
+                    value={collectionMode}
+                    disabled={blocked}
+                    onChange={(event) =>
+                      setCollectionMode(event.target.value as ScoringCollectionMode)
+                    }
+                  >
+                    <option value="TEAM_ONLY">球队记分</option>
+                    {wb.playerRoster?.home.length > 0 && wb.playerRoster?.away.length > 0 && (
+                      <option value="PLAYER_BASIC">逐人基础统计（得分、犯规）</option>
+                    )}
+                  </select>
+                  <span className="score-muted">
+                    准备后本场模式不可更改；逐人模式未选择球员的记录计入未归属。
+                  </span>
+                </label>
+              )}
+              {wb.capabilities.canPrepare && (
                 <button
                   className="button button-primary"
                   disabled={blocked}
@@ -193,7 +235,10 @@ export function MatchWorkbench({
                     void send(
                       {
                         type: 'PREPARE_MATCH',
-                        payload: { expectedEventVersion: wb.event.version },
+                        payload: {
+                          expectedEventVersion: wb.event.version,
+                          ...(collectionMode === 'PLAYER_BASIC' ? { collectionMode } : {}),
+                        },
                       },
                       false,
                     )
@@ -272,6 +317,17 @@ export function MatchWorkbench({
                         {side === 'HOME' ? '主队' : '客队'} ·{' '}
                         {side === 'HOME' ? snapshot.home.teamName : snapshot.away.teamName}
                       </h3>
+                      {snapshot.playerStatistics && (
+                        <PlayerSelector
+                          label={`${side === 'HOME' ? '主队' : '客队'}球员归属`}
+                          players={side === 'HOME' ? wb.playerRoster.home : wb.playerRoster.away}
+                          value={selectedPlayers[side]}
+                          disabled={!record}
+                          onChange={(memberId) =>
+                            setSelectedPlayers((current) => ({ ...current, [side]: memberId }))
+                          }
+                        />
+                      )}
                       <div className="score-point-buttons">
                         {snapshot.rules.allowedScoreValues.map((value) => (
                           <button
@@ -434,6 +490,17 @@ export function MatchWorkbench({
                   球员篮板、助攻及其他个人统计：未统计。犯规和暂停只累计，不推定罚球、配额或剩余次数。
                 </p>
               </section>
+              <PlayerStatisticsPanel
+                statistics={snapshot.playerStatistics ?? null}
+                homeName={snapshot.home.teamName}
+                awayName={snapshot.away.teamName}
+                official={Boolean(
+                  snapshot.latestConfirmation &&
+                  snapshot.status === 'FINAL' &&
+                  !snapshot.requiresReconfirmation,
+                )}
+                needsConfirmation={snapshot.requiresReconfirmation}
+              />
             </>
           )}
           <StaffPanel data={wb} busy={blocked} onSave={model.staff} />
@@ -446,7 +513,7 @@ export function MatchWorkbench({
                   <li key={event.id}>
                     <div>
                       <strong>
-                        记录 {event.seq} · {eventLabel(event.type, event.payload)}
+                        记录 {event.seq} · {eventLabel(event.type, event.payload, wb.playerRoster)}
                       </strong>
                       <small>
                         {localMoment(event.serverTime)} · 操作者 {shortUser(event.actorId)}
@@ -479,6 +546,18 @@ export function MatchWorkbench({
                         {localMoment(item.confirmedAt)} · 确认人 {shortUser(item.confirmingUserId)}{' '}
                         · 核对版本 {item.sourceMatchVersion}
                       </small>
+                      {item.playerStatistics && (
+                        <details className="score-history-players">
+                          <summary>查看确认时个人统计</summary>
+                          <PlayerStatisticsPanel
+                            statistics={item.playerStatistics}
+                            homeName={wb.match.home.teamName}
+                            awayName={wb.match.away.teamName}
+                            title={`确认版本${item.sourceMatchVersion}个人统计`}
+                            official
+                          />
+                        </details>
+                      )}
                     </div>
                     <span className="score-state-chip">
                       {snapshot?.latestConfirmation?.id === item.id &&
@@ -515,6 +594,7 @@ export function MatchWorkbench({
       {snapshot && dialog === 'correction' && !model.pending && (
         <CorrectionDialog
           snapshot={snapshot}
+          playerRoster={wb?.playerRoster}
           events={model.data!.events}
           busy={modalBusy}
           disabled={!correct}
@@ -547,6 +627,15 @@ export function MatchWorkbench({
               {reviewedSnapshot.totals.away.timeouts}
             </span>
           </div>
+          {reviewedSnapshot.playerStatistics && (
+            <PlayerStatisticsPanel
+              statistics={reviewedSnapshot.playerStatistics}
+              homeName={reviewedSnapshot.home.teamName}
+              awayName={reviewedSnapshot.away.teamName}
+              title="本次核对的个人统计"
+              needsConfirmation={reviewedSnapshot.requiresReconfirmation}
+            />
+          )}
           {confirmationExpired && (
             <div className="score-note score-warning" role="alert">
               待确认赛果版本已变化，请关闭后重新核对。此确认框保留打开时的比分，不会替换为新版本。
@@ -659,7 +748,7 @@ export function MatchWorkbench({
 function TrophyMark() {
   return <ShieldCheck size={32} />;
 }
-function eventLabel(type: string, payload: Record<string, unknown>) {
+function eventLabel(type: string, payload: Record<string, unknown>, roster?: MatchPlayerRoster) {
   const labels: Record<string, string> = {
     PREPARE_MATCH: '准备比赛',
     START_MATCH: '开始比赛',
@@ -673,7 +762,15 @@ function eventLabel(type: string, payload: Record<string, unknown>) {
     CONFIRM_RESULT: '确认赛果',
     REOPEN_RESULT: '重开赛果',
   };
-  if (type === 'STAT_RECORDED')
-    return `第${String(payload.period)}节 ${payload.side === 'HOME' ? '主队' : '客队'}${payload.kind === 'SCORE' ? '得分' : payload.kind === 'FOUL' ? '犯规' : '暂停'} +${String(payload.value)}`;
+  if (type === 'STAT_RECORDED') {
+    const players = payload.side === 'HOME' ? roster?.home : roster?.away;
+    const player = players?.find((item) => item.memberId === payload.memberId);
+    const attribution = player
+      ? ` · ${player.jerseyNo}号 ${player.name}`
+      : payload.memberId === null
+        ? ' · 未归属球员'
+        : '';
+    return `第${String(payload.period)}节 ${payload.side === 'HOME' ? '主队' : '客队'}${payload.kind === 'SCORE' ? '得分' : payload.kind === 'FOUL' ? '犯规' : '暂停'} +${String(payload.value)}${attribution}`;
+  }
   return labels[type] ?? '比赛状态操作';
 }

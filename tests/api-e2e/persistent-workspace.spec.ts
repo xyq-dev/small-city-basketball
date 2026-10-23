@@ -63,7 +63,7 @@ test('注册、持久草稿、重新登录和机构切换使用真实API与数�
   expect(
     (await page.context().cookies()).find((cookie) => cookie.name === 'scb.sid'),
   ).toBeUndefined();
-  await page.getByLabel('邮箱', { exact: true }).fill(email);
+  await page.getByLabel('邮箱或用户名', { exact: true }).fill(email);
   await page.getByLabel('密码', { exact: true }).fill(password);
   await page.getByRole('button', { name: '登录工作台', exact: true }).click();
   await expect(

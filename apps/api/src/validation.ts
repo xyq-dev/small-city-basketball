@@ -57,6 +57,21 @@ export function emailInput(value: unknown): string {
   return email;
 }
 
+export function loginNameInput(value: unknown): string {
+  const loginName = text(value, 'loginName', 3, 32).toLowerCase();
+  if (!/^[a-z][a-z0-9_]{2,31}$/.test(loginName))
+    invalid('请检查用户名', { loginName: '用户名需为3–32位字母、数字或下划线，且以字母开头' });
+  return loginName;
+}
+
+/** The legacy JSON field remains `email`; registration is still email-only. */
+export function loginIdentifierInput(value: unknown): string {
+  const identifier = text(value, 'email', 3, 254).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier) && !/^[a-z][a-z0-9_]{2,31}$/.test(identifier))
+    invalid('请检查登录账号', { email: '请输入有效邮箱或用户名' });
+  return identifier;
+}
+
 export function calendarDate(value: unknown, field: string): string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))
     invalid('请检查赛事日期', { [field]: '请输入有效日期' });

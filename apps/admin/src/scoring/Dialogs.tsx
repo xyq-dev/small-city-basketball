@@ -6,7 +6,9 @@ import type {
   ScoreSnapshot,
   ScoringSide,
   ScoringStatKind,
+  MatchPlayerRoster,
 } from '@small-city-basketball/contracts';
+import { PlayerSelector } from './PlayerStatistics';
 export function Modal({
   title,
   children,
@@ -66,6 +68,7 @@ export function activeStats(events: ScoringEventData[]) {
 const statName = (kind: unknown) => (kind === 'SCORE' ? '得分' : kind === 'FOUL' ? '犯规' : '暂停');
 export function CorrectionDialog({
   snapshot,
+  playerRoster,
   events,
   busy,
   disabled = busy,
@@ -74,6 +77,7 @@ export function CorrectionDialog({
   onClose,
 }: {
   snapshot: ScoreSnapshot;
+  playerRoster?: MatchPlayerRoster;
   events: ScoringEventData[];
   busy: boolean;
   disabled?: boolean;
@@ -87,16 +91,30 @@ export function CorrectionDialog({
     [value, setValue] = useState(''),
     [period, setPeriod] = useState(String(snapshot.clock.period)),
     [target, setTarget] = useState(''),
+    [memberId, setMemberId] = useState(''),
     [reason, setReason] = useState(''),
     [error, setError] = useState('');
   const active = activeStats(events),
     selected = active.find((event) => event.id === target),
     effectiveKind = mode === 'REPLACE_STAT' ? selected?.payload.kind : kind;
+  const playerMode = snapshot.playerStatistics !== null && snapshot.playerStatistics !== undefined;
+  const players = playerRoster
+    ? side === 'HOME'
+      ? playerRoster.home
+      : playerRoster.away
+    : side === 'HOME'
+      ? (snapshot.playerStatistics?.home.players ?? [])
+      : (snapshot.playerStatistics?.away.players ?? []);
+  function changeSide(next: ScoringSide) {
+    setSide(next);
+    setMemberId('');
+  }
   function initializeOriginal(eventId: string) {
     setTarget(eventId);
     const original = active.find((item) => item.id === eventId);
     if (!original) {
       setValue('');
+      setMemberId('');
       return;
     }
     const {
@@ -120,6 +138,7 @@ export function CorrectionDialog({
     setKind(originalKind);
     setValue(String(originalValue));
     setPeriod(String(originalPeriod));
+    setMemberId(typeof original.payload.memberId === 'string' ? original.payload.memberId : '');
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -138,6 +157,17 @@ export function CorrectionDialog({
     } else {
       const amount = Number(value);
       if (
+        playerMode &&
+        effectiveKind !== 'TIMEOUT' &&
+        memberId &&
+        !players.some((player) => player.memberId === memberId)
+      ) {
+        setError('所选球员不在当前球队的本场名单中，请重新选择');
+        return;
+      }
+      const attribution =
+        playerMode && effectiveKind !== 'TIMEOUT' ? { memberId: memberId || null } : {};
+      if (
         !value ||
         !Number.isInteger(amount) ||
         amount < 1 ||
@@ -155,7 +185,13 @@ export function CorrectionDialog({
         }
         command = {
           type: 'REPLACE_STAT',
-          payload: { targetEventId: target, side, value: amount, reason: reason.trim() },
+          payload: {
+            targetEventId: target,
+            side,
+            value: amount,
+            reason: reason.trim(),
+            ...attribution,
+          },
         };
       } else {
         const p = Number(period);
@@ -165,7 +201,7 @@ export function CorrectionDialog({
         }
         command = {
           type: 'ADD_CORRECTION',
-          payload: { kind, side, value: amount, period: p, reason: reason.trim() },
+          payload: { kind, side, value: amount, period: p, reason: reason.trim(), ...attribution },
         };
       }
     }
@@ -184,7 +220,10 @@ export function CorrectionDialog({
               setMode(event.target.value);
               setError('');
               if (event.target.value === 'REPLACE_STAT') initializeOriginal(target);
-              else setValue('');
+              else {
+                setValue('');
+                setMemberId('');
+              }
             }}
           >
             <option value="ADD_CORRECTION">补录统计</option>
@@ -228,7 +267,10 @@ export function CorrectionDialog({
               <select
                 aria-label="统计项目"
                 value={kind}
-                onChange={(e) => setKind(e.target.value as ScoringStatKind)}
+                onChange={(e) => {
+                  setKind(e.target.value as ScoringStatKind);
+                  setMemberId('');
+                }}
               >
                 <option value="SCORE">得分</option>
                 <option value="FOUL">犯规</option>
@@ -254,7 +296,7 @@ export function CorrectionDialog({
               <select
                 aria-label="所属球队"
                 value={side}
-                onChange={(e) => setSide(e.target.value as ScoringSide)}
+                onChange={(e) => changeSide(e.target.value as ScoringSide)}
               >
                 <option value="HOME">主队</option>
                 <option value="AWAY">客队</option>
@@ -270,6 +312,15 @@ export function CorrectionDialog({
               />
             </label>
           </div>
+        )}
+        {mode !== 'VOID_STAT' && playerMode && effectiveKind !== 'TIMEOUT' && (
+          <PlayerSelector
+            label="统计归属球员"
+            players={players}
+            value={memberId}
+            onChange={setMemberId}
+            disabled={disabled}
+          />
         )}
         <label className="score-field">
           修正理由

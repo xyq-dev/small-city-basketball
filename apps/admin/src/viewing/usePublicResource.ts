@@ -15,6 +15,17 @@ export function usePublicResource<T>(read: (signal: AbortSignal) => Promise<T>) 
     request = useRef<AbortController | null>(null),
     inFlight = useRef(false),
     onlineRef = useRef(navigator.onLine);
+  const invalidate = useCallback((cause: ApiError) => {
+    if (cause.status !== 404 && cause.apiCode !== 'RESULT_SOURCE_INVALID') return;
+    ++generation.current;
+    request.current?.abort();
+    inFlight.current = false;
+    setData(undefined);
+    setLoading(false);
+    setNotFound(cause.status === 404);
+    setStale(cause.status !== 404);
+    setError(cause.message);
+  }, []);
   const reload = useCallback(async () => {
     if (!onlineRef.current) {
       setOnline(false);
@@ -87,5 +98,16 @@ export function usePublicResource<T>(read: (signal: AbortSignal) => Promise<T>) 
       window.removeEventListener('online', connected);
     };
   }, [reload]);
-  return { data, loading, error, notFound, stale, online, receivedAt, lastSuccess, reload };
+  return {
+    data,
+    loading,
+    error,
+    notFound,
+    stale,
+    online,
+    receivedAt,
+    lastSuccess,
+    reload,
+    invalidate,
+  };
 }

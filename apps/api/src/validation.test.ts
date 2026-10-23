@@ -4,6 +4,8 @@ import {
   emailInput,
   eventInput,
   eventQuery,
+  loginIdentifierInput,
+  loginNameInput,
   membershipInput,
   objectInput,
   passwordInput,
@@ -83,6 +85,27 @@ describe('真实API输入边界', () => {
     expect(() => passwordInput('x'.repeat(129))).toThrow(ApiError);
     expect(passwordInput('🔒'.repeat(12))).toBe('🔒'.repeat(12));
     expect(passwordInput('  valid-password  ')).toBe('  valid-password  ');
+  });
+
+  it('登录支持规范化用户名和邮箱，注册仍只接受邮箱', () => {
+    expect(loginIdentifierInput(' ADMIN_26 ')).toBe('admin_26');
+    expect(loginIdentifierInput(' USER@Example.Test ')).toBe('user@example.test');
+    expect(loginNameInput(' Admin_26 ')).toBe('admin_26');
+    expect(() => emailInput('admin')).toThrow(ApiError);
+    for (const value of [
+      'ab',
+      '1admin',
+      'admin-name',
+      'name space',
+      '名用户',
+      'a'.repeat(33),
+      null,
+    ]) {
+      expect(() => loginIdentifierInput(value)).toThrow(ApiError);
+      expect(() => loginNameInput(value)).toThrow(ApiError);
+    }
+    expect(() => loginNameInput('admin@example.test')).toThrow(ApiError);
+    expect(() => loginIdentifierInput('bad\u0000@example.test')).toThrow(ApiError);
   });
 
   it('拒绝PG文字字段无法存储的NUL，返回对应字段提示', () => {

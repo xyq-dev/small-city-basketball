@@ -1,5 +1,16 @@
 # API 契约
 
+## C02本地候选增量（未合并、未上线）
+
+2026-10-23：精确类型见 `packages/contracts/index.d.ts`，实施/验收状态见[C02](tasks/C02.md)。旧公开/OBS DTO不变。以下不能视为main或生产已支持：
+
+- 登录POST `/v1/auth/login`继续接收 `{email,password}`，email值可为邮箱或唯一用户名，返回会话DTO及资源权限不变。注册仍邮箱专用；密码策略未降低。用户名分配与凭据维护仅走[受控CLI](ACCOUNT_MAINTENANCE.md)，不是新增匿名HTTP接口。
+- PREPARE_MATCH.payload可选 `collectionMode: TEAM_ONLY | PLAYER_BASIC`，缺省TEAM_ONLY且准备后不可变；START_MATCH不接受该参数。
+- RECORD_STAT/ADD_CORRECTION/REPLACE_STAT.payload可选 `memberId: uuid | null`。非空仅允许本场本侧冻结球员的得分/犯规；未传或null为未归属，REPLACE未传则保留旧归属，跨side替换原有球员须显式指定新归属或null。旧输入不补默认字段，保留旧命令hash。
+- 私有Workbench新增 `playerRoster:{home,away}`；私有Snapshot/确认新增nullable `playerStatistics`，PLAYER_BASIC按双方players及unassigned给出分数/犯规，个人与未归属合计等于球队统计，TEAM_ONLY为null。`collected.playerStatistics`只表示本批基础采集，不代表篮板/助攻等已采集。
+- 自动排时建议在前端预览与人工采用，写入仍调用原allocations/CAS，检查与发布仍由服务端授权；不新增绕过校验的排赛API。
+- 公开SVG/CSV/打印只消费原白名单公开数据，重新读取授权和完整分页；不新增私人名单读取、上传服务或永久有效分享授权。
+
 目标契约：v0.2；更新：2026-10-22。P01、P02、P03-A、P04-A、P05-A、P05-B及P06-A均已整合main，DONE / MAIN。P06-A已通过[PR #7](https://github.com/xyq-dev/small-city-basketball/pull/7)合并main `f8af5c99fba294a40334c49a5d2e32f80c6acbf9`，DONE / MAIN；最终验收source `addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`、tree `2a719b4b3e8fd4f67996144c687f5bbb72902519`。[最终CI39758913295](https://github.com/xyq-dev/small-city-basketball/actions/runs/39758913295)全部成功：372项源码（admin171／API201）、123项独立PG、001→006隔离执行／复跑checksum、真实PG18.6重启与39表完整指纹、12Mock及桌面7＋手机7真实API官方Chromium151.0.7922.34浏览器。正常及故意失败流程只清本次owned子库，控制库保留。 身份、报名冻结、排赛、记分、排名／公开观赛及独立只读包装的实际合同见第5–10节；历史证据见[TESTING](TESTING.md)。完整P03/P04/P05/P06仍有文件／小程序、其他赛制／改期、可靠离线／专业统计及媒体等后续范围。原生OBS／CEF、生产及备份恢复未验收。
 
 ## 1. 通用约定

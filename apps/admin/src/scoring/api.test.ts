@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '../api/client';
 import { createScoringApi } from '../api/scoring';
-import { response, snapshot, workbench } from './test-fixtures';
+import { response, snapshot, workbench, playerSnapshot, playerWorkbench } from './test-fixtures';
 const summary = {
   matchId: 'match-a',
   eventId: 'event-a',
@@ -59,4 +59,33 @@ describe('strict scoring HTTP adapter', () => {
       createScoringApi(createApiClient({ fetcher: broken }), 'org').snapshot('match-a'),
     ).rejects.toMatchObject({ apiCode: 'INVALID_RESPONSE' });
   });
+  it('accepts player basic statistics only when all player and unassigned totals reconcile', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(playerSnapshot));
+    const api = createScoringApi(createApiClient({ fetcher }), 'org');
+    expect((await api.snapshot('match-a')).playerStatistics?.mode).toBe('PLAYER_BASIC');
+    const changed = structuredClone(playerSnapshot);
+    changed.playerStatistics!.home.players[0].score = 2;
+    fetcher.mockResolvedValue(response(changed));
+    await expect(api.snapshot('match-a')).rejects.toMatchObject({ apiCode: 'INVALID_RESPONSE' });
+    changed.totals.home.score = 2;
+    fetcher.mockResolvedValue(response(changed));
+    expect((await api.snapshot('match-a')).totals.home.score).toBe(2);
+  });
+  it.each(['flag', 'negative', 'duplicate', 'missing-roster'] as const)(
+    'rejects malformed player collection: %s',
+    async (problem) => {
+      const changed = structuredClone(playerWorkbench);
+      if (problem === 'flag') changed.snapshot!.collected.playerStatistics = false;
+      if (problem === 'negative') changed.snapshot!.playerStatistics!.away.unassigned.fouls = -1;
+      if (problem === 'duplicate')
+        changed.snapshot!.playerStatistics!.home.players.push(
+          changed.snapshot!.playerStatistics!.home.players[0],
+        );
+      const body = problem === 'missing-roster' ? { ...changed, playerRoster: undefined } : changed;
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(body));
+      await expect(
+        createScoringApi(createApiClient({ fetcher }), 'org').workbench('match-a'),
+      ).rejects.toMatchObject({ apiCode: 'INVALID_RESPONSE' });
+    },
+  );
 });
