@@ -213,9 +213,9 @@ quarantine使用新DISABLED系统User，无机构成员权及可验证密码；�
 runtime新增history SELECT/INSERT与match/court/team预约必要列UPDATE，backup仍只读，未新增高权或SECURITY DEFINER入口。40表与7Migration精确就绪/恢复指纹随本卡更新。007已在隔离CI实际执行，40表实际重启及完整dump恢复通过，证据见[交接](handoffs/P04-B.md)；生产执行为0。
 
 
-## C04 单淘汰推进凭证（候选）
+## C04 单淘汰推进凭证
 
-2026-10-23，011_c04_knockout.sql已编写，执行证据见[C04](tasks/C04.md)，无生产执行。旧001–010字节不变。新增第41表knockout_round_publications：唯一org/event/round，复合FK引用原publication/revision，当前transaction_id xid8、from/to event版本、来源hash、上一轮原match/confirmation身份及胜方、全轮计划fixtures、原因/作者/时间。无新的比分或计时状态；正式场次仍published_matches，轮空不建比赛。
+2026-10-23，011_c04_knockout.sql已在隔离CI执行，证据见[C04](tasks/C04.md)，无生产执行。旧001–010字节不变。新增第41表knockout_round_publications：唯一org/event/round，复合FK引用原publication/revision，当前transaction_id xid8、from/to event版本、来源hash、上一轮原match/confirmation身份及胜方、全轮计划fixtures、原因/作者/时间。无新的比分或计时状态；正式场次仍published_matches，轮空不建比赛。
 
 SE首轮比赛数n−nextPow2(n)/2，后轮只能精确同事务凭证追加全部fixture/match/1court+2team预约，deferred guard要求事件增版与完整全轮一并提交；proof禁止改删，runtime仅SELECT/INSERT。原RR发布与007改期不可变语义保持。sources.matchVersion是确认生效固定版本，允许后续安全人员维护提高当前比赛版本，确认ID/原结果仍严格核验。011放宽public ruleset_id为空仅限明确SE；RR仍必须锁定原排名规则，公开links仍只能随初次授权创建、精确覆盖当时全部正式比赛。
 
