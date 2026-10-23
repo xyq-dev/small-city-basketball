@@ -24,8 +24,14 @@ import {
   resultSourceInvalid,
 } from './standings-domain.js';
 import type { ResultRow, StandingParticipant } from './standings-domain.js';
+import {
+  activeEvent,
+  closedEvent,
+  completionReadiness,
+  publicViewingAllowed,
+} from './event-lifecycle-domain.js';
 type Row = Record<string, any>;
-interface Access {
+export interface StandingsAccess {
   ctx: OrgActor;
   event: EventRow & {
     current_standings_ruleset_id: string | null;
@@ -48,11 +54,16 @@ const publicId = (v: string) => {
   return v;
 };
 export class StandingsService extends ApplicationService {
-  private async context(c: PoolClient, cookie: string | undefined, org: string) {
+  protected async context(c: PoolClient, cookie: string | undefined, org: string) {
     return this.lockOrganization(c, await this.lockActor(c, cookie), org);
   }
-  private async event(c: PoolClient, ctx: OrgActor, id: string, write = false): Promise<Access> {
-    const r = await c.query<Access['event']>(
+  protected async event(
+    c: PoolClient,
+    ctx: OrgActor,
+    id: string,
+    write = false,
+  ): Promise<StandingsAccess> {
+    const r = await c.query<StandingsAccess['event']>(
       `SELECT ${EVENT_SELECT} FROM events e WHERE org_id=$1 AND id=$2 FOR ${write ? 'UPDATE' : 'SHARE'} OF e`,
       [ctx.orgId, resourceId(id)],
     );
@@ -71,7 +82,7 @@ export class StandingsService extends ApplicationService {
       manager: isAdministrator(ctx.role) || staff.rows[0]?.role === 'EVENT_MANAGER',
     };
   }
-  private async now(c: PoolClient, ctx?: OrgActor) {
+  protected async now(c: PoolClient, ctx?: OrgActor) {
     const r = await c.query<{ now: Date }>('SELECT clock_timestamp() AS now');
     const now = r.rows[0]!.now.toISOString();
     if (ctx) {
@@ -83,7 +94,7 @@ export class StandingsService extends ApplicationService {
     }
     return now;
   }
-  private eventDto(a: Access): EventData {
+  protected eventDto(a: StandingsAccess): EventData {
     const e = a.event;
     return {
       id: e.id,
@@ -100,7 +111,7 @@ export class StandingsService extends ApplicationService {
       permissions: { canEditDraft: a.manager && e.status === 'DRAFT' },
     };
   }
-  private async rules(
+  protected async rules(
     c: PoolClient,
     org: string,
     id: string | null,
@@ -122,7 +133,7 @@ export class StandingsService extends ApplicationService {
       createdAt: iso(r.created_at),
     };
   }
-  private async plan(c: PoolClient, org: string, event: string): Promise<Row | null> {
+  protected async plan(c: PoolClient, org: string, event: string): Promise<Row | null> {
     return (
       (
         await c.query<Row>(
@@ -132,7 +143,7 @@ export class StandingsService extends ApplicationService {
       ).rows[0] ?? null
     );
   }
-  private async publication(c: PoolClient, org: string, event: string): Promise<Row | null> {
+  protected async publication(c: PoolClient, org: string, event: string): Promise<Row | null> {
     return (
       (
         await c.query<Row>(
@@ -146,6 +157,7 @@ export class StandingsService extends ApplicationService {
     return p
       ? {
           publicEventId: p.public_event_id,
+          purpose: p.purpose,
           status: p.revoked_at ? 'REVOKED' : 'ACTIVE',
           createdAt: iso(p.created_at),
           revokedAt: p.revoked_at ? iso(p.revoked_at) : null,
@@ -153,7 +165,7 @@ export class StandingsService extends ApplicationService {
       : null;
   }
   // The entire mutable result proof is read in one statement snapshot. No per-match queries.
-  private async matches(
+  protected async matches(
     c: PoolClient,
     org: string,
     event: string,
@@ -166,7 +178,7 @@ export class StandingsService extends ApplicationService {
       )
     ).rows;
   }
-  private participants(plan: Row): StandingParticipant[] {
+  protected participants(plan: Row): StandingParticipant[] {
     if (!Array.isArray(plan.source?.entries)) resultSourceInvalid();
     return plan.source.entries.map((e: Row) => ({
       entryId: e.entryId,
@@ -176,7 +188,7 @@ export class StandingsService extends ApplicationService {
   }
   private async view(
     c: PoolClient,
-    a: Access,
+    a: StandingsAccess,
     now: string,
     skipStandings = false,
   ): Promise<EventStandingsData> {
@@ -188,15 +200,26 @@ export class StandingsService extends ApplicationService {
     const plan = await this.plan(c, a.ctx.orgId, a.event.id);
     const pub = await this.publication(c, a.ctx.orgId, a.event.id);
     let standings = null;
-    if (rules && plan && !skipStandings)
+    let historyReady = false;
+    if (rules && plan && !skipStandings) {
+      const matches = await this.matches(c, a.ctx.orgId, a.event.id);
       standings = calculateStandings({
         participants: this.participants(plan),
-        matches: await this.matches(c, a.ctx.orgId, a.event.id),
+        matches,
         rules,
         publicationId: plan.id,
         asOf: now,
         mode: a.event.locked_standings_ruleset_id ? 'PUBLISHED' : 'DRAFT_PREVIEW',
       });
+      if (closedEvent(a.event.status) && a.event.locked_standings_ruleset_id)
+        historyReady = completionReadiness({
+          participants: this.participants(plan),
+          matches,
+          rules,
+          publicationId: plan.id,
+          asOf: now,
+        }).ready;
+    }
     return {
       event: this.eventDto(a),
       rules,
@@ -204,10 +227,20 @@ export class StandingsService extends ApplicationService {
       standings,
       publication: this.publicationDto(pub),
       capabilities: {
-        canManageRules: a.manager && !a.event.locked_standings_ruleset_id,
-        canPublishRules: a.manager && !!rules && !a.event.locked_standings_ruleset_id,
+        canManageRules:
+          a.manager &&
+          !closedEvent(a.event.status) &&
+          a.event.status !== 'CANCELLED' &&
+          !a.event.locked_standings_ruleset_id,
+        canPublishRules:
+          a.manager &&
+          !closedEvent(a.event.status) &&
+          a.event.status !== 'CANCELLED' &&
+          !!rules &&
+          !a.event.locked_standings_ruleset_id,
         canEnablePublicViewing:
           a.manager &&
+          (activeEvent(a.event.status) || historyReady) &&
           !!a.event.locked_standings_ruleset_id &&
           !!plan &&
           (!pub || !!pub.revoked_at),
@@ -215,7 +248,7 @@ export class StandingsService extends ApplicationService {
       },
     };
   }
-  private async touch(c: PoolClient, a: Access, now: string) {
+  protected async touch(c: PoolClient, a: StandingsAccess, now: string) {
     await c.query('UPDATE events SET version=version+1,updated_at=$3 WHERE org_id=$1 AND id=$2', [
       a.ctx.orgId,
       a.event.id,
@@ -248,6 +281,8 @@ export class StandingsService extends ApplicationService {
       if (!a.manager) throw forbidden();
       const now = await this.now(c, ctx);
       version(a.event.version, expected);
+      if (closedEvent(a.event.status) || a.event.status === 'CANCELLED')
+        conflict('INVALID_EVENT_STATE', '赛事当前不能修改排名规则');
       if (a.event.locked_standings_ruleset_id)
         conflict('STANDINGS_RULES_LOCKED', '排名规则已正式发布并锁定');
       const v = (
@@ -296,6 +331,8 @@ export class StandingsService extends ApplicationService {
       if (!a.manager) throw forbidden();
       const now = await this.now(c, ctx);
       version(a.event.version, expected);
+      if (closedEvent(a.event.status) || a.event.status === 'CANCELLED')
+        conflict('INVALID_EVENT_STATE', '赛事当前不能发布排名规则');
       if (a.event.locked_standings_ruleset_id)
         conflict('STANDINGS_RULES_LOCKED', '排名规则已正式发布并锁定');
       if (!a.event.current_standings_ruleset_id)
@@ -324,7 +361,8 @@ export class StandingsService extends ApplicationService {
   }
   async publicViewingCommand(cookie: string | undefined, org: string, id: string, raw: unknown) {
     const input = objectInput(raw, ['type', 'expectedEventVersion']);
-    if (input.type !== 'ENABLE' && input.type !== 'DISABLE') invalid('不支持的公开观赛操作');
+    if (!['ENABLE', 'ENABLE_HISTORY', 'DISABLE'].includes(input.type as string))
+      invalid('不支持的公开观赛操作');
     const expected = expectedVersion(input.expectedEventVersion);
     return this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, org);
@@ -345,16 +383,23 @@ export class StandingsService extends ApplicationService {
         await this.audit(c, ctx.user.id, ctx.orgId, 'public_viewing.disabled', 'event', id);
         return this.view(c, a, now, true);
       }
+      const purpose = input.type === 'ENABLE_HISTORY' ? 'HISTORY' : 'LIVE';
       if (pub && !pub.revoked_at)
         conflict('PUBLIC_VIEWING_ALREADY_ENABLED', '公开观赛已启用，请读取当前链接');
       if (!a.event.locked_standings_ruleset_id)
         throw new ApiError(422, 'STANDINGS_RULES_REQUIRED', '请先显式发布排名规则');
       const plan = await this.plan(c, ctx.orgId, id);
       if (!plan) throw new ApiError(422, 'SCHEDULE_REQUIRED', '请先正式发布单循环赛程');
+      // Preserve existing missing-source errors before checking the publication purpose.
+      if (!publicViewingAllowed(a.event.status, purpose))
+        conflict(
+          'INVALID_EVENT_STATE',
+          purpose === 'HISTORY' ? '仅已完赛或归档赛事可显式公开历史' : '仅活动赛事可启用实时观赛',
+        );
       const rules = await this.rules(c, ctx.orgId, a.event.locked_standings_ruleset_id);
       if (!rules) resultSourceInvalid();
       const rows = await this.matches(c, ctx.orgId, id);
-      calculateStandings({
+      const standings = calculateStandings({
         participants: this.participants(plan),
         matches: rows,
         rules,
@@ -362,12 +407,25 @@ export class StandingsService extends ApplicationService {
         asOf: now,
         mode: 'PUBLISHED',
       });
+      if (purpose === 'HISTORY') {
+        const completion = completionReadiness({
+          participants: this.participants(plan),
+          matches: rows,
+          rules,
+          publicationId: plan.id,
+          asOf: now,
+        });
+        if (!standings.isComplete || !completion.ready)
+          throw new ApiError(422, 'EVENT_COMPLETION_BLOCKED', '历史观赛需要所有比赛当前有效确认', {
+            blockers: completion.blockers,
+          });
+      }
       const teamKeys = Object.fromEntries(
         this.participants(plan).map((p) => [p.entryId, randomBytes(16).toString('base64url')]),
       );
       const publicationId = randomUUID();
       await c.query(
-        'INSERT INTO public_event_publications(id,org_id,event_id,schedule_publication_id,ruleset_id,public_event_id,team_keys,created_by,created_at) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)',
+        'INSERT INTO public_event_publications(id,org_id,event_id,schedule_publication_id,ruleset_id,public_event_id,team_keys,created_by,created_at,purpose) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10)',
         [
           publicationId,
           ctx.orgId,
@@ -378,6 +436,7 @@ export class StandingsService extends ApplicationService {
           JSON.stringify(teamKeys),
           ctx.user.id,
           now,
+          purpose,
         ],
       );
       await c.query(
@@ -392,7 +451,9 @@ export class StandingsService extends ApplicationService {
         ],
       );
       await this.touch(c, a, now);
-      await this.audit(c, ctx.user.id, ctx.orgId, 'public_viewing.enabled', 'event', id);
+      await this.audit(c, ctx.user.id, ctx.orgId, 'public_viewing.enabled', 'event', id, {
+        purpose,
+      });
       return this.view(c, a, now);
     });
   }
@@ -411,24 +472,19 @@ export class StandingsService extends ApplicationService {
     );
     if (!org.rowCount) throw notFound();
     const event = (
-      await c.query<Access['event']>(
+      await c.query<StandingsAccess['event']>(
         `SELECT ${EVENT_SELECT} FROM events e WHERE org_id=$1 AND id=$2 FOR SHARE OF e`,
         [ref.org_id, ref.event_id],
       )
     ).rows[0];
-    if (
-      !event ||
-      event.format !== 'ROUND_ROBIN' ||
-      !['SCHEDULED', 'RUNNING'].includes(event.status)
-    )
-      throw notFound();
+    if (!event || event.format !== 'ROUND_ROBIN') throw notFound();
     const pub = (
       await c.query<Row>(
         'SELECT * FROM public_event_publications WHERE org_id=$1 AND event_id=$2 AND public_event_id=$3 AND revoked_at IS NULL FOR SHARE',
         [ref.org_id, ref.event_id, id],
       )
     ).rows[0];
-    if (!pub) throw notFound();
+    if (!pub || !publicViewingAllowed(event.status, pub.purpose)) throw notFound();
     return { event, pub };
   }
   private publicRules(r: StandingsRulesetData): PublicStandingsRules {
@@ -464,6 +520,17 @@ export class StandingsService extends ApplicationService {
       asOf: now,
       mode: 'PUBLISHED',
     });
+    if (
+      a.pub.purpose === 'HISTORY' &&
+      !completionReadiness({
+        participants: this.participants(plan),
+        matches: rows,
+        rules,
+        publicationId: plan.id,
+        asOf: now,
+      }).ready
+    )
+      resultSourceInvalid();
     return { ...a, now, rules, plan, rows, standings };
   }
   private team(pub: Row, entry: string, name: string) {

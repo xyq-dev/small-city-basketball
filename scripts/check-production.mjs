@@ -264,7 +264,7 @@ async function copyState() {
   await writeFile(hostState, result.output, { mode: 0o600 });
   const saved = JSON.parse(result.output);
   secrets.push(saved.cookie, saved.registration.leaderCookie, saved.scoring.writerCookie);
-  for (const overlay of [...saved.overlays.active, saved.overlays.revoked])
+  for (const overlay of [...saved.overlays.active, saved.overlays.revoked, saved.lifecycle.overlay])
     secrets.push(overlay.cookie, overlay.token);
   return saved;
 }
@@ -284,8 +284,19 @@ async function checkQuarantine(saved) {
       .status,
     401,
   );
-  assert.equal((await tlsRequest(`/v1/public/events/${saved.viewing.publicId}`)).status, 404);
-  for (const overlay of saved.overlays.active) {
+  for (const publicId of [saved.viewing.publicId, saved.lifecycle.publicId])
+    for (const suffix of ['', '/schedule', '/standings'])
+      assert.equal((await tlsRequest(`/v1/public/events/${publicId}${suffix}`)).status, 404);
+  for (const match of saved.lifecycle.schedule)
+    assert.equal(
+      (
+        await tlsRequest(
+          `/v1/public/events/${saved.lifecycle.publicId}/matches/${match.publicMatchId}`,
+        )
+      ).status,
+      404,
+    );
+  for (const overlay of [...saved.overlays.active, saved.lifecycle.overlay]) {
     const route = `/v1/overlays/${overlay.overlayId}`;
     assert.equal(
       (await tlsRequest(`${route}/snapshot`, { headers: { Cookie: overlay.cookie } })).status,
@@ -483,7 +494,7 @@ try {
         `${prefix}/api:local`,
         '--input-type=module',
         '-e',
-        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,9);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
+        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,10);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
       ]);
       await run('docker', [
         'run',

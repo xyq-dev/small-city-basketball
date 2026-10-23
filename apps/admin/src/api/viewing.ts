@@ -115,6 +115,9 @@ function privateOverview(v: unknown) {
       (obj(v.publication) &&
         strings(v.publication, ['publicEventId', 'createdAt']) &&
         ['ACTIVE', 'REVOKED'].includes(String(v.publication.status)) &&
+        (v.publication.purpose === undefined ||
+          v.publication.purpose === 'LIVE' ||
+          v.publication.purpose === 'HISTORY') &&
         (v.publication.revokedAt === null || typeof v.publication.revokedAt === 'string'))) &&
     bools(v.capabilities, [
       'canManageRules',

@@ -22,6 +22,8 @@ PR2四项已按最新代码核验并完成：scrypt单槽/有限队列、过期�
 
 ## 下一步与边界
 
+用户要求继续剩余功能；[C03](tasks/C03.md)已实施候选，REVIEW / BRANCH_ONLY，基线main909fb74，任务分支feat/C03-event-history。优先整届完赛/归档、显式历史观赛与私有本届球员基础数据榜，API/UI/恢复驱动已独立工作树整合；本机660源码/strict/build/格式与独立静态通过，[PR11](https://github.com/xyq-dev/small-city-basketball/pull/11)首CI39938738301的admin/production通过、新17项PG通过；旧无赛程错误顺序回归已修，待全量重跑，尚未合并或上线。
+
 用户已对本批Git/PR/隔离CI请求明确回复“全部授权你去做”；提交、正常同步、PR10、必要修复/审查及合并已完成。原C01 dirty保留并随PR整合，worker及旧工作树不清理。当前本地main；纯文档同步后HEAD以实际Git为准。
 
 本卡只交付商业首批四组能力，不代表完整商业版。后续优先整届完赛/归档与其他赛制，再补长期球员/赛季/高级统计、文件凭证、观众中心/微信、套餐/订单/支付退款对账和真实媒体，见[商业规划](COMMERCIAL_PRODUCT_PLAN.md)。OBS客户端依用户要求暂缓；手机模拟不等于Safari/微信真机。旧schema升级夹具未覆盖原007已落库FINAL完整比赛，部署前须在旧库隔离恢复副本补升级核验。

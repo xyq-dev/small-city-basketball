@@ -747,6 +747,8 @@ export interface StandingsData {
   rows: StandingsRow[];
 }
 export interface PublicViewingPublicationData {
+  /** Older responses omit this and represent LIVE grants. */
+  purpose?: 'LIVE' | 'HISTORY';
   publicEventId: string;
   status: 'ACTIVE' | 'REVOKED';
   createdAt: string;
@@ -774,7 +776,7 @@ export interface StandingsRuleCommandInput {
   expectedEventVersion: number;
 }
 export interface PublicViewingCommandInput {
-  type: 'ENABLE' | 'DISABLE';
+  type: 'ENABLE' | 'ENABLE_HISTORY' | 'DISABLE';
   expectedEventVersion: number;
 }
 export interface PublicStandingsRow extends StandingsTotals {
@@ -931,4 +933,61 @@ export interface OverlayBootstrapData {
 export interface AuthCapabilitiesData {
   canRegisterOrganization: boolean;
   canRegisterParticipant: boolean;
+}
+
+/** Explicit event closure, separate from an individual FINAL result. */
+export interface EventLifecycleCommandInput {
+  type: 'COMPLETE' | 'ARCHIVE' | 'REOPEN';
+  expectedEventVersion: number;
+  reason: string;
+}
+export interface EventLifecycleData {
+  event: EventData;
+  completion: {
+    totalMatchCount: number;
+    confirmedMatchCount: number;
+    ready: boolean;
+    blockers: string[];
+    sourceHash: string | null;
+  };
+  capabilities: { canComplete: boolean; canArchive: boolean; canReopen: boolean };
+}
+export interface EventPlayerStatisticsRow {
+  entryId: string;
+  rosterRevisionId: string;
+  memberId: string;
+  teamName: string;
+  name: string;
+  jerseyNo: string;
+  score: number;
+  fouls: number;
+  /** Frozen-roster samples; never a claim of actual appearances. */
+  rosterSampleMatchCount: number;
+  rank: number;
+  tied: boolean;
+}
+export interface EventPlayerStatisticsData {
+  event: EventData;
+  summary: null | {
+    algorithmVersion: 'EVENT_PLAYER_BASIC_V1';
+    sourceHash: string;
+    asOf: string;
+    totalMatchCount: number;
+    includedMatchCount: number;
+    teamOnlyConfirmedMatchCount: number;
+    pendingMatchCount: number;
+    /** All published matches are effectively confirmed PLAYER_BASIC samples. */
+    coverageComplete: boolean;
+    /** At least one included sample, with no unattributed points or fouls. */
+    attributionComplete: boolean;
+    rows: EventPlayerStatisticsRow[];
+    teams: {
+      entryId: string;
+      teamName: string;
+      attributedScore: number;
+      unassignedScore: number;
+      attributedFouls: number;
+      unassignedFouls: number;
+    }[];
+  };
 }

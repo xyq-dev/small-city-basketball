@@ -143,7 +143,7 @@ function EventStandings({
     [loadError, setLoadError] = useState(''),
     [dirty, setDirty] = useState(false),
     [decision, setDecision] = useState<{
-      type: 'PUBLISH' | 'ENABLE' | 'DISABLE';
+      type: 'PUBLISH' | 'ENABLE' | 'ENABLE_HISTORY' | 'DISABLE';
       data: EventStandingsData;
     } | null>(null);
   const alive = useRef(true),
@@ -201,12 +201,15 @@ function EventStandings({
             }),
       current.type === 'PUBLISH'
         ? '排名规则已正式发布并锁定'
-        : current.type === 'ENABLE'
-          ? '公开观赛已启用'
-          : '公开观赛已撤销，旧链接已失效',
+        : current.type === 'ENABLE_HISTORY'
+          ? '历史观赛已启用，使用全新链接'
+          : current.type === 'ENABLE'
+            ? '公开观赛已启用'
+            : '公开观赛已撤销，旧链接已失效',
     );
     if (succeeded) setDecision(null);
   }
+  const history = data?.event.status === 'COMPLETED' || data?.event.status === 'ARCHIVED';
   const activePublication = data?.publication?.status === 'ACTIVE';
   const publicPath = activePublication
     ? `/watch/${encodeURIComponent(data.publication!.publicEventId)}`
@@ -289,13 +292,17 @@ function EventStandings({
           <section className="panel view-panel view-publication">
             <div>
               <div className="view-eyebrow">A LINK YOU CONTROL</div>
-              <h2>公开观赛</h2>
+              <h2>{history ? '历史观赛授权' : '公开观赛'}</h2>
               <p className="view-muted">
                 {activePublication
-                  ? '当前链接可匿名读取有限赛事、赛程、比分和排名；不会公开名单、人员或控制凭据。'
+                  ? data.publication?.purpose === 'HISTORY'
+                    ? '主办方已显式授权历史观赛，仅公开有限赛事、正式赛程、比分和排名；名单、人员和控制凭据仍为私有。'
+                    : '当前链接可匿名读取有限赛事、赛程、比分和排名；不会公开名单、人员或控制凭据。'
                   : data.publication?.status === 'REVOKED'
                     ? '公开观赛已撤销，原链接永久失效。再次启用将生成全新链接。'
-                    : '当前未启用匿名观赛，私有记分不会自动公开。'}
+                    : history
+                      ? '本届已闭赛，历史默认不公开。必须显式启用历史观赛并使用全新链接，旧活动链接不会复活。'
+                      : '当前未启用匿名观赛，私有记分不会自动公开。'}
               </p>
             </div>
             {data.capabilities.canDisablePublicViewing ? (
@@ -310,10 +317,10 @@ function EventStandings({
               <button
                 className="button button-primary"
                 disabled={action.busy || loading || dirty || Boolean(loadError)}
-                onClick={() => setDecision({ type: 'ENABLE', data })}
+                onClick={() => setDecision({ type: history ? 'ENABLE_HISTORY' : 'ENABLE', data })}
               >
                 <Globe size={17} />
-                启用公开观赛
+                {history ? '启用历史观赛' : '启用公开观赛'}
               </button>
             ) : (
               <span className="status-badge neutral">
@@ -322,7 +329,9 @@ function EventStandings({
             )}
             {!activePublication && (
               <p className="view-caption">
-                启用需已正式锁定排名规则并发布单循环赛程；操作权限由当前赛事授权决定。
+                {history
+                  ? '历史授权需本届已完赛或归档、正式规则已锁定且全部赛果当前有效确认；操作权限由赛事授权决定。'
+                  : '启用需已正式锁定排名规则并发布单循环赛程；操作权限由当前赛事授权决定。'}
               </p>
             )}
             {activePublication && (
@@ -357,7 +366,7 @@ function EventStandings({
           <div className="view-note">
             <ShieldCheck size={19} />
             <p>
-              仅当前有效确认计入榜单。重开后立即整场撤出，重确认只计最新一次；共享名次采用1、1、3，不使用隐藏判定。尚未接入专业统计、可靠离线、OBS或视频。
+              仅当前有效确认计入榜单。重开后立即整场撤出，重确认只计最新一次；共享名次采用1、1、3，不使用隐藏判定。高级统计未统计，可靠离线与真实视频尚未接入；OBS授权独立管理。
             </p>
           </div>
         </>
@@ -367,9 +376,11 @@ function EventStandings({
           title={
             decision.type === 'PUBLISH'
               ? '发布排名规则'
-              : decision.type === 'ENABLE'
-                ? '启用公开观赛'
-                : '撤销公开观赛'
+              : decision.type === 'ENABLE_HISTORY'
+                ? '启用历史观赛'
+                : decision.type === 'ENABLE'
+                  ? '启用公开观赛'
+                  : '撤销公开观赛'
           }
           busy={action.busy}
           onClose={() => setDecision(null)}
@@ -381,9 +392,11 @@ function EventStandings({
             </>
           ) : (
             <p>
-              {decision.type === 'ENABLE'
-                ? '将生成可匿名打开的有限观赛链接，仅公开赛事、冻结球队展示名、正式赛程、基础比分／时钟和排名。不含名单、工作人员或写入凭据。'
-                : '撤销后原链接及其全部比赛链接永久不可用。再次启用必须使用新链接；已打开页面在后续读取时清除资料。'}
+              {decision.type === 'ENABLE_HISTORY'
+                ? '将为已闭赛赛事生成全新的历史观赛链接，旧活动链接永久失效且不会复活。仅公开赛事、球队展示名、正式赛程、基础比分与排名，不含名单、工作人员或写入凭据；OBS仍须独立授权。'
+                : decision.type === 'ENABLE'
+                  ? '将生成可匿名打开的有限观赛链接，仅公开赛事、冻结球队展示名、正式赛程、基础比分／时钟和排名。不含名单、工作人员或写入凭据。'
+                  : '撤销后原链接及其全部比赛链接永久不可用。再次启用必须使用新链接；已打开页面在后续读取时清除资料。'}
             </p>
           )}
           {action.error && (
@@ -399,9 +412,11 @@ function EventStandings({
             >
               {decision.type === 'PUBLISH'
                 ? '正式发布排名规则'
-                : decision.type === 'ENABLE'
-                  ? '确认启用公开观赛'
-                  : '确认撤销公开观赛'}
+                : decision.type === 'ENABLE_HISTORY'
+                  ? '确认启用历史观赛'
+                  : decision.type === 'ENABLE'
+                    ? '确认启用公开观赛'
+                    : '确认撤销公开观赛'}
             </button>
             <button
               className="button button-secondary"

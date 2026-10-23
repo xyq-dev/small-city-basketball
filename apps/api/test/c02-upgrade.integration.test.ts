@@ -14,7 +14,7 @@ import type {
 } from '@small-city-basketball/contracts';
 import { ORIGIN, call, data, testDatabaseUrl } from './support.js';
 
-// This is a genuine 001–007 -> 008+009 database upgrade, never a downgrade of a
+// This is a genuine 001–007 -> 008+009+010 database upgrade, never a downgrade of a
 // database first migrated by the new application. The persisted legacy fixture
 // is a user. Old scoring schema/defaults and legacy command/replay fixtures are
 // checked, but this file does NOT claim an existing FINAL match upgrade test.
@@ -28,7 +28,11 @@ const legacyNames = [
   '006_p06_overlay.sql',
   '007_p04_match_rescheduling.sql',
 ];
-const additions = ['008_p05_player_statistics.sql', '009_c02_login_names.sql'];
+const additions = [
+  '008_p05_player_statistics.sql',
+  '009_c02_login_names.sql',
+  '010_c03_event_history.sql',
+];
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const at = '2026-10-23T00:00:00.000Z';
 const oldCommand: ScoringCommandInput = {
@@ -241,7 +245,7 @@ describe(
     }, 60000);
     afterAll(close, 30000);
 
-    test('applies only 008 and 009 over seven real historical checksums and preserves existing user values', async () => {
+    test('applies only 008 through 010 over seven real historical checksums and preserves existing user values', async () => {
       const files = await readdir(migrations);
       for (const migration of additions) expect(files).toContain(migration);
       expect(await migrate(pool!)).toEqual(additions);
@@ -274,6 +278,15 @@ describe(
       expect(confirmationMode).toMatchObject({
         is_nullable: 'NO',
         column_default: expect.stringContaining('TEAM_ONLY'),
+      });
+      const historyPurpose = (
+        await pool!.query(
+          "SELECT column_default,is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='public_event_publications' AND column_name='purpose'",
+        )
+      ).rows[0];
+      expect(historyPurpose).toMatchObject({
+        is_nullable: 'NO',
+        column_default: expect.stringContaining('LIVE'),
       });
       const guard = (
         await pool!.query<{ definition: string }>(
@@ -354,7 +367,7 @@ describe(
         );
         expect(await userFacts()).toEqual(legacyUser);
         expect((await pool!.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n).toBe(
-          9,
+          10,
         );
       } finally {
         await pool!.query('UPDATE schema_migrations SET checksum=$2 WHERE name=$1', [

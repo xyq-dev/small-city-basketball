@@ -30,6 +30,16 @@ import { ScoringController, SCB_SCORING_SERVICE } from './scoring-controller.js'
 import { StandingsService } from './standings-service.js';
 import { StandingsController, SCB_STANDINGS_SERVICE } from './standings-controller.js';
 import { PublicViewingController } from './public-viewing-controller.js';
+import { EventLifecycleService } from './event-lifecycle-service.js';
+import {
+  EventLifecycleController,
+  SCB_EVENT_LIFECYCLE_SERVICE,
+} from './event-lifecycle-controller.js';
+import { EventPlayerStatisticsService } from './event-player-statistics-service.js';
+import {
+  EventPlayerStatisticsController,
+  SCB_EVENT_PLAYER_STATISTICS_SERVICE,
+} from './event-player-statistics-controller.js';
 import { OverlayService } from './overlay-service.js';
 import { OverlayController, SCB_OVERLAY_SERVICE } from './overlay-controller.js';
 import { OverlaySourceController } from './overlay-bootstrap.js';
@@ -222,6 +232,8 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
     const scoring = new ScoringService(pool, options);
     const standings = new StandingsService(pool, options);
     const overlay = new OverlayService(pool, options);
+    const lifecycle = new EventLifecycleService(pool, options);
+    const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
         AuthController,
@@ -233,6 +245,8 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
         ScoringController,
         StandingsController,
         PublicViewingController,
+        EventLifecycleController,
+        EventPlayerStatisticsController,
         OverlayController,
         OverlaySourceController,
       ],
@@ -242,6 +256,8 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
         { provide: SCB_SCORING_SERVICE, useValue: scoring },
         { provide: SCB_STANDINGS_SERVICE, useValue: standings },
         { provide: SCB_OVERLAY_SERVICE, useValue: overlay },
+        { provide: SCB_EVENT_LIFECYCLE_SERVICE, useValue: lifecycle },
+        { provide: SCB_EVENT_PLAYER_STATISTICS_SERVICE, useValue: playerStatistics },
       ],
     })
     class ApiModule {}

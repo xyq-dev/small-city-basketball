@@ -1,4 +1,5 @@
 import { expect, test, devices } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import type { APIRequestContext } from '@playwright/test';
 import type {
   CourtData,
@@ -12,6 +13,11 @@ import type {
   ScoreSnapshot,
   ScoringEventData,
   ScoringWorkbenchData,
+  EventStandingsData,
+  EventLifecycleData,
+  EventPlayerStatisticsData,
+  PublicEventData,
+  PublicScheduleMatchData,
 } from '@small-city-basketball/contracts';
 
 const origin = 'http://127.0.0.1:4273';
@@ -174,7 +180,7 @@ for (const collectionMode of ['TEAM_ONLY', 'PLAYER_BASIC'] as const) {
     playwright,
     browser,
   }, testInfo) => {
-    test.setTimeout(120000);
+    test.setTimeout(180000);
     const suffix = `${testInfo.project.name}-${collectionMode}-${Date.now()}`;
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
@@ -369,6 +375,204 @@ for (const collectionMode of ['TEAM_ONLY', 'PLAYER_BASIC'] as const) {
           session: sessionStorage.length,
         })),
       ).toEqual({ local: 0, session: 0 });
+
+      progress('private event player summary shows coverage and unattributed statistics honestly');
+      const summaryPath = `${fixture.eventPath}/player-statistics`;
+      const summary = await read<EventPlayerStatisticsData>(page.request, summaryPath);
+      expect(summary.summary?.totalMatchCount).toBe(1);
+      expect(summary.summary?.includedMatchCount).toBe(collectionMode === 'PLAYER_BASIC' ? 1 : 0);
+      expect(summary.summary?.teamOnlyConfirmedMatchCount).toBe(
+        collectionMode === 'TEAM_ONLY' ? 1 : 0,
+      );
+      expect(summary.summary?.pendingMatchCount).toBe(0);
+      expect(summary.summary?.coverageComplete).toBe(collectionMode === 'PLAYER_BASIC');
+      expect((await scorer.get(origin + summaryPath)).status()).toBe(404);
+      await page.goto(`/events/${fixture.eventId}/player-statistics`);
+      await expect(
+        page.getByRole('heading', { name: '本届球员基础数据', exact: true }),
+      ).toBeVisible();
+      const coverage = page.getByRole('region', { name: '采集范围与完整性', exact: true });
+      await expect(coverage).toContainText(/正式比赛\s*1\s*场/);
+      if (collectionMode === 'PLAYER_BASIC') {
+        expect(summary.summary?.rows.some((row) => row.score === 2)).toBe(true);
+        expect(summary.summary?.teams.reduce((sum, team) => sum + team.unassignedScore, 0)).toBe(1);
+        await expect(coverage).toContainText('采集覆盖完整');
+        await expect(page.getByRole('region', { name: '球队归属核对', exact: true })).toContainText(
+          /未归属得分\s*1/,
+        );
+        const playerRanking = page.getByRole('region', { name: '球员得分与犯规榜', exact: true });
+        if (testInfo.project.name === 'mobile-api') {
+          // The responsive desktop table is hidden; assert the actual mobile sample value.
+          await expect(
+            playerRanking
+              .getByRole('article')
+              .first()
+              .getByText(/^采集名单场次\s*1$/),
+          ).toBeVisible();
+        } else {
+          await expect(
+            playerRanking.getByRole('columnheader', { name: '采集名单场次', exact: true }),
+          ).toBeVisible();
+        }
+      } else {
+        expect(summary.summary?.rows).toEqual([]);
+        await expect(coverage).toContainText('采集覆盖不完整');
+        await expect(page.getByText('尚无可计入的球员数据', { exact: true })).toBeVisible();
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+
+      progress(
+        'completed/archive lifecycle uses explicit history grants and permanently revokes old links',
+      );
+      let standings = await read<EventStandingsData>(
+        page.request,
+        `${fixture.eventPath}/standings`,
+      );
+      standings = await write<EventStandingsData>(
+        page.request,
+        'PUT',
+        `${fixture.eventPath}/standings-rules`,
+        {
+          expectedEventVersion: standings.event.version,
+          winPoints: 3,
+          lossPoints: 0,
+          drawPoints: 1,
+          tiebreakers: ['SCORE_DIFFERENCE', 'POINTS_FOR'],
+        },
+      );
+      standings = await write<EventStandingsData>(
+        page.request,
+        'POST',
+        `${fixture.eventPath}/standings-rule-commands`,
+        {
+          type: 'PUBLISH_STANDINGS_RULES',
+          rulesetId: standings.rules!.id,
+          expectedEventVersion: standings.event.version,
+        },
+      );
+      standings = await write<EventStandingsData>(
+        page.request,
+        'POST',
+        `${fixture.eventPath}/public-viewing-commands`,
+        {
+          type: 'ENABLE',
+          expectedEventVersion: standings.event.version,
+        },
+      );
+      const liveId = standings.publication!.publicEventId;
+      const liveMatchId = (
+        await read<PublicScheduleMatchData[]>(leader, `/v1/public/events/${liveId}/schedule`)
+      )[0]!.publicMatchId;
+      async function lifecycleUi(button: string, submit: string) {
+        await page.goto(`/events/${fixture.eventId}/lifecycle`);
+        await expect(
+          page.getByRole('heading', { name: '整届完赛核对', exact: true }),
+        ).toBeVisible();
+        await page.getByRole('button', { name: button, exact: true }).click();
+        const dialog = page.getByRole('dialog', { name: button, exact: true });
+        await dialog.getByLabel('操作原因', { exact: true }).fill(`合成浏览器验收 ${button}`);
+        await dialog.getByRole('button', { name: submit, exact: true }).click();
+        await expect(dialog).toHaveCount(0);
+      }
+      async function enableHistory() {
+        await page.goto(`/events/${fixture.eventId}/standings`);
+        await page.getByRole('button', { name: '启用历史观赛', exact: true }).click();
+        await page.getByRole('button', { name: '确认启用历史观赛', exact: true }).click();
+        await expect
+          .poll(
+            async () =>
+              (await read<EventStandingsData>(page.request, `${fixture.eventPath}/standings`))
+                .publication?.status,
+          )
+          .toBe('ACTIVE');
+        const enabled = await read<EventStandingsData>(
+          page.request,
+          `${fixture.eventPath}/standings`,
+        );
+        expect(enabled.publication!.purpose).toBe('HISTORY');
+        return enabled.publication!.publicEventId;
+      }
+      async function expectDead(publicId: string, publicMatchId: string) {
+        for (const suffix of ['', '/schedule', '/standings', `/matches/${publicMatchId}`])
+          expect(
+            (await leader.get(origin + `/v1/public/events/${publicId}${suffix}`)).status(),
+          ).toBe(404);
+      }
+      await lifecycleUi('确认整届完赛', '确认整届完赛');
+      expect(
+        (await read<EventLifecycleData>(page.request, `${fixture.eventPath}/lifecycle`)).event
+          .status,
+      ).toBe('COMPLETED');
+      await expectDead(liveId, liveMatchId);
+      const closed = await read<ScoringWorkbenchData>(page.request, `${matchPath}/scoring`);
+      expect(closed.capabilities.canReopen).toBe(false);
+      expect(closed.capabilities.canAcquireControl).toBe(false);
+      const closedLease = await scorer.post(origin + `${matchPath}/scorekeeper-lease`, {
+        headers: { Origin: origin },
+        data: { clientInstanceId: randomUUID() },
+      });
+      expect(closedLease.status()).toBe(409);
+      expect((await closedLease.json()).error.code).toBe('INVALID_EVENT_STATE');
+      const closedReopen = await page.request.post(origin + `${matchPath}/commands`, {
+        headers: { Origin: origin },
+        data: {
+          type: 'REOPEN_RESULT',
+          payload: { reason: '闭赛不得单场直接重开' },
+          commandId: randomUUID(),
+          expectedVersion: closed.match.version,
+          capturedAt: new Date().toISOString(),
+        },
+      });
+      expect(closedReopen.status()).toBe(409);
+      expect((await closedReopen.json()).error.code).toBe('INVALID_EVENT_STATE');
+      await writer.goto(uiPath);
+      await expect(writer.getByRole('button', { name: '取得记分控制权', exact: true })).toHaveCount(
+        0,
+      );
+      const firstHistoryId = await enableHistory();
+      expect(firstHistoryId).not.toBe(liveId);
+      const historyMatchId = (
+        await read<PublicScheduleMatchData[]>(
+          leader,
+          `/v1/public/events/${firstHistoryId}/schedule`,
+        )
+      )[0]!.publicMatchId;
+      await lifecycleUi('归档赛事', '确认归档赛事');
+      expect(
+        (await read<PublicEventData>(leader, `/v1/public/events/${firstHistoryId}`)).status,
+      ).toBe('ARCHIVED');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await page.goto(`/watch/${firstHistoryId}`);
+      await expect(
+        page.getByText('历史观赛 · 主办方已显式授权 · 只读正式赛果', { exact: true }),
+      ).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await lifecycleUi('重开赛事', '确认重开赛事');
+      expect(
+        (await read<EventLifecycleData>(page.request, `${fixture.eventPath}/lifecycle`)).event
+          .status,
+      ).toBe('RUNNING');
+      await expectDead(firstHistoryId, historyMatchId);
+      expect((await read<ScoreSnapshot>(page.request, `${matchPath}/snapshot`)).status).toBe(
+        'FINAL',
+      );
+      await lifecycleUi('确认整届完赛', '确认整届完赛');
+      const secondHistoryId = await enableHistory();
+      expect(secondHistoryId).not.toBe(firstHistoryId);
+      await expectDead(liveId, liveMatchId);
+      await expectDead(firstHistoryId, historyMatchId);
+      expect(
+        (await read<PublicEventData>(leader, `/v1/public/events/${secondHistoryId}`)).status,
+      ).toBe('COMPLETED');
+      const finalSummary = await read<EventPlayerStatisticsData>(page.request, summaryPath);
+      expect(finalSummary.summary?.sourceHash).toBe(summary.summary?.sourceHash);
+      expect(finalSummary.summary?.rows).toEqual(summary.summary?.rows);
       expect(errors).toEqual([]);
     } catch (error) {
       console.error(`[scoring:${testInfo.project.name}] failed during ${phase}`);

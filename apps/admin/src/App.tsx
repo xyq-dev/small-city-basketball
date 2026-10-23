@@ -73,6 +73,14 @@ const StandingsIndexPage = lazy(() =>
 const EventStandingsPage = lazy(() =>
   import('./viewing/PrivatePages').then((viewing) => ({ default: viewing.EventStandingsPage })),
 );
+const EventLifecyclePage = lazy(() =>
+  import('./lifecycle/LifecyclePage').then((m) => ({ default: m.EventLifecyclePage })),
+);
+const EventPlayerStatisticsPage = lazy(() =>
+  import('./player-summary/PlayerStatisticsPage').then((m) => ({
+    default: m.EventPlayerStatisticsPage,
+  })),
+);
 const BroadcastIndexPage = lazy(() =>
   import('./overlay/PrivatePages').then((m) => ({ default: m.BroadcastIndexPage })),
 );
@@ -1367,7 +1375,7 @@ function EventDetailPage() {
                 {workspace.mode === 'api'
                   ? event.status === 'DRAFT'
                     ? '当前身份仅可查看此赛事，没有编辑草稿的权限。'
-                    : '当前赛事不是草稿，仅可查看资料。正式状态流转将在后续开放。'
+                    : '当前赛事资料只读；完赛、归档与重新开放请进入赛事生命周期。'
                   : '此为非草稿示例赛事，当前原型仅允许编辑草稿。正式状态流转将在后续接入。'}
               </p>
             </div>
@@ -1432,11 +1440,35 @@ function EventDetailPage() {
           title="赛事功能"
           note={
             workspace.registration
-              ? '报名审核、名单冻结与单循环排赛已开放，其他模块按计划推进。'
+              ? '报名、排赛、记分、排名、球员基础数据与完赛归档已开放。'
               : '以下模块按项目计划逐步开放，当前仅展示规划入口。'
           }
         />
         <div className="module-grid">
+          {workspace.registration && !workspace.registration.teamContext && (
+            <>
+              <Link className="module-card" to={`/events/${event.id}/lifecycle`}>
+                <span className="module-icon">
+                  <FolderOpen size={21} />
+                </span>
+                <div>
+                  <h3>赛事生命周期</h3>
+                  <span>完赛 · 归档 · 重新开放</span>
+                </div>
+                <ChevronRight size={16} />
+              </Link>
+              <Link className="module-card" to={`/events/${event.id}/player-statistics`}>
+                <span className="module-icon">
+                  <ChartNoAxesCombined size={21} />
+                </span>
+                <div>
+                  <h3>球员基础数据榜</h3>
+                  <span>有效确认 · 采集覆盖 · 共同名次</span>
+                </div>
+                <ChevronRight size={16} />
+              </Link>
+            </>
+          )}
           {(['registration', 'schedule', 'broadcast', 'delivery'] as const).map((key) => {
             const item = roadmap[key]!;
             const Icon = item.icon;
@@ -1575,35 +1607,39 @@ function WorkspaceLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const currentLabel =
-    location.pathname === '/broadcast' || location.pathname.endsWith('/overlay')
-      ? '直播与 OBS'
-      : location.pathname === '/standings' || location.pathname.endsWith('/standings')
-        ? '排名与观赛'
-        : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
-          ? '记分与赛果'
-          : location.pathname === '/courts'
-            ? '机构场地'
-            : location.pathname === '/scheduling' || /\/scheduling(?:\/|$)/.test(location.pathname)
-              ? '抽签排赛'
-              : location.pathname.startsWith('/entries/')
-                ? '报名详情'
-                : location.pathname === '/my-team' || teamWorkspace
-                  ? '我的球队'
-                  : location.pathname.startsWith('/teams')
-                    ? '球队与球员'
-                    : location.pathname === '/registration' ||
-                        location.pathname.endsWith('/registration')
-                      ? '报名审核'
-                      : location.pathname === '/'
-                        ? '工作总览'
-                        : location.pathname === '/events/new'
-                          ? '创建赛事'
-                          : location.pathname.startsWith('/events/')
-                            ? '赛事详情'
-                            : location.pathname === '/events'
-                              ? '赛事管理'
-                              : (roadmap[location.pathname.split('/')[2] ?? '']?.title ?? '页面');
+  const currentLabel = location.pathname.endsWith('/lifecycle')
+    ? '赛事生命周期'
+    : location.pathname.endsWith('/player-statistics')
+      ? '球员基础数据榜'
+      : location.pathname === '/broadcast' || location.pathname.endsWith('/overlay')
+        ? '直播与 OBS'
+        : location.pathname === '/standings' || location.pathname.endsWith('/standings')
+          ? '排名与观赛'
+          : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
+            ? '记分与赛果'
+            : location.pathname === '/courts'
+              ? '机构场地'
+              : location.pathname === '/scheduling' ||
+                  /\/scheduling(?:\/|$)/.test(location.pathname)
+                ? '抽签排赛'
+                : location.pathname.startsWith('/entries/')
+                  ? '报名详情'
+                  : location.pathname === '/my-team' || teamWorkspace
+                    ? '我的球队'
+                    : location.pathname.startsWith('/teams')
+                      ? '球队与球员'
+                      : location.pathname === '/registration' ||
+                          location.pathname.endsWith('/registration')
+                        ? '报名审核'
+                        : location.pathname === '/'
+                          ? '工作总览'
+                          : location.pathname === '/events/new'
+                            ? '创建赛事'
+                            : location.pathname.startsWith('/events/')
+                              ? '赛事详情'
+                              : location.pathname === '/events'
+                                ? '赛事管理'
+                                : (roadmap[location.pathname.split('/')[2] ?? '']?.title ?? '页面');
   useEffect(() => {
     setMenuOpen(false);
     document.title = `${currentLabel} · 小城市篮球`;
@@ -1974,6 +2010,30 @@ function WorkspaceLayout() {
                     ) : (
                       <Suspense fallback={standingsFallback}>
                         <StandingsIndexPage context={registration} repository={repository} />
+                      </Suspense>
+                    )
+                  }
+                />
+                <Route
+                  path="/events/:eventId/lifecycle"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={standingsFallback}>
+                        <EventLifecyclePage context={registration} />
+                      </Suspense>
+                    )
+                  }
+                />
+                <Route
+                  path="/events/:eventId/player-statistics"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={standingsFallback}>
+                        <EventPlayerStatisticsPage context={registration} />
                       </Suspense>
                     )
                   }

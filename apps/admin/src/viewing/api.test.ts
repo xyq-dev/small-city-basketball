@@ -136,4 +136,49 @@ describe('private and anonymous viewing adapters', () => {
     expect(data.standings).toBeNull();
     expect(data.publication?.status).toBe('REVOKED');
   });
+  it('preserves explicit history purpose and sends the separate command without widening anonymous DTOs', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () =>
+      response({
+        ...overview,
+        event: { ...overview.event, status: 'COMPLETED' },
+        publication: {
+          publicEventId: 'new-history-key',
+          status: 'ACTIVE',
+          purpose: 'HISTORY',
+          createdAt: overview.event.createdAt,
+          revokedAt: null,
+        },
+      }),
+    );
+    const api = createViewingApi(createApiClient({ fetcher }), 'org-a');
+    const data = await api.publicViewing('private-event-a', {
+      type: 'ENABLE_HISTORY',
+      expectedEventVersion: 7,
+    });
+    expect(data.publication?.purpose).toBe('HISTORY');
+    expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toEqual({
+      type: 'ENABLE_HISTORY',
+      expectedEventVersion: 7,
+    });
+  });
+  it.each(['OTHER', null, ['LIVE'], { purpose: 'LIVE' }])(
+    'rejects an unrecognized publication purpose: %j',
+    async (purpose) => {
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+        response({
+          ...overview,
+          publication: {
+            publicEventId: 'new-key',
+            status: 'ACTIVE',
+            purpose,
+            createdAt: overview.event.createdAt,
+            revokedAt: null,
+          },
+        }),
+      );
+      await expect(
+        createViewingApi(createApiClient({ fetcher }), 'org-a').event('private-event-a'),
+      ).rejects.toMatchObject({ apiCode: 'INVALID_RESPONSE' });
+    },
+  );
 });
