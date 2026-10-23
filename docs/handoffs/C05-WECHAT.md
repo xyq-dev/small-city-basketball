@@ -37,3 +37,25 @@ root按本提交整合，接入共享出口/controller/options/账户路由/运�
 
 
 独立复核增量：已修快照响应先记receivedAt，媒体慢请求不拖后时钟；媒体失败单独清旧媒体而保留已更新比分，404仍整页清空。Cookie提取兼容wx响应cookies[]与Set-Cookie并拒冲突SID，仍仅内存。新增3项原生回归，原生共11项通过；真实基础库行为仍待验。由单独fix提交交root整合。
+
+## 官方 wx.request 协议核查（独立只读增量）
+
+2026-10-24（Asia/Shanghai），只读，没有改网络/CSRF代码或配置微信凭据。两搜索引擎限定developers.weixin.qq.com检索未得可读条目；以下官方中/英文页面实际open均返回工具non-retryable/不可读取，不能按社区转述补成已读规范：
+
+- https://developers.weixin.qq.com/miniprogram/dev/api/network/request/wx.request.html
+- https://developers.weixin.qq.com/miniprogram/dev/framework/ability/network.html
+- https://developers.weixin.qq.com/miniprogram/dev/api/network/request/RequestTask.html
+- https://developers.weixin.qq.com/miniprogram/en/dev/api/network/request/wx.request.html
+- https://developers.weixin.qq.com/miniprogram/en/dev/framework/ability/network.html
+
+可读取的微信官方primary源为wechat-miniprogram/api-typings（文件Tencent版权）。通过GitHub只读API核验当时master HEAD为`6092df9100c73b84e140c20b9a42a8e8799e0660`（提交时间2026-09-01T12:25:38Z），对应[固定提交](https://github.com/wechat-miniprogram/api-typings/commit/6092df9100c73b84e140c20b9a42a8e8799e0660)。[该SHA README](https://raw.githubusercontent.com/wechat-miniprogram/api-typings/6092df9100c73b84e140c20b9a42a8e8799e0660/README.md)实际读取成功，说明API声明和官方文档同源自动生成。未安装这个包或改变锁文件。
+
+[官方API声明master原文件](https://raw.githubusercontent.com/wechat-miniprogram/api-typings/master/types/wx/lib.wx.api.d.ts)实际可读；对应固定审阅链接为[6092df9 API文件](https://github.com/wechat-miniprogram/api-typings/blob/6092df9100c73b84e140c20b9a42a8e8799e0660/types/wx/lib.wx.api.d.ts)。注意大文件固定SHA raw读取因工具体积/DisabledError被拒；下述条目直接来自已读master原文件，未声称完成该大文件固定blob字节校验。
+
+- RequestOption（读取时L10720起）的header说明在L10766–10769：仅明确不能自定义Referer，类型为IAnyObject；没有列出Origin/Cookie禁止项。
+- RequestSuccessCallbackResult（L11049起）在L11055–11058明示cookies为字符串数组且基础库最低2.10.0；L11065–11068提供response header（最低1.2.0）。这支持客户端同时解析cookies[]与Set-Cookie的必要性，不代表已验所有平台Cookie行为。
+- RequestTaskOnHeadersReceivedListenerResult（L11081起）也有cookies[]；其statusCode说明提示开发者工具与真机可能不同，进一步不能把VM/工具结果等同真端。
+
+结论严格限定：已读官方声明未给出“Origin明确禁设”的证据，但不能由未列禁止项推断iOS/Android/各目标基础库一定原样发送手动Origin/Cookie。当前未确认必须更改协议，保留全局Origin/CSRF严格校验，微信默认关闭。不得增加Referer白名单或仅凭X-Client头跳过全局鉴权，也不能把来源头视为用户/机构授权。
+
+真实启用前须用正式AppID对应的开发工具及至少目标iOS/Android基础库，在受控HTTPS隔离环境实测实际送达Origin、Cookie及cookies[]/Set-Cookie读取，覆盖密码登录→绑定→微信登录→注销/解绑撤销，以及缺失/外域Origin仍403；只记录布尔状态/请求ID，不打印临时code、sid、AppSecret/session_key或敏感请求体。当前没有真实微信/真机或此项网络实测，不能将本官方源阅读升级成协议验收通过。

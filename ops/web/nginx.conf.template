@@ -48,6 +48,8 @@ http {
         proxy_set_header Forwarded "";
         proxy_set_header Connection "";
         proxy_cache off;
+        # The edge emits one nosniff header for both static and proxied responses.
+        proxy_hide_header X-Content-Type-Options;
 
         location = /v1 {
             proxy_pass http://scb_api;
