@@ -1,6 +1,6 @@
 # 测试与验收
 
-更新：2026-10-23（Asia/Shanghai）。本文区分P07-A、P06-A最终验收及P05-B/P05-A/P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
+更新：2026-10-24（Asia/Shanghai）。本文区分当前C05及各阶段历史验收；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
 
 ## P04-B最终验收（DONE / MAIN）
 
@@ -270,3 +270,10 @@ P01代码819818d经PR #1合并为f15adb4，[原CI run 39728632742](https://githu
 ## C04 / PR12 验收
 
 2026-10-23，sourcebc6516d与main merge7ef18c9同tree5446bdacb6c5fc08fab245cecad74b91b1028a5d。[CI39975284464](https://github.com/xyq-dev/small-city-basketball/actions/runs/39975284464)三job SUCCESS、无重试：749源码（363+386）、217真实PG（201+16）、12Mock＋桌面9/手机模拟9真实API＋4可信HTTPS；11Migration/checksum、41表真实重启、完整恢复/旧授权隔离及owned正常/负向清理通过，完整日志已核对。C04 PG15项、纯domain63项、实际桌面/手机填表显式发布决赛、最终名次/公开签位通过。确认后人员安全维护与固定晋级确认版本P1已修并回归。自动审查无finding/未解决线程，独立静态CLEAR，security未运行。详细边界见[evidence/C04](evidence/C04/README.md)。合并后CI39976904075三个job同范围全部SUCCESS，完整日志已核对、无重试；没有生产/真实OBS/真实微信Safari/旧007落库FINAL升级证据。
+
+
+## C05 / PR13 验收（DONE / MAIN）
+
+2026-10-24（Asia/Shanghai），[PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)已合并main `d4f6500453f293499dcc0d189c084156026db4f1`，最终source`9abeb5c8aeaf294c1df75320d0c7bf4592fc1d23`；候选与合并的tree均为`23c4620a42b0399976876fd23404fa6c8773b54f`。沿用原比赛、权限、服务器计时和独立确认，交付固定分组接淘汰、按届软件服务费/人工双人收退款/默认关闭的微信支付适配、已有账号微信绑定登录及原生小程序源码、受控文件和小视频/显式发布/人工媒体定位。[最终候选CI40001590258](https://github.com/xyq-dev/small-city-basketball/actions/runs/40001590258)三个job全部SUCCESS、无重试，完整原始日志已核对；914源码（admin410/API504）、11小程序VM、254真实PG（238+16）、12Mock＋桌面12/手机模拟12真实API＋4可信HTTPS浏览器通过。15Migration/checksum、58表实际PG重启、完整dump→第二实例/卷恢复及旧授权隔离、媒体实际字节/Range复核、正常和故意失败owned清理均通过。必要独立审查通过；原分组加时P2已修复并resolved/outdated。最新source自动CodeReview仍RUNNING，不能记为通过，security未运行。合并后[CI40003519494](https://github.com/xyq-dev/small-city-basketball/actions/runs/40003519494)正在运行，完整结果待核验。没有生产部署、正式数据库/账号维护、真实资金请求或外部新凭据。任务、失败轮及证据见[C05](tasks/C05.md)、[交接](handoffs/C05.md)、[验收](evidence/C05/README.md)；操作入口见[使用指南](COMMERCIAL_USAGE.md)。
+
+[四域证据](evidence/C05/README.md)保留首四轮失败/取消及修复，不拼接不同source。最终候选CI的admin120578770233 / api120578770362 / production120578769934完整原始日志已读。媒体是合成文件真实字节持久化/恢复、H264元数据及播放器seek；11小程序VM与微信注入exchange、50支付协议合成RSA/AES/transport不代表真实微信或真实资金。手机Chromium模拟非Safari/微信真机。旧001–007完整FINAL赛事升级仍缺夹具，现有新空库迁移/同版本完整恢复不替代历史业务升级。正式部署、账号/数据库、真实商户/小程序/大视频/云直播/转码/原生OBS未执行。

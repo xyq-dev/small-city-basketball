@@ -6,11 +6,11 @@
 
 ## 当前状态
 
-最新增量：[C04](docs/tasks/C04.md)/[PR12](https://github.com/xyq-dev/small-city-basketball/pull/12)已合并，新增2–32队单淘汰签位/轮空、原独立确认晋级与加时、逐轮显式发布、最终共同名次，公开只读及完赛/历史/球员覆盖沿用原体系。CI39975284464三job成功：749源码、217真实PG、12Mock＋22真实浏览器及41表完整恢复；合并后CI39976904075三个job同范围全部SUCCESS（无重试）。此前C02/PR10和C03/PR11也已整合。准确状态/证据见[当前状态](docs/CURRENT_STATUS.md)。本轮未部署生产，完整商业版仍未完成；分组接淘汰、专业统计、微信、支付和真实媒体另项推进，原生OBS/CEF仍暂缓。
+最新增量：[C05](docs/tasks/C05.md)/[PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)已合并main `d4f6500`：分组循环接淘汰、按届软件服务费与独立双人收退款、默认关闭的微信支付适配/微信账号绑定与原生小程序源码、受控附件和短视频发布/人工定位。最终[CI40001590258](https://github.com/xyq-dev/small-city-basketball/actions/runs/40001590258)三个job成功：914源码、11小程序VM、254真实PG、12Mock＋28真实浏览器、15迁移及58表完整恢复；合并后CI正在核验。准确证据见[当前状态](docs/CURRENT_STATUS.md)，入口见[使用指南](docs/COMMERCIAL_USAGE.md)。本轮未部署生产；真实微信/商户支付、云直播/大视频/转码、专业统计及原生OBS/CEF仍有未验证或后续范围，完整商业平台尚未完成。
 
 2026-10-23：P01、P02、P03-A、P04-A/B、P05-A/B、P06-A及P07-A均为 **DONE / MAIN**。按[开发说明](docs/DEVELOPMENT.md)运行Mock或真实PostgreSQL Web后台：报名审核／冻结、单循环排赛／正式单场改期、在线记分／服务器时钟／独立确认、显式排名及匿名观赛，并可签发1920×1080透明比分浏览器源。
 
-以下PR7/PR8段保留对应版本的历史验收范围；服务器旧1534216部署是用户回传报告，见CURRENT_STATUS，不等于C02/C03已上线。
+以下PR7/PR8段保留对应版本的历史验收范围；服务器旧1534216部署是用户回传报告，见CURRENT_STATUS，不等于C02至C05已上线。
 
 [PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)已合并为`f8af5c99fba294a40334c49a5d2e32f80c6acbf9`，源`addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`／tree`2a719b4b3e8fd4f67996144c687f5bbb72902519`。最终[CI39758913295](https://github.com/xyq-dev/small-city-basketball/actions/runs/39758913295)两job全部成功：372源码（admin171/API201）、123独立PG、12Mock＋7桌面／7手机真实API、格式／完整strict／两端build、001→006与checksum、实际PG18.6重启39表指纹，正常及故意失败子库清理均通过且control保留。官方Chromium151.0.7922.34；完整日志已读。自动addeb CodeReview completed无finding，旧文档P2已resolved/outdated；security未运行。 001–006只在隔离测试库执行，没有生产执行。
 
@@ -27,7 +27,7 @@ P07-A已由[PR8](https://github.com/xyq-dev/small-city-basketball/pull/8)合并`
 
 ## 技术方向
 
-微信小程序采用 Taro + React + TypeScript；机构后台及现场工作台采用 React + Vite + TypeScript；后端采用 NestJS + PostgreSQL，使用模块化单体架构。依赖版本在实施时核验并锁定。
+机构后台及现场工作台采用 React + Vite + TypeScript，后端采用 NestJS + PostgreSQL，沿用模块化单体。C05的 `apps/wechat` 是原生小程序源码（JS/WXML/WXSS）；早期Taro方向不代表当前实现。依赖由仓库锁定。
 
 OBS 负责采集、导播和推流。平台提供只读的赛事比分包装页面，通过 OBS 浏览器源接入；比分、节次和计时以记分系统为准。自动切场、远程控制及云直播分发后续实施，OBS 断开不能阻断比赛记录。
 

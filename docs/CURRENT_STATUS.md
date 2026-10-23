@@ -1,14 +1,14 @@
 # 当前状态
 
-更新时间：2026-10-23（Asia/Shanghai）；集成人root。
+更新时间：2026-10-24（Asia/Shanghai）；集成人root。
 
-## C05 当前分支（尚未验收或上线）
+## C05 已整合（DONE / MAIN，未部署生产）
 
-2026-10-24（Asia/Shanghai），分支 `feat/C05-commercial-completion`、[PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)，基线 main `a9de24c`。四域代码及共享首次发布权益检查、回调原文验签、上传限额、58表ACL/字节摘要/完整恢复驱动已整合。root全量strict/build通过；908源码（admin406/API502）及小程序VM11项通过，均非真实外部联调。独立商业审查所见P1已修复。首轮隔离CI39996944016三个job失败：012触发器IF条件内裸CASE导致PG42601（字符9539），API迁移及production迁移因此未通过，另opsREADME格式失败；无PG业务通过声明。CASE修复后第二轮CI39997736172的admin全成功，迁移及production16PG通过；API198通过/2失败/36跳过，发现两处审计actor错误及跨file登录IP预算污染。审计已改同事务真实DISABLED系统主体并补回归，测试仅隔离真实TCP来源，不改应用限流；第三轮CI39998592777 API237/238通过，剩一项成员权限夹具语义错误及production no-store断言调用错误已修；自动P2分组记分表单强制加时已修并新增4组件回归，第四轮CI39999662348：admin全成功，API 238真实PG/58表实际重启/桌面12+手机模拟12真实浏览器及owned清理全部成功且日志已核；production媒体严格头检查发现重复nosniff，已做最小nginx去重，等待下一轮完整CI。真实PG、浏览器、HTTPS、重启/恢复的最终验收仍待通过；尚未合并/上线。没有生产部署、正式数据库或账号维护、真实资金请求或外部新凭据。任务与逐轮证据见 [C05](tasks/C05.md) / [交接](handoffs/C05.md)。
+2026-10-24（Asia/Shanghai），[PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)已合并main `d4f6500453f293499dcc0d189c084156026db4f1`，最终source`9abeb5c8aeaf294c1df75320d0c7bf4592fc1d23`；候选与合并的tree均为`23c4620a42b0399976876fd23404fa6c8773b54f`。沿用原比赛、权限、服务器计时和独立确认，交付固定分组接淘汰、按届软件服务费/人工双人收退款/默认关闭的微信支付适配、已有账号微信绑定登录及原生小程序源码、受控文件和小视频/显式发布/人工媒体定位。[最终候选CI40001590258](https://github.com/xyq-dev/small-city-basketball/actions/runs/40001590258)三个job全部SUCCESS、无重试，完整原始日志已核对；914源码（admin410/API504）、11小程序VM、254真实PG（238+16）、12Mock＋桌面12/手机模拟12真实API＋4可信HTTPS浏览器通过。15Migration/checksum、58表实际PG重启、完整dump→第二实例/卷恢复及旧授权隔离、媒体实际字节/Range复核、正常和故意失败owned清理均通过。必要独立审查通过；原分组加时P2已修复并resolved/outdated。最新source自动CodeReview仍RUNNING，不能记为通过，security未运行。合并后[CI40003519494](https://github.com/xyq-dev/small-city-basketball/actions/runs/40003519494)正在运行，完整结果待核验。没有生产部署、正式数据库/账号维护、真实资金请求或外部新凭据。任务、失败轮及证据见[C05](tasks/C05.md)、[交接](handoffs/C05.md)、[验收](evidence/C05/README.md)；操作入口见[使用指南](COMMERCIAL_USAGE.md)。
 
 ## main已整合
 
-仓库`xyq-dev/small-city-basketball`，最新业务合并为[PR12](https://github.com/xyq-dev/small-city-basketball/pull/12)的`7ef18c915ffa51712077e6668e60ec6fbb0219b6`。后续纯文档HEAD从实际Git读取。
+仓库`xyq-dev/small-city-basketball`，最新业务合并为[PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)的`d4f6500453f293499dcc0d189c084156026db4f1`。后续纯文档HEAD从实际Git读取。
 
 
 C04已由[PR12](https://github.com/xyq-dev/small-city-basketball/pull/12)合并main `7ef18c915ffa51712077e6668e60ec6fbb0219b6`，最终source`bc6516dc0068812c8075f9a88effa89c4183190f`与合并tree同为`5446bdacb6c5fc08fab245cecad74b91b1028a5d`。2–32队单淘汰、首轮轮空、原独立确认晋级/加时、逐轮显式发布、来源赛果锁定、最终共同名次、公开签位及闭赛/统计/恢复已整合。[CI39975284464](https://github.com/xyq-dev/small-city-basketball/actions/runs/39975284464)三个job全部SUCCESS且日志已核对：749源码（admin363/API386）、217真实PG（201+16，新增15项）、12Mock＋桌面9/手机模拟9真实API＋4可信HTTPS浏览器；11Migration/checksum、41表实际PG重启、完整dump→第二实例恢复及旧授权隔离、正常及负向owned清理均通过，无重试。最新source自动CodeReview completed无finding/未解决线程，独立静态人员维护版本P1修复已复核，security未运行。合并后CI39976904075三个job也全部SUCCESS，完整日志已核对、无重试。没有生产部署/正式DB或账号维护；详见[C04任务](tasks/C04.md)、[交接](handoffs/C04.md)和[证据](evidence/C04/README.md)。
@@ -31,13 +31,13 @@ PR2四项已按最新代码核验并完成：scrypt单槽/有限队列、过期�
 
 ## 下一步与边界
 
-C04为DONE / MAIN，候选完整验收通过；合并后CI39976904075三个job同范围全部SUCCESS（无重试）。下一项为分组循环接淘汰：先冻结分组、同分/跨组比较、晋级签位及更正规则，再复用原比赛/确认/晋级凭证实施，不能套单循环积分或提前造空模块。长期球员/赛季/高级统计、资料附件、观众中心/微信、套餐/订单/支付退款对账及真实媒体仍未完成，详见[商业规划](COMMERCIAL_PRODUCT_PLAN.md)。
+C05为DONE / MAIN，最终候选的三job完整验收通过；合并后CI正在核验。四域已落实上述有界范围，下一步为真实微信开发工具/域名/真机、真实商户沙箱与支付退款对账联调，以及旧001–007完整FINAL赛事的隔离升级演练。依赖实际账号/资质/凭据或服务器通道的工作不能在本轮虚构完成。开发代码仍有长期球员/赛季/专业统计、观众关注提醒、可靠离线、云直播/大视频/转码等后续范围，详见[商业规划](COMMERCIAL_PRODUCT_PLAN.md)及[C05使用指南](COMMERCIAL_USAGE.md)。
 
-用户已明确授权本批开发、测试、commit/普通同步/PR、隔离CI与审查后合并；PR10/PR11/PR12已按范围执行。保留C02/C03/C04及旧工作树和本地作者历史，没有reset、清理他人修改或force push。当前本地main，文档同步后的HEAD以实际Git为准。
+用户已明确授权本批开发、测试、commit/普通同步/PR、隔离CI与审查后合并；PR10/PR11/PR12/PR13已按范围执行。保留C02/C03/C04/C05及旧工作树和本地作者历史，没有reset、清理他人修改或force push。当前本地main，文档同步后的HEAD以实际Git为准。
 
 完整商业版尚未完成。原生OBS/CEF依用户要求暂缓；手机模拟不等于Safari/微信真机。旧schema升级夹具仅旧用户/凭据，不含原007已落库FINAL完整赛事，部署前须用旧库隔离恢复副本补验，不能把本卡新schema恢复当旧库升级。
 
-本轮没有服务器执行通道，没有生产部署、正式Migration/账号维护、付费资源、外部凭据或公网端口变更。账号维护工具已验收不等于管理员已改名或改密。C02/C03本机检查、隔离CI、以下服务器执行方旧版报告分别记录，不能混成一种证据。readiness严格核验Migration集合，不得把新DDL后直接切旧镜像当作已验回退方案。
+本轮没有服务器执行通道，没有生产部署、正式Migration/账号维护、付费资源、外部凭据或公网端口变更。账号维护工具已验收不等于管理员已改名或改密。C02至C05本机检查、隔离CI、以下服务器执行方旧版报告分别记录，不能混成一种证据。readiness严格核验Migration集合，不得把新DDL后直接切旧镜像当作已验回退方案。
 
 ## 服务器阶段（用户回传报告，非本会话独立实测）
 
