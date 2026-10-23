@@ -384,17 +384,18 @@ export class StandingsService extends ApplicationService {
         return this.view(c, a, now, true);
       }
       const purpose = input.type === 'ENABLE_HISTORY' ? 'HISTORY' : 'LIVE';
-      if (!publicViewingAllowed(a.event.status, purpose))
-        conflict(
-          'INVALID_EVENT_STATE',
-          purpose === 'HISTORY' ? '仅已完赛或归档赛事可显式公开历史' : '仅活动赛事可启用实时观赛',
-        );
       if (pub && !pub.revoked_at)
         conflict('PUBLIC_VIEWING_ALREADY_ENABLED', '公开观赛已启用，请读取当前链接');
       if (!a.event.locked_standings_ruleset_id)
         throw new ApiError(422, 'STANDINGS_RULES_REQUIRED', '请先显式发布排名规则');
       const plan = await this.plan(c, ctx.orgId, id);
       if (!plan) throw new ApiError(422, 'SCHEDULE_REQUIRED', '请先正式发布单循环赛程');
+      // Preserve existing missing-source errors before checking the publication purpose.
+      if (!publicViewingAllowed(a.event.status, purpose))
+        conflict(
+          'INVALID_EVENT_STATE',
+          purpose === 'HISTORY' ? '仅已完赛或归档赛事可显式公开历史' : '仅活动赛事可启用实时观赛',
+        );
       const rules = await this.rules(c, ctx.orgId, a.event.locked_standings_ruleset_id);
       if (!rules) resultSourceInvalid();
       const rows = await this.matches(c, ctx.orgId, id);

@@ -19,3 +19,9 @@
 ## 未验证边界
 
 旧001–007升级夹具仍只含旧用户，不是既有FINAL完整赛事升级；原生OBS/CEF、真实手机微信/Safari、生产部署/正式DB/账号均未执行。完整商业版的其他赛制、长期赛季及专业统计、交易支付/退款对账、微信与媒体未由本卡完成。
+
+## 首轮CI（未作为最终通过）
+
+[39938738301](https://github.com/xyq-dev/small-city-basketball/actions/runs/39938738301)，source50beb1a，三个完整job日志已读取。admin成功660源码+12Mock；production成功16真实PG+4可信HTTPS/40表恢复隔离；api新17项均过，但旧P05-B一项错误优先级回归导致185/186，后续API浏览器未跑。修复服务守卫顺序保留旧422 SCHEDULE_REQUIRED，验收断言未改，等待完整重跑。
+
+守卫顺序修复后API strict/313源码/build再次通过，独立静态delta复核CLEAR；首head自动CodeReview completed无finding/security未运行，不代替新head的完整验收。

@@ -22,7 +22,7 @@ PR2四项已按最新代码核验并完成：scrypt单槽/有限队列、过期�
 
 ## 下一步与边界
 
-用户要求继续剩余功能；[C03](tasks/C03.md)已实施候选，REVIEW / LOCAL_ONLY，基线main909fb74，任务分支feat/C03-event-history。优先整届完赛/归档、显式历史观赛与私有本届球员基础数据榜，API/UI/恢复驱动已独立工作树整合；本机660源码/strict/build/格式与独立静态通过，等待17项新增真实PG及浏览器/重启/恢复隔离CI，尚未合并或上线。
+用户要求继续剩余功能；[C03](tasks/C03.md)已实施候选，REVIEW / BRANCH_ONLY，基线main909fb74，任务分支feat/C03-event-history。优先整届完赛/归档、显式历史观赛与私有本届球员基础数据榜，API/UI/恢复驱动已独立工作树整合；本机660源码/strict/build/格式与独立静态通过，[PR11](https://github.com/xyq-dev/small-city-basketball/pull/11)首CI39938738301的admin/production通过、新17项PG通过；旧无赛程错误顺序回归已修，待全量重跑，尚未合并或上线。
 
 用户已对本批Git/PR/隔离CI请求明确回复“全部授权你去做”；提交、正常同步、PR10、必要修复/审查及合并已完成。原C01 dirty保留并随PR整合，worker及旧工作树不清理。当前本地main；纯文档同步后HEAD以实际Git为准。
 
