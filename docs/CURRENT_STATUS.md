@@ -4,7 +4,11 @@
 
 ## main已整合
 
-仓库`xyq-dev/small-city-basketball`，最新业务合并基线`e3102e4090cd09158f6a9f8cb30a00fee57b14b9`（PR9）。后续纯文档提交从实际Git读取；不把聊天或历史HEAD当最新现场。
+仓库`xyq-dev/small-city-basketball`，最新业务合并为[PR10](https://github.com/xyq-dev/small-city-basketball/pull/10)的`e5d4782b9a3b9c79b37295c990ee0dcddec2a66a`。后续纯文档提交从实际Git读取；不把聊天或历史HEAD当最新现场。
+
+C02首批四组能力为 **DONE / MAIN**：私有逐人得分/犯规及更正确认、自动排时建议、用户名兼容登录/安全离线维护、公开SVG/CSV/打印。最终source`ec74c47`与合并tree同为`34b755e77dbcf20156b673505ee38e3b5697172f`；[CI39919192641](https://github.com/xyq-dev/small-city-basketball/actions/runs/39919192641)三job全部SUCCESS：573源码、185真实PG、12Mock＋16真实API＋4可信HTTPS桌面/手机模拟浏览器，008/009隔离执行、两种采集模式40表实际重启、完整备份恢复/隔离及owned清理通过。最终自动CodeReview无新finding/未解决线程，必要独立静态复核通过；security未运行。注册夹具429及恢复计数P1均已修复并完整重跑，详见[C02交接](handoffs/C02.md)与[证据](evidence/C02/README.md)。合并后CI39920273639正在执行，暂不计成功；没有生产部署/正式DB或账号变更。
+
+以下PR9及更早记录保留各自历史验收范围。
 
 P01、P02、P03-A、P04-A/B、P05-A/B、P06-A及P07-A均为 **DONE / MAIN**：多机构身份/权限、球队报名/独立审核/冻结、单循环排赛/受控正式单场改期、单端在线计分/权威时钟/独立确认、正式排名/可撤销公开观赛、独立透明比分网页，以及非root同源HTTPS包/最小DB身份/完整隔离恢复。
 
@@ -18,17 +22,15 @@ PR2四项已按最新代码核验并完成：scrypt单槽/有限队列、过期�
 
 ## 下一步与边界
 
-本批本地报告后，用户明确回复“全部授权你去做”。C02转为REVIEW，正在按现有流程准备提交/普通推送/PR及隔离CI；通过必要验收和独立审查后再合并。以下本地检查点保留为历史，Git/CI实际结果以C02最新记录为准。此次不扩大生产操作范围。
+用户已对本批Git/PR/隔离CI请求明确回复“全部授权你去做”；提交、正常同步、PR10、必要修复/审查及合并已完成。原C01 dirty保留并随PR整合，worker及旧工作树不清理。当前本地main；纯文档同步后HEAD以实际Git为准。
 
-2026-10-23用户要求立即多Agent实现与测试；[C02](tasks/C02.md)首批已整合到`feat/C02-commercial-core`，**BLOCKED / LOCAL_ONLY**，HEAD仍`153421668ea74378df859a4b7c21df7da11ad77e`，未commit/push/PR或部署。六名Agent分工完成私有逐人基础统计与UI、自动排时建议、用户名兼容登录/离线维护工具、公开SVG/CSV/打印及独立审查；原C01 dirty完整保留。root最终本机573源码测试（admin294/API279）、完整严格类型、两端构建、格式通过。008/009及20项真实PG回归已编写但未执行；API浏览器仅list16项，未运行。缺Docker/PG及可运行Chromium，**真实PG/容器/桌面和手机浏览器受阻，不能标可发布**。证据分层、锁序等审查修复、Migration指纹和下一条操作见[交接](handoffs/C02.md)及[证据](evidence/C02/README.md)。正式账号及线上既有版本未改。
+本卡只交付商业首批四组能力，不代表完整商业版。后续优先整届完赛/归档与其他赛制，再补长期球员/赛季/高级统计、文件凭证、观众中心/微信、套餐/订单/支付退款对账和真实媒体，见[商业规划](COMMERCIAL_PRODUCT_PLAN.md)。OBS客户端依用户要求暂缓；手机模拟不等于Safari/微信真机。旧schema升级夹具未覆盖原007已落库FINAL完整比赛，部署前须在旧库隔离恢复副本补升级核验。
 
-2026-10-23用户明确暂缓OBS、先推进其余能力。[P04-B正式单场改期与冲突复检](tasks/P04-B.md)已验收并合并。用户随后要求“小球迷”类能力及完整商业版，[C01范围规划](COMMERCIAL_PRODUCT_PLAN.md)与[任务卡](tasks/C01.md)为REVIEW / LOCAL_ONLY的规划记录；其后C02已实施上述首批四组候选能力，包含独立的自动排时建议，具体以C02为准。其他赛制/晋级、整届归档、长期球员/赛季/高级统计、资料凭证、观众中心/微信、套餐/订单/支付/退款对账、真实媒体等仍未完成。原生OBS另等客户端；手机模拟不等于Safari/微信真机，不能把已上线首版或本地首批称为完整商业版。
-
-P07-A与P04-B的仓库验收证据是运行包和隔离CI；以下服务器执行方报告另列，不能混成同一种独立实测。本轮C01/C02没有生产操作、真实Migration执行、新外部凭据、付费资源或公网端口变更。重新开放恢复库仍需外部当前授权清单和显式操作。
+本轮没有服务器执行通道，没有生产部署、正式Migration/账号维护、付费资源、外部凭据或公网端口变更。账号维护工具已验收不等于管理员已改名或改密。C02本机检查、隔离CI、以下服务器执行方旧版报告分别记录，不能混成一种证据。readiness严格核验Migration集合，不得把新DDL后直接切旧镜像当作已验回退方案。
 
 ## 服务器阶段（用户回传报告，非本会话独立实测）
 
-2026-10-23用户回传Hermes报告：main `153421668ea74378df859a4b7c21df7da11ad77e` 已在 `https://basketball.playhubs.cn` Docker部署，项目 `scb-basketball`，服务器 `/srv/small-city-basketball`；001–007已在该项目新库执行、首owner初始化及登录通过。随后补做同镜像production模式隔离HTTPS业务/权限及桌面和手机模拟；证据据报告位于 `accept/10231320e520/`。经用户向Hermes授权后仅移除本站Basic Auth，应用登录、机构权限与观众独立授权保留，其他项目回查正常；交接在服务器 `DEPLOYMENT.md`。本会话未访问这些服务器证据，不把回传报告改记为独立复测。原生OBS、微信真机/Safari、保险凭证仍未验证；当前admin登录名及密码修改请求尚未实施，现有邮箱登录与密码长度规则未改变。
+2026-10-23用户回传Hermes报告：main `153421668ea74378df859a4b7c21df7da11ad77e` 已在 `https://basketball.playhubs.cn` Docker部署，项目 `scb-basketball`，服务器 `/srv/small-city-basketball`；001–007已在该项目新库执行、首owner初始化及登录通过。随后补做同镜像production模式隔离HTTPS业务/权限及桌面和手机模拟；证据据报告位于 `accept/10231320e520/`。经用户向Hermes授权后仅移除本站Basic Auth，应用登录、机构权限与观众独立授权保留，其他项目回查正常；交接在服务器 `DEPLOYMENT.md`。本会话未访问这些服务器证据，不把回传报告改记为独立复测。原生OBS、微信真机/Safari、保险凭证仍未验证；本会话未实施正式admin登录名或密码修改，也未独立复核服务器当前账号；C02只交付兼容能力，密码长度规则未降低。
 
 ## 接手入口
 

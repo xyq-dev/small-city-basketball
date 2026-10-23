@@ -1,10 +1,10 @@
 # 数据模型与状态
 
-## C02候选迁移（仅已编写，尚未执行）
+## C02迁移（已合并，隔离CI已执行，生产未执行）
 
-2026-10-23，本地集成分支 `feat/C02-commercial-core`；不是main/生产状态。008给原scoring_states/result_confirmations增加collection_mode与nullable player_stats，旧行缺省TEAM_ONLY/null；沿原准备事件锁模式、原事件派生个人投影、原确认保存快照，状态守卫禁止更换模式。名单来源复用published_matches固定的报名revision，不建第二套名单/比分/时钟。009给users增加nullable唯一login_name与ASCII规范约束，保留ID、邮箱、角色；两次迁移不增加业务表，仍为40表，001–007不改。
+2026-10-23，PR10已合并main e5d4782，最终CI39919192641通过，尚未部署生产。008给原scoring_states/result_confirmations增加collection_mode与nullable player_stats，旧行缺省TEAM_ONLY/null；沿原准备事件锁模式、原事件派生个人投影、原确认保存快照，状态守卫禁止更换模式。名单来源复用published_matches固定的报名revision，不建第二套名单/比分/时钟。009给users增加nullable唯一login_name与ASCII规范约束，保留ID、邮箱、角色；两次迁移不增加业务表，仍为40表，001–007不改。
 
-runtime仅为scoring_states追加player_stats的UPDATE白名单；不给collection_mode UPDATE，也不给users.login_name/password_hash UPDATE。离线账号维护使用受控维护角色及不可登录系统审计主体，用户级advisory协议与原session→user锁序共同保证会话撤销和登录串行性，见[维护说明](ACCOUNT_MAINTENANCE.md)。未在正式库执行，真实隔离PG升级/约束/并发回归仍为验收门槛，不能用源码测试替代。
+runtime仅为scoring_states追加player_stats的UPDATE白名单；不给collection_mode UPDATE，也不给users.login_name/password_hash UPDATE。离线账号维护使用受控维护角色及不可登录系统审计主体，用户级advisory协议与原session→user锁序共同保证会话撤销和登录串行性，见[维护说明](ACCOUNT_MAINTENANCE.md)。未在正式库执行；真实隔离PG升级/约束/并发、40表重启及完整备份恢复已通过。旧schema升级夹具只含旧用户/凭据，不等于007已落库FINAL完整升级，部署前仍须核验真实旧库副本。
 
 设计版本：0.1；更新：2026-10-22；状态：P02至P06-A的已交付子卡已整合main，DONE / MAIN。001→006在隔离PG18.6执行／复跑checksum并通过39表实际重启；保险附件未建表，无生产执行。完整P05的可靠离线／专业统计、完整P06媒体／直播等仍为后续范围，原生OBS／CEF及备份恢复未验。
 

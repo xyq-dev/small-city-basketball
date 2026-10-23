@@ -1,8 +1,8 @@
 # API 契约
 
-## C02本地候选增量（未合并、未上线）
+## C02增量（PR10已合并，生产未更新）
 
-2026-10-23：精确类型见 `packages/contracts/index.d.ts`，实施/验收状态见[C02](tasks/C02.md)。旧公开/OBS DTO不变。以下不能视为main或生产已支持：
+2026-10-23：精确类型见 `packages/contracts/index.d.ts`，实施/验收状态见[C02](tasks/C02.md)。旧公开/OBS DTO不变。以下已通过最终隔离CI并整合main，不等于生产已更新：
 
 - 登录POST `/v1/auth/login`继续接收 `{email,password}`，email值可为邮箱或唯一用户名，返回会话DTO及资源权限不变。注册仍邮箱专用；密码策略未降低。用户名分配与凭据维护仅走[受控CLI](ACCOUNT_MAINTENANCE.md)，不是新增匿名HTTP接口。
 - PREPARE_MATCH.payload可选 `collectionMode: TEAM_ONLY | PLAYER_BASIC`，缺省TEAM_ONLY且准备后不可变；START_MATCH不接受该参数。

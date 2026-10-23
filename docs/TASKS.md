@@ -21,11 +21,11 @@
 
 | P07-A | 同源HTTPS自托管包与隔离备份恢复 | DONE | root集成/API/UI/PG/打包 | P06-A | MAIN82a3705，PR8，CI39827535301的432/140/12Mock＋18真实浏览器及完整恢复通过；[任务](tasks/P07-A.md)、[交接](handoffs/P07-A.md) |
 
-| C01 | 商业版范围与实施顺序规划 | REVIEW | root / Codex | 已交付P03/P04/P05/P06/P07 | LOCAL_ONLY；[商业规划](COMMERCIAL_PRODUCT_PLAN.md)、[任务](tasks/C01.md)、[交接](handoffs/C01.md)；未实施新功能 |
-| C02 | 商业能力首轮并行实现与验收 | REVIEW | root / API / UI / 排时 / 账号 / 导出 | C01及已交付模块 | BRANCH_ONLY；[PR10](https://github.com/xyq-dev/small-city-basketball/pull/10)、[任务](tasks/C02.md)、[交接](handoffs/C02.md)；573源码通过，真实隔离CI执行中，未上线 |
+| C01 | 商业版范围与实施顺序规划 | REVIEW | root / Codex | 已交付P03/P04/P05/P06/P07 | MAIN文档（随PR10）；[商业规划](COMMERCIAL_PRODUCT_PLAN.md)、[任务](tasks/C01.md)、[交接](handoffs/C01.md)；C01是范围草案，实施另见C02 |
+| C02 | 商业能力首轮并行实现与验收 | DONE | root / API / UI / 排时 / 账号 / 导出 | C01及已交付模块 | MAIN e5d4782；[PR10](https://github.com/xyq-dev/small-city-basketball/pull/10)、[任务](tasks/C02.md)、[交接](handoffs/C02.md)；CI39919192641三job成功：573源码/185真实PG/12Mock＋20真实浏览器、两模式重启及完整恢复；生产未更新 |
 
 ## 当前顺序
 
-P07-A由PR8、P04-B由PR9合并，候选完整CI及审查通过。2026-10-23用户要求暂缓原生OBS；[P04-B正式单场改期](tasks/P04-B.md)为**DONE / MAIN**。后续服务器部署/隔离验收/本站门禁移除据用户回传Hermes报告已完成，证据类型见[当前状态](CURRENT_STATUS.md)，不是本会话独立实测。商业规划[C01](tasks/C01.md)后，六名Agent已在[C02](tasks/C02.md)实现首批私有逐人统计、自动排时建议、用户名登录/离线维护、公开SVG/CSV/打印；本地573源码测试、严格类型、构建及格式通过。下一步优先解除运行条件阻塞，核实本批Git操作授权后跑既有隔离CI，或在提供的隔离环境补真实PG/迁移升级/重启恢复/桌面手机浏览器。008/009与20项PG新用例未运行，不沿用旧SHA CI，也不在正式库验收。首批未标DONE，完整商业版其余范围继续单列。
+C02已合并PR10，最终候选CI完整成功，合并后CI39920273639执行中；见[当前状态](CURRENT_STATUS.md)。本轮无生产操作或正式账号变更，完整商业版尚未完成。后续开发先补整届完赛/归档与其他赛制，持续按独立卡冻结规则/合同、实现及真实隔离验收，不重复开发C02。
 
-专业统计、个人集锦、赞助报告与年度套餐另拆有验收条件的任务。阶段规划与概念图不构成完成证据。
+P03/P04/P05完整范围、长期球员/赛季及高级统计、资料文件、观众中心/微信、商业套餐/订单/支付退款对账、真实媒体继续单列；原生OBS仍按用户要求暂缓。服务器部署验收报告是用户回传的旧1534216，不等于C02已上线。
