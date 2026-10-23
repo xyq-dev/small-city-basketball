@@ -22,8 +22,11 @@ import { RuleSummary, StandingsTable } from './StandingsTable';
 import { usePublicResource } from './usePublicResource';
 import { MatchExportTools, ScheduleExportTools } from './PublicExports';
 import { PublicBracket } from '../knockout/Bracket';
+import { PublicGroupTables } from '../groups/GroupTables';
+import { PublicMediaPanel } from '../media/PublicMediaPanel';
 import './viewing.css';
 const PublicApiContext = createContext<PublicViewingApi | null>(null);
+const PublicFetcherContext = createContext<typeof fetch | undefined>(undefined);
 const usePublicApi = () => useContext(PublicApiContext)!;
 const closedEvent = (status: string) => status === 'COMPLETED' || status === 'ARCHIVED';
 const statusLabels: Record<string, string> = {
@@ -87,7 +90,7 @@ function WatchFooter() {
   return (
     <footer className="watch-footer">
       <span>小城市篮球 · 每一场热爱，都值得被看见。</span>
-      <span>主办方公开的有限资料 · 未接入OBS或视频服务</span>
+      <span>主办方显式公开的有限资料 · 实际直播导播另行验收</span>
     </footer>
   );
 }
@@ -95,27 +98,29 @@ export function PublicViewingApp({ fetcher }: { fetcher?: typeof fetch }) {
   const api = useMemo(() => createPublicViewingApi({ fetcher }), [fetcher]);
   return (
     <PublicApiContext.Provider value={api}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/watch/:publicEventId" element={<PublicEventPage />} />
-          <Route
-            path="/watch/:publicEventId/matches/:publicMatchId"
-            element={<PublicMatchPage />}
-          />
-          <Route
-            path="*"
-            element={
-              <div className="watch-shell">
-                <WatchHeader />
-                <main className="watch-main">
-                  <Unavailable />
-                </main>
-                <WatchFooter />
-              </div>
-            }
-          />
-        </Routes>
-      </BrowserRouter>
+      <PublicFetcherContext.Provider value={fetcher}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/watch/:publicEventId" element={<PublicEventPage />} />
+            <Route
+              path="/watch/:publicEventId/matches/:publicMatchId"
+              element={<PublicMatchPage />}
+            />
+            <Route
+              path="*"
+              element={
+                <div className="watch-shell">
+                  <WatchHeader />
+                  <main className="watch-main">
+                    <Unavailable />
+                  </main>
+                  <WatchFooter />
+                </div>
+              }
+            />
+          </Routes>
+        </BrowserRouter>
+      </PublicFetcherContext.Provider>
     </PublicApiContext.Provider>
   );
 }
@@ -196,21 +201,25 @@ function PublicEventContent({ publicEventId }: { publicEventId: string }) {
       if (signal.aborted) throw new DOMException('读取已取消', 'AbortError');
       if (event.publicEventId !== publicEventId)
         throw new ApiError(404, 'PUBLIC_NOT_FOUND', '观赛链接不可用');
-      const [schedule, standings, bracket] = await Promise.all([
+      const [schedule, standings, bracket, groups] = await Promise.all([
         api.schedule(publicEventId, undefined, signal),
-        event.format === 'SINGLE_ELIMINATION'
+        event.format === 'SINGLE_ELIMINATION' || event.format === 'GROUP_KNOCKOUT'
           ? Promise.resolve(null)
           : api.standings(publicEventId, signal),
         event.format === 'SINGLE_ELIMINATION'
           ? api.knockout(publicEventId, signal)
           : Promise.resolve(null),
+        event.format === 'GROUP_KNOCKOUT'
+          ? api.groups(publicEventId, signal)
+          : Promise.resolve(null),
       ]);
       if (
         (standings && standings.publicEventId !== publicEventId) ||
-        (bracket && bracket.publicEventId !== publicEventId)
+        (bracket && bracket.publicEventId !== publicEventId) ||
+        (groups && groups.publicEventId !== publicEventId)
       )
         throw new ApiError(404, 'PUBLIC_NOT_FOUND', '观赛链接不可用');
-      return { event, schedule, standings, bracket };
+      return { event, schedule, standings, bracket, groups };
     },
     [api, publicEventId],
   );
@@ -256,7 +265,7 @@ function PublicEventContent({ publicEventId }: { publicEventId: string }) {
                   场已确认 ·{' '}
                   {data.event.isComplete
                     ? '全部场次已确认'
-                    : data.bracket
+                    : data.bracket || data.groups
                       ? '晋级进行中'
                       : '排名暂列'}
                 </span>
@@ -286,7 +295,7 @@ function PublicEventContent({ publicEventId }: { publicEventId: string }) {
                 aria-controls="watch-standings-panel"
                 onClick={() => setTab('standings')}
               >
-                {data.bracket ? '晋级与名次' : '赛事排名'}
+                {data.groups ? '分组与晋级' : data.bracket ? '晋级与名次' : '赛事排名'}
               </button>
             </div>
             {tab === 'schedule' ? (
@@ -331,7 +340,9 @@ function PublicEventContent({ publicEventId }: { publicEventId: string }) {
               </section>
             ) : (
               <div id="watch-standings-panel" role="tabpanel" aria-labelledby="watch-standings-tab">
-                {data.bracket ? (
+                {data.groups ? (
+                  <PublicGroupTables data={data.groups} />
+                ) : data.bracket ? (
                   <PublicBracket data={data.bracket} />
                 ) : (
                   data.standings && (
@@ -421,6 +432,7 @@ function PublicMatchContent({
   publicMatchId: string;
 }) {
   const api = usePublicApi();
+  const mediaFetcher = useContext(PublicFetcherContext);
   const read = useCallback(
     async (signal: AbortSignal) => {
       const data = await api.match(publicEventId, publicMatchId, signal);
@@ -467,6 +479,13 @@ function PublicMatchContent({
             </div>
             <Freshness resource={resource} />
             <PublicScoreboard data={data} receivedAt={resource.receivedAt} />
+            {resource.online && !resource.stale && (
+              <PublicMediaPanel
+                publicEventId={publicEventId}
+                publicMatchId={publicMatchId}
+                fetcher={mediaFetcher}
+              />
+            )}
             <MatchExportTools
               data={data}
               disabled={!resource.online || resource.stale || resource.loading}

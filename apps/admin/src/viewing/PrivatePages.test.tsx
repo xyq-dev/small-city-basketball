@@ -32,57 +32,46 @@ function page(value: RegistrationWorkspace) {
   );
 }
 describe('declared standings rules and publication controls', () => {
-  it.each(['GROUP_KNOCKOUT'] as const)(
-    'shows %s as unsupported without a link or request, while round robin still navigates',
-    async (format) => {
-      const unsupported = {
-        ...overview.event,
-        id: `unsupported-${format}`,
-        name: `未开放赛制赛事${format}`,
-        format,
-      };
-      const repository: EventRepository = {
-        list: vi.fn().mockResolvedValue([unsupported, overview.event]),
-        get: vi.fn().mockResolvedValue(overview.event),
-        create: vi.fn().mockResolvedValue(overview.event),
-        updateDraft: vi.fn().mockResolvedValue(overview.event),
-      };
-      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(overview));
-      const workspace = context(fetcher);
-      render(
-        <MemoryRouter initialEntries={['/standings']}>
-          <Routes>
-            <Route
-              path="/standings"
-              element={<StandingsIndexPage context={workspace} repository={repository} />}
-            />
-            <Route
-              path="/events/:eventId/standings"
-              element={<EventStandingsPage context={workspace} />}
-            />
-          </Routes>
-        </MemoryRouter>,
-      );
-      const card = await screen.findByRole('article', { name: unsupported.name });
-      expect(
-        within(card).getByText('当前赛制暂不支持排名与公开观赛', { exact: true }),
-      ).toBeVisible();
-      expect(within(card).queryByRole('link')).not.toBeInTheDocument();
-      expect(within(card).queryByRole('button')).not.toBeInTheDocument();
-      fireEvent.click(card);
-      expect(fetcher).not.toHaveBeenCalled();
-      expect(screen.getByRole('heading', { level: 1, name: '排名与观赛' })).toBeVisible();
-      expect(screen.queryByText('暂无有权限的赛事')).not.toBeInTheDocument();
-      const roundRobin = screen.getByRole('link', { name: new RegExp(overview.event.name) });
-      expect(roundRobin).toHaveAttribute('href', `/events/${overview.event.id}/standings`);
-      fireEvent.click(roundRobin);
-      expect(
-        await screen.findByRole('heading', { level: 1, name: overview.event.name }),
-      ).toBeVisible();
-      expect(fetcher).toHaveBeenCalledTimes(1);
-      expect(fetcher.mock.calls[0][0]).toBe(`/v1/orgs/org-a/events/${overview.event.id}/standings`);
-    },
-  );
+  it('navigates group competitions to their scoped rules and publication page', async () => {
+    const grouped = {
+      ...overview.event,
+      id: 'group-event',
+      name: '合成分组赛事',
+      format: 'GROUP_KNOCKOUT' as const,
+    };
+    const repository: EventRepository = {
+      list: vi.fn().mockResolvedValue([grouped, overview.event]),
+      get: vi.fn().mockResolvedValue(grouped),
+      create: vi.fn().mockResolvedValue(grouped),
+      updateDraft: vi.fn().mockResolvedValue(grouped),
+    };
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(response({ ...overview, event: grouped, standings: null }));
+    const workspace = context(fetcher);
+    render(
+      <MemoryRouter initialEntries={['/standings']}>
+        <Routes>
+          <Route
+            path="/standings"
+            element={<StandingsIndexPage context={workspace} repository={repository} />}
+          />
+          <Route
+            path="/events/:eventId/standings"
+            element={<EventStandingsPage context={workspace} />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.click(await screen.findByRole('link', { name: /合成分组赛事/ }));
+    expect(await screen.findByRole('link', { name: '查看分组与晋级' })).toHaveAttribute(
+      'href',
+      '/events/group-event/groups',
+    );
+    expect(screen.getByLabelText('胜场积分')).toBeVisible();
+    expect(screen.queryByRole('region', { name: '赛事排名' })).not.toBeInTheDocument();
+    expect(fetcher.mock.calls[0][0]).toBe('/v1/orgs/org-a/events/group-event/standings');
+  });
   it('offers single-elimination publication controls without showing round-robin points or a fictitious ranking form', async () => {
     const value: EventStandingsData = {
       ...overview,

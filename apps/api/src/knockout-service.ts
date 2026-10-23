@@ -22,7 +22,7 @@ const fail = (code: string, message: string): never => {
 
 /** Publishes only original match facts. Bracket state is always a read projection. */
 export class KnockoutService extends SchedulingService {
-  private async resultRows(c: PoolClient, org: string, event: string): Promise<ResultRow[]> {
+  protected async resultRows(c: PoolClient, org: string, event: string): Promise<ResultRow[]> {
     return (
       await c.query<ResultRow>(
         `SELECT m.*,to_jsonb(s) AS state,to_jsonb(cf) AS confirmation,to_jsonb(le) AS last_event,to_jsonb(rc) AS last_command,to_jsonb(sr) AS scoring_rules
@@ -37,7 +37,7 @@ export class KnockoutService extends SchedulingService {
       )
     ).rows;
   }
-  private async view(c: PoolClient, ctx: OrgActor, event: EventAccess) {
+  protected async view(c: PoolClient, ctx: OrgActor, event: EventAccess) {
     if (event.row.format !== 'SINGLE_ELIMINATION')
       throw new ApiError(422, 'UNSUPPORTED_EVENT_FORMAT', '仅单淘汰赛事有淘汰签位');
     const publication = await this.publication(c, ctx.orgId, event.row.id);
@@ -95,7 +95,7 @@ export class KnockoutService extends SchedulingService {
           !!bracket?.nextRound,
       },
     };
-    return { response, revision, matches, publication };
+    return { response, revision, matches, publication, nextRound: bracket?.nextRound ?? null };
   }
   async getKnockout(
     cookie: string | undefined,
@@ -110,11 +110,12 @@ export class KnockoutService extends SchedulingService {
       return response;
     });
   }
-  async publishKnockoutRound(
+  protected async publishRound(
     cookie: string | undefined,
     org: string,
     id: string,
     raw: unknown,
+    qualification = false,
   ): Promise<EventKnockoutData> {
     const input = objectInput(raw, [
       'type',
@@ -124,14 +125,18 @@ export class KnockoutService extends SchedulingService {
       'reason',
       'allocations',
     ]);
-    if (input.type !== 'PUBLISH_ROUND') invalid('不支持的淘汰赛命令');
+    if (input.type !== (qualification ? 'PUBLISH_QUALIFICATION' : 'PUBLISH_ROUND'))
+      invalid('不支持的淘汰赛命令');
     const version = expectedVersion(input.expectedEventVersion);
     if (
       typeof input.expectedSourceHash !== 'string' ||
       !/^[0-9a-f]{64}$/.test(input.expectedSourceHash)
     )
       invalid('晋级来源摘要无效');
-    if (!Number.isInteger(input.roundNo) || Number(input.roundNo) < 2 || Number(input.roundNo) > 5)
+    if (
+      !qualification &&
+      (!Number.isInteger(input.roundNo) || Number(input.roundNo) < 2 || Number(input.roundNo) > 31)
+    )
       invalid('淘汰轮次无效');
     if (typeof input.reason !== 'string' || input.reason.includes('\u0000'))
       invalid('请填写发布原因');
@@ -150,11 +155,13 @@ export class KnockoutService extends SchedulingService {
           });
         if (!['SCHEDULED', 'RUNNING'].includes(event.row.status))
           fail('INVALID_EVENT_STATE', '当前赛事不能发布晋级轮次');
-        const { response, revision, matches, publication } = await this.view(c, ctx, event);
-        const next = response.bracket?.nextRound;
+        const { revision, matches, publication, nextRound: next } = await this.view(c, ctx, event);
         if (!next || !revision || !publication)
           fail('KNOCKOUT_ROUND_NOT_READY', '请先完成上一轮全部比赛的独立确认');
-        if (next!.roundNo !== input.roundNo || next!.sourceHash !== input.expectedSourceHash)
+        if (
+          (!qualification && next!.roundNo !== input.roundNo) ||
+          next!.sourceHash !== input.expectedSourceHash
+        )
           fail('KNOCKOUT_SOURCE_CONFLICT', '晋级来源已更新，请重新读取签位后再发布');
         const allocations = parseAllocationInput(
           input.allocations,
@@ -177,17 +184,19 @@ export class KnockoutService extends SchedulingService {
             endsAt: m.ends_at.toISOString(),
           }))
           .concat(fixtures);
-        const parentByWinner = new Map(
-          next!.sources.map((source) => [
-            source.winnerEntryId,
-            matches.find((m) => m.id === source.matchId)!,
-          ]),
+        const parentMatches = next!.sources.map((source) =>
+          matches.find((m) => m.id === source.matchId)!,
         );
         for (const f of fixtures)
           for (const entry of [f.homeEntryId, f.awayEntryId]) {
-            const parent = parentByWinner.get(entry);
-            if (parent && Date.parse(f.startsAt!) < parent.ends_at.getTime())
-              fail('KNOCKOUT_DEPENDENCY_ORDER', '晋级比赛不能早于来源比赛结束');
+            if (
+              parentMatches.some(
+                (parent) =>
+                  (parent.home_entry_id === entry || parent.away_entry_id === entry) &&
+                  Date.parse(f.startsAt!) < parent.ends_at.getTime(),
+              )
+            )
+              fail('KNOCKOUT_DEPENDENCY_ORDER', '晋级比赛不能早于所有来源比赛结束');
           }
         const courts = await this.courts(c, ctx.orgId, [
           ...revision!.policy.courtWindows.map((w) => w.courtId),
@@ -262,22 +271,17 @@ export class KnockoutService extends SchedulingService {
         });
         await this.ensureFreshSession(c, ctx);
         const proofId = randomUUID();
-        await c.query(
-          `INSERT INTO knockout_round_publications(id,org_id,event_id,publication_id,revision_id,round_no,from_event_version,to_event_version,source_hash,sources,fixtures,reason,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$7+1,$8,$9::jsonb,$10::jsonb,$11,$12)`,
-          [
-            proofId,
-            ctx.orgId,
-            id,
-            publication!.id,
-            revision!.id,
-            next!.roundNo,
-            event.row.version,
-            next!.sourceHash,
-            JSON.stringify(next!.sources),
-            JSON.stringify(proofFixtures),
-            reason,
-            ctx.user.id,
-          ],
+        await this.persistRoundProof(
+          c,
+          ctx,
+          event,
+          revision!,
+          publication!.id,
+          next!,
+          proofFixtures,
+          proofId,
+          reason,
+          qualification,
         );
         for (const f of proofFixtures) {
           await c.query(
@@ -341,12 +345,20 @@ export class KnockoutService extends SchedulingService {
           'UPDATE events SET version=version+1,updated_at=clock_timestamp() WHERE org_id=$1 AND id=$2',
           [ctx.orgId, id],
         );
-        await this.audit(c, ctx.user.id, ctx.orgId, 'KNOCKOUT_ROUND_PUBLISHED', 'event', id, {
-          proofId,
-          roundNo: next!.roundNo,
-          sourceHash: next!.sourceHash,
-          reason,
-        });
+        await this.audit(
+          c,
+          ctx.user.id,
+          ctx.orgId,
+          qualification ? 'GROUP_QUALIFICATION_PUBLISHED' : 'KNOCKOUT_ROUND_PUBLISHED',
+          'event',
+          id,
+          {
+            proofId,
+            roundNo: next!.roundNo,
+            sourceHash: next!.sourceHash,
+            reason,
+          },
+        );
         return (await this.view(c, ctx, await this.event(c, ctx, id, false))).response;
       });
     } catch (error) {
@@ -356,5 +368,44 @@ export class KnockoutService extends SchedulingService {
         });
       throw error;
     }
+  }
+  async publishKnockoutRound(
+    cookie: string | undefined,
+    org: string,
+    id: string,
+    raw: unknown,
+  ): Promise<EventKnockoutData> {
+    return this.publishRound(cookie, org, id, raw, false);
+  }
+  protected async persistRoundProof(
+    c: PoolClient,
+    ctx: OrgActor,
+    event: EventAccess,
+    revision: RevisionRow,
+    publicationId: string,
+    next: NonNullable<KnockoutBracket['nextRound']>,
+    fixtures: unknown[],
+    proofId: string,
+    reason: string,
+    qualification: boolean,
+  ) {
+    if (qualification) fail('UNSUPPORTED_EVENT_FORMAT', '仅分组赛事可发布晋级资格');
+    await c.query(
+      `INSERT INTO knockout_round_publications(id,org_id,event_id,publication_id,revision_id,round_no,from_event_version,to_event_version,source_hash,sources,fixtures,reason,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$7+1,$8,$9::jsonb,$10::jsonb,$11,$12)`,
+      [
+        proofId,
+        ctx.orgId,
+        event.row.id,
+        publicationId,
+        revision.id,
+        next.roundNo,
+        event.row.version,
+        next.sourceHash,
+        JSON.stringify(next.sources),
+        JSON.stringify(fixtures),
+        reason,
+        ctx.user.id,
+      ],
+    );
   }
 }

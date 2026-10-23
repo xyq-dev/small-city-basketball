@@ -313,6 +313,17 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
 }
+.sc-page .sc-seed-choice {
+  flex-direction: row;
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+.sc-page .sc-seed-choice input {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+}
 .sc-window-heading {
   display: flex;
   justify-content: space-between;

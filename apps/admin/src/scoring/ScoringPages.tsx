@@ -19,6 +19,7 @@ import {
 } from './shared';
 import { RulesForm } from './Management';
 import { MatchWorkbench } from './Workbench';
+import { MediaPanel } from '../media/MediaPanels';
 export function ScoringIndexPage({ context }: { context: RegistrationWorkspace }) {
   return scoringOrganization(context) ? (
     <ScoringIndex key={context.organizationId} context={context} />
@@ -207,11 +208,14 @@ function EventScoring({
 export function ScoringWorkbenchPage({ context }: { context: RegistrationWorkspace }) {
   const { matchId = '' } = useParams();
   return scoringOrganization(context) ? (
-    <MatchWorkbench
-      key={`${context.organizationId}:${matchId}`}
-      context={context}
-      matchId={matchId}
-    />
+    <>
+      <MatchWorkbench
+        key={`${context.organizationId}:${matchId}`}
+        context={context}
+        matchId={matchId}
+      />
+      <MediaPanel context={context} matchId={matchId} />
+    </>
   ) : (
     <ScoringAccessRequired />
   );

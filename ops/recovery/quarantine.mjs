@@ -16,7 +16,8 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
     // This is an offline restore operation. Drain in-flight row-locking readers
     // and writers before choosing the single time used by all revocations.
     await client.query(`LOCK TABLE organizations, events, users, sessions,
-      team_invitations, public_event_publications, overlay_grants, scoring_leases
+      team_invitations, public_event_publications, overlay_grants, scoring_leases,
+      platform_operators, wechat_identities, wechat_auth_attempts
       IN EXCLUSIVE MODE`);
     const now = (await client.query('SELECT clock_timestamp()::text AS now')).rows[0].now;
     const systemUserId = randomUUID();
@@ -33,6 +34,15 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
       'UPDATE sessions SET revoked_at=$1::timestamptz WHERE revoked_at IS NULL',
       [now],
     );
+    const operators = await client.query(
+      "UPDATE platform_operators SET status='DISABLED',updated_at=$1::timestamptz WHERE status='ACTIVE'",
+      [now],
+    );
+    const wechatIdentities = await client.query(
+      "UPDATE wechat_identities SET status='REVOKED',version=version+1,updated_at=$1::timestamptz,revoked_at=$1::timestamptz WHERE status='ACTIVE'",
+      [now],
+    );
+    const wechatAttempts = await client.query('DELETE FROM wechat_auth_attempts');
     const invitations = await client.query(
       `UPDATE team_invitations SET revoked_at=$1::timestamptz
        WHERE accepted_at IS NULL AND revoked_at IS NULL`,
@@ -72,6 +82,9 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
     );
     const counts = {
       sessionsRevoked: sessions.rowCount,
+      platformOperatorsDisabled: operators.rowCount,
+      wechatIdentitiesRevoked: wechatIdentities.rowCount,
+      wechatChallengesRemoved: wechatAttempts.rowCount,
       pendingInvitationsRevoked: invitations.rowCount,
       publicPublicationsRevoked: publicGrants.rowCount,
       overlayGrantsRevoked: overlayGrants.rowCount,

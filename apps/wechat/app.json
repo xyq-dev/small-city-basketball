@@ -1,0 +1,11 @@
+{
+  "pages": ["pages/home/index", "pages/event/index", "pages/match/index", "pages/account/index"],
+  "window": {
+    "navigationBarTitleText": "小城市篮球",
+    "navigationBarBackgroundColor": "#132c49",
+    "navigationBarTextStyle": "white",
+    "backgroundTextStyle": "dark"
+  },
+  "networkTimeout": { "request": 8000, "downloadFile": 10000 },
+  "style": "v2"
+}

@@ -76,6 +76,12 @@ const EventStandingsPage = lazy(() =>
 const EventLifecyclePage = lazy(() =>
   import('./lifecycle/LifecyclePage').then((m) => ({ default: m.EventLifecyclePage })),
 );
+const EventGroupKnockoutPage = lazy(() =>
+  import('./groups/GroupKnockoutPage').then((m) => ({ default: m.EventGroupKnockoutPage })),
+);
+const OrgCommercePage = lazy(() =>
+  import('./commerce/CommercePages').then((m) => ({ default: m.OrgCommercePage })),
+);
 const EventKnockoutPage = lazy(() =>
   import('./knockout/KnockoutPage').then((m) => ({ default: m.EventKnockoutPage })),
 );
@@ -1448,6 +1454,18 @@ function EventDetailPage() {
           }
         />
         <div className="module-grid">
+          {workspace.registration &&
+            !workspace.registration.teamContext &&
+            event.format === 'GROUP_KNOCKOUT' && (
+              <Link className="module-card" to={`/events/${event.id}/groups`}>
+                <Trophy size={24} />
+                <div>
+                  <h3>分组积分与淘汰晋级</h3>
+                  <p>核对分组、处理同分抽签，按独立确认赛果发布晋级轮。</p>
+                </div>
+                <ArrowUpRight size={18} />
+              </Link>
+            )}
           {workspace.registration && !workspace.registration.teamContext && (
             <>
               {event.format === 'SINGLE_ELIMINATION' && (
@@ -1622,42 +1640,47 @@ function WorkspaceLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const currentLabel = location.pathname.endsWith('/lifecycle')
-    ? '赛事生命周期'
-    : location.pathname.endsWith('/knockout')
-      ? '淘汰赛签位与晋级'
-      : location.pathname.endsWith('/player-statistics')
-        ? '球员基础数据榜'
-        : location.pathname === '/broadcast' || location.pathname.endsWith('/overlay')
-          ? '直播与 OBS'
-          : location.pathname === '/standings' || location.pathname.endsWith('/standings')
-            ? '排名与观赛'
-            : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
-              ? '记分与赛果'
-              : location.pathname === '/courts'
-                ? '机构场地'
-                : location.pathname === '/scheduling' ||
-                    /\/scheduling(?:\/|$)/.test(location.pathname)
-                  ? '抽签排赛'
-                  : location.pathname.startsWith('/entries/')
-                    ? '报名详情'
-                    : location.pathname === '/my-team' || teamWorkspace
-                      ? '我的球队'
-                      : location.pathname.startsWith('/teams')
-                        ? '球队与球员'
-                        : location.pathname === '/registration' ||
-                            location.pathname.endsWith('/registration')
-                          ? '报名审核'
-                          : location.pathname === '/'
-                            ? '工作总览'
-                            : location.pathname === '/events/new'
-                              ? '创建赛事'
-                              : location.pathname.startsWith('/events/')
-                                ? '赛事详情'
-                                : location.pathname === '/events'
-                                  ? '赛事管理'
-                                  : (roadmap[location.pathname.split('/')[2] ?? '']?.title ??
-                                    '页面');
+  const currentLabel =
+    location.pathname === '/commerce'
+      ? '套餐、订单与权益'
+      : location.pathname.endsWith('/groups')
+        ? '分组积分与淘汰晋级'
+        : location.pathname.endsWith('/lifecycle')
+          ? '赛事生命周期'
+          : location.pathname.endsWith('/knockout')
+            ? '淘汰赛签位与晋级'
+            : location.pathname.endsWith('/player-statistics')
+              ? '球员基础数据榜'
+              : location.pathname === '/broadcast' || location.pathname.endsWith('/overlay')
+                ? '直播与 OBS'
+                : location.pathname === '/standings' || location.pathname.endsWith('/standings')
+                  ? '排名与观赛'
+                  : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
+                    ? '记分与赛果'
+                    : location.pathname === '/courts'
+                      ? '机构场地'
+                      : location.pathname === '/scheduling' ||
+                          /\/scheduling(?:\/|$)/.test(location.pathname)
+                        ? '抽签排赛'
+                        : location.pathname.startsWith('/entries/')
+                          ? '报名详情'
+                          : location.pathname === '/my-team' || teamWorkspace
+                            ? '我的球队'
+                            : location.pathname.startsWith('/teams')
+                              ? '球队与球员'
+                              : location.pathname === '/registration' ||
+                                  location.pathname.endsWith('/registration')
+                                ? '报名审核'
+                                : location.pathname === '/'
+                                  ? '工作总览'
+                                  : location.pathname === '/events/new'
+                                    ? '创建赛事'
+                                    : location.pathname.startsWith('/events/')
+                                      ? '赛事详情'
+                                      : location.pathname === '/events'
+                                        ? '赛事管理'
+                                        : (roadmap[location.pathname.split('/')[2] ?? '']?.title ??
+                                          '页面');
   useEffect(() => {
     setMenuOpen(false);
     document.title = `${currentLabel} · 小城市篮球`;
@@ -1811,7 +1834,17 @@ function WorkspaceLayout() {
           })}
         </nav>
         <div className="sidebar-bottom">
-          <NavLink className="nav-item" to="/roadmap/plan" onClick={() => setMenuOpen(false)}>
+          <NavLink
+            className="nav-item"
+            to={
+              registration &&
+              !teamWorkspace &&
+              (workspace.role === 'ORG_OWNER' || workspace.role === 'ORG_ADMIN')
+                ? '/commerce'
+                : '/roadmap/plan'
+            }
+            onClick={() => setMenuOpen(false)}
+          >
             <ChartNoAxesCombined size={19} />
             <span>套餐与用量</span>
           </NavLink>
@@ -1862,7 +1895,7 @@ function WorkspaceLayout() {
             <strong>{api ? '业务服务 · 数据持久保存' : '演示模式 · Mock 数据'}</strong>
             <span className="notice-separator">—</span>
             {api
-              ? '赛事资料刷新后保留。直播、身份核验和保险凭证仍在建设中。'
+              ? '赛事资料刷新后保留。比赛与媒体操作以当前授权为准。'
               : '本次演示数据保存在内存中，刷新页面后重置。'}
           </span>
           <span className="notice-stage">
@@ -1871,6 +1904,34 @@ function WorkspaceLayout() {
         </div>
         <main className="main-content" id="main-content" tabIndex={-1}>
           <Routes>
+            {registration && (
+              <>
+                <Route
+                  path="/commerce"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={standingsFallback}>
+                        <OrgCommercePage context={registration} />
+                      </Suspense>
+                    )
+                  }
+                />
+                <Route
+                  path="/events/:eventId/groups"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={standingsFallback}>
+                        <EventGroupKnockoutPage context={registration} />
+                      </Suspense>
+                    )
+                  }
+                />
+              </>
+            )}
             <Route
               path="/"
               element={

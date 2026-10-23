@@ -11,17 +11,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@small-city-basketball/contracts": "0.2.0",
     "lucide-react": "1.61.0",
+    "qrcode": "1.5.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-router-dom": "7.18.4",
-    "@small-city-basketball/contracts": "0.2.0"
+    "react-router-dom": "7.18.4"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.8",
     "@types/node": "26.6.5",
+    "@types/qrcode": "1.5.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",

@@ -9,6 +9,13 @@ import type {
   SchedulePolicy,
   KnockoutSource,
 } from '@small-city-basketball/contracts';
+import { calculateGroupKnockout } from './group-knockout-domain.js';
+import type {
+  GroupKnockoutConfig,
+  GroupTieDrawData,
+  GroupQualificationProof,
+  StandingsRulesetData,
+} from '@small-city-basketball/contracts';
 import { calculateKnockout } from './knockout-domain.js';
 import { confirmedPlayerStatistics } from './confirmed-player-statistics.js';
 import { resultSourceInvalid } from './standings-domain.js';
@@ -86,9 +93,29 @@ export function calculateEventPlayerStatistics(input: {
   seed?: string;
   policy?: SchedulePolicy;
   roundPublications?: { roundNo: number; sources: KnockoutSource[] }[];
+  groupConfig?: GroupKnockoutConfig;
+  groupRules?: StandingsRulesetData;
+  groupDraws?: GroupTieDrawData[];
+  groupQualification?: GroupQualificationProof | null;
 }): Summary {
   if (!uuid(input.publicationId)) resultSourceInvalid();
   const entrants = participants(input.source);
+  const group = input.format === 'GROUP_KNOCKOUT';
+  const competition = group
+    ? calculateGroupKnockout({
+        publicationId: input.publicationId,
+        source: input.source as RegistrationFreezeData,
+        seed: input.seed!,
+        policy: input.policy!,
+        config: input.groupConfig!,
+        rules: input.groupRules!,
+        matches: input.matches,
+        asOf: input.asOf,
+        draws: input.groupDraws,
+        qualification: input.groupQualification,
+        roundPublications: input.roundPublications,
+      })
+    : null;
   const knockout = input.format === 'SINGLE_ELIMINATION';
   const bracket = knockout
     ? calculateKnockout({
@@ -101,11 +128,16 @@ export function calculateEventPlayerStatistics(input: {
         asOf: input.asOf,
       })
     : null;
-  const totalMatchCount = knockout
-    ? entrants.length - 1
-    : (entrants.length * (entrants.length - 1)) / 2;
-  if (!knockout && input.matches.length !== totalMatchCount) resultSourceInvalid();
-  if (input.format && !['ROUND_ROBIN', 'SINGLE_ELIMINATION'].includes(input.format))
+  const totalMatchCount = competition
+    ? competition.totalMatchCount
+    : knockout
+      ? entrants.length - 1
+      : (entrants.length * (entrants.length - 1)) / 2;
+  if (!knockout && !group && input.matches.length !== totalMatchCount) resultSourceInvalid();
+  if (
+    input.format &&
+    !['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(input.format)
+  )
     resultSourceInvalid();
   const byEntry = new Map(entrants.map((p) => [p.entryId, p]));
   const teams: Summary['teams'] = entrants.map((p) => ({
@@ -139,7 +171,7 @@ export function calculateEventPlayerStatistics(input: {
     const away = byEntry.get(m.away_entry_id);
     if (!home || !away || home === away) resultSourceInvalid();
     const pair = [home.entryId, away.entryId].sort().join('|');
-    if (pairs.has(pair)) resultSourceInvalid();
+    if (!group && pairs.has(pair)) resultSourceInvalid();
     pairs.add(pair);
     const stats = confirmedPlayerStatistics(m);
     const fixed: MatchPlayerRoster = { home: roster(m.home_roster), away: roster(m.away_roster) };
@@ -250,6 +282,13 @@ export function calculateEventPlayerStatistics(input: {
     participants: entrants,
     rosters: [...rosterSources].sort(([a], [b]) => compareId(a, b)),
     matches: sources,
+    ...(competition
+      ? {
+          format: 'GROUP_KNOCKOUT',
+          competitionAlgorithmVersion: competition.algorithmVersion,
+          totalMatchCount,
+        }
+      : {}),
     ...(bracket
       ? { format: input.format, bracketAlgorithmVersion: bracket.algorithmVersion, totalMatchCount }
       : {}),

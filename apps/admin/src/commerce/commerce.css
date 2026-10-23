@@ -1,0 +1,112 @@
+.commerce-page {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.commerce-panel {
+  padding: 24px;
+  min-width: 0;
+}
+.commerce-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
+}
+.commerce-card {
+  border: 1px solid #e6e9ef;
+  border-radius: 14px;
+  padding: 18px;
+  margin: 12px 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.commerce-card h3 {
+  margin: 0 0 12px;
+}
+.commerce-card p,
+.commerce-muted {
+  color: #687284;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.commerce-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+  margin-top: 20px;
+  align-items: end;
+}
+.commerce-page label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+}
+.commerce-page input,
+.commerce-page select,
+.commerce-page textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #dce1e9;
+  border-radius: 8px;
+  padding: 10px;
+  font: inherit;
+  background: white;
+}
+.commerce-page textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+.commerce-wide {
+  grid-column: 1/-1;
+}
+.commerce-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.commerce-note {
+  padding: 20px;
+  color: #566171;
+  line-height: 1.8;
+}
+.commerce-qr {
+  display: block;
+  width: 240px;
+  max-width: 100%;
+  height: auto;
+  margin: 12px auto;
+}
+.commerce-page small {
+  color: #687284;
+  line-height: 1.6;
+}
+.commerce-page .score-dialog {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.commerce-page .score-dialog label {
+  margin: 14px 0;
+}
+@media (max-width: 600px) {
+  .commerce-panel {
+    padding: 16px;
+  }
+  .commerce-grid {
+    grid-template-columns: 1fr;
+  }
+  .commerce-form {
+    grid-template-columns: 1fr;
+  }
+  .commerce-actions .button {
+    white-space: normal;
+    text-align: center;
+    min-height: 42px;
+  }
+  .commerce-page .score-dialog {
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
+  }
+}

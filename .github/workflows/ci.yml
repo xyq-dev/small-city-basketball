@@ -63,8 +63,8 @@ jobs:
       - run: npm run test:e2e
   api:
     runs-on: ubuntu-latest
-    # Real PostgreSQL plus two isolated browser projects; allow slow Chromium downloads.
-    timeout-minutes: 25
+    # C05 adds commercial, group and media flows in both isolated browser projects.
+    timeout-minutes: 35
     services:
       postgres:
         image: postgres:18.6-alpine3.24

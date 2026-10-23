@@ -1,0 +1,28 @@
+# Optional Native APIv3 override; never generates or uploads merchant credentials.
+services:
+  api:
+    environment:
+      COMMERCE_MODE: ENFORCED
+      WECHAT_PAY_ENABLED: 'true'
+      WECHAT_PAY_APP_ID: ${WECHAT_PAY_APP_ID:?Supply the existing payment AppID}
+      WECHAT_PAY_MERCHANT_ID: ${WECHAT_PAY_MERCHANT_ID:?Supply the existing merchant ID}
+      WECHAT_PAY_MERCHANT_SERIAL: ${WECHAT_PAY_MERCHANT_SERIAL:?Supply the existing merchant certificate serial}
+      WECHAT_PAY_NOTIFY_URL: ${APP_ORIGIN:?Set the canonical HTTPS origin}/v1/payments/wechat/notifications
+      WECHAT_PAY_PRIVATE_KEY_FILE: /run/secrets/wechat_pay_private_key
+      WECHAT_PAY_API_V3_KEY_FILE: /run/secrets/wechat_pay_api_v3_key
+      WECHAT_PAY_PLATFORM_KEYS_FILE: /run/secrets/wechat_pay_platform_keys
+    secrets:
+      - wechat_pay_private_key
+      - wechat_pay_api_v3_key
+      - wechat_pay_platform_keys
+    networks: [frontend, backend, provider_egress]
+secrets:
+  wechat_pay_private_key:
+    file: ${SCB_PROVIDER_SECRET_DIR:?Set the existing private provider secret directory}/wechat_pay_private_key
+  wechat_pay_api_v3_key:
+    file: ${SCB_PROVIDER_SECRET_DIR:?Set the existing private provider secret directory}/wechat_pay_api_v3_key
+  wechat_pay_platform_keys:
+    file: ${SCB_PROVIDER_SECRET_DIR:?Set the existing private provider secret directory}/wechat_pay_platform_keys
+networks:
+  provider_egress:
+    internal: false

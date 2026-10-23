@@ -33,16 +33,18 @@ export function RuleSummary({ rules }: { rules: StandingsRules }) {
 export function StandingsTable({
   data,
   preview = false,
+  title = '赛事排名',
 }: {
   data: PublicStandingsData | StandingsData;
   preview?: boolean;
+  title?: string;
 }) {
   return (
-    <section className="panel view-panel" aria-label="赛事排名">
+    <section className="panel view-panel" aria-label={title}>
       <div className="view-section-title">
         <div>
           <span className="view-eyebrow">THE TABLE, WITH EVERY RESULT</span>
-          <h2>{preview ? '草稿规则预览' : '赛事排名'}</h2>
+          <h2>{preview ? '草稿规则预览' : title}</h2>
         </div>
         <span className={`status-badge ${preview ? 'amber' : data.isComplete ? 'green' : 'blue'}`}>
           {preview ? '未正式发布' : data.isComplete ? '全部场次已确认' : '未完成 · 暂列排名'}

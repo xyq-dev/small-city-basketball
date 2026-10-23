@@ -23,6 +23,9 @@ export class PublicViewingController {
   @Get('standings') async standings(@Req() r: ApiRequest, @Param('publicEventId') id: string) {
     return envelope(r, await this.service.getPublicStandings(id));
   }
+  @Get('groups') async groups(@Req() r: ApiRequest, @Param('publicEventId') id: string) {
+    return envelope(r, await this.service.getPublicGroups(id));
+  }
   @Get('knockout') async knockout(@Req() r: ApiRequest, @Param('publicEventId') id: string) {
     return envelope(r, await this.service.getPublicKnockout(id));
   }

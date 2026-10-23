@@ -17,6 +17,16 @@ export class EventLifecycleService extends StandingsService {
     const plan = await this.plan(c, a.ctx.orgId, a.event.id);
     const matches = await this.matches(c, a.ctx.orgId, a.event.id);
     try {
+      if (a.event.format === 'GROUP_KNOCKOUT' && plan) {
+        const competition = await this.groupCompetition(c, a.event, plan, matches, now);
+        return {
+          totalMatchCount: competition.totalMatchCount,
+          confirmedMatchCount: competition.confirmedMatchCount,
+          ready: competition.isComplete,
+          blockers: competition.isComplete ? [] : ['UNCONFIRMED_MATCHES'],
+          sourceHash: competition.sourceHash,
+        };
+      }
       if (a.event.format === 'SINGLE_ELIMINATION')
         return knockoutCompletionReadiness({
           publicationId: plan?.id ?? null,

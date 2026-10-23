@@ -129,7 +129,7 @@ describe('public export UI and authorization lifecycle', () => {
     expect(download.mock.calls[0][0].body).toContain('剩余 00:50');
     expect(download.mock.calls[0][0].body).toContain('赛果未确认');
     expect(preview).toHaveAttribute('src', expect.stringContaining('data:image/svg+xml;'));
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls.filter(([url]) => !String(url).endsWith('/media'))).toHaveLength(2);
   });
   it('clears a generated preview and blocks output on invalidated result sources', async () => {
     const fetcher = eventFetcher();

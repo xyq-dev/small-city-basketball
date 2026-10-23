@@ -2,12 +2,14 @@ import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type {
   AuthCapabilitiesData,
+  CommerceMode,
   EventData,
   OrgRole,
   SessionData,
   StaffRole,
 } from '@small-city-basketball/contracts';
 import { resolveApiOptions } from './runtime-config.js';
+import type { WechatPayConfig } from './commerce/wechatpay.js';
 import type { ResolvedApiOptions } from './runtime-config.js';
 import { ApiError, forbidden, notFound, unauthenticated } from './errors.js';
 import {
@@ -42,6 +44,8 @@ export interface ApiOptions {
   organizationRegistrationEnabled?: boolean;
   participantRegistrationEnabled?: boolean;
   trustProxyHops?: 0 | 1;
+  commerceMode?: CommerceMode;
+  wechatPay?: WechatPayConfig;
 }
 
 export interface DbUser {
@@ -242,7 +246,12 @@ export class ApplicationService {
       ORDER BY o.created_at,o.id,t.created_at,t.id`,
       [user.id],
     );
+    const operator = await client.query(
+      "SELECT 1 FROM platform_operators WHERE user_id=$1 AND status='ACTIVE'",
+      [user.id],
+    );
     return {
+      ...(operator.rowCount ? { platformOperator: true } : {}),
       user: { id: user.id, email: user.email, displayName: user.display_name },
       organizations: memberships.rows,
       teamContexts: teamContexts.rows,

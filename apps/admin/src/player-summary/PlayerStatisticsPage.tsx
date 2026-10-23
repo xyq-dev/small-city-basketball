@@ -94,6 +94,11 @@ function Statistics({ data }: { data: EventPlayerStatisticsData }) {
   return (
     <>
       <section className="panel view-panel" aria-label="采集范围与完整性">
+        {data.event.format === 'GROUP_KNOCKOUT' && (
+          <p>
+            按组内赛与淘汰赛各自的真实比赛累计，同队在小组赛和决赛重逢仍为两场；这里只统计有效独立确认的逐人样本。
+          </p>
+        )}
         <div className="view-section-title">
           <div>
             <span className="view-eyebrow">COLLECTION COVERAGE</span>

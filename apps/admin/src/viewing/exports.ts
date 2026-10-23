@@ -81,7 +81,7 @@ function status(match: PublicScheduleMatchData) {
 }
 function checkSchedule(event: PublicEventData, matches: PublicScheduleMatchData[]) {
   if (
-    (event.format === 'SINGLE_ELIMINATION'
+    (event.format === 'SINGLE_ELIMINATION' || event.format === 'GROUP_KNOCKOUT'
       ? matches.length > event.totalMatchCount
       : matches.length !== event.totalMatchCount) ||
     matches.length === 0 ||

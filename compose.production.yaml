@@ -77,6 +77,9 @@ services:
       ORGANIZATION_REGISTRATION_ENABLED: 'false'
       PARTICIPANT_REGISTRATION_ENABLED: 'true'
       TRUST_PROXY_HOPS: '1'
+      COMMERCE_MODE: ${COMMERCE_MODE:-OFF}
+      WECHAT_PAY_ENABLED: 'false'
+      WECHAT_MINI_LOGIN_ENABLED: 'false'
       DATABASE_URL_FILE: /run/secrets/database_runtime_url
     secrets:
       - database_runtime_url
@@ -136,6 +139,19 @@ services:
     secrets:
       - database_migrator_url
       - bootstrap_owner_input
+    networks: [backend]
+    restart: 'no'
+
+  platform-operator:
+    <<: *db-tools
+    profiles: [ops]
+    command: [node, apps/api/dist/commerce/platform-operator.js]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_migrator_url
+      PLATFORM_OPERATOR_INPUT_FILE: /run/secrets/platform_operator_input
+    secrets:
+      - database_migrator_url
+      - platform_operator_input
     networks: [backend]
     restart: 'no'
 
@@ -214,6 +230,8 @@ secrets:
     file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/database_backup_url
   bootstrap_owner_input:
     file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/bootstrap_owner_input
+  platform_operator_input:
+    file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/platform_operator_input
   tls_certificate:
     file: ${SCB_SECRET_DIR:?Set an absolute private SCB_SECRET_DIR}/tls_certificate
   tls_private_key:

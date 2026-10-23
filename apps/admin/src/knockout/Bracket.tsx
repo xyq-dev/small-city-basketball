@@ -15,9 +15,11 @@ const label = (status: string) =>
 export function Bracket({
   bracket,
   participants,
+  hidePlacements = false,
 }: {
   bracket: KnockoutBracket;
   participants: ScheduleParticipant[];
+  hidePlacements?: boolean;
 }) {
   const names = new Map(participants.map((p) => [p.entryId, p.teamName]));
   const name = (entryId: string | null, source: string | null) =>
@@ -74,32 +76,45 @@ export function Bracket({
           </section>
         ))}
       </div>
-      <section className="panel view-panel" aria-label="淘汰赛最终名次">
-        <h2>最终名次</h2>
-        <p>不设三四名赛；同轮淘汰者共享名次。所有正式赛果有效独立确认后才公布。</p>
-        {bracket.isComplete ? (
-          <ol className="ko-placements">
-            {bracket.placements.map((row) => (
-              <li key={row.entryId}>
-                <strong>
-                  {row.tied ? '并列' : ''}第{row.rank}名
-                </strong>
-                <span>{row.teamName}</span>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="view-muted">本届尚未全部确认，最终名次未产生。</p>
-        )}
-      </section>
+      {!hidePlacements && (
+        <section className="panel view-panel" aria-label="淘汰赛最终名次">
+          <h2>最终名次</h2>
+          <p>不设三四名赛；同轮淘汰者共享名次。所有正式赛果有效独立确认后才公布。</p>
+          {bracket.isComplete ? (
+            <ol className="ko-placements">
+              {bracket.placements.map((row) => (
+                <li key={row.entryId}>
+                  <strong>
+                    {row.tied ? '并列' : ''}第{row.rank}名
+                  </strong>
+                  <span>{row.teamName}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="view-muted">本届尚未全部确认，最终名次未产生。</p>
+          )}
+        </section>
+      )}
     </>
   );
 }
-export function PublicBracket({ data }: { data: PublicKnockoutData }) {
+export function PublicBracket({
+  data,
+  groupStage = false,
+}: {
+  data: PublicKnockoutData;
+  groupStage?: boolean;
+}) {
   return (
     <>
       <div className="view-note">
-        <p>单淘汰赛 · 平分进入加时 · 首轮轮空无比赛 · 不设三四名赛。仅有效独立确认决定晋级。</p>
+        <p>
+          {groupStage
+            ? '淘汰阶段 · 小组前二固定交叉对阵 · 同组队决赛前不再相遇'
+            : '单淘汰赛 · 首轮轮空无比赛'}{' '}
+          · 平分进入加时 · 不设三四名赛。仅有效独立确认决定晋级。
+        </p>
       </div>
       <div className="ko-rounds" role="region" aria-label="公开淘汰赛签位">
         {data.rounds.map((round) => (
@@ -144,23 +159,25 @@ export function PublicBracket({ data }: { data: PublicKnockoutData }) {
           </section>
         ))}
       </div>
-      <section className="panel view-panel" aria-label="公开最终名次">
-        <h2>最终名次</h2>
-        {data.isComplete ? (
-          <ol className="ko-placements">
-            {data.placements.map((row) => (
-              <li key={row.team.teamKey}>
-                <strong>
-                  {row.tied ? '并列' : ''}第{row.rank}名
-                </strong>
-                <span>{row.team.teamName}</span>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p>本届尚未全部确认，最终名次未产生。</p>
-        )}
-      </section>
+      {!groupStage && (
+        <section className="panel view-panel" aria-label="公开最终名次">
+          <h2>最终名次</h2>
+          {data.isComplete ? (
+            <ol className="ko-placements">
+              {data.placements.map((row) => (
+                <li key={row.team.teamKey}>
+                  <strong>
+                    {row.tied ? '并列' : ''}第{row.rank}名
+                  </strong>
+                  <span>{row.team.teamName}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>本届尚未全部确认，最终名次未产生。</p>
+          )}
+        </section>
+      )}
     </>
   );
 }

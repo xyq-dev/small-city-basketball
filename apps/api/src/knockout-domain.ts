@@ -200,6 +200,8 @@ export function calculateKnockout(input: {
   matches: ResultRow[];
   asOf: string;
   roundPublications?: { roundNo: number; sources: KnockoutSource[] }[];
+  /** Internal GROUP qualification supplies fixed power-of-two seats, never client input. */
+  fixedSeats?: string[];
 }): KnockoutBracket {
   if (!uuid(input.publicationId) || !Array.isArray(input.matches)) resultSourceInvalid();
   let draw: ReturnType<typeof generateKnockoutPairings>;
@@ -211,7 +213,15 @@ export function calculateKnockout(input: {
     return resultSourceInvalid();
   }
   const participants = new Map(source.entries.map((entry) => [entry.entryId, entry]));
-  const seats = layout(draw.orderedEntryIds);
+  const seats = input.fixedSeats ?? layout(draw.orderedEntryIds);
+  if (
+    input.fixedSeats &&
+    (seats.length !== source.entries.length ||
+      ![2, 4, 8, 16, 32].includes(seats.length) ||
+      new Set(seats).size !== seats.length ||
+      input.fixedSeats.some((id) => !participants.has(id)))
+  )
+    resultSourceInvalid();
   const totalRounds = Math.log2(seats.length);
   const matches = new Map<string, ResultRow>();
   const ids = new Set<string>();
@@ -445,6 +455,7 @@ export function calculateKnockout(input: {
     publicationId: input.publicationId,
     inputHash: draw.inputHash,
     pairingHash: draw.pairingHash,
+    ...(input.fixedSeats ? { fixedSeats: input.fixedSeats } : {}),
     plans,
     roundSources: [...proofs].sort(([a], [b]) => a - b),
   });

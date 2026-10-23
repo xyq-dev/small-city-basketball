@@ -35,7 +35,7 @@ http {
         ssl_session_tickets off;
         root /usr/share/nginx/html;
         index index.html;
-        client_max_body_size 1m;
+        client_max_body_size 100k;
         add_header X-Content-Type-Options nosniff always;
         add_header Referrer-Policy no-referrer always;
 
@@ -48,11 +48,19 @@ http {
         proxy_set_header Forwarded "";
         proxy_set_header Connection "";
         proxy_cache off;
+        # The edge emits one nosniff header for both static and proxied responses.
+        proxy_hide_header X-Content-Type-Options;
 
         location = /v1 {
             proxy_pass http://scb_api;
         }
-        location ^~ /v1/ {
+        location ~ "^/v1/orgs/[0-9a-fA-F-]{36}/(entries|matches)/[0-9a-fA-F-]{36}/media-files$" {
+            client_max_body_size 12m;
+            client_body_timeout 30s;
+            proxy_request_buffering off;
+            proxy_pass http://scb_api;
+        }
+        location /v1/ {
             proxy_pass http://scb_api;
         }
         location = /ready {

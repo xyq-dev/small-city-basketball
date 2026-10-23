@@ -22,10 +22,28 @@ import type { Response, NextFunction } from 'express';
 import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
+import { WechatService } from './wechat-service.js';
+import type { WechatServiceOptions } from './wechat-service.js';
+import { WechatController, SCB_WECHAT_SERVICE } from './wechat-controller.js';
 import { RegistrationService } from './registration-service.js';
 import { SchedulingService } from './scheduling-service.js';
 import { SchedulingController } from './scheduling-controller.js';
-import { KnockoutService } from './knockout-service.js';
+import { GroupKnockoutService } from './group-knockout-service.js';
+import {
+  GroupKnockoutController,
+  SCB_GROUP_KNOCKOUT_SERVICE,
+} from './group-knockout-controller.js';
+import { MediaService } from './media-service.js';
+import { MediaController, PublicMediaController, SCB_MEDIA_SERVICE } from './media-controller.js';
+import { CommerceService } from './commerce/service.js';
+import { WechatPayClient } from './commerce/wechatpay.js';
+import {
+  CommerceCapabilitiesController,
+  OrgCommerceController,
+  PlatformCommerceController,
+  WechatPayNotificationController,
+  SCB_COMMERCE_SERVICE,
+} from './commerce/controller.js';
 import { KnockoutController, SCB_KNOCKOUT_SERVICE } from './knockout-controller.js';
 import { ScoringService } from './scoring-service.js';
 import { ScoringController, SCB_SCORING_SERVICE } from './scoring-controller.js';
@@ -54,6 +72,7 @@ import { clearedSessionCookie, sessionCookie } from './security.js';
 import { objectInput } from './validation.js';
 import { resolveApiOptions } from './runtime-config.js';
 import { assertRuntimeReadiness } from './readiness.js';
+import { isPaymentNotificationRequest, requestBodyMiddleware } from './request-body.js';
 
 const SERVICE = 'SCB_APPLICATION_SERVICE';
 const SCHEDULING_SERVICE = 'SCB_SCHEDULING_SERVICE';
@@ -219,7 +238,13 @@ class HealthController {
   }
 }
 
-export async function createApi(input: ApiOptions): Promise<{ app: INestApplication; pool: Pool }> {
+export async function createApi(
+  input: ApiOptions & {
+    wechat?: WechatServiceOptions;
+    media?: { trustedExternalHosts?: string[] };
+    commercePayments?: WechatPayClient;
+  },
+): Promise<{ app: INestApplication; pool: Pool }> {
   const options = resolveApiOptions(input);
   const pool = new Pool({
     connectionString: options.databaseUrl,
@@ -231,7 +256,18 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
     if (options.production) await assertRuntimeReadiness(pool);
     const service = new RegistrationService(pool, options);
     const scheduling = new SchedulingService(pool, options);
-    const knockout = new KnockoutService(pool, options);
+    const wechat = new WechatService(pool, options, input.wechat);
+    const knockout = new GroupKnockoutService(pool, options);
+    const media = new MediaService(
+      pool,
+      options,
+      input.media ?? {
+        trustedExternalHosts: (process.env.SCB_MEDIA_TRUSTED_HOSTS ?? '')
+          .split(',')
+          .filter(Boolean),
+      },
+    );
+    const commerce = new CommerceService(pool, options, input.commercePayments);
     const scoring = new ScoringService(pool, options);
     const standings = new StandingsService(pool, options);
     const overlay = new OverlayService(pool, options);
@@ -240,6 +276,14 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
     @Module({
       controllers: [
         AuthController,
+        WechatController,
+        GroupKnockoutController,
+        MediaController,
+        PublicMediaController,
+        CommerceCapabilitiesController,
+        OrgCommerceController,
+        PlatformCommerceController,
+        WechatPayNotificationController,
         OrganizationController,
         HealthController,
         RegistrationController,
@@ -256,6 +300,10 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
       ],
       providers: [
         { provide: SERVICE, useValue: service },
+        { provide: SCB_WECHAT_SERVICE, useValue: wechat },
+        { provide: SCB_GROUP_KNOCKOUT_SERVICE, useValue: knockout },
+        { provide: SCB_MEDIA_SERVICE, useValue: media },
+        { provide: SCB_COMMERCE_SERVICE, useValue: commerce },
         { provide: SCHEDULING_SERVICE, useValue: scheduling },
         { provide: SCB_KNOCKOUT_SERVICE, useValue: knockout },
         { provide: SCB_SCORING_SERVICE, useValue: scoring },
@@ -266,7 +314,7 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
       ],
     })
     class ApiModule {}
-    const app = await NestFactory.create(ApiModule, { logger: false, bodyParser: true });
+    const app = await NestFactory.create(ApiModule, { logger: false, bodyParser: false });
     app.getHttpAdapter().getInstance().disable('x-powered-by');
     app.getHttpAdapter().getInstance().set('trust proxy', options.trustProxyHops);
     app.use((request: ApiRequest, response: Response, next: NextFunction) => {
@@ -276,6 +324,7 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
       response.setHeader('X-Content-Type-Options', 'nosniff');
       if (
         ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) &&
+        !isPaymentNotificationRequest(request) &&
         request.headers.origin !== options.appOrigin
       ) {
         response.status(403).json({
@@ -289,6 +338,7 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
       }
       next();
     });
+    app.use(requestBodyMiddleware());
     app.enableCors({
       origin: options.appOrigin,
       credentials: true,

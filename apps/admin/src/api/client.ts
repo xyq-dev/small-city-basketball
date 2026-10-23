@@ -136,6 +136,8 @@ function sessionData(value: unknown): AuthSession {
     !Array.isArray(value.organizations)
   )
     throw new ApiError(200, 'INVALID_SESSION', '服务返回的登录资料不完整');
+  if (value.platformOperator !== undefined && typeof value.platformOperator !== 'boolean')
+    throw new ApiError(200, 'INVALID_SESSION', '服务返回的平台授权资料不完整');
   const roles = new Set([
     'ORG_OWNER',
     'ORG_ADMIN',

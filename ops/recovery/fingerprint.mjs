@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { assertManifestSchema, loadManifest } from '../db/privileges.mjs';
-import { quoteIdentifier } from '../db/common.mjs';
+import { exactTableRows } from './fingerprint-rows.mjs';
 
 const digest = (value) => createHash('sha256').update(value).digest('hex');
 const canonical = (value) => JSON.stringify(value);
@@ -30,7 +30,7 @@ export async function fingerprintDatabase(pool) {
         checksum: digest(await readFile(new URL(name, directory))),
       })),
     );
-    if (canonical(migrations) !== canonical(expected) || expected.length !== 11) throw new Error();
+    if (canonical(migrations) !== canonical(expected) || expected.length !== 15) throw new Error();
     const schema = {};
     const queries = {
       tables:
@@ -53,11 +53,7 @@ export async function fingerprintDatabase(pool) {
     const tables = {};
     for (const table of Object.keys(manifest.tables).sort()) {
       // Keep PostgreSQL JSON text rather than JS numbers, including bigint fence values.
-      const rows = (
-        await client.query(
-          `SELECT to_jsonb(t)::text AS value FROM public.${quoteIdentifier(table)} t ORDER BY to_jsonb(t)::text COLLATE "C"`,
-        )
-      ).rows;
+      const rows = await exactTableRows(client, table);
       const hash = createHash('sha256');
       for (const row of rows) hash.update(row.value).update('\n');
       tables[table] = { rows: rows.length, sha256: hash.digest('hex') };

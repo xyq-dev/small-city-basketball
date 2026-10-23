@@ -13,6 +13,8 @@ import type {
   PublicMatchSnapshotData,
   ScoringTotals,
   PublicKnockoutData,
+  PublicGroupKnockoutData,
+  GroupKnockoutProjection,
 } from '@small-city-basketball/contracts';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
 import type { EventRow, OrgActor } from './service.js';
@@ -24,6 +26,8 @@ import {
   parseStandingsRules,
   resultSourceInvalid,
 } from './standings-domain.js';
+import { calculateGroupKnockout } from './group-knockout-domain.js';
+import { groupEvidence } from './group-knockout-repository.js';
 import { calculateKnockout } from './knockout-domain.js';
 import type { ResultRow, StandingParticipant } from './standings-domain.js';
 import {
@@ -77,7 +81,7 @@ export class StandingsService extends ApplicationService {
       [ctx.orgId, event.id, ctx.user.id],
     );
     if (!isAdministrator(ctx.role) && !staff.rows[0]) throw notFound();
-    if (event.format !== 'ROUND_ROBIN' && event.format !== 'SINGLE_ELIMINATION')
+    if (!['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(event.format))
       throw new ApiError(422, 'UNSUPPORTED_STANDINGS_FORMAT', '仅支持2至32队单回合单循环排名');
     return {
       ctx,
@@ -140,7 +144,7 @@ export class StandingsService extends ApplicationService {
     return (
       (
         await c.query<Row>(
-          `SELECT p.*,r.source,r.seed,r.policy,r.algorithm_version,COALESCE((SELECT jsonb_agg(jsonb_build_object('roundNo',k.round_no,'sources',k.sources) ORDER BY k.round_no) FROM knockout_round_publications k WHERE k.org_id=p.org_id AND k.event_id=p.event_id),'[]'::jsonb) AS round_publications FROM schedule_publications p JOIN schedule_revisions r ON r.org_id=p.org_id AND r.event_id=p.event_id AND r.id=p.revision_id WHERE p.org_id=$1 AND p.event_id=$2`,
+          `SELECT p.*,r.source,r.seed,r.policy,r.algorithm_version,r.group_config,COALESCE((SELECT jsonb_agg(jsonb_build_object('roundNo',k.round_no,'sources',k.sources) ORDER BY k.round_no) FROM knockout_round_publications k WHERE k.org_id=p.org_id AND k.event_id=p.event_id),'[]'::jsonb) AS round_publications FROM schedule_publications p JOIN schedule_revisions r ON r.org_id=p.org_id AND r.event_id=p.event_id AND r.id=p.revision_id WHERE p.org_id=$1 AND p.event_id=$2`,
           [org, event],
         )
       ).rows[0] ?? null
@@ -221,7 +225,17 @@ export class StandingsService extends ApplicationService {
       if (completion.blockers.includes('RESULT_SOURCE_INVALID')) resultSourceInvalid();
       historyReady = closedEvent(a.event.status) && completion.ready;
     }
-    if (rules && plan && !skipStandings) {
+    if (a.event.format === 'GROUP_KNOCKOUT' && rules && plan && !skipStandings) {
+      const competition = await this.groupCompetition(
+        c,
+        a.event,
+        plan,
+        await this.matches(c, a.ctx.orgId, a.event.id),
+        now,
+      );
+      historyReady = closedEvent(a.event.status) && competition.isComplete;
+    }
+    if (a.event.format === 'ROUND_ROBIN' && rules && plan && !skipStandings) {
       const matches = await this.matches(c, a.ctx.orgId, a.event.id);
       standings = calculateStandings({
         participants: this.participants(plan),
@@ -300,7 +314,7 @@ export class StandingsService extends ApplicationService {
     return this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, org);
       const a = await this.event(c, ctx, id, true);
-      if (a.event.format !== 'ROUND_ROBIN')
+      if (!['ROUND_ROBIN', 'GROUP_KNOCKOUT'].includes(a.event.format))
         throw new ApiError(
           422,
           'UNSUPPORTED_STANDINGS_FORMAT',
@@ -356,7 +370,7 @@ export class StandingsService extends ApplicationService {
     return this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, org);
       const a = await this.event(c, ctx, id, true);
-      if (a.event.format !== 'ROUND_ROBIN')
+      if (!['ROUND_ROBIN', 'GROUP_KNOCKOUT'].includes(a.event.format))
         throw new ApiError(
           422,
           'UNSUPPORTED_STANDINGS_FORMAT',
@@ -454,6 +468,14 @@ export class StandingsService extends ApplicationService {
             '历史观赛需要完整淘汰轮次及全部有效确认',
             { blockers: completion.blockers },
           );
+      } else if (a.event.format === 'GROUP_KNOCKOUT') {
+        const competition = await this.groupCompetition(c, a.event, plan, rows, now);
+        if (purpose === 'HISTORY' && !competition.isComplete)
+          throw new ApiError(
+            422,
+            'EVENT_COMPLETION_BLOCKED',
+            '历史观赛需要完整分组及淘汰全部有效确认',
+          );
       } else {
         const standings = calculateStandings({
           participants: this.participants(plan),
@@ -517,7 +539,7 @@ export class StandingsService extends ApplicationService {
       return this.view(c, a, now);
     });
   }
-  private async publicAccess(c: PoolClient, id: string) {
+  protected async publicAccess(c: PoolClient, id: string) {
     publicId(id);
     const ref = (
       await c.query<Row>(
@@ -537,7 +559,8 @@ export class StandingsService extends ApplicationService {
         [ref.org_id, ref.event_id],
       )
     ).rows[0];
-    if (!event || !['ROUND_ROBIN', 'SINGLE_ELIMINATION'].includes(event.format)) throw notFound();
+    if (!event || !['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(event.format))
+      throw notFound();
     const pub = (
       await c.query<Row>(
         'SELECT * FROM public_event_publications WHERE org_id=$1 AND event_id=$2 AND public_event_id=$3 AND revoked_at IS NULL FOR SHARE',
@@ -557,7 +580,7 @@ export class StandingsService extends ApplicationService {
       tiebreakers: [...r.tiebreakers],
     };
   }
-  private async publicBundle(c: PoolClient, id: string, targetMatch?: string) {
+  protected async publicBundle(c: PoolClient, id: string, targetMatch?: string) {
     const a = await this.publicAccess(c, id);
     const now = await this.now(c);
     const knockout = a.event.format === 'SINGLE_ELIMINATION';
@@ -574,30 +597,14 @@ export class StandingsService extends ApplicationService {
     const rows = await this.matches(c, a.event.org_id, a.event.id, a.pub.id);
     if (rows.some((r) => !r.public_match_id)) resultSourceInvalid();
     if (targetMatch && !rows.some((r) => r.public_match_id === targetMatch)) throw notFound();
-    const bracket = knockout
-      ? calculateKnockout({
-          publicationId: plan.id,
-          source: plan.source,
-          seed: plan.seed,
-          policy: plan.policy,
-          roundPublications: plan.round_publications,
-          matches: rows,
-          asOf: now,
-        })
-      : null;
-    const standings = knockout
-      ? null
-      : calculateStandings({
-          participants: this.participants(plan),
-          matches: rows,
-          rules: rules!,
-          publicationId: plan.id,
-          asOf: now,
-          mode: 'PUBLISHED',
-        });
-    if (a.pub.purpose === 'HISTORY') {
-      const completion = knockout
-        ? knockoutCompletionReadiness({
+    const groupCompetition =
+      a.event.format === 'GROUP_KNOCKOUT'
+        ? await this.groupCompetition(c, a.event, plan, rows, now)
+        : null;
+    const bracket =
+      groupCompetition?.bracket ??
+      (knockout
+        ? calculateKnockout({
             publicationId: plan.id,
             source: plan.source,
             seed: plan.seed,
@@ -606,16 +613,42 @@ export class StandingsService extends ApplicationService {
             matches: rows,
             asOf: now,
           })
-        : completionReadiness({
+        : null);
+    const standings =
+      knockout || groupCompetition
+        ? null
+        : calculateStandings({
             participants: this.participants(plan),
             matches: rows,
-            rules,
+            rules: rules!,
             publicationId: plan.id,
             asOf: now,
+            mode: 'PUBLISHED',
           });
+    if (a.pub.purpose === 'HISTORY') {
+      if (groupCompetition && !groupCompetition.isComplete) resultSourceInvalid();
+      const completion = groupCompetition
+        ? { ready: groupCompetition.isComplete }
+        : knockout
+          ? knockoutCompletionReadiness({
+              publicationId: plan.id,
+              source: plan.source,
+              seed: plan.seed,
+              policy: plan.policy,
+              roundPublications: plan.round_publications,
+              matches: rows,
+              asOf: now,
+            })
+          : completionReadiness({
+              participants: this.participants(plan),
+              matches: rows,
+              rules,
+              publicationId: plan.id,
+              asOf: now,
+            });
       if (!completion.ready) resultSourceInvalid();
     }
-    return { ...a, now, rules, plan, rows, standings, bracket };
+    return { ...a, now, rules, plan, rows, standings, bracket, groupCompetition };
   }
   private team(pub: Row, entry: string, name: string) {
     const key = pub.team_keys?.[entry];
@@ -655,13 +688,11 @@ export class StandingsService extends ApplicationService {
         venueName: b.event.venue_name,
         status: b.event.status,
         // Keep the original strict ROUND_ROBIN public DTO backward compatible.
-        ...(b.event.format === 'SINGLE_ELIMINATION'
-          ? { format: 'SINGLE_ELIMINATION' as const }
-          : {}),
+        ...(b.event.format !== 'ROUND_ROBIN' ? { format: b.event.format } : {}),
         rules: b.rules ? this.publicRules(b.rules) : null,
-        confirmedMatchCount: (b.bracket ?? b.standings)!.confirmedMatchCount,
-        totalMatchCount: (b.bracket ?? b.standings)!.totalMatchCount,
-        isComplete: (b.bracket ?? b.standings)!.isComplete,
+        confirmedMatchCount: (b.groupCompetition ?? b.bracket ?? b.standings)!.confirmedMatchCount,
+        totalMatchCount: (b.groupCompetition ?? b.bracket ?? b.standings)!.totalMatchCount,
+        isComplete: (b.groupCompetition ?? b.bracket ?? b.standings)!.isComplete,
         serverTime: b.now,
       };
     });
@@ -702,48 +733,135 @@ export class StandingsService extends ApplicationService {
       const b = await this.publicBundle(c, id);
       if (!b.bracket)
         throw new ApiError(422, 'UNSUPPORTED_KNOCKOUT_FORMAT', '当前赛事不是单淘汰赛');
-      const participants = new Map(this.participants(b.plan).map((p) => [p.entryId, p]));
-      const team = (entry: string | null) => {
-        if (entry === null) return null;
-        const p = participants.get(entry);
-        if (!p) resultSourceInvalid();
-        return this.team(b.pub, entry, p.teamName);
-      };
-      const matches = new Map(b.rows.map((m) => [m.id, m]));
+      return this.publicBracket(b, id);
+    });
+  }
+  private publicBracket(
+    b: Awaited<ReturnType<StandingsService['publicBundle']>>,
+    id: string,
+  ): PublicKnockoutData {
+    if (!b.bracket) resultSourceInvalid();
+    const participants = new Map(this.participants(b.plan).map((p) => [p.entryId, p]));
+    const team = (entry: string | null) => {
+      if (entry === null) return null;
+      const p = participants.get(entry);
+      if (!p) resultSourceInvalid();
+      return this.team(b.pub, entry, p.teamName);
+    };
+    const matches = new Map(b.rows.map((m) => [m.id, m]));
+    return {
+      publicEventId: id,
+      algorithmVersion: b.bracket.algorithmVersion,
+      sourceHash: b.bracket.sourceHash,
+      asOf: b.bracket.asOf,
+      participantCount: b.bracket.participantCount,
+      totalMatchCount: b.bracket.totalMatchCount,
+      publishedMatchCount: b.bracket.publishedMatchCount,
+      confirmedMatchCount: b.bracket.confirmedMatchCount,
+      isComplete: b.bracket.isComplete,
+      rounds: b.bracket.rounds.map((round) => ({
+        roundNo: round.roundNo,
+        label: round.label,
+        published: round.published,
+        slots: round.slots.map((slot) => {
+          const match = slot.matchId === null ? null : matches.get(slot.matchId);
+          if (slot.matchId !== null && !match?.public_match_id) resultSourceInvalid();
+          return {
+            positionNo: slot.positionNo,
+            home: team(slot.homeEntryId),
+            away: team(slot.awayEntryId),
+            bye: team(slot.byeEntryId),
+            publicMatchId: match?.public_match_id ?? null,
+            status: slot.status,
+            winner: team(slot.winnerEntryId),
+          };
+        }),
+      })),
+      placements: b.bracket.placements.map((p) => ({
+        team: this.team(b.pub, p.entryId, p.teamName),
+        rank: p.rank,
+        tied: p.tied,
+      })),
+    };
+  }
+  async getPublicGroups(id: string): Promise<PublicGroupKnockoutData> {
+    return this.transaction(async (c) => {
+      const b = await this.publicBundle(c, id),
+        competition = b.groupCompetition;
+      if (!competition || !b.rules)
+        throw new ApiError(422, 'UNSUPPORTED_GROUP_FORMAT', '当前赛事不是分组接淘汰');
       return {
         publicEventId: id,
-        algorithmVersion: b.bracket.algorithmVersion,
-        sourceHash: b.bracket.sourceHash,
-        asOf: b.bracket.asOf,
-        participantCount: b.bracket.participantCount,
-        totalMatchCount: b.bracket.totalMatchCount,
-        publishedMatchCount: b.bracket.publishedMatchCount,
-        confirmedMatchCount: b.bracket.confirmedMatchCount,
-        isComplete: b.bracket.isComplete,
-        rounds: b.bracket.rounds.map((round) => ({
-          roundNo: round.roundNo,
-          label: round.label,
-          published: round.published,
-          slots: round.slots.map((slot) => {
-            const match = slot.matchId === null ? null : matches.get(slot.matchId);
-            if (slot.matchId !== null && !match?.public_match_id) resultSourceInvalid();
-            return {
-              positionNo: slot.positionNo,
-              home: team(slot.homeEntryId),
-              away: team(slot.awayEntryId),
-              bye: team(slot.byeEntryId),
-              publicMatchId: match?.public_match_id ?? null,
-              status: slot.status,
-              winner: team(slot.winnerEntryId),
-            };
+        algorithmVersion: 'GK_BALANCED_V1',
+        sourceHash: competition.sourceHash,
+        asOf: b.now,
+        groupCount: competition.groupCount,
+        totalMatchCount: competition.totalMatchCount,
+        publishedMatchCount: competition.publishedMatchCount,
+        confirmedMatchCount: competition.confirmedMatchCount,
+        isComplete: competition.isComplete,
+        rules: this.publicRules(b.rules),
+        qualificationStatus: competition.qualification.status,
+        groups: competition.groups.map((g) => ({
+          groupKey: g.groupKey,
+          label: g.label,
+          confirmedMatchCount: g.standings.confirmedMatchCount,
+          totalMatchCount: g.standings.totalMatchCount,
+          isComplete: g.standings.isComplete,
+          rows: g.standings.rows.map((r) => ({
+            teamKey: this.team(b.pub, r.entryId, r.teamName).teamKey,
+            teamName: r.teamName,
+            rank: r.rank,
+            tied: r.tied,
+            played: r.played,
+            wins: r.wins,
+            draws: r.draws,
+            losses: r.losses,
+            pointsFor: r.pointsFor,
+            pointsAgainst: r.pointsAgainst,
+            scoreDifference: r.scoreDifference,
+            leaguePoints: r.leaguePoints,
+          })),
+          qualified: (g.qualifiedEntryIds ?? []).map((entry) => {
+            const p = g.participants.find((p) => p.entryId === entry)!;
+            return this.team(b.pub, entry, p.teamName);
           }),
+          tieBreakRequired: !!g.unresolvedTieEntryIds.length,
+          tieDrawApplied: !!g.draw,
         })),
-        placements: b.bracket.placements.map((p) => ({
+        bracket: b.bracket ? this.publicBracket(b, id) : null,
+        placements: competition.placements.map((p) => ({
           team: this.team(b.pub, p.entryId, p.teamName),
+          groupKey: p.groupKey,
+          groupRank: p.groupRank,
+          stage: p.stage,
           rank: p.rank,
           tied: p.tied,
         })),
       };
+    });
+  }
+  protected async groupCompetition(
+    c: PoolClient,
+    event: StandingsAccess['event'],
+    plan: Row,
+    matches: ResultRow[],
+    now: string,
+  ): Promise<GroupKnockoutProjection> {
+    const evidence = await groupEvidence(c, event.org_id, event.id);
+    if (!evidence.rules) resultSourceInvalid();
+    return calculateGroupKnockout({
+      publicationId: plan.id,
+      source: plan.source,
+      seed: plan.seed,
+      policy: plan.policy,
+      config: plan.group_config,
+      rules: evidence.rules!,
+      matches,
+      asOf: now,
+      draws: evidence.draws,
+      qualification: evidence.qualification,
+      roundPublications: plan.round_publications,
     });
   }
   private cursor(

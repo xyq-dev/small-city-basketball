@@ -40,7 +40,7 @@ function roundShape(v: unknown, slot: (v: unknown) => boolean) {
     obj(v) &&
     Number.isInteger(v.roundNo) &&
     Number(v.roundNo) >= 1 &&
-    Number(v.roundNo) <= 5 &&
+    Number(v.roundNo) <= 31 &&
     id(v.label) &&
     typeof v.published === 'boolean' &&
     Array.isArray(v.slots) &&

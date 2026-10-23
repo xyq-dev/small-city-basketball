@@ -14,11 +14,14 @@ import type {
   CourtData,
   SchedulePolicy,
   ScheduledMatchData,
+  GroupKnockoutConfig,
 } from '@small-city-basketball/contracts';
 import type { EventRepository } from '../domain/types';
 import { EVENT_FORMAT_LABELS, EVENT_STATUS_LABELS } from '../domain/types';
 import { ApiError } from '../api/client';
 import { createSchedulingApi } from '../api/scheduling';
+import { createRegistrationApi } from '../api/registration';
+import { createGroupKnockoutApi } from '../api/group-knockout';
 import type { SchedulingApi } from '../api/scheduling';
 import {
   ActionNotice,
@@ -108,7 +111,7 @@ function SchedulingIndex({ repository }: { repository: EventRepository }) {
         </div>
       )}
       <p className="sc-hint">
-        当前支持2–32队单循环与单淘汰。单淘汰首轮发布后逐轮确认晋级；分组淘汰尚未开放。
+        支持2–32队单循环与单淘汰，以及2/4/8组组内循环接淘汰。淘汰阶段须逐轮独立确认并显式发布。
       </p>
     </div>
   );
@@ -158,13 +161,36 @@ function EventSchedulingContent({
       !revisionId && overview.publication && overview.capabilities.canReadMatches
         ? await api.matches(eventId)
         : [];
-    return { overview, revision, courts: courts.data, matches };
-  }, [api, eventId, revisionId]);
+    const registration =
+      overview.event.format === 'GROUP_KNOCKOUT' && overview.freeze && !revision
+        ? await createRegistrationApi(context.client, context.organizationId).registration(eventId)
+        : null;
+    if (registration && registration.freeze?.id !== overview.freeze?.id)
+      throw new ApiError(409, 'VERSION_CONFLICT', '冻结名单已变化，请重新读取');
+    const groupDraw =
+      overview.event.format === 'GROUP_KNOCKOUT' && revision && !revisionId && !overview.publication
+        ? await createGroupKnockoutApi(context.client, context.organizationId).event(eventId)
+        : null;
+    if (groupDraw && groupDraw.event.version !== overview.event.version)
+      throw new ApiError(409, 'VERSION_CONFLICT', '分组资料已变化，请重新读取');
+    return {
+      overview,
+      revision,
+      courts: courts.data,
+      matches,
+      groupParticipants: revision?.participants ?? registration?.freeze?.entries ?? [],
+      draftGroups: groupDraw?.draftGroups ?? [],
+    };
+  }, [api, eventId, revisionId, context.client, context.organizationId]);
   const resource = useResource(read);
   const action = useAction();
   const [formOpen, setFormOpen] = useState<boolean | undefined>();
   const [reschedulingOpen, setReschedulingOpen] = useState(false);
-  async function generate(policy: SchedulePolicy, reason?: string) {
+  async function generate(
+    policy: SchedulePolicy,
+    reason?: string,
+    groupConfig?: GroupKnockoutConfig,
+  ) {
     const current = resource.data;
     if (!current?.overview.freeze) return;
     await action.run(
@@ -173,10 +199,13 @@ function EventSchedulingContent({
           expectedEventVersion: current.overview.event.version,
           freezeId: current.overview.freeze!.id,
           algorithmVersion:
-            current.overview.event.format === 'SINGLE_ELIMINATION'
-              ? 'SE_SEEDED_V1'
-              : 'RR_CIRCLE_V1',
+            current.overview.event.format === 'GROUP_KNOCKOUT'
+              ? 'GK_BALANCED_V1'
+              : current.overview.event.format === 'SINGLE_ELIMINATION'
+                ? 'SE_SEEDED_V1'
+                : 'RR_CIRCLE_V1',
           policy,
+          ...(groupConfig ? { groupConfig } : {}),
           ...(reason ? { redrawReason: reason } : {}),
         });
         if (action.isActive()) {
@@ -186,9 +215,11 @@ function EventSchedulingContent({
       },
       reason
         ? '新对阵已生成，上一版只读保留'
-        : current.overview.event.format === 'SINGLE_ELIMINATION'
-          ? '淘汰赛签位与首轮对阵已生成并保存'
-          : '单循环对阵已生成并保存',
+        : current.overview.event.format === 'GROUP_KNOCKOUT'
+          ? '分组与组内循环对阵已生成并保存'
+          : current.overview.event.format === 'SINGLE_ELIMINATION'
+            ? '淘汰赛签位与首轮对阵已生成并保存'
+            : '单循环对阵已生成并保存',
     );
   }
   const data = resource.data;
@@ -224,9 +255,11 @@ function EventSchedulingContent({
         description={
           historical
             ? '查看当时保存的对阵与时间安排，历史版本不可修改。'
-            : overview?.event.format === 'SINGLE_ELIMINATION'
-              ? '从冻结名单生成固定淘汰赛签位，先安排首轮实际比赛，再逐轮确认和发布。'
-              : '从已冻结参赛名单安排完整单循环，正式发布前逐项检查。'
+            : overview?.event.format === 'GROUP_KNOCKOUT'
+              ? '从冻结名单均衡分组，安排组内循环；全部独立确认后每组前二接固定交叉淘汰赛。'
+              : overview?.event.format === 'SINGLE_ELIMINATION'
+                ? '从冻结名单生成固定淘汰赛签位，先安排首轮实际比赛，再逐轮确认和发布。'
+                : '从已冻结参赛名单安排完整单循环，正式发布前逐项检查。'
         }
       >
         <button
@@ -266,15 +299,17 @@ function EventSchedulingContent({
               <ShieldCheck size={30} />
               <h2>
                 {!overview.freeze &&
-                ['ROUND_ROBIN', 'SINGLE_ELIMINATION'].includes(overview.event.format)
+                ['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
+                  overview.event.format,
+                )
                   ? '请先冻结参赛名单'
                   : '当前赛事暂不支持排赛'}
               </h2>
-              <p>
-                {overview.support.reason || '当前支持2–32队单循环和单淘汰，请核对赛制与冻结名单。'}
-              </p>
+              <p>{overview.support.reason || '请核对赛制、冻结名单及每组至少2队的分组要求。'}</p>
               {!overview.freeze &&
-                ['ROUND_ROBIN', 'SINGLE_ELIMINATION'].includes(overview.event.format) && (
+                ['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
+                  overview.event.format,
+                ) && (
                   <Link className="button button-secondary" to={`/events/${eventId}/registration`}>
                     前往报名审核
                   </Link>
@@ -299,6 +334,22 @@ function EventSchedulingContent({
               {published && (
                 <Link className="button button-primary" to={`/events/${eventId}/knockout`}>
                   查看签位与发布下一轮
+                </Link>
+              )}
+            </section>
+          )}
+          {overview.event.format === 'GROUP_KNOCKOUT' && (
+            <section className="panel sc-panel">
+              <h2>组内循环 · 前二固定交叉晋级</h2>
+              <p>
+                同分影响前二顺序或晋级截线时须独立保存抽签；全部组赛有效独立确认后显式发布淘汰首轮。同组球队只可在决赛重逢。
+              </p>
+              <Link className="button button-secondary" to={`/events/${eventId}/standings`}>
+                设置组内积分规则
+              </Link>
+              {published && (
+                <Link className="button button-primary" to={`/events/${eventId}/groups`}>
+                  查看分组与发布晋级
                 </Link>
               )}
             </section>
@@ -345,6 +396,14 @@ function EventSchedulingContent({
               courts={data.courts}
               initial={revision?.policy}
               knockout={overview.event.format === 'SINGLE_ELIMINATION'}
+              {...(overview.event.format === 'GROUP_KNOCKOUT'
+                ? {
+                    groupOptions: {
+                      participants: data.groupParticipants,
+                      ...(revision?.groupConfig ? { initial: revision.groupConfig } : {}),
+                    },
+                  }
+                : {})}
               redraw={Boolean(revision)}
               busy={action.busy}
               onSave={generate}
@@ -417,17 +476,39 @@ function EventSchedulingContent({
               />
             </>
           ) : revision && !showForm ? (
-            <ScheduleEditor
-              key={`${revision.id}:${revision.version}:${revision.eventVersion}`}
-              revision={revision}
-              courts={data.courts}
-              api={api}
-              action={action}
-              onReload={resource.reload}
-              published={published}
-              historical={historical}
-              eventDates={overview.event}
-            />
+            <>
+              {data.draftGroups.length > 0 && (
+                <section className="panel sc-panel" aria-label="发布前分组核对">
+                  <h2>已保存的固定分组</h2>
+                  <p>
+                    以下来自服务端保存的抽签种子和冻结名单；重新读取不会重新抽取。先核对组内名单，再安排和发布。
+                  </p>
+                  <div className="sc-event-grid">
+                    {data.draftGroups.map((group) => (
+                      <section key={group.groupKey}>
+                        <h3>{group.label}</h3>
+                        <ul>
+                          {group.participants.map((p) => (
+                            <li key={p.entryId}>{p.teamName}</li>
+                          ))}
+                        </ul>
+                      </section>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <ScheduleEditor
+                key={`${revision.id}:${revision.version}:${revision.eventVersion}`}
+                revision={revision}
+                courts={data.courts}
+                api={api}
+                action={action}
+                onReload={resource.reload}
+                published={published}
+                historical={historical}
+                eventDates={overview.event}
+              />
+            </>
           ) : null}
           {revision?.previousRevisionId && (
             <div className="sc-history-link">

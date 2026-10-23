@@ -8,6 +8,9 @@ export function quarantineRestoredDatabase(input: {
   systemUserId: string;
   counts: {
     sessionsRevoked: number;
+    platformOperatorsDisabled: number;
+    wechatIdentitiesRevoked: number;
+    wechatChallengesRemoved: number;
     pendingInvitationsRevoked: number;
     publicPublicationsRevoked: number;
     overlayGrantsRevoked: number;
