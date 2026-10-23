@@ -14,7 +14,7 @@
 | 静态审查 | [初轮记录](C02-security-review.md)；后续P1恢复计数7→9已独立复核，并由真实恢复证明；自动最终ec74c47 CodeReview completed无新finding/未解决线程，security未运行 |
 | 作者/独立源码 | 作者本机及独立8统计/21账号是上述573子集，不另加总；作者handoff不是独立CI证据 |
 | 早期SVG布局 | Inkscape发现并修复长队名/时间行重叠并加回归；无中文字体，不算中文视觉验收 |
-| 合并后CI | [39920273639](https://github.com/xyq-dev/small-city-basketball/actions/runs/39920273639)运行中，尚不计成功 |
+| 合并后CI | [39920273639](https://github.com/xyq-dev/small-city-basketball/actions/runs/39920273639)admin/api已SUCCESS（169 PG/两模式重启/16 API浏览器/清理已复跑）；production仍在Chromium安装，整轮尚不计成功 |
 | 生产/真机 | 本轮未部署/正式Migration/账号维护；真实OBS、微信/Safari真机及中文字体视觉/打印对照未验 |
 
 失败没有删去：首轮39918105548为账号造数429（164/5），第二轮39918705083备份指纹计数遗漏；均最小修复，最后整轮重跑成功。详见[交接](../../handoffs/C02.md)。旧schema升级夹具仅旧用户/凭据，不冒充原007已有FINAL完整落库升级。
