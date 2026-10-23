@@ -12,6 +12,47 @@
       "privileges": ["SELECT", "INSERT", "DELETE"],
       "updateColumns": ["window_start", "attempts"]
     },
+    "billing_operations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["result"]
+    },
+    "billing_orders": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "status",
+        "version",
+        "channel",
+        "provider_transaction_id",
+        "native_code_url",
+        "provider_started_at",
+        "paid_at"
+      ]
+    },
+    "billing_payment_reviews": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "reviewed_by", "review_reason", "reviewed_at"]
+    },
+    "billing_plan_versions": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["available", "catalog_version"]
+    },
+    "billing_reconciliations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "billing_refunds": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "status",
+        "submitted_by",
+        "reviewed_by",
+        "external_reference",
+        "review_reason",
+        "provider_refund_id",
+        "completed_at",
+        "accepted_at"
+      ]
+    },
     "court_reservations": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["court_id", "starts_at", "ends_at"]
@@ -43,6 +84,14 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
     },
+    "event_commercial_activations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "event_entitlements": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["revoked_at", "revoke_reason"]
+    },
     "event_rulesets": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
@@ -72,9 +121,21 @@
         "locked_standings_ruleset_id"
       ]
     },
+    "group_qualification_publications": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "group_tiebreak_draws": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
     "knockout_round_publications": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
+    },
+    "match_media": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "version"]
     },
     "match_reschedules": {
       "privileges": ["SELECT", "INSERT"],
@@ -83,6 +144,14 @@
     "match_staff": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["role", "status", "updated_at"]
+    },
+    "media_files": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["version", "payload", "revoked_at", "revoked_by", "purged_at", "purged_by"]
+    },
+    "media_markers": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
     },
     "org_schedule_mutex": {
       "privileges": ["SELECT", "INSERT"],
@@ -103,6 +172,14 @@
     "overlay_sessions": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["id"]
+    },
+    "payment_notifications": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "platform_operators": {
+      "privileges": ["SELECT"],
+      "updateColumns": []
     },
     "public_event_publications": {
       "privileges": ["SELECT", "INSERT"],
@@ -217,6 +294,14 @@
     "users": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["id"]
+    },
+    "wechat_auth_attempts": {
+      "privileges": ["SELECT", "INSERT", "DELETE"],
+      "updateColumns": ["code_hash", "status", "claimed_at", "finished_at"]
+    },
+    "wechat_identities": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "version", "updated_at", "revoked_at"]
     }
   }
 }

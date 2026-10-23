@@ -67,7 +67,7 @@ function StandingsIndex({ repository }: { repository: EventRepository }) {
       <div className="view-note">
         <ShieldCheck size={20} />
         <p>
-          支持单循环积分榜与单淘汰晋级名次，均只取当前有效独立确认赛果；公开观赛需要主办方显式授权。
+          支持单循环积分、分组循环接淘汰及单淘汰晋级名次，均只取当前有效独立确认赛果；公开观赛需要主办方显式授权。
         </p>
       </div>
       {resource.loading || resource.error || !resource.data ? (
@@ -81,8 +81,9 @@ function StandingsIndex({ repository }: { repository: EventRepository }) {
       ) : (
         <div className="view-event-grid">
           {resource.data.map((event) => {
-            const supported =
-              event.format === 'ROUND_ROBIN' || event.format === 'SINGLE_ELIMINATION';
+            const supported = ['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
+              event.format,
+            );
             const content = (
               <>
                 <span className="status-badge neutral">{EVENT_FORMAT_LABELS[event.format]}</span>
@@ -246,9 +247,21 @@ function EventStandings({
       ) : (
         <>
           {data.event.format === 'GROUP_KNOCKOUT' && (
-            <div className="view-note warning">
-              当前赛事不是单回合循环赛。暂不支持分组、淘汰、相互战绩或其他排名算法，请勿套用规则。
-            </div>
+            <section className="panel view-panel">
+              <h2>分组循环与淘汰晋级</h2>
+              <p>
+                积分仅用于本组，每组前二按固定交叉席位晋级；影响晋级顺序的同分须独立保存抽签，不推造跨组第三名排名。
+              </p>
+              <p>
+                在本页明确保存并锁定组内积分细则。资格首轮及后轮发布会撤销旧实时观赛链接，之后须显式启用新链接。
+              </p>
+              <Link
+                className="button button-primary"
+                to={`/events/${encodeURIComponent(eventId)}/groups`}
+              >
+                查看分组与晋级
+              </Link>
+            </section>
           )}
           {data.event.format === 'SINGLE_ELIMINATION' && (
             <section className="panel view-panel">
@@ -265,7 +278,7 @@ function EventStandings({
               </Link>
             </section>
           )}
-          {data.event.format === 'ROUND_ROBIN' && (
+          {(data.event.format === 'ROUND_ROBIN' || data.event.format === 'GROUP_KNOCKOUT') && (
             <StandingsRulesForm
               key={`${data.rules?.id ?? 'none'}:${data.event.version}`}
               data={data}
@@ -354,7 +367,9 @@ function EventStandings({
                     : '历史授权需本届已完赛或归档、正式规则已锁定且全部赛果当前有效确认；操作权限由赛事授权决定。'
                   : data.event.format === 'SINGLE_ELIMINATION'
                     ? '启用需已正式发布单淘汰赛首轮；后轮发布会撤销旧链接，须再次显式启用。'
-                    : '启用需已正式锁定排名规则并发布单循环赛程；操作权限由当前赛事授权决定。'}
+                    : data.event.format === 'GROUP_KNOCKOUT'
+                      ? '启用需已锁定组内积分规则并发布组赛；资格首轮及后轮发布会撤销旧链接，须再次显式启用。'
+                      : '启用需已正式锁定排名规则并发布单循环赛程；操作权限由当前赛事授权决定。'}
               </p>
             )}
             {activePublication && (

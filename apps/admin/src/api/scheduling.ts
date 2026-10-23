@@ -46,7 +46,13 @@ function summary(value: unknown) {
     ]) &&
     object(value) &&
     Number.isInteger(value.version) &&
-    ['RR_CIRCLE_V1', 'SE_SEEDED_V1'].includes(String(value.algorithmVersion)) &&
+    ['RR_CIRCLE_V1', 'SE_SEEDED_V1', 'GK_BALANCED_V1'].includes(String(value.algorithmVersion)) &&
+    (value.algorithmVersion !== 'GK_BALANCED_V1' ||
+      (object(value.groupConfig) &&
+        [2, 4, 8].includes(Number(value.groupConfig.groupCount)) &&
+        Array.isArray(value.groupConfig.seededEntryIds) &&
+        value.groupConfig.seededEntryIds.every((id) => typeof id === 'string') &&
+        value.groupConfig.seededEntryIds.length <= Number(value.groupConfig.groupCount))) &&
     ['DRAFT', 'SUPERSEDED', 'PUBLISHED'].includes(String(value.status)) &&
     (value.previousRevisionId === null || typeof value.previousRevisionId === 'string')
   );

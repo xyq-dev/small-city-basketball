@@ -1,0 +1,5 @@
+{
+  "email": "registered-operator@example.test",
+  "status": "DISABLED",
+  "reason": "示例：核验实际维护目标后填写授权或撤权原因"
+}

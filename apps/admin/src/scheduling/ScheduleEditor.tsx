@@ -199,7 +199,7 @@ export function ScheduleEditor({
             <p>
               {revision.algorithmVersion === 'SE_SEEDED_V1'
                 ? '首轮实际比赛'
-                : `${revision.rounds.length}轮`}{' '}
+                : `${revision.rounds.length}轮${revision.algorithmVersion === 'GK_BALANCED_V1' ? '组内赛' : ''}`}{' '}
               · {revision.fixtures.length}场 · {assigned}场
               {dirty ? '已在本地配置，尚未保存' : '已有保存安排'}。时间统一为中国标准时间。
             </p>
@@ -494,6 +494,8 @@ export function ScheduleEditor({
             <span>
               {revision.algorithmVersion === 'SE_SEEDED_V1' ? (
                 <strong>淘汰赛首轮</strong>
+              ) : revision.algorithmVersion === 'GK_BALANCED_V1' ? (
+                <strong>{revision.groupConfig?.groupCount}组组内循环</strong>
               ) : (
                 <>
                   <strong>{revision.rounds.length}</strong>轮单循环
@@ -517,9 +519,11 @@ export function ScheduleEditor({
             天。名单以已冻结版本为准。
           </p>
           <p>
-            {revision.algorithmVersion === 'SE_SEEDED_V1'
-              ? '本次只发布首轮实际比赛。之后须在晋级页核对当前独立确认赛果，再显式发布下一轮。轮空不生成比赛。'
-              : '发布会使赛事进入待开赛状态。发布后本版本只读，不能重新生成或重复发布；符合条件的单场改期由独立记录追踪。'}
+            {revision.algorithmVersion === 'GK_BALANCED_V1'
+              ? '本次只发布组内循环比赛。全部组赛有效独立确认并确定前二顺序后，在分组页显式发布固定交叉淘汰首轮；之后逐轮发布。'
+              : revision.algorithmVersion === 'SE_SEEDED_V1'
+                ? '本次只发布首轮实际比赛。之后须在晋级页核对当前独立确认赛果，再显式发布下一轮。轮空不生成比赛。'
+                : '发布会使赛事进入待开赛状态。发布后本版本只读，不能重新生成或重复发布；符合条件的单场改期由独立记录追踪。'}
           </p>
           <div className="sc-actions">
             <button

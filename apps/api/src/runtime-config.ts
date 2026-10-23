@@ -1,4 +1,7 @@
 import type { ApiOptions } from './service.js';
+import type { CommerceMode } from '@small-city-basketball/contracts';
+import type { WechatPayConfig } from './commerce/wechatpay.js';
+import { readCommerceMode, readWechatPayConfig } from './commerce-runtime.js';
 import { isIP } from 'node:net';
 import { readRequiredSecret } from './env.js';
 
@@ -11,6 +14,8 @@ export interface ResolvedApiOptions {
   participantRegistrationEnabled: boolean;
   trustProxyHops: 0 | 1;
   production: boolean;
+  commerceMode: CommerceMode;
+  wechatPay: WechatPayConfig;
 }
 export interface RuntimeConfig {
   apiOptions: ResolvedApiOptions;
@@ -50,6 +55,8 @@ export function readRuntimeConfig(): RuntimeConfig {
       organizationRegistrationEnabled: booleanEnv('ORGANIZATION_REGISTRATION_ENABLED'),
       participantRegistrationEnabled: booleanEnv('PARTICIPANT_REGISTRATION_ENABLED'),
       trustProxyHops: Number(rawHops) as 0 | 1,
+      commerceMode: readCommerceMode(),
+      wechatPay: readWechatPayConfig(process.env.APP_ORIGIN ?? ''),
     }),
   };
 }
@@ -111,6 +118,9 @@ export function resolveApiOptions(options: ApiOptions): ResolvedApiOptions {
   const ttl = options.sessionTtlSeconds ?? 12 * 60 * 60;
   if (!Number.isInteger(ttl) || ttl < 1 || ttl > 30 * 24 * 60 * 60)
     throw new Error('sessionTtlSeconds must be an integer from 1 to 2592000');
+  const commerceMode = options.commerceMode ?? 'OFF';
+  if (commerceMode !== 'OFF' && commerceMode !== 'ENFORCED')
+    throw new Error('commerceMode must be OFF or ENFORCED');
   const hops = options.trustProxyHops ?? 0;
   if (hops !== 0 && hops !== 1) throw new Error('trustProxyHops must be 0 or 1');
   return {
@@ -124,5 +134,7 @@ export function resolveApiOptions(options: ApiOptions): ResolvedApiOptions {
       options.participantRegistrationEnabled ?? options.registrationEnabled ?? !production,
     trustProxyHops: hops,
     production,
+    commerceMode,
+    wechatPay: options.wechatPay ?? { enabled: false },
   };
 }

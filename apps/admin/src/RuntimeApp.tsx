@@ -28,6 +28,12 @@ import './runtime.css';
 import { OverlayEntry } from './overlay/Entry';
 import { useRegistrationCapabilities } from './auth/useRegistrationCapabilities';
 
+const WechatAccountPage = lazy(() =>
+  import('./wechat/WechatAccountPage').then((m) => ({ default: m.WechatAccountPage })),
+);
+const PlatformCommercePage = lazy(() =>
+  import('./commerce/CommercePages').then((m) => ({ default: m.PlatformCommercePage })),
+);
 const PublicViewingApp = lazy(() =>
   import('./viewing/PublicPages').then((viewing) => ({ default: viewing.PublicViewingApp })),
 );
@@ -472,7 +478,7 @@ function IdentityPanel({
           }
           if (event.key !== 'Tab') return;
           const focusable = panel.current?.querySelectorAll<HTMLElement>(
-            'button:not(:disabled), input:not(:disabled), [tabindex="0"]',
+            'button:not(:disabled), input:not(:disabled), a[href], [tabindex="0"]',
           );
           if (!focusable?.length) return;
           const first = focusable[0];
@@ -513,6 +519,16 @@ function IdentityPanel({
             onFocus={(event) => event.currentTarget.select()}
           />
           <p>将此 ID 提供给机构负责人。邀请仅能由被明确指定的账号接受，邮箱不会自动认领权限。</p>
+        </div>
+        <div className="runtime-account-actions">
+          <a className="button button-secondary" href="/account/wechat">
+            微信账户
+          </a>
+          {session.platformOperator === true && (
+            <a className="button button-secondary" href="/platform/commerce">
+              平台计费运营
+            </a>
+          )}
         </div>
         <h3>接受球队管理邀请</h3>
         <p className="runtime-profile-copy">
@@ -583,6 +599,25 @@ function IdentityPanel({
 
 export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
   const sessionEpoch = useRef(0);
+  const [accountView, setAccountView] = useState<'wechat' | 'platform' | null>(() =>
+    window.location.pathname === '/account/wechat'
+      ? 'wechat'
+      : window.location.pathname === '/platform/commerce'
+        ? 'platform'
+        : null,
+  );
+  useEffect(() => {
+    const sync = () =>
+      setAccountView(
+        window.location.pathname === '/account/wechat'
+          ? 'wechat'
+          : window.location.pathname === '/platform/commerce'
+            ? 'platform'
+            : null,
+      );
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, []);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [organizationId, setOrganizationId] = useState('');
   const [teamId, setTeamId] = useState('');
@@ -847,7 +882,35 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
   const hasContext = contextMode === 'organization' ? Boolean(organization) : Boolean(team);
   return (
     <>
-      {hasContext ? (
+      {accountView ? (
+        <main className="runtime-account-tools">
+          <div className="runtime-account-actions">
+            <button
+              className="button button-secondary"
+              onClick={() => {
+                window.history.replaceState(
+                  window.history.state,
+                  '',
+                  contextMode === 'team' ? '/my-team' : '/',
+                );
+                setAccountView(null);
+              }}
+            >
+              返回工作台
+            </button>
+            {logoutButton}
+          </div>
+          <Suspense fallback={<p role="status">正在读取账户工作台…</p>}>
+            {accountView === 'wechat' ? (
+              <WechatAccountPage client={guardedClient} onSignedOut={unauthenticated} />
+            ) : session.platformOperator === true ? (
+              <PlatformCommercePage client={guardedClient} userId={session.user.id} />
+            ) : (
+              <p role="alert">当前账号没有平台运营权限。</p>
+            )}
+          </Suspense>
+        </main>
+      ) : hasContext ? (
         <App
           key={`${session.user.id}:${contextMode}:${contextMode === 'organization' ? organizationId : teamId}`}
           repository={repository}

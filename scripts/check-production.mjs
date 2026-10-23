@@ -97,6 +97,7 @@ function configuration(secretDirectory, database = sourceDatabase) {
     SCB_RESTORE_SECRET_DIR: restoreSecrets,
     SCB_BACKUP_DIR: archives,
     POSTGRES_DB: database,
+    COMMERCE_MODE: 'ENFORCED',
   };
 }
 const sourceEnv = configuration(sourceSecrets);
@@ -232,16 +233,27 @@ async function validator(project, env, mode, recovery = false) {
     '--env',
     'SCB_CHECK_OWNER_FILE=/check-owner',
     '--env',
+    'SCB_CHECK_MAINTENANCE_URL_FILE=/check-maintenance',
+    '--env',
     'SCB_PERSISTENCE_FILE=/check-state/application.json',
     ...(recovery ? ['--env', 'SCB_CHECK_RECOVERY=1'] : []),
     ...mount(path.join(env.SCB_SECRET_DIR, 'database_runtime_url'), '/check-runtime'),
     ...mount(path.join(env.SCB_SECRET_DIR, 'database_backup_url'), '/check-backup'),
+    ...mount(path.join(env.SCB_SECRET_DIR, 'database_migrator_url'), '/check-maintenance'),
     ...mount(path.join(sourceSecrets, 'bootstrap_owner_input'), '/check-owner'),
     ...mount(path.join(certificateDirectory, 'ca.crt'), '/check-ca.crt'),
     ...mount(stateDirectory, '/check-state', false),
     ...mount(
       path.join(root, 'scripts/check-database-restart.mjs'),
       '/app/scripts/check-database-restart.mjs',
+    ),
+    ...mount(
+      path.join(root, 'scripts/c05-media-fixtures.mjs'),
+      '/app/scripts/c05-media-fixtures.mjs',
+    ),
+    ...mount(
+      path.join(root, 'scripts/c05-commerce-check.mjs'),
+      '/app/scripts/c05-commerce-check.mjs',
     ),
     '--entrypoint',
     'node',
@@ -264,6 +276,7 @@ async function copyState() {
   await writeFile(hostState, result.output, { mode: 0o600 });
   const saved = JSON.parse(result.output);
   secrets.push(saved.cookie, saved.registration.leaderCookie, saved.scoring.writerCookie);
+  for (const operator of saved.commerce.operators) secrets.push(operator.cookie);
   for (const overlay of [...saved.overlays.active, saved.overlays.revoked, saved.lifecycle.overlay])
     secrets.push(overlay.cookie, overlay.token);
   return saved;
@@ -296,6 +309,31 @@ async function checkQuarantine(saved) {
       ).status,
       404,
     );
+  for (const suffix of ['', '/schedule', '/groups', '/knockout'])
+    assert.equal(
+      (await tlsRequest(`/v1/public/events/${saved.groups.publicId}${suffix}`)).status,
+      404,
+    );
+  for (const match of saved.groups.schedule)
+    assert.equal(
+      (
+        await tlsRequest(
+          `/v1/public/events/${saved.groups.publicId}/matches/${match.publicMatchId}`,
+        )
+      ).status,
+      404,
+    );
+  for (const operator of saved.commerce.operators) {
+    assert.equal(
+      (await tlsRequest('/v1/platform/commerce', { headers: { Cookie: operator.cookie } })).status,
+      401,
+    );
+    assert.equal(
+      (await tlsRequest('/v1/commerce/capabilities', { headers: { Cookie: operator.cookie } }))
+        .status,
+      401,
+    );
+  }
   for (const suffix of ['', '/schedule', '/knockout'])
     assert.equal(
       (await tlsRequest(`/v1/public/events/${saved.knockout.publicId}${suffix}`)).status,
@@ -327,6 +365,21 @@ async function checkQuarantine(saved) {
       404,
     );
   }
+  for (const item of saved.media.published.media) {
+    assert.equal((await tlsRequest(item.contentPath)).status, 404);
+    assert.equal(
+      (await tlsRequest(item.contentPath, { headers: { Range: 'bytes=0-15' } })).status,
+      404,
+    );
+  }
+  assert.equal(
+    (
+      await tlsRequest(saved.media.privatePath, {
+        headers: { Cookie: saved.registration.leaderCookie },
+      })
+    ).status,
+    401,
+  );
   const response = await tlsRequest('/v1/auth/login', {
     method: 'POST',
     headers: { Origin: origin, 'Content-Type': 'application/json' },
@@ -508,7 +561,7 @@ try {
         `${prefix}/api:local`,
         '--input-type=module',
         '-e',
-        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,11);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
+        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,15);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
       ]);
       await run('docker', [
         'run',
@@ -818,7 +871,7 @@ try {
     await waitReady();
     await validator(target, targetEnv, 'verify', true);
     console.log(
-      '[production] Full restore matched all 41 exact tables, business snapshots and backup-point fencing.',
+      '[production] Full restore matched all 58 exact tables, business snapshots and backup-point fencing.',
     );
   });
   await stage(

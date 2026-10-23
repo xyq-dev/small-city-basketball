@@ -1,3 +1,4 @@
+import type { GroupKnockoutConfig } from './group-knockout.js';
 export const EVENT_FORMATS: readonly ['ROUND_ROBIN', 'GROUP_KNOCKOUT', 'SINGLE_ELIMINATION'];
 export type EventFormat = (typeof EVENT_FORMATS)[number];
 export const EVENT_STATUSES: readonly [
@@ -50,6 +51,8 @@ export interface OrganizationSummary {
   role: OrgRole;
 }
 export interface SessionData {
+  /** Display hint only; every platform API rechecks the independent operator grant. */
+  platformOperator?: boolean;
   user: { id: string; email: string; displayName: string };
   organizations: OrganizationSummary[];
   teamContexts: TeamContext[];
@@ -264,7 +267,7 @@ export interface TeamRegistrationEventData {
   capabilities: { canCreateEntry: boolean };
 }
 
-export type ScheduleAlgorithmVersion = 'RR_CIRCLE_V1' | 'SE_SEEDED_V1';
+export type ScheduleAlgorithmVersion = 'RR_CIRCLE_V1' | 'SE_SEEDED_V1' | 'GK_BALANCED_V1';
 export type ScheduleRevisionStatus = 'DRAFT' | 'SUPERSEDED' | 'PUBLISHED';
 export interface CourtData {
   id: string;
@@ -320,6 +323,7 @@ export interface ScheduleFreezeSummary {
   entryCount: number;
 }
 export interface ScheduleRevisionSummary {
+  groupConfig?: GroupKnockoutConfig | null;
   id: string;
   eventId: string;
   freezeId: string;
@@ -360,6 +364,7 @@ export interface EventSchedulingData {
   capabilities: { canGenerate: boolean; canRedraw: boolean; canReadMatches: boolean };
 }
 export interface CreateScheduleRevisionInput {
+  groupConfig?: GroupKnockoutConfig;
   expectedEventVersion: number;
   freezeId: string;
   algorithmVersion: ScheduleAlgorithmVersion;
@@ -1091,3 +1096,8 @@ export interface PublicKnockoutData {
   }[];
   placements: { team: PublicTeamData; rank: number; tied: boolean }[];
 }
+
+export type * from './group-knockout.js';
+export type * from './wechat.js';
+export type * from './media.js';
+export type * from './commerce.js';

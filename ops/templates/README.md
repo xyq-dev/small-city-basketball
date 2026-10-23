@@ -74,7 +74,7 @@ docker compose --env-file /srv/scb/production.env -p scb -f compose.production.y
 docker compose --env-file /srv/scb/production.env -p scb -f compose.production.yaml up -d --no-deps --force-recreate web
 ```
 
-已完成001–006的生产迁移／角色权限须由真实CI和目标环境验收记录证明，本说明中的命令不是执行证据。不要`down -v`删除持久卷；容器重启持久性也不是备份恢复验证。
+001–015的实际生产迁移／角色权限须由真实CI和目标环境验收记录证明，本说明中的命令不是执行证据。不要`down -v`删除持久卷；容器重启持久性也不是备份恢复验证。
 
 ## 静止备份
 
@@ -118,7 +118,7 @@ docker compose --env-file /srv/scb/production.env -p scb -f compose.production.y
   -e ARCHIVE_PATH=/backups/scb-20261022-001.dump \
   -e RESTORE_DATABASE_NAME=scb_restore_20261022_001 \
   -e RESTORE_RECEIPT_PATH=/backups/scb-20261022-001.restore.json restore
-# 此时先独立完成阶段1：40表／schema／checksum／业务指纹等于同一静止备份点。
+# 此时先独立完成阶段1：58表／schema／checksum／业务指纹等于同一静止备份点。
 # 恢复使用与备份相同的代码/Migration版本；P07-A的39表旧包须用该版本恢复，
 # 不用新包隐式升级旧备份，恢复与显式Migration分开执行。
 docker compose --env-file /srv/scb/production.env -p scb -f compose.production.yaml --profile ops run --rm --no-deps \
@@ -127,6 +127,21 @@ docker compose --env-file /srv/scb/production.env -p scb -f compose.production.y
 
 restore只CREATE全新库，完整custom archive、single transaction、no-owner/no-acl，然后重应用manifest；不覆盖已有库、不先迁移再data-only、不禁触发器。失败留目标库供当前project负责人检查／清理，不任意DROP。receipt0600含目标name／OID／nonce，quarantine核DB comment匹配后才执行。第一阶段恢复相等与第二阶段隔离的预期变化分别验收，不能将重启当恢复。
 
-quarantine撤销旧session／pending invitation／active public／active overlay，过期有效lease，禁用全部机构并保留系统主体审计；它不自动恢复当前授权、不重开机构、不修改比赛赛果／fence身份。终点是旧凭据失效的隔离目标，后续依据外部当前授权清单人工核验后另行开放与切流。不能声称fence超过备份后丢失的未知值、RPO为零或已实现生产灾备。原生OBS／CEF和真实推流仍未验收。
+quarantine撤销旧session／pending invitation／active public／active overlay，过期有效lease，禁用全部机构及平台运营资格、撤销微信身份并删除旧挑战，保留系统主体审计；它不自动恢复当前授权、不重开机构、不修改比赛赛果／fence身份。终点是旧凭据失效的隔离目标，后续依据外部当前授权清单人工核验后另行开放与切流。不能声称fence超过备份后丢失的未知值、RPO为零或已实现生产灾备。原生OBS／CEF和真实推流仍未验收。
 
 网络边界：仅Web连接可发布主机端口的`ingress`桥，同时接入internal `frontend`反代API；API仅连接internal `frontend`/`backend`，PostgreSQL仅internal `backend`，两者均无主机端口。`internal`网络不能替代Web发布入口；隔离CI将Web绑定到`127.0.0.1:9443`，不会开放公网。
+
+
+## C05 商业、微信与媒体运行接口
+
+默认 `COMMERCE_MODE=OFF`，保留既有办赛使用；每次首次正式发布记录 UNMETERED 激活。开启 `ENFORCED` 后，首次发布需要与本届绑定、有效且覆盖整届队数/预计场次的已付软件服务权益；已激活赛事不因后续到期中断。013 为升级前已发布赛事写 LEGACY 激活。这里仅处理平台按届软件服务费，没有报名费、保证金、钱包或托管资金。
+
+平台运营资格独立于机构负责人。先创建真实应用账号，核验人员，再以维护身份运行 `platform-operator` profile 服务；它只读取私有 `platform_operator_input` JSON（[模板](platform-operator.example.json)，10001:10001、0400/0600、普通文件、禁止符号链接），记录维护身份及原因。模板默认 DISABLED，实际开通需显式 ACTIVE。运行服务为 `docker compose --env-file <existing-private-env> -p <verified-project> -f compose.production.yaml --profile ops run --rm --no-deps platform-operator`。先核验目标环境与当时授权；本次只编写及隔离测试，没有生产执行。人工收款与退款要求两位不同平台操作员，复核人不能是订单创建人或目标机构有效成员；缺人时保持待复核。
+
+微信登录与真实微信支付均默认禁用。原生客户端源码在 `apps/wechat/`，需要实际主体、AppID、合法请求域名及真客户端验证。登录绑定仅针对已有账号，使用当前密码复核；微信身份不自动创建虚假邮箱、不合并不同账号。
+
+已有资质和凭据齐全且另获部署授权后，可分别审查并使用 [微信配置覆盖](compose.wechat.yaml) 或 [Native 支付覆盖](compose.wechatpay.yaml)。它们只给 API 增加出站网络，不发布 API/PG 端口；基础包仍只有 internal 网络。私有凭据文件置于既有 `SCB_PROVIDER_SECRET_DIR`，10001:10001、0400；不提交 Git、不打印。支付公钥文件是 serial→PEM 的受信 JSON 映射，仅接受运营方核验过的公钥，不从未经认证的下载建立信任。支付通知固定同源 `/v1/payments/wechat/notifications`；验签、解密及原报价/商户核对后才更新订单，页面跳转不授权益。真实支付、退款、账单和微信真机不因合成协议测试通过而视为通过。
+
+媒体单文件上限8MiB、每机构128MiB，存入PG并随完整备份恢复；整场大录像和外部存储/转码仍需单独交付。仅两条 `.../entries/:id/media-files`、`.../matches/:id/media-files` POST 放宽到12MiB JSON，其他请求100KiB；nginx与API均限制。私有保险/报名资料不可公开。每次公开文件及Range读取都复验原观众授权，撤销后旧路径失效。片段是人工定位，不是已生成剪辑文件；保单文件不等于承保核验。
+
+外部公开媒体链接默认关闭；如确有原本公开的资源，配置 `SCB_MEDIA_TRUSTED_HOSTS` 为最多20个精确小写HTTPS host（逗号分隔，无通配/IP/端口），通过已有运维覆盖传给 API。服务端不抓取外链；已获知的第三方URL不能由本站撤回。要求正文可撤销时使用受控自持文件。

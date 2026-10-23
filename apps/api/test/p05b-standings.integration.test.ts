@@ -90,21 +90,38 @@ describe(
         const read = await call(h.api, 'get', standingsPath(h.owner.orgId, unsupported.id), {
           cookie: h.owner.cookie,
         });
-        if (format === 'GROUP_KNOCKOUT') rejected(read, 422, 'UNSUPPORTED_STANDINGS_FORMAT');
+        if (format === 'GROUP_KNOCKOUT')
+          expect(data(read)).toMatchObject({
+            rules: null,
+            standings: null,
+            capabilities: { canManageRules: true, canPublishRules: false },
+          });
         else
           expect(data(read)).toMatchObject({
             rules: null,
             standings: null,
             capabilities: { canManageRules: false, canPublishRules: false },
           });
-        rejected(
-          await call(h.api, 'put', standingsRulesPath(h.owner.orgId, unsupported.id), {
+        const updated = await call(
+          h.api,
+          'put',
+          standingsRulesPath(h.owner.orgId, unsupported.id),
+          {
             cookie: h.owner.cookie,
             body: { expectedEventVersion: unsupported.version, ...defaultStandingsRules() },
-          }),
-          422,
-          'UNSUPPORTED_STANDINGS_FORMAT',
+          },
         );
+        if (format === 'GROUP_KNOCKOUT')
+          expect(data(updated)).toMatchObject({
+            rules: { eventId: unsupported.id },
+            standings: null,
+          });
+        else
+          rejected(
+            updated /* GROUP now supports its explicit group-local RR rules. */,
+            422,
+            'UNSUPPORTED_STANDINGS_FORMAT',
+          );
       }
       const fixture = await published(h, h.teams.slice(0, 2));
       const eventId = fixture.event.event.id;

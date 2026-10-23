@@ -24,6 +24,7 @@ import {
   useResource,
 } from './shared';
 import type { RegistrationWorkspace } from './shared';
+import { EntryFilesPanel } from '../media/MediaPanels';
 
 export function LeaderHomePage({ context }: { context: RegistrationWorkspace }) {
   const teamContext = context.teamContext;
@@ -214,6 +215,9 @@ function EntryDetailPageContent({ context }: { context: RegistrationWorkspace })
             )
           }
         />
+      )}
+      {resource.data && !resource.error && !resource.loading && (
+        <EntryFilesPanel context={context} entryId={entryId} />
       )}
     </>
   );

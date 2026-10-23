@@ -4,6 +4,7 @@ import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js'
 import type { EventRow } from './service.js';
 import { notFound } from './errors.js';
 import { resourceId } from './validation.js';
+import { groupEvidence } from './group-knockout-repository.js';
 import { calculateEventPlayerStatistics } from './event-player-statistics-domain.js';
 import type { ResultRow } from './standings-domain.js';
 import { resultSourceInvalid } from './standings-domain.js';
@@ -11,6 +12,7 @@ import { resultSourceInvalid } from './standings-domain.js';
 interface Snapshot {
   publication_id: string;
   publication_source: unknown;
+  group_config: import('@small-city-basketball/contracts').GroupKnockoutConfig;
   seed: string;
   policy: import('@small-city-basketball/contracts').SchedulePolicy;
   round_publications: {
@@ -27,7 +29,7 @@ export class EventPlayerStatisticsService extends ApplicationService {
   private async snapshot(c: PoolClient, org: string, event: string): Promise<Snapshot[]> {
     return (
       await c.query<Snapshot>(
-        `SELECT p.id AS publication_id,r.source AS publication_source,r.seed,r.policy,COALESCE((SELECT jsonb_agg(jsonb_build_object('roundNo',k.round_no,'sources',k.sources) ORDER BY k.round_no) FROM knockout_round_publications k WHERE k.org_id=p.org_id AND k.event_id=p.event_id),'[]'::jsonb) AS round_publications,statement_timestamp() AS as_of,
+        `SELECT p.id AS publication_id,r.source AS publication_source,r.seed,r.policy,r.group_config,COALESCE((SELECT jsonb_agg(jsonb_build_object('roundNo',k.round_no,'sources',k.sources) ORDER BY k.round_no) FROM knockout_round_publications k WHERE k.org_id=p.org_id AND k.event_id=p.event_id),'[]'::jsonb) AS round_publications,statement_timestamp() AS as_of,
         CASE WHEN m.id IS NULL THEN NULL ELSE to_jsonb(m) || jsonb_build_object(
           'state',to_jsonb(s),'confirmation',to_jsonb(cf),'last_event',to_jsonb(le),
           'last_command',to_jsonb(rc),'scoring_rules',to_jsonb(sr),
@@ -76,6 +78,8 @@ export class EventPlayerStatisticsService extends ApplicationService {
       const first = snapshot[0];
       if (first && snapshot.some((r) => r.publication_id !== first.publication_id))
         resultSourceInvalid();
+      const group =
+        event.format === 'GROUP_KNOCKOUT' ? await groupEvidence(c, actor.orgId, event.id) : null;
       const summary = first
         ? calculateEventPlayerStatistics({
             publicationId: first.publication_id,
@@ -83,6 +87,10 @@ export class EventPlayerStatisticsService extends ApplicationService {
             matches: snapshot.flatMap((r) => (r.proof ? [r.proof] : [])),
             asOf: iso(first.as_of),
             format: event.format,
+            groupConfig: first.group_config,
+            groupRules: group?.rules ?? undefined,
+            groupDraws: group?.draws,
+            groupQualification: group?.qualification,
             seed: first.seed,
             policy: first.policy,
             roundPublications: first.round_publications,

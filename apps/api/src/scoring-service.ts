@@ -382,10 +382,10 @@ export class ScoringService extends ApplicationService {
     return !grant.rowCount;
   }
   private async resultConsumed(c: PoolClient, a: Access): Promise<boolean> {
-    if (a.event.format !== 'SINGLE_ELIMINATION') return false;
+    if (!['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(a.event.format)) return false;
     return !!(
       await c.query(
-        "SELECT 1 FROM knockout_round_publications WHERE org_id=$1 AND event_id=$2 AND sources @> jsonb_build_array(jsonb_build_object('matchId',$3::text)) LIMIT 1",
+        "SELECT 1 FROM knockout_round_publications WHERE org_id=$1 AND event_id=$2 AND sources @> jsonb_build_array(jsonb_build_object('matchId',$3::text)) UNION ALL SELECT 1 FROM group_qualification_publications WHERE org_id=$1 AND event_id=$2 AND sources @> jsonb_build_array(jsonb_build_object('matchId',$3::text)) LIMIT 1",
         [a.ctx.orgId, a.event.id, a.match.id],
       )
     ).rowCount;
@@ -488,7 +488,10 @@ export class ScoringService extends ApplicationService {
       if (a.event.locked_scoring_ruleset_id) conflict('SCORING_RULES_LOCKED', '赛事记分规则已锁定');
       if (!['SCHEDULED', 'RUNNING'].includes(a.event.status))
         conflict('INVALID_EVENT_STATE', '仅已排赛赛事可配置记分规则');
-      if (a.event.format === 'SINGLE_ELIMINATION' && rules.tiePolicy !== 'OVERTIME')
+      if (
+        ['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(a.event.format) &&
+        rules.tiePolicy !== 'OVERTIME'
+      )
         throw new ApiError(422, 'RULE_CONFLICT', '单淘汰赛必须设置平分加时规则');
       const count = await c.query<{ version: number }>(
         'SELECT COALESCE(MAX(version),0)::int+1 AS version FROM scoring_rulesets WHERE org_id=$1 AND event_id=$2',
@@ -837,7 +840,10 @@ export class ScoringService extends ApplicationService {
       if (!ruleId) conflict('MATCH_NOT_PREPARED', '比赛尚未准备');
       const rules = await this.rules(c, ctx.orgId, ruleId);
       if (!rules) throw notFound();
-      if (a.event.format === 'SINGLE_ELIMINATION' && rules.tiePolicy !== 'OVERTIME')
+      if (
+        ['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(a.event.format) &&
+        rules.tiePolicy !== 'OVERTIME'
+      )
         throw new ApiError(422, 'RULE_CONFLICT', '单淘汰赛必须设置平分加时规则');
       const history = await this.events(c, a);
       const projection = replayStats(history, rules, st?.period ?? 1);

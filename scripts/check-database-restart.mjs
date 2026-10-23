@@ -3,9 +3,18 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createApi } from '../apps/api/dist/app.js';
 import pg from 'pg';
+import { loadManifest } from '../ops/db/privileges.mjs';
+import { exactTableRows } from '../ops/recovery/fingerprint-rows.mjs';
+import { syntheticPdf, syntheticPng, syntheticMp4 } from './c05-media-fixtures.mjs';
+import {
+  captureCommerceSetup,
+  ensureCommercialEntitlement,
+  captureCommerceEnd,
+  verifyCommerce,
+} from './c05-commerce-check.mjs';
 
 // The production package runs this same synthetic business chain against its real TLS API.
-// SQL remains read-only here; use the separately scoped backup role for the 41-table digest.
+// SQL remains read-only here; use the separately scoped backup role for the 58-table digest.
 async function privateValue(name) {
   const inline = process.env[name];
   const file = process.env[name + '_FILE'];
@@ -52,7 +61,7 @@ if (remoteUrl) {
 const origin = process.env.APP_ORIGIN ?? 'http://127.0.0.1:5173';
 const instance = remoteUrl
   ? { app: null, pool: new pg.Pool({ connectionString: databaseUrl }) }
-  : await createApi({ databaseUrl, appOrigin: origin });
+  : await createApi({ databaseUrl, appOrigin: origin, commerceMode: 'ENFORCED' });
 if (instance.app) await instance.app.listen(0, '127.0.0.1');
 const baseUrl = remoteUrl ?? (await instance.app.getUrl());
 const readUrl = await privateValue('SCB_FINGERPRINT_DATABASE_URL');
@@ -73,63 +82,21 @@ async function call(route, { method = 'GET', body, cookie } = {}) {
 }
 async function fingerprint() {
   const hash = createHash('sha256');
-  for (const [table, order] of [
-    ['users', 'id'],
-    ['organizations', 'id'],
-    ['organization_memberships', 'org_id,user_id'],
-    ['sessions', 'id'],
-    ['auth_rate_limits', 'key'],
-    ['events', 'id'],
-    ['event_staff', 'org_id,event_id,user_id'],
-    ['teams', 'id'],
-    ['team_members', 'id'],
-    ['team_access_grants', 'org_id,team_id,user_id'],
-    ['team_invitations', 'id'],
-    ['event_rulesets', 'id'],
-    ['entries', 'id'],
-    ['entry_roster_revisions', 'id'],
-    ['entry_roster_players', 'org_id,revision_id,member_id'],
-    ['entry_review_history', 'id'],
-    ['registration_freezes', 'id'],
-    ['courts', 'id'],
-    ['org_schedule_mutex', 'org_id'],
-    ['schedule_revisions', 'id'],
-    ['schedule_fixtures', 'org_id,revision_id,fixture_key'],
-    ['schedule_publications', 'id'],
-    ['published_matches', 'id'],
-    ['match_reschedules', 'id'],
-    ['knockout_round_publications', 'id'],
-    ['court_reservations', 'org_id,match_id'],
-    ['team_reservations', 'org_id,team_id,match_id'],
-    ['scoring_rulesets', 'id'],
-    ['match_staff', 'org_id,match_id,user_id'],
-    ['scoring_states', 'org_id,match_id'],
-    ['scoring_leases', 'org_id,match_id'],
-    ['scoring_commands', 'org_id,actor_id,match_id,command_id'],
-    ['scoring_events', 'id'],
-    ['result_confirmations', 'id'],
-    ['standings_rulesets', 'id'],
-    ['public_event_publications', 'id'],
-    ['public_match_links', 'publication_id,match_id'],
-    ['overlay_grants', 'id'],
-    ['overlay_sessions', 'id'],
-    ['audit_logs', 'id'],
-    ['schema_migrations', 'name'],
-  ]) {
-    // Table and order names are fixed source constants; no request input is interpolated.
-    const rows = await readPool.query(
-      `SELECT row_to_json(record_row)::text AS exact_row FROM (SELECT * FROM ${table} ORDER BY ${order}) record_row`,
-    );
-    hash.update(table + '\n' + JSON.stringify(rows.rows) + '\n');
+  const manifest = await loadManifest();
+  for (const table of Object.keys(manifest.tables).sort()) {
+    const rows = await exactTableRows(readPool, table);
+    hash.update(table + '\n' + JSON.stringify(rows) + '\n');
   }
   return hash.digest('hex');
 }
+let commerceSetup;
 async function captureRegistration(
   orgId,
   ownerCookie,
   suffix,
   existingLeader,
   format = 'ROUND_ROBIN',
+  teamCount = 3,
 ) {
   const root = `/v1/orgs/${orgId}`;
   const leader = existingLeader
@@ -184,7 +151,7 @@ async function captureRegistration(
   await eventCommand('OPEN_REGISTRATION');
   const entries = [];
   const teams = [];
-  for (let index = 0; index < 3; index += 1) {
+  for (let index = 0; index < teamCount; index += 1) {
     let team = (
       await call(`${root}/teams`, {
         method: 'POST',
@@ -252,7 +219,7 @@ async function captureRegistration(
   workspace = (await call(`${path}/registration`, { cookie: ownerCookie })).data;
   await eventCommand('CLOSE_REGISTRATION');
   await eventCommand('FREEZE_REGISTRATION');
-  assert.equal(workspace.freeze.entries.length, 3);
+  assert.equal(workspace.freeze.entries.length, teamCount);
   const snapshot = structuredClone(workspace.freeze);
   const team = teams[0];
   await call(`${root}/teams/${team.id}/members`, {
@@ -282,6 +249,33 @@ async function captureScheduling(orgId, cookie, registration) {
   const root = `/v1/orgs/${orgId}`;
   const eventId = registration.workspace.event.id;
   const path = `${root}/events/${eventId}`;
+  if (registration.workspace.event.format === 'GROUP_KNOCKOUT') {
+    let standings = (
+      await call(`${path}/standings-rules`, {
+        method: 'PUT',
+        cookie,
+        body: {
+          expectedEventVersion: registration.workspace.event.version,
+          winPoints: 2,
+          lossPoints: 1,
+          drawPoints: 1,
+          tiebreakers: ['SCORE_DIFFERENCE', 'POINTS_FOR', 'WINS'],
+        },
+      })
+    ).data;
+    standings = (
+      await call(`${path}/standings-rule-commands`, {
+        method: 'POST',
+        cookie,
+        body: {
+          type: 'PUBLISH_STANDINGS_RULES',
+          rulesetId: standings.rules.id,
+          expectedEventVersion: standings.event.version,
+        },
+      })
+    ).data;
+    registration.workspace = (await call(`${path}/registration`, { cookie })).data;
+  }
   const court = (
     await call(`${root}/courts`, {
       method: 'POST',
@@ -299,7 +293,12 @@ async function captureScheduling(orgId, cookie, registration) {
         algorithmVersion:
           registration.workspace.event.format === 'SINGLE_ELIMINATION'
             ? 'SE_SEEDED_V1'
-            : 'RR_CIRCLE_V1',
+            : registration.workspace.event.format === 'GROUP_KNOCKOUT'
+              ? 'GK_BALANCED_V1'
+              : 'RR_CIRCLE_V1',
+        ...(registration.workspace.event.format === 'GROUP_KNOCKOUT'
+          ? { groupConfig: { groupCount: 2, seededEntryIds: [] } }
+          : {}),
         policy: {
           slotDurationMinutes: 60,
           minRestMinutes: 30,
@@ -315,7 +314,12 @@ async function captureScheduling(orgId, cookie, registration) {
       },
     })
   ).data;
-  const firstMatchCount = registration.workspace.event.format === 'SINGLE_ELIMINATION' ? 1 : 3;
+  const firstMatchCount =
+    registration.workspace.event.format === 'SINGLE_ELIMINATION'
+      ? 1
+      : registration.workspace.event.format === 'GROUP_KNOCKOUT'
+        ? 2
+        : 3;
   assert.equal(revision.fixtures.length, firstMatchCount);
   assert.deepEqual(revision.source, registration.workspace.freeze);
   const revisionPath = `${root}/schedule-revisions/${revision.id}`;
@@ -343,6 +347,14 @@ async function captureScheduling(orgId, cookie, registration) {
   ).data;
   assert.equal(validation.valid, true);
   assert.deepEqual(validation.conflicts, []);
+  const unpaid = await fetch(baseUrl + `${revisionPath}/publish`, {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify(versions),
+  });
+  assert.equal(unpaid.status, 402, 'Unpaid publication must fail before all schedule effects');
+  assert.equal((await call(`${path}/matches`, { cookie })).data.length, 0);
+  await ensureCommercialEntitlement({ call, cookie, orgId, eventId, setup: commerceSetup });
   const publication = (
     await call(`${revisionPath}/publish`, { method: 'POST', cookie, body: versions })
   ).data;
@@ -964,6 +976,69 @@ async function verifyLifecycle(saved, cookie, orgId) {
 
 // A third, separately scheduled event exercises real byes and the append-only
 // advancement proof across the same actual PostgreSQL restart/full restore.
+async function finishSyntheticMatch(orgId, cookie, writer, matchId) {
+  const root = `/v1/orgs/${orgId}`;
+  const matchPath = `${root}/matches/${matchId}`;
+  let workbench = (await call(`${matchPath}/scoring`, { cookie })).data;
+  await call(`${matchPath}/staff/${writer.writerUserId}`, {
+    method: 'PUT',
+    cookie,
+    body: { expectedMatchVersion: workbench.match.version, role: 'SCORER', status: 'ACTIVE' },
+  });
+  async function command(actor, type, payload = {}, control) {
+    workbench = (await call(`${matchPath}/scoring`, { cookie: actor })).data;
+    return (
+      await call(`${matchPath}/commands`, {
+        method: 'POST',
+        cookie: actor,
+        body: {
+          commandId: randomUUID(),
+          type,
+          expectedVersion: workbench.match.version,
+          capturedAt: new Date().toISOString(),
+          payload: ['PREPARE_MATCH', 'START_MATCH'].includes(type)
+            ? { ...payload, expectedEventVersion: workbench.event.version }
+            : payload,
+          ...(control ? { control } : {}),
+        },
+      })
+    ).data;
+  }
+  const prepared = await command(cookie, 'PREPARE_MATCH', { collectionMode: 'PLAYER_BASIC' });
+  const memberId = prepared.snapshot.playerStatistics.home.players[0].memberId;
+  const lease = (
+    await call(`${matchPath}/scorekeeper-lease`, {
+      method: 'POST',
+      cookie: writer.writerCookie,
+      body: { clientInstanceId: randomUUID() },
+    })
+  ).data;
+  const control = {
+    leaseId: lease.leaseId,
+    fencingToken: lease.fencingToken,
+    clientInstanceId: lease.clientInstanceId,
+  };
+  await command(writer.writerCookie, 'START_MATCH', {}, control);
+  await command(
+    writer.writerCookie,
+    'RECORD_STAT',
+    { kind: 'SCORE', side: 'HOME', value: 2, memberId },
+    control,
+  );
+  await command(
+    writer.writerCookie,
+    'CLOCK_SET',
+    { remainingMs: 0, reason: '淘汰赛恢复验证节末归零' },
+    control,
+  );
+  await command(writer.writerCookie, 'END_MATCH', {}, control);
+  await command(cookie, 'CONFIRM_RESULT');
+  await call(`${matchPath}/scorekeeper-lease`, {
+    method: 'DELETE',
+    cookie: writer.writerCookie,
+    body: { control },
+  });
+}
 async function captureKnockout(orgId, cookie, suffix, existingRegistration, writer) {
   const registration = await captureRegistration(
     orgId,
@@ -987,68 +1062,7 @@ async function captureKnockout(orgId, cookie, suffix, existingRegistration, writ
       overtimeDurationSeconds: 60,
     },
   });
-  async function finish(matchId) {
-    const matchPath = `${root}/matches/${matchId}`;
-    let workbench = (await call(`${matchPath}/scoring`, { cookie })).data;
-    await call(`${matchPath}/staff/${writer.writerUserId}`, {
-      method: 'PUT',
-      cookie,
-      body: { expectedMatchVersion: workbench.match.version, role: 'SCORER', status: 'ACTIVE' },
-    });
-    async function command(actor, type, payload = {}, control) {
-      workbench = (await call(`${matchPath}/scoring`, { cookie: actor })).data;
-      return (
-        await call(`${matchPath}/commands`, {
-          method: 'POST',
-          cookie: actor,
-          body: {
-            commandId: randomUUID(),
-            type,
-            expectedVersion: workbench.match.version,
-            capturedAt: new Date().toISOString(),
-            payload: ['PREPARE_MATCH', 'START_MATCH'].includes(type)
-              ? { ...payload, expectedEventVersion: workbench.event.version }
-              : payload,
-            ...(control ? { control } : {}),
-          },
-        })
-      ).data;
-    }
-    const prepared = await command(cookie, 'PREPARE_MATCH', { collectionMode: 'PLAYER_BASIC' });
-    const memberId = prepared.snapshot.playerStatistics.home.players[0].memberId;
-    const lease = (
-      await call(`${matchPath}/scorekeeper-lease`, {
-        method: 'POST',
-        cookie: writer.writerCookie,
-        body: { clientInstanceId: randomUUID() },
-      })
-    ).data;
-    const control = {
-      leaseId: lease.leaseId,
-      fencingToken: lease.fencingToken,
-      clientInstanceId: lease.clientInstanceId,
-    };
-    await command(writer.writerCookie, 'START_MATCH', {}, control);
-    await command(
-      writer.writerCookie,
-      'RECORD_STAT',
-      { kind: 'SCORE', side: 'HOME', value: 2, memberId },
-      control,
-    );
-    await command(
-      writer.writerCookie,
-      'CLOCK_SET',
-      { remainingMs: 0, reason: '淘汰赛恢复验证节末归零' },
-      control,
-    );
-    await command(writer.writerCookie, 'END_MATCH', {}, control);
-    await command(cookie, 'CONFIRM_RESULT');
-    await call(`${matchPath}/scorekeeper-lease`, {
-      method: 'DELETE',
-      cookie: writer.writerCookie,
-      body: { control },
-    });
-  }
+  const finish = (matchId) => finishSyntheticMatch(orgId, cookie, writer, matchId);
   await finish(scheduling.matches[0].id);
   let knockout = (await call(`${path}/knockout`, { cookie })).data;
   assert.equal(knockout.bracket.totalMatchCount, 2);
@@ -1147,6 +1161,311 @@ async function captureKnockout(orgId, cookie, suffix, existingRegistration, writ
     ),
     proof: proof.rows,
   };
+}
+
+async function captureGroups(orgId, cookie, suffix, existingRegistration, writer) {
+  const registration = await captureRegistration(
+    orgId,
+    cookie,
+    `${suffix}-groups`,
+    existingRegistration,
+    'GROUP_KNOCKOUT',
+    4,
+  );
+  const scheduling = await captureScheduling(orgId, cookie, registration);
+  const root = `/v1/orgs/${orgId}`;
+  const path = `${root}/events/${scheduling.workspace.event.id}`;
+  let work = (await call(`${path}/scoring`, { cookie })).data;
+  await call(`${path}/scoring-rules`, {
+    method: 'PUT',
+    cookie,
+    body: {
+      expectedEventVersion: work.event.version,
+      regulationPeriods: 1,
+      periodDurationSeconds: 60,
+      allowedScoreValues: [1, 2, 3],
+      tiePolicy: 'OVERTIME',
+      overtimeDurationSeconds: 60,
+    },
+  });
+  for (const match of scheduling.matches)
+    await finishSyntheticMatch(orgId, cookie, writer, match.id);
+  let groups = (await call(`${path}/groups`, { cookie })).data;
+  assert.equal(groups.competition.qualification.status, 'READY');
+  const oldGrant = (
+    await call(`${path}/public-viewing-commands`, {
+      method: 'POST',
+      cookie,
+      body: { type: 'ENABLE', expectedEventVersion: groups.event.version },
+    })
+  ).data;
+  const oldPublicId = oldGrant.publication.publicEventId;
+  groups = (await call(`${path}/groups`, { cookie })).data;
+  const next = groups.competition.nextRound;
+  await call(`${path}/group-qualification-commands`, {
+    method: 'POST',
+    cookie,
+    body: {
+      type: 'PUBLISH_QUALIFICATION',
+      expectedEventVersion: groups.event.version,
+      expectedSourceHash: next.sourceHash,
+      reason: '分组资格真实数据库恢复验收',
+      allocations: next.fixtures.map((f, i) => ({
+        fixtureKey: f.fixtureKey,
+        courtId: scheduling.court.id,
+        startsAt: `2026-12-01T0${5 + i * 2}:00:00.000Z`,
+      })),
+    },
+  });
+  await assertPublicMissing(`/v1/public/events/${oldPublicId}`);
+  let matches = (await call(`${path}/matches`, { cookie })).data;
+  for (const match of matches.filter((m) => m.roundNo === 2))
+    await finishSyntheticMatch(orgId, cookie, writer, match.id);
+  groups = (await call(`${path}/groups`, { cookie })).data;
+  const final = groups.competition.nextRound;
+  assert.equal(final.roundNo, 3);
+  await call(`${path}/knockout-round-commands`, {
+    method: 'POST',
+    cookie,
+    body: {
+      type: 'PUBLISH_ROUND',
+      expectedEventVersion: groups.event.version,
+      expectedSourceHash: final.sourceHash,
+      roundNo: final.roundNo,
+      reason: '分组接淘汰决赛恢复验收',
+      allocations: final.fixtures.map((f) => ({
+        fixtureKey: f.fixtureKey,
+        courtId: scheduling.court.id,
+        startsAt: '2026-12-01T09:00:00.000Z',
+      })),
+    },
+  });
+  matches = (await call(`${path}/matches`, { cookie })).data;
+  await finishSyntheticMatch(orgId, cookie, writer, matches.find((m) => m.roundNo === 3).id);
+  groups = (await call(`${path}/groups`, { cookie })).data;
+  assert.equal(groups.competition.isComplete, true);
+  assert.equal(groups.competition.totalMatchCount, 5);
+  const original = (await call(`${root}/matches/${scheduling.matches[0].id}/scoring`, { cookie }))
+    .data;
+  assert.equal(original.capabilities.canReopen, false);
+  let lifecycle = (await call(`${path}/lifecycle`, { cookie })).data;
+  assert.equal(lifecycle.completion.ready, true);
+  for (const type of ['COMPLETE', 'ARCHIVE'])
+    lifecycle = (
+      await call(`${path}/lifecycle-commands`, {
+        method: 'POST',
+        cookie,
+        body: {
+          type,
+          expectedEventVersion: lifecycle.event.version,
+          reason: '分组接淘汰完整闭环归档',
+        },
+      })
+    ).data;
+  const history = (
+    await call(`${path}/public-viewing-commands`, {
+      method: 'POST',
+      cookie,
+      body: { type: 'ENABLE_HISTORY', expectedEventVersion: lifecycle.event.version },
+    })
+  ).data;
+  const publicId = history.publication.publicEventId;
+  const publicPath = `/v1/public/events/${publicId}`;
+  const publicGroups = (await call(`${publicPath}/groups`)).data;
+  assert.equal(publicGroups.isComplete, true);
+  const proof = (
+    await instance.pool.query(
+      'SELECT source_hash,sources,slots,fixtures FROM group_qualification_publications WHERE org_id=$1 AND event_id=$2',
+      [orgId, scheduling.workspace.event.id],
+    )
+  ).rows;
+  assert.equal(proof.length, 1);
+  return {
+    eventPath: path,
+    court: scheduling.court,
+    oldPublicId,
+    publicId,
+    groups: (await call(`${path}/groups`, { cookie })).data,
+    lifecycle: (await call(`${path}/lifecycle`, { cookie })).data,
+    summary: (await call(`${path}/player-statistics`, { cookie })).data,
+    overview: (await call(publicPath)).data,
+    publicGroups,
+    schedule: (await call(`${publicPath}/schedule`)).data,
+    proof,
+  };
+}
+async function verifyGroups(saved, cookie, orgId) {
+  const publicPath = `/v1/public/events/${saved.publicId}`;
+  for (const [path, value] of [
+    [`${saved.eventPath}/groups`, saved.groups],
+    [`${saved.eventPath}/lifecycle`, saved.lifecycle],
+    [`${saved.eventPath}/player-statistics`, saved.summary],
+    [publicPath, saved.overview],
+    [`${publicPath}/groups`, saved.publicGroups],
+    [`${publicPath}/schedule`, saved.schedule],
+  ]) {
+    const current = (await call(path, { ...(path.startsWith('/v1/public/') ? {} : { cookie }) }))
+      .data;
+    assert.deepEqual(withoutReadTimes(current), withoutReadTimes(value));
+  }
+  await assertPublicMissing(`/v1/public/events/${saved.oldPublicId}`);
+  assert.deepEqual(
+    (
+      await instance.pool.query(
+        'SELECT source_hash,sources,slots,fixtures FROM group_qualification_publications WHERE org_id=$1 AND event_id=$2',
+        [orgId, saved.groups.event.id],
+      )
+    ).rows,
+    saved.proof,
+  );
+}
+
+async function fileBytes(path, cookie, range) {
+  const response = await fetch(baseUrl + path, {
+    headers: { ...(cookie ? { Cookie: cookie } : {}), ...(range ? { Range: range } : {}) },
+  });
+  assert.equal(response.status, range ? 206 : 200, `Media content ${path} status`);
+  assert.match(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  return Buffer.from(await response.arrayBuffer());
+}
+async function captureMedia(orgId, cookie, registration, scheduling, scoring, viewing) {
+  const root = `/v1/orgs/${orgId}`;
+  const entry = registration.entries[0];
+  const entryRoot = `${root}/entries/${entry.id}/media-files`;
+  const doc = (
+    await call(entryRoot, {
+      method: 'POST',
+      cookie: registration.leaderCookie,
+      body: {
+        purpose: 'PRIVATE_INSURANCE',
+        fileName: 'synthetic-insurance.pdf',
+        contentType: 'application/pdf',
+        base64: syntheticPdf.toString('base64'),
+        expectedEntryVersion: entry.version,
+      },
+    })
+  ).data;
+  const privatePath = `${entryRoot}/${doc.id}/content`;
+  assert.deepEqual(await fileBytes(privatePath, registration.leaderCookie), syntheticPdf);
+  assert.equal((await fetch(baseUrl + privatePath)).status, 401);
+  const matchId = scoring.saved[1].id;
+  const matchRoot = `${root}/matches/${matchId}`;
+  const files = [];
+  const items = [];
+  for (const [kind, purpose, fileName, contentType, bytes] of [
+    ['IMAGE', 'MATCH_IMAGE', 'synthetic-image.png', 'image/png', syntheticPng],
+    ['VIDEO', 'MATCH_VIDEO', 'synthetic-video.mp4', 'video/mp4', syntheticMp4],
+  ]) {
+    const file = (
+      await call(`${matchRoot}/media-files`, {
+        method: 'POST',
+        cookie,
+        body: { purpose, fileName, contentType, base64: bytes.toString('base64') },
+      })
+    ).data;
+    const path = `${matchRoot}/media-files/${file.id}/content`;
+    assert.deepEqual(await fileBytes(path, cookie), bytes);
+    let item = (
+      await call(`${matchRoot}/media`, {
+        method: 'POST',
+        cookie,
+        body: {
+          kind,
+          title: kind === 'VIDEO' ? '合成视频片段' : '合成比赛图片',
+          fileId: file.id,
+          rightsDeclaration: '本素材为隔离验收自行生成，不含真实人员资料',
+        },
+      })
+    ).data;
+    if (kind === 'VIDEO') {
+      const work = (await call(`${matchRoot}/media`, { cookie })).data;
+      const source =
+        work.sourceEvents.find((e) => e.type === 'STAT_RECORDED') ?? work.sourceEvents[0];
+      assert.ok(source);
+      await call(`${matchRoot}/media/${item.id}/markers`, {
+        method: 'POST',
+        cookie,
+        body: {
+          expectedVersion: item.version,
+          expectedConfirmationId: work.currentConfirmationId,
+          sourceEventId: source.id,
+          label: '合成计分定位',
+          startMs: 0,
+          endMs: 500,
+        },
+      });
+      item = (await call(`${matchRoot}/media`, { cookie })).data.media.find(
+        (m) => m.id === item.id,
+      );
+    }
+    item = (
+      await call(`${matchRoot}/media/${item.id}/commands`, {
+        method: 'POST',
+        cookie,
+        body: { type: 'PUBLISH', expectedVersion: item.version },
+      })
+    ).data;
+    files.push({
+      path,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+      length: bytes.length,
+    });
+    items.push(item);
+  }
+  const privateMatch = scheduling.matches.find((m) => m.id === matchId);
+  const publicMatch = viewing.schedule.find(
+    (m) => m.roundNo === privateMatch.roundNo && m.positionNo === privateMatch.positionNo,
+  );
+  assert.ok(publicMatch);
+  const publicPath = `/v1/public/events/${viewing.publicId}/matches/${publicMatch.publicMatchId}/media`;
+  const published = (await call(publicPath)).data;
+  assert.equal(published.media.length, 2);
+  for (const item of published.media) {
+    assert.ok(item.contentPath);
+    const bytes = await fileBytes(item.contentPath);
+    assert.deepEqual(bytes, item.kind === 'VIDEO' ? syntheticMp4 : syntheticPng);
+    assert.deepEqual(
+      await fileBytes(item.contentPath, undefined, 'bytes=0-15'),
+      bytes.subarray(0, 16),
+    );
+    assert.equal(Object.hasOwn(item, 'fileId'), false);
+  }
+  assert.equal(published.media.find((m) => m.kind === 'VIDEO').markers.length, 1);
+  return {
+    privatePath,
+    privateHash: createHash('sha256').update(syntheticPdf).digest('hex'),
+    files,
+    publicPath,
+    published,
+    entryWorkspace: (await call(entryRoot, { cookie: registration.leaderCookie })).data,
+    matchWorkspace: (await call(`${matchRoot}/media`, { cookie })).data,
+    matchRoot,
+  };
+}
+async function verifyMedia(saved, cookie, leaderCookie) {
+  assert.equal(
+    createHash('sha256')
+      .update(await fileBytes(saved.privatePath, leaderCookie))
+      .digest('hex'),
+    saved.privateHash,
+  );
+  assert.equal((await fetch(baseUrl + saved.privatePath)).status, 401);
+  for (const file of saved.files) {
+    const bytes = await fileBytes(file.path, cookie);
+    assert.equal(bytes.length, file.length);
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), file.sha256);
+  }
+  assert.deepEqual((await call(saved.publicPath)).data, saved.published);
+  assert.deepEqual((await call(`${saved.matchRoot}/media`, { cookie })).data, saved.matchWorkspace);
+  for (const item of saved.published.media) {
+    const expected = item.kind === 'VIDEO' ? syntheticMp4 : syntheticPng;
+    assert.deepEqual(await fileBytes(item.contentPath), expected);
+    assert.deepEqual(
+      await fileBytes(item.contentPath, undefined, 'bytes=0-15'),
+      expected.subarray(0, 16),
+    );
+  }
 }
 
 async function verifyKnockout(saved, cookie, orgId) {
@@ -1305,6 +1624,11 @@ try {
     const cookie = registration.response.headers.getSetCookie()[0]?.split(';')[0];
     assert.ok(cookie, 'Registration must create a server-side session');
     const orgId = registration.data.organizations[0].id;
+    commerceSetup = await captureCommerceSetup({
+      call,
+      databaseUrl,
+      maintenanceUrl: (await privateValue('SCB_CHECK_MAINTENANCE_URL')) ?? databaseUrl,
+    });
     const created = await call(`/v1/orgs/${orgId}/events`, {
       method: 'POST',
       cookie,
@@ -1324,6 +1648,22 @@ try {
     const rescheduling = await captureRescheduling(orgId, cookie, scheduling, viewing, overlays);
     const lifecycle = await captureLifecycle(orgId, cookie, suffix, frozenRegistration, scoring);
     const knockout = await captureKnockout(orgId, cookie, suffix, frozenRegistration, scoring);
+    const groups = await captureGroups(orgId, cookie, suffix, frozenRegistration, scoring);
+    const media = await captureMedia(
+      orgId,
+      cookie,
+      frozenRegistration,
+      scheduling,
+      scoring,
+      viewing,
+    );
+    const commerce = await captureCommerceEnd({
+      call,
+      cookie,
+      orgId,
+      eventId: created.data.id,
+      setup: commerceSetup,
+    });
     frozenRegistration.leaderSession = (
       await call('/v1/auth/session', { cookie: frozenRegistration.leaderCookie })
     ).data;
@@ -1355,6 +1695,9 @@ try {
       rescheduling,
       lifecycle,
       knockout,
+      groups,
+      media,
+      commerce,
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
@@ -1366,7 +1709,7 @@ try {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     state.fingerprint = await fingerprint();
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
-    console.log('Captured the quiescent 41-table backup baseline.');
+    console.log('Captured the quiescent 58-table backup baseline.');
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     const session = await call('/v1/auth/session', { cookie: state.cookie });
@@ -1415,7 +1758,9 @@ try {
     const byId = (a, b) => a.id.localeCompare(b.id);
     assert.deepEqual(
       [...courts.data].sort(byId),
-      [scheduling.court, state.lifecycle.court, state.knockout.court].sort(byId),
+      [scheduling.court, state.lifecycle.court, state.knockout.court, state.groups.court].sort(
+        byId,
+      ),
       'All owned scenario courts survive restart and full restore without extra rows',
     );
     const scoring = state.scoring;
@@ -1502,6 +1847,9 @@ try {
     await assertOverlayRevoked(state.overlays.revoked);
     await verifyLifecycle(state.lifecycle, state.cookie, state.orgId);
     await verifyKnockout(state.knockout, state.cookie, state.orgId);
+    await verifyGroups(state.groups, state.cookie, state.orgId);
+    await verifyMedia(state.media, state.cookie, state.registration.leaderCookie);
+    await verifyCommerce({ call, saved: state.commerce, cookie: state.cookie, orgId: state.orgId });
     assert.equal(await fingerprint(), state.fingerprint);
     const acquired = (
       await call(`/v1/orgs/${state.orgId}/matches/${scoring.saved[0].id}/scorekeeper-lease`, {
@@ -1515,7 +1863,7 @@ try {
       'Lease fence remains monotonic across PostgreSQL restart',
     );
     console.log(
-      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across all 41 tables.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across all 58 tables.',
     );
   }
 } finally {

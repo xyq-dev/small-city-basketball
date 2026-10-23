@@ -2,6 +2,10 @@
 
 更新时间：2026-10-23（Asia/Shanghai）；集成人root。
 
+## C05 当前分支（尚未验收或上线）
+
+2026-10-24（Asia/Shanghai），分支 `feat/C05-commercial-completion` 基于 main `a9de24c`，四域并行产物正在 root 整合。分组接淘汰、微信绑定/原生客户端、受限媒体及真实 API 浏览器驱动已本地提交；计费主体按独立审查修复官方账单格式、退款时间与双向对账后待整合。共享首次发布收费门禁、原始回调验签、专用上传限额、58表ACL/正文摘要/完整恢复驱动已写，联合类型检查、构建、真实PG、浏览器与CI仍待执行。没有生产部署/正式数据库或账号维护/真实资金请求/新外部凭据。任务与真实证据见 [C05](tasks/C05.md) / [交接](handoffs/C05.md)。
+
 ## main已整合
 
 仓库`xyq-dev/small-city-basketball`，最新业务合并为[PR12](https://github.com/xyq-dev/small-city-basketball/pull/12)的`7ef18c915ffa51712077e6668e60ec6fbb0219b6`。后续纯文档HEAD从实际Git读取。

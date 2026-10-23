@@ -5,6 +5,8 @@ import type { Request, Response } from 'express';
 
 export interface ApiRequest extends Request {
   requestId: string;
+  /** Exact bounded webhook bytes; never reconstructed from parsed JSON. */
+  rawBody?: Buffer;
 }
 
 export class ApiError extends Error {

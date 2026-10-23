@@ -539,3 +539,19 @@
     padding: 32px 22px;
   }
 }
+
+.runtime-account-tools {
+  max-width: 1280px;
+  margin: auto;
+  padding: 24px;
+  min-width: 0;
+}
+.runtime-account-tools > .runtime-account-actions {
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+@media (max-width: 600px) {
+  .runtime-account-tools {
+    padding: 16px;
+  }
+}

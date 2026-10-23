@@ -1,0 +1,17 @@
+# Optional source-controlled override. Apply only with existing authorized credentials.
+services:
+  api:
+    environment:
+      WECHAT_MINI_LOGIN_ENABLED: 'true'
+      WECHAT_MINI_APP_ID: ${WECHAT_MINI_APP_ID:?Supply the existing mini-program AppID}
+      WECHAT_MINI_APP_SECRET_FILE: /run/secrets/wechat_mini_app_secret
+    secrets:
+      - wechat_mini_app_secret
+    networks: [frontend, backend, provider_egress]
+secrets:
+  wechat_mini_app_secret:
+    file: ${SCB_PROVIDER_SECRET_DIR:?Set the existing private provider secret directory}/wechat_mini_app_secret
+networks:
+  # Outbound provider calls only; the API still has no published host port.
+  provider_egress:
+    internal: false

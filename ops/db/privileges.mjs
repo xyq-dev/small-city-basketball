@@ -13,7 +13,7 @@ export async function loadManifest() {
     manifest.schema !== 'public' ||
     manifest.runtimeRole !== 'scb_runtime' ||
     manifest.backupRole !== 'scb_backup' ||
-    Object.keys(manifest.tables).length !== 41
+    Object.keys(manifest.tables).length !== 58
   )
     throw new Error('Invalid privilege manifest');
   for (const [table, rule] of Object.entries(manifest.tables)) {
@@ -24,7 +24,8 @@ export async function loadManifest() {
       new Set(rule.privileges).size !== rule.privileges.length ||
       new Set(rule.updateColumns).size !== rule.updateColumns.length ||
       rule.privileges.some((p) => !['SELECT', 'INSERT', 'DELETE'].includes(p)) ||
-      (rule.privileges.includes('DELETE') && table !== 'auth_rate_limits')
+      (rule.privileges.includes('DELETE') &&
+        !['auth_rate_limits', 'wechat_auth_attempts'].includes(table))
     )
       throw new Error('Invalid privilege manifest');
     rule.updateColumns.forEach(quoteIdentifier);

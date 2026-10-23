@@ -81,7 +81,7 @@ async function expectations() {
     manifest.runtimeRole !== 'scb_runtime' ||
     manifest.backupRole !== 'scb_backup' ||
     !manifest.tables ||
-    Object.keys(manifest.tables).length !== 41
+    Object.keys(manifest.tables).length !== 58
   )
     throw new Error();
   for (const [name, t] of Object.entries(manifest.tables)) {
@@ -90,7 +90,8 @@ async function expectations() {
       !Array.isArray(t.privileges) ||
       !Array.isArray(t.updateColumns) ||
       t.privileges.some((p) => !['SELECT', 'INSERT', 'DELETE'].includes(p)) ||
-      (t.privileges.includes('DELETE') && name !== 'auth_rate_limits') ||
+      (t.privileges.includes('DELETE') &&
+        !['auth_rate_limits', 'wechat_auth_attempts'].includes(name)) ||
       t.updateColumns.some((v) => !/^[a-z][a-z_]+$/.test(v)) ||
       new Set(t.privileges).size !== t.privileges.length ||
       new Set(t.updateColumns).size !== t.updateColumns.length

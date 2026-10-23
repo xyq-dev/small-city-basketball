@@ -1,13 +1,19 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import type { CourtData, SchedulePolicy } from '@small-city-basketball/contracts';
+import type {
+  CourtData,
+  GroupKnockoutConfig,
+  SchedulePolicy,
+  ScheduleParticipant,
+} from '@small-city-basketball/contracts';
 import { localInput, offsetTime, timeLabel } from './shared';
 
 export function PolicyForm({
   courts,
   initial,
   knockout = false,
+  groupOptions,
   redraw,
   busy,
   onSave,
@@ -16,9 +22,17 @@ export function PolicyForm({
   courts: CourtData[];
   initial?: SchedulePolicy;
   knockout?: boolean;
+  groupOptions?: {
+    participants: Pick<ScheduleParticipant, 'entryId' | 'teamName'>[];
+    initial?: GroupKnockoutConfig;
+  };
   redraw: boolean;
   busy: boolean;
-  onSave: (policy: SchedulePolicy, reason?: string) => Promise<void>;
+  onSave: (
+    policy: SchedulePolicy,
+    reason?: string,
+    groupConfig?: GroupKnockoutConfig,
+  ) => Promise<void>;
   onCancel: () => void;
 }) {
   const [duration, setDuration] = useState(initial ? String(initial.slotDurationMinutes) : '');
@@ -35,6 +49,10 @@ export function PolicyForm({
       : [{ key: crypto.randomUUID(), courtId: '', startsAt: '', endsAt: '' }],
   );
   const [reason, setReason] = useState('');
+  const [groupCount, setGroupCount] = useState<2 | 4 | 8>(groupOptions?.initial?.groupCount ?? 2);
+  const [seededEntryIds, setSeededEntryIds] = useState<string[]>(
+    groupOptions?.initial?.seededEntryIds ?? [],
+  );
   const [error, setError] = useState('');
   function update(key: string, field: 'courtId' | 'startsAt' | 'endsAt', value: string) {
     setWindows((previous) =>
@@ -45,6 +63,17 @@ export function PolicyForm({
     event.preventDefault();
     setError('');
     try {
+      if (
+        groupOptions &&
+        (groupOptions.participants.length < groupCount * 2 || groupOptions.participants.length > 32)
+      )
+        throw new Error('每组至少2队，总参赛队数最多32队，请调整分组数量。');
+      if (
+        groupOptions &&
+        (seededEntryIds.length > groupCount ||
+          seededEntryIds.some((id) => !groupOptions.participants.some((p) => p.entryId === id)))
+      )
+        throw new Error('种子队必须来自冻结名单，数量不能超过小组数。');
       const numbers = [duration, rest, dayGap];
       if (numbers.some((value) => !value.trim()))
         throw new Error('请明确填写占用时长、休息分钟和日期间隔；无间隔时请填写0。');
@@ -94,6 +123,7 @@ export function PolicyForm({
           courtWindows,
         },
         redraw ? reason.trim() : undefined,
+        groupOptions ? { groupCount, seededEntryIds } : undefined,
       );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '请核对排赛设置。');
@@ -105,13 +135,61 @@ export function PolicyForm({
         <div>
           <h2>{redraw ? '重新生成对阵' : '设置排赛规则'}</h2>
           <p>
-            {knockout
-              ? '先明确使用条件，再生成固定淘汰赛签位和首轮实际对阵。后轮等待确认晋级后另行发布。'
-              : '先明确使用条件，再生成完整单循环对阵。这里不会自动分配开赛时间。'}
+            {groupOptions
+              ? '按固定种子蛇形均衡分组，先生成组内完整单循环；每组前二通过独立确认后再显式发布固定交叉淘汰赛。'
+              : knockout
+                ? '先明确使用条件，再生成固定淘汰赛签位和首轮实际对阵。后轮等待确认晋级后另行发布。'
+                : '先明确使用条件，再生成完整单循环对阵。这里不会自动分配开赛时间。'}
           </p>
         </div>
       </div>
       <form onSubmit={submit} noValidate>
+        {groupOptions && (
+          <fieldset className="sc-panel">
+            <legend>分组与种子队</legend>
+            <label>
+              小组数量
+              <select
+                aria-label="小组数量"
+                value={groupCount}
+                disabled={busy}
+                onChange={(event) => setGroupCount(Number(event.target.value) as 2 | 4 | 8)}
+              >
+                {([2, 4, 8] as const).map((n) => (
+                  <option key={n} value={n} disabled={groupOptions.participants.length < n * 2}>
+                    {n}组
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p>
+              每组至少2队，组间人数差最多1队。每组前二晋级，不比较跨组第三名。可选至多{groupCount}
+              支种子队，确保分组分离。
+            </p>
+            <div className="sc-policy-grid">
+              {groupOptions.participants.map((p) => (
+                <label className="sc-seed-choice" key={p.entryId}>
+                  <input
+                    type="checkbox"
+                    checked={seededEntryIds.includes(p.entryId)}
+                    disabled={
+                      busy ||
+                      (!seededEntryIds.includes(p.entryId) && seededEntryIds.length >= groupCount)
+                    }
+                    onChange={(event) =>
+                      setSeededEntryIds((previous) =>
+                        event.target.checked
+                          ? [...previous, p.entryId]
+                          : previous.filter((id) => id !== p.entryId),
+                      )
+                    }
+                  />
+                  {p.teamName}（种子队）
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
         <div className="sc-policy-grid">
           <label>
             每场占用分钟
@@ -262,9 +340,11 @@ export function PolicyForm({
               ? '正在生成…'
               : redraw
                 ? '确认重新生成对阵'
-                : knockout
-                  ? '生成淘汰赛签位'
-                  : '生成单循环对阵'}
+                : groupOptions
+                  ? '生成分组循环对阵'
+                  : knockout
+                    ? '生成淘汰赛签位'
+                    : '生成单循环对阵'}
           </button>
         </div>
       </form>
