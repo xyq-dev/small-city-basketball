@@ -156,6 +156,47 @@ test('冻结名单排赛发布、单场改期与版本冲突恢复使用真实�
     expect(generated.source).toEqual(frozen);
     progress('round robin generated');
 
+    // Suggestions preserve dirty inputs, and neither preview nor adoption may
+    // publish or persist allocations before the explicit existing save action.
+    const firstFixture = generated.fixtures[0]!;
+    const firstLabel = `第${firstFixture.roundNo}轮第${firstFixture.positionNo}场`;
+    await page.getByLabel(`${firstLabel} 场地`, { exact: true }).selectOption(court.id);
+    await page.getByLabel(`${firstLabel} 开始时间`, { exact: true }).fill('2026-12-01T09:00');
+    await page.getByRole('button', { name: '生成排时建议', exact: true }).click();
+    const suggestions = page.getByRole('region', { name: '排时建议预览', exact: true });
+    await expect(suggestions).toBeVisible();
+    await expect(
+      suggestions.getByRole('heading', { name: '建议2场 · 保留1场 · 未排0场' }),
+    ).toBeVisible();
+    expect(await read<ScheduleRevisionData>(page.request, revisionPath)).toEqual(generated);
+    await suggestions.getByRole('button', { name: '采用2场建议到本地', exact: true }).click();
+    await expect(page.getByLabel(`${firstLabel} 开始时间`, { exact: true })).toHaveValue(
+      '2026-12-01T09:00',
+    );
+    for (const fixture of generated.fixtures) {
+      const label = `第${fixture.roundNo}轮第${fixture.positionNo}场`;
+      await expect(page.getByLabel(`${label} 场地`, { exact: true })).toHaveValue(court.id);
+      await expect(page.getByLabel(`${label} 开始时间`, { exact: true })).not.toHaveValue('');
+    }
+    expect(await read<ScheduleRevisionData>(page.request, revisionPath)).toEqual(generated);
+    expect(
+      (await read<EventSchedulingData>(page.request, `${eventPath}/scheduling`)).publication,
+    ).toBeNull();
+    await page.getByRole('button', { name: '保存全部安排', exact: true }).click();
+    await expect
+      .poll(async () => (await read<ScheduleRevisionData>(page.request, revisionPath)).version)
+      .toBeGreaterThan(generated.version);
+    await expect(page.getByText(/3场\s*已有保存安排/)).toBeVisible();
+    const suggestedSaved = await read<ScheduleRevisionData>(page.request, revisionPath);
+    expect(suggestedSaved.fixtures.every((fixture) => fixture.courtId && fixture.startsAt)).toBe(
+      true,
+    );
+    expect(suggestedSaved.fixtures[0]!.startsAt).toBe('2026-12-01T01:00:00.000Z');
+    expect(
+      (await read<EventSchedulingData>(page.request, `${eventPath}/scheduling`)).publication,
+    ).toBeNull();
+    progress('suggestions preserved local input; preview/adopt stayed local until explicit save');
+
     // Save a real conflict first; the server must still reject publication.
     for (const fixture of generated.fixtures) {
       const label = `第${fixture.roundNo}轮第${fixture.positionNo}场`;

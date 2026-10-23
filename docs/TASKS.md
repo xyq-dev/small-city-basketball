@@ -22,7 +22,7 @@
 | P07-A | 同源HTTPS自托管包与隔离备份恢复 | DONE | root集成/API/UI/PG/打包 | P06-A | MAIN82a3705，PR8，CI39827535301的432/140/12Mock＋18真实浏览器及完整恢复通过；[任务](tasks/P07-A.md)、[交接](handoffs/P07-A.md) |
 
 | C01 | 商业版范围与实施顺序规划 | REVIEW | root / Codex | 已交付P03/P04/P05/P06/P07 | LOCAL_ONLY；[商业规划](COMMERCIAL_PRODUCT_PLAN.md)、[任务](tasks/C01.md)、[交接](handoffs/C01.md)；未实施新功能 |
-| C02 | 商业能力首轮并行实现与验收 | REVIEW | root / API / UI / 排时 / 账号 / 导出 | C01及已交付模块 | LOCAL_ONLY；[任务](tasks/C02.md)、[交接](handoffs/C02.md)；用户已授权Git操作，四组代码及573源码检查通过，准备真实隔离CI，未上线 |
+| C02 | 商业能力首轮并行实现与验收 | REVIEW | root / API / UI / 排时 / 账号 / 导出 | C01及已交付模块 | BRANCH_ONLY；[PR10](https://github.com/xyq-dev/small-city-basketball/pull/10)、[任务](tasks/C02.md)、[交接](handoffs/C02.md)；573源码通过，真实隔离CI执行中，未上线 |
 
 ## 当前顺序
 

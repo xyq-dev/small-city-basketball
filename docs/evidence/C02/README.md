@@ -2,6 +2,8 @@
 
 2026-10-23（Asia/Shanghai）；root集成分支`feat/C02-commercial-core`，源HEAD`153421668ea74378df859a4b7c21df7da11ad77e`，未提交。以下是本批候选代码证据，不是线上验收。
 
+后续Git/CI阶段：用户已授权，[PR10](https://github.com/xyq-dev/small-city-basketball/pull/10)首轮源af53aa0、CI39918105548；admin573源码/12Mock浏览器全部通过；api169项真实PG中164通过、5因账号测试造数429失败（包括统计7/升级5均通过）。失败未忽略，已只修账号测试造数隔离并保留原限流回归；新SHA将重跑全部必要检查。以下矩阵为此前本地阶段记录，最终CI状态继续以C02交接更新为准。
+
 | 证据 | 执行者/方式 | 实际结果 |
 | --- | --- | --- |
 | 完整源码测试 | root，本机`npm test` | 573通过：admin294/32文件、API279/21文件；含DOM/Mock，不等于真实浏览器或PG |

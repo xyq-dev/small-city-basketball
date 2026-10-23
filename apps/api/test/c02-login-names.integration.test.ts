@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createApi } from '../src/app.js';
 import { maintainAccount } from '../src/account-maintenance.js';
 import { migrate } from '../src/database/migrate.js';
+import { hashPassword } from '../src/security.js';
 import {
   ORIGIN,
   PASSWORD,
@@ -13,7 +14,6 @@ import {
   error,
   eventually,
   login,
-  register,
   sessionCookie,
   testDatabaseUrl,
 } from './support.js';
@@ -50,9 +50,46 @@ describe(
       }
     });
 
+    async function fixtureUser(label: string): Promise<User> {
+      // This suite tests login and maintenance, not registration. Seed only
+      // synthetic identities so unrelated files cannot exhaust the shared
+      // loopback registration budget; authentication still uses real HTTP.
+      const user = {
+        id: randomUUID(),
+        orgId: randomUUID(),
+        email: `${label}-${RUN_ID}@example.test`,
+        cookie: '',
+      };
+      const passwordHash = await hashPassword(PASSWORD);
+      const client = await api.pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          'INSERT INTO users(id,email,display_name,password_hash) VALUES($1,$2,$3,$4)',
+          [user.id, user.email, `账号维护 ${label}`, passwordHash],
+        );
+        await client.query('INSERT INTO organizations(id,name) VALUES($1,$2)', [
+          user.orgId,
+          `账号维护机构 ${label}`,
+        ]);
+        await client.query(
+          "INSERT INTO organization_memberships(org_id,user_id,role) VALUES($1,$2,'ORG_OWNER')",
+          [user.orgId, user.id],
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+      user.cookie = await login(api, user);
+      return user;
+    }
+
     test('maintains only the selected account, revokes every old session, and accepts username and unchanged email', async () => {
-      const user = await register(api, `${prefix}-owner`);
-      const other = await register(api, `${prefix}-unaffected`);
+      const user = await fixtureUser(`${prefix}-owner`);
+      const other = await fixtureUser(`${prefix}-unaffected`);
       const oldCookie = await login(api, user);
       const before = (await api.pool.query('SELECT count(*)::int AS count FROM organizations'))
         .rows[0]!.count;
@@ -120,7 +157,7 @@ describe(
     });
 
     test('cannot reuse the current password or partially assign an alias on that rejected request', async () => {
-      const user = await register(api, `${prefix}-same-password`);
+      const user = await fixtureUser(`${prefix}-same-password`);
       await expect(
         maintainAccount(api.pool, { ...maintenance(user, `${prefix}_same`), password: PASSWORD }),
       ).rejects.toMatchObject({ status: 422, code: 'PASSWORD_REUSE_NOT_ALLOWED' });
@@ -132,7 +169,7 @@ describe(
     });
 
     test('unknown names and disabled users share the same non-disclosing credential failure', async () => {
-      const user = await register(api, `${prefix}-disabled`);
+      const user = await fixtureUser(`${prefix}-disabled`);
       await maintainAccount(api.pool, maintenance(user, `${prefix}_disabled`));
       await api.pool.query("UPDATE users SET status='DISABLED' WHERE id=$1", [user.id]);
       const responses = [];
@@ -151,7 +188,7 @@ describe(
     });
 
     test('alternating email and alias cannot bypass the account/IP password-attempt budget', async () => {
-      const user = await register(api, `${prefix}-limit`);
+      const user = await fixtureUser(`${prefix}-limit`);
       const alias = `${prefix}_limit`;
       await maintainAccount(api.pool, maintenance(user, alias));
       for (let attempt = 0; attempt < 10; attempt++) {
@@ -174,8 +211,8 @@ describe(
     }, 30000);
 
     test('a concurrent duplicate alias has one winner and cannot partially reset the losing account', async () => {
-      const first = await register(api, `${prefix}-race-a`);
-      const second = await register(api, `${prefix}-race-b`);
+      const first = await fixtureUser(`${prefix}-race-a`);
+      const second = await fixtureUser(`${prefix}-race-b`);
       const sharedAlias = `${prefix}_shared`;
       const results = await Promise.allSettled([
         maintainAccount(api.pool, maintenance(first, sharedAlias)),
@@ -197,7 +234,7 @@ describe(
     });
 
     test('an audit failure rolls back the password, alias, sessions and system actor together', async () => {
-      const user = await register(api, `${prefix}-rollback`);
+      const user = await fixtureUser(`${prefix}-rollback`);
       const before = (
         await api.pool.query('SELECT password_hash FROM users WHERE id=$1', [user.id])
       ).rows[0]!.password_hash;
@@ -232,7 +269,7 @@ describe(
     });
 
     test('maintenance, an old-password login and its new-session request cannot form a lock cycle', async () => {
-      const user = await register(api, `${prefix}-inflight`);
+      const user = await fixtureUser(`${prefix}-inflight`);
       const blocker = await api.pool.connect();
       const gate = await api.pool.connect();
       const trigger = `scb_test_c02_gate_${randomUUID().replaceAll('-', '')}`;
@@ -339,7 +376,7 @@ describe(
     }, 30000);
 
     test('migration constraints reject invalid or case-conflicting stored names and repeated migrate is a no-op', async () => {
-      const user = await register(api, `${prefix}-constraints`);
+      const user = await fixtureUser(`${prefix}-constraints`);
       for (const loginName of ['AB', '1admin', 'bad-name', 'x'.repeat(33)])
         await expect(
           api.pool.query('UPDATE users SET login_name=$1 WHERE id=$2', [loginName, user.id]),
