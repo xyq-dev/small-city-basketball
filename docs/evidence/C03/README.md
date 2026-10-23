@@ -38,4 +38,8 @@ CI39939228390 sourceb00b8d5，admin/production成功；API186真实PG、C03重�
 
 660源码（347/313）、202真实PG（186/16）、12Mock＋桌面8/手机模拟8真实API＋4可信HTTPS浏览器；新增17项PG、两种采集模式的全UI链、已撤旧键永不复活、独立OBS授权、010/checksum/40表重启、原运行计时保留、新ARCHIVED/HISTORY/私有球员汇总hash、全量恢复/quarantine/正常与负向owned清理全部通过。手机PLAYER_BASIC真实验收16.6秒通过，桌面/手机各8项均2.7分钟通过，非跳过断言。
 
-自动CodeReview最新71451d6 completed，无finding/未解决线程，security未运行；独立静态及必要delta复核CLEAR。合并后[CI39942415842](https://github.com/xyq-dev/small-city-basketball/actions/runs/39942415842)正在运行，未计通过。以上CI实测与本机源码测试分列；未做本机独立PG/浏览器、原生OBS或生产操作。
+自动CodeReview最新71451d6 completed，无finding/未解决线程，security未运行；独立静态及必要delta复核CLEAR。合并后[CI39942415842](https://github.com/xyq-dev/small-city-basketball/actions/runs/39942415842)三个job亦全部SUCCESS，完整日志已核对，无重试。以上CI实测与本机源码测试分列；未做本机独立PG/浏览器、原生OBS或生产操作。
+
+## 合并后完整通过
+
+main01f8ea4的CI39942415842 attempt1三个job全部SUCCESS，无重试；admin120376813853/API120376813481/production120376813926完整日志已读，同范围660源码/202真实PG/12Mock＋20真实浏览器、10Migration/40表重启及完整恢复/隔离/清理全部通过。后续只有文档更新，不把文档HEAD称为另一次应用构建。业务代码相对最终已验tree完全不变；环境边界与未验证项保持。

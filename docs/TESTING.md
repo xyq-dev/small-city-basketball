@@ -264,4 +264,4 @@ P01代码819818d经PR #1合并为f15adb4，[原CI run 39728632742](https://githu
 
 最终source71451d6/tree d9ba1e527e2fc59988c518fdb9355c8bd2f49a70与PR11合并01f8ea4完全一致。[CI39941294620](https://github.com/xyq-dev/small-city-basketball/actions/runs/39941294620)三个job全部成功，完整日志已核对：660源码（347/313）、202真实PG（186/16，新17项）、12Mock＋桌面8/手机模拟8真实API＋4可信HTTPS；生命周期/历史授权/私有榜单与两模式原业务链、10Migration/checksum、40表重启、全量备份恢复/旧授权隔离及正常/负向owned清理均通过。独立静态和最新自动CodeReview无待修，security未运行。
 
-首CI旧无赛程错误优先级回归已修服务守卫顺序；第二轮15分钟CI取消前手机错误命中隐藏桌面表头已修为可见卡片值，API job总时限25分钟而单项断言/时限未降。最终通过属于完整新run，未拼接部分结果。详情见[evidence/C03](evidence/C03/README.md)及[handoff](handoffs/C03.md)。合并后CI39942415842运行中。以上是隔离CI实测，与本机源码检查分列；未本机独立PG/浏览器、旧007既有FINAL升级、原生OBS或生产验收。
+首CI旧无赛程错误优先级回归已修服务守卫顺序；第二轮15分钟CI取消前手机错误命中隐藏桌面表头已修为可见卡片值，API job总时限25分钟而单项断言/时限未降。最终通过属于完整新run，未拼接部分结果。详情见[evidence/C03](evidence/C03/README.md)及[handoff](handoffs/C03.md)。合并后CI39942415842三个job全部SUCCESS（完整日志已核对、无重试）。以上是隔离CI实测，与本机源码检查分列；未本机独立PG/浏览器、旧007既有FINAL升级、原生OBS或生产验收。

@@ -6,7 +6,7 @@
 
 仓库`xyq-dev/small-city-basketball`，最新业务合并为[PR11](https://github.com/xyq-dev/small-city-basketball/pull/11)的`01f8ea426950b865303fd680480e507969adce20`。后续纯文档HEAD从实际Git读取。
 
-C03已由[PR11](https://github.com/xyq-dev/small-city-basketball/pull/11)合并main `01f8ea426950b865303fd680480e507969adce20`，最终source`71451d65ae73604690057a0232e486f42796c1ac`与合并tree同为`d9ba1e527e2fc59988c518fdb9355c8bd2f49a70`。整届完赛/归档/重新开放、显式独立历史观赛、私有本届球员基础数据榜已整合；复用原比分/计时/确认/排名，闭赛业务写守卫与安全撤权例外均验收。最终[CI39941294620](https://github.com/xyq-dev/small-city-basketball/actions/runs/39941294620)三个job全部SUCCESS且完整日志已核对：660源码（admin347/API313）、202真实PG（186+16，新增17项）、12Mock＋桌面8/手机模拟8真实API＋4可信HTTPS浏览器；010/checksum、40表实际重启、完整备份恢复/旧授权隔离、正常及负向owned清理全部通过。最新source自动CodeReview completed无finding/未解决线程，独立静态及必要delta复核CLEAR，security未运行。首轮兼容错误顺序与次轮隐藏桌面表头/CI超时修复均保留[证据](evidence/C03/README.md)和[交接](handoffs/C03.md)，最终成功不拼接局部结果。合并后CI39942415842正在运行，尚未计通过。没有生产部署/正式DB或账号维护。
+C03已由[PR11](https://github.com/xyq-dev/small-city-basketball/pull/11)合并main `01f8ea426950b865303fd680480e507969adce20`，最终source`71451d65ae73604690057a0232e486f42796c1ac`与合并tree同为`d9ba1e527e2fc59988c518fdb9355c8bd2f49a70`。整届完赛/归档/重新开放、显式独立历史观赛、私有本届球员基础数据榜已整合；复用原比分/计时/确认/排名，闭赛业务写守卫与安全撤权例外均验收。最终[CI39941294620](https://github.com/xyq-dev/small-city-basketball/actions/runs/39941294620)三个job全部SUCCESS且完整日志已核对：660源码（admin347/API313）、202真实PG（186+16，新增17项）、12Mock＋桌面8/手机模拟8真实API＋4可信HTTPS浏览器；010/checksum、40表实际重启、完整备份恢复/旧授权隔离、正常及负向owned清理全部通过。最新source自动CodeReview completed无finding/未解决线程，独立静态及必要delta复核CLEAR，security未运行。首轮兼容错误顺序与次轮隐藏桌面表头/CI超时修复均保留[证据](evidence/C03/README.md)和[交接](handoffs/C03.md)，最终成功不拼接局部结果。合并后CI39942415842三个job亦全部SUCCESS，完整日志已核对，无重试。没有生产部署/正式DB或账号维护。
 
 C02首批四组能力为 **DONE / MAIN**：私有逐人得分/犯规及更正确认、自动排时建议、用户名兼容登录/安全离线维护、公开SVG/CSV/打印。最终source`ec74c47`与合并tree同为`34b755e77dbcf20156b673505ee38e3b5697172f`；[CI39919192641](https://github.com/xyq-dev/small-city-basketball/actions/runs/39919192641)三job全部SUCCESS：573源码、185真实PG、12Mock＋16真实API＋4可信HTTPS桌面/手机模拟浏览器，008/009隔离执行、两种采集模式40表实际重启、完整备份恢复/隔离及owned清理通过。最终自动CodeReview无新finding/未解决线程，必要独立静态复核通过；security未运行。注册夹具429及恢复计数P1均已修复并完整重跑，详见[C02交接](handoffs/C02.md)与[证据](evidence/C02/README.md)。[合并后CI39920273639](https://github.com/xyq-dev/small-city-basketball/actions/runs/39920273639)三个job也全部SUCCESS，同范围573源码/185真实PG/12Mock＋20真实浏览器、两模式重启/完整恢复及清理均通过，无重试；没有生产部署/正式DB或账号变更。
 
@@ -24,7 +24,7 @@ PR2四项已按最新代码核验并完成：scrypt单槽/有限队列、过期�
 
 ## 下一步与边界
 
-C03代码已整合main，候选全验收通过，合并后检查进行中；不重复实现C02/C03。下一项优先其他赛制：先冻结单淘汰晋级、平局处理、最终名次与受控发布/更正规则，再复用原授权/正式比赛/计分/确认与闭赛边界实施，不先造空模块。分组淘汰、长期球员/赛季/高级统计、资料附件、观众中心/微信、套餐/订单/支付退款对账及真实媒体仍未完成，详见[商业规划](COMMERCIAL_PRODUCT_PLAN.md)。
+C03为DONE / MAIN，候选全验收通过，合并后CI39942415842同范围全部通过（无重试）；不重复实现C02/C03。下一项优先其他赛制：先冻结单淘汰晋级、平局处理、最终名次与受控发布/更正规则，再复用原授权/正式比赛/计分/确认与闭赛边界实施，不先造空模块。分组淘汰、长期球员/赛季/高级统计、资料附件、观众中心/微信、套餐/订单/支付退款对账及真实媒体仍未完成，详见[商业规划](COMMERCIAL_PRODUCT_PLAN.md)。
 
 用户已明确授权本批开发、测试、commit/普通同步/PR、隔离CI与审查后合并；PR10/PR11已按范围执行。保留C02/C03及旧工作树和本地作者历史，没有reset、清理他人修改或force push。当前本地main，文档同步后的HEAD以实际Git为准。
 
