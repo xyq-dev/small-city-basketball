@@ -26,6 +26,8 @@
 
 | C03 | 整届生命周期/历史观赛/私有球员基础榜 | DONE | root/API/UI/独立审查 | C02 | MAIN 01f8ea4 PR11；[任务](tasks/C03.md)、[交接](handoffs/C03.md)；CI39941294620三job成功：660源码/202PG/12Mock＋20真实浏览器与完整恢复；合并后CI39942415842三job通过（无重试） |
 
+| C04 | 单淘汰赛签位/逐轮晋级/最终名次 | REVIEW | root/API/UI/PG/浏览器/独立审查 | C03 | LOCAL_ONLY feat/C04-single-elimination，基线4617020；[任务](tasks/C04.md)、[交接](handoffs/C04.md)，尚未验收或生产部署 |
+
 ## 当前顺序
 
 C02/PR10与C03/PR11已整合main，C03最终候选完整验收通过，合并后CI39942415842三个job全部SUCCESS（无重试）；见[当前状态](CURRENT_STATUS.md)。本轮无生产操作或正式账号变更，完整商业版尚未完成。后续优先其他赛制，按独立卡冻结晋级/同分/名次/权限/发布规则、实施和真实隔离验收，不重复开发C02/C03。

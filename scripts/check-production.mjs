@@ -296,6 +296,20 @@ async function checkQuarantine(saved) {
       ).status,
       404,
     );
+  for (const suffix of ['', '/schedule', '/knockout'])
+    assert.equal(
+      (await tlsRequest(`/v1/public/events/${saved.knockout.publicId}${suffix}`)).status,
+      404,
+    );
+  for (const match of saved.knockout.schedule)
+    assert.equal(
+      (
+        await tlsRequest(
+          `/v1/public/events/${saved.knockout.publicId}/matches/${match.publicMatchId}`,
+        )
+      ).status,
+      404,
+    );
   for (const overlay of [...saved.overlays.active, saved.lifecycle.overlay]) {
     const route = `/v1/overlays/${overlay.overlayId}`;
     assert.equal(
@@ -494,7 +508,7 @@ try {
         `${prefix}/api:local`,
         '--input-type=module',
         '-e',
-        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,10);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
+        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,11);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
       ]);
       await run('docker', [
         'run',
@@ -804,7 +818,7 @@ try {
     await waitReady();
     await validator(target, targetEnv, 'verify', true);
     console.log(
-      '[production] Full restore matched all 40 exact tables, business snapshots and backup-point fencing.',
+      '[production] Full restore matched all 41 exact tables, business snapshots and backup-point fencing.',
     );
   });
   await stage(

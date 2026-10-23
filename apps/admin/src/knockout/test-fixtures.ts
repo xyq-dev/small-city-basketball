@@ -1,0 +1,135 @@
+import type { EventKnockoutData, PublicKnockoutData } from '@small-city-basketball/contracts';
+import { overview, publicEvent } from '../viewing/test-fixtures';
+const sourceHash = 'a'.repeat(64);
+export const knockout: EventKnockoutData = {
+  event: { ...overview.event, format: 'SINGLE_ELIMINATION' },
+  publicationId: 'publication-a',
+  participants: ['甲', '乙', '丙'].map((name, i) => ({
+    entryId: `entry-${i}`,
+    teamId: `team-${i}`,
+    rosterRevisionId: `roster-${i}`,
+    teamName: `合成${name}队`,
+  })),
+  bracket: {
+    algorithmVersion: 'SE_SEEDED_V1',
+    sourceHash,
+    asOf: publicEvent.serverTime,
+    participantCount: 3,
+    totalMatchCount: 2,
+    publishedMatchCount: 1,
+    confirmedMatchCount: 1,
+    isComplete: false,
+    rounds: [
+      {
+        roundNo: 1,
+        label: '半决赛',
+        published: true,
+        slots: [
+          {
+            fixtureKey: 'R1-P1',
+            roundNo: 1,
+            positionNo: 1,
+            homeEntryId: 'entry-0',
+            awayEntryId: null,
+            homeSource: null,
+            awaySource: null,
+            byeEntryId: 'entry-0',
+            matchId: null,
+            status: 'BYE',
+            winnerEntryId: 'entry-0',
+          },
+          {
+            fixtureKey: 'R1-P2',
+            roundNo: 1,
+            positionNo: 2,
+            homeEntryId: 'entry-1',
+            awayEntryId: 'entry-2',
+            homeSource: null,
+            awaySource: null,
+            byeEntryId: null,
+            matchId: 'match-a',
+            status: 'FINAL',
+            winnerEntryId: 'entry-1',
+          },
+        ],
+      },
+      {
+        roundNo: 2,
+        label: '决赛',
+        published: false,
+        slots: [
+          {
+            fixtureKey: 'R2-P1',
+            roundNo: 2,
+            positionNo: 1,
+            homeEntryId: 'entry-0',
+            awayEntryId: 'entry-1',
+            homeSource: 'R1-P1',
+            awaySource: 'R1-P2',
+            byeEntryId: null,
+            matchId: null,
+            status: 'WAITING',
+            winnerEntryId: null,
+          },
+        ],
+      },
+    ],
+    placements: [],
+    nextRound: {
+      roundNo: 2,
+      sourceHash,
+      sources: [
+        {
+          fixtureKey: 'R1-P2',
+          matchId: 'match-a',
+          confirmationId: 'confirm-a',
+          matchVersion: 8,
+          winnerEntryId: 'entry-1',
+        },
+      ],
+      fixtures: [
+        {
+          fixtureKey: 'R2-P1',
+          roundNo: 2,
+          positionNo: 1,
+          homeEntryId: 'entry-0',
+          awayEntryId: 'entry-1',
+          courtId: null,
+          startsAt: null,
+          endsAt: null,
+        },
+      ],
+    },
+  },
+  capabilities: { canPublishNextRound: true },
+};
+const teams = ['甲', '乙', '丙'].map((name, i) => ({
+  teamKey: String(i).repeat(22),
+  teamName: `合成${name}队`,
+}));
+export const publicKnockoutFixture: PublicKnockoutData = {
+  publicEventId: publicEvent.publicEventId,
+  algorithmVersion: 'SE_SEEDED_V1',
+  sourceHash,
+  asOf: publicEvent.serverTime,
+  participantCount: 3,
+  totalMatchCount: 2,
+  publishedMatchCount: 1,
+  confirmedMatchCount: 1,
+  isComplete: false,
+  rounds: knockout.bracket!.rounds.map((round) => ({
+    roundNo: round.roundNo,
+    label: round.label,
+    published: round.published,
+    slots: round.slots.map((slot) => ({
+      positionNo: slot.positionNo,
+      home: slot.homeEntryId ? teams[Number(slot.homeEntryId.slice(-1))]! : null,
+      away: slot.awayEntryId ? teams[Number(slot.awayEntryId.slice(-1))]! : null,
+      bye: slot.byeEntryId ? teams[Number(slot.byeEntryId.slice(-1))]! : null,
+      publicMatchId: slot.matchId ? 'm'.repeat(43) : null,
+      status: slot.status,
+      winner: slot.winnerEntryId ? teams[Number(slot.winnerEntryId.slice(-1))]! : null,
+    })),
+  })),
+  placements: [],
+};

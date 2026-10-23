@@ -21,6 +21,7 @@ import { clockLabel, clockRemaining } from '../scoring/clock';
 import { RuleSummary, StandingsTable } from './StandingsTable';
 import { usePublicResource } from './usePublicResource';
 import { MatchExportTools, ScheduleExportTools } from './PublicExports';
+import { PublicBracket } from '../knockout/Bracket';
 import './viewing.css';
 const PublicApiContext = createContext<PublicViewingApi | null>(null);
 const usePublicApi = () => useContext(PublicApiContext)!;
@@ -191,14 +192,25 @@ function PublicEventContent({ publicEventId }: { publicEventId: string }) {
   const api = usePublicApi();
   const read = useCallback(
     async (signal: AbortSignal) => {
-      const [event, schedule, standings] = await Promise.all([
-        api.event(publicEventId, signal),
-        api.schedule(publicEventId, undefined, signal),
-        api.standings(publicEventId, signal),
-      ]);
-      if (event.publicEventId !== publicEventId || standings.publicEventId !== publicEventId)
+      const event = await api.event(publicEventId, signal);
+      if (signal.aborted) throw new DOMException('读取已取消', 'AbortError');
+      if (event.publicEventId !== publicEventId)
         throw new ApiError(404, 'PUBLIC_NOT_FOUND', '观赛链接不可用');
-      return { event, schedule, standings };
+      const [schedule, standings, bracket] = await Promise.all([
+        api.schedule(publicEventId, undefined, signal),
+        event.format === 'SINGLE_ELIMINATION'
+          ? Promise.resolve(null)
+          : api.standings(publicEventId, signal),
+        event.format === 'SINGLE_ELIMINATION'
+          ? api.knockout(publicEventId, signal)
+          : Promise.resolve(null),
+      ]);
+      if (
+        (standings && standings.publicEventId !== publicEventId) ||
+        (bracket && bracket.publicEventId !== publicEventId)
+      )
+        throw new ApiError(404, 'PUBLIC_NOT_FOUND', '观赛链接不可用');
+      return { event, schedule, standings, bracket };
     },
     [api, publicEventId],
   );
@@ -239,9 +251,14 @@ function PublicEventContent({ publicEventId }: { publicEventId: string }) {
                 </span>
                 <span>
                   <strong>
-                    {data.standings.confirmedMatchCount} / {data.standings.totalMatchCount}
+                    {data.event.confirmedMatchCount} / {data.event.totalMatchCount}
                   </strong>{' '}
-                  场已确认 · {data.standings.isComplete ? '全部场次已确认' : '排名暂列'}
+                  场已确认 ·{' '}
+                  {data.event.isComplete
+                    ? '全部场次已确认'
+                    : data.bracket
+                      ? '晋级进行中'
+                      : '排名暂列'}
                 </span>
               </div>
             </section>
@@ -269,7 +286,7 @@ function PublicEventContent({ publicEventId }: { publicEventId: string }) {
                 aria-controls="watch-standings-panel"
                 onClick={() => setTab('standings')}
               >
-                赛事排名
+                {data.bracket ? '晋级与名次' : '赛事排名'}
               </button>
             </div>
             {tab === 'schedule' ? (
@@ -314,11 +331,19 @@ function PublicEventContent({ publicEventId }: { publicEventId: string }) {
               </section>
             ) : (
               <div id="watch-standings-panel" role="tabpanel" aria-labelledby="watch-standings-tab">
-                <StandingsTable data={data.standings} />
-                <section className="panel view-panel">
-                  <h2>已发布排名规则</h2>
-                  <RuleSummary rules={data.standings.rules} />
-                </section>
+                {data.bracket ? (
+                  <PublicBracket data={data.bracket} />
+                ) : (
+                  data.standings && (
+                    <>
+                      <StandingsTable data={data.standings} />
+                      <section className="panel view-panel">
+                        <h2>已发布排名规则</h2>
+                        <RuleSummary rules={data.standings.rules} />
+                      </section>
+                    </>
+                  )
+                )}
               </div>
             )}
             <div className="view-note">

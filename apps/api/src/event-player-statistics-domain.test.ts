@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'vitest';
+import type { RegistrationFreezeData, SchedulePolicy } from '@small-city-basketball/contracts';
+import { generateKnockoutPairings } from './knockout-domain.js';
 import { confirmedPlayerStatistics } from './confirmed-player-statistics.js';
 import { calculateEventPlayerStatistics } from './event-player-statistics-domain.js';
 import type { ResultRow } from './standings-domain.js';
@@ -395,5 +397,99 @@ describe('C03 private confirmed-only event statistics', () => {
     invalid(() => calculate([], 2));
     invalid(() => calculate([final(), final(), final(3, 2, 3)], 3));
     invalid(() => calculate([final(1, 1, 2), final(2, 1, 2), final(3, 2, 3)], 3));
+  });
+});
+
+const koPolicy: SchedulePolicy = {
+  slotDurationMinutes: 30,
+  minRestMinutes: 0,
+  minLocalDayGap: 0,
+  courtWindows: [
+    { courtId: id(4500), startsAt: '2026-10-23T00:00:00.000Z', endsAt: '2026-10-23T23:59:00.000Z' },
+  ],
+};
+function knockoutInput(count: number) {
+  const source: RegistrationFreezeData = {
+    id: id(4000),
+    eventId: id(4001),
+    rulesetId: id(4002),
+    rulesetVersion: 1,
+    eventVersion: 3,
+    entries: Array.from({ length: count }, (_, index) => ({
+      ...participant(index + 1),
+      players: roster(index + 1),
+    })),
+    excludedCounts: { DRAFT: 0, REJECTED: 0, WITHDRAWN: 0 },
+    createdAt: '2026-10-23T00:00:00.000Z',
+  };
+  const seed = '1'.repeat(64);
+  const draw = generateKnockoutPairings(source, koPolicy, seed);
+  const matches: ResultRow[] = draw.fixtures.map((fixture, index) => {
+    const h = source.entries.findIndex((p) => p.entryId === fixture.homeEntryId) + 1;
+    const a = source.entries.findIndex((p) => p.entryId === fixture.awayEntryId) + 1;
+    const match = final(index + 1, h, a);
+    return {
+      ...match,
+      event_id: source.eventId,
+      publication_id: id(700),
+      revision_id: id(4003),
+      fixture_key: fixture.fixtureKey,
+      round_no: fixture.roundNo,
+      position_no: fixture.positionNo,
+      court_id: id(4500),
+      court_name: '合成场地',
+      starts_at: '2026-10-23T01:00:00.000Z',
+      ends_at: '2026-10-23T01:30:00.000Z',
+      scoring_rules: { ...match.scoring_rules, tie_policy: 'OVERTIME' },
+    };
+  });
+  return {
+    publicationId: id(700),
+    source,
+    seed,
+    policy: koPolicy,
+    matches,
+    asOf: '2026-10-23T12:00:00.000Z',
+    format: 'SINGLE_ELIMINATION' as const,
+  };
+}
+describe('C04 private player coverage over original knockout results', () => {
+  test('first-round completion does not claim complete event coverage, and byes add no samples', () => {
+    const result = calculateEventPlayerStatistics(knockoutInput(3));
+    expect(result).toMatchObject({
+      totalMatchCount: 2,
+      includedMatchCount: 1,
+      pendingMatchCount: 1,
+      coverageComplete: false,
+    });
+    expect(result.rows).toHaveLength(4);
+    expect(result.rows.every((row) => row.rosterSampleMatchCount === 1)).toBe(true);
+  });
+  test('a two-team confirmed final completes coverage without inventing appearances or advanced metrics', () => {
+    const result = calculateEventPlayerStatistics(knockoutInput(2));
+    expect(result).toMatchObject({
+      totalMatchCount: 1,
+      includedMatchCount: 1,
+      pendingMatchCount: 0,
+      coverageComplete: true,
+      attributionComplete: false,
+    });
+    expect(result.rows[0]).not.toHaveProperty('appearances');
+    expect(result.rows[0]).not.toHaveProperty('rebounds');
+  });
+  test('unconfirmed score and clock changes never change the confirmed-only summary hash', () => {
+    const input = knockoutInput(3);
+    input.matches[0]!.status = 'LIVE';
+    const before = calculateEventPlayerStatistics(input);
+    input.matches[0]!.state.home_score = 100;
+    input.matches[0]!.state.clock_running = true;
+    input.matches[0]!.state.remaining_ms = 100;
+    expect(calculateEventPlayerStatistics(input).sourceHash).toBe(before.sourceHash);
+    expect(before).toMatchObject({
+      totalMatchCount: 2,
+      includedMatchCount: 0,
+      pendingMatchCount: 2,
+      coverageComplete: false,
+    });
   });
 });

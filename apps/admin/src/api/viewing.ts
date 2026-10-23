@@ -8,8 +8,10 @@ import type {
   PublicScheduleMatchData,
   PublicStandingsData,
   PublicMatchSnapshotData,
+  PublicKnockoutData,
 } from '@small-city-basketball/contracts';
 import { ApiError } from './client';
+import { publicKnockout } from './knockout';
 import type { ApiClient } from './client';
 type Obj = Record<string, unknown>;
 const obj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -129,7 +131,10 @@ function privateOverview(v: unknown) {
 }
 function publicEvent(v: unknown) {
   return (
+    obj(v) &&
+    (v.format === undefined || v.format === 'ROUND_ROBIN' || v.format === 'SINGLE_ELIMINATION') &&
     exact(v, [
+      ...(v.format === undefined ? [] : ['format']),
       'publicEventId',
       'name',
       'startDate',
@@ -154,7 +159,7 @@ function publicEvent(v: unknown) {
       'serverTime',
     ]) &&
     (v.venueName === null || typeof v.venueName === 'string') &&
-    publicRules(v.rules) &&
+    (v.format === 'SINGLE_ELIMINATION' ? v.rules === null : publicRules(v.rules)) &&
     numbers(v, ['confirmedMatchCount', 'totalMatchCount']) &&
     typeof v.isComplete === 'boolean' &&
     time(v.serverTime)
@@ -377,6 +382,8 @@ export function createPublicViewingApi({ fetcher }: { fetcher?: typeof fetch } =
   return {
     event: (publicEventId: string, signal?: AbortSignal) =>
       get<PublicEventData>(base(publicEventId), publicEvent, signal),
+    knockout: (publicEventId: string, signal?: AbortSignal) =>
+      get<PublicKnockoutData>(`${base(publicEventId)}/knockout`, publicKnockout, signal),
     standings: (publicEventId: string, signal?: AbortSignal) =>
       get<PublicStandingsData>(
         `${base(publicEventId)}/standings`,

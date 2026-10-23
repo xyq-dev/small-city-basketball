@@ -33,6 +33,12 @@ export interface OwnerInput {
 }
 export interface ProductionFixture {
   event: { id: string; name: string };
+  knockout: {
+    knockout: { event: { id: string } };
+    publicId: string;
+    oldPublicId: string;
+    overview: { name: string };
+  };
   viewing: {
     publicId: string;
     revokedId: string;
@@ -80,7 +86,11 @@ export async function productionFixture(): Promise<ProductionFixture> {
       value.viewing.overview?.name &&
       value.viewing.matches?.length &&
       value.overlays?.active?.some((item) => item.snapshot?.score !== null) &&
-      value.overlays.revoked?.overlayId,
+      value.overlays.revoked?.overlayId &&
+      value.knockout?.knockout?.event?.id &&
+      value.knockout.publicId &&
+      value.knockout.overview?.name &&
+      value.knockout.oldPublicId,
     'business-fixture-shape',
   );
   return value;

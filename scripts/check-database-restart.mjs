@@ -5,7 +5,7 @@ import { createApi } from '../apps/api/dist/app.js';
 import pg from 'pg';
 
 // The production package runs this same synthetic business chain against its real TLS API.
-// SQL remains read-only here; use the separately scoped backup role for the 40-table digest.
+// SQL remains read-only here; use the separately scoped backup role for the 41-table digest.
 async function privateValue(name) {
   const inline = process.env[name];
   const file = process.env[name + '_FILE'];
@@ -98,6 +98,7 @@ async function fingerprint() {
     ['schedule_publications', 'id'],
     ['published_matches', 'id'],
     ['match_reschedules', 'id'],
+    ['knockout_round_publications', 'id'],
     ['court_reservations', 'org_id,match_id'],
     ['team_reservations', 'org_id,team_id,match_id'],
     ['scoring_rulesets', 'id'],
@@ -123,7 +124,13 @@ async function fingerprint() {
   }
   return hash.digest('hex');
 }
-async function captureRegistration(orgId, ownerCookie, suffix, existingLeader) {
+async function captureRegistration(
+  orgId,
+  ownerCookie,
+  suffix,
+  existingLeader,
+  format = 'ROUND_ROBIN',
+) {
   const root = `/v1/orgs/${orgId}`;
   const leader = existingLeader
     ? { data: existingLeader.leaderSession }
@@ -147,7 +154,7 @@ async function captureRegistration(orgId, ownerCookie, suffix, existingLeader) {
       startDate: '2026-12-01',
       endDate: '2026-12-02',
       timezone: 'Asia/Shanghai',
-      format: 'ROUND_ROBIN',
+      format,
     },
   });
   const path = `${root}/events/${event.data.id}`;
@@ -289,7 +296,10 @@ async function captureScheduling(orgId, cookie, registration) {
       body: {
         expectedEventVersion: registration.workspace.event.version,
         freezeId: registration.workspace.freeze.id,
-        algorithmVersion: 'RR_CIRCLE_V1',
+        algorithmVersion:
+          registration.workspace.event.format === 'SINGLE_ELIMINATION'
+            ? 'SE_SEEDED_V1'
+            : 'RR_CIRCLE_V1',
         policy: {
           slotDurationMinutes: 60,
           minRestMinutes: 30,
@@ -305,7 +315,8 @@ async function captureScheduling(orgId, cookie, registration) {
       },
     })
   ).data;
-  assert.equal(revision.fixtures.length, 3);
+  const firstMatchCount = registration.workspace.event.format === 'SINGLE_ELIMINATION' ? 1 : 3;
+  assert.equal(revision.fixtures.length, firstMatchCount);
   assert.deepEqual(revision.source, registration.workspace.freeze);
   const revisionPath = `${root}/schedule-revisions/${revision.id}`;
   revision = (
@@ -340,7 +351,7 @@ async function captureScheduling(orgId, cookie, registration) {
   const matches = (await call(`${path}/matches`, { cookie })).data;
   assert.equal(workspace.event.status, 'SCHEDULED');
   assert.equal(revision.status, 'PUBLISHED');
-  assert.equal(matches.length, 3);
+  assert.equal(matches.length, firstMatchCount);
   assert.equal(matches[0].status, 'SCHEDULED');
   assert.equal(matches[0].courtId, court.id);
   assert.equal(matches[0].startsAt, '2026-12-01T01:00:00.000Z');
@@ -951,6 +962,222 @@ async function verifyLifecycle(saved, cookie, orgId) {
   }
 }
 
+// A third, separately scheduled event exercises real byes and the append-only
+// advancement proof across the same actual PostgreSQL restart/full restore.
+async function captureKnockout(orgId, cookie, suffix, existingRegistration, writer) {
+  const registration = await captureRegistration(
+    orgId,
+    cookie,
+    `${suffix}-knockout`,
+    existingRegistration,
+    'SINGLE_ELIMINATION',
+  );
+  const scheduling = await captureScheduling(orgId, cookie, registration);
+  const root = `/v1/orgs/${orgId}`;
+  const path = `${root}/events/${scheduling.workspace.event.id}`;
+  await call(`${path}/scoring-rules`, {
+    method: 'PUT',
+    cookie,
+    body: {
+      expectedEventVersion: scheduling.workspace.event.version,
+      regulationPeriods: 1,
+      periodDurationSeconds: 60,
+      allowedScoreValues: [1, 2, 3],
+      tiePolicy: 'OVERTIME',
+      overtimeDurationSeconds: 60,
+    },
+  });
+  async function finish(matchId) {
+    const matchPath = `${root}/matches/${matchId}`;
+    let workbench = (await call(`${matchPath}/scoring`, { cookie })).data;
+    await call(`${matchPath}/staff/${writer.writerUserId}`, {
+      method: 'PUT',
+      cookie,
+      body: { expectedMatchVersion: workbench.match.version, role: 'SCORER', status: 'ACTIVE' },
+    });
+    async function command(actor, type, payload = {}, control) {
+      workbench = (await call(`${matchPath}/scoring`, { cookie: actor })).data;
+      return (
+        await call(`${matchPath}/commands`, {
+          method: 'POST',
+          cookie: actor,
+          body: {
+            commandId: randomUUID(),
+            type,
+            expectedVersion: workbench.match.version,
+            capturedAt: new Date().toISOString(),
+            payload: ['PREPARE_MATCH', 'START_MATCH'].includes(type)
+              ? { ...payload, expectedEventVersion: workbench.event.version }
+              : payload,
+            ...(control ? { control } : {}),
+          },
+        })
+      ).data;
+    }
+    const prepared = await command(cookie, 'PREPARE_MATCH', { collectionMode: 'PLAYER_BASIC' });
+    const memberId = prepared.snapshot.playerStatistics.home.players[0].memberId;
+    const lease = (
+      await call(`${matchPath}/scorekeeper-lease`, {
+        method: 'POST',
+        cookie: writer.writerCookie,
+        body: { clientInstanceId: randomUUID() },
+      })
+    ).data;
+    const control = {
+      leaseId: lease.leaseId,
+      fencingToken: lease.fencingToken,
+      clientInstanceId: lease.clientInstanceId,
+    };
+    await command(writer.writerCookie, 'START_MATCH', {}, control);
+    await command(
+      writer.writerCookie,
+      'RECORD_STAT',
+      { kind: 'SCORE', side: 'HOME', value: 2, memberId },
+      control,
+    );
+    await command(
+      writer.writerCookie,
+      'CLOCK_SET',
+      { remainingMs: 0, reason: '淘汰赛恢复验证节末归零' },
+      control,
+    );
+    await command(writer.writerCookie, 'END_MATCH', {}, control);
+    await command(cookie, 'CONFIRM_RESULT');
+    await call(`${matchPath}/scorekeeper-lease`, {
+      method: 'DELETE',
+      cookie: writer.writerCookie,
+      body: { control },
+    });
+  }
+  await finish(scheduling.matches[0].id);
+  let knockout = (await call(`${path}/knockout`, { cookie })).data;
+  assert.equal(knockout.bracket.totalMatchCount, 2);
+  assert.equal(knockout.bracket.publishedMatchCount, 1);
+  assert.equal(knockout.bracket.rounds[0].slots.filter((s) => s.status === 'BYE').length, 1);
+  assert.equal(
+    (await call(`${path}/player-statistics`, { cookie })).data.summary.coverageComplete,
+    false,
+  );
+  const live = (
+    await call(`${path}/public-viewing-commands`, {
+      method: 'POST',
+      cookie,
+      body: { type: 'ENABLE', expectedEventVersion: knockout.event.version },
+    })
+  ).data;
+  const oldPublicId = live.publication.publicEventId;
+  const oldMatchId = (await call(`/v1/public/events/${oldPublicId}/schedule`)).data[0]
+    .publicMatchId;
+  knockout = (await call(`${path}/knockout`, { cookie })).data;
+  const next = knockout.bracket.nextRound;
+  assert.equal(next.roundNo, 2);
+  await call(`${path}/knockout-round-commands`, {
+    method: 'POST',
+    cookie,
+    body: {
+      type: 'PUBLISH_ROUND',
+      expectedEventVersion: knockout.event.version,
+      expectedSourceHash: next.sourceHash,
+      roundNo: next.roundNo,
+      reason: '独立确认晋级恢复验收',
+      allocations: next.fixtures.map((f) => ({
+        fixtureKey: f.fixtureKey,
+        courtId: scheduling.court.id,
+        startsAt: '2026-12-01T03:00:00.000Z',
+      })),
+    },
+  });
+  await assertPublicMissing(`/v1/public/events/${oldPublicId}`);
+  const matches = (await call(`${path}/matches`, { cookie })).data;
+  assert.equal(matches.length, 2);
+  const original = (await call(`${root}/matches/${scheduling.matches[0].id}/scoring`, { cookie }))
+    .data;
+  assert.equal(
+    original.capabilities.canReopen,
+    false,
+    'A published descendant pins its source result',
+  );
+  await finish(matches.find((m) => m.roundNo === 2).id);
+  let lifecycle = (await call(`${path}/lifecycle`, { cookie })).data;
+  assert.equal(lifecycle.completion.ready, true);
+  for (const type of ['COMPLETE', 'ARCHIVE']) {
+    lifecycle = (
+      await call(`${path}/lifecycle-commands`, {
+        method: 'POST',
+        cookie,
+        body: { type, expectedEventVersion: lifecycle.event.version, reason: '淘汰赛完整恢复验收' },
+      })
+    ).data;
+  }
+  const history = (
+    await call(`${path}/public-viewing-commands`, {
+      method: 'POST',
+      cookie,
+      body: { type: 'ENABLE_HISTORY', expectedEventVersion: lifecycle.event.version },
+    })
+  ).data;
+  const publicId = history.publication.publicEventId;
+  const publicPath = `/v1/public/events/${publicId}`;
+  const bracket = (await call(`${publicPath}/knockout`)).data;
+  assert.equal(bracket.isComplete, true);
+  assert.deepEqual(
+    bracket.placements.map((p) => p.rank),
+    [1, 2, 3],
+  );
+  const proof = await instance.pool.query(
+    'SELECT round_no,sources FROM knockout_round_publications WHERE org_id=$1 AND event_id=$2',
+    [orgId, scheduling.workspace.event.id],
+  );
+  assert.equal(proof.rows.length, 1);
+  assert.equal(proof.rows[0].sources.length, 1);
+  return {
+    eventPath: path,
+    court: scheduling.court,
+    oldPublicId,
+    oldMatchId,
+    publicId,
+    knockout: (await call(`${path}/knockout`, { cookie })).data,
+    lifecycle: (await call(`${path}/lifecycle`, { cookie })).data,
+    summary: (await call(`${path}/player-statistics`, { cookie })).data,
+    overview: (await call(publicPath)).data,
+    bracket,
+    schedule: (await call(`${publicPath}/schedule`)).data,
+    snapshots: await Promise.all(
+      matches.map(async (m) => (await call(`${root}/matches/${m.id}/snapshot`, { cookie })).data),
+    ),
+    proof: proof.rows,
+  };
+}
+
+async function verifyKnockout(saved, cookie, orgId) {
+  const comparisons = [
+    [(await call(`${saved.eventPath}/knockout`, { cookie })).data, saved.knockout],
+    [(await call(`${saved.eventPath}/lifecycle`, { cookie })).data, saved.lifecycle],
+    [(await call(`${saved.eventPath}/player-statistics`, { cookie })).data, saved.summary],
+    [(await call(`/v1/public/events/${saved.publicId}`)).data, saved.overview],
+    [(await call(`/v1/public/events/${saved.publicId}/knockout`)).data, saved.bracket],
+    [(await call(`/v1/public/events/${saved.publicId}/schedule`)).data, saved.schedule],
+  ];
+  for (const snapshot of saved.snapshots)
+    comparisons.push([
+      (await call(`/v1/orgs/${orgId}/matches/${snapshot.matchId}/snapshot`, { cookie })).data,
+      snapshot,
+    ]);
+  for (const [actual, expected] of comparisons)
+    assert.deepEqual(withoutReadTimes(actual), withoutReadTimes(expected));
+  assert.deepEqual(
+    (
+      await instance.pool.query(
+        'SELECT round_no,sources FROM knockout_round_publications WHERE org_id=$1 AND event_id=$2',
+        [orgId, saved.knockout.event.id],
+      )
+    ).rows,
+    saved.proof,
+  );
+  for (const suffix of ['', '/schedule', '/knockout', `/matches/${saved.oldMatchId}`])
+    await assertPublicMissing(`/v1/public/events/${saved.oldPublicId}${suffix}`);
+}
+
 async function assertOverlayRevoked(saved) {
   assert.equal(
     (
@@ -1096,6 +1323,7 @@ try {
     const viewing = await captureViewing(orgId, cookie, scheduling);
     const rescheduling = await captureRescheduling(orgId, cookie, scheduling, viewing, overlays);
     const lifecycle = await captureLifecycle(orgId, cookie, suffix, frozenRegistration, scoring);
+    const knockout = await captureKnockout(orgId, cookie, suffix, frozenRegistration, scoring);
     frozenRegistration.leaderSession = (
       await call('/v1/auth/session', { cookie: frozenRegistration.leaderCookie })
     ).data;
@@ -1126,6 +1354,7 @@ try {
       overlays,
       rescheduling,
       lifecycle,
+      knockout,
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
@@ -1137,7 +1366,7 @@ try {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     state.fingerprint = await fingerprint();
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
-    console.log('Captured the quiescent 40-table backup baseline.');
+    console.log('Captured the quiescent 41-table backup baseline.');
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     const session = await call('/v1/auth/session', { cookie: state.cookie });
@@ -1186,8 +1415,8 @@ try {
     const byId = (a, b) => a.id.localeCompare(b.id);
     assert.deepEqual(
       [...courts.data].sort(byId),
-      [scheduling.court, state.lifecycle.court].sort(byId),
-      'Both owned scenario courts survive restart and full restore without extra rows',
+      [scheduling.court, state.lifecycle.court, state.knockout.court].sort(byId),
+      'All owned scenario courts survive restart and full restore without extra rows',
     );
     const scoring = state.scoring;
     assert.deepEqual(
@@ -1272,6 +1501,7 @@ try {
     }
     await assertOverlayRevoked(state.overlays.revoked);
     await verifyLifecycle(state.lifecycle, state.cookie, state.orgId);
+    await verifyKnockout(state.knockout, state.cookie, state.orgId);
     assert.equal(await fingerprint(), state.fingerprint);
     const acquired = (
       await call(`/v1/orgs/${state.orgId}/matches/${scoring.saved[0].id}/scorekeeper-lease`, {
@@ -1285,7 +1515,7 @@ try {
       'Lease fence remains monotonic across PostgreSQL restart',
     );
     console.log(
-      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across all 40 tables.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across all 41 tables.',
     );
   }
 } finally {

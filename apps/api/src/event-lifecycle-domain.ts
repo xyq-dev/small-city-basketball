@@ -3,12 +3,16 @@ import type {
   EventLifecycleData,
   EventStatus,
   StandingsRulesetData,
+  RegistrationFreezeData,
+  SchedulePolicy,
+  KnockoutSource,
 } from '@small-city-basketball/contracts';
 import { ApiError } from './errors.js';
 import { expectedVersion } from './registration-validation.js';
 import { invalid, objectInput, text } from './validation.js';
 import { calculateStandings } from './standings-domain.js';
 import type { ResultRow, StandingParticipant } from './standings-domain.js';
+import { calculateKnockout } from './knockout-domain.js';
 import { confirmedPlayerStatistics } from './confirmed-player-statistics.js';
 
 export const activeEvent = (status: EventStatus) => status === 'SCHEDULED' || status === 'RUNNING';
@@ -80,6 +84,51 @@ export function completionReadiness(input: {
     } else if (!input.matches.length || completion.confirmedMatchCount !== input.matches.length) {
       completion.blockers.push('UNCONFIRMED_MATCHES');
     }
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.code !== 'RESULT_SOURCE_INVALID') throw error;
+    completion.blockers.push('RESULT_SOURCE_INVALID');
+    completion.sourceHash = null;
+  }
+  completion.ready = completion.blockers.length === 0;
+  return completion;
+}
+
+/** Uses the original confirmed results and deterministic bracket; no stored result copy. */
+export function knockoutCompletionReadiness(input: {
+  publicationId: string | null;
+  source: RegistrationFreezeData | null;
+  seed: string;
+  policy: SchedulePolicy;
+  roundPublications?: { roundNo: number; sources: KnockoutSource[] }[];
+  matches: ResultRow[];
+  asOf: string;
+}): EventLifecycleData['completion'] {
+  const completion: EventLifecycleData['completion'] = {
+    totalMatchCount: input.source ? input.source.entries.length - 1 : input.matches.length,
+    confirmedMatchCount: 0,
+    ready: false,
+    blockers: [],
+    sourceHash: null,
+  };
+  if (!input.publicationId || !input.source) {
+    completion.blockers.push('SCHEDULE_REQUIRED');
+    return completion;
+  }
+  try {
+    for (const match of input.matches) confirmedPlayerStatistics(match);
+    const bracket = calculateKnockout({
+      publicationId: input.publicationId,
+      source: input.source,
+      seed: input.seed,
+      policy: input.policy,
+      roundPublications: input.roundPublications,
+      matches: input.matches,
+      asOf: input.asOf,
+    });
+    completion.totalMatchCount = bracket.totalMatchCount;
+    completion.confirmedMatchCount = bracket.confirmedMatchCount;
+    completion.sourceHash = bracket.sourceHash;
+    if (!bracket.isComplete) completion.blockers.push('UNCONFIRMED_MATCHES');
   } catch (error) {
     if (!(error instanceof ApiError) || error.code !== 'RESULT_SOURCE_INVALID') throw error;
     completion.blockers.push('RESULT_SOURCE_INVALID');

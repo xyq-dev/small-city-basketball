@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { EVENT_STATUSES } from '@small-city-basketball/contracts';
-import type { EventStatus, StandingsRulesetData } from '@small-city-basketball/contracts';
+import { generateKnockoutPairings } from './knockout-domain.js';
+import type {
+  RegistrationFreezeData,
+  SchedulePolicy,
+  EventStatus,
+  StandingsRulesetData,
+} from '@small-city-basketball/contracts';
 import {
   activeEvent,
   assertActiveEvent,
   completionReadiness,
+  knockoutCompletionReadiness,
   nextEventStatus,
   parseLifecycleCommand,
   publicViewingAllowed,
@@ -212,5 +219,90 @@ describe('explicit event lifecycle', () => {
     leaked.state.player_stats = { unapproved: 'private field' };
     leaked.confirmation.player_stats = structuredClone(leaked.state.player_stats);
     expect(gate([leaked])).toMatchObject({ ready: false, blockers: ['RESULT_SOURCE_INVALID'] });
+  });
+});
+
+describe('C04 knockout completion, without round-robin points rules', () => {
+  const policy: SchedulePolicy = {
+    slotDurationMinutes: 30,
+    minRestMinutes: 0,
+    minLocalDayGap: 0,
+    courtWindows: [
+      { courtId: id(80), startsAt: '2026-10-23T00:00:00.000Z', endsAt: '2026-10-23T23:59:00.000Z' },
+    ],
+  };
+  function input(count: number) {
+    const source: RegistrationFreezeData = {
+      id: id(81),
+      eventId: id(82),
+      rulesetId: id(83),
+      rulesetVersion: 1,
+      eventVersion: 3,
+      entries: Array.from({ length: count }, (_, i) => ({
+        entryId: id(i + 1),
+        teamId: id(i + 11),
+        teamName: `合成${i + 1}`,
+        rosterRevisionId: id(i + 21),
+        players: [{ memberId: id(i + 101), name: `合成球员${i + 1}`, jerseyNo: String(i + 1) }],
+      })),
+      excludedCounts: { DRAFT: 0, REJECTED: 0, WITHDRAWN: 0 },
+      createdAt: asOf,
+    };
+    const seed = '1'.repeat(64);
+    const fixture = generateKnockoutPairings(source, policy, seed).fixtures[0]!;
+    const home = source.entries.find((e) => e.entryId === fixture.homeEntryId)!;
+    const away = source.entries.find((e) => e.entryId === fixture.awayEntryId)!;
+    const match = {
+      ...currentFinal(),
+      event_id: source.eventId,
+      publication_id: id(84),
+      revision_id: id(85),
+      fixture_key: fixture.fixtureKey,
+      round_no: fixture.roundNo,
+      position_no: fixture.positionNo,
+      home_entry_id: home.entryId,
+      home_team_id: home.teamId,
+      home_team_name: home.teamName,
+      home_roster_revision_id: home.rosterRevisionId,
+      away_entry_id: away.entryId,
+      away_team_id: away.teamId,
+      away_team_name: away.teamName,
+      away_roster_revision_id: away.rosterRevisionId,
+      court_id: id(80),
+      court_name: '合成球场',
+      starts_at: '2026-10-23T01:00:00.000Z',
+      ends_at: '2026-10-23T01:30:00.000Z',
+      scoring_rules: { ...currentFinal().scoring_rules, tie_policy: 'OVERTIME' },
+    };
+    return { publicationId: id(84), source, seed, policy, matches: [match], asOf };
+  }
+  it('completes a two-team final using the original effective confirmation, without standings rules', () => {
+    expect(knockoutCompletionReadiness(input(2))).toMatchObject({
+      totalMatchCount: 1,
+      confirmedMatchCount: 1,
+      ready: true,
+      blockers: [],
+    });
+  });
+  it('blocks a completed initial round until the unpublished final is played and independently confirmed', () => {
+    expect(knockoutCompletionReadiness(input(3))).toMatchObject({
+      totalMatchCount: 2,
+      confirmedMatchCount: 1,
+      ready: false,
+      blockers: ['UNCONFIRMED_MATCHES'],
+    });
+  });
+  it('fails closed on a mismatched current confirmation, and reports missing publication separately', () => {
+    const bad = input(2);
+    bad.matches[0]!.state.latest_confirmation_id = id(999);
+    expect(knockoutCompletionReadiness(bad)).toMatchObject({
+      ready: false,
+      sourceHash: null,
+      blockers: ['RESULT_SOURCE_INVALID'],
+    });
+    expect(knockoutCompletionReadiness({ ...input(2), publicationId: null })).toMatchObject({
+      ready: false,
+      blockers: ['SCHEDULE_REQUIRED'],
+    });
   });
 });

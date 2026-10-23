@@ -211,3 +211,12 @@ quarantine使用新DISABLED系统User，无机构成员权及可验证密码；�
 数据库只允许同事务精确history证明的比赛计划与预约必要列更新，状态/对阵/来源身份不能借改期变化。history commit守卫核对最终match/event版本及计划、恰一Court与双方两Team预约，现有排他与scoring source_version提交约束保持。策略窗口/日期/休息由锁保护下的现有validateSchedule校验，不在SQL复制第二套算法。无proof、孤立或不一致history、删预约/历史须拒绝；审计及任何阶段失败全部回滚。
 
 runtime新增history SELECT/INSERT与match/court/team预约必要列UPDATE，backup仍只读，未新增高权或SECURITY DEFINER入口。40表与7Migration精确就绪/恢复指纹随本卡更新。007已在隔离CI实际执行，40表实际重启及完整dump恢复通过，证据见[交接](handoffs/P04-B.md)；生产执行为0。
+
+
+## C04 单淘汰推进凭证（候选）
+
+2026-10-23，011_c04_knockout.sql已编写，执行证据见[C04](tasks/C04.md)，无生产执行。旧001–010字节不变。新增第41表knockout_round_publications：唯一org/event/round，复合FK引用原publication/revision，当前transaction_id xid8、from/to event版本、来源hash、上一轮原match/confirmation身份及胜方、全轮计划fixtures、原因/作者/时间。无新的比分或计时状态；正式场次仍published_matches，轮空不建比赛。
+
+SE首轮比赛数n−nextPow2(n)/2，后轮只能精确同事务凭证追加全部fixture/match/1court+2team预约，deferred guard要求事件增版与完整全轮一并提交；proof禁止改删，runtime仅SELECT/INSERT。原RR发布与007改期不可变语义保持。sources.matchVersion是确认生效固定版本，允许后续安全人员维护提高当前比赛版本，确认ID/原结果仍严格核验。011放宽public ruleset_id为空仅限明确SE；RR仍必须锁定原排名规则，公开links仍只能随初次授权创建、精确覆盖当时全部正式比赛。
+
+就绪、最小ACL、backup/restore与精确指纹同步41表/11Migration。签位与最终名次是原冻结来源+seed+正式比赛+当前确认+不可变推进凭证的读投影。完赛要求恰好n−1比赛及完整有效树；无三四名赛、半决赛同轮败者共享名次。

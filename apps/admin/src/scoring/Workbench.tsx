@@ -461,6 +461,11 @@ export function MatchWorkbench({
                 {snapshot.requiresReconfirmation && (
                   <p className="score-reason">旧正式结果已保留，当前版本等待重新确认。</p>
                 )}
+                {wb.match.status === 'FINAL' && !wb.capabilities.canReopen && (
+                  <p className="score-reason">
+                    赛果重开受权限、闭赛与晋级来源限制；已用于正式发布下游轮次的来源赛果不可重开。
+                  </p>
+                )}
                 {!wb.capabilities.canCorrect &&
                   !wb.capabilities.canConfirm &&
                   !wb.capabilities.canReopen && (

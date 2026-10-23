@@ -153,7 +153,8 @@ describe('anonymous entry and read-only rendering', () => {
         : old.promise;
     });
     render(<RuntimeApp mode="api" publicFetcher={fetcher} />);
-    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
+    // Read the format before choosing the standings or knockout projection.
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
     act(() => {
       window.history.pushState({}, '', '/watch/public-event-b');
       window.dispatchEvent(new PopStateEvent('popstate'));

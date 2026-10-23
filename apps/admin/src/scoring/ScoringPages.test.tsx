@@ -25,6 +25,32 @@ const context = (fetcher: typeof fetch): RegistrationWorkspace => ({
   onSessionRefresh: async () => {},
 });
 describe('scoring controls and review boundaries', () => {
+  it('fixes single-elimination tie handling to overtime and requires an explicit overtime duration', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(
+      <RulesForm
+        data={{ ...eventScoring, event: { ...eventScoring.event, format: 'SINGLE_ELIMINATION' } }}
+        busy={false}
+        onSave={onSave}
+      />,
+    );
+    expect(screen.getByLabelText('平局处理', { exact: true })).toHaveValue('OVERTIME');
+    expect(screen.getByLabelText('平局处理', { exact: true })).toBeDisabled();
+    expect(screen.queryByRole('option', { name: '允许平局' })).not.toBeInTheDocument();
+    change('常规节数', '1');
+    change('每节时长（秒）', '60');
+    fireEvent.click(screen.getByLabelText('允许1分'));
+    fireEvent.click(screen.getByRole('button', { name: '保存记分规则' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('加时时长');
+    expect(onSave).not.toHaveBeenCalled();
+    change('加时时长（秒）', '300');
+    fireEvent.click(screen.getByRole('button', { name: '保存记分规则' }));
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ tiePolicy: 'OVERTIME', overtimeDurationSeconds: 300 }),
+      ),
+    );
+  });
   it('names rule and staff selects exactly, independently of selected option text', () => {
     render(
       <>

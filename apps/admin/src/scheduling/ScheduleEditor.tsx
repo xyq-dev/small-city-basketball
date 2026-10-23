@@ -197,7 +197,10 @@ export function ScheduleEditor({
           <div>
             <h2>{published ? '原始发布快照' : historical ? '历史对阵与安排' : '按轮安排比赛'}</h2>
             <p>
-              {revision.rounds.length}轮 · {revision.fixtures.length}场 · {assigned}场
+              {revision.algorithmVersion === 'SE_SEEDED_V1'
+                ? '首轮实际比赛'
+                : `${revision.rounds.length}轮`}{' '}
+              · {revision.fixtures.length}场 · {assigned}场
               {dirty ? '已在本地配置，尚未保存' : '已有保存安排'}。时间统一为中国标准时间。
             </p>
           </div>
@@ -257,12 +260,24 @@ export function ScheduleEditor({
           />
         )}
         {revision.rounds
-          .filter((item) => round === 'all' || String(item.roundNo) === round)
+          .filter(
+            (item) =>
+              (round === 'all' || String(item.roundNo) === round) &&
+              (revision.algorithmVersion !== 'SE_SEEDED_V1' ||
+                revision.fixtures.some((f) => f.roundNo === item.roundNo) ||
+                Boolean(item.byeEntryIds?.length)),
+          )
           .map((item) => (
             <section className="sc-round" key={item.roundNo}>
               <div className="sc-round-heading">
                 <h3>第{item.roundNo}轮</h3>
-                {item.byeEntryId && (
+                {item.byeEntryIds && item.byeEntryIds.length > 0 && (
+                  <span>
+                    {item.byeEntryIds.map((id) => participants.get(id) ?? '已冻结球队').join('、')}{' '}
+                    本轮轮空（无比赛）
+                  </span>
+                )}
+                {!item.byeEntryIds && item.byeEntryId && (
                   <span>{participants.get(item.byeEntryId) ?? '已冻结球队'} 本轮轮空</span>
                 )}
               </div>
@@ -477,7 +492,13 @@ export function ScheduleEditor({
               <strong>{revision.participants.length}</strong>支冻结球队
             </span>
             <span>
-              <strong>{revision.rounds.length}</strong>轮单循环
+              {revision.algorithmVersion === 'SE_SEEDED_V1' ? (
+                <strong>淘汰赛首轮</strong>
+              ) : (
+                <>
+                  <strong>{revision.rounds.length}</strong>轮单循环
+                </>
+              )}
             </span>
             <span>
               <strong>{revision.fixtures.length}</strong>场正式比赛
@@ -496,7 +517,9 @@ export function ScheduleEditor({
             天。名单以已冻结版本为准。
           </p>
           <p>
-            发布会使赛事进入待开赛状态。发布后本版本只读，当前不提供重新生成、改期或重复发布入口。
+            {revision.algorithmVersion === 'SE_SEEDED_V1'
+              ? '本次只发布首轮实际比赛。之后须在晋级页核对当前独立确认赛果，再显式发布下一轮。轮空不生成比赛。'
+              : '发布会使赛事进入待开赛状态。发布后本版本只读，不能重新生成或重复发布；符合条件的单场改期由独立记录追踪。'}
           </p>
           <div className="sc-actions">
             <button

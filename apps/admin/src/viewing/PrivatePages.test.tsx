@@ -32,7 +32,7 @@ function page(value: RegistrationWorkspace) {
   );
 }
 describe('declared standings rules and publication controls', () => {
-  it.each(['GROUP_KNOCKOUT', 'SINGLE_ELIMINATION'] as const)(
+  it.each(['GROUP_KNOCKOUT'] as const)(
     'shows %s as unsupported without a link or request, while round robin still navigates',
     async (format) => {
       const unsupported = {
@@ -83,6 +83,30 @@ describe('declared standings rules and publication controls', () => {
       expect(fetcher.mock.calls[0][0]).toBe(`/v1/orgs/org-a/events/${overview.event.id}/standings`);
     },
   );
+  it('offers single-elimination publication controls without showing round-robin points or a fictitious ranking form', async () => {
+    const value: EventStandingsData = {
+      ...overview,
+      event: { ...overview.event, format: 'SINGLE_ELIMINATION' },
+      rules: null,
+      standings: null,
+      capabilities: {
+        canManageRules: false,
+        canPublishRules: false,
+        canEnablePublicViewing: true,
+        canDisablePublicViewing: false,
+      },
+    };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(value));
+    render(page(context(fetcher)));
+    expect(await screen.findByRole('link', { name: '查看晋级与最终名次' })).toHaveAttribute(
+      'href',
+      '/events/private-event-a/knockout',
+    );
+    expect(screen.queryByLabelText('胜场积分')).not.toBeInTheDocument();
+    expect(screen.queryByText('排名尚未读取')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '启用公开观赛' })).toBeEnabled();
+    expect(screen.getByText(/发布下一轮会撤销现有实时观赛链接/)).toBeVisible();
+  });
   it('requires all three explicit point values, accepts zero, preserves declared tiebreaker order and cancels without writing', async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     render(<StandingsRulesForm data={{ ...overview, rules: null }} busy={false} onSave={save} />);

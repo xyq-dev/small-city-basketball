@@ -12,6 +12,7 @@ import type {
   PublicScheduleMatchData,
   PublicMatchSnapshotData,
   ScoringTotals,
+  PublicKnockoutData,
 } from '@small-city-basketball/contracts';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
 import type { EventRow, OrgActor } from './service.js';
@@ -23,11 +24,13 @@ import {
   parseStandingsRules,
   resultSourceInvalid,
 } from './standings-domain.js';
+import { calculateKnockout } from './knockout-domain.js';
 import type { ResultRow, StandingParticipant } from './standings-domain.js';
 import {
   activeEvent,
   closedEvent,
   completionReadiness,
+  knockoutCompletionReadiness,
   publicViewingAllowed,
 } from './event-lifecycle-domain.js';
 type Row = Record<string, any>;
@@ -74,7 +77,7 @@ export class StandingsService extends ApplicationService {
       [ctx.orgId, event.id, ctx.user.id],
     );
     if (!isAdministrator(ctx.role) && !staff.rows[0]) throw notFound();
-    if (event.format !== 'ROUND_ROBIN')
+    if (event.format !== 'ROUND_ROBIN' && event.format !== 'SINGLE_ELIMINATION')
       throw new ApiError(422, 'UNSUPPORTED_STANDINGS_FORMAT', '仅支持2至32队单回合单循环排名');
     return {
       ctx,
@@ -137,7 +140,7 @@ export class StandingsService extends ApplicationService {
     return (
       (
         await c.query<Row>(
-          'SELECT p.*,r.source FROM schedule_publications p JOIN schedule_revisions r ON r.org_id=p.org_id AND r.event_id=p.event_id AND r.id=p.revision_id WHERE p.org_id=$1 AND p.event_id=$2',
+          `SELECT p.*,r.source,r.seed,r.policy,r.algorithm_version,COALESCE((SELECT jsonb_agg(jsonb_build_object('roundNo',k.round_no,'sources',k.sources) ORDER BY k.round_no) FROM knockout_round_publications k WHERE k.org_id=p.org_id AND k.event_id=p.event_id),'[]'::jsonb) AS round_publications FROM schedule_publications p JOIN schedule_revisions r ON r.org_id=p.org_id AND r.event_id=p.event_id AND r.id=p.revision_id WHERE p.org_id=$1 AND p.event_id=$2`,
           [org, event],
         )
       ).rows[0] ?? null
@@ -192,15 +195,32 @@ export class StandingsService extends ApplicationService {
     now: string,
     skipStandings = false,
   ): Promise<EventStandingsData> {
-    const rules = await this.rules(
-      c,
-      a.ctx.orgId,
-      a.event.locked_standings_ruleset_id ?? a.event.current_standings_ruleset_id,
-    );
+    const knockout = a.event.format === 'SINGLE_ELIMINATION';
+    const rules = knockout
+      ? null
+      : await this.rules(
+          c,
+          a.ctx.orgId,
+          a.event.locked_standings_ruleset_id ?? a.event.current_standings_ruleset_id,
+        );
     const plan = await this.plan(c, a.ctx.orgId, a.event.id);
     const pub = await this.publication(c, a.ctx.orgId, a.event.id);
     let standings = null;
     let historyReady = false;
+    if (knockout && plan && !skipStandings) {
+      const matches = await this.matches(c, a.ctx.orgId, a.event.id);
+      const completion = knockoutCompletionReadiness({
+        publicationId: plan.id,
+        source: plan.source,
+        seed: plan.seed,
+        policy: plan.policy,
+        roundPublications: plan.round_publications,
+        matches,
+        asOf: now,
+      });
+      if (completion.blockers.includes('RESULT_SOURCE_INVALID')) resultSourceInvalid();
+      historyReady = closedEvent(a.event.status) && completion.ready;
+    }
     if (rules && plan && !skipStandings) {
       const matches = await this.matches(c, a.ctx.orgId, a.event.id);
       standings = calculateStandings({
@@ -228,11 +248,13 @@ export class StandingsService extends ApplicationService {
       publication: this.publicationDto(pub),
       capabilities: {
         canManageRules:
+          !knockout &&
           a.manager &&
           !closedEvent(a.event.status) &&
           a.event.status !== 'CANCELLED' &&
           !a.event.locked_standings_ruleset_id,
         canPublishRules:
+          !knockout &&
           a.manager &&
           !closedEvent(a.event.status) &&
           a.event.status !== 'CANCELLED' &&
@@ -241,7 +263,7 @@ export class StandingsService extends ApplicationService {
         canEnablePublicViewing:
           a.manager &&
           (activeEvent(a.event.status) || historyReady) &&
-          !!a.event.locked_standings_ruleset_id &&
+          (knockout || !!a.event.locked_standings_ruleset_id) &&
           !!plan &&
           (!pub || !!pub.revoked_at),
         canDisablePublicViewing: a.manager && !!pub && !pub.revoked_at,
@@ -278,6 +300,12 @@ export class StandingsService extends ApplicationService {
     return this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, org);
       const a = await this.event(c, ctx, id, true);
+      if (a.event.format !== 'ROUND_ROBIN')
+        throw new ApiError(
+          422,
+          'UNSUPPORTED_STANDINGS_FORMAT',
+          '淘汰赛按签位及确认胜者产生名次，不配置循环赛积分规则',
+        );
       if (!a.manager) throw forbidden();
       const now = await this.now(c, ctx);
       version(a.event.version, expected);
@@ -328,6 +356,12 @@ export class StandingsService extends ApplicationService {
     return this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, org);
       const a = await this.event(c, ctx, id, true);
+      if (a.event.format !== 'ROUND_ROBIN')
+        throw new ApiError(
+          422,
+          'UNSUPPORTED_STANDINGS_FORMAT',
+          '淘汰赛按签位及确认胜者产生名次，不配置循环赛积分规则',
+        );
       if (!a.manager) throw forbidden();
       const now = await this.now(c, ctx);
       version(a.event.version, expected);
@@ -386,39 +420,65 @@ export class StandingsService extends ApplicationService {
       const purpose = input.type === 'ENABLE_HISTORY' ? 'HISTORY' : 'LIVE';
       if (pub && !pub.revoked_at)
         conflict('PUBLIC_VIEWING_ALREADY_ENABLED', '公开观赛已启用，请读取当前链接');
-      if (!a.event.locked_standings_ruleset_id)
+      const knockout = a.event.format === 'SINGLE_ELIMINATION';
+      if (!knockout && !a.event.locked_standings_ruleset_id)
         throw new ApiError(422, 'STANDINGS_RULES_REQUIRED', '请先显式发布排名规则');
       const plan = await this.plan(c, ctx.orgId, id);
-      if (!plan) throw new ApiError(422, 'SCHEDULE_REQUIRED', '请先正式发布单循环赛程');
+      if (!plan) throw new ApiError(422, 'SCHEDULE_REQUIRED', '请先正式发布赛程');
       // Preserve existing missing-source errors before checking the publication purpose.
       if (!publicViewingAllowed(a.event.status, purpose))
         conflict(
           'INVALID_EVENT_STATE',
           purpose === 'HISTORY' ? '仅已完赛或归档赛事可显式公开历史' : '仅活动赛事可启用实时观赛',
         );
-      const rules = await this.rules(c, ctx.orgId, a.event.locked_standings_ruleset_id);
-      if (!rules) resultSourceInvalid();
+      const rules = knockout
+        ? null
+        : await this.rules(c, ctx.orgId, a.event.locked_standings_ruleset_id);
+      if (!knockout && !rules) resultSourceInvalid();
       const rows = await this.matches(c, ctx.orgId, id);
-      const standings = calculateStandings({
-        participants: this.participants(plan),
-        matches: rows,
-        rules,
-        publicationId: plan.id,
-        asOf: now,
-        mode: 'PUBLISHED',
-      });
-      if (purpose === 'HISTORY') {
-        const completion = completionReadiness({
-          participants: this.participants(plan),
-          matches: rows,
-          rules,
+      if (knockout) {
+        const completion = knockoutCompletionReadiness({
           publicationId: plan.id,
+          source: plan.source,
+          seed: plan.seed,
+          policy: plan.policy,
+          roundPublications: plan.round_publications,
+          matches: rows,
           asOf: now,
         });
-        if (!standings.isComplete || !completion.ready)
-          throw new ApiError(422, 'EVENT_COMPLETION_BLOCKED', '历史观赛需要所有比赛当前有效确认', {
-            blockers: completion.blockers,
+        if (completion.blockers.includes('RESULT_SOURCE_INVALID')) resultSourceInvalid();
+        if (purpose === 'HISTORY' && !completion.ready)
+          throw new ApiError(
+            422,
+            'EVENT_COMPLETION_BLOCKED',
+            '历史观赛需要完整淘汰轮次及全部有效确认',
+            { blockers: completion.blockers },
+          );
+      } else {
+        const standings = calculateStandings({
+          participants: this.participants(plan),
+          matches: rows,
+          rules: rules!,
+          publicationId: plan.id,
+          asOf: now,
+          mode: 'PUBLISHED',
+        });
+        if (purpose === 'HISTORY') {
+          const completion = completionReadiness({
+            participants: this.participants(plan),
+            matches: rows,
+            rules,
+            publicationId: plan.id,
+            asOf: now,
           });
+          if (!standings.isComplete || !completion.ready)
+            throw new ApiError(
+              422,
+              'EVENT_COMPLETION_BLOCKED',
+              '历史观赛需要所有比赛当前有效确认',
+              { blockers: completion.blockers },
+            );
+        }
       }
       const teamKeys = Object.fromEntries(
         this.participants(plan).map((p) => [p.entryId, randomBytes(16).toString('base64url')]),
@@ -431,7 +491,7 @@ export class StandingsService extends ApplicationService {
           ctx.orgId,
           id,
           plan.id,
-          rules.id,
+          rules?.id ?? null,
           randomBytes(32).toString('base64url'),
           JSON.stringify(teamKeys),
           ctx.user.id,
@@ -477,7 +537,7 @@ export class StandingsService extends ApplicationService {
         [ref.org_id, ref.event_id],
       )
     ).rows[0];
-    if (!event || event.format !== 'ROUND_ROBIN') throw notFound();
+    if (!event || !['ROUND_ROBIN', 'SINGLE_ELIMINATION'].includes(event.format)) throw notFound();
     const pub = (
       await c.query<Row>(
         'SELECT * FROM public_event_publications WHERE org_id=$1 AND event_id=$2 AND public_event_id=$3 AND revoked_at IS NULL FOR SHARE',
@@ -500,38 +560,62 @@ export class StandingsService extends ApplicationService {
   private async publicBundle(c: PoolClient, id: string, targetMatch?: string) {
     const a = await this.publicAccess(c, id);
     const now = await this.now(c);
-    const rules = await this.rules(c, a.event.org_id, a.event.locked_standings_ruleset_id);
+    const knockout = a.event.format === 'SINGLE_ELIMINATION';
+    const rules = knockout
+      ? null
+      : await this.rules(c, a.event.org_id, a.event.locked_standings_ruleset_id);
     const plan = await this.plan(c, a.event.org_id, a.event.id);
     if (
-      !rules ||
       !plan ||
-      rules.id !== a.pub.ruleset_id ||
-      plan.id !== a.pub.schedule_publication_id
+      plan.id !== a.pub.schedule_publication_id ||
+      (knockout ? a.pub.ruleset_id !== null : !rules || rules.id !== a.pub.ruleset_id)
     )
       throw notFound();
     const rows = await this.matches(c, a.event.org_id, a.event.id, a.pub.id);
     if (rows.some((r) => !r.public_match_id)) resultSourceInvalid();
     if (targetMatch && !rows.some((r) => r.public_match_id === targetMatch)) throw notFound();
-    const standings = calculateStandings({
-      participants: this.participants(plan),
-      matches: rows,
-      rules,
-      publicationId: plan.id,
-      asOf: now,
-      mode: 'PUBLISHED',
-    });
-    if (
-      a.pub.purpose === 'HISTORY' &&
-      !completionReadiness({
-        participants: this.participants(plan),
-        matches: rows,
-        rules,
-        publicationId: plan.id,
-        asOf: now,
-      }).ready
-    )
-      resultSourceInvalid();
-    return { ...a, now, rules, plan, rows, standings };
+    const bracket = knockout
+      ? calculateKnockout({
+          publicationId: plan.id,
+          source: plan.source,
+          seed: plan.seed,
+          policy: plan.policy,
+          roundPublications: plan.round_publications,
+          matches: rows,
+          asOf: now,
+        })
+      : null;
+    const standings = knockout
+      ? null
+      : calculateStandings({
+          participants: this.participants(plan),
+          matches: rows,
+          rules: rules!,
+          publicationId: plan.id,
+          asOf: now,
+          mode: 'PUBLISHED',
+        });
+    if (a.pub.purpose === 'HISTORY') {
+      const completion = knockout
+        ? knockoutCompletionReadiness({
+            publicationId: plan.id,
+            source: plan.source,
+            seed: plan.seed,
+            policy: plan.policy,
+            roundPublications: plan.round_publications,
+            matches: rows,
+            asOf: now,
+          })
+        : completionReadiness({
+            participants: this.participants(plan),
+            matches: rows,
+            rules,
+            publicationId: plan.id,
+            asOf: now,
+          });
+      if (!completion.ready) resultSourceInvalid();
+    }
+    return { ...a, now, rules, plan, rows, standings, bracket };
   }
   private team(pub: Row, entry: string, name: string) {
     const key = pub.team_keys?.[entry];
@@ -570,10 +654,14 @@ export class StandingsService extends ApplicationService {
         timezone: b.event.timezone,
         venueName: b.event.venue_name,
         status: b.event.status,
-        rules: this.publicRules(b.rules),
-        confirmedMatchCount: b.standings.confirmedMatchCount,
-        totalMatchCount: b.standings.totalMatchCount,
-        isComplete: b.standings.isComplete,
+        // Keep the original strict ROUND_ROBIN public DTO backward compatible.
+        ...(b.event.format === 'SINGLE_ELIMINATION'
+          ? { format: 'SINGLE_ELIMINATION' as const }
+          : {}),
+        rules: b.rules ? this.publicRules(b.rules) : null,
+        confirmedMatchCount: (b.bracket ?? b.standings)!.confirmedMatchCount,
+        totalMatchCount: (b.bracket ?? b.standings)!.totalMatchCount,
+        isComplete: (b.bracket ?? b.standings)!.isComplete,
         serverTime: b.now,
       };
     });
@@ -581,6 +669,8 @@ export class StandingsService extends ApplicationService {
   async getPublicStandings(id: string): Promise<PublicStandingsData> {
     return this.transaction(async (c) => {
       const b = await this.publicBundle(c, id);
+      if (!b.rules || !b.standings)
+        throw new ApiError(422, 'UNSUPPORTED_STANDINGS_FORMAT', '单淘汰赛请读取签位与最终名次');
       return {
         publicEventId: id,
         rules: this.publicRules(b.rules),
@@ -603,6 +693,55 @@ export class StandingsService extends ApplicationService {
           pointsAgainst: r.pointsAgainst,
           scoreDifference: r.scoreDifference,
           leaguePoints: r.leaguePoints,
+        })),
+      };
+    });
+  }
+  async getPublicKnockout(id: string): Promise<PublicKnockoutData> {
+    return this.transaction(async (c) => {
+      const b = await this.publicBundle(c, id);
+      if (!b.bracket)
+        throw new ApiError(422, 'UNSUPPORTED_KNOCKOUT_FORMAT', '当前赛事不是单淘汰赛');
+      const participants = new Map(this.participants(b.plan).map((p) => [p.entryId, p]));
+      const team = (entry: string | null) => {
+        if (entry === null) return null;
+        const p = participants.get(entry);
+        if (!p) resultSourceInvalid();
+        return this.team(b.pub, entry, p.teamName);
+      };
+      const matches = new Map(b.rows.map((m) => [m.id, m]));
+      return {
+        publicEventId: id,
+        algorithmVersion: b.bracket.algorithmVersion,
+        sourceHash: b.bracket.sourceHash,
+        asOf: b.bracket.asOf,
+        participantCount: b.bracket.participantCount,
+        totalMatchCount: b.bracket.totalMatchCount,
+        publishedMatchCount: b.bracket.publishedMatchCount,
+        confirmedMatchCount: b.bracket.confirmedMatchCount,
+        isComplete: b.bracket.isComplete,
+        rounds: b.bracket.rounds.map((round) => ({
+          roundNo: round.roundNo,
+          label: round.label,
+          published: round.published,
+          slots: round.slots.map((slot) => {
+            const match = slot.matchId === null ? null : matches.get(slot.matchId);
+            if (slot.matchId !== null && !match?.public_match_id) resultSourceInvalid();
+            return {
+              positionNo: slot.positionNo,
+              home: team(slot.homeEntryId),
+              away: team(slot.awayEntryId),
+              bye: team(slot.byeEntryId),
+              publicMatchId: match?.public_match_id ?? null,
+              status: slot.status,
+              winner: team(slot.winnerEntryId),
+            };
+          }),
+        })),
+        placements: b.bracket.placements.map((p) => ({
+          team: this.team(b.pub, p.entryId, p.teamName),
+          rank: p.rank,
+          tied: p.tied,
         })),
       };
     });

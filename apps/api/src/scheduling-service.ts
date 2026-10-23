@@ -16,6 +16,7 @@ import type {
   ScheduleValidationData,
   StaffRole,
 } from '@small-city-basketball/contracts';
+import { generateKnockoutPairings } from './knockout-domain.js';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
 import type { EventRow, OrgActor } from './service.js';
 import { ApiError, forbidden, notFound } from './errors.js';
@@ -39,16 +40,16 @@ import {
 
 type MatchRow = Record<string, any>;
 
-interface EventAccess {
+export interface EventAccess {
   row: EventRow & { current_schedule_revision_id: string | null };
   canManage: boolean;
 }
-interface RevisionRow {
+export interface RevisionRow {
   id: string;
   org_id: string;
   event_id: string;
   freeze_id: string;
-  algorithm_version: 'RR_CIRCLE_V1';
+  algorithm_version: 'RR_CIRCLE_V1' | 'SE_SEEDED_V1';
   seed: string;
   input_hash: string;
   pairing_hash: string;
@@ -84,17 +85,17 @@ function business(code: string, message: string, status = 422): never {
 const cursorTime = (alias: string) =>
   `to_char(${alias}.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at`;
 export class SchedulingService extends ApplicationService {
-  private async context(client: PoolClient, cookie: string | undefined, org: string) {
+  protected async context(client: PoolClient, cookie: string | undefined, org: string) {
     return this.lockOrganization(client, await this.lockActor(client, cookie), org);
   }
-  private async mutex(client: PoolClient, org: string) {
+  protected async mutex(client: PoolClient, org: string) {
     await client.query(
       'INSERT INTO org_schedule_mutex(org_id) VALUES($1) ON CONFLICT(org_id) DO NOTHING',
       [org],
     );
     await client.query('SELECT org_id FROM org_schedule_mutex WHERE org_id=$1 FOR UPDATE', [org]);
   }
-  private async event(
+  protected async event(
     client: PoolClient,
     ctx: OrgActor,
     id: string,
@@ -113,7 +114,7 @@ export class SchedulingService extends ApplicationService {
     if (!isAdministrator(ctx.role) && !staff.rows[0]) throw notFound();
     return { row, canManage: isAdministrator(ctx.role) || staff.rows[0]?.role === 'EVENT_MANAGER' };
   }
-  private dtoEvent(access: EventAccess): EventData {
+  protected dtoEvent(access: EventAccess): EventData {
     const r = access.row;
     return {
       id: r.id,
@@ -263,7 +264,7 @@ export class SchedulingService extends ApplicationService {
       throw error;
     }
   }
-  private async freeze(
+  protected async freeze(
     client: PoolClient,
     org: string,
     event: string,
@@ -285,7 +286,7 @@ export class SchedulingService extends ApplicationService {
         }
       : null;
   }
-  private summary(r: RevisionRow): ScheduleRevisionSummary {
+  protected summary(r: RevisionRow): ScheduleRevisionSummary {
     return {
       id: r.id,
       eventId: r.event_id,
@@ -301,7 +302,7 @@ export class SchedulingService extends ApplicationService {
       createdAt: r.created_at.toISOString(),
     };
   }
-  private async publication(
+  protected async publication(
     client: PoolClient,
     org: string,
     event: string,
@@ -323,8 +324,8 @@ export class SchedulingService extends ApplicationService {
       : null;
   }
   private support(event: EventAccess, freeze: RegistrationFreezeData | null) {
-    if (event.row.format !== 'ROUND_ROBIN')
-      return { supported: false, reason: '当前仅支持单循环ROUND_ROBIN' };
+    if (!['ROUND_ROBIN', 'SINGLE_ELIMINATION'].includes(event.row.format))
+      return { supported: false, reason: '当前支持单循环与单淘汰赛' };
     if (!freeze) return { supported: false, reason: '请先冻结报名名单' };
     if (freeze.entries.length < 2 || freeze.entries.length > 32)
       return { supported: false, reason: '当前支持2–32支冻结球队' };
@@ -388,7 +389,7 @@ export class SchedulingService extends ApplicationService {
     if (event.row.status !== 'REGISTRATION_CLOSED')
       business('INVALID_SCHEDULING_STATE', '仅已关闭且冻结报名的赛事可以排赛');
   }
-  private async courts(client: PoolClient, org: string, ids: string[]) {
+  protected async courts(client: PoolClient, org: string, ids: string[]) {
     if (!ids.length) return [];
     const rows = await client.query<{ id: string; name: string; status: 'ACTIVE' | 'DISABLED' }>(
       'SELECT id,name,status FROM courts WHERE org_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR SHARE',
@@ -397,7 +398,7 @@ export class SchedulingService extends ApplicationService {
     if (rows.rows.length !== new Set(ids).size) throw notFound();
     return rows.rows;
   }
-  private async fixtures(client: PoolClient, r: RevisionRow): Promise<ScheduleFixtureData[]> {
+  protected async fixtures(client: PoolClient, r: RevisionRow): Promise<ScheduleFixtureData[]> {
     return (
       await client.query<{
         fixture_key: string;
@@ -496,8 +497,8 @@ export class SchedulingService extends ApplicationService {
     ]);
     const version = expectedVersion(input.expectedEventVersion);
     const freezeId = resourceId(typeof input.freezeId === 'string' ? input.freezeId : '');
-    if (input.algorithmVersion !== 'RR_CIRCLE_V1')
-      business('UNSUPPORTED_SCHEDULE_ALGORITHM', '当前仅支持RR_CIRCLE_V1');
+    if (!['RR_CIRCLE_V1', 'SE_SEEDED_V1'].includes(input.algorithmVersion as string))
+      business('UNSUPPORTED_SCHEDULE_ALGORITHM', '不支持的排赛算法');
     const policy = parseSchedulePolicy(input.policy);
     const reason =
       input.redrawReason === undefined ? null : text(input.redrawReason, 'redrawReason', 1, 500);
@@ -507,8 +508,11 @@ export class SchedulingService extends ApplicationService {
       if (!event.canManage) throw forbidden();
       this.assertOpen(event, await this.publication(client, ctx.orgId, event.row.id));
       checkVersion(event.row.version, version);
-      if (event.row.format !== 'ROUND_ROBIN')
-        business('UNSUPPORTED_EVENT_FORMAT', '当前仅支持单循环ROUND_ROBIN');
+      if (
+        (event.row.format !== 'ROUND_ROBIN' || input.algorithmVersion !== 'RR_CIRCLE_V1') &&
+        (event.row.format !== 'SINGLE_ELIMINATION' || input.algorithmVersion !== 'SE_SEEDED_V1')
+      )
+        business('UNSUPPORTED_EVENT_FORMAT', '赛制与排赛算法不匹配');
       const freeze = await this.freeze(client, ctx.orgId, event.row.id);
       if (!freeze || freeze.id !== freezeId)
         business('REGISTRATION_FREEZE_REQUIRED', '请使用当前赛事已冻结的报名来源');
@@ -533,7 +537,10 @@ export class SchedulingService extends ApplicationService {
         policy.courtWindows.map((w) => w.courtId),
       );
       const seed = randomBytes(32).toString('hex');
-      const generated = generatePairings(freeze, policy, seed);
+      const generated =
+        event.row.format === 'SINGLE_ELIMINATION'
+          ? generateKnockoutPairings(freeze, policy, seed)
+          : generatePairings(freeze, policy, seed);
       await this.ensureFreshSession(client, ctx);
       if (previous)
         await client.query(
@@ -542,7 +549,7 @@ export class SchedulingService extends ApplicationService {
         );
       const id = randomUUID();
       const r = await client.query<RevisionRow>(
-        `INSERT INTO schedule_revisions(id,org_id,event_id,freeze_id,algorithm_version,seed,input_hash,pairing_hash,policy,source,rounds,ordered_entry_ids,redraw_reason,previous_revision_id,created_by) VALUES($1,$2,$3,$4,'RR_CIRCLE_V1',$5,$6,$7,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb,$12,$13,$14) RETURNING *`,
+        `INSERT INTO schedule_revisions(id,org_id,event_id,freeze_id,algorithm_version,seed,input_hash,pairing_hash,policy,source,rounds,ordered_entry_ids,redraw_reason,previous_revision_id,created_by) VALUES($1,$2,$3,$4,$15,$5,$6,$7,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb,$12,$13,$14) RETURNING *`,
         [
           id,
           ctx.orgId,
@@ -558,6 +565,7 @@ export class SchedulingService extends ApplicationService {
           reason,
           previous,
           ctx.user.id,
+          input.algorithmVersion,
         ],
       );
       const entries = new Map(freeze.entries.map((e) => [e.entryId, e]));
@@ -680,7 +688,10 @@ export class SchedulingService extends ApplicationService {
     const freeze = await this.freeze(client, ctx.orgId, event.row.id);
     if (!freeze || freeze.id !== revision.freeze_id)
       business('REGISTRATION_FREEZE_REQUIRED', '排赛来源与冻结名单不一致');
-    const replay = generatePairings(freeze!, revision.policy, revision.seed);
+    const replay =
+      revision.algorithm_version === 'SE_SEEDED_V1'
+        ? generateKnockoutPairings(freeze!, revision.policy, revision.seed)
+        : generatePairings(freeze!, revision.policy, revision.seed);
     const fixtures = await this.fixtures(client, revision);
     const identity = (f: ScheduleFixtureData) => [
       f.fixtureKey,
@@ -693,8 +704,20 @@ export class SchedulingService extends ApplicationService {
       replay.inputHash !== revision.input_hash ||
       replay.pairingHash !== revision.pairing_hash ||
       JSON.stringify(replay.orderedEntryIds) !== JSON.stringify(revision.ordered_entry_ids) ||
-      JSON.stringify(replay.rounds.map((round) => [round.roundNo, round.byeEntryId])) !==
-        JSON.stringify(revision.rounds.map((round) => [round.roundNo, round.byeEntryId])) ||
+      JSON.stringify(
+        replay.rounds.map((round) => [
+          round.roundNo,
+          round.byeEntryId,
+          'byeEntryIds' in round ? round.byeEntryIds : [],
+        ]),
+      ) !==
+        JSON.stringify(
+          revision.rounds.map((round) => [
+            round.roundNo,
+            round.byeEntryId,
+            round.byeEntryIds ?? [],
+          ]),
+        ) ||
       JSON.stringify(canonicalFreeze(freeze!)) !==
         JSON.stringify(canonicalFreeze(revision.source)) ||
       JSON.stringify(replay.fixtures.map(identity)) !== JSON.stringify(fixtures.map(identity))
@@ -915,7 +938,7 @@ export class SchedulingService extends ApplicationService {
     });
   }
 
-  private matchDto(r: MatchRow): ScheduledMatchData {
+  protected matchDto(r: MatchRow): ScheduledMatchData {
     return {
       id: r.id,
       eventId: r.event_id,
@@ -1075,6 +1098,19 @@ export class SchedulingService extends ApplicationService {
         ]);
         const targetCourt = courts.find((court) => court.id === command.courtId)!;
         const next = reschedulePlan(current, command, revision.policy, targetCourt.name);
+        if (event.row.format === 'SINGLE_ELIMINATION' && match.round_no > 1) {
+          const parents = (
+            await c.query<{ ends_at: Date }>(
+              `SELECT m.ends_at FROM knockout_round_publications p
+              CROSS JOIN LATERAL jsonb_array_elements(p.sources) source(value)
+              JOIN published_matches m ON m.org_id=p.org_id AND m.event_id=p.event_id AND m.id=(source.value->>'matchId')::uuid
+              WHERE p.org_id=$1 AND p.event_id=$2 AND p.round_no=$3 AND source.value->>'winnerEntryId'=ANY($4::text[])`,
+              [ctx.orgId, event.row.id, match.round_no, [match.home_entry_id, match.away_entry_id]],
+            )
+          ).rows;
+          if (parents.some((parent) => Date.parse(next.startsAt) < parent.ends_at.getTime()))
+            business('KNOCKOUT_DEPENDENCY_ORDER', '晋级比赛不能改到来源比赛结束之前', 409);
+        }
         const frozen = await this.freeze(c, ctx.orgId, event.row.id);
         if (!frozen || frozen.id !== revision.freeze_id)
           business('SCHEDULE_SOURCE_MISMATCH', '正式赛程与冻结名单不一致');

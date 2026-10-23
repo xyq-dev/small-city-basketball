@@ -7,6 +7,7 @@ import {
   activeEvent,
   closedEvent,
   completionReadiness,
+  knockoutCompletionReadiness,
   nextEventStatus,
   parseLifecycleCommand,
 } from './event-lifecycle-domain.js';
@@ -14,9 +15,19 @@ import {
 export class EventLifecycleService extends StandingsService {
   private async completion(c: PoolClient, a: StandingsAccess, now: string) {
     const plan = await this.plan(c, a.ctx.orgId, a.event.id);
-    const rules = await this.rules(c, a.ctx.orgId, a.event.locked_standings_ruleset_id);
     const matches = await this.matches(c, a.ctx.orgId, a.event.id);
     try {
+      if (a.event.format === 'SINGLE_ELIMINATION')
+        return knockoutCompletionReadiness({
+          publicationId: plan?.id ?? null,
+          source: plan?.source ?? null,
+          seed: plan?.seed,
+          policy: plan?.policy,
+          roundPublications: plan?.round_publications,
+          matches,
+          asOf: now,
+        });
+      const rules = await this.rules(c, a.ctx.orgId, a.event.locked_standings_ruleset_id);
       return completionReadiness({
         publicationId: plan?.id ?? null,
         participants: plan ? this.participants(plan) : null,
@@ -79,7 +90,9 @@ export class EventLifecycleService extends StandingsService {
           throw new ApiError(
             422,
             'EVENT_COMPLETION_BLOCKED',
-            '请先完成并独立确认所有比赛及排名规则',
+            a.event.format === 'SINGLE_ELIMINATION'
+              ? '请先完成全部淘汰轮次并独立确认赛果'
+              : '请先完成并独立确认所有比赛及排名规则',
             {
               blockers: completion.blockers,
             },

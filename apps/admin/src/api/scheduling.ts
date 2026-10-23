@@ -46,7 +46,7 @@ function summary(value: unknown) {
     ]) &&
     object(value) &&
     Number.isInteger(value.version) &&
-    value.algorithmVersion === 'RR_CIRCLE_V1' &&
+    ['RR_CIRCLE_V1', 'SE_SEEDED_V1'].includes(String(value.algorithmVersion)) &&
     ['DRAFT', 'SUPERSEDED', 'PUBLISHED'].includes(String(value.status)) &&
     (value.previousRevisionId === null || typeof value.previousRevisionId === 'string')
   );
@@ -91,7 +91,10 @@ function revision(value: unknown) {
       (item) =>
         object(item) &&
         Number.isInteger(item.roundNo) &&
-        (item.byeEntryId === null || typeof item.byeEntryId === 'string'),
+        (item.byeEntryId === null || typeof item.byeEntryId === 'string') &&
+        (item.byeEntryIds === undefined ||
+          (Array.isArray(item.byeEntryIds) &&
+            item.byeEntryIds.every((id) => typeof id === 'string'))),
     ) &&
     Array.isArray(value.fixtures) &&
     value.fixtures.every(

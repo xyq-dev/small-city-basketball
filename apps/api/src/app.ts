@@ -25,6 +25,8 @@ import { ApplicationService } from './service.js';
 import { RegistrationService } from './registration-service.js';
 import { SchedulingService } from './scheduling-service.js';
 import { SchedulingController } from './scheduling-controller.js';
+import { KnockoutService } from './knockout-service.js';
+import { KnockoutController, SCB_KNOCKOUT_SERVICE } from './knockout-controller.js';
 import { ScoringService } from './scoring-service.js';
 import { ScoringController, SCB_SCORING_SERVICE } from './scoring-controller.js';
 import { StandingsService } from './standings-service.js';
@@ -229,6 +231,7 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
     if (options.production) await assertRuntimeReadiness(pool);
     const service = new RegistrationService(pool, options);
     const scheduling = new SchedulingService(pool, options);
+    const knockout = new KnockoutService(pool, options);
     const scoring = new ScoringService(pool, options);
     const standings = new StandingsService(pool, options);
     const overlay = new OverlayService(pool, options);
@@ -242,6 +245,7 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
         RegistrationController,
         InvitationAcceptanceController,
         SchedulingController,
+        KnockoutController,
         ScoringController,
         StandingsController,
         PublicViewingController,
@@ -253,6 +257,7 @@ export async function createApi(input: ApiOptions): Promise<{ app: INestApplicat
       providers: [
         { provide: SERVICE, useValue: service },
         { provide: SCHEDULING_SERVICE, useValue: scheduling },
+        { provide: SCB_KNOCKOUT_SERVICE, useValue: knockout },
         { provide: SCB_SCORING_SERVICE, useValue: scoring },
         { provide: SCB_STANDINGS_SERVICE, useValue: standings },
         { provide: SCB_OVERLAY_SERVICE, useValue: overlay },

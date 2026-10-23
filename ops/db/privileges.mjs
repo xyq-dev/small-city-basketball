@@ -13,7 +13,7 @@ export async function loadManifest() {
     manifest.schema !== 'public' ||
     manifest.runtimeRole !== 'scb_runtime' ||
     manifest.backupRole !== 'scb_backup' ||
-    Object.keys(manifest.tables).length !== 40
+    Object.keys(manifest.tables).length !== 41
   )
     throw new Error('Invalid privilege manifest');
   for (const [table, rule] of Object.entries(manifest.tables)) {

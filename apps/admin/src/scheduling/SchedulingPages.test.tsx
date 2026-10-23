@@ -150,6 +150,55 @@ describe('场地与排赛业务界面', () => {
     expect(screen.queryByLabelText('每场占用分钟')).not.toBeInTheDocument();
   });
 
+  it('generates only knockout first-round fixtures with the declared algorithm and renders multiple byes', async () => {
+    const knockoutRevision = {
+      ...revision,
+      algorithmVersion: 'SE_SEEDED_V1',
+      rounds: [{ roundNo: 1, byeEntryId: null, byeEntryIds: ['entry-3'] }],
+      fixtures: [revision.fixtures[0]!],
+    };
+    let generated = false;
+    const initial = { ...overview, event: { ...overview.event, format: 'SINGLE_ELIMINATION' } };
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
+      if (String(path).includes('/courts?'))
+        return response([court], { capabilities: { canCreateCourt: true } });
+      if (init?.method === 'POST') {
+        generated = true;
+        return response(knockoutRevision);
+      }
+      if (String(path).endsWith('/schedule-revisions/revision-a'))
+        return response(knockoutRevision);
+      return response(
+        generated
+          ? {
+              ...initial,
+              event: { ...initial.event, version: 11 },
+              currentRevision: knockoutRevision,
+              capabilities: { ...initial.capabilities, canGenerate: false, canRedraw: true },
+            }
+          : initial,
+      );
+    });
+    schedulePage(context(fetcher));
+    await screen.findByLabelText('每场占用分钟');
+    for (const [label, value] of [
+      ['每场占用分钟', '60'],
+      ['最少休息分钟', '0'],
+      ['最小日期间隔', '0'],
+      ['窗口1场地', court.id],
+      ['窗口1开始时间', '2026-12-01T09:00'],
+      ['窗口1结束时间', '2026-12-01T18:00'],
+    ])
+      setTime(label!, value!);
+    fireEvent.click(screen.getByRole('button', { name: '生成淘汰赛签位' }));
+    expect(await screen.findByRole('button', { name: '保存全部安排' })).toBeVisible();
+    expect(screen.getByText('合成丙队 本轮轮空（无比赛）')).toBeVisible();
+    expect(
+      JSON.parse(String(fetcher.mock.calls.find(([, init]) => init?.method === 'POST')![1]?.body)),
+    ).toMatchObject({ algorithmVersion: 'SE_SEEDED_V1' });
+    expect(screen.getAllByText('VS')).toHaveLength(1);
+  });
+
   it('政策要求显式0间隔，生成使用当前赛事版本而非冻结时版本，时间为UTC+8', async () => {
     let generated = false;
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
