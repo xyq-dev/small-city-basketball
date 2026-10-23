@@ -4,7 +4,7 @@
 
 ## C05 当前分支（尚未验收或上线）
 
-2026-10-24（Asia/Shanghai），分支 `feat/C05-commercial-completion`、[PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)，基线 main `a9de24c`。四域代码及共享首次发布权益检查、回调原文验签、上传限额、58表ACL/字节摘要/完整恢复驱动已整合。root全量strict/build通过；908源码（admin406/API502）及小程序VM11项通过，均非真实外部联调。独立商业审查所见P1已修复。首轮隔离CI39996944016三个job失败：012触发器IF条件内裸CASE导致PG42601（字符9539），API迁移及production迁移因此未通过，另opsREADME格式失败；无PG业务通过声明。CASE修复后第二轮CI39997736172的admin全成功，迁移及production16PG通过；API198通过/2失败/36跳过，发现两处审计actor错误及跨file登录IP预算污染。审计已改同事务真实DISABLED系统主体并补回归，测试仅隔离真实TCP来源，不改应用限流；正准备第三轮完整CI。真实PG、浏览器、HTTPS、重启/恢复的最终验收仍待通过；尚未合并/上线。没有生产部署、正式数据库或账号维护、真实资金请求或外部新凭据。任务与逐轮证据见 [C05](tasks/C05.md) / [交接](handoffs/C05.md)。
+2026-10-24（Asia/Shanghai），分支 `feat/C05-commercial-completion`、[PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)，基线 main `a9de24c`。四域代码及共享首次发布权益检查、回调原文验签、上传限额、58表ACL/字节摘要/完整恢复驱动已整合。root全量strict/build通过；908源码（admin406/API502）及小程序VM11项通过，均非真实外部联调。独立商业审查所见P1已修复。首轮隔离CI39996944016三个job失败：012触发器IF条件内裸CASE导致PG42601（字符9539），API迁移及production迁移因此未通过，另opsREADME格式失败；无PG业务通过声明。CASE修复后第二轮CI39997736172的admin全成功，迁移及production16PG通过；API198通过/2失败/36跳过，发现两处审计actor错误及跨file登录IP预算污染。审计已改同事务真实DISABLED系统主体并补回归，测试仅隔离真实TCP来源，不改应用限流；第三轮CI39998592777 API237/238通过，剩一项成员权限夹具语义错误及production no-store断言调用错误已修；自动P2分组记分表单强制加时已修并新增4组件回归，准备下一轮全量CI。真实PG、浏览器、HTTPS、重启/恢复的最终验收仍待通过；尚未合并/上线。没有生产部署、正式数据库或账号维护、真实资金请求或外部新凭据。任务与逐轮证据见 [C05](tasks/C05.md) / [交接](handoffs/C05.md)。
 
 ## main已整合
 

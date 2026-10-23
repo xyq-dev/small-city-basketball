@@ -44,3 +44,9 @@ root 需在 `App.tsx` 导入 `EventGroupKnockoutPage` 并接 `/events/:eventId/g
 商业：两个无机构的独立平台测试用户，用原SQL隔离fixture赋平台角色后真实HTTP登录；浏览器平台路由、报价二次确认/取消不写入、123.45元→12345分不可变v1、另一操作员上下架仅改变catalogVersion、机构负责人平台API403、OFF模式无采购按钮且服务端COMMERCE_DISABLED、无微信支付二维码、真实微信账号页明确未配置均有断言。此驱动保持服务器OFF，不声称覆盖ENFORCED订单双人收款/退款UI；该缺口由root隔离生产HTTPS驱动和真实PG状态机验证单列，不以本OFF页面测试冒充。
 
 两个新增spec与helper执行 `tsc --project tsconfig.tests.json` 和明确路径Prettier检查通过；本机没有PG/Docker/服务/实际浏览器，所有新增真实browser断言仍待CI，不记通过。没有接真实商户、微信AppID、付费资源、生产账号或生产数据库。
+
+## PR13审查P2增量修复
+
+2026-10-24 Asia/Shanghai，root将 PR13 `PRRT_kwDOVTBG086vtpIZ` / comment4362569700 指派本作者修复。`scoring/Management.tsx` 原仅对单淘汰预选并锁定OVERTIME，分组接淘汰界面仍可提交ALLOW_DRAW而被后端RULE_CONFLICT拒绝。增量将GROUP_KNOCKOUT同样纳入固定加时，说明明确覆盖组内赛与淘汰赛，取消修改仍恢复固定策略；原单循环可选平局保持。
+
+新增组件回归 `GroupScoringRules.test.tsx` 覆盖初始GROUP显式加时时长、已存规则与取消恢复、陈旧ALLOW_DRAW不作为合法GROUP选项、RR仍可平局。新增4项与既有ScoringPages合计18项通过，admin typecheck通过；不是服务器或真实浏览器实测。root另修后端错误文案并集成，未修改共享合同/后端/运行CI源树。

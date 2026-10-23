@@ -1325,7 +1325,7 @@ async function fileBytes(path, cookie, range) {
     headers: { ...(cookie ? { Cookie: cookie } : {}), ...(range ? { Range: range } : {}) },
   });
   assert.equal(response.status, range ? 206 : 200, `Media content ${path} status`);
-  assert.match(response.headers.get('cache-control'), 'no-store');
+  assert.match(response.headers.get('cache-control') ?? '', /(?:^|,)\s*no-store\s*(?:,|$)/i);
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
   return Buffer.from(await response.arrayBuffer());
 }

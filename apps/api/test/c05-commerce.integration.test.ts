@@ -193,8 +193,25 @@ describe(
       return o;
     }
     test('platform rights are independent from organization ownership and every financial endpoint is tenant checked', async () => {
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT role,status FROM organization_memberships WHERE org_id=$1 AND user_id=$2',
+            [h.owner.orgId, h.otherOwner.id],
+          )
+        ).rows,
+      ).toEqual([{ role: 'EVENT_MANAGER', status: 'ACTIVE' }]);
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT user_id FROM organization_memberships WHERE org_id=$1 AND user_id=$2',
+            [h.owner.orgId, reviewer.id],
+          )
+        ).rowCount,
+      ).toBe(0);
       error(await call(h.api, 'get', root, { cookie: h.owner.cookie }), 403);
-      error(await call(h.api, 'get', org(h.owner.orgId), { cookie: h.otherOwner.cookie }), 404);
+      error(await call(h.api, 'get', org(h.owner.orgId), { cookie: h.otherOwner.cookie }), 403);
+      error(await call(h.api, 'get', org(h.owner.orgId), { cookie: reviewer.cookie }), 404);
       error(await call(h.api, 'get', org(h.owner.orgId)), 401);
       const o = await order();
       error(

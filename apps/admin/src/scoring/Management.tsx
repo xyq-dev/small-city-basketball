@@ -43,7 +43,8 @@ export function RulesForm({
     data.rules ? String(data.rules.periodDurationSeconds) : '',
   );
   const [scores, setScores] = useState<(1 | 2 | 3)[]>(data.rules?.allowedScoreValues ?? []);
-  const knockout = data.event.format === 'SINGLE_ELIMINATION';
+  const knockout =
+    data.event.format === 'SINGLE_ELIMINATION' || data.event.format === 'GROUP_KNOCKOUT';
   const [tie, setTie] = useState(knockout ? 'OVERTIME' : (data.rules?.tiePolicy ?? ''));
   const [overtime, setOvertime] = useState(
     data.rules?.overtimeDurationSeconds ? String(data.rules.overtimeDurationSeconds) : '',
@@ -62,7 +63,7 @@ export function RulesForm({
       const regulationPeriods = integer(periods, 1, 8, '常规节数'),
         periodDurationSeconds = integer(seconds, 1, 3600, '每节时长');
       if (!scores.length) throw new Error('请至少选择一种允许得分');
-      if (knockout && tie !== 'OVERTIME') throw new Error('单淘汰赛必须平局进入加时');
+      if (knockout && tie !== 'OVERTIME') throw new Error('含淘汰阶段的赛事必须平局进入加时');
       if (tie !== 'ALLOW_DRAW' && tie !== 'OVERTIME') throw new Error('请明确选择平局处理');
       const overtimeDurationSeconds =
         tie === 'OVERTIME' ? integer(overtime, 1, 1800, '加时时长') : null;
@@ -101,7 +102,11 @@ export function RulesForm({
       <h2>显式设置记分规则</h2>
       <p>不预设竞赛规则。首场准备后，本届规则永久锁定；犯规和暂停只累计，不推定罚球或剩余配额。</p>
       {knockout && (
-        <p className="score-note">单淘汰赛必须分出胜负，平分持续加时；请明确填写每次加时时长。</p>
+        <p className="score-note">
+          {data.event.format === 'GROUP_KNOCKOUT'
+            ? '分组接淘汰赛事的组内赛和淘汰赛均必须分出胜负，平分持续加时；请明确填写每次加时时长。'
+            : '单淘汰赛必须分出胜负，平分持续加时；请明确填写每次加时时长。'}
+        </p>
       )}
       <form className="score-form" onSubmit={submit} noValidate>
         <div className="score-fields">

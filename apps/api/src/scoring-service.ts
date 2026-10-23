@@ -492,7 +492,7 @@ export class ScoringService extends ApplicationService {
         ['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(a.event.format) &&
         rules.tiePolicy !== 'OVERTIME'
       )
-        throw new ApiError(422, 'RULE_CONFLICT', '单淘汰赛必须设置平分加时规则');
+        throw new ApiError(422, 'RULE_CONFLICT', '单淘汰与分组接淘汰赛事必须设置平分加时规则');
       const count = await c.query<{ version: number }>(
         'SELECT COALESCE(MAX(version),0)::int+1 AS version FROM scoring_rulesets WHERE org_id=$1 AND event_id=$2',
         [ctx.orgId, id],
@@ -844,7 +844,7 @@ export class ScoringService extends ApplicationService {
         ['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(a.event.format) &&
         rules.tiePolicy !== 'OVERTIME'
       )
-        throw new ApiError(422, 'RULE_CONFLICT', '单淘汰赛必须设置平分加时规则');
+        throw new ApiError(422, 'RULE_CONFLICT', '单淘汰与分组接淘汰赛事必须设置平分加时规则');
       const history = await this.events(c, a);
       const projection = replayStats(history, rules, st?.period ?? 1);
       const mode = st

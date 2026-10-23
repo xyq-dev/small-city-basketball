@@ -19,3 +19,5 @@ root共享`service.ts/runtime-config.ts/commerce-runtime.ts/request-body.ts/erro
 ## 隔离CI审计主体修复
 
 2026-10-24（Asia/Shanghai），root真实隔离production CI39997736172在平台权限维护阶段失败。核实旧001的audit_logs.actor_id为NOT NULL且外键users；新CLI及账本systemAudit传NULL会23502，原作者本机没有PG，strict无法覆盖该错误。已统一新建commerce/system-actor.ts：调用方原事务内先插入随机唯一email/UUID、DISABLED状态、113字符不可verifyPassword的sentinel系统用户，再用真实ID写审计；不冒充普通owner、不授机构/平台权限、不放宽旧schema或runtime ACL，维护CLI保留受控错误。人工收款/退款及Native资金审计共同覆盖。2项新增unit与原domain/activation合计12项通过，API strict/build通过。真实PG新增JOIN审计主体禁用及无会话/角色、账本重放一次审计、约束失败后事务回滚无孤立actor断言；本机仍未执行PG，交root重新隔离CI，不能把最初source通过描述为资金闭环通过。root独立审查作者c05_review已读草稿无代码修改建议，最终提交后须重新核验并记录。
+
+2026-10-24（Asia/Shanghai）隔离CI权限测试夹具修正：root报告第三轮真实API238中237通过，唯一失败是本文件把createHarness中已有owner机构EVENT_MANAGER成员otherOwner预期为非成员404；实际403符合仅机构管理员可读计费的规则。只修测试：先真实SQL核验otherOwner为ACTIVE EVENT_MANAGER、reviewer无机构成员行，再分别断言成员403、无成员reviewer404；保留B路径操作A订单404及状态不变负向。服务授权未改。API strict和差异格式检查通过，本机没有PG，最终238项重跑以root隔离CI为准，不把root回传结果记为作者独立实测。
