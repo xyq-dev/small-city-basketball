@@ -2,9 +2,21 @@
 
 更新：2026-10-23（Asia/Shanghai）。本文区分P07-A、P06-A最终验收及P05-B/P05-A/P04-A/P03-A/P02/P01历史证据；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。
 
-## P04-B分支验收（REVIEW / BRANCH_ONLY）
+## P04-B最终验收（DONE / MAIN）
 
-2026-10-23（Asia/Shanghai），main仍abfca48，PR9当前改期任务未合并。root独立本地API260及最终admin237合计497源码/组件/HTTP、完整strict、格式和两端构建通过；实际Node24.19.0。API/007、PG场景、UI/HTTP及E2E必要增量独立静态审查通过。首轮CI39869921173的admin/production成功：497源码、12Mock、16 P07真实PG、4可信HTTPS和40表完整隔离恢复；api145/149因4处测试夹具/预期错误失败，整体FAIL。第二轮CI39870419966的149真实PG、40表重启及桌面新改期完整流程通过；原机构切换E2E等待挂载时序错误导致桌面6通过/1失败，手机及额外负向清理未执行，整体尚未通过。已最小修正测试helper，完整复验待执行，不能把新测试计划或前轮成功拼成最终全绿。007已在隔离CI实际执行，001–006未改，生产执行0。
+2026-10-23（Asia/Shanghai），[PR9](https://github.com/xyq-dev/small-city-basketball/pull/9)已合并`e3102e4090cd09158f6a9f8cb30a00fee57b14b9`。最终source`cc10b3d54e3a8c86cf94c4c1e7cff014534b6a98`／tree`2950e03f2af0a5238b8f8844d8717f504241b231`，与本地d566623及merge一致。[CI39871485940](https://github.com/xyq-dev/small-city-basketball/actions/runs/39871485940)的admin120146927953、api120146927747、production120146927972全部SUCCESS，完整日志已读。
+
+| 证据层级 | 实际结果 |
+|---|---|
+| root本地独立整合 | API260＋admin237＝497源码/组件/HTTP、完整strict/格式/两端build通过；Node24.19.0，无本地Docker/真实PG/OBS；作者报告另记 |
+| 最终候选CI源码 | 497源码/组件/HTTP、完整strict（含浏览器测试）、格式、两端build、12Mock通过 |
+| 真实隔离PostgreSQL | 常规149（原124＋新25）＋P07的16＝165；状态/权限/CAS/实际锁队列/政策边界/不可变history/SQL及deferred守卫/原发布与计分事实保持/公开和Overlay边界通过；007/checksum及40表实际重启通过 |
+| 官方Chromium151.0.7922.34 | 真实API桌面7＋手机7、可信HTTPS4全部通过；改期冲突拒绝、成功更新/排序、外部改期后的版本冲突保留输入、显式fresh与核对后重新提交、原发布不变、历史及reload持久化；机构切换helper修正已复验；手机为模拟，不是真机Safari/微信 |
+| 实际容器及完整隔离恢复 | 三非root镜像、可信TLS完整链、API真实换IP/Web不变/会话保持、同卷重建；停所有源写者，完整dump→第二实例/卷，40表/schema/业务快照/备份点fence一致，包含两次改期及原快照；拒覆盖、旧授权隔离及重登无旧机构、正常/故意失败owned清理且control保留通过 |
+| 审查 | API/007/最小权限与恢复、PG场景、UI/HTTP及必要E2E增量独立静态复核CLEAR；最新cc10b3d自动CodeReview completed无finding/未解决线程，security未运行；PR2四项亦按当前代码补查，无需重复修改 |
+| 合并后CI | 自动运行39875354051待完成；不先写成功 |
+
+首轮CI39869921173整体FAIL：api145/149，4处测试夹具/预期错误，admin/production成功。第二轮CI39870419966的149 PG/40表重启/桌面改期通过，但旧机构切换helper时序失败（桌面6/7；手机/额外负向清理未执行），production被新候选取代；不能拼为最终通过。最小修正未改产品守卫、放宽超时或启用重试，最终第三轮独立全绿。007已在隔离CI实际执行，001–006未改，生产执行0。
 
 恢复入口、分支/原始改动/目录与完整失败检查点记录见[P04-B交接](handoffs/P04-B.md)，冻结验收见[任务卡](tasks/P04-B.md)。OBS/CEF、真机Safari/微信和生产均未验证。
 

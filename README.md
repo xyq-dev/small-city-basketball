@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-2026-10-23：P01、P02、P03-A、P04-A、P05-A、P05-B、P06-A及P07-A均为 **DONE / MAIN**。按[开发说明](docs/DEVELOPMENT.md)运行Mock或真实PostgreSQL Web后台：报名审核／冻结、单循环排赛、在线记分／服务器时钟／独立确认、显式排名及匿名观赛，并可签发1920×1080透明比分浏览器源。
+2026-10-23：P01、P02、P03-A、P04-A/B、P05-A/B、P06-A及P07-A均为 **DONE / MAIN**。按[开发说明](docs/DEVELOPMENT.md)运行Mock或真实PostgreSQL Web后台：报名审核／冻结、单循环排赛／正式单场改期、在线记分／服务器时钟／独立确认、显式排名及匿名观赛，并可签发1920×1080透明比分浏览器源。
 
 [PR7](https://github.com/xyq-dev/small-city-basketball/pull/7)已合并为`f8af5c99fba294a40334c49a5d2e32f80c6acbf9`，源`addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`／tree`2a719b4b3e8fd4f67996144c687f5bbb72902519`。最终[CI39758913295](https://github.com/xyq-dev/small-city-basketball/actions/runs/39758913295)两job全部成功：372源码（admin171/API201）、123独立PG、12Mock＋7桌面／7手机真实API、格式／完整strict／两端build、001→006与checksum、实际PG18.6重启39表指纹，正常及故意失败子库清理均通过且control保留。官方Chromium151.0.7922.34；完整日志已读。自动addeb CodeReview completed无finding，旧文档P2已resolved/outdated；security未运行。 001–006只在隔离测试库执行，没有生产执行。
 
@@ -36,6 +36,6 @@ OBS 负责采集、导播和推流。平台提供只读的赛事比分包装页�
 - [当前状态与下一项任务](docs/CURRENT_STATUS.md)
 - [开发协作规则](AGENTS.md)
 
-**当前分支任务：P04-B正式单场改期与冲突复检（REVIEW / BRANCH_ONLY）**，按[任务卡](docs/tasks/P04-B.md)实施，尚无新验收或main整合结论。用户要求暂缓原生OBS并先推进其余能力；尚无原生OBS／CEF或生产验收。完整P03/P04仍有资料、小程序、其他赛制／自动排时；可靠离线、专业统计和真实视频另卡。用户已授权项目范围内开发与同步，见AGENTS；Mock刷新重置，API失败不回Mock。
+**本轮完成：P04-B正式单场改期与冲突复检（DONE / MAIN）**，[PR9](https://github.com/xyq-dev/small-city-basketball/pull/9)已合并`e3102e4090cd09158f6a9f8cb30a00fee57b14b9`。[最终CI39871485940](https://github.com/xyq-dev/small-city-basketball/actions/runs/39871485940)三job全部成功：497源码、165真实PG、12Mock＋14真实API＋4可信HTTPS浏览器，40表实际重启与完整隔离恢复；详见[任务](docs/tasks/P04-B.md)及[交接](docs/handoffs/P04-B.md)。用户要求暂缓原生OBS并先推进其余能力；原生OBS／CEF、真机Safari/微信与生产未验证。完整P03/P04仍有资料、小程序、其他赛制／自动排时；可靠离线、专业统计和真实视频另卡，整个平台未完成。用户已授权项目范围内开发与同步，见AGENTS；Mock刷新重置，API失败不回Mock。
 
 新 AI 会话先读 `AGENTS.md`、`docs/CURRENT_STATUS.md`、`docs/TASKS.md`，再读取分配到的任务卡；不要凭旧对话判断当前进度。

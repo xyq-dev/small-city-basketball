@@ -192,10 +192,10 @@ DDL保证归属、固定截止及不可变历史；实际STREAMER／当前成员
 
 quarantine使用新DISABLED系统User，无机构成员权及可验证密码；不伪装原owner。撤销旧private sessions、未消费邀请和未撤销public publication；overlay仅v1未撤销→v2/非空理由，不触碰既有撤销历史或不可变overlay_sessions；只提前到期已取得且仍有效lease，保留身份/fence，空lease保持NULL/fence0。组织全部DISABLED、相关Event版本递增，RESTORE_QUARANTINE审计原子保存。第一阶段完整一致与第二阶段预期隔离变化分别验证，不能声称隔离后全库指纹仍相等或fence超过未知备份后最大值。
 
-## P04-B当前正式安排与不可变改期历史（实施中）
+## P04-B当前正式安排与不可变改期历史（DONE / MAIN）
 
 新增007，001–006不改。`published_matches`保持唯一当前正式计划；原schedule_publications/revisions/fixtures及hash仍不可变，初次发布来源不被改期覆盖。新增第40表`match_reschedules`保存当前事务xid8、old/new Court名称与起止时间、from/to Event及Match版本、理由、created_by与created_at；同match目标版本唯一，tenant/event/match及Court复合FK防串scope，历史只能INSERT不能改删。
 
 数据库只允许同事务精确history证明的比赛计划与预约必要列更新，状态/对阵/来源身份不能借改期变化。history commit守卫核对最终match/event版本及计划、恰一Court与双方两Team预约，现有排他与scoring source_version提交约束保持。策略窗口/日期/休息由锁保护下的现有validateSchedule校验，不在SQL复制第二套算法。无proof、孤立或不一致history、删预约/历史须拒绝；审计及任何阶段失败全部回滚。
 
-runtime新增history SELECT/INSERT与match/court/team预约必要列UPDATE，backup仍只读，未新增高权或SECURITY DEFINER入口。40表与7Migration精确就绪/恢复指纹随本卡更新。当前007仅计划/编写阶段，真实执行证据由[交接](handoffs/P04-B.md)记录，生产执行为0。
+runtime新增history SELECT/INSERT与match/court/team预约必要列UPDATE，backup仍只读，未新增高权或SECURITY DEFINER入口。40表与7Migration精确就绪/恢复指纹随本卡更新。007已在隔离CI实际执行，40表实际重启及完整dump恢复通过，证据见[交接](handoffs/P04-B.md)；生产执行为0。

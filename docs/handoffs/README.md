@@ -7,9 +7,11 @@
 - [P02 实施与接续记录](P02.md)
 - [P03-A 实施检查点](P03-A.md)
 - [P04-A 单循环排赛实施与验收](P04-A.md)
+- [P04-B 正式单场改期、冲突复检与完整验收](P04-B.md)
 - [P05-A 在线记分与独立赛果确认](P05-A.md)
 - [P05-B 显式排名与公开观赛](P05-B.md)
 - [P06-A 透明包装与只读授权](P06-A.md)
+- [P07-A 同源HTTPS运行包与完整隔离恢复](P07-A.md)
 - [DOC001 文档交付记录](DOC001.md)
 
 动态全局状态见[CURRENT_STATUS](../CURRENT_STATUS.md)，认领规则见[COLLABORATION](../COLLABORATION.md)。
