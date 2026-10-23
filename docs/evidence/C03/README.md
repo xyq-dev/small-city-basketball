@@ -25,3 +25,9 @@
 [39938738301](https://github.com/xyq-dev/small-city-basketball/actions/runs/39938738301)，source50beb1a，三个完整job日志已读取。admin成功660源码+12Mock；production成功16真实PG+4可信HTTPS/40表恢复隔离；api新17项均过，但旧P05-B一项错误优先级回归导致185/186，后续API浏览器未跑。修复服务守卫顺序保留旧422 SCHEDULE_REQUIRED，验收断言未改，等待完整重跑。
 
 守卫顺序修复后API strict/313源码/build再次通过，独立静态delta复核CLEAR；首head自动CodeReview completed无finding/security未运行，不代替新head的完整验收。
+
+## 第二轮与移动端断言修复
+
+CI39939228390 sourceb00b8d5，admin/production成功；API186真实PG、C03重启/40表指纹、桌面8项浏览器及手机TEAM_ONLY已过，Chromium安装6分25秒使整job触15分钟上限cancelled；手机PLAYER_BASIC在球员榜阶段另有真实断言失败，不能归为纯环境问题或完整通过。已读取完整可得job日志。已启动只重跑该job以取明细的尝试；本次同步修复后将取代该尝试，最终结果以新head完整CI为准。
+
+独立browser作者与root只读核对DOM/CSS，定位精确getByText.first命中≤600px隐藏桌面表头，手机实际是含样本数的卡片。驱动现分别检查桌面columnheader及手机article的采集名单场次1，未删手机数据/宽度/权限/历史流程断言；单测/单场测试时限未放宽。API job总时限15→25分钟，为真实DB+两独立浏览器项目与慢官方依赖安装留足时间，避免再次截断完整错误和owned清理。待新head全CI，不把中断/部分通过计最终通过。

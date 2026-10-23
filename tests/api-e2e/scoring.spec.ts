@@ -400,7 +400,20 @@ for (const collectionMode of ['TEAM_ONLY', 'PLAYER_BASIC'] as const) {
         await expect(page.getByRole('region', { name: '球队归属核对', exact: true })).toContainText(
           /未归属得分\s*1/,
         );
-        await expect(page.getByText('采集名单场次', { exact: true }).first()).toBeVisible();
+        const playerRanking = page.getByRole('region', { name: '球员得分与犯规榜', exact: true });
+        if (testInfo.project.name === 'mobile-api') {
+          // The responsive desktop table is hidden; assert the actual mobile sample value.
+          await expect(
+            playerRanking
+              .getByRole('article')
+              .first()
+              .getByText(/^采集名单场次\s*1$/),
+          ).toBeVisible();
+        } else {
+          await expect(
+            playerRanking.getByRole('columnheader', { name: '采集名单场次', exact: true }),
+          ).toBeVisible();
+        }
       } else {
         expect(summary.summary?.rows).toEqual([]);
         await expect(coverage).toContainText('采集覆盖不完整');
