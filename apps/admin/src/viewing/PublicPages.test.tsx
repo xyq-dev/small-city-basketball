@@ -63,6 +63,33 @@ describe('anonymous entry and read-only rendering', () => {
       '筛选比赛状态',
     );
   });
+  it.each(['COMPLETED', 'ARCHIVED'] as const)(
+    'labels %s as explicitly authorized read-only history without private requests',
+    async (status) => {
+      const privateFetch = vi.fn<typeof fetch>();
+      const fetcher = vi
+        .fn<typeof fetch>()
+        .mockImplementation(async (path) =>
+          response(
+            String(path).includes('/schedule?')
+              ? [publicMatch]
+              : String(path).endsWith('/standings')
+                ? publicStandings
+                : { ...publicEvent, status },
+          ),
+        );
+      render(
+        <RuntimeApp
+          mode="api"
+          client={createApiClient({ fetcher: privateFetch })}
+          publicFetcher={fetcher}
+        />,
+      );
+      expect(await screen.findByText('历史观赛 · 主办方已显式授权 · 只读正式赛果')).toBeVisible();
+      expect(privateFetch).not.toHaveBeenCalled();
+      expect(screen.queryByRole('button', { name: /记分|确认|重开|启用/ })).not.toBeInTheDocument();
+    },
+  );
   it('unknown links and public 401 never show private login or leak server details', async () => {
     const privateFetch = vi.fn<typeof fetch>();
     const fetcher = vi

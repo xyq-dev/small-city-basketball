@@ -305,4 +305,71 @@ describe('declared standings rules and publication controls', () => {
     expect(screen.queryByRole('heading', { name: '旧机构保存结果' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('胜场积分')).not.toBeInTheDocument();
   });
+  it.each(['COMPLETED', 'ARCHIVED'] as const)(
+    'requires separate history consent for %s and creates a new key',
+    async (status) => {
+      let current: EventStandingsData = {
+        ...overview,
+        locked: true,
+        event: { ...overview.event, status },
+        standings: {
+          ...overview.standings!,
+          mode: 'PUBLISHED',
+          isComplete: true,
+          confirmedMatchCount: 1,
+        },
+        publication: {
+          publicEventId: 'old-live-key',
+          status: 'REVOKED',
+          purpose: 'LIVE',
+          createdAt: overview.event.createdAt,
+          revokedAt: overview.event.updatedAt,
+        },
+        capabilities: {
+          canManageRules: false,
+          canPublishRules: false,
+          canEnablePublicViewing: true,
+          canDisablePublicViewing: false,
+        },
+      };
+      const writes: unknown[] = [];
+      const fetcher = vi.fn<typeof fetch>().mockImplementation(async (_path, init) => {
+        if (init?.method === 'POST') {
+          writes.push(JSON.parse(String(init.body)));
+          current = {
+            ...current,
+            event: { ...current.event, version: 8 },
+            publication: {
+              ...current.publication!,
+              publicEventId: 'new-history-key',
+              purpose: 'HISTORY',
+              status: 'ACTIVE',
+              revokedAt: null,
+            },
+            capabilities: {
+              ...current.capabilities,
+              canEnablePublicViewing: false,
+              canDisablePublicViewing: true,
+            },
+          };
+        }
+        return response(current);
+      });
+      render(page(context(fetcher)));
+      fireEvent.click(await screen.findByRole('button', { name: '启用历史观赛' }));
+      expect(screen.queryByRole('button', { name: '启用公开观赛' })).not.toBeInTheDocument();
+      const dialog = screen.getByRole('dialog', { name: '启用历史观赛' });
+      expect(dialog).toHaveTextContent('旧活动链接永久失效且不会复活');
+      expect(dialog).toHaveTextContent('OBS仍须独立授权');
+      expect(writes).toHaveLength(0);
+      fireEvent.click(within(dialog).getByRole('button', { name: '确认启用历史观赛' }));
+      expect(await screen.findByRole('link', { name: '打开公开观赛' })).toHaveAttribute(
+        'href',
+        '/watch/new-history-key',
+      );
+      expect(writes).toEqual([{ type: 'ENABLE_HISTORY', expectedEventVersion: 7 }]);
+      expect(screen.getByText(/主办方已显式授权历史观赛/)).toBeVisible();
+      expect(screen.getByRole('button', { name: '撤销公开观赛' })).toBeEnabled();
+    },
+  );
 });

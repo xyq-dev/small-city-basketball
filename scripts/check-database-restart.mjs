@@ -123,18 +123,21 @@ async function fingerprint() {
   }
   return hash.digest('hex');
 }
-async function captureRegistration(orgId, ownerCookie, suffix) {
+async function captureRegistration(orgId, ownerCookie, suffix, existingLeader) {
   const root = `/v1/orgs/${orgId}`;
-  const leader = await call('/v1/auth/register-participant', {
-    method: 'POST',
-    body: {
-      email: `restart-leader-${suffix}@example.test`,
-      password: randomBytes(24).toString('base64url'),
-      displayName: '重启验证领队',
-    },
-  });
+  const leader = existingLeader
+    ? { data: existingLeader.leaderSession }
+    : await call('/v1/auth/register-participant', {
+        method: 'POST',
+        body: {
+          email: `restart-leader-${suffix}@example.test`,
+          password: randomBytes(24).toString('base64url'),
+          displayName: '重启验证领队',
+        },
+      });
   assert.deepEqual(leader.data.organizations, []);
-  const leaderCookie = leader.response.headers.getSetCookie()[0]?.split(';')[0];
+  const leaderCookie =
+    existingLeader?.leaderCookie ?? leader.response.headers.getSetCookie()[0]?.split(';')[0];
   assert.ok(leaderCookie, 'Participant registration must create a persistent session');
   const event = await call(`${root}/events`, {
     method: 'POST',
@@ -276,7 +279,7 @@ async function captureScheduling(orgId, cookie, registration) {
     await call(`${root}/courts`, {
       method: 'POST',
       cookie,
-      body: { name: '赛程重启验证球场' },
+      body: { name: `赛程重启验证球场-${eventId}` },
     })
   ).data;
   let revision = (
@@ -347,18 +350,21 @@ async function captureScheduling(orgId, cookie, registration) {
   assert.deepEqual(registration.workspace.freeze, frozenBefore);
   return { court, workspace, revision, matches, publication };
 }
-async function captureScoring(orgId, ownerCookie, scheduling, suffix) {
+async function captureScoring(orgId, ownerCookie, scheduling, suffix, existingWriter) {
   const root = `/v1/orgs/${orgId}`;
   const eventPath = `${root}/events/${scheduling.workspace.event.id}`;
-  const writer = await call('/v1/auth/register-participant', {
-    method: 'POST',
-    body: {
-      email: `restart-writer-${suffix}@example.test`,
-      password: randomBytes(24).toString('base64url'),
-      displayName: '重启验证场次记分员',
-    },
-  });
-  const writerCookie = writer.response.headers.getSetCookie()[0]?.split(';')[0];
+  const writer = existingWriter
+    ? { data: { user: { id: existingWriter.writerUserId } } }
+    : await call('/v1/auth/register-participant', {
+        method: 'POST',
+        body: {
+          email: `restart-writer-${suffix}@example.test`,
+          password: randomBytes(24).toString('base64url'),
+          displayName: '重启验证场次记分员',
+        },
+      });
+  const writerCookie =
+    existingWriter?.writerCookie ?? writer.response.headers.getSetCookie()[0]?.split(';')[0];
   assert.ok(writerCookie);
   await call(`${root}/members/${writer.data.user.id}`, {
     method: 'PUT',
@@ -520,7 +526,14 @@ async function captureScoring(orgId, ownerCookie, scheduling, suffix) {
   assert.equal(saved[1].snapshot.requiresReconfirmation, false);
   const rules = (await call(`${eventPath}/scoring`, { cookie: ownerCookie })).data;
   assert.equal(rules.locked, true);
-  return { rules, saved, writerCookie, receipts, previousFence: controls[0].fencingToken };
+  return {
+    rules,
+    saved,
+    writerCookie,
+    writerUserId: writer.data.user.id,
+    receipts,
+    previousFence: controls[0].fencingToken,
+  };
 }
 
 // Public projections have fresh read timestamps; all persisted business fields,
@@ -688,6 +701,256 @@ async function captureRescheduling(orgId, cookie, scheduling, viewing, overlays)
   return current;
 }
 
+// Keep the original running-clock/reschedule fixture untouched. This separate
+// event reuses its synthetic leader/scorer identities and has a closed history.
+async function captureLifecycle(orgId, cookie, suffix, existingRegistration, existingScoring) {
+  const registration = await captureRegistration(
+    orgId,
+    cookie,
+    `${suffix}-history`,
+    existingRegistration,
+  );
+  const scheduling = await captureScheduling(orgId, cookie, registration);
+  const scoring = await captureScoring(
+    orgId,
+    cookie,
+    scheduling,
+    `${suffix}-history`,
+    existingScoring,
+  );
+  const eventPath = `/v1/orgs/${orgId}/events/${scheduling.workspace.event.id}`;
+  const root = `/v1/orgs/${orgId}`;
+  const viewing = await captureViewing(orgId, cookie, scheduling);
+  const initialSummary = (await call(`${eventPath}/player-statistics`, { cookie })).data.summary;
+  assert.equal(initialSummary.includedMatchCount, 1);
+  assert.equal(initialSummary.pendingMatchCount, 2);
+  assert.equal(initialSummary.coverageComplete, false);
+  for (const match of scheduling.matches) {
+    const path = `${root}/matches/${match.id}`;
+    let workbench = (await call(`${path}/scoring`, { cookie })).data;
+    if (workbench.match.status === 'FINAL') continue;
+    if (workbench.match.status === 'SCHEDULED') {
+      await call(`${path}/staff/${scoring.writerUserId}`, {
+        method: 'PUT',
+        cookie,
+        body: { expectedMatchVersion: workbench.match.version, role: 'SCORER', status: 'ACTIVE' },
+      });
+    }
+    async function command(actor, type, payload = {}, control) {
+      workbench = (await call(`${path}/scoring`, { cookie: actor })).data;
+      return (
+        await call(`${path}/commands`, {
+          method: 'POST',
+          cookie: actor,
+          body: {
+            commandId: randomUUID(),
+            expectedVersion: workbench.match.version,
+            type,
+            capturedAt: new Date().toISOString(),
+            payload: ['PREPARE_MATCH', 'START_MATCH'].includes(type)
+              ? { ...payload, expectedEventVersion: workbench.event.version }
+              : payload,
+            ...(control ? { control } : {}),
+          },
+        })
+      ).data;
+    }
+    if (workbench.match.status === 'SCHEDULED')
+      await command(cookie, 'PREPARE_MATCH', { collectionMode: 'PLAYER_BASIC' });
+    const lease = (
+      await call(`${path}/scorekeeper-lease`, {
+        method: 'POST',
+        cookie: scoring.writerCookie,
+        body: { clientInstanceId: randomUUID() },
+      })
+    ).data;
+    const control = {
+      leaseId: lease.leaseId,
+      fencingToken: lease.fencingToken,
+      clientInstanceId: lease.clientInstanceId,
+    };
+    workbench = (await call(`${path}/scoring`, { cookie: scoring.writerCookie })).data;
+    if (workbench.match.status === 'READY')
+      await command(scoring.writerCookie, 'START_MATCH', {}, control);
+    if (workbench.snapshot.clock.running)
+      await command(scoring.writerCookie, 'CLOCK_PAUSE', {}, control);
+    await command(
+      scoring.writerCookie,
+      'CLOCK_SET',
+      { remainingMs: 0, reason: '历史验收节末归零' },
+      control,
+    );
+    await command(scoring.writerCookie, 'END_MATCH', {}, control);
+    await command(cookie, 'CONFIRM_RESULT');
+    await call(`${path}/scorekeeper-lease`, {
+      method: 'DELETE',
+      cookie: scoring.writerCookie,
+      body: { control },
+    });
+  }
+  let lifecycle = (await call(`${eventPath}/lifecycle`, { cookie })).data;
+  assert.equal(lifecycle.completion.ready, true);
+  assert.equal(lifecycle.completion.confirmedMatchCount, 3);
+  const overlayPath = `${root}/matches/${scheduling.matches[1].id}/overlay`;
+  const overlayWorkspace = (await call(overlayPath, { cookie })).data;
+  const issued = (
+    await call(`${root}/matches/${scheduling.matches[1].id}/overlay-commands`, {
+      method: 'POST',
+      cookie,
+      body: {
+        type: 'ISSUE',
+        expectedEventVersion: overlayWorkspace.event.version,
+        expiresInMinutes: 60,
+      },
+    })
+  ).data;
+  const credential = issued.credential;
+  const bootstrap = await call(`/v1/overlays/${credential.overlayId}/bootstrap`, {
+    method: 'POST',
+    body: { token: credential.token },
+  });
+  const overlayCookie = bootstrap.response.headers.getSetCookie()[0]?.split(';')[0];
+  assert.ok(overlayCookie);
+  async function lifecycleCommand(type) {
+    lifecycle = (await call(`${eventPath}/lifecycle`, { cookie })).data;
+    lifecycle = (
+      await call(`${eventPath}/lifecycle-commands`, {
+        method: 'POST',
+        cookie,
+        body: {
+          type,
+          expectedEventVersion: lifecycle.event.version,
+          reason: `隔离恢复验证 ${type}`,
+        },
+      })
+    ).data;
+    return lifecycle;
+  }
+  async function historyCommand(type) {
+    const current = (await call(`${eventPath}/standings`, { cookie })).data;
+    return (
+      await call(`${eventPath}/public-viewing-commands`, {
+        method: 'POST',
+        cookie,
+        body: { type, expectedEventVersion: current.event.version },
+      })
+    ).data;
+  }
+  await lifecycleCommand('COMPLETE');
+  assert.equal(lifecycle.event.status, 'COMPLETED');
+  await assertPublicMissing(`/v1/public/events/${viewing.publicId}`);
+  const firstHistory = await historyCommand('ENABLE_HISTORY');
+  assert.equal(firstHistory.publication.purpose, 'HISTORY');
+  const revokedHistoryId = firstHistory.publication.publicEventId;
+  const revokedHistoryMatchId = (await call(`/v1/public/events/${revokedHistoryId}/schedule`))
+    .data[0].publicMatchId;
+  await lifecycleCommand('ARCHIVE');
+  assert.equal((await call(`/v1/public/events/${revokedHistoryId}`)).data.status, 'ARCHIVED');
+  await lifecycleCommand('REOPEN');
+  assert.equal(lifecycle.event.status, 'RUNNING');
+  await assertPublicMissing(`/v1/public/events/${revokedHistoryId}`);
+  await lifecycleCommand('COMPLETE');
+  const history = await historyCommand('ENABLE_HISTORY');
+  assert.notEqual(history.publication.publicEventId, revokedHistoryId);
+  await lifecycleCommand('ARCHIVE');
+  const publicPath = `/v1/public/events/${history.publication.publicEventId}`;
+  const summary = (await call(`${eventPath}/player-statistics`, { cookie })).data;
+  assert.equal(summary.summary.totalMatchCount, 3);
+  assert.equal(summary.summary.includedMatchCount, 2);
+  assert.equal(summary.summary.teamOnlyConfirmedMatchCount, 1);
+  assert.equal(summary.summary.pendingMatchCount, 0);
+  assert.equal(summary.summary.coverageComplete, false);
+  assert.equal(summary.summary.attributionComplete, false);
+  assert.ok(summary.summary.rows.some((row) => row.score === 3));
+  const closedWorkbench = (
+    await call(`${root}/matches/${scheduling.matches[1].id}/scoring`, { cookie })
+  ).data;
+  assert.equal(closedWorkbench.capabilities.canReopen, false);
+  const closedLease = await fetch(
+    `${baseUrl}${root}/matches/${scheduling.matches[1].id}/scorekeeper-lease`,
+    {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json', Cookie: scoring.writerCookie },
+      body: JSON.stringify({ clientInstanceId: randomUUID() }),
+    },
+  );
+  assert.equal(closedLease.status, 409, 'Archived event must not issue new scorer control');
+  assert.equal((await closedLease.json()).error.code, 'INVALID_EVENT_STATE');
+  const overlay = {
+    ...credential,
+    cookie: overlayCookie,
+    matchId: scheduling.matches[1].id,
+    workspace: (await call(overlayPath, { cookie })).data,
+    snapshot: (
+      await call(`/v1/overlays/${credential.overlayId}/snapshot`, { cookie: overlayCookie })
+    ).data,
+  };
+  assert.deepEqual(
+    overlay.workspace.currentGrant,
+    issued.currentGrant,
+    'History transitions must not renew or revoke the independent OBS grant',
+  );
+  const snapshots = [];
+  for (const match of scheduling.matches)
+    snapshots.push((await call(`${root}/matches/${match.id}/snapshot`, { cookie })).data);
+  return {
+    eventPath,
+    court: scheduling.court,
+    lifecycle: (await call(`${eventPath}/lifecycle`, { cookie })).data,
+    privateStandings: (await call(`${eventPath}/standings`, { cookie })).data,
+    summary,
+    snapshots,
+    overlay,
+    liveId: viewing.publicId,
+    liveMatchId: viewing.schedule[0].publicMatchId,
+    revokedHistoryId,
+    revokedHistoryMatchId,
+    publicId: history.publication.publicEventId,
+    overview: (await call(publicPath)).data,
+    schedule: (await call(`${publicPath}/schedule`)).data,
+    standings: (await call(`${publicPath}/standings`)).data,
+  };
+}
+
+async function verifyLifecycle(saved, cookie, orgId) {
+  const comparisons = [
+    [(await call(`${saved.eventPath}/lifecycle`, { cookie })).data, saved.lifecycle],
+    [(await call(`${saved.eventPath}/player-statistics`, { cookie })).data, saved.summary],
+    [(await call(`${saved.eventPath}/standings`, { cookie })).data, saved.privateStandings],
+    [(await call(`/v1/public/events/${saved.publicId}`)).data, saved.overview],
+    [(await call(`/v1/public/events/${saved.publicId}/schedule`)).data, saved.schedule],
+    [(await call(`/v1/public/events/${saved.publicId}/standings`)).data, saved.standings],
+    [
+      (await call(`/v1/orgs/${orgId}/matches/${saved.overlay.matchId}/overlay`, { cookie })).data,
+      saved.overlay.workspace,
+    ],
+    [
+      (
+        await call(`/v1/overlays/${saved.overlay.overlayId}/snapshot`, {
+          cookie: saved.overlay.cookie,
+        })
+      ).data,
+      saved.overlay.snapshot,
+    ],
+  ];
+  for (const snapshot of saved.snapshots)
+    comparisons.push([
+      (await call(`/v1/orgs/${orgId}/matches/${snapshot.matchId}/snapshot`, { cookie })).data,
+      snapshot,
+    ]);
+  for (const [current, expected] of comparisons)
+    assert.deepEqual(withoutReadTimes(current), withoutReadTimes(expected));
+  assert.equal(saved.lifecycle.event.status, 'ARCHIVED');
+  assert.equal(saved.privateStandings.publication.purpose, 'HISTORY');
+  for (const [publicId, publicMatchId] of [
+    [saved.liveId, saved.liveMatchId],
+    [saved.revokedHistoryId, saved.revokedHistoryMatchId],
+  ]) {
+    for (const suffix of ['', '/schedule', '/standings', `/matches/${publicMatchId}`])
+      await assertPublicMissing(`/v1/public/events/${publicId}${suffix}`);
+  }
+}
+
 async function assertOverlayRevoked(saved) {
   assert.equal(
     (
@@ -832,6 +1095,10 @@ try {
     const overlays = await captureOverlays(orgId, cookie, scheduling);
     const viewing = await captureViewing(orgId, cookie, scheduling);
     const rescheduling = await captureRescheduling(orgId, cookie, scheduling, viewing, overlays);
+    const lifecycle = await captureLifecycle(orgId, cookie, suffix, frozenRegistration, scoring);
+    frozenRegistration.leaderSession = (
+      await call('/v1/auth/session', { cookie: frozenRegistration.leaderCookie })
+    ).data;
     const scheduledEventPath = `/v1/orgs/${orgId}/events/${scheduling.workspace.event.id}`;
     scoring.rules = (await call(`${scheduledEventPath}/scoring`, { cookie })).data;
     scheduling.workspace = (await call(`${scheduledEventPath}/scheduling`, { cookie })).data;
@@ -858,11 +1125,12 @@ try {
       viewing,
       overlays,
       rescheduling,
+      lifecycle,
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
     console.log(
-      'Captured sessions, frozen registration, schedule, raw clock, TEAM_ONLY and PLAYER_BASIC results with attributed/unassigned points and confirmation history, standings, public identities, independent active/revoked overlay grants and read sessions, and the isolated database fingerprint.',
+      'Captured sessions, frozen registration, schedule, raw clock, TEAM_ONLY and PLAYER_BASIC results with attributed/unassigned points and confirmation history, standings, public identities, independent active/revoked overlay grants and read sessions, closed/archived event history, explicit HISTORY grants, private player summary/sourceHash, and the isolated database fingerprint.',
     );
   } else if (mode === 'freeze') {
     // The caller has stopped every API writer before this point and keeps them stopped until dump finishes.
@@ -915,7 +1183,12 @@ try {
       'Current plan, versions and both immutable reschedules survive restart and full restore',
     );
     const courts = await call(`/v1/orgs/${state.orgId}/courts`, { cookie: state.cookie });
-    assert.deepEqual(courts.data, [scheduling.court]);
+    const byId = (a, b) => a.id.localeCompare(b.id);
+    assert.deepEqual(
+      [...courts.data].sort(byId),
+      [scheduling.court, state.lifecycle.court].sort(byId),
+      'Both owned scenario courts survive restart and full restore without extra rows',
+    );
     const scoring = state.scoring;
     assert.deepEqual(
       (await call(`${scheduledEventPath}/scoring`, { cookie: state.cookie })).data,
@@ -998,6 +1271,7 @@ try {
         assert.ok(returnedCookie === saved.cookie, 'Existing overlay session must be reused');
     }
     await assertOverlayRevoked(state.overlays.revoked);
+    await verifyLifecycle(state.lifecycle, state.cookie, state.orgId);
     assert.equal(await fingerprint(), state.fingerprint);
     const acquired = (
       await call(`/v1/orgs/${state.orgId}/matches/${scoring.saved[0].id}/scorekeeper-lease`, {
@@ -1011,7 +1285,7 @@ try {
       'Lease fence remains monotonic across PostgreSQL restart',
     );
     console.log(
-      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, audit and migration checksums across all 40 tables.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across all 40 tables.',
     );
   }
 } finally {

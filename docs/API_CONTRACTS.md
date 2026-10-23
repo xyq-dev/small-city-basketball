@@ -1,5 +1,23 @@
 # API 契约
 
+## C03增量（候选实现，尚未验收/合并/生产执行）
+
+精确DTO见 `packages/contracts/index.d.ts`，本轮范围及执行证据见[C03任务](tasks/C03.md)和[交接](handoffs/C03.md)。以下是冻结规则，不是完成声明。
+
+| 私有入口 | 输入与语义 |
+|---|---|
+| GET `/v1/orgs/:orgId/events/:eventId/lifecycle` | EventLifecycleData：赛事、已确认/总场次、完赛门槛及capabilities |
+| POST `/v1/orgs/:orgId/events/:eventId/lifecycle-commands` | 精确`{type:COMPLETE或ARCHIVE或REOPEN,expectedEventVersion,reason}`；reason去首尾空白4–500字，版本CAS与审计同事务 |
+| GET `/v1/orgs/:orgId/events/:eventId/player-statistics` | EventPlayerStatisticsData；无正式赛程summary=null，仅管理员或该届实际event_staff可读；仅match_staff不扩权 |
+
+COMPLETE只从SCHEDULED/RUNNING进入COMPLETED，要求正式赛程、锁定排名规则、全部当前有效FINAL独立确认、完整排名及C02个人确认一致；撤销当前公开观赛身份。ARCHIVE只从COMPLETED进入ARCHIVED，不删除历史，可保留已显式签发的HISTORY。REOPEN从COMPLETED/ARCHIVED进入RUNNING，撤销当前公开/历史观赛身份，不修改任何单场FINAL；改分仍须原单场重开、更正及独立重确认。三动作仅管理员/实际EVENT_MANAGER；归属隐藏404，可见但无写权403。
+
+COMPLETED/ARCHIVED拒绝记分业务命令及新建/续租控制权；读取、释放控制权、人员授权管理与安全撤权继续沿用原规则。关闭后报名/排赛/改期不能回写。生命周期按原actor/session→org→event锁序，event UPDATE与记分event SHARE串行，不开启嵌套事务。
+
+原公开授权命令新增ENABLE_HISTORY。ENABLE仅SCHEDULED/RUNNING，创建LIVE；ENABLE_HISTORY仅COMPLETED/ARCHIVED且全部有效FINAL，创建HISTORY及全新公开键。DISABLE在任何状态可用且不依赖健康结果源。publication.purpose可选，旧响应缺省LIVE；公开读必须同时匹配事件状态与授权用途。完赛/重新开放后旧键永久失效；归档本身不隐式发布。公开白名单不新增球员身份，OBS独立TTL/撤销与授权保持不变。
+
+球员汇总只纳入当前有效确认PLAYER_BASIC，重开整场退出，重确认最新一次；TEAM_ONLY有效确认与待确认分别计数。源确认、状态、冻结名单一次SQL statement取证；固定名单键为entryId+rosterRevisionId+memberId，不跨届/跨报名自动合并。总得分共同名次，不以犯规破同分。rosterSampleMatchCount标为“采集名单场次”，不声称实际上场。coverageComplete与attributionComplete分别表示全场采集覆盖和已有逐人样本且无未归属；高级统计继续未统计。sourceHash绑定算法/赛程/确认/固定名单/数据及覆盖且不含asOf，不建第二套结果。
+
 ## C02增量（PR10已合并，生产未更新）
 
 2026-10-23：精确类型见 `packages/contracts/index.d.ts`，实施/验收状态见[C02](tasks/C02.md)。旧公开/OBS DTO不变。以下已通过最终隔离CI并整合main，不等于生产已更新：

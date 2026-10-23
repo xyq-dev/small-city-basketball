@@ -24,6 +24,8 @@
 | C01 | 商业版范围与实施顺序规划 | REVIEW | root / Codex | 已交付P03/P04/P05/P06/P07 | MAIN文档（随PR10）；[商业规划](COMMERCIAL_PRODUCT_PLAN.md)、[任务](tasks/C01.md)、[交接](handoffs/C01.md)；C01是范围草案，实施另见C02 |
 | C02 | 商业能力首轮并行实现与验收 | DONE | root / API / UI / 排时 / 账号 / 导出 | C01及已交付模块 | MAIN e5d4782；[PR10](https://github.com/xyq-dev/small-city-basketball/pull/10)、[任务](tasks/C02.md)、[交接](handoffs/C02.md)；CI39919192641三job成功：573源码/185真实PG/12Mock＋20真实浏览器、两模式重启及完整恢复；生产未更新 |
 
+| C03 | 整届生命周期/历史观赛/私有球员基础榜 | REVIEW | root/API/UI/独立审查 | C02 | LOCAL_ONLY；[任务](tasks/C03.md)、[交接](handoffs/C03.md)；实现已整合候选，本机检查/独立静态通过，待隔离CI |
+
 ## 当前顺序
 
 C02已合并PR10，最终候选CI完整成功，合并后CI39920273639三个job也全部成功；见[当前状态](CURRENT_STATUS.md)。本轮无生产操作或正式账号变更，完整商业版尚未完成。后续开发先补整届完赛/归档与其他赛制，持续按独立卡冻结规则/合同、实现及真实隔离验收，不重复开发C02。

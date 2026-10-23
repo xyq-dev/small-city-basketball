@@ -24,6 +24,7 @@ import { MatchExportTools, ScheduleExportTools } from './PublicExports';
 import './viewing.css';
 const PublicApiContext = createContext<PublicViewingApi | null>(null);
 const usePublicApi = () => useContext(PublicApiContext)!;
+const closedEvent = (status: string) => status === 'COMPLETED' || status === 'ARCHIVED';
 const statusLabels: Record<string, string> = {
   SCHEDULED: '尚未准备',
   READY: '已准备 · 尚未开赛',
@@ -231,7 +232,11 @@ function PublicEventContent({ publicEventId }: { publicEventId: string }) {
                 </span>
               </div>
               <div className="watch-hero-foot">
-                <span className="watch-live">主办方已启用公开观赛 · 仅展示允许公开的资料</span>
+                <span className="watch-live">
+                  {closedEvent(data.event.status)
+                    ? '历史观赛 · 主办方已显式授权 · 只读正式赛果'
+                    : '主办方已启用公开观赛 · 仅展示允许公开的资料'}
+                </span>
                 <span>
                   <strong>
                     {data.standings.confirmedMatchCount} / {data.standings.totalMatchCount}

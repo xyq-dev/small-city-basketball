@@ -39,6 +39,7 @@ import {
   recordedCollectionMode,
   scoringCollectionMode,
 } from './player-statistics.js';
+import { activeEvent, assertActiveEvent } from './event-lifecycle-domain.js';
 
 type Row = Record<string, any>;
 interface Access {
@@ -388,6 +389,7 @@ export class ScoringService extends ApplicationService {
     const l = await this.lease(c, a);
     const held = !!(l?.expires_at && iso(l.expires_at) > now);
     const scorer = a.staff?.role === 'SCORER';
+    const writable = activeEvent(a.event.status);
     return {
       match: this.matchDto(a.match),
       event: {
@@ -417,15 +419,19 @@ export class ScoringService extends ApplicationService {
       },
       capabilities: {
         canManageStaff: a.manager,
-        canPrepare: a.manager && a.match.status === 'SCHEDULED',
+        canPrepare: writable && a.manager && a.match.status === 'SCHEDULED',
         canAcquireControl:
-          !!scorer && ['READY', 'LIVE', 'PENDING_CONFIRMATION'].includes(a.match.status),
-        canRecord: !!scorer && a.match.status === 'LIVE',
-        canCorrect: !!scorer && ['LIVE', 'PENDING_CONFIRMATION'].includes(a.match.status),
+          writable &&
+          !!scorer &&
+          ['READY', 'LIVE', 'PENDING_CONFIRMATION'].includes(a.match.status),
+        canRecord: writable && !!scorer && a.match.status === 'LIVE',
+        canCorrect:
+          writable && !!scorer && ['LIVE', 'PENDING_CONFIRMATION'].includes(a.match.status),
         canConfirm:
+          writable &&
           a.match.status === 'PENDING_CONFIRMATION' &&
           (await this.confirmAllowed(c, a, l, now, false)),
-        canReopen: a.manager && a.match.status === 'FINAL',
+        canReopen: writable && a.manager && a.match.status === 'FINAL',
       },
     };
   }
@@ -443,7 +449,10 @@ export class ScoringService extends ApplicationService {
           a.event.locked_scoring_ruleset_id ?? a.event.current_scoring_ruleset_id,
         ),
         locked: !!a.event.locked_scoring_ruleset_id,
-        capabilities: { canManageRules: a.manager && !a.event.locked_scoring_ruleset_id },
+        capabilities: {
+          canManageRules:
+            activeEvent(a.event.status) && a.manager && !a.event.locked_scoring_ruleset_id,
+        },
       };
     });
   }
@@ -647,6 +656,7 @@ export class ScoringService extends ApplicationService {
       this.scorer(a);
       const l = await this.lease(c, a, true);
       const now = await this.now(c, ctx);
+      assertActiveEvent(a.event.status);
       if (!['READY', 'LIVE', 'PENDING_CONFIRMATION'].includes(a.match.status))
         conflict('INVALID_MATCH_STATE', '本场当前不能取得主写控制');
       if (l?.expires_at && iso(l.expires_at) > now) {
@@ -688,6 +698,7 @@ export class ScoringService extends ApplicationService {
       this.scorer(a);
       const l = await this.lease(c, a, true);
       const now = await this.now(c, ctx);
+      if (!release) assertActiveEvent(a.event.status);
       this.assertLease(l, a, control, now);
       const r = await c.query<Row>(
         `UPDATE scoring_leases SET expires_at=$3::timestamptz${release ? '' : "+interval '30 seconds'"} WHERE org_id=$1 AND match_id=$2 RETURNING *`,
@@ -776,6 +787,9 @@ export class ScoringService extends ApplicationService {
           : null;
       const now = await this.now(c, ctx);
       await this.commandPermission(c, a, command, l, now);
+      // Closed events reject even an otherwise valid idempotent command replay.
+      // Dedicated receipt/snapshot reads remain available for private history.
+      assertActiveEvent(a.event.status);
       const previous = await c.query<Row>(
         'SELECT * FROM scoring_commands WHERE org_id=$1 AND actor_id=$2 AND match_id=$3 AND command_id=$4',
         [ctx.orgId, ctx.user.id, id, command.commandId],
