@@ -1,8 +1,8 @@
 # 数据模型与状态
 
-## C03候选迁移与生命周期（未验收/未生产执行）
+## C03迁移与生命周期（已合并，隔离CI执行，生产未执行）
 
-010_c03_event_history.sql仅给既有public_event_publications新增purpose（LIVE/HISTORY、非空缺省LIVE），并将其纳入不可变字段守卫；不改001–009，不增加表，仍40表。旧公开记录保留LIVE语义，不能因升级自动成为历史授权。runtime仍只可INSERT用途，不取得purpose UPDATE权；就绪与恢复精确迁移集合将从9扩为10。编写与隔离执行证据分别见[C03交接](handoffs/C03.md)。
+010_c03_event_history.sql仅给既有public_event_publications新增purpose（LIVE/HISTORY、非空缺省LIVE），并将其纳入不可变字段守卫；不改001–009，不增加表，仍40表。旧公开记录保留LIVE语义，不能因升级自动成为历史授权。runtime仍只可INSERT用途，不取得purpose UPDATE权；就绪与恢复精确迁移集合已扩为10（隔离验收）。010 SHA256 `a4c2394280bee34e89b9b8add078f0a92fc3ab0908859625cda16ed8cb984433`，PR11/CI39941294620已验证10Migration与40表实际重启和完整恢复；编写与隔离执行证据见[C03交接](handoffs/C03.md)。
 
 复用events已有COMPLETED/ARCHIVED状态和当前正式赛程/确认/排名源。COMPLETE与REOPEN原子更新event.version、审计并撤销旧publication；ARCHIVE不删除数据。显式HISTORY才允许闭赛公开读取，独立OBS授权不复用此用途。私有球员榜只投影当前有效个人确认与冻结名单，一次statement snapshot，不建立汇总表或复制比分/时钟。旧007 FINAL升级缺口仍单列，不能用当前schema闭赛/恢复测试冒充历史升级。
 

@@ -1,8 +1,8 @@
 # API 契约
 
-## C03增量（候选实现，尚未验收/合并/生产执行）
+## C03增量（已合并PR11，生产未更新）
 
-精确DTO见 `packages/contracts/index.d.ts`，本轮范围及执行证据见[C03任务](tasks/C03.md)和[交接](handoffs/C03.md)。以下是冻结规则，不是完成声明。
+精确DTO见 `packages/contracts/index.d.ts`，本轮范围及执行证据见[C03任务](tasks/C03.md)和[交接](handoffs/C03.md)。以下合同已由最终CI39941294620验证并合并，合并后检查状态以交接为准。
 
 | 私有入口 | 输入与语义 |
 |---|---|
@@ -71,7 +71,7 @@ type CreateEventInput = {
 |---|---|---|
 | GET/POST `/events`；GET `/events/{eventId}` | 列表、创建草稿、详情 | 按授权赛事范围读取，列表也裁剪范围；有机构创建权限者建草稿；P02 |
 | PATCH `/events/{eventId}` | 编辑草稿 | EVENT_MANAGER，版本匹配且 DRAFT；P02 |
-| POST `/events/{eventId}/commands` | 结束/归档等后续目标 | 尚未实现；P03-A开关报名及冻结使用第6节的registration-commands，P04-A发布使用第7节的revision publish |
+| POST `/events/{eventId}/commands` | 未设置的旧泛化目标路由 | C03完赛/归档/重开实际使用本页C03节lifecycle-commands；报名/冻结仍用registration-commands，赛程发布仍用revision publish |
 | GET/POST `/teams`；GET/PATCH `/teams/{teamId}` | 长期球队资料 | OWNER/ADMIN创建；管理资料须OWNER/ADMIN或本队有效领队；P03-A已实现 |
 | POST `/teams/{teamId}/invitations` | 邀请既有用户管理球队 | 仅OWNER/ADMIN，绑定targetUserId；P03-A已实现 |
 | POST `/events/{eventId}/entries` | 建立球队参赛草稿 | 本队有效TEAM_MANAGER；工作人员也须另有该队grant；P03-A已实现 |

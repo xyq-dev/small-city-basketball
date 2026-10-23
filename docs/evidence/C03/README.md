@@ -1,8 +1,8 @@
 # C03 验证证据
 
-2026-10-23 UTC；基线main909fb74；候选feat/C03-event-history，尚未合并/部署。详见[任务](../../tasks/C03.md)、[交接](../../handoffs/C03.md)。
+2026-10-23 UTC；基线main909fb74；候选feat/C03-event-history，已合并PR11，生产未部署。详见[任务](../../tasks/C03.md)、[交接](../../handoffs/C03.md)。
 
-## 本机整合
+## 本机整合（当时检查点，后续隔离执行见最终CI）
 
 - root全strict（admin/API/测试tsconfig）与build通过；API23文件313项源码测试通过。
 - admin新路由整合后36文件344测试通过；独立审查追加Unicode边界修复后LifecyclePage11项通过（含新增3项），整合全量36文件347测试及admin严格类型/build全部通过。
@@ -31,3 +31,11 @@
 CI39939228390 sourceb00b8d5，admin/production成功；API186真实PG、C03重启/40表指纹、桌面8项浏览器及手机TEAM_ONLY已过，Chromium安装6分25秒使整job触15分钟上限cancelled；手机PLAYER_BASIC在球员榜阶段另有真实断言失败，不能归为纯环境问题或完整通过。已读取完整可得job日志。已启动只重跑该job以取明细的尝试；本次同步修复后将取代该尝试，最终结果以新head完整CI为准。
 
 独立browser作者与root只读核对DOM/CSS，定位精确getByText.first命中≤600px隐藏桌面表头，手机实际是含样本数的卡片。驱动现分别检查桌面columnheader及手机article的采集名单场次1，未删手机数据/宽度/权限/历史流程断言；单测/单场测试时限未放宽。API job总时限15→25分钟，为真实DB+两独立浏览器项目与慢官方依赖安装留足时间，避免再次截断完整错误和owned清理。待新head全CI，不把中断/部分通过计最终通过。
+
+## 最终完整通过（不可与前轮部分结果拼接）
+
+[CI39941294620](https://github.com/xyq-dev/small-city-basketball/actions/runs/39941294620)，source71451d65ae73604690057a0232e486f42796c1ac；tree d9ba1e527e2fc59988c518fdb9355c8bd2f49a70。PR11合并01f8ea426950b865303fd680480e507969adce20，tree完全相同。admin120373442084、api120373441878、production120373441600全部成功，完整日志已核对。
+
+660源码（347/313）、202真实PG（186/16）、12Mock＋桌面8/手机模拟8真实API＋4可信HTTPS浏览器；新增17项PG、两种采集模式的全UI链、已撤旧键永不复活、独立OBS授权、010/checksum/40表重启、原运行计时保留、新ARCHIVED/HISTORY/私有球员汇总hash、全量恢复/quarantine/正常与负向owned清理全部通过。手机PLAYER_BASIC真实验收16.6秒通过，桌面/手机各8项均2.7分钟通过，非跳过断言。
+
+自动CodeReview最新71451d6 completed，无finding/未解决线程，security未运行；独立静态及必要delta复核CLEAR。合并后[CI39942415842](https://github.com/xyq-dev/small-city-basketball/actions/runs/39942415842)正在运行，未计通过。以上CI实测与本机源码测试分列；未做本机独立PG/浏览器、原生OBS或生产操作。
