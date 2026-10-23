@@ -21,4 +21,7 @@
 | 清理 | 正常/故意失败只清本轮owned库/项目，独立control保留 |
 | 审查 | sourcebc6516d自动CodeReview completed无finding/未解决线程；独立静态P1修复复核CLEAR，security未运行 |
 
-[CI39975284464](https://github.com/xyq-dev/small-city-basketball/actions/runs/39975284464)三个job全部SUCCESS、无重试；admin120488153852 / api120488154061 / production120488154066完整日志已核对。011 SHA256 `23027d473167ae319b826b3bc2167baea7d59e548f7e75b58294db5ddbcccce3`，001–010未变，只隔离CI执行。合并后[CI39976904075](https://github.com/xyq-dev/small-city-basketball/actions/runs/39976904075)正在运行，未计通过。没有生产部署、旧007已落库FINAL升级、原生OBS或真实手机验证。
+[CI39975284464](https://github.com/xyq-dev/small-city-basketball/actions/runs/39975284464)三个job全部SUCCESS、无重试；admin120488153852 / api120488154061 / production120488154066完整日志已核对。011 SHA256 `23027d473167ae319b826b3bc2167baea7d59e548f7e75b58294db5ddbcccce3`，001–010未变，只隔离CI执行。合并后[CI39976904075](https://github.com/xyq-dev/small-city-basketball/actions/runs/39976904075)三个job同范围全部SUCCESS，完整日志已核对，无重试。没有生产部署、旧007已落库FINAL升级、原生OBS或真实手机验证。
+
+
+合并后最终核对：CI39976904075，head7ef18c9，attempt1，admin120493758284 / api120493758162 / production120493757852全部SUCCESS，同范围检查完整通过，无重试。API浏览器依赖安装耗时不当作测试通过；安装完成后的桌面9/手机9均实际通过。main后续只有文档同步，应用/测试/运维代码仍与已验merge一致。
