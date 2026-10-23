@@ -1,6 +1,7 @@
 import { devices, expect, test } from '@playwright/test';
 import type { APIRequestContext } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import type {
   CourtData,
   EntryData,
@@ -238,6 +239,45 @@ test('公开观赛隔离会话、正式排名重开重算、撤销及新链接',
     const publicId = workspace.publication!.publicEventId;
     const publicPath = `/v1/public/events/${publicId}`;
     const publicUi = `/watch/${publicId}`;
+    async function downloadText(button: string, extension: 'csv' | 'svg') {
+      const [download] = await Promise.all([
+        viewer.waitForEvent('download'),
+        viewer.getByRole('button', { name: button, exact: true }).click(),
+      ]);
+      expect(await download.failure()).toBeNull();
+      expect(download.suggestedFilename()).toMatch(new RegExp(`\\.${extension}$`));
+      expect(download.suggestedFilename()).not.toMatch(/[\\/\r\n]/);
+      const path = await download.path();
+      expect(path).not.toBeNull();
+      return readFile(path!, 'utf8');
+    }
+    function expectPublicExport(body: string) {
+      for (const secret of [
+        fixture.eventId,
+        fixture.match.id,
+        fixture.writer.user.id,
+        fixture.root.split('/').at(-1)!,
+        publicId,
+      ])
+        expect(body).not.toContain(secret);
+      expect(body).not.toContain('观赛合成球员');
+      expect(body).not.toContain('/v1/');
+      expect(body).not.toContain('/watch/');
+    }
+    async function expectSafeSvg(body: string) {
+      expectPublicExport(body);
+      expect(
+        await viewer.evaluate((source) => {
+          const svg = new DOMParser().parseFromString(source, 'image/svg+xml');
+          return {
+            root: svg.documentElement.localName,
+            unsafe: svg.querySelectorAll(
+              'parsererror, script, foreignObject, [href], [onload], [onclick]',
+            ).length,
+          };
+        }, body),
+      ).toEqual({ root: 'svg', unsafe: 0 });
+    }
     await viewer.goto(publicUi);
     const overview = await read<PublicEventData>(anonymous.request, publicPath);
     await expect(viewer.getByRole('heading', { name: overview.name, exact: true })).toBeVisible();
@@ -264,6 +304,23 @@ test('公开观赛隔离会话、正式排名重开重算、撤销及新链接',
     ]) {
       expect(publicJson).not.toContain(id);
     }
+    progress('public schedule CSV and SVG downloads use only current public data');
+    const scheduleCsv = await downloadText('下载完整赛程CSV', 'csv');
+    expectPublicExport(scheduleCsv);
+    expect(scheduleCsv.trimEnd().split('\r\n')).toHaveLength(schedule.length + 1);
+    expect(scheduleCsv).toContain(overview.name);
+    expect(scheduleCsv).toContain('比分尚未采集');
+    const scheduleSvg = await downloadText('下载本页赛程海报SVG', 'svg');
+    await expectSafeSvg(scheduleSvg);
+    expect(scheduleSvg).toContain('静态快照');
+    const schedulePreview = viewer.getByAltText('本次赛程海报预览', { exact: true });
+    await expect(schedulePreview).toBeVisible();
+    await expect
+      .poll(() => schedulePreview.evaluate((image: HTMLImageElement) => image.naturalWidth))
+      .toBeGreaterThan(0);
+    expect(await viewer.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
     await viewer.goto(`${publicUi}/matches/${publicMatch.publicMatchId}`);
     await expect(viewer.getByText('尚未准备', { exact: true }).first()).toBeVisible();
 
@@ -372,6 +429,24 @@ test('公开观赛隔离会话、正式排名重开重算、撤销及新链接',
       )
       .toBe('CONFIRMED');
     await expect(viewer.getByText('赛果已确认', { exact: true }).first()).toBeVisible();
+    progress('confirmed match card and data download preserve result status and privacy');
+    const matchCsv = await downloadText('下载本场数据CSV', 'csv');
+    expectPublicExport(matchCsv);
+    expect(matchCsv).not.toContain(publicMatch.publicMatchId);
+    expect(matchCsv).toContain('赛果已确认');
+    expect(matchCsv).toContain('未统计');
+    const matchSvg = await downloadText('下载比分海报SVG', 'svg');
+    await expectSafeSvg(matchSvg);
+    expect(matchSvg).not.toContain(publicMatch.publicMatchId);
+    expect(matchSvg).toContain('赛果已确认');
+    const matchPreview = viewer.getByAltText('本次比分海报预览', { exact: true });
+    await expect(matchPreview).toBeVisible();
+    await expect
+      .poll(() => matchPreview.evaluate((image: HTMLImageElement) => image.naturalWidth))
+      .toBeGreaterThan(0);
+    expect(await viewer.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
     await viewer.goto(publicUi);
     await viewer.getByRole('tab', { name: '赛事排名', exact: true }).click();
     const winner = confirmed.rows.find((row) => row.wins === 1)!;
@@ -409,6 +484,12 @@ test('公开观赛隔离会话、正式排名重开重算、撤销及新链接',
     progress('public offline freshness and no private session initialization');
     await anonymous.setOffline(true);
     await expect(viewer.getByText(/离线/).first()).toBeVisible();
+    await expect(
+      viewer.getByRole('button', { name: '下载完整赛程CSV', exact: true }),
+    ).toBeDisabled();
+    await expect(
+      viewer.getByRole('button', { name: '下载本页赛程海报SVG', exact: true }),
+    ).toBeDisabled();
     await anonymous.setOffline(false);
     await expect(viewer.getByText(/离线/)).toHaveCount(0);
     expect(privateRequests).toEqual([]);
@@ -423,6 +504,12 @@ test('公开观赛隔离会话、正式排名重开重算、撤销及新链接',
       .toBe(404);
     await expect(viewer.getByText('观赛链接不可用', { exact: true })).toBeVisible();
     await expect(viewer.getByRole('heading', { name: overview.name, exact: true })).toHaveCount(0);
+    await expect(viewer.getByRole('region', { name: '公开赛程导出', exact: true })).toHaveCount(0);
+    await expect(viewer.getByRole('button', { name: /下载.*(?:CSV|SVG)/ })).toHaveCount(0);
+    await viewer.goto(`${publicUi}/matches/${publicMatch.publicMatchId}`);
+    await expect(viewer.getByText('观赛链接不可用', { exact: true })).toBeVisible();
+    await expect(viewer.getByRole('region', { name: '公开比分导出', exact: true })).toHaveCount(0);
+    await expect(viewer.getByRole('button', { name: /下载.*(?:CSV|SVG)/ })).toHaveCount(0);
     await page.getByRole('button', { name: '启用公开观赛', exact: true }).click();
     await page.getByRole('button', { name: '确认启用公开观赛', exact: true }).click();
     await expect

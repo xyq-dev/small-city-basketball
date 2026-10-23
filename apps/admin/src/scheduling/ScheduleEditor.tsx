@@ -13,6 +13,7 @@ import type { SchedulingApi } from '../api/scheduling';
 import type { useAction } from '../registration/shared';
 import { fixtureLabel, localInput, offsetTime, timeLabel } from './shared';
 import { PolicySummary } from './PolicyForm';
+import { AutoScheduleSuggestions } from './AutoScheduleSuggestions';
 
 type Allocation = { fixtureKey: string; courtId: string; localStart: string };
 export const conflictTitles: Record<ScheduleConflictCode, string> = {
@@ -38,6 +39,7 @@ export function ScheduleEditor({
   onReload,
   published,
   historical,
+  eventDates,
 }: {
   revision: ScheduleRevisionData;
   courts: CourtData[];
@@ -46,6 +48,7 @@ export function ScheduleEditor({
   onReload: () => void;
   published: boolean;
   historical: boolean;
+  eventDates: { startDate: string; endDate: string };
 }) {
   const original = useMemo(
     () =>
@@ -62,6 +65,8 @@ export function ScheduleEditor({
   const [publishConflicts, setPublishConflicts] = useState<ScheduleConflict[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
+  const [suggesting, setSuggesting] = useState(false);
+  const busy = action.busy || suggesting;
   const cards = useRef<Record<string, HTMLElement | null>>({});
   const dirty = snapshot(allocations) !== snapshot(original);
   const editable = revision.isCurrent && revision.status === 'DRAFT' && !published && !historical;
@@ -221,6 +226,36 @@ export function ScheduleEditor({
             {error}
           </div>
         )}
+        {canEdit && (
+          <AutoScheduleSuggestions
+            revision={revision}
+            courts={courts}
+            allocations={allocations}
+            eventDates={eventDates}
+            disabled={action.busy}
+            onBusyChange={setSuggesting}
+            onAdopt={(suggestions) => {
+              const proposed = new Map(suggestions.map((item) => [item.fixtureKey, item]));
+              setAllocations((previous) =>
+                previous.map((item) => {
+                  const suggestion = proposed.get(item.fixtureKey);
+                  return !item.courtId && !item.localStart && suggestion
+                    ? {
+                        fixtureKey: item.fixtureKey,
+                        courtId: suggestion.courtId,
+                        localStart: localInput(suggestion.startsAt),
+                      }
+                    : item;
+                }),
+              );
+              setValidation(undefined);
+              setPublishConflicts([]);
+              setConfirming(false);
+              setError('');
+              action.clear();
+            }}
+          />
+        )}
         {revision.rounds
           .filter((item) => round === 'all' || String(item.roundNo) === round)
           .map((item) => (
@@ -267,7 +302,7 @@ export function ScheduleEditor({
                                 <select
                                   aria-label={`${label} 场地`}
                                   value={allocation.courtId}
-                                  disabled={action.busy}
+                                  disabled={busy}
                                   onChange={(event) =>
                                     change(
                                       fixture.fixtureKey,
@@ -293,7 +328,7 @@ export function ScheduleEditor({
                                   type="datetime-local"
                                   step="0.001"
                                   value={allocation.localStart}
-                                  disabled={action.busy}
+                                  disabled={busy}
                                   onChange={(event) =>
                                     change(fixture.fixtureKey, { localStart: event.target.value })
                                   }
@@ -305,9 +340,7 @@ export function ScheduleEditor({
                               <button
                                 type="button"
                                 className="button sc-clear-allocation"
-                                disabled={
-                                  action.busy || (!allocation.courtId && !allocation.localStart)
-                                }
+                                disabled={busy || (!allocation.courtId && !allocation.localStart)}
                                 onClick={() =>
                                   change(fixture.fixtureKey, { courtId: '', localStart: '' })
                                 }
@@ -336,16 +369,12 @@ export function ScheduleEditor({
           ))}
         {canEdit && (
           <div className="sc-actions sc-editor-actions">
-            <button
-              className="button button-secondary"
-              disabled={action.busy || !dirty}
-              onClick={reset}
-            >
+            <button className="button button-secondary" disabled={busy || !dirty} onClick={reset}>
               取消本地修改
             </button>
             <button
               className="button button-primary"
-              disabled={action.busy}
+              disabled={busy}
               onClick={() => {
                 void save();
               }}
@@ -366,7 +395,7 @@ export function ScheduleEditor({
             {canValidate && (
               <button
                 className="button button-secondary"
-                disabled={action.busy || dirty}
+                disabled={busy || dirty}
                 onClick={() => {
                   void check();
                 }}
@@ -433,7 +462,7 @@ export function ScheduleEditor({
           </div>
           <button
             className="button button-primary"
-            disabled={action.busy || dirty || !valid}
+            disabled={busy || dirty || !valid}
             onClick={() => setConfirming(true)}
           >
             发布正式赛程
@@ -472,14 +501,14 @@ export function ScheduleEditor({
           <div className="sc-actions">
             <button
               className="button button-secondary"
-              disabled={action.busy}
+              disabled={busy}
               onClick={() => setConfirming(false)}
             >
               取消
             </button>
             <button
               className="button button-primary"
-              disabled={action.busy || dirty || !valid}
+              disabled={busy || dirty || !valid}
               onClick={() => {
                 void publish();
               }}

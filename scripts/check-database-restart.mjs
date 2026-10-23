@@ -386,7 +386,7 @@ async function captureScoring(orgId, ownerCookie, scheduling, suffix) {
       expectedVersion: workbench.match.version,
       type,
       payload: ['PREPARE_MATCH', 'START_MATCH'].includes(type)
-        ? { expectedEventVersion: workbench.event.version }
+        ? { ...payload, expectedEventVersion: workbench.event.version }
         : payload,
       capturedAt: new Date().toISOString(),
       ...(control ? { control } : {}),
@@ -397,13 +397,26 @@ async function captureScoring(orgId, ownerCookie, scheduling, suffix) {
     return response;
   }
   const controls = [];
-  for (const match of scheduling.matches.slice(0, 2)) {
+  let attributedMemberId;
+  for (const [index, match] of scheduling.matches.slice(0, 2).entries()) {
     await call(`${root}/matches/${match.id}/staff/${writer.data.user.id}`, {
       method: 'PUT',
       cookie: ownerCookie,
       body: { expectedMatchVersion: match.version, role: 'SCORER', status: 'ACTIVE' },
     });
-    await command(match.id, ownerCookie, 'PREPARE_MATCH');
+    // Preserve the legacy TEAM_ONLY running-clock fixture. The confirmed match
+    // exercises PLAYER_BASIC through this same restart and full-restore chain.
+    const prepared = await command(
+      match.id,
+      ownerCookie,
+      'PREPARE_MATCH',
+      index === 1 ? { collectionMode: 'PLAYER_BASIC' } : {},
+    );
+    assert.equal(prepared.snapshot.collected.playerStatistics, index === 1);
+    if (index === 1) {
+      attributedMemberId = prepared.snapshot.playerStatistics?.home.players[0]?.memberId;
+      assert.ok(attributedMemberId, 'Player attribution must use the actual frozen home roster');
+    }
     const acquired = (
       await call(`${root}/matches/${match.id}/scorekeeper-lease`, {
         method: 'POST',
@@ -438,7 +451,7 @@ async function captureScoring(orgId, ownerCookie, scheduling, suffix) {
     finalId,
     writerCookie,
     'RECORD_STAT',
-    { kind: 'SCORE', side: 'HOME', value: 3 },
+    { kind: 'SCORE', side: 'HOME', value: 3, memberId: attributedMemberId },
     controls[1],
   );
   await command(
@@ -473,9 +486,37 @@ async function captureScoring(orgId, ownerCookie, scheduling, suffix) {
   assert.equal(saved[0].snapshot.status, 'LIVE');
   assert.equal(saved[0].snapshot.clock.running, true);
   assert.equal(saved[0].snapshot.totals.home.score, 2);
+  assert.equal(saved[0].snapshot.playerStatistics, null);
+  assert.equal(saved[0].snapshot.collected.playerStatistics, false);
   assert.equal(saved[1].snapshot.status, 'FINAL');
   assert.equal(saved[1].snapshot.totals.home.score, 4);
+  const playerStatistics = saved[1].snapshot.playerStatistics;
+  assert.equal(playerStatistics.mode, 'PLAYER_BASIC');
+  assert.equal(saved[1].snapshot.collected.playerStatistics, true);
+  assert.equal(
+    playerStatistics.home.players.find((player) => player.memberId === attributedMemberId)?.score,
+    3,
+  );
+  assert.equal(playerStatistics.home.unassigned.score, 1);
+  assert.equal(
+    playerStatistics.home.players.reduce(
+      (score, player) => score + player.score,
+      playerStatistics.home.unassigned.score,
+    ),
+    saved[1].snapshot.totals.home.score,
+  );
+  assert.deepEqual(saved[1].snapshot.latestConfirmation.playerStatistics, playerStatistics);
   assert.equal(saved[1].confirmations.length, 2);
+  const previousConfirmation = saved[1].confirmations.find(
+    (confirmation) => confirmation.id !== saved[1].snapshot.latestConfirmation.id,
+  );
+  assert.equal(previousConfirmation.playerStatistics.home.unassigned.score, 0);
+  assert.equal(
+    previousConfirmation.playerStatistics.home.players.find(
+      (player) => player.memberId === attributedMemberId,
+    )?.score,
+    3,
+  );
   assert.equal(saved[1].snapshot.requiresReconfirmation, false);
   const rules = (await call(`${eventPath}/scoring`, { cookie: ownerCookie })).data;
   assert.equal(rules.locked, true);
@@ -821,7 +862,7 @@ try {
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
     console.log(
-      'Captured sessions, frozen registration, schedule, raw clock, results, standings, public identities, independent active/revoked overlay grants and read sessions, and the isolated database fingerprint.',
+      'Captured sessions, frozen registration, schedule, raw clock, TEAM_ONLY and PLAYER_BASIC results with attributed/unassigned points and confirmation history, standings, public identities, independent active/revoked overlay grants and read sessions, and the isolated database fingerprint.',
     );
   } else if (mode === 'freeze') {
     // The caller has stopped every API writer before this point and keeps them stopped until dump finishes.
@@ -887,6 +928,8 @@ try {
       const snapshot = (await call(`${path}/snapshot`, { cookie: state.cookie })).data;
       const { serverTime: oldTime, ...oldSnapshot } = saved.snapshot;
       const { serverTime: newTime, ...newSnapshot } = snapshot;
+      // Includes the PLAYER_BASIC roster, personal/unassigned totals and latest
+      // confirmation, as well as the unchanged legacy TEAM_ONLY representation.
       assert.deepEqual(newSnapshot, oldSnapshot);
       if (snapshot.clock.running) {
         assert.ok(Date.parse(newTime) > Date.parse(oldTime));
@@ -968,7 +1011,7 @@ try {
       'Lease fence remains monotonic across PostgreSQL restart',
     );
     console.log(
-      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, audit and migration checksums across all 40 tables.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, audit and migration checksums across all 40 tables.',
     );
   }
 } finally {

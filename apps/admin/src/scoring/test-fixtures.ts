@@ -47,6 +47,7 @@ export const snapshot: ScoreSnapshot = {
   lastEventSeq: 2,
   latestConfirmation: null,
   requiresReconfirmation: false,
+  playerStatistics: null,
   collected: { teamScore: true, teamFouls: true, teamTimeouts: true, playerStatistics: false },
   serverTime: now,
 };
@@ -71,6 +72,7 @@ export const workbench: ScoringWorkbenchData = {
   rules,
   rulesLocked: true,
   snapshot,
+  playerRoster: { home: [], away: [] },
   staff: [{ userId: 'writer-a', displayName: '合成记分员', role: 'SCORER', status: 'ACTIVE' }],
   lease: { held: true, expiresAt: '2026-10-22T08:00:30Z', holderUserId: 'writer-a' },
   capabilities: {
@@ -100,6 +102,34 @@ export const eventScoring: EventScoringData = {
   rules: null,
   locked: false,
   capabilities: { canManageRules: true },
+};
+export const playerRoster = {
+  home: [
+    { memberId: '10000000-0000-4000-8000-000000000001', name: '合成球员甲', jerseyNo: '7' },
+    { memberId: '10000000-0000-4000-8000-000000000002', name: '合成球员乙', jerseyNo: '12' },
+  ],
+  away: [{ memberId: '20000000-0000-4000-8000-000000000001', name: '合成球员丙', jerseyNo: '9' }],
+};
+export const playerStatistics = {
+  mode: 'PLAYER_BASIC' as const,
+  home: {
+    players: playerRoster.home.map((player) => ({ ...player, score: 0, fouls: 0 })),
+    unassigned: { score: 0, fouls: 0 },
+  },
+  away: {
+    players: playerRoster.away.map((player) => ({ ...player, score: 0, fouls: 0 })),
+    unassigned: { score: 0, fouls: 0 },
+  },
+};
+export const playerSnapshot: ScoreSnapshot = {
+  ...snapshot,
+  playerStatistics,
+  collected: { ...snapshot.collected, playerStatistics: true },
+};
+export const playerWorkbench: ScoringWorkbenchData = {
+  ...workbench,
+  playerRoster,
+  snapshot: playerSnapshot,
 };
 export const lease: ScorekeeperLeaseData = {
   leaseId: 'lease-a',

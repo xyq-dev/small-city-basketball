@@ -399,6 +399,7 @@ function EventSchedulingContent({
               onReload={resource.reload}
               published={published}
               historical={historical}
+              eventDates={overview.event}
             />
           ) : null}
           {revision?.previousRevisionId && (

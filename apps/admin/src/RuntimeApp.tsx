@@ -96,8 +96,14 @@ function AuthForm({
       return;
     }
     const errors: Record<string, string> = {};
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-      errors.email = '请填写有效邮箱';
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    const loginNameValid = /^[a-z][a-z0-9_]{2,31}$/i.test(email.trim());
+    if (
+      !email.trim() ||
+      email.trim().length > 254 ||
+      (!emailValid && (register || !loginNameValid))
+    )
+      errors.email = register ? '请填写有效邮箱' : '请输入有效邮箱或用户名';
     if (!password) errors.password = '请输入密码';
     if (register && (Array.from(password).length < 12 || Array.from(password).length > 128))
       errors.password = '密码需为12–128个字符';
@@ -218,11 +224,11 @@ function AuthForm({
             }}
             noValidate
           >
-            <label htmlFor="auth-email">邮箱</label>
+            <label htmlFor="auth-email">{register ? '邮箱' : '邮箱或用户名'}</label>
             <input
               {...field('email')}
-              type="email"
-              autoComplete="email"
+              type={register ? 'email' : 'text'}
+              autoComplete={register ? 'email' : 'username'}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               disabled={busy}

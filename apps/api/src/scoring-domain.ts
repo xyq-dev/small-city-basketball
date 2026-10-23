@@ -13,6 +13,7 @@ import type {
   ScoringSide,
   ScoringStatKind,
   ScoringTotals,
+  ScoringCollectionMode,
 } from '@small-city-basketball/contracts';
 import { ApiError } from './errors.js';
 import { invalid, objectInput, text } from './validation.js';
@@ -121,6 +122,15 @@ function parseControl(raw: unknown): ScoringControl {
     clientInstanceId: uuid(input.clientInstanceId, 'clientInstanceId'),
   };
 }
+function memberAttribution(
+  value: Record<string, unknown>,
+  statKind?: ScoringStatKind,
+): { memberId?: string | null } {
+  if (!Object.prototype.hasOwnProperty.call(value, 'memberId')) return {};
+  const memberId = value.memberId === null ? null : uuid(value.memberId, 'memberId');
+  if (statKind === 'TIMEOUT' && memberId !== null) invalid('暂停不能归属球员');
+  return { memberId };
+}
 export function parseScoringCommand(raw: unknown): ScoringCommandInput {
   const input = objectInput(raw, [
     'commandId',
@@ -140,22 +150,37 @@ export function parseScoringCommand(raw: unknown): ScoringCommandInput {
   const control = MANAGEMENT_COMMANDS.has(type) ? undefined : parseControl(input.control);
   let payload: ScoringCommandPayload['payload'];
   if (type === 'PREPARE_MATCH' || type === 'START_MATCH') {
-    const value = objectInput(input.payload, ['expectedEventVersion']);
+    const value = objectInput(
+      input.payload,
+      type === 'PREPARE_MATCH'
+        ? ['expectedEventVersion', 'collectionMode']
+        : ['expectedEventVersion'],
+    );
+    if (
+      value.collectionMode !== undefined &&
+      value.collectionMode !== 'TEAM_ONLY' &&
+      value.collectionMode !== 'PLAYER_BASIC'
+    )
+      invalid('无效统计采集模式');
     payload = {
       expectedEventVersion: integer(value.expectedEventVersion, 'expectedEventVersion', 1, INT_MAX),
+      ...(value.collectionMode !== undefined
+        ? { collectionMode: value.collectionMode as ScoringCollectionMode }
+        : {}),
     };
   } else if (type === 'RECORD_STAT' || type === 'ADD_CORRECTION') {
     const value = objectInput(
       input.payload,
       type === 'RECORD_STAT'
-        ? ['kind', 'side', 'value']
-        : ['kind', 'side', 'value', 'period', 'reason'],
+        ? ['kind', 'side', 'value', 'memberId']
+        : ['kind', 'side', 'value', 'period', 'reason', 'memberId'],
     );
     const statKind = kind(value.kind);
     const base = {
       kind: statKind,
       side: side(value.side),
       value: statValue(statKind, value.value),
+      ...memberAttribution(value, statKind),
     };
     payload =
       type === 'ADD_CORRECTION'
@@ -170,7 +195,7 @@ export function parseScoringCommand(raw: unknown): ScoringCommandInput {
       input.payload,
       type === 'VOID_STAT'
         ? ['targetEventId', 'reason']
-        : ['targetEventId', 'side', 'value', 'reason'],
+        : ['targetEventId', 'side', 'value', 'reason', 'memberId'],
     );
     const targetEventId = uuid(value.targetEventId, 'targetEventId');
     payload =
@@ -181,6 +206,7 @@ export function parseScoringCommand(raw: unknown): ScoringCommandInput {
             side: side(value.side),
             value: integer(value.value, 'value', 1, 3),
             reason: text(value.reason, 'reason', 1, 500),
+            ...memberAttribution(value),
           };
   } else if (type === 'CLOCK_SET') {
     const value = objectInput(input.payload, ['remainingMs', 'reason']);
@@ -219,6 +245,7 @@ export function commandHash(command: ScoringCommandInput): string {
 }
 
 export interface ActiveStat {
+  memberId?: string | null;
   kind: ScoringStatKind;
   side: ScoringSide;
   value: number;
@@ -252,6 +279,7 @@ export function replayStats(
         side: side(event.payload.side),
         value: statValue(statKind, event.payload.value, rules),
         period: integer(event.payload.period, 'period', 1, currentPeriod),
+        ...memberAttribution(event.payload, statKind),
       });
     } else if (event.type === 'STAT_VOIDED') {
       if (!event.targetEventId)
@@ -350,7 +378,15 @@ export function planCommand(context: ScoringPlanContext): ScoringCommandPlan {
         anchorServerTime: now,
         clockVersion: 1,
       },
-      events: [{ type: command.type, payload: {} }],
+      events: [
+        {
+          type: command.type,
+          payload:
+            command.payload.collectionMode === undefined
+              ? {}
+              : { collectionMode: command.payload.collectionMode },
+        },
+      ],
       isConfirmation: false,
       isReopen: false,
       isActualScoring: false,
@@ -375,6 +411,7 @@ export function planCommand(context: ScoringPlanContext): ScoringCommandPlan {
         value: stat.value,
         period: stat.period,
         ...(reason ? { reason } : {}),
+        ...memberAttribution(stat as unknown as Record<string, unknown>, stat.kind),
       },
     });
   };
@@ -395,6 +432,7 @@ export function planCommand(context: ScoringPlanContext): ScoringCommandPlan {
       side: command.payload.side,
       value: statValue(command.payload.kind, command.payload.value, rules),
       period: clock.period,
+      ...memberAttribution(command.payload),
     });
   } else if (
     command.type === 'ADD_CORRECTION' ||
@@ -409,6 +447,7 @@ export function planCommand(context: ScoringPlanContext): ScoringCommandPlan {
           side: command.payload.side,
           value: statValue(command.payload.kind, command.payload.value, rules),
           period: integer(command.payload.period, 'period', 1, clock.period),
+          ...memberAttribution(command.payload),
         },
         command.payload.reason,
       );
@@ -424,12 +463,20 @@ export function planCommand(context: ScoringPlanContext): ScoringCommandPlan {
         targetEventId: command.payload.targetEventId,
         payload: { reason: command.payload.reason },
       });
+      if (
+        command.type === 'REPLACE_STAT' &&
+        target.memberId &&
+        command.payload.side !== target.side &&
+        !Object.prototype.hasOwnProperty.call(command.payload, 'memberId')
+      )
+        invalid('换队更正须明确球员归属');
       if (command.type === 'REPLACE_STAT')
         appendStat(
           {
             ...target,
             side: command.payload.side,
             value: statValue(target.kind, command.payload.value, rules),
+            ...memberAttribution(command.payload, target.kind),
           },
           command.payload.reason,
         );

@@ -35,7 +35,7 @@ test('private deep link, login and registration capabilities', async ({ page, co
       'participant-has-no-organization',
     );
     await page.getByRole('button', { name: '已有账号？返回登录', exact: true }).click();
-    await page.getByLabel('邮箱', { exact: true }).fill(owner.email);
+    await page.getByLabel('邮箱或用户名', { exact: true }).fill(owner.email);
     await page.getByLabel('密码', { exact: true }).fill(owner.password);
     const login = page.waitForResponse(
       (response) =>

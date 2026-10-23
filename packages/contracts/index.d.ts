@@ -457,6 +457,24 @@ export const MATCH_STATUSES: readonly [
 export type MatchStatus = (typeof MATCH_STATUSES)[number];
 export type ScoringSide = 'HOME' | 'AWAY';
 export type ScoringStatKind = 'SCORE' | 'FOUL' | 'TIMEOUT';
+export type ScoringCollectionMode = 'TEAM_ONLY' | 'PLAYER_BASIC';
+export interface MatchPlayerStatRow extends EntryRosterPlayer {
+  score: number;
+  fouls: number;
+}
+export interface MatchSidePlayerStatistics {
+  players: MatchPlayerStatRow[];
+  unassigned: { score: number; fouls: number };
+}
+export interface MatchPlayerStatistics {
+  mode: 'PLAYER_BASIC';
+  home: MatchSidePlayerStatistics;
+  away: MatchSidePlayerStatistics;
+}
+export interface MatchPlayerRoster {
+  home: EntryRosterPlayer[];
+  away: EntryRosterPlayer[];
+}
 export interface ScoringRules {
   regulationPeriods: number;
   periodDurationSeconds: number;
@@ -507,6 +525,7 @@ export interface ResultConfirmationData {
   home: ScoringTotals;
   away: ScoringTotals;
   periods: ScoringPeriodTotals[];
+  playerStatistics: MatchPlayerStatistics | null;
   confirmedAt: string;
 }
 export interface ScoreSnapshot {
@@ -524,7 +543,8 @@ export interface ScoreSnapshot {
   lastEventSeq: number;
   latestConfirmation: ResultConfirmationData | null;
   requiresReconfirmation: boolean;
-  collected: { teamScore: true; teamFouls: true; teamTimeouts: true; playerStatistics: false };
+  playerStatistics: MatchPlayerStatistics | null;
+  collected: { teamScore: true; teamFouls: true; teamTimeouts: true; playerStatistics: boolean };
   serverTime: string;
 }
 export type MatchStaffRole = 'SCORER' | 'RESULT_REVIEWER';
@@ -560,6 +580,7 @@ export interface ScoringWorkbenchData {
   rules: ScoringRulesetData | null;
   rulesLocked: boolean;
   snapshot: ScoreSnapshot | null;
+  playerRoster: MatchPlayerRoster;
   staff: MatchStaffData[];
   lease: { held: boolean; expiresAt: string | null; holderUserId: string | null };
   capabilities: {
@@ -602,8 +623,20 @@ export const SCORING_COMMAND_TYPES: readonly [
 ];
 export type ScoringCommandType = (typeof SCORING_COMMAND_TYPES)[number];
 export type ScoringCommandPayload =
-  | { type: 'PREPARE_MATCH' | 'START_MATCH'; payload: { expectedEventVersion: number } }
-  | { type: 'RECORD_STAT'; payload: { kind: ScoringStatKind; side: ScoringSide; value: number } }
+  | {
+      type: 'PREPARE_MATCH';
+      payload: { expectedEventVersion: number; collectionMode?: ScoringCollectionMode };
+    }
+  | { type: 'START_MATCH'; payload: { expectedEventVersion: number } }
+  | {
+      type: 'RECORD_STAT';
+      payload: {
+        kind: ScoringStatKind;
+        side: ScoringSide;
+        value: number;
+        memberId?: string | null;
+      };
+    }
   | {
       type: 'ADD_CORRECTION';
       payload: {
@@ -612,12 +645,19 @@ export type ScoringCommandPayload =
         value: number;
         period: number;
         reason: string;
+        memberId?: string | null;
       };
     }
   | { type: 'VOID_STAT'; payload: { targetEventId: string; reason: string } }
   | {
       type: 'REPLACE_STAT';
-      payload: { targetEventId: string; side: ScoringSide; value: number; reason: string };
+      payload: {
+        targetEventId: string;
+        side: ScoringSide;
+        value: number;
+        reason: string;
+        memberId?: string | null;
+      };
     }
   | { type: 'CLOCK_SET'; payload: { remainingMs: number; reason: string } }
   | { type: 'REOPEN_RESULT'; payload: { reason: string } }

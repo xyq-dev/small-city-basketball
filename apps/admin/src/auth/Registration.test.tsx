@@ -87,7 +87,7 @@ describe('independent signed-out registration capabilities', () => {
     expect(await screen.findByRole('button', { name: '登录工作台' })).toBeEnabled();
     expect(screen.getByText('正在读取注册开放状态…')).toBeVisible();
     expect(screen.queryByRole('button', { name: toggleNames[0] })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('邮箱'), { target: { value: session.user.email } });
+    fireEvent.change(screen.getByLabelText(/邮箱/), { target: { value: session.user.email } });
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'test-password' } });
     fireEvent.click(screen.getByRole('button', { name: '登录工作台' }));
     expect(await screen.findByRole('heading', { name: '你的球队主场，从邀请开始' })).toBeVisible();
@@ -129,7 +129,7 @@ describe('independent signed-out registration capabilities', () => {
     render(entry(fetcher));
     await screen.findByRole('alert');
     expect(screen.queryByRole('button', { name: toggleNames[0] })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('邮箱'), { target: { value: session.user.email } });
+    fireEvent.change(screen.getByLabelText(/邮箱/), { target: { value: session.user.email } });
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'correct-password' } });
     fireEvent.click(screen.getByRole('button', { name: '登录工作台' }));
     expect(await screen.findByRole('heading', { name: '你的球队主场，从邀请开始' })).toBeVisible();
@@ -175,7 +175,7 @@ describe('independent signed-out registration capabilities', () => {
     });
     render(entry(fetcher));
     await screen.findByRole('button', { name: toggleNames[0] });
-    fireEvent.change(screen.getByLabelText('邮箱'), { target: { value: session.user.email } });
+    fireEvent.change(screen.getByLabelText(/邮箱/), { target: { value: session.user.email } });
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'correct-password' } });
     fireEvent.click(screen.getByRole('button', { name: '登录工作台' }));
     fireEvent.click(await screen.findByRole('button', { name: '退出' }));

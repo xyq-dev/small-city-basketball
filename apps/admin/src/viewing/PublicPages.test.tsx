@@ -142,6 +142,27 @@ describe('anonymous entry and read-only rendering', () => {
   });
 });
 describe('public polling lifecycle', () => {
+  it('export invalidation aborts an older poll and prevents its late success from restoring revoked data', async () => {
+    const pending = deferred<string>();
+    const read = vi
+      .fn<(signal: AbortSignal) => Promise<string>>()
+      .mockResolvedValueOnce('authorized data')
+      .mockReturnValueOnce(pending.promise);
+    const { result } = renderHook(() => usePublicResource(read));
+    await waitFor(() => expect(result.current.data).toBe('authorized data'));
+    let reload!: Promise<void>;
+    act(() => {
+      reload = result.current.reload();
+    });
+    act(() => result.current.invalidate(new ApiError(404, 'PUBLIC_NOT_FOUND', 'revoked')));
+    expect(read.mock.calls[1][0].aborted).toBe(true);
+    await act(async () => {
+      pending.resolve('late data from before revocation');
+      await reload;
+    });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.notFound).toBe(true);
+  });
   it('keeps last data on network failure, clears it for 404 and source damage', async () => {
     const read = vi
       .fn<(signal: AbortSignal) => Promise<string>>()

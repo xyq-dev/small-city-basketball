@@ -20,6 +20,7 @@ import type { PublicViewingApi } from '../api/viewing';
 import { clockLabel, clockRemaining } from '../scoring/clock';
 import { RuleSummary, StandingsTable } from './StandingsTable';
 import { usePublicResource } from './usePublicResource';
+import { MatchExportTools, ScheduleExportTools } from './PublicExports';
 import './viewing.css';
 const PublicApiContext = createContext<PublicViewingApi | null>(null);
 const usePublicApi = () => useContext(PublicApiContext)!;
@@ -240,6 +241,12 @@ function PublicEventContent({ publicEventId }: { publicEventId: string }) {
               </div>
             </section>
             <Freshness resource={resource} />
+            <ScheduleExportTools
+              data={data}
+              disabled={!resource.online || resource.stale || resource.loading}
+              readLatest={read}
+              onUnavailable={resource.invalidate}
+            />
             <div className="watch-tabs" role="tablist" aria-label="赛事观赛内容">
               <button
                 id="watch-schedule-tab"
@@ -430,6 +437,12 @@ function PublicMatchContent({
             </div>
             <Freshness resource={resource} />
             <PublicScoreboard data={data} receivedAt={resource.receivedAt} />
+            <MatchExportTools
+              data={data}
+              disabled={!resource.online || resource.stale || resource.loading}
+              readLatest={read}
+              onUnavailable={resource.invalidate}
+            />
             {data.periods && (
               <section className="panel view-panel">
                 <h2>按节球队统计</h2>

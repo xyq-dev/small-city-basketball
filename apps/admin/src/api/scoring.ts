@@ -30,6 +30,67 @@ const totals = (v: unknown) => ints(v, ['score', 'fouls', 'timeouts']);
 const periods = (v: unknown) =>
   Array.isArray(v) &&
   v.every((p) => ints(p, ['period']) && obj(p) && totals(p.home) && totals(p.away));
+function rosterPlayers(v: unknown) {
+  if (!Array.isArray(v)) return false;
+  const ids = new Set<string>();
+  return v.every((player) => {
+    if (!str(player, ['memberId', 'name', 'jerseyNo']) || !obj(player)) return false;
+    const id = player.memberId as string;
+    if (!id || ids.has(id)) return false;
+    ids.add(id);
+    return true;
+  });
+}
+function playerStatistics(v: unknown, home: unknown, away: unknown) {
+  // Older TEAM_ONLY responses did not include this additive field.
+  if (v === null || v === undefined) return true;
+  if (!obj(v) || v.mode !== 'PLAYER_BASIC') return false;
+  const seen = new Set<string>();
+  return (
+    [
+      ['home', home],
+      ['away', away],
+    ] as const
+  ).every(([side, total]) => {
+    const team = v[side];
+    if (
+      !obj(team) ||
+      !rosterPlayers(team.players) ||
+      !Array.isArray(team.players) ||
+      !obj(team.unassigned) ||
+      !obj(total)
+    )
+      return false;
+    const unassigned = team.unassigned;
+    if (
+      !['score', 'fouls'].every(
+        (kind) => Number.isSafeInteger(unassigned[kind]) && Number(unassigned[kind]) >= 0,
+      )
+    )
+      return false;
+    let score = Number(unassigned.score),
+      fouls = Number(unassigned.fouls);
+    for (const player of team.players) {
+      if (
+        !obj(player) ||
+        !['score', 'fouls'].every(
+          (kind) => Number.isSafeInteger(player[kind]) && Number(player[kind]) >= 0,
+        ) ||
+        seen.has(String(player.memberId))
+      )
+        return false;
+      seen.add(String(player.memberId));
+      score += Number(player.score);
+      fouls += Number(player.fouls);
+    }
+    return (
+      Number.isSafeInteger(score) &&
+      Number.isSafeInteger(fouls) &&
+      score === total.score &&
+      fouls === total.fouls
+    );
+  });
+}
 function rules(v: unknown) {
   return (
     obj(v) &&
@@ -51,7 +112,8 @@ function confirmation(v: unknown) {
     ints(v, ['rulesetVersion', 'sourceMatchVersion', 'lastEventSeq']) &&
     totals(v.home) &&
     totals(v.away) &&
-    periods(v.periods)
+    periods(v.periods) &&
+    playerStatistics(v.playerStatistics, v.home, v.away)
   );
 }
 function snapshot(v: unknown) {
@@ -79,7 +141,9 @@ function snapshot(v: unknown) {
     v.collected.teamScore === true &&
     v.collected.teamFouls === true &&
     v.collected.teamTimeouts === true &&
-    v.collected.playerStatistics === false
+    typeof v.collected.playerStatistics === 'boolean' &&
+    v.collected.playerStatistics === Boolean(v.playerStatistics) &&
+    playerStatistics(v.playerStatistics, v.totals.home, v.totals.away)
   );
 }
 function staff(v: unknown) {
@@ -118,6 +182,14 @@ function workbench(v: unknown) {
     (v.rules === null || rules(v.rules)) &&
     bool(v, ['rulesLocked']) &&
     (v.snapshot === null || snapshot(v.snapshot)) &&
+    (v.playerRoster === undefined
+      ? v.snapshot === null ||
+        (obj(v.snapshot) &&
+          obj(v.snapshot.collected) &&
+          v.snapshot.collected.playerStatistics === false)
+      : obj(v.playerRoster) &&
+        rosterPlayers(v.playerRoster.home) &&
+        rosterPlayers(v.playerRoster.away)) &&
     Array.isArray(v.staff) &&
     v.staff.every(staff) &&
     obj(v.lease) &&

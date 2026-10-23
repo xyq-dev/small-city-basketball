@@ -613,3 +613,86 @@
   font-size: 15px;
   font-weight: 500;
 }
+.score-collection-mode {
+  width: min(100%, 460px);
+  text-align: left;
+}
+.score-player-selector {
+  margin-bottom: 18px;
+}
+.score-player-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.score-player-team {
+  min-width: 0;
+}
+.score-player-team h3 {
+  color: #132c49;
+  font-size: 16px;
+  margin: 12px 0 5px;
+  overflow-wrap: anywhere;
+}
+.score-player-coverage {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+.score-player-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e0e7ef;
+  border-radius: 9px;
+}
+.score-player-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: #344b64;
+  font-variant-numeric: tabular-nums;
+}
+.score-player-table th,
+.score-player-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e9edf2;
+  text-align: right;
+}
+.score-player-table th:first-child {
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.score-player-table th span {
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.score-player-table thead,
+.score-player-unassigned {
+  background: #f3f6fa;
+}
+.score-player-table tr:last-child th,
+.score-player-table tr:last-child td {
+  border-bottom: 0;
+}
+.score-history-players {
+  margin-top: 12px;
+}
+.score-history-players summary {
+  cursor: pointer;
+  color: #b84918;
+  min-height: 44px;
+  display: list-item;
+  align-content: center;
+}
+.score-history-players .score-player-statistics {
+  margin-top: 8px;
+}
+@media (max-width: 700px) {
+  .score-player-grid {
+    grid-template-columns: 1fr;
+  }
+  .score-player-table th,
+  .score-player-table td {
+    padding: 11px 9px;
+  }
+}

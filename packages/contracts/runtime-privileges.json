@@ -120,6 +120,7 @@
         "home_timeouts",
         "away_timeouts",
         "period_stats",
+        "player_stats",
         "period",
         "remaining_ms",
         "clock_running",
