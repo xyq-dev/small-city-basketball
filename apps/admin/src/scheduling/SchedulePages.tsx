@@ -60,7 +60,7 @@ function SchedulingIndex({ repository }: { repository: EventRepository }) {
       <PageHeading
         eyebrow="MAKE ROOM FOR EVERY MATCH"
         title="抽签排赛"
-        description="从冻结名单生成单循环对阵，安排共享场地与时间，检查通过后正式发布。"
+        description="从冻结名单生成循环赛对阵或淘汰赛首轮，安排共享场地与时间，检查通过后正式发布。"
       >
         <Link className="button button-secondary" to="/courts">
           <MapPin size={17} />
@@ -108,7 +108,7 @@ function SchedulingIndex({ repository }: { repository: EventRepository }) {
         </div>
       )}
       <p className="sc-hint">
-        当前支持2–32队单循环。分组淘汰和单淘汰暂不支持，不会自动更改赛事已有赛制。
+        当前支持2–32队单循环与单淘汰。单淘汰首轮发布后逐轮确认晋级；分组淘汰尚未开放。
       </p>
     </div>
   );
@@ -117,7 +117,7 @@ export function EventSchedulingPage({ context }: { context: RegistrationWorkspac
   const { eventId = '', revisionId = '' } = useParams();
   return organizationContext(context) ? (
     <EventSchedulingContent
-      key={`${eventId}:${revisionId}`}
+      key={`${context.organizationId}:${eventId}:${revisionId}`}
       context={context}
       eventId={eventId}
       revisionId={revisionId}
@@ -172,7 +172,10 @@ function EventSchedulingContent({
         await api.createRevision(eventId, {
           expectedEventVersion: current.overview.event.version,
           freezeId: current.overview.freeze!.id,
-          algorithmVersion: 'RR_CIRCLE_V1',
+          algorithmVersion:
+            current.overview.event.format === 'SINGLE_ELIMINATION'
+              ? 'SE_SEEDED_V1'
+              : 'RR_CIRCLE_V1',
           policy,
           ...(reason ? { redrawReason: reason } : {}),
         });
@@ -181,7 +184,11 @@ function EventSchedulingContent({
           resource.reload();
         }
       },
-      reason ? '新对阵已生成，上一版只读保留' : '单循环对阵已生成并保存',
+      reason
+        ? '新对阵已生成，上一版只读保留'
+        : current.overview.event.format === 'SINGLE_ELIMINATION'
+          ? '淘汰赛签位与首轮对阵已生成并保存'
+          : '单循环对阵已生成并保存',
     );
   }
   const data = resource.data;
@@ -217,7 +224,9 @@ function EventSchedulingContent({
         description={
           historical
             ? '查看当时保存的对阵与时间安排，历史版本不可修改。'
-            : '从已冻结参赛名单安排完整单循环，正式发布前逐项检查。'
+            : overview?.event.format === 'SINGLE_ELIMINATION'
+              ? '从冻结名单生成固定淘汰赛签位，先安排首轮实际比赛，再逐轮确认和发布。'
+              : '从已冻结参赛名单安排完整单循环，正式发布前逐项检查。'
         }
       >
         <button
@@ -256,16 +265,20 @@ function EventSchedulingContent({
             <section className="panel sc-empty">
               <ShieldCheck size={30} />
               <h2>
-                {!overview.freeze && overview.event.format === 'ROUND_ROBIN'
+                {!overview.freeze &&
+                ['ROUND_ROBIN', 'SINGLE_ELIMINATION'].includes(overview.event.format)
                   ? '请先冻结参赛名单'
                   : '当前赛事暂不支持排赛'}
               </h2>
-              <p>{overview.support.reason || '当前仅支持2–32队单循环，请核对赛制与冻结名单。'}</p>
-              {!overview.freeze && overview.event.format === 'ROUND_ROBIN' && (
-                <Link className="button button-secondary" to={`/events/${eventId}/registration`}>
-                  前往报名审核
-                </Link>
-              )}
+              <p>
+                {overview.support.reason || '当前支持2–32队单循环和单淘汰，请核对赛制与冻结名单。'}
+              </p>
+              {!overview.freeze &&
+                ['ROUND_ROBIN', 'SINGLE_ELIMINATION'].includes(overview.event.format) && (
+                  <Link className="button button-secondary" to={`/events/${eventId}/registration`}>
+                    前往报名审核
+                  </Link>
+                )}
             </section>
           ) : !overview.freeze ? (
             <section className="panel sc-empty">
@@ -277,6 +290,19 @@ function EventSchedulingContent({
               </Link>
             </section>
           ) : null}
+          {overview.event.format === 'SINGLE_ELIMINATION' && (
+            <section className="panel sc-panel">
+              <h2>固定签位 · 逐轮确认晋级</h2>
+              <p>
+                首轮轮空不生成比赛。下一轮须待来源比赛全部有效独立确认，再核对并正式发布；不设三四名赛。
+              </p>
+              {published && (
+                <Link className="button button-primary" to={`/events/${eventId}/knockout`}>
+                  查看签位与发布下一轮
+                </Link>
+              )}
+            </section>
+          )}
           {historical && revision && (
             <div className="sc-history-banner">
               <History size={20} />
@@ -318,6 +344,7 @@ function EventSchedulingContent({
               key={revision?.id ?? 'new'}
               courts={data.courts}
               initial={revision?.policy}
+              knockout={overview.event.format === 'SINGLE_ELIMINATION'}
               redraw={Boolean(revision)}
               busy={action.busy}
               onSave={generate}

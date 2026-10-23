@@ -381,6 +381,15 @@ export class ScoringService extends ApplicationService {
     );
     return !grant.rowCount;
   }
+  private async resultConsumed(c: PoolClient, a: Access): Promise<boolean> {
+    if (a.event.format !== 'SINGLE_ELIMINATION') return false;
+    return !!(
+      await c.query(
+        "SELECT 1 FROM knockout_round_publications WHERE org_id=$1 AND event_id=$2 AND sources @> jsonb_build_array(jsonb_build_object('matchId',$3::text)) LIMIT 1",
+        [a.ctx.orgId, a.event.id, a.match.id],
+      )
+    ).rowCount;
+  }
   private async workbench(c: PoolClient, a: Access, now: string): Promise<ScoringWorkbenchData> {
     const staff = await c.query<Row>(
       'SELECT s.user_id,u.display_name,s.role,s.status FROM match_staff s JOIN users u ON u.id=s.user_id WHERE s.org_id=$1 AND s.match_id=$2 ORDER BY s.created_at,s.user_id',
@@ -431,7 +440,8 @@ export class ScoringService extends ApplicationService {
           writable &&
           a.match.status === 'PENDING_CONFIRMATION' &&
           (await this.confirmAllowed(c, a, l, now, false)),
-        canReopen: writable && a.manager && a.match.status === 'FINAL',
+        canReopen:
+          writable && a.manager && a.match.status === 'FINAL' && !(await this.resultConsumed(c, a)),
       },
     };
   }
@@ -478,6 +488,8 @@ export class ScoringService extends ApplicationService {
       if (a.event.locked_scoring_ruleset_id) conflict('SCORING_RULES_LOCKED', '赛事记分规则已锁定');
       if (!['SCHEDULED', 'RUNNING'].includes(a.event.status))
         conflict('INVALID_EVENT_STATE', '仅已排赛赛事可配置记分规则');
+      if (a.event.format === 'SINGLE_ELIMINATION' && rules.tiePolicy !== 'OVERTIME')
+        throw new ApiError(422, 'RULE_CONFLICT', '单淘汰赛必须设置平分加时规则');
       const count = await c.query<{ version: number }>(
         'SELECT COALESCE(MAX(version),0)::int+1 AS version FROM scoring_rulesets WHERE org_id=$1 AND event_id=$2',
         [ctx.orgId, id],
@@ -790,6 +802,10 @@ export class ScoringService extends ApplicationService {
       // Closed events reject even an otherwise valid idempotent command replay.
       // Dedicated receipt/snapshot reads remain available for private history.
       assertActiveEvent(a.event.status);
+      // Event SHARE serializes this check with next-round publication's UPDATE lock.
+      // A consumed result cannot be reopened, including an old idempotent replay.
+      if (command.type === 'REOPEN_RESULT' && (await this.resultConsumed(c, a)))
+        conflict('KNOCKOUT_RESULT_CONSUMED', '该赛果已用于正式发布下轮，不能重开或更换晋级球队');
       const previous = await c.query<Row>(
         'SELECT * FROM scoring_commands WHERE org_id=$1 AND actor_id=$2 AND match_id=$3 AND command_id=$4',
         [ctx.orgId, ctx.user.id, id, command.commandId],
@@ -821,6 +837,8 @@ export class ScoringService extends ApplicationService {
       if (!ruleId) conflict('MATCH_NOT_PREPARED', '比赛尚未准备');
       const rules = await this.rules(c, ctx.orgId, ruleId);
       if (!rules) throw notFound();
+      if (a.event.format === 'SINGLE_ELIMINATION' && rules.tiePolicy !== 'OVERTIME')
+        throw new ApiError(422, 'RULE_CONFLICT', '单淘汰赛必须设置平分加时规则');
       const history = await this.events(c, a);
       const projection = replayStats(history, rules, st?.period ?? 1);
       const mode = st

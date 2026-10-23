@@ -264,7 +264,7 @@ export interface TeamRegistrationEventData {
   capabilities: { canCreateEntry: boolean };
 }
 
-export type ScheduleAlgorithmVersion = 'RR_CIRCLE_V1';
+export type ScheduleAlgorithmVersion = 'RR_CIRCLE_V1' | 'SE_SEEDED_V1';
 export type ScheduleRevisionStatus = 'DRAFT' | 'SUPERSEDED' | 'PUBLISHED';
 export interface CourtData {
   id: string;
@@ -299,6 +299,8 @@ export interface ScheduleParticipant {
 export interface ScheduleRoundData {
   roundNo: number;
   byeEntryId: string | null;
+  /** SINGLE_ELIMINATION can have several first-round byes. */
+  byeEntryIds?: string[];
 }
 export interface ScheduleFixtureData {
   fixtureKey: string;
@@ -808,7 +810,9 @@ export interface PublicEventData {
   timezone: string;
   venueName: string | null;
   status: EventStatus;
-  rules: PublicStandingsRules;
+  /** Older responses omit format and represent ROUND_ROBIN. */
+  format?: EventFormat;
+  rules: PublicStandingsRules | null;
   confirmedMatchCount: number;
   totalMatchCount: number;
   isComplete: boolean;
@@ -990,4 +994,100 @@ export interface EventPlayerStatisticsData {
       unassignedFouls: number;
     }[];
   };
+}
+
+/** C04: bracket projection over original published_matches and effective confirmations. */
+export interface KnockoutSource {
+  fixtureKey: string;
+  matchId: string;
+  confirmationId: string;
+  /** Effective CONFIRM_RESULT version; unaffected by later staff/access maintenance. */
+  matchVersion: number;
+  winnerEntryId: string;
+}
+export interface KnockoutSlotData {
+  fixtureKey: string;
+  roundNo: number;
+  positionNo: number;
+  homeEntryId: string | null;
+  awayEntryId: string | null;
+  /** Previous-round fixture keys; null in the initial draw. */
+  homeSource: string | null;
+  awaySource: string | null;
+  byeEntryId: string | null;
+  matchId: string | null;
+  status: MatchStatus | 'WAITING' | 'BYE';
+  winnerEntryId: string | null;
+}
+export interface KnockoutRoundData {
+  roundNo: number;
+  label: string;
+  published: boolean;
+  slots: KnockoutSlotData[];
+}
+export interface KnockoutPlacement {
+  entryId: string;
+  teamName: string;
+  rank: number;
+  tied: boolean;
+}
+export interface KnockoutBracket {
+  algorithmVersion: 'SE_SEEDED_V1';
+  sourceHash: string;
+  asOf: string;
+  participantCount: number;
+  totalMatchCount: number;
+  publishedMatchCount: number;
+  confirmedMatchCount: number;
+  isComplete: boolean;
+  rounds: KnockoutRoundData[];
+  /** Only populated after the final is independently confirmed. No third-place game. */
+  placements: KnockoutPlacement[];
+  nextRound: {
+    roundNo: number;
+    sourceHash: string;
+    sources: KnockoutSource[];
+    fixtures: ScheduleFixtureData[];
+  } | null;
+}
+export interface EventKnockoutData {
+  event: EventData;
+  publicationId: string | null;
+  participants: ScheduleParticipant[];
+  bracket: KnockoutBracket | null;
+  capabilities: { canPublishNextRound: boolean };
+}
+export interface PublishKnockoutRoundInput {
+  type: 'PUBLISH_ROUND';
+  expectedEventVersion: number;
+  expectedSourceHash: string;
+  roundNo: number;
+  reason: string;
+  allocations: { fixtureKey: string; courtId: string; startsAt: string }[];
+}
+export interface PublicKnockoutData {
+  publicEventId: string;
+  algorithmVersion: 'SE_SEEDED_V1';
+  sourceHash: string;
+  asOf: string;
+  participantCount: number;
+  totalMatchCount: number;
+  publishedMatchCount: number;
+  confirmedMatchCount: number;
+  isComplete: boolean;
+  rounds: {
+    roundNo: number;
+    label: string;
+    published: boolean;
+    slots: {
+      positionNo: number;
+      home: PublicTeamData | null;
+      away: PublicTeamData | null;
+      bye: PublicTeamData | null;
+      publicMatchId: string | null;
+      status: MatchStatus | 'WAITING' | 'BYE';
+      winner: PublicTeamData | null;
+    }[];
+  }[];
+  placements: { team: PublicTeamData; rank: number; tied: boolean }[];
 }

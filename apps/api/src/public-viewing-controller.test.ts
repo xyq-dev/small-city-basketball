@@ -52,6 +52,22 @@ describe('public viewing HTTP transport without database', () => {
     expect(get).toHaveBeenCalledExactlyOnceWith(publicKey);
     expect(JSON.stringify(res.body)).not.toContain('private-marker');
   });
+  it('routes anonymous knockout projection without forwarding private sessions or write identity', async () => {
+    const get = vi.spyOn(service, 'getPublicKnockout').mockResolvedValueOnce({
+      publicEventId: publicKey,
+      algorithmVersion: 'SE_SEEDED_V1',
+      rounds: [],
+      placements: [],
+    } as never);
+    const response = await request(app.getHttpServer())
+      .get(`/v1/public/events/${publicKey}/knockout`)
+      .set('Cookie', 'scb.sid=private-session')
+      .set('Authorization', 'Bearer private-control');
+    expect(response.status).toBe(200);
+    expect(get).toHaveBeenCalledExactlyOnceWith(publicKey);
+    expect(response.body.data.algorithmVersion).toBe('SE_SEEDED_V1');
+    expect(JSON.stringify(response.body)).not.toMatch(/private-session|private-control/);
+  });
   it('rejects a cursor from another public event before database access', async () => {
     const connect = vi.spyOn(pool, 'connect');
     const cursor = Buffer.from(

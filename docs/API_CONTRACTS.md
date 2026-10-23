@@ -390,3 +390,12 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 读按当前event实际工作人员/管理员，写限OWNER/ADMIN或本event实际EVENT_MANAGER，未分配global role/单场SCORER/球队grant不授改期权。Event SCHEDULED/RUNNING、比赛SCHEDULED/READY且无START_MATCH历史才允许。CAS/授权、当前计划复检、history/三预约/Match与Event版本/已有scoring source_version/audit原子完成；READY的分数、时钟、流水和lease/fence不变。私有matches游标绑定Event.version；公开schedule游标绑定本届改期历史版本，不携内部身份ID，改期后旧cursor拒绝而不混合分页结果。
 
 错误沿用401/403 FORBIDDEN/ORIGIN_REJECTED、隐藏或跨scope404 RESOURCE_NOT_FOUND；422 VALIDATION_ERROR；409 VERSION_CONFLICT/RESCHEDULE_UNCHANGED/SCHEDULE_CONFLICT/INVALID_EVENT_STATE/MATCH_CANNOT_RESCHEDULE/RESCHEDULE_SOURCE_INVALID。冲突仅目标fixture及必要Court/Team/时间，不能泄露不可见外部赛事详情。响应未知或版本冲突须fresh GET核对，不自动重放。007将精确运行/恢复期望扩为40表、7Migration，历史P07-A的39表证据仍仅属于该版本。
+
+
+## C04 单淘汰候选契约
+
+2026-10-23，候选未合并，验证状态见[C04](tasks/C04.md)。原调度API按赛事format支持`SE_SEEDED_V1`：首轮生成/分配/校验/发布沿原CAS与冻结来源；既有RR_CIRCLE_V1不变。新私有GET `/v1/orgs/{orgId}/events/{eventId}/knockout`返回`EventKnockoutData`；POST同前缀`knockout-round-commands`严格`PublishKnockoutRoundInput`，reason去空白4–500 Unicode字符，expectedEventVersion及expectedSourceHash必须同时匹配。本轮所有场地/时间精确覆盖nextRound.fixtures，未分配不发布，冲突全回滚。错误含409 KNOCKOUT_SOURCE_CONFLICT/KNOCKOUT_ROUND_NOT_READY/KNOCKOUT_DEPENDENCY_ORDER/SCHEDULE_CONFLICT/VERSION_CONFLICT、既有401/403/404。复用原赛事管理员授权和orgmutex→event锁序。
+
+只有当前有效独立确认才产生胜方；强制OVERTIME，原多次加时流程不变。下游正式发布后源REOPEN_RESULT（含旧命令重放）409 KNOCKOUT_RESULT_CONSUMED，工作台canReopen=false。sources.matchVersion指CONFIRM_RESULT生效固定版本（source_match_version+1），不与后续人员维护版本混淆；当前确认ID、赛果证明与固定签位必须精确一致。子赛不得早于来源结束，原受控改期同样守卫。
+
+循环赛公共event DTO保持兼容；单淘汰公共event带format=SINGLE_ELIMINATION、rules=null，使用新GET `/v1/public/events/{opaque}/knockout`返回`PublicKnockoutData`，不伪造循环赛积分，KO旧standings读明确422。KO私有standings仅公开授权管理且rules/standings=null。只有白名单opaque团队/比赛键、队名、已公开赛程状态和最终名次，不含内部ID、seed、名单、确认/推进凭证或写权。后轮发布在同事务撤销旧LIVE授权，重新显式ENABLE产生全新键；不向旧授权补写links。HISTORY须完整n−1有效赛果与晋级证明。OBS仍独立原授权。私有球员榜分母为n−1，未物化场次不能声称采集完整。

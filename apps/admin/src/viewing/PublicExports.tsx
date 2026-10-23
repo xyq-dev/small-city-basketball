@@ -155,6 +155,8 @@ export function ScheduleExportTools(props: Props<ScheduleData>) {
           <h2>赛程与比分交付</h2>
           <p className="view-muted">
             CSV包含完整已读取公开赛程；海报每页最多{POSTER_PAGE_SIZE}场。
+            {props.data.event.format === 'SINGLE_ELIMINATION' &&
+              ' 淘汰赛仅导出当前已正式发布场次，轮空与待发布签位不生成比赛。'}
           </p>
         </div>
         <div className="watch-export-buttons">

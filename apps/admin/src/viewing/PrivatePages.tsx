@@ -67,7 +67,7 @@ function StandingsIndex({ repository }: { repository: EventRepository }) {
       <div className="view-note">
         <ShieldCheck size={20} />
         <p>
-          仅支持2–32队单回合循环赛。积分只取当前有效确认赛果，未完赛暂列；不自动宣布冠军或晋级。
+          支持单循环积分榜与单淘汰晋级名次，均只取当前有效独立确认赛果；公开观赛需要主办方显式授权。
         </p>
       </div>
       {resource.loading || resource.error || !resource.data ? (
@@ -81,7 +81,8 @@ function StandingsIndex({ repository }: { repository: EventRepository }) {
       ) : (
         <div className="view-event-grid">
           {resource.data.map((event) => {
-            const supported = event.format === 'ROUND_ROBIN';
+            const supported =
+              event.format === 'ROUND_ROBIN' || event.format === 'SINGLE_ELIMINATION';
             const content = (
               <>
                 <span className="status-badge neutral">{EVENT_FORMAT_LABELS[event.format]}</span>
@@ -244,20 +245,37 @@ function EventStandings({
         <ResourceState loading={loading} error={loadError} reload={() => void refresh()} />
       ) : (
         <>
-          {data.event.format !== 'ROUND_ROBIN' && (
+          {data.event.format === 'GROUP_KNOCKOUT' && (
             <div className="view-note warning">
               当前赛事不是单回合循环赛。暂不支持分组、淘汰、相互战绩或其他排名算法，请勿套用规则。
             </div>
           )}
-          <StandingsRulesForm
-            key={`${data.rules?.id ?? 'none'}:${data.event.version}`}
-            data={data}
-            busy={action.busy || loading || Boolean(loadError)}
-            onDirtyChange={setDirty}
-            onSave={async (input) => {
-              await write(() => api.saveRules(eventId, input), '排名规则草稿已保存');
-            }}
-          />
+          {data.event.format === 'SINGLE_ELIMINATION' && (
+            <section className="panel view-panel">
+              <h2>淘汰赛晋级与名次</h2>
+              <p>
+                单淘汰不套用循环赛积分。固定签位、平分加时、首轮轮空无比赛，不设三四名赛；全部有效独立确认后形成最终名次。
+              </p>
+              <p>发布下一轮会撤销现有实时观赛链接，之后请在本页显式重新启用新链接。</p>
+              <Link
+                className="button button-primary"
+                to={`/events/${encodeURIComponent(eventId)}/knockout`}
+              >
+                查看晋级与最终名次
+              </Link>
+            </section>
+          )}
+          {data.event.format === 'ROUND_ROBIN' && (
+            <StandingsRulesForm
+              key={`${data.rules?.id ?? 'none'}:${data.event.version}`}
+              data={data}
+              busy={action.busy || loading || Boolean(loadError)}
+              onDirtyChange={setDirty}
+              onSave={async (input) => {
+                await write(() => api.saveRules(eventId, input), '排名规则草稿已保存');
+              }}
+            />
+          )}
           {data.capabilities.canPublishRules && data.rules && (
             <section className="panel view-panel">
               <h2>
@@ -274,21 +292,22 @@ function EventStandings({
               </button>
             </section>
           )}
-          {data.standings ? (
-            <StandingsTable
-              data={data.standings}
-              preview={data.standings.mode === 'DRAFT_PREVIEW'}
-            />
-          ) : (
-            <section className="panel view-panel">
-              <h2>排名尚未读取</h2>
-              <p className="view-muted">
-                {data.rules
-                  ? '规则仍已保存。可刷新读取当前榜单；公开观赛撤销成功不依赖榜单计算。'
-                  : '请先显式保存排名规则，再读取草稿预览。'}
-              </p>
-            </section>
-          )}
+          {data.event.format === 'ROUND_ROBIN' &&
+            (data.standings ? (
+              <StandingsTable
+                data={data.standings}
+                preview={data.standings.mode === 'DRAFT_PREVIEW'}
+              />
+            ) : (
+              <section className="panel view-panel">
+                <h2>排名尚未读取</h2>
+                <p className="view-muted">
+                  {data.rules
+                    ? '规则仍已保存。可刷新读取当前榜单；公开观赛撤销成功不依赖榜单计算。'
+                    : '请先显式保存排名规则，再读取草稿预览。'}
+                </p>
+              </section>
+            ))}
           <section className="panel view-panel view-publication">
             <div>
               <div className="view-eyebrow">A LINK YOU CONTROL</div>
@@ -330,8 +349,12 @@ function EventStandings({
             {!activePublication && (
               <p className="view-caption">
                 {history
-                  ? '历史授权需本届已完赛或归档、正式规则已锁定且全部赛果当前有效确认；操作权限由赛事授权决定。'
-                  : '启用需已正式锁定排名规则并发布单循环赛程；操作权限由当前赛事授权决定。'}
+                  ? data.event.format === 'SINGLE_ELIMINATION'
+                    ? '历史授权需本届已完赛或归档、全部晋级及决赛赛果当前有效确认；操作权限由赛事授权决定。'
+                    : '历史授权需本届已完赛或归档、正式规则已锁定且全部赛果当前有效确认；操作权限由赛事授权决定。'
+                  : data.event.format === 'SINGLE_ELIMINATION'
+                    ? '启用需已正式发布单淘汰赛首轮；后轮发布会撤销旧链接，须再次显式启用。'
+                    : '启用需已正式锁定排名规则并发布单循环赛程；操作权限由当前赛事授权决定。'}
               </p>
             )}
             {activePublication && (

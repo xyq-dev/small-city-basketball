@@ -7,6 +7,7 @@ import { localInput, offsetTime, timeLabel } from './shared';
 export function PolicyForm({
   courts,
   initial,
+  knockout = false,
   redraw,
   busy,
   onSave,
@@ -14,6 +15,7 @@ export function PolicyForm({
 }: {
   courts: CourtData[];
   initial?: SchedulePolicy;
+  knockout?: boolean;
   redraw: boolean;
   busy: boolean;
   onSave: (policy: SchedulePolicy, reason?: string) => Promise<void>;
@@ -102,7 +104,11 @@ export function PolicyForm({
       <div className="section-heading">
         <div>
           <h2>{redraw ? '重新生成对阵' : '设置排赛规则'}</h2>
-          <p>先明确使用条件，再生成完整单循环对阵。这里不会自动分配开赛时间。</p>
+          <p>
+            {knockout
+              ? '先明确使用条件，再生成固定淘汰赛签位和首轮实际对阵。后轮等待确认晋级后另行发布。'
+              : '先明确使用条件，再生成完整单循环对阵。这里不会自动分配开赛时间。'}
+          </p>
         </div>
       </div>
       <form onSubmit={submit} noValidate>
@@ -252,7 +258,13 @@ export function PolicyForm({
             取消
           </button>
           <button className="button button-primary" disabled={busy || !courts.length}>
-            {busy ? '正在生成…' : redraw ? '确认重新生成对阵' : '生成单循环对阵'}
+            {busy
+              ? '正在生成…'
+              : redraw
+                ? '确认重新生成对阵'
+                : knockout
+                  ? '生成淘汰赛签位'
+                  : '生成单循环对阵'}
           </button>
         </div>
       </form>

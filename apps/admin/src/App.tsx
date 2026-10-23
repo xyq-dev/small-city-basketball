@@ -76,6 +76,9 @@ const EventStandingsPage = lazy(() =>
 const EventLifecyclePage = lazy(() =>
   import('./lifecycle/LifecyclePage').then((m) => ({ default: m.EventLifecyclePage })),
 );
+const EventKnockoutPage = lazy(() =>
+  import('./knockout/KnockoutPage').then((m) => ({ default: m.EventKnockoutPage })),
+);
 const EventPlayerStatisticsPage = lazy(() =>
   import('./player-summary/PlayerStatisticsPage').then((m) => ({
     default: m.EventPlayerStatisticsPage,
@@ -1447,6 +1450,18 @@ function EventDetailPage() {
         <div className="module-grid">
           {workspace.registration && !workspace.registration.teamContext && (
             <>
+              {event.format === 'SINGLE_ELIMINATION' && (
+                <Link className="module-card" to={`/events/${event.id}/knockout`}>
+                  <span className="module-icon">
+                    <ChartNoAxesCombined size={21} />
+                  </span>
+                  <div>
+                    <h3>淘汰赛签位与晋级</h3>
+                    <span>独立确认 · 逐轮发布 · 最终名次</span>
+                  </div>
+                  <ChevronRight size={16} />
+                </Link>
+              )}
               <Link className="module-card" to={`/events/${event.id}/lifecycle`}>
                 <span className="module-icon">
                   <FolderOpen size={21} />
@@ -1609,37 +1624,40 @@ function WorkspaceLayout() {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const currentLabel = location.pathname.endsWith('/lifecycle')
     ? '赛事生命周期'
-    : location.pathname.endsWith('/player-statistics')
-      ? '球员基础数据榜'
-      : location.pathname === '/broadcast' || location.pathname.endsWith('/overlay')
-        ? '直播与 OBS'
-        : location.pathname === '/standings' || location.pathname.endsWith('/standings')
-          ? '排名与观赛'
-          : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
-            ? '记分与赛果'
-            : location.pathname === '/courts'
-              ? '机构场地'
-              : location.pathname === '/scheduling' ||
-                  /\/scheduling(?:\/|$)/.test(location.pathname)
-                ? '抽签排赛'
-                : location.pathname.startsWith('/entries/')
-                  ? '报名详情'
-                  : location.pathname === '/my-team' || teamWorkspace
-                    ? '我的球队'
-                    : location.pathname.startsWith('/teams')
-                      ? '球队与球员'
-                      : location.pathname === '/registration' ||
-                          location.pathname.endsWith('/registration')
-                        ? '报名审核'
-                        : location.pathname === '/'
-                          ? '工作总览'
-                          : location.pathname === '/events/new'
-                            ? '创建赛事'
-                            : location.pathname.startsWith('/events/')
-                              ? '赛事详情'
-                              : location.pathname === '/events'
-                                ? '赛事管理'
-                                : (roadmap[location.pathname.split('/')[2] ?? '']?.title ?? '页面');
+    : location.pathname.endsWith('/knockout')
+      ? '淘汰赛签位与晋级'
+      : location.pathname.endsWith('/player-statistics')
+        ? '球员基础数据榜'
+        : location.pathname === '/broadcast' || location.pathname.endsWith('/overlay')
+          ? '直播与 OBS'
+          : location.pathname === '/standings' || location.pathname.endsWith('/standings')
+            ? '排名与观赛'
+            : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
+              ? '记分与赛果'
+              : location.pathname === '/courts'
+                ? '机构场地'
+                : location.pathname === '/scheduling' ||
+                    /\/scheduling(?:\/|$)/.test(location.pathname)
+                  ? '抽签排赛'
+                  : location.pathname.startsWith('/entries/')
+                    ? '报名详情'
+                    : location.pathname === '/my-team' || teamWorkspace
+                      ? '我的球队'
+                      : location.pathname.startsWith('/teams')
+                        ? '球队与球员'
+                        : location.pathname === '/registration' ||
+                            location.pathname.endsWith('/registration')
+                          ? '报名审核'
+                          : location.pathname === '/'
+                            ? '工作总览'
+                            : location.pathname === '/events/new'
+                              ? '创建赛事'
+                              : location.pathname.startsWith('/events/')
+                                ? '赛事详情'
+                                : location.pathname === '/events'
+                                  ? '赛事管理'
+                                  : (roadmap[location.pathname.split('/')[2] ?? '']?.title ??
+                                    '页面');
   useEffect(() => {
     setMenuOpen(false);
     document.title = `${currentLabel} · 小城市篮球`;
@@ -2010,6 +2028,18 @@ function WorkspaceLayout() {
                     ) : (
                       <Suspense fallback={standingsFallback}>
                         <StandingsIndexPage context={registration} repository={repository} />
+                      </Suspense>
+                    )
+                  }
+                />
+                <Route
+                  path="/events/:eventId/knockout"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={standingsFallback}>
+                        <EventKnockoutPage context={registration} />
                       </Suspense>
                     )
                   }

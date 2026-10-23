@@ -43,7 +43,8 @@ export function RulesForm({
     data.rules ? String(data.rules.periodDurationSeconds) : '',
   );
   const [scores, setScores] = useState<(1 | 2 | 3)[]>(data.rules?.allowedScoreValues ?? []);
-  const [tie, setTie] = useState(data.rules?.tiePolicy ?? '');
+  const knockout = data.event.format === 'SINGLE_ELIMINATION';
+  const [tie, setTie] = useState(knockout ? 'OVERTIME' : (data.rules?.tiePolicy ?? ''));
   const [overtime, setOvertime] = useState(
     data.rules?.overtimeDurationSeconds ? String(data.rules.overtimeDurationSeconds) : '',
   );
@@ -61,6 +62,7 @@ export function RulesForm({
       const regulationPeriods = integer(periods, 1, 8, '常规节数'),
         periodDurationSeconds = integer(seconds, 1, 3600, '每节时长');
       if (!scores.length) throw new Error('请至少选择一种允许得分');
+      if (knockout && tie !== 'OVERTIME') throw new Error('单淘汰赛必须平局进入加时');
       if (tie !== 'ALLOW_DRAW' && tie !== 'OVERTIME') throw new Error('请明确选择平局处理');
       const overtimeDurationSeconds =
         tie === 'OVERTIME' ? integer(overtime, 1, 1800, '加时时长') : null;
@@ -98,6 +100,9 @@ export function RulesForm({
     <section className="panel score-panel">
       <h2>显式设置记分规则</h2>
       <p>不预设竞赛规则。首场准备后，本届规则永久锁定；犯规和暂停只累计，不推定罚球或剩余配额。</p>
+      {knockout && (
+        <p className="score-note">单淘汰赛必须分出胜负，平分持续加时；请明确填写每次加时时长。</p>
+      )}
       <form className="score-form" onSubmit={submit} noValidate>
         <div className="score-fields">
           <label className="score-field">
@@ -143,9 +148,14 @@ export function RulesForm({
         <div className="score-fields">
           <label className="score-field">
             平局处理
-            <select aria-label="平局处理" value={tie} onChange={(e) => setTie(e.target.value)}>
+            <select
+              aria-label="平局处理"
+              value={tie}
+              disabled={knockout}
+              onChange={(e) => setTie(e.target.value)}
+            >
               <option value="">请选择平局处理</option>
-              <option value="ALLOW_DRAW">允许平局</option>
+              {!knockout && <option value="ALLOW_DRAW">允许平局</option>}
               <option value="OVERTIME">平局进入加时</option>
             </select>
           </label>
@@ -179,7 +189,7 @@ export function RulesForm({
               setPeriods(data.rules ? String(data.rules.regulationPeriods) : '');
               setSeconds(data.rules ? String(data.rules.periodDurationSeconds) : '');
               setScores(data.rules?.allowedScoreValues ?? []);
-              setTie(data.rules?.tiePolicy ?? '');
+              setTie(knockout ? 'OVERTIME' : (data.rules?.tiePolicy ?? ''));
               setOvertime(
                 data.rules?.overtimeDurationSeconds
                   ? String(data.rules.overtimeDurationSeconds)

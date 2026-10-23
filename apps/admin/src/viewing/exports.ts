@@ -81,7 +81,9 @@ function status(match: PublicScheduleMatchData) {
 }
 function checkSchedule(event: PublicEventData, matches: PublicScheduleMatchData[]) {
   if (
-    matches.length !== event.totalMatchCount ||
+    (event.format === 'SINGLE_ELIMINATION'
+      ? matches.length > event.totalMatchCount
+      : matches.length !== event.totalMatchCount) ||
     matches.length === 0 ||
     new Set(matches.map((match) => match.publicMatchId)).size !== matches.length
   )

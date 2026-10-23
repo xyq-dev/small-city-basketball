@@ -4,7 +4,12 @@ import type {
   EventPlayerStatisticsData,
   EventPlayerStatisticsRow,
   MatchPlayerRoster,
+  EventFormat,
+  RegistrationFreezeData,
+  SchedulePolicy,
+  KnockoutSource,
 } from '@small-city-basketball/contracts';
+import { calculateKnockout } from './knockout-domain.js';
 import { confirmedPlayerStatistics } from './confirmed-player-statistics.js';
 import { resultSourceInvalid } from './standings-domain.js';
 import type { ResultRow } from './standings-domain.js';
@@ -77,10 +82,31 @@ export function calculateEventPlayerStatistics(input: {
   source: unknown;
   matches: ResultRow[];
   asOf: string;
+  format?: EventFormat;
+  seed?: string;
+  policy?: SchedulePolicy;
+  roundPublications?: { roundNo: number; sources: KnockoutSource[] }[];
 }): Summary {
   if (!uuid(input.publicationId)) resultSourceInvalid();
   const entrants = participants(input.source);
-  if (input.matches.length !== (entrants.length * (entrants.length - 1)) / 2) resultSourceInvalid();
+  const knockout = input.format === 'SINGLE_ELIMINATION';
+  const bracket = knockout
+    ? calculateKnockout({
+        publicationId: input.publicationId,
+        source: input.source as RegistrationFreezeData,
+        seed: input.seed!,
+        policy: input.policy!,
+        roundPublications: input.roundPublications,
+        matches: input.matches,
+        asOf: input.asOf,
+      })
+    : null;
+  const totalMatchCount = knockout
+    ? entrants.length - 1
+    : (entrants.length * (entrants.length - 1)) / 2;
+  if (!knockout && input.matches.length !== totalMatchCount) resultSourceInvalid();
+  if (input.format && !['ROUND_ROBIN', 'SINGLE_ELIMINATION'].includes(input.format))
+    resultSourceInvalid();
   const byEntry = new Map(entrants.map((p) => [p.entryId, p]));
   const teams: Summary['teams'] = entrants.map((p) => ({
     entryId: p.entryId,
@@ -98,7 +124,8 @@ export function calculateEventPlayerStatistics(input: {
   const sources: unknown[] = [];
   let included = 0;
   let teamOnly = 0;
-  let pending = 0;
+  // Unmaterialized knockout rounds still belong to the complete event's coverage denominator.
+  let pending = totalMatchCount - input.matches.length;
   const matches = [...input.matches].sort((a, b) => compareId(a.id, b.id));
   for (const m of matches) {
     if (
@@ -223,16 +250,19 @@ export function calculateEventPlayerStatistics(input: {
     participants: entrants,
     rosters: [...rosterSources].sort(([a], [b]) => compareId(a, b)),
     matches: sources,
+    ...(bracket
+      ? { format: input.format, bracketAlgorithmVersion: bracket.algorithmVersion, totalMatchCount }
+      : {}),
   };
   return {
     algorithmVersion,
     sourceHash: createHash('sha256').update(JSON.stringify(canonical)).digest('hex'),
     asOf: input.asOf,
-    totalMatchCount: matches.length,
+    totalMatchCount,
     includedMatchCount: included,
     teamOnlyConfirmedMatchCount: teamOnly,
     pendingMatchCount: pending,
-    coverageComplete: matches.length > 0 && included === matches.length,
+    coverageComplete: totalMatchCount > 0 && included === totalMatchCount,
     attributionComplete:
       included > 0 && teams.every((t) => !t.unassignedScore && !t.unassignedFouls),
     rows: ranked,

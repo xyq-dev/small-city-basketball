@@ -87,13 +87,16 @@ describe(
           }),
           201,
         );
-        rejected(
-          await call(h.api, 'get', standingsPath(h.owner.orgId, unsupported.id), {
-            cookie: h.owner.cookie,
-          }),
-          422,
-          'UNSUPPORTED_STANDINGS_FORMAT',
-        );
+        const read = await call(h.api, 'get', standingsPath(h.owner.orgId, unsupported.id), {
+          cookie: h.owner.cookie,
+        });
+        if (format === 'GROUP_KNOCKOUT') rejected(read, 422, 'UNSUPPORTED_STANDINGS_FORMAT');
+        else
+          expect(data(read)).toMatchObject({
+            rules: null,
+            standings: null,
+            capabilities: { canManageRules: false, canPublishRules: false },
+          });
         rejected(
           await call(h.api, 'put', standingsRulesPath(h.owner.orgId, unsupported.id), {
             cookie: h.owner.cookie,

@@ -58,6 +58,13 @@ test('private deep link, login and registration capabilities', async ({ page, co
       'browser-private-cookie',
     );
     requireCheck(await noOverflow(page), 'private-mobile-width');
+    await page.goto(`/events/${fixture.knockout.knockout.event.id}/knockout`);
+    await expect(page.getByRole('region', { name: '淘汰赛签位', exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: '淘汰赛签位', exact: true })).toContainText(
+      '轮空',
+    );
+    await expect(page.getByRole('region', { name: '淘汰赛最终名次', exact: true })).toBeVisible();
+    requireCheck(await noOverflow(page), 'private-knockout-mobile-width');
     requireCheck(pageErrors === 0, 'private-runtime-errors');
   });
 });
@@ -96,6 +103,16 @@ test('anonymous watch and overlay are independent and transparent', async ({ pag
     ).toBeVisible();
     requireCheck(await noOverflow(page), 'watch-match-mobile-width');
     await page.goto(`/watch/${fixture.viewing.revokedId}`);
+    await expect(page.getByRole('heading', { name: '观赛链接不可用', exact: true })).toBeVisible();
+    await page.goto(`/watch/${fixture.knockout.publicId}`);
+    await expect(
+      page.getByRole('heading', { name: fixture.knockout.overview.name, exact: true }),
+    ).toBeVisible();
+    await page.getByRole('tab', { name: '晋级与名次', exact: true }).click();
+    await expect(page.getByRole('region', { name: '公开淘汰赛签位', exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: '公开最终名次', exact: true })).toBeVisible();
+    requireCheck(await noOverflow(page), 'public-knockout-mobile-width');
+    await page.goto(`/watch/${fixture.knockout.oldPublicId}`);
     await expect(page.getByRole('heading', { name: '观赛链接不可用', exact: true })).toBeVisible();
     requireCheck(privateRequests === 0, 'watch-has-no-private-initialization');
   });
