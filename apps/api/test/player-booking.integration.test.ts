@@ -1281,6 +1281,230 @@ describe(
       expect(unchanged.totals).toMatchObject({ paidFen: 0, refundedFen: 0, settledFen: 0 });
     });
 
+    test('a grant-only team manager who is also a platform operator cannot independently resolve the team dispute', async () => {
+      const provider = await actor('related-operator-player');
+      const profile = data<BookingPlayerData>(await review(await submitProfile(provider)));
+      const relatedOperator = await actor('grant-only-operator');
+      await maintainPlatformOperator(api.pool, {
+        email: relatedOperator.email,
+        status: 'ACTIVE',
+        reason: why,
+      });
+      await grant(api, owner, firstTeam, relatedOperator);
+      expect(
+        Number(
+          (
+            await api.pool.query('SELECT count(*) FROM organization_memberships WHERE user_id=$1', [
+              relatedOperator.id,
+            ])
+          ).rows[0]!.count,
+        ),
+      ).toBe(0);
+      const now = Date.now();
+      const upcoming: BookingAppearanceInput = {
+        profileId: profile.id,
+        label: '合成利益关联争议',
+        conditional: false,
+        venue: '合成争议核验球场',
+        reportAt: at(now + 10 * 60000),
+        startAt: at(now + 30 * 60000),
+        endAt: at(now + 90 * 60000),
+      };
+      let order = data<BookingOrderData>(await create(orderInput([upcoming])));
+      order = data<BookingOrderData>(
+        await command(order, order.appearances[0]!, 'ACCEPT', provider),
+      );
+      order = data<BookingOrderData>(
+        await command(order, order.appearances[0]!, 'DISPUTE', leader, { reason: why }),
+      );
+      const related = data<BookingOrderData>(
+        await call(api, 'get', `${root}/orders/${order.id}`, { cookie: relatedOperator.cookie }),
+      );
+      expect(related.appearances[0]?.capabilities.canResolveDispute).toBe(false);
+      expect(
+        data<BookingOrderData>(
+          await call(api, 'get', `${root}/orders/${order.id}`, { cookie: operator.cookie }),
+        ).appearances[0]?.capabilities.canResolveDispute,
+      ).toBe(true);
+      const original = (
+        await api.pool.query(
+          'SELECT to_jsonb(a) AS appearance,to_jsonb(o) AS booking FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id WHERE a.id=$1',
+          [order.appearances[0]!.id],
+        )
+      ).rows[0]!;
+      for (const resolution of ['RESUME', 'CANCEL', 'COMPLETE'] as const) {
+        const body: BookingCommandInput = {
+          commandId: randomUUID(),
+          expectedVersion: order.appearances[0]!.version,
+          appearanceId: order.appearances[0]!.id,
+          type: 'RESOLVE_DISPUTE',
+          resolution,
+          reason: why,
+        };
+        const rejected = await call(api, 'post', `${root}/orders/${order.id}/commands`, {
+          cookie: relatedOperator.cookie,
+          body,
+        });
+        error(rejected, 409);
+        expect(rejected.body.error.code).toBe('BOOKING_ACTION_NOT_ALLOWED');
+        expect(
+          Number(
+            (
+              await api.pool.query(
+                'SELECT count(*) FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+                [relatedOperator.id, body.commandId],
+              )
+            ).rows[0]!.count,
+          ),
+        ).toBe(0);
+      }
+      expect(
+        (
+          await api.pool.query(
+            'SELECT to_jsonb(a) AS appearance,to_jsonb(o) AS booking FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id WHERE a.id=$1',
+            [order.appearances[0]!.id],
+          )
+        ).rows[0],
+      ).toEqual(original);
+      order = data<BookingOrderData>(
+        await command(order, order.appearances[0]!, 'RESOLVE_DISPUTE', operator, {
+          reason: why,
+          resolution: 'RESUME',
+        }),
+      );
+      expect(order.appearances[0]?.status).toBe('ACCEPTED');
+      order = data<BookingOrderData>(
+        await command(order, order.appearances[0]!, 'ARRIVE', provider),
+      );
+      // Advance only this owned fixture's planned service window so completion
+      // uses the real HTTP time guard without sleeping or changing server time.
+      await api.pool.query(
+        `UPDATE booking_appearances SET report_at=clock_timestamp()-interval '3 hours',start_at=clock_timestamp()-interval '2 hours',end_at=clock_timestamp()-interval '1 hour',version=version+1,updated_at=clock_timestamp() WHERE id=$1`,
+        [order.appearances[0]!.id],
+      );
+      order = data<BookingOrderData>(
+        await call(api, 'get', `${root}/orders/${order.id}`, { cookie: leader.cookie }),
+      );
+      order = data<BookingOrderData>(
+        await command(order, order.appearances[0]!, 'DISPUTE', leader, { reason: why }),
+      );
+      const deniedComplete = await command(
+        order,
+        order.appearances[0]!,
+        'RESOLVE_DISPUTE',
+        relatedOperator,
+        { reason: why, resolution: 'COMPLETE' },
+      );
+      error(deniedComplete, 409);
+      expect(deniedComplete.body.error.code).toBe('BOOKING_ACTION_NOT_ALLOWED');
+      order = data<BookingOrderData>(
+        await command(order, order.appearances[0]!, 'RESOLVE_DISPUTE', operator, {
+          reason: why,
+          resolution: 'COMPLETE',
+        }),
+      );
+      expect(order.appearances[0]?.status).toBe('COMPLETED');
+      order = data<BookingOrderData>(
+        await command(order, order.appearances[0]!, 'DISPUTE', provider, { reason: why }),
+      );
+      order = data<BookingOrderData>(
+        await command(order, order.appearances[0]!, 'RESOLVE_DISPUTE', operator, {
+          reason: why,
+          resolution: 'CANCEL',
+        }),
+      );
+      expect(order.appearances[0]?.status).toBe('CANCELLED');
+      expect(order.totals).toMatchObject({ paidFen: 0, refundedFen: 0, settledFen: 0 });
+    });
+
+    test('unaccepted requests cannot become permanent disputed holds and retain decline, cancel, quota and expiry release behavior', async () => {
+      const provider = await actor('requested-dispute');
+      const profile = data<BookingPlayerData>(await review(await submitProfile(provider)));
+      const target = appearance(22, profile.id);
+      let order = data<BookingOrderData>(await create(orderInput([target])));
+      expect(order.appearances[0]?.capabilities.canDispute).toBe(false);
+      const playerView = data<BookingOrderData>(
+        await call(api, 'get', `${root}/orders/${order.id}`, { cookie: provider.cookie }),
+      );
+      expect(playerView.appearances[0]?.capabilities).toMatchObject({
+        canDispute: false,
+        canDecline: true,
+      });
+      expect(order.appearances[0]?.capabilities.canCancel).toBe(true);
+      const original = (
+        await api.pool.query(
+          'SELECT to_jsonb(a) AS appearance,to_jsonb(o) AS booking FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id WHERE a.id=$1',
+          [order.appearances[0]!.id],
+        )
+      ).rows[0]!;
+      for (const user of [leader, provider]) {
+        const body: BookingCommandInput = {
+          commandId: randomUUID(),
+          expectedVersion: order.appearances[0]!.version,
+          appearanceId: order.appearances[0]!.id,
+          type: 'DISPUTE',
+          reason: why,
+        };
+        const rejected = await call(api, 'post', `${root}/orders/${order.id}/commands`, {
+          cookie: user.cookie,
+          body,
+        });
+        error(rejected, 409);
+        expect(rejected.body.error.code).toBe('BOOKING_ACTION_NOT_ALLOWED');
+        expect(
+          Number(
+            (
+              await api.pool.query(
+                'SELECT count(*) FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+                [user.id, body.commandId],
+              )
+            ).rows[0]!.count,
+          ),
+        ).toBe(0);
+      }
+      expect(
+        (
+          await api.pool.query(
+            'SELECT to_jsonb(a) AS appearance,to_jsonb(o) AS booking FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id WHERE a.id=$1',
+            [order.appearances[0]!.id],
+          )
+        ).rows[0],
+      ).toEqual(original);
+      expect(await pendingQuota()).toBe(1);
+      order = data<BookingOrderData>(
+        await command(order, order.appearances[0]!, 'DECLINE', provider, { reason: why }),
+      );
+      expect(order.appearances[0]?.status).toBe('DECLINED');
+      expect(await pendingQuota()).toBe(0);
+      order = data<BookingOrderData>(await create(orderInput([target])));
+      order = data<BookingOrderData>(
+        await command(order, order.appearances[0]!, 'CANCEL', leader, { reason: why }),
+      );
+      expect(order.appearances[0]?.status).toBe('CANCELLED');
+      expect(await pendingQuota()).toBe(0);
+      order = data<BookingOrderData>(await create(orderInput([target])));
+      const expiringId = order.appearances[0]!.id;
+      // Simulate elapsed server-side request time only for this owned fixture.
+      // Keep the REQUESTED expiry check valid; production never accepts expiry input.
+      await api.pool.query(
+        `UPDATE booking_appearances SET expires_at=clock_timestamp()-interval '1 second',updated_at=clock_timestamp()-interval '2 seconds',version=version+1 WHERE id=$1`,
+        [expiringId],
+      );
+      expect(await pendingQuota()).toBe(0);
+      const replacement = data<BookingOrderData>(await create(orderInput([target])));
+      expect(replacement.appearances[0]?.status).toBe('REQUESTED');
+      expect(
+        (await api.pool.query('SELECT status FROM booking_appearances WHERE id=$1', [expiringId]))
+          .rows[0]!.status,
+      ).toBe('EXPIRED');
+      const expired = data<BookingOrderData>(
+        await call(api, 'get', `${root}/orders/${order.id}`, { cookie: leader.cookie }),
+      );
+      expect(expired.status).toBe('CANCELLED');
+      expect(expired.appearances[0]?.status).toBe('EXPIRED');
+      expect(await pendingQuota()).toBe(1);
+    });
+
     test('arrival and completion are distinct: neither premature completion nor a dispute frees a future reserved slot', async () => {
       const now = Date.now();
       const upcoming: BookingAppearanceInput = {

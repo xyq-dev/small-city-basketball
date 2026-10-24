@@ -343,7 +343,8 @@ export class PlayerBookingService extends ApplicationService {
       buyer: team.allowed,
       operator,
       player,
-      independentOperator: operator && !staff && !player && order.buyer_user_id !== actor.user.id,
+      independentOperator:
+        operator && !team.allowed && !staff && !player && order.buyer_user_id !== actor.user.id,
     };
   }
   private async orderDto(c: PoolClient, ctx: OrderContext): Promise<BookingOrderData> {
@@ -438,7 +439,7 @@ export class PlayerBookingService extends ApplicationService {
             new Date(a.end_at).getTime() <= now.getTime(),
           canDispute:
             (ctx.buyer || player) &&
-            (['REQUESTED', 'ACCEPTED', 'ARRIVED'].includes(a.status) ||
+            (['ACCEPTED', 'ARRIVED'].includes(a.status) ||
               (a.status === 'COMPLETED' &&
                 now.getTime() <= new Date(a.completed_at).getTime() + 86400_000)),
           canResolveDispute: ctx.independentOperator && a.status === 'DISPUTED',

@@ -1,10 +1,10 @@
 # 任务看板
 
-当前C07：球员数据与最多3人同价比较，`REVIEW / BRANCH_ONLY`。API/schema/UI/tests已整合，本地API534/首版前端442/最终13新增直接测试/类型/格式/build/VM11通过，桌面Mock及独立静态复核通过，真实PG与最终联合CI待验。[草稿PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)已建立；C06基线隔离CI正在完成，历史推送审批阻塞已由最新明确授权解除。见[任务](tasks/C07.md)、[交接](handoffs/C07.md)；不把C06证据当新C07通过。
+当前C07：已授权数据及最多3人同价比较，`REVIEW / BRANCH_ONLY`。四项审查修复已整合/独立静态CLEAR，最终本地1039源码/VM11/类型/格式/build通过。候选ad4af1fb（本地b6be17b、tree281a42fc）已同步[PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)，最终[CI40065307502](https://github.com/xyq-dev/small-city-basketball/actions/runs/40065307502)run54执行中；预约30/数据19 PG及四线程收口待，尚未合并/上线。三旧完整CI基线均成功，不覆盖最后增量。见[任务](tasks/C07.md)、[交接](handoffs/C07.md)。
 
-当前四项审查问题均已修复并静态CLEAR（最终99bf6e8）：原买方128配额、完整授权分页、跨页面/刷新原请求恢复，以及持久终态拒绝。root最终全类型/格式/npm test1039源码（505/534）＋VM11及两端build通过；新增预约30/数据19 PG须新完整候选CI。尚未解除四线程、合并或生产执行。
+当前六项已确认审查问题均已修复并独立静态CLEAR，最终代码9340f6a；本地全类型/格式/npm test1046源码（512/534）＋VM11/build通过。新两争议PG使预约共32、数据19；新完整候选待同步，六threads待最终真实验证，不提前合并或标DONE。
 
-当前C06：`REVIEW / BRANCH_ONLY`，首基线CI40061888579三job完整成功、含新24PG/63表重启恢复；后续同PR的C07及审查修复等待新最终候选CI，尚未合并/上线。见[任务](tasks/C06.md)、[使用](PLAYER_BOOKING_USAGE.md)、[交接](handoffs/C06.md)。
+当前C06：`REVIEW / BRANCH_ONLY`，基线CI40061888579含24新PG/63表完整检查通过；后续C07/审查修复最终候选待完整CI后共同合并。见[任务](tasks/C06.md)、[使用](PLAYER_BOOKING_USAGE.md)、[交接](handoffs/C06.md)。
 
 当前D01：商业版Figma全景初稿已交付，设计DONE；[Figma导览](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=18-2)、[任务](tasks/D01.md)、[交接](handoffs/D01.md)。10页/94张业务与状态画板，原生组件及核心浏览/阶段原型；用户视觉确认、前端新稿实现未完成。本批仅文档同步，不更新应用或生产。
 

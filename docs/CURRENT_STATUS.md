@@ -4,11 +4,13 @@
 
 ## C07 球员数据与同价比较（REVIEW / BRANCH_ONLY）
 
-当前四项审查问题均已修复并静态CLEAR（最终99bf6e8）：原买方128配额、完整授权分页、跨页面/刷新原请求恢复，以及持久终态拒绝。root最终全类型/格式/npm test1039源码（505/534）＋VM11及两端build通过；新增预约30/数据19 PG须新完整候选CI。尚未解除四线程、合并或生产执行。
+当前六项已确认审查问题均已修复并独立静态CLEAR，最终代码9340f6a；本地全类型/格式/npm test1046源码（512/534）＋VM11/build通过。新两争议PG使预约共32、数据19；新完整候选待同步，六threads待最终真实验证，不提前合并或标DONE。
 
-用户本轮已全权授权开发、Git同步、PR及检查后合并，不再重复确认。集成目录为`/workspace/scratch/608836f8d204/small-city-basketball`，分支`feat/player-reservations`。已整合017、65表权限恢复集合、精确提名/本人同意/撤销、当前独立确认的有限公开统计与20人批量API、11项投影测试及17项PG/HTTP用例。UI已整合至6664ccd：同价同位置筛选、最多3人含费对比、近期记录/样本口径、来源提名/本人同意/撤销及viewer草稿隔离已完成。本地API534、首版全量前端442、最终13新增直接测试、类型/格式/两端build及微信VM11通过，桌面Mock浏览器实际流程通过；独立静态复核CLEAR。17项新PG与最终桌面/手机浏览器及恢复联合CI尚待，未标DONE。
+原C06架构中已完成：同价同位置筛选、最多3人含费对比、已授权当前有效确认的个人记录/近期5条/样本口径、完整来源提名/本人同意/撤销与历史分页。助攻/篮板/时间/命中率未采集，不补0或能力总分。四项审查问题均已修复并独立全delta静态CLEAR：原买方128配额、旧授权可达、原actor/ID/payload及跨挂载/刷新恢复、COMMIT后终态拒绝收据。实现和历史失败分别记录，不掩盖旧审查发现。
 
-普通push缺少交互凭据后，已通过连接的GitHub Git Data接口非强制同步，建立[PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)。C06基线[CI40061888579](https://github.com/xyq-dev/small-city-basketball/actions/runs/40061888579)三个job已全部SUCCESS；其源码/PG/浏览器/63表重启恢复证据已补入C06交接，历史本机/审批失败仍保留。最终C07候选本地bd5c240与远端4df2c532的tree同为3e83d4aa5962461eae82708191494df02788c339；[完整CI40062592812](https://github.com/xyq-dev/small-city-basketball/actions/runs/40062592812)中admin和隔离production全部SUCCESS，最终前端444/API534/VM11、14Mock（含新桌面/手机比较各一次）、隔离runtime16、4可信HTTPS及65表完整恢复/旧授权隔离通过，无重试。api真实PG、build和重启步骤成功，真实API浏览器仍运行；尚未合并或生产部署。详见[C07任务](tasks/C07.md)、[交接](handoffs/C07.md)和[证据](evidence/C07/README.md)。
+最终本地99bf6e8完整type/format/npm test1039源码（admin505/API534）＋VM11及两端build通过。最终候选本地b6be17b与远端ad4af1fb同tree281a42fc23dbf427ac91820a39cdc7178528ad13，已正常非强制同步[PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)；[CI40065307502](https://github.com/xyq-dev/small-city-basketball/actions/runs/40065307502)run54/attempt1正在执行，预约30/数据19项PG须本轮实际通过，四threads待新完整验证后解除。
+
+此前C06基线CI40061888579、C07 source4df的CI40062592812及source1bf的CI40064443587均三job完整成功；最新旧基线为1030源码、VM11、283PG＋runtime16、14Mock/24真实API/4HTTPS、17迁移/65表重启及完整恢复/旧授权隔离/owned清理，无重试，不充作新终态4PG通过。本轮用户已全权授权开发/普通同步/PR/检查后合并；尚未合并、生产部署或正式Migration，真实撮合支付/分账、通知、实名/资格自动核验未配置。详见[任务](tasks/C07.md)、[交接](handoffs/C07.md)、[证据](evidence/C07/README.md)。
 
 ## C06 球员赛事预约与UI（REVIEW / BRANCH_ONLY，基线完整CI通过）
 
