@@ -2,6 +2,8 @@
 
 日期：2026-10-24 Asia/Shanghai。业务代码HEAD`44ceb912d199dd507024a68b9bc4f5a421e087ee`。
 
+C06后续已与C07共同通过最终候选CI并由[PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)合并main7d23203。最终[CI40065953550](https://github.com/xyq-dev/small-city-basketball/actions/runs/40065953550)三个job全部SUCCESS（attempt1，无重试），原始日志已核对：1046源码（admin512/API534）、微信VM11、289真实PG（含预约32/数据19）＋隔离runtime16、14Mock＋桌面12/手机模拟12真实API＋4可信HTTPS浏览器；17迁移/65表实际重启、完整dump恢复/旧授权隔离及正常/故意失败owned清理通过。 本页截图为C06阶段Mock证明，最终收口和历史问题见[C07证据](../C07/README.md)。未部署生产或执行真实资金。
+
 - [球员广场桌面截图](player-market-desktop.jpg)
 - [系列预约与逐场状态桌面截图](series-order-desktop.jpg)
 

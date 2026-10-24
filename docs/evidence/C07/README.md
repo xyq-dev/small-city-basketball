@@ -2,7 +2,19 @@
 
 2026-10-24 Asia/Shanghai；root。验收对象为`feat/player-reservations`，本节与C06历史证据分开。最终HEAD、远端CI及合并结果在任务卡/交接持续更新。
 
-## 已执行
+## 最终验收与合并
+
+2026-10-24 Asia/Shanghai；DONE / MAIN。[PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)已合并main `7d23203c2bfd57f3fd99622f286d30cd2c5d9356`。最终source `1722333d50c077cbf11efc388381c68440873dfe` 与本地 `6c4503d9df7455902e4430e3fcb512e1c92d6b8f` 源tree均为 `24c7ad11055fcc0464babeba2b63aa2b3a230a05`；合并后已只读fetch核验merge tree完全一致，未改原main工作树或reset/force。
+
+最终[CI40065953550](https://github.com/xyq-dev/small-city-basketball/actions/runs/40065953550)三个job全部SUCCESS（attempt1，无重试），原始日志已核对：1046源码（admin512/API534）、微信VM11、289真实PG（含预约32/数据19）＋隔离runtime16、14Mock＋桌面12/手机模拟12真实API＋4可信HTTPS浏览器；17迁移/65表实际重启、完整dump恢复/旧授权隔离及正常/故意失败owned清理通过。
+
+独立最终静态联读CLEAR；最新source自动CodeReview completed且无finding/未解决finding，六条历史P2已在完整真实验证后全部resolved（含2条未outdated），没有靠行失效代替修复。security未运行。六项修复为原买方128配额、全部授权历史可达/重验、原请求跨挂载及刷新恢复、COMMIT后持久拒绝、裁定者排除球队授权关联、未接单请求保留原到期而不能转争议。
+
+016/017已在隔离CI实际执行，生产均未执行。真实个人撮合支付/退款/分账、通知、实名/资格自动核验仍未配置，资金UNAVAILABLE/BLOCKED/0。没有生产部署、正式账号维护或新外部凭据。手机模拟不等于微信/Safari真机；旧001–007完整FINAL数据的隔离升级仍属既有待办。
+
+合并后自动检查尚未取得最终结论，不与候选CI混淆；合并代码tree与已验证候选完全相同。后续仅验收文档同步，文档HEAD以实际Git读取。停止会话后不会无人值守监测。
+
+## 逐段执行与问题修复记录
 
 - 整合API/schema/PG用例后：全项目typecheck、API534源码测试（38文件）通过。新增11项projection用例覆盖当前独立确认、TEAM_ONLY/null、真实0、固定名单校验、重复/损坏与部分数据。
 - 整合UI首版dfef5b3后：全项目typecheck、两端build通过；首次全量格式发现`player-performance.test.ts`排版问题，交UI作者修正，不隐藏失败。

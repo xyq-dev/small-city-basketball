@@ -1,10 +1,6 @@
 # 任务看板
 
-当前C07：已授权数据及最多3人同价比较，`REVIEW / BRANCH_ONLY`。四项审查修复已整合/独立静态CLEAR，最终本地1039源码/VM11/类型/格式/build通过。候选ad4af1fb（本地b6be17b、tree281a42fc）已同步[PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)，最终[CI40065307502](https://github.com/xyq-dev/small-city-basketball/actions/runs/40065307502)run54执行中；预约30/数据19 PG及四线程收口待，尚未合并/上线。三旧完整CI基线均成功，不覆盖最后增量。见[任务](tasks/C07.md)、[交接](handoffs/C07.md)。
-
-当前六项已确认审查问题均已修复并独立静态CLEAR，最终代码9340f6a；本地全类型/格式/npm test1046源码（512/534）＋VM11/build通过。新两争议PG使预约共32、数据19；新完整候选待同步，六threads待最终真实验证，不提前合并或标DONE。
-
-当前C06：`REVIEW / BRANCH_ONLY`，基线CI40061888579含24新PG/63表完整检查通过；后续C07/审查修复最终候选待完整CI后共同合并。见[任务](tasks/C06.md)、[使用](PLAYER_BOOKING_USAGE.md)、[交接](handoffs/C06.md)。
+当前C06/C07：`DONE / MAIN`，已由[PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)合并`7d23203`，source1722333d/merge同tree24c7ad11。最终CI40065953550三job完整成功：1046源码/VM11、289PG＋runtime16、14Mock＋28真实浏览器、17迁移/65表重启与完整恢复/隔离/清理；六P2已修并resolved，最终独立/自动代码审查通过所列范围，security未运行。没有生产部署或真实资金。详见[C07最终任务](tasks/C07.md)、[交接](handoffs/C07.md)、[使用](PLAYER_BOOKING_USAGE.md)与[数据](PLAYER_PERFORMANCE_USAGE.md)。
 
 当前D01：商业版Figma全景初稿已交付，设计DONE；[Figma导览](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=18-2)、[任务](tasks/D01.md)、[交接](handoffs/D01.md)。10页/94张业务与状态画板，原生组件及核心浏览/阶段原型；用户视觉确认、前端新稿实现未完成。本批仅文档同步，不更新应用或生产。
 
@@ -35,12 +31,12 @@
 | C04 | 单淘汰赛签位/逐轮晋级/最终名次 | DONE | root/API/UI/PG/浏览器/独立审查 | C03 | MAIN 7ef18c9 PR12；[任务](tasks/C04.md)、[交接](handoffs/C04.md)，CI39975284464三job通过：749源码/217PG/12Mock＋22真实浏览器/41表完整恢复；合并后CI39976904075同范围全部通过（无重试），无生产部署 |
 | C05 | 分组接淘汰、按届计费、微信及媒体 | DONE | root及四域独立作者/UI/恢复/审查 | C04 | MAIN d4f6500 [PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)；[任务](tasks/C05.md)、[交接](handoffs/C05.md)；CI40001590258三job成功：914源码/11VM/254PG/12Mock＋28真实浏览器、15迁移/58表完整恢复；合并后CI40003519494同范围全部SUCCESS（无重试）；无生产部署 |
 | D01 | 整套商业版Figma UI全景初稿 | DONE（设计交付） | root主画布/移动与运营只读协作/独立视觉复核 | 已有业务能力与商业规划 | [Figma](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=18-2)、[设计索引](design/COMMERCIAL_UI_FIGMA.md)、[任务](tasks/D01.md)、[交接](handoffs/D01.md)；本记录同步main仅文档，用户视觉签收/应用实现另卡 |
-| C06 | 球员赛事预约、逐场履约及UI | REVIEW | root / API / UI / 验证 | C05、当前预约业务设计 | BRANCH_ONLY业务44ceb91；[任务](tasks/C06.md)、[使用](PLAYER_BOOKING_USAGE.md)、[证据](evidence/C06/README.md)、[交接](handoffs/C06.md)；基线完整CI通过，修复后候选待验/未上线 |
-| C07 | 已授权球员数据与同价同位置对比 | REVIEW | root / API / UI / PG / 独立审查 | C06、C03已确认个人记录 | BRANCH_ONLY；017/65表、公开有限投影、提名/同意/撤销已整合；[任务](tasks/C07.md)、[交接](handoffs/C07.md)，UI已整合/联合CI待验 |
+| C06 | 球员赛事预约、逐场履约及UI | DONE | root / API / UI / 验证 | C05、预约设计 | MAIN7d23203 PR14；[任务](tasks/C06.md)、[使用](PLAYER_BOOKING_USAGE.md)、[证据](evidence/C06/README.md)、[交接](handoffs/C06.md)；最终CI40065953550完整通过，未部署生产 |
+| C07 | 已授权球员数据与同价同位置对比 | DONE | root / API / UI / PG / 独立审查 | C06、C03 | MAIN7d23203 PR14；[任务](tasks/C07.md)、[交接](handoffs/C07.md)、[证据](evidence/C07/README.md)；1046源码/VM11/305PG/42浏览器、17迁移65表重启恢复通过，无生产部署 |
 
 ## 当前顺序
 
-当前优先完成C06/C07修复后候选完整CI及审查后合并；D01设计交付及C05外部环境待办继续有效。已实现的球员预约和数据UI以代码/真实PG/浏览器证据为准，不以设计原型替代测试，不将隔离验收等同生产发布。
+C06/C07最终候选验收及PR14合并已完成，接续按实际环境补旧库隔离升级、部署和外部支付/微信/通知/身份核验联调；D01设计交付及C05外部环境待办继续有效。已实现的球员预约和数据UI以代码/真实PG/浏览器证据为准，不以设计原型替代测试，不将隔离验收等同生产发布。
 
 C02/PR10、C03/PR11、C04/PR12与C05/PR13均已整合main。C05最终候选完整验收通过，合并后CI40003519494同范围全部SUCCESS（无重试）；自动CodeReview仍运行，不算通过，必要独立审查已完成。真实PG、源码/VM、Mock和浏览器证据分列见[当前状态](CURRENT_STATUS.md)及[C05验收](evidence/C05/README.md)。本轮无生产操作或正式账号变更。
 
