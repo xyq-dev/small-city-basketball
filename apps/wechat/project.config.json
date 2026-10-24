@@ -1,8 +1,12 @@
 {
   "miniprogramRoot": "./",
   "projectname": "small-city-basketball",
-  "description": "小城市篮球，只读观赛与已有账号微信绑定",
+  "description": "小城市篮球，赛事观赛、球队报名与球员预约",
   "appid": "touristappid",
   "compileType": "miniprogram",
-  "setting": { "es6": true, "minified": true, "urlCheck": true }
+  "setting": {
+    "es6": true,
+    "minified": true,
+    "urlCheck": true
+  }
 }

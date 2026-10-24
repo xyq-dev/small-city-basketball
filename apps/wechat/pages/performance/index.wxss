@@ -1,0 +1,10 @@
+.authorization-tabs { display: flex; flex-wrap: wrap; gap: 12rpx; margin: 24rpx 0; }
+.authorization-tabs button { flex: 1; min-width: 140rpx; margin: 0; }
+.authorization-card .row { margin-top: 16rpx; }
+.nomination-field { margin-top: 24rpx; }
+.nomination-picker { min-height: 44px; box-sizing: border-box; padding: 24rpx; background: white; border: 1rpx solid var(--border, #e8edf2); border-radius: 16rpx; }
+.authorization-reason { width: 100%; box-sizing: border-box; min-height: 160rpx; }
+.authorization-actions { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 20rpx; }
+.authorization-actions button { flex: 1; min-width: 240rpx; margin: 0; }
+.authorization-section { margin-top: 24rpx; }
+.authorization-footer { margin-top: 24rpx; }

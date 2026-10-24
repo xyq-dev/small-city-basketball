@@ -1,0 +1,4 @@
+.match-hero .subtitle,.match-hero .score,.match-hero .clock { color:#fff; }
+.match-hero .score { font-size:56px; text-align:left; }
+.match-hero .clock { font-size:24px; text-align:left; margin-bottom:23rpx; }
+.match-page .tabs .chip { flex:1; padding-left:12rpx; padding-right:12rpx; }

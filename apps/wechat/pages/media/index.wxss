@@ -1,0 +1,1 @@
+.media-entry { padding-bottom:calc(170rpx + env(safe-area-inset-bottom)); }

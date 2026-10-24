@@ -1,11 +1,39 @@
 {
-  "pages": ["pages/home/index", "pages/event/index", "pages/match/index", "pages/account/index"],
+  "pages": [
+    "pages/home/index",
+    "pages/watch/index",
+    "pages/media/index",
+    "pages/account/index",
+    "pages/event/index",
+    "pages/match/index",
+    "pages/players/index",
+    "pages/player/index",
+    "pages/compare/index",
+    "pages/booking-create/index",
+    "pages/bookings/index",
+    "pages/booking-detail/index",
+    "pages/player-center/index",
+    "pages/performance/index",
+    "pages/teams/index",
+    "pages/team/index",
+    "pages/registration-events/index",
+    "pages/entry/index",
+    "pages/invitation/index",
+    "pages/planned/index",
+    "pages/platform/index"
+  ],
   "window": {
     "navigationBarTitleText": "小城市篮球",
-    "navigationBarBackgroundColor": "#132c49",
-    "navigationBarTextStyle": "white",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
     "backgroundTextStyle": "dark"
   },
-  "networkTimeout": { "request": 8000, "downloadFile": 10000 },
-  "style": "v2"
+  "networkTimeout": {
+    "request": 8000,
+    "downloadFile": 10000
+  },
+  "style": "v2",
+  "usingComponents": {
+    "scb-nav": "/components/navigation/index"
+  }
 }

@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const ui = require('../../utils/ui');
 Page({
   data: { value: '', error: '' },
   input(e) {
@@ -8,12 +9,15 @@ Page({
     try {
       const event = api.eventFromInput(this.data.value);
       this.setData({ error: '' });
-      wx.navigateTo({ url: '/pages/event/index?event=' + event });
+      ui.open('event', { event });
     } catch {
       this.setData({ error: '请输入主办方提供的有效观赛链接或43位公开编号。' });
     }
   },
   account() {
-    wx.navigateTo({ url: '/pages/account/index' });
+    ui.open('account');
+  },
+  go(e) {
+    ui.open(e.currentTarget.dataset.page);
   },
 });

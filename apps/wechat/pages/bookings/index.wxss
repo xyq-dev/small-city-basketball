@@ -1,0 +1,8 @@
+.booking-tabs { display: flex; gap: 16rpx; margin-bottom: 24rpx; }
+.booking-tabs button { flex: 1; margin: 0; }
+.booking-tabs .active { background: #132c49; color: #fff; }
+.order-card .subtitle { min-width: 0; }
+.order-summary { margin: 20rpx 0; }
+.order-summary .row { padding: 16rpx 0; border-bottom: 1rpx solid #e8edf2; }
+.order-summary .row-between { gap: 16rpx; align-items: flex-start; }
+.order-card button { margin-top: 24rpx; }

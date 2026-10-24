@@ -1,19 +1,134 @@
-// Build-time setting only. Never accept an API origin from a shared URL or QR payload.
+// Fixed build-time origin. Shared links and QR payloads never select a server.
 const API_ORIGIN = 'https://basketball.playhubs.cn';
 const opaque = /^[A-Za-z0-9_-]{43}$/;
+const uuidPattern = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const uuidRegex = new RegExp('^' + uuidPattern + '$', 'i');
+function uuid(value) {
+  if (typeof value !== 'string' || !uuidRegex.test(value)) throw new Error('资料编号无效');
+  return value;
+}
 function publicId(value) {
   if (typeof value !== 'string' || !opaque.test(value)) throw new Error('观赛链接无效');
   return value;
 }
-function pathAllowed(path, method) {
-  if (typeof path !== 'string' || path.includes('..') || path.includes('#') || path.includes('://'))
-    return false;
-  if (
-    /^\/v1\/auth\/(login|session|logout|wechat\/(capabilities|binding|challenges|login|bind|unbind))$/.test(
-      path,
+function queryValues(raw) {
+  const values = Object.create(null);
+  if (!raw) return values;
+  for (const pair of raw.split('&')) {
+    const split = pair.indexOf('=');
+    if (split < 1) return null;
+    let key, value;
+    try {
+      key = decodeURIComponent(pair.slice(0, split));
+      value = decodeURIComponent(pair.slice(split + 1));
+    } catch {
+      return null;
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(values, key) ||
+      ['__proto__', 'constructor', 'prototype'].includes(key)
     )
+      return null;
+    if (value.length > 4096 || /[\u0000-\u001f\u007f]/.test(value)) return null;
+    values[key] = value;
+  }
+  return values;
+}
+function queryAllowed(query, keys) {
+  return query && Object.keys(query).every((key) => keys.includes(key));
+}
+function pathAllowed(path, method = 'GET') {
+  if (
+    typeof path !== 'string' ||
+    path.length > 8500 ||
+    path.includes('..') ||
+    path.includes('#') ||
+    path.includes('://') ||
+    /[\u0000-\u0020\\]/.test(path)
   )
-    return true;
+    return false;
+  const parts = path.split('?');
+  if (parts.length > 2) return false;
+  const base = parts[0],
+    query = queryValues(parts[1]);
+  if (!query) return false;
+  const noQuery = Object.keys(query).length === 0;
+  const matches = (value) => new RegExp('^' + value + '$', 'i').test(base);
+  const auth = {
+    '/v1/auth/capabilities': 'GET',
+    '/v1/auth/session': 'GET',
+    '/v1/auth/login': 'POST',
+    '/v1/auth/logout': 'POST',
+    '/v1/auth/register-participant': 'POST',
+    '/v1/auth/wechat/capabilities': 'GET',
+    '/v1/auth/wechat/binding': 'GET',
+    '/v1/auth/wechat/challenges': 'POST',
+    '/v1/auth/wechat/login': 'POST',
+    '/v1/auth/wechat/bind': 'POST',
+    '/v1/auth/wechat/unbind': 'POST',
+  };
+  if (Object.prototype.hasOwnProperty.call(auth, base)) return noQuery && auth[base] === method;
+  const root = '/v1/player-bookings';
+  if (base === root + '/workspace') return noQuery && method === 'GET';
+  if ([root + '/profile', root + '/settings'].includes(base)) return noQuery && method === 'PUT';
+  if (base === root + '/orders') return noQuery && method === 'POST';
+  if (matches(root + '/orders/' + uuidPattern)) return noQuery && method === 'GET';
+  if (
+    matches(root + '/orders/' + uuidPattern + '/commands') ||
+    matches(root + '/profiles/' + uuidPattern + '/review')
+  )
+    return noQuery && method === 'POST';
+  if (base === root + '/players/performance') {
+    if (method !== 'GET' || !queryAllowed(query, ['ids']) || !query.ids) return false;
+    const ids = query.ids.split(',');
+    return (
+      ids.length > 0 &&
+      ids.length <= 20 &&
+      ids.every((v) => uuidRegex.test(v)) &&
+      new Set(ids).size === ids.length
+    );
+  }
+  if (matches(root + '/players/' + uuidPattern + '/performance'))
+    return noQuery && method === 'GET';
+  if (base === root + '/performance/workspace')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['cursor']) &&
+      (!('cursor' in query) || !!query.cursor)
+    );
+  if (base === root + '/performance/sources')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['orgId', 'eventId']) &&
+      uuidRegex.test(query.orgId || '') &&
+      uuidRegex.test(query.eventId || '')
+    );
+  if (base === root + '/performance/links') return noQuery && method === 'POST';
+  if (matches(root + '/performance/links/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(root + '/performance/links/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  const org = '/v1/orgs/' + uuidPattern;
+  const paged =
+    method === 'GET' &&
+    queryAllowed(query, ['limit', 'cursor']) &&
+    (!query.limit || ['50', '100'].includes(query.limit));
+  if (matches(org + '/teams')) return method === 'GET' ? paged : noQuery && method === 'POST';
+  if (matches(org + '/teams/' + uuidPattern)) return noQuery && ['GET', 'PATCH'].includes(method);
+  if (matches(org + '/teams/' + uuidPattern + '/members')) return noQuery && method === 'PUT';
+  if (matches(org + '/teams/' + uuidPattern + '/registration-events')) return paged;
+  if (matches(org + '/events/' + uuidPattern + '/registration')) return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/entries'))
+    return method === 'GET' ? paged : noQuery && method === 'POST';
+  if (matches(org + '/entries/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(org + '/entries/' + uuidPattern + '/roster')) return noQuery && method === 'PUT';
+  if (matches(org + '/entries/' + uuidPattern + '/commands')) return noQuery && method === 'POST';
+  if (matches(org + '/entries/' + uuidPattern + '/media-files'))
+    return noQuery && ['GET', 'POST'].includes(method);
+  if (matches(org + '/entries/' + uuidPattern + '/media-files/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  if (matches(org + '/entries/' + uuidPattern + '/media-files/' + uuidPattern + '/content'))
+    return noQuery && method === 'GET';
+  if (matches('/v1/invitations/' + uuidPattern + '/accept')) return noQuery && method === 'POST';
   return (
     method === 'GET' &&
     /^\/v1\/public\/events\/[A-Za-z0-9_-]{43}(?:\/(standings|knockout|groups|schedule|matches\/[A-Za-z0-9_-]{43}(?:\/media)?))?(?:\?limit=50(?:&cursor=[A-Za-z0-9_%.-]+)?)?$/.test(
@@ -22,10 +137,38 @@ function pathAllowed(path, method) {
   );
 }
 function createClient(wxApi) {
-  let cookie = '';
-  function request(path, method = 'GET', body) {
-    if (!pathAllowed(path, method))
+  let cookie = '',
+    revision = 0,
+    actor = null;
+  const listeners = new Set();
+  function notify(reason) {
+    for (const listener of listeners) {
+      try {
+        listener(revision, reason);
+      } catch {
+        /* A closed view cannot prevent session invalidation. */
+      }
+    }
+  }
+  function invalidate(reason) {
+    cookie = '';
+    actor = null;
+    revision++;
+    notify(reason);
+  }
+  function request(path, method = 'GET', body, anonymous = false) {
+    if (
+      !pathAllowed(path, method) ||
+      (anonymous && !(method === 'GET' && /^\/v1\/player-bookings\/players\//.test(path)))
+    )
       return Promise.reject({ code: 'INVALID_PATH', message: '请求入口无效' });
+    if (
+      !anonymous &&
+      method === 'POST' &&
+      ['/v1/auth/login', '/v1/auth/wechat/login', '/v1/auth/register-participant'].includes(path)
+    )
+      invalidate('LOGIN');
+    const started = revision;
     return new Promise((resolve, reject) =>
       wxApi.request({
         url: API_ORIGIN + path,
@@ -36,32 +179,45 @@ function createClient(wxApi) {
           Accept: 'application/json',
           'Content-Type': 'application/json',
           Origin: API_ORIGIN,
-          ...(cookie ? { Cookie: cookie } : {}),
+          ...(!anonymous && cookie ? { Cookie: cookie } : {}),
         },
         success(response) {
-          const headers = response.header || {};
-          const key = Object.keys(headers).find((k) => k.toLowerCase() === 'set-cookie');
-          const records = [
-            ...(key ? [String(headers[key])] : []),
-            ...(Array.isArray(response.cookies)
-              ? response.cookies.filter((v) => typeof v === 'string')
-              : []),
-          ];
-          const tokens = new Set();
-          for (const raw of records) {
-            const sid = /(?:^|[,;]\s*)scb\.sid=([A-Za-z0-9_-]{43})(?:;|$)/.exec(raw);
-            if (sid) tokens.add(sid[1]);
+          if (!anonymous && started !== revision) {
+            reject({ code: 'SESSION_CHANGED', message: '登录身份已变化，请重新读取。' });
+            return;
           }
-          if (tokens.size === 1) cookie = 'scb.sid=' + [...tokens][0];
-          if (tokens.size > 1 || records.some((raw) => /(?:^|[,;]\s*)scb\.sid=(?:;|$)/.test(raw)))
-            cookie = '';
-          if (response.statusCode === 401) cookie = '';
+          if (!anonymous) {
+            const headers = response.header || {};
+            const key = Object.keys(headers).find((k) => k.toLowerCase() === 'set-cookie');
+            const records = [
+              ...(key ? [String(headers[key])] : []),
+              ...(Array.isArray(response.cookies)
+                ? response.cookies.filter((v) => typeof v === 'string')
+                : []),
+            ];
+            const tokens = new Set();
+            for (const raw of records) {
+              const sid = /(?:^|[,;]\s*)scb\.sid=([A-Za-z0-9_-]{43})(?:;|$)/.exec(raw);
+              if (sid) tokens.add(sid[1]);
+            }
+            if (tokens.size === 1) cookie = 'scb.sid=' + [...tokens][0];
+            if (tokens.size > 1 || records.some((raw) => /(?:^|[,;]\s*)scb\.sid=(?:;|$)/.test(raw)))
+              cookie = '';
+            if (response.statusCode === 401) invalidate('UNAUTHENTICATED');
+          }
           if (response.statusCode < 200 || response.statusCode >= 300) {
             const error = response.data && response.data.error;
             reject({
               code: (error && error.code) || 'HTTP_ERROR',
               status: response.statusCode,
               message: (error && error.message) || '资料暂时不可用',
+              details:
+                error &&
+                error.details &&
+                typeof error.details === 'object' &&
+                !Array.isArray(error.details)
+                  ? error.details
+                  : undefined,
             });
             return;
           }
@@ -75,12 +231,31 @@ function createClient(wxApi) {
             reject({ code: 'INVALID_RESPONSE', message: '服务返回格式无效' });
             return;
           }
+          if (
+            !anonymous &&
+            [
+              '/v1/auth/session',
+              '/v1/auth/login',
+              '/v1/auth/wechat/login',
+              '/v1/auth/register-participant',
+            ].includes(path) &&
+            payload.data &&
+            payload.data.user &&
+            typeof payload.data.user.id === 'string'
+          ) {
+            const next = payload.data.user.id;
+            if (actor !== next) {
+              actor = next;
+              revision++;
+              notify('ACTOR');
+            }
+          }
           resolve(payload);
         },
         fail() {
           reject({
             code: 'NETWORK_ERROR',
-            message: '网络连接中断，请恢复连接后刷新；旧资料可能已陈旧。',
+            message: '网络连接中断，请恢复连接后刷新；原操作结果可能尚未核对。',
           });
         },
       }),
@@ -88,8 +263,80 @@ function createClient(wxApi) {
   }
   return {
     request,
+    download(path) {
+      const content = new RegExp(
+        '^/v1/orgs/' +
+          uuidPattern +
+          '/entries/' +
+          uuidPattern +
+          '/media-files/' +
+          uuidPattern +
+          '/content$',
+        'i',
+      );
+      if (!content.test(path))
+        return Promise.reject({ code: 'INVALID_PATH', message: '文件入口无效' });
+      const started = revision;
+      return new Promise((resolve, reject) =>
+        wxApi.request({
+          url: API_ORIGIN + path,
+          method: 'GET',
+          timeout: 15000,
+          responseType: 'arraybuffer',
+          header: { Origin: API_ORIGIN, ...(cookie ? { Cookie: cookie } : {}) },
+          success(response) {
+            if (started !== revision) {
+              reject({ code: 'SESSION_CHANGED', message: '登录身份已变化，已停止查看文件。' });
+              return;
+            }
+            if (response.statusCode === 401) invalidate('UNAUTHENTICATED');
+            if (response.statusCode !== 200) {
+              reject({
+                status: response.statusCode,
+                code: 'FILE_UNAVAILABLE',
+                message: '文件不可读取，可能已撤销或权限变化。',
+              });
+              return;
+            }
+            const headers = response.header || {};
+            const key = Object.keys(headers).find((v) => v.toLowerCase() === 'content-type');
+            const contentType = String(key ? headers[key] : '')
+              .split(';')[0]
+              .toLowerCase();
+            const data = response.data;
+            if (
+              !['image/png', 'image/jpeg', 'application/pdf'].includes(contentType) ||
+              !data ||
+              !Number.isSafeInteger(data.byteLength) ||
+              data.byteLength < 1 ||
+              data.byteLength > 8 * 1024 * 1024
+            ) {
+              reject({ code: 'INVALID_FILE', message: '文件格式或容量不符合要求，已停止查看。' });
+              return;
+            }
+            resolve({ data, contentType });
+          },
+          fail() {
+            reject({ code: 'NETWORK_ERROR', message: '文件读取中断，请重新核对权限后再试。' });
+          },
+        }),
+      );
+    },
+    requestPublic(path) {
+      return request(path, 'GET', undefined, true);
+    },
+    sessionRevision() {
+      return revision;
+    },
+    viewerId() {
+      return actor;
+    },
+    onSessionChange(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
     clearSession() {
-      cookie = '';
+      invalidate('CLEARED');
     },
     hasSession() {
       return !!cookie;
@@ -145,9 +392,46 @@ function mediaUrl(path) {
     throw new Error('媒体地址无效');
   return API_ORIGIN + path;
 }
+function publicTime(value) {
+  const time = Date.parse(value);
+  if (!Number.isFinite(time)) return '时间待确认';
+  const d = new Date(time + 8 * 3600000),
+    pad = (v) => String(v).padStart(2, '0');
+  return (
+    pad(d.getUTCMonth() + 1) +
+    '/' +
+    pad(d.getUTCDate()) +
+    ' ' +
+    pad(d.getUTCHours()) +
+    ':' +
+    pad(d.getUTCMinutes())
+  );
+}
+const eventStates = {
+  DRAFT: '赛事筹备中',
+  REGISTRATION_OPEN: '报名开放',
+  REGISTRATION_CLOSED: '报名已关闭',
+  SCHEDULED: '赛程已发布',
+  RUNNING: '比赛进行中',
+  COMPLETED: '本届已完赛',
+  ARCHIVED: '历史赛事',
+  CANCELLED: '赛事已取消',
+};
+const matchStates = {
+  SCHEDULED: '待开始',
+  READY: '赛前准备',
+  LIVE: '比赛进行中',
+  IN_PROGRESS: '比赛进行中',
+  PAUSED: '暂停',
+  FINISHED: '本场已结束',
+  FINAL: '本场已结束',
+  CANCELLED: '已取消',
+  POSTPONED: '已延期',
+};
 module.exports = {
   API_ORIGIN,
   publicId,
+  uuid,
   eventFromInput,
   pathAllowed,
   createClient,
@@ -155,4 +439,19 @@ module.exports = {
   allSchedule,
   clockText,
   mediaUrl,
+  publicTime,
+  eventStatus: (value) => eventStates[value] || value || '状态待确认',
+  matchStatus: (value) => matchStates[value] || value || '状态待确认',
+  resultStatus: (value) =>
+    ({
+      UNCONFIRMED: '尚无正式赛果',
+      CONFIRMED: '赛果已独立确认',
+      REQUIRES_RECONFIRMATION: '更正后待重新确认',
+    })[value] || '赛果待确认',
+  eventFormat: (value) =>
+    ({
+      ROUND_ROBIN: '单循环赛事',
+      SINGLE_ELIMINATION: '单淘汰赛事',
+      GROUP_KNOCKOUT: '分组循环接淘汰',
+    })[value] || '单循环赛事',
 };

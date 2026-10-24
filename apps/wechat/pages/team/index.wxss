@@ -1,0 +1,13 @@
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.member-input {
+  flex: 1;
+  min-width: 0;
+}
+.member-remove {
+  flex-shrink: 0;
+  width: 110rpx;
+}

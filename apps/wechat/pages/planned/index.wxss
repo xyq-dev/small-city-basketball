@@ -1,0 +1,1 @@
+.tabs .chip { width:calc(50% - 8rpx); margin:0; }

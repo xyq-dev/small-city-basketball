@@ -1,0 +1,36 @@
+.roster-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16rpx;
+  border-bottom: 1rpx solid #e8edf2;
+  padding: 12rpx 0;
+}
+.roster-select {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.jersey-input {
+  width: 132rpx;
+  flex-shrink: 0;
+}
+.file-row,
+.history-row {
+  padding: 24rpx 0;
+  border-top: 1rpx solid #e8edf2;
+  overflow-wrap: anywhere;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin: 24rpx 0;
+}
+.tabs .chip {
+  flex: 1;
+  min-width: 145rpx;
+  margin: 0;
+  padding-left: 8rpx;
+  padding-right: 8rpx;
+}

@@ -1,1 +1,39 @@
-<view class="page"><view class="card"><view class="title">账号与微信绑定</view><view wx:if="{{!enabled}}" class="notice">微信登录尚未配置启用；不会模拟微信成功或自动创建账号。</view><view wx:if="{{message}}" class="notice">{{message}}</view><view wx:if="{{user}}">已登录：{{user.displayName}} · {{user.email}}</view><input wx:if="{{!user}}" class="field" data-field="email" placeholder="已有账号的邮箱或登录名" value="{{email}}" bindinput="input"/><input class="field" data-field="password" password placeholder="应用密码（绑定/解绑须重新验证）" value="{{password}}" bindinput="input"/><button wx:if="{{!user}}" class="primary" bindtap="login" disabled="{{busy}}">账号密码登录</button><checkbox-group bindchange="consent"><label><checkbox value="yes" checked="{{consent}}"/>我明确同意本次微信身份认证或解绑；不按昵称合并账号</label></checkbox-group><view class="muted">微信身份仅与当前应用账号关联，不授予机构权限。不采集微信头像、昵称、手机号或 unionid；服务端仅保留 AppID 隔离的身份哈希。会话仅在内存中保存，退出或重新启动后需登录。</view><button wx:if="{{!user}}" bindtap="wechatLogin" disabled="{{busy || !enabled || !consent}}">使用已绑定微信登录</button><button wx:if="{{user && !binding.connected}}" bindtap="bind" disabled="{{busy || !enabled || !consent}}">绑定当前微信（重新验证密码）</button><button wx:if="{{binding.connected}}" bindtap="unbind" disabled="{{busy || !consent}}">解除微信绑定并退出全部设备</button><button wx:if="{{user}}" bindtap="logout" disabled="{{busy}}">退出当前登录</button><button bindtap="load" disabled="{{busy}}">刷新账号状态</button></view></view>
+<view class="page account-page">
+  <view class="hero"><view class="title">我的球赛主场</view><view class="muted">同一账号，按当前实际权限进入。</view></view>
+  <view wx:if="{{message}}" class="notice">{{message}}</view>
+  <view wx:if="{{loading}}" class="muted">正在核对当前账号…</view>
+  <view wx:if="{{user}}" class="card">
+    <view class="subtitle">{{user.displayName}}</view><view class="muted">{{user.email}}</view>
+    <button wx:if="{{hasReturn}}" class="primary" bindtap="continue">继续刚才的操作</button>
+    <button class="secondary" data-page="teams" bindtap="go">我的球队与本届报名</button>
+    <button class="secondary" data-page="bookings" bindtap="go">我发出的球员预约</button>
+    <button class="secondary" data-page="player-center" bindtap="go">球员中心与收到的预约</button>
+    <button class="secondary" data-page="performance" bindtap="go">我的比赛数据授权</button>
+    <button wx:if="{{platformOperator}}" class="secondary" data-page="platform" bindtap="go">平台服务资料与独立处理</button>
+    <button class="quiet" data-page="planned" bindtap="go">费用、资金与后续功能说明</button>
+  </view>
+  <view wx:else class="card">
+    <view class="subtitle">{{registerMode ? '创建个人账号' : '登录已有账号'}}</view>
+    <view class="muted">登录后查看可预约球员、代表有权球队下单，或申请本人球员入驻。</view>
+    <view class="field-label">{{registerMode ? '注册邮箱' : '账号或邮箱'}}</view><input disabled="{{busy}}" class="field" data-field="email" value="{{email}}" bindinput="input" maxlength="254" placeholder="请输入账号或邮箱"/>
+    <block wx:if="{{registerMode}}"><view class="field-label">显示名称</view><input disabled="{{busy}}" class="field" data-field="displayName" value="{{displayName}}" bindinput="input" maxlength="80" placeholder="本人显示名称"/></block>
+    <view class="field-label">应用密码</view><input disabled="{{busy}}" class="field" data-field="password" password value="{{password}}" bindinput="input" maxlength="256" placeholder="请输入应用密码"/>
+    <button wx:if="{{!registerMode}}" class="primary" bindtap="login" disabled="{{busy || loading}}" loading="{{busy}}">账号密码登录</button>
+    <button wx:else class="primary" bindtap="register" disabled="{{busy || loading || !canRegister}}" loading="{{busy}}">创建个人账号并登录</button>
+    <button wx:if="{{canRegister}}" class="quiet" bindtap="toggleRegister" disabled="{{busy}}">{{registerMode ? '返回已有账号登录' : '创建个人账号'}}</button>
+  </view>
+  <view class="card">
+    <view class="subtitle">账号与微信绑定</view>
+    <view wx:if="{{!enabled}}" class="notice warning">微信登录尚未配置启用；可以使用已有应用账号登录。</view>
+    <view wx:if="{{connected}}" class="badge success">已绑定当前微信身份</view>
+    <block wx:if="{{user}}"><view class="field-label">重新验证应用密码</view><input disabled="{{busy}}" class="field" data-field="password" value="{{password}}" password bindinput="input" placeholder="绑定或解绑需重新验证"/></block>
+    <checkbox-group bindchange="consent"><label class="consent"><checkbox disabled="{{busy}}" value="yes" checked="{{consent}}"/>我明确同意本次微信身份认证或解绑，不按昵称合并账号。</label></checkbox-group>
+    <view class="muted small">微信身份只关联当前账号，不授予球队或机构权限。会话仅保留在内存中，重新启动后需登录；不采集微信头像、昵称、手机号或 unionid。</view>
+    <button wx:if="{{!user}}" class="secondary" bindtap="wechatLogin" disabled="{{busy || !enabled || !consent}}">使用已绑定的微信登录</button>
+    <button wx:if="{{user && !connected}}" class="secondary" bindtap="bind" disabled="{{busy || !enabled || !consent}}">绑定当前微信并重新验证</button>
+    <button wx:if="{{connected}}" class="danger" bindtap="unbind" disabled="{{busy || !consent}}">解除绑定并退出全部设备</button>
+    <button wx:if="{{user}}" class="quiet" bindtap="logout" disabled="{{busy}}">退出当前登录</button>
+    <button class="quiet" bindtap="load" disabled="{{busy || loading}}">刷新当前账号</button>
+  </view>
+</view>
+<scb-nav active="Account"/>

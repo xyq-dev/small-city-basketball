@@ -1,0 +1,8 @@
+.profile-summary { margin-top: 20rpx; }
+.profile-field { margin-top: 28rpx; }
+.availability-row { border-top: 1rpx solid var(--border, #e8edf2); padding-top: 24rpx; margin-top: 24rpx; }
+.window-pair { display: flex; gap: 16rpx; margin-top: 12rpx; }
+.window-pair picker { flex: 1; min-width: 0; }
+.picker-value { min-height: 44px; font-size: 14px; padding: 24rpx; border: 1rpx solid var(--border, #e8edf2); border-radius: 16rpx; background: white; }
+.profile-bio { min-height: 160rpx; height: auto; width: 100%; box-sizing: border-box; }
+.profile-subnote { margin-top: 16rpx; }

@@ -151,12 +151,25 @@ async function container(project, env, service) {
   assert.ok(/^[a-f0-9]{12,64}$/.test(id), 'Expected exactly one owned service container');
   return id;
 }
+// The image bootstrap server accepts Unix sockets before final TCP startup.
+// Provisioning uses TCP, so readiness must wait for that same transport.
 async function waitDatabase(project, env) {
   for (let attempt = 0; attempt < 45; attempt++) {
     const result = await compose(
       project,
       env,
-      ['exec', '-T', 'postgres', 'pg_isready', '-U', 'scb_admin', '-d', env.POSTGRES_DB],
+      [
+        'exec',
+        '-T',
+        'postgres',
+        'pg_isready',
+        '-h',
+        '127.0.0.1',
+        '-U',
+        'scb_admin',
+        '-d',
+        env.POSTGRES_DB,
+      ],
       { allowFailure: true },
     );
     if (result.status === 0) return;

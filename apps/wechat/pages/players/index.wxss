@@ -1,0 +1,9 @@
+.player-head,.player-actions,.picker-value { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
+.player-name { margin:0; flex:1; min-width:0; }
+.player-card > view { margin-bottom:12rpx; }
+.player-card .price { margin:16rpx 0; color:#132c49; font-size:42rpx; }
+.unit { font-size:12px; font-weight:400; }
+.total { font-weight:600; }
+.player-actions button { flex:1; min-width:0; }
+.catalog-notice { padding:8rpx 0 24rpx; }
+.filters .field-label { margin-top:20rpx; }

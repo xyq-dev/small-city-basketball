@@ -1,6 +1,14 @@
 const api = require('../../utils/api');
 Page({
-  data: { snapshot: null, clock: '未准备', media: [], error: '', stale: false },
+  data: {
+    snapshot: null,
+    clock: '未准备',
+    media: [],
+    error: '',
+    stale: false,
+    loading: false,
+    tab: 'info',
+  },
   onLoad(query) {
     try {
       this.event = api.publicId(query.event);
@@ -12,7 +20,7 @@ Page({
     this.load();
   },
   onShow() {
-    if (!this.event) return;
+    if (!this.event || this.poll) return;
     this.poll = setInterval(() => this.load(), 5000);
     this.tick = setInterval(() => {
       if (this.data.snapshot)
@@ -22,6 +30,8 @@ Page({
   onHide() {
     clearInterval(this.poll);
     clearInterval(this.tick);
+    this.poll = null;
+    this.tick = null;
   },
   onUnload() {
     this.closed = true;
@@ -31,10 +41,17 @@ Page({
   async load() {
     if (this.busy || !this.event) return;
     this.busy = true;
+    this.setData({ loading: true });
     try {
       const client = api.getClient();
       const base = '/v1/public/events/' + this.event + '/matches/' + this.matchId;
-      const snapshot = (await client.request(base)).data;
+      const raw = (await client.request(base)).data;
+      const snapshot = {
+        ...raw,
+        statusLabel: api.matchStatus(raw.status),
+        resultLabel: api.resultStatus(raw.resultStatus),
+        startLabel: api.publicTime(raw.startsAt),
+      };
       // Capture the scoring receipt immediately; a slow media request must not move the clock anchor.
       this.receivedAt = Date.now();
       if (!this.closed)
@@ -75,7 +92,16 @@ Page({
       }
     } finally {
       this.busy = false;
+      if (!this.closed) this.setData({ loading: false });
     }
+  },
+  tab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (['info', 'media'].includes(tab)) this.setData({ tab });
+  },
+  ranking() {
+    if (this.event)
+      wx.navigateTo({ url: '/pages/event/index?event=' + this.event + '&tab=ranking' });
   },
   copyExternal(e) {
     const item = this.data.media.find((m) => m.publicMediaId === e.currentTarget.dataset.id);
@@ -92,6 +118,7 @@ Page({
       );
   },
   onShareAppMessage() {
+    if (!this.event || !this.matchId) return { title: '小城市篮球', path: '/pages/home/index' };
     return {
       title: this.data.snapshot ? this.data.snapshot.eventName + ' · 比赛' : '小城市篮球',
       path: '/pages/match/index?event=' + this.event + '&match=' + this.matchId,

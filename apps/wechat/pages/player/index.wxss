@@ -1,0 +1,11 @@
+.profile-hero > view { margin-bottom:16rpx; }
+.quote-row { display:flex; align-items:flex-start; justify-content:space-between; gap:20rpx; margin-bottom:16rpx; }
+.quote-row text:last-child { text-align:right; flex-shrink:0; }
+.quote-amount,.total { font-weight:600; color:#132c49; }
+.record-item { margin-top:24rpx; padding:24rpx 0; border-top:1rpx solid #e8edf2; }
+.record-score { margin:16rpx 0; color:#132c49; font-size:34rpx; font-weight:600; }
+.records > view { margin-bottom:12rpx; }
+.stat-value { font-size:48rpx; line-height:1.4; font-weight:600; color:#132c49; }
+.compare-actions { display:flex; gap:16rpx; }
+.compare-actions button { flex:1; min-width:0; }
+.bio { white-space:pre-wrap; overflow-wrap:anywhere; }
