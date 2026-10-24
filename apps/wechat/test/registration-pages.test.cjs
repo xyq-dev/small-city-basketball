@@ -390,6 +390,8 @@ test('team editor rechecks reviewed version before rename and keeps the unsaved 
   );
   assert.match(context.instance.data.error, /资料已变化/);
   assert.equal(context.instance.data.name, '修改中的球队名');
+  assert.equal(context.instance.data.busy, false);
+  assert.equal(context.instance.data.nameDirty, true);
 });
 
 test('entry current capability loss prevents submission even after a previous visible consent', async () => {
@@ -542,3 +544,408 @@ test('a programmatic institution change during team-create preflight aborts rath
   assert.equal(context.instance.data.busy, false);
   assert.match(context.instance.data.error, /创建上下文已变化/);
 });
+
+function editTeamWhileBusy(instance) {
+  instance.inputName({ detail: { value: 'Second edit' } });
+  instance.memberName({
+    currentTarget: { dataset: { index: 0 } },
+    detail: { value: 'Second member' },
+  });
+  instance.addMember();
+  instance.removeMember({ currentTarget: { dataset: { index: 0 } } });
+}
+
+for (const mode of ['name', 'members']) {
+  test(
+    'team ' +
+      mode +
+      ' save locks editing before confirmation/session preflight and preserves the other draft',
+    async () => {
+      const confirmation = deferred(),
+        sessionCheck = deferred();
+      const context = page(
+        'team',
+        (p, method, body) =>
+          envelope({
+            ...team(),
+            ...(method === 'PATCH' ? { name: body.name, version: 2 } : {}),
+            ...(method === 'PUT' ? { members: body.members, version: 2 } : {}),
+          }),
+        { confirm: () => confirmation.promise },
+      );
+      await context.instance.load();
+      context.instance.inputName({ detail: { value: 'First edit' } });
+      context.instance.memberName({
+        currentTarget: { dataset: { index: 0 } },
+        detail: { value: 'First member' },
+      });
+      const session = await context.ui.session();
+      let checks = 0;
+      context.ui.session = () => {
+        checks++;
+        return sessionCheck.promise;
+      };
+      const saving = context.instance.save({ currentTarget: { dataset: { mode } } });
+      assert.equal(context.instance.data.busy, true);
+      editTeamWhileBusy(context.instance);
+      await context.instance.save({
+        currentTarget: { dataset: { mode: mode === 'name' ? 'members' : 'name' } },
+      });
+      assert.equal(context.instance.data.name, 'First edit');
+      assert.equal(context.instance.data.members.length, 1);
+      assert.equal(context.instance.data.members[0].name, 'First member');
+      if (mode === 'members') {
+        assert.equal(checks, 0);
+        confirmation.resolve(true);
+        await turn();
+        assert.equal(context.instance.data.busy, true);
+        editTeamWhileBusy(context.instance);
+      }
+      assert.equal(checks, 1);
+      sessionCheck.resolve(session);
+      await saving;
+      const writes = context.calls.filter((c) => ['PATCH', 'PUT'].includes(c[1]));
+      assert.equal(writes.length, 1);
+      assert.equal(writes[0][2].expectedVersion, 1);
+      if (mode === 'name') {
+        assert.equal(writes[0][2].name, 'First edit');
+        assert.equal(context.instance.data.nameDirty, false);
+        assert.equal(context.instance.data.membersDirty, true);
+        assert.equal(context.instance.data.members[0].name, 'First member');
+      } else {
+        assert.equal(writes[0][2].members[0].name, 'First member');
+        assert.equal(context.instance.data.membersDirty, false);
+        assert.equal(context.instance.data.nameDirty, true);
+        assert.equal(context.instance.data.name, 'First edit');
+      }
+      assert.equal(context.instance.data.busy, false);
+    },
+  );
+}
+
+test('cancelling long-term-member confirmation unlocks editing without discarding the draft', async () => {
+  const confirmation = deferred();
+  const context = page('team', () => envelope(team()), { confirm: () => confirmation.promise });
+  await context.instance.load();
+  context.instance.memberName({
+    currentTarget: { dataset: { index: 0 } },
+    detail: { value: 'First member' },
+  });
+  const saving = context.instance.save({ currentTarget: { dataset: { mode: 'members' } } });
+  assert.equal(context.instance.data.busy, true);
+  confirmation.resolve(false);
+  await saving;
+  assert.equal(context.instance.data.busy, false);
+  assert.equal(context.instance.data.membersDirty, true);
+  assert.equal(context.instance.data.members[0].name, 'First member');
+  assert.equal(context.calls.length, 1);
+  context.instance.memberName({
+    currentTarget: { dataset: { index: 0 } },
+    detail: { value: 'Second member' },
+  });
+  assert.equal(context.instance.data.members[0].name, 'Second member');
+});
+
+function editEntryWhileBusy(instance) {
+  instance.togglePlayer({ currentTarget: { dataset: { index: 0 } } });
+  instance.jersey({ currentTarget: { dataset: { index: 0 } }, detail: { value: '99' } });
+  instance.consent({ detail: { value: [] } });
+  instance.fileConsent({ detail: { value: [] } });
+  instance.reason({ detail: { value: 'Second reason' } });
+  instance.purpose({ detail: { value: '1' } });
+}
+
+test('SUBMIT locks the reviewed roster and declaration throughout confirmation and a delayed actor check', async () => {
+  const confirmation = deferred(),
+    sessionCheck = deferred();
+  const context = page(
+    'entry',
+    (p, method) =>
+      method === 'POST' ? envelope(entry({ status: 'SUBMITTED', version: 2 })) : defaultRequest(p),
+    { confirm: () => confirmation.promise },
+  );
+  await context.instance.load();
+  context.instance.consent({ detail: { value: ['yes'] } });
+  context.instance.fileConsent({ detail: { value: ['yes'] } });
+  context.instance.reason({ detail: { value: 'First reason' } });
+  const session = await context.ui.session();
+  let checks = 0;
+  context.ui.session = () => {
+    checks++;
+    return sessionCheck.promise;
+  };
+  const submitting = context.instance.command({ currentTarget: { dataset: { type: 'SUBMIT' } } });
+  assert.equal(context.instance.data.busy, true);
+  editEntryWhileBusy(context.instance);
+  assert.equal(checks, 0);
+  confirmation.resolve(true);
+  await turn();
+  assert.equal(context.instance.data.busy, true);
+  editEntryWhileBusy(context.instance);
+  await context.instance.command({ currentTarget: { dataset: { type: 'WITHDRAW' } } });
+  await context.instance.saveRoster();
+  assert.equal(checks, 1);
+  assert.equal(context.instance.data.rows[0].selected, true);
+  assert.equal(context.instance.data.rows[0].jerseyNo, '00');
+  assert.equal(context.instance.data.dirty, false);
+  assert.equal(context.instance.data.consent, true);
+  assert.equal(context.instance.data.fileConsent, true);
+  assert.equal(context.instance.data.reason, 'First reason');
+  assert.equal(context.instance.data.uploadPurpose, 'PRIVATE_INSURANCE');
+  sessionCheck.resolve(session);
+  await submitting;
+  const writes = context.calls.filter((c) => c[1] === 'POST');
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0][2].type, 'SUBMIT');
+  assert.equal(writes[0][2].expectedVersion, 1);
+  assert.equal(writes[0][2].reason, 'First reason');
+  assert.equal(context.instance.data.entry.status, 'SUBMITTED');
+  assert.equal(context.instance.data.busy, false);
+});
+
+test('roster save locks its captured jersey draft before the delayed actor check', async () => {
+  const context = page('entry', (p, method, body) =>
+    method === 'PUT'
+      ? envelope(
+          entry({
+            version: 2,
+            players: body.players.map((player) => ({ ...player, name: '球员甲' })),
+          }),
+        )
+      : defaultRequest(p),
+  );
+  await context.instance.load();
+  context.instance.jersey({ currentTarget: { dataset: { index: 0 } }, detail: { value: '11' } });
+  const session = await context.ui.session(),
+    sessionCheck = deferred();
+  context.ui.session = () => sessionCheck.promise;
+  const saving = context.instance.saveRoster();
+  assert.equal(context.instance.data.busy, true);
+  editEntryWhileBusy(context.instance);
+  await context.instance.saveRoster();
+  assert.equal(context.instance.data.rows[0].jerseyNo, '11');
+  assert.equal(context.instance.data.rows[0].selected, true);
+  sessionCheck.resolve(session);
+  await saving;
+  const writes = context.calls.filter((c) => c[1] === 'PUT');
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0][2].players[0].jerseyNo, '11');
+  assert.equal(context.instance.data.rows[0].jerseyNo, '11');
+  assert.equal(context.instance.data.dirty, false);
+  assert.equal(context.instance.data.busy, false);
+});
+
+test('upload freezes consent, purpose and roster before a delayed actor check', async () => {
+  let choices = 0;
+  const context = page(
+    'entry',
+    (p, method) => (method === 'POST' ? envelope(files().files[0]) : defaultRequest(p)),
+    {
+      wx: {
+        chooseMessageFile(options) {
+          choices++;
+          options.success({
+            tempFiles: [{ name: 'proof.pdf', size: 4, path: '/chosen/proof.pdf' }],
+          });
+        },
+        getFileSystemManager: () => ({
+          readFile(options) {
+            options.success({ data: 'JVBERg==' });
+          },
+        }),
+      },
+    },
+  );
+  await context.instance.load();
+  context.instance.fileConsent({ detail: { value: ['yes'] } });
+  const session = await context.ui.session(),
+    sessionCheck = deferred();
+  context.ui.session = () => sessionCheck.promise;
+  const uploading = context.instance.upload();
+  assert.equal(context.instance.data.busy, true);
+  editEntryWhileBusy(context.instance);
+  await context.instance.upload();
+  assert.equal(choices, 0);
+  assert.equal(context.instance.data.fileConsent, true);
+  assert.equal(context.instance.data.uploadPurpose, 'PRIVATE_INSURANCE');
+  assert.equal(context.instance.data.dirty, false);
+  sessionCheck.resolve(session);
+  await uploading;
+  const writes = context.calls.filter((c) => c[1] === 'POST');
+  assert.equal(choices, 1);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0][2].purpose, 'PRIVATE_INSURANCE');
+  assert.equal(writes[0][2].expectedEntryVersion, 1);
+  assert.equal(context.instance.data.busy, false);
+});
+
+test('file revocation locks its reason and file version before confirmation and actor preflight', async () => {
+  const confirmation = deferred(),
+    sessionCheck = deferred();
+  const context = page(
+    'entry',
+    (p, method) => (method === 'POST' ? envelope(files().files[0]) : defaultRequest(p)),
+    { confirm: () => confirmation.promise },
+  );
+  await context.instance.load();
+  context.instance.reason({ detail: { value: 'First reason' } });
+  const session = await context.ui.session();
+  context.ui.session = () => sessionCheck.promise;
+  const revoking = context.instance.revoke({ currentTarget: { dataset: { id: id(9) } } });
+  assert.equal(context.instance.data.busy, true);
+  editEntryWhileBusy(context.instance);
+  confirmation.resolve(true);
+  await turn();
+  assert.equal(context.instance.data.busy, true);
+  editEntryWhileBusy(context.instance);
+  await context.instance.revoke({ currentTarget: { dataset: { id: id(9) } } });
+  sessionCheck.resolve(session);
+  await revoking;
+  const writes = context.calls.filter((c) => c[1] === 'POST');
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0][2].reason, 'First reason');
+  assert.equal(writes[0][2].expectedVersion, 1);
+  assert.equal(context.instance.data.busy, false);
+});
+
+for (const operation of ['SUBMIT', 'WITHDRAW', 'revoke']) {
+  test(
+    'cancelling ' + operation + ' confirmation releases the entry write lock without a request',
+    async () => {
+      const confirmation = deferred();
+      const context = page('entry', defaultRequest, { confirm: () => confirmation.promise });
+      await context.instance.load();
+      context.instance.consent({ detail: { value: ['yes'] } });
+      context.instance.reason({ detail: { value: 'First reason' } });
+      const before = context.calls.length;
+      const saving =
+        operation === 'revoke'
+          ? context.instance.revoke({ currentTarget: { dataset: { id: id(9) } } })
+          : context.instance.command({ currentTarget: { dataset: { type: operation } } });
+      assert.equal(context.instance.data.busy, true);
+      confirmation.resolve(false);
+      await saving;
+      assert.equal(context.instance.data.busy, false);
+      assert.equal(context.instance.data.consent, true);
+      assert.equal(context.instance.data.reason, 'First reason');
+      assert.equal(context.calls.length, before);
+      context.instance.jersey({
+        currentTarget: { dataset: { index: 0 } },
+        detail: { value: '12' },
+      });
+      assert.equal(context.instance.data.rows[0].jerseyNo, '12');
+    },
+  );
+}
+
+for (const failure of ['null', 'throw']) {
+  test(
+    'team and entry writes unlock and preserve drafts after a ' + failure + ' session preflight',
+    async () => {
+      for (const operation of ['name', 'members', 'saveRoster', 'SUBMIT', 'upload', 'revoke']) {
+        const teamPage = ['name', 'members'].includes(operation);
+        const context = page(
+          teamPage ? 'team' : 'entry',
+          teamPage ? () => envelope(team()) : defaultRequest,
+          {
+            wx: {
+              chooseMessageFile() {
+                throw new Error('chooser must not open');
+              },
+            },
+          },
+        );
+        await context.instance.load();
+        if (teamPage) {
+          context.instance.inputName({ detail: { value: 'First edit' } });
+          context.instance.memberName({
+            currentTarget: { dataset: { index: 0 } },
+            detail: { value: 'First member' },
+          });
+        } else {
+          context.instance.consent({ detail: { value: ['yes'] } });
+          context.instance.fileConsent({ detail: { value: ['yes'] } });
+          context.instance.reason({ detail: { value: 'First reason' } });
+          if (operation === 'saveRoster')
+            context.instance.jersey({
+              currentTarget: { dataset: { index: 0 } },
+              detail: { value: '11' },
+            });
+        }
+        context.ui.session = async () => {
+          if (failure === 'throw') throw new Error('session unavailable');
+          return null;
+        };
+        const before = context.calls.length;
+        if (teamPage)
+          await context.instance.save({ currentTarget: { dataset: { mode: operation } } });
+        else if (operation === 'SUBMIT')
+          await context.instance.command({ currentTarget: { dataset: { type: operation } } });
+        else if (operation === 'revoke')
+          await context.instance.revoke({ currentTarget: { dataset: { id: id(9) } } });
+        else await context.instance[operation]();
+        assert.equal(context.instance.data.busy, false, operation);
+        assert.equal(context.instance.data.uncertain, false, operation);
+        assert.equal(context.calls.length, before, operation);
+        if (teamPage) {
+          assert.equal(context.instance.data.name, 'First edit', operation);
+          assert.equal(context.instance.data.members[0].name, 'First member', operation);
+          assert.equal(context.instance.data.nameDirty, true, operation);
+          assert.equal(context.instance.data.membersDirty, true, operation);
+        } else if (operation === 'saveRoster') {
+          assert.equal(context.instance.data.rows[0].jerseyNo, '11');
+          assert.equal(context.instance.data.dirty, true);
+        }
+      }
+    },
+  );
+}
+
+test('cancelling native file selection releases the upload lock without posting', async () => {
+  const context = page('entry', defaultRequest, {
+    wx: {
+      chooseMessageFile(options) {
+        options.fail();
+      },
+    },
+  });
+  await context.instance.load();
+  context.instance.fileConsent({ detail: { value: ['yes'] } });
+  await context.instance.upload();
+  assert.equal(context.instance.data.busy, false);
+  assert.equal(context.instance.data.uncertain, false);
+  assert.equal(
+    context.calls.some((c) => c[1] === 'POST'),
+    false,
+  );
+});
+
+for (const pageName of ['team', 'entry']) {
+  test('a stale ' + pageName + ' save cannot release a later request lock', async () => {
+    const context = page(pageName, pageName === 'team' ? () => envelope(team()) : defaultRequest);
+    await context.instance.load();
+    if (pageName === 'team') context.instance.inputName({ detail: { value: 'First edit' } });
+    else
+      context.instance.jersey({
+        currentTarget: { dataset: { index: 0 } },
+        detail: { value: '11' },
+      });
+    const session = await context.ui.session(),
+      sessionCheck = deferred();
+    context.ui.session = () => sessionCheck.promise;
+    const saving =
+      pageName === 'team'
+        ? context.instance.save({ currentTarget: { dataset: { mode: 'name' } } })
+        : context.instance.saveRoster();
+    assert.equal(context.instance.data.busy, true);
+    context.ui.begin(context.instance);
+    context.instance.setData({ busy: true });
+    sessionCheck.resolve(session);
+    await saving;
+    assert.equal(context.instance.data.busy, true);
+    assert.equal(
+      context.calls.some((c) => ['PUT', 'PATCH', 'POST'].includes(c[1])),
+      false,
+    );
+  });
+}

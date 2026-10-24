@@ -176,15 +176,19 @@ Page({
     }
   },
   consent(e) {
+    if (this.data.busy) return;
     this.setData({ consent: Array.isArray(e.detail.value) && e.detail.value.includes('yes') });
   },
   fileConsent(e) {
+    if (this.data.busy) return;
     this.setData({ fileConsent: Array.isArray(e.detail.value) && e.detail.value.includes('yes') });
   },
   reason(e) {
+    if (this.data.busy) return;
     this.setData({ reason: e.detail.value });
   },
   purpose(e) {
+    if (this.data.busy) return;
     const index = Number(e.detail.value);
     if (index === 0 || index === 1)
       this.setData({
@@ -204,6 +208,18 @@ Page({
     }
     return session;
   },
+  beginWrite(patch) {
+    const token = ui.begin(this);
+    this._writeToken = token;
+    this.setData({ busy: true, ...patch });
+    return token;
+  },
+  finishWrite(token) {
+    if (this._writeToken === token) {
+      this._writeToken = null;
+      if (this._alive && ui.live(this, token)) this.setData({ busy: false });
+    }
+  },
   async saveRoster() {
     if (
       this.data.busy ||
@@ -220,20 +236,21 @@ Page({
       this.setData({ error: ui.message(error) });
       return;
     }
-    if (!(await this.actor())) return;
-    const token = ui.begin(this),
+    const token = this.beginWrite({ error: '', message: '' }),
       repo = registration.createRepository(this._org);
-    this.setData({ busy: true, error: '', message: '' });
+    let sent = false;
     try {
+      if (!(await this.actor()) || !ui.live(this, token)) return;
       const fresh = await repo.entry(this._id);
       if (!ui.live(this, token)) return;
       registration.versionMatch(fresh, expected);
       if (!fresh.capabilities.canEditRoster)
         throw Object.assign(new Error('当前状态不能修改本届名单，请重新读取'), { status: 409 });
+      sent = true;
       const entry = await repo.roster(this._id, expected, players);
       if (!ui.live(this, token)) return;
       this.applyEntry(entry, this._team);
-      this.setData({ busy: false, message: '本届名单已保存为独立版本，请核对资料后明确提交。' });
+      this.setData({ message: '本届名单已保存为独立版本，请核对资料后明确提交。' });
       try {
         const files = await repo.files(this._id);
         if (ui.live(this, token)) this.applyFiles(files);
@@ -244,12 +261,15 @@ Page({
     } catch (error) {
       if (ui.live(this, token))
         this.setData({
-          busy: false,
           error: ui.message(error),
-          uncertain: !error.status || error.status >= 500,
+          uncertain: sent && (!error.status || error.status >= 500),
           message:
-            !error.status || error.status >= 500 ? '保存结果待核对，请先重新读取当前报名。' : '',
+            sent && (!error.status || error.status >= 500)
+              ? '保存结果待核对，请先重新读取当前报名。'
+              : '',
         });
+    } finally {
+      this.finishWrite(token);
     }
   },
   async command(e) {
@@ -269,30 +289,33 @@ Page({
       return;
     const expected = this._entry.version,
       reason = this.data.reason.trim();
-    if (
-      !(await ui.confirm(
-        type === 'SUBMIT' ? '提交本队报名审核' : '撤回本队报名',
-        type === 'SUBMIT'
-          ? '本次将提交已保存的名单版本，之后需等待主办方独立审核；上传凭证不等于核验通过。'
-          : '请确认撤回本队本届报名。撤回保留历史，不能据此新建第二份本队报名。',
-      ))
-    )
-      return;
-    if (!(await this.actor())) return;
-    const token = ui.begin(this),
+    const token = this.beginWrite({ error: '', message: '' }),
       repo = registration.createRepository(this._org);
-    this.setData({ busy: true, error: '', message: '' });
+    let sent = false;
     try {
+      if (
+        !(await ui.confirm(
+          type === 'SUBMIT' ? '提交本队报名审核' : '撤回本队报名',
+          type === 'SUBMIT'
+            ? '本次将提交已保存的名单版本，之后需等待主办方独立审核；上传凭证不等于核验通过。'
+            : '请确认撤回本队本届报名。撤回保留历史，不能据此新建第二份本队报名。',
+        )) ||
+        !ui.live(this, token)
+      )
+        return;
+      if (!(await this.actor()) || !ui.live(this, token)) return;
+      if (type === 'SUBMIT' && (!this.data.consent || this.data.dirty))
+        throw Object.assign(new Error('提交前核对已变化，请重新核对名单并声明'), { status: 409 });
       const fresh = await repo.entry(this._id);
       if (!ui.live(this, token)) return;
       registration.versionMatch(fresh, expected);
       if (!fresh.capabilities[cap])
         throw Object.assign(new Error('当前操作权限或报名状态已变化，请重新读取'), { status: 409 });
+      sent = true;
       const entry = await repo.command(this._id, expected, type, reason);
       if (ui.live(this, token)) {
         this.applyEntry(entry, null);
         this.setData({
-          busy: false,
           stage: 'review',
           reason: '',
           message:
@@ -302,12 +325,15 @@ Page({
     } catch (error) {
       if (ui.live(this, token))
         this.setData({
-          busy: false,
           error: ui.message(error),
-          uncertain: !error.status || error.status >= 500,
+          uncertain: sent && (!error.status || error.status >= 500),
           message:
-            !error.status || error.status >= 500 ? '处理结果待核对，请先重新读取报名状态。' : '',
+            sent && (!error.status || error.status >= 500)
+              ? '处理结果待核对，请先重新读取报名状态。'
+              : '',
         });
+    } finally {
+      this.finishWrite(token);
     }
   },
   async upload() {
@@ -323,14 +349,15 @@ Page({
       this.setData({ fileError: '当前微信无法选择资料文件，请更新客户端后重试。' });
       return;
     }
-    if (!(await this.actor())) return;
-    const token = ui.begin(this),
+    const token = this.beginWrite({ fileError: '', message: '' }),
       repo = registration.createRepository(this._org),
       expected = this._entry.version,
       purpose = this.data.uploadPurpose;
-    this.setData({ busy: true, fileError: '', message: '' });
     let sent = false;
     try {
+      if (!(await this.actor()) || !ui.live(this, token)) return;
+      if (!this.data.fileConsent || this.data.dirty || this.data.uploadPurpose !== purpose)
+        throw Object.assign(new Error('上传声明或名单已变化，请重新核对'), { status: 409 });
       const file = await new Promise((resolve, reject) =>
         wx.chooseMessageFile({
           count: 1,
@@ -363,7 +390,6 @@ Page({
       await repo.upload(this._id, { ...input, purpose, expectedEntryVersion: expected });
       if (!ui.live(this, token)) return;
       this.setData({
-        busy: false,
         fileConsent: false,
         consent: false,
         message: '文件已私有上传。上传不代表投保、承保或审核通过。',
@@ -373,7 +399,6 @@ Page({
     } catch (error) {
       if (ui.live(this, token))
         this.setData({
-          busy: false,
           fileConsent: false,
           fileError: ui.message(error),
           uncertain: sent && (!error.status || error.status >= 500),
@@ -382,6 +407,8 @@ Page({
               ? '上传结果待核对，请先刷新文件列表，避免重复上传。'
               : '',
         });
+    } finally {
+      this.finishWrite(token);
     }
   },
   async revoke(e) {
@@ -394,18 +421,19 @@ Page({
       this.setData({ fileError: '移除原因需为4–500个字符。' });
       return;
     }
-    if (
-      !(await ui.confirm(
-        '撤销这份私有文件',
-        '将撤销该文件的后续读取。内容清除和额度释放需另行管理；不影响已被合法查看或保存的副本。',
-      ))
-    )
-      return;
-    if (!(await this.actor())) return;
-    const token = ui.begin(this),
+    const token = this.beginWrite({ fileError: '', message: '' }),
       repo = registration.createRepository(this._org);
-    this.setData({ busy: true, fileError: '', message: '' });
+    let sent = false;
     try {
+      if (
+        !(await ui.confirm(
+          '撤销这份私有文件',
+          '将撤销该文件的后续读取。内容清除和额度释放需另行管理；不影响已被合法查看或保存的副本。',
+        )) ||
+        !ui.live(this, token)
+      )
+        return;
+      if (!(await this.actor()) || !ui.live(this, token)) return;
       const files = await repo.files(this._id);
       if (!ui.live(this, token)) return;
       const fresh = files.files.find((f) => f.id === file.id);
@@ -416,11 +444,11 @@ Page({
         fresh.version !== file.version
       )
         throw Object.assign(new Error('文件或当前权限已变化，请刷新后核对'), { status: 409 });
+      sent = true;
       await repo.revokeFile(this._id, file.id, file.version, reason);
       if (!ui.live(this, token)) return;
       this.removeTemporaryFiles();
       this.setData({
-        busy: false,
         consent: false,
         fileConsent: false,
         reason: '',
@@ -431,10 +459,11 @@ Page({
     } catch (error) {
       if (ui.live(this, token))
         this.setData({
-          busy: false,
           fileError: ui.message(error),
-          uncertain: !error.status || error.status >= 500,
+          uncertain: sent && (!error.status || error.status >= 500),
         });
+    } finally {
+      this.finishWrite(token);
     }
   },
   removeTemporaryFiles() {

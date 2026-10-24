@@ -57,11 +57,13 @@ Page({
     this.setData({ password: '', consent: false });
   },
   input(e) {
+    if (this.data.busy || this.commandBusy) return;
     const field = e.currentTarget.dataset.field;
     if (['email', 'password', 'displayName'].includes(field))
       this.setData({ [field]: e.detail.value });
   },
   consent(e) {
+    if (this.data.busy || this.commandBusy) return;
     this.setData({ consent: e.detail.value.includes('yes') });
   },
   toggleRegister() {
@@ -212,13 +214,13 @@ Page({
       expectedVersion = this.data.binding.version,
       revision = api.getClient().sessionRevision();
     this.setData({ password: '' });
-    if (
-      !(await ui.confirm('解除微信绑定', '本操作会退出该账号所有设备，需重新登录。')) ||
-      this.closed ||
-      api.getClient().sessionRevision() !== revision
-    )
-      return;
-    this.task(async () => {
+    return this.task(async () => {
+      if (
+        !(await ui.confirm('解除微信绑定', '本操作会退出该账号所有设备，需重新登录。')) ||
+        this.closed ||
+        api.getClient().sessionRevision() !== revision
+      )
+        return;
       await api
         .getClient()
         .request('/v1/auth/wechat/unbind', 'POST', { password, expectedVersion, consent: true });

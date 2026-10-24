@@ -154,37 +154,51 @@ Page({
       this.setData({ error: ui.message(error) });
       return;
     }
-    if (
-      mode === 'members' &&
-      !(await ui.confirm(
-        '保存长期成员',
-        '本次长期名单将按当前编辑保存，移出的成员不再出现在新报名选择中；历史及冻结名单保持原记录。',
-      ))
-    )
-      return;
-    const session = await ui.session(this, this.path());
-    if (!this._alive || !session || session.user.id !== this._viewer) {
-      if (this._alive) {
-        this.setData({ busy: false, nameDirty: false, membersDirty: false });
-        this.load();
-      }
-      return;
-    }
     const token = ui.begin(this),
-      repo = registration.createRepository(this._org);
+      org = this._org,
+      teamId = this._id,
+      viewer = this._viewer,
+      path = this.path();
+    this._saveToken = token;
     this.setData({ busy: true, error: '', message: '' });
+    let sent = false;
     try {
-      const fresh = await repo.team(this._id);
+      if (
+        mode === 'members' &&
+        !(await ui.confirm(
+          '保存长期成员',
+          '本次长期名单将按当前编辑保存，移出的成员不再出现在新报名选择中；历史及冻结名单保持原记录。',
+        ))
+      )
+        return;
+      if (!ui.live(this, token)) return;
+      const session = await ui.session(this, path);
+      if (!ui.live(this, token) || !this._alive || !session) return;
+      if (session.user.id !== viewer) {
+        this._team = null;
+        this.setData({
+          team: null,
+          name: '',
+          members: [],
+          nameDirty: false,
+          membersDirty: false,
+          loginRequired: true,
+          error: '登录身份已变化，请重新读取当前资料。',
+        });
+        return;
+      }
+      const repo = registration.createRepository(org),
+        fresh = await repo.team(teamId);
       if (!ui.live(this, token)) return;
       registration.versionMatch(fresh, expected);
       if (!fresh.capabilities.canManage) throw new Error('当前球队管理权限已变化，请刷新');
+      sent = true;
       const team =
         mode === 'name'
-          ? await repo.updateTeam(this._id, expected, draft)
-          : await repo.members(this._id, expected, draft);
+          ? await repo.updateTeam(teamId, expected, draft)
+          : await repo.members(teamId, expected, draft);
       if (ui.live(this, token)) {
         this.setData({
-          busy: false,
           [mode === 'name' ? 'nameDirty' : 'membersDirty']: false,
           message:
             mode === 'name' ? '球队名称已保存。' : '长期成员已保存；本届报名名单需单独核对。',
@@ -194,14 +208,18 @@ Page({
     } catch (error) {
       if (ui.live(this, token))
         this.setData({
-          busy: false,
           error: ui.message(error),
-          uncertain: !error.status || error.status >= 500,
+          uncertain: sent && (!error.status || error.status >= 500),
           message:
-            !error.status || error.status >= 500
+            sent && (!error.status || error.status >= 500)
               ? '保存结果待核对。请刷新当前球队后再进行新修改。'
               : '',
         });
+    } finally {
+      if (this._saveToken === token) {
+        this._saveToken = null;
+        if (this._alive && ui.live(this, token)) this.setData({ busy: false });
+      }
     }
   },
   async events() {

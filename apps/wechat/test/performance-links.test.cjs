@@ -235,6 +235,146 @@ test('opening action privately rechecks current capability and removes stale act
   assert.equal(h.page.data.pending, null);
   assert.equal(h.page.data.links.length, 0);
 });
+function attemptNominationInputs(page) {
+  page.draftReason({ detail: { value: '正在核对时输入的新提名原因' } });
+  page.publisherConsent({ detail: { value: ['yes'] } });
+  page.chooseProfile({ detail: { value: '0' } });
+}
+function assertEmptyNomination(page) {
+  assert.deepEqual(JSON.parse(JSON.stringify(page.data.draft)), model.emptyDraft());
+  assert.equal(page.data.dirty, false);
+  assert.equal(page.data.profileIndex, -1);
+  assert.equal(page.data.selectedProfile, '');
+}
+test('private link and secure-id prechecks isolate nomination inputs until the dialog is cancelled', async () => {
+  const read = deferred(),
+    random = deferred(),
+    randomStarted = deferred();
+  let sourceReads = 0,
+    nominations = 0;
+  const h = harness({
+    link: () => read.promise,
+    sources: async () => {
+      sourceReads++;
+      return sources;
+    },
+    nominate: async () => {
+      nominations++;
+      return link('new-link');
+    },
+  });
+  h.ui.uuid = () => {
+    randomStarted.resolve();
+    return random.promise;
+  };
+  await h.page.load();
+  const opening = h.page.checkLink({
+    currentTarget: { dataset: { id: 'link-a', type: 'CONSENT' } },
+  });
+  assert.equal(h.page.data.checking, true);
+  attemptNominationInputs(h.page);
+  await h.page.chooseEvent({ detail: { value: '0' } });
+  await h.page.discardDraft();
+  await h.page.nominate();
+  assertEmptyNomination(h.page);
+  assert.equal(sourceReads, 0);
+  assert.equal(nominations, 0);
+  read.resolve(link());
+  await randomStarted.promise;
+  assert.equal(h.page.data.checking, true);
+  attemptNominationInputs(h.page);
+  assertEmptyNomination(h.page);
+  random.resolve('secure-check');
+  await opening;
+  assert.equal(h.page.data.checking, false);
+  assert.equal(h.page.data.pending.link.id, 'link-a');
+  attemptNominationInputs(h.page);
+  await h.page.discardDraft();
+  await h.page.nominate();
+  assertEmptyNomination(h.page);
+  assert.equal(h.page.data.pending.link.id, 'link-a');
+  h.page.closeDialog();
+  h.page.chooseProfile({ detail: { value: '0' } });
+  h.page.draftReason({ detail: { value: '关闭核对后新建草稿' } });
+  h.page.publisherConsent({ detail: { value: ['yes'] } });
+  assert.equal(h.page.data.draft.profileId, 'profile-a');
+  assert.equal(h.page.data.draft.reason, '关闭核对后新建草稿');
+  assert.equal(h.page.data.draft.publisherConsent, true);
+});
+test('authorization save and its forced refresh keep nomination inputs isolated until completion', async () => {
+  const save = deferred(),
+    saveStarted = deferred(),
+    reload = deferred(),
+    reloadStarted = deferred();
+  let lists = 0;
+  const h = harness({
+    performanceWorkspace: async () => {
+      if (++lists === 1) return workspace();
+      reloadStarted.resolve();
+      return reload.promise;
+    },
+    performanceCommand: async () => {
+      saveStarted.resolve();
+      return save.promise;
+    },
+  });
+  await h.page.load();
+  await h.page.checkLink({ currentTarget: { dataset: { id: 'link-a', type: 'CONSENT' } } });
+  h.page.dialogReason({ detail: { value: '本人核对后同意' } });
+  h.page.playerConsent({ detail: { value: ['yes'] } });
+  const submitting = h.page.submitDialog();
+  await saveStarted.promise;
+  assert.equal(h.page.data.busy, true);
+  attemptNominationInputs(h.page);
+  assertEmptyNomination(h.page);
+  save.resolve({ ...link('link-a', 2), status: 'APPROVED' });
+  await reloadStarted.promise;
+  assert.equal(h.page.data.pending, null);
+  assert.equal(h.page.data.loading, true);
+  attemptNominationInputs(h.page);
+  assertEmptyNomination(h.page);
+  reload.resolve(workspace([{ ...link('link-a', 2), status: 'APPROVED' }]));
+  await submitting;
+  assert.equal(h.page.data.loading, false);
+  h.page.draftReason({ detail: { value: '授权处理完成后可编辑' } });
+  assert.equal(h.page.data.draft.reason, '授权处理完成后可编辑');
+});
+test('a precheck failure releases nomination inputs without opening a dialog', async () => {
+  const h = harness({
+    link: async () => {
+      throw { status: 403, message: '当前已失去处理权限' };
+    },
+  });
+  await h.page.load();
+  await h.page.checkLink({ currentTarget: { dataset: { id: 'link-a', type: 'CONSENT' } } });
+  assert.equal(h.page.data.checking, false);
+  assert.equal(h.page.data.pending, null);
+  h.page.draftReason({ detail: { value: '失败后继续新建提名' } });
+  assert.equal(h.page.data.draft.reason, '失败后继续新建提名');
+});
+test('a dialog retained across hide and show still isolates nomination inputs until cancellation', async () => {
+  let lists = 0;
+  const h = harness({
+    performanceWorkspace: async () => {
+      lists++;
+      return workspace();
+    },
+  });
+  await h.page.load();
+  await h.page.checkLink({ currentTarget: { dataset: { id: 'link-a', type: 'CONSENT' } } });
+  h.page.onHide();
+  attemptNominationInputs(h.page);
+  assertEmptyNomination(h.page);
+  h.page._hidden = false;
+  await h.page.load();
+  assert.equal(lists, 1);
+  assert.equal(h.page.data.pending.link.id, 'link-a');
+  attemptNominationInputs(h.page);
+  assertEmptyNomination(h.page);
+  h.page.closeDialog();
+  h.page.draftReason({ detail: { value: '返回后关闭核对再编辑' } });
+  assert.equal(h.page.data.draft.reason, '返回后关闭核对再编辑');
+});
 test('record version changing after opening resets explicit consent and does not write old confirmation', async () => {
   let reads = 0,
     writes = 0;
@@ -279,6 +419,8 @@ test('a lost command result replays identical original id/version even when curr
   await h.page.submitDialog();
   assert.equal(h.page.data.pendingUnknown, true);
   h.page.dialogReason({ detail: { value: '不可改写' } });
+  attemptNominationInputs(h.page);
+  assertEmptyNomination(h.page);
   await h.page.submitDialog();
   assert.deepEqual(calls[0], calls[1]);
   assert.equal(calls[1].expectedVersion, 2);

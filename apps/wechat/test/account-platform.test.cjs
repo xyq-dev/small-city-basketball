@@ -204,3 +204,145 @@ test('review submission is blocked before the default-unchecked statement is sel
     false,
   );
 });
+
+test('WeChat login locks the exact account draft and agreement during native code preflight', async () => {
+  const h = setup('account');
+  let finishCode;
+  h.wx.login = (input) => {
+    finishCode = input.success;
+  };
+  h.page.setData({ enabled: true, consent: true, email: 'original@example.test' });
+  h.page.wechatLogin();
+  await h.flush();
+  assert.equal(h.page.data.busy, true);
+  h.page.input({
+    currentTarget: { dataset: { field: 'email' } },
+    detail: { value: 'later@example.test' },
+  });
+  h.page.consent({ detail: { value: [] } });
+  assert.equal(h.page.data.email, 'original@example.test');
+  assert.equal(h.page.data.consent, true);
+  finishCode({ code: 'synthetic-code' });
+  await h.flush();
+  assert.equal(h.calls.filter((c) => c.url === '/v1/auth/wechat/login').length, 1);
+  assert.equal(h.page.data.busy, false);
+  assert.equal(h.page.data.consent, false);
+});
+
+test('binding preflight locks password and agreement until the original command completes', async () => {
+  const h = setup('account');
+  let finishCode;
+  h.wx.login = (input) => {
+    finishCode = input.success;
+  };
+  h.page.setData({
+    enabled: true,
+    user: session(a).user,
+    consent: true,
+    password: 'synthetic-original',
+  });
+  h.page.bind();
+  await h.flush();
+  h.page.input({
+    currentTarget: { dataset: { field: 'password' } },
+    detail: { value: 'synthetic-later' },
+  });
+  h.page.consent({ detail: { value: [] } });
+  assert.equal(h.page.data.busy, true);
+  assert.equal(h.page.data.password, '');
+  assert.equal(h.page.data.consent, true);
+  finishCode({ code: 'synthetic-code' });
+  await h.flush();
+  assert.equal(h.calls.filter((c) => c.url === '/v1/auth/wechat/bind').length, 1);
+  assert.equal(h.page.data.busy, false);
+});
+
+test('unbind locks editing before its modal and cancellation releases the lock without a write', async () => {
+  const h = setup('account');
+  let finishModal;
+  h.wx.showModal = (input) => {
+    finishModal = input.success;
+  };
+  h.page.setData({
+    connected: true,
+    binding: { version: 2 },
+    consent: true,
+    password: 'synthetic-original',
+  });
+  const action = h.page.unbind();
+  assert.equal(h.page.data.busy, true);
+  h.page.consent({ detail: { value: [] } });
+  assert.equal(h.page.data.consent, true);
+  finishModal({ confirm: false });
+  await action;
+  assert.equal(h.page.data.busy, false);
+  assert.equal(h.page.data.consent, false);
+  assert.equal(
+    h.calls.some((c) => c.url === '/v1/auth/wechat/unbind'),
+    false,
+  );
+});
+
+test('platform review cannot change decision, reason or agreement during the fresh read', async () => {
+  let count = 0,
+    release;
+  const writes = [];
+  const h = setup('platform', {
+    sdk: {
+      workspace: () =>
+        ++count === 2
+          ? new Promise((resolve) => {
+              release = resolve;
+            })
+          : Promise.resolve(work()),
+      reviewProfile: async (...args) => {
+        writes.push(args);
+      },
+    },
+  });
+  await h.page.load();
+  h.page.review({ currentTarget: { dataset: { id: p } } });
+  h.page.reason({ detail: { value: '已核对原版资料' } });
+  h.page.agree({ detail: { value: ['yes'] } });
+  const action = h.page.submitReview();
+  assert.equal(h.page.data.busy, true);
+  h.page.reason({ detail: { value: '尚未确认的新理由' } });
+  h.page.status({ detail: { value: 2 } });
+  h.page.agree({ detail: { value: [] } });
+  assert.equal(h.page.data.reviewReason, '已核对原版资料');
+  assert.equal(h.page.data.statusIndex, 0);
+  assert.equal(h.page.data.consent, true);
+  release(work());
+  await action;
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0][2], 'APPROVED');
+  assert.equal(writes[0][3], '已核对原版资料');
+  assert.equal(h.page.data.busy, false);
+});
+
+test('fee confirmation preserves its draft and ignores edits until cancellation finishes', async () => {
+  let finishModal,
+    writes = 0;
+  const h = setup('platform', {
+    sdk: {
+      workspace: async () => work(),
+      updateFee: async () => {
+        writes++;
+      },
+    },
+  });
+  h.wx.showModal = (input) => {
+    finishModal = input.success;
+  };
+  await h.page.load();
+  h.page.feeInput({ detail: { value: '12.00' } });
+  const action = h.page.saveFee();
+  assert.equal(h.page.data.busy, true);
+  h.page.feeInput({ detail: { value: '30.00' } });
+  assert.equal(h.page.data.feePercent, '12.00');
+  finishModal({ confirm: false });
+  await action;
+  assert.equal(writes, 0);
+  assert.equal(h.page.data.feeDirty, true);
+  assert.equal(h.page.data.busy, false);
+});

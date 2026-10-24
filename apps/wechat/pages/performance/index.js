@@ -123,7 +123,22 @@ Page({
       this.data.busy ||
       this.data.dirty ||
       !!this.data.pending ||
+      !!this._pendingCommand ||
       !!this._pendingNomination
+    );
+  },
+  nominationEditable() {
+    return (
+      !this._closed &&
+      !this._hidden &&
+      this.data.authorized &&
+      !this.data.loading &&
+      !this.data.pageLoading &&
+      !this.data.checking &&
+      !this.data.busy &&
+      !this.data.pending &&
+      !this._pendingCommand &&
+      !this._pendingNomination
     );
   },
   login() {
@@ -274,14 +289,7 @@ Page({
     }
   },
   async chooseEvent(e) {
-    if (
-      !this.data.authorized ||
-      this.data.busy ||
-      this.data.pending ||
-      this._pendingNomination ||
-      this.data.pageLoading
-    )
-      return;
+    if (!this.nominationEditable()) return;
     const index = Number(e.detail.value),
       event = this.data.manageableEvents[index];
     if (!event) return;
@@ -329,8 +337,7 @@ Page({
       this.chooseEvent({ detail: { value: String(this.data.eventIndex) } });
   },
   chooseTeam(e) {
-    if (this.data.busy || this.data.sourceLoading || this.data.pending || this._pendingNomination)
-      return;
+    if (!this.nominationEditable() || this.data.sourceLoading) return;
     const index = Number(e.detail.value),
       team = this.data.teams[index];
     if (!team) return;
@@ -349,8 +356,7 @@ Page({
     });
   },
   chooseMember(e) {
-    if (this.data.busy || this.data.sourceLoading || this.data.pending || this._pendingNomination)
-      return;
+    if (!this.nominationEditable() || this.data.sourceLoading) return;
     const index = Number(e.detail.value),
       member = this.data.members[index];
     if (!member) return;
@@ -362,7 +368,7 @@ Page({
     });
   },
   chooseProfile(e) {
-    if (this.data.busy || this.data.pending || this._pendingNomination) return;
+    if (!this.nominationEditable()) return;
     const index = Number(e.detail.value),
       profile = this.data.profiles[index];
     if (!profile || profile.status !== 'APPROVED') return;
@@ -374,12 +380,12 @@ Page({
     });
   },
   draftReason(e) {
-    if (this.data.busy || this.data.pending || this._pendingNomination) return;
+    if (!this.nominationEditable()) return;
     const draft = { ...this.data.draft, reason: String(e.detail.value), publisherConsent: false };
     this.setData({ draft, dirty: model.draftDirty(draft) });
   },
   publisherConsent(e) {
-    if (this.data.busy || this.data.pending || this._pendingNomination) return;
+    if (!this.nominationEditable()) return;
     const draft = {
       ...this.data.draft,
       publisherConsent: Array.isArray(e.detail.value) && e.detail.value.includes('yes'),
@@ -387,12 +393,13 @@ Page({
     this.setData({ draft, dirty: model.draftDirty(draft) });
   },
   async discardDraft() {
-    if (this.data.busy || this.data.sourceLoading || this._pendingNomination) return;
+    if (!this.nominationEditable() || this.data.sourceLoading) return;
     if (
       this.data.dirty &&
       !(await ui.confirm('放弃未提交的提名？', '当前选择和原因会被清空，已保存的授权不会被撤销。'))
     )
       return;
+    if (!this.nominationEditable()) return;
     this._sources = null;
     this.setData({
       draft: model.emptyDraft(),
@@ -414,9 +421,12 @@ Page({
   async nominate() {
     if (
       !this.data.authorized ||
+      this.data.loading ||
+      this.data.checking ||
       this.data.busy ||
       this.data.sourceLoading ||
       this.data.pending ||
+      this._pendingCommand ||
       this.data.pageLoading ||
       (this._pendingNomination && this._pendingNomination.inFlight)
     )

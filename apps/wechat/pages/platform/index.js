@@ -76,7 +76,7 @@ Page({
     }
   },
   feeInput(e) {
-    if (ui.live(this, this.loadedToken))
+    if (!this.data.busy && ui.live(this, this.loadedToken))
       this.setData({ feePercent: e.detail.value, feeDirty: true, error: '' });
   },
   async saveFee() {
@@ -120,7 +120,8 @@ Page({
       });
   },
   review(e) {
-    if (!ui.live(this, this.loadedToken) || !this.raw) return;
+    if (this.data.busy || this.data.reviewOpen || !ui.live(this, this.loadedToken) || !this.raw)
+      return;
     const p = this.raw.reviewQueue.find((v) => v.id === e.currentTarget.dataset.id);
     if (p)
       this.setData({
@@ -146,13 +147,16 @@ Page({
       });
   },
   reason(e) {
+    if (this.data.busy) return;
     this.setData({ reviewReason: e.detail.value });
   },
   status(e) {
+    if (this.data.busy) return;
     const index = Number(e.detail.value);
     if ([0, 1, 2].includes(index)) this.setData({ statusIndex: index, consent: false });
   },
   agree(e) {
+    if (this.data.busy) return;
     this.setData({ consent: e.detail.value.includes('yes') });
   },
   closeReview() {
