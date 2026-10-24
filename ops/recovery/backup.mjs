@@ -45,7 +45,7 @@ export async function backupDatabase({ databaseUrl, archivePath }) {
       archiveSha256,
       fingerprint,
     });
-    return { status: 'backed_up', archiveSha256, tables: 58 };
+    return { status: 'backed_up', archiveSha256, tables: 65 };
   } catch {
     throw new Error('Database backup failed');
   } finally {

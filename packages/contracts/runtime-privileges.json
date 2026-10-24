@@ -53,6 +53,76 @@
         "accepted_at"
       ]
     },
+    "booking_appearances": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "match_id",
+        "status",
+        "version",
+        "report_at",
+        "start_at",
+        "end_at",
+        "venue",
+        "payment_status",
+        "settlement_status",
+        "expires_at",
+        "accepted_at",
+        "arrived_at",
+        "completed_at",
+        "cancellation_reason",
+        "change_request",
+        "updated_at"
+      ]
+    },
+    "booking_operations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["result"]
+    },
+    "booking_orders": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "version", "updated_at"]
+    },
+    "booking_performance_links": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "status",
+        "version",
+        "consented_by",
+        "consented_at",
+        "revoked_by",
+        "revoked_at",
+        "revoke_reason",
+        "updated_at"
+      ]
+    },
+    "booking_performance_operations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["result"]
+    },
+    "booking_profiles": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "display_name",
+        "position",
+        "height_cm",
+        "city",
+        "bio",
+        "price_fen",
+        "travel_fen",
+        "accommodation_fen",
+        "availability",
+        "version",
+        "status",
+        "review_reason",
+        "reviewed_by",
+        "reviewed_at",
+        "updated_at"
+      ]
+    },
+    "booking_settings": {
+      "privileges": ["SELECT"],
+      "updateColumns": ["fee_bps", "version", "updated_by", "updated_at"]
+    },
     "court_reservations": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["court_id", "starts_at", "ends_at"]

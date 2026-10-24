@@ -2,6 +2,22 @@
 
 更新时间：2026-10-24（Asia/Shanghai）；集成人root。
 
+## C07 球员数据与同价比较（REVIEW / BRANCH_ONLY）
+
+当前六项已确认审查问题均已修复并独立静态CLEAR，最终代码9340f6a；本地全类型/格式/npm test1046源码（512/534）＋VM11/build通过。新两争议PG使预约共32、数据19；新完整候选待同步，六threads待最终真实验证，不提前合并或标DONE。
+
+原C06架构中已完成：同价同位置筛选、最多3人含费对比、已授权当前有效确认的个人记录/近期5条/样本口径、完整来源提名/本人同意/撤销与历史分页。助攻/篮板/时间/命中率未采集，不补0或能力总分。四项审查问题均已修复并独立全delta静态CLEAR：原买方128配额、旧授权可达、原actor/ID/payload及跨挂载/刷新恢复、COMMIT后终态拒绝收据。实现和历史失败分别记录，不掩盖旧审查发现。
+
+最终本地99bf6e8完整type/format/npm test1039源码（admin505/API534）＋VM11及两端build通过。最终候选本地b6be17b与远端ad4af1fb同tree281a42fc23dbf427ac91820a39cdc7178528ad13，已正常非强制同步[PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)；[CI40065307502](https://github.com/xyq-dev/small-city-basketball/actions/runs/40065307502)run54/attempt1正在执行，预约30/数据19项PG须本轮实际通过，四threads待新完整验证后解除。
+
+此前C06基线CI40061888579、C07 source4df的CI40062592812及source1bf的CI40064443587均三job完整成功；最新旧基线为1030源码、VM11、283PG＋runtime16、14Mock/24真实API/4HTTPS、17迁移/65表重启及完整恢复/旧授权隔离/owned清理，无重试，不充作新终态4PG通过。本轮用户已全权授权开发/普通同步/PR/检查后合并；尚未合并、生产部署或正式Migration，真实撮合支付/分账、通知、实名/资格自动核验未配置。详见[任务](tasks/C07.md)、[交接](handoffs/C07.md)、[证据](evidence/C07/README.md)。
+
+## C06 球员赛事预约与UI（REVIEW / BRANCH_ONLY，基线完整CI通过）
+
+真实API/016、五类合作/多人逐场/条件意向、10%费率快照、接单/变更/履约/争议与响应式UI已实现。C06基线61343528的CI40061888579三job完整SUCCESS、无重试：API523/admin431、VM11、262PG（含新24）＋runtime16、12Mock/24真实API/4HTTPS浏览器、016/63表重启与完整恢复/旧授权隔离和owned清理通过。先前本机UID与审批阻塞已保留历史并由最新授权/隔离CI解除，不再记为当前“未执行PG”。
+
+后续C07同PR增加017及授权数据比较，原候选4df2c532的完整CI亦通过；最终配额/分页/未知建单审查修复须等待新候选CI后再合并。Cloud Chrome桌面Mock已走通系列建单/接单/双方换地点/部分取消，资金0；新增恢复组件/store50项直接测试通过。没有生产部署、正式Migration、真实个人撮合支付/分账、通知或实名/资格自动核验。详见[使用](PLAYER_BOOKING_USAGE.md)、[设计](design/PLAYER_BOOKING.md)、[C06任务](tasks/C06.md)与[C07交接](handoffs/C07.md)。
+
 ## D01商业版UI设计交付（DONE，设计及文档范围）
 
 2026-10-24用户最新要求先做整套Figma商业版UI。root已在[原生Figma文件](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=18-2)保存10页、94张业务/状态画板（75业务含阶段/尺寸变体＋19异常/权限），另4张导览/规范/交接板；12组件组41变体、53变量12文本样式。业务页555条原型反应/18起点，封面9链接/1起点，为设计配置，未逐条浏览器演示回放。全文件结构检查、最后5页增量检查、抽样视觉及独立R02/B06/A02复核通过所列范围；8张规划界面明确P标注，E仅对齐既有Web/API能力。用户尚未视觉签收；新UI尚未写入前端或部署，应用代码与C05边界保持。详见[设计及逐画板索引](design/COMMERCIAL_UI_FIGMA.md)、[任务](tasks/D01.md)、[交接](handoffs/D01.md)。本记录进入main仅代表文档整合，不代表新UI上线。
@@ -37,7 +53,7 @@ PR2四项已按最新代码核验并完成：scrypt单槽/有限队列、过期�
 
 ## 下一步与边界
 
-当前新增D01设计初稿已交付，先完成视觉审阅，再单独认领新UI实现；以下C05技术与环境待办继续保留，不因设计完成而视为已验。
+当前优先收口C06/C07修复后候选的完整CI及审查后合并；D01设计初稿和以下C05外部环境待办保留，不能把本轮实现或隔离验证当作生产发布。
 
 C05为DONE / MAIN，最终候选的三job完整验收通过；合并后[CI40003519494](https://github.com/xyq-dev/small-city-basketball/actions/runs/40003519494)三个job同范围全部SUCCESS（无重试），完整日志已核对。四域已落实上述有界范围，下一步为真实微信开发工具/域名/真机、真实商户沙箱与支付退款对账联调，以及旧001–007完整FINAL赛事的隔离升级演练。依赖实际账号/资质/凭据或服务器通道的工作不能在本轮虚构完成。开发代码仍有长期球员/赛季/专业统计、观众关注提醒、可靠离线、云直播/大视频/转码等后续范围，详见[商业规划](COMMERCIAL_PRODUCT_PLAN.md)及[C05使用指南](COMMERCIAL_USAGE.md)。
 
