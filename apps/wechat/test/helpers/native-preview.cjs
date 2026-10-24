@@ -397,11 +397,14 @@ function readWxss(filename, root, seen = new Set()) {
 }
 
 function convertWxss(css, width) {
-  const tags = {
-    page: 'body',
+  // Several native controls share an HTML element. Keep their selector types
+  // distinct without changing CSS specificity (:where contributes zero).
+  const nativeTags = {
     view: 'div',
     text: 'span',
     image: 'img',
+    input: 'input',
+    textarea: 'textarea',
     'scroll-view': 'div',
     'checkbox-group': 'div',
     checkbox: 'input',
@@ -409,6 +412,9 @@ function convertWxss(css, width) {
     radio: 'input',
     picker: 'div',
   };
+  const tags = { page: 'body' };
+  for (const [native, html] of Object.entries(nativeTags))
+    tags[native] = html + ':where([data-mini-tag="' + native + '"])';
   return css
     .replace(/(-?\d*\.?\d+)rpx\b/g, (_, value) => ((Number(value) * width) / 750).toFixed(4) + 'px')
     .replace(

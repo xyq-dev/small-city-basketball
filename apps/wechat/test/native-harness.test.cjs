@@ -100,7 +100,14 @@ test('preview uses actual local template/styles, contains explicit limitation, a
   assert.doesNotMatch(result.phone, /<script/);
   assert.equal(
     convertWxss('page{padding:30rpx} .row view{gap:10rpx}', 375),
-    'body{padding:15.0000px} .row div{gap:5.0000px}',
+    'body{padding:15.0000px} .row div:where([data-mini-tag="view"]){gap:5.0000px}',
+  );
+  assert.equal(
+    convertWxss(
+      'input.field,checkbox:checked,radio:hover{transform:none} picker.field::after{padding:10rpx}',
+      375,
+    ),
+    'input:where([data-mini-tag="input"]).field,input:where([data-mini-tag="checkbox"]):checked,input:where([data-mini-tag="radio"]):hover{transform:none} div:where([data-mini-tag="picker"]).field::after{padding:5.0000px}',
   );
   assert.doesNotMatch(
     renderWxml(
