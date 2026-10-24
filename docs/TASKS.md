@@ -1,5 +1,7 @@
 # 任务看板
 
+当前D02：小程序预约UI补全已完成设计交付（99业务/状态+2辅助，4组件组11变体），[导览](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=30-2400)/[设计索引](design/MINI_PROGRAM_BOOKING_UI.md)/[任务](tasks/D02.md)。原生小程序实现和统一业务测试未完成；本轮只有设计/文档，无应用或生产变更。
+
 当前C06/C07：`DONE / MAIN`，已由[PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)合并`7d23203`，source1722333d/merge同tree24c7ad11。最终CI40065953550三job完整成功：1046源码/VM11、289PG＋runtime16、14Mock＋28真实浏览器、17迁移/65表重启与完整恢复/隔离/清理；六P2已修并resolved，最终独立/自动代码审查通过所列范围，security未运行。没有生产部署或真实资金。详见[C07最终任务](tasks/C07.md)、[交接](handoffs/C07.md)、[使用](PLAYER_BOOKING_USAGE.md)与[数据](PLAYER_PERFORMANCE_USAGE.md)。
 
 当前D01：商业版Figma全景初稿已交付，设计DONE；[Figma导览](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=18-2)、[任务](tasks/D01.md)、[交接](handoffs/D01.md)。10页/94张业务与状态画板，原生组件及核心浏览/阶段原型；用户视觉确认、前端新稿实现未完成。本批仅文档同步，不更新应用或生产。
@@ -31,6 +33,7 @@
 | C04 | 单淘汰赛签位/逐轮晋级/最终名次 | DONE | root/API/UI/PG/浏览器/独立审查 | C03 | MAIN 7ef18c9 PR12；[任务](tasks/C04.md)、[交接](handoffs/C04.md)，CI39975284464三job通过：749源码/217PG/12Mock＋22真实浏览器/41表完整恢复；合并后CI39976904075同范围全部通过（无重试），无生产部署 |
 | C05 | 分组接淘汰、按届计费、微信及媒体 | DONE | root及四域独立作者/UI/恢复/审查 | C04 | MAIN d4f6500 [PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)；[任务](tasks/C05.md)、[交接](handoffs/C05.md)；CI40001590258三job成功：914源码/11VM/254PG/12Mock＋28真实浏览器、15迁移/58表完整恢复；合并后CI40003519494同范围全部SUCCESS（无重试）；无生产部署 |
 | D01 | 整套商业版Figma UI全景初稿 | DONE（设计交付） | root主画布/移动与运营只读协作/独立视觉复核 | 已有业务能力与商业规划 | [Figma](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=18-2)、[设计索引](design/COMMERCIAL_UI_FIGMA.md)、[任务](tasks/D01.md)、[交接](handoffs/D01.md)；本记录同步main仅文档，用户视觉签收/应用实现另卡 |
+| D02 | 小程序预约与球员数据UI补全 | DONE（设计交付） | root / 范围只读复核 | D01、C06/C07 | [Figma导览](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=30-2400)、[设计索引](design/MINI_PROGRAM_BOOKING_UI.md)、[任务](tasks/D02.md)、[交接](handoffs/D02.md)；99业务/状态+2辅助；原生实现/统一测试未执行 |
 | C06 | 球员赛事预约、逐场履约及UI | DONE | root / API / UI / 验证 | C05、预约设计 | MAIN7d23203 PR14；[任务](tasks/C06.md)、[使用](PLAYER_BOOKING_USAGE.md)、[证据](evidence/C06/README.md)、[交接](handoffs/C06.md)；最终CI40065953550完整通过，未部署生产 |
 | C07 | 已授权球员数据与同价同位置对比 | DONE | root / API / UI / PG / 独立审查 | C06、C03 | MAIN7d23203 PR14；[任务](tasks/C07.md)、[交接](handoffs/C07.md)、[证据](evidence/C07/README.md)；1046源码/VM11/305PG/42浏览器、17迁移65表重启恢复通过，无生产部署 |
 

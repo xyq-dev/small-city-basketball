@@ -1,0 +1,924 @@
+{
+  "fileKey": "2jAHpYjdIHqal1nXeoVqm6",
+  "sessionId": "d86c0233-31ab-4f49-a676-e8db946c159d",
+  "baseline": "3dd0a36e331e5f63a8bc55c48dd3040f5e770472",
+  "screenCount": 101,
+  "businessStateScreenCount": 99,
+  "auxiliaryScreenCount": 2,
+  "pages": {
+    "select": {
+      "id": "30:34",
+      "name": "10 · 小程序选人与预约"
+    },
+    "fulfill": {
+      "id": "30:1026",
+      "name": "11 · 小程序履约与异常"
+    },
+    "center": {
+      "id": "30:1730",
+      "name": "12 · 小程序球员与数据授权"
+    },
+    "delivery": {
+      "id": "30:2399",
+      "name": "13 · 小程序交付与资金规划"
+    }
+  },
+  "screens": [
+    {
+      "id": "K01",
+      "nodeId": "30:35",
+      "title": "小城市篮球",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K02",
+      "nodeId": "30:78",
+      "title": "找球员",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K03",
+      "nodeId": "30:126",
+      "title": "筛选球员",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K04",
+      "nodeId": "30:168",
+      "title": "林越 · 球员详情",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K05",
+      "nodeId": "30:206",
+      "title": "个人比赛记录",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K06",
+      "nodeId": "30:256",
+      "title": "同价球员对比",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K07",
+      "nodeId": "30:333",
+      "title": "3人对比",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K08",
+      "nodeId": "30:427",
+      "title": "暂无匹配球员",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K09",
+      "nodeId": "30:453",
+      "title": "尚无个人统计",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K10",
+      "nodeId": "30:482",
+      "title": "代表哪支球队预约",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K11",
+      "nodeId": "30:520",
+      "title": "预约几场",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K12",
+      "nodeId": "30:552",
+      "title": "单场预约",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K13",
+      "nodeId": "30:597",
+      "title": "多场预约",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K14",
+      "nodeId": "30:638",
+      "title": "整届赛事预约",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K15",
+      "nodeId": "30:682",
+      "title": "赛季合作预约",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K16",
+      "nodeId": "30:717",
+      "title": "按时段预约",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K17",
+      "nodeId": "30:760",
+      "title": "多人逐场安排",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K18",
+      "nodeId": "30:806",
+      "title": "确认预约与费用",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K19",
+      "nodeId": "30:852",
+      "title": "预约已提交",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K20",
+      "nodeId": "30:884",
+      "title": "报价发生变化",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K21",
+      "nodeId": "30:913",
+      "title": "这段时间不可预约",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K22",
+      "nodeId": "30:940",
+      "title": "原预约结果待核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K23",
+      "nodeId": "30:970",
+      "title": "原请求已明确拒绝",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K24",
+      "nodeId": "30:999",
+      "title": "当前不能代表球队下单",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K25",
+      "nodeId": "34:3081",
+      "title": "恢复记录损坏",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K26",
+      "nodeId": "34:3106",
+      "title": "本机无法保存恢复资料",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K27",
+      "nodeId": "34:3133",
+      "title": "选择日期与时间",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K28",
+      "nodeId": "34:3248",
+      "title": "确认预约 · 已核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K29",
+      "nodeId": "42:490",
+      "title": "多场预约 · 费用核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K34",
+      "nodeId": "42:537",
+      "title": "多场预约 · 已核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K30",
+      "nodeId": "42:584",
+      "title": "整届合作 · 费用核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K35",
+      "nodeId": "42:631",
+      "title": "整届合作 · 已核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K31",
+      "nodeId": "42:678",
+      "title": "赛季合作 · 费用核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K36",
+      "nodeId": "42:725",
+      "title": "赛季合作 · 已核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K32",
+      "nodeId": "42:772",
+      "title": "按时段合作 · 费用核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K37",
+      "nodeId": "42:819",
+      "title": "按时段合作 · 已核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K33",
+      "nodeId": "42:866",
+      "title": "多人预约 · 费用核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "K38",
+      "nodeId": "42:916",
+      "title": "多人预约 · 已核对",
+      "pageId": "30:34",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L01",
+      "nodeId": "30:1027",
+      "title": "我的预约 · 发出",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L02",
+      "nodeId": "30:1072",
+      "title": "收到的预约",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L03",
+      "nodeId": "30:1114",
+      "title": "青锋杯 · 合作总单",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L04",
+      "nodeId": "30:1162",
+      "title": "核对本场预约 · 球员",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L05",
+      "nodeId": "30:1196",
+      "title": "拒绝本场预约",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L06",
+      "nodeId": "30:1226",
+      "title": "本场已接单 · 球队",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L07",
+      "nodeId": "30:1263",
+      "title": "提议更改安排",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L08",
+      "nodeId": "30:1301",
+      "title": "确认变更提议 · 球员",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L09",
+      "nodeId": "30:1330",
+      "title": "取消单人单场",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L10",
+      "nodeId": "30:1364",
+      "title": "本人到场声明",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L11",
+      "nodeId": "30:1396",
+      "title": "确认本场服务完成",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L12",
+      "nodeId": "30:1431",
+      "title": "本场服务记录已完成",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L13",
+      "nodeId": "30:1467",
+      "title": "发起本场争议",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L14",
+      "nodeId": "30:1501",
+      "title": "争议处理中",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L15",
+      "nodeId": "30:1535",
+      "title": "平台独立处理",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L16",
+      "nodeId": "30:1570",
+      "title": "条件合作意向",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L17",
+      "nodeId": "30:1601",
+      "title": "激活条件场次",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L18",
+      "nodeId": "30:1641",
+      "title": "接单请求已到期",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L19",
+      "nodeId": "30:1673",
+      "title": "本场已拒绝",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L20",
+      "nodeId": "30:1703",
+      "title": "状态已变化，请重新核对",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L21",
+      "nodeId": "34:3629",
+      "title": "本场已取消",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L24",
+      "nodeId": "34:3655",
+      "title": "本场待接单 · 球队",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L25",
+      "nodeId": "34:3686",
+      "title": "本场已接单 · 球员",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L26",
+      "nodeId": "34:3723",
+      "title": "条件合作意向 · 球员",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L27",
+      "nodeId": "34:3756",
+      "title": "本人已声明到场",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L22",
+      "nodeId": "34:3786",
+      "title": "本人到场 · 已核对",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L23",
+      "nodeId": "34:3821",
+      "title": "确认完成 · 已核对",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L28",
+      "nodeId": "37:452",
+      "title": "提议更改安排 · 球员",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "L29",
+      "nodeId": "37:495",
+      "title": "确认变更提议 · 球队",
+      "pageId": "30:1026",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C01",
+      "nodeId": "30:1731",
+      "title": "我的球员中心",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C02",
+      "nodeId": "30:1766",
+      "title": "球员入驻与资料",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C03",
+      "nodeId": "30:1804",
+      "title": "设置服务报价",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C04",
+      "nodeId": "30:1843",
+      "title": "管理可约时间",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C05",
+      "nodeId": "30:1880",
+      "title": "资料等待审核",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C06",
+      "nodeId": "30:1907",
+      "title": "入驻资料需要修改",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C07",
+      "nodeId": "30:1938",
+      "title": "我的比赛数据授权",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C08",
+      "nodeId": "30:1975",
+      "title": "核对本人比赛记录",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C09",
+      "nodeId": "30:2013",
+      "title": "拒绝公开提名",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C10",
+      "nodeId": "30:2041",
+      "title": "撤销这条公开授权",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C11",
+      "nodeId": "30:2073",
+      "title": "主办方提名 · 选赛事",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C12",
+      "nodeId": "30:2106",
+      "title": "主办方提名 · 选成员",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C13",
+      "nodeId": "30:2141",
+      "title": "确认发起数据提名",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C14",
+      "nodeId": "30:2172",
+      "title": "完整授权历史",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C15",
+      "nodeId": "30:2206",
+      "title": "来源已撤销或失效",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C16",
+      "nodeId": "30:2234",
+      "title": "保留未保存的编辑",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C17",
+      "nodeId": "30:2261",
+      "title": "当前权限已变化",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C18",
+      "nodeId": "30:2288",
+      "title": "登录后继续预约",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C19",
+      "nodeId": "30:2324",
+      "title": "怎样理解这些记录",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C20",
+      "nodeId": "30:2358",
+      "title": "我的球赛主场",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C21",
+      "nodeId": "34:4031",
+      "title": "服务档案已停用",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C23",
+      "nodeId": "34:4058",
+      "title": "球员入驻 · 已声明",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C22",
+      "nodeId": "34:4099",
+      "title": "本人公开授权 · 已同意",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "C24",
+      "nodeId": "34:4140",
+      "title": "主办方提名 · 已声明",
+      "pageId": "30:1730",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "D02",
+      "nodeId": "30:2400",
+      "title": "小程序预约设计导览",
+      "pageId": "30:2399",
+      "planned": false,
+      "aux": true
+    },
+    {
+      "id": "G01",
+      "nodeId": "30:2434",
+      "title": "开发交接与统一测试",
+      "pageId": "30:2399",
+      "planned": false,
+      "aux": true
+    },
+    {
+      "id": "F01",
+      "nodeId": "30:2471",
+      "title": "费用与资金说明",
+      "pageId": "30:2399",
+      "planned": false,
+      "aux": false
+    },
+    {
+      "id": "F02",
+      "nodeId": "30:2504",
+      "title": "支付确认 · 规划",
+      "pageId": "30:2399",
+      "planned": true,
+      "aux": false
+    },
+    {
+      "id": "F03",
+      "nodeId": "30:2534",
+      "title": "支付结果待核验 · 规划",
+      "pageId": "30:2399",
+      "planned": true,
+      "aux": false
+    },
+    {
+      "id": "F04",
+      "nodeId": "30:2564",
+      "title": "取消与退款申请 · 规划",
+      "pageId": "30:2399",
+      "planned": true,
+      "aux": false
+    },
+    {
+      "id": "F05",
+      "nodeId": "30:2597",
+      "title": "退款处理进度 · 规划",
+      "pageId": "30:2399",
+      "planned": true,
+      "aux": false
+    },
+    {
+      "id": "F06",
+      "nodeId": "30:2624",
+      "title": "球员结算明细 · 规划",
+      "pageId": "30:2399",
+      "planned": true,
+      "aux": false
+    },
+    {
+      "id": "F07",
+      "nodeId": "30:2659",
+      "title": "关注与消息 · 规划",
+      "pageId": "30:2399",
+      "planned": true,
+      "aux": false
+    },
+    {
+      "id": "F08",
+      "nodeId": "30:2693",
+      "title": "长期球员档案 · 规划",
+      "pageId": "30:2399",
+      "planned": true,
+      "aux": false
+    }
+  ],
+  "components": [
+    {
+      "id": "29:152",
+      "name": "SCB/PlayerBookingCard",
+      "variants": [
+        {
+          "id": "29:136",
+          "name": "State=Available"
+        },
+        {
+          "id": "29:144",
+          "name": "State=Unavailable"
+        }
+      ]
+    },
+    {
+      "id": "29:183",
+      "name": "SCB/BookingAppearance",
+      "variants": [
+        {
+          "id": "29:153",
+          "name": "State=Requested"
+        },
+        {
+          "id": "29:159",
+          "name": "State=Accepted"
+        },
+        {
+          "id": "29:165",
+          "name": "State=Conditional"
+        },
+        {
+          "id": "29:171",
+          "name": "State=Completed"
+        },
+        {
+          "id": "29:177",
+          "name": "State=Disputed"
+        }
+      ]
+    },
+    {
+      "id": "29:194",
+      "name": "SCB/PlayerDataRecord",
+      "variants": [
+        {
+          "id": "29:184",
+          "name": "State=Recorded"
+        },
+        {
+          "id": "29:189",
+          "name": "State=Missing"
+        }
+      ]
+    },
+    {
+      "id": "32:125",
+      "name": "SCB/ExplicitConsent",
+      "variants": [
+        {
+          "id": "32:119",
+          "name": "State=Unchecked"
+        },
+        {
+          "id": "32:122",
+          "name": "State=Checked"
+        }
+      ]
+    }
+  ],
+  "preview": {
+    "id": "38:195",
+    "width": 1330,
+    "height": 1056
+  },
+  "validation": {
+    "designOnly": true,
+    "actualPrototypeReactions": 414,
+    "flowStarts": 11,
+    "nativeNodeCount": 3893,
+    "imageFills": 0,
+    "fonts": [
+      "Noto Sans SC",
+      "Inter"
+    ],
+    "appTestsRun": false,
+    "miniProgramImplemented": false
+  }
+}
