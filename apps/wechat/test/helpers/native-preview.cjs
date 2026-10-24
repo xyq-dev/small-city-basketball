@@ -544,7 +544,7 @@ function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
     markup +
     '</body></html>';
   const html =
-    '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>原生模板兼容预览</title><style>body{margin:0;padding:20px;background:#e8edf2;font:13px/1.7 sans-serif;color:#132c49}.preview-note{max-width:760px;margin:0 auto 16px;padding:12px 16px;background:#fff;border-radius:8px}.preview-frame{display:block;margin:auto;border:0;border-radius:20px;background:white;box-shadow:0 12px 40px #132c4920;width:' +
+    '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>原生模板兼容预览</title><style>body{margin:0;padding:20px;background:#e8edf2;font:13px/1.7 sans-serif;color:#132c49}.preview-note{line-height:22px;max-width:760px;margin:0 auto 16px;padding:12px 16px;background:#fff;border-radius:8px}.preview-frame{display:block;margin:auto;border:0;border-radius:20px;background:white;box-shadow:0 12px 40px #132c4920;width:' +
     width +
     'px;height:' +
     height +
