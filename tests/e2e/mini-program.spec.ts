@@ -181,6 +181,83 @@ async function attachScreen(page: Page, testInfo: TestInfo, name: string) {
   await testInfo.attach(name, { path: target, contentType: 'image/png' });
 }
 
+// Geometry here is measured against the original 390px Figma frames. The
+// existing overflow/touch matrix still owns all three adaptive viewport widths.
+async function checkDesignGeometry(frame: Frame, scenario: string, width: number) {
+  const supported = ['initial-home', 'players-collapsed', 'compare-three'];
+  if (!supported.includes(scenario)) return null;
+  const metrics = await frame.evaluate(() => {
+    const measure = (selector: string) => {
+      const element = document.querySelector(selector);
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+        fontSize: Number.parseFloat(style.fontSize),
+        lineHeight: Number.parseFloat(style.lineHeight),
+        radius: Number.parseFloat(style.borderTopLeftRadius),
+      };
+    };
+    return {
+      fontFamily: getComputedStyle(document.body).fontFamily,
+      hero: measure('.home-hero'),
+      heroTitle: measure('.home-hero .title'),
+      homeAction: measure('.home-page > .accent'),
+      homeCard: measure('.home-card'),
+      marketIntro: measure('.market-intro'),
+      filterToggle: measure('.filter-toggle'),
+      playerCard: measure('.player-card'),
+      playerName: measure('.player-name'),
+      metricColumn: measure('.metric-labels'),
+      playerColumn: measure('.compare-column'),
+      tableCell: measure('.comparison-cell'),
+      action: measure('.action-bar > .primary'),
+    };
+  });
+  expect(metrics.fontFamily).toContain('Noto Sans CJK SC');
+  if (scenario === 'initial-home') {
+    expect(metrics.hero?.x).toBe(20);
+    expect(metrics.hero?.width).toBe(width - 40);
+    expect(metrics.heroTitle?.fontSize).toBe(22);
+    expect(metrics.heroTitle?.lineHeight).toBe(34);
+    expect(metrics.homeAction?.width).toBe(width - 40);
+    expect(metrics.homeAction?.height).toBe(44);
+    expect(metrics.homeCard?.radius).toBe(16);
+    if (width === 390) {
+      expect(metrics.hero?.y).toBe(116);
+      expect(metrics.hero?.height).toBe(118);
+      expect(metrics.homeAction?.y).toBe(250);
+      expect(metrics.homeCard?.y).toBe(310);
+      expect(metrics.homeCard?.height).toBe(124);
+    }
+  } else {
+    expect(metrics.action?.x).toBe(20);
+    expect(metrics.action?.width).toBe(width - 40);
+    expect(metrics.action?.height).toBe(44);
+    if (scenario === 'players-collapsed') {
+      expect(metrics.marketIntro?.height).toBeGreaterThanOrEqual(80);
+      expect(metrics.filterToggle?.height).toBe(44);
+      expect(metrics.playerCard?.radius).toBe(16);
+      expect(metrics.playerName?.fontSize).toBe(18);
+      expect(metrics.playerName?.lineHeight).toBe(28);
+      if (width === 390) {
+        expect(metrics.marketIntro?.height).toBe(80);
+        expect(metrics.playerCard?.y).toBe(332);
+      }
+    } else {
+      expect(metrics.metricColumn?.width).toBe(100);
+      expect(metrics.playerColumn?.width).toBe(125);
+      expect(metrics.tableCell?.height).toBe(56);
+      expect(metrics.tableCell?.fontSize).toBe(12);
+    }
+  }
+  return metrics;
+}
+
 test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机验收）', () => {
   // This matrix owns its widths. Existing mobile-project web application tests
   // still run; repeating these same native-source previews adds no coverage.
@@ -210,12 +287,13 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         const frame = await nativeFrame(page);
         if (scenario.filled) await expect(frame.locator('body')).toContainText('合成');
         const layout = await measureLayout(frame);
+        const designGeometry = await checkDesignGeometry(frame, scenario.name, width);
         const diagnosticPath = testInfo.outputPath('native-layout.json');
         fs.mkdirSync(path.dirname(diagnosticPath), { recursive: true });
         fs.writeFileSync(
           diagnosticPath,
           JSON.stringify(
-            { route: scenario.route, scenario: scenario.name, width, ...layout },
+            { route: scenario.route, scenario: scenario.name, width, ...layout, designGeometry },
             null,
             2,
           ),

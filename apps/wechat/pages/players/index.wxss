@@ -1,9 +1,22 @@
-.player-head,.player-actions,.picker-value { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
-.player-name { margin:0; flex:1; min-width:0; }
-.player-card > view { margin-bottom:12rpx; }
-.player-card .price { margin:16rpx 0; color:#132c49; font-size:42rpx; }
-.unit { font-size:12px; font-weight:400; }
-.total { font-weight:600; }
-.player-actions button { flex:1; min-width:0; }
-.catalog-notice { padding:8rpx 0 24rpx; }
-.filters .field-label { margin-top:20rpx; }
+.market-intro { display:flex; flex-direction:column; gap:4px; min-height:80px; padding:16px; margin-bottom:16px; }
+.market-intro-title { font-size:14px; line-height:24px; font-weight:500; }
+.filter-summary { display:flex; align-items:stretch; gap:8px; margin-bottom:16px; }
+.filter-chip { display:flex; align-items:center; justify-content:center; max-width:calc((100% - 16px) / 3); min-height:44px; padding:8px 10px; border-radius:8px; color:#617286; font-size:14px; line-height:24px; overflow-wrap:anywhere; }
+.filter-chip.active { color:#132c49; background:#eaf0f7; font-weight:500; }
+.filter-toggle { margin-bottom:16px; }
+.picker-value { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.player-result { margin-bottom:16px; }
+.player-card { position:relative; display:flex; flex-direction:column; gap:8px; padding:16px; margin-bottom:16px; }
+.player-head { padding-right:36px; }
+.player-name { margin:0; font-size:18px; line-height:28px; font-weight:500; }
+.player-bio { padding-right:28px; }
+.player-card .price { margin:0; color:#132c49; font-size:22px; line-height:34px; font-weight:700; }
+.unit { font-size:22px; font-weight:700; }
+.total { color:#152c43; font-size:14px; line-height:24px; font-weight:500; }
+.player-review { color:#16734b; }
+.player-select { position:absolute; top:8px; right:8px; display:flex; align-items:center; justify-content:center; width:44px; min-height:44px; padding:0; margin:0; border-radius:50%; background:transparent; color:#617286; font-size:20px; line-height:24px; }
+.player-select::after { border:0; }
+.player-select.selected { color:#132c49; background:#eaf0f7; }
+.player-detail { margin:0; }
+.catalog-notice { padding:4px 0 12px; }
+.filters .field-label { margin-top:10px; }

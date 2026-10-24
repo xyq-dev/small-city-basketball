@@ -491,6 +491,52 @@ function fillPage(page) {
   page.renderForm();
   page.review();
 }
+test('typing a new event name keeps the required party editor mounted until explicitly collapsed', async () => {
+  const app = nativePage();
+  await app.page.load();
+  assert.equal(app.page.data.selectedCount, 1);
+  assert.equal(app.page.data.eventName, '');
+  assert.equal(app.page.data.detailsOpen, true);
+  app.page.input({ currentTarget: { dataset: { field: 'eventName' } }, detail: { value: '青' } });
+  assert.equal(app.page.draft.eventName, '青');
+  assert.equal(app.page.data.detailsOpen, true);
+  app.page.input({
+    currentTarget: { dataset: { field: 'eventName' } },
+    detail: { value: '青锋杯' },
+  });
+  assert.equal(app.page.draft.eventName, '青锋杯');
+  assert.equal(app.page.data.detailsOpen, true);
+  const original = JSON.stringify(app.page.draft);
+  app.page.toggleDetails();
+  assert.equal(app.page.data.detailsOpen, false);
+  assert.equal(JSON.stringify(app.page.draft), original);
+  app.page.renderForm();
+  assert.equal(app.page.data.detailsOpen, false);
+  assert.equal(JSON.stringify(app.page.draft), original);
+  assert.equal(app.calls.length, 0);
+});
+test('choosing the first player does not auto-collapse an editor opened for missing party details', async () => {
+  const app = nativePage({ query: {} });
+  await app.page.load();
+  assert.equal(app.page.data.selectedCount, 0);
+  assert.equal(app.page.data.detailsOpen, true);
+  app.page.input({
+    currentTarget: { dataset: { field: 'eventName' } },
+    detail: { value: '合成赛事' },
+  });
+  app.page.playerPick({ detail: { value: [ids.player] } });
+  assert.equal(app.page.data.selectedCount, 1);
+  assert.equal(app.page.data.detailsOpen, true);
+  assert.deepEqual(Array.from(app.page.draft.selectedIds), [ids.player]);
+  assert.equal(app.page.data.review, false);
+  assert.equal(app.page.data.consent, false);
+  assert.equal(app.calls.length, 0);
+  app.page.toggleDetails();
+  assert.equal(app.page.data.detailsOpen, false);
+  app.page.teamPick({ detail: { value: 0 } });
+  assert.equal(app.page.data.eventName, '');
+  assert.equal(app.page.data.detailsOpen, true);
+});
 test('page blocks unreadable recovery until explicit safe reread restores the original without automatic sends', async () => {
   const storage = backing(),
     original = payload();
