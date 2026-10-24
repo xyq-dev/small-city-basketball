@@ -11,7 +11,7 @@ import type {
 } from '@small-city-basketball/contracts';
 import { ApplicationService, isAdministrator } from '../service.js';
 import type { Actor } from '../service.js';
-import { forbidden, notFound } from '../errors.js';
+import { ApiError, forbidden, notFound } from '../errors.js';
 import { objectInput, text } from '../validation.js';
 import { expectedVersion } from '../registration-validation.js';
 import {
@@ -30,6 +30,8 @@ import {
 } from './domain.js';
 
 type Row = Record<string, any>;
+type CreateRejection = { outcome: 'REJECTED'; status: number; code: string; message: string };
+type CreateAttempt = { order: BookingOrderData } | { rejection: CreateRejection };
 type OrderContext = {
   actor: Actor;
   order: Row;
@@ -719,103 +721,155 @@ export class PlayerBookingService extends ApplicationService {
   async createOrder(cookie: string | undefined, raw: unknown): Promise<BookingOrderData> {
     const input = parseCreate(raw);
     await this.preflight(cookie, 'create', input.commandId);
-    return this.transaction(async (c) => {
+    const outcome = await this.transaction<CreateAttempt>(async (c) => {
       const actor = await this.lockActor(c, cookie);
       const access = await this.teamAccess(c, actor, input.orgId, input.teamId);
       if (!access.allowed) throw notFound();
       await this.lockBuyerQuota(c, actor.user.id);
       const replay = await this.start(c, actor, input.commandId, { op: 'create', input });
-      if (replay) return this.orderDto(c, await this.context(c, actor, replay.resourceId));
-      await this.requirePendingCapacity(
-        c,
-        actor.user.id,
-        input.appearances.filter((a) => !a.conditional).length,
-      );
-      const event = await this.eventAllowed(c, input.orgId, input.teamId, input.eventId);
-      const profiles = new Map<string, Row>();
-      for (const profileId of [...new Set(input.appearances.map((a) => a.profileId))].sort())
-        profiles.set(profileId, await this.profileLock(c, profileId));
-      await this.expire(c, [...profiles.keys()]);
-      const settings = (await c.query<Row>('SELECT * FROM booking_settings WHERE id FOR SHARE'))
-        .rows[0]!;
-      if (
-        settings.version !== input.reviewedSettingsVersion ||
-        [...profiles.values()].some((p) => input.reviewedProfileVersions[p.id] !== p.version)
-      )
-        bookingFail('QUOTE_CHANGED', '球员报价或平台费率已变化，请重新读取并确认后再提交预约');
-      const now = (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
-      const orderId = randomUUID();
-      await c.query(
-        `INSERT INTO booking_orders(id,org_id,team_id,event_id,event_name,team_name,buyer_user_id,scope,fee_bps,settings_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [
-          orderId,
-          input.orgId,
-          input.teamId,
-          input.eventId ?? null,
-          event?.name ?? input.eventName,
-          access.team.name,
+      if (replay) {
+        if (replay.outcome === 'REJECTED') return { rejection: replay as CreateRejection };
+        return { order: await this.orderDto(c, await this.context(c, actor, replay.resourceId)) };
+      }
+      // The operation row and buyer/command locks precede this savepoint.
+      // A terminal business rejection must survive rollback of partial effects.
+      await c.query('SAVEPOINT booking_create_effects');
+      try {
+        await this.requirePendingCapacity(
+          c,
           actor.user.id,
-          input.scope,
-          settings.fee_bps,
-          settings.version,
-        ],
-      );
-      for (const appearance of input.appearances) {
-        const profile = profiles.get(appearance.profileId)!;
-        if (profile.user_id === actor.user.id)
-          bookingFail('SELF_BOOKING_NOT_ALLOWED', '不能预约自己的参赛服务');
-        if (profile.status !== 'APPROVED' || profile.user_status !== 'ACTIVE')
-          bookingFail('PLAYER_UNAVAILABLE', '球员当前未开放预约');
-        await this.representativeAllowed(c, profile, input.teamId, input.eventId);
-        await this.officialMatch(c, appearance, input.orgId, input.teamId, input.eventId);
-        if (!appearance.conditional)
-          await this.scheduleAllowed(c, profile, appearance.reportAt!, appearance.endAt!, now);
-        const price = quote(
-          profile.price_fen,
-          profile.travel_fen,
-          profile.accommodation_fen,
-          settings.fee_bps,
+          input.appearances.filter((a) => !a.conditional).length,
         );
+        const event = await this.eventAllowed(c, input.orgId, input.teamId, input.eventId);
+        const profiles = new Map<string, Row>();
+        for (const profileId of [...new Set(input.appearances.map((a) => a.profileId))].sort())
+          profiles.set(profileId, await this.profileLock(c, profileId));
+        await this.expire(c, [...profiles.keys()]);
+        const settings = (await c.query<Row>('SELECT * FROM booking_settings WHERE id FOR SHARE'))
+          .rows[0]!;
+        if (
+          settings.version !== input.reviewedSettingsVersion ||
+          [...profiles.values()].some((p) => input.reviewedProfileVersions[p.id] !== p.version)
+        )
+          bookingFail('QUOTE_CHANGED', '球员报价或平台费率已变化，请重新读取并确认后再提交预约');
+        const now = (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
+        const orderId = randomUUID();
         await c.query(
-          `INSERT INTO booking_appearances(id,order_id,profile_id,player_user_id,match_id,label,condition_text,status,report_at,start_at,end_at,venue,service_fen,travel_fen,accommodation_fen,platform_fee_fen,total_fen,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,CASE WHEN $8='REQUESTED' THEN clock_timestamp()+interval '20 minutes' ELSE NULL END)`,
+          `INSERT INTO booking_orders(id,org_id,team_id,event_id,event_name,team_name,buyer_user_id,scope,fee_bps,settings_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
           [
-            randomUUID(),
             orderId,
-            profile.id,
-            profile.user_id,
-            appearance.matchId ?? null,
-            appearance.label,
-            appearance.conditionText ?? null,
-            appearance.conditional ? 'CONDITIONAL' : 'REQUESTED',
-            appearance.reportAt ?? null,
-            appearance.startAt ?? null,
-            appearance.endAt ?? null,
-            appearance.venue,
-            price.serviceFen,
-            price.travelFen,
-            price.accommodationFen,
-            price.platformFeeFen,
-            price.totalFen,
+            input.orgId,
+            input.teamId,
+            input.eventId ?? null,
+            event?.name ?? input.eventName,
+            access.team.name,
+            actor.user.id,
+            input.scope,
+            settings.fee_bps,
+            settings.version,
           ],
         );
+        for (const appearance of input.appearances) {
+          const profile = profiles.get(appearance.profileId)!;
+          if (profile.user_id === actor.user.id)
+            bookingFail('SELF_BOOKING_NOT_ALLOWED', '不能预约自己的参赛服务');
+          if (profile.status !== 'APPROVED' || profile.user_status !== 'ACTIVE')
+            bookingFail('PLAYER_UNAVAILABLE', '球员当前未开放预约');
+          await this.representativeAllowed(c, profile, input.teamId, input.eventId);
+          await this.officialMatch(c, appearance, input.orgId, input.teamId, input.eventId);
+          if (!appearance.conditional)
+            await this.scheduleAllowed(c, profile, appearance.reportAt!, appearance.endAt!, now);
+          const price = quote(
+            profile.price_fen,
+            profile.travel_fen,
+            profile.accommodation_fen,
+            settings.fee_bps,
+          );
+          await c.query(
+            `INSERT INTO booking_appearances(id,order_id,profile_id,player_user_id,match_id,label,condition_text,status,report_at,start_at,end_at,venue,service_fen,travel_fen,accommodation_fen,platform_fee_fen,total_fen,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,CASE WHEN $8='REQUESTED' THEN clock_timestamp()+interval '20 minutes' ELSE NULL END)`,
+            [
+              randomUUID(),
+              orderId,
+              profile.id,
+              profile.user_id,
+              appearance.matchId ?? null,
+              appearance.label,
+              appearance.conditionText ?? null,
+              appearance.conditional ? 'CONDITIONAL' : 'REQUESTED',
+              appearance.reportAt ?? null,
+              appearance.startAt ?? null,
+              appearance.endAt ?? null,
+              appearance.venue,
+              price.serviceFen,
+              price.travelFen,
+              price.accommodationFen,
+              price.platformFeeFen,
+              price.totalFen,
+            ],
+          );
+        }
+        const initialAppearances = (
+          await c.query<Row>(
+            'SELECT * FROM booking_appearances WHERE order_id=$1 ORDER BY created_at,id',
+            [orderId],
+          )
+        ).rows;
+        await this.audit(
+          c,
+          actor.user.id,
+          input.orgId,
+          'BOOKING_CREATE',
+          'booking_order',
+          orderId,
+          {
+            scope: input.scope,
+            appearanceCount: input.appearances.length,
+            appointments: initialAppearances.map(appearanceAudit),
+            feeBps: settings.fee_bps,
+            eligibilityDeclaration: true,
+            paymentAvailable: false,
+          },
+        );
+        await this.finish(c, actor, input.commandId, orderId);
+        const order = await this.orderDto(c, await this.context(c, actor, orderId));
+        await c.query('RELEASE SAVEPOINT booking_create_effects');
+        return { order };
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status < 400 || error.status >= 500) throw error;
+        await c.query('ROLLBACK TO SAVEPOINT booking_create_effects');
+        await c.query('RELEASE SAVEPOINT booking_create_effects');
+        const rejection: CreateRejection = {
+          outcome: 'REJECTED',
+          status: error.status,
+          code: error.code,
+          message: error.message,
+        };
+        await c.query(
+          'UPDATE booking_operations SET result=$3::jsonb WHERE actor_id=$1 AND command_id=$2',
+          [actor.user.id, input.commandId, JSON.stringify(rejection)],
+        );
+        await this.audit(
+          c,
+          actor.user.id,
+          input.orgId,
+          'BOOKING_CREATE_REJECTED',
+          'booking_command',
+          input.commandId,
+          { commandId: input.commandId, status: rejection.status, code: rejection.code },
+        );
+        return { rejection };
       }
-      const initialAppearances = (
-        await c.query<Row>(
-          'SELECT * FROM booking_appearances WHERE order_id=$1 ORDER BY created_at,id',
-          [orderId],
-        )
-      ).rows;
-      await this.audit(c, actor.user.id, input.orgId, 'BOOKING_CREATE', 'booking_order', orderId, {
-        scope: input.scope,
-        appearanceCount: input.appearances.length,
-        appointments: initialAppearances.map(appearanceAudit),
-        feeBps: settings.fee_bps,
-        eligibilityDeclaration: true,
-        paymentAvailable: false,
-      });
-      await this.finish(c, actor, input.commandId, orderId);
-      return this.orderDto(c, await this.context(c, actor, orderId));
     });
+    // A marker is emitted only after transaction() has confirmed COMMIT.
+    // SQL/unexpected/5xx failures and authorization/hash failures above never receive it.
+    if ('rejection' in outcome)
+      throw new ApiError(
+        outcome.rejection.status,
+        outcome.rejection.code,
+        outcome.rejection.message,
+        { bookingCreateOutcome: 'REJECTED', commandId: input.commandId },
+      );
+    return outcome.order;
   }
   async command(
     cookie: string | undefined,

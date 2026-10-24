@@ -760,6 +760,329 @@ describe(
       }
     });
 
+    test('a committed EVENT_CLOSED rejection is replayed after reopening and only a new command can create the reservation', async () => {
+      const provider = await actor('terminal-rejection');
+      const profile = data<BookingPlayerData>(await review(await submitProfile(provider)));
+      const teams = [
+        await team(api, owner, '合成终态拒绝球队甲', leader, ['合成甲', '合成乙']),
+        await team(api, owner, '合成终态拒绝球队乙', leader, ['合成丙', '合成丁']),
+      ];
+      const target = appearance(18, profile.id);
+      const fixture = await frozen(
+        {
+          api,
+          owner,
+          otherOwner,
+          leader,
+          teams,
+          otherTeams: [],
+          databaseUrl: testDatabaseUrl(),
+          nextDate: 0,
+        },
+        owner,
+        teams,
+        {
+          startDate: target.reportAt!.slice(0, 10),
+          endDate: at(Date.parse(target.reportAt!) + days(2)).slice(0, 10),
+        },
+      );
+      const visible = await workspace();
+      const body: BookingCreateInput = {
+        ...orderInput([target], { teamId: teams[0]!.id, eventId: fixture.event.id }),
+        reviewedSettingsVersion: visible.settings.version,
+        reviewedProfileVersions: { [profile.id]: profile.version },
+      };
+      // Vary only this owned synthetic event to exercise a stable business
+      // rejection; this is not a production lifecycle shortcut.
+      await api.pool.query(
+        "UPDATE events SET status='COMPLETED',version=version+1,updated_at=clock_timestamp() WHERE id=$1",
+        [fixture.event.id],
+      );
+      const first = await call(api, 'post', `${root}/orders`, { cookie: leader.cookie, body });
+      error(first, 409);
+      expect(first.body.error).toMatchObject({
+        code: 'EVENT_CLOSED',
+        details: { bookingCreateOutcome: 'REJECTED', commandId: body.commandId },
+      });
+      const receipt = (
+        await api.pool.query(
+          'SELECT request_hash,result,created_at FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+          [leader.id, body.commandId],
+        )
+      ).rows[0]!;
+      expect(receipt.result).toMatchObject({
+        outcome: 'REJECTED',
+        status: 409,
+        code: 'EVENT_CLOSED',
+      });
+      expect(
+        Number(
+          (
+            await api.pool.query('SELECT count(*) FROM booking_orders WHERE buyer_user_id=$1', [
+              leader.id,
+            ])
+          ).rows[0]!.count,
+        ),
+      ).toBe(0);
+      await api.pool.query(
+        "UPDATE events SET status='REGISTRATION_CLOSED',version=version+1,updated_at=clock_timestamp() WHERE id=$1",
+        [fixture.event.id],
+      );
+      const replay = await call(api, 'post', `${root}/orders`, { cookie: leader.cookie, body });
+      error(replay, 409);
+      expect(replay.body.error).toMatchObject({
+        code: 'EVENT_CLOSED',
+        message: first.body.error.message,
+        details: { bookingCreateOutcome: 'REJECTED', commandId: body.commandId },
+      });
+      expect(
+        (
+          await api.pool.query(
+            'SELECT request_hash,result,created_at FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+            [leader.id, body.commandId],
+          )
+        ).rows[0],
+      ).toEqual(receipt);
+      await grant(api, owner, teams[0]!, leader, 'DISABLED');
+      try {
+        const denied = await call(api, 'post', `${root}/orders`, { cookie: leader.cookie, body });
+        error(denied, 404);
+        expect(denied.body.error.details?.bookingCreateOutcome).toBeUndefined();
+      } finally {
+        await grant(api, owner, teams[0]!, leader, 'ACTIVE');
+      }
+      const conflict = await call(api, 'post', `${root}/orders`, {
+        cookie: leader.cookie,
+        body: { ...body, eventName: '不同的合成请求' },
+      });
+      error(conflict, 409);
+      expect(conflict.body.error.code).toBe('IDEMPOTENCY_CONFLICT');
+      expect(conflict.body.error.details?.bookingCreateOutcome).toBeUndefined();
+      expect(
+        Number(
+          (
+            await api.pool.query('SELECT count(*) FROM booking_orders WHERE buyer_user_id=$1', [
+              leader.id,
+            ])
+          ).rows[0]!.count,
+        ),
+      ).toBe(0);
+      const created = data<BookingOrderData>(
+        await call(api, 'post', `${root}/orders`, {
+          cookie: leader.cookie,
+          body: { ...body, commandId: randomUUID() },
+        }),
+      );
+      expect(created.eventId).toBe(fixture.event.id);
+      expect(created.appearances[0]?.status).toBe('REQUESTED');
+    });
+
+    test('a post-start multi-slot conflict rolls back every partial order effect before committing its terminal rejection receipt', async () => {
+      const provider = await actor('partial-rejection');
+      const profile = data<BookingPlayerData>(await review(await submitProfile(provider)));
+      const first = appearance(19, profile.id);
+      const second: BookingAppearanceInput = {
+        ...first,
+        label: '合成冲突的第二项',
+        reportAt: at(Date.parse(first.reportAt!) + 60000),
+      };
+      const visible = await workspace();
+      const body: BookingCreateInput = {
+        ...orderInput([first, second]),
+        reviewedSettingsVersion: visible.settings.version,
+        reviewedProfileVersions: { [profile.id]: profile.version },
+      };
+      const rejected = await call(api, 'post', `${root}/orders`, { cookie: leader.cookie, body });
+      error(rejected, 409);
+      expect(rejected.body.error).toMatchObject({
+        code: 'BOOKING_TIME_CONFLICT',
+        details: { bookingCreateOutcome: 'REJECTED', commandId: body.commandId },
+      });
+      expect(
+        Number(
+          (
+            await api.pool.query('SELECT count(*) FROM booking_orders WHERE buyer_user_id=$1', [
+              leader.id,
+            ])
+          ).rows[0]!.count,
+        ),
+      ).toBe(0);
+      expect(
+        Number(
+          (
+            await api.pool.query('SELECT count(*) FROM booking_appearances WHERE profile_id=$1', [
+              profile.id,
+            ])
+          ).rows[0]!.count,
+        ),
+      ).toBe(0);
+      expect(
+        (
+          await api.pool.query(
+            'SELECT result FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+            [leader.id, body.commandId],
+          )
+        ).rows[0]!.result,
+      ).toMatchObject({ outcome: 'REJECTED', code: 'BOOKING_TIME_CONFLICT' });
+      expect(
+        Number(
+          (
+            await api.pool.query(
+              "SELECT count(*) FROM audit_logs WHERE actor_id=$1 AND action='BOOKING_CREATE'",
+              [leader.id],
+            )
+          ).rows[0]!.count,
+        ),
+      ).toBe(0);
+      const corrected = data<BookingOrderData>(
+        await call(api, 'post', `${root}/orders`, {
+          cookie: leader.cookie,
+          body: { ...body, commandId: randomUUID(), scope: 'SINGLE', appearances: [first] },
+        }),
+      );
+      expect(corrected.appearances[0]?.status).toBe('REQUESTED');
+    });
+
+    test('a lost successful creation response is reconciled with the original command and quote even after the provider changes price', async () => {
+      const provider = await actor('lost-create-ack');
+      const profile = data<BookingPlayerData>(await review(await submitProfile(provider)));
+      const visible = await workspace();
+      const body: BookingCreateInput = {
+        ...orderInput(
+          [
+            {
+              profileId: profile.id,
+              label: '合成未定期合作',
+              conditional: true,
+              conditionText: '等待晋级后确认',
+              venue: '合成待定球场',
+            },
+          ],
+          { scope: 'TOURNAMENT' },
+        ),
+        reviewedSettingsVersion: visible.settings.version,
+        reviewedProfileVersions: { [profile.id]: profile.version },
+      };
+      // Treat the first successful HTTP response as discarded by the caller.
+      // The original request remains the only safe reconciliation envelope.
+      const lost = await call(api, 'post', `${root}/orders`, { cookie: leader.cookie, body });
+      const original = data<BookingOrderData>(lost);
+      await submitProfile(
+        provider,
+        profileInput({ expectedVersion: profile.version, priceFen: 40000 }),
+      );
+      const replay = data<BookingOrderData>(
+        await call(api, 'post', `${root}/orders`, { cookie: leader.cookie, body }),
+      );
+      expect(replay.id).toBe(original.id);
+      expect(replay.appearances[0]?.serviceFen).toBe(30000);
+      expect(
+        Number(
+          (
+            await api.pool.query('SELECT count(*) FROM booking_orders WHERE buyer_user_id=$1', [
+              leader.id,
+            ])
+          ).rows[0]!.count,
+        ),
+      ).toBe(1);
+      expect(
+        (
+          await api.pool.query(
+            'SELECT result FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+            [leader.id, body.commandId],
+          )
+        ).rows[0]!.result,
+      ).toEqual({ resourceId: original.id });
+    });
+
+    test('unexpected SQL or commit failure rolls back the whole attempt without a terminal marker and permits safe same-command reconciliation', async () => {
+      const provider = await actor('sql-create-failure');
+      const profile = data<BookingPlayerData>(await review(await submitProfile(provider)));
+      const visible = await workspace();
+      const body: BookingCreateInput = {
+        ...orderInput([appearance(20, profile.id)]),
+        reviewedSettingsVersion: visible.settings.version,
+        reviewedProfileVersions: { [profile.id]: profile.version },
+      };
+      const suffix = randomUUID().replaceAll('-', '').slice(0, 16);
+      const functionName = `c06_owned_create_fault_${suffix}`;
+      const triggerName = `c06_owned_create_fault_${suffix}`;
+      try {
+        // This unique trigger only faults this fixture buyer; existing guards
+        // remain intact and no production schema or migration is modified.
+        await api.pool.query(
+          `CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'owned synthetic booking failure'; END; $$`,
+        );
+        await api.pool.query(
+          `CREATE TRIGGER ${triggerName} BEFORE INSERT ON booking_orders FOR EACH ROW WHEN (NEW.buyer_user_id='${leader.id}'::uuid) EXECUTE FUNCTION ${functionName}()`,
+        );
+        const failed = await call(api, 'post', `${root}/orders`, { cookie: leader.cookie, body });
+        error(failed, 500);
+        expect(failed.body.error.details?.bookingCreateOutcome).toBeUndefined();
+        expect(
+          Number(
+            (
+              await api.pool.query(
+                'SELECT count(*) FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+                [leader.id, body.commandId],
+              )
+            ).rows[0]!.count,
+          ),
+        ).toBe(0);
+        expect(
+          Number(
+            (
+              await api.pool.query('SELECT count(*) FROM booking_orders WHERE buyer_user_id=$1', [
+                leader.id,
+              ])
+            ).rows[0]!.count,
+          ),
+        ).toBe(0);
+      } finally {
+        await api.pool.query(`DROP TRIGGER IF EXISTS ${triggerName} ON booking_orders`);
+        await api.pool.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
+      }
+      const bulkId = await seedPendingQuota(profile, 128);
+      try {
+        // Fail the actual COMMIT of a would-be terminal rejection. The response
+        // must remain uncertain because the rejection receipt never committed.
+        await api.pool.query(
+          `CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'owned synthetic rejection commit failure'; END; $$`,
+        );
+        await api.pool.query(
+          `CREATE CONSTRAINT TRIGGER ${triggerName} AFTER UPDATE ON booking_operations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (NEW.actor_id='${leader.id}'::uuid AND NEW.result->>'outcome'='REJECTED') EXECUTE FUNCTION ${functionName}()`,
+        );
+        const commitFailed = await call(api, 'post', `${root}/orders`, {
+          cookie: leader.cookie,
+          body,
+        });
+        error(commitFailed, 500);
+        expect(commitFailed.body.error.details?.bookingCreateOutcome).toBeUndefined();
+        expect(
+          Number(
+            (
+              await api.pool.query(
+                'SELECT count(*) FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+                [leader.id, body.commandId],
+              )
+            ).rows[0]!.count,
+          ),
+        ).toBe(0);
+      } finally {
+        await api.pool.query(`DROP TRIGGER IF EXISTS ${triggerName} ON booking_operations`);
+        await api.pool.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
+      }
+      const bulk = data<BookingOrderData>(
+        await call(api, 'get', `${root}/orders/${bulkId}`, { cookie: leader.cookie }),
+      );
+      data(await command(bulk, bulk.appearances[0]!, 'CANCEL', leader, { reason: why }));
+      const reconciled = data<BookingOrderData>(
+        await call(api, 'post', `${root}/orders`, { cookie: leader.cookie, body }),
+      );
+      expect(reconciled.appearances[0]?.status).toBe('REQUESTED');
+      expect(await pendingQuota()).toBe(128);
+    });
+
     test('conditional activation enforces the original buyer quota, rolls back at 128, and succeeds after one real cancellation', async () => {
       const provider = await actor('activation-quota');
       const profile = data<BookingPlayerData>(await review(await submitProfile(provider)));

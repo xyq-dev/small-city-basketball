@@ -2,7 +2,7 @@
 
 当前C07：球员数据与最多3人同价比较，`REVIEW / BRANCH_ONLY`。API/schema/UI/tests已整合，本地API534/首版前端442/最终13新增直接测试/类型/格式/build/VM11通过，桌面Mock及独立静态复核通过，真实PG与最终联合CI待验。[草稿PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)已建立；C06基线隔离CI正在完成，历史推送审批阻塞已由最新明确授权解除。见[任务](tasks/C07.md)、[交接](handoffs/C07.md)；不把C06证据当新C07通过。
 
-远端3项P2已整合至092c3b9，独立delta静态CLEAR；最终类型/格式/build/恢复50通过，修复后完整CI待启动。原source4df2c532完整CI三job成功不覆盖新增量。
+当前四项审查问题均已修复并静态CLEAR（最终99bf6e8）：原买方128配额、完整授权分页、跨页面/刷新原请求恢复，以及持久终态拒绝。root最终全类型/格式/npm test1039源码（505/534）＋VM11及两端build通过；新增预约30/数据19 PG须新完整候选CI。尚未解除四线程、合并或生产执行。
 
 当前C06：`REVIEW / BRANCH_ONLY`，首基线CI40061888579三job完整成功、含新24PG/63表重启恢复；后续同PR的C07及审查修复等待新最终候选CI，尚未合并/上线。见[任务](tasks/C06.md)、[使用](PLAYER_BOOKING_USAGE.md)、[交接](handoffs/C06.md)。
 

@@ -902,11 +902,20 @@ function initialSlot(index = 0): Slot {
     venue: '',
   };
 }
-function definitiveCreateRejection(error: unknown, recovering: boolean) {
+function definitiveCreateRejection(error: unknown, recovering: boolean, originalCommandId: string) {
   if (!(error instanceof ApiError)) return false;
-  // QUOTE_CHANGED is returned after the actor's idempotency lock/receipt lookup.
-  if (error.apiCode === 'QUOTE_CHANGED') return true;
-  if (recovering) return false; // A fresh 401/404/429 does not prove the original failed.
+  // Only an actor-scoped, committed rejection receipt proves an ambiguous create
+  // can never succeed. A fresh domain/auth/rate error is not that receipt.
+  const terminalRejection =
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.details !== undefined &&
+    Object.hasOwn(error.details, 'bookingCreateOutcome') &&
+    Object.hasOwn(error.details, 'commandId') &&
+    error.details.bookingCreateOutcome === 'REJECTED' &&
+    error.details.commandId === originalCommandId;
+  if (recovering) return terminalRejection;
+  if (terminalRejection) return true;
   if (error.apiCode.startsWith('HTTP_')) return false; // An opaque proxy response is not a business rejection ACK.
   return (
     error.status >= 400 &&
@@ -1025,6 +1034,7 @@ function BookingForm({
     }
     setValidation('');
     const recovering = entry.uncertain;
+    const originalCommandId = (JSON.parse(entry.payload) as BookingCreateInput).commandId;
     // Shared with a new form mounted while this request is still pending.
     entry.uncertain = true;
     entry.inFlight = true;
@@ -1043,12 +1053,13 @@ function BookingForm({
             onCreated(result.id);
           }
         } catch (error) {
-          if (definitiveCreateRejection(error, recovering)) {
+          if (definitiveCreateRejection(error, recovering, originalCommandId)) {
             entry.rejectedMessage = error instanceof Error ? error.message : '原请求未被接受';
             discardRecovery(entry);
             if (action.isActive() && latestViewer.current === entry.actorUserId) {
               setPendingCreate(null);
               setCanRequote(true);
+              setRules(false);
               requestId.current = commandId();
             }
           } else {

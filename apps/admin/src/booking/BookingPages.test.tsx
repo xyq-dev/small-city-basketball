@@ -603,4 +603,101 @@ describe('球员预约功能UI', () => {
     expect(await screen.findByLabelText('赛事或合作名称')).toBeVisible();
     expect(create).not.toHaveBeenCalled();
   });
+  it('拒绝回执丢失后用原ID核对持久拒绝回执，重新审阅后才以新ID创建', async () => {
+    const demo = createDemoBookingRepository();
+    let rejectedId = '';
+    const create = vi.fn<BookingRepository['create']>().mockImplementation(async (input) => {
+      if (!rejectedId) {
+        rejectedId = input.commandId;
+        // The server committed a REJECTED receipt, but this attempt lost its ACK.
+        throw new ApiError(0, 'NETWORK_ERROR', '拒绝回执未收到');
+      }
+      if (input.commandId === rejectedId)
+        throw new ApiError(409, 'EVENT_CLOSED', '原创建已拒绝，赛事已关闭', {
+          bookingCreateOutcome: 'REJECTED',
+          commandId: rejectedId,
+        });
+      return demo.repository.create(input);
+    });
+    mount('/player-bookings/new?playerId=demo-guard', { ...demo.repository, create });
+    const user = await fillBooking();
+    await user.click(screen.getByRole('button', { name: /整届赛事/ }));
+    await user.click(screen.getByRole('checkbox', { name: '待晋级 / 条件场次' }));
+    await user.click(screen.getByRole('button', { name: '提交预约，等待球员确认' }));
+    expect(await screen.findByRole('heading', { name: '原预约结果待核对' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '恢复原请求结果' }));
+    expect(await screen.findByLabelText('赛事或合作名称')).toHaveValue('组件验证邀请赛');
+    expect(screen.getByRole('alert')).toHaveTextContent('原创建已拒绝');
+    expect(screen.getByRole('checkbox', { name: /我已阅读预约、变更/ })).not.toBeChecked();
+    expect(create.mock.calls[1]![0]).toEqual(create.mock.calls[0]![0]);
+    expect(
+      (await demo.repository.workspace()).orders.filter((o) => o.eventName === '组件验证邀请赛'),
+    ).toHaveLength(0);
+    await user.click(screen.getByRole('button', { name: '重新读取最新报价' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('最新报价已读取');
+    await user.clear(screen.getByLabelText('赛事或合作名称'));
+    await user.type(screen.getByLabelText('赛事或合作名称'), '重新审阅邀请赛');
+    await user.click(screen.getByRole('checkbox', { name: /我已阅读预约、变更/ }));
+    await user.click(screen.getByRole('button', { name: '提交预约，等待球员确认' }));
+    expect(await screen.findByRole('heading', { name: '重新审阅邀请赛' })).toBeVisible();
+    expect(create).toHaveBeenCalledTimes(3);
+    expect(create.mock.calls[2]![0].commandId).not.toBe(rejectedId);
+    expect(
+      (await demo.repository.workspace()).orders.filter((o) => o.eventName === '重新审阅邀请赛'),
+    ).toHaveLength(1);
+  });
+
+  it.each([
+    { status: 409, code: 'EVENT_CLOSED', marker: 'missing' },
+    { status: 409, code: 'EVENT_CLOSED', marker: 'wrong-id' },
+    { status: 409, code: 'QUOTE_CHANGED', marker: 'missing' },
+    { status: 403, code: 'FORBIDDEN', marker: 'missing' },
+    { status: 404, code: 'NOT_FOUND', marker: 'missing' },
+    { status: 429, code: 'RATE_LIMITED', marker: 'missing' },
+    { status: 422, code: 'HTTP_422', marker: 'missing' },
+    { status: 503, code: 'SERVICE_UNAVAILABLE', marker: 'same-id' },
+  ])(
+    '恢复中的$status/$code（$marker）不能代替原创建终态，保留原成功单编号',
+    async ({ status, code, marker }) => {
+      const demo = createDemoBookingRepository();
+      const create = vi.fn<BookingRepository['create']>().mockImplementation(async (input) => {
+        if (create.mock.calls.length === 1) {
+          await demo.repository.create(input);
+          throw new ApiError(0, 'NETWORK_ERROR', '原成功回执未收到');
+        }
+        if (create.mock.calls.length === 2)
+          throw new ApiError(
+            status,
+            code,
+            '本次响应不能证明原创建已拒绝',
+            marker === 'missing'
+              ? undefined
+              : {
+                  bookingCreateOutcome: 'REJECTED',
+                  commandId: marker === 'same-id' ? input.commandId : 'different-command-id',
+                },
+          );
+        return demo.repository.create(input);
+      });
+      mount('/player-bookings/new?playerId=demo-guard', { ...demo.repository, create });
+      const user = await fillBooking();
+      await user.click(screen.getByRole('button', { name: /整届赛事/ }));
+      await user.click(screen.getByRole('checkbox', { name: '待晋级 / 条件场次' }));
+      await user.click(screen.getByRole('button', { name: '提交预约，等待球员确认' }));
+      expect(await screen.findByRole('heading', { name: '原预约结果待核对' })).toBeVisible();
+      await user.click(screen.getByRole('button', { name: '恢复原请求结果' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('本次响应不能证明原创建已拒绝');
+      expect(screen.getByRole('heading', { name: '原预约结果待核对' })).toBeVisible();
+      expect(screen.queryByRole('button', { name: '重新读取最新报价' })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('赛事或合作名称')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: '恢复原请求结果' }));
+      expect(await screen.findByRole('heading', { name: '组件验证邀请赛' })).toBeVisible();
+      expect(create).toHaveBeenCalledTimes(3);
+      expect(create.mock.calls[1]![0]).toEqual(create.mock.calls[0]![0]);
+      expect(create.mock.calls[2]![0]).toEqual(create.mock.calls[0]![0]);
+      expect(
+        (await demo.repository.workspace()).orders.filter((o) => o.eventName === '组件验证邀请赛'),
+      ).toHaveLength(1);
+    },
+  );
 });
