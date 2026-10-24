@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, within, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,6 +8,11 @@ import { BookingPage, OrderDetails, Operations } from './BookingPages';
 import { createDemoBookingRepository } from './demo';
 import type { BookingRepository } from './model';
 import { ApiError } from '../api/client';
+import {
+  BOOKING_RECOVERY_STORAGE_PREFIX,
+  bookingRecoveryStore,
+  createBookingRecoveryStore,
+} from './recovery-store';
 function mount(path: string, repository: BookingRepository) {
   window.history.replaceState({}, '', path);
   return render(
@@ -19,12 +24,20 @@ function mount(path: string, repository: BookingRepository) {
 beforeEach(() => {
   vi.stubGlobal('scrollTo', vi.fn());
   window.history.replaceState({}, '', '/');
+  sessionStorage.clear();
+  useRecoveryStore(createBookingRecoveryStore());
 });
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
+function useRecoveryStore(store: ReturnType<typeof createBookingRecoveryStore>) {
+  vi.spyOn(bookingRecoveryStore, 'load').mockImplementation(store.load);
+  vi.spyOn(bookingRecoveryStore, 'save').mockImplementation(store.save);
+  vi.spyOn(bookingRecoveryStore, 'discard').mockImplementation(store.discard);
+  vi.spyOn(bookingRecoveryStore, 'acknowledgeInvalid').mockImplementation(store.acknowledgeInvalid);
+}
 async function fillBooking() {
   const user = userEvent.setup();
   await user.type(await screen.findByLabelText('赛事或合作名称'), '组件验证邀请赛');
@@ -257,5 +270,337 @@ describe('球员预约功能UI', () => {
     expect(updateFee.mock.calls[0]?.[2]).not.toBe(updateFee.mock.calls[1]?.[2]);
     expect((await demo.repository.workspace()).settings.feeBps).toBe(1200);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+  it.each([
+    [0, 'NETWORK_ERROR'],
+    [503, 'HTTP_503'],
+    [422, 'HTTP_422'],
+    [200, 'INVALID_RESPONSE'],
+  ])('创建已提交但ACK丢失（%s/%s）时保持原条件单请求并可恢复', async (status, code) => {
+    const demo = createDemoBookingRepository();
+    const originalCreate = demo.repository.create;
+    let loseResponse = true;
+    const create = vi.fn<BookingRepository['create']>().mockImplementation(async (input) => {
+      const result = await originalCreate(input);
+      if (loseResponse) {
+        loseResponse = false;
+        throw new ApiError(Number(status), String(code), '预约响应未收到');
+      }
+      return result;
+    });
+    const repository = { ...demo.repository, create };
+    mount('/player-bookings/new?playerId=demo-guard', repository);
+    const user = await fillBooking();
+    await user.click(screen.getByRole('button', { name: /整届赛事/ }));
+    await user.click(screen.getByRole('checkbox', { name: '待晋级 / 条件场次' }));
+    await user.click(screen.getByRole('button', { name: '提交预约，等待球员确认' }));
+    expect(await screen.findByRole('heading', { name: '原预约结果待核对' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: '重新读取最新报价' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('赛事或合作名称')).not.toBeInTheDocument();
+    const sent = structuredClone(create.mock.calls[0]![0]);
+    expect(sent.appearances).toHaveLength(1);
+    expect(sent.appearances[0]?.conditional).toBe(true);
+    expect(
+      (await demo.repository.workspace()).orders.filter(
+        (order) => order.eventName === '组件验证邀请赛',
+      ),
+    ).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: '恢复原请求结果' }));
+    expect(await screen.findByRole('heading', { name: '组件验证邀请赛' })).toBeVisible();
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[1]![0]).toEqual(sent);
+    expect(create.mock.calls[1]![0].commandId).toBe(sent.commandId);
+    expect(
+      (await demo.repository.workspace()).orders.filter(
+        (order) => order.eventName === '组件验证邀请赛',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('换viewer不展示或提交旧请求，原actor返回后可查看迟到成功的原单', async () => {
+    const demo = createDemoBookingRepository();
+    const buyer = await demo.repository.workspace();
+    let workspace = buyer;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const create = vi.fn<BookingRepository['create']>().mockImplementation(async (input) => {
+      const result = await demo.repository.create(input);
+      await gate;
+      return result;
+    });
+    const repository: BookingRepository = {
+      ...demo.repository,
+      workspace: async () => workspace,
+      create,
+    };
+    window.history.replaceState({}, '', '/player-bookings/new?playerId=demo-guard');
+    const view = render(
+      <BrowserRouter>
+        <BookingPage repository={repository} />
+      </BrowserRouter>,
+    );
+    const user = await fillBooking();
+    await user.click(screen.getByRole('button', { name: '提交预约，等待球员确认' }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('group', { name: '预约内容' })).toBeDisabled();
+    workspace = { ...buyer, viewerUserId: 'another-viewer', teams: [], orders: [] };
+    view.rerender(
+      <BrowserRouter>
+        <BookingPage repository={{ ...repository }} />
+      </BrowserRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: '当前账号没有可下单的球队' })).toBeVisible();
+    release();
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: '组件验证邀请赛' })).not.toBeInTheDocument(),
+    );
+    expect(window.location.pathname).toBe('/player-bookings/new');
+    expect(screen.queryByRole('button', { name: '恢复原请求结果' })).not.toBeInTheDocument();
+    workspace = buyer;
+    view.rerender(
+      <BrowserRouter>
+        <BookingPage repository={{ ...repository }} />
+      </BrowserRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: '原预约已创建，请查看结果' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '查看原预约' }));
+    expect(await screen.findByRole('heading', { name: '组件验证邀请赛' })).toBeVisible();
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+  it('首次在途离开并返回不并发重发，原请求提交丢ACK后429也不丢恢复编号', async () => {
+    const demo = createDemoBookingRepository();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const create = vi.fn<BookingRepository['create']>();
+    create.mockImplementation(async (input) => {
+      if (create.mock.calls.length === 1) {
+        await gate;
+        await demo.repository.create(input);
+        throw new ApiError(0, 'NETWORK_ERROR', '首发响应丢失');
+      }
+      if (create.mock.calls.length === 2)
+        throw new ApiError(429, 'RATE_LIMITED', '请稍后核对原请求');
+      return demo.repository.create(input);
+    });
+    mount('/player-bookings/new?playerId=demo-guard', { ...demo.repository, create });
+    const user = await fillBooking();
+    await user.click(screen.getByRole('button', { name: /整届赛事/ }));
+    await user.click(screen.getByRole('checkbox', { name: '待晋级 / 条件场次' }));
+    await user.click(screen.getByRole('button', { name: '提交预约，等待球员确认' }));
+    await act(async () => {
+      window.history.pushState({}, '', '/player-bookings');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await act(async () => {
+      window.history.pushState({}, '', '/player-bookings/new?playerId=demo-guard');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await user.click(await screen.findByRole('button', { name: '恢复原请求结果' }));
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('alert')).toHaveTextContent('原请求仍在处理中');
+    await act(async () => {
+      release();
+      await expect(create.mock.results[0]!.value).rejects.toThrow('首发响应丢失');
+    });
+    await user.click(screen.getByRole('button', { name: '恢复原请求结果' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('请稍后核对原请求');
+    expect(screen.queryByRole('button', { name: '重新读取最新报价' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('赛事或合作名称')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '恢复原请求结果' }));
+    expect(await screen.findByRole('heading', { name: '组件验证邀请赛' })).toBeVisible();
+    expect(create).toHaveBeenCalledTimes(3);
+    expect(create.mock.calls[1]![0]).toEqual(create.mock.calls[0]![0]);
+    expect(create.mock.calls[2]![0]).toEqual(create.mock.calls[0]![0]);
+    expect(
+      (await demo.repository.workspace()).orders.filter((o) => o.eventName === '组件验证邀请赛'),
+    ).toHaveLength(1);
+  });
+
+  it('反向race首发明确429前禁止恢复并发，拒绝终态回到重新审阅而非复活旧请求', async () => {
+    const demo = createDemoBookingRepository();
+    let rejectFirst!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      rejectFirst = resolve;
+    });
+    const create = vi.fn<BookingRepository['create']>().mockImplementation(async (input) => {
+      if (create.mock.calls.length === 1) {
+        await gate;
+        throw new ApiError(429, 'RATE_LIMITED', '首发未被接受');
+      }
+      return demo.repository.create(input);
+    });
+    mount('/player-bookings/new?playerId=demo-guard', { ...demo.repository, create });
+    const user = await fillBooking();
+    await user.click(screen.getByRole('button', { name: '提交预约，等待球员确认' }));
+    await act(async () => {
+      window.history.pushState({}, '', '/player-bookings');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await act(async () => {
+      window.history.pushState({}, '', '/player-bookings/new?playerId=demo-guard');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await user.click(await screen.findByRole('button', { name: '恢复原请求结果' }));
+    expect(create).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      rejectFirst();
+      await expect(create.mock.results[0]!.value).rejects.toThrow('首发未被接受');
+    });
+    await user.click(screen.getByRole('button', { name: '恢复原请求结果' }));
+    expect(await screen.findByLabelText('赛事或合作名称')).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('原请求已明确拒绝');
+    expect(create).toHaveBeenCalledTimes(1);
+    const nextUser = await fillBooking();
+    await nextUser.click(screen.getByRole('button', { name: '提交预约，等待球员确认' }));
+    expect(await screen.findByRole('heading', { name: '组件验证邀请赛' })).toBeVisible();
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[1]![0].commandId).not.toBe(create.mock.calls[0]![0].commandId);
+    expect(
+      (await demo.repository.workspace()).orders.filter((o) => o.eventName === '组件验证邀请赛'),
+    ).toHaveLength(1);
+  });
+  it('API请求先保存原编号，刷新重建内存后只主动恢复同一条件单且重验球队授权', async () => {
+    const demo = createDemoBookingRepository();
+    const buyer = await demo.repository.workspace();
+    const storageKey = `${BOOKING_RECOVERY_STORAGE_PREFIX}${encodeURIComponent(buyer.viewerUserId)}`;
+    const create = vi.fn<BookingRepository['create']>().mockImplementation(async (input) => {
+      expect(JSON.parse(sessionStorage.getItem(storageKey)!).payload).toBe(JSON.stringify(input));
+      const result = await demo.repository.create(input);
+      if (create.mock.calls.length === 1)
+        throw new ApiError(0, 'NETWORK_ERROR', '已写入但未收到回执');
+      return result;
+    });
+    let workspace = buyer;
+    const repository = { ...demo.repository, workspace: async () => workspace, create };
+    const firstView = mount('/player-bookings/new?playerId=demo-guard', repository);
+    const user = await fillBooking();
+    await user.click(screen.getByRole('button', { name: /整届赛事/ }));
+    await user.click(screen.getByRole('checkbox', { name: '待晋级 / 条件场次' }));
+    await user.click(screen.getByRole('button', { name: '提交预约，等待球员确认' }));
+    expect(await screen.findByRole('heading', { name: '原预约结果待核对' })).toBeVisible();
+    const original = structuredClone(create.mock.calls[0]![0]);
+    firstView.unmount();
+    // Rebuilding the store with the same sessionStorage models a fresh page module,
+    // so neither the in-memory entry nor its runtime state can supply recovery.
+    const freshStore = createBookingRecoveryStore();
+    useRecoveryStore(freshStore);
+    expect(freshStore.load('api', 'other-viewer').entry).toBeNull();
+    expect(freshStore.load('demo', buyer.viewerUserId).entry).toBeNull();
+    workspace = { ...buyer, teams: [] };
+    const refreshedView = mount('/player-bookings/new?playerId=demo-guard', repository);
+    expect(await screen.findByRole('heading', { name: '原预约结果待核对' })).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('当前账号已无原球队授权');
+    expect(screen.queryByText('原赛事：组件验证邀请赛')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '恢复原请求结果' })).not.toBeInTheDocument();
+    expect(create).toHaveBeenCalledTimes(1);
+    workspace = buyer;
+    refreshedView.rerender(
+      <BrowserRouter>
+        <BookingPage repository={{ ...repository }} />
+      </BrowserRouter>,
+    );
+    expect(await screen.findByRole('button', { name: '恢复原请求结果' })).toBeEnabled();
+    expect(create).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('button', { name: '恢复原请求结果' }));
+    expect(await screen.findByRole('heading', { name: '组件验证邀请赛' })).toBeVisible();
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[1]![0]).toEqual(original);
+    expect(sessionStorage.getItem(storageKey)).toBeNull();
+    expect(
+      (await demo.repository.workspace()).orders.filter((o) => o.eventName === '组件验证邀请赛'),
+    ).toHaveLength(1);
+  });
+
+  it('损坏恢复内容不提交，返回创建页仍先核对订单并明确确认后才能重新填写', async () => {
+    const demo = createDemoBookingRepository();
+    const buyer = await demo.repository.workspace();
+    sessionStorage.setItem(
+      `${BOOKING_RECOVERY_STORAGE_PREFIX}${encodeURIComponent(buyer.viewerUserId)}`,
+      '{broken',
+    );
+    const create = vi.spyOn(demo.repository, 'create');
+    mount('/player-bookings/new?playerId=demo-guard', demo.repository);
+    expect(
+      await screen.findByRole('heading', { name: '恢复编号无法读取，请先核对原预约' }),
+    ).toBeVisible();
+    expect(screen.queryByLabelText('赛事或合作名称')).not.toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('link', { name: '先查看我的预约' }));
+    await act(async () => {
+      window.history.pushState({}, '', '/player-bookings/new?playerId=demo-guard');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(await screen.findByRole('button', { name: '继续重新填写' })).toBeDisabled();
+    await user.click(screen.getByRole('checkbox', { name: /我已核对本人预约记录/ }));
+    await user.click(screen.getByRole('button', { name: '继续重新填写' }));
+    expect(await screen.findByLabelText('赛事或合作名称')).toBeVisible();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('sessionStorage不可用时提示刷新风险，仍以原内存请求主动核对结果', async () => {
+    useRecoveryStore(
+      createBookingRecoveryStore(() => {
+        throw new Error('Storage unavailable');
+      }),
+    );
+    const demo = createDemoBookingRepository();
+    const create = vi.fn<BookingRepository['create']>().mockImplementation(async (input) => {
+      const result = await demo.repository.create(input);
+      if (create.mock.calls.length === 1) throw new ApiError(0, 'NETWORK_ERROR', '回执未收到');
+      return result;
+    });
+    mount('/player-bookings/new?playerId=demo-guard', { ...demo.repository, create });
+    expect(await screen.findByText(/刷新会丢恢复编号，请先查看原预约/)).toBeVisible();
+    const user = await fillBooking();
+    await user.click(screen.getByRole('button', { name: '提交预约，等待球员确认' }));
+    expect(await screen.findByRole('heading', { name: '原预约结果待核对' })).toBeVisible();
+    expect(screen.getByText(/刷新会丢恢复编号，请先查看原预约/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '恢复原请求结果' }));
+    expect(await screen.findByRole('heading', { name: '组件验证邀请赛' })).toBeVisible();
+    expect(create.mock.calls[1]![0]).toEqual(create.mock.calls[0]![0]);
+    expect(
+      (await demo.repository.workspace()).orders.filter((o) => o.eventName === '组件验证邀请赛'),
+    ).toHaveLength(1);
+  });
+  it('移除损坏恢复标记失败时停留核对页并提示，恢复存储后才可继续填写', async () => {
+    const demo = createDemoBookingRepository();
+    const buyer = await demo.repository.workspace();
+    sessionStorage.setItem(
+      `${BOOKING_RECOVERY_STORAGE_PREFIX}${encodeURIComponent(buyer.viewerUserId)}`,
+      '{broken',
+    );
+    let canRemove = false;
+    const cache = createBookingRecoveryStore(
+      () =>
+        ({
+          getItem: (key: string) => sessionStorage.getItem(key),
+          setItem: (key: string, value: string) => sessionStorage.setItem(key, value),
+          removeItem: (key: string) => {
+            if (!canRemove) throw new Error('Remove blocked');
+            sessionStorage.removeItem(key);
+          },
+        }) as Storage,
+    );
+    useRecoveryStore(cache);
+    const create = vi.spyOn(demo.repository, 'create');
+    mount('/player-bookings/new?playerId=demo-guard', demo.repository);
+    expect(
+      await screen.findByRole('heading', { name: '恢复编号无法读取，请先核对原预约' }),
+    ).toBeVisible();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: /我已核对本人预约记录/ }));
+    await user.click(screen.getByRole('button', { name: '继续重新填写' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('恢复标记无法移除');
+    expect(screen.getByText(/刷新会丢恢复编号，请先查看原预约/)).toBeVisible();
+    expect(screen.queryByLabelText('赛事或合作名称')).not.toBeInTheDocument();
+    expect(create).not.toHaveBeenCalled();
+    canRemove = true;
+    await user.click(screen.getByRole('button', { name: '继续重新填写' }));
+    expect(await screen.findByLabelText('赛事或合作名称')).toBeVisible();
+    expect(create).not.toHaveBeenCalled();
   });
 });

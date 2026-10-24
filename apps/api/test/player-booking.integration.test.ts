@@ -162,6 +162,62 @@ describe(
       return call(api, 'post', `${root}/orders`, { cookie: user.cookie, body });
     }
 
+    async function seedPendingQuota(profile: BookingPlayerData, count: number) {
+      const settings = (
+        await api.pool.query('SELECT fee_bps,version FROM booking_settings WHERE id')
+      ).rows[0]!;
+      const orderId = randomUUID();
+      await api.pool.query(
+        `INSERT INTO booking_orders(id,org_id,team_id,event_name,team_name,buyer_user_id,scope,fee_bps,settings_version) VALUES($1,$2,$3,$4,$5,$6,'MULTI',$7,$8)`,
+        [
+          orderId,
+          owner.orgId,
+          firstTeam.id,
+          '合成额度边界赛事',
+          firstTeam.name,
+          leader.id,
+          settings.fee_bps,
+          settings.version,
+        ],
+      );
+      const fee = Math.round((profile.priceFen * settings.fee_bps) / 10000);
+      // Populate only this test's synthetic valid rows. Do not alter the limiter,
+      // clear another buyer's requests, or create 128 slow HTTP orders.
+      await api.pool.query(
+        `INSERT INTO booking_appearances(id,order_id,profile_id,player_user_id,label,status,report_at,start_at,end_at,venue,service_fen,travel_fen,accommodation_fen,platform_fee_fen,total_fen,expires_at)
+         SELECT gen_random_uuid(),$1,$2,$3,'合成额度占用 '||slot,'REQUESTED',
+           $4::timestamptz+slot*interval '3 hours',
+           $4::timestamptz+slot*interval '3 hours'+interval '30 minutes',
+           $4::timestamptz+slot*interval '3 hours'+interval '90 minutes',
+           '合成额度测试球场',$5,$6,$7,$8,$9,clock_timestamp()+interval '20 minutes'
+         FROM generate_series(0,$10::integer-1) slot`,
+        [
+          orderId,
+          profile.id,
+          profile.userId,
+          at(base + days(1)),
+          profile.priceFen,
+          profile.travelFen,
+          profile.accommodationFen,
+          fee,
+          profile.priceFen + profile.travelFen + profile.accommodationFen + fee,
+          count,
+        ],
+      );
+      return orderId;
+    }
+
+    async function pendingQuota(buyerUserId = leader.id) {
+      return Number(
+        (
+          await api.pool.query(
+            `SELECT count(*) AS count FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id WHERE o.buyer_user_id=$1 AND a.status='REQUESTED' AND a.expires_at>clock_timestamp()`,
+            [buyerUserId],
+          )
+        ).rows[0]!.count,
+      );
+    }
+
     async function fresh(id: string, user = leader) {
       const order = (await workspace(user)).orders.find((value) => value.id === id);
       expect(order, 'the current actor must see the reservation').toBeDefined();
@@ -702,6 +758,154 @@ describe(
           }),
         );
       }
+    });
+
+    test('conditional activation enforces the original buyer quota, rolls back at 128, and succeeds after one real cancellation', async () => {
+      const provider = await actor('activation-quota');
+      const profile = data<BookingPlayerData>(await review(await submitProfile(provider)));
+      const conditional = data<BookingOrderData>(
+        await create(
+          orderInput(
+            [
+              {
+                profileId: profile.id,
+                label: '合成晋级待定场次',
+                conditionText: '晋级后明确赛程',
+                conditional: true,
+                venue: '合成待定球场',
+              },
+            ],
+            { scope: 'TOURNAMENT' },
+          ),
+        ),
+      );
+      const bulkId = await seedPendingQuota(profile, 128);
+      expect(await pendingQuota()).toBe(128);
+      const item = conditional.appearances[0]!;
+      const target = appearance(25, profile.id);
+      const body: BookingCommandInput = {
+        commandId: randomUUID(),
+        appearanceId: item.id,
+        expectedVersion: item.version,
+        type: 'ACTIVATE',
+        eligibilityConfirmed: true,
+        reportAt: target.reportAt!,
+        startAt: target.startAt!,
+        endAt: target.endAt!,
+        venue: target.venue,
+      };
+      const original = (
+        await api.pool.query(
+          'SELECT to_jsonb(a) AS appearance,to_jsonb(o) AS booking FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id WHERE a.id=$1',
+          [item.id],
+        )
+      ).rows[0]!;
+      // The organization owner may manage the leader's order, but must still
+      // consume the order's original buyer quota, not the owner's empty quota.
+      const path = `${root}/orders/${conditional.id}/commands`;
+      const blocked = await call(api, 'post', path, { cookie: owner.cookie, body });
+      error(blocked, 409);
+      expect(blocked.body.error.code).toBe('TOO_MANY_PENDING_BOOKINGS');
+      expect(
+        (
+          await api.pool.query(
+            'SELECT to_jsonb(a) AS appearance,to_jsonb(o) AS booking FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id WHERE a.id=$1',
+            [item.id],
+          )
+        ).rows[0],
+      ).toEqual(original);
+      expect(
+        Number(
+          (
+            await api.pool.query(
+              'SELECT count(*) FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+              [owner.id, body.commandId],
+            )
+          ).rows[0]!.count,
+        ),
+      ).toBe(0);
+      expect(await pendingQuota()).toBe(128);
+
+      const bulk = data<BookingOrderData>(
+        await call(api, 'get', `${root}/orders/${bulkId}`, { cookie: leader.cookie }),
+      );
+      data(await command(bulk, bulk.appearances[0]!, 'CANCEL', leader, { reason: why }));
+      expect(await pendingQuota()).toBe(127);
+      const activated = data<BookingOrderData>(
+        await call(api, 'post', path, { cookie: owner.cookie, body }),
+      );
+      expect(activated.appearances[0]).toMatchObject({
+        id: item.id,
+        status: 'REQUESTED',
+        version: item.version + 1,
+      });
+      expect(await pendingQuota()).toBe(128);
+      const replay = data<BookingOrderData>(
+        await call(api, 'post', path, { cookie: owner.cookie, body }),
+      );
+      expect(replay.appearances[0]).toMatchObject({
+        id: item.id,
+        status: 'REQUESTED',
+        version: item.version + 1,
+      });
+      expect(await pendingQuota()).toBe(128);
+    });
+
+    test('concurrent fixed creation and another manager activating a conditional share one 128-request buyer budget', async () => {
+      const provider = await actor('activation-create-race');
+      const profile = data<BookingPlayerData>(await review(await submitProfile(provider)));
+      const conditional = data<BookingOrderData>(
+        await create(
+          orderInput(
+            [
+              {
+                profileId: profile.id,
+                label: '合成并发晋级场次',
+                conditionText: '晋级后确定',
+                conditional: true,
+                venue: '合成待定球场',
+              },
+            ],
+            { scope: 'TOURNAMENT' },
+          ),
+        ),
+      );
+      await seedPendingQuota(profile, 127);
+      const visible = await workspace();
+      const target = appearance(25, profile.id);
+      const activation: BookingCommandInput = {
+        commandId: randomUUID(),
+        appearanceId: conditional.appearances[0]!.id,
+        expectedVersion: conditional.appearances[0]!.version,
+        type: 'ACTIVATE',
+        eligibilityConfirmed: true,
+        reportAt: target.reportAt!,
+        startAt: target.startAt!,
+        endAt: target.endAt!,
+        venue: target.venue,
+      };
+      const fixed: BookingCreateInput = {
+        ...orderInput([appearance(26, profile.id)]),
+        reviewedSettingsVersion: visible.settings.version,
+        reviewedProfileVersions: { [profile.id]: profile.version },
+      };
+      const results = await Promise.all([
+        call(api, 'post', `${root}/orders/${conditional.id}/commands`, {
+          cookie: owner.cookie,
+          body: activation,
+        }),
+        call(api, 'post', `${root}/orders`, { cookie: leader.cookie, body: fixed }),
+      ]);
+      expect(results.map((result) => result.status).sort()).toEqual([200, 409]);
+      const denied = results.find((result) => result.status === 409)!;
+      expect(denied.body.error.code).toBe('TOO_MANY_PENDING_BOOKINGS');
+      expect(await pendingQuota()).toBe(128);
+      const current = data<BookingOrderData>(
+        await call(api, 'get', `${root}/orders/${conditional.id}`, { cookie: leader.cookie }),
+      );
+      expect(current.appearances[0]?.status).toBe(
+        results[0]!.status === 200 ? 'REQUESTED' : 'CONDITIONAL',
+      );
     });
 
     test('a changed provider quote requires a fresh reviewed version instead of silently increasing the buyer amount', async () => {

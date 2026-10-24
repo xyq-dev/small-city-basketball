@@ -74,6 +74,22 @@ const checkVersion = (actual: number, expected: number) => {
 
 /** No payment credentials or dispatch calls exist in this module. */
 export class PlayerBookingService extends ApplicationService {
+  private async lockBuyerQuota(c: PoolClient, buyerUserId: string) {
+    await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+      `scb-booking-buyer:${buyerUserId}`,
+    ]);
+  }
+  /** Caller holds lockBuyerQuota until commit; expired requests do not consume quota. */
+  private async requirePendingCapacity(c: PoolClient, buyerUserId: string, additional: number) {
+    const existing = (
+      await c.query<{ count: string }>(
+        `SELECT count(*) FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id WHERE o.buyer_user_id=$1 AND a.status='REQUESTED' AND a.expires_at>clock_timestamp()`,
+        [buyerUserId],
+      )
+    ).rows[0]!;
+    if (Number(existing.count) + additional > 128)
+      bookingFail('TOO_MANY_PENDING_BOOKINGS', '待接单场次过多，请先处理现有预约');
+  }
   /** Release authentication connection before the inherited pool-based limiter. */
   private async preflight(cookie: string | undefined, namespace: string, commandId: string) {
     const identity = await this.transaction(async (c) => {
@@ -707,19 +723,14 @@ export class PlayerBookingService extends ApplicationService {
       const actor = await this.lockActor(c, cookie);
       const access = await this.teamAccess(c, actor, input.orgId, input.teamId);
       if (!access.allowed) throw notFound();
-      await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
-        `scb-booking-buyer:${actor.user.id}`,
-      ]);
+      await this.lockBuyerQuota(c, actor.user.id);
       const replay = await this.start(c, actor, input.commandId, { op: 'create', input });
       if (replay) return this.orderDto(c, await this.context(c, actor, replay.resourceId));
-      const existing = (
-        await c.query<{ count: string }>(
-          `SELECT count(*) FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id WHERE o.buyer_user_id=$1 AND a.status='REQUESTED' AND a.expires_at>clock_timestamp()`,
-          [actor.user.id],
-        )
-      ).rows[0]!;
-      if (Number(existing.count) + input.appearances.filter((a) => !a.conditional).length > 128)
-        bookingFail('TOO_MANY_PENDING_BOOKINGS', '待接单场次过多，请先处理现有预约');
+      await this.requirePendingCapacity(
+        c,
+        actor.user.id,
+        input.appearances.filter((a) => !a.conditional).length,
+      );
       const event = await this.eventAllowed(c, input.orgId, input.teamId, input.eventId);
       const profiles = new Map<string, Row>();
       for (const profileId of [...new Set(input.appearances.map((a) => a.profileId))].sort())
@@ -826,6 +837,13 @@ export class PlayerBookingService extends ApplicationService {
       const player = ref.player_user_id === actor.user.id;
       if (!ctx.buyer && !player && !(input.type === 'RESOLVE_DISPUTE' && ctx.independentOperator))
         throw forbidden();
+      // The original buyer owns this order's quota, even when another authorized
+      // leader activates it. Match create's quota -> operation -> order -> player lock order.
+      if (
+        input.type === 'ACTIVATE' ||
+        (input.type === 'RESOLVE_DISPUTE' && input.resolution === 'RESUME')
+      )
+        await this.lockBuyerQuota(c, ctx.order.buyer_user_id);
       const replay = await this.start(c, actor, input.commandId, { op: 'command', orderId, input });
       ctx.order = (
         await c.query<Row>('SELECT * FROM booking_orders WHERE id=$1 FOR UPDATE', [ctx.order.id])
@@ -898,6 +916,7 @@ export class PlayerBookingService extends ApplicationService {
         cancellationReason = input.reason;
         change = null;
       } else if (input.type === 'ACTIVATE') {
+        await this.requirePendingCapacity(c, ctx.order.buyer_user_id, 1);
         await this.eventAllowed(
           c,
           ctx.order.org_id,
@@ -986,8 +1005,10 @@ export class PlayerBookingService extends ApplicationService {
             bookingFail('BOOKING_ACTION_NOT_ALLOWED', '该争议场次不能恢复履约');
           if (!arrivedAt) await this.scheduleAllowed(c, profile, reportAt, endAt, now, a.id);
           status = arrivedAt ? 'ARRIVED' : acceptedAt ? 'ACCEPTED' : 'REQUESTED';
-          if (status === 'REQUESTED')
+          if (status === 'REQUESTED') {
+            await this.requirePendingCapacity(c, ctx.order.buyer_user_id, 1);
             expiresAt = new Date(now.getTime() + REQUEST_MINUTES * 60_000).toISOString();
+          }
         }
       }
       // A change to an official match cannot silently keep a stale match link.

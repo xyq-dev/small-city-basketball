@@ -4,15 +4,17 @@
 
 ## C07 球员数据与同价比较（REVIEW / BRANCH_ONLY）
 
+2026-10-24远端审查3项P2已修复并完成独立增量静态CLEAR（092c3b9）：原买方128配额、完整授权分页/单条重验、未知建单共享互斥/同tab刷新恢复/损坏阻断。最终类型/格式/两端build及50项恢复测试通过；整合后API534、最后4测试前全admin492通过。修复后完整候选待同步及CI，尚不解除threads/合并或标DONE。
+
 用户本轮已全权授权开发、Git同步、PR及检查后合并，不再重复确认。集成目录为`/workspace/scratch/608836f8d204/small-city-basketball`，分支`feat/player-reservations`。已整合017、65表权限恢复集合、精确提名/本人同意/撤销、当前独立确认的有限公开统计与20人批量API、11项投影测试及17项PG/HTTP用例。UI已整合至6664ccd：同价同位置筛选、最多3人含费对比、近期记录/样本口径、来源提名/本人同意/撤销及viewer草稿隔离已完成。本地API534、首版全量前端442、最终13新增直接测试、类型/格式/两端build及微信VM11通过，桌面Mock浏览器实际流程通过；独立静态复核CLEAR。17项新PG与最终桌面/手机浏览器及恢复联合CI尚待，未标DONE。
 
-普通push缺少交互凭据后，已通过连接的GitHub Git Data接口非强制同步C06基线，创建[草稿PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)。本地1ff7c9a与远端61343528源tree一致；[CI40061888579](https://github.com/xyq-dev/small-city-basketball/actions/runs/40061888579)中admin/隔离production成功，api真实PG/重启步骤成功、浏览器步骤运行中。此为C06基线证据，不充作C07新验证或生产部署。下节保留C06交接当时的历史阻塞，现以本节和后续最终证据为准。详见[C07任务](tasks/C07.md)、[交接](handoffs/C07.md)。
+普通push缺少交互凭据后，已通过连接的GitHub Git Data接口非强制同步，建立[PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)。C06基线[CI40061888579](https://github.com/xyq-dev/small-city-basketball/actions/runs/40061888579)三个job已全部SUCCESS；其源码/PG/浏览器/63表重启恢复证据已补入C06交接，历史本机/审批失败仍保留。最终C07候选本地bd5c240与远端4df2c532的tree同为3e83d4aa5962461eae82708191494df02788c339；[完整CI40062592812](https://github.com/xyq-dev/small-city-basketball/actions/runs/40062592812)中admin和隔离production全部SUCCESS，最终前端444/API534/VM11、14Mock（含新桌面/手机比较各一次）、隔离runtime16、4可信HTTPS及65表完整恢复/旧授权隔离通过，无重试。api真实PG、build和重启步骤成功，真实API浏览器仍运行；尚未合并或生产部署。详见[C07任务](tasks/C07.md)、[交接](handoffs/C07.md)和[证据](evidence/C07/README.md)。
 
-## C06 球员赛事预约与UI（本地实现完成，REVIEW / BRANCH_ONLY）
+## C06 球员赛事预约与UI（REVIEW / BRANCH_ONLY，基线完整CI通过）
 
-独立`feat/player-reservations`已整合真实API/016及63表权限恢复契约、五类合作/多人逐场/条件意向、10%报价与版本快照、接单/变更/履约/争议、资料审核/运营与响应式UI。业务HEAD`44ceb912d199dd507024a68b9bc4f5a421e087ee`，后续仅文档/截图。最终类型/两端build/格式通过；API523源码、前端完整429及最后组件增量10、既有微信VM11通过。24项真实PG/HTTP用例已编写并联编，未执行；本机UID限制阻断非root PG，正常Git推送又被自动审批拒绝，未绕过，故无本卡云端CI/PR/合并/部署结论。当前不能标记商业验收通过。
+真实API/016、五类合作/多人逐场/条件意向、10%费率快照、接单/变更/履约/争议与响应式UI已实现。C06基线61343528的CI40061888579三job完整SUCCESS、无重试：API523/admin431、VM11、262PG（含新24）＋runtime16、12Mock/24真实API/4HTTPS浏览器、016/63表重启与完整恢复/旧授权隔离和owned清理通过。先前本机UID与审批阻塞已保留历史并由最新授权/隔离CI解除，不再记为当前“未执行PG”。
 
-Cloud Chrome桌面Mock构建已实际走通：筛选/详情/系列建单/球员接单/双方换地点/单独取消未晋级条件项，资金全0。截图与失败轮见[证据](evidence/C06/README.md)、[交接](handoffs/C06.md)；[使用说明](PLAYER_BOOKING_USAGE.md)、[设计](design/PLAYER_BOOKING.md)、[任务](tasks/C06.md)。手机真机/微信/Safari未验。真实个人撮合支付/分账和通知、自动实名/资格、付费档期保留等未开通；资格仅双方声明，不修改原报名名单。原main基线`2577443`保留、生产禁令不变。
+后续C07同PR增加017及授权数据比较，原候选4df2c532的完整CI亦通过；最终配额/分页/未知建单审查修复须等待新候选CI后再合并。Cloud Chrome桌面Mock已走通系列建单/接单/双方换地点/部分取消，资金0；新增恢复组件/store50项直接测试通过。没有生产部署、正式Migration、真实个人撮合支付/分账、通知或实名/资格自动核验。详见[使用](PLAYER_BOOKING_USAGE.md)、[设计](design/PLAYER_BOOKING.md)、[C06任务](tasks/C06.md)与[C07交接](handoffs/C07.md)。
 
 ## D01商业版UI设计交付（DONE，设计及文档范围）
 
@@ -49,7 +51,7 @@ PR2四项已按最新代码核验并完成：scrypt单槽/有限队列、过期�
 
 ## 下一步与边界
 
-当前新增D01设计初稿已交付，先完成视觉审阅，再单独认领新UI实现；以下C05技术与环境待办继续保留，不因设计完成而视为已验。
+当前优先收口C06/C07修复后候选的完整CI及审查后合并；D01设计初稿和以下C05外部环境待办保留，不能把本轮实现或隔离验证当作生产发布。
 
 C05为DONE / MAIN，最终候选的三job完整验收通过；合并后[CI40003519494](https://github.com/xyq-dev/small-city-basketball/actions/runs/40003519494)三个job同范围全部SUCCESS（无重试），完整日志已核对。四域已落实上述有界范围，下一步为真实微信开发工具/域名/真机、真实商户沙箱与支付退款对账联调，以及旧001–007完整FINAL赛事的隔离升级演练。依赖实际账号/资质/凭据或服务器通道的工作不能在本轮虚构完成。开发代码仍有长期球员/赛季/专业统计、观众关注提醒、可靠离线、云直播/大视频/转码等后续范围，详见[商业规划](COMMERCIAL_PRODUCT_PLAN.md)及[C05使用指南](COMMERCIAL_USAGE.md)。
 

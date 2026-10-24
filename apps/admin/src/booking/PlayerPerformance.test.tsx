@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, within, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,7 +13,11 @@ import {
 import { createDemoBookingRepository } from './demo';
 import { createDemoPerformanceRepository } from './performance-demo';
 import { emptyPerformance } from './performance-model';
-import type { PlayerPerformanceData, PlayerPerformanceRepository } from './performance-model';
+import type {
+  PlayerPerformanceData,
+  PlayerPerformanceRepository,
+  PlayerPerformanceWorkspaceData,
+} from './performance-model';
 beforeEach(() => {
   vi.stubGlobal('scrollTo', vi.fn());
   window.history.replaceState({}, '', '/');
@@ -168,7 +172,7 @@ describe('球员数据与同价比较', () => {
     await screen.findByRole('table');
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '撤销公开授权' }));
-    const dialog = screen.getByRole('dialog', { name: '撤销公开授权' });
+    const dialog = await screen.findByRole('dialog', { name: '撤销公开授权' });
     await user.type(within(dialog).getByLabelText('处理原因'), '本人撤销公开');
     await user.click(within(dialog).getByRole('button', { name: '确认处理' }));
     expect(await screen.findByRole('heading', { name: '暂无可展示的个人比赛记录' })).toBeVisible();
@@ -192,7 +196,7 @@ describe('球员数据与同价比较', () => {
     );
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: '核对本人记录并同意公开' }));
-    const dialog = screen.getByRole('dialog', { name: '核对并同意公开本人记录' });
+    const dialog = await screen.findByRole('dialog', { name: '核对并同意公开本人记录' });
     await user.type(within(dialog).getByLabelText('处理原因'), '本人核对同意');
     await user.click(within(dialog).getByRole('button', { name: '确认处理' }));
     expect(command).not.toHaveBeenCalled();
@@ -267,6 +271,7 @@ describe('球员数据与同价比较', () => {
     );
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: '核对本人记录并同意公开' }));
+    await screen.findByRole('dialog', { name: '核对并同意公开本人记录' });
     await user.type(screen.getByLabelText('处理原因'), '尚未提交的本人草稿');
     booking.setRole('operator');
     const operator = await booking.repository.workspace();
@@ -311,5 +316,251 @@ describe('球员数据与同价比较', () => {
       publisherConsent: true,
     });
     expect((await performance.performance('demo-guard')).sourceCount).toBe(1);
+  });
+});
+
+async function authorizationFixture() {
+  const booking = createDemoBookingRepository();
+  booking.setRole('player');
+  const bookingData = await booking.repository.workspace();
+  const base = createDemoPerformanceRepository(booking);
+  const workspace = await base.workspace();
+  const approved = workspace.links.find((l) => l.status === 'APPROVED')!;
+  const old = { ...approved, id: 'old-approved', eventName: '最早仍公开的本人授权', version: 1 };
+  const records = [
+    ...Array.from({ length: 205 }, (_, i) => ({
+      ...approved,
+      id: `history-${i}`,
+      eventName: `新历史授权${i}`,
+      status: 'REVOKED' as const,
+      capabilities: { canConsent: false, canRevoke: false },
+    })),
+    old,
+  ];
+  const page = (cursor?: string): PlayerPerformanceWorkspaceData => {
+    const start = cursor === undefined ? 0 : Number(cursor.slice(5));
+    const links = records.slice(start, start + 50);
+    const nextCursor = start + 50 < records.length ? `page:${start + 50}` : null;
+    return { ...workspace, links, nextCursor, linksHasMore: nextCursor !== null };
+  };
+  const repository = {
+    ...base,
+    workspace: vi
+      .fn<PlayerPerformanceRepository['workspace']>()
+      .mockImplementation(async (cursor) => page(cursor)),
+    link: vi.fn<PlayerPerformanceRepository['link']>().mockResolvedValue({ ...old, version: 7 }),
+    command: vi
+      .fn<PlayerPerformanceRepository['command']>()
+      .mockImplementation(async (_id, input) => ({
+        ...old,
+        version: input.expectedVersion + 1,
+        status: 'REVOKED',
+      })),
+  };
+  const content = (viewer = bookingData.viewerUserId) => (
+    <PerformanceProvider repository={repository} viewerUserId={viewer} demo={false}>
+      <DataAuthorizations bookingData={{ ...bookingData, viewerUserId: viewer }} ownOnly />
+    </PerformanceProvider>
+  );
+  return { booking, bookingData, repository, workspace, old, records, page, content };
+}
+describe('数据授权的完整分页和当前权限', () => {
+  it('加载超过200条更新历史后可撤销旧本人授权，确认使用重新核验的版本并重置分页', async () => {
+    const f = await authorizationFixture();
+    let finish!: (value: typeof f.old) => void;
+    f.repository.link.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    render(f.content());
+    const user = userEvent.setup();
+    for (let i = 0; i < 4; i++) {
+      const more = await screen.findByRole('button', { name: '加载更多授权记录' });
+      await user.click(more);
+      await waitFor(() => expect(f.repository.workspace).toHaveBeenCalledTimes(i + 2));
+    }
+    expect(await screen.findByRole('heading', { name: f.old.eventName })).toBeVisible();
+    expect(f.repository.workspace.mock.calls.map(([cursor]) => cursor)).toEqual([
+      undefined,
+      'page:50',
+      'page:100',
+      'page:150',
+      'page:200',
+    ]);
+    expect(screen.queryByRole('button', { name: '加载更多授权记录' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '撤销公开授权' }));
+    expect(screen.getByRole('status')).toHaveTextContent('核验');
+    expect(screen.getByRole('button', { name: '刷新数据授权' })).toBeDisabled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await act(async () => finish({ ...f.old, version: 7 }));
+    const dialog = await screen.findByRole('dialog', { name: '撤销公开授权' });
+    await user.type(within(dialog).getByLabelText('处理原因'), '撤销旧赛事公开授权');
+    await user.click(within(dialog).getByRole('button', { name: '确认处理' }));
+    await waitFor(() => expect(f.repository.command).toHaveBeenCalledTimes(1));
+    expect(f.repository.command.mock.calls[0]).toEqual([
+      f.old.id,
+      expect.objectContaining({ type: 'REVOKE', expectedVersion: 7 }),
+    ]);
+    await waitFor(() => expect(f.repository.workspace.mock.calls.at(-1)).toEqual([]));
+    expect(await screen.findByRole('button', { name: '加载更多授权记录' })).toBeEnabled();
+    expect(screen.queryByRole('heading', { name: f.old.eventName })).not.toBeInTheDocument();
+  });
+  it('更多页失败保留已读记录，重试同一游标并按ID去重', async () => {
+    const f = await authorizationFixture();
+    f.repository.workspace
+      .mockReset()
+      .mockResolvedValueOnce(f.page())
+      .mockRejectedValueOnce(new Error('本页暂时读取失败'))
+      .mockResolvedValueOnce({
+        ...f.workspace,
+        links: [f.records[0]!, f.old],
+        nextCursor: null,
+        linksHasMore: false,
+      });
+    render(f.content());
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '加载更多授权记录' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('本页暂时读取失败');
+    expect(screen.getByRole('heading', { name: '新历史授权0' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '加载更多授权记录' }));
+    expect(await screen.findByRole('heading', { name: f.old.eventName })).toBeVisible();
+    expect(screen.getAllByRole('heading', { name: '新历史授权0' })).toHaveLength(1);
+    expect(f.repository.workspace.mock.calls.map(([cursor]) => cursor)).toEqual([
+      undefined,
+      'page:50',
+      'page:50',
+    ]);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+  it('本人页的首批均是管理他人的授权时，过滤为空仍可加载更早本人授权', async () => {
+    const f = await authorizationFixture();
+    f.repository.workspace
+      .mockReset()
+      .mockResolvedValueOnce({
+        ...f.page(),
+        links: f.page().links.map((l) => ({ ...l, profileId: 'managed-other-player' })),
+      })
+      .mockResolvedValueOnce({
+        ...f.workspace,
+        links: [f.old],
+        nextCursor: null,
+        linksHasMore: false,
+      });
+    render(f.content());
+    expect(
+      await screen.findByRole('heading', { name: '当前已加载记录中暂无本人授权' }),
+    ).toBeVisible();
+    await userEvent.setup().click(screen.getByRole('button', { name: '加载更多授权记录' }));
+    expect(await screen.findByRole('heading', { name: f.old.eventName })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: '新历史授权0' })).not.toBeInTheDocument();
+  });
+  it('viewer切换后丢弃迟到的更多页，不能把旧本人资料追加到新身份', async () => {
+    const f = await authorizationFixture();
+    let finish!: (value: PlayerPerformanceWorkspaceData) => void;
+    f.repository.workspace
+      .mockReset()
+      .mockResolvedValueOnce(f.page())
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValueOnce({
+        ...f.workspace,
+        viewerUserId: 'other-viewer',
+        ownProfileId: null,
+        links: [],
+        nextCursor: null,
+        linksHasMore: false,
+      });
+    const view = render(f.content());
+    await userEvent.setup().click(await screen.findByRole('button', { name: '加载更多授权记录' }));
+    view.rerender(f.content('other-viewer'));
+    await screen.findByRole('heading', { name: '暂无数据授权记录' });
+    await act(async () =>
+      finish({ ...f.workspace, links: [f.old], nextCursor: null, linksHasMore: false }),
+    );
+    expect(screen.queryByRole('heading', { name: f.old.eventName })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '撤销公开授权' })).not.toBeInTheDocument();
+    expect(f.repository.command).not.toHaveBeenCalled();
+  });
+  it.each(['permission', 'forbidden', 'not-found'] as const)(
+    '旧记录当前%s时清掉操作能力，不允许沿用旧按钮确认',
+    async (kind) => {
+      const f = await authorizationFixture();
+      f.repository.workspace.mockResolvedValue({
+        ...f.workspace,
+        links: [f.old],
+        nextCursor: null,
+        linksHasMore: false,
+      });
+      if (kind === 'permission')
+        f.repository.link.mockResolvedValue({
+          ...f.old,
+          capabilities: { canConsent: false, canRevoke: false },
+        });
+      else
+        f.repository.link.mockRejectedValue(
+          new Error(`该授权当前不可读取（${kind === 'forbidden' ? '403' : '404'}）`),
+        );
+      render(f.content());
+      await userEvent.setup().click(await screen.findByRole('button', { name: '撤销公开授权' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        kind === 'permission' ? '当前已不能执行' : kind === 'forbidden' ? '403' : '404',
+      );
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: '撤销公开授权' })).not.toBeInTheDocument();
+      expect(f.repository.command).not.toHaveBeenCalled();
+    },
+  );
+  it('确认窗口期间不能加载更多或刷新，取消后保留原游标与已读记录', async () => {
+    const f = await authorizationFixture();
+    f.repository.workspace.mockResolvedValue({
+      ...f.workspace,
+      links: [f.old],
+      nextCursor: 'more',
+      linksHasMore: true,
+    });
+    render(f.content());
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '撤销公开授权' }));
+    const dialog = await screen.findByRole('dialog', { name: '撤销公开授权' });
+    expect(screen.getByRole('button', { name: '加载更多授权记录' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '刷新数据授权' })).toBeDisabled();
+    await user.click(within(dialog).getByRole('button', { name: '返回' }));
+    expect(screen.getByRole('button', { name: '加载更多授权记录' })).toBeEnabled();
+    expect(screen.getByRole('heading', { name: f.old.eventName })).toBeVisible();
+    expect(f.repository.workspace).toHaveBeenCalledTimes(1);
+  });
+  it('主办方提名草稿期间不能翻页或刷新，避免丢失未提交内容', async () => {
+    const booking = createDemoBookingRepository();
+    booking.setRole('publisher');
+    const bookingData = await booking.repository.workspace();
+    const base = createDemoPerformanceRepository(booking),
+      workspace = await base.workspace();
+    const repository = {
+      ...base,
+      workspace: vi
+        .fn<PlayerPerformanceRepository['workspace']>()
+        .mockResolvedValue({ ...workspace, linksHasMore: true, nextCursor: 'more' }),
+    };
+    render(
+      <PerformanceProvider
+        repository={repository}
+        viewerUserId={bookingData.viewerUserId}
+        demo={false}
+      >
+        <DataAuthorizations bookingData={bookingData} />
+      </PerformanceProvider>,
+    );
+    const reason = await screen.findByLabelText('提名依据与原因');
+    await userEvent.setup().type(reason, '核对中，尚未提交');
+    expect(screen.getByRole('button', { name: '加载更多授权记录' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '刷新数据授权' })).toBeDisabled();
+    expect(reason).toHaveValue('核对中，尚未提交');
+    expect(repository.workspace).toHaveBeenCalledTimes(1);
   });
 });

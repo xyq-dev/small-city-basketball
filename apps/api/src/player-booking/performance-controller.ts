@@ -37,8 +37,17 @@ export class PlayerPerformanceController {
       ),
     );
   }
-  @Get('performance/workspace') async workspace(@Req() request: ApiRequest) {
-    return envelope(request, await this.service.workspace(request.headers.cookie));
+  @Get('performance/workspace') async workspace(
+    @Req() request: ApiRequest,
+    @Query() query: unknown,
+  ) {
+    return envelope(request, await this.service.workspace(request.headers.cookie, query));
+  }
+  @Get('performance/links/:id') async link(
+    @Req() request: ApiRequest,
+    @Param('id') linkId: string,
+  ) {
+    return envelope(request, await this.service.getLink(request.headers.cookie, linkId));
   }
   @Get('performance/sources') async sources(@Req() request: ApiRequest, @Query() query: unknown) {
     return envelope(request, await this.service.sources(request.headers.cookie, query));

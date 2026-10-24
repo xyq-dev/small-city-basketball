@@ -12,7 +12,7 @@ import type {
 import { ApplicationService, isAdministrator } from '../service.js';
 import type { Actor } from '../service.js';
 import { forbidden, notFound } from '../errors.js';
-import { objectInput, text } from '../validation.js';
+import { calendarDate, objectInput, text } from '../validation.js';
 import { expectedVersion } from '../registration-validation.js';
 import { bookingFail, bookingHash, id } from './domain.js';
 import { performanceProjection } from './performance-domain.js';
@@ -20,6 +20,49 @@ import type { PerformanceSample } from './performance-domain.js';
 
 type Row = Record<string, any>;
 const iso = (value: Date | string | null) => (value == null ? null : new Date(value).toISOString());
+const LINK_PAGE_SIZE = 50;
+const linkCursorScope = (actorId: string) => bookingHash(['performance-links-v1', actorId]);
+function readLinkCursor(raw: unknown, actorId: string) {
+  const query = objectInput(raw, ['cursor']);
+  if (query.cursor === undefined) return { createdAt: null, linkId: null };
+  try {
+    if (
+      typeof query.cursor !== 'string' ||
+      query.cursor.length < 1 ||
+      query.cursor.length > 1024 ||
+      !/^[A-Za-z0-9_-]+$/.test(query.cursor)
+    )
+      throw new Error();
+    const decoded = objectInput(
+      JSON.parse(Buffer.from(query.cursor, 'base64url').toString('utf8')),
+      ['scope', 'id', 'createdAt'],
+    );
+    if (
+      decoded.scope !== linkCursorScope(actorId) ||
+      typeof decoded.createdAt !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(decoded.createdAt)
+    )
+      throw new Error();
+    calendarDate(decoded.createdAt.slice(0, 10), 'cursor');
+    const [hour, minute, second] = decoded.createdAt.slice(11, 19).split(':').map(Number);
+    if (hour! > 23 || minute! > 59 || second! > 59) throw new Error();
+    return { createdAt: decoded.createdAt, linkId: id(decoded.id) };
+  } catch {
+    return bookingFail('VALIDATION_ERROR', '无效或不匹配的授权分页游标，请刷新列表', 422);
+  }
+}
+function nextLinkCursor(rows: Row[], actorId: string) {
+  const last = rows[LINK_PAGE_SIZE - 1];
+  return rows.length > LINK_PAGE_SIZE && last
+    ? Buffer.from(
+        JSON.stringify({
+          scope: linkCursorScope(actorId),
+          id: last.id,
+          createdAt: last.cursor_created_at,
+        }),
+      ).toString('base64url')
+    : null;
+}
 const publisherPower = (alias: string) =>
   `EXISTS(SELECT 1 FROM organization_memberships pm WHERE pm.org_id=${alias}.org_id AND pm.user_id=${alias}.nominated_by AND pm.status='ACTIVE' AND (pm.role IN ('ORG_OWNER','ORG_ADMIN') OR EXISTS(SELECT 1 FROM event_staff ps WHERE ps.org_id=${alias}.org_id AND ps.event_id=${alias}.event_id AND ps.user_id=pm.user_id AND ps.status='ACTIVE' AND ps.role='EVENT_MANAGER')))`;
 const PUBLIC_SNAPSHOT = `
@@ -185,9 +228,13 @@ export class PlayerPerformanceService extends ApplicationService {
     );
     if (!result.rowCount) throw notFound();
   }
-  async workspace(cookie: string | undefined): Promise<PlayerPerformanceWorkspaceData> {
+  async workspace(
+    cookie: string | undefined,
+    raw: unknown = {},
+  ): Promise<PlayerPerformanceWorkspaceData> {
     return this.transaction(async (c) => {
       const actor = await this.lockActor(c, cookie);
+      const cursor = readLinkCursor(raw, actor.user.id);
       const own = (
         await c.query<Row>('SELECT id FROM booking_profiles WHERE user_id=$1', [actor.user.id])
       ).rows[0];
@@ -199,12 +246,24 @@ export class PlayerPerformanceService extends ApplicationService {
       ).rows;
       const refs = (
         await c.query<Row>(
-          'SELECT id FROM booking_performance_links WHERE profile_id=$1 OR event_id=ANY($2::uuid[]) ORDER BY created_at DESC,id DESC LIMIT 201',
-          [own?.id ?? null, events.map((e) => e.id)],
+          `SELECT l.id,to_char(l.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at
+          FROM booking_performance_links l
+          WHERE (l.profile_id=$2 OR EXISTS(
+            SELECT 1 FROM organizations scope_org
+            JOIN organization_memberships scope_member ON scope_member.org_id=scope_org.id AND scope_member.user_id=$1 AND scope_member.status='ACTIVE'
+            WHERE scope_org.id=l.org_id AND scope_org.status='ACTIVE' AND (
+              scope_member.role IN ('ORG_OWNER','ORG_ADMIN') OR EXISTS(
+                SELECT 1 FROM event_staff scope_staff WHERE scope_staff.org_id=l.org_id AND scope_staff.event_id=l.event_id AND scope_staff.user_id=$1 AND scope_staff.status='ACTIVE' AND scope_staff.role='EVENT_MANAGER'
+              )
+            )
+          )) AND ($3::timestamptz IS NULL OR (l.created_at,l.id)<($3::timestamptz,$4::uuid))
+          ORDER BY l.created_at DESC,l.id DESC LIMIT ${LINK_PAGE_SIZE + 1}`,
+          [actor.user.id, own?.id ?? null, cursor.createdAt, cursor.linkId],
         )
       ).rows;
       const links = [];
-      for (const ref of refs.slice(0, 200)) links.push(await this.dto(c, actor, ref.id));
+      for (const ref of refs.slice(0, LINK_PAGE_SIZE)) links.push(await this.dto(c, actor, ref.id));
+      const nextCursor = nextLinkCursor(refs, actor.user.id);
       await this.ensureFreshSession(c, actor);
       return {
         viewerUserId: actor.user.id,
@@ -216,10 +275,21 @@ export class PlayerPerformanceService extends ApplicationService {
           format: e.format,
         })),
         links,
-        linksHasMore: refs.length > 200,
+        linksHasMore: nextCursor !== null,
+        nextCursor,
         disclosureNotice:
           '主办方提名代表允许公开该成员有限统计；只有球员本人再次明确同意才生效。可随时撤销；主办方授权、机构或账号失效时来源停止公开。平台运营身份不替代赛事数据管理权。',
       };
+    });
+  }
+  async getLink(cookie: string | undefined, linkId: string): Promise<PlayerPerformanceLinkData> {
+    return this.transaction(async (c) => {
+      const actor = await this.lockActor(c, cookie);
+      const context = await this.link(c, actor, id(linkId));
+      if (!context.owns) await this.manager(c, actor, context.l.org_id, context.l.event_id);
+      const result = await this.dto(c, actor, linkId);
+      await this.ensureFreshSession(c, actor);
+      return result;
     });
   }
   async sources(cookie: string | undefined, raw: unknown): Promise<PlayerPerformanceSourcesData> {

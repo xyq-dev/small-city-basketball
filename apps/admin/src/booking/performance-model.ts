@@ -19,7 +19,8 @@ export interface PlayerPerformanceRepository {
   performances(
     profileIds: string[],
   ): Promise<{ players: PlayerPerformanceData[]; unavailableProfileIds: string[] }>;
-  workspace(): Promise<PlayerPerformanceWorkspaceData>;
+  workspace(cursor?: string): Promise<PlayerPerformanceWorkspaceData>;
+  link(linkId: string): Promise<PlayerPerformanceLinkData>;
   sources(orgId: string, eventId: string): Promise<PlayerPerformanceSourcesData>;
   nominate(input: PlayerPerformanceNominateInput): Promise<PlayerPerformanceLinkData>;
   command(linkId: string, input: PlayerPerformanceCommandInput): Promise<PlayerPerformanceLinkData>;
@@ -72,10 +73,14 @@ export const unavailablePerformanceRepository: PlayerPerformanceRepository = {
       manageableEvents: [],
       links: [],
       linksHasMore: false,
+      nextCursor: null,
       disclosureNotice: '请连接球员数据授权服务后查看本人记录。',
     };
   },
   async sources() {
+    throw new Error('当前没有连接球员数据授权服务。');
+  },
+  async link() {
     throw new Error('当前没有连接球员数据授权服务。');
   },
   async nominate() {

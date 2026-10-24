@@ -25,11 +25,14 @@ import {
   Wallet,
   X,
 } from 'lucide-react';
+import { ApiError } from '../api/client';
 import type { ApiClient } from '../api/client';
 import { createPlayerBookingApi } from '../api/player-booking';
 import { ResourceState, useAction, useResource } from '../registration/shared';
 import { Modal } from '../scoring/Dialogs';
 import { bookingDemo } from './demo';
+import { bookingRecoveryStore } from './recovery-store';
+import type { BookingCreateRecovery } from './recovery-store';
 import { createPlayerPerformanceApi } from '../api/player-performance';
 import type { PlayerPerformanceRepository } from './performance-model';
 import { unavailablePerformanceRepository } from './performance-model';
@@ -212,7 +215,7 @@ export function BookingPage({
     else if (path === '/player-bookings/new')
       page = (
         <BookingForm
-          key={location.search}
+          key={`${demo ? 'demo' : 'api'}:${data.viewerUserId}:${location.search}`}
           data={data}
           repository={repository}
           demo={demo}
@@ -899,6 +902,19 @@ function initialSlot(index = 0): Slot {
     venue: '',
   };
 }
+function definitiveCreateRejection(error: unknown, recovering: boolean) {
+  if (!(error instanceof ApiError)) return false;
+  // QUOTE_CHANGED is returned after the actor's idempotency lock/receipt lookup.
+  if (error.apiCode === 'QUOTE_CHANGED') return true;
+  if (recovering) return false; // A fresh 401/404/429 does not prove the original failed.
+  if (error.apiCode.startsWith('HTTP_')) return false; // An opaque proxy response is not a business rejection ACK.
+  return (
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    !['IDEMPOTENCY_CONFLICT', 'OPERATION_PENDING'].includes(error.apiCode)
+  );
+}
 function BookingForm({
   data,
   repository,
@@ -925,6 +941,20 @@ function BookingForm({
     [validation, setValidation] = useState('');
   const action = useAction();
   const requestId = useRef(commandId());
+  const latestViewer = useRef(data.viewerUserId);
+  latestViewer.current = data.viewerUserId;
+  const sending = useRef(false);
+  const recoveryMode = demo ? 'demo' : 'api';
+  const [initialRecovery] = useState(() =>
+    bookingRecoveryStore.load(recoveryMode, data.viewerUserId),
+  );
+  const [pendingCreate, setPendingCreate] = useState<BookingCreateRecovery | null>(
+    initialRecovery.entry,
+  );
+  const [invalidRecovery, setInvalidRecovery] = useState(initialRecovery.invalid);
+  const [checkedOrders, setCheckedOrders] = useState(false);
+  const [storageUnavailable, setStorageUnavailable] = useState(initialRecovery.storageUnavailable);
+  const [canRequote, setCanRequote] = useState(false);
   const team = data.teams.find((t) => t.id === teamId);
   const chosen = quoteData.players.filter((p) => selected.includes(p.id));
   const fixed = slots.filter((s) => !s.conditional),
@@ -953,8 +983,102 @@ function BookingForm({
     setScope(next);
     if (next === 'SINGLE') setSlots((rows) => [{ ...rows[0]!, conditional: false }]);
   }
+  function discardRecovery(entry: BookingCreateRecovery) {
+    bookingRecoveryStore.discard(recoveryMode, entry);
+  }
+  async function sendCreate(entry: BookingCreateRecovery) {
+    if (
+      sending.current ||
+      entry.actorUserId !== data.viewerUserId ||
+      latestViewer.current !== entry.actorUserId
+    )
+      return;
+    const recovery = bookingRecoveryStore.load(recoveryMode, entry.actorUserId);
+    if (recovery.invalid) {
+      setInvalidRecovery(true);
+      return;
+    }
+    const current = recovery.entry;
+    if (current && current !== entry) {
+      setPendingCreate(current);
+      setValidation('还有另一份原请求待核对，请先处理。');
+      return;
+    }
+    if (entry.inFlight) {
+      setPendingCreate(entry);
+      setValidation('原请求仍在处理中，请稍后再次核对；不会并发发送第二个请求。');
+      return;
+    }
+    if (entry.rejectedMessage) {
+      discardRecovery(entry);
+      setPendingCreate(null);
+      setCanRequote(true);
+      setRules(false);
+      requestId.current = commandId();
+      setValidation(`原请求已明确拒绝：${entry.rejectedMessage}。请重新核对报价与预约内容。`);
+      return;
+    }
+    if (entry.resolvedOrderId) {
+      discardRecovery(entry);
+      if (action.isActive()) onCreated(entry.resolvedOrderId);
+      return;
+    }
+    setValidation('');
+    const recovering = entry.uncertain;
+    // Shared with a new form mounted while this request is still pending.
+    entry.uncertain = true;
+    entry.inFlight = true;
+    sending.current = true;
+    if (!bookingRecoveryStore.save(recoveryMode, entry)) setStorageUnavailable(true);
+    try {
+      await action.run(async () => {
+        try {
+          // Recreate only the original serialized body. Editable form state and new
+          // quotes must never replace an envelope whose outcome is still unknown.
+          const result = await repository.create(JSON.parse(entry.payload) as BookingCreateInput);
+          entry.resolvedOrderId = result.id;
+          if (action.isActive() && latestViewer.current === entry.actorUserId) {
+            discardRecovery(entry);
+            setPendingCreate(null);
+            onCreated(result.id);
+          }
+        } catch (error) {
+          if (definitiveCreateRejection(error, recovering)) {
+            entry.rejectedMessage = error instanceof Error ? error.message : '原请求未被接受';
+            discardRecovery(entry);
+            if (action.isActive() && latestViewer.current === entry.actorUserId) {
+              setPendingCreate(null);
+              setCanRequote(true);
+              requestId.current = commandId();
+            }
+          } else {
+            entry.uncertain = true;
+            if (action.isActive() && latestViewer.current === entry.actorUserId) {
+              setPendingCreate(entry);
+              setCanRequote(false);
+            }
+          }
+          throw error;
+        }
+      }, '预约已提交');
+    } finally {
+      entry.inFlight = false;
+      sending.current = false;
+    }
+  }
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (sending.current) return;
+    const recovery = bookingRecoveryStore.load(recoveryMode, data.viewerUserId);
+    if (recovery.invalid || invalidRecovery) {
+      setInvalidRecovery(true);
+      return;
+    }
+    const unresolved = recovery.entry;
+    if (unresolved) {
+      setPendingCreate(unresolved);
+      return;
+    }
     setValidation('');
     if (slots.length * chosen.length > 64) {
       setValidation('每份预约最多64项球员场次，请拆分提交。');
@@ -1020,10 +1144,128 @@ function BookingForm({
         })),
       ),
     };
-    await action.run(async () => {
-      const o = await repository.create(input);
-      onCreated(o.id);
-    }, '预约已提交');
+    await sendCreate({
+      actorUserId: data.viewerUserId,
+      payload: JSON.stringify(input),
+      uncertain: false,
+    });
+  }
+  const recoveryStorageNotice = !demo && (
+    <Notice tone="warning">
+      {storageUnavailable
+        ? '本标签页无法保存恢复编号。刷新会丢恢复编号，请先查看原预约，再决定是否重新填写。'
+        : '恢复编号仅保存在本标签页，刷新后需本人主动核对；这不代表离线提交或自动重试。'}
+    </Notice>
+  );
+  if (invalidRecovery) {
+    return (
+      <section className="bk-panel">
+        <span className="bk-eyebrow">CHECK EXISTING RESERVATIONS</span>
+        <h1>恢复编号无法读取，请先核对原预约</h1>
+        <Notice tone="warning">
+          本标签页的恢复内容已损坏或不符合当前格式，已安全丢弃。此前请求可能已成功，请先查看本人预约记录，避免重复预约。
+        </Notice>
+        {recoveryStorageNotice}
+        <Link className="bk-button bk-outline" to="/player-bookings">
+          先查看我的预约
+        </Link>
+        <label className="bk-muted">
+          <input
+            type="checkbox"
+            checked={checkedOrders}
+            onChange={(e) => setCheckedOrders(e.target.checked)}
+          />
+          我已核对本人预约记录，并确认没有需要恢复的原预约
+        </label>
+        {validation && (
+          <p role="alert" className="bk-error">
+            {validation}
+          </p>
+        )}
+        <button
+          type="button"
+          className="bk-button bk-primary"
+          disabled={!checkedOrders}
+          onClick={() => {
+            const acknowledged = bookingRecoveryStore.acknowledgeInvalid(
+              recoveryMode,
+              data.viewerUserId,
+            );
+            setInvalidRecovery(!acknowledged);
+            if (!acknowledged) setStorageUnavailable(true);
+            setValidation(acknowledged ? '' : '恢复标记无法移除，请检查本标签页存储权限后再确认。');
+          }}
+        >
+          继续重新填写
+        </button>
+      </section>
+    );
+  }
+  if (pendingCreate && pendingCreate.actorUserId === data.viewerUserId) {
+    const original = JSON.parse(pendingCreate.payload) as BookingCreateInput;
+    const canRecover = data.teams.some(
+      (t) => t.id === original.teamId && t.orgId === original.orgId,
+    );
+    return (
+      <section className="bk-panel">
+        <span className="bk-eyebrow">RECOVER ORIGINAL RESERVATION</span>
+        <h1>{pendingCreate.resolvedOrderId ? '原预约已创建，请查看结果' : '原预约结果待核对'}</h1>
+        <Notice tone="warning">
+          原请求可能已成功。已保留原操作编号与原始预约内容，当前不能重新报价或另建预约。
+        </Notice>
+        {recoveryStorageNotice}
+        {canRecover ? (
+          <>
+            <p>
+              <strong>原赛事：{original.eventName}</strong> · {scopeLabels[original.scope]} ·{' '}
+              {original.appearances.length}项球员服务
+            </p>
+            <details className="bk-muted">
+              <summary>查看原预约的场次信息</summary>
+              <ul style={{ maxHeight: 260, overflowY: 'auto' }}>
+                {original.appearances.map((a, i) => (
+                  <li key={i}>
+                    {a.label} ·{' '}
+                    {a.conditional
+                      ? `条件意向：${a.conditionText}`
+                      : localTime(a.startAt ?? null, true)}{' '}
+                    · {a.venue}
+                  </li>
+                ))}
+              </ul>
+            </details>
+            {(validation || action.error) && (
+              <p role="alert" className="bk-error">
+                {validation || action.error}
+              </p>
+            )}
+            <div className="bk-dialog-actions">
+              <Link className="bk-button bk-outline" to="/player-bookings">
+                先查看我的预约
+              </Link>
+              <button
+                type="button"
+                className="bk-button bk-primary"
+                disabled={action.busy}
+                onClick={() => {
+                  void sendCreate(pendingCreate);
+                }}
+              >
+                {action.busy
+                  ? '正在核对原请求…'
+                  : pendingCreate.resolvedOrderId
+                    ? '查看原预约'
+                    : '恢复原请求结果'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <p role="alert" className="bk-error">
+            当前账号已无原球队授权，不能显示或重试原预约。请先核对授权，再查看本人预约记录。
+          </p>
+        )}
+      </section>
+    );
   }
   if (!data.teams.length)
     return (
@@ -1047,7 +1289,12 @@ function BookingForm({
         一份合作预约，逐人逐场确认。先核对赛程与费用，再交给球员选择。
       </Heading>
       <form className="bk-checkout-layout" onSubmit={(e) => void submit(e)}>
-        <div className="bk-form-main">
+        <fieldset
+          className="bk-form-main"
+          aria-label="预约内容"
+          disabled={action.busy}
+          style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+        >
           <section className="bk-panel">
             <h2 className="bk-number-title">
               <span>01</span>选择合作方式
@@ -1359,7 +1606,7 @@ function BookingForm({
               我已阅读预约、变更与逐场取消规则，并知悉当前不发生线上资金交易
             </label>
           </section>
-        </div>
+        </fieldset>
         <aside className="bk-panel bk-checkout-aside">
           <span className="bk-eyebrow">RESERVATION SUMMARY</span>
           <h2>费用明细</h2>
@@ -1401,22 +1648,31 @@ function BookingForm({
           <Notice tone="warning">
             线上支付与分账尚未接通。提交仅创建预约记录，费用为报价，实收为0。
           </Notice>
+          {recoveryStorageNotice}
           {(validation || action.error) && (
             <p className="bk-error" role="alert">
               {validation || action.error}
             </p>
           )}
-          {action.error && (
+          {canRequote && !pendingCreate && (
             <button
               type="button"
               className="bk-button bk-outline"
               disabled={action.busy}
               onClick={() => {
                 void action.run(async () => {
+                  const actorUserId = data.viewerUserId;
                   const fresh = await repository.workspace();
+                  if (
+                    !action.isActive() ||
+                    latestViewer.current !== actorUserId ||
+                    fresh.viewerUserId !== actorUserId
+                  )
+                    return;
                   setQuoteData(fresh);
                   setRules(false);
                   requestId.current = commandId();
+                  setCanRequote(false);
                 }, '最新报价已读取，请重新核对并勾选预约规则。');
               }}
             >

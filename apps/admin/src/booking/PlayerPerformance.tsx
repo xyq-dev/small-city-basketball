@@ -507,6 +507,151 @@ const linkStatus: Record<string, string> = {
   APPROVED: '已同意公开',
   REVOKED: '已拒绝 / 撤销',
 };
+type AuthorizationPageState = {
+  scope: object;
+  data?: PlayerPerformanceWorkspaceData;
+  loading: boolean;
+  error: string;
+  pageLoading: boolean;
+  pageError: string;
+};
+function useAuthorizationPages(
+  repository: PlayerPerformanceRepository,
+  viewerUserId: string,
+  revision: number,
+) {
+  const [refresh, setRefresh] = useState(0);
+  // Viewer changes and refreshes invalidate in-flight pages before they can append private rows.
+  const scope = useMemo(() => ({}), [repository, viewerUserId, revision, refresh]);
+  const currentScope = useRef<object | null>(scope);
+  currentScope.current = scope;
+  const request = useRef<object | null>(null);
+  const cursors = useRef(new Set<string>());
+  const [state, setState] = useState<AuthorizationPageState>({
+    scope,
+    loading: true,
+    error: '',
+    pageLoading: false,
+    pageError: '',
+  });
+  const current: AuthorizationPageState =
+    state.scope === scope
+      ? state
+      : {
+          scope,
+          loading: true,
+          error: '',
+          pageLoading: false,
+          pageError: '',
+        };
+  const latest = useRef(current);
+  latest.current = current;
+  function verify(page: PlayerPerformanceWorkspaceData) {
+    if (page.viewerUserId !== viewerUserId) throw new Error('数据授权身份已变化，请重新读取。');
+    if (
+      page.links.length > 50 ||
+      new Set(page.links.map((l) => l.id)).size !== page.links.length ||
+      page.linksHasMore !== (page.nextCursor !== null) ||
+      (page.nextCursor !== null &&
+        (!page.nextCursor || page.links.length === 0 || cursors.current.has(page.nextCursor)))
+    )
+      throw new Error('授权记录分页资料不完整，请刷新后重新读取。');
+  }
+  useEffect(() => {
+    let active = true;
+    currentScope.current = scope;
+    request.current = scope;
+    cursors.current = new Set();
+    setState({ scope, loading: true, error: '', pageLoading: false, pageError: '' });
+    void repository
+      .workspace()
+      .then((page) => {
+        if (!active || currentScope.current !== scope) return;
+        verify(page);
+        if (page.nextCursor !== null) cursors.current.add(page.nextCursor);
+        setState({
+          scope,
+          data: page,
+          loading: false,
+          error: '',
+          pageLoading: false,
+          pageError: '',
+        });
+      })
+      .catch((error: unknown) => {
+        if (active && currentScope.current === scope)
+          setState({
+            scope,
+            loading: false,
+            error: error instanceof Error ? error.message : '无法读取数据授权，请重试。',
+            pageLoading: false,
+            pageError: '',
+          });
+      })
+      .finally(() => {
+        if (request.current === scope) request.current = null;
+      });
+    return () => {
+      active = false;
+      if (currentScope.current === scope) currentScope.current = null;
+    };
+  }, [scope]);
+  async function loadMore() {
+    const data = latest.current.data,
+      cursor = data?.nextCursor;
+    if (!data || !cursor || request.current === scope || currentScope.current !== scope) return;
+    request.current = scope;
+    setState((s) => ({ ...s, pageLoading: true, pageError: '' }));
+    try {
+      const page = await repository.workspace(cursor);
+      if (currentScope.current !== scope) return;
+      verify(page);
+      if (page.nextCursor !== null) cursors.current.add(page.nextCursor);
+      setState((s) => {
+        if (s.scope !== scope || !s.data) return s;
+        const merged = new Map(s.data.links.map((l) => [l.id, l]));
+        for (const l of page.links) merged.set(l.id, l);
+        return {
+          ...s,
+          data: { ...page, links: [...merged.values()] },
+          pageLoading: false,
+          pageError: '',
+        };
+      });
+    } catch (error) {
+      if (currentScope.current === scope)
+        setState((s) => ({
+          ...s,
+          pageLoading: false,
+          pageError: error instanceof Error ? error.message : '无法读取更多授权记录，请重试。',
+        }));
+    } finally {
+      if (request.current === scope) request.current = null;
+    }
+  }
+  function updateLink(id: string, value?: PlayerPerformanceLinkData) {
+    setState((s) =>
+      s.scope !== scope || !s.data
+        ? s
+        : {
+            ...s,
+            data: {
+              ...s.data,
+              links: s.data.links.map((l) =>
+                l.id !== id
+                  ? l
+                  : (value ?? {
+                      ...l,
+                      capabilities: { canConsent: false, canRevoke: false },
+                      sourceCurrentlyAvailable: false,
+                    }),
+              ),
+            },
+          },
+    );
+  }
+  return { ...current, scope, loadMore, updateLink, reload: () => setRefresh((n) => n + 1) };
+}
 export function DataAuthorizations({
   bookingData,
   ownOnly = false,
@@ -516,24 +661,60 @@ export function DataAuthorizations({
 }) {
   const context = useContext(Context);
   const { repository, viewerUserId, revision, demo } = context;
-  const read = useCallback(async () => {
-    const value = await repository.workspace();
-    if (value.viewerUserId !== viewerUserId) throw new Error('数据授权身份已变化，请重新读取。');
-    return value;
-  }, [repository, viewerUserId, revision]);
-  const resource = useResource(read);
+  const resource = useAuthorizationPages(repository, viewerUserId, revision);
   const data = resource.data?.viewerUserId === viewerUserId ? resource.data : undefined;
+  const currentScope = useRef(resource.scope);
+  currentScope.current = resource.scope;
+  const checkRequest = useRef<object | null>(null);
   const [pending, setPending] = useState<{
       link: PlayerPerformanceLinkData;
       type: 'CONSENT' | 'REVOKE';
       commandId: string;
       viewerUserId: string;
     } | null>(null),
-    [draft, setDraft] = useState(false);
+    [draft, setDraft] = useState(false),
+    [checking, setChecking] = useState<string | null>(null),
+    [checkError, setCheckError] = useState('');
   useEffect(() => {
     setPending(null);
     setDraft(false);
-  }, [viewerUserId]);
+    setChecking(null);
+    setCheckError('');
+    checkRequest.current = null;
+    return () => {
+      checkRequest.current = null;
+    };
+  }, [resource.scope]);
+  const blocked =
+    Boolean(pending) || draft || Boolean(checking) || resource.loading || resource.pageLoading;
+  async function checkLink(l: PlayerPerformanceLinkData, type: 'CONSENT' | 'REVOKE') {
+    if (blocked || checkRequest.current) return;
+    const token = {},
+      scope = resource.scope;
+    checkRequest.current = token;
+    setChecking(l.id);
+    setCheckError('');
+    try {
+      const fresh = await repository.link(l.id);
+      if (checkRequest.current !== token || currentScope.current !== scope) return;
+      if (fresh.id !== l.id) throw new Error('授权记录核验不一致，请刷新。');
+      resource.updateLink(l.id, fresh);
+      if (type === 'CONSENT' ? !fresh.capabilities.canConsent : !fresh.capabilities.canRevoke) {
+        setCheckError('当前已不能执行这项授权操作，请刷新核对权限或记录状态。');
+        return;
+      }
+      setPending({ link: fresh, type, commandId: commandId(), viewerUserId });
+    } catch (error) {
+      if (checkRequest.current !== token || currentScope.current !== scope) return;
+      resource.updateLink(l.id);
+      setCheckError(error instanceof Error ? error.message : '无法核验当前授权权限，请刷新。');
+    } finally {
+      if (checkRequest.current === token && currentScope.current === scope) {
+        checkRequest.current = null;
+        setChecking(null);
+      }
+    }
+  }
   const links = data?.links.filter((l) => !ownOnly || l.profileId === data.ownProfileId) ?? [];
   return (
     <section className="bk-panel pf-authorizations">
@@ -544,7 +725,7 @@ export function DataAuthorizations({
         </div>
         <button
           className="bk-button bk-outline bk-small"
-          disabled={Boolean(pending) || draft}
+          disabled={blocked}
           onClick={resource.reload}
         >
           <RefreshCw size={15} />
@@ -587,8 +768,15 @@ export function DataAuthorizations({
           {ownOnly && !data.ownProfileId ? (
             <p className="bk-muted">先建立本人球员档案，主办方才能向你的档案提名参赛记录。</p>
           ) : null}
-          {data.linksHasMore && (
-            <p className="bk-muted">当前展示最近一批授权记录，更早记录未列出。</p>
+          {checking && (
+            <p role="status" className="bk-muted">
+              正在核验该授权记录的当前权限…
+            </p>
+          )}
+          {checkError && (
+            <p role="alert" className="bk-error">
+              {checkError}
+            </p>
           )}
           {links.length ? (
             <div className="pf-link-list">
@@ -622,14 +810,8 @@ export function DataAuthorizations({
                     {l.capabilities.canConsent && (
                       <button
                         className="bk-button bk-primary bk-small"
-                        onClick={() =>
-                          setPending({
-                            link: l,
-                            type: 'CONSENT',
-                            commandId: commandId(),
-                            viewerUserId,
-                          })
-                        }
+                        disabled={blocked}
+                        onClick={() => void checkLink(l, 'CONSENT')}
                       >
                         核对本人记录并同意公开
                       </button>
@@ -637,14 +819,8 @@ export function DataAuthorizations({
                     {l.capabilities.canRevoke && (
                       <button
                         className="bk-button bk-outline bk-small"
-                        onClick={() =>
-                          setPending({
-                            link: l,
-                            type: 'REVOKE',
-                            commandId: commandId(),
-                            viewerUserId,
-                          })
-                        }
+                        disabled={blocked}
+                        onClick={() => void checkLink(l, 'REVOKE')}
                       >
                         {l.status === 'PENDING' ? '拒绝本次公开' : '撤销公开授权'}
                       </button>
@@ -656,9 +832,27 @@ export function DataAuthorizations({
           ) : (
             <div className="pf-no-stats">
               <ClipboardCheck size={25} />
-              <h3>暂无数据授权记录</h3>
-              <p>主办方提名后，由球员本人核对并选择是否公开。不会按姓名自动匹配身份。</p>
+              <h3>{data.linksHasMore ? '当前已加载记录中暂无本人授权' : '暂无数据授权记录'}</h3>
+              <p>
+                {data.linksHasMore
+                  ? '还有更早的授权记录，可以继续加载。'
+                  : '主办方提名后，由球员本人核对并选择是否公开。不会按姓名自动匹配身份。'}
+              </p>
             </div>
+          )}
+          {resource.pageError && (
+            <p role="alert" className="bk-error">
+              {resource.pageError} 已加载记录仍保留，可重试。
+            </p>
+          )}
+          {data.linksHasMore && (
+            <button
+              className="bk-button bk-outline bk-small"
+              disabled={blocked}
+              onClick={() => void resource.loadMore()}
+            >
+              {resource.pageLoading ? '正在加载更多授权记录…' : '加载更多授权记录'}
+            </button>
           )}
         </>
       ) : null}

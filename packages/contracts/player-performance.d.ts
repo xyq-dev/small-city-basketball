@@ -68,6 +68,8 @@ export interface PlayerPerformanceWorkspaceData {
   manageableEvents: { id: string; orgId: string; name: string; format: string }[];
   links: PlayerPerformanceLinkData[];
   linksHasMore: boolean;
+  /** Private, actor-bound keyset cursor. Null means there is no following page. */
+  nextCursor: string | null;
   disclosureNotice: string;
 }
 export interface PlayerPerformanceSourcesData {

@@ -230,16 +230,72 @@ export function createDemoPerformanceRepository(
         unavailableProfileIds: ids.filter((id) => !available.includes(id)),
       };
     },
-    async workspace(): Promise<PlayerPerformanceWorkspaceData> {
+    async workspace(cursor?: string): Promise<PlayerPerformanceWorkspaceData> {
+      const viewerUserId = user();
+      let boundary: { createdAt: string; id: string } | undefined;
+      if (cursor !== undefined) {
+        try {
+          if (cursor.length < 1 || cursor.length > 2048) throw new Error();
+          const value: unknown = JSON.parse(atob(cursor));
+          if (
+            !value ||
+            typeof value !== 'object' ||
+            Object.keys(value).length !== 3 ||
+            !('viewerUserId' in value) ||
+            value.viewerUserId !== viewerUserId ||
+            !('createdAt' in value) ||
+            typeof value.createdAt !== 'string' ||
+            !Number.isFinite(Date.parse(value.createdAt)) ||
+            !('id' in value) ||
+            typeof value.id !== 'string' ||
+            !value.id
+          )
+            throw new Error();
+          boundary = { createdAt: value.createdAt, id: value.id };
+        } catch {
+          throw new Error('授权记录游标已失效，请重新读取。');
+        }
+      }
+      const visible = links
+        .filter((l) => l.profileId === own() || publisher())
+        .sort((a, b) =>
+          a.createdAt === b.createdAt
+            ? a.id < b.id
+              ? 1
+              : a.id === b.id
+                ? 0
+                : -1
+            : a.createdAt < b.createdAt
+              ? 1
+              : -1,
+        )
+        .filter(
+          (l) =>
+            !boundary ||
+            l.createdAt < boundary.createdAt ||
+            (l.createdAt === boundary.createdAt && l.id < boundary.id),
+        );
+      const page = visible.slice(0, 50),
+        last = page.at(-1);
+      const nextCursor =
+        visible.length > 50 && last
+          ? btoa(JSON.stringify({ viewerUserId, createdAt: last.createdAt, id: last.id }))
+          : null;
       return copy({
-        viewerUserId: user(),
+        viewerUserId,
         ownProfileId: own(),
         manageableEvents: publisher() ? events : [],
-        links: links.filter((l) => l.profileId === own() || publisher()).map(project),
-        linksHasMore: false,
+        links: page.map(project),
+        linksHasMore: nextCursor !== null,
+        nextCursor,
         disclosureNotice:
           '主办方提名与球员本人同意后，仅公开本人有限得分/犯规记录。撤销后下次读取不再展示该来源，不开放原私有赛事接口。',
       });
+    },
+    async link(id) {
+      const value = links.find((l) => l.id === id && (l.profileId === own() || publisher()));
+      if (!value) throw new Error('当前没有权限读取该授权记录，请刷新。');
+      return copy(project(value));
     },
     async sources(orgId, eventId) {
       if (!publisher()) throw new Error('当前没有该赛事数据管理权。');

@@ -124,10 +124,84 @@ describe(
       );
     }
 
-    async function workspace(user: User) {
+    async function workspace(user: User, cursor?: string) {
       return data<PlayerPerformanceWorkspaceData>(
-        await call(h.api, 'get', `${performance}/workspace`, { cookie: user.cookie }),
+        await call(
+          h.api,
+          'get',
+          `${performance}/workspace${cursor ? `?${new URLSearchParams({ cursor })}` : ''}`,
+          { cookie: user.cookie },
+        ),
       );
+    }
+
+    async function allLinks(user: User) {
+      const links: PlayerPerformanceLinkData[] = [];
+      const cursors = new Set<string>();
+      let cursor: string | undefined;
+      for (let page = 0; page < 100; page++) {
+        const current = await workspace(user, cursor);
+        expect(current.viewerUserId).toBe(user.id);
+        expect(current.links.length).toBeLessThanOrEqual(50);
+        expect(current.linksHasMore).toBe(current.nextCursor !== null);
+        links.push(...current.links);
+        if (current.nextCursor === null) {
+          expect(new Set(links.map((link) => link.id)).size).toBe(links.length);
+          return links;
+        }
+        expect(current.nextCursor.length).toBeGreaterThan(0);
+        expect(cursors.has(current.nextCursor)).toBe(false);
+        cursors.add(current.nextCursor);
+        cursor = current.nextCursor;
+      }
+      throw new Error('Consent pagination did not terminate');
+    }
+
+    async function revokedHistory(target: Provider, source: PersonalFixture, count: number) {
+      // Schema-valid synthetic history in this owned scb_test_* fixture only.
+      // One nomination is revoked before the next is inserted, preserving both
+      // active-source unique indexes. Every created_at shares one millisecond
+      // but has distinct microseconds, so JS millisecond cursor loss is exposed.
+      const c = await h.api.pool.connect();
+      const ids: string[] = [];
+      try {
+        await c.query('BEGIN');
+        const origin = (
+          await c.query<{ base: string }>(
+            `SELECT to_char(date_trunc('milliseconds',clock_timestamp()) AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS base`,
+          )
+        ).rows[0]!.base;
+        for (let index = 0; index < count; index++) {
+          const linkId = randomUUID();
+          await c.query(
+            `INSERT INTO booking_performance_links(id,profile_id,org_id,event_id,team_id,member_id,nominated_by,publisher_reason,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::timestamptz+$10::int*interval '1 microsecond')`,
+            [
+              linkId,
+              target.profile.id,
+              h.owner.orgId,
+              source.fixture.event.event.id,
+              source.teamId,
+              source.memberId,
+              h.owner.id,
+              why,
+              origin,
+              index + 1,
+            ],
+          );
+          await c.query(
+            `UPDATE booking_performance_links SET status='REVOKED',version=version+1,revoked_by=$2,revoked_at=clock_timestamp(),revoke_reason=$3,updated_at=clock_timestamp() WHERE id=$1`,
+            [linkId, target.actor.id, why],
+          );
+          ids.push(linkId);
+        }
+        await c.query('COMMIT');
+        return ids;
+      } catch (failure) {
+        await c.query('ROLLBACK');
+        throw failure;
+      } finally {
+        c.release();
+      }
     }
 
     async function personalFixture(
@@ -780,6 +854,136 @@ describe(
         }),
       );
       error(await call(h.api, 'get', publicPath(target.profile.id)), 404);
+    });
+
+    test('all pages reach an old approved own consent beyond 205 newer revoked rows without losing microsecond records or actor scope', async () => {
+      const target = await provider('pagination-history');
+      const source = await personalFixture();
+      const old = await approved(target, source);
+      const historicalSource = await personalFixture();
+      const histories = await revokedHistory(target, historicalSource, 205);
+      const first = await workspace(target.actor);
+      expect(first.links).toHaveLength(50);
+      expect(first.linksHasMore).toBe(true);
+      expect(first.nextCursor).toEqual(expect.any(String));
+      expect(first.links.map((link) => link.id)).not.toContain(old.id);
+      const decoded = JSON.parse(Buffer.from(first.nextCursor!, 'base64url').toString('utf8'));
+      expect(decoded.createdAt).toMatch(/\.\d{6}Z$/);
+      const expected = (
+        await h.api.pool.query<{ id: string }>(
+          'SELECT id FROM booking_performance_links WHERE profile_id=$1 ORDER BY created_at DESC,id DESC',
+          [target.profile.id],
+        )
+      ).rows.map((row) => row.id);
+      expect(expected).toHaveLength(206);
+      const complete = await allLinks(target.actor);
+      expect(complete.map((link) => link.id)).toEqual(expected);
+      expect(new Set(complete.map((link) => link.id))).toEqual(new Set([old.id, ...histories]));
+
+      error(
+        await call(
+          h.api,
+          'get',
+          `${performance}/workspace?${new URLSearchParams({ cursor: first.nextCursor! })}`,
+          { cookie: stranger.cookie },
+        ),
+        422,
+      );
+      const malformed = Buffer.from(
+        JSON.stringify({ ...decoded, createdAt: '2026-02-30T00:00:00.000001Z' }),
+      ).toString('base64url');
+      error(
+        await call(
+          h.api,
+          'get',
+          `${performance}/workspace?${new URLSearchParams({ cursor: malformed })}`,
+          { cookie: target.actor.cookie },
+        ),
+        422,
+      );
+      error(
+        await call(h.api, 'get', `${performance}/links/${old.id}`, { cookie: stranger.cookie }),
+        404,
+      );
+      const fresh = data<PlayerPerformanceLinkData>(
+        await call(h.api, 'get', `${performance}/links/${old.id}`, { cookie: target.actor.cookie }),
+      );
+      expect(fresh).toMatchObject({
+        id: old.id,
+        status: 'APPROVED',
+        version: old.version,
+        capabilities: { canRevoke: true },
+      });
+      expect(
+        data<PlayerPerformanceLinkData>(await linkCommand(fresh, target.actor, 'REVOKE')).status,
+      ).toBe('REVOKED');
+      expect(await read(target.profile.id)).toMatchObject({ sourceCount: 0, totalPoints: null });
+
+      // The same cursor must still apply current permissions on every page.
+      // Revoking an event role after page one hides that event's older rows.
+      for (const eventId of [
+        source.fixture.event.event.id,
+        historicalSource.fixture.event.event.id,
+      ])
+        data(
+          await call(h.api, 'put', staffPath(h.owner.orgId, eventId, h.otherOwner.id), {
+            cookie: h.owner.cookie,
+            body: { role: 'EVENT_MANAGER', status: 'ACTIVE' },
+          }),
+        );
+      const managerPage = await workspace(h.otherOwner);
+      expect(managerPage.links).toHaveLength(50);
+      expect(
+        managerPage.links.every((link) => link.eventId === historicalSource.fixture.event.event.id),
+      ).toBe(true);
+      expect(managerPage.nextCursor).toEqual(expect.any(String));
+      data(
+        await call(
+          h.api,
+          'put',
+          staffPath(h.owner.orgId, historicalSource.fixture.event.event.id, h.otherOwner.id),
+          { cookie: h.owner.cookie, body: { role: 'EVENT_MANAGER', status: 'DISABLED' } },
+        ),
+      );
+      const afterRevocation = await workspace(h.otherOwner, managerPage.nextCursor!);
+      expect(
+        afterRevocation.links.every(
+          (link) => link.eventId !== historicalSource.fixture.event.event.id,
+        ),
+      ).toBe(true);
+      error(
+        await call(h.api, 'get', `${performance}/links/${histories[0]}`, {
+          cookie: h.otherOwner.cookie,
+        }),
+        404,
+      );
+    });
+
+    test('older managed-event consent remains reachable even when its event is outside the newest 200 nomination dropdown entries', async () => {
+      const source = await personalFixture();
+      const target = await provider('old-managed-event');
+      const link = await approved(target, source);
+      // Draft-only synthetic events create dropdown pressure without changing
+      // any original roster or result. Link authorization must not use this cap.
+      await h.api.pool.query(
+        `INSERT INTO events(id,org_id,name,start_date,end_date,timezone,format,created_by) SELECT gen_random_uuid(),$1,'合成分页赛事 '||n,DATE '2040-01-01'+n,DATE '2040-01-01'+n,'Asia/Shanghai','ROUND_ROBIN',$2 FROM generate_series(1,205) n`,
+        [h.owner.orgId, h.owner.id],
+      );
+      const first = await workspace(h.owner);
+      expect(first.manageableEvents).toHaveLength(200);
+      expect(first.manageableEvents.map((event) => event.id)).not.toContain(
+        source.fixture.event.event.id,
+      );
+      const complete = await allLinks(h.owner);
+      expect(complete.map((item) => item.id)).toContain(link.id);
+      const current = data<PlayerPerformanceLinkData>(
+        await call(h.api, 'get', `${performance}/links/${link.id}`, { cookie: h.owner.cookie }),
+      );
+      expect(current.capabilities.canRevoke).toBe(true);
+      expect(
+        data<PlayerPerformanceLinkData>(await linkCommand(current, h.owner, 'REVOKE')).status,
+      ).toBe('REVOKED');
+      expect(await read(target.profile.id)).toMatchObject({ sourceCount: 0 });
     });
 
     test('a completed reservation is a service record, never evidence of a paid transaction or collected platform revenue', async () => {

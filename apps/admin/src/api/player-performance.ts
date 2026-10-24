@@ -137,8 +137,14 @@ export function parsePerformanceWorkspace(v: unknown): PlayerPerformanceWorkspac
       (e) => object(e) && ['id', 'orgId', 'name', 'format'].every((k) => text(e[k])),
     ) ||
     !Array.isArray(v.links) ||
+    v.links.length > 50 ||
     !v.links.every(link) ||
+    new Set(v.links.map((l) => l.id)).size !== v.links.length ||
     typeof v.linksHasMore !== 'boolean' ||
+    (v.nextCursor !== null &&
+      (!text(v.nextCursor) || v.nextCursor.length < 1 || v.nextCursor.length > 2048)) ||
+    v.linksHasMore !== (v.nextCursor !== null) ||
+    (v.linksHasMore && v.links.length === 0) ||
     !text(v.disclosureNotice)
   )
     invalid();
@@ -228,8 +234,18 @@ export function createPlayerPerformanceApi(
         invalid();
       return { players, unavailableProfileIds: raw.unavailableProfileIds as string[] };
     },
-    async workspace() {
-      return parsePerformanceWorkspace((await client.request<unknown>(`${root}/workspace`)).data);
+    async workspace(cursor) {
+      const query = cursor === undefined ? '' : `?${new URLSearchParams({ cursor })}`;
+      const value = parsePerformanceWorkspace(
+        (await client.request<unknown>(`${root}/workspace${query}`)).data,
+      );
+      if (cursor !== undefined && value.nextCursor === cursor) invalid();
+      return value;
+    },
+    async link(id) {
+      const value = (await client.request<unknown>(`${root}/links/${encodeURIComponent(id)}`)).data;
+      if (!link(value) || value.id !== id) invalid();
+      return value;
     },
     async sources(orgId, eventId) {
       const query = new URLSearchParams({ orgId, eventId });

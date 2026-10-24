@@ -96,4 +96,50 @@ describe('公开统计与私有授权API边界', () => {
     await api.command(workspace.links[1]!.id, input);
     expect(JSON.parse(String(request.mock.calls[0]?.[1]?.body))).toEqual(input);
   });
+  it('私有工作区编码游标，并独立重读当前授权能力', async () => {
+    const booking = createDemoBookingRepository();
+    booking.setRole('player');
+    const workspace = await createDemoPerformanceRepository(booking).workspace();
+    const request = vi
+      .fn<ApiClient['request']>()
+      .mockResolvedValueOnce({ data: workspace, meta: { requestId: 'page' } })
+      .mockResolvedValueOnce({ data: workspace.links[0], meta: { requestId: 'link' } });
+    const api = createPlayerPerformanceApi({ request: request as ApiClient['request'] });
+    await api.workspace('opaque/+cursor=');
+    expect(request.mock.calls[0]?.[0]).toBe(
+      '/v1/player-bookings/performance/workspace?cursor=opaque%2F%2Bcursor%3D',
+    );
+    expect(await api.link(workspace.links[0]!.id)).toEqual(workspace.links[0]);
+    expect(request.mock.calls[1]?.[0]).toBe(
+      `/v1/player-bookings/performance/links/${workspace.links[0]!.id}`,
+    );
+  });
+  it('拒绝缺失或矛盾游标、重复记录、无限页和错误单条ID', async () => {
+    const booking = createDemoBookingRepository();
+    booking.setRole('player');
+    const workspace = await createDemoPerformanceRepository(booking).workspace();
+    for (const bad of [
+      { ...workspace, nextCursor: undefined },
+      { ...workspace, linksHasMore: true },
+      { ...workspace, nextCursor: 'more', linksHasMore: false },
+      { ...workspace, nextCursor: '', linksHasMore: true },
+      { ...workspace, links: [], nextCursor: 'more', linksHasMore: true },
+      { ...workspace, links: [workspace.links[0], workspace.links[0]] },
+      {
+        ...workspace,
+        links: Array.from({ length: 51 }, (_, i) => ({ ...workspace.links[0], id: `id-${i}` })),
+      },
+    ])
+      expect(() => parsePerformanceWorkspace(bad)).toThrow('不完整');
+    const request = vi
+      .fn<ApiClient['request']>()
+      .mockResolvedValueOnce({
+        data: { ...workspace, linksHasMore: true, nextCursor: 'same' },
+        meta: { requestId: 'page' },
+      })
+      .mockResolvedValueOnce({ data: workspace.links[0], meta: { requestId: 'link' } });
+    const api = createPlayerPerformanceApi({ request: request as ApiClient['request'] });
+    await expect(api.workspace('same')).rejects.toThrow('不完整');
+    await expect(api.link('different')).rejects.toThrow('不完整');
+  });
 });
