@@ -1,0 +1,2 @@
+.home-page { padding-bottom:calc(170rpx + env(safe-area-inset-bottom)); }
+.home-page > button { margin-bottom:31rpx; }

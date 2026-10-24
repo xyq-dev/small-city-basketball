@@ -1,0 +1,64 @@
+<view class="page has-actions">
+  <view class="notice">
+    <view class="section-title">按需求选人</view>
+    <view>先看位置、档期与数据样本，再比较含费报价。</view>
+  </view>
+  <view wx:if="{{loginRequired}}" class="card empty">
+    <view class="subtitle">登录后查看球员服务资料</view>
+    <view class="muted">球员目录使用当前应用账号读取，不会用演示资料替代。</view>
+    <button class="primary" bindtap="login">登录并返回找球员</button>
+  </view>
+  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
+  <block wx:if="{{!loginRequired}}">
+    <button class="secondary" bindtap="filtersToggle">{{filtersOpen ? '收起筛选' : '筛选位置、价格与档期'}}</button>
+    <view wx:if="{{filtersOpen}}" class="card filters">
+      <view class="field-label">球员姓名</view>
+      <input class="field" value="{{filters.search}}" data-field="search" bindinput="input" placeholder="搜索球员姓名" maxlength="80" />
+      <view class="field-label">服务地区</view>
+      <input class="field" value="{{filters.city}}" data-field="city" bindinput="input" placeholder="例如高州、石鼓" maxlength="80" />
+      <view class="field-label">球员位置</view>
+      <picker range="{{positionOptions}}" value="{{positionIndex}}" bindchange="positionChange"><view class="field picker-value">{{positionOptions[positionIndex]}}<text>⌄</text></view></picker>
+      <view class="field-label">相同参赛服务费</view>
+      <input class="field" type="digit" value="{{filters.price}}" data-field="price" bindinput="input" placeholder="不限价格，输入金额如300" maxlength="10" />
+      <view class="muted small">同价只比较参赛服务费，不含平台费、交通和食宿。</view>
+      <view class="field-label">比赛日期</view>
+      <picker mode="date" value="{{filters.date}}" bindchange="dateChange"><view class="field picker-value">{{filters.date || '不限日期'}}<text>⌄</text></view></picker>
+      <button class="quiet" bindtap="clearDate">不限日期</button>
+      <view class="muted small">筛选该日有可约窗口的球员；具体时段仍需提交时核验。</view>
+      <view class="field-label">报价排序</view>
+      <picker range="{{sortOptions}}" value="{{sortIndex}}" bindchange="sortChange"><view class="field picker-value">{{sortOptions[sortIndex]}}<text>⌄</text></view></picker>
+      <checkbox-group bindchange="samePriceChange"><label class="consent"><checkbox value="same" checked="{{filters.samePrice}}" />与首位已选球员同价、同位置</label></checkbox-group>
+      <button class="primary" bindtap="applyFilters" disabled="{{loading}}">应用筛选</button>
+      <button class="quiet" bindtap="clearFilters" disabled="{{loading}}">清空筛选</button>
+    </view>
+    <view wx:if="{{selectionNotice}}" class="notice warning">{{selectionNotice}}</view>
+    <view wx:if="{{statisticsError}}" class="notice warning">统计暂时无法读取：{{statisticsError}}。旧统计已清除，可刷新后重试。</view>
+    <view wx:if="{{loading}}" class="card empty">正在读取球员与授权统计…</view>
+    <view wx:if="{{!loading && !cards.length && !error}}" class="card empty">
+      <view class="subtitle">暂无匹配球员</view><view class="muted">可以放宽日期、位置或价格，再找一找。</view>
+      <button class="secondary" bindtap="filtersToggle">调整筛选条件</button>
+    </view>
+    <block wx:for="{{cards}}" wx:key="id">
+      <view class="card player-card">
+        <view class="player-head"><view class="subtitle player-name">{{item.name}}</view><view class="badge">{{item.position}}</view></view>
+        <view class="muted small">{{item.height}}cm · {{item.city}} · 本人填写</view>
+        <view class="title price">{{item.price}}<text class="unit"> / 场</text></view>
+        <view class="small">{{item.performance.sample}} 场统计样本 · 每场记录 {{item.performance.points}} 分 / {{item.performance.fouls}} 犯规</view>
+        <view class="muted small">完成服务 {{item.performance.services}} 次 · {{item.performance.status}}</view>
+        <view class="total">含平台及交通食宿预计 {{item.total}}</view>
+        <view class="muted small">已通过入驻资料审核，未核验本场资格或保险。</view>
+        <view class="player-actions">
+          <button class="secondary" data-id="{{item.id}}" bindtap="detail">详情与数据</button>
+          <button class="{{item.selected ? 'primary' : 'secondary'}}" data-id="{{item.id}}" bindtap="toggle">{{item.selected ? '移出对比' : '加入对比'}}</button>
+        </view>
+      </view>
+    </block>
+    <button wx:if="{{hasMore}}" class="secondary" bindtap="more" disabled="{{loading}}">加载更多球员</button>
+    <view wx:if="{{!loading && cards.length}}" class="muted small catalog-notice">当前显示 {{showingCount}} / {{filteredCount}} 位匹配球员。目录最多读取最新200位已审核档案，筛选仅在当前目录内进行。</view>
+    <view wx:if="{{catalogLimited}}" class="notice warning">目录达到200位上限，不代表全部球员。可联系平台核对其他档案。</view>
+  </block>
+  <view class="action-bar">
+    <button class="primary" bindtap="compare" disabled="{{loading || selectedCount < 2}}">对比已选球员 · {{selectedCount}}/3</button>
+    <button class="quiet" bindtap="bookings">我的预约</button>
+  </view>
+</view>

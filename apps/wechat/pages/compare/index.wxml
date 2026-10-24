@@ -1,0 +1,32 @@
+<view class="page has-actions">
+  <view wx:if="{{loading}}" class="card empty">正在核对球员资料与授权统计…</view>
+  <view wx:if="{{loginRequired}}" class="card empty"><view class="subtitle">登录后继续比较</view><button class="primary" bindtap="login">登录并返回对比</button></view>
+  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
+  <view wx:if="{{notice}}" class="notice warning">{{notice}}</view>
+  <view wx:if="{{statisticsError}}" class="notice warning">统计读取失败：{{statisticsError}}。已停止展示旧统计，可刷新重试；不会用0或演示数据填补。</view>
+  <block wx:if="{{columns.length >= 2}}">
+    <view class="comparison-grid">
+      <view class="metric-labels">
+        <view class="comparison-head label-head">指标</view>
+        <view wx:for="{{labels}}" wx:for-item="metric" wx:key="id" class="comparison-cell label-cell">{{metric.label}}</view>
+      </view>
+      <scroll-view scroll-x="true" enable-flex="true" class="comparison-scroll" style="height: {{tableHeight}};">
+        <view class="comparison-columns" style="width: {{columnsWidth}};">
+          <view wx:for="{{columns}}" wx:for-item="column" wx:key="id" class="compare-column">
+            <view class="comparison-head" data-id="{{column.id}}" bindtap="detail" aria-role="button" aria-label="{{column.name}}，查看资料">
+              <view class="compare-name">{{column.name}}</view><view class="position">{{column.position}}</view>
+            </view>
+            <view wx:for="{{column.cells}}" wx:for-item="cell" wx:key="id" class="comparison-cell">{{cell.value}}</view>
+            <view class="column-actions"><button class="primary" data-id="{{column.id}}" bindtap="book">预约这位</button><button class="quiet" data-id="{{column.id}}" bindtap="remove">移出对比</button></view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+    <view class="muted small scroll-hint">{{selectedCount === 3 ? '左右滑动查看第3人，指标名称保持可见。' : '同服务费不等于含费总额相同。'}} 最多比较3人。</view>
+    <view class="notice"><view class="section-title">同价看记录，也看适配</view><view>样本数、赛制和完整度不同，不直接作为实力排名。统计样本不代表实际出场；完成服务不代表付费成交。</view></view>
+    <view class="card"><view class="subtitle">有限记录与未统计项目</view><view class="muted">只使用当前有效的本人授权与独立确认记录。来源撤销、权限失效或赛果重开后，下次读取不再纳入。</view><view class="muted">篮板、助攻、时间、命中率未采集，不生成综合战力分、胜率或准时率。</view></view>
+    <button class="secondary" bindtap="load" disabled="{{loading}}">刷新对比资料与统计</button>
+  </block>
+  <view wx:if="{{!loading && columns.length < 2 && !loginRequired}}" class="card empty"><view class="subtitle">继续选择合适的球员</view><view class="muted">停用或不可查看的档案不能继续比较。当前目录最多最新200位已审核球员。</view><button class="secondary" bindtap="market">返回球员广场</button></view>
+  <view class="action-bar"><button class="primary" data-id="{{firstId}}" bindtap="book" disabled="{{loading || !firstId}}">{{firstId ? '预约 ' + firstName : '请选择至少2位球员'}}</button><button class="quiet" bindtap="market">继续找球员</button></view>
+</view>

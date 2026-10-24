@@ -1,0 +1,5 @@
+.event-summary { padding:46rpx; }
+.event-summary .badge { margin-top:24rpx; }
+.event-court { display:block; width:100%; height:auto; margin-top:31rpx; }
+.match-score { font-size:32px; line-height:1.4; font-family:Inter,Arial,sans-serif; color:#132c49; font-weight:600; }
+.event-page .tabs .chip { flex:1; padding-left:12rpx; padding-right:12rpx; }

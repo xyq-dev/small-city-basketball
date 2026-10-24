@@ -1,0 +1,14 @@
+.appearance-card > view { margin-bottom: 12rpx; }
+.appearance-card .row-between { align-items: flex-start; gap: 16rpx; }
+.appearance-actions { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 20rpx; }
+.appearance-actions button { flex: 1 1 260rpx; margin: 0; }
+.change-panel { padding: 24rpx; border: 1rpx solid #e8edf2; border-radius: 16rpx; }
+.change-panel > view { margin-bottom: 8rpx; }
+.pending-panel button { margin-top: 20rpx; }
+.command-id { word-break: break-all; }
+.date-row { display: flex; gap: 16rpx; }
+.date-row picker { flex: 1; min-width: 0; }
+.schedule-form .field-label { margin-top: 20rpx; }
+.reason-input { box-sizing: border-box; width: 100%; min-height: 180rpx; }
+.command-form button { margin-top: 20rpx; }
+.command-form .subtitle { scroll-margin-top: 24rpx; }

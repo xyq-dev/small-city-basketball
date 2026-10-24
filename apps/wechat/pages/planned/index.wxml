@@ -1,0 +1,17 @@
+<view class="page">
+  <view class="title">费用与后续功能</view>
+  <view class="tabs"><button wx:for="{{options}}" wx:key="key" class="chip {{selected===item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="select">{{item.label}}</button></view>
+  <view wx:if="{{selected!=='funds'}}" class="notice warning">功能筹备中。本页为后续功能说明，不会发生支付、退款、分账或消息送达。</view>
+  <block wx:if="{{selected==='funds'}}">
+    <view class="card"><view class="subtitle">确定报价与条件意向分开</view><view>参赛服务费、平台服务费、交通和食宿逐项展示。</view><view class="muted">平台费仅按参赛服务费计算。未确定场次单列预计金额，不计入确定合计、不占档。</view></view>
+    <view class="notice warning">在线支付与个人分账尚未开放。当前可以提交合作预约并记录履约，不会在线扣款。</view>
+    <view class="card"><view class="subtitle">当前资金状态</view><view class="row-between"><text>实收</text><text class="money">¥0.00</text></view><view class="row-between"><text>退款到账</text><text class="money">¥0.00</text></view><view class="row-between"><text>已结算</text><text class="money">¥0.00</text></view><view class="muted">完成服务记录不代表付款成交或球员已收款。</view></view>
+  </block>
+  <view wx:if="{{selected==='payment'}}" class="card"><view class="subtitle">支付前核对</view><view>交易主体、逐场报价、取消退款规则和渠道能力需明确。</view><view class="muted">未来支付以真实渠道和服务端核验为准，不使用个人收款码模拟平台支付。</view><button disabled>支付暂未开放</button></view>
+  <view wx:if="{{selected==='unknown'}}" class="card"><view class="subtitle">先核对原交易结果</view><view>未知结果不等于支付失败。核对期间保留原交易编号，避免重复付款。</view><view class="muted">客户端返回不能自行把预约改为已支付。</view><button disabled>渠道查单暂未开放</button></view>
+  <view wx:if="{{selected==='refund'}}" class="card"><view class="subtitle">取消合作与退款分别处理</view><view>逐人逐场选择范围，核对实际付款、可退金额、争议和结算状态。</view><view class="muted">取消合作不等于退款到账。当前未启用真实退款，不能承诺到账金额与时间。</view><button disabled>退款申请暂未开放</button></view>
+  <view wx:if="{{selected==='settlement'}}" class="card"><view class="subtitle">球员结算明细</view><view>未来分别列服务收入、平台费用、交通食宿、退款、争议冻结与结算进度。</view><view class="muted">当前个人分账未开通，可结算/已结算均未发生，不显示可提现余额。</view><button disabled>结算功能筹备中</button></view>
+  <view wx:if="{{selected==='messages'}}" class="card"><view class="subtitle">预约动态与关注提醒</view><view>未来提醒需用户明确选择微信允许的订阅类型，点击后读取订单当前状态。</view><view class="muted">当前请到“我的预约”主动刷新，未接通或未授权不显示已送达。</view><button class="secondary" data-page="bookings" bindtap="go">查看我的预约</button></view>
+  <view wx:if="{{selected==='profile'}}" class="card"><view class="subtitle">长期球员档案</view><view>按赛事和赛季整理本人资料与明确授权来源，保留样本、口径和撤销入口。</view><view class="muted">未采集的篮板、助攻、时间、命中率仍为未统计，不生成虚假战力分。长期档案不代替每届冻结名单。</view><button class="secondary" data-page="performance" bindtap="go">管理当前比赛数据授权</button></view>
+  <button class="secondary" data-page="bookings" bindtap="go">返回我的预约</button>
+</view>

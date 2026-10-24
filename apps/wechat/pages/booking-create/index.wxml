@@ -1,0 +1,508 @@
+<template name="fees">
+  <view class="card">
+    <view class="subtitle">确定金额与条件预计分开</view>
+    <view class="quote-row"><text>确定参赛服务费</text><text>{{quote.service}}</text></view>
+    <view class="quote-row"><text>确定平台服务费</text><text>{{quote.platform}}</text></view>
+    <view class="quote-row"><text>交通费</text><text>{{quote.travel}}</text></view>
+    <view class="quote-row"><text>食宿费</text><text>{{quote.accommodation}}</text></view>
+    <view class="quote-row quote-total"
+      ><text>确定报价合计</text><text>{{quote.confirmed}}</text></view
+    >
+    <view class="quote-row quote-conditional"
+      ><text>条件意向预计 · 另列</text><text>{{quote.conditional}}</text></view
+    >
+    <view class="small muted"
+      >确定{{quote.fixedCount}}项 ·
+      条件意向{{quote.conditionalCount}}项，共{{quote.count}}项球员场次。平台费只按参赛服务费计算；条件意向不占档，不计入确定合计。</view
+    >
+  </view>
+</template>
+
+<view class="page has-actions">
+  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
+  <view wx:if="{{notice}}" class="notice">{{notice}}</view>
+  <view wx:if="{{loading}}" class="card muted">正在读取当前身份、球队与球员资料…</view>
+  <view wx:if="{{loginRequired}}" class="card empty">
+    <view class="title">登录后继续预约</view>
+    <view class="muted"
+      >使用现有账号，登录后返回本次球员选择。不能使用新账号重放其他账号的原请求。</view
+    >
+    <button class="primary" bindtap="login">登录已有账号</button>
+    <button class="quiet" bindtap="players">返回球员广场</button>
+  </view>
+  <view wx:elif="{{!ready &amp;&amp; !loading}}" class="card empty">
+    <view class="subtitle">暂时无法读取预约资料</view>
+    <button class="secondary" bindtap="load">重新读取</button>
+  </view>
+  <block wx:elif="{{ready}}">
+    <view wx:if="{{invalidRecovery}}" class="card">
+      <view class="title">恢复记录损坏，先核对原预约</view>
+      <view class="notice warning"
+        >读取损坏不代表没有建单。已暂停直接创建新请求，避免重复预约。</view
+      >
+      <button class="secondary" bindtap="orders">先查看我的预约</button>
+      <checkbox-group bindchange="recoveryCheck"
+        ><label class="consent"
+          ><checkbox
+            value="checked"
+            checked="{{recoveryChecked}}"
+          />我已核对本人预约，并确认没有需要恢复的原请求</label
+        ></checkbox-group
+      >
+      <view wx:if="{{storageUnavailable}}" class="small error"
+        >本机无法保存或移除恢复标记，请先检查存储权限。</view
+      >
+    </view>
+    <view wx:elif="{{pending}}" class="card">
+      <view class="title"
+        >{{originalResolvedId ? '原预约已创建' : originalRejected ? '原请求已明确拒绝' :
+        '原预约结果待核对'}}</view
+      >
+      <view class="notice warning"
+        >原请求可能已成功。保留原操作编号及完整安排，核对期间不重新报价、不换编号重复提交。</view
+      >
+      <block wx:if="{{canRecover}}">
+        <view class="subtitle">{{recoveryEventName}}</view>
+        <view class="muted">{{recoveryScope}} · {{recoveryCount}}项球员服务</view>
+        <view class="small">原操作编号</view><view class="recovery-id">{{recoveryCommand}}</view>
+        <view wx:for="{{recoverySlots}}" wx:key="key" class="row">
+          <view>{{item.label}}</view><view class="small muted">{{item.schedule}}</view
+          ><view class="small muted">{{item.venue}}</view>
+        </view>
+        <view wx:if="{{originalRejected}}" class="notice warning"
+          >{{originalRejected}}。先移除已核对的恢复标记，再重新审阅安排和报价。</view
+        >
+      </block>
+      <view wx:else class="error"
+        >当前账号已无原球队授权，不能展示或重试原预约。请先核对当前球队权限。</view
+      >
+      <view wx:if="{{storageUnavailable}}" class="notice warning"
+        >本机恢复资料无法可靠保存或移除；刷新可能丢失核对编号。请先核对原预约，不后台自动重发。</view
+      >
+      <button class="secondary" bindtap="orders">先查看我的预约</button>
+    </view>
+    <view wx:elif="{{success}}" class="card">
+      <view class="hero"
+        ><view class="title">预约已提交</view><view>等待每位球员、每一场分别确认</view></view
+      >
+      <view class="notice">本次只提交合作预约，未发生在线付款。</view>
+      <view class="muted"
+        >固定场次保留20分钟等待接单；条件意向不占档。当前通过主动刷新查看状态，不承诺微信通知已送达。</view
+      >
+    </view>
+    <view wx:elif="{{noTeams}}" class="card empty">
+      <view class="title">需要有效球队授权</view>
+      <view class="muted">请由球队有权管理的领队操作。个人球员可先维护自己的入驻资料。</view>
+      <button class="secondary" bindtap="playerCenter">进入本人球员中心</button>
+      <button class="quiet" bindtap="players">继续浏览球员</button>
+    </view>
+    <view wx:elif="{{noPlayers}}" class="card empty">
+      <view class="title">暂无可预约球员</view>
+      <view class="muted"
+        >仅展示当前已通过入驻资料审核的球员，不能预约本人。接口失败不会切换到合成数据。</view
+      >
+      <button class="secondary" bindtap="load">重新读取资料</button>
+    </view>
+    <block wx:else>
+      <view wx:if="{{storageUnavailable}}" class="notice warning"
+        >本机无法保存恢复编号。提交后请先完成原请求核对，再关闭或刷新页面；这里不提供离线提交。</view
+      >
+      <view wx:if="{{canRequote}}" class="notice warning"
+        >原请求已经明确拒绝。请主动读取最新资料并重新核对全部费用。</view
+      >
+      <view wx:if="{{quoteInvalid}}" class="notice danger"
+        >所选球员已不在当前可约资料中。请重新选择，不能沿用失效报价。</view
+      >
+      <block wx:if="{{!review}}">
+        <view class="card">
+          <view class="create-step"
+            ><text class="step-number">01</text><text class="subtitle">预约几场</text></view
+          >
+          <view class="scope-grid"
+            ><button
+              wx:for="{{scopeOptions}}"
+              wx:key="value"
+              class="scope-option {{scope === item.value ? 'active' : ''}}"
+              data-scope="{{item.value}}"
+              bindtap="changeScope"
+              disabled="{{busy}}"
+            >
+              <text class="scope-label">{{item.label}}</text
+              ><text class="scope-hint">{{item.hint}}</text>
+            </button></view
+          >
+          <view class="notice">长期合作仍需逐场确认；未来意向不占档，不自动续费。</view>
+        </view>
+        <view class="card">
+          <view class="create-step"
+            ><text class="step-number">02</text><text class="subtitle">代表球队与球员</text></view
+          >
+          <view class="field-label">代表球队</view
+          ><picker
+            class="field"
+            range="{{teams}}"
+            range-key="name"
+            value="{{teamIndex}}"
+            bindchange="teamPick"
+            disabled="{{busy}}"
+            ><view>{{teamName || '请选择授权球队'}}</view></picker
+          >
+          <view class="field-label">关联已有赛事</view
+          ><picker
+            class="field"
+            range="{{events}}"
+            range-key="name"
+            value="{{eventIndex}}"
+            bindchange="eventPick"
+            disabled="{{busy}}"
+            ><view>{{events[eventIndex].name}}</view></picker
+          >
+          <view class="field-label">赛事或合作名称</view
+          ><input
+            class="field"
+            value="{{eventName}}"
+            maxlength="80"
+            placeholder="例如：青锋杯、周末篮球活动"
+            data-field="eventName"
+            bindinput="input"
+            disabled="{{busy || eventId !== ''}}"
+          />
+          <view class="field-help"
+            >预约不自动加入报名名单，资格、保险及赛事规则仍由主办方核验。</view
+          >
+          <view class="field-label">选择球员 · 已选{{selectedCount}}位</view>
+          <checkbox-group bindchange="playerPick"
+            ><label wx:for="{{players}}" wx:for-item="player" wx:key="id" class="player-choice"
+              ><checkbox
+                value="{{player.id}}"
+                checked="{{player.selected}}"
+                disabled="{{busy}}"
+              /><view class="choice-body"
+                ><text class="choice-name">{{player.label}}</text
+                ><view class="small muted">参赛服务费 {{player.price}} / 场</view
+                ><view class="small">含当前平台费与交通食宿预计 {{player.total}}</view></view
+              ></label
+            ></checkbox-group
+          >
+          <view class="small muted"
+            >当前只读取最新200份可约档案。最多3人只限制数据对比，预约可选择多位球员。</view
+          >
+        </view>
+        <view wx:if="{{scope === 'SEASON'}}" class="card">
+          <view class="subtitle">赛季合作周期</view>
+          <view class="datetime-grid"
+            ><picker
+              mode="date"
+              class="field"
+              value="{{periodStart}}"
+              data-field="periodStart"
+              bindchange="input"
+              disabled="{{busy}}"
+              ><view>{{periodStart}}</view></picker
+            ><picker
+              mode="date"
+              class="field"
+              value="{{periodEnd}}"
+              data-field="periodEnd"
+              bindchange="input"
+              disabled="{{busy}}"
+              ><view>{{periodEnd}}</view></picker
+            ></view
+          >
+          <view class="small muted"
+            >周期内仍逐场约定；未确定场次只能记录条件意向，不保证未来到场。</view
+          >
+        </view>
+        <view class="card">
+          <view class="create-step"
+            ><text class="step-number">03</text><text class="subtitle">逐场安排</text></view
+          >
+          <view class="small muted"
+            >全部为北京时间。报到≤开始&lt;结束；单项服务最多12小时，场后留30分钟交通缓冲。</view
+          >
+          <block wx:if="{{matchChoices.length > 1}}"
+            ><view class="field-label">从本队正式赛程添加</view
+            ><picker
+              class="field"
+              range="{{matchChoices}}"
+              range-key="label"
+              value="{{matchIndex}}"
+              bindchange="matchPick"
+              disabled="{{busy}}"
+              ><view>选择本队正式比赛</view></picker
+            ></block
+          >
+          <view
+            wx:for="{{slots}}"
+            wx:for-item="slot"
+            wx:for-index="slotIndex"
+            wx:key="key"
+            class="slot-editor"
+          >
+            <view class="slot-head"
+              ><text class="subtitle">场次 {{slot.number}}</text
+              ><button
+                wx:if="{{slots.length > 1}}"
+                class="quiet small"
+                data-index="{{slotIndex}}"
+                bindtap="removeSlot"
+                disabled="{{busy}}"
+              >
+                删除本场
+              </button></view
+            >
+            <view
+              wx:if="{{scope !== 'SINGLE' &amp;&amp; scope !== 'TIME_BLOCK'}}"
+              class="conditional-toggle"
+              ><text>待晋级 / 条件意向</text
+              ><switch
+                checked="{{slot.conditional}}"
+                data-index="{{slotIndex}}"
+                bindchange="conditional"
+                disabled="{{busy}}"
+                color="#132c49"
+            /></view>
+            <view class="field-label"
+              >{{scope === 'TIME_BLOCK' ? '服务范围与活动名称' : '场次名称'}}</view
+            ><input
+              class="field"
+              value="{{slot.label}}"
+              maxlength="80"
+              data-index="{{slotIndex}}"
+              data-field="label"
+              bindinput="slotInput"
+              placeholder="明确本场或本时段的服务内容"
+              disabled="{{busy}}"
+            />
+            <view class="field-label">比赛或服务地点</view
+            ><input
+              class="field"
+              value="{{slot.venue}}"
+              maxlength="120"
+              data-index="{{slotIndex}}"
+              data-field="venue"
+              bindinput="slotInput"
+              placeholder="球场名称与具体地点；意向可注明待确认"
+              disabled="{{busy}}"
+            />
+            <view wx:if="{{slot.conditional}}"
+              ><view class="field-label">触发条件</view
+              ><textarea
+                class="field"
+                value="{{slot.conditionText}}"
+                maxlength="200"
+                data-index="{{slotIndex}}"
+                data-field="conditionText"
+                bindinput="slotInput"
+                placeholder="例如：本队晋级后补齐半决赛实际安排"
+                disabled="{{busy}}"
+              /><view class="small muted"
+                >不预占具体档期。条件满足后补齐安排，沿用原单费用快照，并由球员重新接单。</view
+              ></view
+            >
+            <block wx:else>
+              <view class="field-label">报到日期与时间</view
+              ><view class="datetime-grid"
+                ><picker
+                  mode="date"
+                  class="field"
+                  value="{{slot.reportDate}}"
+                  data-index="{{slotIndex}}"
+                  data-field="reportDate"
+                  bindchange="slotInput"
+                  disabled="{{busy}}"
+                  ><view>{{slot.reportDate}}</view></picker
+                ><picker
+                  mode="time"
+                  class="field"
+                  value="{{slot.reportTime}}"
+                  data-index="{{slotIndex}}"
+                  data-field="reportTime"
+                  bindchange="slotInput"
+                  disabled="{{busy}}"
+                  ><view>{{slot.reportTime}}</view></picker
+                ></view
+              >
+              <view class="field-label">{{scope === 'TIME_BLOCK' ? '服务开始' : '比赛开始'}}</view
+              ><view class="datetime-grid"
+                ><picker
+                  mode="date"
+                  class="field"
+                  value="{{slot.startDate}}"
+                  data-index="{{slotIndex}}"
+                  data-field="startDate"
+                  bindchange="slotInput"
+                  disabled="{{busy}}"
+                  ><view>{{slot.startDate}}</view></picker
+                ><picker
+                  mode="time"
+                  class="field"
+                  value="{{slot.startTime}}"
+                  data-index="{{slotIndex}}"
+                  data-field="startTime"
+                  bindchange="slotInput"
+                  disabled="{{busy}}"
+                  ><view>{{slot.startTime}}</view></picker
+                ></view
+              >
+              <view class="field-label">{{scope === 'TIME_BLOCK' ? '服务结束' : '比赛结束'}}</view
+              ><view class="datetime-grid"
+                ><picker
+                  mode="date"
+                  class="field"
+                  value="{{slot.endDate}}"
+                  data-index="{{slotIndex}}"
+                  data-field="endDate"
+                  bindchange="slotInput"
+                  disabled="{{busy}}"
+                  ><view>{{slot.endDate}}</view></picker
+                ><picker
+                  mode="time"
+                  class="field"
+                  value="{{slot.endTime}}"
+                  data-index="{{slotIndex}}"
+                  data-field="endTime"
+                  bindchange="slotInput"
+                  disabled="{{busy}}"
+                  ><view>{{slot.endTime}}</view></picker
+                ></view
+              >
+            </block>
+            <view wx:if="{{slot.matchId}}" class="small muted"
+              >已关联本队正式比赛。手工更改时间地点会解除该关联，提交时仍须重新核验。</view
+            >
+            <view class="field-label">本场参与球员</view
+            ><checkbox-group data-index="{{slotIndex}}" bindchange="slotPlayers"
+              ><label
+                wx:for="{{slot.playerChoices}}"
+                wx:for-item="choice"
+                wx:key="id"
+                class="slot-choice"
+                ><checkbox
+                  value="{{choice.id}}"
+                  checked="{{choice.selected}}"
+                  disabled="{{busy}}"
+                /><text>{{choice.label}}</text></label
+              ></checkbox-group
+            >
+            <view wx:if="{{!slot.playerChoices.length}}" class="small muted"
+              >先在上方选择本次合作球员。</view
+            >
+          </view>
+          <button
+            wx:if="{{scope !== 'SINGLE' &amp;&amp; scope !== 'TIME_BLOCK'}}"
+            class="secondary"
+            bindtap="addSlot"
+            disabled="{{busy}}"
+          >
+            添加一场安排
+          </button>
+        </view>
+        <template is="fees" data="{{quote: quote}}" />
+      </block>
+      <block wx:else>
+        <view class="card"
+          ><view class="title">确认本次预约与费用</view
+          ><view class="subtitle">{{teamName}} · {{eventName}}</view
+          ><view class="small muted"
+            >每位球员、每一场分别接单与履约，取消一项不自动取消其他有效安排。</view
+          ></view
+        >
+        <view class="card"
+          ><view wx:for="{{slots}}" wx:for-item="slot" wx:key="key" class="review-slot"
+            ><view class="subtitle">{{slot.label}}</view
+            ><view wx:if="{{slot.conditional}}" class="notice warning"
+              >条件意向：{{slot.conditionText}} · 不占档</view
+            ><view wx:else class="muted"
+              ><view>报到 {{slot.reportDate}} {{slot.reportTime}}</view
+              ><view>开始 {{slot.startDate}} {{slot.startTime}}</view
+              ><view>结束 {{slot.endDate}} {{slot.endTime}}</view></view
+            ><view>{{slot.venue}}</view
+            ><block wx:for="{{slot.playerChoices}}" wx:for-item="choice" wx:key="id"
+              ><view wx:if="{{choice.selected}}" class="small muted"
+                >{{choice.label}} · 含费预计{{choice.total}}</view
+              ></block
+            ></view
+          ></view
+        >
+        <template is="fees" data="{{quote: quote}}" />
+        <view class="card"
+          ><view class="subtitle">请逐项核对</view
+          ><view class="muted">我有权代表所选球队预约。</view
+          ><view class="muted"
+            >已核对参赛资格、保险及赛事报名限制；这些仍属本人声明，不等于平台核验。</view
+          ><view class="muted">已阅读每场时间地点、费用、条件意向和取消规则。</view
+          ><checkbox-group bindchange="consent"
+            ><label class="consent"
+              ><checkbox
+                value="agree"
+                checked="{{consent}}"
+                disabled="{{busy}}"
+              />我已核对以上事项并明确同意本次预约规则</label
+            ></checkbox-group
+          ></view
+        >
+      </block>
+      <view class="notice warning"
+        ><view class="subtitle">当前仅提交合作预约</view
+        ><view
+          >在线支付与个人分账尚未开放；提交不扣款，不自动加入报名名单。实收、退款到账和已结算均为¥0。</view
+        ></view
+      >
+    </block>
+  </block>
+</view>
+
+<view wx:if="{{ready}}" class="action-bar">
+  <block wx:if="{{invalidRecovery}}"
+    ><button class="primary" bindtap="acknowledgeInvalid" disabled="{{busy || !recoveryChecked}}">
+      核对后继续重新填写</button
+    ><button class="quiet" bindtap="orders">先查看我的预约</button></block
+  >
+  <block wx:elif="{{pending}}"
+    ><button wx:if="{{originalResolvedId}}" class="primary" bindtap="result" disabled="{{busy}}">
+      查看原预约结果</button
+    ><button
+      wx:else
+      class="primary"
+      bindtap="recover"
+      disabled="{{busy || !canRecover}}"
+      loading="{{busy}}"
+    >
+      {{originalRejected ? '移除已核对标记' : '恢复原请求结果'}}</button
+    ><button
+      wx:if="{{originalResolvedId}}"
+      class="secondary"
+      bindtap="recover"
+      disabled="{{busy || !canRecover}}"
+    >
+      核对后移除恢复标记</button
+    ><button wx:if="{{!originalResolvedId}}" class="quiet" bindtap="orders">
+      查看我的预约
+    </button></block
+  >
+  <block wx:elif="{{success}}"
+    ><button class="primary" bindtap="result">查看预约详情</button
+    ><button class="quiet" bindtap="players">继续找球员</button></block
+  >
+  <block wx:elif="{{noTeams || noPlayers}}"
+    ><button class="primary" bindtap="players">返回球员广场</button></block
+  >
+  <block wx:elif="{{review}}"
+    ><button
+      class="primary"
+      bindtap="submit"
+      disabled="{{busy || !consent || quoteInvalid}}"
+      loading="{{busy}}"
+    >
+      {{consent ? '提交 · ' + quote.confirmed + '确定报价' : '请先核对并勾选声明'}}</button
+    ><button class="quiet" bindtap="edit" disabled="{{busy}}">返回修改安排</button></block
+  >
+  <block wx:else
+    ><button wx:if="{{canRequote}}" class="primary" bindtap="requote" disabled="{{busy}}">
+      读取最新报价并重新核对</button
+    ><button wx:else class="primary" bindtap="review" disabled="{{busy || quoteInvalid}}">
+      核对本次合作费用</button
+    ><button class="quiet" bindtap="players" disabled="{{busy}}">继续找球员</button></block
+  >
+</view>

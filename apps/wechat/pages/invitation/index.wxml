@@ -1,0 +1,56 @@
+<view class="page"
+  ><view class="page-title">接受球队邀请</view>
+  <view class="notice">请用邀请发送给的目标账号登录。登录、打开此页都不代表接受授权。</view>
+  <view wx:if="{{error}}" class="error">{{error}}</view
+  ><view wx:if="{{message}}" class="notice">{{message}}</view
+  ><button wx:if="{{loginRequired}}" class="primary" bindtap="login">登录目标账号</button>
+  <view wx:if="{{user}}" class="card"
+    ><view class="subtitle">当前账号</view><view>{{user.displayName}}</view
+    ><view class="muted">{{user.email}}</view></view
+  >
+  <view wx:if="{{!accepted}}" class="card"
+    ><view class="field-label">邀请编号</view
+    ><input
+      class="field"
+      value="{{invitationId}}"
+      maxlength="36"
+      bindinput="invitation"
+      disabled="{{busy}}"
+      placeholder="请输入邀请编号"
+    /><view class="field-label">邀请凭据</view
+    ><input
+      wx:if="{{tokenVisible}}"
+      class="field"
+      password="{{true}}"
+      maxlength="43"
+      bindinput="token"
+      disabled="{{busy}}"
+      placeholder="请输入43位邀请凭据"
+    /><view class="small muted"
+      >邀请凭据仅保留当前页面内存；离开后清除，不写入本地存储，不提供分享入口。</view
+    ><checkbox-group bindchange="consent"
+      ><label class="consent"
+        ><checkbox
+          value="yes"
+          checked="{{consent}}"
+          disabled="{{busy || !user}}"
+        />我确认以当前账号明确接受本次球队管理邀请</label
+      ></checkbox-group
+    ><button
+      class="primary"
+      bindtap="accept"
+      disabled="{{busy || !consent || !user}}"
+      loading="{{busy}}"
+    >
+      接受球队授权
+    </button></view
+  >
+  <view wx:if="{{accepted}}" class="card"
+    ><view class="subtitle">已接受授权</view
+    ><view>{{accepted.organizationName}} · {{accepted.teamName}}</view
+    ><button class="primary" bindtap="openTeam">进入已授权球队</button></view
+  >
+  <view class="notice warning"
+    >邀请到期、已撤销、对象不符或发布者权限失效时不能接受；不会自动创建账号或合并身份。</view
+  >
+</view>

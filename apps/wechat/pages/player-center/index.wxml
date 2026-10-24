@@ -1,0 +1,54 @@
+<view class="page has-actions">
+  <view wx:if="{{loading}}" class="notice">正在核对当前账号与本人资料…</view>
+  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
+  <view wx:if="{{message}}" class="notice">{{message}}</view>
+  <view wx:if="{{loginRequired}}" class="card empty">
+    <view class="title">登录后管理本人服务资料</view><view class="muted">不会根据姓名猜测球员账号，也不会展示其他账号的私有资料。</view>
+    <button class="primary" bindtap="login">登录并返回球员中心</button>
+  </view>
+  <block wx:if="{{authorized}}">
+    <block wx:if="{{profile &amp;&amp; !editing}}">
+      <view class="hero"><view class="title">{{profile.displayName}} · {{profile.positionText}}</view><view>{{profile.statusText}}</view></view>
+      <view class="card profile-summary"><view class="subtitle">本人的服务资料</view><view>{{profile.priceText}} / 场 · {{profile.city}}</view><view class="muted">本人填写，资料审核不代表实名、实力、保险或参赛资格认证。</view><view wx:if="{{profile.reviewReason}}" class="notice warning">审核意见：{{profile.reviewReason}}</view><view wx:if="{{profile.status === 'DISABLED'}}" class="notice warning">当前档案已停用，不公开预约资料和统计。已有订单按原约定、当前权限和状态处理。</view></view>
+      <button class="secondary" bindtap="edit">编辑资料、报价与可约时间</button>
+      <view class="card"><view class="subtitle">可约时间</view><view>已公布 {{profile.windowCount}} 个窗口</view><view class="muted">可约不等于保证到场。删除窗口不会取消已经接受的预约。</view></view>
+      <button class="secondary" bindtap="received">查看收到的预约</button>
+      <button class="secondary" bindtap="performance">我的比赛数据授权</button>
+      <view class="card"><view class="subtitle">资金状态</view><view>实收 ¥0 / 已结算 ¥0</view><view class="muted">在线撮合支付与个人分账暂未开放。</view></view>
+      <button class="quiet" bindtap="refresh" disabled="{{busy || pending}}">刷新本人资料</button>
+    </block>
+    <block wx:if="{{editing}}">
+      <view class="hero"><view class="title">{{profile ? '编辑本人资料' : '申请球员入驻'}}</view><view>资料由本人提交，公开状态以平台审核为准。</view></view>
+      <view class="card">
+        <view class="subtitle">本人服务档案</view>
+        <view class="profile-field"><view class="field-label">显示名称</view><input class="field" value="{{form.displayName}}" maxlength="40" data-field="displayName" bindinput="input" disabled="{{busy || pending}}" placeholder="填写本人显示名称" /></view>
+        <view class="profile-field"><view class="field-label">主要位置</view><picker range="{{positions}}" value="{{positionIndex}}" bindchange="position" disabled="{{busy || pending}}"><view class="picker-value">{{positions[positionIndex]}}</view></picker></view>
+        <view class="profile-field"><view class="field-label">身高（厘米）</view><input class="field" type="number" value="{{form.heightCm}}" maxlength="3" data-field="heightCm" bindinput="input" disabled="{{busy || pending}}" placeholder="120–250" /></view>
+        <view class="profile-field"><view class="field-label">服务地区</view><input class="field" value="{{form.city}}" maxlength="60" data-field="city" bindinput="input" disabled="{{busy || pending}}" placeholder="例如：高州 / 石鼓" /></view>
+        <view class="profile-field"><view class="field-label">服务介绍</view><textarea class="field profile-bio" value="{{form.bio}}" maxlength="500" data-field="bio" bindinput="input" disabled="{{busy || pending}}" placeholder="说明打法、服务范围；不要填写证件或私密联系方式" /></view>
+      </view>
+      <view class="card"><view class="subtitle">服务与交通食宿报价</view>
+        <view class="profile-field"><view class="field-label">参赛服务费（元 / 场）</view><input class="field" type="digit" value="{{form.price}}" data-field="price" bindinput="input" disabled="{{busy || pending}}" /></view>
+        <view class="profile-field"><view class="field-label">交通费（元）</view><input class="field" type="digit" value="{{form.travel}}" data-field="travel" bindinput="input" disabled="{{busy || pending}}" /></view>
+        <view class="profile-field"><view class="field-label">食宿费（元）</view><input class="field" type="digit" value="{{form.accommodation}}" data-field="accommodation" bindinput="input" disabled="{{busy || pending}}" /></view>
+        <view wx:if="{{quote}}" class="notice profile-subnote"><view>服务费 {{quote.service}} · 平台费 {{quote.platform}}（{{feeText}}）</view><view>交通 {{quote.travel}} / 食宿 {{quote.accommodation}}</view><view>预计合计 {{quote.total}}</view></view>
+        <view class="muted profile-subnote">平台费仅以参赛服务费为基数。新报价不追溯修改已有订单。</view>
+      </view>
+      <view class="card"><view class="subtitle">可约时间 · 北京时间</view><view class="muted">填写1至60个不重叠窗口；单段最多31天。</view>
+        <view wx:for="{{form.availability}}" wx:key="key" class="availability-row">
+          <view class="row-between"><text>可约窗口 {{index + 1}}</text><button class="quiet" size="mini" bindtap="removeWindow" data-index="{{index}}" disabled="{{busy || pending}}">删除</button></view>
+          <view class="window-pair"><picker mode="date" value="{{item.startDate}}" bindchange="windowInput" data-field="startDate" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.startDate}}</view></picker><picker mode="time" value="{{item.startTime}}" bindchange="windowInput" data-field="startTime" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.startTime}}</view></picker></view>
+          <view class="muted">至</view>
+          <view class="window-pair"><picker mode="date" value="{{item.endDate}}" bindchange="windowInput" data-field="endDate" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.endDate}}</view></picker><picker mode="time" value="{{item.endTime}}" bindchange="windowInput" data-field="endTime" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.endTime}}</view></picker></view>
+        </view>
+        <button class="secondary" bindtap="addWindow" disabled="{{busy || pending || form.availability.length >= 60}}">添加可约时间段</button>
+        <view class="muted profile-subnote">实际接单仍核验已有订单和场后30分钟交通缓冲；不能以修改窗口取消已有合作。</view>
+      </view>
+      <view class="card"><view class="subtitle">成人与资料声明</view><view class="muted">本功能仅接受已满18周岁的本人申请。本人声明不等于自动身份核验。</view><checkbox-group bindchange="consent"><label class="consent"><checkbox value="yes" checked="{{form.adultConfirmed}}" disabled="{{busy || pending}}" />本人已满18周岁，并确认以上资料真实</label></checkbox-group></view>
+      <view wx:if="{{pending}}" class="notice warning">原资料提交结果待核对，当前内容已锁定。使用原编号继续核对，不会自动重发或另外创建提交。</view>
+      <button class="quiet" bindtap="refresh" disabled="{{busy || pending}}">重新读取本人资料</button>
+      <view class="action-bar"><button class="primary" bindtap="save" disabled="{{busy || pendingInFlight || (!pending &amp;&amp; !form.adultConfirmed)}}">{{busy ? '正在保存…' : pending ? '核对原资料提交' : '保存并提交资料审核'}}</button><button class="quiet" bindtap="cancelEdit" disabled="{{busy || pending}}">返回本人资料</button></view>
+    </block>
+  </block>
+  <button wx:if="{{!loading &amp;&amp; !authorized &amp;&amp; !loginRequired}}" class="secondary" bindtap="refresh">重新读取本人资料</button>
+</view>
