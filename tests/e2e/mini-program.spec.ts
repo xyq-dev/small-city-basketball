@@ -55,19 +55,17 @@ async function nativeFrame(page: Page): Promise<Frame> {
   const frame = await element?.contentFrame();
   if (!frame) throw new Error('Actual WXML compatibility iframe did not load');
   await frame.locator('body').waitFor();
-  await frame.evaluate(async () => {
-    await document.fonts.ready;
-    await Promise.all(
-      Array.from(document.images).map((image) => {
-        if (image.complete) return Promise.resolve();
-        return new Promise<void>((resolve) => {
-          image.addEventListener('load', () => resolve(), { once: true });
-          image.addEventListener('error', () => resolve(), { once: true });
-        });
-      }),
-    );
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-  });
+  // Keep the preview sandbox and CSP intact. Callbacks scheduled inside a
+  // script-disabled iframe need not run; poll synchronous state from the host.
+  await expect
+    .poll(() =>
+      frame.evaluate(() => ({
+        documentReady: document.readyState === 'complete',
+        fontsReady: document.fonts.status === 'loaded',
+        imagesReady: Array.from(document.images).every((image) => image.complete),
+      })),
+    )
+    .toEqual({ documentReady: true, fontsReady: true, imagesReady: true });
   return frame;
 }
 
