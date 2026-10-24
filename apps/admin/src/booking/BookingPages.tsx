@@ -6,6 +6,8 @@ import {
   ArrowRight,
   CalendarDays,
   CheckCircle2,
+  Database,
+  BarChart3,
   ChevronRight,
   ClipboardList,
   Clock3,
@@ -28,6 +30,19 @@ import { createPlayerBookingApi } from '../api/player-booking';
 import { ResourceState, useAction, useResource } from '../registration/shared';
 import { Modal } from '../scoring/Dialogs';
 import { bookingDemo } from './demo';
+import { createPlayerPerformanceApi } from '../api/player-performance';
+import type { PlayerPerformanceRepository } from './performance-model';
+import { unavailablePerformanceRepository } from './performance-model';
+import { performanceDemo } from './performance-demo';
+import {
+  PerformanceProvider,
+  usePerformanceData,
+  PerformanceCardSummary,
+  PlayerPerformanceDetails,
+  PlayerComparison,
+  DataAuthorizations,
+  PlayerDataPage,
+} from './PlayerPerformance';
 import type { DemoRole } from './demo';
 import type {
   BookingAppearanceData,
@@ -59,6 +74,7 @@ const tabs = [
   { to: '/players', label: '找球员', icon: UsersRound },
   { to: '/player-bookings', label: '我的预约', icon: ClipboardList },
   { to: '/player-center', label: '球员中心', icon: UserRound },
+  { to: '/player-data', label: '数据授权', icon: Database },
 ];
 function Badge({ state, children }: { state?: string; children?: ReactNode }) {
   return (
@@ -148,9 +164,11 @@ export function BookingStandaloneApp({ client }: { client: ApiClient }) {
 export function BookingPage({
   client,
   repository: providedRepository,
+  performanceRepository: providedPerformanceRepository,
 }: {
   client?: ApiClient;
   repository?: BookingRepository;
+  performanceRepository?: PlayerPerformanceRepository;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -158,6 +176,16 @@ export function BookingPage({
   const repository = useMemo(
     () => providedRepository ?? (client ? createPlayerBookingApi(client) : bookingDemo.repository),
     [client, providedRepository],
+  );
+  const performanceRepository = useMemo(
+    () =>
+      providedPerformanceRepository ??
+      (client
+        ? createPlayerPerformanceApi(client)
+        : demo
+          ? performanceDemo
+          : unavailablePerformanceRepository),
+    [providedPerformanceRepository, client, demo],
   );
   const read = useCallback(() => repository.workspace(), [repository]);
   const resource = useResource(read);
@@ -172,6 +200,7 @@ export function BookingPage({
   let page: ReactNode = null;
   if (data) {
     if (path === '/players') page = <Marketplace data={data} demo={demo} />;
+    else if (path === '/players/compare') page = <PlayerComparison bookingData={data} />;
     else if (path.startsWith('/players/'))
       page = (
         <PlayerDetails
@@ -208,6 +237,7 @@ export function BookingPage({
       page = (
         <PlayerCenter data={data} repository={repository} demo={demo} reload={resource.reload} />
       );
+    else if (path === '/player-data') page = <PlayerDataPage bookingData={data} />;
     else if (path === '/player-bookings-admin')
       page = <Operations data={data} repository={repository} reload={resource.reload} />;
     else
@@ -218,130 +248,149 @@ export function BookingPage({
       );
   }
   return (
-    <div className="booking-app">
-      <a className="bk-skip" href="#booking-main">
-        跳转到主要内容
-      </a>
-      <header className="bk-header">
-        <div className="bk-header-inner">
-          <Link to="/players" className="bk-brand">
-            <span className="bk-brand-ball">
-              <Trophy size={23} />
-            </span>
-            <span>
-              小城市篮球<small>球员赛事预约</small>
-            </span>
-          </Link>
-          <nav className="bk-desktop-nav" aria-label="球员预约导航">
-            {tabs.map((t) => (
-              <NavLink
-                to={t.to}
-                end={t.to != '/players'}
-                key={t.to}
-                className={({ isActive }) => (isActive ? 'active' : '')}
+    <PerformanceProvider
+      repository={performanceRepository}
+      viewerUserId={data?.viewerUserId ?? ''}
+      demo={demo}
+    >
+      <div className="booking-app">
+        <a className="bk-skip" href="#booking-main">
+          跳转到主要内容
+        </a>
+        <header className="bk-header">
+          <div className="bk-header-inner">
+            <Link to="/players" className="bk-brand">
+              <span className="bk-brand-ball">
+                <Trophy size={23} />
+              </span>
+              <span>
+                小城市篮球<small>球员赛事预约</small>
+              </span>
+            </Link>
+            <nav className="bk-desktop-nav" aria-label="球员预约导航">
+              {tabs.map((t) => (
+                <NavLink
+                  to={t.to}
+                  end={t.to != '/players'}
+                  key={t.to}
+                  className={({ isActive }) => (isActive ? 'active' : '')}
+                >
+                  {t.label}
+                </NavLink>
+              ))}
+              {data?.isPlatformOperator && <NavLink to="/player-bookings-admin">平台运营</NavLink>}
+            </nav>
+            <div className="bk-header-right">
+              <span className="bk-city">
+                <MapPin size={15} />
+                高州
+              </span>
+              <a href="/" className="bk-back-workspace">
+                赛事工作台
+                <ArrowRight size={15} />
+              </a>
+              <button
+                className="bk-icon-button bk-menu-button"
+                aria-label="打开预约导航"
+                onClick={() => setMenuOpen(!menuOpen)}
               >
-                {t.label}
-              </NavLink>
-            ))}
-            {data?.isPlatformOperator && <NavLink to="/player-bookings-admin">平台运营</NavLink>}
-          </nav>
-          <div className="bk-header-right">
-            <span className="bk-city">
-              <MapPin size={15} />
-              高州
-            </span>
-            <a href="/" className="bk-back-workspace">
-              赛事工作台
-              <ArrowRight size={15} />
-            </a>
-            <button
-              className="bk-icon-button bk-menu-button"
-              aria-label="打开预约导航"
-              onClick={() => setMenuOpen(!menuOpen)}
-            >
-              <SlidersHorizontal size={21} />
-            </button>
+                <SlidersHorizontal size={21} />
+              </button>
+            </div>
           </div>
-        </div>
-        {menuOpen && (
-          <nav className="bk-mobile-menu" aria-label="更多预约导航">
-            {tabs.map((t) => (
-              <Link to={t.to} key={t.to}>
-                {t.label}
-              </Link>
-            ))}
-            {data?.isPlatformOperator && <Link to="/player-bookings-admin">平台运营</Link>}
-            <a href="/">返回赛事工作台</a>
-          </nav>
+          {menuOpen && (
+            <nav className="bk-mobile-menu" aria-label="更多预约导航">
+              {tabs.map((t) => (
+                <Link to={t.to} key={t.to}>
+                  {t.label}
+                </Link>
+              ))}
+              {data?.isPlatformOperator && <Link to="/player-bookings-admin">平台运营</Link>}
+              <a href="/">返回赛事工作台</a>
+            </nav>
+          )}
+        </header>
+        {demo && (
+          <div className="bk-demo-bar">
+            <span>
+              <Sparkles size={15} />
+              <strong>交互演示</strong> · 合成球员与订单，刷新后重置，不发生资金交易
+            </span>
+            <label>
+              体验身份
+              <select
+                aria-label="演示身份"
+                value={demoRole}
+                onChange={(e) => {
+                  const role = e.target.value as DemoRole;
+                  bookingDemo.setRole(role);
+                  setDemoRole(role);
+                  resource.reload();
+                }}
+              >
+                <option value="buyer">球队领队</option>
+                <option value="player">预约球员</option>
+                <option value="operator">平台运营</option>
+                <option value="publisher">赛事数据管理者</option>
+              </select>
+            </label>
+          </div>
         )}
-      </header>
-      {demo && (
-        <div className="bk-demo-bar">
-          <span>
-            <Sparkles size={15} />
-            <strong>交互演示</strong> · 合成球员与订单，刷新后重置，不发生资金交易
-          </span>
-          <label>
-            体验身份
-            <select
-              aria-label="演示身份"
-              value={demoRole}
-              onChange={(e) => {
-                const role = e.target.value as DemoRole;
-                bookingDemo.setRole(role);
-                setDemoRole(role);
-                resource.reload();
-              }}
-            >
-              <option value="buyer">球队领队</option>
-              <option value="player">预约球员</option>
-              <option value="operator">平台运营</option>
-            </select>
-          </label>
-        </div>
-      )}
-      <main id="booking-main" className="bk-main" tabIndex={-1}>
-        {resource.loading || resource.error ? (
-          <ResourceState
-            loading={resource.loading}
-            error={resource.error}
-            reload={resource.reload}
-          />
-        ) : (
-          page
-        )}
-      </main>
-      <footer className="bk-footer">
-        <span>小城市，也有大主场。</span>
-        <p>球员自主接单 · 费用清晰展示 · 逐场履约记录</p>
-        <small>线上支付、退款及分账尚未接通；入驻资料审核不等于实名、参赛资格或保险核验。</small>
-      </footer>
-      <nav className="bk-bottom-nav" aria-label="手机预约导航">
-        {tabs.map((t) => (
-          <NavLink key={t.to} to={t.to} end={t.to != '/players'}>
-            <t.icon size={21} />
-            <span>{t.label}</span>
-          </NavLink>
-        ))}
-        {data?.isPlatformOperator && (
-          <NavLink to="/player-bookings-admin">
-            <ShieldCheck size={21} />
-            <span>运营</span>
-          </NavLink>
-        )}
-      </nav>
-    </div>
+        <main id="booking-main" className="bk-main" tabIndex={-1}>
+          {resource.loading || resource.error ? (
+            <ResourceState
+              loading={resource.loading}
+              error={resource.error}
+              reload={resource.reload}
+            />
+          ) : (
+            page
+          )}
+        </main>
+        <footer className="bk-footer">
+          <span>小城市，也有大主场。</span>
+          <p>球员自主接单 · 费用清晰展示 · 逐场履约记录</p>
+          <small>线上支付、退款及分账尚未接通；入驻资料审核不等于实名、参赛资格或保险核验。</small>
+        </footer>
+        <nav className="bk-bottom-nav" aria-label="手机预约导航">
+          {tabs.map((t) => (
+            <NavLink key={t.to} to={t.to} end={t.to != '/players'}>
+              <t.icon size={21} />
+              <span>{t.label}</span>
+            </NavLink>
+          ))}
+          {data?.isPlatformOperator && (
+            <NavLink to="/player-bookings-admin">
+              <ShieldCheck size={21} />
+              <span>运营</span>
+            </NavLink>
+          )}
+        </nav>
+      </div>
+    </PerformanceProvider>
   );
 }
 function Marketplace({ data, demo }: { data: BookingWorkspaceData; demo: boolean }) {
   const [search, setSearch] = useState(''),
     [position, setPosition] = useState('ALL'),
     [sort, setSort] = useState('recommended'),
-    [date, setDate] = useState('');
+    [date, setDate] = useState(''),
+    [price, setPrice] = useState('ALL'),
+    [page, setPage] = useState(1),
+    [compared, setCompared] = useState<string[]>([]),
+    [compareError, setCompareError] = useState('');
+  useEffect(() => {
+    setPage(1);
+  }, [position, search, date, price, sort]);
+  useEffect(() => {
+    setCompared([]);
+    setCompareError('');
+  }, [data.viewerUserId]);
   const players = data.players
     .filter(
       (p) =>
         (position === 'ALL' || p.position === position) &&
+        (price === 'ALL' || p.priceFen === Number(price)) &&
         (!search || `${p.displayName} ${p.city} ${p.bio}`.includes(search)) &&
         (!date ||
           p.availability.some(
@@ -357,6 +406,24 @@ function Marketplace({ data, demo }: { data: BookingWorkspaceData; demo: boolean
           ? b.priceFen - a.priceFen
           : a.displayName.localeCompare(b.displayName, 'zh-CN'),
     );
+  const pageCount = Math.max(1, Math.ceil(players.length / 20));
+  const visiblePlayers = players.slice(
+    (Math.min(page, pageCount) - 1) * 20,
+    Math.min(page, pageCount) * 20,
+  );
+  const performance = usePerformanceData(visiblePlayers.map((p) => p.id));
+  function toggleCompare(id: string) {
+    setCompareError('');
+    if (compared.includes(id)) {
+      setCompared((values) => values.filter((value) => value !== id));
+      return;
+    }
+    if (compared.length >= 3) {
+      setCompareError('最多比较3名球员，请先移除一位。');
+      return;
+    }
+    setCompared((values) => [...values, id]);
+  }
   return (
     <>
       <section className="bk-hero">
@@ -445,6 +512,14 @@ function Marketplace({ data, demo }: { data: BookingWorkspaceData; demo: boolean
               球员广场 <small>{players.length} 位可查看</small>
             </h2>
           </div>
+          <button
+            type="button"
+            className="bk-button bk-outline bk-small"
+            onClick={performance.reload}
+          >
+            <RefreshCw size={15} />
+            刷新统计记录
+          </button>
           <Link to="/player-bookings" className="bk-text-link">
             我的预约
             <ArrowRight size={16} />
@@ -492,6 +567,20 @@ function Marketplace({ data, demo }: { data: BookingWorkspaceData; demo: boolean
                   onChange={(e) => setDate(e.target.value)}
                 />
               </label>
+              <select
+                aria-label="参赛费同价筛选"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+              >
+                <option value="ALL">全部参赛费</option>
+                {Array.from(new Set(data.players.map((p) => p.priceFen)))
+                  .sort((a, b) => a - b)
+                  .map((value) => (
+                    <option key={value} value={value}>
+                      {money(value)} / 场
+                    </option>
+                  ))}
+              </select>
               <select aria-label="球员排序" value={sort} onChange={(e) => setSort(e.target.value)}>
                 <option value="recommended">默认排序</option>
                 <option value="price-up">参赛费从低到高</option>
@@ -500,10 +589,27 @@ function Marketplace({ data, demo }: { data: BookingWorkspaceData; demo: boolean
             </div>
           </div>
         </div>
+        <p className="pf-filter-note">
+          同价按球员参赛费筛选，不含平台费及交通食宿。位置、身高和打法是本人资料；下方统计来自单独授权记录。
+        </p>
+        {performance.error && (
+          <p role="alert" className="bk-error">
+            {performance.error} 未用演示统计替代。
+          </p>
+        )}
+        {compareError && (
+          <p role="alert" className="bk-error">
+            {compareError}
+          </p>
+        )}
         {players.length ? (
           <div className="bk-player-grid">
-            {players.map((p) => (
-              <article className="bk-player-card" key={p.id}>
+            {visiblePlayers.map((p) => (
+              <article
+                className="bk-player-card"
+                aria-label={`${p.displayName} 球员资料`}
+                key={p.id}
+              >
                 <Link
                   className="bk-player-picture"
                   to={`/players/${encodeURIComponent(p.id)}`}
@@ -525,7 +631,37 @@ function Marketplace({ data, demo }: { data: BookingWorkspaceData; demo: boolean
                   <p className="bk-player-meta">
                     {p.heightCm}cm <span>·</span> {p.city}
                   </p>
-                  <p className="bk-player-bio">{p.bio}</p>
+                  <p className="bk-player-bio">
+                    <span className="pf-self-label">本人自述</span>
+                    {p.bio}
+                  </p>
+                  <PerformanceCardSummary
+                    data={performance.data?.[p.id]}
+                    loading={performance.loading}
+                    error={performance.error}
+                    demo={demo}
+                  />
+                  <div className="pf-card-compare-actions">
+                    <button
+                      type="button"
+                      className={compared.includes(p.id) ? 'active' : ''}
+                      aria-pressed={compared.includes(p.id)}
+                      aria-label={`${compared.includes(p.id) ? '移除对比' : '加入对比'} ${p.displayName}`}
+                      onClick={() => toggleCompare(p.id)}
+                    >
+                      <BarChart3 size={13} />
+                      {compared.includes(p.id) ? '已加入对比' : '加入对比'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPosition(p.position);
+                        setPrice(String(p.priceFen));
+                      }}
+                    >
+                      找同价同位置
+                    </button>
+                  </div>
                   <div className="bk-card-bottom">
                     <span className="bk-price">
                       {money(p.priceFen)}
@@ -552,6 +688,7 @@ function Marketplace({ data, demo }: { data: BookingWorkspaceData; demo: boolean
                 setSearch('');
                 setPosition('ALL');
                 setDate('');
+                setPrice('ALL');
               }}
             >
               清空筛选
@@ -559,6 +696,60 @@ function Marketplace({ data, demo }: { data: BookingWorkspaceData; demo: boolean
           </Empty>
         )}
       </section>
+      {pageCount > 1 && (
+        <nav className="pf-pagination" aria-label="球员分页">
+          <button
+            type="button"
+            className="bk-button bk-outline bk-small"
+            disabled={page <= 1}
+            onClick={() => setPage((value) => Math.max(1, value - 1))}
+          >
+            上一页
+          </button>
+          <span>
+            第{Math.min(page, pageCount)} / {pageCount}页 · 每页最多20位
+          </span>
+          <button
+            type="button"
+            className="bk-button bk-outline bk-small"
+            disabled={page >= pageCount}
+            onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+          >
+            下一页
+          </button>
+        </nav>
+      )}
+      {compared.length > 0 && (
+        <div className="pf-compare-bar">
+          <div>
+            <strong>球员对比 {compared.length}/3</strong>
+            <span>
+              {compared
+                .map((id) => data.players.find((p) => p.id === id)?.displayName)
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="bk-button bk-outline bk-small"
+            onClick={() => setCompared([])}
+          >
+            清空
+          </button>
+          {compared.length >= 2 ? (
+            <Link
+              className="bk-button bk-primary bk-small"
+              to={`/players/compare?${new URLSearchParams({ ids: compared.join(',') })}`}
+            >
+              开始对比
+              <ArrowRight size={15} />
+            </Link>
+          ) : (
+            <span>再选1位开始比较</span>
+          )}
+        </div>
+      )}
       <Notice>
         球员广场显示的是入驻资料审核结果。参赛资格由赛事规则与报名要求决定，预约前请先核对。
       </Notice>
@@ -620,7 +811,7 @@ function PlayerDetails({
                 <span>主打位置</span>
               </div>
             </div>
-            <h2>关于这位队友</h2>
+            <h2>关于这位队友 · 本人自述</h2>
             <p className="bk-bio-long">{p.bio}</p>
             <Notice>尚未采集真实比赛视频和能力评分，不以示意人物或审核状态代替实力证明。</Notice>
           </div>
@@ -656,6 +847,7 @@ function PlayerDetails({
           <small>提交预约后仍需球员确认；当前线上支付及分账未接通。</small>
         </aside>
       </div>
+      <PlayerPerformanceDetails profileId={p.id} />
       <section className="bk-panel bk-availability">
         <div className="bk-section-head">
           <div>
@@ -1937,6 +2129,7 @@ function PlayerCenter({
           <small>支付及分账未接通</small>
         </div>
       </div>
+      <DataAuthorizations bookingData={data} ownOnly />
       <div className="bk-section-head">
         <h2>收到的系列预约</h2>
         <button

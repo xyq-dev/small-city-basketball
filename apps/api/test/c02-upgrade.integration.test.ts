@@ -14,7 +14,7 @@ import type {
 } from '@small-city-basketball/contracts';
 import { ORIGIN, call, data, testDatabaseUrl } from './support.js';
 
-// This is a genuine 001–007 -> 008–016 database upgrade, never a downgrade of a
+// This is a genuine 001–007 -> 008–017 database upgrade, never a downgrade of a
 // database first migrated by the new application. The persisted legacy fixture
 // is a user. Old scoring schema/defaults and legacy command/replay fixtures are
 // checked, but this file does NOT claim an existing FINAL match upgrade test.
@@ -38,6 +38,7 @@ const additions = [
   '014_c05_wechat.sql',
   '015_c05_media.sql',
   '016_c06_player_bookings.sql',
+  '017_c07_player_performance.sql',
 ];
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const at = '2026-10-23T00:00:00.000Z';
@@ -317,7 +318,7 @@ describe(
       }
     });
 
-    test('keeps the sixty-three manifest tables and every declared runtime update column compatible', async () => {
+    test('keeps the sixty-five manifest tables and every declared runtime update column compatible', async () => {
       const manifest = JSON.parse(
         await readFile(
           new URL('../../../packages/contracts/runtime-privileges.json', import.meta.url),
@@ -329,7 +330,7 @@ describe(
           "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name",
         )
       ).rows.map((row) => row.table_name);
-      expect(actual).toHaveLength(63);
+      expect(actual).toHaveLength(65);
       expect(Object.keys(manifest.tables).sort()).toEqual(actual);
       const columns = (
         await pool!.query<{ table_name: string; column_name: string }>(
@@ -373,7 +374,7 @@ describe(
         );
         expect(await userFacts()).toEqual(legacyUser);
         expect((await pool!.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n).toBe(
-          16,
+          17,
         );
       } finally {
         await pool!.query('UPDATE schema_migrations SET checksum=$2 WHERE name=$1', [

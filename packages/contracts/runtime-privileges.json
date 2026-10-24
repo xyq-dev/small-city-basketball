@@ -82,6 +82,23 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["status", "version", "updated_at"]
     },
+    "booking_performance_links": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "status",
+        "version",
+        "consented_by",
+        "consented_at",
+        "revoked_by",
+        "revoked_at",
+        "revoke_reason",
+        "updated_at"
+      ]
+    },
+    "booking_performance_operations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["result"]
+    },
     "booking_profiles": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": [

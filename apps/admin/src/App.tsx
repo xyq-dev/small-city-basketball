@@ -1609,6 +1609,7 @@ const primaryNav: { label: string; to: string; icon: LucideIcon; planned?: boole
   { label: '抽签排赛', to: '/roadmap/schedule', icon: CalendarDays, planned: true },
   { label: '球队与球员', to: '/roadmap/teams', icon: UsersRound, planned: true },
   { label: '球员预约', to: '/players', icon: UserRound, planned: false },
+  { label: '球员数据授权', to: '/player-data', icon: ShieldCheck, planned: false },
   { label: '工作人员', to: '/roadmap/staff', icon: ShieldCheck, planned: true },
   { label: '直播与 OBS', to: '/roadmap/broadcast', icon: Radio, planned: true },
   { label: '内容与交付', to: '/roadmap/delivery', icon: Video, planned: true },

@@ -23,6 +23,11 @@ import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
 import { PlayerBookingService } from './player-booking/service.js';
+import { PlayerPerformanceService } from './player-booking/performance-service.js';
+import {
+  PlayerPerformanceController,
+  SCB_PLAYER_PERFORMANCE_SERVICE,
+} from './player-booking/performance-controller.js';
 import {
   PlayerBookingController,
   SCB_PLAYER_BOOKING_SERVICE,
@@ -261,6 +266,7 @@ export async function createApi(
     if (options.production) await assertRuntimeReadiness(pool);
     const service = new RegistrationService(pool, options);
     const playerBooking = new PlayerBookingService(pool, options);
+    const playerPerformance = new PlayerPerformanceService(pool, options);
     const scheduling = new SchedulingService(pool, options);
     const wechat = new WechatService(pool, options, input.wechat);
     const knockout = new GroupKnockoutService(pool, options);
@@ -283,6 +289,7 @@ export async function createApi(
       controllers: [
         AuthController,
         PlayerBookingController,
+        PlayerPerformanceController,
         WechatController,
         GroupKnockoutController,
         MediaController,
@@ -308,6 +315,7 @@ export async function createApi(
       providers: [
         { provide: SERVICE, useValue: service },
         { provide: SCB_PLAYER_BOOKING_SERVICE, useValue: playerBooking },
+        { provide: SCB_PLAYER_PERFORMANCE_SERVICE, useValue: playerPerformance },
         { provide: SCB_WECHAT_SERVICE, useValue: wechat },
         { provide: SCB_GROUP_KNOCKOUT_SERVICE, useValue: knockout },
         { provide: SCB_MEDIA_SERVICE, useValue: media },

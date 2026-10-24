@@ -2,6 +2,12 @@
 
 更新时间：2026-10-24（Asia/Shanghai）；集成人root。
 
+## C07 球员数据与同价比较（REVIEW / BRANCH_ONLY）
+
+用户本轮已全权授权开发、Git同步、PR及检查后合并，不再重复确认。集成目录为`/workspace/scratch/608836f8d204/small-city-basketball`，分支`feat/player-reservations`。已整合017、65表权限恢复集合、精确提名/本人同意/撤销、当前独立确认的有限公开统计与20人批量API、11项投影测试及17项PG/HTTP用例。UI已整合至6664ccd：同价同位置筛选、最多3人含费对比、近期记录/样本口径、来源提名/本人同意/撤销及viewer草稿隔离已完成。本地API534、首版全量前端442、最终13新增直接测试、类型/格式/两端build及微信VM11通过，桌面Mock浏览器实际流程通过；独立静态复核CLEAR。17项新PG与最终桌面/手机浏览器及恢复联合CI尚待，未标DONE。
+
+普通push缺少交互凭据后，已通过连接的GitHub Git Data接口非强制同步C06基线，创建[草稿PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)。本地1ff7c9a与远端61343528源tree一致；[CI40061888579](https://github.com/xyq-dev/small-city-basketball/actions/runs/40061888579)中admin/隔离production成功，api真实PG/重启步骤成功、浏览器步骤运行中。此为C06基线证据，不充作C07新验证或生产部署。下节保留C06交接当时的历史阻塞，现以本节和后续最终证据为准。详见[C07任务](tasks/C07.md)、[交接](handoffs/C07.md)。
+
 ## C06 球员赛事预约与UI（本地实现完成，REVIEW / BRANCH_ONLY）
 
 独立`feat/player-reservations`已整合真实API/016及63表权限恢复契约、五类合作/多人逐场/条件意向、10%报价与版本快照、接单/变更/履约/争议、资料审核/运营与响应式UI。业务HEAD`44ceb912d199dd507024a68b9bc4f5a421e087ee`，后续仅文档/截图。最终类型/两端build/格式通过；API523源码、前端完整429及最后组件增量10、既有微信VM11通过。24项真实PG/HTTP用例已编写并联编，未执行；本机UID限制阻断非root PG，正常Git推送又被自动审批拒绝，未绕过，故无本卡云端CI/PR/合并/部署结论。当前不能标记商业验收通过。

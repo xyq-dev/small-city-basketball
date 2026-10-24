@@ -1,5 +1,7 @@
 # 任务看板
 
+当前C07：球员数据与最多3人同价比较，`REVIEW / BRANCH_ONLY`。API/schema/UI/tests已整合，本地API534/首版前端442/最终13新增直接测试/类型/格式/build/VM11通过，桌面Mock及独立静态复核通过，真实PG与最终联合CI待验。[草稿PR14](https://github.com/xyq-dev/small-city-basketball/pull/14)已建立；C06基线隔离CI正在完成，历史推送审批阻塞已由最新明确授权解除。见[任务](tasks/C07.md)、[交接](handoffs/C07.md)；不把C06证据当新C07通过。
+
 当前C06：球员赛事预约与响应式UI，`REVIEW / BRANCH_ONLY`。业务HEAD`44ceb91`，类型/构建/格式、API523、前端完整429＋最后组件10、微信VM11通过；桌面Mock浏览器已走通系列建单/接单/双方变更/部分取消。真实PG24项已编写未执行，受本机UID及推送审批阻塞，未云端CI/合并/部署，资金严格未开通。见[任务](tasks/C06.md)、[使用说明](PLAYER_BOOKING_USAGE.md)、[交接](handoffs/C06.md)。
 
 当前D01：商业版Figma全景初稿已交付，设计DONE；[Figma导览](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=18-2)、[任务](tasks/D01.md)、[交接](handoffs/D01.md)。10页/94张业务与状态画板，原生组件及核心浏览/阶段原型；用户视觉确认、前端新稿实现未完成。本批仅文档同步，不更新应用或生产。
@@ -32,6 +34,7 @@
 | C05 | 分组接淘汰、按届计费、微信及媒体 | DONE | root及四域独立作者/UI/恢复/审查 | C04 | MAIN d4f6500 [PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)；[任务](tasks/C05.md)、[交接](handoffs/C05.md)；CI40001590258三job成功：914源码/11VM/254PG/12Mock＋28真实浏览器、15迁移/58表完整恢复；合并后CI40003519494同范围全部SUCCESS（无重试）；无生产部署 |
 | D01 | 整套商业版Figma UI全景初稿 | DONE（设计交付） | root主画布/移动与运营只读协作/独立视觉复核 | 已有业务能力与商业规划 | [Figma](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=18-2)、[设计索引](design/COMMERCIAL_UI_FIGMA.md)、[任务](tasks/D01.md)、[交接](handoffs/D01.md)；本记录同步main仅文档，用户视觉签收/应用实现另卡 |
 | C06 | 球员赛事预约、逐场履约及UI | REVIEW | root / API / UI / 验证 | C05、当前预约业务设计 | BRANCH_ONLY业务44ceb91；[任务](tasks/C06.md)、[使用](PLAYER_BOOKING_USAGE.md)、[证据](evidence/C06/README.md)、[交接](handoffs/C06.md)；PG/CI受阻，未验收/未上线 |
+| C07 | 已授权球员数据与同价同位置对比 | REVIEW | root / API / UI / PG / 独立审查 | C06、C03已确认个人记录 | BRANCH_ONLY；017/65表、公开有限投影、提名/同意/撤销已整合；[任务](tasks/C07.md)、[交接](handoffs/C07.md)，UI已整合/联合CI待验 |
 
 ## 当前顺序
 

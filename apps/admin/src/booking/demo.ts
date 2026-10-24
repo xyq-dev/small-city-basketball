@@ -9,7 +9,7 @@ import type {
 } from '@small-city-basketball/contracts';
 import type { BookingRepository } from './model';
 import { commandId, fee } from './model';
-export type DemoRole = 'buyer' | 'player' | 'operator';
+export type DemoRole = 'buyer' | 'player' | 'operator' | 'publisher';
 const clone = <T>(v: T): T => structuredClone(v);
 const now = () => new Date().toISOString();
 const day = (offset: number, hour = 19) => {
@@ -56,6 +56,17 @@ export function createDemoBookingRepository() {
       30000,
       '擅长组织控场、突破分球。愿意配合球队战术，认真对待每一场比赛。',
     ),
+    {
+      ...makePlayer(
+        'demo-guard-two',
+        '林泽宇',
+        'PG',
+        184,
+        30000,
+        '偏重外线接应与无球跑动，愿意承担不同战术角色。以上为本人自述，不是统计结论。',
+      ),
+      travelFen: 8000,
+    },
     makePlayer(
       'demo-center',
       '周启明',
@@ -87,7 +98,13 @@ export function createDemoBookingRepository() {
   const orders: BookingOrderData[] = [];
   const receipts = new Map<string, { hash: string; value: unknown }>();
   const actor = () =>
-    role === 'buyer' ? 'demo-buyer' : role === 'player' ? 'demo-user-demo-guard' : 'demo-operator';
+    role === 'buyer'
+      ? 'demo-buyer'
+      : role === 'player'
+        ? 'demo-user-demo-guard'
+        : role === 'publisher'
+          ? 'demo-publisher'
+          : 'demo-operator';
   function cap(a: BookingAppearanceData, o: BookingOrderData) {
     const buyer = o.buyerUserId === actor(),
       player = a.playerUserId === actor();
@@ -492,6 +509,11 @@ export function createDemoBookingRepository() {
     },
     getRole() {
       return role;
+    },
+    completedServiceCount(profileId: string) {
+      return orders
+        .flatMap((order) => order.appearances)
+        .filter((a) => a.profileId === profileId && a.status === 'COMPLETED').length;
     },
   };
 }
