@@ -175,10 +175,10 @@ async function measureLayout(frame: Frame) {
 }
 
 async function attachScreen(page: Page, testInfo: TestInfo, name: string) {
-  await testInfo.attach(name, {
-    body: await page.locator('iframe.preview-frame').screenshot({ animations: 'disabled' }),
-    contentType: 'image/png',
-  });
+  const target = testInfo.outputPath(name);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  await page.locator('iframe.preview-frame').screenshot({ path: target, animations: 'disabled' });
+  await testInfo.attach(name, { path: target, contentType: 'image/png' });
 }
 
 test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机验收）', () => {
@@ -210,14 +210,18 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         const frame = await nativeFrame(page);
         if (scenario.filled) await expect(frame.locator('body')).toContainText('合成');
         const layout = await measureLayout(frame);
-        await testInfo.attach('native-layout.json', {
-          body: Buffer.from(
-            JSON.stringify(
-              { route: scenario.route, scenario: scenario.name, width, ...layout },
-              null,
-              2,
-            ),
+        const diagnosticPath = testInfo.outputPath('native-layout.json');
+        fs.mkdirSync(path.dirname(diagnosticPath), { recursive: true });
+        fs.writeFileSync(
+          diagnosticPath,
+          JSON.stringify(
+            { route: scenario.route, scenario: scenario.name, width, ...layout },
+            null,
+            2,
           ),
+        );
+        await testInfo.attach('native-layout.json', {
+          path: diagnosticPath,
           contentType: 'application/json',
         });
         await attachScreen(page, testInfo, 'native-top.png');

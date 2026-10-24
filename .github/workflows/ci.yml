@@ -61,6 +61,8 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - name: Verify native compatibility evidence files
+        run: node scripts/check-mini-layout-evidence.mjs
       - name: Preserve native template compatibility layouts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
