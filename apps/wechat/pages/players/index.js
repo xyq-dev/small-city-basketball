@@ -95,7 +95,6 @@ Page({
       });
       return;
     }
-    const token = ui.begin(this);
     const ids = market.selectedIds();
     const anchor = this._catalog.find((p) => p.id === ids[0]);
     const result = market.filterPlayers(this._catalog, this.data.filters, anchor);
@@ -103,6 +102,8 @@ Page({
       this.setData({ cards: [], error: result.error, loading: false, hasMore: false });
       return;
     }
+    // Invalid filters must not invalidate the last authenticated catalog read.
+    const token = ui.begin(this);
     const visible = result.players.slice(0, limit);
     this.setData({ cards: [], loading: true, error: '', statisticsError: '' });
     const stats = {};

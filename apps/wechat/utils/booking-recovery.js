@@ -71,7 +71,14 @@ function createRecoveryStore(storageProvider = () => wx) {
       try {
         raw = storageProvider().getStorageSync(storageKey(actor));
       } catch {
-        return { entry: null, invalid: false, storageUnavailable: true };
+        // An unreadable journal may already contain an unknown command. Do not
+        // turn a storage read failure into permission to overwrite that intent.
+        return {
+          entry: null,
+          invalid: false,
+          storageUnavailable: true,
+          storageReadBlocked: true,
+        };
       }
       if (absent(raw)) return { entry: null, invalid: false, storageUnavailable: false };
       let envelope;
@@ -133,6 +140,11 @@ function createRecoveryStore(storageProvider = () => wx) {
     },
     begin(actor, payload) {
       const current = store.load(actor);
+      if (current.storageReadBlocked) {
+        const error = new Error('本机恢复记录暂时无法读取，请安全重读后再核对原预约');
+        error.code = 'RECOVERY_READ_BLOCKED';
+        throw error;
+      }
       if (current.invalid || current.entry) throw new Error('还有原预约待核对，不能创建新请求');
       if (!id(actor) || !validPayload(payload)) throw new Error('预约恢复内容无效，未发送请求');
       const entry = entryFor(actor, payload);

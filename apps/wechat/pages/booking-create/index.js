@@ -62,6 +62,7 @@ Page({
     pending: false,
     invalidRecovery: false,
     storageUnavailable: false,
+    storageReadBlocked: false,
     recoveryChecked: false,
     recoveryEventName: '',
     recoveryScope: '',
@@ -171,14 +172,15 @@ Page({
       if (!this.closed && (!token || ui.live(this, token))) this.setData({ loading: false });
     }
   },
-  renderRecovery() {
+  renderRecovery(snapshot) {
     if (!this.actor || !this.workspace) return;
-    const stored = recoveryStore.load(this.actor);
+    const stored = snapshot || recoveryStore.load(this.actor);
     this.entry = stored.entry;
     const base = {
       pending: !!stored.entry,
       invalidRecovery: stored.invalid,
       storageUnavailable: stored.storageUnavailable,
+      storageReadBlocked: stored.storageReadBlocked === true,
       recoveryChecked: false,
       canRecover: false,
       recoveryEventName: '',
@@ -189,6 +191,11 @@ Page({
       originalResolvedId: '',
       originalRejected: '',
     };
+    if (stored.storageReadBlocked) {
+      this.draft.consent = false;
+      base.review = false;
+      base.consent = false;
+    }
     if (stored.entry) {
       const original = JSON.parse(stored.entry.payload);
       const allowed = this.workspace.teams.some(
@@ -301,6 +308,7 @@ Page({
       !this._busy &&
       !this.data.pending &&
       !this.data.invalidRecovery &&
+      !this.data.storageReadBlocked &&
       !this.data.success
     );
   },
@@ -506,8 +514,8 @@ Page({
       }
       token = ui.begin(this);
       const stored = recoveryStore.load(this.actor);
-      if (stored.invalid || stored.entry) {
-        this.renderRecovery();
+      if (stored.invalid || stored.entry || stored.storageReadBlocked) {
+        this.renderRecovery(stored);
         return;
       }
       const commandId = await ui.uuid();
@@ -517,8 +525,18 @@ Page({
       this.renderRecovery();
       await this.sendOriginal(this.entry, token);
     } catch (error) {
-      if (!this.closed && (!token || ui.live(this, token)))
+      if (!this.closed && (!token || ui.live(this, token))) {
+        if (error && error.code === 'RECOVERY_READ_BLOCKED') {
+          this.draft.consent = false;
+          this.setData({
+            storageReadBlocked: true,
+            storageUnavailable: true,
+            review: false,
+            consent: false,
+          });
+        }
         this.setData({ error: ui.message(error) });
+      }
     } finally {
       this._busy = false;
       if (!this.closed && (!token || ui.live(this, token))) this.setData({ busy: false });
@@ -602,7 +620,14 @@ Page({
     this.setData({ recoveryChecked: selected(event.detail.value, 'checked') });
   },
   async acknowledgeInvalid() {
-    if (this._busy || !this.actor || !this.data.recoveryChecked) return;
+    if (
+      this._busy ||
+      !this.actor ||
+      !this.data.invalidRecovery ||
+      this.data.storageReadBlocked ||
+      !this.data.recoveryChecked
+    )
+      return;
     const session = await ui.session(this, this.returnPath);
     if (this.closed) return;
     if (!session || session.user.id !== this.actor) {

@@ -35,7 +35,14 @@
     <button class="secondary" bindtap="load">重新读取</button>
   </view>
   <block wx:elif="{{ready}}">
-    <view wx:if="{{invalidRecovery}}" class="card">
+    <view wx:if="{{storageReadBlocked}}" class="card">
+      <view class="title">暂时无法读取原预约记录</view>
+      <view class="notice warning"
+        >本机记录无法读取，尚不能确认是否已有预约请求。已暂停新建，原记录不会被覆盖，也不会自动重发。</view
+      >
+      <view class="muted">请检查本机存储权限后安全重读；也可以先查看本人预约核对结果。</view>
+    </view>
+    <view wx:elif="{{invalidRecovery}}" class="card">
       <view class="title">恢复记录损坏，先核对原预约</view>
       <view class="notice warning"
         >读取损坏不代表没有建单。已暂停直接创建新请求，避免重复预约。</view
@@ -454,7 +461,12 @@
 </view>
 
 <view wx:if="{{ready}}" class="action-bar">
-  <block wx:if="{{invalidRecovery}}"
+  <block wx:if="{{storageReadBlocked}}"
+    ><button class="primary" bindtap="load" disabled="{{busy || loading}}">
+      安全重读原预约记录</button
+    ><button class="quiet" bindtap="orders">先查看我的预约</button></block
+  >
+  <block wx:elif="{{invalidRecovery}}"
     ><button class="primary" bindtap="acknowledgeInvalid" disabled="{{busy || !recoveryChecked}}">
       核对后继续重新填写</button
     ><button class="quiet" bindtap="orders">先查看我的预约</button></block

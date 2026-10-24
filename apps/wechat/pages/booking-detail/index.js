@@ -53,6 +53,7 @@ Page({
     this.raw = null;
     this.viewer = null;
     this.loadedToken = null;
+    this.pendingReviewSnapshot = null;
     this.setData({
       order: null,
       form: null,
@@ -95,6 +96,7 @@ Page({
     const request = (this.request = (this.request || 0) + 1);
     this.raw = null;
     this.viewer = null;
+    this.pendingReviewSnapshot = null;
     this.setData({
       order: null,
       form: null,
@@ -365,6 +367,18 @@ Page({
       pendingAcknowledged: Array.isArray(event.detail.value) && event.detail.value.includes('yes'),
     });
   },
+  reviewPending(latest, token) {
+    this.raw = latest;
+    this.render(token);
+    const snapshot = JSON.stringify({ order: latest, pending: this.data.pending });
+    if (this.pendingReviewSnapshot === snapshot) return true;
+    this.pendingReviewSnapshot = snapshot;
+    this.setData({
+      pendingAcknowledged: false,
+      message: '最新场次记录已显示。请重新阅读，再勾选并点击移除本机标记；原操作编号仍保留。',
+    });
+    return false;
+  },
   async clearPending() {
     if (
       this.data.busy ||
@@ -383,7 +397,9 @@ Page({
       if (!session || session.user.id !== actor || !this.active(token, visit)) return;
       const latest = await sdk.get(this.orderId);
       if (!this.active(token, visit)) return;
-      this.raw = latest;
+      // An acknowledgement of the old screen cannot discard an unknown command.
+      // Present each new snapshot and require a separate, renewed user action.
+      if (!this.reviewPending(latest, token)) return;
       if (
         !(await ui.confirm(
           '已核对当前场次记录？',
@@ -392,7 +408,10 @@ Page({
       )
         return;
       if (!this.active(token, visit)) return;
+      const confirmed = await sdk.get(this.orderId);
+      if (!this.active(token, visit) || !this.reviewPending(confirmed, token)) return;
       const removed = model.getJournal().clear(actor, this.orderId);
+      this.pendingReviewSnapshot = null;
       this.render(token);
       this.setData({
         pendingAcknowledged: false,

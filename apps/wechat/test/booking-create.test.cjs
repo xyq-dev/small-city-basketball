@@ -336,10 +336,66 @@ test('recovery rejects unknown/private fields, oversized input and malicious pro
   poisoned.reviewedProfileVersions = JSON.parse('{"__proto__":1}');
   assert.equal(form.validPayload(JSON.stringify(poisoned)), false);
 });
-test('unavailable native storage warns while retaining only this process original request and lock', async () => {
-  const store = recovery.createRecoveryStore(() => {
-    throw new Error('denied');
+test('unreadable native journal blocks new intents without overwriting the original and safely rereads it', async () => {
+  const storage = backing(),
+    original = payload();
+  recovery.createRecoveryStore(() => storage).begin(ids.actor, original);
+  const journal = storage.map.get(recovery.PREFIX + ids.actor);
+  const read = storage.getStorageSync;
+  let denied = true;
+  storage.getStorageSync = (key) => {
+    if (denied && key === recovery.PREFIX + ids.actor) throw new Error('read denied');
+    return read(key);
+  };
+  const restarted = recovery.createRecoveryStore(() => storage);
+  const blocked = restarted.load(ids.actor);
+  assert.equal(blocked.entry, null);
+  assert.equal(blocked.invalid, false);
+  assert.equal(blocked.storageReadBlocked, true);
+  assert.equal(blocked.storageUnavailable, true);
+  const next = JSON.parse(original);
+  next.commandId = ids.order;
+  assert.throws(() => restarted.begin(ids.actor, JSON.stringify(next)), {
+    code: 'RECOVERY_READ_BLOCKED',
   });
+  assert.equal(restarted.acknowledgeInvalid(ids.actor), false);
+  assert.equal(storage.map.get(recovery.PREFIX + ids.actor), journal);
+  assert.equal(restarted.load(ids.other).storageReadBlocked, undefined);
+  denied = false;
+  const restored = restarted.load(ids.actor);
+  assert.equal(restored.entry.payload, original);
+  assert.equal(restored.entry.inFlight, false);
+  let calls = 0;
+  await restarted.execute(ids.actor, restored.entry, async (input) => {
+    calls++;
+    assert.deepEqual(input, JSON.parse(original));
+    return { id: ids.order };
+  });
+  assert.equal(calls, 1);
+});
+test('a confirmed empty journal can start a new intent after a successful safe reread', () => {
+  const storage = backing(),
+    read = storage.getStorageSync;
+  storage.getStorageSync = () => {
+    throw new Error('read denied');
+  };
+  const store = recovery.createRecoveryStore(() => storage);
+  assert.equal(store.load(ids.actor).storageReadBlocked, true);
+  assert.throws(() => store.begin(ids.actor, payload()), { code: 'RECOVERY_READ_BLOCKED' });
+  assert.equal(storage.map.size, 0);
+  storage.getStorageSync = read;
+  assert.equal(store.load(ids.actor).entry, null);
+  assert.equal(store.begin(ids.actor, payload()).payload, payload());
+});
+test('storage write failure after confirmed empty read warns while retaining this process original request and lock', async () => {
+  const storage = backing();
+  storage.setStorageSync = () => {
+    throw new Error('denied');
+  };
+  storage.removeStorageSync = () => {
+    throw new Error('denied');
+  };
+  const store = recovery.createRecoveryStore(() => storage);
   const entry = store.begin(ids.actor, payload());
   assert.equal(entry.persistenceWarning, true);
   assert.equal(store.load(ids.actor).storageUnavailable, true);
@@ -435,6 +491,115 @@ function fillPage(page) {
   page.renderForm();
   page.review();
 }
+test('page blocks unreadable recovery until explicit safe reread restores the original without automatic sends', async () => {
+  const storage = backing(),
+    original = payload();
+  recovery.createRecoveryStore(() => storage).begin(ids.actor, original);
+  const journal = storage.map.get(recovery.PREFIX + ids.actor),
+    read = storage.getStorageSync;
+  let denied = true,
+    uuidCalls = 0;
+  storage.getStorageSync = (key) => {
+    if (denied) throw new Error('read denied');
+    return read(key);
+  };
+  const app = nativePage({
+    storage,
+    uuid: async () => {
+      uuidCalls++;
+      return ids.order;
+    },
+  });
+  await app.page.load();
+  assert.equal(app.page.data.storageReadBlocked, true);
+  assert.equal(app.page.data.invalidRecovery, false);
+  assert.equal(app.page.data.pending, false);
+  fillPage(app.page);
+  app.page.consent({ detail: { value: ['agree'] } });
+  await app.page.submit();
+  app.page.recoveryCheck({ detail: { value: ['checked'] } });
+  await app.page.acknowledgeInvalid();
+  assert.equal(app.page.data.review, false);
+  assert.equal(app.page.data.consent, false);
+  assert.equal(app.calls.length, 0);
+  assert.equal(uuidCalls, 0);
+  assert.equal(storage.map.get(recovery.PREFIX + ids.actor), journal);
+  denied = false;
+  await app.page.load();
+  assert.equal(app.page.data.storageReadBlocked, false);
+  assert.equal(app.page.data.pending, true);
+  assert.equal(app.page.data.recoveryCommand, ids.command);
+  assert.equal(app.calls.length, 0);
+  await app.page.recover();
+  assert.equal(app.calls.length, 1);
+  assert.deepEqual(app.calls[0], JSON.parse(original));
+  assert.equal(uuidCalls, 0);
+});
+test('a journal read failing after review blocks before UUID and requires another explicit review after reread', async () => {
+  const storage = backing(),
+    read = storage.getStorageSync;
+  let denied = false,
+    uuidCalls = 0;
+  storage.getStorageSync = (key) => {
+    if (denied) throw new Error('read denied');
+    return read(key);
+  };
+  const app = nativePage({
+    storage,
+    uuid: async () => {
+      uuidCalls++;
+      return ids.command;
+    },
+  });
+  await app.page.load();
+  fillPage(app.page);
+  app.page.consent({ detail: { value: ['agree'] } });
+  denied = true;
+  await app.page.submit();
+  assert.equal(app.page.data.storageReadBlocked, true);
+  assert.equal(app.page.data.consent, false);
+  assert.equal(app.page.data.review, false);
+  assert.equal(uuidCalls, 0);
+  assert.equal(app.calls.length, 0);
+  denied = false;
+  await app.page.load();
+  assert.equal(app.page.data.storageReadBlocked, false);
+  await app.page.submit();
+  assert.equal(app.calls.length, 0);
+  assert.equal(uuidCalls, 0);
+});
+test('a journal read failing after secure UUID cannot overwrite a separately persisted original intent', async () => {
+  const storage = backing(),
+    read = storage.getStorageSync,
+    original = payload();
+  let denied = false;
+  storage.getStorageSync = (key) => {
+    if (denied) throw new Error('read denied');
+    return read(key);
+  };
+  const app = nativePage({
+    storage,
+    uuid: async () => {
+      recovery.createRecoveryStore(() => storage).begin(ids.actor, original);
+      denied = true;
+      return ids.order;
+    },
+  });
+  await app.page.load();
+  fillPage(app.page);
+  app.page.consent({ detail: { value: ['agree'] } });
+  await app.page.submit();
+  assert.equal(app.page.data.storageReadBlocked, true);
+  assert.equal(app.page.data.review, false);
+  assert.equal(app.page.data.consent, false);
+  assert.equal(app.calls.length, 0);
+  assert.equal(JSON.parse(storage.map.get(recovery.PREFIX + ids.actor)).payload, original);
+  denied = false;
+  await app.page.load();
+  assert.equal(app.page.data.pending, true);
+  assert.equal(app.page.data.recoveryCommand, ids.command);
+  assert.equal(app.calls.length, 0);
+});
 test('native page starts consent unchecked, builds real scoped payload and never calls a payment operation', async () => {
   const app = nativePage();
   await app.page.load();

@@ -36,7 +36,7 @@
 | D02 | 小程序预约与球员数据UI补全 | DONE（设计交付） | root / 范围只读复核 | D01、C06/C07 | [Figma导览](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=30-2400)、[设计索引](design/MINI_PROGRAM_BOOKING_UI.md)、[任务](tasks/D02.md)、[交接](handoffs/D02.md)；99业务/状态+2辅助；原生实现/统一测试未执行 |
 | C06 | 球员赛事预约、逐场履约及UI | DONE | root / API / UI / 验证 | C05、预约设计 | MAIN7d23203 PR14；[任务](tasks/C06.md)、[使用](PLAYER_BOOKING_USAGE.md)、[证据](evidence/C06/README.md)、[交接](handoffs/C06.md)；最终CI40065953550完整通过，未部署生产 |
 | C07 | 已授权球员数据与同价同位置对比 | DONE | root / API / UI / PG / 独立审查 | C06、C03 | MAIN7d23203 PR14；[任务](tasks/C07.md)、[交接](handoffs/C07.md)、[证据](evidence/C07/README.md)；1046源码/VM11/305PG/42浏览器、17迁移65表重启恢复通过，无生产部署 |
-| C08 | 按D01/D02设计实现原生小程序页面 | IN_PROGRESS / LOCAL_ONLY | root集成 / 六域独立作者与审查 | D01/D02、C06/C07 | 21个原生路由及既有API接入已整合本地；[任务](tasks/C08.md)、[使用](../apps/wechat/README.md)；本地VM/项目检查及CI布局核验收尾，官方微信运行/真机未验证 |
+| C08 | 按D01/D02设计实现原生小程序页面 | REVIEW / BRANCH_ONLY | root集成 / 六域独立作者与审查 | D01/D02、C06/C07 | 21个原生路由及既有API接入已整合本地；[任务](tasks/C08.md)、[使用](../apps/wechat/README.md)；本地VM/项目检查及CI布局核验收尾，官方微信运行/真机未验证 |
 
 ## 当前顺序
 

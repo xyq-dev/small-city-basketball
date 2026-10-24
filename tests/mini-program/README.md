@@ -60,3 +60,31 @@ Chromium/Chrome executable, and no official WeChat compiler/automator/simulate.
 The HTML generator can run without a browser. Browser screenshots or layout
 results must only be reported when an independently available browser was
 actually used, with its own environment and limitations stated.
+
+## CI browser layout checks
+
+```sh
+npx playwright test tests/e2e/mini-program.spec.ts --project=desktop
+```
+
+The existing Playwright configuration supplies Chromium. The spec calls
+`page.setContent(buildPreview(...).html)` directly; it never opens a generated
+file URL or visits a mini-program preview server. Requests are blocked and the
+browser context is offline. The existing configuration may still start its
+ordinary admin test server; these checks do not use that server.
+
+The desktop project checks 320, 390 and 430px native iframe viewports. It covers
+every currently registered initial Page (21 for C08) and the nine portable filled
+states described in [fixtures/README.md](fixtures/README.md). The mobile project
+skips this duplicate width matrix while retaining the existing web application
+tests. The assertions measure the iframe's own document/body and actual element
+bounds, allow wider content inside horizontal native `scroll-view` regions, check
+visible button targets at 44×44px, and check form heights/text (16px inputs,
+14px picker text). They do not test application commands or native interactions.
+
+Each scenario attaches a PNG and JSON measurements to the Playwright test
+results. Filled long forms also attach their lower viewport; three-player
+comparison attaches its last horizontal column. These artifacts aid layout
+review and are still compatibility rendering, not official WeChat screenshots or
+device acceptance. Browser execution is required before claiming this matrix
+passes; type checking and successful test collection alone do not validate it.

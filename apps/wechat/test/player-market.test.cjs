@@ -290,6 +290,52 @@ test('catalog loads only20 public statistics per batch and uses real workspace f
     true,
   );
 });
+test('catalog can recover after applying same fee without a selected anchor', async () => {
+  const f = fixture('players');
+  await f.page.onShow();
+  f.page.samePriceChange({ detail: { value: ['same'] } });
+  await f.page.applyFilters();
+  assert.match(f.page.data.error, /先选择/);
+  assert.equal(f.calls.length, 1);
+  f.page.samePriceChange({ detail: { value: [] } });
+  await f.page.applyFilters();
+  assert.equal(f.page.data.error, '');
+  assert.equal(f.page.data.cards.length, 2);
+  assert.equal(f.calls.length, 2);
+  f.page.detail({ currentTarget: { dataset: { id: id(1) } } });
+  assert.equal(f.nav[0].route, 'player');
+});
+test('clearing invalid filters restores the loaded catalog without reentering the page', async () => {
+  const f = fixture('players');
+  await f.page.onShow();
+  f.page.input({ currentTarget: { dataset: { field: 'price' } }, detail: { value: 'oops' } });
+  await f.page.applyFilters();
+  assert.match(f.page.data.error, /金额/);
+  assert.equal(f.calls.length, 1);
+  await f.page.clearFilters();
+  assert.equal(f.page.data.error, '');
+  assert.equal(f.page.data.filters.price, '');
+  assert.equal(f.page.data.cards.length, 2);
+  assert.equal(f.calls.length, 2);
+});
+test('correcting invalid filters after identity changes cannot revive cached catalog', async () => {
+  const f = fixture('players');
+  await f.page.onShow();
+  f.page.samePriceChange({ detail: { value: ['same'] } });
+  await f.page.applyFilters();
+  assert.match(f.page.data.error, /先选择/);
+  f.changeSession();
+  f.page.samePriceChange({ detail: { value: [] } });
+  await f.page.applyFilters();
+  assert.match(f.page.data.error, /当前账号或资料已变化/);
+  assert.equal(f.page.data.cards.length, 0);
+  assert.equal(f.page._catalog.length, 0);
+  await f.page.clearFilters();
+  f.page.detail({ currentTarget: { dataset: { id: id(1) } } });
+  assert.equal(f.page.data.cards.length, 0);
+  assert.equal(f.calls.length, 1);
+  assert.equal(f.nav.length, 0);
+});
 test('catalog statistics failure clears prior metrics and never substitutes0', async () => {
   const f = fixture('players');
   await f.page.onShow();

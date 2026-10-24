@@ -539,6 +539,91 @@ test('a recovery marker cannot be cleared without explicit unchecked-by-default 
   assert.ok(journal.read(actor, orderId));
   h.p.pendingConsent({ detail: { value: ['yes'] } });
   await h.p.clearPending();
+  assert.ok(journal.read(actor, orderId));
+  assert.equal(h.p.data.pendingAcknowledged, false);
+  await h.p.clearPending();
+  assert.ok(journal.read(actor, orderId));
+  h.p.pendingConsent({ detail: { value: ['yes'] } });
+  await h.p.clearPending();
+  assert.equal(journal.read(actor, orderId), null);
+});
+
+test('a lost ACCEPT acknowledgement is displayed before renewed consent can remove its original marker', async () => {
+  const h = await readyDetail({
+    sdk: {
+      command: async () => {
+        throw { code: 'NETWORK_ERROR', message: '服务端已接单，但响应丢失' };
+      },
+    },
+  });
+  await acceptForm(h);
+  await h.p.submit();
+  assert.equal(h.p.data.order.appearances[0].status, 'REQUESTED');
+  assert.equal(h.journal.read(actor, orderId).payload.commandId, commandId);
+  h.sdk.get = async () =>
+    order({ appearances: [item({ status: 'ACCEPTED', version: 8, capabilities: {} })] });
+  let confirmations = 0;
+  h.ui.confirm = async () => {
+    confirmations++;
+    assert.equal(h.p.data.order.appearances[0].status, 'ACCEPTED');
+    assert.equal(h.journal.read(actor, orderId).payload.commandId, commandId);
+    return true;
+  };
+  h.p.pendingConsent({ detail: { value: ['yes'] } });
+  await h.p.clearPending();
+  assert.equal(h.p.data.order.appearances[0].status, 'ACCEPTED');
+  assert.equal(h.p.data.pendingAcknowledged, false);
+  assert.equal(confirmations, 0);
+  assert.equal(h.journal.read(actor, orderId).payload.commandId, commandId);
+  h.p.pendingConsent({ detail: { value: ['yes'] } });
+  await h.p.clearPending();
+  assert.equal(confirmations, 1);
+  assert.equal(h.journal.read(actor, orderId), null);
+});
+
+test('a newer record on the second clear attempt resets acknowledgement and retains the original command', async () => {
+  const journal = model.createJournal(storage());
+  journal.start(actor, orderId, model.command('ACCEPT', item(), {}, commandId, true));
+  const h = await readyDetail({ journal });
+  let confirmations = 0;
+  h.ui.confirm = async () => {
+    confirmations++;
+    return true;
+  };
+  h.p.pendingConsent({ detail: { value: ['yes'] } });
+  await h.p.clearPending();
+  h.sdk.get = async () =>
+    order({ appearances: [item({ status: 'CANCELLED', version: 9, capabilities: {} })] });
+  h.p.pendingConsent({ detail: { value: ['yes'] } });
+  await h.p.clearPending();
+  assert.equal(h.p.data.order.appearances[0].status, 'CANCELLED');
+  assert.equal(h.p.data.pendingAcknowledged, false);
+  assert.equal(confirmations, 0);
+  assert.equal(journal.read(actor, orderId).payload.commandId, commandId);
+  h.p.pendingConsent({ detail: { value: ['yes'] } });
+  await h.p.clearPending();
+  assert.equal(confirmations, 1);
+  assert.equal(journal.read(actor, orderId), null);
+});
+
+test('a record changing during the removal modal is presented for another review instead of losing recovery', async () => {
+  const journal = model.createJournal(storage());
+  journal.start(actor, orderId, model.command('ACCEPT', item(), {}, commandId, true));
+  const h = await readyDetail({ journal });
+  h.p.pendingConsent({ detail: { value: ['yes'] } });
+  await h.p.clearPending();
+  h.ui.confirm = async () => {
+    h.sdk.get = async () =>
+      order({ appearances: [item({ status: 'ACCEPTED', version: 8, capabilities: {} })] });
+    return true;
+  };
+  h.p.pendingConsent({ detail: { value: ['yes'] } });
+  await h.p.clearPending();
+  assert.equal(h.p.data.order.appearances[0].status, 'ACCEPTED');
+  assert.equal(h.p.data.pendingAcknowledged, false);
+  assert.equal(journal.read(actor, orderId).payload.commandId, commandId);
+  h.p.pendingConsent({ detail: { value: ['yes'] } });
+  await h.p.clearPending();
   assert.equal(journal.read(actor, orderId), null);
 });
 
