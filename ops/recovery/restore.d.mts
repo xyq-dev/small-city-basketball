@@ -4,4 +4,4 @@ export function restoreDatabase(options: {
   archivePath: string;
   databaseName: string;
   receiptPath: string;
-}): Promise<{ status: 'restored'; databaseName: string; tables: 58 }>;
+}): Promise<{ status: 'restored'; databaseName: string; tables: 63 }>;

@@ -1101,3 +1101,4 @@ export type * from './group-knockout.js';
 export type * from './wechat.js';
 export type * from './media.js';
 export type * from './commerce.js';
+export * from './player-booking.js';

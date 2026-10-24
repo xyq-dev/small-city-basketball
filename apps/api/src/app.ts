@@ -22,6 +22,11 @@ import type { Response, NextFunction } from 'express';
 import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
+import { PlayerBookingService } from './player-booking/service.js';
+import {
+  PlayerBookingController,
+  SCB_PLAYER_BOOKING_SERVICE,
+} from './player-booking/controller.js';
 import { WechatService } from './wechat-service.js';
 import type { WechatServiceOptions } from './wechat-service.js';
 import { WechatController, SCB_WECHAT_SERVICE } from './wechat-controller.js';
@@ -255,6 +260,7 @@ export async function createApi(
   try {
     if (options.production) await assertRuntimeReadiness(pool);
     const service = new RegistrationService(pool, options);
+    const playerBooking = new PlayerBookingService(pool, options);
     const scheduling = new SchedulingService(pool, options);
     const wechat = new WechatService(pool, options, input.wechat);
     const knockout = new GroupKnockoutService(pool, options);
@@ -276,6 +282,7 @@ export async function createApi(
     @Module({
       controllers: [
         AuthController,
+        PlayerBookingController,
         WechatController,
         GroupKnockoutController,
         MediaController,
@@ -300,6 +307,7 @@ export async function createApi(
       ],
       providers: [
         { provide: SERVICE, useValue: service },
+        { provide: SCB_PLAYER_BOOKING_SERVICE, useValue: playerBooking },
         { provide: SCB_WECHAT_SERVICE, useValue: wechat },
         { provide: SCB_GROUP_KNOCKOUT_SERVICE, useValue: knockout },
         { provide: SCB_MEDIA_SERVICE, useValue: media },

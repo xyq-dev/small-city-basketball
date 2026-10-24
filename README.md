@@ -6,6 +6,8 @@
 
 ## 当前状态
 
+C06球员赛事预约已在独立任务分支实现五类预约、多球员逐场履约、10%报价快照及球员/运营UI，尚未合并或上线；类型/构建/源码和桌面Mock交互已验证，真实PG/CI受环境与推送审批阻塞，真实撮合支付/分账保持关闭。入口和准确边界见[预约使用说明](docs/PLAYER_BOOKING_USAGE.md)与[C06交接](docs/handoffs/C06.md)，不要将本地演示当作真实收款或生产验收。
+
 最新增量：[C05](docs/tasks/C05.md)/[PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)已合并main `d4f6500`：分组循环接淘汰、按届软件服务费与独立双人收退款、默认关闭的微信支付适配/微信账号绑定与原生小程序源码、受控附件和短视频发布/人工定位。最终[CI40001590258](https://github.com/xyq-dev/small-city-basketball/actions/runs/40001590258)三个job成功：914源码、11小程序VM、254真实PG、12Mock＋28真实浏览器、15迁移及58表完整恢复；合并后[CI40003519494](https://github.com/xyq-dev/small-city-basketball/actions/runs/40003519494)三个job同范围全部SUCCESS（无重试），完整日志已核对。准确证据见[当前状态](docs/CURRENT_STATUS.md)，入口见[使用指南](docs/COMMERCIAL_USAGE.md)。本轮未部署生产；真实微信/商户支付、云直播/大视频/转码、专业统计及原生OBS/CEF仍有未验证或后续范围，完整商业平台尚未完成。
 
 2026-10-23：P01、P02、P03-A、P04-A/B、P05-A/B、P06-A及P07-A均为 **DONE / MAIN**。按[开发说明](docs/DEVELOPMENT.md)运行Mock或真实PostgreSQL Web后台：报名审核／冻结、单循环排赛／正式单场改期、在线记分／服务器时钟／独立确认、显式排名及匿名观赛，并可签发1920×1080透明比分浏览器源。

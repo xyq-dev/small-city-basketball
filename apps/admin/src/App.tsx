@@ -43,6 +43,7 @@ import {
   Tag,
   Trophy,
   UsersRound,
+  UserRound,
   Video,
   X,
 } from 'lucide-react';
@@ -66,6 +67,11 @@ import './scheduling/scheduling.css';
 import { ScoringIndexPage, EventScoringPage, ScoringWorkbenchPage } from './scoring/ScoringPages';
 import './scoring/scoring.css';
 import './viewing/viewing.css';
+import { isBookingPath } from './booking/routes';
+
+const BookingPage = lazy(() =>
+  import('./booking/BookingPages').then((m) => ({ default: m.BookingPage })),
+);
 
 const StandingsIndexPage = lazy(() =>
   import('./viewing/PrivatePages').then((viewing) => ({ default: viewing.StandingsIndexPage })),
@@ -1602,6 +1608,7 @@ const primaryNav: { label: string; to: string; icon: LucideIcon; planned?: boole
   { label: '报名审核', to: '/roadmap/registration', icon: ClipboardCheck, planned: true },
   { label: '抽签排赛', to: '/roadmap/schedule', icon: CalendarDays, planned: true },
   { label: '球队与球员', to: '/roadmap/teams', icon: UsersRound, planned: true },
+  { label: '球员预约', to: '/players', icon: UserRound, planned: false },
   { label: '工作人员', to: '/roadmap/staff', icon: ShieldCheck, planned: true },
   { label: '直播与 OBS', to: '/roadmap/broadcast', icon: Radio, planned: true },
   { label: '内容与交付', to: '/roadmap/delivery', icon: Video, planned: true },
@@ -1615,7 +1622,10 @@ function WorkspaceLayout() {
   const registration = workspace.registration;
   const teamWorkspace = Boolean(registration?.teamContext);
   const baseNav = teamWorkspace
-    ? [{ label: '我的球队', to: '/my-team', icon: UsersRound, planned: false }]
+    ? [
+        { label: '我的球队', to: '/my-team', icon: UsersRound, planned: false },
+        { label: '球员预约', to: '/players', icon: UserRound, planned: false },
+      ]
     : primaryNav.map((item) =>
         registration && item.to === '/roadmap/teams'
           ? { ...item, to: '/teams', planned: false }
@@ -2175,6 +2185,27 @@ function WorkspaceLayout() {
   );
 }
 
+function RoutedWorkspace() {
+  const workspace = useWorkspace();
+  const location = useLocation();
+  if (isBookingPath(location.pathname)) {
+    if (workspace.mode === 'api' && !workspace.registration?.client)
+      return <p role="alert">当前预约服务上下文不可用，请重新登录。</p>;
+    return (
+      <Suspense
+        fallback={
+          <section className="panel registration-state" role="status">
+            正在读取球员预约…
+          </section>
+        }
+      >
+        <BookingPage client={workspace.registration?.client} />
+      </Suspense>
+    );
+  }
+  return <WorkspaceLayout />;
+}
+
 export default function App({
   repository = eventRepository,
   workspace = defaultWorkspace,
@@ -2186,7 +2217,7 @@ export default function App({
     <RepositoryContext.Provider value={repository}>
       <WorkspaceContext.Provider value={workspace}>
         <BrowserRouter>
-          <WorkspaceLayout />
+          <RoutedWorkspace />
         </BrowserRouter>
       </WorkspaceContext.Provider>
     </RepositoryContext.Provider>

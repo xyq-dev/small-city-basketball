@@ -25,9 +25,13 @@ import { ApiError, createApiClient, createAuthApi } from './api/client';
 import type { ApiClient, AuthApi, AuthSession } from './api/client';
 import { createHttpEventRepository } from './api/events';
 import './runtime.css';
+import { isBookingPath } from './booking/routes';
 import { OverlayEntry } from './overlay/Entry';
 import { useRegistrationCapabilities } from './auth/useRegistrationCapabilities';
 
+const BookingStandaloneApp = lazy(() =>
+  import('./booking/BookingPages').then((m) => ({ default: m.BookingStandaloneApp })),
+);
 const WechatAccountPage = lazy(() =>
   import('./wechat/WechatAccountPage').then((m) => ({ default: m.WechatAccountPage })),
 );
@@ -521,6 +525,12 @@ function IdentityPanel({
           <p>将此 ID 提供给机构负责人。邀请仅能由被明确指定的账号接受，邮箱不会自动认领权限。</p>
         </div>
         <div className="runtime-account-actions">
+          <a className="button button-secondary" href="/players">
+            找球员 / 预约比赛
+          </a>
+          <a className="button button-secondary" href="/player-center">
+            我的球员中心
+          </a>
           <a className="button button-secondary" href="/account/wechat">
             微信账户
           </a>
@@ -599,21 +609,25 @@ function IdentityPanel({
 
 export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
   const sessionEpoch = useRef(0);
-  const [accountView, setAccountView] = useState<'wechat' | 'platform' | null>(() =>
-    window.location.pathname === '/account/wechat'
-      ? 'wechat'
-      : window.location.pathname === '/platform/commerce'
-        ? 'platform'
-        : null,
+  const [accountView, setAccountView] = useState<'wechat' | 'platform' | 'booking' | null>(() =>
+    isBookingPath(window.location.pathname)
+      ? 'booking'
+      : window.location.pathname === '/account/wechat'
+        ? 'wechat'
+        : window.location.pathname === '/platform/commerce'
+          ? 'platform'
+          : null,
   );
   useEffect(() => {
     const sync = () =>
       setAccountView(
-        window.location.pathname === '/account/wechat'
-          ? 'wechat'
-          : window.location.pathname === '/platform/commerce'
-            ? 'platform'
-            : null,
+        isBookingPath(window.location.pathname)
+          ? 'booking'
+          : window.location.pathname === '/account/wechat'
+            ? 'wechat'
+            : window.location.pathname === '/platform/commerce'
+              ? 'platform'
+              : null,
       );
     window.addEventListener('popstate', sync);
     return () => window.removeEventListener('popstate', sync);
@@ -883,7 +897,9 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
   return (
     <>
       {accountView ? (
-        <main className="runtime-account-tools">
+        <main
+          className={accountView === 'booking' ? 'bk-runtime-wrapper' : 'runtime-account-tools'}
+        >
           <div className="runtime-account-actions">
             <button
               className="button button-secondary"
@@ -901,7 +917,9 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
             {logoutButton}
           </div>
           <Suspense fallback={<p role="status">正在读取账户工作台…</p>}>
-            {accountView === 'wechat' ? (
+            {accountView === 'booking' ? (
+              <BookingStandaloneApp client={guardedClient} />
+            ) : accountView === 'wechat' ? (
               <WechatAccountPage client={guardedClient} onSignedOut={unauthenticated} />
             ) : session.platformOperator === true ? (
               <PlatformCommercePage client={guardedClient} userId={session.user.id} />
@@ -951,6 +969,12 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
             onFocus={(event) => event.currentTarget.select()}
           />
           <div className="runtime-account-actions">
+            <a className="button button-primary" href="/players">
+              找球员 / 预约比赛
+            </a>
+            <a className="button button-secondary" href="/player-center">
+              申请成为预约球员
+            </a>
             {headerActions}
             <button
               className="button button-secondary"
