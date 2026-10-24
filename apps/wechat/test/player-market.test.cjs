@@ -488,7 +488,14 @@ test('comparison reads at most3 and labels missing metrics without invented scor
   await f.page.onShow();
   assert.equal(f.page.data.columns.length, 3);
   assert.equal(f.calls[0].length, 3);
-  assert.equal(f.page.data.columnsWidth, '738rpx');
+  assert.equal(f.page.data.columnsWidth, '375px');
+  assert.equal(f.page.data.tableHeight, '456px');
+  assert.deepEqual(
+    Array.from(f.page.data.labels, (row) => row.id),
+    ['price', 'total', 'sample', 'points', 'fouls', 'services', 'status'],
+  );
+  assert.equal(f.page.data.profiles[0].platformFee, '¥30.00');
+  assert.equal(f.page.data.profiles[0].travel, '¥0.00');
   f.sdk.performances = async () => {
     throw { message: '数据服务失败' };
   };

@@ -1,5 +1,9 @@
 # 当前状态
 
+## C09 小程序视觉修正（IN_PROGRESS / LOCAL_ONLY）
+
+2026-10-25 Asia/Shanghai；用户指出C08展示与原Figma稿不一致，视觉签收未通过。root已从与远端main64db9ba相同tree的新工作树开始修复首页、球员列表、比较、预约与共享排版；新结果以[C09任务](tasks/C09.md)及[交接](handoffs/C09.md)为准。C08代码/布局检查保留其原范围，不代表设计视觉一致或官方微信运行。当前未交付新截图或发布。
+
 ## C08 原生小程序页面实现（DONE / MAIN；微信环境验收待办）
 
 2026-10-24 Asia/Shanghai；[PR15](https://github.com/xyq-dev/small-city-basketball/pull/15)已合并main `0d35d4608c59015a14a60926769c162cbeb5c362`。最终source `96aa0af6192202b2b381c58f718c6dd10c69cbab`与合并tree均`49b17f4d47306df7abe1c687fee75b60fa71645d`，已实际读取核验；本地业务源09a4898同tree、保留分工历史。D01/D02整合为21条原生JS/WXML/WXSS路由，覆盖球员数据与同价含费比较、5类预约/原ID恢复/逐场履约、入驻档期/双边授权、球队/本届报名/私密材料及首页/观赛/账号/平台处理。规划资金、消息和长期档案明确未启用。

@@ -3,6 +3,21 @@ const sdk = require('../../utils/booking');
 const market = require('../../utils/player-market');
 const returnPath = '/pages/players/index';
 
+function filterSummary(filters, anchor) {
+  const position = filters.position || (filters.samePrice && anchor ? anchor.position : '');
+  const price = String(filters.price || '').trim();
+  const date = filters.date ? filters.date.split('-') : null;
+  return {
+    position: market.positionOptions[market.positionCodes.indexOf(position)] || '全部位置',
+    price: price
+      ? '同价 ¥' + Number(price)
+      : filters.samePrice && anchor
+        ? '同价 ¥' + anchor.priceFen / 100
+        : '不限价格',
+    date: date ? Number(date[1]) + '月' + Number(date[2]) + '日' : '不限日期',
+  };
+}
+
 Page({
   data: {
     cards: [],
@@ -12,6 +27,7 @@ Page({
     statisticsError: '',
     selectionNotice: '',
     filtersOpen: false,
+    filterSummary: { position: '全部位置', price: '不限价格', date: '不限日期' },
     filters: {
       search: '',
       city: '',
@@ -97,7 +113,8 @@ Page({
     }
     const ids = market.selectedIds();
     const anchor = this._catalog.find((p) => p.id === ids[0]);
-    const result = market.filterPlayers(this._catalog, this.data.filters, anchor);
+    const appliedFilters = { ...this.data.filters };
+    const result = market.filterPlayers(this._catalog, appliedFilters, anchor);
     if (result.error) {
       this.setData({ cards: [], error: result.error, loading: false, hasMore: false });
       return;
@@ -139,6 +156,7 @@ Page({
       showingCount: rows.length,
       filteredCount: result.players.length - unavailable.size,
       hasMore: result.players.length > limit,
+      filterSummary: filterSummary(appliedFilters, anchor),
       selectionNotice: unavailable.size
         ? '部分球员资料已不可查看，已移出当前目录和对比。'
         : this.data.selectionNotice,

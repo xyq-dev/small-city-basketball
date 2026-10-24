@@ -138,24 +138,12 @@
         "label": "参赛服务费"
       },
       {
-        "id": "platformFee",
-        "label": "平台服务费"
-      },
-      {
-        "id": "travel",
-        "label": "交通费"
-      },
-      {
-        "id": "accommodation",
-        "label": "食宿费"
-      },
-      {
         "id": "total",
         "label": "含费预计"
       },
       {
         "id": "sample",
-        "label": "个人统计样本"
+        "label": "统计样本"
       },
       {
         "id": "points",
@@ -171,11 +159,7 @@
       },
       {
         "id": "status",
-        "label": "记录完整度"
-      },
-      {
-        "id": "sourceCount",
-        "label": "授权来源"
+        "label": "来源完整度"
       }
     ],
     "columns": [
@@ -187,18 +171,6 @@
           {
             "id": "price",
             "value": "¥300.00"
-          },
-          {
-            "id": "platformFee",
-            "value": "¥30.00"
-          },
-          {
-            "id": "travel",
-            "value": "¥0.00"
-          },
-          {
-            "id": "accommodation",
-            "value": "¥0.00"
           },
           {
             "id": "total",
@@ -223,10 +195,6 @@
           {
             "id": "status",
             "value": "部分记录"
-          },
-          {
-            "id": "sourceCount",
-            "value": "1"
           }
         ]
       },
@@ -238,18 +206,6 @@
           {
             "id": "price",
             "value": "¥300.00"
-          },
-          {
-            "id": "platformFee",
-            "value": "¥30.00"
-          },
-          {
-            "id": "travel",
-            "value": "¥80.00"
-          },
-          {
-            "id": "accommodation",
-            "value": "¥0.00"
           },
           {
             "id": "total",
@@ -274,10 +230,6 @@
           {
             "id": "status",
             "value": "已有个人记录"
-          },
-          {
-            "id": "sourceCount",
-            "value": "1"
           }
         ]
       },
@@ -289,18 +241,6 @@
           {
             "id": "price",
             "value": "¥300.00"
-          },
-          {
-            "id": "platformFee",
-            "value": "¥30.00"
-          },
-          {
-            "id": "travel",
-            "value": "¥0.00"
-          },
-          {
-            "id": "accommodation",
-            "value": "¥0.00"
           },
           {
             "id": "total",
@@ -325,10 +265,6 @@
           {
             "id": "status",
             "value": "暂无授权来源"
-          },
-          {
-            "id": "sourceCount",
-            "value": "0"
           }
         ]
       }
@@ -336,8 +272,8 @@
     "selectedCount": 3,
     "firstId": "80000000-0000-4000-8000-000000000001",
     "firstName": "合成林越",
-    "columnsWidth": "738rpx",
-    "tableHeight": "896px",
+    "columnsWidth": "375px",
+    "tableHeight": "456px",
     "loading": false,
     "loginRequired": false,
     "error": "",

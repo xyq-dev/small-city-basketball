@@ -528,7 +528,7 @@ function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
     '\n' +
     [...componentStyles.values()].join('\n');
   const nativeDefaults =
-    '*{box-sizing:border-box}html,body{margin:0;min-height:100%;width:100%;}button,input,textarea{font:inherit}button{display:block;position:relative;border:0;cursor:default;max-width:100%}button::after{content:"";position:absolute;inset:0;pointer-events:none;border:0}button[disabled]{cursor:default}img{display:block;max-width:100%}input[type=checkbox],input[type=radio]{width:20px;height:20px;flex-shrink:0;accent-color:#132c49}textarea{max-width:100%}form{margin:0}[data-mini-tag=picker]{display:block}[data-mini-scroll=x]{overflow-x:auto}[data-mini-scroll=y]{overflow-y:auto}[data-mini-scroll=xy]{overflow:auto}.mini-native-status{height:32px;padding:4px 24px;font:12px/24px sans-serif;display:flex;justify-content:space-between}.mini-native-nav{height:64px;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font:600 18px/28px sans-serif}.mini-native-bar{background:' +
+    '*{box-sizing:border-box}html,body{margin:0;min-height:100%;width:100%;}button,input,textarea{font:inherit}button{display:block;position:relative;border:0;cursor:default;max-width:100%}button::after{content:"";position:absolute;inset:0;pointer-events:none;border:0}button[disabled]{cursor:default}img{display:block;max-width:100%}input[type=checkbox],input[type=radio]{width:20px;height:20px;flex-shrink:0;accent-color:#132c49}textarea{max-width:100%}form{margin:0}[data-mini-tag=picker]{display:block}[data-mini-scroll=x]{overflow-x:auto}[data-mini-scroll=y]{overflow-y:auto}[data-mini-scroll=xy]{overflow:auto}.mini-native-status{height:32px;padding:0 24px;font-size:12px;line-height:20px;display:flex;justify-content:space-between}.mini-native-nav{height:64px;padding:8px 20px;display:flex;gap:8px;align-items:center;border-radius:16px;font-size:18px;font-weight:500;line-height:28px}.mini-native-back{display:flex;width:44px;height:44px;flex-shrink:0;align-items:center;justify-content:center;font-size:22px;line-height:34px}.mini-native-title{flex:1;min-width:0}.mini-native-menu{width:44px;flex-shrink:0;font-size:14px;color:#617286}.mini-native-bar{background:' +
     background +
     ';color:' +
     foreground +
@@ -538,9 +538,9 @@ function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
     nativeDefaults +
     '\n' +
     css +
-    '</style></head><body><header class="mini-native-bar"><div class="mini-native-status"><span>9:41</span><span>● ▰</span></div><div class="mini-native-nav"><span>' +
+    '</style></head><body><header class="mini-native-bar"><div class="mini-native-status"><span>9:41</span><span>● ▰</span></div><div class="mini-native-nav"><span class="mini-native-back" aria-hidden="true">‹</span><span class="mini-native-title">' +
     escape(title) +
-    '</span><span>•••</span></div></header>' +
+    '</span><span class="mini-native-menu">•••</span></div></header>' +
     markup +
     '</body></html>';
   const html =
