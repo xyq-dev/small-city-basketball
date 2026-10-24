@@ -33,14 +33,14 @@
 | C04 | 单淘汰赛签位/逐轮晋级/最终名次 | DONE | root/API/UI/PG/浏览器/独立审查 | C03 | MAIN 7ef18c9 PR12；[任务](tasks/C04.md)、[交接](handoffs/C04.md)，CI39975284464三job通过：749源码/217PG/12Mock＋22真实浏览器/41表完整恢复；合并后CI39976904075同范围全部通过（无重试），无生产部署 |
 | C05 | 分组接淘汰、按届计费、微信及媒体 | DONE | root及四域独立作者/UI/恢复/审查 | C04 | MAIN d4f6500 [PR13](https://github.com/xyq-dev/small-city-basketball/pull/13)；[任务](tasks/C05.md)、[交接](handoffs/C05.md)；CI40001590258三job成功：914源码/11VM/254PG/12Mock＋28真实浏览器、15迁移/58表完整恢复；合并后CI40003519494同范围全部SUCCESS（无重试）；无生产部署 |
 | D01 | 整套商业版Figma UI全景初稿 | DONE（设计交付） | root主画布/移动与运营只读协作/独立视觉复核 | 已有业务能力与商业规划 | [Figma](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=18-2)、[设计索引](design/COMMERCIAL_UI_FIGMA.md)、[任务](tasks/D01.md)、[交接](handoffs/D01.md)；本记录同步main仅文档，用户视觉签收/应用实现另卡 |
-| D02 | 小程序预约与球员数据UI补全 | DONE（设计交付） | root / 范围只读复核 | D01、C06/C07 | [Figma导览](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=30-2400)、[设计索引](design/MINI_PROGRAM_BOOKING_UI.md)、[任务](tasks/D02.md)、[交接](handoffs/D02.md)；99业务/状态+2辅助；原生实现/统一测试未执行 |
+| D02 | 小程序预约与球员数据UI补全 | DONE（设计交付） | root / 范围只读复核 | D01、C06/C07 | [Figma导览](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=30-2400)、[设计索引](design/MINI_PROGRAM_BOOKING_UI.md)、[任务](tasks/D02.md)、[交接](handoffs/D02.md)；99业务/状态+2辅助；设计阶段未执行应用测试；接续原生实现见C08，微信环境统一验收待办 |
 | C06 | 球员赛事预约、逐场履约及UI | DONE | root / API / UI / 验证 | C05、预约设计 | MAIN7d23203 PR14；[任务](tasks/C06.md)、[使用](PLAYER_BOOKING_USAGE.md)、[证据](evidence/C06/README.md)、[交接](handoffs/C06.md)；最终CI40065953550完整通过，未部署生产 |
 | C07 | 已授权球员数据与同价同位置对比 | DONE | root / API / UI / PG / 独立审查 | C06、C03 | MAIN7d23203 PR14；[任务](tasks/C07.md)、[交接](handoffs/C07.md)、[证据](evidence/C07/README.md)；1046源码/VM11/305PG/42浏览器、17迁移65表重启恢复通过，无生产部署 |
-| C08 | 按D01/D02设计实现原生小程序页面 | REVIEW / BRANCH_ONLY | root集成 / 六域独立作者与审查 | D01/D02、C06/C07 | 21个原生路由及既有API接入已整合本地；[任务](tasks/C08.md)、[使用](../apps/wechat/README.md)；本地VM/项目检查及CI布局核验收尾，官方微信运行/真机未验证 |
+| C08 | 按D01/D02设计实现原生小程序页面 | DONE（源码实现） / MAIN | root集成 / 六域独立作者与复核 | D01/D02、C06/C07 | MAIN0d35d46 [PR15](https://github.com/xyq-dev/small-city-basketball/pull/15)；[任务](tasks/C08.md)、[交接](handoffs/C08.md)、[使用](../apps/wechat/README.md)、[预览/验收](evidence/C08/README.md)；225VM/90布局及CI40094090818三job通过；官方微信编译/真机未验，无生产部署 |
 
 ## 当前顺序
 
-当前用户请求为C08：完成按稿实现、原生回归、兼容手机布局及隔离CI，审查通过后按已有授权整合。不要把C06/C07 Web验收或D02设计完成等同本次微信运行验证。真实微信联调需要目标AppID/合法域名及客户端环境；没有生产部署。
+C08按稿原生实现已合并main（PR15），225VM/90兼容布局及完整隔离CI通过。接续按使用/交接在目标AppID、合法域名与真实微信环境做统一验收；不要把VM/Chromium或旧C06/C07 Web验收当作小程序真机结果。没有生产部署，旧库升级/外部支付、通知与资格核验仍按原范围另行推进。
 
 C06/C07最终候选验收及PR14合并已完成，接续按实际环境补旧库隔离升级、部署和外部支付/微信/通知/身份核验联调；D01设计交付及C05外部环境待办继续有效。已实现的球员预约和数据UI以代码/真实PG/浏览器证据为准，不以设计原型替代测试，不将隔离验收等同生产发布。
 

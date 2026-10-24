@@ -1,0 +1,75 @@
+{
+  "ci": 40094090818,
+  "artifact": 12559769583,
+  "source": "96aa0af6192202b2b381c58f718c6dd10c69cbab",
+  "tree": "49b17f4d47306df7abe1c687fee75b60fa71645d",
+  "archiveSha256": "902454e6e340bfd4a65b9cab7ee3671d95174c82c82c67fdac35cf97aa166094",
+  "compatibilityOnly": true,
+  "syntheticData": true,
+  "images": [
+    {
+      "scenario": "player-records-zero",
+      "route": "pages/player/index",
+      "width": 390,
+      "file": "player-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--1bd98-390px-·-player-records-zero-desktop/native-top.png",
+      "sha256": "18dc9a5b4ecc776f12b605f327f84c8bcbe2cc144d8c8532e5d17a47c49fbb51"
+    },
+    {
+      "scenario": "initial-home",
+      "route": "pages/home/index",
+      "width": 390,
+      "file": "home-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--618ee-或真机验收）-390px-·-initial-home-desktop/native-top.png",
+      "sha256": "bd45806eddec21fd22a2341e5770971fe96a2aea029ade90370c191e458a54b8"
+    },
+    {
+      "scenario": "compare-three",
+      "route": "pages/compare/index",
+      "width": 390,
+      "file": "compare-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--881a8-真机验收）-390px-·-compare-three-desktop/native-top.png",
+      "sha256": "cee9e3413c728dbb68e7215da22f7d9a216c903fbedb0679c4bba54208d9775f"
+    },
+    {
+      "scenario": "player-center-edit",
+      "route": "pages/player-center/index",
+      "width": 390,
+      "file": "player-center-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--9eb84--390px-·-player-center-edit-desktop/native-top.png",
+      "sha256": "3e1ebfd559c9ab4990c163d0ead2e1a28f25141a42c24e562ea6764a209311de"
+    },
+    {
+      "scenario": "booking-detail-change-form",
+      "route": "pages/booking-detail/index",
+      "width": 390,
+      "file": "booking-detail-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--9ffbf--booking-detail-change-form-desktop/native-top.png",
+      "sha256": "8221632bc9ddc119648f8ccead61da33a8da1c936f3160dc78019631d47c1b4c"
+    },
+    {
+      "scenario": "booking-create-tournament",
+      "route": "pages/booking-create/index",
+      "width": 390,
+      "file": "booking-create-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--b8888-·-booking-create-tournament-desktop/native-top.png",
+      "sha256": "da78f15140f7c5737c2b37510e02d8345fbb05b67cb289dc9bbcfed980c54fee"
+    },
+    {
+      "scenario": "compare-three",
+      "route": "pages/compare/index",
+      "width": 320,
+      "file": "compare-320.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--bf364-真机验收）-320px-·-compare-three-desktop/native-top.png",
+      "sha256": "81908df95ef84b8e1cad065d36b85333e6052d1981b2956d230d6834e46105b9"
+    },
+    {
+      "scenario": "players-filters",
+      "route": "pages/players/index",
+      "width": 390,
+      "file": "players-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--e5019-验收）-390px-·-players-filters-desktop/native-top.png",
+      "sha256": "05b0c392bc73ceea15dc1791db2a721ba0cd6f12942a2abb24a1bb1afab7c7f7"
+    }
+  ]
+}
