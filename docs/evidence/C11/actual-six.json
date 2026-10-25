@@ -1,0 +1,84 @@
+{
+  "source": "1d038743907d7357fb5035e1853520e20037ecf6",
+  "method": "Six original 390x844 viewport PNGs pasted without resampling or retouching; report labels outside screenshots",
+  "screens": [
+    {
+      "scenario": "c11-home-ready",
+      "source": "screenshots/c11-home-ready-390/native-top.png",
+      "sha256": "0ef2a102823425ca93ccfeb0896a4ccd5530ec638575c8b5ed2a5e0ec245b4a3",
+      "position": [
+        24,
+        166
+      ],
+      "size": [
+        390,
+        844
+      ]
+    },
+    {
+      "scenario": "c11-player-market-ready",
+      "source": "screenshots/c11-player-market-ready-390/native-top.png",
+      "sha256": "70ab758af01428f7e247bf23cf4616e8b52d5c8508c10b60f9a786c1532f42da",
+      "position": [
+        438,
+        166
+      ],
+      "size": [
+        390,
+        844
+      ]
+    },
+    {
+      "scenario": "c11-player-detail-ready",
+      "source": "screenshots/c11-player-detail-ready-390/native-top.png",
+      "sha256": "98bd144d57a4165cd9a998e573432731a6f4b949c8509b1674be78b2beb46789",
+      "position": [
+        852,
+        166
+      ],
+      "size": [
+        390,
+        844
+      ]
+    },
+    {
+      "scenario": "c11-player-compare-ready",
+      "source": "screenshots/c11-player-compare-ready-390/native-top.png",
+      "sha256": "87c9d74cead485efabf4a27d178318e9d674cedc982f76a9e1f32705bca7f89c",
+      "position": [
+        24,
+        1056
+      ],
+      "size": [
+        390,
+        844
+      ]
+    },
+    {
+      "scenario": "c11-booking-create-ready",
+      "source": "screenshots/c11-booking-create-ready-390/native-top.png",
+      "sha256": "2bda632a28bd4975ec07200951de51d2e8e9be2e409a42abbf4c2005ed7fc10b",
+      "position": [
+        438,
+        1056
+      ],
+      "size": [
+        390,
+        844
+      ]
+    },
+    {
+      "scenario": "c11-booking-orders-ready",
+      "source": "screenshots/c11-booking-orders-ready-390/native-top.png",
+      "sha256": "3e7b934301bd659bb4d6a248681654deffbb9c40a7db7815f2a973b3af57d749",
+      "position": [
+        852,
+        1056
+      ],
+      "size": [
+        390,
+        844
+      ]
+    }
+  ]
+}

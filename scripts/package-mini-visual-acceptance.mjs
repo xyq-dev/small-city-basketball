@@ -593,7 +593,8 @@ function main() {
     );
     page.referenceOutput = original(page.referenceSource, `references/${page.slug}.png`, {
       source: page.referenceImage,
-      sourceKind: 'figma-reference',
+      sourceKind:
+        page.sourceKind === 'approved-image' ? 'approved-image-reference' : 'figma-reference',
       route: page.route,
       figmaNode: page.figmaNode,
     });
