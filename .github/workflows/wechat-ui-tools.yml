@@ -1,0 +1,53 @@
+name: Local WeChat UI tooling
+on:
+  pull_request:
+    paths:
+      - 'scripts/wechat-devtools-ui.mjs'
+      - 'scripts/accept-wechat-ui.ps1'
+      - 'scripts/start-wechat-ui-cli.ps1'
+      - 'tests/wechat-tools/**'
+      - 'tools/wechat-ui/**'
+      - '.github/workflows/wechat-ui-tools.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/wechat-devtools-ui.mjs'
+      - 'scripts/accept-wechat-ui.ps1'
+      - 'scripts/start-wechat-ui-cli.ps1'
+      - 'tests/wechat-tools/**'
+      - 'tools/wechat-ui/**'
+      - '.github/workflows/wechat-ui-tools.yml'
+permissions:
+  contents: read
+jobs:
+  windows-tooling:
+    name: Windows preparation and SDK contract (not WeChat runtime)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Parse Windows PowerShell entry
+        shell: powershell
+        run: |
+          $errors = $null
+          $tokens = $null
+          foreach ($file in @('accept-wechat-ui.ps1', 'start-wechat-ui-cli.ps1')) {
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              (Join-Path $env:GITHUB_WORKSPACE "scripts/$file"),
+              [ref]$tokens, [ref]$errors)
+            if ($errors.Count -gt 0) { throw ($errors | Out-String) }
+          }
+      - run: npm ci --prefix tools/wechat-ui --ignore-scripts --no-audit --no-fund
+      - name: Load pinned SDK without launching DevTools
+        run: >-
+          node -e "const r=require('module').createRequire(require('path').resolve('tools/wechat-ui/package.json'));
+          const s=r('miniprogram-automator');
+          if(r('miniprogram-automator/package.json').version!=='0.13.0'||typeof s.launch!=='function')process.exit(1);
+          console.log('SDK contract loaded; no WeChat runtime executed');"
+      - name: Exercise isolated preparation and SDK test doubles
+        run: node --test tests/wechat-tools/devtools-ui.test.mjs
+      - name: Prepare six-page isolated fixture project
+        run: node scripts/wechat-devtools-ui.mjs prepare
