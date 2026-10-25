@@ -1,6 +1,6 @@
 # 当前状态
 
-当前C10：`REVIEW（21页源码/兼容截图完成） / PR16`。271原生、654三宽布局、668浏览器通过，21normal/代表状态人工复核CLEAR；460界面PNG+21原稿整包已交付准备。最终CI40156690255 admin/production SUCCESS、API运行中，源码486d5d9未合并；官方微信/真机与用户视觉签收待办。[图集/来源](evidence/C10/README.md)、[任务](tasks/C10.md)、[交接](handoffs/C10.md)。
+当前C10：`DONE（21页源码/兼容图集） / MAIN`。PR16已合并7607c28；最终候选CI40156690255三job全部SUCCESS，271原生、654三宽布局、668浏览器及完整PG/恢复检查通过；460实际界面PNG+21原稿整包已交付。合并tree与已检候选一致；合并后独立CI尚未完成，后续仅文档同步。官方微信/真机与用户视觉签收待办。[图集/来源](evidence/C10/README.md)、[任务](tasks/C10.md)、[交接](handoffs/C10.md)。
 
 ## C09 小程序视觉修正（REVIEW / BRANCH_ONLY）
 

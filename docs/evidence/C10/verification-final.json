@@ -1,0 +1,35 @@
+{
+  "verifiedAt": "2026-10-25T03:14:30.747067+00:00",
+  "source": "486d5d9cf1befc06be64b955e60288bd9c38b9f3",
+  "sourceTree": "9964b4cbee56699587af159c39d483ba2f88a5d0",
+  "appsTree": "f366a47dae45fbf08857d1b4c339ee0658922755",
+  "run": 40156690255,
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "admin",
+      "id": 121059672920,
+      "conclusion": "success"
+    },
+    {
+      "name": "api",
+      "id": 121059672214,
+      "conclusion": "success"
+    },
+    {
+      "name": "production",
+      "id": 121059672345,
+      "conclusion": "success"
+    }
+  ],
+  "pr": 16,
+  "mergedMain": "7607c28f8256ca7651f01366531eeeefc8af78b4",
+  "mergedTreeMatchesSource": true,
+  "postMergeIndependentCI": "not-yet-completed",
+  "artifact": 12585381105,
+  "artifactSha256": "75fe9e9638e134db38d015520f759a40ed15d063109e29deacf1775cd3b06cfb",
+  "deliveryZipSha256": "39cfc6cca387a3c7bea749b3e3eec8856ee0853ae7c58647e3c3a08b0f4c53d7",
+  "userVisualSignoff": "pending",
+  "officialWeChat": "pending"
+}

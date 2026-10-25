@@ -1,11 +1,11 @@
 # C10 整套原生小程序视觉验收
 
-21页实现与兼容截图已完成，等待用户统一视觉签收。源码PR16待最终完整隔离CI，尚未合并；官方微信开发者工具/真机未验。
+21页实现与兼容截图已完成，等待用户统一视觉签收。源码PR16已合并main7607c28，最终完整隔离CI40156690255三job全部SUCCESS；官方微信开发者工具/真机未验。
 
 [下载整套截图验收包](https://chatgpt.com/library?file_id=libfile_8e169efe9158819184379dccc5150f1f&account_id=personal)（当前账号文件，ZIP约27.2MB）。解压打开index.html：21页原稿与正常界面并列，其余状态按页展开；checklist.csv可填写验收意见。
 
 - 最终源码486d5d9cf1befc06be64b955e60288bd9c38b9f3，完整tree9964b4cbee56699587af159c39d483ba2f88a5d0，apps子树f366a47dae45fbf08857d1b4c339ee0658922755。
-- [CI40156690255](https://github.com/xyq-dev/small-city-basketball/actions/runs/40156690255)：admin/production SUCCESS；API运行中（交付包来源核验时点）。admin含512 Web+534 API源码测试、271原生、654原生布局；浏览器668通过、654重复mobile布局skip；格式、typecheck、build与证据检查通过。
+- [CI40156690255](https://github.com/xyq-dev/small-city-basketball/actions/runs/40156690255)：admin/API/production三job全部SUCCESS（无重试）；包内verification保留打包时点快照，此处补记最终终态。admin含512 Web+534 API源码测试、271原生、654原生布局；浏览器668通过、654重复mobile布局skip；格式、typecheck、build与证据检查通过。
 - artifact12585381105（mini-program-layouts），ZIP117643440字节，SHA256 `75fe9e9638e134db38d015520f759a40ed15d063109e29deacf1775cd3b06cfb`，已下载并校验同源head486d5d9。
 - 交付包460张实际界面PNG、21份原稿、654份三宽JSON、113份390滚动位置记录；包括全部390状态及21正常页三宽，其他320/430状态PNG留在原CI artifact，不声称包内全有。ZIP27168470字节，SHA256 `39cfc6cca387a3c7bea749b3e3eec8856ee0853ae7c58647e3c3a08b0f4c53d7`。
 - 长页按600px步长捕获844px原始viewport，保留top/bottom及中段和scrollY，不拼接、不交付iframe裁切的空白长图。全部PNG尺寸/目录链接/文件SHA检查通过，layout finding为0。
@@ -43,3 +43,6 @@
 开发复核覆盖21normal和代表状态；修复球队标签折行及长图空白问题后，最终候选全量重拍。19张正常390图与首轮逐字节相同；球队新三宽逐图通过；邀请仅输入框圆角16/29个像素的轻微栅格化差异。球员/履约20张中段40个相邻重叠区逐像素一致；不把局部几何/人工抽查描述为全部状态像素一致。
 
 复现打包工具位于[证据分支](https://github.com/xyq-dev/small-city-basketball/tree/evidence/c10-mini-ui-complete/scripts/package-mini-visual-acceptance.mjs)，仅做原文件整理和校验。主干交付文档/截图不修改应用逻辑；工具27项检查、语法/格式和本轮真实artifact打包已通过。没有生产部署、生产库或Migration、新凭据或付费资源。
+
+
+源码合并tree与已检候选精确相同：9964b4cbee56699587af159c39d483ba2f88a5d0。合并后main独立CI尚未完成，不将其描述为通过；此处通过指最终候选40156690255的完整三job结果。接续文档/图像提交仅改docs，不改变该apps子树。[终态核验](verification-final.json)。
