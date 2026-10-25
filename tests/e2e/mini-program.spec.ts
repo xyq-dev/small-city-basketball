@@ -329,6 +329,30 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         for (const name of scenario.expectEnabled || [])
           await expect(frame.getByRole('button', { name, exact: true }).first()).toBeEnabled();
         const layout = await measureLayout(frame);
+        if (scenario.name === 'c10-team-team-ready') {
+          await expect(frame.locator('.member-table-row')).toHaveCount(3);
+          const clippedLabels = await frame.locator('.member-table-row').evaluateAll((rows) =>
+            rows.flatMap((row) =>
+              Array.from(row.children)
+                .filter((cell) => ['本届设置', '已保存'].includes(cell.textContent?.trim() || ''))
+                .filter((cell) => {
+                  const style = getComputedStyle(cell);
+                  const range = document.createRange();
+                  range.selectNodeContents(cell);
+                  const available =
+                    cell.clientWidth -
+                    parseFloat(style.paddingLeft) -
+                    parseFloat(style.paddingRight);
+                  return (
+                    range.getClientRects().length !== 1 ||
+                    range.getBoundingClientRect().width > available + 1
+                  );
+                })
+                .map((cell) => cell.textContent),
+            ),
+          );
+          expect(clippedLabels, 'member status labels must fit on one line').toEqual([]);
+        }
         const designGeometry = await checkDesignGeometry(frame, scenario.name, width);
         const diagnosticPath = testInfo.outputPath('native-layout.json');
         fs.mkdirSync(path.dirname(diagnosticPath), { recursive: true });
@@ -385,10 +409,45 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
           await frame.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
           await attachScreen(page, testInfo, 'native-bottom.png');
           if (width === 390) {
-            await frame.evaluate(() => window.scrollTo(0, 0));
-            const fullPath = testInfo.outputPath('native-full.png');
-            await frame.locator('body').screenshot({ path: fullPath, animations: 'disabled' });
-            await testInfo.attach('native-full.png', { path: fullPath, contentType: 'image/png' });
+            // Keep the actual 844px viewport and fixed controls. Capturing a
+            // taller child body is clipped by its iframe; preserve unstitched
+            // overlapping viewport segments instead of claiming a full image.
+            const maxScroll = await frame.evaluate(
+              () => document.documentElement.scrollHeight - window.innerHeight,
+            );
+            const segments: Array<{ file: string; scrollY: number }> = [];
+            for (let position = 600; position < maxScroll; position += 600) {
+              const scrollY = await frame.evaluate((y) => {
+                window.scrollTo(0, y);
+                return window.scrollY;
+              }, position);
+              const file = `native-segment-${String(segments.length + 1).padStart(2, '0')}.png`;
+              await attachScreen(page, testInfo, file);
+              segments.push({ file, scrollY });
+            }
+            const segmentPath = testInfo.outputPath('native-scroll-segments.json');
+            fs.writeFileSync(
+              segmentPath,
+              JSON.stringify(
+                {
+                  route: scenario.route,
+                  scenario: scenario.name,
+                  width,
+                  viewportHeight: 844,
+                  step: 600,
+                  maxScroll,
+                  top: { file: 'native-top.png', scrollY: 0 },
+                  segments,
+                  bottom: { file: 'native-bottom.png', scrollY: maxScroll },
+                },
+                null,
+                2,
+              ),
+            );
+            await testInfo.attach('native-scroll-segments.json', {
+              path: segmentPath,
+              contentType: 'application/json',
+            });
           }
         }
       });
