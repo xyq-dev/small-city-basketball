@@ -1,6 +1,6 @@
 page { background:#f5f7fa; }
 .profile-hero { position:relative; width:100%; height:260px; overflow:hidden; background:#102d44; color:#fff; }
-.profile-hero-image { position:absolute; inset:0; width:100%; height:100%; object-position:60% 30%; }
+.profile-hero-image { position:absolute; right:0; top:-50px; width:72%; height:auto; }
 .profile-hero-shade { position:absolute; inset:0; background:linear-gradient(90deg,rgba(7,26,42,.48),rgba(7,26,42,0) 72%); }
 .profile-hero-copy { position:absolute; left:20px; bottom:48px; max-width:60%; color:#fff; font-size:14px; line-height:22px; overflow-wrap:anywhere; }
 .profile-name { margin-bottom:6px; font-size:32px; line-height:42px; font-weight:700; color:#fff; }
@@ -51,3 +51,6 @@ page { background:#f5f7fa; }
 .records .subtitle { margin-bottom:8px; }
 .notice-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
 @media(max-width:360px) { .profile-hero { height:240px; } .profile-name { font-size:28px; } .profile-hero-copy { bottom:38px; } .quote-price { font-size:36px; line-height:44px; } .quote-price text { font-size:16px; } .quote-total { flex-basis:106px; } .quote-total-price { font-size:26px; } .sample-heading .subtitle { font-size:15px; } .profile-records-toggle { font-size:10px; } .metric-value { font-size:24px; } .metric-value.textual { font-size:16px; } }
+
+.player-page .profile-quote { width:calc(100% + 24px); margin-left:-12px; margin-right:-12px; padding-left:24px; padding-right:16px; box-sizing:border-box; }
+@media(max-width:360px) { .profile-hero-image { top:-40px; } }

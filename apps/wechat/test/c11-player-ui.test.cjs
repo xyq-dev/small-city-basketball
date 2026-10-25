@@ -70,7 +70,7 @@ test('current DTO never turns a real player name or untrusted portrait field int
   const f = fixture('detail');
   f.data.profile = view;
   const result = preview(f);
-  assert.ok(result.assets.some((asset) => asset.path.endsWith('player-placeholder.svg')));
+  assert.ok(result.assets.some((asset) => asset.path.endsWith('player-placeholder.png')));
   assert.ok(result.assets.every((asset) => !/player-sample-/.test(asset.path)));
 });
 

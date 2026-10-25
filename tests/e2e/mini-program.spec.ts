@@ -242,6 +242,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
         lineHeight: parseFloat(style.lineHeight),
         radius: parseFloat(style.borderTopLeftRadius),
         background: style.backgroundColor,
+        color: style.color,
       };
     };
     return {
@@ -260,6 +261,14 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       tableCell: measure('.comparison-cell'),
       columns: document.querySelectorAll('.compare-column').length,
       profileHero: measure('.profile-hero'),
+      profilePortrait: measure('.profile-hero-image'),
+      wrappedMetricLabels: Array.from(document.querySelectorAll('.label-cell'))
+        .filter((cell) => {
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          return range.getClientRects().length > 1;
+        })
+        .map((cell) => cell.textContent),
       profileQuote: measure('.profile-quote'),
       scopeRail: measure('.scope-rail'),
       selectedPlayer: measure('.selected-player'),
@@ -274,6 +283,8 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
         width: image.width,
         height: image.height,
         objectFit: getComputedStyle(image).objectFit,
+        mode: image.getAttribute('data-mini-image-mode'),
+        naturalRatio: image.naturalWidth / image.naturalHeight,
       })),
     };
   });
@@ -294,7 +305,12 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     expect(
       metrics.photographs.every(
         (photo) =>
-          photo.loaded && photo.width > 0 && photo.height > 0 && photo.objectFit === 'cover',
+          photo.loaded &&
+          photo.width > 0 &&
+          photo.height > 0 &&
+          (photo.mode === 'widthFix'
+            ? Math.abs(photo.width / photo.height - photo.naturalRatio) < 0.01
+            : photo.objectFit === 'cover'),
       ),
     ).toBe(true);
   }
@@ -304,6 +320,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     expect(metrics.homeAction?.width).toBe(214);
     expect(metrics.homeAction?.height).toBe(52);
     expect(metrics.homeAction?.background).toBe('rgb(255, 107, 45)');
+    expect(metrics.homeAction?.color).toBe('rgb(255, 255, 255)');
   } else {
     expect(metrics.action?.x).toBe(12);
     expect(metrics.action?.width).toBe(width - 24);
@@ -324,10 +341,13 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       expect(metrics.playerColumn?.width).toBeCloseTo(expected, 1);
       expect(metrics.tableHead?.height).toBe(204);
       expect(metrics.tableCell?.height).toBe(38);
+      expect(metrics.wrappedMetricLabels).toEqual([]);
     } else if (group === 'player') {
       expect(metrics.profileHero?.height).toBe(width <= 360 ? 240 : 260);
-      expect(metrics.profileQuote?.x).toBe(12);
-      expect(metrics.profileQuote?.width).toBe(width - 24);
+      expect(metrics.profilePortrait?.width).toBeCloseTo(width * 0.72, 1);
+      expect(metrics.profilePortrait?.y).toBe(width <= 360 ? -40 : -50);
+      expect(metrics.profileQuote?.x).toBe(0);
+      expect(metrics.profileQuote?.width).toBe(width);
       expect(metrics.action?.background).toBe('rgb(255, 107, 45)');
     } else if (group === 'booking-create') {
       expect(metrics.scopeRail?.height).toBe(44);
@@ -407,6 +427,7 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
           );
           expect(clippedLabels, 'member status labels must fit on one line').toEqual([]);
         }
+        await attachScreen(page, testInfo, 'native-top.png');
         const designGeometry = await checkDesignGeometry(frame, scenario.name, width);
         const diagnosticPath = testInfo.outputPath('native-layout.json');
         fs.mkdirSync(path.dirname(diagnosticPath), { recursive: true });
@@ -432,7 +453,6 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
           path: diagnosticPath,
           contentType: 'application/json',
         });
-        await attachScreen(page, testInfo, 'native-top.png');
 
         // Measure the iframe's document, never just the outer preview wrapper.
         expect(layout.innerWidth).toBe(width);

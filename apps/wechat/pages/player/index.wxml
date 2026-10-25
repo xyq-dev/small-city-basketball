@@ -1,5 +1,5 @@
 <view wx:if="{{profile &amp;&amp; !recordsOpen}}" class="profile-hero">
-  <image class="profile-hero-image" src="{{profile.heroPortrait || profile.portrait || '/assets/approved-ui/player-placeholder.svg'}}" mode="aspectFill" aria-label="{{profile.portrait ? '示例球员形象' : '球员尚未提供公开头像'}}"/>
+  <image class="profile-hero-image" src="{{profile.heroPortrait || profile.portrait || '/assets/approved-ui/player-placeholder.png'}}" mode="widthFix" aria-label="{{profile.portrait ? '示例球员形象' : '球员尚未提供公开头像'}}"/>
   <view class="profile-hero-shade"></view><scb-header title="" dark="{{true}}" disabled="{{loading}}"/>
   <view class="profile-hero-copy"><view class="profile-name">{{profile.name}}</view><view>{{profile.position}} · {{profile.height}}cm</view><view>{{profile.city}}</view></view>
 </view>

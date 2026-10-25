@@ -139,7 +139,7 @@
           <view class="selected-players">
             <block wx:for="{{players}}" wx:for-item="player" wx:key="id">
               <button wx:if="{{player.selected}}" class="selected-player" bindtap="openEditor" disabled="{{busy}}">
-                <image class="selected-portrait" src="{{player.portrait || '/assets/approved-ui/player-placeholder.svg'}}" mode="aspectFill"/>
+                <image class="selected-portrait" src="{{player.portrait || '/assets/approved-ui/player-placeholder.png'}}" mode="aspectFill"/>
                 <view class="selected-copy"><view class="selected-name">{{player.name || player.label}}<text wx:if="{{player.position}}" class="selected-position"> · {{player.position}}</text></view><view class="selected-meta">{{player.meta || '本人填写的合作资料'}}</view></view>
                 <view class="selected-price">{{player.priceShort || player.price}}<text> / 场</text></view>
               </button>

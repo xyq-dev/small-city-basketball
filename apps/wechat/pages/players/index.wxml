@@ -36,7 +36,7 @@
     <view wx:for="{{cards}}" wx:key="id" class="player-result">
       <view class="card player-card">
         <view class="player-head">
-          <image class="player-portrait" src="{{item.portrait || '/assets/approved-ui/player-placeholder.svg'}}" mode="aspectFill" aria-label="{{item.portrait ? '示例球员形象' : '球员尚未提供公开头像'}}"/>
+          <image class="player-portrait" src="{{item.portrait || '/assets/approved-ui/player-placeholder.png'}}" mode="aspectFill" aria-label="{{item.portrait ? '示例球员形象' : '球员尚未提供公开头像'}}"/>
           <view class="player-identity"><view class="player-name-row"><text class="player-name">{{item.name}}</text><text class="player-position">· {{item.position}}</text></view><view class="player-bio">{{item.height}}cm · {{item.city}}</view><view class="price">{{item.priceLabel || item.price}}<text class="unit"> / 场</text></view></view>
         </view>
         <button class="player-select {{item.selected ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="toggle" disabled="{{loading}}" aria-label="{{item.name}}，{{item.selected ? '移出对比' : '加入对比'}}"><view class="selection-box">{{item.selected ? '✓' : '＋'}}</view></button>

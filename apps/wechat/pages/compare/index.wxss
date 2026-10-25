@@ -35,3 +35,5 @@ page { background:#fff; }
 .compare-action .primary { min-height:56px; margin:0; padding:12px; border-radius:10px; background:#ff6b2d; color:#fff; font-size:19px; line-height:28px; font-weight:600; }
 .compare-action .quiet { min-height:44px; margin:4px 0 0; padding:8px; font-size:14px; font-weight:600; }
 @media(max-width:360px) { .metric-labels { flex-basis:94px; width:94px; } .compare-name { font-size:15px; } .compare-position,.compare-city { font-size:10px; } .label-cell { padding-left:5px; font-size:11px; } .comparison-cell { font-size:14px; } .price-cell { font-size:16px; } .advice-title { font-size:13px; } .advice-copy { font-size:11px; } }
+
+@media(max-width:360px) { .comparison-cell.label-cell { font-size:11px; white-space:nowrap; } }
