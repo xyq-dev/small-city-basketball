@@ -1,1 +1,5 @@
-{ "navigationBarTitleText": "小城市篮球" }
+{
+  "navigationBarTitleText": "小城市篮球",
+  "navigationStyle": "custom",
+  "navigationBarTextStyle": "white"
+}

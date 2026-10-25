@@ -1,4 +1,10 @@
-<view class="page has-actions player-page">
+<view wx:if="{{profile &amp;&amp; !recordsOpen}}" class="profile-hero">
+  <image class="profile-hero-image" src="{{profile.heroPortrait || profile.portrait || '/assets/approved-ui/player-placeholder.svg'}}" mode="aspectFill" aria-label="{{profile.portrait ? '示例球员形象' : '球员尚未提供公开头像'}}"/>
+  <view class="profile-hero-shade"></view><scb-header title="" dark="{{true}}" disabled="{{loading}}"/>
+  <view class="profile-hero-copy"><view class="profile-name">{{profile.name}}</view><view>{{profile.position}} · {{profile.height}}cm</view><view>{{profile.city}}</view></view>
+</view>
+<scb-header wx:else title="{{recordsOpen ? '近期记录与来源' : '球员详情'}}" disabled="{{loading}}"/>
+<view class="page has-actions player-page premium-page">
   <view wx:if="{{loading}}" class="card state-card"><view class="subtitle">正在读取球员资料</view><view class="muted">正在核对球员与授权记录，请稍候…</view></view>
   <view wx:if="{{loginRequired}}" class="card state-card"><view class="subtitle">请登录后继续</view><view class="muted">登录后查看当前可预约的服务资料与有限授权记录。</view><button class="primary" bindtap="login">登录并返回球员详情</button></view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
@@ -6,23 +12,26 @@
   <block wx:if="{{profile}}">
     <view wx:if="{{statisticsError}}" class="notice warning">统计暂时无法读取：{{statisticsError}}。已清除旧统计，可重新读取。</view>
     <block wx:if="{{!recordsOpen}}">
-    <view class="hero profile-hero"><view class="title">{{profile.name}}</view><view class="profile-meta">{{profile.position}} · {{profile.height}}cm · {{profile.city}}</view></view>
-    <view class="card profile-card">
-      <view class="subtitle">参赛服务报价</view>
-      <view class="profile-copy">{{profile.price}} / 场 · 平台费预计 {{profile.platformFee}}</view>
-      <view class="profile-copy">交通 {{profile.travel}} · 食宿 {{profile.accommodation}} · 合计 {{profile.total}}</view>
-    </view>
-    <view class="card profile-card">
-      <view class="subtitle">每场记录</view>
-      <view class="profile-copy">{{profile.performance.points}} 分 / {{profile.performance.fouls}} 犯规 · {{profile.performance.sample}}场统计样本</view>
-      <view class="profile-copy">{{profile.performance.denominator}}</view>
-      <view class="profile-copy">完成服务 {{profile.performance.services}} 次，不代表付费成交</view>
-    </view>
-    <button class="secondary profile-records-toggle" bindtap="recordsToggle">{{recordsOpen ? '收起近期记录与来源' : '查看近期记录与来源'}}</button>
-    <view class="card profile-card"><view class="subtitle">本人填写的服务介绍</view><view class="bio profile-copy">{{profile.bio || '暂无服务介绍'}}</view><view class="profile-copy">资料审核不代表实力、实名或本场资格认证。</view></view>
-    <view class="card profile-card"><view class="subtitle">可约时间</view><view wx:if="{{!windows.length}}" class="profile-copy">暂无公开可约窗口，请先核对档期。</view><view wx:for="{{windows}}" wx:key="id" class="window-row"><view>{{item.start}}</view><view class="muted">至 {{item.end}}</view></view><view class="small muted">北京时间；接单时再次核验安排与30分钟交通缓冲，不保证已经锁定档期。</view></view>
-    <view class="card profile-card"><view class="subtitle">尚未采集的项目</view><view class="profile-copy">篮板、助攻、上场时间和命中率：未统计。不估算能力总分、胜率或准时率。</view></view>
-    <view class="notice small">最终按预约报价快照核对，在线支付未开放。缺少样本不代表球员能力差。</view>
+      <view class="card profile-quote">
+        <view class="quote-service"><view class="quote-price">{{profile.priceLabel || profile.price}}<text> / 场</text></view><view class="quote-platform">平台服务费 {{profile.platformFeeLabel || profile.platformFee}}</view></view>
+        <view class="quote-total"><view>含费预计</view><view class="quote-total-price">{{profile.totalLabel || profile.total}}</view></view>
+      </view>
+      <view class="card profile-samples">
+        <view class="sample-heading"><view class="subtitle">已授权赛事记录</view><button class="quiet profile-records-toggle" bindtap="recordsToggle">查看记录与来源<scb-icon name="chevron-right" size="15"/></button></view>
+        <view class="profile-metrics"><view class="profile-metric"><view class="metric-value {{profile.performance.points === '暂不可用' ? 'textual' : ''}}">{{profile.performance.points}}</view><view>场均得分</view></view><view class="profile-metric"><view class="metric-value {{profile.performance.fouls === '暂不可用' ? 'textual' : ''}}">{{profile.performance.fouls}}</view><view>场均犯规</view></view><view class="profile-metric"><view class="metric-value">{{profile.performance.sample}}<text>场</text></view><view>样本</view></view></view>
+        <view class="sample-limit"><scb-icon name="info" tone="orange" size="17"/><text>少量记录，谨慎比较</text></view>
+        <view wx:if="{{profile.performance.points === '0' &amp;&amp; profile.performance.fouls === '0'}}" class="zero-note">每场记录 0 分 / 0 犯规 · 真实0与未统计分开</view>
+      </view>
+      <view class="card profile-card profile-introduction"><view class="subtitle">球员自述</view><view class="bio">{{profile.bio || '暂无服务介绍'}}</view></view>
+      <view class="card profile-card availability-card"><view class="subtitle">可约时间</view><view wx:if="{{!windows.length}}" class="profile-copy">暂无公开可约窗口，请先核对档期。</view><view wx:for="{{windows}}" wx:key="id" class="window-row"><scb-icon name="calendar" size="19"/><view><view>{{item.display || item.start}}</view><view wx:if="{{!item.display}}" class="muted">至 {{item.end}}</view></view></view></view>
+      <button class="quiet profile-more-toggle" bindtap="informationToggle">{{informationOpen ? '收起费用与数据口径' : '更多费用、数据口径与对比'}}</button>
+      <view wx:if="{{informationOpen}}" class="profile-information">
+        <view class="card profile-card"><view class="subtitle">完整费用与每场记录</view><view class="profile-copy">{{profile.price}} / 场 · 平台费预计 {{profile.platformFee}}</view><view class="profile-copy">交通 {{profile.travel}} · 食宿 {{profile.accommodation}} · 合计 {{profile.total}}</view><view class="profile-copy">每场记录 {{profile.performance.points}} 分 / {{profile.performance.fouls}} 犯规 · {{profile.performance.sample}}场统计样本</view><view class="profile-copy">{{profile.performance.denominator}}</view><view class="profile-copy">完成服务 {{profile.performance.services}} 次，不代表付费成交</view></view>
+        <view class="card profile-card"><view class="subtitle">本人填写的服务介绍</view><view class="profile-copy">资料审核不代表实力、实名或本场资格认证。</view><view class="small muted">北京时间；接单时再次核验安排与30分钟交通缓冲，不保证已经锁定档期。</view></view>
+        <view class="card profile-card"><view class="subtitle">尚未采集的项目</view><view class="profile-copy">篮板、助攻、上场时间和命中率：未统计。不估算能力总分、胜率或准时率。</view></view>
+        <view class="notice small">最终按预约报价快照核对，在线支付未开放。缺少样本不代表球员能力差。预约不自动加入赛事名单；参赛资格、外援限制与保险仍需主办方核验。</view>
+        <view class="compare-actions"><button class="secondary" bindtap="toggle" disabled="{{loading || !profile}}">{{selected ? '移出对比' : '加入同价对比'}}</button><button class="secondary" bindtap="compare" disabled="{{loading || !profile}}">对比 {{selectedCount}}/3</button></view>
+      </view>
     </block>
     <block wx:else>
       <block wx:if="{{profile.performance.sample === '0' &amp;&amp; profile.performance.points === '未统计'}}">
@@ -39,10 +48,6 @@
         <button class="secondary profile-records-toggle" bindtap="recordsToggle">返回球员详情</button>
       </block>
     </block>
-    <view class="notice">预约不自动加入赛事名单；参赛资格、外援限制与保险仍需主办方核验。</view>
   </block>
-  <view class="action-bar">
-    <button class="primary" bindtap="book" disabled="{{loading || !profile}}">预约这位球员</button>
-    <view class="compare-actions"><button wx:if="{{recordsOpen}}" class="quiet" bindtap="recordsToggle" disabled="{{loading || !profile}}">返回球员详情</button><button wx:else class="quiet" bindtap="toggle" disabled="{{loading || !profile}}">{{selected ? '移出对比' : '加入同价对比'}}</button><button class="quiet" bindtap="compare" disabled="{{loading || !profile}}">对比 {{selectedCount}}/3</button></view>
-  </view>
+  <view class="action-bar profile-action"><button class="primary" bindtap="book" disabled="{{loading || !profile}}">预约这位球员</button><button wx:if="{{recordsOpen}}" class="quiet" bindtap="recordsToggle" disabled="{{loading || !profile}}">返回球员详情</button></view>
 </view>

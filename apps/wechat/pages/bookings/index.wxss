@@ -25,3 +25,43 @@
 .state-card button { margin:8px 0 0; }
 .skeleton { height:12px; width:88%; background:#eaf0f7; border-radius:6px; margin:6px 0; }
 .skeleton.short { width:56%; }
+
+/* C11: the approved two-role order cards. */
+.bookings-page { padding:8px 12px 100px; color:#132c49; }
+.booking-view-tabs { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:0; height:44px; margin-bottom:12px; background:#eaf0f7; border-radius:10px; overflow:hidden; }
+.booking-view-tab { min-height:44px; height:44px; margin:0; padding:10px 8px; background:transparent; border-radius:10px; color:#4c617e; font-size:14px; line-height:24px; font-weight:600; }
+.booking-view-tab::after { border:0; }
+.booking-view-tab.active { background:#132c49; color:#fff; }
+.booking-order-card { position:relative; margin-bottom:12px; padding:14px; border-radius:12px; background:#fff; box-shadow:0 3px 12px rgba(19,44,73,.03); }
+.appearance-status { display:flex; align-items:flex-start; gap:7px; padding-right:28px; font-size:13px; line-height:22px; font-weight:600; color:#ff6b2d; }
+.status-dot { flex:0 0 11px; height:11px; border-radius:50%; background:currentColor; margin-top:5px; }
+.appearance-status.accepted,.appearance-status.success { color:#09a267; }
+.appearance-status.warning { color:#a97521; }
+.order-more { position:absolute; top:0; right:0; width:44px; min-height:44px; height:44px; margin:0; padding:0; line-height:44px; background:transparent; color:#132c49; font-size:17px; letter-spacing:1px; }
+.order-more::after { border:0; }
+.order-heading { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-top:5px; }
+.order-event { min-width:0; flex:1; font-size:17px; line-height:26px; font-weight:700; overflow-wrap:anywhere; }
+.order-team { max-width:42%; color:#6a7d96; font-size:11px; line-height:18px; overflow-wrap:anywhere; text-align:right; }
+.order-player { display:flex; align-items:center; gap:12px; margin:9px 0 11px; }
+.order-portrait { display:block; flex:0 0 56px; width:56px; height:62px; border-radius:7px; background:#e8eef5; }
+.order-player-copy { min-width:0; flex:1; }
+.order-player-name { font-size:16px; line-height:24px; font-weight:700; overflow-wrap:anywhere; }
+.order-player-name text { font-size:12px; line-height:20px; font-weight:400; color:#52627c; }
+.order-player-meta { margin-top:3px; color:#6a7d96; font-size:12px; line-height:20px; overflow-wrap:anywhere; }
+.order-schedule,.order-venue { display:flex; align-items:flex-start; gap:10px; color:#132c49; font-size:14px; line-height:22px; }
+.order-schedule scb-icon,.order-venue scb-icon { display:block; flex:0 0 18px; margin-top:2px; }
+.order-schedule text,.order-venue text { flex:1; min-width:0; overflow-wrap:anywhere; }
+.order-venue { margin-top:4px; }
+.order-quote { display:flex; align-items:center; gap:14px; margin-top:12px; padding:6px 10px; border-radius:8px; background:#fff1e3; color:#65758d; font-size:12px; line-height:24px; }
+.order-quote-value { color:#ff6b2d; font-size:20px; line-height:26px; font-weight:700; }
+.booking-order-card .detail-button { display:flex; align-items:center; justify-content:center; gap:5px; min-height:44px; margin:12px 0 0; padding:9px 8px; border:1px solid #c6d2e1; border-radius:9px; background:#fff; color:#132c49; font-size:13px; line-height:24px; font-weight:600; }
+.booking-order-card .detail-button::after { border:0; }
+.order-expanded { padding:12px; margin-top:12px; background:#f5f7fa; border-radius:8px; }
+.order-expanded > view + view { margin-top:4px; }
+.booking-tools { display:flex; gap:8px; margin-top:4px; }
+.booking-tools button { flex:1; width:0; margin:0; color:#60758f; font-size:12px; line-height:24px; }
+.time-caption { display:flex; align-items:flex-start; gap:7px; color:#71839c; font-size:11px; line-height:18px; margin:4px 0 0; }
+.time-caption scb-icon { display:block; flex:0 0 16px; margin-top:1px; }
+.bookings-actions { padding:10px 12px calc(12px + env(safe-area-inset-bottom)); border-top:0; background:#f5f7fa; }
+.bookings-actions .primary { min-height:48px; padding:12px; margin:0; border-radius:9px; background:#132c49; color:#fff; font-size:14px; line-height:24px; font-weight:600; }
+@media (max-width:360px) { .booking-order-card { padding:12px; } .order-player-name text { display:block; } .order-team { max-width:38%; } }

@@ -103,6 +103,9 @@ function fixture(name, options = {}) {
     localTime(value) {
       return value;
     },
+    today() {
+      return '2026-10-25';
+    },
     open(route, query) {
       nav.push({ route, query });
     },

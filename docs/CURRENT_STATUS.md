@@ -1,5 +1,7 @@
 # 当前状态
 
+当前C11：`IN_PROGRESS / LOCAL_ONLY`。用户已否定C10成品视觉并确认新的六屏图；以docs/design/C11/approved-six-screen.png为唯一基准，实施6核心路由与必要共享组件。C10逻辑/兼容检查不算新稿视觉签收；新稿实际截图待生成。[任务](tasks/C11.md)、[交接](handoffs/C11.md)。
+
 当前C10：`DONE（21页源码/兼容图集） / MAIN`。PR16已合并7607c28；最终候选CI40156690255三job全部SUCCESS，271原生、654三宽布局、668浏览器及完整PG/恢复检查通过；460实际界面PNG+21原稿整包已交付。合并tree与已检候选一致；合并后独立CI尚未完成，后续仅文档同步。官方微信/真机与用户视觉签收待办。[图集/来源](evidence/C10/README.md)、[任务](tasks/C10.md)、[交接](handoffs/C10.md)。
 
 ## C09 小程序视觉修正（REVIEW / BRANCH_ONLY）

@@ -1,22 +1,55 @@
-.market-intro { display:flex; flex-direction:column; gap:4px; min-height:80px; padding:16px; margin-bottom:16px; }
-.market-intro-title { font-size:14px; line-height:24px; font-weight:500; }
-.filter-summary { display:flex; align-items:stretch; gap:8px; margin-bottom:16px; }
-.filter-chip { display:flex; align-items:center; justify-content:center; max-width:calc((100% - 16px) / 3); min-height:44px; padding:8px 10px; border-radius:8px; color:#617286; font-size:14px; line-height:24px; overflow-wrap:anywhere; }
-.filter-chip.active { color:#132c49; background:#eaf0f7; font-weight:500; }
-.filter-toggle { margin-bottom:16px; }
+page { background:#f5f7fa; }
+.players-page { padding:12px 12px calc(116px + env(safe-area-inset-bottom)); max-width:600px; }
+.market-search { display:flex; align-items:center; gap:10px; height:44px; padding-left:14px; margin-bottom:8px; border-radius:14px; background:#eaf0f6; }
+.market-search input { flex:1; min-width:0; height:44px; border:0; outline:0; background:transparent; padding:0; font-size:16px; line-height:24px; color:#132c49; }
+.search-submit { width:44px; flex:0 0 44px; min-height:44px; margin:0; padding:10px; background:transparent; }
+.search-submit::after { border:0; }
+.filter-summary { display:flex; gap:8px; margin-bottom:8px; }
+.filter-chip { flex:1; min-width:0; display:flex; gap:6px; justify-content:center; align-items:center; height:44px; margin:0; padding:4px 6px; font-size:12px; line-height:18px; border-radius:10px; background:#f8fafc; color:#132c49; }
+.filter-chip::after { border:1px solid #e5ebf2; border-radius:10px; }
+.filter-chip.active { font-weight:600; }
+.date-chip { gap:5px; }
+.filter-title { display:flex; align-items:center; justify-content:space-between; }
+.filter-title .subtitle { margin:0; }
+.filter-collapse { width:44px; flex:0 0 44px; margin:0; padding:10px; }
 .picker-value { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.player-result { margin-bottom:16px; }
-.player-card { position:relative; display:flex; flex-direction:column; gap:8px; padding:16px; margin-bottom:16px; }
-.player-head { padding-right:36px; }
-.player-name { margin:0; font-size:18px; line-height:28px; font-weight:500; }
-.player-bio { padding-right:28px; }
-.player-card .price { margin:0; color:#132c49; font-size:22px; line-height:34px; font-weight:700; }
-.unit { font-size:22px; font-weight:700; }
-.total { color:#152c43; font-size:14px; line-height:24px; font-weight:500; }
-.player-review { color:#16734b; }
-.player-select { position:absolute; top:8px; right:8px; display:flex; align-items:center; justify-content:center; width:44px; min-height:44px; padding:0; margin:0; border-radius:50%; background:transparent; color:#617286; font-size:20px; line-height:24px; }
-.player-select::after { border:0; }
-.player-select.selected { color:#132c49; background:#eaf0f7; }
-.player-detail { margin:0; }
-.catalog-notice { padding:4px 0 12px; }
 .filters .field-label { margin-top:10px; }
+.player-result { margin-bottom:12px; }
+.player-card { position:relative; padding:12px; margin:0; border-radius:12px; border:1px solid #edf1f5; box-shadow:0 3px 10px rgba(19,44,73,.035); }
+.player-head { display:flex; gap:12px; min-height:102px; }
+.player-portrait { flex:0 0 94px; width:94px; height:102px; border-radius:8px; background:#e5ecf3; }
+.player-identity { flex:1; min-width:0; padding-top:1px; }
+.player-name-row { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; padding-right:32px; }
+.player-name { color:#132c49; font-size:18px; line-height:26px; font-weight:700; overflow-wrap:anywhere; }
+.player-position { color:#617286; font-size:12px; line-height:20px; }
+.player-bio { margin-top:3px; color:#617286; font-size:12px; line-height:20px; overflow-wrap:anywhere; }
+.player-card .price { margin-top:10px; color:#ff5f19; font-size:28px; line-height:34px; font-weight:700; }
+.unit { color:#e85a20; font-size:14px; font-weight:500; }
+.player-select { position:absolute; top:5px; right:5px; display:flex; align-items:center; justify-content:center; width:44px; min-height:44px; padding:0; margin:0; background:transparent; }
+.player-select::after { border:0; }
+.selection-box { display:flex; align-items:center; justify-content:center; width:28px; height:28px; border:1px solid #ccd6e1; border-radius:7px; color:#617286; font-size:22px; line-height:26px; }
+.selected .selection-box { color:#fff; background:#ff6b2d; border-color:#ff6b2d; }
+.player-metrics-row { display:flex; align-items:flex-start; gap:8px; margin-top:10px; }
+.player-metrics { display:flex; flex:1; min-width:0; padding:7px 0; border-radius:10px; background:#f4f7fa; }
+.metric { flex:1; min-width:0; text-align:center; border-right:1px solid #e0e7ef; }
+.metric:last-child { border:0; }
+.metric-value { color:#132c49; font-family:Arial,sans-serif; font-size:20px; line-height:26px; font-weight:700; overflow-wrap:anywhere; }
+.metric-value.textual { font-size:15px; }
+.metric-unit { font-size:14px; }
+.metric-label { color:#718096; font-size:11px; line-height:18px; }
+.total { flex:0 0 auto; max-width:43%; margin-top:0; padding:8px 9px; border-radius:8px; background:#fff3e8; color:#ad5b30; font-size:11px; line-height:20px; overflow-wrap:anywhere; }
+.total text { color:#fa6423; font-size:13px; font-weight:600; }
+.player-footer { display:flex; justify-content:space-between; align-items:flex-end; gap:8px; margin-top:10px; }
+.player-review { flex:1; min-width:0; }
+.review-badge { display:inline-flex; align-items:center; gap:4px; padding:0 4px; border-radius:5px; background:#ecfaf4; color:#15a47a; font-size:12px; line-height:24px; }
+.review-note { color:#8b98aa; font-size:11px; line-height:18px; }
+.player-detail { display:flex; align-items:center; justify-content:center; gap:3px; flex:0 0 104px; width:104px; height:44px; min-height:44px; padding:8px; margin:0; font-size:13px; font-weight:600; border-radius:10px; }
+.player-detail::after { border-color:#d2dce7; border-radius:10px; }
+.market-information { margin:24px 0 0; }
+.market-information > button { margin:0; font-size:12px; }
+.market-notes { margin-top:12px; }
+.source-row { padding:12px 0; border-bottom:1px solid #e8edf2; }
+.market-action { padding:12px 12px calc(16px + env(safe-area-inset-bottom)); background:rgba(245,247,250,.97); border-radius:0; }
+.market-action .primary { min-height:72px; padding:10px 12px; border-radius:10px; font-size:20px; line-height:28px; font-weight:600; background:#163955; }
+.action-caption { margin-top:2px; font-size:12px; line-height:20px; color:#d6e2ed; font-weight:400; }
+@media(max-width:360px) { .player-portrait { width:76px; flex-basis:76px; height:94px; } .player-head { gap:8px; min-height:94px; } .player-name { font-size:17px; } .player-card .price { font-size:26px; margin-top:6px; } .player-bio { font-size:11px; } .player-metrics-row { gap:6px; } .total { padding:8px 6px; font-size:10px; } .total text { font-size:12px; } .metric-value { font-size:18px; } .metric-label { font-size:10px; } .player-detail { flex-basis:96px; width:96px; } }

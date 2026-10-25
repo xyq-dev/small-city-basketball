@@ -1,0 +1,1 @@
+<image class="scb-icon" src="/assets/approved-ui/icon-{{name}}-{{tone}}.svg" mode="aspectFit" style="width:{{size}}px;height:{{size}}px" aria-hidden="true"/>

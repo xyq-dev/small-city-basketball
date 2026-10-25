@@ -78,6 +78,9 @@
         "matchId": "",
         "number": 1,
         "key": 0,
+        "dayLabel": "10月28日",
+        "reportLabel": "19:00",
+        "scheduleLabel": "19:30–21:00",
         "playerChoices": []
       }
     ],
@@ -92,6 +95,18 @@
     "periodEnd": "2026-10-28",
     "review": false,
     "detailsOpen": true,
+    "editorOpen": false,
+    "compactQuote": {
+      "service": "¥0",
+      "platform": "¥0",
+      "travel": "¥0",
+      "accommodation": "¥0",
+      "confirmed": "¥0",
+      "conditional": "¥0",
+      "count": 0,
+      "fixedCount": 0,
+      "conditionalCount": 0
+    },
     "consent": false,
     "quote": {
       "service": "¥0.00",
@@ -132,5 +147,6 @@
     "请先核对并勾选声明"
   ],
   "expectDisabled": [],
-  "expectEnabled": ["重新读取资料", "返回球员广场"]
+  "expectEnabled": ["重新读取资料", "返回球员广场"],
+  "designSource": "approved:C11"
 }

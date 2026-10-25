@@ -5,10 +5,8 @@
   "figmaNode": "30:35",
   "syntheticData": true,
   "static": true,
-  "expectText": [
-    "每一场，都有合适的人",
-    "查看我的预约"
-  ],
+  "expectText": ["每一场，都有合适的人", "赛事观赛", "按位置找球员"],
   "data": {},
-  "primary": true
+  "primary": true,
+  "designSource": "approved:C11"
 }

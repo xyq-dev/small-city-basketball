@@ -4,3 +4,5 @@
 .nav-dot { height:20px; font-size:12px; line-height:20px; }
 .nav-item.selected { color:#132c49; }
 .nav-item[disabled] { background:#fff; color:#a3b2c1; opacity:.65; }
+
+.premium-nav { height:calc(72px + env(safe-area-inset-bottom)); padding-top:8px; padding-bottom:calc(8px + env(safe-area-inset-bottom)); } .premium-nav .nav-item { font-size:11px; line-height:17px; gap:4px; } .premium-nav .nav-item.selected { color:#ff6b2d; font-weight:600; }

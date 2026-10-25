@@ -1,27 +1,53 @@
-.profile-hero { display:flex; flex-direction:column; gap:12px; padding:24px; }
-.profile-hero .title { margin:0; }
-.profile-meta { font-size:14px; line-height:24px; }
-.profile-card { display:flex; flex-direction:column; gap:8px; }
-.profile-card .subtitle { margin:0; }
+page { background:#f5f7fa; }
+.profile-hero { position:relative; width:100%; height:260px; overflow:hidden; background:#102d44; color:#fff; }
+.profile-hero-image { position:absolute; inset:0; width:100%; height:100%; object-position:60% 30%; }
+.profile-hero-shade { position:absolute; inset:0; background:linear-gradient(90deg,rgba(7,26,42,.48),rgba(7,26,42,0) 72%); }
+.profile-hero-copy { position:absolute; left:20px; bottom:48px; max-width:60%; color:#fff; font-size:14px; line-height:22px; overflow-wrap:anywhere; }
+.profile-name { margin-bottom:6px; font-size:32px; line-height:42px; font-weight:700; color:#fff; }
+.player-page { padding:0 12px calc(108px + env(safe-area-inset-bottom)); max-width:600px; }
+.player-page .card { border-radius:12px; margin-bottom:12px; border:1px solid #edf1f5; box-shadow:0 3px 10px rgba(19,44,73,.025); }
+.profile-quote { position:relative; display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:108px; padding:14px 16px; margin-top:-2px; }
+.quote-service { flex:1; min-width:0; }
+.quote-price { color:#ff641e; font-family:Arial,sans-serif; font-size:44px; line-height:50px; font-weight:700; overflow-wrap:anywhere; }
+.quote-price text { font-size:18px; font-family:inherit; font-weight:500; }
+.quote-platform { color:#748299; font-size:14px; line-height:22px; }
+.quote-total { flex:0 0 126px; padding:10px 8px; border-radius:12px; background:#fff3e8; text-align:center; color:#51617c; font-size:14px; line-height:22px; }
+.quote-total-price { color:#ff641e; font-family:Arial,sans-serif; font-size:30px; line-height:36px; font-weight:700; overflow-wrap:anywhere; }
+.profile-samples { min-height:164px; padding:8px 12px 12px; }
+.sample-heading { display:flex; align-items:center; justify-content:space-between; gap:6px; min-height:44px; }
+.sample-heading .subtitle { margin:0; font-size:16px; line-height:24px; font-weight:700; }
+.profile-records-toggle { display:flex; align-items:center; justify-content:flex-end; gap:2px; width:auto; max-width:48%; min-height:44px; margin:0; padding:4px 0 4px 4px; color:#8390a3; font-size:11px; line-height:18px; }
+.profile-metrics { display:flex; gap:8px; margin-top:0; }
+.profile-metric { flex:1; min-width:0; min-height:60px; padding:7px 4px; border-radius:10px; background:#f4f7fa; color:#7b899d; text-align:center; font-size:12px; line-height:20px; }
+.metric-value { color:#132c49; font-family:Arial,sans-serif; font-size:26px; line-height:30px; font-weight:700; overflow-wrap:anywhere; }
+.metric-value text { font-size:16px; }
+.metric-value.textual { font-size:18px; }
+.sample-limit { display:flex; align-items:center; gap:6px; margin-top:10px; color:#8390a3; font-size:12px; line-height:20px; }
+.zero-note { color:#617286; font-size:11px; line-height:18px; margin-top:4px; }
+.profile-card { display:flex; flex-direction:column; gap:8px; padding:14px 16px; }
+.profile-card .subtitle { margin:0; font-size:16px; line-height:24px; font-weight:700; }
+.profile-introduction { min-height:96px; }
+.bio { color:#132c49; font-size:15px; line-height:24px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.availability-card { min-height:88px; }
+.window-row { display:flex; align-items:flex-start; gap:10px; padding:2px 0; color:#132c49; font-size:14px; line-height:22px; }
 .profile-copy { color:#617286; font-size:14px; line-height:24px; }
-.profile-records-toggle { margin-bottom:16px; }
-.quote-note { margin-top:0; }
-.record-item { padding:16px 0; border-top:1px solid #e8edf2; margin-top:12px; }
-.record-name { color:#132c49; font-size:18px; line-height:28px; font-weight:500; }
-.record-score { margin:8px 0; color:#132c49; font-size:18px; line-height:28px; font-weight:500; }
-.records > view { margin-bottom:8px; }
-.records .subtitle { margin-bottom:8px; }
-.window-row { padding:8px 0; border-bottom:1px solid #e8edf2; }
-.window-row:last-of-type { border-bottom:0; }
+.profile-more-toggle { margin-top:8px; margin-bottom:12px; font-size:12px; }
+.profile-information > .notice { margin-bottom:12px; }
 .compare-actions { display:flex; gap:8px; }
 .compare-actions button { flex:1; min-width:0; margin:0; }
-.bio { white-space:pre-wrap; overflow-wrap:anywhere; }
+.profile-action { padding:12px 12px calc(20px + env(safe-area-inset-bottom)); background:#f5f7fa; border-radius:0; }
+.profile-action .primary { min-height:56px; margin:0; border-radius:10px; background:#ff6b2d; color:#fff; font-size:20px; line-height:28px; font-weight:600; }
+.profile-action .quiet { margin:4px 0 0; }
+.state-card { margin-top:12px; }
 .state-card .muted { font-size:14px; line-height:24px; }
 .state-card button { margin-top:16px; margin-bottom:0; }
-
-.records-stats { gap:12px; }
-.records-stats .stat { padding:16px; border-radius:16px; }
-.stat-value { color:#132c49; font-family:Inter,Arial,sans-serif; font-size:34px; line-height:44px; font-weight:600; margin-bottom:4px; }
+.records-stats { gap:12px; padding-top:12px; }
+.records-stats .stat { padding:16px; border-radius:12px; }
+.stat-value { color:#132c49; font-family:Arial,sans-serif; font-size:34px; line-height:44px; font-weight:600; margin-bottom:4px; overflow-wrap:anywhere; }
 .record-card { display:flex; flex-direction:column; gap:8px; }
-.record-card .record-score { margin:0; }
+.record-name { color:#132c49; font-size:18px; line-height:28px; font-weight:500; }
+.record-score { margin:0; color:#132c49; font-size:18px; line-height:28px; font-weight:500; }
+.records > view { margin-bottom:8px; }
+.records .subtitle { margin-bottom:8px; }
 .notice-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
+@media(max-width:360px) { .profile-hero { height:240px; } .profile-name { font-size:28px; } .profile-hero-copy { bottom:38px; } .quote-price { font-size:36px; line-height:44px; } .quote-price text { font-size:16px; } .quote-total { flex-basis:106px; } .quote-total-price { font-size:26px; } .sample-heading .subtitle { font-size:15px; } .profile-records-toggle { font-size:10px; } .metric-value { font-size:24px; } .metric-value.textual { font-size:16px; } }

@@ -27,6 +27,7 @@ Page({
     statisticsError: '',
     selectionNotice: '',
     filtersOpen: false,
+    informationOpen: false,
     filterSummary: { position: '全部位置', price: '不限价格', date: '不限日期' },
     filters: {
       search: '',
@@ -46,6 +47,17 @@ Page({
     showingCount: 0,
     hasMore: false,
     catalogLimited: false,
+  },
+  onLoad(query = {}) {
+    const index = market.positionCodes.indexOf(query.position);
+    if (index > 0)
+      this.setData({
+        positionIndex: index,
+        filters: { ...this.data.filters, position: market.positionCodes[index] },
+      });
+  },
+  informationToggle() {
+    this.setData({ informationOpen: !this.data.informationOpen });
   },
   onShow() {
     this._visible = true;
@@ -149,7 +161,14 @@ Page({
     const rows = visible.filter((p) => !unavailable.has(p.id));
     this._displayToken = token;
     this.setData({
-      cards: rows.map((p) => market.profileView(p, this._feeBps, stats[p.id], !!statisticsError)),
+      cards: rows.map((p) => {
+        const row = market.profileView(p, this._feeBps, stats[p.id], !!statisticsError);
+        return {
+          ...row,
+          priceLabel: row.price.replace(/\.00$/, ''),
+          totalLabel: row.total.replace(/\.00$/, ''),
+        };
+      }),
       loading: false,
       statisticsError,
       selectedCount: market.selectedIds().length,

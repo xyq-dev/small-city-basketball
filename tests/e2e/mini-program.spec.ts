@@ -10,6 +10,7 @@ type Scenario = {
   filled: boolean;
   state?: string;
   figmaNode?: string;
+  designSource?: string;
   static?: boolean;
   expectText?: string[];
   expectAbsentText?: string[];
@@ -206,19 +207,26 @@ async function attachScreen(page: Page, testInfo: TestInfo, name: string) {
   await testInfo.attach(name, { path: target, contentType: 'image/png' });
 }
 
-// Geometry here is measured against the original 390px Figma frames. The
-// existing overflow/touch matrix still owns all three adaptive viewport widths.
+// C11 replaces the earlier four-screen C09 targets with the user's explicitly
+// approved six-screen image. Geometry and real asset loading are checked in
+// addition to the unchanged overflow/touch/readability matrix.
 async function checkDesignGeometry(frame: Frame, scenario: string, width: number) {
-  scenario =
-    (
-      {
-        'c10-core-home-ready': 'initial-home',
-        'c10-core-players-ready': 'players-collapsed',
-        'c10-core-compare-ready': 'compare-three',
-      } as Record<string, string>
-    )[scenario] || scenario;
-  const supported = ['initial-home', 'players-collapsed', 'compare-three'];
-  if (!supported.includes(scenario)) return null;
+  const groups: Record<string, string> = {
+    'initial-home': 'home',
+    'c10-core-home-ready': 'home',
+    'c11-home-ready': 'home',
+    'players-collapsed': 'players',
+    'c10-core-players-ready': 'players',
+    'c11-player-market-ready': 'players',
+    'compare-three': 'compare',
+    'c10-core-compare-ready': 'compare',
+    'c11-player-compare-ready': 'compare',
+    'c11-player-detail-ready': 'player',
+    'c11-booking-create-ready': 'booking-create',
+    'c11-booking-orders-ready': 'bookings',
+  };
+  const group = groups[scenario];
+  if (!group) return null;
   const metrics = await frame.evaluate(() => {
     const measure = (selector: string) => {
       const element = document.querySelector(selector);
@@ -230,65 +238,111 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
         y: rect.y,
         width: rect.width,
         height: rect.height,
-        fontSize: Number.parseFloat(style.fontSize),
-        lineHeight: Number.parseFloat(style.lineHeight),
-        radius: Number.parseFloat(style.borderTopLeftRadius),
+        fontSize: parseFloat(style.fontSize),
+        lineHeight: parseFloat(style.lineHeight),
+        radius: parseFloat(style.borderTopLeftRadius),
+        background: style.backgroundColor,
       };
     };
     return {
       fontFamily: getComputedStyle(document.body).fontFamily,
+      header: measure('.scb-header'),
+      duplicateNativeHeader: document.querySelectorAll('.mini-native-bar').length,
+      statusBars: document.querySelectorAll('.mini-custom-status').length,
       hero: measure('.home-hero'),
-      heroTitle: measure('.home-hero .title'),
-      homeAction: measure('.home-page > .accent'),
-      homeCard: measure('.home-card'),
-      marketIntro: measure('.market-intro'),
-      filterToggle: measure('.filter-toggle'),
+      homeAction: measure('.home-primary'),
+      search: measure('.market-search'),
       playerCard: measure('.player-card'),
-      playerName: measure('.player-name'),
+      portrait: measure('.player-portrait'),
       metricColumn: measure('.metric-labels'),
       playerColumn: measure('.compare-column'),
+      tableHead: measure('.comparison-head'),
       tableCell: measure('.comparison-cell'),
+      columns: document.querySelectorAll('.compare-column').length,
+      profileHero: measure('.profile-hero'),
+      profileQuote: measure('.profile-quote'),
+      scopeRail: measure('.scope-rail'),
+      selectedPlayer: measure('.selected-player'),
+      arrangement: measure('.arrangement-summary'),
+      orderCard: measure('.booking-order-card'),
+      orderTabs: measure('.booking-view-tabs'),
       action: measure('.action-bar > .primary'),
+      photographs: Array.from(
+        document.querySelectorAll<HTMLImageElement>('img[src^="data:image/jpeg"]'),
+      ).map((image) => ({
+        loaded: image.complete && image.naturalWidth > 0,
+        width: image.width,
+        height: image.height,
+        objectFit: getComputedStyle(image).objectFit,
+      })),
     };
   });
   expect(metrics.fontFamily).toContain('Noto Sans CJK SC');
-  if (scenario === 'initial-home') {
-    expect(metrics.hero?.x).toBe(20);
-    expect(metrics.hero?.width).toBe(width - 40);
-    expect(metrics.heroTitle?.fontSize).toBe(22);
-    expect(metrics.heroTitle?.lineHeight).toBe(34);
-    expect(metrics.homeAction?.width).toBe(width - 40);
-    expect(metrics.homeAction?.height).toBe(44);
-    expect(metrics.homeCard?.radius).toBe(16);
-    if (width === 390) {
-      expect(metrics.hero?.y).toBe(116);
-      expect(metrics.hero?.height).toBe(118);
-      expect(metrics.homeAction?.y).toBe(250);
-      expect(metrics.homeCard?.y).toBe(310);
-      expect(metrics.homeCard?.height).toBe(124);
-    }
+  expect(metrics.header?.height).toBe(80);
+  expect(metrics.duplicateNativeHeader).toBe(0);
+  expect(metrics.statusBars).toBe(1);
+  if (scenario.startsWith('c11-')) {
+    const minimumPhotos: Record<string, number> = {
+      home: 1,
+      players: 2,
+      player: 1,
+      compare: 2,
+      'booking-create': 1,
+      bookings: 2,
+    };
+    expect(metrics.photographs.length).toBeGreaterThanOrEqual(minimumPhotos[group]);
+    expect(
+      metrics.photographs.every(
+        (photo) =>
+          photo.loaded && photo.width > 0 && photo.height > 0 && photo.objectFit === 'cover',
+      ),
+    ).toBe(true);
+  }
+  if (group === 'home') {
+    expect(metrics.hero?.width).toBe(width);
+    expect(metrics.hero?.height).toBe(width <= 360 ? 400 : 430);
+    expect(metrics.homeAction?.width).toBe(214);
+    expect(metrics.homeAction?.height).toBe(52);
+    expect(metrics.homeAction?.background).toBe('rgb(255, 107, 45)');
   } else {
-    expect(metrics.action?.x).toBe(20);
-    expect(metrics.action?.width).toBe(width - 40);
-    expect(metrics.action?.height).toBe(44);
-    if (scenario === 'players-collapsed') {
-      expect(metrics.marketIntro?.height).toBeGreaterThanOrEqual(80);
-      expect(metrics.filterToggle?.height).toBe(44);
-      expect(metrics.playerCard?.radius).toBe(16);
-      expect(metrics.playerName?.fontSize).toBe(18);
-      expect(metrics.playerName?.lineHeight).toBe(28);
-      if (width === 390) {
-        expect(metrics.marketIntro?.height).toBe(80);
-        expect(metrics.playerCard?.y).toBe(332);
-      }
-    } else {
-      expect(metrics.metricColumn?.width).toBe(100);
-      expect(metrics.playerColumn?.width).toBe(125);
-      expect(metrics.tableCell?.height).toBe(56);
-      expect(metrics.tableCell?.fontSize).toBe(12);
+    expect(metrics.action?.x).toBe(12);
+    expect(metrics.action?.width).toBe(width - 24);
+    expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
+    if (group === 'players') {
+      expect(metrics.search?.x).toBe(12);
+      expect(metrics.search?.y).toBe(92);
+      expect(metrics.search?.height).toBe(44);
+      expect(metrics.playerCard?.x).toBe(12);
+      expect(metrics.playerCard?.y).toBe(196);
+      expect(metrics.playerCard?.width).toBe(width - 24);
+      expect(metrics.playerCard?.radius).toBe(12);
+      expect(metrics.portrait?.width).toBe(width <= 360 ? 76 : 94);
+    } else if (group === 'compare') {
+      const metricWidth = width <= 360 ? 94 : 100;
+      expect(metrics.metricColumn?.width).toBe(metricWidth);
+      const expected = metrics.columns === 2 ? (width - 24 - metricWidth) / 2 : 125;
+      expect(metrics.playerColumn?.width).toBeCloseTo(expected, 1);
+      expect(metrics.tableHead?.height).toBe(204);
+      expect(metrics.tableCell?.height).toBe(38);
+    } else if (group === 'player') {
+      expect(metrics.profileHero?.height).toBe(width <= 360 ? 240 : 260);
+      expect(metrics.profileQuote?.x).toBe(12);
+      expect(metrics.profileQuote?.width).toBe(width - 24);
+      expect(metrics.action?.background).toBe('rgb(255, 107, 45)');
+    } else if (group === 'booking-create') {
+      expect(metrics.scopeRail?.height).toBe(44);
+      expect(metrics.selectedPlayer?.height).toBeGreaterThanOrEqual(84);
+      expect(metrics.arrangement?.x).toBe(12);
+      expect(metrics.arrangement?.width).toBe(width - 24);
+      expect(metrics.action?.background).toBe('rgb(255, 107, 45)');
+    } else if (group === 'bookings') {
+      expect(metrics.orderTabs?.height).toBe(44);
+      expect(metrics.orderCard?.x).toBe(12);
+      expect(metrics.orderCard?.width).toBe(width - 24);
+      expect(metrics.orderCard?.radius).toBe(12);
     }
   }
-  return metrics;
+  return { source: 'approved:C11', group, ...metrics };
 }
 
 test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机验收）', () => {
@@ -364,6 +418,8 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
               scenario: scenario.name,
               state: scenario.state || (scenario.filled ? 'ready' : 'initial'),
               figmaNode: scenario.figmaNode || null,
+              designSource:
+                scenario.designSource || (scenario.name.startsWith('c11-') ? 'approved:C11' : null),
               width,
               ...layout,
               designGeometry,

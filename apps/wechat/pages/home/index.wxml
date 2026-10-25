@@ -1,13 +1,16 @@
-<view class="page home-page">
-  <view class="hero home-hero"><view class="title">每一场，都有合适的人</view><view class="muted">赛事观赛 · 球队报名 · 球员预约</view></view>
-  <button class="accent" data-page="players" bindtap="go">进入球员广场</button>
-  <view class="card home-card"><view class="subtitle">我的预约</view><view class="home-copy">逐位球员查看接单与履约进度</view><view class="home-copy">按单场核对时间、地点与状态</view></view>
-  <button class="secondary" data-page="bookings" bindtap="go">查看我的预约</button>
-  <view class="card home-card"><view class="subtitle">赛事与球队</view><view class="home-copy">进入主办方已公开的赛事观赛</view><view class="home-copy">管理我的球队与本届报名</view></view>
-  <button class="secondary" data-page="watch" bindtap="go">打开观赛入口</button>
-  <button class="secondary" data-page="teams" bindtap="go">我的球队</button>
-  <view class="notice">先看位置、档期与有限授权数据，再比较含费报价。合作预约不自动加入赛事报名名单。</view>
-  <view class="card home-card"><view class="subtitle">球员入驻</view><view class="home-copy">本人提交服务资料与可约时间</view><view class="home-copy">自主接受每一场合作</view></view>
-  <button class="secondary" data-page="player-center" bindtap="go">进入本人球员中心</button>
+<view class="home-page premium-home">
+ <view class="home-hero">
+  <image class="home-court" src="/assets/approved-ui/court-night.jpg" mode="aspectFill" aria-hidden="true"/>
+  <view class="home-shade"></view>
+  <scb-header home="{{true}}" dark="{{true}}" back="{{false}}" bind:search="openPlayers"/>
+  <view class="home-hero-content"><view class="home-headline"><image src="/assets/approved-ui/home-slogan.png" mode="widthFix" aria-label="每一场，都有合适的人"/><text class="accessible-headline">每一场，都有合适的人</text></view><view class="home-tagline">找球员 · 看赛事 · 管球队</view><button class="accent home-primary" bindtap="openPlayers">找球员<scb-icon name="arrow-right" tone="white" size="22"/></button></view>
+ </view>
+ <view class="home-content">
+  <view class="home-section-head"><view class="home-section-title">按位置找球员</view><button class="home-more-toggle" bindtap="moreToggle">更多服务<scb-icon name="{{moreOpen ? 'chevron-up' : 'chevron-down'}}" size="14"/></button></view>
+  <view class="position-grid"><button wx:for="{{positions}}" wx:key="code" class="position-button" data-position="{{item.code}}" bindtap="position"><scb-icon name="{{item.icon}}" tone="{{index === 0 || index === 3 ? 'orange' : 'navy'}}" size="38"/><text>{{item.name}}</text></button></view>
+  <view class="home-service-grid"><button class="home-service" data-page="watch" bindtap="go"><view><view class="home-service-title">赛事观赛</view><view class="home-service-copy">看现场比分<br/>了解本地赛事</view></view><scb-icon name="court" size="40"/></button><button class="home-service" data-page="teams" bindtap="go"><view><view class="home-service-title">我的球队</view><view class="home-service-copy">组建球队<br/>管理队员</view></view><scb-icon name="users" size="40"/></button></view>
+  <view class="home-steps"><view class="home-step"><view class="step-title"><text class="step-number">1</text><text>选球员</text></view><view>挑选合适的球员</view></view><text class="step-arrow">→</text><view class="home-step"><view class="step-title"><text class="step-number">2</text><text>填比赛</text></view><view>填写比赛信息</view></view><text class="step-arrow">→</text><view class="home-step"><view class="step-title"><text class="step-number">3</text><text>确认到场</text></view><view>等待球员确认</view></view></view>
+  <view wx:if="{{moreOpen}}" class="home-more"><button class="secondary" data-page="bookings" bindtap="go">查看我的预约</button><button class="secondary" data-page="player-center" bindtap="go">进入本人球员中心</button><view class="small muted">先看位置、档期与有限授权数据，再比较含费报价。合作预约不自动加入赛事报名名单。</view></view>
+ </view>
 </view>
-<scb-nav active="Home"/>
+<scb-nav active="Home" variant="premium"/>

@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "找球员", "enablePullDownRefresh": false }
+{
+  "navigationBarTitleText": "找球员",
+  "enablePullDownRefresh": false,
+  "navigationStyle": "custom",
+  "navigationBarTextStyle": "black"
+}

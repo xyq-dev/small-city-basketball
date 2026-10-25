@@ -13,7 +13,17 @@ function primaryComparison(table) {
     })),
     columns: table.columns.map((column) => {
       const cellById = new Map(column.cells.map((cell) => [cell.id, cell]));
-      return { ...column, cells: PRIMARY_METRICS.map((id) => cellById.get(id)) };
+      return {
+        ...column,
+        cells: PRIMARY_METRICS.map((id) => {
+          const cell = cellById.get(id);
+          return {
+            ...cell,
+            displayValue:
+              typeof cell.value === 'string' ? cell.value.replace(/\.00$/, '') : cell.value,
+          };
+        }),
+      };
     }),
   };
 }
@@ -33,6 +43,9 @@ Page({
     error: '',
     notice: '',
     statisticsError: '',
+    informationOpen: false,
+    sameServicePrice: false,
+    comparisonPrice: '',
   },
   onLoad(query) {
     try {
@@ -138,6 +151,8 @@ Page({
         columnsWidth: String(profiles.length * 125) + 'px',
         tableHeight: String(64 + table.labels.length * 56) + 'px',
         selectedCount: profiles.length,
+        sameServicePrice: profiles.every((profile) => profile.priceFen === profiles[0].priceFen),
+        comparisonPrice: profiles[0].price.replace(/\.00$/, ''),
         firstId: profiles[0].id,
         firstName: profiles[0].name,
         loginRequired: false,
@@ -150,6 +165,9 @@ Page({
     } finally {
       if (this._visible && this._loadSequence === sequence) this.setData({ loading: false });
     }
+  },
+  informationToggle() {
+    this.setData({ informationOpen: !this.data.informationOpen });
   },
   detail(event) {
     if (!this._displayToken || !this._visible || !ui.live(this, this._displayToken)) return;

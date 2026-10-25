@@ -18,7 +18,8 @@
   </view>
 </template>
 
-<view class="page has-actions create-page">
+<scb-header title="创建预约" disabled="{{busy || loading}}"/>
+<view class="page has-actions create-page premium-page">
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
   <view wx:if="{{notice}}" class="notice">{{notice}}</view>
   <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在读取当前身份、球队与球员资料…</view><view class="muted">完成读取后再核对本次安排，不自动提交请求。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
@@ -130,10 +131,46 @@
               data-scope="{{item.value}}"
               bindtap="changeScope"
               disabled="{{busy}}"
-            >{{item.label}}</button></view>
+            >{{item.value === 'SINGLE' ? '单场' : item.value === 'MULTI' ? '多场' : item.value === 'TOURNAMENT' ? '整届' : item.value === 'SEASON' ? '赛季' : '时段'}}</button></view>
           </scroll-view>
-          <view class="small muted scope-caption">{{scopeOptions[scopeIndex].hint}} · 长期合作仍需逐场确认，不自动续费。</view>
+          <view wx:if="{{editorOpen || detailsOpen || !selectedCount || !eventName || !teamId}}" class="small muted scope-caption">{{scopeOptions[scopeIndex].hint}} · 长期合作仍需逐场确认，不自动续费。</view>
         </view>
+        <block wx:if="{{!editorOpen &amp;&amp; !detailsOpen &amp;&amp; selectedCount &amp;&amp; eventName &amp;&amp; teamId}}">
+          <view class="selected-players">
+            <block wx:for="{{players}}" wx:for-item="player" wx:key="id">
+              <button wx:if="{{player.selected}}" class="selected-player" bindtap="openEditor" disabled="{{busy}}">
+                <image class="selected-portrait" src="{{player.portrait || '/assets/approved-ui/player-placeholder.svg'}}" mode="aspectFill"/>
+                <view class="selected-copy"><view class="selected-name">{{player.name || player.label}}<text wx:if="{{player.position}}" class="selected-position"> · {{player.position}}</text></view><view class="selected-meta">{{player.meta || '本人填写的合作资料'}}</view></view>
+                <view class="selected-price">{{player.priceShort || player.price}}<text> / 场</text></view>
+              </button>
+            </block>
+          </view>
+          <view class="arrangement-summary">
+            <button class="summary-row" bindtap="openEditor" disabled="{{busy}}"><scb-icon name="trophy"/><text class="summary-label">赛事</text><text class="summary-value">{{eventName}}</text><scb-icon name="chevron-right" size="14"/></button>
+            <button class="summary-row" bindtap="openEditor" disabled="{{busy}}"><scb-icon name="users"/><text class="summary-label">预约球队</text><text class="summary-value">{{teamName}}</text><scb-icon name="chevron-right" size="14"/></button>
+            <view wx:if="{{scope === 'SEASON'}}" class="summary-period">赛季周期 {{periodStart}} — {{periodEnd}}</view>
+            <block wx:for="{{slots}}" wx:for-item="slot" wx:key="key">
+              <view wx:if="{{slots.length > 1}}" class="summary-slot-label">场次{{slot.number}} · {{slot.label}}</view>
+              <button wx:if="{{slot.conditional}}" class="summary-row conditional-summary" bindtap="openEditor" disabled="{{busy}}"><scb-icon name="info" tone="orange"/><text class="summary-label">条件意向</text><text class="summary-value">{{slot.conditionText || '待补齐触发条件'}} · 不占档</text><scb-icon name="chevron-right" size="14"/></button>
+              <block wx:else>
+                <button class="summary-row" bindtap="openEditor" disabled="{{busy}}"><scb-icon name="calendar"/><text class="summary-label">比赛日期</text><text class="summary-value">{{slot.dayLabel || slot.startDate}}</text><scb-icon name="chevron-right" size="14"/></button>
+                <button class="summary-row" bindtap="openEditor" disabled="{{busy}}"><scb-icon name="clock"/><text class="summary-label">报到时间</text><text class="summary-value">{{slot.reportLabel || slot.reportTime}}</text><scb-icon name="chevron-right" size="14"/></button>
+                <button class="summary-row" bindtap="openEditor" disabled="{{busy}}"><scb-icon name="clock"/><text class="summary-label">{{scope === 'TIME_BLOCK' ? '服务时间' : '比赛时间'}}</text><text class="summary-value">{{slot.scheduleLabel || (slot.startDate === slot.endDate ? slot.startTime + '–' + slot.endTime : slot.startDate + ' ' + slot.startTime + '–' + slot.endDate + ' ' + slot.endTime)}}</text><scb-icon name="chevron-right" size="14"/></button>
+              </block>
+              <button class="summary-row venue-summary" bindtap="openEditor" disabled="{{busy}}"><scb-icon name="pin"/><text class="summary-label">比赛地点</text><text class="summary-value">{{slot.venue || '请选择具体地点'}}</text><scb-icon name="chevron-right" size="14"/></button>
+            </block>
+          </view>
+          <view class="compact-fees">
+            <view class="compact-fee-row"><text>参赛服务</text><text>{{compactQuote.service || quote.service}}</text></view>
+            <view class="compact-fee-row"><text>平台服务</text><text>{{compactQuote.platform || quote.platform}}</text></view>
+            <view class="compact-fee-row"><text>交通</text><text>{{compactQuote.travel || quote.travel}}</text></view>
+            <view wx:if="{{quote.accommodation !== '¥0.00' &amp;&amp; quote.accommodation !== '¥0'}}" class="compact-fee-row"><text>食宿</text><text>{{compactQuote.accommodation || quote.accommodation}}</text></view>
+            <view class="compact-fee-total"><text>含费预计</text><text>{{compactQuote.confirmed || quote.confirmed}}</text></view>
+            <view wx:if="{{quote.conditionalCount}}" class="compact-fee-row conditional-cost"><text>条件预计 · 另列</text><text>{{compactQuote.conditional || quote.conditional}}</text></view>
+          </view>
+          <view class="summary-payment-note"><scb-icon name="info" size="17"/><text>当前仅提交预约，暂未开通线上支付</text></view>
+        </block>
+        <block wx:if="{{editorOpen || detailsOpen || !selectedCount || !eventName || !teamId}}">
         <view class="card booking-context">
           <view class="subtitle">赛事与球员</view>
           <view wx:if="{{selectedCount &amp;&amp; eventName &amp;&amp; teamId}}" class="context-summary">
@@ -404,6 +441,8 @@
           </button>
         </view>
         <view class="notice booking-estimate"><view class="estimate-title">确定报价预计 {{quote.confirmed}}</view><view class="small">{{quote.fixedCount}}项确定安排 · {{quote.conditionalCount}}项条件意向。下一步逐项核对费用，条件意向不计入确定合计。</view></view>
+        <button wx:if="{{selectedCount &amp;&amp; eventName &amp;&amp; teamId}}" class="secondary close-editor" bindtap="closeEditor" disabled="{{busy}}">返回预约摘要</button>
+        </block>
       </block>
       <block wx:else>
         <view class="card review-heading"
@@ -447,7 +486,7 @@
           ></checkbox-group
         >
       </block>
-      <view class="booking-boundary small muted"
+      <view wx:if="{{review || editorOpen || detailsOpen || !selectedCount || !eventName || !teamId}}" class="booking-boundary small muted"
         ><view class="boundary-title">当前仅提交合作预约</view
         ><view
           >在线支付与个人分账尚未开放；提交不扣款，不自动加入报名名单。实收、退款到账和已结算均为¥0。</view
@@ -457,7 +496,7 @@
   </block>
 </view>
 
-<view wx:if="{{ready}}" class="action-bar">
+<view wx:if="{{ready}}" class="action-bar create-actions {{!review &amp;&amp; !pending &amp;&amp; !success &amp;&amp; !storageReadBlocked &amp;&amp; !invalidRecovery &amp;&amp; !noTeams &amp;&amp; !noPlayers ? 'draft-actions' : ''}}">
   <block wx:if="{{storageReadBlocked}}"
     ><button class="primary" bindtap="load" disabled="{{busy || loading}}">
       安全重读原预约记录</button
@@ -512,6 +551,6 @@
       读取最新报价并重新核对</button
     ><button wx:else class="primary" bindtap="review" disabled="{{busy || quoteInvalid}}">
       下一步 · 核对费用</button
-    ><button class="quiet" bindtap="players" disabled="{{busy}}">继续找球员</button></block
+    ><button wx:if="{{editorOpen || detailsOpen}}" class="quiet" bindtap="players" disabled="{{busy}}">继续找球员</button></block
   >
 </view>

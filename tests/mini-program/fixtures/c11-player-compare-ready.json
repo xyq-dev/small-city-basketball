@@ -1,0 +1,248 @@
+{
+  "name": "c11-player-compare-ready",
+  "route": "pages/compare/index",
+  "state": "ready",
+  "figmaNode": "approved:C11",
+  "referenceImage": "docs/design/C11/compare.png",
+  "referenceKind": "approved-image",
+  "approvedPrimary": true,
+  "syntheticData": true,
+  "expectText": ["林越", "陈凯", "合成高州", "同为", "¥300", "样本有限"],
+  "data": {
+    "profiles": [
+      {
+        "id": "80000000-0000-4000-8000-000000000001",
+        "name": "林越",
+        "position": "控球后卫",
+        "height": "182",
+        "city": "合成高州 / 石鼓",
+        "bio": "擅长推进与组织，配合团队打法",
+        "priceFen": 30000,
+        "price": "¥300.00",
+        "platformFee": "¥30.00",
+        "travel": "¥0.00",
+        "accommodation": "¥0.00",
+        "total": "¥330.00",
+        "performance": {
+          "status": "部分记录",
+          "points": "8.4",
+          "fouls": "1.6",
+          "sample": "5",
+          "services": "1",
+          "sourceCount": "1",
+          "source": "有限双边授权记录",
+          "denominator": "合成场景：固定名单统计样本不代表实际出场，真实0保留。",
+          "completeness": "合成场景：5场有个人记录、1场仅球队统计；真实0与未统计分别呈现。",
+          "pending": "0",
+          "invalid": "0",
+          "teamOnly": "1",
+          "partial": "0",
+          "truncated": false,
+          "asOf": "2026-10-24T08:00:00.000Z",
+          "records": [
+            {
+              "id": "fixture-zero",
+              "eventName": "合成青锋杯",
+              "date": "2026-10-23",
+              "format": "分组接淘汰",
+              "points": "0",
+              "fouls": "0",
+              "note": "固定名单记录，不代表实际出场"
+            },
+            {
+              "id": "fixture-team",
+              "eventName": "合成青锋杯",
+              "date": "2026-10-21",
+              "format": "分组接淘汰",
+              "points": "未统计",
+              "fouls": "未统计",
+              "note": "仅球队数据，不计入个人均值分母"
+            }
+          ]
+        },
+        "selected": false,
+        "portrait": "/assets/approved-ui/player-sample-a.jpg",
+        "priceLabel": "¥300",
+        "totalLabel": "¥330",
+        "platformFeeLabel": "¥30",
+        "heroPortrait": "/assets/approved-ui/player-sample-a-hero.jpg"
+      },
+      {
+        "id": "80000000-0000-4000-8000-000000000002",
+        "name": "陈凯",
+        "position": "控球后卫",
+        "height": "178",
+        "city": "合成高州",
+        "bio": "配合球队安排，参与团队进攻",
+        "priceFen": 30000,
+        "price": "¥300.00",
+        "platformFee": "¥30.00",
+        "travel": "¥80.00",
+        "accommodation": "¥0.00",
+        "total": "¥410.00",
+        "performance": {
+          "status": "已有个人记录",
+          "points": "18.3",
+          "fouls": "2.0",
+          "sample": "3",
+          "services": "0",
+          "sourceCount": "1",
+          "source": "有限双边授权记录",
+          "denominator": "合成场景：固定名单统计样本不代表实际出场，真实0保留。",
+          "completeness": "合成授权记录，仅供布局核验；未采集项目显示未统计。",
+          "pending": "0",
+          "invalid": "0",
+          "teamOnly": "0",
+          "partial": "0",
+          "truncated": false,
+          "asOf": "2026-10-24T08:00:00.000Z",
+          "records": [
+            {
+              "id": "fixture-score",
+              "eventName": "合成青锋杯",
+              "date": "2026-10-23",
+              "format": "分组接淘汰",
+              "points": "18",
+              "fouls": "2",
+              "note": "固定名单记录，不代表实际出场"
+            }
+          ]
+        },
+        "selected": true,
+        "portrait": "/assets/approved-ui/player-sample-b.jpg",
+        "priceLabel": "¥300",
+        "totalLabel": "¥410",
+        "platformFeeLabel": "¥30"
+      }
+    ],
+    "labels": [
+      {
+        "id": "price",
+        "label": "参赛服务费"
+      },
+      {
+        "id": "total",
+        "label": "含费预计"
+      },
+      {
+        "id": "sample",
+        "label": "统计样本"
+      },
+      {
+        "id": "points",
+        "label": "每场记录得分"
+      },
+      {
+        "id": "fouls",
+        "label": "每场记录犯规"
+      },
+      {
+        "id": "services",
+        "label": "完成服务记录"
+      },
+      {
+        "id": "status",
+        "label": "来源完整度"
+      }
+    ],
+    "columns": [
+      {
+        "id": "80000000-0000-4000-8000-000000000001",
+        "name": "林越",
+        "position": "控球后卫",
+        "cells": [
+          {
+            "id": "price",
+            "value": "¥300.00",
+            "displayValue": "¥300"
+          },
+          {
+            "id": "total",
+            "value": "¥330.00",
+            "displayValue": "¥330"
+          },
+          {
+            "id": "sample",
+            "value": "5",
+            "displayValue": "5"
+          },
+          {
+            "id": "points",
+            "value": "8.4",
+            "displayValue": "8.4"
+          },
+          {
+            "id": "fouls",
+            "value": "1.6",
+            "displayValue": "1.6"
+          },
+          {
+            "id": "services",
+            "value": "1",
+            "displayValue": "1"
+          },
+          {
+            "id": "status",
+            "value": "部分记录",
+            "displayValue": "部分记录"
+          }
+        ]
+      },
+      {
+        "id": "80000000-0000-4000-8000-000000000002",
+        "name": "陈凯",
+        "position": "控球后卫",
+        "cells": [
+          {
+            "id": "price",
+            "value": "¥300.00",
+            "displayValue": "¥300"
+          },
+          {
+            "id": "total",
+            "value": "¥410.00",
+            "displayValue": "¥410"
+          },
+          {
+            "id": "sample",
+            "value": "3",
+            "displayValue": "3"
+          },
+          {
+            "id": "points",
+            "value": "18.3",
+            "displayValue": "18.3"
+          },
+          {
+            "id": "fouls",
+            "value": "2.0",
+            "displayValue": "2.0"
+          },
+          {
+            "id": "services",
+            "value": "0",
+            "displayValue": "0"
+          },
+          {
+            "id": "status",
+            "value": "已有个人记录",
+            "displayValue": "已有个人记录"
+          }
+        ]
+      }
+    ],
+    "selectedCount": 2,
+    "firstId": "80000000-0000-4000-8000-000000000001",
+    "firstName": "林越",
+    "columnsWidth": "250px",
+    "tableHeight": "456px",
+    "loading": false,
+    "loginRequired": false,
+    "error": "",
+    "notice": "",
+    "statisticsError": "",
+    "sameServicePrice": true,
+    "comparisonPrice": "¥300",
+    "informationOpen": false
+  }
+}

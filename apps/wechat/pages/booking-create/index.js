@@ -15,6 +15,20 @@ const EMPTY_QUOTES = {
   conditionalCount: 0,
 };
 const PLACEHOLDER_COMMAND = '00000000-0000-4000-8000-000000000001';
+function compactMoney(value) {
+  return value.replace(/\.00$/, '');
+}
+function summaryDay(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+  if (!match) return value || '请选择日期';
+  return (
+    (match[1] === ui.today().slice(0, 4) ? '' : match[1] + '年') +
+    Number(match[2]) +
+    '月' +
+    Number(match[3]) +
+    '日'
+  );
+}
 function selected(value, item) {
   return Array.isArray(value) && value.includes(item);
 }
@@ -58,6 +72,8 @@ Page({
     periodEnd: '',
     review: false,
     detailsOpen: false,
+    editorOpen: false,
+    compactQuote: {},
     consent: false,
     quote: EMPTY_QUOTES,
     pending: false,
@@ -114,6 +130,8 @@ Page({
       originalRejected: '',
       quote: EMPTY_QUOTES,
       detailsOpen: false,
+      editorOpen: false,
+      compactQuote: {},
       review: false,
       consent: false,
       noTeams: false,
@@ -230,6 +248,10 @@ Page({
     const players = availablePlayers.map((p) => ({
       id: p.id,
       label: p.displayName + ' · ' + ui.position(p.position),
+      name: p.displayName,
+      position: ui.position(p.position),
+      meta: [p.heightCm ? String(p.heightCm) + 'cm' : '', p.city || ''].filter(Boolean).join(' · '),
+      priceShort: compactMoney(ui.money(p.priceFen)),
       price: ui.money(p.priceFen),
       total: ui.money(
         p.priceFen +
@@ -265,11 +287,22 @@ Page({
       ...s,
       number: index + 1,
       key: index,
+      dayLabel: summaryDay(s.startDate),
+      reportLabel:
+        s.reportDate === s.startDate ? s.reportTime : summaryDay(s.reportDate) + ' ' + s.reportTime,
+      scheduleLabel:
+        s.startTime +
+        '–' +
+        (s.endDate === s.startDate ? s.endTime : summaryDay(s.endDate) + ' ' + s.endTime),
       playerChoices: players
         .filter((p) => draft.selectedIds.includes(p.id))
         .map((p) => ({ ...p, selected: s.profileIds.includes(p.id) })),
     }));
     const quoteInvalid = draft.selectedIds.some((id) => !availablePlayers.some((p) => p.id === id));
+    const compactQuote = {};
+    Object.keys(quote).forEach((key) => {
+      compactQuote[key] = typeof quote[key] === 'string' ? compactMoney(quote[key]) : quote[key];
+    });
     this.setData({
       scope: draft.scope,
       scopeIndex: form.SCOPES.findIndex((s) => s.value === draft.scope),
@@ -299,6 +332,7 @@ Page({
       ),
       matchIndex: 0,
       quote,
+      compactQuote,
       quoteInvalid,
     });
   },
@@ -325,6 +359,14 @@ Page({
       canRequote: this.needsRequote === true,
     });
     this.renderForm();
+  },
+  openEditor() {
+    if (!this.editable() || this.data.review) return;
+    this.setData({ editorOpen: true, detailsOpen: true });
+  },
+  closeEditor() {
+    if (!this.editable() || this.data.review) return;
+    this.setData({ editorOpen: false, detailsOpen: false });
   },
   toggleDetails() {
     if (!this.editable() || this.data.review) return;

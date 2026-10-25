@@ -1,1 +1,5 @@
-{ "navigationBarTitleText": "球员详情" }
+{
+  "navigationBarTitleText": "球员详情",
+  "navigationStyle": "custom",
+  "navigationBarTextStyle": "white"
+}
