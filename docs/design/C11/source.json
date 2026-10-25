@@ -1,0 +1,50 @@
+{
+  "approvedBoardSha256": "025c234ff04c10e3984671b3b87334335669444cbd316e4ba6b692086dc50398",
+  "sourceSize": [
+    1024,
+    1536
+  ],
+  "screenBoxes": {
+    "home": [
+      29,
+      129,
+      335,
+      788
+    ],
+    "players": [
+      362,
+      129,
+      666,
+      788
+    ],
+    "player": [
+      691,
+      129,
+      995,
+      788
+    ],
+    "compare": [
+      29,
+      840,
+      335,
+      1494
+    ],
+    "booking-create": [
+      362,
+      840,
+      666,
+      1494
+    ],
+    "bookings": [
+      691,
+      840,
+      995,
+      1494
+    ]
+  },
+  "normalization": [
+    390,
+    844
+  ],
+  "purpose": "Exact crop/resample for engineering comparison, never runtime page backgrounds"
+}

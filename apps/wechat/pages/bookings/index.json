@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "我的球员预约" }
+{
+  "navigationBarTitleText": "我的预约",
+  "navigationStyle": "custom"
+}

@@ -1,4 +1,5 @@
 {
-  "navigationBarTitleText": "预约球员",
-  "enablePullDownRefresh": false
+  "navigationBarTitleText": "创建预约",
+  "enablePullDownRefresh": false,
+  "navigationStyle": "custom"
 }

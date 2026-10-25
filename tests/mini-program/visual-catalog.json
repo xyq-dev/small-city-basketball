@@ -1,22 +1,23 @@
 {
-  "version": 1,
+  "version": 2,
   "figmaFile": "2jAHpYjdIHqal1nXeoVqm6",
   "limitations": [
-    "真实WXML/WXSS的离线Chromium兼容渲染，全部动态资料为合成数据。",
+    "实际WXML/WXSS离线Chromium兼容截图；6核心页对照用户确认图C11，其余15页保留C10基准。动态资料均为合成数据。",
     "官方微信编译、开发者工具、真机和用户视觉验收待完成。"
   ],
   "pages": [
     {
       "route": "pages/home/index",
       "title": "预约首页",
-      "primaryFixture": "c10-core-home-ready",
-      "figmaNode": "30:35",
-      "referenceImage": "docs/evidence/C10/references/home.png",
-      "referenceSha256": "518998d58a20c6e00020103272ab6dfdc673eef42b538ab46deb97b858f980b0",
-      "referenceKind": "adapted",
-      "notes": "无个人订单摘要读取接口，不展示示例待处理订单。",
+      "primaryFixture": "c11-home-ready",
+      "figmaNode": "approved:C11",
+      "referenceImage": "docs/design/C11/home.png",
+      "referenceSha256": "e442b7193961c7cd23ba6afe5abc216cdb1250aa22b3717c06c5c5a055839380",
+      "referenceKind": "user-approved",
+      "notes": "以用户在本会话确认的六屏图为唯一视觉基准；真实内容与动态状态沿用服务端契约，系统胶囊按微信平台保留。真实无头像字段时使用中性占位，示例照片只在合成验收数据中。",
       "notApplicableStates": ["静态导航无异步加载、空列表、请求错误或权限读取态"],
-      "states": ["ready"]
+      "states": ["ready"],
+      "sourceKind": "approved-image"
     },
     {
       "route": "pages/watch/index",
@@ -81,48 +82,51 @@
     {
       "route": "pages/players/index",
       "title": "找球员",
-      "primaryFixture": "c10-core-players-ready",
-      "figmaNode": "30:78",
-      "referenceImage": "docs/evidence/C10/references/players.png",
-      "referenceSha256": "7b5e113d2431f1f29bf852448bc8cbcd47427f5bb5a3a46af7ea03d041298ba2",
-      "referenceKind": "adapted",
-      "notes": "仅展示真实采集的得分、犯规与样本，不添加助攻、篮板或评分。",
+      "primaryFixture": "c11-player-market-ready",
+      "figmaNode": "approved:C11",
+      "referenceImage": "docs/design/C11/players.png",
+      "referenceSha256": "50ded0f2f2b6153644455a99610b63e91498b9a88adf5b86a6c6c80e38024d1d",
+      "referenceKind": "user-approved",
+      "notes": "以用户在本会话确认的六屏图为唯一视觉基准；真实内容与动态状态沿用服务端契约，系统胶囊按微信平台保留。真实无头像字段时使用中性占位，示例照片只在合成验收数据中。",
       "notApplicableStates": [],
-      "states": ["empty", "error", "legacy", "loading", "permission", "ready"]
+      "states": ["empty", "error", "legacy", "loading", "permission", "ready"],
+      "sourceKind": "approved-image"
     },
     {
       "route": "pages/player/index",
       "title": "球员档案",
-      "primaryFixture": "c10-profile-player-ready",
-      "figmaNode": "30:168",
-      "referenceImage": "docs/evidence/C10/references/player.png",
-      "referenceSha256": "a67df6c48b4a7bf50d92c39ffbc8b40c4286b413c324401f8b3ea64a05f447f3",
-      "referenceKind": "adapted",
-      "notes": "个人记录与详情同路由切换；0、未统计、不可用严格区分。",
+      "primaryFixture": "c11-player-detail-ready",
+      "figmaNode": "approved:C11",
+      "referenceImage": "docs/design/C11/player.png",
+      "referenceSha256": "462da4ee7c910e64d5e25ce35a9ffdf9a64f11a6a4777d74975a195ed41ffc46",
+      "referenceKind": "user-approved",
+      "notes": "以用户在本会话确认的六屏图为唯一视觉基准；真实内容与动态状态沿用服务端契约，系统胶囊按微信平台保留。真实无头像字段时使用中性占位，示例照片只在合成验收数据中。",
       "notApplicableStates": [],
-      "states": ["empty", "error", "legacy", "loading", "permission", "ready", "review"]
+      "states": ["empty", "error", "legacy", "loading", "permission", "ready", "review"],
+      "sourceKind": "approved-image"
     },
     {
       "route": "pages/compare/index",
       "title": "球员对比",
-      "primaryFixture": "c10-core-compare-ready",
-      "figmaNode": "30:333",
-      "referenceImage": "docs/evidence/C10/references/compare.png",
-      "referenceSha256": "c42532a5c33a3f5411f9e4f7d2bae15287ea6ce567870c7fe3832c0d66ba958b",
-      "referenceKind": "adapted",
-      "notes": "三人对比保留横向滚动、分母与数据限制。",
+      "primaryFixture": "c11-player-compare-ready",
+      "figmaNode": "approved:C11",
+      "referenceImage": "docs/design/C11/compare.png",
+      "referenceSha256": "815e1ae0a3569aa1c7b88c149adbc7bf97852495f79a704f7cb62e91c2fc3f91",
+      "referenceKind": "user-approved",
+      "notes": "以用户在本会话确认的六屏图为唯一视觉基准；真实内容与动态状态沿用服务端契约，系统胶囊按微信平台保留。真实无头像字段时使用中性占位，示例照片只在合成验收数据中。",
       "notApplicableStates": [],
-      "states": ["empty", "error", "legacy", "loading", "permission", "ready"]
+      "states": ["empty", "error", "legacy", "loading", "permission", "ready"],
+      "sourceKind": "approved-image"
     },
     {
       "route": "pages/booking-create/index",
       "title": "创建预约",
-      "primaryFixture": "c10-core-booking-ready-single",
-      "figmaNode": "30:552",
-      "referenceImage": "docs/evidence/C10/references/booking-create.png",
-      "referenceSha256": "1325df81cb5b488b6447a4783186bfcf3a38f4672a6c556bd332343e4a399975",
-      "referenceKind": "adapted",
-      "notes": "同路由支持单场、多场、整届、赛季、时段及报价复核、原请求恢复。",
+      "primaryFixture": "c11-booking-create-ready",
+      "figmaNode": "approved:C11",
+      "referenceImage": "docs/design/C11/booking-create.png",
+      "referenceSha256": "1188a311a1e676ac43ae8482b386e3c22a1c8ce84a82b0aba75500dd2382bef9",
+      "referenceKind": "user-approved",
+      "notes": "以用户在本会话确认的六屏图为唯一视觉基准；真实内容与动态状态沿用服务端契约，系统胶囊按微信平台保留。真实无头像字段时使用中性占位，示例照片只在合成验收数据中。",
       "notApplicableStates": [],
       "states": [
         "empty",
@@ -134,19 +138,21 @@
         "recovery",
         "review",
         "success"
-      ]
+      ],
+      "sourceKind": "approved-image"
     },
     {
       "route": "pages/bookings/index",
       "title": "预约列表",
-      "primaryFixture": "c10-fulfill-bookings-ready",
-      "figmaNode": "30:1027",
-      "referenceImage": "docs/evidence/C10/references/bookings.png",
-      "referenceSha256": "dabe11db8778114964259b051eea6eba38fba4f7403ab7c38883f3f416faecf7",
-      "referenceKind": "adapted",
-      "notes": "发送和收到两个视角复用原稿，逐场状态保持原契约。",
+      "primaryFixture": "c11-booking-orders-ready",
+      "figmaNode": "approved:C11",
+      "referenceImage": "docs/design/C11/bookings.png",
+      "referenceSha256": "606c1bd74cc147a09d20f9e7727ad4bf5f1924cecc973c71afe0e0c61c0a7a25",
+      "referenceKind": "user-approved",
+      "notes": "以用户在本会话确认的六屏图为唯一视觉基准；真实内容与动态状态沿用服务端契约，系统胶囊按微信平台保留。真实无头像字段时使用中性占位，示例照片只在合成验收数据中。",
       "notApplicableStates": [],
-      "states": ["empty", "error", "legacy", "loading", "permission", "ready"]
+      "states": ["empty", "error", "legacy", "loading", "permission", "ready"],
+      "sourceKind": "approved-image"
     },
     {
       "route": "pages/booking-detail/index",

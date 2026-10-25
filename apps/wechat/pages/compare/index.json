@@ -1,1 +1,5 @@
-{ "navigationBarTitleText": "同价球员对比" }
+{
+  "navigationBarTitleText": "同价球员对比",
+  "navigationStyle": "custom",
+  "navigationBarTextStyle": "black"
+}

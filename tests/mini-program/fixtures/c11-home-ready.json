@@ -1,0 +1,11 @@
+{
+  "name": "c11-home-ready",
+  "route": "pages/home/index",
+  "state": "ready",
+  "figmaNode": "approved:C11",
+  "designSource": "approved:C11",
+  "referenceImage": "docs/design/C11/home.png",
+  "static": true,
+  "expectText": ["每一场，都有合适的人", "找球员", "我的球队"],
+  "data": {}
+}

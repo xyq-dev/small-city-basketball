@@ -213,7 +213,13 @@ test('all fulfillment visual fixtures use supported fields and meaningful, trace
     for (const width of [320, 390, 430]) {
       const output = buildPreview({ root, route: f.route, data: f.data, width, height: 844 });
       for (const text of f.expectText) assert.ok(output.phone.includes(text), file + ': ' + text);
-      assert.equal(output.assets.length, 0, 'no generated screenshot is used as the page UI');
+      for (const asset of output.assets) {
+        assert.match(
+          asset.path,
+          /^assets\/approved-ui\/(?:icon-[a-z-]+-(?:navy|orange|white|green)\.(?:svg|png)|player-placeholder\.png)$/,
+          'only UI icons and neutral placeholders; no sample identities or entire UI screenshot',
+        );
+      }
     }
   }
   assert.equal(primary.size, 3);

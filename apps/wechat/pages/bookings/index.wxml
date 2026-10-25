@@ -1,40 +1,42 @@
-<view class="page has-actions bookings-page">
-  <scroll-view scroll-x="true" enable-flex="true" class="status-rail">
-    <view class="status-tabs">
-      <button wx:for="{{quickStatuses}}" wx:key="value" class="status-tab {{status === item.value ? 'selected' : ''}}" data-index="{{item.index}}" bindtap="statusTab" disabled="{{loading}}">{{item.label}}</button>
-      <picker mode="selector" range="{{statusLabels}}" value="{{statusIndex}}" bindchange="changeStatus" disabled="{{loading}}"><view class="status-more">更多⌄</view></picker>
-    </view>
-  </scroll-view>
-  <view wx:if="{{statusIndex > 0}}" class="active-filter small muted">当前筛选：{{statusLabels[statusIndex]}}</view>
+<scb-header title="我的预约" disabled="{{loading}}"/>
+<view class="page has-actions bookings-page premium-page">
+  <view class="booking-view-tabs">
+    <button class="booking-view-tab {{view === 'sent' ? 'active' : ''}}" data-view="sent" bindtap="changeView" disabled="{{loading}}">我发出的</button>
+    <button class="booking-view-tab {{view === 'received' ? 'active' : ''}}" data-view="received" bindtap="changeView" disabled="{{loading}}">我收到的</button>
+  </view>
+  <block wx:if="{{filtersOpen || statusIndex > 0}}">
+    <scroll-view scroll-x="true" enable-flex="true" class="status-rail"><view class="status-tabs"><button wx:for="{{quickStatuses}}" wx:key="value" class="status-tab {{status === item.value ? 'selected' : ''}}" data-index="{{item.index}}" bindtap="statusTab" disabled="{{loading}}">{{item.label}}</button><picker mode="selector" range="{{statusLabels}}" value="{{statusIndex}}" bindchange="changeStatus" disabled="{{loading}}"><view class="status-more">更多⌄</view></picker></view></scroll-view>
+    <view wx:if="{{statusIndex > 0}}" class="active-filter small muted">当前筛选：{{statusLabels[statusIndex]}}</view>
+  </block>
   <view wx:if="{{view === 'received'}}" class="notice role-notice"><view class="notice-title">以本人球员身份处理</view><view class="small">只能接受或拒绝自己的逐场安排，不代其他球员确认。</view></view>
   <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">预约读取失败</view><view class="small">{{error}}</view><view class="small">保留当前筛选，可刷新后重试。</view></view>
-  <view wx:if="{{loginRequired}}" class="card empty state-card">
-    <view class="subtitle">登录后查看本人合作</view><view class="muted">当前身份核对后，才可读取有权查看的预约。</view>
-    <button class="primary" bindtap="login">登录并返回预约</button>
-  </view>
+  <view wx:if="{{loginRequired}}" class="card empty state-card"><view class="subtitle">登录后查看本人合作</view><view class="muted">当前身份核对后，才可读取有权查看的预约。</view><button class="primary" bindtap="login">登录并返回预约</button></view>
   <view wx:elif="{{loading}}" class="card state-card loading-card"><view class="state-title">正在读取最新预约</view><view class="skeleton"></view><view class="skeleton short"></view><view class="small muted">正在核对当前身份与逐场状态…</view></view>
-  <view wx:elif="{{!rows.length && !error}}" class="card empty state-card"><view class="subtitle">暂无符合条件的合作记录</view><view class="muted">可切换发出/收到或调整状态筛选。</view></view>
+  <view wx:elif="{{!rows.length &amp;&amp; !error}}" class="card empty state-card"><view class="subtitle">暂无符合条件的合作记录</view><view class="muted">可切换发出/收到或调整状态筛选。</view></view>
   <block wx:for="{{rows}}" wx:for-item="order" wx:key="id">
-    <view class="card order-context">
-      <view class="subtitle">{{order.teamName}} · {{order.eventName}}</view>
-      <view class="muted">总单包含{{order.playerCount}}位球员、{{order.itemCount}}场安排</view>
-      <view class="muted">{{order.scopeText}} · 逐人逐场查看最新结果</view>
+    <view wx:for="{{order.appearances}}" wx:for-item="appearance" wx:key="id" class="booking-order-card">
+      <view class="appearance-status {{appearance.status === 'ACCEPTED' ? 'accepted' : appearance.tone}}"><text class="status-dot"></text>{{appearance.status === 'ACCEPTED' ? '已接单 · 待到场' : appearance.statusText}}</view>
+      <button class="order-more" data-id="{{appearance.id}}" bindtap="toggleInfo" disabled="{{loading}}" aria-label="{{expandedAppearanceId === appearance.id ? '收起预约明细' : '展开预约明细'}}">⋯</button>
+      <view class="order-heading"><view class="order-event">{{order.eventName}}</view><text class="order-team">{{order.teamName}}</text></view>
+      <view class="order-player"><image class="order-portrait" src="{{appearance.portrait || '/assets/approved-ui/player-placeholder.png'}}" mode="aspectFill"/><view class="order-player-copy"><view class="order-player-name">{{appearance.playerName}}<text> · {{appearance.positionText}}</text></view><view class="order-player-meta">{{appearance.playerMeta || appearance.label}}</view></view></view>
+      <view class="order-schedule"><scb-icon name="calendar"/><text>{{appearance.summaryStartText || (appearance.status === 'CONDITIONAL' ? '条件满足后补齐具体时间' : appearance.startText)}}</text></view>
+      <view class="order-venue"><scb-icon name="pin"/><text>{{appearance.venue}}</text></view>
+      <view wx:if="{{appearance.status === 'REQUESTED' || appearance.status === 'CONDITIONAL'}}" class="order-quote"><text>{{appearance.status === 'CONDITIONAL' ? '条件预计' : '确认报价'}}</text><text class="order-quote-value">{{appearance.totalShort || appearance.totalText}}</text></view>
+      <view wx:if="{{expandedAppearanceId === appearance.id}}" class="order-expanded">
+        <view class="small">{{appearance.label}} · {{order.scopeText}}</view>
+        <view class="small">{{appearance.scheduleText || appearance.startText + ' — ' + appearance.endText}}</view>
+        <view class="small muted">报到 {{appearance.reportText}}</view>
+        <view class="small muted">{{order.playerCount}}位球员 · {{order.itemCount}}场安排</view>
+        <view class="small">本项{{appearance.status === 'CONDITIONAL' ? '条件预计' : '报价'}} {{appearance.totalText}} · 支付未开放</view>
+        <view class="small muted">总单确定报价 {{order.confirmedText}} · 条件预计 {{order.conditionalText}} · 实收 {{order.paidText}}</view>
+        <view wx:if="{{appearance.conditionText}}" class="small muted">条件：{{appearance.conditionText}}</view>
+      </view>
+      <button class="secondary detail-button" data-id="{{order.id}}" bindtap="detail">{{appearance.status === 'REQUESTED' ? '查看预约详情' : '查看逐场进度'}}<scb-icon name="chevron-right" size="14"/></button>
     </view>
-    <view wx:for="{{order.appearances}}" wx:for-item="appearance" wx:key="id" class="card appearance-summary">
-      <view class="appearance-status {{appearance.tone}}">{{appearance.statusText}}</view>
-      <view class="subtitle">{{appearance.playerName}} · {{appearance.label}}</view>
-      <view wx:if="{{appearance.scheduleText}}" class="small">{{appearance.scheduleText}}</view>
-      <block wx:elif="{{appearance.status === 'CONDITIONAL'}}"><view class="small">条件满足后补齐具体时间</view></block>
-      <block wx:else><view class="small">{{appearance.startText}} — {{appearance.endText}}</view><view class="small muted">报到 {{appearance.reportText}}</view></block>
-      <view class="small muted">{{appearance.venue}}</view>
-      <view class="appearance-price">{{appearance.status === 'CONDITIONAL' ? '条件预计' : '报价'}} {{appearance.totalText}} · 支付未开放</view>
-    </view>
-    <button class="secondary detail-button" data-id="{{order.id}}" bindtap="detail">查看合作总单与逐场操作</button>
-    <view class="small muted order-money">确定报价 {{order.confirmedText}} · 条件预计 {{order.conditionalText}} · 实收 {{order.paidText}}</view>
   </block>
   <view wx:if="{{hasMore}}" class="notice warning">这里只显示最新100份可见预约，更早记录未计入当前列表；可用已知订单入口读取具体合作。</view>
   <view wx:if="{{paymentNotice}}" class="notice small">{{paymentNotice}}</view>
-  <button class="secondary switch-view" data-view="{{view === 'sent' ? 'received' : 'sent'}}" bindtap="changeView" disabled="{{loading}}">{{view === 'sent' ? '切换查看本人收到的预约' : '切换查看我方发出的预约'}}</button>
-  <view class="small muted time-caption">安排时间均为北京时间。</view>
-  <view class="action-bar"><button class="primary" loading="{{loading}}" disabled="{{loading}}" bindtap="load">刷新预约状态</button><button class="quiet" bindtap="players">继续找球员</button></view>
+  <view class="time-caption"><scb-icon name="info" size="16"/><text>按场确认时间、地点与履约状态 · 北京时间</text></view>
+  <view class="booking-tools"><button class="quiet" bindtap="load" loading="{{loading}}" disabled="{{loading}}">刷新预约状态</button><button class="quiet" bindtap="toggleFilters" disabled="{{loading}}">{{filtersOpen ? '收起状态筛选' : '筛选预约状态'}}</button></view>
 </view>
+<view class="action-bar bookings-actions"><button class="primary" bindtap="players" disabled="{{loading}}">继续找球员</button></view>

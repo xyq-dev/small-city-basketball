@@ -7,6 +7,7 @@ Page({
     profile: null,
     windows: [],
     recordsOpen: false,
+    informationOpen: false,
     loading: false,
     loginRequired: false,
     error: '',
@@ -84,18 +85,39 @@ Page({
       }
       if (!ui.live(this, token) || !this._visible) return;
       this._displayToken = token;
+      const visibleProfile = market.profileView(
+        profile,
+        workspace.settings.feeBps,
+        performance,
+        !!statisticsError,
+      );
       this.setData({
-        profile: market.profileView(
-          profile,
-          workspace.settings.feeBps,
-          performance,
-          !!statisticsError,
-        ),
-        windows: profile.availability.map((window, index) => ({
-          id: String(index),
-          start: ui.localTime(window.startAt, true),
-          end: ui.localTime(window.endAt, true),
-        })),
+        profile: {
+          ...visibleProfile,
+          priceLabel: visibleProfile.price.replace(/\.00$/, ''),
+          platformFeeLabel: visibleProfile.platformFee.replace(/\.00$/, ''),
+          totalLabel: visibleProfile.total.replace(/\.00$/, ''),
+        },
+        windows: profile.availability.map((window, index) => {
+          const start = ui.localTime(window.startAt, true);
+          const end = ui.localTime(window.endAt, true);
+          return {
+            id: String(index),
+            start,
+            end,
+            display:
+              start.slice(0, 10) === end.slice(0, 10)
+                ? (start.slice(0, 4) === ui.today().slice(0, 4) ? '' : start.slice(0, 4) + '年') +
+                  Number(start.slice(5, 7)) +
+                  '月' +
+                  Number(start.slice(8, 10)) +
+                  '日 ' +
+                  start.slice(11) +
+                  '–' +
+                  end.slice(11)
+                : '',
+          };
+        }),
         selected: market.selectedIds().includes(this.profileId),
         selectedCount: market.selectedIds().length,
         loginRequired: false,
@@ -113,6 +135,9 @@ Page({
     } finally {
       if (this._visible && this._loadSequence === sequence) this.setData({ loading: false });
     }
+  },
+  informationToggle() {
+    this.setData({ informationOpen: !this.data.informationOpen });
   },
   recordsToggle() {
     this.setData({ recordsOpen: !this.data.recordsOpen });

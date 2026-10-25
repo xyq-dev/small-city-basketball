@@ -1,7 +1,28 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 Page({
-  data: { value: '', error: '' },
+  data: {
+    value: '',
+    error: '',
+    moreOpen: false,
+    positions: [
+      { code: 'PG', name: '控卫', icon: 'pos-pg' },
+      { code: 'SG', name: '分卫', icon: 'pos-sg' },
+      { code: 'SF', name: '小前', icon: 'pos-sf' },
+      { code: 'PF', name: '大前', icon: 'pos-pf' },
+      { code: 'C', name: '中锋', icon: 'pos-c' },
+    ],
+  },
+  openPlayers() {
+    ui.open('players');
+  },
+  moreToggle() {
+    this.setData({ moreOpen: !this.data.moreOpen });
+  },
+  position(e) {
+    const position = e.currentTarget.dataset.position;
+    if (['PG', 'SG', 'SF', 'PF', 'C'].includes(position)) ui.open('players', { position });
+  },
   input(e) {
     this.setData({ value: e.detail.value });
   },

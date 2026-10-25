@@ -358,6 +358,11 @@ function renderWxml(source, data, options = {}) {
         if (value != null) result.push(key + '="' + escape(value) + '"');
       }
     }
+    if (node.name === 'image' && a.mode) {
+      const mode = attribute(a.mode, scope);
+      if (['aspectFill', 'aspectFit', 'widthFix', 'heightFix', 'scaleToFill'].includes(mode))
+        result.push('data-mini-image-mode="' + mode + '"');
+    }
     if (node.name === 'checkbox' || node.name === 'switch') result.push('type="checkbox"');
     if (node.name === 'radio') result.push('type="radio"');
     if (node.name === 'video') result.push('preload="none"');
@@ -514,10 +519,15 @@ function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
   const title = config.navigationBarTitleText || manifest.window.navigationBarTitleText;
   const background =
     config.navigationBarBackgroundColor || manifest.window.navigationBarBackgroundColor || '#fff';
-  const foreground =
+  let foreground =
     (config.navigationBarTextStyle || manifest.window.navigationBarTextStyle) === 'white'
       ? '#fff'
       : '#132c49';
+  const customNavigation = (config.navigationStyle || manifest.window.navigationStyle) === 'custom';
+  if (customNavigation) {
+    const header = componentInstances.find((instance) => instance.tag === 'scb-header');
+    if (header) foreground = header.properties.dark ? '#fff' : '#132c49';
+  }
   const css =
     convertWxss(
       readWxss(path.join(root, 'app.wxss'), root) +
@@ -528,19 +538,28 @@ function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
     '\n' +
     [...componentStyles.values()].join('\n');
   const nativeDefaults =
-    '*{box-sizing:border-box}html,body{margin:0;min-height:100%;width:100%;}button,input,textarea{font:inherit}button{display:block;position:relative;border:0;cursor:default;max-width:100%}button::after{content:"";position:absolute;inset:0;pointer-events:none;border:0}button[disabled]{cursor:default}img{display:block;max-width:100%}input[type=checkbox],input[type=radio]{width:20px;height:20px;flex-shrink:0;accent-color:#132c49}textarea{max-width:100%}form{margin:0}[data-mini-tag=picker]{display:block}[data-mini-scroll=x]{overflow-x:auto}[data-mini-scroll=y]{overflow-y:auto}[data-mini-scroll=xy]{overflow:auto}.mini-native-status{height:32px;padding:0 24px;font-size:12px;line-height:20px;display:flex;justify-content:space-between}.mini-native-nav{height:64px;padding:8px 20px;display:flex;gap:8px;align-items:center;border-radius:16px;font-size:18px;font-weight:500;line-height:28px}.mini-native-back{display:flex;width:44px;height:44px;flex-shrink:0;align-items:center;justify-content:center;font-size:22px;line-height:34px}.mini-native-title{flex:1;min-width:0}.mini-native-menu{width:44px;flex-shrink:0;font-size:14px;color:#617286}.mini-native-bar{background:' +
+    '[data-mini-image-mode=aspectFill]{object-fit:cover}[data-mini-image-mode=aspectFit]{object-fit:contain}[data-mini-image-mode=widthFix]{height:auto}[data-mini-image-mode=heightFix]{width:auto}*{box-sizing:border-box}html,body{margin:0;min-height:100%;width:100%;}button,input,textarea{font:inherit}button{display:block;position:relative;border:0;cursor:default;max-width:100%}button::after{content:"";position:absolute;inset:0;pointer-events:none;border:0}button[disabled]{cursor:default}img{display:block;max-width:100%}input[type=checkbox],input[type=radio]{width:20px;height:20px;flex-shrink:0;accent-color:#132c49}textarea{max-width:100%}form{margin:0}[data-mini-tag=picker]{display:block}[data-mini-scroll=x]{overflow-x:auto}[data-mini-scroll=y]{overflow-y:auto}[data-mini-scroll=xy]{overflow:auto}.mini-native-status{height:32px;padding:0 24px;font-size:12px;line-height:20px;display:flex;justify-content:space-between}.mini-native-nav{height:64px;padding:8px 20px;display:flex;gap:8px;align-items:center;border-radius:16px;font-size:18px;font-weight:500;line-height:28px}.mini-native-back{display:flex;width:44px;height:44px;flex-shrink:0;align-items:center;justify-content:center;font-size:22px;line-height:34px}.mini-native-title{flex:1;min-width:0}.mini-native-menu{width:44px;flex-shrink:0;font-size:14px;color:#617286}.mini-native-bar{background:' +
     background +
     ';color:' +
     foreground +
     '}';
+  const nativeBar = customNavigation
+    ? '<header class="mini-custom-status" aria-hidden="true" style="color:' +
+      foreground +
+      '"><span>9:41</span><span>● ▰</span></header>'
+    : '<header class="mini-native-bar"><div class="mini-native-status"><span>9:41</span><span>● ▰</span></div><div class="mini-native-nav"><span class="mini-native-back" aria-hidden="true">‹</span><span class="mini-native-title">' +
+      escape(title) +
+      '</span><span class="mini-native-menu">•••</span></div></header>';
+  const customStatusCss =
+    '.mini-custom-status{position:absolute;top:0;left:0;right:0;z-index:30;height:24px;padding:0 24px;font-size:11px;line-height:24px;display:flex;justify-content:space-between;pointer-events:none}';
   const phone =
     '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; style-src \'unsafe-inline\'; font-src data:"><style>' +
     nativeDefaults +
     '\n' +
     css +
-    '</style></head><body><header class="mini-native-bar"><div class="mini-native-status"><span>9:41</span><span>● ▰</span></div><div class="mini-native-nav"><span class="mini-native-back" aria-hidden="true">‹</span><span class="mini-native-title">' +
-    escape(title) +
-    '</span><span class="mini-native-menu">•••</span></div></header>' +
+    customStatusCss +
+    '</style></head><body>' +
+    nativeBar +
     markup +
     '</body></html>';
   const html =

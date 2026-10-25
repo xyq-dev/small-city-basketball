@@ -7,14 +7,15 @@ const destinations = {
 Component({
   properties: {
     active: { type: String, value: 'Home' },
+    variant: { type: String, value: 'classic' },
     disabled: { type: Boolean, value: false },
   },
   data: {
     items: [
-      { key: 'Home', label: '首页' },
-      { key: 'Events', label: '赛事' },
-      { key: 'Video', label: '视频' },
-      { key: 'Account', label: '我的' },
+      { key: 'Home', label: '首页', icon: 'home' },
+      { key: 'Events', label: '赛事', icon: 'trophy' },
+      { key: 'Video', label: '视频', icon: 'play' },
+      { key: 'Account', label: '我的', icon: 'user' },
     ],
   },
   methods: {

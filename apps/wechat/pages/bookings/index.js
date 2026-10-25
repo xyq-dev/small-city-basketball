@@ -16,6 +16,18 @@ function scheduleText(item) {
     : item.reportText;
   return day + ' ' + date[4] + '–' + end + ' · 报到' + report;
 }
+function startSummary(item) {
+  const match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/.exec(item.startText || '');
+  if (!match) return item.status === 'CONDITIONAL' ? '时间待确认' : item.startText;
+  return (
+    (match[1] === ui.today().slice(0, 4) ? '' : match[1] + '年') +
+    Number(match[2]) +
+    '月' +
+    Number(match[3]) +
+    '日  ' +
+    match[4]
+  );
+}
 const STATUS_VALUES = [
   'ALL',
   'REQUESTED',
@@ -31,6 +43,8 @@ const STATUS_VALUES = [
 Page({
   data: {
     view: 'sent',
+    filtersOpen: false,
+    expandedAppearanceId: '',
     status: 'ALL',
     statusIndex: 0,
     quickStatuses: [
@@ -72,7 +86,13 @@ Page({
     this.raw = null;
     this.viewer = null;
     this.loadedToken = null;
-    this.setData({ rows: [], loading: false, paymentNotice: '', hasMore: false });
+    this.setData({
+      rows: [],
+      loading: false,
+      paymentNotice: '',
+      hasMore: false,
+      expandedAppearanceId: '',
+    });
   },
   onUnload() {
     this.hidden = true;
@@ -89,6 +109,7 @@ Page({
     this.loadedToken = null;
     this.setData({
       rows: [],
+      expandedAppearanceId: '',
       loading: true,
       loginRequired: false,
       error: '',
@@ -136,10 +157,22 @@ Page({
           const decorated = orders.decorateOrder(order, this.viewer, this.data.view, ui);
           return {
             ...decorated,
-            appearances: decorated.appearances.map((item) => ({
-              ...item,
-              scheduleText: scheduleText(item),
-            })),
+            appearances: decorated.appearances.map((item) => {
+              const profile = (this.raw.players || []).find(
+                (player) => player.id === item.profileId,
+              );
+              return {
+                ...item,
+                scheduleText: scheduleText(item),
+                summaryStartText: startSummary(item),
+                playerMeta: profile
+                  ? [profile.heightCm ? String(profile.heightCm) + 'cm' : '', profile.city || '']
+                      .filter(Boolean)
+                      .join(' · ')
+                  : '',
+                totalShort: item.totalText.replace(/\.00$/, ''),
+              };
+            }),
           };
         });
       this.setData({ rows });
@@ -153,6 +186,16 @@ Page({
     if (!['sent', 'received'].includes(view) || view === this.data.view) return;
     this.setData({ view, rows: [] });
     this.load();
+  },
+  toggleFilters() {
+    if (this.data.loading) return;
+    this.setData({ filtersOpen: !this.data.filtersOpen });
+  },
+  toggleInfo(event) {
+    if (this.data.loading || !this.loadedToken || !ui.live(this, this.loadedToken)) return;
+    const id = event.currentTarget.dataset.id;
+    if (!this.data.rows.some((row) => row.appearances.some((item) => item.id === id))) return;
+    this.setData({ expandedAppearanceId: this.data.expandedAppearanceId === id ? '' : id });
   },
   statusTab(event) {
     this.changeStatus({ detail: { value: event.currentTarget.dataset.index } });

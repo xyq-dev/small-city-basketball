@@ -34,6 +34,8 @@
   },
   "style": "v2",
   "usingComponents": {
-    "scb-nav": "/components/navigation/index"
+    "scb-nav": "/components/navigation/index",
+    "scb-header": "/components/header/index",
+    "scb-icon": "/components/icon/index"
   }
 }
