@@ -1,0 +1,49 @@
+{
+  "verifiedAt": "2026-10-25T03:11:43.295Z",
+  "repository": "xyq-dev/small-city-basketball",
+  "source": "486d5d9cf1befc06be64b955e60288bd9c38b9f3",
+  "sourceTree": "9964b4cbee56699587af159c39d483ba2f88a5d0",
+  "appsTree": "f366a47dae45fbf08857d1b4c339ee0658922755",
+  "run": 40156690255,
+  "runUrl": "https://github.com/xyq-dev/small-city-basketball/actions/runs/40156690255",
+  "artifact": {
+    "id": 12585381105,
+    "name": "mini-program-layouts",
+    "sha256": "75fe9e9638e134db38d015520f759a40ed15d063109e29deacf1775cd3b06cfb",
+    "downloadedBytes": 117643440,
+    "source": "486d5d9cf1befc06be64b955e60288bd9c38b9f3"
+  },
+  "uiChecks": {
+    "job": 121059672920,
+    "status": "completed",
+    "conclusion": "success",
+    "nativeTests": 271,
+    "nativeLayoutChecks": 654,
+    "browserPassed": 668,
+    "duplicateNativeMobileSkipped": 654,
+    "layoutFindings": 0
+  },
+  "workflowJobsAtVerification": [
+    {
+      "id": 121059672214,
+      "name": "api",
+      "status": "in_progress",
+      "conclusion": null
+    },
+    {
+      "id": 121059672345,
+      "name": "production",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 121059672920,
+      "name": "admin",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "developerVisualReview": "21 normal routes plus representative states checked; source PNG identity and overlapping segments verified; see REVIEW.md",
+  "officialWeChat": "pending",
+  "userVisualSignoff": "pending"
+}
