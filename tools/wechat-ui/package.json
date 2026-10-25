@@ -1,0 +1,9 @@
+{
+  "name": "scb-local-wechat-ui-acceptance",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Only for local WeChat DevTools UI capture; never bundled into the mini program",
+  "dependencies": {
+    "miniprogram-automator": "0.13.0"
+  }
+}

@@ -24,7 +24,9 @@
     "db:seed": "npm run seed --workspace @small-city-basketball/api",
     "test:api:e2e": "node scripts/run-api-browser-checks.mjs",
     "test:production": "node scripts/check-production.mjs",
-    "test:wechat": "node --test apps/wechat/test/*.test.cjs"
+    "test:wechat": "node --test apps/wechat/test/*.test.cjs tests/wechat-tools/devtools-ui.test.mjs",
+    "wechat:ui:prepare": "node scripts/wechat-devtools-ui.mjs prepare",
+    "wechat:ui:capture": "node scripts/wechat-devtools-ui.mjs capture"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
