@@ -1,0 +1,11 @@
+{
+  "name": "c10-public-event-error",
+  "route": "pages/event/index",
+  "state": "error",
+  "figmaNode": "11:36",
+  "expectText": ["暂时无法读取赛事", "重新读取"],
+  "data": {
+    "error": "合成场景：网络暂时不可用",
+    "unavailable": false
+  }
+}

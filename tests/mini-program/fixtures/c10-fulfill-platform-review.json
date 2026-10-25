@@ -1,0 +1,49 @@
+{
+  "name": "c10-fulfill-platform-review",
+  "route": "pages/platform/index",
+  "state": "review",
+  "figmaNode": "30:1535",
+  "expectText": ["处理：合成林越", "处理依据与原因"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "allowed": true,
+    "loading": false,
+    "busy": false,
+    "feePercent": "10.00",
+    "reviewQueue": [
+      {
+        "id": "90000000-0000-4000-8000-000000000001",
+        "displayName": "合成林越",
+        "positionLabel": "控球后卫",
+        "stateLabel": "待审核",
+        "price": "¥300.00"
+      }
+    ],
+    "orders": [
+      {
+        "id": "90000000-0000-4000-8000-000000000300",
+        "eventName": "合成青锋杯",
+        "teamName": "合成石鼓青锋",
+        "total": "¥740.00",
+        "disputed": true
+      }
+    ],
+    "paymentNotice": "合成场景：在线支付与个人结算未开放，实际收款、退款到账和结算均为0。",
+    "reviewOpen": true,
+    "reviewName": "合成林越",
+    "reviewId": "90000000-0000-4000-8000-000000000001",
+    "reviewVersion": 7,
+    "reviewReason": "",
+    "consent": false,
+    "reviewSnapshot": {
+      "city": "高州 / 石鼓",
+      "height": 182,
+      "bio": "合成服务资料：组织推进与团队配合，仅为布局验收样例。",
+      "price": "¥300.00",
+      "travel": "¥0.00",
+      "accommodation": "¥0.00",
+      "availability": ["2026-10-28 19:00 — 2026-10-28 22:00"]
+    }
+  }
+}

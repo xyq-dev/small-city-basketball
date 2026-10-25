@@ -1,10 +1,26 @@
-.authorization-tabs { display: flex; flex-wrap: wrap; gap: 12rpx; margin: 24rpx 0; }
-.authorization-tabs button { flex: 1; min-width: 140rpx; margin: 0; }
-.authorization-card .row { margin-top: 16rpx; }
-.nomination-field { margin-top: 24rpx; }
-.nomination-picker { min-height: 44px; box-sizing: border-box; padding: 24rpx; background: white; border: 1rpx solid var(--border, #e8edf2); border-radius: 16rpx; }
-.authorization-reason { width: 100%; box-sizing: border-box; min-height: 160rpx; }
-.authorization-actions { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 20rpx; }
-.authorization-actions button { flex: 1; min-width: 240rpx; margin: 0; }
-.authorization-section { margin-top: 24rpx; }
-.authorization-footer { margin-top: 24rpx; }
+.authorization-tab-scroll { width:100%; margin-bottom:16px; }
+.authorization-tabs { display:flex; flex-wrap:nowrap; gap:8px; width:408px; }
+.authorization-tabs button { flex:0 0 auto; width:auto; min-width:64px; white-space:nowrap; padding:10px 12px; margin:0; border:0; border-radius:8px; background:transparent; color:#617286; font-size:14px; line-height:24px; }
+.authorization-tabs button::after { border:0; }
+.authorization-tabs .active { background:#eaf0f7; color:#132c49; font-weight:500; }
+.authorization-item { margin-bottom:16px; }
+.authorization-card,.dialog-card { display:flex; flex-direction:column; gap:8px; }
+.authorization-card .subtitle,.dialog-card .subtitle { margin:0; }
+.authorization-copy,.dialog-copy { color:#617286; font-size:14px; line-height:24px; }
+.authorization-card .notice { margin:0; }
+.authorization-actions { display:flex; flex-direction:column; gap:8px; }
+.authorization-actions button { width:100%; margin:0; }
+.nomination-field { margin-top:16px; }
+.nomination-picker { min-height:44px; box-sizing:border-box; padding:9px 12px; background:white; border:1px solid #e8edf2; border-radius:8px; font-size:14px; line-height:24px; }
+.authorization-reason { width:100%; box-sizing:border-box; min-height:88px; }
+.authorization-section { margin-top:16px; }
+.authorization-footer { margin:16px 0; }
+.authorization-consent { border-radius:0; margin:0 0 16px; font-weight:500; }
+.authorization-state .muted { font-size:14px; line-height:24px; }
+.authorization-state button { margin-top:16px; margin-bottom:0; }
+
+.dialog-field { margin-bottom:16px; }
+.dialog-field .field-label { color:#152c43; }
+.hint-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
+
+.authorization-created { margin:-8px 0 8px; }

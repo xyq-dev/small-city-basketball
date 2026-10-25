@@ -1,0 +1,31 @@
+{
+  "name": "c10-account-busy-lock",
+  "route": "pages/account/index",
+  "state": "pending",
+  "figmaNode": "9:581",
+  "referenceKind": "derived",
+  "expectText": ["确认绑定当前微信", "保留当前设置并返回"],
+  "primary": false,
+  "data": {
+    "loading": false,
+    "busy": true,
+    "user": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "displayName": "合成参与者",
+      "email": "synthetic@example.test"
+    },
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": false,
+    "registerMode": false,
+    "consent": true,
+    "securityOpen": true,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "synthetic-test-only",
+    "hasReturn": false,
+    "platformOperator": false
+  }
+}

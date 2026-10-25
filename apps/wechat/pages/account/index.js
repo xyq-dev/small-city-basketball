@@ -24,7 +24,9 @@ Page({
     busy: false,
     loading: false,
     message: '',
+    messageTone: 'info',
     hasReturn: false,
+    securityOpen: false,
   },
   onLoad(query = {}) {
     this.returnTo = ui.safeReturn(query.returnTo || '');
@@ -40,6 +42,7 @@ Page({
             user: null,
             binding: null,
             connected: false,
+            securityOpen: false,
             password: '',
             consent: false,
           });
@@ -115,7 +118,13 @@ Page({
         });
     } catch (error) {
       if (!this.closed && seq === this.seq)
-        this.setData({ user: null, binding: null, connected: false, message: ui.message(error) });
+        this.setData({
+          user: null,
+          binding: null,
+          connected: false,
+          message: ui.message(error),
+          messageTone: 'error',
+        });
     } finally {
       if (!this.closed && seq === this.seq) this.setData({ loading: false });
     }
@@ -123,11 +132,11 @@ Page({
   async task(action) {
     if (this.commandBusy) return;
     this.commandBusy = true;
-    this.setData({ busy: true, message: '' });
+    this.setData({ busy: true, message: '', messageTone: 'info' });
     try {
       await action();
     } catch (error) {
-      if (!this.closed) this.setData({ message: ui.message(error) });
+      if (!this.closed) this.setData({ message: ui.message(error), messageTone: 'error' });
     } finally {
       this.commandBusy = false;
       if (!this.closed) this.setData({ busy: false, password: '', consent: false });
@@ -205,7 +214,8 @@ Page({
         consent: true,
       });
       await this.load();
-      if (!this.closed) this.setData({ message: '微信身份已绑定当前应用账号。' });
+      if (!this.closed)
+        this.setData({ message: '微信身份已绑定当前应用账号。', messageTone: 'success' });
     });
   },
   async unbind() {
@@ -231,6 +241,7 @@ Page({
           binding: null,
           connected: false,
           message: '已解绑并退出全部设备。',
+          messageTone: 'success',
         });
     });
   },
@@ -239,15 +250,35 @@ Page({
       await api.getClient().request('/v1/auth/logout', 'POST');
       api.getClient().clearSession();
       if (!this.closed)
-        this.setData({ user: null, binding: null, connected: false, message: '已退出登录。' });
+        this.setData({
+          user: null,
+          binding: null,
+          connected: false,
+          message: '已退出登录。',
+          messageTone: 'success',
+        });
     });
   },
   continue() {
     if (this.data.user && this.returnTo) wx.redirectTo({ url: this.returnTo });
   },
+  showSecurity() {
+    if (!this.data.user || this.data.busy || this.commandBusy) return;
+    this.setData({ securityOpen: true });
+  },
+  closeSecurity() {
+    if (this.data.busy || this.commandBusy) return;
+    this.setData({ securityOpen: false });
+  },
   go(e) {
     const key = e.currentTarget.dataset.page;
-    const query = key === 'bookings' ? { view: 'sent' } : {};
+    const kind = e.currentTarget.dataset.kind;
+    const query =
+      key === 'bookings'
+        ? { view: 'sent' }
+        : key === 'planned' && ['funds', 'messages', 'profile'].includes(kind)
+          ? { kind }
+          : {};
     ui.open(key, query);
   },
 });

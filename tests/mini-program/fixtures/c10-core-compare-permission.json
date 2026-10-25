@@ -1,0 +1,23 @@
+{
+  "name": "c10-core-compare-permission",
+  "route": "pages/compare/index",
+  "state": "permission",
+  "figmaNode": "11:36",
+  "syntheticData": true,
+  "expectText": ["登录后继续比较"],
+  "data": {
+    "profiles": [],
+    "labels": [],
+    "columns": [],
+    "selectedCount": 0,
+    "firstId": "",
+    "firstName": "",
+    "columnsWidth": "375px",
+    "tableHeight": "456px",
+    "loading": false,
+    "loginRequired": true,
+    "error": "",
+    "notice": "",
+    "statisticsError": ""
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "c10-core-home-ready",
+  "route": "pages/home/index",
+  "state": "ready",
+  "figmaNode": "30:35",
+  "syntheticData": true,
+  "static": true,
+  "expectText": [
+    "每一场，都有合适的人",
+    "查看我的预约"
+  ],
+  "data": {},
+  "primary": true
+}

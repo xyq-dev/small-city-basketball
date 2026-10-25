@@ -1,0 +1,14 @@
+{
+  "name": "c10-fulfill-detail-permission",
+  "route": "pages/booking-detail/index",
+  "state": "permission",
+  "figmaNode": "30:1703",
+  "expectText": ["当前账号已无权查看"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "loading": false,
+    "order": null,
+    "error": "合成权限场景：当前账号已无权查看这份合作。"
+  }
+}

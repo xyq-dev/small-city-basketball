@@ -1,0 +1,23 @@
+{
+  "name": "c10-core-compare-loading",
+  "route": "pages/compare/index",
+  "state": "loading",
+  "figmaNode": "11:36",
+  "syntheticData": true,
+  "expectText": ["正在核对球员资料与授权统计"],
+  "data": {
+    "profiles": [],
+    "labels": [],
+    "columns": [],
+    "selectedCount": 0,
+    "firstId": "",
+    "firstName": "",
+    "columnsWidth": "375px",
+    "tableHeight": "456px",
+    "loading": true,
+    "loginRequired": false,
+    "error": "",
+    "notice": "",
+    "statisticsError": ""
+  }
+}

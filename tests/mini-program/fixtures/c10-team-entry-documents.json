@@ -1,0 +1,109 @@
+{
+  "name": "c10-team-entry-documents",
+  "route": "pages/entry/index",
+  "state": "review",
+  "figmaNode": "9:1095",
+  "expectText": ["合成保险凭证.pdf", "上传不等于投保", "选择一份PDF"],
+  "data": {
+    "entry": {
+      "id": "c1000000-0000-4000-8000-000000000005",
+      "orgId": "c1000000-0000-4000-8000-000000000002",
+      "teamId": "c1000000-0000-4000-8000-000000000001",
+      "teamName": "合成石鼓青锋",
+      "eventId": "c1000000-0000-4000-8000-000000000003",
+      "status": "DRAFT",
+      "statusLabel": "报名草稿",
+      "version": 3,
+      "rules": {
+        "id": "c1000000-0000-4000-8000-000000000004",
+        "eventId": "c1000000-0000-4000-8000-000000000003",
+        "createdAt": "2026-10-25T00:00:00Z",
+        "version": 1,
+        "minPlayers": 3,
+        "maxPlayers": 12,
+        "zeroAndDoubleZeroDistinct": true,
+        "requireIdentity": false,
+        "requireInsurance": false
+      },
+      "players": [
+        {
+          "memberId": "c1000000-0000-4000-8000-000000000010",
+          "name": "合成林越",
+          "jerseyNo": "07"
+        },
+        {
+          "memberId": "c1000000-0000-4000-8000-000000000011",
+          "name": "合成陈凯",
+          "jerseyNo": "12"
+        },
+        {
+          "memberId": "c1000000-0000-4000-8000-000000000012",
+          "name": "合成周宁",
+          "jerseyNo": "00"
+        }
+      ],
+      "history": [],
+      "capabilities": {
+        "canEditRoster": true,
+        "canSubmit": true,
+        "canWithdraw": false,
+        "canReview": false,
+        "canApprove": false,
+        "canRequestChanges": false,
+        "canReject": false
+      }
+    },
+    "rows": [
+      {
+        "memberId": "c1000000-0000-4000-8000-000000000010",
+        "name": "合成林越",
+        "jerseyNo": "07",
+        "selected": true,
+        "archived": false
+      },
+      {
+        "memberId": "c1000000-0000-4000-8000-000000000011",
+        "name": "合成陈凯",
+        "jerseyNo": "12",
+        "selected": true,
+        "archived": false
+      },
+      {
+        "memberId": "c1000000-0000-4000-8000-000000000012",
+        "name": "合成周宁",
+        "jerseyNo": "00",
+        "selected": true,
+        "archived": false
+      }
+    ],
+    "selectedCount": 3,
+    "stage": "documents",
+    "consent": false,
+    "fileConsent": false,
+    "files": [
+      {
+        "id": "c1000000-0000-4000-8000-000000000006",
+        "purpose": "PRIVATE_INSURANCE",
+        "purposeLabel": "外部已购保险凭证",
+        "fileName": "合成保险凭证.pdf",
+        "status": "ACTIVE",
+        "statusLabel": "已上传 · 私有",
+        "sizeText": "128 KiB",
+        "rosterRevisionId": "c1000000-0000-4000-8000-000000000007",
+        "version": 1
+      }
+    ],
+    "fileWorkspace": {
+      "usage": {
+        "usedBytes": 131072,
+        "maxFileBytes": 8388608,
+        "limitBytes": 134217728
+      },
+      "capabilities": {
+        "canUpload": true,
+        "canRevoke": true,
+        "canPurge": true
+      }
+    }
+  }
+}

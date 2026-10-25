@@ -1,0 +1,37 @@
+{
+  "name": "c10-profile-center-new",
+  "route": "pages/player-center/index",
+  "state": "empty",
+  "figmaNode": "30:1766",
+  "expectText": ["成人与资料声明", "下一步填写服务报价", "管理可约时间"],
+  "syntheticData": true,
+  "data": {
+    "authorized": true,
+    "loginRequired": false,
+    "loading": false,
+    "busy": false,
+    "pending": false,
+    "pendingInFlight": false,
+    "error": "",
+    "message": "",
+    "profile": null,
+    "editing": true,
+    "dirty": false,
+    "form": {
+      "displayName": "",
+      "position": "PG",
+      "heightCm": "",
+      "city": "",
+      "bio": "",
+      "price": "",
+      "travel": "0.00",
+      "accommodation": "0.00",
+      "adultConfirmed": false,
+      "availability": []
+    },
+    "positions": ["控球后卫 PG", "得分后卫 SG", "小前锋 SF", "大前锋 PF", "中锋 C"],
+    "positionIndex": 0,
+    "quote": null,
+    "feeText": "10%"
+  }
+}

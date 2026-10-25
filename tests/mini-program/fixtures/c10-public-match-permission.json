@@ -1,0 +1,11 @@
+{
+  "name": "c10-public-match-permission",
+  "route": "pages/match/index",
+  "state": "permission",
+  "figmaNode": "11:196",
+  "expectText": ["该内容已停止公开", "旧画面与媒体已清空"],
+  "data": {
+    "error": "观赛授权已撤销或比赛不可用",
+    "unavailable": true
+  }
+}

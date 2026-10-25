@@ -12,6 +12,7 @@ Page({
     error: '',
     message: '',
     loginRequired: false,
+    loading: false,
   },
   onLoad(query) {
     this._alive = true;
@@ -50,10 +51,17 @@ Page({
     );
   },
   async load() {
-    this.setData({ user: null, accepted: null, consent: false, loginRequired: false });
+    this.setData({
+      user: null,
+      accepted: null,
+      consent: false,
+      loginRequired: false,
+      loading: true,
+    });
     ui.begin(this);
     const session = await ui.session(this, '/pages/invitation/index');
     if (!this._alive) return;
+    this.setData({ loading: false });
     if (session) {
       if (this._viewer && this._viewer !== session.user.id) this._token = '';
       this._viewer = session.user.id;

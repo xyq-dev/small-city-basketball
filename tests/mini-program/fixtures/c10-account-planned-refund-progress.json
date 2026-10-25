@@ -1,0 +1,14 @@
+{
+  "name": "c10-account-planned-refund-progress",
+  "route": "pages/planned/index",
+  "state": "planned",
+  "figmaNode": "30:2597",
+  "referenceKind": "derived",
+  "expectText": ["退款进度以核验结果为准", "当前没有真实退款"],
+  "static": true,
+  "data": {
+    "selected": "refund",
+    "refundProgress": true,
+    "optionsOpen": false
+  }
+}

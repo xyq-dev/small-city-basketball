@@ -1,0 +1,10 @@
+{
+  "name": "c10-team-invitation-error",
+  "route": "pages/invitation/index",
+  "state": "error",
+  "figmaNode": "11:36",
+  "expectText": ["合成网络错误"],
+  "data": {
+    "error": "合成网络错误：读取失败，请重新读取。"
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "name": "c10-public-event-results",
+  "route": "pages/event/index",
+  "state": "ready",
+  "figmaNode": "9:374",
+  "expectText": ["最终名次", "合成青锋"],
+  "data": {
+    "event": {
+      "name": "合成城市联赛2026",
+      "startDate": "2026-10-24",
+      "endDate": "2026-11-08",
+      "dateLabel": "10/24–11/08",
+      "venueName": "合成石鼓公园篮球场",
+      "status": "RUNNING",
+      "statusLabel": "比赛进行中",
+      "format": "GROUP_KNOCKOUT",
+      "formatLabel": "分组循环接淘汰",
+      "confirmedMatchCount": 6,
+      "totalMatchCount": 16,
+      "serverTime": "2026-10-25T11:30:00Z"
+    },
+    "matches": [
+      {
+        "publicMatchId": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+        "roundNo": 3,
+        "positionNo": 1,
+        "home": {
+          "teamKey": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+          "teamName": "合成青锋"
+        },
+        "away": {
+          "teamKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "teamName": "合成长青"
+        },
+        "courtName": "合成公园1号场",
+        "startsAt": "2026-10-25T11:30:00Z",
+        "endsAt": "2026-10-25T13:00:00Z",
+        "startLabel": "10月25日 19:30",
+        "status": "LIVE",
+        "statusLabel": "比赛进行中",
+        "version": 1,
+        "score": {
+          "home": 68,
+          "away": 62
+        },
+        "resultStatus": "UNCONFIRMED",
+        "resultLabel": "尚无正式赛果"
+      },
+      {
+        "publicMatchId": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "roundNo": 3,
+        "positionNo": 2,
+        "home": {
+          "teamKey": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "teamName": "合成清风"
+        },
+        "away": {
+          "teamKey": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+          "teamName": "合成金塘"
+        },
+        "courtName": "合成公园2号场",
+        "startLabel": "10月25日 20:15",
+        "status": "SCHEDULED",
+        "statusLabel": "尚未开赛",
+        "score": null,
+        "resultStatus": "UNCONFIRMED",
+        "resultLabel": "尚无正式赛果"
+      }
+    ],
+    "standings": null,
+    "groups": null,
+    "bracket": {
+      "rounds": [
+        {
+          "roundNo": 1,
+          "label": "半决赛",
+          "published": false,
+          "slots": [
+            {
+              "positionNo": 1,
+              "home": {
+                "teamKey": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+                "teamName": "合成青锋"
+              },
+              "away": {
+                "teamKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "teamName": "合成长青"
+              },
+              "bye": null,
+              "status": "WAITING",
+              "statusLabel": "尚未发布",
+              "winner": null,
+              "publicMatchId": null
+            },
+            {
+              "positionNo": 2,
+              "home": {
+                "teamKey": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                "teamName": "合成清风"
+              },
+              "away": {
+                "teamKey": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+                "teamName": "合成金塘"
+              },
+              "bye": null,
+              "status": "WAITING",
+              "statusLabel": "尚未发布",
+              "winner": null,
+              "publicMatchId": null
+            }
+          ]
+        }
+      ],
+      "placements": [
+        {
+          "rank": 1,
+          "team": {
+            "teamKey": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+            "teamName": "合成青锋"
+          },
+          "tied": false
+        },
+        {
+          "rank": 2,
+          "team": {
+            "teamKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "teamName": "合成长青"
+          },
+          "tied": false
+        }
+      ],
+      "isComplete": true
+    },
+    "error": "",
+    "stale": false,
+    "loading": false,
+    "tab": "ranking",
+    "overview": false,
+    "unavailable": false
+  }
+}

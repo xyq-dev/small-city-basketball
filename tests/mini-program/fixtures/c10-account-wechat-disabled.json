@@ -1,0 +1,27 @@
+{
+  "name": "c10-account-wechat-disabled",
+  "route": "pages/account/index",
+  "state": "permission",
+  "figmaNode": "9:476",
+  "referenceKind": "derived",
+  "expectText": ["微信登录尚未配置，继续使用应用账号", "微信登录暂未开放"],
+  "primary": false,
+  "data": {
+    "loading": false,
+    "busy": false,
+    "user": null,
+    "binding": null,
+    "connected": false,
+    "enabled": false,
+    "canRegister": false,
+    "registerMode": false,
+    "consent": false,
+    "securityOpen": false,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "",
+    "hasReturn": false,
+    "platformOperator": false
+  }
+}

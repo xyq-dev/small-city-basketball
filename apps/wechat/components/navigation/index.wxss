@@ -3,3 +3,4 @@
 .nav-item::after { border:0; }
 .nav-dot { height:20px; font-size:12px; line-height:20px; }
 .nav-item.selected { color:#132c49; }
+.nav-item[disabled] { background:#fff; color:#a3b2c1; opacity:.65; }

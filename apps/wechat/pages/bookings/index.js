@@ -1,6 +1,21 @@
 const ui = require('../../utils/ui');
 const sdk = require('../../utils/booking');
 const orders = require('../../utils/booking-orders');
+function scheduleText(item) {
+  if (item.status === 'CONDITIONAL') return '条件满足后补齐具体时间';
+  const date = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/.exec(item.startText);
+  if (!date || !item.endText || !item.reportText) return '';
+  const day =
+    date[1] === ui.today().slice(0, 4)
+      ? Number(date[2]) + '月' + Number(date[3]) + '日'
+      : date[1] + '年' + Number(date[2]) + '月' + Number(date[3]) + '日';
+  const startDate = item.startText.slice(0, 10);
+  const end = item.endText.startsWith(startDate + ' ') ? item.endText.slice(11) : item.endText;
+  const report = item.reportText.startsWith(startDate + ' ')
+    ? item.reportText.slice(11)
+    : item.reportText;
+  return day + ' ' + date[4] + '–' + end + ' · 报到' + report;
+}
 const STATUS_VALUES = [
   'ALL',
   'REQUESTED',
@@ -18,6 +33,12 @@ Page({
     view: 'sent',
     status: 'ALL',
     statusIndex: 0,
+    quickStatuses: [
+      { value: 'ALL', index: 0, label: '全部' },
+      { value: 'REQUESTED', index: 1, label: '待接单' },
+      { value: 'ACCEPTED', index: 2, label: '已接单' },
+      { value: 'COMPLETED', index: 5, label: '已完成' },
+    ],
     statusLabels: [
       '全部状态',
       '待接单',
@@ -111,7 +132,16 @@ Page({
     try {
       const rows = orders
         .list(this.raw, this.viewer, this.data.view, this.data.status)
-        .map((order) => orders.decorateOrder(order, this.viewer, this.data.view, ui));
+        .map((order) => {
+          const decorated = orders.decorateOrder(order, this.viewer, this.data.view, ui);
+          return {
+            ...decorated,
+            appearances: decorated.appearances.map((item) => ({
+              ...item,
+              scheduleText: scheduleText(item),
+            })),
+          };
+        });
       this.setData({ rows });
     } catch (error) {
       this.raw = null;
@@ -123,6 +153,9 @@ Page({
     if (!['sent', 'received'].includes(view) || view === this.data.view) return;
     this.setData({ view, rows: [] });
     this.load();
+  },
+  statusTab(event) {
+    this.changeStatus({ detail: { value: event.currentTarget.dataset.index } });
   },
   changeStatus(event) {
     const index = Number(event.detail.value);

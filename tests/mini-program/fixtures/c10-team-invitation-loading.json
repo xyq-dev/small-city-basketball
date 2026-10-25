@@ -1,0 +1,10 @@
+{
+  "name": "c10-team-invitation-loading",
+  "route": "pages/invitation/index",
+  "state": "loading",
+  "figmaNode": "11:36",
+  "expectText": ["正在核对当前账号"],
+  "data": {
+    "loading": true
+  }
+}

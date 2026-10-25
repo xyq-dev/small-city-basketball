@@ -1,83 +1,35 @@
-<view class="page">
-  <view class="page-title">球队与长期成员</view>
-  <view wx:if="{{error}}" class="error">{{error}}</view>
+<view class="page team-page">
+  <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">请核对球队资料后继续</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice">{{message}}</view>
-  <button wx:if="{{loginRequired}}" class="primary" bindtap="login">登录后继续</button>
-  <view wx:if="{{loading}}" class="muted">正在读取球队资料…</view>
+  <view wx:if="{{loginRequired}}" class="card team-panel state-panel"><view class="subtitle">登录后继续管理球队</view><view class="muted">当前未读取私有成员资料。</view><button class="primary" bindtap="login">登录并继续</button></view>
+  <view wx:if="{{loading}}" class="card team-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取球队资料</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
   <block wx:if="{{team}}">
-    <view class="card"
-      ><view class="subtitle">{{team.name}}</view
-      ><view class="muted">{{team.members.length}}名长期成员 · 当前版本{{team.version}}</view
-      ><view class="notice"
-        >长期成员与本届报名名单分开。保存长期资料不会修改历史冻结名单。</view
-      ></view
-    >
-    <view class="card"
-      ><view class="field-label">球队名称</view
-      ><input
-        class="field"
-        maxlength="80"
-        value="{{name}}"
-        bindinput="inputName"
-        disabled="{{busy || uncertain || !team.capabilities.canManage}}"
-      /><button
-        wx:if="{{team.capabilities.canManage}}"
-        class="primary"
-        data-mode="name"
-        bindtap="save"
-        disabled="{{busy || uncertain || !nameDirty}}"
-        loading="{{busy}}"
-      >
-        保存球队名称
-      </button></view
-    >
-    <view class="card"
-      ><view class="subtitle">长期成员 · {{members.length}} / 60</view
-      ><view wx:if="{{!members.length}}" class="muted">先添加长期成员，再选择本届报名名单。</view>
-      <view wx:for="{{members}}" wx:key="key" class="member-row"
-        ><input
-          class="field member-input"
-          value="{{item.name}}"
-          maxlength="80"
-          placeholder="成员姓名"
-          bindinput="memberName"
-          data-index="{{index}}"
-          disabled="{{busy || uncertain || !team.capabilities.canManage}}"
-        /><button
-          wx:if="{{team.capabilities.canManage}}"
-          class="quiet member-remove"
-          data-index="{{index}}"
-          bindtap="removeMember"
-          disabled="{{busy || uncertain}}"
-        >
-          移出
-        </button></view
-      >
-      <button
-        wx:if="{{team.capabilities.canManage}}"
-        class="secondary"
-        bindtap="addMember"
-        disabled="{{busy || uncertain || members.length &gt;= 60}}"
-      >
-        添加成员
-      </button>
-      <button
-        wx:if="{{team.capabilities.canManage}}"
-        class="primary"
-        data-mode="members"
-        bindtap="save"
-        disabled="{{busy || uncertain || !membersDirty}}"
-        loading="{{busy}}"
-      >
-        保存长期成员
-      </button>
+    <view class="team-sections"><view class="team-section selected">长期成员</view><button class="quiet team-section" bindtap="events" disabled="{{busy || !canRegister}}">本届报名</button></view>
+    <view class="card team-panel">
+      <view class="subtitle">{{team.name}} · 长期成员</view>
+      <view class="member-table">
+        <view class="member-table-head"><text>成员</text><text>号码</text><text>状态</text></view>
+        <view wx:for="{{team.members}}" wx:key="id" class="member-table-row"><text>{{item.name}}</text><text class="muted">本届设置</text><text>已保存</text></view>
+        <view wx:if="{{!team.members.length}}" class="member-empty muted">暂无长期成员，请先添加。</view>
+      </view>
+      <view class="small muted member-note">球衣号码在本届报名中设置。长期成员变更不会改写历史冻结名单。</view>
     </view>
-    <button wx:if="{{canRegister}}" class="primary" bindtap="events" disabled="{{busy}}">
-      选择可报名赛事
-    </button>
-    <view wx:else class="notice"
-      >本届报名由持球队领队授权的账号操作，机构管理身份不会自动代替领队。</view
-    >
+    <button wx:if="{{canRegister}}" class="primary team-action" bindtap="events" disabled="{{busy}}">管理本届报名</button>
+    <view wx:else class="notice"><view class="feedback-title">本届报名需球队领队授权</view><view class="small">机构管理身份不会自动代替领队。</view></view>
+    <button wx:if="{{team.capabilities.canManage}}" class="secondary team-action" bindtap="toggleEdit" disabled="{{busy || uncertain}}">{{editMode ? '收起长期资料编辑' : '编辑长期成员与球队名称'}}</button>
+    <block wx:if="{{editMode && team.capabilities.canManage}}">
+      <view class="notice"><view class="feedback-title">长期档案与本届快照分开</view><view class="small">当前版本{{team.version}}；收起编辑不会丢弃未保存草稿。</view></view>
+      <view class="field-label">球队名称</view><input class="field" maxlength="80" value="{{name}}" bindinput="inputName" disabled="{{busy || uncertain || !team.capabilities.canManage}}"/>
+      <button class="primary team-action" data-mode="name" bindtap="save" disabled="{{busy || uncertain || !nameDirty}}" loading="{{busy}}">保存球队名称</button>
+      <view class="card team-panel"><view class="subtitle">编辑长期成员 · {{members.length}} / 60</view>
+        <view wx:for="{{members}}" wx:key="key" class="member-row"><input class="field member-input" value="{{item.name}}" maxlength="80" placeholder="成员姓名" bindinput="memberName" data-index="{{index}}" disabled="{{busy || uncertain || !team.capabilities.canManage}}"/><button class="quiet member-remove" data-index="{{index}}" bindtap="removeMember" disabled="{{busy || uncertain}}">移出</button></view>
+        <button class="secondary" bindtap="addMember" disabled="{{busy || uncertain || members.length >= 60}}">添加成员</button>
+        <button class="primary" data-mode="members" bindtap="save" disabled="{{busy || uncertain || !membersDirty}}" loading="{{busy}}">保存长期成员</button>
+      </view>
+    </block>
   </block>
+  <button wx:if="{{nameDirty || membersDirty}}" class="quiet" bindtap="refresh" disabled="{{busy || uncertain}}">取消未保存修改</button>
+  <view wx:if="{{!team && !loading && !error && !loginRequired}}" class="card team-panel state-panel"><view class="subtitle">暂无可查看的球队资料</view><view class="muted">请从我的球队重新进入，或联系有权人员核对授权。</view></view>
   <button class="quiet" bindtap="refresh" disabled="{{busy || loading}}">重新读取球队资料</button>
 </view>
+<scb-nav active="Account" disabled="{{busy || loading || uncertain || nameDirty || membersDirty}}"/>

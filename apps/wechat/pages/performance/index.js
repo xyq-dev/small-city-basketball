@@ -144,6 +144,12 @@ Page({
   login() {
     ui.login(this.returnPath());
   },
+  nomination() {
+    if (!this.data.authorized || this.data.ownOnly || this.blocked()) return;
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#nomination-section', duration: 200 });
+    else this.setData({ message: '请向下查看主办方提名表单。' });
+  },
   center() {
     ui.open('player-center');
   },

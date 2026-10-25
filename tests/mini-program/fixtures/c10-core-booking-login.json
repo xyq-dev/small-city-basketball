@@ -1,0 +1,13 @@
+{
+  "name": "c10-core-booking-login",
+  "route": "pages/booking-create/index",
+  "state": "permission",
+  "figmaNode": "30:2288",
+  "syntheticData": true,
+  "expectText": ["登录后继续预约"],
+  "data": {
+    "loginRequired": true,
+    "ready": false,
+    "loading": false
+  }
+}

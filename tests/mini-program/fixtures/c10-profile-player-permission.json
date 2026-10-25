@@ -1,0 +1,13 @@
+{
+  "name": "c10-profile-player-permission",
+  "route": "pages/player/index",
+  "state": "permission",
+  "figmaNode": "30:2261",
+  "expectText": ["当前账号无权查看", "返回球员广场"],
+  "syntheticData": true,
+  "data": {
+    "loading": false,
+    "profile": null,
+    "error": "合成：当前账号无权查看这份服务档案。"
+  }
+}

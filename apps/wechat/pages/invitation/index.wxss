@@ -1,3 +1,19 @@
-.consent {
-  margin-top: 24rpx;
-}
+.invitation-page { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+.invitation-panel { padding:24px; border:1px solid #e8edf2; border-radius:12px; margin-bottom:20px; }
+.invitation-summary { display:flex; flex-direction:column; gap:16px; }
+.invitation-summary .subtitle { margin:0; }
+.account-identity { display:flex; align-items:center; gap:12px; font-weight:500; }
+.account-identity > view:last-child { min-width:0; overflow-wrap:anywhere; }
+.account-avatar { width:40px; height:40px; border-radius:50%; background:#eaf0f7; display:flex; align-items:center; justify-content:center; color:#132c49; flex-shrink:0; }
+.invite-details { display:flex; flex-direction:column; gap:20px; }
+.detail-row { display:flex; gap:12px; font-weight:500; }
+.detail-row > view { min-width:0; }
+.detail-row .muted { margin-top:4px; font-weight:400; }
+.detail-dot { color:#ff6b2d; flex:0 0 14px; }
+.feedback-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
+.invite-form .field-label { margin-top:20px; color:#152c43; }
+.secret-note { margin:8px 0 20px; }
+.invite-action { margin:20px 0; }
+.state-panel .muted { margin:8px 0 16px; }
+.skeleton-line { height:12px; border-radius:4px; background:#eaf0f7; margin-top:8px; }
+.skeleton-line.short { width:78%; }

@@ -1,0 +1,151 @@
+{
+  "name": "c10-core-players-ready",
+  "route": "pages/players/index",
+  "state": "ready",
+  "figmaNode": "30:78",
+  "syntheticData": true,
+  "expectText": [
+    "合成林越",
+    "筛选位置、价格与档期"
+  ],
+  "data": {
+    "cards": [
+      {
+        "id": "80000000-0000-4000-8000-000000000001",
+        "name": "合成林越",
+        "position": "控球后卫",
+        "height": "182",
+        "city": "高州 / 石鼓",
+        "bio": "合成布局数据：组织推进，配合团队打法。本段不是真实球员自述。",
+        "priceFen": 30000,
+        "price": "¥300.00",
+        "platformFee": "¥30.00",
+        "travel": "¥0.00",
+        "accommodation": "¥0.00",
+        "total": "¥330.00",
+        "performance": {
+          "status": "部分记录",
+          "points": "0",
+          "fouls": "0",
+          "sample": "5",
+          "services": "1",
+          "sourceCount": "1",
+          "source": "有限双边授权记录",
+          "denominator": "合成场景：固定名单统计样本不代表实际出场，真实0保留。",
+          "completeness": "合成场景：5场有个人记录、1场仅球队统计；真实0与未统计分别呈现。",
+          "pending": "0",
+          "invalid": "0",
+          "teamOnly": "1",
+          "partial": "0",
+          "truncated": false,
+          "asOf": "2026-10-24T08:00:00.000Z",
+          "records": [
+            {
+              "id": "fixture-zero",
+              "eventName": "合成青锋杯",
+              "date": "2026-10-23",
+              "format": "分组接淘汰",
+              "points": "0",
+              "fouls": "0",
+              "note": "固定名单记录，不代表实际出场"
+            },
+            {
+              "id": "fixture-team",
+              "eventName": "合成青锋杯",
+              "date": "2026-10-21",
+              "format": "分组接淘汰",
+              "points": "未统计",
+              "fouls": "未统计",
+              "note": "仅球队数据，不计入个人均值分母"
+            }
+          ]
+        },
+        "selected": true
+      },
+      {
+        "id": "80000000-0000-4000-8000-000000000002",
+        "name": "合成陈凯",
+        "position": "控球后卫",
+        "height": "180",
+        "city": "高州 / 石鼓",
+        "bio": "合成布局数据：不同交通费用的同价球员，仅用于版式核对。",
+        "priceFen": 30000,
+        "price": "¥300.00",
+        "platformFee": "¥30.00",
+        "travel": "¥80.00",
+        "accommodation": "¥0.00",
+        "total": "¥410.00",
+        "performance": {
+          "status": "已有个人记录",
+          "points": "18.3",
+          "fouls": "2",
+          "sample": "3",
+          "services": "0",
+          "sourceCount": "1",
+          "source": "有限双边授权记录",
+          "denominator": "合成场景：固定名单统计样本不代表实际出场，真实0保留。",
+          "completeness": "合成授权记录，仅供布局核验；未采集项目显示未统计。",
+          "pending": "0",
+          "invalid": "0",
+          "teamOnly": "0",
+          "partial": "0",
+          "truncated": false,
+          "asOf": "2026-10-24T08:00:00.000Z",
+          "records": [
+            {
+              "id": "fixture-score",
+              "eventName": "合成青锋杯",
+              "date": "2026-10-23",
+              "format": "分组接淘汰",
+              "points": "18",
+              "fouls": "2",
+              "note": "固定名单记录，不代表实际出场"
+            }
+          ]
+        },
+        "selected": true
+      }
+    ],
+    "loading": false,
+    "loginRequired": false,
+    "error": "",
+    "statisticsError": "",
+    "selectionNotice": "",
+    "filtersOpen": false,
+    "filters": {
+      "search": "",
+      "city": "石鼓",
+      "position": "PG",
+      "price": "300",
+      "date": "2026-10-28",
+      "sort": "",
+      "samePrice": true
+    },
+    "positionOptions": [
+      "全部位置",
+      "控球后卫",
+      "得分后卫",
+      "小前锋",
+      "大前锋",
+      "中锋"
+    ],
+    "positionIndex": 1,
+    "sortOptions": [
+      "默认顺序",
+      "服务费从低到高",
+      "服务费从高到低"
+    ],
+    "sortIndex": 0,
+    "selectedCount": 2,
+    "filteredCount": 2,
+    "showingCount": 2,
+    "hasMore": false,
+    "catalogLimited": false,
+    "filterSummary": {
+      "position": "控球后卫",
+      "price": "同价 ¥300",
+      "date": "10月28日"
+    }
+  },
+  "primary": true
+}

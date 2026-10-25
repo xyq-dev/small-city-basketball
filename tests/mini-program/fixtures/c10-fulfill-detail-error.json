@@ -1,0 +1,14 @@
+{
+  "name": "c10-fulfill-detail-error",
+  "route": "pages/booking-detail/index",
+  "state": "error",
+  "figmaNode": "30:1703",
+  "expectText": ["当前合作需要重新核对"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "loading": false,
+    "order": null,
+    "error": "合成网络场景：读取失败，未使用旧合作资料。"
+  }
+}

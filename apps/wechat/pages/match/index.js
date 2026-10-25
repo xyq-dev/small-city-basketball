@@ -8,13 +8,14 @@ Page({
     stale: false,
     loading: false,
     tab: 'info',
+    unavailable: false,
   },
   onLoad(query) {
     try {
       this.event = api.publicId(query.event);
       this.matchId = api.publicId(query.match);
     } catch {
-      this.setData({ error: '观赛链接不可用' });
+      this.setData({ error: '观赛链接不可用', unavailable: true });
       return;
     }
     this.load();
@@ -60,6 +61,7 @@ Page({
           clock: api.clockText(snapshot, this.receivedAt),
           error: '',
           stale: false,
+          unavailable: false,
         });
       try {
         const result = (await client.request(base + '/media')).data;
@@ -82,6 +84,7 @@ Page({
             clock: '未准备',
             error: '观赛授权已撤销或比赛不可用',
             stale: false,
+            unavailable: true,
           });
         else
           this.setData({
@@ -96,8 +99,12 @@ Page({
     }
   },
   tab(e) {
+    if (this.data.loading) return;
     const tab = e.currentTarget.dataset.tab;
     if (['info', 'media'].includes(tab)) this.setData({ tab });
+  },
+  watch() {
+    wx.navigateTo({ url: '/pages/watch/index' });
   },
   ranking() {
     if (this.event)

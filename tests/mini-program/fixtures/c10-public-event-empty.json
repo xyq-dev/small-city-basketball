@@ -1,0 +1,33 @@
+{
+  "name": "c10-public-event-empty",
+  "route": "pages/event/index",
+  "state": "empty",
+  "figmaNode": "9:109",
+  "expectText": ["暂无已发布赛程"],
+  "data": {
+    "event": {
+      "name": "合成城市联赛2026",
+      "startDate": "2026-10-24",
+      "endDate": "2026-11-08",
+      "dateLabel": "10/24–11/08",
+      "venueName": "合成石鼓公园篮球场",
+      "status": "RUNNING",
+      "statusLabel": "比赛进行中",
+      "format": "GROUP_KNOCKOUT",
+      "formatLabel": "分组循环接淘汰",
+      "confirmedMatchCount": 6,
+      "totalMatchCount": 16,
+      "serverTime": "2026-10-25T11:30:00Z"
+    },
+    "matches": [],
+    "standings": null,
+    "groups": null,
+    "bracket": null,
+    "error": "",
+    "stale": false,
+    "loading": false,
+    "tab": "schedule",
+    "overview": false,
+    "unavailable": false
+  }
+}

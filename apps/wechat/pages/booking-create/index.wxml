@@ -21,7 +21,7 @@
 <view class="page has-actions create-page">
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
   <view wx:if="{{notice}}" class="notice">{{notice}}</view>
-  <view wx:if="{{loading}}" class="card muted">正在读取当前身份、球队与球员资料…</view>
+  <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在读取当前身份、球队与球员资料…</view><view class="muted">完成读取后再核对本次安排，不自动提交请求。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
   <view wx:if="{{loginRequired}}" class="card empty">
     <view class="title">登录后继续预约</view>
     <view class="muted"
@@ -60,13 +60,11 @@
         >本机无法保存或移除恢复标记，请先检查存储权限。</view
       >
     </view>
-    <view wx:elif="{{pending}}" class="card">
-      <view class="title"
+    <view wx:elif="{{pending}}" class="recovery-view">
+      <view class="hero recovery-hero"><view class="title">{{originalResolvedId ? '原预约已创建' : originalRejected ? '原请求已明确拒绝' : '先核对原请求'}}</view><view class="muted">{{originalResolvedId ? '已核对原操作编号，可查看原预约' : originalRejected ? '已取得明确拒绝回执，核对后再重新填写' : '网络异常不代表预约没有创建'}}</view></view>
+      <view class="card"><view class="subtitle"
         >{{originalResolvedId ? '原预约已创建' : originalRejected ? '原请求已明确拒绝' :
         '原预约结果待核对'}}</view
-      >
-      <view class="notice warning"
-        >原请求可能已成功。保留原操作编号及完整安排，核对期间不重新报价、不换编号重复提交。</view
       >
       <block wx:if="{{canRecover}}">
         <view class="subtitle">{{recoveryEventName}}</view>
@@ -83,6 +81,8 @@
       <view wx:else class="error"
         >当前账号已无原球队授权，不能展示或重试原预约。请先核对当前球队权限。</view
       >
+      </view>
+      <view class="notice warning"><view class="state-label">避免重复预约</view>{{originalResolvedId ? '已找到原预约，先查看记录，避免重复提交。' : originalRejected ? '原请求已明确拒绝。核对并移除原恢复标记后，再重新审阅安排和报价。' : '原请求可能已成功。保留原操作编号及完整安排，核对期间不重新报价、不换编号重复提交。'}}</view>
       <view wx:if="{{storageUnavailable}}" class="notice warning"
         >本机恢复资料无法可靠保存或移除；刷新可能丢失核对编号。请先核对原预约，不后台自动重发。</view
       >

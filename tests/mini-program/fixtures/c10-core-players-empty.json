@@ -1,0 +1,40 @@
+{
+  "name": "c10-core-players-empty",
+  "route": "pages/players/index",
+  "state": "empty",
+  "figmaNode": "30:427",
+  "syntheticData": true,
+  "expectText": ["暂无匹配球员"],
+  "data": {
+    "cards": [],
+    "loading": false,
+    "loginRequired": false,
+    "error": "",
+    "statisticsError": "",
+    "selectionNotice": "",
+    "filtersOpen": false,
+    "filters": {
+      "search": "",
+      "city": "石鼓",
+      "position": "PG",
+      "price": "300",
+      "date": "2026-10-28",
+      "sort": "",
+      "samePrice": true
+    },
+    "positionOptions": ["全部位置", "控球后卫", "得分后卫", "小前锋", "大前锋", "中锋"],
+    "positionIndex": 1,
+    "sortOptions": ["默认顺序", "服务费从低到高", "服务费从高到低"],
+    "sortIndex": 0,
+    "selectedCount": 0,
+    "filteredCount": 2,
+    "showingCount": 2,
+    "hasMore": false,
+    "catalogLimited": false,
+    "filterSummary": {
+      "position": "控球后卫",
+      "price": "同价 ¥300",
+      "date": "10月28日"
+    }
+  }
+}

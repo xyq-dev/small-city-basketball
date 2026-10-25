@@ -17,6 +17,7 @@ Page({
     message: '',
     profile: null,
     editing: false,
+    editorSection: 'PROFILE',
     dirty: false,
     form: model.formFromProfile(null),
     positions: ['控球后卫 PG', '得分后卫 SG', '小前锋 SF', '大前锋 PF', '中锋 C'],
@@ -169,11 +170,15 @@ Page({
     this.setData({ dirty: false, editing: false });
     this.load(true);
   },
-  edit() {
+  edit(e) {
     if (!this.data.authorized || this.data.busy || this._pending) return;
     const form = model.formFromProfile(this._profile);
     this.setData({
       editing: true,
+      editorSection:
+        e && e.currentTarget && e.currentTarget.dataset.section === 'AVAILABILITY'
+          ? 'AVAILABILITY'
+          : 'PROFILE',
       dirty: false,
       form,
       positionIndex: model.positions.indexOf(form.position),
@@ -181,6 +186,12 @@ Page({
       message: '',
     });
     this.updateQuote(form);
+  },
+  editSection(e) {
+    if (!this.data.authorized || !this.data.editing || this.data.busy || this._pending) return;
+    const section = e.currentTarget.dataset.section;
+    if (['PROFILE', 'FEES', 'AVAILABILITY'].includes(section))
+      this.setData({ editorSection: section });
   },
   async cancelEdit() {
     if (this.data.busy || this._pending) return;
@@ -335,6 +346,9 @@ Page({
       if (this.active(token) && this._actor === actor)
         this.setData({ busy: false, pendingInFlight: false });
     }
+  },
+  account() {
+    ui.open('account');
   },
   received() {
     ui.open('bookings', { view: 'received' });

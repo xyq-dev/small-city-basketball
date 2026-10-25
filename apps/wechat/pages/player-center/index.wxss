@@ -1,8 +1,29 @@
-.profile-summary { margin-top: 20rpx; }
-.profile-field { margin-top: 28rpx; }
-.availability-row { border-top: 1rpx solid var(--border, #e8edf2); padding-top: 24rpx; margin-top: 24rpx; }
-.window-pair { display: flex; gap: 16rpx; margin-top: 12rpx; }
-.window-pair picker { flex: 1; min-width: 0; }
-.picker-value { min-height: 44px; font-size: 14px; padding: 24rpx; border: 1rpx solid var(--border, #e8edf2); border-radius: 16rpx; background: white; }
-.profile-bio { min-height: 160rpx; height: auto; width: 100%; box-sizing: border-box; }
-.profile-subnote { margin-top: 16rpx; }
+.center-hero { display:flex; flex-direction:column; gap:12px; padding:24px; }
+.center-hero .title { margin:0; }
+.center-card { display:flex; flex-direction:column; gap:8px; }
+.center-card .subtitle { margin:0; }
+.center-copy { color:#617286; font-size:14px; line-height:24px; }
+.center-link { margin-bottom:16px; }
+.notice-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
+.profile-fields { margin-bottom:16px; }
+.profile-field { margin:0 0 16px; }
+.profile-fields .field-label { color:#152c43; }
+.profile-fields .field { margin:4px 0 0; }
+.editor-pair { display:flex; gap:8px; align-items:stretch; }
+.editor-pair > input,.editor-pair > picker { flex:1; width:0; min-width:0; }
+.editor-pair > .height-field { flex:0 0 88px; width:88px; }
+.editor-pair > picker { margin-top:4px; }
+.availability-row { border-top:1px solid #e8edf2; padding-top:16px; margin-top:16px; }
+.availability-row .row-between > button { flex:0 0 64px; width:64px; margin:0; }
+.window-pair { display:flex; gap:8px; margin-top:8px; }
+.window-pair picker { flex:1; min-width:0; }
+.picker-value { min-height:44px; font-size:14px; line-height:24px; padding:9px 12px; border:1px solid #e8edf2; border-radius:8px; background:white; }
+.profile-bio { min-height:88px; height:auto; width:100%; box-sizing:border-box; }
+.profile-subnote { margin-top:8px; }
+.field-help { margin-top:4px; }
+.profile-consent { border-radius:0; margin:0 0 16px; font-weight:500; }
+.profile-consent checkbox { flex-shrink:0; }
+
+.pricing-fields .profile-field { margin:0 0 16px; }
+.pricing-fields .field-label { color:#152c43; }
+.pricing-fields .field { margin:4px 0 0; }

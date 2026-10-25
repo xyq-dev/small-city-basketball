@@ -1,0 +1,27 @@
+{
+  "name": "c10-account-login",
+  "route": "pages/account/index",
+  "state": "permission",
+  "figmaNode": "30:2288",
+  "referenceKind": "derived",
+  "expectText": ["登录你的已有账号", "账号或邮箱", "登录已有账号"],
+  "primary": false,
+  "data": {
+    "loading": false,
+    "busy": false,
+    "user": null,
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": false,
+    "registerMode": false,
+    "consent": false,
+    "securityOpen": false,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "",
+    "hasReturn": false,
+    "platformOperator": false
+  }
+}

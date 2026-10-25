@@ -3,7 +3,19 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { Frame, Page, TestInfo } from '@playwright/test';
 
-type Scenario = { name: string; route: string; data: Record<string, unknown>; filled: boolean };
+type Scenario = {
+  name: string;
+  route: string;
+  data: Record<string, unknown>;
+  filled: boolean;
+  state?: string;
+  figmaNode?: string;
+  static?: boolean;
+  expectText?: string[];
+  expectAbsentText?: string[];
+  expectDisabled?: string[];
+  expectEnabled?: string[];
+};
 type Preview = { html: string; route: string; width: number; height: number };
 const root = path.resolve(__dirname, '../../apps/wechat');
 const { buildPreview } = require('../../apps/wechat/test/helpers/native-preview.cjs') as {
@@ -31,11 +43,9 @@ const scenarios: Scenario[] = [
     .filter((file) => file.endsWith('.json'))
     .sort()
     .map((file) => {
-      const fixture = JSON.parse(fs.readFileSync(path.join(fixtureDirectory, file), 'utf8')) as {
-        name: string;
-        route: string;
-        data: Record<string, unknown>;
-      };
+      const fixture = JSON.parse(
+        fs.readFileSync(path.join(fixtureDirectory, file), 'utf8'),
+      ) as Scenario;
       if (
         !/^[a-z0-9-]+$/.test(fixture.name) ||
         !/^pages\/[a-z0-9-]+\/index$/.test(fixture.route) ||
@@ -44,6 +54,21 @@ const scenarios: Scenario[] = [
         Array.isArray(fixture.data)
       )
         throw new Error('Invalid synthetic mini-program fixture: ' + file);
+      for (const field of [
+        'expectText',
+        'expectAbsentText',
+        'expectDisabled',
+        'expectEnabled',
+      ] as const) {
+        if (
+          fixture[field] !== undefined &&
+          (!Array.isArray(fixture[field]) ||
+            fixture[field]!.some((value) => typeof value !== 'string' || !value))
+        )
+          throw new Error('Invalid native state expectations: ' + file);
+      }
+      if (fixture.name.startsWith('c10-') && (!fixture.state || !fixture.figmaNode))
+        throw new Error('C10 fixture needs its state and Figma reference: ' + file);
       return { ...fixture, filled: true };
     }),
 ];
@@ -184,6 +209,14 @@ async function attachScreen(page: Page, testInfo: TestInfo, name: string) {
 // Geometry here is measured against the original 390px Figma frames. The
 // existing overflow/touch matrix still owns all three adaptive viewport widths.
 async function checkDesignGeometry(frame: Frame, scenario: string, width: number) {
+  scenario =
+    (
+      {
+        'c10-core-home-ready': 'initial-home',
+        'c10-core-players-ready': 'players-collapsed',
+        'c10-core-compare-ready': 'compare-three',
+      } as Record<string, string>
+    )[scenario] || scenario;
   const supported = ['initial-home', 'players-collapsed', 'compare-three'];
   if (!supported.includes(scenario)) return null;
   const metrics = await frame.evaluate(() => {
@@ -285,7 +318,16 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         await page.setContent(preview.html, { waitUntil: 'load' });
         await expect(page.getByText(/非微信运行时\/开发工具\/真机/)).toBeVisible();
         const frame = await nativeFrame(page);
-        if (scenario.filled) await expect(frame.locator('body')).toContainText('合成');
+        if (scenario.filled && !scenario.static && (!scenario.state || scenario.state === 'ready'))
+          await expect(frame.locator('body')).toContainText('合成');
+        for (const text of scenario.expectText || [])
+          await expect(frame.locator('body')).toContainText(text);
+        for (const text of scenario.expectAbsentText || [])
+          await expect(frame.locator('body')).not.toContainText(text);
+        for (const name of scenario.expectDisabled || [])
+          await expect(frame.getByRole('button', { name, exact: true }).first()).toBeDisabled();
+        for (const name of scenario.expectEnabled || [])
+          await expect(frame.getByRole('button', { name, exact: true }).first()).toBeEnabled();
         const layout = await measureLayout(frame);
         const designGeometry = await checkDesignGeometry(frame, scenario.name, width);
         const diagnosticPath = testInfo.outputPath('native-layout.json');
@@ -293,7 +335,15 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         fs.writeFileSync(
           diagnosticPath,
           JSON.stringify(
-            { route: scenario.route, scenario: scenario.name, width, ...layout, designGeometry },
+            {
+              route: scenario.route,
+              scenario: scenario.name,
+              state: scenario.state || (scenario.filled ? 'ready' : 'initial'),
+              figmaNode: scenario.figmaNode || null,
+              width,
+              ...layout,
+              designGeometry,
+            },
             null,
             2,
           ),
@@ -316,7 +366,7 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         expect(layout.unreadableFields, 'form controls must keep readable native text').toEqual([]);
         expect(attemptedNetwork, 'compatibility previews must remain entirely offline').toEqual([]);
 
-        if (scenario.name === 'compare-three') {
+        if (['compare-three', 'c10-core-compare-ready'].includes(scenario.name)) {
           expect(
             layout.horizontalScrollers.some(
               (region) => region.scrollWidth > region.clientWidth + 1,
@@ -334,6 +384,12 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         if (scenario.filled && layout.contentHeight > 844) {
           await frame.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
           await attachScreen(page, testInfo, 'native-bottom.png');
+          if (width === 390) {
+            await frame.evaluate(() => window.scrollTo(0, 0));
+            const fullPath = testInfo.outputPath('native-full.png');
+            await frame.locator('body').screenshot({ path: fullPath, animations: 'disabled' });
+            await testInfo.attach('native-full.png', { path: fullPath, contentType: 'image/png' });
+          }
         }
       });
     }

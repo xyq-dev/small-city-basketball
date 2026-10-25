@@ -1,11 +1,35 @@
 const ui = require('../../utils/ui');
 const sdk = require('../../utils/booking');
 const model = require('../../utils/booking-orders');
+function scheduleText(item) {
+  if (item.status === 'CONDITIONAL') return '条件满足后补齐具体时间';
+  const date = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/.exec(item.startText);
+  if (!date || !item.endText || !item.reportText) return '';
+  const day =
+    date[1] === ui.today().slice(0, 4)
+      ? Number(date[2]) + '月' + Number(date[3]) + '日'
+      : date[1] + '年' + Number(date[2]) + '月' + Number(date[3]) + '日';
+  const startDate = item.startText.slice(0, 10);
+  const end = item.endText.startsWith(startDate + ' ') ? item.endText.slice(11) : item.endText;
+  const report = item.reportText.startsWith(startDate + ' ')
+    ? item.reportText.slice(11)
+    : item.reportText;
+  return day + ' ' + date[4] + '–' + end + ' · 报到' + report;
+}
+const SINGLE_STATE_BANNERS = {
+  ACCEPTED: ['双方约定已确认', '时间地点以当前约定为准'],
+  EXPIRED: ['本场请求已到期', '原20分钟待接单保留已释放'],
+  DECLINED: ['球员已拒绝本场', '本项待接单档期已释放'],
+  CANCELLED: ['本场合作已取消', '只处理本球员本场，其他项独立保留'],
+  COMPLETED: ['服务记录已完成', '完成记录与资金状态分别展示'],
+  DISPUTED: ['等待独立处理', '本场保留相关记录与约定'],
+};
 const PROBE_ID = '00000000-0000-4000-8000-000000000000';
 Page({
   data: {
     orderId: '',
     order: null,
+    expandedId: '',
     loading: false,
     busy: false,
     loginRequired: false,
@@ -56,6 +80,7 @@ Page({
     this.pendingReviewSnapshot = null;
     this.setData({
       order: null,
+      expandedId: '',
       form: null,
       formFields: null,
       selected: null,
@@ -99,6 +124,7 @@ Page({
     this.pendingReviewSnapshot = null;
     this.setData({
       order: null,
+      expandedId: '',
       form: null,
       formFields: null,
       selected: null,
@@ -141,9 +167,37 @@ Page({
     if (token) this.loadedToken = token;
     if (!this.raw || !this.viewer || !this.loadedToken || !ui.live(this, this.loadedToken)) return;
     this.setData({
-      order: model.decorateOrder(this.raw, this.viewer, this.view, ui),
+      order: (() => {
+        const order = model.decorateOrder(this.raw, this.viewer, this.view, ui);
+        const banner =
+          order.appearances.length === 1 ? SINGLE_STATE_BANNERS[order.appearances[0].status] : null;
+        return {
+          ...order,
+          stateTitle: banner ? banner[0] : '',
+          stateHint: banner ? banner[1] : '',
+          appearances: order.appearances.map((item) => ({
+            ...item,
+            scheduleText: scheduleText(item),
+          })),
+        };
+      })(),
       pending: model.getJournal().read(this.viewer, this.orderId),
     });
+  },
+  toggleAppearance(event) {
+    if (
+      this.data.busy ||
+      this.data.pending ||
+      this.data.form ||
+      !this.raw ||
+      !this.viewer ||
+      !this.loadedToken ||
+      !ui.live(this, this.loadedToken)
+    )
+      return;
+    const id = event.currentTarget.dataset.id;
+    if (!this.data.order || !this.data.order.appearances.some((item) => item.id === id)) return;
+    this.setData({ expandedId: this.data.expandedId === id ? '' : id });
   },
   async chooseAction(event) {
     if (

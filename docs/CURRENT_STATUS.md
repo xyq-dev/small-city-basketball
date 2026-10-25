@@ -1,8 +1,10 @@
 # 当前状态
 
-## C09 小程序视觉修正（IN_PROGRESS / LOCAL_ONLY）
+当前C10：`IN_PROGRESS / LOCAL_ONLY`。21页原生视觉实现已整合；本地267原生及format/typecheck/build通过，订单上下文复查修复已入候选，最终截图与隔离CI待执行。654三宽布局场景，统一图集/清单准备中。PR16未合并，main仍64db9ba6；官方微信/真机与用户视觉签收待办。[任务](tasks/C10.md)、[交接](handoffs/C10.md)。
 
-2026-10-25 Asia/Shanghai；用户指出C08展示与原Figma稿不一致，视觉签收未通过。root已从与远端main64db9ba相同tree的新工作树开始修复首页、球员列表、比较、预约与共享排版；新结果以[C09任务](tasks/C09.md)及[交接](handoffs/C09.md)为准。C08代码/布局检查保留其原范围，不代表设计视觉一致或官方微信运行。当前未交付新截图或发布。
+## C09 小程序视觉修正（REVIEW / BRANCH_ONLY）
+
+2026-10-25 Asia/Shanghai；用户指出C08展示与原Figma稿不一致，视觉签收未通过。[PR16](https://github.com/xyq-dev/small-city-basketball/pull/16) source21994add（本地09d0780，同tree7bae5137）已修正首页、球员列表、比较、预约与共享排版；232VM、96新兼容布局+14Web/实际PNG/JSON守卫及定向独立复核通过。6张新截图及原稿对照见[C09证据](evidence/C09/README.md)，单独保存在证据分支evidence/c09-mini-ui-fidelity，应用代码与候选相同。完整CI40117324334最后读取仍in_progress（admin及隔离production成功、api未结束）；未合并、未发布。C08功能/几何检查不代表视觉签收，本轮也不代表微信工具/真机或全部21页/99状态逐像素验收；[任务](tasks/C09.md)、[交接](handoffs/C09.md)继续记录。
 
 ## C08 原生小程序页面实现（DONE / MAIN；微信环境验收待办）
 

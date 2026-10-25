@@ -1,7 +1,7 @@
 <view class="page has-actions compare-page">
-  <view wx:if="{{loading}}" class="card empty">正在核对球员资料与授权统计…</view>
+  <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在核对球员资料与授权统计…</view><view class="muted">完成读取后再比较当前可见的报价和记录。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
   <view wx:if="{{loginRequired}}" class="card empty"><view class="subtitle">登录后继续比较</view><button class="primary" bindtap="login">登录并返回对比</button></view>
-  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
+  <view wx:if="{{error}}" class="card state-panel" role="alert"><view class="state-label">读取失败</view><view class="subtitle">暂时无法读取比较资料</view><view class="notice danger">{{error}}</view><button class="primary" bindtap="load" disabled="{{loading}}">重新读取比较资料</button><button class="quiet" bindtap="market">返回球员广场</button></view>
   <view wx:if="{{notice}}" class="notice warning">{{notice}}</view>
   <view wx:if="{{statisticsError}}" class="notice warning">统计读取失败：{{statisticsError}}。已停止展示旧统计，可刷新重试；不会用0或演示数据填补。</view>
   <block wx:if="{{columns.length >= 2}}">
@@ -41,6 +41,6 @@
     </view>
     <button class="secondary" bindtap="load" disabled="{{loading}}">刷新对比资料与统计</button>
   </block>
-  <view wx:if="{{!loading && columns.length < 2 && !loginRequired}}" class="card empty"><view class="subtitle">继续选择合适的球员</view><view class="muted">停用或不可查看的档案不能继续比较。当前目录最多最新200位已审核球员。</view><button class="secondary" bindtap="market">返回球员广场</button></view>
+  <view wx:if="{{!loading && columns.length < 2 && !loginRequired && !error}}" class="card empty"><view class="subtitle">继续选择合适的球员</view><view class="muted">停用或不可查看的档案不能继续比较。当前目录最多最新200位已审核球员。</view><button class="secondary" bindtap="market">返回球员广场</button></view>
   <view class="action-bar"><button class="primary" data-id="{{firstId}}" bindtap="book" disabled="{{loading || !firstId}}">{{firstId ? '选择' + firstName + '并预约' : '请选择至少2位球员'}}</button><button class="quiet" bindtap="market">继续找球员</button></view>
 </view>

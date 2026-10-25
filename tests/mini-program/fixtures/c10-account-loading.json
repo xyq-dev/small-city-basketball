@@ -1,0 +1,27 @@
+{
+  "name": "c10-account-loading",
+  "route": "pages/account/index",
+  "state": "loading",
+  "figmaNode": "30:2358",
+  "referenceKind": "derived",
+  "expectText": ["正在核对当前账号"],
+  "primary": false,
+  "data": {
+    "loading": true,
+    "busy": false,
+    "user": null,
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": false,
+    "registerMode": false,
+    "consent": false,
+    "securityOpen": false,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "",
+    "hasReturn": false,
+    "platformOperator": false
+  }
+}

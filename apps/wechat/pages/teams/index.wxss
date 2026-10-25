@@ -1,13 +1,13 @@
-.team-avatar {
-  width: 76rpx;
-  height: 76rpx;
-  border-radius: 50%;
-  background: #eaf0f7;
-  color: #132c49;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  font-size: 12px;
-  white-space: nowrap;
-}
+.teams-page { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+.team-panel { padding:24px; border:1px solid #e8edf2; border-radius:12px; margin-bottom:20px; }
+.team-overview { display:flex; flex-direction:column; gap:16px; }
+.team-overview .subtitle { margin:0; }
+.team-identity { display:flex; align-items:center; gap:12px; color:#132c49; font-weight:500; }
+.team-avatar { width:40px; height:40px; border-radius:50%; background:#eaf0f7; color:#132c49; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:14px; line-height:24px; }
+.team-access { margin-bottom:20px; }
+.feedback-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
+.team-action { margin-bottom:20px; }
+.state-panel .muted { margin:8px 0 16px; }
+.skeleton-line { height:12px; border-radius:4px; background:#eaf0f7; margin-top:8px; }
+.skeleton-line.short { width:78%; }
+.create-team .field-label { margin-top:16px; }

@@ -1,0 +1,8 @@
+{
+  "name": "c10-team-teams-empty",
+  "route": "pages/teams/index",
+  "state": "empty",
+  "figmaNode": "11:8",
+  "expectText": ["暂无可管理球队"],
+  "data": {}
+}

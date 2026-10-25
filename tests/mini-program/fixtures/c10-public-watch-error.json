@@ -1,0 +1,12 @@
+{
+  "name": "c10-public-watch-error",
+  "route": "pages/watch/index",
+  "state": "error",
+  "figmaNode": "11:54",
+  "expectText": ["请核对观赛入口", "请输入主办方提供的有效观赛链接或43位公开编号。"],
+  "data": {
+    "value": "合成无效观赛链接",
+    "error": "请输入主办方提供的有效观赛链接或43位公开编号。"
+  },
+  "referenceKind": "derived"
+}

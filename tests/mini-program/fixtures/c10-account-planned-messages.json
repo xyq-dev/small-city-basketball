@@ -1,0 +1,15 @@
+{
+  "name": "c10-account-planned-messages",
+  "route": "pages/planned/index",
+  "state": "planned",
+  "figmaNode": "30:2659",
+  "referenceKind": "derived",
+  "expectText": ["未来预约动态", "当前查看方式"],
+  "static": true,
+  "primary": false,
+  "data": {
+    "selected": "messages",
+    "optionsOpen": false,
+    "refundProgress": false
+  }
+}

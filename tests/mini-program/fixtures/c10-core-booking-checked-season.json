@@ -1,0 +1,192 @@
+{
+  "name": "c10-core-booking-checked-season",
+  "route": "pages/booking-create/index",
+  "state": "review",
+  "figmaNode": "42:725",
+  "syntheticData": true,
+  "expectText": ["确认本次预约与费用", "请逐项核对"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "ready": true,
+    "loginRequired": false,
+    "error": "",
+    "notice": "",
+    "scope": "SEASON",
+    "scopeOptions": [
+      {
+        "value": "SINGLE",
+        "label": "单场预约",
+        "hint": "一场明确的比赛"
+      },
+      {
+        "value": "MULTI",
+        "label": "自选多场",
+        "hint": "逐场安排、逐场确认"
+      },
+      {
+        "value": "TOURNAMENT",
+        "label": "整届赛事",
+        "hint": "确定赛程与晋级意向分开"
+      },
+      {
+        "value": "SEASON",
+        "label": "赛季合作",
+        "hint": "周期内逐场约定，不自动续费"
+      },
+      {
+        "value": "TIME_BLOCK",
+        "label": "按时段预约",
+        "hint": "明确服务时间与范围"
+      }
+    ],
+    "scopeIndex": 3,
+    "teams": [
+      {
+        "id": "90000000-0000-4000-8000-000000000100",
+        "orgId": "90000000-0000-4000-8000-000000000200",
+        "name": "合成石鼓篮球队"
+      }
+    ],
+    "teamIndex": 0,
+    "teamName": "合成石鼓篮球队",
+    "teamId": "90000000-0000-4000-8000-000000000100",
+    "events": [
+      {
+        "id": "",
+        "name": "其他比赛 / 手工填写"
+      }
+    ],
+    "eventIndex": 0,
+    "eventId": "",
+    "eventName": "合成青锋杯 · 小组赛与晋级意向",
+    "players": [
+      {
+        "id": "90000000-0000-4000-8000-000000000001",
+        "label": "合成林越 · 控球后卫",
+        "price": "¥300.00",
+        "total": "¥330.00",
+        "selected": true
+      },
+      {
+        "id": "90000000-0000-4000-8000-000000000002",
+        "label": "合成陈凯 · 得分后卫",
+        "price": "¥300.00",
+        "total": "¥410.00",
+        "selected": true
+      }
+    ],
+    "selectedCount": 2,
+    "slots": [
+      {
+        "label": "合成青锋杯小组赛第1场",
+        "venue": "合成石鼓镇体育馆一号篮球场",
+        "profileIds": [
+          "90000000-0000-4000-8000-000000000001",
+          "90000000-0000-4000-8000-000000000002"
+        ],
+        "conditional": false,
+        "conditionText": "",
+        "reportDate": "2026-10-28",
+        "reportTime": "19:00",
+        "startDate": "2026-10-28",
+        "startTime": "19:30",
+        "endDate": "2026-10-28",
+        "endTime": "21:00",
+        "matchId": "",
+        "number": 1,
+        "key": 0,
+        "playerChoices": [
+          {
+            "id": "90000000-0000-4000-8000-000000000001",
+            "label": "合成林越 · 控球后卫",
+            "price": "¥300.00",
+            "total": "¥330.00",
+            "selected": true
+          },
+          {
+            "id": "90000000-0000-4000-8000-000000000002",
+            "label": "合成陈凯 · 得分后卫",
+            "price": "¥300.00",
+            "total": "¥410.00",
+            "selected": true
+          }
+        ]
+      },
+      {
+        "label": "合成青锋杯半决赛意向",
+        "venue": "合成体育馆，晋级后确认具体场地",
+        "profileIds": ["90000000-0000-4000-8000-000000000001"],
+        "conditional": true,
+        "conditionText": "仅在本队晋级后补齐实际时间地点；此意向不预占球员档期。",
+        "reportDate": "2026-11-01",
+        "reportTime": "19:00",
+        "startDate": "2026-11-01",
+        "startTime": "19:30",
+        "endDate": "2026-11-01",
+        "endTime": "21:00",
+        "matchId": "",
+        "number": 2,
+        "key": 1,
+        "playerChoices": [
+          {
+            "id": "90000000-0000-4000-8000-000000000001",
+            "label": "合成林越 · 控球后卫",
+            "price": "¥300.00",
+            "total": "¥330.00",
+            "selected": true
+          },
+          {
+            "id": "90000000-0000-4000-8000-000000000002",
+            "label": "合成陈凯 · 得分后卫",
+            "price": "¥300.00",
+            "total": "¥410.00",
+            "selected": false
+          }
+        ]
+      }
+    ],
+    "matchChoices": [
+      {
+        "id": "",
+        "label": "选择本队正式比赛"
+      }
+    ],
+    "matchIndex": 0,
+    "periodStart": "2026-10-01",
+    "periodEnd": "2026-12-31",
+    "review": true,
+    "consent": true,
+    "quote": {
+      "service": "¥600.00",
+      "platform": "¥60.00",
+      "travel": "¥80.00",
+      "accommodation": "¥0.00",
+      "confirmed": "¥740.00",
+      "conditional": "¥330.00",
+      "count": 3,
+      "fixedCount": 2,
+      "conditionalCount": 1
+    },
+    "pending": false,
+    "invalidRecovery": false,
+    "storageUnavailable": false,
+    "recoveryChecked": false,
+    "recoveryEventName": "",
+    "recoveryScope": "",
+    "recoveryCount": 0,
+    "recoveryCommand": "",
+    "recoverySlots": [],
+    "canRecover": false,
+    "originalResolvedId": "",
+    "originalRejected": "",
+    "canRequote": false,
+    "success": false,
+    "successOrderId": "",
+    "noTeams": false,
+    "noPlayers": false,
+    "quoteInvalid": false,
+    "detailsOpen": false
+  },
+  "expectEnabled": ["提交 · ¥740.00确定报价"]
+}

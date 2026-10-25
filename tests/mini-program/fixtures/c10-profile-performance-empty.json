@@ -1,0 +1,22 @@
+{
+  "name": "c10-profile-performance-empty",
+  "route": "pages/performance/index",
+  "state": "empty",
+  "figmaNode": "30:1938",
+  "expectText": ["本页暂无符合条件的记录", "较早有效授权"],
+  "syntheticData": true,
+  "data": {
+    "authorized": true,
+    "loading": false,
+    "loginRequired": false,
+    "ownOnly": true,
+    "ownProfileId": "c10-profile-one",
+    "filter": "ALL",
+    "links": [],
+    "linksHasMore": false,
+    "nextCursor": null,
+    "disclosureNotice": "合成示例：仅公开本人有限授权比赛数据，不公开私有凭据。",
+    "manageableEvents": [],
+    "pending": null
+  }
+}

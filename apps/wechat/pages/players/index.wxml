@@ -8,7 +8,7 @@
     <view class="muted">球员目录使用当前应用账号读取，不会用演示资料替代。</view>
     <button class="primary" bindtap="login">登录并返回找球员</button>
   </view>
-  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
+  <view wx:if="{{error}}" class="card state-panel" role="alert"><view class="state-label">读取失败</view><view class="subtitle">暂时无法读取球员资料</view><view class="notice danger">{{error}}</view><button class="primary" bindtap="load" disabled="{{loading}}">重新读取球员资料</button></view>
   <block wx:if="{{!loginRequired}}">
     <view class="filter-summary" aria-label="当前已应用的筛选条件"><view class="filter-chip active">{{filterSummary.position}}</view><view class="filter-chip">{{filterSummary.price}}</view><view class="filter-chip">{{filterSummary.date}}</view></view>
     <button class="secondary filter-toggle" bindtap="filtersToggle">{{filtersOpen ? '收起筛选' : '筛选位置、价格与档期'}}</button>
@@ -34,7 +34,7 @@
     </view>
     <view wx:if="{{selectionNotice}}" class="notice warning">{{selectionNotice}}</view>
     <view wx:if="{{statisticsError}}" class="notice warning">统计暂时无法读取：{{statisticsError}}。旧统计已清除，可刷新后重试。</view>
-    <view wx:if="{{loading}}" class="card empty">正在读取球员与授权统计…</view>
+    <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在读取球员与授权统计…</view><view class="muted">读取完成前不展示旧资料或旧统计。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
     <view wx:if="{{!loading && !cards.length && !error}}" class="card empty">
       <view class="subtitle">暂无匹配球员</view><view class="muted">可以放宽日期、位置或价格，再找一找。</view>
       <button class="secondary" bindtap="filtersToggle">调整筛选条件</button>

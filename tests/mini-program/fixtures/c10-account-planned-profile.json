@@ -1,0 +1,15 @@
+{
+  "name": "c10-account-planned-profile",
+  "route": "pages/planned/index",
+  "state": "planned",
+  "figmaNode": "30:2693",
+  "referenceKind": "derived",
+  "expectText": ["长期球员档案 · 规划", "专业数据边界"],
+  "static": true,
+  "primary": false,
+  "data": {
+    "selected": "profile",
+    "optionsOpen": false,
+    "refundProgress": false
+  }
+}

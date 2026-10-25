@@ -1,0 +1,95 @@
+{
+  "name": "c10-public-match-confirmed",
+  "route": "pages/match/index",
+  "state": "ready",
+  "figmaNode": "9:374",
+  "expectText": ["正式赛果", "已独立确认", "分节比分"],
+  "data": {
+    "snapshot": {
+      "publicMatchId": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+      "roundNo": 3,
+      "positionNo": 1,
+      "home": {
+        "teamKey": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+        "teamName": "合成青锋"
+      },
+      "away": {
+        "teamKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "teamName": "合成长青"
+      },
+      "courtName": "合成公园1号场",
+      "startsAt": "2026-10-25T11:30:00Z",
+      "endsAt": "2026-10-25T13:00:00Z",
+      "startLabel": "10月25日 19:30",
+      "status": "FINISHED",
+      "statusLabel": "比赛已结束",
+      "version": 1,
+      "score": {
+        "home": 68,
+        "away": 62
+      },
+      "resultStatus": "CONFIRMED",
+      "resultLabel": "赛果已独立确认",
+      "publicEventId": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "eventName": "合成城市联赛2026",
+      "clock": {
+        "period": 4,
+        "remainingMs": 156000,
+        "running": false,
+        "anchorServerTime": "2026-10-25T12:00:00Z"
+      },
+      "serverTime": "2026-10-25T12:00:00Z",
+      "periods": [
+        {
+          "period": 1,
+          "home": {
+            "score": 18
+          },
+          "away": {
+            "score": 16
+          }
+        },
+        {
+          "period": 2,
+          "home": {
+            "score": 20
+          },
+          "away": {
+            "score": 14
+          }
+        },
+        {
+          "period": 3,
+          "home": {
+            "score": 14
+          },
+          "away": {
+            "score": 16
+          }
+        },
+        {
+          "period": 4,
+          "home": {
+            "score": 16
+          },
+          "away": {
+            "score": 16
+          }
+        }
+      ],
+      "collected": {
+        "teamScore": true,
+        "teamFouls": false,
+        "teamTimeouts": false,
+        "playerStatistics": false
+      }
+    },
+    "clock": "02:36",
+    "media": [],
+    "error": "",
+    "stale": false,
+    "loading": false,
+    "tab": "info",
+    "unavailable": false
+  }
+}

@@ -1,44 +1,40 @@
-<view class="page has-actions">
-  <view class="hero">
-    <view class="title">每位球员，每一场都清楚</view>
-    <view>查看当前身份有权处理的合作记录</view>
-  </view>
-  <view class="tabs booking-tabs">
-    <button class="chip {{view === 'sent' ? 'active' : ''}}" data-view="sent" bindtap="changeView">我方发出</button>
-    <button class="chip {{view === 'received' ? 'active' : ''}}" data-view="received" bindtap="changeView">本人收到</button>
-  </view>
-  <picker mode="selector" range="{{statusLabels}}" value="{{statusIndex}}" bindchange="changeStatus">
-    <view class="field row-between"><text>筛选状态</text><text>{{statusLabels[statusIndex]}}　⌄</text></view>
-  </picker>
-  <view wx:if="{{error}}" class="notice danger">{{error}}</view>
-  <view wx:if="{{loginRequired}}" class="card empty">
-    <view class="subtitle">登录后查看本人合作</view>
-    <view class="muted">不显示其他账号或合成预约作为替代。</view>
+<view class="page has-actions bookings-page">
+  <scroll-view scroll-x="true" enable-flex="true" class="status-rail">
+    <view class="status-tabs">
+      <button wx:for="{{quickStatuses}}" wx:key="value" class="status-tab {{status === item.value ? 'selected' : ''}}" data-index="{{item.index}}" bindtap="statusTab" disabled="{{loading}}">{{item.label}}</button>
+      <picker mode="selector" range="{{statusLabels}}" value="{{statusIndex}}" bindchange="changeStatus" disabled="{{loading}}"><view class="status-more">更多⌄</view></picker>
+    </view>
+  </scroll-view>
+  <view wx:if="{{statusIndex > 0}}" class="active-filter small muted">当前筛选：{{statusLabels[statusIndex]}}</view>
+  <view wx:if="{{view === 'received'}}" class="notice role-notice"><view class="notice-title">以本人球员身份处理</view><view class="small">只能接受或拒绝自己的逐场安排，不代其他球员确认。</view></view>
+  <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">预约读取失败</view><view class="small">{{error}}</view><view class="small">保留当前筛选，可刷新后重试。</view></view>
+  <view wx:if="{{loginRequired}}" class="card empty state-card">
+    <view class="subtitle">登录后查看本人合作</view><view class="muted">当前身份核对后，才可读取有权查看的预约。</view>
     <button class="primary" bindtap="login">登录并返回预约</button>
   </view>
-  <view wx:elif="{{loading}}" class="card empty">正在读取最新预约…</view>
-  <view wx:elif="{{!rows.length}}" class="card empty">
-    <view class="subtitle">暂无符合条件的合作记录</view>
-    <view class="muted">可切换发出/收到或调整状态筛选。</view>
-  </view>
-  <view wx:for="{{rows}}" wx:key="id" class="card order-card">
-    <view class="row-between"><view class="subtitle">{{item.eventName}}</view><text class="badge">{{item.statusText}}</text></view>
-    <view class="muted">{{item.teamName}} · {{item.scopeText}}</view>
-    <view class="small">{{item.playerCount}}位球员 · {{item.confirmedCount}}项确定安排 / {{item.conditionalCount}}项意向</view>
-    <view class="order-summary">
-      <view wx:for="{{item.appearances}}" wx:for-item="appearance" wx:key="id" class="row">
-        <view class="row-between"><text>{{appearance.playerName}} · {{appearance.label}}</text><text class="badge {{appearance.tone}}">{{appearance.statusText}}</text></view>
-        <view class="small muted">{{appearance.startText}}</view>
-      </view>
+  <view wx:elif="{{loading}}" class="card state-card loading-card"><view class="state-title">正在读取最新预约</view><view class="skeleton"></view><view class="skeleton short"></view><view class="small muted">正在核对当前身份与逐场状态…</view></view>
+  <view wx:elif="{{!rows.length && !error}}" class="card empty state-card"><view class="subtitle">暂无符合条件的合作记录</view><view class="muted">可切换发出/收到或调整状态筛选。</view></view>
+  <block wx:for="{{rows}}" wx:for-item="order" wx:key="id">
+    <view class="card order-context">
+      <view class="subtitle">{{order.teamName}} · {{order.eventName}}</view>
+      <view class="muted">总单包含{{order.playerCount}}位球员、{{order.itemCount}}场安排</view>
+      <view class="muted">{{order.scopeText}} · 逐人逐场查看最新结果</view>
     </view>
-    <view class="money">确定报价 {{item.confirmedText}}</view>
-    <view class="small muted">条件预计 {{item.conditionalText}} · 实收 {{item.paidText}}</view>
-    <button class="secondary" data-id="{{item.id}}" bindtap="detail">查看合作与逐场操作</button>
-  </view>
+    <view wx:for="{{order.appearances}}" wx:for-item="appearance" wx:key="id" class="card appearance-summary">
+      <view class="appearance-status {{appearance.tone}}">{{appearance.statusText}}</view>
+      <view class="subtitle">{{appearance.playerName}} · {{appearance.label}}</view>
+      <view wx:if="{{appearance.scheduleText}}" class="small">{{appearance.scheduleText}}</view>
+      <block wx:elif="{{appearance.status === 'CONDITIONAL'}}"><view class="small">条件满足后补齐具体时间</view></block>
+      <block wx:else><view class="small">{{appearance.startText}} — {{appearance.endText}}</view><view class="small muted">报到 {{appearance.reportText}}</view></block>
+      <view class="small muted">{{appearance.venue}}</view>
+      <view class="appearance-price">{{appearance.status === 'CONDITIONAL' ? '条件预计' : '报价'}} {{appearance.totalText}} · 支付未开放</view>
+    </view>
+    <button class="secondary detail-button" data-id="{{order.id}}" bindtap="detail">查看合作总单与逐场操作</button>
+    <view class="small muted order-money">确定报价 {{order.confirmedText}} · 条件预计 {{order.conditionalText}} · 实收 {{order.paidText}}</view>
+  </block>
   <view wx:if="{{hasMore}}" class="notice warning">这里只显示最新100份可见预约，更早记录未计入当前列表；可用已知订单入口读取具体合作。</view>
-  <view wx:if="{{paymentNotice}}" class="notice">{{paymentNotice}}</view>
-  <view class="action-bar">
-    <button class="primary" loading="{{loading}}" disabled="{{loading}}" bindtap="load">刷新预约状态</button>
-    <button class="quiet" bindtap="players">继续找球员</button>
-  </view>
+  <view wx:if="{{paymentNotice}}" class="notice small">{{paymentNotice}}</view>
+  <button class="secondary switch-view" data-view="{{view === 'sent' ? 'received' : 'sent'}}" bindtap="changeView" disabled="{{loading}}">{{view === 'sent' ? '切换查看本人收到的预约' : '切换查看我方发出的预约'}}</button>
+  <view class="small muted time-caption">安排时间均为北京时间。</view>
+  <view class="action-bar"><button class="primary" loading="{{loading}}" disabled="{{loading}}" bindtap="load">刷新预约状态</button><button class="quiet" bindtap="players">继续找球员</button></view>
 </view>

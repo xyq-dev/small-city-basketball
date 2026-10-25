@@ -1,0 +1,14 @@
+{
+  "name": "c10-fulfill-platform-permission",
+  "route": "pages/platform/index",
+  "state": "permission",
+  "figmaNode": "30:1535",
+  "expectText": ["当前账号没有平台运营权限"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "allowed": false,
+    "loading": false,
+    "error": "合成权限场景：当前账号没有平台运营权限。"
+  }
+}

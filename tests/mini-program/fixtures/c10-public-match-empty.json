@@ -1,0 +1,8 @@
+{
+  "name": "c10-public-match-empty",
+  "route": "pages/match/index",
+  "state": "empty",
+  "figmaNode": "11:54",
+  "expectText": ["比赛资料尚未读取"],
+  "data": {}
+}

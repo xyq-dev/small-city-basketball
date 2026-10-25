@@ -1,0 +1,27 @@
+{
+  "name": "c10-account-registration-disabled",
+  "route": "pages/account/index",
+  "state": "permission",
+  "figmaNode": "9:476",
+  "referenceKind": "derived",
+  "expectText": ["返回已有账号登录", "创建个人账号并登录"],
+  "primary": false,
+  "data": {
+    "loading": false,
+    "busy": false,
+    "user": null,
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": false,
+    "registerMode": true,
+    "consent": false,
+    "securityOpen": false,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "",
+    "hasReturn": false,
+    "platformOperator": false
+  }
+}

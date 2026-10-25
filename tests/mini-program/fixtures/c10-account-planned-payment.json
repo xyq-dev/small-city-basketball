@@ -1,0 +1,15 @@
+{
+  "name": "c10-account-planned-payment",
+  "route": "pages/planned/index",
+  "state": "planned",
+  "figmaNode": "30:2504",
+  "referenceKind": "derived",
+  "expectText": ["支付前核对", "支付暂未开放"],
+  "static": true,
+  "primary": false,
+  "data": {
+    "selected": "payment",
+    "optionsOpen": false,
+    "refundProgress": false
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "c10-profile-performance-error",
+  "route": "pages/performance/index",
+  "state": "error",
+  "figmaNode": "30:1938",
+  "expectText": ["合成数据授权读取失败", "重新读取数据授权"],
+  "syntheticData": true,
+  "data": {
+    "authorized": false,
+    "loading": false,
+    "error": "合成数据授权读取失败。"
+  }
+}

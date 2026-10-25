@@ -5,7 +5,10 @@ const destinations = {
   Account: '/pages/account/index',
 };
 Component({
-  properties: { active: { type: String, value: 'Home' } },
+  properties: {
+    active: { type: String, value: 'Home' },
+    disabled: { type: Boolean, value: false },
+  },
   data: {
     items: [
       { key: 'Home', label: '首页' },
@@ -16,8 +19,9 @@ Component({
   },
   methods: {
     go(e) {
+      if (this.properties.disabled) return;
       const key = e.currentTarget.dataset.key;
-      if (destinations[key] && key !== this.properties.active)
+      if (Object.prototype.hasOwnProperty.call(destinations, key) && key !== this.properties.active)
         wx.redirectTo({ url: destinations[key] });
     },
   },

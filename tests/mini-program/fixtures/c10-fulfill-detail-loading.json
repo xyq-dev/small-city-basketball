@@ -1,0 +1,13 @@
+{
+  "name": "c10-fulfill-detail-loading",
+  "route": "pages/booking-detail/index",
+  "state": "loading",
+  "figmaNode": "30:1114",
+  "expectText": ["正在核对最新合作记录"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "loading": true,
+    "order": null
+  }
+}

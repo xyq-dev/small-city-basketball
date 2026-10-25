@@ -1,0 +1,11 @@
+{
+  "name": "c10-team-invitation-permission",
+  "route": "pages/invitation/index",
+  "state": "permission",
+  "figmaNode": "11:54",
+  "expectText": ["当前账号无权访问"],
+  "data": {
+    "loginRequired": true,
+    "error": "合成场景：当前账号无权访问该资料，已清除原私有内容。"
+  }
+}

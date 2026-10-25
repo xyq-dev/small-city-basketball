@@ -1,6 +1,8 @@
 # 任务看板
 
-当前C09：IN_PROGRESS / LOCAL_ONLY；用户未接受C08展示视觉，按原Figma修正四个核心页面与共享样式，任务负责人root；[任务](tasks/C09.md)、[交接](handoffs/C09.md)。旧VM/几何通过不视为视觉签收，须交付本轮新渲染结果。
+当前C10：`IN_PROGRESS / LOCAL_ONLY`。21页原生视觉实现已整合；本地267原生及format/typecheck/build通过，订单上下文复查修复已入候选，最终截图与隔离CI待执行。654三宽布局场景，统一图集/清单准备中。PR16未合并，main仍64db9ba6；官方微信/真机与用户视觉签收待办。[任务](tasks/C10.md)、[交接](handoffs/C10.md)。
+
+当前C09：REVIEW / BRANCH_ONLY；用户未接受C08展示视觉，本轮已修正四个核心页面与共享样式，232VM/96新兼容布局及定向独立复核通过；[PR16](https://github.com/xyq-dev/small-city-basketball/pull/16) source21994add，完整CI40117324334仍运行，未合并。6张新图及原稿对照随证据分支evidence/c09-mini-ui-fidelity保存，用户视觉签收和微信工具/真机仍待办；[任务](tasks/C09.md)、[交接](handoffs/C09.md)、[证据](evidence/C09/README.md)。
 
 当前D02：小程序预约UI补全已完成设计交付（99业务/状态+2辅助，4组件组11变体），[导览](https://www.figma.com/design/2jAHpYjdIHqal1nXeoVqm6?node-id=30-2400)/[设计索引](design/MINI_PROGRAM_BOOKING_UI.md)/[任务](tasks/D02.md)。原生小程序实现和统一业务测试未完成；本轮只有设计/文档，无应用或生产变更。
 

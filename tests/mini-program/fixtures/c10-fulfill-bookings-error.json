@@ -1,0 +1,14 @@
+{
+  "name": "c10-fulfill-bookings-error",
+  "route": "pages/bookings/index",
+  "state": "error",
+  "figmaNode": "30:1027",
+  "expectText": ["预约读取失败"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "rows": [],
+    "loading": false,
+    "error": "合成弱网场景：本次读取未完成，请重试。"
+  }
+}

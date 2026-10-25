@@ -1,0 +1,64 @@
+{
+  "name": "c10-team-events-ready",
+  "route": "pages/registration-events/index",
+  "state": "ready",
+  "figmaNode": "9:982",
+  "expectText": ["合成城市联赛2026", "为本队报名", "报名要求"],
+  "data": {
+    "team": {
+      "id": "c1000000-0000-4000-8000-000000000001",
+      "orgId": "c1000000-0000-4000-8000-000000000002",
+      "name": "合成石鼓青锋",
+      "version": 3,
+      "members": [
+        {
+          "id": "c1000000-0000-4000-8000-000000000010",
+          "name": "合成林越"
+        },
+        {
+          "id": "c1000000-0000-4000-8000-000000000011",
+          "name": "合成陈凯"
+        },
+        {
+          "id": "c1000000-0000-4000-8000-000000000012",
+          "name": "合成周宁"
+        }
+      ],
+      "grants": [],
+      "capabilities": {
+        "canManage": true,
+        "canInvite": false
+      }
+    },
+    "events": [
+      {
+        "id": "c1000000-0000-4000-8000-000000000003",
+        "event": {
+          "id": "c1000000-0000-4000-8000-000000000003",
+          "orgId": "c1000000-0000-4000-8000-000000000002",
+          "name": "合成城市联赛2026",
+          "status": "REGISTRATION_OPEN",
+          "startDate": "2026-11-01",
+          "endDate": "2026-11-30"
+        },
+        "statusLabel": "报名开放",
+        "rules": {
+          "id": "c1000000-0000-4000-8000-000000000004",
+          "eventId": "c1000000-0000-4000-8000-000000000003",
+          "createdAt": "2026-10-25T00:00:00Z",
+          "version": 1,
+          "minPlayers": 3,
+          "maxPlayers": 12,
+          "zeroAndDoubleZeroDistinct": true,
+          "requireIdentity": false,
+          "requireInsurance": false
+        },
+        "entry": null,
+        "capabilities": {
+          "canCreateEntry": true
+        }
+      }
+    ]
+  },
+  "primary": true
+}

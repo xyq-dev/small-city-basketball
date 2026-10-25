@@ -1,0 +1,82 @@
+{
+  "name": "c10-profile-center-disabled",
+  "route": "pages/player-center/index",
+  "state": "locked",
+  "figmaNode": "34:4031",
+  "expectText": ["服务档案已停用"],
+  "syntheticData": true,
+  "data": {
+    "authorized": true,
+    "loginRequired": false,
+    "loading": false,
+    "busy": false,
+    "pending": false,
+    "pendingInFlight": false,
+    "error": "",
+    "message": "",
+    "profile": {
+      "id": "90000000-0000-4000-8000-000000000001",
+      "userId": "90000000-0000-4000-8000-000000000501",
+      "displayName": "合成林越",
+      "position": "PG",
+      "heightCm": 182,
+      "city": "高州 / 石鼓",
+      "bio": "合成布局数据：组织推进，配合团队打法。",
+      "priceFen": 30000,
+      "travelFen": 0,
+      "accommodationFen": 0,
+      "version": 1,
+      "status": "DISABLED",
+      "availability": [
+        {
+          "startAt": "2026-10-28T10:00:00.000Z",
+          "endAt": "2026-10-28T14:00:00.000Z"
+        }
+      ],
+      "reviewReason": "合成停用原因：资料需由平台复核。",
+      "statusText": "服务档案已停用",
+      "positionText": "控球后卫",
+      "priceText": "¥300.00",
+      "windowCount": 1
+    },
+    "editing": false,
+    "dirty": false,
+    "form": {
+      "displayName": "合成林越",
+      "position": "PG",
+      "heightCm": "182",
+      "city": "高州 / 石鼓",
+      "bio": "合成布局数据：组织推进，配合团队打法。",
+      "price": "300.00",
+      "travel": "0.00",
+      "accommodation": "0.00",
+      "adultConfirmed": false,
+      "availability": [
+        {
+          "key": "saved-0",
+          "startDate": "2026-10-28",
+          "startTime": "18:00",
+          "endDate": "2026-10-28",
+          "endTime": "22:00"
+        },
+        {
+          "key": "synthetic-window-2",
+          "startDate": "2026-11-01",
+          "startTime": "18:00",
+          "endDate": "2026-11-01",
+          "endTime": "22:00"
+        }
+      ]
+    },
+    "positions": ["控球后卫 PG", "得分后卫 SG", "小前锋 SF", "大前锋 PF", "中锋 C"],
+    "positionIndex": 0,
+    "quote": {
+      "service": "¥300.00",
+      "travel": "¥0.00",
+      "accommodation": "¥0.00",
+      "platform": "¥30.00",
+      "total": "¥330.00"
+    },
+    "feeText": "10%"
+  }
+}
