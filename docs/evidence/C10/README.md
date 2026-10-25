@@ -1,16 +1,48 @@
 # C10 整套原生小程序视觉验收
 
-状态：整合候选，等待本轮隔离 Chromium 截图与用户统一视觉验收。
+21页实现与兼容截图已完成，等待用户统一视觉签收。源码PR16已合并main7607c28，最终完整隔离CI40156690255三job全部SUCCESS；官方微信开发者工具/真机未验。
 
-范围是 app.json 的全部21条原生路由；17页补齐加原4页状态一致性修复。真实WXML/WXSS生成兼容预览；没有使用Figma整图代替界面。主图索引、Figma节点、原稿SHA256、直接/适配/派生区别和静态页N/A，见 [visual-catalog.json](../../../tests/mini-program/visual-catalog.json)。同目录references是对应原始设计PNG，供对照，不是本轮实现截图。
+[下载整套截图验收包](https://chatgpt.com/library?file_id=libfile_8e169efe9158819184379dccc5150f1f&account_id=personal)（当前账号文件，ZIP约27.2MB）。解压打开index.html：21页原稿与正常界面并列，其余状态按页展开；checklist.csv可填写验收意见。
 
-- 5种预约模式：单场、多场、整届、赛季、时段，均有默认未勾和已勾的条款复核。
-- 球员数据保留真实0/未统计/不可用、样本、分母和来源限制，不造篮板、助攻或评分。
-- 履约包括逐场处理、变更、取消、条件启用、争议及原编号未知结果恢复；原费用、权限、声明和在途写锁保留。
-- 观赛、球队、报名、邀请、账号与审核按已有API能力实现。缺少独立对应画板/预览接口的页面在目录标为derived；规划资金、消息和档案仍为静态未启用说明。
+- 最终源码486d5d9cf1befc06be64b955e60288bd9c38b9f3，完整tree9964b4cbee56699587af159c39d483ba2f88a5d0，apps子树f366a47dae45fbf08857d1b4c339ee0658922755。
+- [CI40156690255](https://github.com/xyq-dev/small-city-basketball/actions/runs/40156690255)：admin/API/production三job全部SUCCESS（无重试）；包内verification保留打包时点快照，此处补记最终终态。admin含512 Web+534 API源码测试、271原生、654原生布局；浏览器668通过、654重复mobile布局skip；格式、typecheck、build与证据检查通过。
+- artifact12585381105（mini-program-layouts），ZIP117643440字节，SHA256 `75fe9e9638e134db38d015520f759a40ed15d063109e29deacf1775cd3b06cfb`，已下载并校验同源head486d5d9。
+- 交付包460张实际界面PNG、21份原稿、654份三宽JSON、113份390滚动位置记录；包括全部390状态及21正常页三宽，其他320/430状态PNG留在原CI artifact，不声称包内全有。ZIP27168470字节，SHA256 `39cfc6cca387a3c7bea749b3e3eec8856ee0853ae7c58647e3c3a08b0f4c53d7`。
+- 长页按600px步长捕获844px原始viewport，保留top/bottom及中段和scrollY，不拼接、不交付iframe裁切的空白长图。全部PNG尺寸/目录链接/文件SHA检查通过，layout finding为0。
 
-截图矩阵覆盖320、390、430px。每场景保留真实native-top.png与native-layout.json；长页有bottom，390px长页另有按600px步长连续滚动的native-segment截图及原始位置JSON（不拼接），三人对比保留末列。目录将收录所有390状态及21主图三宽，完整三宽JSON随包提供。截图仅用合成数据，离线且无应用网络请求。
+原生页面全部是真实WXML/WXSS，动态示例均为合成数据，不是用Figma截图代替界面。微信引擎、原生组件、标题、安全区与真机仍需目标环境验证，用户视觉签收单列待定。详见[视觉复核](VISUAL_REVIEW.md)、[来源核验](verification.json)、[主图哈希索引](screenshots/index.json)及[逐页映射](../../../tests/mini-program/visual-catalog.json)。
 
-浏览器几何测量检查横向溢出、44px触控目标和表单字体/高度，原4页保留Figma几何断言；这些不能替代所有页面像素一致、官方微信编译、开发工具、真机或用户视觉签收。不存在的异步状态不补造，具体N/A逐页列明。没有生产部署、生产库/Migration、新外部凭据或付费资源。
+| 页面 | 本轮390截图 | Figma原稿 | 映射 |
+| --- | --- | --- | --- |
+| 预约首页 | [查看](screenshots/home-390.png) | [原稿](references/home.png) · 30:35 | adapted |
+| 观赛入口 | [查看](screenshots/watch-390.png) | [原稿](references/watch.png) · 9:58 | derived |
+| 视频入口 | [查看](screenshots/media-390.png) | [原稿](references/media.png) · 9:421 | derived |
+| 我的账号 | [查看](screenshots/account-390.png) | [原稿](references/account.png) · 30:2358 | derived |
+| 赛事观赛 | [查看](screenshots/event-390.png) | [原稿](references/event.png) · 9:58 | direct |
+| 单场比赛 | [查看](screenshots/match-390.png) | [原稿](references/match.png) · 9:155 | direct |
+| 找球员 | [查看](screenshots/players-390.png) | [原稿](references/players.png) · 30:78 | adapted |
+| 球员档案 | [查看](screenshots/player-390.png) | [原稿](references/player.png) · 30:168 | adapted |
+| 球员对比 | [查看](screenshots/compare-390.png) | [原稿](references/compare.png) · 30:333 | adapted |
+| 创建预约 | [查看](screenshots/booking-create-390.png) | [原稿](references/booking-create.png) · 30:552 | adapted |
+| 预约列表 | [查看](screenshots/bookings-390.png) | [原稿](references/bookings.png) · 30:1027 | adapted |
+| 预约与逐场履约 | [查看](screenshots/booking-detail-390.png) | [原稿](references/booking-detail.png) · 30:1114 | adapted |
+| 球员中心 | [查看](screenshots/player-center-390.png) | [原稿](references/player-center.png) · 30:1731 | adapted |
+| 数据授权 | [查看](screenshots/performance-390.png) | [原稿](references/performance.png) · 30:1938 | adapted |
+| 我的球队 | [查看](screenshots/teams-390.png) | [原稿](references/teams.png) · 9:818 | direct |
+| 球队详情 | [查看](screenshots/team-390.png) | [原稿](references/team.png) · 9:863 | adapted |
+| 赛事报名 | [查看](screenshots/registration-events-390.png) | [原稿](references/registration-events.png) · 9:982 | direct |
+| 报名与本届名单 | [查看](screenshots/entry-390.png) | [原稿](references/entry.png) · 9:1028 | adapted |
+| 接受球队邀请 | [查看](screenshots/invitation-390.png) | [原稿](references/invitation.png) · 9:1248 | derived |
+| 资金与规划 | [查看](screenshots/planned-390.png) | [原稿](references/planned.png) · 30:2471 | derived |
+| 平台处理 | [查看](screenshots/platform-390.png) | [原稿](references/platform.png) · 30:1535 | derived |
 
-本轮实际CI run、候选SHA、artifact SHA256、图片数量、完整图集和逐页验收结果在真实执行后补记；成功收集、生成HTML或本地逻辑通过不算截图通过。实现说明见 docs/implementation/C10-*.md，任务/交接见 [C10任务](../../tasks/C10.md)、[C10交接](../../handoffs/C10.md)。
+## 原稿适配与业务边界
+
+21页分别注明direct/adapted/derived；入口、邀请、平台处理、账号/规划等合并状态不宣称有一张独立画板逐像素对应。未采集篮板/助攻/评分不编造，真实0/未统计/不可用和来源分母保留；长期成员不造球衣字段，邀请无预览不造球队/角色/到期。完整费用、声明、权限、写锁和原编号恢复未简化。静态页N/A列入catalog，不虚构异步状态。资金、消息、长期档案未启用部分仍禁用，真实资金为0。
+
+开发复核覆盖21normal和代表状态；修复球队标签折行及长图空白问题后，最终候选全量重拍。19张正常390图与首轮逐字节相同；球队新三宽逐图通过；邀请仅输入框圆角16/29个像素的轻微栅格化差异。球员/履约20张中段40个相邻重叠区逐像素一致；不把局部几何/人工抽查描述为全部状态像素一致。
+
+复现打包工具位于[证据分支](https://github.com/xyq-dev/small-city-basketball/tree/evidence/c10-mini-ui-complete/scripts/package-mini-visual-acceptance.mjs)，仅做原文件整理和校验。主干交付文档/截图不修改应用逻辑；工具27项检查、语法/格式和本轮真实artifact打包已通过。没有生产部署、生产库或Migration、新凭据或付费资源。
+
+
+源码合并tree与已检候选精确相同：9964b4cbee56699587af159c39d483ba2f88a5d0。合并后main独立CI尚未完成，不将其描述为通过；此处通过指最终候选40156690255的完整三job结果。接续文档/图像提交仅改docs，不改变该apps子树。[终态核验](verification-final.json)。
