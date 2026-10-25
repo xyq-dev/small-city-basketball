@@ -1,0 +1,239 @@
+{
+  "source": "486d5d9cf1befc06be64b955e60288bd9c38b9f3",
+  "run": 40156690255,
+  "artifact": 12585381105,
+  "artifactSha256": "75fe9e9638e134db38d015520f759a40ed15d063109e29deacf1775cd3b06cfb",
+  "screenshots": [
+    {
+      "route": "pages/home/index",
+      "title": "预约首页",
+      "scenario": "c10-core-home-ready",
+      "figmaNode": "30:35",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/home-390.png",
+      "sha256": "186585d44e4a37e9901fe4e3fdbcbdf3245adb2d73e51c82b3200d92fe4054bb",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/watch/index",
+      "title": "观赛入口",
+      "scenario": "c10-public-watch-ready",
+      "figmaNode": "9:58",
+      "referenceKind": "derived",
+      "image": "docs/evidence/C10/screenshots/watch-390.png",
+      "sha256": "7828b83e1084c616ca1922dd4af42f2df82c0fb166a4287da977e387d783ad8a",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/media/index",
+      "title": "视频入口",
+      "scenario": "c10-public-media-ready",
+      "figmaNode": "9:421",
+      "referenceKind": "derived",
+      "image": "docs/evidence/C10/screenshots/media-390.png",
+      "sha256": "bfc51dd48d9cbc8ed9925c6c1dc78104614df36c84498c592e388e67367a9ae9",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/account/index",
+      "title": "我的账号",
+      "scenario": "c10-account-home",
+      "figmaNode": "30:2358",
+      "referenceKind": "derived",
+      "image": "docs/evidence/C10/screenshots/account-390.png",
+      "sha256": "43ba76fcf25ad76179020babb581fbd7a4c42e0a24445f75071a38cdb2549333",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/event/index",
+      "title": "赛事观赛",
+      "scenario": "c10-public-event-ready",
+      "figmaNode": "9:58",
+      "referenceKind": "direct",
+      "image": "docs/evidence/C10/screenshots/event-390.png",
+      "sha256": "884c6d23f03daadabe800b758b2400c34954afd424927e1866b6d143671dd7e5",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/match/index",
+      "title": "单场比赛",
+      "scenario": "c10-public-match-ready",
+      "figmaNode": "9:155",
+      "referenceKind": "direct",
+      "image": "docs/evidence/C10/screenshots/match-390.png",
+      "sha256": "b0119c2fbf5d1d9135a92a086b9eecee34a2213f168ae37fb4f63c1b4d6da2c8",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/players/index",
+      "title": "找球员",
+      "scenario": "c10-core-players-ready",
+      "figmaNode": "30:78",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/players-390.png",
+      "sha256": "c82ef1d2ca1dd9a451697b19cef437bd22f5d34e77bf4244b10c929405ca3160",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/player/index",
+      "title": "球员档案",
+      "scenario": "c10-profile-player-ready",
+      "figmaNode": "30:168",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/player-390.png",
+      "sha256": "4210d80d122be0707ac1df1a0aca93a692d8034ac183dcf01ef807ce44065e86",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/compare/index",
+      "title": "球员对比",
+      "scenario": "c10-core-compare-ready",
+      "figmaNode": "30:333",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/compare-390.png",
+      "sha256": "d07b04b88f5d8819d6cddfd5046a5d9a7b3018255dfed03c9e132dcfb7fb8312",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/booking-create/index",
+      "title": "创建预约",
+      "scenario": "c10-core-booking-ready-single",
+      "figmaNode": "30:552",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/booking-create-390.png",
+      "sha256": "ae2ec63ad09d05829ff9cd582894aaf4772e94579987ffa45da4d8590f434936",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/bookings/index",
+      "title": "预约列表",
+      "scenario": "c10-fulfill-bookings-ready",
+      "figmaNode": "30:1027",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/bookings-390.png",
+      "sha256": "187732638bbca779b2c5292823456dda24cd68b72d9d6b92680644b13ebd236d",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/booking-detail/index",
+      "title": "预约与逐场履约",
+      "scenario": "c10-fulfill-detail-ready",
+      "figmaNode": "30:1114",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/booking-detail-390.png",
+      "sha256": "22b8466e4492698235f48f2200f2054af48bc595202273cdee334ef1e79e3bed",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/player-center/index",
+      "title": "球员中心",
+      "scenario": "c10-profile-center-ready",
+      "figmaNode": "30:1731",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/player-center-390.png",
+      "sha256": "e309ffd74ac39aca95f4bd9be2ffabead06110e9c4d65bfa3e389dc6899bb9f7",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/performance/index",
+      "title": "数据授权",
+      "scenario": "c10-profile-performance-ready",
+      "figmaNode": "30:1938",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/performance-390.png",
+      "sha256": "5b2a029ae95be810e988c0105ecc116458ea7c2fedbf45bc477f7d02b43033e4",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/teams/index",
+      "title": "我的球队",
+      "scenario": "c10-team-teams-ready",
+      "figmaNode": "9:818",
+      "referenceKind": "direct",
+      "image": "docs/evidence/C10/screenshots/teams-390.png",
+      "sha256": "4f9a3910dd627dc9f8d73965c566fb47f00ac53b15e7561ecb082ceb32e977f2",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/team/index",
+      "title": "球队详情",
+      "scenario": "c10-team-team-ready",
+      "figmaNode": "9:863",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/team-390.png",
+      "sha256": "5bdf8aeb85ac5a218003cb8bfb51f418d50c23343883f8fc95af3fe98cf4ef3c",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/registration-events/index",
+      "title": "赛事报名",
+      "scenario": "c10-team-events-ready",
+      "figmaNode": "9:982",
+      "referenceKind": "direct",
+      "image": "docs/evidence/C10/screenshots/registration-events-390.png",
+      "sha256": "a25cc6d1bb8ddc1c2bcc1bfc54fd31b47f6c1b925b80ae4c27f56a6f8822da62",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/entry/index",
+      "title": "报名与本届名单",
+      "scenario": "c10-team-entry-ready",
+      "figmaNode": "9:1028",
+      "referenceKind": "adapted",
+      "image": "docs/evidence/C10/screenshots/entry-390.png",
+      "sha256": "9aac5798b9a1d399bdab52a1f6e54936568bbd3d7217f336c5d8906f3a26871b",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/invitation/index",
+      "title": "接受球队邀请",
+      "scenario": "c10-team-invitation-ready",
+      "figmaNode": "9:1248",
+      "referenceKind": "derived",
+      "image": "docs/evidence/C10/screenshots/invitation-390.png",
+      "sha256": "bbcb22853c4d4939ecb9bcbd098c8962733d7e67d6d78e86dc7792a719468480",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/planned/index",
+      "title": "资金与规划",
+      "scenario": "c10-account-planned-funds",
+      "figmaNode": "30:2471",
+      "referenceKind": "derived",
+      "image": "docs/evidence/C10/screenshots/planned-390.png",
+      "sha256": "c62a934a4068cab9cca49a3e47b486646541bfbc15dd5da9ee41605365efb71a",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "route": "pages/platform/index",
+      "title": "平台处理",
+      "scenario": "c10-fulfill-platform-ready",
+      "figmaNode": "30:1535",
+      "referenceKind": "derived",
+      "image": "docs/evidence/C10/screenshots/platform-390.png",
+      "sha256": "413251fb996807ff03862b2e3e4627c7cf303d8b1fd7f5dfe945c1ac64b25fbb",
+      "width": 390,
+      "height": 844
+    }
+  ]
+}

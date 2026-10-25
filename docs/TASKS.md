@@ -1,6 +1,6 @@
 # 任务看板
 
-当前C10：`IN_PROGRESS / LOCAL_ONLY`。21页原生视觉实现已整合；本地267原生及format/typecheck/build通过，订单上下文复查修复已入候选，最终截图与隔离CI待执行。654三宽布局场景，统一图集/清单准备中。PR16未合并，main仍64db9ba6；官方微信/真机与用户视觉签收待办。[任务](tasks/C10.md)、[交接](handoffs/C10.md)。
+当前C10：`REVIEW（21页源码/兼容截图完成） / PR16`。271原生、654三宽布局、668浏览器通过，21normal/代表状态人工复核CLEAR；460界面PNG+21原稿整包已交付准备。最终CI40156690255 admin/production SUCCESS、API运行中，源码486d5d9未合并；官方微信/真机与用户视觉签收待办。[图集/来源](evidence/C10/README.md)、[任务](tasks/C10.md)、[交接](handoffs/C10.md)。
 
 当前C09：REVIEW / BRANCH_ONLY；用户未接受C08展示视觉，本轮已修正四个核心页面与共享样式，232VM/96新兼容布局及定向独立复核通过；[PR16](https://github.com/xyq-dev/small-city-basketball/pull/16) source21994add，完整CI40117324334仍运行，未合并。6张新图及原稿对照随证据分支evidence/c09-mini-ui-fidelity保存，用户视觉签收和微信工具/真机仍待办；[任务](tasks/C09.md)、[交接](handoffs/C09.md)、[证据](evidence/C09/README.md)。
 
