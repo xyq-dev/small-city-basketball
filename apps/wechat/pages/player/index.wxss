@@ -1,7 +1,7 @@
 page { background:#f5f7fa; }
 .profile-hero { position:relative; width:100%; height:260px; overflow:hidden; background:#102d44; color:#fff; }
 .profile-hero-image { position:absolute; right:0; top:-50px; width:72%; height:auto; }
-.profile-hero-shade { position:absolute; inset:0; background:linear-gradient(90deg,rgba(7,26,42,.48),rgba(7,26,42,0) 72%); }
+.profile-hero-shade { position:absolute; inset:0; background:linear-gradient(90deg,#102d44 0%,#102d44 28%,rgba(16,45,68,.72) 32%,rgba(16,45,68,.25) 40%,rgba(16,45,68,0) 54%); }
 .profile-hero-copy { position:absolute; left:20px; bottom:48px; max-width:60%; color:#fff; font-size:14px; line-height:22px; overflow-wrap:anywhere; }
 .profile-name { margin-bottom:6px; font-size:32px; line-height:42px; font-weight:700; color:#fff; }
 .player-page { padding:0 12px calc(108px + env(safe-area-inset-bottom)); max-width:600px; }

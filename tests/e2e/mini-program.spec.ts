@@ -275,6 +275,11 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       arrangement: measure('.arrangement-summary'),
       orderCard: measure('.booking-order-card'),
       orderTabs: measure('.booking-view-tabs'),
+      orderMore: Array.from(document.querySelectorAll('.order-more')).map((button) => {
+        const range = document.createRange();
+        range.selectNodeContents(button);
+        return { text: button.textContent?.trim(), lines: range.getClientRects().length };
+      }),
       action: measure('.action-bar > .primary'),
       photographs: Array.from(
         document.querySelectorAll<HTMLImageElement>('img[src^="data:image/jpeg"]'),
@@ -360,6 +365,10 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       expect(metrics.orderCard?.x).toBe(12);
       expect(metrics.orderCard?.width).toBe(width - 24);
       expect(metrics.orderCard?.radius).toBe(12);
+      expect(metrics.orderMore.length).toBe(2);
+      expect(metrics.orderMore.every((button) => button.text === '⋯' && button.lines === 1)).toBe(
+        true,
+      );
     }
   }
   return { source: 'approved:C11', group, ...metrics };
