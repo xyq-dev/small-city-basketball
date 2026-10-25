@@ -1,0 +1,15 @@
+{
+  "name": "c10-account-planned-settlement",
+  "route": "pages/planned/index",
+  "state": "planned",
+  "figmaNode": "30:2624",
+  "referenceKind": "derived",
+  "expectText": ["未来结算应逐项展示", "结算功能筹备中"],
+  "static": true,
+  "primary": false,
+  "data": {
+    "selected": "settlement",
+    "optionsOpen": false,
+    "refundProgress": false
+  }
+}

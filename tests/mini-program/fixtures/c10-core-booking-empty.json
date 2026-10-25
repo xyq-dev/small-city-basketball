@@ -1,0 +1,136 @@
+{
+  "name": "c10-core-booking-empty",
+  "route": "pages/booking-create/index",
+  "state": "empty",
+  "figmaNode": "30:427",
+  "syntheticData": true,
+  "expectText": ["暂无可预约球员"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "ready": true,
+    "loginRequired": false,
+    "error": "",
+    "notice": "",
+    "scope": "SINGLE",
+    "scopeOptions": [
+      {
+        "value": "SINGLE",
+        "label": "单场预约",
+        "hint": "一场明确的比赛"
+      },
+      {
+        "value": "MULTI",
+        "label": "自选多场",
+        "hint": "逐场安排、逐场确认"
+      },
+      {
+        "value": "TOURNAMENT",
+        "label": "整届赛事",
+        "hint": "确定赛程与晋级意向分开"
+      },
+      {
+        "value": "SEASON",
+        "label": "赛季合作",
+        "hint": "周期内逐场约定，不自动续费"
+      },
+      {
+        "value": "TIME_BLOCK",
+        "label": "按时段预约",
+        "hint": "明确服务时间与范围"
+      }
+    ],
+    "scopeIndex": 0,
+    "teams": [
+      {
+        "id": "90000000-0000-4000-8000-000000000100",
+        "orgId": "90000000-0000-4000-8000-000000000200",
+        "name": "合成石鼓篮球队"
+      }
+    ],
+    "teamIndex": 0,
+    "teamName": "合成石鼓篮球队",
+    "teamId": "90000000-0000-4000-8000-000000000100",
+    "events": [
+      {
+        "id": "",
+        "name": "其他比赛 / 手工填写"
+      }
+    ],
+    "eventIndex": 0,
+    "eventId": "",
+    "eventName": "",
+    "players": [],
+    "selectedCount": 0,
+    "slots": [
+      {
+        "label": "",
+        "venue": "",
+        "profileIds": [],
+        "conditional": false,
+        "conditionText": "",
+        "reportDate": "2026-10-28",
+        "reportTime": "19:00",
+        "startDate": "2026-10-28",
+        "startTime": "19:30",
+        "endDate": "2026-10-28",
+        "endTime": "21:00",
+        "matchId": "",
+        "number": 1,
+        "key": 0,
+        "playerChoices": []
+      }
+    ],
+    "matchChoices": [
+      {
+        "id": "",
+        "label": "选择本队正式比赛"
+      }
+    ],
+    "matchIndex": 0,
+    "periodStart": "2026-10-28",
+    "periodEnd": "2026-10-28",
+    "review": false,
+    "detailsOpen": true,
+    "consent": false,
+    "quote": {
+      "service": "¥0.00",
+      "platform": "¥0.00",
+      "travel": "¥0.00",
+      "accommodation": "¥0.00",
+      "confirmed": "¥0.00",
+      "conditional": "¥0.00",
+      "count": 0,
+      "fixedCount": 0,
+      "conditionalCount": 0
+    },
+    "pending": false,
+    "invalidRecovery": false,
+    "storageUnavailable": false,
+    "storageReadBlocked": false,
+    "recoveryChecked": false,
+    "recoveryEventName": "",
+    "recoveryScope": "",
+    "recoveryCount": 0,
+    "recoveryCommand": "",
+    "recoverySlots": [],
+    "canRecover": false,
+    "originalResolvedId": "",
+    "originalRejected": "",
+    "canRequote": false,
+    "success": false,
+    "successOrderId": "",
+    "noTeams": false,
+    "noPlayers": true,
+    "quoteInvalid": false
+  },
+  "expectAbsentText": [
+    "合成林越",
+    "合成陈凯",
+    "确定报价合计",
+    "下一步 · 核对费用",
+    "请先核对并勾选声明"
+  ],
+  "expectDisabled": [],
+  "expectEnabled": ["重新读取资料", "返回球员广场"]
+}

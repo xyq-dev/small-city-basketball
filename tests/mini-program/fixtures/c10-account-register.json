@@ -1,0 +1,28 @@
+{
+  "name": "c10-account-register",
+  "route": "pages/account/index",
+  "state": "review",
+  "figmaNode": "9:476",
+  "referenceKind": "derived",
+  "expectText": ["创建个人账号", "显示名称", "创建个人账号并登录"],
+  "primary": false,
+  "data": {
+    "loading": false,
+    "busy": false,
+    "user": null,
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": true,
+    "registerMode": true,
+    "consent": false,
+    "securityOpen": false,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "",
+    "hasReturn": false,
+    "platformOperator": false,
+    "displayName": "合成新参与者"
+  }
+}

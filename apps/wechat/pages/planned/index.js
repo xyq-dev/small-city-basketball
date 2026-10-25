@@ -2,6 +2,8 @@ const ui = require('../../utils/ui');
 Page({
   data: {
     selected: 'funds',
+    optionsOpen: false,
+    refundProgress: false,
     options: [
       { key: 'funds', label: '当前费用与资金' },
       { key: 'payment', label: '支付确认' },
@@ -17,7 +19,14 @@ Page({
   },
   select(e) {
     const key = e.currentTarget.dataset.key;
-    if (this.data.options.some((v) => v.key === key)) this.setData({ selected: key });
+    if (this.data.options.some((v) => v.key === key))
+      this.setData({ selected: key, optionsOpen: false, refundProgress: false });
+  },
+  toggleOptions() {
+    this.setData({ optionsOpen: !this.data.optionsOpen });
+  },
+  showRefundProgress() {
+    if (this.data.selected === 'refund') this.setData({ refundProgress: true });
   },
   go(e) {
     ui.open(e.currentTarget.dataset.page);

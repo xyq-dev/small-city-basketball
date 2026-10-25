@@ -1,0 +1,24 @@
+{
+  "name": "c10-core-compare-error",
+  "route": "pages/compare/index",
+  "state": "error",
+  "figmaNode": "11:36",
+  "syntheticData": true,
+  "expectText": ["重新读取比较资料"],
+  "expectAbsentText": ["继续选择合适的球员"],
+  "data": {
+    "profiles": [],
+    "labels": [],
+    "columns": [],
+    "selectedCount": 0,
+    "firstId": "",
+    "firstName": "",
+    "columnsWidth": "375px",
+    "tableHeight": "456px",
+    "loading": false,
+    "loginRequired": false,
+    "error": "合成场景：比较资料读取失败。",
+    "notice": "",
+    "statisticsError": ""
+  }
+}

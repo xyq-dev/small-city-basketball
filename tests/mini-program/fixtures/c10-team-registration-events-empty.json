@@ -1,0 +1,8 @@
+{
+  "name": "c10-team-registration-events-empty",
+  "route": "pages/registration-events/index",
+  "state": "empty",
+  "figmaNode": "11:8",
+  "expectText": ["暂无可报名赛事"],
+  "data": {}
+}

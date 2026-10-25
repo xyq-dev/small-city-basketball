@@ -1,0 +1,10 @@
+{
+  "name": "c10-team-team-loading",
+  "route": "pages/team/index",
+  "state": "loading",
+  "figmaNode": "11:36",
+  "expectText": ["正在读取"],
+  "data": {
+    "loading": true
+  }
+}

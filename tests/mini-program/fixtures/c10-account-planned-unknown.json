@@ -1,0 +1,15 @@
+{
+  "name": "c10-account-planned-unknown",
+  "route": "pages/planned/index",
+  "state": "planned",
+  "figmaNode": "30:2534",
+  "referenceKind": "derived",
+  "expectText": ["先核对交易结果", "渠道查单暂未开放"],
+  "static": true,
+  "primary": false,
+  "data": {
+    "selected": "unknown",
+    "optionsOpen": false,
+    "refundProgress": false
+  }
+}

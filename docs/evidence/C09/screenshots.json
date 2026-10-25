@@ -1,0 +1,53 @@
+{
+  "run": 40117324334,
+  "artifact": 12569556719,
+  "source": "21994add691918a30774322e48e2e306e80ddbc6",
+  "tree": "7bae5137c714721c9515117472f4e2a99e12051c",
+  "archiveSha256": "9e482bc33038c80838860f96e501a85b8da39b6a733a12bbae7df8f5d1a38f95",
+  "compatibilityOnly": true,
+  "syntheticData": true,
+  "images": [
+    {
+      "scenario": "initial-home",
+      "width": 390,
+      "file": "home-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--618ee-或真机验收）-390px-·-initial-home-desktop/native-top.png",
+      "sha256": "186585d44e4a37e9901fe4e3fdbcbdf3245adb2d73e51c82b3200d92fe4054bb"
+    },
+    {
+      "scenario": "compare-three",
+      "width": 390,
+      "file": "compare-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--881a8-真机验收）-390px-·-compare-three-desktop/native-top.png",
+      "sha256": "d07b04b88f5d8819d6cddfd5046a5d9a7b3018255dfed03c9e132dcfb7fb8312"
+    },
+    {
+      "scenario": "players-collapsed",
+      "width": 390,
+      "file": "players-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--95b20-）-390px-·-players-collapsed-desktop/native-top.png",
+      "sha256": "c82ef1d2ca1dd9a451697b19cef437bd22f5d34e77bf4244b10c929405ca3160"
+    },
+    {
+      "scenario": "booking-review-tournament",
+      "width": 390,
+      "file": "booking-review-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--ad380-·-booking-review-tournament-desktop/native-top.png",
+      "sha256": "344c8340b6bd67c5162c4d687cc94dd62b533d8cdb5b6cc6c7007b4e558d1a1a"
+    },
+    {
+      "scenario": "booking-create-tournament",
+      "width": 390,
+      "file": "booking-create-390.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--b8888-·-booking-create-tournament-desktop/native-top.png",
+      "sha256": "3b2753ee1954fe641c077e1bcca8d56815346415c15c1e02dae49359edfa498a"
+    },
+    {
+      "scenario": "compare-three",
+      "width": 320,
+      "file": "compare-320.png",
+      "archivePath": "mini-program-原生-WXML-WXSS--bf364-真机验收）-320px-·-compare-three-desktop/native-top.png",
+      "sha256": "d3ec7902ac9be4cc4a6ed14552a99cf6d83956c46bfe3161c6455f4b6a23ccfe"
+    }
+  ]
+}

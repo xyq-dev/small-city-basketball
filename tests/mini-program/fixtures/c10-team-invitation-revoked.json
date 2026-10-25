@@ -1,0 +1,16 @@
+{
+  "name": "c10-team-invitation-revoked",
+  "route": "pages/invitation/index",
+  "state": "permission",
+  "figmaNode": "11:54",
+  "expectText": ["已撤销或到期", "接受球队授权"],
+  "data": {
+    "user": {
+      "id": "c1000000-0000-4000-8000-000000000040",
+      "displayName": "合成领队",
+      "email": "team-manager@example.invalid"
+    },
+    "error": "此合成邀请已撤销或到期，不能接受授权。",
+    "consent": false
+  }
+}

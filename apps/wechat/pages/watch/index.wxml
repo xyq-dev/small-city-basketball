@@ -1,1 +1,8 @@
-<view class="page watch-page"><view class="hero"><view class="title">小城市，也有大主场</view><view class="muted">通过主办方授权入口，进入你的球赛主场。</view></view><view class="card"><view class="subtitle">打开一届赛事</view><view class="field-label">主办方观赛链接或公开编号</view><input class="field" value="{{value}}" bindinput="input" placeholder="粘贴已获授权的观赛链接" maxlength="300"/><view wx:if="{{error}}" class="error">{{error}}</view><button class="primary" bindtap="open">打开观赛入口</button><view class="muted">只展示明确公开且授权有效的赛事。撤销后停止展示，不列出私有赛事目录。</view></view></view><scb-nav active="Events"/>
+<view class="page watch-page">
+  <view class="watch-intro"><view class="title">小城市，也有大主场</view><view class="watch-copy">从主办方的公开观赛入口，进入你的球赛主场。</view></view>
+  <view class="watch-panel"><view class="subtitle">打开一届赛事</view><view class="field-label">主办方观赛链接或公开编号</view><input class="field" value="{{value}}" bindinput="input" placeholder="粘贴已获授权的观赛链接" maxlength="300"/><view wx:if="{{error}}" class="notice warning watch-error"><view class="watch-strong">请核对观赛入口</view><view class="small">{{error}}</view></view><view class="muted">仅展示明确公开、授权仍有效的赛事。主办方撤销授权后停止展示。</view></view>
+  <button class="primary" bindtap="open">打开观赛入口</button>
+  <view class="watch-panel watch-guide"><view class="subtitle">你可以查看</view><view class="guide-row"><text>•</text><view><view class="watch-strong">正式赛程与比赛详情</view><view class="muted">核对时间、场地、对阵及当前有效比分</view></view></view><view class="guide-row"><text>•</text><view><view class="watch-strong">排名、晋级与已发布媒体</view><view class="muted">赛果以独立确认记录为准，媒体由主办方明确发布</view></view></view></view>
+  <view class="notice watch-note"><view class="watch-strong">使用主办方授权入口</view><view class="small">这里不列出私有赛事目录，不根据球队名称猜测观赛编号。</view></view>
+</view>
+<scb-nav active="Events"/>

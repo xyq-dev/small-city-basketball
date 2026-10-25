@@ -1,0 +1,14 @@
+{
+  "name": "c10-fulfill-bookings-permission",
+  "route": "pages/bookings/index",
+  "state": "permission",
+  "figmaNode": "30:1072",
+  "expectText": ["登录后查看本人合作"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "rows": [],
+    "loading": false,
+    "loginRequired": true
+  }
+}

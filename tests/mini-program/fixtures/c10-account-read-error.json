@@ -1,0 +1,27 @@
+{
+  "name": "c10-account-read-error",
+  "route": "pages/account/index",
+  "state": "error",
+  "figmaNode": "30:2288",
+  "referenceKind": "derived",
+  "expectText": ["合成读取失败", "刷新当前账号"],
+  "primary": false,
+  "data": {
+    "loading": false,
+    "busy": false,
+    "user": null,
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": false,
+    "registerMode": false,
+    "consent": false,
+    "securityOpen": false,
+    "message": "合成读取失败，请检查网络后刷新当前账号。",
+    "messageTone": "error",
+    "email": "",
+    "password": "",
+    "hasReturn": false,
+    "platformOperator": false
+  }
+}

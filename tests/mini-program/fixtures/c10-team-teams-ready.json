@@ -1,0 +1,47 @@
+{
+  "name": "c10-team-teams-ready",
+  "route": "pages/teams/index",
+  "state": "ready",
+  "figmaNode": "9:818",
+  "expectText": ["合成石鼓青锋", "进入球队", "选择可报名赛事"],
+  "data": {
+    "teams": [
+      {
+        "id": "c1000000-0000-4000-8000-000000000001",
+        "orgId": "c1000000-0000-4000-8000-000000000002",
+        "name": "合成石鼓青锋",
+        "version": 3,
+        "members": [
+          {
+            "id": "c1000000-0000-4000-8000-000000000010",
+            "name": "合成林越"
+          },
+          {
+            "id": "c1000000-0000-4000-8000-000000000011",
+            "name": "合成陈凯"
+          },
+          {
+            "id": "c1000000-0000-4000-8000-000000000012",
+            "name": "合成周宁"
+          }
+        ],
+        "grants": [],
+        "capabilities": {
+          "canManage": true,
+          "canInvite": false
+        },
+        "canRegister": true
+      }
+    ],
+    "organizations": [
+      {
+        "id": "c1000000-0000-4000-8000-000000000002",
+        "name": "合成篮协",
+        "role": "ORG_ADMIN"
+      }
+    ],
+    "selectedOrg": "c1000000-0000-4000-8000-000000000002",
+    "loading": false
+  },
+  "primary": true
+}

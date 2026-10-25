@@ -1,46 +1,21 @@
-<view class="page"
-  ><view class="page-title">选择可报名赛事</view>
-  <view class="notice">仅展示已开放或本队已有报名的赛事。其他球队的私有名单不在这里展示。</view>
-  <view wx:if="{{error}}" class="error">{{error}}</view
-  ><view wx:if="{{message}}" class="notice warning">{{message}}</view>
-  <button wx:if="{{loginRequired}}" class="primary" bindtap="login">登录后继续本队报名</button>
-  <view wx:if="{{team}}" class="card"
-    ><view class="subtitle">{{team.name}}</view
-    ><view class="muted">本届报名使用单独保存的名单快照。</view></view
-  >
-  <view wx:if="{{loading}}" class="muted">正在读取可报名赛事…</view>
-  <view wx:for="{{events}}" wx:key="id" class="card"
-    ><view class="badge">{{item.statusLabel}}</view><view class="subtitle">{{item.event.name}}</view
-    ><view class="muted">{{item.event.startDate}} — {{item.event.endDate}}</view>
-    <view wx:if="{{item.rules}}" class="muted"
-      >{{item.rules.minPlayers}}–{{item.rules.maxPlayers}}人 ·
-      {{item.rules.zeroAndDoubleZeroDistinct ? '0与00不同号' : '0与00视为同号'}}</view
-    >
-    <view wx:if="{{item.entry}}"
-      ><view class="notice">{{item.entryStatus}}</view
-      ><view wx:if="{{item.entry.latestReviewReason}}" class="notice warning"
-        >审核意见：{{item.entry.latestReviewReason}}</view
-      ><button class="primary" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy}}">
-        查看本队报名
-      </button></view
-    >
-    <button
-      wx:elif="{{item.capabilities.canCreateEntry}}"
-      class="primary"
-      data-id="{{item.event.id}}"
-      bindtap="enter"
-      disabled="{{busy}}"
-      loading="{{busy}}"
-    >
-      为本队创建报名草稿
-    </button>
-    <view wx:else class="muted">当前不能新建本队报名。</view>
+<view class="page registration-page">
+  <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">暂时无法读取可报名赛事</view><view class="small">{{error}}</view></view>
+  <view wx:if="{{message}}" class="notice warning">{{message}}</view>
+  <view wx:if="{{loginRequired}}" class="card event-panel state-panel"><view class="subtitle">登录后继续本队报名</view><view class="muted">仅展示当前账号可管理的报名范围。</view><button class="primary" bindtap="login">登录并继续</button></view>
+  <view wx:if="{{loading}}" class="card event-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取可报名赛事</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
+  <view wx:for="{{events}}" wx:key="id" class="card event-panel event-card">
+    <view class="subtitle">可报名赛事</view><view class="event-name">{{item.event.name}}</view>
+    <view class="muted">{{item.event.startDate}} — {{item.event.endDate}}</view>
+    <view class="badge {{item.capabilities.canCreateEntry ? 'success' : ''}}">{{item.statusLabel}}</view>
+    <view wx:if="{{team}}" class="muted">为{{team.name}}管理本届独立报名。</view>
+    <view wx:if="{{item.rules}}" class="muted">{{item.rules.minPlayers}}–{{item.rules.maxPlayers}}人 · {{item.rules.zeroAndDoubleZeroDistinct ? '0与00不同号' : '0与00视为同号'}}</view>
+    <block wx:if="{{item.entry}}"><view class="notice entry-state">{{item.entryStatus}}</view><view wx:if="{{item.entry.latestReviewReason}}" class="notice warning">审核意见：{{item.entry.latestReviewReason}}</view><button class="primary" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy}}">查看本队报名</button></block>
+    <button wx:elif="{{item.capabilities.canCreateEntry}}" class="primary" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy}}" loading="{{busy}}">为本队报名</button>
+    <view wx:else class="small muted">当前不能新建本队报名。</view>
   </view>
-  <view wx:if="{{!loading &amp;&amp; !events.length &amp;&amp; !loginRequired}}" class="card empty"
-    >暂无可报名赛事，请等待主办方开放。</view
-  >
-  <button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loading || busy}}">
-    加载更多赛事
-  </button>
+  <view wx:if="{{!loading && !events.length && !loginRequired && !error}}" class="card event-panel state-panel"><view class="subtitle">暂无可报名赛事</view><view class="muted">请等待主办方开放报名，或刷新本队已有报名。</view></view>
+  <view class="card event-panel registration-guide"><view class="guide-row"><text class="guide-dot">•</text><view><view>报名要求</view><view class="muted">按赛事规则提交本届名单及私有资料。</view></view></view><view class="guide-row"><text class="guide-dot">•</text><view><view>审核</view><view class="muted">由独立人员复核，提交不等于获批。</view></view></view></view>
+  <button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loading || busy}}">加载更多赛事</button>
   <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新本队报名状态</button>
 </view>
+<scb-nav active="Account" disabled="{{busy || loading}}"/>

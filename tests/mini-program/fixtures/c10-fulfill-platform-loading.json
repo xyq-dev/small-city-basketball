@@ -1,0 +1,13 @@
+{
+  "name": "c10-fulfill-platform-loading",
+  "route": "pages/platform/index",
+  "state": "loading",
+  "figmaNode": "30:1535",
+  "expectText": ["正在核对平台权限"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "loading": true,
+    "allowed": false
+  }
+}

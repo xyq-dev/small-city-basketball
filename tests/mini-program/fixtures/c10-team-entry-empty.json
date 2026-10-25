@@ -1,0 +1,8 @@
+{
+  "name": "c10-team-entry-empty",
+  "route": "pages/entry/index",
+  "state": "empty",
+  "figmaNode": "11:8",
+  "expectText": ["本届报名"],
+  "data": {}
+}

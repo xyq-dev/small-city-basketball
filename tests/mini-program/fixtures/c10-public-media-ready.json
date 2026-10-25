@@ -1,0 +1,12 @@
+{
+  "name": "c10-public-media-ready",
+  "route": "pages/media/index",
+  "state": "ready",
+  "figmaNode": "9:421",
+  "expectText": ["比赛回放与人工片段", "打开赛事选择比赛"],
+  "data": {},
+  "static": true,
+  "referenceKind": "derived",
+  "primary": true,
+  "referenceImage": "docs/evidence/C10/references/media.png"
+}

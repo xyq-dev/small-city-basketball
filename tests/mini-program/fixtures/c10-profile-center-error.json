@@ -1,0 +1,13 @@
+{
+  "name": "c10-profile-center-error",
+  "route": "pages/player-center/index",
+  "state": "error",
+  "figmaNode": "30:1731",
+  "expectText": ["合成本人资料读取失败", "当前无法管理本人资料"],
+  "syntheticData": true,
+  "data": {
+    "loading": false,
+    "authorized": false,
+    "error": "合成本人资料读取失败。"
+  }
+}

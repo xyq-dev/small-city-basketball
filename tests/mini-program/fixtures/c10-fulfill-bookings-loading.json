@@ -1,0 +1,12 @@
+{
+  "name": "c10-fulfill-bookings-loading",
+  "route": "pages/bookings/index",
+  "state": "loading",
+  "figmaNode": "30:1027",
+  "expectText": ["正在读取最新预约"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "loading": true
+  }
+}

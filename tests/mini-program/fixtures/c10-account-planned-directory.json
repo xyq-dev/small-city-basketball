@@ -1,0 +1,14 @@
+{
+  "name": "c10-account-planned-directory",
+  "route": "pages/planned/index",
+  "state": "planned",
+  "figmaNode": "30:2471",
+  "referenceKind": "derived",
+  "expectText": ["规划说明目录", "仅查看说明"],
+  "static": true,
+  "data": {
+    "selected": "funds",
+    "refundProgress": false,
+    "optionsOpen": true
+  }
+}

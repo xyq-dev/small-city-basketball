@@ -1,0 +1,27 @@
+{
+  "name": "c10-account-login-return",
+  "route": "pages/account/index",
+  "state": "permission",
+  "figmaNode": "30:2288",
+  "referenceKind": "derived",
+  "expectText": ["成功后返回本次选择和原请求核对入口", "登录并返回刚才的操作"],
+  "primary": false,
+  "data": {
+    "loading": false,
+    "busy": false,
+    "user": null,
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": false,
+    "registerMode": false,
+    "consent": false,
+    "securityOpen": false,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "",
+    "hasReturn": true,
+    "platformOperator": false
+  }
+}

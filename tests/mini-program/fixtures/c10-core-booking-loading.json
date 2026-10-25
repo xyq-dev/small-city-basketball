@@ -1,0 +1,12 @@
+{
+  "name": "c10-core-booking-loading",
+  "route": "pages/booking-create/index",
+  "state": "loading",
+  "figmaNode": "11:36",
+  "syntheticData": true,
+  "expectText": ["正在读取当前身份、球队与球员资料"],
+  "data": {
+    "loading": true,
+    "ready": false
+  }
+}

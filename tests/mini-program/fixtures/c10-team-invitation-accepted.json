@@ -1,0 +1,20 @@
+{
+  "name": "c10-team-invitation-accepted",
+  "route": "pages/invitation/index",
+  "state": "ready",
+  "figmaNode": "9:1248",
+  "expectText": ["已接受授权", "合成石鼓青锋", "进入已授权球队"],
+  "data": {
+    "user": {
+      "id": "c1000000-0000-4000-8000-000000000040",
+      "displayName": "合成领队",
+      "email": "team-manager@example.invalid"
+    },
+    "accepted": {
+      "orgId": "c1000000-0000-4000-8000-000000000002",
+      "teamId": "c1000000-0000-4000-8000-000000000001",
+      "teamName": "合成石鼓青锋",
+      "organizationName": "合成篮协"
+    }
+  }
+}

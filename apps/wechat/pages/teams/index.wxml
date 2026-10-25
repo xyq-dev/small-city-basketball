@@ -1,64 +1,26 @@
-<view class="page">
-  <view class="page-title">我的球队</view>
-  <view class="notice">球队授权与机构工作人员分开。此处仅展示当前账号有权管理的球队。</view>
-  <view wx:if="{{error}}" class="error">{{error}}</view>
+<view class="page teams-page">
+  <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">暂时无法读取球队</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice warning">{{message}}</view>
-  <button wx:if="{{loginRequired}}" class="primary" bindtap="login">登录后查看我的球队</button>
-  <picker
-    wx:if="{{organizations.length}}"
-    range="{{organizations}}"
-    range-key="name"
-    value="{{orgIndex}}"
-    bindchange="selectOrg"
-    disabled="{{busy}}"
-    ><view class="field">{{organizations[orgIndex].name}} ▾</view></picker
-  >
-  <view wx:if="{{loading}}" class="muted">正在读取当前授权…</view>
-  <view wx:for="{{teams}}" wx:key="id" class="card">
-    <view class="row-between"
-      ><view class="subtitle">{{item.name}}</view
-      ><view class="team-avatar">{{item.name}}</view></view
-    >
-    <view class="muted">{{item.members.length}}名长期成员 · 本届名单独立保存</view>
-    <button class="primary" data-id="{{item.id}}" bindtap="team">进入球队</button>
-    <button wx:if="{{item.canRegister}}" class="secondary" data-id="{{item.id}}" bindtap="events">
-      选择可报名赛事
-    </button>
-    <view wx:else class="muted">本届报名需由持本队领队授权的账号操作。</view>
-  </view>
-  <view wx:if="{{!loading &amp;&amp; !teams.length &amp;&amp; !loginRequired}}" class="card empty"
-    >当前暂无可管理球队。请由主办方授予本账号球队权限，或接受发送给本账号的有效邀请。</view
-  >
-  <button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loading || busy}}">
-    加载更多球队
-  </button>
-  <view wx:if="{{canCreateTeam}}" class="card"
-    ><view class="subtitle">创建球队</view
-    ><view class="muted">仅当前机构有权管理员可创建，不会自动代替球队领队报名。</view
-    ><input
-      class="field"
-      maxlength="80"
-      value="{{newName}}"
-      bindinput="input"
-      placeholder="球队名称"
-      disabled="{{busy || uncertain}}"
-    /><button
-      class="primary"
-      bindtap="create"
-      disabled="{{busy || uncertain || !newName}}"
-      loading="{{busy}}"
-    >
-      创建球队
-    </button></view
-  >
-  <button
-    wx:if="{{uncertain}}"
-    class="secondary"
-    bindtap="acknowledgeUnknown"
-    disabled="{{busy || loading}}"
-  >
-    先核对创建结果
-  </button>
-  <button class="secondary" bindtap="invitation">接受球队邀请</button>
+  <view wx:if="{{loginRequired}}" class="card team-panel state-panel"><view class="subtitle">登录后查看我的球队</view><view class="muted">使用本人账号读取当前授权；登录不自动获得球队权限。</view><button class="primary" bindtap="login">登录并继续</button></view>
+  <picker wx:if="{{organizations.length > 1}}" range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="selectOrg" disabled="{{busy}}"><view class="field">{{organizations[orgIndex].name}} ▾</view></picker>
+  <view wx:if="{{loading}}" class="card team-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取当前授权</view><view class="muted">读取完成前，不显示过期球队资料。</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
+  <block wx:for="{{teams}}" wx:key="id">
+    <view class="card team-panel team-overview">
+      <view class="subtitle">{{item.name}}</view>
+      <view class="muted">{{item.members.length}}名长期成员 · 本届名单独立保存</view>
+      <view class="team-identity"><view class="team-avatar">{{item.name[0]}}</view><view>小城市，也有大主场。</view></view>
+    </view>
+    <view class="notice team-access"><view class="feedback-title">球队授权与机构工作人员分开</view><view class="small">此处只管理本人获授权的球队与报名。</view></view>
+    <button class="primary team-action" data-id="{{item.id}}" bindtap="team">进入球队</button>
+    <button wx:if="{{item.canRegister}}" class="secondary team-action" data-id="{{item.id}}" bindtap="events">选择可报名赛事</button>
+    <view wx:else class="notice team-access"><view class="small">本届报名需由持本队领队授权的账号操作。</view></view>
+  </block>
+  <view wx:if="{{!loading && !teams.length && !loginRequired && !error}}" class="card team-panel state-panel"><view class="subtitle">暂无可管理球队</view><view class="muted">请由主办方授予本账号球队权限，或接受发送给本账号的有效邀请。</view></view>
+  <button wx:if="{{nextCursor}}" class="secondary team-action" bindtap="more" disabled="{{loading || busy}}">加载更多球队</button>
+  <view wx:if="{{canCreateTeam}}" class="card team-panel create-team"><view class="subtitle">创建球队</view><view class="muted">仅当前机构有权管理员可创建，不会自动代替球队领队报名。</view><view class="field-label">球队名称</view><input class="field" maxlength="80" value="{{newName}}" bindinput="input" placeholder="填写球队名称" disabled="{{busy || uncertain}}"/><button class="primary" bindtap="create" disabled="{{busy || uncertain || !newName}}" loading="{{busy}}">创建球队</button></view>
+  <button wx:if="{{newName && !uncertain}}" class="quiet" bindtap="cancelDraft" disabled="{{busy}}">取消创建输入</button>
+  <button wx:if="{{uncertain}}" class="secondary team-action" bindtap="acknowledgeUnknown" disabled="{{busy || loading}}">先核对创建结果</button>
+  <button class="secondary team-action" bindtap="invitation">接受球队邀请</button>
   <button class="quiet" bindtap="load" disabled="{{busy || loading}}">刷新当前授权与球队</button>
 </view>
+<scb-nav active="Account" disabled="{{busy || loading || uncertain || newName !== ''}}"/>

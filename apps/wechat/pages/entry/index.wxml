@@ -1,35 +1,17 @@
-<view class="page">
-  <view class="page-title">本届报名与资料</view>
+<view class="page entry-page">
   <view wx:if="{{error}}" class="error">{{error}}</view
   ><view wx:if="{{message}}" class="notice">{{message}}</view>
-  <button wx:if="{{loginRequired}}" class="primary" bindtap="login">登录后查看本队报名</button
-  ><view wx:if="{{loading}}" class="muted">正在读取本届名单与权限…</view>
+  <view wx:if="{{loginRequired}}" class="card team-panel state-panel"><view class="subtitle">登录后查看本队报名</view><view class="muted">本届名单与资料仅对当前有权人员展示。</view><button class="primary" bindtap="login">登录并继续</button></view><view wx:if="{{loading}}" class="card team-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取本届名单与权限</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
   <block wx:if="{{entry}}">
-    <view class="card"
-      ><view class="subtitle">{{entry.teamName}}</view
-      ><view class="badge">{{entry.statusLabel}}</view
-      ><view class="muted">报名版本{{entry.version}} · 已保存{{entry.players.length}}人</view
-      ><view wx:if="{{entry.latestReviewReason}}" class="notice warning"
-        >审核意见：{{entry.latestReviewReason}}</view
-      ></view
-    >
-    <view class="tabs"
-      ><button class="chip" data-stage="roster" bindtap="switchStage">本届名单</button
-      ><button class="chip" data-stage="documents" bindtap="switchStage">资料凭证</button
-      ><button class="chip" data-stage="review" bindtap="switchStage">提交核对</button
-      ><button class="chip" data-stage="history" bindtap="switchStage">审核进度</button></view
-    >
+    <view wx:if="{{stage==='roster'}}" class="notice entry-summary"><view class="feedback-title">本届名单 · {{entry.statusLabel}} V{{entry.version}}</view><view class="small">{{entry.teamName}} · 已保存{{entry.players.length}}人</view><view class="small">{{entry.rules.zeroAndDoubleZeroDistinct ? '0与00按不同号码处理。' : '0与00视为同一号码。'}}本届快照与长期档案分开。</view></view>
+    <view wx:if="{{entry.latestReviewReason}}" class="notice warning"><view class="feedback-title">独立审核意见</view><view class="small">{{entry.latestReviewReason}}</view></view>
     <view wx:if="{{stage==='roster'}}">
-      <view class="notice"
-        >本届名单独立保存。{{entry.rules.zeroAndDoubleZeroDistinct ? '0与00按不同号码处理。' :
-        '0与00视为同一号码。'}}修改本届号码不覆盖历史冻结名单。</view
-      >
-      <view wx:if="{{entry.capabilities.canEditRoster}}" class="card"
+      <view wx:if="{{entry.capabilities.canEditRoster}}" class="card team-panel"
         ><view class="subtitle">从长期成员选择 · 已选{{selectedCount}}人</view
         ><view class="muted"
           >赛事要求{{entry.rules.minPlayers}}–{{entry.rules.maxPlayers}}人。</view
         >
-        <view wx:for="{{rows}}" wx:key="memberId" class="roster-row"
+        <view class="roster-header"><text>本届报名球员</text><text>号码</text></view><view wx:for="{{rows}}" wx:key="memberId" class="roster-row"
           ><button
             class="quiet roster-select"
             data-index="{{index}}"
@@ -63,10 +45,10 @@
       <view wx:else class="notice warning"
         >本届名单当前只读。已批准、已锁定或权限变化时不能直接编辑；最终以主办方赛事状态与当前权限为准。</view
       >
-      <view class="card"
+      <view class="card team-panel"
         ><view class="subtitle">已保存的本届名单</view
         ><view wx:if="{{!entry.players.length}}" class="muted">暂无已保存球员。</view
-        ><view wx:for="{{entry.players}}" wx:key="memberId" class="row-between"
+        ><view class="saved-roster-header"><text>球员</text><text>号码</text></view><view wx:for="{{entry.players}}" wx:key="memberId" class="saved-roster-row"
           ><text>{{item.name}}</text><text class="badge">{{item.jerseyNo}}号</text></view
         ></view
       >
@@ -75,7 +57,7 @@
       </button>
     </view>
     <view wx:if="{{stage==='documents'}}">
-      <view class="card"
+      <view class="card team-panel"
         ><view class="subtitle">报名私有文件</view
         ><view class="muted"
           >文件仅供当前有权人员查看，不会进入匿名观赛页。已在别处购买保险，可上传原保险凭证。</view
@@ -115,7 +97,7 @@
       <view wx:if="{{dirty}}" class="notice warning"
         >文件关联服务器已保存的名单版本。请先保存本届名单，再上传资料。</view
       >
-      <view wx:if="{{fileWorkspace.capabilities.canUpload}}" class="card"
+      <view wx:if="{{fileWorkspace.capabilities.canUpload}}" class="card team-panel"
         ><view class="field-label">文件用途</view
         ><picker
           range="{{purposes}}"
@@ -140,7 +122,7 @@
           选择一份PDF / PNG / JPEG并上传
         </button></view
       >
-      <view wx:if="{{fileWorkspace.capabilities.canRevoke}}" class="card"
+      <view wx:if="{{fileWorkspace.capabilities.canRevoke}}" class="card team-panel"
         ><view class="field-label">撤销原因（4–500字符）</view
         ><textarea
           class="field"
@@ -156,7 +138,7 @@
       </button>
     </view>
     <view wx:if="{{stage==='review'}}">
-      <view class="card"
+      <view class="card team-panel"
         ><view class="subtitle">提交前核对</view
         ><view class="row-between"><text>本队</text><text>{{entry.teamName}}</text></view
         ><view class="row-between"
@@ -200,20 +182,21 @@
       <view wx:if="{{!entry.capabilities.canSubmit}}" class="muted"
         >当前不能提交，请核对人数、报名状态、赛事规则及当前授权。</view
       >
+      <button class="secondary" data-stage="roster" bindtap="switchStage" disabled="{{busy}}">返回修改本届名单</button>
       <button class="secondary" data-stage="history" bindtap="switchStage" disabled="{{busy}}">
         查看审核进度
       </button>
     </view>
     <view wx:if="{{stage==='history'}}"
-      ><view class="card"
-        ><view class="subtitle">审核进度与历史</view><view class="badge">{{entry.statusLabel}}</view
+      ><view class="card team-panel"
+        ><view class="subtitle">审核进度与历史</view><view class="muted history-context">{{entry.teamName}}</view><view class="badge">{{entry.statusLabel}}</view
         ><view wx:if="{{!entry.history.length}}" class="empty">尚无提交或审核记录。</view
         ><view wx:for="{{entry.history}}" wx:key="id" class="history-row"
           ><view class="subtitle">{{item.typeLabel}}</view
           ><view class="small muted">{{item.timeText}}</view
           ><view wx:if="{{item.reason}}">{{item.reason}}</view></view
         ></view
-      ><view wx:if="{{entry.capabilities.canWithdraw}}" class="card"
+      ><view wx:if="{{entry.capabilities.canWithdraw}}" class="card team-panel"
         ><view class="field-label">撤回说明（可选）</view
         ><textarea
           class="field"
@@ -232,7 +215,17 @@
       ></view
     >
   </block>
+    <view wx:if="{{entry}}" class="tabs entry-tabs"
+      ><button class="chip stage-tab {{stage==='roster' ? 'active' : ''}}" data-stage="roster" bindtap="switchStage">本届名单</button
+      ><button class="chip stage-tab {{stage==='documents' ? 'active' : ''}}" data-stage="documents" bindtap="switchStage">资料凭证</button
+      ><button class="chip stage-tab {{stage==='review' ? 'active' : ''}}" data-stage="review" bindtap="switchStage">提交核对</button
+      ><button class="chip stage-tab {{stage==='history' ? 'active' : ''}}" data-stage="history" bindtap="switchStage">审核进度</button></view
+    >
+  <view wx:if="{{!entry && !loading && !error && !loginRequired}}" class="card team-panel state-panel"><view class="subtitle">暂无可查看的本届报名</view><view class="muted">请从本队已开放的赛事进入报名，或核对当前账号授权。</view></view>
+  <button wx:if="{{dirty}}" class="quiet" bindtap="refresh" disabled="{{busy || uncertain}}">取消未保存名单修改</button>
   <button class="quiet" bindtap="refresh" disabled="{{busy || loading}}">
     重新读取本届名单与资料
   </button>
 </view>
+
+<scb-nav active="Account" disabled="{{busy || loading || uncertain || dirty}}"/>

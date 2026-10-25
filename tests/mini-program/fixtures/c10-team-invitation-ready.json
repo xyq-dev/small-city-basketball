@@ -1,0 +1,17 @@
+{
+  "name": "c10-team-invitation-ready",
+  "route": "pages/invitation/index",
+  "state": "ready",
+  "figmaNode": "9:1248",
+  "expectText": ["合成领队", "接受球队授权", "目标账号"],
+  "data": {
+    "user": {
+      "id": "c1000000-0000-4000-8000-000000000040",
+      "displayName": "合成领队",
+      "email": "team-manager@example.invalid"
+    },
+    "invitationId": "c1000000-0000-4000-8000-000000000041",
+    "consent": false
+  },
+  "primary": true
+}

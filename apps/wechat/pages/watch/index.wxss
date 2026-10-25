@@ -1,1 +1,15 @@
-.watch-page { padding-bottom:calc(170rpx + env(safe-area-inset-bottom)); }
+.watch-page { display:flex; flex-direction:column; gap:20px; padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+.watch-page > button,.watch-page > .notice { margin:0; }
+.watch-intro { padding:24px; border-radius:16px; background:#132c49; color:#fff; }
+.watch-intro .title { color:#fff; margin:0 0 12px; }
+.watch-copy { font-size:14px; line-height:24px; }
+.watch-panel { display:flex; flex-direction:column; gap:16px; padding:24px; border:1px solid #e8edf2; border-radius:12px; background:#fff; }
+.watch-panel .subtitle,.watch-panel .field-label,.watch-panel .field { margin:0; }
+.watch-panel .field-label { margin-bottom:-12px; }
+.watch-error { margin:0; padding:16px; }
+.watch-strong { font-size:14px; line-height:24px; font-weight:500; }
+.watch-error .watch-strong,.watch-note .watch-strong { margin-bottom:4px; }
+.guide-row { display:flex; gap:12px; align-items:flex-start; }
+.guide-row > text { color:#ff6b2d; flex-shrink:0; }
+.guide-row > view { flex:1; min-width:0; }
+.watch-note { margin:0; }

@@ -1,0 +1,10 @@
+{
+  "name": "c10-public-event-loading",
+  "route": "pages/event/index",
+  "state": "loading",
+  "figmaNode": "11:36",
+  "expectText": ["正在读取最新赛事"],
+  "data": {
+    "loading": true
+  }
+}

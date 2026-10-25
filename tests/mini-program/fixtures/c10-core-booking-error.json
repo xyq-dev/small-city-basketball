@@ -1,0 +1,13 @@
+{
+  "name": "c10-core-booking-error",
+  "route": "pages/booking-create/index",
+  "state": "error",
+  "figmaNode": "11:36",
+  "syntheticData": true,
+  "expectText": ["暂时无法读取预约资料", "重新读取"],
+  "data": {
+    "loading": false,
+    "ready": false,
+    "error": "合成场景：读取失败，请重试。"
+  }
+}

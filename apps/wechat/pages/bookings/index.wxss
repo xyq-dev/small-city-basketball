@@ -1,8 +1,27 @@
-.booking-tabs { display: flex; gap: 16rpx; margin-bottom: 24rpx; }
-.booking-tabs button { flex: 1; margin: 0; }
-.booking-tabs .active { background: #132c49; color: #fff; }
-.order-card .subtitle { min-width: 0; }
-.order-summary { margin: 20rpx 0; }
-.order-summary .row { padding: 16rpx 0; border-bottom: 1rpx solid #e8edf2; }
-.order-summary .row-between { gap: 16rpx; align-items: flex-start; }
-.order-card button { margin-top: 24rpx; }
+.status-rail { width:100%; margin-bottom:16px; }
+.status-tabs { display:flex; align-items:center; gap:8px; width:312px; min-width:100%; }
+.status-tab,.status-more { display:flex; align-items:center; justify-content:center; flex:0 0 56px; width:56px; min-height:44px; padding:10px 0; margin:0; border-radius:8px; background:transparent; color:#617286; font-size:14px; line-height:24px; }
+.status-tab::after { border:0; }
+.status-tab.selected { background:#eaf0f7; color:#132c49; }
+.status-more { width:56px; }
+.active-filter { margin:-8px 0 16px; }
+.role-notice { display:flex; flex-direction:column; gap:4px; }
+.notice-title,.state-title { font-size:14px; line-height:24px; font-weight:500; }
+.order-context,.appearance-summary { display:flex; flex-direction:column; gap:8px; }
+.order-context .subtitle,.appearance-summary .subtitle { margin:0; font-size:18px; line-height:28px; font-weight:500; }
+.order-context .muted { font-size:14px; line-height:24px; }
+.appearance-status { color:#132c49; font-size:14px; line-height:24px; font-weight:500; }
+.appearance-status.warning { color:#895500; background:transparent; }
+.appearance-status.danger { color:#b53333; }
+.appearance-status.success { color:#16734b; }
+.appearance-status.neutral { color:#617286; }
+.appearance-price { color:#132c49; font-size:14px; line-height:24px; font-weight:500; }
+.detail-button { margin:0 0 16px; }
+.order-money { margin:0 0 16px; }
+.switch-view { margin-bottom:16px; }
+.time-caption { margin-bottom:16px; }
+.state-card { display:flex; flex-direction:column; gap:8px; }
+.state-card .subtitle { margin:0; }
+.state-card button { margin:8px 0 0; }
+.skeleton { height:12px; width:88%; background:#eaf0f7; border-radius:6px; margin:6px 0; }
+.skeleton.short { width:56%; }

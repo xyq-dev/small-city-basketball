@@ -1,0 +1,11 @@
+{
+  "name": "c10-public-match-error",
+  "route": "pages/match/index",
+  "state": "error",
+  "figmaNode": "11:36",
+  "expectText": ["暂时无法读取比赛", "重新读取"],
+  "data": {
+    "error": "合成场景：暂时无法读取比赛",
+    "unavailable": false
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "c10-profile-center-permission",
+  "route": "pages/player-center/index",
+  "state": "permission",
+  "figmaNode": "30:2288",
+  "expectText": ["登录后管理本人服务资料"],
+  "syntheticData": true,
+  "data": {
+    "loading": false,
+    "authorized": false,
+    "loginRequired": true
+  }
+}

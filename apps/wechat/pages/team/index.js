@@ -16,6 +16,7 @@ Page({
     error: '',
     message: '',
     loginRequired: false,
+    editMode: false,
   },
   onLoad(query) {
     this._alive = true;
@@ -38,6 +39,7 @@ Page({
         membersDirty: false,
         uncertain: false,
         busy: false,
+        editMode: false,
       });
     if (!this.data.nameDirty && !this.data.membersDirty) this.load();
   },
@@ -120,6 +122,10 @@ Page({
       members[index].name = e.detail.value;
       this.setData({ members, membersDirty: true });
     }
+  },
+  toggleEdit() {
+    if (this.data.busy || this.data.uncertain || !this.data.team?.capabilities.canManage) return;
+    this.setData({ editMode: !this.data.editMode });
   },
   addMember() {
     if (this.data.busy || !this.data.team?.capabilities.canManage || this.data.members.length >= 60)

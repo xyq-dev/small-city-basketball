@@ -1,0 +1,46 @@
+{
+  "name": "c10-profile-performance-revoked",
+  "route": "pages/performance/index",
+  "state": "locked",
+  "figmaNode": "30:2206",
+  "expectText": ["已拒绝 / 已撤销", "当前来源不再满足公开条件"],
+  "syntheticData": true,
+  "data": {
+    "authorized": true,
+    "loading": false,
+    "loginRequired": false,
+    "ownOnly": true,
+    "ownProfileId": "c10-profile-one",
+    "filter": "REVOKED",
+    "links": [
+      {
+        "id": "c10-link-one",
+        "version": 1,
+        "profileId": "c10-profile-one",
+        "profileName": "合成林越",
+        "orgId": "c10-org-one",
+        "eventId": "c10-event-one",
+        "eventName": "合成青锋杯",
+        "teamId": "c10-team-one",
+        "teamName": "合成石鼓青锋",
+        "memberId": "c10-member-one",
+        "memberName": "合成林越",
+        "status": "REVOKED",
+        "statusText": "已拒绝 / 已撤销",
+        "sourceCurrentlyAvailable": false,
+        "createdText": "2026-10-24 19:30",
+        "sourceText": "来源已失效或暂不可用",
+        "revokeText": "撤销公开授权",
+        "capabilities": {
+          "canConsent": false,
+          "canRevoke": false
+        }
+      }
+    ],
+    "linksHasMore": false,
+    "nextCursor": null,
+    "disclosureNotice": "合成示例：仅公开本人有限授权比赛数据，不公开私有凭据。",
+    "manageableEvents": [],
+    "pending": null
+  }
+}

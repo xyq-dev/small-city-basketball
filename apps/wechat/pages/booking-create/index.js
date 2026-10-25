@@ -57,6 +57,7 @@ Page({
     periodStart: '',
     periodEnd: '',
     review: false,
+    detailsOpen: false,
     consent: false,
     quote: EMPTY_QUOTES,
     pending: false,
@@ -112,6 +113,7 @@ Page({
       originalResolvedId: '',
       originalRejected: '',
       quote: EMPTY_QUOTES,
+      detailsOpen: false,
       review: false,
       consent: false,
       noTeams: false,
@@ -285,6 +287,8 @@ Page({
       ),
       eventId: draft.eventId,
       eventName: draft.eventName,
+      detailsOpen:
+        this.data.detailsOpen || !draft.selectedIds.length || !draft.eventName || !draft.teamId,
       players,
       slots,
       selectedCount: draft.selectedIds.length,
@@ -321,6 +325,10 @@ Page({
       canRequote: this.needsRequote === true,
     });
     this.renderForm();
+  },
+  toggleDetails() {
+    if (!this.editable() || this.data.review) return;
+    this.setData({ detailsOpen: !this.data.detailsOpen });
   },
   async changeScope(event) {
     if (!this.editable()) return;

@@ -1,36 +1,23 @@
-.roster-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16rpx;
-  border-bottom: 1rpx solid #e8edf2;
-  padding: 12rpx 0;
-}
-.roster-select {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-}
-.jersey-input {
-  width: 132rpx;
-  flex-shrink: 0;
-}
-.file-row,
-.history-row {
-  padding: 24rpx 0;
-  border-top: 1rpx solid #e8edf2;
-  overflow-wrap: anywhere;
-}
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
-  margin: 24rpx 0;
-}
-.tabs .chip {
-  flex: 1;
-  min-width: 145rpx;
-  margin: 0;
-  padding-left: 8rpx;
-  padding-right: 8rpx;
-}
+.entry-page { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+.team-panel { padding:24px; border:1px solid #e8edf2; border-radius:12px; margin-bottom:20px; }
+.feedback-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
+.entry-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; margin:20px 0; }
+.entry-tabs .stage-tab { min-width:0; padding:10px 4px; margin:0; border:0; color:#617286; background:transparent; font-size:12px; line-height:24px; }
+.entry-tabs .stage-tab::after { border:0; }
+.entry-tabs .stage-tab.active { background:#eaf0f7; color:#132c49; }
+.roster-header,.saved-roster-header { display:grid; grid-template-columns:minmax(0,1fr) 64px; align-items:center; min-height:52px; padding:12px; background:#f5f7fa; border-radius:8px 8px 0 0; font-size:12px; line-height:20px; color:#617286; margin-top:16px; }
+.roster-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; border-bottom:1px solid #e8edf2; padding:8px 0; }
+.roster-select { flex:1; min-width:0; text-align:left; margin:0; padding:10px 8px; }
+.jersey-input { width:64px; flex-shrink:0; margin:0; }
+.saved-roster-row { display:grid; grid-template-columns:minmax(0,1fr) 64px; align-items:center; min-height:52px; padding:12px; border:1px solid #e8edf2; border-top:0; }
+.saved-roster-row .badge { margin:0; padding:0; background:transparent; }
+.file-row { padding:20px 0; border-top:1px solid #e8edf2; overflow-wrap:anywhere; }
+.file-row .subtitle { font-size:14px; line-height:24px; }
+.file-row .small { margin:8px 0 16px; }
+.history-row { padding:0 0 20px 20px; border-left:2px solid #e8edf2; margin-left:6px; overflow-wrap:anywhere; }
+.history-row:last-child { padding-bottom:0; }
+.history-row .subtitle { color:#132c49; font-size:14px; line-height:24px; margin:0 0 4px; }
+.state-panel .muted { margin:8px 0 16px; }
+.skeleton-line { height:12px; border-radius:4px; background:#eaf0f7; margin-top:8px; }
+.skeleton-line.short { width:78%; }
+@media (max-width:360px) { .team-panel { padding:20px; } }

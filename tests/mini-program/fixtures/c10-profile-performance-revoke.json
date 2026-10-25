@@ -1,0 +1,97 @@
+{
+  "name": "c10-profile-performance-revoke",
+  "route": "pages/performance/index",
+  "state": "review",
+  "figmaNode": "30:2041",
+  "expectText": ["当前有效授权", "需要重新公开时", "确认拒绝或撤销"],
+  "syntheticData": true,
+  "data": {
+    "authorized": true,
+    "loading": false,
+    "loginRequired": false,
+    "ownOnly": true,
+    "ownProfileId": "c10-profile-one",
+    "filter": "ALL",
+    "links": [
+      {
+        "id": "c10-link-one",
+        "version": 1,
+        "profileId": "c10-profile-one",
+        "profileName": "合成林越",
+        "orgId": "c10-org-one",
+        "eventId": "c10-event-one",
+        "eventName": "合成青锋杯",
+        "teamId": "c10-team-one",
+        "teamName": "合成石鼓青锋",
+        "memberId": "c10-member-one",
+        "memberName": "合成林越",
+        "status": "PENDING",
+        "statusText": "等待本人确认",
+        "sourceCurrentlyAvailable": true,
+        "createdText": "2026-10-24 19:30",
+        "sourceText": "来源当前有效",
+        "revokeText": "拒绝本次公开",
+        "capabilities": {
+          "canConsent": true,
+          "canRevoke": true
+        }
+      },
+      {
+        "id": "c10-link-two",
+        "version": 1,
+        "profileId": "c10-profile-one",
+        "profileName": "合成林越",
+        "orgId": "c10-org-one",
+        "eventId": "c10-event-two",
+        "eventName": "合成青锋杯",
+        "teamId": "c10-team-one",
+        "teamName": "合成石鼓青锋",
+        "memberId": "c10-member-one",
+        "memberName": "合成林越",
+        "status": "APPROVED",
+        "statusText": "已同意公开",
+        "sourceCurrentlyAvailable": true,
+        "createdText": "2026-10-24 19:30",
+        "sourceText": "来源当前有效",
+        "revokeText": "撤销公开授权",
+        "capabilities": {
+          "canConsent": false,
+          "canRevoke": true
+        }
+      }
+    ],
+    "linksHasMore": false,
+    "nextCursor": null,
+    "disclosureNotice": "合成示例：仅公开本人有限授权比赛数据，不公开私有凭据。",
+    "manageableEvents": [],
+    "pending": {
+      "type": "REVOKE",
+      "title": "撤销公开授权",
+      "link": {
+        "id": "c10-link-one",
+        "version": 1,
+        "profileId": "c10-profile-one",
+        "profileName": "合成林越",
+        "orgId": "c10-org-one",
+        "eventId": "c10-event-one",
+        "eventName": "合成青锋杯",
+        "teamId": "c10-team-one",
+        "teamName": "合成石鼓青锋",
+        "memberId": "c10-member-one",
+        "memberName": "合成林越",
+        "status": "APPROVED",
+        "statusText": "已同意公开",
+        "sourceCurrentlyAvailable": true,
+        "createdText": "2026-10-24 19:30",
+        "sourceText": "来源当前有效",
+        "revokeText": "拒绝本次公开",
+        "capabilities": {
+          "canConsent": false,
+          "canRevoke": true
+        }
+      },
+      "reason": "本人确认这是合成记录",
+      "consent": false
+    }
+  }
+}

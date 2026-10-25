@@ -1,6 +1,6 @@
 <template name="fees">
   <view class="card">
-    <view class="subtitle">确定金额与条件预计分开</view>
+    <view class="subtitle">确定报价</view>
     <view class="quote-row"><text>确定参赛服务费</text><text>{{quote.service}}</text></view>
     <view class="quote-row"><text>确定平台服务费</text><text>{{quote.platform}}</text></view>
     <view class="quote-row"><text>交通费</text><text>{{quote.travel}}</text></view>
@@ -8,7 +8,7 @@
     <view class="quote-row quote-total"
       ><text>确定报价合计</text><text>{{quote.confirmed}}</text></view
     >
-    <view class="quote-row quote-conditional"
+    <view wx:if="{{quote.conditionalCount}}" class="quote-row quote-conditional"
       ><text>条件意向预计 · 另列</text><text>{{quote.conditional}}</text></view
     >
     <view class="small muted"
@@ -18,10 +18,10 @@
   </view>
 </template>
 
-<view class="page has-actions">
+<view class="page has-actions create-page">
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
   <view wx:if="{{notice}}" class="notice">{{notice}}</view>
-  <view wx:if="{{loading}}" class="card muted">正在读取当前身份、球队与球员资料…</view>
+  <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在读取当前身份、球队与球员资料…</view><view class="muted">完成读取后再核对本次安排，不自动提交请求。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
   <view wx:if="{{loginRequired}}" class="card empty">
     <view class="title">登录后继续预约</view>
     <view class="muted"
@@ -60,13 +60,11 @@
         >本机无法保存或移除恢复标记，请先检查存储权限。</view
       >
     </view>
-    <view wx:elif="{{pending}}" class="card">
-      <view class="title"
+    <view wx:elif="{{pending}}" class="recovery-view">
+      <view class="hero recovery-hero"><view class="title">{{originalResolvedId ? '原预约已创建' : originalRejected ? '原请求已明确拒绝' : '先核对原请求'}}</view><view class="muted">{{originalResolvedId ? '已核对原操作编号，可查看原预约' : originalRejected ? '已取得明确拒绝回执，核对后再重新填写' : '网络异常不代表预约没有创建'}}</view></view>
+      <view class="card"><view class="subtitle"
         >{{originalResolvedId ? '原预约已创建' : originalRejected ? '原请求已明确拒绝' :
         '原预约结果待核对'}}</view
-      >
-      <view class="notice warning"
-        >原请求可能已成功。保留原操作编号及完整安排，核对期间不重新报价、不换编号重复提交。</view
       >
       <block wx:if="{{canRecover}}">
         <view class="subtitle">{{recoveryEventName}}</view>
@@ -83,6 +81,8 @@
       <view wx:else class="error"
         >当前账号已无原球队授权，不能展示或重试原预约。请先核对当前球队权限。</view
       >
+      </view>
+      <view class="notice warning"><view class="state-label">避免重复预约</view>{{originalResolvedId ? '已找到原预约，先查看记录，避免重复提交。' : originalRejected ? '原请求已明确拒绝。核对并移除原恢复标记后，再重新审阅安排和报价。' : '原请求可能已成功。保留原操作编号及完整安排，核对期间不重新报价、不换编号重复提交。'}}</view>
       <view wx:if="{{storageUnavailable}}" class="notice warning"
         >本机恢复资料无法可靠保存或移除；刷新可能丢失核对编号。请先核对原预约，不后台自动重发。</view
       >
@@ -121,29 +121,28 @@
         >所选球员已不在当前可约资料中。请重新选择，不能沿用失效报价。</view
       >
       <block wx:if="{{!review}}">
-        <view class="card">
-          <view class="create-step"
-            ><text class="step-number">01</text><text class="subtitle">预约几场</text></view
-          >
-          <view class="scope-grid"
-            ><button
+        <view class="scope-picker">
+          <scroll-view scroll-x="true" enable-flex="true" class="scope-rail">
+            <view class="scope-grid"><button
               wx:for="{{scopeOptions}}"
               wx:key="value"
               class="scope-option {{scope === item.value ? 'active' : ''}}"
               data-scope="{{item.value}}"
               bindtap="changeScope"
               disabled="{{busy}}"
-            >
-              <text class="scope-label">{{item.label}}</text
-              ><text class="scope-hint">{{item.hint}}</text>
-            </button></view
-          >
-          <view class="notice">长期合作仍需逐场确认；未来意向不占档，不自动续费。</view>
+            >{{item.label}}</button></view>
+          </scroll-view>
+          <view class="small muted scope-caption">{{scopeOptions[scopeIndex].hint}} · 长期合作仍需逐场确认，不自动续费。</view>
         </view>
-        <view class="card">
-          <view class="create-step"
-            ><text class="step-number">02</text><text class="subtitle">代表球队与球员</text></view
-          >
+        <view class="card booking-context">
+          <view class="subtitle">赛事与球员</view>
+          <view wx:if="{{selectedCount &amp;&amp; eventName &amp;&amp; teamId}}" class="context-summary">
+            <view class="context-event">{{eventName}}</view>
+            <view class="muted">{{teamName}} · 已选{{selectedCount}}位球员</view>
+            <block wx:for="{{players}}" wx:for-item="player" wx:key="id"><view wx:if="{{player.selected}}" class="small muted">{{player.label}}</view></block>
+            <button class="secondary context-toggle" bindtap="toggleDetails" disabled="{{busy}}">{{detailsOpen ? '收起球队与球员' : '修改球队与球员'}}</button>
+          </view>
+          <block wx:if="{{detailsOpen || !selectedCount || !eventName || !teamId}}">
           <view class="field-label">代表球队</view
           ><picker
             class="field"
@@ -194,6 +193,7 @@
           <view class="small muted"
             >当前只读取最新200份可约档案。最多3人只限制数据对比，预约可选择多位球员。</view
           >
+          </block>
         </view>
         <view wx:if="{{scope === 'SEASON'}}" class="card">
           <view class="subtitle">赛季合作周期</view>
@@ -220,10 +220,8 @@
             >周期内仍逐场约定；未确定场次只能记录条件意向，不保证未来到场。</view
           >
         </view>
-        <view class="card">
-          <view class="create-step"
-            ><text class="step-number">03</text><text class="subtitle">逐场安排</text></view
-          >
+        <view class="card arrangement-card">
+          <view class="subtitle">{{scope === 'SINGLE' ? '比赛安排' : scope === 'TIME_BLOCK' ? '服务安排' : '逐场安排'}}</view>
           <view class="small muted"
             >全部为北京时间。报到≤开始&lt;结束；单项服务最多12小时，场后留30分钟交通缓冲。</view
           >
@@ -405,18 +403,17 @@
             添加一场安排
           </button>
         </view>
-        <template is="fees" data="{{quote: quote}}" />
+        <view class="notice booking-estimate"><view class="estimate-title">确定报价预计 {{quote.confirmed}}</view><view class="small">{{quote.fixedCount}}项确定安排 · {{quote.conditionalCount}}项条件意向。下一步逐项核对费用，条件意向不计入确定合计。</view></view>
       </block>
       <block wx:else>
-        <view class="card"
-          ><view class="title">确认本次预约与费用</view
-          ><view class="subtitle">{{teamName}} · {{eventName}}</view
+        <view class="card review-heading"
+          ><view class="subtitle">确认本次预约与费用</view
+          ><view class="context-event">{{teamName}} · {{eventName}}</view
           ><view class="small muted"
             >每位球员、每一场分别接单与履约，取消一项不自动取消其他有效安排。</view
           ></view
         >
-        <view class="card"
-          ><view wx:for="{{slots}}" wx:for-item="slot" wx:key="key" class="review-slot"
+        <view wx:for="{{slots}}" wx:for-item="slot" wx:key="key" class="card review-slot"
             ><view class="subtitle">{{slot.label}}</view
             ><view wx:if="{{slot.conditional}}" class="notice warning"
               >条件意向：{{slot.conditionText}} · 不占档</view
@@ -430,7 +427,6 @@
                 >{{choice.label}} · 含费预计{{choice.total}}</view
               ></block
             ></view
-          ></view
         >
         <template is="fees" data="{{quote: quote}}" />
         <view class="card"
@@ -439,19 +435,20 @@
           ><view class="muted"
             >已核对参赛资格、保险及赛事报名限制；这些仍属本人声明，不等于平台核验。</view
           ><view class="muted">已阅读每场时间地点、费用、条件意向和取消规则。</view
-          ><checkbox-group bindchange="consent"
-            ><label class="consent"
-              ><checkbox
-                value="agree"
-                checked="{{consent}}"
-                disabled="{{busy}}"
-              />我已核对以上事项并明确同意本次预约规则</label
-            ></checkbox-group
           ></view
         >
+        <checkbox-group bindchange="consent"
+          ><label class="consent review-consent"
+            ><checkbox
+              value="agree"
+              checked="{{consent}}"
+              disabled="{{busy}}"
+            />我已核对以上事项并明确同意本次预约规则</label
+          ></checkbox-group
+        >
       </block>
-      <view class="notice warning"
-        ><view class="subtitle">当前仅提交合作预约</view
+      <view class="booking-boundary small muted"
+        ><view class="boundary-title">当前仅提交合作预约</view
         ><view
           >在线支付与个人分账尚未开放；提交不扣款，不自动加入报名名单。实收、退款到账和已结算均为¥0。</view
         ></view
@@ -514,7 +511,7 @@
     ><button wx:if="{{canRequote}}" class="primary" bindtap="requote" disabled="{{busy}}">
       读取最新报价并重新核对</button
     ><button wx:else class="primary" bindtap="review" disabled="{{busy || quoteInvalid}}">
-      核对本次合作费用</button
+      下一步 · 核对费用</button
     ><button class="quiet" bindtap="players" disabled="{{busy}}">继续找球员</button></block
   >
 </view>

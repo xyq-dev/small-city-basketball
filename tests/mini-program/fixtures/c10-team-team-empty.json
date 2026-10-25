@@ -1,0 +1,8 @@
+{
+  "name": "c10-team-team-empty",
+  "route": "pages/team/index",
+  "state": "empty",
+  "figmaNode": "11:8",
+  "expectText": ["暂无可查看的球队资料"],
+  "data": {}
+}

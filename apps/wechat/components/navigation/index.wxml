@@ -1,1 +1,1 @@
-<view class="mobile-nav"><button wx:for="{{items}}" wx:key="key" class="nav-item {{active===item.key ? 'selected' : ''}}" data-key="{{item.key}}" bindtap="go"><view class="nav-dot">{{active===item.key ? '●' : '○'}}</view><view>{{item.label}}</view></button></view>
+<view class="mobile-nav"><button wx:for="{{items}}" wx:key="key" class="nav-item {{active===item.key ? 'selected' : ''}}" data-key="{{item.key}}" bindtap="go" disabled="{{disabled}}"><view class="nav-dot">{{active===item.key ? '●' : '○'}}</view><view>{{item.label}}</view></button></view>

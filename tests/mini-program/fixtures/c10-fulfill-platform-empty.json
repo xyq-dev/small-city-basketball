@@ -1,0 +1,16 @@
+{
+  "name": "c10-fulfill-platform-empty",
+  "route": "pages/platform/index",
+  "state": "empty",
+  "figmaNode": "30:1535",
+  "expectText": ["暂无可见预约", "暂无可审核资料"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "allowed": true,
+    "loading": false,
+    "orders": [],
+    "reviewQueue": [],
+    "feePercent": "10.00"
+  }
+}

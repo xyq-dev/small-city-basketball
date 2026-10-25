@@ -1,0 +1,15 @@
+{
+  "name": "c10-account-planned-funds",
+  "route": "pages/planned/index",
+  "state": "ready",
+  "figmaNode": "30:2471",
+  "referenceKind": "derived",
+  "expectText": ["确定场次报价", "当前实际资金", "实收 ¥0.00"],
+  "static": true,
+  "primary": true,
+  "data": {
+    "selected": "funds",
+    "optionsOpen": false,
+    "refundProgress": false
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "name": "c10-public-match-media",
+  "route": "pages/match/index",
+  "state": "ready",
+  "figmaNode": "9:421",
+  "expectText": ["合成比赛图片", "已发布的片段定位", "复制外部媒体链接"],
+  "data": {
+    "snapshot": {
+      "publicMatchId": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+      "roundNo": 3,
+      "positionNo": 1,
+      "home": {
+        "teamKey": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+        "teamName": "合成青锋"
+      },
+      "away": {
+        "teamKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "teamName": "合成长青"
+      },
+      "courtName": "合成公园1号场",
+      "startsAt": "2026-10-25T11:30:00Z",
+      "endsAt": "2026-10-25T13:00:00Z",
+      "startLabel": "10月25日 19:30",
+      "status": "LIVE",
+      "statusLabel": "比赛进行中",
+      "version": 1,
+      "score": {
+        "home": 68,
+        "away": 62
+      },
+      "resultStatus": "UNCONFIRMED",
+      "resultLabel": "尚无正式赛果",
+      "publicEventId": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "eventName": "合成城市联赛2026",
+      "clock": {
+        "period": 4,
+        "remainingMs": 156000,
+        "running": false,
+        "anchorServerTime": "2026-10-25T12:00:00Z"
+      },
+      "serverTime": "2026-10-25T12:00:00Z",
+      "periods": null,
+      "collected": {
+        "teamScore": true,
+        "teamFouls": false,
+        "teamTimeouts": false,
+        "playerStatistics": false
+      }
+    },
+    "clock": "02:36",
+    "media": [
+      {
+        "publicMediaId": "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii",
+        "title": "合成比赛图片",
+        "kind": "IMAGE",
+        "src": "/assets/court.png",
+        "externalUrl": null,
+        "markers": []
+      },
+      {
+        "publicMediaId": "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv",
+        "title": "合成已发布小视频",
+        "kind": "VIDEO",
+        "src": "https://example.invalid/synthetic-only.mp4",
+        "externalUrl": null,
+        "markers": [
+          {
+            "publicMarkerId": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+            "label": "合成第4节 · 已确认事件片段",
+            "startMs": 32000,
+            "endMs": 46000
+          }
+        ]
+      },
+      {
+        "publicMediaId": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        "title": "合成外部媒体入口",
+        "kind": "EXTERNAL_LINK",
+        "src": null,
+        "externalUrl": "https://example.invalid/synthetic-highlight",
+        "markers": []
+      }
+    ],
+    "error": "",
+    "stale": false,
+    "loading": false,
+    "tab": "media",
+    "unavailable": false
+  }
+}

@@ -1,37 +1,41 @@
-<view class="page {{pending ? 'has-actions' : ''}}">
-  <view wx:if="{{loading}}" class="notice">正在核对本人及当前有权赛事的数据授权…</view>
+<view class="page has-actions performance-page">
+  <view wx:if="{{loading}}" class="card authorization-state"><view class="subtitle">正在读取数据授权</view><view class="muted">正在核对本人及当前有权赛事的数据授权，请稍候…</view></view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
   <view wx:if="{{message}}" class="notice">{{message}}</view>
   <view wx:if="{{loginRequired}}" class="card empty"><view class="title">登录后管理比赛数据授权</view><view class="muted">仅读取本人或当前有权管理赛事的授权记录。</view><button class="primary" bindtap="login">登录并返回数据授权</button></view>
   <block wx:if="{{authorized}}">
     <block wx:if="{{pending}}">
-      <view class="page-title">{{pending.title}}</view>
-      <view class="card"><view class="subtitle">请核对关联对象</view><view class="row">赛事：{{pending.link.eventName}}</view><view class="row">球队：{{pending.link.teamName}}</view><view class="row">固定名单成员：{{pending.link.memberName}}</view><view class="row">目标球员档案：{{pending.link.profileName}}</view></view>
-      <view class="card"><view class="subtitle">有限公开范围</view><view class="row muted">只公开本人有限赛事名称、日期、赛制与得分 / 犯规、样本口径及完整度。</view><view class="row muted">不公开其他名单、身份证、联系方式、保单或私有赛事接口。</view></view>
-      <view wx:if="{{pending.type === 'CONSENT'}}" class="card"><view class="subtitle">本人明确同意</view><checkbox-group bindchange="playerConsent"><label class="consent"><checkbox value="yes" checked="{{pending.consent}}" disabled="{{busy || pendingUnknown}}" />我确认这是本人的参赛记录，并同意按上述有限范围公开</label></checkbox-group><view class="notice authorization-section">授权不等于立即有个人统计，仍须有当前有效、独立确认的个人记录。</view></view>
-      <view wx:else class="notice warning">拒绝或撤销后，下次读取不再纳入该来源；不能收回别人此前已经看见或保存的内容。重新公开需要主办方重新提名与本人再次同意。</view>
-      <view class="card"><view class="field-label">处理原因</view><textarea class="field authorization-reason" value="{{pending.reason}}" bindinput="dialogReason" maxlength="500" disabled="{{busy || pendingUnknown}}" placeholder="填写2至500字；不要包含私密证件或联系方式" /></view>
+      <block wx:if="{{pending.type === 'CONSENT'}}">
+        <view class="card dialog-card"><view class="subtitle">请核对关联对象</view><view class="dialog-copy">赛事：{{pending.link.eventName}}</view><view class="dialog-copy">球队：{{pending.link.teamName}} · 固定名单成员：{{pending.link.memberName}}</view><view class="dialog-copy">目标档案：{{pending.link.profileName}}</view></view>
+        <view class="card dialog-card"><view class="subtitle">同意后公开什么</view><view class="dialog-copy">赛事名称、日期、赛制与本人得分 / 犯规</view><view class="dialog-copy">统计样本、完整度及有限近期记录</view><view class="dialog-copy">不公开其他名单、联系方式、私有凭据或私有赛事接口</view></view>
+        <view class="card dialog-card"><view class="subtitle">本人明确确认</view><view class="dialog-copy">这是本人的参赛记录</view><view class="dialog-copy">同意按上述有限范围公开展示</view></view>
+        <checkbox-group bindchange="playerConsent"><label class="consent authorization-consent"><checkbox value="yes" checked="{{pending.consent}}" disabled="{{busy || pendingUnknown}}" />我确认是本人记录，并同意有限公开</label></checkbox-group>
+      </block>
+      <view wx:else class="card dialog-card"><view class="subtitle">{{pending.link.status === 'PENDING' ? '拒绝本次公开' : '当前有效授权'}}</view><view class="dialog-copy">{{pending.link.eventName}} · {{pending.link.memberName}}的固定名单记录</view><view class="dialog-copy">目标档案：{{pending.link.profileName}}</view><view class="dialog-copy">{{pending.link.sourceText}}</view></view>
+      <view class="dialog-field"><view class="field-label">{{pending.type === 'CONSENT' ? '处理原因' : pending.link.status === 'PENDING' ? '拒绝原因' : '撤销原因'}}</view><textarea class="field authorization-reason" value="{{pending.reason}}" bindinput="dialogReason" maxlength="500" disabled="{{busy || pendingUnknown}}" placeholder="填写2至500字；不要包含私密证件或联系方式" /></view>
+      <view wx:if="{{pending.type === 'CONSENT'}}" class="notice small">授权不等于立即有个人统计，仍须有当前有效、独立确认的个人记录。</view>
+      <block wx:else><view class="notice warning"><view class="hint-title">拒绝或撤销后的范围</view><view class="small">下次读取不再纳入该来源；不能收回别人此前已经看见或保存的内容。</view></view><view class="card dialog-card"><view class="subtitle">需要重新公开时</view><view class="dialog-copy">由主办方重新提名，球员再次同意</view><view class="dialog-copy">不会直接恢复旧授权</view></view></block>
       <view wx:if="{{pendingUnknown}}" class="notice warning">原处理结果待核对，已保留原编号及内容。继续核对会重放原操作，不生成新的授权处理。</view>
-      <view class="action-bar"><button class="primary" bindtap="submitDialog" disabled="{{busy || (!pendingUnknown &amp;&amp; (pending.reason.length &lt; 2 || (pending.type === 'CONSENT' &amp;&amp; !pending.consent)))}}">{{busy ? '正在核对…' : pendingUnknown ? '核对原处理结果' : '确认处理'}}</button><button class="quiet" bindtap="closeDialog" disabled="{{busy || pendingUnknown}}">返回授权列表</button></view>
+      <view class="action-bar"><button class="primary" bindtap="submitDialog" disabled="{{busy || (!pendingUnknown &amp;&amp; (pending.reason.length &lt; 2 || (pending.type === 'CONSENT' &amp;&amp; !pending.consent)))}}">{{busy ? '正在核对…' : pendingUnknown ? '核对原处理结果' : pending.type === 'CONSENT' ? '核对并明确同意' : '确认拒绝或撤销'}}</button><button class="quiet" bindtap="closeDialog" disabled="{{busy || pendingUnknown}}">返回授权列表</button></view>
     </block>
     <block wx:else>
-      <view class="hero"><view class="title">{{ownOnly ? '我的比赛数据授权' : '比赛数据授权与提名'}}</view><view>服务资料和比赛记录，各自有来源。</view></view>
-      <view class="notice authorization-section">{{disclosureNotice}}</view>
-      <view class="authorization-tabs">
+      <scroll-view scroll-x="true" enable-flex="true" class="authorization-tab-scroll"><view class="authorization-tabs" aria-label="数据授权状态筛选">
         <button class="chip {{filter === 'ALL' ? 'active' : ''}}" data-filter="ALL" bindtap="filter" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">全部历史</button>
         <button class="chip {{filter === 'PENDING' ? 'active' : ''}}" data-filter="PENDING" bindtap="filter" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">待本人确认</button>
         <button class="chip {{filter === 'APPROVED' ? 'active' : ''}}" data-filter="APPROVED" bindtap="filter" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">已同意</button>
         <button class="chip {{filter === 'REVOKED' ? 'active' : ''}}" data-filter="REVOKED" bindtap="filter" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">已拒绝 / 撤销</button>
-      </view>
+      </view></scroll-view>
       <view wx:if="{{!links.length}}" class="card empty"><view class="subtitle">本页暂无符合条件的记录</view><view class="muted">当前页没有本人记录时，仍可继续加载完整历史。较早有效授权不会因新记录增多而失去撤销入口。</view><button wx:if="{{ownOnly &amp;&amp; !ownProfileId}}" class="secondary" bindtap="center">查看本人球员档案</button></view>
-      <view wx:for="{{links}}" wx:key="id" class="card authorization-card">
-        <view class="row-between"><view class="subtitle">{{item.eventName}}</view><text class="badge">{{item.statusText}}</text></view>
-        <view class="row">{{item.teamName}} · 固定名单成员：{{item.memberName}}</view>
-        <view class="row">球员档案：{{item.profileName}}</view>
-        <view class="row muted">{{item.createdText}} · {{item.sourceText}}</view>
-        <view wx:if="{{!item.sourceCurrentlyAvailable}}" class="notice warning">当前来源不再满足公开条件。个人统计不会回退到旧确认；可以按当前权限处理撤销。</view>
+      <view wx:for="{{links}}" wx:key="id" class="authorization-item">
+        <view class="card authorization-card">
+          <view class="subtitle">{{item.eventName}} · {{item.teamName}} · {{item.memberName}}</view>
+          <view class="authorization-copy">{{item.statusText}}</view>
+          <view class="authorization-copy">档案：{{item.profileName}} · {{item.sourceText}}</view>
+          <view wx:if="{{!item.sourceCurrentlyAvailable}}" class="notice warning">当前来源不再满足公开条件。个人统计不会回退到旧确认；可以按当前权限处理撤销。</view>
+        </view>
+        <view class="small muted authorization-created">{{item.createdText}} · 固定名单成员与目标档案需逐条核对</view>
         <view class="authorization-actions">
-          <button wx:if="{{item.capabilities.canConsent}}" class="primary" bindtap="checkLink" data-id="{{item.id}}" data-type="CONSENT" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">核对本人记录并同意</button>
+          <button wx:if="{{item.capabilities.canConsent}}" class="secondary" bindtap="checkLink" data-id="{{item.id}}" data-type="CONSENT" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">核对本人记录并同意</button>
           <button wx:if="{{item.capabilities.canRevoke}}" class="secondary" bindtap="checkLink" data-id="{{item.id}}" data-type="REVOKE" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">{{item.revokeText}}</button>
         </view>
       </view>
@@ -39,9 +43,10 @@
       <view wx:if="{{pageError}}" class="notice warning">{{pageError}}</view>
       <button wx:if="{{linksHasMore}}" class="secondary" bindtap="more" disabled="{{dirty || busy || loading || pageLoading || sourceLoading || checking || nominationUnknown}}">{{pageLoading ? '正在加载…' : pageError ? '重试加载同一页历史' : '加载更多授权历史'}}</button>
       <view class="muted small authorization-footer">每次读取50条，直到全部有权历史加载完毕。每次操作前重新读取当前记录；授权不授予私有赛事接口权限。</view>
-      <button class="quiet" bindtap="refresh" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">刷新数据授权</button>
+      <view wx:if="{{disclosureNotice}}" class="notice authorization-section">{{disclosureNotice}}</view>
+      <view class="action-bar"><button class="primary" bindtap="refresh" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">刷新数据授权</button><button wx:if="{{!ownOnly}}" class="quiet" bindtap="nomination" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">主办方提名入口</button><button wx:else class="quiet" bindtap="center">返回球员中心</button></view>
 
-      <view wx:if="{{!ownOnly}}" class="authorization-section">
+      <view wx:if="{{!ownOnly}}" id="nomination-section" class="authorization-section">
         <view class="card"><view class="subtitle">主办方提名本人参赛记录</view><view class="muted">由当前有赛事数据管理权的主办方精确选择固定名单成员；不能按同名自动认领。平台身份不会自动获得发布权。</view>
           <view wx:if="{{!manageableEvents.length}}" class="notice">当前没有可管理数据授权的赛事。</view>
           <block wx:else>
@@ -64,5 +69,5 @@
       <view wx:if="{{dirty || nominationUnknown}}" class="notice warning">编辑草稿或确认记录期间暂停刷新和历史分页，避免丢失输入。先完成或关闭当前操作。</view>
     </block>
   </block>
-  <button wx:if="{{!loading &amp;&amp; !authorized &amp;&amp; !loginRequired}}" class="secondary" bindtap="refresh">重新读取数据授权</button>
+  <view wx:if="{{!loading &amp;&amp; !authorized &amp;&amp; !loginRequired}}" class="card authorization-state"><view class="subtitle">当前无法读取数据授权</view><view class="muted">核对当前账号和赛事权限后重新读取，不展示其他账号的旧记录。</view><button class="secondary" bindtap="refresh">重新读取数据授权</button></view>
 </view>

@@ -1,0 +1,13 @@
+{
+  "name": "c10-profile-performance-permission",
+  "route": "pages/performance/index",
+  "state": "permission",
+  "figmaNode": "30:2261",
+  "expectText": ["登录后管理比赛数据授权"],
+  "syntheticData": true,
+  "data": {
+    "authorized": false,
+    "loading": false,
+    "loginRequired": true
+  }
+}

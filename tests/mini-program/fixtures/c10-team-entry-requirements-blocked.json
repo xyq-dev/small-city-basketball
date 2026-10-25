@@ -1,0 +1,84 @@
+{
+  "name": "c10-team-entry-requirements-blocked",
+  "route": "pages/entry/index",
+  "state": "permission",
+  "figmaNode": "9:1139",
+  "expectText": ["保险资料", "上传文件不会解除提交限制", "当前不能提交"],
+  "data": {
+    "entry": {
+      "id": "c1000000-0000-4000-8000-000000000005",
+      "orgId": "c1000000-0000-4000-8000-000000000002",
+      "teamId": "c1000000-0000-4000-8000-000000000001",
+      "teamName": "合成石鼓青锋",
+      "eventId": "c1000000-0000-4000-8000-000000000003",
+      "status": "DRAFT",
+      "statusLabel": "报名草稿",
+      "version": 3,
+      "rules": {
+        "id": "c1000000-0000-4000-8000-000000000004",
+        "eventId": "c1000000-0000-4000-8000-000000000003",
+        "createdAt": "2026-10-25T00:00:00Z",
+        "version": 1,
+        "minPlayers": 3,
+        "maxPlayers": 12,
+        "zeroAndDoubleZeroDistinct": true,
+        "requireIdentity": false,
+        "requireInsurance": true
+      },
+      "players": [
+        {
+          "memberId": "c1000000-0000-4000-8000-000000000010",
+          "name": "合成林越",
+          "jerseyNo": "07"
+        },
+        {
+          "memberId": "c1000000-0000-4000-8000-000000000011",
+          "name": "合成陈凯",
+          "jerseyNo": "12"
+        },
+        {
+          "memberId": "c1000000-0000-4000-8000-000000000012",
+          "name": "合成周宁",
+          "jerseyNo": "00"
+        }
+      ],
+      "history": [],
+      "capabilities": {
+        "canEditRoster": true,
+        "canSubmit": false,
+        "canWithdraw": false,
+        "canReview": false,
+        "canApprove": false,
+        "canRequestChanges": false,
+        "canReject": false
+      }
+    },
+    "rows": [
+      {
+        "memberId": "c1000000-0000-4000-8000-000000000010",
+        "name": "合成林越",
+        "jerseyNo": "07",
+        "selected": true,
+        "archived": false
+      },
+      {
+        "memberId": "c1000000-0000-4000-8000-000000000011",
+        "name": "合成陈凯",
+        "jerseyNo": "12",
+        "selected": true,
+        "archived": false
+      },
+      {
+        "memberId": "c1000000-0000-4000-8000-000000000012",
+        "name": "合成周宁",
+        "jerseyNo": "00",
+        "selected": true,
+        "archived": false
+      }
+    ],
+    "selectedCount": 3,
+    "stage": "review",
+    "consent": false,
+    "fileConsent": false
+  }
+}

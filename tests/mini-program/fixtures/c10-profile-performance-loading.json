@@ -1,0 +1,12 @@
+{
+  "name": "c10-profile-performance-loading",
+  "route": "pages/performance/index",
+  "state": "loading",
+  "figmaNode": "30:1938",
+  "expectText": ["正在读取数据授权"],
+  "syntheticData": true,
+  "data": {
+    "authorized": false,
+    "loading": true
+  }
+}

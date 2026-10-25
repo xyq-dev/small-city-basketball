@@ -1,0 +1,12 @@
+{
+  "name": "c10-profile-player-loading",
+  "route": "pages/player/index",
+  "state": "loading",
+  "figmaNode": "30:168",
+  "expectText": ["正在读取球员资料"],
+  "syntheticData": true,
+  "data": {
+    "loading": true,
+    "profile": null
+  }
+}

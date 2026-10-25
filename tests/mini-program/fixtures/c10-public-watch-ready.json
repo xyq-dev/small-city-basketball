@@ -1,0 +1,15 @@
+{
+  "name": "c10-public-watch-ready",
+  "route": "pages/watch/index",
+  "state": "ready",
+  "figmaNode": "9:58",
+  "expectText": ["打开一届赛事", "主办方观赛链接"],
+  "data": {
+    "value": "https://basketball.playhubs.cn/watch/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "error": ""
+  },
+  "static": true,
+  "referenceKind": "derived",
+  "primary": true,
+  "referenceImage": "docs/evidence/C10/references/watch.png"
+}

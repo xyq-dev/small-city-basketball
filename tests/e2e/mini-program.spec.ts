@@ -3,7 +3,19 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { Frame, Page, TestInfo } from '@playwright/test';
 
-type Scenario = { name: string; route: string; data: Record<string, unknown>; filled: boolean };
+type Scenario = {
+  name: string;
+  route: string;
+  data: Record<string, unknown>;
+  filled: boolean;
+  state?: string;
+  figmaNode?: string;
+  static?: boolean;
+  expectText?: string[];
+  expectAbsentText?: string[];
+  expectDisabled?: string[];
+  expectEnabled?: string[];
+};
 type Preview = { html: string; route: string; width: number; height: number };
 const root = path.resolve(__dirname, '../../apps/wechat');
 const { buildPreview } = require('../../apps/wechat/test/helpers/native-preview.cjs') as {
@@ -31,11 +43,9 @@ const scenarios: Scenario[] = [
     .filter((file) => file.endsWith('.json'))
     .sort()
     .map((file) => {
-      const fixture = JSON.parse(fs.readFileSync(path.join(fixtureDirectory, file), 'utf8')) as {
-        name: string;
-        route: string;
-        data: Record<string, unknown>;
-      };
+      const fixture = JSON.parse(
+        fs.readFileSync(path.join(fixtureDirectory, file), 'utf8'),
+      ) as Scenario;
       if (
         !/^[a-z0-9-]+$/.test(fixture.name) ||
         !/^pages\/[a-z0-9-]+\/index$/.test(fixture.route) ||
@@ -44,6 +54,21 @@ const scenarios: Scenario[] = [
         Array.isArray(fixture.data)
       )
         throw new Error('Invalid synthetic mini-program fixture: ' + file);
+      for (const field of [
+        'expectText',
+        'expectAbsentText',
+        'expectDisabled',
+        'expectEnabled',
+      ] as const) {
+        if (
+          fixture[field] !== undefined &&
+          (!Array.isArray(fixture[field]) ||
+            fixture[field]!.some((value) => typeof value !== 'string' || !value))
+        )
+          throw new Error('Invalid native state expectations: ' + file);
+      }
+      if (fixture.name.startsWith('c10-') && (!fixture.state || !fixture.figmaNode))
+        throw new Error('C10 fixture needs its state and Figma reference: ' + file);
       return { ...fixture, filled: true };
     }),
 ];
@@ -181,6 +206,91 @@ async function attachScreen(page: Page, testInfo: TestInfo, name: string) {
   await testInfo.attach(name, { path: target, contentType: 'image/png' });
 }
 
+// Geometry here is measured against the original 390px Figma frames. The
+// existing overflow/touch matrix still owns all three adaptive viewport widths.
+async function checkDesignGeometry(frame: Frame, scenario: string, width: number) {
+  scenario =
+    (
+      {
+        'c10-core-home-ready': 'initial-home',
+        'c10-core-players-ready': 'players-collapsed',
+        'c10-core-compare-ready': 'compare-three',
+      } as Record<string, string>
+    )[scenario] || scenario;
+  const supported = ['initial-home', 'players-collapsed', 'compare-three'];
+  if (!supported.includes(scenario)) return null;
+  const metrics = await frame.evaluate(() => {
+    const measure = (selector: string) => {
+      const element = document.querySelector(selector);
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+        fontSize: Number.parseFloat(style.fontSize),
+        lineHeight: Number.parseFloat(style.lineHeight),
+        radius: Number.parseFloat(style.borderTopLeftRadius),
+      };
+    };
+    return {
+      fontFamily: getComputedStyle(document.body).fontFamily,
+      hero: measure('.home-hero'),
+      heroTitle: measure('.home-hero .title'),
+      homeAction: measure('.home-page > .accent'),
+      homeCard: measure('.home-card'),
+      marketIntro: measure('.market-intro'),
+      filterToggle: measure('.filter-toggle'),
+      playerCard: measure('.player-card'),
+      playerName: measure('.player-name'),
+      metricColumn: measure('.metric-labels'),
+      playerColumn: measure('.compare-column'),
+      tableCell: measure('.comparison-cell'),
+      action: measure('.action-bar > .primary'),
+    };
+  });
+  expect(metrics.fontFamily).toContain('Noto Sans CJK SC');
+  if (scenario === 'initial-home') {
+    expect(metrics.hero?.x).toBe(20);
+    expect(metrics.hero?.width).toBe(width - 40);
+    expect(metrics.heroTitle?.fontSize).toBe(22);
+    expect(metrics.heroTitle?.lineHeight).toBe(34);
+    expect(metrics.homeAction?.width).toBe(width - 40);
+    expect(metrics.homeAction?.height).toBe(44);
+    expect(metrics.homeCard?.radius).toBe(16);
+    if (width === 390) {
+      expect(metrics.hero?.y).toBe(116);
+      expect(metrics.hero?.height).toBe(118);
+      expect(metrics.homeAction?.y).toBe(250);
+      expect(metrics.homeCard?.y).toBe(310);
+      expect(metrics.homeCard?.height).toBe(124);
+    }
+  } else {
+    expect(metrics.action?.x).toBe(20);
+    expect(metrics.action?.width).toBe(width - 40);
+    expect(metrics.action?.height).toBe(44);
+    if (scenario === 'players-collapsed') {
+      expect(metrics.marketIntro?.height).toBeGreaterThanOrEqual(80);
+      expect(metrics.filterToggle?.height).toBe(44);
+      expect(metrics.playerCard?.radius).toBe(16);
+      expect(metrics.playerName?.fontSize).toBe(18);
+      expect(metrics.playerName?.lineHeight).toBe(28);
+      if (width === 390) {
+        expect(metrics.marketIntro?.height).toBe(80);
+        expect(metrics.playerCard?.y).toBe(332);
+      }
+    } else {
+      expect(metrics.metricColumn?.width).toBe(100);
+      expect(metrics.playerColumn?.width).toBe(125);
+      expect(metrics.tableCell?.height).toBe(56);
+      expect(metrics.tableCell?.fontSize).toBe(12);
+    }
+  }
+  return metrics;
+}
+
 test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机验收）', () => {
   // This matrix owns its widths. Existing mobile-project web application tests
   // still run; repeating these same native-source previews adds no coverage.
@@ -208,14 +318,56 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         await page.setContent(preview.html, { waitUntil: 'load' });
         await expect(page.getByText(/非微信运行时\/开发工具\/真机/)).toBeVisible();
         const frame = await nativeFrame(page);
-        if (scenario.filled) await expect(frame.locator('body')).toContainText('合成');
+        if (scenario.filled && !scenario.static && (!scenario.state || scenario.state === 'ready'))
+          await expect(frame.locator('body')).toContainText('合成');
+        for (const text of scenario.expectText || [])
+          await expect(frame.locator('body')).toContainText(text);
+        for (const text of scenario.expectAbsentText || [])
+          await expect(frame.locator('body')).not.toContainText(text);
+        for (const name of scenario.expectDisabled || [])
+          await expect(frame.getByRole('button', { name, exact: true }).first()).toBeDisabled();
+        for (const name of scenario.expectEnabled || [])
+          await expect(frame.getByRole('button', { name, exact: true }).first()).toBeEnabled();
         const layout = await measureLayout(frame);
+        if (scenario.name === 'c10-team-team-ready') {
+          await expect(frame.locator('.member-table-row')).toHaveCount(3);
+          const clippedLabels = await frame.locator('.member-table-row').evaluateAll((rows) =>
+            rows.flatMap((row) =>
+              Array.from(row.children)
+                .filter((cell) => ['本届设置', '已保存'].includes(cell.textContent?.trim() || ''))
+                .filter((cell) => {
+                  const style = getComputedStyle(cell);
+                  const range = document.createRange();
+                  range.selectNodeContents(cell);
+                  const available =
+                    cell.clientWidth -
+                    parseFloat(style.paddingLeft) -
+                    parseFloat(style.paddingRight);
+                  return (
+                    range.getClientRects().length !== 1 ||
+                    range.getBoundingClientRect().width > available + 1
+                  );
+                })
+                .map((cell) => cell.textContent),
+            ),
+          );
+          expect(clippedLabels, 'member status labels must fit on one line').toEqual([]);
+        }
+        const designGeometry = await checkDesignGeometry(frame, scenario.name, width);
         const diagnosticPath = testInfo.outputPath('native-layout.json');
         fs.mkdirSync(path.dirname(diagnosticPath), { recursive: true });
         fs.writeFileSync(
           diagnosticPath,
           JSON.stringify(
-            { route: scenario.route, scenario: scenario.name, width, ...layout },
+            {
+              route: scenario.route,
+              scenario: scenario.name,
+              state: scenario.state || (scenario.filled ? 'ready' : 'initial'),
+              figmaNode: scenario.figmaNode || null,
+              width,
+              ...layout,
+              designGeometry,
+            },
             null,
             2,
           ),
@@ -238,7 +390,7 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         expect(layout.unreadableFields, 'form controls must keep readable native text').toEqual([]);
         expect(attemptedNetwork, 'compatibility previews must remain entirely offline').toEqual([]);
 
-        if (scenario.name === 'compare-three') {
+        if (['compare-three', 'c10-core-compare-ready'].includes(scenario.name)) {
           expect(
             layout.horizontalScrollers.some(
               (region) => region.scrollWidth > region.clientWidth + 1,
@@ -256,6 +408,47 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         if (scenario.filled && layout.contentHeight > 844) {
           await frame.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
           await attachScreen(page, testInfo, 'native-bottom.png');
+          if (width === 390) {
+            // Keep the actual 844px viewport and fixed controls. Capturing a
+            // taller child body is clipped by its iframe; preserve unstitched
+            // overlapping viewport segments instead of claiming a full image.
+            const maxScroll = await frame.evaluate(
+              () => document.documentElement.scrollHeight - window.innerHeight,
+            );
+            const segments: Array<{ file: string; scrollY: number }> = [];
+            for (let position = 600; position < maxScroll; position += 600) {
+              const scrollY = await frame.evaluate((y) => {
+                window.scrollTo(0, y);
+                return window.scrollY;
+              }, position);
+              const file = `native-segment-${String(segments.length + 1).padStart(2, '0')}.png`;
+              await attachScreen(page, testInfo, file);
+              segments.push({ file, scrollY });
+            }
+            const segmentPath = testInfo.outputPath('native-scroll-segments.json');
+            fs.writeFileSync(
+              segmentPath,
+              JSON.stringify(
+                {
+                  route: scenario.route,
+                  scenario: scenario.name,
+                  width,
+                  viewportHeight: 844,
+                  step: 600,
+                  maxScroll,
+                  top: { file: 'native-top.png', scrollY: 0 },
+                  segments,
+                  bottom: { file: 'native-bottom.png', scrollY: maxScroll },
+                },
+                null,
+                2,
+              ),
+            );
+            await testInfo.attach('native-scroll-segments.json', {
+              path: segmentPath,
+              contentType: 'application/json',
+            });
+          }
         }
       });
     }

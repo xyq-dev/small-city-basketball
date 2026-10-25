@@ -1,1 +1,8 @@
-<view class="page media-entry"><view class="hero"><view class="title">留住球场上的每一刻</view><view class="muted">只查看主办方明确发布的比赛图片与小视频。</view></view><view class="card"><view class="subtitle">从比赛进入媒体</view><view class="muted">打开获授权的赛事，选择一场比赛，即可查看本场已发布的图片、视频与事件定位。</view><button class="primary" bindtap="open">打开赛事选择比赛</button><view class="notice">未发布、已撤销或已到期的媒体不会继续显示。外部链接仅提供复制，不保证微信内播放。</view></view></view><scb-nav active="Video"/>
+<view class="page media-entry">
+  <view class="media-intro"><view class="title">留住球场上的每一刻</view><view class="media-copy">只查看主办方明确发布的比赛图片与小视频。</view></view>
+  <view class="media-panel"><view class="subtitle">比赛回放与人工片段</view><view class="muted">已发布的媒体，不改变原比赛记录。</view><view class="media-route"><view class="route-step"><view class="route-number">01</view><view><view class="media-strong">打开获授权的赛事</view><view class="muted">使用主办方提供的有效观赛入口</view></view></view><view class="route-step"><view class="route-number">02</view><view><view class="media-strong">选择一场比赛</view><view class="muted">在比赛详情进入“视频”页签</view></view></view><view class="route-step"><view class="route-number">03</view><view><view class="media-strong">查看已发布媒体</view><view class="muted">图片、小视频及人工对时的片段定位</view></view></view></view></view>
+  <button class="primary" bindtap="open">打开赛事选择比赛</button>
+  <view class="notice media-note"><view class="media-strong">以当前有效发布为准</view><view class="small">未发布、已撤销或已到期的媒体不继续显示。外部链接仅提供复制，不保证微信内播放；已复制传播的链接无法收回。</view></view>
+  <view class="media-panel"><view class="subtitle">从比赛记录找到片段</view><view class="muted">片段定位由主办方基于现有比赛记录发布。没有已发布媒体时，这里不会使用示例视频替代。</view></view>
+</view>
+<scb-nav active="Video"/>

@@ -130,6 +130,9 @@ Page({
   input(e) {
     this.setData({ newName: e.detail.value });
   },
+  cancelDraft() {
+    if (!this.data.busy && !this.data.uncertain) this.setData({ newName: '' });
+  },
   team(e) {
     ui.open('team', { orgId: this.data.selectedOrg, teamId: e.currentTarget.dataset.id });
   },

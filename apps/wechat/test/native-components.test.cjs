@@ -204,7 +204,18 @@ test('static preview refuses components with top-level request side effects', ()
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
 if (manifest.usingComponents?.['scb-nav']) {
   test('actual scb-nav reads active Account and exposes its four navigation labels', () => {
-    const result = buildPreview({ root, route: 'pages/account/index' });
+    const result = buildPreview({
+      root,
+      route: 'pages/account/index',
+      data: {
+        user: {
+          id: '11111111-1111-4111-8111-111111111111',
+          displayName: '合成参与者',
+          email: 'synthetic@example.test',
+        },
+        loading: false,
+      },
+    });
     const navigation = result.components.find((component) => component.tag === 'scb-nav');
     assert.equal(navigation?.properties.active, 'Account');
     for (const label of ['首页', '赛事', '视频', '我的'])

@@ -1,0 +1,13 @@
+{
+  "name": "c10-fulfill-detail-empty",
+  "route": "pages/booking-detail/index",
+  "state": "empty",
+  "figmaNode": "30:1114",
+  "expectText": ["暂未读取到合作记录"],
+  "primary": false,
+  "asOf": "2026-10-25T02:00:00.000Z",
+  "data": {
+    "loading": false,
+    "order": null
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "c10-account-planned-refund",
+  "route": "pages/planned/index",
+  "state": "planned",
+  "figmaNode": "30:2564",
+  "referenceKind": "derived",
+  "expectText": ["逐场选择处理范围", "退款申请暂未开放"],
+  "static": true,
+  "primary": false,
+  "data": {
+    "selected": "refund",
+    "optionsOpen": false,
+    "refundProgress": false
+  }
+}

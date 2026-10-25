@@ -1,0 +1,13 @@
+{
+  "name": "c10-profile-player-error",
+  "route": "pages/player/index",
+  "state": "error",
+  "figmaNode": "30:168",
+  "expectText": ["合成网络读取失败", "重新读取资料"],
+  "syntheticData": true,
+  "data": {
+    "loading": false,
+    "profile": null,
+    "error": "合成网络读取失败，请重试。"
+  }
+}

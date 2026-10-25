@@ -1,6 +1,22 @@
 const ui = require('../../utils/ui');
 const sdk = require('../../utils/booking');
 const market = require('../../utils/player-market');
+const PRIMARY_METRICS = ['price', 'total', 'sample', 'points', 'fouls', 'services', 'status'];
+
+function primaryComparison(table) {
+  const labelById = new Map(table.labels.map((label) => [label.id, label]));
+  return {
+    labels: PRIMARY_METRICS.map((id) => ({
+      ...labelById.get(id),
+      label:
+        id === 'sample' ? '统计样本' : id === 'status' ? '来源完整度' : labelById.get(id).label,
+    })),
+    columns: table.columns.map((column) => {
+      const cellById = new Map(column.cells.map((cell) => [cell.id, cell]));
+      return { ...column, cells: PRIMARY_METRICS.map((id) => cellById.get(id)) };
+    }),
+  };
+}
 
 Page({
   data: {
@@ -10,8 +26,8 @@ Page({
     selectedCount: 0,
     firstId: '',
     firstName: '',
-    columnsWidth: '0rpx',
-    tableHeight: '1200px',
+    columnsWidth: '0px',
+    tableHeight: '456px',
     loading: false,
     loginRequired: false,
     error: '',
@@ -113,14 +129,14 @@ Page({
           !!statisticsError,
         ),
       );
-      const table = market.comparisonRows(profiles);
+      const table = primaryComparison(market.comparisonRows(profiles));
       this._displayToken = token;
       this.setData({
         profiles,
         labels: table.labels,
         columns: table.columns,
-        columnsWidth: String(profiles.length * 246) + 'rpx',
-        tableHeight: String(64 + table.labels.length * 64 + 128) + 'px',
+        columnsWidth: String(profiles.length * 125) + 'px',
+        tableHeight: String(64 + table.labels.length * 56) + 'px',
         selectedCount: profiles.length,
         firstId: profiles[0].id,
         firstName: profiles[0].name,

@@ -1,0 +1,23 @@
+{
+  "name": "c10-core-compare-empty",
+  "route": "pages/compare/index",
+  "state": "empty",
+  "figmaNode": "11:36",
+  "syntheticData": true,
+  "expectText": ["继续选择合适的球员"],
+  "data": {
+    "profiles": [],
+    "labels": [],
+    "columns": [],
+    "selectedCount": 0,
+    "firstId": "",
+    "firstName": "",
+    "columnsWidth": "375px",
+    "tableHeight": "456px",
+    "loading": false,
+    "loginRequired": false,
+    "error": "",
+    "notice": "",
+    "statisticsError": ""
+  }
+}

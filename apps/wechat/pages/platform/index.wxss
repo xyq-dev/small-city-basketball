@@ -1,0 +1,21 @@
+.platform-notice { display:flex; flex-direction:column; gap:4px; }
+.notice-title,.state-title { font-size:14px; line-height:24px; font-weight:500; }
+.platform-order,.review-row { display:flex; flex-direction:column; gap:8px; border-bottom:1px solid #e8edf2; padding:16px 0; }
+.platform-order:last-child,.review-row:last-child { border-bottom:0; }
+.platform-order .subtitle,.review-row .subtitle { font-size:18px; line-height:28px; margin:0; font-weight:500; }
+.platform-order button,.review-row button { margin:0; }
+.appearance-status,.appearance-price { color:#132c49; font-size:14px; line-height:24px; font-weight:500; }
+.appearance-status.danger { color:#b53333; }
+.section-empty { display:flex; flex-direction:column; gap:8px; padding:12px 0 16px; }
+.fee-value { display:flex; align-items:center; gap:12px; }
+.fee-value .field { flex:1; min-width:0; }
+.fee-value > text { flex:0 0 16px; color:#617286; }
+.fee-card button { margin:16px 0 0; }
+.review-summary { display:flex; flex-direction:column; gap:8px; }
+.review-summary .subtitle { margin:0; }
+.review-editor textarea { min-height:112px; }
+.state-card { display:flex; flex-direction:column; gap:8px; }
+.state-card .subtitle { margin:0; }
+.state-card button { margin:8px 0 0; }
+.skeleton { height:12px; width:88%; background:#eaf0f7; border-radius:6px; margin:6px 0; }
+.skeleton.short { width:56%; }

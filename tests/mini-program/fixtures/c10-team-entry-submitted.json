@@ -1,0 +1,102 @@
+{
+  "name": "c10-team-entry-submitted",
+  "route": "pages/entry/index",
+  "state": "pending",
+  "figmaNode": "17:571",
+  "expectText": ["已提交待审核", "合成石鼓青锋", "审核进度与历史"],
+  "data": {
+    "entry": {
+      "id": "c1000000-0000-4000-8000-000000000005",
+      "orgId": "c1000000-0000-4000-8000-000000000002",
+      "teamId": "c1000000-0000-4000-8000-000000000001",
+      "teamName": "合成石鼓青锋",
+      "eventId": "c1000000-0000-4000-8000-000000000003",
+      "status": "SUBMITTED",
+      "statusLabel": "已提交待审核",
+      "version": 4,
+      "rules": {
+        "id": "c1000000-0000-4000-8000-000000000004",
+        "eventId": "c1000000-0000-4000-8000-000000000003",
+        "createdAt": "2026-10-25T00:00:00Z",
+        "version": 1,
+        "minPlayers": 3,
+        "maxPlayers": 12,
+        "zeroAndDoubleZeroDistinct": true,
+        "requireIdentity": false,
+        "requireInsurance": false
+      },
+      "players": [
+        {
+          "memberId": "c1000000-0000-4000-8000-000000000010",
+          "name": "合成林越",
+          "jerseyNo": "07"
+        },
+        {
+          "memberId": "c1000000-0000-4000-8000-000000000011",
+          "name": "合成陈凯",
+          "jerseyNo": "12"
+        },
+        {
+          "memberId": "c1000000-0000-4000-8000-000000000012",
+          "name": "合成周宁",
+          "jerseyNo": "00"
+        }
+      ],
+      "history": [
+        {
+          "id": "c1000000-0000-4000-8000-000000000030",
+          "type": "SUBMIT",
+          "typeLabel": "提交审核",
+          "timeText": "2026-10-24",
+          "createdAt": "2026-10-24T10:20:00Z",
+          "reason": "合成名单已提交独立审核"
+        },
+        {
+          "id": "c1000000-0000-4000-8000-000000000031",
+          "type": "SUBMIT",
+          "typeLabel": "等待独立审核",
+          "timeText": "2026-10-25",
+          "createdAt": "2026-10-25T00:30:00Z",
+          "reason": "合成记录：保留名单版本与操作原因"
+        }
+      ],
+      "capabilities": {
+        "canEditRoster": false,
+        "canSubmit": false,
+        "canWithdraw": true,
+        "canReview": false,
+        "canApprove": false,
+        "canRequestChanges": false,
+        "canReject": false
+      },
+      "latestReviewReason": null
+    },
+    "rows": [
+      {
+        "memberId": "c1000000-0000-4000-8000-000000000010",
+        "name": "合成林越",
+        "jerseyNo": "07",
+        "selected": true,
+        "archived": false
+      },
+      {
+        "memberId": "c1000000-0000-4000-8000-000000000011",
+        "name": "合成陈凯",
+        "jerseyNo": "12",
+        "selected": true,
+        "archived": false
+      },
+      {
+        "memberId": "c1000000-0000-4000-8000-000000000012",
+        "name": "合成周宁",
+        "jerseyNo": "00",
+        "selected": true,
+        "archived": false
+      }
+    ],
+    "selectedCount": 3,
+    "stage": "history",
+    "consent": false,
+    "fileConsent": false
+  }
+}

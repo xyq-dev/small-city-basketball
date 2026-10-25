@@ -1,17 +1,59 @@
-<view class="page">
-  <view class="title">费用与后续功能</view>
-  <view class="tabs"><button wx:for="{{options}}" wx:key="key" class="chip {{selected===item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="select">{{item.label}}</button></view>
-  <view wx:if="{{selected!=='funds'}}" class="notice warning">功能筹备中。本页为后续功能说明，不会发生支付、退款、分账或消息送达。</view>
+<view class="page has-actions planned-page">
   <block wx:if="{{selected==='funds'}}">
-    <view class="card"><view class="subtitle">确定报价与条件意向分开</view><view>参赛服务费、平台服务费、交通和食宿逐项展示。</view><view class="muted">平台费仅按参赛服务费计算。未确定场次单列预计金额，不计入确定合计、不占档。</view></view>
-    <view class="notice warning">在线支付与个人分账尚未开放。当前可以提交合作预约并记录履约，不会在线扣款。</view>
-    <view class="card"><view class="subtitle">当前资金状态</view><view class="row-between"><text>实收</text><text class="money">¥0.00</text></view><view class="row-between"><text>退款到账</text><text class="money">¥0.00</text></view><view class="row-between"><text>已结算</text><text class="money">¥0.00</text></view><view class="muted">完成服务记录不代表付款成交或球员已收款。</view></view>
+    <view class="card plan-card"><view class="subtitle">确定场次报价</view><view>参赛服务费、平台费、交通和食宿逐项展示</view><view>条件意向另列，不计入确定合计、不占档</view></view>
+    <view class="notice warning plan-notice"><view class="plan-notice-title">在线支付暂未开放</view><view class="small">当前可以提交合作预约与记录履约，不会发生在线扣款。</view></view>
+    <view class="card plan-card"><view class="subtitle">当前实际资金</view><view>实收 ¥0.00 · 退款到账 ¥0.00 · 已结算 ¥0.00</view><view>完成服务记录不会自动产生付款</view></view>
+    <view class="card plan-card"><view class="subtitle">费用规则</view><view>平台费仅按参赛服务费计算</view><view>条件意向预计与确定报价分开</view></view>
   </block>
-  <view wx:if="{{selected==='payment'}}" class="card"><view class="subtitle">支付前核对</view><view>交易主体、逐场报价、取消退款规则和渠道能力需明确。</view><view class="muted">未来支付以真实渠道和服务端核验为准，不使用个人收款码模拟平台支付。</view><button disabled>支付暂未开放</button></view>
-  <view wx:if="{{selected==='unknown'}}" class="card"><view class="subtitle">先核对原交易结果</view><view>未知结果不等于支付失败。核对期间保留原交易编号，避免重复付款。</view><view class="muted">客户端返回不能自行把预约改为已支付。</view><button disabled>渠道查单暂未开放</button></view>
-  <view wx:if="{{selected==='refund'}}" class="card"><view class="subtitle">取消合作与退款分别处理</view><view>逐人逐场选择范围，核对实际付款、可退金额、争议和结算状态。</view><view class="muted">取消合作不等于退款到账。当前未启用真实退款，不能承诺到账金额与时间。</view><button disabled>退款申请暂未开放</button></view>
-  <view wx:if="{{selected==='settlement'}}" class="card"><view class="subtitle">球员结算明细</view><view>未来分别列服务收入、平台费用、交通食宿、退款、争议冻结与结算进度。</view><view class="muted">当前个人分账未开通，可结算/已结算均未发生，不显示可提现余额。</view><button disabled>结算功能筹备中</button></view>
-  <view wx:if="{{selected==='messages'}}" class="card"><view class="subtitle">预约动态与关注提醒</view><view>未来提醒需用户明确选择微信允许的订阅类型，点击后读取订单当前状态。</view><view class="muted">当前请到“我的预约”主动刷新，未接通或未授权不显示已送达。</view><button class="secondary" data-page="bookings" bindtap="go">查看我的预约</button></view>
-  <view wx:if="{{selected==='profile'}}" class="card"><view class="subtitle">长期球员档案</view><view>按赛事和赛季整理本人资料与明确授权来源，保留样本、口径和撤销入口。</view><view class="muted">未采集的篮板、助攻、时间、命中率仍为未统计，不生成虚假战力分。长期档案不代替每届冻结名单。</view><button class="secondary" data-page="performance" bindtap="go">管理当前比赛数据授权</button></view>
-  <button class="secondary" data-page="bookings" bindtap="go">返回我的预约</button>
+  <block wx:elif="{{selected==='payment'}}">
+    <view class="notice warning plan-notice"><view class="plan-notice-title">功能筹备中</view><view class="small">本页为未来资金能力说明；需完成渠道与资金规则后启用。</view></view>
+    <view class="card plan-card"><view class="subtitle">支付前核对</view><view>核对逐人逐场服务费、平台费与交通食宿</view><view>明确交易主体与取消退款规则</view><view>未启用渠道，不展示可支付订单或收款码</view></view>
+    <view class="card plan-card"><view class="subtitle">确认内容</view><view>收款与分账能力尚未开通</view><view>未来支付以真实渠道和服务端核验为准</view></view>
+    <button class="secondary" data-key="unknown" bindtap="select">查看支付结果待核验状态</button>
+  </block>
+  <block wx:elif="{{selected==='unknown'}}">
+    <view class="hero plan-hero"><view class="title">先核对交易结果</view><view class="muted">未知结果不等于付款失败</view></view>
+    <view class="card plan-card"><view class="subtitle">未来支付状态</view><view>以支付渠道与服务端核验结果为准</view><view>不凭客户端返回自行改为已支付</view></view>
+    <view class="notice warning plan-notice"><view class="plan-notice-title">核对期间避免重复付款</view><view class="small">原交易编号关联原订单；未核验时保留待确认状态。</view></view>
+    <view class="card plan-card"><view class="subtitle">当前项目状态</view><view>真实个人撮合支付尚未启用</view><view>本页不代表已经发生任何资金</view></view>
+  </block>
+  <block wx:elif="{{selected==='refund' && !refundProgress}}">
+    <view class="card plan-card"><view class="subtitle">逐场选择处理范围</view><view>未来只选择要取消的球员与场次</view><view>不影响其他有效履约项</view></view>
+    <view class="card plan-card"><view class="subtitle">退款核对区</view><view>实付、可退金额、已结算部分分别核对</view><view>服务费与交通食宿按最终明确规则处理</view><view>规则及渠道未启用时不生成承诺金额</view></view>
+    <view class="notice warning plan-notice"><view class="plan-notice-title">取消和退款分别确认</view><view class="small">取消合作不等于退款到账，争议按独立流程处理。</view></view>
+    <button class="secondary" bindtap="showRefundProgress">查看退款进度规划</button>
+  </block>
+  <block wx:elif="{{selected==='refund' && refundProgress}}">
+    <view class="hero plan-hero"><view class="title">退款进度以核验结果为准</view><view class="muted">申请 → 审核 → 渠道处理 → 到账核验</view></view>
+    <view class="card plan-card"><view class="subtitle">状态设计</view><view>处理中：展示原交易与退款编号</view><view>失败：展示原因和可重试入口</view><view>到账：只在渠道与服务端核验后显示</view></view>
+    <view class="notice warning plan-notice"><view class="plan-notice-title">当前没有真实退款</view><view class="small">实收与退款到账均为¥0，不展示虚假的成功到账。</view></view>
+    <button class="secondary" data-key="funds" bindtap="select">查看资金说明</button>
+  </block>
+  <block wx:elif="{{selected==='settlement'}}">
+    <view class="card plan-card"><view class="subtitle">未来结算应逐项展示</view><view>参赛服务收入、平台费用、交通食宿</view><view>退款、争议冻结、待结算与已结算分开</view></view>
+    <view class="plan-stat-grid"><view class="plan-stat"><view class="numeric">¥0</view><view class="small muted">当前实收</view></view><view class="plan-stat"><view class="numeric">¥0</view><view class="small muted">当前已结算</view></view></view>
+    <view class="notice warning plan-notice"><view class="plan-notice-title">个人分账尚未开通</view><view class="small">不显示虚假可提现余额，不提供绕过渠道的手动结算按钮。</view></view>
+    <view class="card plan-card"><view class="subtitle">结算规则待专项完成</view><view>收款主体、手续费、税费及周期需明确</view><view>到账以实际渠道对账结果为准</view></view>
+  </block>
+  <block wx:elif="{{selected==='messages'}}">
+    <view class="plan-categories"><text class="selected-category">预约动态</text><text>关注赛事</text><text>系统消息</text></view>
+    <view class="card plan-card"><view class="subtitle">未来预约动态</view><view>收到预约 / 对方变更提议 / 处理结果</view><view>点击后读取当前真实订单状态</view></view>
+    <view class="card plan-card"><view class="subtitle">订阅提醒</view><view>需用户明确选择微信允许的提醒类型</view><view>未接通或未授权时不能显示已送达</view></view>
+    <view class="notice warning plan-notice"><view class="plan-notice-title">当前查看方式</view><view class="small">先通过我的预约主动刷新。本页只作为未来消息中心说明。</view></view>
+  </block>
+  <block wx:elif="{{selected==='profile'}}">
+    <view class="hero plan-hero"><view class="title">长期球员档案 · 规划</view><view class="muted">本人资料与已授权来源分别标示</view></view>
+    <view class="card plan-card"><view class="subtitle">长期展示方向</view><view>按赛季/赛事查看本人已授权记录</view><view>服务资料、样本、来源和可撤销授权</view></view>
+    <view class="card plan-card"><view class="subtitle">专业数据边界</view><view>篮板、助攻、时间与命中率尚未采集</view><view>未统计保持未统计，不编造生涯能力分</view></view>
+    <button class="secondary" data-page="performance" bindtap="go">当前可用的有限授权记录</button>
+    <view class="notice plan-notice"><view class="plan-notice-title">档案与报名分别管理</view><view class="small">长期个人档案不替代每届冻结名单与资格审核。</view></view>
+  </block>
+  <button class="secondary plan-menu-toggle" bindtap="toggleOptions">{{optionsOpen ? '收起规划说明目录' : selected==='funds' ? '查看未来交易界面规划' : '切换其他规划说明'}}</button>
+  <view wx:if="{{optionsOpen}}" class="card plan-menu"><view class="subtitle">规划说明目录</view><view class="small muted">仅查看说明，不会触发资金或消息操作。</view><view class="plan-options"><button wx:for="{{options}}" wx:key="key" class="secondary {{selected===item.key ? 'option-selected' : ''}}" data-key="{{item.key}}" bindtap="select">{{item.label}}</button></view></view>
+</view>
+<view class="action-bar">
+  <button wx:if="{{selected==='funds' || selected==='messages'}}" class="primary" data-page="bookings" bindtap="go">查看我的预约</button>
+  <button wx:elif="{{selected==='profile'}}" class="primary" data-page="performance" bindtap="go">查看本人授权记录</button>
+  <button wx:else disabled>{{selected==='payment' ? '支付暂未开放' : selected==='unknown' ? '渠道查单暂未开放' : selected==='refund' ? '退款申请暂未开放' : '结算功能筹备中'}}</button>
+  <button class="quiet" data-page="account" bindtap="go">返回我的</button>
 </view>
