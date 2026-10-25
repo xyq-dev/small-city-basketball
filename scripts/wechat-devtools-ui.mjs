@@ -234,6 +234,7 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     name: fixtures.get(page.route).fixture.name,
     title: page.title,
     probe: probes[page.route.split('/')[1]],
+    selector: page.route === 'pages/home/index' ? '.premium-home' : '.premium-page',
     fixtureSha256: fixtures.get(page.route).fixtureSha256,
     reference: 'references/' + page.route.split('/')[1] + '.png',
     referenceSha256: hash(fs.readFileSync(path.resolve(root, page.referenceImage))),
@@ -362,7 +363,7 @@ export async function capture(
       )
         throw new Error('连接目标不是本轮隔离验收副本');
       await deadline(() => page.waitFor(500), '等待原生渲染', timeout);
-      const body = await deadline(() => page.$('.premium-page'), '检查页面根节点', timeout);
+      const body = await deadline(() => page.$(scenario.selector), '检查页面根节点', timeout);
       if (
         !body ||
         !(await deadline(() => body.text(), '检查页面文字', timeout)).includes(scenario.probe)

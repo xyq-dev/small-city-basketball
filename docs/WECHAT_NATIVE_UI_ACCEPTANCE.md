@@ -37,7 +37,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\accept-wechat-ui.p
 
 启动或截图超时、路由/来源标识不符、缺少预期文字、无效PNG、AppService异常都不得记为成功。启动前条件不齐时只输出错误；已建立副本后失败会保留未完成报告。退出码0仅表示六张原生模板截图采集完成，不表示已通过人工视觉签收。
 
-副本保留原始WXML/WXSS/组件/素材，但**替换App和Page的业务生命周期与事件为只读桩**，并把副本API来源固定到不可用的`https://scb-ui-fixture.invalid`；六屏数据来自C11合成fixture。因而只适用于官方模板编译、字体/图片/布局与安全区核对；不用于验证原Page业务逻辑、登录、接口Cookie/Origin、预约写入或真机。真实业务验收必须重新导入原始`apps/wechat`，按原[使用说明](../apps/wechat/README.md)配置已有目标环境，并单独保留证据。
+副本保留原始WXML/WXSS/组件/素材，但**替换App和Page的业务生命周期与事件为只读桩**，并把副本API来源固定到不可用的`https://scb-ui-fixture.invalid`；六屏数据来自C11合成fixture。因而只适用于官方模板编译、字体/图片/布局与安全区核对；不用于验证原Page业务逻辑、登录、接口Cookie/Origin、预约写入或真机。真实业务验收须另用经批准的隔离测试副本与合成账号，并按原[使用说明](../apps/wechat/README.md)核对AppID、域名及接口行为。当前原项目API固定来源未改，本轮禁止在生产写入预约或测试资金。不得把本入口的模板桩当作真实业务验收。
 
 截图前在开发工具选择目标模拟器尺寸。需要320/390/430三宽时，逐宽切换模拟器并重新执行命令，各次生成独立目录；本入口不会假装已自动切换设备或修改图片尺寸。
 

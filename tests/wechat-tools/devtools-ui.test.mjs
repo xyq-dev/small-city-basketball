@@ -15,6 +15,17 @@ import {
 
 const require = createRequire(import.meta.url);
 const { loadPage } = require('../../apps/wechat/test/helpers/native-page.cjs');
+const { parseWxml } = require('../../apps/wechat/test/helpers/wxml.cjs');
+
+function hasClassSelector(route, selector) {
+  if (!/^\.[a-z-]+$/.test(selector)) return false;
+  const tree = parseWxml(fs.readFileSync(path.join(ROOT, 'apps/wechat', route + '.wxml'), 'utf8'));
+  function find(node) {
+    const classes = String(node.attributes?.class || '').split(/\s+/);
+    return classes.includes(selector.slice(1)) || (node.children || []).some(find);
+  }
+  return find(tree);
+}
 const runs = [];
 afterEach(() => {
   for (const run of runs.splice(0)) fs.rmSync(run, { recursive: true, force: true });
@@ -60,7 +71,8 @@ function fakeSdk(
         businessDisabled: true,
       }),
       waitFor: async () => {},
-      $: async () => ({ text: async () => s.probe }),
+      $: async (selector) =>
+        hasClassSelector(s.route, selector) ? { text: async () => s.probe } : null,
     };
   };
   mini.screenshot = async ({ path: filename }) => {
@@ -87,6 +99,12 @@ test('prepare preserves all source templates/assets and never mutates the runtim
   assert.equal(run.plan.scenarios.length, 6);
   assert.equal(run.plan.nativeScreenshotsCaptured, false);
   assert.equal(run.plan.businessFlowVerified, false);
+  for (const scenario of run.plan.scenarios)
+    assert.equal(hasClassSelector(scenario.route, scenario.selector), true, scenario.route);
+  assert.equal(
+    run.plan.scenarios.find((s) => s.route === 'pages/home/index').selector,
+    '.premium-home',
+  );
   for (const item of run.plan.sourceSnapshots) {
     const original = fs.readFileSync(path.join(ROOT, 'apps/wechat', item.path));
     assert.equal(createHash('sha256').update(original).digest('hex'), item.sha256);
@@ -174,6 +192,18 @@ test('unexpected route fails before capturing and disconnects', async () => {
   const report = await captureFake(run, { sdk });
   assert.equal(report.nativeScreenshotsCaptured, false);
   assert.match(report.error, /路由不符/);
+  assert.equal(report.screenshots.length, 0);
+  assert.equal(mini.disconnected, 1);
+});
+
+test('a selector absent from the real WXML cannot pass the capture check', async () => {
+  const run = prepared(),
+    { sdk, mini } = fakeSdk(run);
+  run.plan.scenarios[0].selector = '.premium-page';
+  assert.equal(hasClassSelector('pages/home/index', '.premium-page'), false);
+  const report = await captureFake(run, { sdk });
+  assert.equal(report.nativeScreenshotsCaptured, false);
+  assert.match(report.error, /缺少预期原生页面内容/);
   assert.equal(report.screenshots.length, 0);
   assert.equal(mini.disconnected, 1);
 });
