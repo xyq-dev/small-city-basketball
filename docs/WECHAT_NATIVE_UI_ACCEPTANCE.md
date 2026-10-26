@@ -30,7 +30,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\accept-wechat-ui.p
 
 除C11六屏外，`tests/mini-program/platform-catalog.json` 列出赛事优先首页、我的赛事、机构赛事详情等合成状态。副本中为每个状态生成别名页 `pages/platform-*/index`：WXML/WXSS/页面配置与对应正式页面逐字节相同，只有只读桩数据不同，并追加到副本 `app.json`。这些状态没有用户确认稿，对照页明确标注“设计待签收”。球员详情采集选择器改为 `.profile-hero`（姓名位于该区域，此前`.premium-page`导致误报失败）。
 
-若副本启动后自动化一直超时（页面栈为空、截图超时），先用旧的可用副本对照确认环境正常，再在副本内二分WXSS。C13实测两类会使基础库3.17.4的AppService不启动：组件WXSS注释含分号；以及特定的子选择器规则（见[C13交接](handoffs/C13.md)）。本入口不会把此类超时记为成功。
+若副本启动后自动化一直超时（页面栈为空、截图超时），先用旧的可用副本对照确认环境正常，再在副本内二分WXSS。C13实测两类会使基础库3.17.4的AppService不启动：组件WXSS注释含分号；以及特定的子选择器规则（见[C13交接](handoffs/C13.md)）。本入口不会把此类超时记为成功。同样实测：别名页命名为 `pages/platform-home-extension/index` 时副本无响应，内容不变改名为 `platform-home-lower` 即正常，平台场景请避免该名称。另外开发工具同一时间只应打开一个验收副本；第二个项目窗口的自动化会超时。
 
 ## 输出与判定
 

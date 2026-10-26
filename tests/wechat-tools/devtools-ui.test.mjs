@@ -190,7 +190,7 @@ test('successful SDK fixture capture records every original PNG hash without cla
     mini.scrolls,
     run.plan.scenarios.filter((s) => s.scrollTop).map((s) => [s.name, s.scrollTop]),
   );
-  assert.ok(mini.scrolls.some(([name]) => name === 'platform-home-extension'));
+  assert.ok(mini.scrolls.some(([name]) => name === 'platform-home-lower'));
   assert.equal(report.businessFlowVerified, false);
   assert.equal(report.realDeviceVerified, false);
   assert.equal(report.userVisualAccepted, false);

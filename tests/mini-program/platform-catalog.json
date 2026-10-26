@@ -9,7 +9,7 @@
       "probe": "合成青锋杯"
     },
     {
-      "name": "platform-home-extension",
+      "name": "platform-home-lower",
       "baseRoute": "pages/home/index",
       "title": "首页 · 扩展服务（下滑）",
       "selector": ".premium-home",

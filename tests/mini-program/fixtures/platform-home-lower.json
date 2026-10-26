@@ -1,5 +1,5 @@
 {
-  "name": "platform-home-extension",
+  "name": "platform-home-lower",
   "route": "pages/home/index",
   "state": "ready-scrolled",
   "designSource": "synthetic:platform-alignment",
