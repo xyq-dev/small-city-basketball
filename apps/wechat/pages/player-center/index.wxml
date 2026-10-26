@@ -7,7 +7,7 @@
     <button class="primary" bindtap="login">登录并返回球员中心</button>
   </view>
   <block wx:if="{{authorized}}">
-    <block wx:if="{{profile &amp;&amp; !editing}}">
+    <block wx:if="{{profile && !editing}}">
       <block wx:if="{{profile.status === 'PENDING'}}">
         <view class="hero center-hero"><view class="title">资料已提交</view><view>等待平台审核服务资料</view></view>
         <view class="card center-card"><view class="subtitle">当前状态</view><view class="center-copy">{{profile.displayName}} · {{profile.statusText}}</view><view class="center-copy">待审核期间不进入可约公开广场</view><view class="center-copy">提交成功不代表实名、保险或参赛资格已核验</view></view>
@@ -79,8 +79,8 @@
       </block>
       <view wx:if="{{pending}}" class="notice warning">原资料提交结果待核对，当前内容已锁定。使用原编号继续核对，不会自动重发或另外创建提交。</view>
       <button class="quiet" bindtap="refresh" disabled="{{busy || pending}}">重新读取本人资料</button>
-      <view class="action-bar"><button class="primary" bindtap="save" disabled="{{busy || pendingInFlight || (!pending &amp;&amp; !form.adultConfirmed)}}">{{busy ? '正在保存…' : pending ? '核对原资料提交' : '保存并提交资料审核'}}</button><button class="quiet" bindtap="cancelEdit" disabled="{{busy || pending}}">返回本人资料</button></view>
+      <view class="action-bar"><button class="primary" bindtap="save" disabled="{{busy || pendingInFlight || (!pending && !form.adultConfirmed)}}">{{busy ? '正在保存…' : pending ? '核对原资料提交' : '保存并提交资料审核'}}</button><button class="quiet" bindtap="cancelEdit" disabled="{{busy || pending}}">返回本人资料</button></view>
     </block>
   </block>
-  <view wx:if="{{!loading &amp;&amp; !authorized &amp;&amp; !loginRequired}}" class="card center-card"><view class="subtitle">当前无法管理本人资料</view><view class="center-copy">请核对当前账号与访问权限后重新读取，不展示其他账号的服务档案。</view><button class="secondary" bindtap="refresh">重新读取本人资料</button></view>
+  <view wx:if="{{!loading && !authorized && !loginRequired}}" class="card center-card"><view class="subtitle">当前无法管理本人资料</view><view class="center-copy">请核对当前账号与访问权限后重新读取，不展示其他账号的服务档案。</view><button class="secondary" bindtap="refresh">重新读取本人资料</button></view>
 </view>

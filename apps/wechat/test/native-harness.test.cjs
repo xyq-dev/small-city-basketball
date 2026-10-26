@@ -75,6 +75,16 @@ test('template renderer handles nested loops, chained conditionals and escaping 
   assert.doesNotThrow(() => parseWxml('<text>{{ x < 2 ? "}}" : ">" }}</text>'));
 });
 
+test('binding code rejects HTML-escaped operators like the official WXML compiler', () => {
+  for (const source of [
+    '<view wx:if="{{a &amp;&amp; b}}"/>',
+    '<view wx:if="{{list.length &gt;= 2}}"/>',
+    '<text>{{count &lt; 2 ? "few" : "many"}}</text>',
+  ])
+    assert.throws(() => parseWxml(source), /HTML entity used as WXML binding code/);
+  assert.doesNotThrow(() => parseWxml('<view wx:if="{{a && b}}">报到≤开始&lt;结束</view>'));
+});
+
 test('default unchecked and denied capability controls stay unselected and disabled in rendered WXML', () => {
   const source =
     '<checkbox checked="{{consent}}"/><button wx:if="{{canSubmit}}" disabled="{{!consent || busy}}">submit</button><button wx:else disabled>no access</button>';

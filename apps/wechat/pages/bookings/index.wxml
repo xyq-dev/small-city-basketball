@@ -12,7 +12,7 @@
   <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">预约读取失败</view><view class="small">{{error}}</view><view class="small">保留当前筛选，可刷新后重试。</view></view>
   <view wx:if="{{loginRequired}}" class="card empty state-card"><view class="subtitle">登录后查看本人合作</view><view class="muted">当前身份核对后，才可读取有权查看的预约。</view><button class="primary" bindtap="login">登录并返回预约</button></view>
   <view wx:elif="{{loading}}" class="card state-card loading-card"><view class="state-title">正在读取最新预约</view><view class="skeleton"></view><view class="skeleton short"></view><view class="small muted">正在核对当前身份与逐场状态…</view></view>
-  <view wx:elif="{{!rows.length &amp;&amp; !error}}" class="card empty state-card"><view class="subtitle">暂无符合条件的合作记录</view><view class="muted">可切换发出/收到或调整状态筛选。</view></view>
+  <view wx:elif="{{!rows.length && !error}}" class="card empty state-card"><view class="subtitle">暂无符合条件的合作记录</view><view class="muted">可切换发出/收到或调整状态筛选。</view></view>
   <block wx:for="{{rows}}" wx:for-item="order" wx:key="id">
     <view wx:for="{{order.appearances}}" wx:for-item="appearance" wx:key="id" class="booking-order-card">
       <view class="appearance-status {{appearance.status === 'ACCEPTED' ? 'accepted' : appearance.tone}}"><text class="status-dot"></text>{{appearance.status === 'ACCEPTED' ? '已接单 · 待到场' : appearance.statusText}}</view>

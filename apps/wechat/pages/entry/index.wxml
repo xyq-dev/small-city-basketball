@@ -81,7 +81,7 @@
           >
             私有查看此文件</button
           ><button
-            wx:if="{{item.status==='ACTIVE' &amp;&amp; fileWorkspace.capabilities.canRevoke}}"
+            wx:if="{{item.status==='ACTIVE' && fileWorkspace.capabilities.canRevoke}}"
             class="quiet"
             data-id="{{item.id}}"
             bindtap="revoke"
@@ -154,7 +154,7 @@
         wx:if="{{entry.rules.requireIdentity || entry.rules.requireInsurance}}"
         class="notice warning"
         >赛事要求{{entry.rules.requireIdentity ? '身份资料' : ''}}{{entry.rules.requireIdentity
-        &amp;&amp; entry.rules.requireInsurance ? '及' : ''}}{{entry.rules.requireInsurance ?
+        && entry.rules.requireInsurance ? '及' : ''}}{{entry.rules.requireInsurance ?
         '保险资料' :
         ''}}核验。当前系统未提供该核验结果，上传文件不会解除提交限制，请联系主办方按现有流程处理。</view
       >

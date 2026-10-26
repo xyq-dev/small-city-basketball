@@ -32,7 +32,7 @@
     <view wx:if="{{selectionNotice}}" class="notice warning">{{selectionNotice}}</view>
     <view wx:if="{{statisticsError}}" class="notice warning">统计暂时无法读取：{{statisticsError}}。旧统计已清除，可刷新后重试。</view>
     <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在读取球员与授权统计…</view><view class="muted">读取完成前不展示旧资料或旧统计。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
-    <view wx:if="{{!loading &amp;&amp; !cards.length &amp;&amp; !error}}" class="card empty"><view class="subtitle">暂无匹配球员</view><view class="muted">可以放宽日期、位置或价格，再找一找。</view><button class="secondary" bindtap="filtersToggle">调整筛选条件</button></view>
+    <view wx:if="{{!loading && !cards.length && !error}}" class="card empty"><view class="subtitle">暂无匹配球员</view><view class="muted">可以放宽日期、位置或价格，再找一找。</view><button class="secondary" bindtap="filtersToggle">调整筛选条件</button></view>
     <view wx:for="{{cards}}" wx:key="id" class="player-result">
       <view class="card player-card">
         <view class="player-head">
@@ -45,12 +45,12 @@
       </view>
     </view>
     <button wx:if="{{hasMore}}" class="secondary" bindtap="more" disabled="{{loading}}">加载更多球员</button>
-    <view wx:if="{{!loading &amp;&amp; cards.length}}" class="market-information">
+    <view wx:if="{{!loading && cards.length}}" class="market-information">
       <button class="quiet filter-toggle" bindtap="filtersToggle">{{filtersOpen ? '收起筛选' : '筛选位置、价格与档期'}}</button>
       <button class="quiet" bindtap="informationToggle">{{informationOpen ? '收起费用与数据说明' : '费用、来源与数据说明'}}</button>
       <view wx:if="{{informationOpen}}" class="card market-notes"><view class="subtitle">按需求选人</view><view class="small">先看位置、档期与数据样本，再比较含费报价。每场记录不代表实力评分，缺少样本不代表能力差。</view><view wx:for="{{cards}}" wx:key="id" class="source-row"><view>{{item.name}}</view><view class="small">{{item.performance.sample}} 场统计样本 · 每场记录 {{item.performance.points}} 分 / {{item.performance.fouls}} 犯规</view><view class="muted small">完成服务 {{item.performance.services}} 次 · {{item.performance.status}}</view><view class="small">已通过入驻资料审核，未核验本场资格或保险。</view></view><view class="muted small">当前显示 {{showingCount}} / {{filteredCount}} 位匹配球员。目录最多读取最新200位已审核档案，筛选仅在当前目录内进行。</view><button class="quiet" bindtap="bookings">我的预约</button></view>
     </view>
     <view wx:if="{{catalogLimited}}" class="notice warning">目录达到200位上限，不代表全部球员。可联系平台核对其他档案。</view>
   </block>
-  <view class="action-bar market-action"><button class="primary" bindtap="compare" disabled="{{loading || selectedCount &lt; 2}}"><view>{{selectedCount &gt;= 2 ? '对比已选' + selectedCount + '位球员 →' : '请选择至少2位球员对比'}}</view><view class="action-caption">同价，也要看样本与实际报价</view></button></view>
+  <view class="action-bar market-action"><button class="primary" bindtap="compare" disabled="{{loading || selectedCount < 2}}"><view>{{selectedCount >= 2 ? '对比已选' + selectedCount + '位球员 →' : '请选择至少2位球员对比'}}</view><view class="action-caption">同价，也要看样本与实际报价</view></button></view>
 </view>

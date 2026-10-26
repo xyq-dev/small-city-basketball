@@ -1,4 +1,4 @@
-<view wx:if="{{profile &amp;&amp; !recordsOpen}}" class="profile-hero">
+<view wx:if="{{profile && !recordsOpen}}" class="profile-hero">
   <image class="profile-hero-image" src="{{profile.heroPortrait || profile.portrait || '/assets/approved-ui/player-placeholder.png'}}" mode="widthFix" aria-label="{{profile.portrait ? '示例球员形象' : '球员尚未提供公开头像'}}"/>
   <view class="profile-hero-shade"></view><scb-header title="" dark="{{true}}" disabled="{{loading}}"/>
   <view class="profile-hero-copy"><view class="profile-name">{{profile.name}}</view><view>{{profile.position}} · {{profile.height}}cm</view><view>{{profile.city}}</view></view>
@@ -8,7 +8,7 @@
   <view wx:if="{{loading}}" class="card state-card"><view class="subtitle">正在读取球员资料</view><view class="muted">正在核对球员与授权记录，请稍候…</view></view>
   <view wx:if="{{loginRequired}}" class="card state-card"><view class="subtitle">请登录后继续</view><view class="muted">登录后查看当前可预约的服务资料与有限授权记录。</view><button class="primary" bindtap="login">登录并返回球员详情</button></view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
-  <view wx:if="{{!profile &amp;&amp; !loading &amp;&amp; !loginRequired}}" class="card state-card"><view class="subtitle">暂时无法展示球员资料</view><view class="muted">档案停用或访问条件变化后，需要重新核对当前目录。</view><button class="secondary" bindtap="load">重新读取资料</button><button class="quiet" bindtap="market">返回球员广场</button></view>
+  <view wx:if="{{!profile && !loading && !loginRequired}}" class="card state-card"><view class="subtitle">暂时无法展示球员资料</view><view class="muted">档案停用或访问条件变化后，需要重新核对当前目录。</view><button class="secondary" bindtap="load">重新读取资料</button><button class="quiet" bindtap="market">返回球员广场</button></view>
   <block wx:if="{{profile}}">
     <view wx:if="{{statisticsError}}" class="notice warning">统计暂时无法读取：{{statisticsError}}。已清除旧统计，可重新读取。</view>
     <block wx:if="{{!recordsOpen}}">
@@ -20,7 +20,7 @@
         <view class="sample-heading"><view class="subtitle">已授权赛事记录</view><button class="quiet profile-records-toggle" bindtap="recordsToggle">查看记录与来源<scb-icon name="chevron-right" size="15"/></button></view>
         <view class="profile-metrics"><view class="profile-metric"><view class="metric-value {{profile.performance.points === '暂不可用' ? 'textual' : ''}}">{{profile.performance.points}}</view><view>场均得分</view></view><view class="profile-metric"><view class="metric-value {{profile.performance.fouls === '暂不可用' ? 'textual' : ''}}">{{profile.performance.fouls}}</view><view>场均犯规</view></view><view class="profile-metric"><view class="metric-value">{{profile.performance.sample}}<text>场</text></view><view>样本</view></view></view>
         <view class="sample-limit"><scb-icon name="info" tone="orange" size="17"/><text>少量记录，谨慎比较</text></view>
-        <view wx:if="{{profile.performance.points === '0' &amp;&amp; profile.performance.fouls === '0'}}" class="zero-note">每场记录 0 分 / 0 犯规 · 真实0与未统计分开</view>
+        <view wx:if="{{profile.performance.points === '0' && profile.performance.fouls === '0'}}" class="zero-note">每场记录 0 分 / 0 犯规 · 真实0与未统计分开</view>
       </view>
       <view class="card profile-card profile-introduction"><view class="subtitle">球员自述</view><view class="bio">{{profile.bio || '暂无服务介绍'}}</view></view>
       <view class="card profile-card availability-card"><view class="subtitle">可约时间</view><view wx:if="{{!windows.length}}" class="profile-copy">暂无公开可约窗口，请先核对档期。</view><view wx:for="{{windows}}" wx:key="id" class="window-row"><scb-icon name="calendar" size="19"/><view><view>{{item.display || item.start}}</view><view wx:if="{{!item.display}}" class="muted">至 {{item.end}}</view></view></view></view>
@@ -34,7 +34,7 @@
       </view>
     </block>
     <block wx:else>
-      <block wx:if="{{profile.performance.sample === '0' &amp;&amp; profile.performance.points === '未统计'}}">
+      <block wx:if="{{profile.performance.sample === '0' && profile.performance.points === '未统计'}}">
         <view class="hero profile-hero"><view class="title">先看档期与服务资料</view><view>个人比赛数据：未统计</view></view>
         <view class="card profile-card"><view class="subtitle">数据状态</view><view class="profile-copy">{{profile.performance.completeness}}</view><view class="profile-copy">不以0分替代缺失，不生成综合能力分</view></view>
         <view class="card profile-card"><view class="subtitle">仍可比较</view><view class="profile-copy">{{profile.name}} · {{profile.position}} · {{profile.height}}cm</view><view class="profile-copy">报价、交通食宿、可约时间与完成服务记录</view></view>

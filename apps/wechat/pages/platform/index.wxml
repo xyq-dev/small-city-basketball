@@ -36,7 +36,7 @@
       <view class="field-label">处理依据与原因</view><textarea disabled="{{busy}}" class="field" maxlength="500" value="{{reviewReason}}" bindinput="reason" placeholder="至少2个字，保留核对依据"/>
       <view class="notice small">审核只针对本次展示版本；资料更新后须关闭并重新核对，不沿用旧声明。</view>
       <checkbox-group bindchange="agree"><label class="consent"><checkbox disabled="{{busy}}" value="yes" checked="{{consent}}"/><text>我确认按资料审核范围作出本次处理</text></label></checkbox-group>
-      <button class="primary" bindtap="submitReview" disabled="{{busy || !consent || reviewReason.length &lt; 2}}">确认处理资料</button><button class="quiet" bindtap="closeReview" disabled="{{busy}}">关闭本次处理</button>
+      <button class="primary" bindtap="submitReview" disabled="{{busy || !consent || reviewReason.length < 2}}">确认处理资料</button><button class="quiet" bindtap="closeReview" disabled="{{busy}}">关闭本次处理</button>
     </view>
     <view wx:if="{{paymentNotice}}" class="notice small">{{paymentNotice}}</view>
     <button class="secondary" bindtap="load" disabled="{{busy || loading || reviewOpen || feeDirty}}">刷新平台资料</button>

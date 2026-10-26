@@ -7,17 +7,19 @@ const { parseWxml, bindingParts, eventHandlers, evaluate } = require('./helpers/
 const { renderWxml, buildPreview } = require('./helpers/native-preview.cjs');
 const root = path.resolve(__dirname, '..');
 
-test('XML binding entities decode once before expression parsing, including quoted delimiters', () => {
-  const source =
-    '<view wx:if="{{a &lt; b &amp;&amp; b &gt; 0}}">{{&quot;}}&quot; + &apos;ok&apos;}}</view><view wx:else>no</view>';
+test('XML entities decode once outside binding code; escaped binding operators are rejected', () => {
+  // Official WeChat compile rejects `{{home &amp;&amp; x}}` (unexpected `;`), so binding code stays raw.
+  for (const code of ['a &lt; b && b > 0', 'a &#38;&#38; b', '&quot;}}&quot; + 1'])
+    assert.throws(() => bindingParts('{{' + code + '}}'), /HTML entity used as WXML binding code/);
+  const source = '<view wx:if="{{a < b && b > 0}}">{{"}}" + \'ok\'}}</view><view wx:else>no</view>';
   assert.doesNotThrow(() => parseWxml(source));
   const result = renderWxml(source, { a: 1, b: 2 });
   assert.match(result, />}}ok<\/div>/);
   assert.doesNotMatch(result, />no</);
   assert.match(renderWxml(source, { a: 3, b: 2 }), />no<\/div>/);
-  const expression = bindingParts('{{a &#38;&#38; b}}')[0].value;
+  const expression = bindingParts('{{a && b}}')[0].value;
   assert.equal(evaluate(expression, { a: true, b: 'yes' }), 'yes');
-  const once = renderWxml('<text>&amp;lt; {{&quot;&amp;lt;&quot;}}</text>', {});
+  const once = renderWxml('<text>&amp;lt; {{"&amp;lt;"}}</text>', {});
   assert.match(once, /&amp;lt; &amp;lt;/);
   assert.doesNotMatch(once, /<text>/);
   assert.deepEqual(eventHandlers(parseWxml('<view bindtap="do&#84;hing"/>')), ['doThing']);

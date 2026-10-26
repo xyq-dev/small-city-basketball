@@ -202,6 +202,9 @@ function readBinding(value, start, objectFields = false) {
   while (end < value.length) {
     const unit = decodedUnit(value, end);
     const char = unit.value;
+    // WeChat's compiler does not decode entities in binding code: `{{a &amp;&amp; b}}` fails.
+    if (!quote && unit.end - end > 1)
+      throw new Error('HTML entity used as WXML binding code; write the operator directly');
     if (quote) {
       if (escaped) escaped = false;
       else if (char === '\\') escaped = true;

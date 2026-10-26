@@ -31,7 +31,7 @@
     <button class="primary" bindtap="login">登录已有账号</button>
     <button class="quiet" bindtap="players">返回球员广场</button>
   </view>
-  <view wx:elif="{{!ready &amp;&amp; !loading}}" class="card empty">
+  <view wx:elif="{{!ready && !loading}}" class="card empty">
     <view class="subtitle">暂时无法读取预约资料</view>
     <button class="secondary" bindtap="load">重新读取</button>
   </view>
@@ -135,7 +135,7 @@
           </scroll-view>
           <view wx:if="{{editorOpen || detailsOpen || !selectedCount || !eventName || !teamId}}" class="small muted scope-caption">{{scopeOptions[scopeIndex].hint}} · 长期合作仍需逐场确认，不自动续费。</view>
         </view>
-        <block wx:if="{{!editorOpen &amp;&amp; !detailsOpen &amp;&amp; selectedCount &amp;&amp; eventName &amp;&amp; teamId}}">
+        <block wx:if="{{!editorOpen && !detailsOpen && selectedCount && eventName && teamId}}">
           <view class="selected-players">
             <block wx:for="{{players}}" wx:for-item="player" wx:key="id">
               <button wx:if="{{player.selected}}" class="selected-player" bindtap="openEditor" disabled="{{busy}}">
@@ -164,7 +164,7 @@
             <view class="compact-fee-row"><text>参赛服务</text><text>{{compactQuote.service || quote.service}}</text></view>
             <view class="compact-fee-row"><text>平台服务</text><text>{{compactQuote.platform || quote.platform}}</text></view>
             <view class="compact-fee-row"><text>交通</text><text>{{compactQuote.travel || quote.travel}}</text></view>
-            <view wx:if="{{quote.accommodation !== '¥0.00' &amp;&amp; quote.accommodation !== '¥0'}}" class="compact-fee-row"><text>食宿</text><text>{{compactQuote.accommodation || quote.accommodation}}</text></view>
+            <view wx:if="{{quote.accommodation !== '¥0.00' && quote.accommodation !== '¥0'}}" class="compact-fee-row"><text>食宿</text><text>{{compactQuote.accommodation || quote.accommodation}}</text></view>
             <view class="compact-fee-total"><text>含费预计</text><text>{{compactQuote.confirmed || quote.confirmed}}</text></view>
             <view wx:if="{{quote.conditionalCount}}" class="compact-fee-row conditional-cost"><text>条件预计 · 另列</text><text>{{compactQuote.conditional || quote.conditional}}</text></view>
           </view>
@@ -173,7 +173,7 @@
         <block wx:if="{{editorOpen || detailsOpen || !selectedCount || !eventName || !teamId}}">
         <view class="card booking-context">
           <view class="subtitle">赛事与球员</view>
-          <view wx:if="{{selectedCount &amp;&amp; eventName &amp;&amp; teamId}}" class="context-summary">
+          <view wx:if="{{selectedCount && eventName && teamId}}" class="context-summary">
             <view class="context-event">{{eventName}}</view>
             <view class="muted">{{teamName}} · 已选{{selectedCount}}位球员</view>
             <block wx:for="{{players}}" wx:for-item="player" wx:key="id"><view wx:if="{{player.selected}}" class="small muted">{{player.label}}</view></block>
@@ -294,7 +294,7 @@
               </button></view
             >
             <view
-              wx:if="{{scope !== 'SINGLE' &amp;&amp; scope !== 'TIME_BLOCK'}}"
+              wx:if="{{scope !== 'SINGLE' && scope !== 'TIME_BLOCK'}}"
               class="conditional-toggle"
               ><text>待晋级 / 条件意向</text
               ><switch
@@ -432,7 +432,7 @@
             >
           </view>
           <button
-            wx:if="{{scope !== 'SINGLE' &amp;&amp; scope !== 'TIME_BLOCK'}}"
+            wx:if="{{scope !== 'SINGLE' && scope !== 'TIME_BLOCK'}}"
             class="secondary"
             bindtap="addSlot"
             disabled="{{busy}}"
@@ -441,7 +441,7 @@
           </button>
         </view>
         <view class="notice booking-estimate"><view class="estimate-title">确定报价预计 {{quote.confirmed}}</view><view class="small">{{quote.fixedCount}}项确定安排 · {{quote.conditionalCount}}项条件意向。下一步逐项核对费用，条件意向不计入确定合计。</view></view>
-        <button wx:if="{{selectedCount &amp;&amp; eventName &amp;&amp; teamId}}" class="secondary close-editor" bindtap="closeEditor" disabled="{{busy}}">返回预约摘要</button>
+        <button wx:if="{{selectedCount && eventName && teamId}}" class="secondary close-editor" bindtap="closeEditor" disabled="{{busy}}">返回预约摘要</button>
         </block>
       </block>
       <block wx:else>
@@ -496,7 +496,7 @@
   </block>
 </view>
 
-<view wx:if="{{ready}}" class="action-bar create-actions {{!review &amp;&amp; !pending &amp;&amp; !success &amp;&amp; !storageReadBlocked &amp;&amp; !invalidRecovery &amp;&amp; !noTeams &amp;&amp; !noPlayers ? 'draft-actions' : ''}}">
+<view wx:if="{{ready}}" class="action-bar create-actions {{!review && !pending && !success && !storageReadBlocked && !invalidRecovery && !noTeams && !noPlayers ? 'draft-actions' : ''}}">
   <block wx:if="{{storageReadBlocked}}"
     ><button class="primary" bindtap="load" disabled="{{busy || loading}}">
       安全重读原预约记录</button

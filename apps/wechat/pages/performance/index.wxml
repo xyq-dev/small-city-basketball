@@ -16,7 +16,7 @@
       <view wx:if="{{pending.type === 'CONSENT'}}" class="notice small">授权不等于立即有个人统计，仍须有当前有效、独立确认的个人记录。</view>
       <block wx:else><view class="notice warning"><view class="hint-title">拒绝或撤销后的范围</view><view class="small">下次读取不再纳入该来源；不能收回别人此前已经看见或保存的内容。</view></view><view class="card dialog-card"><view class="subtitle">需要重新公开时</view><view class="dialog-copy">由主办方重新提名，球员再次同意</view><view class="dialog-copy">不会直接恢复旧授权</view></view></block>
       <view wx:if="{{pendingUnknown}}" class="notice warning">原处理结果待核对，已保留原编号及内容。继续核对会重放原操作，不生成新的授权处理。</view>
-      <view class="action-bar"><button class="primary" bindtap="submitDialog" disabled="{{busy || (!pendingUnknown &amp;&amp; (pending.reason.length &lt; 2 || (pending.type === 'CONSENT' &amp;&amp; !pending.consent)))}}">{{busy ? '正在核对…' : pendingUnknown ? '核对原处理结果' : pending.type === 'CONSENT' ? '核对并明确同意' : '确认拒绝或撤销'}}</button><button class="quiet" bindtap="closeDialog" disabled="{{busy || pendingUnknown}}">返回授权列表</button></view>
+      <view class="action-bar"><button class="primary" bindtap="submitDialog" disabled="{{busy || (!pendingUnknown && (pending.reason.length < 2 || (pending.type === 'CONSENT' && !pending.consent)))}}">{{busy ? '正在核对…' : pendingUnknown ? '核对原处理结果' : pending.type === 'CONSENT' ? '核对并明确同意' : '确认拒绝或撤销'}}</button><button class="quiet" bindtap="closeDialog" disabled="{{busy || pendingUnknown}}">返回授权列表</button></view>
     </block>
     <block wx:else>
       <scroll-view scroll-x="true" enable-flex="true" class="authorization-tab-scroll"><view class="authorization-tabs" aria-label="数据授权状态筛选">
@@ -25,7 +25,7 @@
         <button class="chip {{filter === 'APPROVED' ? 'active' : ''}}" data-filter="APPROVED" bindtap="filter" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">已同意</button>
         <button class="chip {{filter === 'REVOKED' ? 'active' : ''}}" data-filter="REVOKED" bindtap="filter" disabled="{{dirty || busy || pageLoading || sourceLoading || checking || nominationUnknown}}">已拒绝 / 撤销</button>
       </view></scroll-view>
-      <view wx:if="{{!links.length}}" class="card empty"><view class="subtitle">本页暂无符合条件的记录</view><view class="muted">当前页没有本人记录时，仍可继续加载完整历史。较早有效授权不会因新记录增多而失去撤销入口。</view><button wx:if="{{ownOnly &amp;&amp; !ownProfileId}}" class="secondary" bindtap="center">查看本人球员档案</button></view>
+      <view wx:if="{{!links.length}}" class="card empty"><view class="subtitle">本页暂无符合条件的记录</view><view class="muted">当前页没有本人记录时，仍可继续加载完整历史。较早有效授权不会因新记录增多而失去撤销入口。</view><button wx:if="{{ownOnly && !ownProfileId}}" class="secondary" bindtap="center">查看本人球员档案</button></view>
       <view wx:for="{{links}}" wx:key="id" class="authorization-item">
         <view class="card authorization-card">
           <view class="subtitle">{{item.eventName}} · {{item.teamName}} · {{item.memberName}}</view>
@@ -50,18 +50,18 @@
         <view class="card"><view class="subtitle">主办方提名本人参赛记录</view><view class="muted">由当前有赛事数据管理权的主办方精确选择固定名单成员；不能按同名自动认领。平台身份不会自动获得发布权。</view>
           <view wx:if="{{!manageableEvents.length}}" class="notice">当前没有可管理数据授权的赛事。</view>
           <block wx:else>
-            <view class="nomination-field"><view class="field-label">有权管理的赛事</view><picker range="{{manageableEvents}}" range-key="name" value="{{eventIndex &lt; 0 ? 0 : eventIndex}}" bindchange="chooseEvent" disabled="{{loading || pageLoading || checking || pending || busy || nominationUnknown}}"><view class="nomination-picker">{{selectedEvent || '请选择赛事'}}</view></picker></view>
+            <view class="nomination-field"><view class="field-label">有权管理的赛事</view><picker range="{{manageableEvents}}" range-key="name" value="{{eventIndex < 0 ? 0 : eventIndex}}" bindchange="chooseEvent" disabled="{{loading || pageLoading || checking || pending || busy || nominationUnknown}}"><view class="nomination-picker">{{selectedEvent || '请选择赛事'}}</view></picker></view>
             <view wx:if="{{sourceLoading}}" class="notice">正在读取该届明确报名名单…</view>
-            <button wx:if="{{selectedEvent &amp;&amp; !sourceLoading &amp;&amp; !teams.length}}" class="quiet" bindtap="retrySources" disabled="{{loading || pageLoading || checking || pending || busy || nominationUnknown}}">重新读取所选赛事名单</button>
-            <view class="nomination-field"><view class="field-label">所属球队</view><picker range="{{teams}}" range-key="name" value="{{teamIndex &lt; 0 ? 0 : teamIndex}}" bindchange="chooseTeam" disabled="{{loading || pageLoading || checking || pending || busy || sourceLoading || nominationUnknown || !teams.length}}"><view class="nomination-picker">{{selectedTeam || '先选择赛事，再选择球队'}}</view></picker></view>
-            <view class="nomination-field"><view class="field-label">固定报名名单成员</view><picker range="{{members}}" range-key="label" value="{{memberIndex &lt; 0 ? 0 : memberIndex}}" bindchange="chooseMember" disabled="{{loading || pageLoading || checking || pending || busy || sourceLoading || nominationUnknown || !members.length}}"><view class="nomination-picker">{{selectedMember || '请选择明确的名单成员'}}</view></picker></view>
-            <view class="nomination-field"><view class="field-label">提名到已审核球员档案</view><picker range="{{profiles}}" range-key="displayName" value="{{profileIndex &lt; 0 ? 0 : profileIndex}}" bindchange="chooseProfile" disabled="{{loading || pageLoading || checking || pending || busy || sourceLoading || nominationUnknown || !profiles.length}}"><view class="nomination-picker">{{selectedProfile || '请选择已审核档案并核对编号'}}</view></picker></view>
+            <button wx:if="{{selectedEvent && !sourceLoading && !teams.length}}" class="quiet" bindtap="retrySources" disabled="{{loading || pageLoading || checking || pending || busy || nominationUnknown}}">重新读取所选赛事名单</button>
+            <view class="nomination-field"><view class="field-label">所属球队</view><picker range="{{teams}}" range-key="name" value="{{teamIndex < 0 ? 0 : teamIndex}}" bindchange="chooseTeam" disabled="{{loading || pageLoading || checking || pending || busy || sourceLoading || nominationUnknown || !teams.length}}"><view class="nomination-picker">{{selectedTeam || '先选择赛事，再选择球队'}}</view></picker></view>
+            <view class="nomination-field"><view class="field-label">固定报名名单成员</view><picker range="{{members}}" range-key="label" value="{{memberIndex < 0 ? 0 : memberIndex}}" bindchange="chooseMember" disabled="{{loading || pageLoading || checking || pending || busy || sourceLoading || nominationUnknown || !members.length}}"><view class="nomination-picker">{{selectedMember || '请选择明确的名单成员'}}</view></picker></view>
+            <view class="nomination-field"><view class="field-label">提名到已审核球员档案</view><picker range="{{profiles}}" range-key="displayName" value="{{profileIndex < 0 ? 0 : profileIndex}}" bindchange="chooseProfile" disabled="{{loading || pageLoading || checking || pending || busy || sourceLoading || nominationUnknown || !profiles.length}}"><view class="nomination-picker">{{selectedProfile || '请选择已审核档案并核对编号'}}</view></picker></view>
             <view class="muted small authorization-section">档案列表为当前最多200条已审核资料；未找到时先核对档案状态，不能仅凭同名替代。</view>
             <view class="nomination-field"><view class="field-label">提名依据与原因</view><textarea class="field authorization-reason" value="{{draft.reason}}" bindinput="draftReason" maxlength="500" disabled="{{loading || pageLoading || checking || pending || busy || nominationUnknown}}" placeholder="填写2至500字，说明如何核对对象；不要填身份证、联系方式或保单" /></view>
             <checkbox-group bindchange="publisherConsent"><label class="consent"><checkbox value="yes" checked="{{draft.publisherConsent}}" disabled="{{loading || pageLoading || checking || pending || busy || sourceLoading || nominationUnknown}}" />我确认有权提供本次名单成员的有限比赛统计</label></checkbox-group>
             <view class="notice">提名后等待球员本人单独同意，尚不公开，也不修改冻结名单。一个账号兼任两角色时仍须分别执行，不等于双人实名核验。</view>
             <view wx:if="{{nominationUnknown}}" class="notice warning">原提名结果待核对，当前内容已锁定；继续使用原编号核对，不换号重复提名。</view>
-            <button class="primary" bindtap="nominate" disabled="{{loading || pageLoading || checking || pending || busy || sourceLoading || (!nominationUnknown &amp;&amp; (!draft.publisherConsent || !draft.eventId || !draft.teamId || !draft.memberId || !draft.profileId || draft.reason.length &lt; 2))}}">{{busy ? '正在处理…' : nominationUnknown ? '核对原提名结果' : '提名给球员本人确认'}}</button>
+            <button class="primary" bindtap="nominate" disabled="{{loading || pageLoading || checking || pending || busy || sourceLoading || (!nominationUnknown && (!draft.publisherConsent || !draft.eventId || !draft.teamId || !draft.memberId || !draft.profileId || draft.reason.length < 2))}}">{{busy ? '正在处理…' : nominationUnknown ? '核对原提名结果' : '提名给球员本人确认'}}</button>
             <button class="quiet" bindtap="discardDraft" disabled="{{loading || pageLoading || checking || pending || busy || sourceLoading || nominationUnknown}}">放弃当前未提交草稿</button>
           </block>
         </view>
@@ -69,5 +69,5 @@
       <view wx:if="{{dirty || nominationUnknown}}" class="notice warning">编辑草稿或确认记录期间暂停刷新和历史分页，避免丢失输入。先完成或关闭当前操作。</view>
     </block>
   </block>
-  <view wx:if="{{!loading &amp;&amp; !authorized &amp;&amp; !loginRequired}}" class="card authorization-state"><view class="subtitle">当前无法读取数据授权</view><view class="muted">核对当前账号和赛事权限后重新读取，不展示其他账号的旧记录。</view><button class="secondary" bindtap="refresh">重新读取数据授权</button></view>
+  <view wx:if="{{!loading && !authorized && !loginRequired}}" class="card authorization-state"><view class="subtitle">当前无法读取数据授权</view><view class="muted">核对当前账号和赛事权限后重新读取，不展示其他账号的旧记录。</view><button class="secondary" bindtap="refresh">重新读取数据授权</button></view>
 </view>

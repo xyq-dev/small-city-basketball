@@ -5,7 +5,7 @@
   <view wx:if="{{error}}" class="card state-panel" role="alert"><view class="state-label">读取失败</view><view class="subtitle">暂时无法读取比较资料</view><view class="notice danger">{{error}}</view><button class="primary" bindtap="load" disabled="{{loading}}">重新读取比较资料</button><button class="quiet" bindtap="market">返回球员广场</button></view>
   <view wx:if="{{notice}}" class="notice warning">{{notice}}</view>
   <view wx:if="{{statisticsError}}" class="notice warning">统计读取失败：{{statisticsError}}。已停止展示旧统计，可刷新重试；不会用0或演示数据填补。</view>
-  <block wx:if="{{columns.length &gt;= 2}}">
+  <block wx:if="{{columns.length >= 2}}">
     <view class="comparison-intro"><block wx:if="{{sameServicePrice}}">同为 <text>{{comparisonPrice}} / 场</text>，看看差在哪里</block><block wx:else>看报价与记录，找到适合的人</block></view>
     <view class="comparison-grid">
       <view class="metric-labels"><view class="comparison-head label-head" aria-label="对比指标"></view><block wx:for="{{labels}}" wx:for-item="metric" wx:key="id"><view wx:if="{{metric.id !== 'status'}}" class="comparison-cell label-cell">{{metric.id === 'points' ? '场均记录得分' : metric.id === 'fouls' ? '场均记录犯规' : metric.id === 'services' ? '已完成服务' : metric.label}}</view></block></view>
@@ -29,6 +29,6 @@
       <button class="secondary" bindtap="load" disabled="{{loading}}">刷新对比资料与统计</button>
     </block>
   </block>
-  <view wx:if="{{!loading &amp;&amp; columns.length &lt; 2 &amp;&amp; !loginRequired &amp;&amp; !error}}" class="card empty"><view class="subtitle">继续选择合适的球员</view><view class="muted">停用或不可查看的档案不能继续比较。当前目录最多最新200位已审核球员。</view><button class="secondary" bindtap="market">返回球员广场</button></view>
+  <view wx:if="{{!loading && columns.length < 2 && !loginRequired && !error}}" class="card empty"><view class="subtitle">继续选择合适的球员</view><view class="muted">停用或不可查看的档案不能继续比较。当前目录最多最新200位已审核球员。</view><button class="secondary" bindtap="market">返回球员广场</button></view>
   <view class="action-bar compare-action"><button class="primary" data-id="{{firstId}}" bindtap="book" disabled="{{loading || !firstId}}">{{firstId ? '选择' + firstName + '并预约' : '请选择至少2位球员'}}</button><button class="quiet" bindtap="market">继续找球员</button></view>
 </view>

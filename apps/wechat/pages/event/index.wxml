@@ -1,5 +1,5 @@
 <view class="page event-page">
-  <view wx:if="{{loading &amp;&amp; !event}}" class="public-panel public-state">
+  <view wx:if="{{loading && !event}}" class="public-panel public-state">
     <view class="state-tag">赛事观赛</view>
     <view class="title">正在读取最新赛事</view>
     <view class="notice"><view class="state-strong">核对公开赛事与正式赛程</view><view class="small">读取完成前不将旧资料标为最新，请稍候。</view></view>
@@ -10,8 +10,8 @@
     <view class="state-tag warning">{{unavailable ? '请核对' : error ? '读取未完成' : '赛事观赛'}}</view>
     <view class="title">{{unavailable ? '该内容已停止公开' : error ? '暂时无法读取赛事' : '打开主办方公开赛事'}}</view>
     <view class="notice {{error ? 'warning' : ''}}"><view>{{error || '从主办方提供的有效观赛入口进入，查看已发布的赛程、比分与媒体。'}}</view><view wx:if="{{unavailable}}" class="small">旧画面已清空，不回显已撤销或不可访问的赛事资料。</view></view>
-    <button wx:if="{{error &amp;&amp; !unavailable}}" class="primary" bindtap="load">重新读取</button>
-    <button class="{{error &amp;&amp; !unavailable ? 'secondary' : 'primary'}}" bindtap="watch">返回观赛入口</button>
+    <button wx:if="{{error && !unavailable}}" class="primary" bindtap="load">重新读取</button>
+    <button class="{{error && !unavailable ? 'secondary' : 'primary'}}" bindtap="watch">返回观赛入口</button>
   </view>
   <block wx:else>
     <view wx:if="{{error}}" class="notice warning">{{error}}<view wx:if="{{stale}}" class="small">现有资料已陈旧，请恢复连接后刷新。</view></view>
@@ -68,7 +68,7 @@
         <block wx:for="{{bracket.rounds}}" wx:key="roundNo" wx:for-item="round"><view wx:for="{{round.slots}}" wx:key="positionNo" class="public-panel bracket-card"><view class="subtitle">{{round.label}} · {{item.positionNo}}</view><view class="muted bracket-teams"><block wx:if="{{item.bye}}">{{item.bye.teamName}} · 轮空</block><block wx:else>{{item.home ? item.home.teamName : '待晋级'}} / {{item.away ? item.away.teamName : '待晋级'}}</block></view><view class="event-status">{{item.statusLabel || '以正式赛程为准'}}</view><view wx:if="{{item.winner}}" class="match-status">晋级：{{item.winner.teamName}}</view><view wx:elif="{{!round.published}}" class="muted">时间与场地待负责人明确发布</view></view></block>
         <view wx:if="{{bracket.isComplete}}" class="public-panel placements-panel"><view class="subtitle">最终名次</view><view wx:for="{{bracket.placements}}" wx:key="index" class="placement-row"><text class="placement-rank">{{item.rank}}</text><view>{{item.team.teamName}}<view wx:if="{{item.tied}}" class="small muted">并列名次</view></view></view></view>
       </block>
-      <view wx:if="{{!groups &amp;&amp; !standings &amp;&amp; !bracket}}" class="public-panel public-state compact-state"><view class="subtitle">排名资料待发布</view><view class="muted">当前没有可公开展示的积分或晋级资料。</view></view>
+      <view wx:if="{{!groups && !standings && !bracket}}" class="public-panel public-state compact-state"><view class="subtitle">排名资料待发布</view><view class="muted">当前没有可公开展示的积分或晋级资料。</view></view>
     </block>
     <button wx:if="{{!overview}}" class="secondary" bindtap="backToOverview" disabled="{{loading}}">返回赛事概览</button>
     <button class="secondary" open-type="share">分享此公开赛事</button>
