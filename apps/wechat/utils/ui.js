@@ -113,14 +113,20 @@ function clientRevision() {
   return c.sessionRevision ? c.sessionRevision() : 0;
 }
 function resetPrivate(page) {
-  if (!page._closed && page.setData)
-    page.setData({
-      ...(page._sessionDefaults ? clone(page._sessionDefaults) : {}),
-      loginRequired: true,
-      loading: false,
-      busy: false,
-      error: '登录身份已变化，请重新登录并读取当前资料。',
-    });
+  if (page._closed || !page.setData) return;
+  // Pages whose fields differ from the shared defaults (e.g. a public input that must not
+  // receive the session message) clear their own private state through the same signal.
+  if (typeof page.onSessionReset === 'function') {
+    page.onSessionReset();
+    return;
+  }
+  page.setData({
+    ...(page._sessionDefaults ? clone(page._sessionDefaults) : {}),
+    loginRequired: true,
+    loading: false,
+    busy: false,
+    error: '登录身份已变化，请重新登录并读取当前资料。',
+  });
 }
 async function session(page, returnPath) {
   if (!page._sessionDefaults) page._sessionDefaults = clone(page.data || {});

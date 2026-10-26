@@ -187,16 +187,17 @@ test('native error envelope preserves the exact terminal create receipt marker',
 
 test('shared UI tokens invalidate in-flight views and clear displayed private state on account change', async () => {
   const wx = createWx({ request: () => response(session(a), cookieA) });
-  const h = loadPage({ root, route: 'pages/home/index', wx });
+  // Hosted on a page that uses the shared default reset (home/events pages supply their own).
+  const h = loadPage({ root, route: 'pages/teams/index', wx });
   const ui = h.requireLocal('utils/ui.js');
   const api = h.requireLocal('utils/api.js');
   assert.equal((await ui.session(h.page, '/pages/players/index')).user.id, a);
   const token = ui.begin(h.page);
-  h.page.setData({ value: 'private-value' });
+  h.page.setData({ newName: 'private-value' });
   assert.equal(ui.live(h.page, token), true);
   api.getClient().clearSession();
   assert.equal(ui.live(h.page, token), false);
-  assert.equal(h.page.data.value, '');
+  assert.equal(h.page.data.newName, '');
   assert.equal(h.page.data.loginRequired, true);
   const next = ui.begin(h.page);
   ui.close(h.page);

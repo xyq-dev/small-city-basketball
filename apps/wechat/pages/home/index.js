@@ -1,6 +1,14 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
+
+const privateEvents = {
+  signedIn: false,
+  featured: [],
+  eventTotal: 0,
+  hasOrganizations: false,
+  eventsError: '',
+};
 Page({
   data: {
     value: '',
@@ -27,46 +35,57 @@ Page({
   },
   onUnload() {
     this._alive = false;
-    this._eventsRequest = (this._eventsRequest || 0) + 1;
+    this._eventsLoad = (this._eventsLoad || 0) + 1;
+    ui.close(this);
+  },
+  // Called through ui.begin's session subscription on 401, logout or account switch.
+  onSessionReset() {
+    this._eventsLoad = (this._eventsLoad || 0) + 1;
+    this.setData({ eventsLoading: false, ...privateEvents });
   },
   async loadEvents() {
     const client = api.getClient();
-    const request = (this._eventsRequest = (this._eventsRequest || 0) + 1);
-    const session = client.sessionRevision();
-    const live = () =>
-      this._alive !== false &&
-      request === this._eventsRequest &&
-      session === client.sessionRevision();
-    const empty = {
-      signedIn: false,
-      featured: [],
-      eventTotal: 0,
-      hasOrganizations: false,
-      eventsError: '',
-    };
+    const load = (this._eventsLoad = (this._eventsLoad || 0) + 1);
+    const current = () => this._alive !== false && load === this._eventsLoad;
     if (!client.hasSession()) {
-      this.setData({ eventsLoading: false, ...empty });
+      this.setData({ eventsLoading: false, ...privateEvents });
       return;
     }
     this.setData({ eventsLoading: true, eventsError: '' });
+    let session;
     try {
-      const result = await events.fetch(client);
-      if (live())
-        this.setData({
-          eventsLoading: false,
-          ...empty,
-          signedIn: result.signedIn,
-          featured: result.featured || [],
-          eventTotal: result.total || 0,
-          hasOrganizations: !!(result.organizations && result.organizations.length),
-        });
+      session = await events.session(client);
     } catch (error) {
-      if (live())
+      if (current())
         this.setData({
           eventsLoading: false,
-          ...empty,
+          ...privateEvents,
           signedIn: error.status !== 401,
           eventsError: error.status === 401 ? '' : ui.message(error),
+        });
+      return;
+    }
+    if (!current()) return;
+    const token = ui.begin(this);
+    try {
+      const result = await events.load(client, session);
+      if (ui.live(this, token) && current())
+        this.setData({
+          eventsLoading: false,
+          ...privateEvents,
+          signedIn: true,
+          featured: result.featured,
+          eventTotal: result.total,
+          hasOrganizations: result.organizations.length > 0,
+        });
+    } catch (error) {
+      // A session change has already cleared the page through onSessionReset.
+      if (ui.live(this, token) && current())
+        this.setData({
+          eventsLoading: false,
+          ...privateEvents,
+          signedIn: true,
+          eventsError: ui.message(error),
         });
     }
   },

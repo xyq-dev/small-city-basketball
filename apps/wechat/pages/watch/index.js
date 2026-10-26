@@ -22,30 +22,63 @@ Page({
   },
   onUnload() {
     this._alive = false;
-    this._request = (this._request || 0) + 1;
+    this._load = (this._load || 0) + 1;
+    ui.close(this);
+  },
+  // Called through ui.begin's session subscription on 401, logout or account switch.
+  // The public watch-link input is not private and is kept.
+  onSessionReset() {
+    this._load = (this._load || 0) + 1;
+    this.setData({ loading: false, ...privateDefaults });
   },
   async load() {
     const client = api.getClient();
-    const request = (this._request = (this._request || 0) + 1);
-    const session = client.sessionRevision();
-    const live = () =>
-      this._alive !== false && request === this._request && session === client.sessionRevision();
+    const load = (this._load = (this._load || 0) + 1);
+    const current = () => this._alive !== false && load === this._load;
     if (!client.hasSession()) {
       this.setData({ loading: false, ...privateDefaults });
       return;
     }
     this.setData({ loading: true, eventsError: '' });
+    let session;
     try {
-      const result = await events.fetch(client);
-      if (live()) this.setData({ loading: false, ...privateDefaults, ...result });
+      session = await events.session(client);
     } catch (error) {
       // Never keep another account's private list on screen.
-      if (live())
+      if (current())
         this.setData({
           loading: false,
           ...privateDefaults,
           signedIn: error.status !== 401,
           eventsError: error.status === 401 ? '' : ui.message(error),
+        });
+      return;
+    }
+    if (!current()) return;
+    const token = ui.begin(this);
+    try {
+      const result = await events.load(client, session);
+      // Store only fields listed in privateDefaults, so a session reset clears all of them.
+      if (ui.live(this, token) && current())
+        this.setData({
+          loading: false,
+          ...privateDefaults,
+          signedIn: true,
+          organizations: result.organizations,
+          sections: result.sections,
+          failures: result.failures,
+          truncated: result.truncated,
+          total: result.total,
+          teamCount: result.teamCount,
+        });
+    } catch (error) {
+      // A session change has already cleared the page through onSessionReset.
+      if (ui.live(this, token) && current())
+        this.setData({
+          loading: false,
+          ...privateDefaults,
+          signedIn: true,
+          eventsError: ui.message(error),
         });
     }
   },

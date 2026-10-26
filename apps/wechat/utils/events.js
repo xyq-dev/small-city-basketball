@@ -126,16 +126,19 @@ async function load(client, session) {
     teamCount: Array.isArray(session.teamContexts) ? session.teamContexts.length : 0,
   };
 }
-async function fetch(client) {
-  if (!client.hasSession()) return { signedIn: false };
-  const session = (await client.request('/v1/auth/session')).data;
+// Read separately from the private event requests: a first read may legitimately advance the
+// client's session revision (unknown actor -> current actor) before a page starts listening.
+async function session(client) {
+  const value = (await client.request('/v1/auth/session')).data;
   if (
-    !session ||
-    !session.user ||
-    !Array.isArray(session.organizations) ||
-    !Array.isArray(session.teamContexts)
+    !value ||
+    !value.user ||
+    typeof value.user.id !== 'string' ||
+    !Array.isArray(value.organizations) ||
+    !Array.isArray(value.teamContexts)
   )
     throw invalid('登录资料无效，请重新登录');
-  return { signedIn: true, ...(await load(client, session)) };
+  api.uuid(value.user.id);
+  return value;
 }
-module.exports = { statusGroups, roleNames, organizations, eventView, load, fetch };
+module.exports = { statusGroups, roleNames, organizations, eventView, load, session };

@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
+const events = require('../../utils/events');
 
 const TABS = ['schedule', 'ranking', 'stats'];
 const MAX_MATCH_PAGES = 10;
@@ -70,22 +71,21 @@ const qualificationLabels = {
   PUBLISHED: '当前出线资格已正式发布',
 };
 
+const privateDefaults = {
+  event: null,
+  unavailable: false,
+  matches: [],
+  matchesTruncated: false,
+  scheduleError: '',
+  ranking: null,
+  rankingError: '',
+  stats: null,
+  statsError: '',
+  publicEventId: '',
+};
+
 Page({
-  data: {
-    event: null,
-    tab: 'schedule',
-    loading: false,
-    error: '',
-    unavailable: false,
-    matches: [],
-    matchesTruncated: false,
-    scheduleError: '',
-    ranking: null,
-    rankingError: '',
-    stats: null,
-    statsError: '',
-    publicEventId: '',
-  },
+  data: { tab: 'schedule', loading: false, error: '', ...privateDefaults },
   onLoad(query) {
     this._alive = true;
     try {
@@ -98,9 +98,24 @@ Page({
     if (TABS.includes(query.tab)) this.setData({ tab: query.tab });
     this.load();
   },
+  onShow() {
+    // onLoad already started the first read; returning to the page re-verifies identity.
+    if (this._shown) this.load();
+    this._shown = true;
+  },
   onUnload() {
     this._alive = false;
+    this._load = (this._load || 0) + 1;
     ui.close(this);
+  },
+  // Called through ui.begin's session subscription on 401, logout or account switch.
+  onSessionReset() {
+    this._load = (this._load || 0) + 1;
+    this.setData({
+      ...privateDefaults,
+      loading: false,
+      error: '登录身份已变化，已清除上一身份的赛事资料，请重新读取。',
+    });
   },
   base() {
     return '/v1/orgs/' + this.orgId + '/events/' + this.eventId;
@@ -108,11 +123,37 @@ Page({
   async load() {
     if (!this.orgId || this.data.loading) return;
     const client = api.getClient();
-    const token = { request: (this._request = (this._request || 0) + 1) };
-    token.session = client.sessionRevision();
-    const live = () =>
-      this._alive && token.request === this._request && token.session === client.sessionRevision();
+    const load = (this._load = (this._load || 0) + 1);
+    const current = () => this._alive && load === this._load;
+    if (!client.hasSession()) {
+      this.setData({
+        ...privateDefaults,
+        loading: false,
+        unavailable: true,
+        error: '请先登录后查看机构赛事。',
+      });
+      return;
+    }
     this.setData({ loading: true, error: '' });
+    let session;
+    try {
+      session = await events.session(client);
+    } catch (error) {
+      if (current())
+        this.setData({
+          ...privateDefaults,
+          loading: false,
+          unavailable: error.status === 401,
+          error: error.status === 401 ? '请先登录后查看机构赛事。' : ui.message(error),
+        });
+      return;
+    }
+    if (!current()) return;
+    // Never show one account's event while re-reading it for another.
+    if (this._viewer && this._viewer !== session.user.id) this.setData({ ...privateDefaults });
+    this._viewer = session.user.id;
+    const token = ui.begin(this);
+    const live = () => ui.live(this, token) && current();
     let raw;
     try {
       raw = (await client.request(this.base())).data;
@@ -121,8 +162,8 @@ Page({
       if (!live()) return;
       const hidden = error.status === 401 || error.status === 403 || error.status === 404;
       this.setData({
+        ...(hidden ? privateDefaults : {}),
         loading: false,
-        event: hidden ? null : this.data.event,
         unavailable: hidden,
         error:
           error.status === 401
