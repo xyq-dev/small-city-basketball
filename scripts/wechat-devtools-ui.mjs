@@ -366,7 +366,13 @@ async function deadline(action, label, timeout) {
 
 export async function capture(
   prepared,
-  { sdk, cliPath, timeout = 60000, launchProject = (options) => launchWeChat(sdk, options) } = {},
+  {
+    sdk,
+    cliPath,
+    timeout = 60000,
+    expectedWidth,
+    launchProject = (options) => launchWeChat(sdk, options),
+  } = {},
 ) {
   const { destination, project, plan } = prepared;
   const report = {
@@ -425,6 +431,11 @@ export async function capture(
         .filter((key) => system[key] !== undefined)
         .map((key) => [key, system[key]]),
     );
+    // A width-labelled run must come from a simulator actually at that logical width.
+    if (expectedWidth && system.windowWidth !== expectedWidth)
+      throw new Error(
+        '模拟器逻辑宽度为' + system.windowWidth + '，与要求的' + expectedWidth + '不符；未截图',
+      );
     for (const scenario of plan.scenarios) {
       const page = await deadline(
         () => mini.reLaunch('/' + scenario.route),
@@ -519,21 +530,55 @@ export async function capture(
   return report;
 }
 
+// Captures again from an already prepared copy that is open with automation on `port`,
+// e.g. after manually switching the simulator model; each width gets its own subdirectory.
+export async function recapture(runDirectory, { sdk, port, label, timeout } = {}) {
+  const run = path.resolve(runDirectory || '');
+  if (
+    path.dirname(run) !== path.join(ROOT, 'artifacts/wechat-ui') ||
+    !fs.existsSync(path.join(run, 'plan.json'))
+  )
+    throw new Error('重采集须指定artifacts/wechat-ui下已准备的副本目录');
+  if (!/^w\d{3}$/.test(label || '')) throw new Error('尺寸标签须为w加三位逻辑宽度，如w320');
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('无效自动化端口');
+  const destination = path.join(run, label);
+  if (fs.existsSync(destination)) throw new Error('该尺寸目录已存在，不覆盖已有证据');
+  fs.mkdirSync(destination);
+  fs.cpSync(path.join(run, 'references'), path.join(destination, 'references'), {
+    recursive: true,
+  });
+  return capture(
+    { destination, project: path.join(run, 'project'), plan: read(path.join(run, 'plan.json')) },
+    {
+      sdk,
+      timeout,
+      expectedWidth: Number(label.slice(1)),
+      launchProject: () => sdk.connect({ wsEndpoint: 'ws://127.0.0.1:' + port }),
+    },
+  );
+}
+
 async function main() {
   const [major, minor] = process.versions.node.split('.').map(Number);
   if (major < 22 || (major === 22 && minor < 12)) throw new Error('需要Node.js >=22.12');
   const [command, ...args] = process.argv.slice(2);
   const options = {};
   for (let i = 0; i < args.length; i += 2) {
-    if (!['--cli', '--app-id', '--out'].includes(args[i]) || !args[i + 1])
-      throw new Error('用法：prepare|capture [--cli 路径] [--app-id wx…] [--out 新子目录]');
+    if (
+      !['--cli', '--app-id', '--out', '--run', '--port', '--label'].includes(args[i]) ||
+      !args[i + 1]
+    )
+      throw new Error(
+        '用法：prepare|capture [--cli 路径] [--app-id wx…] [--out 新子目录]；recapture --run 副本目录 --port 自动化端口 --label w320',
+      );
     options[args[i].slice(2)] = args[i + 1];
   }
-  if (!['prepare', 'capture'].includes(command)) throw new Error('请使用prepare或capture');
+  if (!['prepare', 'capture', 'recapture'].includes(command))
+    throw new Error('请使用prepare、capture或recapture');
   let sdk;
   const cliPath = options.cli || process.env.WECHAT_DEVTOOLS_CLI;
-  if (command === 'capture') {
-    if (!cliPath || !fs.existsSync(cliPath))
+  if (command === 'capture' || command === 'recapture') {
+    if (command === 'capture' && (!cliPath || !fs.existsSync(cliPath)))
       throw new Error('找不到微信开发工具CLI；使用scripts/accept-wechat-ui.ps1或--cli指定');
     const sdkRequire = createRequire(path.join(ROOT, 'tools/wechat-ui/package.json'));
     try {
@@ -544,6 +589,20 @@ async function main() {
       throw new Error('先运行 npm ci --prefix tools/wechat-ui --ignore-scripts 安装锁定的本地SDK');
     }
   }
+  if (command === 'recapture') {
+    const report = await recapture(options.run, {
+      sdk,
+      port: Number(options.port),
+      label: options.label,
+    });
+    const destination = path.join(path.resolve(options.run), options.label);
+    console.log('对照报告：' + path.join(destination, 'index.html'));
+    if (!report.nativeScreenshotsCaptured) throw new Error(report.error || '截图采集未完成');
+    console.log(
+      report.screenshots.length + '个状态原生截图采集完成；人工视觉签收/真机/业务流程仍待验收。',
+    );
+    return;
+  }
   const prepared = prepare({ out: options.out, appId: options['app-id'] });
   console.log('验收副本：' + prepared.destination);
   if (command === 'prepare') {
@@ -553,7 +612,9 @@ async function main() {
   const report = await capture(prepared, { sdk, cliPath });
   console.log('对照报告：' + path.join(prepared.destination, 'index.html'));
   if (!report.nativeScreenshotsCaptured) throw new Error(report.error || '截图采集未完成');
-  console.log('六屏原生截图采集完成；人工视觉签收/真机/业务流程仍待验收。');
+  console.log(
+    report.screenshots.length + '个状态原生截图采集完成；人工视觉签收/真机/业务流程仍待验收。',
+  );
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

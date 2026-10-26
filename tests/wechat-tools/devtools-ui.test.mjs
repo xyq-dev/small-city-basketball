@@ -8,6 +8,7 @@ import { createRequire } from 'node:module';
 import {
   prepare,
   capture,
+  recapture,
   ROOT,
   windowsLaunchSpec,
   spawnWindowsCli,
@@ -92,6 +93,10 @@ function fakeSdk(
       launch: async (options) => {
         assert.equal(options.projectPath, run.project);
         assert.equal(options.trustProject, true);
+        return mini;
+      },
+      connect: async (options) => {
+        mini.endpoint = options.wsEndpoint;
         return mini;
       },
     },
@@ -238,6 +243,32 @@ test('a simulator still loading its first page is waited for, other errors are n
   const failed = await captureFake(other, { sdk: failing.sdk });
   assert.equal(failed.nativeScreenshotsCaptured, false);
   assert.match(failed.error, /synthetic automator failure/);
+});
+
+test('recapture writes a separate width directory from the open copy and checks its width', async () => {
+  const run = prepared(),
+    { sdk, mini } = fakeSdk(run);
+  mini.systemInfo = async () => ({ windowWidth: 320, windowHeight: 568, pixelRatio: 2 });
+  const report = await recapture(run.destination, { sdk, port: 9420, label: 'w320' });
+  assert.equal(mini.endpoint, 'ws://127.0.0.1:9420');
+  assert.equal(report.nativeScreenshotsCaptured, true);
+  assert.equal(report.simulator.windowWidth, 320);
+  assert.equal(report.screenshots.length, run.plan.scenarios.length);
+  for (const file of ['report.json', 'index.html', 'references/home.png'])
+    assert.equal(fs.existsSync(path.join(run.destination, 'w320', file)), true, file);
+  await assert.rejects(
+    recapture(run.destination, { sdk, port: 9420, label: 'w320' }),
+    /不覆盖已有证据/,
+  );
+  const wrong = await recapture(run.destination, { sdk, port: 9420, label: 'w430' });
+  assert.equal(wrong.nativeScreenshotsCaptured, false);
+  assert.match(wrong.error, /逻辑宽度为320/);
+  assert.equal(wrong.screenshots.length, 0);
+  await assert.rejects(
+    recapture(path.join(ROOT, 'apps/wechat'), { sdk, port: 9420, label: 'w390' }),
+    /已准备的副本目录/,
+  );
+  await assert.rejects(recapture(run.destination, { sdk, port: 9420, label: '../x' }), /尺寸标签/);
 });
 
 test('unexpected route fails before capturing and disconnects', async () => {
