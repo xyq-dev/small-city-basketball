@@ -1,0 +1,28 @@
+<view class="page mgmt-page">
+  <view class="intro-card">
+    <view class="subtitle">记分与赛果确认</view>
+    <view class="muted">只列出你被分配或有权管理的比赛。记分、确认的权限每次由服务端核验。</view>
+    <view wx:if="{{scopeLabel}}" class="badge">{{scopeLabel}}</view>
+  </view>
+  <view wx:if="{{loginRequired}}" class="card state-panel">
+    <text class="state-label">未登录</text>
+    <view class="subtitle">登录后查看记分任务</view>
+    <button class="primary" bindtap="login">登录</button>
+  </view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+    <view wx:if="{{loading && !sections.length}}" class="card"><view class="loading-lines"><view></view><view></view></view></view>
+    <view wx:for="{{orgErrors}}" wx:key="key" class="notice warning small">{{item.text}}</view>
+    <view wx:if="{{empty}}" class="card empty"><view class="subtitle">暂无记分任务</view><view class="muted">赛事负责人分配你为记分员或复核人后，比赛会出现在这里。</view></view>
+    <block wx:for="{{sections}}" wx:key="key" wx:for-item="section">
+      <view class="section-label">{{section.label}} · {{section.items.length}}</view>
+      <view wx:for="{{section.items}}" wx:key="key" class="org-match task-row" data-org="{{item.orgId}}" data-match="{{item.matchId}}" bindtap="open">
+        <view class="org-match-meta">{{item.meta}}</view>
+        <view class="row-between"><view class="task-title">{{item.title}}</view><text wx:if="{{item.score}}" class="task-score">{{item.score}}</text></view>
+        <view class="org-match-status {{item.live ? 'live' : ''}}">{{item.statusLabel}}</view>
+      </view>
+    </block>
+    <view wx:if="{{truncated}}" class="muted">比赛较多，仅显示前1000场。</view>
+    <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">刷新</button>
+  </block>
+</view>

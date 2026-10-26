@@ -63,18 +63,33 @@ async function signIn(h) {
   await h.requireLocal('utils/api.js').getClient().request('/v1/auth/session');
 }
 
-test('platform reads allow only own-organization event read models, never event writes', () => {
-  for (const url of [
-    '/v1/orgs/' + orgA + '/events?limit=50',
-    '/v1/orgs/' + orgA + '/events?limit=50&cursor=abc_DEF-1',
-    '/v1/orgs/' + orgA + '/events/' + eventA,
-    '/v1/orgs/' + orgA + '/events/' + eventA + '/standings',
-    '/v1/orgs/' + orgA + '/events/' + eventA + '/groups',
-    '/v1/orgs/' + orgA + '/events/' + eventA + '/knockout',
-    '/v1/orgs/' + orgA + '/events/' + eventA + '/player-statistics',
-    '/v1/orgs/' + orgA + '/events/' + eventA + '/matches?limit=100',
+test('platform paths allow own-organization reads and existing role-checked commands only', () => {
+  const match = '/v1/orgs/' + orgA + '/matches/' + eventA;
+  for (const [url, method] of [
+    ['/v1/orgs/' + orgA + '/events?limit=50', 'GET'],
+    ['/v1/orgs/' + orgA + '/events?limit=50&cursor=abc_DEF-1', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA, 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/standings', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/groups', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/knockout', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/player-statistics', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/matches?limit=100', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle-commands', 'POST'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/registration-commands', 'POST'],
+    ['/v1/orgs/' + orgA + '/scoring-matches', 'GET'],
+    ['/v1/orgs/' + orgA + '/scoring-matches?eventId=' + eventA + '&limit=100', 'GET'],
+    [match + '/scoring', 'GET'],
+    [match + '/snapshot', 'GET'],
+    [match + '/scoring-events?limit=100', 'GET'],
+    [match + '/result-confirmations?limit=100', 'GET'],
+    [match + '/commands', 'POST'],
+    [match + '/commands/' + orgA, 'GET'],
+    [match + '/scorekeeper-lease', 'POST'],
+    [match + '/scorekeeper-lease', 'DELETE'],
+    [match + '/scorekeeper-lease/renew', 'POST'],
   ])
-    assert.equal(pathAllowed(url, 'GET'), true, url);
+    assert.equal(pathAllowed(url, method), true, method + ' ' + url);
   for (const [url, method] of [
     ['/v1/orgs/' + orgA + '/events', 'POST'],
     ['/v1/orgs/' + orgA + '/events', 'GET'],
@@ -83,11 +98,16 @@ test('platform reads allow only own-organization event read models, never event 
     ['/v1/orgs/' + orgA + '/events/' + eventA, 'PATCH'],
     ['/v1/orgs/' + orgA + '/events/' + eventA + '/standings-rules', 'PUT'],
     ['/v1/orgs/' + orgA + '/events/' + eventA + '/public-viewing-commands', 'POST'],
-    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle-commands', 'POST'],
-    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle', 'POST'],
     ['/v1/orgs/' + orgA + '/events/' + eventA + '/player-statistics?asOf=1', 'GET'],
     ['/v1/orgs/' + orgA + '/events/' + eventA + '/scheduling', 'GET'],
-    ['/v1/orgs/' + orgA + '/scoring-matches', 'GET'],
+    ['/v1/orgs/' + orgA + '/scoring-matches?status=LIVE', 'GET'],
+    ['/v1/orgs/' + orgA + '/scoring-matches?eventId=private', 'GET'],
+    [match + '/staff/' + orgA, 'PUT'],
+    [match + '/commands', 'GET'],
+    [match + '/scorekeeper-lease', 'GET'],
+    [match + '/reschedule-commands', 'POST'],
+    [match + '/scoring-events?limit=20', 'GET'],
     ['/v1/orgs/not-a-uuid/events?limit=50', 'GET'],
   ])
     assert.equal(pathAllowed(url, method), false, method + ' ' + url);
@@ -341,7 +361,7 @@ test('org event page renders schedule, published standings and basic stats with 
   assert.ok(h.wx.calls.some((c) => c.url === '/pages/event/index?event=' + publicKey));
   h.page.tab({ currentTarget: { dataset: { tab: 'schedule' } } });
   const schedule = buildPreview({ root, route: 'pages/org-event/index', data: h.page.data });
-  assert.match(schedule.phone, /原生记分、排赛将在后续版本提供/);
+  assert.match(schedule.phone, /点击比赛查看比分、记录与确认状态/);
 });
 
 test('a forbidden section stays local; a hidden event clears the page', async () => {

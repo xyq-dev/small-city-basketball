@@ -1,0 +1,326 @@
+const api = require('../../utils/api');
+const ui = require('../../utils/ui');
+const events = require('../../utils/events');
+const scoring = require('../../utils/scoring');
+
+const POLL_MS = 5000;
+const privateDefaults = {
+  match: null,
+  board: null,
+  history: [],
+  historyError: '',
+  confirmations: [],
+  staff: [],
+  caps: null,
+  unavailable: false,
+  pending: null,
+  reopenOpen: false,
+  reopenReason: '',
+  collectionMode: 'TEAM_ONLY',
+};
+
+function staffView(list) {
+  return (list || [])
+    .filter((s) => s && s.status === 'ACTIVE')
+    .map((s) => ({
+      key: s.userId + ':' + s.role,
+      name: s.displayName,
+      role: s.role === 'SCORER' ? '记分员' : '赛果复核人',
+    }));
+}
+
+Page({
+  data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
+  onLoad(query) {
+    this._alive = true;
+    try {
+      this.orgId = api.uuid(query.orgId);
+      this.matchId = api.uuid(query.matchId);
+    } catch {
+      this.setData({ unavailable: true, error: '比赛入口无效，请从赛事赛程重新进入。' });
+      return;
+    }
+    this.load();
+  },
+  onShow() {
+    if (this._shown) this.load();
+    this._shown = true;
+  },
+  onHide() {
+    this.stopPolling();
+  },
+  onUnload() {
+    this._alive = false;
+    this._load = (this._load || 0) + 1;
+    this.stopPolling();
+    ui.close(this);
+  },
+  onSessionReset() {
+    this._load = (this._load || 0) + 1;
+    this.stopPolling();
+    this.setData({
+      ...privateDefaults,
+      loading: false,
+      busy: false,
+      error: '登录身份已变化，已清除上一身份的比赛资料，请重新读取。',
+    });
+  },
+  base() {
+    return '/v1/orgs/' + this.orgId + '/matches/' + this.matchId;
+  },
+  stopPolling() {
+    if (this._poll) clearInterval(this._poll);
+    this._poll = null;
+  },
+  startPolling() {
+    this.stopPolling();
+    this._poll = setInterval(() => {
+      if (!this.data.busy && !this.data.loading) this.load(true);
+    }, POLL_MS);
+  },
+  async load(quiet) {
+    if (!this.orgId || this.data.loading) return;
+    const client = api.getClient();
+    const load = (this._load = (this._load || 0) + 1);
+    const current = () => this._alive && load === this._load;
+    if (!client.hasSession()) {
+      this.setData({ ...privateDefaults, unavailable: true, error: '请先登录后查看比赛。' });
+      return;
+    }
+    if (!quiet) this.setData({ loading: true, error: '' });
+    let session;
+    try {
+      session = await events.session(client);
+    } catch (error) {
+      if (current())
+        this.setData({
+          ...privateDefaults,
+          loading: false,
+          unavailable: error.status === 401,
+          error: error.status === 401 ? '请先登录后查看比赛。' : ui.message(error),
+        });
+      return;
+    }
+    if (!current()) return;
+    if (this._viewer && this._viewer !== session.user.id) this.setData({ ...privateDefaults });
+    this._viewer = session.user.id;
+    const token = ui.begin(this);
+    const live = () => ui.live(this, token) && current();
+    let wb, receivedAt;
+    try {
+      wb = (await client.request(this.base() + '/scoring')).data;
+      receivedAt = Date.now();
+      if (!wb || !wb.match || !wb.capabilities) throw { message: '比赛资料格式无效' };
+    } catch (error) {
+      if (!live()) return;
+      const hidden = error.status === 401 || error.status === 403 || error.status === 404;
+      this.stopPolling();
+      this.setData({
+        ...(hidden ? privateDefaults : {}),
+        loading: false,
+        unavailable: hidden,
+        error: hidden ? '该比赛不存在或当前身份无权查看。' : scoring.failure(error),
+      });
+      return;
+    }
+    let history = [],
+      confirmations = [],
+      historyError = '';
+    if (wb.snapshot) {
+      try {
+        const names = {};
+        for (const p of [...wb.playerRoster.home, ...wb.playerRoster.away])
+          names[p.memberId] = p.jerseyNo + '号 ' + p.name;
+        const [list, confirmed] = await Promise.all([
+          scoring.allPages(client, this.base() + '/scoring-events'),
+          scoring.allPages(client, this.base() + '/result-confirmations'),
+        ]);
+        history = scoring.history(list, wb.snapshot, names).slice(0, 60);
+        const staffNames = {};
+        for (const s of wb.staff) staffNames[s.userId] = s.displayName;
+        confirmations = confirmed
+          .slice()
+          .reverse()
+          .map((c) => ({
+            key: c.id,
+            score: c.home.score + ' : ' + c.away.score,
+            by: staffNames[c.confirmingUserId] || '赛事负责人',
+            time: ui.localTime(c.confirmedAt),
+          }));
+      } catch (error) {
+        historyError = scoring.failure(error);
+      }
+    }
+    if (!live()) return;
+    const m = wb.match;
+    this._eventVersion = wb.event.version;
+    this._matchVersion = wb.snapshot ? wb.snapshot.version : m.version;
+    this.setData({
+      loading: false,
+      unavailable: false,
+      match: {
+        eventName: wb.event.name,
+        eventId: wb.event.id,
+        eventClosed: ['COMPLETED', 'ARCHIVED'].includes(wb.event.status),
+        round: '第' + m.roundNo + '轮',
+        time: ui.localTime(m.startsAt),
+        court: m.courtName || '场地待定',
+        home: m.home.teamName,
+        away: m.away.teamName,
+        status: m.status,
+        statusLabel: api.matchStatus(m.status),
+        rulesLabel: wb.rules
+          ? wb.rules.regulationPeriods +
+            '节 × ' +
+            Math.round(wb.rules.periodDurationSeconds / 60) +
+            '分钟' +
+            (wb.rules.tiePolicy === 'OVERTIME' ? ' · 平分加时' : ' · 允许平局')
+          : '赛事尚未设置记分规则',
+        leaseHeld: !!(wb.lease && wb.lease.held),
+      },
+      board: scoring.board(wb.snapshot, receivedAt),
+      history,
+      historyError,
+      confirmations,
+      staff: staffView(wb.staff),
+      caps: {
+        prepare: !!wb.capabilities.canPrepare && !!wb.rules,
+        score: !!wb.capabilities.canAcquireControl,
+        confirm: !!wb.capabilities.canConfirm,
+        reopen: !!wb.capabilities.canReopen,
+      },
+    });
+    if (m.status === 'LIVE' && !this._poll) this.startPolling();
+    if (m.status !== 'LIVE') this.stopPolling();
+  },
+  setMode(e) {
+    const mode = e.currentTarget.dataset.mode;
+    if (['TEAM_ONLY', 'PLAYER_BASIC'].includes(mode)) this.setData({ collectionMode: mode });
+  },
+  async run(type, payload, title, content) {
+    if (this.data.busy || this.data.pending) return;
+    if (!(await ui.confirm(title, content))) return;
+    this.setData({ busy: true, error: '', notice: '' });
+    const client = api.getClient();
+    const token = ui.begin(this);
+    try {
+      // Commands CAS against the exact match version from the latest read.
+      const body = await scoring.envelope(type, payload, this._matchVersion);
+      const outcome = await scoring.send(client, this.base(), body);
+      if (!ui.live(this, token)) return;
+      if (!outcome.done) {
+        this.setData({
+          busy: false,
+          pending: { body: outcome.pending, label: scoring.commandNames[type] },
+          error:
+            '网络中断，' + scoring.commandNames[type] + '结果未知。请先核对结果，不要换新操作。',
+        });
+        return;
+      }
+      this.setData({
+        busy: false,
+        notice: scoring.commandNames[type] + '已完成。',
+        reopenOpen: false,
+      });
+      await this.load(true);
+    } catch (error) {
+      if (!ui.live(this, token)) return;
+      this.setData({ busy: false, error: scoring.failure(error) });
+      if (['VERSION_CONFLICT', 'INVALID_MATCH_STATE'].includes(error && error.code))
+        await this.load(true);
+    }
+  },
+  prepare() {
+    const mode = this.data.collectionMode;
+    this.run(
+      'PREPARE_MATCH',
+      { expectedEventVersion: this._eventVersion, collectionMode: mode },
+      '准备比赛',
+      (mode === 'PLAYER_BASIC' ? '逐人记录得分与犯规' : '只记录球队比分、犯规与暂停') +
+        '；准备后记分规则锁定，采集方式不可更改。',
+    );
+  },
+  confirmResult() {
+    const b = this.data.board;
+    if (!b) return;
+    this.run(
+      'CONFIRM_RESULT',
+      {},
+      '独立确认赛果',
+      b.home.name +
+        ' ' +
+        b.home.score +
+        ' : ' +
+        b.away.score +
+        ' ' +
+        b.away.name +
+        '。确认后计入正式积分；你不能是本场记分或时钟操作者。',
+    );
+  },
+  toggleReopen() {
+    this.setData({ reopenOpen: !this.data.reopenOpen, reopenReason: '' });
+  },
+  reopenInput(e) {
+    this.setData({ reopenReason: String(e.detail.value || '').slice(0, 500) });
+  },
+  reopen() {
+    const reason = this.data.reopenReason.trim();
+    if (!reason) {
+      this.setData({ error: '请填写重开原因。' });
+      return;
+    }
+    this.run(
+      'REOPEN_RESULT',
+      { reason },
+      '重开赛果',
+      '原确认记录保留；本场退出正式积分，更正后须重新独立确认。',
+    );
+  },
+  async checkPending() {
+    const pending = this.data.pending;
+    if (!pending || this.data.busy) return;
+    this.setData({ busy: true, error: '' });
+    const token = ui.begin(this);
+    try {
+      const found = await scoring.receipt(api.getClient(), this.base(), pending.body.commandId);
+      if (!ui.live(this, token)) return;
+      if (found) {
+        this.setData({ busy: false, pending: null, notice: pending.label + '已在服务端完成。' });
+        await this.load(true);
+      } else
+        this.setData({
+          busy: false,
+          error: '服务端暂无该操作记录。可按原编号重发同一操作；不会重复执行。',
+        });
+    } catch (error) {
+      if (ui.live(this, token)) this.setData({ busy: false, error: scoring.failure(error) });
+    }
+  },
+  async resendPending() {
+    const pending = this.data.pending;
+    if (!pending || this.data.busy) return;
+    this.setData({ busy: true, error: '' });
+    const token = ui.begin(this);
+    try {
+      const outcome = await scoring.send(api.getClient(), this.base(), pending.body);
+      if (!ui.live(this, token)) return;
+      if (!outcome.done) {
+        this.setData({ busy: false, error: '仍未连接到服务，请恢复网络后再核对。' });
+        return;
+      }
+      this.setData({ busy: false, pending: null, notice: pending.label + '已完成。' });
+      await this.load(true);
+    } catch (error) {
+      if (!ui.live(this, token)) return;
+      this.setData({ busy: false, pending: null, error: scoring.failure(error) });
+      await this.load(true);
+    }
+  },
+  openScorer() {
+    ui.open('scorer', { orgId: this.orgId, matchId: this.matchId });
+  },
+  openEvent() {
+    const m = this.data.match;
+    if (m) ui.open('org-event', { orgId: this.orgId, eventId: m.eventId });
+  },
+});

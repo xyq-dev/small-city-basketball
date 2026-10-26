@@ -82,6 +82,18 @@ const privateDefaults = {
   stats: null,
   statsError: '',
   publicEventId: '',
+  manage: null,
+  lifecycleAction: '',
+  lifecycleReason: '',
+  notice: '',
+};
+const lifecycleCommands = {
+  COMPLETE: { label: '确认本届完赛', note: '完赛后不再接受记分，当前公开观赛链接失效。' },
+  ARCHIVE: { label: '归档为历史赛事', note: '归档不删除记录，赛果与数据保留。' },
+  REOPEN: {
+    label: '重新开放本届',
+    note: '重新开放后公开/历史观赛链接失效；已确认的单场赛果不变。',
+  },
 };
 
 Page({
@@ -184,10 +196,12 @@ Page({
       dateLabel: shortDate(raw.startDate) + '–' + shortDate(raw.endDate),
       venueName: raw.venueName || '场地待说明',
     };
-    const [schedule, ranking, stats] = await Promise.all([
+    this._eventVersion = raw.version;
+    const [schedule, ranking, stats, manage] = await Promise.all([
       this.readSchedule(client),
       this.readRanking(client, event.format),
       this.readStats(client),
+      this.readManage(client),
     ]);
     if (!live()) return;
     this.setData({
@@ -202,7 +216,91 @@ Page({
       publicEventId: ranking.publicEventId,
       stats: stats.value,
       statsError: stats.error,
+      manage,
     });
+  },
+  // Management entries appear only where the server grants the matching read; every
+  // command is re-authorized server-side, so a hidden 403 here never widens anything.
+  async readManage(client) {
+    const quiet = (p) => p.then((r) => r.data).catch(() => null);
+    const [lifecycle, registration] = await Promise.all([
+      quiet(client.request(this.base() + '/lifecycle')),
+      quiet(client.request(this.base() + '/registration')),
+    ]);
+    if (!lifecycle && !registration) return null;
+    const c = (lifecycle && lifecycle.capabilities) || {};
+    const completion = lifecycle && lifecycle.completion;
+    return {
+      review: !!registration,
+      reviewLabel: registration
+        ? '已提交 ' +
+          registration.counts.SUBMITTED +
+          ' · 已通过 ' +
+          registration.counts.APPROVED +
+          (registration.freeze ? ' · 名单已冻结' : '')
+        : '',
+      progress: completion
+        ? '已确认 ' + completion.confirmedMatchCount + ' / ' + completion.totalMatchCount + ' 场'
+        : '',
+      ready: !!(completion && completion.ready),
+      blockers: completion ? completion.blockers.slice(0, 5) : [],
+      actions: ['COMPLETE', 'ARCHIVE', 'REOPEN']
+        .filter((t) => c['can' + t.charAt(0) + t.slice(1).toLowerCase()])
+        .map((t) => ({ type: t, label: lifecycleCommands[t].label })),
+    };
+  },
+  openMatch(e) {
+    const id = e.currentTarget.dataset.id;
+    if (id) ui.open('org-match', { orgId: this.orgId, matchId: id });
+  },
+  openReview() {
+    ui.open('entry-review', { orgId: this.orgId, eventId: this.eventId });
+  },
+  openTasks() {
+    ui.open('scoring-tasks', { orgId: this.orgId, eventId: this.eventId });
+  },
+  chooseLifecycle(e) {
+    const type = e.currentTarget.dataset.type;
+    if (lifecycleCommands[type])
+      this.setData({
+        lifecycleAction: this.data.lifecycleAction === type ? '' : type,
+        lifecycleReason: '',
+      });
+  },
+  lifecycleInput(e) {
+    this.setData({ lifecycleReason: String(e.detail.value || '').slice(0, 500) });
+  },
+  async runLifecycle() {
+    const type = this.data.lifecycleAction;
+    const command = lifecycleCommands[type];
+    const reason = this.data.lifecycleReason.trim();
+    if (!command || this.data.loading) return;
+    if (reason.length < 4) {
+      this.setData({ error: '请填写至少4个字的原因。' });
+      return;
+    }
+    if (!(await ui.confirm(command.label, command.note))) return;
+    const token = ui.begin(this);
+    this.setData({ loading: true, error: '', notice: '' });
+    try {
+      await api.getClient().request(this.base() + '/lifecycle-commands', 'POST', {
+        type,
+        expectedEventVersion: this._eventVersion,
+        reason,
+      });
+      if (!ui.live(this, token)) return;
+      this.setData({ loading: false, lifecycleAction: '', notice: command.label + '已完成。' });
+    } catch (error) {
+      if (!ui.live(this, token)) return;
+      this.setData({
+        loading: false,
+        error:
+          error && error.code === 'VERSION_CONFLICT'
+            ? '赛事已被更新，已重新读取，请核对后再操作。'
+            : ui.message(error),
+      });
+    }
+    await this.load();
   },
   async readSchedule(client) {
     try {

@@ -67,3 +67,29 @@ checkbox { transform:scale(.85); transform-origin:top left; flex-shrink:0; }
 .media-image,.media-video { width:100%; border-radius:8px; margin:8px 0; }
 .media-image { max-height:468px; }
 @media (min-width:600px) { .action-bar { left:50%; transform:translateX(-50%); width:600px; } }
+.notice.success-notice { color:#16734b; background:#e7f5ee; }
+.intro-card { background:#fff; border-radius:16px; padding:16px; margin-bottom:12px; }
+.intro-card .badge { margin:8px 0 0; }
+.section-label { margin:16px 0 8px; color:#617286; font-size:12px; line-height:20px; font-weight:600; }
+.page.mgmt-page button { width:100%; margin-left:0; margin-right:0; }
+.page.mgmt-page button.small-button { width:auto; min-height:32px; padding:4px 10px; margin:0; font-size:12px; line-height:20px; }
+.page.mgmt-page .mode-choice button,.page.mgmt-page .pad button { margin:0; }
+.board { padding:16px 16px 14px; border-radius:16px; background:#132c49; color:#fff; margin-bottom:12px; }
+.board-meta { color:#d7e0ea; font-size:12px; line-height:20px; overflow-wrap:anywhere; }
+.board-row { display:flex; align-items:center; gap:8px; margin-top:12px; }
+.board-team { flex:1; min-width:0; text-align:center; }
+.board-name { font-size:14px; line-height:20px; font-weight:600; overflow-wrap:anywhere; }
+.board-score { font-family:Inter,'DIN Alternate',Arial,sans-serif; font-size:44px; line-height:56px; font-weight:700; font-variant-numeric:tabular-nums; }
+.board-mid { flex:none; width:88px; text-align:center; }
+.board-status { display:inline-block; padding:2px 8px; border-radius:24px; background:rgba(255,255,255,.16); font-size:12px; line-height:20px; }
+.board-status.live { background:#ff6b2d; }
+.board-clock { margin-top:6px; font-family:Inter,'DIN Alternate',Arial,sans-serif; font-size:24px; line-height:32px; font-variant-numeric:tabular-nums; }
+.board-period { color:#d7e0ea; font-size:12px; line-height:20px; }
+.board-sub { margin-top:8px; text-align:center; color:#d7e0ea; font-size:12px; line-height:20px; }
+.board-result { margin-top:8px; text-align:center; font-size:12px; line-height:20px; color:#ffd3bf; }
+.board-result.final { color:#9fe0bf; }
+.mode-choice { display:flex; gap:8px; margin:12px 0; }
+.mode-choice button { flex:1; min-width:0; color:#617286; }
+.mode-choice button.selected { color:#fff; background:#132c49; }
+.mode-choice button.selected::after { border:none; }
+@media(max-width:360px) { .board-score { font-size:36px; line-height:48px; } .board-mid { width:76px; } }

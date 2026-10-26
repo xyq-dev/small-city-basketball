@@ -1,0 +1,123 @@
+<view class="page mgmt-page">
+  <view wx:if="{{loading && !match}}" class="card state-panel">
+    <text class="state-label">记分台</text>
+    <view class="subtitle">正在读取比赛</view>
+    <view class="loading-lines"><view></view><view></view></view>
+  </view>
+  <view wx:elif="{{!match}}" class="card state-panel">
+    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
+    <view class="subtitle">{{unavailable ? '无法进入记分台' : '暂时无法读取比赛'}}</view>
+    <view class="notice warning">{{error || '请从比赛详情重新进入。'}}</view>
+    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+  </view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
+    <view wx:if="{{pending}}" class="card">
+      <view class="subtitle">“{{pending.label}}”结果待核对</view>
+      <view class="muted">已暂停新的记分。先核对；服务端未收到时按原编号重发，不会重复加分。</view>
+      <button class="primary" bindtap="checkPending" disabled="{{busy}}">核对结果</button>
+      <button class="secondary" bindtap="resendPending" disabled="{{busy}}">按原编号重发</button>
+    </view>
+
+    <view class="board">
+      <view class="board-meta">{{match.eventName}}</view>
+      <view class="board-row">
+        <view class="board-team"><view class="board-name">{{match.home}}</view><view class="board-score">{{board ? board.home.score : '–'}}</view></view>
+        <view class="board-mid"><view class="board-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</view><view wx:if="{{board}}" class="board-clock">{{board.clockLabel}}</view><view wx:if="{{board}}" class="board-period">{{board.periodLabel}}{{board.running ? ' · 计时中' : ' · 已暂停'}}</view></view>
+        <view class="board-team"><view class="board-name">{{match.away}}</view><view class="board-score">{{board ? board.away.score : '–'}}</view></view>
+      </view>
+      <view wx:if="{{board}}" class="board-sub">犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>
+    </view>
+
+    <view wx:if="{{match.closed}}" class="notice warning">本届赛事已完赛或归档，不再接受记分。</view>
+    <block wx:elif="{{!held}}">
+      <view wx:if="{{leaseNote}}" class="notice small">{{leaseNote}}</view>
+      <view wx:if="{{!board}}" class="notice small">比赛尚未准备。请赛事负责人在比赛详情中准备比赛。</view>
+      <button wx:if="{{canControl && board}}" class="primary" bindtap="acquire" disabled="{{busy}}">取得记分控制</button>
+      <view class="muted">同一时间只有一个记分端可以写入；控制每10秒自动续约，断网或离开页面即停止写入。</view>
+    </block>
+    <block wx:else>
+      <button wx:if="{{match.status === 'READY'}}" class="accent" bindtap="start" disabled="{{busy || !!pending}}">开始比赛</button>
+
+      <block wx:if="{{match.status === 'LIVE'}}">
+        <view class="pad">
+          <view class="pad-side">
+            <view class="pad-team">{{match.home}}</view>
+            <picker wx:if="{{board.playerMode}}" class="field pad-picker" range="{{roster.home}}" range-key="label" value="{{pick.home}}" data-side="home" bindchange="pickPlayer">{{roster.home[pick.home].label}}</picker>
+            <view class="pad-grid">
+              <button wx:for="{{board.allowedScores}}" wx:key="*this" class="pad-score" data-side="HOME" data-kind="SCORE" data-value="{{item}}" bindtap="stat" disabled="{{busy || !!pending}}">+{{item}}</button>
+              <button class="pad-minor" data-side="HOME" data-kind="FOUL" bindtap="stat" disabled="{{busy || !!pending}}">犯规</button>
+              <button class="pad-minor" data-side="HOME" data-kind="TIMEOUT" bindtap="stat" disabled="{{busy || !!pending}}">暂停</button>
+            </view>
+          </view>
+          <view class="pad-side">
+            <view class="pad-team">{{match.away}}</view>
+            <picker wx:if="{{board.playerMode}}" class="field pad-picker" range="{{roster.away}}" range-key="label" value="{{pick.away}}" data-side="away" bindchange="pickPlayer">{{roster.away[pick.away].label}}</picker>
+            <view class="pad-grid">
+              <button wx:for="{{board.allowedScores}}" wx:key="*this" class="pad-score" data-side="AWAY" data-kind="SCORE" data-value="{{item}}" bindtap="stat" disabled="{{busy || !!pending}}">+{{item}}</button>
+              <button class="pad-minor" data-side="AWAY" data-kind="FOUL" bindtap="stat" disabled="{{busy || !!pending}}">犯规</button>
+              <button class="pad-minor" data-side="AWAY" data-kind="TIMEOUT" bindtap="stat" disabled="{{busy || !!pending}}">暂停</button>
+            </view>
+          </view>
+        </view>
+        <button class="primary" bindtap="clock" disabled="{{busy || !!pending}}">{{board.running ? '暂停计时' : '启动计时'}}</button>
+        <view class="mode-choice">
+          <button bindtap="nextPeriod" disabled="{{busy || !!pending}}">下一节</button>
+          <button bindtap="overtime" disabled="{{busy || !!pending}}">加时</button>
+          <button bindtap="toggleClock" disabled="{{busy || !!pending}}">校时</button>
+        </view>
+        <view wx:if="{{clockOpen}}" class="card">
+          <text class="field-label">本节剩余时间（分:秒）</text>
+          <input class="field" value="{{clockValue}}" data-field="clockValue" bindinput="clockInput" placeholder="例如 05:30"/>
+          <text class="field-label">校时原因</text>
+          <input class="field" value="{{clockReason}}" data-field="clockReason" bindinput="clockInput" placeholder="例如 计时器漏停"/>
+          <button class="primary" bindtap="submitClock" disabled="{{busy}}">确认校时</button>
+        </view>
+        <button class="danger" bindtap="end" disabled="{{busy || !!pending}}">结束比赛</button>
+      </block>
+
+      <view wx:if="{{match.status === 'PENDING_CONFIRMATION'}}" class="notice small">比赛已结束，等待独立确认。确认前可撤销错误记录或补录更正。</view>
+
+      <view wx:if="{{match.status === 'LIVE' || match.status === 'PENDING_CONFIRMATION'}}" class="card">
+        <view class="row-between"><view class="subtitle">补录更正</view><button class="quiet small-button" bindtap="toggleFix">{{fixOpen ? '收起' : '补录'}}</button></view>
+        <block wx:if="{{fixOpen}}">
+          <view class="mode-choice">
+            <button class="{{fix.side === 'HOME' ? 'selected' : ''}}" data-field="side" data-value="HOME" bindtap="fixField">{{match.home}}</button>
+            <button class="{{fix.side === 'AWAY' ? 'selected' : ''}}" data-field="side" data-value="AWAY" bindtap="fixField">{{match.away}}</button>
+          </view>
+          <view class="mode-choice">
+            <button class="{{fix.kind === 'SCORE' ? 'selected' : ''}}" data-field="kind" data-value="SCORE" bindtap="fixField">得分</button>
+            <button class="{{fix.kind === 'FOUL' ? 'selected' : ''}}" data-field="kind" data-value="FOUL" bindtap="fixField">犯规</button>
+            <button class="{{fix.kind === 'TIMEOUT' ? 'selected' : ''}}" data-field="kind" data-value="TIMEOUT" bindtap="fixField">暂停</button>
+          </view>
+          <view wx:if="{{fix.kind === 'SCORE'}}" class="mode-choice">
+            <button wx:for="{{board.allowedScores}}" wx:key="*this" class="{{fix.value === item ? 'selected' : ''}}" data-field="value" data-value="{{item}}" bindtap="fixField">{{item}}分</button>
+          </view>
+          <text class="field-label">节次</text>
+          <input class="field" type="number" value="{{fix.period}}" data-field="period" bindinput="fixField"/>
+          <text class="field-label">补录原因</text>
+          <input class="field" value="{{fix.reason}}" data-field="reason" bindinput="fixField" placeholder="例如 第二节漏记一次得分"/>
+          <button class="primary" bindtap="submitFix" disabled="{{busy || !!pending}}">补录</button>
+        </block>
+      </view>
+
+      <view wx:if="{{voidTarget}}" class="card">
+        <view class="subtitle">撤销：{{voidTarget.text}}</view>
+        <text class="field-label">撤销原因</text>
+        <input class="field" value="{{voidReason}}" bindinput="voidInput" placeholder="例如 记错球队"/>
+        <button class="danger" bindtap="submitVoid" disabled="{{busy}}">确认撤销</button>
+        <button class="secondary" bindtap="cancelVoid">取消</button>
+      </view>
+    </block>
+
+    <view wx:if="{{history.length}}" class="card">
+      <view class="subtitle">最近记录</view>
+      <view wx:for="{{history}}" wx:key="key" class="row-between row">
+        <view class="{{item.voided ? 'voided-text' : ''}}"><view>{{item.text}}{{item.voided ? '（已撤销）' : ''}}</view><view class="muted">{{item.periodLabel}} {{item.time}}</view></view>
+        <button wx:if="{{held && item.canVoid && (match.status === 'LIVE' || match.status === 'PENDING_CONFIRMATION')}}" class="quiet small-button" data-id="{{item.id}}" bindtap="askVoid">撤销</button>
+      </view>
+    </view>
+    <button class="quiet" bindtap="load" disabled="{{loading || busy}}">重新读取比分</button>
+  </block>
+</view>

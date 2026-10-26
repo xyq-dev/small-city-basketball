@@ -1,0 +1,55 @@
+<view class="page mgmt-page">
+  <view wx:if="{{loading && !event}}" class="card state-panel">
+    <text class="state-label">报名审核</text>
+    <view class="subtitle">正在读取本届报名</view>
+    <view class="loading-lines"><view></view><view></view></view>
+  </view>
+  <view wx:elif="{{!event}}" class="card state-panel">
+    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
+    <view class="subtitle">{{unavailable ? '无法处理本届报名' : '暂时无法读取报名'}}</view>
+    <view class="notice warning">{{error || '请从赛事详情重新进入。'}}</view>
+    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+  </view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
+    <view class="intro-card">
+      <view class="row-between"><view class="subtitle">{{event.name}}</view><text class="badge">{{event.statusLabel}}</text></view>
+      <view class="muted">{{rules}}</view>
+      <view class="count-row"><text wx:for="{{counts}}" wx:key="key" class="count-chip">{{item.label}} {{item.count}}</text></view>
+      <view wx:if="{{freeze}}" class="notice small freeze-note">名单已冻结：{{freeze.teams}} 支球队 · {{freeze.time}}。本届名单以冻结快照为准，不随球队长期成员变化。</view>
+    </view>
+
+    <view wx:for="{{stages}}" wx:key="type" class="card">
+      <view class="subtitle">{{item.label}}</view>
+      <view class="muted">{{item.note}}</view>
+      <button class="primary" data-type="{{item.type}}" bindtap="stage" disabled="{{busy}}">{{item.label}}</button>
+    </view>
+
+    <view wx:if="{{detail}}" class="card">
+      <view class="row-between"><view class="subtitle">{{detail.teamName}}</view><button class="quiet small-button" bindtap="closeEntry">收起</button></view>
+      <view class="badge">{{detail.statusLabel}}</view>
+      <view class="section-label">本届名单（报名快照）</view>
+      <view wx:if="{{!detail.players.length}}" class="muted">尚未填写名单。</view>
+      <view wx:for="{{detail.players}}" wx:key="key" class="row">{{item.text}}</view>
+      <view wx:if="{{detail.history.length}}" class="section-label">审核记录</view>
+      <view wx:for="{{detail.history}}" wx:key="key" class="row"><view>{{item.text}}</view><view class="muted">{{item.time}}</view></view>
+      <view wx:if="{{detail.reviewBlocked}}" class="notice warning small">你是该队领队或最近提交人，不能审核本报名；请由其他审核人员处理。</view>
+      <block wx:if="{{detail.approve || detail.changes || detail.reject}}">
+        <text class="field-label">审核说明（退回或拒绝必填）</text>
+        <textarea class="field" maxlength="500" value="{{reason}}" bindinput="reasonInput" placeholder="例如：5号球员缺少身份资料"/>
+        <button wx:if="{{detail.approve}}" class="primary" data-type="APPROVE" bindtap="review" disabled="{{busy}}">通过</button>
+        <button wx:if="{{detail.changes}}" class="secondary" data-type="REQUEST_CHANGES" bindtap="review" disabled="{{busy}}">退回补齐</button>
+        <button wx:if="{{detail.reject}}" class="danger" data-type="REJECT" bindtap="review" disabled="{{busy}}">拒绝</button>
+      </block>
+    </view>
+
+    <view class="section-label">参赛球队 · {{entries.length}}</view>
+    <view wx:if="{{!entries.length}}" class="card empty"><view class="subtitle">暂无报名</view><view class="muted">开放报名后，球队领队提交的报名会出现在这里。</view></view>
+    <view wx:for="{{entries}}" wx:key="key" class="org-match entry-row" data-id="{{item.id}}" bindtap="openEntry">
+      <view class="row-between"><view class="task-title">{{item.teamName}}</view><text class="org-match-status {{item.waiting ? 'live' : ''}}">{{item.statusLabel}}</text></view>
+      <view wx:if="{{item.reason}}" class="muted">{{item.reason}}</view>
+    </view>
+    <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">刷新报名</button>
+  </block>
+</view>

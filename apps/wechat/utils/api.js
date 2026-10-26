@@ -112,8 +112,29 @@ function pathAllowed(path, method = 'GET') {
     method === 'GET' &&
     queryAllowed(query, ['limit', 'cursor']) &&
     (!query.limit || ['50', '100'].includes(query.limit));
-  // Event-platform reads: only the caller's organization list, one event and its read models.
-  // Writes (create/edit, scoring, scheduling, publication) remain outside the mini program.
+  const cursor = (value) => /^[A-Za-z0-9_%.-]{1,2048}$/.test(value);
+  // Event-platform reads plus the role-checked commands that already exist server-side:
+  // scoring (lease + idempotent commands), independent result confirmation, registration
+  // review and lifecycle. Every write is re-authorized by the API; the client never decides.
+  if (matches(org + '/scoring-matches'))
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['eventId', 'limit', 'cursor']) &&
+      (!query.eventId || uuidRegex.test(query.eventId)) &&
+      (!query.limit || ['50', '100'].includes(query.limit)) &&
+      (!('cursor' in query) || cursor(query.cursor))
+    );
+  const match = org + '/matches/' + uuidPattern;
+  if (matches(match + '/(scoring|snapshot)')) return noQuery && method === 'GET';
+  if (matches(match + '/(scoring-events|result-confirmations)')) return paged;
+  if (matches(match + '/commands')) return noQuery && method === 'POST';
+  if (matches(match + '/commands/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(match + '/scorekeeper-lease')) return noQuery && ['POST', 'DELETE'].includes(method);
+  if (matches(match + '/scorekeeper-lease/renew')) return noQuery && method === 'POST';
+  if (matches(org + '/events/' + uuidPattern + '/(lifecycle|scoring)'))
+    return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/(lifecycle-commands|registration-commands)'))
+    return noQuery && method === 'POST';
   if (matches(org + '/events'))
     return (
       method === 'GET' &&

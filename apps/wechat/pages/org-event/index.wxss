@@ -30,3 +30,9 @@ text.org-match-vs { flex:none; color:#7c91a9; font-size:12px; font-weight:500; }
 .org-round-label { margin:12px 0 6px; color:#617286; font-size:12px; line-height:20px; font-weight:600; }
 .org-uncollected .subtitle { font-size:16px; }
 @media(max-width:360px) { .num-cell { width:40px; } .rank-cell { width:34px; } }
+.manage-card .subtitle { margin-bottom:8px; }
+.manage-links { display:flex; gap:8px; margin-bottom:8px; }
+.page.org-event-page .manage-links button { flex:1; min-width:0; margin:0; }
+.manage-sub { display:block; color:#617286; font-size:12px; line-height:18px; font-weight:400; }
+.org-match-more { color:#7c91a9; font-size:12px; line-height:20px; }
+.page.org-event-page .mode-choice button { margin:0; }

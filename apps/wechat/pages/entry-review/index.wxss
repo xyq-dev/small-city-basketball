@@ -1,0 +1,4 @@
+.count-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.count-chip { padding:2px 8px; border-radius:24px; background:#eaf0f7; color:#132c49; font-size:12px; line-height:20px; }
+.freeze-note { margin:12px 0 0; }
+.task-title { color:#132c49; font-size:16px; line-height:24px; font-weight:600; }
