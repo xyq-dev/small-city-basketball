@@ -9,6 +9,14 @@
       "probe": "合成青锋杯"
     },
     {
+      "name": "platform-home-extension",
+      "baseRoute": "pages/home/index",
+      "title": "首页 · 扩展服务（下滑）",
+      "selector": ".premium-home",
+      "probe": "扩展服务",
+      "scrollTop": 2000
+    },
+    {
       "name": "platform-home-signed-out",
       "baseRoute": "pages/home/index",
       "title": "首页 · 未登录",

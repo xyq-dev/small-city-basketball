@@ -50,6 +50,10 @@ function fakeSdk(
   const mini = new EventEmitter();
   let index = -1;
   mini.disconnected = 0;
+  mini.scrolls = [];
+  mini.pageScrollTo = async (scrollTop) => {
+    mini.scrolls.push([run.plan.scenarios[index].name, scrollTop]);
+  };
   mini.currentPage = async () => ({
     data: async () => ({ runId: run.plan.runId, businessDisabled: true }),
   });
@@ -182,6 +186,11 @@ test('successful SDK fixture capture records every original PNG hash without cla
   const report = await captureFake(run, { sdk, cliPath: 'test-cli' });
   assert.equal(report.nativeScreenshotsCaptured, true);
   assert.equal(report.screenshots.length, run.plan.scenarios.length);
+  assert.deepEqual(
+    mini.scrolls,
+    run.plan.scenarios.filter((s) => s.scrollTop).map((s) => [s.name, s.scrollTop]),
+  );
+  assert.ok(mini.scrolls.some(([name]) => name === 'platform-home-extension'));
   assert.equal(report.businessFlowVerified, false);
   assert.equal(report.realDeviceVerified, false);
   assert.equal(report.userVisualAccepted, false);

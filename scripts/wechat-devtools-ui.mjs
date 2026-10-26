@@ -239,7 +239,9 @@ export function prepare({ root = ROOT, out, appId } = {}) {
       !app.pages.includes(item.baseRoute) ||
       !/^\.[a-z-]+$/.test(item.selector) ||
       typeof item.probe !== 'string' ||
-      !item.probe
+      !item.probe ||
+      (item.scrollTop !== undefined &&
+        (!Number.isSafeInteger(item.scrollTop) || item.scrollTop < 1 || item.scrollTop > 20000))
     )
       throw new Error('无效平台场景：' + item.name);
     const filename = path.join(root, 'tests/mini-program/fixtures', item.name + '.json');
@@ -276,6 +278,7 @@ export function prepare({ root = ROOT, out, appId } = {}) {
       title: item.title,
       probe: item.probe,
       selector: item.selector,
+      ...(item.scrollTop ? { scrollTop: item.scrollTop } : {}),
       fixtureSha256: hash(fs.readFileSync(filename)),
       reference: null,
       referenceSha256: null,
@@ -433,6 +436,11 @@ export async function capture(
       )
         throw new Error('连接目标不是本轮隔离验收副本');
       await deadline(() => page.waitFor(500), '等待原生渲染', timeout);
+      // Lower sections (e.g. the home booking extension) are captured by an explicit scroll.
+      if (scenario.scrollTop) {
+        await deadline(() => mini.pageScrollTo(scenario.scrollTop), '滚动页面', timeout);
+        await deadline(() => page.waitFor(300), '等待滚动渲染', timeout);
+      }
       const body = await deadline(() => page.$(scenario.selector), '检查页面根节点', timeout);
       if (
         !body ||
