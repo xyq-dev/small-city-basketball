@@ -78,19 +78,23 @@
         {
           "value": "SCORE_DIFFERENCE",
           "label": "净胜分",
-          "on": true
+          "on": true,
+          "rank": "1"
         },
         {
           "value": "POINTS_FOR",
           "label": "总得分",
-          "on": true
+          "on": true,
+          "rank": "2"
         },
         {
           "value": "WINS",
           "label": "胜场",
-          "on": false
+          "on": false,
+          "rank": ""
         }
       ],
+      "orderLabel": "净胜分 → 总得分",
       "saved": false
     },
     "viewing": {

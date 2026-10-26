@@ -47,6 +47,33 @@ function eventInput(form) {
     format: form.format,
   };
 }
+// Server order first (that order is the ranking), then the unused options. Only an explicit
+// toggle or move by the organizer changes what is sent back.
+function tiebreakerRows(saved) {
+  const order = saved || ['SCORE_DIFFERENCE', 'POINTS_FOR'];
+  const known = (v) => TIEBREAKERS.find((t) => t.value === v);
+  return ranked([
+    ...order.filter(known).map((v) => ({ ...known(v), on: true })),
+    ...TIEBREAKERS.filter((t) => !order.includes(t.value)).map((t) => ({ ...t, on: false })),
+  ]);
+}
+function ranked(rows) {
+  let rank = 0;
+  return rows.map((t) => ({ ...t, rank: t.on ? String(++rank) : '' }));
+}
+function orderLabel(rows) {
+  const on = rows.filter((t) => t.on).map((t) => t.label);
+  return on.length ? on.join(' → ') : '不设同分比较';
+}
+// Durations are whole seconds on the server; edit them as minutes plus seconds, never rounded.
+function clock(seconds) {
+  return { minutes: String(Math.floor(seconds / 60)), seconds: String(seconds % 60) };
+}
+function seconds(minutes, secs, label, max) {
+  const total = int(minutes, label + '分钟', 0, max / 60) * 60 + int(secs, label + '秒数', 0, 59);
+  if (total < 1 || total > max) throw new Error(label + '须为1秒至' + max / 60 + '分钟');
+  return total;
+}
 function failure(error) {
   if (error && error.code === 'VERSION_CONFLICT')
     return '赛事已被其他操作更新，已重新读取，请核对后再保存。';
@@ -108,7 +135,7 @@ Page({
     return '/v1/orgs/' + this.orgId + '/events/' + this.eventId;
   },
   async load() {
-    if (!this.eventId || this.data.loading) return;
+    if (!this.eventId || this.data.loading || this.data.busy) return;
     const client = api.getClient();
     const load = (this._load = (this._load || 0) + 1);
     const current = () => this._alive && load === this._load;
@@ -196,16 +223,20 @@ Page({
               editable: scoring.capabilities.canManageRules && !scoring.locked,
               locked: scoring.locked,
               periods: String(sc ? sc.regulationPeriods : 4),
-              minutes: String(sc ? Math.round(sc.periodDurationSeconds / 60) : 10),
+              ...clock(sc ? sc.periodDurationSeconds : 600),
               scores: [1, 2, 3].map((v) => ({
                 value: v,
                 on: sc ? sc.allowedScoreValues.includes(v) : true,
               })),
               overtime: sc ? sc.tiePolicy === 'OVERTIME' : true,
               durationLabel: sc ? scoringView.duration(sc.periodDurationSeconds) : '',
-              otMinutes: String(
-                sc && sc.overtimeDurationSeconds ? Math.round(sc.overtimeDurationSeconds / 60) : 5,
+              ...((ot) => ({ otMinutes: ot.minutes, otSeconds: ot.seconds }))(
+                clock(sc && sc.overtimeDurationSeconds ? sc.overtimeDurationSeconds : 300),
               ),
+              otLabel:
+                sc && sc.overtimeDurationSeconds
+                  ? scoringView.duration(sc.overtimeDurationSeconds)
+                  : '',
               saved: !!sc,
             }
           : null,
@@ -219,10 +250,8 @@ Page({
               win: String(st ? st.winPoints : 2),
               loss: String(st ? st.lossPoints : 1),
               draw: String(st ? st.drawPoints : 1),
-              tiebreakers: TIEBREAKERS.map((t) => ({
-                ...t,
-                on: st ? st.tiebreakers.includes(t.value) : t.value !== 'WINS',
-              })),
+              tiebreakers: tiebreakerRows(st && st.tiebreakers),
+              orderLabel: orderLabel(tiebreakerRows(st && st.tiebreakers)),
               saved: !!st,
             }
           : null,
@@ -256,7 +285,7 @@ Page({
   toggle(e) {
     const { section, field, index } = e.currentTarget.dataset;
     if (!this.data[section] || this.data.busy) return;
-    if (field === 'scores' || field === 'tiebreakers') {
+    if (field === 'scores') {
       const i = Number(index);
       if (!this.data[section][field][i]) return;
       this.setData({
@@ -264,20 +293,40 @@ Page({
       });
       return;
     }
+    if (field === 'tiebreakers' && section === 'standings') {
+      const rows = this.data.standings.tiebreakers.map((t, i) =>
+        i === Number(index) ? { ...t, on: !t.on } : t,
+      );
+      this.setTiebreakers(rows);
+      return;
+    }
     if (['zeroDistinct', 'requireIdentity', 'requireInsurance', 'overtime'].includes(field))
       this.setData({ [section + '.' + field]: !this.data[section][field] });
   },
+  // Moves one comparison up a place; the list order is the order sent to the server.
+  moveTiebreaker(e) {
+    const s = this.data.standings;
+    const i = Number(e.currentTarget.dataset.index);
+    if (!s || this.data.busy || !(i > 0) || !s.tiebreakers[i]) return;
+    const rows = s.tiebreakers.slice();
+    [rows[i - 1], rows[i]] = [rows[i], rows[i - 1]];
+    this.setTiebreakers(rows);
+  },
+  setTiebreakers(rows) {
+    const next = ranked(rows);
+    this.setData({ 'standings.tiebreakers': next, 'standings.orderLabel': orderLabel(next) });
+  },
   async write(path, method, body, label) {
     if (this.data.busy) return null;
-    const token = ui.begin(this);
-    this.setData({ busy: true, error: '', notice: '' });
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       const result = (await api.getClient().request(path, method, body)).data;
-      if (!ui.live(this, token)) return null;
+      if (!ui.held(this, token)) return null;
       this.setData({ busy: false, notice: label + '已保存。' });
       return result || {};
     } catch (error) {
-      if (!ui.live(this, token)) return null;
+      if (!ui.held(this, token)) return null;
       this.setData({ busy: false, error: failure(error) });
       if (error && error.code === 'VERSION_CONFLICT') await this.load();
       return null;
@@ -365,10 +414,12 @@ Page({
       body = {
         expectedEventVersion: this._event.version,
         regulationPeriods: int(s.periods, '节数', 1, 8),
-        periodDurationSeconds: int(s.minutes, '每节分钟', 1, 60) * 60,
+        periodDurationSeconds: seconds(s.minutes, s.seconds, '每节时长', 3600),
         allowedScoreValues: scores,
         tiePolicy: s.overtime ? 'OVERTIME' : 'ALLOW_DRAW',
-        overtimeDurationSeconds: s.overtime ? int(s.otMinutes, '加时分钟', 1, 30) * 60 : null,
+        overtimeDurationSeconds: s.overtime
+          ? seconds(s.otMinutes, s.otSeconds, '加时时长', 1800)
+          : null,
       };
     } catch (error) {
       this.setData({ error: ui.message(error) });

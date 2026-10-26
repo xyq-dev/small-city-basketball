@@ -72,18 +72,22 @@
     <view wx:if="{{scoring}}" class="card">
       <view class="row-between"><view class="subtitle">记分规则</view><text class="badge">{{scoring.locked ? '已锁定' : scoring.saved ? '已设置' : '未设置'}}</text></view>
       <block wx:if="{{scoring.editable}}">
-        <view class="setup-pair">
+        <view class="setup-trio">
           <view><text class="field-label">常规节数</text><input class="field" type="number" value="{{scoring.periods}}" data-section="scoring" data-field="periods" bindinput="field"/></view>
           <view><text class="field-label">每节分钟</text><input class="field" type="number" value="{{scoring.minutes}}" data-section="scoring" data-field="minutes" bindinput="field"/></view>
+          <view><text class="field-label">每节秒</text><input class="field" type="number" value="{{scoring.seconds}}" data-section="scoring" data-field="seconds" bindinput="field"/></view>
         </view>
         <text class="field-label">允许的得分分值</text>
         <view class="mode-choice"><button wx:for="{{scoring.scores}}" wx:key="value" class="{{item.on ? 'selected' : ''}}" data-section="scoring" data-field="scores" data-index="{{index}}" bindtap="toggle">{{item.value}}分</button></view>
         <view class="setup-switch" data-section="scoring" data-field="overtime" bindtap="toggle"><text>平分时进入加时</text><text class="setup-flag {{scoring.overtime ? 'on' : ''}}">{{scoring.overtime ? '加时' : '允许平局'}}</text></view>
-        <block wx:if="{{scoring.overtime}}"><text class="field-label">加时分钟</text><input class="field" type="number" value="{{scoring.otMinutes}}" data-section="scoring" data-field="otMinutes" bindinput="field"/></block>
+        <view wx:if="{{scoring.overtime}}" class="setup-pair">
+          <view><text class="field-label">加时分钟</text><input class="field" type="number" value="{{scoring.otMinutes}}" data-section="scoring" data-field="otMinutes" bindinput="field"/></view>
+          <view><text class="field-label">加时秒</text><input class="field" type="number" value="{{scoring.otSeconds}}" data-section="scoring" data-field="otSeconds" bindinput="field"/></view>
+        </view>
         <view class="muted">首场比赛准备后规则永久锁定。</view>
         <button class="primary" bindtap="saveScoring" disabled="{{busy}}">保存记分规则</button>
       </block>
-      <view wx:else class="muted">{{scoring.periods}} 节 × {{scoring.durationLabel}} · {{scoring.overtime ? '平分加时' : '允许平局'}}{{scoring.locked ? '。比赛已准备，规则已锁定。' : ''}}</view>
+      <view wx:else class="muted">{{scoring.periods}} 节 × {{scoring.durationLabel}} · {{scoring.overtime ? '平分加时 ' + scoring.otLabel : '允许平局'}}{{scoring.locked ? '。比赛已准备，规则已锁定。' : ''}}</view>
     </view>
 
     <view wx:if="{{standings}}" class="card">
@@ -94,12 +98,17 @@
           <view><text class="field-label">平</text><input class="field" type="number" value="{{standings.draw}}" data-section="standings" data-field="draw" bindinput="field"/></view>
           <view><text class="field-label">负</text><input class="field" type="number" value="{{standings.loss}}" data-section="standings" data-field="loss" bindinput="field"/></view>
         </view>
-        <text class="field-label">同分时依次比较</text>
-        <view class="mode-choice"><button wx:for="{{standings.tiebreakers}}" wx:key="value" class="{{item.on ? 'selected' : ''}}" data-section="standings" data-field="tiebreakers" data-index="{{index}}" bindtap="toggle">{{item.label}}</button></view>
+        <text class="field-label">同分时依次比较：{{standings.orderLabel}}</text>
+        <view wx:for="{{standings.tiebreakers}}" wx:key="value" class="setup-switch setup-order">
+          <text class="setup-rank {{item.on ? 'on' : ''}}">{{item.rank || '–'}}</text>
+          <text class="setup-order-name">{{item.label}}</text>
+          <button wx:if="{{index > 0}}" class="quiet small-button" data-index="{{index}}" bindtap="moveTiebreaker" disabled="{{busy}}">上移</button>
+          <button class="{{item.on ? 'secondary' : 'quiet'}} small-button" data-section="standings" data-field="tiebreakers" data-index="{{index}}" bindtap="toggle" disabled="{{busy}}">{{item.on ? '停用' : '启用'}}</button>
+        </view>
         <button class="secondary" bindtap="saveStandings" disabled="{{busy}}">保存积分规则草稿</button>
         <button wx:if="{{standings.canPublish}}" class="primary" bindtap="publishStandings" disabled="{{busy}}">锁定积分规则</button>
       </block>
-      <view wx:else class="muted">胜 {{standings.win}} · 平 {{standings.draw}} · 负 {{standings.loss}}。规则已锁定，正式积分只计入独立确认的赛果。</view>
+      <view wx:else class="muted">胜 {{standings.win}} · 平 {{standings.draw}} · 负 {{standings.loss}} · 同分依次比较：{{standings.orderLabel}}。规则已锁定，正式积分只计入独立确认的赛果。</view>
     </view>
 
     <view wx:if="{{viewing}}" class="card">
@@ -112,6 +121,6 @@
       <view wx:if="{{!viewing.active && !viewing.canEnable}}" class="muted">需先锁定积分规则并发布正式赛程。</view>
     </view>
     <view wx:elif="{{!event.roundRobin}}" class="notice small">分组与淘汰赛的积分、出线与公开观赛设置目前在Web赛事工作台完成。</view>
-    <button class="quiet" bindtap="load" disabled="{{loading}}">刷新</button>
+    <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
   </block>
 </view>

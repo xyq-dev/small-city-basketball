@@ -273,36 +273,45 @@ test('event mainline runs end to end through native pages on the real API', asyn
     false,
     'registration rules freeze after draft',
   );
+  // A 1-second period is set natively: durations are exact seconds, never rounded to minutes.
   setup.page.field(tap({ section: 'scoring', field: 'periods' }, { value: '1' }));
-  setup.page.field(tap({ section: 'scoring', field: 'minutes' }, { value: '1' }));
+  setup.page.field(tap({ section: 'scoring', field: 'minutes' }, { value: '0' }));
+  setup.page.field(tap({ section: 'scoring', field: 'seconds' }, { value: '1' }));
   setup.page.toggle(tap({ section: 'scoring', field: 'overtime' }));
   await setup.page.saveScoring();
   await ownerDevice.settle(setup);
   assert.equal(setup.page.data.scoring.saved, true, setup.page.data.error);
-  setup.page.field(tap({ section: 'standings', field: 'win' }, { value: '2' }));
+  assert.deepEqual(
+    [setup.page.data.scoring.minutes, setup.page.data.scoring.seconds],
+    ['0', '1'],
+    'read back exactly',
+  );
+  await setup.page.saveScoring();
+  await ownerDevice.settle(setup);
+  // Non-default comparison order chosen explicitly (胜场 first), then only the points change.
+  const wins = () => setup.page.data.standings.tiebreakers.findIndex((t) => t.value === 'WINS');
+  setup.page.toggle(tap({ section: 'standings', field: 'tiebreakers', index: wins() }));
+  while (wins() > 0) setup.page.moveTiebreaker(tap({ index: wins() }));
+  await setup.page.saveStandings();
+  await ownerDevice.settle(setup);
+  setup.page.field(tap({ section: 'standings', field: 'win' }, { value: '3' }));
   await setup.page.saveStandings();
   await ownerDevice.settle(setup);
   assert.equal(setup.page.data.standings.canPublish, true, setup.page.data.error);
+  const saved = {
+    scoring: (await call(`${eventPath}/scoring`, { cookie: ownerCookie })).data.rules,
+    standings: (await call(`${eventPath}/standings`, { cookie: ownerCookie })).data.rules,
+  };
+  assert.equal(saved.scoring.periodDurationSeconds, 1);
+  assert.equal(saved.scoring.tiePolicy, 'ALLOW_DRAW');
+  assert.equal(saved.standings.winPoints, 3);
+  assert.deepEqual(saved.standings.tiebreakers, ['WINS', 'SCORE_DIFFERENCE', 'POINTS_FOR']);
+  assert.equal(setup.page.data.standings.orderLabel, '胜场 → 净胜分 → 总得分');
+  snapshot(setup, 'event-setup-rules');
   ownerDevice.approve();
   await setup.page.publishStandings();
   await ownerDevice.settle(setup);
   assert.equal(setup.page.data.standings.locked, true, setup.page.data.error);
-
-  // The 60-second native period is shortened to 1 second for the run; rules stay unlocked
-  // until the first prepare, so this exact server rule is set once more over HTTP.
-  const scoringRules = (await call(`${eventPath}/scoring`, { cookie: ownerCookie })).data;
-  await call(`${eventPath}/scoring-rules`, {
-    method: 'PUT',
-    cookie: ownerCookie,
-    body: {
-      expectedEventVersion: scoringRules.event.version,
-      regulationPeriods: 1,
-      periodDurationSeconds: 1,
-      allowedScoreValues: [1, 2, 3],
-      tiePolicy: 'ALLOW_DRAW',
-      overtimeDurationSeconds: null,
-    },
-  });
   const [match] = (await call(`${eventPath}/matches?limit=100`, { cookie: ownerCookie })).data;
 
   // Organizer: event page lists the match and opens it; prepare natively (per-player mode).
@@ -404,8 +413,16 @@ test('event mainline runs end to end through native pages on the real API', asyn
   await ownerDevice.settle(ownerMatch);
   assert.equal(ownerMatch.page.data.caps.confirm, true, ownerMatch.page.data.error);
   ownerDevice.approve();
-  ownerMatch.page.confirmResult();
+  const confirming = ownerMatch.page.confirmResult();
+  for (let i = 0; i < 200 && !ownerMatch.page.data.busy; i++)
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  assert.equal(ownerMatch.page.data.busy, true, 'confirmation in flight');
+  // A refresh tap while the command is in flight must neither cancel it nor leave busy set.
+  ownerMatch.page.refresh(tap());
+  await confirming;
   await ownerDevice.settle(ownerMatch);
+  assert.equal(ownerMatch.page.data.busy, false);
+  assert.match(ownerMatch.page.data.notice, /已完成/);
   assert.equal(ownerMatch.page.data.match.status, 'FINAL', ownerMatch.page.data.error);
   assert.equal(ownerMatch.page.data.board.final, true);
   assert.equal(ownerMatch.page.data.confirmations.length, 1);

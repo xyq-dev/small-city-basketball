@@ -62,7 +62,7 @@ Page({
     return '/v1/orgs/' + this.orgId;
   },
   async load() {
-    if (!this.orgId || this.data.loading) return;
+    if (!this.orgId || this.data.loading || this.data.busy) return;
     const client = api.getClient();
     const load = (this._load = (this._load || 0) + 1);
     const current = () => this._alive && load === this._load;
@@ -206,15 +206,15 @@ Page({
   },
   async run(path, method, body, label) {
     if (this.data.busy) return null;
-    const token = ui.begin(this);
-    this.setData({ busy: true, error: '', notice: '' });
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       const result = (await api.getClient().request(path, method, body)).data;
-      if (!ui.live(this, token)) return null;
+      if (!ui.held(this, token)) return null;
       this.setData({ busy: false, notice: label ? label + '已完成。' : '' });
       return result || {};
     } catch (error) {
-      if (!ui.live(this, token)) return null;
+      if (!ui.held(this, token)) return null;
       const details =
         error && error.details && Array.isArray(error.details.conflicts)
           ? error.details.conflicts

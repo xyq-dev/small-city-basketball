@@ -282,8 +282,8 @@ Page({
       this.setData({ error: '请填写至少4个字的原因。' });
       return;
     }
-    if (!(await ui.confirm(command.label, command.note))) return;
-    const token = ui.begin(this);
+    if (!(await ui.confirm(command.label, command.note)) || this.data.loading) return;
+    const token = ui.hold(this);
     this.setData({ loading: true, error: '', notice: '' });
     try {
       await api.getClient().request(this.base() + '/lifecycle-commands', 'POST', {
@@ -291,10 +291,10 @@ Page({
         expectedEventVersion: this._eventVersion,
         reason,
       });
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({ loading: false, lifecycleAction: '', notice: command.label + '已完成。' });
     } catch (error) {
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({
         loading: false,
         error:

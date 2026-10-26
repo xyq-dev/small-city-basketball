@@ -53,7 +53,7 @@ Page({
     this.load();
   },
   onShow() {
-    if (this._shown) this.load();
+    if (this._shown) this.load(false);
     this._shown = true;
   },
   onHide() {
@@ -88,8 +88,15 @@ Page({
       if (!this.data.busy && !this.data.loading) this.load(true);
     }, POLL_MS);
   },
+  // Bound to the buttons; the tap event must never be read as `quiet`.
+  refresh() {
+    this.load(false);
+  },
+  // Reads never start while a write is in flight: the write re-reads when it ends, and hold()
+  // has already discarded any read that was started before it.
   async load(quiet) {
-    if (!this.orgId || this.data.loading) return;
+    quiet = quiet === true;
+    if (!this.orgId || this.data.loading || this.data.busy) return;
     const client = api.getClient();
     const load = (this._load = (this._load || 0) + 1);
     const current = () => this._alive && load === this._load;
@@ -206,10 +213,12 @@ Page({
   },
   // Only the organization owner can list members; others assign through the Web console.
   async loadMembers() {
-    const token = ui.begin(this);
+    const token = ui.guard(this);
+    const n = (this._members = (this._members || 0) + 1);
+    const live = () => ui.held(this, token) && n === this._members;
     try {
       const list = (await api.getClient().request('/v1/orgs/' + this.orgId + '/members')).data;
-      if (!ui.live(this, token)) return;
+      if (!live()) return;
       this.setData({
         members: list
           .filter((v) => v.status === 'ACTIVE')
@@ -218,7 +227,7 @@ Page({
         staffNote: '',
       });
     } catch (error) {
-      if (ui.live(this, token))
+      if (live())
         this.setData({
           members: [],
           staffNote:
@@ -235,20 +244,21 @@ Page({
     this.setData({ roleIndex: Number(e.detail.value) === 1 ? 1 : 0 });
   },
   async staff(userId, role, status, label) {
-    if (this.data.busy) return;
-    const token = ui.begin(this);
-    this.setData({ busy: true, error: '', notice: '' });
+    if (this.data.busy || this.data.pending) return;
+    const version = this._matchVersion;
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       await api.getClient().request(this.base() + '/staff/' + api.uuid(userId), 'PUT', {
-        expectedMatchVersion: this._matchVersion,
+        expectedMatchVersion: version,
         role,
         status,
       });
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({ busy: false, notice: label });
       await this.load(true);
     } catch (error) {
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({ busy: false, error: scoring.failure(error) });
       if (error && error.code === 'VERSION_CONFLICT') await this.load(true);
     }
@@ -276,15 +286,18 @@ Page({
   },
   async run(type, payload, title, content) {
     if (this.data.busy || this.data.pending) return;
+    // CAS against the version the organizer saw when confirming; a poll that lands while the
+    // dialog is open makes the command conflict and re-read instead of acting on newer data.
+    const version = this._matchVersion;
     if (!(await ui.confirm(title, content))) return;
-    this.setData({ busy: true, error: '', notice: '' });
+    if (this.data.busy || this.data.pending) return;
     const client = api.getClient();
-    const token = ui.begin(this);
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
-      // Commands CAS against the exact match version from the latest read.
-      const body = await scoring.envelope(type, payload, this._matchVersion);
+      const body = await scoring.envelope(type, payload, version);
       const outcome = await scoring.send(client, this.base(), body);
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       if (!outcome.done) {
         this.setData({
           busy: false,
@@ -301,7 +314,7 @@ Page({
       });
       await this.load(true);
     } catch (error) {
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({ busy: false, error: scoring.failure(error) });
       if (['VERSION_CONFLICT', 'INVALID_MATCH_STATE'].includes(error && error.code))
         await this.load(true);
@@ -356,11 +369,11 @@ Page({
   async checkPending() {
     const pending = this.data.pending;
     if (!pending || this.data.busy) return;
-    this.setData({ busy: true, error: '' });
-    const token = ui.begin(this);
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '' });
     try {
       const found = await scoring.receipt(api.getClient(), this.base(), pending.body.commandId);
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       if (found) {
         this.setData({ busy: false, pending: null, notice: pending.label + '已在服务端完成。' });
         await this.load(true);
@@ -370,17 +383,17 @@ Page({
           error: '服务端暂无该操作记录。可按原编号重发同一操作；不会重复执行。',
         });
     } catch (error) {
-      if (ui.live(this, token)) this.setData({ busy: false, error: scoring.failure(error) });
+      if (ui.held(this, token)) this.setData({ busy: false, error: scoring.failure(error) });
     }
   },
   async resendPending() {
     const pending = this.data.pending;
     if (!pending || this.data.busy) return;
-    this.setData({ busy: true, error: '' });
-    const token = ui.begin(this);
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '' });
     try {
       const outcome = await scoring.send(api.getClient(), this.base(), pending.body);
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       if (!outcome.done) {
         this.setData({ busy: false, error: '仍未连接到服务，请恢复网络后再核对。' });
         return;
@@ -388,7 +401,7 @@ Page({
       this.setData({ busy: false, pending: null, notice: pending.label + '已完成。' });
       await this.load(true);
     } catch (error) {
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({ busy: false, pending: null, error: scoring.failure(error) });
       await this.load(true);
     }

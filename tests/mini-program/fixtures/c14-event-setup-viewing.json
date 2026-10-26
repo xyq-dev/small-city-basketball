@@ -4,7 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["公开观赛", "关闭公开观赛", "1 秒"],
+  "expectText": ["公开观赛", "关闭公开观赛", "1 秒", "胜场 → 净胜分 → 总得分"],
   "data": {
     "loading": false,
     "busy": false,
@@ -63,6 +63,7 @@
       "locked": true,
       "periods": "1",
       "minutes": "0",
+      "seconds": "1",
       "scores": [
         {
           "value": 1,
@@ -80,38 +81,44 @@
       "overtime": false,
       "durationLabel": "1 秒",
       "otMinutes": "5",
+      "otSeconds": "0",
+      "otLabel": "",
       "saved": true
     },
     "standings": {
       "editable": false,
       "locked": true,
       "canPublish": false,
-      "rulesetId": "f4a362eb-9ee3-4c8b-b702-2849099885ee",
-      "win": "2",
+      "rulesetId": "040701f7-bf91-4306-a454-b475a5cdfbb3",
+      "win": "3",
       "loss": "1",
       "draw": "1",
       "tiebreakers": [
         {
+          "value": "WINS",
+          "label": "胜场",
+          "on": true,
+          "rank": "1"
+        },
+        {
           "value": "SCORE_DIFFERENCE",
           "label": "净胜分",
-          "on": true
+          "on": true,
+          "rank": "2"
         },
         {
           "value": "POINTS_FOR",
           "label": "总得分",
-          "on": true
-        },
-        {
-          "value": "WINS",
-          "label": "胜场",
-          "on": false
+          "on": true,
+          "rank": "3"
         }
       ],
+      "orderLabel": "胜场 → 净胜分 → 总得分",
       "saved": true
     },
     "viewing": {
       "active": true,
-      "publicEventId": "cLK7B2OGQG4hkZGIoW_YNmE0Rm4Vbvexeyq9kINE7wU",
+      "publicEventId": "uNQDr72ha52DQIjIQz-3M-nwkl1TnGfzoJcsrG7Mi3g",
       "canEnable": false,
       "canDisable": true,
       "history": false

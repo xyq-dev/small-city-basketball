@@ -9,7 +9,7 @@
     <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
     <view class="subtitle">{{unavailable ? '无法查看该比赛' : '暂时无法读取比赛'}}</view>
     <view class="notice warning">{{error || '请从赛事赛程重新进入。'}}</view>
-    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+    <button wx:if="{{!unavailable}}" class="primary" bindtap="refresh">重新读取</button>
   </view>
   <block wx:else>
     <view wx:if="{{error}}" class="notice warning">{{error}}</view>
@@ -96,6 +96,6 @@
       <view wx:elif="{{caps.staff && staffNote}}" class="muted">{{staffNote}}</view>
     </view>
 
-    <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">刷新比赛</button>
+    <button class="quiet" bindtap="refresh" disabled="{{loading || busy}}" loading="{{loading}}">刷新比赛</button>
   </block>
 </view>

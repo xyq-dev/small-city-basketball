@@ -91,7 +91,7 @@ Page({
     return '/v1/orgs/' + this.orgId;
   },
   async load() {
-    if (!this.orgId || this.data.loading) return;
+    if (!this.orgId || this.data.loading || this.data.busy) return;
     const client = api.getClient();
     const load = (this._load = (this._load || 0) + 1);
     const current = () => this._alive && load === this._load;
@@ -187,11 +187,11 @@ Page({
   async openEntry(e) {
     const id = e.currentTarget.dataset.id;
     if (!id || this.data.busy) return;
-    const token = ui.begin(this);
-    this.setData({ busy: true, error: '', reason: '' });
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '', reason: '' });
     try {
       const entry = (await api.getClient().request(this.base() + '/entries/' + api.uuid(id))).data;
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       const c = entry.capabilities || {};
       this.setData({
         busy: false,
@@ -219,7 +219,7 @@ Page({
         },
       });
     } catch (error) {
-      if (ui.live(this, token)) this.setData({ busy: false, error: ui.message(error) });
+      if (ui.held(this, token)) this.setData({ busy: false, error: ui.message(error) });
     }
   },
   closeEntry() {
@@ -244,19 +244,20 @@ Page({
           ? '拒绝为终态，该队本届报名不能再提交。'
           : '领队补齐后可重新提交。';
     if (!(await ui.confirm(commandLabels[type] + '：' + detail.teamName, note))) return;
-    const token = ui.begin(this);
-    this.setData({ busy: true, error: '', notice: '' });
+    if (this.data.busy || !this.data.detail || this.data.detail.id !== detail.id) return;
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       await api.getClient().request(this.base() + '/entries/' + detail.id + '/commands', 'POST', {
         type,
         expectedVersion: detail.version,
         ...(type === 'APPROVE' ? {} : { reason }),
       });
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({ busy: false, notice: detail.teamName + ' 已' + commandLabels[type] + '。' });
       await this.load();
     } catch (error) {
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({
         busy: false,
         error:
@@ -271,9 +272,9 @@ Page({
     const type = e.currentTarget.dataset.type;
     const command = stageCommands.find((c) => c.type === type);
     if (!command || this.data.busy) return;
-    if (!(await ui.confirm(command.label, command.note))) return;
-    const token = ui.begin(this);
-    this.setData({ busy: true, error: '', notice: '' });
+    if (!(await ui.confirm(command.label, command.note)) || this.data.busy) return;
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       await api
         .getClient()
@@ -281,11 +282,11 @@ Page({
           type,
           expectedVersion: this._eventVersion,
         });
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({ busy: false, notice: command.label + '已完成。' });
       await this.load();
     } catch (error) {
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({
         busy: false,
         error:

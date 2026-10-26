@@ -50,6 +50,6 @@
       <view class="row-between"><view class="task-title">{{item.teamName}}</view><text class="org-match-status {{item.waiting ? 'live' : ''}}">{{item.statusLabel}}</text></view>
       <view wx:if="{{item.reason}}" class="muted">{{item.reason}}</view>
     </view>
-    <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">刷新报名</button>
+    <button class="quiet" bindtap="load" disabled="{{loading || busy}}" loading="{{loading}}">刷新报名</button>
   </block>
 </view>

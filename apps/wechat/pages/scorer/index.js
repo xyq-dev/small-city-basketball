@@ -106,7 +106,7 @@ Page({
     }
   },
   async load() {
-    if (!this.orgId || this.data.loading) return;
+    if (!this.orgId || this.data.loading || this.data.busy) return;
     const client = api.getClient();
     const load = (this._load = (this._load || 0) + 1);
     const current = () => this._alive && load === this._load;
@@ -175,11 +175,14 @@ Page({
       });
     }
   },
+  // Own counter and a session-only token: history neither cancels nor is cancelled by the
+  // board read or a command, and only the newest history request is shown.
   async refreshHistory() {
-    const token = ui.begin(this);
+    const token = ui.guard(this);
+    const n = (this._history = (this._history || 0) + 1);
     try {
       const list = await scoring.allPages(api.getClient(), this.base() + '/scoring-events');
-      if (ui.live(this, token))
+      if (ui.held(this, token) && n === this._history)
         this.setData({ history: scoring.history(list, this._snapshot, this._names).slice(0, 20) });
     } catch {
       /* History is supplementary; the board stays authoritative. */
@@ -187,8 +190,8 @@ Page({
   },
   async acquire() {
     if (this.data.busy || this._control) return;
-    this.setData({ busy: true, error: '', notice: '' });
-    const token = ui.begin(this);
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
+    const token = ui.hold(this);
     try {
       // Memory only: a reload is a new client instance and never resumes old credentials.
       this._instance = this._instance || (await ui.uuid());
@@ -197,7 +200,7 @@ Page({
           .getClient()
           .request(this.base() + '/scorekeeper-lease', 'POST', { clientInstanceId: this._instance })
       ).data;
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this._control = {
         leaseId: lease.leaseId,
         fencingToken: lease.fencingToken,
@@ -206,7 +209,7 @@ Page({
       this._renew = setInterval(() => this.renew(), RENEW_MS);
       this.setData({ busy: false, held: true, leaseNote: '', notice: '已取得记分控制。' });
     } catch (error) {
-      if (ui.live(this, token)) this.setData({ busy: false, error: scoring.failure(error) });
+      if (ui.held(this, token)) this.setData({ busy: false, error: scoring.failure(error) });
     }
   },
   async renew() {
@@ -234,12 +237,12 @@ Page({
       this.setData({ error: '请先取得记分控制。' });
       return;
     }
-    this.setData({ busy: true, error: '', notice: '' });
-    const token = ui.begin(this);
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
+    const token = ui.hold(this);
     try {
       const body = await scoring.envelope(type, payload, this._matchVersion, this._control);
       const outcome = await scoring.send(api.getClient(), this.base(), body);
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       if (!outcome.done) {
         this.setData({
           busy: false,
@@ -252,7 +255,7 @@ Page({
       this.setData({ busy: false, notice: label + ' 已记录' });
       this.refreshHistory();
     } catch (error) {
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       this.setData({ busy: false, error: scoring.failure(error) });
       if (error && error.code === 'LEASE_CONFLICT') {
         this.dropControl();
@@ -264,11 +267,11 @@ Page({
   async checkPending() {
     const pending = this.data.pending;
     if (!pending || this.data.busy) return;
-    this.setData({ busy: true, error: '' });
-    const token = ui.begin(this);
+    this.setData({ busy: true, loading: false, error: '' });
+    const token = ui.hold(this);
     try {
       const found = await scoring.receipt(api.getClient(), this.base(), pending.body.commandId);
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       if (found) {
         this.show(found.snapshot, Date.now());
         this.setData({ busy: false, pending: null, notice: pending.label + ' 已在服务端记录' });
@@ -279,17 +282,17 @@ Page({
           error: '服务端暂无该记录。确认网络恢复后，可按原编号重发同一操作，不会重复加分。',
         });
     } catch (error) {
-      if (ui.live(this, token)) this.setData({ busy: false, error: scoring.failure(error) });
+      if (ui.held(this, token)) this.setData({ busy: false, error: scoring.failure(error) });
     }
   },
   async resendPending() {
     const pending = this.data.pending;
     if (!pending || this.data.busy) return;
-    this.setData({ busy: true, error: '' });
-    const token = ui.begin(this);
+    this.setData({ busy: true, loading: false, error: '' });
+    const token = ui.hold(this);
     try {
       const outcome = await scoring.send(api.getClient(), this.base(), pending.body);
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       if (!outcome.done) {
         this.setData({ busy: false, error: '仍未连接到服务，请恢复网络后再核对。' });
         return;
@@ -298,7 +301,7 @@ Page({
       this.setData({ busy: false, pending: null, notice: pending.label + ' 已记录' });
       this.refreshHistory();
     } catch (error) {
-      if (!ui.live(this, token)) return;
+      if (!ui.held(this, token)) return;
       // A changed version or lost control means the original cannot be replayed; re-read.
       this.setData({ busy: false, pending: null, error: scoring.failure(error) });
       this.load();

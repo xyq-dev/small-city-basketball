@@ -160,18 +160,44 @@ async function session(page, returnPath) {
     return null;
   }
 }
-function begin(page) {
-  page._closed = false;
+function subscribe(page) {
   if (!page._sessionDefaults) page._sessionDefaults = clone(page.data || {});
-  page._requestRevision = (page._requestRevision || 0) + 1;
   if (page._unsubscribeSession) page._unsubscribeSession();
   const c = api.getClient();
   if (c.onSessionChange)
     page._unsubscribeSession = c.onSessionChange(() => {
       page._requestRevision++;
+      page._sessionEpoch = (page._sessionEpoch || 0) + 1;
       resetPrivate(page);
     });
+}
+function begin(page) {
+  page._closed = false;
+  page._requestRevision = (page._requestRevision || 0) + 1;
+  subscribe(page);
   return { request: page._requestRevision, session: clientRevision() };
+}
+// A token that later reads cannot invalidate: only a session change or closing the page does.
+// Used for supplementary reads with their own counter, and by hold() for writes.
+function guard(page) {
+  if (!page._unsubscribeSession) subscribe(page);
+  return { epoch: page._sessionEpoch || 0, session: clientRevision() };
+}
+// Writes: cancel in-flight reads (begin, plus the page's own `_load` read generation) so a
+// stale response cannot overwrite what the write returns, then hold a token that a refresh or
+// poll started afterwards cannot orphan. Pages refuse to start reads while busy.
+function hold(page) {
+  begin(page);
+  page._load = (page._load || 0) + 1;
+  return guard(page);
+}
+function held(page, token) {
+  return (
+    !!token &&
+    !page._closed &&
+    token.epoch === (page._sessionEpoch || 0) &&
+    token.session === clientRevision()
+  );
 }
 function live(page, token) {
   return (
@@ -185,6 +211,7 @@ function close(page) {
   page._closed = true;
   page._requestRevision = (page._requestRevision || 0) + 1;
   page._sessionRequest = (page._sessionRequest || 0) + 1;
+  page._sessionEpoch = (page._sessionEpoch || 0) + 1;
   if (page._unsubscribeSession) page._unsubscribeSession();
   page._unsubscribeSession = null;
 }
@@ -256,6 +283,9 @@ module.exports = {
   session,
   begin,
   live,
+  guard,
+  hold,
+  held,
   close,
   message,
   confirm,
