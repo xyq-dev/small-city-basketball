@@ -116,3 +116,11 @@ text.org-match-vs { flex:none; color:#7c91a9; font-size:12px; font-weight:500; }
 .page.mgmt-page button.small-button { flex:none; white-space:nowrap; }
 .num-cell.record { width:56px; white-space:nowrap; }
 @media(max-width:360px) { .num-cell.record { width:48px; font-size:12px; } }
+/* Shared management forms (event setup, scheduling). */
+.setup-name { margin:6px 0 4px; font-size:20px; line-height:30px; font-weight:700; overflow-wrap:anywhere; }
+.setup-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.setup-trio { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.setup-switch { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; padding:8px 0; border-bottom:1px solid #e8edf2; color:#132c49; }
+.setup-flag { flex:none; padding:2px 10px; border-radius:24px; background:#eaf0f7; color:#617286; font-size:12px; line-height:20px; }
+.setup-flag.on { background:#132c49; color:#fff; }
+.page.mgmt-page .setup-actions { margin:8px 0 12px; }

@@ -46,6 +46,10 @@ function period(rules, value) {
     ? '第' + value + '节'
     : '加时' + (value - rules.regulationPeriods);
 }
+function duration(seconds) {
+  if (!Number.isSafeInteger(seconds) || seconds < 1) return '时长待确认';
+  return seconds % 60 === 0 ? seconds / 60 + ' 分钟' : seconds + ' 秒';
+}
 function totals(value) {
   return value
     ? { score: value.score, fouls: value.fouls, timeouts: value.timeouts }
@@ -179,6 +183,7 @@ module.exports = {
   commandNames,
   failure,
   period,
+  duration,
   board,
   remaining,
   history,

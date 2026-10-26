@@ -27,6 +27,7 @@
       </button>
     </block>
     <view wx:for="{{failures}}" wx:key="orgId" class="notice warning small">{{item.orgName}}：{{item.message}}</view>
+    <button wx:for="{{creatable}}" wx:key="id" class="secondary" data-org="{{item.id}}" bindtap="createEvent">在 {{item.name}} 创建赛事</button>
     <view wx:if="{{truncated.length}}" class="muted">部分机构仅显示最近50届赛事，其余请在Web查看。</view>
   </block>
 

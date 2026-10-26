@@ -1,0 +1,88 @@
+<view class="page mgmt-page">
+  <view wx:if="{{loading && !event}}" class="card state-panel"><text class="state-label">排赛</text><view class="subtitle">正在读取</view><view class="loading-lines"><view></view><view></view></view></view>
+  <view wx:elif="{{!event}}" class="card state-panel">
+    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
+    <view class="subtitle">{{unavailable ? '无法为该赛事排赛' : '暂时无法读取'}}</view>
+    <view class="notice warning">{{error || '请从赛事设置重新进入。'}}</view>
+    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+  </view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
+    <view class="board">
+      <view class="board-meta">{{event.statusLabel}} · {{event.dates}}</view>
+      <view class="setup-name">{{event.name}}</view>
+      <view class="board-meta">冻结球队 {{event.teams}} 支</view>
+    </view>
+
+    <view wx:if="{{state === 'published'}}" class="card">
+      <view class="subtitle">正式赛程已发布</view>
+      <view class="muted">共 {{publication.count}} 场 · {{publication.time}}。正式赛程不能重抽；单场调整走改期流程（Web）。</view>
+      <button class="primary" bindtap="openEvent">查看赛程</button>
+    </view>
+    <view wx:elif="{{state === 'no-freeze'}}" class="card">
+      <view class="subtitle">名单尚未冻结</view>
+      <view class="muted">报名截止并冻结名单后才能生成对阵。</view>
+      <button class="primary" bindtap="openReview">去报名审核</button>
+    </view>
+    <view wx:elif="{{state === 'unsupported'}}" class="notice warning">当前赛事暂不支持排赛：{{supportReason || '请核对赛制与名单'}}</view>
+    <view wx:elif="{{state === 'web-only'}}" class="notice small">单淘汰与分组赛的抽签、签位与分组设置目前在Web赛事工作台完成。</view>
+    <view wx:elif="{{state === 'readonly'}}" class="notice small">当前身份可查看但不能排赛。</view>
+
+    <block wx:if="{{state === 'generate'}}">
+      <view class="card">
+        <view class="subtitle">选择场地</view>
+        <view wx:if="{{!courts.length}}" class="muted">机构还没有可用场地。</view>
+        <view wx:for="{{courts}}" wx:key="id" class="setup-switch" data-index="{{index}}" bindtap="toggleCourt"><text>{{item.name}}</text><text class="setup-flag {{item.on ? 'on' : ''}}">{{item.on ? '使用' : '不用'}}</text></view>
+        <block wx:if="{{canCreateCourt}}">
+          <text class="field-label">新增场地</text>
+          <input class="field" value="{{newCourt}}" bindinput="courtInput" maxlength="80" placeholder="例如 一号场"/>
+          <button class="secondary" bindtap="addCourt" disabled="{{busy || !newCourt}}">添加场地</button>
+        </block>
+      </view>
+      <view class="card">
+        <view class="subtitle">时段与间隔</view>
+        <view class="setup-pair">
+          <view><text class="field-label">每日开始</text><picker mode="time" class="field" value="{{form.dayStart}}" data-field="dayStart" bindchange="formInput">{{form.dayStart}}</picker></view>
+          <view><text class="field-label">每日结束</text><picker mode="time" class="field" value="{{form.dayEnd}}" data-field="dayEnd" bindchange="formInput">{{form.dayEnd}}</picker></view>
+        </view>
+        <view class="setup-trio">
+          <view><text class="field-label">每场分钟</text><input class="field" type="number" value="{{form.slot}}" data-field="slot" bindinput="formInput"/></view>
+          <view><text class="field-label">最短休息</text><input class="field" type="number" value="{{form.rest}}" data-field="rest" bindinput="formInput"/></view>
+          <view><text class="field-label">日期间隔</text><input class="field" type="number" value="{{form.gap}}" data-field="gap" bindinput="formInput"/></view>
+        </view>
+        <view class="muted">赛期内每天按所选场地开放上述时段。服务端随机生成单循环对阵并保存随机种子。</view>
+        <button class="primary" bindtap="generate" disabled="{{busy}}">生成对阵草稿</button>
+      </view>
+    </block>
+
+    <block wx:if="{{state === 'draft'}}">
+      <view class="card">
+        <view class="row-between"><view class="subtitle">对阵草稿</view><text class="badge">{{revision.rounds}} 轮 · {{revision.count}} 场</text></view>
+        <view class="muted">草稿不占用正式场地。先自动排入时间，再由服务端校验冲突，通过后一次发布。</view>
+        <button wx:if="{{revision.canEdit}}" class="secondary" bindtap="autoAssign" disabled="{{busy}}">自动排入时间与场地</button>
+        <button wx:if="{{revision.canValidate}}" class="secondary" bindtap="validate" disabled="{{busy}}">校验冲突</button>
+        <button wx:if="{{revision.canPublish}}" class="primary" bindtap="publish" disabled="{{busy}}">发布正式赛程</button>
+      </view>
+      <view wx:if="{{validated}}" class="card">
+        <view class="subtitle">校验结果</view>
+        <view wx:if="{{!conflicts.length}}" class="muted">未发现冲突。</view>
+        <view wx:for="{{conflicts}}" wx:key="key" class="row"><view>{{item.label}}{{item.external ? '（与本机构其他赛事）' : ''}}</view><view class="muted">{{item.fixtures}}</view></view>
+      </view>
+      <view wx:for="{{fixtures}}" wx:key="key" class="org-match">
+        <view class="org-match-meta">{{item.round}} · {{item.time}}{{item.court ? ' · ' + item.court : ''}}</view>
+        <view class="org-match-teams"><text>{{item.home}}</text><text class="org-match-vs">VS</text><text>{{item.away}}</text></view>
+        <view wx:if="{{!item.assigned}}" class="org-match-status live">未安排</view>
+      </view>
+      <view wx:if="{{revision.canRedraw}}" class="card">
+        <view class="row-between"><view class="subtitle">重新抽签</view><button class="quiet small-button" bindtap="toggleRedraw">{{redrawOpen ? '收起' : '需要重抽'}}</button></view>
+        <block wx:if="{{redrawOpen}}">
+          <text class="field-label">原因（必填）</text>
+          <input class="field" value="{{redrawReason}}" bindinput="redrawInput" placeholder="例如 场地调整后重新抽签"/>
+          <button class="danger" bindtap="redraw" disabled="{{busy}}">重新抽签</button>
+        </block>
+      </view>
+    </block>
+    <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
+  </block>
+</view>

@@ -52,46 +52,46 @@
     },
     "history": [
       {
-        "key": "11294ffb-abb1-4f7a-a180-e2439a601efb",
-        "id": "11294ffb-abb1-4f7a-a180-e2439a601efb",
+        "key": "1236f1a2-d54a-42ec-be0d-c97949d7c42f",
+        "id": "1236f1a2-d54a-42ec-be0d-c97949d7c42f",
         "seq": 4,
         "text": "合成石鼓青锋 犯规",
         "reason": "",
         "periodLabel": "第1节",
-        "time": "10-27 01:05",
+        "time": "10-27 01:15",
         "voided": false,
         "canVoid": true
       },
       {
-        "key": "e20092e1-f2ff-4bf0-9a09-fe355256de74",
-        "id": "e20092e1-f2ff-4bf0-9a09-fe355256de74",
+        "key": "646fb070-1cdd-48f6-b349-322518cafd7d",
+        "id": "646fb070-1cdd-48f6-b349-322518cafd7d",
         "seq": 3,
         "text": "合成高州猛龙 得分 +2 · 10号 合成高州猛龙甲",
         "reason": "",
         "periodLabel": "第1节",
-        "time": "10-27 01:05",
+        "time": "10-27 01:15",
         "voided": false,
         "canVoid": true
       },
       {
-        "key": "e396efaa-15d5-4d7e-8e82-cd257c68ad81",
-        "id": "e396efaa-15d5-4d7e-8e82-cd257c68ad81",
+        "key": "133baa1e-3ede-4aec-93d7-d69ff29a410d",
+        "id": "133baa1e-3ede-4aec-93d7-d69ff29a410d",
         "seq": 2,
         "text": "开始比赛",
         "reason": "",
         "periodLabel": "",
-        "time": "10-27 01:05",
+        "time": "10-27 01:15",
         "voided": false,
         "canVoid": false
       },
       {
-        "key": "73b4b311-41b0-40e1-b49f-871e4f30ed6c",
-        "id": "73b4b311-41b0-40e1-b49f-871e4f30ed6c",
+        "key": "3bb10532-8896-4989-a14d-e73b82b1fa44",
+        "id": "3bb10532-8896-4989-a14d-e73b82b1fa44",
         "seq": 1,
         "text": "准备比赛",
         "reason": "",
         "periodLabel": "",
-        "time": "10-27 01:05",
+        "time": "10-27 01:15",
         "voided": false,
         "canVoid": false
       }
@@ -103,15 +103,15 @@
           "label": "不归属到个人"
         },
         {
-          "memberId": "0e18e08b-ba95-4b2d-b907-811ae7c1dc8f",
+          "memberId": "51f48f48-0b47-4669-b5d5-417e05caef68",
           "label": "10号 合成高州猛龙甲"
         },
         {
-          "memberId": "3beb4c6b-8d98-415c-8844-612e78f58206",
+          "memberId": "19cab447-fd25-441c-b957-73b75cbd0d2a",
           "label": "11号 合成高州猛龙乙"
         },
         {
-          "memberId": "e7d78ac5-83cd-409b-8c63-b1aeaeabaf3a",
+          "memberId": "fc970dd0-f934-4d11-8540-1f8c686b20bb",
           "label": "12号 合成高州猛龙丙"
         }
       ],
@@ -121,15 +121,15 @@
           "label": "不归属到个人"
         },
         {
-          "memberId": "54cf90c0-a748-49df-ac67-cb72b77cccbb",
+          "memberId": "6db80565-5861-4eb7-ac04-bb188e11c4ce",
           "label": "4号 合成石鼓青锋甲"
         },
         {
-          "memberId": "a0337016-2cc8-4265-b998-202b97cbbfd2",
+          "memberId": "0a53c470-845f-408c-b4fc-007ed2908fa2",
           "label": "5号 合成石鼓青锋乙"
         },
         {
-          "memberId": "ccf46e7d-26bd-4a16-8321-45b91c7a8923",
+          "memberId": "fdd62c8d-b1b9-4925-b83c-b8d65b3d9174",
           "label": "6号 合成石鼓青锋丙"
         }
       ]

@@ -65,33 +65,33 @@ test('event mainline runs end to end through native pages on the real API', asyn
     body: { role: 'SCORER', status: 'ACTIVE' },
   });
 
-  // Web-only setup: event, rules and long-term teams.
-  const event = (
-    await call(`${root}/events`, {
-      method: 'POST',
-      cookie: ownerCookie,
-      body: {
-        name: '合成青锋杯',
-        startDate: '2028-03-01',
-        endDate: '2028-03-02',
-        timezone: 'Asia/Shanghai',
-        format: 'ROUND_ROBIN',
-      },
-    })
-  ).data;
+  // The organizer creates the event and sets registration rules natively.
+  const created = ownerDevice.open('pages/event-setup/index', { orgId: org });
+  for (const [field, value] of [
+    ['name', '合成青锋杯'],
+    ['startDate', '2028-03-01'],
+    ['endDate', '2028-03-02'],
+    ['venueName', '合成体育馆'],
+  ])
+    created.page.field(tap({ section: 'draft', field }, { value }));
+  ownerDevice.approve();
+  await created.page.create();
+  await ownerDevice.settle(created);
+  assert.equal(created.page.data.event?.name, '合成青锋杯', created.page.data.error);
+  const event = { id: created.page.eventId };
   const eventPath = `${root}/events/${event.id}`;
-  await call(`${eventPath}/registration-rules`, {
-    method: 'PUT',
-    cookie: ownerCookie,
-    body: {
-      expectedVersion: event.version,
-      minPlayers: 2,
-      maxPlayers: 3,
-      zeroAndDoubleZeroDistinct: true,
-      requireIdentity: false,
-      requireInsurance: false,
-    },
-  });
+  assert.equal(created.page.data.registration.editable, true);
+  created.page.field(tap({ section: 'registration', field: 'minPlayers' }, { value: '2' }));
+  created.page.field(tap({ section: 'registration', field: 'maxPlayers' }, { value: '3' }));
+  await created.page.saveRegistration();
+  await ownerDevice.settle(created);
+  assert.equal(created.page.data.registration.saved, true, created.page.data.error);
+  snapshot(created, 'event-setup-draft');
+  // Rule violations are explained before any request is sent.
+  created.page.field(tap({ section: 'registration', field: 'maxPlayers' }, { value: '1' }));
+  await created.page.saveRegistration();
+  assert.match(created.page.data.error, /最多人数不能少于最少人数/);
+
   const teams = [];
   for (const name of ['合成石鼓青锋', '合成高州猛龙']) {
     let team = (
@@ -232,106 +232,78 @@ test('event mainline runs end to end through native pages on the real API', asyn
   assert.equal(review.page.data.freeze.teams, 2);
   snapshot(review, 'entry-review-frozen');
 
-  // Web-only scheduling and rules; then staff assignment for the single match.
-  const registration = (await call(`${eventPath}/registration`, { cookie: ownerCookie })).data;
-  const court = (
-    await call(`${root}/courts`, {
-      method: 'POST',
-      cookie: ownerCookie,
-      body: { name: '合成一号场' },
-    })
-  ).data;
-  let revision = (
-    await call(`${eventPath}/schedule-revisions`, {
-      method: 'POST',
-      cookie: ownerCookie,
-      body: {
-        expectedEventVersion: registration.event.version,
-        freezeId: registration.freeze.id,
-        algorithmVersion: 'RR_CIRCLE_V1',
-        policy: {
-          slotDurationMinutes: 60,
-          minRestMinutes: 0,
-          minLocalDayGap: 0,
-          courtWindows: [
-            {
-              courtId: court.id,
-              startsAt: '2028-03-01T09:00:00+08:00',
-              endsAt: '2028-03-01T20:00:00+08:00',
-            },
-          ],
-        },
-      },
-    })
-  ).data;
-  revision = (
-    await call(`${root}/schedule-revisions/${revision.id}/allocations`, {
-      method: 'PUT',
-      cookie: ownerCookie,
-      body: {
-        expectedEventVersion: revision.eventVersion,
-        expectedRevisionVersion: revision.version,
-        allocations: revision.fixtures.map((f) => ({
-          fixtureKey: f.fixtureKey,
-          courtId: court.id,
-          startsAt: '2028-03-01T10:00:00+08:00',
-        })),
-      },
-    })
-  ).data;
-  let published = (
-    await call(`${root}/schedule-revisions/${revision.id}/publish`, {
-      method: 'POST',
-      cookie: ownerCookie,
-      body: {
-        expectedEventVersion: revision.eventVersion,
-        expectedRevisionVersion: revision.version,
-      },
-    })
-  ).data;
-  let version = published.event.version;
-  version = (
-    await call(`${eventPath}/scoring-rules`, {
-      method: 'PUT',
-      cookie: ownerCookie,
-      body: {
-        expectedEventVersion: version,
-        regulationPeriods: 1,
-        periodDurationSeconds: 1,
-        allowedScoreValues: [1, 2, 3],
-        tiePolicy: 'ALLOW_DRAW',
-        overtimeDurationSeconds: null,
-      },
-    })
-  ).data.event.version;
-  const standings = (
-    await call(`${eventPath}/standings-rules`, {
-      method: 'PUT',
-      cookie: ownerCookie,
-      body: {
-        expectedEventVersion: version,
-        winPoints: 2,
-        lossPoints: 1,
-        drawPoints: 1,
-        tiebreakers: ['SCORE_DIFFERENCE'],
-      },
-    })
-  ).data;
-  await call(`${eventPath}/standings-rule-commands`, {
-    method: 'POST',
+  // Native scheduling: add a court, generate the draw, propose times, validate, publish.
+  const schedule = ownerDevice.open('pages/schedule/index', { orgId: org, eventId: event.id });
+  await ownerDevice.settle(schedule);
+  assert.equal(schedule.page.data.state, 'generate', schedule.page.data.error);
+  schedule.page.courtInput(tap({}, { value: '合成一号场' }));
+  await schedule.page.addCourt();
+  await ownerDevice.settle(schedule);
+  assert.equal(schedule.page.data.courts.length, 1, schedule.page.data.error);
+  ownerDevice.approve();
+  await schedule.page.generate();
+  await ownerDevice.settle(schedule);
+  assert.equal(schedule.page.data.state, 'draft', schedule.page.data.error);
+  await schedule.page.validate();
+  await ownerDevice.settle(schedule);
+  assert.ok(
+    schedule.page.data.conflicts.some((c) => /尚未安排/.test(c.label)),
+    'unassigned draft fails validation',
+  );
+  await schedule.page.autoAssign();
+  await ownerDevice.settle(schedule);
+  assert.ok(
+    schedule.page.data.fixtures.every((f) => f.assigned),
+    schedule.page.data.error,
+  );
+  await schedule.page.validate();
+  await ownerDevice.settle(schedule);
+  assert.deepEqual(schedule.page.data.conflicts, []);
+  snapshot(schedule, 'schedule-draft');
+  ownerDevice.approve();
+  await schedule.page.publish();
+  await ownerDevice.settle(schedule);
+  assert.equal(schedule.page.data.state, 'published', schedule.page.data.error);
+
+  // Scoring and standings rules natively; standings are locked before public viewing.
+  const setup = ownerDevice.open('pages/event-setup/index', { orgId: org, eventId: event.id });
+  await ownerDevice.settle(setup);
+  assert.equal(
+    setup.page.data.registration.editable,
+    false,
+    'registration rules freeze after draft',
+  );
+  setup.page.field(tap({ section: 'scoring', field: 'periods' }, { value: '1' }));
+  setup.page.field(tap({ section: 'scoring', field: 'minutes' }, { value: '1' }));
+  setup.page.toggle(tap({ section: 'scoring', field: 'overtime' }));
+  await setup.page.saveScoring();
+  await ownerDevice.settle(setup);
+  assert.equal(setup.page.data.scoring.saved, true, setup.page.data.error);
+  setup.page.field(tap({ section: 'standings', field: 'win' }, { value: '2' }));
+  await setup.page.saveStandings();
+  await ownerDevice.settle(setup);
+  assert.equal(setup.page.data.standings.canPublish, true, setup.page.data.error);
+  ownerDevice.approve();
+  await setup.page.publishStandings();
+  await ownerDevice.settle(setup);
+  assert.equal(setup.page.data.standings.locked, true, setup.page.data.error);
+
+  // The 60-second native period is shortened to 1 second for the run; rules stay unlocked
+  // until the first prepare, so this exact server rule is set once more over HTTP.
+  const scoringRules = (await call(`${eventPath}/scoring`, { cookie: ownerCookie })).data;
+  await call(`${eventPath}/scoring-rules`, {
+    method: 'PUT',
     cookie: ownerCookie,
     body: {
-      type: 'PUBLISH_STANDINGS_RULES',
-      rulesetId: standings.rules.id,
-      expectedEventVersion: standings.event.version,
+      expectedEventVersion: scoringRules.event.version,
+      regulationPeriods: 1,
+      periodDurationSeconds: 1,
+      allowedScoreValues: [1, 2, 3],
+      tiePolicy: 'ALLOW_DRAW',
+      overtimeDurationSeconds: null,
     },
   });
   const [match] = (await call(`${eventPath}/matches?limit=100`, { cookie: ownerCookie })).data;
-  await call(`${root}/matches/${match.id}/staff/${people.scorer}`, {
-    method: 'PUT',
-    cookie: ownerCookie,
-    body: { expectedMatchVersion: match.version, role: 'SCORER', status: 'ACTIVE' },
-  });
 
   // Organizer: event page lists the match and opens it; prepare natively (per-player mode).
   const orgEvent = ownerDevice.open('pages/org-event/index', { orgId: org, eventId: event.id });
@@ -342,6 +314,15 @@ test('event mainline runs end to end through native pages on the real API', asyn
   assert.match(ownerDevice.navigations.at(-1), new RegExp('/pages/org-match/index\\?orgId=' + org));
   const ownerMatch = ownerDevice.open('pages/org-match/index', { orgId: org, matchId: match.id });
   await ownerDevice.settle(ownerMatch);
+  // Owner assigns the scorer natively from the organization's member list.
+  assert.equal(ownerMatch.page.data.caps.staff, true);
+  const scorerIndex = ownerMatch.page.data.members.findIndex((m) => /合成记分员/.test(m.label));
+  assert.ok(scorerIndex >= 0, ownerMatch.page.data.staffNote);
+  ownerMatch.page.pickMember(tap({}, { value: scorerIndex }));
+  ownerMatch.page.pickRole(tap({}, { value: 0 }));
+  await ownerMatch.page.assign();
+  await ownerDevice.settle(ownerMatch);
+  assert.equal(ownerMatch.page.data.staff[0]?.name, '合成记分员', ownerMatch.page.data.error);
   assert.equal(ownerMatch.page.data.caps.prepare, true, ownerMatch.page.data.error);
   assert.equal(ownerMatch.page.data.caps.score, false, 'owners never score automatically');
   ownerMatch.page.setMode(tap({ mode: 'PLAYER_BASIC' }));
@@ -444,13 +425,15 @@ test('event mainline runs end to end through native pages on the real API', asyn
   assert.equal(orgEvent.page.data.manage.ready, true, JSON.stringify(orgEvent.page.data.manage));
   snapshot(orgEvent, 'org-event-manage');
 
-  // Public viewing is switched on in the Web console; spectators arrive by the shared card.
-  const current = (await call(eventPath, { cookie: ownerCookie })).data;
-  await call(`${eventPath}/public-viewing-commands`, {
-    method: 'POST',
-    cookie: ownerCookie,
-    body: { type: 'ENABLE', expectedEventVersion: current.version },
-  });
+  // Public viewing is switched on natively; spectators arrive by the shared card.
+  await setup.page.load();
+  await ownerDevice.settle(setup);
+  assert.equal(setup.page.data.viewing.canEnable, true, setup.page.data.error);
+  ownerDevice.approve();
+  await setup.page.viewing(tap({ type: 'ENABLE' }));
+  await ownerDevice.settle(setup);
+  assert.equal(setup.page.data.viewing.active, true, setup.page.data.error);
+  snapshot(setup, 'event-setup-viewing');
   await orgEvent.page.load();
   await ownerDevice.settle(orgEvent);
   const publicEventId = orgEvent.page.data.publicEventId;

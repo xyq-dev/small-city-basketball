@@ -136,13 +136,35 @@ function pathAllowed(path, method = 'GET') {
   if (matches(org + '/events/' + uuidPattern + '/(lifecycle-commands|registration-commands)'))
     return noQuery && method === 'POST';
   if (matches(org + '/events'))
-    return (
-      method === 'GET' &&
-      queryAllowed(query, ['limit', 'cursor']) &&
-      query.limit === '50' &&
-      (!('cursor' in query) || /^[A-Za-z0-9_-]{1,2048}$/.test(query.cursor))
-    );
-  if (matches(org + '/events/' + uuidPattern)) return noQuery && method === 'GET';
+    return method === 'POST'
+      ? noQuery
+      : method === 'GET' &&
+          queryAllowed(query, ['limit', 'cursor']) &&
+          query.limit === '50' &&
+          (!('cursor' in query) || /^[A-Za-z0-9_-]{1,2048}$/.test(query.cursor));
+  if (matches(org + '/events/' + uuidPattern)) return noQuery && ['GET', 'PATCH'].includes(method);
+  // Event setup and round-robin scheduling: forms over existing role-checked commands.
+  if (
+    matches(org + '/events/' + uuidPattern + '/(registration-rules|scoring-rules|standings-rules)')
+  )
+    return noQuery && method === 'PUT';
+  if (
+    matches(
+      org +
+        '/events/' +
+        uuidPattern +
+        '/(standings-rule-commands|public-viewing-commands|schedule-revisions)',
+    )
+  )
+    return noQuery && method === 'POST';
+  if (matches(org + '/events/' + uuidPattern + '/scheduling')) return noQuery && method === 'GET';
+  if (matches(org + '/courts')) return method === 'GET' ? paged : noQuery && method === 'POST';
+  const revision = org + '/schedule-revisions/' + uuidPattern;
+  if (matches(revision)) return noQuery && method === 'GET';
+  if (matches(revision + '/allocations')) return noQuery && method === 'PUT';
+  if (matches(revision + '/(validate|publish)')) return noQuery && method === 'POST';
+  if (matches(org + '/members')) return noQuery && method === 'GET';
+  if (matches(match + '/staff/' + uuidPattern)) return noQuery && method === 'PUT';
   if (matches(org + '/events/' + uuidPattern + '/(standings|groups|knockout|player-statistics)'))
     return noQuery && method === 'GET';
   if (matches(org + '/events/' + uuidPattern + '/matches')) return paged;

@@ -10,6 +10,8 @@
     "pages/scorer/index",
     "pages/scoring-tasks/index",
     "pages/entry-review/index",
+    "pages/event-setup/index",
+    "pages/schedule/index",
     "pages/match/index",
     "pages/players/index",
     "pages/player/index",

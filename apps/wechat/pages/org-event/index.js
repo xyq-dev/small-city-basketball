@@ -256,6 +256,9 @@ Page({
   openReview() {
     ui.open('entry-review', { orgId: this.orgId, eventId: this.eventId });
   },
+  openSetup() {
+    ui.open('event-setup', { orgId: this.orgId, eventId: this.eventId });
+  },
   openTasks() {
     ui.open('scoring-tasks', { orgId: this.orgId, eventId: this.eventId });
   },

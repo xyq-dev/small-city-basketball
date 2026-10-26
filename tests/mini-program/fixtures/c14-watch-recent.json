@@ -11,10 +11,10 @@
     "loading": false,
     "recentEvents": [
       {
-        "publicEventId": "0PpOSOOoIdu3nb1wrhPakfh_KWGi9d04Xg0B8OmDNIU",
+        "publicEventId": "cLK7B2OGQG4hkZGIoW_YNmE0Rm4Vbvexeyq9kINE7wU",
         "name": "合成青锋杯",
         "dateLabel": "03/01–03/02",
-        "openedAt": 1793034349236
+        "openedAt": 1793034931842
       }
     ],
     "signedIn": false,
@@ -24,6 +24,7 @@
     "truncated": [],
     "total": 0,
     "teamCount": 0,
-    "eventsError": ""
+    "eventsError": "",
+    "creatable": []
   }
 }

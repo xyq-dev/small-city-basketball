@@ -17,20 +17,30 @@ const privateDefaults = {
   reopenOpen: false,
   reopenReason: '',
   collectionMode: 'TEAM_ONLY',
+  members: [],
+  memberIndex: 0,
+  roleIndex: 0,
+  staffNote: '',
 };
+const ROLES = [
+  { value: 'SCORER', label: '记分员' },
+  { value: 'RESULT_REVIEWER', label: '赛果复核人' },
+];
 
 function staffView(list) {
   return (list || [])
     .filter((s) => s && s.status === 'ACTIVE')
     .map((s) => ({
       key: s.userId + ':' + s.role,
+      userId: s.userId,
+      roleValue: s.role,
       name: s.displayName,
       role: s.role === 'SCORER' ? '记分员' : '赛果复核人',
     }));
 }
 
 Page({
-  data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
+  data: { loading: false, busy: false, error: '', notice: '', roles: ROLES, ...privateDefaults },
   onLoad(query) {
     this._alive = true;
     try {
@@ -172,8 +182,7 @@ Page({
         rulesLabel: wb.rules
           ? wb.rules.regulationPeriods +
             '节 × ' +
-            Math.round(wb.rules.periodDurationSeconds / 60) +
-            '分钟' +
+            scoring.duration(wb.rules.periodDurationSeconds) +
             (wb.rules.tiePolicy === 'OVERTIME' ? ' · 平分加时' : ' · 允许平局')
           : '赛事尚未设置记分规则',
         leaseHeld: !!(wb.lease && wb.lease.held),
@@ -184,14 +193,82 @@ Page({
       confirmations,
       staff: staffView(wb.staff),
       caps: {
+        staff: !!wb.capabilities.canManageStaff,
         prepare: !!wb.capabilities.canPrepare && !!wb.rules,
         score: !!wb.capabilities.canAcquireControl,
         confirm: !!wb.capabilities.canConfirm,
         reopen: !!wb.capabilities.canReopen,
       },
     });
+    if (wb.capabilities.canManageStaff && !quiet) this.loadMembers();
     if (m.status === 'LIVE' && !this._poll) this.startPolling();
     if (m.status !== 'LIVE') this.stopPolling();
+  },
+  // Only the organization owner can list members; others assign through the Web console.
+  async loadMembers() {
+    const token = ui.begin(this);
+    try {
+      const list = (await api.getClient().request('/v1/orgs/' + this.orgId + '/members')).data;
+      if (!ui.live(this, token)) return;
+      this.setData({
+        members: list
+          .filter((v) => v.status === 'ACTIVE')
+          .map((v) => ({ userId: v.userId, label: v.displayName + ' · ' + v.email })),
+        memberIndex: 0,
+        staffNote: '',
+      });
+    } catch (error) {
+      if (ui.live(this, token))
+        this.setData({
+          members: [],
+          staffNote:
+            error && error.status === 403
+              ? '只有机构负责人可以在小程序内选择成员分配；其他管理员请在Web赛事工作台分配。'
+              : scoring.failure(error),
+        });
+    }
+  },
+  pickMember(e) {
+    this.setData({ memberIndex: Number(e.detail.value) || 0 });
+  },
+  pickRole(e) {
+    this.setData({ roleIndex: Number(e.detail.value) === 1 ? 1 : 0 });
+  },
+  async staff(userId, role, status, label) {
+    if (this.data.busy) return;
+    const token = ui.begin(this);
+    this.setData({ busy: true, error: '', notice: '' });
+    try {
+      await api.getClient().request(this.base() + '/staff/' + api.uuid(userId), 'PUT', {
+        expectedMatchVersion: this._matchVersion,
+        role,
+        status,
+      });
+      if (!ui.live(this, token)) return;
+      this.setData({ busy: false, notice: label });
+      await this.load(true);
+    } catch (error) {
+      if (!ui.live(this, token)) return;
+      this.setData({ busy: false, error: scoring.failure(error) });
+      if (error && error.code === 'VERSION_CONFLICT') await this.load(true);
+    }
+  },
+  assign() {
+    const member = this.data.members[this.data.memberIndex];
+    const role = ROLES[this.data.roleIndex];
+    if (member) this.staff(member.userId, role.value, 'ACTIVE', '已分配' + role.label + '。');
+  },
+  async disable(e) {
+    const row = this.data.staff.find((s) => s.key === e.currentTarget.dataset.key);
+    if (!row) return;
+    if (
+      !(await ui.confirm(
+        '停用' + row.role,
+        row.name + '将不能再处理本场；正在持有的记分控制随之失效。',
+      ))
+    )
+      return;
+    this.staff(row.userId, row.roleValue, 'DISABLED', '已停用' + row.role + '。');
   },
   setMode(e) {
     const mode = e.currentTarget.dataset.mode;

@@ -10,6 +10,8 @@ for (const key of [
   'scorer',
   'scoring-tasks',
   'entry-review',
+  'event-setup',
+  'schedule',
   'match',
   'account',
   'players',

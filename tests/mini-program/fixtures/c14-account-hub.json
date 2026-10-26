@@ -13,7 +13,7 @@
     "canRegister": true,
     "consent": false,
     "user": {
-      "id": "030813b4-ed09-4426-89a5-3b9fdc931506",
+      "id": "ed87c271-3ea8-428d-9253-82f85d7951f1",
       "email": "owner@example.test",
       "displayName": "合成负责人"
     },
@@ -33,7 +33,7 @@
     "securityOpen": false,
     "roles": [
       {
-        "key": "20f00574-cebd-47c4-b697-73b3a9f23d85",
+        "key": "28632d75-e480-46e8-b599-1180ddafa034",
         "text": "合成高州篮协 · 机构负责人"
       }
     ],

@@ -24,6 +24,7 @@
     <view wx:if="{{manage}}" class="card manage-card">
       <view class="subtitle">赛事管理</view>
       <view class="manage-links">
+        <button class="secondary" bindtap="openSetup">赛事设置与排赛</button>
         <button class="secondary" bindtap="openTasks">记分与赛果确认</button>
         <button wx:if="{{manage.review}}" class="secondary" bindtap="openReview">报名审核<text class="manage-sub">{{manage.reviewLabel}}</text></button>
       </view>
@@ -39,7 +40,7 @@
           <button class="primary" bindtap="runLifecycle" disabled="{{loading}}">确认执行</button>
         </block>
       </block>
-      <view class="muted">排赛、积分规则、公开观赛开关与人员分配目前在Web赛事工作台完成。</view>
+      <view class="muted">改期、分组与淘汰的抽签发布、媒体上传目前在Web赛事工作台完成。</view>
     </view>
     <view class="org-event-tabs">
       <button class="{{tab === 'schedule' ? 'selected' : ''}}" data-tab="schedule" bindtap="tab">赛程</button>

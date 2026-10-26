@@ -13,7 +13,7 @@
 .org-round-label { margin:12px 0 6px; color:#617286; font-size:12px; line-height:20px; font-weight:600; }
 .org-uncollected .subtitle { font-size:16px; }
 .manage-card .subtitle { margin-bottom:8px; }
-.manage-links { display:flex; gap:8px; margin-bottom:8px; }
+.manage-links { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:8px; }
 .page.org-event-page .manage-links button { flex:1; min-width:0; margin:0; }
 .manage-sub { display:block; color:#617286; font-size:12px; line-height:18px; font-weight:400; }
 .page.org-event-page .mode-choice button { margin:0; }

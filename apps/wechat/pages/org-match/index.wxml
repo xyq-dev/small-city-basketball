@@ -82,11 +82,19 @@
       <view wx:for="{{history}}" wx:key="key" class="row history-row {{item.voided ? 'voided' : ''}}"><view>{{item.text}}{{item.voided ? '（已撤销）' : ''}}</view><view class="muted">{{item.periodLabel}} {{item.time}}{{item.reason ? ' · ' + item.reason : ''}}</view></view>
     </view>
 
-    <view wx:if="{{staff.length}}" class="card">
+    <view class="card">
       <view class="subtitle">本场工作人员</view>
-      <view wx:for="{{staff}}" wx:key="key" class="row-between row"><text>{{item.name}}</text><text class="muted">{{item.role}}</text></view>
+      <view wx:if="{{!staff.length}}" class="muted">尚未分配记分员或赛果复核人。</view>
+      <view wx:for="{{staff}}" wx:key="key" class="row-between row"><view><view>{{item.name}}</view><view class="muted">{{item.role}}</view></view><button wx:if="{{caps.staff}}" class="quiet small-button" data-key="{{item.key}}" bindtap="disable" disabled="{{busy}}">停用</button></view>
+      <block wx:if="{{caps.staff && members.length}}">
+        <view class="section-label">分配人员（须为本机构有效成员）</view>
+        <picker class="field" range="{{members}}" range-key="label" value="{{memberIndex}}" bindchange="pickMember">{{members[memberIndex].label}}</picker>
+        <picker class="field" range="{{roles}}" range-key="label" value="{{roleIndex}}" bindchange="pickRole">{{roles[roleIndex].label}}</picker>
+        <button class="secondary" bindtap="assign" disabled="{{busy}}">分配</button>
+        <view class="muted">记分员不能确认本场赛果；复核人与记分员应为不同人员。</view>
+      </block>
+      <view wx:elif="{{caps.staff && staffNote}}" class="muted">{{staffNote}}</view>
     </view>
-    <view wx:else class="notice small">本场尚未分配记分员或复核人。人员分配在Web赛事工作台完成。</view>
 
     <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">刷新比赛</button>
   </block>

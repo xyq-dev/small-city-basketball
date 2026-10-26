@@ -12,6 +12,7 @@ const privateDefaults = {
   total: 0,
   teamCount: 0,
   eventsError: '',
+  creatable: [],
 };
 Page({
   data: { value: '', error: '', loading: false, recentEvents: [], ...privateDefaults },
@@ -78,6 +79,10 @@ Page({
           ...privateDefaults,
           signedIn: true,
           organizations: result.organizations,
+          creatable: result.organizations
+            .filter((o) => o.role === 'ORG_OWNER' || o.role === 'ORG_ADMIN')
+            .slice(0, 3)
+            .map((o) => ({ id: o.id, name: o.name })),
           sections: result.sections,
           failures: result.failures,
           truncated: result.truncated,
@@ -104,6 +109,13 @@ Page({
       ui.open('org-event', { orgId: api.uuid(org), eventId: api.uuid(id) });
     } catch {
       this.setData({ eventsError: '赛事入口无效，请刷新后重试。' });
+    }
+  },
+  createEvent(e) {
+    try {
+      ui.open('event-setup', { orgId: api.uuid(e.currentTarget.dataset.org) });
+    } catch {
+      this.setData({ eventsError: '机构入口无效，请刷新后重试。' });
     }
   },
   teams() {

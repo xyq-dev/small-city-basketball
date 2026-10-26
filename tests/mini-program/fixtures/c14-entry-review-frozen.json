@@ -24,14 +24,14 @@
     ],
     "freeze": {
       "teams": 2,
-      "time": "10-27 01:05"
+      "time": "10-27 01:15"
     },
     "rules": "每队 2–3 人",
     "stages": [],
     "entries": [
       {
-        "key": "d7a17847-d4b6-4bcb-a679-aaa72ba7aa95",
-        "id": "d7a17847-d4b6-4bcb-a679-aaa72ba7aa95",
+        "key": "ee158572-0fd1-4cc1-9645-fc7dbcd32e21",
+        "id": "ee158572-0fd1-4cc1-9645-fc7dbcd32e21",
         "teamName": "合成高州猛龙",
         "status": "APPROVED",
         "statusLabel": "已通过",
@@ -39,8 +39,8 @@
         "waiting": false
       },
       {
-        "key": "fa37fecf-507f-4c2b-b0fa-76d1978a6335",
-        "id": "fa37fecf-507f-4c2b-b0fa-76d1978a6335",
+        "key": "637e5bec-9dc8-472c-a7a2-78a5b447f26c",
+        "id": "637e5bec-9dc8-472c-a7a2-78a5b447f26c",
         "teamName": "合成石鼓青锋",
         "status": "APPROVED",
         "statusLabel": "已通过",
@@ -49,34 +49,34 @@
       }
     ],
     "detail": {
-      "id": "fa37fecf-507f-4c2b-b0fa-76d1978a6335",
+      "id": "637e5bec-9dc8-472c-a7a2-78a5b447f26c",
       "version": 4,
       "teamName": "合成石鼓青锋",
       "statusLabel": "已通过",
       "players": [
         {
-          "key": "54cf90c0-a748-49df-ac67-cb72b77cccbb",
+          "key": "6db80565-5861-4eb7-ac04-bb188e11c4ce",
           "text": "4号 · 合成石鼓青锋甲"
         },
         {
-          "key": "a0337016-2cc8-4265-b998-202b97cbbfd2",
+          "key": "0a53c470-845f-408c-b4fc-007ed2908fa2",
           "text": "5号 · 合成石鼓青锋乙"
         },
         {
-          "key": "ccf46e7d-26bd-4a16-8321-45b91c7a8923",
+          "key": "fdd62c8d-b1b9-4925-b83c-b8d65b3d9174",
           "text": "6号 · 合成石鼓青锋丙"
         }
       ],
       "history": [
         {
-          "key": "f6581179-205c-4705-9853-7f929122ec06",
+          "key": "57312182-8c30-4987-824f-8ba0d9e9f2b4",
           "text": "通过",
-          "time": "10-27 01:05"
+          "time": "10-27 01:15"
         },
         {
-          "key": "4ea5f804-d79f-4785-b92e-7fb53dd30024",
+          "key": "79743aba-e3f5-42d3-9edc-8905d5e88563",
           "text": "提交",
-          "time": "10-27 01:05"
+          "time": "10-27 01:15"
         }
       ],
       "approve": false,
