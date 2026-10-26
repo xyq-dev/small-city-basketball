@@ -22,6 +22,38 @@ test('native manifest routes are unique, local and include loadable Page/templat
   }
 });
 
+// The runtime sets these on every Page instance; a same-named method is replaced at runtime
+// (booking-detail once called this.route() and failed before reading the order).
+const builtIns = [
+  'route',
+  'options',
+  'data',
+  'setData',
+  'selectComponent',
+  'is',
+  '__wxExparserNodeId__',
+];
+test('page definitions never shadow built-in page instance properties', () => {
+  for (const route of manifest.pages) {
+    let definition;
+    new vm.Script(fs.readFileSync(path.join(root, route + '.js'), 'utf8')).runInNewContext({
+      Page(value) {
+        definition = value;
+      },
+      require: () => new Proxy({}, { get: () => () => ({}) }),
+      wx: {},
+      getApp: () => ({}),
+    });
+    for (const name of builtIns)
+      if (name !== 'data')
+        assert.equal(
+          Object.prototype.hasOwnProperty.call(definition, name),
+          false,
+          route + ': ' + name,
+        );
+  }
+});
+
 for (const route of manifest.pages) {
   test('native template and static event targets: ' + route, () => {
     const source = fs.readFileSync(path.join(root, route + '.wxml'), 'utf8');

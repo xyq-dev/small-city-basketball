@@ -105,6 +105,8 @@ jobs:
       - name: Existing PostgreSQL integration checks
         run: npm run test:integration --workspace @small-city-basketball/api -- --exclude '**/p07-*.integration.test.ts'
       - run: npm run build --workspace @small-city-basketball/api
+      - name: Native mini program pages against the real API
+        run: npm run test:wechat:api
       - name: Capture sessions, scoring, standings and public identities
         run: node scripts/check-database-restart.mjs capture
         env:

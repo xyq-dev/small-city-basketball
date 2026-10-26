@@ -104,7 +104,7 @@ Page({
       this.setData({ error: '账号已变化，请重新读取本单。' });
     } else this.setData({ busy: false });
   },
-  route() {
+  returnPath() {
     return '/pages/booking-detail/index?id=' + this.orderId + '&view=' + this.view;
   },
   async load() {
@@ -137,7 +137,7 @@ Page({
     });
     let token;
     try {
-      const session = await ui.session(this, this.route());
+      const session = await ui.session(this, this.returnPath());
       if (!session || this.hidden || this.visit !== visit || this.request !== request) return;
       token = ui.begin(this);
       const order = await sdk.get(this.orderId);
@@ -324,7 +324,7 @@ Page({
     this.setData({ busy: true, error: '', message: '' });
     const token = ui.begin(this);
     try {
-      const session = await ui.session(this, this.route());
+      const session = await ui.session(this, this.returnPath());
       if (!session || session.user.id !== actor || !this.active(token, visit)) return;
       const latest = await sdk.get(this.orderId);
       if (!this.active(token, visit)) return;
@@ -394,7 +394,7 @@ Page({
       token = ui.begin(this);
     this.setData({ busy: true, error: '', message: '' });
     try {
-      const session = await ui.session(this, this.route());
+      const session = await ui.session(this, this.returnPath());
       if (!session || session.user.id !== actor || !this.active(token, visit)) return;
       const latest = await sdk.get(this.orderId);
       if (!this.active(token, visit)) return;
@@ -447,7 +447,7 @@ Page({
       token = ui.begin(this);
     this.setData({ busy: true, error: '' });
     try {
-      const session = await ui.session(this, this.route());
+      const session = await ui.session(this, this.returnPath());
       if (!session || session.user.id !== actor || !this.active(token, visit)) return;
       const latest = await sdk.get(this.orderId);
       if (!this.active(token, visit)) return;
@@ -480,7 +480,7 @@ Page({
     }
   },
   login() {
-    ui.login(this.route());
+    ui.login(this.returnPath());
   },
   list() {
     ui.open('bookings', { view: this.view });

@@ -61,6 +61,15 @@ export async function startServer() {
     url,
     pool: instance.pool,
     bootstrapOwner: (body) => bootstrapOwner(instance.pool, body),
+    async grantOperator(email) {
+      const { maintainPlatformOperator } =
+        await import('../../apps/api/dist/commerce/platform-operator.js');
+      await maintainPlatformOperator(instance.pool, {
+        email,
+        status: 'ACTIVE',
+        reason: '隔离真实API联调的合成平台运营账号',
+      });
+    },
     async close() {
       await instance.app.close();
       await instance.pool.end().catch(() => {});
