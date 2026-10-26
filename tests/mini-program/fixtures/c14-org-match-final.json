@@ -1,0 +1,199 @@
+{
+  "name": "c14-org-match-final",
+  "route": "pages/org-match/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["赛果已独立确认", "确认记录", "（已撤销）"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "赛果独立确认已完成。",
+    "match": {
+      "eventName": "合成青锋杯",
+      "eventId": "17aa1d9c-a0e4-4c86-9931-c7d799a87bef",
+      "eventClosed": false,
+      "round": "第1轮",
+      "time": "03-01 10:00",
+      "court": "合成一号场",
+      "home": "合成高州猛龙",
+      "away": "合成石鼓青锋",
+      "status": "FINAL",
+      "statusLabel": "本场已结束",
+      "rulesLabel": "1节 × 0分钟 · 允许平局",
+      "leaseHeld": false
+    },
+    "board": {
+      "version": 12,
+      "status": "FINAL",
+      "statusLabel": "本场已结束",
+      "resultLabel": "赛果已独立确认",
+      "final": true,
+      "home": {
+        "name": "合成高州猛龙",
+        "score": 2,
+        "fouls": 0,
+        "timeouts": 0
+      },
+      "away": {
+        "name": "合成石鼓青锋",
+        "score": 3,
+        "fouls": 0,
+        "timeouts": 0
+      },
+      "periodLabel": "第1节",
+      "clockLabel": "0:00",
+      "running": false,
+      "allowedScores": [1, 2, 3],
+      "periods": [
+        {
+          "key": "1",
+          "label": "第1节",
+          "home": 2,
+          "away": 3
+        }
+      ],
+      "playerMode": true
+    },
+    "history": [
+      {
+        "key": "4bd00558-d75e-446f-bd69-e7fd18ed4e2a",
+        "id": "4bd00558-d75e-446f-bd69-e7fd18ed4e2a",
+        "seq": 10,
+        "text": "赛果独立确认",
+        "reason": "",
+        "periodLabel": "",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": false
+      },
+      {
+        "key": "81daf779-ec1b-447c-b1b3-74d35e34e3a9",
+        "id": "81daf779-ec1b-447c-b1b3-74d35e34e3a9",
+        "seq": 9,
+        "text": "结束比赛，待确认",
+        "reason": "",
+        "periodLabel": "",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": false
+      },
+      {
+        "key": "2b7e7d87-2d1a-4d5e-8e93-0a2c207d26bb",
+        "id": "2b7e7d87-2d1a-4d5e-8e93-0a2c207d26bb",
+        "seq": 8,
+        "text": "暂停计时",
+        "reason": "",
+        "periodLabel": "",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": false
+      },
+      {
+        "key": "b3030261-9531-4272-a183-9daf1ab883a5",
+        "id": "b3030261-9531-4272-a183-9daf1ab883a5",
+        "seq": 7,
+        "text": "启动计时",
+        "reason": "",
+        "periodLabel": "",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": false
+      },
+      {
+        "key": "36d86fe1-3bf9-4a5a-84c3-f66c3eef13f3",
+        "id": "36d86fe1-3bf9-4a5a-84c3-f66c3eef13f3",
+        "seq": 6,
+        "text": "撤销一条记录",
+        "reason": "记错球队",
+        "periodLabel": "",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": false
+      },
+      {
+        "key": "c593fe56-b2e6-4384-b8d5-c3c3b22596ef",
+        "id": "c593fe56-b2e6-4384-b8d5-c3c3b22596ef",
+        "seq": 5,
+        "text": "合成石鼓青锋 得分 +3",
+        "reason": "",
+        "periodLabel": "第1节",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": true
+      },
+      {
+        "key": "11294ffb-abb1-4f7a-a180-e2439a601efb",
+        "id": "11294ffb-abb1-4f7a-a180-e2439a601efb",
+        "seq": 4,
+        "text": "合成石鼓青锋 犯规",
+        "reason": "",
+        "periodLabel": "第1节",
+        "time": "10-27 01:05",
+        "voided": true,
+        "canVoid": false
+      },
+      {
+        "key": "e20092e1-f2ff-4bf0-9a09-fe355256de74",
+        "id": "e20092e1-f2ff-4bf0-9a09-fe355256de74",
+        "seq": 3,
+        "text": "合成高州猛龙 得分 +2 · 10号 合成高州猛龙甲",
+        "reason": "",
+        "periodLabel": "第1节",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": true
+      },
+      {
+        "key": "e396efaa-15d5-4d7e-8e82-cd257c68ad81",
+        "id": "e396efaa-15d5-4d7e-8e82-cd257c68ad81",
+        "seq": 2,
+        "text": "开始比赛",
+        "reason": "",
+        "periodLabel": "",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": false
+      },
+      {
+        "key": "73b4b311-41b0-40e1-b49f-871e4f30ed6c",
+        "id": "73b4b311-41b0-40e1-b49f-871e4f30ed6c",
+        "seq": 1,
+        "text": "准备比赛",
+        "reason": "",
+        "periodLabel": "",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": false
+      }
+    ],
+    "historyError": "",
+    "confirmations": [
+      {
+        "key": "e6e39fac-f94d-4a36-a64b-05bcc932d3b9",
+        "score": "2 : 3",
+        "by": "赛事负责人",
+        "time": "10-27 01:05"
+      }
+    ],
+    "staff": [
+      {
+        "key": "a0ce4404-1965-4d06-8ae6-f660c57b38e0:SCORER",
+        "name": "合成记分员",
+        "role": "记分员"
+      }
+    ],
+    "caps": {
+      "prepare": false,
+      "score": false,
+      "confirm": false,
+      "reopen": true
+    },
+    "unavailable": false,
+    "pending": null,
+    "reopenOpen": false,
+    "reopenReason": "",
+    "collectionMode": "PLAYER_BASIC"
+  }
+}

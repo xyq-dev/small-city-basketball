@@ -68,7 +68,7 @@
           <view class="muted">{{ranking.modeLabel}}</view>
           <view class="org-table">
             <view class="org-table-row head"><text class="rank-cell">名次</text><text class="team-cell">球队</text><text class="num-cell">胜负</text><text class="num-cell">净胜</text><text class="num-cell">积分</text></view>
-            <view wx:for="{{ranking.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><text class="team-cell">{{item.teamName}}{{item.tied ? ' · 并列' : ''}}</text><text class="num-cell">{{item.record}}</text><text class="num-cell">{{item.diff}}</text><text class="num-cell strong">{{item.points}}</text></view>
+            <view wx:for="{{ranking.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><text class="team-cell">{{item.teamName}}{{item.tied ? ' · 并列' : ''}}</text><text class="num-cell record">{{item.record}}</text><text class="num-cell">{{item.diff}}</text><text class="num-cell strong">{{item.points}}</text></view>
           </view>
         </view>
       </block>
@@ -80,7 +80,7 @@
           <view wx:if="{{group.tieBreakRequired}}" class="notice warning small">同分待抽签，出线资格尚未确定</view>
           <view class="org-table">
             <view class="org-table-row head"><text class="rank-cell">名次</text><text class="team-cell">球队</text><text class="num-cell">胜负</text><text class="num-cell">积分</text></view>
-            <view wx:for="{{group.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><text class="team-cell">{{item.teamName}}</text><text class="num-cell">{{item.record}}</text><text class="num-cell strong">{{item.points}}</text></view>
+            <view wx:for="{{group.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><text class="team-cell">{{item.teamName}}</text><text class="num-cell record">{{item.record}}</text><text class="num-cell strong">{{item.points}}</text></view>
           </view>
         </view>
       </block>

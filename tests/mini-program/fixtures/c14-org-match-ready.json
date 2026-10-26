@@ -1,0 +1,93 @@
+{
+  "name": "c14-org-match-ready",
+  "route": "pages/org-match/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["准备比赛", "赛前准备"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "准备比赛已完成。",
+    "match": {
+      "eventName": "合成青锋杯",
+      "eventId": "17aa1d9c-a0e4-4c86-9931-c7d799a87bef",
+      "eventClosed": false,
+      "round": "第1轮",
+      "time": "03-01 10:00",
+      "court": "合成一号场",
+      "home": "合成高州猛龙",
+      "away": "合成石鼓青锋",
+      "status": "READY",
+      "statusLabel": "赛前准备",
+      "rulesLabel": "1节 × 0分钟 · 允许平局",
+      "leaseHeld": false
+    },
+    "board": {
+      "version": 3,
+      "status": "READY",
+      "statusLabel": "赛前准备",
+      "resultLabel": "比赛未结束，比分不是正式赛果",
+      "final": false,
+      "home": {
+        "name": "合成高州猛龙",
+        "score": 0,
+        "fouls": 0,
+        "timeouts": 0
+      },
+      "away": {
+        "name": "合成石鼓青锋",
+        "score": 0,
+        "fouls": 0,
+        "timeouts": 0
+      },
+      "periodLabel": "第1节",
+      "clockLabel": "0:01",
+      "running": false,
+      "allowedScores": [1, 2, 3],
+      "periods": [
+        {
+          "key": "1",
+          "label": "第1节",
+          "home": 0,
+          "away": 0
+        }
+      ],
+      "playerMode": true
+    },
+    "history": [
+      {
+        "key": "73b4b311-41b0-40e1-b49f-871e4f30ed6c",
+        "id": "73b4b311-41b0-40e1-b49f-871e4f30ed6c",
+        "seq": 1,
+        "text": "准备比赛",
+        "reason": "",
+        "periodLabel": "",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": false
+      }
+    ],
+    "historyError": "",
+    "confirmations": [],
+    "staff": [
+      {
+        "key": "a0ce4404-1965-4d06-8ae6-f660c57b38e0:SCORER",
+        "name": "合成记分员",
+        "role": "记分员"
+      }
+    ],
+    "caps": {
+      "prepare": false,
+      "score": false,
+      "confirm": false,
+      "reopen": false
+    },
+    "unavailable": false,
+    "pending": null,
+    "reopenOpen": false,
+    "reopenReason": "",
+    "collectionMode": "PLAYER_BASIC"
+  }
+}

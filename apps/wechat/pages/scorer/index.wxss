@@ -8,3 +8,4 @@
 .page.mgmt-page .pad-grid button.pad-score::after { border:none; }
 .page.mgmt-page .pad-grid button.pad-minor { color:#132c49; background:#eaf0f7; }
 .voided-text { color:#7c91a9; text-decoration:line-through; }
+.page.mgmt-page .pad-grid button[disabled] { opacity:.45; }

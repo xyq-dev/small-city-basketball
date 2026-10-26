@@ -1,0 +1,90 @@
+{
+  "name": "c14-entry-review-frozen",
+  "route": "pages/entry-review/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["名单已冻结", "本届名单（报名快照）", "审核记录"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "冻结名单已完成。",
+    "event": {
+      "name": "合成青锋杯",
+      "status": "REGISTRATION_CLOSED",
+      "statusLabel": "报名已关闭"
+    },
+    "counts": [
+      {
+        "key": "APPROVED",
+        "label": "已通过",
+        "count": 2
+      }
+    ],
+    "freeze": {
+      "teams": 2,
+      "time": "10-27 01:05"
+    },
+    "rules": "每队 2–3 人",
+    "stages": [],
+    "entries": [
+      {
+        "key": "d7a17847-d4b6-4bcb-a679-aaa72ba7aa95",
+        "id": "d7a17847-d4b6-4bcb-a679-aaa72ba7aa95",
+        "teamName": "合成高州猛龙",
+        "status": "APPROVED",
+        "statusLabel": "已通过",
+        "reason": "",
+        "waiting": false
+      },
+      {
+        "key": "fa37fecf-507f-4c2b-b0fa-76d1978a6335",
+        "id": "fa37fecf-507f-4c2b-b0fa-76d1978a6335",
+        "teamName": "合成石鼓青锋",
+        "status": "APPROVED",
+        "statusLabel": "已通过",
+        "reason": "",
+        "waiting": false
+      }
+    ],
+    "detail": {
+      "id": "fa37fecf-507f-4c2b-b0fa-76d1978a6335",
+      "version": 4,
+      "teamName": "合成石鼓青锋",
+      "statusLabel": "已通过",
+      "players": [
+        {
+          "key": "54cf90c0-a748-49df-ac67-cb72b77cccbb",
+          "text": "4号 · 合成石鼓青锋甲"
+        },
+        {
+          "key": "a0337016-2cc8-4265-b998-202b97cbbfd2",
+          "text": "5号 · 合成石鼓青锋乙"
+        },
+        {
+          "key": "ccf46e7d-26bd-4a16-8321-45b91c7a8923",
+          "text": "6号 · 合成石鼓青锋丙"
+        }
+      ],
+      "history": [
+        {
+          "key": "f6581179-205c-4705-9853-7f929122ec06",
+          "text": "通过",
+          "time": "10-27 01:05"
+        },
+        {
+          "key": "4ea5f804-d79f-4785-b92e-7fb53dd30024",
+          "text": "提交",
+          "time": "10-27 01:05"
+        }
+      ],
+      "approve": false,
+      "changes": false,
+      "reject": false,
+      "reviewBlocked": false
+    },
+    "reason": "",
+    "unavailable": false
+  }
+}

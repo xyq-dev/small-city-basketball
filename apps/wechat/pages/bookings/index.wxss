@@ -66,3 +66,4 @@
 .bookings-actions { padding:10px 12px calc(12px + env(safe-area-inset-bottom)); border-top:0; background:#f5f7fa; }
 .bookings-actions .primary { min-height:48px; padding:12px; margin:0; border-radius:9px; background:#132c49; color:#fff; font-size:14px; line-height:24px; font-weight:600; }
 @media (max-width:360px) { .booking-order-card { padding:12px; } .order-player-name text { display:block; } .order-team { max-width:38%; } }
+.booking-view-tabs .booking-view-tab { width:auto; min-width:0; margin:0; }

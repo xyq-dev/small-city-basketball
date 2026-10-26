@@ -219,3 +219,29 @@ export async function register(d, email, displayName) {
   return account;
 }
 export const tap = (dataset = {}, detail = {}) => ({ currentTarget: { dataset }, detail });
+
+/**
+ * Optional self-review aid: with SCB_WECHAT_API_SNAPSHOTS=<dir>, write the static
+ * compatibility rendering of a page's current real-API data. Not a WeChat runtime capture.
+ */
+export function snapshot(h, name) {
+  const dir = process.env.SCB_WECHAT_API_SNAPSHOTS;
+  if (!dir) return;
+  const fs = require('node:fs');
+  const { buildPreview } = require(path.join(programRoot, 'test', 'helpers', 'native-preview.cjs'));
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, `${name}.data.json`),
+    JSON.stringify({ route: h.page.route, data: h.page.data }, null, 2),
+  );
+  for (const width of [390, 320]) {
+    const preview = buildPreview({
+      root: programRoot,
+      route: h.page.route,
+      data: structuredClone(h.page.data),
+      width,
+      height: 844,
+    });
+    fs.writeFileSync(path.join(dir, `${name}-w${width}.html`), preview.phone);
+  }
+}

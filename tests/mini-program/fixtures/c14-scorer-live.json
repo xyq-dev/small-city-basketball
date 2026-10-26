@@ -1,0 +1,160 @@
+{
+  "name": "c14-scorer-live",
+  "route": "pages/scorer/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["启动计时", "最近记录", "撤销"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "合成石鼓青锋 犯规 已记录",
+    "match": {
+      "eventName": "合成青锋杯",
+      "home": "合成高州猛龙",
+      "away": "合成石鼓青锋",
+      "status": "LIVE",
+      "statusLabel": "比赛进行中",
+      "closed": false
+    },
+    "board": {
+      "version": 6,
+      "status": "LIVE",
+      "statusLabel": "比赛进行中",
+      "resultLabel": "比赛未结束，比分不是正式赛果",
+      "final": false,
+      "home": {
+        "name": "合成高州猛龙",
+        "score": 2,
+        "fouls": 0,
+        "timeouts": 0
+      },
+      "away": {
+        "name": "合成石鼓青锋",
+        "score": 0,
+        "fouls": 1,
+        "timeouts": 0
+      },
+      "periodLabel": "第1节",
+      "clockLabel": "0:01",
+      "running": false,
+      "allowedScores": [1, 2, 3],
+      "periods": [
+        {
+          "key": "1",
+          "label": "第1节",
+          "home": 2,
+          "away": 0
+        }
+      ],
+      "playerMode": true
+    },
+    "history": [
+      {
+        "key": "11294ffb-abb1-4f7a-a180-e2439a601efb",
+        "id": "11294ffb-abb1-4f7a-a180-e2439a601efb",
+        "seq": 4,
+        "text": "合成石鼓青锋 犯规",
+        "reason": "",
+        "periodLabel": "第1节",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": true
+      },
+      {
+        "key": "e20092e1-f2ff-4bf0-9a09-fe355256de74",
+        "id": "e20092e1-f2ff-4bf0-9a09-fe355256de74",
+        "seq": 3,
+        "text": "合成高州猛龙 得分 +2 · 10号 合成高州猛龙甲",
+        "reason": "",
+        "periodLabel": "第1节",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": true
+      },
+      {
+        "key": "e396efaa-15d5-4d7e-8e82-cd257c68ad81",
+        "id": "e396efaa-15d5-4d7e-8e82-cd257c68ad81",
+        "seq": 2,
+        "text": "开始比赛",
+        "reason": "",
+        "periodLabel": "",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": false
+      },
+      {
+        "key": "73b4b311-41b0-40e1-b49f-871e4f30ed6c",
+        "id": "73b4b311-41b0-40e1-b49f-871e4f30ed6c",
+        "seq": 1,
+        "text": "准备比赛",
+        "reason": "",
+        "periodLabel": "",
+        "time": "10-27 01:05",
+        "voided": false,
+        "canVoid": false
+      }
+    ],
+    "roster": {
+      "home": [
+        {
+          "memberId": "",
+          "label": "不归属到个人"
+        },
+        {
+          "memberId": "0e18e08b-ba95-4b2d-b907-811ae7c1dc8f",
+          "label": "10号 合成高州猛龙甲"
+        },
+        {
+          "memberId": "3beb4c6b-8d98-415c-8844-612e78f58206",
+          "label": "11号 合成高州猛龙乙"
+        },
+        {
+          "memberId": "e7d78ac5-83cd-409b-8c63-b1aeaeabaf3a",
+          "label": "12号 合成高州猛龙丙"
+        }
+      ],
+      "away": [
+        {
+          "memberId": "",
+          "label": "不归属到个人"
+        },
+        {
+          "memberId": "54cf90c0-a748-49df-ac67-cb72b77cccbb",
+          "label": "4号 合成石鼓青锋甲"
+        },
+        {
+          "memberId": "a0337016-2cc8-4265-b998-202b97cbbfd2",
+          "label": "5号 合成石鼓青锋乙"
+        },
+        {
+          "memberId": "ccf46e7d-26bd-4a16-8321-45b91c7a8923",
+          "label": "6号 合成石鼓青锋丙"
+        }
+      ]
+    },
+    "pick": {
+      "home": 1,
+      "away": 0
+    },
+    "held": true,
+    "canControl": true,
+    "leaseNote": "",
+    "unavailable": false,
+    "pending": null,
+    "voidTarget": null,
+    "voidReason": "",
+    "clockOpen": false,
+    "clockValue": "",
+    "clockReason": "",
+    "fixOpen": false,
+    "fix": {
+      "kind": "SCORE",
+      "side": "HOME",
+      "value": 2,
+      "period": 1,
+      "reason": ""
+    }
+  }
+}

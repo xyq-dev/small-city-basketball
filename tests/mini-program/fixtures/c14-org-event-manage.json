@@ -1,0 +1,166 @@
+{
+  "name": "c14-org-event-manage",
+  "route": "pages/org-event/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["赛事管理", "确认本届完赛", "报名审核"],
+  "data": {
+    "tab": "schedule",
+    "loading": false,
+    "error": "",
+    "event": {
+      "id": "17aa1d9c-a0e4-4c86-9931-c7d799a87bef",
+      "name": "合成青锋杯",
+      "format": "ROUND_ROBIN",
+      "status": "RUNNING",
+      "statusLabel": "比赛进行中",
+      "formatLabel": "单循环赛事",
+      "dateLabel": "03/01–03/02",
+      "venueName": "场地待说明"
+    },
+    "unavailable": false,
+    "matches": [
+      {
+        "id": "09549c53-cce4-4977-af00-56922f7d9667",
+        "roundLabel": "第1轮",
+        "timeLabel": "03-01 10:00",
+        "courtName": "合成一号场",
+        "home": "合成高州猛龙",
+        "away": "合成石鼓青锋",
+        "status": "FINAL",
+        "statusLabel": "本场已结束"
+      }
+    ],
+    "matchesTruncated": false,
+    "scheduleError": "",
+    "ranking": {
+      "kind": "standings",
+      "modeLabel": "正式积分 · 仅计入独立确认的赛果",
+      "progress": "已确认 1 / 1 场",
+      "rows": [
+        {
+          "key": "fa37fecf-507f-4c2b-b0fa-76d1978a6335",
+          "rankLabel": "1",
+          "teamName": "合成石鼓青锋",
+          "tied": false,
+          "record": "1胜0负",
+          "points": 2,
+          "diff": "+1"
+        },
+        {
+          "key": "d7a17847-d4b6-4bcb-a679-aaa72ba7aa95",
+          "rankLabel": "2",
+          "teamName": "合成高州猛龙",
+          "tied": false,
+          "record": "0胜1负",
+          "points": 1,
+          "diff": "-1"
+        }
+      ]
+    },
+    "rankingError": "",
+    "stats": {
+      "empty": false,
+      "progress": "已纳入 1 / 1 场",
+      "coverageLabel": "全部已发布比赛均已逐人采集并确认",
+      "attributionLabel": "存在未归属到个人的得分或犯规",
+      "pendingLabel": "",
+      "rows": [
+        {
+          "key": "d7a17847-d4b6-4bcb-a679-aaa72ba7aa95:0e18e08b-ba95-4b2d-b907-811ae7c1dc8f",
+          "rankLabel": "1",
+          "name": "合成高州猛龙甲",
+          "jerseyNo": "10",
+          "teamName": "合成高州猛龙",
+          "score": 2,
+          "fouls": 0,
+          "samples": 1
+        },
+        {
+          "key": "d7a17847-d4b6-4bcb-a679-aaa72ba7aa95:3beb4c6b-8d98-415c-8844-612e78f58206",
+          "rankLabel": "并列2",
+          "name": "合成高州猛龙乙",
+          "jerseyNo": "11",
+          "teamName": "合成高州猛龙",
+          "score": 0,
+          "fouls": 0,
+          "samples": 1
+        },
+        {
+          "key": "d7a17847-d4b6-4bcb-a679-aaa72ba7aa95:e7d78ac5-83cd-409b-8c63-b1aeaeabaf3a",
+          "rankLabel": "并列2",
+          "name": "合成高州猛龙丙",
+          "jerseyNo": "12",
+          "teamName": "合成高州猛龙",
+          "score": 0,
+          "fouls": 0,
+          "samples": 1
+        },
+        {
+          "key": "fa37fecf-507f-4c2b-b0fa-76d1978a6335:54cf90c0-a748-49df-ac67-cb72b77cccbb",
+          "rankLabel": "并列2",
+          "name": "合成石鼓青锋甲",
+          "jerseyNo": "4",
+          "teamName": "合成石鼓青锋",
+          "score": 0,
+          "fouls": 0,
+          "samples": 1
+        },
+        {
+          "key": "fa37fecf-507f-4c2b-b0fa-76d1978a6335:a0337016-2cc8-4265-b998-202b97cbbfd2",
+          "rankLabel": "并列2",
+          "name": "合成石鼓青锋乙",
+          "jerseyNo": "5",
+          "teamName": "合成石鼓青锋",
+          "score": 0,
+          "fouls": 0,
+          "samples": 1
+        },
+        {
+          "key": "fa37fecf-507f-4c2b-b0fa-76d1978a6335:ccf46e7d-26bd-4a16-8321-45b91c7a8923",
+          "rankLabel": "并列2",
+          "name": "合成石鼓青锋丙",
+          "jerseyNo": "6",
+          "teamName": "合成石鼓青锋",
+          "score": 0,
+          "fouls": 0,
+          "samples": 1
+        }
+      ],
+      "truncated": false,
+      "teams": [
+        {
+          "key": "d7a17847-d4b6-4bcb-a679-aaa72ba7aa95",
+          "teamName": "合成高州猛龙",
+          "unassignedScore": 0,
+          "unassignedFouls": 0
+        },
+        {
+          "key": "fa37fecf-507f-4c2b-b0fa-76d1978a6335",
+          "teamName": "合成石鼓青锋",
+          "unassignedScore": 3,
+          "unassignedFouls": 0
+        }
+      ]
+    },
+    "statsError": "",
+    "publicEventId": "",
+    "manage": {
+      "review": true,
+      "reviewLabel": "已提交 0 · 已通过 2 · 名单已冻结",
+      "progress": "已确认 1 / 1 场",
+      "ready": true,
+      "blockers": [],
+      "actions": [
+        {
+          "type": "COMPLETE",
+          "label": "确认本届完赛"
+        }
+      ]
+    },
+    "lifecycleAction": "",
+    "lifecycleReason": "",
+    "notice": ""
+  }
+}

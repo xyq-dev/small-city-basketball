@@ -24,7 +24,7 @@
       <view class="board-meta">{{match.eventName}}</view>
       <view class="board-row">
         <view class="board-team"><view class="board-name">{{match.home}}</view><view class="board-score">{{board ? board.home.score : '–'}}</view></view>
-        <view class="board-mid"><view class="board-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</view><view wx:if="{{board}}" class="board-clock">{{board.clockLabel}}</view><view wx:if="{{board}}" class="board-period">{{board.periodLabel}}{{board.running ? ' · 计时中' : ' · 已暂停'}}</view></view>
+        <view class="board-mid"><view class="board-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</view><view wx:if="{{board}}" class="board-clock">{{board.clockLabel}}</view><view wx:if="{{board}}" class="board-period">{{board.periodLabel}}</view><view wx:if="{{board}}" class="board-period">{{board.running ? '计时中' : '已暂停'}}</view></view>
         <view class="board-team"><view class="board-name">{{match.away}}</view><view class="board-score">{{board ? board.away.score : '–'}}</view></view>
       </view>
       <view wx:if="{{board}}" class="board-sub">犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>

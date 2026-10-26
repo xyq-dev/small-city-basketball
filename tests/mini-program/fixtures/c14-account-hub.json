@@ -1,0 +1,44 @@
+{
+  "name": "c14-account-hub",
+  "route": "pages/account/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["我的赛事", "记分与赛果确认", "切换账号", "退出登录"],
+  "data": {
+    "email": "",
+    "password": "",
+    "displayName": "",
+    "registerMode": false,
+    "canRegister": true,
+    "consent": false,
+    "user": {
+      "id": "030813b4-ed09-4426-89a5-3b9fdc931506",
+      "email": "owner@example.test",
+      "displayName": "合成负责人"
+    },
+    "binding": {
+      "enabled": false,
+      "connected": false,
+      "version": null,
+      "linkedAt": null
+    },
+    "connected": false,
+    "enabled": false,
+    "busy": false,
+    "loading": false,
+    "message": "",
+    "messageTone": "info",
+    "hasReturn": false,
+    "securityOpen": false,
+    "roles": [
+      {
+        "key": "20f00574-cebd-47c4-b697-73b3a9f23d85",
+        "text": "合成高州篮协 · 机构负责人"
+      }
+    ],
+    "roleSummary": "合成高州篮协 · 机构负责人",
+    "teamCount": 0,
+    "platformOperator": false
+  }
+}

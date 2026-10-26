@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { PASSWORD, device, http, register, signIn, startServer, tap } from './support.mjs';
+import {
+  PASSWORD,
+  device,
+  http,
+  register,
+  signIn,
+  snapshot,
+  startServer,
+  tap,
+} from './support.mjs';
 
 // Event mainline against the real API: registration (leader) -> independent review and
 // freeze (staff) -> native prepare -> native scoring with lease and lost-response recovery
@@ -221,6 +230,7 @@ test('event mainline runs end to end through native pages on the real API', asyn
     assert.equal(review.page.data.error, '', type);
   }
   assert.equal(review.page.data.freeze.teams, 2);
+  snapshot(review, 'entry-review-frozen');
 
   // Web-only scheduling and rules; then staff assignment for the single match.
   const registration = (await call(`${eventPath}/registration`, { cookie: ownerCookie })).data;
@@ -339,11 +349,13 @@ test('event mainline runs end to end through native pages on the real API', asyn
   ownerMatch.page.prepare();
   await ownerDevice.settle(ownerMatch);
   assert.equal(ownerMatch.page.data.match.status, 'READY', ownerMatch.page.data.error);
+  snapshot(ownerMatch, 'org-match-ready');
 
   // Scorer: task list -> record table with lease.
   const tasks = scorerDevice.open('pages/scoring-tasks/index');
   await scorerDevice.settle(tasks);
   assert.equal(tasks.page.data.sections[0]?.key, 'ready', tasks.page.data.error);
+  snapshot(tasks, 'scoring-tasks');
   const scorer = scorerDevice.open('pages/scorer/index', { orgId: org, matchId: match.id });
   await scorerDevice.settle(scorer);
   assert.equal(scorer.page.data.canControl, true, scorer.page.data.error);
@@ -363,6 +375,8 @@ test('event mainline runs end to end through native pages on the real API', asyn
   await scorerDevice.settle(scorer);
   assert.equal(scorer.page.data.board.home.score, 2, scorer.page.data.error);
   assert.equal(scorer.page.data.board.away.fouls, 1);
+  await scorer.page.refreshHistory();
+  snapshot(scorer, 'scorer-live');
 
   // Lost response: the server records +3 but the device never hears; recovery must use the
   // same commandId and must not count it twice.
@@ -370,6 +384,7 @@ test('event mainline runs end to end through native pages on the real API', asyn
   await scorer.page.stat(tap({ side: 'AWAY', kind: 'SCORE', value: 3 }));
   await scorerDevice.settle(scorer);
   assert.ok(scorer.page.data.pending, 'unknown result keeps the original envelope');
+  snapshot(scorer, 'scorer-pending');
   await scorer.page.stat(tap({ side: 'AWAY', kind: 'SCORE', value: 1 }));
   assert.equal(scorerDevice.wx.pendingRequests, 0, 'no new write while a result is unknown');
   await scorer.page.checkPending();
@@ -417,6 +432,7 @@ test('event mainline runs end to end through native pages on the real API', asyn
     ownerMatch.page.data.history.some((h) => h.voided),
     'voided record stays visible',
   );
+  snapshot(ownerMatch, 'org-match-final');
 
   // Standings and per-player statistics come only from the confirmed result.
   await orgEvent.page.load();
@@ -426,6 +442,7 @@ test('event mainline runs end to end through native pages on the real API', asyn
   const scorerRow = orgEvent.page.data.stats.rows.find((r) => r.score === 2);
   assert.ok(scorerRow, 'attributed player basket appears in the statistics');
   assert.equal(orgEvent.page.data.manage.ready, true, JSON.stringify(orgEvent.page.data.manage));
+  snapshot(orgEvent, 'org-event-manage');
 
   // Public viewing is switched on in the Web console; spectators arrive by the shared card.
   const current = (await call(eventPath, { cookie: ownerCookie })).data;
@@ -450,6 +467,8 @@ test('event mainline runs end to end through native pages on the real API', asyn
     watch.page.data.recentEvents.map((e) => e.publicEventId),
     [publicEventId],
   );
+  snapshot(watch, 'watch-recent');
+  snapshot(shared, 'public-event');
   assert.equal(
     spectator.wx.calls.some((c) => c.type === 'request' && c.url.includes('/v1/orgs/')),
     false,
@@ -474,6 +493,7 @@ test('event mainline runs end to end through native pages on the real API', asyn
   // Signing out clears every private page immediately.
   const account = ownerDevice.open('pages/account/index');
   await ownerDevice.settle(account);
+  snapshot(account, 'account-hub');
   ownerDevice.approve();
   account.page.logout();
   await ownerDevice.settle(account);
