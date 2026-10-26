@@ -1,0 +1,1485 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-26T08:40:54.654Z",
+  "sourceHead": "baf6540e967669a639b8e0e0d1af33bdd3f09581",
+  "runId": "e8fff33e-d693-4b81-828f-2afb9d6bbce1",
+  "sourceDirty": false,
+  "sdkVersion": "0.13.0",
+  "mode": "isolated-native-template-fixtures",
+  "businessLifecycle": "replaced-in-disposable-copy",
+  "networkOrigin": "https://scb-ui-fixture.invalid",
+  "overriddenFiles": [
+    "app.js",
+    "app.json",
+    "project.config.json",
+    "utils/api.js",
+    "pages/home/index.js",
+    "pages/watch/index.js",
+    "pages/media/index.js",
+    "pages/account/index.js",
+    "pages/event/index.js",
+    "pages/org-event/index.js",
+    "pages/match/index.js",
+    "pages/players/index.js",
+    "pages/player/index.js",
+    "pages/compare/index.js",
+    "pages/booking-create/index.js",
+    "pages/bookings/index.js",
+    "pages/booking-detail/index.js",
+    "pages/player-center/index.js",
+    "pages/performance/index.js",
+    "pages/teams/index.js",
+    "pages/team/index.js",
+    "pages/registration-events/index.js",
+    "pages/entry/index.js",
+    "pages/invitation/index.js",
+    "pages/planned/index.js",
+    "pages/platform/index.js"
+  ],
+  "aliasPages": [
+    {
+      "route": "pages/platform-home-events/index",
+      "baseRoute": "pages/home/index"
+    },
+    {
+      "route": "pages/platform-home-lower/index",
+      "baseRoute": "pages/home/index"
+    },
+    {
+      "route": "pages/platform-home-signed-out/index",
+      "baseRoute": "pages/home/index"
+    },
+    {
+      "route": "pages/platform-events-list/index",
+      "baseRoute": "pages/watch/index"
+    },
+    {
+      "route": "pages/platform-events-no-org/index",
+      "baseRoute": "pages/watch/index"
+    },
+    {
+      "route": "pages/platform-org-event-schedule/index",
+      "baseRoute": "pages/org-event/index"
+    },
+    {
+      "route": "pages/platform-org-event-standings/index",
+      "baseRoute": "pages/org-event/index"
+    },
+    {
+      "route": "pages/platform-org-event-groups/index",
+      "baseRoute": "pages/org-event/index"
+    },
+    {
+      "route": "pages/platform-org-event-stats/index",
+      "baseRoute": "pages/org-event/index"
+    },
+    {
+      "route": "pages/platform-org-event-unavailable/index",
+      "baseRoute": "pages/org-event/index"
+    }
+  ],
+  "runnerSha256": "0a8be5089273e33fdd048ec2fb315abfec9e76ada9a1be81ac057ea0a0e2cd31",
+  "businessFlowVerified": false,
+  "realDeviceVerified": false,
+  "userVisualAccepted": false,
+  "nativeScreenshotsCaptured": true,
+  "sourceSnapshots": [
+    {
+      "path": "app.js",
+      "sha256": "18600537d51121e708d63a2652bbbbd7ef9247197922ab17db37f38a782061d4"
+    },
+    {
+      "path": "app.json",
+      "sha256": "b43aae30ec49c01bac036a05b9f80dc1e267ea01705c83f94e74edc76b6f5050"
+    },
+    {
+      "path": "app.wxss",
+      "sha256": "32d3116fac33ed6192b8252fedbfc0ec7efa1dac3793acec6ecd618b95a2a3d0"
+    },
+    {
+      "path": "assets/approved-ui/court-night.jpg",
+      "sha256": "d028afca90ddce01d8c6759fca7fa35dd8abdad080fd2f56b598649e0e8ed31c"
+    },
+    {
+      "path": "assets/approved-ui/home-slogan.png",
+      "sha256": "fa845d76aa08c7c44eebb5dee4d7140c851196d7c7ca40403e49e8650c6e17bd"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-gray.png",
+      "sha256": "3aecb15c08b4211864715e6584fa50e963b88215e8919ce35aa32a522b02cf37"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-green.png",
+      "sha256": "4ad98534299773ae97f9e7de97ced1a0864754fe18864a6716e13b2eb4ceedfd"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-navy.png",
+      "sha256": "49682a061c465bfe1fb6d0cef5c00bee6ee40e507cc4db37921375ae170d25e2"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-orange.png",
+      "sha256": "8a15d418621028f38aeed83358a6157b3e4e4f20f0f03808c93975277107eab8"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-white.png",
+      "sha256": "76dbabb09bac248e479cc2f516398723e7babb66af8291d0a2ef72956a79ef9c"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-gray.png",
+      "sha256": "4eeaf24c844a5fa21fd5576f7c23608d98d6a8c3e53f4065bf3ad6a85b6e129f"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-green.png",
+      "sha256": "c16fadee82cede0932f9af88b1ee613b74b6ab2f4d853e3defd28b292d69d5cf"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-navy.png",
+      "sha256": "a795244c7c076ff7c3062384f84780b7410cd7d4005ceb54fd46545dc94dd799"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-orange.png",
+      "sha256": "e1b03928d4f4dd4f80bcfe07f4f0c133acb22402e03123b9c17d1420636a321d"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-white.png",
+      "sha256": "9d0b11e89c624079644e892021d693f536bd3d781ce253b942728e31e2286831"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-gray.png",
+      "sha256": "56afc43d4eb17e76b7a39b401ebf095ef61b8730016fe06507cc63f4470b3aa1"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-green.png",
+      "sha256": "65dde9155cdbf5d510abc2fe1861a8d7065fa658a76e714a2a4b878aa17284ba"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-navy.png",
+      "sha256": "43f798381bb3e9b1f636f3c4eeee6ad8daef327ba6f45033d85e813db7de8713"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-orange.png",
+      "sha256": "cbc70de35a7cf48ccd535cf5477b896a75bb77a523efe2c4f5a8d87f14ed79f0"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-white.png",
+      "sha256": "1f38402d1450042bf3969106918e2b783719ac0ac7ac56c2e53e88675adbca57"
+    },
+    {
+      "path": "assets/approved-ui/icon-chart-gray.png",
+      "sha256": "8490aeb0948ed04173b3dedf5d2083ce70110b7c42e83e87b346e199240e919f"
+    },
+    {
+      "path": "assets/approved-ui/icon-chart-green.png",
+      "sha256": "4c57be1d53ef0a745780074c18d6b7302ae1ae9799a2c42dc402b7157e1622f5"
+    },
+    {
+      "path": "assets/approved-ui/icon-chart-navy.png",
+      "sha256": "7699e3b6f3a922fca5f4c41ae25a015a46924d10460062013d70ad669c267ac7"
+    },
+    {
+      "path": "assets/approved-ui/icon-chart-orange.png",
+      "sha256": "1005fd0af6674a0b24d2008e92a95820dc4e301cf698fa9583f07fcd651cae24"
+    },
+    {
+      "path": "assets/approved-ui/icon-chart-white.png",
+      "sha256": "684a94a8b52bc9c3c91659350a1bd567ea8ec5c64f93507a5565e73e78ad389b"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-gray.png",
+      "sha256": "06e820f3145c700349ec8dcd322872441c09db204502eafdcfd51b741019a894"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-green.png",
+      "sha256": "d6fda3bb414295ae406b6b8c023d34307712b7d4f14b143f8ed957d03e488f09"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-navy.png",
+      "sha256": "5fcdc4085a6590d929c5c5447877b8618ad1ebc0125c23508d90bc862738e9ea"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-orange.png",
+      "sha256": "7774ee0b54f2b8c75667c111ee5187458e3e299663b482f142be57c92e6258a2"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-white.png",
+      "sha256": "8798165867f1e438c915afc9ec6ae390b3c25c88479fa29a429242fd5e052430"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-gray.png",
+      "sha256": "58604d9f0c7533dd22c941e4a0f4dcd2b3a1289d01131e438b6088f0fc4f0615"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-green.png",
+      "sha256": "5346bac8843a15055ea0fd08bd3b5c3393cf0c5e703da59af7e931ac891cff0d"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-navy.png",
+      "sha256": "ce0e29700d1764b766a00728c1d26e31b8eece2e522aa228d1a488e9d0761ccd"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-orange.png",
+      "sha256": "3e9998c102339108fbe3f6de50178383392693f945475004e00acd941a412dcb"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-white.png",
+      "sha256": "5d89f0b4e3b7fd6b745ad11ef5c2ba1fcafc0dd366aa2157b55a67efc6e88c80"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-gray.png",
+      "sha256": "a32a3d506448ae770c78c48011d89025189429fcb3129fd5c57b49f16c4c4205"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-green.png",
+      "sha256": "89e86c150d9acacb871300bee77ad496cb81962d303899c760e469d945cb54ef"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-navy.png",
+      "sha256": "852a3cdb0771f52d3af5a49713069c9602a9aa7847dc59fec4d6770db6212c8e"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-orange.png",
+      "sha256": "79f508fa9aa9c3cba1d3e1eb5b320463803f0a6d7e6abd415a1ea4571f0e396a"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-white.png",
+      "sha256": "a3b34e7ea6c63020352995958a7346146dec38fbcc836b96449b2f979501d123"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-gray.png",
+      "sha256": "1f92063613f7d78f9fef4e7b47fb4db592a40a58ea4566b425db9a3ffc27930a"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-green.png",
+      "sha256": "d2a2d316d341fda6eee993dd714b049efc4b67566ea978ec8cb528888d2561e7"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-navy.png",
+      "sha256": "b59b7621e40595066264452e2282d33a0323d54f24d3a7fa823e8fdf1658adb0"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-orange.png",
+      "sha256": "b37bf1156a9e49475e0e8c937284e2d1c3a738779f2587332f989fe77d87b9b2"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-white.png",
+      "sha256": "7065ec25e2a706411eed697413509879158ecfaf2f5a07317adbc5eb3d433708"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-gray.png",
+      "sha256": "87a1bb65d6c788323d7f278494311599fbac7b7f3bd593a77c2c34fac9d362d1"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-green.png",
+      "sha256": "e3c9323d5c3e07d43844ab6d65d170e2724eb98d7a5e3542462341de945ffa8b"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-navy.png",
+      "sha256": "773d01032988a130af2f43c286d0d7a9c1565900482042c5a270c2791d326781"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-orange.png",
+      "sha256": "df1d3aa57b98321d1b50110e2624ff261dcc554092ff4914523f2cfc756dd6f7"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-white.png",
+      "sha256": "c6a0404f42358c31ea1d87f2cf5ce7698b4c2cf396ed7f4703ce7bbaa2364af2"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-gray.png",
+      "sha256": "e39e6a416e2e4944ae4ee57aab0f02c41c54ae618bb2462eba31ded2dcfd89aa"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-green.png",
+      "sha256": "1ec0d864c87d09041a0676a0c201838310d5a1a9e96a997a3e9814939da0f450"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-navy.png",
+      "sha256": "cbaa21cedac36d0cb8a633b9520c56e969715a96aae1f2683f6ea6dcbce85778"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-orange.png",
+      "sha256": "2260509fbcd68915f361bbd08862617d2804924d91ecfdd759a84c8cea60778a"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-white.png",
+      "sha256": "cbddaeec67343d5ab515f4ab1cfee55d85eae9a1d559e38d6d2683285c724969"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-gray.png",
+      "sha256": "270332e08880cc2df5012e9c08cc703687dec3c26f0f7e042bf1bf480417b6e1"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-green.png",
+      "sha256": "9fd0f696e35e1b052586b7bde826001306f52ab10904fcc8d68ca42f7a5926bd"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-navy.png",
+      "sha256": "a0b0239af0cd4498931072b3e00e6e51860580c729aa91d1822d0956dda1a4a2"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-orange.png",
+      "sha256": "e335485c933854350b0ecccc507cb9c5793b96d5542f5552a60485331712feaf"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-white.png",
+      "sha256": "3b49dfbc7d6bd0c193f3ef4c1eaca7c795ebbc5677ea3a56ddf30ad8cea17b7c"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-gray.png",
+      "sha256": "5c54404a840f11694d8374cefe812d35a3248f4799e4232035afe3bf034b51d7"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-green.png",
+      "sha256": "063cab9661fbaf41b2150cbe4e8e85e1c59f9af7f83ffd872a56afb2192d6426"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-navy.png",
+      "sha256": "e9ce1114b8d422a6911ce607438dacbbb12690ce27bd5b2baa074aa5b75f3013"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-orange.png",
+      "sha256": "ebcd907a07f6a0f83b3deb6cc4ce23270968a41797be8571d0a37138e8f8548f"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-white.png",
+      "sha256": "52998818e8f6ad7ee1abca55cdb3b91c7ce2a243c9f2ce1e302266759b856641"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-gray.png",
+      "sha256": "a46347c13df89e560d086c923b9276b2d76550d954a344004d912123954d078c"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-green.png",
+      "sha256": "1bf23de65615ca7b0b8f1a3b7b93540781c168696bef5f3765ab754d69f882bf"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-navy.png",
+      "sha256": "9955509dbdcaebdd2ea5d5a05c85b6fdf475d7d1c9084a1ee63a3a6c24a93ca1"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-orange.png",
+      "sha256": "f40ef62bf8134a3d887ca4ed4a5bb791b538322846dd5d8a0cd0a588258bb234"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-white.png",
+      "sha256": "17ae851c0b96e06ad243482dc93dade85a2d329ce5fb1c13ecaaf7e0dbb2b8cf"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-gray.png",
+      "sha256": "1cc560820e97a1585d92002ea9aec631d7dc4f975e536d1eb97d7aedb4181dff"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-green.png",
+      "sha256": "7cd61b4d915e47262db54f080367d28d55d768c53411988d55c857f227163316"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-navy.png",
+      "sha256": "88a2a0f213e04683e0bd8f64fffbb93b19ba71b2a327565bc200a2099b03502e"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-orange.png",
+      "sha256": "2da72d11c1a91439a73ed27e527b466b4962e06bf16131d13c1e9bd80789d7c3"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-white.png",
+      "sha256": "1a9b9e11b93ab21ae0c7302b9e4cbf02facca0eb5332b3206d4a0e877b4e8a54"
+    },
+    {
+      "path": "assets/approved-ui/icon-more-gray.png",
+      "sha256": "57621cfb7b66b674df6e579c0ae95f940b46784ad535491c549b09a9314a215e"
+    },
+    {
+      "path": "assets/approved-ui/icon-more-green.png",
+      "sha256": "2c59616a66b902e3092e7e9be3542c5d8beb0c1bf2e73f311e61be9f1f54845b"
+    },
+    {
+      "path": "assets/approved-ui/icon-more-navy.png",
+      "sha256": "fbe797af43d8d708fb07f5bed5cee8ce1f703f24c72e0717d033ac64d2c2c0a0"
+    },
+    {
+      "path": "assets/approved-ui/icon-more-orange.png",
+      "sha256": "4552b35b6a332bb716fd183d5826260cdfabe6ccc2f64d5831c342346660d50c"
+    },
+    {
+      "path": "assets/approved-ui/icon-more-white.png",
+      "sha256": "dfb3a8f965212d861bbe8fe44961ce207173a1132c008d03e0140bc5e449b69c"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-gray.png",
+      "sha256": "6eefa624faf48f2d28287f86bdacc6a635794211deda8dc50c50cab492d53bbf"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-green.png",
+      "sha256": "4f76577b156b304afbd8919b40fd707c42a398e6e5c36e34afa2f0b4c9817e29"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-navy.png",
+      "sha256": "724eca10e89c117eb52d47507e23a9cf2b12ac4b13535f315f8bad21a4bb5e72"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-orange.png",
+      "sha256": "3f4a5368a300e8466d15c5b8c98fab98900d312b359dfec515ba51ff79063d10"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-white.png",
+      "sha256": "7a3127fa23de97ee347282f61067e40e9f8ecab3b7da806a3867b4e6f996b859"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-gray.png",
+      "sha256": "be96337c36479a8dd9ac48382a34dfad493a44cd3c5393f800d74ddb9e7263af"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-green.png",
+      "sha256": "8fe8772cbedd6426e01a45534ec82605c5c67c1bbd74b065d89db5cbf976a5d4"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-navy.png",
+      "sha256": "41cd539647809a6ceb763f45742ad0301eb9a2fc4666d7f42c8f13384ac8685a"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-orange.png",
+      "sha256": "03c40a67011d5440abc0ece6119eee31d722cd3418d05e94d50ffde0de00f28b"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-white.png",
+      "sha256": "3848d8b6dd8dd0f44916fffd89b335be6f43d70725d113991f44e201c6713ffb"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-gray.png",
+      "sha256": "41f8cef3c140fb5c9c75f15a0f7745dd60a8f3f604b1e8673df1074433103b7c"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-green.png",
+      "sha256": "8f76111b5b18825f4fc9b5735a0df197522a1de5a40ce8b42f0579c40311e230"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-navy.png",
+      "sha256": "f16dd9ea3939ee4c68595a56aa208a6148ffafe9571194abb6db498c1eff731e"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-orange.png",
+      "sha256": "8c930f623db4c3b9f7856858b532f4460a911054a7344880927a722b7a6a1a66"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-white.png",
+      "sha256": "a850fd64bff3fbb46750f3bf18660d7c18756e9dab94148546f7f17dfdf81354"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-gray.png",
+      "sha256": "b2229368c8b3f35a17601150fac96785857094882b249d2f348bb5be85931774"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-green.png",
+      "sha256": "4efd6fc38cf12a5b4c5d5d9818d6497fa6eacc9d3e418ea09147b97a2a5f7b43"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-navy.png",
+      "sha256": "444eebde457a7984914ebf7713011951d08efec5bbbc30dd006406f2c6d065cb"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-orange.png",
+      "sha256": "b925b1c855507dc2a1ca9c051a6bd72d3d144b31a7b29b1620bd67e899bcc0c6"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-white.png",
+      "sha256": "97b80ebbcbcc9c829cb34ae519ff9ad508c60d6240d8b2a5dfe6448adda5f022"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-gray.png",
+      "sha256": "6628689ecf8874dbdf99c1880bcd0375bb84c2aa31e8002f24720a3beb9a6512"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-green.png",
+      "sha256": "34c01f552671ace461aa1b0048ea760e83f4760f6509f770c1e0b439d84d2c9e"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-navy.png",
+      "sha256": "b5a19dccc6eadee50c79df84f57b08f5477a4f1b03ac96b906cd28c18b7050d0"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-orange.png",
+      "sha256": "d111e00a7c9026d8e0d2ed6f14045b14147180f11face3df631fdf352da5cb70"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-white.png",
+      "sha256": "a31b23970a01271590493c1b9ab66ee006f379c2d7d6574ea7998a8aae0b6b04"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-gray.png",
+      "sha256": "41480f8f05df80e157aa342707bb0b3af13ec07d61480e6b11183a9c6fdbb4be"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-green.png",
+      "sha256": "1310cce5906ee7cb21ce2228a85d2b9c6bc21982d2979099d1a2bc12ab00842d"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-navy.png",
+      "sha256": "bb520cb9b8b9a9a862beb45ea4d1fed46ae7d9150e9c946d86d2808be8b0b3c0"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-orange.png",
+      "sha256": "c28a043c39b01f757b0157b75b3786877594130feb88a96105f1f8bf9be0daa1"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-white.png",
+      "sha256": "63347e7bedb26ad7fff5dd6c82a519e99e3671a921436efbd8557db3aa5d0c0d"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-gray.png",
+      "sha256": "2b0cc9e6869a882a805838779263e567f87bdfee5a1d16e738744b4cd6522471"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-green.png",
+      "sha256": "02437830d8796a3adbd0c7a6e6c5b31dff1b3d8494b0a4a6111dc11a8c7b737a"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-navy.png",
+      "sha256": "b65fe2b5a21609c869f5f91c6e8be796842e13f1a08a93292f0310d89716e934"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-orange.png",
+      "sha256": "b81e6f3eae999c974ad89ee86f6b729decdee49bb299918322f937664c28a03f"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-white.png",
+      "sha256": "c49579429b3a626d8ffdce3a945648f5db11e9379ec2e21cb9781298c0c5faa4"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-gray.png",
+      "sha256": "e44c19a73e9d5c61a1eddd34cf76ef5d51840c3ae159ccde62249ba25de437c4"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-green.png",
+      "sha256": "f9be006f14c9b9c95df76af33493713acab4c497bcbb14ce421ef4683266f312"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-navy.png",
+      "sha256": "6aef9532a38da3003979b218c9f2369b356ced1aa2263107cc3786c0bc0f8939"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-orange.png",
+      "sha256": "2f7082afccabe26de9affd80d5e65f43323d7f1bc52d297a6e0ffaf4c178f568"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-white.png",
+      "sha256": "a455fe029f7715a34810203d7da8594f1bad8c20affb8e0ed59900e804c08ed5"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-gray.png",
+      "sha256": "2a2eea957427f5ad40a34e60cb3b576bfca25779aa13a2dde1946e5746bec50d"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-green.png",
+      "sha256": "b77d52083dee7c443d2b823caedd5775ce0a79723c81c1d58c567dadb25d5ddf"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-navy.png",
+      "sha256": "6aa0deab190398083f00ec57adcef8c324f3dd49a31c6c41fdbae8dd3170e681"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-orange.png",
+      "sha256": "9e3b711bcbfae27b7e7bcc1f8f6e408c82a2e2eb7259cd9adfe989ac31bbf6f7"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-white.png",
+      "sha256": "b30e8b7bd39f95a937e9c2573205fae031e17c59074453012b1f4d3567a1a325"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-gray.png",
+      "sha256": "6a5267c6b201587acf9521e8a774d2fb8626ecb4c5190b967fbf92ebaab989d4"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-green.png",
+      "sha256": "405846a32df48422dde431b8115f87cae308a85daa8c2b869ad2c778fe6426f0"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-navy.png",
+      "sha256": "0cf8878cf399ee0efd34e567fd8763e5b2bedcc473e2b902802c198faddb0295"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-orange.png",
+      "sha256": "5e94c98bc47875e8930722aa788b16a898436192fce7142772f27f9d1107fd73"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-white.png",
+      "sha256": "407f3c8f63d784d425cc930b8075ae177b63a35972ef5207d6a8bec2b4ad45d6"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-gray.png",
+      "sha256": "efd1a844757d6e49ad28f359b3789d47519496be2bc475a65ec7651093167fca"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-green.png",
+      "sha256": "32886c61f4616eaf3c508034c3a5e6c509679217266d2024adc940809567eef0"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-navy.png",
+      "sha256": "a737cd5c3e3b40ddc5881feb40cd8680b29485e1fa7ccb4cfcc1044ef20f1139"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-orange.png",
+      "sha256": "b0f28849bca8ac0d3b70f1adbd3c1b0f75a40362c7e6afce5eaf8862c0b12876"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-white.png",
+      "sha256": "18867eebb9fafe2d0987f385e7856c8931544b8fafeb55e2757c249fc1cf388c"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-gray.png",
+      "sha256": "396b3851360bfcb75eb70ac80e2dd3fe7db8b8b98bd6675b4d19156588dabd98"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-green.png",
+      "sha256": "d8de0c023bf947125e8fdceef8809e7e0a50259322df3bffd51b4da0dc3e049c"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-navy.png",
+      "sha256": "d7588791b6560136a1498b911e7896681379ae88ec43246461f2a45a16fff731"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-orange.png",
+      "sha256": "3d4c34074be700a66de114daca16aac92c2c78981f78969ba8b9e3df7a336b66"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-white.png",
+      "sha256": "a82bf52e3c1b4457ec6588b8d76f8c85bbf1c8187822b46a674a11d937b10f88"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-gray.png",
+      "sha256": "4fd8d27ba3edfe4bfd69ec8432f5ab19f339b051453b95412ecb17d4008cc705"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-green.png",
+      "sha256": "aaffe880fbab59e3229cb91bdff1a741e88df995486eafac586fbc0baac60945"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-navy.png",
+      "sha256": "30fb17cf8538baa6f954c8c7b8ce0150bee7f1fde58acbc4f766dc726de1a0c4"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-orange.png",
+      "sha256": "d4f80e42b8d857a3783335baf029e4a0a806ed4aa635ccf1df1e732f9beba2e2"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-white.png",
+      "sha256": "ae519f88529659c2abc8a9ea6394e2fdd80513a23027bc202b6cd572f880fc50"
+    },
+    {
+      "path": "assets/approved-ui/player-placeholder.png",
+      "sha256": "90d3415d72b9dcc14b494f28346aba9b75e1ba391b2f9c4be85254e39e90fd55"
+    },
+    {
+      "path": "assets/approved-ui/player-placeholder.svg",
+      "sha256": "f328add6db9d0613c967cef80a0fecde7f35e430df9d2f87ca08284997c3a4a3"
+    },
+    {
+      "path": "assets/approved-ui/player-sample-a-hero.jpg",
+      "sha256": "5bea49e68ca0a439bfee096ffb8c87ad17988971bc52d2287113e080e3482056"
+    },
+    {
+      "path": "assets/approved-ui/player-sample-a.jpg",
+      "sha256": "ab5cb73d9f4fa96713ebbabd75af07c292ef72a09559d4f8535d301de090c469"
+    },
+    {
+      "path": "assets/approved-ui/player-sample-b-hero.jpg",
+      "sha256": "87b70e99d154d1620ea2c2c3e91313af591ffaecd0a20f87e0b8d8be442c212c"
+    },
+    {
+      "path": "assets/approved-ui/player-sample-b.jpg",
+      "sha256": "4186044a194615c1d6b441c6f0a9540637e61f5173ed10034be7a5d416dc6f5e"
+    },
+    {
+      "path": "assets/approved-ui/README.md",
+      "sha256": "e38b10998d77b7b7f6e280fb8db969228b9f662b80a33ba36a7a72d0917a1db6"
+    },
+    {
+      "path": "assets/court.png",
+      "sha256": "a76fa7b80d3d9b211c1de97ab6f5145824d5e274b10a21c2b2cd766e34052ce5"
+    },
+    {
+      "path": "assets/README.md",
+      "sha256": "54bdc720464a64141fd9c584acfaa5275de427ae76074b79e511a679d1a87fa0"
+    },
+    {
+      "path": "components/header/index.js",
+      "sha256": "18f9dcefa1bf0f9a2aa3f3eacf6da4c5c282d218ec01a560bb95f82d4ec1d279"
+    },
+    {
+      "path": "components/header/index.json",
+      "sha256": "63d78bc96b81a3fbfc081a7aa5317aec503467a146d1dd9e03af7d40e4becdb3"
+    },
+    {
+      "path": "components/header/index.wxml",
+      "sha256": "0bf20428da8e5363d58705ef2a33dfb7b27aa3f6b24f12dd622bdaf8cfc9e8f0"
+    },
+    {
+      "path": "components/header/index.wxss",
+      "sha256": "3c724022b84bbd607ca25aec9e57d909b51bd2b0bab5a0c723ae325c8b08ffa9"
+    },
+    {
+      "path": "components/icon/index.js",
+      "sha256": "0e4acd5031920935ed36c37d8fbd152e93beadae049fabf73ed0103f4edcc7d5"
+    },
+    {
+      "path": "components/icon/index.json",
+      "sha256": "63d78bc96b81a3fbfc081a7aa5317aec503467a146d1dd9e03af7d40e4becdb3"
+    },
+    {
+      "path": "components/icon/index.wxml",
+      "sha256": "3dca1e7f31bf587ead397531774ee19fdd8e81b6433b8e34e8a886a54f9d0fe3"
+    },
+    {
+      "path": "components/icon/index.wxss",
+      "sha256": "da273ea6db3dbb9921ed9cc460484cb63665d17db34b7568a4e3a78b6ea26229"
+    },
+    {
+      "path": "components/navigation/index.js",
+      "sha256": "f5e4d7c07cd0b511b757ee8aece11e75fb07d68b133424a11b2aa2ade3687859"
+    },
+    {
+      "path": "components/navigation/index.json",
+      "sha256": "63d78bc96b81a3fbfc081a7aa5317aec503467a146d1dd9e03af7d40e4becdb3"
+    },
+    {
+      "path": "components/navigation/index.wxml",
+      "sha256": "c0bc38b8cfac31826cc0820ed73e10218cdfc4274813b55176fd15c48e56252e"
+    },
+    {
+      "path": "components/navigation/index.wxss",
+      "sha256": "905f7406e47abbdf41e25d01cd9d74dcba5d4bb1fa592c5c70d4801c49ef8aea"
+    },
+    {
+      "path": "pages/account/index.js",
+      "sha256": "52d39576b70bd554642a1ce678aecddb546cd35bec9de6913083a5f7572e4086"
+    },
+    {
+      "path": "pages/account/index.json",
+      "sha256": "d0f5617e6b8fd45d2806507a75f205cfdabee5f2d8b379d4761fcd03a3e47fbe"
+    },
+    {
+      "path": "pages/account/index.wxml",
+      "sha256": "35c4f4ea21906951c8d5ca41685e4d2767dbdb19af44cab529344a27890e759a"
+    },
+    {
+      "path": "pages/account/index.wxss",
+      "sha256": "f94d80473a75794e9a25b48c698ca36d44abde8476780bf1705725c1c7d08fbc"
+    },
+    {
+      "path": "pages/booking-create/index.js",
+      "sha256": "036f1f87d2e877d3f9a04f8dad57f3769b5fef747ec39922b871a41afff23c84"
+    },
+    {
+      "path": "pages/booking-create/index.json",
+      "sha256": "4aca0c4bc5f3c6126d71f73445e481806056b13deadd796fe137c71331ec3273"
+    },
+    {
+      "path": "pages/booking-create/index.wxml",
+      "sha256": "7ba04f839325218a0a59e7ccb02da9b66521302aa7e0b6e7298946f16374dcc7"
+    },
+    {
+      "path": "pages/booking-create/index.wxss",
+      "sha256": "4a8c1a6572202e2584000a762488b6aa93c4d99e14d9973e77b6951c7d7f1474"
+    },
+    {
+      "path": "pages/booking-detail/index.js",
+      "sha256": "1ad57b4940fd98e8a6848dfe21d2e39ab3ec7310666f62e9858cb622ec59e54c"
+    },
+    {
+      "path": "pages/booking-detail/index.json",
+      "sha256": "adb59d609bbf4d5233bb7569f522170bd1505c297cd457d1431aefc053d419de"
+    },
+    {
+      "path": "pages/booking-detail/index.wxml",
+      "sha256": "b0ca25f0778c059618bc9cf70b7356d2a942d2c9e55ffddb60f9635a011caa4f"
+    },
+    {
+      "path": "pages/booking-detail/index.wxss",
+      "sha256": "6a6579d399c958000b03c61375e2a78820c0f47fb717c957f29e38378a06162a"
+    },
+    {
+      "path": "pages/bookings/index.js",
+      "sha256": "9b69e1158ebda96826dbd71ddfff69b1ed2be9e8d5920063bca97b33576e640f"
+    },
+    {
+      "path": "pages/bookings/index.json",
+      "sha256": "7e5d0f3d4e83a217290f63e42af182c103d1a3f9a7d42d8bfdeac7de084c5944"
+    },
+    {
+      "path": "pages/bookings/index.wxml",
+      "sha256": "a0653e78bcb7d8a78cd0b180b4a20b2ac914351c5edd89ec710ce37f3a3b5fea"
+    },
+    {
+      "path": "pages/bookings/index.wxss",
+      "sha256": "7f3de636672b8c7850d938d69b8f549fee41907525af0a64248180d8c05efb5c"
+    },
+    {
+      "path": "pages/compare/index.js",
+      "sha256": "4c174348681c41a402bb277d18d67ffb5d6a7f2b4ced1b68c109524bcbd09596"
+    },
+    {
+      "path": "pages/compare/index.json",
+      "sha256": "fb899002f8f49a21abb4c6be843f519e7f7a8c8d33f556632cffd581769c82ea"
+    },
+    {
+      "path": "pages/compare/index.wxml",
+      "sha256": "aa2a52c4cc91212f6ce98df479edd8a4858266547113a938034892e5fbf2f928"
+    },
+    {
+      "path": "pages/compare/index.wxss",
+      "sha256": "11732bf1343fc4d957e90c52cd78e7804152c22f507eab6f7d8d5983b6363047"
+    },
+    {
+      "path": "pages/entry/index.js",
+      "sha256": "f94a937e48bdc4244dd340fc2178889d9c27adfd5ef94af76aaba8c8b5915e47"
+    },
+    {
+      "path": "pages/entry/index.json",
+      "sha256": "209a8fac61c7fb97bf1642166dc91a05dc14f5fd9e60aeb57d11dd50bfed68d2"
+    },
+    {
+      "path": "pages/entry/index.wxml",
+      "sha256": "619330803239df6f2e985e4803bbf77b1312364ac4fbd4d6f64800c0a9197faf"
+    },
+    {
+      "path": "pages/entry/index.wxss",
+      "sha256": "4feac5fc4c4fc18ae399a57160282eef963f18630e38d2b350c3c002d2ca264b"
+    },
+    {
+      "path": "pages/event/index.js",
+      "sha256": "f3529639e1b9818af317569bd7d92ac50c7a3f0f6b457b79f2243aabe013e9ed"
+    },
+    {
+      "path": "pages/event/index.json",
+      "sha256": "46cbd8f6255fa9fdac96d7dbdc6330baf0d31f27ce75218363972ee5516ea2a5"
+    },
+    {
+      "path": "pages/event/index.wxml",
+      "sha256": "fb13a5c680dc0ea58b9c64fedea2620abb752b8f4a7265ca98ff807b18fc01e3"
+    },
+    {
+      "path": "pages/event/index.wxss",
+      "sha256": "9fc83c131df32b1c2f7a7c5581e2424e2b2ec22523aacc333d1637a7a32df838"
+    },
+    {
+      "path": "pages/home/index.js",
+      "sha256": "0d573e8977eaa92306e77e4459175d96dbadd05509dedf55dd6f24b759002518"
+    },
+    {
+      "path": "pages/home/index.json",
+      "sha256": "2e20baea9b62119dad28fac9cd53df6c415a8b92c56bf5cfc5c756171b087da2"
+    },
+    {
+      "path": "pages/home/index.wxml",
+      "sha256": "2faaa63974e071901891eaea19c8324c31e0285bc0dcd3e5dcbf93552c998d46"
+    },
+    {
+      "path": "pages/home/index.wxss",
+      "sha256": "c7ba149183cb45105fd4ced0a85593d3875f644b5480f63ae2704d60f35235a1"
+    },
+    {
+      "path": "pages/invitation/index.js",
+      "sha256": "cb095e7c68f7c1732a1e405e8daf7d30aa0d9e81963af7ad11cc3174783b4825"
+    },
+    {
+      "path": "pages/invitation/index.json",
+      "sha256": "4c3f48bb52376ca0fdecb81be6a3addbb6fe33796feb89e036376b80804e2ebf"
+    },
+    {
+      "path": "pages/invitation/index.wxml",
+      "sha256": "acfa6be91a288e6f0cb6b3ea8736b643a8326e88e462cd3a4f6dafe1a97767df"
+    },
+    {
+      "path": "pages/invitation/index.wxss",
+      "sha256": "a86c98e79ab6d4d2cb42396d2ccc5c20635cdcb53f50b871154723c3e51d9a72"
+    },
+    {
+      "path": "pages/match/index.js",
+      "sha256": "c653624aa48146e7733d6f411e76ad84a3a1b1af6e0ef416caef6870191770d9"
+    },
+    {
+      "path": "pages/match/index.json",
+      "sha256": "115218b1ae668b9f9843a716106b0c9f59de272ceae4b8e1f0f245e6726285b8"
+    },
+    {
+      "path": "pages/match/index.wxml",
+      "sha256": "dae5aab34450c096995e6ebdd7f689458d73638899c481ede4b6b6d1e7b744d0"
+    },
+    {
+      "path": "pages/match/index.wxss",
+      "sha256": "2b03948a1a6f135b64b30c8b0d7122e4a4fe9f17ce8fc02f2a700933c8d12e46"
+    },
+    {
+      "path": "pages/media/index.js",
+      "sha256": "7c3f6831f58ac1313ad30c12ac07ad7296356a11f0ab9176417a5e549a208943"
+    },
+    {
+      "path": "pages/media/index.json",
+      "sha256": "2ce900a802bc383220da4bf251ad17c07b20874e32784b7cd2d1cc3ed1b7c6db"
+    },
+    {
+      "path": "pages/media/index.wxml",
+      "sha256": "d239cf15ca668b6bf7a9a7beba5d9a0c7e83e7fe0686e125bb1323cec08874f5"
+    },
+    {
+      "path": "pages/media/index.wxss",
+      "sha256": "48a136da33c83f19eceade4c908d80b3ba9436ceae6f5824b9719b778a59f6c2"
+    },
+    {
+      "path": "pages/org-event/index.js",
+      "sha256": "371d8c1a5424fb11827536cdea0dc413a41bb195c55d3d559c3e6063d19bf463"
+    },
+    {
+      "path": "pages/org-event/index.json",
+      "sha256": "7529f432885f53f35cbb92f0fb229c02f3e7e5d8474149d2cc34c6a60c26e70f"
+    },
+    {
+      "path": "pages/org-event/index.wxml",
+      "sha256": "ff91cd2b7fc9f4a532bb94918e340076080617c285f52050405003908711aeea"
+    },
+    {
+      "path": "pages/org-event/index.wxss",
+      "sha256": "97514e32ca48ee77b0e0b120d4508a5760e3b86a3ee2c5a7e38810623fefb4ad"
+    },
+    {
+      "path": "pages/performance/index.js",
+      "sha256": "559fc350372ae59b8557f064be3b0572ac055b040b53925a7336e4c22fcc9075"
+    },
+    {
+      "path": "pages/performance/index.json",
+      "sha256": "b679d2d8563a95871dd6c1195cd0dae671c7a59562bd64192b9698175404a8be"
+    },
+    {
+      "path": "pages/performance/index.wxml",
+      "sha256": "82144645bb9f1d6207bd72b501548ba4c1261c43adfab5bac313bf03b820408f"
+    },
+    {
+      "path": "pages/performance/index.wxss",
+      "sha256": "83b6ede0046ae7c2bfe2aaed07425fdf066eccc7aeab8f09287b853d2b30cd94"
+    },
+    {
+      "path": "pages/planned/index.js",
+      "sha256": "109676e3f814d6b437862da49af10268c0cba44cac32a712a5664bb9e88e8099"
+    },
+    {
+      "path": "pages/planned/index.json",
+      "sha256": "cd8f6561ecab9cc851af5d4fee3fc295e64034ee9c183e7b499dd1464dda54ed"
+    },
+    {
+      "path": "pages/planned/index.wxml",
+      "sha256": "e2997b3bb70135f870b25b43e15cb802385902b6798cb4d89ac62621e91e2c89"
+    },
+    {
+      "path": "pages/planned/index.wxss",
+      "sha256": "3fc929207d76d3a1fcd257033e2e51f012723f9294ed5346da441076f504531b"
+    },
+    {
+      "path": "pages/platform/index.js",
+      "sha256": "f1be6a7bbc87fc9ded44d9032918cc82d44a7e2ca3c32c1aca7855ab7960fe63"
+    },
+    {
+      "path": "pages/platform/index.json",
+      "sha256": "c6e1f405227875d1ce3c40b4acc05247b2ce68d404411140705dfe77c73e8863"
+    },
+    {
+      "path": "pages/platform/index.wxml",
+      "sha256": "9d7e473186640e4e4111761eefbc7d7b2107ad2c82e1ad2f1ede674dc1fc7144"
+    },
+    {
+      "path": "pages/platform/index.wxss",
+      "sha256": "6d33bf501b566c6f2131b7e8b10787bb6f87efebbfc1042c52aa8714edd09f54"
+    },
+    {
+      "path": "pages/player/index.js",
+      "sha256": "c7be0f6213bb4914bcf05271ebd62f9542c3b706429715f6663241e4e1824a21"
+    },
+    {
+      "path": "pages/player/index.json",
+      "sha256": "3a9ee9011718ce2f4f9cb649aa584aa4c7c585895219ac570faa34c2f560f7f3"
+    },
+    {
+      "path": "pages/player/index.wxml",
+      "sha256": "3146ee0543c6906a6926941dca685a03a75e0aa0ee86076116b65263467986da"
+    },
+    {
+      "path": "pages/player/index.wxss",
+      "sha256": "89fc5c27663d7ff56e4b35f11f73acc8f8cabeef294f166cf6920d64f498d267"
+    },
+    {
+      "path": "pages/player-center/index.js",
+      "sha256": "df85a75e7dd6d40f91965397547915c79c6e17f55e953d5997008d157df34f50"
+    },
+    {
+      "path": "pages/player-center/index.json",
+      "sha256": "6b495e0a7240a59f0d0168e656b16176392c26c04f8a8c9646dbbbde2ed9b911"
+    },
+    {
+      "path": "pages/player-center/index.wxml",
+      "sha256": "ad071ef34dd44fe8d3cf9349c0f140c07f55159fcaaa0193ffa21624d9fa1c13"
+    },
+    {
+      "path": "pages/player-center/index.wxss",
+      "sha256": "6063143d15e09792e7c848999164ad88ce8939ce4fab1c0452789fe24b0d4956"
+    },
+    {
+      "path": "pages/players/index.js",
+      "sha256": "3765ca05b35611c31830dcee9bd74a42aabdb1b65e258933e1045f52d2899456"
+    },
+    {
+      "path": "pages/players/index.json",
+      "sha256": "757f9c492526114e20c98c54f9a73dbcd4f979c9450fdd854622411cb478e138"
+    },
+    {
+      "path": "pages/players/index.wxml",
+      "sha256": "f0288b5ed1bf4d23dd5d8cb2415bc275f0599f8a65c724e653b003a620106e25"
+    },
+    {
+      "path": "pages/players/index.wxss",
+      "sha256": "9a6c35504714d874c0551ee87dff4e6b0144748636c8578965b87c4d565ce234"
+    },
+    {
+      "path": "pages/registration-events/index.js",
+      "sha256": "af46054b70b5b34a098164e5cdfd99d0fe3a3ec85320d63192400267f2b9b0b9"
+    },
+    {
+      "path": "pages/registration-events/index.json",
+      "sha256": "06fa1851762d2fe04bc7f1e88669c718728c38ce2b36351dd870f53412213380"
+    },
+    {
+      "path": "pages/registration-events/index.wxml",
+      "sha256": "72ade0dc04de7bad9f4fb2715c81117ba06bc48c38b17a072210080f39a8d920"
+    },
+    {
+      "path": "pages/registration-events/index.wxss",
+      "sha256": "ca83396dc888d049be1343d7123815cb8383a58afe9f6673ab0d14347b498860"
+    },
+    {
+      "path": "pages/team/index.js",
+      "sha256": "920be8b314bc3822c17fd98acac8cfeaff35decadb027a547ac789d9bfdd36b7"
+    },
+    {
+      "path": "pages/team/index.json",
+      "sha256": "e640faf89292dfa1f5afb49cf5e3396ff6aa3ff4b42d60cd21989e9d992eea81"
+    },
+    {
+      "path": "pages/team/index.wxml",
+      "sha256": "774fbdcc098e08af0d9f7bbf652f4438f555642d46a9a1206de3a27c290529c5"
+    },
+    {
+      "path": "pages/team/index.wxss",
+      "sha256": "f33551cc0c06e5e69c747e5c150ed08f3c66dc1c062ee9e9fd4b34fce98f2d93"
+    },
+    {
+      "path": "pages/teams/index.js",
+      "sha256": "0ff1507b6561a7eb04f5cfc91f6e4c848698051bd960500696de46a0a2e29d73"
+    },
+    {
+      "path": "pages/teams/index.json",
+      "sha256": "e654b2cd2b591e1675d129811dde4992055f1fa4df983a925b4482c3611a7384"
+    },
+    {
+      "path": "pages/teams/index.wxml",
+      "sha256": "b4aeedbe334921f0b90b0a682d7864694ea39b3a73a57038e7e0b435bd7a9cb9"
+    },
+    {
+      "path": "pages/teams/index.wxss",
+      "sha256": "3c5840720c8f9bb2d45b3f007a189705167cc40f75d4e0e9b281c5e4dd8f172d"
+    },
+    {
+      "path": "pages/watch/index.js",
+      "sha256": "e648b3b42c1ed8f1a335759e9e0a3f96d36d5e10efe326b32c95cbdd7b6e2b8a"
+    },
+    {
+      "path": "pages/watch/index.json",
+      "sha256": "57aabb8d9b91209a19dadb6db299f02e0b2ec8805ddd56eabe5612bec9380f39"
+    },
+    {
+      "path": "pages/watch/index.wxml",
+      "sha256": "d3daf47bb8b1b150e624885ef9eac352cc16e946eea679b5eec9b0af6248e73f"
+    },
+    {
+      "path": "pages/watch/index.wxss",
+      "sha256": "db61c136864e15f8b667e226babfb6959512bbe8c622d3ccc86b3749a6f0ae7c"
+    },
+    {
+      "path": "project.config.json",
+      "sha256": "d5cfc14587b63b2fc1af36b2eac4440a3dda2611461e5cbdcbcf0e46531d07c0"
+    },
+    {
+      "path": "README.md",
+      "sha256": "3a8276353c841a5a4f59eb445e8099f69b7ee0d6bc54d6a47baaf1a255610678"
+    },
+    {
+      "path": "utils/api.js",
+      "sha256": "831f1b7fa4779bb84730360f7a287cc166f207518e160b0fd736dfa8350f2837"
+    },
+    {
+      "path": "utils/booking-data.js",
+      "sha256": "01ece0a71cb9790c796b26f8e83388e3509f8e2ccc5bbb7708b67a7a2c278df9"
+    },
+    {
+      "path": "utils/booking-form.js",
+      "sha256": "0858ccd0b3009672a82bc1f2d72e7b0d94a566e9b94d8cd35a0496208832f96a"
+    },
+    {
+      "path": "utils/booking-orders.js",
+      "sha256": "d8c6660bbd5540c6410cbc8d6be494f59be2bb3f57f3bc6b79b6ec29b798aa11"
+    },
+    {
+      "path": "utils/booking-recovery.js",
+      "sha256": "41eac103eda16fc4566e2cd09e5229c13605923f45f2c0324b484e8694b57671"
+    },
+    {
+      "path": "utils/booking.js",
+      "sha256": "7e5e47c17d47cec1f133f7bdc3dcd2614254bef474dc39add2123514f519427e"
+    },
+    {
+      "path": "utils/events.js",
+      "sha256": "c525443ac0df4b5dc9f02595ef9c67ead1ada5179fdbdb382f5265d5520994a0"
+    },
+    {
+      "path": "utils/performance-data.js",
+      "sha256": "5301329cf985efa26f53c80a2a9d1e95b405a3be5b5e15667ac4ec5710a4d4b2"
+    },
+    {
+      "path": "utils/performance-links.js",
+      "sha256": "bacc0de3cd4be62dc0ef63cb6baff6f6ed4905fa27b13317b9a4d1fdf3f864f2"
+    },
+    {
+      "path": "utils/player-center.js",
+      "sha256": "ea0d8a7ad9922864e0436ba7c2d68f98fe7e0782be830d33150f2abe5084acb6"
+    },
+    {
+      "path": "utils/player-market.js",
+      "sha256": "025fb36e50cb26fe7f0ecc6a6562f767fc8c69944a1b5860752d459a65a664a3"
+    },
+    {
+      "path": "utils/registration.js",
+      "sha256": "e19abe8f082602428432d6215188308deb4bbbb66bd50444ef2b01653ee277b9"
+    },
+    {
+      "path": "utils/ui.js",
+      "sha256": "f831a1f098a75dfea08bc64470bb67881c9206c02e5cc193af7a956a0e7d535f"
+    }
+  ],
+  "scenarios": [
+    {
+      "route": "pages/home/index",
+      "baseRoute": "pages/home/index",
+      "name": "c11-home-ready",
+      "title": "预约首页",
+      "probe": "按位置找球员",
+      "selector": ".premium-home",
+      "fixtureSha256": "f3cf3d56663a33ff711607a46734f17e96f11dd702bce5bf79a7dac5c0bd9cdb",
+      "reference": "references/home.png",
+      "referenceSha256": "e442b7193961c7cd23ba6afe5abc216cdb1250aa22b3717c06c5c5a055839380"
+    },
+    {
+      "route": "pages/players/index",
+      "baseRoute": "pages/players/index",
+      "name": "c11-player-market-ready",
+      "title": "找球员",
+      "probe": "林越",
+      "selector": ".premium-page",
+      "fixtureSha256": "379b0b3babcba9eeeb00296c78273c9b36d221bae4a516a70284c0371147e7dd",
+      "reference": "references/players.png",
+      "referenceSha256": "50ded0f2f2b6153644455a99610b63e91498b9a88adf5b86a6c6c80e38024d1d"
+    },
+    {
+      "route": "pages/player/index",
+      "baseRoute": "pages/player/index",
+      "name": "c11-player-detail-ready",
+      "title": "球员档案",
+      "probe": "林越",
+      "selector": ".profile-hero",
+      "fixtureSha256": "c2204b78ce992f77aebc2712fa7318df5f12859682bb684fb142c60796efacb6",
+      "reference": "references/player.png",
+      "referenceSha256": "462da4ee7c910e64d5e25ce35a9ffdf9a64f11a6a4777d74975a195ed41ffc46"
+    },
+    {
+      "route": "pages/compare/index",
+      "baseRoute": "pages/compare/index",
+      "name": "c11-player-compare-ready",
+      "title": "球员对比",
+      "probe": "同为",
+      "selector": ".premium-page",
+      "fixtureSha256": "1cbf12d930ac5aae04a19ab4f0f31ed6f02ac0870aa6ebbffde1a41a12f57e1d",
+      "reference": "references/compare.png",
+      "referenceSha256": "815e1ae0a3569aa1c7b88c149adbc7bf97852495f79a704f7cb62e91c2fc3f91"
+    },
+    {
+      "route": "pages/booking-create/index",
+      "baseRoute": "pages/booking-create/index",
+      "name": "c11-booking-create-ready",
+      "title": "创建预约",
+      "probe": "青锋杯",
+      "selector": ".premium-page",
+      "fixtureSha256": "3407fe0e19bbdfe8998bd403ff0759e2dbb8d56726bd219824cf31e0c7208f1e",
+      "reference": "references/booking-create.png",
+      "referenceSha256": "1188a311a1e676ac43ae8482b386e3c22a1c8ce84a82b0aba75500dd2382bef9"
+    },
+    {
+      "route": "pages/bookings/index",
+      "baseRoute": "pages/bookings/index",
+      "name": "c11-booking-orders-ready",
+      "title": "预约列表",
+      "probe": "青锋杯",
+      "selector": ".premium-page",
+      "fixtureSha256": "d7a78abf62b3fdee009ee11b6549bf565d71d2669aedccc71b3659a85f786935",
+      "reference": "references/bookings.png",
+      "referenceSha256": "606c1bd74cc147a09d20f9e7727ad4bf5f1924cecc973c71afe0e0c61c0a7a25"
+    },
+    {
+      "route": "pages/platform-home-events/index",
+      "baseRoute": "pages/home/index",
+      "name": "platform-home-events",
+      "title": "首页 · 我的赛事",
+      "probe": "合成青锋杯",
+      "selector": ".premium-home",
+      "fixtureSha256": "7aaac50a32d223bc3f3e04e05a71b8c1fbaa9a8447cf239d328e88e116448a2c",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-home-lower/index",
+      "baseRoute": "pages/home/index",
+      "name": "platform-home-lower",
+      "title": "首页 · 扩展服务（下滑）",
+      "probe": "扩展服务",
+      "selector": ".premium-home",
+      "scrollTop": 2000,
+      "fixtureSha256": "c59919287ad2587d99067d46a59dbd3f3e63c7ee8a37602953f675321123f80f",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-home-signed-out/index",
+      "baseRoute": "pages/home/index",
+      "name": "platform-home-signed-out",
+      "title": "首页 · 未登录",
+      "probe": "登录后查看你参与的赛事",
+      "selector": ".premium-home",
+      "fixtureSha256": "f28fd7cebbb5262b7d69d7a4fa95ba6747dd15e074372e2674ac233654567e41",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-events-list/index",
+      "baseRoute": "pages/watch/index",
+      "name": "platform-events-list",
+      "title": "赛事 · 我的赛事列表",
+      "probe": "合成青锋杯",
+      "selector": ".watch-page",
+      "fixtureSha256": "27e553cfdfe50668bdd3f59576a3e52dd7a4571b37d898b49c19a0fc7714a6c2",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-events-no-org/index",
+      "baseRoute": "pages/watch/index",
+      "name": "platform-events-no-org",
+      "title": "赛事 · 无机构身份",
+      "probe": "当前账号没有机构赛事身份",
+      "selector": ".watch-page",
+      "fixtureSha256": "8a8757fbde771fb11ef1128e72388f2ffef8bdeb75703fc6b8c2944cdced7a12",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-org-event-schedule/index",
+      "baseRoute": "pages/org-event/index",
+      "name": "platform-org-event-schedule",
+      "title": "赛事详情 · 赛程",
+      "probe": "第1轮",
+      "selector": ".org-event-page",
+      "fixtureSha256": "ec11f444297f52c60b3f449f0a2fa87109639dcff08ecb3747fbc3a024886a43",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-org-event-standings/index",
+      "baseRoute": "pages/org-event/index",
+      "name": "platform-org-event-standings",
+      "title": "赛事详情 · 积分排名",
+      "probe": "正式积分",
+      "selector": ".org-event-page",
+      "fixtureSha256": "4bd4edecd28d5751a8c3dcd9465ba1f83489a42ff5edb61ff14b23a7701dd788",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-org-event-groups/index",
+      "baseRoute": "pages/org-event/index",
+      "name": "platform-org-event-groups",
+      "title": "赛事详情 · 分组与淘汰",
+      "probe": "A组",
+      "selector": ".org-event-page",
+      "fixtureSha256": "bd17772f9b7a1564ab619bc0dd3c93c51ad9d14186256bce0025fcf5c4aa152c",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-org-event-stats/index",
+      "baseRoute": "pages/org-event/index",
+      "name": "platform-org-event-stats",
+      "title": "赛事详情 · 球员数据",
+      "probe": "未统计",
+      "selector": ".org-event-page",
+      "fixtureSha256": "24dda61f73f55c8f85d67c58936a138ae3ba9e7d567b6a6650fd282eb551ea40",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-org-event-unavailable/index",
+      "baseRoute": "pages/org-event/index",
+      "name": "platform-org-event-unavailable",
+      "title": "赛事详情 · 无权限",
+      "probe": "无法查看该赛事",
+      "selector": ".org-event-page",
+      "fixtureSha256": "ee4568b8e5e9ba90dcbc24bb6a4a8a0dd23476fd700b6b847c5aa203a92af855",
+      "reference": null,
+      "referenceSha256": null
+    }
+  ],
+  "renderer": "WeChat DevTools SDK native screenshot; synthetic template fixtures",
+  "screenshots": [
+    {
+      "scenario": "c11-home-ready",
+      "path": "screenshots/c11-home-ready.png",
+      "bytes": 442783,
+      "sha256": "f091a62536883afcfff949b32dc97d1097f10dd330cd4c00d8dda19bf45e9b1a",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "c11-player-market-ready",
+      "path": "screenshots/c11-player-market-ready.png",
+      "bytes": 128290,
+      "sha256": "da3520f9b2982c346135ad3717a53dabc8d10110156a7c09704ea1a98bedb747",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "c11-player-detail-ready",
+      "path": "screenshots/c11-player-detail-ready.png",
+      "bytes": 250638,
+      "sha256": "f6c3b2183438956ffb6ded1f7affb1c9d6fc435d04e55008426ddbef0c04f5de",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "c11-player-compare-ready",
+      "path": "screenshots/c11-player-compare-ready.png",
+      "bytes": 161771,
+      "sha256": "0917905d68152fd79d48d96c8e7e992f3d09e1c72efc7b39aecd063c8b39ac3c",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "c11-booking-create-ready",
+      "path": "screenshots/c11-booking-create-ready.png",
+      "bytes": 90053,
+      "sha256": "f425050c701d17f7d3bd89e3bf2d39bec8021e129e7c3fb8db5dbfc8bf3fe6d6",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "c11-booking-orders-ready",
+      "path": "screenshots/c11-booking-orders-ready.png",
+      "bytes": 95003,
+      "sha256": "bdfd73270d90a606f8d6082566a02315637e038d8f216d42c52fc08e01b04c81",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "platform-home-events",
+      "path": "screenshots/platform-home-events.png",
+      "bytes": 439532,
+      "sha256": "b4a41753a3296a38c7cbdfe93b565132cd327ff49bd872464cb47da1c8798b02",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "platform-home-lower",
+      "path": "screenshots/platform-home-lower.png",
+      "bytes": 136072,
+      "sha256": "ecde42370a7dfe1efd4f157504ef7f1099f5d55fa4ed55b47aff285e69168a7b",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "platform-home-signed-out",
+      "path": "screenshots/platform-home-signed-out.png",
+      "bytes": 442824,
+      "sha256": "39cd6442adf5f1950b6c4dcb972731989cba51c3337a37fbfbc127cc649eea07",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "platform-events-list",
+      "path": "screenshots/platform-events-list.png",
+      "bytes": 84422,
+      "sha256": "1594d80a28c37e4eb6786d05dd390d0793ea3967454d18350706bd91ddff63bd",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "platform-events-no-org",
+      "path": "screenshots/platform-events-no-org.png",
+      "bytes": 89585,
+      "sha256": "b27c99dbbbb6f7b3143231a2f8baa8e5e4bda3ff375afb28e2b9a7bccdf5cf11",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "platform-org-event-schedule",
+      "path": "screenshots/platform-org-event-schedule.png",
+      "bytes": 97943,
+      "sha256": "b85ec990db3ab6684bcd6b0a47e3bb46787c9faf5588ebefdc40186f4c869245",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "platform-org-event-standings",
+      "path": "screenshots/platform-org-event-standings.png",
+      "bytes": 87571,
+      "sha256": "81877af4406f721469cfd68c8977d1d4bc3bd2098eff9cf401ac7331bcce31bf",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "platform-org-event-groups",
+      "path": "screenshots/platform-org-event-groups.png",
+      "bytes": 86216,
+      "sha256": "6f6108683faf707cd238f142193e32c53630a644a70087310af4fb9645a4a91a",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "platform-org-event-stats",
+      "path": "screenshots/platform-org-event-stats.png",
+      "bytes": 91471,
+      "sha256": "069d8c3918054aabdb298ee5bca844387893c1a9aa3856ad1b5a77830eb9f21d",
+      "width": 475,
+      "height": 840
+    },
+    {
+      "scenario": "platform-org-event-unavailable",
+      "path": "screenshots/platform-org-event-unavailable.png",
+      "bytes": 49908,
+      "sha256": "ece4ea5baff6347d250395070b82fcaf2bc0a67e88546d3268ad65d2829057b7",
+      "width": 475,
+      "height": 840
+    }
+  ],
+  "exceptions": [],
+  "error": null,
+  "simulator": {
+    "platform": "devtools",
+    "model": "小屏320",
+    "SDKVersion": "3.17.4",
+    "windowWidth": 320,
+    "windowHeight": 568,
+    "pixelRatio": 2,
+    "statusBarHeight": 20
+  }
+}
