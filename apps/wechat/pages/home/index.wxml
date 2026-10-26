@@ -2,15 +2,29 @@
  <view class="home-hero">
   <image class="home-court" src="/assets/approved-ui/court-night.jpg" mode="aspectFill" aria-hidden="true"/>
   <view class="home-shade"></view>
-  <scb-header home="{{true}}" dark="{{true}}" back="{{false}}" bind:search="openPlayers"/>
-  <view class="home-hero-content"><view class="home-headline"><image src="/assets/approved-ui/home-slogan.png" mode="widthFix" aria-label="每一场，都有合适的人"/><text class="accessible-headline">每一场，都有合适的人</text></view><view class="home-tagline">找球员 · 看赛事 · 管球队</view><button class="accent home-primary" bindtap="openPlayers">找球员<scb-icon name="arrow-right" tone="white" size="22"/></button></view>
+  <scb-header home="{{true}}" dark="{{true}}" back="{{false}}" bind:search="openEvents"/>
+  <view class="home-hero-content"><view class="home-headline"><image src="/assets/approved-ui/home-slogan.png" mode="widthFix" aria-label="每一场，都有合适的人"/><text class="accessible-headline">每一场，都有合适的人</text></view><view class="home-tagline">看赛事 · 管球队 · 查数据</view><button class="accent home-primary" bindtap="openEvents">看赛事<scb-icon name="arrow-right" tone="white" size="22"/></button></view>
  </view>
  <view class="home-content">
-  <view class="home-section-head"><view class="home-section-title">按位置找球员</view><button class="home-more-toggle" bindtap="moreToggle">更多服务<scb-icon name="{{moreOpen ? 'chevron-up' : 'chevron-down'}}" size="14"/></button></view>
-  <view class="position-grid"><button wx:for="{{positions}}" wx:key="code" class="position-button" data-position="{{item.code}}" bindtap="position"><scb-icon name="{{item.icon}}" tone="{{index === 0 || index === 3 ? 'orange' : 'navy'}}" size="38"/><text>{{item.name}}</text></button></view>
-  <view class="home-service-grid"><button class="home-service" data-page="watch" bindtap="go"><view><view class="home-service-title">赛事观赛</view><view class="home-service-copy"><view>看现场比分</view><view>了解本地赛事</view></view></view><scb-icon name="court" size="40"/></button><button class="home-service" data-page="teams" bindtap="go"><view><view class="home-service-title">我的球队</view><view class="home-service-copy"><view>组建球队</view><view>管理队员</view></view></view><scb-icon name="users" size="40"/></button></view>
-  <view class="home-steps"><view class="home-step"><view class="step-title"><text class="step-number">1</text><text>选球员</text></view><view>挑选合适的球员</view></view><text class="step-arrow">→</text><view class="home-step"><view class="step-title"><text class="step-number">2</text><text>填比赛</text></view><view>填写比赛信息</view></view><text class="step-arrow">→</text><view class="home-step"><view class="step-title"><text class="step-number">3</text><text>确认到场</text></view><view>等待球员确认</view></view></view>
-  <view wx:if="{{moreOpen}}" class="home-more"><button class="secondary" data-page="bookings" bindtap="go">查看我的预约</button><button class="secondary" data-page="player-center" bindtap="go">进入本人球员中心</button><view class="small muted">先看位置、档期与有限授权数据，再比较含费报价。合作预约不自动加入赛事报名名单。</view></view>
+  <view class="home-section-head"><view class="home-section-title">我的赛事</view><button class="home-more-toggle" bindtap="openEvents">全部赛事<scb-icon name="chevron-right" size="14"/></button></view>
+  <view wx:if="{{eventsLoading && !featured.length}}" class="home-event-state"><view class="muted">正在读取你可访问的赛事…</view></view>
+  <block wx:elif="{{featured.length}}">
+   <button wx:for="{{featured}}" wx:key="key" class="home-event" data-org="{{item.orgId}}" data-id="{{item.id}}" bindtap="openEvent"><view class="home-event-main"><view class="home-event-name">{{item.name}}</view><view class="home-event-meta">{{item.dateLabel}} · {{item.orgName}}</view></view><view class="home-event-status {{item.group}}">{{item.statusLabel}}</view></button>
+  </block>
+  <view wx:elif="{{!signedIn}}" class="home-event-state"><view class="home-event-name">登录后查看你参与的赛事</view><view class="muted">未登录也可用主办方公开观赛链接查看比分与赛程。</view><view class="home-event-actions"><button class="primary" bindtap="login">登录</button><button class="secondary" bindtap="openEvents">打开观赛链接</button></view></view>
+  <view wx:else class="home-event-state"><view class="home-event-name">{{eventsError ? '赛事暂时无法读取' : hasOrganizations ? '暂无进行中或即将开赛的赛事' : '当前账号没有机构赛事身份'}}</view><view class="muted">{{eventsError || (hasOrganizations ? '已结束和筹备中的赛事在“全部赛事”查看。' : '球队负责人可从“我的球队”查看报名；观众可打开公开观赛链接。')}}</view></view>
+  <view class="home-service-grid">
+   <button class="home-service" data-page="watch" bindtap="go"><view><view class="home-service-title">赛事观赛</view><view class="home-service-copy"><view>赛程 · 比分</view><view>排名与晋级</view></view></view><scb-icon name="court" size="36"/></button>
+   <button class="home-service" data-page="teams" bindtap="go"><view><view class="home-service-title">我的球队</view><view class="home-service-copy"><view>组建球队</view><view>赛事报名</view></view></view><scb-icon name="users" size="36"/></button>
+   <button class="home-service" data-page="watch" bindtap="go"><view><view class="home-service-title">赛事数据</view><view class="home-service-copy"><view>球员得分榜</view><view>未采集显示未统计</view></view></view><scb-icon name="trophy" size="36"/></button>
+   <button class="home-service" data-page="media" bindtap="go"><view><view class="home-service-title">比赛视频</view><view class="home-service-copy"><view>已发布图片</view><view>小视频与片段</view></view></view><scb-icon name="play" size="36"/></button>
+  </view>
+  <view class="home-extension">
+   <view class="home-section-head"><view><view class="home-extension-tag">扩展服务</view><view class="home-section-title">按位置找球员</view></view><button class="home-more-toggle" bindtap="openPlayers">找球员<scb-icon name="chevron-right" size="14"/></button></view>
+   <view class="position-grid"><button wx:for="{{positions}}" wx:key="code" class="position-button" data-position="{{item.code}}" bindtap="position"><scb-icon name="{{item.icon}}" tone="{{index === 0 || index === 3 ? 'orange' : 'navy'}}" size="34"/><text>{{item.name}}</text></button></view>
+   <view class="home-extension-actions"><button class="secondary" data-page="bookings" bindtap="go">查看我的预约</button><button class="secondary" data-page="player-center" bindtap="go">进入本人球员中心</button></view>
+   <view class="small muted">球员预约支持单场、多场、整届、赛季与时段合作，可同价比较并逐场确认。合作预约不自动加入赛事报名名单。</view>
+  </view>
  </view>
 </view>
 <scb-nav active="Home" variant="premium"/>

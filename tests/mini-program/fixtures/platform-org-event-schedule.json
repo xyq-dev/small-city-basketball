@@ -1,0 +1,70 @@
+{
+  "name": "platform-org-event-schedule",
+  "route": "pages/org-event/index",
+  "state": "ready",
+  "designSource": "synthetic:platform-alignment",
+  "static": true,
+  "expectText": ["合成青锋杯 · 冬季赛", "第1轮", "合成石鼓青锋", "原生记分、排赛将在后续版本提供"],
+  "data": {
+    "tab": "schedule",
+    "event": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "name": "合成青锋杯 · 冬季赛",
+      "format": "ROUND_ROBIN",
+      "status": "RUNNING",
+      "statusLabel": "比赛进行中",
+      "formatLabel": "单循环赛事",
+      "dateLabel": "11/01–11/03",
+      "venueName": "合成体育馆"
+    },
+    "matches": [
+      {
+        "id": "m1",
+        "roundLabel": "第1轮",
+        "timeLabel": "11-01 19:30",
+        "courtName": "一号场",
+        "home": "合成石鼓青锋",
+        "away": "合成高州猛龙",
+        "status": "FINAL",
+        "statusLabel": "本场已结束"
+      },
+      {
+        "id": "m2",
+        "roundLabel": "第1轮",
+        "timeLabel": "11-01 21:00",
+        "courtName": "一号场",
+        "home": "合成城东联队",
+        "away": "合成长名称球队用于检查两侧换行",
+        "status": "IN_PROGRESS",
+        "statusLabel": "比赛进行中"
+      },
+      {
+        "id": "m3",
+        "roundLabel": "第2轮",
+        "timeLabel": "11-02 19:30",
+        "courtName": "二号场",
+        "home": "合成高州猛龙",
+        "away": "合成城东联队",
+        "status": "SCHEDULED",
+        "statusLabel": "待开始"
+      },
+      {
+        "id": "m4",
+        "roundLabel": "第2轮",
+        "timeLabel": "11-02 21:00",
+        "courtName": "二号场",
+        "home": "合成石鼓青锋",
+        "away": "合成长名称球队用于检查两侧换行",
+        "status": "SCHEDULED",
+        "statusLabel": "待开始"
+      }
+    ],
+    "matchesTruncated": false,
+    "scheduleError": "",
+    "ranking": null,
+    "rankingError": "",
+    "stats": null,
+    "statsError": "",
+    "publicEventId": ""
+  }
+}

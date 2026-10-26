@@ -26,6 +26,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\accept-wechat-ui.p
 
 依赖独立安装在`tools/wechat-ui`，使用锁定的miniprogram-automator 0.13.0，不进入小程序包或后端依赖。Windows通过独立PowerShell脚本调用CLI的`auto`命令，再由SDK连接本机回环地址，避免Node直接spawn批处理的EINVAL问题。安装/项目路径支持空格与中文；含批处理控制字符的路径会明确拒绝。入口不调用upload/preview发布命令。开发工具窗口保留供人工查看。
 
+## 平台定位状态（C13）
+
+除C11六屏外，`tests/mini-program/platform-catalog.json` 列出赛事优先首页、我的赛事、机构赛事详情等合成状态。副本中为每个状态生成别名页 `pages/platform-*/index`：WXML/WXSS/页面配置与对应正式页面逐字节相同，只有只读桩数据不同，并追加到副本 `app.json`。这些状态没有用户确认稿，对照页明确标注“设计待签收”。球员详情采集选择器改为 `.profile-hero`（姓名位于该区域，此前`.premium-page`导致误报失败）。
+
+若副本启动后自动化一直超时（页面栈为空、截图超时），先用旧的可用副本对照确认环境正常，再在副本内二分WXSS。C13实测两类会使基础库3.17.4的AppService不启动：组件WXSS注释含分号；以及特定的子选择器规则（见[C13交接](handoffs/C13.md)）。本入口不会把此类超时记为成功。
+
 ## 输出与判定
 
 脚本打印`artifacts/wechat-ui/<本次时间>/index.html`，用浏览器打开即可逐页对照用户确认稿和原始截图。旁边包含：

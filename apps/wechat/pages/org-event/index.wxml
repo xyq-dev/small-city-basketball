@@ -1,0 +1,109 @@
+<view class="page org-event-page">
+  <view wx:if="{{loading && !event}}" class="card state-panel">
+    <text class="state-label">机构赛事</text>
+    <view class="subtitle">正在读取赛事资料</view>
+    <view class="muted">核对当前身份可查看的赛程、排名与数据，请稍候。</view>
+    <view class="loading-lines"><view></view><view></view></view>
+  </view>
+  <view wx:elif="{{!event}}" class="card state-panel">
+    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
+    <view class="subtitle">{{unavailable ? '无法查看该赛事' : '暂时无法读取赛事'}}</view>
+    <view class="notice warning">{{error || '请从赛事列表重新进入。'}}</view>
+    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+    <button class="{{unavailable ? 'primary' : 'secondary'}}" bindtap="events">返回赛事列表</button>
+  </view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="notice warning">{{error}}<view class="small">现有资料可能已陈旧，请恢复连接后刷新。</view></view>
+    <view class="org-event-hero">
+      <view class="org-event-status {{event.status === 'RUNNING' ? 'live' : ''}}">{{event.statusLabel}}</view>
+      <view class="org-event-name">{{event.name}}</view>
+      <view class="org-event-meta">{{event.dateLabel}} · {{event.venueName}}</view>
+      <view class="org-event-meta">{{event.formatLabel}} · 机构内部视图</view>
+    </view>
+    <view class="org-event-tabs">
+      <button class="{{tab === 'schedule' ? 'selected' : ''}}" data-tab="schedule" bindtap="tab">赛程</button>
+      <button class="{{tab === 'ranking' ? 'selected' : ''}}" data-tab="ranking" bindtap="tab">{{event.format === 'ROUND_ROBIN' ? '积分排名' : '分组与淘汰'}}</button>
+      <button class="{{tab === 'stats' ? 'selected' : ''}}" data-tab="stats" bindtap="tab">球员数据</button>
+    </view>
+
+    <block wx:if="{{tab === 'schedule'}}">
+      <view wx:if="{{scheduleError}}" class="notice warning">{{scheduleError}}</view>
+      <view wx:elif="{{!matches.length}}" class="card empty"><view class="subtitle">暂无正式赛程</view><view class="muted">赛程由主办方在Web排赛后发布，发布后这里显示时间、场地和对阵。</view></view>
+      <view wx:for="{{matches}}" wx:key="id" class="org-match">
+        <view class="org-match-meta">{{item.roundLabel}} · {{item.timeLabel}} · {{item.courtName}}</view>
+        <view class="org-match-teams"><text>{{item.home}}</text><text class="org-match-vs">VS</text><text>{{item.away}}</text></view>
+        <view class="org-match-status {{item.status === 'IN_PROGRESS' || item.status === 'LIVE' ? 'live' : ''}}">{{item.statusLabel}}</view>
+      </view>
+      <view wx:if="{{matchesTruncated}}" class="muted">仅显示前1000场，请在Web查看完整赛程。</view>
+      <view class="notice small">比分记录与赛果确认由记录台完成；原生记分、排赛将在后续版本提供，当前请使用Web工作台。</view>
+    </block>
+
+    <block wx:if="{{tab === 'ranking'}}">
+      <view wx:if="{{rankingError}}" class="notice warning">{{rankingError}}</view>
+      <block wx:elif="{{ranking && ranking.kind === 'standings'}}">
+        <view wx:if="{{!ranking.rows.length}}" class="card empty"><view class="subtitle">积分榜待生成</view><view class="muted">需要先设置积分规则并发布正式赛程。</view></view>
+        <view wx:else class="card org-table-card">
+          <view class="row-between"><view class="subtitle">积分排名</view><text class="muted">{{ranking.progress}}</text></view>
+          <view class="muted">{{ranking.modeLabel}}</view>
+          <view class="org-table">
+            <view class="org-table-row head"><text class="rank-cell">名次</text><text class="team-cell">球队</text><text class="num-cell">胜负</text><text class="num-cell">净胜</text><text class="num-cell">积分</text></view>
+            <view wx:for="{{ranking.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><text class="team-cell">{{item.teamName}}{{item.tied ? ' · 并列' : ''}}</text><text class="num-cell">{{item.record}}</text><text class="num-cell">{{item.diff}}</text><text class="num-cell strong">{{item.points}}</text></view>
+          </view>
+        </view>
+      </block>
+      <block wx:elif="{{ranking && ranking.kind === 'groups'}}">
+        <view wx:if="{{ranking.qualificationLabel}}" class="notice small">{{ranking.qualificationLabel}}。组内同分须明确抽签，不生成跨组总排名。</view>
+        <view wx:if="{{!ranking.groups.length}}" class="card empty"><view class="subtitle">分组尚未发布</view><view class="muted">主办方发布分组赛程后显示各组排名。</view></view>
+        <view wx:for="{{ranking.groups}}" wx:key="key" wx:for-item="group" class="card org-table-card">
+          <view class="row-between"><view class="subtitle">{{group.label}}</view><text class="muted">{{group.progress}}</text></view>
+          <view wx:if="{{group.tieBreakRequired}}" class="notice warning small">同分待抽签，出线资格尚未确定</view>
+          <view class="org-table">
+            <view class="org-table-row head"><text class="rank-cell">名次</text><text class="team-cell">球队</text><text class="num-cell">胜负</text><text class="num-cell">积分</text></view>
+            <view wx:for="{{group.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><text class="team-cell">{{item.teamName}}</text><text class="num-cell">{{item.record}}</text><text class="num-cell strong">{{item.points}}</text></view>
+          </view>
+        </view>
+      </block>
+      <block wx:if="{{!rankingError && ranking && ranking.bracket}}">
+        <view class="row-between org-bracket-head"><view class="subtitle">淘汰签位</view><text class="muted">{{ranking.bracket.progress}}</text></view>
+        <block wx:for="{{ranking.bracket.rounds}}" wx:key="roundNo" wx:for-item="round">
+          <view class="org-round-label">{{round.label}}{{round.published ? '' : ' · 待发布'}}</view>
+          <view wx:for="{{round.slots}}" wx:key="key" class="org-match">
+            <view wx:if="{{item.bye}}" class="org-match-teams"><text>{{item.bye}}</text><text class="org-match-vs">轮空</text></view>
+            <view wx:else class="org-match-teams"><text>{{item.home}}</text><text class="org-match-vs">VS</text><text>{{item.away}}</text></view>
+            <view class="org-match-status">{{item.statusLabel}}{{item.winner ? ' · 晋级：' + item.winner : ''}}</view>
+          </view>
+        </block>
+        <view wx:if="{{ranking.bracket.isComplete && ranking.bracket.placements.length}}" class="card">
+          <view class="subtitle">最终名次</view>
+          <view wx:for="{{ranking.bracket.placements}}" wx:key="key" class="row">{{item.rank}} · {{item.teamName}}{{item.tied ? '（并列）' : ''}}</view>
+        </view>
+      </block>
+      <view wx:if="{{!rankingError && ranking && ranking.kind === 'bracket' && !ranking.bracket}}" class="card empty"><view class="subtitle">签位尚未生成</view><view class="muted">报名冻结并发布首轮后显示淘汰签位。</view></view>
+      <button wx:if="{{publicEventId}}" class="secondary" bindtap="openPublic">打开公开观赛页</button>
+    </block>
+
+    <block wx:if="{{tab === 'stats'}}">
+      <view wx:if="{{statsError}}" class="notice warning">{{statsError}}</view>
+      <view wx:elif="{{stats && stats.empty}}" class="card empty"><view class="subtitle">暂无个人数据</view><view class="muted">尚无正式赛程或逐人采集的确认赛果。</view></view>
+      <block wx:elif="{{stats}}">
+        <view class="notice small"><view>{{stats.progress}} · {{stats.coverageLabel}}</view><view wx:if="{{stats.attributionLabel}}">{{stats.attributionLabel}}</view><view wx:if="{{stats.pendingLabel}}">{{stats.pendingLabel}}</view></view>
+        <view class="card org-table-card">
+          <view class="subtitle">本届得分榜</view>
+          <view class="org-table">
+            <view class="org-table-row head"><text class="rank-cell">名次</text><text class="team-cell">球员</text><text class="num-cell">得分</text><text class="num-cell">犯规</text><text class="num-cell">名单场次</text></view>
+            <view wx:for="{{stats.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><view class="team-cell"><view>{{item.name}} · {{item.jerseyNo}}号</view><view class="muted">{{item.teamName}}</view></view><text class="num-cell strong">{{item.score}}</text><text class="num-cell">{{item.fouls}}</text><text class="num-cell">{{item.samples}}</text></view>
+          </view>
+          <view wx:if="{{!stats.rows.length}}" class="muted">已确认比赛中暂无逐人得分。</view>
+          <view wx:if="{{stats.truncated}}" class="muted">仅显示前50名。</view>
+        </view>
+        <view class="card org-uncollected">
+          <view class="subtitle">未统计项目</view>
+          <view class="muted">篮板、助攻、抢断、盖帽、失误、命中率与上场时间：未统计。“名单场次”为冻结名单所含场次，不代表实际上场。</view>
+        </view>
+      </block>
+    </block>
+
+    <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">{{loading ? '正在刷新赛事资料' : '刷新赛事资料'}}</button>
+  </block>
+</view>
+<scb-nav active="Events"/>

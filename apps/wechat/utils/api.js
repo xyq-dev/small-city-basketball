@@ -112,6 +112,19 @@ function pathAllowed(path, method = 'GET') {
     method === 'GET' &&
     queryAllowed(query, ['limit', 'cursor']) &&
     (!query.limit || ['50', '100'].includes(query.limit));
+  // Event-platform reads: only the caller's organization list, one event and its read models.
+  // Writes (create/edit, scoring, scheduling, publication) remain outside the mini program.
+  if (matches(org + '/events'))
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['limit', 'cursor']) &&
+      query.limit === '50' &&
+      (!('cursor' in query) || /^[A-Za-z0-9_-]{1,2048}$/.test(query.cursor))
+    );
+  if (matches(org + '/events/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/(standings|groups|knockout|player-statistics)'))
+    return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/matches')) return paged;
   if (matches(org + '/teams')) return method === 'GET' ? paged : noQuery && method === 'POST';
   if (matches(org + '/teams/' + uuidPattern)) return noQuery && ['GET', 'PATCH'].includes(method);
   if (matches(org + '/teams/' + uuidPattern + '/members')) return noQuery && method === 'PUT';

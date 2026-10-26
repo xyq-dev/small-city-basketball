@@ -54,7 +54,7 @@
 .order-venue { margin-top:4px; }
 .order-quote { display:flex; align-items:center; gap:14px; margin-top:12px; padding:6px 10px; border-radius:8px; background:#fff1e3; color:#65758d; font-size:12px; line-height:24px; }
 .order-quote-value { color:#ff6b2d; font-size:20px; line-height:26px; font-weight:700; }
-.booking-order-card .detail-button { display:flex; align-items:center; justify-content:center; gap:5px; min-height:44px; margin:12px 0 0; padding:9px 8px; border:1px solid #c6d2e1; border-radius:9px; background:#fff; color:#132c49; font-size:13px; line-height:24px; font-weight:600; }
+.booking-order-card .detail-button { display:flex; align-items:center; justify-content:center; gap:5px; width:100%; min-height:44px; margin:12px 0 0; padding:9px 8px; border:1px solid #c6d2e1; border-radius:9px; background:#fff; color:#132c49; font-size:13px; line-height:24px; font-weight:600; }
 .booking-order-card .detail-button::after { border:0; }
 .order-expanded { padding:12px; margin-top:12px; background:#f5f7fa; border-radius:8px; }
 .order-expanded > view + view { margin-top:4px; }

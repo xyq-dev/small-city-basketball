@@ -1,0 +1,15 @@
+{
+  "name": "platform-org-event-unavailable",
+  "route": "pages/org-event/index",
+  "state": "permission",
+  "designSource": "synthetic:platform-alignment",
+  "static": true,
+  "expectText": ["无法查看该赛事", "该赛事不存在或当前身份无权查看。", "返回赛事列表"],
+  "expectAbsentText": ["合成青锋杯"],
+  "data": {
+    "event": null,
+    "unavailable": true,
+    "loading": false,
+    "error": "该赛事不存在或当前身份无权查看。"
+  }
+}

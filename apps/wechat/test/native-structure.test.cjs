@@ -44,6 +44,23 @@ for (const route of manifest.pages) {
   });
 }
 
+test('component WXSS comments contain no semicolon; DevTools 3.17.4 then never starts AppService', () => {
+  // Reproduced 2026-10-26: "/* a; b */" in components/header/index.wxss left the simulator
+  // unresponsive to automation, while the same comment in a page stylesheet compiled normally.
+  const files = [];
+  (function collect(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) collect(file);
+      else if (entry.name.endsWith('.wxss')) files.push(file);
+    }
+  })(path.join(root, 'components'));
+  assert.ok(files.length > 0);
+  for (const file of files)
+    for (const [comment] of fs.readFileSync(file, 'utf8').matchAll(/\/\*[\s\S]*?\*\//g))
+      assert.doesNotMatch(comment, /;/, path.relative(root, file));
+});
+
 test('static WXML checks reject malformed branches, duplicate attributes and JS calls', () => {
   for (const invalid of [
     '<view><text>x</view>',

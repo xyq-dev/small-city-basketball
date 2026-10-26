@@ -1,0 +1,17 @@
+{
+  "name": "platform-events-no-org",
+  "route": "pages/watch/index",
+  "state": "empty",
+  "designSource": "synthetic:platform-alignment",
+  "static": true,
+  "expectText": ["当前账号没有机构赛事身份", "进入我的球队（1支）", "公开赛事目录尚未开放"],
+  "data": {
+    "signedIn": true,
+    "organizations": [],
+    "sections": [],
+    "failures": [],
+    "truncated": [],
+    "total": 0,
+    "teamCount": 1
+  }
+}

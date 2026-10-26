@@ -136,7 +136,13 @@ test('all account and planned visual fixtures expand real WXML and retain disabl
       });
       for (const text of fixture.expectText)
         assert.ok(result.phone.includes(text), name + ': ' + text);
-      assert.equal(result.assets.length, 0);
+      // Only the shared bottom-bar UI icons; no portraits or other imagery on account pages.
+      assert.deepEqual(
+        result.assets.filter(
+          (asset) => !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path),
+        ),
+        [],
+      );
       if (
         fixture.route === 'pages/planned/index' &&
         ['payment', 'unknown', 'refund', 'settlement'].includes(fixture.data.selected)

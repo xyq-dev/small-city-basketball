@@ -94,7 +94,13 @@ test('revoked event clears old content before the new unavailable state is rende
   assert.deepEqual(h.page.data.matches, []);
   assert.match(preview.phone, /该内容已停止公开/);
   assert.doesNotMatch(preview.phone, /old-hidden-title/);
-  assert.equal(preview.assets.length, 0);
+  // Only the shared bottom-bar UI icons may load; no event imagery survives revocation.
+  assert.deepEqual(
+    preview.assets.filter(
+      (asset) => !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path),
+    ),
+    [],
+  );
 });
 
 test('all public UI fixtures render actual templates at three widths with valid local assets', () => {

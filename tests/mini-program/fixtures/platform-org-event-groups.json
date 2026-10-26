@@ -1,0 +1,139 @@
+{
+  "name": "platform-org-event-groups",
+  "route": "pages/org-event/index",
+  "state": "ready",
+  "designSource": "synthetic:platform-alignment",
+  "static": true,
+  "expectText": ["分组与淘汰", "A组", "B组", "同分待抽签", "淘汰签位", "半决赛"],
+  "data": {
+    "tab": "ranking",
+    "event": {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "name": "合成石鼓邀请赛",
+      "format": "GROUP_KNOCKOUT",
+      "status": "RUNNING",
+      "statusLabel": "比赛进行中",
+      "formatLabel": "分组循环接淘汰",
+      "dateLabel": "11/20–11/22",
+      "venueName": "合成石鼓公园球场"
+    },
+    "matches": [],
+    "scheduleError": "",
+    "ranking": {
+      "kind": "groups",
+      "qualificationLabel": "组内同分资格待抽签",
+      "groups": [
+        {
+          "key": "A",
+          "label": "A组",
+          "progress": "已确认 3 / 3 场",
+          "tieBreakRequired": false,
+          "rows": [
+            {
+              "key": "a1",
+              "rankLabel": "1",
+              "teamName": "合成石鼓青锋",
+              "record": "2胜0负",
+              "points": 4
+            },
+            {
+              "key": "a2",
+              "rankLabel": "2",
+              "teamName": "合成高州猛龙",
+              "record": "1胜1负",
+              "points": 3
+            },
+            {
+              "key": "a3",
+              "rankLabel": "3",
+              "teamName": "合成城东联队",
+              "record": "0胜2负",
+              "points": 2
+            }
+          ]
+        },
+        {
+          "key": "B",
+          "label": "B组",
+          "progress": "已确认 3 / 3 场",
+          "tieBreakRequired": true,
+          "rows": [
+            {
+              "key": "b1",
+              "rankLabel": "1",
+              "teamName": "合成城西火箭",
+              "record": "1胜1负",
+              "points": 3
+            },
+            {
+              "key": "b2",
+              "rankLabel": "1",
+              "teamName": "合成南湖之星",
+              "record": "1胜1负",
+              "points": 3
+            },
+            {
+              "key": "b3",
+              "rankLabel": "1",
+              "teamName": "合成北岸联队",
+              "record": "1胜1负",
+              "points": 3
+            }
+          ]
+        }
+      ],
+      "bracket": {
+        "progress": "已确认 0 / 3 场",
+        "isComplete": false,
+        "rounds": [
+          {
+            "roundNo": 1,
+            "label": "半决赛",
+            "published": false,
+            "slots": [
+              {
+                "key": "s1",
+                "positionNo": 1,
+                "bye": null,
+                "home": "合成石鼓青锋",
+                "away": "待晋级",
+                "statusLabel": "尚未发布",
+                "winner": null
+              },
+              {
+                "key": "s2",
+                "positionNo": 2,
+                "bye": null,
+                "home": "待晋级",
+                "away": "合成高州猛龙",
+                "statusLabel": "尚未发布",
+                "winner": null
+              }
+            ]
+          },
+          {
+            "roundNo": 2,
+            "label": "决赛",
+            "published": false,
+            "slots": [
+              {
+                "key": "f1",
+                "positionNo": 1,
+                "bye": null,
+                "home": "待晋级",
+                "away": "待晋级",
+                "statusLabel": "尚未发布",
+                "winner": null
+              }
+            ]
+          }
+        ],
+        "placements": []
+      }
+    },
+    "rankingError": "",
+    "stats": null,
+    "statsError": "",
+    "publicEventId": ""
+  }
+}

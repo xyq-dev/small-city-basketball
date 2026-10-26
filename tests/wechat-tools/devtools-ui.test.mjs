@@ -72,7 +72,7 @@ function fakeSdk(
       }),
       waitFor: async () => {},
       $: async (selector) =>
-        hasClassSelector(s.route, selector) ? { text: async () => s.probe } : null,
+        hasClassSelector(s.baseRoute, selector) ? { text: async () => s.probe } : null,
     };
   };
   mini.screenshot = async ({ path: filename }) => {
@@ -96,23 +96,45 @@ function fakeSdk(
 
 test('prepare preserves all source templates/assets and never mutates the runtime project', () => {
   const run = prepared();
-  assert.equal(run.plan.scenarios.length, 6);
+  const catalog = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'tests/mini-program/platform-catalog.json'), 'utf8'),
+  );
+  assert.equal(run.plan.scenarios.filter((s) => s.reference).length, 6);
+  assert.equal(run.plan.scenarios.length, 6 + catalog.scenarios.length);
   assert.equal(run.plan.nativeScreenshotsCaptured, false);
   assert.equal(run.plan.businessFlowVerified, false);
   for (const scenario of run.plan.scenarios)
-    assert.equal(hasClassSelector(scenario.route, scenario.selector), true, scenario.route);
+    assert.equal(hasClassSelector(scenario.baseRoute, scenario.selector), true, scenario.route);
   assert.equal(
     run.plan.scenarios.find((s) => s.route === 'pages/home/index').selector,
     '.premium-home',
+  );
+  assert.equal(
+    run.plan.scenarios.find((s) => s.route === 'pages/player/index').selector,
+    '.profile-hero',
   );
   for (const item of run.plan.sourceSnapshots) {
     const original = fs.readFileSync(path.join(ROOT, 'apps/wechat', item.path));
     assert.equal(createHash('sha256').update(original).digest('hex'), item.sha256);
     if (
       !/pages\/.*\.js$/.test(item.path) &&
-      !['project.config.json', 'app.js', 'utils/api.js'].includes(item.path)
+      !['project.config.json', 'app.js', 'app.json', 'utils/api.js'].includes(item.path)
     )
       assert.deepEqual(fs.readFileSync(path.join(run.project, item.path)), original);
+  }
+  // Alias pages only add synthetic states; their templates/styles are the real source bytes.
+  const copiedApp = JSON.parse(fs.readFileSync(path.join(run.project, 'app.json'), 'utf8'));
+  for (const alias of run.plan.aliasPages) {
+    assert.ok(copiedApp.pages.includes(alias.route), alias.route);
+    for (const extension of ['.wxml', '.wxss'])
+      assert.deepEqual(
+        fs.readFileSync(path.join(run.project, alias.route + extension)),
+        fs.readFileSync(path.join(ROOT, 'apps/wechat', alias.baseRoute + extension)),
+        alias.route + extension,
+      );
+    const page = loadPage({ root: run.project, route: alias.route });
+    assert.equal(page.page.data.__scbUiAcceptance.baseRoute, alias.baseRoute);
+    assert.equal(page.page.data.__scbUiAcceptance.synthetic, true);
   }
   assert.equal(fs.existsSync(path.join(run.project, 'test')), false);
   assert.equal(fs.existsSync(path.join(run.project, 'project.private.config.json')), false);
@@ -154,12 +176,12 @@ test('outputs cannot replace source files, escape the ignored directory or overw
   assert.throws(() => prepare({ appId: 'not-an-app-id' }), /AppID格式/);
 });
 
-test('successful SDK fixture capture records six original PNG hashes without claiming business/device/signoff', async () => {
+test('successful SDK fixture capture records every original PNG hash without claiming business/device/signoff', async () => {
   const run = prepared(),
     { sdk, mini } = fakeSdk(run);
   const report = await captureFake(run, { sdk, cliPath: 'test-cli' });
   assert.equal(report.nativeScreenshotsCaptured, true);
-  assert.equal(report.screenshots.length, 6);
+  assert.equal(report.screenshots.length, run.plan.scenarios.length);
   assert.equal(report.businessFlowVerified, false);
   assert.equal(report.realDeviceVerified, false);
   assert.equal(report.userVisualAccepted, false);
@@ -225,7 +247,7 @@ test('invalid screenshot and AppService exceptions remain failures', async () =>
     assert.equal(report.nativeScreenshotsCaptured, false);
     assert.ok(report.error);
     assert.equal(mini.disconnected, 1);
-    if (flags.exception) assert.equal(report.exceptions.length, 6);
+    if (flags.exception) assert.equal(report.exceptions.length, run.plan.scenarios.length);
   }
 });
 

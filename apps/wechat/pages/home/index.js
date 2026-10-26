@@ -1,10 +1,16 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
+const events = require('../../utils/events');
 Page({
   data: {
     value: '',
     error: '',
-    moreOpen: false,
+    signedIn: false,
+    eventsLoading: false,
+    eventsError: '',
+    featured: [],
+    eventTotal: 0,
+    hasOrganizations: false,
     positions: [
       { code: 'PG', name: '控卫', icon: 'pos-pg' },
       { code: 'SG', name: '分卫', icon: 'pos-sg' },
@@ -13,11 +19,73 @@ Page({
       { code: 'C', name: '中锋', icon: 'pos-c' },
     ],
   },
+  onLoad() {
+    this._alive = true;
+  },
+  onShow() {
+    this.loadEvents();
+  },
+  onUnload() {
+    this._alive = false;
+    this._eventsRequest = (this._eventsRequest || 0) + 1;
+  },
+  async loadEvents() {
+    const client = api.getClient();
+    const request = (this._eventsRequest = (this._eventsRequest || 0) + 1);
+    const session = client.sessionRevision();
+    const live = () =>
+      this._alive !== false &&
+      request === this._eventsRequest &&
+      session === client.sessionRevision();
+    const empty = {
+      signedIn: false,
+      featured: [],
+      eventTotal: 0,
+      hasOrganizations: false,
+      eventsError: '',
+    };
+    if (!client.hasSession()) {
+      this.setData({ eventsLoading: false, ...empty });
+      return;
+    }
+    this.setData({ eventsLoading: true, eventsError: '' });
+    try {
+      const result = await events.fetch(client);
+      if (live())
+        this.setData({
+          eventsLoading: false,
+          ...empty,
+          signedIn: result.signedIn,
+          featured: result.featured || [],
+          eventTotal: result.total || 0,
+          hasOrganizations: !!(result.organizations && result.organizations.length),
+        });
+    } catch (error) {
+      if (live())
+        this.setData({
+          eventsLoading: false,
+          ...empty,
+          signedIn: error.status !== 401,
+          eventsError: error.status === 401 ? '' : ui.message(error),
+        });
+    }
+  },
+  openEvents() {
+    ui.open('watch');
+  },
+  openEvent(e) {
+    const { org, id } = e.currentTarget.dataset;
+    try {
+      ui.open('org-event', { orgId: api.uuid(org), eventId: api.uuid(id) });
+    } catch {
+      this.setData({ eventsError: '赛事入口无效，请刷新后重试。' });
+    }
+  },
+  login() {
+    ui.login('/pages/home/index');
+  },
   openPlayers() {
     ui.open('players');
-  },
-  moreToggle() {
-    this.setData({ moreOpen: !this.data.moreOpen });
   },
   position(e) {
     const position = e.currentTarget.dataset.position;

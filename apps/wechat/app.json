@@ -5,6 +5,7 @@
     "pages/media/index",
     "pages/account/index",
     "pages/event/index",
+    "pages/org-event/index",
     "pages/match/index",
     "pages/players/index",
     "pages/player/index",

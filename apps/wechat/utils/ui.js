@@ -5,6 +5,7 @@ for (const key of [
   'watch',
   'media',
   'event',
+  'org-event',
   'match',
   'account',
   'players',

@@ -1,0 +1,32 @@
+.org-event-page { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+.org-event-hero { padding:20px; border-radius:16px; background:#132c49; color:#fff; margin-bottom:12px; }
+.org-event-status { display:inline-block; padding:2px 10px; border-radius:24px; background:rgba(255,255,255,.16); font-size:12px; line-height:20px; }
+.org-event-status.live { background:#ff6b2d; }
+.org-event-name { margin:8px 0 4px; font-size:20px; line-height:30px; font-weight:700; overflow-wrap:anywhere; }
+.org-event-meta { font-size:12px; line-height:20px; color:#d7e0ea; }
+.page.org-event-page button { width:100%; margin-left:0; margin-right:0; }
+.org-event-tabs { display:flex; gap:8px; margin-bottom:12px; }
+.org-event-tabs button { flex:1; min-width:0; margin:0; padding:10px 4px; font-size:14px; color:#617286; background:#fff; }
+.org-event-tabs button.selected { color:#fff; background:#132c49; }
+.org-event-tabs button.selected::after { border:none; }
+.org-match { background:#fff; border-radius:12px; padding:12px 16px; margin-bottom:8px; }
+.org-match-meta { color:#617286; font-size:12px; line-height:20px; }
+.org-match-teams { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0; font-size:16px; line-height:24px; font-weight:600; color:#132c49; }
+.org-match-teams > text { flex:1; min-width:0; overflow-wrap:anywhere; }
+.org-match-teams > text:last-child { text-align:right; }
+text.org-match-vs { flex:none; color:#7c91a9; font-size:12px; font-weight:500; }
+.org-match-status { color:#617286; font-size:12px; line-height:20px; }
+.org-match-status.live { color:#ff6b2d; font-weight:600; }
+.org-table-card .subtitle { margin:0; }
+.org-table { margin-top:8px; }
+.org-table-row { display:flex; align-items:center; gap:6px; min-height:40px; padding:6px 0; border-bottom:1px solid #e8edf2; font-size:13px; line-height:20px; }
+.org-table-row:last-child { border-bottom:0; }
+.org-table-row.head { min-height:32px; color:#617286; font-size:12px; }
+.rank-cell { width:40px; flex:none; color:#617286; }
+.team-cell { flex:1; min-width:0; overflow-wrap:anywhere; color:#132c49; }
+.num-cell { width:52px; flex:none; text-align:right; font-variant-numeric:tabular-nums; }
+.num-cell.strong { font-weight:700; color:#132c49; }
+.org-bracket-head { margin:8px 0; }
+.org-round-label { margin:12px 0 6px; color:#617286; font-size:12px; line-height:20px; font-weight:600; }
+.org-uncollected .subtitle { font-size:16px; }
+@media(max-width:360px) { .num-cell { width:40px; } .rank-cell { width:34px; } }

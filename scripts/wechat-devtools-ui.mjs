@@ -127,6 +127,22 @@ function runtimeFiles(root, relative = '') {
   });
 }
 
+function writeStub(project, route, original, data) {
+  const methods = Object.entries(original.definition).filter(
+    ([key, value]) => key !== 'data' && typeof value === 'function',
+  );
+  const stub = methods.map(([key]) => JSON.stringify(key) + ': function () {}').join(',\n');
+  // Only the disposable copy loses business lifecycle/handlers. Original templates,
+  // styles, components and images remain byte-identical; this is UI evidence only.
+  fs.writeFileSync(
+    path.join(project, route + '.js'),
+    '// C12 disposable UI-only fixture; business and network lifecycle disabled.\nPage({data:' +
+      JSON.stringify(data) +
+      (stub ? ',\n' + stub : '') +
+      '});\n',
+  );
+}
+
 export function prepare({ root = ROOT, out, appId } = {}) {
   const source = path.join(root, 'apps/wechat');
   const base = path.join(root, 'artifacts/wechat-ui');
@@ -211,34 +227,86 @@ export function prepare({ root = ROOT, out, appId } = {}) {
         businessDisabled: true,
       },
     };
-    const methods = Object.entries(original.definition).filter(
-      ([key, value]) => key !== 'data' && typeof value === 'function',
-    );
-    const stub = methods.map(([key]) => JSON.stringify(key) + ': function () {}').join(',\n');
-    // Only the disposable copy loses business lifecycle/handlers. Original templates,
-    // styles, components and images remain byte-identical; this is UI evidence only.
-    fs.writeFileSync(
-      path.join(project, route + '.js'),
-      '// C12 disposable UI-only fixture; business and network lifecycle disabled.\nPage({data:' +
-        JSON.stringify(data) +
-        (stub ? ',\n' + stub : '') +
-        '});\n',
-    );
+    writeStub(project, route, original, data);
   }
+  // Platform-alignment states reuse a real route's byte-identical template, style and page
+  // config under a disposable alias page, so several synthetic states can be captured.
+  const platformCatalog = read(path.join(root, 'tests/mini-program/platform-catalog.json'));
+  const platform = platformCatalog.scenarios.map((item) => {
+    const alias = 'pages/' + item.name + '/index';
+    if (
+      !/^platform-[a-z-]+$/.test(item.name) ||
+      !app.pages.includes(item.baseRoute) ||
+      !/^\.[a-z-]+$/.test(item.selector) ||
+      typeof item.probe !== 'string' ||
+      !item.probe
+    )
+      throw new Error('无效平台场景：' + item.name);
+    const filename = path.join(root, 'tests/mini-program/fixtures', item.name + '.json');
+    const fixture = read(filename);
+    if (
+      fixture.name !== item.name ||
+      fixture.route !== item.baseRoute ||
+      fixture.designSource !== 'synthetic:platform-alignment'
+    )
+      throw new Error('平台fixture来源不一致：' + item.name);
+    fs.mkdirSync(path.join(project, path.dirname(alias)), { recursive: true });
+    for (const extension of ['.wxml', '.wxss', '.json']) {
+      const from = path.join(source, item.baseRoute + extension);
+      if (fs.existsSync(from)) fs.copyFileSync(from, path.join(project, alias + extension));
+    }
+    const original = loadPage({ root: source, route: item.baseRoute });
+    writeStub(project, alias, original, {
+      ...original.page.data,
+      ...fixture.data,
+      __scbUiAcceptance: {
+        sourceHead,
+        runId,
+        route: alias,
+        baseRoute: item.baseRoute,
+        scenario: fixture.name,
+        synthetic: true,
+        businessDisabled: true,
+      },
+    });
+    return {
+      route: alias,
+      baseRoute: item.baseRoute,
+      name: fixture.name,
+      title: item.title,
+      probe: item.probe,
+      selector: item.selector,
+      fixtureSha256: hash(fs.readFileSync(filename)),
+      reference: null,
+      referenceSha256: null,
+    };
+  });
+  write(path.join(project, 'app.json'), {
+    ...app,
+    pages: [...app.pages, ...platform.map((s) => s.route)],
+  });
   const config = read(path.join(project, 'project.config.json'));
   config.projectname = 'SCB-C12-UI-FIXTURES-ONLY';
   if (appId) config.appid = appId;
   write(path.join(project, 'project.config.json'), config);
-  const scenarios = selected.map((page) => ({
+  const approved = selected.map((page) => ({
     route: page.route,
+    baseRoute: page.route,
     name: fixtures.get(page.route).fixture.name,
     title: page.title,
     probe: probes[page.route.split('/')[1]],
-    selector: page.route === 'pages/home/index' ? '.premium-home' : '.premium-page',
+    // The player name renders in the hero above .premium-page, not inside it.
+    selector:
+      page.route === 'pages/home/index'
+        ? '.premium-home'
+        : page.route === 'pages/player/index'
+          ? '.profile-hero'
+          : '.premium-page',
     fixtureSha256: fixtures.get(page.route).fixtureSha256,
     reference: 'references/' + page.route.split('/')[1] + '.png',
     referenceSha256: hash(fs.readFileSync(path.resolve(root, page.referenceImage))),
   }));
+  const scenarios = [...approved, ...platform];
   fs.mkdirSync(path.join(destination, 'references'));
   for (const page of selected) {
     const reference = path.resolve(root, page.referenceImage);
@@ -261,10 +329,12 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     networkOrigin: 'https://scb-ui-fixture.invalid',
     overriddenFiles: [
       'app.js',
+      'app.json',
       'project.config.json',
       'utils/api.js',
       ...app.pages.map((route) => route + '.js'),
     ],
+    aliasPages: platform.map((s) => ({ route: s.route, baseRoute: s.baseRoute })),
     runnerSha256: hash(fs.readFileSync(fileURLToPath(import.meta.url))),
     businessFlowVerified: false,
     realDeviceVerified: false,
@@ -414,9 +484,11 @@ export async function capture(
         return (
           '<section><h2>' +
           escape(s.title) +
-          '</h2><div><figure><figcaption>用户确认稿</figcaption><img src="' +
-          s.reference +
-          '"></figure><figure><figcaption>微信开发工具 · 合成模板（人工待验）</figcaption>' +
+          '</h2><div><figure><figcaption>用户确认稿</figcaption>' +
+          (s.reference
+            ? '<img src="' + s.reference + '">'
+            : '<p>无用户确认稿：平台定位修正新增状态，设计待签收</p>') +
+          '</figure><figure><figcaption>微信开发工具 · 合成模板（人工待验）</figcaption>' +
           (shot ? '<img src="' + shot.path + '">' : '<p>未采集</p>') +
           '</figure></div></section>'
         );

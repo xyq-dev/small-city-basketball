@@ -7,7 +7,8 @@ const destinations = {
 Component({
   properties: {
     active: { type: String, value: 'Home' },
-    variant: { type: String, value: 'classic' },
+    // One bottom bar everywhere: the approved icon style, not dots on some tabs.
+    variant: { type: String, value: 'premium' },
     disabled: { type: Boolean, value: false },
   },
   data: {
