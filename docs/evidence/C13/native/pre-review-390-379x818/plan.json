@@ -1,0 +1,1599 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-26T07:16:24.305Z",
+  "sourceHead": "a4d61a512a22f97aed8d1dc289d188b8d6bacdf8",
+  "runId": "8dc017c3-5ccb-4895-a519-fbfec940ef12",
+  "sourceDirty": true,
+  "sdkVersion": "0.13.0",
+  "mode": "isolated-native-template-fixtures",
+  "businessLifecycle": "replaced-in-disposable-copy",
+  "networkOrigin": "https://scb-ui-fixture.invalid",
+  "overriddenFiles": [
+    "app.js",
+    "app.json",
+    "project.config.json",
+    "utils/api.js",
+    "pages/home/index.js",
+    "pages/watch/index.js",
+    "pages/media/index.js",
+    "pages/account/index.js",
+    "pages/event/index.js",
+    "pages/org-event/index.js",
+    "pages/match/index.js",
+    "pages/players/index.js",
+    "pages/player/index.js",
+    "pages/compare/index.js",
+    "pages/booking-create/index.js",
+    "pages/bookings/index.js",
+    "pages/booking-detail/index.js",
+    "pages/player-center/index.js",
+    "pages/performance/index.js",
+    "pages/teams/index.js",
+    "pages/team/index.js",
+    "pages/registration-events/index.js",
+    "pages/entry/index.js",
+    "pages/invitation/index.js",
+    "pages/planned/index.js",
+    "pages/platform/index.js"
+  ],
+  "aliasPages": [
+    {
+      "route": "pages/platform-home-events/index",
+      "baseRoute": "pages/home/index"
+    },
+    {
+      "route": "pages/platform-home-signed-out/index",
+      "baseRoute": "pages/home/index"
+    },
+    {
+      "route": "pages/platform-events-list/index",
+      "baseRoute": "pages/watch/index"
+    },
+    {
+      "route": "pages/platform-events-no-org/index",
+      "baseRoute": "pages/watch/index"
+    },
+    {
+      "route": "pages/platform-org-event-schedule/index",
+      "baseRoute": "pages/org-event/index"
+    },
+    {
+      "route": "pages/platform-org-event-standings/index",
+      "baseRoute": "pages/org-event/index"
+    },
+    {
+      "route": "pages/platform-org-event-groups/index",
+      "baseRoute": "pages/org-event/index"
+    },
+    {
+      "route": "pages/platform-org-event-stats/index",
+      "baseRoute": "pages/org-event/index"
+    },
+    {
+      "route": "pages/platform-org-event-unavailable/index",
+      "baseRoute": "pages/org-event/index"
+    }
+  ],
+  "runnerSha256": "36918a58f1fba9552396d657ae47f35d8afb1e21690fa8fe85ac42a5e5adfeb3",
+  "businessFlowVerified": false,
+  "realDeviceVerified": false,
+  "userVisualAccepted": false,
+  "nativeScreenshotsCaptured": false,
+  "sourceSnapshots": [
+    {
+      "path": "app.js",
+      "sha256": "18600537d51121e708d63a2652bbbbd7ef9247197922ab17db37f38a782061d4"
+    },
+    {
+      "path": "app.json",
+      "sha256": "b43aae30ec49c01bac036a05b9f80dc1e267ea01705c83f94e74edc76b6f5050"
+    },
+    {
+      "path": "app.wxss",
+      "sha256": "32d3116fac33ed6192b8252fedbfc0ec7efa1dac3793acec6ecd618b95a2a3d0"
+    },
+    {
+      "path": "assets/approved-ui/court-night.jpg",
+      "sha256": "d028afca90ddce01d8c6759fca7fa35dd8abdad080fd2f56b598649e0e8ed31c"
+    },
+    {
+      "path": "assets/approved-ui/home-slogan.png",
+      "sha256": "fa845d76aa08c7c44eebb5dee4d7140c851196d7c7ca40403e49e8650c6e17bd"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-green.png",
+      "sha256": "4ebbc5b81aa2da96d9273a75042b9ab296bcbad449b38c0506d24ca694f65242"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-green.svg",
+      "sha256": "63d45f954656fdc9abb510569c7da0169efaf61ef1e0c7bff07789d7ddb4b4c9"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-navy.png",
+      "sha256": "c2ef641ee6a73ff3518ed0f4ea8df7987fbb437773c0a59a8000ae531336f9a8"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-navy.svg",
+      "sha256": "fa3e217420191dec97ba817239d83b12555f3f798b85f533cd745ed5680a3551"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-orange.png",
+      "sha256": "2bb2a05f14bb6ffee9fb9cfd1124415c00d217ac89779ce73cef7bddd0c661a7"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-orange.svg",
+      "sha256": "3056a8c5d537b902da09c2e4db73e4047682f0f02583fff920b0c26832900506"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-white.png",
+      "sha256": "0f86b57f152c7e2c91e7e4939e2fa973de999c4b787f0cd9a7cf9252c6b08aba"
+    },
+    {
+      "path": "assets/approved-ui/icon-arrow-right-white.svg",
+      "sha256": "fc647b5cfd71d09e3edb93f408924edd7dd90aca7146da868d548c062081b40d"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-green.png",
+      "sha256": "ec992089f78aeed2738a154951e8a6020a727866779d5dc08f2efce3894d878e"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-green.svg",
+      "sha256": "b60a90812a95969787f6347def3b497c3f90ea2e3cf9440d8aa3dababc973823"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-navy.png",
+      "sha256": "7587dacea1ee2eddeee03ec3cf362d9b09e688f5d88f0edce27db19f6368c0dc"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-navy.svg",
+      "sha256": "d3df49c763d19cbf438b3d78c7efee4aa94d762b3fba9a50fb424573d6e66de9"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-orange.png",
+      "sha256": "71a3020da6033f19451a3a87cd5ee8e5cfe973b4fd730691da567a229aba1e97"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-orange.svg",
+      "sha256": "24f54757a88719ca2f61ca9936fdbaf4e081487e2ff98765b3fa533edcd3dbcf"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-white.png",
+      "sha256": "ecc0b7d482d5d2ade1a6acc61144012fd54373ca6aea2df90100035a6bf4b3d7"
+    },
+    {
+      "path": "assets/approved-ui/icon-basketball-white.svg",
+      "sha256": "18395b759e4a4678f2cf4d7b371b51ba907326ccf95ed881c715331ec7d1ed24"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-green.png",
+      "sha256": "5939e9954a5c99c08cfd49c56aef7070abd5250cee0dfe2abb28a35531a83d2c"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-green.svg",
+      "sha256": "18aeb332b933c8399059b5ccddbd570d282908a693045584839c7119a2f951c3"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-navy.png",
+      "sha256": "82f55c7e395215c0bcfe58edad8ec030969d17fd06c5f1575efe77fd77a3886f"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-navy.svg",
+      "sha256": "8b0f9046a3491ab5736b21efbad2bb1c0b3306cb6877991c133dffb6770b9369"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-orange.png",
+      "sha256": "eac23bbdddd623a85313664aacf62d6e17c5cb0694ae83390f24b6e72ce57e64"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-orange.svg",
+      "sha256": "65d68d30d7bdf3d1f4853d8374b76308c8d0341afbeb4c38a34d4d190d8088b0"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-white.png",
+      "sha256": "1c1a1cf0696b731766df8896cebd4f7972b183c017cd72223ecabd2be2f3976c"
+    },
+    {
+      "path": "assets/approved-ui/icon-calendar-white.svg",
+      "sha256": "fae5f71bc37d54a6ab7be16f0bbe54fb0ee563b0e0eefca584afc2feb8076065"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-green.png",
+      "sha256": "53469e5ec739155153fa8667ca09080ac7810f2db81b1c1033109c874955e0ca"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-green.svg",
+      "sha256": "43dbfc6d2ae6dd00867bab3761ae7336a43c20a25a0c5f5c9ddd90d683661628"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-navy.png",
+      "sha256": "df9c1fa1e950437d392ae51794cf498bfefbf149dcd9582f293adb477f293275"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-navy.svg",
+      "sha256": "c5164e39d9bbe0f5c557b8dc54e04a0a99dbfe64c84d69355b5ef654ae1e29d5"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-orange.png",
+      "sha256": "0dfe27c01f70c76e12fe1f51668c5342c51fc426a08e8fd6d0205fbd0bc1f7da"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-orange.svg",
+      "sha256": "e94384dc6e95b0dcbc6e3d71b10474a2e5ec1eacf0a716c240be945e1323c019"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-white.png",
+      "sha256": "78dd112bf3b3ea735b66b03f7cbebd749902e10831ec600138abe6a16b9886fe"
+    },
+    {
+      "path": "assets/approved-ui/icon-chat-white.svg",
+      "sha256": "1f41b9dd9ce4b1d1dbc0d8a601137ebb018e9a08b352f140720d48526a39155d"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-green.png",
+      "sha256": "33e707a0e6fe6d08b653800a62d7de7f2ebac0bc20ce63cfa02639c57158d457"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-green.svg",
+      "sha256": "5402be4654f403612a9897bcf26cbfc7b92055810b81c4b6c381f32153d34b59"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-navy.png",
+      "sha256": "ce2179b954b1223136406d9948a44e7b73c4e865d41f4641225395f29f675741"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-navy.svg",
+      "sha256": "338889c49ad21e8d1b7eb9ccdec5faa3bd3bafc21c14170ebee3ca2cc71ed589"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-orange.png",
+      "sha256": "a175202a6fe0846cfc2e3a4c300a1dd71405d1f8cb0e4992b1140b7d6ae0e66e"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-orange.svg",
+      "sha256": "65c557d9a0a5ff59c4a580254143bf148c522dbaf3415bb6c6a4d87261a8f71d"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-white.png",
+      "sha256": "8b7631d3ff8d4ec71a5cd65dcaaeeebf729ea8310c87616f4049b4e1f19b6d6c"
+    },
+    {
+      "path": "assets/approved-ui/icon-check-white.svg",
+      "sha256": "629f8f136cb793c4ba09c710e18e2c63c9d68d495187fc0031340ece2aa94c81"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-green.png",
+      "sha256": "45dc4fe614b3cfc22b38b15ea838bdbff37c19b746b2e726abb5629dca449397"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-green.svg",
+      "sha256": "84e1dc4bc6617ddd5f9bdee09f3c29e97f5d9f5a0eb148e6fbdb3b126f1374b0"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-navy.png",
+      "sha256": "56892cc5668fc8a8bfe737c94da653fb213a96c3fd6fa6e32a3056802b05b16d"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-navy.svg",
+      "sha256": "e25818d89b388694bbd8b14681cc7ab8c9b20f4750018d1b5f08f65f76dfba34"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-orange.png",
+      "sha256": "2a80721c055d64eab77853853e7e2a87d54b31fc0915d25096df58b23ace879d"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-orange.svg",
+      "sha256": "393e30497b8469019983202abec3e186d7967b58a5673c455f7aa46050432c07"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-white.png",
+      "sha256": "744e386c93d5b9afbc699546c58e3977b14fd0b1566de2b4f960e7b71cd373de"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-down-white.svg",
+      "sha256": "0d47c5bbd64946181eb2c97851b37b0795b2a98392cb8515d0c79a22eebfd1cd"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-green.png",
+      "sha256": "86e8d1363f33b498d7f28efededc0d3beb3c7f31e0d20f3581db741a6a062dbc"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-green.svg",
+      "sha256": "d627e580bc377b21b54dee7e1cbe1e3d5a06f53d2424f0d9dae2bc1014d9b345"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-navy.png",
+      "sha256": "6c65f8beac55ef45acf8ae4d65627a889d529fa3570f2f8545018e91b53758e7"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-navy.svg",
+      "sha256": "5614fbd24d412d50dd73c3dc9ad6ab8dc820772e67fe5f4537e634e9b38d3adb"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-orange.png",
+      "sha256": "9618c60a6b758c9e7c76dbf239d87b5f91097fb2d7821120acafce5f436ee898"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-orange.svg",
+      "sha256": "9c5fad610c69dbee2c3020e64c3deba7cb107744b90bdeba9fc61069e159ca66"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-white.png",
+      "sha256": "a9ffe29e3247fea6b78bfbcfce54033dbc10c59eba95b826bc308bf9e56059bf"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-left-white.svg",
+      "sha256": "dd6b179cf7b000bab61abee3ae031aeedb0b38d46a5c51c592e9ea1093d287eb"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-green.png",
+      "sha256": "9757419210d46d5c627e63328e93e741bf6fe818b0e33b9c85cb0578fece52a0"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-green.svg",
+      "sha256": "c888472717fc45b6fb9776a96b9c7df534b6f87640d0657ae0da6b19ced5d71f"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-navy.png",
+      "sha256": "1823cb244ad797cc63778835b4baed1263ff24ddb6ea3239bb6437885a0fe066"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-navy.svg",
+      "sha256": "ca36fdc7bf1fd35d1c2e38b6acf7437f9715ea6eca7064c73062e25f8a9a3601"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-orange.png",
+      "sha256": "27943f33a42635ef3c40028fa348dd16f5c7ff85a8167c6d68ee511c8be4583d"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-orange.svg",
+      "sha256": "12f21056904551ed74daeec7e7152ed684666c677cc27d85e824087f3bd9bc03"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-white.png",
+      "sha256": "3af15e7b938817e6b6d4020e9627b93a342be7be6e0e159ecfcc30c38690bb45"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-right-white.svg",
+      "sha256": "f143f988461902d94e25f70b637416f66b26fb729329bf8f47fcfdd0abf31c30"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-green.png",
+      "sha256": "2fa5de172d3846cb441f473dbe2d3fe21e7bd134a90d78c5c1b9c7796fa3300d"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-green.svg",
+      "sha256": "0cb1fcda71024a40d7bde97832e1018d8eb4234c9db6e8f1e799916039c21dfd"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-navy.png",
+      "sha256": "70c7d051f080ed863fed40d45f1b94b23217fe1b0745766a0fa3240efae987c1"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-navy.svg",
+      "sha256": "4a9c1a69521878974968229b2eb97bc2dd7ec7fa90ef69bf937fbe7b0a36fb1e"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-orange.png",
+      "sha256": "606f0ec7fe86206d72007952ca8e6b23bde37017cb4b92f222a8c36694ee274a"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-orange.svg",
+      "sha256": "563b023def2784b39eb723e4fff507e276066a94bf1f843b7f0632bd55658419"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-white.png",
+      "sha256": "1103d8aa9da0aac70e62ae7828facaab10c5d652d85f242b825ce5d61ee7df82"
+    },
+    {
+      "path": "assets/approved-ui/icon-chevron-up-white.svg",
+      "sha256": "fab6e49bc354735b724a1cce64f3184b843eefcf2536bc6f2c2cb22175b31ed0"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-green.png",
+      "sha256": "5cef784515bead9ba38a095e9e4a53df581acc521fed8e364929e93cf9f7fd7d"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-green.svg",
+      "sha256": "0dd2cbc20163b042d804355bece3ee1e06643dc629489019675bf2328c9acf5e"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-navy.png",
+      "sha256": "1f4befb6066bb18297c51ca02e13ecb3fd624a96aa9a36c5ef616fffab05af60"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-navy.svg",
+      "sha256": "dbb2549b095b0d45a7e3f26200cdc78aad40bb0f442f33543ee397bb93469a2a"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-orange.png",
+      "sha256": "d65f8c59f365750814ad8dcfdaf91fbb514a468e1bfb074b143533923f5c64b6"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-orange.svg",
+      "sha256": "e76e0fcf346561e28fc903d6c4f764e727460a620c8f9204061a64652c1c25d4"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-white.png",
+      "sha256": "a1d16819a84ea7410549e355e56f2c1d2bce21f9c2d214b5393af0fc8a894a68"
+    },
+    {
+      "path": "assets/approved-ui/icon-clock-white.svg",
+      "sha256": "2c87edbfc4e7b9007886b4228e38d3d4a98544a7c32381862d5a9fff44f8300d"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-green.png",
+      "sha256": "157f2cb168f6759f53d95662e2e323cb077a6143fd8da4557ed10667ad5d474f"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-green.svg",
+      "sha256": "ec00b9fbd0d8771c792ed7432e18af391c5ecebe2061ff102b2a112d578ef81c"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-navy.png",
+      "sha256": "ee999a3fdfceba9bb5bca2cc87b9d56dfe4b3f853ece817fd9d15d22e4a9f816"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-navy.svg",
+      "sha256": "2974c3980ed863babe3653e204ebcab88506b25033cff02d29280776fbb0dab7"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-orange.png",
+      "sha256": "c808f4a4b56b7abafc525ef2837473feb52ebeff71fd5da23ccc1f2f818e0545"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-orange.svg",
+      "sha256": "839c66d7f6f2bc8ea21fa648695bec1076adcefb5facc94ad183cf20be1b3569"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-white.png",
+      "sha256": "5c02ccbbca92526287158ab2ec17d446034120cfe0ff14f5768593962f89e533"
+    },
+    {
+      "path": "assets/approved-ui/icon-court-white.svg",
+      "sha256": "bfe4249a90533ee4d33d76361c9bf0ec6cef71de427d181429fd67b75a4841e7"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-green.png",
+      "sha256": "6c637273e84821ffad9452bf521cf4285a3af62150911f4606199ea8a8e42d85"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-green.svg",
+      "sha256": "03481dc855b3115c7c72efd646351d7a82a9eeab4b4f37a66dc5e8d8516df5f1"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-navy.png",
+      "sha256": "97483541db7bba3d6615ff0cfa5c92daffeee297ae125061e5d6f00138e8a351"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-navy.svg",
+      "sha256": "6ec8a737fcf8005c59dfec2fba94b54b608e3c0dd659bb55ec780576fd782ac9"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-orange.png",
+      "sha256": "a135d80eee9916b060be3820e744fcc21fe15c4da38543d9b1da48a82f6843b8"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-orange.svg",
+      "sha256": "efcfcc70fc0bdee0dd22922664d240b2fe1c08e08c1b10e3735ed54e7e160175"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-white.png",
+      "sha256": "9d1feab270abdc5b11f744ef60b5db9dbcc8833f16025a056417829b3725784e"
+    },
+    {
+      "path": "assets/approved-ui/icon-home-white.svg",
+      "sha256": "71ae7cc2a964d54497d3ec7ce72fb9f634091f03be7fa15227a13a219035b221"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-green.png",
+      "sha256": "58b18049eb5044a4e53221abb0dce9063281db998cb841c4ae2276942cfbc6af"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-green.svg",
+      "sha256": "79bb2635cd7ed1f36d5ca1bf2a237479314d9f9ac876a78cb5e32e1d1a9a288e"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-navy.png",
+      "sha256": "2d24593d82a2d4c829d23a9836cea2bcf619739a5fdc89d8c48cfe3f1716fb82"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-navy.svg",
+      "sha256": "9ec334a20fb4846cfc59c06c9c8560b66d49527924e04d4a1ff107a12b41c66f"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-orange.png",
+      "sha256": "b5e746fcef488e3dc16ada24074928abc324dd448dad5821bd5b99c82bceffed"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-orange.svg",
+      "sha256": "b17c332ba9e7bfa9f01636618b878918dd8182e5395114b555f5cab9a43000b4"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-white.png",
+      "sha256": "db333f270d6b67033da2c0ad9882d4f1992d9942e2eaffa9030e19ef06372fc4"
+    },
+    {
+      "path": "assets/approved-ui/icon-info-white.svg",
+      "sha256": "728c462453ff2fb324b9415dccaa9c9661d10498726539ef285482b2c4547cc2"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-green.png",
+      "sha256": "7ebe8b93f810d91298dba36e10eb4e70b073b31dea6d3bf2b2460ae767f39670"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-green.svg",
+      "sha256": "20e3152708ec1f3bb4344770c4d8acfecc0415c670593224946094a857b6ae61"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-navy.png",
+      "sha256": "cee84e9a27b4db11692954f745bbc9d9eab6c14da40e41f31459e1b6fb5a44c4"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-navy.svg",
+      "sha256": "9ecf7cd13cf90bd43f83f9c7d17faa4e485765e2d6097e81d75c88f61be889f5"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-orange.png",
+      "sha256": "781d890d4279dc1751ad9a5adf2b7e47ea0a277bbe07092bbb0843ed7e04e0e5"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-orange.svg",
+      "sha256": "998c406ba3872405da54a36bfe24a96c7850bb82c907b2cf0d4dda6793795f9c"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-white.png",
+      "sha256": "880a2fb0b85ec3235c907e74f58eec7ff9eacc87f0c177f91d1968f213fde0cb"
+    },
+    {
+      "path": "assets/approved-ui/icon-pin-white.svg",
+      "sha256": "395ad87cea61462dda557bc38ae6027a076201ce244d458707bff54a60d8014f"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-green.png",
+      "sha256": "63a0082036c5ec045333545968bc8ff2347677d421950bf6fd88d56e7864f7d8"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-green.svg",
+      "sha256": "d853128f27f8ac04c9eebf74518f168a526276e37dcb2c4b4d6c690bb2c7577f"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-navy.png",
+      "sha256": "929cab87179959c612da540ea610c957896b21ddb37def2cc68615a4353dbb0b"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-navy.svg",
+      "sha256": "868c6fa464510600bcb4e607f92f21c28378f267077cf2dc85c9b9eaf263c2af"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-orange.png",
+      "sha256": "53cf02d3b85ecf8585d247094eaabc6402ccb961ac7a9a401ccb501a0f1d37e2"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-orange.svg",
+      "sha256": "96978fb2d7c9b1d7a03f23c7d1e12f26097ea998309ea220afb1ae501c322853"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-white.png",
+      "sha256": "90bd4ad10647187cb11179beeb23bb9afecdeb554a781e066fab5f408c6b4b5f"
+    },
+    {
+      "path": "assets/approved-ui/icon-play-white.svg",
+      "sha256": "d5f6b13368e123b9217999928fdbe77f9826360122939867eab5dfac8af6edaa"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-green.png",
+      "sha256": "3ec83d6cafb8778f3cc5f4c60ff5cff6ad645d360fe833fde0500fa9549f8f5e"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-green.svg",
+      "sha256": "08690bd91722473aa1d38d3b34118cc176d9bf03ba80b69e4a8584349919b3b9"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-navy.png",
+      "sha256": "00e3c31660727fec3f5f36097ae2f1c7501122fca0fdafad3d92a70fd2f73b7e"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-navy.svg",
+      "sha256": "36d891ffbe8f232da3e7eda805224a961f44cd98c3f882b6fe011d35e4d518b9"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-orange.png",
+      "sha256": "a08749efb3f067be763befd66fbbb406178981aeea9f10334f48397cd145609b"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-orange.svg",
+      "sha256": "182008a76465e37fb9809bfdd70d2c041fda513fce3839b51ad024d869ec90c4"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-white.png",
+      "sha256": "12d0518961161a26ab9e6507d1743c791487c61f6f39255f5026ad45d2fc80c6"
+    },
+    {
+      "path": "assets/approved-ui/icon-plus-white.svg",
+      "sha256": "a67fe79dab15f22257b6b7ff7dc2165c0aeb617e8bfa4ae10af1ea34ee5b80f8"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-green.png",
+      "sha256": "3dbe8dbe831b329dbc63b7889247d1a83f4574b441cf9bc3b5324552242b2c4c"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-green.svg",
+      "sha256": "9fd7c07b09d41190c29df6100f6b3ea7213b61f6dec1e6fe34fbaa63c000062f"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-navy.png",
+      "sha256": "9bc8932f2d62d4fc8a85b6a7043b4a36c19356a9c1956a3a38b6b095f7908508"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-navy.svg",
+      "sha256": "6ab3d9c59fdebc84d32b7d489a5fe745e7ec1d917c91a286c5bcb69d43536903"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-orange.png",
+      "sha256": "101f02241d54cc2e6778be35cabceb02fe5f047fd6927f45cca7c28214e948a7"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-orange.svg",
+      "sha256": "56d3e51cd34c2032e01a98b91d8832300031e0de51435cfa61e2be3caf2f0ca7"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-white.png",
+      "sha256": "1ed4bb2a3405fddaea3321bb92ad5f949c2b4211760b25b644ed41e73a6ed871"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-c-white.svg",
+      "sha256": "5ec07388b61b10784fdb358b72c1a260619bb58482ec41da2cc081e5f21d83fb"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-green.png",
+      "sha256": "495b496a069bb8fb01c8231f035c077e18b0d030d3d49224a15e582a87d5da07"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-green.svg",
+      "sha256": "cfb5159a55aaf403df0075a4b0ffa9aa8a7b02d9fa0f57a444f3023657371e32"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-navy.png",
+      "sha256": "ae2e01fcd321847dbb48b3a35d93dbee42df372e222d567fd502f0491526b283"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-navy.svg",
+      "sha256": "6894a5d96477ef4c33ec44745f4c49164a888706533b57e4b254cabcbff4ba21"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-orange.png",
+      "sha256": "fcd0973fb1d39cd7ed4fe667f10276bdca0590f63d0019449db5140feb732651"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-orange.svg",
+      "sha256": "648ffaac44bc2dc29a7ca08ebf53af709833d0ff0e5eecba8a0d6bd378308546"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-white.png",
+      "sha256": "7beb2442cfee35472e84113a5c340ca1af10a0b191bba7b24cb8d9524ca095dc"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pf-white.svg",
+      "sha256": "e7ffaa1be525d5918fd20280f0e4b46a68983735e952781bce1c11a06680dd7b"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-green.png",
+      "sha256": "67eb330e1c45a25e30bb095fbf775376484a8a1262c5ef25881b89b8fac5af73"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-green.svg",
+      "sha256": "526fcc8cca3ac8b27e88dadbf5c28f3ae5a6ebe8d6e55b37618e77db022c8ffd"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-navy.png",
+      "sha256": "83da4c01e37f714cfdbe7f8b487aa359a2eeacb41b664b108e2b999e5e177862"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-navy.svg",
+      "sha256": "ce318bc33f8b0b51ffc7092eee9f58538fe496e2ef0067b52217a2fa20fb7373"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-orange.png",
+      "sha256": "6856e8a327c0727ec5d67f732d91d45c0d3f24d8ff8db4380ee555b7deba1db1"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-orange.svg",
+      "sha256": "bdec5bb9376251eef3ca5acd00b52eb7982597037b747b08edab865a804bb8f5"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-white.png",
+      "sha256": "fe61409c3ccc64c5463665cf042e68cb7e39af54e20a8c9c7f1cb7d9e56c7b3f"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-pg-white.svg",
+      "sha256": "72cb0c922a1ef27bcfe2306c2b28b1574859b0082f6ebf0d76970131f9d95292"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-green.png",
+      "sha256": "6757abede22b006a4e88884008cb90ab151e7b1bbb94265dc8c0a5c28fa9fbf9"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-green.svg",
+      "sha256": "ac279a6fee3f93f33037b9ce7a639e79da9fd8b44a02d632ab90b59cef0a9fc3"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-navy.png",
+      "sha256": "2c59cde8b9b47c140236bcf7bdecd0c15bc35ca984199906a571047eecca1be8"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-navy.svg",
+      "sha256": "b5e9e23a227e7c05ee331eb9abb5e60e7ecbc02771f5d5e68e17acbd1df6dc91"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-orange.png",
+      "sha256": "d24ce95a671a5541c8e212a42ce79e7b1b092a4f3be0ce5294f79e73070849a7"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-orange.svg",
+      "sha256": "9450bc1ec1ccd25728ef3144b91d47385f31b9a19387b6efc1b97440608f1854"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-white.png",
+      "sha256": "dbcbd45b182517991e038cb8987bda0152bfe9108bbeb1dedc7bda09f871b933"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sf-white.svg",
+      "sha256": "9dc18eb6e3ccfc3002636d62a0866e43581bacdff313429495f12dee90814abc"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-green.png",
+      "sha256": "4223e831dee5fc8b592b13905a364768b290b8572d9a74283097a7f25df2e9c7"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-green.svg",
+      "sha256": "f83e18a7881c2bcedf7424e822d1141a1c1e67c1591034559f0f667d1900fa9f"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-navy.png",
+      "sha256": "dbd4f5033fdbba27b266f3e95ca6a04807d2f0c732a062202c062417f91c36df"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-navy.svg",
+      "sha256": "eae5375616719b93b36dc14ea4c5f0c339c1b752661635165ba9f81b058f0068"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-orange.png",
+      "sha256": "3af2ea626b31caa995beb42c0874b82b4e6c67bf460e075eeb5df918f9a8e742"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-orange.svg",
+      "sha256": "7d0edb638f1b7a58d4db8a60524ca9de8b6bcefa49d0b55ac2121a2f5b683633"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-white.png",
+      "sha256": "42fce8132a9291e8c2b5015d17214ea6c74e6f0debc06941035017e80b4f53f7"
+    },
+    {
+      "path": "assets/approved-ui/icon-pos-sg-white.svg",
+      "sha256": "35d26fdcc7d4f2f59e87aba9791935a898a7a00cba940d3435aba599d946e6f7"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-green.png",
+      "sha256": "0d98e7354d09c19892d7241ffbe4a812058c0abe67ce0ec018434886380645dd"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-green.svg",
+      "sha256": "22791a9f1665af2a836de3c9718564413507928a854c4ba791caf363c159363c"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-navy.png",
+      "sha256": "e9080228ea5eacce9185ac9e06981eaefbc4113a744d70644db4e04bc7afa751"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-navy.svg",
+      "sha256": "8c1ed52f5909a484bc06608264a3330de058597177778100f4fea5bf2d062866"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-orange.png",
+      "sha256": "70f6eb8cdfac250d3c8d6a790419216a5ee2eddae5d29b1fccf73505e1f53be9"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-orange.svg",
+      "sha256": "e42b5395ae284a9bc04be3cdeed76a53a2c7573267e16e3abc890027696e8368"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-white.png",
+      "sha256": "e25653887a0c3a82271178433f4edc8d23c202eff877cad690727fda82b2f14c"
+    },
+    {
+      "path": "assets/approved-ui/icon-search-white.svg",
+      "sha256": "407f8cd085d4dcdeabfb49bd45ff7a179db0da681371ed5ec146e9e2be8eeb44"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-green.png",
+      "sha256": "f1a790bd5efb7b7e21d1a83f865bb0198d7d79b5814d0d5a819cec0ad93a94fa"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-green.svg",
+      "sha256": "0c68a41dceb1f13e6837d75b5c232db24f655591a004d0b6ea51dcabec82e861"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-navy.png",
+      "sha256": "74b0bfa7fae6c79e739967c6590be7f98167e1f3feb596b423a1a7ab5022b899"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-navy.svg",
+      "sha256": "eef8d03387eb9528f76feb08be8599f64b950271cc3c6ac1c04780572cd37ea4"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-orange.png",
+      "sha256": "b85919c8807a24ea4378e3781bc7e7473bb04c94350198522fadf882b310a765"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-orange.svg",
+      "sha256": "aaa9232703e90155536a059796c7ec9a749542af1d5edd5532ad7183d96cd439"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-white.png",
+      "sha256": "8e5cc8b375c3cc7d0b185d9f0c8f200c1d7a7617909b82ed58fc299e07ee739e"
+    },
+    {
+      "path": "assets/approved-ui/icon-shield-white.svg",
+      "sha256": "6d445c2c7fd5b6958162e2cf839bad420d0019fb4160edf3c39ebf6db9344505"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-green.png",
+      "sha256": "a0b02567243f0d8d6606ef2f409b9f2a44ff5f7e4f30369bd2018a1e4c77ea46"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-green.svg",
+      "sha256": "2f3eae247add3af9597971b19ccfb19e877426b13e54619298b235f936c30cbc"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-navy.png",
+      "sha256": "4beb2e14e2ee1233dc3ef678069bed2842126a34fef26d0a9974f13c8488be30"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-navy.svg",
+      "sha256": "794dca7e25c43db9d316544d9dd2f86ffb6b0a90d5c6eb40493b46995daecf88"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-orange.png",
+      "sha256": "d88714fd9c2358ac5c11c4630f711bde3fa5cfbf14d56bc314f16e0000f823c3"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-orange.svg",
+      "sha256": "a42fb9d8153eb6b7f67c68dac1b1f2ca67ebd0104bf11e5b2d20ad88e3b8fbf3"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-white.png",
+      "sha256": "82115491725c10253d073fc33b1659439f838e872a9423a09c52461dc4b82996"
+    },
+    {
+      "path": "assets/approved-ui/icon-trophy-white.svg",
+      "sha256": "cfcd07ded230f41efb51bfc5ae176b53c754526c72778eacda6788344cc4bbe8"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-green.png",
+      "sha256": "96f05df4c815c4c2e49b20c6392609c2b67284e1d307e7fd7346ad8df30f48b6"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-green.svg",
+      "sha256": "eb2337eaa4578aaba452e46fea314fc02f919e87dd8d586683b38f7e91d21f2d"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-navy.png",
+      "sha256": "2330827ef000e7d3c2c752b61169b31565e93f99db158338d7984be5d0fd9be4"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-navy.svg",
+      "sha256": "b6ad4dbf048fa6f52fb9c95a70a47ac7557f68bceba1303c8460b1f86ff1031c"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-orange.png",
+      "sha256": "0cf138e142a698fcafd74575f71ca4d1aa60fed182f97de2d70ac9acc67f0361"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-orange.svg",
+      "sha256": "44a190df352139b1bc40916b2930eab4235da165039f034c0d8714f4cbc4390d"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-white.png",
+      "sha256": "dff5df11df98f59ba63c289b5be9ca3e501e0ba1a129c6975501c1c77ddf445f"
+    },
+    {
+      "path": "assets/approved-ui/icon-user-white.svg",
+      "sha256": "58097c7171370d830688a88045444d1ecdfb4500a733482e4acd15c624e2cfa7"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-green.png",
+      "sha256": "297ab1a5309fd5cce0065e1510802db8b25ee61c40fb75a8d829547125dd7992"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-green.svg",
+      "sha256": "20a5a8aae274d391eba0748c5b5c47eac2a147ad465484986175e01a269dea35"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-navy.png",
+      "sha256": "9f99966c0948604e8a48b8528d6677ee8011adf38ef70d48057ea395d2143d2d"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-navy.svg",
+      "sha256": "3d0b7cdb6213b00e5e98bd26aa22336009ef28227cdc6e8115ed17b14b2cd8a7"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-orange.png",
+      "sha256": "2fda10fe2aa649e840144ff6b6496a6381281d796a995337275fa06bdaaaebb4"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-orange.svg",
+      "sha256": "3b7ac7eec7a5030589fca613193d5b33652d12ecbc9ca5569cf464eddb596896"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-white.png",
+      "sha256": "5ff3824276e2a0434061c2cbf683281daa5485ff0b5ac489ab81cc591d5c03ed"
+    },
+    {
+      "path": "assets/approved-ui/icon-users-white.svg",
+      "sha256": "0675a02f4058bfbb8c6d218469207d3dba2f9cca416d44c639e44071eab49a9d"
+    },
+    {
+      "path": "assets/approved-ui/player-placeholder.png",
+      "sha256": "90d3415d72b9dcc14b494f28346aba9b75e1ba391b2f9c4be85254e39e90fd55"
+    },
+    {
+      "path": "assets/approved-ui/player-placeholder.svg",
+      "sha256": "f328add6db9d0613c967cef80a0fecde7f35e430df9d2f87ca08284997c3a4a3"
+    },
+    {
+      "path": "assets/approved-ui/player-sample-a-hero.jpg",
+      "sha256": "5bea49e68ca0a439bfee096ffb8c87ad17988971bc52d2287113e080e3482056"
+    },
+    {
+      "path": "assets/approved-ui/player-sample-a.jpg",
+      "sha256": "ab5cb73d9f4fa96713ebbabd75af07c292ef72a09559d4f8535d301de090c469"
+    },
+    {
+      "path": "assets/approved-ui/player-sample-b-hero.jpg",
+      "sha256": "87b70e99d154d1620ea2c2c3e91313af591ffaecd0a20f87e0b8d8be442c212c"
+    },
+    {
+      "path": "assets/approved-ui/player-sample-b.jpg",
+      "sha256": "4186044a194615c1d6b441c6f0a9540637e61f5173ed10034be7a5d416dc6f5e"
+    },
+    {
+      "path": "assets/approved-ui/README.md",
+      "sha256": "e38b10998d77b7b7f6e280fb8db969228b9f662b80a33ba36a7a72d0917a1db6"
+    },
+    {
+      "path": "assets/court.png",
+      "sha256": "a76fa7b80d3d9b211c1de97ab6f5145824d5e274b10a21c2b2cd766e34052ce5"
+    },
+    {
+      "path": "assets/README.md",
+      "sha256": "54bdc720464a64141fd9c584acfaa5275de427ae76074b79e511a679d1a87fa0"
+    },
+    {
+      "path": "components/header/index.js",
+      "sha256": "18f9dcefa1bf0f9a2aa3f3eacf6da4c5c282d218ec01a560bb95f82d4ec1d279"
+    },
+    {
+      "path": "components/header/index.json",
+      "sha256": "63d78bc96b81a3fbfc081a7aa5317aec503467a146d1dd9e03af7d40e4becdb3"
+    },
+    {
+      "path": "components/header/index.wxml",
+      "sha256": "0bf20428da8e5363d58705ef2a33dfb7b27aa3f6b24f12dd622bdaf8cfc9e8f0"
+    },
+    {
+      "path": "components/header/index.wxss",
+      "sha256": "3c724022b84bbd607ca25aec9e57d909b51bd2b0bab5a0c723ae325c8b08ffa9"
+    },
+    {
+      "path": "components/icon/index.js",
+      "sha256": "0e4acd5031920935ed36c37d8fbd152e93beadae049fabf73ed0103f4edcc7d5"
+    },
+    {
+      "path": "components/icon/index.json",
+      "sha256": "63d78bc96b81a3fbfc081a7aa5317aec503467a146d1dd9e03af7d40e4becdb3"
+    },
+    {
+      "path": "components/icon/index.wxml",
+      "sha256": "3dca1e7f31bf587ead397531774ee19fdd8e81b6433b8e34e8a886a54f9d0fe3"
+    },
+    {
+      "path": "components/icon/index.wxss",
+      "sha256": "da273ea6db3dbb9921ed9cc460484cb63665d17db34b7568a4e3a78b6ea26229"
+    },
+    {
+      "path": "components/navigation/index.js",
+      "sha256": "99f1f39e480cb4aa157512087a50c71578c88cf28a2728ea58c378e247d01de8"
+    },
+    {
+      "path": "components/navigation/index.json",
+      "sha256": "63d78bc96b81a3fbfc081a7aa5317aec503467a146d1dd9e03af7d40e4becdb3"
+    },
+    {
+      "path": "components/navigation/index.wxml",
+      "sha256": "802e3a2f312311da41bec30440c6c9738e61140131ecd7c08d6f7d10d5fb04e9"
+    },
+    {
+      "path": "components/navigation/index.wxss",
+      "sha256": "8d813fa9997b73274307fb3156c39d4f7558fadee1d079c935bfb92ba740f905"
+    },
+    {
+      "path": "pages/account/index.js",
+      "sha256": "52d39576b70bd554642a1ce678aecddb546cd35bec9de6913083a5f7572e4086"
+    },
+    {
+      "path": "pages/account/index.json",
+      "sha256": "d0f5617e6b8fd45d2806507a75f205cfdabee5f2d8b379d4761fcd03a3e47fbe"
+    },
+    {
+      "path": "pages/account/index.wxml",
+      "sha256": "35c4f4ea21906951c8d5ca41685e4d2767dbdb19af44cab529344a27890e759a"
+    },
+    {
+      "path": "pages/account/index.wxss",
+      "sha256": "f94d80473a75794e9a25b48c698ca36d44abde8476780bf1705725c1c7d08fbc"
+    },
+    {
+      "path": "pages/booking-create/index.js",
+      "sha256": "036f1f87d2e877d3f9a04f8dad57f3769b5fef747ec39922b871a41afff23c84"
+    },
+    {
+      "path": "pages/booking-create/index.json",
+      "sha256": "4aca0c4bc5f3c6126d71f73445e481806056b13deadd796fe137c71331ec3273"
+    },
+    {
+      "path": "pages/booking-create/index.wxml",
+      "sha256": "7ba04f839325218a0a59e7ccb02da9b66521302aa7e0b6e7298946f16374dcc7"
+    },
+    {
+      "path": "pages/booking-create/index.wxss",
+      "sha256": "4a8c1a6572202e2584000a762488b6aa93c4d99e14d9973e77b6951c7d7f1474"
+    },
+    {
+      "path": "pages/booking-detail/index.js",
+      "sha256": "1ad57b4940fd98e8a6848dfe21d2e39ab3ec7310666f62e9858cb622ec59e54c"
+    },
+    {
+      "path": "pages/booking-detail/index.json",
+      "sha256": "adb59d609bbf4d5233bb7569f522170bd1505c297cd457d1431aefc053d419de"
+    },
+    {
+      "path": "pages/booking-detail/index.wxml",
+      "sha256": "28cb137d054ddf6190e45db12d129ad8bf6d97ae30ba11f57f8d2cf00811291c"
+    },
+    {
+      "path": "pages/booking-detail/index.wxss",
+      "sha256": "5efe934eb0b84eaf50a9a2ac87d2dc6758fc01b460dedb8593c3724c31a66eb7"
+    },
+    {
+      "path": "pages/bookings/index.js",
+      "sha256": "9b69e1158ebda96826dbd71ddfff69b1ed2be9e8d5920063bca97b33576e640f"
+    },
+    {
+      "path": "pages/bookings/index.json",
+      "sha256": "7e5d0f3d4e83a217290f63e42af182c103d1a3f9a7d42d8bfdeac7de084c5944"
+    },
+    {
+      "path": "pages/bookings/index.wxml",
+      "sha256": "d967cf54f1f860afdb0b405baaa2b20a08f988d30dabbd9d0f9397e5132d9217"
+    },
+    {
+      "path": "pages/bookings/index.wxss",
+      "sha256": "08cecd9f5d4e88ea5ae7fb47d1acc7bdc56f385c274a1d70eee9e65bc759aa9b"
+    },
+    {
+      "path": "pages/compare/index.js",
+      "sha256": "4c174348681c41a402bb277d18d67ffb5d6a7f2b4ced1b68c109524bcbd09596"
+    },
+    {
+      "path": "pages/compare/index.json",
+      "sha256": "fb899002f8f49a21abb4c6be843f519e7f7a8c8d33f556632cffd581769c82ea"
+    },
+    {
+      "path": "pages/compare/index.wxml",
+      "sha256": "aa2a52c4cc91212f6ce98df479edd8a4858266547113a938034892e5fbf2f928"
+    },
+    {
+      "path": "pages/compare/index.wxss",
+      "sha256": "11732bf1343fc4d957e90c52cd78e7804152c22f507eab6f7d8d5983b6363047"
+    },
+    {
+      "path": "pages/entry/index.js",
+      "sha256": "f94a937e48bdc4244dd340fc2178889d9c27adfd5ef94af76aaba8c8b5915e47"
+    },
+    {
+      "path": "pages/entry/index.json",
+      "sha256": "209a8fac61c7fb97bf1642166dc91a05dc14f5fd9e60aeb57d11dd50bfed68d2"
+    },
+    {
+      "path": "pages/entry/index.wxml",
+      "sha256": "619330803239df6f2e985e4803bbf77b1312364ac4fbd4d6f64800c0a9197faf"
+    },
+    {
+      "path": "pages/entry/index.wxss",
+      "sha256": "4feac5fc4c4fc18ae399a57160282eef963f18630e38d2b350c3c002d2ca264b"
+    },
+    {
+      "path": "pages/event/index.js",
+      "sha256": "f3529639e1b9818af317569bd7d92ac50c7a3f0f6b457b79f2243aabe013e9ed"
+    },
+    {
+      "path": "pages/event/index.json",
+      "sha256": "46cbd8f6255fa9fdac96d7dbdc6330baf0d31f27ce75218363972ee5516ea2a5"
+    },
+    {
+      "path": "pages/event/index.wxml",
+      "sha256": "fb13a5c680dc0ea58b9c64fedea2620abb752b8f4a7265ca98ff807b18fc01e3"
+    },
+    {
+      "path": "pages/event/index.wxss",
+      "sha256": "9fc83c131df32b1c2f7a7c5581e2424e2b2ec22523aacc333d1637a7a32df838"
+    },
+    {
+      "path": "pages/home/index.js",
+      "sha256": "00bf0098cb0e2e0941611c3ed1e71d22195d228dba43cf7919071c26b0be82ba"
+    },
+    {
+      "path": "pages/home/index.json",
+      "sha256": "2e20baea9b62119dad28fac9cd53df6c415a8b92c56bf5cfc5c756171b087da2"
+    },
+    {
+      "path": "pages/home/index.wxml",
+      "sha256": "bc34393a85ee204675962d57741e56cb4b9e7ae88b8a91353dcd45fd2d9e3b05"
+    },
+    {
+      "path": "pages/home/index.wxss",
+      "sha256": "c7ba149183cb45105fd4ced0a85593d3875f644b5480f63ae2704d60f35235a1"
+    },
+    {
+      "path": "pages/invitation/index.js",
+      "sha256": "cb095e7c68f7c1732a1e405e8daf7d30aa0d9e81963af7ad11cc3174783b4825"
+    },
+    {
+      "path": "pages/invitation/index.json",
+      "sha256": "4c3f48bb52376ca0fdecb81be6a3addbb6fe33796feb89e036376b80804e2ebf"
+    },
+    {
+      "path": "pages/invitation/index.wxml",
+      "sha256": "acfa6be91a288e6f0cb6b3ea8736b643a8326e88e462cd3a4f6dafe1a97767df"
+    },
+    {
+      "path": "pages/invitation/index.wxss",
+      "sha256": "a86c98e79ab6d4d2cb42396d2ccc5c20635cdcb53f50b871154723c3e51d9a72"
+    },
+    {
+      "path": "pages/match/index.js",
+      "sha256": "c653624aa48146e7733d6f411e76ad84a3a1b1af6e0ef416caef6870191770d9"
+    },
+    {
+      "path": "pages/match/index.json",
+      "sha256": "115218b1ae668b9f9843a716106b0c9f59de272ceae4b8e1f0f245e6726285b8"
+    },
+    {
+      "path": "pages/match/index.wxml",
+      "sha256": "dae5aab34450c096995e6ebdd7f689458d73638899c481ede4b6b6d1e7b744d0"
+    },
+    {
+      "path": "pages/match/index.wxss",
+      "sha256": "2b03948a1a6f135b64b30c8b0d7122e4a4fe9f17ce8fc02f2a700933c8d12e46"
+    },
+    {
+      "path": "pages/media/index.js",
+      "sha256": "7c3f6831f58ac1313ad30c12ac07ad7296356a11f0ab9176417a5e549a208943"
+    },
+    {
+      "path": "pages/media/index.json",
+      "sha256": "2ce900a802bc383220da4bf251ad17c07b20874e32784b7cd2d1cc3ed1b7c6db"
+    },
+    {
+      "path": "pages/media/index.wxml",
+      "sha256": "d239cf15ca668b6bf7a9a7beba5d9a0c7e83e7fe0686e125bb1323cec08874f5"
+    },
+    {
+      "path": "pages/media/index.wxss",
+      "sha256": "48a136da33c83f19eceade4c908d80b3ba9436ceae6f5824b9719b778a59f6c2"
+    },
+    {
+      "path": "pages/org-event/index.js",
+      "sha256": "ab39ffdfd273a19039f69258cea9744874c61eb096541c424f4c4664c8d2b5e2"
+    },
+    {
+      "path": "pages/org-event/index.json",
+      "sha256": "7529f432885f53f35cbb92f0fb229c02f3e7e5d8474149d2cc34c6a60c26e70f"
+    },
+    {
+      "path": "pages/org-event/index.wxml",
+      "sha256": "ff91cd2b7fc9f4a532bb94918e340076080617c285f52050405003908711aeea"
+    },
+    {
+      "path": "pages/org-event/index.wxss",
+      "sha256": "97514e32ca48ee77b0e0b120d4508a5760e3b86a3ee2c5a7e38810623fefb4ad"
+    },
+    {
+      "path": "pages/performance/index.js",
+      "sha256": "559fc350372ae59b8557f064be3b0572ac055b040b53925a7336e4c22fcc9075"
+    },
+    {
+      "path": "pages/performance/index.json",
+      "sha256": "b679d2d8563a95871dd6c1195cd0dae671c7a59562bd64192b9698175404a8be"
+    },
+    {
+      "path": "pages/performance/index.wxml",
+      "sha256": "82144645bb9f1d6207bd72b501548ba4c1261c43adfab5bac313bf03b820408f"
+    },
+    {
+      "path": "pages/performance/index.wxss",
+      "sha256": "83b6ede0046ae7c2bfe2aaed07425fdf066eccc7aeab8f09287b853d2b30cd94"
+    },
+    {
+      "path": "pages/planned/index.js",
+      "sha256": "109676e3f814d6b437862da49af10268c0cba44cac32a712a5664bb9e88e8099"
+    },
+    {
+      "path": "pages/planned/index.json",
+      "sha256": "cd8f6561ecab9cc851af5d4fee3fc295e64034ee9c183e7b499dd1464dda54ed"
+    },
+    {
+      "path": "pages/planned/index.wxml",
+      "sha256": "e2997b3bb70135f870b25b43e15cb802385902b6798cb4d89ac62621e91e2c89"
+    },
+    {
+      "path": "pages/planned/index.wxss",
+      "sha256": "3fc929207d76d3a1fcd257033e2e51f012723f9294ed5346da441076f504531b"
+    },
+    {
+      "path": "pages/platform/index.js",
+      "sha256": "f1be6a7bbc87fc9ded44d9032918cc82d44a7e2ca3c32c1aca7855ab7960fe63"
+    },
+    {
+      "path": "pages/platform/index.json",
+      "sha256": "c6e1f405227875d1ce3c40b4acc05247b2ce68d404411140705dfe77c73e8863"
+    },
+    {
+      "path": "pages/platform/index.wxml",
+      "sha256": "9d7e473186640e4e4111761eefbc7d7b2107ad2c82e1ad2f1ede674dc1fc7144"
+    },
+    {
+      "path": "pages/platform/index.wxss",
+      "sha256": "6d33bf501b566c6f2131b7e8b10787bb6f87efebbfc1042c52aa8714edd09f54"
+    },
+    {
+      "path": "pages/player/index.js",
+      "sha256": "c7be0f6213bb4914bcf05271ebd62f9542c3b706429715f6663241e4e1824a21"
+    },
+    {
+      "path": "pages/player/index.json",
+      "sha256": "3a9ee9011718ce2f4f9cb649aa584aa4c7c585895219ac570faa34c2f560f7f3"
+    },
+    {
+      "path": "pages/player/index.wxml",
+      "sha256": "3146ee0543c6906a6926941dca685a03a75e0aa0ee86076116b65263467986da"
+    },
+    {
+      "path": "pages/player/index.wxss",
+      "sha256": "89fc5c27663d7ff56e4b35f11f73acc8f8cabeef294f166cf6920d64f498d267"
+    },
+    {
+      "path": "pages/player-center/index.js",
+      "sha256": "df85a75e7dd6d40f91965397547915c79c6e17f55e953d5997008d157df34f50"
+    },
+    {
+      "path": "pages/player-center/index.json",
+      "sha256": "6b495e0a7240a59f0d0168e656b16176392c26c04f8a8c9646dbbbde2ed9b911"
+    },
+    {
+      "path": "pages/player-center/index.wxml",
+      "sha256": "ad071ef34dd44fe8d3cf9349c0f140c07f55159fcaaa0193ffa21624d9fa1c13"
+    },
+    {
+      "path": "pages/player-center/index.wxss",
+      "sha256": "6063143d15e09792e7c848999164ad88ce8939ce4fab1c0452789fe24b0d4956"
+    },
+    {
+      "path": "pages/players/index.js",
+      "sha256": "3765ca05b35611c31830dcee9bd74a42aabdb1b65e258933e1045f52d2899456"
+    },
+    {
+      "path": "pages/players/index.json",
+      "sha256": "757f9c492526114e20c98c54f9a73dbcd4f979c9450fdd854622411cb478e138"
+    },
+    {
+      "path": "pages/players/index.wxml",
+      "sha256": "304c1054f42ec4a4924f906b77d6a4ab5879f77bba71291df945dd53afde18a0"
+    },
+    {
+      "path": "pages/players/index.wxss",
+      "sha256": "dc739c60c19431d278894205e853776c691d1f4fdef82b600e65eb9409ebb594"
+    },
+    {
+      "path": "pages/registration-events/index.js",
+      "sha256": "af46054b70b5b34a098164e5cdfd99d0fe3a3ec85320d63192400267f2b9b0b9"
+    },
+    {
+      "path": "pages/registration-events/index.json",
+      "sha256": "06fa1851762d2fe04bc7f1e88669c718728c38ce2b36351dd870f53412213380"
+    },
+    {
+      "path": "pages/registration-events/index.wxml",
+      "sha256": "72ade0dc04de7bad9f4fb2715c81117ba06bc48c38b17a072210080f39a8d920"
+    },
+    {
+      "path": "pages/registration-events/index.wxss",
+      "sha256": "ca83396dc888d049be1343d7123815cb8383a58afe9f6673ab0d14347b498860"
+    },
+    {
+      "path": "pages/team/index.js",
+      "sha256": "920be8b314bc3822c17fd98acac8cfeaff35decadb027a547ac789d9bfdd36b7"
+    },
+    {
+      "path": "pages/team/index.json",
+      "sha256": "e640faf89292dfa1f5afb49cf5e3396ff6aa3ff4b42d60cd21989e9d992eea81"
+    },
+    {
+      "path": "pages/team/index.wxml",
+      "sha256": "774fbdcc098e08af0d9f7bbf652f4438f555642d46a9a1206de3a27c290529c5"
+    },
+    {
+      "path": "pages/team/index.wxss",
+      "sha256": "f33551cc0c06e5e69c747e5c150ed08f3c66dc1c062ee9e9fd4b34fce98f2d93"
+    },
+    {
+      "path": "pages/teams/index.js",
+      "sha256": "0ff1507b6561a7eb04f5cfc91f6e4c848698051bd960500696de46a0a2e29d73"
+    },
+    {
+      "path": "pages/teams/index.json",
+      "sha256": "e654b2cd2b591e1675d129811dde4992055f1fa4df983a925b4482c3611a7384"
+    },
+    {
+      "path": "pages/teams/index.wxml",
+      "sha256": "b4aeedbe334921f0b90b0a682d7864694ea39b3a73a57038e7e0b435bd7a9cb9"
+    },
+    {
+      "path": "pages/teams/index.wxss",
+      "sha256": "3c5840720c8f9bb2d45b3f007a189705167cc40f75d4e0e9b281c5e4dd8f172d"
+    },
+    {
+      "path": "pages/watch/index.js",
+      "sha256": "a5078400ed4c6eff8dde04d9de66e56eed6e8f1f355be5dc8f8452778ba4dc5d"
+    },
+    {
+      "path": "pages/watch/index.json",
+      "sha256": "57aabb8d9b91209a19dadb6db299f02e0b2ec8805ddd56eabe5612bec9380f39"
+    },
+    {
+      "path": "pages/watch/index.wxml",
+      "sha256": "d3daf47bb8b1b150e624885ef9eac352cc16e946eea679b5eec9b0af6248e73f"
+    },
+    {
+      "path": "pages/watch/index.wxss",
+      "sha256": "db61c136864e15f8b667e226babfb6959512bbe8c622d3ccc86b3749a6f0ae7c"
+    },
+    {
+      "path": "project.config.json",
+      "sha256": "d5cfc14587b63b2fc1af36b2eac4440a3dda2611461e5cbdcbcf0e46531d07c0"
+    },
+    {
+      "path": "README.md",
+      "sha256": "3a8276353c841a5a4f59eb445e8099f69b7ee0d6bc54d6a47baaf1a255610678"
+    },
+    {
+      "path": "utils/api.js",
+      "sha256": "831f1b7fa4779bb84730360f7a287cc166f207518e160b0fd736dfa8350f2837"
+    },
+    {
+      "path": "utils/booking-data.js",
+      "sha256": "01ece0a71cb9790c796b26f8e83388e3509f8e2ccc5bbb7708b67a7a2c278df9"
+    },
+    {
+      "path": "utils/booking-form.js",
+      "sha256": "0858ccd0b3009672a82bc1f2d72e7b0d94a566e9b94d8cd35a0496208832f96a"
+    },
+    {
+      "path": "utils/booking-orders.js",
+      "sha256": "d8c6660bbd5540c6410cbc8d6be494f59be2bb3f57f3bc6b79b6ec29b798aa11"
+    },
+    {
+      "path": "utils/booking-recovery.js",
+      "sha256": "41eac103eda16fc4566e2cd09e5229c13605923f45f2c0324b484e8694b57671"
+    },
+    {
+      "path": "utils/booking.js",
+      "sha256": "7e5e47c17d47cec1f133f7bdc3dcd2614254bef474dc39add2123514f519427e"
+    },
+    {
+      "path": "utils/events.js",
+      "sha256": "78ab6a9de25e82f5ddedbbd76be6e9cf8d882955a8ee3b5a8c7ec80b05f327eb"
+    },
+    {
+      "path": "utils/performance-data.js",
+      "sha256": "5301329cf985efa26f53c80a2a9d1e95b405a3be5b5e15667ac4ec5710a4d4b2"
+    },
+    {
+      "path": "utils/performance-links.js",
+      "sha256": "bacc0de3cd4be62dc0ef63cb6baff6f6ed4905fa27b13317b9a4d1fdf3f864f2"
+    },
+    {
+      "path": "utils/player-center.js",
+      "sha256": "ea0d8a7ad9922864e0436ba7c2d68f98fe7e0782be830d33150f2abe5084acb6"
+    },
+    {
+      "path": "utils/player-market.js",
+      "sha256": "025fb36e50cb26fe7f0ecc6a6562f767fc8c69944a1b5860752d459a65a664a3"
+    },
+    {
+      "path": "utils/registration.js",
+      "sha256": "e19abe8f082602428432d6215188308deb4bbbb66bd50444ef2b01653ee277b9"
+    },
+    {
+      "path": "utils/ui.js",
+      "sha256": "b5e8599d9ab87e10a4130a546014a52eeafe7528aa5f37d787eca6fbc754e461"
+    }
+  ],
+  "scenarios": [
+    {
+      "route": "pages/home/index",
+      "baseRoute": "pages/home/index",
+      "name": "c11-home-ready",
+      "title": "预约首页",
+      "probe": "按位置找球员",
+      "selector": ".premium-home",
+      "fixtureSha256": "f3cf3d56663a33ff711607a46734f17e96f11dd702bce5bf79a7dac5c0bd9cdb",
+      "reference": "references/home.png",
+      "referenceSha256": "e442b7193961c7cd23ba6afe5abc216cdb1250aa22b3717c06c5c5a055839380"
+    },
+    {
+      "route": "pages/players/index",
+      "baseRoute": "pages/players/index",
+      "name": "c11-player-market-ready",
+      "title": "找球员",
+      "probe": "林越",
+      "selector": ".premium-page",
+      "fixtureSha256": "379b0b3babcba9eeeb00296c78273c9b36d221bae4a516a70284c0371147e7dd",
+      "reference": "references/players.png",
+      "referenceSha256": "50ded0f2f2b6153644455a99610b63e91498b9a88adf5b86a6c6c80e38024d1d"
+    },
+    {
+      "route": "pages/player/index",
+      "baseRoute": "pages/player/index",
+      "name": "c11-player-detail-ready",
+      "title": "球员档案",
+      "probe": "林越",
+      "selector": ".profile-hero",
+      "fixtureSha256": "c2204b78ce992f77aebc2712fa7318df5f12859682bb684fb142c60796efacb6",
+      "reference": "references/player.png",
+      "referenceSha256": "462da4ee7c910e64d5e25ce35a9ffdf9a64f11a6a4777d74975a195ed41ffc46"
+    },
+    {
+      "route": "pages/compare/index",
+      "baseRoute": "pages/compare/index",
+      "name": "c11-player-compare-ready",
+      "title": "球员对比",
+      "probe": "同为",
+      "selector": ".premium-page",
+      "fixtureSha256": "1cbf12d930ac5aae04a19ab4f0f31ed6f02ac0870aa6ebbffde1a41a12f57e1d",
+      "reference": "references/compare.png",
+      "referenceSha256": "815e1ae0a3569aa1c7b88c149adbc7bf97852495f79a704f7cb62e91c2fc3f91"
+    },
+    {
+      "route": "pages/booking-create/index",
+      "baseRoute": "pages/booking-create/index",
+      "name": "c11-booking-create-ready",
+      "title": "创建预约",
+      "probe": "青锋杯",
+      "selector": ".premium-page",
+      "fixtureSha256": "3407fe0e19bbdfe8998bd403ff0759e2dbb8d56726bd219824cf31e0c7208f1e",
+      "reference": "references/booking-create.png",
+      "referenceSha256": "1188a311a1e676ac43ae8482b386e3c22a1c8ce84a82b0aba75500dd2382bef9"
+    },
+    {
+      "route": "pages/bookings/index",
+      "baseRoute": "pages/bookings/index",
+      "name": "c11-booking-orders-ready",
+      "title": "预约列表",
+      "probe": "青锋杯",
+      "selector": ".premium-page",
+      "fixtureSha256": "d7a78abf62b3fdee009ee11b6549bf565d71d2669aedccc71b3659a85f786935",
+      "reference": "references/bookings.png",
+      "referenceSha256": "606c1bd74cc147a09d20f9e7727ad4bf5f1924cecc973c71afe0e0c61c0a7a25"
+    },
+    {
+      "route": "pages/platform-home-events/index",
+      "baseRoute": "pages/home/index",
+      "name": "platform-home-events",
+      "title": "首页 · 我的赛事",
+      "probe": "合成青锋杯",
+      "selector": ".premium-home",
+      "fixtureSha256": "7aaac50a32d223bc3f3e04e05a71b8c1fbaa9a8447cf239d328e88e116448a2c",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-home-signed-out/index",
+      "baseRoute": "pages/home/index",
+      "name": "platform-home-signed-out",
+      "title": "首页 · 未登录",
+      "probe": "登录后查看你参与的赛事",
+      "selector": ".premium-home",
+      "fixtureSha256": "f28fd7cebbb5262b7d69d7a4fa95ba6747dd15e074372e2674ac233654567e41",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-events-list/index",
+      "baseRoute": "pages/watch/index",
+      "name": "platform-events-list",
+      "title": "赛事 · 我的赛事列表",
+      "probe": "合成青锋杯",
+      "selector": ".watch-page",
+      "fixtureSha256": "27e553cfdfe50668bdd3f59576a3e52dd7a4571b37d898b49c19a0fc7714a6c2",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-events-no-org/index",
+      "baseRoute": "pages/watch/index",
+      "name": "platform-events-no-org",
+      "title": "赛事 · 无机构身份",
+      "probe": "当前账号没有机构赛事身份",
+      "selector": ".watch-page",
+      "fixtureSha256": "8a8757fbde771fb11ef1128e72388f2ffef8bdeb75703fc6b8c2944cdced7a12",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-org-event-schedule/index",
+      "baseRoute": "pages/org-event/index",
+      "name": "platform-org-event-schedule",
+      "title": "赛事详情 · 赛程",
+      "probe": "第1轮",
+      "selector": ".org-event-page",
+      "fixtureSha256": "ec11f444297f52c60b3f449f0a2fa87109639dcff08ecb3747fbc3a024886a43",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-org-event-standings/index",
+      "baseRoute": "pages/org-event/index",
+      "name": "platform-org-event-standings",
+      "title": "赛事详情 · 积分排名",
+      "probe": "正式积分",
+      "selector": ".org-event-page",
+      "fixtureSha256": "4bd4edecd28d5751a8c3dcd9465ba1f83489a42ff5edb61ff14b23a7701dd788",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-org-event-groups/index",
+      "baseRoute": "pages/org-event/index",
+      "name": "platform-org-event-groups",
+      "title": "赛事详情 · 分组与淘汰",
+      "probe": "A组",
+      "selector": ".org-event-page",
+      "fixtureSha256": "bd17772f9b7a1564ab619bc0dd3c93c51ad9d14186256bce0025fcf5c4aa152c",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-org-event-stats/index",
+      "baseRoute": "pages/org-event/index",
+      "name": "platform-org-event-stats",
+      "title": "赛事详情 · 球员数据",
+      "probe": "未统计",
+      "selector": ".org-event-page",
+      "fixtureSha256": "24dda61f73f55c8f85d67c58936a138ae3ba9e7d567b6a6650fd282eb551ea40",
+      "reference": null,
+      "referenceSha256": null
+    },
+    {
+      "route": "pages/platform-org-event-unavailable/index",
+      "baseRoute": "pages/org-event/index",
+      "name": "platform-org-event-unavailable",
+      "title": "赛事详情 · 无权限",
+      "probe": "无法查看该赛事",
+      "selector": ".org-event-page",
+      "fixtureSha256": "ee4568b8e5e9ba90dcbc24bb6a4a8a0dd23476fd700b6b847c5aa203a92af855",
+      "reference": null,
+      "referenceSha256": null
+    }
+  ]
+}
