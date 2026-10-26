@@ -21,7 +21,7 @@
   </view>
   <view class="home-extension">
    <view class="home-section-head"><view><view class="home-extension-tag">扩展服务</view><view class="home-section-title">按位置找球员</view></view><button class="home-more-toggle" bindtap="openPlayers">找球员<scb-icon name="chevron-right" size="14"/></button></view>
-   <view class="position-grid"><button wx:for="{{positions}}" wx:key="code" class="position-button" data-position="{{item.code}}" bindtap="position"><scb-icon name="{{item.icon}}" size="34"/><text>{{item.name}}</text></button></view>
+   <view class="position-grid"><button wx:for="{{positions}}" wx:key="code" class="position-button" data-position="{{item.code}}" bindtap="position"><scb-icon name="{{item.icon}}" size="40"/><text>{{item.name}}</text></button></view>
    <view class="home-extension-actions"><button class="secondary" data-page="bookings" bindtap="go">查看我的预约</button><button class="secondary" data-page="player-center" bindtap="go">进入本人球员中心</button></view>
    <view class="small muted">球员预约支持单场、多场、整届、赛季与时段合作，可同价比较并逐场确认。合作预约不自动加入赛事报名名单。</view>
   </view>

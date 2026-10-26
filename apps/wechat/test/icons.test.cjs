@@ -110,5 +110,7 @@ test('no Unicode glyph or dot is used as a functional icon inside buttons', () =
     const source = fs.readFileSync(file, 'utf8');
     for (const [button] of source.matchAll(/<button\b[\s\S]*?<\/button>/g))
       assert.doesNotMatch(button, /[⋯●○✓✔＋→←›‹]/, path.relative(root, file));
+    // Dropdown indicators (also in pickers) must be the chevron icon, never a glyph.
+    assert.doesNotMatch(source, /[⌄⌃ˇ∨]/, path.relative(root, file));
   }
 });

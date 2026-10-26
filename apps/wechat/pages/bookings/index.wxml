@@ -5,7 +5,7 @@
     <button class="booking-view-tab {{view === 'received' ? 'active' : ''}}" data-view="received" bindtap="changeView" disabled="{{loading}}">我收到的</button>
   </view>
   <block wx:if="{{filtersOpen || statusIndex > 0}}">
-    <scroll-view scroll-x="true" enable-flex="true" class="status-rail"><view class="status-tabs"><button wx:for="{{quickStatuses}}" wx:key="value" class="status-tab {{status === item.value ? 'selected' : ''}}" data-index="{{item.index}}" bindtap="statusTab" disabled="{{loading}}">{{item.label}}</button><picker mode="selector" range="{{statusLabels}}" value="{{statusIndex}}" bindchange="changeStatus" disabled="{{loading}}"><view class="status-more">更多⌄</view></picker></view></scroll-view>
+    <scroll-view scroll-x="true" enable-flex="true" class="status-rail"><view class="status-tabs"><button wx:for="{{quickStatuses}}" wx:key="value" class="status-tab {{status === item.value ? 'selected' : ''}}" data-index="{{item.index}}" bindtap="statusTab" disabled="{{loading}}">{{item.label}}</button><picker mode="selector" range="{{statusLabels}}" value="{{statusIndex}}" bindchange="changeStatus" disabled="{{loading}}"><view class="status-more">更多<scb-icon name="chevron-down" size="14"/></view></picker></view></scroll-view>
     <view wx:if="{{statusIndex > 0}}" class="active-filter small muted">当前筛选：{{statusLabels[statusIndex]}}</view>
   </block>
   <view wx:if="{{view === 'received'}}" class="notice role-notice"><view class="notice-title">以本人球员身份处理</view><view class="small">只能接受或拒绝自己的逐场安排，不代其他球员确认。</view></view>
