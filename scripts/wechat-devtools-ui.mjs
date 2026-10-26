@@ -392,7 +392,13 @@ export async function capture(
       async () => {
         const started = Date.now();
         while (Date.now() - started < timeout) {
-          const page = await mini.currentPage();
+          let page = null;
+          try {
+            page = await mini.currentPage();
+          } catch (error) {
+            // A freshly launched simulator throws until its first page exists.
+            if (!/getPageMetaByWebviewId/.test(String(error?.message))) throw error;
+          }
           if (page) return page;
           await new Promise((resolve) => setTimeout(resolve, 300));
         }

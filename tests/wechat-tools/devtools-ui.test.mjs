@@ -217,6 +217,29 @@ test('successful SDK fixture capture records every original PNG hash without cla
   );
 });
 
+test('a simulator still loading its first page is waited for, other errors are not', async () => {
+  const run = prepared(),
+    { sdk, mini } = fakeSdk(run);
+  const ready = mini.currentPage;
+  let attempts = 0;
+  mini.currentPage = async () => {
+    if (++attempts < 3)
+      throw new Error("Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)'");
+    return ready();
+  };
+  const report = await captureFake(run, { sdk });
+  assert.equal(report.nativeScreenshotsCaptured, true);
+  assert.equal(attempts, 3);
+  const other = prepared(),
+    failing = fakeSdk(other);
+  failing.mini.currentPage = async () => {
+    throw new Error('synthetic automator failure');
+  };
+  const failed = await captureFake(other, { sdk: failing.sdk });
+  assert.equal(failed.nativeScreenshotsCaptured, false);
+  assert.match(failed.error, /synthetic automator failure/);
+});
+
 test('unexpected route fails before capturing and disconnects', async () => {
   const run = prepared(),
     { sdk, mini } = fakeSdk(run, { badRoute: true });
