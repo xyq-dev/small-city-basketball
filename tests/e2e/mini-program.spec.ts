@@ -276,9 +276,13 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       orderCard: measure('.booking-order-card'),
       orderTabs: measure('.booking-view-tabs'),
       orderMore: Array.from(document.querySelectorAll('.order-more')).map((button) => {
-        const range = document.createRange();
-        range.selectNodeContents(button);
-        return { text: button.textContent?.trim(), lines: range.getClientRects().length };
+        const rect = button.getBoundingClientRect();
+        return {
+          text: button.textContent?.trim(),
+          icons: button.querySelectorAll('img').length,
+          width: rect.width,
+          height: rect.height,
+        };
       }),
       action: measure('.action-bar > .primary'),
       photographs: Array.from(
@@ -366,9 +370,13 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       expect(metrics.orderCard?.width).toBe(width - 24);
       expect(metrics.orderCard?.radius).toBe(12);
       expect(metrics.orderMore.length).toBe(2);
-      expect(metrics.orderMore.every((button) => button.text === '⋯' && button.lines === 1)).toBe(
-        true,
-      );
+      // An icon, not a text glyph, with a 44px target.
+      expect(
+        metrics.orderMore.every(
+          (button) =>
+            button.text === '' && button.icons === 1 && button.width >= 44 && button.height >= 44,
+        ),
+      ).toBe(true);
     }
   }
   return { source: 'approved:C11', group, ...metrics };

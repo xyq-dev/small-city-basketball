@@ -39,7 +39,7 @@
           <image class="player-portrait" src="{{item.portrait || '/assets/approved-ui/player-placeholder.png'}}" mode="aspectFill" aria-label="{{item.portrait ? '示例球员形象' : '球员尚未提供公开头像'}}"/>
           <view class="player-identity"><view class="player-name-row"><text class="player-name">{{item.name}}</text><text class="player-position">· {{item.position}}</text></view><view class="player-bio">{{item.height}}cm · {{item.city}}</view><view class="price">{{item.priceLabel || item.price}}<text class="unit"> / 场</text></view></view>
         </view>
-        <button class="player-select {{item.selected ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="toggle" disabled="{{loading}}" aria-label="{{item.name}}，{{item.selected ? '移出对比' : '加入对比'}}"><view class="selection-box">{{item.selected ? '✓' : '＋'}}</view></button>
+        <button class="player-select {{item.selected ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="toggle" disabled="{{loading}}" aria-label="{{item.name}}，{{item.selected ? '移出对比' : '加入对比'}}"><view class="selection-box"><scb-icon wx:if="{{item.selected}}" name="check" tone="white" size="18"/><scb-icon wx:else name="plus" tone="gray" size="16"/></view></button>
         <view class="player-metrics-row"><view class="player-metrics"><view class="metric"><view class="metric-value {{item.performance.points === '暂不可用' ? 'textual' : ''}}">{{item.performance.points}}</view><view class="metric-label">得分</view></view><view class="metric"><view class="metric-value {{item.performance.fouls === '暂不可用' ? 'textual' : ''}}">{{item.performance.fouls}}</view><view class="metric-label">犯规</view></view><view class="metric"><view class="metric-value">{{item.performance.sample}}<text class="metric-unit">场</text></view><view class="metric-label">样本</view></view></view><view class="total">含费预计 <text>{{item.totalLabel || item.total}}</text></view></view>
         <view class="player-footer"><view class="player-review"><view class="review-badge"><scb-icon name="shield" tone="green" size="16"/>资料已审核</view><view class="review-note">未核验本场资格或保险</view></view><button class="secondary player-detail" data-id="{{item.id}}" bindtap="detail">查看详情<scb-icon name="chevron-right" size="16"/></button></view>
       </view>
@@ -52,5 +52,5 @@
     </view>
     <view wx:if="{{catalogLimited}}" class="notice warning">目录达到200位上限，不代表全部球员。可联系平台核对其他档案。</view>
   </block>
-  <view class="action-bar market-action"><button class="primary" bindtap="compare" disabled="{{loading || selectedCount < 2}}"><view>{{selectedCount >= 2 ? '对比已选' + selectedCount + '位球员 →' : '请选择至少2位球员对比'}}</view><view class="action-caption">同价，也要看样本与实际报价</view></button></view>
+  <view class="action-bar market-action"><button class="primary" bindtap="compare" disabled="{{loading || selectedCount < 2}}"><view class="compare-label">{{selectedCount >= 2 ? '对比已选' + selectedCount + '位球员' : '请选择至少2位球员对比'}}<scb-icon wx:if="{{selectedCount >= 2}}" name="arrow-right" tone="white" size="20"/></view><view class="action-caption">同价，也要看样本与实际报价</view></button></view>
 </view>

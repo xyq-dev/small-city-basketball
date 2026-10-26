@@ -37,7 +37,8 @@
 .status-dot { flex:0 0 11px; height:11px; border-radius:50%; background:currentColor; margin-top:5px; }
 .appearance-status.accepted,.appearance-status.success { color:#09a267; }
 .appearance-status.warning { color:#a97521; }
-.order-more { position:absolute; top:0; right:0; width:44px; min-height:44px; height:44px; margin:0; padding:0; line-height:44px; background:transparent; color:#132c49; font-size:17px; letter-spacing:1px; }
+.order-more { position:absolute; top:0; right:0; display:flex; align-items:center; justify-content:center; width:44px; min-height:44px; height:44px; margin:0; padding:0; background:transparent; }
+.booking-order-card .order-more { width:44px; margin:0; }
 .order-more::after { border:0; }
 .order-heading { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-top:5px; }
 .order-event { min-width:0; flex:1; font-size:17px; line-height:26px; font-weight:700; overflow-wrap:anywhere; }
@@ -65,5 +66,3 @@
 .bookings-actions { padding:10px 12px calc(12px + env(safe-area-inset-bottom)); border-top:0; background:#f5f7fa; }
 .bookings-actions .primary { min-height:48px; padding:12px; margin:0; border-radius:9px; background:#132c49; color:#fff; font-size:14px; line-height:24px; font-weight:600; }
 @media (max-width:360px) { .booking-order-card { padding:12px; } .order-player-name text { display:block; } .order-team { max-width:38%; } }
-
-.order-more { white-space:nowrap; letter-spacing:0; font-size:24px; }

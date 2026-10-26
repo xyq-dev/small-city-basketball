@@ -16,7 +16,7 @@
   <block wx:for="{{rows}}" wx:for-item="order" wx:key="id">
     <view wx:for="{{order.appearances}}" wx:for-item="appearance" wx:key="id" class="booking-order-card">
       <view class="appearance-status {{appearance.status === 'ACCEPTED' ? 'accepted' : appearance.tone}}"><text class="status-dot"></text>{{appearance.status === 'ACCEPTED' ? '已接单 · 待到场' : appearance.statusText}}</view>
-      <button class="order-more" data-id="{{appearance.id}}" bindtap="toggleInfo" disabled="{{loading}}" aria-label="{{expandedAppearanceId === appearance.id ? '收起预约明细' : '展开预约明细'}}">⋯</button>
+      <button class="order-more" data-id="{{appearance.id}}" bindtap="toggleInfo" disabled="{{loading}}" aria-label="{{expandedAppearanceId === appearance.id ? '收起预约明细' : '展开预约明细'}}"><scb-icon name="more" size="24"/></button>
       <view class="order-heading"><view class="order-event">{{order.eventName}}</view><text class="order-team">{{order.teamName}}</text></view>
       <view class="order-player"><image class="order-portrait" src="{{appearance.portrait || '/assets/approved-ui/player-placeholder.png'}}" mode="aspectFill"/><view class="order-player-copy"><view class="order-player-name">{{appearance.playerName}}<text> · {{appearance.positionText}}</text></view><view class="order-player-meta">{{appearance.playerMeta || appearance.label}}</view></view></view>
       <view class="order-schedule"><scb-icon name="calendar"/><text>{{appearance.summaryStartText || (appearance.status === 'CONDITIONAL' ? '条件满足后补齐具体时间' : appearance.startText)}}</text></view>
