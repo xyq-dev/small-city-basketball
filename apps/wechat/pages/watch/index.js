@@ -1,6 +1,7 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
+const recent = require('../../utils/recent');
 
 const privateDefaults = {
   signedIn: false,
@@ -13,12 +14,24 @@ const privateDefaults = {
   eventsError: '',
 };
 Page({
-  data: { value: '', error: '', loading: false, ...privateDefaults },
+  data: { value: '', error: '', loading: false, recentEvents: [], ...privateDefaults },
   onLoad() {
     this._alive = true;
   },
   onShow() {
+    this.setData({ recentEvents: recent.list() });
     this.load();
+  },
+  openRecent(e) {
+    try {
+      ui.open('event', { event: api.publicId(e.currentTarget.dataset.id) });
+    } catch {
+      this.setData({ recentEvents: recent.list() });
+    }
+  },
+  clearRecent() {
+    recent.clear();
+    this.setData({ recentEvents: [] });
   },
   onUnload() {
     this._alive = false;

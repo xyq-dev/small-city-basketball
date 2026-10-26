@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const recent = require('../../utils/recent');
 
 function shortDate(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -90,6 +91,7 @@ Page({
       } else {
         standings = (await client.request('/v1/public/events/' + this.id + '/standings')).data;
       }
+      if (!this.closed) recent.remember({ ...event, publicEventId: this.id });
       if (!this.closed)
         this.setData({
           event,
@@ -110,6 +112,7 @@ Page({
         });
     } catch (error) {
       if (!this.closed) {
+        if (error.status === 404) recent.forget(this.id);
         if (error.status === 404)
           this.setData({
             event: null,

@@ -427,6 +427,35 @@ test('event mainline runs end to end through native pages on the real API', asyn
   assert.ok(scorerRow, 'attributed player basket appears in the statistics');
   assert.equal(orgEvent.page.data.manage.ready, true, JSON.stringify(orgEvent.page.data.manage));
 
+  // Public viewing is switched on in the Web console; spectators arrive by the shared card.
+  const current = (await call(eventPath, { cookie: ownerCookie })).data;
+  await call(`${eventPath}/public-viewing-commands`, {
+    method: 'POST',
+    cookie: ownerCookie,
+    body: { type: 'ENABLE', expectedEventVersion: current.version },
+  });
+  await orgEvent.page.load();
+  await ownerDevice.settle(orgEvent);
+  const publicEventId = orgEvent.page.data.publicEventId;
+  assert.match(publicEventId, /^[A-Za-z0-9_-]{43}$/);
+  const spectator = device(server);
+  const shared = spectator.open('pages/event/index', { event: publicEventId });
+  await spectator.settle(shared);
+  assert.equal(shared.page.data.event?.name, '合成青锋杯', shared.page.data.error);
+  assert.equal(shared.page.onShareAppMessage().path, '/pages/event/index?event=' + publicEventId);
+  assert.equal(shared.page.data.matches[0].resultLabel, '赛果已独立确认');
+  const watch = spectator.open('pages/watch/index');
+  await spectator.settle(watch);
+  assert.deepEqual(
+    watch.page.data.recentEvents.map((e) => e.publicEventId),
+    [publicEventId],
+  );
+  assert.equal(
+    spectator.wx.calls.some((c) => c.type === 'request' && c.url.includes('/v1/orgs/')),
+    false,
+    'a signed-out spectator never calls private endpoints',
+  );
+
   // Lifecycle: complete natively with a reason.
   orgEvent.page.chooseLifecycle(tap({ type: 'COMPLETE' }));
   orgEvent.page.lifecycleInput(tap({}, { value: '全部比赛已独立确认' }));
@@ -434,6 +463,13 @@ test('event mainline runs end to end through native pages on the real API', asyn
   await orgEvent.page.runLifecycle();
   await ownerDevice.settle(orgEvent);
   assert.equal(orgEvent.page.data.event.status, 'COMPLETED', orgEvent.page.data.error);
+  // Completing revokes the live public identity: the shared page clears and is forgotten.
+  await shared.page.load();
+  await spectator.settle(shared);
+  assert.equal(shared.page.data.event, null);
+  assert.equal(shared.page.data.unavailable, true);
+  const media = spectator.open('pages/media/index');
+  assert.deepEqual(media.page.data.recentEvents, []);
 
   // Signing out clears every private page immediately.
   const account = ownerDevice.open('pages/account/index');

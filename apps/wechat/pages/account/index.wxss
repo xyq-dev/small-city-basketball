@@ -23,3 +23,12 @@
 .account-loading .subtitle { margin:0; }
 .account-feedback { overflow-wrap:anywhere; }
 .account-feedback.success { color:#16734b; background:#e7f5ee; }
+.account-continue { margin-bottom:12px; }
+.menu-group { background:#fff; border-radius:16px; padding:4px 16px; margin-bottom:12px; }
+.menu-title { padding:12px 0 4px; color:#617286; font-size:12px; line-height:20px; font-weight:600; }
+.menu-row { display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 0; border-bottom:1px solid #e8edf2; color:#132c49; font-size:15px; line-height:22px; }
+.menu-row:last-child { border-bottom:0; }
+.menu-text { flex:1; min-width:0; overflow-wrap:anywhere; }
+.menu-sub { color:#617286; font-size:12px; line-height:18px; }
+.account-actions { display:flex; gap:8px; margin-top:4px; }
+.page.account-page .account-actions button { flex:1; min-width:0; width:auto; margin:0; }

@@ -122,7 +122,7 @@ test('signed-out events tab issues no private request and keeps the public watch
   assert.equal(h.page.data.signedIn, false);
   const preview = buildPreview({ root, route: 'pages/watch/index', data: h.page.data });
   assert.match(preview.phone, /登录后查看你参与的赛事/);
-  assert.match(preview.phone, /打开一届赛事/);
+  assert.match(preview.phone, /粘贴观赛链接/);
   assert.match(preview.phone, /公开赛事目录尚未开放/);
 });
 
