@@ -184,3 +184,117 @@ $$;
 
 CREATE TRIGGER team_member_bindings_guard BEFORE INSERT OR UPDATE ON team_member_bindings
   FOR EACH ROW EXECUTE FUNCTION c19_guard_member_binding();
+
+-- Binding history lookups (the guard's EXISTS and claim preconditions) by member and account.
+CREATE INDEX team_member_bindings_by_member_user ON team_member_bindings(member_id, user_id);
+
+-- State machines for the other module tables. Runtime column grants allow UPDATE of the state
+-- columns only; these guards additionally refuse any rewind: identity columns are immutable,
+-- statuses only move forward, counters only grow by one, revocation and team_id are written
+-- once. History is never deleted or truncated.
+CREATE FUNCTION c19_reject_history_delete() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'C19 team membership history cannot be deleted' USING ERRCODE = '23514';
+END;
+$$;
+
+CREATE FUNCTION c19_guard_request_link() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.id <> OLD.id OR NEW.org_id <> OLD.org_id OR NEW.token_hash <> OLD.token_hash
+    OR NEW.created_by <> OLD.created_by OR NEW.reason <> OLD.reason OR NEW.max_uses <> OLD.max_uses
+    OR NEW.expires_at <> OLD.expires_at OR NEW.created_at <> OLD.created_at THEN
+    RAISE EXCEPTION 'Team request link identity is immutable' USING ERRCODE = '23514';
+  END IF;
+  IF NEW.use_count NOT IN (OLD.use_count, OLD.use_count + 1)
+    OR (NEW.use_count = OLD.use_count + 1 AND OLD.revoked_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'Team request link use count only grows by one while usable' USING ERRCODE = '23514';
+  END IF;
+  IF OLD.revoked_at IS NOT NULL AND (NEW.revoked_at IS DISTINCT FROM OLD.revoked_at
+    OR NEW.revoked_by IS DISTINCT FROM OLD.revoked_by OR NEW.revoke_reason IS DISTINCT FROM OLD.revoke_reason) THEN
+    RAISE EXCEPTION 'A revoked team request link stays revoked' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE FUNCTION c19_guard_team_request() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.id <> OLD.id OR NEW.org_id <> OLD.org_id OR NEW.link_id <> OLD.link_id
+    OR NEW.requester_id <> OLD.requester_id OR NEW.client_request_id <> OLD.client_request_id
+    OR NEW.team_name <> OLD.team_name OR NEW.note IS DISTINCT FROM OLD.note
+    OR NEW.created_at <> OLD.created_at THEN
+    RAISE EXCEPTION 'Team request identity is immutable' USING ERRCODE = '23514';
+  END IF;
+  -- PENDING is the only non-terminal state; a decided request is history.
+  IF OLD.status <> 'PENDING' OR NEW.status NOT IN ('APPROVED', 'REJECTED', 'WITHDRAWN')
+    OR NEW.version <> OLD.version + 1 THEN
+    RAISE EXCEPTION 'A team request moves once from PENDING to a terminal state' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE FUNCTION c19_guard_join_code() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.id <> OLD.id OR NEW.org_id <> OLD.org_id OR NEW.team_id <> OLD.team_id
+    OR NEW.code_hash <> OLD.code_hash OR NEW.issued_by <> OLD.issued_by OR NEW.max_uses <> OLD.max_uses
+    OR NEW.expires_at <> OLD.expires_at OR NEW.created_at <> OLD.created_at THEN
+    RAISE EXCEPTION 'Join code identity is immutable' USING ERRCODE = '23514';
+  END IF;
+  IF NEW.use_count NOT IN (OLD.use_count, OLD.use_count + 1)
+    OR (NEW.use_count = OLD.use_count + 1 AND OLD.revoked_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'Join code use count only grows by one while usable' USING ERRCODE = '23514';
+  END IF;
+  IF OLD.revoked_at IS NOT NULL AND (NEW.revoked_at IS DISTINCT FROM OLD.revoked_at
+    OR NEW.revoked_by IS DISTINCT FROM OLD.revoked_by) THEN
+    RAISE EXCEPTION 'A revoked join code stays revoked' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE FUNCTION c19_guard_member_claim() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.id <> OLD.id OR NEW.org_id <> OLD.org_id OR NEW.team_id <> OLD.team_id
+    OR NEW.member_id <> OLD.member_id OR NEW.target_user_id <> OLD.target_user_id
+    OR NEW.issued_by <> OLD.issued_by OR NEW.expires_at <> OLD.expires_at
+    OR NEW.created_at <> OLD.created_at THEN
+    RAISE EXCEPTION 'Member claim identity is immutable' USING ERRCODE = '23514';
+  END IF;
+  IF OLD.status <> 'PENDING' OR NEW.status = 'PENDING' THEN
+    RAISE EXCEPTION 'A member claim is decided once' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER team_request_links_guard BEFORE UPDATE ON team_request_links
+  FOR EACH ROW EXECUTE FUNCTION c19_guard_request_link();
+CREATE TRIGGER team_requests_guard BEFORE UPDATE ON team_requests
+  FOR EACH ROW EXECUTE FUNCTION c19_guard_team_request();
+CREATE TRIGGER team_join_codes_guard BEFORE UPDATE ON team_join_codes
+  FOR EACH ROW EXECUTE FUNCTION c19_guard_join_code();
+CREATE TRIGGER team_member_claims_guard BEFORE UPDATE ON team_member_claims
+  FOR EACH ROW EXECUTE FUNCTION c19_guard_member_claim();
+
+CREATE TRIGGER team_request_links_no_delete BEFORE DELETE ON team_request_links
+  FOR EACH ROW EXECUTE FUNCTION c19_reject_history_delete();
+CREATE TRIGGER team_requests_no_delete BEFORE DELETE ON team_requests
+  FOR EACH ROW EXECUTE FUNCTION c19_reject_history_delete();
+CREATE TRIGGER team_join_codes_no_delete BEFORE DELETE ON team_join_codes
+  FOR EACH ROW EXECUTE FUNCTION c19_reject_history_delete();
+CREATE TRIGGER team_member_claims_no_delete BEFORE DELETE ON team_member_claims
+  FOR EACH ROW EXECUTE FUNCTION c19_reject_history_delete();
+CREATE TRIGGER team_member_bindings_no_delete BEFORE DELETE ON team_member_bindings
+  FOR EACH ROW EXECUTE FUNCTION c19_reject_history_delete();
+
+CREATE TRIGGER team_request_links_no_truncate BEFORE TRUNCATE ON team_request_links
+  FOR EACH STATEMENT EXECUTE FUNCTION c19_reject_history_delete();
+CREATE TRIGGER team_requests_no_truncate BEFORE TRUNCATE ON team_requests
+  FOR EACH STATEMENT EXECUTE FUNCTION c19_reject_history_delete();
+CREATE TRIGGER team_join_codes_no_truncate BEFORE TRUNCATE ON team_join_codes
+  FOR EACH STATEMENT EXECUTE FUNCTION c19_reject_history_delete();
+CREATE TRIGGER team_member_claims_no_truncate BEFORE TRUNCATE ON team_member_claims
+  FOR EACH STATEMENT EXECUTE FUNCTION c19_reject_history_delete();
+CREATE TRIGGER team_member_bindings_no_truncate BEFORE TRUNCATE ON team_member_bindings
+  FOR EACH STATEMENT EXECUTE FUNCTION c19_reject_history_delete();
