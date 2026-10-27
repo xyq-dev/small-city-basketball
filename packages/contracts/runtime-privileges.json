@@ -357,9 +357,38 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["accepted_at", "revoked_at"]
     },
+    "team_join_codes": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["use_count", "revoked_at", "revoked_by"]
+    },
+    "team_member_bindings": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "ended_reason", "ended_by", "end_note", "ended_at"]
+    },
+    "team_member_claims": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "decided_at"]
+    },
     "team_members": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["name", "status", "updated_at"]
+    },
+    "team_request_links": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["use_count", "revoked_at", "revoked_by", "revoke_reason"]
+    },
+    "team_requests": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "status",
+        "version",
+        "reviewer_id",
+        "review_reason",
+        "reviewed_at",
+        "withdrawn_at",
+        "team_id",
+        "updated_at"
+      ]
     },
     "team_reservations": {
       "privileges": ["SELECT", "INSERT"],

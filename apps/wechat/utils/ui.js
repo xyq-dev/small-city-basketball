@@ -32,6 +32,10 @@ for (const key of [
   'invitation',
   'planned',
   'platform',
+  'memberships',
+  'team-join',
+  'team-requests',
+  'team-request',
   'follows',
 ])
   routes[key] = '/pages/' + key + '/index';

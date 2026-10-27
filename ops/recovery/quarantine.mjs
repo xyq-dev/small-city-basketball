@@ -17,7 +17,8 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
     // and writers before choosing the single time used by all revocations.
     await client.query(`LOCK TABLE organizations, events, users, sessions,
       team_invitations, public_event_publications, event_directory_listings, overlay_grants, scoring_leases,
-      platform_operators, wechat_identities, wechat_auth_attempts
+      platform_operators, wechat_identities, wechat_auth_attempts,
+      team_request_links, team_join_codes, team_member_claims
       IN EXCLUSIVE MODE`);
     const now = (await client.query('SELECT clock_timestamp()::text AS now')).rows[0].now;
     const systemUserId = randomUUID();
@@ -46,6 +47,21 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
     const invitations = await client.query(
       `UPDATE team_invitations SET revoked_at=$1::timestamptz
        WHERE accepted_at IS NULL AND revoked_at IS NULL`,
+      [now],
+    );
+    // C19 bearer credentials: share links and join codes are usable by whoever holds the
+    // token, and a pending claim admits its target. None may survive into a restored copy.
+    const requestLinks = await client.query(
+      `UPDATE team_request_links SET revoked_at=$1::timestamptz,revoked_by=$2,revoke_reason=$3
+       WHERE revoked_at IS NULL`,
+      [now, systemUserId, '恢复隔离统一撤销'],
+    );
+    const joinCodes = await client.query(
+      `UPDATE team_join_codes SET revoked_at=$1::timestamptz,revoked_by=$2 WHERE revoked_at IS NULL`,
+      [now, systemUserId],
+    );
+    const memberClaims = await client.query(
+      `UPDATE team_member_claims SET status='REVOKED',decided_at=$1::timestamptz WHERE status='PENDING'`,
       [now],
     );
     const publicGrants = await client.query(
@@ -86,6 +102,9 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
       wechatIdentitiesRevoked: wechatIdentities.rowCount,
       wechatChallengesRemoved: wechatAttempts.rowCount,
       pendingInvitationsRevoked: invitations.rowCount,
+      teamRequestLinksRevoked: requestLinks.rowCount,
+      teamJoinCodesRevoked: joinCodes.rowCount,
+      pendingMemberClaimsRevoked: memberClaims.rowCount,
       publicPublicationsRevoked: publicGrants.rowCount,
       overlayGrantsRevoked: overlayGrants.rowCount,
       activeLeasesExpired: leases.rowCount,

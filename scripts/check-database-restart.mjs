@@ -14,7 +14,7 @@ import {
 } from './c05-commerce-check.mjs';
 
 // The production package runs this same synthetic business chain against its real TLS API.
-// SQL remains read-only here; use the separately scoped backup role for the 67-table digest.
+// SQL remains read-only here; use the separately scoped backup role for the 72-table digest.
 async function privateValue(name) {
   const inline = process.env[name];
   const file = process.env[name + '_FILE'];
@@ -1709,7 +1709,7 @@ try {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     state.fingerprint = await fingerprint();
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
-    console.log('Captured the quiescent 67-table backup baseline.');
+    console.log('Captured the quiescent 72-table backup baseline.');
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     const session = await call('/v1/auth/session', { cookie: state.cookie });
@@ -1863,7 +1863,7 @@ try {
       'Lease fence remains monotonic across PostgreSQL restart',
     );
     console.log(
-      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across all 67 tables.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across all 72 tables.',
     );
   }
 } finally {
