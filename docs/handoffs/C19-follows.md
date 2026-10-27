@@ -4,15 +4,15 @@
 
 ## 1. 实现摘要
 
-| 层 | 文件 |
-|---|---|
-| Migration | `apps/api/migrations/021_c19_event_follows.sql`（新表 `event_follows`） |
-| 契约 | `packages/contracts/event-follows.d.ts` |
-| 后端 | `apps/api/src/event-follow-{domain,service,controller}.ts`、`event-follow-domain.test.ts` |
-| 真实 PG | `apps/api/test/c19-event-follows.integration.test.ts` |
-| 小程序 | `apps/wechat/utils/follows.js`、新页面 `pages/follows/*`、`pages/event/*`（关注区块） |
-| 测试 | `apps/wechat/test/c19-follows.test.cjs`、`tests/wechat-api/c19-follows.test.mjs` |
-| 文档 | 本文件、`docs/design/C19_FOLLOW_NOTIFICATIONS.md`（未来通知草案，未实施） |
+| 层        | 文件                                                                                      |
+| --------- | ----------------------------------------------------------------------------------------- |
+| Migration | `apps/api/migrations/021_c19_event_follows.sql`（新表 `event_follows`）                   |
+| 契约      | `packages/contracts/event-follows.d.ts`                                                   |
+| 后端      | `apps/api/src/event-follow-{domain,service,controller}.ts`、`event-follow-domain.test.ts` |
+| 真实 PG   | `apps/api/test/c19-event-follows.integration.test.ts`                                     |
+| 小程序    | `apps/wechat/utils/follows.js`、新页面 `pages/follows/*`、`pages/event/*`（关注区块）     |
+| 测试      | `apps/wechat/test/c19-follows.test.cjs`、`tests/wechat-api/c19-follows.test.mjs`          |
+| 文档      | 本文件、`docs/design/C19_FOLLOW_NOTIFICATIONS.md`（未来通知草案，未实施）                 |
 
 路由（与冻结 §4 一致）：`POST /v1/me/follows`（首次 201、重复 200 同一 followId）、`GET /v1/me/follows?limit=&cursor=`、`GET /v1/me/follows/lookup?publicEventId=`（`data` 为 `FollowData | null`）、`POST /v1/me/follows/:followId/cancel`（空体或 `{}`）。
 
@@ -61,19 +61,19 @@
 
 ## 5. 执行的命令与结果
 
-| 命令 | 结果 |
-|---|---|
-| `npm run typecheck` | 通过 |
-| `cd apps/api && npx vitest run src/event-follow-domain.test.ts` | 8/8 通过 |
-| `cd apps/api && npx vitest run src` | 544/548，失败 4 项均为既有 `account-maintenance.test.ts`（Windows POSIX 模式/符号链接基线） |
-| `TEST_DATABASE_URL=… npx vitest run test/c19-event-follows.integration.test.ts` | 10/10 通过（真实 PostgreSQL 18） |
-| `TEST_DATABASE_URL=… npx vitest run test/c18-directory.integration.test.ts test/p05b-public.integration.test.ts` | 19/19 通过 |
-| `node --test apps/wechat/test/c19-follows.test.cjs` | 25/25 通过 |
-| `node --test apps/wechat/test/*.test.cjs` | 554/559；失败 5 项 = 既有 Windows 基线 4 项 + 上述待注册路由 1 项 |
-| `npm run build --workspace @small-city-basketball/api` | 通过 |
-| `TEST_DATABASE_URL=… node --test --test-concurrency=1 tests/wechat-api/c19-follows.test.mjs` | 1/1 通过 |
-| `TEST_DATABASE_URL=… node --test --test-concurrency=1 tests/wechat-api/event-platform.test.mjs` | 1/1 通过（赛事页改动后既有主线回归） |
-| `npx prettier --check --end-of-line auto <本模块文件>`、`git diff --check` | 通过 |
+| 命令                                                                                                             | 结果                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `npm run typecheck`                                                                                              | 通过                                                                                        |
+| `cd apps/api && npx vitest run src/event-follow-domain.test.ts`                                                  | 8/8 通过                                                                                    |
+| `cd apps/api && npx vitest run src`                                                                              | 544/548，失败 4 项均为既有 `account-maintenance.test.ts`（Windows POSIX 模式/符号链接基线） |
+| `TEST_DATABASE_URL=… npx vitest run test/c19-event-follows.integration.test.ts`                                  | 10/10 通过（真实 PostgreSQL 18）                                                            |
+| `TEST_DATABASE_URL=… npx vitest run test/c18-directory.integration.test.ts test/p05b-public.integration.test.ts` | 19/19 通过                                                                                  |
+| `node --test apps/wechat/test/c19-follows.test.cjs`                                                              | 25/25 通过                                                                                  |
+| `node --test apps/wechat/test/*.test.cjs`                                                                        | 554/559；失败 5 项 = 既有 Windows 基线 4 项 + 上述待注册路由 1 项                           |
+| `npm run build --workspace @small-city-basketball/api`                                                           | 通过                                                                                        |
+| `TEST_DATABASE_URL=… node --test --test-concurrency=1 tests/wechat-api/c19-follows.test.mjs`                     | 1/1 通过                                                                                    |
+| `TEST_DATABASE_URL=… node --test --test-concurrency=1 tests/wechat-api/event-platform.test.mjs`                  | 1/1 通过（赛事页改动后既有主线回归）                                                        |
+| `npx prettier --check --end-of-line auto <本模块文件>`、`git diff --check`                                       | 通过                                                                                        |
 
 真实 PG 覆盖：未登录 401、输入 422、首次 201/重复 200、并发重复只一行一审计、审计 org_id 为空；未知/撤销/机构停用拒绝体一致且不写；UNLIST 后仍 ACTIVE；撤销→INVALID 且 `event=null`、列表不含原名称；重开新键不继承、旧键关注 404；撤销后取消成功且幂等；取消后再关注产生新行；他人不能读/查/取消（与不存在同 404）；退出会话后 401；键集分页含同时间戳且中途取消不跳行；关注与撤销并发不留下可读关注；关注与取消的审计失败均回滚；DELETE/TRUNCATE/复活被拒；向已撤销发布插入被触发器拒绝；限流 429 不写；迁移顶层无数据语句、无 SECURITY DEFINER。
 
