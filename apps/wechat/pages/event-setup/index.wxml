@@ -120,6 +120,24 @@
       <button wx:if="{{viewing.canDisable}}" class="danger" data-type="DISABLE" bindtap="viewing" disabled="{{busy}}">关闭公开观赛</button>
       <view wx:if="{{!viewing.active && !viewing.canEnable}}" class="muted">{{event.knockout ? '需先发布正式赛程。' : '需先锁定积分规则并发布正式赛程。'}}{{event.roundRobin ? '' : '每次发布淘汰轮次都会撤销旧链接，需重新开启。'}}</view>
     </view>
+    <view wx:if="{{directory}}" class="card">
+      <view class="row-between"><view class="subtitle">公开赛事目录</view><text class="badge {{directory.listed ? 'success' : ''}}">{{directory.listed ? '已列入' : '未列入'}}</text></view>
+      <view class="muted">开启公开观赛不会自动列入目录。列入后，所有观众都能在“赛事”页的公开赛事中发现本届赛事。</view>
+      <view wx:if="{{directory.listed}}" class="muted">当前分组：{{directory.group || '—'}}{{directory.city ? ' · 城市：' + directory.city : ''}}</view>
+      <view wx:if="{{directory.lastNote}}" class="notice small">{{directory.lastNote}}</view>
+      <view wx:if="{{!directory.publicActive && !directory.listed}}" class="muted">需先开启公开观赛（完赛后为历史观赛），才能列入目录。</view>
+      <view wx:elif="{{!directory.canList && !directory.listed && directory.publicActive}}" class="muted">当前赛事状态与公开观赛用途不符，或当前身份无权操作。</view>
+      <block wx:if="{{directory.canList || directory.canUnlist}}">
+        <block wx:if="{{directory.canList}}">
+          <text class="field-label">展示城市（可选，1–20字）</text>
+          <input class="field" maxlength="40" value="{{directory.cityInput}}" bindinput="directoryCityInput" placeholder="例如 茂名"/>
+        </block>
+        <text class="field-label">原因（4–500字，记入审计）</text>
+        <textarea class="field" maxlength="500" value="{{directory.reason}}" bindinput="directoryReasonInput" placeholder="{{directory.canList ? '例如：本届赛程已发布，欢迎观众关注' : '例如：赛事信息需更新后再列入'}}"/>
+        <button wx:if="{{directory.canList}}" class="primary" bindtap="listDirectory" disabled="{{busy}}">列入公开目录</button>
+        <button wx:if="{{directory.canUnlist}}" class="danger" bindtap="unlistDirectory" disabled="{{busy}}">撤出目录（保留分享链接）</button>
+      </block>
+    </view>
     <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
   </block>
 </view>

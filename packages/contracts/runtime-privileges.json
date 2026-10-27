@@ -158,6 +158,10 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
     },
+    "event_directory_listings": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "revoked_at", "revoked_by", "revoke_source", "revoke_reason"]
+    },
     "event_entitlements": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["revoked_at", "revoke_reason"]

@@ -323,7 +323,7 @@ describe('P07 real PostgreSQL audited runtime and backup identities', () => {
     });
   });
 
-  test('the backup identity reads all 65 tables but cannot lock, write or change schema', async () => {
+  test('the backup identity reads all 66 tables but cannot lock, write or change schema', async () => {
     const manifest = await loadManifest();
     for (const name of Object.keys(manifest.tables)) {
       await expect(backup.query(`SELECT 1 FROM public."${name}" LIMIT 1`)).resolves.toBeDefined();

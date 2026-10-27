@@ -68,6 +68,16 @@ function pathAllowed(path, method = 'GET') {
     '/v1/auth/wechat/unbind': 'POST',
   };
   if (Object.prototype.hasOwnProperty.call(auth, base)) return noQuery && auth[base] === method;
+  // C18 anonymous public directory: exact parameters only; sent without any session cookie.
+  if (base === '/v1/public/directory')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['status', 'limit', 'city', 'cursor']) &&
+      (!('status' in query) || ['LIVE', 'UPCOMING', 'HISTORY'].includes(query.status)) &&
+      (!('limit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit)) &&
+      (!('city' in query) || (query.city.length >= 1 && query.city.length <= 40)) &&
+      (!('cursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.cursor))
+    );
   const root = '/v1/player-bookings';
   if (base === root + '/workspace') return noQuery && method === 'GET';
   if ([root + '/profile', root + '/settings'].includes(base)) return noQuery && method === 'PUT';
@@ -168,6 +178,10 @@ function pathAllowed(path, method = 'GET') {
   if (matches(match + '/staff/' + uuidPattern)) return noQuery && method === 'PUT';
   if (matches(org + '/events/' + uuidPattern + '/(standings|groups|knockout|player-statistics)'))
     return noQuery && method === 'GET';
+  // C18: directory status and explicit LIST/UNLIST (role-checked and CAS-checked by the API).
+  if (matches(org + '/events/' + uuidPattern + '/directory')) return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/directory-commands'))
+    return noQuery && method === 'POST';
   // C15/C16: group tie draws, qualification and knockout round publication, formal
   // rescheduling and match media (files incl. revoke/purge, drafts, publish/revoke, time
   // markers). Each command is CAS-checked and role-checked by the API.
@@ -237,7 +251,12 @@ function createClient(wxApi) {
   function request(path, method = 'GET', body, anonymous = false, timeout = 8000) {
     if (
       !pathAllowed(path, method) ||
-      (anonymous && !(method === 'GET' && /^\/v1\/player-bookings\/players\//.test(path)))
+      (anonymous &&
+        !(
+          method === 'GET' &&
+          (/^\/v1\/player-bookings\/players\//.test(path) ||
+            /^\/v1\/public\/directory(?:\?|$)/.test(path))
+        ))
     )
       return Promise.reject({ code: 'INVALID_PATH', message: '请求入口无效' });
     if (

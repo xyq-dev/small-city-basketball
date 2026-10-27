@@ -36,7 +36,7 @@
 | 分享与最近观看（本机仅存公开身份，404 自动移除） | C14 | event、watch | 同上 | 已验证 | API-E | — |
 | 手输观赛编号（降为“其他方式”，兼容旧链接） | C13/C14 | watch | 同上 | 已验证 | VM | — |
 | 已发布媒体与时间标记的公开播放 | C05 | match、media | `/v1/public/…/media` | 已验证（数据）/ 待验证（播放） | API-M 匿名核对发布、撤销、标记 | 真机播放、外链在微信内的可播性 |
-| 公开赛事目录 | 商业规划、C13 | watch“公开赛事” | 无 | **待审** | — | 待审包 §1 |
+| 公开赛事目录（进行中 / 即将开始 / 历史，城市筛选、分页） | 商业规划、C13、C18 | watch“公开赛事” | `/v1/public/directory` | 已验证（C18 分支，未合并） | API-E（列入 → 匿名浏览打开 → 撤出后刷新消失、分享链接仍有效）、VM、布局 | 合并与部署；Migration 018 待集成人安排 |
 | 赛季或跨届数据榜 | C14 | — | 无 | **待审** | — | 待审包 §3 |
 | 关注与开赛/赛果提醒 | C14 | account“关注与消息”（规划说明） | 无 | **待审 + 外部** | — | 订阅消息模板与凭据 |
 
@@ -49,6 +49,7 @@
 | 报名、记分、积分规则（秒级节时、同分顺序无损） | P03/P05 | event-setup | `*-rules` | 已验证 | API-E、VM | — |
 | 组内积分规则（分组赛发布前锁定） | C05 | event-setup、schedule | 同上 | 已验证 | API-M | — |
 | 公开观赛开启、关闭、历史 | P05-B、C03 | event-setup | `public-viewing-commands` | 已验证 | API-E、API-M（每轮发布后重新开启） | — |
+| 列入 / 撤出公开赛事目录（原因、城市；开启公开观赛不自动列入） | C18 | event-setup“公开赛事目录” | `directory`、`directory-commands` | 已验证（C18 分支，未合并） | API-E、VM（迟到确认零写请求） | 同上 |
 | 报名审核与开放、截止、冻结 | P03-A | entry-review | `entries/*/commands`、`registration-commands` | 已验证 | API-E | — |
 | 单循环排赛（场地、对阵、排时、校验、发布、重抽） | P04-A | schedule | `schedule-revisions/*` | 已验证 | API-E | — |
 | 单淘汰签位、轮空、逐轮发布 | C04 | schedule、bracket | `knockout`、`knockout-round-commands` | 已验证 | API-M | 淘汰轮次时间手工选择，无自动建议 |
@@ -124,3 +125,4 @@
   - 场地改名、停用、启用；
   - 建立统一待审包；
   - 本清单改为六类状态口径。
+- **C18**（`feat/public-event-directory`，Draft PR，基于 #26）：公开赛事目录首版——观众侧“公开赛事”分区与主办方列入 / 撤出，状态改为已验证（分支内）。

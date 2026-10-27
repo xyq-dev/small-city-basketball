@@ -60,6 +60,12 @@ import { ScoringController, SCB_SCORING_SERVICE } from './scoring-controller.js'
 import { StandingsService } from './standings-service.js';
 import { StandingsController, SCB_STANDINGS_SERVICE } from './standings-controller.js';
 import { PublicViewingController } from './public-viewing-controller.js';
+import { DirectoryService } from './directory-service.js';
+import {
+  DirectoryController,
+  PublicDirectoryController,
+  SCB_DIRECTORY_SERVICE,
+} from './directory-controller.js';
 import { EventLifecycleService } from './event-lifecycle-service.js';
 import {
   EventLifecycleController,
@@ -282,6 +288,7 @@ export async function createApi(
     const commerce = new CommerceService(pool, options, input.commercePayments);
     const scoring = new ScoringService(pool, options);
     const standings = new StandingsService(pool, options);
+    const directory = new DirectoryService(pool, options);
     const overlay = new OverlayService(pool, options);
     const lifecycle = new EventLifecycleService(pool, options);
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
@@ -307,6 +314,8 @@ export async function createApi(
         ScoringController,
         StandingsController,
         PublicViewingController,
+        DirectoryController,
+        PublicDirectoryController,
         EventLifecycleController,
         EventPlayerStatisticsController,
         OverlayController,
@@ -324,6 +333,7 @@ export async function createApi(
         { provide: SCB_KNOCKOUT_SERVICE, useValue: knockout },
         { provide: SCB_SCORING_SERVICE, useValue: scoring },
         { provide: SCB_STANDINGS_SERVICE, useValue: standings },
+        { provide: SCB_DIRECTORY_SERVICE, useValue: directory },
         { provide: SCB_OVERLAY_SERVICE, useValue: overlay },
         { provide: SCB_EVENT_LIFECYCLE_SERVICE, useValue: lifecycle },
         { provide: SCB_EVENT_PLAYER_STATISTICS_SERVICE, useValue: playerStatistics },

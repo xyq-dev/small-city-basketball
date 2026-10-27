@@ -574,7 +574,7 @@ try {
         `${prefix}/api:local`,
         '--input-type=module',
         '-e',
-        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,17);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
+        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,18);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
       ]);
       await run('docker', [
         'run',
@@ -884,7 +884,7 @@ try {
     await waitReady();
     await validator(target, targetEnv, 'verify', true);
     console.log(
-      '[production] Full restore matched all 65 exact tables, business snapshots and backup-point fencing.',
+      '[production] Full restore matched all 66 exact tables, business snapshots and backup-point fencing.',
     );
   });
   await stage(

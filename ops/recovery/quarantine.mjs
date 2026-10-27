@@ -16,7 +16,7 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
     // This is an offline restore operation. Drain in-flight row-locking readers
     // and writers before choosing the single time used by all revocations.
     await client.query(`LOCK TABLE organizations, events, users, sessions,
-      team_invitations, public_event_publications, overlay_grants, scoring_leases,
+      team_invitations, public_event_publications, event_directory_listings, overlay_grants, scoring_leases,
       platform_operators, wechat_identities, wechat_auth_attempts
       IN EXCLUSIVE MODE`);
     const now = (await client.query('SELECT clock_timestamp()::text AS now')).rows[0].now;

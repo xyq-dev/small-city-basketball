@@ -120,6 +120,17 @@ async function fixture(target: Target) {
     await disable(h, schedule.event.event.id);
     const publicViewing = await enable(h, schedule.event.event.id);
     const publicId = publicViewing.publication!.publicEventId;
+    // C18: an explicit directory listing must not survive (or be revived by) a restore.
+    const directoryPath = `/v1/orgs/${owner.orgId}/events/${schedule.event.event.id}/directory`;
+    const directoryVersion = data<{ event: { version: number } }>(
+      await call(api, 'get', directoryPath, { cookie: owner.cookie }),
+    ).event.version;
+    data(
+      await call(api, 'post', `${directoryPath}-commands`, {
+        cookie: owner.cookie,
+        body: { type: 'LIST', expectedEventVersion: directoryVersion, reason: '恢复前目录上架' },
+      }),
+    );
     const firstOverlay = await issue(h, final.matchId);
     if (!firstOverlay.credential) throw new Error('Synthetic overlay fixture has no credential');
     const firstBootstrap = await bootstrap(
@@ -262,6 +273,7 @@ describe('P07 owned restore quarantine on the real migrated PostgreSQL schema', 
       'events',
       'team_invitations',
       'public_event_publications',
+      'event_directory_listings',
       'overlay_grants',
       'scoring_leases',
       'audit_logs',
@@ -362,6 +374,18 @@ describe('P07 owned restore quarantine on the real migrated PostgreSQL schema', 
         .status,
     ).toBe(401);
     expect((await anonymous(seeded.h, publicEventPath(seeded.publicId))).status).toBe(404);
+    // The directory listing went with its publication, recorded against the restore actor.
+    const listings = (
+      await target.pool.query(
+        'SELECT status,revoke_source,revoked_by FROM event_directory_listings',
+      )
+    ).rows;
+    expect(listings).toEqual([
+      { status: 'REVOKED', revoke_source: 'PUBLICATION_REVOKED', revoked_by: result.systemUserId },
+    ]);
+    expect(
+      data<unknown[]>(await anonymous(seeded.h, '/v1/public/directory?status=UPCOMING')),
+    ).toEqual([]);
     expect(
       (await overlaySnapshot(seeded.h, seeded.overlayCredential.overlayId, seeded.sourceCookie))
         .status,
@@ -417,6 +441,7 @@ describe('P07 owned restore quarantine on the real migrated PostgreSQL schema', 
   test('a repeated quarantine never mutates already revoked histories or immutable session/lease facts', async () => {
     const names = [
       'public_event_publications',
+      'event_directory_listings',
       'overlay_grants',
       'overlay_sessions',
       'scoring_leases',
