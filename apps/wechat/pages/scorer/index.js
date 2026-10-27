@@ -54,6 +54,8 @@ Page({
   },
   onSessionReset() {
     this._load = (this._load || 0) + 1;
+    this._acquireOp = (this._acquireOp || 0) + 1;
+    this._instance = null;
     this.dropControl();
     this.setData({
       ...privateDefaults,
@@ -190,11 +192,21 @@ Page({
   },
   async acquire() {
     if (this.data.busy || this._control) return;
-    this.setData({ busy: true, loading: false, error: '', notice: '' });
+    // Bound to this page, session and attempt before the instance-id wait; a late id is
+    // neither sent nor kept once the account changed, the user signed out or the page closed.
     const token = ui.hold(this);
+    const attempt = (this._acquireOp = (this._acquireOp || 0) + 1);
+    const live = () => ui.held(this, token) && attempt === this._acquireOp && !this._control;
+    if (!live()) return;
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       // Memory only: a reload is a new client instance and never resumes old credentials.
-      this._instance = this._instance || (await ui.uuid());
+      const instance = this._instance || (await ui.uuid());
+      if (!live()) {
+        if (ui.held(this, token)) this.setData({ busy: false });
+        return;
+      }
+      this._instance = instance;
       const lease = (
         await api
           .getClient()
@@ -233,7 +245,9 @@ Page({
   },
   // `op`: the confirmation a command follows (ui.confirmOp), if any. Both it and the control
   // that signed the envelope are re-checked after the secure-random wait, right before sending.
-  async command(type, payload, label, op) {
+  // `expected`: for confirmed commands, the match version the scorer saw when the dialog
+  // opened; the command is sent with it, and not at all if the page has moved on since.
+  async command(type, payload, label, op, expected) {
     if (this.data.busy || this.data.pending) return;
     if (op && !op.valid()) return;
     if (!this._control) {
@@ -242,11 +256,16 @@ Page({
     }
     const control = this._control;
     const token = ui.hold(this);
-    const live = () => ui.held(this, token) && (!op || op.valid()) && this._control === control;
+    const version = expected === undefined ? this._matchVersion : expected;
+    const live = () =>
+      ui.held(this, token) &&
+      (!op || op.valid()) &&
+      this._control === control &&
+      (expected === undefined || this._matchVersion === expected);
     if (!live()) return;
     this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
-      const body = await scoring.envelope(type, payload, this._matchVersion, control);
+      const body = await scoring.envelope(type, payload, version, control);
       if (!live()) {
         if (ui.held(this, token)) this.setData({ busy: false });
         return;
@@ -347,10 +366,23 @@ Page({
   },
   // Confirmed commands: the dialog is bound to this page, session and control; a late answer
   // (account change, sign-out, unload, lost control, a newer dialog) sends nothing.
+  // The version, status and control the scorer saw are fixed when the dialog opens; if any of
+  // them changed by the time the answer arrives, nothing is sent and the scorer re-checks.
   async confirmedCommand(type, label, title, content) {
     const control = this._control;
+    const version = this._matchVersion;
+    const status = this.data.match && this.data.match.status;
     const op = await ui.confirmOp(this, title, content);
-    if (op && control && this._control === control) this.command(type, {}, label, op);
+    if (!op || !control) return;
+    if (
+      this._control !== control ||
+      this._matchVersion !== version ||
+      (this.data.match && this.data.match.status) !== status
+    ) {
+      this.setData({ error: '比分或比赛状态已更新，请重新核对后再确认“' + label + '”。' });
+      return;
+    }
+    return this.command(type, {}, label, op, version);
   },
   nextPeriod() {
     return this.confirmedCommand(
