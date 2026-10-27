@@ -500,15 +500,21 @@ test('groups, tie draw, qualification, knockout rounds, rescheduling and media t
   const mediaPage = owner.open('pages/match-media/index', { orgId: org, matchId: finalId });
   await owner.settle(mediaPage);
   assert.equal(mediaPage.page.data.caps.upload, true, mediaPage.page.data.error);
-  // Lost upload response: the server stores the file; re-reading resolves it without a second upload.
+  // Lost upload response: the server stores the file, but the API has no request identity, so
+  // the page keeps the outcome unknown and only shows the new file as a candidate to check.
   owner.dropNextResponse((o) => o.method === 'POST' && /\/media-files$/.test(o.url));
   await mediaPage.page.uploadImage();
   await owner.settle(mediaPage);
-  assert.equal(mediaPage.page.data.uncertain, true, mediaPage.page.data.error);
+  assert.ok(mediaPage.page.data.pending, mediaPage.page.data.error);
   await mediaPage.page.load();
   await owner.settle(mediaPage);
-  assert.equal(mediaPage.page.data.files.length, 1, 'stored exactly once');
+  assert.equal(mediaPage.page.data.files.length, 1, 'the page did not send it twice');
   assert.equal(mediaPage.page.data.canRetry, false);
+  assert.equal(mediaPage.page.data.pending?.candidates.length, 1, 'shown for checking');
+  await mediaPage.page.uploadImage();
+  assert.equal(mediaPage.page.data.files.length, 1, 'no new upload while unknown');
+  await mediaPage.page.confirmPending(tap({ id: mediaPage.page.data.pending.candidates[0].id }));
+  assert.equal(mediaPage.page.data.pending, null);
   assert.match(mediaPage.page.data.files[0].statusLabel, /未关联、未发布/);
   assert.deepEqual(await publicMedia(), [], 'an upload alone is not public');
   mediaPage.page.titleInput(tap({}, { value: '决赛最后一攻' }));

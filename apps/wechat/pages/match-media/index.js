@@ -7,7 +7,32 @@ const media = require('../../utils/media');
 // publish / revoke. Uploading never publishes, and publication is still only visible through
 // the event's public-viewing grant. Byte-level progress is not available: the existing upload
 // is one JSON request, and wx.request reports no upload progress; stages are shown instead.
+//
+// The existing upload and draft-creation endpoints have no request identity: each call stores
+// a new file / media record. A lost response therefore stays "unknown" until the organizer
+// resolves it; a file or draft that merely looks the same is shown for checking, never taken
+// as proof, and no retry or new upload is offered meanwhile. The record is kept in device
+// storage per account and match so leaving and re-entering the page does not clear it.
 const UPLOAD_TIMEOUT = 120000;
+const PENDING_KEY = 'scb.mediaPending.v1';
+function pendingStore() {
+  try {
+    const v = wx.getStorageSync(PENDING_KEY);
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+  } catch {
+    return {};
+  }
+}
+function savePendingStore(map) {
+  try {
+    const keys = Object.keys(map);
+    // Bounded: only the most recent records are kept.
+    for (const k of keys.slice(0, Math.max(0, keys.length - 20))) delete map[k];
+    wx.setStorageSync(PENDING_KEY, map);
+  } catch {
+    /* Storage failure keeps the in-memory record for this page only. */
+  }
+}
 const privateDefaults = {
   match: null,
   usage: null,
@@ -23,6 +48,7 @@ const privateDefaults = {
   upload: null,
   canRetry: false,
   uncertain: false,
+  pending: null,
   unavailable: false,
 };
 
@@ -48,7 +74,8 @@ Page({
     this._load = (this._load || 0) + 1;
     this._data = null;
     this._retry = null;
-    this._attempt = null;
+    this._viewer = '';
+    this._pendingMemory = null;
     this.setData({
       ...privateDefaults,
       loading: false,
@@ -69,13 +96,15 @@ Page({
       return;
     }
     this.setData({ loading: true, error: '' });
+    let session;
     try {
-      await events.session(client);
+      session = await events.session(client);
     } catch (error) {
       if (current()) this.setData({ ...privateDefaults, loading: false, error: ui.message(error) });
       return;
     }
     if (!current()) return;
+    this._viewer = session.user.id;
     const token = ui.begin(this);
     const live = () => ui.live(this, token) && current();
     try {
@@ -122,20 +151,6 @@ Page({
         canRevoke: f.status === 'ACTIVE' && !!w.capabilities.canManage,
       }));
     const draftFiles = files.filter((f) => f.status === 'ACTIVE' && !used.has(f.id));
-    // Resolve an upload whose response was lost: same name and size, created after the attempt.
-    const attempt = this._attempt;
-    const landed =
-      attempt &&
-      w.files.some(
-        (f) =>
-          f.fileName === attempt.name &&
-          f.byteLength === attempt.size &&
-          Date.parse(f.createdAt) >= attempt.at - 120000,
-      );
-    if (landed) {
-      this._attempt = null;
-      this._retry = null;
-    }
     this.setData({
       loading: false,
       unavailable: false,
@@ -175,16 +190,93 @@ Page({
       },
       draftFiles,
       draftIndex: Math.min(this.data.draftIndex, Math.max(draftFiles.length - 1, 0)),
-      canRetry: !!this._retry,
-      ...(landed
+      canRetry: !!this._retry && !this.pendingRecord(),
+      pending: this.pendingView(w),
+    });
+  },
+  pendingKey() {
+    return this._viewer ? this._viewer + ':' + this.orgId + ':' + this.matchId : '';
+  },
+  pendingRecord() {
+    const key = this.pendingKey();
+    if (!key) return null;
+    return (
+      pendingStore()[key] ||
+      (this._pendingMemory && this._pendingMemory.key === key ? this._pendingMemory.record : null)
+    );
+  },
+  setPending(record) {
+    const key = this.pendingKey();
+    if (!key) return;
+    const map = pendingStore();
+    if (record) map[key] = record;
+    else delete map[key];
+    this._pendingMemory = record ? { key, record } : null;
+    savePendingStore(map);
+  },
+  // What the organizer can check: records created since the unknown attempt that look like it.
+  // Shown as candidates only; equality of name/size/file is not proof of this request.
+  pendingView(w) {
+    const r = this.pendingRecord();
+    if (!r || !w) return null;
+    const known = new Set(r.known || []);
+    const candidates =
+      r.op === 'upload'
+        ? w.files
+            .filter((f) => !known.has(f.id) && f.fileName === r.name && f.byteLength === r.size)
+            .map((f) => ({
+              id: f.id,
+              text:
+                f.fileName + ' · ' + media.size(f.byteLength) + ' · ' + ui.localTime(f.createdAt),
+            }))
+        : w.media
+            .filter((m) => !known.has(m.id) && m.fileId === r.fileId)
+            .map((m) => ({
+              id: m.id,
+              text: m.title + ' · ' + (media.statusLabels[m.status] || m.status),
+            }));
+    return {
+      op: r.op,
+      title: r.op === 'upload' ? '上传结果未知：' + r.name : '草稿创建结果未知：' + r.title,
+      at: ui.localTime(new Date(r.at).toISOString()),
+      candidates,
+    };
+  },
+  confirmPending(e) {
+    const view = this.data.pending;
+    const id = e.currentTarget.dataset.id;
+    if (!view || this.data.busy || !view.candidates.some((c) => c.id === id)) return;
+    const r = this.pendingRecord();
+    this.setPending(null);
+    this._retry = null;
+    this.setData({
+      pending: null,
+      canRetry: false,
+      notice: '',
+      ...(r && r.op === 'upload'
         ? {
             upload: {
               stage: 'saved',
-              label: '已核对：' + attempt.name + ' 已私有保存，尚未发布。',
+              label:
+                '由你核对确认：' + r.name + ' 为该次上传结果（接口无请求编号，系统无法自动证明）。',
             },
           }
-        : {}),
+        : { notice: '已按你的核对结束该草稿记录（接口无请求编号，系统无法自动证明）。' }),
     });
+  },
+  async dismissPending() {
+    if (!this.data.pending || this.data.busy) return;
+    if (
+      !(await ui.confirm(
+        '结束这条未知记录',
+        '原请求仍可能在之后完成并多保存一份；如出现多余文件或草稿，可在本页撤销。之后可重新选择文件。',
+      ))
+    )
+      return;
+    if (!this.data.pending) return;
+    this.setPending(null);
+    this._retry = null;
+    this.setData({ pending: null, canRetry: false, upload: null });
   },
   uploadImage() {
     this.upload('image');
@@ -192,24 +284,50 @@ Page({
   uploadVideo() {
     this.upload('video');
   },
+  // Only after a known rejection; never while an earlier outcome is unknown.
   retryUpload() {
-    if (this._retry) this.upload(this._retry.kind, this._retry.file);
+    if (this._retry && !this.pendingRecord())
+      return this.upload(this._retry.kind, this._retry.file);
+  },
+  blocked() {
+    if (!this.pendingRecord()) return false;
+    this.setData({ error: '上一次操作结果未知，请先在下方核对处理后再继续。', notice: '' });
+    return true;
   },
   async upload(kind, chosen) {
-    const w = this._data;
-    if (!w || !this.data.caps || !this.data.caps.upload || this.data.busy || this.data.uncertain)
-      return;
-    let file;
+    if (!this._data || !this.data.caps || !this.data.caps.upload) return;
+    if (this.data.busy || this.data.uncertain || this.blocked()) return;
+    // Bind the whole operation to this page, account and match before the picker opens. A late
+    // picker result is checked against these; a new token is never used to adopt it.
+    const token = ui.guard(this);
+    const op = (this._op = (this._op || 0) + 1);
+    const viewer = this._viewer;
+    const valid = () =>
+      ui.held(this, token) &&
+      this._alive &&
+      op === this._op &&
+      !!viewer &&
+      viewer === this._viewer &&
+      !!this._data &&
+      !!this.data.caps &&
+      this.data.caps.upload;
+    let picked;
     try {
-      file = media.describe(chosen || (await media.choose(wx, kind)), kind, w.usage);
+      picked = chosen || (await media.choose(wx, kind));
     } catch (error) {
-      if (!error.cancelled) this.setData({ error: ui.message(error), notice: '' });
+      if (valid() && !error.cancelled) this.setData({ error: ui.message(error), notice: '' });
       return;
     }
-    if (this.data.busy || this.data.uncertain) return;
-    const token = ui.hold(this);
+    if (!valid() || this.data.busy || this.data.uncertain || this.pendingRecord()) return;
+    let file;
+    try {
+      file = media.describe(picked, kind, this._data.usage);
+    } catch (error) {
+      this.setData({ error: ui.message(error), notice: '' });
+      return;
+    }
+    ui.hold(this); // cancels in-flight reads only; validity stays bound to `token`
     this._retry = { kind, file };
-    this._attempt = null;
     this.setData({
       busy: true,
       loading: false,
@@ -224,7 +342,7 @@ Page({
     let sent = false;
     try {
       const base64 = await media.readBase64(wx, file);
-      if (!ui.held(this, token)) return;
+      if (!valid()) return;
       this.setData({
         upload: {
           stage: 'sending',
@@ -235,7 +353,14 @@ Page({
         },
       });
       sent = true;
-      this._attempt = { name: file.name, size: file.size, at: Date.now() };
+      // Recorded before sending, so a killed app or a re-entered page still knows about it.
+      this.setPending({
+        op: 'upload',
+        name: file.name,
+        size: file.size,
+        at: Date.now(),
+        known: this._data.files.map((f) => f.id),
+      });
       await api
         .getClient()
         .request(
@@ -245,28 +370,29 @@ Page({
           false,
           UPLOAD_TIMEOUT,
         );
-      if (!ui.held(this, token)) return;
+      if (!valid()) return;
+      this.setPending(null);
       this._retry = null;
-      this._attempt = null;
       this.setData({
         busy: false,
         upload: { stage: 'saved', label: '3/3 已私有保存 ' + file.name + '，尚未发布。' },
       });
       await this.load();
     } catch (error) {
-      if (!ui.held(this, token)) return;
+      if (!valid()) return;
       const lost = sent && media.unknown(error);
+      if (!lost) this.setPending(null);
       this.setData({
         busy: false,
-        uncertain: lost,
         canRetry: !lost,
         error: media.failure(error),
         upload: {
           stage: 'failed',
           label: lost
-            ? '上传结果未知：请先重新读取，确认文件未保存后再重试。'
+            ? '上传结果未知：接口没有请求编号，无法自动确认是否已保存。请在下方核对。'
             : '上传未完成，可按原文件重试。',
         },
+        pending: lost ? this.pendingView(this._data) : null,
       });
     }
   },
@@ -303,7 +429,8 @@ Page({
   async createDraft() {
     const w = this._data;
     const file = this.data.draftFiles[this.data.draftIndex];
-    if (!w || !file || !this.data.caps.manage) return;
+    if (!w || !file || !this.data.caps || !this.data.caps.manage) return;
+    if (this.data.busy || this.data.uncertain || this.blocked()) return;
     const title = this.data.title.trim(),
       rights = this.data.rights.trim();
     if (!title || Array.from(rights).length < 4) {
@@ -311,19 +438,48 @@ Page({
       return;
     }
     const source = w.files.find((f) => f.id === file.id);
-    if (
-      await this.write(
-        this.base() + '/media',
-        {
-          kind: source.purpose === 'MATCH_IMAGE' ? 'IMAGE' : 'VIDEO',
-          title,
-          fileId: file.id,
-          rightsDeclaration: rights,
-        },
-        '媒体草稿已创建，尚未发布；发布前观众不可见。',
-      )
-    )
-      this.setData({ title: '', rights: '' });
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
+    this.setPending({
+      op: 'draft',
+      fileId: file.id,
+      title,
+      at: Date.now(),
+      known: w.media.map((m) => m.id),
+    });
+    try {
+      await api.getClient().request(this.base() + '/media', 'POST', {
+        kind: source.purpose === 'MATCH_IMAGE' ? 'IMAGE' : 'VIDEO',
+        title,
+        fileId: file.id,
+        rightsDeclaration: rights,
+      });
+      if (!ui.held(this, token)) return;
+      this.setPending(null);
+      this.setData({
+        busy: false,
+        title: '',
+        rights: '',
+        notice: '媒体草稿已创建，尚未发布；发布前观众不可见。',
+      });
+      await this.load();
+    } catch (error) {
+      if (!ui.held(this, token)) return;
+      const lost = media.unknown(error);
+      if (!lost) this.setPending(null);
+      this.setData({
+        busy: false,
+        error: lost
+          ? '网络中断，草稿是否已创建未知：接口没有请求编号，请在下方核对，不会自动重新创建。'
+          : media.failure(error),
+        pending: lost ? this.pendingView(w) : null,
+      });
+      if (!lost && error && error.status === 409) {
+        const message = this.data.error;
+        await this.load();
+        if (ui.held(this, token) && !this.data.unavailable) this.setData({ error: message });
+      }
+    }
   },
   async command(e, type) {
     const w = this._data;

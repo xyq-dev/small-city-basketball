@@ -828,7 +828,7 @@ test('media: oversized or wrong-type files are refused before reading or sending
   s.unload();
 });
 
-test('media: a rejected upload can be retried with the same file; a lost one is checked first', async () => {
+test('media: a rejected upload can be retried with the same file; a lost one stays unknown', async () => {
   const s = mediaPage(workspace());
   await s.open({ orgId: org, matchId });
   const upload = 'POST ' + matchBase + '/media-files';
@@ -845,16 +845,20 @@ test('media: a rejected upload can be retried with the same file; a lost one is 
   });
   await s.page.retryUpload();
   await s.flush();
-  assert.equal(s.page.data.uncertain, true);
-  assert.equal(s.page.data.canRetry, false, 'no retry before checking');
+  assert.ok(s.page.data.pending, 'the outcome is unknown');
+  assert.equal(s.page.data.canRetry, false, 'no retry while unknown');
   await s.page.retryUpload();
   assert.equal(s.sent(upload).length, 2);
   await s.page.load();
   await s.flush();
-  assert.equal(s.page.data.uncertain, false);
-  assert.equal(s.page.data.canRetry, false, 'the re-read found the stored file');
-  assert.match(s.page.data.upload.label, /已核对/);
-  assert.equal(s.sent(upload).length, 2, 'never uploaded twice');
+  // The stored file is only a candidate for the organizer to check, not proof.
+  assert.ok(s.page.data.pending, 'still unknown after a re-read');
+  assert.equal(s.page.data.pending.candidates.length, 1);
+  assert.equal(s.page.data.canRetry, false);
+  await s.page.confirmPending(tap({ id: s.page.data.pending.candidates[0].id }));
+  assert.equal(s.page.data.pending, null);
+  assert.match(s.page.data.upload.label, /由你核对/);
+  assert.equal(s.sent(upload).length, 2, 'the page itself never sent it again');
   s.unload();
 });
 
