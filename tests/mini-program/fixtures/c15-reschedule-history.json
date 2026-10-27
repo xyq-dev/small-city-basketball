@@ -1,0 +1,49 @@
+{
+  "name": "c15-reschedule-history",
+  "route": "pages/reschedule/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["改期记录", "球队申请延后", "检查并保存改期", "不是排赛草稿"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "改期已保存，改期记录已追加。",
+    "match": {
+      "eventName": "合成分组杯",
+      "round": "第4轮",
+      "home": "合成四队",
+      "away": "合成二队",
+      "status": "SCHEDULED",
+      "statusLabel": "待开始",
+      "plan": "合成一号场 · 2028-04-02 13:30–14:30",
+      "duration": 60
+    },
+    "history": [
+      {
+        "key": "997c5968-6a89-4dd6-b26a-3197f6f4bf42",
+        "from": "合成一号场 · 2028-04-02 11:00–12:00",
+        "to": "合成一号场 · 2028-04-02 13:30–14:30",
+        "reason": "球队申请延后",
+        "time": "2026-10-27 09:40"
+      }
+    ],
+    "truncated": false,
+    "canReschedule": true,
+    "blocker": "",
+    "courts": [
+      {
+        "id": "e21db07e-fa79-4738-b73a-a8af6d92ea69",
+        "name": "合成一号场"
+      }
+    ],
+    "courtIndex": 0,
+    "date": "2028-04-02",
+    "time": "13:30",
+    "reason": "",
+    "conflicts": [],
+    "uncertain": false,
+    "unavailable": false
+  }
+}

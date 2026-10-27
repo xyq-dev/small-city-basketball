@@ -17,8 +17,9 @@
 
     <view wx:if="{{state === 'published'}}" class="card">
       <view class="subtitle">正式赛程已发布</view>
-      <view class="muted">共 {{publication.count}} 场 · {{publication.time}}。正式赛程不能重抽；单场调整走改期流程（Web）。</view>
-      <button class="primary" bindtap="openEvent">查看赛程</button>
+      <view class="muted">共 {{publication.count}} 场 · {{publication.time}}。原发布快照保留、不能重抽；单场调整请在比赛详情中正式改期，每次改期单独留存记录。</view>
+      <button wx:if="{{format !== 'ROUND_ROBIN'}}" class="primary" bindtap="openBracket">{{format === 'GROUP_KNOCKOUT' ? '分组积分与晋级发布' : '签位与下一轮发布'}}</button>
+      <button class="{{format === 'ROUND_ROBIN' ? 'primary' : 'secondary'}}" bindtap="openEvent">查看赛程</button>
     </view>
     <view wx:elif="{{state === 'no-freeze'}}" class="card">
       <view class="subtitle">名单尚未冻结</view>
@@ -26,10 +27,21 @@
       <button class="primary" bindtap="openReview">去报名审核</button>
     </view>
     <view wx:elif="{{state === 'unsupported'}}" class="notice warning">当前赛事暂不支持排赛：{{supportReason || '请核对赛制与名单'}}</view>
-    <view wx:elif="{{state === 'web-only'}}" class="notice small">单淘汰与分组赛的抽签、签位与分组设置目前在Web赛事工作台完成。</view>
     <view wx:elif="{{state === 'readonly'}}" class="notice small">当前身份可查看但不能排赛。</view>
 
     <block wx:if="{{state === 'generate'}}">
+      <view wx:if="{{format === 'GROUP_KNOCKOUT'}}" class="card">
+        <view class="subtitle">分组与种子</view>
+        <view wx:if="{{!groupCounts.length}}" class="notice warning small">冻结球队不足，分组赛每组至少2队。</view>
+        <block wx:else>
+          <text class="field-label">分组数</text>
+          <picker class="field" range="{{groupCounts}}" range-key="label" value="{{groupIndex}}" bindchange="pickGroups">{{groupCounts[groupIndex].label}}</picker>
+          <text class="field-label">种子队（可选，每组至多一支，用于分开强队）</text>
+          <view wx:for="{{seeds}}" wx:key="id" class="setup-switch" data-index="{{index}}" bindtap="toggleSeed"><text>{{item.name}}</text><text class="setup-flag {{item.on ? 'on' : ''}}">{{item.on ? '种子' : '—'}}</text></view>
+          <view class="muted">服务端随机均衡分组（组间人数差至多1队）并生成组内单循环；每组前二按固定交叉进入淘汰赛，不比较跨组第三名。</view>
+        </block>
+      </view>
+      <view wx:elif="{{format === 'SINGLE_ELIMINATION'}}" class="notice small">服务端从冻结名单随机生成固定签位；首轮轮空不生成比赛，下一轮须待来源比赛全部有效独立确认后再发布。不设三四名赛。</view>
       <view class="card">
         <view class="subtitle">选择场地</view>
         <view wx:if="{{!courts.length}}" class="muted">机构还没有可用场地。</view>
@@ -51,7 +63,7 @@
           <view><text class="field-label">最短休息</text><input class="field" type="number" value="{{form.rest}}" data-field="rest" bindinput="formInput"/></view>
           <view><text class="field-label">日期间隔</text><input class="field" type="number" value="{{form.gap}}" data-field="gap" bindinput="formInput"/></view>
         </view>
-        <view class="muted">赛期内每天按所选场地开放上述时段。服务端随机生成单循环对阵并保存随机种子。</view>
+        <view class="muted">赛期内每天按所选场地开放上述时段。服务端随机生成{{format === 'GROUP_KNOCKOUT' ? '分组与组内对阵' : format === 'SINGLE_ELIMINATION' ? '签位与首轮对阵' : '单循环对阵'}}并保存随机种子。</view>
         <button class="primary" bindtap="generate" disabled="{{busy}}">生成对阵草稿</button>
       </view>
     </block>
@@ -64,6 +76,16 @@
         <button wx:if="{{revision.canValidate}}" class="secondary" bindtap="validate" disabled="{{busy}}">校验冲突</button>
         <button wx:if="{{revision.canPublish}}" class="primary" bindtap="publish" disabled="{{busy}}">发布正式赛程</button>
       </view>
+      <view wx:if="{{draftGroups.length}}" class="card">
+        <view class="subtitle">分组结果（服务端回放，发布前核对）</view>
+        <view wx:for="{{draftGroups}}" wx:key="key" class="row"><view>{{item.label}}</view><view class="muted">{{item.teams}}</view></view>
+      </view>
+      <view wx:if="{{format === 'GROUP_KNOCKOUT'}}" class="card">
+        <view class="subtitle">发布前锁定组内积分规则</view>
+        <view class="muted">组内名次与出线按锁定的积分规则计算；未锁定时服务端拒绝发布。</view>
+        <button class="secondary" bindtap="openSetup">设置组内积分规则</button>
+      </view>
+      <view wx:if="{{byes}}" class="notice small">首轮轮空直接晋级：{{byes}}。轮空不生成比赛。</view>
       <view wx:if="{{validated}}" class="card">
         <view class="subtitle">校验结果</view>
         <view wx:if="{{!conflicts.length}}" class="muted">未发现冲突。</view>

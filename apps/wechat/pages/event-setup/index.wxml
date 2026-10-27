@@ -91,7 +91,7 @@
     </view>
 
     <view wx:if="{{standings}}" class="card">
-      <view class="row-between"><view class="subtitle">积分规则</view><text class="badge">{{standings.locked ? '已锁定' : standings.saved ? '草稿' : '未设置'}}</text></view>
+      <view class="row-between"><view class="subtitle">{{event.groups ? '组内积分规则' : '积分规则'}}</view><text class="badge">{{standings.locked ? '已锁定' : standings.saved ? '草稿' : '未设置'}}</text></view>
       <block wx:if="{{standings.editable}}">
         <view class="setup-trio">
           <view><text class="field-label">胜</text><input class="field" type="number" value="{{standings.win}}" data-section="standings" data-field="win" bindinput="field"/></view>
@@ -118,9 +118,8 @@
       <button wx:if="{{viewing.canEnable && !viewing.history}}" class="primary" data-type="ENABLE" bindtap="viewing" disabled="{{busy}}">开启公开观赛</button>
       <button wx:if="{{viewing.canEnable && viewing.history}}" class="primary" data-type="ENABLE_HISTORY" bindtap="viewing" disabled="{{busy}}">开启历史观赛</button>
       <button wx:if="{{viewing.canDisable}}" class="danger" data-type="DISABLE" bindtap="viewing" disabled="{{busy}}">关闭公开观赛</button>
-      <view wx:if="{{!viewing.active && !viewing.canEnable}}" class="muted">需先锁定积分规则并发布正式赛程。</view>
+      <view wx:if="{{!viewing.active && !viewing.canEnable}}" class="muted">{{event.knockout ? '需先发布正式赛程。' : '需先锁定积分规则并发布正式赛程。'}}{{event.roundRobin ? '' : '每次发布淘汰轮次都会撤销旧链接，需重新开启。'}}</view>
     </view>
-    <view wx:elif="{{!event.roundRobin}}" class="notice small">分组与淘汰赛的积分、出线与公开观赛设置目前在Web赛事工作台完成。</view>
     <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
   </block>
 </view>

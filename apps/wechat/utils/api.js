@@ -167,6 +167,25 @@ function pathAllowed(path, method = 'GET') {
   if (matches(match + '/staff/' + uuidPattern)) return noQuery && method === 'PUT';
   if (matches(org + '/events/' + uuidPattern + '/(standings|groups|knockout|player-statistics)'))
     return noQuery && method === 'GET';
+  // C15: group tie draws, qualification and knockout round publication, formal rescheduling
+  // and match media. Each command is CAS-checked and role-checked by the API; marker creation
+  // and media purging are not offered natively.
+  if (
+    matches(
+      org +
+        '/events/' +
+        uuidPattern +
+        '/(group-tie-commands|group-qualification-commands|knockout-round-commands)',
+    )
+  )
+    return noQuery && method === 'POST';
+  if (matches(match + '/rescheduling')) return noQuery && method === 'GET';
+  if (matches(match + '/reschedule-commands')) return noQuery && method === 'POST';
+  if (matches(match + '/media')) return noQuery && ['GET', 'POST'].includes(method);
+  if (matches(match + '/media-files')) return noQuery && method === 'POST';
+  if (matches(match + '/media-files/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  if (matches(match + '/media/' + uuidPattern + '/commands')) return noQuery && method === 'POST';
   if (matches(org + '/events/' + uuidPattern + '/matches')) return paged;
   if (matches(org + '/teams')) return method === 'GET' ? paged : noQuery && method === 'POST';
   if (matches(org + '/teams/' + uuidPattern)) return noQuery && ['GET', 'PATCH'].includes(method);
@@ -212,7 +231,8 @@ function createClient(wxApi) {
     revision++;
     notify(reason);
   }
-  function request(path, method = 'GET', body, anonymous = false) {
+  // `timeout` is only raised for a single media upload (one JSON body of up to ~11 MB base64).
+  function request(path, method = 'GET', body, anonymous = false, timeout = 8000) {
     if (
       !pathAllowed(path, method) ||
       (anonymous && !(method === 'GET' && /^\/v1\/player-bookings\/players\//.test(path)))
@@ -229,7 +249,7 @@ function createClient(wxApi) {
       wxApi.request({
         url: API_ORIGIN + path,
         method,
-        timeout: 8000,
+        timeout: Math.min(Math.max(Number(timeout) || 8000, 8000), 120000),
         data: body,
         header: {
           Accept: 'application/json',

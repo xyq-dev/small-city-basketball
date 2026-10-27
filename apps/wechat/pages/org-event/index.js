@@ -259,6 +259,9 @@ Page({
   openSetup() {
     ui.open('event-setup', { orgId: this.orgId, eventId: this.eventId });
   },
+  openBracket() {
+    ui.open('bracket', { orgId: this.orgId, eventId: this.eventId });
+  },
   openTasks() {
     ui.open('scoring-tasks', { orgId: this.orgId, eventId: this.eventId });
   },

@@ -171,7 +171,7 @@ Page({
     const [registration, scoring, standings] = await Promise.all([
       quiet(client.request(this.base() + '/registration')),
       quiet(client.request(this.base() + '/scoring')),
-      event.format === 'ROUND_ROBIN' ? quiet(client.request(this.base() + '/standings')) : null,
+      quiet(client.request(this.base() + '/standings')),
     ]);
     if (!live()) return;
     this._event = event;
@@ -192,6 +192,8 @@ Page({
         dateLabel: event.startDate + ' 至 ' + event.endDate,
         venueName: event.venueName || '场地待定',
         roundRobin: event.format === 'ROUND_ROBIN',
+        knockout: event.format === 'SINGLE_ELIMINATION',
+        groups: event.format === 'GROUP_KNOCKOUT',
       },
       draft: editable
         ? {

@@ -409,6 +409,12 @@ Page({
   openScorer() {
     ui.open('scorer', { orgId: this.orgId, matchId: this.matchId });
   },
+  openReschedule() {
+    ui.open('reschedule', { orgId: this.orgId, matchId: this.matchId });
+  },
+  openMedia() {
+    ui.open('match-media', { orgId: this.orgId, matchId: this.matchId });
+  },
   openEvent() {
     const m = this.data.match;
     if (m) ui.open('org-event', { orgId: this.orgId, eventId: m.eventId });

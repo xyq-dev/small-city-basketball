@@ -1,0 +1,79 @@
+<view class="page mgmt-page">
+  <view wx:if="{{loading && !match}}" class="card state-panel"><text class="state-label">比赛媒体</text><view class="subtitle">正在读取媒体资料</view><view class="loading-lines"><view></view><view></view></view></view>
+  <view wx:elif="{{!match}}" class="card state-panel">
+    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
+    <view class="subtitle">{{unavailable ? '无法管理本场媒体' : '暂时无法读取'}}</view>
+    <view class="notice warning">{{error || '请从比赛详情重新进入。'}}</view>
+    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+  </view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
+    <view wx:if="{{uncertain}}" class="card">
+      <view class="subtitle">操作结果待核对</view>
+      <view class="muted">网络中断时服务端可能已经执行。请先重新读取核对；在此之前不能继续上传或发布。</view>
+      <button class="primary" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button>
+    </view>
+    <view class="board">
+      <view class="board-meta" bindtap="openMatch">{{match.meta}}</view>
+      <view class="setup-name">{{match.title}}</view>
+      <view class="board-meta">{{usage.label}}</view>
+    </view>
+    <view class="notice small">上传只保存为本机构私有文件；须创建媒体并明确发布后，才会在本届公开观赛开启时对持有链接的观众显示。</view>
+
+    <view class="card">
+      <view class="subtitle">上传图片或视频</view>
+      <block wx:if="{{caps.upload}}">
+        <view class="muted">图片支持PNG、JPEG，视频支持MP4；单个文件不超过8MB，服务端复核格式与额度。</view>
+        <view class="mode-choice">
+          <button class="secondary" bindtap="uploadImage" disabled="{{busy || uncertain}}">选择图片</button>
+          <button class="secondary" bindtap="uploadVideo" disabled="{{busy || uncertain}}">选择视频</button>
+        </view>
+        <view wx:if="{{upload}}" class="upload-stage {{upload.stage}}">{{upload.label}}</view>
+        <button wx:if="{{canRetry}}" class="primary" bindtap="retryUpload" disabled="{{busy || uncertain}}">按原文件重试上传</button>
+      </block>
+      <view wx:else class="muted">当前身份不能上传本场媒体，或赛事已归档、取消（由服务端判定）。</view>
+    </view>
+
+    <view class="card">
+      <view class="subtitle">已上传文件</view>
+      <view wx:if="{{!files.length}}" class="muted">尚无文件。</view>
+      <view wx:for="{{files}}" wx:key="id" class="row">
+        <view class="row-between"><view>{{item.name}}</view><button wx:if="{{item.canRevoke}}" class="quiet small-button" data-id="{{item.id}}" bindtap="askRevokeFile" disabled="{{busy || uncertain}}">撤销</button></view>
+        <view class="muted">{{item.kind}} · {{item.size}} · {{item.statusLabel}} · {{item.time}}</view>
+        <block wx:if="{{revokeId === item.id}}">
+          <text class="field-label">撤销原因（4–500字）</text>
+          <textarea class="field" maxlength="500" value="{{revokeReason}}" bindinput="revokeReasonInput" placeholder="例如：误传了其他比赛的照片"/>
+          <button class="danger" bindtap="revokeFile" disabled="{{busy || uncertain}}">确认撤销文件</button>
+        </block>
+      </view>
+    </view>
+
+    <view wx:if="{{caps.manage && draftFiles.length}}" class="card">
+      <view class="subtitle">创建媒体草稿</view>
+      <text class="field-label">选择文件</text>
+      <picker class="field" range="{{draftFiles}}" range-key="name" value="{{draftIndex}}" bindchange="pickDraft">{{draftFiles[draftIndex].name}}</picker>
+      <text class="field-label">标题</text>
+      <input class="field" maxlength="120" value="{{title}}" bindinput="titleInput" placeholder="例如 决赛最后一攻"/>
+      <text class="field-label">权利声明（4–500字）</text>
+      <textarea class="field" maxlength="500" value="{{rights}}" bindinput="rightsInput" placeholder="拍摄者及授权范围，例如：主办方摄影组拍摄，仅限本届公开观赛使用"/>
+      <button class="primary" bindtap="createDraft" disabled="{{busy || uncertain}}">创建草稿（不公开）</button>
+    </view>
+
+    <view class="card">
+      <view class="subtitle">本场媒体</view>
+      <view wx:if="{{!items.length}}" class="muted">尚无媒体记录。</view>
+      <view wx:for="{{items}}" wx:key="id" class="row">
+        <view class="row-between"><view>{{item.title}}</view><text class="badge {{item.status === 'PUBLISHED' ? 'success' : item.status === 'REVOKED' ? 'danger' : ''}}">{{item.status === 'PUBLISHED' ? '已发布' : item.status === 'REVOKED' ? '已撤销' : '草稿'}}</text></view>
+        <view class="muted">{{item.kind}} · {{item.statusLabel}}{{item.markers ? ' · ' + item.markers + '个时间标记' : ''}}{{item.stale ? '（赛果已重新确认，标记待更新）' : ''}}</view>
+        <view class="muted">权利声明：{{item.rights}}</view>
+        <view class="mode-choice">
+          <button wx:if="{{item.canPublish}}" class="primary" data-id="{{item.id}}" bindtap="publish" disabled="{{busy || uncertain}}">发布</button>
+          <button wx:if="{{item.canRevoke}}" class="quiet" data-id="{{item.id}}" bindtap="revoke" disabled="{{busy || uncertain}}">撤销</button>
+        </view>
+      </view>
+      <view wx:if="{{caps.manage && !caps.publish}}" class="muted">发布须由机构负责人、管理员或本届赛事管理员操作。</view>
+    </view>
+    <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
+  </block>
+</view>

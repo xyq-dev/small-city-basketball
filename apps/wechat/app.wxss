@@ -117,6 +117,11 @@ text.org-match-vs { flex:none; color:#7c91a9; font-size:12px; font-weight:500; }
 .num-cell.record { width:56px; white-space:nowrap; }
 @media(max-width:360px) { .num-cell.record { width:48px; font-size:12px; } }
 /* Shared management forms (event setup, scheduling). */
+.setup-block { padding:8px 0 4px; border-bottom:1px solid #e8edf2; }
+.setup-block:last-of-type { border-bottom:0; }
+.upload-stage { margin:8px 0; padding:8px 12px; border-radius:8px; background:#eaf0f7; color:#132c49; font-size:13px; line-height:20px; overflow-wrap:anywhere; }
+.upload-stage.saved { background:#e7f5ee; color:#16734b; }
+.upload-stage.failed { background:#fff3dc; color:#895500; }
 .setup-name { margin:6px 0 4px; font-size:20px; line-height:30px; font-weight:700; overflow-wrap:anywhere; }
 .setup-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
 .setup-trio { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }

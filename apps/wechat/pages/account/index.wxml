@@ -8,6 +8,7 @@
       <view class="menu-group">
         <view class="menu-title">赛事</view>
         <view class="menu-row" data-page="watch" bindtap="go"><scb-icon name="trophy" size="20"/><view class="menu-text"><view>我的赛事</view><view class="menu-sub">{{roles.length ? roleSummary : '暂无机构赛事身份，可打开主办方分享的观赛链接'}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+        <view wx:if="{{roles.length}}" class="menu-row" data-page="watch" bindtap="go"><scb-icon name="calendar" size="20"/><view class="menu-text"><view>赛事管理</view><view class="menu-sub">选择赛事后进入排赛、晋级发布、改期与比赛媒体</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view wx:if="{{roles.length}}" class="menu-row" data-page="scoring-tasks" bindtap="go"><scb-icon name="clock" size="20"/><view class="menu-text"><view>记分与赛果确认</view><view class="menu-sub">被分配或可管理的比赛</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
       <view class="menu-group">
