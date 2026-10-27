@@ -318,9 +318,13 @@ Page({
     const next = ranked(rows);
     this.setData({ 'standings.tiebreakers': next, 'standings.orderLabel': orderLabel(next) });
   },
-  async write(path, method, body, label) {
+  // `op`: the confirmation this write follows (ui.confirmOp), if any; re-checked right
+  // before sending and never replaced by the write token.
+  async write(path, method, body, label, op) {
     if (this.data.busy) return null;
+    if (op && !op.valid()) return null;
     const token = ui.hold(this);
+    if ((op && !op.valid()) || !ui.held(this, token)) return null;
     this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       const result = (await api.getClient().request(path, method, body)).data;
@@ -342,23 +346,23 @@ Page({
       this.setData({ error: ui.message(error) });
       return;
     }
-    if (
-      !(await ui.confirm(
-        '创建赛事草稿',
-        input.name +
-          '，' +
-          input.startDate +
-          ' 至 ' +
-          input.endDate +
-          '。创建后先设置报名规则再开放报名。',
-      ))
-    )
-      return;
+    const op = await ui.confirmOp(
+      this,
+      '创建赛事草稿',
+      input.name +
+        '，' +
+        input.startDate +
+        ' 至 ' +
+        input.endDate +
+        '。创建后先设置报名规则再开放报名。',
+    );
+    if (!op || this.eventId || !this.data.creating) return;
     const created = await this.write(
       '/v1/orgs/' + this.orgId + '/events',
       'POST',
       input,
       '赛事草稿',
+      op,
     );
     if (!created || !created.id) return;
     this.eventId = api.uuid(created.id);
@@ -450,8 +454,22 @@ Page({
   },
   async publishStandings() {
     const s = this.data.standings;
-    if (!s || !s.canPublish) return;
-    if (!(await ui.confirm('锁定积分规则', '锁定后本届积分规则不可再改，正式积分按此计算。')))
+    if (!s || !s.canPublish || !this._event) return;
+    const version = this._event.version;
+    const op = await ui.confirmOp(
+      this,
+      '锁定积分规则',
+      '锁定后本届积分规则不可再改，正式积分按此计算。',
+    );
+    const now = this.data.standings;
+    if (
+      !op ||
+      !this._event ||
+      this._event.version !== version ||
+      !now ||
+      !now.canPublish ||
+      now.rulesetId !== s.rulesetId
+    )
       return;
     if (
       await this.write(
@@ -460,9 +478,10 @@ Page({
         {
           type: 'PUBLISH_STANDINGS_RULES',
           rulesetId: s.rulesetId,
-          expectedEventVersion: this._event.version,
+          expectedEventVersion: version,
         },
         '积分规则锁定',
+        op,
       )
     )
       await this.load();
@@ -474,13 +493,25 @@ Page({
       type === 'DISABLE'
         ? '关闭后现有观赛链接立即失效；再次开启会生成新的链接。'
         : '开启后持有链接的观众可查看赛程、比分与排名，不含名单与联系方式。';
-    if (!(await ui.confirm(type === 'DISABLE' ? '关闭公开观赛' : '开启公开观赛', note))) return;
+    if (!this._event) return;
+    const version = this._event.version;
+    const op = await ui.confirmOp(this, type === 'DISABLE' ? '关闭公开观赛' : '开启公开观赛', note);
+    const v = this.data.viewing;
+    if (
+      !op ||
+      !this._event ||
+      this._event.version !== version ||
+      !v ||
+      !(type === 'DISABLE' ? v.canDisable : v.canEnable)
+    )
+      return;
     if (
       await this.write(
         this.base() + '/public-viewing-commands',
         'POST',
-        { type, expectedEventVersion: this._event.version },
+        { type, expectedEventVersion: version },
         type === 'DISABLE' ? '公开观赛关闭' : '公开观赛开启',
+        op,
       )
     )
       await this.load();

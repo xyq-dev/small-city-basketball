@@ -285,13 +285,24 @@ Page({
       this.setData({ error: '请填写至少4个字的原因。' });
       return;
     }
-    if (!(await ui.confirm(command.label, command.note)) || this.data.loading) return;
+    const version = this._eventVersion;
+    const op = await ui.confirmOp(this, command.label, command.note);
+    if (
+      !op ||
+      this.data.loading ||
+      this._eventVersion !== version ||
+      this.data.lifecycleAction !== type ||
+      !this.data.manage ||
+      !this.data.manage.actions.some((a) => a.type === type)
+    )
+      return;
     const token = ui.hold(this);
+    if (!op.valid() || !ui.held(this, token)) return;
     this.setData({ loading: true, error: '', notice: '' });
     try {
       await api.getClient().request(this.base() + '/lifecycle-commands', 'POST', {
         type,
-        expectedEventVersion: this._eventVersion,
+        expectedEventVersion: version,
         reason,
       });
       if (!ui.held(this, token)) return;

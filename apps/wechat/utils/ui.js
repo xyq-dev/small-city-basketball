@@ -234,6 +234,23 @@ async function confirmFor(page, title, content) {
   const yes = await confirm(title, content);
   return yes && held(page, token) ? token : null;
 }
+/**
+ * A user-confirmed write operation bound to the session, page lifecycle and confirmation
+ * generation that opened it. Resolves to null when the user declines or the answer arrives
+ * after an account change, sign-out, unload or a newer confirmation on the same page. Callers
+ * re-check `op.valid()` after every asynchronous step and immediately before sending; a write
+ * token from hold() never replaces or refreshes it.
+ */
+async function confirmOp(page, title, content) {
+  if (page._closed) return null;
+  const token = guard(page);
+  const generation = (page._confirmOp = (page._confirmOp || 0) + 1);
+  const op = {
+    token,
+    valid: () => !page._closed && held(page, token) && generation === page._confirmOp,
+  };
+  return (await confirm(title, content)) && op.valid() ? op : null;
+}
 function confirm(title, content) {
   return new Promise((resolve) =>
     wx.showModal({
@@ -304,6 +321,7 @@ module.exports = {
   message,
   confirm,
   confirmFor,
+  confirmOp,
   uuid,
   money,
   localTime,

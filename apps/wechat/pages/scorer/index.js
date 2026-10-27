@@ -231,16 +231,26 @@ Page({
       });
     }
   },
-  async command(type, payload, label) {
+  // `op`: the confirmation a command follows (ui.confirmOp), if any. Both it and the control
+  // that signed the envelope are re-checked after the secure-random wait, right before sending.
+  async command(type, payload, label, op) {
     if (this.data.busy || this.data.pending) return;
+    if (op && !op.valid()) return;
     if (!this._control) {
       this.setData({ error: '请先取得记分控制。' });
       return;
     }
-    this.setData({ busy: true, loading: false, error: '', notice: '' });
+    const control = this._control;
     const token = ui.hold(this);
+    const live = () => ui.held(this, token) && (!op || op.valid()) && this._control === control;
+    if (!live()) return;
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
-      const body = await scoring.envelope(type, payload, this._matchVersion, this._control);
+      const body = await scoring.envelope(type, payload, this._matchVersion, control);
+      if (!live()) {
+        if (ui.held(this, token)) this.setData({ busy: false });
+        return;
+      }
       const outcome = await scoring.send(api.getClient(), this.base(), body);
       if (!ui.held(this, token)) return;
       if (!outcome.done) {
@@ -335,31 +345,45 @@ Page({
     const running = this.data.board && this.data.board.running;
     this.command(running ? 'CLOCK_PAUSE' : 'CLOCK_START', {}, running ? '暂停计时' : '启动计时');
   },
-  async nextPeriod() {
-    if (await ui.confirm('进入下一节', '本节时钟须已归零并暂停。'))
-      this.command('NEXT_PERIOD', {}, '进入下一节');
+  // Confirmed commands: the dialog is bound to this page, session and control; a late answer
+  // (account change, sign-out, unload, lost control, a newer dialog) sends nothing.
+  async confirmedCommand(type, label, title, content) {
+    const control = this._control;
+    const op = await ui.confirmOp(this, title, content);
+    if (op && control && this._control === control) this.command(type, {}, label, op);
   },
-  async overtime() {
-    if (await ui.confirm('进入加时', '仅常规时间结束后平分且规则允许时可加时。'))
-      this.command('START_OVERTIME', {}, '进入加时');
+  nextPeriod() {
+    return this.confirmedCommand(
+      'NEXT_PERIOD',
+      '进入下一节',
+      '进入下一节',
+      '本节时钟须已归零并暂停。',
+    );
   },
-  async end() {
+  overtime() {
+    return this.confirmedCommand(
+      'START_OVERTIME',
+      '进入加时',
+      '进入加时',
+      '仅常规时间结束后平分且规则允许时可加时。',
+    );
+  },
+  end() {
     const b = this.data.board;
-    if (
-      b &&
-      (await ui.confirm(
-        '结束比赛',
-        b.home.name +
-          ' ' +
-          b.home.score +
-          ' : ' +
-          b.away.score +
-          ' ' +
-          b.away.name +
-          '。结束后进入待确认，须由他人独立确认才成为正式赛果。',
-      ))
-    )
-      this.command('END_MATCH', {}, '结束比赛');
+    if (!b) return;
+    return this.confirmedCommand(
+      'END_MATCH',
+      '结束比赛',
+      '结束比赛',
+      b.home.name +
+        ' ' +
+        b.home.score +
+        ' : ' +
+        b.away.score +
+        ' ' +
+        b.away.name +
+        '。结束后进入待确认，须由他人独立确认才成为正式赛果。',
+    );
   },
   askVoid(e) {
     const id = e.currentTarget.dataset.id;

@@ -211,21 +211,31 @@ Page({
       return;
     }
     const court = this.data.courts[this.data.courtIndex];
+    const op = await ui.confirmOp(
+      this,
+      '正式改期',
+      '改为 ' +
+        (court ? court.name : '') +
+        ' · ' +
+        this.data.date +
+        ' ' +
+        this.data.time +
+        '。原发布记录保留，本次改动单独记入改期历史。',
+    );
+    // Same match and event versions as confirmed, and still reschedulable.
+    const now = this._data;
     if (
-      !(await ui.confirm(
-        '正式改期',
-        '改为 ' +
-          (court ? court.name : '') +
-          ' · ' +
-          this.data.date +
-          ' ' +
-          this.data.time +
-          '。原发布记录保留，本次改动单独记入改期历史。',
-      ))
+      !op ||
+      this.data.busy ||
+      this.data.uncertain ||
+      !now ||
+      now.match.version !== body.expectedMatchVersion ||
+      now.event.version !== body.expectedEventVersion ||
+      !now.capabilities.canReschedule
     )
       return;
-    if (this.data.busy || this.data.uncertain) return;
     const token = ui.hold(this);
+    if (!op.valid() || !ui.held(this, token)) return;
     this.setData({ busy: true, loading: false, error: '', notice: '', conflicts: [] });
     try {
       await api.getClient().request(this.base() + '/reschedule-commands', 'POST', body);
