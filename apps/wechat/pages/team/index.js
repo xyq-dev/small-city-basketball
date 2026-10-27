@@ -1,6 +1,22 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const registration = require('../../utils/registration');
+// Loaded on first use: only managers reach the C19 player-account section.
+let tmModule = null;
+const tm = () => tmModule || (tmModule = require('../../utils/team-membership'));
+const codeView = (c) => ({
+  ...c,
+  stateText: tm().codeState(c.status),
+  expires: ui.localTime(c.expiresAt, true),
+});
+const rosterView = (r) => ({
+  ...r,
+  bindings: r.bindings.map((b) => ({
+    ...b,
+    stateText: b.status === 'ACTIVE' ? '已绑定' : tm().endedReason(b.endedReason) || '已结束',
+  })),
+  claims: r.claims.map((c) => ({ ...c, stateText: tm().claimState(c.status) })),
+});
 const rows = (members) => members.map((m) => ({ id: m.id, key: m.id, name: m.name }));
 Page({
   data: {
@@ -17,6 +33,14 @@ Page({
     message: '',
     loginRequired: false,
     editMode: false,
+    // C19 player accounts: join codes, bindings and directed claims (managers only).
+    codes: [],
+    roster: null,
+    issuedCode: '',
+    removeReason: '',
+    claimMember: '',
+    claimTarget: '',
+    playersError: '',
   },
   onLoad(query) {
     this._alive = true;
@@ -40,8 +64,16 @@ Page({
         uncertain: false,
         busy: false,
         editMode: false,
+        codes: [],
+        roster: null,
+        issuedCode: '',
+        claimTarget: '',
       });
     if (!this.data.nameDirty && !this.data.membersDirty) this.load();
+  },
+  onHide() {
+    // A freshly issued join code is shown once and not kept after leaving the page.
+    if (!this.data.busy) this.setData({ issuedCode: '' });
   },
   onUnload() {
     this._alive = false;
@@ -92,6 +124,7 @@ Page({
       if (ui.live(this, token)) {
         this.setData({ nameDirty: false, membersDirty: false, uncertain: false, loading: false });
         this.apply(team);
+        if (team.capabilities.canManage) this.loadPlayers(token);
       }
     } catch (error) {
       if (ui.live(this, token))
@@ -239,5 +272,137 @@ Page({
     )
       return;
     ui.open('registration-events', { orgId: this._org, teamId: this._id });
+  },
+  // ---------- C19 player accounts ----------
+  async loadPlayers(token) {
+    try {
+      const repo = tm().createRepository();
+      const [codes, roster] = await Promise.all([
+        repo.joinCodes(this._org, this._id),
+        repo.bindings(this._org, this._id),
+      ]);
+      if (ui.live(this, token))
+        this.setData({ codes: codes.map(codeView), roster: rosterView(roster), playersError: '' });
+    } catch (error) {
+      if (ui.live(this, token))
+        this.setData({ codes: [], roster: null, playersError: ui.message(error) });
+    }
+  },
+  playerField(e) {
+    if (this.data.busy) return;
+    const field = e.currentTarget.dataset.field;
+    if (['removeReason', 'claimTarget'].includes(field)) this.setData({ [field]: e.detail.value });
+  },
+  pickClaimMember(e) {
+    if (!this.data.busy) this.setData({ claimMember: e.currentTarget.dataset.id || '' });
+  },
+  async playerWrite(options, reload) {
+    const ok = await tm().confirmedWrite(this, ui, { path: this.path(), ...options });
+    if (ok && this._alive && reload) {
+      // Roster changes bump the team version: re-read unless local edits are pending.
+      if (this.data.nameDirty || this.data.membersDirty)
+        this.setData({ message: '球员账号已变化，请保存或放弃当前编辑后刷新球队。' });
+      else this.load();
+    } else if (ok && this._alive) this.loadPlayers(ui.begin(this));
+    return ok;
+  },
+  async issueJoinCode() {
+    if (!this._team || !this._team.capabilities.canManage) return;
+    const org = this._org,
+      teamId = this._id;
+    await this.playerWrite({
+      title: '签发加入码',
+      content:
+        '加入码7天内有效、最多30人使用，只显示这一次。持码的已登录用户会作为新成员加入长期名单；可随时撤销。',
+      send: () => tm().createRepository().createJoinCode(org, teamId),
+      done: async (result) =>
+        this.setData({
+          issuedCode: tm().formatJoinCode(result.code),
+          message: '加入码已签发，只显示这一次，请当面或私下发给球员。',
+        }),
+    });
+  },
+  async revokeJoinCode(e) {
+    const item = this.data.codes.find((c) => c.id === e.currentTarget.dataset.id);
+    if (!item || item.status === 'REVOKED') return;
+    const org = this._org,
+      teamId = this._id;
+    await this.playerWrite({
+      title: '撤销加入码',
+      content: '撤销后该码不能再用于加入；已加入的球员不受影响。',
+      send: () => tm().createRepository().revokeJoinCode(org, teamId, item.id),
+      done: async () => this.setData({ issuedCode: '', message: '加入码已撤销。' }),
+    });
+  },
+  async removeBinding(e) {
+    const item =
+      this.data.roster &&
+      this.data.roster.bindings.find((b) => b.bindingId === e.currentTarget.dataset.id);
+    if (!item || item.status !== 'ACTIVE') return;
+    let why;
+    try {
+      why = tm().reason(this.data.removeReason, '移除原因');
+    } catch (error) {
+      this.setData({ error: ui.message(error) });
+      return;
+    }
+    const org = this._org,
+      teamId = this._id;
+    await this.playerWrite(
+      {
+        title: '移除球员',
+        content:
+          '“' +
+          item.memberName +
+          '”将移出长期名单并解除账号绑定；历史与已冻结报名不变。其之前拿到的加入码不能再用于重新加入。',
+        send: () => tm().createRepository().removeBinding(org, teamId, item.bindingId, why),
+        done: async () => this.setData({ removeReason: '', message: '已移除。' }),
+      },
+      true,
+    );
+  },
+  async createClaim() {
+    const member =
+      this.data.roster &&
+      this.data.roster.claimableMembers.find((m) => m.memberId === this.data.claimMember);
+    if (!member) {
+      this.setData({ error: '请选择要认领的历史成员' });
+      return;
+    }
+    let target;
+    try {
+      target = tm().id(String(this.data.claimTarget || '').trim());
+    } catch {
+      this.setData({ error: '请填写对方提供的账号编号' });
+      return;
+    }
+    const org = this._org,
+      teamId = this._id;
+    await this.playerWrite({
+      title: '发起历史成员认领',
+      content:
+        '把“' +
+        member.name +
+        '”定向发给账号 ' +
+        target +
+        '。对方本人核对接受后才会绑定；不会覆盖其他账号的绑定。',
+      send: () => tm().createRepository().createClaim(org, teamId, member.memberId, target),
+      done: async () =>
+        this.setData({ claimMember: '', claimTarget: '', message: '认领已发出，等待对方接受。' }),
+    });
+  },
+  async revokeClaim(e) {
+    const item =
+      this.data.roster &&
+      this.data.roster.claims.find((c) => c.claimId === e.currentTarget.dataset.id);
+    if (!item || item.status !== 'PENDING') return;
+    const org = this._org,
+      teamId = this._id;
+    await this.playerWrite({
+      title: '撤销认领',
+      content: '撤销后对方不能再接受该认领。',
+      send: () => tm().createRepository().revokeClaim(org, teamId, item.claimId),
+      done: async () => this.setData({ message: '认领已撤销。' }),
+    });
   },
 });

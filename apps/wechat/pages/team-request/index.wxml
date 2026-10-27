@@ -1,0 +1,30 @@
+<view class="page c19-page">
+  <view wx:if="{{error}}" class="notice warning" role="alert"><view class="feedback-title">请核对后继续</view><view class="small">{{error}}</view></view>
+  <view wx:if="{{message}}" class="notice">{{message}}</view>
+  <view wx:if="{{loginRequired}}" class="card c19-panel state-panel"><view class="subtitle">登录后申请建队</view><view class="muted">申请以当前登录账号本人提交。</view><button class="primary" bindtap="login">登录</button></view>
+  <view wx:if="{{loading}}" class="card c19-panel state-panel"><view class="subtitle">正在读取申请资料</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
+  <view wx:if="{{pending}}" class="card c19-panel"><view class="badge">结果待核对</view><view class="subtitle">上次提交：{{pending.teamName}}</view><view class="muted">{{pending.orgName}} · 原请求编号已保存在本机，核对不会创建第二份申请。</view><button class="primary" bindtap="recover" disabled="{{busy}}" loading="{{busy}}">核对上次提交</button></view>
+  <view wx:if="{{link && !pending && !loading}}" class="card c19-panel">
+    <view class="subtitle">向 {{link.orgName}} 申请建队</view>
+    <view class="small muted">入口仅显示该机构名称；批准后你将成为新球队的领队，不会获得机构或赛事工作人员身份。</view>
+    <view class="field-label">球队名称</view><input class="field" maxlength="80" value="{{teamName}}" data-field="teamName" bindinput="input" disabled="{{busy}}" placeholder="1–80个字符"/>
+    <view class="field-label">补充说明（可选）</view><textarea class="field" maxlength="500" value="{{note}}" data-field="note" bindinput="input" disabled="{{busy}}" placeholder="例如：球队所在地区、联系人称呼"/>
+    <button class="primary invite-action" bindtap="submit" disabled="{{busy || !teamName}}" loading="{{busy}}">提交申请</button>
+  </view>
+  <view wx:if="{{!hasLink && !loading && !loginRequired}}" class="notice"><view class="feedback-title">需要机构发来的申请入口</view><view class="small">请向赛事机构索取“申请建队”分享入口后从入口打开；本页不提供机构搜索。</view></view>
+  <view wx:if="{{!loginRequired}}" class="card c19-panel">
+    <view class="subtitle">我的建队申请</view>
+    <view wx:if="{{!requests.length && !loading}}" class="muted">暂无申请。</view>
+    <view wx:for="{{requests}}" wx:key="id" class="item-row">
+      <view class="item-title">{{item.teamName}}</view>
+      <view class="small muted">{{item.orgName}} · {{item.stateText}} · {{item.created}}</view>
+      <view wx:if="{{item.reviewReason}}" class="small">审核说明：{{item.reviewReason}}</view>
+      <view class="row-actions">
+        <button wx:if="{{item.capabilities.canWithdraw}}" class="secondary" data-id="{{item.id}}" bindtap="withdraw" disabled="{{busy}}">撤回申请</button>
+        <button wx:if="{{item.teamId}}" class="primary" data-id="{{item.id}}" bindtap="openTeam" disabled="{{busy}}">管理我的球队</button>
+      </view>
+    </view>
+  </view>
+  <button class="quiet" bindtap="refresh" disabled="{{busy || loading}}">重新读取</button>
+</view>
+<scb-nav active="Account" disabled="{{busy || loading}}"/>
