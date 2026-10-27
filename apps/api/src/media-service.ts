@@ -25,7 +25,7 @@ import {
 } from './media-domain.js';
 type Row = Record<string, any>;
 type FileContext = Actor & { orgId: string; role: string | null };
-type Access = {
+export type MediaAccess = {
   ctx: FileContext;
   row: Row;
   event: Row;
@@ -33,6 +33,7 @@ type Access = {
   manage: boolean;
   scope: 'ENTRY' | 'MATCH';
 };
+type Access = MediaAccess;
 const iso = (v: Date) => v.toISOString();
 const active = (event: Row) => !['ARCHIVED', 'CANCELLED'].includes(event.status);
 const version = (actual: number, expected: unknown) => {
@@ -62,7 +63,7 @@ export class MediaService extends StandingsService {
       throw new Error('Invalid trusted media hosts');
     this.trustedExternalHosts = [...new Set(hosts)];
   }
-  private async fileContext(
+  protected async fileContext(
     c: PoolClient,
     cookie: string | undefined,
     org: string,
@@ -86,7 +87,7 @@ export class MediaService extends StandingsService {
       role: membership.rows[0]?.status === 'ACTIVE' ? membership.rows[0].role : null,
     };
   }
-  private async access(
+  protected async access(
     c: PoolClient,
     ctx: FileContext,
     id: string,
@@ -137,7 +138,7 @@ export class MediaService extends StandingsService {
     if (!row) throw notFound();
     return { ctx, row, event, manager, manage, scope };
   }
-  private fileDto(r: Row): MediaFileData {
+  protected fileDto(r: Row): MediaFileData {
     return {
       id: r.id,
       purpose: r.purpose,
@@ -153,7 +154,17 @@ export class MediaService extends StandingsService {
       purgedAt: r.purged_at ? iso(r.purged_at) : null,
     };
   }
-  private async usage(c: PoolClient, org: string): Promise<MediaStorageUsage> {
+  /** C19: OPEN, unexpired upload sessions reserve their declared bytes and one file slot. */
+  protected async reservations(c: PoolClient, org: string, matchId: string | null) {
+    const r = (
+      await c.query(
+        "SELECT count(*)::int AS sessions,count(*) FILTER(WHERE match_id=$2)::int AS scoped,COALESCE(sum(byte_length),0)::int AS bytes FROM media_upload_sessions WHERE org_id=$1 AND status='OPEN' AND expires_at>clock_timestamp()",
+        [org, matchId],
+      )
+    ).rows[0];
+    return { sessions: r.sessions as number, scoped: r.scoped as number, bytes: r.bytes as number };
+  }
+  protected async usage(c: PoolClient, org: string): Promise<MediaStorageUsage> {
     const used = (
       await c.query(
         'SELECT COALESCE(sum(byte_length) FILTER(WHERE payload IS NOT NULL),0)::int AS used FROM media_files WHERE org_id=$1',
@@ -216,9 +227,18 @@ export class MediaService extends StandingsService {
           [org, id],
         )
       ).rows[0];
-      if (counts.total >= 4096 || counts.retained >= 512 || counts.scoped >= 100)
+      // C19: open upload sessions hold file slots and bytes until they complete or close.
+      const reserved = await this.reservations(c, org, scope === 'MATCH' ? id : null);
+      if (
+        counts.total + reserved.sessions >= 4096 ||
+        counts.retained + reserved.sessions >= 512 ||
+        counts.scoped + reserved.scoped >= 100
+      )
         throw new ApiError(409, 'MEDIA_FILE_LIMIT', '文件数量已达上限，请先整理资料');
-      if ((await this.usage(c, org)).usedBytes + input.payload.length > MEDIA_ORG_LIMIT_BYTES)
+      if (
+        (await this.usage(c, org)).usedBytes + reserved.bytes + input.payload.length >
+        MEDIA_ORG_LIMIT_BYTES
+      )
         throw new ApiError(
           409,
           'MEDIA_STORAGE_LIMIT',
@@ -315,7 +335,7 @@ export class MediaService extends StandingsService {
       lastSeq: r.confirmation.last_event_seq as number,
     };
   }
-  private async safeConfirmation(c: PoolClient, org: string, event: string, match: string) {
+  protected async safeConfirmation(c: PoolClient, org: string, event: string, match: string) {
     try {
       return await this.confirmation(c, org, event, match);
     } catch (error) {
@@ -336,7 +356,7 @@ export class MediaService extends StandingsService {
       sourceStatus: current === r.confirmation_id ? 'CURRENT' : 'STALE',
     };
   }
-  private async itemDto(c: PoolClient, r: Row, current: string | null): Promise<MatchMediaData> {
+  protected async itemDto(c: PoolClient, r: Row, current: string | null): Promise<MatchMediaData> {
     return {
       id: r.id,
       kind: r.kind,
