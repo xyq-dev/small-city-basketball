@@ -876,4 +876,255 @@ describe('C19 team membership on isolated PostgreSQL', { concurrent: false }, ()
     // Even a valid code is refused while the account is limited.
     expect((await join(players[1]!, issued.code, '试错')).status).toBe(429);
   });
+
+  // ---------- review fixes ----------
+  const rosterIds = async () =>
+    data<TeamData>(await call(api, 'get', teamBase(teamId), { cookie: leader.cookie }));
+  const addMember = async (name: string) => {
+    const team = await rosterIds();
+    const saved = data<TeamData>(
+      await call(api, 'put', `${teamBase(teamId)}/members`, {
+        cookie: leader.cookie,
+        body: {
+          expectedVersion: team.version,
+          members: [...team.members.map((m) => ({ id: m.id, name: m.name })), { name }],
+        },
+      }),
+    );
+    return saved.members.find((m) => m.name === name)!;
+  };
+  const claimFor = async (memberId: string, target: Actor) =>
+    data<TeamMemberClaimData>(
+      await call(api, 'post', `${teamBase(teamId)}/members/${memberId}/claims`, {
+        cookie: leader.cookie,
+        body: { targetUserId: target.id },
+      }),
+      201,
+    );
+  const accept = (claimId: string, actor: Actor) =>
+    call(api, 'post', `/v1/me/member-claims/${claimId}/accept`, { cookie: actor.cookie, body: {} });
+
+  test('P2-1: a claim issued before removal cannot bring the removed player back', async () => {
+    const x1 = await participant(api, 'rv-x1');
+    const historical = await addMember('审查历史甲');
+    const claim = await claimFor(historical.id, x1);
+    const joined = data<MembershipData>(
+      await join(x1, (await issueCode(teamId, leader.cookie)).code, '审查球员甲'),
+      201,
+    );
+    data(
+      await call(api, 'post', `${teamBase(teamId)}/member-bindings/${joined.bindingId}/remove`, {
+        cookie: leader.cookie,
+        body: { reason: '审查移除测试' },
+      }),
+    );
+    // Removal withdraws every pending claim addressed to that account in the team.
+    const after = await api.pool.query('SELECT status FROM team_member_claims WHERE id=$1', [
+      claim.claimId,
+    ]);
+    expect(after.rows[0].status).toBe('REVOKED');
+    expect(code(await accept(claim.claimId, x1))).toBe('CLAIM_CLOSED');
+    expect(await count("team_member_bindings WHERE user_id=$1 AND status='ACTIVE'", [x1.id])).toBe(
+      0,
+    );
+    // Defence in depth: a pending claim created before the removal is still refused.
+    const ended = await api.pool.query('SELECT ended_at FROM team_member_bindings WHERE id=$1', [
+      joined.bindingId,
+    ]);
+    const forged = randomUUID();
+    await api.pool.query(
+      `INSERT INTO team_member_claims(id,org_id,team_id,member_id,target_user_id,issued_by,created_at,expires_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7::timestamptz-interval '1 second',$7::timestamptz+interval '100 hours')`,
+      [forged, owner.orgId, teamId, historical.id, x1.id, leader.id, ended.rows[0].ended_at],
+    );
+    expect(code(await accept(forged, x1))).toBe('CLAIM_PREDATES_REMOVAL');
+    // The member-save path withdraws them too.
+    const x2 = await participant(api, 'rv-x2');
+    const historical2 = await addMember('审查历史乙');
+    const claim2 = await claimFor(historical2.id, x2);
+    const joined2 = data<MembershipData>(
+      await join(x2, (await issueCode(teamId, leader.cookie)).code, '审查球员乙'),
+      201,
+    );
+    const team = await rosterIds();
+    data(
+      await call(api, 'put', `${teamBase(teamId)}/members`, {
+        cookie: leader.cookie,
+        body: {
+          expectedVersion: team.version,
+          members: team.members
+            .filter((m) => m.id !== joined2.memberId)
+            .map((m) => ({ id: m.id, name: m.name })),
+        },
+      }),
+    );
+    expect(code(await accept(claim2.claimId, x2))).toBe('CLAIM_CLOSED');
+  });
+
+  test('P3-2: one holder cannot exhaust a shared link by submit/withdraw loops', async () => {
+    const y = await participant(api, 'rv-y');
+    const link = await issueLink(10);
+    const withdraw = async (r: TeamRequestData) =>
+      data<TeamRequestData>(
+        await call(api, 'post', `/v1/me/team-requests/${r.id}/withdraw`, {
+          cookie: y.cookie,
+          body: { expectedVersion: r.version },
+        }),
+      );
+    const first = data<TeamRequestData>(await submit(y, link.token, randomUUID(), '审查甲队'), 201);
+    expect(code(await submit(y, link.token, randomUUID(), '审查乙队'))).toBe(
+      'TEAM_REQUEST_LINK_ALREADY_USED',
+    );
+    await withdraw(first);
+    const second = data<TeamRequestData>(
+      await submit(y, link.token, randomUUID(), '审查乙队'),
+      201,
+    );
+    await withdraw(second);
+    const third = data<TeamRequestData>(await submit(y, link.token, randomUUID(), '审查丙队'), 201);
+    await withdraw(third);
+    expect(code(await submit(y, link.token, randomUUID(), '审查丁队'))).toBe(
+      'TEAM_REQUEST_LINK_SUBMISSION_LIMIT',
+    );
+    const used = await api.pool.query('SELECT use_count FROM team_request_links WHERE id=$1', [
+      link.link.id,
+    ]);
+    expect(used.rows[0].use_count).toBe(3);
+  });
+
+  test('P3-3: parallel failure bursts cannot exceed the limiter; successes are refunded', async () => {
+    const burster = await participant(api, 'rv-burst');
+    const bogus = 'B'.repeat(26);
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => join(burster, bogus, '并发试错')),
+    );
+    const invalid = results.filter((r) => code(r) === 'JOIN_CODE_INVALID').length;
+    expect(invalid).toBeLessThanOrEqual(10);
+    expect(results.filter((r) => r.status === 429).length).toBe(20 - invalid);
+    await api.pool.query("DELETE FROM auth_rate_limits WHERE key LIKE 'team-%'");
+    const link = await issueLink(5);
+    for (let i = 0; i < 15; i++)
+      data(
+        await call(api, 'post', '/v1/team-request-links/resolve', {
+          cookie: burster.cookie,
+          body: { token: link.token },
+        }),
+      );
+  });
+
+  test('P3-4: the pending cap holds across links submitted concurrently', async () => {
+    const z = await participant(api, 'rv-z');
+    const links = await Promise.all([1, 2, 3, 4, 5].map(() => issueLink(5)));
+    const results = await Promise.all(
+      links.map((l, i) => submit(z, l.token, randomUUID(), `并发申请${i}`)),
+    );
+    expect(results.filter((r) => r.status === 201)).toHaveLength(3);
+    expect(
+      results.filter((r) => r.status !== 201).every((r) => code(r) === 'TOO_MANY_PENDING_REQUESTS'),
+    ).toBe(true);
+    expect(await count("team_requests WHERE requester_id=$1 AND status='PENDING'", [z.id])).toBe(3);
+  });
+
+  test('P3-5: direct runtime-style rewinds of module state are rejected by the database', async () => {
+    const one = async (sql: string) => (await api.pool.query(sql)).rows[0];
+    const approved = await one(
+      "SELECT id,team_id FROM team_requests WHERE status='APPROVED' LIMIT 1",
+    );
+    const toRevoke = await issueCode(teamId, leader.cookie);
+    const revokedCode = data<TeamJoinCodeData>(
+      await call(api, 'post', `${teamBase(teamId)}/join-codes/${toRevoke.joinCode.id}/revoke`, {
+        cookie: leader.cookie,
+        body: {},
+      }),
+    );
+    const usedCode = await one('SELECT id FROM team_join_codes WHERE use_count>0 LIMIT 1');
+    const revokedLink = await one(
+      'SELECT id FROM team_request_links WHERE revoked_at IS NOT NULL LIMIT 1',
+    );
+    const closedClaim = await one(
+      "SELECT id FROM team_member_claims WHERE status<>'PENDING' LIMIT 1",
+    );
+    const otherTeam = (
+      await api.pool.query('SELECT id FROM teams WHERE org_id=$1 AND id<>$2 LIMIT 1', [
+        owner.orgId,
+        approved.team_id,
+      ])
+    ).rows[0];
+    for (const row of [approved, revokedCode, usedCode, revokedLink, closedClaim, otherTeam])
+      expect(row).toBeTruthy();
+    const rejected = async (sql: string, params: unknown[] = []) => {
+      const client = await api.pool.connect();
+      try {
+        await client.query('BEGIN');
+        await expect(client.query(sql, params), sql).rejects.toThrow();
+      } finally {
+        await client.query('ROLLBACK').catch(() => {});
+        client.release();
+      }
+    };
+    await rejected(
+      "UPDATE team_requests SET status='PENDING',team_id=NULL,reviewer_id=NULL,review_reason=NULL,reviewed_at=NULL WHERE id=$1",
+      [approved.id],
+    );
+    await rejected('UPDATE team_requests SET team_id=$2 WHERE id=$1', [approved.id, otherTeam.id]);
+    await rejected('UPDATE team_requests SET version=version+1 WHERE id=$1', [approved.id]);
+    await rejected('UPDATE team_join_codes SET use_count=use_count-1 WHERE id=$1', [usedCode.id]);
+    await rejected('UPDATE team_join_codes SET revoked_at=NULL,revoked_by=NULL WHERE id=$1', [
+      revokedCode.id,
+    ]);
+    await rejected(
+      "UPDATE team_join_codes SET expires_at=expires_at+interval '1 hour' WHERE id=$1",
+      [usedCode.id],
+    );
+    await rejected(
+      'UPDATE team_request_links SET revoked_at=NULL,revoked_by=NULL,revoke_reason=NULL WHERE id=$1',
+      [revokedLink.id],
+    );
+    await rejected("UPDATE team_member_claims SET status='PENDING',decided_at=NULL WHERE id=$1", [
+      closedClaim.id,
+    ]);
+    for (const table of [
+      'team_requests',
+      'team_join_codes',
+      'team_request_links',
+      'team_member_claims',
+      'team_member_bindings',
+    ]) {
+      await rejected(`DELETE FROM ${table} WHERE true`);
+      await rejected(`TRUNCATE ${table} CASCADE`);
+    }
+  });
+
+  test('P3-6: codes and claims do not revive when the issuer regains rights', async () => {
+    const w = await participant(api, 'rv-w');
+    const v = await participant(api, 'rv-v');
+    const issued = await issueCode(teamId, leader.cookie);
+    const historical = await addMember('审查历史丙');
+    const claim = await claimFor(historical.id, v);
+    for (const status of ['DISABLED', 'ACTIVE'])
+      data(
+        await call(api, 'put', `${teamBase(teamId)}/grants/${leader.id}`, {
+          cookie: owner.cookie,
+          body: { status },
+        }),
+      );
+    const listed = data<TeamJoinCodeData[]>(
+      await call(api, 'get', `${teamBase(teamId)}/join-codes`, { cookie: leader.cookie }),
+    );
+    expect(listed.find((c) => c.id === issued.joinCode.id)!.status).toBe('ISSUER_INVALID');
+    expect(code(await join(w, issued.code, '复活测试'))).toBe('JOIN_CODE_INVALID');
+    expect(code(await accept(claim.claimId, v))).toBe('CLAIM_INVALID');
+    // A code issued after the rights were restored works.
+    data<MembershipData>(
+      await join(w, (await issueCode(teamId, leader.cookie)).code, '复活测试'),
+      201,
+    );
+  });
+
+  test('P3-7: binding history lookups by member and account are indexed', async () => {
+    const found = await api.pool.query(
+      "SELECT indexdef FROM pg_indexes WHERE tablename='team_member_bindings'",
+    );
+    expect(found.rows.some((r) => /\(member_id, user_id\)/.test(r.indexdef))).toBe(true);
+  });
 });

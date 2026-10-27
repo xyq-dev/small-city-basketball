@@ -133,6 +133,7 @@ type TeamClaimRow = ClaimRow & { member_name: string; target_display_name: strin
 
 const FAILURES_PER_MINUTE = 10;
 const MAX_PENDING_REQUESTS_PER_ORG = 3;
+const MAX_SUBMISSIONS_PER_LINK = 3;
 const MAX_TEAM_MEMBERS = 60;
 const iso = (value: Date | null) => value?.toISOString() ?? null;
 const conflict = (code: string, message: string) => new ApiError(409, code, message);
@@ -147,15 +148,19 @@ const MEMBERSHIP_SELECT = `b.id,b.org_id,b.team_id,b.member_id,b.user_id,b.sourc
 const MEMBERSHIP_FROM = `team_member_bindings b JOIN organizations o ON o.id=b.org_id
   JOIN teams t ON t.org_id=b.org_id AND t.id=b.team_id
   JOIN team_members m ON m.org_id=b.org_id AND m.team_id=b.team_id AND m.id=b.member_id`;
+// The issuer must still manage the team through a grant or admin membership that has not been
+// (re)written since the code or claim was issued (`since`): disabling and later restoring the
+// right never revives what was issued before.
 const ISSUER_QUALIFIED = (
   org: string,
   team: string,
   user: string,
+  since: string,
 ) => `(${user}.status='ACTIVE' AND (
   EXISTS(SELECT 1 FROM organization_memberships m WHERE m.org_id=${org} AND m.user_id=${user}.id
-    AND m.status='ACTIVE' AND m.role IN ('ORG_OWNER','ORG_ADMIN'))
+    AND m.status='ACTIVE' AND m.role IN ('ORG_OWNER','ORG_ADMIN') AND m.updated_at<=${since})
   OR EXISTS(SELECT 1 FROM team_access_grants g WHERE g.org_id=${org} AND g.team_id=${team}
-    AND g.user_id=${user}.id AND g.status='ACTIVE')))`;
+    AND g.user_id=${user}.id AND g.status='ACTIVE' AND g.updated_at<=${since})))`;
 
 /**
  * C19 §3: organization-approved team requests, join codes, player account bindings and
@@ -217,19 +222,42 @@ export class TeamMembershipService extends ApplicationService {
     return { ctx, team };
   }
   /** A join code or claim stays usable only while its issuer can still manage the team. */
-  private async issuerQualified(client: PoolClient, orgId: string, teamId: string, userId: string) {
+  private async issuerQualified(
+    client: PoolClient,
+    orgId: string,
+    teamId: string,
+    userId: string,
+    issuedAt: Date,
+  ) {
     const found = await client.query<{ qualified: boolean }>(
-      `SELECT ${ISSUER_QUALIFIED('$1', '$2', 'u')} AS qualified FROM users u WHERE u.id=$3`,
-      [orgId, teamId, userId],
+      `SELECT ${ISSUER_QUALIFIED('$1', '$2', 'u', '$4::timestamptz')} AS qualified FROM users u WHERE u.id=$3`,
+      [orgId, teamId, userId, issuedAt],
     );
     return found.rows[0]?.qualified === true;
+  }
+  /** True when `issuedAt` is not after this account's latest ended binding in the team. */
+  private async predatesEnd(
+    client: PoolClient,
+    orgId: string,
+    teamId: string,
+    userId: string,
+    issuedAt: Date,
+  ) {
+    const ended = await client.query<{ predates: boolean | null }>(
+      `SELECT $4::timestamptz <= max(ended_at) AS predates FROM team_member_bindings
+       WHERE org_id=$1 AND team_id=$2 AND user_id=$3 AND status='ENDED'`,
+      [orgId, teamId, userId, issuedAt],
+    );
+    return ended.rows[0]?.predates === true;
   }
   private async now(client: PoolClient): Promise<Date> {
     return (await client.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
   }
   /**
-   * Failure-only limiter on the shared auth_rate_limits table, per account and per trusted
-   * client IP (Express `trust proxy` hops as configured): at most 10 failures a minute.
+   * Failure limiter on the shared auth_rate_limits table, per account and per trusted client
+   * IP (Express `trust proxy` hops as configured): at most 10 failures a minute. Every attempt
+   * atomically reserves a slot before any work, so parallel bursts cannot overrun the limit;
+   * the slot is refunded unless the attempt ends in a counted failure.
    */
   private async limitedFailures<T>(
     cookie: string | undefined,
@@ -240,18 +268,26 @@ export class TeamMembershipService extends ApplicationService {
   ): Promise<T> {
     const actor = await this.transaction((client) => this.lockActor(client, cookie));
     const keys = [`${scope}-account:${actor.user.id}`, `${scope}-ip:${hashToken(ip)}`];
-    const found = await this.pool.query<{ attempts: number }>(
-      "SELECT attempts FROM auth_rate_limits WHERE key=ANY($1::text[]) AND window_start > clock_timestamp()-interval '60 seconds'",
-      [keys],
-    );
-    if (found.rows.some((row) => row.attempts >= FAILURES_PER_MINUTE))
-      throw new ApiError(429, 'RATE_LIMITED', '尝试次数过多，请稍后重试', { retryAfter: 60 });
+    // rateLimit() increments atomically first and throws once the window exceeds the maximum.
+    for (const key of keys) await this.rateLimit(key, FAILURES_PER_MINUTE, 60);
+    let failed = false;
     try {
       return await work();
     } catch (error) {
-      if (error instanceof ApiError && counted.includes(error.code))
-        for (const key of keys) await this.rateLimit(key, Number.MAX_SAFE_INTEGER, 60);
+      failed = error instanceof ApiError && counted.includes(error.code);
       throw error;
+    } finally {
+      if (!failed) {
+        // attempts is CHECKed > 0: a last reserved slot is released by removing the row.
+        await this.pool.query(
+          "UPDATE auth_rate_limits SET attempts=attempts-1 WHERE key=ANY($1::text[]) AND attempts>1 AND window_start > clock_timestamp()-interval '60 seconds'",
+          [keys],
+        );
+        await this.pool.query(
+          "DELETE FROM auth_rate_limits WHERE key=ANY($1::text[]) AND attempts=1 AND window_start > clock_timestamp()-interval '60 seconds'",
+          [keys],
+        );
+      }
     }
   }
   private async teamVersionBump(client: PoolClient, orgId: string, teamId: string) {
@@ -477,6 +513,27 @@ export class TeamMembershipService extends ApplicationService {
         const existing = await replay(client, actor);
         if (existing) return same(client, existing);
         const { link } = await this.usableLink(client, input.token, true);
+        // Serialize one requester's submissions to one organization (across links) before
+        // counting, so concurrent submissions cannot exceed the pending cap.
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          `scb-team-request:${link.org_id}:${actor.user.id}`,
+        ]);
+        // One holder cannot exhaust a shared link: one live submission per link, and at most
+        // MAX_SUBMISSIONS_PER_LINK in total including withdrawn ones.
+        const mine = await client.query<{ total: number; live: number }>(
+          "SELECT count(*)::int AS total,(count(*) FILTER (WHERE status<>'WITHDRAWN'))::int AS live FROM team_requests WHERE link_id=$1 AND requester_id=$2",
+          [link.id, actor.user.id],
+        );
+        if (mine.rows[0]!.live > 0)
+          throw conflict(
+            'TEAM_REQUEST_LINK_ALREADY_USED',
+            '你已通过该入口提交过申请；如需修改请先撤回原申请',
+          );
+        if (mine.rows[0]!.total >= MAX_SUBMISSIONS_PER_LINK)
+          throw conflict(
+            'TEAM_REQUEST_LINK_SUBMISSION_LIMIT',
+            '你通过该入口提交的次数已达上限，请向机构索取新的入口',
+          );
         const pending = await client.query<{ count: number }>(
           "SELECT count(*)::int AS count FROM team_requests WHERE org_id=$1 AND requester_id=$2 AND status='PENDING'",
           [link.org_id, actor.user.id],
@@ -687,7 +744,7 @@ export class TeamMembershipService extends ApplicationService {
   private async joinCodes(client: PoolClient, orgId: string, teamId: string, id?: string) {
     const rows = await client.query<JoinCodeRow>(
       `SELECT c.*,u.display_name AS issuer_display_name,
-        ${ISSUER_QUALIFIED('c.org_id', 'c.team_id', 'u')} AS issuer_qualified
+        ${ISSUER_QUALIFIED('c.org_id', 'c.team_id', 'u', 'c.created_at')} AS issuer_qualified
        FROM team_join_codes c JOIN users u ON u.id=c.issued_by
        WHERE c.org_id=$1 AND c.team_id=$2 AND ($3::uuid IS NULL OR c.id=$3)
        ORDER BY c.created_at DESC,c.id DESC LIMIT 50`,
@@ -858,16 +915,11 @@ export class TeamMembershipService extends ApplicationService {
           }
           if (
             linkStatus(code, await this.now(client)) !== 'ACTIVE' ||
-            !(await this.issuerQualified(client, orgId, teamId, code.issued_by))
+            !(await this.issuerQualified(client, orgId, teamId, code.issued_by, code.created_at))
           )
             throw joinCodeInvalid();
           // Leaving or removal invalidates every code issued before it for this account.
-          const ended = await client.query<{ predates: boolean | null }>(
-            `SELECT $4::timestamptz <= max(ended_at) AS predates FROM team_member_bindings
-             WHERE org_id=$1 AND team_id=$2 AND user_id=$3 AND status='ENDED'`,
-            [orgId, teamId, actor.user.id, code.created_at],
-          );
-          if (ended.rows[0]?.predates === true)
+          if (await this.predatesEnd(client, orgId, teamId, actor.user.id, code.created_at))
             throw new ApiError(
               422,
               'JOIN_CODE_PREDATES_REMOVAL',
@@ -966,8 +1018,11 @@ export class TeamMembershipService extends ApplicationService {
       [binding.org_id, binding.team_id, binding.member_id],
     );
     await client.query(
-      "UPDATE team_member_claims SET status='REVOKED',decided_at=clock_timestamp() WHERE member_id=$1 AND status='PENDING'",
-      [binding.member_id],
+      // Pending claims on the member and every pending claim addressed to this account in
+      // the team: a removed or departed player needs a new authorization to come back.
+      `UPDATE team_member_claims SET status='REVOKED',decided_at=clock_timestamp()
+       WHERE status='PENDING' AND (member_id=$1 OR (org_id=$2 AND team_id=$3 AND target_user_id=$4))`,
+      [binding.member_id, binding.org_id, binding.team_id, binding.user_id],
     );
     await this.teamVersionBump(client, binding.org_id, binding.team_id);
     await this.audit(
@@ -1291,7 +1346,24 @@ export class TeamMembershipService extends ApplicationService {
         );
         return result(null);
       }
-      if (!(await this.issuerQualified(client, claim.org_id, claim.team_id, claim.issued_by)))
+      // Leaving or removal invalidates every claim issued before it for this account.
+      if (
+        await this.predatesEnd(client, claim.org_id, claim.team_id, actor.user.id, claim.created_at)
+      )
+        throw new ApiError(
+          422,
+          'CLAIM_PREDATES_REMOVAL',
+          '该认领发起于你上次离队之前，请联系领队重新发起',
+        );
+      if (
+        !(await this.issuerQualified(
+          client,
+          claim.org_id,
+          claim.team_id,
+          claim.issued_by,
+          claim.created_at,
+        ))
+      )
         throw new ApiError(
           422,
           'CLAIM_INVALID',

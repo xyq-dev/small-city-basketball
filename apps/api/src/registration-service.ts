@@ -392,17 +392,17 @@ export class RegistrationService extends ApplicationService {
           "UPDATE team_members SET status='ARCHIVED',updated_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND id=ANY($3::uuid[]) AND status='ACTIVE'",
           [ctx.orgId, row.id, removed],
         );
-        // A removed member's account binding ends with it; pending claims on it are withdrawn.
-        endedBindings =
-          (
-            await client.query(
-              "UPDATE team_member_bindings SET status='ENDED',ended_reason='MEMBER_REMOVED',ended_by=$4,ended_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND member_id=ANY($3::uuid[]) AND status='ACTIVE'",
-              [ctx.orgId, row.id, removed, ctx.user.id],
-            )
-          ).rowCount ?? 0;
+        // A removed member's account binding ends with it. Pending claims on the member, and
+        // every pending claim in the team addressed to an account whose binding just ended,
+        // are withdrawn: coming back needs a new authorization.
+        const ended = await client.query<{ user_id: string }>(
+          "UPDATE team_member_bindings SET status='ENDED',ended_reason='MEMBER_REMOVED',ended_by=$4,ended_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND member_id=ANY($3::uuid[]) AND status='ACTIVE' RETURNING user_id",
+          [ctx.orgId, row.id, removed, ctx.user.id],
+        );
+        endedBindings = ended.rowCount ?? 0;
         await client.query(
-          "UPDATE team_member_claims SET status='REVOKED',decided_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND member_id=ANY($3::uuid[]) AND status='PENDING'",
-          [ctx.orgId, row.id, removed],
+          "UPDATE team_member_claims SET status='REVOKED',decided_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND status='PENDING' AND (member_id=ANY($3::uuid[]) OR target_user_id=ANY($4::uuid[]))",
+          [ctx.orgId, row.id, removed, ended.rows.map((r) => r.user_id)],
         );
       }
       for (const member of input.members) {
