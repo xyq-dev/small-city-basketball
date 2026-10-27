@@ -501,21 +501,20 @@ test('groups, tie draw, qualification, knockout rounds, rescheduling and media t
   const mediaPage = owner.open('pages/match-media/index', { orgId: org, matchId: finalId });
   await owner.settle(mediaPage);
   assert.equal(mediaPage.page.data.caps.upload, true, mediaPage.page.data.error);
-  // Lost upload response: the server stores the file, but the API has no request identity, so
-  // the page keeps the outcome unknown and only shows the new file as a candidate to check.
-  owner.dropNextResponse((o) => o.method === 'POST' && /\/media-files$/.test(o.url));
+  // C19: lost upload response — the server stored the file; the page resolves it through the
+  // receipt of the same request ID (looked up on the next read) and never sends it twice.
+  owner.dropNextResponse((o) => o.method === 'POST' && /\/media-file-requests$/.test(o.url));
   await mediaPage.page.uploadImage();
   await owner.settle(mediaPage);
-  assert.ok(mediaPage.page.data.pending, mediaPage.page.data.error);
+  assert.equal(mediaPage.page.data.request?.state, 'unknown', mediaPage.page.data.error);
+  await mediaPage.page.uploadImage();
+  await owner.settle(mediaPage);
+  assert.equal(mediaPage.page.data.request?.state, 'unknown', 'no new upload while unknown');
   await mediaPage.page.load();
   await owner.settle(mediaPage);
+  assert.equal(mediaPage.page.data.request, null, mediaPage.page.data.error);
+  assert.equal(mediaPage.page.data.upload.stage, 'saved');
   assert.equal(mediaPage.page.data.files.length, 1, 'the page did not send it twice');
-  assert.equal(mediaPage.page.data.canRetry, false);
-  assert.equal(mediaPage.page.data.pending?.candidates.length, 1, 'shown for checking');
-  await mediaPage.page.uploadImage();
-  assert.equal(mediaPage.page.data.files.length, 1, 'no new upload while unknown');
-  await mediaPage.page.confirmPending(tap({ id: mediaPage.page.data.pending.candidates[0].id }));
-  assert.equal(mediaPage.page.data.pending, null);
   assert.match(mediaPage.page.data.files[0].statusLabel, /未关联、未发布/);
   assert.deepEqual(await publicMedia(), [], 'an upload alone is not public');
   mediaPage.page.titleInput(tap({}, { value: '决赛最后一攻' }));
