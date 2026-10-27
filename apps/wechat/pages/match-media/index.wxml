@@ -29,7 +29,7 @@
     <view wx:if="{{previewVideo}}" class="card">
       <view class="row-between"><view class="subtitle">私有预览</view><button class="quiet small-button" bindtap="closePreview">关闭</button></view>
       <video class="media-preview" src="{{previewVideo}}" controls show-fullscreen-btn/>
-      <view class="muted">仅本机临时文件，关闭、离开页面后即删除；预览不代表已发布。</view>
+      <view class="muted">仅本机临时文件，关闭或离开页面后删除；删除失败会自动重试，并在下次进入时再次清理。预览不代表已发布。</view>
     </view>
     <view class="board">
       <view class="board-meta" bindtap="openMatch">{{match.meta}}</view>

@@ -101,6 +101,7 @@ Page({
     this._alive = true;
     this._visible = true;
     this._temporaryFiles = [];
+    media.sweepTemps(wx);
     try {
       this.orgId = api.uuid(query.orgId);
       this.matchId = api.uuid(query.matchId);
@@ -356,14 +357,17 @@ Page({
   },
   async dismissPending() {
     if (!this.data.pending || this.data.busy) return;
-    if (
-      !(await ui.confirm(
-        '结束这条未知记录',
-        '原请求仍可能在之后完成并多保存一份；如出现多余文件或草稿，可在本页撤销。之后可重新选择文件。',
-      ))
-    )
-      return;
-    if (!this.data.pending) return;
+    const record = this.pendingState().record;
+    if (!record) return;
+    const token = await this.confirmed(
+      '结束这条未知记录',
+      '原请求仍可能在之后完成并多保存一份；如出现多余文件或草稿，可在本页撤销。之后可重新选择文件。',
+      () => {
+        const now = this.pendingState().record;
+        return !!now && now.at === record.at && now.op === record.op;
+      },
+    );
+    if (!token || !this.data.pending) return;
     const failed = this.setPending(null);
     if (failed) {
       this.setData({ error: failed, notice: '' });
@@ -515,26 +519,47 @@ Page({
   rightsInput(e) {
     this.setData({ rights: String(e.detail.value || '').slice(0, 500) });
   },
-  async write(path, body, label) {
+  // `bound` is the token of the confirmation this write follows: the write stays valid only
+  // while both it and the write's own token are (never adopted by a newer token).
+  async write(path, body, label, bound) {
     if (this.data.busy || this.data.uncertain) return false;
+    if (bound && !ui.held(this, bound)) return false;
     const token = ui.hold(this);
+    const live = () => ui.held(this, token) && (!bound || ui.held(this, bound));
+    if (!live()) return false;
     this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       await api.getClient().request(path, 'POST', body);
-      if (!ui.held(this, token)) return false;
+      if (!live()) return false;
       this.setData({ busy: false, notice: label });
       await this.load();
       return true;
     } catch (error) {
-      if (!ui.held(this, token)) return false;
+      if (!live()) return false;
       const message = media.failure(error);
       this.setData({ busy: false, error: message, uncertain: media.unknown(error) });
       if (error && error.status === 409) {
         await this.load();
-        if (ui.held(this, token) && !this.data.unavailable) this.setData({ error: message });
+        if (live() && !this.data.unavailable) this.setData({ error: message });
       }
       return false;
     }
+  },
+  /**
+   * Opens a confirmation bound to this page, session, viewer and a fresh operation number;
+   * `still()` re-checks the target against the latest read once the user answers. Returns the
+   * confirmation token, or null when the answer is no or arrives too late.
+   */
+  async confirmed(title, content, still) {
+    const op = (this._confirmOp = (this._confirmOp || 0) + 1);
+    const viewer = this._viewer;
+    const token = await ui.confirmFor(this, title, content);
+    if (!token || op !== this._confirmOp || !this._alive || viewer !== this._viewer) return null;
+    return !still || still() ? token : null;
+  },
+  sameFile(file, status) {
+    const now = this._data && this._data.files.find((f) => f.id === file.id);
+    return !!now && now.version === file.version && now.status === status;
   },
   setDraftMode(e) {
     const mode = e.currentTarget.dataset.mode;
@@ -633,19 +658,22 @@ Page({
     const item = w && w.media.find((m) => m.id === e.currentTarget.dataset.id);
     if (!item) return;
     const publish = type === 'PUBLISH';
-    if (
-      !(await ui.confirm(
-        publish ? '发布“' + item.title + '”' : '撤销“' + item.title + '”',
-        publish
-          ? '发布后仅在本届公开观赛开启时，持有观赛链接的观众可见；不扩大其他公开范围。'
-          : '撤销后观众不再可见；已被合法查看或保存的副本不受影响。撤销不可恢复为草稿。',
-      ))
-    )
-      return;
+    const token = await this.confirmed(
+      publish ? '发布“' + item.title + '”' : '撤销“' + item.title + '”',
+      publish
+        ? '发布后仅在本届公开观赛开启时，持有观赛链接的观众可见；不扩大其他公开范围。'
+        : '撤销后观众不再可见；已被合法查看或保存的副本不受影响。撤销不可恢复为草稿。',
+      () => {
+        const now = this._data && this._data.media.find((m) => m.id === item.id);
+        return !!now && now.version === item.version && now.status === item.status;
+      },
+    );
+    if (!token) return;
     await this.write(
       this.base() + '/media/' + item.id + '/commands',
       { type, expectedVersion: item.version },
       publish ? '已发布。' : '已撤销，观众不再可见。',
+      token,
     );
   },
   publish(e) {
@@ -669,15 +697,18 @@ Page({
       this.setData({ error: '撤销文件须填写至少4个字的原因。' });
       return;
     }
-    if (
-      !(await ui.confirm('撤销私有文件', '撤销后不能再用于新媒体；内容清除与额度释放需另行管理。'))
-    )
-      return;
+    const token = await this.confirmed(
+      '撤销私有文件',
+      '撤销后不能再用于新媒体；内容清除与额度释放需另行管理。',
+      () => this.sameFile(file, 'ACTIVE'),
+    );
+    if (!token) return;
     if (
       await this.write(
         this.base() + '/media-files/' + file.id + '/commands',
         { type: 'REVOKE', expectedVersion: file.version, reason },
         '文件已撤销；不等于内容已清除或额度已释放。',
+        token,
       )
     )
       this.setData({ revokeId: '', revokeReason: '' });
@@ -748,20 +779,20 @@ Page({
       this.setData({ error: '清除文件内容须填写至少4个字的原因。' });
       return;
     }
-    if (
-      !(await ui.confirm(
-        '永久清除文件内容',
-        '清除后文件正文不可恢复，也不能再预览或发布；记录与审计保留，并释放机构额度。确定清除“' +
-          file.fileName +
-          '”？',
-      ))
-    )
-      return;
+    const token = await this.confirmed(
+      '永久清除文件内容',
+      '清除后文件正文不可恢复，也不能再预览或发布；记录与审计保留，并释放机构额度。确定清除“' +
+        file.fileName +
+        '”？',
+      () => this.sameFile(file, 'REVOKED') && !!this._data.capabilities.canPurge,
+    );
+    if (!token) return;
     if (
       await this.write(
         this.base() + '/media-files/' + file.id + '/commands',
         { type: 'PURGE', expectedVersion: file.version, reason },
         '文件内容已清除，不可恢复。',
+        token,
       )
     )
       this.setData({ purgeId: '', purgeReason: '' });
@@ -800,9 +831,12 @@ Page({
         throw new Error('文件内容与当前记录不一致，请重新读取');
       const extension =
         file.contentType === 'video/mp4' ? 'mp4' : file.contentType === 'image/png' ? 'png' : 'jpg';
-      filePath =
+      const target =
         wx.env.USER_DATA_PATH + '/scb-media-' + file.id + '-' + Date.now() + '.' + extension;
-      this._temporaryFiles.push(filePath);
+      // Recorded before writing so a crash or a closed page still leaves a cleanup trail.
+      if (!media.trackTemp(wx, target))
+        throw new Error('本机存储不可用，无法登记临时文件以便清理，已取消预览。');
+      filePath = target;
       await new Promise((resolve, reject) =>
         wx.getFileSystemManager().writeFile({
           filePath,
@@ -811,7 +845,8 @@ Page({
           fail: () => reject(new Error('临时文件写入失败')),
         }),
       );
-      if (!valid()) return this.removeTemporary(filePath);
+      if (!valid()) return media.releaseTemp(wx, filePath);
+      this._temporaryFiles.push(filePath);
       if (extension === 'mp4') this.setData({ previewVideo: filePath });
       else
         await new Promise((resolve, reject) =>
@@ -824,7 +859,7 @@ Page({
           }),
         );
     } catch (error) {
-      if (filePath) this.removeTemporary(filePath);
+      if (filePath) media.releaseTemp(wx, filePath);
       if (valid())
         this.setData({
           error: ui.message(error),
@@ -834,14 +869,14 @@ Page({
       if (valid() || ui.held(this, token)) this.setData({ busy: false });
     }
   },
+  // Any close (button, hide, unload, account change) ends the current preview operation for
+  // good: a download or write still in flight sees a newer op and removes its own file.
   closePreview() {
-    for (const path of (this._temporaryFiles || []).slice()) this.removeTemporary(path);
-    if (this.data.previewVideo && this.setData) this.setData({ previewVideo: '' });
-  },
-  removeTemporary(path) {
-    this._temporaryFiles = (this._temporaryFiles || []).filter((p) => p !== path);
-    if (typeof wx.getFileSystemManager !== 'function') return;
-    wx.getFileSystemManager().unlink({ filePath: path, success() {}, fail() {} });
+    this._previewOp = (this._previewOp || 0) + 1;
+    const paths = this._temporaryFiles || [];
+    this._temporaryFiles = [];
+    if (this.data && this.data.previewVideo && this.setData) this.setData({ previewVideo: '' });
+    for (const path of paths) media.releaseTemp(wx, path);
   },
   openMatch() {
     ui.open('org-match', { orgId: this.orgId, matchId: this.matchId });

@@ -190,6 +190,8 @@ function guard(page) {
 // stale response cannot overwrite what the write returns, then hold a token that a refresh or
 // poll started afterwards cannot orphan. Pages refuse to start reads while busy.
 function hold(page) {
+  // A closed (unloaded) page can never start a write; begin() must not reopen it.
+  if (page._closed) return { epoch: -1, session: -1 };
   begin(page);
   page._load = (page._load || 0) + 1;
   return guard(page);
@@ -222,6 +224,15 @@ function message(error) {
   return error && typeof error.message === 'string'
     ? error.message
     : '操作未完成，请重新读取后核对';
+}
+// A confirmation bound to the session and page that opened it: a reply that arrives after an
+// account change, sign-out or unload resolves to null, so no stale write can start. Returns the
+// guard token for the caller to keep checking through the write.
+async function confirmFor(page, title, content) {
+  if (page._closed) return null;
+  const token = guard(page);
+  const yes = await confirm(title, content);
+  return yes && held(page, token) ? token : null;
 }
 function confirm(title, content) {
   return new Promise((resolve) =>
@@ -292,6 +303,7 @@ module.exports = {
   close,
   message,
   confirm,
+  confirmFor,
   uuid,
   money,
   localTime,

@@ -272,8 +272,10 @@ Page({
   courtInput(e) {
     this.setData({ newCourt: String(e.detail.value || '').slice(0, 80) });
   },
-  async run(path, method, body, label) {
+  // `bound`: token of the confirmation this write follows (see ui.confirmFor).
+  async run(path, method, body, label, bound) {
     if (this.data.busy) return null;
+    if (bound && !ui.held(this, bound)) return null;
     const token = ui.hold(this);
     this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
@@ -308,13 +310,14 @@ Page({
   renameInput(e) {
     this.setData({ renameValue: String(e.detail.value || '').slice(0, 80) });
   },
-  async updateCourt(court, name, active, label) {
+  async updateCourt(court, name, active, label, bound) {
     if (
       await this.run(
         this.org() + '/courts/' + court.id,
         'PATCH',
         { expectedVersion: court.version, name, status: active ? 'ACTIVE' : 'DISABLED' },
         label,
+        bound,
       )
     ) {
       this.setData({ renameId: '', renameValue: '' });
@@ -330,13 +333,23 @@ Page({
   async toggleCourtStatus(e) {
     const court = this.data.courtAdmin.find((c) => c.id === e.currentTarget.dataset.id);
     if (!court) return;
+    const op = (this._confirmOp = (this._confirmOp || 0) + 1);
+    const token = await ui.confirmFor(
+      this,
+      court.active ? '停用场地“' + court.name + '”' : '重新启用“' + court.name + '”',
+      court.active
+        ? '停用后不能再安排新比赛；已安排在该场地的比赛会在校验、发布或改期时报“场地已停用”，需改到其他场地。'
+        : '启用后可重新用于排赛与改期。',
+    );
+    // Late answers (account change, sign-out, unload, a newer dialog, a changed court) do nothing.
+    const now = this.data.courtAdmin.find((c) => c.id === court.id);
     if (
-      !(await ui.confirm(
-        court.active ? '停用场地“' + court.name + '”' : '重新启用“' + court.name + '”',
-        court.active
-          ? '停用后不能再安排新比赛；已安排在该场地的比赛会在校验、发布或改期时报“场地已停用”，需改到其他场地。'
-          : '启用后可重新用于排赛与改期。',
-      ))
+      !token ||
+      op !== this._confirmOp ||
+      !this._alive ||
+      !now ||
+      now.version !== court.version ||
+      now.active !== court.active
     )
       return;
     await this.updateCourt(
@@ -344,6 +357,7 @@ Page({
       court.name,
       !court.active,
       court.active ? '场地停用' : '场地启用',
+      token,
     );
   },
   async addCourt() {
