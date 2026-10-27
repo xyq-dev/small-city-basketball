@@ -371,25 +371,35 @@ export class RegistrationService extends ApplicationService {
       const row = await this.team(client, ctx, id, true);
       if (!this.admin(ctx) && !(await this.leader(client, ctx, row.id))) throw notFound();
       versionCheck(row.version, input.expectedVersion);
-      const existing = await client.query<{ id: string }>(
-        'SELECT id FROM team_members WHERE org_id=$1 AND team_id=$2',
+      const existing = await client.query<{ id: string; name: string; status: string }>(
+        'SELECT id,name,status FROM team_members WHERE org_id=$1 AND team_id=$2 FOR UPDATE',
         [ctx.orgId, row.id],
       );
-      const ids = new Set(existing.rows.map((member) => member.id));
-      if (input.members.some((member) => member.id && !ids.has(member.id)))
+      const current = new Map(existing.rows.map((member) => [member.id, member]));
+      if (input.members.some((member) => member.id && !current.has(member.id)))
         invalid('成员不属于本队', { members: '请使用本队成员' });
       await this.ensureFreshSession(client, ctx);
-      await client.query(
-        "UPDATE team_members SET status='ARCHIVED',updated_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND status='ACTIVE'",
-        [ctx.orgId, row.id],
-      );
+      // C19: archive only the members actually removed from the list. Retained rows keep their
+      // identity and ACTIVE status throughout, so nothing keyed to them (account bindings,
+      // claims) is ended by a save that merely keeps or renames them.
+      const kept = new Set(input.members.flatMap((member) => (member.id ? [member.id] : [])));
+      const removed = existing.rows
+        .filter((member) => member.status === 'ACTIVE' && !kept.has(member.id))
+        .map((member) => member.id);
+      if (removed.length)
+        await client.query(
+          "UPDATE team_members SET status='ARCHIVED',updated_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND id=ANY($3::uuid[]) AND status='ACTIVE'",
+          [ctx.orgId, row.id, removed],
+        );
       for (const member of input.members) {
-        if (member.id)
-          await client.query(
-            "UPDATE team_members SET name=$4,status='ACTIVE',updated_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND id=$3",
-            [ctx.orgId, row.id, member.id, member.name],
-          );
-        else
+        const found = member.id ? current.get(member.id) : undefined;
+        if (found) {
+          if (found.status !== 'ACTIVE' || found.name !== member.name)
+            await client.query(
+              "UPDATE team_members SET name=$4,status='ACTIVE',updated_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND id=$3",
+              [ctx.orgId, row.id, found.id, member.name],
+            );
+        } else
           await client.query(
             'INSERT INTO team_members(id,org_id,team_id,name) VALUES($1,$2,$3,$4)',
             [randomUUID(), ctx.orgId, row.id, member.name],
