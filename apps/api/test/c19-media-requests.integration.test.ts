@@ -154,15 +154,15 @@ describe(
         [ids, h.owner.id],
       );
     }
-    async function streamerStatus(status: 'ACTIVE' | 'DISABLED') {
+    async function streamerStatus(status: 'ACTIVE' | 'DISABLED', role = 'STREAMER') {
       data(
         await call(h.api, 'put', staffPath(h.owner.orgId, eventA, streamer.id), {
           cookie: h.owner.cookie,
-          body: { role: 'STREAMER', status },
+          body: { role, status },
         }),
       );
     }
-    async function admin(label: string): Promise<User> {
+    async function admin(label: string, role = 'ORG_ADMIN'): Promise<User> {
       const id = randomUUID();
       const email = `c19-media-${label}-${RUN_ID}@example.test`;
       await h.api.pool.query(
@@ -170,8 +170,8 @@ describe(
         [id, email, `媒体 ${label}`, await hashPassword(PASSWORD)],
       );
       await h.api.pool.query(
-        "INSERT INTO organization_memberships(org_id,user_id,role) VALUES($1,$2,'ORG_ADMIN')",
-        [h.owner.orgId, id],
+        'INSERT INTO organization_memberships(org_id,user_id,role) VALUES($1,$2,$3)',
+        [h.owner.orgId, id, role],
       );
       const user = { id, orgId: h.owner.orgId, email, cookie: '' };
       user.cookie = await login(h.api, user);
@@ -365,7 +365,7 @@ describe(
       ).toBe('VALIDATION_ERROR');
     });
 
-    test('a revoked permission returns 403 whether or not the receipt exists; outsiders get 404', async () => {
+    test('a lost media role returns 403 whether or not the receipt exists; non-staff get 404', async () => {
       const id = randomUUID();
       const bytes = mp4(2500, 5);
       const file = data<MediaFileData>(
@@ -373,7 +373,8 @@ describe(
         201,
       );
       const missing = randomUUID();
-      await streamerStatus('DISABLED');
+      // Still ACTIVE event staff of this event, but in a role without media rights: visible, 403.
+      await streamerStatus('ACTIVE', 'REVIEWER');
       const shapes: string[] = [];
       for (const r of [
         await get(`${base()}/media-file-requests/${id}`, streamer),
@@ -386,11 +387,40 @@ describe(
         shapes.push(JSON.stringify({ ...r.body.error, requestId: '' }));
       }
       expect(new Set(shapes).size).toBe(1);
-      for (const r of [
-        await get(`${base()}/media-file-requests/${id}`, h.leader),
-        await get(`${base()}/media-file-requests/${missing}`, h.leader),
-      ])
+      // Not visible: disabled staff, a plain organization member, a former member and a total
+      // outsider all get exactly the 404 of a match that does not exist.
+      const hidden = (r: Response) => {
         expect(errorCode(r, 404)).toBe('RESOURCE_NOT_FOUND');
+        return JSON.stringify({ ...r.body.error, requestId: '' });
+      };
+      const nowhere = hidden(
+        await get(`${base(randomUUID())}/media-file-requests/${missing}`, h.leader),
+      );
+      const member = await admin('plain-member', 'SCORER');
+      await streamerStatus('DISABLED');
+      const shapesHidden = [];
+      for (const actor of [streamer, member, h.leader])
+        for (const r of [
+          await get(`${base()}/media-file-requests/${id}`, actor),
+          await get(`${base()}/media-file-requests/${missing}`, actor),
+          await post(`${base()}/media-file-requests`, fileBody(missing, bytes), actor),
+        ])
+          shapesHidden.push(hidden(r));
+      // Former member: ACTIVE staff row kept, organization membership disabled.
+      await streamerStatus('ACTIVE');
+      await h.api.pool.query(
+        "UPDATE organization_memberships SET status='DISABLED' WHERE org_id=$1 AND user_id=$2",
+        [h.owner.orgId, streamer.id],
+      );
+      try {
+        shapesHidden.push(hidden(await get(`${base()}/media-file-requests/${id}`, streamer)));
+      } finally {
+        await h.api.pool.query(
+          "UPDATE organization_memberships SET status='ACTIVE' WHERE org_id=$1 AND user_id=$2",
+          [h.owner.orgId, streamer.id],
+        );
+      }
+      expect(new Set([nowhere, ...shapesHidden])).toEqual(new Set([nowhere]));
       // Receipts are scoped to the actor: the owner does not see the streamer's request.
       expect(errorCode(await get(`${base()}/media-file-requests/${id}`), 404)).toBe(
         'RECEIPT_NOT_FOUND',
@@ -824,7 +854,7 @@ describe(
         'RESOURCE_NOT_FOUND',
       );
       expect(errorCode(await cancel(session), 404)).toBe('RESOURCE_NOT_FOUND');
-      await streamerStatus('DISABLED');
+      await streamerStatus('ACTIVE', 'REVIEWER');
       try {
         for (const r of [
           await get(path, streamer),
@@ -833,6 +863,9 @@ describe(
           await cancel(session, streamer),
         ])
           expect(errorCode(r, 403)).toBe('FORBIDDEN');
+        await streamerStatus('DISABLED');
+        expect(errorCode(await get(path, streamer), 404)).toBe('RESOURCE_NOT_FOUND');
+        expect(errorCode(await cancel(session, streamer), 404)).toBe('RESOURCE_NOT_FOUND');
         expect(
           (await one('SELECT status FROM media_upload_sessions WHERE id=$1', [session.id])).status,
         ).toBe('OPEN');

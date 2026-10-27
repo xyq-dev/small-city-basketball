@@ -105,7 +105,10 @@ export class MediaRequestService extends MediaService {
     }
   }
 
-  /** 404 when the match is invisible to the actor, 403 when visible but not a media manager. */
+  /**
+   * 404 when the match is invisible (not an ACTIVE member with ACTIVE event staff), 403 when
+   * visible but without a media role.
+   */
   private async matchAccess(
     c: PoolClient,
     cookie: string | undefined,
@@ -116,14 +119,19 @@ export class MediaRequestService extends MediaService {
   ): Promise<MatchAccess> {
     const ctx = await this.fileContext(c, cookie, org, exclusive);
     const id = resourceId(match);
+    // Match media has no team grants: like every other organization route, a former or disabled
+    // member is not visible at all, even if an old event_staff row is still ACTIVE.
+    if (!ctx.role) throw notFound();
     let a: MatchAccess;
     try {
       a = await this.access(c, ctx, id, 'MATCH', writing);
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
+        // Visible exactly as elsewhere: an ACTIVE organization member who is ACTIVE staff of
+        // this match's event (administrators always manage). Everyone else gets the same 404.
         const visible = await c.query(
-          'SELECT 1 FROM published_matches m WHERE m.org_id=$1 AND m.id=$2 AND ($3::boolean OR EXISTS(SELECT 1 FROM event_staff s WHERE s.org_id=m.org_id AND s.event_id=m.event_id AND s.user_id=$4))',
-          [ctx.orgId, id, Boolean(ctx.role), ctx.user.id],
+          "SELECT 1 FROM published_matches m JOIN event_staff s ON s.org_id=m.org_id AND s.event_id=m.event_id AND s.user_id=$3 AND s.status='ACTIVE' WHERE m.org_id=$1 AND m.id=$2",
+          [ctx.orgId, id, ctx.user.id],
         );
         if (visible.rowCount) throw forbidden();
       }
