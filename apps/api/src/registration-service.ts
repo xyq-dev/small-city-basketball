@@ -386,11 +386,25 @@ export class RegistrationService extends ApplicationService {
       const removed = existing.rows
         .filter((member) => member.status === 'ACTIVE' && !kept.has(member.id))
         .map((member) => member.id);
-      if (removed.length)
+      let endedBindings = 0;
+      if (removed.length) {
         await client.query(
           "UPDATE team_members SET status='ARCHIVED',updated_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND id=ANY($3::uuid[]) AND status='ACTIVE'",
           [ctx.orgId, row.id, removed],
         );
+        // A removed member's account binding ends with it; pending claims on it are withdrawn.
+        endedBindings =
+          (
+            await client.query(
+              "UPDATE team_member_bindings SET status='ENDED',ended_reason='MEMBER_REMOVED',ended_by=$4,ended_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND member_id=ANY($3::uuid[]) AND status='ACTIVE'",
+              [ctx.orgId, row.id, removed, ctx.user.id],
+            )
+          ).rowCount ?? 0;
+        await client.query(
+          "UPDATE team_member_claims SET status='REVOKED',decided_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND member_id=ANY($3::uuid[]) AND status='PENDING'",
+          [ctx.orgId, row.id, removed],
+        );
+      }
       for (const member of input.members) {
         const found = member.id ? current.get(member.id) : undefined;
         if (found) {
@@ -411,6 +425,8 @@ export class RegistrationService extends ApplicationService {
       );
       await this.audit(client, ctx.user.id, ctx.orgId, 'TEAM_MEMBERS_UPDATED', 'team', row.id, {
         count: input.members.length,
+        removed: removed.length,
+        endedBindings,
       });
       return this.teamDto(client, ctx, await this.team(client, ctx, row.id, false));
     });
