@@ -1,0 +1,86 @@
+<view class="page grants-page">
+  <view class="hero"><view class="title">{{mode === 'organizer' ? '私有赛季提名' : '我的私有赛季授权'}}</view><view class="muted">用途仅为本机构私有赛季统计（PRIVATE_SEASON）；与“公开到预约档案”的授权互相独立，账号绑定本身不产生授权。</view></view>
+  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
+  <view wx:if="{{message}}" class="notice">{{message}}</view>
+  <view wx:if="{{loginRequired}}" class="card state-panel"><view class="subtitle">登录后继续</view><view class="muted">授权只属于本人账号；换账号后需重新读取。</view><button class="primary" bindtap="login">登录并继续</button></view>
+  <view wx:if="{{loading}}" class="card state-panel"><view class="subtitle">正在读取</view><view class="loading-lines"><view></view><view></view></view></view>
+
+  <view wx:if="{{disclosure}}" class="card disclosure">
+    <view class="subtitle">授权说明</view>
+    <view class="small">{{disclosure.purpose}}</view>
+    <view class="small">{{disclosure.scope}}</view>
+    <view class="small">{{disclosure.readers}}</view>
+    <view class="small">{{disclosure.metrics}}</view>
+    <view class="small">{{disclosure.revocation}}</view>
+    <view class="small">{{disclosure.independence}}</view>
+  </view>
+
+  <block wx:if="{{mode === 'organizer' && event}}">
+    <view class="card">
+      <view class="subtitle">{{event.name}}</view>
+      <view class="muted">{{event.startDate}} 至 {{event.endDate}} · {{season ? '已归入赛季：' + season.name : '尚未归入赛季（同意后也不会进入任何赛季统计）'}}</view>
+      <view wx:if="{{!frozen}}" class="notice warning">报名名单尚未冻结，暂不能提名。</view>
+      <block wx:if="{{frozen}}">
+        <view class="field-label">球队（冻结名单）</view>
+        <picker range="{{teamLabels}}" value="{{teamIndex}}" bindchange="pickTeam" disabled="{{busy || nominationPending}}"><view class="field">{{teamIndex >= 0 ? teamLabels[teamIndex] : '选择球队'}} ▾</view></picker>
+        <view class="field-label">成员</view>
+        <picker range="{{memberLabels}}" value="{{memberIndex}}" bindchange="pickMember" disabled="{{busy || nominationPending || teamIndex < 0}}"><view class="field">{{memberIndex >= 0 ? memberLabels[memberIndex] : '选择成员'}} ▾</view></picker>
+        <view class="field-label">提名原因（4–500字）</view>
+        <textarea class="field" maxlength="500" value="{{reason}}" data-field="reason" bindinput="input" disabled="{{busy || nominationPending}}"/>
+        <button class="primary" bindtap="nominate" disabled="{{busy || loading}}" loading="{{busy}}">{{nominationPending ? '核对并重试（沿用原请求编号）' : '提名，等待本人同意'}}</button>
+      </block>
+    </view>
+  </block>
+
+  <view wx:if="{{!loginRequired && !invalid}}" class="card">
+    <view class="subtitle">{{mode === 'organizer' ? '本届授权记录' : '收到的提名与授权'}}</view>
+    <view wx:if="{{!grants.length && !loading}}" class="empty">暂无授权记录</view>
+    <view wx:if="{{truncated}}" class="notice warning">只显示最近100条授权记录。</view>
+    <view wx:for="{{grants}}" wx:key="id" class="row">
+      <view class="row-between"><view>{{item.eventName}} · {{item.teamName}} · {{item.memberName}}</view><view class="badge {{item.effective ? 'success' : ''}}">{{item.statusText}}</view></view>
+      <view class="muted">{{mode === 'organizer' ? '目标账号：' + item.targetDisplayName : '机构：' + item.orgName + ' · 提名人：' + item.nominatedByDisplayName}}</view>
+      <view class="muted">提名原因：{{item.nominateReason}}</view>
+      <view class="muted">赛季：{{item.seasonText}}</view>
+      <view wx:if="{{item.effective}}" class="small">当前计入私有赛季统计。</view>
+      <view wx:if="{{!item.effective && item.reasonsText}}" class="small">当前不计入：{{item.reasonsText}}</view>
+      <block wx:if="{{mode === 'player'}}">
+        <checkbox-group wx:if="{{item.capabilities.canConsent}}" data-id="{{item.id}}" bindchange="acknowledge"><label class="inline"><checkbox value="yes" checked="{{acknowledged === item.id}}" disabled="{{busy}}"/>我已阅读上方范围、读者、统计口径与撤销方式</label></checkbox-group>
+        <view class="inline">
+          <button wx:if="{{item.capabilities.canConsent}}" class="inline primary" data-id="{{item.id}}" data-type="CONSENT" bindtap="answer" disabled="{{busy || loading || acknowledged !== item.id}}">同意</button>
+          <button wx:if="{{item.capabilities.canDecline}}" class="inline secondary" data-id="{{item.id}}" data-type="DECLINE" bindtap="answer" disabled="{{busy || loading}}">拒绝</button>
+          <button wx:if="{{item.capabilities.canRevoke}}" class="inline danger" data-id="{{item.id}}" data-type="REVOKE" bindtap="answer" disabled="{{busy || loading}}">撤销授权</button>
+          <button wx:if="{{item.season}}" class="inline quiet" data-org="{{item.orgId}}" data-season="{{item.season.id}}" bindtap="showStats" disabled="{{busy || loading}}">查看本人统计</button>
+        </view>
+      </block>
+      <block wx:if="{{mode === 'organizer' && item.capabilities.canWithdraw}}">
+        <button wx:if="{{withdrawId !== item.id}}" class="inline quiet" data-id="{{item.id}}" bindtap="askWithdraw" disabled="{{busy}}">撤回</button>
+        <block wx:if="{{withdrawId === item.id}}">
+          <view class="field-label">撤回原因（4–500字）</view>
+          <textarea class="field" maxlength="500" value="{{withdrawReason}}" data-field="withdrawReason" bindinput="input" disabled="{{busy}}"/>
+          <button class="danger" bindtap="withdraw" disabled="{{busy || loading}}">确认撤回</button>
+          <button class="quiet" bindtap="cancelWithdraw" disabled="{{busy}}">取消</button>
+        </block>
+      </block>
+    </view>
+  </view>
+
+  <view wx:if="{{statsError}}" class="notice danger">{{statsError}}</view>
+  <view wx:if="{{stats}}" class="card">
+    <view class="subtitle">本人统计 · {{stats.seasonName}}</view>
+    <view class="muted">{{stats.orgName}} · {{stats.statusText}} · 只显示您本人的数据</view>
+    <view wx:if="{{!stats.row}}" class="empty">当前没有生效的授权数据。</view>
+    <block wx:if="{{stats.row}}">
+      <view class="stat-grid">
+        <view class="stat"><view class="muted">得分</view><view class="numeric">{{stats.row.score}}</view></view>
+        <view class="stat"><view class="muted">犯规</view><view class="numeric">{{stats.row.fouls}}</view></view>
+        <view class="stat"><view class="muted">名单场次（非实际出场）</view><view class="numeric">{{stats.row.samples}}</view></view>
+        <view class="stat"><view class="muted">赛事</view><view class="numeric">{{stats.row.events}}</view></view>
+      </view>
+      <view class="muted">篮板 {{stats.row.rebounds}} · 助攻 {{stats.row.assists}} · 出场时间 {{stats.row.minutes}}</view>
+      <view wx:for="{{stats.row.sources}}" wx:for-item="source" wx:key="key" class="small">{{source.text}}</view>
+    </block>
+    <view wx:for="{{stats.coverage}}" wx:key="eventId" class="row"><view>{{item.name}} · {{item.state}}</view><view class="muted">{{item.text}}</view></view>
+    <view class="muted">统计时间 {{stats.asOf}} · 来源摘要 {{stats.sourceHash}}</view>
+  </view>
+  <button class="quiet" bindtap="load" disabled="{{busy || loading || invalid}}">刷新</button>
+</view>

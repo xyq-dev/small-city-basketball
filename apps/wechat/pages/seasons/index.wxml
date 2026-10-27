@@ -1,0 +1,86 @@
+<view class="page seasons-page">
+  <view class="hero"><view class="title">私有赛季</view><view class="muted">机构内部汇总：只计入经球员本人同意的私有赛季授权，不公开、不生成匿名球员榜。</view></view>
+  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
+  <view wx:if="{{message}}" class="notice">{{message}}</view>
+  <view wx:if="{{loginRequired}}" class="card state-panel"><view class="subtitle">登录后管理私有赛季</view><view class="muted">仅机构负责人/管理员可创建、编辑、激活和关闭赛季。</view><button class="primary" bindtap="login">登录并继续</button></view>
+  <view wx:if="{{loading}}" class="card state-panel"><view class="subtitle">正在读取</view><view class="loading-lines"><view></view><view></view></view></view>
+
+  <block wx:if="{{!seasonId && !loginRequired && !invalid}}">
+    <view class="card">
+      <view class="subtitle">赛季列表</view>
+      <view wx:if="{{!seasons.length && !loading}}" class="empty">暂无赛季</view>
+      <view wx:for="{{seasons}}" wx:key="id" class="row row-between">
+        <view><view>{{item.name}}</view><view class="muted">{{item.startDate}} 至 {{item.endDate}} · {{item.statusText}} · {{item.events.length}} 届赛事</view></view>
+        <button class="inline secondary" data-id="{{item.id}}" bindtap="openSeason" disabled="{{busy}}">管理</button>
+      </view>
+    </view>
+    <view class="card">
+      <view class="subtitle">创建赛季</view>
+      <view class="muted">赛季为机构级；赛事须明确归入，赛事日期须落在赛季范围内，不按日期自动归属。</view>
+      <view class="field-label">赛季名称</view>
+      <input class="field" maxlength="80" value="{{draft.name}}" data-section="draft" data-field="name" bindinput="input" disabled="{{busy || createPending}}" placeholder="例如 2028 春季"/>
+      <view class="field-label">开始日期（YYYY-MM-DD）</view>
+      <input class="field" maxlength="10" value="{{draft.startDate}}" data-section="draft" data-field="startDate" bindinput="input" disabled="{{busy || createPending}}"/>
+      <view class="field-label">结束日期（YYYY-MM-DD）</view>
+      <input class="field" maxlength="10" value="{{draft.endDate}}" data-section="draft" data-field="endDate" bindinput="input" disabled="{{busy || createPending}}"/>
+      <button class="primary" bindtap="create" disabled="{{busy || loading}}" loading="{{busy}}">{{createPending ? '核对并重试（沿用原请求编号）' : '创建赛季'}}</button>
+    </view>
+  </block>
+
+  <block wx:if="{{season}}">
+    <view class="card">
+      <view class="badge">{{season.statusText}}</view>
+      <view class="subtitle">{{season.name}}</view>
+      <view class="muted">{{season.startDate}} 至 {{season.endDate}} · 版本 {{season.version}}</view>
+      <view wx:if="{{season.status === 'CLOSED'}}" class="notice warning">赛季已关闭：名称、日期和赛事归属已锁定。球员撤销授权与赛果变化仍按当前有效来源计算。</view>
+      <block wx:if="{{season.capabilities.canEdit}}">
+        <view class="field-label">赛季名称</view>
+        <input class="field" maxlength="80" value="{{edit.name}}" data-section="edit" data-field="name" bindinput="input" disabled="{{busy}}"/>
+        <view class="field-label">开始日期</view>
+        <input class="field" maxlength="10" value="{{edit.startDate}}" data-section="edit" data-field="startDate" bindinput="input" disabled="{{busy}}"/>
+        <view class="field-label">结束日期</view>
+        <input class="field" maxlength="10" value="{{edit.endDate}}" data-section="edit" data-field="endDate" bindinput="input" disabled="{{busy}}"/>
+        <button class="secondary" bindtap="save" disabled="{{busy || loading}}">保存赛季资料</button>
+      </block>
+      <button wx:if="{{season.capabilities.canActivate}}" class="primary" data-type="ACTIVATE" bindtap="command" disabled="{{busy || loading}}">激活赛季</button>
+      <button wx:if="{{season.capabilities.canClose}}" class="danger" data-type="CLOSE" bindtap="command" disabled="{{busy || loading}}">关闭赛季</button>
+    </view>
+    <view class="card">
+      <view class="subtitle">已归入的赛事</view>
+      <view wx:if="{{!season.events.length}}" class="empty">尚未归入赛事</view>
+      <view wx:for="{{season.events}}" wx:key="eventId" class="row">
+        <view>{{item.name}}</view><view class="muted">{{item.startDate}} 至 {{item.endDate}}</view>
+        <view class="inline">
+          <button class="inline secondary" data-id="{{item.eventId}}" bindtap="openGrants" disabled="{{busy}}">提名与授权</button>
+          <button wx:if="{{season.capabilities.canEdit}}" class="inline quiet" data-type="DETACH_EVENT" data-id="{{item.eventId}}" bindtap="command" disabled="{{busy || loading}}">移出</button>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{season.capabilities.canEdit}}" class="card">
+      <view class="subtitle">可归入的赛事</view>
+      <view class="muted">仅列出本机构日期在赛季范围内、尚未归入任何赛季的赛事。</view>
+      <view wx:if="{{!season.candidates.length}}" class="empty">暂无可归入赛事</view>
+      <view wx:for="{{season.candidates}}" wx:key="eventId" class="row row-between">
+        <view><view>{{item.name}}</view><view class="muted">{{item.startDate}} 至 {{item.endDate}}</view></view>
+        <button class="inline secondary" data-type="ATTACH_EVENT" data-id="{{item.eventId}}" bindtap="command" disabled="{{busy || loading}}">归入</button>
+      </view>
+    </view>
+    <view class="card">
+      <view class="subtitle">机构私有榜单</view>
+      <view class="muted">读者仅限本机构负责人/管理员。只计入当前有效、经本人同意的授权和当前有效的逐人确认数据；“名单场次”不代表实际出场。</view>
+      <view wx:if="{{boardError}}" class="notice danger">{{boardError}}</view>
+      <block wx:if="{{board}}">
+        <view class="notice {{board.rankingComplete ? '' : 'warning'}}">{{board.note}}</view>
+        <view wx:for="{{board.coverage}}" wx:key="eventId" class="row"><view>{{item.name}} · {{item.state}}</view><view class="muted">{{item.text}}</view></view>
+        <view wx:for="{{board.rows}}" wx:key="userId" class="row">
+          <view class="row-between"><view>{{item.rankText}} · {{item.displayName}}</view><view class="numeric">{{item.score}} 分</view></view>
+          <view class="muted">犯规 {{item.fouls}} · 名单场次 {{item.samples}} · 赛事 {{item.events}} 届</view>
+          <view class="muted">篮板 {{item.rebounds}} · 助攻 {{item.assists}} · 出场时间 {{item.minutes}}</view>
+          <view wx:for="{{item.sources}}" wx:for-item="source" wx:key="key" class="small">{{source.text}}</view>
+        </view>
+        <view class="muted">统计时间 {{board.asOf}} · 来源摘要 {{board.sourceHash}}</view>
+      </block>
+    </view>
+  </block>
+  <button class="quiet" bindtap="load" disabled="{{busy || loading || invalid}}">刷新</button>
+</view>
