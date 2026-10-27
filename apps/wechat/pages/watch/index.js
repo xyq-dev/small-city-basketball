@@ -42,10 +42,13 @@ Page({
     const gen = (this._dirGen = (this._dirGen || 0) + 1);
     this._dirCursor = null;
     const { group, city } = this.data.dir;
-    // A reset clears the rows first: a failed refresh never shows old rows as current.
+    // A reset clears the rows first: a failed refresh never shows old rows as current. It also
+    // ends the previous generation's pending "load more": that reply is dropped by generation,
+    // so leaving loadingMore set would block every later page of the new generation.
     this.setData({
       'dir.items': [],
       'dir.loading': true,
+      'dir.loadingMore': false,
       'dir.error': '',
       'dir.moreError': '',
       'dir.done': false,

@@ -291,6 +291,104 @@ test('a slow reply for an older filter never overwrites the newer one', async ()
   assert.equal(h.page.data.dir.done, true, 'the stale cursor was not adopted');
 });
 
+// C19: a reset while a later page is pending must not leave the new generation stuck in
+// loadingMore. Both outcomes of the stale reply are covered, and the new group must actually
+// send its own next-page request (not just show the right text).
+for (const outcome of ['succeeds', 'fails']) {
+  test(
+    'switching group while page 2 is pending: the stale reply ' +
+      outcome +
+      ', the new group still pages',
+    async () => {
+      const stale = deferred();
+      const d = device((key) => {
+        if (key === 'GET /v1/public/directory?status=LIVE&limit=20')
+          return page([row('a', '进行中一')], 'live_next');
+        if (key === 'GET /v1/public/directory?status=LIVE&limit=20&cursor=live_next')
+          return stale.promise;
+        if (key === 'GET /v1/public/directory?status=UPCOMING&limit=20')
+          return page([row('u', '即将一', { status: 'SCHEDULED' })], 'up_next');
+        if (key === 'GET /v1/public/directory?status=UPCOMING&limit=20&cursor=up_next')
+          return page([row('v', '即将二', { status: 'SCHEDULED' })]);
+        return null;
+      });
+      const p = await d.open('pages/watch/index', {}, { signIn: false });
+      const pendingMore = p.page.loadMoreDirectory();
+      await ticks();
+      assert.equal(p.page.data.dir.loadingMore, true);
+      p.page.pickDirGroup(tap({ group: 'UPCOMING' }));
+      await ticks();
+      assert.equal(p.page.data.dir.loadingMore, false, 'a reset clears the previous loadingMore');
+      assert.deepEqual(
+        p.page.data.dir.items.map((e) => e.name),
+        ['即将一'],
+      );
+      stale.resolve(
+        outcome === 'succeeds'
+          ? page([row('b', '进行中二')], 'live_more')
+          : fail(500, 'INTERNAL_ERROR'),
+      );
+      await pendingMore;
+      await p.flush();
+      assert.equal(p.page.data.dir.loadingMore, false);
+      assert.equal(
+        p.page.data.dir.moreError,
+        '',
+        'the stale reply never reports into the new group',
+      );
+      assert.deepEqual(
+        p.page.data.dir.items.map((e) => e.name),
+        ['即将一'],
+      );
+      const before = d.state.publicCalls.length;
+      await p.page.loadMoreDirectory();
+      const sent = d.state.publicCalls.slice(before).map((c) => c.url);
+      assert.deepEqual(sent, ['/v1/public/directory?status=UPCOMING&limit=20&cursor=up_next']);
+      assert.deepEqual(
+        p.page.data.dir.items.map((e) => e.name),
+        ['即将一', '即将二'],
+      );
+      assert.equal(p.page.data.dir.done, true);
+    },
+  );
+}
+
+test('every reset entry (city, clear city, refresh, re-entry) clears a pending loadingMore', async () => {
+  const pendings = [];
+  const d = device((key) => {
+    if (key.includes('cursor=')) {
+      const w = deferred();
+      pendings.push(w);
+      return w.promise;
+    }
+    if (key.startsWith('GET /v1/public/directory?status=LIVE&limit=20'))
+      return page([row('a', '进行中一')], 'n1');
+    return null;
+  });
+  const p = await d.open('pages/watch/index', {}, { signIn: false });
+  const resets = [
+    () => {
+      p.page.dirCityInput({ detail: { value: '茂名' } });
+      p.page.applyDirCity();
+    },
+    () => p.page.clearDirCity(),
+    () => p.page.loadDirectory(),
+    () => p.page.onShow(),
+  ];
+  for (const reset of resets) {
+    p.page.loadMoreDirectory();
+    await ticks();
+    assert.equal(p.page.data.dir.loadingMore, true);
+    reset();
+    await ticks();
+    assert.equal(p.page.data.dir.loadingMore, false);
+  }
+  pendings.forEach((w) => w.resolve(page([row('z', '迟到')], 'late')));
+  await p.flush();
+  assert.equal(p.page.data.dir.loadingMore, false);
+  assert.ok(!p.page.data.dir.items.some((e) => e.name === '迟到'));
+});
+
 test('a refresh clears old rows first and a failed refresh never shows them as current', async () => {
   let listed = true;
   const d = device((key) => {
