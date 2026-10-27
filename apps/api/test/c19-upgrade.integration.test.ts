@@ -716,14 +716,13 @@ describe(
         expect(await fullFingerprint(restoredPool)).toEqual(source);
         // Quarantine with the real ops/recovery implementation. Without the provisioned
         // scb_migrator role (Linux CI has it) its single SET LOCAL ROLE statement is skipped.
-        const { quarantineRestoredDatabase } = (await import(
-          '../../../ops/recovery/quarantine.mjs'
-        )) as {
-          quarantineRestoredDatabase: (input: {
-            pool: unknown;
-            ownership: unknown;
-          }) => Promise<{ counts: Record<string, number> }>;
-        };
+        const { quarantineRestoredDatabase } =
+          (await import('../../../ops/recovery/quarantine.mjs')) as {
+            quarantineRestoredDatabase: (input: {
+              pool: unknown;
+              ownership: unknown;
+            }) => Promise<{ counts: Record<string, number> }>;
+          };
         const migrator = (
           await restoredPool.query(
             "SELECT pg_has_role(current_user,'scb_migrator','MEMBER') AS ok FROM pg_roles WHERE rolname='scb_migrator'",
