@@ -50,7 +50,7 @@
 - 只有机构 OWNER/ADMIN 生成/撤销分享入口（非成员 404、普通成员 403）；令牌 128 位（base64url 22 字符），只存 SHA-256；1–168 小时、1–200 次、撤销需 4–500 字原因。
 - `resolve` 只返回 `{linkId, orgName, expiresAt}`；提交不接受 orgId 字段（多余字段 422）；无机构搜索。
 - 提交按 `(requester_id, client_request_id)` 唯一约束持久去重：首次 201、同编号同内容 200（返回原申请，不再消耗入口次数，入口已满/撤销也能恢复）、同编号不同内容 409 `IDEMPOTENCY_CONFLICT`；并发重复在唯一冲突后回滚并以新事务读回。
-- 每人每机构至多 3 份 PENDING（防刷，新增约束，见“冲突与取舍”）。
+- 每人每机构至多 3 份 PENDING（防刷，按 (机构, 申请人) 咨询锁串行计数）；同一入口每人至多一份未撤回申请、累计 3 份（审查修复 P3-2/P3-4）。
 - 申请人只能读/撤回自己的（他人 404）；撤回 CAS。
 - 审核：仅目标机构当前 OWNER/ADMIN；审核人=申请人 403 `REVIEWER_IS_REQUESTER`（DB CHECK 兜底）；CAS 409；原因 4–500；已处理 409 `TEAM_REQUEST_CLOSED`。
 - 批准同一事务：插入 `teams` + `team_access_grants(TEAM_MANAGER)` + 申请 APPROVED/`team_id` + 审计（`TEAM_CREATED`、`TEAM_REQUEST_APPROVED`）；`UNIQUE(team_id)` 与状态 CAS 保证最多一支队；不写机构成员或赛事工作人员。审计失败整体回滚（已测）。
@@ -75,7 +75,7 @@
 2. `POST /v1/team-joins` 返回 `MembershipData`，首次 201、重复 200；`POST /v1/team-requests` 首次 201、重放 200。
 3. `POST /v1/me/member-claims/:id/accept|decline` 返回 `{claim: MyMemberClaimData, membership: MembershipData|null}`；重复同一决定返回原结果。
 4. `GET member-bindings` 返回 `TeamMemberBindingsData`（含 `claims` 与可认领成员 `claimableMembers`），供领队撤销认领与选择成员，契约无单独的认领列表接口。
-5. `remove` 与 `leave` 同时把成员移出长期名单（“移除/退出球队”语义）；若仅需解绑而保留成员，需领队之后在长期名单里另行处理（当前 UI 不提供恢复已归档成员）。
+5. （已记录决定，集成人接受）`remove` 与 `leave` 同时把成员移出长期名单（“移除/退出球队”语义）；若仅需解绑而保留成员，需领队之后在长期名单里另行处理（当前 UI 不提供恢复已归档成员）。
 6. 新增约束：每人每机构 PENDING 申请 ≤3；球队 ACTIVE 长期成员 ≤60 时加入返回 422 `TEAM_FULL`（与既有名单上限一致）。
 7. `TeamMembershipService` 改为继承 `ApplicationService`（构造签名不变，`app.ts` 无需改动）。
 
@@ -93,6 +93,36 @@
 ```
 
 无 DELETE。既有表沿用现有授权（`teams`/`team_members`/`team_access_grants` INSERT 与列更新、`auth_rate_limits`）。触发器函数 `c19_guard_member_binding()` 为默认 invoker。3. 表数 +5、Migration +1（020）：readiness、privileges、backup/restore、c02-upgrade/p07 计数。4. （建议）`apps/wechat/utils/ui.js` 的 `routes` 增加 `team-request`、`team-requests`、`team-join`、`memberships`，使登录回跳可回到这些页；本模块页面自身用 `utils/team-membership.js#go` 导航，不依赖此项。5. `apps/wechat/pages/account` 入口文案（集成人添加）：所有登录用户“加入球队 / 认领” → `/pages/team-join/index`；“我的成员关系” → `/pages/memberships/index`；“我的建队申请” → `/pages/team-request/index`（无令牌时只看我的申请）；机构 OWNER/ADMIN “建队申请审核” → `/pages/team-requests/index?orgId=<机构>`。6. `apps/wechat/utils/api.js` 白名单无需修改（已覆盖全部路由，VM 测试逐条断言）。
+
+## 审查修复（独立审查，无 P0/P1）
+
+提交：`667184e`（Migration 020 原地修订：P3-5 状态机守护 + P3-7 索引）、`dba9b69`（服务修复 P2-1、P3-2…P3-6 + 真实 PG 回归）。020 尚未在任何集成环境执行，按集成人要求原地修改、不新增编号；本机控制库已按旧校验和执行过 020，因此复验改用本任务新建的隔离库 `scb_test_c19_teams_r2`（同一 PG 集群，本任务创建，可删除）。
+
+| 编号 | 问题                                  | 修复                                                                                                                                                                                                                                                             | 回归测试（修复前失败原因）                                                                                                                                   |
+| ---- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P2-1 | 移除前发出的认领可让被移除者重新入队  | 领队移除、本人退出、长期名单保存移出成员时，同事务撤销该队所有发给该账号的 PENDING 认领（不只撤销针对该成员的）；接受认领时若 `claim.created_at <=` 该账号在该队最近一次绑定结束时间，返回 422 `CLAIM_PREDATES_REMOVAL`（检查先于签发者资格检查）                | `P2-1 …`：修复前认领仍为 PENDING（`expected 'PENDING' to be 'REVOKED'`）；另以直接插入的“移除前创建”认领验证纵深防御，并覆盖长期名单保存路径                 |
+| P3-2 | 同一持有人可提交/撤回循环耗尽共享入口 | 同一 (入口, 申请人) 至多一份未撤回申请（409 `TEAM_REQUEST_LINK_ALREADY_USED`），含已撤回的累计至多 3 份（409 `TEAM_REQUEST_LINK_SUBMISSION_LIMIT`）；原编号重放不受影响                                                                                          | `P3-2 …`：修复前第二份直接 201                                                                                                                               |
+| P3-3 | 失败限流可被并发突发绕过              | 每次尝试先原子占用名额（`rateLimit` 先自增，超过 10 即 429），成功或非计数错误后退还（`attempts>1` 减一，最后一个名额删除行，满足 `attempts>0` 约束）；计数失败不退还                                                                                            | `P3-3 …`：20 个并发错误码，修复前 11 个进入业务逻辑；另验证 15 次成功解析不被限流                                                                            |
+| P3-4 | 两个入口并发可突破每机构 3 份 PENDING | 计数前对 `(org, requester)` 取 `pg_advisory_xact_lock`（位于机构锁与入口行锁之后，同一申请人跨入口串行）                                                                                                                                                         | `P3-4 …`：5 个入口并发，修复前 5 份全部成功                                                                                                                  |
+| P3-5 | 运行时列授权下可回退其他表状态        | 四张表 BEFORE UPDATE 守护（invoker）：身份列不可变；申请只允许 PENDING → 终态一次且 version+1（`team_id` 因此只写一次）；认领只决定一次；加入码/入口 `use_count` 只能 +1 且仅在未撤销时；撤销字段只能 NULL→值一次。五张表禁止 DELETE/TRUNCATE（与 C18 先例一致） | `P3-5 …`：直接 UPDATE（APPROVED→PENDING、换 team_id、减 use_count、取消撤销、改有效期、重开认领）与 DELETE/TRUNCATE 均在事务内执行并回滚；修复前 UPDATE 成功 |
+| P3-6 | 签发者恢复权限后旧码/旧认领复活       | 采用 created_at 谓词（不改其他模块）：签发者须有 ACTIVE 且 `updated_at <=` 码/认领 `created_at` 的 TEAM_MANAGER 授权，或同样条件的 OWNER/ADMIN 机构成员身份；列表显示 `ISSUER_INVALID`                                                                           | `P3-6 …`：停用再恢复领队授权后，修复前旧码仍为 ACTIVE；同时验证旧认领 `CLAIM_INVALID`、恢复后新签发的码可用                                                  |
+| P3-7 | 绑定历史查询缺索引                    | `team_member_bindings(member_id, user_id)` 索引                                                                                                                                                                                                                  | `P3-7 …`：修复前索引不存在                                                                                                                                   |
+
+已记录决定：本人退出与领队移除同时把长期成员移出名单（ARCHIVED），集成人已接受，保持现状。
+
+P3-6 的保守副作用：对同一签发者授权行或机构成员行的任何重写（包括 ACTIVE→ACTIVE 的重复设置、角色调整）都会使其此前签发的加入码与待接受认领失效，需重新签发。
+
+运行时权限：无新增需求。`auth_rate_limits` 的退还使用现有 `DELETE` 与 `attempts` 列更新权限；新触发器函数均为默认 invoker。
+
+审查修复后复验（本机，隔离库 `scb_test_c19_teams_r2`）：
+
+| 命令                                                                                                                                       | 结果                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| 修复前 `npx vitest run test/c19-team-membership.integration.test.ts`                                                                       | 18 项：11 通过，7 项新回归全部失败（原因见上表；输出存于会话 scratchpad `c19-review-prefix.txt`） |
+| `npx vitest run test/c19-team-membership.integration.test.ts src/team-membership-domain.test.ts test/p03-registration.integration.test.ts` | 3 文件 48/48 通过（c19 真实 PG 18、领域 6、p03 24）；c19 文件再单独运行一次 18/18                 |
+| `node --test apps/wechat/test/c19-team-membership.test.cjs`                                                                                | 11/11                                                                                             |
+| `npm run build --workspace @small-city-basketball/api` + `node --test --test-concurrency=1 tests/wechat-api/c19-teams.test.mjs`            | 1/1                                                                                               |
+| `npm run typecheck`、`npx prettier --check`（本模块 TS 文件）、`git diff --check`                                                          | 通过                                                                                              |
 
 ## 已执行的检查（本机 Windows，隔离 PG 18 @127.0.0.1:55433）
 
