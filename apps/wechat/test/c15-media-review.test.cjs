@@ -306,3 +306,138 @@ test('the normal path stays usable: upload, draft, publish and revoke', async ()
   assert.equal(page.page.data.items[0].status, 'REVOKED');
   page.unload();
 });
+
+// ---------- PR #24 follow-up: the stored record is the protection itself ----------
+const PENDING_KEY = 'scb.mediaPending.v1';
+function breakPending(d, which) {
+  const get = d.wx.getStorageSync,
+    set = d.wx.setStorageSync;
+  const boom = () => {
+    throw new Error('synthetic storage ' + which + ' failure');
+  };
+  if (which === 'read') d.wx.getStorageSync = (key) => (key === PENDING_KEY ? boom() : get(key));
+  if (which === 'write')
+    d.wx.setStorageSync = (key, value) => (key === PENDING_KEY ? boom() : set(key, value));
+  return () => {
+    d.wx.getStorageSync = get;
+    d.wx.setStorageSync = set;
+  };
+}
+const stored = (d) => JSON.parse(JSON.stringify(d.wx.storage.get(PENDING_KEY) || {}));
+
+test('a record that cannot be stored stops the upload and the draft before sending', async () => {
+  const d = deviceFor();
+  d.state.ws = workspace({ files: [fileRow(newFile)] });
+  const page = await d.open();
+  breakPending(d, 'write');
+  d.state.replies.set(UPLOAD, lost);
+  const uploading = page.page.uploadImage();
+  await ticks();
+  d.pick();
+  await uploading;
+  await page.flush();
+  assert.equal(d.sent(UPLOAD).length, 0, 'not sent without a stored record');
+  assert.match(page.page.data.error, /本机存储/);
+  assert.equal(page.page.data.pending, null);
+  page.page.titleInput(tap({}, { value: '决赛最后一攻' }));
+  page.page.rightsInput(tap({}, { value: '主办方摄影组拍摄' }));
+  await page.page.createDraft();
+  await page.flush();
+  assert.equal(d.sent(CREATE).length, 0);
+  assert.equal(page.page.data.busy, false);
+  page.unload();
+});
+
+test('unreadable storage is not taken as "no record": new requests stay blocked', async () => {
+  const d = deviceFor();
+  d.state.ws = workspace({ files: [fileRow(newFile)] });
+  // An unresolved record exists, but storage cannot be read right now.
+  d.wx.storage.set(PENDING_KEY, {
+    [userA + ':' + org + ':' + matchId]: {
+      op: 'upload',
+      name: 'photo.png',
+      size: PNG.length,
+      at: Date.now(),
+      known: [],
+    },
+  });
+  breakPending(d, 'read');
+  const page = await d.open();
+  assert.match(page.page.data.storageError, /本机存储/);
+  d.state.picker = null;
+  await page.page.uploadImage();
+  assert.equal(d.state.picker, null, 'the picker is not even opened');
+  page.page.titleInput(tap({}, { value: '决赛最后一攻' }));
+  page.page.rightsInput(tap({}, { value: '主办方摄影组拍摄' }));
+  await page.page.createDraft();
+  assert.equal(d.sent(CREATE).length + d.sent(UPLOAD).length, 0);
+  page.unload();
+});
+
+test('a record whose removal cannot be written keeps protecting, also after re-entry', async () => {
+  const d = deviceFor();
+  const page = await d.open();
+  d.state.replies.set(UPLOAD, () => {
+    d.state.ws = workspace({ files: [fileRow(newFile)] });
+    return lost();
+  });
+  const uploading = page.page.uploadImage();
+  await ticks();
+  d.pick();
+  await uploading;
+  await page.flush();
+  await page.page.load();
+  await page.flush();
+  assert.equal(page.page.data.pending.candidates.length, 1);
+  const before = stored(d);
+  const restore = breakPending(d, 'write');
+  await page.page.confirmPending(tap({ id: newFile }));
+  assert.ok(page.page.data.pending, 'confirmation not applied');
+  assert.match(page.page.data.error, /未能结束该记录/);
+  await page.page.dismissPending();
+  assert.ok(page.page.data.pending, 'dismissal not applied');
+  assert.deepEqual(stored(d), before, 'the stored record is intact');
+  page.unload();
+  const again = await d.open();
+  assert.ok(again.page.data.pending, 'still protected after re-entry');
+  d.state.picker = null;
+  await again.page.uploadImage();
+  assert.equal(d.state.picker, null);
+  assert.equal(d.sent(UPLOAD).length, 1);
+  restore();
+  await again.page.dismissPending();
+  assert.equal(again.page.data.pending, null, 'released once the removal is written');
+  assert.deepEqual(stored(d), {});
+  again.unload();
+});
+
+test('20 unresolved records are never evicted; a 21st operation is refused', async () => {
+  const d = deviceFor();
+  d.state.ws = workspace({ files: [fileRow(newFile)] });
+  const others = {};
+  for (let i = 0; i < 20; i++)
+    others[userA + ':' + org + ':' + String(i).padStart(12, '0')] = {
+      op: 'upload',
+      name: 'other-' + i + '.png',
+      size: 10,
+      at: Date.now() - i,
+      known: [],
+    };
+  d.wx.storage.set(PENDING_KEY, others);
+  const page = await d.open();
+  assert.equal(page.page.data.pending, null, 'none of them belongs to this match');
+  d.state.replies.set(UPLOAD, lost);
+  const uploading = page.page.uploadImage();
+  await ticks();
+  d.pick();
+  await uploading;
+  await page.flush();
+  assert.equal(d.sent(UPLOAD).length, 0);
+  assert.match(page.page.data.error, /20 条未核对/);
+  page.page.titleInput(tap({}, { value: '决赛最后一攻' }));
+  page.page.rightsInput(tap({}, { value: '主办方摄影组拍摄' }));
+  await page.page.createDraft();
+  assert.equal(d.sent(CREATE).length, 0);
+  assert.deepEqual(stored(d), JSON.parse(JSON.stringify(others)), 'every earlier record kept');
+  page.unload();
+});

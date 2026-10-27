@@ -14,6 +14,7 @@
       <view class="muted">网络中断时服务端可能已经执行。请先重新读取核对；在此之前不能继续上传或发布。</view>
       <button class="primary" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button>
     </view>
+    <view wx:if="{{storageError}}" class="notice warning">{{storageError}}</view>
     <view wx:if="{{pending}}" class="card">
       <view class="subtitle">{{pending.title}}</view>
       <view class="muted">发起于 {{pending.at}}。网络中断时服务端可能已保存，也可能稍后才保存；现有接口没有请求编号，系统无法自动确认，也不会自动重试。核对前不能继续上传或创建草稿。</view>
@@ -37,8 +38,8 @@
       <block wx:if="{{caps.upload}}">
         <view class="muted">图片支持PNG、JPEG，视频支持MP4；单个文件不超过8MB，服务端复核格式与额度。</view>
         <view class="mode-choice">
-          <button class="secondary" bindtap="uploadImage" disabled="{{busy || uncertain || !!pending}}">选择图片</button>
-          <button class="secondary" bindtap="uploadVideo" disabled="{{busy || uncertain || !!pending}}">选择视频</button>
+          <button class="secondary" bindtap="uploadImage" disabled="{{busy || uncertain || !!pending || !!storageError}}">选择图片</button>
+          <button class="secondary" bindtap="uploadVideo" disabled="{{busy || uncertain || !!pending || !!storageError}}">选择视频</button>
         </view>
         <view wx:if="{{upload}}" class="upload-stage {{upload.stage}}">{{upload.label}}</view>
         <button wx:if="{{canRetry && !pending}}" class="primary" bindtap="retryUpload" disabled="{{busy || uncertain}}">按原文件重试上传</button>
@@ -68,7 +69,7 @@
       <input class="field" maxlength="120" value="{{title}}" bindinput="titleInput" placeholder="例如 决赛最后一攻"/>
       <text class="field-label">权利声明（4–500字）</text>
       <textarea class="field" maxlength="500" value="{{rights}}" bindinput="rightsInput" placeholder="拍摄者及授权范围，例如：主办方摄影组拍摄，仅限本届公开观赛使用"/>
-      <button class="primary" bindtap="createDraft" disabled="{{busy || uncertain || !!pending}}">创建草稿（不公开）</button>
+      <button class="primary" bindtap="createDraft" disabled="{{busy || uncertain || !!pending || !!storageError}}">创建草稿（不公开）</button>
     </view>
 
     <view class="card">

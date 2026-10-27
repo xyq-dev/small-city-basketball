@@ -13,24 +13,36 @@ const media = require('../../utils/media');
 // resolves it; a file or draft that merely looks the same is shown for checking, never taken
 // as proof, and no retry or new upload is offered meanwhile. The record is kept in device
 // storage per account and match so leaving and re-entering the page does not clear it.
+//
+// That storage is the protection itself: a record must be stored before a non-idempotent
+// request is sent, a read or write failure stops new uploads and drafts (never treated as "no
+// record"), unresolved records are never evicted, and a record is only released once its
+// removal has actually been written.
 const UPLOAD_TIMEOUT = 120000;
 const PENDING_KEY = 'scb.mediaPending.v1';
-function pendingStore() {
+const PENDING_LIMIT = 20;
+const STORAGE_FAILED =
+  '本机存储读写失败，无法可靠记录或核对未知操作，已停止上传和创建草稿。请检查微信存储空间后重新进入本页。';
+const PENDING_FULL =
+  '本机已有 20 条未核对的媒体记录（可能属于其他比赛或账号），请先到相应比赛核对或结束这些记录，再上传或创建草稿。';
+const CLEAR_FAILED = '本机存储写入失败，未能结束该记录，保护仍保留。请检查微信存储空间后重试。';
+/** The record map, or null when storage cannot be read or holds something unexpected. */
+function readPendingStore() {
+  let value;
   try {
-    const v = wx.getStorageSync(PENDING_KEY);
-    return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+    value = wx.getStorageSync(PENDING_KEY);
   } catch {
-    return {};
+    return null;
   }
+  if (value === '' || value === undefined || value === null) return {};
+  return typeof value === 'object' && !Array.isArray(value) ? value : null;
 }
-function savePendingStore(map) {
+function writePendingStore(map) {
   try {
-    const keys = Object.keys(map);
-    // Bounded: only the most recent records are kept.
-    for (const k of keys.slice(0, Math.max(0, keys.length - 20))) delete map[k];
     wx.setStorageSync(PENDING_KEY, map);
+    return true;
   } catch {
-    /* Storage failure keeps the in-memory record for this page only. */
+    return false;
   }
 }
 const privateDefaults = {
@@ -49,6 +61,7 @@ const privateDefaults = {
   canRetry: false,
   uncertain: false,
   pending: null,
+  storageError: '',
   unavailable: false,
 };
 
@@ -75,7 +88,6 @@ Page({
     this._data = null;
     this._retry = null;
     this._viewer = '';
-    this._pendingMemory = null;
     this.setData({
       ...privateDefaults,
       loading: false,
@@ -151,6 +163,7 @@ Page({
         canRevoke: f.status === 'ACTIVE' && !!w.capabilities.canManage,
       }));
     const draftFiles = files.filter((f) => f.status === 'ACTIVE' && !used.has(f.id));
+    const state = this.pendingState();
     this.setData({
       loading: false,
       unavailable: false,
@@ -190,34 +203,36 @@ Page({
       },
       draftFiles,
       draftIndex: Math.min(this.data.draftIndex, Math.max(draftFiles.length - 1, 0)),
-      canRetry: !!this._retry && !this.pendingRecord(),
+      canRetry: !!this._retry && state.ok && !state.record,
       pending: this.pendingView(w),
+      storageError: state.ok ? '' : STORAGE_FAILED,
     });
   },
   pendingKey() {
     return this._viewer ? this._viewer + ':' + this.orgId + ':' + this.matchId : '';
   },
-  pendingRecord() {
+  /** { ok: false } when storage cannot be read; never reported as "no record". */
+  pendingState() {
     const key = this.pendingKey();
-    if (!key) return null;
-    return (
-      pendingStore()[key] ||
-      (this._pendingMemory && this._pendingMemory.key === key ? this._pendingMemory.record : null)
-    );
+    const map = key ? readPendingStore() : null;
+    return map ? { ok: true, record: map[key] || null } : { ok: false, record: null };
   },
+  /** Stores (or with null, removes) this page's record; returns '' or why it could not. */
   setPending(record) {
     const key = this.pendingKey();
-    if (!key) return;
-    const map = pendingStore();
-    if (record) map[key] = record;
-    else delete map[key];
-    this._pendingMemory = record ? { key, record } : null;
-    savePendingStore(map);
+    const map = key ? readPendingStore() : null;
+    if (!map) return STORAGE_FAILED;
+    const next = { ...map };
+    if (record) {
+      if (!next[key] && Object.keys(next).length >= PENDING_LIMIT) return PENDING_FULL;
+      next[key] = record;
+    } else delete next[key];
+    return writePendingStore(next) ? '' : record ? STORAGE_FAILED : CLEAR_FAILED;
   },
   // What the organizer can check: records created since the unknown attempt that look like it.
   // Shown as candidates only; equality of name/size/file is not proof of this request.
   pendingView(w) {
-    const r = this.pendingRecord();
+    const r = this.pendingState().record;
     if (!r || !w) return null;
     const known = new Set(r.known || []);
     const candidates =
@@ -246,8 +261,12 @@ Page({
     const view = this.data.pending;
     const id = e.currentTarget.dataset.id;
     if (!view || this.data.busy || !view.candidates.some((c) => c.id === id)) return;
-    const r = this.pendingRecord();
-    this.setPending(null);
+    const r = this.pendingState().record;
+    const failed = this.setPending(null);
+    if (failed) {
+      this.setData({ error: failed, notice: '' });
+      return;
+    }
     this._retry = null;
     this.setData({
       pending: null,
@@ -274,7 +293,11 @@ Page({
     )
       return;
     if (!this.data.pending) return;
-    this.setPending(null);
+    const failed = this.setPending(null);
+    if (failed) {
+      this.setData({ error: failed, notice: '' });
+      return;
+    }
     this._retry = null;
     this.setData({ pending: null, canRetry: false, upload: null });
   },
@@ -286,11 +309,16 @@ Page({
   },
   // Only after a known rejection; never while an earlier outcome is unknown.
   retryUpload() {
-    if (this._retry && !this.pendingRecord())
-      return this.upload(this._retry.kind, this._retry.file);
+    if (this._retry && !this.blocked()) return this.upload(this._retry.kind, this._retry.file);
   },
+  /** True (with the reason shown) when a non-idempotent request must not be started. */
   blocked() {
-    if (!this.pendingRecord()) return false;
+    const state = this.pendingState();
+    if (!state.ok) {
+      this.setData({ error: STORAGE_FAILED, storageError: STORAGE_FAILED, notice: '' });
+      return true;
+    }
+    if (!state.record) return false;
     this.setData({ error: '上一次操作结果未知，请先在下方核对处理后再继续。', notice: '' });
     return true;
   },
@@ -318,7 +346,7 @@ Page({
       if (valid() && !error.cancelled) this.setData({ error: ui.message(error), notice: '' });
       return;
     }
-    if (!valid() || this.data.busy || this.data.uncertain || this.pendingRecord()) return;
+    if (!valid() || this.data.busy || this.data.uncertain || this.blocked()) return;
     let file;
     try {
       file = media.describe(picked, kind, this._data.usage);
@@ -352,15 +380,25 @@ Page({
             '：单次提交，完成前无法显示字节进度，请保持网络连接。',
         },
       });
-      sent = true;
-      // Recorded before sending, so a killed app or a re-entered page still knows about it.
-      this.setPending({
+      // Stored before sending, so a killed app or a re-entered page still knows about it.
+      // Without a stored record the request is not sent at all.
+      const unstored = this.setPending({
         op: 'upload',
         name: file.name,
         size: file.size,
         at: Date.now(),
         known: this._data.files.map((f) => f.id),
       });
+      if (unstored) {
+        this.setData({
+          busy: false,
+          canRetry: false,
+          error: unstored,
+          upload: { stage: 'failed', label: '未发送：' + file.name + ' 未上传。' },
+        });
+        return;
+      }
+      sent = true;
       await api
         .getClient()
         .request(
@@ -371,28 +409,29 @@ Page({
           UPLOAD_TIMEOUT,
         );
       if (!valid()) return;
-      this.setPending(null);
+      const uncleared = this.setPending(null);
       this._retry = null;
       this.setData({
         busy: false,
+        error: uncleared,
         upload: { stage: 'saved', label: '3/3 已私有保存 ' + file.name + '，尚未发布。' },
       });
       await this.load();
     } catch (error) {
       if (!valid()) return;
       const lost = sent && media.unknown(error);
-      if (!lost) this.setPending(null);
+      const uncleared = sent && !lost ? this.setPending(null) : '';
       this.setData({
         busy: false,
-        canRetry: !lost,
-        error: media.failure(error),
+        canRetry: !lost && !uncleared,
+        error: uncleared || media.failure(error),
         upload: {
           stage: 'failed',
           label: lost
             ? '上传结果未知：接口没有请求编号，无法自动确认是否已保存。请在下方核对。'
             : '上传未完成，可按原文件重试。',
         },
-        pending: lost ? this.pendingView(this._data) : null,
+        pending: lost || uncleared ? this.pendingView(this._data) : null,
       });
     }
   },
@@ -438,15 +477,19 @@ Page({
       return;
     }
     const source = w.files.find((f) => f.id === file.id);
-    const token = ui.hold(this);
-    this.setData({ busy: true, loading: false, error: '', notice: '' });
-    this.setPending({
+    const unstored = this.setPending({
       op: 'draft',
       fileId: file.id,
       title,
       at: Date.now(),
       known: w.media.map((m) => m.id),
     });
+    if (unstored) {
+      this.setData({ error: unstored, notice: '' });
+      return;
+    }
+    const token = ui.hold(this);
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       await api.getClient().request(this.base() + '/media', 'POST', {
         kind: source.purpose === 'MATCH_IMAGE' ? 'IMAGE' : 'VIDEO',
@@ -455,26 +498,27 @@ Page({
         rightsDeclaration: rights,
       });
       if (!ui.held(this, token)) return;
-      this.setPending(null);
+      const uncleared = this.setPending(null);
       this.setData({
         busy: false,
         title: '',
         rights: '',
+        error: uncleared,
         notice: '媒体草稿已创建，尚未发布；发布前观众不可见。',
       });
       await this.load();
     } catch (error) {
       if (!ui.held(this, token)) return;
       const lost = media.unknown(error);
-      if (!lost) this.setPending(null);
+      const uncleared = lost ? '' : this.setPending(null);
       this.setData({
         busy: false,
         error: lost
           ? '网络中断，草稿是否已创建未知：接口没有请求编号，请在下方核对，不会自动重新创建。'
-          : media.failure(error),
-        pending: lost ? this.pendingView(w) : null,
+          : uncleared || media.failure(error),
+        pending: lost || uncleared ? this.pendingView(w) : null,
       });
-      if (!lost && error && error.status === 409) {
+      if (!lost && !uncleared && error && error.status === 409) {
         const message = this.data.error;
         await this.load();
         if (ui.held(this, token) && !this.data.unavailable) this.setData({ error: message });
