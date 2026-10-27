@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const media = require('../../utils/media');
+const scoring = require('../../utils/scoring');
 
 // Match media over the existing C05 workspace: private upload -> draft record -> explicit
 // publish / revoke. Uploading never publishes, and publication is still only visible through
@@ -19,6 +20,26 @@ const media = require('../../utils/media');
 // record"), unresolved records are never evicted, and a record is only released once its
 // removal has actually been written.
 const UPLOAD_TIMEOUT = 120000;
+const eventLabels = {
+  ...scoring.commandNames,
+  STAT_RECORDED: '记录',
+  STAT_VOIDED: '撤销记录',
+  STAT_REPLACED: '更正记录',
+  CORRECTION_ADDED: '补录更正',
+};
+const pad = (v) => String(v).padStart(2, '0');
+function clock(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  return (h ? h + ':' + pad(Math.floor(s / 60) % 60) : Math.floor(s / 60)) + ':' + pad(s % 60);
+}
+// A client-side mirror of the server rule; the server stays authoritative.
+function trustedLink(value, hosts) {
+  const m = /^https:\/\/([a-z0-9.-]+)(\/[^\s#]*)?$/i.exec(value || '');
+  if (!m || value.length > 2048) return false;
+  const host = m[1].toLowerCase();
+  return hosts.includes(host) && !/^\d+(\.\d+){3}$/.test(host) && host !== 'localhost';
+}
 const PENDING_KEY = 'scb.mediaPending.v1';
 const PENDING_LIMIT = 20;
 const STORAGE_FAILED =
@@ -57,6 +78,15 @@ const privateDefaults = {
   rights: '',
   revokeId: '',
   revokeReason: '',
+  purgeId: '',
+  purgeReason: '',
+  draftMode: 'FILE',
+  externalUrl: '',
+  trustedHosts: [],
+  sources: [],
+  markerFor: '',
+  marker: { sourceIndex: 0, label: '', start: '', end: '' },
+  previewVideo: '',
   upload: null,
   canRetry: false,
   uncertain: false,
@@ -69,6 +99,8 @@ Page({
   data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
   onLoad(query = {}) {
     this._alive = true;
+    this._visible = true;
+    this._temporaryFiles = [];
     try {
       this.orgId = api.uuid(query.orgId);
       this.matchId = api.uuid(query.matchId);
@@ -78,9 +110,18 @@ Page({
     }
     this.load();
   },
+  onShow() {
+    this._visible = true;
+  },
+  onHide() {
+    this._visible = false;
+    this.closePreview();
+  },
   onUnload() {
     this._alive = false;
+    this._visible = false;
     this._load = (this._load || 0) + 1;
+    this.closePreview();
     ui.close(this);
   },
   onSessionReset() {
@@ -88,6 +129,7 @@ Page({
     this._data = null;
     this._retry = null;
     this._viewer = '';
+    this.closePreview();
     this.setData({
       ...privateDefaults,
       loading: false,
@@ -161,6 +203,9 @@ Page({
             : media.fileLabels[f.status] || f.status,
         time: ui.localTime(f.createdAt),
         canRevoke: f.status === 'ACTIVE' && !!w.capabilities.canManage,
+        canPreview: f.status === 'ACTIVE',
+        // Clearing content is irreversible and only follows a revoke (server rule).
+        canPurge: f.status === 'REVOKED' && !!w.capabilities.canPurge,
       }));
     const draftFiles = files.filter((f) => f.status === 'ACTIVE' && !used.has(f.id));
     const state = this.pendingState();
@@ -191,8 +236,20 @@ Page({
         status: m.status,
         statusLabel: media.statusLabels[m.status] || m.status,
         rights: m.rightsDeclaration,
+        externalUrl: m.kind === 'EXTERNAL_LINK' ? m.externalUrl || '' : '',
         markers: m.markers.length,
+        markerList: m.markers.map((k) => ({
+          key: k.id,
+          text: k.label + ' · ' + clock(k.startMs) + '–' + clock(k.endMs),
+          stale: k.sourceStatus === 'STALE',
+        })),
         stale: m.markers.some((k) => k.sourceStatus === 'STALE'),
+        // Manual time markers: private video drafts of an independently confirmed result.
+        canMark:
+          m.kind === 'VIDEO' &&
+          m.status === 'DRAFT' &&
+          !!w.capabilities.canMark &&
+          !!w.currentConfirmationId,
         canPublish: m.status === 'DRAFT' && !!w.capabilities.canPublish,
         canRevoke: m.status !== 'REVOKED' && !!w.capabilities.canManage,
       })),
@@ -203,6 +260,14 @@ Page({
       },
       draftFiles,
       draftIndex: Math.min(this.data.draftIndex, Math.max(draftFiles.length - 1, 0)),
+      trustedHosts: (w.trustedExternalHosts || []).slice(0, 20),
+      draftMode:
+        w.trustedExternalHosts && w.trustedExternalHosts.length ? this.data.draftMode : 'FILE',
+      sources: w.sourceEvents.map((v) => ({
+        id: v.id,
+        label:
+          '#' + v.seq + ' ' + (eventLabels[v.type] || v.type) + ' · ' + ui.timePart(v.serverTime),
+      })),
       canRetry: !!this._retry && state.ok && !state.record,
       pending: this.pendingView(w),
       storageError: state.ok ? '' : STORAGE_FAILED,
@@ -245,7 +310,13 @@ Page({
                 f.fileName + ' · ' + media.size(f.byteLength) + ' · ' + ui.localTime(f.createdAt),
             }))
         : w.media
-            .filter((m) => !known.has(m.id) && m.fileId === r.fileId)
+            .filter(
+              (m) =>
+                !known.has(m.id) &&
+                (r.fileId
+                  ? m.fileId === r.fileId
+                  : !!m.externalUrl && m.externalUrl === r.externalUrl),
+            )
             .map((m) => ({
               id: m.id,
               text: m.title + ' · ' + (media.statusLabels[m.status] || m.status),
@@ -465,10 +536,23 @@ Page({
       return false;
     }
   },
+  setDraftMode(e) {
+    const mode = e.currentTarget.dataset.mode;
+    if (mode === 'FILE' || (mode === 'LINK' && this.data.trustedHosts.length))
+      this.setData({ draftMode: mode, error: '' });
+  },
+  externalInput(e) {
+    this.setData({
+      externalUrl: String(e.detail.value || '')
+        .trim()
+        .slice(0, 2048),
+    });
+  },
   async createDraft() {
     const w = this._data;
-    const file = this.data.draftFiles[this.data.draftIndex];
-    if (!w || !file || !this.data.caps || !this.data.caps.manage) return;
+    const link = this.data.draftMode === 'LINK';
+    const file = link ? null : this.data.draftFiles[this.data.draftIndex];
+    if (!w || (!link && !file) || !this.data.caps || !this.data.caps.manage) return;
     if (this.data.busy || this.data.uncertain || this.blocked()) return;
     const title = this.data.title.trim(),
       rights = this.data.rights.trim();
@@ -476,10 +560,22 @@ Page({
       this.setData({ error: '请填写标题和至少4个字的权利声明（拍摄者、授权范围等）。' });
       return;
     }
-    const source = w.files.find((f) => f.id === file.id);
+    let externalUrl = '';
+    if (link) {
+      externalUrl = this.data.externalUrl;
+      if (!trustedLink(externalUrl, w.trustedExternalHosts || [])) {
+        this.setData({
+          error:
+            '外部链接须为HTTPS，且主机在服务器受信列表内：' + this.data.trustedHosts.join('、'),
+        });
+        return;
+      }
+    }
+    const source = link ? null : w.files.find((f) => f.id === file.id);
     const unstored = this.setPending({
       op: 'draft',
-      fileId: file.id,
+      fileId: link ? null : file.id,
+      externalUrl: link ? externalUrl : null,
       title,
       at: Date.now(),
       known: w.media.map((m) => m.id),
@@ -491,18 +587,25 @@ Page({
     const token = ui.hold(this);
     this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
-      await api.getClient().request(this.base() + '/media', 'POST', {
-        kind: source.purpose === 'MATCH_IMAGE' ? 'IMAGE' : 'VIDEO',
-        title,
-        fileId: file.id,
-        rightsDeclaration: rights,
-      });
+      await api.getClient().request(
+        this.base() + '/media',
+        'POST',
+        link
+          ? { kind: 'EXTERNAL_LINK', title, externalUrl, rightsDeclaration: rights }
+          : {
+              kind: source.purpose === 'MATCH_IMAGE' ? 'IMAGE' : 'VIDEO',
+              title,
+              fileId: file.id,
+              rightsDeclaration: rights,
+            },
+      );
       if (!ui.held(this, token)) return;
       const uncleared = this.setPending(null);
       this.setData({
         busy: false,
         title: '',
         rights: '',
+        externalUrl: '',
         error: uncleared,
         notice: '媒体草稿已创建，尚未发布；发布前观众不可见。',
       });
@@ -578,6 +681,167 @@ Page({
       )
     )
       this.setData({ revokeId: '', revokeReason: '' });
+  },
+  // ---- time markers (CAS on the media version, so a duplicate send is rejected) ----
+  openMarker(e) {
+    const id = e.currentTarget.dataset.id;
+    this.setData({
+      markerFor: this.data.markerFor === id ? '' : id,
+      marker: { sourceIndex: 0, label: '', start: '', end: '' },
+    });
+  },
+  markerInput(e) {
+    const field = e.currentTarget.dataset.field;
+    if (['label', 'start', 'end'].includes(field))
+      this.setData({ ['marker.' + field]: String(e.detail.value || '').slice(0, 120) });
+  },
+  pickSource(e) {
+    this.setData({ 'marker.sourceIndex': Number(e.detail.value) || 0 });
+  },
+  async addMarker() {
+    const w = this._data;
+    const item = w && w.media.find((m) => m.id === this.data.markerFor);
+    const source = this.data.sources[this.data.marker.sourceIndex];
+    if (!item || !source || !w.currentConfirmationId) return;
+    const m = this.data.marker;
+    const ms = (v) =>
+      /^\d+(\.\d{1,3})?$/.test(String(v).trim()) ? Math.round(Number(v) * 1000) : NaN;
+    const startMs = ms(m.start),
+      endMs = ms(m.end);
+    if (!m.label.trim() || !Number.isSafeInteger(startMs) || !Number.isSafeInteger(endMs)) {
+      this.setData({ error: '请填写标记名称，以及以秒为单位的开始和结束位置（最多三位小数）。' });
+      return;
+    }
+    if (endMs <= startMs || endMs > 86400000) {
+      this.setData({ error: '结束位置须晚于开始位置，且不超过24小时。' });
+      return;
+    }
+    if (
+      await this.write(
+        this.base() + '/media/' + item.id + '/markers',
+        {
+          expectedVersion: item.version,
+          expectedConfirmationId: w.currentConfirmationId,
+          sourceEventId: source.id,
+          label: m.label.trim(),
+          startMs,
+          endMs,
+        },
+        '时间标记已添加（基于当前独立确认的赛果）。',
+      )
+    )
+      this.setData({ markerFor: '', marker: { sourceIndex: 0, label: '', start: '', end: '' } });
+  },
+  // ---- irreversible content clearing (after revoke; reason, confirm, CAS, server audit) ----
+  askPurgeFile(e) {
+    this.setData({ purgeId: e.currentTarget.dataset.id || '', purgeReason: '' });
+  },
+  purgeReasonInput(e) {
+    this.setData({ purgeReason: String(e.detail.value || '').slice(0, 500) });
+  },
+  async purgeFile() {
+    const w = this._data;
+    const file = w && w.files.find((f) => f.id === this.data.purgeId && f.status === 'REVOKED');
+    if (!file || !w.capabilities.canPurge) return;
+    const reason = this.data.purgeReason.trim();
+    if (Array.from(reason).length < 4) {
+      this.setData({ error: '清除文件内容须填写至少4个字的原因。' });
+      return;
+    }
+    if (
+      !(await ui.confirm(
+        '永久清除文件内容',
+        '清除后文件正文不可恢复，也不能再预览或发布；记录与审计保留，并释放机构额度。确定清除“' +
+          file.fileName +
+          '”？',
+      ))
+    )
+      return;
+    if (
+      await this.write(
+        this.base() + '/media-files/' + file.id + '/commands',
+        { type: 'PURGE', expectedVersion: file.version, reason },
+        '文件内容已清除，不可恢复。',
+      )
+    )
+      this.setData({ purgeId: '', purgeReason: '' });
+  },
+  // ---- private preview: downloaded to a temporary file, removed on close/hide/unload ----
+  async preview(e) {
+    const w = this._data;
+    const file =
+      w && w.files.find((f) => f.id === e.currentTarget.dataset.id && f.status === 'ACTIVE');
+    if (!file || this.data.busy) return;
+    const client = api.getClient();
+    if (
+      typeof client.download !== 'function' ||
+      typeof wx.getFileSystemManager !== 'function' ||
+      !wx.env ||
+      !wx.env.USER_DATA_PATH
+    ) {
+      this.setData({ error: '当前客户端无法安全预览私有文件，请更新后重试。' });
+      return;
+    }
+    this.closePreview();
+    const token = ui.guard(this);
+    const op = (this._previewOp = (this._previewOp || 0) + 1);
+    const valid = () =>
+      ui.held(this, token) && this._alive && this._visible && op === this._previewOp;
+    this.setData({ busy: true, error: '' });
+    let filePath = '';
+    try {
+      const data = await client.download(this.base() + '/media-files/' + file.id + '/content');
+      if (!valid()) return;
+      if (
+        data.contentType !== file.contentType ||
+        !data.data ||
+        data.data.byteLength !== file.byteLength
+      )
+        throw new Error('文件内容与当前记录不一致，请重新读取');
+      const extension =
+        file.contentType === 'video/mp4' ? 'mp4' : file.contentType === 'image/png' ? 'png' : 'jpg';
+      filePath =
+        wx.env.USER_DATA_PATH + '/scb-media-' + file.id + '-' + Date.now() + '.' + extension;
+      this._temporaryFiles.push(filePath);
+      await new Promise((resolve, reject) =>
+        wx.getFileSystemManager().writeFile({
+          filePath,
+          data: data.data,
+          success: resolve,
+          fail: () => reject(new Error('临时文件写入失败')),
+        }),
+      );
+      if (!valid()) return this.removeTemporary(filePath);
+      if (extension === 'mp4') this.setData({ previewVideo: filePath });
+      else
+        await new Promise((resolve, reject) =>
+          wx.previewImage({
+            current: filePath,
+            urls: [filePath],
+            showmenu: false,
+            success: resolve,
+            fail: () => reject(new Error('无法打开图片')),
+          }),
+        );
+    } catch (error) {
+      if (filePath) this.removeTemporary(filePath);
+      if (valid())
+        this.setData({
+          error: ui.message(error),
+          ...([403, 404, 410].includes(error && error.status) ? { previewVideo: '' } : {}),
+        });
+    } finally {
+      if (valid() || ui.held(this, token)) this.setData({ busy: false });
+    }
+  },
+  closePreview() {
+    for (const path of (this._temporaryFiles || []).slice()) this.removeTemporary(path);
+    if (this.data.previewVideo && this.setData) this.setData({ previewVideo: '' });
+  },
+  removeTemporary(path) {
+    this._temporaryFiles = (this._temporaryFiles || []).filter((p) => p !== path);
+    if (typeof wx.getFileSystemManager !== 'function') return;
+    wx.getFileSystemManager().unlink({ filePath: path, success() {}, fail() {} });
   },
   openMatch() {
     ui.open('org-match', { orgId: this.orgId, matchId: this.matchId });

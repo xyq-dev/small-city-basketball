@@ -28,7 +28,7 @@
     </block>
     <view wx:for="{{failures}}" wx:key="orgId" class="notice warning small">{{item.orgName}}：{{item.message}}</view>
     <button wx:for="{{creatable}}" wx:key="id" class="secondary" data-org="{{item.id}}" bindtap="createEvent">在 {{item.name}} 创建赛事</button>
-    <view wx:if="{{truncated.length}}" class="muted">部分机构仅显示最近50届赛事，其余请在Web查看。</view>
+    <view wx:if="{{truncated.length}}" class="muted">部分机构的赛事超过500届，这里只列出每个机构的前500届：{{truncated}}。</view>
   </block>
 
   <view class="watch-section-head"><view class="subtitle">最近观看</view><text wx:if="{{recentEvents.length}}" class="muted" bindtap="clearRecent">清除</text></view>

@@ -71,7 +71,7 @@ Page({
     if (!current()) return;
     const token = ui.begin(this);
     try {
-      const result = await events.load(client, session);
+      const result = await events.load(client, session, 10);
       // Store only fields listed in privateDefaults, so a session reset clears all of them.
       if (ui.live(this, token) && current())
         this.setData({

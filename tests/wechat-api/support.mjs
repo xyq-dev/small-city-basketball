@@ -132,7 +132,9 @@ export function device(server) {
               : JSON.stringify(options.data),
         });
         const cookies = response.headers.getSetCookie();
-        const text = await response.text();
+        // Binary downloads (private file content) are returned as an ArrayBuffer, like wx.request.
+        const binary = options.responseType === 'arraybuffer';
+        const raw = binary ? await response.arrayBuffer() : await response.text();
         // Simulate a lost response: the server applied the request, the device never heard.
         const drop = drops.findIndex((match) => match(options));
         if (drop >= 0) {
@@ -141,9 +143,12 @@ export function device(server) {
         }
         return {
           statusCode: response.status,
-          header: cookies.length ? { 'Set-Cookie': cookies.join(', ') } : {},
+          header: {
+            ...(cookies.length ? { 'Set-Cookie': cookies.join(', ') } : {}),
+            ...(binary ? { 'Content-Type': response.headers.get('content-type') || '' } : {}),
+          },
           cookies,
-          data: text ? JSON.parse(text) : null,
+          data: binary ? raw : raw ? JSON.parse(raw) : null,
         };
       } finally {
         inflight--;

@@ -10,6 +10,7 @@ const orgA = '11111111-1111-4111-8111-111111111111';
 const orgB = '22222222-2222-4222-8222-222222222222';
 const eventA = '33333333-3333-4333-8333-333333333333';
 const eventB = '44444444-4444-4444-8444-444444444444';
+const eventC = '45454545-4545-4545-8545-454545454545';
 const viewer = '55555555-5555-4555-8555-555555555555';
 const publicKey = 'p'.repeat(43);
 const cookie = 'c'.repeat(43);
@@ -116,6 +117,7 @@ test('platform paths allow own-organization reads and existing role-checked comm
     [match + '/media-files', 'POST'],
     [match + '/media-files/' + orgA + '/commands', 'POST'],
     [match + '/media/' + orgA + '/commands', 'POST'],
+    [match + '/media/' + orgA + '/markers', 'POST'],
   ])
     assert.equal(pathAllowed(url, method), true, method + ' ' + url);
   for (const [url, method] of [
@@ -135,7 +137,7 @@ test('platform paths allow own-organization reads and existing role-checked comm
     [match + '/media?limit=50', 'GET'],
     [match + '/media-files', 'GET'],
     [match + '/media-files/' + orgA + '/content', 'GET'],
-    [match + '/media/' + orgA + '/markers', 'POST'],
+    [match + '/media/' + orgA + '/markers', 'GET'],
     [match + '/media/' + orgA, 'DELETE'],
     ['/v1/orgs/' + orgA + '/events/' + eventA + '/public-viewing-commands', 'PUT'],
     ['/v1/orgs/' + orgA + '/events/' + eventA, 'DELETE'],
@@ -206,6 +208,11 @@ test('my events groups by real status, keeps per-organization failures and opens
         'next-cursor',
       ),
     ],
+    // The events tab follows the cursor; the last page here has no further cursor.
+    [
+      '/v1/orgs/' + orgA + '/events?limit=50&cursor=next-cursor',
+      ok([event(eventC, 'COMPLETED', '合成春季联赛', '2026-03-01')]),
+    ],
     ['/v1/orgs/' + orgB + '/events?limit=50', fail(403)],
   ]);
   await signIn(h);
@@ -213,7 +220,7 @@ test('my events groups by real status, keeps per-organization failures and opens
   await h.page.load();
   await h.flush();
   const requested = h.requests().filter((url) => url.includes('/events'));
-  assert.equal(requested.length, 2);
+  assert.equal(requested.length, 3);
   assert.deepEqual(
     h.page.data.sections.map((s) => s.key),
     ['live', 'finished'],
@@ -221,7 +228,12 @@ test('my events groups by real status, keeps per-organization failures and opens
   assert.equal(h.page.data.sections[0].events[0].name, '合成冬季杯');
   assert.equal(h.page.data.failures.length, 1);
   assert.match(h.page.data.failures[0].message, /不能查看该机构/);
-  assert.deepEqual(h.page.data.truncated, ['合成机构A']);
+  assert.deepEqual(h.page.data.truncated, []);
+  assert.deepEqual(
+    h.page.data.sections[1].events.map((e) => e.name),
+    ['合成秋季联赛', '合成春季联赛'],
+    'events from the second page are listed',
+  );
   h.page.openEvent({ currentTarget: { dataset: { org: orgA, id: eventB } } });
   assert.ok(
     h.wx.calls.some(

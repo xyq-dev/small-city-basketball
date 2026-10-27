@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
 import { after, before, test } from 'node:test';
 import {
   PASSWORD,
@@ -536,6 +537,81 @@ test('groups, tie draw, qualification, knockout rounds, rescheduling and media t
   await owner.settle(mediaPage);
   assert.equal(mediaPage.page.data.items[0].status, 'REVOKED', mediaPage.page.data.error);
   assert.deepEqual(await publicMedia(), [], 'revoked media disappears publicly');
+
+  // C16: private preview, revoke then irreversible purge, and a manual time marker on a video
+  // draft of the confirmed final. The MP4 is the API tests' own synthetic fixture.
+  const fixtures = fs.readFileSync(
+    new URL('../../apps/api/test/media-fixtures.ts', import.meta.url),
+    'utf8',
+  );
+  const MP4 = Buffer.from(/syntheticMp4 = Buffer\.from\(\s*'([^']+)'/.exec(fixtures)[1], 'base64');
+  const temp = new Map(),
+    previewed = [];
+  owner.wx.env = { USER_DATA_PATH: 'wxfile://usr' };
+  owner.wx.getFileSystemManager = () => ({
+    readFile: (o) =>
+      o.success({ data: (/\.mp4$/.test(o.filePath) ? MP4 : PNG).toString('base64') }),
+    writeFile: (o) => {
+      temp.set(o.filePath, Buffer.from(o.data));
+      o.success();
+    },
+    unlink: (o) => {
+      temp.delete(o.filePath);
+      o.success?.();
+    },
+  });
+  owner.wx.previewImage = (o) => {
+    previewed.push(temp.get(o.current));
+    o.success();
+  };
+  const png = mediaPage.page.data.files[0];
+  await mediaPage.page.preview(tap({ id: png.id }));
+  await owner.settle(mediaPage);
+  assert.ok(
+    previewed[0]?.equals(PNG),
+    'the private bytes were previewed: ' + mediaPage.page.data.error,
+  );
+  mediaPage.page.askRevokeFile(tap({ id: png.id }));
+  mediaPage.page.revokeReasonInput(tap({}, { value: '误传的测试图片' }));
+  owner.approve();
+  await mediaPage.page.revokeFile();
+  await owner.settle(mediaPage);
+  assert.equal(mediaPage.page.data.files[0].status, 'REVOKED', mediaPage.page.data.error);
+  assert.equal(mediaPage.page.data.files[0].canPurge, true);
+  mediaPage.page.askPurgeFile(tap({ id: png.id }));
+  mediaPage.page.purgeReasonInput(tap({}, { value: '按要求永久删除正文' }));
+  snapshot(mediaPage, 'match-media-purge');
+  owner.approve();
+  await mediaPage.page.purgeFile();
+  await owner.settle(mediaPage);
+  assert.equal(mediaPage.page.data.files[0].status, 'PURGED', mediaPage.page.data.error);
+  owner.wx.chooseMedia = (o) =>
+    o.success({ tempFiles: [{ tempFilePath: 'wxfile://tmp/final-replay.mp4', size: MP4.length }] });
+  await mediaPage.page.uploadVideo();
+  await owner.settle(mediaPage);
+  assert.equal(mediaPage.page.data.upload.stage, 'saved', mediaPage.page.data.error);
+  assert.equal(mediaPage.page.data.draftFiles[0]?.name, 'final-replay.mp4');
+  mediaPage.page.titleInput(tap({}, { value: '决赛回放' }));
+  mediaPage.page.rightsInput(tap({}, { value: '主办方摄影组拍摄，仅限本届公开观赛' }));
+  await mediaPage.page.createDraft();
+  await owner.settle(mediaPage);
+  const replay = mediaPage.page.data.items.find((m) => m.title === '决赛回放');
+  assert.equal(replay?.canMark, true, mediaPage.page.data.error);
+  mediaPage.page.openMarker(tap({ id: replay.id }));
+  mediaPage.page.markerInput(tap({ field: 'label' }, { value: '决胜一投' }));
+  mediaPage.page.markerInput(tap({ field: 'start' }, { value: '0' }));
+  mediaPage.page.markerInput(tap({ field: 'end' }, { value: '0.5' }));
+  snapshot(mediaPage, 'match-media-marker');
+  await mediaPage.page.addMarker();
+  await owner.settle(mediaPage);
+  const marked = mediaPage.page.data.items.find((m) => m.id === replay.id);
+  assert.equal(marked.markerList.length, 1, mediaPage.page.data.error);
+  owner.approve();
+  await mediaPage.page.publish(tap({ id: replay.id }));
+  await owner.settle(mediaPage);
+  const withMarker = (await publicMedia()).find((m) => m.title === '决赛回放');
+  assert.equal(withMarker?.markers.length, 1, 'the published video carries its time marker');
+  assert.equal(withMarker.markers[0].label, '决胜一投');
 
   // Account switch clears every new page.
   owner.client.clearSession();

@@ -167,9 +167,9 @@ function pathAllowed(path, method = 'GET') {
   if (matches(match + '/staff/' + uuidPattern)) return noQuery && method === 'PUT';
   if (matches(org + '/events/' + uuidPattern + '/(standings|groups|knockout|player-statistics)'))
     return noQuery && method === 'GET';
-  // C15: group tie draws, qualification and knockout round publication, formal rescheduling
-  // and match media. Each command is CAS-checked and role-checked by the API; marker creation
-  // and media purging are not offered natively.
+  // C15/C16: group tie draws, qualification and knockout round publication, formal
+  // rescheduling and match media (files incl. revoke/purge, drafts, publish/revoke, time
+  // markers). Each command is CAS-checked and role-checked by the API.
   if (
     matches(
       org +
@@ -185,7 +185,8 @@ function pathAllowed(path, method = 'GET') {
   if (matches(match + '/media-files')) return noQuery && method === 'POST';
   if (matches(match + '/media-files/' + uuidPattern + '/commands'))
     return noQuery && method === 'POST';
-  if (matches(match + '/media/' + uuidPattern + '/commands')) return noQuery && method === 'POST';
+  if (matches(match + '/media/' + uuidPattern + '/(commands|markers)'))
+    return noQuery && method === 'POST';
   if (matches(org + '/events/' + uuidPattern + '/matches')) return paged;
   if (matches(org + '/teams')) return method === 'GET' ? paged : noQuery && method === 'POST';
   if (matches(org + '/teams/' + uuidPattern)) return noQuery && ['GET', 'PATCH'].includes(method);
@@ -340,24 +341,29 @@ function createClient(wxApi) {
   return {
     request,
     download(path) {
+      // Private file content only: registration files (PDF/images) and match media (images/MP4).
       const content = new RegExp(
         '^/v1/orgs/' +
           uuidPattern +
-          '/entries/' +
+          '/(entries|matches)/' +
           uuidPattern +
           '/media-files/' +
           uuidPattern +
           '/content$',
         'i',
       );
-      if (!content.test(path))
-        return Promise.reject({ code: 'INVALID_PATH', message: '文件入口无效' });
+      const scope = (content.exec(path) || [])[1];
+      if (!scope) return Promise.reject({ code: 'INVALID_PATH', message: '文件入口无效' });
+      const allowed =
+        scope.toLowerCase() === 'matches'
+          ? ['image/png', 'image/jpeg', 'video/mp4']
+          : ['image/png', 'image/jpeg', 'application/pdf'];
       const started = revision;
       return new Promise((resolve, reject) =>
         wxApi.request({
           url: API_ORIGIN + path,
           method: 'GET',
-          timeout: 15000,
+          timeout: scope.toLowerCase() === 'matches' ? 60000 : 15000,
           responseType: 'arraybuffer',
           header: { Origin: API_ORIGIN, ...(cookie ? { Cookie: cookie } : {}) },
           success(response) {
@@ -381,7 +387,7 @@ function createClient(wxApi) {
               .toLowerCase();
             const data = response.data;
             if (
-              !['image/png', 'image/jpeg', 'application/pdf'].includes(contentType) ||
+              !allowed.includes(contentType) ||
               !data ||
               !Number.isSafeInteger(data.byteLength) ||
               data.byteLength < 1 ||
