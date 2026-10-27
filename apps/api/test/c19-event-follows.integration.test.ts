@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import type { EventScoringData, FollowData, TeamData } from '@small-city-basketball/contracts';
-import { PASSWORD, call, data, error } from './support.js';
+import { PASSWORD, call, data, error, sessionCookie } from './support.js';
 import type { User } from './support.js';
 import { allocate, court, frozen, fullAllocations, publish, revision } from './p04-support.js';
 import { defaultRules, scoringRulesPath } from './p05-support.js';
@@ -295,7 +295,7 @@ describe('C19 event follows on isolated PostgreSQL', { concurrent: false }, () =
     const login = await call(h.api, 'post', '/v1/auth/login', {
       body: { email: h.leader.email, password: PASSWORD },
     });
-    const second = login.headers['set-cookie'][0].split(';')[0];
+    const second = sessionCookie(login);
     const reader: User = { ...h.leader, cookie: second };
     expect((await listAll(reader)).map((f) => f.followId)).toContain(mine.followId);
     data(await call(h.api, 'post', '/v1/auth/logout', { cookie: second }));
