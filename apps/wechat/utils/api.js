@@ -220,6 +220,87 @@ function pathAllowed(path, method = 'GET') {
   if (matches(org + '/entries/' + uuidPattern + '/media-files/' + uuidPattern + '/content'))
     return noQuery && method === 'GET';
   if (matches('/v1/invitations/' + uuidPattern + '/accept')) return noQuery && method === 'POST';
+  // C19 (docs/design/C19_CONTRACTS.md). Every route below is re-authorized server-side.
+  // Media request idempotency and chunked upload sessions (match media only).
+  if (matches(match + '/(media-file-requests|media-requests|media-upload-sessions)'))
+    return noQuery && method === 'POST';
+  if (matches(match + '/(media-file-requests|media-requests)/' + uuidPattern))
+    return noQuery && method === 'GET';
+  if (matches(match + '/media-upload-sessions/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(match + '/media-upload-sessions/' + uuidPattern + '/(complete|cancel)'))
+    return noQuery && method === 'POST';
+  if (matches(match + '/media-upload-sessions/' + uuidPattern + '/chunks/(0|[1-9][0-9]?)'))
+    return noQuery && method === 'PUT';
+  // Team requests, join codes, member bindings and historical member claims.
+  const me = '/v1/me';
+  if (matches(org + '/(team-request-links|team-requests)')) {
+    if (base.endsWith('/team-request-links'))
+      return method === 'POST' ? noQuery : noQuery && method === 'GET';
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['status']) &&
+      (!('status' in query) ||
+        ['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN'].includes(query.status))
+    );
+  }
+  if (matches(org + '/team-request-links/' + uuidPattern + '/revoke'))
+    return noQuery && method === 'POST';
+  if (matches(org + '/team-requests/' + uuidPattern + '/review'))
+    return noQuery && method === 'POST';
+  if (['/v1/team-request-links/resolve', '/v1/team-requests', '/v1/team-joins'].includes(base))
+    return noQuery && method === 'POST';
+  if ([me + '/team-requests', me + '/member-claims', me + '/memberships'].includes(base))
+    return noQuery && method === 'GET';
+  if (matches(me + '/team-requests/' + uuidPattern + '/withdraw'))
+    return noQuery && method === 'POST';
+  if (matches(me + '/member-claims/' + uuidPattern + '/(accept|decline)'))
+    return noQuery && method === 'POST';
+  if (matches(me + '/memberships/' + uuidPattern + '/team')) return noQuery && method === 'GET';
+  if (matches(me + '/memberships/' + uuidPattern + '/leave')) return noQuery && method === 'POST';
+  const team = org + '/teams/' + uuidPattern;
+  if (matches(team + '/join-codes')) return noQuery && ['GET', 'POST'].includes(method);
+  if (matches(team + '/join-codes/' + uuidPattern + '/revoke')) return noQuery && method === 'POST';
+  if (matches(team + '/member-bindings')) return noQuery && method === 'GET';
+  if (matches(team + '/member-bindings/' + uuidPattern + '/remove'))
+    return noQuery && method === 'POST';
+  if (matches(team + '/members/' + uuidPattern + '/claims')) return noQuery && method === 'POST';
+  if (matches(team + '/member-claims/' + uuidPattern + '/revoke'))
+    return noQuery && method === 'POST';
+  // Event follows (own account only).
+  if (base === me + '/follows')
+    return method === 'POST'
+      ? noQuery
+      : method === 'GET' &&
+          queryAllowed(query, ['limit', 'cursor']) &&
+          (!('limit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit)) &&
+          (!('cursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.cursor));
+  if (base === me + '/follows/lookup')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['publicEventId']) &&
+      /^[A-Za-z0-9_-]{43}$/.test(query.publicEventId || '')
+    );
+  if (matches(me + '/follows/' + uuidPattern + '/cancel')) return noQuery && method === 'POST';
+  // Private seasons and independent PRIVATE_SEASON data grants.
+  if (matches(org + '/seasons')) return noQuery && ['GET', 'POST'].includes(method);
+  if (matches(org + '/seasons/' + uuidPattern)) return noQuery && ['GET', 'PATCH'].includes(method);
+  if (matches(org + '/seasons/' + uuidPattern + '/commands')) return noQuery && method === 'POST';
+  if (matches(org + '/seasons/' + uuidPattern + '/player-statistics'))
+    return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/season-data-grants'))
+    return noQuery && ['GET', 'POST'].includes(method);
+  if (matches(org + '/season-data-grants/' + uuidPattern + '/withdraw'))
+    return noQuery && method === 'POST';
+  if (base === me + '/season-data-grants') return noQuery && method === 'GET';
+  if (matches(me + '/season-data-grants/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  if (base === me + '/season-statistics')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['orgId', 'seasonId']) &&
+      uuidRegex.test(query.orgId || '') &&
+      uuidRegex.test(query.seasonId || '')
+    );
   return (
     method === 'GET' &&
     /^\/v1\/public\/events\/[A-Za-z0-9_-]{43}(?:\/(standings|knockout|groups|schedule|matches\/[A-Za-z0-9_-]{43}(?:\/media)?))?(?:\?limit=50(?:&cursor=[A-Za-z0-9_%.-]+)?)?$/.test(
