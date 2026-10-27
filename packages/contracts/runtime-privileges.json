@@ -166,6 +166,10 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["revoked_at", "revoke_reason"]
     },
+    "event_follows": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "cancelled_at"]
+    },
     "event_rulesets": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
