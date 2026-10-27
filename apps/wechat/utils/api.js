@@ -314,7 +314,11 @@ function createClient(wxApi) {
     actor = null;
   const listeners = new Set();
   function notify(reason) {
-    for (const listener of listeners) {
+    // Iterate a snapshot: a listener that re-subscribes while being notified (ui.subscribe on a
+    // page reset) would otherwise be appended to the live Set and revisited without end. A
+    // listener removed earlier in this same notification no longer runs.
+    for (const listener of Array.from(listeners)) {
+      if (!listeners.has(listener)) continue;
       try {
         listener(revision, reason);
       } catch {
