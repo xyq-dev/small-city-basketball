@@ -57,7 +57,7 @@
 | 正式改期（冲突、历史、原发布保留） | P04-B | org-match → reschedule | `rescheduling`、`reschedule-commands` | 已验证 | API-M | — |
 | 场地新增、改名、停用、启用 | P04-A | schedule“场地管理” | `POST/PATCH courts` | 已验证 | API-M（改名；有未来比赛时停用被服务端拒绝）、VM | — |
 | 单场人员分配（记分员、复核人） | P05-A | org-match | `PUT matches/:m/staff/:u` | 已验证（机构负责人） | API-E | 非负责人管理员无成员列表权限（服务端规则 `listMembers` 仅 OWNER），页面提示在 Web 分配 |
-| 赛事级工作人员（EVENT_MANAGER 等）授权 | P02 | 无 | `PUT events/:e/staff/:u` | **缺交互**（Web 也未提供） | — | 无既定交互需求，且成员列表同上限制；本期不做 |
+| 赛事级工作人员（EVENT_MANAGER 等）授权 | P02 | 无 | `PUT events/:e/staff/:u` | **缺交互**（Web 也未提供） | — | 尚未纳入该轮交互和权限实施；成员列表同上限制（C19 订正：[产品需求 §2](../PRODUCT_REQUIREMENTS.md#2-角色与权限边界)确有机构管理员管理工作人员、赛事管理员等角色要求；准确状态是“尚未纳入该轮交互和权限实施”，不是“没有需求”） |
 | 机构成员与角色维护 | P01 | 无 | `GET/PUT members` | **缺交互** | — | 属机构权限配置，本期按约定不在小程序修改 |
 | 准备比赛、记分台、租约、计时、撤销、补录、结束 | P05-A、C02 | org-match、scorer、scoring-tasks | `commands`、`scorekeeper-lease` | 已验证 | API-E（含丢失响应按原 commandId 恢复） | 真机弱网 |
 | 独立确认、重开 | P05-A | org-match | `CONFIRM_RESULT`、`REOPEN_RESULT` | 已验证 | API-E、API-M | — |
