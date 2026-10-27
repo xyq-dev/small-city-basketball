@@ -438,3 +438,78 @@ test('a later page failing keeps the events already read and says the list is in
   assert.match(h.page.data.failures[0].message, /后续赛事读取未完成，仅显示已读取的 2 届/);
   h.unload();
 });
+
+// ---------- court maintenance on the schedule page ----------
+test('courts: rename and disable pin the version, need confirmation and stay server-checked', async () => {
+  const courtA = '66666666-6666-4666-8666-666666666661';
+  const courtB = '66666666-6666-4666-8666-666666666662';
+  const evBase = '/v1/orgs/' + org + '/events/' + eventId;
+  const courts = [
+    { id: courtA, name: '一号场', status: 'ACTIVE', version: 4, capabilities: { canManage: true } },
+    {
+      id: courtB,
+      name: '旧场',
+      status: 'DISABLED',
+      version: 2,
+      capabilities: { canManage: false },
+    },
+  ];
+  const bodies = [];
+  const answers = [true, false];
+  const wx = createWx({
+    modalAnswers: answers,
+    request(options) {
+      const url = options.url.replace(/^https:\/\/[^/]+/, '');
+      const key = (options.method || 'GET') + ' ' + url;
+      if (options.method === 'PATCH') bodies.push(JSON.parse(JSON.stringify(options.data)));
+      if (url === '/v1/auth/session')
+        return ok(session([{ id: org, name: '合成机构', role: 'ORG_OWNER' }]));
+      if (key === 'GET ' + evBase + '/scheduling')
+        return ok({
+          event: {
+            id: eventId,
+            name: '合成赛事',
+            status: 'REGISTRATION_FROZEN',
+            version: 5,
+            startDate: '2028-03-01',
+            endDate: '2028-03-02',
+            format: 'ROUND_ROBIN',
+          },
+          freeze: null,
+          currentRevision: null,
+          publication: null,
+          support: { supported: true, reason: null },
+          capabilities: { canGenerate: true, canRedraw: false, canReadMatches: true },
+        });
+      if (key === 'GET /v1/orgs/' + org + '/courts?limit=100')
+        return ok(courts, { capabilities: { canCreateCourt: true } });
+      if (key === 'PATCH /v1/orgs/' + org + '/courts/' + courtA)
+        return ok({ ...courts[0], version: 5 });
+      return { statusCode: 404, data: { error: { code: 'TEST_UNHANDLED', message: key } } };
+    },
+  });
+  const h = loadPage({ root, route: 'pages/schedule/index', wx });
+  await h.requireLocal('utils/api.js').getClient().request('/v1/auth/session');
+  h.page.onLoad({ orgId: org, eventId });
+  await h.flush();
+  assert.deepEqual(
+    h.page.data.courtAdmin.map((c) => c.name),
+    ['一号场'],
+    'only courts this identity may manage',
+  );
+  h.page.askRename(tap({ id: courtA }));
+  h.page.renameInput(tap({}, { value: '一号主场' }));
+  await h.page.saveRename();
+  await h.flush();
+  assert.deepEqual(bodies[0], { expectedVersion: 4, name: '一号主场', status: 'ACTIVE' });
+  // First confirmation accepted (disable), second declined (nothing sent).
+  answers.length = 0;
+  answers.push(true, false);
+  await h.page.toggleCourtStatus(tap({ id: courtA }));
+  await h.flush();
+  assert.deepEqual(bodies[1], { expectedVersion: 4, name: '一号场', status: 'DISABLED' });
+  await h.page.toggleCourtStatus(tap({ id: courtA }));
+  await h.flush();
+  assert.equal(bodies.length, 2, 'a declined confirmation sends nothing');
+  h.unload();
+});

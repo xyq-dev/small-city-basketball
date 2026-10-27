@@ -22,6 +22,9 @@ const privateDefaults = {
   unavailable: false,
   newCourt: '',
   canCreateCourt: false,
+  courtAdmin: [],
+  renameId: '',
+  renameValue: '',
   redrawOpen: false,
   redrawReason: '',
   format: '',
@@ -201,6 +204,17 @@ Page({
             on: (this.data.courts.find((o) => o.id === c.id) || {}).on !== false,
           })),
         canCreateCourt,
+        // Court maintenance (rename, disable, re-enable): every court the server lets this
+        // identity manage, including disabled ones. Conflicts on published matches stay
+        // server-side (COURT_DISABLED in validation and rescheduling).
+        courtAdmin: courts
+          .filter((c) => c.capabilities && c.capabilities.canManage)
+          .map((c) => ({
+            id: c.id,
+            name: c.name,
+            version: c.version,
+            active: c.status === 'ACTIVE',
+          })),
         form: this.data.form || {
           dayStart: '09:00',
           dayEnd: '21:00',
@@ -282,6 +296,55 @@ Page({
         await this.load();
       return null;
     }
+  },
+  askRename(e) {
+    const court = this.data.courtAdmin.find((c) => c.id === e.currentTarget.dataset.id);
+    if (court)
+      this.setData({
+        renameId: this.data.renameId === court.id ? '' : court.id,
+        renameValue: court.name,
+      });
+  },
+  renameInput(e) {
+    this.setData({ renameValue: String(e.detail.value || '').slice(0, 80) });
+  },
+  async updateCourt(court, name, active, label) {
+    if (
+      await this.run(
+        this.org() + '/courts/' + court.id,
+        'PATCH',
+        { expectedVersion: court.version, name, status: active ? 'ACTIVE' : 'DISABLED' },
+        label,
+      )
+    ) {
+      this.setData({ renameId: '', renameValue: '' });
+      await this.load();
+    }
+  },
+  async saveRename() {
+    const court = this.data.courtAdmin.find((c) => c.id === this.data.renameId);
+    const name = this.data.renameValue.trim();
+    if (!court || !name || name === court.name) return;
+    await this.updateCourt(court, name, court.active, '场地改名');
+  },
+  async toggleCourtStatus(e) {
+    const court = this.data.courtAdmin.find((c) => c.id === e.currentTarget.dataset.id);
+    if (!court) return;
+    if (
+      !(await ui.confirm(
+        court.active ? '停用场地“' + court.name + '”' : '重新启用“' + court.name + '”',
+        court.active
+          ? '停用后不能再安排新比赛；已安排在该场地的比赛会在校验、发布或改期时报“场地已停用”，需改到其他场地。'
+          : '启用后可重新用于排赛与改期。',
+      ))
+    )
+      return;
+    await this.updateCourt(
+      court,
+      court.name,
+      !court.active,
+      court.active ? '场地停用' : '场地启用',
+    );
   },
   async addCourt() {
     const name = this.data.newCourt.trim();

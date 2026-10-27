@@ -159,6 +159,7 @@ function pathAllowed(path, method = 'GET') {
     return noQuery && method === 'POST';
   if (matches(org + '/events/' + uuidPattern + '/scheduling')) return noQuery && method === 'GET';
   if (matches(org + '/courts')) return method === 'GET' ? paged : noQuery && method === 'POST';
+  if (matches(org + '/courts/' + uuidPattern)) return noQuery && method === 'PATCH';
   const revision = org + '/schedule-revisions/' + uuidPattern;
   if (matches(revision)) return noQuery && method === 'GET';
   if (matches(revision + '/allocations')) return noQuery && method === 'PUT';

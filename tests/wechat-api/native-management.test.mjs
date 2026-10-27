@@ -659,4 +659,26 @@ test('single elimination with a bye: native first round, then the final round', 
   assert.equal(bracket.page.data.error, '');
   assert.equal(bracket.page.data.rounds[1].published, true);
   snapshot(bracket, 'bracket-knockout');
+
+  // C16: shared court maintenance from the schedule page (rename, disable, re-enable).
+  const courts = owner.open('pages/schedule/index', { orgId: org, eventId: event.id });
+  await owner.settle(courts);
+  const court = courts.page.data.courtAdmin[0];
+  assert.ok(court, courts.page.data.error);
+  courts.page.askRename(tap({ id: court.id }));
+  courts.page.renameInput(tap({}, { value: '合成主场' }));
+  await courts.page.saveRename();
+  await owner.settle(courts);
+  const serverCourt = async () =>
+    (await call(`${root}/courts?limit=100`, { cookie: ownerCookie })).data.find(
+      (c) => c.id === court.id,
+    );
+  assert.equal((await serverCourt()).name, '合成主场', courts.page.data.error);
+  // A court with future formal matches cannot be disabled: the server refuses and the page
+  // shows why; nothing changes.
+  owner.approve();
+  await courts.page.toggleCourtStatus(tap({ id: court.id }));
+  await owner.settle(courts);
+  assert.match(courts.page.data.error, /仍有未来或进行中的正式预约/);
+  assert.equal((await serverCourt()).status, 'ACTIVE');
 });
