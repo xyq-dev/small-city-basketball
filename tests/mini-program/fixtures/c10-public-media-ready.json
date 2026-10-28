@@ -3,7 +3,7 @@
   "route": "pages/media/index",
   "state": "ready",
   "figmaNode": "9:421",
-  "expectText": ["比赛回放与人工片段", "打开赛事选择比赛"],
+  "expectText": ["最近观看的赛事", "去赛事页"],
   "data": {},
   "static": true,
   "referenceKind": "derived",

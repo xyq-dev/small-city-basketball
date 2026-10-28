@@ -1,0 +1,70 @@
+{
+  "name": "platform-org-event-standings",
+  "route": "pages/org-event/index",
+  "state": "ready",
+  "designSource": "synthetic:platform-alignment",
+  "static": true,
+  "expectText": ["积分排名", "正式积分", "已确认 3 / 6 场", "打开公开观赛页"],
+  "data": {
+    "tab": "ranking",
+    "event": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "name": "合成青锋杯 · 冬季赛",
+      "format": "ROUND_ROBIN",
+      "status": "RUNNING",
+      "statusLabel": "比赛进行中",
+      "formatLabel": "单循环赛事",
+      "dateLabel": "11/01–11/03",
+      "venueName": "合成体育馆"
+    },
+    "matches": [],
+    "scheduleError": "",
+    "ranking": {
+      "kind": "standings",
+      "modeLabel": "正式积分 · 仅计入独立确认的赛果",
+      "progress": "已确认 3 / 6 场",
+      "rows": [
+        {
+          "key": "r1",
+          "rankLabel": "1",
+          "teamName": "合成石鼓青锋",
+          "tied": false,
+          "record": "2胜0负",
+          "points": 4,
+          "diff": "+21"
+        },
+        {
+          "key": "r2",
+          "rankLabel": "2",
+          "teamName": "合成高州猛龙",
+          "tied": true,
+          "record": "1胜1负",
+          "points": 3,
+          "diff": "+2"
+        },
+        {
+          "key": "r3",
+          "rankLabel": "2",
+          "teamName": "合成城东联队",
+          "tied": true,
+          "record": "1胜1负",
+          "points": 3,
+          "diff": "+2"
+        },
+        {
+          "key": "r4",
+          "rankLabel": "暂列",
+          "teamName": "合成长名称球队用于检查换行",
+          "tied": false,
+          "record": "0胜2负",
+          "points": 2,
+          "diff": "-25"
+        }
+      ]
+    },
+    "rankingError": "",
+    "stats": null,
+    "statsError": "",
+    "publicEventId": "pppppppppppppppppppppppppppppppppppppppppp1"
+  }
+}

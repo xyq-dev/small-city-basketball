@@ -40,14 +40,14 @@ test('custom-header respects pending-operation locks and actual status/capsule g
   assert.equal(h.instance.data.statusBarHeight, 38);
 });
 
-test('home position shortcuts pass only finite positions, while expanded services retain original entries', () => {
+test('home position shortcuts pass only finite positions, while the booking extension retains original entries', () => {
   const h = loadPage({ root, route: 'pages/home/index' });
   h.page.position({ currentTarget: { dataset: { position: '__proto__' } } });
   assert.equal(h.wx.calls.length, 0);
   h.page.position({ currentTarget: { dataset: { position: 'PG' } } });
   assert.ok(h.wx.calls.some((call) => call.url === '/pages/players/index?position=PG'));
-  h.page.moreToggle();
   const preview = buildPreview({ root, route: 'pages/home/index', data: h.page.data });
+  assert.match(preview.phone, /扩展服务/);
   assert.match(preview.phone, /查看我的预约/);
   assert.match(preview.phone, /进入本人球员中心/);
   assert.match(preview.phone, /不自动加入赛事报名名单/);

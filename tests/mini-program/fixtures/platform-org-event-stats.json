@@ -1,0 +1,88 @@
+{
+  "name": "platform-org-event-stats",
+  "route": "pages/org-event/index",
+  "state": "ready",
+  "designSource": "synthetic:platform-alignment",
+  "static": true,
+  "expectText": ["本届得分榜", "合成林越", "名单场次", "未统计", "存在未归属到个人的得分或犯规"],
+  "data": {
+    "tab": "stats",
+    "event": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "name": "合成青锋杯 · 冬季赛",
+      "format": "ROUND_ROBIN",
+      "status": "RUNNING",
+      "statusLabel": "比赛进行中",
+      "formatLabel": "单循环赛事",
+      "dateLabel": "11/01–11/03",
+      "venueName": "合成体育馆"
+    },
+    "matches": [],
+    "scheduleError": "",
+    "ranking": null,
+    "rankingError": "",
+    "publicEventId": "",
+    "statsError": "",
+    "stats": {
+      "empty": false,
+      "progress": "已纳入 3 / 6 场",
+      "coverageLabel": "部分比赛仅记录球队比分或尚待确认，个人数据不完整",
+      "attributionLabel": "存在未归属到个人的得分或犯规",
+      "pendingLabel": "1 场待确认，未纳入",
+      "truncated": false,
+      "teams": [],
+      "rows": [
+        {
+          "key": "p1",
+          "rankLabel": "1",
+          "name": "合成林越",
+          "jerseyNo": "7",
+          "teamName": "合成石鼓青锋",
+          "score": 41,
+          "fouls": 5,
+          "samples": 3
+        },
+        {
+          "key": "p2",
+          "rankLabel": "2",
+          "name": "合成陈凯",
+          "jerseyNo": "11",
+          "teamName": "合成高州猛龙",
+          "score": 33,
+          "fouls": 7,
+          "samples": 3
+        },
+        {
+          "key": "p3",
+          "rankLabel": "并列3",
+          "name": "合成周远",
+          "jerseyNo": "23",
+          "teamName": "合成城东联队",
+          "score": 28,
+          "fouls": 4,
+          "samples": 2
+        },
+        {
+          "key": "p4",
+          "rankLabel": "并列3",
+          "name": "合成黄一鸣",
+          "jerseyNo": "0",
+          "teamName": "合成石鼓青锋",
+          "score": 28,
+          "fouls": 2,
+          "samples": 3
+        },
+        {
+          "key": "p5",
+          "rankLabel": "5",
+          "name": "合成长名字球员用于检查换行",
+          "jerseyNo": "99",
+          "teamName": "合成长名称球队用于检查换行",
+          "score": 0,
+          "fouls": 0,
+          "samples": 1
+        }
+      ]
+    }
+  }
+}

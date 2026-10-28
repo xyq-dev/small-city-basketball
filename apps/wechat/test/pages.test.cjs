@@ -11,7 +11,8 @@ function page(name, request, clock = Date) {
     Page(v) {
       definition = v;
     },
-    require() {
+    require(specifier) {
+      if (specifier.endsWith('/recent')) return { remember() {}, forget() {}, list: () => [] };
       return {
         ...core,
         getClient() {

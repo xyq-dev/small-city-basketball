@@ -1,0 +1,167 @@
+{
+  "name": "c15-schedule-groups-draft",
+  "route": "pages/schedule/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": [
+    "分组结果（服务端回放，发布前核对）",
+    "发布前锁定组内积分规则",
+    "设置组内积分规则"
+  ],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "校验通过，可以发布。",
+    "event": {
+      "name": "合成分组杯",
+      "statusLabel": "报名已关闭",
+      "dates": "2028-04-01 至 2028-04-03",
+      "teams": 6
+    },
+    "state": "draft",
+    "supportReason": "",
+    "publication": null,
+    "courts": [
+      {
+        "id": "e21db07e-fa79-4738-b73a-a8af6d92ea69",
+        "name": "合成一号场",
+        "on": true
+      }
+    ],
+    "form": {
+      "dayStart": "09:00",
+      "dayEnd": "21:00",
+      "slot": "60",
+      "rest": "0",
+      "gap": "0"
+    },
+    "revision": {
+      "id": "c8e1516d-04e0-4afe-a35a-6eb648d238b6",
+      "status": "DRAFT",
+      "rounds": 3,
+      "count": 6,
+      "canEdit": true,
+      "canValidate": true,
+      "canPublish": true,
+      "canRedraw": true
+    },
+    "fixtures": [
+      {
+        "key": "R1-P2",
+        "round": "第1轮",
+        "home": "合成二队",
+        "away": "合成三队",
+        "time": "04-01 09:00",
+        "court": "合成一号场",
+        "assigned": true
+      },
+      {
+        "key": "R1-P4",
+        "round": "第1轮",
+        "home": "合成五队",
+        "away": "合成六队",
+        "time": "04-01 10:00",
+        "court": "合成一号场",
+        "assigned": true
+      },
+      {
+        "key": "R2-P1",
+        "round": "第2轮",
+        "home": "合成一队",
+        "away": "合成三队",
+        "time": "04-01 11:00",
+        "court": "合成一号场",
+        "assigned": true
+      },
+      {
+        "key": "R2-P3",
+        "round": "第2轮",
+        "home": "合成四队",
+        "away": "合成六队",
+        "time": "04-01 12:00",
+        "court": "合成一号场",
+        "assigned": true
+      },
+      {
+        "key": "R3-P1",
+        "round": "第3轮",
+        "home": "合成一队",
+        "away": "合成二队",
+        "time": "04-01 13:00",
+        "court": "合成一号场",
+        "assigned": true
+      },
+      {
+        "key": "R3-P3",
+        "round": "第3轮",
+        "home": "合成四队",
+        "away": "合成五队",
+        "time": "04-01 14:00",
+        "court": "合成一号场",
+        "assigned": true
+      }
+    ],
+    "conflicts": [],
+    "validated": true,
+    "unavailable": false,
+    "newCourt": "",
+    "canCreateCourt": true,
+    "redrawOpen": false,
+    "redrawReason": "",
+    "format": "GROUP_KNOCKOUT",
+    "groupCounts": [
+      {
+        "value": 2,
+        "label": "2 组"
+      }
+    ],
+    "groupIndex": 0,
+    "seeds": [
+      {
+        "id": "3b264287-d1c0-4baa-a484-e9ef63f53fbf",
+        "name": "合成一队",
+        "on": true
+      },
+      {
+        "id": "af856c45-059a-43d0-8115-20a80b98c7f0",
+        "name": "合成二队",
+        "on": false
+      },
+      {
+        "id": "dd875b8e-374b-47df-9d3d-b58c51b24483",
+        "name": "合成三队",
+        "on": false
+      },
+      {
+        "id": "6bfc5490-176b-4d0c-8785-287971043daf",
+        "name": "合成四队",
+        "on": false
+      },
+      {
+        "id": "8a1708b3-8a0e-40db-a0f5-85e3cf2015b7",
+        "name": "合成五队",
+        "on": false
+      },
+      {
+        "id": "f21ab9bf-fc0b-4117-8cbd-077ccb2a64ae",
+        "name": "合成六队",
+        "on": false
+      }
+    ],
+    "draftGroups": [
+      {
+        "key": "A",
+        "label": "A组",
+        "teams": "合成一队、合成三队、合成二队"
+      },
+      {
+        "key": "B",
+        "label": "B组",
+        "teams": "合成六队、合成五队、合成四队"
+      }
+    ],
+    "byes": ""
+  }
+}

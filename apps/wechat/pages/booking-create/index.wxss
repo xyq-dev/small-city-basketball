@@ -50,6 +50,7 @@
 .selected-player { display:flex; align-items:center; gap:12px; width:100%; padding:12px; min-height:84px; margin:0 0 8px; background:#fff; border-radius:12px; text-align:left; box-shadow:0 3px 12px rgba(19,44,73,.03); }
 .selected-player:last-child { margin-bottom:0; }
 .selected-player::after,.summary-row::after { border:0; }
+.selected-players .selected-player,.arrangement-summary .summary-row { width:100%; margin-left:0; margin-right:0; }
 .selected-portrait { display:block; flex:0 0 54px; width:54px; height:60px; border-radius:7px; background:#e8eef5; }
 .selected-copy { min-width:0; flex:1; }
 .selected-name { font-size:18px; line-height:24px; font-weight:700; overflow-wrap:anywhere; }

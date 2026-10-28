@@ -1,0 +1,85 @@
+{
+  "name": "c15-bracket-knockout",
+  "route": "pages/bracket/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["轮空晋级", "已发布"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "第2轮已正式发布；请重新开启公开观赛。",
+    "event": {
+      "name": "合成淘汰杯",
+      "statusLabel": "比赛进行中",
+      "formatLabel": "单淘汰赛事"
+    },
+    "kind": "SINGLE_ELIMINATION",
+    "progress": "1 / 2 场有效独立确认 · 已发布 2 场",
+    "qualification": "",
+    "groups": [],
+    "rounds": [
+      {
+        "key": "1",
+        "label": "半决赛",
+        "published": true,
+        "slots": [
+          {
+            "key": "R1-P1",
+            "matchId": "",
+            "bye": true,
+            "home": "合成七队",
+            "away": "轮空",
+            "status": "BYE",
+            "statusLabel": "轮空晋级",
+            "winner": "合成七队"
+          },
+          {
+            "key": "R1-P2",
+            "matchId": "c2022d87-b81c-42cd-920f-bd9723df948a",
+            "bye": false,
+            "home": "合成八队",
+            "away": "合成九队",
+            "status": "FINAL",
+            "statusLabel": "本场已结束",
+            "winner": "合成八队"
+          }
+        ]
+      },
+      {
+        "key": "2",
+        "label": "决赛",
+        "published": true,
+        "slots": [
+          {
+            "key": "R2-P1",
+            "matchId": "482ece60-74d2-4d47-b3e6-860026f21369",
+            "bye": false,
+            "home": "合成七队",
+            "away": "合成八队",
+            "status": "SCHEDULED",
+            "statusLabel": "待开始",
+            "winner": ""
+          }
+        ]
+      }
+    ],
+    "placements": [],
+    "next": null,
+    "fixtures": [],
+    "courts": [
+      {
+        "id": "e21db07e-fa79-4738-b73a-a8af6d92ea69",
+        "name": "合成一号场"
+      }
+    ],
+    "reason": "",
+    "tieReasons": {},
+    "blocker": "等待当前轮次全部有效独立确认；下一轮由已确认胜者产生。",
+    "canDraw": false,
+    "conflicts": [],
+    "uncertain": false,
+    "unavailable": false
+  }
+}

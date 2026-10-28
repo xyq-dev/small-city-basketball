@@ -1,10 +1,24 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
+const events = require('../../utils/events');
+
+const privateEvents = {
+  signedIn: false,
+  featured: [],
+  eventTotal: 0,
+  hasOrganizations: false,
+  eventsError: '',
+};
 Page({
   data: {
     value: '',
     error: '',
-    moreOpen: false,
+    signedIn: false,
+    eventsLoading: false,
+    eventsError: '',
+    featured: [],
+    eventTotal: 0,
+    hasOrganizations: false,
     positions: [
       { code: 'PG', name: '控卫', icon: 'pos-pg' },
       { code: 'SG', name: '分卫', icon: 'pos-sg' },
@@ -13,11 +27,84 @@ Page({
       { code: 'C', name: '中锋', icon: 'pos-c' },
     ],
   },
+  onLoad() {
+    this._alive = true;
+  },
+  onShow() {
+    this.loadEvents();
+  },
+  onUnload() {
+    this._alive = false;
+    this._eventsLoad = (this._eventsLoad || 0) + 1;
+    ui.close(this);
+  },
+  // Called through ui.begin's session subscription on 401, logout or account switch.
+  onSessionReset() {
+    this._eventsLoad = (this._eventsLoad || 0) + 1;
+    this.setData({ eventsLoading: false, ...privateEvents });
+  },
+  async loadEvents() {
+    const client = api.getClient();
+    const load = (this._eventsLoad = (this._eventsLoad || 0) + 1);
+    const current = () => this._alive !== false && load === this._eventsLoad;
+    if (!client.hasSession()) {
+      this.setData({ eventsLoading: false, ...privateEvents });
+      return;
+    }
+    this.setData({ eventsLoading: true, eventsError: '' });
+    let session;
+    try {
+      session = await events.session(client);
+    } catch (error) {
+      if (current())
+        this.setData({
+          eventsLoading: false,
+          ...privateEvents,
+          signedIn: error.status !== 401,
+          eventsError: error.status === 401 ? '' : ui.message(error),
+        });
+      return;
+    }
+    if (!current()) return;
+    const token = ui.begin(this);
+    try {
+      const result = await events.load(client, session);
+      if (ui.live(this, token) && current())
+        this.setData({
+          eventsLoading: false,
+          ...privateEvents,
+          signedIn: true,
+          featured: result.featured,
+          eventTotal: result.total,
+          hasOrganizations: result.organizations.length > 0,
+        });
+    } catch (error) {
+      // A session change has already cleared the page through onSessionReset.
+      if (ui.live(this, token) && current())
+        this.setData({
+          eventsLoading: false,
+          ...privateEvents,
+          signedIn: true,
+          eventsError: ui.message(error),
+        });
+    }
+  },
+  openEvents() {
+    ui.open('watch');
+  },
+  openEvent(e) {
+    const { org, id } = e.currentTarget.dataset;
+    try {
+      ui.open('org-event', { orgId: api.uuid(org), eventId: api.uuid(id) });
+    } catch {
+      this.setData({ eventsError: '赛事入口无效，请刷新后重试。' });
+    }
+  },
+  login() {
+    ui.login('/pages/home/index');
+  },
   openPlayers() {
     ui.open('players');
-  },
-  moreToggle() {
-    this.setData({ moreOpen: !this.data.moreOpen });
   },
   position(e) {
     const position = e.currentTarget.dataset.position;

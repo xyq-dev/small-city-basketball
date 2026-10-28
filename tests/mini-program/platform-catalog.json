@@ -1,0 +1,76 @@
+{
+  "purpose": "Event-first platform alignment states for official WeChat DevTools UI capture. Synthetic data only; there is no user-approved design for these states yet.",
+  "scenarios": [
+    {
+      "name": "platform-home-events",
+      "baseRoute": "pages/home/index",
+      "title": "首页 · 我的赛事",
+      "selector": ".premium-home",
+      "probe": "合成青锋杯"
+    },
+    {
+      "name": "platform-home-lower",
+      "baseRoute": "pages/home/index",
+      "title": "首页 · 扩展服务（下滑）",
+      "selector": ".premium-home",
+      "probe": "扩展服务",
+      "scrollTop": 2000
+    },
+    {
+      "name": "platform-home-signed-out",
+      "baseRoute": "pages/home/index",
+      "title": "首页 · 未登录",
+      "selector": ".premium-home",
+      "probe": "登录后查看你参与的赛事"
+    },
+    {
+      "name": "platform-events-list",
+      "baseRoute": "pages/watch/index",
+      "title": "赛事 · 我的赛事列表",
+      "selector": ".watch-page",
+      "probe": "合成青锋杯"
+    },
+    {
+      "name": "platform-events-no-org",
+      "baseRoute": "pages/watch/index",
+      "title": "赛事 · 无机构身份",
+      "selector": ".watch-page",
+      "probe": "当前账号没有机构赛事身份"
+    },
+    {
+      "name": "platform-org-event-schedule",
+      "baseRoute": "pages/org-event/index",
+      "title": "赛事详情 · 赛程",
+      "selector": ".org-event-page",
+      "probe": "第1轮"
+    },
+    {
+      "name": "platform-org-event-standings",
+      "baseRoute": "pages/org-event/index",
+      "title": "赛事详情 · 积分排名",
+      "selector": ".org-event-page",
+      "probe": "正式积分"
+    },
+    {
+      "name": "platform-org-event-groups",
+      "baseRoute": "pages/org-event/index",
+      "title": "赛事详情 · 分组与淘汰",
+      "selector": ".org-event-page",
+      "probe": "A组"
+    },
+    {
+      "name": "platform-org-event-stats",
+      "baseRoute": "pages/org-event/index",
+      "title": "赛事详情 · 球员数据",
+      "selector": ".org-event-page",
+      "probe": "未统计"
+    },
+    {
+      "name": "platform-org-event-unavailable",
+      "baseRoute": "pages/org-event/index",
+      "title": "赛事详情 · 无权限",
+      "selector": ".org-event-page",
+      "probe": "无法查看该赛事"
+    }
+  ]
+}

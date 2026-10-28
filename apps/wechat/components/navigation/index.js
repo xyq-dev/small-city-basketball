@@ -7,7 +7,8 @@ const destinations = {
 Component({
   properties: {
     active: { type: String, value: 'Home' },
-    variant: { type: String, value: 'classic' },
+    // Kept for caller compatibility; every page renders the same icon bar.
+    variant: { type: String, value: 'premium' },
     disabled: { type: Boolean, value: false },
   },
   data: {

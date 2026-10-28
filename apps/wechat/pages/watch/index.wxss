@@ -13,3 +13,15 @@
 .guide-row > text { color:#ff6b2d; flex-shrink:0; }
 .guide-row > view { flex:1; min-width:0; }
 .watch-note { margin:0; }
+.watch-page > .watch-section-head { display:flex; align-items:baseline; justify-content:space-between; margin:4px 0 -8px; }
+.watch-section-head .subtitle { margin:0; font-size:16px; line-height:24px; font-weight:700; }
+.watch-panel button { margin:0; }
+.watch-group-label { margin:0 0 -12px; color:#617286; font-size:12px; line-height:20px; font-weight:600; }
+.watch-page > button.watch-event { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin:0; padding:16px; border-radius:12px; text-align:left; font-weight:400; }
+.page.watch-page button { width:100%; margin-left:0; margin-right:0; }
+.watch-event-main { flex:1; min-width:0; }
+.watch-event-name { font-size:16px; line-height:24px; font-weight:600; color:#132c49; overflow-wrap:anywhere; }
+.watch-event-status { flex:none; padding:2px 8px; border-radius:24px; background:#eaf0f7; color:#132c49; font-size:12px; line-height:20px; }
+.watch-event-status.live { background:#ff6b2d; color:#fff; }
+.watch-event-status.upcoming { background:#e7f5ee; color:#16734b; }
+.watch-event-status.cancelled { background:#fdecec; color:#b53333; }

@@ -42,3 +42,4 @@
 .skeleton.short { width:56%; }
 .expiry-hero .title { margin-bottom:12px; }
 @media (max-width:360px) { .date-row { flex-direction:column; gap:0; } }
+.resolution-picker { display:flex; align-items:center; justify-content:space-between; gap:8px; }

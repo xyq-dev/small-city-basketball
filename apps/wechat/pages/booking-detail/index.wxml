@@ -94,7 +94,7 @@
       </view>
       <block wx:if="{{form.needsResolution}}">
         <view class="field-label">独立处理结果</view>
-        <picker mode="selector" range="{{resolutionLabels}}" bindchange="resolution"><view class="field">{{form.resolutionLabel}}　⌄</view></picker>
+        <picker mode="selector" range="{{resolutionLabels}}" bindchange="resolution"><view class="field resolution-picker">{{form.resolutionLabel}}<scb-icon name="chevron-down" size="16"/></view></picker>
         <view class="small muted">平台身份不覆盖利益冲突限制，最终仍由服务端核验。确认完成须有本人到场且服务时段已结束。</view>
       </block>
       <block wx:if="{{form.needsReason}}">

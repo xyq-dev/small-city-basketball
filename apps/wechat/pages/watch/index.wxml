@@ -1,8 +1,63 @@
 <view class="page watch-page">
-  <view class="watch-intro"><view class="title">小城市，也有大主场</view><view class="watch-copy">从主办方的公开观赛入口，进入你的球赛主场。</view></view>
-  <view class="watch-panel"><view class="subtitle">打开一届赛事</view><view class="field-label">主办方观赛链接或公开编号</view><input class="field" value="{{value}}" bindinput="input" placeholder="粘贴已获授权的观赛链接" maxlength="300"/><view wx:if="{{error}}" class="notice warning watch-error"><view class="watch-strong">请核对观赛入口</view><view class="small">{{error}}</view></view><view class="muted">仅展示明确公开、授权仍有效的赛事。主办方撤销授权后停止展示。</view></view>
-  <button class="primary" bindtap="open">打开观赛入口</button>
-  <view class="watch-panel watch-guide"><view class="subtitle">你可以查看</view><view class="guide-row"><text>•</text><view><view class="watch-strong">正式赛程与比赛详情</view><view class="muted">核对时间、场地、对阵及当前有效比分</view></view></view><view class="guide-row"><text>•</text><view><view class="watch-strong">排名、晋级与已发布媒体</view><view class="muted">赛果以独立确认记录为准，媒体由主办方明确发布</view></view></view></view>
-  <view class="notice watch-note"><view class="watch-strong">使用主办方授权入口</view><view class="small">这里不列出私有赛事目录，不根据球队名称猜测观赛编号。</view></view>
+  <view class="watch-intro"><view class="title">小城市，也有大主场</view><view class="watch-copy">查看你参与的赛事、赛程、排名与数据；也可以打开主办方公开的观赛入口。</view></view>
+
+  <view class="watch-section-head"><view class="subtitle">我的赛事</view><text wx:if="{{signedIn && total}}" class="muted">共 {{total}} 届</text></view>
+  <view wx:if="{{loading && !sections.length}}" class="watch-panel"><view class="muted">正在读取你可访问的赛事…</view><view class="loading-lines"><view></view><view></view></view></view>
+  <view wx:elif="{{!signedIn}}" class="watch-panel">
+    <view class="watch-strong">登录后查看你参与的赛事</view>
+    <view class="muted">主办方、赛事负责人与工作人员可查看所属机构的赛程、排名和球员数据。未登录也可用下方公开观赛链接查看比分。</view>
+    <button class="primary" bindtap="login">登录 / 绑定微信</button>
+  </view>
+  <block wx:else>
+    <view wx:if="{{eventsError}}" class="notice warning watch-error"><view class="watch-strong">赛事暂时无法读取</view><view class="small">{{eventsError}}</view></view>
+    <view wx:elif="{{!organizations.length}}" class="watch-panel">
+      <view class="watch-strong">当前账号没有机构赛事身份</view>
+      <view class="muted">机构赛事只对主办方和获分配的工作人员开放，不会自动公开。球队负责人可从“我的球队”查看可报名赛事和本届报名。</view>
+      <button class="primary" bindtap="teams">进入我的球队{{teamCount ? '（' + teamCount + '支）' : ''}}</button>
+    </view>
+    <view wx:elif="{{!sections.length && !failures.length}}" class="watch-panel">
+      <view class="watch-strong">暂无你可访问的赛事</view>
+      <view class="muted">机构管理员可查看本机构全部赛事；其他工作人员仅显示被分配的赛事。</view>
+    </view>
+    <block wx:for="{{sections}}" wx:key="key" wx:for-item="section">
+      <view class="watch-group-label">{{section.label}} · {{section.events.length}}</view>
+      <button wx:for="{{section.events}}" wx:key="key" class="watch-event" data-org="{{item.orgId}}" data-id="{{item.id}}" bindtap="openEvent">
+        <view class="watch-event-main"><view class="watch-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · {{item.venueName}}</view><view class="muted">{{item.orgName}} · {{item.roleLabel}} · {{item.formatLabel}}</view></view>
+        <view class="watch-event-status {{item.group}}">{{item.statusLabel}}</view>
+      </button>
+    </block>
+    <view wx:for="{{failures}}" wx:key="orgId" class="notice warning small">{{item.orgName}}：{{item.message}}</view>
+    <button wx:for="{{creatable}}" wx:key="id" class="secondary" data-org="{{item.id}}" bindtap="createEvent">在 {{item.name}} 创建赛事</button>
+    <view wx:if="{{truncated.length}}" class="muted">部分机构的赛事超过500届，这里只列出每个机构的前500届：{{truncated}}。</view>
+  </block>
+
+  <view class="watch-section-head"><view class="subtitle">公开赛事</view><text wx:if="{{dir.loaded && dir.items.length}}" class="muted">已显示 {{dir.items.length}} 届</text></view>
+  <view class="mode-choice">
+    <button wx:for="{{dirGroups}}" wx:key="value" class="{{dir.group === item.value ? 'selected' : ''}}" data-group="{{item.value}}" bindtap="pickDirGroup" disabled="{{dir.loading}}">{{item.label}}</button>
+  </view>
+  <view class="watch-city-row">
+    <input class="field" value="{{dir.cityInput}}" bindinput="dirCityInput" bindconfirm="applyDirCity" placeholder="按城市筛选（可选）" maxlength="40"/>
+    <button class="secondary small-button" bindtap="applyDirCity" disabled="{{dir.loading}}">筛选</button>
+    <button wx:if="{{dir.city}}" class="quiet small-button" bindtap="clearDirCity" disabled="{{dir.loading}}">全部</button>
+  </view>
+  <view wx:if="{{dir.cityError}}" class="notice warning small">{{dir.cityError}}</view>
+  <view wx:if="{{dir.loading}}" class="watch-panel"><view class="muted">正在读取公开赛事…</view><view class="loading-lines"><view></view><view></view></view></view>
+  <view wx:elif="{{dir.error}}" class="notice warning watch-error"><view class="watch-strong">公开赛事暂时无法读取</view><view class="small">{{dir.error}}</view><button class="secondary" bindtap="loadDirectory">重新读取</button></view>
+  <view wx:elif="{{dir.loaded && !dir.items.length}}" class="watch-panel"><view class="muted">{{dir.city ? '“' + dir.city + '”' : ''}}暂无主办方公开的{{dir.group === 'LIVE' ? '进行中' : dir.group === 'UPCOMING' ? '即将开始' : '历史'}}赛事。</view></view>
+  <button wx:for="{{dir.items}}" wx:key="publicEventId" class="watch-event" data-id="{{item.publicEventId}}" bindtap="openDirectory">
+    <view class="watch-event-main"><view class="watch-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · {{item.venueName}}</view><view wx:if="{{item.displayCity}}" class="muted">{{item.displayCity}}</view></view>
+    <view class="watch-event-status {{item.group}}">{{item.statusLabel}}</view>
+  </button>
+  <view wx:if="{{dir.moreError}}" class="notice warning small">{{dir.moreError}}</view>
+  <button wx:if="{{dir.loaded && !dir.done && !dir.loading}}" class="quiet" bindtap="loadMoreDirectory" disabled="{{dir.loadingMore}}" loading="{{dir.loadingMore}}">{{dir.moreError ? '重试加载更多' : '加载更多'}}</button>
+  <view class="watch-section-head"><view class="subtitle">最近观看</view><text wx:if="{{recentEvents.length}}" class="muted" bindtap="clearRecent">清除</text></view>
+  <view wx:if="{{!recentEvents.length}}" class="watch-panel"><view class="muted">打开主办方分享的赛事卡片后，会在本机记住，方便再次查看。主办方撤销公开后自动移除。</view></view>
+  <button wx:for="{{recentEvents}}" wx:key="publicEventId" class="watch-event" data-id="{{item.publicEventId}}" bindtap="openRecent">
+    <view class="watch-event-main"><view class="watch-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · 公开观赛</view></view>
+    <scb-icon name="chevron-right" tone="gray" size="16"/>
+  </button>
+
+  <view class="watch-panel"><view class="subtitle">其他方式：粘贴观赛链接</view><view class="field-label">主办方观赛链接或公开编号</view><input class="field" value="{{value}}" bindinput="input" placeholder="粘贴已获授权的观赛链接" maxlength="300"/><view wx:if="{{error}}" class="notice warning watch-error"><view class="watch-strong">请核对观赛入口</view><view class="small">{{error}}</view></view><view class="muted">仅展示明确公开、授权仍有效的赛事。主办方撤销授权后停止展示。</view><button class="secondary" bindtap="open">打开观赛入口</button></view>
+  <view class="notice watch-note"><view class="watch-strong">关于公开赛事目录</view><view class="small">只列出主办方明确列入目录的赛事，不列出私有赛事，也不根据球队名称猜测观赛编号。主办方撤出目录后，已分享的观赛链接仍可打开；关闭公开观赛后链接失效。</view></view>
 </view>
 <scb-nav active="Events"/>

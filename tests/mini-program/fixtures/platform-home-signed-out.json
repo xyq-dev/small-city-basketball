@@ -1,0 +1,9 @@
+{
+  "name": "platform-home-signed-out",
+  "route": "pages/home/index",
+  "state": "signed-out",
+  "designSource": "synthetic:platform-alignment",
+  "static": true,
+  "expectText": ["我的赛事", "登录后查看你参与的赛事", "打开观赛链接", "按位置找球员"],
+  "data": {}
+}

@@ -22,6 +22,38 @@ test('native manifest routes are unique, local and include loadable Page/templat
   }
 });
 
+// The runtime sets these on every Page instance; a same-named method is replaced at runtime
+// (booking-detail once called this.route() and failed before reading the order).
+const builtIns = [
+  'route',
+  'options',
+  'data',
+  'setData',
+  'selectComponent',
+  'is',
+  '__wxExparserNodeId__',
+];
+test('page definitions never shadow built-in page instance properties', () => {
+  for (const route of manifest.pages) {
+    let definition;
+    new vm.Script(fs.readFileSync(path.join(root, route + '.js'), 'utf8')).runInNewContext({
+      Page(value) {
+        definition = value;
+      },
+      require: () => new Proxy({}, { get: () => () => ({}) }),
+      wx: {},
+      getApp: () => ({}),
+    });
+    for (const name of builtIns)
+      if (name !== 'data')
+        assert.equal(
+          Object.prototype.hasOwnProperty.call(definition, name),
+          false,
+          route + ': ' + name,
+        );
+  }
+});
+
 for (const route of manifest.pages) {
   test('native template and static event targets: ' + route, () => {
     const source = fs.readFileSync(path.join(root, route + '.wxml'), 'utf8');
@@ -43,6 +75,23 @@ for (const route of manifest.pages) {
     }
   });
 }
+
+test('component WXSS comments contain no semicolon; DevTools 3.17.4 then never starts AppService', () => {
+  // Reproduced 2026-10-26: "/* a; b */" in components/header/index.wxss left the simulator
+  // unresponsive to automation, while the same comment in a page stylesheet compiled normally.
+  const files = [];
+  (function collect(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) collect(file);
+      else if (entry.name.endsWith('.wxss')) files.push(file);
+    }
+  })(path.join(root, 'components'));
+  assert.ok(files.length > 0);
+  for (const file of files)
+    for (const [comment] of fs.readFileSync(file, 'utf8').matchAll(/\/\*[\s\S]*?\*\//g))
+      assert.doesNotMatch(comment, /;/, path.relative(root, file));
+});
 
 test('static WXML checks reject malformed branches, duplicate attributes and JS calls', () => {
   for (const invalid of [

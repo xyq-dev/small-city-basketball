@@ -1,6 +1,6 @@
 <view class="page match-page">
-  <view wx:if="{{loading &amp;&amp; !snapshot}}" class="match-panel public-state"><view class="state-tag">比赛资料</view><view class="title">正在读取最新赛况</view><view class="notice"><view class="state-strong">正在核对比分与服务器时钟</view><view class="small">读取完成前不使用示例比分，也不将旧资料标为最新。</view></view><view class="public-skeleton"></view><view class="public-skeleton short"></view><button class="primary" disabled>正在读取…</button></view>
-  <view wx:elif="{{!snapshot}}" class="match-panel public-state"><view class="state-tag warning">{{unavailable ? '请核对' : error ? '读取未完成' : '比赛资料'}}</view><view class="title">{{unavailable ? '该内容已停止公开' : error ? '暂时无法读取比赛' : '比赛资料尚未读取'}}</view><view class="notice {{error ? 'warning' : ''}}"><view>{{error || '请从当前有效的公开赛事选择一场比赛。'}}</view><view wx:if="{{unavailable}}" class="small">旧画面与媒体已清空，不回显已撤销的比赛资料。</view></view><button wx:if="{{error &amp;&amp; !unavailable}}" class="primary" bindtap="load">重新读取</button><button class="{{error &amp;&amp; !unavailable ? 'secondary' : 'primary'}}" bindtap="watch">返回观赛入口</button></view>
+  <view wx:if="{{loading && !snapshot}}" class="match-panel public-state"><view class="state-tag">比赛资料</view><view class="title">正在读取最新赛况</view><view class="notice"><view class="state-strong">正在核对比分与服务器时钟</view><view class="small">读取完成前不使用示例比分，也不将旧资料标为最新。</view></view><view class="public-skeleton"></view><view class="public-skeleton short"></view><button class="primary" disabled>正在读取…</button></view>
+  <view wx:elif="{{!snapshot}}" class="match-panel public-state"><view class="state-tag warning">{{unavailable ? '请核对' : error ? '读取未完成' : '比赛资料'}}</view><view class="title">{{unavailable ? '该内容已停止公开' : error ? '暂时无法读取比赛' : '比赛资料尚未读取'}}</view><view class="notice {{error ? 'warning' : ''}}"><view>{{error || '请从当前有效的公开赛事选择一场比赛。'}}</view><view wx:if="{{unavailable}}" class="small">旧画面与媒体已清空，不回显已撤销的比赛资料。</view></view><button wx:if="{{error && !unavailable}}" class="primary" bindtap="load">重新读取</button><button class="{{error && !unavailable ? 'secondary' : 'primary'}}" bindtap="watch">返回观赛入口</button></view>
   <block wx:else>
     <view wx:if="{{error}}" class="notice warning">{{error}}<view wx:if="{{stale}}" class="small">比分和计时资料已陈旧，请恢复连接后刷新。</view></view>
     <view wx:if="{{snapshot.resultStatus==='CONFIRMED'}}" class="match-panel confirmed-result">
@@ -21,7 +21,7 @@
         <view class="detail-item"><text class="detail-bullet">•</text><view class="detail-content"><view class="detail-title">{{snapshot.resultLabel}}</view><view class="muted">正式赛果须经独立人员确认</view></view></view>
         <view class="detail-item"><text class="detail-bullet">•</text><view class="detail-content"><view class="detail-title">未采集个人技术统计</view><view class="muted">不从球队比分推算个人数据</view></view></view>
       </view>
-      <view wx:if="{{snapshot.periods &amp;&amp; snapshot.periods.length}}" class="match-panel periods-panel"><view class="subtitle">分节比分</view><view class="period-row table-head"><text>节次</text><text>主队 : 客队</text></view><view wx:for="{{snapshot.periods}}" wx:key="period" class="period-row"><text>第{{item.period}}节</text><text class="numeric">{{item.home.score}} : {{item.away.score}}</text></view></view>
+      <view wx:if="{{snapshot.periods && snapshot.periods.length}}" class="match-panel periods-panel"><view class="subtitle">分节比分</view><view class="period-row table-head"><text>节次</text><text>主队 : 客队</text></view><view wx:for="{{snapshot.periods}}" wx:key="period" class="period-row"><text>第{{item.period}}节</text><text class="numeric">{{item.home.score}} : {{item.away.score}}</text></view></view>
       <button class="secondary" bindtap="ranking" disabled="{{loading}}">查看分组排名与晋级</button>
       <button class="secondary" data-tab="media" bindtap="tab" disabled="{{loading}}">查看比赛视频与图片</button>
     </block>
@@ -29,8 +29,8 @@
       <view wx:if="{{!media.length}}" class="match-panel public-state"><view class="subtitle">尚未发布媒体</view><view class="muted">主办方明确发布且授权有效的图片、小视频与片段定位，会在这里显示。</view></view>
       <view wx:for="{{media}}" wx:key="publicMediaId" class="match-panel published-media">
         <view class="subtitle">{{item.title}}</view><view class="muted">已发布媒体 · 不改变原比赛记录</view>
-        <image wx:if="{{item.kind==='IMAGE' &amp;&amp; item.src}}" class="media-image" src="{{item.src}}" mode="widthFix"/>
-        <video wx:if="{{item.kind==='VIDEO' &amp;&amp; item.src}}" id="media-{{item.publicMediaId}}" class="media-video" src="{{item.src}}" controls/>
+        <image wx:if="{{item.kind==='IMAGE' && item.src}}" class="media-image" src="{{item.src}}" mode="widthFix"/>
+        <video wx:if="{{item.kind==='VIDEO' && item.src}}" id="media-{{item.publicMediaId}}" class="media-video" src="{{item.src}}" controls/>
         <button wx:if="{{item.externalUrl}}" class="primary" data-id="{{item.publicMediaId}}" bindtap="copyExternal">复制外部媒体链接</button>
         <view wx:if="{{item.externalUrl}}" class="muted small">外链由主办方提供，不保证微信内播放；复制后无法收回已传播链接。</view>
         <block wx:if="{{item.markers.length}}"><view class="marker-heading">已发布的片段定位</view><view wx:for="{{item.markers}}" wx:key="publicMarkerId" wx:for-item="marker" class="detail-item"><text class="detail-bullet">•</text><view class="detail-content"><view class="detail-title">{{marker.label}}</view><button wx:if="{{item.kind==='VIDEO'}}" class="secondary" data-id="{{item.publicMediaId}}" data-marker="{{marker.publicMarkerId}}" bindtap="seekMarker">定位本场片段</button></view></view></block>

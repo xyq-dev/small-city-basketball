@@ -1,0 +1,43 @@
+{
+  "name": "platform-home-lower",
+  "route": "pages/home/index",
+  "state": "ready-scrolled",
+  "designSource": "synthetic:platform-alignment",
+  "static": true,
+  "expectText": [
+    "扩展服务",
+    "按位置找球员",
+    "查看我的预约",
+    "进入本人球员中心",
+    "不自动加入赛事报名名单"
+  ],
+  "data": {
+    "signedIn": true,
+    "eventsLoading": false,
+    "eventsError": "",
+    "hasOrganizations": true,
+    "eventTotal": 4,
+    "featured": [
+      {
+        "key": "11111111-1111-4111-8111-111111111111:33333333-3333-4333-8333-333333333333",
+        "id": "33333333-3333-4333-8333-333333333333",
+        "orgId": "11111111-1111-4111-8111-111111111111",
+        "orgName": "合成高州篮协",
+        "name": "合成青锋杯 · 冬季赛",
+        "statusLabel": "比赛进行中",
+        "group": "live",
+        "dateLabel": "11/01–11/03"
+      },
+      {
+        "key": "11111111-1111-4111-8111-111111111111:44444444-4444-4444-8444-444444444444",
+        "id": "44444444-4444-4444-8444-444444444444",
+        "orgId": "11111111-1111-4111-8111-111111111111",
+        "orgName": "合成高州篮协",
+        "name": "合成石鼓邀请赛",
+        "statusLabel": "赛程已发布",
+        "group": "upcoming",
+        "dateLabel": "11/20–11/22"
+      }
+    ]
+  }
+}

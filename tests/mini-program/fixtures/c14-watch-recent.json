@@ -1,0 +1,30 @@
+{
+  "name": "c14-watch-recent",
+  "route": "pages/watch/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["最近观看", "合成青锋杯"],
+  "data": {
+    "value": "",
+    "error": "",
+    "loading": false,
+    "recentEvents": [
+      {
+        "publicEventId": "cLK7B2OGQG4hkZGIoW_YNmE0Rm4Vbvexeyq9kINE7wU",
+        "name": "合成青锋杯",
+        "dateLabel": "03/01–03/02",
+        "openedAt": 1793034931842
+      }
+    ],
+    "signedIn": false,
+    "organizations": [],
+    "sections": [],
+    "failures": [],
+    "truncated": [],
+    "total": 0,
+    "teamCount": 0,
+    "eventsError": "",
+    "creatable": []
+  }
+}

@@ -127,6 +127,22 @@ function runtimeFiles(root, relative = '') {
   });
 }
 
+function writeStub(project, route, original, data) {
+  const methods = Object.entries(original.definition).filter(
+    ([key, value]) => key !== 'data' && typeof value === 'function',
+  );
+  const stub = methods.map(([key]) => JSON.stringify(key) + ': function () {}').join(',\n');
+  // Only the disposable copy loses business lifecycle/handlers. Original templates,
+  // styles, components and images remain byte-identical; this is UI evidence only.
+  fs.writeFileSync(
+    path.join(project, route + '.js'),
+    '// C12 disposable UI-only fixture; business and network lifecycle disabled.\nPage({data:' +
+      JSON.stringify(data) +
+      (stub ? ',\n' + stub : '') +
+      '});\n',
+  );
+}
+
 export function prepare({ root = ROOT, out, appId } = {}) {
   const source = path.join(root, 'apps/wechat');
   const base = path.join(root, 'artifacts/wechat-ui');
@@ -211,34 +227,89 @@ export function prepare({ root = ROOT, out, appId } = {}) {
         businessDisabled: true,
       },
     };
-    const methods = Object.entries(original.definition).filter(
-      ([key, value]) => key !== 'data' && typeof value === 'function',
-    );
-    const stub = methods.map(([key]) => JSON.stringify(key) + ': function () {}').join(',\n');
-    // Only the disposable copy loses business lifecycle/handlers. Original templates,
-    // styles, components and images remain byte-identical; this is UI evidence only.
-    fs.writeFileSync(
-      path.join(project, route + '.js'),
-      '// C12 disposable UI-only fixture; business and network lifecycle disabled.\nPage({data:' +
-        JSON.stringify(data) +
-        (stub ? ',\n' + stub : '') +
-        '});\n',
-    );
+    writeStub(project, route, original, data);
   }
+  // Platform-alignment states reuse a real route's byte-identical template, style and page
+  // config under a disposable alias page, so several synthetic states can be captured.
+  const platformCatalog = read(path.join(root, 'tests/mini-program/platform-catalog.json'));
+  const platform = platformCatalog.scenarios.map((item) => {
+    const alias = 'pages/' + item.name + '/index';
+    if (
+      !/^platform-[a-z-]+$/.test(item.name) ||
+      !app.pages.includes(item.baseRoute) ||
+      !/^\.[a-z-]+$/.test(item.selector) ||
+      typeof item.probe !== 'string' ||
+      !item.probe ||
+      (item.scrollTop !== undefined &&
+        (!Number.isSafeInteger(item.scrollTop) || item.scrollTop < 1 || item.scrollTop > 20000))
+    )
+      throw new Error('无效平台场景：' + item.name);
+    const filename = path.join(root, 'tests/mini-program/fixtures', item.name + '.json');
+    const fixture = read(filename);
+    if (
+      fixture.name !== item.name ||
+      fixture.route !== item.baseRoute ||
+      fixture.designSource !== 'synthetic:platform-alignment'
+    )
+      throw new Error('平台fixture来源不一致：' + item.name);
+    fs.mkdirSync(path.join(project, path.dirname(alias)), { recursive: true });
+    for (const extension of ['.wxml', '.wxss', '.json']) {
+      const from = path.join(source, item.baseRoute + extension);
+      if (fs.existsSync(from)) fs.copyFileSync(from, path.join(project, alias + extension));
+    }
+    const original = loadPage({ root: source, route: item.baseRoute });
+    writeStub(project, alias, original, {
+      ...original.page.data,
+      ...fixture.data,
+      __scbUiAcceptance: {
+        sourceHead,
+        runId,
+        route: alias,
+        baseRoute: item.baseRoute,
+        scenario: fixture.name,
+        synthetic: true,
+        businessDisabled: true,
+      },
+    });
+    return {
+      route: alias,
+      baseRoute: item.baseRoute,
+      name: fixture.name,
+      title: item.title,
+      probe: item.probe,
+      selector: item.selector,
+      ...(item.scrollTop ? { scrollTop: item.scrollTop } : {}),
+      fixtureSha256: hash(fs.readFileSync(filename)),
+      reference: null,
+      referenceSha256: null,
+    };
+  });
+  write(path.join(project, 'app.json'), {
+    ...app,
+    pages: [...app.pages, ...platform.map((s) => s.route)],
+  });
   const config = read(path.join(project, 'project.config.json'));
   config.projectname = 'SCB-C12-UI-FIXTURES-ONLY';
   if (appId) config.appid = appId;
   write(path.join(project, 'project.config.json'), config);
-  const scenarios = selected.map((page) => ({
+  const approved = selected.map((page) => ({
     route: page.route,
+    baseRoute: page.route,
     name: fixtures.get(page.route).fixture.name,
     title: page.title,
     probe: probes[page.route.split('/')[1]],
-    selector: page.route === 'pages/home/index' ? '.premium-home' : '.premium-page',
+    // The player name renders in the hero above .premium-page, not inside it.
+    selector:
+      page.route === 'pages/home/index'
+        ? '.premium-home'
+        : page.route === 'pages/player/index'
+          ? '.profile-hero'
+          : '.premium-page',
     fixtureSha256: fixtures.get(page.route).fixtureSha256,
     reference: 'references/' + page.route.split('/')[1] + '.png',
     referenceSha256: hash(fs.readFileSync(path.resolve(root, page.referenceImage))),
   }));
+  const scenarios = [...approved, ...platform];
   fs.mkdirSync(path.join(destination, 'references'));
   for (const page of selected) {
     const reference = path.resolve(root, page.referenceImage);
@@ -261,10 +332,12 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     networkOrigin: 'https://scb-ui-fixture.invalid',
     overriddenFiles: [
       'app.js',
+      'app.json',
       'project.config.json',
       'utils/api.js',
       ...app.pages.map((route) => route + '.js'),
     ],
+    aliasPages: platform.map((s) => ({ route: s.route, baseRoute: s.baseRoute })),
     runnerSha256: hash(fs.readFileSync(fileURLToPath(import.meta.url))),
     businessFlowVerified: false,
     realDeviceVerified: false,
@@ -293,7 +366,13 @@ async function deadline(action, label, timeout) {
 
 export async function capture(
   prepared,
-  { sdk, cliPath, timeout = 60000, launchProject = (options) => launchWeChat(sdk, options) } = {},
+  {
+    sdk,
+    cliPath,
+    timeout = 60000,
+    expectedWidth,
+    launchProject = (options) => launchWeChat(sdk, options),
+  } = {},
 ) {
   const { destination, project, plan } = prepared;
   const report = {
@@ -319,7 +398,13 @@ export async function capture(
       async () => {
         const started = Date.now();
         while (Date.now() - started < timeout) {
-          const page = await mini.currentPage();
+          let page = null;
+          try {
+            page = await mini.currentPage();
+          } catch (error) {
+            // A freshly launched simulator throws until its first page exists.
+            if (!/getPageMetaByWebviewId/.test(String(error?.message))) throw error;
+          }
           if (page) return page;
           await new Promise((resolve) => setTimeout(resolve, 300));
         }
@@ -346,6 +431,11 @@ export async function capture(
         .filter((key) => system[key] !== undefined)
         .map((key) => [key, system[key]]),
     );
+    // A width-labelled run must come from a simulator actually at that logical width.
+    if (expectedWidth && system.windowWidth !== expectedWidth)
+      throw new Error(
+        '模拟器逻辑宽度为' + system.windowWidth + '，与要求的' + expectedWidth + '不符；未截图',
+      );
     for (const scenario of plan.scenarios) {
       const page = await deadline(
         () => mini.reLaunch('/' + scenario.route),
@@ -363,6 +453,11 @@ export async function capture(
       )
         throw new Error('连接目标不是本轮隔离验收副本');
       await deadline(() => page.waitFor(500), '等待原生渲染', timeout);
+      // Lower sections (e.g. the home booking extension) are captured by an explicit scroll.
+      if (scenario.scrollTop) {
+        await deadline(() => mini.pageScrollTo(scenario.scrollTop), '滚动页面', timeout);
+        await deadline(() => page.waitFor(300), '等待滚动渲染', timeout);
+      }
       const body = await deadline(() => page.$(scenario.selector), '检查页面根节点', timeout);
       if (
         !body ||
@@ -414,9 +509,11 @@ export async function capture(
         return (
           '<section><h2>' +
           escape(s.title) +
-          '</h2><div><figure><figcaption>用户确认稿</figcaption><img src="' +
-          s.reference +
-          '"></figure><figure><figcaption>微信开发工具 · 合成模板（人工待验）</figcaption>' +
+          '</h2><div><figure><figcaption>用户确认稿</figcaption>' +
+          (s.reference
+            ? '<img src="' + s.reference + '">'
+            : '<p>无用户确认稿：平台定位修正新增状态，设计待签收</p>') +
+          '</figure><figure><figcaption>微信开发工具 · 合成模板（人工待验）</figcaption>' +
           (shot ? '<img src="' + shot.path + '">' : '<p>未采集</p>') +
           '</figure></div></section>'
         );
@@ -433,21 +530,55 @@ export async function capture(
   return report;
 }
 
+// Captures again from an already prepared copy that is open with automation on `port`,
+// e.g. after manually switching the simulator model; each width gets its own subdirectory.
+export async function recapture(runDirectory, { sdk, port, label, timeout } = {}) {
+  const run = path.resolve(runDirectory || '');
+  if (
+    path.dirname(run) !== path.join(ROOT, 'artifacts/wechat-ui') ||
+    !fs.existsSync(path.join(run, 'plan.json'))
+  )
+    throw new Error('重采集须指定artifacts/wechat-ui下已准备的副本目录');
+  if (!/^w\d{3}$/.test(label || '')) throw new Error('尺寸标签须为w加三位逻辑宽度，如w320');
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('无效自动化端口');
+  const destination = path.join(run, label);
+  if (fs.existsSync(destination)) throw new Error('该尺寸目录已存在，不覆盖已有证据');
+  fs.mkdirSync(destination);
+  fs.cpSync(path.join(run, 'references'), path.join(destination, 'references'), {
+    recursive: true,
+  });
+  return capture(
+    { destination, project: path.join(run, 'project'), plan: read(path.join(run, 'plan.json')) },
+    {
+      sdk,
+      timeout,
+      expectedWidth: Number(label.slice(1)),
+      launchProject: () => sdk.connect({ wsEndpoint: 'ws://127.0.0.1:' + port }),
+    },
+  );
+}
+
 async function main() {
   const [major, minor] = process.versions.node.split('.').map(Number);
   if (major < 22 || (major === 22 && minor < 12)) throw new Error('需要Node.js >=22.12');
   const [command, ...args] = process.argv.slice(2);
   const options = {};
   for (let i = 0; i < args.length; i += 2) {
-    if (!['--cli', '--app-id', '--out'].includes(args[i]) || !args[i + 1])
-      throw new Error('用法：prepare|capture [--cli 路径] [--app-id wx…] [--out 新子目录]');
+    if (
+      !['--cli', '--app-id', '--out', '--run', '--port', '--label'].includes(args[i]) ||
+      !args[i + 1]
+    )
+      throw new Error(
+        '用法：prepare|capture [--cli 路径] [--app-id wx…] [--out 新子目录]；recapture --run 副本目录 --port 自动化端口 --label w320',
+      );
     options[args[i].slice(2)] = args[i + 1];
   }
-  if (!['prepare', 'capture'].includes(command)) throw new Error('请使用prepare或capture');
+  if (!['prepare', 'capture', 'recapture'].includes(command))
+    throw new Error('请使用prepare、capture或recapture');
   let sdk;
   const cliPath = options.cli || process.env.WECHAT_DEVTOOLS_CLI;
-  if (command === 'capture') {
-    if (!cliPath || !fs.existsSync(cliPath))
+  if (command === 'capture' || command === 'recapture') {
+    if (command === 'capture' && (!cliPath || !fs.existsSync(cliPath)))
       throw new Error('找不到微信开发工具CLI；使用scripts/accept-wechat-ui.ps1或--cli指定');
     const sdkRequire = createRequire(path.join(ROOT, 'tools/wechat-ui/package.json'));
     try {
@@ -458,6 +589,20 @@ async function main() {
       throw new Error('先运行 npm ci --prefix tools/wechat-ui --ignore-scripts 安装锁定的本地SDK');
     }
   }
+  if (command === 'recapture') {
+    const report = await recapture(options.run, {
+      sdk,
+      port: Number(options.port),
+      label: options.label,
+    });
+    const destination = path.join(path.resolve(options.run), options.label);
+    console.log('对照报告：' + path.join(destination, 'index.html'));
+    if (!report.nativeScreenshotsCaptured) throw new Error(report.error || '截图采集未完成');
+    console.log(
+      report.screenshots.length + '个状态原生截图采集完成；人工视觉签收/真机/业务流程仍待验收。',
+    );
+    return;
+  }
   const prepared = prepare({ out: options.out, appId: options['app-id'] });
   console.log('验收副本：' + prepared.destination);
   if (command === 'prepare') {
@@ -467,7 +612,9 @@ async function main() {
   const report = await capture(prepared, { sdk, cliPath });
   console.log('对照报告：' + path.join(prepared.destination, 'index.html'));
   if (!report.nativeScreenshotsCaptured) throw new Error(report.error || '截图采集未完成');
-  console.log('六屏原生截图采集完成；人工视觉签收/真机/业务流程仍待验收。');
+  console.log(
+    report.screenshots.length + '个状态原生截图采集完成；人工视觉签收/真机/业务流程仍待验收。',
+  );
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

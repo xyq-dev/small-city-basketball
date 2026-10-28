@@ -12,3 +12,8 @@
 .route-number { display:flex; align-items:center; justify-content:center; flex:0 0 28px; width:28px; height:28px; border-radius:50%; background:#eaf0f7; color:#132c49; font-size:12px; line-height:20px; }
 .media-note { margin:0; }
 .media-note .media-strong { margin-bottom:4px; }
+.media-head .subtitle { margin:0; font-size:16px; line-height:24px; font-weight:700; }
+.page.media-entry button { width:100%; margin-left:0; margin-right:0; }
+.media-entry > button.media-event { display:flex; align-items:center; gap:12px; margin:0; padding:16px; border-radius:12px; text-align:left; font-weight:400; }
+.media-event-main { flex:1; min-width:0; }
+.media-event-name { font-size:16px; line-height:24px; font-weight:600; color:#132c49; overflow-wrap:anywhere; }

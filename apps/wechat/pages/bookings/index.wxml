@@ -5,18 +5,18 @@
     <button class="booking-view-tab {{view === 'received' ? 'active' : ''}}" data-view="received" bindtap="changeView" disabled="{{loading}}">我收到的</button>
   </view>
   <block wx:if="{{filtersOpen || statusIndex > 0}}">
-    <scroll-view scroll-x="true" enable-flex="true" class="status-rail"><view class="status-tabs"><button wx:for="{{quickStatuses}}" wx:key="value" class="status-tab {{status === item.value ? 'selected' : ''}}" data-index="{{item.index}}" bindtap="statusTab" disabled="{{loading}}">{{item.label}}</button><picker mode="selector" range="{{statusLabels}}" value="{{statusIndex}}" bindchange="changeStatus" disabled="{{loading}}"><view class="status-more">更多⌄</view></picker></view></scroll-view>
+    <scroll-view scroll-x="true" enable-flex="true" class="status-rail"><view class="status-tabs"><button wx:for="{{quickStatuses}}" wx:key="value" class="status-tab {{status === item.value ? 'selected' : ''}}" data-index="{{item.index}}" bindtap="statusTab" disabled="{{loading}}">{{item.label}}</button><picker mode="selector" range="{{statusLabels}}" value="{{statusIndex}}" bindchange="changeStatus" disabled="{{loading}}"><view class="status-more">更多<scb-icon name="chevron-down" size="14"/></view></picker></view></scroll-view>
     <view wx:if="{{statusIndex > 0}}" class="active-filter small muted">当前筛选：{{statusLabels[statusIndex]}}</view>
   </block>
   <view wx:if="{{view === 'received'}}" class="notice role-notice"><view class="notice-title">以本人球员身份处理</view><view class="small">只能接受或拒绝自己的逐场安排，不代其他球员确认。</view></view>
   <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">预约读取失败</view><view class="small">{{error}}</view><view class="small">保留当前筛选，可刷新后重试。</view></view>
   <view wx:if="{{loginRequired}}" class="card empty state-card"><view class="subtitle">登录后查看本人合作</view><view class="muted">当前身份核对后，才可读取有权查看的预约。</view><button class="primary" bindtap="login">登录并返回预约</button></view>
   <view wx:elif="{{loading}}" class="card state-card loading-card"><view class="state-title">正在读取最新预约</view><view class="skeleton"></view><view class="skeleton short"></view><view class="small muted">正在核对当前身份与逐场状态…</view></view>
-  <view wx:elif="{{!rows.length &amp;&amp; !error}}" class="card empty state-card"><view class="subtitle">暂无符合条件的合作记录</view><view class="muted">可切换发出/收到或调整状态筛选。</view></view>
+  <view wx:elif="{{!rows.length && !error}}" class="card empty state-card"><view class="subtitle">暂无符合条件的合作记录</view><view class="muted">可切换发出/收到或调整状态筛选。</view></view>
   <block wx:for="{{rows}}" wx:for-item="order" wx:key="id">
     <view wx:for="{{order.appearances}}" wx:for-item="appearance" wx:key="id" class="booking-order-card">
       <view class="appearance-status {{appearance.status === 'ACCEPTED' ? 'accepted' : appearance.tone}}"><text class="status-dot"></text>{{appearance.status === 'ACCEPTED' ? '已接单 · 待到场' : appearance.statusText}}</view>
-      <button class="order-more" data-id="{{appearance.id}}" bindtap="toggleInfo" disabled="{{loading}}" aria-label="{{expandedAppearanceId === appearance.id ? '收起预约明细' : '展开预约明细'}}">⋯</button>
+      <button class="order-more" data-id="{{appearance.id}}" bindtap="toggleInfo" disabled="{{loading}}" aria-label="{{expandedAppearanceId === appearance.id ? '收起预约明细' : '展开预约明细'}}"><scb-icon name="more" size="24"/></button>
       <view class="order-heading"><view class="order-event">{{order.eventName}}</view><text class="order-team">{{order.teamName}}</text></view>
       <view class="order-player"><image class="order-portrait" src="{{appearance.portrait || '/assets/approved-ui/player-placeholder.png'}}" mode="aspectFill"/><view class="order-player-copy"><view class="order-player-name">{{appearance.playerName}}<text> · {{appearance.positionText}}</text></view><view class="order-player-meta">{{appearance.playerMeta || appearance.label}}</view></view></view>
       <view class="order-schedule"><scb-icon name="calendar"/><text>{{appearance.summaryStartText || (appearance.status === 'CONDITIONAL' ? '条件满足后补齐具体时间' : appearance.startText)}}</text></view>

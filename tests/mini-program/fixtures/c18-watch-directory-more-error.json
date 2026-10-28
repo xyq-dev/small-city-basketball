@@ -1,0 +1,78 @@
+{
+  "name": "c18-watch-directory-more-error",
+  "route": "pages/watch/index",
+  "state": "error",
+  "designSource": "synthetic:c18-directory",
+  "static": true,
+  "expectText": ["即将开始", "合成春季杯", "后续赛事读取失败，已显示的 3 届保留", "重试加载更多"],
+  "data": {
+    "value": "",
+    "error": "",
+    "loading": false,
+    "recentEvents": [],
+    "signedIn": false,
+    "organizations": [],
+    "sections": [],
+    "failures": [],
+    "truncated": [],
+    "total": 0,
+    "teamCount": 0,
+    "eventsError": "",
+    "creatable": [],
+    "dir": {
+      "group": "UPCOMING",
+      "city": "",
+      "cityInput": "",
+      "cityError": "",
+      "items": [
+        {
+          "publicEventId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "name": "合成春季杯",
+          "dateLabel": "2028-03-01 至 2028-03-02",
+          "venueName": "合成体育馆",
+          "displayCity": "高州",
+          "statusLabel": "即将开始",
+          "group": "upcoming"
+        },
+        {
+          "publicEventId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "name": "合成青年联赛（名称较长用于检查换行与截断表现）",
+          "dateLabel": "2028-03-01 至 2028-03-02",
+          "venueName": "合成体育馆",
+          "displayCity": "化州",
+          "statusLabel": "即将开始",
+          "group": "upcoming"
+        },
+        {
+          "publicEventId": "ccccccccccccccccccccccccccccccccccccccccccc",
+          "name": "合成社区邀请赛",
+          "dateLabel": "2028-03-01 至 2028-03-02",
+          "venueName": "合成体育馆",
+          "displayCity": "",
+          "statusLabel": "即将开始",
+          "group": "upcoming"
+        }
+      ],
+      "loading": false,
+      "loadingMore": false,
+      "loaded": true,
+      "done": false,
+      "error": "",
+      "moreError": "后续赛事读取失败，已显示的 3 届保留：合成错误 503"
+    },
+    "dirGroups": [
+      {
+        "value": "LIVE",
+        "label": "进行中"
+      },
+      {
+        "value": "UPCOMING",
+        "label": "即将开始"
+      },
+      {
+        "value": "HISTORY",
+        "label": "历史赛事"
+      }
+    ]
+  }
+}

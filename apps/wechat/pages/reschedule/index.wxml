@@ -1,0 +1,55 @@
+<view class="page mgmt-page">
+  <view wx:if="{{loading && !match}}" class="card state-panel"><text class="state-label">改期</text><view class="subtitle">正在读取正式安排</view><view class="loading-lines"><view></view><view></view></view></view>
+  <view wx:elif="{{!match}}" class="card state-panel">
+    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
+    <view class="subtitle">{{unavailable ? '无法查看改期' : '暂时无法读取'}}</view>
+    <view class="notice warning">{{error || '请从比赛详情重新进入。'}}</view>
+    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+  </view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
+    <view wx:if="{{uncertain}}" class="card">
+      <view class="subtitle">改期结果待核对</view>
+      <view class="muted">网络中断时服务端可能已经保存。请先重新读取核对当前安排与历史；不会自动重发。</view>
+      <button class="primary" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button>
+    </view>
+    <view class="board">
+      <view class="board-meta" bindtap="openMatch">{{match.eventName}} · {{match.round}} · {{match.statusLabel}}</view>
+      <view class="org-match-teams"><text>{{match.home}}</text><text class="org-match-vs">VS</text><text>{{match.away}}</text></view>
+      <view class="board-result">当前正式安排：{{match.plan}}</view>
+    </view>
+    <view class="notice small">这是对已发布比赛的正式改期，不是排赛草稿。原发布快照保持不变，每次改期单独留存记录；结束时间按原排赛每场 {{match.duration}} 分钟由服务端计算。</view>
+
+    <view wx:if="{{canReschedule}}" class="card">
+      <view class="subtitle">新的场地与时间</view>
+      <view wx:if="{{!courts.length}}" class="notice warning small">机构没有可用场地。</view>
+      <text class="field-label">场地</text>
+      <picker class="field" range="{{courts}}" range-key="name" value="{{courtIndex}}" bindchange="pickCourt">{{courts[courtIndex].name || '选择场地'}}</picker>
+      <view class="setup-pair">
+        <view><text class="field-label">日期</text><picker mode="date" class="field" value="{{date}}" bindchange="pickDate">{{date || '选择日期'}}</picker></view>
+        <view><text class="field-label">开始时间（北京时间）</text><picker mode="time" class="field" value="{{time}}" bindchange="pickTime">{{time || '选择时间'}}</picker></view>
+      </view>
+      <text class="field-label">改期原因（必填，球队与工作人员可见于记录）</text>
+      <textarea class="field" maxlength="500" value="{{reason}}" bindinput="reasonInput" placeholder="例如：原场地灯光检修"/>
+      <view wx:if="{{conflicts.length}}" class="setup-block">
+        <view class="section-label">服务端检查发现冲突</view>
+        <view wx:for="{{conflicts}}" wx:key="key" class="muted">· {{item.label}}（{{item.scope}}{{item.external ? '，本机构其他赛事' : ''}}）</view>
+      </view>
+      <button class="primary" bindtap="submit" disabled="{{busy || uncertain || !courts.length}}">检查并保存改期</button>
+    </view>
+    <view wx:else class="notice small">{{blocker}}</view>
+
+    <view class="card">
+      <view class="subtitle">改期记录</view>
+      <view wx:if="{{!history.length}}" class="muted">尚无改期；当前安排即原发布安排。</view>
+      <view wx:for="{{history}}" wx:key="key" class="row">
+        <view>{{item.from}}</view>
+        <view>→ {{item.to}}</view>
+        <view class="muted">{{item.reason}} · {{item.time}}</view>
+      </view>
+      <view wx:if="{{truncated}}" class="muted">仅显示最近20条改期记录。</view>
+    </view>
+    <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
+  </block>
+</view>

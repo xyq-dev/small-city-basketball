@@ -1,5 +1,5 @@
 <view class="page event-page">
-  <view wx:if="{{loading &amp;&amp; !event}}" class="public-panel public-state">
+  <view wx:if="{{loading && !event}}" class="public-panel public-state">
     <view class="state-tag">赛事观赛</view>
     <view class="title">正在读取最新赛事</view>
     <view class="notice"><view class="state-strong">核对公开赛事与正式赛程</view><view class="small">读取完成前不将旧资料标为最新，请稍候。</view></view>
@@ -10,8 +10,9 @@
     <view class="state-tag warning">{{unavailable ? '请核对' : error ? '读取未完成' : '赛事观赛'}}</view>
     <view class="title">{{unavailable ? '该内容已停止公开' : error ? '暂时无法读取赛事' : '打开主办方公开赛事'}}</view>
     <view class="notice {{error ? 'warning' : ''}}"><view>{{error || '从主办方提供的有效观赛入口进入，查看已发布的赛程、比分与媒体。'}}</view><view wx:if="{{unavailable}}" class="small">旧画面已清空，不回显已撤销或不可访问的赛事资料。</view></view>
-    <button wx:if="{{error &amp;&amp; !unavailable}}" class="primary" bindtap="load">重新读取</button>
-    <button class="{{error &amp;&amp; !unavailable ? 'secondary' : 'primary'}}" bindtap="watch">返回观赛入口</button>
+    <button wx:if="{{error && !unavailable}}" class="primary" bindtap="load">重新读取</button>
+    <button class="{{error && !unavailable ? 'secondary' : 'primary'}}" bindtap="watch">返回观赛入口</button>
+    <button wx:if="{{unavailable && follow.state!=='signedOut'}}" class="quiet" bindtap="openFollows">查看我的关注</button>
   </view>
   <block wx:else>
     <view wx:if="{{error}}" class="notice warning">{{error}}<view wx:if="{{stale}}" class="small">现有资料已陈旧，请恢复连接后刷新。</view></view>
@@ -68,9 +69,28 @@
         <block wx:for="{{bracket.rounds}}" wx:key="roundNo" wx:for-item="round"><view wx:for="{{round.slots}}" wx:key="positionNo" class="public-panel bracket-card"><view class="subtitle">{{round.label}} · {{item.positionNo}}</view><view class="muted bracket-teams"><block wx:if="{{item.bye}}">{{item.bye.teamName}} · 轮空</block><block wx:else>{{item.home ? item.home.teamName : '待晋级'}} / {{item.away ? item.away.teamName : '待晋级'}}</block></view><view class="event-status">{{item.statusLabel || '以正式赛程为准'}}</view><view wx:if="{{item.winner}}" class="match-status">晋级：{{item.winner.teamName}}</view><view wx:elif="{{!round.published}}" class="muted">时间与场地待负责人明确发布</view></view></block>
         <view wx:if="{{bracket.isComplete}}" class="public-panel placements-panel"><view class="subtitle">最终名次</view><view wx:for="{{bracket.placements}}" wx:key="index" class="placement-row"><text class="placement-rank">{{item.rank}}</text><view>{{item.team.teamName}}<view wx:if="{{item.tied}}" class="small muted">并列名次</view></view></view></view>
       </block>
-      <view wx:if="{{!groups &amp;&amp; !standings &amp;&amp; !bracket}}" class="public-panel public-state compact-state"><view class="subtitle">排名资料待发布</view><view class="muted">当前没有可公开展示的积分或晋级资料。</view></view>
+      <view wx:if="{{!groups && !standings && !bracket}}" class="public-panel public-state compact-state"><view class="subtitle">排名资料待发布</view><view class="muted">当前没有可公开展示的积分或晋级资料。</view></view>
     </block>
     <button wx:if="{{!overview}}" class="secondary" bindtap="backToOverview" disabled="{{loading}}">返回赛事概览</button>
+    <view class="public-panel follow-panel">
+      <view class="follow-head"><view class="subtitle">关注赛事</view><view wx:if="{{follow.state==='active'}}" class="follow-tag">已关注</view></view>
+      <view wx:if="{{follow.state==='signedOut'}}" class="muted">登录后可关注此公开赛事，并在「我的关注」查看。未登录也可以继续观赛。</view>
+      <view wx:elif="{{follow.state==='checking'}}" class="muted">正在核对本账号的关注状态…</view>
+      <view wx:elif="{{follow.state==='none'}}" class="muted">关注后可在「我的关注」快速回到此赛事。</view>
+      <view wx:elif="{{follow.state==='active'}}" class="muted">本账号已关注此公开赛事。</view>
+      <view wx:elif="{{follow.state==='invalid'}}" class="muted">这条关注已失效，可在「我的关注」取消。</view>
+      <view wx:if="{{follow.notice}}" class="notice follow-notice">{{follow.notice}}</view>
+      <view wx:if="{{follow.error}}" class="notice warning follow-notice">{{follow.error}}</view>
+      <view class="small muted follow-reminder">{{reminderOff}}</view>
+      <button wx:if="{{follow.state==='signedOut'}}" class="secondary" bindtap="followLogin">登录后关注</button>
+      <button wx:elif="{{follow.state==='checking'}}" class="secondary" disabled>正在核对关注状态</button>
+      <button wx:elif="{{follow.state==='none'}}" class="secondary" bindtap="followEvent" disabled="{{follow.busy}}" loading="{{follow.busy}}">{{follow.busy ? '正在关注' : '关注此赛事'}}</button>
+      <button wx:elif="{{follow.state==='unknown'}}" class="secondary" bindtap="checkFollow">重新核对关注状态</button>
+      <block wx:elif="{{follow.state==='active' || follow.state==='invalid'}}">
+        <button class="secondary" bindtap="openFollows" disabled="{{follow.busy}}">查看我的关注</button>
+        <button class="quiet" bindtap="cancelFollow" disabled="{{follow.busy}}" loading="{{follow.busy}}">{{follow.busy ? '正在取消' : '取消关注'}}</button>
+      </block>
+    </view>
     <button class="secondary" open-type="share">分享此公开赛事</button>
     <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">{{loading ? '正在核对最新赛事资料' : '刷新赛事资料'}}</button>
   </block>

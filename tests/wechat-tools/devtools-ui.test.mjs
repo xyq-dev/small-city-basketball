@@ -8,6 +8,7 @@ import { createRequire } from 'node:module';
 import {
   prepare,
   capture,
+  recapture,
   ROOT,
   windowsLaunchSpec,
   spawnWindowsCli,
@@ -50,6 +51,10 @@ function fakeSdk(
   const mini = new EventEmitter();
   let index = -1;
   mini.disconnected = 0;
+  mini.scrolls = [];
+  mini.pageScrollTo = async (scrollTop) => {
+    mini.scrolls.push([run.plan.scenarios[index].name, scrollTop]);
+  };
   mini.currentPage = async () => ({
     data: async () => ({ runId: run.plan.runId, businessDisabled: true }),
   });
@@ -72,7 +77,7 @@ function fakeSdk(
       }),
       waitFor: async () => {},
       $: async (selector) =>
-        hasClassSelector(s.route, selector) ? { text: async () => s.probe } : null,
+        hasClassSelector(s.baseRoute, selector) ? { text: async () => s.probe } : null,
     };
   };
   mini.screenshot = async ({ path: filename }) => {
@@ -90,29 +95,55 @@ function fakeSdk(
         assert.equal(options.trustProject, true);
         return mini;
       },
+      connect: async (options) => {
+        mini.endpoint = options.wsEndpoint;
+        return mini;
+      },
     },
   };
 }
 
 test('prepare preserves all source templates/assets and never mutates the runtime project', () => {
   const run = prepared();
-  assert.equal(run.plan.scenarios.length, 6);
+  const catalog = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'tests/mini-program/platform-catalog.json'), 'utf8'),
+  );
+  assert.equal(run.plan.scenarios.filter((s) => s.reference).length, 6);
+  assert.equal(run.plan.scenarios.length, 6 + catalog.scenarios.length);
   assert.equal(run.plan.nativeScreenshotsCaptured, false);
   assert.equal(run.plan.businessFlowVerified, false);
   for (const scenario of run.plan.scenarios)
-    assert.equal(hasClassSelector(scenario.route, scenario.selector), true, scenario.route);
+    assert.equal(hasClassSelector(scenario.baseRoute, scenario.selector), true, scenario.route);
   assert.equal(
     run.plan.scenarios.find((s) => s.route === 'pages/home/index').selector,
     '.premium-home',
+  );
+  assert.equal(
+    run.plan.scenarios.find((s) => s.route === 'pages/player/index').selector,
+    '.profile-hero',
   );
   for (const item of run.plan.sourceSnapshots) {
     const original = fs.readFileSync(path.join(ROOT, 'apps/wechat', item.path));
     assert.equal(createHash('sha256').update(original).digest('hex'), item.sha256);
     if (
       !/pages\/.*\.js$/.test(item.path) &&
-      !['project.config.json', 'app.js', 'utils/api.js'].includes(item.path)
+      !['project.config.json', 'app.js', 'app.json', 'utils/api.js'].includes(item.path)
     )
       assert.deepEqual(fs.readFileSync(path.join(run.project, item.path)), original);
+  }
+  // Alias pages only add synthetic states; their templates/styles are the real source bytes.
+  const copiedApp = JSON.parse(fs.readFileSync(path.join(run.project, 'app.json'), 'utf8'));
+  for (const alias of run.plan.aliasPages) {
+    assert.ok(copiedApp.pages.includes(alias.route), alias.route);
+    for (const extension of ['.wxml', '.wxss'])
+      assert.deepEqual(
+        fs.readFileSync(path.join(run.project, alias.route + extension)),
+        fs.readFileSync(path.join(ROOT, 'apps/wechat', alias.baseRoute + extension)),
+        alias.route + extension,
+      );
+    const page = loadPage({ root: run.project, route: alias.route });
+    assert.equal(page.page.data.__scbUiAcceptance.baseRoute, alias.baseRoute);
+    assert.equal(page.page.data.__scbUiAcceptance.synthetic, true);
   }
   assert.equal(fs.existsSync(path.join(run.project, 'test')), false);
   assert.equal(fs.existsSync(path.join(run.project, 'project.private.config.json')), false);
@@ -154,12 +185,17 @@ test('outputs cannot replace source files, escape the ignored directory or overw
   assert.throws(() => prepare({ appId: 'not-an-app-id' }), /AppID格式/);
 });
 
-test('successful SDK fixture capture records six original PNG hashes without claiming business/device/signoff', async () => {
+test('successful SDK fixture capture records every original PNG hash without claiming business/device/signoff', async () => {
   const run = prepared(),
     { sdk, mini } = fakeSdk(run);
   const report = await captureFake(run, { sdk, cliPath: 'test-cli' });
   assert.equal(report.nativeScreenshotsCaptured, true);
-  assert.equal(report.screenshots.length, 6);
+  assert.equal(report.screenshots.length, run.plan.scenarios.length);
+  assert.deepEqual(
+    mini.scrolls,
+    run.plan.scenarios.filter((s) => s.scrollTop).map((s) => [s.name, s.scrollTop]),
+  );
+  assert.ok(mini.scrolls.some(([name]) => name === 'platform-home-lower'));
   assert.equal(report.businessFlowVerified, false);
   assert.equal(report.realDeviceVerified, false);
   assert.equal(report.userVisualAccepted, false);
@@ -184,6 +220,55 @@ test('successful SDK fixture capture records six original PNG hashes without cla
     fs.readFileSync(path.join(run.destination, 'index.html'), 'utf8'),
     /业务流程、真机、用户签收仍待/,
   );
+});
+
+test('a simulator still loading its first page is waited for, other errors are not', async () => {
+  const run = prepared(),
+    { sdk, mini } = fakeSdk(run);
+  const ready = mini.currentPage;
+  let attempts = 0;
+  mini.currentPage = async () => {
+    if (++attempts < 3)
+      throw new Error("Cannot destructure property 'rawPath' of 't.getPageMetaByWebviewId(...)'");
+    return ready();
+  };
+  const report = await captureFake(run, { sdk });
+  assert.equal(report.nativeScreenshotsCaptured, true);
+  assert.equal(attempts, 3);
+  const other = prepared(),
+    failing = fakeSdk(other);
+  failing.mini.currentPage = async () => {
+    throw new Error('synthetic automator failure');
+  };
+  const failed = await captureFake(other, { sdk: failing.sdk });
+  assert.equal(failed.nativeScreenshotsCaptured, false);
+  assert.match(failed.error, /synthetic automator failure/);
+});
+
+test('recapture writes a separate width directory from the open copy and checks its width', async () => {
+  const run = prepared(),
+    { sdk, mini } = fakeSdk(run);
+  mini.systemInfo = async () => ({ windowWidth: 320, windowHeight: 568, pixelRatio: 2 });
+  const report = await recapture(run.destination, { sdk, port: 9420, label: 'w320' });
+  assert.equal(mini.endpoint, 'ws://127.0.0.1:9420');
+  assert.equal(report.nativeScreenshotsCaptured, true);
+  assert.equal(report.simulator.windowWidth, 320);
+  assert.equal(report.screenshots.length, run.plan.scenarios.length);
+  for (const file of ['report.json', 'index.html', 'references/home.png'])
+    assert.equal(fs.existsSync(path.join(run.destination, 'w320', file)), true, file);
+  await assert.rejects(
+    recapture(run.destination, { sdk, port: 9420, label: 'w320' }),
+    /不覆盖已有证据/,
+  );
+  const wrong = await recapture(run.destination, { sdk, port: 9420, label: 'w430' });
+  assert.equal(wrong.nativeScreenshotsCaptured, false);
+  assert.match(wrong.error, /逻辑宽度为320/);
+  assert.equal(wrong.screenshots.length, 0);
+  await assert.rejects(
+    recapture(path.join(ROOT, 'apps/wechat'), { sdk, port: 9420, label: 'w390' }),
+    /已准备的副本目录/,
+  );
+  await assert.rejects(recapture(run.destination, { sdk, port: 9420, label: '../x' }), /尺寸标签/);
 });
 
 test('unexpected route fails before capturing and disconnects', async () => {
@@ -225,7 +310,7 @@ test('invalid screenshot and AppService exceptions remain failures', async () =>
     assert.equal(report.nativeScreenshotsCaptured, false);
     assert.ok(report.error);
     assert.equal(mini.disconnected, 1);
-    if (flags.exception) assert.equal(report.exceptions.length, 6);
+    if (flags.exception) assert.equal(report.exceptions.length, run.plan.scenarios.length);
   }
 });
 
