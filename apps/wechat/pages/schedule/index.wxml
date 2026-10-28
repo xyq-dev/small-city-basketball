@@ -105,6 +105,17 @@
         </block>
       </view>
     </block>
+    <view wx:if="{{courtAdmin.length}}" class="card">
+      <view class="subtitle">场地管理（本机构共享）</view>
+      <view wx:for="{{courtAdmin}}" wx:key="id" class="row">
+        <view class="row-between"><view>{{item.name}}<text class="badge {{item.active ? 'success' : 'warning'}}">{{item.active ? '可用' : '已停用'}}</text></view><view class="file-actions"><button class="quiet small-button" data-id="{{item.id}}" bindtap="askRename" disabled="{{busy}}">改名</button><button class="quiet small-button" data-id="{{item.id}}" bindtap="toggleCourtStatus" disabled="{{busy}}">{{item.active ? '停用' : '启用'}}</button></view></view>
+        <block wx:if="{{renameId === item.id}}">
+          <input class="field" maxlength="80" value="{{renameValue}}" bindinput="renameInput"/>
+          <button class="secondary" bindtap="saveRename" disabled="{{busy || !renameValue}}">保存名称</button>
+        </block>
+      </view>
+      <view class="muted">场地为本机构所有赛事共享；停用不删除历史安排。</view>
+    </view>
     <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
   </block>
 </view>

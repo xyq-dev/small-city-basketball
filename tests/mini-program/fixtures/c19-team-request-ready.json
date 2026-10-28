@@ -1,0 +1,48 @@
+{
+  "name": "c19-team-request-ready",
+  "route": "pages/team-request/index",
+  "state": "synthetic-populated",
+  "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
+  "expectText": ["向 合成机构 申请建队", "我的建队申请", "合成青锋"],
+  "expectEnabled": ["提交申请", "撤回申请"],
+  "data": {
+    "hasLink": true,
+    "link": {
+      "linkId": "33333333-3333-4333-8333-333333333333",
+      "orgName": "合成机构",
+      "expiresAt": "2026-11-04T08:00:00.000Z"
+    },
+    "teamName": "合成新城青年篮球队",
+    "note": "申请参加本机构联赛，提交后等待其他管理员审批。",
+    "requests": [
+      {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "clientRequestId": "12345678-1234-4234-8234-123456789012",
+        "orgId": "11111111-1111-4111-8111-111111111111",
+        "orgName": "合成机构",
+        "teamName": "合成青锋",
+        "note": null,
+        "status": "PENDING",
+        "version": 1,
+        "reviewReason": null,
+        "reviewedAt": null,
+        "withdrawnAt": null,
+        "teamId": null,
+        "createdAt": "2026-10-28T08:00:00.000Z",
+        "updatedAt": "2026-10-28T08:00:00.000Z",
+        "capabilities": {
+          "canWithdraw": true
+        },
+        "stateText": "待机构审核",
+        "created": "2026-10-28 16:00"
+      }
+    ],
+    "pending": null,
+    "loading": false,
+    "busy": false,
+    "uncertain": false,
+    "error": "",
+    "message": "",
+    "loginRequired": false
+  }
+}

@@ -243,9 +243,20 @@ Page({
         : type === 'REJECT'
           ? '拒绝为终态，该队本届报名不能再提交。'
           : '领队补齐后可重新提交。';
-    if (!(await ui.confirm(commandLabels[type] + '：' + detail.teamName, note))) return;
-    if (this.data.busy || !this.data.detail || this.data.detail.id !== detail.id) return;
+    const op = await ui.confirmOp(this, commandLabels[type] + '：' + detail.teamName, note);
+    const now = this.data.detail;
+    // The same entry at the same version the reviewer confirmed, still reviewable.
+    if (
+      !op ||
+      this.data.busy ||
+      !now ||
+      now.id !== detail.id ||
+      now.version !== detail.version ||
+      !now[type === 'APPROVE' ? 'approve' : type === 'REJECT' ? 'reject' : 'changes']
+    )
+      return;
     const token = ui.hold(this);
+    if (!op.valid() || !ui.held(this, token)) return;
     this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       await api.getClient().request(this.base() + '/entries/' + detail.id + '/commands', 'POST', {
@@ -272,15 +283,24 @@ Page({
     const type = e.currentTarget.dataset.type;
     const command = stageCommands.find((c) => c.type === type);
     if (!command || this.data.busy) return;
-    if (!(await ui.confirm(command.label, command.note)) || this.data.busy) return;
+    const version = this._eventVersion;
+    const op = await ui.confirmOp(this, command.label, command.note);
+    if (
+      !op ||
+      this.data.busy ||
+      this._eventVersion !== version ||
+      !this.data.stages.some((s) => s.type === type)
+    )
+      return;
     const token = ui.hold(this);
+    if (!op.valid() || !ui.held(this, token)) return;
     this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       await api
         .getClient()
         .request(this.base() + '/events/' + this.eventId + '/registration-commands', 'POST', {
           type,
-          expectedVersion: this._eventVersion,
+          expectedVersion: version,
         });
       if (!ui.held(this, token)) return;
       this.setData({ busy: false, notice: command.label + '已完成。' });

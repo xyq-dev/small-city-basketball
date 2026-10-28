@@ -132,7 +132,88 @@ function readBase64(wxApi, file) {
     }),
   );
 }
+// ---- temporary preview files ----
+// Every preview file is recorded in device storage before it is written and only forgotten
+// once its removal succeeded (or the file is already gone). Failed removals are retried a few
+// times from module scope (independent of any Page) and swept again on the next media page
+// load or app launch. Only files under USER_DATA_PATH/scb-media- are ever touched.
+const TEMP_KEY = 'scb.mediaTemp.v1';
+const TEMP_RETRY_DELAYS = [1000, 5000, 30000];
+const retrying = new Set();
+function tempPrefix(wxApi) {
+  return wxApi && wxApi.env && wxApi.env.USER_DATA_PATH
+    ? wxApi.env.USER_DATA_PATH + '/scb-media-'
+    : '';
+}
+function ownTemp(wxApi, path) {
+  const prefix = tempPrefix(wxApi);
+  return (
+    !!prefix &&
+    typeof path === 'string' &&
+    path.startsWith(prefix) &&
+    /^[A-Za-z0-9-]+\.(png|jpg|mp4)$/.test(path.slice(prefix.length))
+  );
+}
+/** Tracked paths, or null when storage cannot be read. */
+function trackedTemps(wxApi) {
+  let value;
+  try {
+    value = wxApi.getStorageSync(TEMP_KEY);
+  } catch {
+    return null;
+  }
+  if (value === '' || value === undefined || value === null) return [];
+  return Array.isArray(value) ? value.filter((p) => ownTemp(wxApi, p)) : null;
+}
+function saveTemps(wxApi, list) {
+  try {
+    wxApi.setStorageSync(TEMP_KEY, list);
+    return true;
+  } catch {
+    return false;
+  }
+}
+/** Records a path before its file is written; false means do not write it. */
+function trackTemp(wxApi, path) {
+  const list = trackedTemps(wxApi);
+  if (!list || !ownTemp(wxApi, path)) return false;
+  return list.includes(path) || saveTemps(wxApi, [...list, path]);
+}
+function forgetTemp(wxApi, path) {
+  const list = trackedTemps(wxApi);
+  if (list)
+    saveTemps(
+      wxApi,
+      list.filter((p) => p !== path),
+    );
+}
+/** Removes one tracked file; it stays tracked until removal succeeds. */
+function releaseTemp(wxApi, path, attempt = 0) {
+  if (!ownTemp(wxApi, path) || typeof wxApi.getFileSystemManager !== 'function') return;
+  wxApi.getFileSystemManager().unlink({
+    filePath: path,
+    success: () => forgetTemp(wxApi, path),
+    fail: (error) => {
+      const message = String((error && error.errMsg) || '');
+      if (/no such file|not exist|ENOENT/i.test(message)) return forgetTemp(wxApi, path);
+      trackTemp(wxApi, path);
+      if (attempt >= TEMP_RETRY_DELAYS.length || retrying.has(path)) return;
+      retrying.add(path);
+      setTimeout(() => {
+        retrying.delete(path);
+        releaseTemp(wxApi, path, attempt + 1);
+      }, TEMP_RETRY_DELAYS[attempt]);
+    },
+  });
+}
+function sweepTemps(wxApi) {
+  for (const path of trackedTemps(wxApi) || []) releaseTemp(wxApi, path);
+}
 module.exports = {
+  TEMP_RETRY_DELAYS,
+  trackTemp,
+  releaseTemp,
+  sweepTemps,
   MAX_FILE_BYTES,
   kinds,
   statusLabels,

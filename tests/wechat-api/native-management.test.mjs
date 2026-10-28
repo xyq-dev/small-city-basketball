@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
 import { after, before, test } from 'node:test';
 import {
   PASSWORD,
@@ -500,21 +501,20 @@ test('groups, tie draw, qualification, knockout rounds, rescheduling and media t
   const mediaPage = owner.open('pages/match-media/index', { orgId: org, matchId: finalId });
   await owner.settle(mediaPage);
   assert.equal(mediaPage.page.data.caps.upload, true, mediaPage.page.data.error);
-  // Lost upload response: the server stores the file, but the API has no request identity, so
-  // the page keeps the outcome unknown and only shows the new file as a candidate to check.
-  owner.dropNextResponse((o) => o.method === 'POST' && /\/media-files$/.test(o.url));
+  // C19: lost upload response — the server stored the file; the page resolves it through the
+  // receipt of the same request ID (looked up on the next read) and never sends it twice.
+  owner.dropNextResponse((o) => o.method === 'POST' && /\/media-file-requests$/.test(o.url));
   await mediaPage.page.uploadImage();
   await owner.settle(mediaPage);
-  assert.ok(mediaPage.page.data.pending, mediaPage.page.data.error);
+  assert.equal(mediaPage.page.data.request?.state, 'unknown', mediaPage.page.data.error);
+  await mediaPage.page.uploadImage();
+  await owner.settle(mediaPage);
+  assert.equal(mediaPage.page.data.request?.state, 'unknown', 'no new upload while unknown');
   await mediaPage.page.load();
   await owner.settle(mediaPage);
+  assert.equal(mediaPage.page.data.request, null, mediaPage.page.data.error);
+  assert.equal(mediaPage.page.data.upload.stage, 'saved');
   assert.equal(mediaPage.page.data.files.length, 1, 'the page did not send it twice');
-  assert.equal(mediaPage.page.data.canRetry, false);
-  assert.equal(mediaPage.page.data.pending?.candidates.length, 1, 'shown for checking');
-  await mediaPage.page.uploadImage();
-  assert.equal(mediaPage.page.data.files.length, 1, 'no new upload while unknown');
-  await mediaPage.page.confirmPending(tap({ id: mediaPage.page.data.pending.candidates[0].id }));
-  assert.equal(mediaPage.page.data.pending, null);
   assert.match(mediaPage.page.data.files[0].statusLabel, /未关联、未发布/);
   assert.deepEqual(await publicMedia(), [], 'an upload alone is not public');
   mediaPage.page.titleInput(tap({}, { value: '决赛最后一攻' }));
@@ -536,6 +536,81 @@ test('groups, tie draw, qualification, knockout rounds, rescheduling and media t
   await owner.settle(mediaPage);
   assert.equal(mediaPage.page.data.items[0].status, 'REVOKED', mediaPage.page.data.error);
   assert.deepEqual(await publicMedia(), [], 'revoked media disappears publicly');
+
+  // C16: private preview, revoke then irreversible purge, and a manual time marker on a video
+  // draft of the confirmed final. The MP4 is the API tests' own synthetic fixture.
+  const fixtures = fs.readFileSync(
+    new URL('../../apps/api/test/media-fixtures.ts', import.meta.url),
+    'utf8',
+  );
+  const MP4 = Buffer.from(/syntheticMp4 = Buffer\.from\(\s*'([^']+)'/.exec(fixtures)[1], 'base64');
+  const temp = new Map(),
+    previewed = [];
+  owner.wx.env = { USER_DATA_PATH: 'wxfile://usr' };
+  owner.wx.getFileSystemManager = () => ({
+    readFile: (o) =>
+      o.success({ data: (/\.mp4$/.test(o.filePath) ? MP4 : PNG).toString('base64') }),
+    writeFile: (o) => {
+      temp.set(o.filePath, Buffer.from(o.data));
+      o.success();
+    },
+    unlink: (o) => {
+      temp.delete(o.filePath);
+      o.success?.();
+    },
+  });
+  owner.wx.previewImage = (o) => {
+    previewed.push(temp.get(o.current));
+    o.success();
+  };
+  const png = mediaPage.page.data.files[0];
+  await mediaPage.page.preview(tap({ id: png.id }));
+  await owner.settle(mediaPage);
+  assert.ok(
+    previewed[0]?.equals(PNG),
+    'the private bytes were previewed: ' + mediaPage.page.data.error,
+  );
+  mediaPage.page.askRevokeFile(tap({ id: png.id }));
+  mediaPage.page.revokeReasonInput(tap({}, { value: '误传的测试图片' }));
+  owner.approve();
+  await mediaPage.page.revokeFile();
+  await owner.settle(mediaPage);
+  assert.equal(mediaPage.page.data.files[0].status, 'REVOKED', mediaPage.page.data.error);
+  assert.equal(mediaPage.page.data.files[0].canPurge, true);
+  mediaPage.page.askPurgeFile(tap({ id: png.id }));
+  mediaPage.page.purgeReasonInput(tap({}, { value: '按要求永久删除正文' }));
+  snapshot(mediaPage, 'match-media-purge');
+  owner.approve();
+  await mediaPage.page.purgeFile();
+  await owner.settle(mediaPage);
+  assert.equal(mediaPage.page.data.files[0].status, 'PURGED', mediaPage.page.data.error);
+  owner.wx.chooseMedia = (o) =>
+    o.success({ tempFiles: [{ tempFilePath: 'wxfile://tmp/final-replay.mp4', size: MP4.length }] });
+  await mediaPage.page.uploadVideo();
+  await owner.settle(mediaPage);
+  assert.equal(mediaPage.page.data.upload.stage, 'saved', mediaPage.page.data.error);
+  assert.equal(mediaPage.page.data.draftFiles[0]?.name, 'final-replay.mp4');
+  mediaPage.page.titleInput(tap({}, { value: '决赛回放' }));
+  mediaPage.page.rightsInput(tap({}, { value: '主办方摄影组拍摄，仅限本届公开观赛' }));
+  await mediaPage.page.createDraft();
+  await owner.settle(mediaPage);
+  const replay = mediaPage.page.data.items.find((m) => m.title === '决赛回放');
+  assert.equal(replay?.canMark, true, mediaPage.page.data.error);
+  mediaPage.page.openMarker(tap({ id: replay.id }));
+  mediaPage.page.markerInput(tap({ field: 'label' }, { value: '决胜一投' }));
+  mediaPage.page.markerInput(tap({ field: 'start' }, { value: '0' }));
+  mediaPage.page.markerInput(tap({ field: 'end' }, { value: '0.5' }));
+  snapshot(mediaPage, 'match-media-marker');
+  await mediaPage.page.addMarker();
+  await owner.settle(mediaPage);
+  const marked = mediaPage.page.data.items.find((m) => m.id === replay.id);
+  assert.equal(marked.markerList.length, 1, mediaPage.page.data.error);
+  owner.approve();
+  await mediaPage.page.publish(tap({ id: replay.id }));
+  await owner.settle(mediaPage);
+  const withMarker = (await publicMedia()).find((m) => m.title === '决赛回放');
+  assert.equal(withMarker?.markers.length, 1, 'the published video carries its time marker');
+  assert.equal(withMarker.markers[0].label, '决胜一投');
 
   // Account switch clears every new page.
   owner.client.clearSession();
@@ -583,4 +658,26 @@ test('single elimination with a bye: native first round, then the final round', 
   assert.equal(bracket.page.data.error, '');
   assert.equal(bracket.page.data.rounds[1].published, true);
   snapshot(bracket, 'bracket-knockout');
+
+  // C16: shared court maintenance from the schedule page (rename, disable, re-enable).
+  const courts = owner.open('pages/schedule/index', { orgId: org, eventId: event.id });
+  await owner.settle(courts);
+  const court = courts.page.data.courtAdmin[0];
+  assert.ok(court, courts.page.data.error);
+  courts.page.askRename(tap({ id: court.id }));
+  courts.page.renameInput(tap({}, { value: '合成主场' }));
+  await courts.page.saveRename();
+  await owner.settle(courts);
+  const serverCourt = async () =>
+    (await call(`${root}/courts?limit=100`, { cookie: ownerCookie })).data.find(
+      (c) => c.id === court.id,
+    );
+  assert.equal((await serverCourt()).name, '合成主场', courts.page.data.error);
+  // A court with future formal matches cannot be disabled: the server refuses and the page
+  // shows why; nothing changes.
+  owner.approve();
+  await courts.page.toggleCourtStatus(tap({ id: court.id }));
+  await owner.settle(courts);
+  assert.match(courts.page.data.error, /仍有未来或进行中的正式预约/);
+  assert.equal((await serverCourt()).status, 'ACTIVE');
 });

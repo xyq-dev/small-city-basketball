@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const recent = require('../../utils/recent');
+const directory = require('../../utils/directory');
 
 const privateDefaults = {
   signedIn: false,
@@ -15,13 +16,119 @@ const privateDefaults = {
   creatable: [],
 };
 Page({
-  data: { value: '', error: '', loading: false, recentEvents: [], ...privateDefaults },
+  data: {
+    value: '',
+    error: '',
+    loading: false,
+    recentEvents: [],
+    ...privateDefaults,
+    // Public directory: anonymous and independent of the signed-in account's private list.
+    dir: directory.initialState(),
+    dirGroups: directory.GROUPS,
+  },
   onLoad() {
     this._alive = true;
   },
   onShow() {
     this.setData({ recentEvents: recent.list() });
     this.load();
+    // Re-entering always starts the directory from its first page.
+    this.loadDirectory();
+  },
+  // ---- public directory (anonymous) ----
+  // Every reset (filter change, refresh, re-entry) starts a new generation; replies from an
+  // older generation are dropped, so a slow earlier filter can never overwrite a newer one.
+  async loadDirectory() {
+    const gen = (this._dirGen = (this._dirGen || 0) + 1);
+    this._dirCursor = null;
+    const { group, city } = this.data.dir;
+    // A reset clears the rows first: a failed refresh never shows old rows as current. It also
+    // ends the previous generation's pending "load more": that reply is dropped by generation,
+    // so leaving loadingMore set would block every later page of the new generation.
+    this.setData({
+      'dir.items': [],
+      'dir.loading': true,
+      'dir.loadingMore': false,
+      'dir.error': '',
+      'dir.moreError': '',
+      'dir.done': false,
+      'dir.loaded': false,
+    });
+    try {
+      const page = await directory.fetchPage(api.getClient(), { group, city });
+      if (gen !== this._dirGen || this._alive === false) return;
+      this._dirCursor = page.nextCursor;
+      this.setData({
+        'dir.items': directory.merge([], page.items),
+        'dir.loading': false,
+        'dir.loaded': true,
+        'dir.done': !page.nextCursor,
+      });
+    } catch (error) {
+      if (gen !== this._dirGen || this._alive === false) return;
+      this.setData({ 'dir.loading': false, 'dir.error': directory.failure(error) });
+    }
+  },
+  async loadMoreDirectory() {
+    const cursor = this._dirCursor;
+    const d = this.data.dir;
+    if (!cursor || d.loading || d.loadingMore) return;
+    const gen = this._dirGen;
+    this.setData({ 'dir.loadingMore': true, 'dir.moreError': '' });
+    try {
+      const page = await directory.fetchPage(api.getClient(), {
+        group: d.group,
+        city: d.city,
+        cursor,
+      });
+      if (gen !== this._dirGen || this._alive === false) return;
+      this._dirCursor = page.nextCursor;
+      this.setData({
+        'dir.items': directory.merge(this.data.dir.items, page.items),
+        'dir.loadingMore': false,
+        'dir.done': !page.nextCursor,
+      });
+    } catch (error) {
+      if (gen !== this._dirGen || this._alive === false) return;
+      // Rows already read stay; only the next page is reported as missing.
+      this.setData({
+        'dir.loadingMore': false,
+        'dir.moreError':
+          '后续赛事读取失败，已显示的 ' +
+          this.data.dir.items.length +
+          ' 届保留：' +
+          directory.failure(error),
+      });
+    }
+  },
+  pickDirGroup(e) {
+    const group = e.currentTarget.dataset.group;
+    if (!directory.GROUPS.some((g) => g.value === group) || group === this.data.dir.group) return;
+    this.setData({ 'dir.group': group });
+    this.loadDirectory();
+  },
+  dirCityInput(e) {
+    this.setData({ 'dir.cityInput': String(e.detail.value || '').slice(0, 40) });
+  },
+  applyDirCity() {
+    const city = directory.normalizeCity(this.data.dir.cityInput);
+    if (city === undefined) {
+      this.setData({ 'dir.cityError': '城市仅支持中文、字母、数字、空格和“·”，最多20个字。' });
+      return;
+    }
+    this.setData({ 'dir.city': city || '', 'dir.cityInput': city || '', 'dir.cityError': '' });
+    this.loadDirectory();
+  },
+  clearDirCity() {
+    this.setData({ 'dir.city': '', 'dir.cityInput': '', 'dir.cityError': '' });
+    this.loadDirectory();
+  },
+  openDirectory(e) {
+    try {
+      ui.open('event', { event: api.publicId(e.currentTarget.dataset.id) });
+    } catch {
+      this.loadDirectory();
+    }
   },
   openRecent(e) {
     try {
@@ -71,7 +178,7 @@ Page({
     if (!current()) return;
     const token = ui.begin(this);
     try {
-      const result = await events.load(client, session);
+      const result = await events.load(client, session, 10);
       // Store only fields listed in privateDefaults, so a session reset clears all of them.
       if (ui.live(this, token) && current())
         this.setData({

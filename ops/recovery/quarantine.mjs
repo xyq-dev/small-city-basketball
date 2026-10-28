@@ -16,8 +16,10 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
     // This is an offline restore operation. Drain in-flight row-locking readers
     // and writers before choosing the single time used by all revocations.
     await client.query(`LOCK TABLE organizations, events, users, sessions,
-      team_invitations, public_event_publications, overlay_grants, scoring_leases,
-      platform_operators, wechat_identities, wechat_auth_attempts
+      team_invitations, public_event_publications, event_directory_listings, overlay_grants, scoring_leases,
+      platform_operators, wechat_identities, wechat_auth_attempts,
+      team_request_links, team_join_codes, team_member_claims,
+      media_upload_sessions, media_upload_chunks, season_data_grants
       IN EXCLUSIVE MODE`);
     const now = (await client.query('SELECT clock_timestamp()::text AS now')).rows[0].now;
     const systemUserId = randomUUID();
@@ -47,6 +49,41 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
       `UPDATE team_invitations SET revoked_at=$1::timestamptz
        WHERE accepted_at IS NULL AND revoked_at IS NULL`,
       [now],
+    );
+    // C19 bearer credentials: share links and join codes are usable by whoever holds the
+    // token, and a pending claim admits its target. None may survive into a restored copy.
+    const requestLinks = await client.query(
+      `UPDATE team_request_links SET revoked_at=$1::timestamptz,revoked_by=$2,revoke_reason=$3
+       WHERE revoked_at IS NULL`,
+      [now, systemUserId, '恢复隔离统一撤销'],
+    );
+    const joinCodes = await client.query(
+      `UPDATE team_join_codes SET revoked_at=$1::timestamptz,revoked_by=$2 WHERE revoked_at IS NULL`,
+      [now, systemUserId],
+    );
+    const memberClaims = await client.query(
+      `UPDATE team_member_claims SET status='REVOKED',decided_at=$1::timestamptz WHERE status='PENDING'`,
+      [now],
+    );
+    // Close every unfinished upload; keep receipts and completed files. Use transaction
+    // time for the terminal state to match the upload guard's expiry boundary.
+    const uploadSessions = await client.query(
+      `UPDATE media_upload_sessions SET
+       status=CASE WHEN expires_at<=now() THEN 'EXPIRED' ELSE 'CANCELLED' END,
+       version=version+1,closed_at=$1::timestamptz,closed_by=$2 WHERE status='OPEN'`,
+      [now, systemUserId],
+    );
+    const uploadChunks = await client.query(
+      `UPDATE media_upload_chunks SET payload=NULL,released_at=$1::timestamptz
+       WHERE released_at IS NULL`,
+      [now],
+    );
+    // Re-enabling an organization after a restore must never revive prior consent.
+    const seasonGrants = await client.query(
+      `UPDATE season_data_grants SET status='WITHDRAWN',version=version+1,
+       withdrawn_by=$2,withdrawn_at=$1::timestamptz,withdraw_reason=$3,
+       updated_at=$1::timestamptz WHERE status IN ('PENDING','ACTIVE')`,
+      [now, systemUserId, '恢复隔离撤回私有赛季授权'],
     );
     const publicGrants = await client.query(
       `UPDATE public_event_publications SET revoked_at=$1::timestamptz,revoked_by=$2
@@ -86,6 +123,12 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
       wechatIdentitiesRevoked: wechatIdentities.rowCount,
       wechatChallengesRemoved: wechatAttempts.rowCount,
       pendingInvitationsRevoked: invitations.rowCount,
+      teamRequestLinksRevoked: requestLinks.rowCount,
+      teamJoinCodesRevoked: joinCodes.rowCount,
+      pendingMemberClaimsRevoked: memberClaims.rowCount,
+      uploadSessionsClosed: uploadSessions.rowCount,
+      uploadChunksReleased: uploadChunks.rowCount,
+      seasonDataGrantsWithdrawn: seasonGrants.rowCount,
       publicPublicationsRevoked: publicGrants.rowCount,
       overlayGrantsRevoked: overlayGrants.rowCount,
       activeLeasesExpired: leases.rowCount,

@@ -39,11 +39,13 @@
     <view class="plan-categories"><text class="selected-category">预约动态</text><text>关注赛事</text><text>系统消息</text></view>
     <view class="card plan-card"><view class="subtitle">未来预约动态</view><view>收到预约 / 对方变更提议 / 处理结果</view><view>点击后读取当前真实订单状态</view></view>
     <view class="card plan-card"><view class="subtitle">订阅提醒</view><view>需用户明确选择微信允许的提醒类型</view><view>未接通或未授权时不能显示已送达</view></view>
-    <view class="notice warning plan-notice"><view class="plan-notice-title">当前查看方式</view><view class="small">先通过我的预约主动刷新。本页只作为未来消息中心说明。</view></view>
+    <view class="notice warning plan-notice"><view class="plan-notice-title">关注可用，微信提醒尚未启用</view><view class="small">通过“我的关注”查看赛事，通过“我的预约”主动刷新订单。收藏赛事不会自动授权微信订阅消息。</view></view>
+    <button class="secondary" data-page="follows" bindtap="go">查看我的关注</button>
   </block>
   <block wx:elif="{{selected==='profile'}}">
     <view class="hero plan-hero"><view class="title">长期球员档案 · 规划</view><view class="muted">本人资料与已授权来源分别标示</view></view>
-    <view class="card plan-card"><view class="subtitle">长期展示方向</view><view>按赛季/赛事查看本人已授权记录</view><view>服务资料、样本、来源和可撤销授权</view></view>
+    <view class="card plan-card"><view class="subtitle">当前私有赛季数据</view><view>本人同意后可查看机构内赛季来源与统计</view><view>公开长期档案仍在规划，私有授权不会自动公开</view></view>
+    <button class="secondary" data-page="season-grants" bindtap="go">我的私有赛季授权与数据</button>
     <view class="card plan-card"><view class="subtitle">专业数据边界</view><view>篮板、助攻、时间与命中率尚未采集</view><view>未统计保持未统计，不编造生涯能力分</view></view>
     <button class="secondary" data-page="performance" bindtap="go">当前可用的有限授权记录</button>
     <view class="notice plan-notice"><view class="plan-notice-title">档案与报名分别管理</view><view class="small">长期个人档案不替代每届冻结名单与资格审核。</view></view>

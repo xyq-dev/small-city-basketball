@@ -81,7 +81,7 @@ async function expectations() {
     manifest.runtimeRole !== 'scb_runtime' ||
     manifest.backupRole !== 'scb_backup' ||
     !manifest.tables ||
-    Object.keys(manifest.tables).length !== 65
+    Object.keys(manifest.tables).length !== 78
   )
     throw new Error();
   for (const [name, t] of Object.entries(manifest.tables)) {

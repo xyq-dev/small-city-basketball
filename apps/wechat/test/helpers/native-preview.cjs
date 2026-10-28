@@ -132,7 +132,11 @@ function renderWxml(source, data, options = {}) {
     const bytes = fs.readFileSync(localFile(target, root, 'Preview asset'));
     if (!bytes.length || bytes.length > 8 * 1024 * 1024)
       throw new Error('Invalid preview image size');
-    assets.push({ path: path.relative(root, target), bytes: bytes.length });
+    // Logical project path with POSIX separators on every platform (path.relative uses "\\" on Windows).
+    assets.push({
+      path: path.relative(root, target).split(path.sep).join('/'),
+      bytes: bytes.length,
+    });
     return 'data:' + types[kind] + ';base64,' + bytes.toString('base64');
   }
   function children(nodes, scope) {

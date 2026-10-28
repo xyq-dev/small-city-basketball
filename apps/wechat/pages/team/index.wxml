@@ -27,6 +27,26 @@
         <button class="primary" data-mode="members" bindtap="save" disabled="{{busy || uncertain || !membersDirty}}" loading="{{busy}}">保存长期成员</button>
       </view>
     </block>
+    <view wx:if="{{team.capabilities.canManage}}" class="card team-panel">
+      <view class="subtitle">球员账号 · 加入码与认领</view>
+      <view class="small muted">球员账号绑定只代表球队成员身份，不授予管理权限。你只能看到成员名、对方显示名与绑定状态。</view>
+      <view wx:if="{{playersError}}" class="notice warning">{{playersError}}</view>
+      <button class="primary team-action" bindtap="issueJoinCode" disabled="{{busy}}">签发加入码</button>
+      <view wx:if="{{issuedCode}}" class="notice"><view class="feedback-title">本次加入码（只显示一次）</view><view class="join-code">{{issuedCode}}</view></view>
+      <view wx:for="{{codes}}" wx:key="id" class="member-table-row player-row"><text>{{item.stateText}} · {{item.useCount}}/{{item.maxUses}}</text><text class="muted">{{item.expires}}</text><button wx:if="{{item.status !== 'REVOKED'}}" class="quiet member-remove" data-id="{{item.id}}" bindtap="revokeJoinCode" disabled="{{busy}}">撤销</button></view>
+      <block wx:if="{{roster}}">
+        <view class="field-label">已绑定账号</view>
+        <view wx:if="{{!roster.bindings.length}}" class="muted">暂无球员账号。</view>
+        <view wx:for="{{roster.bindings}}" wx:key="bindingId" class="member-table-row player-row"><text>{{item.memberName}}</text><text class="muted">{{item.accountDisplayName}} · {{item.stateText}}</text><button wx:if="{{item.status === 'ACTIVE'}}" class="quiet member-remove" data-id="{{item.bindingId}}" bindtap="removeBinding" disabled="{{busy || !removeReason}}">移除</button></view>
+        <view class="field-label">移除原因（4–500字）</view><input class="field" maxlength="500" value="{{removeReason}}" data-field="removeReason" bindinput="playerField" disabled="{{busy}}"/>
+        <view class="field-label">历史成员认领</view>
+        <view class="small muted">选择长期名单中尚未绑定的成员，填写对方本人提供的账号编号；对方接受后才绑定。</view>
+        <view wx:for="{{roster.claimableMembers}}" wx:key="memberId" class="member-row"><button class="{{claimMember === item.memberId ? 'primary' : 'quiet'}}" data-id="{{item.memberId}}" bindtap="pickClaimMember" disabled="{{busy}}">{{item.name}}</button></view>
+        <input class="field" maxlength="36" value="{{claimTarget}}" data-field="claimTarget" bindinput="playerField" disabled="{{busy}}" placeholder="对方账号编号"/>
+        <button class="secondary team-action" bindtap="createClaim" disabled="{{busy || !claimMember || !claimTarget}}">发起认领</button>
+        <view wx:for="{{roster.claims}}" wx:key="claimId" class="member-table-row player-row"><text>{{item.memberName}} → {{item.targetDisplayName}}</text><text class="muted">{{item.stateText}}</text><button wx:if="{{item.status === 'PENDING'}}" class="quiet member-remove" data-id="{{item.claimId}}" bindtap="revokeClaim" disabled="{{busy}}">撤销</button></view>
+      </block>
+    </view>
   </block>
   <button wx:if="{{nameDirty || membersDirty}}" class="quiet" bindtap="refresh" disabled="{{busy || uncertain}}">取消未保存修改</button>
   <view wx:if="{{!team && !loading && !error && !loginRequired}}" class="card team-panel state-panel"><view class="subtitle">暂无可查看的球队资料</view><view class="muted">请从我的球队重新进入，或联系有权人员核对授权。</view></view>

@@ -19,3 +19,5 @@
 .skeleton-line { height:12px; border-radius:4px; background:#eaf0f7; margin-top:8px; }
 .skeleton-line.short { width:78%; }
 @media (max-width:360px) { .team-panel { padding:20px; } .member-table-head,.member-table-row { grid-template-columns:minmax(0,1fr) 64px 58px; } .member-table-head text,.member-table-row text { padding:10px 8px; } }
+.player-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 60px; }
+.join-code { font-family:monospace; font-size:16px; letter-spacing:1px; overflow-wrap:anywhere; margin-top:8px; }
