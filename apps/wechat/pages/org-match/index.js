@@ -243,10 +243,13 @@ Page({
   pickRole(e) {
     this.setData({ roleIndex: Number(e.detail.value) === 1 ? 1 : 0 });
   },
-  async staff(userId, role, status, label) {
+  // `op`: the confirmation this write follows (ui.confirmOp); it is re-checked right before the
+  // request and never replaced by the write token.
+  async staff(userId, role, status, label, op, version = this._matchVersion) {
     if (this.data.busy || this.data.pending) return;
-    const version = this._matchVersion;
+    if (op && !op.valid()) return;
     const token = ui.hold(this);
+    if (!ui.held(this, token)) return;
     this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       await api.getClient().request(this.base() + '/staff/' + api.uuid(userId), 'PUT', {
@@ -270,15 +273,23 @@ Page({
   },
   async disable(e) {
     const row = this.data.staff.find((s) => s.key === e.currentTarget.dataset.key);
-    if (!row) return;
+    if (!row || this.data.busy) return;
+    const version = this._matchVersion;
+    const op = await ui.confirmOp(
+      this,
+      '停用' + row.role,
+      row.name + '将不能再处理本场；正在持有的记分控制随之失效。',
+    );
+    // The same assignment must still be listed at the version the organizer confirmed.
     if (
-      !(await ui.confirm(
-        '停用' + row.role,
-        row.name + '将不能再处理本场；正在持有的记分控制随之失效。',
-      ))
+      !op ||
+      this._matchVersion !== version ||
+      !this.data.caps ||
+      !this.data.caps.staff ||
+      !this.data.staff.some((s) => s.key === row.key)
     )
       return;
-    this.staff(row.userId, row.roleValue, 'DISABLED', '已停用' + row.role + '。');
+    this.staff(row.userId, row.roleValue, 'DISABLED', '已停用' + row.role + '。', op, version);
   },
   setMode(e) {
     const mode = e.currentTarget.dataset.mode;
@@ -289,13 +300,21 @@ Page({
     // CAS against the version the organizer saw when confirming; a poll that lands while the
     // dialog is open makes the command conflict and re-read instead of acting on newer data.
     const version = this._matchVersion;
-    if (!(await ui.confirm(title, content))) return;
-    if (this.data.busy || this.data.pending) return;
+    const op = await ui.confirmOp(this, title, content);
+    // Late, replaced or out-of-date confirmations do nothing (a newer read moved the version).
+    if (!op || this.data.busy || this.data.pending || this._matchVersion !== version) return;
     const client = api.getClient();
     const token = ui.hold(this);
+    const live = () => op.valid() && ui.held(this, token);
+    if (!live()) return;
     this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       const body = await scoring.envelope(type, payload, version);
+      // Generating the command id waits for secure random; check again before sending.
+      if (!live()) {
+        if (ui.held(this, token)) this.setData({ busy: false });
+        return;
+      }
       const outcome = await scoring.send(client, this.base(), body);
       if (!ui.held(this, token)) return;
       if (!outcome.done) {
@@ -390,6 +409,7 @@ Page({
     const pending = this.data.pending;
     if (!pending || this.data.busy) return;
     const token = ui.hold(this);
+    if (!ui.held(this, token)) return;
     this.setData({ busy: true, loading: false, error: '' });
     try {
       const outcome = await scoring.send(api.getClient(), this.base(), pending.body);

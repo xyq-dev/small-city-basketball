@@ -102,10 +102,19 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Prepare exact PostgreSQL archive clients and isolated restore role
+        run: |
+          node --test scripts/ci-postgres-clients.test.mjs
+          node scripts/prepare-ci-postgres-clients.mjs
       - name: Existing PostgreSQL integration checks
         run: npm run test:integration --workspace @small-city-basketball/api -- --exclude '**/p07-*.integration.test.ts'
-      - run: npm run build --workspace @small-city-basketball/api
+      # The page suite owns separate child databases. Collect its failures even when
+      # an integration test fails; that failed step still makes the job fail.
+      - id: api_build
+        if: ${{ !cancelled() }}
+        run: npm run build --workspace @small-city-basketball/api
       - name: Native mini program pages against the real API
+        if: ${{ !cancelled() && steps.api_build.outcome == 'success' }}
         run: npm run test:wechat:api
       - name: Capture sessions, scoring, standings and public identities
         run: node scripts/check-database-restart.mjs capture

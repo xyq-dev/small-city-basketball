@@ -158,9 +158,17 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
     },
+    "event_directory_listings": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "revoked_at", "revoked_by", "revoke_source", "revoke_reason"]
+    },
     "event_entitlements": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["revoked_at", "revoke_reason"]
+    },
+    "event_follows": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "cancelled_at"]
     },
     "event_rulesets": {
       "privileges": ["SELECT", "INSERT"],
@@ -222,6 +230,18 @@
     "media_markers": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
+    },
+    "media_request_receipts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["result_file_id"]
+    },
+    "media_upload_chunks": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["payload", "released_at"]
+    },
+    "media_upload_sessions": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "version", "closed_at", "closed_by", "file_id"]
     },
     "org_schedule_mutex": {
       "privileges": ["SELECT", "INSERT"],
@@ -333,6 +353,39 @@
         "updated_at"
       ]
     },
+    "season_data_grants": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "status",
+        "version",
+        "consented_at",
+        "declined_at",
+        "revoked_at",
+        "withdrawn_by",
+        "withdrawn_at",
+        "withdraw_reason",
+        "updated_at",
+        "invalidated_at",
+        "invalidation_reason"
+      ]
+    },
+    "season_events": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "detached_by", "detached_at"]
+    },
+    "seasons": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "name",
+        "start_date",
+        "end_date",
+        "status",
+        "version",
+        "activated_at",
+        "closed_at",
+        "updated_at"
+      ]
+    },
     "sessions": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["revoked_at"]
@@ -349,9 +402,38 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["accepted_at", "revoked_at"]
     },
+    "team_join_codes": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["use_count", "revoked_at", "revoked_by"]
+    },
+    "team_member_bindings": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "ended_reason", "ended_by", "end_note", "ended_at"]
+    },
+    "team_member_claims": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "decided_at"]
+    },
     "team_members": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["name", "status", "updated_at"]
+    },
+    "team_request_links": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["use_count", "revoked_at", "revoked_by", "revoke_reason"]
+    },
+    "team_requests": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "status",
+        "version",
+        "reviewer_id",
+        "review_reason",
+        "reviewed_at",
+        "withdrawn_at",
+        "team_id",
+        "updated_at"
+      ]
     },
     "team_reservations": {
       "privileges": ["SELECT", "INSERT"],

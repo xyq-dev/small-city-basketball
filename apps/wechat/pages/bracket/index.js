@@ -242,9 +242,11 @@ Page({
       throw new Error('请填写4–500字的操作原因');
     return v;
   },
-  async send(path, body, label) {
-    if (this.data.busy) return false;
+  // `op`: the confirmation this command follows; re-checked right before sending.
+  async send(path, body, label, op) {
+    if (this.data.busy || !op || !op.valid()) return false;
     const token = ui.hold(this);
+    if (!op.valid() || !ui.held(this, token)) return false;
     this.setData({ busy: true, loading: false, error: '', notice: '', conflicts: [] });
     try {
       await api.getClient().request(path, 'POST', body);
@@ -310,13 +312,19 @@ Page({
       this.setData({ error: ui.message(error) });
       return;
     }
+    const op = await ui.confirmOp(
+      this,
+      '正式发布' + this.data.next.title,
+      '将发布 ' +
+        body.allocations.length +
+        ' 场比赛并锁定来源赛果；现有实时观赛链接随之撤销，需重新开启公开观赛。',
+    );
+    // The same event version and source hash as confirmed.
     if (
-      !(await ui.confirm(
-        '正式发布' + this.data.next.title,
-        '将发布 ' +
-          body.allocations.length +
-          ' 场比赛并锁定来源赛果；现有实时观赛链接随之撤销，需重新开启公开观赛。',
-      ))
+      !op ||
+      !this._data ||
+      this._data.event.version !== body.expectedEventVersion ||
+      this._sourceHash !== body.expectedSourceHash
     )
       return;
     const path =
@@ -324,7 +332,9 @@ Page({
       (body.type === 'PUBLISH_QUALIFICATION'
         ? '/group-qualification-commands'
         : '/knockout-round-commands');
-    if (await this.send(path, body, this.data.next.title + '已正式发布；请重新开启公开观赛。')) {
+    if (
+      await this.send(path, body, this.data.next.title + '已正式发布；请重新开启公开观赛。', op)
+    ) {
       this.setData({ reason: '', fixtures: [] });
       await this.load();
     }
@@ -343,11 +353,23 @@ Page({
       this.setData({ error: ui.message(error) });
       return;
     }
+    const op = await ui.confirmOp(
+      this,
+      '保存' + g.label + '同分抽签',
+      '抽签只保存一次并可审计；之后发布失败也不会重新抽取。',
+    );
+    const nowGroup =
+      this._data &&
+      this._data.competition &&
+      this._data.competition.groups.find((x) => x.groupKey === key);
+    // Same event version and group source; the tie must still be unresolved.
     if (
-      !(await ui.confirm(
-        '保存' + g.label + '同分抽签',
-        '抽签只保存一次并可审计；之后发布失败也不会重新抽取。',
-      ))
+      !op ||
+      !nowGroup ||
+      this._data.event.version !== data.event.version ||
+      nowGroup.standings.sourceHash !== g.standings.sourceHash ||
+      nowGroup.draw ||
+      !nowGroup.unresolvedTieEntryIds.length
     )
       return;
     if (
@@ -361,6 +383,7 @@ Page({
           reason,
         },
         g.label + '同分抽签已保存。',
+        op,
       )
     ) {
       this.setData({ ['tieReasons.' + key]: '' });
