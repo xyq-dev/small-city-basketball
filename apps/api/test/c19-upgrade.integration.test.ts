@@ -779,11 +779,13 @@ describe(
           maxUses: 10,
           reason: '升级恢复演练合成入口',
         });
+        expect(link.link.status).toBe('ACTIVE');
         const members = fixture.tables.team_members!.rows;
         const code = await post<IssuedTeamJoinCodeData>(
           `${orgPath}/teams/${members[0]!.team_id}/join-codes`,
           {},
         );
+        expect(code.joinCode.status).toBe('ACTIVE');
         const pendingClaim = await post<TeamMemberClaimData>(
           `${orgPath}/teams/${members[0]!.team_id}/members/${members[0]!.id}/claims`,
           { targetUserId: fixture.users.invitee!.id },
@@ -1010,8 +1012,36 @@ describe(
         expect(result.counts.publicPublicationsRevoked).toBe(1);
         expect(result.counts.overlayGrantsRevoked).toBe(1);
         expect(result.counts.pendingInvitationsRevoked).toBe(1);
+        expect(
+          (
+            await restoredPool.query(
+              'SELECT id,target_user_id,revoked_at IS NOT NULL AS revoked,accepted_at FROM team_invitations WHERE id=$1',
+              [fixture.credentials.pendingInvitation.id],
+            )
+          ).rows,
+        ).toEqual([
+          {
+            id: fixture.credentials.pendingInvitation.id,
+            target_user_id: fixture.users.invitee!.id,
+            revoked: true,
+            accepted_at: null,
+          },
+        ]);
         expect(result.counts.teamRequestLinksRevoked).toBe(1);
         expect(result.counts.teamJoinCodesRevoked).toBe(1);
+        for (const [table, id] of [
+          ['team_request_links', newAuth.link.link.id],
+          ['team_join_codes', newAuth.code.joinCode.id],
+        ]) {
+          expect(
+            (
+              await restoredPool.query(
+                `SELECT id,revoked_at IS NOT NULL AS revoked FROM ${quote(table!)} WHERE id=$1`,
+                [id],
+              )
+            ).rows,
+          ).toEqual([{ id, revoked: true }]);
+        }
         expect(result.counts.pendingMemberClaimsRevoked).toBe(1);
         expect(
           (
@@ -1097,8 +1127,9 @@ describe(
             body: { token: fixture.credentials.pendingInvitation.token },
           },
         );
-        expect(invitation.status).toBe(422);
-        expect(invitation.error?.code).toBe('INVITATION_INVALID');
+        // An inactive organization is hidden before the invitation's revocation is inspected.
+        expect(invitation.status).toBe(404);
+        expect(invitation.error?.code).toBe('RESOURCE_NOT_FOUND');
         // A password login still opens an account, but its organization stays disabled.
         const relogin = await restoredApi.login(fixture.users.owner!.email);
         const events = await restoredApi.call(
@@ -1122,18 +1153,30 @@ describe(
         const ownerAfter = await restoredApi.login(fixture.users.owner!.email);
         const inviteeAfter = await restoredApi.login(fixture.users.invitee!.email);
         const scorerAfter = await restoredApi.login(fixture.users.scorer!.email);
+        const revokedInvitation = await restoredApi.call(
+          `/v1/invitations/${fixture.credentials.pendingInvitation.id}/accept`,
+          {
+            method: 'POST',
+            cookie: inviteeAfter,
+            body: { token: fixture.credentials.pendingInvitation.token },
+          },
+        );
+        expect(revokedInvitation.status).toBe(422);
+        expect(revokedInvitation.error?.code).toBe('INVITATION_INVALID');
         const link = await restoredApi.call('/v1/team-request-links/resolve', {
           method: 'POST',
           cookie: inviteeAfter,
           body: { token: newAuth.link.token },
         });
-        expect([404, 409, 410, 422]).toContain(link.status);
+        expect(link.status).toBe(404);
+        expect(link.error?.code).toBe('TEAM_REQUEST_LINK_INVALID');
         const join = await restoredApi.call('/v1/team-joins', {
           method: 'POST',
           cookie: inviteeAfter,
           body: { code: newAuth.code.code, displayName: '恢复后不可凭旧码入队' },
         });
-        expect([404, 409, 410, 422]).toContain(join.status);
+        expect(join.status).toBe(422);
+        expect(join.error?.code).toBe('JOIN_CODE_INVALID');
         const claim = await restoredApi.call(
           `/v1/me/member-claims/${newAuth.pendingClaim.claimId}/accept`,
           {

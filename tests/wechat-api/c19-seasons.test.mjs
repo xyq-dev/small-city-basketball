@@ -312,10 +312,15 @@ test('season management, nomination, consent, own statistics, organization board
   await team.page.createClaim();
   await ownerDevice.settle(team);
   assert.equal(team.page.data.error, '', team.page.data.error);
+  const issuedClaim = team.page.data.roster.claims.find((c) => c.memberId === fixture.memberId);
+  assert.ok(issuedClaim, team.page.data.playersError);
+  assert.equal(issuedClaim.status, 'PENDING');
   const join = playerDevice.open('pages/team-join/index', {});
   await playerDevice.settle(join);
-  const claim = join.page.data.claims.find((c) => c.memberId === fixture.memberId);
+  const claim = join.page.data.claims.find((c) => c.claimId === issuedClaim.claimId);
   assert.ok(claim, join.page.data.error);
+  assert.equal(claim.memberName, fixture.memberName);
+  assert.equal(claim.status, 'PENDING');
   playerDevice.approve();
   await join.page.decide(tap({ id: claim.claimId, decision: 'accept' }));
   await playerDevice.settle(join);
