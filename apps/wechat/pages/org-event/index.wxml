@@ -28,6 +28,7 @@
         <button wx:if="{{event.format !== 'ROUND_ROBIN'}}" class="secondary" bindtap="openBracket">{{event.format === 'GROUP_KNOCKOUT' ? '分组积分与晋级发布' : '签位与下一轮发布'}}</button>
         <button class="secondary" bindtap="openTasks">记分与赛果确认</button>
         <button wx:if="{{manage.review}}" class="secondary" bindtap="openReview">报名审核<text class="manage-sub">{{manage.reviewLabel}}</text></button>
+        <button wx:if="{{manage.seasonGrants}}" class="secondary" bindtap="openSeasonGrants">私有赛季数据提名<text class="manage-sub">提名后仍需球员本人同意</text></button>
       </view>
       <block wx:if="{{manage.progress}}">
         <view class="muted">{{manage.progress}}{{manage.ready ? ' · 已满足完赛条件' : ''}}</view>

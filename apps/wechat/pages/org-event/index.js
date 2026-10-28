@@ -223,15 +223,17 @@ Page({
   // command is re-authorized server-side, so a hidden 403 here never widens anything.
   async readManage(client) {
     const quiet = (p) => p.then((r) => r.data).catch(() => null);
-    const [lifecycle, registration] = await Promise.all([
+    const [lifecycle, registration, seasonGrants] = await Promise.all([
       quiet(client.request(this.base() + '/lifecycle')),
       quiet(client.request(this.base() + '/registration')),
+      quiet(client.request(this.base() + '/season-data-grants')),
     ]);
-    if (!lifecycle && !registration) return null;
+    if (!lifecycle && !registration && !seasonGrants) return null;
     const c = (lifecycle && lifecycle.capabilities) || {};
     const completion = lifecycle && lifecycle.completion;
     return {
       review: !!registration,
+      seasonGrants: !!seasonGrants,
       reviewLabel: registration
         ? '已提交 ' +
           registration.counts.SUBMITTED +
@@ -264,6 +266,10 @@ Page({
   },
   openTasks() {
     ui.open('scoring-tasks', { orgId: this.orgId, eventId: this.eventId });
+  },
+  openSeasonGrants() {
+    if (this.data.manage && this.data.manage.seasonGrants)
+      ui.open('season-grants', { orgId: this.orgId, eventId: this.eventId });
   },
   chooseLifecycle(e) {
     const type = e.currentTarget.dataset.type;

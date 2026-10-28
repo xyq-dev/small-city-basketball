@@ -250,3 +250,374 @@ export function snapshot(h, name) {
     fs.writeFileSync(path.join(dir, `${name}-w${width}.html`), preview.phone);
   }
 }
+
+/**
+ * C19: like startServer, with extra createApi options for the isolated service only (for
+ * example a synthetic `media: { trustedExternalHosts }`). Never a production configuration.
+ */
+export async function startServerWith(options = {}) {
+  const base = isolatedBase();
+  const owned = `${decodeURIComponent(base.pathname.slice(1)).slice(0, 30)}_w_${randomBytes(6).toString('hex')}`;
+  assert.match(owned, /^scb_test_[A-Za-z0-9_]+$/);
+  const admin = new pg.Pool({ connectionString: base.href, max: 1 });
+  await admin.query(`CREATE DATABASE "${owned}"`);
+  const target = new URL(base);
+  target.pathname = '/' + owned;
+  const { migrate } = await import('../../apps/api/dist/database/migrate.js');
+  const { createApi } = await import('../../apps/api/dist/app.js');
+  const { bootstrapOwner } = await import('../../apps/api/dist/bootstrap-owner.js');
+  const schemaPool = new pg.Pool({ connectionString: target.href, max: 1 });
+  await migrate(schemaPool);
+  await schemaPool.end();
+  const instance = await createApi({
+    databaseUrl: target.href,
+    appOrigin: APP_ORIGIN,
+    participantRegistrationEnabled: true,
+    ...options,
+  });
+  await instance.app.listen(0, '127.0.0.1');
+  const url = (await instance.app.getUrl()).replace('[::1]', '127.0.0.1');
+  return {
+    url,
+    pool: instance.pool,
+    bootstrapOwner: (body) => bootstrapOwner(instance.pool, body),
+    async grantOperator(email) {
+      const { maintainPlatformOperator } =
+        await import('../../apps/api/dist/commerce/platform-operator.js');
+      await maintainPlatformOperator(instance.pool, {
+        email,
+        status: 'ACTIVE',
+        reason: '隔离真实API联调的合成平台运营账号',
+      });
+    },
+    async close() {
+      await instance.app.close();
+      await instance.pool.end().catch(() => {});
+      await admin.query(`DROP DATABASE IF EXISTS "${owned}" WITH (FORCE)`);
+      await admin.end();
+    },
+  };
+}
+
+/** C19 fixture: owner + organization, the owner's HTTP cookie, and a call helper. */
+export async function organizationFixture(server, organizationName = '合成高州篮协') {
+  const call = http(server);
+  const org = (
+    await server.bootstrapOwner({
+      email: 'owner@example.test',
+      password: PASSWORD,
+      displayName: '合成负责人',
+      organizationName,
+    })
+  ).organizationId;
+  const login = async (email) =>
+    (await call('/v1/auth/login', { method: 'POST', body: { email, password: PASSWORD } })).cookie;
+  return {
+    call,
+    org,
+    root: `/v1/orgs/${org}`,
+    ownerCookie: await login('owner@example.test'),
+    login,
+  };
+}
+
+/**
+ * C19 fixture (HTTP preparation only, never counted as page acceptance): an event with the
+ * given teams registered by `leader` ({id, cookie}), approved and frozen. A spec is either
+ * {name, members: [names]} (new team, leader invited) or {id} (existing team the leader runs).
+ */
+export async function frozenEventFixture(f, leader, teamSpecs, name = '合成青锋杯', month = '06') {
+  const { call, root, ownerCookie } = f;
+  const event = (
+    await call(`${root}/events`, {
+      method: 'POST',
+      cookie: ownerCookie,
+      body: {
+        name,
+        startDate: `2028-${month}-01`,
+        endDate: `2028-${month}-02`,
+        timezone: 'Asia/Shanghai',
+        format: 'ROUND_ROBIN',
+        venueName: '合成体育馆',
+      },
+    })
+  ).data;
+  const eventPath = `${root}/events/${event.id}`;
+  const version = async () => (await call(eventPath, { cookie: ownerCookie })).data.version;
+  await call(`${eventPath}/registration-rules`, {
+    method: 'PUT',
+    cookie: ownerCookie,
+    body: {
+      expectedVersion: await version(),
+      minPlayers: 2,
+      maxPlayers: 3,
+      zeroAndDoubleZeroDistinct: false,
+      requireIdentity: false,
+      requireInsurance: false,
+    },
+  });
+  const stage = async (type) =>
+    (
+      await call(`${eventPath}/registration-commands`, {
+        method: 'POST',
+        cookie: ownerCookie,
+        body: { type, expectedVersion: await version() },
+      })
+    ).data;
+  await stage('OPEN_REGISTRATION');
+  const teams = [];
+  for (const spec of teamSpecs) {
+    let team;
+    if (spec.id) team = (await call(`${root}/teams/${spec.id}`, { cookie: ownerCookie })).data;
+    else {
+      team = (
+        await call(`${root}/teams`, {
+          method: 'POST',
+          cookie: ownerCookie,
+          body: { name: spec.name },
+        })
+      ).data;
+      team = (
+        await call(`${root}/teams/${team.id}/members`, {
+          method: 'PUT',
+          cookie: ownerCookie,
+          body: { expectedVersion: team.version, members: spec.members.map((n) => ({ name: n })) },
+        })
+      ).data;
+      const issued = (
+        await call(`${root}/teams/${team.id}/invitations`, {
+          method: 'POST',
+          cookie: ownerCookie,
+          body: { targetUserId: leader.id, expiresInHours: 1 },
+        })
+      ).data;
+      await call(`/v1/invitations/${issued.invitation.id}/accept`, {
+        method: 'POST',
+        cookie: leader.cookie,
+        body: { token: issued.token },
+      });
+    }
+    let entry = (
+      await call(`${eventPath}/entries`, {
+        method: 'POST',
+        cookie: leader.cookie,
+        body: { teamId: team.id },
+      })
+    ).data;
+    entry = (
+      await call(`${root}/entries/${entry.id}/roster`, {
+        method: 'PUT',
+        cookie: leader.cookie,
+        body: {
+          expectedVersion: entry.version,
+          players: team.members
+            .slice(0, 3)
+            .map((m, i) => ({ memberId: m.id, jerseyNo: String(i + 4) })),
+        },
+      })
+    ).data;
+    entry = (
+      await call(`${root}/entries/${entry.id}/commands`, {
+        method: 'POST',
+        cookie: leader.cookie,
+        body: { type: 'SUBMIT', expectedVersion: entry.version },
+      })
+    ).data;
+    await call(`${root}/entries/${entry.id}/commands`, {
+      method: 'POST',
+      cookie: ownerCookie,
+      body: { type: 'APPROVE', expectedVersion: entry.version },
+    });
+    teams.push({ ...team, entryId: entry.id });
+  }
+  await stage('CLOSE_REGISTRATION');
+  const frozen = await stage('FREEZE_REGISTRATION');
+  return { id: event.id, path: eventPath, teams, frozen, version };
+}
+
+/** C19 fixture (HTTP): publish a one-court schedule, 1-second scoring and standings rules. */
+export async function publishedEventFixture(f, event) {
+  const { call, root, ownerCookie } = f;
+  const court = (
+    await call(`${root}/courts`, {
+      method: 'POST',
+      cookie: ownerCookie,
+      body: { name: '合成场地-' + randomBytes(3).toString('hex') },
+    })
+  ).data;
+  const month = event.frozen.event.startDate.slice(0, 7);
+  let revision = (
+    await call(`${event.path}/schedule-revisions`, {
+      method: 'POST',
+      cookie: ownerCookie,
+      body: {
+        expectedEventVersion: await event.version(),
+        freezeId: event.frozen.freeze.id,
+        algorithmVersion: 'RR_CIRCLE_V1',
+        policy: {
+          slotDurationMinutes: 60,
+          minRestMinutes: 0,
+          minLocalDayGap: 0,
+          courtWindows: [
+            {
+              courtId: court.id,
+              startsAt: `${month}-01T00:00:00+08:00`,
+              endsAt: `${month}-03T02:00:00+08:00`,
+            },
+          ],
+        },
+      },
+    })
+  ).data;
+  const versions = () => ({
+    expectedEventVersion: revision.eventVersion,
+    expectedRevisionVersion: revision.version,
+  });
+  revision = (
+    await call(`${root}/schedule-revisions/${revision.id}/allocations`, {
+      method: 'PUT',
+      cookie: ownerCookie,
+      body: {
+        ...versions(),
+        allocations: revision.fixtures.map((x, i) => ({
+          fixtureKey: x.fixtureKey,
+          courtId: court.id,
+          startsAt: new Date(Date.parse(`${month}-01T09:00:00+08:00`) + i * 3600000).toISOString(),
+        })),
+      },
+    })
+  ).data;
+  await call(`${root}/schedule-revisions/${revision.id}/validate`, {
+    method: 'POST',
+    cookie: ownerCookie,
+    body: versions(),
+  });
+  await call(`${root}/schedule-revisions/${revision.id}/publish`, {
+    method: 'POST',
+    cookie: ownerCookie,
+    body: versions(),
+  });
+  await call(`${event.path}/scoring-rules`, {
+    method: 'PUT',
+    cookie: ownerCookie,
+    body: {
+      expectedEventVersion: await event.version(),
+      regulationPeriods: 1,
+      periodDurationSeconds: 1,
+      allowedScoreValues: [1, 2, 3],
+      tiePolicy: 'ALLOW_DRAW',
+      overtimeDurationSeconds: null,
+    },
+  });
+  const standings = (
+    await call(`${event.path}/standings-rules`, {
+      method: 'PUT',
+      cookie: ownerCookie,
+      body: {
+        expectedEventVersion: await event.version(),
+        winPoints: 3,
+        lossPoints: 0,
+        drawPoints: 1,
+        tiebreakers: [],
+      },
+    })
+  ).data;
+  await call(`${event.path}/standings-rule-commands`, {
+    method: 'POST',
+    cookie: ownerCookie,
+    body: {
+      type: 'PUBLISH_STANDINGS_RULES',
+      rulesetId: standings.rules.id,
+      expectedEventVersion: await event.version(),
+    },
+  });
+  return (await call(`${event.path}/matches?limit=100`, { cookie: ownerCookie })).data;
+}
+
+/**
+ * C19 fixture (HTTP): one scorer ({id, cookie}) records per-player scores, the organizer
+ * confirms independently. `stats` items: { side: 'HOME'|'AWAY', value, memberId }.
+ */
+export async function finalMatchFixture(f, matchId, scorer, stats) {
+  const { call, root, ownerCookie } = f;
+  const base = `${root}/matches/${matchId}`;
+  let wb = (await call(`${base}/scoring`, { cookie: ownerCookie })).data;
+  if (!wb.staff.some((s) => s.userId === scorer.id && s.status === 'ACTIVE')) {
+    await call(`${base}/staff/${scorer.id}`, {
+      method: 'PUT',
+      cookie: ownerCookie,
+      body: { expectedMatchVersion: wb.match.version, role: 'SCORER', status: 'ACTIVE' },
+    });
+    wb = (await call(`${base}/scoring`, { cookie: ownerCookie })).data;
+  }
+  const command = async (cookie, expectedVersion, type, payload = {}, control) =>
+    (
+      await call(`${base}/commands`, {
+        method: 'POST',
+        cookie,
+        body: {
+          commandId: globalThis.crypto.randomUUID(),
+          expectedVersion,
+          type,
+          payload,
+          capturedAt: new Date().toISOString(),
+          ...(control ? { control } : {}),
+        },
+      })
+    ).data.snapshot;
+  let snap = await command(ownerCookie, wb.match.version, 'PREPARE_MATCH', {
+    expectedEventVersion: wb.event.version,
+    collectionMode: 'PLAYER_BASIC',
+  });
+  const lease = (
+    await call(`${base}/scorekeeper-lease`, {
+      method: 'POST',
+      cookie: scorer.cookie,
+      body: { clientInstanceId: globalThis.crypto.randomUUID() },
+    })
+  ).data;
+  const control = {
+    leaseId: lease.leaseId,
+    fencingToken: lease.fencingToken,
+    clientInstanceId: lease.clientInstanceId,
+  };
+  const eventVersion = (await call(`${base}/scoring`, { cookie: ownerCookie })).data.event.version;
+  snap = await command(
+    scorer.cookie,
+    snap.version,
+    'START_MATCH',
+    { expectedEventVersion: eventVersion },
+    control,
+  );
+  for (const s of stats)
+    snap = await command(
+      scorer.cookie,
+      snap.version,
+      'RECORD_STAT',
+      { kind: 'SCORE', side: s.side, value: s.value, memberId: s.memberId },
+      control,
+    );
+  snap = await command(scorer.cookie, snap.version, 'CLOCK_START', {}, control);
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  snap = await command(scorer.cookie, snap.version, 'CLOCK_PAUSE', {}, control);
+  snap = await command(scorer.cookie, snap.version, 'END_MATCH', {}, control);
+  await call(`${base}/scorekeeper-lease`, {
+    method: 'DELETE',
+    cookie: scorer.cookie,
+    body: { control },
+    expect: [200, 204],
+  });
+  snap = await command(ownerCookie, snap.version, 'CONFIRM_RESULT');
+  assert.equal(snap.status, 'FINAL');
+  return snap;
+}
+
+/** C19 fixture (HTTP): enable public viewing; returns the public event id. */
+export async function enableViewingFixture(f, event) {
+  const r = await f.call(`${event.path}/public-viewing-commands`, {
+    method: 'POST',
+    cookie: f.ownerCookie,
+    body: { type: 'ENABLE', expectedEventVersion: await event.version() },
+  });
+  return r.data.publication.publicEventId;
+}

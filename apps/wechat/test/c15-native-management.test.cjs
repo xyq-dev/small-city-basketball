@@ -753,7 +753,8 @@ function mediaPage(data, file = { tempFilePath: 'wxfile://tmp/photo.png', size: 
 test('media: upload is private; only an explicit publish makes it public, and revoke hides it', async () => {
   const s = mediaPage(workspace());
   await s.open({ orgId: org, matchId });
-  const upload = 'POST ' + matchBase + '/media-files';
+  // C19: the idempotent whole-file request (one chunk or less); progress is server-confirmed only.
+  const upload = 'POST ' + matchBase + '/media-file-requests';
   s.on(upload, () => {
     s.set(workspace({ files: [fileRow()] }));
     return ok(fileRow());
@@ -762,14 +763,27 @@ test('media: upload is private; only an explicit publish makes it public, and re
   const uploading = s.page.uploadImage();
   await ticks();
   assert.equal(s.page.data.upload.stage, 'sending');
-  assert.match(s.page.data.upload.label, /无法显示字节进度/);
+  assert.match(s.page.data.upload.label, /服务端已确认上传 0 B/);
+  assert.equal(s.page.data.upload.confirmed, 0, 'nothing is shown as uploaded before a reply');
   s.release(upload);
   await uploading;
   await s.flush();
   const sent = s.sent(upload)[0];
   assert.deepEqual(
-    { ...sent.body, base64: sent.body.base64 === PNG.toString('base64') },
-    { purpose: 'MATCH_IMAGE', fileName: 'photo.png', contentType: 'image/png', base64: true },
+    {
+      ...sent.body,
+      clientRequestId: /^[0-9a-f-]{36}$/.test(sent.body.clientRequestId),
+      contentBase64: sent.body.contentBase64 === PNG.toString('base64'),
+    },
+    {
+      clientRequestId: true,
+      purpose: 'MATCH_IMAGE',
+      fileName: 'photo.png',
+      contentType: 'image/png',
+      byteLength: PNG.length,
+      contentSha256: require('node:crypto').createHash('sha256').update(PNG).digest('hex'),
+      contentBase64: true,
+    },
   );
   assert.equal(sent.timeout, 120000);
   assert.equal(s.page.data.upload.stage, 'saved');
@@ -778,14 +792,17 @@ test('media: upload is private; only an explicit publish makes it public, and re
 
   s.page.titleInput(tap({}, { value: '决赛最后一攻' }));
   s.page.rightsInput(tap({}, { value: '主办方摄影组拍摄' }));
-  const create = 'POST ' + matchBase + '/media';
+  const create = 'POST ' + matchBase + '/media-requests';
   s.on(create, () => {
     s.set(workspace({ files: [fileRow()], media: [mediaRow('DRAFT', 1)] }));
     return ok(mediaRow('DRAFT', 1));
   });
   await s.page.createDraft();
   await s.flush();
-  assert.deepEqual(s.sent(create)[0].body, {
+  const draftBody = s.sent(create)[0].body;
+  assert.match(draftBody.clientRequestId, /^[0-9a-f-]{36}$/);
+  assert.deepEqual(draftBody, {
+    clientRequestId: draftBody.clientRequestId,
     kind: 'IMAGE',
     title: '决赛最后一攻',
     fileId,
@@ -828,10 +845,10 @@ test('media: oversized or wrong-type files are refused before reading or sending
   s.unload();
 });
 
-test('media: a rejected upload can be retried with the same file; a lost one stays unknown', async () => {
+test('media: a rejected upload is retried with the same request ID; a lost one is resolved by its receipt', async () => {
   const s = mediaPage(workspace());
   await s.open({ orgId: org, matchId });
-  const upload = 'POST ' + matchBase + '/media-files';
+  const upload = 'POST ' + matchBase + '/media-file-requests';
   s.on(upload, () => fail(409, 'MEDIA_STORAGE_LIMIT'));
   await s.page.uploadImage();
   await s.flush();
@@ -845,20 +862,22 @@ test('media: a rejected upload can be retried with the same file; a lost one sta
   });
   await s.page.retryUpload();
   await s.flush();
-  assert.ok(s.page.data.pending, 'the outcome is unknown');
-  assert.equal(s.page.data.canRetry, false, 'no retry while unknown');
+  assert.equal(s.page.data.request.state, 'unknown', 'the outcome is unknown');
+  assert.equal(s.page.data.canRetry, false, 'no resend while unknown');
   await s.page.retryUpload();
   assert.equal(s.sent(upload).length, 2);
-  await s.page.load();
+  const [first, second] = s.sent(upload);
+  assert.deepEqual(second.body, first.body, 'the retry kept the original ID and content');
+  // The receipt of that same ID proves the result; nothing is sent again.
+  s.on('GET ' + matchBase + '/media-file-requests/' + first.body.clientRequestId, () =>
+    ok({ state: 'FILE', file: fileRow() }),
+  );
+  await s.page.queryRequest();
   await s.flush();
-  // The stored file is only a candidate for the organizer to check, not proof.
-  assert.ok(s.page.data.pending, 'still unknown after a re-read');
-  assert.equal(s.page.data.pending.candidates.length, 1);
-  assert.equal(s.page.data.canRetry, false);
-  await s.page.confirmPending(tap({ id: s.page.data.pending.candidates[0].id }));
-  assert.equal(s.page.data.pending, null);
-  assert.match(s.page.data.upload.label, /由你核对/);
-  assert.equal(s.sent(upload).length, 2, 'the page itself never sent it again');
+  assert.equal(s.page.data.request, null);
+  assert.equal(s.page.data.upload.stage, 'saved');
+  assert.equal(s.page.data.files.length, 1);
+  assert.equal(s.sent(upload).length, 2, 'the page itself never sent it a third time');
   s.unload();
 });
 

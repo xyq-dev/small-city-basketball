@@ -1,0 +1,25 @@
+<view class="page c19-page">
+  <view wx:if="{{error}}" class="notice warning" role="alert"><view class="feedback-title">请核对后继续</view><view class="small">{{error}}</view></view>
+  <view wx:if="{{message}}" class="notice">{{message}}</view>
+  <view wx:if="{{loginRequired}}" class="card c19-panel state-panel"><view class="subtitle">登录后加入球队</view><button class="primary" bindtap="login">登录</button></view>
+  <view wx:if="{{!loginRequired}}" class="card c19-panel">
+    <view class="subtitle">输入加入码</view>
+    <view class="small muted">加入码由球队领队签发，26位，不区分大小写，可含空格。加入后你会作为新成员出现在长期名单，不会自动认领同名旧成员。</view>
+    <view class="field-label">加入码</view><input class="field" maxlength="40" value="{{code}}" data-field="code" bindinput="input" disabled="{{busy}}" placeholder="例如 ABCD EFGH …"/>
+    <view class="field-label">队内显示名</view><input class="field" maxlength="80" value="{{displayName}}" data-field="displayName" bindinput="input" disabled="{{busy}}"/>
+    <button class="primary invite-action" bindtap="join" disabled="{{busy || !code}}" loading="{{busy}}">{{uncertain ? '核对上次加入' : '加入球队'}}</button>
+  </view>
+  <view wx:if="{{joined}}" class="card c19-panel"><view class="badge success">成员关系</view><view class="subtitle">{{joined.teamName}}</view><view class="muted">{{joined.organizationName}} · {{joined.memberName}}</view><button class="secondary" bindtap="openMemberships">查看我的成员关系</button></view>
+  <view wx:if="{{!loginRequired}}" class="card c19-panel">
+    <view class="subtitle">历史成员认领</view>
+    <view class="small muted">领队可把长期名单中的某位历史成员定向发给你的账号；只有你本人核对并接受后才会绑定。</view>
+    <view wx:if="{{!claims.length && !loading}}" class="muted">暂无认领。</view>
+    <view wx:for="{{claims}}" wx:key="claimId" class="item-row">
+      <view class="item-title">{{item.teamName}} · {{item.memberName}}</view>
+      <view class="small muted">{{item.organizationName}} · {{item.stateText}} · 截止 {{item.expires}}</view>
+      <view wx:if="{{item.status === 'PENDING'}}" class="row-actions"><button class="secondary" data-id="{{item.claimId}}" data-decision="decline" bindtap="decide" disabled="{{busy}}">不是我</button><button class="primary" data-id="{{item.claimId}}" data-decision="accept" bindtap="decide" disabled="{{busy}}">是我本人，接受</button></view>
+    </view>
+  </view>
+  <button class="quiet" bindtap="openMemberships" disabled="{{busy}}">我的成员关系</button>
+</view>
+<scb-nav active="Account" disabled="{{busy || loading}}"/>

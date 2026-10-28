@@ -1104,3 +1104,7 @@ export type * from './commerce.js';
 export * from './player-booking.js';
 export * from './player-performance.js';
 export type * from './directory.js';
+export type * from './media-requests.js';
+export type * from './team-membership.js';
+export type * from './event-follows.js';
+export type * from './private-seasons.js';

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { applyRuntimePrivileges, loadManifest } from '../../../ops/db/privileges.mjs';
@@ -6,8 +6,19 @@ import { createApi } from '../src/app.js';
 import { bootstrapOwner } from '../src/bootstrap-owner.js';
 import { assertRuntimeReadiness } from '../src/readiness.js';
 import { hashPassword, verifyPassword } from '../src/security.js';
-import { call, data, eventually, PASSWORD } from './support.js';
+import { call, data, eventually, login, PASSWORD } from './support.js';
+import type { User } from './support.js';
 import { createOwnedRestoreDatabase, p07DatabaseUrls } from './p07-support.js';
+import { participant, team } from './p03-support.js';
+import { published } from './p05-support.js';
+import type { Harness } from './p05-support.js';
+import { enable, savePublishRules, viewingCommand } from './p05b-support.js';
+import { syntheticPng } from './media-fixtures.js';
+import type {
+  MatchMediaData,
+  MediaFileReceiptData,
+  UploadSessionData,
+} from '@small-city-basketball/contracts';
 
 type Target = Awaited<ReturnType<typeof createOwnedRestoreDatabase>>;
 const input = () => ({
@@ -323,7 +334,7 @@ describe('P07 real PostgreSQL audited runtime and backup identities', () => {
     });
   });
 
-  test('the backup identity reads all 66 tables but cannot lock, write or change schema', async () => {
+  test('the backup identity reads all 78 tables but cannot lock, write or change schema', async () => {
     const manifest = await loadManifest();
     for (const name of Object.keys(manifest.tables)) {
       await expect(backup.query(`SELECT 1 FROM public."${name}" LIMIT 1`)).resolves.toBeDefined();
@@ -477,3 +488,254 @@ describe('P07 real PostgreSQL audited runtime and backup identities', () => {
     });
   });
 });
+
+test('C19 HTTP writes and invoker triggers work with the exact runtime grants', async () => {
+  await withTarget(async (isolated) => {
+    const ownerInput = input();
+    const first = await bootstrapOwner(isolated.pool, ownerInput);
+    const urls = await p07DatabaseUrls();
+    const runtimeUrl = new URL(urls.runtime);
+    runtimeUrl.pathname = `/${isolated.ownership.databaseName}`;
+    const api = await createApi({
+      databaseUrl: runtimeUrl.toString(),
+      appOrigin: 'http://localhost:5173',
+      participantRegistrationEnabled: true,
+    });
+    try {
+      expect((await api.pool.query('SELECT current_user AS role')).rows[0]!.role).toBe(
+        'scb_runtime',
+      );
+      await assertRuntimeReadiness(api.pool);
+      const owner: User = {
+        id: first.userId,
+        orgId: first.organizationId,
+        email: ownerInput.email,
+        cookie: '',
+      };
+      owner.cookie = await login(api, owner);
+      const leader = { ...(await participant(api, 'c19-runtime-leader')), orgId: '' };
+      const player = { ...(await participant(api, 'c19-runtime-player')), orgId: '' };
+      const root = `/v1/orgs/${owner.orgId}`;
+      const post = async <T = any>(
+        route: string,
+        body: object,
+        actor: User = owner,
+        status = 200,
+      ) => data<T>(await call(api, 'post', route, { cookie: actor.cookie, body }), status);
+      const get = async (route: string, actor: User = owner) =>
+        data<any>(await call(api, 'get', route, { cookie: actor.cookie }));
+
+      // Approval writes a request, a team, its manager grant and audit as the runtime identity.
+      const link = await post(
+        `${root}/team-request-links`,
+        {
+          expiresInHours: 24,
+          maxUses: 2,
+          reason: '隔离运行权限验证入口',
+        },
+        owner,
+        201,
+      );
+      const request = await post(
+        '/v1/team-requests',
+        {
+          token: link.token,
+          clientRequestId: randomUUID(),
+          teamName: '隔离运行权限申请队',
+        },
+        leader,
+        201,
+      );
+      const approved = await post(`${root}/team-requests/${request.id}/review`, {
+        decision: 'APPROVE',
+        expectedVersion: request.version,
+        reason: '隔离运行权限批准建队',
+      });
+      expect(approved.status).toBe('APPROVED');
+      expect((await get(`${root}/teams/${approved.teamId}`, leader)).capabilities.canManage).toBe(
+        true,
+      );
+
+      // A regular member joins a different team without inheriting any management grant.
+      let home = await team(api, owner, '运行权限主队', leader, ['既有成员']);
+      const away = await team(api, owner, '运行权限客队', leader, ['合成丙', '合成丁']);
+      const issued = await post(`${root}/teams/${home.id}/join-codes`, {}, owner, 201);
+      const membership = await post(
+        '/v1/team-joins',
+        {
+          code: issued.code,
+          displayName: '运行权限球员',
+        },
+        player,
+        201,
+      );
+      expect(membership.status).toBe('ACTIVE');
+      expect((await get('/v1/auth/session', player)).teamContexts).toEqual([]);
+      home = await get(`${root}/teams/${home.id}`);
+      const h: Harness = {
+        api,
+        owner,
+        otherOwner: owner,
+        leader,
+        teams: [home, away],
+        otherTeams: [],
+        databaseUrl: runtimeUrl.toString(),
+        nextDate: 0,
+      };
+      const fixture = await published(h);
+      const eventId = fixture.event.event.id;
+      const matchPath = `${root}/matches/${fixture.matches[0]!.id}`;
+
+      // Chunk acceptance/completion exercises session, chunk, file and receipt column grants
+      // plus the file quota and receipt guards under an ordinary runtime connection.
+      const fileInput = {
+        clientRequestId: randomUUID(),
+        purpose: 'MATCH_IMAGE',
+        fileName: 'runtime.png',
+        contentType: 'image/png',
+        byteLength: syntheticPng.length,
+        contentSha256: createHash('sha256').update(syntheticPng).digest('hex'),
+      };
+      const session = await post<UploadSessionData>(
+        `${matchPath}/media-upload-sessions`,
+        fileInput,
+        owner,
+        201,
+      );
+      const chunk = data<any>(
+        await call(api, 'put', `${matchPath}/media-upload-sessions/${session.id}/chunks/0`, {
+          cookie: owner.cookie,
+          body: {
+            byteLength: syntheticPng.length,
+            sha256: fileInput.contentSha256,
+            contentBase64: syntheticPng.toString('base64'),
+          },
+        }),
+      );
+      expect(chunk.receivedBytes).toBe(syntheticPng.length);
+      const completed = await post<MediaFileReceiptData>(
+        `${matchPath}/media-upload-sessions/${session.id}/complete`,
+        {},
+      );
+      expect(completed.state).toBe('FILE');
+      if (completed.state !== 'FILE')
+        throw new Error('Upload completion did not return a file receipt');
+      expect(await get(`${matchPath}/media-file-requests/${fileInput.clientRequestId}`)).toEqual(
+        completed,
+      );
+      const media = await post<MatchMediaData>(
+        `${matchPath}/media-requests`,
+        {
+          clientRequestId: randomUUID(),
+          kind: 'IMAGE',
+          title: '隔离权限图片',
+          fileId: completed.file.id,
+          rightsDeclaration: '合成图片仅用于隔离测试',
+        },
+        owner,
+        201,
+      );
+      expect(media.status).toBe('DRAFT');
+      expect(media.fileId).toBe(completed.file.id);
+      const cancelled = await post<UploadSessionData>(
+        `${matchPath}/media-upload-sessions`,
+        {
+          ...fileInput,
+          clientRequestId: randomUUID(),
+        },
+        owner,
+        201,
+      );
+      expect(
+        (await post(`${matchPath}/media-upload-sessions/${cancelled.id}/cancel`, {})).status,
+      ).toBe('CANCELLED');
+
+      // A consented source, then leaving the binding, exercises read-side joins and the new
+      // cross-module invalidation trigger as scb_runtime (not the schema owner).
+      const season = await post(
+        `${root}/seasons`,
+        {
+          clientRequestId: randomUUID(),
+          name: '隔离运行权限赛季',
+          startDate: fixture.event.event.startDate,
+          endDate: fixture.event.event.endDate,
+        },
+        owner,
+        201,
+      );
+      const attached = await post(`${root}/seasons/${season.id}/commands`, {
+        type: 'ATTACH_EVENT',
+        eventId,
+        expectedVersion: season.version,
+      });
+      await post(`${root}/seasons/${season.id}/commands`, {
+        type: 'ACTIVATE',
+        expectedVersion: attached.version,
+      });
+      const pending = await post(
+        `${root}/events/${eventId}/season-data-grants`,
+        {
+          clientRequestId: randomUUID(),
+          teamId: home.id,
+          memberId: membership.memberId,
+          targetUserId: player.id,
+          reason: '运行权限私有赛季提名',
+        },
+        owner,
+        201,
+      );
+      expect(
+        (
+          await post(
+            `/v1/me/season-data-grants/${pending.id}/commands`,
+            {
+              type: 'CONSENT',
+              expectedVersion: pending.version,
+            },
+            player,
+          )
+        ).status,
+      ).toBe('ACTIVE');
+      expect(
+        (await get(`${root}/seasons/${season.id}/player-statistics`)).summary.effectiveGrantCount,
+      ).toBe(1);
+      await post(`/v1/me/memberships/${membership.bindingId}/leave`, {}, player);
+      expect(
+        (await get(`${root}/seasons/${season.id}/player-statistics`)).summary.effectiveGrantCount,
+      ).toBe(0);
+
+      await savePublishRules(h, eventId);
+      const viewing = await enable(h, eventId);
+      const followed = await post(
+        '/v1/me/follows',
+        {
+          publicEventId: viewing.publication!.publicEventId,
+        },
+        player,
+        201,
+      );
+      expect(followed.status).toBe('ACTIVE');
+      expect(await get('/v1/me/follows', player)).toHaveLength(1);
+      await post(`${root}/events/${eventId}/directory-commands`, {
+        type: 'LIST',
+        expectedEventVersion: viewing.event.version,
+        reason: '隔离运行权限目录发布',
+      });
+      data(await viewingCommand(h, eventId, 'DISABLE'));
+      expect((await get('/v1/me/follows', player))[0]).toMatchObject({
+        status: 'INVALID',
+        event: null,
+      });
+      expect((await post(`/v1/me/follows/${followed.followId}/cancel`, {}, player)).status).toBe(
+        'CANCELLED',
+      );
+      await assertRuntimeReadiness(api.pool);
+      await expect(api.pool.query('SELECT * FROM audit_logs')).rejects.toMatchObject({
+        code: '42501',
+      });
+    } finally {
+      await api.app.close();
+      await api.pool.end();
+    }
+  });
+}, 120000);

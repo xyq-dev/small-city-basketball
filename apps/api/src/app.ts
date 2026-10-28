@@ -79,6 +79,18 @@ import {
 import { OverlayService } from './overlay-service.js';
 import { OverlayController, SCB_OVERLAY_SERVICE } from './overlay-controller.js';
 import { OverlaySourceController } from './overlay-bootstrap.js';
+// C19 modules (docs/design/C19_CONTRACTS.md); module agents own these files, not this one.
+import { MediaRequestService } from './media-request-service.js';
+import { MediaRequestController, SCB_MEDIA_REQUEST_SERVICE } from './media-request-controller.js';
+import { TeamMembershipService } from './team-membership-service.js';
+import {
+  TeamMembershipController,
+  SCB_TEAM_MEMBERSHIP_SERVICE,
+} from './team-membership-controller.js';
+import { EventFollowService } from './event-follow-service.js';
+import { EventFollowController, SCB_EVENT_FOLLOW_SERVICE } from './event-follow-controller.js';
+import { SeasonService } from './season-service.js';
+import { SeasonController, SCB_SEASON_SERVICE } from './season-controller.js';
 import {
   RegistrationController,
   InvitationAcceptanceController,
@@ -276,15 +288,14 @@ export async function createApi(
     const scheduling = new SchedulingService(pool, options);
     const wechat = new WechatService(pool, options, input.wechat);
     const knockout = new GroupKnockoutService(pool, options);
-    const media = new MediaService(
-      pool,
-      options,
-      input.media ?? {
-        trustedExternalHosts: (process.env.SCB_MEDIA_TRUSTED_HOSTS ?? '')
-          .split(',')
-          .filter(Boolean),
-      },
-    );
+    const mediaOptions = input.media ?? {
+      trustedExternalHosts: (process.env.SCB_MEDIA_TRUSTED_HOSTS ?? '').split(',').filter(Boolean),
+    };
+    const media = new MediaService(pool, options, mediaOptions);
+    const mediaRequests = new MediaRequestService(pool, options, mediaOptions);
+    const teamMembership = new TeamMembershipService(pool, options);
+    const eventFollows = new EventFollowService(pool, options);
+    const seasons = new SeasonService(pool, options);
     const commerce = new CommerceService(pool, options, input.commercePayments);
     const scoring = new ScoringService(pool, options);
     const standings = new StandingsService(pool, options);
@@ -320,6 +331,10 @@ export async function createApi(
         EventPlayerStatisticsController,
         OverlayController,
         OverlaySourceController,
+        MediaRequestController,
+        TeamMembershipController,
+        EventFollowController,
+        SeasonController,
       ],
       providers: [
         { provide: SERVICE, useValue: service },
@@ -337,6 +352,10 @@ export async function createApi(
         { provide: SCB_OVERLAY_SERVICE, useValue: overlay },
         { provide: SCB_EVENT_LIFECYCLE_SERVICE, useValue: lifecycle },
         { provide: SCB_EVENT_PLAYER_STATISTICS_SERVICE, useValue: playerStatistics },
+        { provide: SCB_MEDIA_REQUEST_SERVICE, useValue: mediaRequests },
+        { provide: SCB_TEAM_MEMBERSHIP_SERVICE, useValue: teamMembership },
+        { provide: SCB_EVENT_FOLLOW_SERVICE, useValue: eventFollows },
+        { provide: SCB_SEASON_SERVICE, useValue: seasons },
       ],
     })
     class ApiModule {}
