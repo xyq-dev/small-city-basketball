@@ -135,6 +135,7 @@ Page({
         input.maxUses +
         '份申请；持有入口的已登录用户可向本机构提交建队申请，批准仍需管理员审核。',
       path: PATH,
+      still: () => this.data.allowed && this.data.orgId === orgId,
       send: () => tm.createRepository().createLink(orgId, input),
       done: async (result) =>
         this.setData({
@@ -173,6 +174,10 @@ Page({
       title: '撤销申请入口',
       content: '撤销后该入口不能再提交申请；已提交的申请不受影响。',
       path: PATH,
+      still: () =>
+        this.data.allowed &&
+        this.data.orgId === orgId &&
+        this.data.links.some((l) => l.id === link.id && l.status === link.status),
       send: () => tm.createRepository().revokeLink(orgId, link.id, why),
       done: async (updated) =>
         this.setData({
@@ -210,6 +215,17 @@ Page({
             '”该队领队权限；不授予机构或赛事工作人员身份。'
           : '拒绝后申请人可看到审核说明。',
       path: PATH,
+      still: () =>
+        this.data.allowed &&
+        this.data.orgId === orgId &&
+        this.data.requests.some(
+          (r) =>
+            r.id === item.id &&
+            r.version === item.version &&
+            r.status === item.status &&
+            r.capabilities.canReview &&
+            !r.capabilities.isOwnRequest,
+        ),
       send: () => tm.createRepository().review(orgId, item.id, decision, why, item.version),
       done: async (updated) =>
         this.setData({

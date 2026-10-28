@@ -81,6 +81,9 @@ Page({
         displayName +
         '”出现在长期名单中。领队只能看到你的显示名与绑定状态。重复提交只会返回原成员关系。',
       path: PATH,
+      still: () =>
+        this.data.code.replace(/[\s-]/g, '').toUpperCase() === code &&
+        this.data.displayName.trim() === displayName,
       send: () => tm.createRepository().join(code, displayName),
       done: async (membership) =>
         this.setData({
@@ -110,6 +113,14 @@ Page({
             '”。接受后该成员与当前账号绑定。'
           : '拒绝后该认领失效，领队可另行处理。',
       path: PATH,
+      still: () =>
+        this.data.claims.some(
+          (c) =>
+            c.claimId === claim.claimId &&
+            c.status === 'PENDING' &&
+            c.memberName === claim.memberName &&
+            c.teamName === claim.teamName,
+        ),
       send: () => tm.createRepository().decideClaim(claim.claimId, decision),
       done: async (result) =>
         this.setData({

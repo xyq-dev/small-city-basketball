@@ -123,6 +123,7 @@ Page({
     const followId = e.currentTarget.dataset.id;
     const item = this.data.items.find((v) => v.followId === followId);
     if (!item) return;
+    const gen = this._listGen;
     const op = await ui.confirmOp(
       this,
       '取消关注',
@@ -131,12 +132,11 @@ Page({
         : '取消这条已失效的关注？原赛事资料不会再显示。',
     );
     if (!op) return;
-    const gen = this._listGen;
     const still = () =>
       op.valid() &&
       this._alive &&
       gen === this._listGen &&
-      this.data.items.some((v) => v.followId === followId);
+      this.data.items.some((v) => v.followId === followId && v.status === item.status);
     if (!still()) return;
     this.setData({ busy: true, cancelling: followId, error: '', notice: '' });
     try {

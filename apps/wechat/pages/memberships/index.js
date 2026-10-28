@@ -78,6 +78,14 @@ Page({
         item.memberName +
         '”将移出长期名单；已冻结的报名名单不变。再次加入需要领队签发新的加入码。',
       path: PATH,
+      still: () =>
+        this.data.items.some(
+          (m) =>
+            m.bindingId === item.bindingId &&
+            m.status === 'ACTIVE' &&
+            m.memberName === item.memberName &&
+            m.teamName === item.teamName,
+        ),
       send: () => tm.createRepository().leave(item.bindingId),
       done: async (updated) =>
         this.setData({

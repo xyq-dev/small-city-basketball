@@ -297,7 +297,21 @@ Page({
     if (!this.data.busy) this.setData({ claimMember: e.currentTarget.dataset.id || '' });
   },
   async playerWrite(options, reload) {
-    const ok = await tm().confirmedWrite(this, ui, { path: this.path(), ...options });
+    const team = this._team;
+    if (!team || !team.capabilities.canManage) return false;
+    const expected = team.version;
+    const org = this._org;
+    const id = this._id;
+    const ok = await tm().confirmedWrite(this, ui, {
+      path: this.path(),
+      ...options,
+      still: () =>
+        this._org === org &&
+        this._id === id &&
+        this._team?.version === expected &&
+        this._team.capabilities.canManage &&
+        (!options.still || options.still()),
+    });
     if (ok && this._alive && reload) {
       // Roster changes bump the team version: re-read unless local edits are pending.
       if (this.data.nameDirty || this.data.membersDirty)
@@ -330,6 +344,7 @@ Page({
     await this.playerWrite({
       title: '撤销加入码',
       content: '撤销后该码不能再用于加入；已加入的球员不受影响。',
+      still: () => this.data.codes.some((c) => c.id === item.id && c.status === item.status),
       send: () => tm().createRepository().revokeJoinCode(org, teamId, item.id),
       done: async () => this.setData({ issuedCode: '', message: '加入码已撤销。' }),
     });
@@ -355,6 +370,13 @@ Page({
           '“' +
           item.memberName +
           '”将移出长期名单并解除账号绑定；历史与已冻结报名不变。其之前拿到的加入码不能再用于重新加入。',
+        still: () =>
+          this.data.roster?.bindings.some(
+            (b) =>
+              b.bindingId === item.bindingId &&
+              b.status === 'ACTIVE' &&
+              b.memberName === item.memberName,
+          ),
         send: () => tm().createRepository().removeBinding(org, teamId, item.bindingId, why),
         done: async () => this.setData({ removeReason: '', message: '已移除。' }),
       },
@@ -386,6 +408,10 @@ Page({
         '”定向发给账号 ' +
         target +
         '。对方本人核对接受后才会绑定；不会覆盖其他账号的绑定。',
+      still: () =>
+        this.data.roster?.claimableMembers.some(
+          (m) => m.memberId === member.memberId && m.name === member.name,
+        ),
       send: () => tm().createRepository().createClaim(org, teamId, member.memberId, target),
       done: async () =>
         this.setData({ claimMember: '', claimTarget: '', message: '认领已发出，等待对方接受。' }),
@@ -401,6 +427,8 @@ Page({
     await this.playerWrite({
       title: '撤销认领',
       content: '撤销后对方不能再接受该认领。',
+      still: () =>
+        this.data.roster?.claims.some((c) => c.claimId === item.claimId && c.status === 'PENDING'),
       send: () => tm().createRepository().revokeClaim(org, teamId, item.claimId),
       done: async () => this.setData({ message: '认领已撤销。' }),
     });

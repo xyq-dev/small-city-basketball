@@ -17,7 +17,7 @@ import type {
 } from '@small-city-basketball/contracts';
 import { createApi } from '../src/app.js';
 import { migrate } from '../src/database/migrate.js';
-import { ORIGIN, RUN_ID, call, data, error, membersPath, register } from './support.js';
+import { ORIGIN, RUN_ID, call, data, error, eventually, membersPath, register } from './support.js';
 import type { Api, User } from './support.js';
 import { participant, registrationDatabaseUrl, teamPath, teamsPath } from './p03-support.js';
 import type { Actor } from './p03-support.js';
@@ -1126,5 +1126,110 @@ describe('C19 team membership on isolated PostgreSQL', { concurrent: false }, ()
       "SELECT indexdef FROM pg_indexes WHERE tablename='team_member_bindings'",
     );
     expect(found.rows.some((r) => /\(member_id, user_id\)/.test(r.indexdef))).toBe(true);
+  });
+
+  test('an in-flight original submission is replayed after waiting, even when it uses the last link slot', async () => {
+    const applicant = await participant(api, 'resume-race');
+    const link = await issueLink(1);
+    const id = randomUUID();
+    const blocker = await api.pool.connect();
+    await blocker.query('BEGIN');
+    await blocker.query('SELECT id FROM team_request_links WHERE id=$1 FOR UPDATE', [link.link.id]);
+    const pending = Promise.all([
+      submit(applicant, link.token, id, '并发恢复球队'),
+      submit(applicant, link.token, id, '并发恢复球队'),
+    ]);
+    try {
+      await eventually(
+        async () =>
+          (
+            await api.pool.query<{ n: number }>(
+              `SELECT count(*)::int AS n FROM pg_stat_activity
+           WHERE datname=current_database() AND wait_event_type='Lock'
+             AND (query LIKE 'SELECT * FROM team_request_links%FOR UPDATE%'
+               OR query LIKE 'SELECT pg_advisory_xact_lock%')`,
+            )
+          ).rows[0]!.n,
+        (n) => n >= 2,
+        'both submissions must be blocked before the link lock is released',
+      );
+    } finally {
+      await blocker.query('COMMIT');
+      blocker.release();
+    }
+    const responses = await pending;
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 201]);
+    expect(new Set(responses.map((r) => r.body.data.id)).size).toBe(1);
+    expect(
+      await count('team_requests WHERE requester_id=$1 AND client_request_id=$2', [
+        applicant.id,
+        id,
+      ]),
+    ).toBe(1);
+    expect(
+      (await api.pool.query('SELECT use_count FROM team_request_links WHERE id=$1', [link.link.id]))
+        .rows[0].use_count,
+    ).toBe(1);
+  });
+
+  test('successful token resolution refunds only itself and preserves prior failed attempts', async () => {
+    const applicant = await participant(api, 'resume-limiter');
+    const link = await issueLink(1);
+    const resolve = (token: string) =>
+      call(api, 'post', '/v1/team-request-links/resolve', {
+        cookie: applicant.cookie,
+        body: { token },
+      });
+    const bogus = 'z'.repeat(22);
+    error(await resolve(bogus), 404);
+    data(await resolve(link.token));
+    expect(
+      (
+        await api.pool.query('SELECT attempts FROM auth_rate_limits WHERE key=$1', [
+          `team-link-account:${applicant.id}`,
+        ])
+      ).rows[0]?.attempts,
+    ).toBe(1);
+    for (let i = 1; i < 10; i++) error(await resolve(bogus), 404);
+    error(await resolve(link.token), 429);
+  });
+
+  test('join authorization preserves PostgreSQL microseconds when a code follows a role update', async () => {
+    const player = await participant(api, 'resume-microseconds');
+    const team = await createTeam('微秒授权回归', []);
+    const previous = (
+      await api.pool.query<{ stamp: string }>(
+        'SELECT updated_at::text AS stamp FROM organization_memberships WHERE org_id=$1 AND user_id=$2',
+        [owner.orgId, owner.id],
+      )
+    ).rows[0]!.stamp;
+    const id = randomUUID();
+    const token = 'X'.repeat(26);
+    try {
+      await api.pool.query(
+        `UPDATE organization_memberships
+         SET updated_at=date_trunc('milliseconds',clock_timestamp())-interval '1 second'+interval '100 microseconds'
+         WHERE org_id=$1 AND user_id=$2`,
+        [owner.orgId, owner.id],
+      );
+      await api.pool.query(
+        `INSERT INTO team_join_codes(id,org_id,team_id,code_hash,issued_by,max_uses,created_at,expires_at)
+         SELECT $1,$2,$3,$4,$5,1,updated_at+interval '100 microseconds',updated_at+interval '1 hour'
+         FROM organization_memberships WHERE org_id=$2 AND user_id=$5`,
+        [id, owner.orgId, team.id, sha(token), owner.id],
+      );
+      const listed = data<TeamJoinCodeData[]>(
+        await call(api, 'get', `${teamBase(team.id)}/join-codes`, {
+          cookie: owner.cookie,
+        }),
+      );
+      expect(listed.find((r) => r.id === id)?.status).toBe('ACTIVE');
+      data<MembershipData>(await join(player, token, '微秒球员'), 201);
+    } finally {
+      await api.pool.query(
+        'UPDATE organization_memberships SET updated_at=$3::timestamptz WHERE org_id=$1 AND user_id=$2',
+        [owner.orgId, owner.id, previous],
+      );
+    }
   });
 });

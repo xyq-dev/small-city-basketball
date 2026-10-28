@@ -1,0 +1,33 @@
+{
+  "name": "c19-account-participant",
+  "route": "pages/account/index",
+  "state": "synthetic-populated",
+  "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
+  "expectText": ["我的成员关系", "加入球队与成员认领", "私有赛季授权与本人数据", "我的关注"],
+  "expectAbsentText": ["机构管理", "私有赛季管理", "建队申请审批"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "user": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "displayName": "合成参与者",
+      "email": "synthetic@example.test"
+    },
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": false,
+    "registerMode": false,
+    "consent": false,
+    "securityOpen": false,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "",
+    "hasReturn": false,
+    "platformOperator": false,
+    "roles": [],
+    "managedOrgs": [],
+    "teamCount": 0
+  }
+}

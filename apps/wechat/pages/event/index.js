@@ -238,20 +238,30 @@ Page({
       return;
     }
     if (f.state !== 'none') return;
+    const publicId = this.id;
+    const before = this._followGen;
+    const name = this.data.event.name;
+    const status = this.data.event.status;
+    const available = () =>
+      this.id === publicId &&
+      !this.data.unavailable &&
+      this.data.event &&
+      this.data.event.name === name &&
+      this.data.event.status === status;
     const op = await ui.confirmOp(
       this,
       '关注此公开赛事',
       '关注后可在「我的关注」查看。微信提醒未启用，不会发送订阅消息。',
     );
-    if (!op) return;
+    if (!op || before !== this._followGen || !available()) return;
     const gen = (this._followGen = (this._followGen || 0) + 1);
-    const still = () => op.valid() && gen === this._followGen && !this.closed;
+    const still = () => op.valid() && gen === this._followGen && !this.closed && available();
     if (!still()) return;
     this.setData({ 'follow.busy': true, 'follow.error': '', 'follow.notice': '' });
     const client = api.getClient();
     try {
       // Asynchronous preparation: re-read the current state; an existing follow needs no write.
-      const existing = await follows.lookup(client, this.id);
+      const existing = await follows.lookup(client, publicId);
       if (!still()) return this._followAbandon(gen);
       if (existing && existing.status !== 'ACTIVE') {
         this.setData({
@@ -259,7 +269,7 @@ Page({
         });
         return;
       }
-      const item = existing || (await follows.create(client, this.id));
+      const item = existing || (await follows.create(client, publicId));
       if (!still()) return this._followAbandon(gen);
       this.setData({
         follow: {
@@ -284,8 +294,9 @@ Page({
     const f = this.data.follow;
     if (f.busy || !f.followId || !['active', 'invalid'].includes(f.state)) return;
     const followId = f.followId;
+    const before = this._followGen;
     const op = await ui.confirmOp(this, '取消关注', '取消后此赛事不再出现在「我的关注」。');
-    if (!op) return;
+    if (!op || before !== this._followGen || this.data.follow.state !== f.state) return;
     const gen = (this._followGen = (this._followGen || 0) + 1);
     const still = () => op.valid() && gen === this._followGen && !this.closed;
     if (!still() || this.data.follow.followId !== followId) return;

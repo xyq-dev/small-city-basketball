@@ -70,7 +70,7 @@ Page({
       let message = '';
       if (pending && requests.some((r) => r.clientRequestId === pending.clientRequestId)) {
         // The server has the original submission: recovery is complete.
-        tm.writePending(wx, this._viewer, null);
+        tm.writePending(wx, this._viewer, null, pending.clientRequestId);
         pending = null;
         message = '上次提交已由服务器确认，见下方我的申请。';
       }
@@ -93,7 +93,18 @@ Page({
     if (field === 'teamName' || field === 'note') this.setData({ [field]: e.detail.value });
   },
   async submit() {
-    if (this.data.busy || !this.data.link || this.data.pending) return;
+    if (this.data.busy || this._preparing || !this.data.link || this.data.pending) return;
+    const guard = ui.guard(this);
+    const viewer = this._viewer;
+    const link = this.data.link;
+    const linkToken = this._token;
+    const still = () =>
+      ui.held(this, guard) &&
+      this._viewer === viewer &&
+      this._token === linkToken &&
+      this.data.link &&
+      this.data.link.linkId === link.linkId &&
+      !this.data.pending;
     let teamName, note;
     try {
       teamName = tm.text(this.data.teamName, '球队名称', 1, 80);
@@ -103,24 +114,28 @@ Page({
       return;
     }
     let clientRequestId;
+    this._preparing = true;
     try {
       clientRequestId = await ui.uuid();
     } catch (error) {
-      this.setData({ error: ui.message(error) });
+      if (still()) this.setData({ error: ui.message(error) });
       return;
+    } finally {
+      this._preparing = false;
     }
+    if (!still()) return;
     const record = {
       clientRequestId,
       teamName,
       note,
-      linkId: this.data.link.linkId,
-      orgName: this.data.link.orgName,
+      linkId: link.linkId,
+      orgName: link.orgName,
     };
     await this.send(
       record,
       '提交建队申请',
       '向“' +
-        this.data.link.orgName +
+        link.orgName +
         '”提交球队“' +
         teamName +
         '”的建队申请。批准前不能报名；机构管理员审核后才会创建球队。',
@@ -149,15 +164,24 @@ Page({
   },
   async send(record, title, content, fresh) {
     const viewer = this._viewer;
+    const guard = ui.guard(this);
     if (fresh && !tm.writePending(wx, viewer, record)) {
       this.setData({ error: '无法在本机保存请求编号，未提交申请；请检查存储空间后重试。' });
       return;
     }
     const tokenText = this._token;
+    const outcome = {};
     const ok = await tm.confirmedWrite(this, ui, {
       title,
       content,
       path: PATH,
+      outcome,
+      still: () =>
+        this._viewer === viewer &&
+        this._token === tokenText &&
+        this.data.link &&
+        this.data.link.linkId === record.linkId &&
+        tm.readPending(wx, viewer).record?.clientRequestId === record.clientRequestId,
       send: () =>
         tm.createRepository().submit({
           token: tokenText,
@@ -166,7 +190,7 @@ Page({
           note: record.note,
         }),
       done: async (request) => {
-        tm.writePending(wx, viewer, null);
+        tm.writePending(wx, viewer, null, record.clientRequestId);
         this.setData({
           pending: null,
           uncertain: false,
@@ -177,11 +201,11 @@ Page({
         });
       },
     });
-    if (!ok && fresh && !this.data.uncertain && !this._closed) {
+    if (!ok && fresh && (!outcome.sent || outcome.resolved)) {
       // Declined, refused before sending, or a definite server refusal: nothing is pending.
-      tm.writePending(wx, viewer, null);
+      tm.writePending(wx, viewer, null, record.clientRequestId);
     }
-    if (!ok && this.data.uncertain && !this._closed)
+    if (!ok && outcome.sent && !outcome.resolved && ui.held(this, guard))
       this.setData({
         pending: record,
         message: '提交结果未知。请点击“核对上次提交”，将以原请求编号恢复，不会重复创建。',
@@ -194,6 +218,14 @@ Page({
       title: '撤回建队申请',
       content: '撤回“' + item.teamName + '”的申请后不可恢复，需要时请重新提交。',
       path: PATH,
+      still: () =>
+        this.data.requests.some(
+          (r) =>
+            r.id === item.id &&
+            r.version === item.version &&
+            r.status === item.status &&
+            r.capabilities.canWithdraw,
+        ),
       send: () => tm.createRepository().withdraw(item.id, item.version),
       done: async (updated) =>
         this.setData({

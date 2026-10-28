@@ -316,10 +316,18 @@ function readPending(wxApi, userId) {
     : { unavailable: false, record: null };
 }
 /** Returns false when storage fails: the caller must not send without a durable record. */
-function writePending(wxApi, userId, record) {
+function writePending(wxApi, userId, record, expectedRequestId) {
   try {
     const current = wxApi.getStorageSync(PENDING_KEY);
     const next = object(current) ? { ...current } : {};
+    // Never replace another unresolved submission, or clear a newer record from a late
+    // callback belonging to an older request.
+    if (
+      object(next[userId]) &&
+      ((record && next[userId].clientRequestId !== record.clientRequestId) ||
+        (!record && expectedRequestId && next[userId].clientRequestId !== expectedRequestId))
+    )
+      return false;
     if (record) next[userId] = record;
     else delete next[userId];
     wxApi.setStorageSync(PENDING_KEY, next);
@@ -340,31 +348,50 @@ function writePending(wxApi, userId, record) {
  * nothing; a reply that arrives after any of them is dropped. A sent request whose reply is
  * lost (network error or 5xx) is reported as `uncertain` so the page offers recovery.
  */
-async function confirmedWrite(page, ui, { title, content, path, send, done }) {
+async function confirmedWrite(
+  page,
+  ui,
+  { title, content, path, send, done, still = () => true, outcome = {} },
+) {
+  outcome.sent = false;
+  outcome.resolved = false;
   if (page.data.busy || page._closed) return false;
+  const viewer = page._viewer;
   const op = await ui.confirmOp(page, title, content);
   if (!op) return false;
+  if (!still()) {
+    page.setData({ error: '资料或权限已更新，请重新核对后再确认；未发送任何操作。' });
+    return false;
+  }
   const token = ui.hold(page);
   page.setData({ busy: true, error: '', message: '' });
   let sent = false;
   try {
     const session = await ui.session(page, path);
     if (!session || !op.valid() || !ui.held(page, token)) return false;
-    if (session.user.id !== page._viewer) {
+    if (session.user.id !== viewer || page._viewer !== viewer) {
       page.setData({ error: '登录身份已变化，请重新读取当前资料；未发送任何操作。' });
       return false;
     }
+    if (!still()) {
+      page.setData({ error: '资料或权限已更新，请重新核对后再确认；未发送任何操作。' });
+      return false;
+    }
     sent = true;
+    outcome.sent = true;
     const result = await send();
     if (!ui.held(page, token)) return false;
     await done(result);
+    outcome.resolved = true;
     return true;
   } catch (error) {
-    if (ui.held(page, token))
+    if (ui.held(page, token)) {
+      outcome.resolved = sent && !!error && error.status >= 400 && error.status < 500;
       page.setData({
         error: ui.message(error),
         uncertain: sent && (!error || !error.status || error.status >= 500),
       });
+    }
     return false;
   } finally {
     if (ui.held(page, token)) page.setData({ busy: false });

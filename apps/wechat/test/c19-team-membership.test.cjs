@@ -553,3 +553,181 @@ test('new pages: static WXML handlers exist and no literal page route escapes th
   const teamScript = fs.readFileSync(path.join(root, 'pages/team/index.js'), 'utf8');
   assert.doesNotMatch(teamScript, /\/pages\/(team-join|team-request|memberships)/);
 });
+
+// Interrupted C19 review: async preparation and already-sent requests retain their original
+// identity, target and durable recovery record, independent of later page state.
+for (const change of ['switch', 'logout', 'unload']) {
+  test('team submission waiting for UUID is abandoned after ' + change, async () => {
+    const d = device(applicantRoutes());
+    const h = await d.open('pages/team-request/index', { token: TOKEN });
+    h.page.input(tap({ field: 'teamName' }, { value: '合成青锋' }));
+    let random;
+    d.wx.getRandomValues = (o) => {
+      random = o;
+    };
+    const action = h.page.submit();
+    await ticks();
+    if (change === 'switch') {
+      await h.client.request('/v1/auth/login', 'POST', { email: 'b@example.test', password: 'x' });
+      await h.page.load();
+    } else if (change === 'logout') h.client.clearSession();
+    else h.unload();
+    random.success({ randomValues: new Uint8Array(16).fill(4).buffer });
+    let failure;
+    const completion = action.catch((e) => {
+      failure = e;
+    });
+    await ticks();
+    const modal = d.state.modal;
+    if (modal) d.answer(false);
+    await completion;
+    assert.equal(modal, null, 'stale preparation cannot open a new confirmation');
+    assert.equal(failure, undefined, 'stale preparation exits without a page error');
+    assert.equal(d.state.writes.filter((w) => w.key === 'POST /v1/team-requests').length, 0);
+    assert.equal(d.wx.storage.get(tmUtil.PENDING_KEY), undefined);
+  });
+}
+
+test('an already-sent team request keeps its original recovery ID after account switch', async () => {
+  let resolveResponse;
+  const routes = applicantRoutes();
+  const d = device((key, state, options) =>
+    key === 'POST /v1/team-requests'
+      ? new Promise((resolve) => {
+          resolveResponse = () => resolve(routes(key, state, options));
+        })
+      : routes(key, state, options),
+  );
+  const h = await d.open('pages/team-request/index', { token: TOKEN });
+  h.page.input(tap({ field: 'teamName' }, { value: '合成青锋' }));
+  const action = h.page.submit();
+  await ticks();
+  d.answer();
+  await ticks();
+  const id = d.wx.storage.get(tmUtil.PENDING_KEY)[userA].clientRequestId;
+  await h.client.request('/v1/auth/login', 'POST', { email: 'b@example.test', password: 'x' });
+  resolveResponse();
+  await action;
+  assert.equal(d.wx.storage.get(tmUtil.PENDING_KEY)[userA]?.clientRequestId, id);
+  assert.equal(
+    h.page.data.pending,
+    null,
+    'old identity recovery is not rendered to the new account',
+  );
+  assert.equal(d.state.writes.filter((w) => w.key === 'POST /v1/team-requests').length, 1);
+});
+
+test('changed request state during withdraw confirmation sends nothing', async () => {
+  const d = device(applicantRoutes());
+  d.state.server = myRequest('0b4c8b1e-6f1a-4c2d-9e3f-1a2b3c4d5e6f');
+  const h = await d.open('pages/team-request/index', {});
+  const action = h.page.withdraw(tap({ id: requestId }));
+  await ticks();
+  h.page.setData({
+    requests: [
+      {
+        ...h.page.data.requests[0],
+        version: 2,
+        status: 'REJECTED',
+        capabilities: { canWithdraw: false },
+      },
+    ],
+  });
+  d.answer();
+  await action;
+  assert.equal(d.state.writes.length, 0);
+});
+
+test('request storage cannot replace an unresolved original ID', () => {
+  const wx = createWx();
+  const first = { clientRequestId: '0b4c8b1e-6f1a-4c2d-9e3f-1a2b3c4d5e6f', teamName: '原申请' };
+  const second = { clientRequestId: '1b4c8b1e-6f1a-4c2d-9e3f-1a2b3c4d5e6f', teamName: '另申请' };
+  assert.equal(tmUtil.writePending(wx, userA, first), true);
+  assert.equal(tmUtil.writePending(wx, userA, second), false);
+  assert.equal(tmUtil.readPending(wx, userA).record.clientRequestId, first.clientRequestId);
+});
+
+test('approval confirmation does not send after the request version or review permission changes', async () => {
+  const request = {
+    ...myRequest('x'),
+    requesterDisplayName: '合成乙',
+    capabilities: { canReview: true, isOwnRequest: false },
+  };
+  delete request.clientRequestId;
+  const d = device(
+    (key) =>
+      key === 'GET /v1/orgs/' + org + '/team-request-links'
+        ? ok([])
+        : key === 'GET /v1/orgs/' + org + '/team-requests?status=PENDING'
+          ? ok([request])
+          : null,
+    { organizations: [{ id: org, name: '合成机构', role: 'ORG_ADMIN' }] },
+  );
+  const h = await d.open('pages/team-requests/index', { orgId: org });
+  h.page.select(tap({ id: requestId }));
+  h.page.input(tap({ field: 'reviewReason' }, { value: '资料核对无误' }));
+  const action = h.page.review(tap({ decision: 'APPROVE' }));
+  await ticks();
+  h.page.setData({
+    requests: [{ ...request, version: 2, capabilities: { canReview: false, isOwnRequest: false } }],
+  });
+  d.answer();
+  await action;
+  assert.equal(d.state.writes.length, 0);
+});
+
+for (const operation of ['claim', 'leave']) {
+  test(operation + ' confirmation does not send after the current target ended', async () => {
+    const claim = {
+      claimId,
+      organizationName: '合成机构',
+      teamName: '合成青锋',
+      memberName: '球员甲',
+      status: 'PENDING',
+      expiresAt: later,
+      createdAt: now,
+      decidedAt: null,
+    };
+    const d = device((key) =>
+      key === 'GET /v1/me/member-claims'
+        ? ok([claim])
+        : key === 'GET /v1/me/memberships'
+          ? ok([membership()])
+          : null,
+    );
+    const h = await d.open(
+      operation === 'claim' ? 'pages/team-join/index' : 'pages/memberships/index',
+      {},
+    );
+    const action =
+      operation === 'claim'
+        ? h.page.decide(tap({ id: claimId, decision: 'accept' }))
+        : h.page.leave(tap({ id: bindingId }));
+    await ticks();
+    if (operation === 'claim') h.page.setData({ claims: [{ ...claim, status: 'REVOKED' }] });
+    else h.page.setData({ items: [membership({ status: 'ENDED', endedAt: now })] });
+    d.answer();
+    await action;
+    assert.equal(d.state.writes.length, 0);
+  });
+}
+
+test('team account management rechecks the team version before issuing a code', async () => {
+  const base = '/v1/orgs/' + org + '/teams/' + teamId;
+  const d = device((key) =>
+    key === 'GET ' + base
+      ? ok(teamDto(true))
+      : key === 'GET ' + base + '/join-codes'
+        ? ok([])
+        : key === 'GET ' + base + '/member-bindings'
+          ? ok({ teamId, teamName: '合成青锋', bindings: [], claims: [], claimableMembers: [] })
+          : null,
+  );
+  const h = await d.open('pages/team/index', { orgId: org, teamId });
+  const action = h.page.issueJoinCode();
+  await ticks();
+  h.page.apply({ ...teamDto(true), version: 4 });
+  d.answer();
+  await action;
+  assert.equal(d.state.writes.length, 0);
+});

@@ -38,6 +38,7 @@ interface LegacyCommand {
 }
 interface LegacyFixture {
   format: string;
+  databaseTimeZone: string;
   historicalCommit: string;
   origin: string;
   password: string;
@@ -204,6 +205,14 @@ describe(
         : `scb_c19_upgrade_owner:${nonce}`;
       await control!.query(`COMMENT ON DATABASE ${quote(database)} IS '${comment}'`);
       owned.set(database, { oid, nonce });
+      // to_jsonb(timestamptz) uses the connection's TimeZone. Preserve the export's explicit
+      // serialization zone so an identical historical instant hashes identically on Linux
+      // and Windows; never rewrite the fixture rows or regenerate expected hashes to pass.
+      if (!/^[A-Za-z_]+(?:\/[A-Za-z_]+)*$/.test(fixture.databaseTimeZone))
+        throw new Error('Unexpected fixture database time zone');
+      await control!.query(
+        `ALTER DATABASE ${quote(database)} SET TimeZone TO '${fixture.databaseTimeZone}'`,
+      );
       const url = new URL(testDatabaseUrl());
       url.pathname = `/${database}`;
       return { url: url.toString(), oid, nonce };

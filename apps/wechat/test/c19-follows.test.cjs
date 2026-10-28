@@ -624,3 +624,34 @@ test('my follows: a cancel reply after a switch never edits the new account list
   assert.equal(p.page.data.notice, '登录身份已变化，已清空上一账号的关注。');
   assert.equal(p.page.data.busy, false);
 });
+
+test('a follow confirmation cannot revive an operation after public viewing became unavailable', async () => {
+  const d = device((k) =>
+    k === lookupKey ? ok(null) : k === 'POST /v1/me/follows' ? ok(followData()) : null,
+  );
+  const p = await d.open('pages/event/index', { event: key });
+  const action = p.page.followEvent();
+  await ticks();
+  p.page._followGen++;
+  p.page.setData({ event: null, unavailable: true, follow: { state: 'unavailable', busy: false } });
+  d.answer();
+  await action;
+  assert.equal(d.state.writes.length, 0);
+});
+
+test('a list refresh while cancelling invalidates the earlier confirmation', async () => {
+  const d = device((k) =>
+    k === 'GET /v1/me/follows?limit=20'
+      ? ok([followData()], cookieA, { nextCursor: null })
+      : k === 'POST /v1/me/follows/' + fid(1) + '/cancel'
+        ? ok(cancelledOf(followData()))
+        : null,
+  );
+  const p = await d.open('pages/follows/index', {});
+  const action = p.page.cancel(tap({ id: fid(1) }));
+  await ticks();
+  await p.page.load();
+  d.answer();
+  await action;
+  assert.equal(d.state.writes.length, 0);
+});
