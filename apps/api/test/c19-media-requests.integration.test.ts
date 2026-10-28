@@ -816,7 +816,11 @@ describe(
     });
 
     test('a transaction does not release reservations before its own expiry decision', async () => {
-      const opened = [await openSession(mp4(1024, 95)), await openSession(mp4(1024, 96))];
+      const fixtureSize = syntheticMp4.length + 8; // The source plus a valid empty free box.
+      const opened = [
+        await openSession(mp4(fixtureSize, 95)),
+        await openSession(mp4(fixtureSize, 96)),
+      ];
       const c = await h.api.pool.connect();
       try {
         await fixture(

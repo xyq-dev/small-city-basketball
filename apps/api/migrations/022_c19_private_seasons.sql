@@ -250,6 +250,13 @@ BEGIN
         WHERE (target_user_id=OLD.id OR nominated_by=OLD.id) AND status IN ('PENDING','ACTIVE') AND invalidated_at IS NULL;
     END IF;
   ELSIF TG_TABLE_NAME IN ('event_staff','organization_memberships') THEN
+    -- Two concurrent revocations must not each rely on the other transaction's old route
+    -- to authority. Serialize by the principal (not by event), then evaluate in a separate
+    -- SQL statement. This VOLATILE invoker function gets a fresh READ COMMITTED snapshot
+    -- after the preceding transaction releases its lock; all application writers use it.
+    -- No organization/membership row is acquired here after the updated staff row.
+    PERFORM pg_advisory_xact_lock(hashtextextended(
+      'scb-season-authority:' || OLD.org_id::text || ':' || OLD.user_id::text, 0));
     -- Losing one route to authority while retaining another does not terminate a grant.
     UPDATE season_data_grants g SET invalidated_at=clock_timestamp(),invalidation_reason='NOMINATOR_UNAUTHORIZED',
       version=version+1,updated_at=clock_timestamp()

@@ -282,13 +282,30 @@ function pathAllowed(path, method = 'GET') {
     );
   if (matches(me + '/follows/' + uuidPattern + '/cancel')) return noQuery && method === 'POST';
   // Private seasons and independent PRIVATE_SEASON data grants.
-  if (matches(org + '/seasons')) return noQuery && ['GET', 'POST'].includes(method);
-  if (matches(org + '/seasons/' + uuidPattern)) return noQuery && ['GET', 'PATCH'].includes(method);
+  if (matches(org + '/seasons'))
+    return method === 'POST'
+      ? noQuery
+      : method === 'GET' &&
+          queryAllowed(query, ['limit', 'cursor']) &&
+          (!('limit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit)) &&
+          (!('cursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.cursor));
+  if (matches(org + '/seasons/' + uuidPattern))
+    return method === 'PATCH'
+      ? noQuery
+      : method === 'GET' &&
+          queryAllowed(query, ['candidateLimit', 'candidateCursor']) &&
+          (!('candidateLimit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.candidateLimit)) &&
+          (!('candidateCursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.candidateCursor));
   if (matches(org + '/seasons/' + uuidPattern + '/commands')) return noQuery && method === 'POST';
   if (matches(org + '/seasons/' + uuidPattern + '/player-statistics'))
     return noQuery && method === 'GET';
   if (matches(org + '/events/' + uuidPattern + '/season-data-grants'))
-    return noQuery && ['GET', 'POST'].includes(method);
+    return method === 'POST'
+      ? noQuery
+      : method === 'GET' &&
+          queryAllowed(query, ['limit', 'cursor']) &&
+          (!('limit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit)) &&
+          (!('cursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.cursor));
   if (matches(org + '/season-data-grants/' + uuidPattern + '/withdraw'))
     return noQuery && method === 'POST';
   if (base === me + '/season-data-grants')

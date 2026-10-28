@@ -10,6 +10,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createApi } from '../src/app.js';
 import { migrate } from '../src/database/migrate.js';
 import { testDatabaseUrl } from './support.js';
+import type { MediaFileData } from '@small-city-basketball/contracts';
 
 // C19 G: a persisted legacy-database upgrade drill.
 //
@@ -19,8 +20,12 @@ import { testDatabaseUrl } from './support.js';
 // complete FINAL event (registration, frozen entries, published schedule, scoring commands with
 // receipts, a voided stat, independent confirmation, standings rules, public viewing, an overlay
 // grant and session, a pending invitation, a signed-out session) and exported every row of every
-// table exactly. This test rebuilds that database byte-for-byte in an owned child database
-// (proven by per-table hashes recorded at generation time), upgrades it with the CURRENT
+// table exactly. This test first rebuilds that database byte-for-byte in an owned child
+// database (proven by the original per-table hashes). The export used CRLF migration files;
+// on LF checkouts we prove migrate() rejects that original ledger, then explicitly adapt
+// only its seven checksums in this owned fixture after proving the SQL differs only in line
+// endings. This is test-fixture portability, NOT a production checksum migration or proof
+// that an unchanged Windows ledger accepts a Linux release. It then upgrades with the CURRENT
 // migrate() over every later migration found in the directory (so 019–022 are covered
 // automatically once they exist), and then checks persistence, the current API, checksum
 // behaviour and an isolated backup -> restore -> quarantine cycle.
@@ -186,6 +191,7 @@ describe(
     const owned = new Map<string, { oid: number; nonce: string }>();
     const name = `scb_test_c19_upgrade_${randomBytes(8).toString('hex')}`;
     let laterMigrations: string[] = [];
+    const candidateMigrations: LegacyFixture['migrations'] = [];
     let applied: string[] = [];
     let upgradedFingerprint: Record<string, { rowCount: number; sha256: string }> = {};
     const notes: string[] = [];
@@ -304,8 +310,10 @@ describe(
       childUrl = child.url;
       await control.query(`REVOKE CONNECT ON DATABASE ${quote(name)} FROM PUBLIC`);
       pool = new Pool({ connectionString: childUrl, connectionTimeoutMillis: 5000 });
-      // Rebuild the historical schema from the unchanged 001–007 files plus the historical
-      // schema_migrations DDL (identical in 1534216 and today), then load every exported row.
+      // Rebuild the historical schema from semantically unchanged 001–007 files plus the
+      // historical schema_migrations DDL, then load every original exported row. Verify the
+      // original source bytes with only the two known checkout encodings, LF and CRLF;
+      // any content change still fails against the unchanged historical checksum.
       const files = (await readdir(migrationsDir)).filter((f) => /^\d+_[a-z0-9_]+\.sql$/.test(f));
       laterMigrations = files.sort().filter((f) => !LEGACY.includes(f));
       const c = await pool.connect();
@@ -316,7 +324,14 @@ describe(
     )`);
         for (const [index, migration] of LEGACY.entries()) {
           const sql = await readFile(new URL(migration, migrationsDir), 'utf8');
-          expect(fixture.migrations[index]).toEqual({ name: migration, checksum: sha(sql) });
+          const historical = fixture.migrations[index]!;
+          expect(historical.name).toBe(migration);
+          const lf = sql.replaceAll('\r\n', '\n');
+          expect(lf.includes('\r'), `${migration}: unexpected lone CR`).toBe(false);
+          expect([sha(lf), sha(lf.replaceAll('\n', '\r\n'))], migration).toContain(
+            historical.checksum,
+          );
+          candidateMigrations.push({ name: migration, checksum: sha(sql) });
           await c.query(sql);
         }
         const legacyTables = Object.keys(fixture.tables).sort();
@@ -400,6 +415,60 @@ describe(
 
     test('current migrate() applies every later migration once and keeps every legacy column value', async () => {
       expect(laterMigrations.length).toBeGreaterThanOrEqual(11);
+      const lineEndingChanges = candidateMigrations.filter(
+        (candidate, index) => candidate.checksum !== fixture.migrations[index]!.checksum,
+      );
+      if (lineEndingChanges.length) {
+        // Do not hide a real cross-platform release problem: the production migrator must
+        // reject the original CRLF ledger on an LF checkout, with its transaction rolled back.
+        const original = await fullFingerprint(pool!);
+        await expect(migrate(pool!)).rejects.toThrow(
+          `Migration checksum mismatch: ${lineEndingChanges[0]!.name}`,
+        );
+        expect(await fullFingerprint(pool!)).toEqual(original);
+        expect((await pool!.query('SELECT current_database() AS name')).rows[0]!.name).toBe(name);
+        const ledger = (
+          await pool!.query<{ name: string; checksum: string; applied_at: string }>(
+            'SELECT name,checksum,applied_at::text FROM schema_migrations ORDER BY name',
+          )
+        ).rows;
+        const c = await pool!.connect();
+        try {
+          await c.query('BEGIN');
+          for (const candidate of lineEndingChanges) {
+            const historical = fixture.migrations.find((r) => r.name === candidate.name)!;
+            const changed = await c.query(
+              'UPDATE schema_migrations SET checksum=$1 WHERE name=$2 AND checksum=$3',
+              [candidate.checksum, candidate.name, historical.checksum],
+            );
+            expect(changed.rowCount).toBe(1);
+          }
+          expect(
+            (
+              await c.query(
+                'SELECT name,checksum,applied_at::text FROM schema_migrations ORDER BY name',
+              )
+            ).rows,
+          ).toEqual(
+            ledger.map((row) => ({
+              ...row,
+              checksum: candidateMigrations.find((m) => m.name === row.name)!.checksum,
+            })),
+          );
+          await c.query('COMMIT');
+        } catch (error) {
+          await c.query('ROLLBACK');
+          throw error;
+        } finally {
+          c.release();
+        }
+        const adapted = await fullFingerprint(pool!);
+        for (const [table, fingerprint] of Object.entries(original))
+          if (table !== 'schema_migrations') expect(adapted[table], table).toEqual(fingerprint);
+        notes.push(
+          `Original line-ending ledger rejected without changes; adapted only ${lineEndingChanges.length} schema_migrations checksums in the owned fixture. All business rows, names and applied_at values unchanged. This is not production ledger repair.`,
+        );
+      }
       applied = await migrate(pool!);
       expect(applied).toEqual(laterMigrations);
       const changed: string[] = [];
@@ -418,7 +487,7 @@ describe(
         )
       ).rows;
       expect(legacyMigrationRows.map((r) => ({ name: r.name, checksum: r.checksum }))).toEqual(
-        fixture.migrations,
+        candidateMigrations,
       );
       expect(legacyMigrationRows.map((r) => r.applied_at.toISOString())).toEqual(
         fixture.tables.schema_migrations!.rows.map((r) =>
@@ -661,7 +730,11 @@ describe(
       });
       try {
         freshOwner = await api.login(fixture.users.owner!.email);
-        const post = async (route: string, body: unknown, cookie = freshOwner) => {
+        const post = async <T = any>(
+          route: string,
+          body: unknown,
+          cookie = freshOwner,
+        ): Promise<T> => {
           const result = await api.call(route, { method: 'POST', cookie, body });
           expect([200, 201], `${route}: ${JSON.stringify(result.error)}`).toContain(result.status);
           return result.data;
@@ -747,12 +820,14 @@ describe(
         // Completed file bytes must survive; an in-progress upload and its retained chunk
         // must be cancelled/cleared. Their request identities are retained in both cases.
         newAuth.completedInput = uploadInput();
-        const completed = await post(`${matchPath}/media-file-requests`, {
+        const completed = await post<MediaFileData>(`${matchPath}/media-file-requests`, {
           ...newAuth.completedInput,
           contentBase64: png.toString('base64'),
         });
-        expect(completed.state).toBe('FILE');
-        newAuth.fileId = completed.file.id;
+        // POST returns the file DTO; only GET by clientRequestId returns {state, file}.
+        expect(completed.status).toBe('ACTIVE');
+        expect(completed.sha256).toBe(newAuth.completedInput.contentSha256);
+        newAuth.fileId = completed.id;
         newAuth.openInput = uploadInput();
         newAuth.session = await post(`${matchPath}/media-upload-sessions`, newAuth.openInput);
         const chunk = await api.call(

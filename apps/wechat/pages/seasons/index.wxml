@@ -13,6 +13,8 @@
         <view><view>{{item.name}}</view><view class="muted">{{item.startDate}} 至 {{item.endDate}} · {{item.statusText}} · {{item.events.length}} 届赛事</view></view>
         <button class="inline secondary" data-id="{{item.id}}" bindtap="openSeason" disabled="{{busy}}">管理</button>
       </view>
+      <view wx:if="{{moreError}}" class="notice danger">{{moreError}}</view>
+      <button wx:if="{{nextCursor}}" class="secondary" bindtap="loadMore" disabled="{{busy || loading || loadingMore}}" loading="{{loadingMore}}">读取更多赛季</button>
     </view>
     <view class="card">
       <view class="subtitle">创建赛季</view>
@@ -64,6 +66,8 @@
         <view><view>{{item.name}}</view><view class="muted">{{item.startDate}} 至 {{item.endDate}}</view></view>
         <button class="inline secondary" data-type="ATTACH_EVENT" data-id="{{item.eventId}}" bindtap="command" disabled="{{busy || loading}}">归入</button>
       </view>
+      <view wx:if="{{candidateMoreError}}" class="notice danger">{{candidateMoreError}}</view>
+      <button wx:if="{{season.candidateNextCursor}}" class="secondary" bindtap="loadMoreCandidates" disabled="{{busy || loading || candidateLoadingMore}}" loading="{{candidateLoadingMore}}">读取更多可归入赛事</button>
     </view>
     <view class="card">
       <view class="subtitle">机构私有榜单</view>

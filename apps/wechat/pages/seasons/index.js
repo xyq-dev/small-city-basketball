@@ -9,10 +9,15 @@ const emptyDraft = () => ({ name: '', startDate: '', endDate: '' });
 // Private, account-bound state; cleared on every identity change, sign-out or unload.
 const privateDefaults = () => ({
   seasons: [],
+  nextCursor: null,
+  loadingMore: false,
+  moreError: '',
   season: null,
   edit: emptyDraft(),
   board: null,
   boardError: '',
+  candidateLoadingMore: false,
+  candidateMoreError: '',
   createPending: false,
   message: '',
 });
@@ -73,7 +78,14 @@ Page({
   async load() {
     if (this.data.busy || this.data.invalid) return;
     const token = ui.begin(this);
-    this.setData({ loading: true, error: '' });
+    this.setData({
+      loading: true,
+      loadingMore: false,
+      moreError: '',
+      candidateLoadingMore: false,
+      candidateMoreError: '',
+      error: '',
+    });
     const session = await ui.session(this, this.returnPath());
     if (!session || !ui.live(this, token)) return;
     const client = api.getClient();
@@ -94,9 +106,12 @@ Page({
         });
         await this.loadBoard(token);
       } else {
-        const seasons = (await client.request(this.root())).data;
+        const response = await client.request(this.root());
         if (!ui.live(this, token)) return;
-        this.setData({ seasons: seasons.map(model.seasonView) });
+        this.setData({
+          seasons: response.data.map(model.seasonView),
+          nextCursor: response.meta.nextCursor || null,
+        });
       }
     } catch (error) {
       if (ui.live(this, token))
@@ -111,6 +126,81 @@ Page({
         });
     } finally {
       if (ui.live(this, token)) this.setData({ loading: false });
+    }
+  },
+  async loadMore() {
+    if (
+      this.data.seasonId ||
+      this.data.busy ||
+      this.data.loading ||
+      this.data.loadingMore ||
+      !this.data.nextCursor ||
+      this._closed
+    )
+      return;
+    const token = ui.guard(this);
+    const generation = this._requestRevision;
+    const valid = () => ui.held(this, token) && generation === this._requestRevision;
+    this.setData({ loadingMore: true, moreError: '' });
+    try {
+      const response = await api
+        .getClient()
+        .request(this.root() + '?cursor=' + encodeURIComponent(this.data.nextCursor));
+      if (!valid()) return;
+      const ids = new Set(this.data.seasons.map((s) => s.id));
+      this.setData({
+        seasons: this.data.seasons.concat(
+          response.data.filter((s) => !ids.has(s.id)).map(model.seasonView),
+        ),
+        nextCursor: response.meta.nextCursor || null,
+      });
+    } catch (error) {
+      if (valid()) this.setData({ moreError: ui.message(error) });
+    } finally {
+      if (valid()) this.setData({ loadingMore: false });
+    }
+  },
+  async loadMoreCandidates() {
+    const season = this.data.season;
+    if (
+      !season ||
+      !season.candidateNextCursor ||
+      this.data.busy ||
+      this.data.loading ||
+      this.data.candidateLoadingMore ||
+      this._closed
+    )
+      return;
+    const token = ui.guard(this);
+    const generation = this._requestRevision;
+    const valid = () => ui.held(this, token) && generation === this._requestRevision;
+    this.setData({ candidateLoadingMore: true, candidateMoreError: '' });
+    try {
+      const result = (
+        await api
+          .getClient()
+          .request(
+            this.root() +
+              '/' +
+              season.id +
+              '?candidateCursor=' +
+              encodeURIComponent(season.candidateNextCursor),
+          )
+      ).data;
+      if (!valid()) return;
+      if (!this.data.season || result.version !== this.data.season.version)
+        throw new Error('赛季资料已更新，请刷新后再选择赛事');
+      const ids = new Set(this.data.season.candidates.map((e) => e.eventId));
+      this.setData({
+        'season.candidates': this.data.season.candidates.concat(
+          result.candidates.filter((e) => !ids.has(e.eventId)),
+        ),
+        'season.candidateNextCursor': result.candidateNextCursor || null,
+      });
+    } catch (error) {
+      if (valid()) this.setData({ candidateMoreError: ui.message(error) });
+    } finally {
+      if (valid()) this.setData({ candidateLoadingMore: false });
     }
   },
   async loadBoard(token) {

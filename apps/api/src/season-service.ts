@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { seasonPage, seasonCursor } from './season-pagination.js';
 import type { PoolClient } from 'pg';
 import type {
   EventSeasonGrantsData,
@@ -45,7 +46,6 @@ import type { EffectiveGrant, GrantConditions, SeasonEventInput } from './season
 type Row = Record<string, any>;
 const iso = (value: Date | string | null | undefined) =>
   value == null ? null : new Date(value).toISOString();
-const GRANT_LIST_LIMIT = 50;
 
 const SEASON_SELECT = `s.*, s.start_date::text AS start_date, s.end_date::text AS end_date`;
 /** Current nominating power of the grant's nominator (OWNER/ADMIN or that event's EVENT_MANAGER). */
@@ -218,6 +218,7 @@ export class SeasonService extends ApplicationService {
     c: PoolClient,
     orgId: string,
     seasonId: string,
+    page = seasonPage({}, 'DATE'),
   ): Promise<SeasonDetailData> {
     const row = await this.seasonRow(c, orgId, seasonId);
     const events = await this.seasonEvents(c, orgId, row.id);
@@ -229,13 +230,25 @@ export class SeasonService extends ApplicationService {
               `SELECT e.id,e.name,e.start_date::text AS start_date,e.end_date::text AS end_date,e.status FROM events e
               WHERE e.org_id=$1 AND e.start_date>=$2::date AND e.end_date<=$3::date
                 AND NOT EXISTS(SELECT 1 FROM season_events se WHERE se.event_id=e.id AND se.status='ACTIVE')
-              ORDER BY e.start_date,e.id LIMIT 100`,
-              [orgId, row.start_date, row.end_date],
+                AND ($4::date IS NULL OR (e.start_date,e.id)>($4::date,$5::uuid))
+              ORDER BY e.start_date,e.id LIMIT $6`,
+              [
+                orgId,
+                row.start_date,
+                row.end_date,
+                page.cursor?.at ?? null,
+                page.cursor?.id ?? null,
+                page.limit + 1,
+              ],
             )
           ).rows;
     return {
       ...this.seasonDto(row, events),
-      candidates: candidates.map((e) => ({
+      candidateNextCursor:
+        candidates.length > page.limit
+          ? seasonCursor(candidates[page.limit - 1]!.start_date, candidates[page.limit - 1]!.id)
+          : null,
+      candidates: candidates.slice(0, page.limit).map((e) => ({
         eventId: e.id,
         name: e.name,
         startDate: e.start_date,
@@ -310,31 +323,52 @@ export class SeasonService extends ApplicationService {
 
   // ---------- seasons ----------
 
-  async listSeasons(cookie: string | undefined, orgId: string): Promise<SeasonData[]> {
+  async listSeasons(
+    cookie: string | undefined,
+    orgId: string,
+    raw: unknown = {},
+  ): Promise<{ seasons: SeasonData[]; nextCursor: string | null }> {
+    const { limit, cursor } = seasonPage(raw, 'DATE');
     return this.snapshotRead(async (c) => {
       const actor = await this.readOrganization(c, await this.readActor(c, cookie), orgId);
       this.requireAdministrator(actor);
       const rows = (
         await c.query<Row>(
-          `SELECT ${SEASON_SELECT} FROM seasons s WHERE s.org_id=$1 ORDER BY s.start_date DESC,s.id DESC LIMIT 100`,
-          [actor.orgId],
+          `SELECT ${SEASON_SELECT} FROM seasons s WHERE s.org_id=$1
+          AND ($2::date IS NULL OR (s.start_date,s.id)<($2::date,$3::uuid))
+          ORDER BY s.start_date DESC,s.id DESC LIMIT $4`,
+          [actor.orgId, cursor?.at ?? null, cursor?.id ?? null, limit + 1],
         )
       ).rows;
+      const page = rows.slice(0, limit);
       const result: SeasonData[] = [];
-      for (const row of rows)
+      for (const row of page)
         result.push(this.seasonDto(row, await this.seasonEvents(c, actor.orgId, row.id)));
-      return result;
+      const last = page.at(-1);
+      return {
+        seasons: result,
+        nextCursor: rows.length > limit && last ? seasonCursor(last.start_date, last.id) : null,
+      };
     });
   }
   async getSeason(
     cookie: string | undefined,
     orgId: string,
     seasonId: string,
+    raw: unknown = {},
   ): Promise<SeasonDetailData> {
+    const query = objectInput(raw ?? {}, ['candidateLimit', 'candidateCursor']);
+    const page = seasonPage(
+      {
+        ...(query.candidateLimit === undefined ? {} : { limit: query.candidateLimit }),
+        ...(query.candidateCursor === undefined ? {} : { cursor: query.candidateCursor }),
+      },
+      'DATE',
+    );
     return this.snapshotRead(async (c) => {
       const actor = await this.readOrganization(c, await this.readActor(c, cookie), orgId);
       this.requireAdministrator(actor);
-      return this.seasonDetail(c, actor.orgId, seasonId);
+      return this.seasonDetail(c, actor.orgId, seasonId, page);
     });
   }
   async createSeason(
@@ -701,7 +735,9 @@ export class SeasonService extends ApplicationService {
     cookie: string | undefined,
     orgId: string,
     eventId: string,
+    raw: unknown = {},
   ): Promise<EventSeasonGrantsData> {
+    const { limit, cursor } = seasonPage(raw);
     return this.snapshotRead(async (c) => {
       const actor = await this.readOrganization(c, await this.readActor(c, cookie), orgId);
       const event = (
@@ -740,8 +776,10 @@ export class SeasonService extends ApplicationService {
       );
       const grants = (
         await c.query<Row>(
-          `${GRANT_SELECT} WHERE g.org_id=$1 AND g.event_id=$2 ORDER BY g.created_at DESC,g.id DESC LIMIT 500`,
-          [actor.orgId, event.id],
+          `${GRANT_SELECT.replace('SELECT g.*,', 'SELECT g.*, g.created_at::text AS cursor_created_at,')}
+            WHERE g.org_id=$1 AND g.event_id=$2 AND ($3::timestamptz IS NULL OR (g.created_at,g.id)<($3::timestamptz,$4::uuid))
+            ORDER BY g.created_at DESC,g.id DESC LIMIT $5`,
+          [actor.orgId, event.id, cursor?.at ?? null, cursor?.id ?? null, limit + 1],
         )
       ).rows;
       return {
@@ -770,7 +808,13 @@ export class SeasonService extends ApplicationService {
             };
           }),
         })),
-        grants: grants.map((g) => this.grantDto(g, { userId: actor.user.id, manages: true })),
+        grants: grants
+          .slice(0, limit)
+          .map((g) => this.grantDto(g, { userId: actor.user.id, manages: true })),
+        nextCursor:
+          grants.length > limit
+            ? seasonCursor(grants[limit - 1]!.cursor_created_at, grants[limit - 1]!.id)
+            : null,
         disclosure: DISCLOSURE,
       };
     });
@@ -953,45 +997,7 @@ export class SeasonService extends ApplicationService {
     });
   }
   async myGrants(cookie: string | undefined, raw: unknown = {}): Promise<MySeasonDataGrantsData> {
-    const query = objectInput(raw ?? {}, ['limit', 'cursor']);
-    const limit = query.limit === undefined ? GRANT_LIST_LIMIT : Number(query.limit);
-    if (
-      (query.limit !== undefined &&
-        (typeof query.limit !== 'string' || !/^[1-9][0-9]*$/.test(query.limit))) ||
-      !Number.isSafeInteger(limit) ||
-      limit < 1 ||
-      limit > GRANT_LIST_LIMIT
-    )
-      throw new ApiError(400, 'INVALID_QUERY', '每页授权记录数量须为1至50');
-    let cursor: { at: string; id: string } | null = null;
-    if (query.cursor !== undefined) {
-      try {
-        if (
-          typeof query.cursor !== 'string' ||
-          query.cursor.length > 512 ||
-          !/^[A-Za-z0-9_-]+$/.test(query.cursor)
-        )
-          throw new Error();
-        const decoded = Buffer.from(query.cursor, 'base64url').toString('utf8');
-        const value = JSON.parse(decoded);
-        if (
-          !value ||
-          Object.keys(value).sort().join(',') !== 'at,id' ||
-          typeof value.at !== 'string' ||
-          !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?[+-]\d{2}(?::\d{2})?$/.test(
-            value.at,
-          ) ||
-          !Number.isFinite(Date.parse(value.at)) ||
-          typeof value.id !== 'string' ||
-          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value.id) ||
-          Buffer.from(decoded).toString('base64url') !== query.cursor
-        )
-          throw new Error();
-        cursor = value;
-      } catch {
-        throw new ApiError(400, 'INVALID_CURSOR', '授权记录游标无效，请重新读取');
-      }
-    }
+    const { limit, cursor } = seasonPage(raw);
     return this.snapshotRead(async (c) => {
       const actor = await this.readActor(c, cookie);
       const rows = (
@@ -1008,12 +1014,7 @@ export class SeasonService extends ApplicationService {
       return {
         grants: page.map((g) => this.grantDto(g, { userId: actor.user.id, manages: false })),
         truncated: more,
-        nextCursor:
-          more && last
-            ? Buffer.from(JSON.stringify({ at: last.cursor_created_at, id: last.id })).toString(
-                'base64url',
-              )
-            : null,
+        nextCursor: more && last ? seasonCursor(last.cursor_created_at, last.id) : null,
         disclosure: DISCLOSURE,
       };
     });

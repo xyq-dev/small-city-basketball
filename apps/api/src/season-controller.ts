@@ -23,8 +23,16 @@ const envelope = <T>(r: ApiRequest, data: T) => ({ data, meta: { requestId: r.re
 export class SeasonController {
   constructor(@Inject(SCB_SEASON_SERVICE) readonly service: SeasonService) {}
 
-  @Get('v1/orgs/:orgId/seasons') async list(@Req() r: ApiRequest, @Param('orgId') org: string) {
-    return envelope(r, await this.service.listSeasons(r.headers.cookie, org));
+  @Get('v1/orgs/:orgId/seasons') async list(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Query() query: unknown,
+  ) {
+    const result = await this.service.listSeasons(r.headers.cookie, org, query);
+    return {
+      data: result.seasons,
+      meta: { requestId: r.requestId, nextCursor: result.nextCursor },
+    };
   }
   /** 201 on first creation, 200 when the same clientRequestId replays the same content. */
   @Post('v1/orgs/:orgId/seasons') async create(
@@ -41,8 +49,9 @@ export class SeasonController {
     @Req() r: ApiRequest,
     @Param('orgId') org: string,
     @Param('seasonId') season: string,
+    @Query() query: unknown,
   ) {
-    return envelope(r, await this.service.getSeason(r.headers.cookie, org, season));
+    return envelope(r, await this.service.getSeason(r.headers.cookie, org, season, query));
   }
   @Patch('v1/orgs/:orgId/seasons/:seasonId') async update(
     @Req() r: ApiRequest,
@@ -71,8 +80,9 @@ export class SeasonController {
     @Req() r: ApiRequest,
     @Param('orgId') org: string,
     @Param('eventId') event: string,
+    @Query() query: unknown,
   ) {
-    return envelope(r, await this.service.eventGrants(r.headers.cookie, org, event));
+    return envelope(r, await this.service.eventGrants(r.headers.cookie, org, event, query));
   }
   /** 201 on first nomination, 200 for a replay of the same clientRequestId and content. */
   @Post('v1/orgs/:orgId/events/:eventId/season-data-grants') async nominate(

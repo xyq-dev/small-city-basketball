@@ -38,6 +38,7 @@ export interface SeasonData {
 /** Detail adds the organization's events that could be attached now (in range, unattached). */
 export interface SeasonDetailData extends SeasonData {
   candidates: Omit<SeasonEventData, 'attachedAt'>[];
+  candidateNextCursor?: string | null;
 }
 export interface CreateSeasonInput {
   /** UUID v4 chosen before the first send; a replay returns the same season. */
@@ -153,6 +154,7 @@ export interface EventSeasonGrantsData {
   frozen: boolean;
   sources: { teamId: string; teamName: string; members: SeasonGrantSourceMember[] }[];
   grants: SeasonDataGrantData[];
+  nextCursor?: string | null;
   disclosure: SeasonGrantDisclosure;
 }
 export interface NominateSeasonGrantInput {

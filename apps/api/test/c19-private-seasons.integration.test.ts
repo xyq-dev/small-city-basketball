@@ -864,6 +864,96 @@ describe(
       await member('EVENT_MANAGER', 'ACTIVE');
     });
 
+    test('concurrent revocations of both nominator authority routes cannot revive old consent', async () => {
+      const s = await scored(await pair('并发撤权'), 3, 0);
+      const season = await activeSeasonWith(s.eventId);
+      const player = await person('authority-race');
+      await bind(player, s.teamId, s.memberId);
+      const manager: User = { ...h.otherOwner, orgId: h.owner.orgId };
+      data(
+        await call(h.api, 'put', `${org()}/members/${manager.id}`, {
+          cookie: h.owner.cookie,
+          body: { role: 'ORG_ADMIN', status: 'ACTIVE' },
+        }),
+      );
+      data(
+        await call(h.api, 'put', `${org()}/events/${s.eventId}/staff/${manager.id}`, {
+          cookie: h.owner.cookie,
+          body: { role: 'EVENT_MANAGER', status: 'ACTIVE' },
+        }),
+      );
+      const original = await consented(s, player, manager);
+      const first = await h.api.pool.connect();
+      const second = await h.api.pool.connect();
+      let secondWrite: Promise<unknown> | undefined;
+      let secondSettled = false;
+      try {
+        await first.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+        await second.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+        await second.query("SET LOCAL lock_timeout='10s'");
+        const pid = (await second.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')).rows[0]!
+          .pid;
+        // T1 sees the still-active event role and leaves the original consent intact.
+        // Keep its membership change uncommitted while T2 removes the other route.
+        await first.query(
+          "UPDATE organization_memberships SET role='EVENT_MANAGER' WHERE org_id=$1 AND user_id=$2",
+          [h.owner.orgId, manager.id],
+        );
+        secondWrite = second.query(
+          "UPDATE event_staff SET status='DISABLED' WHERE org_id=$1 AND event_id=$2 AND user_id=$3",
+          [h.owner.orgId, s.eventId, manager.id],
+        );
+        void secondWrite.then(
+          () => {
+            secondSettled = true;
+          },
+          () => {
+            secondSettled = true;
+          },
+        );
+        let reached = false;
+        for (let tries = 0; tries < 200 && !reached; tries++) {
+          const activity = await h.api.pool.query(
+            'SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1',
+            [pid],
+          );
+          // Without the fix T2 finishes against T1's old membership; with the fix it waits.
+          reached = secondSettled || activity.rows[0]?.wait_event_type === 'Lock';
+          if (!reached) await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        expect(reached).toBe(true);
+        await first.query('COMMIT');
+        await secondWrite;
+        await second.query('COMMIT');
+      } finally {
+        await first.query('ROLLBACK');
+        if (secondWrite) await secondWrite.catch(() => {});
+        await second.query('ROLLBACK');
+        first.release();
+        second.release();
+      }
+      // Neither an intermediate read nor a fresh consent is needed to reveal the bug:
+      // restoring one route must leave the already-recorded invalidation intact.
+      data(
+        await call(h.api, 'put', `${org()}/members/${manager.id}`, {
+          cookie: h.owner.cookie,
+          body: { role: 'ORG_ADMIN', status: 'ACTIVE' },
+        }),
+      );
+      expect(rowFor(await board(season.id), player)).toBeUndefined();
+      expect((await myGrants(player)).grants.find((g) => g.id === original.id)).toMatchObject({
+        effective: false,
+        invalidationReason: 'NOMINATOR_UNAUTHORIZED',
+        version: original.version + 1,
+      });
+      data(
+        await call(h.api, 'put', `${org()}/members/${manager.id}`, {
+          cookie: h.owner.cookie,
+          body: { role: 'EVENT_MANAGER', status: 'ACTIVE' },
+        }),
+      );
+    });
+
     test('consent and binding loss use the same lock order and cannot leave effective consent', async () => {
       const s = await scored(await pair('解绑竞争'), 2, 0);
       const player = await person('consent-race');
@@ -967,9 +1057,21 @@ describe(
       const here = rowFor(await board(season.id), player)!;
       expect(here.sources.map((x) => x.eventId)).toEqual([s.eventId]);
       expect(here.score).toBe(3);
-      const there = rowFor(await board(otherSeason.id, h.otherOwner), player)!;
-      expect(there.sources).toEqual([]);
-      expect(there.score).toBe(0);
+      const otherBoard = await board(otherSeason.id, h.otherOwner);
+      // This event is frozen but has no published schedule or confirmed individual samples.
+      // It must not invent a zero-score row or import this account's score from another org.
+      expect(otherBoard.season.orgId).toBe(h.otherOwner.orgId);
+      expect(otherBoard.summary.rows).toEqual([]);
+      expect(otherBoard.summary.effectiveGrantCount).toBe(1);
+      expect(otherBoard.summary.events).toEqual([
+        expect.objectContaining({ eventId: otherEvent.event.id, state: 'NO_SCHEDULE' }),
+      ]);
+      const otherOwn = data<MySeasonStatisticsData>(
+        await mine(player, otherSeason.id, h.otherOwner.orgId),
+      );
+      expect(otherOwn.season.orgId).toBe(h.otherOwner.orgId);
+      expect(otherOwn.summary.rows).toEqual([]);
+      expect(otherOwn.summary.events.map((event) => event.eventId)).toEqual([otherEvent.event.id]);
       reject(await mine(player, season.id, h.otherOwner.orgId), 404);
       reject(await mine(player, otherSeason.id, h.owner.orgId), 404);
       expect(
@@ -1164,6 +1266,101 @@ describe(
           )
         ).rows.map((r) => r.action),
       ).toEqual(['SEASON_GRANT_NOMINATED', 'SEASON_GRANT_CONSENTED']);
+    });
+
+    test('administrator paging reaches old seasons and old event grants for withdrawal', async () => {
+      await createSeason('管理分页甲');
+      await createSeason('管理分页乙');
+      const candidateSeason = await createSeason('候选分页');
+      const expected = (
+        await h.api.pool.query(
+          'SELECT id FROM seasons WHERE org_id=$1 ORDER BY start_date DESC,id DESC',
+          [h.owner.orgId],
+        )
+      ).rows.map((r) => r.id);
+      const reached: string[] = [];
+      let cursor: string | null = null;
+      do {
+        const page = await call(
+          h.api,
+          'get',
+          `${org()}/seasons?limit=2${cursor ? '&cursor=' + cursor : ''}`,
+          { cookie: h.owner.cookie },
+        );
+        expect(page.status).toBe(200);
+        expect(Array.isArray(page.body.data)).toBe(true);
+        reached.push(...page.body.data.map((row: { id: string }) => row.id));
+        cursor = page.body.meta.nextCursor;
+      } while (cursor && reached.length <= expected.length);
+      expect(reached).toEqual(expected);
+      expect(cursor).toBeNull();
+      for (const name of ['候选赛事甲', '候选赛事乙'])
+        data(
+          await call(h.api, 'post', `${org()}/events`, {
+            cookie: h.owner.cookie,
+            body: {
+              name,
+              startDate: `${YEAR}-06-01`,
+              endDate: `${YEAR}-06-02`,
+              timezone: 'Asia/Shanghai',
+              format: 'ROUND_ROBIN',
+            },
+          }),
+          201,
+        );
+      const candidateIds = (
+        await h.api.pool.query(
+          `SELECT e.id FROM events e WHERE e.org_id=$1
+        AND e.start_date>=$2::date AND e.end_date<=$3::date
+        AND NOT EXISTS(SELECT 1 FROM season_events se WHERE se.event_id=e.id AND se.status='ACTIVE')
+        ORDER BY e.start_date,e.id`,
+          [h.owner.orgId, candidateSeason.startDate, candidateSeason.endDate],
+        )
+      ).rows.map((r) => r.id);
+      const reachedCandidates: string[] = [];
+      let candidateCursor: string | null = null;
+      do {
+        const detail: SeasonDetailData = data(
+          await call(
+            h.api,
+            'get',
+            `${org()}/seasons/${candidateSeason.id}?candidateLimit=1${candidateCursor ? '&candidateCursor=' + candidateCursor : ''}`,
+            { cookie: h.owner.cookie },
+          ),
+        );
+        reachedCandidates.push(...detail.candidates.map((row) => row.eventId));
+        candidateCursor = detail.candidateNextCursor ?? null;
+      } while (candidateCursor && reachedCandidates.length <= candidateIds.length);
+      expect(reachedCandidates).toEqual(candidateIds);
+      expect(candidateCursor).toBeNull();
+      const s = await scored(await pair('管理员授权分页'), 2, 0);
+      const player = await person('administrator-grant-pages');
+      await bind(player, s.teamId, s.memberId);
+      await bind(player, s.awayTeamId, s.awayMemberId);
+      const old = await consented(s, player);
+      const newer = data<SeasonDataGrantData>(
+        await nominate(s.eventId, s.awayTeamId, s.awayMemberId, player),
+        201,
+      );
+      const path = `${org()}/events/${s.eventId}/season-data-grants`;
+      const first = data<EventSeasonGrantsData>(
+        await call(h.api, 'get', path + '?limit=1', { cookie: h.owner.cookie }),
+      );
+      expect(first.grants.map((g) => g.id)).toEqual([newer.id]);
+      const second = data<EventSeasonGrantsData>(
+        await call(h.api, 'get', path + '?limit=1&cursor=' + first.nextCursor, {
+          cookie: h.owner.cookie,
+        }),
+      );
+      expect(second.grants.map((g) => g.id)).toEqual([old.id]);
+      expect(second.nextCursor).toBeNull();
+      const withdrawn = data<SeasonDataGrantData>(
+        await call(h.api, 'post', `${org()}/season-data-grants/${old.id}/withdraw`, {
+          cookie: h.owner.cookie,
+          body: { reason: why, expectedVersion: old.version },
+        }),
+      );
+      expect(withdrawn.status).toBe('WITHDRAWN');
     });
 
     test('own grant pagination preserves exact cursor position and keeps older consent revocable', async () => {

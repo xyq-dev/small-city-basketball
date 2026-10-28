@@ -116,6 +116,19 @@ test('C19 login return targets recognize both season pages and grant pagination 
   assert.equal(api.pathAllowed('/v1/me/season-data-grants?limit=50&cursor=YWJj', 'GET'), true);
   for (const query of ['limit=51', 'limit=0', 'cursor=bad%2Fcursor', 'actorId=' + b])
     assert.equal(api.pathAllowed('/v1/me/season-data-grants?' + query, 'GET'), false);
+  for (const route of [
+    '/v1/orgs/' + b + '/seasons',
+    '/v1/orgs/' + b + '/events/' + p + '/season-data-grants',
+  ]) {
+    assert.equal(api.pathAllowed(route + '?limit=50&cursor=YWJj', 'GET'), true);
+    assert.equal(api.pathAllowed(route + '?limit=51', 'GET'), false);
+    assert.equal(api.pathAllowed(route + '?cursor=YWJj', 'POST'), false);
+    assert.equal(api.pathAllowed(route, 'POST'), true);
+  }
+  const detail = '/v1/orgs/' + b + '/seasons/' + p;
+  assert.equal(api.pathAllowed(detail + '?candidateLimit=50&candidateCursor=YWJj', 'GET'), true);
+  assert.equal(api.pathAllowed(detail + '?candidateLimit=51', 'GET'), false);
+  assert.equal(api.pathAllowed(detail + '?candidateCursor=YWJj', 'PATCH'), false);
 });
 test('late native wx.login code cannot overwrite a newer application identity', async () => {
   const h = setup('account');

@@ -14,6 +14,11 @@ import { published } from './p05-support.js';
 import type { Harness } from './p05-support.js';
 import { enable, savePublishRules, viewingCommand } from './p05b-support.js';
 import { syntheticPng } from './media-fixtures.js';
+import type {
+  MatchMediaData,
+  MediaFileReceiptData,
+  UploadSessionData,
+} from '@small-city-basketball/contracts';
 
 type Target = Awaited<ReturnType<typeof createOwnedRestoreDatabase>>;
 const input = () => ({
@@ -511,8 +516,12 @@ test('C19 HTTP writes and invoker triggers work with the exact runtime grants', 
       const leader = { ...(await participant(api, 'c19-runtime-leader')), orgId: '' };
       const player = { ...(await participant(api, 'c19-runtime-player')), orgId: '' };
       const root = `/v1/orgs/${owner.orgId}`;
-      const post = async (route: string, body: object, actor: User = owner, status = 200) =>
-        data<any>(await call(api, 'post', route, { cookie: actor.cookie, body }), status);
+      const post = async <T = any>(
+        route: string,
+        body: object,
+        actor: User = owner,
+        status = 200,
+      ) => data<T>(await call(api, 'post', route, { cookie: actor.cookie, body }), status);
       const get = async (route: string, actor: User = owner) =>
         data<any>(await call(api, 'get', route, { cookie: actor.cookie }));
 
@@ -587,7 +596,12 @@ test('C19 HTTP writes and invoker triggers work with the exact runtime grants', 
         byteLength: syntheticPng.length,
         contentSha256: createHash('sha256').update(syntheticPng).digest('hex'),
       };
-      const session = await post(`${matchPath}/media-upload-sessions`, fileInput, owner, 201);
+      const session = await post<UploadSessionData>(
+        `${matchPath}/media-upload-sessions`,
+        fileInput,
+        owner,
+        201,
+      );
       const chunk = data<any>(
         await call(api, 'put', `${matchPath}/media-upload-sessions/${session.id}/chunks/0`, {
           cookie: owner.cookie,
@@ -599,12 +613,17 @@ test('C19 HTTP writes and invoker triggers work with the exact runtime grants', 
         }),
       );
       expect(chunk.receivedBytes).toBe(syntheticPng.length);
-      const completed = await post(`${matchPath}/media-upload-sessions/${session.id}/complete`, {});
+      const completed = await post<MediaFileReceiptData>(
+        `${matchPath}/media-upload-sessions/${session.id}/complete`,
+        {},
+      );
       expect(completed.state).toBe('FILE');
+      if (completed.state !== 'FILE')
+        throw new Error('Upload completion did not return a file receipt');
       expect(await get(`${matchPath}/media-file-requests/${fileInput.clientRequestId}`)).toEqual(
         completed,
       );
-      const media = await post(
+      const media = await post<MatchMediaData>(
         `${matchPath}/media-requests`,
         {
           clientRequestId: randomUUID(),
@@ -616,8 +635,9 @@ test('C19 HTTP writes and invoker triggers work with the exact runtime grants', 
         owner,
         201,
       );
-      expect(media.media.status).toBe('DRAFT');
-      const cancelled = await post(
+      expect(media.status).toBe('DRAFT');
+      expect(media.fileId).toBe(completed.file.id);
+      const cancelled = await post<UploadSessionData>(
         `${matchPath}/media-upload-sessions`,
         {
           ...fileInput,

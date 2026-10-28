@@ -1,5 +1,13 @@
 # 当前状态
 
+## C19 分支接续验证（IN_PROGRESS / BRANCH_ONLY）
+
+2026-10-28 Asia/Shanghai，Codex 为本轮唯一集成人。用户已推送中断成果并授权继续测试、修复；媒体、建队/成员绑定、私有赛季与独立授权、关注收藏已集成到 `feat/mini-program-completion`，[Draft PR #28](https://github.com/xyq-dev/small-city-basketball/pull/28)，base 为 #27 分支。当前 22 个 Migration、78 张表、38 条原生页面路由；001–018 与 AGENTS.md 未改。
+
+本轮已补跨账号迟到操作、原请求恢复、临时文件清理、授权不可逆失效与并发撤权、赛季完整分页、最小运行权限、隔离恢复撤销和 HTTPS 上传限制。候选 CI `40664876451` 的 admin 成功：887 个浏览器检查、873 组兼容布局，其中新增 39 组；API 与隔离 production 发现新增测试问题，正在修复复跑，尚无最终全绿结论。官方微信工具/真机未执行，截图交付继续暂缓。详见 [C19 任务](tasks/C19.md)、[交接](handoffs/C19.md)、[总交付清单](audits/MINI_PROGRAM_DELIVERY_SCOPE.md)。
+
+以上仅为分支进展；#22—#28 均保持 Draft、未合并，main 与生产未更新。019–022 只允许在自有隔离库验证；未正式 pack/部署或执行生产 Migration。下面保留各阶段 main/分支历史记录，不以旧结果替代 C19 验证。
+
 当前C12：`DONE（本地验收入口） / MAIN`；原生微信截图阶段`BLOCKED`（缺少本机执行通道）。[PR20](https://github.com/xyq-dev/small-city-basketball/pull/20)已合并ace2403，最终source d74b30b4/合并tree4117a963实际核验一致，apps ca1a2328保持不变。Windows CI40222050802的14项工具检查全过；应用CI40222050821的admin/隔离production通过，API重复回归仍运行，未记作最终全绿。入口生成隔离六屏副本、原始PNG/错误与对照报告，真实业务/真机/用户签收仍待。[本机执行](WECHAT_NATIVE_UI_ACCEPTANCE.md)、[任务](tasks/C12.md)、[交接](handoffs/C12.md)。
 
 当前C11：`DONE（六页实现/21页兼容图集） / MAIN`。用户确认的新六屏图已实现并由[PR18](https://github.com/xyq-dev/small-city-basketball/pull/18)合并ee359af；最终source1d038743与合并完整tree0bbe4984/apps ca1a2328已实际核验一致。CI40170353262三job全部SUCCESS（attempt1）：1046源码/289原生、678三宽布局+14 Web浏览器、24真实API浏览器与隔离恢复/TLS/清理通过。448实际PNG/678JSON及六屏原稿对照已整理，独立视觉/证据复核CLEAR。官方微信/真机与用户视觉签收待办；合并后重复CI不计入候选结果。[实际截图/证据](evidence/C11/README.md)、[任务](tasks/C11.md)、[交接](handoffs/C11.md)。
@@ -49,7 +57,6 @@ D02设计任务仅Figma与docs文件，无应用代码/依赖/Migration/生产�
 ## main已整合
 
 仓库`xyq-dev/small-city-basketball`，最新业务合并为[PR15](https://github.com/xyq-dev/small-city-basketball/pull/15)的`0d35d4608c59015a14a60926769c162cbeb5c362`。后续纯文档HEAD从实际Git读取。
-
 
 C04已由[PR12](https://github.com/xyq-dev/small-city-basketball/pull/12)合并main `7ef18c915ffa51712077e6668e60ec6fbb0219b6`，最终source`bc6516dc0068812c8075f9a88effa89c4183190f`与合并tree同为`5446bdacb6c5fc08fab245cecad74b91b1028a5d`。2–32队单淘汰、首轮轮空、原独立确认晋级/加时、逐轮显式发布、来源赛果锁定、最终共同名次、公开签位及闭赛/统计/恢复已整合。[CI39975284464](https://github.com/xyq-dev/small-city-basketball/actions/runs/39975284464)三个job全部SUCCESS且日志已核对：749源码（admin363/API386）、217真实PG（201+16，新增15项）、12Mock＋桌面9/手机模拟9真实API＋4可信HTTPS浏览器；11Migration/checksum、41表实际PG重启、完整dump→第二实例恢复及旧授权隔离、正常及负向owned清理均通过，无重试。最新source自动CodeReview completed无finding/未解决线程，独立静态人员维护版本P1修复已复核，security未运行。合并后CI39976904075三个job也全部SUCCESS，完整日志已核对、无重试。没有生产部署/正式DB或账号维护；详见[C04任务](tasks/C04.md)、[交接](handoffs/C04.md)和[证据](evidence/C04/README.md)。
 

@@ -1016,3 +1016,105 @@ for (const settleOld of ['success', 'failure']) {
     },
   );
 }
+
+test('administrator season list keeps the array envelope and appends older pages after a retry', async () => {
+  let attempts = 0;
+  const cursor = 'YWRtaW4';
+  const base = 'GET /v1/orgs/' + org + '/seasons';
+  const d = device(
+    seasonRoutes({
+      [base]: () => {
+        const r = ok([season()]);
+        r.data.meta.nextCursor = cursor;
+        return r;
+      },
+      [base + '?cursor=' + cursor]: () => {
+        if (++attempts === 1) throw new Error('page failed');
+        const r = ok([season({ id: userB, name: '更早的赛季' })]);
+        r.data.meta.nextCursor = null;
+        return r;
+      },
+    }),
+  );
+  const p = await d.open('pages/seasons/index', { orgId: org });
+  await p.page.loadMore();
+  assert.equal(p.page.data.seasons.length, 1);
+  assert.equal(p.page.data.nextCursor, cursor);
+  assert.ok(p.page.data.moreError);
+  await p.page.loadMore();
+  assert.deepEqual(
+    p.page.data.seasons.map((s) => s.id),
+    [seasonId, userB],
+  );
+  assert.equal(p.page.data.nextCursor, null);
+  assert.equal(attempts, 2);
+});
+
+test('organizer reads an earlier grant page and can withdraw that older grant', async () => {
+  const cursor = 'b2xk';
+  const base = '/v1/orgs/' + org + '/events/' + eventId + '/season-data-grants';
+  const old = grant({
+    id: userB,
+    status: 'ACTIVE',
+    version: 4,
+    capabilities: { canWithdraw: true },
+  });
+  const d = device(
+    organizerRoutes({
+      ['GET ' + base]: () =>
+        ok({
+          event: { id: eventId },
+          season: null,
+          sources,
+          frozen: true,
+          disclosure,
+          grants: [grant()],
+          nextCursor: cursor,
+        }),
+      ['GET ' + base + '?cursor=' + cursor]: () => ok({ grants: [old], nextCursor: null }),
+      ['POST /v1/orgs/' + org + '/season-data-grants/' + userB + '/withdraw']: () =>
+        ok({ ...old, status: 'WITHDRAWN', version: 5 }),
+    }),
+  );
+  const p = await d.open('pages/season-grants/index', { orgId: org, eventId });
+  await p.page.loadMore();
+  assert.deepEqual(
+    p.page.data.grants.map((g) => g.id),
+    [grantId, userB],
+  );
+  p.page.askWithdraw(tap({ id: userB }));
+  p.page.input(tap({ field: 'withdrawReason' }, { value: '核对后撤回授权' }));
+  await confirmed(d, p, () => p.page.withdraw());
+  assert.deepEqual(d.state.writes.at(-1).body, { expectedVersion: 4, reason: '核对后撤回授权' });
+});
+
+test('candidate events page through in bounded requests and reject mixed season versions', async () => {
+  const cursor = 'Y2FuZGlkYXRl';
+  const base = 'GET /v1/orgs/' + org + '/seasons/' + seasonId;
+  let version = 4;
+  const d = device(
+    seasonRoutes({
+      [base]: () =>
+        ok(season({ candidates: [{ eventId, name: '候选赛事一' }], candidateNextCursor: cursor })),
+      [base + '?candidateCursor=' + cursor]: () =>
+        ok(
+          season({
+            version,
+            candidates: [{ eventId: userB, name: '候选赛事二' }],
+            candidateNextCursor: null,
+          }),
+        ),
+    }),
+  );
+  const p = await d.open('pages/seasons/index', { orgId: org, seasonId });
+  await p.page.loadMoreCandidates();
+  assert.equal(p.page.data.season.candidates.length, 1);
+  assert.match(p.page.data.candidateMoreError, /请刷新/);
+  version = 3;
+  await p.page.loadMoreCandidates();
+  assert.deepEqual(
+    p.page.data.season.candidates.map((e) => e.eventId),
+    [eventId, userB],
+  );
+  assert.equal(p.page.data.season.candidateNextCursor, null);
+});

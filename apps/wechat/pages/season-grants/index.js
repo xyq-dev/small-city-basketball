@@ -117,6 +117,8 @@ Page({
           disclosure: result.disclosure,
           teamLabels: sources.map((t) => t.teamName),
           grants: result.grants.map(model.grantView),
+          nextCursor: result.nextCursor || null,
+          truncated: !!result.nextCursor,
         });
         if (this._pendingNomination) {
           const pending = this._pendingNomination;
@@ -165,7 +167,6 @@ Page({
   },
   async loadMore() {
     if (
-      this.data.mode !== 'player' ||
       this.data.busy ||
       this.data.loading ||
       this.data.loadingMore ||
@@ -179,11 +180,9 @@ Page({
     const valid = () => ui.held(this, token) && generation === this._requestRevision;
     this.setData({ loadingMore: true, moreError: '' });
     try {
-      const result = (
-        await api
-          .getClient()
-          .request('/v1/me/season-data-grants?cursor=' + encodeURIComponent(cursor))
-      ).data;
+      const path = this.data.mode === 'organizer' ? this.eventPath() : '/v1/me/season-data-grants';
+      const result = (await api.getClient().request(path + '?cursor=' + encodeURIComponent(cursor)))
+        .data;
       if (!valid()) return;
       const existing = new Set(this.data.grants.map((g) => g.id));
       this.setData({
@@ -191,7 +190,7 @@ Page({
           result.grants.filter((g) => !existing.has(g.id)).map(model.grantView),
         ),
         nextCursor: result.nextCursor || null,
-        truncated: result.truncated,
+        truncated: !!result.nextCursor,
       });
     } catch (error) {
       if (valid()) this.setData({ moreError: ui.message(error) });
