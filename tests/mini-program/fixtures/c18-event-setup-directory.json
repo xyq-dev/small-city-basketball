@@ -1,0 +1,146 @@
+{
+  "name": "c18-event-setup-directory",
+  "route": "pages/event-setup/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": [
+    "公开赛事目录",
+    "已列入",
+    "当前分组：进行中 · 城市：高州",
+    "撤出目录（保留分享链接）"
+  ],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "已列入公开赛事目录。",
+    "creating": false,
+    "formats": [
+      {
+        "value": "ROUND_ROBIN",
+        "label": "单循环"
+      },
+      {
+        "value": "SINGLE_ELIMINATION",
+        "label": "单淘汰"
+      },
+      {
+        "value": "GROUP_KNOCKOUT",
+        "label": "分组循环接淘汰"
+      }
+    ],
+    "tiebreakers": [
+      {
+        "value": "SCORE_DIFFERENCE",
+        "label": "净胜分"
+      },
+      {
+        "value": "POINTS_FOR",
+        "label": "总得分"
+      },
+      {
+        "value": "WINS",
+        "label": "胜场"
+      }
+    ],
+    "event": {
+      "name": "合成青锋杯",
+      "status": "RUNNING",
+      "statusLabel": "比赛进行中",
+      "formatLabel": "单循环赛事",
+      "dateLabel": "2028-03-01 至 2028-03-02",
+      "venueName": "合成体育馆",
+      "roundRobin": true,
+      "knockout": false,
+      "groups": false
+    },
+    "draft": null,
+    "registration": {
+      "minPlayers": "2",
+      "maxPlayers": "3",
+      "zeroDistinct": true,
+      "requireIdentity": false,
+      "requireInsurance": false,
+      "saved": true,
+      "editable": false
+    },
+    "scoring": {
+      "editable": false,
+      "locked": true,
+      "periods": "1",
+      "minutes": "0",
+      "seconds": "1",
+      "scores": [
+        {
+          "value": 1,
+          "on": true
+        },
+        {
+          "value": 2,
+          "on": true
+        },
+        {
+          "value": 3,
+          "on": true
+        }
+      ],
+      "overtime": false,
+      "durationLabel": "1 秒",
+      "otMinutes": "5",
+      "otSeconds": "0",
+      "otLabel": "",
+      "saved": true
+    },
+    "standings": {
+      "editable": false,
+      "locked": true,
+      "canPublish": false,
+      "rulesetId": "f35998fd-466a-47f9-93a4-e89b62371e43",
+      "win": "3",
+      "loss": "1",
+      "draw": "1",
+      "tiebreakers": [
+        {
+          "value": "WINS",
+          "label": "胜场",
+          "on": true,
+          "rank": "1"
+        },
+        {
+          "value": "SCORE_DIFFERENCE",
+          "label": "净胜分",
+          "on": true,
+          "rank": "2"
+        },
+        {
+          "value": "POINTS_FOR",
+          "label": "总得分",
+          "on": true,
+          "rank": "3"
+        }
+      ],
+      "orderLabel": "胜场 → 净胜分 → 总得分",
+      "saved": true
+    },
+    "viewing": {
+      "active": true,
+      "publicEventId": "DWlcaE3t4U-F7kUV6mo_AGsTGMTkD5BUnP-S068nVaA",
+      "canEnable": false,
+      "canDisable": true,
+      "history": false
+    },
+    "directory": {
+      "listed": true,
+      "city": "高州",
+      "group": "进行中",
+      "publicActive": true,
+      "canList": false,
+      "canUnlist": true,
+      "lastNote": "",
+      "cityInput": "",
+      "reason": ""
+    },
+    "unavailable": false
+  }
+}

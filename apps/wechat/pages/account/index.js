@@ -12,12 +12,14 @@ function wxCode() {
 }
 // Display hints only: every management page re-reads its own capabilities from the API.
 function roleView(session) {
-  const roles = events.organizations(session).map((o) => ({
+  const organizations = events.organizations(session);
+  const roles = organizations.map((o) => ({
     key: o.id,
     text: o.name + ' · ' + o.roleLabel,
   }));
   return {
     roles,
+    managedOrgs: organizations.filter((o) => ['ORG_OWNER', 'ORG_ADMIN'].includes(o.role)),
     roleSummary:
       roles
         .map((r) => r.text)
@@ -45,6 +47,7 @@ Page({
     hasReturn: false,
     securityOpen: false,
     roles: [],
+    managedOrgs: [],
     roleSummary: '',
     teamCount: 0,
   },
@@ -65,6 +68,9 @@ Page({
             securityOpen: false,
             password: '',
             consent: false,
+            roles: [],
+            managedOrgs: [],
+            teamCount: 0,
           });
       });
     this.load();
@@ -96,7 +102,15 @@ Page({
   async load() {
     const seq = (this.seq || 0) + 1;
     this.seq = seq;
-    this.setData({ loading: true, user: null, binding: null, connected: false });
+    this.setData({
+      loading: true,
+      user: null,
+      binding: null,
+      connected: false,
+      roles: [],
+      managedOrgs: [],
+      teamCount: 0,
+    });
     try {
       const client = api.getClient();
       const results = await Promise.allSettled([
@@ -316,8 +330,9 @@ Page({
       return;
     }
     const kind = e.currentTarget.dataset.kind;
-    const query =
-      key === 'bookings'
+    const query = ['seasons', 'team-requests'].includes(key)
+      ? { orgId: api.uuid(e.currentTarget.dataset.org) }
+      : key === 'bookings'
         ? { view: 'sent' }
         : key === 'planned' && ['funds', 'messages', 'profile'].includes(kind)
           ? { kind }

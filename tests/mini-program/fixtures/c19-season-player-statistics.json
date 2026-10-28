@@ -1,0 +1,118 @@
+{
+  "name": "c19-season-player-statistics",
+  "route": "pages/season-grants/index",
+  "state": "synthetic-populated",
+  "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
+  "expectText": ["本人统计 · 合成春季", "只显示您本人的数据", "名单场次（非实际出场）", "未统计"],
+  "expectEnabled": ["撤销授权"],
+  "expectAbsentText": ["机构私有榜单"],
+  "data": {
+    "mode": "player",
+    "orgId": "",
+    "eventId": "",
+    "invalid": false,
+    "loginRequired": false,
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "grants": [
+      {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "purpose": "PRIVATE_SEASON",
+        "orgId": "11111111-1111-4111-8111-111111111111",
+        "orgName": "合成机构",
+        "eventId": "33333333-3333-4333-8333-333333333333",
+        "eventName": "合成杯",
+        "teamId": "55555555-5555-4555-8555-555555555555",
+        "teamName": "合成队",
+        "memberId": "66666666-6666-4666-8666-666666666666",
+        "memberName": "合成甲",
+        "targetUserId": "88888888-8888-4888-8888-888888888888",
+        "targetDisplayName": "合成球员甲",
+        "nominatedByDisplayName": "合成负责人",
+        "status": "ACTIVE",
+        "version": 2,
+        "nominateReason": "本届逐人统计提名",
+        "withdrawReason": null,
+        "createdAt": "2028-03-03T00:00:00.000Z",
+        "consentedAt": null,
+        "declinedAt": null,
+        "revokedAt": null,
+        "withdrawnAt": null,
+        "effective": true,
+        "ineffectiveReasons": [],
+        "season": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "合成春季",
+          "status": "ACTIVE"
+        },
+        "capabilities": {
+          "canConsent": false,
+          "canDecline": false,
+          "canRevoke": true,
+          "canWithdraw": false
+        },
+        "statusText": "已同意",
+        "reasonsText": "",
+        "seasonText": "合成春季（进行中）"
+      }
+    ],
+    "truncated": false,
+    "disclosure": {
+      "purpose": "用途：私有赛季统计（PRIVATE_SEASON）",
+      "scope": "范围：机构、赛事、球队、成员与账号",
+      "readers": "读者：本人与机构 OWNER/ADMIN，没有匿名查询",
+      "metrics": "统计口径：篮板、助攻、出场时间未统计；名单场次不代表实际出场",
+      "revocation": "撤销：可随时撤销",
+      "independence": "与预约档案授权互相独立"
+    },
+    "acknowledged": "",
+    "stats": {
+      "seasonName": "合成春季",
+      "orgName": "合成机构",
+      "statusText": "进行中",
+      "row": {
+        "userId": "88888888-8888-4888-8888-888888888888",
+        "displayName": "合成球员甲",
+        "rankText": "第1",
+        "score": "7",
+        "fouls": "2",
+        "samples": "1",
+        "events": "1",
+        "rebounds": "未统计",
+        "assists": "未统计",
+        "minutes": "未统计",
+        "sources": [
+          {
+            "key": "33333333-3333-4333-8333-333333333333:合成队:7",
+            "text": "合成杯 · 合成队 · 7号 合成甲：得分 7，犯规 2，名单场次 1"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "eventId": "33333333-3333-4333-8333-333333333333",
+          "name": "合成杯",
+          "state": "已计入",
+          "text": "逐人确认 1 / 2 场；仅队伍统计 0 场；待确认 1 场"
+        }
+      ],
+      "asOf": "2028-03-03 08:00",
+      "sourceHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    "statsError": "",
+    "event": null,
+    "season": null,
+    "frozen": false,
+    "sources": [],
+    "teamLabels": [],
+    "memberLabels": [],
+    "teamIndex": -1,
+    "memberIndex": -1,
+    "reason": "",
+    "nominationPending": false,
+    "withdrawId": "",
+    "withdrawReason": "",
+    "message": ""
+  }
+}

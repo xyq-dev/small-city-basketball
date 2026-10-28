@@ -1,0 +1,60 @@
+{
+  "name": "c18-watch-directory",
+  "route": "pages/watch/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["公开赛事", "合成青锋杯", "高州", "进行中"],
+  "data": {
+    "value": "",
+    "error": "",
+    "loading": false,
+    "recentEvents": [],
+    "signedIn": false,
+    "organizations": [],
+    "sections": [],
+    "failures": [],
+    "truncated": [],
+    "total": 0,
+    "teamCount": 0,
+    "eventsError": "",
+    "creatable": [],
+    "dir": {
+      "group": "LIVE",
+      "city": "高州",
+      "cityInput": "高州",
+      "cityError": "",
+      "items": [
+        {
+          "publicEventId": "DWlcaE3t4U-F7kUV6mo_AGsTGMTkD5BUnP-S068nVaA",
+          "name": "合成青锋杯",
+          "dateLabel": "2028-03-01 至 2028-03-02",
+          "venueName": "合成体育馆",
+          "displayCity": "高州",
+          "statusLabel": "比赛进行中",
+          "group": "live"
+        }
+      ],
+      "loading": false,
+      "loadingMore": false,
+      "loaded": true,
+      "done": true,
+      "error": "",
+      "moreError": ""
+    },
+    "dirGroups": [
+      {
+        "value": "LIVE",
+        "label": "进行中"
+      },
+      {
+        "value": "UPCOMING",
+        "label": "即将开始"
+      },
+      {
+        "value": "HISTORY",
+        "label": "历史赛事"
+      }
+    ]
+  }
+}

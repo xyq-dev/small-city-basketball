@@ -26,6 +26,18 @@
         <button class="quiet" bindtap="dismissPending" disabled="{{busy}}">结束此记录</button>
       </view>
     </view>
+    <view wx:if="{{request}}" class="card">
+      <view class="subtitle">{{request.title}}</view>
+      <view class="muted">请求编号 {{request.shortId}}… · 发起于 {{request.at}}（编号与内容摘要已保存在本机）</view>
+      <view class="notice {{request.state === 'conflict' || request.state === 'local' ? 'warning' : 'small'}}">{{request.message}}</view>
+      <view class="mode-choice">
+        <button wx:if="{{request.canQuery}}" class="secondary" bindtap="queryRequest" disabled="{{busy}}">查询回执</button>
+        <button wx:if="{{request.canContinue}}" class="primary" bindtap="continueRequest" disabled="{{busy}}">继续上传</button>
+        <button wx:if="{{request.canResend}}" class="primary" bindtap="resendRequest" disabled="{{busy}}">按原编号原样重发</button>
+        <button wx:if="{{request.canCancel}}" class="quiet" bindtap="cancelRequest" disabled="{{busy}}">取消上传会话</button>
+        <button wx:if="{{request.canEnd}}" class="quiet" bindtap="endRequest" disabled="{{busy}}">结束此记录</button>
+      </view>
+    </view>
     <view wx:if="{{previewVideo}}" class="card">
       <view class="row-between"><view class="subtitle">私有预览</view><button class="quiet small-button" bindtap="closePreview">关闭</button></view>
       <video class="media-preview" src="{{previewVideo}}" controls show-fullscreen-btn/>
@@ -41,13 +53,13 @@
     <view class="card">
       <view class="subtitle">上传图片或视频</view>
       <block wx:if="{{caps.upload}}">
-        <view class="muted">图片支持PNG、JPEG，视频支持MP4；单个文件不超过8MB，服务端复核格式与额度。</view>
+        <view class="muted">图片支持PNG、JPEG，视频支持MP4；单个文件不超过8MB，服务端复核格式与额度。超过512KB的文件分片上传，进度只显示服务端已确认的字节。</view>
         <view class="mode-choice">
-          <button class="secondary" bindtap="uploadImage" disabled="{{busy || uncertain || !!pending || !!storageError}}">选择图片</button>
-          <button class="secondary" bindtap="uploadVideo" disabled="{{busy || uncertain || !!pending || !!storageError}}">选择视频</button>
+          <button class="secondary" bindtap="uploadImage" disabled="{{busy || uncertain || !!pending || !!request || !!storageError}}">选择图片</button>
+          <button class="secondary" bindtap="uploadVideo" disabled="{{busy || uncertain || !!pending || !!request || !!storageError}}">选择视频</button>
         </view>
         <view wx:if="{{upload}}" class="upload-stage {{upload.stage}}">{{upload.label}}</view>
-        <button wx:if="{{canRetry && !pending}}" class="primary" bindtap="retryUpload" disabled="{{busy || uncertain}}">按原文件重试上传</button>
+        <button wx:if="{{canRetry && !pending}}" class="primary" bindtap="retryUpload" disabled="{{busy || uncertain}}">按原文件、原请求编号重试上传</button>
       </block>
       <view wx:else class="muted">当前身份不能上传本场媒体，或赛事已归档、取消（由服务端判定）。</view>
     </view>
@@ -91,7 +103,7 @@
       <input class="field" maxlength="120" value="{{title}}" bindinput="titleInput" placeholder="例如 决赛最后一攻"/>
       <text class="field-label">权利声明（4–500字）</text>
       <textarea class="field" maxlength="500" value="{{rights}}" bindinput="rightsInput" placeholder="拍摄者及授权范围，例如：主办方摄影组拍摄，仅限本届公开观赛使用"/>
-      <button class="primary" bindtap="createDraft" disabled="{{busy || uncertain || !!pending || !!storageError}}">创建草稿（不公开）</button>
+      <button class="primary" bindtap="createDraft" disabled="{{busy || uncertain || !!pending || !!request || !!storageError}}">创建草稿（不公开）</button>
     </view>
 
     <view class="card">

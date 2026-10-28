@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const scoringView = require('../../utils/scoring');
+const directoryUtil = require('../../utils/directory');
 
 // Native forms over the existing event-setup commands. Each section is shown only when the
 // server's capabilities allow it, and every write carries the version it was read at.
@@ -22,8 +23,27 @@ const privateDefaults = {
   scoring: null,
   standings: null,
   viewing: null,
+  directory: null,
   unavailable: false,
 };
+const DIRECTORY_GROUP_LABELS = { LIVE: '进行中', UPCOMING: '即将开始', HISTORY: '历史赛事' };
+const DIRECTORY_REVOKED = {
+  UNLIST: '已手动撤出目录。',
+  PUBLICATION_REVOKED: '公开观赛授权已撤销（关闭、完赛、重新开放或发布新轮次），目录已自动撤出。',
+  ORGANIZATION_DISABLED: '机构停用时目录已自动撤出。',
+};
+function directoryFailure(error) {
+  const codes = {
+    DIRECTORY_ALREADY_LISTED: '该赛事已在公开目录中，已重新读取。',
+    DIRECTORY_NOT_LISTED: '该赛事当前不在公开目录中，已重新读取。',
+    PUBLIC_VIEWING_NOT_ENABLED: '请先开启公开观赛，再列入目录。',
+    INVALID_EVENT_STATE: '当前赛事状态与公开观赛用途不符，不能列入目录。',
+    VERSION_CONFLICT: '赛事已被其他操作更新，已重新读取，请核对后再操作。',
+  };
+  if (error && !error.status)
+    return '目录操作结果未知：请点“刷新”重新读取核对后再决定，不要直接重复提交。';
+  return (error && codes[error.code]) || ui.message(error);
+}
 const date = /^\d{4}-\d{2}-\d{2}$/;
 function int(value, label, min, max) {
   const n = Number(value);
@@ -124,6 +144,7 @@ Page({
   },
   onSessionReset() {
     this._load = (this._load || 0) + 1;
+    this._directory = null;
     this.setData({
       ...privateDefaults,
       loading: false,
@@ -168,10 +189,11 @@ Page({
       });
       return;
     }
-    const [registration, scoring, standings] = await Promise.all([
+    const [registration, scoring, standings, directory] = await Promise.all([
       quiet(client.request(this.base() + '/registration')),
       quiet(client.request(this.base() + '/scoring')),
       quiet(client.request(this.base() + '/standings')),
+      quiet(client.request(this.base() + '/directory')),
     ]);
     if (!live()) return;
     this._event = event;
@@ -266,7 +288,9 @@ Page({
             history: ['COMPLETED', 'ARCHIVED'].includes(event.status),
           }
         : null,
+      directory: this.directoryView(directory),
     });
+    this._directory = directory;
   },
   field(e) {
     const { section, field } = e.currentTarget.dataset;
@@ -515,6 +539,105 @@ Page({
       )
     )
       await this.load();
+  },
+  // ---- C18 public event directory ----
+  directoryView(d) {
+    if (!d) return null;
+    const previous = this.data.directory;
+    const last = d.lastListing;
+    return {
+      listed: !!d.listing,
+      city: d.listing ? d.listing.displayCity || '' : '',
+      group: d.group ? DIRECTORY_GROUP_LABELS[d.group] : '',
+      publicActive: !!(d.publication && d.publication.status === 'ACTIVE'),
+      canList: !!d.capabilities.canList,
+      canUnlist: !!d.capabilities.canUnlist,
+      lastNote: !d.listing && last ? DIRECTORY_REVOKED[last.revokeSource] || '' : '',
+      cityInput: previous ? previous.cityInput : '',
+      reason: previous ? previous.reason : '',
+    };
+  },
+  directoryCityInput(e) {
+    this.setData({ 'directory.cityInput': String(e.detail.value || '').slice(0, 40) });
+  },
+  directoryReasonInput(e) {
+    this.setData({ 'directory.reason': String(e.detail.value || '').slice(0, 500) });
+  },
+  listDirectory() {
+    return this.directoryCommand('LIST');
+  },
+  unlistDirectory() {
+    return this.directoryCommand('UNLIST');
+  },
+  async directoryCommand(type) {
+    const d = this._directory;
+    const view = this.data.directory;
+    if (!d || !view || this.data.busy || !this._event) return;
+    if (type === 'LIST' ? !d.capabilities.canList : !d.capabilities.canUnlist) return;
+    const reason = view.reason.trim();
+    if (Array.from(reason).length < 4 || Array.from(reason).length > 500) {
+      this.setData({ error: '请填写4–500字的原因。' });
+      return;
+    }
+    let city = null;
+    if (type === 'LIST') {
+      city = directoryUtil.normalizeCity(view.cityInput);
+      if (city === undefined) {
+        this.setData({ error: '城市仅支持中文、字母、数字、空格和“·”，最多20个字。' });
+        return;
+      }
+    }
+    // Fixed before the dialog: the event version, the public publication and the listing.
+    const version = this._event.version;
+    const publicEventId = d.publication ? d.publication.publicEventId : '';
+    const listingId = d.listing ? d.listing.id : '';
+    const op = await ui.confirmOp(
+      this,
+      type === 'LIST' ? '列入公开赛事目录' : '撤出公开赛事目录',
+      type === 'LIST'
+        ? '列入后，所有观众都可以在公开赛事目录中发现该赛事' +
+            (city ? '（城市：' + city + '）' : '') +
+            '，并打开当前公开观赛页。'
+        : '撤出后不再出现在目录中；已分享的观赛链接仍可访问。如需停止链接访问，请关闭公开观赛。',
+    );
+    const now = this._directory;
+    if (
+      !op ||
+      !this._event ||
+      this._event.version !== version ||
+      !now ||
+      (now.publication ? now.publication.publicEventId : '') !== publicEventId ||
+      (now.listing ? now.listing.id : '') !== listingId ||
+      !(type === 'LIST' ? now.capabilities.canList : now.capabilities.canUnlist)
+    )
+      return;
+    const token = ui.hold(this);
+    if (!op.valid() || !ui.held(this, token)) return;
+    this.setData({ busy: true, loading: false, error: '', notice: '' });
+    try {
+      await api.getClient().request(this.base() + '/directory-commands', 'POST', {
+        type,
+        expectedEventVersion: version,
+        reason,
+        ...(type === 'LIST' && city ? { displayCity: city } : {}),
+      });
+      if (!ui.held(this, token)) return;
+      this.setData({
+        busy: false,
+        'directory.reason': '',
+        'directory.cityInput': '',
+        notice: type === 'LIST' ? '已列入公开赛事目录。' : '已撤出公开赛事目录；分享链接仍有效。',
+      });
+      await this.load();
+    } catch (error) {
+      if (!ui.held(this, token)) return;
+      const message = directoryFailure(error);
+      this.setData({ busy: false, error: message });
+      if (error && error.status === 409) {
+        await this.load();
+        if (ui.held(this, token) && !this.data.unavailable) this.setData({ error: message });
+      }
+    }
   },
   openPublic() {
     const id = this.data.viewing && this.data.viewing.publicEventId;

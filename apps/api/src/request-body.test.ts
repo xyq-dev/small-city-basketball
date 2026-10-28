@@ -98,4 +98,40 @@ describe('bounded request ingestion', () => {
     pending.splice(0).forEach((finish) => finish());
     expect((await third).status).toBe(200);
   });
+  it('C19: the idempotent upload shares the 12 MB lane; one chunk route alone gets 1 MB', async () => {
+    const base =
+      '/v1/orgs/00000000-0000-4000-8000-000000000001/matches/00000000-0000-4000-8000-000000000002';
+    const requestUpload = base + '/media-file-requests';
+    const chunk = base + '/media-upload-sessions/00000000-0000-4000-8000-000000000003/chunks/15';
+    const app = express();
+    app.use(requestBodyMiddleware());
+    app.all(/.*/, (req, res) => {
+      res.json({ length: JSON.stringify(req.body ?? null).length });
+    });
+    app.use(failure);
+    const big = { base64: 'A'.repeat(800_000) };
+    expect((await request(app).post(requestUpload).send(big)).status).toBe(200);
+    expect((await request(app).put(chunk).send(big)).status).toBe(200);
+    expect(
+      (
+        await request(app)
+          .put(chunk)
+          .send({ base64: 'A'.repeat(1_100_000) })
+      ).status,
+    ).toBe(413);
+    // Neighbouring routes and other methods stay at the ordinary 100 KiB limit.
+    for (const [method, path] of [
+      ['post', chunk],
+      ['put', base + '/media-upload-sessions/00000000-0000-4000-8000-000000000003/chunks'],
+      ['post', base + '/media-upload-sessions'],
+      ['post', base + '/media-upload-sessions/00000000-0000-4000-8000-000000000003/complete'],
+      ['post', base + '/media-requests'],
+      [
+        'post',
+        '/v1/orgs/00000000-0000-4000-8000-000000000001/entries/00000000-0000-4000-8000-000000000002/media-file-requests',
+      ],
+    ] as const) {
+      expect((await request(app)[method](path).send(big)).status, path).toBe(413);
+    }
+  });
 });

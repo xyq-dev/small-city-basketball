@@ -39,6 +39,11 @@ const additions = [
   '015_c05_media.sql',
   '016_c06_player_bookings.sql',
   '017_c07_player_performance.sql',
+  '018_c18_public_event_directory.sql',
+  '019_c19_media_requests.sql',
+  '020_c19_team_membership.sql',
+  '021_c19_event_follows.sql',
+  '022_c19_private_seasons.sql',
 ];
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const at = '2026-10-23T00:00:00.000Z';
@@ -300,6 +305,10 @@ describe(
           "SELECT pg_get_functiondef('p05_state_guard()'::regprocedure) definition",
         )
       ).rows[0]!.definition;
+      // C18: the directory starts empty; upgrading never lists an existing publication.
+      expect(
+        (await pool!.query('SELECT count(*)::int AS n FROM event_directory_listings')).rows[0].n,
+      ).toBe(0);
       expect(guard).toContain('OLD.collection_mode');
       expect(guard).toContain('NEW.collection_mode');
     });
@@ -318,7 +327,7 @@ describe(
       }
     });
 
-    test('keeps the sixty-five manifest tables and every declared runtime update column compatible', async () => {
+    test('keeps the sixty-six manifest tables and every declared runtime update column compatible', async () => {
       const manifest = JSON.parse(
         await readFile(
           new URL('../../../packages/contracts/runtime-privileges.json', import.meta.url),
@@ -330,7 +339,7 @@ describe(
           "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name",
         )
       ).rows.map((row) => row.table_name);
-      expect(actual).toHaveLength(65);
+      expect(actual).toHaveLength(78);
       expect(Object.keys(manifest.tables).sort()).toEqual(actual);
       const columns = (
         await pool!.query<{ table_name: string; column_name: string }>(
@@ -374,7 +383,7 @@ describe(
         );
         expect(await userFacts()).toEqual(legacyUser);
         expect((await pool!.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n).toBe(
-          17,
+          22,
         );
       } finally {
         await pool!.query('UPDATE schema_migrations SET checksum=$2 WHERE name=$1', [
