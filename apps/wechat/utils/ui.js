@@ -37,6 +37,8 @@ for (const key of [
   'team-requests',
   'team-request',
   'follows',
+  'seasons',
+  'season-grants',
 ])
   routes[key] = '/pages/' + key + '/index';
 const positionNames = { PG: '控球后卫', SG: '得分后卫', SF: '小前锋', PF: '大前锋', C: '中锋' };

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
 import {
   device,
@@ -73,7 +74,7 @@ test('trusted external link: illegal links refused by page and server, then crea
   ];
   const posts = () =>
     owner.wx.calls.filter(
-      (c) => c.type === 'request' && c.method === 'POST' && /\/media$/.test(c.url),
+      (c) => c.type === 'request' && c.method === 'POST' && /\/media-requests$/.test(c.url),
     ).length;
   for (const url of illegal) {
     page.page.externalInput(tap({}, { value: url }));
@@ -83,10 +84,11 @@ test('trusted external link: illegal links refused by page and server, then crea
   assert.equal(posts(), 0, 'no illegal link ever leaves the page');
   // The server enforces the same rule independently of the page (direct request, same session).
   for (const url of illegal) {
-    const response = await f.call(`${f.root}/matches/${match.id}/media`, {
+    const response = await f.call(`${f.root}/matches/${match.id}/media-requests`, {
       method: 'POST',
       cookie: f.ownerCookie,
       body: {
+        clientRequestId: randomUUID(),
         kind: 'EXTERNAL_LINK',
         title: '非法',
         externalUrl: url,
@@ -105,6 +107,13 @@ test('trusted external link: illegal links refused by page and server, then crea
   await owner.settle(page);
   assert.equal(page.page.data.error, '', page.page.data.error);
   assert.equal(posts(), 1, 'exactly one create request');
+  assert.equal(
+    owner.wx.calls.filter(
+      (c) => c.type === 'request' && c.method === 'POST' && /\/media$/.test(c.url),
+    ).length,
+    0,
+    'the native page uses persistent request identities rather than the legacy create path',
+  );
   const draft = page.page.data.items.find((m) => m.externalUrl === legal);
   assert.equal(draft?.status, 'DRAFT');
   let rows = await mediaRows();

@@ -165,7 +165,7 @@ test('external links are offered only for configured trusted hosts and checked b
   page.page.setDraftMode(tap({ mode: 'LINK' }));
   page.page.titleInput(tap({}, { value: '决赛直播回看' }));
   page.page.rightsInput(tap({}, { value: '主办方授权平台发布' }));
-  const create = 'POST ' + matchBase + '/media';
+  const create = 'POST ' + matchBase + '/media-requests';
   for (const url of [
     'http://video.example.test/v/1',
     'https://evil.example.test/v/1',
@@ -177,12 +177,15 @@ test('external links are offered only for configured trusted hosts and checked b
     assert.match(page.page.data.error, /受信列表/, url);
   }
   assert.equal(d.sent(create).length, 0);
-  // A lost response for a link draft is protected exactly like a file draft.
+  // A lost response for a link draft is protected exactly like a file draft: the same request
+  // ID is looked up, never a second draft. The link is sent in its canonical (stored) form.
   d.state.replies.set(create, lost);
-  page.page.externalInput(tap({}, { value: 'https://video.example.test/v/1' }));
+  page.page.externalInput(tap({}, { value: 'https://VIDEO.example.test/v/1' }));
   await page.page.createDraft();
   await page.flush();
-  assert.deepEqual(d.sent(create)[0].body, {
+  const linkBody = d.sent(create)[0].body;
+  assert.deepEqual(linkBody, {
+    clientRequestId: linkBody.clientRequestId,
     kind: 'EXTERNAL_LINK',
     title: '决赛直播回看',
     externalUrl: 'https://video.example.test/v/1',
@@ -199,11 +202,16 @@ test('external links are offered only for configured trusted hosts and checked b
       }),
     ],
   });
-  await page.page.load();
-  await page.flush();
-  assert.equal(page.page.data.pending.candidates.length, 1, 'shown for checking, not proof');
+  assert.equal(page.page.data.request.state, 'unknown');
   await page.page.createDraft();
   assert.equal(d.sent(create).length, 1, 'no second link draft while unknown');
+  d.state.replies.set('GET ' + matchBase + '/media-requests/' + linkBody.clientRequestId, () =>
+    ok({ state: 'MEDIA', media: d.state.ws.media[0] }),
+  );
+  await page.page.load();
+  await page.flush();
+  assert.equal(page.page.data.request, null, 'resolved by the receipt of the same ID');
+  assert.equal(d.sent(create).length, 1);
   assert.match(page.page.data.items[0].externalUrl, /video\.example\.test/);
   page.unload();
 });

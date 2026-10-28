@@ -77,3 +77,13 @@
 ## 共享文件变更请求
 
 无。
+
+## Codex 接续验证（2026-10-28 Asia/Shanghai，进行中）
+
+- 接续目录 `/workspace/scratch/608836f8d204/scb-c19-validation`，分支 `codex/c19-validation`；开工基线 `72a51bd`，已同步集成人合入媒体/赛季的 `ace5f47`。此前 Windows 报告保留为历史，本节单列当前 Linux 实测。
+- 发现真实外链联调仍只统计旧 `POST /media`；改为检查新 `POST /media-requests`，非法输入直接检验新后端入口并验证页面未退回旧写入路径。
+- “我的赛事”截断补充精确 ID 集合断言，确保显示的是服务端排序的前 500 届，不只核对数量。
+- 旧库演练要求完整 C19 候选表必须存在；移除已在球队模块说明中取消的 `team_operations`。全库指纹现在包含 `media_files.payload`，不再遗漏文件字节。
+- 恢复前通过真实 HTTP 创建申请入口、加入码、待认领、两个有效绑定、PENDING/ACTIVE 私有赛季授权、赛季归属、关注、已完成图片和未完成分片上传；恢复后检查撤销与负载清理，并在自有副本重新启用机构，验证旧凭据及授权仍不能复活，已完成文件和成员历史保持。
+- `SCB_REQUIRE_ARCHIVE_RESTORE=1` 要求 PostgreSQL 18 的真实归档往返及实际 `scb_migrator` 角色；仅在新建且拥有回执的恢复测试库授予该角色隔离清理所需 DML。归档目录支持 `SCB_PG_WORK_DIRECTORY` / `RUNNER_TEMP`。未设置严格模式的本地替代路径仍明确记录，不冒充归档验收。
+- 当前已通过类型检查及 API 构建；隔离 PG 和最终清理实现由集成人准备，真实 API/升级演练待运行。未修改产品代码、共享文件、AGENTS.md 或生产环境。

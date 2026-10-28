@@ -101,6 +101,21 @@ test('my events: 10 pages per organization, 500 truncation, and a failed later p
     await server.pool.query('SELECT count(*)::int n FROM events WHERE org_id=$1', [orgA])
   ).rows[0].n;
   assert.equal(serverA, 501);
+  const first500 = (
+    await server.pool.query(
+      'SELECT id FROM events WHERE org_id=$1 ORDER BY created_at DESC,id DESC LIMIT 500',
+      [orgA],
+    )
+  ).rows
+    .map((e) => e.id)
+    .sort();
+  assert.deepEqual(
+    byOrg(orgA)
+      .map((e) => e.id)
+      .sort(),
+    first500,
+    'the displayed set is exactly the first 500 rows, not just any 500 distinct events',
+  );
 
   // Refresh without loss: B is complete (60), A still truncated at 500.
   watch.page.onShow();

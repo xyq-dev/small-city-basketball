@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const api = require('../utils/api');
 const { createWx, loadPage } = require('./helpers/native-page.cjs');
+const { buildPreview } = require('./helpers/native-preview.cjs');
 const root = path.resolve(__dirname, '..');
 const a = '11111111-1111-4111-8111-111111111111',
   b = '22222222-2222-4222-8222-222222222222',
@@ -58,6 +59,64 @@ function setup(route, options = {}) {
     },
   };
 }
+test('C19 account entries expose participant flows and organization-scoped manager destinations', async () => {
+  const h = setup('account', {
+    request: async (url) => {
+      if (url === '/v1/auth/session')
+        return envelope({
+          ...session(a),
+          organizations: [
+            { id: b, name: '合成主办方', role: 'ORG_OWNER' },
+            { id: p, name: '合成工作人员机构', role: 'EVENT_MANAGER' },
+          ],
+        });
+      return envelope({ enabled: false, canRegisterParticipant: false, connected: false });
+    },
+  });
+  h.page.onLoad({});
+  h.page.onShow();
+  await h.flush();
+  assert.deepEqual(
+    h.page.data.managedOrgs.map((org) => org.id),
+    [b],
+  );
+  const html = buildPreview({ root, route: 'pages/account/index', data: h.page.data }).phone;
+  for (const label of [
+    '我的关注',
+    '我的成员关系',
+    '申请建队',
+    '加入球队与成员认领',
+    '私有赛季授权与本人数据',
+    '建队申请审批',
+    '私有赛季管理',
+  ])
+    assert.ok(html.includes(label), label);
+  for (const page of ['follows', 'memberships', 'team-request', 'team-join', 'season-grants']) {
+    h.page.go({ currentTarget: { dataset: { page } } });
+    assert.equal(h.wx.calls.at(-1).url, '/pages/' + page + '/index');
+  }
+  for (const page of ['seasons', 'team-requests']) {
+    h.page.go({ currentTarget: { dataset: { page, org: b } } });
+    assert.equal(h.wx.calls.at(-1).url, '/pages/' + page + '/index?orgId=' + b);
+  }
+  h.switchActor();
+  assert.deepEqual(h.page.data.managedOrgs, []);
+  assert.deepEqual(h.page.data.roles, []);
+  assert.equal(h.page.data.user, null);
+  h.page.onUnload();
+});
+
+test('C19 login return targets recognize both season pages and grant pagination stays bounded', () => {
+  for (const page of ['seasons', 'season-grants']) {
+    const h = setup('account');
+    const returnTo = '/pages/' + page + '/index?orgId=' + b;
+    h.page.onLoad({ returnTo });
+    assert.equal(h.page.returnTo, returnTo);
+  }
+  assert.equal(api.pathAllowed('/v1/me/season-data-grants?limit=50&cursor=YWJj', 'GET'), true);
+  for (const query of ['limit=51', 'limit=0', 'cursor=bad%2Fcursor', 'actorId=' + b])
+    assert.equal(api.pathAllowed('/v1/me/season-data-grants?' + query, 'GET'), false);
+});
 test('late native wx.login code cannot overwrite a newer application identity', async () => {
   const h = setup('account');
   let finishCode;

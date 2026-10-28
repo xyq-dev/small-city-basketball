@@ -291,7 +291,13 @@ function pathAllowed(path, method = 'GET') {
     return noQuery && ['GET', 'POST'].includes(method);
   if (matches(org + '/season-data-grants/' + uuidPattern + '/withdraw'))
     return noQuery && method === 'POST';
-  if (base === me + '/season-data-grants') return noQuery && method === 'GET';
+  if (base === me + '/season-data-grants')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['limit', 'cursor']) &&
+      (!('limit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit)) &&
+      (!('cursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.cursor))
+    );
   if (matches(me + '/season-data-grants/' + uuidPattern + '/commands'))
     return noQuery && method === 'POST';
   if (base === me + '/season-statistics')

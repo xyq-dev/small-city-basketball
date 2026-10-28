@@ -10,11 +10,26 @@
         <view class="menu-row" data-page="watch" bindtap="go"><scb-icon name="trophy" size="20"/><view class="menu-text"><view>我的赛事</view><view class="menu-sub">{{roles.length ? roleSummary : '暂无机构赛事身份，可打开主办方分享的观赛链接'}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view wx:if="{{roles.length}}" class="menu-row" data-page="watch" bindtap="go"><scb-icon name="calendar" size="20"/><view class="menu-text"><view>赛事管理</view><view class="menu-sub">选择赛事后进入排赛、晋级发布、改期与比赛媒体</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view wx:if="{{roles.length}}" class="menu-row" data-page="scoring-tasks" bindtap="go"><scb-icon name="clock" size="20"/><view class="menu-text"><view>记分与赛果确认</view><view class="menu-sub">被分配或可管理的比赛</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+        <view class="menu-row" data-page="follows" bindtap="go"><scb-icon name="chat" size="20"/><view class="menu-text"><view>我的关注</view><view class="menu-sub">收藏公开赛事，微信提醒尚未启用</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
       <view class="menu-group">
         <view class="menu-title">球队</view>
         <view class="menu-row" data-page="teams" bindtap="go"><scb-icon name="users" size="20"/><view class="menu-text"><view>我的球队与本届报名</view><view class="menu-sub">{{teamCount ? '可管理 ' + teamCount + ' 支球队' : '接受球队邀请后在此管理'}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view class="menu-row" data-page="invitation" bindtap="go"><scb-icon name="check" size="20"/><view class="menu-text"><view>接受球队邀请</view><view class="menu-sub">使用主办方发给本人的邀请</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+        <view class="menu-row" data-page="memberships" bindtap="go"><scb-icon name="users" size="20"/><view class="menu-text"><view>我的成员关系</view><view class="menu-sub">查看已加入的球队或退出</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+        <view class="menu-row" data-page="team-join" bindtap="go"><scb-icon name="check" size="20"/><view class="menu-text"><view>加入球队与成员认领</view><view class="menu-sub">使用加入码，或接受发给本人的认领</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+        <view class="menu-row" data-page="team-request" bindtap="go"><scb-icon name="users" size="20"/><view class="menu-text"><view>申请建队</view><view class="menu-sub">使用机构分享的申请入口，查看申请进度</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+      </view>
+      <view wx:if="{{managedOrgs.length}}" class="menu-group">
+        <view class="menu-title">机构管理</view>
+        <block wx:for="{{managedOrgs}}" wx:key="id">
+          <view class="menu-row" data-page="team-requests" data-org="{{item.id}}" bindtap="go"><scb-icon name="users" size="20"/><view class="menu-text"><view>建队申请审批</view><view class="menu-sub">{{item.name}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+          <view class="menu-row" data-page="seasons" data-org="{{item.id}}" bindtap="go"><scb-icon name="chart" size="20"/><view class="menu-text"><view>私有赛季管理</view><view class="menu-sub">{{item.name}} · 仅机构内已授权统计</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+        </block>
+      </view>
+      <view class="menu-group">
+        <view class="menu-title">我的赛季</view>
+        <view class="menu-row" data-page="season-grants" bindtap="go"><scb-icon name="chart" size="20"/><view class="menu-text"><view>私有赛季授权与本人数据</view><view class="menu-sub">本人同意后计入，可查看或撤销授权</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
       <view class="menu-group">
         <view class="menu-title">扩展服务 · 球员预约</view>
@@ -25,7 +40,7 @@
       <view class="menu-group">
         <view class="menu-title">账号</view>
         <view class="menu-row" bindtap="showSecurity"><scb-icon name="shield" size="20"/><view class="menu-text"><view>账号与微信绑定</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
-        <view class="menu-row" data-page="planned" data-kind="messages" bindtap="go"><scb-icon name="chat" size="20"/><view class="menu-text"><view>关注与消息</view><view class="menu-sub">尚未开放，查看规划说明</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+        <view class="menu-row" data-page="planned" data-kind="messages" bindtap="go"><scb-icon name="chat" size="20"/><view class="menu-text"><view>微信提醒说明</view><view class="menu-sub">关注已开放，订阅消息尚未启用</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view wx:if="{{platformOperator}}" class="menu-row" data-page="platform" bindtap="go"><scb-icon name="info" size="20"/><view class="menu-text"><view>平台服务资料与独立处理</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
       <view class="account-actions">

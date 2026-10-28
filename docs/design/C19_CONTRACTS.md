@@ -17,11 +17,13 @@
 | 编号 | 文件 | 模块负责人 | 新表（运行时权限由集成人写入清单） |
 |---|---|---|---|
 | 019 | `019_c19_media_requests.sql` | Agent 媒体 | `media_request_receipts`、`media_upload_sessions`、`media_upload_chunks` |
-| 020 | `020_c19_team_membership.sql` | Agent 球队 | `team_request_links`、`team_requests`、`team_join_codes`、`team_member_bindings`、`team_member_claims`、`team_operations` |
+| 020 | `020_c19_team_membership.sql` | Agent 球队 | `team_request_links`、`team_requests`、`team_join_codes`、`team_member_bindings`、`team_member_claims` |
 | 021 | `021_c19_event_follows.sql` | Agent 关注 | `event_follows` |
 | 022 | `022_c19_private_seasons.sql` | Agent 赛季（依赖 020） | `seasons`、`season_events`、`season_data_grants` |
 
 表名可按实现微调，最终以 Migration 为准，由集成人同步 `runtime-privileges.json`、表数与 Migration 数（readiness、privileges、backup/restore、restart/production 检查、c02/p07 测试）。不得修改 001–018。
+
+实施订正：建队申请幂等身份保存在 `team_requests`，状态历史结合终态行与审计保存，不另建 `team_operations`。集成候选为 22 个 Migration、78 张表；备份隔离关闭未完成上传、释放分片负载并撤回待确认/已生效私有赛季授权，保留历史成员关系、回执及已完成文件。
 
 共享文件只由集成人改：`packages/contracts/index.d.ts`、`apps/api/src/app.ts`、`apps/api/src/request-body.ts`、`apps/wechat/utils/api.js`（路径白名单）、`apps/wechat/app.json`、`packages/contracts/runtime-privileges.json`、计数脚本、汇总文档。冻结后各模块独占自己的契约文件 `packages/contracts/<模块>.d.ts`、服务/控制器/领域文件、迁移、测试、小程序页面与 utils；修改契约字段须在交接列明。
 

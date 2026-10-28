@@ -79,9 +79,8 @@ const LEGACY = [
   '006_p06_overlay.sql',
   '007_p04_match_rescheduling.sql',
 ];
-// C19 tables named in the frozen contract (§1) and C18's listing table. Each must exist with zero
-// rows after an upgrade; a table that is not in this candidate's migration set yet is skipped
-// (reported, not failed), so the drill keeps working when 019–022 land.
+// The complete C19 candidate must contain every frozen module table, with zero automatic rows
+// after an upgrade. Missing migrations must fail instead of making a partial candidate pass.
 const NO_AUTOMATIC_ROWS = [
   'event_directory_listings',
   'media_request_receipts',
@@ -92,7 +91,6 @@ const NO_AUTOMATIC_ROWS = [
   'team_join_codes',
   'team_member_bindings',
   'team_member_claims',
-  'team_operations',
   'event_follows',
   'seasons',
   'season_events',
@@ -134,14 +132,7 @@ async function columnsOf(c: Pool | PoolClient, table: string) {
 async function fullFingerprint(c: Pool | PoolClient) {
   const result: Record<string, { rowCount: number; sha256: string }> = {};
   for (const table of await publicTables(c))
-    result[table] =
-      table === 'media_files'
-        ? await tableHash(
-            c,
-            table,
-            (await columnsOf(c, table)).filter((column) => column !== 'payload'),
-          )
-        : await tableHash(c, table, await columnsOf(c, table));
+    result[table] = await tableHash(c, table, await columnsOf(c, table));
   return result;
 }
 /** Deterministic load order; FK triggers are held during the load (see beforeAll). */
@@ -457,10 +448,7 @@ describe(
         },
       ]);
       for (const table of NO_AUTOMATIC_ROWS) {
-        if (!tables.includes(table)) {
-          notes.push(`skipped (not in this candidate's migrations yet): ${table}`);
-          continue;
-        }
+        expect(tables, `required C19 table missing: ${table}`).toContain(table);
         const n = (
           await pool!.query<{ n: number }>(`SELECT count(*)::int n FROM public.${quote(table)}`)
         ).rows[0]!.n;
@@ -623,8 +611,12 @@ describe(
           { cookie: fixture.credentials.overlay.session },
         );
         if (!grant.revoked_at && grant.expires_at.getTime() > now) expect(overlay.status).toBe(200);
-        else
-          notes.push('overlay grant expired since generation; snapshot status ' + overlay.status);
+        else {
+          expect([401, 403, 404, 410]).toContain(overlay.status);
+          notes.push(
+            'overlay grant expired since generation; verified rejection ' + overlay.status,
+          );
+        }
       } finally {
         await api.close();
       }
@@ -643,8 +635,28 @@ describe(
       // A new post-upgrade authorization: the event is explicitly listed (C18) with a reason.
       const api = await startApi(childUrl);
       let freshOwner = '';
+      const orgPath = `/v1/orgs/${fixture.organizationId}`;
+      const matchPath = `${orgPath}/matches/${fixture.matchId}`;
+      const newAuth: Record<string, any> = {};
+      const png = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+      );
+      const uploadInput = () => ({
+        clientRequestId: randomUUID(),
+        purpose: 'MATCH_IMAGE',
+        fileName: 'upgrade-drill.png',
+        contentType: 'image/png',
+        byteLength: png.length,
+        contentSha256: createHash('sha256').update(png).digest('hex'),
+      });
       try {
         freshOwner = await api.login(fixture.users.owner!.email);
+        const post = async (route: string, body: unknown, cookie = freshOwner) => {
+          const result = await api.call(route, { method: 'POST', cookie, body });
+          expect([200, 201], `${route}: ${JSON.stringify(result.error)}`).toContain(result.status);
+          return result.data;
+        };
         const eventPath = `/v1/orgs/${fixture.organizationId}/events/${fixture.eventId}`;
         const event = (await api.call(eventPath, { cookie: freshOwner })).data;
         const listed = await api.call(`${eventPath}/directory-commands`, {
@@ -660,6 +672,94 @@ describe(
         expect(listed.status, JSON.stringify(listed.error)).toBe(200);
         const directory = await api.call('/v1/public/directory');
         expect((directory.data.items ?? directory.data).length).toBe(1);
+
+        // Seed each newly introduced authorization through its real HTTP command before the
+        // backup. A restore test with empty C19 tables cannot prove revocation or non-revival.
+        newAuth.link = await post(`${orgPath}/team-request-links`, {
+          expiresInHours: 24,
+          maxUses: 10,
+          reason: '升级恢复演练合成入口',
+        });
+        const members = fixture.tables.team_members!.rows;
+        newAuth.code = await post(`${orgPath}/teams/${members[0]!.team_id}/join-codes`, {});
+        newAuth.pendingClaim = await post(
+          `${orgPath}/teams/${members[0]!.team_id}/members/${members[0]!.id}/claims`,
+          { targetUserId: fixture.users.invitee!.id },
+        );
+        const bindings = [];
+        newAuth.grantIds = [];
+        for (const [index, actor] of ['scorer', 'leader'].entries()) {
+          const member = members[index + 1]!;
+          const claimant = await api.login(fixture.users[actor]!.email);
+          const claim = await post(
+            `${orgPath}/teams/${member.team_id}/members/${member.id}/claims`,
+            { targetUserId: fixture.users[actor]!.id },
+          );
+          bindings.push(await post(`/v1/me/member-claims/${claim.id}/accept`, {}, claimant));
+          const grant = await post(`${eventPath}/season-data-grants`, {
+            clientRequestId: randomUUID(),
+            teamId: member.team_id,
+            memberId: member.id,
+            targetUserId: fixture.users[actor]!.id,
+            reason: '升级恢复演练私有授权',
+          });
+          newAuth.grantIds.push(grant.id);
+          if (actor === 'scorer') {
+            const consent = await post(
+              `/v1/me/season-data-grants/${grant.id}/commands`,
+              { type: 'CONSENT', expectedVersion: grant.version },
+              claimant,
+            );
+            expect(consent.status).toBe('ACTIVE');
+          } else expect(grant.status).toBe('PENDING');
+        }
+        newAuth.bindings = bindings;
+        const season = await post(`${orgPath}/seasons`, {
+          clientRequestId: randomUUID(),
+          name: '升级恢复演练赛季',
+          startDate: event.startDate,
+          endDate: event.endDate,
+        });
+        newAuth.seasonId = season.id;
+        const attached = await post(`${orgPath}/seasons/${season.id}/commands`, {
+          type: 'ATTACH_EVENT',
+          eventId: fixture.eventId,
+          expectedVersion: season.version,
+        });
+        await post(`${orgPath}/seasons/${season.id}/commands`, {
+          type: 'ACTIVATE',
+          expectedVersion: attached.version,
+        });
+        newAuth.follow = await post('/v1/me/follows', {
+          publicEventId: fixture.public.publicEventId,
+        });
+        expect(newAuth.follow.status).toBe('ACTIVE');
+
+        // Completed file bytes must survive; an in-progress upload and its retained chunk
+        // must be cancelled/cleared. Their request identities are retained in both cases.
+        newAuth.completedInput = uploadInput();
+        const completed = await post(`${matchPath}/media-file-requests`, {
+          ...newAuth.completedInput,
+          contentBase64: png.toString('base64'),
+        });
+        expect(completed.state).toBe('FILE');
+        newAuth.fileId = completed.file.id;
+        newAuth.openInput = uploadInput();
+        newAuth.session = await post(`${matchPath}/media-upload-sessions`, newAuth.openInput);
+        const chunk = await api.call(
+          `${matchPath}/media-upload-sessions/${newAuth.session.id}/chunks/0`,
+          {
+            method: 'PUT',
+            cookie: freshOwner,
+            body: {
+              byteLength: png.length,
+              sha256: newAuth.openInput.contentSha256,
+              contentBase64: png.toString('base64'),
+            },
+          },
+        );
+        expect(chunk.status, JSON.stringify(chunk.error)).toBe(200);
+        expect(chunk.data.receivedBytes).toBe(png.length);
       } finally {
         await api.close();
       }
@@ -670,9 +770,24 @@ describe(
       const restoreName = `scb_restore_c19v_${randomBytes(6).toString('hex')}`;
       const pgDump = findPgTool('pg_dump');
       const pgRestore = findPgTool('pg_restore');
+      if (process.env.SCB_REQUIRE_ARCHIVE_RESTORE === '1') {
+        expect(
+          pgDump,
+          'the required archive drill needs pg_dump 18 (SCB_PG_BIN or PATH)',
+        ).not.toBeNull();
+        expect(
+          pgRestore,
+          'the required archive drill needs pg_restore 18 (SCB_PG_BIN or PATH)',
+        ).not.toBeNull();
+      }
       let restored: { url: string; oid: number; nonce: string };
       if (pgDump && pgRestore) {
-        const dir = mkdtempSync(join(tmpdir(), 'scb-c19-drill-'));
+        const dir = mkdtempSync(
+          join(
+            process.env.SCB_PG_WORK_DIRECTORY ?? process.env.RUNNER_TEMP ?? tmpdir(),
+            'scb-c19-drill-',
+          ),
+        );
         try {
           const archive = join(dir, 'drill.dump');
           const dump = spawnSync(
@@ -728,6 +843,20 @@ describe(
             "SELECT pg_has_role(current_user,'scb_migrator','MEMBER') AS ok FROM pg_roles WHERE rolname='scb_migrator'",
           )
         ).rows[0]?.ok;
+        if (process.env.SCB_REQUIRE_ARCHIVE_RESTORE === '1')
+          expect(
+            migrator,
+            'the required archive drill must exercise the real scb_migrator role',
+          ).toBe(true);
+        if (migrator) {
+          // pg_restore --no-owner deliberately leaves this disposable copy owned by the test
+          // database user. Provision only DML in this owned database for the real NOLOGIN
+          // migrator role; never change role attributes or grants in an existing database.
+          await restoredPool.query('GRANT USAGE ON SCHEMA public TO scb_migrator');
+          await restoredPool.query(
+            'GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO scb_migrator',
+          );
+        }
         const quarantinePool = migrator
           ? restoredPool
           : {
@@ -764,6 +893,42 @@ describe(
         expect(result.counts.publicPublicationsRevoked).toBe(1);
         expect(result.counts.overlayGrantsRevoked).toBe(1);
         expect(result.counts.pendingInvitationsRevoked).toBe(1);
+        expect(result.counts.teamRequestLinksRevoked).toBe(1);
+        expect(result.counts.teamJoinCodesRevoked).toBe(1);
+        expect(result.counts.pendingMemberClaimsRevoked).toBe(1);
+        expect(
+          (await restoredPool.query('SELECT status FROM season_data_grants ORDER BY id')).rows,
+        ).toEqual([{ status: 'WITHDRAWN' }, { status: 'WITHDRAWN' }]);
+        const uploadState = (
+          await restoredPool.query(
+            'SELECT status,closed_at FROM media_upload_sessions WHERE id=$1',
+            [newAuth.session.id],
+          )
+        ).rows[0]!;
+        expect(['CANCELLED', 'EXPIRED']).toContain(uploadState.status);
+        expect(uploadState.closed_at).not.toBeNull();
+        expect(
+          (
+            await restoredPool.query(
+              'SELECT payload FROM media_upload_chunks WHERE session_id=$1',
+              [newAuth.session.id],
+            )
+          ).rows,
+        ).toEqual([{ payload: null }]);
+        expect(
+          (
+            await restoredPool.query('SELECT payload FROM media_files WHERE id=$1', [
+              newAuth.fileId,
+            ])
+          ).rows[0]!.payload,
+        ).toEqual(png);
+        expect(
+          (
+            await restoredPool.query(
+              "SELECT count(*)::int n FROM team_member_bindings WHERE status='ACTIVE'",
+            )
+          ).rows[0]!.n,
+        ).toBe(2); // Historical membership is preserved; PRIVATE_SEASON consent is separately withdrawn.
         const live = (
           await restoredPool.query<{ n: number }>(
             'SELECT count(*)::int n FROM sessions WHERE revoked_at IS NULL',
@@ -801,7 +966,8 @@ describe(
             body: { token: fixture.credentials.pendingInvitation.token },
           },
         );
-        expect(invitation.status).not.toBe(200);
+        expect(invitation.status).toBe(422);
+        expect(invitation.error?.code).toBe('INVITATION_INVALID');
         // A password login still opens an account, but its organization stays disabled.
         const relogin = await restoredApi.login(fixture.users.owner!.email);
         const events = await restoredApi.call(
@@ -809,12 +975,89 @@ describe(
           { cookie: relogin },
         );
         expect([403, 404]).toContain(events.status);
+
+        // Re-enable only this owned restored organization's row to simulate later recovery.
+        // The blanket DISABLED guard must not be the only thing preventing old grants,
+        // bearer tokens or upload reservations from silently becoming live again.
+        const reenable = new Pool({ connectionString: restored.url });
+        try {
+          await reenable.query(
+            "UPDATE organizations SET status='ACTIVE',updated_at=clock_timestamp() WHERE id=$1",
+            [fixture.organizationId],
+          );
+        } finally {
+          await reenable.end();
+        }
+        const ownerAfter = await restoredApi.login(fixture.users.owner!.email);
+        const inviteeAfter = await restoredApi.login(fixture.users.invitee!.email);
+        const scorerAfter = await restoredApi.login(fixture.users.scorer!.email);
+        const link = await restoredApi.call('/v1/team-request-links/resolve', {
+          method: 'POST',
+          cookie: inviteeAfter,
+          body: { token: newAuth.link.token },
+        });
+        expect([404, 409, 410, 422]).toContain(link.status);
+        const join = await restoredApi.call('/v1/team-joins', {
+          method: 'POST',
+          cookie: inviteeAfter,
+          body: { code: newAuth.code.code, displayName: '恢复后不可凭旧码入队' },
+        });
+        expect([404, 409, 410, 422]).toContain(join.status);
+        const claim = await restoredApi.call(
+          `/v1/me/member-claims/${newAuth.pendingClaim.id}/accept`,
+          {
+            method: 'POST',
+            cookie: inviteeAfter,
+            body: {},
+          },
+        );
+        expect([404, 409, 410, 422]).toContain(claim.status);
+        const grants = await restoredApi.call('/v1/me/season-data-grants', { cookie: scorerAfter });
+        expect(grants.status).toBe(200);
+        expect(grants.data.grants).toHaveLength(1);
+        expect(grants.data.grants[0].status).toBe('WITHDRAWN');
+        expect(grants.data.grants[0].capabilities.canConsent).toBe(false);
+        const summary = await restoredApi.call(
+          `${orgPath}/seasons/${newAuth.seasonId}/player-statistics`,
+          { cookie: ownerAfter },
+        );
+        expect(summary.status).toBe(200);
+        expect(summary.data.summary.effectiveGrantCount).toBe(0);
+        expect(summary.data.summary.rows).toEqual([]);
+        const followed = await restoredApi.call('/v1/me/follows', { cookie: ownerAfter });
+        expect(followed.status).toBe(200);
+        expect(followed.data).toHaveLength(1);
+        expect(followed.data[0]).toMatchObject({ status: 'INVALID', event: null });
+        const closed = await restoredApi.call(
+          `${matchPath}/media-upload-sessions/${newAuth.session.id}`,
+          { cookie: ownerAfter },
+        );
+        expect(closed.status).toBe(200);
+        expect(['CANCELLED', 'EXPIRED']).toContain(closed.data.status);
+        expect(closed.data.chunks).toEqual([]);
+        const reuse = await restoredApi.call(`${matchPath}/media-file-requests`, {
+          method: 'POST',
+          cookie: ownerAfter,
+          body: { ...newAuth.openInput, contentBase64: png.toString('base64') },
+        });
+        expect(reuse.status).toBe(409);
+        expect(reuse.error?.code).toBe('REQUEST_CLOSED');
+        const completedReceipt = await restoredApi.call(
+          `${matchPath}/media-file-requests/${newAuth.completedInput.clientRequestId}`,
+          { cookie: ownerAfter },
+        );
+        expect(completedReceipt.status).toBe(200);
+        expect(completedReceipt.data).toMatchObject({
+          state: 'FILE',
+          file: { id: newAuth.fileId },
+        });
       } finally {
         await restoredApi.close();
       }
       await dropOwned(restoreName);
       // The source database is untouched by the restore cycle.
       pool = new Pool({ connectionString: childUrl, connectionTimeoutMillis: 5000 });
+      expect(await fullFingerprint(pool)).toEqual(source);
     }, 180000);
   },
 );

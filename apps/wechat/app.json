@@ -35,7 +35,9 @@
     "pages/team-request/index",
     "pages/team-requests/index",
     "pages/team-join/index",
-    "pages/memberships/index"
+    "pages/memberships/index",
+    "pages/seasons/index",
+    "pages/season-grants/index"
   ],
   "window": {
     "navigationBarTitleText": "小城市篮球",
