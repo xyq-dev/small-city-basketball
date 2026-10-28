@@ -1,5 +1,15 @@
 # 任务看板
 
+## C13—C19 已整合（DONE：源码与隔离验收 / MAIN）
+
+2026-10-29 Asia/Shanghai，集成人 Codex。用户明确授权测试通过后合并。#28 → #27 → #26 → #25 → #24 → #23 → #22 已依次使用 merge commit 合入；最终业务合并为 [PR #22](https://github.com/xyq-dev/small-city-basketball/pull/22)，main 提交 `f97bb4b07e1313cd389dcb6c5ec40451f7e2cbac`。每一步完整 tree 均与已检候选 `a384896228bba35e665da22178b23a02eaf5c2bb` 相同：`6e6bc53d3d6bda71c3a684345df85206481f46ca`。所有业务分支已包含；三条 evidence/* 历史截图分支独立保留，没有删除分支。
+
+精确候选的 [CI 40673829836](https://github.com/xyq-dev/small-city-basketball/actions/runs/40673829836) 三个 job 全部 SUCCESS，attempt 1，原始日志与测试 merge ref tree 已独立核对：1750 单测通过/1 平台跳过，365+17 真实 PG、14/14 真实页面 API、887 兼容浏览器、24 真实 API 浏览器、4 HTTPS 浏览器、873 布局、78 表重启/真实归档恢复及授权隔离通过。本轮另跑小程序单测 661 通过/1 平台跳过/0 失败。main 自动重复检查尚在运行，不能把候选通过写成 main 重跑已结束；后续结果见 [C19 交接](handoffs/C19.md)。
+
+38 条小程序路由、22 个 Migration、78 张表已整合到 main。官方微信工具、真机及当前 Windows 验收仍待办；生产未部署、生产 Migration/数据/权限/凭据未操作，截图交付继续暂缓。正式微信与外部服务、内部后续规划见 [交付清单](audits/MINI_PROGRAM_DELIVERY_SCOPE.md)。此前 BRANCH_ONLY、Draft 和禁止合并说明属于各历史时点，本次明确授权及实际合并结果取代其当前状态。
+
+## 历史交付记录
+
 ## C19 阶段交付（REVIEW / BRANCH_ONLY）
 
 2026-10-28 18:37 Asia/Shanghai，集成人 Codex。媒体原编号恢复与有界分片、机构审批建队/加入/历史认领、独立 PRIVATE_SEASON 私有赛季、赛事关注收藏已完成本轮源码与隔离验收，集中在 [Draft PR #28](https://github.com/xyq-dev/small-city-basketball/pull/28)，基于 #27。当前 22 个 Migration、78 张表、38 条小程序路由；新迁移 019–022 只在自有隔离库执行，001–018 与 AGENTS.md 未改。
@@ -28,7 +38,7 @@
 
 | ID     | 任务                                                   | 状态                    | 负责人                                     | 依赖                              | 交付位置                                                                                                                                                                                                                                                                       |
 | ------ | ------------------------------------------------------ | ----------------------- | ------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| C19    | 小程序媒体恢复、球队成员、私有赛季、关注与完整隔离验收 | REVIEW / BRANCH_ONLY    | Codex 集成及模块复核                       | C18 / PR #27                      | [Draft PR #28](https://github.com/xyq-dev/small-city-basketball/pull/28)；[任务](tasks/C19.md)、[交接](handoffs/C19.md)；源码与隔离验证完成，官方微信/真机待验，未合并部署                                                                                                     |
+| C19    | 小程序媒体恢复、球队成员、私有赛季、关注与完整隔离验收 | DONE / MAIN    | Codex 集成及模块复核                       | C18 / PR #27                      | MAIN f97bb4b，[PR #22](https://github.com/xyq-dev/small-city-basketball/pull/22) 已整合 #23—#28；[任务](tasks/C19.md)、[交接](handoffs/C19.md)；源码与隔离验证完成，官方微信/真机待验，未部署                                                                                                     |
 | DOC000 | 私有仓库、初始说明与四组 UI                            | DONE                    | Codex / 初始化会话                         | 无                                | MAIN，源基线6911724                                                                                                                                                                                                                                                            |
 | DOC001 | 开发文档及多 AI 协作规范                               | DONE                    | Codex                                      | DOC000                            | MAIN；[记录](handoffs/DOC001.md)                                                                                                                                                                                                                                               |
 | P01    | 机构后台四页 Mock 原型                                 | DONE                    | Codex                                      | DOC001                            | MAIN f15adb4，PR#1；[任务卡](tasks/P01.md)                                                                                                                                                                                                                                     |

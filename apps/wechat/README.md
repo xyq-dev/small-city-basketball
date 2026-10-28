@@ -1,6 +1,6 @@
-# 微信小程序源码入口（C19 集成候选）
+# 微信小程序源码入口（C19 已整合 main）
 
-当前为 `feat/mini-program-completion` / [Draft PR #28](https://github.com/xyq-dev/small-city-basketball/pull/28)，基于 #27，**本轮源码与隔离验收完成，REVIEW / BRANCH_ONLY**。候选 `cd506ec` 的 [CI 40670536098](https://github.com/xyq-dev/small-city-basketball/actions/runs/40670536098) 三个 job 全部成功，14 条真实页面→API→PostgreSQL 流程通过；未合并或部署，生产未执行新 Migration。官方微信工具/真机和本轮 Windows 复验未执行，详细证据、恢复边界与剩余事项见 [C19 交接](../../docs/handoffs/C19.md)。
+2026-10-29 Asia/Shanghai：#22—#28 已逐级合并，业务合并 main `f97bb4b07e1313cd389dcb6c5ec40451f7e2cbac`，**源码与隔离验收完成 / MAIN**。完整 tree 与最终候选 `a384896` 一致；该候选的 [CI 40673829836](https://github.com/xyq-dev/small-city-basketball/actions/runs/40673829836) 三个 job 全部成功，14 条真实页面→API→PostgreSQL 流程通过。后续检出以 `origin/main` 为准；main 重复 CI 的实际结果见 [C19 交接](../../docs/handoffs/C19.md)。没有部署或执行生产 Migration；官方微信工具/真机和当前 Windows 验收仍未执行。
 
 原生无外部依赖项目，开发工具导入本目录。`touristappid`仅为可阅读的项目配置，不能调用真实微信登录或发布。AppID 已提供；实际启用使用本机批准的项目配置，服务端配置同 AppID 的 secret 文件，凭据不入仓库，并在微信后台配置basketball.playhubs.cn request/download合法域名、隐私说明与媒体域名。没有在本轮创建主体、凭据或付费资源。
 
