@@ -455,6 +455,70 @@ test('event mainline runs end to end through native pages on the real API', asyn
   await ownerDevice.settle(orgEvent);
   const publicEventId = orgEvent.page.data.publicEventId;
   assert.match(publicEventId, /^[A-Za-z0-9_-]{43}$/);
+
+  // C18: enabling public viewing never lists; the organizer lists explicitly with a reason.
+  await setup.page.load();
+  await ownerDevice.settle(setup);
+  assert.equal(setup.page.data.directory.listed, false, setup.page.data.error);
+  assert.equal(setup.page.data.directory.canList, true);
+  const browser = device(server);
+  const directoryTab = browser.open('pages/watch/index');
+  await browser.settle(directoryTab);
+  assert.equal(directoryTab.page.data.dir.loaded, true, directoryTab.page.data.dir.error);
+  assert.deepEqual(directoryTab.page.data.dir.items, [], 'not listed by enabling viewing');
+  setup.page.directoryCityInput(tap({}, { value: ' 高州 ' }));
+  setup.page.directoryReasonInput(tap({}, { value: '赛程已发布，欢迎观众关注' }));
+  ownerDevice.approve();
+  await setup.page.listDirectory();
+  await ownerDevice.settle(setup);
+  assert.equal(setup.page.data.directory.listed, true, setup.page.data.error);
+  assert.equal(setup.page.data.directory.city, '高州');
+  assert.equal(setup.page.data.directory.group, '进行中');
+  snapshot(setup, 'event-setup-directory-listed');
+  // An anonymous viewer finds it under 进行中, filtered by city, and opens the existing page.
+  directoryTab.page.dirCityInput(tap({}, { value: '高州' }));
+  directoryTab.page.applyDirCity();
+  await browser.settle(directoryTab);
+  assert.deepEqual(
+    directoryTab.page.data.dir.items.map((e) => [e.publicEventId, e.name, e.displayCity]),
+    [[publicEventId, '合成青锋杯', '高州']],
+    directoryTab.page.data.dir.error,
+  );
+  snapshot(directoryTab, 'watch-directory');
+  directoryTab.page.openDirectory(tap({ id: publicEventId }));
+  assert.equal(browser.navigations.at(-1), '/pages/event/index?event=' + publicEventId);
+  const found = browser.open('pages/event/index', { event: publicEventId });
+  await browser.settle(found);
+  assert.equal(found.page.data.event?.name, '合成青锋杯', found.page.data.error);
+  // Unlisting removes it from the directory only; the share link keeps working.
+  setup.page.directoryReasonInput(tap({}, { value: '赛事信息需更新后再列入' }));
+  ownerDevice.approve();
+  await setup.page.unlistDirectory();
+  await ownerDevice.settle(setup);
+  assert.equal(setup.page.data.directory.listed, false, setup.page.data.error);
+  assert.match(setup.page.data.directory.lastNote, /已手动撤出/);
+  directoryTab.page.onShow();
+  await browser.settle(directoryTab);
+  assert.equal(directoryTab.page.data.dir.loaded, true, directoryTab.page.data.dir.error);
+  assert.deepEqual(directoryTab.page.data.dir.items, [], 'refresh removes the unlisted event');
+  await found.page.load();
+  await browser.settle(found);
+  assert.equal(found.page.data.event?.name, '合成青锋杯', 'share link still valid after UNLIST');
+  assert.equal(
+    browser.wx.calls.some((c) => c.type === 'request' && c.url.includes('/v1/orgs/')),
+    false,
+    'the anonymous directory viewer never calls private endpoints',
+  );
+  assert.equal(
+    browser.wx.calls.some(
+      (c) =>
+        c.type === 'request' &&
+        c.url.includes('/v1/public/directory') &&
+        Object.keys(c.header || {}).some((k) => k.toLowerCase() === 'cookie'),
+    ),
+    false,
+  );
+
   const spectator = device(server);
   const shared = spectator.open('pages/event/index', { event: publicEventId });
   await spectator.settle(shared);
@@ -475,7 +539,10 @@ test('event mainline runs end to end through native pages on the real API', asyn
     'a signed-out spectator never calls private endpoints',
   );
 
-  // Lifecycle: complete natively with a reason.
+  // Lifecycle: complete natively with a reason. LIST/UNLIST bumped the event version, so the
+  // organizer page re-reads first (a stale version is never sent).
+  await orgEvent.page.load();
+  await ownerDevice.settle(orgEvent);
   orgEvent.page.chooseLifecycle(tap({ type: 'COMPLETE' }));
   orgEvent.page.lifecycleInput(tap({}, { value: '全部比赛已独立确认' }));
   ownerDevice.approve();

@@ -4,7 +4,7 @@
   "state": "empty",
   "designSource": "synthetic:platform-alignment",
   "static": true,
-  "expectText": ["当前账号没有机构赛事身份", "进入我的球队（1支）", "公开赛事目录尚未开放"],
+  "expectText": ["当前账号没有机构赛事身份", "进入我的球队（1支）", "关于公开赛事目录"],
   "data": {
     "signedIn": true,
     "organizations": [],

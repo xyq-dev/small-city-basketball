@@ -1,0 +1,73 @@
+{
+  "name": "c19-media-chunk-verifying",
+  "route": "pages/match-media/index",
+  "state": "synthetic-populated",
+  "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
+  "expectText": ["分片已全部被服务端确认", "正在进行最终文件校验"],
+  "expectDisabled": ["继续上传", "查询回执", "取消上传会话", "选择图片", "选择视频"],
+  "expectAbsentText": ["上传成功"],
+  "data": {
+    "loading": false,
+    "busy": true,
+    "error": "",
+    "notice": "",
+    "match": {
+      "title": "合成青锋 VS 合成新城",
+      "meta": "合成杯 · 本场已结束"
+    },
+    "usage": {
+      "label": "机构已用 1.0 MB / 128.0 MB · 单个文件不超过 8.0 MB"
+    },
+    "files": [],
+    "items": [],
+    "caps": {
+      "upload": true,
+      "manage": true,
+      "publish": true
+    },
+    "draftFiles": [],
+    "draftIndex": 0,
+    "title": "",
+    "rights": "",
+    "revokeId": "",
+    "revokeReason": "",
+    "purgeId": "",
+    "purgeReason": "",
+    "draftMode": "FILE",
+    "externalUrl": "",
+    "trustedHosts": [],
+    "sources": [],
+    "markerFor": "",
+    "marker": {
+      "sourceIndex": 0,
+      "label": "",
+      "start": "",
+      "end": ""
+    },
+    "previewVideo": "",
+    "upload": {
+      "stage": "verifying",
+      "confirmed": 1572864,
+      "total": 1572864,
+      "label": "分片已全部被服务端确认（1.5 MB / 1.5 MB），正在进行最终文件校验…"
+    },
+    "canRetry": false,
+    "uncertain": false,
+    "pending": null,
+    "request": {
+      "op": "upload",
+      "state": "session",
+      "title": "分片上传未完成：synthetic-final-highlight.mp4",
+      "at": "10-28 16:00",
+      "shortId": "12345678",
+      "message": "服务端已确认 1.0 MB / 1.5 MB，可从已确认的分片继续上传。",
+      "canQuery": true,
+      "canContinue": true,
+      "canResend": false,
+      "canCancel": true,
+      "canEnd": true
+    },
+    "storageError": "",
+    "unavailable": false
+  }
+}

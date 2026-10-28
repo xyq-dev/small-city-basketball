@@ -141,6 +141,6 @@ quarantine撤销旧session／pending invitation／active public／active overlay
 
 已有资质和凭据齐全且另获部署授权后，可分别审查并使用 [微信配置覆盖](compose.wechat.yaml) 或 [Native 支付覆盖](compose.wechatpay.yaml)。它们只给 API 增加出站网络，不发布 API/PG 端口；基础包仍只有 internal 网络。私有凭据文件置于既有 `SCB_PROVIDER_SECRET_DIR`，10001:10001、0400；不提交 Git、不打印。支付公钥文件是 serial→PEM 的受信 JSON 映射，仅接受运营方核验过的公钥，不从未经认证的下载建立信任。支付通知固定同源 `/v1/payments/wechat/notifications`；验签、解密及原报价/商户核对后才更新订单，页面跳转不授权益。真实支付、退款、账单和微信真机不因合成协议测试通过而视为通过。
 
-媒体单文件上限8MiB、每机构128MiB，存入PG并随完整备份恢复；整场大录像和外部存储/转码仍需单独交付。仅两条 `.../entries/:id/media-files`、`.../matches/:id/media-files` POST 放宽到12MiB JSON，其他请求100KiB；nginx与API均限制。私有保险/报名资料不可公开。每次公开文件及Range读取都复验原观众授权，撤销后旧路径失效。片段是人工定位，不是已生成剪辑文件；保单文件不等于承保核验。
+媒体单文件上限8MiB、每机构128MiB，存入PG并随完整备份恢复；整场大录像和外部存储/转码仍需单独交付。`.../entries/:id/media-files`、`.../matches/:id/media-files` 和 `.../matches/:id/media-file-requests` POST 放宽到12MiB JSON；精确 `.../matches/:id/media-upload-sessions/:sessionId/chunks/:index` PUT 为1MiB，承载512KiB分片；其他请求仍100KiB。nginx与API均限制，不能只修改API解析器。分片会话24小时到期；请求内有界清理之外，可显式执行 `ops/db/media-cleanup.mjs` 单批次清理，参见 C19 媒体交接，未配置后台定时任务。私有保险/报名资料不可公开。每次公开文件及Range读取都复验原观众授权，撤销后旧路径失效。片段是人工定位，不是已生成剪辑文件；保单文件不等于承保核验。
 
 外部公开媒体链接默认关闭；如确有原本公开的资源，配置 `SCB_MEDIA_TRUSTED_HOSTS` 为最多20个精确小写HTTPS host（逗号分隔，无通配/IP/端口），通过已有运维覆盖传给 API。服务端不抓取外链；已获知的第三方URL不能由本站撤回。要求正文可撤销时使用受控自持文件。

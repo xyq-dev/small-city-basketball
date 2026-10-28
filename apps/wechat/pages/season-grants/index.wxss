@@ -1,0 +1,3 @@
+.grants-page { padding-bottom:calc(40px + env(safe-area-inset-bottom)); }
+.grants-page .disclosure .small { margin-bottom:8px; }
+.grants-page .row .inline { margin-top:8px; }

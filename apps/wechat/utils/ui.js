@@ -12,6 +12,9 @@ for (const key of [
   'entry-review',
   'event-setup',
   'schedule',
+  'bracket',
+  'reschedule',
+  'match-media',
   'match',
   'account',
   'players',
@@ -29,6 +32,13 @@ for (const key of [
   'invitation',
   'planned',
   'platform',
+  'memberships',
+  'team-join',
+  'team-requests',
+  'team-request',
+  'follows',
+  'seasons',
+  'season-grants',
 ])
   routes[key] = '/pages/' + key + '/index';
 const positionNames = { PG: '控球后卫', SG: '得分后卫', SF: '小前锋', PF: '大前锋', C: '中锋' };
@@ -187,6 +197,8 @@ function guard(page) {
 // stale response cannot overwrite what the write returns, then hold a token that a refresh or
 // poll started afterwards cannot orphan. Pages refuse to start reads while busy.
 function hold(page) {
+  // A closed (unloaded) page can never start a write; begin() must not reopen it.
+  if (page._closed) return { epoch: -1, session: -1 };
   begin(page);
   page._load = (page._load || 0) + 1;
   return guard(page);
@@ -219,6 +231,32 @@ function message(error) {
   return error && typeof error.message === 'string'
     ? error.message
     : '操作未完成，请重新读取后核对';
+}
+// A confirmation bound to the session and page that opened it: a reply that arrives after an
+// account change, sign-out or unload resolves to null, so no stale write can start. Returns the
+// guard token for the caller to keep checking through the write.
+async function confirmFor(page, title, content) {
+  if (page._closed) return null;
+  const token = guard(page);
+  const yes = await confirm(title, content);
+  return yes && held(page, token) ? token : null;
+}
+/**
+ * A user-confirmed write operation bound to the session, page lifecycle and confirmation
+ * generation that opened it. Resolves to null when the user declines or the answer arrives
+ * after an account change, sign-out, unload or a newer confirmation on the same page. Callers
+ * re-check `op.valid()` after every asynchronous step and immediately before sending; a write
+ * token from hold() never replaces or refreshes it.
+ */
+async function confirmOp(page, title, content) {
+  if (page._closed) return null;
+  const token = guard(page);
+  const generation = (page._confirmOp = (page._confirmOp || 0) + 1);
+  const op = {
+    token,
+    valid: () => !page._closed && held(page, token) && generation === page._confirmOp,
+  };
+  return (await confirm(title, content)) && op.valid() ? op : null;
 }
 function confirm(title, content) {
   return new Promise((resolve) =>
@@ -289,6 +327,8 @@ module.exports = {
   close,
   message,
   confirm,
+  confirmFor,
+  confirmOp,
   uuid,
   money,
   localTime,

@@ -4,18 +4,32 @@ import type { ApiRequest } from './errors.js';
 
 export const WECHAT_PAYMENT_NOTIFICATION_PATH = '/v1/payments/wechat/notifications';
 const uploadPath = /^\/v1\/orgs\/[0-9a-f-]{36}\/(?:entries|matches)\/[0-9a-f-]{36}\/media-files$/i;
+// C19: the idempotent whole-file upload shares the original upload lane and limit.
+const requestUploadPath =
+  /^\/v1\/orgs\/[0-9a-f-]{36}\/matches\/[0-9a-f-]{36}\/media-file-requests$/i;
+// C19: one 512 KiB chunk (base64 plus small JSON fields) fits well inside 1 MB.
+const chunkPath =
+  /^\/v1\/orgs\/[0-9a-f-]{36}\/matches\/[0-9a-f-]{36}\/media-upload-sessions\/[0-9a-f-]{36}\/chunks\/\d{1,2}$/i;
 export function isPaymentNotificationRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
   return request.method === 'POST' && request.path === WECHAT_PAYMENT_NOTIFICATION_PATH;
 }
 export function isMediaUploadRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
-  return request.method === 'POST' && uploadPath.test(request.path);
+  return (
+    request.method === 'POST' &&
+    (uploadPath.test(request.path) || requestUploadPath.test(request.path))
+  );
+}
+export function isMediaChunkRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
+  return request.method === 'PUT' && chunkPath.test(request.path);
 }
 
-/** Apply the larger limit only after the exact upload route claims a bounded slot. */
+type Lane = { active: number; max: number; parser: RequestHandler };
+
+/** Apply a larger limit only after the exact upload route claims a bounded slot. */
 export function requestBodyMiddleware(): RequestHandler {
-  let activeUploads = 0;
   const ordinary = json({ limit: '100kb', inflate: false });
-  const upload = json({ limit: '12mb', inflate: false });
+  const upload: Lane = { active: 0, max: 2, parser: json({ limit: '12mb', inflate: false }) };
+  const chunk: Lane = { active: 0, max: 8, parser: json({ limit: '1mb', inflate: false }) };
   const notification = json({
     limit: '100kb',
     inflate: false,
@@ -26,8 +40,13 @@ export function requestBodyMiddleware(): RequestHandler {
   return (incoming, response, next) => {
     const request = incoming as ApiRequest;
     if (isPaymentNotificationRequest(request)) return notification(request, response, next);
-    if (!isMediaUploadRequest(request)) return ordinary(request, response, next);
-    if (activeUploads >= 2) {
+    const lane = isMediaUploadRequest(request)
+      ? upload
+      : isMediaChunkRequest(request)
+        ? chunk
+        : null;
+    if (!lane) return ordinary(request, response, next);
+    if (lane.active >= lane.max) {
       response.setHeader('Retry-After', '1');
       response.status(429).json({
         error: {
@@ -39,7 +58,7 @@ export function requestBodyMiddleware(): RequestHandler {
       request.resume();
       return;
     }
-    activeUploads++;
+    lane.active++;
     const timer = setTimeout(() => {
       if (!response.headersSent)
         response.status(408).json({
@@ -56,14 +75,14 @@ export function requestBodyMiddleware(): RequestHandler {
     const release = () => {
       if (!released) {
         released = true;
-        activeUploads--;
+        lane.active--;
         clearTimeout(timer);
       }
     };
     response.once('finish', release);
     response.once('close', release);
     request.once('aborted', release);
-    upload(request, response, (error) => {
+    lane.parser(request, response, (error) => {
       clearTimeout(timer);
       next(error);
     });

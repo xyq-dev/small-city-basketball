@@ -1,0 +1,109 @@
+{
+  "name": "c15-bracket-tie",
+  "route": "pages/bracket/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["需独立保存同分抽签", "同分待抽签", "抽签原因"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "",
+    "event": {
+      "name": "合成分组杯",
+      "statusLabel": "比赛进行中",
+      "formatLabel": "分组循环接淘汰"
+    },
+    "kind": "GROUP_KNOCKOUT",
+    "progress": "6 / 9 场有效独立确认 · 已发布 6 场",
+    "qualification": "需独立保存同分抽签",
+    "groups": [
+      {
+        "key": "A",
+        "label": "A组",
+        "rows": [
+          {
+            "key": "3b264287-d1c0-4baa-a484-e9ef63f53fbf",
+            "rank": "1=",
+            "team": "合成一队",
+            "record": "1-1",
+            "points": "3",
+            "diff": "0"
+          },
+          {
+            "key": "dd875b8e-374b-47df-9d3d-b58c51b24483",
+            "rank": "1=",
+            "team": "合成三队",
+            "record": "1-1",
+            "points": "3",
+            "diff": "0"
+          },
+          {
+            "key": "af856c45-059a-43d0-8115-20a80b98c7f0",
+            "rank": "1=",
+            "team": "合成二队",
+            "record": "1-1",
+            "points": "3",
+            "diff": "0"
+          }
+        ],
+        "qualified": "",
+        "ties": "合成一队、合成二队、合成三队",
+        "needsDraw": true,
+        "draw": null
+      },
+      {
+        "key": "B",
+        "label": "B组",
+        "rows": [
+          {
+            "key": "6bfc5490-176b-4d0c-8785-287971043daf",
+            "rank": "1",
+            "team": "合成四队",
+            "record": "2-0",
+            "points": "4",
+            "diff": "+4"
+          },
+          {
+            "key": "8a1708b3-8a0e-40db-a0f5-85e3cf2015b7",
+            "rank": "2",
+            "team": "合成五队",
+            "record": "1-1",
+            "points": "3",
+            "diff": "0"
+          },
+          {
+            "key": "f21ab9bf-fc0b-4117-8cbd-077ccb2a64ae",
+            "rank": "3",
+            "team": "合成六队",
+            "record": "0-2",
+            "points": "2",
+            "diff": "-4"
+          }
+        ],
+        "qualified": "合成四队 → 合成五队",
+        "ties": "",
+        "needsDraw": false,
+        "draw": null
+      }
+    ],
+    "rounds": [],
+    "placements": [],
+    "next": null,
+    "fixtures": [],
+    "courts": [
+      {
+        "id": "e21db07e-fa79-4738-b73a-a8af6d92ea69",
+        "name": "合成一号场"
+      }
+    ],
+    "reason": "",
+    "tieReasons": {},
+    "blocker": "存在影响晋级的同分，须先为该组独立保存抽签。",
+    "canDraw": true,
+    "conflicts": [],
+    "uncertain": false,
+    "unavailable": false
+  }
+}

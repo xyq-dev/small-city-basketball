@@ -12,6 +12,9 @@
     "pages/entry-review/index",
     "pages/event-setup/index",
     "pages/schedule/index",
+    "pages/bracket/index",
+    "pages/reschedule/index",
+    "pages/match-media/index",
     "pages/match/index",
     "pages/players/index",
     "pages/player/index",
@@ -27,7 +30,14 @@
     "pages/entry/index",
     "pages/invitation/index",
     "pages/planned/index",
-    "pages/platform/index"
+    "pages/platform/index",
+    "pages/follows/index",
+    "pages/team-request/index",
+    "pages/team-requests/index",
+    "pages/team-join/index",
+    "pages/memberships/index",
+    "pages/seasons/index",
+    "pages/season-grants/index"
   ],
   "window": {
     "navigationBarTitleText": "小城市篮球",

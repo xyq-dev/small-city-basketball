@@ -223,15 +223,17 @@ Page({
   // command is re-authorized server-side, so a hidden 403 here never widens anything.
   async readManage(client) {
     const quiet = (p) => p.then((r) => r.data).catch(() => null);
-    const [lifecycle, registration] = await Promise.all([
+    const [lifecycle, registration, seasonGrants] = await Promise.all([
       quiet(client.request(this.base() + '/lifecycle')),
       quiet(client.request(this.base() + '/registration')),
+      quiet(client.request(this.base() + '/season-data-grants')),
     ]);
-    if (!lifecycle && !registration) return null;
+    if (!lifecycle && !registration && !seasonGrants) return null;
     const c = (lifecycle && lifecycle.capabilities) || {};
     const completion = lifecycle && lifecycle.completion;
     return {
       review: !!registration,
+      seasonGrants: !!seasonGrants,
       reviewLabel: registration
         ? '已提交 ' +
           registration.counts.SUBMITTED +
@@ -259,8 +261,15 @@ Page({
   openSetup() {
     ui.open('event-setup', { orgId: this.orgId, eventId: this.eventId });
   },
+  openBracket() {
+    ui.open('bracket', { orgId: this.orgId, eventId: this.eventId });
+  },
   openTasks() {
     ui.open('scoring-tasks', { orgId: this.orgId, eventId: this.eventId });
+  },
+  openSeasonGrants() {
+    if (this.data.manage && this.data.manage.seasonGrants)
+      ui.open('season-grants', { orgId: this.orgId, eventId: this.eventId });
   },
   chooseLifecycle(e) {
     const type = e.currentTarget.dataset.type;
@@ -282,13 +291,24 @@ Page({
       this.setData({ error: '请填写至少4个字的原因。' });
       return;
     }
-    if (!(await ui.confirm(command.label, command.note)) || this.data.loading) return;
+    const version = this._eventVersion;
+    const op = await ui.confirmOp(this, command.label, command.note);
+    if (
+      !op ||
+      this.data.loading ||
+      this._eventVersion !== version ||
+      this.data.lifecycleAction !== type ||
+      !this.data.manage ||
+      !this.data.manage.actions.some((a) => a.type === type)
+    )
+      return;
     const token = ui.hold(this);
+    if (!op.valid() || !ui.held(this, token)) return;
     this.setData({ loading: true, error: '', notice: '' });
     try {
       await api.getClient().request(this.base() + '/lifecycle-commands', 'POST', {
         type,
-        expectedEventVersion: this._eventVersion,
+        expectedEventVersion: version,
         reason,
       });
       if (!ui.held(this, token)) return;

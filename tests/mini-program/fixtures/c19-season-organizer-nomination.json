@@ -1,0 +1,141 @@
+{
+  "name": "c19-season-organizer-nomination",
+  "route": "pages/season-grants/index",
+  "state": "synthetic-populated",
+  "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
+  "expectText": ["私有赛季提名", "球队（冻结名单）", "绑定账号：合成球员甲", "本届授权记录"],
+  "expectEnabled": ["提名，等待本人同意", "撤回"],
+  "data": {
+    "mode": "organizer",
+    "orgId": "11111111-1111-4111-8111-111111111111",
+    "eventId": "33333333-3333-4333-8333-333333333333",
+    "invalid": false,
+    "loginRequired": false,
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "grants": [
+      {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "purpose": "PRIVATE_SEASON",
+        "orgId": "11111111-1111-4111-8111-111111111111",
+        "orgName": "合成机构",
+        "eventId": "33333333-3333-4333-8333-333333333333",
+        "eventName": "合成杯",
+        "teamId": "55555555-5555-4555-8555-555555555555",
+        "teamName": "合成队",
+        "memberId": "66666666-6666-4666-8666-666666666666",
+        "memberName": "合成甲",
+        "targetUserId": "88888888-8888-4888-8888-888888888888",
+        "targetDisplayName": "合成球员甲",
+        "nominatedByDisplayName": "合成负责人",
+        "status": "PENDING",
+        "version": 1,
+        "nominateReason": "本届逐人统计提名",
+        "withdrawReason": null,
+        "createdAt": "2028-03-03T00:00:00.000Z",
+        "consentedAt": null,
+        "declinedAt": null,
+        "revokedAt": null,
+        "withdrawnAt": null,
+        "effective": false,
+        "ineffectiveReasons": ["NOT_CONSENTED"],
+        "season": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "合成春季",
+          "status": "ACTIVE"
+        },
+        "capabilities": {
+          "canConsent": false,
+          "canDecline": false,
+          "canRevoke": false,
+          "canWithdraw": true
+        },
+        "statusText": "待本人确认",
+        "reasonsText": "尚未经本人同意",
+        "seasonText": "合成春季（进行中）"
+      }
+    ],
+    "truncated": false,
+    "disclosure": {
+      "purpose": "用途：私有赛季统计（PRIVATE_SEASON）",
+      "scope": "范围：机构、赛事、球队、成员与账号",
+      "readers": "读者：本人与机构 OWNER/ADMIN，没有匿名查询",
+      "metrics": "统计口径：篮板、助攻、出场时间未统计；名单场次不代表实际出场",
+      "revocation": "撤销：可随时撤销",
+      "independence": "与预约档案授权互相独立"
+    },
+    "acknowledged": "",
+    "stats": null,
+    "statsError": "",
+    "event": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "name": "合成杯",
+      "startDate": "2028-03-01",
+      "endDate": "2028-03-02"
+    },
+    "season": {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "orgId": "11111111-1111-4111-8111-111111111111",
+      "name": "合成春季",
+      "startDate": "2028-01-01",
+      "endDate": "2028-12-31",
+      "status": "ACTIVE",
+      "version": 3,
+      "activatedAt": "2028-01-01T00:00:00.000Z",
+      "closedAt": null,
+      "createdAt": "2028-01-01T00:00:00.000Z",
+      "updatedAt": "2028-01-01T00:00:00.000Z",
+      "events": [
+        {
+          "eventId": "33333333-3333-4333-8333-333333333333",
+          "name": "合成杯",
+          "startDate": "2028-03-01",
+          "endDate": "2028-03-02",
+          "status": "RUNNING",
+          "attachedAt": "2028-01-02T00:00:00.000Z"
+        }
+      ],
+      "candidates": [],
+      "capabilities": {
+        "canEdit": true,
+        "canActivate": false,
+        "canClose": true
+      }
+    },
+    "frozen": true,
+    "sources": [
+      {
+        "teamId": "55555555-5555-4555-8555-555555555555",
+        "teamName": "合成队",
+        "members": [
+          {
+            "memberId": "66666666-6666-4666-8666-666666666666",
+            "name": "合成甲",
+            "jerseyNo": "7",
+            "binding": {
+              "bindingId": "44444444-4444-4444-8444-444444444444",
+              "userId": "88888888-8888-4888-8888-888888888888",
+              "displayName": "合成球员甲"
+            }
+          },
+          {
+            "memberId": "77777777-7777-4777-8777-777777777777",
+            "name": "合成乙",
+            "jerseyNo": "8",
+            "binding": null
+          }
+        ]
+      }
+    ],
+    "teamLabels": ["合成队"],
+    "memberLabels": ["7号 合成甲 · 绑定账号：合成球员甲", "8号 合成乙 · 未绑定（不能提名）"],
+    "teamIndex": 0,
+    "memberIndex": 0,
+    "reason": "本届独立确认数据用于机构私有赛季汇总",
+    "nominationPending": false,
+    "withdrawId": "",
+    "withdrawReason": "",
+    "message": ""
+  }
+}

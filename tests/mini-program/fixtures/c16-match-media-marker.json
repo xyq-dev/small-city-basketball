@@ -1,0 +1,138 @@
+{
+  "name": "c16-match-media-marker",
+  "route": "pages/match-media/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["时间标记", "视频开始（秒）", "添加时间标记", "对应的比赛记录"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "媒体草稿已创建，尚未发布；发布前观众不可见。",
+    "match": {
+      "title": "合成六队 VS 合成四队",
+      "meta": "合成分组杯 · 本场已结束"
+    },
+    "usage": {
+      "label": "机构已用 1.7 KB / 128.0 MB · 单个文件不超过 8.0 MB"
+    },
+    "files": [
+      {
+        "id": "74c798b1-293b-44e4-a135-08e1be96a0e8",
+        "name": "final-moment.png",
+        "kind": "图片",
+        "size": "70 B",
+        "status": "PURGED",
+        "statusLabel": "内容已清除",
+        "time": "10-27 13:49",
+        "canRevoke": false,
+        "canPreview": false,
+        "canPurge": false
+      },
+      {
+        "id": "42c082ce-94de-4bf7-a23c-8f35e2c957e8",
+        "name": "final-replay.mp4",
+        "kind": "视频",
+        "size": "1.7 KB",
+        "status": "ACTIVE",
+        "statusLabel": "已私有保存 · 已关联媒体",
+        "time": "10-27 13:49",
+        "canRevoke": true,
+        "canPreview": true,
+        "canPurge": false
+      }
+    ],
+    "items": [
+      {
+        "id": "0c2cc828-aa22-4f71-9b2d-19ad7251cbe5",
+        "title": "决赛最后一攻",
+        "kind": "图片",
+        "status": "REVOKED",
+        "statusLabel": "已撤销 · 不再公开",
+        "rights": "主办方摄影组拍摄，仅限本届公开观赛",
+        "externalUrl": "",
+        "markers": 0,
+        "markerList": [],
+        "stale": false,
+        "canMark": false,
+        "canPublish": false,
+        "canRevoke": false
+      },
+      {
+        "id": "38d142b3-e998-4957-8565-5bb5b858e068",
+        "title": "决赛回放",
+        "kind": "视频",
+        "status": "DRAFT",
+        "statusLabel": "草稿 · 未公开",
+        "rights": "主办方摄影组拍摄，仅限本届公开观赛",
+        "externalUrl": "",
+        "markers": 0,
+        "markerList": [],
+        "stale": false,
+        "canMark": true,
+        "canPublish": true,
+        "canRevoke": true
+      }
+    ],
+    "caps": {
+      "upload": true,
+      "manage": true,
+      "publish": true
+    },
+    "draftFiles": [],
+    "draftIndex": 0,
+    "title": "",
+    "rights": "",
+    "revokeId": "",
+    "revokeReason": "",
+    "purgeId": "",
+    "purgeReason": "",
+    "draftMode": "FILE",
+    "externalUrl": "",
+    "trustedHosts": [],
+    "sources": [
+      {
+        "id": "c7101dae-4ef5-4909-846d-fff2daa74858",
+        "label": "#1 准备比赛 · 13:48"
+      },
+      {
+        "id": "a9ee8a02-8032-41d2-8f9f-fc54e06fc155",
+        "label": "#2 开始比赛 · 13:48"
+      },
+      {
+        "id": "1dc561e8-0c89-4ba4-8add-7b5ddbeb9018",
+        "label": "#3 记录 · 13:48"
+      },
+      {
+        "id": "571495a7-63d4-445d-8171-935ffde38f2a",
+        "label": "#4 启动计时 · 13:48"
+      },
+      {
+        "id": "9222d9a3-57c3-4ef4-8f09-db5e942a34fd",
+        "label": "#5 暂停计时 · 13:49"
+      },
+      {
+        "id": "1d4770e9-acbe-4c64-8a15-a247b7dbd6b9",
+        "label": "#6 结束比赛，待确认 · 13:49"
+      }
+    ],
+    "markerFor": "38d142b3-e998-4957-8565-5bb5b858e068",
+    "marker": {
+      "sourceIndex": 0,
+      "label": "决胜一投",
+      "start": "0",
+      "end": "0.5"
+    },
+    "previewVideo": "",
+    "upload": {
+      "stage": "saved",
+      "label": "3/3 已私有保存 final-replay.mp4，尚未发布。"
+    },
+    "canRetry": false,
+    "uncertain": false,
+    "pending": null,
+    "storageError": "",
+    "unavailable": false
+  }
+}

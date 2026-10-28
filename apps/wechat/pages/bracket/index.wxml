@@ -1,0 +1,80 @@
+<view class="page mgmt-page">
+  <view wx:if="{{loading && !event}}" class="card state-panel"><text class="state-label">晋级</text><view class="subtitle">正在读取分组与淘汰资料</view><view class="loading-lines"><view></view><view></view></view></view>
+  <view wx:elif="{{!event}}" class="card state-panel">
+    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
+    <view class="subtitle">{{unavailable ? '无法查看晋级' : '暂时无法读取'}}</view>
+    <view class="notice warning">{{error || '请从赛事详情重新进入。'}}</view>
+    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+  </view>
+  <block wx:else>
+    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
+    <view wx:if="{{uncertain}}" class="card">
+      <view class="subtitle">操作结果待核对</view>
+      <view class="muted">网络中断时服务端可能已经执行。请先重新读取核对；不会自动重发。</view>
+      <button class="primary" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button>
+    </view>
+    <view class="board">
+      <view class="board-meta">{{event.statusLabel}} · {{event.formatLabel}}</view>
+      <view class="setup-name">{{event.name}}</view>
+      <view wx:if="{{progress}}" class="board-meta">{{progress}}</view>
+      <view wx:if="{{qualification}}" class="board-result">{{qualification}}</view>
+    </view>
+
+    <view wx:if="{{blocker}}" class="notice small">{{blocker}}</view>
+
+    <view wx:for="{{groups}}" wx:key="key" class="card">
+      <view class="row-between"><view class="subtitle">{{item.label}} · 组内积分</view><text wx:if="{{item.qualified}}" class="badge success">已定出线</text></view>
+      <view class="org-table">
+        <view class="org-table-row head"><text class="rank-cell">名次</text><text class="team-cell">球队</text><text class="num-cell record">胜-负</text><text class="num-cell">积分</text><text class="num-cell">净胜</text></view>
+        <view wx:for="{{item.rows}}" wx:for-item="row" wx:key="key" class="org-table-row"><text class="rank-cell">{{row.rank}}</text><text class="team-cell">{{row.team}}</text><text class="num-cell record">{{row.record}}</text><text class="num-cell">{{row.points}}</text><text class="num-cell">{{row.diff}}</text></view>
+      </view>
+      <view wx:if="{{item.qualified}}" class="muted">出线顺序：{{item.qualified}}</view>
+      <view wx:elif="{{item.ties}}" class="muted">同分待抽签：{{item.ties}}</view>
+      <view wx:else class="muted">等待本组全部比赛有效独立确认。</view>
+      <view wx:if="{{item.draw}}" class="muted">已保存抽签：{{item.draw.order}} · {{item.draw.reason}} · {{item.draw.time}}</view>
+      <block wx:if="{{item.needsDraw && canDraw && !next && !uncertain}}">
+        <text class="field-label">{{item.label}}抽签原因（4–500字）</text>
+        <textarea class="field" maxlength="500" value="{{tieReasons[item.key]}}" data-key="{{item.key}}" bindinput="tieInput" placeholder="例如：积分与净胜分完全相同，按规则抽签"/>
+        <button class="secondary" data-key="{{item.key}}" bindtap="drawTie" disabled="{{busy}}">保存{{item.label}}同分抽签</button>
+      </block>
+    </view>
+
+    <view wx:for="{{rounds}}" wx:key="key" class="card">
+      <view class="row-between"><view class="subtitle">{{item.label}}</view><text class="badge {{item.published ? 'success' : ''}}">{{item.published ? '已发布' : '未发布'}}</text></view>
+      <view wx:for="{{item.slots}}" wx:for-item="slot" wx:key="key" class="org-match" data-id="{{slot.matchId}}" bindtap="openMatch">
+        <view class="org-match-teams"><text>{{slot.home}}</text><text class="org-match-vs">{{slot.bye ? '' : 'VS'}}</text><text>{{slot.away}}</text></view>
+        <view class="row-between"><text class="org-match-status {{slot.status === 'LIVE' ? 'live' : ''}}">{{slot.statusLabel}}</text><text wx:if="{{slot.winner}}" class="org-match-more">晋级：{{slot.winner}}</text></view>
+      </view>
+    </view>
+
+    <view wx:if="{{placements.length}}" class="card">
+      <view class="subtitle">最终名次</view>
+      <view wx:for="{{placements}}" wx:key="key" class="row-between row"><text>{{item.rank}}</text><text>{{item.team}}</text></view>
+    </view>
+
+    <view wx:if="{{next}}" class="card">
+      <view class="subtitle">发布{{next.title}}</view>
+      <view class="muted">{{next.note}}时间为北京时间；场地、球队占用与休息间隔由服务端复检。</view>
+      <view wx:if="{{!courts.length}}" class="notice warning small">机构没有可用场地，请先在排赛中添加场地。</view>
+      <view wx:for="{{fixtures}}" wx:key="key" class="setup-block">
+        <view class="section-label">{{item.label}}</view>
+        <picker class="field" range="{{courts}}" range-key="name" value="{{item.courtIndex}}" data-index="{{index}}" bindchange="pickCourt">{{courts[item.courtIndex].name || '选择场地'}}</picker>
+        <view class="setup-pair">
+          <picker mode="date" class="field" value="{{item.date}}" data-index="{{index}}" bindchange="pickDate">{{item.date || '选择日期'}}</picker>
+          <picker mode="time" class="field" value="{{item.time}}" data-index="{{index}}" bindchange="pickTime">{{item.time || '开始时间'}}</picker>
+        </view>
+      </view>
+      <text class="field-label">发布原因（4–500字）</text>
+      <textarea class="field" maxlength="500" value="{{reason}}" bindinput="reasonInput" placeholder="例如：上一轮赛果已全部独立确认"/>
+      <view wx:for="{{conflicts}}" wx:key="key" class="muted">· {{item.label}}{{item.external ? '（与本机构其他赛事）' : ''}}</view>
+      <button class="primary" bindtap="publish" disabled="{{busy || uncertain || !courts.length}}">核对并正式发布</button>
+    </view>
+
+    <view class="mode-choice setup-actions">
+      <button class="secondary" bindtap="openSchedule">排赛与场地</button>
+      <button class="secondary" bindtap="openSetup">规则与公开观赛</button>
+    </view>
+    <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新晋级资料</button>
+  </block>
+</view>

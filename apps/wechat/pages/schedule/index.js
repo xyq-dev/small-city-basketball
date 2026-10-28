@@ -3,8 +3,10 @@ const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const plan = require('../../utils/schedule');
 
-// Round-robin scheduling over the existing revision API: generate from the frozen roster,
-// propose allocations, validate on the server and publish once. Other formats stay in Web.
+// Scheduling over the existing revision API for all three formats: generate from the frozen
+// roster (round robin, seeded knockout bracket, or balanced groups), propose allocations,
+// validate on the server and publish once. Later knockout rounds are published from the
+// bracket page; formal changes to a published match go through rescheduling.
 const MAX_PAGES = 10;
 const privateDefaults = {
   event: null,
@@ -20,12 +22,33 @@ const privateDefaults = {
   unavailable: false,
   newCourt: '',
   canCreateCourt: false,
+  courtAdmin: [],
+  renameId: '',
+  renameValue: '',
   redrawOpen: false,
   redrawReason: '',
+  format: '',
+  groupCounts: [],
+  groupIndex: 0,
+  seeds: [],
+  draftGroups: [],
+  byes: '',
+};
+const ALGORITHMS = {
+  ROUND_ROBIN: 'RR_CIRCLE_V1',
+  SINGLE_ELIMINATION: 'SE_SEEDED_V1',
+  GROUP_KNOCKOUT: 'GK_BALANCED_V1',
+};
+const GENERATE_TITLES = {
+  ROUND_ROBIN: '生成单循环对阵',
+  SINGLE_ELIMINATION: '生成淘汰赛签位与首轮',
+  GROUP_KNOCKOUT: '生成分组与组内循环',
 };
 function failure(error) {
   if (error && error.code === 'VERSION_CONFLICT') return '赛程已被其他操作更新，已重新读取。';
   if (error && error.code === 'SCHEDULE_CONFLICT') return '发布前复检发现冲突，请先处理后再发布。';
+  if (error && error.code === 'STANDINGS_RULES_REQUIRED')
+    return '分组赛发布前须先保存并锁定组内积分规则（规则与公开观赛中设置）。';
   if (error && error.code === 'SCHEDULE_REVISION_NOT_CURRENT')
     return '该草稿已被重新抽签替代，已重新读取。';
   return ui.message(error);
@@ -103,26 +126,40 @@ Page({
       const revision = data.currentRevision
         ? (await client.request(this.org() + '/schedule-revisions/' + data.currentRevision.id)).data
         : null;
+      const group = data.event.format === 'GROUP_KNOCKOUT';
+      // Group seeding chooses among frozen entries; the server replays the draw for review.
+      const frozen =
+        group && data.freeze && !data.publication
+          ? (await client.request(this.org() + '/events/' + this.eventId + '/registration')).data
+              .freeze
+          : null;
+      const groupDraw =
+        group && revision && !data.publication
+          ? (await client.request(this.org() + '/events/' + this.eventId + '/groups')).data
+          : null;
       if (!live()) return;
       this._scheduling = data;
       this._revision = revision;
       const e = data.event;
-      const roundRobin = e.format === 'ROUND_ROBIN';
       const state = !data.support.supported
         ? 'unsupported'
         : data.publication
           ? 'published'
           : !data.freeze
             ? 'no-freeze'
-            : !roundRobin
-              ? 'web-only'
-              : revision && revision.status === 'DRAFT'
-                ? 'draft'
-                : data.capabilities.canGenerate
-                  ? 'generate'
-                  : 'readonly';
+            : revision && revision.status === 'DRAFT'
+              ? 'draft'
+              : data.capabilities.canGenerate
+                ? 'generate'
+                : 'readonly';
       const names = {};
       for (const p of (revision && revision.participants) || []) names[p.entryId] = p.teamName;
+      const entries = frozen ? frozen.entries : [];
+      const counts = [2, 4, 8].filter((n) => entries.length >= n * 2);
+      const keepSeeds = new Set(this.data.seeds.filter((x) => x.on).map((x) => x.id));
+      const byeIds = revision
+        ? revision.rounds.flatMap((r) => r.byeEntryIds || (r.byeEntryId ? [r.byeEntryId] : []))
+        : [];
       const courtNames = {};
       for (const c of courts) courtNames[c.id] = c.name;
       this.setData({
@@ -135,6 +172,26 @@ Page({
           teams: data.freeze ? data.freeze.entryCount : 0,
         },
         state,
+        format: e.format,
+        groupCounts: counts.map((n) => ({ value: n, label: n + ' 组' })),
+        groupIndex: Math.min(this.data.groupIndex, Math.max(counts.length - 1, 0)),
+        seeds: entries.map((x) => ({
+          id: x.entryId,
+          name: x.teamName,
+          on: keepSeeds.has(x.entryId),
+        })),
+        draftGroups:
+          groupDraw && groupDraw.draftGroups
+            ? groupDraw.draftGroups.map((g) => ({
+                key: g.groupKey,
+                label: g.label,
+                teams: g.participants.map((p) => p.teamName).join('、'),
+              }))
+            : [],
+        byes:
+          e.format === 'SINGLE_ELIMINATION' && byeIds.length
+            ? byeIds.map((id) => names[id] || '冻结参赛队').join('、')
+            : '',
         supportReason: data.support.reason || '',
         publication: data.publication
           ? { count: data.publication.matchCount, time: ui.localTime(data.publication.publishedAt) }
@@ -147,6 +204,17 @@ Page({
             on: (this.data.courts.find((o) => o.id === c.id) || {}).on !== false,
           })),
         canCreateCourt,
+        // Court maintenance (rename, disable, re-enable): every court the server lets this
+        // identity manage, including disabled ones. Conflicts on published matches stay
+        // server-side (COURT_DISABLED in validation and rescheduling).
+        courtAdmin: courts
+          .filter((c) => c.capabilities && c.capabilities.canManage)
+          .map((c) => ({
+            id: c.id,
+            name: c.name,
+            version: c.version,
+            active: c.status === 'ACTIVE',
+          })),
         form: this.data.form || {
           dayStart: '09:00',
           dayEnd: '21:00',
@@ -204,9 +272,13 @@ Page({
   courtInput(e) {
     this.setData({ newCourt: String(e.detail.value || '').slice(0, 80) });
   },
-  async run(path, method, body, label) {
+  // `op`: the confirmation this write follows (ui.confirmOp); re-checked right before sending
+  // and never replaced by the write token.
+  async run(path, method, body, label, op) {
     if (this.data.busy) return null;
+    if (op && !op.valid()) return null;
     const token = ui.hold(this);
+    if ((op && !op.valid()) || !ui.held(this, token)) return null;
     this.setData({ busy: true, loading: false, error: '', notice: '' });
     try {
       const result = (await api.getClient().request(path, method, body)).data;
@@ -228,6 +300,59 @@ Page({
         await this.load();
       return null;
     }
+  },
+  askRename(e) {
+    const court = this.data.courtAdmin.find((c) => c.id === e.currentTarget.dataset.id);
+    if (court)
+      this.setData({
+        renameId: this.data.renameId === court.id ? '' : court.id,
+        renameValue: court.name,
+      });
+  },
+  renameInput(e) {
+    this.setData({ renameValue: String(e.detail.value || '').slice(0, 80) });
+  },
+  async updateCourt(court, name, active, label, op) {
+    if (
+      await this.run(
+        this.org() + '/courts/' + court.id,
+        'PATCH',
+        { expectedVersion: court.version, name, status: active ? 'ACTIVE' : 'DISABLED' },
+        label,
+        op,
+      )
+    ) {
+      this.setData({ renameId: '', renameValue: '' });
+      await this.load();
+    }
+  },
+  async saveRename() {
+    const court = this.data.courtAdmin.find((c) => c.id === this.data.renameId);
+    const name = this.data.renameValue.trim();
+    if (!court || !name || name === court.name) return;
+    await this.updateCourt(court, name, court.active, '场地改名');
+  },
+  async toggleCourtStatus(e) {
+    const court = this.data.courtAdmin.find((c) => c.id === e.currentTarget.dataset.id);
+    if (!court) return;
+    const op = await ui.confirmOp(
+      this,
+      court.active ? '停用场地“' + court.name + '”' : '重新启用“' + court.name + '”',
+      court.active
+        ? '停用后不能再安排新比赛；已安排在该场地的比赛会在校验、发布或改期时报“场地已停用”，需改到其他场地。'
+        : '启用后可重新用于排赛与改期。',
+    );
+    // Late answers (account change, sign-out, unload, a newer dialog, a changed court) do nothing.
+    const now = this.data.courtAdmin.find((c) => c.id === court.id);
+    if (!op || !this._alive || !now || now.version !== court.version || now.active !== court.active)
+      return;
+    await this.updateCourt(
+      court,
+      court.name,
+      !court.active,
+      court.active ? '场地停用' : '场地启用',
+      op,
+    );
   },
   async addCourt() {
     const name = this.data.newCourt.trim();
@@ -265,20 +390,59 @@ Page({
       courtWindows: windows,
     };
   },
+  pickGroups(e) {
+    this.setData({ groupIndex: Number(e.detail.value) || 0 });
+  },
+  toggleSeed(e) {
+    const i = Number(e.currentTarget.dataset.index);
+    const seed = this.data.seeds[i];
+    if (!seed) return;
+    const limit = (this.data.groupCounts[this.data.groupIndex] || {}).value || 0;
+    if (!seed.on && this.data.seeds.filter((x) => x.on).length >= limit) {
+      this.setData({ error: '种子队最多 ' + limit + ' 支（每组至多一支）。' });
+      return;
+    }
+    this.setData({ ['seeds[' + i + '].on']: !seed.on, error: '' });
+  },
+  groupConfig() {
+    const option = this.data.groupCounts[this.data.groupIndex];
+    if (!option) throw new Error('冻结球队不足，分组赛每组至少2队');
+    const seeded = this.data.seeds.filter((x) => x.on).map((x) => x.id);
+    if (seeded.length > option.value) throw new Error('种子队数量不能超过分组数');
+    return { groupCount: option.value, seededEntryIds: seeded };
+  },
   async generate() {
-    let policy;
+    let policy, groupConfig;
+    const s = this._scheduling;
     try {
       policy = this.policy();
+      if (s.event.format === 'GROUP_KNOCKOUT') groupConfig = this.groupConfig();
     } catch (error) {
       this.setData({ error: ui.message(error) });
       return;
     }
-    const s = this._scheduling;
+    const note =
+      s.event.format === 'GROUP_KNOCKOUT'
+        ? '分成 ' +
+          groupConfig.groupCount +
+          ' 组，服务端随机均衡分组并生成组内循环；每组前二晋级淘汰赛。'
+        : s.event.format === 'SINGLE_ELIMINATION'
+          ? '服务端随机生成固定签位；首轮轮空不生成比赛，之后逐轮确认并发布。'
+          : '服务端随机生成对阵；之后可自动排入时间并校验。';
+    const op = await ui.confirmOp(
+      this,
+      GENERATE_TITLES[s.event.format],
+      s.freeze.entryCount + ' 支冻结球队。' + note,
+    );
+    // Same event version and frozen roster as confirmed, and generating still allowed.
+    const now = this._scheduling;
     if (
-      !(await ui.confirm(
-        '生成单循环对阵',
-        s.freeze.entryCount + ' 支冻结球队，服务端随机生成对阵；之后可自动排入时间并校验。',
-      ))
+      !op ||
+      !now ||
+      now.event.version !== s.event.version ||
+      !now.freeze ||
+      now.freeze.id !== s.freeze.id ||
+      !now.capabilities.canGenerate
     )
       return;
     if (
@@ -288,10 +452,12 @@ Page({
         {
           expectedEventVersion: s.event.version,
           freezeId: s.freeze.id,
-          algorithmVersion: 'RR_CIRCLE_V1',
+          algorithmVersion: ALGORITHMS[s.event.format],
           policy,
+          ...(groupConfig ? { groupConfig } : {}),
         },
         '对阵生成',
+        op,
       )
     )
       await this.load();
@@ -351,11 +517,19 @@ Page({
   async publish() {
     const r = this._revision;
     if (!r || !r.capabilities.canPublish) return;
+    const op = await ui.confirmOp(
+      this,
+      '发布正式赛程',
+      '发布后对阵与时间成为正式赛程，不能再重抽；个别场次只能按改期流程调整。',
+    );
+    const now = this._revision;
     if (
-      !(await ui.confirm(
-        '发布正式赛程',
-        '发布后对阵与时间成为正式赛程，不能再重抽；个别场次只能按改期流程调整。',
-      ))
+      !op ||
+      !now ||
+      now.id !== r.id ||
+      now.version !== r.version ||
+      now.eventVersion !== r.eventVersion ||
+      !now.capabilities.canPublish
     )
       return;
     if (
@@ -364,6 +538,7 @@ Page({
         'POST',
         { expectedEventVersion: r.eventVersion, expectedRevisionVersion: r.version },
         '赛程发布',
+        op,
       )
     )
       await this.load();
@@ -382,7 +557,17 @@ Page({
       this.setData({ error: '请填写重新抽签原因。' });
       return;
     }
-    if (!(await ui.confirm('重新抽签', '旧草稿保留为历史，生成新的随机对阵。'))) return;
+    const op = await ui.confirmOp(this, '重新抽签', '旧草稿保留为历史，生成新的随机对阵。');
+    const now = this._scheduling;
+    if (
+      !op ||
+      !now ||
+      now.event.version !== s.event.version ||
+      !now.capabilities.canRedraw ||
+      !this._revision ||
+      this._revision.id !== r.id
+    )
+      return;
     if (
       await this.run(
         this.org() + '/events/' + this.eventId + '/schedule-revisions',
@@ -390,19 +575,27 @@ Page({
         {
           expectedEventVersion: s.event.version,
           freezeId: s.freeze.id,
-          algorithmVersion: 'RR_CIRCLE_V1',
+          algorithmVersion: ALGORITHMS[s.event.format],
           policy: r.policy,
+          ...(r.groupConfig ? { groupConfig: r.groupConfig } : {}),
           redrawReason: reason,
         },
         '重新抽签',
+        op,
       )
     ) {
       this.setData({ redrawOpen: false, redrawReason: '', conflicts: [], validated: false });
       await this.load();
     }
   },
+  openSetup() {
+    ui.open('event-setup', { orgId: this.orgId, eventId: this.eventId });
+  },
   openEvent() {
     ui.open('org-event', { orgId: this.orgId, eventId: this.eventId });
+  },
+  openBracket() {
+    ui.open('bracket', { orgId: this.orgId, eventId: this.eventId });
   },
   openReview() {
     ui.open('entry-review', { orgId: this.orgId, eventId: this.eventId });

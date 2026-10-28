@@ -371,25 +371,49 @@ export class RegistrationService extends ApplicationService {
       const row = await this.team(client, ctx, id, true);
       if (!this.admin(ctx) && !(await this.leader(client, ctx, row.id))) throw notFound();
       versionCheck(row.version, input.expectedVersion);
-      const existing = await client.query<{ id: string }>(
-        'SELECT id FROM team_members WHERE org_id=$1 AND team_id=$2',
+      const existing = await client.query<{ id: string; name: string; status: string }>(
+        'SELECT id,name,status FROM team_members WHERE org_id=$1 AND team_id=$2 FOR UPDATE',
         [ctx.orgId, row.id],
       );
-      const ids = new Set(existing.rows.map((member) => member.id));
-      if (input.members.some((member) => member.id && !ids.has(member.id)))
+      const current = new Map(existing.rows.map((member) => [member.id, member]));
+      if (input.members.some((member) => member.id && !current.has(member.id)))
         invalid('成员不属于本队', { members: '请使用本队成员' });
       await this.ensureFreshSession(client, ctx);
-      await client.query(
-        "UPDATE team_members SET status='ARCHIVED',updated_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND status='ACTIVE'",
-        [ctx.orgId, row.id],
-      );
+      // C19: archive only the members actually removed from the list. Retained rows keep their
+      // identity and ACTIVE status throughout, so nothing keyed to them (account bindings,
+      // claims) is ended by a save that merely keeps or renames them.
+      const kept = new Set(input.members.flatMap((member) => (member.id ? [member.id] : [])));
+      const removed = existing.rows
+        .filter((member) => member.status === 'ACTIVE' && !kept.has(member.id))
+        .map((member) => member.id);
+      let endedBindings = 0;
+      if (removed.length) {
+        await client.query(
+          "UPDATE team_members SET status='ARCHIVED',updated_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND id=ANY($3::uuid[]) AND status='ACTIVE'",
+          [ctx.orgId, row.id, removed],
+        );
+        // A removed member's account binding ends with it. Pending claims on the member, and
+        // every pending claim in the team addressed to an account whose binding just ended,
+        // are withdrawn: coming back needs a new authorization.
+        const ended = await client.query<{ user_id: string }>(
+          "UPDATE team_member_bindings SET status='ENDED',ended_reason='MEMBER_REMOVED',ended_by=$4,ended_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND member_id=ANY($3::uuid[]) AND status='ACTIVE' RETURNING user_id",
+          [ctx.orgId, row.id, removed, ctx.user.id],
+        );
+        endedBindings = ended.rowCount ?? 0;
+        await client.query(
+          "UPDATE team_member_claims SET status='REVOKED',decided_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND status='PENDING' AND (member_id=ANY($3::uuid[]) OR target_user_id=ANY($4::uuid[]))",
+          [ctx.orgId, row.id, removed, ended.rows.map((r) => r.user_id)],
+        );
+      }
       for (const member of input.members) {
-        if (member.id)
-          await client.query(
-            "UPDATE team_members SET name=$4,status='ACTIVE',updated_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND id=$3",
-            [ctx.orgId, row.id, member.id, member.name],
-          );
-        else
+        const found = member.id ? current.get(member.id) : undefined;
+        if (found) {
+          if (found.status !== 'ACTIVE' || found.name !== member.name)
+            await client.query(
+              "UPDATE team_members SET name=$4,status='ACTIVE',updated_at=clock_timestamp() WHERE org_id=$1 AND team_id=$2 AND id=$3",
+              [ctx.orgId, row.id, found.id, member.name],
+            );
+        } else
           await client.query(
             'INSERT INTO team_members(id,org_id,team_id,name) VALUES($1,$2,$3,$4)',
             [randomUUID(), ctx.orgId, row.id, member.name],
@@ -401,6 +425,8 @@ export class RegistrationService extends ApplicationService {
       );
       await this.audit(client, ctx.user.id, ctx.orgId, 'TEAM_MEMBERS_UPDATED', 'team', row.id, {
         count: input.members.length,
+        removed: removed.length,
+        endedBindings,
       });
       return this.teamDto(client, ctx, await this.team(client, ctx, row.id, false));
     });

@@ -1,0 +1,82 @@
+{
+  "name": "c15-match-media-pending",
+  "route": "pages/match-media/index",
+  "state": "derived",
+  "designSource": "real-api:isolated-synthetic + synthetic unknown-result record",
+  "static": true,
+  "expectText": [
+    "上传结果未知：final-moment.png",
+    "系统不作证明",
+    "是这一份",
+    "结束此记录",
+    "重新读取核对"
+  ],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "",
+    "match": {
+      "title": "合成三队 VS 合成四队",
+      "meta": "合成分组杯 · 本场已结束"
+    },
+    "usage": {
+      "label": "机构已用 70 B / 128.0 MB · 单个文件不超过 8.0 MB"
+    },
+    "files": [
+      {
+        "id": "82e598dc-5196-4733-a8b3-6f96e6e0a4fb",
+        "name": "final-moment.png",
+        "kind": "图片",
+        "size": "70 B",
+        "status": "ACTIVE",
+        "statusLabel": "已私有保存 · 已关联媒体",
+        "time": "10-27 09:40",
+        "canRevoke": true
+      }
+    ],
+    "items": [
+      {
+        "id": "0b1fb328-f5b3-495c-b861-182dca267c20",
+        "title": "决赛最后一攻",
+        "kind": "图片",
+        "status": "PUBLISHED",
+        "statusLabel": "已发布 · 公开观赛开启时观众可见",
+        "rights": "主办方摄影组拍摄，仅限本届公开观赛",
+        "markers": 0,
+        "stale": false,
+        "canPublish": false,
+        "canRevoke": true
+      }
+    ],
+    "caps": {
+      "upload": true,
+      "manage": true,
+      "publish": true
+    },
+    "draftFiles": [],
+    "draftIndex": 0,
+    "title": "",
+    "rights": "",
+    "revokeId": "",
+    "revokeReason": "",
+    "upload": {
+      "stage": "saved",
+      "label": "已核对：final-moment.png 已私有保存，尚未发布。"
+    },
+    "canRetry": false,
+    "uncertain": false,
+    "unavailable": false,
+    "pending": {
+      "op": "upload",
+      "title": "上传结果未知：final-moment.png",
+      "at": "10-27 18:00",
+      "candidates": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "text": "final-moment.png · 0.1 KB · 10-27 18:00"
+        }
+      ]
+    }
+  }
+}
