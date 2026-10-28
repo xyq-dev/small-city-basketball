@@ -1,12 +1,12 @@
 # 当前状态
 
-## C19 分支接续验证（IN_PROGRESS / BRANCH_ONLY）
+## C19 阶段交付（REVIEW / BRANCH_ONLY）
 
-2026-10-28 Asia/Shanghai，Codex 为本轮唯一集成人。用户已推送中断成果并授权继续测试、修复；媒体、建队/成员绑定、私有赛季与独立授权、关注收藏已集成到 `feat/mini-program-completion`，[Draft PR #28](https://github.com/xyq-dev/small-city-basketball/pull/28)，base 为 #27 分支。当前 22 个 Migration、78 张表、38 条原生页面路由；001–018 与 AGENTS.md 未改。
+2026-10-28 18:37 Asia/Shanghai，集成人 Codex。媒体原编号恢复与有界分片、机构审批建队/加入/历史认领、独立 PRIVATE_SEASON 私有赛季、赛事关注收藏已完成本轮源码与隔离验收，集中在 [Draft PR #28](https://github.com/xyq-dev/small-city-basketball/pull/28)，基于 #27。当前 22 个 Migration、78 张表、38 条小程序路由；新迁移 019–022 只在自有隔离库执行，001–018 与 AGENTS.md 未改。
 
-本轮已补跨账号迟到操作、原请求恢复、临时文件清理、授权不可逆失效与并发撤权、赛季完整分页、最小运行权限、隔离恢复撤销和 HTTPS 上传限制。候选 CI `40664876451` 的 admin 成功：887 个浏览器检查、873 组兼容布局，其中新增 39 组；API 与隔离 production 发现新增测试问题，正在修复复跑，尚无最终全绿结论。官方微信工具/真机未执行，截图交付继续暂缓。详见 [C19 任务](tasks/C19.md)、[交接](handoffs/C19.md)、[总交付清单](audits/MINI_PROGRAM_DELIVERY_SCOPE.md)。
+业务候选 `cd506ec2b7933e5cb824f4d552acec6dbf59d4a8` 的 [CI 40670536098](https://github.com/xyq-dev/small-city-basketball/actions/runs/40670536098) 三个 job 全部 SUCCESS，attempt 1：源码单测 1750 通过/1 平台跳过，真实 PG 365+17，真实原生页面→API 14/14，兼容浏览器 887、真实 API 浏览器 24、HTTPS 浏览器 4；873 组布局（新增 39）、78 表重启/完整归档恢复、旧与新增授权隔离及自有资源清理通过。失败轮次与修复保留在交接，不拼接为一次成功。
 
-以上仅为分支进展；#22—#28 均保持 Draft、未合并，main 与生产未更新。019–022 只允许在自有隔离库验证；未正式 pack/部署或执行生产 Migration。下面保留各阶段 main/分支历史记录，不以旧结果替代 C19 验证。
+#22—#28 仍为 Draft，未合并、未正式 pack/部署、未操作生产数据库。官方微信工具/真机与 Windows 本轮复验未执行，截图交付继续暂缓；外部支付、消息发送等及内部后续规划见 [总交付清单](audits/MINI_PROGRAM_DELIVERY_SCOPE.md)。[任务](tasks/C19.md)、[交接](handoffs/C19.md) 记录来源和接续方式。后续仅同步交付文档，业务与测试源码不变；最终文档 HEAD 与自动复跑状态以 PR 为准。以下保留历史 main / 分支记录。
 
 当前C12：`DONE（本地验收入口） / MAIN`；原生微信截图阶段`BLOCKED`（缺少本机执行通道）。[PR20](https://github.com/xyq-dev/small-city-basketball/pull/20)已合并ace2403，最终source d74b30b4/合并tree4117a963实际核验一致，apps ca1a2328保持不变。Windows CI40222050802的14项工具检查全过；应用CI40222050821的admin/隔离production通过，API重复回归仍运行，未记作最终全绿。入口生成隔离六屏副本、原始PNG/错误与对照报告，真实业务/真机/用户签收仍待。[本机执行](WECHAT_NATIVE_UI_ACCEPTANCE.md)、[任务](tasks/C12.md)、[交接](handoffs/C12.md)。
 
