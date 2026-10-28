@@ -10,7 +10,19 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createApi } from '../src/app.js';
 import { migrate } from '../src/database/migrate.js';
 import { testDatabaseUrl } from './support.js';
-import type { MediaFileData } from '@small-city-basketball/contracts';
+import type {
+  FollowData,
+  IssuedTeamJoinCodeData,
+  IssuedTeamRequestLinkData,
+  MediaFileData,
+  MembershipData,
+  MyMemberClaimData,
+  SeasonDataGrantData,
+  SeasonDetailData,
+  TeamMemberClaimData,
+  UploadSessionData,
+  UploadSessionInput,
+} from '@small-city-basketball/contracts';
 
 // C19 G: a persisted legacy-database upgrade drill.
 //
@@ -715,12 +727,11 @@ describe(
       let freshOwner = '';
       const orgPath = `/v1/orgs/${fixture.organizationId}`;
       const matchPath = `${orgPath}/matches/${fixture.matchId}`;
-      const newAuth: Record<string, any> = {};
       const png = Buffer.from(
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
         'base64',
       );
-      const uploadInput = () => ({
+      const uploadInput = (): UploadSessionInput => ({
         clientRequestId: randomUUID(),
         purpose: 'MATCH_IMAGE',
         fileName: 'upgrade-drill.png',
@@ -728,13 +739,19 @@ describe(
         byteLength: png.length,
         contentSha256: createHash('sha256').update(png).digest('hex'),
       });
+      let newAuth: {
+        link: IssuedTeamRequestLinkData;
+        code: IssuedTeamJoinCodeData;
+        pendingClaim: TeamMemberClaimData;
+        seasonId: string;
+        completedInput: UploadSessionInput;
+        fileId: string;
+        openInput: UploadSessionInput;
+        session: UploadSessionData;
+      };
       try {
         freshOwner = await api.login(fixture.users.owner!.email);
-        const post = async <T = any>(
-          route: string,
-          body: unknown,
-          cookie = freshOwner,
-        ): Promise<T> => {
+        const post = async <T>(route: string, body: unknown, cookie = freshOwner): Promise<T> => {
           const result = await api.call(route, { method: 'POST', cookie, body });
           expect([200, 201], `${route}: ${JSON.stringify(result.error)}`).toContain(result.status);
           return result.data;
@@ -757,37 +774,46 @@ describe(
 
         // Seed each newly introduced authorization through its real HTTP command before the
         // backup. A restore test with empty C19 tables cannot prove revocation or non-revival.
-        newAuth.link = await post(`${orgPath}/team-request-links`, {
+        const link = await post<IssuedTeamRequestLinkData>(`${orgPath}/team-request-links`, {
           expiresInHours: 24,
           maxUses: 10,
           reason: '升级恢复演练合成入口',
         });
         const members = fixture.tables.team_members!.rows;
-        newAuth.code = await post(`${orgPath}/teams/${members[0]!.team_id}/join-codes`, {});
-        newAuth.pendingClaim = await post(
+        const code = await post<IssuedTeamJoinCodeData>(
+          `${orgPath}/teams/${members[0]!.team_id}/join-codes`,
+          {},
+        );
+        const pendingClaim = await post<TeamMemberClaimData>(
           `${orgPath}/teams/${members[0]!.team_id}/members/${members[0]!.id}/claims`,
           { targetUserId: fixture.users.invitee!.id },
         );
-        const bindings = [];
-        newAuth.grantIds = [];
+        expect(pendingClaim.claimId).toMatch(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+        );
+        expect(pendingClaim.status).toBe('PENDING');
         for (const [index, actor] of ['scorer', 'leader'].entries()) {
           const member = members[index + 1]!;
           const claimant = await api.login(fixture.users[actor]!.email);
-          const claim = await post(
+          const claim = await post<TeamMemberClaimData>(
             `${orgPath}/teams/${member.team_id}/members/${member.id}/claims`,
             { targetUserId: fixture.users[actor]!.id },
           );
-          bindings.push(await post(`/v1/me/member-claims/${claim.id}/accept`, {}, claimant));
-          const grant = await post(`${eventPath}/season-data-grants`, {
+          const accepted = await post<{
+            claim: MyMemberClaimData;
+            membership: MembershipData | null;
+          }>(`/v1/me/member-claims/${claim.claimId}/accept`, {}, claimant);
+          expect(accepted.claim.status).toBe('ACCEPTED');
+          expect(accepted.membership).toMatchObject({ memberId: member.id, status: 'ACTIVE' });
+          const grant = await post<SeasonDataGrantData>(`${eventPath}/season-data-grants`, {
             clientRequestId: randomUUID(),
             teamId: member.team_id,
             memberId: member.id,
             targetUserId: fixture.users[actor]!.id,
             reason: '升级恢复演练私有授权',
           });
-          newAuth.grantIds.push(grant.id);
           if (actor === 'scorer') {
-            const consent = await post(
+            const consent = await post<SeasonDataGrantData>(
               `/v1/me/season-data-grants/${grant.id}/commands`,
               { type: 'CONSENT', expectedVersion: grant.version },
               claimant,
@@ -795,55 +821,62 @@ describe(
             expect(consent.status).toBe('ACTIVE');
           } else expect(grant.status).toBe('PENDING');
         }
-        newAuth.bindings = bindings;
-        const season = await post(`${orgPath}/seasons`, {
+        const season = await post<SeasonDetailData>(`${orgPath}/seasons`, {
           clientRequestId: randomUUID(),
           name: '升级恢复演练赛季',
           startDate: event.startDate,
           endDate: event.endDate,
         });
-        newAuth.seasonId = season.id;
-        const attached = await post(`${orgPath}/seasons/${season.id}/commands`, {
+        const attached = await post<SeasonDetailData>(`${orgPath}/seasons/${season.id}/commands`, {
           type: 'ATTACH_EVENT',
           eventId: fixture.eventId,
           expectedVersion: season.version,
         });
-        await post(`${orgPath}/seasons/${season.id}/commands`, {
+        await post<SeasonDetailData>(`${orgPath}/seasons/${season.id}/commands`, {
           type: 'ACTIVATE',
           expectedVersion: attached.version,
         });
-        newAuth.follow = await post('/v1/me/follows', {
+        const follow = await post<FollowData>('/v1/me/follows', {
           publicEventId: fixture.public.publicEventId,
         });
-        expect(newAuth.follow.status).toBe('ACTIVE');
+        expect(follow.status).toBe('ACTIVE');
 
         // Completed file bytes must survive; an in-progress upload and its retained chunk
         // must be cancelled/cleared. Their request identities are retained in both cases.
-        newAuth.completedInput = uploadInput();
+        const completedInput = uploadInput();
         const completed = await post<MediaFileData>(`${matchPath}/media-file-requests`, {
-          ...newAuth.completedInput,
+          ...completedInput,
           contentBase64: png.toString('base64'),
         });
         // POST returns the file DTO; only GET by clientRequestId returns {state, file}.
         expect(completed.status).toBe('ACTIVE');
-        expect(completed.sha256).toBe(newAuth.completedInput.contentSha256);
-        newAuth.fileId = completed.id;
-        newAuth.openInput = uploadInput();
-        newAuth.session = await post(`${matchPath}/media-upload-sessions`, newAuth.openInput);
-        const chunk = await api.call(
-          `${matchPath}/media-upload-sessions/${newAuth.session.id}/chunks/0`,
-          {
-            method: 'PUT',
-            cookie: freshOwner,
-            body: {
-              byteLength: png.length,
-              sha256: newAuth.openInput.contentSha256,
-              contentBase64: png.toString('base64'),
-            },
-          },
+        expect(completed.sha256).toBe(completedInput.contentSha256);
+        const openInput = uploadInput();
+        const session = await post<UploadSessionData>(
+          `${matchPath}/media-upload-sessions`,
+          openInput,
         );
+        const chunk = await api.call(`${matchPath}/media-upload-sessions/${session.id}/chunks/0`, {
+          method: 'PUT',
+          cookie: freshOwner,
+          body: {
+            byteLength: png.length,
+            sha256: openInput.contentSha256,
+            contentBase64: png.toString('base64'),
+          },
+        });
         expect(chunk.status, JSON.stringify(chunk.error)).toBe(200);
         expect(chunk.data.receivedBytes).toBe(png.length);
+        newAuth = {
+          link,
+          code,
+          pendingClaim,
+          seasonId: season.id,
+          completedInput,
+          fileId: completed.id,
+          openInput,
+          session,
+        };
       } finally {
         await api.close();
       }
@@ -981,6 +1014,20 @@ describe(
         expect(result.counts.teamJoinCodesRevoked).toBe(1);
         expect(result.counts.pendingMemberClaimsRevoked).toBe(1);
         expect(
+          (
+            await restoredPool.query(
+              'SELECT id,status,target_user_id FROM team_member_claims WHERE id=$1',
+              [newAuth.pendingClaim.claimId],
+            )
+          ).rows,
+        ).toEqual([
+          {
+            id: newAuth.pendingClaim.claimId,
+            status: 'REVOKED',
+            target_user_id: fixture.users.invitee!.id,
+          },
+        ]);
+        expect(
           (await restoredPool.query('SELECT status FROM season_data_grants ORDER BY id')).rows,
         ).toEqual([{ status: 'WITHDRAWN' }, { status: 'WITHDRAWN' }]);
         const uploadState = (
@@ -1088,14 +1135,15 @@ describe(
         });
         expect([404, 409, 410, 422]).toContain(join.status);
         const claim = await restoredApi.call(
-          `/v1/me/member-claims/${newAuth.pendingClaim.id}/accept`,
+          `/v1/me/member-claims/${newAuth.pendingClaim.claimId}/accept`,
           {
             method: 'POST',
             cookie: inviteeAfter,
             body: {},
           },
         );
-        expect([404, 409, 410, 422]).toContain(claim.status);
+        expect(claim.status).toBe(409);
+        expect(claim.error?.code).toBe('CLAIM_CLOSED');
         const grants = await restoredApi.call('/v1/me/season-data-grants', { cookie: scorerAfter });
         expect(grants.status).toBe(200);
         expect(grants.data.grants).toHaveLength(1);
