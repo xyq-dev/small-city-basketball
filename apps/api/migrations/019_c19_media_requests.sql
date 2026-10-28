@@ -126,6 +126,8 @@ BEGIN
 END;
 $$;
 
+-- Expiry decisions (close, chunk accept) use the transaction's own time, now(), exactly like the
+-- service's checks, so one transaction never sees a session both open and lapsed.
 CREATE FUNCTION c19_upload_session_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Upload sessions cannot be deleted' USING ERRCODE='23514'; END IF;
@@ -147,8 +149,8 @@ BEGIN
   IF (to_jsonb(NEW)-ARRAY['status','version','closed_at','closed_by','file_id']) IS DISTINCT FROM
     (to_jsonb(OLD)-ARRAY['status','version','closed_at','closed_by','file_id']) OR
     NEW.version<>OLD.version+1 OR OLD.status<>'OPEN' OR NEW.status='OPEN' OR
-    (NEW.status IN ('COMPLETED','CANCELLED') AND OLD.expires_at<=clock_timestamp()) OR
-    (NEW.status='EXPIRED' AND OLD.expires_at>clock_timestamp()) THEN
+    (NEW.status IN ('COMPLETED','CANCELLED') AND OLD.expires_at<=now()) OR
+    (NEW.status='EXPIRED' AND OLD.expires_at>now()) THEN
     RAISE EXCEPTION 'Upload sessions only close once from OPEN' USING ERRCODE='23514';
   END IF;
   RETURN NEW;
@@ -163,7 +165,7 @@ BEGIN
   IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Upload chunks cannot be deleted' USING ERRCODE='23514'; END IF;
   IF TG_OP='INSERT' THEN
     SELECT * INTO s FROM media_upload_sessions WHERE org_id=NEW.org_id AND id=NEW.session_id FOR SHARE;
-    IF NOT FOUND OR s.status<>'OPEN' OR s.expires_at<=clock_timestamp() OR NEW.released_at IS NOT NULL OR
+    IF NOT FOUND OR s.status<>'OPEN' OR s.expires_at<=now() OR NEW.released_at IS NOT NULL OR
       NEW.chunk_index>=s.chunk_count OR
       NEW.byte_length<>(CASE WHEN NEW.chunk_index<s.chunk_count-1 THEN s.chunk_size
         ELSE s.byte_length-s.chunk_size*(s.chunk_count-1) END) THEN

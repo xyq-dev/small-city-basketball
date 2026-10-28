@@ -815,6 +815,41 @@ describe(
       }
     });
 
+    test('expiry passing during complete or cancel never surfaces as a 500', async () => {
+      // A test-only trigger, firing before the guard, sleeps until the session's expiry has
+      // passed on the wall clock while the complete/cancel transaction is in progress.
+      await h.api.pool.query(`CREATE FUNCTION c19_test_slow() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN IF OLD.file_name='slow.mp4' THEN
+          PERFORM pg_sleep(GREATEST(0, EXTRACT(EPOCH FROM OLD.expires_at-clock_timestamp()))+0.1);
+        END IF; RETURN NEW; END; $$`);
+      await h.api.pool.query(
+        'CREATE TRIGGER a_c19_test_slow BEFORE UPDATE ON media_upload_sessions FOR EACH ROW EXECUTE FUNCTION c19_test_slow()',
+      );
+      try {
+        for (const action of ['complete', 'cancel'] as const) {
+          const bytes = mp4(CHUNK + 333, action === 'complete' ? 90 : 91);
+          const id = randomUUID();
+          const session = data<UploadSessionData>(
+            await post(sessionsPath(), metaOf(fileBody(id, bytes, { fileName: 'slow.mp4' }))),
+            201,
+          );
+          await sendAll(session, bytes);
+          await fixture(
+            "UPDATE media_upload_sessions SET expires_at=clock_timestamp()+interval '1 second' WHERE id=$1",
+            [session.id],
+          );
+          const r = action === 'complete' ? await complete(session) : await cancel(session);
+          // Decided once, at the transaction's own time: it started before expiry, so it wins.
+          expect(r.status, JSON.stringify(r.body)).toBe(200);
+          const row = await one('SELECT status FROM media_upload_sessions WHERE id=$1', [session.id]);
+          expect(row.status).toBe(action === 'complete' ? 'COMPLETED' : 'CANCELLED');
+        }
+      } finally {
+        await h.api.pool.query('DROP TRIGGER a_c19_test_slow ON media_upload_sessions');
+        await h.api.pool.query('DROP FUNCTION c19_test_slow()');
+      }
+    });
+
     test('cancel racing complete: the transaction result wins and is reported truthfully', async () => {
       for (let round = 0; round < 4; round++) {
         const bytes = mp4(CHUNK + 300, 50 + round);

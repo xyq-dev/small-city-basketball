@@ -38,7 +38,8 @@ const active = (event: Row) => !['ARCHIVED', 'CANCELLED'].includes(event.status)
 const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const FILE_COLUMNS =
   'id,purpose,roster_revision_id,file_name,content_type,byte_length,sha256,version,created_at,revoked_at,purged_at';
-const SESSION_COLUMNS = '*,expires_at<=clock_timestamp() AS lapsed';
+// Lapse is judged at the transaction's own time, now(), the same clock as the DB guard.
+const SESSION_COLUMNS = '*,expires_at<=now() AS lapsed';
 const conflict = () =>
   new ApiError(409, 'IDEMPOTENCY_CONFLICT', '该请求编号已用于不同内容，原请求不会被改写');
 const closed = (message = '该请求编号对应的上传会话已取消或过期，编号不能再次使用') =>
@@ -63,7 +64,7 @@ export async function expireMediaUploadSessions(
   const r = await db.query(
     `WITH due AS (
        SELECT org_id,id FROM media_upload_sessions
-       WHERE status='OPEN' AND expires_at<=clock_timestamp() AND ($1::uuid IS NULL OR org_id=$1::uuid)
+       WHERE status='OPEN' AND expires_at<=now() AND ($1::uuid IS NULL OR org_id=$1::uuid)
        ORDER BY expires_at,id LIMIT $2 FOR UPDATE SKIP LOCKED
      ), expired AS (
        UPDATE media_upload_sessions s SET status='EXPIRED',closed_at=clock_timestamp(),version=s.version+1
@@ -678,10 +679,11 @@ export class MediaRequestService extends MediaService {
       await this.ensureFreshSession(c, a.ctx);
       const fileId = randomUUID();
       // Close first (deferred FK) so the file insert's quota no longer counts the reservation.
-      await c.query(
-        "UPDATE media_upload_sessions SET status='COMPLETED',file_id=$3,closed_at=clock_timestamp(),closed_by=$4,version=version+1 WHERE org_id=$1 AND id=$2",
+      const closing = await c.query(
+        "UPDATE media_upload_sessions SET status='COMPLETED',file_id=$3,closed_at=clock_timestamp(),closed_by=$4,version=version+1 WHERE org_id=$1 AND id=$2 AND status='OPEN' AND expires_at>now() RETURNING id",
         [s.org_id, s.id, fileId, a.ctx.user.id],
       );
+      if (!closing.rowCount) throw closed();
       const row = (
         await c.query(
           `INSERT INTO media_files(id,org_id,event_id,match_id,purpose,file_name,content_type,byte_length,sha256,payload,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING ${FILE_COLUMNS}`,
@@ -730,10 +732,11 @@ export class MediaRequestService extends MediaService {
       await this.ensureFreshSession(c, a.ctx);
       if (s.status === 'OPEN') {
         const next = s.lapsed ? 'EXPIRED' : 'CANCELLED';
-        await c.query(
-          'UPDATE media_upload_sessions SET status=$3,closed_at=clock_timestamp(),closed_by=$4,version=version+1 WHERE org_id=$1 AND id=$2',
+        const closing = await c.query(
+          `UPDATE media_upload_sessions SET status=$3,closed_at=clock_timestamp(),closed_by=$4,version=version+1 WHERE org_id=$1 AND id=$2 AND status='OPEN' AND expires_at${next === 'CANCELLED' ? '>' : '<='}now() RETURNING id`,
           [s.org_id, s.id, next, next === 'CANCELLED' ? a.ctx.user.id : null],
         );
+        if (!closing.rowCount) throw closed();
         await this.releaseChunks(c, s);
         if (next === 'CANCELLED')
           await this.audit(
