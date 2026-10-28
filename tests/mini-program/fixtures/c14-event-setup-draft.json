@@ -1,0 +1,109 @@
+{
+  "name": "c14-event-setup-draft",
+  "route": "pages/event-setup/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["基本信息（草稿可改）", "保存报名规则"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "报名规则已保存。",
+    "creating": false,
+    "formats": [
+      {
+        "value": "ROUND_ROBIN",
+        "label": "单循环"
+      },
+      {
+        "value": "SINGLE_ELIMINATION",
+        "label": "单淘汰"
+      },
+      {
+        "value": "GROUP_KNOCKOUT",
+        "label": "分组循环接淘汰"
+      }
+    ],
+    "tiebreakers": [
+      {
+        "value": "SCORE_DIFFERENCE",
+        "label": "净胜分"
+      },
+      {
+        "value": "POINTS_FOR",
+        "label": "总得分"
+      },
+      {
+        "value": "WINS",
+        "label": "胜场"
+      }
+    ],
+    "event": {
+      "name": "合成青锋杯",
+      "status": "DRAFT",
+      "statusLabel": "赛事筹备中",
+      "formatLabel": "单循环赛事",
+      "dateLabel": "2028-03-01 至 2028-03-02",
+      "venueName": "合成体育馆",
+      "roundRobin": true
+    },
+    "draft": {
+      "name": "合成青锋杯",
+      "startDate": "2028-03-01",
+      "endDate": "2028-03-02",
+      "venueName": "合成体育馆",
+      "format": "ROUND_ROBIN",
+      "formatIndex": 0
+    },
+    "registration": {
+      "minPlayers": "2",
+      "maxPlayers": "3",
+      "zeroDistinct": true,
+      "requireIdentity": false,
+      "requireInsurance": false,
+      "saved": true,
+      "editable": true
+    },
+    "scoring": null,
+    "standings": {
+      "editable": true,
+      "locked": false,
+      "canPublish": false,
+      "rulesetId": "",
+      "win": "2",
+      "loss": "1",
+      "draw": "1",
+      "tiebreakers": [
+        {
+          "value": "SCORE_DIFFERENCE",
+          "label": "净胜分",
+          "on": true,
+          "rank": "1"
+        },
+        {
+          "value": "POINTS_FOR",
+          "label": "总得分",
+          "on": true,
+          "rank": "2"
+        },
+        {
+          "value": "WINS",
+          "label": "胜场",
+          "on": false,
+          "rank": ""
+        }
+      ],
+      "orderLabel": "净胜分 → 总得分",
+      "saved": false
+    },
+    "viewing": {
+      "active": false,
+      "publicEventId": "",
+      "canEnable": false,
+      "canDisable": false,
+      "history": false
+    },
+    "unavailable": false
+  }
+}

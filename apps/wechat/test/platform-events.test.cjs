@@ -10,6 +10,7 @@ const orgA = '11111111-1111-4111-8111-111111111111';
 const orgB = '22222222-2222-4222-8222-222222222222';
 const eventA = '33333333-3333-4333-8333-333333333333';
 const eventB = '44444444-4444-4444-8444-444444444444';
+const eventC = '45454545-4545-4545-8545-454545454545';
 const viewer = '55555555-5555-4555-8555-555555555555';
 const publicKey = 'p'.repeat(43);
 const cookie = 'c'.repeat(43);
@@ -63,31 +64,90 @@ async function signIn(h) {
   await h.requireLocal('utils/api.js').getClient().request('/v1/auth/session');
 }
 
-test('platform reads allow only own-organization event read models, never event writes', () => {
-  for (const url of [
-    '/v1/orgs/' + orgA + '/events?limit=50',
-    '/v1/orgs/' + orgA + '/events?limit=50&cursor=abc_DEF-1',
-    '/v1/orgs/' + orgA + '/events/' + eventA,
-    '/v1/orgs/' + orgA + '/events/' + eventA + '/standings',
-    '/v1/orgs/' + orgA + '/events/' + eventA + '/groups',
-    '/v1/orgs/' + orgA + '/events/' + eventA + '/knockout',
-    '/v1/orgs/' + orgA + '/events/' + eventA + '/player-statistics',
-    '/v1/orgs/' + orgA + '/events/' + eventA + '/matches?limit=100',
-  ])
-    assert.equal(pathAllowed(url, 'GET'), true, url);
+test('platform paths allow own-organization reads and existing role-checked commands only', () => {
+  const match = '/v1/orgs/' + orgA + '/matches/' + eventA;
   for (const [url, method] of [
+    ['/v1/orgs/' + orgA + '/events?limit=50', 'GET'],
+    ['/v1/orgs/' + orgA + '/events?limit=50&cursor=abc_DEF-1', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA, 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/standings', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/groups', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/knockout', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/player-statistics', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/matches?limit=100', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle-commands', 'POST'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/registration-commands', 'POST'],
+    ['/v1/orgs/' + orgA + '/scoring-matches', 'GET'],
+    ['/v1/orgs/' + orgA + '/scoring-matches?eventId=' + eventA + '&limit=100', 'GET'],
+    [match + '/scoring', 'GET'],
+    [match + '/snapshot', 'GET'],
+    [match + '/scoring-events?limit=100', 'GET'],
+    [match + '/result-confirmations?limit=100', 'GET'],
+    [match + '/commands', 'POST'],
+    [match + '/commands/' + orgA, 'GET'],
+    [match + '/scorekeeper-lease', 'POST'],
+    [match + '/scorekeeper-lease', 'DELETE'],
+    [match + '/scorekeeper-lease/renew', 'POST'],
     ['/v1/orgs/' + orgA + '/events', 'POST'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA, 'PATCH'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/registration-rules', 'PUT'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/scoring-rules', 'PUT'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/standings-rules', 'PUT'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/standings-rule-commands', 'POST'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/public-viewing-commands', 'POST'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/scheduling', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/schedule-revisions', 'POST'],
+    ['/v1/orgs/' + orgA + '/courts?limit=100', 'GET'],
+    ['/v1/orgs/' + orgA + '/courts', 'POST'],
+    ['/v1/orgs/' + orgA + '/courts/' + eventA, 'PATCH'],
+    ['/v1/orgs/' + orgA + '/schedule-revisions/' + eventA, 'GET'],
+    ['/v1/orgs/' + orgA + '/schedule-revisions/' + eventA + '/allocations', 'PUT'],
+    ['/v1/orgs/' + orgA + '/schedule-revisions/' + eventA + '/validate', 'POST'],
+    ['/v1/orgs/' + orgA + '/schedule-revisions/' + eventA + '/publish', 'POST'],
+    ['/v1/orgs/' + orgA + '/members', 'GET'],
+    [match + '/staff/' + orgA, 'PUT'],
+    // C15: tie draws, qualification/round publication, formal rescheduling and match media.
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/group-tie-commands', 'POST'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/group-qualification-commands', 'POST'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/knockout-round-commands', 'POST'],
+    [match + '/rescheduling', 'GET'],
+    [match + '/reschedule-commands', 'POST'],
+    [match + '/media', 'GET'],
+    [match + '/media', 'POST'],
+    [match + '/media-files', 'POST'],
+    [match + '/media-files/' + orgA + '/commands', 'POST'],
+    [match + '/media/' + orgA + '/commands', 'POST'],
+    [match + '/media/' + orgA + '/markers', 'POST'],
+  ])
+    assert.equal(pathAllowed(url, method), true, method + ' ' + url);
+  for (const [url, method] of [
     ['/v1/orgs/' + orgA + '/events', 'GET'],
     ['/v1/orgs/' + orgA + '/events?limit=100', 'GET'],
     ['/v1/orgs/' + orgA + '/events?limit=50&q=private', 'GET'],
-    ['/v1/orgs/' + orgA + '/events/' + eventA, 'PATCH'],
-    ['/v1/orgs/' + orgA + '/events/' + eventA + '/standings-rules', 'PUT'],
-    ['/v1/orgs/' + orgA + '/events/' + eventA + '/public-viewing-commands', 'POST'],
-    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle-commands', 'POST'],
-    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle', 'POST'],
     ['/v1/orgs/' + orgA + '/events/' + eventA + '/player-statistics?asOf=1', 'GET'],
-    ['/v1/orgs/' + orgA + '/events/' + eventA + '/scheduling', 'GET'],
-    ['/v1/orgs/' + orgA + '/scoring-matches', 'GET'],
+    ['/v1/orgs/' + orgA + '/scoring-matches?status=LIVE', 'GET'],
+    ['/v1/orgs/' + orgA + '/scoring-matches?eventId=private', 'GET'],
+    [match + '/commands', 'GET'],
+    [match + '/scorekeeper-lease', 'GET'],
+    [match + '/reschedule-commands', 'GET'],
+    [match + '/rescheduling?history=all', 'GET'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/knockout-round-commands', 'PUT'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/group-tie-commands', 'GET'],
+    [match + '/media?limit=50', 'GET'],
+    [match + '/media-files', 'GET'],
+    [match + '/media-files/' + orgA + '/content', 'GET'],
+    [match + '/media/' + orgA + '/markers', 'GET'],
+    [match + '/media/' + orgA, 'DELETE'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/public-viewing-commands', 'PUT'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA, 'DELETE'],
+    ['/v1/orgs/' + orgA + '/courts/' + eventA, 'DELETE'],
+    ['/v1/orgs/' + orgA + '/courts/' + eventA + '?force=1', 'PATCH'],
+    ['/v1/orgs/' + orgA + '/members/' + eventA, 'PUT'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/staff/' + orgA, 'PUT'],
+    ['/v1/orgs/' + orgA + '/events/' + eventA + '/lifecycle', 'POST'],
+    [match + '/scoring-events?limit=20', 'GET'],
     ['/v1/orgs/not-a-uuid/events?limit=50', 'GET'],
   ])
     assert.equal(pathAllowed(url, method), false, method + ' ' + url);
@@ -102,8 +162,8 @@ test('signed-out events tab issues no private request and keeps the public watch
   assert.equal(h.page.data.signedIn, false);
   const preview = buildPreview({ root, route: 'pages/watch/index', data: h.page.data });
   assert.match(preview.phone, /登录后查看你参与的赛事/);
-  assert.match(preview.phone, /打开一届赛事/);
-  assert.match(preview.phone, /公开赛事目录尚未开放/);
+  assert.match(preview.phone, /粘贴观赛链接/);
+  assert.match(preview.phone, /关于公开赛事目录/);
 });
 
 test('a player without an organization role never reads institution events and sees teams entry', async () => {
@@ -150,6 +210,11 @@ test('my events groups by real status, keeps per-organization failures and opens
         'next-cursor',
       ),
     ],
+    // The events tab follows the cursor; the last page here has no further cursor.
+    [
+      '/v1/orgs/' + orgA + '/events?limit=50&cursor=next-cursor',
+      ok([event(eventC, 'COMPLETED', '合成春季联赛', '2026-03-01')]),
+    ],
     ['/v1/orgs/' + orgB + '/events?limit=50', fail(403)],
   ]);
   await signIn(h);
@@ -157,7 +222,7 @@ test('my events groups by real status, keeps per-organization failures and opens
   await h.page.load();
   await h.flush();
   const requested = h.requests().filter((url) => url.includes('/events'));
-  assert.equal(requested.length, 2);
+  assert.equal(requested.length, 3);
   assert.deepEqual(
     h.page.data.sections.map((s) => s.key),
     ['live', 'finished'],
@@ -165,7 +230,12 @@ test('my events groups by real status, keeps per-organization failures and opens
   assert.equal(h.page.data.sections[0].events[0].name, '合成冬季杯');
   assert.equal(h.page.data.failures.length, 1);
   assert.match(h.page.data.failures[0].message, /不能查看该机构/);
-  assert.deepEqual(h.page.data.truncated, ['合成机构A']);
+  assert.deepEqual(h.page.data.truncated, []);
+  assert.deepEqual(
+    h.page.data.sections[1].events.map((e) => e.name),
+    ['合成秋季联赛', '合成春季联赛'],
+    'events from the second page are listed',
+  );
   h.page.openEvent({ currentTarget: { dataset: { org: orgA, id: eventB } } });
   assert.ok(
     h.wx.calls.some(
@@ -341,7 +411,7 @@ test('org event page renders schedule, published standings and basic stats with 
   assert.ok(h.wx.calls.some((c) => c.url === '/pages/event/index?event=' + publicKey));
   h.page.tab({ currentTarget: { dataset: { tab: 'schedule' } } });
   const schedule = buildPreview({ root, route: 'pages/org-event/index', data: h.page.data });
-  assert.match(schedule.phone, /原生记分、排赛将在后续版本提供/);
+  assert.match(schedule.phone, /点击比赛查看比分、记录与确认状态/);
 });
 
 test('a forbidden section stays local; a hidden event clears the page', async () => {

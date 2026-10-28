@@ -1,0 +1,33 @@
+{
+  "name": "c19-team-join-claim",
+  "route": "pages/team-join/index",
+  "state": "synthetic-populated",
+  "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
+  "expectText": ["输入加入码", "历史成员认领", "合成历史球员"],
+  "expectEnabled": ["加入球队", "是我本人，接受", "不是我"],
+  "data": {
+    "code": "ABCD EFGH IJKL MNOP QRST UVWX YZ",
+    "displayName": "合成甲",
+    "joined": null,
+    "claims": [
+      {
+        "claimId": "99999999-9999-4999-8999-999999999999",
+        "organizationName": "合成机构",
+        "teamName": "合成青锋",
+        "memberName": "合成历史球员",
+        "status": "PENDING",
+        "expiresAt": "2026-11-04T08:00:00.000Z",
+        "createdAt": "2026-10-28T08:00:00.000Z",
+        "decidedAt": null,
+        "stateText": "待本人接受",
+        "expires": "2026-11-04 16:00"
+      }
+    ],
+    "loading": false,
+    "busy": false,
+    "uncertain": false,
+    "error": "",
+    "message": "",
+    "loginRequired": false
+  }
+}

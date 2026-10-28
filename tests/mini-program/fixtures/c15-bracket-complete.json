@@ -1,0 +1,181 @@
+{
+  "name": "c15-bracket-complete",
+  "route": "pages/bracket/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["最终名次", "第1名", "已发布"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "第5轮已正式发布；请重新开启公开观赛。",
+    "event": {
+      "name": "合成分组杯",
+      "statusLabel": "比赛进行中",
+      "formatLabel": "分组循环接淘汰"
+    },
+    "kind": "GROUP_KNOCKOUT",
+    "progress": "9 / 9 场有效独立确认 · 已发布 9 场",
+    "qualification": "淘汰首轮已发布",
+    "groups": [
+      {
+        "key": "A",
+        "label": "A组",
+        "rows": [
+          {
+            "key": "3b264287-d1c0-4baa-a484-e9ef63f53fbf",
+            "rank": "1=",
+            "team": "合成一队",
+            "record": "1-1",
+            "points": "3",
+            "diff": "0"
+          },
+          {
+            "key": "dd875b8e-374b-47df-9d3d-b58c51b24483",
+            "rank": "1=",
+            "team": "合成三队",
+            "record": "1-1",
+            "points": "3",
+            "diff": "0"
+          },
+          {
+            "key": "af856c45-059a-43d0-8115-20a80b98c7f0",
+            "rank": "1=",
+            "team": "合成二队",
+            "record": "1-1",
+            "points": "3",
+            "diff": "0"
+          }
+        ],
+        "qualified": "合成三队 → 合成二队",
+        "ties": "",
+        "needsDraw": false,
+        "draw": {
+          "order": "合成三队 → 合成二队 → 合成一队",
+          "reason": "三队胜负循环且不设同分比较，按规则抽签",
+          "time": "2026-10-27 09:40"
+        }
+      },
+      {
+        "key": "B",
+        "label": "B组",
+        "rows": [
+          {
+            "key": "6bfc5490-176b-4d0c-8785-287971043daf",
+            "rank": "1",
+            "team": "合成四队",
+            "record": "2-0",
+            "points": "4",
+            "diff": "+4"
+          },
+          {
+            "key": "8a1708b3-8a0e-40db-a0f5-85e3cf2015b7",
+            "rank": "2",
+            "team": "合成五队",
+            "record": "1-1",
+            "points": "3",
+            "diff": "0"
+          },
+          {
+            "key": "f21ab9bf-fc0b-4117-8cbd-077ccb2a64ae",
+            "rank": "3",
+            "team": "合成六队",
+            "record": "0-2",
+            "points": "2",
+            "diff": "-4"
+          }
+        ],
+        "qualified": "合成四队 → 合成五队",
+        "ties": "",
+        "needsDraw": false,
+        "draw": null
+      }
+    ],
+    "rounds": [
+      {
+        "key": "4",
+        "label": "半决赛",
+        "published": true,
+        "slots": [
+          {
+            "key": "R4-P1",
+            "matchId": "56be42d6-8b79-436f-af78-bcd350c9c4b0",
+            "bye": false,
+            "home": "合成三队",
+            "away": "合成五队",
+            "status": "FINAL",
+            "statusLabel": "本场已结束",
+            "winner": "合成三队"
+          },
+          {
+            "key": "R4-P2",
+            "matchId": "00f189c4-a85f-4035-b098-715bdd31a818",
+            "bye": false,
+            "home": "合成四队",
+            "away": "合成二队",
+            "status": "FINAL",
+            "statusLabel": "本场已结束",
+            "winner": "合成四队"
+          }
+        ]
+      },
+      {
+        "key": "5",
+        "label": "决赛",
+        "published": true,
+        "slots": [
+          {
+            "key": "R5-P1",
+            "matchId": "525a960f-e14e-46a9-831a-53ca99fdd60e",
+            "bye": false,
+            "home": "合成三队",
+            "away": "合成四队",
+            "status": "FINAL",
+            "statusLabel": "本场已结束",
+            "winner": "合成四队"
+          }
+        ]
+      }
+    ],
+    "placements": [
+      {
+        "key": "6bfc5490-176b-4d0c-8785-287971043daf",
+        "rank": "第1名",
+        "team": "合成四队"
+      },
+      {
+        "key": "dd875b8e-374b-47df-9d3d-b58c51b24483",
+        "rank": "第2名",
+        "team": "合成三队"
+      },
+      {
+        "key": "af856c45-059a-43d0-8115-20a80b98c7f0",
+        "rank": "第3名（并列）",
+        "team": "合成二队"
+      },
+      {
+        "key": "8a1708b3-8a0e-40db-a0f5-85e3cf2015b7",
+        "rank": "第3名（并列）",
+        "team": "合成五队"
+      }
+    ],
+    "next": null,
+    "fixtures": [],
+    "courts": [
+      {
+        "id": "e21db07e-fa79-4738-b73a-a8af6d92ea69",
+        "name": "合成一号场"
+      }
+    ],
+    "reason": "",
+    "tieReasons": {
+      "A": ""
+    },
+    "blocker": "",
+    "canDraw": false,
+    "conflicts": [],
+    "uncertain": false,
+    "unavailable": false
+  }
+}

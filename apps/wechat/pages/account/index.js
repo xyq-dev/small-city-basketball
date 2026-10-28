@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
+const events = require('../../utils/events');
 function wxCode() {
   return new Promise((resolve, reject) =>
     wx.login({
@@ -8,6 +9,24 @@ function wxCode() {
       fail: () => reject(new Error('微信登录未完成，请重新发起')),
     }),
   );
+}
+// Display hints only: every management page re-reads its own capabilities from the API.
+function roleView(session) {
+  const organizations = events.organizations(session);
+  const roles = organizations.map((o) => ({
+    key: o.id,
+    text: o.name + ' · ' + o.roleLabel,
+  }));
+  return {
+    roles,
+    managedOrgs: organizations.filter((o) => ['ORG_OWNER', 'ORG_ADMIN'].includes(o.role)),
+    roleSummary:
+      roles
+        .map((r) => r.text)
+        .slice(0, 2)
+        .join('；') + (roles.length > 2 ? ' 等' : ''),
+    teamCount: Array.isArray(session.teamContexts) ? session.teamContexts.length : 0,
+  };
 }
 Page({
   data: {
@@ -27,6 +46,10 @@ Page({
     messageTone: 'info',
     hasReturn: false,
     securityOpen: false,
+    roles: [],
+    managedOrgs: [],
+    roleSummary: '',
+    teamCount: 0,
   },
   onLoad(query = {}) {
     this.returnTo = ui.safeReturn(query.returnTo || '');
@@ -45,6 +68,9 @@ Page({
             securityOpen: false,
             password: '',
             consent: false,
+            roles: [],
+            managedOrgs: [],
+            teamCount: 0,
           });
       });
     this.load();
@@ -76,7 +102,15 @@ Page({
   async load() {
     const seq = (this.seq || 0) + 1;
     this.seq = seq;
-    this.setData({ loading: true, user: null, binding: null, connected: false });
+    this.setData({
+      loading: true,
+      user: null,
+      binding: null,
+      connected: false,
+      roles: [],
+      managedOrgs: [],
+      teamCount: 0,
+    });
     try {
       const client = api.getClient();
       const results = await Promise.allSettled([
@@ -113,6 +147,7 @@ Page({
           binding,
           connected: !!(binding && binding.connected),
           platformOperator: current.platformOperator === true,
+          ...roleView(current),
           registerMode: false,
           message: '',
         });
@@ -259,6 +294,23 @@ Page({
         });
     });
   },
+  switchAccount() {
+    this.task(async () => {
+      await api.getClient().request('/v1/auth/logout', 'POST');
+      api.getClient().clearSession();
+      if (!this.closed)
+        this.setData({
+          user: null,
+          binding: null,
+          connected: false,
+          roles: [],
+          teamCount: 0,
+          registerMode: false,
+          message: '已退出上一账号，请登录要切换的账号。',
+          messageTone: 'success',
+        });
+    });
+  },
   continue() {
     if (this.data.user && this.returnTo) wx.redirectTo({ url: this.returnTo });
   },
@@ -272,9 +324,15 @@ Page({
   },
   go(e) {
     const key = e.currentTarget.dataset.page;
+    if (this.data.busy) return;
+    if (key === 'watch') {
+      wx.redirectTo({ url: '/pages/watch/index' });
+      return;
+    }
     const kind = e.currentTarget.dataset.kind;
-    const query =
-      key === 'bookings'
+    const query = ['seasons', 'team-requests'].includes(key)
+      ? { orgId: api.uuid(e.currentTarget.dataset.org) }
+      : key === 'bookings'
         ? { view: 'sent' }
         : key === 'planned' && ['funds', 'messages', 'profile'].includes(kind)
           ? { kind }

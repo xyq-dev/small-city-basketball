@@ -85,29 +85,47 @@ function order(a, b) {
     ? a.startDate.localeCompare(b.startDate)
     : b.startDate.localeCompare(a.startDate);
 }
-async function load(client, session) {
+// `maxPages` follows the server cursor (50 per page); the home summary reads one page, the
+// events tab up to 10 (500 events per organization) and names organizations beyond that.
+async function load(client, session, maxPages = 1) {
   const orgs = organizations(session);
   const items = [];
   const failures = [];
   const truncated = [];
   for (const org of orgs) {
+    let cursor = null,
+      page = 0;
+    const rows = [];
     try {
-      const response = await client.request('/v1/orgs/' + org.id + '/events?limit=' + PAGE_LIMIT);
-      if (!Array.isArray(response.data)) throw invalid('赛事资料格式无效');
-      for (const raw of response.data) items.push(eventView(org, raw));
-      if (response.meta.nextCursor) truncated.push(org.name);
+      do {
+        const response = await client.request(
+          '/v1/orgs/' +
+            org.id +
+            '/events?limit=' +
+            PAGE_LIMIT +
+            (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''),
+        );
+        if (!Array.isArray(response.data)) throw invalid('赛事资料格式无效');
+        rows.push(...response.data);
+        cursor = response.meta.nextCursor;
+        page++;
+      } while (cursor && page < maxPages);
+      if (cursor) truncated.push(org.name);
     } catch (error) {
       // A changed account must never fall through to a partially rendered private list.
       if (error && (error.code === 'SESSION_CHANGED' || error.status === 401)) throw error;
       failures.push({
         orgId: org.id,
         orgName: org.name,
-        message:
-          error && error.status === 403
+        message: page
+          ? '后续赛事读取未完成，仅显示已读取的 ' + rows.length + ' 届，请稍后刷新'
+          : error && error.status === 403
             ? '当前身份不能查看该机构的赛事'
             : (error && error.message) || '赛事暂时无法读取',
       });
     }
+    // Pages already read belong to the current account; a later page failing is reported above.
+    for (const raw of rows) items.push(eventView(org, raw));
   }
   items.sort(order);
   return {

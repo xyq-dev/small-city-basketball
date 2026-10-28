@@ -1,0 +1,29 @@
+<view class="page follows-page">
+  <view class="notice follows-reminder"><view class="feedback-title">关注与微信提醒分开</view><view class="small">关注成功只表示可在此处查看。{{reminderOff}}</view></view>
+  <view wx:if="{{notice}}" class="notice">{{notice}}</view>
+  <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">操作未完成</view><view class="small">{{error}}</view></view>
+  <view wx:if="{{loginRequired}}" class="card follows-panel state-panel"><view class="subtitle">登录后查看我的关注</view><view class="muted">关注只属于本人账号；切换账号后只显示新账号的关注。</view><button class="primary" bindtap="login">登录并继续</button></view>
+  <view wx:elif="{{loading}}" class="card follows-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取我的关注</view><view class="muted">读取完成前不显示旧资料。</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
+  <block wx:else>
+    <block wx:for="{{items}}" wx:key="followId">
+      <view class="card follows-panel follow-card">
+        <view class="follow-row"><view class="follow-state {{item.status==='ACTIVE' ? 'active' : 'invalid'}}">{{item.statusLabel}}</view><view wx:if="{{item.event}}" class="small muted">{{item.eventLabel}}</view></view>
+        <block wx:if="{{item.status==='ACTIVE'}}">
+          <view class="subtitle">{{item.event.name}}</view>
+          <view class="muted">{{item.dateLabel}} · {{item.event.purpose==='HISTORY' ? '历史赛事' : '实时观赛'}}</view>
+          <button class="secondary" data-id="{{item.publicEventId}}" bindtap="openEvent" disabled="{{busy}}">打开赛事</button>
+        </block>
+        <block wx:else>
+          <view class="subtitle">公开赛事已停止公开</view>
+          <view class="muted">主办方已撤销或暂停该公开发布，原赛事资料已收回，不再显示；重新公开会使用新的链接，不会继承这条关注。</view>
+        </block>
+        <button class="quiet" data-id="{{item.followId}}" bindtap="cancel" disabled="{{busy}}" loading="{{cancelling===item.followId}}">{{cancelling===item.followId ? '正在取消' : '取消关注'}}</button>
+      </view>
+    </block>
+    <view wx:if="{{!items.length && !error}}" class="card follows-panel state-panel"><view class="subtitle">暂无关注</view><view class="muted">在主办方分享的公开赛事页可关注赛事。</view></view>
+    <view wx:if="{{moreError}}" class="notice warning">{{moreError}}</view>
+    <button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loadingMore || busy}}" loading="{{loadingMore}}">{{moreError ? '重试加载更多' : '加载更多关注'}}</button>
+  </block>
+  <button class="quiet" bindtap="load" disabled="{{busy || loading}}">刷新我的关注</button>
+</view>
+<scb-nav active="Account" disabled="{{busy}}"/>

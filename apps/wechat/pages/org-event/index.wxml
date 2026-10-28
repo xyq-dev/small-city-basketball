@@ -14,11 +14,35 @@
   </view>
   <block wx:else>
     <view wx:if="{{error}}" class="notice warning">{{error}}<view class="small">现有资料可能已陈旧，请恢复连接后刷新。</view></view>
+    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
     <view class="org-event-hero">
       <view class="org-event-status {{event.status === 'RUNNING' ? 'live' : ''}}">{{event.statusLabel}}</view>
       <view class="org-event-name">{{event.name}}</view>
       <view class="org-event-meta">{{event.dateLabel}} · {{event.venueName}}</view>
       <view class="org-event-meta">{{event.formatLabel}} · 机构内部视图</view>
+    </view>
+    <view wx:if="{{manage}}" class="card manage-card">
+      <view class="subtitle">赛事管理</view>
+      <view class="manage-links">
+        <button class="secondary" bindtap="openSetup">赛事设置与排赛</button>
+        <button wx:if="{{event.format !== 'ROUND_ROBIN'}}" class="secondary" bindtap="openBracket">{{event.format === 'GROUP_KNOCKOUT' ? '分组积分与晋级发布' : '签位与下一轮发布'}}</button>
+        <button class="secondary" bindtap="openTasks">记分与赛果确认</button>
+        <button wx:if="{{manage.review}}" class="secondary" bindtap="openReview">报名审核<text class="manage-sub">{{manage.reviewLabel}}</text></button>
+        <button wx:if="{{manage.seasonGrants}}" class="secondary" bindtap="openSeasonGrants">私有赛季数据提名<text class="manage-sub">提名后仍需球员本人同意</text></button>
+      </view>
+      <block wx:if="{{manage.progress}}">
+        <view class="muted">{{manage.progress}}{{manage.ready ? ' · 已满足完赛条件' : ''}}</view>
+        <view wx:for="{{manage.blockers}}" wx:key="*this" class="muted">· {{item}}</view>
+        <view wx:if="{{manage.actions.length}}" class="mode-choice">
+          <button wx:for="{{manage.actions}}" wx:key="type" class="{{lifecycleAction === item.type ? 'selected' : ''}}" data-type="{{item.type}}" bindtap="chooseLifecycle">{{item.label}}</button>
+        </view>
+        <block wx:if="{{lifecycleAction}}">
+          <text class="field-label">原因（4–500字）</text>
+          <textarea class="field" maxlength="500" value="{{lifecycleReason}}" bindinput="lifecycleInput" placeholder="例如：全部比赛已独立确认"/>
+          <button class="primary" bindtap="runLifecycle" disabled="{{loading}}">确认执行</button>
+        </block>
+      </block>
+      <view class="muted">改期与比赛媒体：在赛程中点开比赛，从比赛详情进入。</view>
     </view>
     <view class="org-event-tabs">
       <button class="{{tab === 'schedule' ? 'selected' : ''}}" data-tab="schedule" bindtap="tab">赛程</button>
@@ -28,14 +52,14 @@
 
     <block wx:if="{{tab === 'schedule'}}">
       <view wx:if="{{scheduleError}}" class="notice warning">{{scheduleError}}</view>
-      <view wx:elif="{{!matches.length}}" class="card empty"><view class="subtitle">暂无正式赛程</view><view class="muted">赛程由主办方在Web排赛后发布，发布后这里显示时间、场地和对阵。</view></view>
-      <view wx:for="{{matches}}" wx:key="id" class="org-match">
+      <view wx:elif="{{!matches.length}}" class="card empty"><view class="subtitle">暂无正式赛程</view><view class="muted">报名冻结并发布赛程后，这里显示时间、场地和对阵。</view></view>
+      <view wx:for="{{matches}}" wx:key="id" class="org-match" data-id="{{item.id}}" bindtap="openMatch">
         <view class="org-match-meta">{{item.roundLabel}} · {{item.timeLabel}} · {{item.courtName}}</view>
         <view class="org-match-teams"><text>{{item.home}}</text><text class="org-match-vs">VS</text><text>{{item.away}}</text></view>
-        <view class="org-match-status {{item.status === 'IN_PROGRESS' || item.status === 'LIVE' ? 'live' : ''}}">{{item.statusLabel}}</view>
+        <view class="row-between"><text class="org-match-status {{item.status === 'IN_PROGRESS' || item.status === 'LIVE' ? 'live' : ''}}">{{item.statusLabel}}</text><text class="org-match-more">比分与记录</text></view>
       </view>
       <view wx:if="{{matchesTruncated}}" class="muted">仅显示前1000场，请在Web查看完整赛程。</view>
-      <view class="notice small">比分记录与赛果确认由记录台完成；原生记分、排赛将在后续版本提供，当前请使用Web工作台。</view>
+      <view class="notice small">点击比赛查看比分、记录与确认状态。被分配的记分员可在比赛详情进入记分台；赛果须由他人独立确认后才计入正式积分。</view>
     </block>
 
     <block wx:if="{{tab === 'ranking'}}">
@@ -47,7 +71,7 @@
           <view class="muted">{{ranking.modeLabel}}</view>
           <view class="org-table">
             <view class="org-table-row head"><text class="rank-cell">名次</text><text class="team-cell">球队</text><text class="num-cell">胜负</text><text class="num-cell">净胜</text><text class="num-cell">积分</text></view>
-            <view wx:for="{{ranking.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><text class="team-cell">{{item.teamName}}{{item.tied ? ' · 并列' : ''}}</text><text class="num-cell">{{item.record}}</text><text class="num-cell">{{item.diff}}</text><text class="num-cell strong">{{item.points}}</text></view>
+            <view wx:for="{{ranking.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><text class="team-cell">{{item.teamName}}{{item.tied ? ' · 并列' : ''}}</text><text class="num-cell record">{{item.record}}</text><text class="num-cell">{{item.diff}}</text><text class="num-cell strong">{{item.points}}</text></view>
           </view>
         </view>
       </block>
@@ -59,7 +83,7 @@
           <view wx:if="{{group.tieBreakRequired}}" class="notice warning small">同分待抽签，出线资格尚未确定</view>
           <view class="org-table">
             <view class="org-table-row head"><text class="rank-cell">名次</text><text class="team-cell">球队</text><text class="num-cell">胜负</text><text class="num-cell">积分</text></view>
-            <view wx:for="{{group.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><text class="team-cell">{{item.teamName}}</text><text class="num-cell">{{item.record}}</text><text class="num-cell strong">{{item.points}}</text></view>
+            <view wx:for="{{group.rows}}" wx:key="key" class="org-table-row"><text class="rank-cell">{{item.rankLabel}}</text><text class="team-cell">{{item.teamName}}</text><text class="num-cell record">{{item.record}}</text><text class="num-cell strong">{{item.points}}</text></view>
           </view>
         </view>
       </block>

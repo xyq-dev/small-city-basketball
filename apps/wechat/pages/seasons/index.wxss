@@ -1,0 +1,2 @@
+.seasons-page { padding-bottom:calc(40px + env(safe-area-inset-bottom)); }
+.seasons-page .row .inline { margin-top:8px; }

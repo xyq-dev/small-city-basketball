@@ -4,7 +4,12 @@
   "state": "ready",
   "designSource": "synthetic:platform-alignment",
   "static": true,
-  "expectText": ["合成青锋杯 · 冬季赛", "第1轮", "合成石鼓青锋", "原生记分、排赛将在后续版本提供"],
+  "expectText": [
+    "合成青锋杯 · 冬季赛",
+    "第1轮",
+    "合成石鼓青锋",
+    "点击比赛查看比分、记录与确认状态"
+  ],
   "data": {
     "tab": "schedule",
     "event": {

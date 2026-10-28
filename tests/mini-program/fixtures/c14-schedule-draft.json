@@ -1,0 +1,65 @@
+{
+  "name": "c14-schedule-draft",
+  "route": "pages/schedule/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["对阵草稿", "未发现冲突", "发布正式赛程"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "校验通过，可以发布。",
+    "event": {
+      "name": "合成青锋杯",
+      "statusLabel": "报名已关闭",
+      "dates": "2028-03-01 至 2028-03-02",
+      "teams": 2
+    },
+    "state": "draft",
+    "supportReason": "",
+    "publication": null,
+    "courts": [
+      {
+        "id": "0925a2a6-9e93-4291-b8f2-2df0a6a675a5",
+        "name": "合成一号场",
+        "on": true
+      }
+    ],
+    "form": {
+      "dayStart": "09:00",
+      "dayEnd": "21:00",
+      "slot": "60",
+      "rest": "0",
+      "gap": "0"
+    },
+    "revision": {
+      "id": "49762d2c-71f9-4a94-bd1e-c26f927a623d",
+      "status": "DRAFT",
+      "rounds": 1,
+      "count": 1,
+      "canEdit": true,
+      "canValidate": true,
+      "canPublish": true,
+      "canRedraw": true
+    },
+    "fixtures": [
+      {
+        "key": "R1-P1",
+        "round": "第1轮",
+        "home": "合成高州猛龙",
+        "away": "合成石鼓青锋",
+        "time": "03-01 09:00",
+        "court": "合成一号场",
+        "assigned": true
+      }
+    ],
+    "conflicts": [],
+    "validated": true,
+    "unavailable": false,
+    "newCourt": "",
+    "canCreateCourt": true,
+    "redrawOpen": false,
+    "redrawReason": ""
+  }
+}

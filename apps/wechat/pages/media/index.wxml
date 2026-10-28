@@ -1,8 +1,16 @@
 <view class="page media-entry">
   <view class="media-intro"><view class="title">留住球场上的每一刻</view><view class="media-copy">只查看主办方明确发布的比赛图片与小视频。</view></view>
-  <view class="media-panel"><view class="subtitle">比赛回放与人工片段</view><view class="muted">已发布的媒体，不改变原比赛记录。</view><view class="media-route"><view class="route-step"><view class="route-number">01</view><view><view class="media-strong">打开获授权的赛事</view><view class="muted">使用主办方提供的有效观赛入口</view></view></view><view class="route-step"><view class="route-number">02</view><view><view class="media-strong">选择一场比赛</view><view class="muted">在比赛详情进入“视频”页签</view></view></view><view class="route-step"><view class="route-number">03</view><view><view class="media-strong">查看已发布媒体</view><view class="muted">图片、小视频及人工对时的片段定位</view></view></view></view></view>
-  <button class="primary" bindtap="open">打开赛事选择比赛</button>
-  <view class="notice media-note"><view class="media-strong">以当前有效发布为准</view><view class="small">未发布、已撤销或已到期的媒体不继续显示。外部链接仅提供复制，不保证微信内播放；已复制传播的链接无法收回。</view></view>
-  <view class="media-panel"><view class="subtitle">从比赛记录找到片段</view><view class="muted">片段定位由主办方基于现有比赛记录发布。没有已发布媒体时，这里不会使用示例视频替代。</view></view>
+  <view class="media-head"><view class="subtitle">最近观看的赛事</view></view>
+  <view wx:if="{{!recentEvents.length}}" class="media-panel">
+    <view class="media-strong">还没有可查看的赛事</view>
+    <view class="muted">打开主办方分享的赛事卡片后，可在这里直接进入该届的比赛视频与图片。</view>
+    <button class="primary" bindtap="open">去赛事页</button>
+  </view>
+  <button wx:for="{{recentEvents}}" wx:key="publicEventId" class="media-event" data-id="{{item.publicEventId}}" bindtap="openRecent">
+    <scb-icon name="play" size="20"/>
+    <view class="media-event-main"><view class="media-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · 查看已发布媒体</view></view>
+    <scb-icon name="chevron-right" tone="gray" size="16"/>
+  </button>
+  <view class="notice media-note"><view class="media-strong">以当前有效发布为准</view><view class="small">未发布、已撤销或已到期的媒体不显示；没有已发布媒体时不会用示例视频替代。外部链接仅提供复制，不保证微信内播放。直播、云回放与转码尚未开通。</view></view>
 </view>
 <scb-nav active="Video"/>

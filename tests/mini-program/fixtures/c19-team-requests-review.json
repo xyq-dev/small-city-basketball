@@ -1,0 +1,66 @@
+{
+  "name": "c19-team-requests-review",
+  "route": "pages/team-requests/index",
+  "state": "synthetic-populated",
+  "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
+  "expectText": ["申请建队入口", "申请人 合成申请人", "已用 3 / 20"],
+  "expectEnabled": ["批准并建队", "拒绝", "撤销入口"],
+  "data": {
+    "orgId": "11111111-1111-4111-8111-111111111111",
+    "orgName": "合成机构",
+    "allowed": true,
+    "links": [
+      {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "status": "ACTIVE",
+        "reason": "新赛季球队报名",
+        "maxUses": 20,
+        "useCount": 3,
+        "expiresAt": "2026-11-04T08:00:00.000Z",
+        "createdAt": "2026-10-28T08:00:00.000Z",
+        "revokedAt": null,
+        "stateText": "可使用",
+        "expires": "2026-11-04 16:00"
+      }
+    ],
+    "requests": [
+      {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "clientRequestId": "12345678-1234-4234-8234-123456789012",
+        "orgId": "11111111-1111-4111-8111-111111111111",
+        "orgName": "合成机构",
+        "teamName": "合成青锋",
+        "note": "青年队首次参赛，请审核球队名称和归属。",
+        "status": "PENDING",
+        "version": 1,
+        "reviewReason": null,
+        "reviewedAt": null,
+        "withdrawnAt": null,
+        "teamId": null,
+        "createdAt": "2026-10-28T08:00:00.000Z",
+        "updatedAt": "2026-10-28T08:00:00.000Z",
+        "capabilities": {
+          "canReview": true,
+          "isOwnRequest": false
+        },
+        "requesterDisplayName": "合成申请人",
+        "stateText": "待机构审核",
+        "created": "2026-10-28 16:00"
+      }
+    ],
+    "filter": "PENDING",
+    "hours": "72",
+    "maxUses": "20",
+    "linkReason": "",
+    "revokeReason": "旧入口停止使用",
+    "issued": null,
+    "selectedId": "44444444-4444-4444-8444-444444444444",
+    "reviewReason": "资料核对无误，批准成立球队",
+    "loading": false,
+    "busy": false,
+    "uncertain": false,
+    "error": "",
+    "message": "",
+    "loginRequired": false
+  }
+}

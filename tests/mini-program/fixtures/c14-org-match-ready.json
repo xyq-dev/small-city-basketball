@@ -1,0 +1,119 @@
+{
+  "name": "c14-org-match-ready",
+  "route": "pages/org-match/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["准备比赛", "赛前准备"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "准备比赛已完成。",
+    "roles": [
+      {
+        "value": "SCORER",
+        "label": "记分员"
+      },
+      {
+        "value": "RESULT_REVIEWER",
+        "label": "赛果复核人"
+      }
+    ],
+    "match": {
+      "eventName": "合成青锋杯",
+      "eventId": "b1ddbfc6-5378-4f67-a16e-aa3111c6d279",
+      "eventClosed": false,
+      "round": "第1轮",
+      "time": "03-01 09:00",
+      "court": "合成一号场",
+      "home": "合成高州猛龙",
+      "away": "合成石鼓青锋",
+      "status": "READY",
+      "statusLabel": "赛前准备",
+      "rulesLabel": "1节 × 1 秒 · 允许平局",
+      "leaseHeld": false
+    },
+    "board": {
+      "version": 3,
+      "status": "READY",
+      "statusLabel": "赛前准备",
+      "resultLabel": "比赛未结束，比分不是正式赛果",
+      "final": false,
+      "home": {
+        "name": "合成高州猛龙",
+        "score": 0,
+        "fouls": 0,
+        "timeouts": 0
+      },
+      "away": {
+        "name": "合成石鼓青锋",
+        "score": 0,
+        "fouls": 0,
+        "timeouts": 0
+      },
+      "periodLabel": "第1节",
+      "clockLabel": "0:01",
+      "running": false,
+      "allowedScores": [1, 2, 3],
+      "periods": [
+        {
+          "key": "1",
+          "label": "第1节",
+          "home": 0,
+          "away": 0
+        }
+      ],
+      "playerMode": true
+    },
+    "history": [
+      {
+        "key": "3bb10532-8896-4989-a14d-e73b82b1fa44",
+        "id": "3bb10532-8896-4989-a14d-e73b82b1fa44",
+        "seq": 1,
+        "text": "准备比赛",
+        "reason": "",
+        "periodLabel": "",
+        "time": "10-27 01:15",
+        "voided": false,
+        "canVoid": false
+      }
+    ],
+    "historyError": "",
+    "confirmations": [],
+    "staff": [
+      {
+        "key": "ea792828-d897-46ac-bd22-19fb2ab1d6c9:SCORER",
+        "userId": "ea792828-d897-46ac-bd22-19fb2ab1d6c9",
+        "roleValue": "SCORER",
+        "name": "合成记分员",
+        "role": "记分员"
+      }
+    ],
+    "caps": {
+      "staff": true,
+      "prepare": false,
+      "score": false,
+      "confirm": false,
+      "reopen": false
+    },
+    "unavailable": false,
+    "pending": null,
+    "reopenOpen": false,
+    "reopenReason": "",
+    "collectionMode": "PLAYER_BASIC",
+    "members": [
+      {
+        "userId": "ed87c271-3ea8-428d-9253-82f85d7951f1",
+        "label": "合成负责人 · owner@example.test"
+      },
+      {
+        "userId": "ea792828-d897-46ac-bd22-19fb2ab1d6c9",
+        "label": "合成记分员 · scorer@example.test"
+      }
+    ],
+    "memberIndex": 1,
+    "roleIndex": 0,
+    "staffNote": ""
+  }
+}

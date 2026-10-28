@@ -1,0 +1,35 @@
+{
+  "name": "c14-scoring-tasks",
+  "route": "pages/scoring-tasks/index",
+  "state": "real-api",
+  "designSource": "real-api:isolated-synthetic",
+  "static": true,
+  "expectText": ["记分与赛果确认", "已准备 · 待开赛"],
+  "data": {
+    "loading": false,
+    "loginRequired": false,
+    "error": "",
+    "scopeLabel": "",
+    "sections": [
+      {
+        "key": "ready",
+        "label": "已准备 · 待开赛",
+        "items": [
+          {
+            "key": "28632d75-e480-46e8-b599-1180ddafa034:c483d2d4-5976-4056-985f-b319eeedd3bd",
+            "orgId": "28632d75-e480-46e8-b599-1180ddafa034",
+            "matchId": "c483d2d4-5976-4056-985f-b319eeedd3bd",
+            "title": "合成高州猛龙 vs 合成石鼓青锋",
+            "meta": "合成青锋杯 · 03-01 09:00 · 合成一号场",
+            "score": "0 : 0",
+            "statusLabel": "赛前准备",
+            "live": false
+          }
+        ]
+      }
+    ],
+    "orgErrors": [],
+    "empty": false,
+    "truncated": false
+  }
+}

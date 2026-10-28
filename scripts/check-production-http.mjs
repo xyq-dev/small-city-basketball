@@ -207,6 +207,30 @@ try {
       data(await json('/v1/auth/session', { headers: { Cookie: sid } })).user.id ===
         session.user.id,
     );
+    phase = 'bounded-c19-upload-edge';
+    const syntheticId = '00000000-0000-4000-8000-000000000019';
+    const mediaBase = `/v1/orgs/${syntheticId}/matches/${syntheticId}`;
+    // Invalid synthetic input must reach the API validator through HTTPS. This exercises
+    // the edge's exact large-body lanes without adding a business row to the backup fixture.
+    const medium = { padding: 'x'.repeat(200 * 1024) };
+    error(await json(mediaBase + '/media-file-requests', post(medium, { Cookie: sid })), 422);
+    error(
+      await json(mediaBase + `/media-upload-sessions/${syntheticId}/chunks/0`, {
+        ...post(medium, { Cookie: sid }),
+        method: 'PUT',
+      }),
+      422,
+    );
+    for (const path of [mediaBase + '/media-requests', mediaBase + '/media-upload-sessions'])
+      check((await request(path, post(medium, { Cookie: sid }))).response.status === 413);
+    check(
+      (
+        await request(mediaBase + `/media-upload-sessions/${syntheticId}/chunks/0`, {
+          ...post({ padding: 'x'.repeat(1024 * 1024) }, { Cookie: sid }),
+          method: 'PUT',
+        })
+      ).response.status === 413,
+    );
     const unknown = randomBytes(32).toString('base64url');
     error(await json('/v1/auth/session', { headers: { Cookie: `scb.sid=${unknown}` } }), 401, [
       ...forbidden,

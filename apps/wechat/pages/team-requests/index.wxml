@@ -1,0 +1,48 @@
+<view class="page c19-page">
+  <view wx:if="{{error}}" class="notice warning" role="alert"><view class="feedback-title">请核对后继续</view><view class="small">{{error}}</view></view>
+  <view wx:if="{{message}}" class="notice">{{message}}</view>
+  <view wx:if="{{loginRequired}}" class="card c19-panel state-panel"><view class="subtitle">登录机构管理账号</view><button class="primary" bindtap="login">登录</button></view>
+  <view wx:if="{{loading}}" class="card c19-panel state-panel"><view class="subtitle">正在读取</view><view class="skeleton-line"></view></view>
+  <view wx:if="{{!allowed && !loading && !loginRequired && orgId}}" class="notice"><view class="feedback-title">仅机构负责人或管理员可用</view><view class="small">当前账号不是该机构的负责人或管理员。</view></view>
+  <block wx:if="{{allowed}}">
+    <view class="card c19-panel">
+      <view class="subtitle">{{orgName}} · 申请建队入口</view>
+      <view class="small muted">入口令牌只在生成时显示一次；服务器只保存摘要。持有入口的已登录用户只能看到本机构名称。</view>
+      <view class="field-label">有效期（小时，1–168）</view><input class="field" type="number" value="{{hours}}" data-field="hours" bindinput="input" disabled="{{busy}}"/>
+      <view class="field-label">最多申请份数（1–200）</view><input class="field" type="number" value="{{maxUses}}" data-field="maxUses" bindinput="input" disabled="{{busy}}"/>
+      <view class="field-label">生成原因（4–500字）</view><input class="field" maxlength="500" value="{{linkReason}}" data-field="linkReason" bindinput="input" disabled="{{busy}}" placeholder="例如：春季联赛新队报名"/>
+      <button class="primary invite-action" bindtap="createLink" disabled="{{busy}}" loading="{{busy}}">生成入口</button>
+      <view wx:if="{{issued}}"><view class="feedback-title">本次入口（仅显示一次）</view><view class="secret-box">{{issued.path}}</view><view class="row-actions"><button class="secondary" bindtap="copyLink">复制入口</button><button class="primary" open-type="share">分享给申请人</button></view></view>
+      <view class="field-label">撤销原因（4–500字）</view><input class="field" maxlength="500" value="{{revokeReason}}" data-field="revokeReason" bindinput="input" disabled="{{busy}}"/>
+      <view wx:for="{{links}}" wx:key="id" class="item-row">
+        <view class="item-title">{{item.stateText}} · 已用 {{item.useCount}} / {{item.maxUses}}</view>
+        <view class="small muted">截止 {{item.expires}} · {{item.reason}}</view>
+        <view class="row-actions"><button wx:if="{{item.status !== 'REVOKED'}}" class="secondary" data-id="{{item.id}}" bindtap="revokeLink" disabled="{{busy || !revokeReason}}">撤销入口</button></view>
+      </view>
+    </view>
+    <view class="card c19-panel">
+      <view class="subtitle">建队申请</view>
+      <view class="row-actions">
+        <button class="{{filter === 'PENDING' ? 'primary' : 'quiet'}}" data-value="PENDING" bindtap="filter" disabled="{{busy}}">待审核</button>
+        <button class="{{filter === 'APPROVED' ? 'primary' : 'quiet'}}" data-value="APPROVED" bindtap="filter" disabled="{{busy}}">已批准</button>
+        <button class="{{filter === 'REJECTED' ? 'primary' : 'quiet'}}" data-value="REJECTED" bindtap="filter" disabled="{{busy}}">未通过</button>
+        <button class="{{filter === 'WITHDRAWN' ? 'primary' : 'quiet'}}" data-value="WITHDRAWN" bindtap="filter" disabled="{{busy}}">已撤回</button>
+      </view>
+      <view wx:if="{{!requests.length && !loading}}" class="muted">暂无申请。</view>
+      <view wx:for="{{requests}}" wx:key="id" class="item-row">
+        <view class="item-title">{{item.teamName}}</view>
+        <view class="small muted">申请人 {{item.requesterDisplayName}} · {{item.stateText}} · {{item.created}}</view>
+        <view wx:if="{{item.note}}" class="small">说明：{{item.note}}</view>
+        <view wx:if="{{item.reviewReason}}" class="small">审核说明：{{item.reviewReason}}</view>
+        <view wx:if="{{item.capabilities.isOwnRequest}}" class="small muted">这是你本人提交的申请，需由其他管理员审核。</view>
+        <button wx:if="{{item.capabilities.canReview && selectedId !== item.id}}" class="secondary" data-id="{{item.id}}" bindtap="select" disabled="{{busy}}">审核</button>
+        <view wx:if="{{selectedId === item.id}}">
+          <view class="field-label">审核原因（4–500字）</view><input class="field" maxlength="500" value="{{reviewReason}}" data-field="reviewReason" bindinput="input" disabled="{{busy}}"/>
+          <view class="row-actions"><button class="secondary" data-decision="REJECT" bindtap="review" disabled="{{busy || !reviewReason}}">拒绝</button><button class="primary" data-decision="APPROVE" bindtap="review" disabled="{{busy || !reviewReason}}">批准并建队</button></view>
+        </view>
+      </view>
+    </view>
+  </block>
+  <button class="quiet" bindtap="refresh" disabled="{{busy || loading}}">重新读取</button>
+</view>
+<scb-nav active="Account" disabled="{{busy || loading}}"/>

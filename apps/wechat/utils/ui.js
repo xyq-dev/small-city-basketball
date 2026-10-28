@@ -6,6 +6,15 @@ for (const key of [
   'media',
   'event',
   'org-event',
+  'org-match',
+  'scorer',
+  'scoring-tasks',
+  'entry-review',
+  'event-setup',
+  'schedule',
+  'bracket',
+  'reschedule',
+  'match-media',
   'match',
   'account',
   'players',
@@ -23,6 +32,13 @@ for (const key of [
   'invitation',
   'planned',
   'platform',
+  'memberships',
+  'team-join',
+  'team-requests',
+  'team-request',
+  'follows',
+  'seasons',
+  'season-grants',
 ])
   routes[key] = '/pages/' + key + '/index';
 const positionNames = { PG: '控球后卫', SG: '得分后卫', SF: '小前锋', PF: '大前锋', C: '中锋' };
@@ -154,18 +170,46 @@ async function session(page, returnPath) {
     return null;
   }
 }
-function begin(page) {
-  page._closed = false;
+function subscribe(page) {
   if (!page._sessionDefaults) page._sessionDefaults = clone(page.data || {});
-  page._requestRevision = (page._requestRevision || 0) + 1;
   if (page._unsubscribeSession) page._unsubscribeSession();
   const c = api.getClient();
   if (c.onSessionChange)
     page._unsubscribeSession = c.onSessionChange(() => {
       page._requestRevision++;
+      page._sessionEpoch = (page._sessionEpoch || 0) + 1;
       resetPrivate(page);
     });
+}
+function begin(page) {
+  page._closed = false;
+  page._requestRevision = (page._requestRevision || 0) + 1;
+  subscribe(page);
   return { request: page._requestRevision, session: clientRevision() };
+}
+// A token that later reads cannot invalidate: only a session change or closing the page does.
+// Used for supplementary reads with their own counter, and by hold() for writes.
+function guard(page) {
+  if (!page._unsubscribeSession) subscribe(page);
+  return { epoch: page._sessionEpoch || 0, session: clientRevision() };
+}
+// Writes: cancel in-flight reads (begin, plus the page's own `_load` read generation) so a
+// stale response cannot overwrite what the write returns, then hold a token that a refresh or
+// poll started afterwards cannot orphan. Pages refuse to start reads while busy.
+function hold(page) {
+  // A closed (unloaded) page can never start a write; begin() must not reopen it.
+  if (page._closed) return { epoch: -1, session: -1 };
+  begin(page);
+  page._load = (page._load || 0) + 1;
+  return guard(page);
+}
+function held(page, token) {
+  return (
+    !!token &&
+    !page._closed &&
+    token.epoch === (page._sessionEpoch || 0) &&
+    token.session === clientRevision()
+  );
 }
 function live(page, token) {
   return (
@@ -179,6 +223,7 @@ function close(page) {
   page._closed = true;
   page._requestRevision = (page._requestRevision || 0) + 1;
   page._sessionRequest = (page._sessionRequest || 0) + 1;
+  page._sessionEpoch = (page._sessionEpoch || 0) + 1;
   if (page._unsubscribeSession) page._unsubscribeSession();
   page._unsubscribeSession = null;
 }
@@ -186,6 +231,32 @@ function message(error) {
   return error && typeof error.message === 'string'
     ? error.message
     : '操作未完成，请重新读取后核对';
+}
+// A confirmation bound to the session and page that opened it: a reply that arrives after an
+// account change, sign-out or unload resolves to null, so no stale write can start. Returns the
+// guard token for the caller to keep checking through the write.
+async function confirmFor(page, title, content) {
+  if (page._closed) return null;
+  const token = guard(page);
+  const yes = await confirm(title, content);
+  return yes && held(page, token) ? token : null;
+}
+/**
+ * A user-confirmed write operation bound to the session, page lifecycle and confirmation
+ * generation that opened it. Resolves to null when the user declines or the answer arrives
+ * after an account change, sign-out, unload or a newer confirmation on the same page. Callers
+ * re-check `op.valid()` after every asynchronous step and immediately before sending; a write
+ * token from hold() never replaces or refreshes it.
+ */
+async function confirmOp(page, title, content) {
+  if (page._closed) return null;
+  const token = guard(page);
+  const generation = (page._confirmOp = (page._confirmOp || 0) + 1);
+  const op = {
+    token,
+    valid: () => !page._closed && held(page, token) && generation === page._confirmOp,
+  };
+  return (await confirm(title, content)) && op.valid() ? op : null;
 }
 function confirm(title, content) {
   return new Promise((resolve) =>
@@ -250,9 +321,14 @@ module.exports = {
   session,
   begin,
   live,
+  guard,
+  hold,
+  held,
   close,
   message,
   confirm,
+  confirmFor,
+  confirmOp,
   uuid,
   money,
   localTime,

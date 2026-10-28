@@ -68,6 +68,16 @@ function pathAllowed(path, method = 'GET') {
     '/v1/auth/wechat/unbind': 'POST',
   };
   if (Object.prototype.hasOwnProperty.call(auth, base)) return noQuery && auth[base] === method;
+  // C18 anonymous public directory: exact parameters only; sent without any session cookie.
+  if (base === '/v1/public/directory')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['status', 'limit', 'city', 'cursor']) &&
+      (!('status' in query) || ['LIVE', 'UPCOMING', 'HISTORY'].includes(query.status)) &&
+      (!('limit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit)) &&
+      (!('city' in query) || (query.city.length >= 1 && query.city.length <= 40)) &&
+      (!('cursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.cursor))
+    );
   const root = '/v1/player-bookings';
   if (base === root + '/workspace') return noQuery && method === 'GET';
   if ([root + '/profile', root + '/settings'].includes(base)) return noQuery && method === 'PUT';
@@ -112,18 +122,86 @@ function pathAllowed(path, method = 'GET') {
     method === 'GET' &&
     queryAllowed(query, ['limit', 'cursor']) &&
     (!query.limit || ['50', '100'].includes(query.limit));
-  // Event-platform reads: only the caller's organization list, one event and its read models.
-  // Writes (create/edit, scoring, scheduling, publication) remain outside the mini program.
-  if (matches(org + '/events'))
+  const cursor = (value) => /^[A-Za-z0-9_%.-]{1,2048}$/.test(value);
+  // Event-platform reads plus the role-checked commands that already exist server-side:
+  // scoring (lease + idempotent commands), independent result confirmation, registration
+  // review and lifecycle. Every write is re-authorized by the API; the client never decides.
+  if (matches(org + '/scoring-matches'))
     return (
       method === 'GET' &&
-      queryAllowed(query, ['limit', 'cursor']) &&
-      query.limit === '50' &&
-      (!('cursor' in query) || /^[A-Za-z0-9_-]{1,2048}$/.test(query.cursor))
+      queryAllowed(query, ['eventId', 'limit', 'cursor']) &&
+      (!query.eventId || uuidRegex.test(query.eventId)) &&
+      (!query.limit || ['50', '100'].includes(query.limit)) &&
+      (!('cursor' in query) || cursor(query.cursor))
     );
-  if (matches(org + '/events/' + uuidPattern)) return noQuery && method === 'GET';
+  const match = org + '/matches/' + uuidPattern;
+  if (matches(match + '/(scoring|snapshot)')) return noQuery && method === 'GET';
+  if (matches(match + '/(scoring-events|result-confirmations)')) return paged;
+  if (matches(match + '/commands')) return noQuery && method === 'POST';
+  if (matches(match + '/commands/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(match + '/scorekeeper-lease')) return noQuery && ['POST', 'DELETE'].includes(method);
+  if (matches(match + '/scorekeeper-lease/renew')) return noQuery && method === 'POST';
+  if (matches(org + '/events/' + uuidPattern + '/(lifecycle|scoring)'))
+    return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/(lifecycle-commands|registration-commands)'))
+    return noQuery && method === 'POST';
+  if (matches(org + '/events'))
+    return method === 'POST'
+      ? noQuery
+      : method === 'GET' &&
+          queryAllowed(query, ['limit', 'cursor']) &&
+          query.limit === '50' &&
+          (!('cursor' in query) || /^[A-Za-z0-9_-]{1,2048}$/.test(query.cursor));
+  if (matches(org + '/events/' + uuidPattern)) return noQuery && ['GET', 'PATCH'].includes(method);
+  // Event setup and round-robin scheduling: forms over existing role-checked commands.
+  if (
+    matches(org + '/events/' + uuidPattern + '/(registration-rules|scoring-rules|standings-rules)')
+  )
+    return noQuery && method === 'PUT';
+  if (
+    matches(
+      org +
+        '/events/' +
+        uuidPattern +
+        '/(standings-rule-commands|public-viewing-commands|schedule-revisions)',
+    )
+  )
+    return noQuery && method === 'POST';
+  if (matches(org + '/events/' + uuidPattern + '/scheduling')) return noQuery && method === 'GET';
+  if (matches(org + '/courts')) return method === 'GET' ? paged : noQuery && method === 'POST';
+  if (matches(org + '/courts/' + uuidPattern)) return noQuery && method === 'PATCH';
+  const revision = org + '/schedule-revisions/' + uuidPattern;
+  if (matches(revision)) return noQuery && method === 'GET';
+  if (matches(revision + '/allocations')) return noQuery && method === 'PUT';
+  if (matches(revision + '/(validate|publish)')) return noQuery && method === 'POST';
+  if (matches(org + '/members')) return noQuery && method === 'GET';
+  if (matches(match + '/staff/' + uuidPattern)) return noQuery && method === 'PUT';
   if (matches(org + '/events/' + uuidPattern + '/(standings|groups|knockout|player-statistics)'))
     return noQuery && method === 'GET';
+  // C18: directory status and explicit LIST/UNLIST (role-checked and CAS-checked by the API).
+  if (matches(org + '/events/' + uuidPattern + '/directory')) return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/directory-commands'))
+    return noQuery && method === 'POST';
+  // C15/C16: group tie draws, qualification and knockout round publication, formal
+  // rescheduling and match media (files incl. revoke/purge, drafts, publish/revoke, time
+  // markers). Each command is CAS-checked and role-checked by the API.
+  if (
+    matches(
+      org +
+        '/events/' +
+        uuidPattern +
+        '/(group-tie-commands|group-qualification-commands|knockout-round-commands)',
+    )
+  )
+    return noQuery && method === 'POST';
+  if (matches(match + '/rescheduling')) return noQuery && method === 'GET';
+  if (matches(match + '/reschedule-commands')) return noQuery && method === 'POST';
+  if (matches(match + '/media')) return noQuery && ['GET', 'POST'].includes(method);
+  if (matches(match + '/media-files')) return noQuery && method === 'POST';
+  if (matches(match + '/media-files/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  if (matches(match + '/media/' + uuidPattern + '/(commands|markers)'))
+    return noQuery && method === 'POST';
   if (matches(org + '/events/' + uuidPattern + '/matches')) return paged;
   if (matches(org + '/teams')) return method === 'GET' ? paged : noQuery && method === 'POST';
   if (matches(org + '/teams/' + uuidPattern)) return noQuery && ['GET', 'PATCH'].includes(method);
@@ -142,6 +220,110 @@ function pathAllowed(path, method = 'GET') {
   if (matches(org + '/entries/' + uuidPattern + '/media-files/' + uuidPattern + '/content'))
     return noQuery && method === 'GET';
   if (matches('/v1/invitations/' + uuidPattern + '/accept')) return noQuery && method === 'POST';
+  // C19 (docs/design/C19_CONTRACTS.md). Every route below is re-authorized server-side.
+  // Media request idempotency and chunked upload sessions (match media only).
+  if (matches(match + '/(media-file-requests|media-requests|media-upload-sessions)'))
+    return noQuery && method === 'POST';
+  if (matches(match + '/(media-file-requests|media-requests)/' + uuidPattern))
+    return noQuery && method === 'GET';
+  if (matches(match + '/media-upload-sessions/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(match + '/media-upload-sessions/' + uuidPattern + '/(complete|cancel)'))
+    return noQuery && method === 'POST';
+  if (matches(match + '/media-upload-sessions/' + uuidPattern + '/chunks/(0|[1-9][0-9]?)'))
+    return noQuery && method === 'PUT';
+  // Team requests, join codes, member bindings and historical member claims.
+  const me = '/v1/me';
+  if (matches(org + '/(team-request-links|team-requests)')) {
+    if (base.endsWith('/team-request-links'))
+      return method === 'POST' ? noQuery : noQuery && method === 'GET';
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['status']) &&
+      (!('status' in query) ||
+        ['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN'].includes(query.status))
+    );
+  }
+  if (matches(org + '/team-request-links/' + uuidPattern + '/revoke'))
+    return noQuery && method === 'POST';
+  if (matches(org + '/team-requests/' + uuidPattern + '/review'))
+    return noQuery && method === 'POST';
+  if (['/v1/team-request-links/resolve', '/v1/team-requests', '/v1/team-joins'].includes(base))
+    return noQuery && method === 'POST';
+  if ([me + '/team-requests', me + '/member-claims', me + '/memberships'].includes(base))
+    return noQuery && method === 'GET';
+  if (matches(me + '/team-requests/' + uuidPattern + '/withdraw'))
+    return noQuery && method === 'POST';
+  if (matches(me + '/member-claims/' + uuidPattern + '/(accept|decline)'))
+    return noQuery && method === 'POST';
+  if (matches(me + '/memberships/' + uuidPattern + '/team')) return noQuery && method === 'GET';
+  if (matches(me + '/memberships/' + uuidPattern + '/leave')) return noQuery && method === 'POST';
+  const team = org + '/teams/' + uuidPattern;
+  if (matches(team + '/join-codes')) return noQuery && ['GET', 'POST'].includes(method);
+  if (matches(team + '/join-codes/' + uuidPattern + '/revoke')) return noQuery && method === 'POST';
+  if (matches(team + '/member-bindings')) return noQuery && method === 'GET';
+  if (matches(team + '/member-bindings/' + uuidPattern + '/remove'))
+    return noQuery && method === 'POST';
+  if (matches(team + '/members/' + uuidPattern + '/claims')) return noQuery && method === 'POST';
+  if (matches(team + '/member-claims/' + uuidPattern + '/revoke'))
+    return noQuery && method === 'POST';
+  // Event follows (own account only).
+  if (base === me + '/follows')
+    return method === 'POST'
+      ? noQuery
+      : method === 'GET' &&
+          queryAllowed(query, ['limit', 'cursor']) &&
+          (!('limit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit)) &&
+          (!('cursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.cursor));
+  if (base === me + '/follows/lookup')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['publicEventId']) &&
+      /^[A-Za-z0-9_-]{43}$/.test(query.publicEventId || '')
+    );
+  if (matches(me + '/follows/' + uuidPattern + '/cancel')) return noQuery && method === 'POST';
+  // Private seasons and independent PRIVATE_SEASON data grants.
+  if (matches(org + '/seasons'))
+    return method === 'POST'
+      ? noQuery
+      : method === 'GET' &&
+          queryAllowed(query, ['limit', 'cursor']) &&
+          (!('limit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit)) &&
+          (!('cursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.cursor));
+  if (matches(org + '/seasons/' + uuidPattern))
+    return method === 'PATCH'
+      ? noQuery
+      : method === 'GET' &&
+          queryAllowed(query, ['candidateLimit', 'candidateCursor']) &&
+          (!('candidateLimit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.candidateLimit)) &&
+          (!('candidateCursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.candidateCursor));
+  if (matches(org + '/seasons/' + uuidPattern + '/commands')) return noQuery && method === 'POST';
+  if (matches(org + '/seasons/' + uuidPattern + '/player-statistics'))
+    return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/season-data-grants'))
+    return method === 'POST'
+      ? noQuery
+      : method === 'GET' &&
+          queryAllowed(query, ['limit', 'cursor']) &&
+          (!('limit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit)) &&
+          (!('cursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.cursor));
+  if (matches(org + '/season-data-grants/' + uuidPattern + '/withdraw'))
+    return noQuery && method === 'POST';
+  if (base === me + '/season-data-grants')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['limit', 'cursor']) &&
+      (!('limit' in query) || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit)) &&
+      (!('cursor' in query) || /^[A-Za-z0-9_-]{1,512}$/.test(query.cursor))
+    );
+  if (matches(me + '/season-data-grants/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  if (base === me + '/season-statistics')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['orgId', 'seasonId']) &&
+      uuidRegex.test(query.orgId || '') &&
+      uuidRegex.test(query.seasonId || '')
+    );
   return (
     method === 'GET' &&
     /^\/v1\/public\/events\/[A-Za-z0-9_-]{43}(?:\/(standings|knockout|groups|schedule|matches\/[A-Za-z0-9_-]{43}(?:\/media)?))?(?:\?limit=50(?:&cursor=[A-Za-z0-9_%.-]+)?)?$/.test(
@@ -155,7 +337,11 @@ function createClient(wxApi) {
     actor = null;
   const listeners = new Set();
   function notify(reason) {
-    for (const listener of listeners) {
+    // Iterate a snapshot: a listener that re-subscribes while being notified (ui.subscribe on a
+    // page reset) would otherwise be appended to the live Set and revisited without end. A
+    // listener removed earlier in this same notification no longer runs.
+    for (const listener of Array.from(listeners)) {
+      if (!listeners.has(listener)) continue;
       try {
         listener(revision, reason);
       } catch {
@@ -169,10 +355,16 @@ function createClient(wxApi) {
     revision++;
     notify(reason);
   }
-  function request(path, method = 'GET', body, anonymous = false) {
+  // `timeout` is only raised for a single media upload (one JSON body of up to ~11 MB base64).
+  function request(path, method = 'GET', body, anonymous = false, timeout = 8000) {
     if (
       !pathAllowed(path, method) ||
-      (anonymous && !(method === 'GET' && /^\/v1\/player-bookings\/players\//.test(path)))
+      (anonymous &&
+        !(
+          method === 'GET' &&
+          (/^\/v1\/player-bookings\/players\//.test(path) ||
+            /^\/v1\/public\/directory(?:\?|$)/.test(path))
+        ))
     )
       return Promise.reject({ code: 'INVALID_PATH', message: '请求入口无效' });
     if (
@@ -186,7 +378,7 @@ function createClient(wxApi) {
       wxApi.request({
         url: API_ORIGIN + path,
         method,
-        timeout: 8000,
+        timeout: Math.min(Math.max(Number(timeout) || 8000, 8000), 120000),
         data: body,
         header: {
           Accept: 'application/json',
@@ -277,24 +469,29 @@ function createClient(wxApi) {
   return {
     request,
     download(path) {
+      // Private file content only: registration files (PDF/images) and match media (images/MP4).
       const content = new RegExp(
         '^/v1/orgs/' +
           uuidPattern +
-          '/entries/' +
+          '/(entries|matches)/' +
           uuidPattern +
           '/media-files/' +
           uuidPattern +
           '/content$',
         'i',
       );
-      if (!content.test(path))
-        return Promise.reject({ code: 'INVALID_PATH', message: '文件入口无效' });
+      const scope = (content.exec(path) || [])[1];
+      if (!scope) return Promise.reject({ code: 'INVALID_PATH', message: '文件入口无效' });
+      const allowed =
+        scope.toLowerCase() === 'matches'
+          ? ['image/png', 'image/jpeg', 'video/mp4']
+          : ['image/png', 'image/jpeg', 'application/pdf'];
       const started = revision;
       return new Promise((resolve, reject) =>
         wxApi.request({
           url: API_ORIGIN + path,
           method: 'GET',
-          timeout: 15000,
+          timeout: scope.toLowerCase() === 'matches' ? 60000 : 15000,
           responseType: 'arraybuffer',
           header: { Origin: API_ORIGIN, ...(cookie ? { Cookie: cookie } : {}) },
           success(response) {
@@ -318,7 +515,7 @@ function createClient(wxApi) {
               .toLowerCase();
             const data = response.data;
             if (
-              !['image/png', 'image/jpeg', 'application/pdf'].includes(contentType) ||
+              !allowed.includes(contentType) ||
               !data ||
               !Number.isSafeInteger(data.byteLength) ||
               data.byteLength < 1 ||

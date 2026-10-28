@@ -1,0 +1,50 @@
+{
+  "name": "c19-follows-active-invalid",
+  "route": "pages/follows/index",
+  "state": "synthetic-populated",
+  "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
+  "expectText": ["合成冬季杯", "公开赛事已停止公开", "微信提醒未启用", "已失效"],
+  "expectEnabled": ["打开赛事", "加载更多关注"],
+  "data": {
+    "items": [
+      {
+        "followId": "77777771-7777-4777-8777-777777777777",
+        "publicEventId": "KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK",
+        "status": "ACTIVE",
+        "event": {
+          "name": "合成冬季杯",
+          "startDate": "2026-11-01",
+          "endDate": "2026-11-02",
+          "status": "RUNNING",
+          "purpose": "LIVE"
+        },
+        "createdAt": "2026-10-28T01:00:00.000Z",
+        "cancelledAt": null,
+        "statusLabel": "关注中",
+        "eventLabel": "比赛进行中",
+        "dateLabel": "11/01–11/02"
+      },
+      {
+        "followId": "77777772-7777-4777-8777-777777777777",
+        "publicEventId": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL",
+        "status": "INVALID",
+        "event": null,
+        "createdAt": "2026-10-28T01:00:00.000Z",
+        "cancelledAt": null,
+        "statusLabel": "已失效",
+        "eventLabel": "",
+        "dateLabel": ""
+      }
+    ],
+    "nextCursor": "synthetic_next_cursor",
+    "loading": false,
+    "loadingMore": false,
+    "moreError": "",
+    "busy": false,
+    "cancelling": "",
+    "error": "",
+    "notice": "",
+    "loginRequired": false,
+    "reminderOff": "微信提醒未启用：本轮不发送订阅消息，请回到小程序主动查看。"
+  }
+}
