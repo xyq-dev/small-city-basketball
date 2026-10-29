@@ -1,5 +1,15 @@
 # 任务看板
 
+## DOC003 管理员办赛、球员本人报名与必传照片
+
+2026-10-29 Asia/Shanghai；负责人及集成人：本次Codex会话。[专项要求](design/EVENT_REGISTRATION_PHOTO_REQUIREMENTS.md)、[任务](tasks/DOC003.md)、[交接](handoffs/DOC003.md)。
+
+| ID | 任务 | 交付状态 | 下一步 |
+| --- | --- | --- | --- |
+| DOC003 | 8队办赛、必传本人照片、私有相貌核对、宣传授权、保险与资格流程 | 需求文档交付；业务未实施 | 先完成角色流程UI及现有契约差异设计，再安排实现和R01—R12验收 |
+
+本轮不调整已完成C13—C19的状态，也不把需求补充算作新功能验收。照片上传为必填；宣传公开用途须单独授权。当前身份／保险报名阻塞、季军赛及真实投保接口仍待实施。
+
 ## DOC002 全国平台与同城服务需求文档
 
 更新：2026-10-29 Asia/Shanghai；本轮仅文档，负责人及集成人为本次Codex会话。完整内容见 [NATIONWIDE_LOCAL_REQUIREMENTS.md](NATIONWIDE_LOCAL_REQUIREMENTS.md)，执行记录见 [任务](tasks/DOC002.md) 与 [交接](handoffs/DOC002.md)。
