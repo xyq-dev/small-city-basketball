@@ -1,5 +1,15 @@
 # 任务看板
 
+## DOC004 定位选城、附近发现与服务可预约性
+
+2026-10-30 Asia/Shanghai；负责人及集成人：本次Codex会话。[专项要求](design/LOCATION_SERVICE_REQUIREMENTS.md)、[任务](tasks/DOC004.md)、[交接](handoffs/DOC004.md)。
+
+| ID | 任务 | 交付状态 | 下一步 |
+| --- | --- | --- | --- |
+| DOC004 | 官方资料研究、选城与附近交互、服务地点和覆盖规则、异常与验收要求 | DONE / MAIN文档交付；新增业务未实施 | 先做地区目录和手动选城差异设计；定位准入、真实供给及G01—G15另行实现和验证 |
+
+本轮不修改既有业务、权限、支付、照片保险或订单合同；8个逻辑交互态不代表已新增页面，15项验收为计划。地图地点、定位成功与可预约供给分别判断。
+
 ## DOC003 管理员办赛、球员本人报名与必传照片
 
 2026-10-29 Asia/Shanghai；负责人及集成人：本次Codex会话。[专项要求](design/EVENT_REGISTRATION_PHOTO_REQUIREMENTS.md)、[任务](tasks/DOC003.md)、[交接](handoffs/DOC003.md)。
