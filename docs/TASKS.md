@@ -1,5 +1,15 @@
 # 任务看板
 
+## DOC002 全国平台与同城服务需求文档
+
+更新：2026-10-29 Asia/Shanghai；本轮仅文档，负责人及集成人为本次Codex会话。完整内容见 [NATIONWIDE_LOCAL_REQUIREMENTS.md](NATIONWIDE_LOCAL_REQUIREMENTS.md)，执行记录见 [任务](tasks/DOC002.md) 与 [交接](handoffs/DOC002.md)。
+
+| ID | 任务 | 交付范围 | 负责人 | 依赖与后续 |
+| --- | --- | --- | --- | --- |
+| DOC002 | 全国平台＋同城服务完整功能要求与入口同步 | DONE / MAIN 文档交付；不代表全国化功能DONE | Codex | 已核对main基线及24页方案；后续先做现有实现差异评估，再建实施卡 |
+
+目标顺序为A全国内容与高州办赛样板 → B1机构工具套餐验证，B2同城供给履约可并行 → C各类交易逐项验收 → D逐城复制。此顺序是新需求，不回退或重新认领已合并C06—C19能力；官方微信／真机、生产和外部服务待办继续保留。
+
 ## C13—C19 已整合（DONE：源码与隔离验收 / MAIN）
 
 2026-10-29 Asia/Shanghai，集成人 Codex。用户明确授权测试通过后合并。#28 → #27 → #26 → #25 → #24 → #23 → #22 已依次使用 merge commit 合入；最终业务合并为 [PR #22](https://github.com/xyq-dev/small-city-basketball/pull/22)，main 提交 `f97bb4b07e1313cd389dcb6c5ec40451f7e2cbac`。每一步完整 tree 均与已检候选 `a384896228bba35e665da22178b23a02eaf5c2bb` 相同：`6e6bc53d3d6bda71c3a684345df85206481f46ca`。所有业务分支已包含；2026-10-29 经用户授权已删除 34 条已合并分支，仅保留 main 和三条 evidence/* 历史证据分支。[清理及恢复依据](audits/MERGED_BRANCH_CLEANUP_2026-10-29.md)。

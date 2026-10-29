@@ -1,5 +1,15 @@
 # 当前状态
 
+## DOC002 全国平台与同城服务需求同步 DONE 文档范围
+
+更新：2026-10-29 Asia/Shanghai；负责人及集成人：本次Codex会话。范围为**文档交付**；[完整需求](NATIONWIDE_LOCAL_REQUIREMENTS.md)、[任务](tasks/DOC002.md)、[交接](handoffs/DOC002.md)。
+
+- 将用户已提供的全国平台与同城服务方案整理为24章Markdown，更新产品、UI、商业规划、开发入口与决策；保留既有业务合同及历史证据。
+- 目标导航：首页／赛事／同城／球队／我的；全国可浏览与受理机构，实际交易服务按城市供给开放。此处是新目标，不将全国化标为已实现。
+- 本次基于远端 `main@a57e2e6247938dd20706dcdf08d45797b9de5313`，无本地Git checkout，通过GitHub API整合。只变更README和docs；应用子树 `766aa4b3967220d7c401fabe91be2634bc16b330` 及数据库、依赖、脚本、工作流与部署配置不变。
+- 文档检查包括24章、15项验收、相对路径、空白与改动范围。没有重跑应用测试、PG、官方微信或真机；应用CI对本次文档路径不触发，不记作测试通过。
+- C13—C19及其他已合并状态仍按下文记录；生产、支付、资质、定位与媒体服务的既有待办不因本次同步解除。
+
 ## C13—C19 已整合（DONE：源码与隔离验收 / MAIN）
 
 2026-10-29 Asia/Shanghai，集成人 Codex。用户明确授权测试通过后合并。#28 → #27 → #26 → #25 → #24 → #23 → #22 已依次使用 merge commit 合入；最终业务合并为 [PR #22](https://github.com/xyq-dev/small-city-basketball/pull/22)，main 提交 `f97bb4b07e1313cd389dcb6c5ec40451f7e2cbac`。每一步完整 tree 均与已检候选 `a384896228bba35e665da22178b23a02eaf5c2bb` 相同：`6e6bc53d3d6bda71c3a684345df85206481f46ca`。所有业务分支已包含；2026-10-29 经用户授权已删除 34 条已合并分支，仅保留 main 和三条 evidence/* 历史证据分支。[清理及恢复依据](audits/MERGED_BRANCH_CLEANUP_2026-10-29.md)。
