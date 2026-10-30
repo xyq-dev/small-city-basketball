@@ -6,7 +6,7 @@
 
 [CI41096252199](https://github.com/xyq-dev/small-city-basketball/actions/runs/41096252199)三job全部SUCCESS且原始日志已核验：1965单测/1原平台skip，集成396（含C23的13项和旧源校验）＋隔离运行PG19，原生页面API15，兼容浏览器947、933组三宽布局及PNG，真实API浏览器24、HTTPS4，83表重启与非空密文完整归档恢复、授权隔离及自有清理通过。Migration024已在隔离CI执行，生产未执行；001–023未改。[任务](tasks/C23.md)与[交接](handoffs/C23.md)保留每段代码依据、失败与修复及接续操作。
 
-当前40条小程序路由、24迁移、83表。专用密钥缺失/失配时新流程关闭；官方微信工具/真机、生产部署/生产Migration未执行。在线投保/真实支付、海报、邀请招募新体系、季军赛和GPS/附近服务仍待办，完整商业平台和DOC003均未全量完成。用户本轮要求先测试合并分支；2026-10-31 01:54 Asia/Shanghai核验[main自动CI41099428902](https://github.com/xyq-dev/small-city-basketball/actions/runs/41099428902)：admin和production均SUCCESS且完整日志已核对，api仍运行且最终日志尚不可下载，不把候选成功冒称复跑成功。当前恢复点G.1；本轮只更新工作安排和验证记录，没有业务或Migration变更。下一步先核对该结果，再按实际通道做微信/真机及发布前演练。分段代码与文档同步规则见COLLABORATION，运行中最迟15分钟留检查点。
+当前40条小程序路由、24迁移、83表。专用密钥缺失/失配时新流程关闭；官方微信工具/真机、生产部署/生产Migration未执行。在线投保/真实支付、海报、邀请招募新体系、季军赛和GPS/附近服务仍待办，完整商业平台和DOC003均未全量完成。用户本轮要求先测试合并分支；2026-10-31 02:01 Asia/Shanghai最终核验[main自动CI41099428902](https://github.com/xyq-dev/small-city-basketball/actions/runs/41099428902)整体completed/SUCCESS、attempt1，admin/api/production三job全部SUCCESS。已读本次main全部三套完整日志：1965单测/1平台跳过、396集成＋PG19、页面API15、947兼容浏览器/933布局PNG、真实API浏览器24/HTTPS4、83表重启/非空密文恢复和自有清理全部通过；执行SHA09348e39687489239ade33219dcd1cb86c742052，tree与已验收候选完全相同。此前日志可下载但状态更新延迟的检查点保留在任务G.1/G.2，当前恢复点为G.3，不再待测或重复合并。没有待合并业务代码，本轮仅4份Markdown，应用/测试/依赖/ops/工作流和Migration未变。后续按实际通道做微信/真机及发布前演练；本次未操作生产。分段代码与文档同步规则见COLLABORATION，运行中最迟15分钟留检查点。
 
 ## C22 标准地区目录（DONE / MAIN，源码与隔离验收）
 

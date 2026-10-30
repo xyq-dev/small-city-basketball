@@ -2,7 +2,7 @@
 
 ## C23 本人报名资料与人工审核
 
-2026-10-31 Asia/Shanghai；唯一集成人 Codex root。状态 **DONE / MAIN（源码与隔离验收）**；PR32合入09348e3，精确候选CI41096252199三job全绿。本轮按用户要求优先核验合并后[main CI41099428902](https://github.com/xyq-dev/small-city-basketball/actions/runs/41099428902)：01:54核验admin和production均成功，api仍运行且最终日志尚不可下载；恢复点G.1，未新增业务改动。
+2026-10-31 Asia/Shanghai；唯一集成人 Codex root。状态 **DONE / MAIN（源码与隔离验收）**；PR32合入09348e3，精确候选CI41096252199和合并后[main CI41099428902](https://github.com/xyq-dev/small-city-basketball/actions/runs/41099428902)均完整SUCCESS，三job全绿。本轮按用户要求测试合并分支，实际main完整日志及最终状态已核验；恢复点G.3。没有未合并业务改动，本轮只更新验证记录。
 
 | 切片 | 交付 | 状态 |
 | --- | --- | --- |
