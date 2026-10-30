@@ -503,6 +503,7 @@ test('event mainline runs end to end through native pages on the real API', asyn
   directoryTab.page.onShow();
   await browser.settle(directoryTab);
   assert.equal(directoryTab.page.data.dir.city, '合成未覆盖城市');
+  assert.equal(directoryTab.page.data.dir.loaded, true, directoryTab.page.data.dir.error);
   assert.deepEqual(directoryTab.page.data.dir.items, []);
   directoryTab.page.clearDirCity();
   await browser.settle(directoryTab);
