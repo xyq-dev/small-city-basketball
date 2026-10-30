@@ -476,8 +476,12 @@ test('event mainline runs end to end through native pages on the real API', asyn
   assert.equal(setup.page.data.directory.group, '进行中');
   snapshot(setup, 'event-setup-directory-listed');
   // An anonymous viewer finds it under 进行中, filtered by city, and opens the existing page.
-  directoryTab.page.dirCityInput(tap({}, { value: '高州' }));
-  directoryTab.page.applyDirCity();
+  // C20: a manual choice is shared by the existing directory and the public homepage.
+  directoryTab.page.onHide();
+  const cityPicker = browser.open('pages/city-select/index');
+  cityPicker.page.inputCity(tap({}, { value: ' 高州 ' }));
+  cityPicker.page.apply();
+  directoryTab.page.onShow();
   await browser.settle(directoryTab);
   assert.deepEqual(
     directoryTab.page.data.dir.items.map((e) => [e.publicEventId, e.name, e.displayCity]),
@@ -485,6 +489,25 @@ test('event mainline runs end to end through native pages on the real API', asyn
     directoryTab.page.data.dir.error,
   );
   snapshot(directoryTab, 'watch-directory');
+  const discoveryHome = browser.open('pages/home/index');
+  await browser.settle(discoveryHome);
+  assert.equal(discoveryHome.page.data.citySelection.city, '高州');
+  assert.deepEqual(
+    discoveryHome.page.data.publicEvents.map((e) => e.publicEventId),
+    [publicEventId],
+    discoveryHome.page.data.publicError,
+  );
+  snapshot(discoveryHome, 'home-city-discovery');
+  cityPicker.page.inputCity(tap({}, { value: '合成未覆盖城市' }));
+  cityPicker.page.apply();
+  directoryTab.page.onShow();
+  await browser.settle(directoryTab);
+  assert.equal(directoryTab.page.data.dir.city, '合成未覆盖城市');
+  assert.deepEqual(directoryTab.page.data.dir.items, []);
+  directoryTab.page.clearDirCity();
+  await browser.settle(directoryTab);
+  assert.equal(directoryTab.page.data.dir.city, '');
+  assert.deepEqual(directoryTab.page.data.dir.items.map((e) => e.publicEventId), [publicEventId]);
   directoryTab.page.openDirectory(tap({ id: publicEventId }));
   assert.equal(browser.navigations.at(-1), '/pages/event/index?event=' + publicEventId);
   const found = browser.open('pages/event/index', { event: publicEventId });
@@ -501,6 +524,11 @@ test('event mainline runs end to end through native pages on the real API', asyn
   await browser.settle(directoryTab);
   assert.equal(directoryTab.page.data.dir.loaded, true, directoryTab.page.data.dir.error);
   assert.deepEqual(directoryTab.page.data.dir.items, [], 'refresh removes the unlisted event');
+  discoveryHome.page.onShow();
+  await browser.settle(discoveryHome);
+  assert.equal(discoveryHome.page.data.publicLoaded, true, discoveryHome.page.data.publicError);
+  assert.equal(discoveryHome.page.data.citySelection.city, '');
+  assert.deepEqual(discoveryHome.page.data.publicEvents, [], 'homepage refresh also honors UNLIST');
   await found.page.load();
   await browser.settle(found);
   assert.equal(found.page.data.event?.name, '合成青锋杯', 'share link still valid after UNLIST');

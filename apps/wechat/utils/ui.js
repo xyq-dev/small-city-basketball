@@ -2,6 +2,7 @@ const api = require('./api');
 const routes = {};
 for (const key of [
   'home',
+  'city-select',
   'watch',
   'media',
   'event',

@@ -25,3 +25,6 @@
 .watch-event-status.live { background:#ff6b2d; color:#fff; }
 .watch-event-status.upcoming { background:#e7f5ee; color:#16734b; }
 .watch-event-status.cancelled { background:#fdecec; color:#b53333; }
+.watch-city-summary { display:flex; align-items:center; gap:12px; margin:8px 0; }
+.watch-city-summary > view { flex:1; min-width:0; overflow-wrap:anywhere; }
+.watch-page .watch-city-summary button { width:auto; flex:none; margin:0; padding:8px 12px; }

@@ -3,6 +3,7 @@ const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const recent = require('../../utils/recent');
 const directory = require('../../utils/directory');
+const cities = require('../../utils/city-preference');
 
 const privateDefaults = {
   signedIn: false,
@@ -25,20 +26,37 @@ Page({
     // Public directory: anonymous and independent of the signed-in account's private list.
     dir: directory.initialState(),
     dirGroups: directory.GROUPS,
+    citySelection: { label: '全国', source: '全国浏览', guide: true, warning: '' },
   },
   onLoad() {
     this._alive = true;
   },
   onShow() {
-    this.setData({ recentEvents: recent.list() });
+    this._dirHidden = false;
+    const selection = cities.snapshot();
+    this.setData({
+      recentEvents: recent.list(),
+      citySelection: selection,
+      'dir.city': selection.city,
+      'dir.cityInput': selection.city,
+      'dir.cityError': '',
+    });
     this.load();
     // Re-entering always starts the directory from its first page.
     this.loadDirectory();
+  },
+  onHide() {
+    this._dirHidden = true;
+    this._dirGen = (this._dirGen || 0) + 1;
+  },
+  chooseCity() {
+    ui.open('city-select');
   },
   // ---- public directory (anonymous) ----
   // Every reset (filter change, refresh, re-entry) starts a new generation; replies from an
   // older generation are dropped, so a slow earlier filter can never overwrite a newer one.
   async loadDirectory() {
+    if (this._alive === false || this._dirHidden) return;
     const gen = (this._dirGen = (this._dirGen || 0) + 1);
     this._dirCursor = null;
     const { group, city } = this.data.dir;
@@ -72,7 +90,7 @@ Page({
   async loadMoreDirectory() {
     const cursor = this._dirCursor;
     const d = this.data.dir;
-    if (!cursor || d.loading || d.loadingMore) return;
+    if (!cursor || d.loading || d.loadingMore || this._alive === false || this._dirHidden) return;
     const gen = this._dirGen;
     this.setData({ 'dir.loadingMore': true, 'dir.moreError': '' });
     try {
@@ -116,11 +134,21 @@ Page({
       this.setData({ 'dir.cityError': '城市仅支持中文、字母、数字、空格和“·”，最多20个字。' });
       return;
     }
-    this.setData({ 'dir.city': city || '', 'dir.cityInput': city || '', 'dir.cityError': '' });
+    this.setData({
+      citySelection: cities.choose(city || ''),
+      'dir.city': city || '',
+      'dir.cityInput': city || '',
+      'dir.cityError': '',
+    });
     this.loadDirectory();
   },
   clearDirCity() {
-    this.setData({ 'dir.city': '', 'dir.cityInput': '', 'dir.cityError': '' });
+    this.setData({
+      citySelection: cities.choose(''),
+      'dir.city': '',
+      'dir.cityInput': '',
+      'dir.cityError': '',
+    });
     this.loadDirectory();
   },
   openDirectory(e) {

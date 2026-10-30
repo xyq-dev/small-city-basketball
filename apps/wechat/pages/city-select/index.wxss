@@ -1,0 +1,7 @@
+.city-page .card { margin-top:16px; }
+.city-page .muted,.city-history button { overflow-wrap:anywhere; }
+.city-recent-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:20px; }
+.city-clear { width:auto; margin:0; font-size:13px; }
+.city-history { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.city-history button { width:auto; max-width:100%; margin:0; padding:8px 14px; }
+.city-location { background:#f4f6fa; }

@@ -192,3 +192,8 @@
 | S4 | [百度地图小程序POI检索](https://lbs.baidu.com/docs/jsapi?title=wxjsapi%2Fguide%2Fguide%2Fgetpoi) | 城市检索无需当前位置；周边检索采用中心点／半径及筛选 |
 
 微信开发者站的[getLocation原始页面](https://developers.weixin.qq.com/miniprogram/dev/api/location/wx.getLocation.html)、[getFuzzyLocation页面](https://developers.weixin.qq.com/miniprogram/dev/api/location/wx.getFuzzyLocation.html)及腾讯位置服务站点部分页面本次抓取失败，未把它们记为已阅读全文，也没有确认本项目已经拥有其权限。实施前仍须在官方文档与本项目小程序后台复核当前准入、隐私要求和实际可用能力。未选定或购买地图产品，未创建或配置Key。
+
+## 11. C20实施切片与现有合同差异
+
+2026-10-30 Asia/Shanghai：[C20任务](../tasks/C20.md)从手动选城／全国和公开赛事发现开始。现有目录仅有主办方填写的`displayCity`文字标签精确筛选，没有权威行政区ID、别名或父子区域归属。为保留既有公开授权与查询合同，本轮先做设备级偏好、最近选择、首页与赛事页联动、失败及迟到响应保护；不将标签映射为猜测的行政区，不改后端或Migration。
+L01／L02仅交付手动路径与定位未开放说明，行政层级浏览、地区目录、定位解析、附近范围和服务供给复核尚未实现。G01／G06／G07／G08／G13／G14中的相关手动子场景由C20回归覆盖，完整验收状态以任务交接为准；G02的正式“高州·石鼓”地区映射等不能因此判为通过。后续先设计标签到地区ID兼容与公开索引，再按实际准入接入定位。

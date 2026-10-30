@@ -1,0 +1,21 @@
+{
+  "name": "c20-home-empty",
+  "route": "pages/home/index",
+  "state": "home-empty",
+  "data": {
+    "citySelection": {
+      "label": "高州",
+      "city": "高州",
+      "source": "本次选择",
+      "guide": false,
+      "warning": ""
+    },
+    "publicLoaded": true,
+    "publicEvents": []
+  },
+  "expectText": [
+    "暂无已列入目录的进行中赛事",
+    "查看其他赛事阶段",
+    "浏览全国"
+  ]
+}

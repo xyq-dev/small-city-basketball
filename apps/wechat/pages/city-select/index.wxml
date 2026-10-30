@@ -1,0 +1,17 @@
+<view class="page city-page">
+  <view class="title">选择浏览城市</view>
+  <view class="muted">当前：{{label}} · {{source}}。仅筛选公开赛事，不修改个人资料或订单地点。</view>
+  <view class="card">
+    <view class="field-label">城市名称</view>
+    <input class="field" value="{{input}}" bindinput="inputCity" bindconfirm="apply" placeholder="输入主办方标注的城市，如高州" maxlength="40"/>
+    <view class="muted small">按主办方填写的城市名称精确筛选。“高州”和“高州市”暂不自动合并，也不按上级城市扩大范围。</view>
+    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+    <button class="primary" bindtap="apply">使用此城市</button>
+    <button class="secondary" bindtap="nationwide">浏览全国</button>
+  </view>
+  <view wx:if="{{warning}}" class="notice warning">{{warning}}</view>
+  <view class="city-recent-head"><view class="subtitle">最近选择</view><button wx:if="{{recent.length}}" class="quiet city-clear" bindtap="clearHistory">清除记录</button></view>
+  <view wx:if="{{!recent.length}}" class="muted">暂无最近选择，可以直接输入城市名称。</view>
+  <view class="city-history"><button wx:for="{{recent}}" wx:key="*this" class="secondary" data-city="{{item}}" bindtap="pickRecent">{{item}}</button></view>
+  <view class="card city-location"><view class="subtitle">定位当前城市</view><view class="muted">定位暂未开放，请手动选城或浏览全国。这里不会读取你的当前位置。</view></view>
+</view>
