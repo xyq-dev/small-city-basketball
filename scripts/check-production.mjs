@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, readFile, writeFile, chmod, rm } from 'node:fs/promises
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
+import { assertApiSecretMounts } from './check-api-secret-mounts.mjs';
 
 // CI owns every generated project, volume, credential and archive. Nothing is deployed remotely.
 if (process.env.CI !== 'true' || !process.env.RUNNER_TEMP)
@@ -524,6 +525,13 @@ try {
       await ownedFile(path.join(directory, 'tls_private_key'), key, 101);
       await ownedFile(path.join(directory, 'bootstrap_owner_input'), JSON.stringify(owner));
       await ownedFile(path.join(directory, 'c23_participant_data_key'), participantDataKey);
+      const participantKeyMode = await run('sudo', [
+        'stat',
+        '-c',
+        '%a %u %g',
+        path.join(directory, 'c23_participant_data_key'),
+      ]);
+      assert.equal(participantKeyMode.output.trim(), '400 10001 10001');
       await ownedFile(
         path.join(directory, 'database_restore_url'),
         databaseUrl('admin', 'restoredb', 'postgres'),
@@ -560,6 +568,7 @@ secrets:
   await stage(
     'Build production api, web and database tools plus an isolated test image',
     async () => {
+      await run(process.execPath, ['--test', 'scripts/check-api-secret-mounts.test.mjs']);
       for (const image of [
         'node:24.22.1-bookworm-slim',
         'nginx:1.30.6-alpine',
@@ -709,16 +718,7 @@ secrets:
         const id = await container(source, sourceEnv, service);
         const details = (await jsonCommand(['inspect', id]))[0];
         assert.equal(Object.keys(details.HostConfig.PortBindings ?? {}).length, 0);
-        if (service === 'api') {
-          assert.equal(details.HostConfig.ReadonlyRootfs, true);
-          assert.equal(details.HostConfig.Init, true);
-          assert.deepEqual(
-            details.Mounts.filter((item) => item.Destination.startsWith('/run/secrets/')).map(
-              (item) => item.Destination,
-            ),
-            ['/run/secrets/database_runtime_url'],
-          );
-        }
+        if (service === 'api') assertApiSecretMounts(details, sourceSecrets);
       }
       await validator(source, sourceEnv, 'capture');
       await copyState();
@@ -795,6 +795,7 @@ secrets:
         assert.notEqual(recreatedApi, apiId, 'The API container must actually be recreated');
         assert.equal(await container(source, sourceEnv, 'web'), webId, 'Web must remain running');
         const apiAfter = (await jsonCommand(['inspect', recreatedApi]))[0];
+        assertApiSecretMounts(apiAfter, sourceSecrets);
         assert.notEqual(
           apiAfter.NetworkSettings.Networks[`${source}_frontend`].IPAddress,
           previousAddress,
@@ -912,6 +913,10 @@ secrets:
 
     await compose(target, targetEnv, ['up', '-d', '--no-build', '--no-deps', 'api']);
     await compose(target, targetEnv, ['up', '-d', '--no-build', '--no-deps', 'web']);
+    const restoredApi = (
+      await jsonCommand(['inspect', await container(target, targetEnv, 'api')])
+    )[0];
+    assertApiSecretMounts(restoredApi, targetSecrets);
     await waitReady();
     await validator(target, targetEnv, 'verify', true);
     console.log(
