@@ -36,6 +36,7 @@ test('C20 archive is restored with its frozen package, quarantined, then upgrade
   const owned = new Map<string, { oid: number; comment: string }>();
   const pools: Pool[] = [];
   const directory = await mkdtemp(join(process.env.SCB_PG_WORK_DIRECTORY || tmpdir(), 'scb-c22-'));
+  const previousTemporaryDirectory = process.env.TMPDIR;
   let changedMigrator = false;
   let primaryError: unknown;
   const urlFor = (role: string, database: string) => {
@@ -53,6 +54,10 @@ test('C20 archive is restored with its frozen package, quarantined, then upgrade
       )
     ).rows[0];
   try {
+    // Both frozen and current recovery tools create private libpq passfiles via
+    // os.tmpdir(). The CI client container mounts only its owned work directory,
+    // so keep those files inside this already-owned child, without broadening mounts.
+    process.env.TMPDIR = directory;
     expect(fixture.sourceCommit).toBe('406568891a8eb95219b962cbdcb7fa422b257f46');
     const legacyRoot = join(directory, 'legacy');
     for (const [name, file] of Object.entries(fixture.files)) {
@@ -207,6 +212,8 @@ test('C20 archive is restored with its frozen package, quarantined, then upgrade
     primaryError = error;
     throw error;
   } finally {
+    if (previousTemporaryDirectory === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = previousTemporaryDirectory;
     const cleanupErrors: unknown[] = [];
     const clean = async (action: () => Promise<unknown>) => {
       try {
