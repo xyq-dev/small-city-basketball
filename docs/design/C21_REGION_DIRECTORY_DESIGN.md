@@ -310,3 +310,11 @@ event-setup 在目录卡内选标准地区，旧 listing 显示原公开标签�
 - S3：[固定 CC0 许可](https://github.com/yescallop/areacodes/blob/e2c2b2e1fb4ce1fb76e879aa0b80e229adaf950c/LICENSE)。已读，不额外引入地图数据许可。
 - S4：[国务院公报：行政区划代码管理办法](https://www.gov.cn/gongbao/2025/issue_12226/202508/content_7036972.html)，[司法部转载](https://www.moj.gov.cn/pub/sfbgw/flfggz/flfggzbmgz/202512/t20251204_528920.html)。搜索实际取得原文；直接打开司法部页面出现重定向错误，未隐瞒读取方式。代码是来源属性，废码不能复用，旧版本保留。
 - S5：[国家地名信息库年版入口](https://dmfw.mca.gov.cn/XzqhVersionPublish.html)。上游列为 2025 年来源；本轮直接访问失败，不能当作已全量核对。
+
+## 12. C22 实施订正与验证入口
+
+2026-10-30（Asia/Shanghai）：C21 设计经 PR #30 合入；当前由 Codex 直接实施、测试、审查与集成，[C22 任务](../tasks/C22.md)／[交接](../handoffs/C22.md) 是执行事实。上面的“仅设计”“全部待实施”及历史 Claude Code 提示词反映设计交付时点。
+
+恢复隔离始终要求停止外部 writer。审查发现原 quarantine 的逐表等待与会话写入顺序可能形成死锁；实施采用同一事务 `LOCK TABLE ... IN EXCLUSIVE MODE NOWAIT`，如有在途事务则完整回滚并拒绝隔离，停止写入后显式重试。R11 因而区分：正常在线命令按原锁序串行；离线 quarantine 有并发 writer 时拒绝，不能声称在线隔离无条件成功。不会强杀连接、降低隔离或自动重新公开赛事。确定性两方向 PG 测试及原完整恢复测试必须通过后才能验收。
+
+Migration 023 和引用表只增新版本，不回填历史地点；运行 readiness 核对精确目录内容哈希、81 表和23迁移。旧78表归档必须使用保留的旧包恢复与隔离后显式升级，新恢复包仍拒绝旧归档；没有通用跨版本降级或生产执行。

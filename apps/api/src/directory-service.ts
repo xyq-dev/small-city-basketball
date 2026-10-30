@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type {
   EventDirectoryData,
   EventDirectoryListingData,
   PublicDirectoryEventData,
+  RegionSelection,
 } from '@small-city-basketball/contracts';
 import { ApiError, forbidden } from './errors.js';
 import { hashToken } from './security.js';
@@ -12,9 +13,13 @@ import type { StandingsAccess } from './standings-service.js';
 import {
   directoryGroup,
   encodeDirectoryCursor,
+  encodeRegionDirectoryCursor,
   parseDirectoryCommand,
   parseDirectoryQuery,
 } from './directory-domain.js';
+import { REGION_CATALOG_VERSION } from './region-catalog-data.js';
+import { assertCurrentRegionVersion } from './region-catalog-domain.js';
+import { readVerifiedRegionCatalog } from './region-catalog-integrity.js';
 
 type Row = Record<string, any>;
 const iso = (v: Date | string) => (v instanceof Date ? v.toISOString() : new Date(v).toISOString());
@@ -28,7 +33,7 @@ const version = (actual: number, expected: number) => {
     });
 };
 const LISTING_COLUMNS =
-  'l.id,l.status,l.display_city,l.listed_at,l.revoked_at,l.revoke_source,p.public_event_id';
+  'l.id,l.status,l.publication_id,l.display_city,l.listed_at,l.revoked_at,l.revoke_source,l.region_id,l.region_catalog_version,p.public_event_id';
 
 /**
  * C18 public event directory. LIST/UNLIST reuse the public-viewing authority (organization
@@ -44,6 +49,9 @@ export class DirectoryService extends StandingsService {
           status: r.status,
           publicEventId: r.public_event_id,
           displayCity: r.display_city,
+          region: r.region_id
+            ? { regionId: r.region_id, catalogVersion: r.region_catalog_version }
+            : null,
           listedAt: iso(r.listed_at),
           revokedAt: r.revoked_at ? iso(r.revoked_at) : null,
           revokeSource: r.revoke_source,
@@ -101,13 +109,24 @@ export class DirectoryService extends StandingsService {
         listing: this.listingDto(active ?? undefined),
         lastListing: active ? null : this.listingDto(rows[0]),
         group,
+        regionCatalogVersion: REGION_CATALOG_VERSION,
         capabilities: {
           canList: a.manager && !active && !!group,
           // Withdrawing is never blocked by a closed event.
           canUnlist: a.manager && !!active,
+          canReplaceRegion:
+            a.manager && !!active && !!group && active.publication_id === livePub?.id,
         },
       },
     };
+  }
+
+  private async selectedRegion(db: PoolClient | Pool, selection: RegionSelection) {
+    assertCurrentRegionVersion(selection.catalogVersion);
+    const { nodes } = await readVerifiedRegionCatalog(db);
+    const node = nodes.find((n) => n.regionId === selection.regionId);
+    if (!node) throw new ApiError(400, 'INVALID_REGION', '地区不存在，请重新选择');
+    return node;
   }
 
   async getDirectory(cookie: string | undefined, org: string, id: string) {
@@ -128,35 +147,79 @@ export class DirectoryService extends StandingsService {
       const now = await this.now(c, ctx);
       version(a.event.version, input.expectedEventVersion);
       const { pub, active } = await this.state(c, a, true);
-      if (input.type === 'LIST') {
-        if (active) conflict('DIRECTORY_ALREADY_LISTED', '该赛事已在公开目录中');
+      if (input.type === 'LIST' || input.type === 'REPLACE_REGION') {
+        const replace = input.type === 'REPLACE_REGION';
+        if (!replace && active) conflict('DIRECTORY_ALREADY_LISTED', '该赛事已在公开目录中');
+        if (
+          replace &&
+          (!active || active.id !== input.expectedListingId || active.publication_id !== pub?.id)
+        )
+          conflict('DIRECTORY_LISTING_CHANGED', '目录记录已变化，请重新读取后确认');
         if (!pub) conflict('PUBLIC_VIEWING_NOT_ENABLED', '请先开启公开观赛');
         if (!directoryGroup(a.event.status, pub!.purpose))
           conflict('INVALID_EVENT_STATE', '当前赛事状态与公开观赛用途不符，不能列入目录');
+        const selected = input.region ? await this.selectedRegion(c, input.region) : null;
+        const displayCity = selected ? selected.name : input.displayCity;
+        if (
+          replace &&
+          active!.region_id === selected!.regionId &&
+          active!.region_catalog_version === input.region!.catalogVersion &&
+          active!.display_city === displayCity
+        )
+          conflict('DIRECTORY_REGION_UNCHANGED', '当前已经是所选标准地区');
+        if (replace)
+          await c.query(
+            `UPDATE event_directory_listings SET status='REVOKED',revoked_at=GREATEST($2::timestamptz,listed_at),
+           revoked_by=$3,revoke_source='UNLIST',revoke_reason=$4 WHERE id=$1 AND status='ACTIVE'`,
+            [active!.id, now, ctx.user.id, input.reason],
+          );
         const listingId = randomUUID();
         await c.query(
-          `INSERT INTO event_directory_listings(id,org_id,event_id,publication_id,display_city,listed_by,listed_at,listed_event_version,list_reason)
-           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          `INSERT INTO event_directory_listings(id,org_id,event_id,publication_id,display_city,listed_by,listed_at,listed_event_version,list_reason,region_catalog_version,region_id)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
           [
             listingId,
             ctx.orgId,
             a.event.id,
             pub!.id,
-            input.displayCity,
+            displayCity,
             ctx.user.id,
             now,
             a.event.version + 1,
             input.reason,
+            input.region?.catalogVersion ?? null,
+            selected?.regionId ?? null,
           ],
         );
         await this.touch(c, a, now);
-        await this.audit(c, ctx.user.id, ctx.orgId, 'directory.listed', 'event', a.event.id, {
-          listingId,
-          publicationId: pub!.id,
-          displayCity: input.displayCity,
-          reason: input.reason,
-          eventVersion: a.event.version,
-        });
+        await this.audit(
+          c,
+          ctx.user.id,
+          ctx.orgId,
+          replace ? 'directory.region_replaced' : 'directory.listed',
+          'event',
+          a.event.id,
+          {
+            listingId,
+            publicationId: pub!.id,
+            displayCity,
+            region: input.region ?? null,
+            ...(replace
+              ? {
+                  previousListingId: active!.id,
+                  previousDisplayCity: active!.display_city,
+                  previousRegion: active!.region_id
+                    ? {
+                        regionId: active!.region_id,
+                        catalogVersion: active!.region_catalog_version,
+                      }
+                    : null,
+                }
+              : {}),
+            reason: input.reason,
+            eventVersion: a.event.version,
+          },
+        );
       } else {
         if (!active) conflict('DIRECTORY_NOT_LISTED', '该赛事当前不在公开目录中');
         await c.query(
@@ -179,6 +242,7 @@ export class DirectoryService extends StandingsService {
   async getPublicDirectory(raw: unknown, ip: string) {
     const q = parseDirectoryQuery(raw);
     await this.rateLimit(`directory-ip:${hashToken(ip)}`, 60, 60);
+    if (q.region) await this.selectedRegion(this.pool, q.region);
     const history = q.group === 'HISTORY';
     const sort = history ? 'e.end_date' : 'e.start_date';
     const condition =
@@ -194,18 +258,38 @@ export class DirectoryService extends StandingsService {
       : '';
     const params: unknown[] = [q.city, q.limit + 1];
     if (q.cursor) params.push(q.cursor.sortDate, q.cursor.publicEventId);
+    let regionTree = '',
+      aliasJoin = '',
+      regionFilter = '';
+    if (q.region) {
+      const id = '$' + params.push(q.region.regionId);
+      const catalog = '$' + params.push(q.region.catalogVersion);
+      regionTree = `WITH RECURSIVE selected_regions AS (
+        SELECT region_id FROM region_catalog_nodes WHERE catalog_version=${catalog} AND region_id=${id}::uuid
+        UNION ALL
+        SELECT n.region_id FROM region_catalog_nodes n JOIN selected_regions p ON n.parent_region_id=p.region_id
+        WHERE n.catalog_version=${catalog}
+      )`;
+      // Legacy labels already use normalizeCity on write; the immutable table guard preserves
+      // that canonical shape. A unique (version,label) mapping cannot multiply a listing row.
+      aliasJoin = `LEFT JOIN region_legacy_aliases legacy ON l.region_id IS NULL
+        AND legacy.catalog_version=${catalog} AND legacy.label=l.display_city`;
+      regionFilter =
+        'AND COALESCE(l.region_id,legacy.region_id) IN (SELECT region_id FROM selected_regions)';
+    }
     const rows = (
       await this.pool.query<Row>(
-        `SELECT p.public_event_id,e.name,e.start_date::text AS start_date,e.end_date::text AS end_date,
+        `${regionTree} SELECT p.public_event_id,e.name,e.start_date::text AS start_date,e.end_date::text AS end_date,
            e.venue_name,e.status,p.purpose,l.display_city,${sort}::text AS sort_date
          FROM event_directory_listings l
          JOIN organizations o ON o.id=l.org_id AND o.status='ACTIVE'
          JOIN events e ON e.org_id=l.org_id AND e.id=l.event_id
          JOIN public_event_publications p ON p.org_id=l.org_id AND p.event_id=l.event_id
            AND p.id=l.publication_id AND p.revoked_at IS NULL
+         ${aliasJoin}
          WHERE l.status='ACTIVE' AND ${condition}
            AND e.format IN ('ROUND_ROBIN','SINGLE_ELIMINATION','GROUP_KNOCKOUT')
-           AND ($1::text IS NULL OR l.display_city=$1::text) ${after}
+           AND ($1::text IS NULL OR l.display_city=$1::text) ${regionFilter} ${after}
          ORDER BY ${sort} ${history ? 'DESC' : 'ASC'}, p.public_event_id COLLATE "C" ASC
          LIMIT $2`,
         params,
@@ -227,7 +311,15 @@ export class DirectoryService extends StandingsService {
       data,
       nextCursor:
         rows.length > q.limit && last
-          ? encodeDirectoryCursor(q.group, q.city, last.sort_date, last.public_event_id)
+          ? q.region
+            ? encodeRegionDirectoryCursor(
+                q.group,
+                q.region,
+                q.limit,
+                last.sort_date,
+                last.public_event_id,
+              )
+            : encodeDirectoryCursor(q.group, q.city, last.sort_date, last.public_event_id)
           : null,
     };
   }

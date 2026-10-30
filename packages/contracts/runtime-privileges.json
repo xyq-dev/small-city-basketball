@@ -283,6 +283,18 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["status", "version", "court_id", "court_name", "starts_at", "ends_at"]
     },
+    "region_catalog_nodes": {
+      "privileges": ["SELECT"],
+      "updateColumns": []
+    },
+    "region_catalog_versions": {
+      "privileges": ["SELECT"],
+      "updateColumns": []
+    },
+    "region_legacy_aliases": {
+      "privileges": ["SELECT"],
+      "updateColumns": []
+    },
     "registration_freezes": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []

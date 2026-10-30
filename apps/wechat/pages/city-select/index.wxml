@@ -1,17 +1,44 @@
 <view class="page city-page">
-  <view class="title">选择浏览城市</view>
-  <view class="muted">当前：{{label}} · {{source}}。仅筛选公开赛事，不修改个人资料或订单地点。</view>
+  <view class="title">{{organizer ? '选择赛事标准地区' : '选择浏览地区'}}</view>
+  <view class="muted">{{organizer ? '只用于本次目录设置，不改变首页浏览地区、赛事场馆或订单地点。' : '当前：' + label + ' · ' + source + '。仅筛选公开赛事，不修改个人资料或订单地点。'}}</view>
+  <view wx:if="{{warning && !organizer}}" class="notice warning">{{warning}}</view>
+  <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+  <view wx:if="{{versionNote}}" class="notice">{{versionNote}}</view>
+  <button wx:if="{{!organizer}}" class="secondary" bindtap="nationwide">浏览全国</button>
   <view class="card">
-    <view class="field-label">城市名称</view>
-    <input class="field" value="{{input}}" bindinput="inputCity" bindconfirm="apply" placeholder="输入主办方标注的城市，如高州" maxlength="40"/>
-    <view class="muted small">按主办方填写的城市名称精确筛选。“高州”和“高州市”暂不自动合并，也不按上级城市扩大范围。</view>
-    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-    <button class="primary" bindtap="apply">使用此城市</button>
-    <button class="secondary" bindtap="nationwide">浏览全国</button>
+    <view class="subtitle">按标准地区选择</view>
+    <view class="muted small">选择本地区包含其下辖地区；只确定到上级的赛事不会自动进入具体市县。定位暂未开放。</view>
+    <view wx:if="{{catalogLoading}}" class="muted">正在读取地区目录…</view>
+    <view wx:elif="{{catalogError}}" class="notice warning">{{catalogError}}<button class="secondary" bindtap="loadCatalog">重试读取地区目录</button></view>
+    <block wx:else>
+      <view class="muted small" wx:if="{{dataDate}}">地区数据截至 {{dataDate}}；港澳台目前只收录省级。</view>
+      <input class="field" value="{{search}}" bindinput="searchRegion" placeholder="搜索省、市或区县，核对完整路径" maxlength="80"/>
+      <view wx:if="{{parentId}}" class="region-parent">
+        <view class="watch-strong">{{parentLabel}}</view>
+        <view wx:if="{{partial}}" class="notice small">此地区尚未收录下级，可按省级范围查看，不代表当地服务已开放。</view>
+        <button class="primary" bindtap="chooseParent">选择本地区及下辖地区</button>
+        <button class="quiet" bindtap="rootRegions">返回全国地区列表</button>
+      </view>
+      <view wx:if="{{!rows.length}}" class="muted">{{parentId ? '此地区没有已收录的下级，可直接选择本地区。' : '没有匹配地区，请换个名称搜索。'}}</view>
+      <view wx:for="{{rows}}" wx:key="id" class="region-row">
+        <view class="region-name">{{item.name}}</view>
+        <view class="muted small">{{item.path}}</view>
+        <view wx:if="{{item.partial}}" class="muted small">目前仅收录省级</view>
+        <view class="region-actions"><button class="secondary" data-id="{{item.id}}" bindtap="selectRegion">选择{{item.hasChildren ? '本地区及下辖地区' : '本地区'}}</button><button wx:if="{{item.hasChildren}}" class="quiet" data-id="{{item.id}}" bindtap="browseRegion">查看下级</button></view>
+      </view>
+      <button wx:if="{{hasMore}}" class="quiet" bindtap="moreRegions">显示更多地区</button>
+    </block>
   </view>
-  <view wx:if="{{warning}}" class="notice warning">{{warning}}</view>
-  <view class="city-recent-head"><view class="subtitle">最近选择</view><button wx:if="{{recent.length}}" class="quiet city-clear" bindtap="clearHistory">清除记录</button></view>
-  <view wx:if="{{!recent.length}}" class="muted">暂无最近选择，可以直接输入城市名称。</view>
-  <view class="city-history"><button wx:for="{{recent}}" wx:key="*this" class="secondary" data-city="{{item}}" bindtap="pickRecent">{{item}}</button></view>
+  <block wx:if="{{!organizer}}">
+    <view class="city-recent-head"><view class="subtitle">最近选择</view><button wx:if="{{recentChoices.length}}" class="quiet city-clear" bindtap="clearHistory">清除记录</button></view>
+    <view wx:if="{{!recentChoices.length}}" class="muted">暂无最近选择。</view>
+    <view class="city-history"><button wx:for="{{recentChoices}}" wx:key="key" class="secondary" data-key="{{item.key}}" bindtap="pickRecent">{{item.label}}{{item.mode === 'LEGACY_CITY' ? '（历史文字）' : ''}}</button></view>
+    <view class="card">
+      <view class="field-label">按历史城市文字筛选</view>
+      <input class="field" value="{{input}}" bindinput="inputCity" bindconfirm="apply" placeholder="输入主办方原标签，如高州" maxlength="40"/>
+      <view class="muted small">此入口仍精确匹配原城市文字。“高州”和“高州市”在文字模式下不自动合并；选择上方标准地区可查看本地区及下辖赛事。</view>
+      <button class="secondary" bindtap="apply">使用此城市文字</button>
+    </view>
+  </block>
   <view class="card city-location"><view class="subtitle">定位当前城市</view><view class="muted">定位暂未开放，请手动选城或浏览全国。这里不会读取你的当前位置。</view></view>
 </view>

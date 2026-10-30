@@ -59,7 +59,10 @@ Page({
     if (this._alive === false || this._dirHidden) return;
     const gen = (this._dirGen = (this._dirGen || 0) + 1);
     this._dirCursor = null;
-    const { group, city } = this.data.dir;
+    const { group } = this.data.dir;
+    const selection = cities.snapshot();
+    this._dirSelection = cities.query(selection);
+    this.setData({ citySelection: selection });
     // A reset clears the rows first: a failed refresh never shows old rows as current. It also
     // ends the previous generation's pending "load more": that reply is dropped by generation,
     // so leaving loadingMore set would block every later page of the new generation.
@@ -73,7 +76,7 @@ Page({
       'dir.loaded': false,
     });
     try {
-      const page = await directory.fetchPage(api.getClient(), { group, city });
+      const page = await directory.fetchPage(api.getClient(), { group, ...this._dirSelection });
       if (gen !== this._dirGen || this._alive === false) return;
       this._dirCursor = page.nextCursor;
       this.setData({
@@ -96,7 +99,7 @@ Page({
     try {
       const page = await directory.fetchPage(api.getClient(), {
         group: d.group,
-        city: d.city,
+        ...this._dirSelection,
         cursor,
       });
       if (gen !== this._dirGen || this._alive === false) return;
@@ -108,6 +111,13 @@ Page({
       });
     } catch (error) {
       if (gen !== this._dirGen || this._alive === false) return;
+      if (
+        error &&
+        ['INVALID_CURSOR', 'REGION_CATALOG_CHANGED', 'INVALID_REGION'].includes(error.code)
+      ) {
+        this._dirCursor = null;
+        this.setData({ 'dir.done': true });
+      }
       // Rows already read stay; only the next page is reported as missing.
       this.setData({
         'dir.loadingMore': false,

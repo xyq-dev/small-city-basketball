@@ -1,0 +1,21 @@
+{
+  "name": "c22-city-error",
+  "route": "pages/city-select/index",
+  "state": "region-directory",
+  "designSource": "synthetic:C22-region-directory",
+  "data": {
+    "mode": "REGION",
+    "regionId": "00000000-0000-4000-8000-000000000003",
+    "catalogVersion": "synthetic-2025-v1",
+    "label": "广东省 / 茂名市 / 高州市",
+    "level": "COUNTY",
+    "description": "本地区及下辖地区",
+    "source": "上次选择",
+    "guide": false,
+    "warning": "更改已在本次生效，但无法保存到本机；下次启动可能恢复之前的城市和最近选择。",
+    "catalogError": "地区目录暂时无法读取，请重试。",
+    "rows": [],
+    "recentChoices": []
+  },
+  "expectText": ["重试读取地区目录", "无法保存到本机", "浏览全国"]
+}

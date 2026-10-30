@@ -327,7 +327,7 @@ describe(
       }
     });
 
-    test('keeps the sixty-six manifest tables and every declared runtime update column compatible', async () => {
+    test('keeps the 81 manifest tables and every declared runtime update column compatible', async () => {
       const manifest = JSON.parse(
         await readFile(
           new URL('../../../packages/contracts/runtime-privileges.json', import.meta.url),
@@ -339,7 +339,7 @@ describe(
           "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name",
         )
       ).rows.map((row) => row.table_name);
-      expect(actual).toHaveLength(78);
+      expect(actual).toHaveLength(81);
       expect(Object.keys(manifest.tables).sort()).toEqual(actual);
       const columns = (
         await pool!.query<{ table_name: string; column_name: string }>(

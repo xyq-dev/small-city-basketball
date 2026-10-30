@@ -5,6 +5,7 @@ const { createWx, loadPage } = require('./helpers/native-page.cjs');
 const { buildPreview } = require('./helpers/native-preview.cjs');
 const root = path.resolve(__dirname, '..');
 const KEY = 'scb.browseCity.v1';
+const V2_KEY = 'scb.browseRegion.v2';
 const tap = (dataset = {}, value = '') => ({ currentTarget: { dataset }, detail: { value } });
 const reply = (data = [], nextCursor = null) => ({
   statusCode: 200,
@@ -91,13 +92,15 @@ test('picker applies canonical city and home/watch share the explicit preference
   assert.equal(watch.page.data.dir.city, '高州');
   assert.equal(watch.page.data.dir.cityInput, '高州');
   assert.equal(home.page.data.citySelection.source, '本次选择');
-  for (const r of d.wx.calls.filter((c) => c.type === 'request'))
+  for (const r of d.wx.calls.filter(
+    (c) => c.type === 'request' && c.url.includes('/public/directory'),
+  ))
     assert.match(r.url, new RegExp('city=' + encodeURIComponent('高州') + '$'));
-  assert.deepEqual(d.storage.get(KEY), {
-    version: 1,
-    selected: '高州',
+  assert.deepEqual(d.storage.get(V2_KEY), {
+    version: 2,
+    selected: { mode: 'LEGACY_CITY', city: '高州' },
     chosen: true,
-    recent: ['高州'],
+    recent: [{ mode: 'LEGACY_CITY', city: '高州' }],
   });
 });
 
@@ -121,13 +124,16 @@ test('manual city: county and prefecture names are not guessed', async () => {
 test('blank and invalid cities do not save, navigate or send requests', () => {
   const d = device();
   const p = d.open('city-select');
+  const before = d.wx.calls.length; // Opening the picker may read the public region catalog.
   for (const value of ['', ' ', '高州!', '城'.repeat(21), 'https://a.test', '高州\u0000']) {
     p.page.inputCity(tap({}, value));
     p.page.apply();
     assert.ok(p.page.data.error);
   }
   assert.equal(
-    d.wx.calls.some((c) => ['request', 'setStorageSync', 'navigateBack'].includes(c.type)),
+    d.wx.calls
+      .slice(before)
+      .some((c) => ['request', 'setStorageSync', 'navigateBack'].includes(c.type)),
     false,
   );
 });
@@ -147,7 +153,7 @@ test('recent choices: bounded, deduplicated, safe clearing', () => {
   assert.equal(p.page.data.city, '合成城6');
   assert.deepEqual(p.page.data.recent, []);
   assert.deepEqual(storage.get('unrelated-private-draft'), { originalCommandId: 'keep-me' });
-  assert.deepEqual([...storage.keys()].sort(), [KEY, 'unrelated-private-draft'].sort());
+  assert.deepEqual([...storage.keys()].sort(), [V2_KEY, 'unrelated-private-draft'].sort());
 });
 
 test('cold start restores choice without GPS; nationwide persists an empty filter', async () => {
@@ -201,7 +207,7 @@ test('stored extra fields never reach UI or the next persisted preference', () =
   const p = d.open('city-select');
   assert.equal(JSON.stringify(p.page.data).includes('private'), false);
   p.page.nationwide();
-  assert.deepEqual(Object.keys(d.storage.get(KEY)).sort(), [
+  assert.deepEqual(Object.keys(d.storage.get(V2_KEY)).sort(), [
     'chosen',
     'recent',
     'selected',

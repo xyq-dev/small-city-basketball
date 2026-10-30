@@ -194,7 +194,11 @@ describe('C18 public event directory on isolated PostgreSQL', { concurrent: fals
       displayCity: '茂名 高州',
       publicEventId,
     });
-    expect(listed.capabilities).toEqual({ canList: false, canUnlist: true });
+    expect(listed.capabilities).toEqual({
+      canList: false,
+      canUnlist: true,
+      canReplaceRegion: true,
+    });
     const audit = await h.api.pool.query(
       "SELECT actor_id,metadata FROM audit_logs WHERE resource_id=$1 AND action='directory.listed'",
       [eventId],

@@ -5,3 +5,9 @@
 .city-history { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
 .city-history button { width:auto; max-width:100%; margin:0; padding:8px 14px; }
 .city-location { background:#f4f6fa; }
+.region-row { padding:14px 0; border-bottom:1px solid #e4e8ef; }
+.region-name { font-weight:600; }
+.region-row .small,.region-parent { overflow-wrap:anywhere; }
+.region-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.region-actions button { width:auto; max-width:100%; margin:0; font-size:13px; padding:7px 12px; }
+.region-parent { padding:12px; background:#f4f6fa; border-radius:10px; }

@@ -13,14 +13,17 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
     await client.query('SET LOCAL ROLE scb_migrator');
     await assertOwnedRestoreTarget(client, ownership);
     await client.query("SET LOCAL lock_timeout = '15s'");
-    // This is an offline restore operation. Drain in-flight row-locking readers
-    // and writers before choosing the single time used by all revocations.
+    // This is an offline restore operation: writers must already be stopped. Do not
+    // wait while holding only some table locks: an in-flight authenticated request
+    // locks sessions/users before organizations and could otherwise form a lock cycle.
+    // NOWAIT rejects and rolls back the entire operation before any revocation. The
+    // operator may retry after draining writers; quarantine never retries automatically.
     await client.query(`LOCK TABLE organizations, events, users, sessions,
       team_invitations, public_event_publications, event_directory_listings, overlay_grants, scoring_leases,
       platform_operators, wechat_identities, wechat_auth_attempts,
       team_request_links, team_join_codes, team_member_claims,
       media_upload_sessions, media_upload_chunks, season_data_grants
-      IN EXCLUSIVE MODE`);
+      IN EXCLUSIVE MODE NOWAIT`);
     const now = (await client.query('SELECT clock_timestamp()::text AS now')).rows[0].now;
     const systemUserId = randomUUID();
     // This is deliberately not a password hash accepted by verifyPassword.

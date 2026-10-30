@@ -73,9 +73,16 @@ function view(raw) {
   };
 }
 
-async function fetchPage(client, { group, city, cursor }) {
+async function fetchPage(client, { group, city, regionId, catalogVersion, cursor }) {
   const query = ['status=' + group, 'limit=' + PAGE_SIZE];
-  if (city) query.push('city=' + encodeURIComponent(city));
+  if (regionId) {
+    if (city || !catalogVersion) throw new Error('地区筛选参数无效，请重新选择。');
+    query.push(
+      'regionId=' + encodeURIComponent(regionId),
+      'catalogVersion=' + encodeURIComponent(catalogVersion),
+    );
+  } else if (catalogVersion) throw new Error('地区筛选参数无效，请重新选择。');
+  else if (city) query.push('city=' + encodeURIComponent(city));
   if (cursor) query.push('cursor=' + encodeURIComponent(cursor));
   const response = await client.requestPublic('/v1/public/directory?' + query.join('&'));
   if (!Array.isArray(response.data)) throw new Error('公开赛事资料格式无效');
@@ -95,6 +102,10 @@ function merge(existing, incoming) {
 
 function failure(error) {
   if (error && error.status === 429) return '读取过于频繁，请稍后再试。';
+  if (error && ['REGION_CATALOG_CHANGED', 'INVALID_REGION'].includes(error.code))
+    return '地区目录已更新或该地区已不再可选，请点击选择城市重新核对确认；原选择不会自动改变。';
+  if (error && error.code === 'INVALID_QUERY')
+    return '地区筛选暂不可用，请核对选择或确认服务已升级。';
   if (error && error.code === 'INVALID_CURSOR') return '分页已变化，请重新读取。';
   return ui.message(error);
 }

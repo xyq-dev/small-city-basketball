@@ -128,13 +128,20 @@
       <view wx:if="{{!directory.publicActive && !directory.listed}}" class="muted">需先开启公开观赛（完赛后为历史观赛），才能列入目录。</view>
       <view wx:elif="{{!directory.canList && !directory.listed && directory.publicActive}}" class="muted">当前赛事状态与公开观赛用途不符，或当前身份无权操作。</view>
       <block wx:if="{{directory.canList || directory.canUnlist}}">
-        <block wx:if="{{directory.canList}}">
-          <text class="field-label">展示城市（可选，1–20字）</text>
+        <view wx:if="{{directory.listed}}" class="muted small">{{directory.currentRegionLabel}}</view>
+        <block wx:if="{{directory.catalogVersion && (directory.canList || directory.canReplaceRegion)}}">
+          <button class="secondary" bindtap="chooseDirectoryRegion" disabled="{{busy}}">选择标准地区</button>
+          <view wx:if="{{directory.selectedRegion}}" class="notice small">已选择：{{directory.selectedRegion.label}}<view wx:if="{{directory.selectedRegion.level === 'PROVINCE'}}">仅按省级归类，不会进入具体市县筛选。</view></view>
+          <button wx:if="{{directory.selectedRegion && directory.canList}}" class="quiet" bindtap="clearDirectoryRegion" disabled="{{busy}}">改用历史城市文字</button>
+        </block>
+        <block wx:if="{{directory.canList && !directory.selectedRegion}}">
+          <text class="field-label">历史城市文字（兼容入口，可选，1–20字）</text>
           <input class="field" maxlength="40" value="{{directory.cityInput}}" bindinput="directoryCityInput" placeholder="例如 茂名"/>
         </block>
         <text class="field-label">原因（4–500字，记入审计）</text>
         <textarea class="field" maxlength="500" value="{{directory.reason}}" bindinput="directoryReasonInput" placeholder="{{directory.canList ? '例如：本届赛程已发布，欢迎观众关注' : '例如：赛事信息需更新后再列入'}}"/>
         <button wx:if="{{directory.canList}}" class="primary" bindtap="listDirectory" disabled="{{busy}}">列入公开目录</button>
+        <button wx:if="{{directory.canReplaceRegion}}" class="secondary" bindtap="replaceDirectoryRegion" disabled="{{busy || !directory.selectedRegion}}">确认更正标准地区</button>
         <button wx:if="{{directory.canUnlist}}" class="danger" bindtap="unlistDirectory" disabled="{{busy}}">撤出目录（保留分享链接）</button>
       </block>
     </view>

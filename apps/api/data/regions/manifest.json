@@ -1,0 +1,22 @@
+{
+  "catalogVersion": "cn-admin-2025-r1",
+  "dataDate": "2025-12-31",
+  "sourceRepo": "https://github.com/yescallop/areacodes",
+  "sourceCommit": "e2c2b2e1fb4ce1fb76e879aa0b80e229adaf950c",
+  "sourcePath": "data/2025.txt",
+  "sourceBlob": "a31f53c95324bf8723be9f653bafce17bc253a61",
+  "sourceSha256": "73520f533c8e3f1aadb3bb55166656a491fb1e7703b2e2172e5694ec8845bab0",
+  "license": "CC0-1.0",
+  "licenseBlob": "0e259d42c996742e9e3cba14c677129b2c1b6311",
+  "licenseSha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+  "namespace": "494a6df2-5f24-5c6d-9949-9476ff74f5bd",
+  "nodeCount": 3212,
+  "aliasCount": 3151,
+  "normalizedSha256": "c84ba84b7941d0cee8cfdd5b0d2df56210969d487a462a8ccc1e635b5b4afb46",
+  "aliasSha256": "10565133d9c6e5b48aacc2c1236bbf5dbff58777b1daeca58d4179a31787be23",
+  "partialRootIds": [
+    "e905c313-4119-5eaa-a62f-4822eb64ee34",
+    "d888c131-e53b-5fe4-8bec-ad321935ab93",
+    "5dd7c859-ebe5-536d-881c-c788c89c4241"
+  ]
+}

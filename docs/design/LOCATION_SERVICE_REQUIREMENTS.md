@@ -203,3 +203,7 @@ C20整合结果：2026-10-30，PR #29已合入main，695cac3候选完整隔离CI
 ## 12. C21 地区目录接续设计（未实施）
 
 2026-10-30（Asia/Shanghai）：[C21 方案](C21_REGION_DIRECTORY_DESIGN.md)明确省／地级／县级标准地区、版本和稳定 ID、旧标签只读关联、旧 city／v1 游标兼容、主办方原子更正、Schema／权限及恢复边界。[任务](../tasks/C21.md)、[交接](../handoffs/C21.md)、[Claude Code 实施提示词](../agent-prompts/C21_CLAUDE_IMPLEMENTATION.md)。本轮仅文档分支，未实现新 API，Migration 仅设计、未编写未执行；定位、乡镇、附近供给等后续范围不变。
+
+## 13. C22 标准地区目录实施
+
+2026-10-30（Asia/Shanghai）：按 C21 在 `feat/region-directory` 实施省／地级／县级标准 ID、唯一别名的只读兼容、全国兜底、主办方原子更正与观众选地。C21 已合并的纯设计记录保留；本阶段由 Codex 直接完成，不再转交 Claude Code。Migration 023 已编写，完整隔离验证与合并状态见 [C22 任务](../tasks/C22.md)／[交接](../handoffs/C22.md)，不能据此宣称已迁移生产。乡镇、GPS、地图和服务库存仍未纳入本阶段。

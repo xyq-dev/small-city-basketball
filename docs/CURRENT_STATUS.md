@@ -1,5 +1,9 @@
 # 当前状态
 
+## C22 标准地区目录（REVIEW / BRANCH_ONLY）
+
+2026-10-30 Asia/Shanghai，Codex root 集成。C21 设计 [PR #30](https://github.com/xyq-dev/small-city-basketball/pull/30) 已合入 `2d22114ed75ddf4f549a1f2948363d0bd7867c02`。C22 在 `feat/region-directory` 实施省／地级／县级目录、旧标签兼容、主办方原子更正与四页接入，真实 PG／布局／完整隔离 CI 尚待执行，不视为 main 业务或生产已更新。[任务](tasks/C22.md)、[交接](handoffs/C22.md)。用户已要求设计、编码、测试、审查、合并均由 Codex 执行，不再以历史 Claude Code 提示词作为转交步骤。
+
 ## C20 手动选城与公开赛事发现（DONE / MAIN）
 
 2026-10-30 Asia/Shanghai；Codex集成。最终代码候选 `695cac3e212cc2a4fbbcffa185dbf105fdd55aef` 的 [CI 40983327795](https://github.com/xyq-dev/small-city-basketball/actions/runs/40983327795) 三job全部SUCCESS（attempt 1），已读原始日志。[PR #29](https://github.com/xyq-dev/small-city-basketball/pull/29) 已以merge commit `9b5ce36dd907fbffab36431e7df54487ba062dc2` 合入main；合并tree `8441a65f3c5119b9a88433effe3904fe9959b00f` 与已检候选完全一致。

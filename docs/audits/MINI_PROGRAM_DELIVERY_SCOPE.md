@@ -1,5 +1,10 @@
 # 小程序总交付清单（C19 已整合 main）
 
+## C22 分支实施增量（待完整 CI／合并）
+
+[任务](../tasks/C22.md)、[交接](../handoffs/C22.md)。首页、赛事目录和选城增加标准地区层级；赛事设置增加标准上架与原子更正。公开地区节点与匿名赛事合同分开，赛事仍严格八字段；全国保留未知／歧义旧标签。下方历史 C18／C20 验证不替代 C22；目前新单测通过，真实数据库、页面 API、三宽布局、恢复与最终 CI 待验。官方微信和真机未执行。
+
+
 2026-10-29 Asia/Shanghai。本清单核对 C19 的代码、入口与证据；当前为 **DONE（源码与隔离验收） / MAIN**，不代表已部署或完成官方微信/真机验收。
 
 - 当前分支：`main`。#28 至 #22 已逐级合并，业务合并为 [PR #22](https://github.com/xyq-dev/small-city-basketball/pull/22) 的 `f97bb4b07e1313cd389dcb6c5ec40451f7e2cbac`；其完整 tree 与已检最终候选 `a384896` 相同。该候选的 [CI 40673829836](https://github.com/xyq-dev/small-city-basketball/actions/runs/40673829836) 三个 job 全部成功，真实 PostgreSQL、14 条页面 API、重启/完整恢复与授权隔离均通过。main 重复检查的实际状态及完整边界见 C19 交接；生产未更新。

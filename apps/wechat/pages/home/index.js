@@ -75,7 +75,7 @@ Page({
     try {
       const result = await directory.fetchPage(api.getClient(), {
         group: 'LIVE',
-        city: selection.city,
+        ...cities.query(selection),
       });
       if (current())
         this.setData({
