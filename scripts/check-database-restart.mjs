@@ -1468,6 +1468,7 @@ async function captureMedia(orgId, cookie, registration, scheduling, scoring, vi
   }
   assert.equal(published.media.find((m) => m.kind === 'VIDEO').markers.length, 1);
   return {
+    entryRoot,
     privatePath,
     privateHash: createHash('sha256').update(syntheticPdf).digest('hex'),
     files,
@@ -1492,6 +1493,10 @@ async function verifyMedia(saved, cookie, leaderCookie) {
     assert.equal(createHash('sha256').update(bytes).digest('hex'), file.sha256);
   }
   assert.deepEqual((await call(saved.publicPath)).data, saved.published);
+  assert.deepEqual(
+    (await call(saved.entryRoot, { cookie: leaderCookie })).data,
+    saved.entryWorkspace,
+  );
   assert.deepEqual((await call(`${saved.matchRoot}/media`, { cookie })).data, saved.matchWorkspace);
   for (const item of saved.published.media) {
     const expected = item.kind === 'VIDEO' ? syntheticMp4 : syntheticPng;
@@ -1706,6 +1711,19 @@ try {
       eventId: created.data.id,
       setup: commerceSetup,
     });
+    // Every byte-producing fixture is complete now. Media DTO usage is org-wide and
+    // therefore includes the later C23 ciphertext; retain its exact final baseline.
+    const previousMediaUsedBytes = media.matchWorkspace.usage.usedBytes;
+    media.entryWorkspace = (
+      await call(media.entryRoot, { cookie: frozenRegistration.leaderCookie })
+    ).data;
+    media.matchWorkspace = (await call(`${media.matchRoot}/media`, { cookie })).data;
+    assert.deepEqual(media.entryWorkspace.usage, media.matchWorkspace.usage);
+    assert.equal(
+      media.matchWorkspace.usage.usedBytes,
+      previousMediaUsedBytes + participantMaterials.snapshot.stored_length,
+      'Final shared media quota must include the nonempty C23 ciphertext exactly once',
+    );
     frozenRegistration.leaderSession = (
       await call('/v1/auth/session', { cookie: frozenRegistration.leaderCookie })
     ).data;

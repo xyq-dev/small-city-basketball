@@ -1267,6 +1267,7 @@ const SEEDED_CONFIGURATION: Record<string, number> = {
 // New columns on legacy rows take only neutral defaults: a legacy publication is LIVE, legacy
 // scoring stays team-only without player statistics, no group config, no login name.
 const EXPECTED_NEW_COLUMN_VALUES: Record<string, Record<string, unknown[]>> = {
+  event_rulesets: { require_participant_materials: [false] },
   public_event_publications: { purpose: ['LIVE'] },
   result_confirmations: { collection_mode: ['TEAM_ONLY'], player_stats: [null] },
   schedule_revisions: { group_config: [null] },

@@ -694,3 +694,21 @@ test('C23 late definitive rejection does not release protection when durable rem
   await h.page.save();
   assert.equal(writes(h).length, 1);
 });
+
+test('C23 native mainline fixture keeps Web-only grant administration outside the client', () => {
+  const organization = '/v1/orgs/' + org;
+  assert.equal(pathAllowed(organization + '/teams/' + id(20) + '/grants/' + user, 'PUT'), false);
+  for (const [route, method] of [
+    [organization + '/teams', 'POST'],
+    [organization + '/teams/' + id(20) + '/join-codes', 'POST'],
+    [organization + '/events', 'POST'],
+    [organization + '/events/' + id(21), 'GET'],
+    [organization + '/events/' + id(21) + '/registration-rules', 'PUT'],
+    [organization + '/events/' + id(21) + '/registration-commands', 'POST'],
+    [organization + '/events/' + id(21) + '/entries', 'POST'],
+    [organization + '/entries/' + entry, 'GET'],
+    [organization + '/entries/' + entry + '/roster', 'PUT'],
+    [organization + '/entries/' + entry + '/commands', 'POST'],
+  ])
+    assert.equal(pathAllowed(route, method), true, method + ' ' + route);
+});

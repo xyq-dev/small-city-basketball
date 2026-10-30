@@ -557,7 +557,8 @@ describe('C23 private participant materials on isolated PostgreSQL', { concurren
     const f = await fixture();
     await approved(f, 0);
     await approved(f, 1);
-    let currentEntry = await getEntry(api, owner, f.entry.id);
+    expect((await getEntry(api, owner, f.entry.id)).capabilities.canSubmit).toBe(false);
+    let currentEntry = await getEntry(api, owner, f.entry.id, leader);
     expect(currentEntry.capabilities.canSubmit).toBe(true);
     await api.pool.query(
       "UPDATE events SET end_date='2028-04-02',version=version+1,updated_at=clock_timestamp() WHERE org_id=$1 AND id=$2",
@@ -565,7 +566,7 @@ describe('C23 private participant materials on isolated PostgreSQL', { concurren
     );
     const stale = (await mine(f)).material!;
     expect(stale.status).toBe('STALE');
-    currentEntry = await getEntry(api, owner, f.entry.id);
+    currentEntry = await getEntry(api, owner, f.entry.id, leader);
     expect(currentEntry.capabilities.canSubmit).toBe(false);
     error(
       await call(api, 'post', entryCommandsPath(owner.orgId, f.entry.id), {

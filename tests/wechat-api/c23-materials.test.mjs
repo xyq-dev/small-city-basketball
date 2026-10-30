@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { after, before, test } from 'node:test';
 import sharp from 'sharp';
-import { PASSWORD, device, register, signIn, startServer, tap } from './support.mjs';
+import { PASSWORD, device, http, register, signIn, startServer, tap } from './support.mjs';
 
 // Actual Page/utils -> loopback API -> owned PostgreSQL. A generated test-only encryption key
 // and obviously synthetic identity region are never production credentials or person data.
@@ -30,6 +30,25 @@ test('C23 native private draft, response recovery, photos, external policy and i
   const owner = device(server),
     leader = device(server),
     player = device(server);
+  // Client failures are normally plain transport objects. Give a forbidden test path a
+  // stage/method/path stack without logging private request bodies or response payloads.
+  for (const [stage, d] of [
+    ['owner', owner],
+    ['leader', leader],
+    ['player', player],
+  ]) {
+    const request = d.client.request;
+    d.client.request = async (path, method = 'GET', ...args) => {
+      try {
+        return await request(path, method, ...args);
+      } catch (error) {
+        if (error?.code !== 'INVALID_PATH') throw error;
+        throw new Error(`C23 ${stage} ${method} ${path}: forbidden native-client test path`, {
+          cause: error,
+        });
+      }
+    };
+  }
   await signIn(owner, 'c23-owner@example.test');
   await register(leader, 'c23-leader@example.test', '合成领队');
   await register(player, 'c23-player@example.test', '合成本人');
@@ -37,8 +56,17 @@ test('C23 native private draft, response recovery, photos, external policy and i
   const root = '/v1/orgs/' + org;
   const team = (await owner.client.request(root + '/teams', 'POST', { name: '合成青锋本人资料队' }))
     .data;
-  await owner.client.request(root + '/teams/' + team.id + '/grants/' + leaderId, 'PUT', {
-    status: 'ACTIVE',
+  // Team-grant administration is Web-only. Bootstrap it through the existing isolated
+  // HTTP fixture transport; adding this permission to the native allowlist is unnecessary.
+  const call = http(server);
+  const fixtureLogin = await call('/v1/auth/login', {
+    method: 'POST',
+    body: { email: 'c23-owner@example.test', password: PASSWORD },
+  });
+  await call(root + '/teams/' + team.id + '/grants/' + leaderId, {
+    method: 'PUT',
+    cookie: fixtureLogin.cookie,
+    body: { status: 'ACTIVE' },
   });
   const issued = (
     await leader.client.request(root + '/teams/' + team.id + '/join-codes', 'POST', {})

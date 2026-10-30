@@ -3,7 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { createApi } from '../src/app.js';
+import { createC22LegacyRegistrationApi } from './fixtures/c22-legacy-registration-api.js';
 import { migrate } from '../src/database/migrate.js';
 import {
   REGION_CATALOG_VERSION,
@@ -116,9 +116,22 @@ describe(
         c.release();
       }
       expect(await tableNames(upgraded)).toHaveLength(78);
-      // The unchanged registration/schedule/publication routes create a real parent chain on
-      // the old schema. They do not read the new catalog or run the migration runner.
-      api = await createApi({ databaseUrl: old.url, appOrigin: ORIGIN });
+      const assertOldRegistrationSchema = async () => {
+        expect(
+          (await upgraded.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n,
+        ).toBe(22);
+        expect(
+          (
+            await upgraded.query(
+              "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='event_rulesets' AND column_name='require_participant_materials'",
+            )
+          ).rowCount,
+        ).toBe(0);
+      };
+      await assertOldRegistrationSchema();
+      // Fixed historical registration SQL is injected only by this fixture factory.
+      // The genuine 001–022 schema is never extended before the upgrade baseline.
+      api = await createC22LegacyRegistrationApi({ databaseUrl: old.url, appOrigin: ORIGIN });
       const owner = await register(api, 'c22-old-owner');
       const leader = await register(api, 'c22-old-leader');
       const otherOwner = await register(api, 'c22-old-other');
@@ -184,6 +197,7 @@ describe(
       await api.app.close();
       await api.pool.end();
       api = undefined;
+      await assertOldRegistrationSchema();
       baseline = await snapshot(upgraded, await tableNames(upgraded));
     }, 180000);
 
