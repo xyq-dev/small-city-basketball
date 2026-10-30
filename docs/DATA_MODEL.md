@@ -221,7 +221,7 @@ SE首轮比赛数n−nextPow2(n)/2，后轮只能精确同事务凭证追加全�
 
 就绪、最小ACL、backup/restore与精确指纹同步41表/11Migration。签位与最终名次是原冻结来源+seed+正式比赛+当前确认+不可变推进凭证的读投影。完赛要求恰好n−1比赛及完整有效树；无三四名赛、半决赛同轮败者共享名次。
 
-## C23 私有本人材料（Migration024已编写，真实执行另记）
+## C23 私有本人材料（Migration024已编写并在隔离CI执行，生产未执行）
 
 `event_rulesets.require_participant_materials` 默认false，旧锁定规则不自动启用。新 `participant_materials` 按机构/赛事/entry/member关联当前本人binding、key-id、当前revision/status/version和独立宣传许可；`participant_material_revisions` 以不可变revision保存规则/名单/号码/实际terms_version、经过完整解码重编码的照片与外部保单事实，私有文字及文件全部进入资源AAD绑定的AES-GCM密文。身份查重为专用HMAC，当前有效reservation的账号/身份同届唯一；历史无效占用按event锁释放，旧回执不复活。
 

@@ -1,8 +1,12 @@
 # 当前状态
 
-## C23 本人报名资料与人工审核（IN_PROGRESS / BRANCH_ONLY）
+## C23 本人报名资料与人工审核（DONE / MAIN，源码与隔离验收）
 
-2026-10-31 Asia/Shanghai，唯一集成人 Codex root。基线 main `83ae15a64bce2a29566d22e3885ebb44a0772bdd`；本人报名、私有照片、外部保单人工核验按 [任务](tasks/C23.md) 分段推进，详细恢复点见 [交接](handoffs/C23.md)。本人资料API、加密版本化存储、人工审核及小程序已整合在任务分支；源码/VM验证通过范围见任务卡，真实PG、页面API、浏览器和非空归档恢复仍待验。本条不代表main业务或生产已更新。每个可验证代码切片连同任务及交接同步 GitHub 后，再开始下一切片。
+2026-10-31 Asia/Shanghai，Codex root集成。[PR32](https://github.com/xyq-dev/small-city-basketball/pull/32)已合入main `09348e39687489239ade33219dcd1cb86c742052`，完整tree与已检91fa687/实际CI merge-ref完全一致。本人资料、私有照片、已有外部保单人工审核及小程序入口已交付；独立审核与提交/批准/冻结统一复检，宣传拒绝或撤回不单独阻止参赛。旧规则不自动启用新要求。
+
+[CI41096252199](https://github.com/xyq-dev/small-city-basketball/actions/runs/41096252199)三job全部SUCCESS且原始日志已核验：1965单测/1原平台skip，集成396（含C23的13项和旧源校验）＋隔离运行PG19，原生页面API15，兼容浏览器947、933组三宽布局及PNG，真实API浏览器24、HTTPS4，83表重启与非空密文完整归档恢复、授权隔离及自有清理通过。Migration024已在隔离CI执行，生产未执行；001–023未改。[任务](tasks/C23.md)与[交接](handoffs/C23.md)保留每段代码依据、失败与修复及接续操作。
+
+当前40条小程序路由、24迁移、83表。专用密钥缺失/失配时新流程关闭；官方微信工具/真机、生产部署/生产Migration未执行。在线投保/真实支付、海报、邀请招募新体系、季军赛和GPS/附近服务仍待办，完整商业平台和DOC003均未全量完成。[main自动CI41099428902](https://github.com/xyq-dev/small-city-basketball/actions/runs/41099428902)仍进行中，不把候选成功冒称复跑成功；本次收尾只改文档。下一步先核对该结果，再按实际通道做微信/真机及发布前演练。分段代码与文档同步规则见COLLABORATION，运行中最迟15分钟留检查点。
 
 ## C22 标准地区目录（DONE / MAIN，源码与隔离验收）
 

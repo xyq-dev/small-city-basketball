@@ -400,7 +400,7 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 
 循环赛公共event DTO保持兼容；单淘汰公共event带format=SINGLE_ELIMINATION、rules=null，使用新GET `/v1/public/events/{opaque}/knockout`返回`PublicKnockoutData`，不伪造循环赛积分，KO旧standings读明确422。KO私有standings仅公开授权管理且rules/standings=null。只有白名单opaque团队/比赛键、队名、已公开赛程状态和最终名次，不含内部ID、seed、名单、确认/推进凭证或写权。后轮发布在同事务撤销旧LIVE授权，重新显式ENABLE产生全新键；不向旧授权补写links。HISTORY须完整n−1有效赛果与晋级证明。OBS仍独立原授权。私有球员榜分母为n−1，未物化场次不能声称采集完整。
 
-## C23 本人资料与外部保单人工核验（任务分支，待联合验收）
+## C23 本人资料与外部保单人工核验（DONE / MAIN，源码与隔离验收）
 
 合同：[C23最小合同](design/C23_PARTICIPANT_MATERIALS.md)，类型 `packages/contracts/participant-materials.d.ts`。报名规则新增可选布尔 `requireParticipantMaterials`；旧客户端省略时保留草稿已有值，新建默认为false，开放后规则仍锁定。无专用加密密钥或密钥与历史资料失配时，新工作流不开放。旧身份/保险要求且未启用本流程仍拒绝开放。
 
