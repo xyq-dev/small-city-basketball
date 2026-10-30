@@ -1,8 +1,12 @@
 # 当前状态
 
-## C22 标准地区目录（REVIEW / BRANCH_ONLY）
+## C23 本人报名资料与人工审核（IN_PROGRESS / BRANCH_ONLY）
 
-2026-10-30 Asia/Shanghai，Codex root 集成。C21 设计 [PR #30](https://github.com/xyq-dev/small-city-basketball/pull/30) 已合入 `2d22114ed75ddf4f549a1f2948363d0bd7867c02`。C22 在 `feat/region-directory` 实施省／地级／县级目录、旧标签兼容、主办方原子更正与四页接入，真实 PG／布局／完整隔离 CI 尚待执行，不视为 main 业务或生产已更新。[任务](tasks/C22.md)、[交接](handoffs/C22.md)。用户已要求设计、编码、测试、审查、合并均由 Codex 执行，不再以历史 Claude Code 提示词作为转交步骤。
+2026-10-31 Asia/Shanghai，唯一集成人 Codex root。基线 main `83ae15a64bce2a29566d22e3885ebb44a0772bdd`；本人报名、私有照片、外部保单人工核验按 [任务](tasks/C23.md) 分段推进，详细恢复点见 [交接](handoffs/C23.md)。本条为认领，不表示功能已实现。每个可验证代码切片连同任务及交接同步 GitHub 后，再开始下一切片。
+
+## C22 标准地区目录（DONE / MAIN，源码与隔离验收）
+
+[PR #31](https://github.com/xyq-dev/small-city-basketball/pull/31) 已合入 `83ae15a64bce2a29566d22e3885ebb44a0772bdd`。候选 cc69330 的 [CI 41015563263](https://github.com/xyq-dev/small-city-basketball/actions/runs/41015563263) 和合并后 [CI 41017763877](https://github.com/xyq-dev/small-city-basketball/actions/runs/41017763877) 均成功。PR 最终记录：1864 单测／1 平台跳过、真实 PG 382＋19、页面 API 14、浏览器935、三宽布局921、真实 API 浏览器24及 HTTPS4；81表／23迁移重启与恢复通过。本次纠正文档滞后；详细测试数字来自 PR 验收记录，本会话已核验两次 CI 结果，未重新执行历史测试。生产、官方微信和真机仍未验收。[任务](tasks/C22.md)、[交接](handoffs/C22.md)。
 
 ## C20 手动选城与公开赛事发现（DONE / MAIN）
 
