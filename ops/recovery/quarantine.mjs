@@ -22,7 +22,7 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
       team_invitations, public_event_publications, event_directory_listings, overlay_grants, scoring_leases,
       platform_operators, wechat_identities, wechat_auth_attempts,
       team_request_links, team_join_codes, team_member_claims,
-      media_upload_sessions, media_upload_chunks, season_data_grants
+      media_upload_sessions, media_upload_chunks, season_data_grants, participant_materials
       IN EXCLUSIVE MODE NOWAIT`);
     const now = (await client.query('SELECT clock_timestamp()::text AS now')).rows[0].now;
     const systemUserId = randomUUID();
@@ -88,6 +88,10 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
        updated_at=$1::timestamptz WHERE status IN ('PENDING','ACTIVE')`,
       [now, systemUserId, '恢复隔离撤回私有赛季授权'],
     );
+    const participantConsents = await client.query(
+      `UPDATE participant_materials SET publicity_consent=false,version=version+1,updated_at=$1::timestamptz WHERE publicity_consent`,
+      [now],
+    );
     const publicGrants = await client.query(
       `UPDATE public_event_publications SET revoked_at=$1::timestamptz,revoked_by=$2
        WHERE revoked_at IS NULL RETURNING event_id`,
@@ -132,6 +136,7 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
       uploadSessionsClosed: uploadSessions.rowCount,
       uploadChunksReleased: uploadChunks.rowCount,
       seasonDataGrantsWithdrawn: seasonGrants.rowCount,
+      participantPublicityConsentsWithdrawn: participantConsents.rowCount,
       publicPublicationsRevoked: publicGrants.rowCount,
       overlayGrantsRevoked: overlayGrants.rowCount,
       activeLeasesExpired: leases.rowCount,

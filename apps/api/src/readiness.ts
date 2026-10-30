@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import type { Pool, PoolClient } from 'pg';
 import { ApiError } from './errors.js';
+import { participantKey, participantKeyId } from './participant-materials-domain.js';
 import { readVerifiedRegionCatalog } from './region-catalog-integrity.js';
 
 export interface PrivilegeManifest {
@@ -69,6 +70,11 @@ export function privilegesMatch(manifest: PrivilegeManifest, tables: TablePrivil
   });
 }
 
+/** Existing encrypted material requires its exact configured key; no silent key rotation. */
+export function participantKeyIdsMatch(keyId: string | null, rows: { key_id: string }[]): boolean {
+  return rows.length === 0 || (keyId !== null && rows.every((row) => row.key_id === keyId));
+}
+
 async function expectations() {
   const manifest = JSON.parse(
     await readFile(
@@ -82,7 +88,7 @@ async function expectations() {
     manifest.runtimeRole !== 'scb_runtime' ||
     manifest.backupRole !== 'scb_backup' ||
     !manifest.tables ||
-    Object.keys(manifest.tables).length !== 81
+    Object.keys(manifest.tables).length !== 83
   )
     throw new Error();
   for (const [name, t] of Object.entries(manifest.tables)) {
@@ -121,7 +127,10 @@ async function expectations() {
 }
 
 /** Read-only verification. It never migrates, grants, writes a counter, or logs a cause. */
-export async function assertRuntimeReadiness(pool: Pool): Promise<void> {
+export async function assertRuntimeReadiness(
+  pool: Pool,
+  participantDataKey?: string,
+): Promise<void> {
   let client: PoolClient | undefined;
   try {
     const { manifest, expected } = await expectations();
@@ -162,6 +171,14 @@ export async function assertRuntimeReadiness(pool: Pool): Promise<void> {
        WHEN c.relkind IN ('r','p','v','m','f') AND (n.nspname<>'public' OR c.relkind NOT IN ('r','p')) THEN (c.relowner=(SELECT oid FROM pg_roles WHERE rolname=current_user) OR has_any_column_privilege(current_user,c.oid,'SELECT') OR has_any_column_privilege(current_user,c.oid,'INSERT') OR has_any_column_privilege(current_user,c.oid,'UPDATE') OR has_table_privilege(current_user,c.oid,'DELETE') OR has_table_privilege(current_user,c.oid,'TRUNCATE') OR has_table_privilege(current_user,c.oid,'TRIGGER') OR has_any_column_privilege(current_user,c.oid,'REFERENCES') OR has_table_privilege(current_user,c.oid,'MAINTAIN')) ELSE false END) AS present`,
     );
     if (extra.rows[0]?.present !== false) throw new Error();
+    const materialKeys = await client.query<{ key_id: string }>(
+      'SELECT DISTINCT key_id FROM participant_material_revisions WHERE payload_ciphertext IS NOT NULL ORDER BY key_id',
+    );
+    const keyId =
+      participantDataKey === undefined
+        ? null
+        : participantKeyId(participantKey(participantDataKey));
+    if (!participantKeyIdsMatch(keyId, materialKeys.rows)) throw new Error();
     await readVerifiedRegionCatalog(client);
     await client.query('COMMIT');
   } catch {

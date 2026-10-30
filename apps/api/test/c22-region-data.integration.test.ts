@@ -72,7 +72,9 @@ describe(
         const projection =
           name === 'event_directory_listings'
             ? "to_jsonb(t)-ARRAY['region_catalog_version','region_id']"
-            : 'to_jsonb(t)';
+            : name === 'event_rulesets'
+              ? "to_jsonb(t)-'require_participant_materials'"
+              : 'to_jsonb(t)';
         result[name] = (
           await pool.query<{ rows: unknown[] }>(
             `SELECT coalesce(jsonb_agg(${projection} ORDER BY to_jsonb(t)::text COLLATE "C"),'[]'::jsonb) AS rows FROM ${quote(name)} t`,
@@ -219,8 +221,8 @@ describe(
     }, 30000);
 
     test('fresh migration imports the complete catalog and preserves deterministic hashes', async () => {
-      expect(await migrate(fresh)).toHaveLength(23);
-      expect(await tableNames(fresh)).toHaveLength(81);
+      expect(await migrate(fresh)).toHaveLength(24);
+      expect(await tableNames(fresh)).toHaveLength(83);
       const nodes = (
         await fresh.query(
           `SELECT region_id::text AS "regionId",source_code AS "sourceCode",name,level,parent_region_id::text AS "parentRegionId"
@@ -243,11 +245,22 @@ describe(
     });
 
     test('001–022 upgrade keeps every legacy row and leaves existing listing regions NULL', async () => {
-      expect(await migrate(upgraded)).toEqual(['023_c21_region_directory.sql']);
+      expect(await migrate(upgraded)).toEqual([
+        '023_c21_region_directory.sql',
+        '024_c23_participant_materials.sql',
+      ]);
       const after = await snapshot(upgraded, Object.keys(baseline));
-      // The ledger only appends 023; every pre-existing checksum/applied_at remains byte-for-byte.
+      expect(
+        (
+          await upgraded.query(
+            'SELECT count(*)::int AS n FROM event_rulesets WHERE require_participant_materials',
+          )
+        ).rows[0].n,
+      ).toBe(0);
+      // The ledger only appends 023–024; every pre-existing checksum/applied_at remains byte-for-byte.
       after.schema_migrations = after.schema_migrations!.filter(
-        (r: any) => r.name !== '023_c21_region_directory.sql',
+        (r: any) =>
+          !['023_c21_region_directory.sql', '024_c23_participant_materials.sql'].includes(r.name),
       );
       expect(after).toEqual(baseline);
       expect(

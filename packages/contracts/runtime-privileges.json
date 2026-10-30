@@ -263,6 +263,28 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["id"]
     },
+    "participant_material_revisions": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["payload_ciphertext", "purged_at"]
+    },
+    "participant_materials": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "current_revision_id",
+        "identity_digest",
+        "version",
+        "status",
+        "publicity_consent",
+        "reservation_active",
+        "legal_hold",
+        "reviewer_id",
+        "review_reason",
+        "reviewed_start_date",
+        "reviewed_end_date",
+        "reviewed_at",
+        "updated_at"
+      ]
+    },
     "payment_notifications": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []

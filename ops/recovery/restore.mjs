@@ -43,7 +43,7 @@ export async function restoreDatabase({
       archive.format !== 'SCB_FULL_CUSTOM_PG18' ||
       archive.archiveSha256 !== archiveSha256 ||
       archive.fingerprint?.version !== 1 ||
-      Object.keys(archive.fingerprint.tables ?? {}).length !== 81
+      Object.keys(archive.fingerprint.tables ?? {}).length !== 83
     )
       throw new Error();
     if (
@@ -105,7 +105,7 @@ export async function restoreDatabase({
     if (JSON.stringify(fingerprint) !== JSON.stringify(archive.fingerprint)) throw new Error();
     await assertOwnedRestoreTarget(targetPool, ownership);
     await writePrivateJson(receiptPath, { ...ownership, archiveSha256, fingerprint });
-    return { status: 'restored', databaseName, tables: 81 };
+    return { status: 'restored', databaseName, tables: 83 };
   } catch {
     throw new Error('Database restore failed');
   } finally {

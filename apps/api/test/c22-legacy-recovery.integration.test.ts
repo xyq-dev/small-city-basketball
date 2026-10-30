@@ -190,7 +190,10 @@ test('C20 archive is restored with its frozen package, quarantined, then upgrade
     const retained = (
       await target.query('SELECT to_jsonb(o) AS value FROM organizations o ORDER BY id')
     ).rows;
-    expect(await migrate(target)).toEqual(['023_c21_region_directory.sql']);
+    expect(await migrate(target)).toEqual([
+      '023_c21_region_directory.sql',
+      '024_c23_participant_materials.sql',
+    ]);
     await applyRuntimePrivileges(target);
     expect(
       (await target.query('SELECT to_jsonb(o) AS value FROM organizations o ORDER BY id')).rows,

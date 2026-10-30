@@ -1,6 +1,11 @@
 import type { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
-import { assertRuntimeReadiness, migrationSetsMatch, privilegesMatch } from './readiness.js';
+import {
+  assertRuntimeReadiness,
+  migrationSetsMatch,
+  participantKeyIdsMatch,
+  privilegesMatch,
+} from './readiness.js';
 import type { PrivilegeManifest, TablePrivileges } from './readiness.js';
 
 const manifest: PrivilegeManifest = {
@@ -39,6 +44,16 @@ const tables: TablePrivileges[] = [
   },
 ];
 describe('runtime readiness invariants', () => {
+  it('requires the exact key for all retained participant ciphertext while allowing old databases without materials', () => {
+    expect(participantKeyIdsMatch(null, [])).toBe(true);
+    expect(participantKeyIdsMatch('current', [])).toBe(true);
+    expect(participantKeyIdsMatch('current', [{ key_id: 'current' }])).toBe(true);
+    expect(participantKeyIdsMatch(null, [{ key_id: 'current' }])).toBe(false);
+    expect(participantKeyIdsMatch('current', [{ key_id: 'old' }])).toBe(false);
+    expect(participantKeyIdsMatch('current', [{ key_id: 'current' }, { key_id: 'old' }])).toBe(
+      false,
+    );
+  });
   it('requires the exact migration identity and checksum set, including no newer extra migration', () => {
     const expected = new Map([
       ['001.sql', 'a'],

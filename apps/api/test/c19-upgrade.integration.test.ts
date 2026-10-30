@@ -100,6 +100,8 @@ const LEGACY = [
 // The complete C19 candidate must contain every frozen module table, with zero automatic rows
 // after an upgrade. Missing migrations must fail instead of making a partial candidate pass.
 const NO_AUTOMATIC_ROWS = [
+  'participant_materials',
+  'participant_material_revisions',
   'event_directory_listings',
   'media_request_receipts',
   'media_upload_sessions',
