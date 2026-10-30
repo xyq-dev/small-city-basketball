@@ -1,9 +1,11 @@
-# 微信小程序源码入口（C19 已整合 main）
+# 微信小程序源码入口（C20 已整合 main）
 
-## C20 手动选城与公开发现（候选分支）
+## C20 手动选城与公开发现（已整合main）
 
 2026-10-30 Asia/Shanghai：新增 `city-select`，首页可匿名查看所选城市进行中的公开赛事；赛事页优先显示公开目录，支持手动选城／全国、最多6个最近选择和上次选择恢复。新入口不要求登录或GPS，不改变个人资料、订单地点或分享链接。
 城市仍按现有 `displayCity` 文字标签精确查询；“高州”和“高州市”不自动等价，未实现行政区目录、父子区划或地图距离。定位接口尚未接入，页面明确说明；无需新增定位权限、凭据或后端Migration。
+最终代码候选 `695cac3e212cc2a4fbbcffa185dbf105fdd55aef` 的 [CI 40983327795](https://github.com/xyq-dev/small-city-basketball/actions/runs/40983327795) 三job全部SUCCESS（attempt 1），已读原始日志。[PR #29](https://github.com/xyq-dev/small-city-basketball/pull/29) 已以merge commit `9b5ce36dd907fbffab36431e7df54487ba062dc2` 合入main；合并tree `8441a65f3c5119b9a88433effe3904fe9959b00f` 与已检候选完全一致。
+
 本轮为39条路由，测试与整合状态见 [C20任务](../../docs/tasks/C20.md) 和 [交接](../../docs/handoffs/C20.md)。以下C19证据为历史基线，不代表本轮CI或真机通过。
 
 2026-10-29 Asia/Shanghai：#22—#28 已逐级合并，业务合并 main `f97bb4b07e1313cd389dcb6c5ec40451f7e2cbac`，**源码与隔离验收完成 / MAIN**。完整 tree 与最终候选 `a384896` 一致；该候选的 [CI 40673829836](https://github.com/xyq-dev/small-city-basketball/actions/runs/40673829836) 三个 job 全部成功，14 条真实页面→API→PostgreSQL 流程通过。后续检出以 `origin/main` 为准；main 重复 CI 的实际结果见 [C19 交接](../../docs/handoffs/C19.md)。没有部署或执行生产 Migration；官方微信工具/真机和当前 Windows 验收仍未执行。
