@@ -3,6 +3,7 @@ const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const scoringView = require('../../utils/scoring');
 const directoryUtil = require('../../utils/directory');
+const regions = require('../../utils/regions');
 
 // Native forms over the existing event-setup commands. Each section is shown only when the
 // server's capabilities allow it, and every write carries the version it was read at.
@@ -39,6 +40,10 @@ function directoryFailure(error) {
     PUBLIC_VIEWING_NOT_ENABLED: '请先开启公开观赛，再列入目录。',
     INVALID_EVENT_STATE: '当前赛事状态与公开观赛用途不符，不能列入目录。',
     VERSION_CONFLICT: '赛事已被其他操作更新，已重新读取，请核对后再操作。',
+    REGION_CATALOG_CHANGED: '地区目录已更新，请重新选择并确认地区。',
+    INVALID_REGION: '该地区已不再可选，请重新选择。',
+    DIRECTORY_LISTING_CHANGED: '目录记录已变化，已重新读取，请核对后再操作。',
+    DIRECTORY_REGION_UNCHANGED: '当前记录已是这一标准地区，无需重复更正。',
   };
   if (error && !error.status)
     return '目录操作结果未知：请点“刷新”重新读取核对后再决定，不要直接重复提交。';
@@ -145,6 +150,8 @@ Page({
   onSessionReset() {
     this._load = (this._load || 0) + 1;
     this._directory = null;
+    this._regionPick = (this._regionPick || 0) + 1;
+    this._directoryEdit = (this._directoryEdit || 0) + 1;
     this.setData({
       ...privateDefaults,
       loading: false,
@@ -291,6 +298,30 @@ Page({
       directory: this.directoryView(directory),
     });
     this._directory = directory;
+    this.loadCurrentDirectoryRegion(directory);
+  },
+  async loadCurrentDirectoryRegion(d) {
+    if (!d || !d.listing || !d.listing.region || !d.regionCatalogVersion) return;
+    const current = () => this._alive && this._directory === d;
+    try {
+      const catalog = await regions.fetchCatalog();
+      if (!current()) return;
+      const node = catalog.index[d.listing.region.regionId];
+      this.setData({
+        'directory.currentRegionLabel':
+          catalog.version !== d.regionCatalogVersion
+            ? '地区目录已更新，请刷新后核对标准归属。'
+            : node
+              ? node.path + '（标准地区）'
+              : '原标准地区已不在当前目录，请重新选择；赛事仍可在全国目录中找到。',
+      });
+    } catch (error) {
+      if (current())
+        this.setData({
+          'directory.currentRegionLabel':
+            '已保存标准地区，当前完整路径暂不可读取：' + regions.failure(error),
+        });
+    }
   },
   field(e) {
     const { section, field } = e.currentTarget.dataset;
@@ -540,24 +571,88 @@ Page({
     )
       await this.load();
   },
-  // ---- C18 public event directory ----
+  // Directory writes remain bound to the session, event, publication and original listing.
   directoryView(d) {
     if (!d) return null;
     const previous = this.data.directory;
+    const selected = previous && previous.selectedRegion;
     const last = d.lastListing;
     return {
       listed: !!d.listing,
       city: d.listing ? d.listing.displayCity || '' : '',
+      currentRegionLabel:
+        d.listing && d.listing.region
+          ? (d.listing.displayCity || '已保存') + '（标准地区）'
+          : '尚未确认标准地区，历史标签可能用于匹配',
+      catalogVersion: d.regionCatalogVersion || '',
+      selectedRegion:
+        selected && selected.catalogVersion === d.regionCatalogVersion ? selected : null,
       group: d.group ? DIRECTORY_GROUP_LABELS[d.group] : '',
       publicActive: !!(d.publication && d.publication.status === 'ACTIVE'),
       canList: !!d.capabilities.canList,
       canUnlist: !!d.capabilities.canUnlist,
+      canReplaceRegion: !!d.capabilities.canReplaceRegion,
       lastNote: !d.listing && last ? DIRECTORY_REVOKED[last.revokeSource] || '' : '',
       cityInput: previous ? previous.cityInput : '',
       reason: previous ? previous.reason : '',
     };
   },
+  chooseDirectoryRegion() {
+    const d = this._directory;
+    if (
+      !d ||
+      !d.regionCatalogVersion ||
+      !this._event ||
+      this.data.busy ||
+      !(d.capabilities.canList || d.capabilities.canReplaceRegion)
+    )
+      return;
+    const token = ui.guard(this);
+    const generation = (this._regionPick = (this._regionPick || 0) + 1);
+    const version = this._event.version;
+    const listingId = d.listing ? d.listing.id : '';
+    const publicEventId = d.publication ? d.publication.publicEventId : '';
+    wx.navigateTo({
+      url: '/pages/city-select/index?context=directory',
+      events: {
+        regionSelected: (selection) => {
+          const now = this._directory;
+          if (
+            !this._alive ||
+            !ui.held(this, token) ||
+            generation !== this._regionPick ||
+            !now ||
+            !this._event ||
+            this._event.version !== version ||
+            (now.listing ? now.listing.id : '') !== listingId ||
+            (now.publication ? now.publication.publicEventId : '') !== publicEventId ||
+            !(now.capabilities.canList || now.capabilities.canReplaceRegion)
+          )
+            return;
+          if (
+            !regions.validSelection(selection) ||
+            selection.catalogVersion !== now.regionCatalogVersion
+          ) {
+            this.setData({ error: '地区目录已更新，请刷新赛事设置后重新选地。' });
+            return;
+          }
+          this._directoryEdit = (this._directoryEdit || 0) + 1;
+          this.setData({
+            'directory.selectedRegion': { ...selection },
+            'directory.cityInput': '',
+            error: '',
+          });
+        },
+      },
+    });
+  },
+  clearDirectoryRegion() {
+    if (!this.data.directory || !this.data.directory.canList || this.data.busy) return;
+    this._directoryEdit = (this._directoryEdit || 0) + 1;
+    this.setData({ 'directory.selectedRegion': null });
+  },
   directoryCityInput(e) {
+    this._directoryEdit = (this._directoryEdit || 0) + 1;
     this.setData({ 'directory.cityInput': String(e.detail.value || '').slice(0, 40) });
   },
   directoryReasonInput(e) {
@@ -569,37 +664,73 @@ Page({
   unlistDirectory() {
     return this.directoryCommand('UNLIST');
   },
+  replaceDirectoryRegion() {
+    return this.directoryCommand('REPLACE_REGION');
+  },
   async directoryCommand(type) {
-    const d = this._directory;
-    const view = this.data.directory;
+    const d = this._directory,
+      view = this.data.directory;
     if (!d || !view || this.data.busy || !this._event) return;
-    if (type === 'LIST' ? !d.capabilities.canList : !d.capabilities.canUnlist) return;
+    const capability =
+      type === 'LIST' ? 'canList' : type === 'REPLACE_REGION' ? 'canReplaceRegion' : 'canUnlist';
+    if (!d.capabilities[capability]) return;
     const reason = view.reason.trim();
     if (Array.from(reason).length < 4 || Array.from(reason).length > 500) {
       this.setData({ error: '请填写4–500字的原因。' });
       return;
     }
+    const selected = type === 'UNLIST' ? null : view.selectedRegion;
+    if (type === 'REPLACE_REGION' && !selected) {
+      this.setData({ error: '请先选择完整的标准地区，再确认更正。' });
+      return;
+    }
+    if (
+      selected &&
+      (!regions.validSelection(selected) || selected.catalogVersion !== d.regionCatalogVersion)
+    ) {
+      this.setData({ error: '地区目录已更新，请重新选择并确认。' });
+      return;
+    }
     let city = null;
-    if (type === 'LIST') {
+    if (type === 'LIST' && !selected) {
       city = directoryUtil.normalizeCity(view.cityInput);
       if (city === undefined) {
         this.setData({ error: '城市仅支持中文、字母、数字、空格和“·”，最多20个字。' });
         return;
       }
     }
-    // Fixed before the dialog: the event version, the public publication and the listing.
+    const region = selected
+      ? { catalogVersion: selected.catalogVersion, regionId: selected.regionId }
+      : null;
+    const selectedKey = JSON.stringify(selected || null);
+    const edit = this._directoryEdit || 0;
     const version = this._event.version;
     const publicEventId = d.publication ? d.publication.publicEventId : '';
     const listingId = d.listing ? d.listing.id : '';
-    const op = await ui.confirmOp(
-      this,
-      type === 'LIST' ? '列入公开赛事目录' : '撤出公开赛事目录',
+    const catalogVersion = d.regionCatalogVersion;
+    const title =
+      type === 'LIST'
+        ? '列入公开赛事目录'
+        : type === 'REPLACE_REGION'
+          ? '更正目录标准地区'
+          : '撤出公开赛事目录';
+    const note =
       type === 'LIST'
         ? '列入后，所有观众都可以在公开赛事目录中发现该赛事' +
-            (city ? '（城市：' + city + '）' : '') +
-            '，并打开当前公开观赛页。'
-        : '撤出后不再出现在目录中；已分享的观赛链接仍可访问。如需停止链接访问，请关闭公开观赛。',
-    );
+          (selected
+            ? '（标准地区：' + selected.label + '）'
+            : city
+              ? '（城市：' + city + '）'
+              : '') +
+          '，并打开当前公开观赛页。'
+        : type === 'REPLACE_REGION'
+          ? '原公开标签：' +
+            (view.city || '未填写') +
+            '。更正为：' +
+            selected.label +
+            '。系统保留旧记录并重新上架，原文字筛选可能不再找到此赛事；全国、标准地区和分享链接仍可访问。'
+          : '撤出后不再出现在目录中；已分享的观赛链接仍可访问。如需停止链接访问，请关闭公开观赛。';
+    const op = await ui.confirmOp(this, title, note);
     const now = this._directory;
     if (
       !op ||
@@ -608,7 +739,11 @@ Page({
       !now ||
       (now.publication ? now.publication.publicEventId : '') !== publicEventId ||
       (now.listing ? now.listing.id : '') !== listingId ||
-      !(type === 'LIST' ? now.capabilities.canList : now.capabilities.canUnlist)
+      !now.capabilities[capability] ||
+      now.regionCatalogVersion !== catalogVersion ||
+      (this._directoryEdit || 0) !== edit ||
+      (type !== 'UNLIST' &&
+        JSON.stringify(this.data.directory.selectedRegion || null) !== selectedKey)
     )
       return;
     const token = ui.hold(this);
@@ -619,14 +754,21 @@ Page({
         type,
         expectedEventVersion: version,
         reason,
-        ...(type === 'LIST' && city ? { displayCity: city } : {}),
+        ...(region ? { region } : type === 'LIST' && city ? { displayCity: city } : {}),
+        ...(type === 'REPLACE_REGION' ? { expectedListingId: listingId } : {}),
       });
       if (!ui.held(this, token)) return;
       this.setData({
         busy: false,
         'directory.reason': '',
         'directory.cityInput': '',
-        notice: type === 'LIST' ? '已列入公开赛事目录。' : '已撤出公开赛事目录；分享链接仍有效。',
+        'directory.selectedRegion': null,
+        notice:
+          type === 'LIST'
+            ? '已列入公开赛事目录。'
+            : type === 'REPLACE_REGION'
+              ? '标准地区已更正，原上架记录已保留，分享链接仍有效。'
+              : '已撤出公开赛事目录；分享链接仍有效。',
       });
       await this.load();
     } catch (error) {
@@ -634,6 +776,8 @@ Page({
       const message = directoryFailure(error);
       this.setData({ busy: false, error: message });
       if (error && error.status === 409) {
+        if (error.code === 'REGION_CATALOG_CHANGED')
+          this.setData({ 'directory.selectedRegion': null });
         await this.load();
         if (ui.held(this, token) && !this.data.unavailable) this.setData({ error: message });
       }

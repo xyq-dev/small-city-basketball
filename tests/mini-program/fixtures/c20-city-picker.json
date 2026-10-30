@@ -14,11 +14,45 @@
       "合成城市四",
       "合成城市五",
       "合成城市六"
+    ],
+    "recentChoices": [
+      {
+        "mode": "LEGACY_CITY",
+        "city": "高州",
+        "label": "高州",
+        "key": "city:高州"
+      },
+      {
+        "mode": "LEGACY_CITY",
+        "city": "高州市",
+        "label": "高州市",
+        "key": "city:高州市"
+      },
+      {
+        "mode": "LEGACY_CITY",
+        "city": "合成二十字超长城市名称仅供界面测试使用",
+        "label": "合成二十字超长城市名称仅供界面测试使用",
+        "key": "city:合成二十字超长城市名称仅供界面测试使用"
+      },
+      {
+        "mode": "LEGACY_CITY",
+        "city": "合成城市四",
+        "label": "合成城市四",
+        "key": "city:合成城市四"
+      },
+      {
+        "mode": "LEGACY_CITY",
+        "city": "合成城市五",
+        "label": "合成城市五",
+        "key": "city:合成城市五"
+      },
+      {
+        "mode": "LEGACY_CITY",
+        "city": "合成城市六",
+        "label": "合成城市六",
+        "key": "city:合成城市六"
+      }
     ]
   },
-  "expectText": [
-    "选择浏览城市",
-    "最近选择",
-    "定位暂未开放"
-  ]
+  "expectText": ["选择浏览地区", "最近选择", "定位暂未开放"]
 }

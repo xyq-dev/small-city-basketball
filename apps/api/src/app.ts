@@ -61,6 +61,11 @@ import { StandingsService } from './standings-service.js';
 import { StandingsController, SCB_STANDINGS_SERVICE } from './standings-controller.js';
 import { PublicViewingController } from './public-viewing-controller.js';
 import { DirectoryService } from './directory-service.js';
+import { RegionCatalogService } from './region-catalog-service.js';
+import {
+  RegionCatalogController,
+  SCB_REGION_CATALOG_SERVICE,
+} from './region-catalog-controller.js';
 import {
   DirectoryController,
   PublicDirectoryController,
@@ -300,6 +305,7 @@ export async function createApi(
     const scoring = new ScoringService(pool, options);
     const standings = new StandingsService(pool, options);
     const directory = new DirectoryService(pool, options);
+    const regionCatalog = new RegionCatalogService(pool, options);
     const overlay = new OverlayService(pool, options);
     const lifecycle = new EventLifecycleService(pool, options);
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
@@ -327,6 +333,7 @@ export async function createApi(
         PublicViewingController,
         DirectoryController,
         PublicDirectoryController,
+        RegionCatalogController,
         EventLifecycleController,
         EventPlayerStatisticsController,
         OverlayController,
@@ -349,6 +356,7 @@ export async function createApi(
         { provide: SCB_SCORING_SERVICE, useValue: scoring },
         { provide: SCB_STANDINGS_SERVICE, useValue: standings },
         { provide: SCB_DIRECTORY_SERVICE, useValue: directory },
+        { provide: SCB_REGION_CATALOG_SERVICE, useValue: regionCatalog },
         { provide: SCB_OVERLAY_SERVICE, useValue: overlay },
         { provide: SCB_EVENT_LIFECYCLE_SERVICE, useValue: lifecycle },
         { provide: SCB_EVENT_PLAYER_STATISTICS_SERVICE, useValue: playerStatistics },

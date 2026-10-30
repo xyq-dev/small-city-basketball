@@ -117,6 +117,7 @@ export function device(server) {
   const globals = { getApp: () => app };
   const modalAnswers = [];
   const navigations = [];
+  let pendingNavigation = null;
   const drops = [];
   let inflight = 0;
   const wx = createWx({
@@ -159,6 +160,7 @@ export function device(server) {
   });
   const original = { navigateTo: wx.navigateTo, redirectTo: wx.redirectTo };
   wx.navigateTo = (options) => {
+    pendingNavigation = options;
     navigations.push(options.url);
     original.navigateTo(options);
   };
@@ -178,6 +180,33 @@ export function device(server) {
     open(route, query = {}) {
       const h = loadPage({ root: programRoot, route, wx, modules, globals });
       h.page.onLoad?.(query);
+      h.page.onShow?.();
+      return h;
+    },
+    /** Follow the actual navigateTo URL and wire its EventChannel before the child loads.
+     * This tests picker return handlers; callers never inject a selected region into page data.
+     * It is deliberately explicit, rather than pretending this VM is the WeChat navigator.
+     */
+    openNavigated() {
+      const navigation = pendingNavigation;
+      assert.ok(navigation, 'a native navigateTo must precede openNavigated');
+      pendingNavigation = null;
+      const url = new URL(navigation.url, APP_ORIGIN);
+      assert.equal(url.origin, APP_ORIGIN);
+      const h = loadPage({
+        root: programRoot,
+        route: url.pathname.slice(1),
+        wx,
+        modules,
+        globals: { ...globals, getCurrentPages: () => [{}, {}] },
+      });
+      h.page.getOpenerEventChannel = () => ({
+        emit(name, ...values) {
+          const listener = navigation.events && navigation.events[name];
+          if (typeof listener === 'function') listener(...values);
+        },
+      });
+      h.page.onLoad?.(Object.fromEntries(url.searchParams));
       h.page.onShow?.();
       return h;
     },

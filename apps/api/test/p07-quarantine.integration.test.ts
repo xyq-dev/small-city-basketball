@@ -1,9 +1,10 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { assertOwnedRestoreTarget } from '../../../ops/db/common.mjs';
 import { quarantineRestoredDatabase } from '../../../ops/recovery/quarantine.mjs';
 import { createApi } from '../src/app.js';
+import { REGION_CATALOG_VERSION } from '../src/region-catalog-data.js';
 import { hashPassword, verifyPassword } from '../src/security.js';
 import { call, createEvent, data, login, ORIGIN, PASSWORD } from './support.js';
 import type { User } from './support.js';
@@ -25,6 +26,191 @@ type Target = Awaited<ReturnType<typeof createOwnedRestoreDatabase>>;
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const opaque = () => randomBytes(32).toString('base64url');
 const quote = (identifier: string) => `"${identifier.replaceAll('"', '""')}"`;
+
+/** Pause after an actual successful SQL statement, without replacing its result or locks. */
+function pauseAfter(pool: Pool, matches: (sql: string) => boolean) {
+  let entered!: () => void;
+  let release!: () => void;
+  const reached = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const proceed = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const originals = new Map<PoolClient, PoolClient['query']>();
+  let used = false;
+  const attach = (client: PoolClient) => {
+    if (originals.has(client)) return;
+    const original = client.query;
+    originals.set(client, original);
+    client.query = function (...args: unknown[]) {
+      const result = Reflect.apply(original, client, args);
+      if (!used && typeof args[0] === 'string' && matches(args[0])) {
+        used = true;
+        return Promise.resolve(result).then(async (rows) => {
+          entered();
+          await proceed;
+          return rows;
+        });
+      }
+      return result;
+    } as PoolClient['query'];
+  };
+  pool.on('acquire', attach);
+  return {
+    reached,
+    release,
+    restore() {
+      release();
+      pool.off('acquire', attach);
+      for (const [client, original] of originals) client.query = original;
+    },
+  };
+}
+
+async function within<T>(pending: Promise<T>, milliseconds = 5000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      pending,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error('Deterministic concurrency barrier timed out')),
+          milliseconds,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function activeReplacement(target: Target, seeded: Awaited<ReturnType<typeof fixture>>) {
+  const current = (
+    await target.pool.query<{ id: string; event_id: string; version: number }>(
+      `SELECT l.id,l.event_id,e.version FROM event_directory_listings l
+     JOIN events e ON e.id=l.event_id WHERE l.status='ACTIVE'`,
+    )
+  ).rows[0]!;
+  return {
+    path: `/v1/orgs/${seeded.h.owner.orgId}/events/${current.event_id}/directory-commands`,
+    body: {
+      type: 'REPLACE_REGION',
+      expectedEventVersion: current.version,
+      expectedListingId: current.id,
+      region: {
+        catalogVersion: REGION_CATALOG_VERSION,
+        regionId: '5dbae224-8a72-5c66-8b2e-d6a7a9f312e3',
+      },
+      reason: '合成恢复并发地区更正',
+    },
+  };
+}
+
+async function assertQuarantined(target: Target, seeded: Awaited<ReturnType<typeof fixture>>) {
+  expect(
+    (await target.pool.query("SELECT id FROM event_directory_listings WHERE status='ACTIVE'")).rows,
+  ).toEqual([]);
+  expect(
+    (await target.pool.query('SELECT id FROM public_event_publications WHERE revoked_at IS NULL'))
+      .rows,
+  ).toEqual([]);
+  expect(data(await anonymous(seeded.h, '/v1/public/directory?status=LIVE'))).toEqual([]);
+  expect((await anonymous(seeded.h, publicEventPath(seeded.publicId))).status).toBe(404);
+}
+
+test('C22 an in-flight REPLACE makes offline quarantine fail immediately and wholly; retry after draining revokes the replacement', async () => {
+  const target = await createOwnedRestoreDatabase();
+  let seeded: Awaited<ReturnType<typeof fixture>> | undefined;
+  let barrier: ReturnType<typeof pauseAfter> | undefined;
+  let pendingReplace: ReturnType<typeof call> | undefined;
+  let pendingQuarantine: Promise<unknown> | undefined;
+  try {
+    seeded = await fixture(target);
+    const request = await activeReplacement(target, seeded);
+    const before = await fingerprints(target.pool);
+    // Hold the real API transaction after sessions/users FOR SHARE, before it asks for
+    // organizations. The old quarantine waits with org/event table locks for 15 seconds;
+    // NOWAIT must reject within this 5-second observation while the API stays paused.
+    barrier = pauseAfter(seeded.h.api.pool, (sql) =>
+      sql.includes('FROM users WHERE id=$1 FOR SHARE'),
+    );
+    pendingReplace = call(seeded.h.api, 'post', request.path, {
+      cookie: seeded.h.owner.cookie,
+      body: request.body,
+    });
+    await within(barrier.reached);
+    pendingQuarantine = quarantineRestoredDatabase(target);
+    await within(expect(pendingQuarantine).rejects.toThrow('Restore quarantine failed'));
+    expect(await fingerprints(target.pool)).toEqual(before);
+    barrier.restore();
+    data(await within(pendingReplace));
+    // It is an offline operator retry after writers have drained, never an automatic retry.
+    const quarantine = await quarantineRestoredDatabase(target);
+    expect(quarantine.status).toBe('quarantined');
+    await assertQuarantined(target, seeded);
+  } finally {
+    barrier?.restore();
+    await Promise.allSettled([pendingReplace, pendingQuarantine]);
+    if (seeded) {
+      await seeded.h.api.app.close();
+      await seeded.h.api.pool.end();
+    }
+    await target.close();
+  }
+}, 120000);
+
+test('C22 quarantine holding every table lock commits before REPLACE and its revoked session cannot revive a listing', async () => {
+  const target = await createOwnedRestoreDatabase();
+  let seeded: Awaited<ReturnType<typeof fixture>> | undefined;
+  let barrier: ReturnType<typeof pauseAfter> | undefined;
+  let pendingReplace: ReturnType<typeof call> | undefined;
+  let pendingQuarantine: Promise<{ status: string }> | undefined;
+  try {
+    seeded = await fixture(target);
+    const request = await activeReplacement(target, seeded);
+    // The recovery operation has actually acquired all EXCLUSIVE locks. This barrier is
+    // before it chooses the revocation time; the HTTP request then demonstrably waits on
+    // the sessions table and must observe revoked credentials after quarantine commits.
+    barrier = pauseAfter(target.pool, (sql) => /^LOCK TABLE organizations,/.test(sql));
+    pendingQuarantine = quarantineRestoredDatabase(target);
+    await within(barrier.reached);
+    pendingReplace = call(seeded.h.api, 'post', request.path, {
+      cookie: seeded.h.owner.cookie,
+      body: request.body,
+    });
+    await within(
+      (async () => {
+        const deadline = Date.now() + 4500;
+        while (Date.now() < deadline) {
+          const waiting = (
+            await target.pool.query<{ waiting: boolean }>(
+              `SELECT EXISTS(SELECT 1 FROM pg_locks WHERE database=(SELECT oid FROM pg_database WHERE datname=current_database())
+           AND relation='sessions'::regclass AND mode='RowShareLock' AND NOT granted) AS waiting`,
+            )
+          ).rows[0]!.waiting;
+          if (waiting) return;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        throw new Error('REPLACE did not wait for the held quarantine lock');
+      })(),
+    );
+    barrier.restore();
+    expect((await within(pendingQuarantine)).status).toBe('quarantined');
+    const response = await within(pendingReplace);
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe('UNAUTHENTICATED');
+    await assertQuarantined(target, seeded);
+  } finally {
+    barrier?.restore();
+    await Promise.allSettled([pendingReplace, pendingQuarantine]);
+    if (seeded) {
+      await seeded.h.api.app.close();
+      await seeded.h.api.pool.end();
+    }
+    await target.close();
+  }
+}, 120000);
 
 async function fingerprints(pool: Pool, selected?: readonly string[]) {
   const tables = selected

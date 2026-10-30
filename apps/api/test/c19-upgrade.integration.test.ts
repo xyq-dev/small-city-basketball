@@ -1255,6 +1255,10 @@ function stripVolatile<T>(value: T): T {
 // published as source LEGACY, so a legacy event keeps working without a paid activation. It
 // grants no data access and is asserted field by field below.
 const SEEDED_CONFIGURATION: Record<string, number> = {
+  // C22 adds only public reference data; no old event location is inferred or listed.
+  region_catalog_versions: 1,
+  region_catalog_nodes: 3212,
+  region_legacy_aliases: 3151,
   booking_settings: 1,
   event_commercial_activations: 1,
 };

@@ -44,6 +44,7 @@ const additions = [
   '020_c19_team_membership.sql',
   '021_c19_event_follows.sql',
   '022_c19_private_seasons.sql',
+  '023_c21_region_directory.sql',
 ];
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const at = '2026-10-23T00:00:00.000Z';
@@ -257,7 +258,7 @@ describe(
     }, 60000);
     afterAll(close, 30000);
 
-    test('applies only 008 through 010 over seven real historical checksums and preserves existing user values', async () => {
+    test('applies exactly 008 through 023 over seven real historical checksums and preserves existing user values', async () => {
       const files = await readdir(migrations);
       for (const migration of additions) expect(files).toContain(migration);
       expect(await migrate(pool!)).toEqual(additions);
@@ -327,7 +328,7 @@ describe(
       }
     });
 
-    test('keeps the sixty-six manifest tables and every declared runtime update column compatible', async () => {
+    test('keeps the 81 manifest tables and every declared runtime update column compatible', async () => {
       const manifest = JSON.parse(
         await readFile(
           new URL('../../../packages/contracts/runtime-privileges.json', import.meta.url),
@@ -339,7 +340,7 @@ describe(
           "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name",
         )
       ).rows.map((row) => row.table_name);
-      expect(actual).toHaveLength(78);
+      expect(actual).toHaveLength(81);
       expect(Object.keys(manifest.tables).sort()).toEqual(actual);
       const columns = (
         await pool!.query<{ table_name: string; column_name: string }>(
@@ -383,7 +384,7 @@ describe(
         );
         expect(await userFacts()).toEqual(legacyUser);
         expect((await pool!.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n).toBe(
-          22,
+          23,
         );
       } finally {
         await pool!.query('UPDATE schema_migrations SET checksum=$2 WHERE name=$1', [

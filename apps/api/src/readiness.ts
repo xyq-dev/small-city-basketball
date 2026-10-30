@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import type { Pool, PoolClient } from 'pg';
 import { ApiError } from './errors.js';
+import { readVerifiedRegionCatalog } from './region-catalog-integrity.js';
 
 export interface PrivilegeManifest {
   version: 1;
@@ -81,7 +82,7 @@ async function expectations() {
     manifest.runtimeRole !== 'scb_runtime' ||
     manifest.backupRole !== 'scb_backup' ||
     !manifest.tables ||
-    Object.keys(manifest.tables).length !== 78
+    Object.keys(manifest.tables).length !== 81
   )
     throw new Error();
   for (const [name, t] of Object.entries(manifest.tables)) {
@@ -161,6 +162,7 @@ export async function assertRuntimeReadiness(pool: Pool): Promise<void> {
        WHEN c.relkind IN ('r','p','v','m','f') AND (n.nspname<>'public' OR c.relkind NOT IN ('r','p')) THEN (c.relowner=(SELECT oid FROM pg_roles WHERE rolname=current_user) OR has_any_column_privilege(current_user,c.oid,'SELECT') OR has_any_column_privilege(current_user,c.oid,'INSERT') OR has_any_column_privilege(current_user,c.oid,'UPDATE') OR has_table_privilege(current_user,c.oid,'DELETE') OR has_table_privilege(current_user,c.oid,'TRUNCATE') OR has_table_privilege(current_user,c.oid,'TRIGGER') OR has_any_column_privilege(current_user,c.oid,'REFERENCES') OR has_table_privilege(current_user,c.oid,'MAINTAIN')) ELSE false END) AS present`,
     );
     if (extra.rows[0]?.present !== false) throw new Error();
+    await readVerifiedRegionCatalog(client);
     await client.query('COMMIT');
   } catch {
     if (client) {

@@ -1,0 +1,154 @@
+{
+  "name": "c22-setup-region",
+  "route": "pages/event-setup/index",
+  "state": "region-directory",
+  "designSource": "synthetic:C22-region-directory",
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "已列入公开赛事目录。",
+    "creating": false,
+    "formats": [
+      {
+        "value": "ROUND_ROBIN",
+        "label": "单循环"
+      },
+      {
+        "value": "SINGLE_ELIMINATION",
+        "label": "单淘汰"
+      },
+      {
+        "value": "GROUP_KNOCKOUT",
+        "label": "分组循环接淘汰"
+      }
+    ],
+    "tiebreakers": [
+      {
+        "value": "SCORE_DIFFERENCE",
+        "label": "净胜分"
+      },
+      {
+        "value": "POINTS_FOR",
+        "label": "总得分"
+      },
+      {
+        "value": "WINS",
+        "label": "胜场"
+      }
+    ],
+    "event": {
+      "name": "合成青锋杯",
+      "status": "RUNNING",
+      "statusLabel": "比赛进行中",
+      "formatLabel": "单循环赛事",
+      "dateLabel": "2028-03-01 至 2028-03-02",
+      "venueName": "合成体育馆",
+      "roundRobin": true,
+      "knockout": false,
+      "groups": false
+    },
+    "draft": null,
+    "registration": {
+      "minPlayers": "2",
+      "maxPlayers": "3",
+      "zeroDistinct": true,
+      "requireIdentity": false,
+      "requireInsurance": false,
+      "saved": true,
+      "editable": false
+    },
+    "scoring": {
+      "editable": false,
+      "locked": true,
+      "periods": "1",
+      "minutes": "0",
+      "seconds": "1",
+      "scores": [
+        {
+          "value": 1,
+          "on": true
+        },
+        {
+          "value": 2,
+          "on": true
+        },
+        {
+          "value": 3,
+          "on": true
+        }
+      ],
+      "overtime": false,
+      "durationLabel": "1 秒",
+      "otMinutes": "5",
+      "otSeconds": "0",
+      "otLabel": "",
+      "saved": true
+    },
+    "standings": {
+      "editable": false,
+      "locked": true,
+      "canPublish": false,
+      "rulesetId": "f35998fd-466a-47f9-93a4-e89b62371e43",
+      "win": "3",
+      "loss": "1",
+      "draw": "1",
+      "tiebreakers": [
+        {
+          "value": "WINS",
+          "label": "胜场",
+          "on": true,
+          "rank": "1"
+        },
+        {
+          "value": "SCORE_DIFFERENCE",
+          "label": "净胜分",
+          "on": true,
+          "rank": "2"
+        },
+        {
+          "value": "POINTS_FOR",
+          "label": "总得分",
+          "on": true,
+          "rank": "3"
+        }
+      ],
+      "orderLabel": "胜场 → 净胜分 → 总得分",
+      "saved": true
+    },
+    "viewing": {
+      "active": true,
+      "publicEventId": "DWlcaE3t4U-F7kUV6mo_AGsTGMTkD5BUnP-S068nVaA",
+      "canEnable": false,
+      "canDisable": true,
+      "history": false
+    },
+    "directory": {
+      "listed": true,
+      "city": "高州",
+      "group": "进行中",
+      "publicActive": true,
+      "canList": false,
+      "canUnlist": true,
+      "canReplaceRegion": true,
+      "catalogVersion": "synthetic-2025-v1",
+      "currentRegionLabel": "尚未确认标准地区，历史标签可能用于匹配",
+      "selectedRegion": {
+        "mode": "REGION",
+        "regionId": "00000000-0000-4000-8000-000000000003",
+        "catalogVersion": "synthetic-2025-v1",
+        "label": "广东省",
+        "level": "PROVINCE",
+        "description": "本地区及下辖地区",
+        "source": "上次选择",
+        "guide": false,
+        "warning": ""
+      },
+      "reason": "将目录归属更正为已确认地区",
+      "cityInput": "",
+      "lastNote": ""
+    },
+    "unavailable": false
+  },
+  "expectText": ["公开赛事目录", "选择标准地区", "仅按省级归类", "确认更正标准地区"]
+}

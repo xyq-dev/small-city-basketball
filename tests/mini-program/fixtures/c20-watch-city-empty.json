@@ -8,7 +8,9 @@
       "city": "合成二十字超长城市名称仅供界面测试使用",
       "source": "上次选择",
       "guide": false,
-      "warning": ""
+      "warning": "",
+      "mode": "LEGACY_CITY",
+      "description": "历史城市标签精确筛选"
     },
     "dir": {
       "group": "LIVE",
@@ -24,9 +26,6 @@
       "moreError": ""
     }
   },
-  "expectText": [
-    "按主办方标注城市精确筛选",
-    "浏览全国赛事",
-    "最近观看"
-  ]
+  "expectText": ["历史城市标签精确筛选", "历史文字需与主办方填写一致", "浏览全国赛事", "最近观看"],
+  "expectAbsentText": ["本地区及下辖地区"]
 }

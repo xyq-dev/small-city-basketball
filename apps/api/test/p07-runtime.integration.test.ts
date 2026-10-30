@@ -315,6 +315,13 @@ describe('P07 real PostgreSQL audited runtime and backup identities', () => {
       'DELETE FROM public.match_reschedules',
       'DELETE FROM public.court_reservations',
       'UPDATE public.team_reservations SET team_id=team_id',
+      'UPDATE public.event_directory_listings SET region_id=region_id',
+      'UPDATE public.event_directory_listings SET region_catalog_version=region_catalog_version',
+      'UPDATE public.region_catalog_nodes SET name=name',
+      'INSERT INTO public.region_catalog_nodes SELECT * FROM public.region_catalog_nodes LIMIT 1',
+      'DELETE FROM public.region_catalog_versions',
+      'TRUNCATE public.region_legacy_aliases',
+      'SELECT region_id FROM public.region_catalog_nodes FOR SHARE',
       'SET ROLE scb_migrator',
       'CREATE ROLE p07_forbidden',
       'ALTER ROLE scb_runtime SUPERUSER',
@@ -334,13 +341,16 @@ describe('P07 real PostgreSQL audited runtime and backup identities', () => {
     });
   });
 
-  test('the backup identity reads all 78 tables but cannot lock, write or change schema', async () => {
+  test('the backup identity reads all 81 tables but cannot lock, write or change schema', async () => {
     const manifest = await loadManifest();
     for (const name of Object.keys(manifest.tables)) {
       await expect(backup.query(`SELECT 1 FROM public."${name}" LIMIT 1`)).resolves.toBeDefined();
     }
     for (const sql of [
       'SELECT id FROM public.overlay_sessions FOR SHARE',
+      'SELECT region_id FROM public.region_catalog_nodes FOR SHARE',
+      'UPDATE public.region_legacy_aliases SET label=label',
+      'DELETE FROM public.region_catalog_nodes',
       "INSERT INTO public.auth_rate_limits(key,window_start,attempts) VALUES('p07-forbidden',clock_timestamp(),1)",
       'DELETE FROM public.auth_rate_limits',
       'CREATE TABLE public.p07_forbidden(id int)',

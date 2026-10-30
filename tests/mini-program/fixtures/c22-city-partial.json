@@ -1,0 +1,24 @@
+{
+  "name": "c22-city-partial",
+  "route": "pages/city-select/index",
+  "state": "region-directory",
+  "designSource": "synthetic:C22-region-directory",
+  "data": {
+    "mode": "REGION",
+    "regionId": "00000000-0000-4000-8000-000000000003",
+    "catalogVersion": "synthetic-2025-v1",
+    "label": "广东省 / 茂名市 / 高州市",
+    "level": "COUNTY",
+    "description": "本地区及下辖地区",
+    "source": "上次选择",
+    "guide": false,
+    "warning": "",
+    "parentId": "00000000-0000-4000-8000-000000000010",
+    "parentLabel": "香港特别行政区",
+    "partial": true,
+    "dataDate": "2025-12-31",
+    "rows": [],
+    "recentChoices": []
+  },
+  "expectText": ["尚未收录下级", "此地区没有已收录的下级"]
+}

@@ -144,3 +144,11 @@ quarantine撤销旧session／pending invitation／active public／active overlay
 媒体单文件上限8MiB、每机构128MiB，存入PG并随完整备份恢复；整场大录像和外部存储/转码仍需单独交付。`.../entries/:id/media-files`、`.../matches/:id/media-files` 和 `.../matches/:id/media-file-requests` POST 放宽到12MiB JSON；精确 `.../matches/:id/media-upload-sessions/:sessionId/chunks/:index` PUT 为1MiB，承载512KiB分片；其他请求仍100KiB。nginx与API均限制，不能只修改API解析器。分片会话24小时到期；请求内有界清理之外，可显式执行 `ops/db/media-cleanup.mjs` 单批次清理，参见 C19 媒体交接，未配置后台定时任务。私有保险/报名资料不可公开。每次公开文件及Range读取都复验原观众授权，撤销后旧路径失效。片段是人工定位，不是已生成剪辑文件；保单文件不等于承保核验。
 
 外部公开媒体链接默认关闭；如确有原本公开的资源，配置 `SCB_MEDIA_TRUSTED_HOSTS` 为最多20个精确小写HTTPS host（逗号分隔，无通配/IP/端口），通过已有运维覆盖传给 API。服务端不抓取外链；已获知的第三方URL不能由本站撤回。要求正文可撤销时使用受控自持文件。
+
+## C22 地区目录升级和恢复边界
+
+本节为部署前操作约束，不是生产执行记录；实施验收见 [C22 交接](../../docs/handoffs/C22.md)。Migration 023 增加三张只读参考表、两个可空 listing 字段和固定 `cn-admin-2025-r1` 种子；001–022 不改，不推断／回填旧地点。当前精确 schema 为81表／23迁移，运行角色只读新参考表，listing 仍仅可更新原五个撤出字段。
+
+未来升级须先关闭 Web/API 并停止全部 writer，以匹配旧包保留完整静止备份；新包显式 migrate、重新应用最小权限并通过 `/ready` 内容哈希与 schema 检查后再开放。旧服务二进制不能连接新 schema，不能仅回滚镜像；降级须恢复匹配旧包的升级前归档，升级后的写入不会自动带回。没有本轮生产 Migration 或部署授权。
+
+78表旧归档用其原 C20 包恢复至新建自有目标，核对指纹后 quarantine，再用新包执行023并授权；81表归档使用匹配新包。新 restore 必须拒绝78表归档，不放宽精确表／迁移／哈希保护。隔离时采用 NOWAIT 锁表，有在途 writer 就完整回滚、保留目标并报错；先停写再重试，不强杀连接，不把离线恢复改成在线服务。

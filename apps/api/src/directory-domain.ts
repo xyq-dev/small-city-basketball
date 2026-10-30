@@ -2,10 +2,12 @@ import type {
   DirectoryCommandInput,
   DirectoryGroup,
   EventStatus,
+  RegionSelection,
 } from '@small-city-basketball/contracts';
 import { ApiError } from './errors.js';
 import { invalid, objectInput, text } from './validation.js';
 import { expectedVersion } from './registration-validation.js';
+import { assertCurrentRegionVersion, parseRegionSelection } from './region-catalog-domain.js';
 
 // C18 public event directory: pure rules shared by the private commands and the anonymous list.
 export const DIRECTORY_GROUPS: readonly DirectoryGroup[] = ['LIVE', 'UPCOMING', 'HISTORY'];
@@ -43,15 +45,45 @@ export function normalizeCity(raw: unknown, onError: (message: string) => never)
 export function parseDirectoryCommand(raw: unknown): DirectoryCommandInput & {
   displayCity: string | null;
 } {
-  const input = objectInput(raw, ['type', 'expectedEventVersion', 'displayCity', 'reason']);
-  if (input.type !== 'LIST' && input.type !== 'UNLIST') invalid('不支持的目录操作');
-  const type = input.type as 'LIST' | 'UNLIST';
+  const input = objectInput(raw, [
+    'type',
+    'expectedEventVersion',
+    'displayCity',
+    'reason',
+    'region',
+    'expectedListingId',
+  ]);
+  if (input.type !== 'LIST' && input.type !== 'UNLIST' && input.type !== 'REPLACE_REGION')
+    invalid('不支持的目录操作');
+  const type = input.type as DirectoryCommandInput['type'];
   if (type === 'UNLIST' && input.displayCity !== undefined) invalid('撤出目录不接受城市字段');
+  if (type === 'UNLIST' && input.region !== undefined) invalid('撤出目录不接受地区字段');
+  if (input.region !== undefined && input.displayCity !== undefined)
+    invalid('标准地区与城市文字不能同时填写');
+  if (type !== 'REPLACE_REGION' && input.expectedListingId !== undefined)
+    invalid('只有更正地区才接受目标目录记录');
+  let expectedListingId: string | undefined;
+  if (type === 'REPLACE_REGION') {
+    if (input.displayCity !== undefined || input.region === undefined)
+      invalid('更正地区必须选择标准地区');
+    if (
+      typeof input.expectedListingId !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+        input.expectedListingId,
+      )
+    )
+      invalid('更正地区必须提供原目录记录');
+    expectedListingId = input.expectedListingId;
+  }
+  const region =
+    input.region === undefined ? undefined : parseRegionSelection(input.region, invalid);
   return {
     type,
     expectedEventVersion: expectedVersion(input.expectedEventVersion),
     displayCity: type === 'LIST' ? normalizeCity(input.displayCity, invalid) : null,
     reason: text(input.reason, 'reason', 4, 500),
+    ...(region ? { region } : {}),
+    ...(expectedListingId ? { expectedListingId } : {}),
   };
 }
 
@@ -71,6 +103,7 @@ export interface DirectoryQuery {
   limit: number;
   city: string | null;
   cursor: DirectoryCursor | null;
+  region?: RegionSelection;
 }
 
 /** The cursor only marks a page start; it grants nothing and is re-filtered every page. */
@@ -85,13 +118,39 @@ export function encodeDirectoryCursor(
   ).toString('base64url');
 }
 
+export function encodeRegionDirectoryCursor(
+  group: DirectoryGroup,
+  region: RegionSelection,
+  limit: number,
+  sortDate: string,
+  publicEventId: string,
+): string {
+  return Buffer.from(
+    JSON.stringify({
+      v: 2,
+      s: group,
+      r: region.regionId,
+      g: region.catalogVersion,
+      l: limit,
+      d: sortDate,
+      k: publicEventId,
+    }),
+  ).toString('base64url');
+}
+
 function realDate(value: string): boolean {
   if (!DATE.test(value)) return false;
   const time = Date.parse(`${value}T00:00:00Z`);
   return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
 }
 
-function decodeCursor(raw: unknown, group: DirectoryGroup, city: string | null): DirectoryCursor {
+function decodeCursor(
+  raw: unknown,
+  group: DirectoryGroup,
+  city: string | null,
+  region?: RegionSelection,
+  limit?: number,
+): DirectoryCursor {
   if (
     typeof raw !== 'string' ||
     raw.length < 1 ||
@@ -109,15 +168,30 @@ function decodeCursor(raw: unknown, group: DirectoryGroup, city: string | null):
   const v = value as Record<string, unknown>;
   const keys = Object.keys(v).sort().join(',');
   if (
-    keys !== 'c,d,k,s,v' ||
-    v.v !== 1 ||
     v.s !== group ||
-    (v.c !== null && typeof v.c !== 'string') ||
-    v.c !== city ||
     typeof v.d !== 'string' ||
     !realDate(v.d) ||
     typeof v.k !== 'string' ||
     !PUBLIC_ID.test(v.k)
+  )
+    return badCursor();
+  if (region) {
+    if (
+      keys !== 'd,g,k,l,r,s,v' ||
+      v.v !== 2 ||
+      v.r !== region.regionId ||
+      v.g !== region.catalogVersion ||
+      v.l !== limit ||
+      encodeRegionDirectoryCursor(group, region, limit!, v.d as string, v.k as string) !== raw
+    )
+      return badCursor();
+    return { sortDate: v.d as string, publicEventId: v.k as string };
+  }
+  if (
+    keys !== 'c,d,k,s,v' ||
+    v.v !== 1 ||
+    (v.c !== null && typeof v.c !== 'string') ||
+    v.c !== city
   )
     return badCursor();
   // Re-encoding must reproduce the same token: no alternative spellings of one position.
@@ -128,7 +202,11 @@ function decodeCursor(raw: unknown, group: DirectoryGroup, city: string | null):
 export function parseDirectoryQuery(raw: unknown): DirectoryQuery {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return badQuery('查询参数无效');
   const q = raw as Record<string, unknown>;
-  if (Object.keys(q).some((key) => !['status', 'limit', 'city', 'cursor'].includes(key)))
+  if (
+    Object.keys(q).some(
+      (key) => !['status', 'limit', 'city', 'cursor', 'regionId', 'catalogVersion'].includes(key),
+    )
+  )
     return badQuery('查询包含不支持的参数');
   for (const key of Object.keys(q))
     if (typeof q[key] !== 'string') return badQuery('查询参数只能出现一次');
@@ -140,7 +218,17 @@ export function parseDirectoryQuery(raw: unknown): DirectoryQuery {
     limit = Number(q.limit);
     if (limit > DIRECTORY_MAX_LIMIT) return badQuery('limit须为1至50的整数');
   }
+  let region: RegionSelection | undefined;
+  if (q.regionId !== undefined || q.catalogVersion !== undefined) {
+    if (q.regionId === undefined || q.catalogVersion === undefined || q.city !== undefined)
+      return badQuery('地区ID和目录版本须成对提供，且不能与城市文字并用');
+    region = parseRegionSelection(
+      { regionId: q.regionId, catalogVersion: q.catalogVersion },
+      badQuery,
+    );
+    assertCurrentRegionVersion(region.catalogVersion);
+  }
   const city = q.city === undefined ? null : normalizeCity(q.city, badQuery);
-  const cursor = q.cursor === undefined ? null : decodeCursor(q.cursor, group, city);
-  return { group, limit, city, cursor };
+  const cursor = q.cursor === undefined ? null : decodeCursor(q.cursor, group, city, region, limit);
+  return { group, limit, city, cursor, ...(region ? { region } : {}) };
 }

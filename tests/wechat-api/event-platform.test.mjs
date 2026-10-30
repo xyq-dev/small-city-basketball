@@ -517,6 +517,170 @@ test('event mainline runs end to end through native pages on the real API', asyn
   const found = browser.open('pages/event/index', { event: publicEventId });
   await browser.settle(found);
   assert.equal(found.page.data.event?.name, '合成青锋杯', found.page.data.error);
+  // C22: find IDs through the real complete catalog and the native picker. The same legacy
+  // "高州" listing belongs to Guangdong, Maoming and Gaozhou without changing its stored text.
+  async function browseRegion(name, expectedIds = [publicEventId]) {
+    directoryTab.page.onHide();
+    directoryTab.page.chooseCity();
+    const picker = browser.openNavigated();
+    await browser.settle(picker);
+    assert.equal(picker.page.data.catalogError, '');
+    picker.page.searchRegion(tap({}, { value: name }));
+    const choices = picker.page.data.rows.filter((r) => r.name === name);
+    assert.equal(choices.length, 1, 'select a unique complete path for ' + name);
+    const choice = choices[0];
+    const catalogVersion = picker.page.data.catalogVersion;
+    picker.page.selectRegion(tap({ id: choice.id }));
+    picker.unload();
+    directoryTab.page.onShow();
+    await browser.settle(directoryTab);
+    assert.equal(directoryTab.page.data.citySelection.mode, 'REGION');
+    assert.equal(directoryTab.page.data.citySelection.label, choice.path);
+    assert.deepEqual(
+      directoryTab.page.data.dir.items.map((e) => e.publicEventId),
+      expectedIds,
+      directoryTab.page.data.dir.error,
+    );
+    const read = browser.wx.calls
+      .filter((c) => c.type === 'request' && c.url.includes('/v1/public/directory'))
+      .at(-1);
+    const query = new URL(read.url).searchParams;
+    assert.equal(query.get('regionId'), choice.id);
+    assert.equal(query.get('catalogVersion'), catalogVersion);
+    assert.equal(query.has('city'), false, 'region browsing never sends a display name filter');
+    return { id: choice.id, catalogVersion, path: choice.path };
+  }
+  const guangdong = await browseRegion('广东省');
+  const maoming = await browseRegion('茂名市');
+  const gaozhou = await browseRegion('高州市');
+  assert.equal(gaozhou.path, '广东省 / 茂名市 / 高州市');
+  assert.equal(directoryTab.page.data.dir.items[0].displayCity, '高州');
+  const publicRegionRows = (
+    await call(
+      '/v1/public/directory?status=LIVE&regionId=' +
+        guangdong.id +
+        '&catalogVersion=' +
+        guangdong.catalogVersion,
+    )
+  ).data;
+  assert.deepEqual(
+    Object.keys(publicRegionRows[0]).sort(),
+    [
+      'publicEventId',
+      'name',
+      'startDate',
+      'endDate',
+      'venueName',
+      'status',
+      'purpose',
+      'displayCity',
+    ].sort(),
+  );
+  discoveryHome.page.onShow();
+  await browser.settle(discoveryHome);
+  assert.equal(discoveryHome.page.data.citySelection.regionId, gaozhou.id);
+  assert.deepEqual(
+    discoveryHome.page.data.publicEvents.map((e) => e.publicEventId),
+    [publicEventId],
+  );
+  snapshot(directoryTab, 'watch-standard-region');
+
+  const ownerPreference = setup.requireLocal('utils/city-preference.js');
+  async function chooseDirectoryRegion(name) {
+    const before = ownerPreference.snapshot();
+    setup.page.chooseDirectoryRegion();
+    const picker = ownerDevice.openNavigated();
+    assert.equal(picker.page.data.organizer, true);
+    await ownerDevice.settle(picker);
+    assert.equal(picker.page.data.catalogError, '');
+    picker.page.searchRegion(tap({}, { value: name }));
+    const choices = picker.page.data.rows.filter((r) => r.name === name);
+    assert.equal(choices.length, 1);
+    const choice = choices[0];
+    picker.page.selectRegion(tap({ id: choice.id }));
+    picker.unload();
+    assert.equal(setup.page.data.directory.selectedRegion.regionId, choice.id);
+    assert.equal(setup.page.data.directory.selectedRegion.label, choice.path);
+    assert.deepEqual(
+      ownerPreference.snapshot(),
+      before,
+      'organizer selection does not change browsing',
+    );
+    return choice;
+  }
+  const directoryWrites = () =>
+    ownerDevice.wx.calls.filter(
+      (c) =>
+        c.type === 'request' &&
+        c.method === 'POST' &&
+        c.url.endsWith(eventPath + '/directory-commands'),
+    );
+  const legacyListingId = setup.page._directory.listing.id;
+  const legacyEventVersion = setup.page._event.version;
+  await chooseDirectoryRegion('高州市');
+  setup.page.directoryReasonInput(tap({}, { value: '已核对广东省茂名市高州市，补充标准归属' }));
+  const beforeCorrection = directoryWrites().length;
+  ownerDevice.approve();
+  await setup.page.replaceDirectoryRegion();
+  await ownerDevice.settle(setup);
+  assert.equal(directoryWrites().length, beforeCorrection + 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(directoryWrites().at(-1).data)), {
+    type: 'REPLACE_REGION',
+    expectedEventVersion: legacyEventVersion,
+    expectedListingId: legacyListingId,
+    region: { regionId: gaozhou.id, catalogVersion: gaozhou.catalogVersion },
+    reason: '已核对广东省茂名市高州市，补充标准归属',
+  });
+  assert.notEqual(setup.page._directory.listing.id, legacyListingId);
+  assert.equal(setup.page._directory.listing.region.regionId, gaozhou.id);
+  assert.equal(setup.page._directory.listing.publicEventId, publicEventId);
+  assert.equal(setup.page._directory.publication.publicEventId, publicEventId);
+  assert.equal(setup.page.data.directory.currentRegionLabel, gaozhou.path + '（标准地区）');
+  await found.page.load();
+  await browser.settle(found);
+  assert.equal(
+    found.page.data.event?.name,
+    '合成青锋杯',
+    'same share remains valid after correction',
+  );
+
+  // A coarse prefecture assignment never pretends to be a known county. Lose the actual
+  // successful response, then re-read the new immutable listing without replaying a command.
+  const countyListingId = setup.page._directory.listing.id;
+  const countyEventVersion = setup.page._event.version;
+  await chooseDirectoryRegion('茂名市');
+  setup.page.directoryReasonInput(tap({}, { value: '实际仅确认到茂名市，保留原上架历史' }));
+  ownerDevice.dropNextResponse(
+    (o) =>
+      o.method === 'POST' &&
+      o.url.endsWith(eventPath + '/directory-commands') &&
+      o.data?.type === 'REPLACE_REGION',
+  );
+  ownerDevice.approve();
+  const beforeUnknown = directoryWrites().length;
+  await setup.page.replaceDirectoryRegion();
+  await ownerDevice.settle(setup);
+  assert.match(setup.page.data.error, /结果未知/);
+  assert.equal(directoryWrites().length, beforeUnknown + 1);
+  assert.equal(
+    setup.page._directory.listing.id,
+    countyListingId,
+    'no fabricated successful result',
+  );
+  await setup.page.load();
+  await ownerDevice.settle(setup);
+  assert.equal(directoryWrites().length, beforeUnknown + 1, 'reread never resends the write');
+  assert.notEqual(setup.page._directory.listing.id, countyListingId);
+  assert.equal(setup.page._event.version, countyEventVersion + 1);
+  assert.equal(setup.page._directory.listing.region.regionId, maoming.id);
+  assert.equal(setup.page._directory.listing.publicEventId, publicEventId);
+  await browseRegion('高州市', []);
+  await browseRegion('茂名市');
+  await browseRegion('广东省');
+  directoryTab.page.clearDirCity();
+  await browser.settle(directoryTab);
+  assert.equal(directoryTab.page.data.citySelection.mode, 'NATIONWIDE');
+  snapshot(setup, 'event-setup-standard-region');
   // Unlisting removes it from the directory only; the share link keeps working.
   setup.page.directoryReasonInput(tap({}, { value: '赛事信息需更新后再列入' }));
   ownerDevice.approve();
@@ -545,11 +709,31 @@ test('event mainline runs end to end through native pages on the real API', asyn
     browser.wx.calls.some(
       (c) =>
         c.type === 'request' &&
-        c.url.includes('/v1/public/directory') &&
+        /\/v1\/public\/(directory|regions)(?:\?|$)/.test(c.url) &&
         Object.keys(c.header || {}).some((k) => k.toLowerCase() === 'cookie'),
     ),
     false,
   );
+
+  // Re-list with a standard selection through the native organizer picker. This creates a
+  // new directory row and never sends displayCity. The later COMPLETE step must auto-withdraw it.
+  await chooseDirectoryRegion('高州市');
+  setup.page.directoryReasonInput(tap({}, { value: '确认县级归属后重新开放公开目录' }));
+  const beforeStandardList = directoryWrites().length;
+  ownerDevice.approve();
+  await setup.page.listDirectory();
+  await ownerDevice.settle(setup);
+  assert.equal(directoryWrites().length, beforeStandardList + 1);
+  assert.equal(directoryWrites().at(-1).data.type, 'LIST');
+  assert.equal(Object.hasOwn(directoryWrites().at(-1).data, 'displayCity'), false);
+  assert.deepEqual(JSON.parse(JSON.stringify(directoryWrites().at(-1).data.region)), {
+    regionId: gaozhou.id,
+    catalogVersion: gaozhou.catalogVersion,
+  });
+  assert.equal(setup.page._directory.listing.region.regionId, gaozhou.id);
+  assert.equal(setup.page._directory.listing.publicEventId, publicEventId);
+  await browseRegion('高州市');
+  const standardListingId = setup.page._directory.listing.id;
 
   const spectator = device(server);
   const shared = spectator.open('pages/event/index', { event: publicEventId });
@@ -588,6 +772,19 @@ test('event mainline runs end to end through native pages on the real API', asyn
   assert.equal(shared.page.data.unavailable, true);
   const media = spectator.open('pages/media/index');
   assert.deepEqual(media.page.data.recentEvents, []);
+
+  directoryTab.page.onShow();
+  await browser.settle(directoryTab);
+  assert.deepEqual(
+    directoryTab.page.data.dir.items,
+    [],
+    'completion withdraws standard-region listing',
+  );
+  await setup.page.load();
+  await ownerDevice.settle(setup);
+  assert.equal(setup.page._directory.listing, null);
+  assert.equal(setup.page._directory.lastListing.id, standardListingId);
+  assert.match(setup.page.data.directory.lastNote, /自动撤出/);
 
   // Signing out clears every private page immediately.
   const account = ownerDevice.open('pages/account/index');
