@@ -63,7 +63,10 @@ test('first visit: anonymous events and dismissible city guide', async () => {
   const calls = d.wx.calls.filter((c) => c.type === 'request');
   assert.equal(calls.length, 1);
   assert.match(calls[0].url, /\/v1\/public\/directory\?status=LIVE&limit=20$/);
-  assert.equal(Object.keys(calls[0].header).some((k) => k.toLowerCase() === 'cookie'), false);
+  assert.equal(
+    Object.keys(calls[0].header).some((k) => k.toLowerCase() === 'cookie'),
+    false,
+  );
   assert.equal(h.requireLocal('utils/api.js').getClient().hasSession(), false);
   const html = buildPreview({ root, route: h.page.route, data: h.page.data }).phone;
   assert.match(html, /合成公开赛事a/);
@@ -261,7 +264,7 @@ test('watch inline filter shares preference and invalid input keeps the old choi
 
 test('old home response cannot overwrite new city after a picker round trip', async () => {
   const old = deferred();
-  const d = device({ request: (o) => o.url.includes('city=') ? reply([row('b')]) : old.promise });
+  const d = device({ request: (o) => (o.url.includes('city=') ? reply([row('b')]) : old.promise) });
   const h = d.open('home');
   await ticks();
   h.page.onHide();
@@ -296,7 +299,10 @@ test('switching nationwide resets cursor and ignores old load-more', async () =>
   await ticks();
   oldMore.resolve(reply([row('c')]));
   await w.flush();
-  assert.deepEqual(w.page.data.dir.items.map((r) => r.publicEventId), ['b'.repeat(43)]);
+  assert.deepEqual(
+    w.page.data.dir.items.map((r) => r.publicEventId),
+    ['b'.repeat(43)],
+  );
   assert.equal(w.page._dirCursor, 'new_cursor');
   assert.equal(w.page.data.dir.loadingMore, false);
   assert.equal(d.open('home').page.data.citySelection.city, '');

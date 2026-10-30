@@ -507,7 +507,10 @@ test('event mainline runs end to end through native pages on the real API', asyn
   directoryTab.page.clearDirCity();
   await browser.settle(directoryTab);
   assert.equal(directoryTab.page.data.dir.city, '');
-  assert.deepEqual(directoryTab.page.data.dir.items.map((e) => e.publicEventId), [publicEventId]);
+  assert.deepEqual(
+    directoryTab.page.data.dir.items.map((e) => e.publicEventId),
+    [publicEventId],
+  );
   directoryTab.page.openDirectory(tap({ id: publicEventId }));
   assert.equal(browser.navigations.at(-1), '/pages/event/index?event=' + publicEventId);
   const found = browser.open('pages/event/index', { event: publicEventId });
