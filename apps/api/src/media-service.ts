@@ -167,7 +167,7 @@ export class MediaService extends StandingsService {
   protected async usage(c: PoolClient, org: string): Promise<MediaStorageUsage> {
     const used = (
       await c.query(
-        'SELECT COALESCE(sum(byte_length) FILTER(WHERE payload IS NOT NULL),0)::int AS used FROM media_files WHERE org_id=$1',
+        `SELECT (COALESCE((SELECT sum(byte_length) FROM media_files WHERE org_id=$1 AND payload IS NOT NULL),0) + COALESCE((SELECT sum(payload_byte_length) FROM participant_material_revisions WHERE org_id=$1 AND payload_ciphertext IS NOT NULL),0))::int AS used`,
         [org],
       )
     ).rows[0].used;

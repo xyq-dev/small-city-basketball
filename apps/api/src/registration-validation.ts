@@ -55,6 +55,7 @@ export function rulesInput(value: unknown): RegistrationRulesInput {
     'zeroAndDoubleZeroDistinct',
     'requireIdentity',
     'requireInsurance',
+    'requireParticipantMaterials',
   ]);
   if (
     !Number.isInteger(input.minPlayers) ||
@@ -69,7 +70,15 @@ export function rulesInput(value: unknown): RegistrationRulesInput {
     });
   for (const field of ['zeroAndDoubleZeroDistinct', 'requireIdentity', 'requireInsurance'])
     if (typeof input[field] !== 'boolean') invalid('请明确选择规则', { [field]: '请选择是或否' });
+  if (
+    input.requireParticipantMaterials !== undefined &&
+    typeof input.requireParticipantMaterials !== 'boolean'
+  )
+    invalid('请明确选择本人资料要求', { requireParticipantMaterials: '请选择是或否' });
   return {
+    ...(input.requireParticipantMaterials === undefined
+      ? {}
+      : { requireParticipantMaterials: input.requireParticipantMaterials as boolean }),
     expectedVersion: expectedVersion(input.expectedVersion),
     minPlayers: input.minPlayers as number,
     maxPlayers: input.maxPlayers as number,

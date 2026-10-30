@@ -43,6 +43,8 @@ export interface ApiOptions {
   registrationEnabled?: boolean;
   organizationRegistrationEnabled?: boolean;
   participantRegistrationEnabled?: boolean;
+  /** Dedicated canonical base64 AES-256 key; absent keeps new material workflows closed. */
+  participantDataKey?: string;
   trustProxyHops?: 0 | 1;
   commerceMode?: CommerceMode;
   wechatPay?: WechatPayConfig;

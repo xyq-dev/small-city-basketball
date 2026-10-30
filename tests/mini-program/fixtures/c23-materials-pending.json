@@ -1,0 +1,57 @@
+{
+  "name": "c23-materials-pending",
+  "route": "pages/participant-materials/index",
+  "state": "synthetic-populated",
+  "designSource": "C23 contract and implemented native Page; synthetic data only",
+  "expectText": ["原请求结果待核对", "重新核对原请求回执"],
+  "data": {
+    "mode": "mine",
+    "entries": [],
+    "workspace": {
+      "entryId": "00000000-0000-4000-8000-000000000002",
+      "memberId": "00000000-0000-4000-8000-000000000003",
+      "eventName": "合成本人报名杯",
+      "teamName": "合成青锋",
+      "startDate": "2028-05-01",
+      "endDate": "2028-05-03",
+      "rules": {
+        "requireInsurance": true,
+        "termsVersion": "registration-materials-v1"
+      },
+      "enabled": true,
+      "frozen": false,
+      "material": null,
+      "capabilities": {
+        "canSave": true,
+        "canSubmit": false,
+        "canWithdrawPublicity": false
+      }
+    },
+    "material": null,
+    "members": [],
+    "form": {
+      "realName": "",
+      "identityNumber": "",
+      "insurer": "",
+      "policyNumber": "",
+      "startDate": "",
+      "endDate": "",
+      "acceptedTerms": false,
+      "publicityConsent": false
+    },
+    "privateDetails": null,
+    "reason": "",
+    "identityChecked": false,
+    "portraitChecked": false,
+    "insuranceChecked": false,
+    "loading": false,
+    "busy": false,
+    "dirty": false,
+    "pending": true,
+    "storageError": "",
+    "error": "",
+    "message": "",
+    "loginRequired": false
+  },
+  "expectDisabled": ["保存本人资料草稿", "拍摄或选择本人照片"]
+}

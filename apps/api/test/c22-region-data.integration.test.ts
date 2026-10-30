@@ -3,7 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { createApi } from '../src/app.js';
+import { createC22LegacyRegistrationApi } from './fixtures/c22-legacy-registration-api.js';
 import { migrate } from '../src/database/migrate.js';
 import {
   REGION_CATALOG_VERSION,
@@ -72,7 +72,9 @@ describe(
         const projection =
           name === 'event_directory_listings'
             ? "to_jsonb(t)-ARRAY['region_catalog_version','region_id']"
-            : 'to_jsonb(t)';
+            : name === 'event_rulesets'
+              ? "to_jsonb(t)-'require_participant_materials'"
+              : 'to_jsonb(t)';
         result[name] = (
           await pool.query<{ rows: unknown[] }>(
             `SELECT coalesce(jsonb_agg(${projection} ORDER BY to_jsonb(t)::text COLLATE "C"),'[]'::jsonb) AS rows FROM ${quote(name)} t`,
@@ -114,9 +116,22 @@ describe(
         c.release();
       }
       expect(await tableNames(upgraded)).toHaveLength(78);
-      // The unchanged registration/schedule/publication routes create a real parent chain on
-      // the old schema. They do not read the new catalog or run the migration runner.
-      api = await createApi({ databaseUrl: old.url, appOrigin: ORIGIN });
+      const assertOldRegistrationSchema = async () => {
+        expect(
+          (await upgraded.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n,
+        ).toBe(22);
+        expect(
+          (
+            await upgraded.query(
+              "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='event_rulesets' AND column_name='require_participant_materials'",
+            )
+          ).rowCount,
+        ).toBe(0);
+      };
+      await assertOldRegistrationSchema();
+      // Fixed historical registration SQL is injected only by this fixture factory.
+      // The genuine 001–022 schema is never extended before the upgrade baseline.
+      api = await createC22LegacyRegistrationApi({ databaseUrl: old.url, appOrigin: ORIGIN });
       const owner = await register(api, 'c22-old-owner');
       const leader = await register(api, 'c22-old-leader');
       const otherOwner = await register(api, 'c22-old-other');
@@ -182,6 +197,7 @@ describe(
       await api.app.close();
       await api.pool.end();
       api = undefined;
+      await assertOldRegistrationSchema();
       baseline = await snapshot(upgraded, await tableNames(upgraded));
     }, 180000);
 
@@ -219,8 +235,8 @@ describe(
     }, 30000);
 
     test('fresh migration imports the complete catalog and preserves deterministic hashes', async () => {
-      expect(await migrate(fresh)).toHaveLength(23);
-      expect(await tableNames(fresh)).toHaveLength(81);
+      expect(await migrate(fresh)).toHaveLength(24);
+      expect(await tableNames(fresh)).toHaveLength(83);
       const nodes = (
         await fresh.query(
           `SELECT region_id::text AS "regionId",source_code AS "sourceCode",name,level,parent_region_id::text AS "parentRegionId"
@@ -243,11 +259,22 @@ describe(
     });
 
     test('001–022 upgrade keeps every legacy row and leaves existing listing regions NULL', async () => {
-      expect(await migrate(upgraded)).toEqual(['023_c21_region_directory.sql']);
+      expect(await migrate(upgraded)).toEqual([
+        '023_c21_region_directory.sql',
+        '024_c23_participant_materials.sql',
+      ]);
       const after = await snapshot(upgraded, Object.keys(baseline));
-      // The ledger only appends 023; every pre-existing checksum/applied_at remains byte-for-byte.
+      expect(
+        (
+          await upgraded.query(
+            'SELECT count(*)::int AS n FROM event_rulesets WHERE require_participant_materials',
+          )
+        ).rows[0].n,
+      ).toBe(0);
+      // The ledger only appends 023–024; every pre-existing checksum/applied_at remains byte-for-byte.
       after.schema_migrations = after.schema_migrations!.filter(
-        (r: any) => r.name !== '023_c21_region_directory.sql',
+        (r: any) =>
+          !['023_c21_region_directory.sql', '024_c23_participant_materials.sql'].includes(r.name),
       );
       expect(after).toEqual(baseline);
       expect(

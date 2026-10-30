@@ -7,6 +7,11 @@ import { loadManifest } from '../ops/db/privileges.mjs';
 import { exactTableRows } from '../ops/recovery/fingerprint-rows.mjs';
 import { syntheticPdf, syntheticPng, syntheticMp4 } from './c05-media-fixtures.mjs';
 import {
+  captureParticipantMaterials,
+  verifyParticipantMaterials,
+  verifyParticipantQuarantine,
+} from './c23-participant-material-check.mjs';
+import {
   captureCommerceSetup,
   ensureCommercialEntitlement,
   captureCommerceEnd,
@@ -14,7 +19,7 @@ import {
 } from './c05-commerce-check.mjs';
 
 // The production package runs this same synthetic business chain against its real TLS API.
-// SQL remains read-only here; use the separately scoped backup role for the 81-table digest.
+// SQL remains read-only here; use the separately scoped backup role for the 83-table digest.
 async function privateValue(name) {
   const inline = process.env[name];
   const file = process.env[name + '_FILE'];
@@ -41,8 +46,8 @@ const stateFile = process.env.SCB_PERSISTENCE_FILE;
 if (!stateFile)
   throw new Error('SCB_PERSISTENCE_FILE must be a private temporary file outside the repository');
 const mode = process.argv[2];
-if (!['capture', 'verify', 'freeze'].includes(mode))
-  throw new Error('Use capture, verify or freeze');
+if (!['capture', 'verify', 'freeze', 'quarantine'].includes(mode))
+  throw new Error('Use capture, verify, freeze or quarantine');
 const remoteUrl = process.env.SCB_CHECK_BASE_URL;
 if (remoteUrl) {
   let url;
@@ -58,10 +63,40 @@ if (remoteUrl) {
   )
     throw new Error('External check requires an isolated TLS origin');
 }
+// Synthetic key derivation is limited to a locally constructed scb_test_* API.
+// A cloned restore reuses the capture's nonsecret source-name reference instead of
+// deriving a different key from its target name. TLS package checks use private CI files.
+const configuredParticipantKey = await privateValue('SCB_PARTICIPANT_DATA_KEY');
+let participantKeyFixtureDatabase = null;
+if (!configuredParticipantKey && !remoteUrl) {
+  participantKeyFixtureDatabase =
+    mode === 'capture'
+      ? databaseName
+      : JSON.parse(await readFile(stateFile, 'utf8')).participantKeyFixtureDatabase;
+  if (
+    typeof participantKeyFixtureDatabase !== 'string' ||
+    !/^scb_test_[A-Za-z0-9_]+$/.test(participantKeyFixtureDatabase)
+  )
+    throw new Error('Local material recovery requires its captured isolated key reference');
+}
+const participantDataKey =
+  configuredParticipantKey ??
+  (participantKeyFixtureDatabase
+    ? createHash('sha256')
+        .update(`synthetic-c23-restart:${participantKeyFixtureDatabase}`)
+        .digest('base64')
+    : undefined);
+if (!participantDataKey)
+  throw new Error('Participant restart checks require their private isolated key');
 const origin = process.env.APP_ORIGIN ?? 'http://127.0.0.1:5173';
 const instance = remoteUrl
   ? { app: null, pool: new pg.Pool({ connectionString: databaseUrl }) }
-  : await createApi({ databaseUrl, appOrigin: origin, commerceMode: 'ENFORCED' });
+  : await createApi({
+      databaseUrl,
+      appOrigin: origin,
+      commerceMode: 'ENFORCED',
+      participantDataKey,
+    });
 if (instance.app) await instance.app.listen(0, '127.0.0.1');
 const baseUrl = remoteUrl ?? (await instance.app.getUrl());
 const readUrl = await privateValue('SCB_FINGERPRINT_DATABASE_URL');
@@ -1433,6 +1468,7 @@ async function captureMedia(orgId, cookie, registration, scheduling, scoring, vi
   }
   assert.equal(published.media.find((m) => m.kind === 'VIDEO').markers.length, 1);
   return {
+    entryRoot,
     privatePath,
     privateHash: createHash('sha256').update(syntheticPdf).digest('hex'),
     files,
@@ -1457,6 +1493,10 @@ async function verifyMedia(saved, cookie, leaderCookie) {
     assert.equal(createHash('sha256').update(bytes).digest('hex'), file.sha256);
   }
   assert.deepEqual((await call(saved.publicPath)).data, saved.published);
+  assert.deepEqual(
+    (await call(saved.entryRoot, { cookie: leaderCookie })).data,
+    saved.entryWorkspace,
+  );
   assert.deepEqual((await call(`${saved.matchRoot}/media`, { cookie })).data, saved.matchWorkspace);
   for (const item of saved.published.media) {
     const expected = item.kind === 'VIDEO' ? syntheticMp4 : syntheticPng;
@@ -1657,6 +1697,13 @@ try {
       scoring,
       viewing,
     );
+    const participantMaterials = await captureParticipantMaterials({
+      call,
+      readPool,
+      orgId,
+      ownerCookie: cookie,
+      suffix,
+    });
     const commerce = await captureCommerceEnd({
       call,
       cookie,
@@ -1664,6 +1711,19 @@ try {
       eventId: created.data.id,
       setup: commerceSetup,
     });
+    // Every byte-producing fixture is complete now. Media DTO usage is org-wide and
+    // therefore includes the later C23 ciphertext; retain its exact final baseline.
+    const previousMediaUsedBytes = media.matchWorkspace.usage.usedBytes;
+    media.entryWorkspace = (
+      await call(media.entryRoot, { cookie: frozenRegistration.leaderCookie })
+    ).data;
+    media.matchWorkspace = (await call(`${media.matchRoot}/media`, { cookie })).data;
+    assert.deepEqual(media.entryWorkspace.usage, media.matchWorkspace.usage);
+    assert.equal(
+      media.matchWorkspace.usage.usedBytes,
+      previousMediaUsedBytes + participantMaterials.snapshot.stored_length,
+      'Final shared media quota must include the nonempty C23 ciphertext exactly once',
+    );
     frozenRegistration.leaderSession = (
       await call('/v1/auth/session', { cookie: frozenRegistration.leaderCookie })
     ).data;
@@ -1698,18 +1758,30 @@ try {
       groups,
       media,
       commerce,
+      participantMaterials,
+      participantKeyFixtureDatabase,
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
     console.log(
       'Captured sessions, frozen registration, schedule, raw clock, TEAM_ONLY and PLAYER_BASIC results with attributed/unassigned points and confirmation history, standings, public identities, independent active/revoked overlay grants and read sessions, closed/archived event history, explicit HISTORY grants, private player summary/sourceHash, and the isolated database fingerprint.',
     );
+  } else if (mode === 'quarantine') {
+    const state = JSON.parse(await readFile(stateFile, 'utf8'));
+    await verifyParticipantQuarantine({ readPool, saved: state.participantMaterials });
+    const denied = await fetch(baseUrl + state.participantMaterials.materialPath + '/mine', {
+      headers: { Cookie: state.participantMaterials.cookie },
+    });
+    assert.equal(denied.status, 401);
+    console.log(
+      'Restored participant consent was withdrawn; ciphertext and permanent request tombstones retained, old session rejected.',
+    );
   } else if (mode === 'freeze') {
     // The caller has stopped every API writer before this point and keeps them stopped until dump finishes.
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     state.fingerprint = await fingerprint();
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
-    console.log('Captured the quiescent 81-table backup baseline.');
+    console.log('Captured the quiescent 83-table backup baseline.');
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     const session = await call('/v1/auth/session', { cookie: state.cookie });
@@ -1851,6 +1923,12 @@ try {
     await verifyMedia(state.media, state.cookie, state.registration.leaderCookie);
     await verifyCommerce({ call, saved: state.commerce, cookie: state.cookie, orgId: state.orgId });
     assert.equal(await fingerprint(), state.fingerprint);
+    await verifyParticipantMaterials({
+      call,
+      readPool,
+      saved: state.participantMaterials,
+      fetchFile: (route, cookie) => fetch(baseUrl + route, { headers: { Cookie: cookie } }),
+    });
     const acquired = (
       await call(`/v1/orgs/${state.orgId}/matches/${scoring.saved[0].id}/scorekeeper-lease`, {
         method: 'POST',
@@ -1863,7 +1941,7 @@ try {
       'Lease fence remains monotonic across PostgreSQL restart',
     );
     console.log(
-      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across all 81 tables.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across all 83 tables.',
     );
   }
 } finally {

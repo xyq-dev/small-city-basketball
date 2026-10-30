@@ -59,6 +59,10 @@ Page({
     this.removeTemporaryFiles();
     ui.close(this);
   },
+  participantProgress() {
+    if (!this.data.busy && this._entry)
+      ui.open('participant-materials', { orgId: this._org, entryId: this._id, mode: 'review' });
+  },
   path() {
     return '/pages/entry/index?orgId=' + this._org + '&entryId=' + this._id;
   },

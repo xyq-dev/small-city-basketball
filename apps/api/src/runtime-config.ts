@@ -12,6 +12,7 @@ export interface ResolvedApiOptions {
   secureCookies: boolean;
   organizationRegistrationEnabled: boolean;
   participantRegistrationEnabled: boolean;
+  participantDataKey?: string;
   trustProxyHops: 0 | 1;
   production: boolean;
   commerceMode: CommerceMode;
@@ -54,6 +55,11 @@ export function readRuntimeConfig(): RuntimeConfig {
       registrationEnabled: booleanEnv('REGISTRATION_ENABLED'),
       organizationRegistrationEnabled: booleanEnv('ORGANIZATION_REGISTRATION_ENABLED'),
       participantRegistrationEnabled: booleanEnv('PARTICIPANT_REGISTRATION_ENABLED'),
+      participantDataKey:
+        process.env.SCB_PARTICIPANT_DATA_KEY !== undefined ||
+        process.env.SCB_PARTICIPANT_DATA_KEY_FILE !== undefined
+          ? readRequiredSecret('SCB_PARTICIPANT_DATA_KEY')
+          : undefined,
       trustProxyHops: Number(rawHops) as 0 | 1,
       commerceMode: readCommerceMode(),
       wechatPay: readWechatPayConfig(process.env.APP_ORIGIN ?? ''),
@@ -88,6 +94,15 @@ export function validateDatabaseUrl(value: unknown): string {
 /** Shared by createApi and direct service construction; caller options cannot select a mode. */
 export function resolveApiOptions(options: ApiOptions): ResolvedApiOptions {
   const production = isProduction();
+  const participantDataKey = options.participantDataKey;
+  if (
+    participantDataKey !== undefined &&
+    (typeof participantDataKey !== 'string' ||
+      !/^[A-Za-z0-9+/]{43}=$/.test(participantDataKey) ||
+      Buffer.from(participantDataKey, 'base64').length !== 32 ||
+      Buffer.from(participantDataKey, 'base64').toString('base64') !== participantDataKey)
+  )
+    throw new Error('Participant material key configuration is invalid');
   let origin: URL;
   try {
     origin = new URL(options.appOrigin);
@@ -125,6 +140,7 @@ export function resolveApiOptions(options: ApiOptions): ResolvedApiOptions {
   if (hops !== 0 && hops !== 1) throw new Error('trustProxyHops must be 0 or 1');
   return {
     databaseUrl: validateDatabaseUrl(options.databaseUrl),
+    ...(participantDataKey === undefined ? {} : { participantDataKey }),
     appOrigin: options.appOrigin,
     sessionTtlSeconds: ttl,
     secureCookies: production || options.secureCookies === true,

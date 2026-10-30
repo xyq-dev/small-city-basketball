@@ -220,3 +220,9 @@ runtime新增history SELECT/INSERT与match/court/team预约必要列UPDATE，bac
 SE首轮比赛数n−nextPow2(n)/2，后轮只能精确同事务凭证追加全部fixture/match/1court+2team预约，deferred guard要求事件增版与完整全轮一并提交；proof禁止改删，runtime仅SELECT/INSERT。原RR发布与007改期不可变语义保持。sources.matchVersion是确认生效固定版本，允许后续安全人员维护提高当前比赛版本，确认ID/原结果仍严格核验。011放宽public ruleset_id为空仅限明确SE；RR仍必须锁定原排名规则，公开links仍只能随初次授权创建、精确覆盖当时全部正式比赛。
 
 就绪、最小ACL、backup/restore与精确指纹同步41表/11Migration。签位与最终名次是原冻结来源+seed+正式比赛+当前确认+不可变推进凭证的读投影。完赛要求恰好n−1比赛及完整有效树；无三四名赛、半决赛同轮败者共享名次。
+
+## C23 私有本人材料（Migration024已编写，真实执行另记）
+
+`event_rulesets.require_participant_materials` 默认false，旧锁定规则不自动启用。新 `participant_materials` 按机构/赛事/entry/member关联当前本人binding、key-id、当前revision/status/version和独立宣传许可；`participant_material_revisions` 以不可变revision保存规则/名单/号码/实际terms_version、经过完整解码重编码的照片与外部保单事实，私有文字及文件全部进入资源AAD绑定的AES-GCM密文。身份查重为专用HMAC，当前有效reservation的账号/身份同届唯一；历史无效占用按event锁释放，旧回执不复活。
+
+原clientRequestId、请求patch指纹和旧revision永久保留为回执墓碑，私有密文仅在赛事归档/取消且结束超过90日、无legal_hold时由人工维护清除；没有自动任务。清除不得修改既有revision元数据或冻结参赛事实。冻结snapshot只新增材料revision引用，不包含证件/照片/保单。宣传撤回作用于head的独立权限事实，不撤销参赛审核。当前83表／24迁移，001–023未修改；运行权限、readiness、重启/恢复精确清单已同步，执行证据以任务卡为准。

@@ -399,3 +399,11 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 只有当前有效独立确认才产生胜方；强制OVERTIME，原多次加时流程不变。下游正式发布后源REOPEN_RESULT（含旧命令重放）409 KNOCKOUT_RESULT_CONSUMED，工作台canReopen=false。sources.matchVersion指CONFIRM_RESULT生效固定版本（source_match_version+1），不与后续人员维护版本混淆；当前确认ID、赛果证明与固定签位必须精确一致。子赛不得早于来源结束，原受控改期同样守卫。
 
 循环赛公共event DTO保持兼容；单淘汰公共event带format=SINGLE_ELIMINATION、rules=null，使用新GET `/v1/public/events/{opaque}/knockout`返回`PublicKnockoutData`，不伪造循环赛积分，KO旧standings读明确422。KO私有standings仅公开授权管理且rules/standings=null。只有白名单opaque团队/比赛键、队名、已公开赛程状态和最终名次，不含内部ID、seed、名单、确认/推进凭证或写权。后轮发布在同事务撤销旧LIVE授权，重新显式ENABLE产生全新键；不向旧授权补写links。HISTORY须完整n−1有效赛果与晋级证明。OBS仍独立原授权。私有球员榜分母为n−1，未物化场次不能声称采集完整。
+
+## C23 本人资料与外部保单人工核验（任务分支，待联合验收）
+
+合同：[C23最小合同](design/C23_PARTICIPANT_MATERIALS.md)，类型 `packages/contracts/participant-materials.d.ts`。报名规则新增可选布尔 `requireParticipantMaterials`；旧客户端省略时保留草稿已有值，新建默认为false，开放后规则仍锁定。无专用加密密钥或密钥与历史资料失配时，新工作流不开放。旧身份/保险要求且未启用本流程仍拒绝开放。
+
+`GET /v1/me/participant-entries` 发现当前本人已列入名单的报名及仅撤宣传的历史入口。`/v1/orgs/:orgId/entries/:entryId/participant-materials` 提供 mine GET/PUT、mine/submit、mine/publicity-withdraw、mine/receipts/:clientRequestId、列表、:memberId、:memberId/private、:memberId/files/:kind、:memberId/review。普通DTO脱敏，原始证件仅明确授权private接口，文件不进入原整队media或匿名目录。当前活跃成员本人/独立审核人与领队进度权限分开；原资料本人退出后仍有数据主体只读与宣传撤回例外，不获得新球队权限。
+
+保存使用原clientRequestId与expectedVersion；未知结果查原回执，不用新ID绕过。照片或保单分次保存，精确PUT mine路由共享12MiB/2并发上传lane，邻接命令仍100KiB。材料通过、队伍提交、独立队伍批准、冻结分别执行；后面三个入口重查当前资料/签署/审核/保障版本。拒绝宣传不影响参赛。在线保险、支付和自动实名核验未开放。

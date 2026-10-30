@@ -1,0 +1,61 @@
+{
+  "name": "c23-materials-draft",
+  "route": "pages/participant-materials/index",
+  "state": "synthetic-populated",
+  "designSource": "C23 contract and implemented native Page; synthetic data only",
+  "expectText": [
+    "填写本人参赛资料",
+    "本人照片 · 必传",
+    "在线投保尚未开放",
+    "自愿允许上述本届照片宣传用途"
+  ],
+  "data": {
+    "mode": "mine",
+    "entries": [],
+    "workspace": {
+      "entryId": "00000000-0000-4000-8000-000000000002",
+      "memberId": "00000000-0000-4000-8000-000000000003",
+      "eventName": "合成本人报名杯",
+      "teamName": "合成青锋",
+      "startDate": "2028-05-01",
+      "endDate": "2028-05-03",
+      "rules": {
+        "requireInsurance": true,
+        "termsVersion": "registration-materials-v1"
+      },
+      "enabled": true,
+      "frozen": false,
+      "material": null,
+      "capabilities": {
+        "canSave": true,
+        "canSubmit": false,
+        "canWithdrawPublicity": false
+      }
+    },
+    "material": null,
+    "members": [],
+    "form": {
+      "realName": "",
+      "identityNumber": "",
+      "insurer": "",
+      "policyNumber": "",
+      "startDate": "",
+      "endDate": "",
+      "acceptedTerms": false,
+      "publicityConsent": false
+    },
+    "privateDetails": null,
+    "reason": "",
+    "identityChecked": false,
+    "portraitChecked": false,
+    "insuranceChecked": false,
+    "loading": false,
+    "busy": false,
+    "dirty": false,
+    "pending": false,
+    "storageError": "",
+    "error": "",
+    "message": "",
+    "loginRequired": false
+  }
+}

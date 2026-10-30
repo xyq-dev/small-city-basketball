@@ -29,6 +29,7 @@
     <view wx:if="{{detail}}" class="card">
       <view class="row-between"><view class="subtitle">{{detail.teamName}}</view><button class="quiet small-button" bindtap="closeEntry">收起</button></view>
       <view class="badge">{{detail.statusLabel}}</view>
+      <button class="secondary" bindtap="participantProgress" disabled="{{busy}}">查看逐人本人资料与独立审核</button>
       <view class="section-label">本届名单（报名快照）</view>
       <view wx:if="{{!detail.players.length}}" class="muted">尚未填写名单。</view>
       <view wx:for="{{detail.players}}" wx:key="key" class="row">{{item.text}}</view>

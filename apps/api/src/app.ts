@@ -36,6 +36,12 @@ import { WechatService } from './wechat-service.js';
 import type { WechatServiceOptions } from './wechat-service.js';
 import { WechatController, SCB_WECHAT_SERVICE } from './wechat-controller.js';
 import { RegistrationService } from './registration-service.js';
+import { ParticipantMaterialsService } from './participant-materials-service.js';
+import {
+  ParticipantMaterialsController,
+  ParticipantEntriesController,
+  SCB_PARTICIPANT_MATERIALS_SERVICE,
+} from './participant-materials-controller.js';
 import { SchedulingService } from './scheduling-service.js';
 import { SchedulingController } from './scheduling-controller.js';
 import { GroupKnockoutService } from './group-knockout-service.js';
@@ -266,7 +272,7 @@ class HealthController {
   }
   @Get('ready')
   async ready(@Req() request: ApiRequest) {
-    await assertRuntimeReadiness(this.service.pool);
+    await assertRuntimeReadiness(this.service.pool, this.service.options.participantDataKey);
     return envelope(request, { status: 'ready' });
   }
 }
@@ -286,8 +292,9 @@ export async function createApi(
   });
   pool.on('error', () => console.error('Database idle connection error'));
   try {
-    if (options.production) await assertRuntimeReadiness(pool);
+    if (options.production) await assertRuntimeReadiness(pool, options.participantDataKey);
     const service = new RegistrationService(pool, options);
+    const participantMaterials = new ParticipantMaterialsService(pool, options);
     const playerBooking = new PlayerBookingService(pool, options);
     const playerPerformance = new PlayerPerformanceService(pool, options);
     const scheduling = new SchedulingService(pool, options);
@@ -325,6 +332,8 @@ export async function createApi(
         OrganizationController,
         HealthController,
         RegistrationController,
+        ParticipantMaterialsController,
+        ParticipantEntriesController,
         InvitationAcceptanceController,
         SchedulingController,
         KnockoutController,
@@ -345,6 +354,7 @@ export async function createApi(
       ],
       providers: [
         { provide: SERVICE, useValue: service },
+        { provide: SCB_PARTICIPANT_MATERIALS_SERVICE, useValue: participantMaterials },
         { provide: SCB_PLAYER_BOOKING_SERVICE, useValue: playerBooking },
         { provide: SCB_PLAYER_PERFORMANCE_SERVICE, useValue: playerPerformance },
         { provide: SCB_WECHAT_SERVICE, useValue: wechat },

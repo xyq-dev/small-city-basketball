@@ -100,6 +100,8 @@ const LEGACY = [
 // The complete C19 candidate must contain every frozen module table, with zero automatic rows
 // after an upgrade. Missing migrations must fail instead of making a partial candidate pass.
 const NO_AUTOMATIC_ROWS = [
+  'participant_materials',
+  'participant_material_revisions',
   'event_directory_listings',
   'media_request_receipts',
   'media_upload_sessions',
@@ -1265,6 +1267,7 @@ const SEEDED_CONFIGURATION: Record<string, number> = {
 // New columns on legacy rows take only neutral defaults: a legacy publication is LIVE, legacy
 // scoring stays team-only without player statistics, no group config, no login name.
 const EXPECTED_NEW_COLUMN_VALUES: Record<string, Record<string, unknown[]>> = {
+  event_rulesets: { require_participant_materials: [false] },
   public_event_publications: { purpose: ['LIVE'] },
   result_confirmations: { collection_mode: ['TEAM_ONLY'], player_stats: [null] },
   schedule_revisions: { group_config: [null] },

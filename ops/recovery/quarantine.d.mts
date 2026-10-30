@@ -12,6 +12,7 @@ export function quarantineRestoredDatabase(input: {
     wechatIdentitiesRevoked: number;
     wechatChallengesRemoved: number;
     pendingInvitationsRevoked: number;
+    participantPublicityConsentsWithdrawn: number;
     publicPublicationsRevoked: number;
     overlayGrantsRevoked: number;
     activeLeasesExpired: number;

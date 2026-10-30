@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, readFile, writeFile, chmod, rm } from 'node:fs/promises
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
+import { assertApiSecretMounts } from './check-api-secret-mounts.mjs';
 
 // CI owns every generated project, volume, credential and archive. Nothing is deployed remotely.
 if (process.env.CI !== 'true' || !process.env.RUNNER_TEMP)
@@ -28,6 +29,8 @@ const stateDirectory = path.join(temporary, 'state');
 const certificateDirectory = path.join(temporary, 'certificates');
 const hostOwner = path.join(temporary, 'owner.json');
 const hostState = path.join(temporary, 'state.json');
+const participantDataKey = randomBytes(32).toString('base64');
+const participantOverride = path.join(temporary, 'participant-checks.compose.yaml');
 const passwords = Object.fromEntries(
   ['source', 'target'].map((cluster) => [
     cluster,
@@ -49,6 +52,7 @@ const secrets = [
   ...Object.values(passwords.source),
   ...Object.values(passwords.target),
   owner.password,
+  participantDataKey,
 ];
 let controlCreated = false;
 let sourceStarted = false;
@@ -103,10 +107,14 @@ function configuration(secretDirectory, database = sourceDatabase) {
 const sourceEnv = configuration(sourceSecrets);
 const targetEnv = configuration(targetSecrets, 'postgres');
 async function compose(project, env, args, options) {
-  return run('docker', ['compose', '-p', project, '-f', 'compose.production.yaml', ...args], {
-    ...options,
-    env: { ...env, ...options?.env },
-  });
+  return run(
+    'docker',
+    ['compose', '-p', project, '-f', 'compose.production.yaml', '-f', participantOverride, ...args],
+    {
+      ...options,
+      env: { ...env, ...options?.env },
+    },
+  );
 }
 async function stage(label, action) {
   console.log(`[production] ${label}`);
@@ -244,6 +252,8 @@ async function validator(project, env, mode, recovery = false) {
     '--env',
     'SCB_FINGERPRINT_DATABASE_URL_FILE=/check-backup',
     '--env',
+    'SCB_PARTICIPANT_DATA_KEY_FILE=/check-participant-key',
+    '--env',
     'SCB_CHECK_OWNER_FILE=/check-owner',
     '--env',
     'SCB_CHECK_MAINTENANCE_URL_FILE=/check-maintenance',
@@ -252,6 +262,7 @@ async function validator(project, env, mode, recovery = false) {
     ...(recovery ? ['--env', 'SCB_CHECK_RECOVERY=1'] : []),
     ...mount(path.join(env.SCB_SECRET_DIR, 'database_runtime_url'), '/check-runtime'),
     ...mount(path.join(env.SCB_SECRET_DIR, 'database_backup_url'), '/check-backup'),
+    ...mount(path.join(env.SCB_SECRET_DIR, 'c23_participant_data_key'), '/check-participant-key'),
     ...mount(path.join(env.SCB_SECRET_DIR, 'database_migrator_url'), '/check-maintenance'),
     ...mount(path.join(sourceSecrets, 'bootstrap_owner_input'), '/check-owner'),
     ...mount(path.join(certificateDirectory, 'ca.crt'), '/check-ca.crt'),
@@ -263,6 +274,10 @@ async function validator(project, env, mode, recovery = false) {
     ...mount(
       path.join(root, 'scripts/c05-media-fixtures.mjs'),
       '/app/scripts/c05-media-fixtures.mjs',
+    ),
+    ...mount(
+      path.join(root, 'scripts/c23-participant-material-check.mjs'),
+      '/app/scripts/c23-participant-material-check.mjs',
     ),
     ...mount(
       path.join(root, 'scripts/c05-commerce-check.mjs'),
@@ -289,6 +304,7 @@ async function copyState() {
   await writeFile(hostState, result.output, { mode: 0o600 });
   const saved = JSON.parse(result.output);
   secrets.push(saved.cookie, saved.registration.leaderCookie, saved.scoring.writerCookie);
+  secrets.push(saved.participantMaterials.cookie);
   for (const operator of saved.commerce.operators) secrets.push(operator.cookie);
   for (const overlay of [...saved.overlays.active, saved.overlays.revoked, saved.lifecycle.overlay])
     secrets.push(overlay.cookie, overlay.token);
@@ -508,11 +524,34 @@ try {
       await ownedFile(path.join(directory, 'tls_certificate'), certificate, 101);
       await ownedFile(path.join(directory, 'tls_private_key'), key, 101);
       await ownedFile(path.join(directory, 'bootstrap_owner_input'), JSON.stringify(owner));
+      await ownedFile(path.join(directory, 'c23_participant_data_key'), participantDataKey);
+      const participantKeyMode = await run('sudo', [
+        'stat',
+        '-c',
+        '%a %u %g',
+        path.join(directory, 'c23_participant_data_key'),
+      ]);
+      assert.equal(participantKeyMode.output.trim(), '400 10001 10001');
       await ownedFile(
         path.join(directory, 'database_restore_url'),
         databaseUrl('admin', 'restoredb', 'postgres'),
       );
     }
+    // Test-only override: the shipped production template retains its default disabled state.
+    await writeFile(
+      participantOverride,
+      `services:
+  api:
+    environment:
+      SCB_PARTICIPANT_DATA_KEY_FILE: /run/secrets/c23_participant_data_key
+    secrets:
+      - c23_participant_data_key
+secrets:
+  c23_participant_data_key:
+    file: ${'${SCB_SECRET_DIR}'}/c23_participant_data_key
+`,
+      { mode: 0o600 },
+    );
     await urlFiles(sourceSecrets, sourceDatabase);
     await urlFiles(targetSecrets, 'postgres');
     await ownedFile(
@@ -529,6 +568,7 @@ try {
   await stage(
     'Build production api, web and database tools plus an isolated test image',
     async () => {
+      await run(process.execPath, ['--test', 'scripts/check-api-secret-mounts.test.mjs']);
       for (const image of [
         'node:24.22.1-bookworm-slim',
         'nginx:1.30.6-alpine',
@@ -574,7 +614,7 @@ try {
         `${prefix}/api:local`,
         '--input-type=module',
         '-e',
-        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,23);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
+        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,24);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
       ]);
       await run('docker', [
         'run',
@@ -678,16 +718,7 @@ try {
         const id = await container(source, sourceEnv, service);
         const details = (await jsonCommand(['inspect', id]))[0];
         assert.equal(Object.keys(details.HostConfig.PortBindings ?? {}).length, 0);
-        if (service === 'api') {
-          assert.equal(details.HostConfig.ReadonlyRootfs, true);
-          assert.equal(details.HostConfig.Init, true);
-          assert.deepEqual(
-            details.Mounts.filter((item) => item.Destination.startsWith('/run/secrets/')).map(
-              (item) => item.Destination,
-            ),
-            ['/run/secrets/database_runtime_url'],
-          );
-        }
+        if (service === 'api') assertApiSecretMounts(details, sourceSecrets);
       }
       await validator(source, sourceEnv, 'capture');
       await copyState();
@@ -764,6 +795,7 @@ try {
         assert.notEqual(recreatedApi, apiId, 'The API container must actually be recreated');
         assert.equal(await container(source, sourceEnv, 'web'), webId, 'Web must remain running');
         const apiAfter = (await jsonCommand(['inspect', recreatedApi]))[0];
+        assertApiSecretMounts(apiAfter, sourceSecrets);
         assert.notEqual(
           apiAfter.NetworkSettings.Networks[`${source}_frontend`].IPAddress,
           previousAddress,
@@ -881,10 +913,14 @@ try {
 
     await compose(target, targetEnv, ['up', '-d', '--no-build', '--no-deps', 'api']);
     await compose(target, targetEnv, ['up', '-d', '--no-build', '--no-deps', 'web']);
+    const restoredApi = (
+      await jsonCommand(['inspect', await container(target, targetEnv, 'api')])
+    )[0];
+    assertApiSecretMounts(restoredApi, targetSecrets);
     await waitReady();
     await validator(target, targetEnv, 'verify', true);
     console.log(
-      '[production] Full restore matched all 81 exact tables, business snapshots and backup-point fencing.',
+      '[production] Full restore matched all 83 exact tables, business snapshots and backup-point fencing.',
     );
   });
   await stage(
@@ -946,6 +982,7 @@ try {
       await run('docker', ['start', targetApiId, targetWebId]);
       await waitReady();
       await checkQuarantine(saved);
+      await validator(target, targetEnv, 'quarantine', true);
       console.log(
         '[production] Old private, public and overlay credentials are invalid; relogin exposes no quarantined organization.',
       );

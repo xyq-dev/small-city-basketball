@@ -7,6 +7,9 @@ const uploadPath = /^\/v1\/orgs\/[0-9a-f-]{36}\/(?:entries|matches)\/[0-9a-f-]{3
 // C19: the idempotent whole-file upload shares the original upload lane and limit.
 const requestUploadPath =
   /^\/v1\/orgs\/[0-9a-f-]{36}\/matches\/[0-9a-f-]{36}\/media-file-requests$/i;
+// C23: only the exact private draft PUT accepts one bounded image/document patch.
+const participantDraftPath =
+  /^\/v1\/orgs\/[0-9a-f-]{36}\/entries\/[0-9a-f-]{36}\/participant-materials\/mine$/i;
 // C19: one 512 KiB chunk (base64 plus small JSON fields) fits well inside 1 MB.
 const chunkPath =
   /^\/v1\/orgs\/[0-9a-f-]{36}\/matches\/[0-9a-f-]{36}\/media-upload-sessions\/[0-9a-f-]{36}\/chunks\/\d{1,2}$/i;
@@ -15,8 +18,9 @@ export function isPaymentNotificationRequest(request: Pick<ApiRequest, 'method' 
 }
 export function isMediaUploadRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
   return (
-    request.method === 'POST' &&
-    (uploadPath.test(request.path) || requestUploadPath.test(request.path))
+    (request.method === 'POST' &&
+      (uploadPath.test(request.path) || requestUploadPath.test(request.path))) ||
+    (request.method === 'PUT' && participantDraftPath.test(request.path))
   );
 }
 export function isMediaChunkRequest(request: Pick<ApiRequest, 'method' | 'path'>) {

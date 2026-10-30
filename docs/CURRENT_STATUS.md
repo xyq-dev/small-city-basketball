@@ -2,7 +2,7 @@
 
 ## C23 本人报名资料与人工审核（IN_PROGRESS / BRANCH_ONLY）
 
-2026-10-31 Asia/Shanghai，唯一集成人 Codex root。基线 main `83ae15a64bce2a29566d22e3885ebb44a0772bdd`；本人报名、私有照片、外部保单人工核验按 [任务](tasks/C23.md) 分段推进，详细恢复点见 [交接](handoffs/C23.md)。本条为认领，不表示功能已实现。每个可验证代码切片连同任务及交接同步 GitHub 后，再开始下一切片。
+2026-10-31 Asia/Shanghai，唯一集成人 Codex root。基线 main `83ae15a64bce2a29566d22e3885ebb44a0772bdd`；本人报名、私有照片、外部保单人工核验按 [任务](tasks/C23.md) 分段推进，详细恢复点见 [交接](handoffs/C23.md)。本人资料API、加密版本化存储、人工审核及小程序已整合在任务分支；源码/VM验证通过范围见任务卡，真实PG、页面API、浏览器和非空归档恢复仍待验。本条不代表main业务或生产已更新。每个可验证代码切片连同任务及交接同步 GitHub 后，再开始下一切片。
 
 ## C22 标准地区目录（DONE / MAIN，源码与隔离验收）
 

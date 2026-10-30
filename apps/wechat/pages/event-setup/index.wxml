@@ -63,7 +63,8 @@
         <view class="setup-switch" data-section="registration" data-field="zeroDistinct" bindtap="toggle"><text>0号与00号视为不同号码</text><text class="setup-flag {{registration.zeroDistinct ? 'on' : ''}}">{{registration.zeroDistinct ? '是' : '否'}}</text></view>
         <view class="setup-switch" data-section="registration" data-field="requireIdentity" bindtap="toggle"><text>要求身份资料</text><text class="setup-flag {{registration.requireIdentity ? 'on' : ''}}">{{registration.requireIdentity ? '要求' : '不要求'}}</text></view>
         <view class="setup-switch" data-section="registration" data-field="requireInsurance" bindtap="toggle"><text>要求保险资料</text><text class="setup-flag {{registration.requireInsurance ? 'on' : ''}}">{{registration.requireInsurance ? '要求' : '不要求'}}</text></view>
-        <view class="muted">要求身份或保险资料时，当前版本不能开放报名（尚未接入资料核验服务）。</view>
+        <view class="setup-switch" data-section="registration" data-field="requireParticipantMaterials" bindtap="toggle"><text>本人填写、必传照片与人工核验</text><text class="setup-flag {{registration.requireParticipantMaterials ? 'on' : ''}}">{{registration.requireParticipantMaterials ? '启用' : '未启用'}}</text></view>
+        <view class="muted">启用后需服务器安全配置就绪，并由本人提交资料与照片。未启用时，身份或保险要求仍阻止开放；在线投保未开放。</view>
         <button class="primary" bindtap="saveRegistration" disabled="{{busy}}">保存报名规则</button>
       </block>
       <view wx:else class="muted">每队 {{registration.minPlayers}}–{{registration.maxPlayers}} 人。报名规则只能在草稿阶段修改。</view>
