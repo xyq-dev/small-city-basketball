@@ -1,0 +1,30 @@
+{
+  "name": "c20-home-public",
+  "route": "pages/home/index",
+  "state": "home-public",
+  "data": {
+    "citySelection": {
+      "label": "合成二十字超长城市名称仅供界面测试使用",
+      "city": "合成二十字超长城市名称仅供界面测试使用",
+      "source": "上次选择",
+      "guide": false,
+      "warning": ""
+    },
+    "publicLoaded": true,
+    "publicEvents": [
+      {
+        "publicEventId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "合成超长名称篮球邀请赛用于城市公开赛事展示",
+        "dateLabel": "2028-05-01 至 2028-05-03",
+        "venueName": "合成文化体育中心东区二号场",
+        "displayCity": "合成二十字超长城市名称仅供界面测试使用",
+        "statusLabel": "进行中"
+      }
+    ]
+  },
+  "expectText": [
+    "正在进行的公开赛事",
+    "上次选择",
+    "合成超长名称篮球邀请赛"
+  ]
+}

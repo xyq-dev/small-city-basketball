@@ -1,5 +1,15 @@
 # 任务看板
 
+## C20 选城与公开赛事发现
+
+2026-10-30 Asia/Shanghai；负责人及集成人Codex。基线 `c17e15a`，分支 `feat/c20-city-discovery`；[任务](tasks/C20.md)、[交接](handoffs/C20.md)。
+
+| ID | 闭环 | 状态 | 后续 |
+| --- | --- | --- | --- |
+| C20 | 设备级手动选城／全国、首页匿名赛事及既有目录筛选 | REVIEW，分支候选；本地回归通过，待CI | CI与真实API／布局验收后整合；行政区目录和GPS需后续契约及准入 |
+
+DOC004仅部分开始实施，不能把G01—G15或全部定位服务标为DONE；已完成C13—C19的状态不变。
+
 ## DOC004 定位选城、附近发现与服务可预约性
 
 2026-10-30 Asia/Shanghai；负责人及集成人：本次Codex会话。[专项要求](design/LOCATION_SERVICE_REQUIREMENTS.md)、[任务](tasks/DOC004.md)、[交接](handoffs/DOC004.md)。

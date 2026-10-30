@@ -25,3 +25,8 @@ button.home-event::after { border:none; }
 .home-extension-actions button { flex:1; min-width:0; margin:0; font-size:13px; }
 .home-extension-actions button.secondary { background:#f5f8fb; border-radius:12px; font-weight:600; }
 .home-extension-actions button.secondary::after { border:0; }
+.home-city-bar { display:flex; align-items:center; gap:12px; padding:16px 0 8px; }
+.home-city-copy { flex:1; min-width:0; overflow-wrap:anywhere; }
+.home-city-bar .home-city-button { width:auto; flex:none; margin:0; padding:8px 12px; font-size:13px; }
+.home-city-guide { padding:12px; border-radius:12px; background:#edf3fa; margin:8px 0; }
+.home-city-guide .home-event-actions button { min-width:0; }

@@ -1,0 +1,20 @@
+{
+  "name": "c20-home-error",
+  "route": "pages/home/index",
+  "state": "home-error",
+  "data": {
+    "citySelection": {
+      "label": "合成二十字超长城市名称仅供界面测试使用",
+      "city": "合成二十字超长城市名称仅供界面测试使用",
+      "source": "上次选择",
+      "guide": false,
+      "warning": ""
+    },
+    "publicError": "网络连接中断，请恢复连接后刷新。",
+    "publicLoaded": false
+  },
+  "expectText": [
+    "公开赛事暂时无法读取",
+    "重新读取"
+  ]
+}

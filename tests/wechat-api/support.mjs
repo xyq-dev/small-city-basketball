@@ -113,6 +113,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * every page this actor opens, exactly as a single mini program instance would.
  */
 export function device(server) {
+  const app = { globalData: {} };
+  const globals = { getApp: () => app };
   const modalAnswers = [];
   const navigations = [];
   const drops = [];
@@ -165,7 +167,7 @@ export function device(server) {
     original.redirectTo(options);
   };
   const apiFile = path.join(programRoot, 'utils', 'api.js');
-  const first = loadPage({ root: programRoot, route: 'pages/account/index', wx });
+  const first = loadPage({ root: programRoot, route: 'pages/account/index', wx, globals });
   const apiModule = first.requireLocal('utils/api.js');
   const modules = { [apiFile]: apiModule };
   return {
@@ -174,7 +176,7 @@ export function device(server) {
     navigations,
     client: apiModule.getClient(),
     open(route, query = {}) {
-      const h = loadPage({ root: programRoot, route, wx, modules });
+      const h = loadPage({ root: programRoot, route, wx, modules, globals });
       h.page.onLoad?.(query);
       h.page.onShow?.();
       return h;

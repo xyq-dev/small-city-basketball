@@ -1,6 +1,29 @@
 <view class="page watch-page">
   <view class="watch-intro"><view class="title">小城市，也有大主场</view><view class="watch-copy">查看你参与的赛事、赛程、排名与数据；也可以打开主办方公开的观赛入口。</view></view>
 
+  <view class="watch-section-head"><view class="subtitle">公开赛事</view><text wx:if="{{dir.loaded && dir.items.length}}" class="muted">已显示 {{dir.items.length}} 届</text></view>
+  <view class="watch-city-summary"><view><view class="watch-strong">{{citySelection.label}} · {{citySelection.source}}</view><view class="muted small">按主办方标注城市精确筛选</view></view><button class="secondary small-button" bindtap="chooseCity">选择城市</button></view>
+  <view wx:if="{{citySelection.guide}}" class="notice small">未登录也能浏览全国赛事。可手动选城；定位暂未开放，不读取当前位置。<button class="quiet" bindtap="clearDirCity">先浏览全国</button></view>
+  <view wx:if="{{citySelection.warning}}" class="notice warning small">{{citySelection.warning}}</view>
+  <view class="mode-choice">
+    <button wx:for="{{dirGroups}}" wx:key="value" class="{{dir.group === item.value ? 'selected' : ''}}" data-group="{{item.value}}" bindtap="pickDirGroup" disabled="{{dir.loading}}">{{item.label}}</button>
+  </view>
+  <view class="watch-city-row">
+    <input class="field" value="{{dir.cityInput}}" bindinput="dirCityInput" bindconfirm="applyDirCity" placeholder="按城市筛选（可选）" maxlength="40"/>
+    <button class="secondary small-button" bindtap="applyDirCity" disabled="{{dir.loading}}">筛选</button>
+    <button wx:if="{{dir.city}}" class="quiet small-button" bindtap="clearDirCity">全国</button>
+  </view>
+  <view wx:if="{{dir.cityError}}" class="notice warning small">{{dir.cityError}}</view>
+  <view wx:if="{{dir.loading}}" class="watch-panel"><view class="muted">正在读取公开赛事…</view><view class="loading-lines"><view></view><view></view></view></view>
+  <view wx:elif="{{dir.error}}" class="notice warning watch-error"><view class="watch-strong">公开赛事暂时无法读取</view><view class="small">{{dir.error}}</view><button class="secondary" bindtap="loadDirectory">重新读取</button></view>
+  <view wx:elif="{{dir.loaded && !dir.items.length}}" class="watch-panel"><view class="muted">{{dir.city ? '“' + dir.city + '”' : ''}}暂无主办方公开的{{dir.group === 'LIVE' ? '进行中' : dir.group === 'UPCOMING' ? '即将开始' : '历史'}}赛事。</view><view wx:if="{{dir.city}}" class="small muted">城市名称须与主办方填写一致，也可切换阶段或浏览全国。</view><button wx:if="{{dir.city}}" class="secondary" bindtap="clearDirCity">浏览全国赛事</button></view>
+  <button wx:for="{{dir.items}}" wx:key="publicEventId" class="watch-event" data-id="{{item.publicEventId}}" bindtap="openDirectory">
+    <view class="watch-event-main"><view class="watch-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · {{item.venueName}}</view><view wx:if="{{item.displayCity}}" class="muted">{{item.displayCity}}</view></view>
+    <view class="watch-event-status {{item.group}}">{{item.statusLabel}}</view>
+  </button>
+  <view wx:if="{{dir.moreError}}" class="notice warning small">{{dir.moreError}}</view>
+  <button wx:if="{{dir.loaded && !dir.done && !dir.loading}}" class="quiet" bindtap="loadMoreDirectory" disabled="{{dir.loadingMore}}" loading="{{dir.loadingMore}}">{{dir.moreError ? '重试加载更多' : '加载更多'}}</button>
+
   <view class="watch-section-head"><view class="subtitle">我的赛事</view><text wx:if="{{signedIn && total}}" class="muted">共 {{total}} 届</text></view>
   <view wx:if="{{loading && !sections.length}}" class="watch-panel"><view class="muted">正在读取你可访问的赛事…</view><view class="loading-lines"><view></view><view></view></view></view>
   <view wx:elif="{{!signedIn}}" class="watch-panel">
@@ -31,25 +54,6 @@
     <view wx:if="{{truncated.length}}" class="muted">部分机构的赛事超过500届，这里只列出每个机构的前500届：{{truncated}}。</view>
   </block>
 
-  <view class="watch-section-head"><view class="subtitle">公开赛事</view><text wx:if="{{dir.loaded && dir.items.length}}" class="muted">已显示 {{dir.items.length}} 届</text></view>
-  <view class="mode-choice">
-    <button wx:for="{{dirGroups}}" wx:key="value" class="{{dir.group === item.value ? 'selected' : ''}}" data-group="{{item.value}}" bindtap="pickDirGroup" disabled="{{dir.loading}}">{{item.label}}</button>
-  </view>
-  <view class="watch-city-row">
-    <input class="field" value="{{dir.cityInput}}" bindinput="dirCityInput" bindconfirm="applyDirCity" placeholder="按城市筛选（可选）" maxlength="40"/>
-    <button class="secondary small-button" bindtap="applyDirCity" disabled="{{dir.loading}}">筛选</button>
-    <button wx:if="{{dir.city}}" class="quiet small-button" bindtap="clearDirCity" disabled="{{dir.loading}}">全部</button>
-  </view>
-  <view wx:if="{{dir.cityError}}" class="notice warning small">{{dir.cityError}}</view>
-  <view wx:if="{{dir.loading}}" class="watch-panel"><view class="muted">正在读取公开赛事…</view><view class="loading-lines"><view></view><view></view></view></view>
-  <view wx:elif="{{dir.error}}" class="notice warning watch-error"><view class="watch-strong">公开赛事暂时无法读取</view><view class="small">{{dir.error}}</view><button class="secondary" bindtap="loadDirectory">重新读取</button></view>
-  <view wx:elif="{{dir.loaded && !dir.items.length}}" class="watch-panel"><view class="muted">{{dir.city ? '“' + dir.city + '”' : ''}}暂无主办方公开的{{dir.group === 'LIVE' ? '进行中' : dir.group === 'UPCOMING' ? '即将开始' : '历史'}}赛事。</view></view>
-  <button wx:for="{{dir.items}}" wx:key="publicEventId" class="watch-event" data-id="{{item.publicEventId}}" bindtap="openDirectory">
-    <view class="watch-event-main"><view class="watch-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · {{item.venueName}}</view><view wx:if="{{item.displayCity}}" class="muted">{{item.displayCity}}</view></view>
-    <view class="watch-event-status {{item.group}}">{{item.statusLabel}}</view>
-  </button>
-  <view wx:if="{{dir.moreError}}" class="notice warning small">{{dir.moreError}}</view>
-  <button wx:if="{{dir.loaded && !dir.done && !dir.loading}}" class="quiet" bindtap="loadMoreDirectory" disabled="{{dir.loadingMore}}" loading="{{dir.loadingMore}}">{{dir.moreError ? '重试加载更多' : '加载更多'}}</button>
   <view class="watch-section-head"><view class="subtitle">最近观看</view><text wx:if="{{recentEvents.length}}" class="muted" bindtap="clearRecent">清除</text></view>
   <view wx:if="{{!recentEvents.length}}" class="watch-panel"><view class="muted">打开主办方分享的赛事卡片后，会在本机记住，方便再次查看。主办方撤销公开后自动移除。</view></view>
   <button wx:for="{{recentEvents}}" wx:key="publicEventId" class="watch-event" data-id="{{item.publicEventId}}" bindtap="openRecent">

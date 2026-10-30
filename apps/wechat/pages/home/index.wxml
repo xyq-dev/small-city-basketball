@@ -6,6 +6,14 @@
   <view class="home-hero-content"><view class="home-headline"><image src="/assets/approved-ui/home-slogan.png" mode="widthFix" aria-label="每一场，都有合适的人"/><text class="accessible-headline">每一场，都有合适的人</text></view><view class="home-tagline">看赛事 · 管球队 · 查数据</view><button class="accent home-primary" bindtap="openEvents">看赛事<scb-icon name="arrow-right" tone="white" size="22"/></button></view>
  </view>
  <view class="home-content">
+  <view class="home-city-bar"><view class="home-city-copy"><view class="home-event-name">{{citySelection.label}} · 公开赛事</view><view class="muted small">{{citySelection.source}}，按主办方标注城市筛选</view></view><button class="secondary home-city-button" bindtap="chooseCity">切换城市</button></view>
+  <view wx:if="{{citySelection.guide}}" class="home-city-guide"><view class="home-event-name">先看看全国，或选择你的城市</view><view class="muted small">浏览公开赛事无需登录。定位暂未开放，手动选城不读取当前位置。</view><view class="home-event-actions"><button class="primary" bindtap="chooseCity">手动选城</button><button class="secondary" bindtap="nationwide">先浏览全国</button></view></view>
+  <view wx:if="{{citySelection.warning}}" class="notice warning small">{{citySelection.warning}}</view>
+  <view class="home-section-head"><view class="home-section-title">正在进行的公开赛事</view><button class="home-more-toggle" bindtap="openEvents">全部公开赛事<scb-icon name="chevron-right" size="14"/></button></view>
+  <view wx:if="{{publicLoading}}" class="home-event-state"><view class="muted">正在读取公开赛事…</view></view>
+  <view wx:elif="{{publicError}}" class="home-event-state"><view class="home-event-name">公开赛事暂时无法读取</view><view class="muted">{{publicError}}</view><button class="secondary" bindtap="loadPublicEvents">重新读取</button></view>
+  <view wx:elif="{{publicLoaded && !publicEvents.length}}" class="home-event-state"><view class="muted">{{citySelection.city ? '“' + citySelection.city + '”' : '全国'}}暂无已列入目录的进行中赛事。</view><view class="home-event-actions"><button class="secondary" bindtap="openEvents">查看其他赛事阶段</button><button wx:if="{{citySelection.city}}" class="secondary" bindtap="nationwide">浏览全国</button></view></view>
+  <button wx:for="{{publicEvents}}" wx:key="publicEventId" class="home-event" data-id="{{item.publicEventId}}" bindtap="openPublicEvent"><view class="home-event-main"><view class="home-event-name">{{item.name}}</view><view class="home-event-meta">{{item.dateLabel}} · {{item.displayCity || '城市未标注'}}</view><view class="home-event-meta">{{item.venueName}}</view></view><view class="home-event-status live">{{item.statusLabel}}</view></button>
   <view class="home-section-head"><view class="home-section-title">我的赛事</view><button class="home-more-toggle" bindtap="openEvents">全部赛事<scb-icon name="chevron-right" size="14"/></button></view>
   <view wx:if="{{eventsLoading && !featured.length}}" class="home-event-state"><view class="muted">正在读取你可访问的赛事…</view></view>
   <block wx:elif="{{featured.length}}">

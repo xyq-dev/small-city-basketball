@@ -1,6 +1,8 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
+const directory = require('../../utils/directory');
+const cities = require('../../utils/city-preference');
 
 const privateEvents = {
   signedIn: false,
@@ -19,6 +21,11 @@ Page({
     featured: [],
     eventTotal: 0,
     hasOrganizations: false,
+    citySelection: { label: '全国', source: '全国浏览', guide: true, warning: '' },
+    publicEvents: [],
+    publicLoading: false,
+    publicLoaded: false,
+    publicError: '',
     positions: [
       { code: 'PG', name: '控卫', icon: 'pos-pg' },
       { code: 'SG', name: '分卫', icon: 'pos-sg' },
@@ -31,12 +38,61 @@ Page({
     this._alive = true;
   },
   onShow() {
+    this._hidden = false;
+    this.setData({ citySelection: cities.snapshot() });
+    this.loadPublicEvents();
     this.loadEvents();
+  },
+  onHide() {
+    this._hidden = true;
+    this._publicLoad = (this._publicLoad || 0) + 1;
   },
   onUnload() {
     this._alive = false;
     this._eventsLoad = (this._eventsLoad || 0) + 1;
+    this._publicLoad = (this._publicLoad || 0) + 1;
     ui.close(this);
+  },
+  chooseCity() {
+    ui.open('city-select');
+  },
+  nationwide() {
+    this.setData({ citySelection: cities.choose('') });
+    this.loadPublicEvents();
+  },
+  async loadPublicEvents() {
+    if (this._alive === false || this._hidden) return;
+    const load = (this._publicLoad = (this._publicLoad || 0) + 1);
+    const current = () => this._alive !== false && !this._hidden && load === this._publicLoad;
+    const selection = cities.snapshot();
+    this.setData({
+      citySelection: selection,
+      publicEvents: [],
+      publicLoading: true,
+      publicLoaded: false,
+      publicError: '',
+    });
+    try {
+      const result = await directory.fetchPage(api.getClient(), {
+        group: 'LIVE',
+        city: selection.city,
+      });
+      if (current())
+        this.setData({
+          publicEvents: result.items.slice(0, 3),
+          publicLoading: false,
+          publicLoaded: true,
+        });
+    } catch (error) {
+      if (current()) this.setData({ publicLoading: false, publicError: directory.failure(error) });
+    }
+  },
+  openPublicEvent(e) {
+    try {
+      ui.open('event', { event: api.publicId(e.currentTarget.dataset.id) });
+    } catch {
+      this.loadPublicEvents();
+    }
   },
   // Called through ui.begin's session subscription on 401, logout or account switch.
   onSessionReset() {
