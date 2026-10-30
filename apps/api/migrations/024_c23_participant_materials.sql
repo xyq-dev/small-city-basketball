@@ -14,7 +14,7 @@ CREATE TABLE participant_materials (
   binding_id uuid NOT NULL,
   key_id text NOT NULL CHECK (key_id ~ '^[0-9a-f]{16,64}$'),
   identity_digest char(64) CHECK (identity_digest IS NULL OR identity_digest ~ '^[0-9a-f]{64}$'),
-  current_revision_id uuid,
+  current_revision_id uuid NOT NULL,
   version integer NOT NULL DEFAULT 1 CHECK (version > 0),
   status text NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','SUBMITTED','APPROVED','CHANGES_REQUESTED')),
   publicity_consent boolean NOT NULL DEFAULT false,
@@ -42,6 +42,7 @@ CREATE TABLE participant_materials (
 CREATE UNIQUE INDEX participant_identity_one_event ON participant_materials(org_id,event_id,identity_digest) WHERE reservation_active AND identity_digest IS NOT NULL;
 CREATE UNIQUE INDEX participant_user_one_event ON participant_materials(org_id,event_id,user_id) WHERE reservation_active;
 CREATE INDEX participant_materials_by_entry ON participant_materials(org_id,entry_id,member_id);
+CREATE INDEX participant_materials_by_user ON participant_materials(user_id,event_id,entry_id);
 
 CREATE TABLE participant_material_revisions (
   id uuid PRIMARY KEY,
@@ -59,10 +60,11 @@ CREATE TABLE participant_material_revisions (
   jersey_no text NOT NULL CHECK (jersey_no ~ '^(0|00|[1-9][0-9]?)$'),
   key_id text NOT NULL CHECK (key_id ~ '^[0-9a-f]{16,64}$'),
   payload_ciphertext text,
-  payload_byte_length integer NOT NULL CHECK (payload_byte_length BETWEEN 1 AND 25000000),
+  payload_byte_length integer NOT NULL CHECK (payload_byte_length BETWEEN 1 AND 37748736),
   has_identity boolean NOT NULL,
   has_real_name boolean NOT NULL,
   has_signature boolean NOT NULL,
+  terms_version text,
   portrait_sha256 char(64) CHECK (portrait_sha256 IS NULL OR portrait_sha256 ~ '^[0-9a-f]{64}$'),
   portrait_bytes integer NOT NULL CHECK (portrait_bytes BETWEEN 0 AND 8388608),
   insurance_bytes integer NOT NULL CHECK (insurance_bytes BETWEEN 0 AND 8388608),
@@ -76,7 +78,9 @@ CREATE TABLE participant_material_revisions (
     REFERENCES participant_materials(org_id,event_id,team_id,entry_id,member_id,user_id,id),
   FOREIGN KEY (org_id,event_id,ruleset_id) REFERENCES event_rulesets(org_id,event_id,id),
   FOREIGN KEY (org_id,entry_id,roster_revision_id) REFERENCES entry_roster_revisions(org_id,entry_id,id),
+  FOREIGN KEY (org_id,roster_revision_id,member_id) REFERENCES entry_roster_players(org_id,revision_id,member_id),
   CHECK ((payload_ciphertext IS NULL)=(purged_at IS NOT NULL)),
+  CHECK (has_signature=(terms_version IS NOT NULL)),
   CHECK (insurance_end_date IS NULL OR (insurance_start_date IS NOT NULL AND insurance_end_date>=insurance_start_date)),
   CHECK ((portrait_bytes=0)=(portrait_sha256 IS NULL))
 );

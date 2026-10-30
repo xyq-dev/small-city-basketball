@@ -87,6 +87,14 @@ Page({
       error: '登录身份已变化，已清除上一身份的报名资料。',
     });
   },
+  participantProgress() {
+    if (!this.data.busy && this.data.detail)
+      ui.open('participant-materials', {
+        orgId: this.orgId,
+        entryId: this.data.detail.id,
+        mode: 'review',
+      });
+  },
   base() {
     return '/v1/orgs/' + this.orgId;
   },

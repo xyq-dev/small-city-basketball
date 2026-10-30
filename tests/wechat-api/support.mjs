@@ -36,7 +36,7 @@ export function isolatedBase() {
 }
 
 /** Owned database + migrated schema + real API on 127.0.0.1. */
-export async function startServer() {
+export async function startServer({ participantDataKey } = {}) {
   const base = isolatedBase();
   const owned = `${decodeURIComponent(base.pathname.slice(1)).slice(0, 30)}_w_${randomBytes(6).toString('hex')}`;
   assert.match(owned, /^scb_test_[A-Za-z0-9_]+$/);
@@ -54,6 +54,7 @@ export async function startServer() {
     databaseUrl: target.href,
     appOrigin: APP_ORIGIN,
     participantRegistrationEnabled: true,
+    ...(participantDataKey === undefined ? {} : { participantDataKey }),
   });
   await instance.app.listen(0, '127.0.0.1');
   const url = (await instance.app.getUrl()).replace('[::1]', '127.0.0.1');

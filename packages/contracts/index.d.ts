@@ -157,6 +157,8 @@ export interface RegistrationRulesInput {
   zeroAndDoubleZeroDistinct: boolean;
   requireIdentity: boolean;
   requireInsurance: boolean;
+  /** Explicit opt-in; omitted by legacy clients. */
+  requireParticipantMaterials?: boolean;
 }
 export interface EventRulesetData {
   id: string;
@@ -167,6 +169,8 @@ export interface EventRulesetData {
   zeroAndDoubleZeroDistinct: boolean;
   requireIdentity: boolean;
   requireInsurance: boolean;
+  /** Explicit opt-in; omitted by legacy clients. */
+  requireParticipantMaterials?: boolean;
   createdAt: string;
 }
 export interface EntryRosterPlayer {
@@ -197,6 +201,11 @@ export interface EntryData extends EntrySummary {
   orgId: string;
   rules: EventRulesetData;
   players: EntryRosterPlayer[];
+  participantMaterials?: {
+    required: true;
+    ready: boolean;
+    blockers: { memberId: string; code: string; message: string }[];
+  };
   history: EntryReviewData[];
   createdAt: string;
   updatedAt: string;
@@ -237,6 +246,12 @@ export interface FrozenEntryData {
   teamName: string;
   rosterRevisionId: string;
   players: EntryRosterPlayer[];
+  participantMaterials?: {
+    memberId: string;
+    materialId: string;
+    revisionId: string;
+    materialVersion: number;
+  }[];
 }
 export interface RegistrationFreezeData {
   id: string;
@@ -1109,3 +1124,5 @@ export type * from './media-requests.js';
 export type * from './team-membership.js';
 export type * from './event-follows.js';
 export type * from './private-seasons.js';
+
+export type * from './participant-materials.js';

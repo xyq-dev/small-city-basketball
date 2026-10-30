@@ -123,7 +123,18 @@ function pathAllowed(path, method = 'GET') {
   if (matches(root + '/performance/links/' + uuidPattern)) return noQuery && method === 'GET';
   if (matches(root + '/performance/links/' + uuidPattern + '/commands'))
     return noQuery && method === 'POST';
+  // C23 private participant materials: explicit methods, no anonymous or query access.
+  if (base === '/v1/me/participant-entries') return noQuery && method === 'GET';
   const org = '/v1/orgs/' + uuidPattern;
+  const participant = org + '/entries/' + uuidPattern + '/participant-materials';
+  if (matches(participant)) return noQuery && method === 'GET';
+  if (matches(participant + '/mine')) return noQuery && ['GET', 'PUT'].includes(method);
+  if (matches(participant + '/mine/(submit|publicity-withdraw)'))
+    return noQuery && method === 'POST';
+  if (matches(participant + '/mine/receipts/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(participant + '/' + uuidPattern + '(?:/private)?'))
+    return noQuery && method === 'GET';
+  if (matches(participant + '/' + uuidPattern + '/review')) return noQuery && method === 'POST';
   const paged =
     method === 'GET' &&
     queryAllowed(query, ['limit', 'cursor']) &&
@@ -487,7 +498,17 @@ function createClient(wxApi) {
           '/content$',
         'i',
       );
-      const scope = (content.exec(path) || [])[1];
+      const participant = new RegExp(
+        '^/v1/orgs/' +
+          uuidPattern +
+          '/entries/' +
+          uuidPattern +
+          '/participant-materials/' +
+          uuidPattern +
+          '/files/(portrait|insurance)$',
+        'i',
+      ).test(path);
+      const scope = participant ? 'participant' : (content.exec(path) || [])[1];
       if (!scope) return Promise.reject({ code: 'INVALID_PATH', message: '文件入口无效' });
       const allowed =
         scope.toLowerCase() === 'matches'

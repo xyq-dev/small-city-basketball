@@ -1,9 +1,6 @@
 import type { PoolClient } from 'pg';
 import { ApiError } from './errors.js';
-import {
-  participantEligibility,
-  PARTICIPANT_TERMS_VERSION,
-} from './participant-materials-domain.js';
+import { participantEligibility } from './participant-materials-domain.js';
 
 export interface EntryParticipantEligibilityInput {
   orgId: string;
@@ -38,7 +35,7 @@ export async function readEntryParticipantEligibility(
     `SELECT p.member_id,p.jersey_no,m.id AS material_id,m.version,m.status,m.binding_id,m.user_id,
       m.reservation_active,m.reviewed_start_date::text,m.reviewed_end_date::text,m.key_id AS material_key_id,
       r.id AS revision_id,r.ruleset_id,r.roster_revision_id,r.jersey_no AS saved_jersey_no,
-      r.key_id,r.has_identity,r.has_real_name,r.has_signature,r.portrait_bytes,r.insurance_bytes,
+      r.key_id,r.terms_version,r.has_identity,r.has_real_name,r.has_signature,r.portrait_bytes,r.insurance_bytes,
       r.insurance_start_date::text,r.insurance_end_date::text,r.purged_at,
       EXISTS(SELECT 1 FROM team_member_bindings b JOIN users u ON u.id=b.user_id AND u.status='ACTIVE'
         JOIN team_members tm ON tm.org_id=b.org_id AND tm.team_id=b.team_id AND tm.id=b.member_id AND tm.status='ACTIVE'
@@ -60,7 +57,8 @@ export async function readEntryParticipantEligibility(
       required: true,
       requireInsurance: input.requireInsurance,
       keyAvailable: Boolean(
-        input.keyId && row.key_id === input.keyId && row.material_key_id === input.keyId,
+        input.keyId &&
+        (!row.material_id || (row.key_id === input.keyId && row.material_key_id === input.keyId)),
       ),
       bindingActive: Boolean(row.binding_active && row.reservation_active),
       rulesetId: input.rulesetId,
@@ -74,7 +72,7 @@ export async function readEntryParticipantEligibility(
             rulesetId: row.ruleset_id,
             rosterRevisionId: row.roster_revision_id,
             jerseyNo: row.saved_jersey_no,
-            termsVersion: row.has_signature ? PARTICIPANT_TERMS_VERSION : null,
+            termsVersion: row.has_signature ? row.terms_version : null,
             hasIdentity: row.has_identity,
             hasRealName: row.has_real_name,
             hasPortrait: row.portrait_bytes > 0,
@@ -106,9 +104,12 @@ export async function readEntryParticipantEligibility(
 export async function assertParticipantKeyConsistency(
   client: PoolClient,
   keyId: string | null,
+  lockForWrite = false,
 ): Promise<void> {
   if (!keyId)
     throw new ApiError(503, 'PARTICIPANT_MATERIALS_UNAVAILABLE', '本人资料安全存储尚未配置');
+  // A fixed application namespace serializes first writes using different keys across organizations.
+  if (lockForWrite) await client.query('SELECT pg_advisory_xact_lock(1127428915,23)');
   const mismatched = await client.query(
     `SELECT 1 FROM participant_material_revisions WHERE payload_ciphertext IS NOT NULL AND key_id<>$1 LIMIT 1`,
     [keyId],

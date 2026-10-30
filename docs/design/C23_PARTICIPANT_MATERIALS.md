@@ -14,7 +14,7 @@
 
 ## 数据与状态
 
-新增 Migration024，不改001–023。新增个人材料 head 与不可变 revision 两表（最终表名/列以实施记录补充），head 按本届 entry/member 与 user 绑定。每次保存产生新 revision，包含精确 ruleset、roster revision、号码、规程签署版本、照片/保单版本和日期；head version +1，原审核失效。状态 DRAFT → SUBMITTED → APPROVED 或 CHANGES_REQUESTED；未冻结前重新保存回 DRAFT。没有静默转移已有材料给新绑定账号。
+新增 Migration024，不改001–023。新增 `participant_materials` head 与 `participant_material_revisions` 不可变 revision 两表（精确83表／24迁移），head 按本届 entry/member 与 user 绑定。每次保存产生新 revision，包含精确 ruleset、roster revision、号码、规程签署版本、照片/保单版本和日期；head version +1，原审核失效。状态 DRAFT → SUBMITTED → APPROVED 或 CHANGES_REQUESTED；未冻结前重新保存回 DRAFT。没有静默转移已有材料给新绑定账号。
 
 照片/证件/保单等私有内容全部进入 AES-256-GCM 认证加密 envelope，并绑定 org/event/entry/member/user/revision 的 AAD。身份证查重用专用 keyed HMAC；不用明文/无密钥散列。同届一个账号/身份不能绕过跨队重复规则。审计只记资源编号、版本和状态，不记原表单、证件、保单号或加密键。
 
@@ -40,6 +40,7 @@ PUT 草稿使用小写 UUIDv4 clientRequestId 和 expectedVersion（新建为0�
 
 - `GET /mine`：本人的常规脱敏 DTO，未建档为 data:null，并返回本人 memberId 与规则/能力上下文。
 - `PUT /mine`：本人保存版本化草稿；字段含 clientRequestId、expectedVersion、realName、identityNumber、portrait、insurance、acceptedTerms、publicityConsent。文件对象 `{fileName,contentType,base64}`；insurance 含 insurer/policyNumber/startDate/endDate/document。省略保留旧值。
+- `GET /mine/receipts/:clientRequestId`：只查询本人原保存回执，返回原revision、isCurrent与currentVersion；404仅表示尚无已提交结果，不解除未知保护。
 - `POST /mine/submit`：提交当前版本；`POST /mine/publicity-withdraw`：撤回宣传许可（仅影响未来使用）。
 - `GET /`：主办方审核或领队进度，返回逐人脱敏状态、blockers、memberId/materialId/version，绝不含私有文件/完整证件。
 - `GET /:memberId`：有权审核人读取常规 DTO。
@@ -49,7 +50,7 @@ PUT 草稿使用小写 UUIDv4 clientRequestId 和 expectedVersion（新建为0�
 
 ## 留存与验证
 
-目标留存为赛事归档/取消且结束90日后清除私有材料；诉争保留须显式标记。未实现/未验收清理能力前保持生产启用阻塞，不宣称有自动定时清理。密钥备份与数据备份分开；新 schema 旧包不能直接运行，须精确更新 readiness/运行最小权限/重启恢复清单。
+人工维护入口 `ops/db/participant-material-cleanup.mjs` 已编写，未配置定时任务。目标留存为赛事归档/取消且结束90日后清除私有材料；诉争保留须显式标记。未实现/未验收清理能力前保持生产启用阻塞，不宣称有自动定时清理。密钥备份与数据备份分开；新 schema 旧包不能直接运行，须精确更新 readiness/运行最小权限/重启恢复清单。
 
 独立复审订正：数据库保存非秘密 key-id，相关模块与 readiness 发现旧 key 失配须关闭写入，首版不支持静默轮换；名单/规则变化后显式 STALE 且必须本人重新勾选签署，不继承旧 true；head 的身份/账号占用仅当前有效 reservation，撤回/拒绝、移除名单或结束绑定后在同一 event 锁下释放，旧回放不复活占用；宣传撤回按原材料 user 重新授权，退出球队后仍可撤回；幂等指纹针对规范化原 patch，严格区分省略/null，不含后来的 head/名单或随机 nonce。取消/归档、WITHDRAWN/REJECTED 不允许常规写入。
 

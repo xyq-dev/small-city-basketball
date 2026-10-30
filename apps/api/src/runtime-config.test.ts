@@ -16,6 +16,26 @@ afterEach(() => {
 });
 
 describe('central runtime configuration', () => {
+  it('C23: missing participant key stays disabled and malformed keys never appear in errors', () => {
+    expect(resolveApiOptions(options).participantDataKey).toBeUndefined();
+    const synthetic = Buffer.alloc(32, 7).toString('base64');
+    expect(
+      resolveApiOptions({ ...options, participantDataKey: synthetic }).participantDataKey,
+    ).toBe(synthetic);
+    for (const secret of [
+      'private-secret-marker',
+      synthetic + '\n',
+      Buffer.alloc(31).toString('base64'),
+    ]) {
+      try {
+        resolveApiOptions({ ...options, participantDataKey: secret });
+        throw new Error('expected rejection');
+      } catch (error) {
+        expect(String(error)).toContain('key configuration');
+        expect(String(error)).not.toContain(secret);
+      }
+    }
+  });
   it('uses production defaults for direct service construction and exposes only two public capabilities', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     const pool = new Pool({ connectionString: url });

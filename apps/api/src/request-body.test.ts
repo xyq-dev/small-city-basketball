@@ -24,6 +24,30 @@ function fixture() {
 }
 
 describe('bounded request ingestion', () => {
+  it('C23: private draft PUT shares the bounded upload lane without enlarging review or neighbouring writes', async () => {
+    const path = upload
+      .replace('/matches/', '/entries/')
+      .replace('/media-files', '/participant-materials/mine');
+    const app = express();
+    app.use(requestBodyMiddleware());
+    app.all(/.*/, (_req, res) => res.sendStatus(200));
+    app.use(failure);
+    const body = { base64: 'A'.repeat(200_000) };
+    expect((await request(app).put(path).send(body)).status).toBe(200);
+    for (const [method, url] of [
+      ['post', path],
+      ['put', path + '/submit'],
+      ['post', path.replace('/mine', '/member/review')],
+    ] as const)
+      expect((await request(app)[method](url).send(body)).status).toBe(413);
+    expect(
+      (
+        await request(app)
+          .put(path)
+          .send({ base64: 'A'.repeat(12 * 1024 * 1024) })
+      ).status,
+    ).toBe(413);
+  });
   it('accepts a larger upload only at the dedicated route and keeps other writes at 100KiB', async () => {
     const app = fixture();
     const data = { base64: 'A'.repeat(200_000) };

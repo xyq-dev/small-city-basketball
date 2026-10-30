@@ -47,6 +47,12 @@ import {
 } from './registration-validation.js';
 import type { PageInput } from './registration-validation.js';
 
+import {
+  readEntryParticipantEligibility,
+  assertParticipantKeyConsistency,
+} from './participant-materials-eligibility.js';
+import { participantKey, participantKeyId } from './participant-materials-domain.js';
+
 interface Context extends Actor {
   orgId: string;
   organizationName: string;
@@ -737,15 +743,44 @@ export class RegistrationService extends ApplicationService {
       zeroAndDoubleZeroDistinct: boolean;
       requireIdentity: boolean;
       requireInsurance: boolean;
+      requireParticipantMaterials: boolean;
       created_at: Date;
     }>(
-      `SELECT id,event_id AS "eventId",version,min_players AS "minPlayers",max_players AS "maxPlayers",zero_and_double_zero_distinct AS "zeroAndDoubleZeroDistinct",require_identity AS "requireIdentity",require_insurance AS "requireInsurance",created_at FROM event_rulesets WHERE org_id=$1 AND event_id=$2 AND id=$3`,
+      `SELECT id,event_id AS "eventId",version,min_players AS "minPlayers",max_players AS "maxPlayers",zero_and_double_zero_distinct AS "zeroAndDoubleZeroDistinct",require_identity AS "requireIdentity",require_insurance AS "requireInsurance",require_participant_materials AS "requireParticipantMaterials",created_at FROM event_rulesets WHERE org_id=$1 AND event_id=$2 AND id=$3`,
       [orgId, eventId, id],
     );
     const row = rows.rows[0];
     if (!row) throw notFound();
-    const { created_at, ...data } = row;
-    return { ...data, createdAt: created_at.toISOString() };
+    const { created_at, requireParticipantMaterials, ...data } = row;
+    return {
+      ...data,
+      ...(requireParticipantMaterials ? { requireParticipantMaterials: true } : {}),
+      createdAt: created_at.toISOString(),
+    };
+  }
+  private materialKeyId(): string | null {
+    return this.options.participantDataKey
+      ? participantKeyId(participantKey(this.options.participantDataKey))
+      : null;
+  }
+  private materialEligibility(
+    client: PoolClient,
+    event: EventAccess,
+    entry: EntryRow,
+    rules: EventRulesetData,
+  ) {
+    return readEntryParticipantEligibility(client, {
+      orgId: entry.org_id,
+      eventId: entry.event_id,
+      entryId: entry.id,
+      rosterRevisionId: entry.roster_revision_id,
+      rulesetId: rules.id,
+      startDate: event.row.start_date,
+      endDate: event.row.end_date,
+      requireParticipantMaterials: rules.requireParticipantMaterials === true,
+      requireInsurance: rules.requireInsurance,
+      keyId: this.materialKeyId(),
+    });
   }
   private publicEvent(event: EventAccess) {
     const row = event.row;
@@ -818,6 +853,22 @@ export class RegistrationService extends ApplicationService {
         }
       : null;
     const canManage = event.canManage && !event.frozen;
+    let materialsReady = true;
+    const materialKeyId = this.materialKeyId();
+    if (rules?.requireParticipantMaterials) {
+      materialsReady = materialKeyId !== null;
+      if (materialsReady) await assertParticipantKeyConsistency(client, materialKeyId);
+      if (row.status === 'REGISTRATION_CLOSED') {
+        const approved = await client.query<EntryRow>(
+          "SELECT * FROM entries WHERE org_id=$1 AND event_id=$2 AND status='APPROVED' ORDER BY id",
+          [row.org_id, row.id],
+        );
+        for (const entry of approved.rows) {
+          if (!(await this.materialEligibility(client, event, entry, rules)).ready)
+            materialsReady = false;
+        }
+      }
+    }
     return {
       event: this.publicEvent(event),
       rules,
@@ -828,11 +879,17 @@ export class RegistrationService extends ApplicationService {
         canOpen:
           canManage &&
           row.status === 'DRAFT' &&
-          Boolean(rules && !rules.requireIdentity && !rules.requireInsurance),
+          Boolean(
+            rules &&
+            (rules.requireParticipantMaterials
+              ? materialKeyId !== null
+              : !rules.requireIdentity && !rules.requireInsurance),
+          ),
         canClose: canManage && row.status === 'REGISTRATION_OPEN',
         canFreeze:
           canManage &&
           row.status === 'REGISTRATION_CLOSED' &&
+          materialsReady &&
           counts.APPROVED >= 2 &&
           !counts.SUBMITTED &&
           !counts.CHANGES_REQUESTED,
@@ -873,8 +930,16 @@ export class RegistrationService extends ApplicationService {
         [ctx.orgId, event.row.id],
       );
       const ruleId = randomUUID();
+      const previousRules = await this.rules(
+        client,
+        ctx.orgId,
+        event.row.id,
+        event.row.current_ruleset_id,
+      );
+      const requireParticipantMaterials =
+        input.requireParticipantMaterials ?? previousRules?.requireParticipantMaterials ?? false;
       await client.query(
-        `INSERT INTO event_rulesets(id,org_id,event_id,version,min_players,max_players,zero_and_double_zero_distinct,require_identity,require_insurance,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        `INSERT INTO event_rulesets(id,org_id,event_id,version,min_players,max_players,zero_and_double_zero_distinct,require_identity,require_insurance,created_by,require_participant_materials) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [
           ruleId,
           ctx.orgId,
@@ -886,6 +951,7 @@ export class RegistrationService extends ApplicationService {
           input.requireIdentity,
           input.requireInsurance,
           ctx.user.id,
+          requireParticipantMaterials,
         ],
       );
       await client.query(
@@ -929,7 +995,9 @@ export class RegistrationService extends ApplicationService {
       await this.ensureFreshSession(client, ctx);
       if (input.type === 'OPEN_REGISTRATION') {
         if (event.row.status !== 'DRAFT') stateError('仅草稿赛事可以开放报名');
-        if (rules.requireIdentity || rules.requireInsurance)
+        if (rules.requireParticipantMaterials) {
+          await assertParticipantKeyConsistency(client, this.materialKeyId());
+        } else if (rules.requireIdentity || rules.requireInsurance)
           stateError('身份与保险验证尚未接入，当前要求会阻止开放报名');
         await client.query(
           "UPDATE events SET status='REGISTRATION_OPEN',locked_ruleset_id=current_ruleset_id,version=version+1,updated_at=clock_timestamp() WHERE org_id=$1 AND id=$2",
@@ -950,6 +1018,10 @@ export class RegistrationService extends ApplicationService {
           "SELECT * FROM entries WHERE org_id=$1 AND event_id=$2 AND status='APPROVED' ORDER BY created_at,id",
           [ctx.orgId, event.row.id],
         );
+        // Bindings and long-term member removals are guarded by the team lock (C19),
+        // not the event lock. Hold every approved team in stable UUID order until COMMIT.
+        for (const teamId of [...new Set(approved.rows.map((entry) => entry.team_id))].sort())
+          await this.team(client, ctx, teamId, false);
         const entries: FrozenEntryData[] = [];
         for (const entry of approved.rows) {
           if (!entry.roster_revision_id || entry.ruleset_id !== rules.id)
@@ -958,12 +1030,18 @@ export class RegistrationService extends ApplicationService {
           if (players.length < rules.minPlayers || players.length > rules.maxPlayers)
             stateError('获批名单人数不满足锁定规则');
           assertJerseyNumbers(players, rules.zeroAndDoubleZeroDistinct);
+          const materials = await this.materialEligibility(client, event, entry, rules);
+          if (!materials.ready)
+            stateError('获批名单的本人资料、照片或保险审核已失效，请补齐后重新审核');
           entries.push({
             entryId: entry.id,
             teamId: entry.team_id,
             teamName: entry.team_name,
             rosterRevisionId: entry.roster_revision_id,
             players,
+            ...(rules.requireParticipantMaterials
+              ? { participantMaterials: materials.snapshots }
+              : {}),
           });
         }
         const snapshot = {
@@ -1118,7 +1196,8 @@ export class RegistrationService extends ApplicationService {
       event.canReview &&
       independent &&
       ['REGISTRATION_OPEN', 'REGISTRATION_CLOSED'].includes(event.row.status);
-    const canApprove = canReview && entry.status === 'SUBMITTED';
+    const materials = await this.materialEligibility(client, event, entry, rules);
+    const canApprove = canReview && entry.status === 'SUBMITTED' && materials.ready;
     const canRequestChanges = canReview && ['SUBMITTED', 'APPROVED'].includes(entry.status);
     const canReject = canReview && ['SUBMITTED', 'CHANGES_REQUESTED'].includes(entry.status);
     return {
@@ -1126,6 +1205,15 @@ export class RegistrationService extends ApplicationService {
       orgId: ctx.orgId,
       rules,
       players,
+      ...(rules.requireParticipantMaterials
+        ? {
+            participantMaterials: {
+              required: true as const,
+              ready: materials.ready,
+              blockers: materials.blockers,
+            },
+          }
+        : {}),
       history: historyRows.rows.map(({ created_at, ...row }) => ({
         ...row,
         createdAt: created_at.toISOString(),
@@ -1139,8 +1227,9 @@ export class RegistrationService extends ApplicationService {
           Boolean(entry.roster_revision_id) &&
           players.length >= rules.minPlayers &&
           players.length <= rules.maxPlayers &&
-          !rules.requireIdentity &&
-          !rules.requireInsurance,
+          (rules.requireParticipantMaterials
+            ? materials.ready
+            : !rules.requireIdentity && !rules.requireInsurance),
         canWithdraw:
           leader &&
           !event.frozen &&
@@ -1387,6 +1476,9 @@ export class RegistrationService extends ApplicationService {
           throw forbidden();
         if (input.type === 'APPROVE') {
           if (entry.status !== 'SUBMITTED') stateError('仅待审报名可以批准');
+          const rules = await this.rules(client, ctx.orgId, event.row.id, entry.ruleset_id);
+          if (!rules || !(await this.materialEligibility(client, event, entry, rules)).ready)
+            stateError('本人资料、照片或保险审核未满足当前名单，请补齐后再批准');
           next = 'APPROVED';
         } else if (input.type === 'REQUEST_CHANGES') {
           if (!['SUBMITTED', 'APPROVED'].includes(entry.status)) stateError('当前报名不能退回修改');

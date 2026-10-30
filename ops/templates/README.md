@@ -152,3 +152,23 @@ quarantine撤销旧session／pending invitation／active public／active overlay
 未来升级须先关闭 Web/API 并停止全部 writer，以匹配旧包保留完整静止备份；新包显式 migrate、重新应用最小权限并通过 `/ready` 内容哈希与 schema 检查后再开放。旧服务二进制不能连接新 schema，不能仅回滚镜像；降级须恢复匹配旧包的升级前归档，升级后的写入不会自动带回。没有本轮生产 Migration 或部署授权。
 
 78表旧归档用其原 C20 包恢复至新建自有目标，核对指纹后 quarantine，再用新包执行023并授权；81表归档使用匹配新包。新 restore 必须拒绝78表归档，不放宽精确表／迁移／哈希保护。隔离时采用 NOWAIT 锁表，有在途 writer 就完整回滚、保留目标并报错；先停写再重试，不强杀连接，不把离线恢复改成在线服务。
+
+## C23 本人资料：密钥、留存与匹配版本恢复
+
+C23 增加 `participant_materials` 和 `participant_material_revisions`，当前包精确为 **83表／24迁移**。024只增加显式 opt-in 与新私有材料表，001–023不改；旧赛事不自动开启本人资料门槛。以上C22的81表包/78表历史归档说明保留为历史匹配包约束，当前包不能直接接收旧81表或78表归档。旧归档须先用其原包恢复至全新隔离目标、核对原指纹并 quarantine，再在停写目标执行新迁移及精确授权；不改旧fixture、checksum或放宽恢复清单。回退不能只替换旧API镜像。
+
+生产模板默认**不配置**本人资料密钥，因此新流程保持关闭。本轮没有准备生产密钥、修改正式Compose或执行部署。将来显式启用时，应将专用、规范 base64 的32字节密钥作为私有文件单独挂载给API，使用 `SCB_PARTICIPANT_DATA_KEY_FILE`，不能同时设置同名inline值；文件权限沿用10001:10001／0400，宿主私有目录0700。仅在env文件写路径不能自动增加容器挂载。密钥不得提交仓库、打印到终端、放进保单/照片或普通归档清单；加密数据备份和密钥备份分别保管。已有未清除密文时，`/ready`及本人资料操作核验数据库 key-id 和配置匹配；丢失或静默换key必须失败关闭。本版没有自动密钥轮换/找回机制。
+
+手工留存清理入口为 `ops/db/participant-material-cleanup.mjs`，**没有定时服务**。执行前指定一个机构、该机构当前有效 OWNER/ADMIN 的账号编号、单批revision数（默认20，最多500）；使用现有 `scb_runtime` 数据库身份，不允许admin/migrator/backup身份。须由实际维护人员在已有受控运行环境执行，连接secret仍通过文件传入。示例只示意输入合同，不表示已经执行：
+
+```sh
+DATABASE_URL_FILE=/run/secrets/database_runtime_url \
+SCB_PARTICIPANT_CLEANUP_ORG_ID='<organization-uuid>' \
+SCB_PARTICIPANT_CLEANUP_ACTOR_ID='<authorized-user-uuid>' \
+SCB_PARTICIPANT_CLEANUP_LIMIT=20 \
+node ops/db/participant-material-cleanup.mjs
+```
+
+清理器按actor→机构→赛事→球队→entry→材料加锁，仅清除已归档/取消、赛事结束**超过90日**且无 `legal_hold` 的私有密文。它不解密资料、不删除head/revision、请求ID或指纹，不改名单、冻结快照和审核结论；保留墓碑阻止旧ID再次创建。清理与审计同事务，审计仅记录资源ID和数量。当前操作要求机构及授权账号有效；禁用机构的留存处置须先由维护人员明确处理授权，不能假称该手工入口已自动覆盖全部历史数据。
+
+完整归档指纹对私有密文在PostgreSQL侧计算长度和SHA256，报表不输出原文或完整密文。恢复隔离会撤回head上的宣传许可，随后重新启用机构也不能让旧revision中的历史许可自行生效；不可变资料及冻结参赛快照保留。本轮仅交付脚本与隔离测试入口，实际清理、生产Migration、生产备份/恢复和真机验收均须另有执行证据。

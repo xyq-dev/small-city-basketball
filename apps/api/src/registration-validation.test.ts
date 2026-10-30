@@ -23,6 +23,17 @@ const rules = {
 };
 
 describe('P03报名输入边界', () => {
+  it('C23: legacy rule patches omit the opt-in while new clients must send a boolean', () => {
+    expect(rulesInput(rules)).not.toHaveProperty('requireParticipantMaterials');
+    expect(rulesInput({ ...rules, requireParticipantMaterials: true })).toMatchObject({
+      requireParticipantMaterials: true,
+    });
+    expect(rulesInput({ ...rules, requireParticipantMaterials: false })).toMatchObject({
+      requireParticipantMaterials: false,
+    });
+    for (const value of [null, 'true', 0, {}, []])
+      expect(() => rulesInput({ ...rules, requireParticipantMaterials: value })).toThrow(ApiError);
+  });
   it('球队与成员白名单、Unicode边界、最多60人；同名成员可共存', () => {
     expect(teamInput({ name: '  城市队  ' }).name).toBe('城市队');
     expect(

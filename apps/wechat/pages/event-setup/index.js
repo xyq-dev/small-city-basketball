@@ -244,6 +244,7 @@ Page({
             zeroDistinct: rules ? rules.zeroAndDoubleZeroDistinct : true,
             requireIdentity: rules ? rules.requireIdentity : false,
             requireInsurance: rules ? rules.requireInsurance : false,
+            requireParticipantMaterials: rules ? rules.requireParticipantMaterials === true : false,
             saved: !!rules,
             editable: !!reg.capabilities.canManageRules,
           }
@@ -357,7 +358,15 @@ Page({
       this.setTiebreakers(rows);
       return;
     }
-    if (['zeroDistinct', 'requireIdentity', 'requireInsurance', 'overtime'].includes(field))
+    if (
+      [
+        'zeroDistinct',
+        'requireIdentity',
+        'requireInsurance',
+        'requireParticipantMaterials',
+        'overtime',
+      ].includes(field)
+    )
       this.setData({ [section + '.' + field]: !this.data[section][field] });
   },
   // Moves one comparison up a place; the list order is the order sent to the server.
@@ -456,13 +465,18 @@ Page({
         zeroAndDoubleZeroDistinct: !!r.zeroDistinct,
         requireIdentity: !!r.requireIdentity,
         requireInsurance: !!r.requireInsurance,
+        requireParticipantMaterials: !!r.requireParticipantMaterials,
       };
     } catch (error) {
       this.setData({ error: ui.message(error) });
       return;
     }
     if (body.requireIdentity || body.requireInsurance)
-      this.setData({ notice: '要求身份或保险资料时，报名需逐队核对资料后才能开放。' });
+      this.setData({
+        notice: body.requireParticipantMaterials
+          ? '本人资料流程须服务器安全配置就绪；逐人照片、资料及适用保险须独立审核，队伍提交与冻结时复查。'
+          : '未启用本人资料流程时，身份或保险要求仍会阻止开放报名。',
+      });
     if (await this.write(this.base() + '/registration-rules', 'PUT', body, '报名规则'))
       await this.load();
   },

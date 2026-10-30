@@ -3,6 +3,7 @@
   ><view wx:if="{{message}}" class="notice">{{message}}</view>
   <view wx:if="{{loginRequired}}" class="card team-panel state-panel"><view class="subtitle">登录后查看本队报名</view><view class="muted">本届名单与资料仅对当前有权人员展示。</view><button class="primary" bindtap="login">登录并继续</button></view><view wx:if="{{loading}}" class="card team-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取本届名单与权限</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
   <block wx:if="{{entry}}">
+    <button wx:if="{{entry.rules.requireParticipantMaterials}}" class="secondary" bindtap="participantProgress" disabled="{{busy}}">逐人本人资料与审核进度</button>
     <view wx:if="{{stage==='roster'}}" class="notice entry-summary"><view class="feedback-title">本届名单 · {{entry.statusLabel}} V{{entry.version}}</view><view class="small">{{entry.teamName}} · 已保存{{entry.players.length}}人</view><view class="small">{{entry.rules.zeroAndDoubleZeroDistinct ? '0与00按不同号码处理。' : '0与00视为同一号码。'}}本届快照与长期档案分开。</view></view>
     <view wx:if="{{entry.latestReviewReason}}" class="notice warning"><view class="feedback-title">独立审核意见</view><view class="small">{{entry.latestReviewReason}}</view></view>
     <view wx:if="{{stage==='roster'}}">

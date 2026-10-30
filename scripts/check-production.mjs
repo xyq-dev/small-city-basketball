@@ -28,6 +28,8 @@ const stateDirectory = path.join(temporary, 'state');
 const certificateDirectory = path.join(temporary, 'certificates');
 const hostOwner = path.join(temporary, 'owner.json');
 const hostState = path.join(temporary, 'state.json');
+const participantDataKey = randomBytes(32).toString('base64');
+const participantOverride = path.join(temporary, 'participant-checks.compose.yaml');
 const passwords = Object.fromEntries(
   ['source', 'target'].map((cluster) => [
     cluster,
@@ -49,6 +51,7 @@ const secrets = [
   ...Object.values(passwords.source),
   ...Object.values(passwords.target),
   owner.password,
+  participantDataKey,
 ];
 let controlCreated = false;
 let sourceStarted = false;
@@ -103,10 +106,14 @@ function configuration(secretDirectory, database = sourceDatabase) {
 const sourceEnv = configuration(sourceSecrets);
 const targetEnv = configuration(targetSecrets, 'postgres');
 async function compose(project, env, args, options) {
-  return run('docker', ['compose', '-p', project, '-f', 'compose.production.yaml', ...args], {
-    ...options,
-    env: { ...env, ...options?.env },
-  });
+  return run(
+    'docker',
+    ['compose', '-p', project, '-f', 'compose.production.yaml', '-f', participantOverride, ...args],
+    {
+      ...options,
+      env: { ...env, ...options?.env },
+    },
+  );
 }
 async function stage(label, action) {
   console.log(`[production] ${label}`);
@@ -244,6 +251,8 @@ async function validator(project, env, mode, recovery = false) {
     '--env',
     'SCB_FINGERPRINT_DATABASE_URL_FILE=/check-backup',
     '--env',
+    'SCB_PARTICIPANT_DATA_KEY_FILE=/check-participant-key',
+    '--env',
     'SCB_CHECK_OWNER_FILE=/check-owner',
     '--env',
     'SCB_CHECK_MAINTENANCE_URL_FILE=/check-maintenance',
@@ -252,6 +261,7 @@ async function validator(project, env, mode, recovery = false) {
     ...(recovery ? ['--env', 'SCB_CHECK_RECOVERY=1'] : []),
     ...mount(path.join(env.SCB_SECRET_DIR, 'database_runtime_url'), '/check-runtime'),
     ...mount(path.join(env.SCB_SECRET_DIR, 'database_backup_url'), '/check-backup'),
+    ...mount(path.join(env.SCB_SECRET_DIR, 'c23_participant_data_key'), '/check-participant-key'),
     ...mount(path.join(env.SCB_SECRET_DIR, 'database_migrator_url'), '/check-maintenance'),
     ...mount(path.join(sourceSecrets, 'bootstrap_owner_input'), '/check-owner'),
     ...mount(path.join(certificateDirectory, 'ca.crt'), '/check-ca.crt'),
@@ -263,6 +273,10 @@ async function validator(project, env, mode, recovery = false) {
     ...mount(
       path.join(root, 'scripts/c05-media-fixtures.mjs'),
       '/app/scripts/c05-media-fixtures.mjs',
+    ),
+    ...mount(
+      path.join(root, 'scripts/c23-participant-material-check.mjs'),
+      '/app/scripts/c23-participant-material-check.mjs',
     ),
     ...mount(
       path.join(root, 'scripts/c05-commerce-check.mjs'),
@@ -289,6 +303,7 @@ async function copyState() {
   await writeFile(hostState, result.output, { mode: 0o600 });
   const saved = JSON.parse(result.output);
   secrets.push(saved.cookie, saved.registration.leaderCookie, saved.scoring.writerCookie);
+  secrets.push(saved.participantMaterials.cookie);
   for (const operator of saved.commerce.operators) secrets.push(operator.cookie);
   for (const overlay of [...saved.overlays.active, saved.overlays.revoked, saved.lifecycle.overlay])
     secrets.push(overlay.cookie, overlay.token);
@@ -508,11 +523,27 @@ try {
       await ownedFile(path.join(directory, 'tls_certificate'), certificate, 101);
       await ownedFile(path.join(directory, 'tls_private_key'), key, 101);
       await ownedFile(path.join(directory, 'bootstrap_owner_input'), JSON.stringify(owner));
+      await ownedFile(path.join(directory, 'c23_participant_data_key'), participantDataKey);
       await ownedFile(
         path.join(directory, 'database_restore_url'),
         databaseUrl('admin', 'restoredb', 'postgres'),
       );
     }
+    // Test-only override: the shipped production template retains its default disabled state.
+    await writeFile(
+      participantOverride,
+      `services:
+  api:
+    environment:
+      SCB_PARTICIPANT_DATA_KEY_FILE: /run/secrets/c23_participant_data_key
+    secrets:
+      - c23_participant_data_key
+secrets:
+  c23_participant_data_key:
+    file: ${'${SCB_SECRET_DIR}'}/c23_participant_data_key
+`,
+      { mode: 0o600 },
+    );
     await urlFiles(sourceSecrets, sourceDatabase);
     await urlFiles(targetSecrets, 'postgres');
     await ownedFile(
@@ -946,6 +977,7 @@ try {
       await run('docker', ['start', targetApiId, targetWebId]);
       await waitReady();
       await checkQuarantine(saved);
+      await validator(target, targetEnv, 'quarantine', true);
       console.log(
         '[production] Old private, public and overlay credentials are invalid; relogin exposes no quarantined organization.',
       );

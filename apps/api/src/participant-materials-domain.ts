@@ -1,5 +1,4 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
-import sharp from 'sharp';
 import { ApiError } from './errors.js';
 import { MAX_MEDIA_FILE_BYTES, parseMediaUpload } from './media-domain.js';
 import { calendarDate, invalid, objectInput, resourceId, text } from './validation.js';
@@ -334,6 +333,8 @@ export async function sanitizeParticipantFile(
     contentType = 'application/pdf';
   } else {
     try {
+      // Recovery/db-tools use musl and never decode images. Load native sharp only in the API image path.
+      const { default: sharp } = await import('sharp');
       const image = sharp(bytes, {
         failOn: 'warning',
         limitInputPixels: PARTICIPANT_MAX_PIXELS,
