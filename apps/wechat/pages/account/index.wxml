@@ -10,7 +10,7 @@
         <view class="menu-row" data-page="watch" bindtap="go"><scb-icon name="trophy" size="20"/><view class="menu-text"><view>我的赛事</view><view class="menu-sub">{{roles.length ? roleSummary : '暂无机构赛事身份，可打开主办方分享的观赛链接'}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view wx:if="{{roles.length}}" class="menu-row" data-page="watch" bindtap="go"><scb-icon name="calendar" size="20"/><view class="menu-text"><view>赛事管理</view><view class="menu-sub">选择赛事后进入排赛、晋级发布、改期与比赛媒体</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view wx:if="{{roles.length}}" class="menu-row" data-page="scoring-tasks" bindtap="go"><scb-icon name="clock" size="20"/><view class="menu-text"><view>记分与赛果确认</view><view class="menu-sub">被分配或可管理的比赛</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
-        <view class="menu-row" data-page="follows" bindtap="go"><scb-icon name="chat" size="20"/><view class="menu-text"><view>我的关注</view><view class="menu-sub">收藏公开赛事，微信提醒尚未启用</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+        <view class="menu-row" data-page="follows" bindtap="go"><scb-icon name="chat" size="20"/><view class="menu-text"><view>我的关注</view><view class="menu-sub">收藏公开赛事，微信提醒须本人逐次选择订阅</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
       <view class="menu-group">
         <view class="menu-title">球队</view>
@@ -25,6 +25,7 @@
       <view wx:if="{{managedOrgs.length}}" class="menu-group">
         <view class="menu-title">机构管理</view>
         <block wx:for="{{managedOrgs}}" wx:key="id">
+<view class="menu-row" data-page="trade-manage" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>收款条款与资金管理</view><view class="menu-sub">{{item.name}} · 报名费、保证金与订单</view></view></view>
 <view class="menu-row" data-page="public-ledgers" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>授权经费记账与公示</view><view class="menu-sub">{{item.name}} · 独立审核、追加更正</view></view></view>
 <view class="menu-row" data-page="sponsorships" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>广告与赞助投放</view><view class="menu-sub">{{item.name}} · 地区、赛事与时段</view></view></view>
 <view class="menu-row" data-page="staff-configuration" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>成员与工作人员权限</view><view class="menu-sub">{{item.name}}</view></view></view>
@@ -47,7 +48,13 @@
       </view>
       <view class="menu-group">
         <view class="menu-title">账号</view>
-<button class="quiet" bindtap="copyMemberId">复制我的成员编号，供主办方配置授权</button>
+<view class="small muted">我的账号编号（UUID）</view><view class="account-uuid" selectable="true">{{user.id}}</view>
+<button class="quiet" bindtap="copyMemberId" disabled="{{busy}}">复制本人账号编号，供监护邀请或授权配置</button>
+<view class="menu-row" data-page="messages" bindtap="go"><view class="menu-text"><view>我的消息</view><view class="menu-sub">报名审核、赛程变更与开赛前提醒</view></view></view>
+<view class="menu-row" data-page="notification-settings" bindtap="go"><view class="menu-text"><view>微信订阅提醒</view><view class="menu-sub">逐次选择、核对记录与撤销许可</view></view></view>
+<view class="menu-row" data-page="insurance" bindtap="go"><view class="menu-text"><view>本人保险订单</view><view class="menu-sub">投保进度、查单与退保</view></view></view>
+<view class="menu-row" data-page="guardian" bindtap="go"><view class="menu-text"><view>青少年与监护确认</view><view class="menu-sub">本人相关邀请与当前名单确认</view></view></view>
+<view class="menu-row" data-page="trade-order" bindtap="go"><view class="menu-text"><view>我的收付款订单</view><view class="menu-sub">报名费、保证金、服务与退款进度</view></view></view>
 <view class="menu-row" data-page="local-bookings" bindtap="go"><view class="menu-text"><view>我的球场与服务订单</view></view></view>
 <view class="menu-row" data-page="local-matchups" bindtap="go"><view class="menu-text"><view>球队约赛</view></view></view>
 <view class="menu-row" data-page="governance" bindtap="go"><view class="menu-text"><view>客服、举报与申诉</view></view></view>
@@ -55,7 +62,7 @@
 <view class="menu-row" data-page="city-operations" bindtap="go"><view class="menu-text"><view>城市运营授权</view><view class="menu-sub">按当前账号被委派的范围管理</view></view></view>
         <view class="menu-row" data-page="account-recovery" bindtap="go"><view class="menu-text">邮箱验证与账号找回</view></view>
         <view class="menu-row" bindtap="showSecurity"><scb-icon name="shield" size="20"/><view class="menu-text"><view>账号与微信绑定</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
-        <view class="menu-row" data-page="planned" data-kind="messages" bindtap="go"><scb-icon name="chat" size="20"/><view class="menu-text"><view>微信提醒说明</view><view class="menu-sub">关注已开放，订阅消息尚未启用</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
+        <view class="menu-row" data-page="account-closure" bindtap="go"><view class="menu-text"><view>账号自助注销</view><view class="menu-sub">先核对未完成事项，再本人明确申请</view></view></view>
         <view wx:if="{{platformOperator}}" class="menu-row" data-page="platform" bindtap="go"><scb-icon name="info" size="20"/><view class="menu-text"><view>平台服务资料与独立处理</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
       <view class="account-actions">
@@ -74,7 +81,8 @@
       <button wx:else class="danger" bindtap="unbind" disabled="{{busy || !consent}}">确认解绑并退出全部设备</button>
       <button class="secondary" bindtap="closeSecurity" disabled="{{busy}}">保留当前设置并返回</button>
       <button class="quiet" bindtap="load" disabled="{{busy || loading}}">刷新当前账号</button>
-      <button class="quiet" data-page="planned" data-kind="funds" bindtap="go" disabled="{{busy}}">费用与资金说明</button>
+      <button class="quiet" data-page="trade-order" bindtap="go" disabled="{{busy}}">查看本人收付款订单</button>
+      <button class="quiet" data-page="account-closure" bindtap="go" disabled="{{busy}}">账号自助注销</button>
       <button class="quiet" bindtap="logout" disabled="{{busy}}">退出当前登录</button>
     </block>
     <block wx:else>

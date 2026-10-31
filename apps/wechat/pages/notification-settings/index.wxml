@@ -9,8 +9,8 @@
   <button class="primary" bindtap="prepare" disabled="{{busy || pending || !enabled}}">准备本次订阅</button>
   <button wx:if="{{intent}}" class="primary" bindtap="subscribe" disabled="{{busy || pending}}">打开微信弹窗，决定本次订阅</button>
  </view>
- <view wx:if="{{pending}}" class="card"><view class="subtitle">原请求待核对</view><view>恢复记录只保存原编号与操作类型，不保存微信code、openid或密码。</view><button class="primary" bindtap="recover" disabled="{{busy}}">核对原请求</button></view>
+ <view wx:if="{{pending}}" class="card"><view class="subtitle">原请求待核对</view><view>核对原请求后继续，避免重复申请。身份验证信息不会保存到本机恢复记录。</view><button class="primary" bindtap="recover" disabled="{{busy}}">核对原请求</button></view>
  <button class="secondary" bindtap="revoke" disabled="{{busy}}">明确撤销本类许可及待发提醒</button>
- <view class="card"><view class="subtitle">最近订阅记录</view><view wx:for="{{subscriptions}}" wx:key="id">{{item.kind}} · {{item.state}}</view><view wx:if="{{!subscriptions.length}}">暂无订阅许可记录</view></view>
+ <view class="card"><view class="subtitle">最近订阅记录</view><view wx:for="{{subscriptions}}" wx:key="id">{{item.label}} · {{item.stateLabel}}</view><view wx:if="{{!subscriptions.length}}">暂无订阅许可记录</view></view>
  <button class="secondary" bindtap="messages">查看站内消息</button>
 </view>

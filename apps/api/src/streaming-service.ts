@@ -55,8 +55,12 @@ export class StreamingService extends ApplicationService {
   private readonly key: Buffer | null;
   private readonly config: StreamingOptions;
   private draining = false;
+  private closing = false;
+  private drainCompletion: Promise<void> | undefined;
+  private readonly mediaTasks = new Set<Promise<void>>();
+  private readonly localRelayKeys = new Set<string>();
   private timer: ReturnType<typeof setInterval> | undefined;
-  private readonly recordings = new Map<string, AbortController>();
+  private readonly mediaControllers = new Set<AbortController>();
   constructor(pool: Pool, options: ApiOptions, config: StreamingOptions = {}) {
     super(pool, options);
     this.config = config;
@@ -75,10 +79,15 @@ export class StreamingService extends ApplicationService {
       )
         throw Error('Invalid streaming target configuration');
     }
-    if (config.autoDispatch) {
-      this.timer = setInterval(() => void this.drain().catch(() => {}), 1000);
-      this.timer.unref();
-    }
+  }
+  /** Explicitly called only after the enclosing application has initialized successfully. */
+  startWorker() {
+    if (this.closing || this.timer || !this.config.autoDispatch) return;
+    this.timer = setInterval(() => {
+      if (this.draining || this.closing) return;
+      this.drainCompletion = this.drain().catch(() => {});
+    }, 1000);
+    this.timer.unref();
   }
   private ready() {
     return (
@@ -683,6 +692,14 @@ export class StreamingService extends ApplicationService {
     });
   }
   private async workerSource(c: PoolClient, id: string) {
+    const route = (
+      await c.query<Row>('SELECT org_id,event_id FROM broadcast_sessions WHERE id=$1', [id])
+    ).rows[0];
+    if (!route) return undefined;
+    await c.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR SHARE NOWAIT', [
+      route.org_id,
+      route.event_id,
+    ]);
     const value = (
       await c.query<Row>(
         `SELECT s.*,m.home_team_name,m.away_team_name,m.version AS match_version,clock_timestamp() AS sampled_at,to_jsonb(st) AS scoring,
@@ -734,10 +751,26 @@ export class StreamingService extends ApplicationService {
     await this.transaction(async (c) => {
       const sessions = (
         await c.query<Row>(
-          "SELECT * FROM broadcast_sessions WHERE observed<>'ENDED' ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED",
+          "SELECT id,org_id,event_id FROM broadcast_sessions WHERE desired='RUNNING' OR observed IN('STOPPING','UNKNOWN') ORDER BY id LIMIT 100",
         )
       ).rows;
-      for (let s of sessions) {
+      for (const candidate of sessions) {
+        if (
+          !(
+            await c.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR SHARE SKIP LOCKED', [
+              candidate.org_id,
+              candidate.event_id,
+            ])
+          ).rowCount
+        )
+          continue;
+        let s = (
+          await c.query<Row>(
+            'SELECT * FROM broadcast_sessions WHERE id=$1 FOR UPDATE SKIP LOCKED',
+            [candidate.id],
+          )
+        ).rows[0];
+        if (!s) continue;
         if (s.desired === 'RUNNING') {
           const source = await this.workerSource(c, s.id);
           if (!source?.authorized || !this.ready()) {
@@ -798,7 +831,8 @@ export class StreamingService extends ApplicationService {
     });
     if (!job) return;
     let ok = false,
-      unknown = false;
+      unknown = false,
+      dispatched = false;
     try {
       if (job.kind === 'START') {
         if (job.attempt > 1) {
@@ -837,6 +871,8 @@ export class StreamingService extends ApplicationService {
             start.s.source_stream_name,
             new Date(start.s.source_expires_at),
           );
+          this.localRelayKeys.add(job.operation_key);
+          dispatched = true;
           await this.config.executor!.start({
             operationKey: job.operation_key,
             inputUrl: lease.pullUrl,
@@ -898,6 +934,13 @@ export class StreamingService extends ApplicationService {
           );
       }
     } catch {
+      if (job.kind === 'START' && job.attempt === 1 && !dispatched) {
+        await this.pool.query(
+          "UPDATE stream_jobs SET state='FAILED',error_code='FENCED_BEFORE_DISPATCH',lease_until=NULL WHERE id=$1 AND lease_token=$2",
+          [job.id, token],
+        );
+        return;
+      }
       unknown = true;
     }
     await this.pool.query(
@@ -932,7 +975,7 @@ export class StreamingService extends ApplicationService {
     }
   }
   async drain() {
-    if (this.draining) return;
+    if (this.draining || this.closing) return;
     this.draining = true;
     try {
       await this.reconcile();
@@ -1026,6 +1069,39 @@ export class StreamingService extends ApplicationService {
       liveFail('MEDIA_CONFIRMED_SOURCE_REQUIRED', '自动集锦须有效独立确认赛果');
     return r.confirmation.id as string;
   }
+  private async artifactLineage(c: PoolClient, artifact: Row) {
+    const chain = (
+      await c.query<Row>(
+        `WITH RECURSIVE chain AS (
+      SELECT a.id,a.revoked_at,j.source_artifact_id,j.kind,j.source_confirmation_id,1 AS depth FROM live_media_artifacts a JOIN live_media_jobs j ON j.org_id=a.org_id AND j.id=a.job_id WHERE a.org_id=$1 AND a.session_id=$2 AND a.id=$3
+      UNION ALL SELECT a.id,a.revoked_at,j.source_artifact_id,j.kind,j.source_confirmation_id,p.depth+1 FROM chain p JOIN live_media_artifacts a ON a.id=p.source_artifact_id AND a.org_id=$1 AND a.session_id=$2 JOIN live_media_jobs j ON j.org_id=a.org_id AND j.id=a.job_id WHERE p.depth<9)
+      SELECT * FROM chain ORDER BY depth`,
+        [artifact.org_id, artifact.session_id, artifact.id],
+      )
+    ).rows;
+    if (
+      !chain.length ||
+      chain.length > 8 ||
+      chain.some((r) => r.revoked_at) ||
+      chain.at(-1)?.source_artifact_id
+    )
+      throw notFound();
+    if (chain.some((r) => r.kind === 'HIGHLIGHTS')) {
+      const proof = await this.resultProof(c, {
+        org_id: artifact.org_id,
+        match_id:
+          artifact.match_id ??
+          (
+            await c.query<Row>('SELECT match_id FROM broadcast_sessions WHERE id=$1', [
+              artifact.session_id,
+            ])
+          ).rows[0]!.match_id,
+      });
+      if (chain.some((r) => r.kind === 'HIGHLIGHTS' && r.source_confirmation_id !== proof))
+        throw notFound();
+    }
+    return chain.length;
+  }
   async mediaCommand(cookie: string | undefined, org: string, session: string, raw: unknown) {
     const b = objectInput(raw, [
       'clientRequestId',
@@ -1090,6 +1166,8 @@ export class StreamingService extends ApplicationService {
         ).rows[0];
         if (!artifact || artifact.revoked_at) throw notFound();
         if (artifact.version !== b.expectedVersion) liveFail('VERSION_CONFLICT');
+        if ((await this.artifactLineage(c, artifact)) >= 8)
+          liveFail('MEDIA_DERIVATION_LIMIT', '媒体派生链已达到上限');
         let intervals: { startMs: number; endMs: number }[] = [],
           confirmation: string | null = null,
           sourceJob: Row | null = null;
@@ -1164,6 +1242,7 @@ export class StreamingService extends ApplicationService {
             (await this.resultProof(c, s)) !== artifact.source_confirmation_id
           )
             liveFail('MEDIA_SOURCE_CHANGED');
+          await this.artifactLineage(c, artifact);
           const key = randomBytes(24).toString('base64url');
           await c.query(
             'UPDATE live_media_artifacts SET public_key=$2,published_by=$3,published_at=clock_timestamp(),version=version+1 WHERE id=$1',
@@ -1211,6 +1290,10 @@ export class StreamingService extends ApplicationService {
       liveFail('MEDIA_QUEUE_FULL', '媒体队列已满', 429);
   }
   private async recordingEligibility(c: PoolClient, s: Row) {
+    await c.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR SHARE NOWAIT', [
+      s.org_id,
+      s.event_id,
+    ]);
     if (
       !this.config.authorizeRecording ||
       !(await this.config.authorizeRecording(c, {
@@ -1234,22 +1317,22 @@ export class StreamingService extends ApplicationService {
     ).rows[0];
     if (!s) throw Error('MEDIA_RIGHTS_REVOKED');
     await this.recordingEligibility(c, s);
-    if (
-      job.source_artifact_id &&
-      !(
-        await c.query(
-          'SELECT id FROM live_media_artifacts WHERE org_id=$1 AND session_id=$2 AND id=$3 AND revoked_at IS NULL',
+    if (job.source_artifact_id) {
+      const source = (
+        await c.query<Row>(
+          'SELECT * FROM live_media_artifacts WHERE org_id=$1 AND session_id=$2 AND id=$3',
           [s.org_id, s.id, job.source_artifact_id],
         )
-      ).rowCount
-    )
-      throw Error('MEDIA_SOURCE_CHANGED');
+      ).rows[0];
+      if (!source) throw Error('MEDIA_SOURCE_CHANGED');
+      await this.artifactLineage(c, source);
+    }
     if (job.kind === 'HIGHLIGHTS' && (await this.resultProof(c, s)) !== job.source_confirmation_id)
       throw Error('MEDIA_SOURCE_CHANGED');
     return s;
   }
   private async mediaDrain() {
-    if (!this.config.executor || !this.ready()) return;
+    if (this.closing || !this.config.executor || !this.ready()) return;
     await this.pool.query(
       "UPDATE live_media_jobs SET status='FAILED',error_code='WORKER_RESULT_UNKNOWN',version=version+1 WHERE status='RUNNING' AND worker_until<=clock_timestamp()",
     );
@@ -1279,6 +1362,7 @@ export class StreamingService extends ApplicationService {
     if (!job) return;
     const execute = async () => {
       const controller = new AbortController();
+      this.mediaControllers.add(controller);
       let timer: ReturnType<typeof setInterval> | undefined;
       let output: ArtifactResult | undefined;
       try {
@@ -1301,7 +1385,7 @@ export class StreamingService extends ApplicationService {
             )
               throw Error('MEDIA_WORKER_FENCED');
           });
-        if (job.kind === 'RECORDING') this.recordings.set(s.id, controller);
+
         await current();
         timer = setInterval(() => void current().catch(() => controller.abort()), 1000);
         timer.unref();
@@ -1373,10 +1457,12 @@ export class StreamingService extends ApplicationService {
         );
       } finally {
         if (timer) clearInterval(timer);
-        this.recordings.delete(job.session_id);
+        this.mediaControllers.delete(controller);
       }
     };
-    void execute();
+    const task = execute();
+    this.mediaTasks.add(task);
+    void task.finally(() => this.mediaTasks.delete(task)).catch(() => {});
   }
   async artifact(cookie: string | undefined, org: string, session: string, id: string) {
     if (!this.config.executor) throw notFound();
@@ -1390,6 +1476,7 @@ export class StreamingService extends ApplicationService {
       ).rows[0];
       if (!r || s.rights_revoked_at) throw notFound();
       await this.recordingEligibility(c, s);
+      await this.artifactLineage(c, r);
       await this.ensureFreshSession(c, a.ctx);
       return {
         path: await this.config.executor!.file(r.file_name),
@@ -1412,6 +1499,7 @@ export class StreamingService extends ApplicationService {
         throw notFound();
       try {
         await this.recordingEligibility(c, r);
+        await this.artifactLineage(c, r);
       } catch {
         throw notFound();
       }
@@ -1434,16 +1522,15 @@ export class StreamingService extends ApplicationService {
     });
   }
   async onModuleDestroy() {
-    if (!this.config.executor) return;
+    this.closing = true;
     if (this.timer) clearInterval(this.timer);
-    for (const c of this.recordings.values()) c.abort();
-    const relays = (
-      await this.pool.query<Row>(
-        'SELECT provider_id FROM live_relays WHERE slot_held AND provider_id IS NOT NULL',
-      )
-    ).rows;
-    await Promise.all(
-      relays.map((r) => this.config.executor?.stop(r.provider_id).catch(() => false)),
-    );
+    this.timer = undefined;
+    for (const c of this.mediaControllers) c.abort();
+    await this.drainCompletion;
+    if (this.config.executor)
+      await Promise.all(
+        [...this.localRelayKeys].map((key) => this.config.executor!.stop(key).catch(() => false)),
+      );
+    await Promise.allSettled([...this.mediaTasks]);
   }
 }

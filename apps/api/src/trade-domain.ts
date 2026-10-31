@@ -49,7 +49,7 @@ export function tradeBalances(
   const refundReservedFen = sum(refunds.filter((x) => !['REJECTED', 'FAILED'].includes(x.status)));
   const refundedFen = sum(refunds.filter((x) => x.status === 'SUCCEEDED'));
   const deductionReservedFen = sum(
-    deductions.filter((x) => ['PENDING_REVIEW', 'APPROVED'].includes(x.status)),
+    deductions.filter((x) => ['PENDING_REVIEW', 'APPROVED', 'REVERSAL_PENDING'].includes(x.status)),
   );
   const deductionApprovedFen = sum(deductions.filter((x) => x.status === 'APPROVED'));
   const settlementReservedFen = settlements
@@ -75,6 +75,23 @@ export function tradeBalances(
     settledFen,
     refundableFen: paid - refundReservedFen - deductionReservedFen,
   };
+}
+/** Recomputed under the shared order lock before proposal, approval and dispatch. */
+export function tradeSettlementCapacity(
+  kind: TradeSourceKind,
+  balances: { paidFen: number; refundReservedFen: number; deductionApprovedFen: number },
+  platformFeeFen: number,
+  settlements: { id: string; amount_fen: number; status: string; return_amount_fen?: number }[],
+  excludeId?: string,
+) {
+  const allocated = settlements
+    .filter((s) => s.id !== excludeId && !['REJECTED', 'FAILED', 'RETURNED'].includes(s.status))
+    .reduce((n, s) => n + s.amount_fen - (s.return_amount_fen ?? 0), 0);
+  const revenue =
+    kind === 'ENTRY_DEPOSIT'
+      ? Math.min(balances.deductionApprovedFen, balances.paidFen - balances.refundReservedFen)
+      : balances.paidFen - balances.refundReservedFen - platformFeeFen;
+  return Math.max(0, revenue - allocated);
 }
 export function tradeSeal(key: Buffer, id: string, value: TradeCheckout): Buffer {
   if (key.length !== 32) throw Error('Trade checkout encryption configuration invalid');

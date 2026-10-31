@@ -323,7 +323,13 @@ Page({
     this.setData({ securityOpen: false });
   },
   copyMemberId() {
-    if (this.data.user?.id && typeof wx.setClipboardData === 'function')
+    if (
+      !this.closed &&
+      !this.data.busy &&
+      this.data.user?.id &&
+      api.getClient().viewerId() === this.data.user.id &&
+      typeof wx.setClipboardData === 'function'
+    )
       wx.setClipboardData({ data: this.data.user.id });
   },
   go(e) {
@@ -341,6 +347,7 @@ Page({
       'local-manage',
       'sponsorships',
       'public-ledgers',
+      'trade-manage',
     ].includes(key)
       ? { orgId: api.uuid(e.currentTarget.dataset.org) }
       : key === 'bookings'

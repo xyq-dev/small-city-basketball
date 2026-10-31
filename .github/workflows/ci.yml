@@ -56,7 +56,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Chinese fonts for poster rendering and layout verification
-        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra fontconfig
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra fontconfig ffmpeg
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
@@ -103,7 +103,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Chinese fonts for actual poster rasterization
-        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fontconfig
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fontconfig ffmpeg
       - name: Prepare exact PostgreSQL archive clients and isolated restore role
         run: |
           node --test scripts/ci-postgres-clients.test.mjs

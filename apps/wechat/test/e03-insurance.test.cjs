@@ -171,3 +171,39 @@ test('journal rejects document/identity injection and arbitrary endpoints', () =
   assert.equal(r.valid({ ...v, path: 'https://evil.test' }), false);
   assert.equal(r.valid({ ...v, body: { ...v.body, identityNumber: '990101201201010010' } }), false);
 });
+
+test('private policy PDF uses tracked temporary files and removes them on hide', async () => {
+  const h = setup(),
+    paths = [],
+    opened = [];
+  h.page.onLoad({});
+  h.wx.env = { USER_DATA_PATH: '/test-private' };
+  h.wx.getFileSystemManager = () => ({
+    writeFile: (o) => {
+      paths.push(o.filePath);
+      o.success();
+    },
+    unlink: (o) => o.success(),
+  });
+  h.wx.openDocument = (o) => opened.push(o);
+  h.requireLocal('utils/api.js').getClient = () => ({
+    download: async () => ({
+      data: new Uint8Array([37, 80, 68, 70, 45, 49, 46, 52]).buffer,
+      contentType: 'application/pdf',
+    }),
+    sessionRevision: () => 0,
+  });
+  await h.page.document(tap({ id: id(8) }));
+  assert.equal(paths.length, 1);
+  assert.match(paths[0], /^\/test-private\/scb-participant-insurance-/);
+  assert.equal(opened[0].showMenu, false);
+  assert.equal(
+    [...h.wx.storage.values()].some((v) => Array.isArray(v) && v.includes(paths[0])),
+    true,
+  );
+  h.page.onHide();
+  assert.equal(
+    [...h.wx.storage.values()].some((v) => Array.isArray(v) && v.includes(paths[0])),
+    false,
+  );
+});

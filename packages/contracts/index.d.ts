@@ -1211,3 +1211,5 @@ export type * from './notifications.js';
 export type * from './streaming.js';
 export type * from './insurance.js';
 export type * from './trade.js';
+export type * from './account-closure.js';
+export type * from './youth-guardians.js';

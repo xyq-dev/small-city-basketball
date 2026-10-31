@@ -562,6 +562,25 @@ Page({
       if (ui.held(this, token)) this.setData({ busy: false });
     }
   },
+  guardian() {
+    const w = this.data.workspace;
+    if (!this.data.busy && w?.eventId && w?.memberId)
+      ui.open('guardian', {
+        orgId: this._org,
+        eventId: w.eventId,
+        entryId: this._entry,
+        memberId: w.memberId,
+      });
+  },
+  qualification() {
+    if (!this.data.busy)
+      ui.open('qualification-precheck', { orgId: this._org, entryId: this._entry });
+  },
+  insurance() {
+    const w = this.data.workspace;
+    if (!this.data.busy && w?.memberId)
+      ui.open('insurance', { orgId: this._org, entryId: this._entry, memberId: w.memberId });
+  },
   async viewFile(e) {
     const selected = this._selected,
       kind = e.currentTarget.dataset.kind,

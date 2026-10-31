@@ -74,8 +74,11 @@ export type NotificationTemplate = {
 export function notificationTemplate(value: NotificationTemplate): NotificationTemplate {
   if (
     !value ||
+    typeof value.id !== 'string' ||
     !/^[A-Za-z0-9_-]{1,128}$/.test(value.id) ||
     !value.fields ||
+    typeof value.fields !== 'object' ||
+    Array.isArray(value.fields) ||
     Object.keys(value.fields).length < 1 ||
     Object.keys(value.fields).length > 8 ||
     Object.entries(value.fields).some(

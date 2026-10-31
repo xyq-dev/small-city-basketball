@@ -3,6 +3,18 @@ const routes = {};
 for (const key of [
   'home',
   'search',
+  'live-studio',
+  'media-jobs',
+  'insurance',
+  'qualification-precheck',
+  'trade-order',
+  'trade-manage',
+  'messages',
+  'notification-settings',
+  'account-closure',
+  'guardian',
+  'youth-review',
+
   'match-exceptions',
   'recruitment',
   'poster',

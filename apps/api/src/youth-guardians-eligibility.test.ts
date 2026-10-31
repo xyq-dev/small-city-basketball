@@ -69,18 +69,21 @@ function fixture() {
     subject_purposes: ['PARTICIPATION'],
     guardian_purposes: ['PARTICIPATION'],
   };
+  const independent = { ok: true };
   const c = {
     query: async (sql: string) => ({
-      rows: sql.includes('youth_event_policies')
-        ? [policy]
-        : sql.includes('youth_guardian_preconsents')
-          ? [data]
-          : sql.includes('youth_guardian_requests')
-            ? [request]
-            : [],
+      rows: sql.includes('NOT EXISTS(SELECT 1 FROM team_access_grants')
+        ? [independent]
+        : sql.includes('youth_event_policies')
+          ? [policy]
+          : sql.includes('youth_guardian_preconsents')
+            ? [data]
+            : sql.includes('youth_guardian_requests')
+              ? [request]
+              : [],
     }),
   } as unknown as PoolClient;
-  return { policy, data, request, c };
+  return { policy, data, request, c, independent };
 }
 describe('E08 current consent gate', () => {
   it('keeps legacy policy optional but cannot disable forced youth data consent', async () => {
@@ -149,6 +152,13 @@ describe('E08 current consent gate', () => {
       Object.assign(f.request, patch);
       expect((await readYouthEligibility(f.c, input, async () => qualification)).ready).toBe(false);
     }
+  });
+  it('invalidates approval if the guardian reviewer later joins the associated team', async () => {
+    const f = fixture();
+    f.independent.ok = false;
+    expect((await readYouthEligibility(f.c, input, async () => qualification)).blockers).toEqual([
+      'GUARDIAN_INDEPENDENT_REVIEW_REQUIRED',
+    ]);
   });
   it('uses trusted event-date age, not a client declaration, and adults do not need guardian grants', async () => {
     const f = fixture();

@@ -84,3 +84,10 @@ BEGIN
  RETURN NEW;
 END $$;
 CREATE TRIGGER e01_session_invariants BEFORE UPDATE ON broadcast_sessions FOR EACH ROW EXECUTE FUNCTION e01_session_guard();
+
+CREATE FUNCTION e02_job_identity_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF (NEW.org_id,NEW.session_id,NEW.created_by,NEW.kind,NEW.source_artifact_id,NEW.source_epoch,NEW.source_match_id,NEW.source_confirmation_id,NEW.intervals) IS DISTINCT FROM (OLD.org_id,OLD.session_id,OLD.created_by,OLD.kind,OLD.source_artifact_id,OLD.source_epoch,OLD.source_match_id,OLD.source_confirmation_id,OLD.intervals) THEN RAISE EXCEPTION 'Media source identity is immutable' USING ERRCODE='23514'; END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER e02_job_identity BEFORE UPDATE ON live_media_jobs FOR EACH ROW EXECUTE FUNCTION e02_job_identity_guard();

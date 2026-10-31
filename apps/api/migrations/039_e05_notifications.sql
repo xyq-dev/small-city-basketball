@@ -151,3 +151,14 @@ CREATE TABLE notification_commands (
   PRIMARY KEY(user_id,client_request_id)
 );
 CREATE TRIGGER notification_commands_guard BEFORE UPDATE OR DELETE ON notification_commands FOR EACH ROW EXECUTE FUNCTION p03_reject_history_mutation();
+
+-- A shared cyclic scan ensures existing schedules and runtime lead changes also create due work.
+CREATE TABLE notification_start_scan (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),
+  cursor_starts_at timestamptz CHECK(cursor_starts_at IS NULL OR isfinite(cursor_starts_at)),
+  cursor_match_id uuid,
+  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  CHECK((cursor_starts_at IS NULL)=(cursor_match_id IS NULL))
+);
+INSERT INTO notification_start_scan(singleton) VALUES(true);
+CREATE INDEX notification_match_start_window ON published_matches(starts_at,id) WHERE status IN('SCHEDULED','READY');

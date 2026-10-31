@@ -10,6 +10,7 @@ import { readStreamingClosureBlockers } from '../src/streaming-privacy.js';
 class ControlledExecutor implements LiveExecutor, MediaExecutor {
   readonly enabled = true;
   states = new Map<string, RelayObserved>();
+  files = new Map<string, string>();
   runs: RelayRun[] = [];
   stopKnown = true;
   starts = 0;
@@ -38,8 +39,10 @@ class ControlledExecutor implements LiveExecutor, MediaExecutor {
   async probe(): Promise<never> {
     throw Error('No synthetic probe');
   }
-  async file(): Promise<never> {
-    throw Error('No synthetic file');
+  async file(name: string): Promise<string> {
+    const path = this.files.get(name);
+    if (!path) throw Error('No synthetic file');
+    return path;
   }
   async discard() {}
 }
@@ -263,6 +266,50 @@ describe(
           expectedVersion: current.version,
         }),
       ).rejects.toMatchObject({ code: 'STREAM_STOP_UNCONFIRMED' });
+    });
+    test('revoking an original recording revokes access to an already published transcode in its source chain', async () => {
+      const f = await setup(),
+        a = randomUUID(),
+        b = randomUUID(),
+        ja = randomUUID(),
+        jb = randomUUID(),
+        fileA = randomUUID() + '.mp4',
+        fileB = randomUUID() + '.mp4',
+        key = 'A'.repeat(32);
+      await h.api.pool.query(
+        'UPDATE broadcast_sessions SET recording_approved_at=clock_timestamp(),recording_approved_by=$2 WHERE id=$1',
+        [f.session, h.owner.id],
+      );
+      await h.api.pool.query(
+        "INSERT INTO live_media_jobs(id,org_id,session_id,created_by,kind,status,source_epoch) VALUES($1,$2,$3,$4,'RECORDING','READY',0)",
+        [ja, h.owner.orgId, f.session, h.otherOwner.id],
+      );
+      await h.api.pool.query(
+        'INSERT INTO live_media_artifacts(id,org_id,session_id,job_id,file_name,sha256,byte_length,duration_ms) VALUES($1,$2,$3,$4,$5,$6,100,1000)',
+        [a, h.owner.orgId, f.session, ja, fileA, '0'.repeat(64)],
+      );
+      await h.api.pool.query(
+        "INSERT INTO live_media_jobs(id,org_id,session_id,created_by,kind,status,source_epoch,source_artifact_id) VALUES($1,$2,$3,$4,'TRANSCODE','READY',0,$5)",
+        [jb, h.owner.orgId, f.session, h.otherOwner.id, a],
+      );
+      await h.api.pool.query(
+        'INSERT INTO live_media_artifacts(id,org_id,session_id,job_id,file_name,sha256,byte_length,duration_ms,public_key,published_by,published_at) VALUES($1,$2,$3,$4,$5,$6,100,1000,$7,$8,clock_timestamp())',
+        [b, h.owner.orgId, f.session, jb, fileB, '1'.repeat(64), key, h.owner.id],
+      );
+      f.executor.files.set(fileB, '/controlled-test-artifact.mp4');
+      expect(await f.service.publicArtifact(key)).toMatchObject({
+        path: '/controlled-test-artifact.mp4',
+      });
+      await f.service.mediaCommand(h.owner.cookie, h.owner.orgId, f.session, {
+        clientRequestId: randomUUID(),
+        type: 'REVOKE',
+        artifactId: a,
+        expectedVersion: 1,
+      });
+      await expect(f.service.publicArtifact(key)).rejects.toMatchObject({ status: 404 });
+      await expect(
+        h.api.pool.query('UPDATE live_media_jobs SET source_artifact_id=$2 WHERE id=$1', [jb, b]),
+      ).rejects.toThrow('identity is immutable');
     });
     test('membership revocation invalidates score reads immediately and drain erects a stop barrier', async () => {
       const f = await setup();

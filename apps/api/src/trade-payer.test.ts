@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { hashToken } from './security.js';
 import { createTradePayerResolver } from './trade-payer.js';
 import type { TradeMerchant } from './trade-provider.js';
@@ -46,6 +46,7 @@ function fixture(change?: () => void) {
     { organization: merchant },
   );
   return {
+    client: client as unknown as PoolClient,
     call: () =>
       resolve({
         actorId: 'actor',
@@ -77,13 +78,22 @@ function fixture(change?: () => void) {
 describe('trusted trade payer resolver', () => {
   it('returns only the currently bound server-exchanged identity without holding a connection', async () => {
     const f = fixture();
-    await expect(f.call()).resolves.toEqual({ appId, openid });
+    await expect(f.call()).resolves.toMatchObject({ appId, openid });
     expect(f.exchanges).toBe(1);
   });
   for (const operation of ['unbind', 'version', 'reset', 'revoke'] as const)
     it(`rejects ${operation} while the exchange was in flight`, async () => {
       const f = fixture(() => f[operation]());
       await expect(f.call()).rejects.toMatchObject({ code: 'TRADE_PAYER_IDENTITY_CHANGED' });
+    });
+  for (const operation of ['unbind', 'version', 'reset', 'revoke'] as const)
+    it(`rechecks ${operation} in the final dispatch transaction after resolution returned`, async () => {
+      const f = fixture();
+      const payer = await f.call();
+      f[operation]();
+      await expect(payer.assertCurrent(f.client)).rejects.toMatchObject({
+        code: 'TRADE_PAYER_IDENTITY_CHANGED',
+      });
     });
   it('rejects another mini-program user even when the exchange succeeds', async () => {
     const f = fixture();

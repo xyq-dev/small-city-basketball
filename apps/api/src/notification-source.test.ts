@@ -11,6 +11,8 @@ function fixture(
     startsAt?: string;
     command?: string;
     entryStatus?: string;
+    exceptionActive?: boolean;
+    exceptionVersion?: number;
   } = {},
 ) {
   const calls: string[] = [];
@@ -42,6 +44,18 @@ function fixture(
               new_court_id: id(4),
             },
           ],
+        };
+      if (sql.includes('FROM match_exception_heads'))
+        return {
+          rows:
+            options.exceptionActive || options.exceptionVersion !== undefined
+              ? [
+                  {
+                    version: options.exceptionVersion ?? 1,
+                    active_request_id: options.exceptionActive ? id(11) : null,
+                  },
+                ]
+              : [],
         };
       if (sql.includes('FROM entries n'))
         return {
@@ -75,6 +89,19 @@ describe('notifications derive only current authoritative source facts', () => {
     expect((await resolveNotificationSource(fixture().c, input, 30))!.dueAt.toISOString()).toBe(
       '2026-11-01T10:30:00.000Z',
     );
+    expect((await resolveNotificationSource(fixture().c, input, 30))!.fingerprint).not.toBe(
+      a!.fingerprint,
+    );
+  });
+  it('blocks cancelled or forfeited physical SCHEDULED rows and gives reinstatement a fresh generation', async () => {
+    expect(await resolveNotificationSource(fixture({ exceptionActive: true }).c, input)).toBeNull();
+    const first = await resolveNotificationSource(fixture().c, input);
+    const reinstated = await resolveNotificationSource(fixture({ exceptionVersion: 2 }).c, input);
+    expect(reinstated).not.toBeNull();
+    expect(reinstated!.fingerprint).not.toBe(first!.fingerprint);
+    expect(
+      await resolveNotificationSource(fixture({ now: '2026-11-01T11:00:00Z' }).c, input),
+    ).toBeNull();
   });
   it.each(['LIVE', 'FINAL', 'CANCELLED'])(
     'cannot prepare an old start reminder for status %s',

@@ -37,6 +37,15 @@ export function isGovernanceAttachmentRequest(request: Pick<ApiRequest, 'method'
     /^\/v1\/me\/governance\/cases\/[0-9a-f-]{36}\/attachments\/[0-9a-f-]{36}$/i.test(request.path)
   );
 }
+export function isGuardianProofRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
+  return (
+    request.method === 'POST' &&
+    /^\/v1\/youth-guardian-requests\/[0-9a-f-]{36}\/confirm$/i.test(request.path)
+  );
+}
+export function isInsuranceProviderNoticeRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
+  return request.method === 'POST' && request.path === '/v1/insurance/provider-notices';
+}
 
 type Lane = { active: number; max: number; parser: RequestHandler };
 
@@ -56,13 +65,14 @@ export function requestBodyMiddleware(): RequestHandler {
   return (incoming, response, next) => {
     const request = incoming as ApiRequest;
     if (isPaymentNotificationRequest(request)) return notification(request, response, next);
-    const lane = isGovernanceAttachmentRequest(request)
-      ? governance
-      : isMediaUploadRequest(request)
-        ? upload
-        : isMediaChunkRequest(request)
-          ? chunk
-          : null;
+    const lane =
+      isGovernanceAttachmentRequest(request) || isGuardianProofRequest(request)
+        ? governance
+        : isMediaUploadRequest(request)
+          ? upload
+          : isMediaChunkRequest(request)
+            ? chunk
+            : null;
     if (!lane) return ordinary(request, response, next);
     if (lane.active >= lane.max) {
       response.setHeader('Retry-After', '1');

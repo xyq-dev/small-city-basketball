@@ -25,6 +25,7 @@ import { ApiError, forbidden, notFound } from './errors.js';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
 import type { Actor, ApiOptions, EventRow } from './service.js';
 import type { SourceTradeHooks } from './trade-source-hooks.js';
+import type { ParticipantMaterialGuards } from './participant-materials-guards.js';
 import { lockTradeSourceCalendar } from './trade-source-hooks.js';
 import { captureNotification } from './notification-source.js';
 import { hashPassword, hashToken, newSessionToken } from './security.js';
@@ -141,6 +142,7 @@ export class RegistrationService extends ApplicationService {
     pool: Pool,
     options: ApiOptions,
     private readonly trade?: SourceTradeHooks,
+    private readonly materialGuards: ParticipantMaterialGuards = {},
   ) {
     super(pool, options);
   }
@@ -779,18 +781,23 @@ export class RegistrationService extends ApplicationService {
     entry: EntryRow,
     rules: EventRulesetData,
   ) {
-    return readEntryParticipantEligibility(client, {
-      orgId: entry.org_id,
-      eventId: entry.event_id,
-      entryId: entry.id,
-      rosterRevisionId: entry.roster_revision_id,
-      rulesetId: rules.id,
-      startDate: event.row.start_date,
-      endDate: event.row.end_date,
-      requireParticipantMaterials: rules.requireParticipantMaterials === true,
-      requireInsurance: rules.requireInsurance,
-      keyId: this.materialKeyId(),
-    });
+    return readEntryParticipantEligibility(
+      client,
+      {
+        orgId: entry.org_id,
+        eventId: entry.event_id,
+        entryId: entry.id,
+        rosterRevisionId: entry.roster_revision_id,
+        rulesetId: rules.id,
+        startDate: event.row.start_date,
+        endDate: event.row.end_date,
+        requireParticipantMaterials: rules.requireParticipantMaterials === true,
+        requireInsurance: rules.requireInsurance,
+        keyId: this.materialKeyId(),
+        participantDataKey: this.options.participantDataKey,
+      },
+      this.materialGuards,
+    );
   }
   private publicEvent(event: EventAccess) {
     const row = event.row;

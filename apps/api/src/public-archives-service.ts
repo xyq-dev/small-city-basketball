@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type {
   PublicArchiveData,
   PublicArchiveProfileData,
@@ -7,7 +7,9 @@ import type {
   PublicArchiveKind,
 } from '@small-city-basketball/contracts';
 import { ApplicationService, isAdministrator } from './service.js';
-import type { Actor } from './service.js';
+import type { Actor, ApiOptions } from './service.js';
+import { createYouthPublicationGuard, knownYouthAccount } from './youth-guardians-publication.js';
+import type { YouthPublicationGuard } from './youth-guardians-publication.js';
 import { ApiError, forbidden, notFound } from './errors.js';
 import { objectInput, text } from './validation.js';
 import {
@@ -33,7 +35,7 @@ const POWER = `EXISTS(SELECT 1 FROM organization_memberships pm WHERE pm.org_id=
 // no access itself: publication + exact source consent + current publisher power are all required.
 const SOURCE_VALID = `o.status='ACTIVE' AND nu.status='ACTIVE' AND ${POWER} AND ((p.kind='TEAM' AND g.member_id IS NULL AND p.org_id=g.org_id AND p.team_id=g.team_id) OR (p.kind='PLAYER' AND owner.status='ACTIVE' AND g.target_user_id=p.owner_user_id AND b.org_id=g.org_id AND b.team_id=g.team_id AND b.member_id=g.member_id AND b.user_id=p.owner_user_id)) AND EXISTS(SELECT 1 FROM registration_freezes f WHERE f.org_id=g.org_id AND f.event_id=g.event_id AND f.snapshot->'entries' @> jsonb_build_array(jsonb_build_object('teamId',g.team_id::text)) AND (g.member_id IS NULL OR f.snapshot->'entries' @> jsonb_build_array(jsonb_build_object('teamId',g.team_id::text,'players',jsonb_build_array(jsonb_build_object('memberId',g.member_id::text))))))`;
 const EFFECTIVE = `g.status='APPROVED' AND g.consented_at IS NOT NULL AND (p.kind='TEAM' OR g.consented_by=p.owner_user_id) AND ${SOURCE_VALID}`;
-const SOURCE_SELECT = `SELECT g.*,e.name AS event_name,t.name AS team_name,tm.name AS member_name,(${EFFECTIVE}) AS effective FROM public_archive_sources g JOIN public_archive_profiles p ON p.id=g.profile_id JOIN users owner ON owner.id=p.owner_user_id JOIN organizations o ON o.id=g.org_id JOIN events e ON e.org_id=g.org_id AND e.id=g.event_id JOIN teams t ON t.org_id=g.org_id AND t.id=g.team_id JOIN users nu ON nu.id=g.nominated_by LEFT JOIN team_members tm ON tm.org_id=g.org_id AND tm.team_id=g.team_id AND tm.id=g.member_id LEFT JOIN team_member_bindings b ON b.id=g.binding_id`;
+const SOURCE_SELECT = `SELECT g.*,p.kind AS profile_kind,p.owner_user_id,EXISTS(SELECT 1 FROM youth_event_policies yp WHERE yp.org_id=g.org_id AND yp.event_id=g.event_id AND yp.enabled) AS youth_enabled,e.name AS event_name,t.name AS team_name,tm.name AS member_name,(${EFFECTIVE}) AS effective FROM public_archive_sources g JOIN public_archive_profiles p ON p.id=g.profile_id JOIN users owner ON owner.id=p.owner_user_id JOIN organizations o ON o.id=g.org_id JOIN events e ON e.org_id=g.org_id AND e.id=g.event_id JOIN teams t ON t.org_id=g.org_id AND t.id=g.team_id JOIN users nu ON nu.id=g.nominated_by LEFT JOIN team_members tm ON tm.org_id=g.org_id AND tm.team_id=g.team_id AND tm.id=g.member_id LEFT JOIN team_member_bindings b ON b.id=g.binding_id`;
 export const ARCHIVE_EFFECTIVE_SOURCE_SQL = SOURCE_SELECT + ' WHERE (' + EFFECTIVE + ')';
 const PROOF = `SELECT g.id AS source_id,g.team_id,g.member_id,e.name AS event_name,to_char(m.starts_at AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS match_date,
  to_jsonb(m)||jsonb_build_object('state',to_jsonb(s),'confirmation',to_jsonb(cf),'last_event',to_jsonb(le),'last_command',to_jsonb(rc),'scoring_rules',to_jsonb(sr),
@@ -50,7 +52,92 @@ const PROOF = `SELECT g.id AS source_id,g.team_id,g.member_id,e.name AS event_na
  AND NOT EXISTS(SELECT 1 FROM match_exception_heads h WHERE h.org_id=m.org_id AND h.match_id=m.id AND h.active_request_id IS NOT NULL)
  AND (g.member_id IS NULL OR EXISTS(SELECT 1 FROM entry_roster_players rp WHERE rp.org_id=m.org_id AND rp.team_id=g.team_id AND rp.member_id=g.member_id AND ((rp.entry_id=m.home_entry_id AND rp.revision_id=m.home_roster_revision_id) OR (rp.entry_id=m.away_entry_id AND rp.revision_id=m.away_roster_revision_id))))
  ORDER BY m.starts_at DESC,m.id,g.id LIMIT ${MAX_ARCHIVE_MATCHES + 1}`;
+export interface PublicArchivesOptions extends ApiOptions {
+  youthPublicationGuard?: YouthPublicationGuard;
+}
 export class PublicArchivesService extends ApplicationService {
+  private readonly youthGuard: YouthPublicationGuard;
+  constructor(pool: Pool, options: PublicArchivesOptions) {
+    super(pool, options);
+    this.youthGuard =
+      options.youthPublicationGuard ?? createYouthPublicationGuard(options.participantDataKey);
+  }
+  protected async knownYouthProfile(c: PoolClient, p: Row) {
+    if (p.kind !== 'PLAYER') return false;
+    return (
+      (await knownYouthAccount(c, p.owner_user_id)) ||
+      Boolean(
+        (
+          await c.query(
+            `SELECT 1 FROM public_archive_sources s JOIN youth_event_policies yp ON yp.org_id=s.org_id AND yp.event_id=s.event_id AND yp.enabled WHERE s.profile_id=$1 LIMIT 1`,
+            [p.id],
+          )
+        ).rowCount,
+      )
+    );
+  }
+  private async lockYouthSource(c: PoolClient, row: Row) {
+    await c.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR SHARE NOWAIT', [
+      row.org_id,
+      row.event_id,
+    ]);
+    await c.query('SELECT id FROM teams WHERE org_id=$1 AND id=$2 FOR SHARE NOWAIT', [
+      row.org_id,
+      row.team_id,
+    ]);
+  }
+  private async youthSourceReady(c: PoolClient, row: Row, known?: boolean, futureConsent = false) {
+    if (row.profile_kind !== 'PLAYER') return true;
+    const isKnown =
+      known ??
+      (await this.knownYouthProfile(c, {
+        id: row.profile_id,
+        kind: 'PLAYER',
+        owner_user_id: row.owner_user_id,
+      }));
+    if (isKnown && !row.youth_enabled) return false;
+    if (!row.youth_enabled) return true;
+    await this.lockYouthSource(c, row);
+    const decision = await this.youthGuard(
+      c,
+      { orgId: row.org_id, eventId: row.event_id, teamId: row.team_id, memberId: row.member_id },
+      'PUBLIC_ARCHIVE',
+    );
+    if (!decision.ready) return false;
+    // An independently verified adult in a former youth context must explicitly grant
+    // the archive source again after that current age/identity qualification.
+    if (isKnown && decision.trustedAdult && !futureConsent) {
+      if (!row.consented_at || !decision.qualificationId) return false;
+      return Boolean(
+        (
+          await c.query(
+            'SELECT 1 FROM participant_qualification_prechecks WHERE id=$1 AND created_at<=$2::timestamptz',
+            [decision.qualificationId, row.consented_at],
+          )
+        ).rowCount,
+      );
+    }
+    return true;
+  }
+  protected async currentArchiveSources(c: PoolClient, profiles: Row[]): Promise<Row[]> {
+    if (!profiles.length) return [];
+    const rows = (
+      await c.query<Row>(
+        SOURCE_SELECT +
+          ' WHERE g.profile_id=ANY($1::uuid[]) AND (' +
+          EFFECTIVE +
+          ') ORDER BY g.org_id,g.event_id,g.id',
+        [profiles.map((p) => p.id)],
+      )
+    ).rows;
+    const known = new Map<string, boolean>();
+    for (const p of profiles) known.set(p.id, await this.knownYouthProfile(c, p));
+    const permitted: Row[] = [];
+    for (const r of rows)
+      if (await this.youthSourceReady(c, r, known.get(r.profile_id))) permitted.push(r);
+    return permitted;
+  }
+
   private readonly transactionActors = new WeakMap<PoolClient, Actor>();
   protected override async lockActor(c: PoolClient, cookie: string | undefined): Promise<Actor> {
     const actor = await super.lockActor(c, cookie);
@@ -100,7 +187,7 @@ export class PublicArchivesService extends ApplicationService {
     const ids = profiles.map((p) => p.id);
     const sources = (
       await c.query<Row>(
-        "SELECT id,org_id,event_id,nominated_by FROM public_archive_sources WHERE profile_id=ANY($1::uuid[]) AND status<>'REVOKED' ORDER BY id LIMIT 5001",
+        "SELECT id,org_id,event_id,team_id,nominated_by FROM public_archive_sources WHERE profile_id=ANY($1::uuid[]) AND status<>'REVOKED' ORDER BY id LIMIT 5001",
         [ids],
       )
     ).rows;
@@ -132,6 +219,14 @@ export class PublicArchivesService extends ApplicationService {
         [orgs],
       );
     if (sources.length) {
+      await c.query(
+        `SELECT e.id FROM events e WHERE EXISTS(SELECT 1 FROM public_archive_sources g WHERE g.profile_id=ANY($1::uuid[]) AND g.status<>'REVOKED' AND g.org_id=e.org_id AND g.event_id=e.id) ORDER BY e.org_id,e.id FOR SHARE OF e NOWAIT`,
+        [ids],
+      );
+      await c.query(
+        `SELECT t.id FROM teams t WHERE EXISTS(SELECT 1 FROM public_archive_sources g WHERE g.profile_id=ANY($1::uuid[]) AND g.status<>'REVOKED' AND g.org_id=t.org_id AND g.team_id=t.id) ORDER BY t.org_id,t.id FOR SHARE OF t NOWAIT`,
+        [ids],
+      );
       await c.query(
         `SELECT m.org_id,m.user_id FROM organization_memberships m WHERE EXISTS(SELECT 1 FROM public_archive_sources g WHERE g.profile_id=ANY($1::uuid[]) AND g.status<>'REVOKED' AND g.org_id=m.org_id AND g.nominated_by=m.user_id) ORDER BY m.org_id,m.user_id FOR SHARE OF m NOWAIT`,
         [ids],
@@ -224,7 +319,7 @@ export class PublicArchivesService extends ApplicationService {
       status: row.status,
       version: row.version,
       reason: row.revoke_reason ?? row.publisher_reason,
-      currentlyEffective: row.effective === true,
+      currentlyEffective: row.effective === true && (await this.youthSourceReady(c, row)),
       canConsent: owns && row.status === 'PENDING' && (await this.sourceUpstream(c, row.id)),
       canRevoke: (owns || manages) && row.status !== 'REVOKED',
     };
@@ -256,8 +351,10 @@ export class PublicArchivesService extends ApplicationService {
     };
   }
   private async sourceUpstream(c: PoolClient, id: string) {
-    return !!(await c.query(SOURCE_SELECT + ' WHERE g.id=$1 AND (' + SOURCE_VALID + ')', [id]))
-      .rowCount;
+    const row = (
+      await c.query<Row>(SOURCE_SELECT + ' WHERE g.id=$1 AND (' + SOURCE_VALID + ')', [id])
+    ).rows[0];
+    return !!row && (await this.youthSourceReady(c, row, undefined, true));
   }
   private async operation(c: PoolClient, actor: Actor, command: string, body: unknown) {
     await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
@@ -386,6 +483,13 @@ export class PublicArchivesService extends ApplicationService {
       if (p.version !== input.expectedVersion) conflict('档案已更新，请重新读取');
       if (input.type === 'PUBLISH') {
         if (p.status === 'PUBLISHED') conflict('档案已经发布');
+        if (
+          (await this.knownYouthProfile(c, p)) &&
+          !(await this.currentArchiveSources(c, [p])).length
+        )
+          conflict(
+            '青年档案须先取得当前精确来源的本人及监护公开档案许可；可信成年后亦须重新确认用途',
+          );
         const key = randomBytes(32).toString('base64url');
         await c.query(
           'INSERT INTO public_archive_publications(public_key,profile_id,consented_by) VALUES($1,$2,$3)',
@@ -609,12 +713,19 @@ export class PublicArchivesService extends ApplicationService {
       return this.privateSource(c, actor, id);
     });
   }
-  protected async projection(c: PoolClient, p: Row, asOf: string): Promise<PublicArchiveData> {
-    const sources = await c.query<Row>(
-      SOURCE_SELECT + ' WHERE g.profile_id=$1 AND (' + EFFECTIVE + ')',
-      [p.id],
-    );
-    const rows = (await c.query<Row>(PROOF, [p.id])).rows;
+  protected async projection(
+    c: PoolClient,
+    p: Row,
+    asOf: string,
+    permitted?: Row[],
+  ): Promise<PublicArchiveData> {
+    const sources = permitted ?? (await this.currentArchiveSources(c, [p]));
+    const rows = (
+      await c.query<Row>(
+        PROOF.replace('g.profile_id=$1', 'g.profile_id=$1 AND g.id=ANY($2::uuid[])'),
+        [p.id, sources.map((s) => s.id)],
+      )
+    ).rows;
     return archiveProjection(
       {
         publicKey: p.public_key,
@@ -629,32 +740,23 @@ export class PublicArchivesService extends ApplicationService {
         memberId: r.member_id,
         proof: r.proof,
       })) as ArchiveSample[],
-      sources.rowCount ?? 0,
+      sources.length,
       asOf,
     );
   }
   private async rankingProjections(c: PoolClient, profiles: Row[], asOf: string) {
     if (!profiles.length) return [];
-    const ids = profiles.map((p) => p.id);
-    const counts = (
-      await c.query<Row>(
-        'SELECT profile_id,count(*)::int AS count FROM (' +
-          SOURCE_SELECT +
-          ' WHERE g.profile_id=ANY($1::uuid[]) AND (' +
-          EFFECTIVE +
-          ')) valid GROUP BY profile_id',
-        [ids],
-      )
-    ).rows;
-    const byCount = new Map(counts.map((r) => [r.profile_id, r.count]));
-    // One database snapshot and two bounded statements for all ranking candidates. Never
-    // rank a truncated subset if the full authorized proof exceeds this request capacity.
+    const ids = profiles.map((p) => p.id),
+      sources = await this.currentArchiveSources(c, profiles);
+    const byCount = new Map<string, number>();
+    for (const s of sources) byCount.set(s.profile_id, (byCount.get(s.profile_id) ?? 0) + 1);
+    // Apply the current purpose allowlist inside each bounded proof query, before LIMIT.
     const rows = (
       await c.query<Row>(
         'SELECT requested.id AS profile_id,q.* FROM unnest($1::uuid[]) AS requested(id) CROSS JOIN LATERAL (' +
-          PROOF.replace('g.profile_id=$1', 'g.profile_id=requested.id') +
+          PROOF.replace('g.profile_id=$1', 'g.profile_id=requested.id AND g.id=ANY($2::uuid[])') +
           ') q LIMIT 5001',
-        [ids],
+        [ids, sources.map((s) => s.id)],
       )
     ).rows;
     if (rows.length > 5000)
@@ -702,7 +804,9 @@ export class PublicArchivesService extends ApplicationService {
       if (!p) throw notFound();
       await this.lockPublicSources(c, [p]);
       const at = (await c.query<Row>('SELECT statement_timestamp() AS now')).rows[0]!.now;
-      return this.projection(c, p, iso(at));
+      const sources = await this.currentArchiveSources(c, [p]);
+      if ((await this.knownYouthProfile(c, p)) && !sources.length) throw notFound();
+      return this.projection(c, p, iso(at), sources);
     });
   }
   async rankings(raw: unknown, peer: string) {

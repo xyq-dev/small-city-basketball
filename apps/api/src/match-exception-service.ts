@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { captureEventMatchNotifications } from './notification-source.js';
+import { notificationLeadMinutes } from './notification-runtime.js';
 import type { PoolClient } from 'pg';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
 import type { OrgActor } from './service.js';
@@ -488,6 +490,13 @@ export class MatchExceptionService extends ApplicationService {
         match,
         { requestId: request, operation: r.operation, kind: r.kind, reason: input.reason },
       );
+      if (input.type === 'APPROVE')
+        await captureEventMatchNotifications(
+          c,
+          a.ctx.orgId,
+          a.event.id,
+          notificationLeadMinutes(this.options),
+        );
       return this.receipt(c, a, input.clientRequestId, fingerprint, 'REVIEW', {
         requestId: request,
         status: input.type === 'APPROVE' ? 'APPROVED' : 'REJECTED',

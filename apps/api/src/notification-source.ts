@@ -87,6 +87,15 @@ export async function resolveNotificationSource(
     )
   ).rows[0];
   if (!m || !['SCHEDULED', 'READY'].includes(m.status)) return null;
+  const exception = (
+    await c.query<Row>(
+      'SELECT version,active_request_id FROM match_exception_heads WHERE org_id=$1 AND event_id=$2 AND match_id=$3 FOR SHARE',
+      [input.orgId, input.eventId, input.resourceId],
+    )
+  ).rows[0];
+  // An approved cancellation/forfeit retains SCHEDULED in the physical match row.
+  // Reinstatement changes the head version and creates a fresh notification generation.
+  if (exception?.active_request_id) return null;
   const startsAt = new Date(m.starts_at);
   if (startsAt <= now) return null;
   if (
@@ -96,12 +105,22 @@ export async function resolveNotificationSource(
       m.new_court_id !== m.court_id)
   )
     return null;
-  const plan = [m.id, m.reschedule_id ?? null, startsAt.toISOString(), m.court_id];
+  const plan = [
+    m.id,
+    m.reschedule_id ?? null,
+    startsAt.toISOString(),
+    m.court_id,
+    exception?.version ?? 0,
+  ];
   const dueAt =
     input.kind === 'MATCH_STARTING' ? new Date(startsAt.getTime() - leadMinutes * 60000) : now;
   return {
     ...input,
-    fingerprint: notificationHash([input.kind, ...plan]),
+    fingerprint: notificationHash([
+      input.kind,
+      ...plan,
+      input.kind === 'MATCH_STARTING' ? leadMinutes : null,
+    ]),
     location: typeof m.court_name === 'string' ? m.court_name : '待定',
     title: input.kind === 'MATCH_STARTING' ? '比赛即将开始' : '比赛安排已更新',
     detail:
@@ -159,6 +178,7 @@ export async function captureNotification(
   c: PoolClient,
   input: NotificationSourceInput,
   leadMinutes = 15,
+  refreshRecipients = true,
 ) {
   const source = await resolveNotificationSource(c, input, leadMinutes);
   if (!source) return null;
@@ -186,9 +206,11 @@ export async function captureNotification(
       )
     ).rows[0]!.id;
   await c.query(
-    `INSERT INTO notification_fanout_state(source_id) VALUES($1)
+    refreshRecipients
+      ? `INSERT INTO notification_fanout_state(source_id) VALUES($1)
      ON CONFLICT(source_id) DO UPDATE SET cursor_user_id=NULL,done=false
-     WHERE notification_fanout_state.done=true`,
+     WHERE notification_fanout_state.done=true`
+      : 'INSERT INTO notification_fanout_state(source_id) VALUES($1) ON CONFLICT DO NOTHING',
     [id],
   );
   return id;

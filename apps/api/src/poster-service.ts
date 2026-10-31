@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
+import type { ApiOptions } from './service.js';
+import { createYouthPublicationGuard } from './youth-guardians-publication.js';
+import type { YouthPublicationGuard } from './youth-guardians-publication.js';
+import type { YouthSnapshot } from '../../../packages/contracts/youth-guardians.js';
 import { ApiError, forbidden, notFound } from './errors.js';
 import { StandingsService } from './standings-service.js';
 import type { StandingsAccess } from './standings-service.js';
@@ -29,7 +33,17 @@ function unavailable(message = '海报来源或授权已变化，请重新生成
 let activeRenders = 0;
 
 /** Private recipes, no cached private originals or permanent anonymous image URLs. */
+export interface YouthPosterOptions extends ApiOptions {
+  youthPublicationGuard?: YouthPublicationGuard;
+}
 export class PosterService extends StandingsService {
+  private readonly youthGuard: YouthPublicationGuard;
+  constructor(pool: Pool, options: YouthPosterOptions) {
+    super(pool, options);
+    this.youthGuard =
+      options.youthPublicationGuard ?? createYouthPublicationGuard(options.participantDataKey);
+  }
+
   private async manager(
     c: PoolClient,
     cookie: string | undefined,
@@ -207,6 +221,7 @@ export class PosterService extends StandingsService {
         )
       ).rows;
       const byMember = new Map(materials.map((m) => [m.member_id, m]));
+      const youthSnapshots: YouthSnapshot[] = [];
       for (const player of selected) {
         const m = byMember.get(player.memberId);
         if (
@@ -229,6 +244,24 @@ export class PosterService extends StandingsService {
           recipe.omittedPlayerCount++;
           continue;
         }
+        const youth = await this.youthGuard(
+          c,
+          {
+            orgId: a.ctx.orgId,
+            eventId: a.event.id,
+            entryId: entry.entryId,
+            teamId: entry.teamId,
+            memberId: player.memberId,
+            rosterRevisionId: entry.rosterRevisionId,
+            rulesetId: (a.event as unknown as Row).locked_ruleset_id,
+          },
+          'PUBLICITY',
+        );
+        if (!youth.ready) {
+          recipe.omittedPlayerCount++;
+          continue;
+        }
+        if (youth.snapshot) youthSnapshots.push(youth.snapshot);
         if (
           input.includePortraits &&
           m.key_id !== participantKeyId(participantKey(this.options.participantDataKey))
@@ -253,6 +286,7 @@ export class PosterService extends StandingsService {
         rosterRevisionId: entry.rosterRevisionId,
         rulesetId: (a.event as unknown as Row).locked_ruleset_id,
         selectedMemberIds: selected.map((p) => p.memberId),
+        youthSnapshots,
       };
     } else if (input.kind === 'MATCHUP' || input.kind === 'RESULT') {
       const match = b.rows.find((m) => m.id === input.matchId);

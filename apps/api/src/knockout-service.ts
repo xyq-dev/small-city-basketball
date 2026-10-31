@@ -5,6 +5,8 @@ import {
   exceptionResultJoins,
 } from './match-exception-domain.js';
 import { randomUUID } from 'node:crypto';
+import { captureEventMatchNotifications } from './notification-source.js';
+import { notificationLeadMinutes } from './notification-runtime.js';
 import type { PoolClient } from 'pg';
 import type {
   EventKnockoutData,
@@ -437,6 +439,12 @@ export class KnockoutService extends SchedulingService {
           },
         );
         const response = (await this.view(c, ctx, await this.event(c, ctx, id, false))).response;
+        await captureEventMatchNotifications(
+          c,
+          ctx.orgId,
+          id,
+          notificationLeadMinutes(this.options),
+        );
         await this.ensureFreshSession(c, ctx);
         return response;
       });

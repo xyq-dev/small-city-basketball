@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { tradeBalances, tradeFen, parseTradeSource, tradeSeal, tradeOpen } from './trade-domain.js';
+import {
+  tradeSettlementCapacity,
+  tradeBalances,
+  tradeFen,
+  parseTradeSource,
+  tradeSeal,
+  tradeOpen,
+} from './trade-domain.js';
 describe('trade money and unknown-result boundaries', () => {
   it('pending and unknown refunds plus pending deposit deductions reserve the same paid capacity', () => {
     expect(
@@ -70,4 +77,32 @@ describe('trade money and unknown-result boundaries', () => {
     cipher[20] = (cipher[20] ?? 0) ^ 1;
     expect(() => tradeOpen(key, 'first', cipher)).toThrow();
   });
+});
+
+it('recomputes settlement capacity after deductions/reversals/refunds and excludes only its own reserved proposal', () => {
+  const proposal = { id: 'split', amount_fen: 100, status: 'APPROVED' };
+  const balances = { paidFen: 1000, refundReservedFen: 0, deductionApprovedFen: 100 };
+  expect(tradeSettlementCapacity('ENTRY_DEPOSIT', balances, 0, [proposal], 'split')).toBe(100);
+  expect(
+    tradeSettlementCapacity(
+      'ENTRY_DEPOSIT',
+      { ...balances, deductionApprovedFen: 0 },
+      0,
+      [proposal],
+      'split',
+    ),
+  ).toBe(0);
+  expect(
+    tradeSettlementCapacity(
+      'LOCAL_BOOKING',
+      { ...balances, refundReservedFen: 950 },
+      100,
+      [proposal],
+      'split',
+    ),
+  ).toBe(0);
+  expect(tradeSettlementCapacity('LOCAL_BOOKING', balances, 100, [proposal])).toBe(800);
+  expect(
+    tradeBalances(1000, [], [{ amount_fen: 100, status: 'REVERSAL_PENDING' }], []),
+  ).toMatchObject({ deductionReservedFen: 100, deductionApprovedFen: 0, refundableFen: 900 });
 });

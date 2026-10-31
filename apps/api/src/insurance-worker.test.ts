@@ -42,6 +42,9 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
       user_id: id(),
       quote_id: quoteId,
       operation_id: operation,
+      version: 1,
+      refunded_fen: 0,
+      provider_order_id: null,
       quote_ciphertext: sealInsurance(key, quoteId, quote),
       applicant_ciphertext: sealInsurance(key, quoteId, applicant),
       material_revision_id: id(),
@@ -126,6 +129,7 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
         }
         return { rows: [], rowCount: 1 };
       }
+      if (sql.startsWith('INSERT INTO insurance_policy_facts')) return { rows: [], rowCount: 1 };
       if (sql.startsWith('INSERT INTO insurance_operations')) return { rows: [], rowCount: 1 };
       throw Error('Unexpected synthetic DB operation ' + sql);
     },
@@ -207,6 +211,16 @@ describe('durable insurance worker uncertainty and fencing', () => {
     expect(h.state.queryCalls).toEqual([h.order.operation_id, h.order.operation_id]);
     expect(h.state.op.reconcile_only).toBe(true);
   });
+  it('an accepted cancellation remains query-only until the original policy actually cancels', async () => {
+    const h = harness('CANCEL');
+    h.state.fact = h.fact;
+    await h.service.drain();
+    expect(h.state.op.status).toBe('UNKNOWN');
+    expect(h.order.policy_status).toBe('CANCEL_PENDING');
+    await h.service.drain();
+    expect(h.state.cancelCalls).toHaveLength(1);
+    expect(h.state.queryCalls).toHaveLength(2);
+  });
   it('a late worker result cannot overwrite an operation owned by another fence', async () => {
     const h = harness();
     h.state.fact = h.fact;
@@ -231,6 +245,15 @@ describe('durable insurance worker uncertainty and fencing', () => {
     await h.service.drain();
     expect(h.state.orderWrites).toBe(0);
     expect(h.order.policy_status).toBe('CANCELLED');
+  });
+  it('a query cannot silently switch an order already bound to a provider order id', async () => {
+    const h = harness();
+    h.state.op.reconcile_only = true;
+    h.order.provider_order_id = 'existing-provider-order';
+    h.state.fact = h.fact;
+    await h.service.drain();
+    expect(h.state.orderWrites).toBe(0);
+    expect(h.state.op.status).toBe('UNKNOWN');
   });
   it('no supplier configuration produces no network work and reports a closed feature', async () => {
     const service = new InsuranceService({} as Pool, {

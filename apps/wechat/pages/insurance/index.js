@@ -231,7 +231,7 @@ Page({
         throw Error('保单文件元数据无效，请重新查单。');
       const id = await ui.uuid();
       if (!ui.held(this, t)) return;
-      path = wx.env.USER_DATA_PATH + '/scb-insurance-' + id + '.pdf';
+      path = wx.env.USER_DATA_PATH + '/scb-participant-insurance-' + id + '.pdf';
       if (!files.trackTemp(wx, path)) throw Error('无法记录私有临时文件，已停止预览。');
       this._temporaryFiles.push(path);
       await new Promise((resolve, reject) =>

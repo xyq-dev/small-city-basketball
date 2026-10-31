@@ -114,7 +114,7 @@ export function createAccountClosureHooks(
         if ((error as { code?: string }).code !== 'TRADE_MONEY_UNRESOLVED') throw error;
         blockers.push('TRADE_MONEY_UNRESOLVED');
       }
-      return closureBlockers(blockers);
+      return closureBlockers([...new Set(blockers)]);
     },
     async revoke(c, userId) {
       await dependencies.streaming.revoke(c, userId);

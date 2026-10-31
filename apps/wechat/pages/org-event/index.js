@@ -259,7 +259,18 @@ Page({
   },
   openFeature(e) {
     const key = e.currentTarget.dataset.page;
-    if (['recruitment', 'poster', 'staff-configuration', 'match-exceptions'].includes(key))
+    if (
+      !this.data.loading &&
+      this.data.manage &&
+      [
+        'recruitment',
+        'poster',
+        'staff-configuration',
+        'match-exceptions',
+        'youth-review',
+        'trade-manage',
+      ].includes(key)
+    )
       ui.open(key, { orgId: this.orgId, eventId: this.eventId });
   },
   openSetup() {

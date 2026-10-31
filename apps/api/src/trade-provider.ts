@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import type {
   WechatPayOrder,
   WechatPayRefund,
@@ -117,5 +118,9 @@ export interface TradeRuntime {
     sessionId: string;
     merchantKey: string;
     code: string;
-  }) => Promise<{ openid: string; appId: string }>;
+  }) => Promise<{
+    openid: string;
+    appId: string;
+    assertCurrent: (client: PoolClient) => Promise<void>;
+  }>;
 }

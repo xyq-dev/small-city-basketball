@@ -56,7 +56,18 @@
     "pages/sponsorships/index",
     "pages/public-archives/index",
     "pages/public-archive/index",
-    "pages/public-ledgers/index"
+    "pages/public-ledgers/index",
+    "pages/live-studio/index",
+    "pages/media-jobs/index",
+    "pages/insurance/index",
+    "pages/qualification-precheck/index",
+    "pages/trade-order/index",
+    "pages/trade-manage/index",
+    "pages/messages/index",
+    "pages/notification-settings/index",
+    "pages/account-closure/index",
+    "pages/guardian/index",
+    "pages/youth-review/index"
   ],
   "window": {
     "navigationBarTitleText": "小城市篮球",

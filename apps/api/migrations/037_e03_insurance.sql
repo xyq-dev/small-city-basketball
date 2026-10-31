@@ -59,6 +59,7 @@ CREATE TABLE insurance_orders (
   version integer NOT NULL DEFAULT 1 CHECK(version>=1),
   payment_status text NOT NULL DEFAULT 'UNPAID' CHECK(payment_status IN('UNPAID','PENDING','PAID','REFUND_PENDING','REFUNDED','FAILED')),
   policy_status text NOT NULL DEFAULT 'PENDING' CHECK(policy_status IN('PENDING','ISSUED','FAILED','CANCEL_PENDING','CANCELLED')),
+  provider_id text NOT NULL,
   provider_order_id text,
   policy_ciphertext text,
   cancellation_requested_at timestamptz,
@@ -73,6 +74,19 @@ CREATE TABLE insurance_orders (
   FOREIGN KEY(org_id,entry_id) REFERENCES entries(org_id,id),
   CHECK(policy_status<>'ISSUED' OR payment_status='PAID')
 );
+CREATE UNIQUE INDEX insurance_provider_order_unique ON insurance_orders(provider_id,provider_order_id) WHERE provider_order_id IS NOT NULL;
+CREATE TABLE insurance_policy_facts (
+  id uuid PRIMARY KEY,
+  order_id uuid NOT NULL REFERENCES insurance_orders(id),
+  order_version integer NOT NULL CHECK(order_version>=1),
+  key_id char(64) NOT NULL CHECK(key_id ~ '^[0-9a-f]{64}$'),
+  fact_hash char(64) NOT NULL CHECK(fact_hash ~ '^[0-9a-f]{64}$'),
+  fact_ciphertext text NOT NULL,
+  has_document boolean NOT NULL,
+  observed_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  UNIQUE(order_id,fact_hash)
+);
+CREATE INDEX insurance_policy_fact_history ON insurance_policy_facts(order_id,observed_at DESC,id DESC);
 CREATE UNIQUE INDEX insurance_one_unresolved_subject ON insurance_orders(org_id,entry_id,member_id) WHERE policy_status IN('PENDING','ISSUED','CANCEL_PENDING') OR payment_status='REFUND_PENDING' OR (policy_status='FAILED' AND payment_status='PAID');
 CREATE TABLE insurance_operations (
   id uuid PRIMARY KEY,
@@ -112,6 +126,7 @@ CREATE TABLE insurance_provider_events (
 );
 CREATE FUNCTION e03_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN RAISE EXCEPTION 'Insurance source evidence is immutable' USING ERRCODE='23514'; END $$;
+CREATE TRIGGER insurance_policy_fact_immutable BEFORE UPDATE OR DELETE ON insurance_policy_facts FOR EACH ROW EXECUTE FUNCTION e03_immutable();
 CREATE TRIGGER insurance_quote_immutable BEFORE UPDATE OR DELETE ON insurance_quotes FOR EACH ROW EXECUTE FUNCTION e03_immutable();
 CREATE TRIGGER insurance_receipt_immutable BEFORE UPDATE OR DELETE ON insurance_receipts FOR EACH ROW EXECUTE FUNCTION e03_immutable();
 CREATE TRIGGER insurance_event_immutable BEFORE UPDATE OR DELETE ON insurance_provider_events FOR EACH ROW EXECUTE FUNCTION e03_immutable();

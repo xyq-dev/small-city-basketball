@@ -41,7 +41,7 @@ CREATE TABLE trade_refunds (
 CREATE TABLE trade_deductions (
  id uuid PRIMARY KEY,order_id uuid NOT NULL REFERENCES trade_orders(id),amount_fen integer NOT NULL CHECK(amount_fen BETWEEN 1 AND 100000000),
  reason text NOT NULL CHECK(char_length(reason) BETWEEN 4 AND 1000),evidence_reference text NOT NULL CHECK(char_length(evidence_reference) BETWEEN 4 AND 200),
- status text NOT NULL DEFAULT 'PENDING_REVIEW' CHECK(status IN('PENDING_REVIEW','APPROVED','REJECTED','REVERSED')),
+ status text NOT NULL DEFAULT 'PENDING_REVIEW' CHECK(status IN('PENDING_REVIEW','APPROVED','REJECTED','REVERSAL_PENDING','REVERSED')),
  proposed_by uuid NOT NULL REFERENCES users(id),reviewed_by uuid REFERENCES users(id),review_reason text,created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  CHECK(reviewed_by IS NULL OR reviewed_by<>proposed_by),CHECK(status='PENDING_REVIEW' OR reviewed_by IS NOT NULL)
 );

@@ -21,6 +21,7 @@ import {
   tradeBalances,
   tradeSeal,
   tradeOpen,
+  tradeSettlementCapacity,
 } from './trade-domain.js';
 import type { TradeRuntime, TradeMerchant } from './trade-provider.js';
 import type {
@@ -852,6 +853,7 @@ export class TradeService extends ApplicationService {
     let dispatched = false;
     try {
       let openid: string | undefined;
+      let payerCheck: ((c: PoolClient) => Promise<void>) | undefined;
       if (channel === 'JSAPI') {
         const payer = await this.runtime.resolvePayer!({
           actorId: i.actor.user.id,
@@ -860,6 +862,7 @@ export class TradeService extends ApplicationService {
           code: code!,
         });
         if (
+          typeof payer.assertCurrent !== 'function' ||
           payer.appId !== i.merchant.appId ||
           typeof payer.openid !== 'string' ||
           payer.openid.length < 16 ||
@@ -867,9 +870,11 @@ export class TradeService extends ApplicationService {
         )
           tradeFail('TRADE_PAYER_INVALID', '当前微信付款身份无法核验', 403);
         openid = payer.openid;
+        payerCheck = payer.assertCurrent;
       }
-      // Auth/config/source must still be current after the external login-code exchange.
+      // Resolver check takes maintenance/session/user/identity locks BEFORE the generic actor lock.
       await this.transaction(async (c) => {
+        if (payerCheck) await payerCheck(c);
         const ctx = await this.context(c, cookie, id);
         if (
           ctx.a.sessionId !== i.actor.sessionId ||
@@ -879,6 +884,19 @@ export class TradeService extends ApplicationService {
           this.merchant(ctx.order.org_id, ctx.order) !== i.merchant
         )
           tradeFail('TRADE_SOURCE_NOT_PAYABLE', '付款前资料已变化，请查询原订单');
+        const current = (
+          await c.query<Row>(
+            'SELECT *,clock_timestamp() AS db_now FROM trade_payment_attempts WHERE id=$1 AND order_id=$2 FOR UPDATE',
+            [i.attempt.id, id],
+          )
+        ).rows[0];
+        if (
+          !current ||
+          current.status !== 'DISPATCHING' ||
+          current.fence !== i.attempt.fence ||
+          new Date(current.expires_at) <= new Date(current.db_now)
+        )
+          tradeFail('TRADE_PAYMENT_STATE', '原付款意图已变化或过期，请查询原编号');
         await this.ensureFreshSession(c, ctx.a);
       });
       const input = {
@@ -1077,10 +1095,39 @@ export class TradeService extends ApplicationService {
         id,
         async () => {
           assertTradeVersion(o.version, tradeVersion(b.expectedVersion));
-          if (row.status !== (b.decision === 'REVERSE' ? 'APPROVED' : 'PENDING_REVIEW'))
+          if (
+            b.decision === 'REVERSE'
+              ? !['APPROVED', 'REVERSAL_PENDING'].includes(row.status)
+              : row.status !== 'PENDING_REVIEW' &&
+                !(type === 'SETTLEMENT' && b.decision === 'REJECT' && row.status === 'APPROVED')
+          )
             tradeFail('TRADE_REVIEW_STATE', '原申请已处理，请核对当前状态');
-          if (type === 'SETTLEMENT' && b.decision === 'APPROVE')
-            await this.settlementAllowed(c, ctx);
+          if (type === 'SETTLEMENT' && b.decision === 'APPROVE') {
+            const m = await this.settlementAllowed(c, ctx);
+            if (
+              row.amount_fen >
+              tradeSettlementCapacity(
+                o.kind,
+                m.balances,
+                o.quote.platformFeeFen ?? 0,
+                m.settlements as any,
+                row.id,
+              )
+            )
+              tradeFail(
+                'TRADE_SETTLEMENT_AMOUNT',
+                '原分账金额已超过当前可分收入，请拒绝原提案后重新核对',
+              );
+          }
+          let reversalStatus = 'REVERSED';
+          if (type === 'DEDUCTION' && b.decision === 'REVERSE') {
+            const m = await this.money(c, o);
+            const otherApproved = m.deductions
+              .filter((x) => x.id !== row.id && x.status === 'APPROVED')
+              .reduce((n, x) => n + x.amount_fen, 0);
+            if (otherApproved < m.balances.settlementReservedFen)
+              reversalStatus = 'REVERSAL_PENDING';
+          }
           await c.query(
             `UPDATE ${table} SET status=$2,reviewed_by=$3,review_reason=$4 ${type === 'DEDUCTION' ? '' : ',updated_at=clock_timestamp()'} WHERE id=$1`,
             [
@@ -1088,7 +1135,7 @@ export class TradeService extends ApplicationService {
               b.decision === 'APPROVE'
                 ? 'APPROVED'
                 : b.decision === 'REVERSE'
-                  ? 'REVERSED'
+                  ? reversalStatus
                   : 'REJECTED',
               a.user.id,
               reason,
@@ -1124,7 +1171,14 @@ export class TradeService extends ApplicationService {
       const ctx = await this.context(c, cookie, id),
         { a, order: o, s } = ctx;
       if (!ctx.manage && !ctx.operator) throw forbidden();
-      if (o.kind !== 'ENTRY_DEPOSIT' || !s.fulfilled || s.disputed)
+      if (
+        o.kind !== 'ENTRY_DEPOSIT' ||
+        !s.fulfilled ||
+        !s.valid ||
+        s.disputed ||
+        o.status === 'SOURCE_CONFLICT' ||
+        tradeHash(s.identity) !== o.source_hash
+      )
         tradeFail('TRADE_DEPOSIT_STATE', '保证金须赛后且无未决争议再按条款提出扣减');
       return this.operation(
         c,
@@ -1268,7 +1322,13 @@ export class TradeService extends ApplicationService {
       if (!['SENDING', 'UNKNOWN', 'PROCESSING'].includes(local.status))
         tradeFail('TRADE_REFUND_STATE', '退款未获当前执行授权');
       const status =
-        r.state === 'SUCCESS' ? 'SUCCEEDED' : r.state === 'PROCESSING' ? 'PROCESSING' : 'FAILED';
+        r.state === 'SUCCESS'
+          ? 'SUCCEEDED'
+          : r.state === 'PROCESSING'
+            ? 'PROCESSING'
+            : r.state === 'CLOSED'
+              ? 'FAILED'
+              : 'UNKNOWN';
       await c.query(
         'UPDATE trade_refunds SET status=$2,provider_refund_id=$3,success_at=$4,updated_at=clock_timestamp() WHERE id=$1',
         [local.id, status, r.refundId, r.state === 'SUCCESS' ? r.successTime : null],
@@ -1311,7 +1371,7 @@ export class TradeService extends ApplicationService {
       tradeFail('TRADE_SETTLEMENT_SOURCE', '履约未完成、存在争议或来源冲突，不能分账');
     if (
       money.refunds.some((r) => !['SUCCEEDED', 'FAILED', 'REJECTED'].includes(r.status)) ||
-      money.deductions.some((d) => d.status === 'PENDING_REVIEW')
+      money.deductions.some((d) => ['PENDING_REVIEW', 'REVERSAL_PENDING'].includes(d.status))
     )
       tradeFail('TRADE_SETTLEMENT_UNRESOLVED', '先处理全部未决退款和扣减');
     const rec = (
@@ -1356,12 +1416,12 @@ export class TradeService extends ApplicationService {
             tradeFail('TRADE_SETTLEMENT_EXISTS', '原分账尚需核对，不创建第二单');
           const p = money.attempts.find((p) => p.status === 'PAID' && p.profit_sharing);
           if (!p) tradeFail('TRADE_SPLIT_NOT_RESERVED', '原支付未按分账产品预留，不能事后改成分账');
-          const limit =
-            o.kind === 'ENTRY_DEPOSIT'
-              ? money.balances.deductionApprovedFen
-              : money.balances.paidFen -
-                money.balances.refundReservedFen -
-                (o.quote.platformFeeFen ?? 0);
+          const limit = tradeSettlementCapacity(
+            o.kind,
+            money.balances,
+            o.quote.platformFeeFen ?? 0,
+            money.settlements as any,
+          );
           if (limit <= 0 || limit > p.total_fen)
             tradeFail('TRADE_SETTLEMENT_AMOUNT', '当前没有可分账收入；未扣保证金不作为收入');
           const sid = randomUUID();
@@ -1408,6 +1468,17 @@ export class TradeService extends ApplicationService {
             receiver?.merchantId !== s.receiver_merchant_id
           )
             tradeFail('TRADE_SETTLEMENT_DISABLED', '原分账接收方或回退通道已变化', 503);
+          if (
+            s.amount_fen >
+            tradeSettlementCapacity(
+              o.kind,
+              money.balances,
+              o.quote.platformFeeFen ?? 0,
+              money.settlements as any,
+              s.id,
+            )
+          )
+            tradeFail('TRADE_SETTLEMENT_AMOUNT', '原分账金额超过当前可分收入，禁止派发');
           const p = money.attempts.find(
             (p) => p.id === s.payment_id && p.status === 'PAID' && p.profit_sharing,
           );
@@ -1578,12 +1649,15 @@ export class TradeService extends ApplicationService {
             tradeFail('TRADE_RETURN_DISABLED', '原分账回退通道未配置，保留退款申请待处理', 503);
           const refund = (
             await c.query(
-              "SELECT id FROM trade_refunds WHERE order_id=$1 AND payment_id=$2 AND status='APPROVED'",
+              "SELECT id FROM trade_refunds WHERE order_id=$1 AND payment_id=$2 AND status='APPROVED' UNION ALL SELECT id FROM trade_deductions WHERE order_id=$1 AND status='REVERSAL_PENDING' LIMIT 1",
               [id, s.payment_id],
             )
           ).rows[0];
           if (!refund)
-            tradeFail('TRADE_RETURN_REVIEW_REQUIRED', '须先独立批准原支付退款，再回退该支付分账');
+            tradeFail(
+              'TRADE_RETURN_REVIEW_REQUIRED',
+              '须先独立批准退款或保证金扣减更正，再回退原分账',
+            );
           const rid = randomUUID(),
             r = {
               id: rid,
@@ -2081,7 +2155,7 @@ export class TradeService extends ApplicationService {
         m.refunds.some((x) =>
           ['PENDING_REVIEW', 'APPROVED', 'SENDING', 'UNKNOWN', 'PROCESSING'].includes(x.status),
         ) ||
-        m.deductions.some((x) => x.status === 'PENDING_REVIEW') ||
+        m.deductions.some((x) => ['PENDING_REVIEW', 'REVERSAL_PENDING'].includes(x.status)) ||
         m.settlements.some((x) =>
           [
             'PENDING_REVIEW',

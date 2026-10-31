@@ -179,7 +179,7 @@ export class NotificationService extends ApplicationService {
       await this.settingsLock(c, a.user.id);
       const old = (
         await c.query<Row>(
-          'SELECT * FROM notification_subscription_intents WHERE user_id=$1 AND client_request_id=$2',
+          'SELECT *,expires_at>clock_timestamp() AS valid FROM notification_subscription_intents WHERE user_id=$1 AND client_request_id=$2',
           [a.user.id, p.clientRequestId],
         )
       ).rows[0];
@@ -629,6 +629,39 @@ export class NotificationService extends ApplicationService {
   captureEventMatches(c: PoolClient, orgId: string, eventId: string) {
     return captureEventMatchNotifications(c, orgId, eventId, this.leadMinutes);
   }
+  /** Cyclic DB keyset scan also discovers pre-existing schedules and new lead-time generations. */
+  async scheduleStarts() {
+    await this.transaction(async (c) => {
+      const scan = (
+        await c.query<Row>(
+          'SELECT * FROM notification_start_scan WHERE singleton=true FOR UPDATE SKIP LOCKED',
+        )
+      ).rows[0];
+      if (!scan) return;
+      const matches = await c.query<Row>(
+        `SELECT m.id,m.org_id,m.event_id,m.starts_at FROM published_matches m
+        JOIN events e ON e.org_id=m.org_id AND e.id=m.event_id JOIN organizations o ON o.id=m.org_id
+        WHERE o.status='ACTIVE' AND e.status IN('SCHEDULED','RUNNING') AND m.status IN('SCHEDULED','READY')
+        AND m.starts_at>clock_timestamp() AND m.starts_at<=clock_timestamp()+make_interval(mins=>$1)
+        AND ($2::timestamptz IS NULL OR (m.starts_at,m.id)>($2::timestamptz,$3::uuid))
+        ORDER BY m.starts_at,m.id LIMIT 100`,
+        [this.leadMinutes, scan.cursor_starts_at, scan.cursor_match_id],
+      );
+      for (const m of matches.rows)
+        await captureNotification(
+          c,
+          { kind: 'MATCH_STARTING', orgId: m.org_id, eventId: m.event_id, resourceId: m.id },
+          this.leadMinutes,
+          false,
+        );
+      const last = matches.rows.at(-1),
+        more = matches.rows.length === 100;
+      await c.query(
+        'UPDATE notification_start_scan SET cursor_starts_at=$1,cursor_match_id=$2,updated_at=clock_timestamp() WHERE singleton=true',
+        [more ? last!.starts_at : null, more ? last!.id : null],
+      );
+    });
+  }
   async fanout() {
     const sources = await this.pool
       .query<Row>(`SELECT s.* FROM notification_source_events s JOIN notification_fanout_state f ON f.source_id=s.id
@@ -888,6 +921,7 @@ export class NotificationService extends ApplicationService {
     if (this.draining) return;
     this.draining = true;
     try {
+      await this.scheduleStarts();
       await this.fanout();
       await this.recoverExpiredLeases();
       if (!this.key || !this.notifications.provider) return;

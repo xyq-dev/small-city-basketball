@@ -80,7 +80,23 @@ export class UnifiedSearchService extends PublicArchivesService {
       const items: PublicSearchItem[] = [];
       for (const r of page) {
         if (r.profile) {
-          const current = await this.projection(c, r.profile, asOf);
+          const permitted = await this.currentArchiveSources(c, [r.profile]);
+          if (!permitted.length) continue;
+          if (q.city || q.regionId) {
+            const sourceRegion = region.replaceAll('$4', '$2').replaceAll('$5', '$3');
+            const sourceListing = publicListing.replaceAll('$5', '$3');
+            const regionMatch = await c.query(
+              `WITH RECURSIVE selected_regions AS (
+              SELECT region_id FROM region_catalog_nodes WHERE region_id=$2::uuid AND catalog_version=$3
+              UNION ALL SELECT n.region_id FROM region_catalog_nodes n JOIN selected_regions r ON n.parent_region_id=r.region_id WHERE n.catalog_version=$3
+            ) SELECT l.id FROM public_archive_sources g JOIN event_directory_listings l ON l.org_id=g.org_id AND l.event_id=g.event_id ${sourceListing}
+              WHERE g.id=ANY($4::uuid[]) AND l.status='ACTIVE' AND (${live}) AND ($1::text IS NULL OR l.display_city=$1) AND ${sourceRegion}
+              ORDER BY l.id LIMIT 1 FOR SHARE OF l,sp NOWAIT`,
+              [q.city, q.regionId, q.catalogVersion, permitted.map((s) => s.id)],
+            );
+            if (!regionMatch.rowCount) continue;
+          }
+          const current = await this.projection(c, r.profile, asOf, permitted);
           if (current.authorizedSourceCount < 1) continue;
         }
         items.push({

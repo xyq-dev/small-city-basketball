@@ -1,5 +1,6 @@
 // Fixed build-time origin. Shared links and QR payloads never select a server.
 const API_ORIGIN = 'https://basketball.playhubs.cn';
+const { expansionPathAllowed } = require('./expansion-api');
 const opaque = /^[A-Za-z0-9_-]{43}$/;
 const uuidPattern = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const uuidRegex = new RegExp('^' + uuidPattern + '$', 'i');
@@ -53,6 +54,7 @@ function pathAllowed(path, method = 'GET') {
     query = queryValues(parts[1]);
   if (!query) return false;
   const noQuery = Object.keys(query).length === 0;
+  if (expansionPathAllowed(base, method, query, uuidPattern)) return true;
   const matches = (value) => new RegExp('^' + value + '$', 'i').test(base);
   const auth = {
     '/v1/auth/capabilities': 'GET',
@@ -790,9 +792,16 @@ function createClient(wxApi) {
         '^/v1/me/governance/cases/' + uuidPattern + '/attachments/' + uuidPattern + '/content$',
         'i',
       ).test(path);
+      const policy = new RegExp('^/v1/insurance/orders/' + uuidPattern + '/document$', 'i').test(
+        path,
+      );
+      const guardianProof = new RegExp(
+        '^/v1/youth-guardian-requests/' + uuidPattern + '/proof$',
+        'i',
+      ).test(path);
       const scope = poster
         ? 'poster'
-        : evidence
+        : evidence || policy || guardianProof
           ? 'evidence'
           : participant
             ? 'participant'

@@ -27,7 +27,7 @@ RUN npm ci --omit=dev --workspace @small-city-basketball/api --include-workspace
 FROM node:24.22.1-bookworm-slim AS api
 ENV NODE_ENV=production
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk fontconfig \
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk fontconfig ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 10001 scb && useradd --uid 10001 --gid 10001 --no-create-home scb
 COPY --from=api-deps /app/node_modules ./node_modules

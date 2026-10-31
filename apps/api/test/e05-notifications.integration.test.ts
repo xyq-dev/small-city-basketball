@@ -6,11 +6,17 @@ import type { NotificationOptions } from '../src/notification-service.js';
 import type { WechatNotificationResult } from '../src/notification-provider.js';
 import { hashToken } from '../src/security.js';
 import { openNotificationTarget } from '../src/notification-domain.js';
-import { closeHarness, createScoringHarness } from './p05-support.js';
+import {
+  closeHarness,
+  createScoringHarness,
+  defaultRules,
+  scoringRulesPath,
+} from './p05-support.js';
+import { enable, disable, savePublishRules } from './p05b-support.js';
 import type { Harness } from './p05-support.js';
 import { scheduled, rescheduling, reschedule } from './p04-rescheduling-support.js';
 import { command, openRegistration, submittedEntry, grant } from './p03-support.js';
-import { ORIGIN, data } from './support.js';
+import { ORIGIN, data, call } from './support.js';
 import type { User } from './support.js';
 
 // These are deliberately synthetic recipients and transports. No official endpoint is contacted.
@@ -64,14 +70,23 @@ async function soon(s: NotificationService) {
   const startsAt = new Date(now.getTime() + 12 * 60000).toISOString();
   const startDate = new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 10);
   const endDate = new Date(now.getTime() + 32 * 3600000).toISOString().slice(0, 10);
+  const teamOffset = fixtureIndex++ * 2;
   const f = await scheduled(h, {
-    teams: h.teams.slice(fixtureIndex * 2, fixtureIndex++ * 2 + 2),
+    teams: h.teams.slice(teamOffset, teamOffset + 2),
     startDate,
     endDate,
     startsAt,
   });
   const eventId = f.registration.event.id,
     matchId = f.matches[0]!.id;
+  expect(
+    (
+      await h.api.pool.query(
+        "SELECT count(*)::int AS n FROM notification_source_events WHERE org_id=$1 AND resource_id=$2 AND kind='MATCH_STARTING'",
+        [h.owner.orgId, matchId],
+      )
+    ).rows[0]!.n,
+  ).toBeGreaterThan(0);
   await tx((c) => s.captureEventMatches(c, h.owner.orgId, eventId));
   await s.fanout();
   const source = {
@@ -111,12 +126,12 @@ async function delivery(id: string) {
 
 describe('E05 authoritative notifications in real PostgreSQL', () => {
   beforeAll(async () => {
-    h = await createScoringHarness(12);
+    h = await createScoringHarness(14);
     await h.api.pool.query(
       'INSERT INTO wechat_identities(id,user_id,app_id,openid_hash) VALUES($1,$2,$3,$4)',
       [randomUUID(), h.owner.id, appId, hashToken(appId + '\n' + openid)],
     );
-  });
+  }, 180000);
   afterEach(async () => {
     if (!h) return;
     await tx(async (c) => {
@@ -183,6 +198,35 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
         )
       ).rows[0]!.n,
     ).toBe(before);
+    const changed = new NotificationService(
+      h.api.pool,
+      { databaseUrl: h.databaseUrl, appOrigin: ORIGIN },
+      { startingLeadMinutes: 30, autoDispatch: false },
+    );
+    services.push(changed);
+    expect((await changed.list(h.owner.cookie, {})).items.some((x) => x.id === f.row.id)).toBe(
+      false,
+    );
+    await changed.scheduleStarts();
+    await changed.fanout();
+    const generated = (
+      await h.api.pool.query(
+        "SELECT s.id,f.done FROM notification_source_events s JOIN notification_fanout_state f ON f.source_id=s.id WHERE s.org_id=$1 AND s.resource_id=$2 AND s.kind='MATCH_STARTING' AND s.due_at=s.expires_at-interval '30 minutes'",
+        [h.owner.orgId, f.matchId],
+      )
+    ).rows[0]!;
+    expect(generated.done).toBe(true);
+    expect(
+      (await changed.list(h.owner.cookie, {})).items.some((x) => x.time === f.matches[0]!.startsAt),
+    ).toBe(true);
+    await changed.scheduleStarts();
+    expect(
+      (
+        await h.api.pool.query('SELECT done FROM notification_fanout_state WHERE source_id=$1', [
+          generated.id,
+        ])
+      ).rows[0]!.done,
+    ).toBe(true);
   });
 
   it('binds encrypted recipient to current AppID/hash/version, never trusting the client target', async () => {
@@ -384,6 +428,14 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
         startsAt: new Date(Date.parse(current.match.startsAt) + 120 * 60000).toISOString(),
       }),
     );
+    expect(
+      (
+        await h.api.pool.query(
+          "SELECT count(*)::int AS n FROM notification_source_events WHERE org_id=$1 AND resource_id=$2 AND kind='MATCH_RESCHEDULED'",
+          [h.owner.orgId, f.matchId],
+        )
+      ).rows[0]!.n,
+    ).toBe(1);
     await s.drain();
     expect(sends).toBe(0);
     expect((await delivery(f.row.delivery_id)).state).toBe('CANCELLED');
@@ -470,6 +522,57 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
     expect(sends).toBe(0);
   });
 
+  it('a new public follow catches up a completed fanout but does not create external permission; revocation hides it', async () => {
+    let sends = 0;
+    const s = service(async () => {
+      sends++;
+      return { state: 'ACCEPTED' };
+    });
+    const f = await soon(s);
+    data(
+      await call(h.api, 'put', scoringRulesPath(h.owner.orgId, f.eventId), {
+        cookie: h.owner.cookie,
+        body: { expectedEventVersion: f.publication.event.version, ...defaultRules() },
+      }),
+    );
+    await savePublishRules(h, f.eventId);
+    const publicView = await enable(h, f.eventId);
+    const key = publicView.publication!.publicEventId;
+    expect(
+      (await s.list(h.otherOwner.cookie, {})).items.some(
+        (x) => x.eventName === f.registration.event.name,
+      ),
+    ).toBe(false);
+    data(
+      await call(h.api, 'post', '/v1/me/follows', {
+        cookie: h.otherOwner.cookie,
+        body: { publicEventId: key },
+      }),
+      201,
+    );
+    await s.fanout();
+    await s.drain();
+    const inbox = await s.list(h.otherOwner.cookie, {});
+    expect(inbox.items.find((x) => x.eventName === f.registration.event.name)?.delivery).toBe(
+      'WAITING_PERMISSION',
+    );
+    expect(sends).toBe(0);
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT count(*)::int AS n FROM notification_subscription_grants WHERE user_id=$1',
+          [h.otherOwner.id],
+        )
+      ).rows[0]!.n,
+    ).toBe(0);
+    await disable(h, f.eventId);
+    expect(
+      (await s.list(h.otherOwner.cookie, {})).items.some(
+        (x) => x.eventName === f.registration.event.name,
+      ),
+    ).toBe(false);
+  });
+
   it('derives review messages from committed business review history without copying confidential reasons', async () => {
     const s = service();
     const current = await openRegistration(h.api, h.owner, 'E05审核通知');
@@ -482,6 +585,14 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
       'REQUEST_CHANGES',
       '合成证件号码 private-material-123',
     );
+    expect(
+      (
+        await h.api.pool.query(
+          "SELECT count(*)::int AS n FROM notification_source_events WHERE org_id=$1 AND resource_id=$2 AND kind='REGISTRATION_REVIEW'",
+          [h.owner.orgId, reviewed.id],
+        )
+      ).rows[0]!.n,
+    ).toBe(1);
     await tx((c) =>
       s.capture(c, {
         kind: 'REGISTRATION_REVIEW',

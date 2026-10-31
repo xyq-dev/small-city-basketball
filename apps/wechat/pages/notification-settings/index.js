@@ -7,6 +7,12 @@ const labels = {
   MATCH_RESCHEDULED: '比赛改期通知',
   MATCH_STARTING: '开赛前提醒',
 };
+const grantStates = {
+  AVAILABLE: '本次许可待使用',
+  RESERVED: '已安排本次提醒',
+  CONSUMED: '本次许可已使用',
+  REVOKED: '已撤销',
+};
 function clear(viewer, id) {
   const p = wx.getStorageSync(key(viewer));
   if (p && p.clientRequestId === id) wx.removeStorageSync(key(viewer));
@@ -61,8 +67,15 @@ Page({
       if (ui.live(this, t))
         this.setData({
           enabled: data.wechatEnabled,
+          selected: data.kinds.some((x) => x.kind === this.data.selected && x.templateId)
+            ? this.data.selected
+            : data.kinds.find((x) => x.templateId)?.kind || 'MATCH_STARTING',
           kinds: data.kinds.map((x) => ({ ...x, label: labels[x.kind] })),
-          subscriptions: data.subscriptions,
+          subscriptions: data.subscriptions.map((x) => ({
+            ...x,
+            label: labels[x.kind],
+            stateLabel: grantStates[x.state] || '待核对',
+          })),
           pending: !!wx.getStorageSync(key(this._viewer)),
         });
     } catch (e) {
@@ -172,7 +185,7 @@ Page({
           intent: null,
           message:
             response.state === 'ACCEPTED'
-              ? '本次客户端许可已记录；微信发送仍以官方实际响应为准，一次许可只安排一次提醒。'
+              ? '本次客户端许可已记录，一次许可只安排一次提醒；微信实际受理后才会更新发送状态。'
               : '本次未允许微信提醒，站内业务照常。',
         });
     } catch (e) {
@@ -253,7 +266,7 @@ Page({
       this.setData({
         intent: null,
         pending: false,
-        message: '已核对本类撤销；旧的迟到确认不能恢复许可。',
+        message: '已撤销本类未发送提醒；新的提醒需重新选择订阅。',
       });
   },
   messages() {

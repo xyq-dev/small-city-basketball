@@ -48,6 +48,23 @@ export function qualificationUnder14(birthDate: string, policyDate: string): boo
     14
   );
 }
+export async function qualificationDataConsentReady(
+  c: PoolClient,
+  options: QualificationOptions,
+  input: { orgId: string; eventId: string; userId: string; birthDate: string; policyDate: string },
+): Promise<boolean> {
+  const required = qualificationUnder14(input.birthDate, input.policyDate);
+  return options.dataConsentGuard
+    ? (
+        await options.dataConsentGuard(c, {
+          orgId: input.orgId,
+          eventId: input.eventId,
+          userId: input.userId,
+          forceRequired: required,
+        })
+      ).ready === true
+    : !required;
+}
 export const QUALIFICATION_SUBJECT_SQL = `SELECT e.id AS entry_id,e.team_id,e.event_id,e.ruleset_id,e.roster_revision_id,e.status AS entry_status,
  ev.start_date::text,ev.end_date::text,ev.status AS event_status,m.id AS material_id,m.current_revision_id AS material_revision_id,
  m.version AS material_version,m.user_id,m.binding_id,m.key_id AS material_key_id,m.status AS material_status,m.reservation_active,
@@ -206,16 +223,13 @@ export function createYouthQualificationReader(
     const identity = participantIdentityNumber(payload.identityNumber, row.start_date);
     const birth = qualificationBirthDate(identity);
     if (
-      qualificationUnder14(birth, row.start_date) &&
-      (!options.dataConsentGuard ||
-        !(
-          await options.dataConsentGuard(c, {
-            orgId: input.orgId,
-            eventId: row.event_id,
-            userId: row.user_id,
-            forceRequired: true,
-          })
-        ).ready)
+      !(await qualificationDataConsentReady(c, options, {
+        orgId: input.orgId,
+        eventId: row.event_id,
+        userId: row.user_id,
+        birthDate: birth,
+        policyDate: row.start_date,
+      }))
     )
       return base;
     return {
@@ -407,18 +421,15 @@ export class QualificationPrecheckService extends ApplicationService {
         participantIdentityNumber(p.identityNumber, row.start_date),
       );
       if (
-        qualificationUnder14(birth, row.start_date) &&
-        (!this.qualification.dataConsentGuard ||
-          !(
-            await this.qualification.dataConsentGuard(c, {
-              orgId: a.orgId,
-              eventId: a.event.id,
-              userId: row.user_id,
-              forceRequired: true,
-            })
-          ).ready)
+        !(await qualificationDataConsentReady(c, this.qualification, {
+          orgId: a.orgId,
+          eventId: a.event.id,
+          userId: row.user_id,
+          birthDate: birth,
+          policyDate: row.start_date,
+        }))
       )
-        insuranceFail('YOUTH_DATA_CONSENT_REQUIRED', '未满14岁资料须先取得有效监护人同意', 409);
+        insuranceFail('YOUTH_DATA_CONSENT_REQUIRED', '当前资料须先取得有效监护人数据处理同意', 409);
       const id = randomUUID();
       await c.query(
         'INSERT INTO participant_qualification_requests(id,org_id,event_id,entry_id,member_id,user_id,material_id,material_revision_id,ruleset_id,roster_revision_id,portrait_sha256,event_start_date,event_end_date,accepted_terms_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
@@ -579,22 +590,15 @@ export class QualificationPrecheckService extends ApplicationService {
         participantIdentityNumber(privatePayload.identityNumber, row.start_date),
       );
       if (
-        qualificationUnder14(birth, row.start_date) &&
-        (!this.qualification.dataConsentGuard ||
-          !(
-            await this.qualification.dataConsentGuard(c, {
-              orgId: a.orgId,
-              eventId: a.event.id,
-              userId: row.user_id,
-              forceRequired: true,
-            })
-          ).ready)
+        !(await qualificationDataConsentReady(c, this.qualification, {
+          orgId: a.orgId,
+          eventId: a.event.id,
+          userId: row.user_id,
+          birthDate: birth,
+          policyDate: row.start_date,
+        }))
       )
-        insuranceFail(
-          'YOUTH_DATA_CONSENT_REQUIRED',
-          '未满14岁资料须先取得有效监护人数据处理同意',
-          409,
-        );
+        insuranceFail('YOUTH_DATA_CONSENT_REQUIRED', '当前资料须先取得有效监护人数据处理同意', 409);
       if (
         b.decision === 'APPROVED' &&
         (b.identityReviewed !== true || b.portraitReviewed !== true || b.signatureReviewed !== true)

@@ -93,6 +93,21 @@ export function createTradePayerResolver(
       after.credential !== before.credential
     )
       throw rejected();
-    return result;
+    return {
+      ...result,
+      // The source may wait on calendar/order locks after code exchange. The
+      // dispatcher must invoke this inside its last intent transaction, before
+      // lockActor, to place current binding authorization at that commit.
+      assertCurrent: async (c: PoolClient) => {
+        const current = await read(c, actorId, sessionId, merchant.appId);
+        if (
+          current.id !== before.id ||
+          current.version !== before.version ||
+          current.openid_hash !== before.openid_hash ||
+          current.credential !== before.credential
+        )
+          throw rejected();
+      },
+    };
   };
 }

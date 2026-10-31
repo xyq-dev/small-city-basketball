@@ -38,7 +38,7 @@ type Claim = { id: string; userId: string; leaseId: string; fence: string };
 const iso = (v: string | Date | null) => (v === null ? null : new Date(v).toISOString());
 const active = (r: Row) => ['PENDING', 'BLOCKED'].includes(r.status);
 const retryableLock = (error: unknown) =>
-  ['55P03', '40P01'].includes(String((error as { code?: string }).code));
+  ['55P03', '40P01', 'STREAMING_PRIVACY_BUSY'].includes(String((error as { code?: string }).code));
 
 export class AccountClosureService extends ApplicationService {
   private timer?: ReturnType<typeof setInterval>;
@@ -432,7 +432,7 @@ export class AccountClosureService extends ApplicationService {
       [userId],
     );
     await c.query(
-      "UPDATE account_mail_jobs j SET status='EXPIRED',envelope=NULL,lease_id=NULL,lease_until=NULL,updated_at=clock_timestamp() FROM account_action_tokens t WHERE t.id=j.token_id AND t.user_id=$1 AND j.status<>'EXPIRED'",
+      "UPDATE account_mail_jobs j SET status=CASE WHEN j.status='SENDING' THEN 'UNKNOWN' WHEN j.status IN('PENDING','FAILED') THEN 'EXPIRED' ELSE j.status END,envelope=NULL,lease_id=NULL,lease_until=NULL,updated_at=clock_timestamp() FROM account_action_tokens t WHERE t.id=j.token_id AND t.user_id=$1 AND (j.status IN('PENDING','SENDING','UNKNOWN','FAILED') OR j.envelope IS NOT NULL)",
       [userId],
     );
     await c.query(

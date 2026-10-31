@@ -4,6 +4,7 @@ import {
   notificationIdInput,
   notificationKey,
   notificationTemplateData,
+  notificationTemplate,
   openNotificationTarget,
   sealNotificationTarget,
 } from './notification-domain.js';
@@ -67,5 +68,9 @@ describe('notification consent and encrypted target boundaries', () => {
         { event: 'x', title: 'x', detail: 'x', time: 'x' },
       ),
     ).toThrow();
+  });
+  it('does not coerce malformed runtime template IDs or array fields into trusted configuration', () => {
+    expect(() => notificationTemplate({ id: 123, fields: { thing1: 'event' } } as any)).toThrow();
+    expect(() => notificationTemplate({ id: 'synthetic', fields: ['event'] } as any)).toThrow();
   });
 });

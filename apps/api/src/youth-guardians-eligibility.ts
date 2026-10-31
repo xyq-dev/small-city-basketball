@@ -175,6 +175,13 @@ export async function readYouthEligibility(
     r.proof_purged_at
   )
     return bad('GUARDIAN_INDEPENDENT_REVIEW_REQUIRED');
+  const independent = (
+    await c.query(
+      `SELECT NOT EXISTS(SELECT 1 FROM team_access_grants WHERE org_id=$1 AND team_id=$2 AND user_id=$3 AND status='ACTIVE') AND NOT EXISTS(SELECT 1 FROM team_member_bindings WHERE org_id=$1 AND team_id=$2 AND user_id=$3 AND status='ACTIVE') AS ok`,
+      [input.orgId, r.team_id, r.reviewer_id],
+    )
+  ).rows[0]?.ok;
+  if (!independent) return bad('GUARDIAN_INDEPENDENT_REVIEW_REQUIRED');
   const purpose = input.purpose ?? 'PARTICIPATION';
   if (!r.subject_purposes.includes(purpose) || !r.guardian_purposes.includes(purpose))
     return bad('GUARDIAN_PURPOSE_CONSENT_REQUIRED');
