@@ -1,5 +1,29 @@
 # 数据模型与状态
 
+## COMPLETION22 当前持久化增量
+
+2026-10-31 Asia/Shanghai；当前整合范围累计35项Migration、127张表，025—035新增44表并扩展既有比赛/采集约束。执行与合并事实见[当前状态](CURRENT_STATUS.md)，仅在隔离CI验证，不代表生产Migration已执行。下方早期阶段的“待新增”“仅三赛制”等历史描述不覆盖本节与第3节当前规范。
+
+| Migration | 新增表/变更范围 |
+| --- | --- |
+| [025_x01_third_place.sql](../apps/api/migrations/025_x01_third_place.sql) | 扩展既有表/函数及约束，不新增表 |
+| [026_x03_scheduling_templates.sql](../apps/api/migrations/026_x03_scheduling_templates.sql) | `event_templates`, `event_template_versions`, `event_template_instances`, `event_template_commands` |
+| [027_x05_recruitment_posters.sql](../apps/api/migrations/027_x05_recruitment_posters.sql) | `recruitment_publications`, `recruitment_applications`, `event_team_import_previews`, `event_invitations`, `recruitment_request_receipts`, `poster_exports` |
+| [028_x08_professional_statistics.sql](../apps/api/migrations/028_x08_professional_statistics.sql) | 扩展既有表/函数及约束，不新增表 |
+| [029_x12_local_services.sql](../apps/api/migrations/029_x12_local_services.sql) | `local_listings`, `local_slots`, `local_bookings`, `local_matchups`, `local_resource_reservations`, `local_command_receipts`, `local_service_history` |
+| [030_x18_governance.sql](../apps/api/migrations/030_x18_governance.sql) | `governance_operations`, `city_operation_grants`, `governance_cases`, `governance_case_messages`, `governance_case_attachments`, `governance_reviews`, `sponsorship_campaigns`, `sponsorship_publications`, `sponsorship_impressions`, `public_ledger_accounts`, `public_ledger_entries`, `public_ledger_publications` |
+| [031_x22_account_recovery.sql](../apps/api/migrations/031_x22_account_recovery.sql) | `account_mail_configuration`, `account_action_requests`, `account_action_tokens`, `account_action_cancellations`, `account_mail_jobs` |
+| [032_x08_public_archives.sql](../apps/api/migrations/032_x08_public_archives.sql) | `public_archive_profiles`, `public_archive_publications`, `public_archive_sources`, `public_archive_operations` |
+| [033_x02_match_exceptions.sql](../apps/api/migrations/033_x02_match_exceptions.sql) | `match_exception_rules`, `match_exception_heads`, `match_exception_requests`, `match_exception_receipts` |
+| [034_x08_scoring_offline_intents.sql](../apps/api/migrations/034_x08_scoring_offline_intents.sql) | `scoring_offline_intents` |
+| [035_x17_staff_configuration.sql](../apps/api/migrations/035_x17_staff_configuration.sql) | `staff_configuration_receipts` |
+
+双循环必须在events.format与schedule_revisions.algorithm_version中同时匹配，使用独立DRR_CIRCLE_V1，不能把双回合拼入单循环来源。季军赛复用既有晋级来源及发布结构；半决赛负者proof、闭赛场数和完整赛事权益同时校验。行政结果保存在独立rules/head/request/receipt中，不改写记分事件；READY的有效行政来源必须核scoring_states的当前source_version、暂停时钟及未确认状态。
+
+专业统计与阵容/权威时间在原追加记分及确认快照内扩展，未采集字段不补0；离线意向保留原命令ID、顺序、lease fence及回执。公开档案、招募/海报、赞助和账本分别保留当前授权及不可变版本/发布来源，不互相替代授权。local_resource_reservations与既有排赛/球员预约共享日历守卫，DB到期与取消释放规则不由客户端时间决定。
+
+账号操作只保存token哈希、单次消费/取消墓碑及加密mail envelope，密码重置以users.credential_reset_at撤销旧会话；同账号新有效码可取消未知旧编号，但不延长旧码或授权过期码执行账号动作。经费公示记录线下账务及追加冲正，不作为支付余额。所有新表均进入最小权限、真实非空重启/完整恢复和恢复后授权隔离清单；不修改已成功执行的旧Migration来修补测试。
+
 ## C03迁移与生命周期（已合并，隔离CI执行，生产未执行）
 
 010_c03_event_history.sql仅给既有public_event_publications新增purpose（LIVE/HISTORY、非空缺省LIVE），并将其纳入不可变字段守卫；不改001–009，不增加表，仍40表。旧公开记录保留LIVE语义，不能因升级自动成为历史授权。runtime仍只可INSERT用途，不取得purpose UPDATE权；就绪与恢复精确迁移集合已扩为10（隔离验收）。010 SHA256 `a4c2394280bee34e89b9b8add078f0a92fc3ab0908859625cda16ed8cb984433`，PR11/CI39941294620已验证10Migration与40表实际重启和完整恢复；编写与隔离执行证据见[C03交接](handoffs/C03.md)。
@@ -57,7 +81,7 @@ P06 的扩展对象至少定义：直播会话所属机构/比赛/云端流引�
 
 ## 3. 规则快照
 
-`format` 固定为 `ROUND_ROBIN`、`GROUP_KNOCKOUT`、`SINGLE_ELIMINATION`。长期规则版本将包含报名人数、参赛资格、节次/时长、加时、犯规/暂停、积分及同分排序、赛制晋级、最低休息间隔和排赛约束等；P03-A只实现第7节列出的报名规则，不表示三种赛制已可排赛。实际赛事逐项设置并确认，不能全平台固定“8队16场”“19:30/20:15”或某届的户籍条件。
+`format` 当前约束为 `ROUND_ROBIN`、`GROUP_KNOCKOUT`、`SINGLE_ELIMINATION`、`DOUBLE_ROUND_ROBIN`，与共享EventFormat及Migration026的events_format_check一致。单循环/双循环分别使用RR_CIRCLE_V1/DRR_CIRCLE_V1；双循环共n(n−1)场并主客互换。季军赛由排赛policy显式thirdPlaceMatch:true控制，不是独立EventFormat，也不自动改变旧赛事。报名、记分、排名和晋级仍按各自版本来源及锁定规则核验。实际赛事逐项设置并确认，不全平台固定“8队16场”“19:30/20:15”或某届户籍条件。
 
 排赛规则区分硬约束与可提示的偏好；系统无解时输出冲突证据及可放宽项，不偷偷放宽。手动调赛生成新版本并重跑校验；已开赛或已确认场次不能被普通排赛覆盖。
 

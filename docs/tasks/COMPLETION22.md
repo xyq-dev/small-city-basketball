@@ -168,3 +168,19 @@ root追加独立复核发现两处明确P2并暂停合并：1) match-exception-s
 root实际执行npm run typecheck、五个改动源/测试的Prettier、git diff --check通过；vitest两个裁定文件27/27、x17-x22消费者8/8通过。作者另执行197项相关单测与旧源反证，不冒称root重跑。新增4项PG本地无PG未执行，目标总数516变520，待完整精确候选CI。未改Migration/依赖/锁文件/外部配置；既有35迁移仅隔离CI执行，不操作生产。
 
 同步前执行环境短暂断开，失败命令没有创建进程；恢复后重新核验HEAD9599fcb与dirty，全部已提交源代码及未提交汇总均保留，未走GitHub接口重建或覆盖代码。下一条：连同既有X05/X-INFRA验收记录普通push至PR33，核完整新候选CI和必要审查后才合并，再记录main及合并后CI，不能提前称上线。
+
+
+## 接续检查点16：远端完整候选及运行中验收
+
+2026-10-31T13:59:48+08:00；shell普通Git认证通道恢复失败，未推送或覆盖任何远端。改由已连接GitHub工具原子创建tree/commit并非强制更新：远端186026d601314bcce5fd8ed2d0df37d38d2740f7，parent00b8e44，tree8a55d3fbadc136877d732a497e995b7f9f1c9775与本地已检828391e完全相同。17文件含两补片及保留验收记录，没有重新构造不同代码。实际CI merge-ref0f4595fc94d9748a88c4ecceb314097de7545840同tree。
+
+完整候选CI41173913872（R138）已启动，PR33已进入Review而非Draft。root亲读admin124457406160完整日志：561admin/920API/925native通过、1既有Windows跳过、995浏览器及981布局PNG通过；production124457406328完整日志：PG20、HTTPS4、127表完整恢复、backup-point fencing/quarantine及自有清理成功。API124457406278的PG和原生页面步骤均明确success，当前在capture/重启/真实浏览器后段，完整job日志尚待，不按active位置推算测试数字或整CI成功。
+
+独立审查确认READY业务修片及账号新增回归范围，未发现新阻断；未修改成功Migration，未生产。文档检查点先在本地保存、精确远端/CI已在PR正文同步，保持正在执行的PR head不变，待完整候选终结后统一写main验收事实，避免纯文档同步取消当前检查。下一条：等待API后段及完整归档，成功后复核PR head/审查/merge tree再合并；失败则按实际日志最小修复。
+
+
+## 接续检查点17：完整R138成功，修复规范冲突
+
+2026-10-31T14:07:54+08:00；root已亲读R138三套完整归档和最终completed/SUCCESS（attempt1）：55文件520/520 PG、16/16页面HTTP、24真实API浏览器、20最小权限PG、4HTTPS、127表完整恢复/quarantine与自有清理；920API/561admin/925native源码通过、1既有平台跳过、995兼容浏览器/981布局PNG通过。新增READY弃权/取消及账号expired/revoked四PG均成功。
+
+标记PR ready后自动审查在186026d提交提出一条规范P1：API_CONTRACTS与DATA_MODEL仍列旧三值EventFormat。已在对应规范同步第四值DOUBLE_ROUND_ROBIN、独立算法/两回合场数、季军开关及22项契约/025—035真实表清单。只改Markdown，无应用/迁移/测试/依赖/工作流变化；完整应用CI证据继续绑定186026d及源tree8a55d3f，不将新文档SHA冒称已重复测试。文档检查后同步同PR、复核并resolve该finding，然后检查无并发head变化再合并；最终main事实另记。
