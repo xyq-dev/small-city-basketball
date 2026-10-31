@@ -35,3 +35,5 @@ X01季军树／025／原生晋级页、X05／X12／X18领域与027／029／030�
 10后审查片：X03 916e4d7+660c3a0（手工淘汰local休息/日间隔，PG用真实366天内日期）、X01 719884b+7db792f（裁定尾session，observer取实际application_name）、X08 0961641（scorer onHide停续租/写并保未知与持久队列）已根整合。仍待X17缺行CAS/尾核、季军quota+改期parent、R133赞助serverTime稳定验收hash修。根先等133归档，不随意取消正在跑的证据；全部修后同步下一候选并真PG。当前未合并/未生产。
 
 检查点11：已接X17 686a73b（nullCAS DO NOTHING+409、unique等待尾fresh，新增PG3）、X03 ec2b2a1/4aa0ad5/a957545（季军额度/父轮改期/calendar尾fresh，含先前O共12PG）、X05 8d6ca05真实HONOR PNG、infra84af94c严格分离公开serverTime动态字段。全部成功迁移未动。R133 admin成功，API PG与真Page阶段成功但完整job未归档；prod已真capture44新表非空、dump/第二集群restore到X18固定hash，首错为动态serverTime。I10已修，后续normal/quarantine仍未证。根本地API914、native924+1Win、最新type/format通过（精确各冻结态见父卡）。下一条推11完整验收；不能将source hash静态修当已恢复成功，也不能结束于任一模块。
+
+11b：R133归档确认499PG、16真Page及重启成功，verify仍旧serverTime摘要错误。e4d6205给新增HONOR用真实participant→owner MEMBER授权的独立actor（6请求），保留既有10/60s限流和其他3测试原10请求；不把fixture累计429误改成生产阈值。根立即同步11b替代刚启动134，新的完整候选仍待验。

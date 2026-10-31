@@ -126,3 +126,5 @@ API capture另报X22 helper构造真实service时漏传已有databaseUrl，根�
 独立复核确认的7项P2已全部最小修复整合：手工晋级local休息/日间隔、行政裁定锁后自然session、隐藏记分页续租、工作人员缺行并发CAS及尾核、季军完整套餐场数、季军改期父轮依赖、共享calendar写等待后的session尾核。新增真实PG回归待下一CI；035/033等已成功迁移一律未改。四种海报中的HONOR另补真实完成→独立确认→HISTORY→PNG及撤销旧图/不复活测试，不用SQL造终态。API接线/私有下载/上传限流另经独立只读复核与37定向测试，无新增确定P1/P2；其他域审查范围及限制见自卡。
 
 根d76eac0冻结态API73文件914项通过（含I10两回归），37a11af后原生全量925项924通过/1既有Windows专属跳过；最新9ec45cc全类型与全格式通过。前两套数字不冒称覆盖后到的staff业务，下一完整CI会复验最新头。下一条同步checkpoint11，继续查看真实PG/HTTPS/重启/127表非空恢复/quarantine与清理；只在全绿、复核无阻断后按授权合并，全部22项仍TESTING。
+
+11b前R133 API归档已核：51文件499/499、真Page16/16，capture与数据库重启成功，正常verify同样停在X18动态serverTime摘要，I10已修。新增HONOR真实PG用独立participant经owner真实STAFF MEMBER授本机构ORG_ADMIN，再由其6次海报请求验证流程；原三个案例继续原actor10次/60s，保留原限流，不清库或放宽阈值。该测试隔离补片e4d6205随后同步11b，134因新候选替代的取消不能记作通过。

@@ -65,10 +65,15 @@ describe(
       if (h) await closeHarness(h);
     }, 30000);
     const base = (event: string) => `/v1/orgs/${h.owner.orgId}/events/${event}/posters`;
-    const get = async (event: string) =>
-      data<Row>(await call(h.api, 'get', base(event), { cookie: h.owner.cookie }));
-    const generate = async (event: string, kind: string, extra: Row = {}) => {
-      const w = await get(event);
+    const get = async (event: string, cookie = h.owner.cookie) =>
+      data<Row>(await call(h.api, 'get', base(event), { cookie }));
+    const generate = async (
+      event: string,
+      kind: string,
+      extra: Row = {},
+      cookie = h.owner.cookie,
+    ) => {
+      const w = await get(event, cookie);
       const body = {
         clientRequestId: randomUUID(),
         expectedEventVersion: w.event.version,
@@ -77,7 +82,7 @@ describe(
       };
       return {
         body,
-        response: await call(h.api, 'post', base(event), { cookie: h.owner.cookie, body }),
+        response: await call(h.api, 'post', base(event), { cookie, body }),
       };
     };
     test('matchup uses formal public fixture and private PNG export revocation is permanent', async () => {
@@ -143,15 +148,32 @@ describe(
       error((await generate(event, 'MATCHUP', { matchId: f.matches[0]!.id })).response, 410);
     });
     test('honor PNG comes from a fully confirmed completed event and explicit history; withdrawn history never revives its old export', async () => {
+      // Earlier cases deliberately use the original actor's full 10-per-minute
+      // generation budget. A separately authorized real actor keeps both budgets intact.
+      const actor = await participant(h.api, 'x05-honor-reviewer');
+      data(
+        await call(h.api, 'post', `/v1/orgs/${h.owner.orgId}/staff-configuration/commands`, {
+          cookie: h.owner.cookie,
+          body: {
+            clientRequestId: randomUUID(),
+            type: 'MEMBER',
+            userId: actor.id,
+            expectedVersion: null,
+            role: 'ORG_ADMIN',
+            status: 'ACTIVE',
+          },
+        }),
+      );
       const f = await published(h, h.teams),
         event = f.event.event.id,
         root = `/v1/orgs/${h.owner.orgId}/events/${event}`;
+      const honor = () => generate(event, 'HONOR', {}, actor.cookie);
       expect(f.matches).toHaveLength(1);
       await savePublishRules(h, event);
       await enable(h, event);
-      error((await generate(event, 'HONOR')).response, 410);
+      error((await honor()).response, 410);
       await confirmMatch(h, f, 0, 3, 1);
-      error((await generate(event, 'HONOR')).response, 410);
+      error((await honor()).response, 410);
       const lifecycle = data<Row>(
         await call(h.api, 'get', root + '/lifecycle', { cookie: h.owner.cookie }),
       );
@@ -167,7 +189,7 @@ describe(
         }),
       );
       expect(completed.event.status).toBe('COMPLETED');
-      error((await generate(event, 'HONOR')).response, 410);
+      error((await honor()).response, 410);
       const history = data<Row>(await viewingCommand(h, event, 'ENABLE_HISTORY')).publication;
       expect(history).toMatchObject({ purpose: 'HISTORY', status: 'ACTIVE' });
       const standings = (await privateStandings(h, event)).standings!;
@@ -175,7 +197,7 @@ describe(
       expect(standings.confirmedMatchCount).toBe(1);
       expect(standings.rows.map((row) => row.rank)).toEqual([1, 2]);
       expect(standings.rows[0]!.entryId).toBe(f.matches[0]!.home.entryId);
-      const generated = await generate(event, 'HONOR'),
+      const generated = await honor(),
         poster = data<Row>(generated.response, 201).poster,
         path = base(event) + `/${poster.id}/content`;
       const stored = (
@@ -198,7 +220,7 @@ describe(
           tied,
         })),
       });
-      const content = await call(h.api, 'get', path, { cookie: h.owner.cookie });
+      const content = await call(h.api, 'get', path, { cookie: actor.cookie });
       expect(content.status).toBe(200);
       const metadata = await sharp(content.body as Buffer).metadata();
       expect(metadata).toMatchObject({
@@ -208,15 +230,15 @@ describe(
       });
       expect(metadata.exif).toBeUndefined();
       await disable(h, event);
-      error(await call(h.api, 'get', path, { cookie: h.owner.cookie }), 410);
+      error(await call(h.api, 'get', path, { cookie: actor.cookie }), 410);
       error(
-        await call(h.api, 'post', base(event), { cookie: h.owner.cookie, body: generated.body }),
+        await call(h.api, 'post', base(event), { cookie: actor.cookie, body: generated.body }),
         410,
       );
       const republished = data<Row>(await viewingCommand(h, event, 'ENABLE_HISTORY')).publication;
       expect(republished.publicEventId).not.toBe(history.publicEventId);
-      error(await call(h.api, 'get', path, { cookie: h.owner.cookie }), 410);
-      data((await generate(event, 'HONOR')).response, 201);
+      error(await call(h.api, 'get', path, { cookie: actor.cookie }), 410);
+      data((await honor()).response, 201);
     });
     test('roster uses only exact current approved photo consent; withdrawal blocks old artifact and private originals remain protected', async () => {
       const reg = await openRegistration(h.api, h.owner, 'X05本人照片宣传', undefined, {
