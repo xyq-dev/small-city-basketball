@@ -2,9 +2,9 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 import type { TradeSourceKind, TradeCheckout } from '../../../packages/contracts/trade.js';
 import { ApiError } from './errors.js';
 import { objectInput, resourceId, text } from './validation.js';
-export const tradeFail = (code: string, message: string, status = 409): never => {
+export function tradeFail(code: string, message: string, status = 409): never {
   throw new ApiError(status, code, message);
-};
+}
 export const tradeHash = (v: unknown) =>
   createHash('sha256').update(JSON.stringify(v)).digest('hex');
 export function tradeId(v: unknown): string {

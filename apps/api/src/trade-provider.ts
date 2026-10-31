@@ -102,11 +102,15 @@ export interface TradeMerchant {
   appId: string;
   displayName: string;
   payments: TradePayments;
+  /** Explicit opt-in for charging only newly created player appearances. */
+  playerFeesEnabled?: boolean;
   receivers: Record<string, { merchantId: string; displayName: string }>;
   settlements?: TradeSettlementProvider;
 }
 export interface TradeRuntime {
   merchants?: Record<string, TradeMerchant>;
+  /** Immutable historical key: orgId + colon + merchant key, retained for old pending orders. */
+  historicalMerchants?: Record<string, TradeMerchant>;
   encryptionKey?: Buffer;
   resolvePayer?: (input: {
     actorId: string;

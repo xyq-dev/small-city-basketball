@@ -12,10 +12,10 @@ CREATE TABLE trade_orders (
  id uuid PRIMARY KEY,org_id uuid NOT NULL REFERENCES organizations(id),kind text NOT NULL CHECK(kind IN('ENTRY_FEE','ENTRY_DEPOSIT','LOCAL_BOOKING','PLAYER_APPEARANCE')),
  source_id uuid NOT NULL,source_version integer NOT NULL CHECK(source_version>0),source_snapshot jsonb NOT NULL CHECK(jsonb_typeof(source_snapshot)='object'),source_hash char(64) NOT NULL CHECK(source_hash~'^[a-f0-9]{64}$'),
  payer_user_id uuid NOT NULL REFERENCES users(id),beneficiary_user_id uuid NOT NULL REFERENCES users(id),terms_id uuid REFERENCES trade_terms(id),
- merchant_key text NOT NULL,merchant_id text NOT NULL,merchant_name text NOT NULL,total_fen integer NOT NULL CHECK(total_fen BETWEEN 1 AND 100000000),currency text NOT NULL DEFAULT 'CNY' CHECK(currency='CNY'),
+ merchant_key text NOT NULL,merchant_id text NOT NULL,merchant_app_id text NOT NULL,merchant_name text NOT NULL,total_fen integer NOT NULL CHECK(total_fen BETWEEN 1 AND 100000000),currency text NOT NULL DEFAULT 'CNY' CHECK(currency='CNY'),
  quote jsonb NOT NULL CHECK(jsonb_typeof(quote)='object'),status text NOT NULL DEFAULT 'OPEN' CHECK(status IN('OPEN','SOURCE_CONFLICT','COMPLETED')),
  version integer NOT NULL DEFAULT 1 CHECK(version>0),created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
- UNIQUE(kind,source_id),CHECK(payer_user_id<>beneficiary_user_id)
+ UNIQUE(kind,source_id)
 );
 CREATE INDEX trade_orders_payer ON trade_orders(payer_user_id,created_at DESC,id);
 CREATE INDEX trade_orders_org ON trade_orders(org_id,created_at DESC,id);
@@ -78,3 +78,9 @@ BEGIN
 END; $$;
 CREATE TRIGGER trade_order_history BEFORE UPDATE OR DELETE ON trade_orders FOR EACH ROW EXECUTE FUNCTION e04_trade_immutable();
 CREATE TRIGGER trade_terms_history BEFORE UPDATE OR DELETE ON trade_terms FOR EACH ROW EXECUTE FUNCTION e04_trade_immutable();
+CREATE TABLE trade_settlement_returns (
+ id uuid PRIMARY KEY,settlement_id uuid NOT NULL REFERENCES trade_settlements(id),out_return_no text NOT NULL UNIQUE,
+ amount_fen integer NOT NULL CHECK(amount_fen BETWEEN 1 AND 100000000),status text NOT NULL CHECK(status IN('SENDING','UNKNOWN','PROCESSING','SUCCEEDED','FAILED')),
+ fence uuid NOT NULL,provider_return_id text,created_by uuid NOT NULL REFERENCES users(id),created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE UNIQUE INDEX trade_unresolved_return ON trade_settlement_returns(settlement_id) WHERE status IN('SENDING','UNKNOWN','PROCESSING');
