@@ -38,6 +38,7 @@ CREATE TABLE youth_guardian_requests (
   material_revision_id uuid NOT NULL,
   qualification_id uuid NOT NULL,
   preconsent_id uuid NOT NULL,
+  preconsent_version integer NOT NULL CHECK(preconsent_version>0),
   roster_revision_id uuid NOT NULL,
   ruleset_id uuid NOT NULL,
   policy_version integer NOT NULL CHECK(policy_version>0),
@@ -135,3 +136,26 @@ CREATE TABLE youth_preconsent_history (
  action text NOT NULL CHECK(action IN('INVITE','CONSENT','DECLINE','WITHDRAW','ACCOUNT_CLOSURE')),created_at timestamptz NOT NULL DEFAULT clock_timestamp(),UNIQUE(preconsent_id,version)
 );
 CREATE TRIGGER youth_preconsent_history_immutable BEFORE UPDATE OR DELETE ON youth_preconsent_history FOR EACH ROW EXECUTE FUNCTION e08_immutable_guardian_fact();
+
+CREATE FUNCTION e08_protect_guardian_source() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Guardian consent history is retained' USING ERRCODE='23514';END IF;
+ IF NEW.version<>OLD.version+1 OR
+  (to_jsonb(NEW)-ARRAY['version','status','guardian_confirmed_at','guardian_purposes','guardian_payload_version','guardian_payload_ciphertext','guardian_payload_bytes','guardian_payload_hash','guardian_key_id','reviewed_payload_version','guardian_identity_checked','relationship_checked','guardian_adult_checked','reviewer_id','review_reason','reviewed_at','legal_hold','proof_purged_at','updated_at']) IS DISTINCT FROM
+  (to_jsonb(OLD)-ARRAY['version','status','guardian_confirmed_at','guardian_purposes','guardian_payload_version','guardian_payload_ciphertext','guardian_payload_bytes','guardian_payload_hash','guardian_key_id','reviewed_payload_version','guardian_identity_checked','relationship_checked','guardian_adult_checked','reviewer_id','review_reason','reviewed_at','legal_hold','proof_purged_at','updated_at']) THEN
+  RAISE EXCEPTION 'Guardian consent sources are immutable and versioned' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END;
+$$;
+CREATE TRIGGER youth_guardian_source_immutable BEFORE UPDATE OR DELETE ON youth_guardian_requests FOR EACH ROW EXECUTE FUNCTION e08_protect_guardian_source();
+CREATE FUNCTION e08_protect_preconsent_source() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Prior data consent history is retained' USING ERRCODE='23514';END IF;
+ IF NEW.version<>OLD.version+1 OR
+  (to_jsonb(NEW)-ARRAY['version','status','guardian_confirmed_at','updated_at']) IS DISTINCT FROM
+  (to_jsonb(OLD)-ARRAY['version','status','guardian_confirmed_at','updated_at']) THEN
+  RAISE EXCEPTION 'Prior data consent sources are immutable and versioned' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END;
+$$;
+CREATE TRIGGER youth_preconsent_source_immutable BEFORE UPDATE OR DELETE ON youth_guardian_preconsents FOR EACH ROW EXECUTE FUNCTION e08_protect_preconsent_source();

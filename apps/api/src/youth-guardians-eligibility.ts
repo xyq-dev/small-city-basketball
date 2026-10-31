@@ -150,6 +150,7 @@ export async function readYouthEligibility(
     return bad('GUARDIAN_ACCOUNT_INACTIVE');
   if (
     r.preconsent_id !== dataConsent.preconsentId ||
+    r.preconsent_version !== dataConsent.version ||
     r.guardian_user_id !== dataConsent.guardianUserId ||
     r.subject_user_id !== q.subjectUserId ||
     r.material_id !== q.materialId ||
