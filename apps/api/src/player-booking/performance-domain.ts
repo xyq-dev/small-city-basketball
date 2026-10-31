@@ -1,3 +1,4 @@
+import { administrativeResult } from '../match-exception-domain.js';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type {
@@ -65,6 +66,7 @@ export function performanceProjection(input: {
   asOf: string;
   truncated?: boolean;
 }): PlayerPerformanceData {
+  let excludedAdministrative = 0;
   let pending = 0,
     invalid = 0,
     teamOnly = 0,
@@ -83,11 +85,15 @@ export function performanceProjection(input: {
     // Independent of SQL uniqueness, a match can contribute at most one sample per profile.
     if (seen.has(m.id)) continue;
     seen.add(m.id);
-    if (m.status !== 'FINAL') {
-      pending++;
-      continue;
-    }
     try {
+      if (administrativeResult(m)) {
+        excludedAdministrative++;
+        continue;
+      }
+      if (m.status !== 'FINAL') {
+        pending++;
+        continue;
+      }
       const stats = confirmedPlayerStatistics(m);
       const rosters = validateFrozenRoster(m, stats);
       const side =
@@ -160,6 +166,7 @@ export function performanceProjection(input: {
     confirmedMatchCount: recorded + teamOnly,
     teamOnlyMatchCount: teamOnly,
     pendingMatchCount: pending,
+    ...(excludedAdministrative ? { excludedAdministrativeMatchCount: excludedAdministrative } : {}),
     invalidMatchCount: invalid,
     partialAttributionMatchCount: partialAttribution,
     totalPoints: recorded ? totalPoints : null,
@@ -182,7 +189,7 @@ export function performanceProjection(input: {
     completenessNotice:
       input.sourceCount === 0
         ? '尚无经主办方提名及本人同意的有效公开来源。未授权或未统计不代表球员能力差。'
-        : `${recorded}场有个人记录，${teamOnly}场仅球队统计，${pending}场尚无有效确认，${invalid}场来源暂无法核验，${partialAttribution}场本队仍有未归属得分或犯规，个人记录可能不完整。${truncated ? '当前仅展示最新1000项已授权比赛样本。' : ''}助攻、篮板、时间和命中率尚未采集；完成服务记录不代表付费成交。`,
+        : `${recorded}场有个人记录，${teamOnly}场仅球队统计，${pending}场尚无有效确认，${invalid}场来源暂无法核验，${partialAttribution}场本队仍有未归属得分或犯规，个人记录可能不完整。${truncated ? '当前仅展示最新1000项已授权比赛样本。' : ''}${excludedAdministrative ? excludedAdministrative + '场行政裁定／取消已排除，不记为参赛或待确认样本。' : ''}此用途只公开得分／犯规样本，专业统计未在此用途披露；完成服务记录不代表付费成交。`,
     asOf: input.asOf,
   };
 }

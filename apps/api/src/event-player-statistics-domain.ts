@@ -1,3 +1,4 @@
+import { administrativeResult } from './match-exception-domain.js';
 import { createHash } from 'node:crypto';
 import { MATCH_STATUSES } from '@small-city-basketball/contracts';
 import type {
@@ -159,6 +160,7 @@ export function calculateEventPlayerStatistics(input: {
   const sources: unknown[] = [];
   let included = 0;
   let teamOnly = 0;
+  let excludedAdministrative = 0;
   // Unmaterialized knockout rounds still belong to the complete event's coverage denominator.
   let pending = totalMatchCount - input.matches.length;
   const matches = [...input.matches].sort((a, b) => compareId(a.id, b.id));
@@ -178,7 +180,8 @@ export function calculateEventPlayerStatistics(input: {
       : [home.entryId, away.entryId].sort().join('|');
     if (!group && pairs.has(pair)) resultSourceInvalid();
     pairs.add(pair);
-    const stats = confirmedPlayerStatistics(m);
+    const administration = administrativeResult(m);
+    const stats = administration ? null : confirmedPlayerStatistics(m);
     const fixed: MatchPlayerRoster = { home: roster(m.home_roster), away: roster(m.away_roster) };
     if (
       new Set([...fixed.home, ...fixed.away].map((p) => p.memberId)).size !==
@@ -230,7 +233,8 @@ export function calculateEventPlayerStatistics(input: {
         team.attributedFouls = add(team.attributedFouls, player.fouls);
       }
     }
-    if (stats) included++;
+    if (administration) excludedAdministrative++;
+    else if (stats) included++;
     else if (m.status === 'FINAL') teamOnly++;
     else pending++;
     // Live score/clock changes do not alter a confirmed-only source. Reconfirmation does.
@@ -238,7 +242,14 @@ export function calculateEventPlayerStatistics(input: {
       matchId: m.id,
       homeEntryId: home.entryId,
       awayEntryId: away.entryId,
-      coverage: stats ? 'PLAYER_BASIC' : m.status === 'FINAL' ? 'TEAM_ONLY' : 'PENDING',
+      coverage: administration
+        ? administration.kind
+        : stats
+          ? 'PLAYER_BASIC'
+          : m.status === 'FINAL'
+            ? 'TEAM_ONLY'
+            : 'PENDING',
+      ...(administration ? { administration } : {}),
       confirmation:
         m.status === 'FINAL'
           ? {
@@ -307,7 +318,15 @@ export function calculateEventPlayerStatistics(input: {
     includedMatchCount: included,
     teamOnlyConfirmedMatchCount: teamOnly,
     pendingMatchCount: pending,
-    coverageComplete: totalMatchCount > 0 && included === totalMatchCount,
+    ...(excludedAdministrative
+      ? {
+          excludedAdministrativeMatchCount: excludedAdministrative,
+          recordableMatchCount: totalMatchCount - excludedAdministrative,
+        }
+      : {}),
+    coverageComplete:
+      totalMatchCount - excludedAdministrative > 0 &&
+      included === totalMatchCount - excludedAdministrative,
     attributionComplete:
       included > 0 && teams.every((t) => !t.unassignedScore && !t.unassignedFouls),
     rows: ranked,

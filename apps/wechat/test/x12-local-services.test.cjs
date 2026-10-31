@@ -594,3 +594,126 @@ test('team invite uses a real confirmed court booking and a finite team card rat
   h.page.card();
   assert.equal(h.wx.calls.at(-1).data, '/pages/team/index?orgId=' + O + '&teamId=' + T);
 });
+
+test('a court checkin secret appears only in the original response and is cleared when the page leaves', async () => {
+  const code = 'abcdef0123456789abcdef0123456789';
+  let version = 1;
+  const h = harness('local-bookings', {
+    request: ({ url }) => {
+      if (url.endsWith('/checkin')) {
+        version = 2;
+        return envelope({
+          receipt: { resourceType: 'BOOKING', resourceId: B, version: 2 },
+          checkin: { code, expiresAt: '2028-05-01T01:10:00Z' },
+        });
+      }
+      return envelope({ items: [booking({ status: 'CONFIRMED', version })], limit: 200 });
+    },
+  });
+  h.page.onShow();
+  await h.flush();
+  h.page.select(tap({ id: B }));
+  await h.page.issueCheckin();
+  assert.equal(h.page.data.checkinDisplay.code, code);
+  assert.equal(h.storage.size, 0);
+  h.page.copyCheckin();
+  assert.equal(h.wx.calls.at(-1).data, code);
+  h.page.onHide();
+  assert.equal(h.page.data.checkinDisplay, null);
+  assert.equal(h.page.data.checkinInput, '');
+  assert.equal(JSON.stringify([...h.storage.values()]).includes(code), false);
+});
+
+test('unknown checkin redemption persists its command but never its credential, and requires the same code to retry', async () => {
+  const code = 'abcdef0123456789abcdef0123456789';
+  let failed = true;
+  const h = harness('local-bookings', {
+    request: ({ url }) => {
+      if (url.endsWith('/commands')) {
+        if (failed) throw { code: 'NETWORK_ERROR', message: '合成断网' };
+        return envelope({ resourceType: 'BOOKING', resourceId: B, version: 2 });
+      }
+      return envelope({
+        items: [booking({ status: 'CONFIRMED', canActAs: 'PROVIDER' })],
+        limit: 200,
+      });
+    },
+  });
+  h.page.onShow();
+  await h.flush();
+  h.page.select(tap({ id: B }));
+  h.page.input(tap({}, '现场持需求方码核销'));
+  h.page.input(tap({ field: 'checkinInput' }, code));
+  await h.page.command(tap({ type: 'REDEEM_CHECKIN' }));
+  assert.ok(h.page.data.pending);
+  const original = h.page.data.pending.body.commandId;
+  assert.equal(Object.hasOwn(h.page.data.pending.body, 'checkinCode'), false);
+  assert.equal(JSON.stringify([...h.storage.values()]).includes(code), false);
+  h.page.onHide();
+  h.page.onShow();
+  await h.flush();
+  await h.page.retry();
+  assert.match(h.page.data.error, /不会保存到本机/);
+  assert.equal(h.calls.filter((c) => c.method === 'POST').length, 1);
+  h.page.input(tap({ field: 'checkinInput' }, code));
+  failed = false;
+  await h.page.retry();
+  const writes = h.calls.filter((c) => c.method === 'POST');
+  assert.equal(writes[1].body.commandId, original);
+  assert.equal(writes[1].body.checkinCode, code);
+  assert.equal(h.storage.size, 0);
+});
+
+test('an issuing response arriving after the page is hidden never restores the plaintext code', async () => {
+  const d = deferred(),
+    code = 'abcdef0123456789abcdef0123456789';
+  const h = harness('local-bookings', {
+    request: ({ url }) =>
+      url.endsWith('/checkin')
+        ? d.promise
+        : envelope({ items: [booking({ status: 'CONFIRMED' })], limit: 200 }),
+  });
+  h.page.onShow();
+  await h.flush();
+  h.page.select(tap({ id: B }));
+  const task = h.page.issueCheckin();
+  await ticks();
+  h.page.onHide();
+  d.resolve(
+    envelope({
+      receipt: { resourceType: 'BOOKING', resourceId: B, version: 2 },
+      checkin: { code, expiresAt: '2028-05-01T01:10:00Z' },
+    }),
+  );
+  await task;
+  assert.equal(h.page.data.checkinDisplay, null);
+  assert.equal(JSON.stringify([...h.storage.values()]).includes(code), false);
+});
+
+test('local booking feedback uses only the selected server booking and completion gates reviews', () => {
+  const h = harness('local-bookings'),
+    ls = h.requireLocal('utils/local-services.js'),
+    ui = h.requireLocal('utils/ui.js');
+  ui.routes.governance = '/pages/governance/index';
+  ui.routes['governance-reviews'] = '/pages/governance-reviews/index';
+  h.page.setData({ items: [ls.booking(booking({ status: 'CONFIRMED' }))] });
+  h.page.select(tap({ id: B }));
+  h.page.governance(tap({ kind: 'review' }));
+  assert.equal(h.wx.calls.length, 0);
+  h.page.governance(tap({ kind: 'case' }));
+  assert.equal(
+    h.wx.calls.at(-1).url,
+    '/pages/governance/index?sourceKind=LOCAL_BOOKING&sourceId=' + B,
+  );
+  h.page.setData({ items: [ls.booking(booking({ status: 'COMPLETED' }))] });
+  h.page.select(tap({ id: B }));
+  h.page.governance(tap({ kind: 'review' }));
+  assert.equal(
+    h.wx.calls.at(-1).url,
+    '/pages/governance-reviews/index?sourceKind=LOCAL_BOOKING&sourceId=' + B,
+  );
+  h.page.setData({ busy: true });
+  const count = h.wx.calls.length;
+  h.page.governance(tap({ kind: 'case' }));
+  assert.equal(h.wx.calls.length, count);
+});

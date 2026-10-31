@@ -135,3 +135,25 @@ test('explicit draft mode saves statistics without changing authoritative score 
   assert.equal(h.page.data.offlineDraft, false);
   assert.equal(h.store.read(h.wx, scope).items.length, 1);
 });
+
+test('private season coverage explicitly removes administrative games from statistical denominator', () => {
+  const h = setup(),
+    model = h.requireLocal('utils/seasons.js');
+  const rows = model.coverageRows({
+    events: [
+      {
+        eventId: id(4),
+        name: '合成赛事',
+        state: 'INCLUDED',
+        totalMatchCount: 3,
+        recordableMatchCount: 2,
+        includedMatchCount: 2,
+        teamOnlyConfirmedMatchCount: 0,
+        pendingMatchCount: 0,
+        excludedAdministrativeMatchCount: 1,
+      },
+    ],
+  });
+  assert.match(rows[0].text, /逐人确认 2 \/ 2/);
+  assert.match(rows[0].text, /行政裁定.*排除 1 场，不记出场/);
+});

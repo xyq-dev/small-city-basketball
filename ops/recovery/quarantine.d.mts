@@ -6,17 +6,5 @@ export function quarantineRestoredDatabase(input: {
 }): Promise<{
   status: 'quarantined';
   systemUserId: string;
-  counts: {
-    sessionsRevoked: number;
-    platformOperatorsDisabled: number;
-    wechatIdentitiesRevoked: number;
-    wechatChallengesRemoved: number;
-    pendingInvitationsRevoked: number;
-    participantPublicityConsentsWithdrawn: number;
-    publicPublicationsRevoked: number;
-    overlayGrantsRevoked: number;
-    activeLeasesExpired: number;
-    organizationsDisabled: number;
-    eventsTouched: number;
-  };
+  counts: Record<string, number>;
 }>;

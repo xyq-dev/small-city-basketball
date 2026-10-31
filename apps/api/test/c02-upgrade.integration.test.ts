@@ -259,10 +259,14 @@ describe(
     }, 60000);
     afterAll(close, 30000);
 
-    test('applies exactly 008 through 023 over seven real historical checksums and preserves existing user values', async () => {
+    test('applies the exact current suffix over seven real historical checksums and preserves existing user values', async () => {
       const files = await readdir(migrations);
       for (const migration of additions) expect(files).toContain(migration);
-      expect(await migrate(pool!)).toEqual(additions);
+      expect(await migrate(pool!)).toEqual(
+        files
+          .filter((name) => /^\d+_[a-z0-9_]+\.sql$/.test(name) && !legacyNames.includes(name))
+          .sort(),
+      );
       expect(await userFacts()).toEqual(legacyUser);
       expect(
         (await pool!.query('SELECT login_name FROM users WHERE id=$1', [id(1)])).rows[0].login_name,
@@ -329,7 +333,7 @@ describe(
       }
     });
 
-    test('keeps the 83 manifest tables and every declared runtime update column compatible', async () => {
+    test('keeps the exact manifest tables and every declared runtime update column compatible', async () => {
       const manifest = JSON.parse(
         await readFile(
           new URL('../../../packages/contracts/runtime-privileges.json', import.meta.url),
@@ -341,7 +345,7 @@ describe(
           "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name",
         )
       ).rows.map((row) => row.table_name);
-      expect(actual).toHaveLength(83);
+      expect(actual).toHaveLength(Object.keys(manifest.tables).length);
       expect(Object.keys(manifest.tables).sort()).toEqual(actual);
       const columns = (
         await pool!.query<{ table_name: string; column_name: string }>(

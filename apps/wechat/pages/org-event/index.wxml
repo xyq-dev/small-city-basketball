@@ -98,7 +98,7 @@
           <view wx:for="{{round.slots}}" wx:key="key" class="org-match">
             <view wx:if="{{item.bye}}" class="org-match-teams"><text>{{item.bye}}</text><text class="org-match-vs">轮空</text></view>
             <view wx:else class="org-match-teams"><text>{{item.home}}</text><text class="org-match-vs">VS</text><text>{{item.away}}</text></view>
-            <view class="org-match-status">{{item.statusLabel}}{{item.winner ? ' · 晋级：' + item.winner : ''}}</view>
+            <view wx:if="{{item.label}}" class="muted">{{item.label}}</view><view class="org-match-status">{{item.statusLabel}}{{item.winner ? ' · ' + item.winnerLabel + '：' + item.winner : ''}}</view>
           </view>
         </block>
         <view wx:if="{{ranking.bracket.isComplete && ranking.bracket.placements.length}}" class="card">
@@ -114,7 +114,7 @@
       <view wx:if="{{statsError}}" class="notice warning">{{statsError}}</view>
       <view wx:elif="{{stats && stats.empty}}" class="card empty"><view class="subtitle">暂无个人数据</view><view class="muted">尚无正式赛程或逐人采集的确认赛果。</view></view>
       <block wx:elif="{{stats}}">
-        <view class="notice small"><view>{{stats.progress}} · {{stats.coverageLabel}}</view><view wx:if="{{stats.attributionLabel}}">{{stats.attributionLabel}}</view><view wx:if="{{stats.pendingLabel}}">{{stats.pendingLabel}}</view></view>
+        <view class="notice small"><view>{{stats.progress}} · {{stats.coverageLabel}}</view><view wx:if="{{stats.administrativeLabel}}" class="muted">{{stats.administrativeLabel}}</view><view wx:if="{{stats.attributionLabel}}">{{stats.attributionLabel}}</view><view wx:if="{{stats.pendingLabel}}">{{stats.pendingLabel}}</view></view>
         <view class="card org-table-card">
           <view class="subtitle">本届得分榜</view>
           <view class="org-table">

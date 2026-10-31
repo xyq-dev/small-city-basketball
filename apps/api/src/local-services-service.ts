@@ -1,7 +1,8 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type {
   LocalBookingData,
+  LocalCheckinData,
   LocalBookingStatus,
   LocalListingData,
   LocalMatchupData,
@@ -42,8 +43,8 @@ export type LocalReviewAuthorizer = (
 ) => Promise<unknown>;
 const iso = (v: Date | string) => new Date(v).toISOString();
 const active = ['HELD', 'REQUESTED', 'CONFIRMED', 'ARRIVED', 'DELIVERED', 'DISPUTED'];
-const baseListing = `SELECT l.*,clock_timestamp() AS db_now,o.name AS organization_name FROM local_listings l JOIN organizations o ON o.id=l.org_id JOIN users provider ON provider.id=l.provider_user_id WHERE o.status='ACTIVE' AND provider.status='ACTIVE'`;
-const visible = `l.status='APPROVED' AND l.published AND l.provider_confirmed AND l.qualified_until>clock_timestamp()`;
+const baseListing = `SELECT l.*,clock_timestamp() AS db_now,o.name AS organization_name,actual_court.status AS court_status FROM local_listings l JOIN organizations o ON o.id=l.org_id JOIN users provider ON provider.id=l.provider_user_id LEFT JOIN courts actual_court ON actual_court.id=l.court_id AND actual_court.org_id=l.org_id WHERE o.status='ACTIVE' AND provider.status='ACTIVE'`;
+const visible = `l.status='APPROVED' AND l.published AND l.provider_confirmed AND l.qualified_until>clock_timestamp() AND (l.kind<>'COURT' OR actual_court.status='ACTIVE')`;
 
 /** No payment is recorded or inferred. All resource mutations follow the calendar mutex. */
 export class LocalServicesService extends ApplicationService {
@@ -249,13 +250,14 @@ export class LocalServicesService extends ApplicationService {
   private validSupply(row: Row, endsAt?: string) {
     if (
       row.status !== 'APPROVED' ||
+      (row.kind === 'COURT' && row.court_status !== 'ACTIVE') ||
       !row.published ||
       !row.provider_confirmed ||
       !row.qualified_until ||
       Date.parse(iso(row.qualified_until)) <= new Date(row.db_now).getTime() ||
       (endsAt && iso(row.qualified_until) < endsAt)
     )
-      localFail('LOCAL_SUPPLY_UNAVAILABLE', '供给未上架或资格有效期不足，请重新核对');
+      localFail('LOCAL_SUPPLY_UNAVAILABLE', '供给或实际球场未开放、或资格有效期不足，请重新核对');
   }
   async publicList(raw: unknown, ip: string) {
     const q = parseLocalQuery(raw);
@@ -627,6 +629,7 @@ export class LocalServicesService extends ApplicationService {
         } else if (input.type === 'PUBLISH') {
           if (
             row.status !== 'APPROVED' ||
+            (row.kind === 'COURT' && row.court_status !== 'ACTIVE') ||
             !row.provider_confirmed ||
             !until ||
             new Date(until).getTime() <= new Date(row.db_now).getTime()
@@ -866,8 +869,74 @@ export class LocalServicesService extends ApplicationService {
       return this.bookingDto(b, actor);
     });
   }
+  async issueCheckin(
+    cookie: string | undefined,
+    id: string,
+    raw: unknown,
+  ): Promise<{ receipt: Row; checkin: LocalCheckinData | null }> {
+    const x = objectInput(raw, ['commandId', 'expectedVersion']),
+      commandId = localCommandId(x.commandId),
+      expectedVersion = localVersion(x.expectedVersion);
+    return this.transaction(async (c) => {
+      const actor = await this.lockActor(c, cookie),
+        ref = (await c.query('SELECT * FROM local_bookings WHERE id=$1', [resourceId(id)])).rows[0];
+      if (!ref || ref.buyer_user_id !== actor.user.id) throw notFound();
+      await this.mutex(c, [ref.org_id]);
+      const b = (await c.query('SELECT * FROM local_bookings WHERE id=$1 FOR UPDATE', [id]))
+        .rows[0];
+      let checkin: { code: string; expiresAt: string } | null = null;
+      const receipt = await this.operation(
+        c,
+        actor,
+        commandId,
+        { id, expectedVersion, kind: 'ISSUE_CHECKIN' },
+        async () => {
+          this.checkVersion(b, expectedVersion);
+          const listing = await this.listing(c, b.listing_id),
+            now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
+          if (
+            listing.kind !== 'COURT' ||
+            listing.court_status !== 'ACTIVE' ||
+            b.status !== 'CONFIRMED' ||
+            now.getTime() < b.starts_at.getTime() - 30 * 60000 ||
+            now >= b.ends_at
+          )
+            localFail(
+              'LOCAL_CHECKIN_WINDOW',
+              '请在球场开始前30分钟至结束前，由需求方现场生成核销码',
+            );
+          const code = randomBytes(16).toString('hex'),
+            expiresAt = new Date(
+              Math.min(now.getTime() + 10 * 60000, b.ends_at.getTime()),
+            ).toISOString();
+          await c.query(
+            'UPDATE local_bookings SET checkin_hash=$2,checkin_expires_at=$3,version=version+1,updated_at=clock_timestamp() WHERE id=$1',
+            [id, hashToken(code), expiresAt],
+          );
+          await this.history(
+            c,
+            actor,
+            id,
+            'ISSUE_CHECKIN',
+            b.version + 1,
+            '需求方签发或换发一次性球场现场核销码，明文不入库',
+          );
+          checkin = { code, expiresAt };
+          return { resourceType: 'BOOKING', resourceId: id, version: b.version + 1 };
+        },
+      );
+      // Plaintext appears only in this original response, never in receipts or audit history.
+      return { receipt, checkin };
+    });
+  }
   async bookingCommand(cookie: string | undefined, id: string, raw: unknown) {
     const input = parseLocalBookingCommand(raw);
+    resourceId(id);
+    if (input.type === 'REDEEM_CHECKIN') {
+      // Release the authentication connection before the pool-based limiter.
+      const userId = await this.transaction(async (c) => (await this.lockActor(c, cookie)).user.id);
+      await this.rateLimit(`local-checkin:${userId}:${id}`, 6, 60);
+    }
     return this.transaction(async (c) => {
       const actor = await this.lockActor(c, cookie),
         ref = (await c.query('SELECT * FROM local_bookings WHERE id=$1', [resourceId(id)])).rows[0];
@@ -946,6 +1015,23 @@ export class LocalServicesService extends ApplicationService {
           }
           change = null;
         } else {
+          if (input.type === 'ARRIVE' && listing.kind === 'COURT')
+            localFail('LOCAL_CHECKIN_REQUIRED', '球场到场须由需求方出示一次性码并由实际经营方核销');
+          if (input.type === 'REDEEM_CHECKIN') {
+            if (
+              listing.kind !== 'COURT' ||
+              listing.court_status !== 'ACTIVE' ||
+              role !== 'PROVIDER' ||
+              !b.checkin_hash ||
+              !b.checkin_expires_at ||
+              b.checkin_expires_at <= now ||
+              !timingSafeEqual(
+                Buffer.from(b.checkin_hash, 'hex'),
+                Buffer.from(hashToken(input.checkinCode!), 'hex'),
+              )
+            )
+              localFail('LOCAL_CHECKIN_INVALID', '核销码无效、已过期或不是本次球场预约');
+          }
           status = localBookingTransition(status, input.type, role);
           if (['CONFIRM', 'ACCEPT'].includes(input.type)) {
             this.validSupply(listing, endsAt);
@@ -953,12 +1039,15 @@ export class LocalServicesService extends ApplicationService {
             if (b.starts_at <= now) localFail('LOCAL_SLOT_UNAVAILABLE', '原时段已经开始');
           }
           if (
-            ['ARRIVE', 'DELIVER', 'COMPLETE'].includes(input.type) &&
+            ['ARRIVE', 'REDEEM_CHECKIN', 'DELIVER', 'COMPLETE'].includes(input.type) &&
             (role === 'ADMIN' || now.getTime() < new Date(b.starts_at).getTime() - 30 * 60000)
           )
             localFail('LOCAL_STATE_CONFLICT', '尚未到可履约时段或非履约双方');
           if (status === 'COMPLETED' && b.ends_at > now)
             localFail('LOCAL_STATE_CONFLICT', '服务时段尚未结束');
+          // Narrow lock-scope exception: the calendar mutex serializes all local rows.
+          // Cascading cancellation may touch other organizations' matchup/ledger rows,
+          // but never takes another org mutex or reads/locks legacy reservation rows.
           if (['CANCELLED', 'DECLINED', 'EXPIRED'].includes(status)) {
             await c.query(
               'UPDATE local_resource_reservations SET active=false WHERE booking_id=$1 AND active',
@@ -976,7 +1065,7 @@ export class LocalServicesService extends ApplicationService {
           change = null;
         }
         await c.query(
-          'UPDATE local_bookings SET status=$2,change_request=$3,slot_id=$4,starts_at=$5,ends_at=$6,reason=$7,version=version+1,updated_at=clock_timestamp() WHERE id=$1',
+          'UPDATE local_bookings SET status=$2,change_request=$3,slot_id=$4,starts_at=$5,ends_at=$6,reason=$7,checkin_hash=NULL,checkin_expires_at=NULL,version=version+1,updated_at=clock_timestamp() WHERE id=$1',
           [id, status, change, slotId, startsAt, endsAt, input.reason],
         );
         await this.history(c, actor, id, input.type, b.version + 1, input.reason);
@@ -1013,6 +1102,8 @@ export class LocalServicesService extends ApplicationService {
           ).rowCount
         )
           localFail('LOCAL_STATE_CONFLICT', '已有履约或争议记录，请按争议处理，不自动取消');
+        // As with booking cancellation, the cross-org cascade below touches only
+        // local rows under the calendar mutex; it acquires no additional org locks.
         await c.query(
           "UPDATE local_slots SET status='CLOSED',reason=$2,version=version+1 WHERE id=$1",
           [slotId, reason],
@@ -1030,7 +1121,7 @@ export class LocalServicesService extends ApplicationService {
           [slotId],
         );
         await c.query(
-          "UPDATE local_bookings SET status='CANCELLED',reason=$2,change_request=NULL,version=version+1,updated_at=clock_timestamp() WHERE slot_id=$1 AND status IN ('HELD','REQUESTED','CONFIRMED')",
+          "UPDATE local_bookings SET status='CANCELLED',reason=$2,change_request=NULL,checkin_hash=NULL,checkin_expires_at=NULL,version=version+1,updated_at=clock_timestamp() WHERE slot_id=$1 AND status IN ('HELD','REQUESTED','CONFIRMED')",
           [slotId, reason],
         );
         await this.history(c, actor, slotId, 'CLOSE_SLOT', s.version + 1, reason);
@@ -1129,7 +1220,7 @@ export class LocalServicesService extends ApplicationService {
     if (
       !(
         await c.query(
-          "SELECT 1 FROM team_access_grants g JOIN teams t ON t.org_id=g.org_id AND t.id=g.team_id JOIN organizations o ON o.id=t.org_id WHERE g.org_id=$1 AND g.team_id=$2 AND g.user_id=$3 AND g.status='ACTIVE' AND t.status='ACTIVE' AND o.status='ACTIVE' FOR SHARE OF g,t,o",
+          "SELECT 1 FROM team_access_grants g JOIN teams t ON t.org_id=g.org_id AND t.id=g.team_id JOIN organizations o ON o.id=t.org_id WHERE g.org_id=$1 AND g.team_id=$2 AND g.user_id=$3 AND g.status='ACTIVE' AND o.status='ACTIVE' FOR SHARE OF g,t,o",
           [orgId, teamId, actor.user.id],
         )
       ).rowCount
@@ -1141,7 +1232,7 @@ export class LocalServicesService extends ApplicationService {
     if (!r) throw notFound();
     const visible = (
       await c.query(
-        "SELECT g.org_id,g.team_id FROM team_access_grants g JOIN teams t ON t.org_id=g.org_id AND t.id=g.team_id WHERE g.user_id=$1 AND g.status='ACTIVE' AND t.status='ACTIVE' AND ((g.org_id=$2 AND g.team_id=$3) OR (g.org_id=$4 AND g.team_id=$5)) FOR SHARE OF g,t",
+        "SELECT g.org_id,g.team_id FROM team_access_grants g JOIN teams t ON t.org_id=g.org_id AND t.id=g.team_id WHERE g.user_id=$1 AND g.status='ACTIVE' AND ((g.org_id=$2 AND g.team_id=$3) OR (g.org_id=$4 AND g.team_id=$5)) FOR SHARE OF g,t",
         [actor.user.id, r.home_org_id, r.home_team_id, r.away_org_id, r.away_team_id],
       )
     ).rows;
@@ -1153,13 +1244,13 @@ export class LocalServicesService extends ApplicationService {
     ).rows;
     if (new Set(orgs.map((o) => o.id)).size !== new Set([r.home_org_id, r.away_org_id]).size)
       throw notFound();
-    const activeTeams = (
+    const existingTeams = (
       await c.query(
-        "SELECT id FROM teams WHERE status='ACTIVE' AND ((org_id=$1 AND id=$2) OR (org_id=$3 AND id=$4)) FOR SHARE",
+        'SELECT id FROM teams WHERE ((org_id=$1 AND id=$2) OR (org_id=$3 AND id=$4)) FOR SHARE',
         [r.home_org_id, r.home_team_id, r.away_org_id, r.away_team_id],
       )
     ).rows;
-    if (activeTeams.length !== 2) throw notFound();
+    if (existingTeams.length !== 2) throw notFound();
     return {
       row: r,
       home: visible.some((v) => v.team_id === r.home_team_id),
@@ -1195,11 +1286,14 @@ export class LocalServicesService extends ApplicationService {
       const actor = await this.lockActor(c, cookie);
       const rows = (
         await c.query(
-          "SELECT m.*,clock_timestamp() AS db_now,EXISTS(SELECT 1 FROM team_access_grants g WHERE g.user_id=$1 AND g.org_id=m.away_org_id AND g.team_id=m.away_team_id AND g.status='ACTIVE') AS can_away FROM local_matchups m JOIN organizations h ON h.id=m.home_org_id JOIN organizations a ON a.id=m.away_org_id WHERE h.status='ACTIVE' AND a.status='ACTIVE' AND EXISTS(SELECT 1 FROM teams t WHERE t.org_id=m.home_org_id AND t.id=m.home_team_id AND t.status='ACTIVE') AND EXISTS(SELECT 1 FROM teams t WHERE t.org_id=m.away_org_id AND t.id=m.away_team_id AND t.status='ACTIVE') AND EXISTS(SELECT 1 FROM team_access_grants g WHERE g.user_id=$1 AND g.status='ACTIVE' AND ((g.org_id=m.home_org_id AND g.team_id=m.home_team_id) OR (g.org_id=m.away_org_id AND g.team_id=m.away_team_id))) ORDER BY m.created_at DESC,m.id LIMIT 200",
+          "SELECT m.*,clock_timestamp() AS db_now,EXISTS(SELECT 1 FROM team_access_grants g WHERE g.user_id=$1 AND g.org_id=m.away_org_id AND g.team_id=m.away_team_id AND g.status='ACTIVE') AS can_away FROM local_matchups m JOIN organizations h ON h.id=m.home_org_id JOIN organizations a ON a.id=m.away_org_id WHERE h.status='ACTIVE' AND a.status='ACTIVE' AND EXISTS(SELECT 1 FROM teams t WHERE t.org_id=m.home_org_id AND t.id=m.home_team_id) AND EXISTS(SELECT 1 FROM teams t WHERE t.org_id=m.away_org_id AND t.id=m.away_team_id) AND EXISTS(SELECT 1 FROM team_access_grants g WHERE g.user_id=$1 AND g.status='ACTIVE' AND ((g.org_id=m.home_org_id AND g.team_id=m.home_team_id) OR (g.org_id=m.away_org_id AND g.team_id=m.away_team_id))) ORDER BY m.created_at DESC,m.id LIMIT 200",
           [actor.user.id],
         )
       ).rows;
-      return { items: rows.map((r) => this.matchupDto(r, r.can_away)), limit: 200 };
+      return {
+        items: rows.map((r) => this.matchupDto(r, r.can_away && r.created_by !== actor.user.id)),
+        limit: 200,
+      };
     });
   }
   async createMatchup(cookie: string | undefined, raw: unknown) {
@@ -1242,9 +1336,12 @@ export class LocalServicesService extends ApplicationService {
         ).rows[0];
         if (b.status !== 'CONFIRMED' || b.snapshot.kind !== 'COURT' || b.starts_at <= b.db_now)
           localFail('LOCAL_COURT_BOOKING_REQUIRED', '约赛须使用本人已确认的未来球场预约');
+        const currentSupply = await this.listing(c, b.listing_id);
+        if (currentSupply.court_status !== 'ACTIVE')
+          localFail('LOCAL_COURT_BOOKING_REQUIRED', '本次实际球场已停用，请先核对场地安排');
         const teams = (
           await c.query(
-            "SELECT id,name FROM teams WHERE status='ACTIVE' AND ((org_id=$1 AND id=$2) OR (org_id=$3 AND id=$4)) FOR SHARE",
+            'SELECT id,name FROM teams WHERE ((org_id=$1 AND id=$2) OR (org_id=$3 AND id=$4)) FOR SHARE',
             [input.homeOrgId, input.homeTeamId, input.awayOrgId, input.awayTeamId],
           )
         ).rows;
@@ -1316,9 +1413,12 @@ export class LocalServicesService extends ApplicationService {
           if (!access.away || actor.user.id === row.created_by || status !== 'OPEN')
             throw forbidden();
           const booking = (
-            await c.query('SELECT status FROM local_bookings WHERE id=$1', [row.court_booking_id])
+            await c.query(
+              'SELECT b.status,c.status AS court_status FROM local_bookings b JOIN local_listings l ON l.id=b.listing_id JOIN courts c ON c.id=l.court_id AND c.org_id=l.org_id WHERE b.id=$1',
+              [row.court_booking_id],
+            )
           ).rows[0];
-          if (booking?.status !== 'CONFIRMED')
+          if (booking?.status !== 'CONFIRMED' || booking?.court_status !== 'ACTIVE')
             localFail('LOCAL_COURT_BOOKING_REQUIRED', '球场预约已变化，请由双方重新核对');
           if (row.starts_at <= now) localFail('LOCAL_STATE_CONFLICT', '约赛时段已经开始');
           await this.reserve(

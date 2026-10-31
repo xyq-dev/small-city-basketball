@@ -15,10 +15,26 @@ import type {
 } from '@small-city-basketball/contracts';
 import { hashPassword } from '../src/security.js';
 import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
-import { call, data, error, login, PASSWORD, RUN_ID } from './support.js';
+import { call, data, error, login, PASSWORD, RUN_ID, eventsPath, eventInput } from './support.js';
 import type { User } from './support.js';
-import { team } from './p03-support.js';
-import { frozen } from './p04-support.js';
+import {
+  team,
+  rules as registrationRules,
+  rulesPath,
+  registrationCommand,
+  entry,
+  roster,
+  command as entryCommand,
+} from './p03-support.js';
+import {
+  frozen,
+  court,
+  revision,
+  allocate,
+  fullAllocations,
+  publish,
+  matchesPath,
+} from './p04-support.js';
 import {
   acquire,
   act,
@@ -1505,6 +1521,116 @@ describe(
         'ACTIVE',
       );
       expect(rowFor(await board(season.id), player)?.score).toBe(2);
+    });
+    test('administrative cancellation is explicit coverage exclusion in both per-event and private-season proofs', async () => {
+      const teams = await pair('合成行政赛季排除'),
+        root = `/v1/orgs/${h.owner.orgId}`;
+      const created = data<any>(
+        await call(h.api, 'post', eventsPath(h.owner.orgId), {
+          cookie: h.owner.cookie,
+          body: eventInput('合成行政赛季来源', {
+            startDate: `${YEAR}-11-01`,
+            endDate: `${YEAR}-11-07`,
+          }),
+        }),
+        201,
+      );
+      const configured = data<{ eventVersion: number }>(
+        await call(h.api, 'put', `${root}/events/${created.id}/exception-rules`, {
+          cookie: h.owner.cookie,
+          body: {
+            clientRequestId: randomUUID(),
+            expectedEventVersion: created.version,
+            expectedVersion: 0,
+            forfeitWinPoints: 2,
+            forfeitLossPoints: 0,
+            cancellationPolicy: 'EXCLUDE_FROM_TABLE',
+          },
+        }),
+      );
+      let registration = data<any>(
+        await call(h.api, 'put', rulesPath(h.owner.orgId, created.id), {
+          cookie: h.owner.cookie,
+          body: registrationRules(configured.eventVersion, { minPlayers: 2, maxPlayers: 2 }),
+        }),
+      );
+      registration = await registrationCommand(h.api, h.owner, registration, 'OPEN_REGISTRATION');
+      for (const target of teams) {
+        let draft = await entry(h.api, h.owner, created.id, target, h.leader);
+        draft = await roster(h.api, h.owner, draft, h.leader, target.members);
+        draft = await entryCommand(h.api, h.owner, draft, h.leader, 'SUBMIT');
+        await entryCommand(h.api, h.owner, draft, h.owner, 'APPROVE');
+      }
+      registration = await registrationCommand(h.api, h.owner, registration, 'CLOSE_REGISTRATION');
+      registration = await registrationCommand(h.api, h.owner, registration, 'FREEZE_REGISTRATION');
+      const resource = await court(h.api, h.owner, '合成行政赛季场地');
+      let schedule = await revision(h.api, h.owner, registration, [resource]);
+      schedule = await allocate(
+        h.api,
+        h.owner,
+        schedule,
+        fullAllocations(schedule, resource, `${registration.event.startDate}T09:00:00+08:00`),
+      );
+      data(await publish(h.api, h.owner, schedule));
+      const matches = data<any[]>(
+        await call(h.api, 'get', matchesPath(h.owner.orgId, created.id), {
+          cookie: h.owner.cookie,
+        }),
+      );
+      const eventId = created.id,
+        matchId = matches[0].id,
+        base = `${root}/matches/${matchId}/exceptions`;
+      await assign(h, matchId, h.otherOwner, 'RESULT_REVIEWER');
+      const current = data<any>(await call(h.api, 'get', base, { cookie: h.owner.cookie }));
+      const proposed = data<{ requestId: string }>(
+        await call(h.api, 'post', base + '/proposals', {
+          cookie: h.owner.cookie,
+          body: {
+            clientRequestId: randomUUID(),
+            expectedEventVersion: current.event.version,
+            expectedMatchVersion: current.match.version,
+            operation: 'DECLARE',
+            kind: 'CANCELLED',
+            forfeitingSide: null,
+            reason: why,
+          },
+        }),
+      );
+      const review = data<any>(await call(h.api, 'get', base, { cookie: h.otherOwner.cookie }));
+      data(
+        await call(h.api, 'post', base + '/' + proposed.requestId + '/review', {
+          cookie: h.otherOwner.cookie,
+          body: {
+            clientRequestId: randomUUID(),
+            expectedEventVersion: review.event.version,
+            expectedMatchVersion: review.match.version,
+            expectedRequestVersion: review.requests.find((r: any) => r.id === proposed.requestId)
+              .version,
+            type: 'APPROVE',
+            reason: why,
+          },
+        }),
+      );
+      const eventStats = data<any>(
+        await call(h.api, 'get', `${root}/events/${eventId}/player-statistics`, {
+          cookie: h.owner.cookie,
+        }),
+      );
+      expect(eventStats.summary).toMatchObject({
+        excludedAdministrativeMatchCount: 1,
+        recordableMatchCount: 0,
+        pendingMatchCount: 0,
+        rows: [],
+      });
+      const season = await activeSeasonWith(eventId),
+        stats = await board(season.id);
+      expect(stats.summary.events.find((e) => e.eventId === eventId)).toMatchObject({
+        state: 'INCLUDED',
+        excludedAdministrativeMatchCount: 1,
+        recordableMatchCount: 0,
+        pendingMatchCount: 0,
+      });
+      expect(stats.summary.rows).toEqual([]);
     });
   },
 );

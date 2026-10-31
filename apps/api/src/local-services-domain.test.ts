@@ -6,6 +6,7 @@ import {
   localInterval,
   localPoint,
   parseLocalBooking,
+  parseLocalBookingCommand,
   parseLocalListing,
   parseLocalQuery,
 } from './local-services-domain.js';
@@ -90,6 +91,21 @@ describe('X12 local supply invariants', () => {
       }),
     ).toThrow();
     expect(() => parseLocalQuery({ q: '', secret: 'unknown' })).toThrow();
+  });
+  test('one-time checkin codes are accepted only by the dedicated redemption command', () => {
+    const base = {
+      commandId: id,
+      expectedVersion: 1,
+      type: 'REDEEM_CHECKIN',
+      reason: '实际现场核销',
+      checkinCode: 'a'.repeat(32),
+    };
+    expect(parseLocalBookingCommand(base).checkinCode).toBe('a'.repeat(32));
+    expect(() => parseLocalBookingCommand({ ...base, checkinCode: 'too-short' })).toThrow();
+    expect(() => parseLocalBookingCommand({ ...base, type: 'ARRIVE' })).toThrow();
+    expect(() => parseLocalBookingCommand({ ...base, checkinCode: undefined })).toThrow();
+    expect(localBookingTransition('CONFIRMED', 'REDEEM_CHECKIN', 'PROVIDER')).toBe('ARRIVED');
+    expect(() => localBookingTransition('CONFIRMED', 'REDEEM_CHECKIN', 'BUYER')).toThrow();
   });
   test('paging binds selected region, filters and explicit origin instead of mixing nearby results', () => {
     const q = parseLocalQuery({ q: '球场' });

@@ -207,7 +207,14 @@ export function parseLocalBooking(raw: unknown) {
   };
 }
 export function parseLocalBookingCommand(raw: unknown) {
-  const x = objectInput(raw, ['commandId', 'expectedVersion', 'type', 'reason', 'newSlotId']);
+  const x = objectInput(raw, [
+    'commandId',
+    'expectedVersion',
+    'type',
+    'reason',
+    'newSlotId',
+    'checkinCode',
+  ]);
   if (
     ![
       'CONFIRM',
@@ -215,6 +222,7 @@ export function parseLocalBookingCommand(raw: unknown) {
       'DECLINE',
       'CANCEL',
       'ARRIVE',
+      'REDEEM_CHECKIN',
       'DELIVER',
       'COMPLETE',
       'DISPUTE',
@@ -226,12 +234,17 @@ export function parseLocalBookingCommand(raw: unknown) {
     invalid('不支持的履约操作');
   if ((x.type === 'PROPOSE_CHANGE') !== (x.newSlotId !== undefined))
     invalid('仅改期提议需要新时隙');
+  if ((x.type === 'REDEEM_CHECKIN') !== (x.checkinCode !== undefined))
+    invalid('仅现场核销可提交一次性核销码');
+  const checkinCode = x.checkinCode === undefined ? null : String(x.checkinCode);
+  if (checkinCode !== null && !/^[0-9a-f]{32}$/.test(checkinCode)) invalid('核销码格式无效');
   return {
     commandId: localCommandId(x.commandId),
     expectedVersion: localVersion(x.expectedVersion),
     type: String(x.type),
     reason: text(x.reason, 'reason', 4, 500),
     newSlotId: x.newSlotId === undefined ? null : resourceId(String(x.newSlotId)),
+    checkinCode,
   };
 }
 export function localBookingTransition(
@@ -249,6 +262,7 @@ export function localBookingTransition(
     ACCEPT: { from: 'REQUESTED', role: 'PROVIDER', to: 'CONFIRMED' },
     DECLINE: { from: 'REQUESTED', role: 'PROVIDER', to: 'DECLINED' },
     ARRIVE: { from: 'CONFIRMED', role: 'PROVIDER', to: 'ARRIVED' },
+    REDEEM_CHECKIN: { from: 'CONFIRMED', role: 'PROVIDER', to: 'ARRIVED' },
     DELIVER: { from: 'ARRIVED', role: 'PROVIDER', to: 'DELIVERED' },
     COMPLETE: { from: 'DELIVERED', role: 'BUYER', to: 'COMPLETED' },
   };

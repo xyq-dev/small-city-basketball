@@ -22,7 +22,7 @@ function eventPage(request) {
       '../../utils/api': {
         ...core,
         getClient() {
-          return { request };
+          return { request, requestPublic: request };
         },
       },
     },

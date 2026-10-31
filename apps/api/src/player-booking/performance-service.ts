@@ -1,3 +1,4 @@
+import { exceptionResultJoins } from '../match-exception-domain.js';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type {
@@ -83,7 +84,7 @@ SELECT p.id,statement_timestamp() AS as_of,
   COALESCE((SELECT jsonb_agg(to_jsonb(q) ORDER BY q.starts_at DESC,q.match_id DESC) FROM (
     SELECT l.team_id,l.member_id,l.event_name,l.event_format,m.starts_at,m.id AS match_id,
       to_char(m.starts_at AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS match_date,
-      to_jsonb(m) || jsonb_build_object('state',to_jsonb(s),'confirmation',to_jsonb(cf),'last_event',to_jsonb(le),'last_command',to_jsonb(rc),'scoring_rules',to_jsonb(sr),
+      to_jsonb(m) || jsonb_build_object('state',to_jsonb(s),'confirmation',to_jsonb(cf),'last_event',to_jsonb(le),'last_command',to_jsonb(rc),'scoring_rules',to_jsonb(sr),'exception_checked',true,'exception_head',to_jsonb(xh),'exception_request',to_jsonb(xr),'exception_rules',to_jsonb(xrules),
         'home_roster',(SELECT jsonb_agg(jsonb_build_object('memberId',rp.member_id,'name',rp.name,'jerseyNo',rp.jersey_no) ORDER BY rp.member_id) FROM entry_roster_players rp WHERE rp.org_id=m.org_id AND rp.entry_id=m.home_entry_id AND rp.revision_id=m.home_roster_revision_id),
         'away_roster',(SELECT jsonb_agg(jsonb_build_object('memberId',rp.member_id,'name',rp.name,'jerseyNo',rp.jersey_no) ORDER BY rp.member_id) FROM entry_roster_players rp WHERE rp.org_id=m.org_id AND rp.entry_id=m.away_entry_id AND rp.revision_id=m.away_roster_revision_id)
       ) AS proof
@@ -93,6 +94,7 @@ SELECT p.id,statement_timestamp() AS as_of,
     LEFT JOIN scoring_events le ON le.org_id=m.org_id AND le.match_id=m.id AND le.seq=s.last_event_seq
     LEFT JOIN scoring_commands rc ON rc.org_id=m.org_id AND rc.match_id=m.id AND rc.actor_id=le.actor_id AND rc.command_id=le.command_id
     LEFT JOIN scoring_rulesets sr ON sr.org_id=m.org_id AND sr.event_id=m.event_id AND sr.id=s.ruleset_id
+    ${exceptionResultJoins}
     WHERE l.profile_id=p.id AND EXISTS(SELECT 1 FROM entry_roster_players rp WHERE rp.org_id=m.org_id AND rp.team_id=l.team_id AND rp.member_id=l.member_id AND ((rp.entry_id=m.home_entry_id AND rp.revision_id=m.home_roster_revision_id) OR (rp.entry_id=m.away_entry_id AND rp.revision_id=m.away_roster_revision_id)))
     ORDER BY m.starts_at DESC,m.id DESC LIMIT 1001
   ) q),'[]'::jsonb) AS samples

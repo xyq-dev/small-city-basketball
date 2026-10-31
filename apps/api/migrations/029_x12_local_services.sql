@@ -39,10 +39,11 @@ CREATE TABLE local_bookings (
  buyer_user_id uuid NOT NULL REFERENCES users(id), provider_user_id uuid NOT NULL REFERENCES users(id),
  status text NOT NULL CHECK(status IN ('HELD','REQUESTED','CONFIRMED','ARRIVED','DELIVERED','COMPLETED','DECLINED','CANCELLED','EXPIRED','DISPUTED')),
  starts_at timestamptz NOT NULL, ends_at timestamptz NOT NULL CHECK(ends_at>starts_at), hold_expires_at timestamptz,
+ checkin_hash char(64) CHECK(checkin_hash ~ '^[0-9a-f]{64}$'), checkin_expires_at timestamptz CHECK(checkin_expires_at IS NULL OR isfinite(checkin_expires_at)),
  snapshot jsonb NOT NULL CHECK(jsonb_typeof(snapshot)='object'), change_request jsonb CHECK(change_request IS NULL OR jsonb_typeof(change_request)='object'),
  reason text, version integer NOT NULL DEFAULT 1 CHECK(version>0), created_at timestamptz NOT NULL DEFAULT clock_timestamp(), updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  FOREIGN KEY(org_id,listing_id,slot_id) REFERENCES local_slots(org_id,listing_id,id),
- CHECK(buyer_user_id<>provider_user_id), CHECK(status NOT IN ('HELD','REQUESTED') OR hold_expires_at IS NOT NULL)
+ CHECK((checkin_hash IS NULL)=(checkin_expires_at IS NULL)), CHECK(checkin_hash IS NULL OR status='CONFIRMED'), CHECK(buyer_user_id<>provider_user_id), CHECK(status NOT IN ('HELD','REQUESTED') OR hold_expires_at IS NOT NULL)
 );
 CREATE INDEX local_bookings_people ON local_bookings(buyer_user_id,provider_user_id,created_at DESC,id);
 CREATE TABLE local_matchups (

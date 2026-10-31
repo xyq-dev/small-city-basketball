@@ -161,12 +161,15 @@ function coverageRows(summary) {
         ? '逐人确认 ' +
           e.includedMatchCount +
           ' / ' +
-          e.totalMatchCount +
+          (e.recordableMatchCount === undefined ? e.totalMatchCount : e.recordableMatchCount) +
           ' 场；仅队伍统计 ' +
           e.teamOnlyConfirmedMatchCount +
           ' 场；待确认 ' +
           e.pendingMatchCount +
-          ' 场'
+          ' 场' +
+          (e.excludedAdministrativeMatchCount
+            ? '；行政裁定／取消排除 ' + e.excludedAdministrativeMatchCount + ' 场，不记出场'
+            : '')
         : eventState[e.state] || e.state,
   }));
 }
@@ -174,7 +177,7 @@ function coverageRows(summary) {
 function rankingNote(summary) {
   if (!summary.rows || !summary.rows.length) return '暂无可计入的已授权数据。';
   return summary.rankingComplete
-    ? '仅含已授权球员；各届比赛均已逐人确认。'
+    ? '仅含已授权球员；各届可统计比赛均已逐人确认。'
     : '部分样本：仍有比赛待确认、仅有队伍统计或来源未计入，不是完整排名。';
 }
 function grantView(grant) {

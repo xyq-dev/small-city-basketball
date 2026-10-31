@@ -254,6 +254,8 @@ function pathAllowed(path, method = 'GET') {
     return noQuery && method === 'POST';
   if (['/v1/local-bookings', '/v1/local-matchups'].includes(base))
     return noQuery && ['GET', 'POST'].includes(method);
+  if (matches('/v1/local-bookings/' + uuidPattern + '/checkin'))
+    return noQuery && method === 'POST';
   if (matches('/v1/local-bookings/' + uuidPattern)) return noQuery && method === 'GET';
   if (matches('/v1/local-(bookings|matchups)/' + uuidPattern + '/commands'))
     return noQuery && method === 'POST';

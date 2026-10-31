@@ -1,6 +1,7 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
+const publicResults = require('../../utils/public-results');
 
 const TABS = ['schedule', 'ranking', 'stats'];
 const MAX_MATCH_PAGES = 10;
@@ -31,7 +32,7 @@ function bracketView(bracket, names) {
   if (!bracket) return null;
   const name = (id) => (id && names[id]) || null;
   return {
-    progress: '已确认 ' + bracket.confirmedMatchCount + ' / ' + bracket.totalMatchCount + ' 场',
+    progress: publicResults.progress(bracket),
     isComplete: !!bracket.isComplete,
     rounds: (bracket.rounds || []).map((round) => ({
       roundNo: round.roundNo,
@@ -41,14 +42,14 @@ function bracketView(bracket, names) {
         key: slot.fixtureKey,
         positionNo: slot.positionNo,
         bye: slot.status === 'BYE' ? name(slot.byeEntryId) || '轮空球队' : null,
-        home: name(slot.homeEntryId) || '待晋级',
-        away: name(slot.awayEntryId) || '待晋级',
-        statusLabel:
-          slot.status === 'WAITING'
-            ? '尚未发布'
-            : slot.status === 'BYE'
-              ? '轮空'
-              : api.matchStatus(slot.status),
+        home:
+          name(slot.homeEntryId) || (slot.sourceOutcome === 'LOSER' ? '待半决赛负者' : '待晋级'),
+        away:
+          name(slot.awayEntryId) || (slot.sourceOutcome === 'LOSER' ? '待半决赛负者' : '待晋级'),
+        statusLabel: publicResults.status(slot),
+        label: slot.kind === 'THIRD_PLACE' ? '季军赛' : slot.kind === 'CHAMPIONSHIP' ? '决赛' : '',
+        winnerLabel:
+          slot.kind === 'THIRD_PLACE' ? '季军' : slot.kind === 'CHAMPIONSHIP' ? '冠军' : '晋级',
         winner: name(slot.winnerEntryId),
       })),
     })),
@@ -241,9 +242,7 @@ Page({
           registration.counts.APPROVED +
           (registration.freeze ? ' · 名单已冻结' : '')
         : '',
-      progress: completion
-        ? '已确认 ' + completion.confirmedMatchCount + ' / ' + completion.totalMatchCount + ' 场'
-        : '',
+      progress: completion ? publicResults.progress(completion) : '',
       ready: !!(completion && completion.ready),
       blockers: completion ? completion.blockers.slice(0, 5) : [],
       actions: ['COMPLETE', 'ARCHIVE', 'REOPEN']
@@ -392,12 +391,7 @@ Page({
             groups: groups.map((g) => ({
               key: g.groupKey,
               label: g.label,
-              progress:
-                '已确认 ' +
-                g.standings.confirmedMatchCount +
-                ' / ' +
-                g.standings.totalMatchCount +
-                ' 场',
+              progress: publicResults.progress(g.standings),
               tieBreakRequired: (g.unresolvedTieEntryIds || []).length > 0,
               rows: standingRows(g.standings),
             })),
@@ -421,11 +415,9 @@ Page({
           modeLabel: !standings
             ? ''
             : standings.mode === 'PUBLISHED'
-              ? '正式积分 · 仅计入独立确认的赛果'
+              ? '正式积分 · 依据有效记分确认和独立行政裁定'
               : '积分规则尚未锁定 · 草稿预览',
-          progress: standings
-            ? '已确认 ' + standings.confirmedMatchCount + ' / ' + standings.totalMatchCount + ' 场'
-            : '',
+          progress: standings ? publicResults.progress(standings) : '',
           rows: standingRows(standings),
         },
       };
@@ -443,10 +435,20 @@ Page({
         value: {
           empty: false,
           progress:
-            '已纳入 ' + summary.includedMatchCount + ' / ' + summary.totalMatchCount + ' 场',
+            '已纳入 ' +
+            summary.includedMatchCount +
+            ' / ' +
+            (summary.recordableMatchCount ?? summary.totalMatchCount) +
+            ' 场',
           coverageLabel: summary.coverageComplete
-            ? '全部已发布比赛均已逐人采集并确认'
+            ? '全部可记分比赛均已逐人采集并确认'
             : '部分比赛仅记录球队比分或尚待确认，个人数据不完整',
+          administrativeLabel:
+            summary.excludedAdministrativeMatchCount > 0
+              ? '行政裁定排除 ' +
+                summary.excludedAdministrativeMatchCount +
+                ' 场，不计个人出场或技术数据'
+              : '',
           attributionLabel: summary.attributionComplete ? '' : '存在未归属到个人的得分或犯规',
           pendingLabel:
             summary.pendingMatchCount > 0 ? summary.pendingMatchCount + ' 场待确认，未纳入' : '',

@@ -1269,8 +1269,18 @@ const SEEDED_CONFIGURATION: Record<string, number> = {
 const EXPECTED_NEW_COLUMN_VALUES: Record<string, Record<string, unknown[]>> = {
   event_rulesets: { require_participant_materials: [false] },
   public_event_publications: { purpose: ['LIVE'] },
-  result_confirmations: { collection_mode: ['TEAM_ONLY'], player_stats: [null] },
+  result_confirmations: {
+    collection_mode: ['TEAM_ONLY'],
+    player_stats: [null],
+    technical_collection: [false],
+    professional_stats: [null],
+  },
   schedule_revisions: { group_config: [null] },
-  scoring_states: { collection_mode: ['TEAM_ONLY'], player_stats: [null] },
-  users: { login_name: [null] },
+  scoring_states: {
+    collection_mode: ['TEAM_ONLY'],
+    player_stats: [null],
+    technical_collection: [false],
+    professional_stats: [null],
+  },
+  users: { login_name: [null], email_verified_at: [null], credential_reset_at: [null] },
 };

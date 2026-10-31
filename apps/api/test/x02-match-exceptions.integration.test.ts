@@ -31,7 +31,7 @@ import {
   workbenchPath,
 } from './p05-support.js';
 import type { Harness } from './p05-support.js';
-import { privateStandings, savePublishRules } from './p05b-support.js';
+import { privateStandings, savePublishRules, enable } from './p05b-support.js';
 import { lifecyclePath, readKnockout, publishRound, roundInput } from './c04-support.js';
 const rulesUrl = (h: Harness, event: string) =>
   `/v1/orgs/${h.owner.orgId}/events/${event}/exception-rules`;
@@ -218,6 +218,10 @@ describe('X02 real PostgreSQL administrative adjudication workflow', () => {
       forfeitingSide: 'HOME',
     });
     expect(v.capabilities.canPropose).toBe(false);
+    const listed = data<Record<string, any>[]>(
+      await call(h.api, 'get', matchesPath(h.owner.orgId, f.event.id), { cookie: h.owner.cookie }),
+    );
+    expect(listed.find((x) => x.id === m.id)?.adjudication).toEqual({ kind: 'FORFEIT' });
     const blockedPlan = await rescheduling(h, m.id);
     const blocked = await reschedule(h, blockedPlan, {
       startsAt: new Date(Date.parse(m.startsAt) + 120 * 60000).toISOString(),
@@ -268,6 +272,15 @@ describe('X02 real PostgreSQL administrative adjudication workflow', () => {
     const revoke = await propose(h, m.id, 'FORFEIT', true);
     data(await approve(h, m.id, revoke.r.requestId));
     expect((await read(h, m.id)).active).toBeNull();
+    const resumedList = data<Record<string, any>[]>(
+      await call(h.api, 'get', matchesPath(h.owner.orgId, f.event.id), { cookie: h.owner.cookie }),
+    );
+    expect(
+      Object.hasOwn(
+        resumedList.find((x) => x.id === m.id)!,
+        'adjudication',
+      ),
+    ).toBe(false);
     const resumed = await rescheduling(h, m.id);
     data(
       await reschedule(h, resumed, {
@@ -311,6 +324,15 @@ describe('X02 real PostgreSQL administrative adjudication workflow', () => {
     ).toBe(true);
     expect(b.bracket!.nextRound!.fixtures).toHaveLength(2);
     await publishRound(h, f.event.id, await roundInput(h, b, f.resource));
+    const technical = data<{ summary: Record<string, any> }>(
+      await call(h.api, 'get', `/v1/orgs/${h.owner.orgId}/events/${f.event.id}/player-statistics`, {
+        cookie: h.owner.cookie,
+      }),
+    );
+    expect(technical.summary).toMatchObject({
+      excludedAdministrativeMatchCount: 2,
+      recordableMatchCount: 2,
+    });
     const current = await read(h, f.matches[0]!.id);
     expect(current.capabilities.canRevoke).toBe(false);
     const bad = await call(h.api, 'post', url(h, f.matches[0]!.id) + '/proposals', {
@@ -357,4 +379,47 @@ describe('X02 real PostgreSQL administrative adjudication workflow', () => {
     data(await approve(h, m.id, p.r.requestId, 'REJECT'));
     expect((await read(h, m.id)).requests[0]!.status).toBe('REJECTED');
   }, 120000);
+  test.each(['FORFEIT', 'CANCELLED'] as const)(
+    '%s invalidates old matchup export and prevents new or replayed promotional previews',
+    async (kind) => {
+      const f = await fixture(h),
+        m = f.matches[0]!;
+      await enable(h, f.event.id);
+      const base = `/v1/orgs/${h.owner.orgId}/events/${f.event.id}/posters`;
+      const version = (await read(h, m.id)).event.version;
+      const body = {
+        clientRequestId: randomUUID(),
+        expectedEventVersion: version,
+        kind: 'MATCHUP',
+        matchId: m.id,
+      };
+      const exported = data<{ poster: { id: string } }>(
+        await call(h.api, 'post', base, { cookie: h.owner.cookie, body }),
+        201,
+      );
+      const content = base + '/' + exported.poster.id + '/content';
+      const initial = await call(h.api, 'get', content, { cookie: h.owner.cookie });
+      expect(initial.status).toBe(200);
+      expect(initial.headers['content-type']).toMatch(/^image\/png/);
+      const p = await propose(h, m.id, kind);
+      data(await approve(h, m.id, p.r.requestId));
+      const stale = await call(h.api, 'get', content, { cookie: h.owner.cookie });
+      error(stale, 410);
+      expect(stale.body.error.code).toBe('POSTER_SOURCE_UNAVAILABLE');
+      const replay = await call(h.api, 'post', base, { cookie: h.owner.cookie, body });
+      error(replay, 410);
+      expect(replay.body.error.code).toBe('POSTER_SOURCE_UNAVAILABLE');
+      const fresh = await call(h.api, 'post', base, {
+        cookie: h.owner.cookie,
+        body: {
+          ...body,
+          clientRequestId: randomUUID(),
+          expectedEventVersion: (await read(h, m.id)).event.version,
+        },
+      });
+      error(fresh, 410);
+      expect(fresh.body.error.code).toBe('POSTER_SOURCE_UNAVAILABLE');
+    },
+    120000,
+  );
 });

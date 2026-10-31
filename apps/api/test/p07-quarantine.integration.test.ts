@@ -172,7 +172,7 @@ test('C22 quarantine holding every table lock commits before REPLACE and its rev
     // The recovery operation has actually acquired all EXCLUSIVE locks. This barrier is
     // before it chooses the revocation time; the HTTP request then demonstrably waits on
     // the sessions table and must observe revoked credentials after quarantine commits.
-    barrier = pauseAfter(target.pool, (sql) => /^LOCK TABLE organizations,/.test(sql));
+    barrier = pauseAfter(target.pool, (sql) => /^LOCK TABLE "?organizations"?,/.test(sql));
     pendingQuarantine = quarantineRestoredDatabase(target);
     await within(barrier.reached);
     pendingReplace = call(seeded.h.api, 'post', request.path, {

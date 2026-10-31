@@ -519,3 +519,85 @@ describe('X08 double round-robin individual samples', () => {
     expect(() => calculateEventPlayerStatistics(duplicate)).toThrow();
   });
 });
+
+function adjudicated(m: ResultRow, kind = 'FORFEIT') {
+  m.status = 'SCHEDULED';
+  m.version = 2;
+  m.state = null;
+  m.confirmation = null;
+  m.last_event = null;
+  m.last_command = null;
+  m.event_id = id(8000);
+  m.fixture_key = 'R1-P1';
+  const request = {
+    id: id(8001),
+    match_id: m.id,
+    event_id: m.event_id,
+    status: 'APPROVED',
+    operation: 'DECLARE',
+    version: 2,
+    proposed_by: id(8002),
+    reviewed_by: id(8003),
+    reviewed_at: '2026-10-31T00:00:00Z',
+    source_match_version: 1,
+    rules_id: id(8004),
+    rules_version: 1,
+    kind,
+    forfeiting_side: kind === 'FORFEIT' ? 'HOME' : null,
+    winner_entry_id: kind === 'FORFEIT' ? m.away_entry_id : null,
+    loser_entry_id: kind === 'FORFEIT' ? m.home_entry_id : null,
+  };
+  return {
+    ...m,
+    exception_checked: true,
+    exception_head: { version: 2, active_request_id: request.id },
+    exception_request: request,
+    exception_rules: {
+      id: id(8004),
+      event_id: m.event_id,
+      version: 1,
+      forfeit_win_points: 2,
+      forfeit_loss_points: 0,
+      cancellation_policy: 'EXCLUDE_FROM_TABLE',
+    },
+  };
+}
+describe('administrative resolutions excluded from individual statistical samples', () => {
+  test.each(['FORFEIT', 'CANCELLED'])(
+    '%s never creates a zero-point appearance or pending confirmation',
+    (kind) => {
+      const result = calculate([adjudicated(final(), kind)]);
+      expect(result).toMatchObject({
+        totalMatchCount: 1,
+        recordableMatchCount: 0,
+        excludedAdministrativeMatchCount: 1,
+        pendingMatchCount: 0,
+        includedMatchCount: 0,
+        teamOnlyConfirmedMatchCount: 0,
+        coverageComplete: false,
+        rows: [],
+      });
+    },
+  );
+  test('mixed real and administrative games use only recordable games for coverage', () => {
+    const result = calculate([adjudicated(final(1, 1, 2)), final(2, 1, 3), final(3, 2, 3)], 3);
+    expect(result).toMatchObject({
+      totalMatchCount: 3,
+      recordableMatchCount: 2,
+      excludedAdministrativeMatchCount: 1,
+      pendingMatchCount: 0,
+      includedMatchCount: 2,
+      coverageComplete: true,
+    });
+    expect(
+      result.rows.filter((p) => p.entryId === id(11)).every((p) => p.rosterSampleMatchCount === 1),
+    ).toBe(true);
+  });
+  test('incomplete explicit administrative join proof fails closed', () => {
+    const m = adjudicated(final());
+    delete (m as any).exception_rules;
+    expect(() => calculate([m])).toThrowError(
+      expect.objectContaining({ code: 'RESULT_SOURCE_INVALID' }),
+    );
+  });
+});

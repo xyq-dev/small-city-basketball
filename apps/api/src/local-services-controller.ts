@@ -116,6 +116,13 @@ export class LocalBookingsController {
   @Get(':id') async detail(@Req() r: ApiRequest, @Param('id') id: string) {
     return envelope(r, await this.service.bookingDetail(r.headers.cookie, id));
   }
+  @Post(':id/checkin') @HttpCode(200) async checkin(
+    @Req() r: ApiRequest,
+    @Param('id') id: string,
+    @Body() raw: unknown,
+  ) {
+    return envelope(r, await this.service.issueCheckin(r.headers.cookie, id, raw));
+  }
   @Post(':id/commands') @HttpCode(200) async command(
     @Req() r: ApiRequest,
     @Param('id') id: string,

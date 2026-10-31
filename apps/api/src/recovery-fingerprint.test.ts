@@ -25,11 +25,9 @@ describe('private recovery fingerprint boundaries', () => {
     );
   });
   test('rejects ambiguous payload metadata rather than exposing raw private bytes', async () => {
-    const query = vi
-      .fn()
-      .mockResolvedValue({
-        rows: [{ attname: 'id' }, { attname: 'envelope' }, { attname: 'stored_envelope_sha256' }],
-      });
+    const query = vi.fn().mockResolvedValue({
+      rows: [{ attname: 'id' }, { attname: 'envelope' }, { attname: 'stored_envelope_sha256' }],
+    });
     await expect(
       exactTableRows({ query } as unknown as PoolClient, 'account_mail_jobs'),
     ).rejects.toThrow('Unexpected media fingerprint schema');

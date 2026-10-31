@@ -1,3 +1,4 @@
+import { exceptionResultJoins } from './match-exception-domain.js';
 import type { PoolClient } from 'pg';
 import type { EventPlayerStatisticsData } from '@small-city-basketball/contracts';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
@@ -33,6 +34,7 @@ export class EventPlayerStatisticsService extends ApplicationService {
         CASE WHEN m.id IS NULL THEN NULL ELSE to_jsonb(m) || jsonb_build_object(
           'state',to_jsonb(s),'confirmation',to_jsonb(cf),'last_event',to_jsonb(le),
           'last_command',to_jsonb(rc),'scoring_rules',to_jsonb(sr),
+    'exception_checked',true,'exception_head',to_jsonb(xh),'exception_request',to_jsonb(xr),'exception_rules',to_jsonb(xrules),
           'home_roster',(SELECT jsonb_agg(jsonb_build_object('memberId',rp.member_id,'name',rp.name,'jerseyNo',rp.jersey_no) ORDER BY rp.member_id)
             FROM entry_roster_players rp WHERE rp.org_id=m.org_id AND rp.entry_id=m.home_entry_id AND rp.revision_id=m.home_roster_revision_id),
           'away_roster',(SELECT jsonb_agg(jsonb_build_object('memberId',rp.member_id,'name',rp.name,'jerseyNo',rp.jersey_no) ORDER BY rp.member_id)
@@ -46,6 +48,7 @@ export class EventPlayerStatisticsService extends ApplicationService {
         LEFT JOIN scoring_events le ON le.org_id=m.org_id AND le.match_id=m.id AND le.seq=s.last_event_seq
         LEFT JOIN scoring_commands rc ON rc.org_id=m.org_id AND rc.match_id=m.id AND rc.actor_id=le.actor_id AND rc.command_id=le.command_id
         LEFT JOIN scoring_rulesets sr ON sr.org_id=m.org_id AND sr.event_id=m.event_id AND sr.id=s.ruleset_id
+  ${exceptionResultJoins}
         WHERE p.org_id=$1 AND p.event_id=$2 ORDER BY m.id`,
         [org, event],
       )

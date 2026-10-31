@@ -1039,7 +1039,10 @@ export interface EventPlayerStatisticsData {
     includedMatchCount: number;
     teamOnlyConfirmedMatchCount: number;
     pendingMatchCount: number;
-    /** All published matches are effectively confirmed PLAYER_BASIC samples. */
+    /** Administrative resolutions never contribute recorded statistics or appearances. */
+    excludedAdministrativeMatchCount?: number;
+    recordableMatchCount?: number;
+    /** All non-administrative published matches are effectively confirmed PLAYER_BASIC samples. */
     coverageComplete: boolean;
     /** At least one included sample, with no unattributed points or fouls. */
     attributionComplete: boolean;

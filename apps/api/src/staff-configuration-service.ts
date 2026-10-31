@@ -26,6 +26,7 @@ export class StaffConfigurationService extends ApplicationService {
             [actor.orgId, eventId],
           )
         : { rows: [] };
+      await this.ensureFreshSession(c, actor);
       return {
         orgId: actor.orgId,
         eventId,
@@ -87,6 +88,7 @@ export class StaffConfigurationService extends ApplicationService {
           receipt.request_hash !== fingerprint
         )
           throw new ApiError(409, 'REQUEST_CONFLICT', '原操作编号内容不同');
+        await this.ensureFreshSession(c, actor);
         return receipt.result;
       }
       const user = (

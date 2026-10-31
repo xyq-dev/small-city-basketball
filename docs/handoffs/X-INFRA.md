@@ -7,3 +7,7 @@ root批准infra独占见docs/tasks/X-INFRA.md。先接本片manifest127表/105�
 迁移计划保留既有事务/checksum合同，加连续唯一规范序号与已应用前缀检查。9单测与API tsconfig已通过；PG/grants/restore均尚未执行。后续片继续更换hardcoded24/83、隔离所有新公开授权/找回邮件任务与token、保留私密历史且不输出，真实运行交根CI。
 
 I2去除所有本组backup/restore/fingerprint/production/restart旧24/83硬编码。镜像逐SQL文件名/checksum对源；restore新建前exact表名集合，返回真实表数。私密工单附件bytea与邮件envelope在PG内摘要，报告只长度/摘要与元数据。15个本地单测通过；脚本语法/格式与API tsconfig通过；无PG/dump/restore实际结果。root需另改旧c02/c22固定83测试（已告知）。
+
+I2b：c02/c22 exact当前迁移suffix/manifest表集合，C22历史列比较排除028/031中性新列；c19 EXPECTED_NEW_COLUMN_VALUES显式false/null新列。无真实PG升级运行结果，根CI执行。
+
+I3依赖X12 E@25b7fc8新增checkin两列，根须先整合该027? 实际为029候选。quarantine锁完整manifest且NOWAIT，新增所有独立公开授权/城市权/账号token+邮件envelope/同城供给订单约赛库存核销永久关闭；不删私密历史，不动已确认行政head/回执。P07锁竞争观察正则兼容带引号完整table锁。19本地infra单测+tsconfig/语法格式通过；真实PG尚未执行。CI129 production固定migrate-and-grant失败，不代表HTTPS/restart/restore执行过。非空新域fixtures和受限runtime actual API下一片继续，不能标DONE。

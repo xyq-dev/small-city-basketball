@@ -5,6 +5,8 @@ import {
   verifiedGovernanceBooking,
   verifiedCompletedBooking,
 } from '../src/local-services-service.js';
+import { PlayerBookingService } from '../src/player-booking/service.js';
+import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
 import { forbidden } from '../src/errors.js';
 import { TencentLocationProvider } from '../src/location-provider.js';
 import { REGION_CATALOG_VERSION } from '../src/region-catalog-data.js';
@@ -332,6 +334,369 @@ describe(
       ).rejects.toMatchObject({ code: '23P01' });
       expect((await service.bookingDetail(h.leader.cookie, b.resourceId)).status).toBe('REQUESTED');
     });
+    test('court arrival requires one-time buyer checkin, rotates safely and never stores or replays plaintext', async () => {
+      const near =
+        ((await h.api.pool.query('SELECT clock_timestamp() AS now')).rows[0].now.getTime() +
+          10 * 60000 -
+          base) /
+        3600000;
+      const s = await supply('COURT', near),
+        b = await service.book(h.leader.cookie, bookBody(s));
+      await service.bookingCommand(h.leader.cookie, b.resourceId, {
+        commandId: command(),
+        expectedVersion: 1,
+        type: 'CONFIRM',
+        reason: '确认现场球场预约',
+      });
+      await assertCode(
+        service.bookingCommand(h.owner.cookie, b.resourceId, {
+          commandId: command(),
+          expectedVersion: 2,
+          type: 'ARRIVE',
+          reason: '不能用经营方自行声明代替核销',
+        }),
+        'LOCAL_CHECKIN_REQUIRED',
+      );
+      const issue = { commandId: command(), expectedVersion: 2 },
+        first = await service.issueCheckin(h.leader.cookie, b.resourceId, issue);
+      expect(first.checkin?.code).toMatch(/^[0-9a-f]{32}$/);
+      expect((await service.issueCheckin(h.leader.cookie, b.resourceId, issue)).checkin).toBeNull();
+      const stored = (
+        await h.api.pool.query(
+          'SELECT checkin_hash,checkin_expires_at FROM local_bookings WHERE id=$1',
+          [b.resourceId],
+        )
+      ).rows[0];
+      expect(stored.checkin_hash).not.toBe(first.checkin!.code);
+      expect(
+        JSON.stringify(
+          (
+            await h.api.pool.query(
+              'SELECT result FROM local_command_receipts WHERE actor_id=$1 AND command_id=$2',
+              [h.leader.id, issue.commandId],
+            )
+          ).rows,
+        ),
+      ).not.toContain(first.checkin!.code);
+      const second = await service.issueCheckin(h.leader.cookie, b.resourceId, {
+        commandId: command(),
+        expectedVersion: 3,
+      });
+      expect(second.checkin!.code).not.toBe(first.checkin!.code);
+      await assertCode(
+        service.bookingCommand(h.owner.cookie, b.resourceId, {
+          commandId: command(),
+          expectedVersion: 4,
+          type: 'REDEEM_CHECKIN',
+          checkinCode: first.checkin!.code,
+          reason: '旧码不应仍可核销',
+        }),
+        'LOCAL_CHECKIN_INVALID',
+      );
+      await assertCode(
+        service.bookingCommand(h.leader.cookie, b.resourceId, {
+          commandId: command(),
+          expectedVersion: 4,
+          type: 'REDEEM_CHECKIN',
+          checkinCode: second.checkin!.code,
+          reason: '需求方不能冒充实际经营方核销',
+        }),
+        'LOCAL_CHECKIN_INVALID',
+      );
+      await service.bookingCommand(h.owner.cookie, b.resourceId, {
+        commandId: command(),
+        expectedVersion: 4,
+        type: 'REDEEM_CHECKIN',
+        checkinCode: second.checkin!.code,
+        reason: '双方现场出示并核销当前一次性码',
+      });
+      expect((await service.bookingDetail(h.leader.cookie, b.resourceId)).status).toBe('ARRIVED');
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT checkin_hash,checkin_expires_at FROM local_bookings WHERE id=$1',
+            [b.resourceId],
+          )
+        ).rows[0],
+      ).toEqual({ checkin_hash: null, checkin_expires_at: null });
+      await assertCode(
+        service.bookingCommand(h.owner.cookie, b.resourceId, {
+          commandId: command(),
+          expectedVersion: 5,
+          type: 'REDEEM_CHECKIN',
+          checkinCode: second.checkin!.code,
+          reason: '核销后同一码不能再次使用',
+        }),
+        'LOCAL_CHECKIN_INVALID',
+      );
+    });
+    test('checkin issuance obeys DB time and cancellation invalidates issued credentials', async () => {
+      const s = await supply(),
+        b = await service.book(h.leader.cookie, bookBody(s));
+      await service.bookingCommand(h.leader.cookie, b.resourceId, {
+        commandId: command(),
+        expectedVersion: 1,
+        type: 'CONFIRM',
+        reason: '确认远期实际场地',
+      });
+      await assertCode(
+        service.issueCheckin(h.leader.cookie, b.resourceId, {
+          commandId: command(),
+          expectedVersion: 2,
+        }),
+        'LOCAL_CHECKIN_WINDOW',
+      );
+      const near =
+        ((await h.api.pool.query('SELECT clock_timestamp() AS now')).rows[0].now.getTime() +
+          10 * 60000 -
+          base) /
+        3600000;
+      const current = await supply('COURT', near),
+        booked = await service.book(h.leader.cookie, bookBody(current));
+      await service.bookingCommand(h.leader.cookie, booked.resourceId, {
+        commandId: command(),
+        expectedVersion: 1,
+        type: 'CONFIRM',
+        reason: '确认现场实际场地',
+      });
+      const issued = await service.issueCheckin(h.leader.cookie, booked.resourceId, {
+        commandId: command(),
+        expectedVersion: 2,
+      });
+      await h.api.pool.query(
+        "UPDATE local_bookings SET checkin_expires_at=clock_timestamp()-interval '1 second',version=version+1 WHERE id=$1",
+        [booked.resourceId],
+      );
+      await assertCode(
+        service.bookingCommand(h.owner.cookie, booked.resourceId, {
+          commandId: command(),
+          expectedVersion: 4,
+          type: 'REDEEM_CHECKIN',
+          checkinCode: issued.checkin!.code,
+          reason: '过期码不可由设备时钟延长',
+        }),
+        'LOCAL_CHECKIN_INVALID',
+      );
+      await service.bookingCommand(h.leader.cookie, booked.resourceId, {
+        commandId: command(),
+        expectedVersion: 4,
+        type: 'CANCEL',
+        reason: '取消现场需求并作废任何核销码',
+      });
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT checkin_hash,checkin_expires_at FROM local_bookings WHERE id=$1',
+            [booked.resourceId],
+          )
+        ).rows[0],
+      ).toEqual({ checkin_hash: null, checkin_expires_at: null });
+    });
+    test('legacy C06 create and activation persist only known cross-calendar rejection after rolling back effects', async () => {
+      const legacy = new PlayerBookingService(h.api.pool, {
+        databaseUrl: h.databaseUrl,
+        appOrigin: ORIGIN,
+      });
+      await maintainPlatformOperator(h.api.pool, {
+        email: h.otherOwner.email,
+        status: 'ACTIVE',
+        reason: '仅隔离测试独立球员资料审核',
+      });
+      const version = (
+        await h.api.pool.query('SELECT version FROM booking_profiles WHERE id=$1', [profileId])
+      ).rows[0].version;
+      const pending = await legacy.putProfile(h.owner.cookie, {
+        commandId: command(),
+        expectedVersion: version,
+        displayName: '合成跨业务实际球员',
+        position: 'PG',
+        heightCm: 180,
+        city: '合成市',
+        bio: '隔离档期冲突回执验证',
+        priceFen: 10000,
+        travelFen: 0,
+        accommodationFen: 0,
+        availability: [{ startAt: at(-100), endAt: at(620) }],
+        adultConfirmed: true,
+      });
+      const profile = await legacy.reviewProfile(h.otherOwner.cookie, profileId, {
+        commandId: command(),
+        expectedVersion: pending.version,
+        status: 'APPROVED',
+        reason: '独立核对合成测试资料',
+      });
+      const settings = (await h.api.pool.query('SELECT version FROM booking_settings WHERE id'))
+        .rows[0].version;
+      const s = await supply('REFEREE'),
+        local = await service.book(h.leader.cookie, bookBody(s));
+      const appearance = {
+        profileId,
+        label: '合成冲突场次',
+        conditional: false,
+        reportAt: s.start,
+        startAt: s.start,
+        endAt: s.end,
+        venue: '双方确认实际服务场地',
+      };
+      const draft = {
+        commandId: command(),
+        orgId: h.owner.orgId,
+        teamId: h.teams[0]!.id,
+        eventName: '合成独立约赛',
+        scope: 'MULTI',
+        eligibilityConfirmed: true,
+        reviewedSettingsVersion: settings,
+        reviewedProfileVersions: { [profileId]: profile.version },
+        appearances: [
+          {
+            ...appearance,
+            label: '应被整体回滚的首项',
+            reportAt: at(500),
+            startAt: at(500),
+            endAt: at(501),
+          },
+          appearance,
+        ],
+      };
+      const count = Number(
+        (await h.api.pool.query('SELECT count(*) AS n FROM booking_orders')).rows[0].n,
+      );
+      await expect(legacy.createOrder(h.leader.cookie, draft)).rejects.toMatchObject({
+        status: 409,
+        code: 'BOOKING_TIME_CONFLICT',
+        details: { bookingCreateOutcome: 'REJECTED', commandId: draft.commandId },
+      });
+      expect(
+        Number((await h.api.pool.query('SELECT count(*) AS n FROM booking_orders')).rows[0].n),
+      ).toBe(count);
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT result FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+            [h.leader.id, draft.commandId],
+          )
+        ).rows[0].result.outcome,
+      ).toBe('REJECTED');
+      const conditional = await legacy.createOrder(h.leader.cookie, {
+        ...draft,
+        commandId: command(),
+        scope: 'SINGLE',
+        appearances: [
+          {
+            profileId,
+            label: '合成待触发项目',
+            conditional: true,
+            conditionText: '双方另行确认实际时间',
+            venue: '待双方核定实际场馆',
+          },
+        ],
+      });
+      const activation = {
+        commandId: command(),
+        type: 'ACTIVATE',
+        appearanceId: conditional.appearances[0]!.id,
+        expectedVersion: 1,
+        reportAt: s.start,
+        startAt: s.start,
+        endAt: s.end,
+        venue: '双方确认实际服务场地',
+        reason: '合成待触发转为确定档期',
+      };
+      await expect(
+        legacy.command(h.leader.cookie, conditional.id, activation),
+      ).rejects.toMatchObject({
+        status: 409,
+        code: 'BOOKING_TIME_CONFLICT',
+        details: { bookingCommandOutcome: 'REJECTED', commandId: activation.commandId },
+      });
+      expect((await legacy.getOrder(h.leader.cookie, conditional.id)).appearances[0]).toMatchObject(
+        { status: 'CONDITIONAL', version: 1 },
+      );
+      await service.bookingCommand(h.leader.cookie, local.resourceId, {
+        commandId: command(),
+        expectedVersion: 1,
+        type: 'CANCEL',
+        reason: '释放同城需求不复活原已拒绝命令',
+      });
+      await expect(legacy.createOrder(h.leader.cookie, draft)).rejects.toMatchObject({
+        code: 'BOOKING_TIME_CONFLICT',
+        details: { bookingCreateOutcome: 'REJECTED' },
+      });
+      await expect(
+        legacy.command(h.leader.cookie, conditional.id, activation),
+      ).rejects.toMatchObject({
+        code: 'BOOKING_TIME_CONFLICT',
+        details: { bookingCommandOutcome: 'REJECTED' },
+      });
+      await grant(h.api, h.owner, h.teams[0]!, h.leader, 'DISABLED');
+      try {
+        await expect(legacy.createOrder(h.leader.cookie, draft)).rejects.toMatchObject({
+          status: 404,
+        });
+        await expect(
+          legacy.command(h.leader.cookie, conditional.id, activation),
+        ).rejects.toMatchObject({ status: 404 });
+      } finally {
+        await grant(h.api, h.owner, h.teams[0]!, h.leader, 'ACTIVE');
+      }
+      expect(
+        (
+          await legacy.command(h.leader.cookie, conditional.id, {
+            ...activation,
+            commandId: command(),
+          })
+        ).appearances[0]!.status,
+      ).toBe('REQUESTED');
+    });
+    test('cross-organization matchup creation racing court cancellation never leaves occupied teams or a live matchup', async () => {
+      for (let i = 0; i < 4; i++) {
+        const s = await supply(),
+          b = await service.book(h.leader.cookie, bookBody(s));
+        await service.bookingCommand(h.leader.cookie, b.resourceId, {
+          commandId: command(),
+          expectedVersion: 1,
+          type: 'CONFIRM',
+          reason: '确认跨机构约赛实际场地',
+        });
+        const [created, cancelled] = await Promise.allSettled([
+          service.createMatchup(h.leader.cookie, {
+            commandId: command(),
+            homeOrgId: h.owner.orgId,
+            homeTeamId: h.teams[0]!.id,
+            awayOrgId: h.otherOwner.orgId,
+            awayTeamId: h.otherTeams[0]!.id,
+            courtBookingId: b.resourceId,
+            terms: '双方确认现场时间与场地，核对跨组织取消竞态',
+          }),
+          service.bookingCommand(h.leader.cookie, b.resourceId, {
+            commandId: command(),
+            expectedVersion: 2,
+            type: 'CANCEL',
+            reason: '并发取消场地不得留下球队占用或有效约赛',
+          }),
+        ]);
+        expect(cancelled.status).toBe('fulfilled');
+        if (created.status === 'rejected')
+          expect(created.reason).toMatchObject({ code: 'LOCAL_COURT_BOOKING_REQUIRED' });
+        const matches = (
+          await h.api.pool.query('SELECT id,status FROM local_matchups WHERE court_booking_id=$1', [
+            b.resourceId,
+          ])
+        ).rows;
+        expect(matches.every((m) => m.status === 'CANCELLED')).toBe(true);
+        expect(
+          (
+            await h.api.pool.query(
+              'SELECT id FROM local_resource_reservations WHERE active AND (booking_id=$1 OR matchup_id=ANY($2::uuid[]))',
+              [b.resourceId, matches.map((m) => m.id)],
+            )
+          ).rowCount,
+        ).toBe(0);
+        expect((await service.bookingDetail(h.leader.cookie, b.resourceId)).status).toBe(
+          'CANCELLED',
+        );
+      }
+    }, 120000);
     test('same command and content returns one original receipt; changed content is rejected', async () => {
       const s = await supply();
       const body = bookBody(s);

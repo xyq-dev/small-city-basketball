@@ -100,6 +100,18 @@ describe(
       if (!mail) throw new Error('Synthetic mailbox not dispatched');
       return { token: tokenFrom(mail.mail), jobId: mail.id, requestId };
     }
+    async function issueVerification(u: User) {
+      data(
+        await call(api, 'post', endpoint('verification-requests'), {
+          cookie: u.cookie,
+          body: { clientRequestId: randomUUID() },
+        }),
+      );
+      await service.drain();
+      const mail = mailbox.sent.filter((x) => x.mail.to === u.email).at(-1);
+      if (!mail) throw new Error('Verification fixture not dispatched');
+      return { token: tokenFrom(mail.mail), jobId: mail.id };
+    }
     const consume = (token: string, clientRequestId = randomUUID(), newPassword = resetPassword) =>
       call(api, 'post', endpoint('consume'), { body: { clientRequestId, token, newPassword } });
     const cancel = (token: string, clientRequestId: string) =>
@@ -301,6 +313,95 @@ describe(
         ])
       ).rows[0];
       expect(fresh).toEqual({ status: 'ACCEPTED', envelope: null });
+    }, 120000);
+    test('email verification rejects reset payloads, expiry and revoked codes while preserving valid sessions', async () => {
+      const u = await user('verify-purpose');
+      expect(data(await call(api, 'get', endpoint('me'), { cookie: u.cookie }))).toMatchObject({
+        emailVerified: false,
+      });
+      const first = await issueVerification(u);
+      const wrongPurpose = await consume(first.token);
+      error(wrongPurpose, 422);
+      expect(wrongPurpose.body.error.code).toBe('ACCOUNT_CODE_INVALID');
+      const operation = randomUUID();
+      expect(
+        data(
+          await call(api, 'post', endpoint('consume'), {
+            body: { clientRequestId: operation, token: first.token },
+          }),
+        ),
+      ).toEqual({ completed: true, purpose: 'VERIFY_EMAIL' });
+      expect(data(await call(api, 'get', endpoint('me'), { cookie: u.cookie }))).toMatchObject({
+        emailVerified: true,
+      });
+      data(await call(api, 'get', '/v1/auth/session', { cookie: u.cookie }));
+      expect(
+        (await api.pool.query('SELECT credential_reset_at FROM users WHERE id=$1', [u.id])).rows[0]
+          .credential_reset_at,
+      ).toBeNull();
+      const expired = await issueVerification(u);
+      await api.pool.query(
+        "UPDATE account_action_tokens SET created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 day' WHERE id=(SELECT token_id FROM account_mail_jobs WHERE id=$1)",
+        [expired.jobId],
+      );
+      error(
+        await call(api, 'post', endpoint('consume'), {
+          body: { clientRequestId: randomUUID(), token: expired.token },
+        }),
+        422,
+      );
+      const old = await issueVerification(u),
+        latest = await issueVerification(u);
+      error(
+        await call(api, 'post', endpoint('consume'), {
+          body: { clientRequestId: randomUUID(), token: old.token },
+        }),
+        422,
+      );
+      expect(
+        data(
+          await call(api, 'post', endpoint('consume'), {
+            body: { clientRequestId: randomUUID(), token: latest.token },
+          }),
+        ),
+      ).toEqual({ completed: true, purpose: 'VERIFY_EMAIL' });
+    }, 120000);
+    test('wrong mail encryption key fails startup closed with a nonempty encrypted job and does not send or mutate it', async () => {
+      const u = await user('wrong-encryption');
+      mailbox.state = 'UNKNOWN';
+      const t = await issue(u);
+      mailbox.state = 'ACCEPTED';
+      const before = (
+        await api.pool.query('SELECT status,envelope FROM account_mail_jobs WHERE id=$1', [t.jobId])
+      ).rows[0];
+      expect(before.status).toBe('UNKNOWN');
+      expect(Buffer.isBuffer(before.envelope)).toBe(true);
+      const keyBefore = (
+        await api.pool.query('SELECT key_id FROM account_mail_configuration WHERE singleton=true')
+      ).rows[0].key_id;
+      const countBefore = mailbox.sent.length;
+      await expect(
+        createApi({
+          databaseUrl,
+          appOrigin: ORIGIN,
+          accountRecovery: {
+            provider: mailbox,
+            encryptionKey: Buffer.alloc(32, 0x33).toString('base64'),
+            autoDispatch: false,
+          },
+        }),
+      ).rejects.toThrow('Account mail key does not match stored configuration');
+      expect(mailbox.sent).toHaveLength(countBefore);
+      expect(
+        (await api.pool.query('SELECT key_id FROM account_mail_configuration WHERE singleton=true'))
+          .rows[0].key_id,
+      ).toBe(keyBefore);
+      const after = (
+        await api.pool.query('SELECT status,envelope FROM account_mail_jobs WHERE id=$1', [t.jobId])
+      ).rows[0];
+      expect(after.status).toBe(before.status);
+      expect(Buffer.from(after.envelope).equals(before.envelope)).toBe(true);
+      data(await call(api, 'get', '/v1/auth/session', { cookie: u.cookie }));
     }, 120000);
   },
 );

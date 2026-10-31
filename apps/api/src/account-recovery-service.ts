@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { ApplicationService } from './service.js';
-import type { ApiOptions, DbUser } from './service.js';
+import type { ApiOptions, DbUser, Actor } from './service.js';
 import { ApiError } from './errors.js';
 import { hashPassword } from './security.js';
 import { objectInput } from './validation.js';
@@ -95,6 +95,7 @@ export class AccountRecoveryService extends ApplicationService {
     return this.transaction(async (c) => {
       const a = await this.lockActor(c, cookie);
       const r = await c.query('SELECT email_verified_at FROM users WHERE id=$1', [a.user.id]);
+      await this.ensureFreshSession(c, a);
       return {
         email: a.user.email,
         emailVerified: !!r.rows[0]?.email_verified_at,
@@ -124,9 +125,10 @@ export class AccountRecoveryService extends ApplicationService {
     await this.rateLimit(`account-mail-address:${recoveryFingerprint(key, email)}`, 6, 3600);
     const fingerprint = recoveryFingerprint(key, { purpose, email });
     return this.transaction(async (c) => {
+      let verifier: Actor | null = null;
       if (purpose === 'VERIFY_EMAIL') {
-        const actor = await this.lockActor(c, cookie);
-        if (actor.user.email !== email) throw invalidCode();
+        verifier = await this.lockActor(c, cookie);
+        if (verifier.user.email !== email) throw invalidCode();
       }
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `account-request:${id}`,
@@ -138,6 +140,7 @@ export class AccountRecoveryService extends ApplicationService {
       if (previous.rows[0]) {
         if (previous.rows[0].request_hash !== fingerprint)
           throw new ApiError(409, 'ACCOUNT_REQUEST_CONFLICT', '原操作编号内容不同');
+        if (verifier) await this.ensureFreshSession(c, verifier);
         return { accepted: true };
       }
       const user = (
@@ -187,6 +190,7 @@ export class AccountRecoveryService extends ApplicationService {
           purpose,
         });
       }
+      if (verifier) await this.ensureFreshSession(c, verifier);
       // No account-existence, mailbox or provider state in the anonymous response.
       return { accepted: true };
     });

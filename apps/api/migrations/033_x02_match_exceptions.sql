@@ -104,7 +104,7 @@ END;
 $$;
 CREATE TRIGGER match_exception_rules_guard BEFORE INSERT OR UPDATE OR DELETE ON match_exception_rules FOR EACH ROW EXECUTE FUNCTION x02_rules_guard();
 CREATE FUNCTION x02_request_guard() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE h match_exception_heads%ROWTYPE;m published_matches%ROWTYPE;r match_exception_requests%ROWTYPE;e events%ROWTYPE;
+DECLARE h match_exception_heads%ROWTYPE;m published_matches%ROWTYPE;r match_exception_requests%ROWTYPE;e events%ROWTYPE;expected_winner uuid;expected_loser uuid;
 BEGIN
  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Adjudication history cannot be deleted' USING ERRCODE='23514';END IF;
  SELECT * INTO e FROM events WHERE org_id=NEW.org_id AND id=NEW.event_id FOR SHARE;
@@ -122,8 +122,13 @@ BEGIN
  END IF;
  END IF;
  SELECT * INTO m FROM published_matches WHERE org_id=NEW.org_id AND id=NEW.match_id;
- IF NEW.kind='FORFEIT' AND (NEW.winner_entry_id IS DISTINCT FROM CASE WHEN NEW.forfeiting_side='HOME' THEN m.away_entry_id ELSE m.home_entry_id END OR NEW.loser_entry_id IS DISTINCT FROM CASE WHEN NEW.forfeiting_side='HOME' THEN m.home_entry_id ELSE m.away_entry_id END) THEN
-  RAISE EXCEPTION 'Administrative winner and loser must be the original opposing entries' USING ERRCODE='23514';END IF;
+ IF NEW.kind='FORFEIT' THEN
+  IF NEW.forfeiting_side='HOME' THEN expected_winner:=m.away_entry_id;expected_loser:=m.home_entry_id;
+  ELSIF NEW.forfeiting_side='AWAY' THEN expected_winner:=m.home_entry_id;expected_loser:=m.away_entry_id;
+  ELSE RAISE EXCEPTION 'Forfeit must explicitly name the original side' USING ERRCODE='23514';END IF;
+  IF NEW.winner_entry_id IS DISTINCT FROM expected_winner OR NEW.loser_entry_id IS DISTINCT FROM expected_loser THEN
+   RAISE EXCEPTION 'Administrative winner and loser must be the original opposing entries' USING ERRCODE='23514';END IF;
+ END IF;
  IF TG_OP='INSERT' THEN
   IF NEW.status<>'PENDING' OR NEW.version<>1 OR NOT x02_can_adjudicate(NEW.org_id,NEW.event_id,NEW.match_id,NEW.proposed_by) THEN RAISE EXCEPTION 'Adjudication must start as an authorized proposal' USING ERRCODE='23514';END IF;
  ELSE
@@ -180,7 +185,7 @@ CREATE TRIGGER match_exception_scoring_states_guard BEFORE INSERT OR UPDATE ON s
 
 CREATE FUNCTION x02_assert_administrative_source(scope_org uuid,scope_event uuid,item jsonb,allow_cancellation boolean DEFAULT false)
 RETURNS void LANGUAGE plpgsql AS $$
-DECLARE m published_matches%ROWTYPE;r match_exception_requests%ROWTYPE;h match_exception_heads%ROWTYPE;actual_keys text[];
+DECLARE m published_matches%ROWTYPE;r match_exception_requests%ROWTYPE;h match_exception_heads%ROWTYPE;actual_keys text[];expected_winner uuid;expected_loser uuid;
 BEGIN
  SELECT array_agg(k ORDER BY k) INTO actual_keys FROM jsonb_object_keys(item) k;
  IF actual_keys IS DISTINCT FROM ARRAY['adjudicationId','adjudicationVersion','fixtureKey','kind','loserEntryId','matchId','matchVersion','winnerEntryId']::text[] OR COALESCE(item->>'kind','') NOT IN ('ADJUDICATION','CANCELLATION') THEN
@@ -195,7 +200,11 @@ BEGIN
  IF r.kind='CANCELLED' THEN
   IF NOT allow_cancellation OR item->>'kind'<>'CANCELLATION' OR item->'winnerEntryId'<>'null'::jsonb OR item->'loserEntryId'<>'null'::jsonb THEN RAISE EXCEPTION 'Cancellation never supplies a knockout contestant' USING ERRCODE='23514';END IF;
  ELSE
-  IF item->>'kind'<>'ADJUDICATION' OR (item->>'winnerEntryId')::uuid IS DISTINCT FROM r.winner_entry_id OR (item->>'loserEntryId')::uuid IS DISTINCT FROM r.loser_entry_id OR r.winner_entry_id IS DISTINCT FROM CASE WHEN r.forfeiting_side='HOME' THEN m.away_entry_id ELSE m.home_entry_id END OR r.loser_entry_id IS DISTINCT FROM CASE WHEN r.forfeiting_side='HOME' THEN m.home_entry_id ELSE m.away_entry_id END THEN RAISE EXCEPTION 'Administrative source must retain actual opposing winner and loser' USING ERRCODE='23514';END IF;
+  IF r.forfeiting_side='HOME' THEN expected_winner:=m.away_entry_id;expected_loser:=m.home_entry_id;
+  ELSIF r.forfeiting_side='AWAY' THEN expected_winner:=m.home_entry_id;expected_loser:=m.away_entry_id;
+  ELSE RAISE EXCEPTION 'Administrative source requires an explicit original forfeiting side' USING ERRCODE='23514';END IF;
+  IF item->>'kind'<>'ADJUDICATION' OR (item->>'winnerEntryId')::uuid IS DISTINCT FROM r.winner_entry_id OR (item->>'loserEntryId')::uuid IS DISTINCT FROM r.loser_entry_id OR r.winner_entry_id IS DISTINCT FROM expected_winner OR r.loser_entry_id IS DISTINCT FROM expected_loser THEN
+   RAISE EXCEPTION 'Administrative source must retain actual opposing winner and loser' USING ERRCODE='23514';END IF;
  END IF;
 END;
 $$;

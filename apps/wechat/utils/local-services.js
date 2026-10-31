@@ -225,7 +225,11 @@ function booking(raw) {
     add('ACCEPT', '接单');
     add('DECLINE', '拒绝');
   }
-  if (r.canActAs === 'PROVIDER' && r.status === 'CONFIRMED') add('ARRIVE', '登记到场');
+  if (r.canActAs === 'PROVIDER' && r.status === 'CONFIRMED')
+    add(
+      r.kind === 'COURT' ? 'REDEEM_CHECKIN' : 'ARRIVE',
+      r.kind === 'COURT' ? '凭需求方核销码核销到场' : '本人登记到场',
+    );
   if (r.canActAs === 'PROVIDER' && r.status === 'ARRIVED') add('DELIVER', '登记交付');
   if (r.canActAs === 'BUYER' && r.status === 'DELIVERED') add('COMPLETE', '确认完成');
   if (['HELD', 'REQUESTED', 'CONFIRMED'].includes(r.status)) add('CANCEL', '取消预约');
@@ -267,6 +271,7 @@ function booking(raw) {
     timeText: ui.localTime(r.startsAt, true) + ' — ' + ui.localTime(r.endsAt),
     actions,
     canChange: r.status === 'CONFIRMED' && r.canActAs !== 'ADMIN',
+    canIssueCheckin: r.kind === 'COURT' && r.canActAs === 'BUYER' && r.status === 'CONFIRMED',
   };
 }
 function matchup(raw) {
@@ -460,8 +465,23 @@ function repository(client = api.getClient()) {
       if (!COMMAND.test(commandId)) throw new Error('操作编号无效');
       return result(await read('/v1/local-services/receipts/' + commandId));
     },
-    async send(record) {
-      return result((await client.request(record.path, record.method, record.body)).data);
+    async send(record, secret) {
+      const body =
+        record.body.type === 'REDEEM_CHECKIN'
+          ? { ...record.body, checkinCode: checkinCode(secret) }
+          : record.body;
+      const raw = (await client.request(record.path, record.method, body)).data;
+      if (/^\/v1\/local-bookings\/[0-9a-f-]{36}\/checkin$/.test(record.path)) {
+        const r = object(raw, ['receipt', 'checkin']),
+          receipt = result(r.receipt);
+        let checkin = null;
+        if (r.checkin !== null) {
+          const c = object(r.checkin, ['code', 'expiresAt']);
+          checkin = { code: checkinCode(c.code), expiresAt: timestamp(c.expiresAt) };
+        }
+        return { ...receipt, checkin };
+      }
+      return result(raw);
     },
   };
 }
@@ -470,7 +490,7 @@ function repository(client = api.getClient()) {
 // never passed to this persistence path; business/service coordinates are explicitly chosen.
 const KEY = 'scb.local.pending.v1.';
 const privatePath =
-  /^\/v1\/(?:orgs\/[0-9a-f-]{36}\/local-services\/listings|local-services\/listings\/[0-9a-f-]{36}(?:\/commands|\/slots(?:\/[0-9a-f-]{36}\/close)?)?|local-bookings(?:\/[0-9a-f-]{36}\/commands)?|local-matchups(?:\/[0-9a-f-]{36}\/commands)?)$/i;
+  /^\/v1\/(?:orgs\/[0-9a-f-]{36}\/local-services\/listings|local-services\/listings\/[0-9a-f-]{36}(?:\/commands|\/slots(?:\/[0-9a-f-]{36}\/close)?)?|local-bookings(?:\/[0-9a-f-]{36}\/(?:commands|checkin))?|local-matchups(?:\/[0-9a-f-]{36}\/commands)?)$/i;
 function pendingRecord(raw) {
   const r = object(raw, ['version', 'actorId', 'path', 'method', 'body', 'label']);
   if (
@@ -479,6 +499,7 @@ function pendingRecord(raw) {
     !['POST', 'PUT'].includes(r.method) ||
     !r.body ||
     typeof r.body !== 'object' ||
+    Object.prototype.hasOwnProperty.call(r.body, 'checkinCode') ||
     !COMMAND.test(r.body.commandId) ||
     JSON.stringify(r).length > 16000
   )
@@ -565,6 +586,14 @@ async function recover(page) {
     if (ui.held(page, guard)) page.setData({ busy: false });
   }
 }
+function checkinCode(value) {
+  const code = String(value || '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+  if (!/^[0-9a-f]{32}$/.test(code))
+    throw new Error('请填写需求方本次出示的完整核销码；核销码不会保存到本机。');
+  return code;
+}
 async function write(page, { path, method = 'POST', body, label, content }) {
   if (page.data.busy || page.data.pending || page.data.pendingError || !page._viewer) return false;
   const actor = page._viewer,
@@ -572,12 +601,14 @@ async function write(page, { path, method = 'POST', body, label, content }) {
   if (!op || !op.valid() || actor !== page._viewer) return false;
   const commandId = await ui.uuid();
   if (!op.valid() || actor !== page._viewer || page.data.pending) return false;
+  const persistedBody = { ...body };
+  delete persistedBody.checkinCode;
   const record = pendingRecord({
     version: 1,
     actorId: actor,
     path,
     method,
-    body: { ...body, commandId },
+    body: { ...persistedBody, commandId },
     label,
   });
   if (!savePending(wx, record)) {
@@ -585,16 +616,16 @@ async function write(page, { path, method = 'POST', body, label, content }) {
     return false;
   }
   page.setData({ pending: record });
-  return sendPending(page, record, op);
+  return sendPending(page, record, op, body.checkinCode);
 }
-async function sendPending(page, record, op) {
+async function sendPending(page, record, op, secret) {
   if (page.data.busy || !record || record.actorId !== page._viewer || (op && !op.valid()))
     return false;
   const actor = page._viewer,
     guard = ui.hold(page);
   page.setData({ busy: true, error: '', message: '' });
   try {
-    const value = await repository().send(record);
+    const value = await repository().send(record, secret);
     if (!ui.held(page, guard) || page._viewer !== actor) return false;
     const cleared = clearPending(wx, actor, record.body.commandId);
     page.setData({
@@ -628,13 +659,22 @@ async function retry(page) {
     page.setData({ pendingError: state.error, pending: state.record });
     return false;
   }
+  let secret;
+  if (state.record.body.type === 'REDEEM_CHECKIN') {
+    try {
+      secret = checkinCode(page.data.checkinInput);
+    } catch (e) {
+      page.setData({ error: ui.message(e) });
+      return false;
+    }
+  }
   const op = await ui.confirmOp(
     page,
     '重试原操作',
     '将按原编号和原内容重试“' + state.record.label + '”。服务器会返回同一结果。',
   );
   if (!op) return false;
-  return sendPending(page, state.record, op);
+  return sendPending(page, state.record, op, secret);
 }
 function loadPending(page) {
   const state = readPending(wx, page._viewer);
@@ -696,6 +736,7 @@ function open(name, query = {}) {
 module.exports = {
   KINDS,
   STATUS,
+  checkinCode,
   id,
   text,
   region,

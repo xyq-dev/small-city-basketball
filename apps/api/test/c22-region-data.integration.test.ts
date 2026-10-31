@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createC22LegacyRegistrationApi } from './fixtures/c22-legacy-registration-api.js';
+import { loadManifest } from '../../../ops/db/privileges.mjs';
 import { migrate } from '../src/database/migrate.js';
 import {
   REGION_CATALOG_VERSION,
@@ -74,7 +75,11 @@ describe(
             ? "to_jsonb(t)-ARRAY['region_catalog_version','region_id']"
             : name === 'event_rulesets'
               ? "to_jsonb(t)-'require_participant_materials'"
-              : 'to_jsonb(t)';
+              : name === 'users'
+                ? "to_jsonb(t)-ARRAY['email_verified_at','credential_reset_at']"
+                : ['scoring_states', 'result_confirmations'].includes(name)
+                  ? "to_jsonb(t)-ARRAY['technical_collection','professional_stats']"
+                  : 'to_jsonb(t)';
         result[name] = (
           await pool.query<{ rows: unknown[] }>(
             `SELECT coalesce(jsonb_agg(${projection} ORDER BY to_jsonb(t)::text COLLATE "C"),'[]'::jsonb) AS rows FROM ${quote(name)} t`,
@@ -235,8 +240,11 @@ describe(
     }, 30000);
 
     test('fresh migration imports the complete catalog and preserves deterministic hashes', async () => {
-      expect(await migrate(fresh)).toHaveLength(24);
-      expect(await tableNames(fresh)).toHaveLength(83);
+      const names = (await readdir(migrations))
+        .filter((name) => /^\d+_[a-z0-9_]+\.sql$/.test(name))
+        .sort();
+      expect(await migrate(fresh)).toEqual(names);
+      expect(await tableNames(fresh)).toEqual(Object.keys((await loadManifest()).tables).sort());
       const nodes = (
         await fresh.query(
           `SELECT region_id::text AS "regionId",source_code AS "sourceCode",name,level,parent_region_id::text AS "parentRegionId"
@@ -259,10 +267,10 @@ describe(
     });
 
     test('001–022 upgrade keeps every legacy row and leaves existing listing regions NULL', async () => {
-      expect(await migrate(upgraded)).toEqual([
-        '023_c21_region_directory.sql',
-        '024_c23_participant_materials.sql',
-      ]);
+      const added = (await readdir(migrations))
+        .filter((name) => /^\d+_[a-z0-9_]+\.sql$/.test(name) && Number(name.slice(0, 3)) > 22)
+        .sort();
+      expect(await migrate(upgraded)).toEqual(added);
       const after = await snapshot(upgraded, Object.keys(baseline));
       expect(
         (
@@ -271,10 +279,9 @@ describe(
           )
         ).rows[0].n,
       ).toBe(0);
-      // The ledger only appends 023–024; every pre-existing checksum/applied_at remains byte-for-byte.
+      // The ledger only appends the exact current suffix; every pre-existing checksum/applied_at remains byte-for-byte.
       after.schema_migrations = after.schema_migrations!.filter(
-        (r: any) =>
-          !['023_c21_region_directory.sql', '024_c23_participant_materials.sql'].includes(r.name),
+        (r: any) => !added.includes(r.name),
       );
       expect(after).toEqual(baseline);
       expect(

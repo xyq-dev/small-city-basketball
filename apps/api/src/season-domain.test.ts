@@ -390,4 +390,25 @@ describe('C19 season aggregation over confirmed per-event statistics', () => {
     ).toEqual(new Map([[u(1), u(2)]]));
     expect(teamsByEntry(null).size).toBe(0);
   });
+  it('retains explicit administrative exclusions in private season coverage without fabricating player samples', () => {
+    const item = event(10, []);
+    item.summary = {
+      ...summary([], 'administrative'),
+      totalMatchCount: 1,
+      includedMatchCount: 0,
+      pendingMatchCount: 0,
+      coverageComplete: false,
+      excludedAdministrativeMatchCount: 1,
+      recordableMatchCount: 0,
+    };
+    const result = aggregateSeason({ ...base, events: [item], grants: [] });
+    expect(result.events[0]).toMatchObject({
+      excludedAdministrativeMatchCount: 1,
+      recordableMatchCount: 0,
+      pendingMatchCount: 0,
+      coverageComplete: false,
+    });
+    expect(result.rows).toEqual([]);
+    expect(result.rankingComplete).toBe(false);
+  });
 });

@@ -14,3 +14,8 @@
 
 切片I2：backup/restore返回真实manifest表数，restore在新建库前核对完整表名集合；fingerprint要求当前完整迁移checksum集合且连续，不再固定24；production镜像检查逐SQL文件名和SHA256与源一致，不只比24个数目。重启/生产文案改完整manifest而非83。治理私密附件content与账号邮件加密envelope加入PG内octet_length+sha256指纹，只让元数据与摘要进入Node，实际原始私密字节不入报告/日志。
 I2验证：readiness/迁移/私密指纹15项单测通过，production/restart及recovery脚本node --check与格式通过，API完整tsconfig通过（最终重查）。真实dump/restore/运行账户尚未执行。另向root报旧c02-upgrade/c22-region-data测试83断言需修，与我原文件边界分开。
+
+I2b兼容门槛：root授权c02/c22旧测试从固定008–024/24迁移/83表改为exact当前已知迁移suffix与manifest表集合，旧行仍精确比较；C22只剔除新中性字段用于历史列比较，C19新列常量显式加入专业字段false/null、邮箱验证/凭据时间null。未把旧历史断言放宽为任意默认值。完整API tsconfig及格式通过；这三份真实升级测试未执行。
+
+I3离线恢复隔离：先对完整manifest127表一次EXCLUSIVE NOWAIT锁（任何冲突在主体写入前回滚）。永久撤销招募、本届待接邀请、海报导出、公共档案key/profile/source、城市运营权、赞助公开与活动、经费公开与账号、评价；账号所有动作token撤销、未决/未知邮件任务EXPIRED并清加密envelope/lease，防恢复后重发。关闭同城供给/时段，未履约预约取消、已到场/交付转争议，未决约赛取消，全部库存ledger释放，核销hash/expiry清空并断言无遗留。保留私有工单/附件/账目/所有原请求/离线回执/模板历史/已独立确认行政裁定head，不直接重写体育行政事实。原C23宣传撤回与旧凭据隔离保持。
+依赖X12 E@25b7fc8，029新增checkin_hash/checkin_expires_at列，manifest只加这两个实际UPDATE字段；DB保证只有CONFIRMED可留hash，历史终态不改。19个本地infra单测（含锁冲突、审计失败、核销遗留固定错误及整体回滚）通过，API完整tsconfig与脚本语法/格式通过。真PG/quarantine/restore未执行；CI129生产已在migrate-and-grant失败，尚未进入恢复，正在排根因。

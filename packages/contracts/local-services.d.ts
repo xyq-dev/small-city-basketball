@@ -108,3 +108,9 @@ export interface LocalLocationCandidate {
   regionLabel?: string;
   regionLevel?: 'PROVINCE' | 'PREFECTURE' | 'COUNTY';
 }
+
+/** Plaintext appears only in the original issuing response; receipts never contain it. */
+export interface LocalCheckinData {
+  code: string;
+  expiresAt: string;
+}
