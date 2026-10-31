@@ -1,0 +1,138 @@
+{
+  "name": "e02-media-jobs-ready",
+  "route": "pages/media-jobs/index",
+  "state": "synthetic-populated-static",
+  "designSource": "synthetic:expansion-eight/static-native-layout-only",
+  "static": true,
+  "expectText": [
+    "录像与媒体作业",
+    "等待实际处理进程退出",
+    "确认此录像的时间锚点",
+    "独立审核并公开产物",
+    "复制公开观看链接"
+  ],
+  "data": {
+    "session": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "matchId": "22222222-2222-4222-8222-222222222222",
+      "version": 8,
+      "epoch": 3,
+      "sourceEpoch": 2,
+      "desired": "STOPPED",
+      "observed": "ENDED",
+      "sourceExpiresAt": null,
+      "leaseOwned": false,
+      "approved": true,
+      "recordingApproved": true,
+      "maximumSeconds": 5400,
+      "budgetFen": 10000,
+      "startedAt": "2028-06-01T12:00:00+08:00",
+      "targets": [
+        {
+          "channelId": "44444444-4444-4444-8444-444444444444",
+          "platform": "BILIBILI",
+          "label": "合成比赛主频道",
+          "epoch": 3,
+          "state": "CONNECTED",
+          "stateText": "转推连接已建立",
+          "observedAt": "2028-06-01T12:00:01+08:00",
+          "platformState": "UNKNOWN"
+        },
+        {
+          "channelId": "55555555-5555-4555-8555-555555555555",
+          "platform": "WECHAT_CHANNELS",
+          "label": "合成待确认频道",
+          "epoch": 4,
+          "state": "UNKNOWN",
+          "stateText": "停止结果未知，仍占用频道",
+          "observedAt": "2028-06-01T12:00:02+08:00",
+          "platformState": "UNKNOWN"
+        },
+        {
+          "channelId": "66666666-6666-4666-8666-666666666666",
+          "platform": "DOUYIN",
+          "label": "合成已停止频道",
+          "epoch": 3,
+          "state": "STOPPED",
+          "stateText": "已确认停止",
+          "observedAt": "2028-06-01T12:00:03+08:00",
+          "platformState": "UNKNOWN"
+        }
+      ]
+    },
+    "jobs": [
+      {
+        "id": "77777777-7777-4777-8777-777777777777",
+        "sessionId": "33333333-3333-4333-8333-333333333333",
+        "kind": "RECORDING",
+        "kindText": "独立录像",
+        "status": "READY",
+        "statusText": "已探测并生成",
+        "version": 3,
+        "artifactId": "88888888-8888-4888-8888-888888888888",
+        "error": null,
+        "cancelRequested": false,
+        "createdAt": "2028-06-01T12:00:00+08:00"
+      },
+      {
+        "id": "99999999-9999-4999-8999-999999999999",
+        "sessionId": "33333333-3333-4333-8333-333333333333",
+        "kind": "TRANSCODE",
+        "kindText": "转码",
+        "status": "RUNNING",
+        "statusText": "等待实际处理进程退出",
+        "version": 2,
+        "artifactId": null,
+        "error": null,
+        "cancelRequested": true,
+        "createdAt": "2028-06-01T13:00:00+08:00"
+      },
+      {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "sessionId": "33333333-3333-4333-8333-333333333333",
+        "kind": "HIGHLIGHTS",
+        "kindText": "有效得分事件集锦",
+        "status": "QUEUED",
+        "statusText": "排队中",
+        "version": 1,
+        "artifactId": null,
+        "error": null,
+        "cancelRequested": false,
+        "createdAt": "2028-06-01T13:01:00+08:00"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": "88888888-8888-4888-8888-888888888888",
+        "durationMs": 3750400,
+        "durationText": "3750.4秒",
+        "byteLength": 136314880,
+        "sizeText": "130.0MB",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "version": 1,
+        "published": false,
+        "publicKey": null
+      },
+      {
+        "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "durationMs": 42200,
+        "durationText": "42.2秒",
+        "byteLength": 4823449,
+        "sizeText": "4.6MB",
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "version": 2,
+        "published": true,
+        "publicKey": "SYNTHETICPUBLICKEY000000000000000"
+      }
+    ],
+    "canManage": true,
+    "pending": false,
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "合成静态布局：任务、时长、大小和摘要均为测试示例，不代表实际云处理或公开产物。",
+    "anchorAt": "2028-06-01T12:00:00+08:00",
+    "offsetMs": "420",
+    "reason": "合成人工核对源PTS与赛事时间"
+  }
+}

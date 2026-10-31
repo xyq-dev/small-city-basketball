@@ -85,6 +85,12 @@ export function endpoint(
     liveFail('STREAM_ENDPOINT_INVALID', '仅可使用已核验媒体端点', 422);
   return u;
 }
+export function channelEndpoint(host: string, appPath: string, publishKey: string): URL {
+  const target = endpoint(`rtmps://${host}/${appPath}/${publishKey}`, 'rtmps:', [host]);
+  if (!target.pathname.startsWith('/' + appPath + '/'))
+    liveFail('STREAM_ENDPOINT_INVALID', '推流参数不得改变已核验的应用路径', 422);
+  return target;
+}
 export function parseStreamingCommand(raw: unknown) {
   const b = objectInput(raw, [
     'clientRequestId',

@@ -311,6 +311,29 @@ describe(
         h.api.pool.query('UPDATE live_media_jobs SET source_artifact_id=$2 WHERE id=$1', [jb, b]),
       ).rejects.toThrow('identity is immutable');
     });
+    test('a source session belonging to a different active user cannot authorize frames', async () => {
+      const f = await setup();
+      await f.service.command(h.otherOwner.cookie, h.owner.orgId, f.match, f.start);
+      await f.service.drain();
+      const otherSession = (
+        await h.api.pool.query(
+          'SELECT id FROM sessions WHERE user_id=$1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1',
+          [h.owner.id],
+        )
+      ).rows[0]!.id;
+      await h.api.pool.query('UPDATE broadcast_sessions SET source_session_id=$2 WHERE id=$1', [
+        f.session,
+        otherSession,
+      ]);
+      await expect(f.executor.runs[0]!.readScore()).rejects.toMatchObject({
+        code: 'STREAM_WORKER_FENCED',
+      });
+      await f.service.drain();
+      expect(
+        (await h.api.pool.query('SELECT desired FROM broadcast_sessions WHERE id=$1', [f.session]))
+          .rows[0]!.desired,
+      ).toBe('PAUSED');
+    });
     test('membership revocation invalidates score reads immediately and drain erects a stop barrier', async () => {
       const f = await setup();
       await f.service.command(h.otherOwner.cookie, h.owner.orgId, f.match, f.start);

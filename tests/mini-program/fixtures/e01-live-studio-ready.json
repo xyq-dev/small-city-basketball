@@ -1,0 +1,159 @@
+{
+  "name": "e01-live-studio-ready",
+  "route": "pages/live-studio/index",
+  "state": "synthetic-populated-static",
+  "designSource": "synthetic:expansion-eight/static-native-layout-only",
+  "static": true,
+  "expectText": [
+    "本场直播工作台",
+    "停止结果未知，仍占用频道",
+    "外站平台状态：未核验",
+    "查看录像与媒体作业"
+  ],
+  "data": {
+    "sessions": [
+      {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "matchId": "22222222-2222-4222-8222-222222222222",
+        "version": 8,
+        "epoch": 3,
+        "sourceEpoch": 2,
+        "desired": "RUNNING",
+        "observed": "PARTIAL",
+        "sourceExpiresAt": "2028-06-01T12:00:30+08:00",
+        "leaseOwned": true,
+        "approved": true,
+        "recordingApproved": true,
+        "maximumSeconds": 5400,
+        "budgetFen": 10000,
+        "startedAt": "2028-06-01T12:00:00+08:00",
+        "targets": [
+          {
+            "channelId": "44444444-4444-4444-8444-444444444444",
+            "platform": "BILIBILI",
+            "label": "合成比赛主频道",
+            "epoch": 3,
+            "state": "CONNECTED",
+            "stateText": "转推连接已建立",
+            "observedAt": "2028-06-01T12:00:01+08:00",
+            "platformState": "UNKNOWN"
+          },
+          {
+            "channelId": "55555555-5555-4555-8555-555555555555",
+            "platform": "WECHAT_CHANNELS",
+            "label": "合成待确认频道",
+            "epoch": 4,
+            "state": "UNKNOWN",
+            "stateText": "停止结果未知，仍占用频道",
+            "observedAt": "2028-06-01T12:00:02+08:00",
+            "platformState": "UNKNOWN"
+          },
+          {
+            "channelId": "66666666-6666-4666-8666-666666666666",
+            "platform": "DOUYIN",
+            "label": "合成已停止频道",
+            "epoch": 3,
+            "state": "STOPPED",
+            "stateText": "已确认停止",
+            "observedAt": "2028-06-01T12:00:03+08:00",
+            "platformState": "UNKNOWN"
+          }
+        ]
+      }
+    ],
+    "channels": [
+      {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "platform": "BILIBILI",
+        "label": "合成比赛主频道",
+        "version": 1,
+        "verifiedUntil": "2028-06-01T16:00:00+08:00",
+        "revoked": false
+      },
+      {
+        "id": "55555555-5555-4555-8555-555555555555",
+        "platform": "WECHAT_CHANNELS",
+        "label": "合成待确认频道",
+        "version": 1,
+        "verifiedUntil": "2028-06-01T16:00:00+08:00",
+        "revoked": false
+      },
+      {
+        "id": "66666666-6666-4666-8666-666666666666",
+        "platform": "DOUYIN",
+        "label": "合成已停止频道",
+        "version": 1,
+        "verifiedUntil": "2028-06-01T16:00:00+08:00",
+        "revoked": false
+      }
+    ],
+    "session": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "matchId": "22222222-2222-4222-8222-222222222222",
+      "version": 8,
+      "epoch": 3,
+      "sourceEpoch": 2,
+      "desired": "RUNNING",
+      "observed": "PARTIAL",
+      "sourceExpiresAt": "2028-06-01T12:00:30+08:00",
+      "leaseOwned": true,
+      "approved": true,
+      "recordingApproved": true,
+      "maximumSeconds": 5400,
+      "budgetFen": 10000,
+      "startedAt": "2028-06-01T12:00:00+08:00",
+      "targets": [
+        {
+          "channelId": "44444444-4444-4444-8444-444444444444",
+          "platform": "BILIBILI",
+          "label": "合成比赛主频道",
+          "epoch": 3,
+          "state": "CONNECTED",
+          "stateText": "转推连接已建立",
+          "observedAt": "2028-06-01T12:00:01+08:00",
+          "platformState": "UNKNOWN"
+        },
+        {
+          "channelId": "55555555-5555-4555-8555-555555555555",
+          "platform": "WECHAT_CHANNELS",
+          "label": "合成待确认频道",
+          "epoch": 4,
+          "state": "UNKNOWN",
+          "stateText": "停止结果未知，仍占用频道",
+          "observedAt": "2028-06-01T12:00:02+08:00",
+          "platformState": "UNKNOWN"
+        },
+        {
+          "channelId": "66666666-6666-4666-8666-666666666666",
+          "platform": "DOUYIN",
+          "label": "合成已停止频道",
+          "epoch": 3,
+          "state": "STOPPED",
+          "stateText": "已确认停止",
+          "observedAt": "2028-06-01T12:00:03+08:00",
+          "platformState": "UNKNOWN"
+        }
+      ]
+    },
+    "capabilities": {
+      "canManage": true,
+      "canExecute": true,
+      "providerReady": true,
+      "blockers": []
+    },
+    "pushUrl": "",
+    "capturing": true,
+    "pending": false,
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "合成静态布局：未调用摄像头、云入口或外站；停流未知示例仍保留频道占用。",
+    "selected": [],
+    "minutes": "90",
+    "budgetFen": "10000",
+    "record": true,
+    "reason": "合成主办方显式操作",
+    "cameraReady": true,
+    "phoneState": "合成状态：本机采集中；静态占位，未实际采集或推流"
+  }
+}

@@ -7,6 +7,7 @@ import { call, createEvent, data, staffPath } from '../support.js';
 import type { Api, User } from '../support.js';
 import {
   entry,
+  registration,
   registrationCommand,
   roster,
   rules,
@@ -44,6 +45,8 @@ export interface YouthFixtureOptions {
   subjects: Actor[];
   birthDates: string[];
   requireInsurance?: boolean;
+  /** Reuse an already opened event for the second actual team in a freeze fixture. */
+  registration?: EventRegistrationData;
   beforeOpen?: (registration: EventRegistrationData) => Promise<void>;
   beforeMaterial?: (resource: {
     orgId: string;
@@ -57,27 +60,40 @@ export async function createYouthRosterFixture(
   options: YouthFixtureOptions,
 ): Promise<YouthRosterFixture> {
   const { api, owner, leader, reviewer, subjects } = options;
-  const created = await createEvent(api, owner, 'E08 synthetic event ' + randomUUID().slice(0, 8));
-  data(
-    await call(api, 'put', staffPath(owner.orgId, created.id, reviewer.id), {
-      cookie: owner.cookie,
-      body: { role: 'REVIEWER', status: 'ACTIVE' },
-    }),
-  );
-  const configured = data<EventRegistrationData>(
-    await call(api, 'put', rulesPath(owner.orgId, created.id), {
-      cookie: owner.cookie,
-      body: rules(created.version, {
-        requireParticipantMaterials: true,
-        requireIdentity: true,
-        requireInsurance: options.requireInsurance ?? true,
-        minPlayers: 2,
-        maxPlayers: 2,
+  let opened = options.registration;
+  if (!opened) {
+    const created = await createEvent(
+      api,
+      owner,
+      'E08 synthetic event ' + randomUUID().slice(0, 8),
+    );
+    data(
+      await call(api, 'put', staffPath(owner.orgId, created.id, reviewer.id), {
+        cookie: owner.cookie,
+        body: { role: 'REVIEWER', status: 'ACTIVE' },
       }),
-    }),
-  );
-  await options.beforeOpen?.(configured);
-  const opened = await registrationCommand(api, owner, configured, 'OPEN_REGISTRATION');
+    );
+    const configured = data<EventRegistrationData>(
+      await call(api, 'put', rulesPath(owner.orgId, created.id), {
+        cookie: owner.cookie,
+        body: rules(created.version, {
+          requireParticipantMaterials: true,
+          requireIdentity: true,
+          requireInsurance: options.requireInsurance ?? true,
+          minPlayers: 2,
+          maxPlayers: 2,
+        }),
+      }),
+    );
+    await options.beforeOpen?.(configured);
+    opened = await registrationCommand(
+      api,
+      owner,
+      await registration(api, owner, created.id),
+      'OPEN_REGISTRATION',
+    );
+  }
+  const eventId = opened!.event.id;
   const target = await team(
     api,
     owner,
@@ -102,7 +118,7 @@ export async function createYouthRosterFixture(
       }),
     );
   }
-  let currentEntry = await entry(api, owner, created.id, target, leader);
+  let currentEntry = await entry(api, owner, eventId, target, leader);
   currentEntry = await roster(api, owner, currentEntry, leader, target.members);
   const portrait = {
     fileName: 'synthetic-child.png',
@@ -119,7 +135,7 @@ export async function createYouthRosterFixture(
       memberId = target.members[n]!.id;
     await options.beforeMaterial?.({
       orgId: owner.orgId,
-      eventId: created.id,
+      eventId,
       entryId: currentEntry.id,
       memberId,
       subject: actor,
@@ -154,5 +170,5 @@ export async function createYouthRosterFixture(
       materialVersion: saved.material.version,
     });
   }
-  return { registration: opened, team: target, entry: currentEntry, subjects, members };
+  return { registration: opened!, team: target, entry: currentEntry, subjects, members };
 }

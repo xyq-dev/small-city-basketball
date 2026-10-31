@@ -1,0 +1,19 @@
+.trade .card {
+  margin: 24rpx 0;
+  padding: 24rpx;
+}
+.trade button {
+  margin-top: 16rpx;
+}
+.trade .field {
+  border: 1rpx solid #ccd3df;
+  padding: 16rpx;
+  margin: 16rpx 0;
+}
+.trade .small {
+  font-size: 22rpx;
+  word-break: break-all;
+}
+.trade .warning {
+  color: #9e4f00;
+}

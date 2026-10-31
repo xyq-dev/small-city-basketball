@@ -4,6 +4,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { createWx, loadPage } = require('./helpers/native-page.cjs');
 const { parseWxml } = require('./helpers/wxml.cjs');
+const { renderWxml } = require('./helpers/native-preview.cjs');
 const root = path.resolve(__dirname, '..');
 const org = '11111111-1111-4111-8111-111111111111',
   match = '22222222-2222-4222-8222-222222222222',
@@ -267,4 +268,69 @@ test('dedicated pages parse actual WXML; private journal rejects credentials reg
     assert.doesNotThrow(() =>
       parseWxml(fs.readFileSync(path.join(root, 'pages', route, 'index.wxml'), 'utf8')),
     );
+});
+
+function strictBindings(source) {
+  for (const match of source.matchAll(/wx:(if|elif|for)="([^"]*)"/g))
+    assert.match(
+      match[2],
+      /^\{\{[\s\S]+\}\}$/,
+      'wx:' + match[1] + ' must use a complete native binding',
+    );
+  return parseWxml(source);
+}
+test('native conditions require explicit braces and actually hide management and capture content', async () => {
+  assert.throws(
+    () => strictBindings('<view wx:if="canManage"/>'),
+    /must use a complete native binding/,
+  );
+  assert.throws(
+    () => strictBindings('<view wx:for="jobs"/>'),
+    /must use a complete native binding/,
+  );
+  const live = fs.readFileSync(path.join(root, 'pages/live-studio/index.wxml'), 'utf8'),
+    media = fs.readFileSync(path.join(root, 'pages/media-jobs/index.wxml'), 'utf8');
+  strictBindings(live);
+  strictBindings(media);
+  // The compatibility renderer has no live-pusher implementation. Its surrounding real
+  // control markup is rendered unchanged; the actual full source was strictly parsed above.
+  assert.match(live, /<live-pusher[^>]+url="\{\{pushUrl\}\}"/);
+  const controls = live.replace(
+    /<live-pusher\b[^>]*\/>/g,
+    '<view data-native-camera-placeholder="true"/>',
+  );
+  const h = fixture();
+  const empty = renderWxml(controls, h.page.data);
+  assert.doesNotMatch(empty, /批准直播与所选录像用途|源代次|撤销直播与录像授权/);
+  await h.open();
+  assert.match(renderWxml(controls, h.page.data), /批准直播与所选录像用途/);
+  h.page.setData({
+    capabilities: { canManage: false, providerReady: false, blockers: ['合成未准入'] },
+  });
+  const denied = renderWxml(controls, h.page.data);
+  assert.doesNotMatch(denied, /批准直播与所选录像用途|撤销直播与录像授权/);
+  assert.match(denied, /合成未准入/);
+  const data = {
+    session: snapshot(),
+    jobs: [],
+    artifacts: [
+      {
+        id: org,
+        durationText: '1.0秒',
+        sizeText: '1MB',
+        sha256: '0'.repeat(64),
+        version: 1,
+        published: false,
+      },
+    ],
+    canManage: false,
+    busy: false,
+    pending: false,
+  };
+  assert.doesNotMatch(
+    renderWxml(media, data),
+    /录像时间校准|独立审核并公开产物|按有效得分生成集锦/,
+  );
+  assert.match(renderWxml(media, { ...data, canManage: true }), /录像时间校准|独立审核并公开产物/);
+  h.page.onUnload();
 });

@@ -49,7 +49,11 @@ describe(
       } finally {
         await pool.end();
       }
-      api = await createApi({ databaseUrl, appOrigin: ORIGIN });
+      api = await createApi({
+        databaseUrl,
+        appOrigin: ORIGIN,
+        accountClosure: { autoDispatch: false },
+      });
     }, 120000);
     afterAll(async () => {
       if (api) {

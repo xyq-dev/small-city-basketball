@@ -1,10 +1,10 @@
 <view class="page">
   <view class="title">本场直播工作台</view>
-  <view wx:if="error" class="error">{{error}}</view><view wx:if="notice" class="notice">{{notice}}</view>
-  <view wx:if="pending" class="card"><text>原操作结果尚未核对，已保留原编号。</text><button bindtap="retry" disabled="{{busy}}">核对原操作结果</button></view>
+  <view wx:if="{{error}}" class="error">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view>
+  <view wx:if="{{pending}}" class="card"><text>原操作结果尚未核对，已保留原编号。</text><button bindtap="retry" disabled="{{busy}}">核对原操作结果</button></view>
   <button bindtap="load" disabled="{{loading || busy}}">刷新云端状态</button>
-  <view wx:if="capabilities && !capabilities.providerReady" class="card"><view wx:for="{{capabilities.blockers}}" wx:key="*this">{{item}}</view></view>
-  <view wx:if="!session || session.desired === 'STOPPED'" class="card">
+  <view wx:if="{{capabilities && !capabilities.providerReady}}" class="card"><view wx:for="{{capabilities.blockers}}" wx:key="*this">{{item}}</view></view>
+  <view wx:if="{{!session || session.desired === 'STOPPED'}}" class="card">
     <view>新建直播：选择已核验频道</view>
     <checkbox-group bindchange="selectChannels"><label wx:for="{{channels}}" wx:key="id"><checkbox value="{{item.id}}" disabled="{{item.revoked}}"/>{{item.label}} · {{item.platform}}</label></checkbox-group>
     <label>最长分钟<input type="number" data-field="minutes" value="{{minutes}}" bindinput="input"/></label>
@@ -12,17 +12,17 @@
     <label>独立录制<switch checked="{{record}}" bindchange="setRecord"/></label>
     <button bindtap="create" disabled="{{busy || pending || !selected.length}}">创建待批准直播</button>
   </view>
-  <view wx:if="session" class="card">
+  <view wx:if="{{session}}" class="card">
     <view>云端：{{session.desired}} / {{session.observed}}</view><view>源代次 {{session.sourceEpoch}} · {{session.maximumSeconds}}秒上限</view>
     <view>直播批准：{{session.approved ? '已批准' : '待批准'}} · 录制：{{session.recordingApproved ? '已批准' : '未批准'}}</view>
-    <button wx:if="capabilities.canManage" data-type="APPROVE" bindtap="action" disabled="{{busy || pending || session.desired === 'STOPPED'}}">批准直播与所选录像用途</button>
+    <button wx:if="{{capabilities.canManage}}" data-type="APPROVE" bindtap="action" disabled="{{busy || pending || session.desired === 'STOPPED'}}">批准直播与所选录像用途</button>
     <button data-type="START" bindtap="action" disabled="{{busy || pending || !cameraReady || !capabilities.providerReady || (session.desired !== 'DRAFT' && session.desired !== 'PAUSED')}}">显式开始／恢复本机采集</button>
     <live-pusher id="basketball-source" url="{{pushUrl}}" mode="RTC" autopush="{{false}}" muted="{{false}}" enable-camera="{{true}}" auto-focus="{{true}}" bindstatechange="pusherState" binderror="pusherError"/>
     <view>{{phoneState}}</view><view>画面由云端读取本场权威比分合成；转推连接建立后仍需核对外站实际画面。</view>
     <input data-field="reason" value="{{reason}}" bindinput="input" placeholder="暂停、停止或撤权原因"/>
     <button data-type="PAUSE" bindtap="action" disabled="{{busy || pending || session.desired !== 'RUNNING'}}">暂停并确认停流</button>
     <button data-type="STOP" bindtap="action" disabled="{{busy || pending || session.desired === 'STOPPED'}}">结束整场直播</button>
-    <button wx:if="capabilities.canManage" data-type="REVOKE" bindtap="action" disabled="{{busy || pending || session.desired === 'STOPPED'}}">撤销直播与录像授权</button>
+    <button wx:if="{{capabilities.canManage}}" data-type="REVOKE" bindtap="action" disabled="{{busy || pending || session.desired === 'STOPPED'}}">撤销直播与录像授权</button>
     <view wx:for="{{session.targets}}" wx:key="channelId" class="target"><view>{{item.label}}：{{item.stateText}}</view><text>外站平台状态：未核验</text><button size="mini" data-type="STOP_TARGET" data-id="{{item.channelId}}" bindtap="target" disabled="{{busy || pending}}">停止该频道</button><button size="mini" data-type="RECONNECT_TARGET" data-id="{{item.channelId}}" bindtap="target" disabled="{{busy || pending || session.desired !== 'RUNNING' || item.state !== 'STOPPED'}}">显式重连</button></view>
     <button bindtap="media">查看录像与媒体作业</button>
   </view>

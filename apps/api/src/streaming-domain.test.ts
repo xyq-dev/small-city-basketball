@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import {
   allowedObservation,
+  channelEndpoint,
   endpoint,
   highlightIntervals,
   openStreamSecret,
@@ -14,6 +15,13 @@ import {
 import { cssHeaders, TencentCssIngress, resolvePublic } from './streaming-provider.js';
 const key = Buffer.alloc(32, 7);
 describe('E01/E02 authorization, transport and event-time boundaries', () => {
+  it('keeps channel keys under the operator-approved application path after URL normalization', () => {
+    expect(
+      channelEndpoint('relay.example.com', 'live', 'synthetic-key?token=synthetic').pathname,
+    ).toBe('/live/synthetic-key');
+    for (const key of ['../foreign', '%2e%2e/foreign', '../../other'])
+      expect(() => channelEndpoint('relay.example.com', 'live', key)).toThrow();
+  });
   it('AEAD binds the ciphertext to the exact channel identity and key', () => {
     const cipher = sealStreamSecret(key, 'one', 'private-publish-key');
     expect(openStreamSecret(key, 'one', cipher)).toBe('private-publish-key');

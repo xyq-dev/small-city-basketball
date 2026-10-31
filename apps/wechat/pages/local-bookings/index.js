@@ -83,6 +83,13 @@ Page({
       if (ui.live(this, token)) this.setData({ loading: false, error: ui.message(e) });
     }
   },
+  trade() {
+    const row = this.data.selected;
+    if (row && !this.data.busy)
+      wx.navigateTo({
+        url: '/pages/trade-order/index?kind=LOCAL_BOOKING&sourceId=' + encodeURIComponent(row.id),
+      });
+  },
   select(e) {
     if (this.data.busy) return;
     const selected = this.data.items.find((r) => r.id === e.currentTarget.dataset.id);

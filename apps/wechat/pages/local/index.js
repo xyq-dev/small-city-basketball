@@ -1,3 +1,4 @@
+const trade = require('../trade-order/client');
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const cities = require('../../utils/city-preference');
@@ -340,6 +341,9 @@ Page({
       this._detailId = ls.id(id);
       this.setData({
         detail: null,
+        feeRead: false,
+        feePreview: null,
+        chargeConsent: false,
         detailLoading: true,
         error: '',
         accepted: false,
@@ -370,6 +374,32 @@ Page({
     const d = this.data.detail;
     if (d) ls.navigate(d.listing.point, d.listing.address, d.listing.title);
   },
+  async previewCharge() {
+    if (this.data.busy || !this.data.detail) return;
+    const listingId = this.data.detail.listing.id,
+      token = ui.begin(this);
+    this.setData({ busy: true, error: '', feeRead: false, feePreview: null, chargeConsent: false });
+    try {
+      const session = await ui.session(this, '/pages/local/index');
+      if (!session || !ui.live(this, token)) return;
+      const preview = await trade.post('/preview', { kind: 'LOCAL_BOOKING', sourceId: listingId });
+      if (ui.live(this, token) && this.data.detail && this.data.detail.listing.id === listingId)
+        this.setData({
+          feeRead: true,
+          feePreview: {
+            ...preview,
+            ...(preview.enabled ? { totalText: trade.money(preview.totalFen) } : {}),
+          },
+        });
+    } catch (e) {
+      if (ui.live(this, token)) this.setData({ error: ui.message(e) });
+    } finally {
+      if (ui.live(this, token)) this.setData({ busy: false });
+    }
+  },
+  chargeConsent(e) {
+    if (!this.data.busy) this.setData({ chargeConsent: (e.detail.value || []).includes('yes') });
+  },
   async book() {
     if (this.data.busy || !this.data.detail) return;
     try {
@@ -378,9 +408,16 @@ Page({
         s = d.slots.find((v) => v.id === this.data.selectedSlot && v.available);
       if (!s) throw new Error('请选择当前可预约档期。');
       if (!this.data.accepted) throw new Error('请先阅读并勾选合作约定。');
+      if (!this.data.feeRead) throw Error('请先读取服务端收费条款');
+      if (this.data.feePreview.enabled && !this.data.chargeConsent)
+        throw Error('请明确确认实际收款方、金额及收费条款');
       const serviceRegion =
         row.kind === 'COURT' ? row.region : ls.selectedRegion(this.data.selection);
       const body = { listingId: row.id, slotId: s.id, serviceRegion, acceptedTerms: true };
+      if (this.data.feePreview.enabled) {
+        body.acceptedTermsId = this.data.feePreview.termsId;
+        body.chargeConsent = true;
+      }
       if (row.kind !== 'COURT') {
         body.serviceAddress = ls.text(this.data.serviceAddress, '实际服务地址', 1, 200);
         if (this.data.servicePlace) body.servicePoint = this.data.servicePlace.point;
@@ -400,7 +437,7 @@ Page({
           s.timeText +
           '，' +
           (body.serviceAddress || row.address) +
-          '。球场需确认锁位，人员需本人接单；支付未开放。',
+          '。球场锁位后在期限内付款，人员接单后付款；收费以已确认服务端条款为准。',
       });
       if (result) ls.open('local-bookings');
     } catch (e) {

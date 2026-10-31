@@ -213,7 +213,7 @@ Page({
         )
           throw Error('采集入口无效');
         this._lease = { ...v.source, deviceId: body.deviceId, sessionId: s.id };
-        if (!this._visible) {
+        if (!this._visible || !this._pusher) {
           this._pauseAfter = true;
           return;
         }

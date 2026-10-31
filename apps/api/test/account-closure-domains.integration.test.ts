@@ -41,7 +41,7 @@ describe('E07 real cross-domain closure hooks on PostgreSQL', { concurrent: fals
     } finally {
       await pool.end();
     }
-    api = await createApi(configuration);
+    api = await createApi({ ...configuration, accountClosure: { autoDispatch: false } });
     const insurance = new InsuranceService(api.pool, configuration);
     const trade = new TradeService(api.pool, configuration);
     const hooks = createAccountClosureHooks({

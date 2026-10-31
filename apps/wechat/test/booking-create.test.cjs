@@ -465,6 +465,8 @@ function nativePage(options = {}) {
       definition = value;
     },
     require(name) {
+      if (name.endsWith('/trade-order/client'))
+        return { post: async () => ({ enabled: false, quotes: [] }), money: commonUi.money };
       if (name.endsWith('/api'))
         return { getClient: () => ({ sessionRevision: () => current.revision }) };
       if (name.endsWith('/ui')) return ui;
@@ -484,12 +486,12 @@ function nativePage(options = {}) {
   page.onLoad(options.query || { playerId: ids.player });
   return { page, current, calls, navigation, store, storage };
 }
-function fillPage(page) {
+async function fillPage(page) {
   page.draft.eventName = '合成赛事';
   page.draft.slots[0].label = '小组第1场';
   page.draft.slots[0].venue = '合成球场';
   page.renderForm();
-  page.review();
+  await page.review();
 }
 test('typing a new event name keeps the required party editor mounted until explicitly collapsed', async () => {
   const app = nativePage();
@@ -560,7 +562,7 @@ test('page blocks unreadable recovery until explicit safe reread restores the or
   assert.equal(app.page.data.storageReadBlocked, true);
   assert.equal(app.page.data.invalidRecovery, false);
   assert.equal(app.page.data.pending, false);
-  fillPage(app.page);
+  await fillPage(app.page);
   app.page.consent({ detail: { value: ['agree'] } });
   await app.page.submit();
   app.page.recoveryCheck({ detail: { value: ['checked'] } });
@@ -598,7 +600,7 @@ test('a journal read failing after review blocks before UUID and requires anothe
     },
   });
   await app.page.load();
-  fillPage(app.page);
+  await fillPage(app.page);
   app.page.consent({ detail: { value: ['agree'] } });
   denied = true;
   await app.page.submit();
@@ -632,7 +634,7 @@ test('a journal read failing after secure UUID cannot overwrite a separately per
     },
   });
   await app.page.load();
-  fillPage(app.page);
+  await fillPage(app.page);
   app.page.consent({ detail: { value: ['agree'] } });
   await app.page.submit();
   assert.equal(app.page.data.storageReadBlocked, true);
@@ -649,7 +651,7 @@ test('a journal read failing after secure UUID cannot overwrite a separately per
 test('native page starts consent unchecked, builds real scoped payload and never calls a payment operation', async () => {
   const app = nativePage();
   await app.page.load();
-  fillPage(app.page);
+  await fillPage(app.page);
   assert.equal(app.page.data.review, true);
   assert.equal(app.page.data.consent, false);
   await app.page.submit();
@@ -675,7 +677,7 @@ test('page network unknown blocks editing/requote and retries the exact original
     },
   });
   await app.page.load();
-  fillPage(app.page);
+  await fillPage(app.page);
   app.page.consent({ detail: { value: ['agree'] } });
   await app.page.submit();
   assert.equal(app.page.data.pending, true);
@@ -704,7 +706,7 @@ test('matching quote rejection requires explicit refresh then new review/consent
     },
   });
   await app.page.load();
-  fillPage(app.page);
+  await fillPage(app.page);
   app.page.consent({ detail: { value: ['agree'] } });
   await app.page.submit();
   assert.equal(app.page.data.pending, false);
@@ -714,7 +716,7 @@ test('matching quote rejection requires explicit refresh then new review/consent
     currentTarget: { dataset: { field: 'eventName' } },
     detail: { value: '新名称' },
   });
-  app.page.review();
+  await app.page.review();
   assert.equal(app.page.data.review, false);
   assert.match(app.page.data.error, /读取最新报价/);
   await app.page.load();
@@ -739,7 +741,7 @@ test('late create success remains attached to original actor and cannot navigate
   const delayed = defer(),
     app = nativePage({ create: () => delayed.promise });
   await app.page.load();
-  fillPage(app.page);
+  await fillPage(app.page);
   app.page.consent({ detail: { value: ['agree'] } });
   const submitting = app.page.submit();
   while (!app.calls.length) await new Promise((resolve) => setImmediate(resolve));
@@ -757,7 +759,7 @@ test('unload before secure UUID resolves does not create a recovery record or se
   const random = defer(),
     app = nativePage({ uuid: () => random.promise });
   await app.page.load();
-  fillPage(app.page);
+  await fillPage(app.page);
   app.page.consent({ detail: { value: ['agree'] } });
   const submitting = app.page.submit();
   await Promise.resolve();
@@ -789,7 +791,7 @@ test('known successful receipt can be removed after storage recovers without dis
   };
   const app = nativePage({ storage });
   await app.page.load();
-  fillPage(app.page);
+  await fillPage(app.page);
   app.page.consent({ detail: { value: ['agree'] } });
   await app.page.submit();
   assert.equal(app.page.data.pending, true);
@@ -812,7 +814,7 @@ test('unload during fresh mutation session validation cannot dispatch or overwri
     },
   });
   await app.page.load();
-  fillPage(app.page);
+  await fillPage(app.page);
   app.page.consent({ detail: { value: ['agree'] } });
   const submitting = app.page.submit();
   await Promise.resolve();

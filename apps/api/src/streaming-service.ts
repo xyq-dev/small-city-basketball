@@ -13,6 +13,7 @@ import {
   streamHash,
   streamKey,
   endpoint,
+  channelEndpoint,
   highlightIntervals,
 } from './streaming-domain.js';
 import type { IngressProvider } from './streaming-provider.js';
@@ -261,7 +262,7 @@ export class StreamingService extends ApplicationService {
         if (/[\u0000-\u0020\\#]/.test(publish))
           liveFail('STREAM_ENDPOINT_INVALID', '推流参数不合法', 422);
         const id = resourceId(String(b.clientRequestId)),
-          target = endpoint(`rtmps://${t!.host}/${t!.appPath}/${publish}`, 'rtmps:', [t!.host]);
+          target = channelEndpoint(t!.host, t!.appPath, publish);
         const old = (await c.query<Row>('SELECT * FROM live_channel_accounts WHERE id=$1', [id]))
           .rows[0];
         const cipher = sealStreamSecret(this.key!, id, target.toString());
@@ -704,7 +705,7 @@ export class StreamingService extends ApplicationService {
       await c.query<Row>(
         `SELECT s.*,m.home_team_name,m.away_team_name,m.version AS match_version,clock_timestamp() AS sampled_at,to_jsonb(st) AS scoring,
   (s.desired='RUNNING' AND s.rights_revoked_at IS NULL AND s.approval_expires_at>clock_timestamp() AND s.source_expires_at>clock_timestamp() AND s.started_at+s.maximum_seconds*interval '1 second'>clock_timestamp()
-  AND o.status='ACTIVE' AND ev.status IN('SCHEDULED','RUNNING') AND u.status='ACTIVE' AND se.revoked_at IS NULL AND se.expires_at>clock_timestamp() AND se.created_at>COALESCE(u.credential_reset_at,'-infinity'::timestamptz)
+  AND o.status='ACTIVE' AND ev.status IN('SCHEDULED','RUNNING') AND u.status='ACTIVE' AND se.user_id=u.id AND se.revoked_at IS NULL AND se.expires_at>clock_timestamp() AND se.created_at>COALESCE(u.credential_reset_at,'-infinity'::timestamptz)
   AND om.status='ACTIVE' AND (om.role IN('ORG_OWNER','ORG_ADMIN') OR EXISTS(SELECT 1 FROM event_staff f WHERE f.org_id=s.org_id AND f.event_id=s.event_id AND f.user_id=u.id AND f.status='ACTIVE' AND f.role IN('EVENT_MANAGER','STREAMER')))
   AND EXISTS(SELECT 1 FROM users au JOIN organization_memberships am ON am.user_id=au.id AND am.org_id=s.org_id WHERE au.id=s.approved_by AND au.status='ACTIVE' AND am.status='ACTIVE' AND (am.role IN('ORG_OWNER','ORG_ADMIN') OR EXISTS(SELECT 1 FROM event_staff af WHERE af.org_id=s.org_id AND af.event_id=s.event_id AND af.user_id=au.id AND af.role='EVENT_MANAGER' AND af.status='ACTIVE')))) AS authorized
   FROM broadcast_sessions s JOIN organizations o ON o.id=s.org_id JOIN events ev ON ev.org_id=s.org_id AND ev.id=s.event_id JOIN published_matches m ON m.org_id=s.org_id AND m.id=s.match_id

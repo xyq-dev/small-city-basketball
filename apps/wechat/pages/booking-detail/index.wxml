@@ -25,14 +25,14 @@
     <block wx:for="{{order.appearances}}" wx:key="id">
       <view class="card appearance-summary">
         <view class="appearance-status {{item.tone}}">{{item.statusText}}{{item.status === 'EXPIRED' ? ' · 本项档期已释放' : ''}}</view>
-        <view class="subtitle">{{item.playerName}} · {{item.label}}</view>
+        <view class="subtitle">{{item.playerName}} · {{item.label}}</view><button data-id="{{item.id}}" bindtap="trade" disabled="{{busy}}">查看本场付款与退款</button>
 <button class="quiet" data-id="{{item.id}}" data-kind="report" bindtap="governance" disabled="{{busy}}">本场服务举报或工单</button>
 <button wx:if="{{item.status === 'COMPLETED'}}" class="quiet" data-id="{{item.id}}" data-kind="review" bindtap="governance" disabled="{{busy}}">评价本场已完成服务</button>
         <view wx:if="{{item.status === 'CONDITIONAL'}}" class="small">条件满足后补齐具体时间</view>
         <view wx:elif="{{item.scheduleText}}" class="small">{{item.scheduleText}}</view>
         <block wx:else><view class="small">{{item.startText}} — {{item.endText}}</view><view class="small muted">报到 {{item.reportText}}</view></block>
         <view class="small muted">{{item.venue}}</view>
-        <view class="appearance-price">{{item.status === 'CONDITIONAL' ? '条件预计' : '报价'}} {{item.totalText}} · 支付未开放</view>
+        <view class="appearance-price">{{item.status === 'CONDITIONAL' ? '条件预计' : '报价'}} {{item.totalText}} · 资金见本场独立订单</view>
       </view>
       <button class="secondary appearance-toggle" disabled="{{busy || pending || form}}" data-id="{{item.id}}" bindtap="toggleAppearance">{{expandedId === item.id ? '收起本场约定与操作' : '核对本场约定与操作'}}</button>
       <view wx:if="{{expandedId === item.id || pending}}" class="card appearance-detail">
@@ -44,7 +44,7 @@
       <view wx:if="{{item.scheduleChanged}}" class="notice danger">关联正式比赛的时间、地点或状态已变化，请核对当前赛事安排，不能按过期约定继续处理。</view>
       <view class="small muted">服务费 {{item.serviceText}} · 平台费 {{item.platformFeeText}}</view>
       <view class="small muted">交通 {{item.travelText}} · 食宿 {{item.accommodationText}}</view>
-      <view class="small muted">支付未开放 · 结算未开放</view>
+      <view class="small muted">资金以独立交易记录及渠道核验为准</view>
       <view wx:if="{{item.change}}" class="change-panel">
         <view class="section-title">待另一方确认的变更 · {{item.change.role}}</view>
         <view class="small">新报到 {{item.change.reportText}}</view>
@@ -67,7 +67,7 @@
     </block>
     <view wx:if="{{form}}" id="command-form" class="card command-form">
       <view class="subtitle">{{form.title}}</view>
-      <view class="selected-summary"><view class="appearance-status {{selected.tone}}">{{selected.statusText}}</view><view class="subtitle">{{selected.playerName}} · {{selected.label}}</view><view wx:if="{{selected.status === 'CONDITIONAL'}}" class="small">条件满足后补齐具体时间</view><block wx:else><view class="small">报到 {{selected.reportText}}</view><view class="small">{{selected.startText}} — {{selected.endText}}</view></block><view class="small muted">{{selected.venue}}</view><view class="appearance-price">{{selected.status === 'CONDITIONAL' ? '条件预计' : '本场报价'}} {{selected.totalText}} · 支付未开放</view></view>
+      <view class="selected-summary"><view class="appearance-status {{selected.tone}}">{{selected.statusText}}</view><view class="subtitle">{{selected.playerName}} · {{selected.label}}</view><view wx:if="{{selected.status === 'CONDITIONAL'}}" class="small">条件满足后补齐具体时间</view><block wx:else><view class="small">报到 {{selected.reportText}}</view><view class="small">{{selected.startText}} — {{selected.endText}}</view></block><view class="small muted">{{selected.venue}}</view><view class="appearance-price">{{selected.status === 'CONDITIONAL' ? '条件预计' : '本场报价'}} {{selected.totalText}} · 资金见本场独立订单</view></view>
       <view wx:if="{{selected.status === 'CONDITIONAL'}}" class="notice warning"><view class="notice-title">意向不占具体档期</view><view class="small">{{selected.conditionText}} 条件满足后补齐实际时间地点，再由本人接单。</view></view>
       <view wx:if="{{selected.expiresText && selected.status === 'REQUESTED'}}" class="notice small">等待接单至 {{selected.expiresText}}，超时释放；未回复不代表已接单。</view>
       <view wx:if="{{selected.scheduleChanged}}" class="notice danger">关联正式比赛的时间、地点或状态已变化，请核对当前赛事安排，不能按过期约定继续处理。</view>
@@ -78,7 +78,7 @@
         <view class="subtitle">本场处理记录</view><view wx:if="{{selected.arrivedText}}" class="small muted">本人声明到场 {{selected.arrivedText}}（非GPS核验）</view><view wx:if="{{selected.completedText}}" class="small muted">完成记录 {{selected.completedText}}（不等于付款）</view><view wx:if="{{selected.cancellationReason}}" class="small">处理原因：{{selected.cancellationReason}}</view><view wx:if="{{selected.status === 'DISPUTED'}}" class="small muted">争议保留相关档期与记录并阻断结算。只有满足独立条件的平台人员可作裁定。</view>
       </view>
       <view class="card agreement-card"><view class="subtitle">资格与服务约定</view><view class="muted">{{order.eligibilityNotice}}</view><view class="small muted">入驻资料审核不等于本场资格或保险已经核验。</view></view>
-      <view class="card quote-compact"><view class="subtitle">本场报价</view><view class="muted">服务费 {{selected.serviceText}} · 平台费 {{selected.platformFeeText}}</view><view class="muted">交通 {{selected.travelText}} · 食宿 {{selected.accommodationText}}</view><view class="appearance-price">总报价 {{selected.totalText}} · 在线支付未开放</view></view>
+      <view class="card quote-compact"><view class="subtitle">本场报价</view><view class="muted">服务费 {{selected.serviceText}} · 平台费 {{selected.platformFeeText}}</view><view class="muted">交通 {{selected.travelText}} · 食宿 {{selected.accommodationText}}</view><view class="appearance-price">总报价 {{selected.totalText}} · 资金见本场独立订单</view></view>
       <view wx:if="{{form.type === 'ACTIVATE'}}" class="notice warning">激活只补齐时间地点，沿用原单金额和费率快照；如需另议价格，取消原项后重新预约。</view>
       <view wx:if="{{form.type === 'PROPOSE_CHANGE'}}" class="notice">提交提议后等待交易另一方明确同意；同意前原约定不变。</view>
       <view wx:if="{{form.type === 'ARRIVE'}}" class="notice">到场为球员本人声明，不等于现场、GPS或二维码核验。</view>
