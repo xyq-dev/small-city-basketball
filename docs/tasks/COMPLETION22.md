@@ -138,3 +138,11 @@ API capture另报X22 helper构造真实service时漏传已有databaseUrl，根�
 本轮已实证通过X17全部7项（含新CAS/到期）、X02全部7项（含新自然到期）、X03额度5/5及calendar到期3/3；其余具体见原始归档与领域卡，不把失败文件中未执行的后段补算通过。下一条整合这5处修复、更新GitHub检查点并继续全套隔离验收，F01—F22仍TESTING，不结束任务或合并失败分支。
 
 12修复整合：X03 2a2896e根f893fd9仅两测试真实前置（不改权限规则）；X05 5ec3b50根b062e4f生成SQL显式created_at和expires_at同一statement_timestamp，成功各kind精确24h校验，独立actor荣誉共6次成功插入/10请求预算不变。根最新全typecheck/format通过，真实PG仍等新CI。前述production成功与914/561/924源码单测、995布局（981不适用跳过）是2490869候选的实证，不用旧候选为新源SQL背书。下一步同步12后继续完整隔离验收。
+
+13前状态：R136/head61c108e的production和admin均SUCCESS；API的PG step9明确FAILURE，Native继续运行，具体失败等待job归档，不推测通过数量/原因。已本地调整API工作流依赖步骤使用默认success门控：PG失败就结束并尽早归档，成功路径仍完整运行build/Native/restart/browser，post清理保持。该CI改进待原136日志归档后与实际修片一起同步，避免诊断中取消当前运行。不得把后续active步骤误当PG成功。
+
+## 检查点13：仅余同一组预约确认前置，已修并启用失败早归档
+
+R136/head61c108e最终归档：真实PG55文件54通过/1失败，516项513通过/3失败；Native16/16；production/admin SUCCESS。海报4/4已实际通过，含四类精确24h、荣誉6次真实生成与撤销/新来源不复活旧图；季军改期1/1也已通过。仅O三个local日历新例仍停于共用前置：COURT预约HELD状态的CONFIRM须BUYER，测试错用PROVIDER，409 LOCAL_STATE_CONFLICT；PERSONNEL才由PROVIDER ACCEPT。X03 a07d725根abd533b改为实际buyer h.leader确认并核对后续双方角色，未改生产规则或目标休息/日间隔断言，三例仍待真PG跑到目标。
+
+已接root c4aaf69工作流依赖默认success门控，PG失败立即结束API组归档，成功仍完整运行build/Native/restart/真浏览器，清理不变；不再为已失败前置继续等待约6分钟Native后才得原日志。根最新完整typecheck/format通过。下一条同步checkpoint13，继续全套516PG与完整恢复/原生/浏览器；只有最终全部绿且无审查阻断才合并，全部22项仍TESTING，未生产。

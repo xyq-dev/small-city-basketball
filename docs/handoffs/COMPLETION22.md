@@ -41,3 +41,7 @@ X01季军树／025／原生晋级页、X05／X12／X18领域与027／029／030�
 检查点12：135最终API failed，PG511/516（3文件5失败），Native16成功；step10/11允许PG失败后继续，之前口头从active误推PG过已纠正。prod与admin真SUCCESS已核，不代表整CI全过。4个新X03前置错（owner兼队长导致独立审核403，READY漏SCORER），X03在修；HONOR500为真实poster双clock的TTL24h+1µs违反027check，X05修同statement时刻两列，绝不改冻结027或放宽check。X17 7、X02 7、quota5、calendar3已实测过。当前本地未推docs75f3f53/bb84ab5保留完整恢复证据和各域新恢复入口；这批会随下一源修一起同步，不能误当main。第一条等两owner SHA→cherry→type/必要test→sync checkpoint12，全CI再验。
 
 12修片已取2a2896e与5ec3b50；根b062e4f全type/format过。首次真实业务poster TTL修只改SQL稳定时刻，不触冻结Migration；全部成功海报PG断言exact24h，HONOR不放宽10/60s。135 admin完整914API/561admin/924native+1Win和995布局/981skip已亲读；不能因此补算5个失败PG。下一条同步12再看新CI每个step.conclusion，PG失败后仍会跑Native，禁止再按active位置推断先前通过。
+
+13前：136 PG step9=FAILURE，prod/admin=SUCCESS，Native还在运行，case日志待归档。root已本地改ci.yml去掉build/Native的!cancelled绕过，默认success门控会在PG失败立即归档、成功全路径不减测试；尚未推，等当前归档后和实际修复同步。第一条取API124427527178完整日志，X03与X05监各自case。当前GitHub仍61c108e，不能把未同步CI改进当远端已生效。
+
+检查点13：136最终PG513/516，唯一失败文件O3均COURT HELD用PROVIDER CONFIRM错角色；Native16与prod/admin成功。HONOR四类/重复TTL与bronze改期已真PG过。根已取a07d725→abd533b改实际BUYER确认，目标三断言未运行仍待验；root c4aaf69默认success门控让PG失败直接归档，成功路径完整测试不减。全type/format过。下一条同步13，取新workflow按每个named step.conclusion核查，不看后续active推断前面。最新源SQL仍b062e4f稳定海报时间，001—035迁移未再改，生产禁止范围保持。

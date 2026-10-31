@@ -113,13 +113,11 @@ jobs:
         run: node --import tsx scripts/check-migrations.mjs
       - name: Existing PostgreSQL integration checks
         run: npm run test:integration --workspace @small-city-basketball/api -- --exclude '**/p07-*.integration.test.ts'
-      # The page suite owns separate child databases. Collect its failures even when
-      # an integration test fails; that failed step still makes the job fail.
+      # Stop dependent suites on a failed prerequisite so its archived log is available promptly.
+      # A successful run still executes build, native pages, restart and browser checks.
       - id: api_build
-        if: ${{ !cancelled() && steps.schema_preflight.outcome == 'success' }}
         run: npm run build --workspace @small-city-basketball/api
       - name: Native mini program pages against the real API
-        if: ${{ !cancelled() && steps.api_build.outcome == 'success' }}
         run: npm run test:wechat:api
       - name: Capture sessions, scoring, standings and public identities
         run: node scripts/check-database-restart.mjs capture

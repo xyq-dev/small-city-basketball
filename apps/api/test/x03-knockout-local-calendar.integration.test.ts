@@ -163,11 +163,11 @@ describe(
         serviceRegion: region,
         acceptedTerms: true,
       });
-      await local.bookingCommand(h.otherOwner.cookie, booking.resourceId, {
+      await local.bookingCommand(h.leader.cookie, booking.resourceId, {
         commandId: randomUUID(),
         expectedVersion: 1,
         type: 'CONFIRM',
-        reason: '实际经营方确认球场',
+        reason: '实际预订方确认球场锁位',
       });
       const proposal = await local.createMatchup(h.leader.cookie, {
         commandId: randomUUID(),
