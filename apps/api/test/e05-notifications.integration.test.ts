@@ -254,15 +254,17 @@ async function createUnsubscribedBacklog(s: NotificationService) {
     }),
   );
   await fanoutCommitted(s, source.id);
+  // The same reviewers can legitimately receive another entry review in this event.
+  // This backlog assertion measures exactly the original captured business source.
   expect(
     (
       await h.api.pool.query(
-        "SELECT count(*)::int AS n FROM notification_messages m JOIN notification_deliveries d ON d.message_id=m.id WHERE m.user_id=ANY($1::uuid[]) AND d.state='WAITING_PERMISSION'",
-        [people.map((p) => p.id)],
+        "SELECT count(*)::int AS n FROM notification_messages m JOIN notification_deliveries d ON d.message_id=m.id WHERE m.user_id=ANY($1::uuid[]) AND m.source_id=$2 AND d.state='WAITING_PERMISSION'",
+        [people.map((p) => p.id), source.id],
       )
     ).rows[0]!.n,
   ).toBe(25);
-  return people.map((p) => p.id);
+  return { userIds: people.map((p) => p.id), sourceId: source.id as string };
 }
 
 describe('E05 authoritative notifications in real PostgreSQL', () => {
@@ -434,9 +436,9 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
         await h.api.pool.query(
           `SELECT count(*)::int AS n FROM notification_deliveries d
       JOIN notification_messages m ON m.id=d.message_id JOIN notification_deliveries target ON target.id=$2
-      WHERE m.user_id=ANY($1::uuid[]) AND d.state='WAITING_PERMISSION'
+      WHERE m.user_id=ANY($1::uuid[]) AND m.source_id=$3 AND d.state='WAITING_PERMISSION'
       AND d.next_attempt_at<target.next_attempt_at`,
-          [backlog, f.row.delivery_id],
+          [backlog.userIds, f.row.delivery_id, backlog.sourceId],
         )
       ).rows[0]!.n,
     ).toBe(25);
@@ -445,8 +447,8 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
     expect(
       (
         await h.api.pool.query(
-          "SELECT count(*)::int AS n FROM notification_deliveries d JOIN notification_messages m ON m.id=d.message_id WHERE m.user_id=ANY($1::uuid[]) AND d.state='WAITING_PERMISSION'",
-          [backlog],
+          "SELECT count(*)::int AS n FROM notification_deliveries d JOIN notification_messages m ON m.id=d.message_id WHERE m.user_id=ANY($1::uuid[]) AND m.source_id=$2 AND d.state='WAITING_PERMISSION'",
+          [backlog.userIds, backlog.sourceId],
         )
       ).rows[0]!.n,
     ).toBe(25);

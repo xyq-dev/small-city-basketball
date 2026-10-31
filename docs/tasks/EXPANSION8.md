@@ -66,3 +66,5 @@
 检查点12：24389a6整合E08当前event与首次global youth user tuple fence、成年处理撤回后的独立公开用途epoch；3新真实PG源码（其中adult公开case扩原文件）均待验，不回改042。root复核users/team/event顺序、closure union preconsents与原事实保留，未见新增确定问题；独立同伴review通过。最新完整API1158/1158、格式/全类型/APIbuild过，原生TAP1008+1skip为前一UI相同候选；最终E05紧急fanout片待集成后启动第五CI。同步将普通快进现有PR34，仍draft，不提前merge。
 
 检查点13：E05当前完整修片2783e8e已整合：live fanout仍每轮10源，2h紧急层优先、层内updated_at轮转，过期独立最多100收尾；不以增加LIMIT掩盖积压。PG显式按真实pending规模推进全局源，逐轮要求进展，保留25条无订阅更老积压和紧急review共享份额/到期边界探针，仍待CI实际执行。root当前全类型/44通知源码/42静态通过；下一操作将所有已提交集成普通同步PR34并跑第五CI。主源码1158完整已过（本E05业务改动随后44针对回归），所有外部零调用。
+
+检查点14：第五CI41186594264/admin124494659094完整SUCCESS（1158 API/561 admin/1008原生+1skip、1067浏览器、1053布局PNG、类型格式构建），root已读原始日志并核artifact13036009981。API124494658981真实PG580过/4失败：新E04三case被旧DTO optional字段false省略断言卡住，c70bc1b兼容断言且加DB实际false证明；E05一case按两review source得50条正确消息，e95f1d9把三处统计固定到exact原source，仍严格25且不改单轮LIMIT/UNKNOWN断言。其余E01八、E08十、E07十三、C23十五、公开RR三及旧P03二十四等真实PG全过。production124494658902构建/健康/HTTPS/额外PG21过，captureStreaming缺APPROVE reason422，root同时补APPROVE/STOP合成依据；独立逐输入复核未见下一处确定阻断，仍待实际完整恢复。新增使用指南与真实菜单路径，未宣称外部开通。下一步普通同步当前全部修片，跑CI6；原迁移冻结、无生产/真实外部动作。

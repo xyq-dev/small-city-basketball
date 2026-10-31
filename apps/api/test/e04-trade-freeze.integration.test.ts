@@ -127,7 +127,15 @@ describe(
 
     async function prepare(kind?: ChargeKind) {
       const opened = await openRegistration(h.api, h.owner, '合成退款冻结回归');
-      expect(opened.rules?.requireParticipantMaterials).toBe(false);
+      // The legacy DTO omits false rather than serializing this optional flag.
+      expect(opened.rules).not.toBeNull();
+      expect(opened.rules?.requireParticipantMaterials).not.toBe(true);
+      const storedRules = await h.api.pool.query<{ require_participant_materials: boolean }>(
+        'SELECT require_participant_materials FROM event_rulesets WHERE org_id=$1 AND event_id=$2 AND id=$3',
+        [h.owner.orgId, opened.event.id, opened.rules!.id],
+      );
+      expect(storedRules.rows).toHaveLength(1);
+      expect(storedRules.rows[0]!.require_participant_materials).toBe(false);
       const amountFen = kind === 'ENTRY_DEPOSIT' ? 5000 : 1200;
       let termsId: string | undefined;
       if (kind) {

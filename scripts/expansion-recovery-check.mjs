@@ -497,6 +497,7 @@ async function captureStreaming(c) {
       type: 'APPROVE',
       sessionId: session.session.id,
       expectedVersion: session.session.version,
+      reason: '独立核对隔离合成直播与录像用途',
     });
     const start = {
       clientRequestId: randomUUID(),
@@ -574,6 +575,7 @@ async function captureStreaming(c) {
       type: 'STOP',
       sessionId: session.session.id,
       expectedVersion: current.version,
+      reason: '结束隔离合成直播并保留未知停流证据',
     });
     await service.drain();
     // Shutdown persists its final UNKNOWN/held-slot evidence. Capture that
