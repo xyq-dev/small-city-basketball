@@ -232,11 +232,11 @@ export class GovernanceService extends StandingsService {
       ]);
       const row = (
         await c.query<Row>(
-          'SELECT result FROM governance_operations WHERE actor_id=$1 AND command_id=$2',
+          "SELECT result->>'_cancelled' AS cancelled FROM governance_operations WHERE actor_id=$1 AND command_id=$2",
           [actor.user.id, commandId],
         )
       ).rows[0];
-      if (row) return { alreadyCompleted: true as const };
+      if (row) return { alreadyCompleted: row.cancelled !== 'true' };
       const result = { commandId, cancelled: true, _cancelled: true };
       await c.query(
         'INSERT INTO governance_operations(actor_id,command_id,request_hash,result) VALUES($1,$2,$3,$4::jsonb)',
@@ -258,7 +258,7 @@ export class GovernanceService extends StandingsService {
       return { alreadyCompleted: false as const, commandId, cancelled: true };
     });
     return outcome.alreadyCompleted
-      ? this.operationReceipt(cookie, commandId)
+      ? { commandId, completed: true, cancelled: false }
       : { commandId, cancelled: true };
   }
   /** A verifier for real service participation; caller-supplied status or party IDs are never used. */
@@ -297,10 +297,11 @@ export class GovernanceService extends StandingsService {
         `SELECT a.id,a.status,a.player_user_id,o.org_id,o.buyer_user_id
       FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id
       JOIN organizations org ON org.id=o.org_id AND org.status='ACTIVE'
-      JOIN users buyer ON buyer.id=o.buyer_user_id AND buyer.status='ACTIVE'
-      JOIN users provider ON provider.id=a.player_user_id AND provider.status='ACTIVE'
-      WHERE a.id=$1 AND (o.buyer_user_id=$2 OR a.player_user_id=$2) FOR SHARE OF a,o,org,buyer,provider`,
-        [govId(id), actorUserId],
+      JOIN users buyer ON buyer.id=o.buyer_user_id
+      JOIN users provider ON provider.id=a.player_user_id
+      WHERE a.id=$1 AND ((o.buyer_user_id=$2 AND buyer.status='ACTIVE') OR (a.player_user_id=$2 AND provider.status='ACTIVE'))
+      AND (NOT $3::boolean OR (buyer.status='ACTIVE' AND provider.status='ACTIVE')) FOR SHARE OF a,o,org,buyer,provider`,
+        [govId(id), actorUserId, completed],
       )
     ).rows[0];
     if (

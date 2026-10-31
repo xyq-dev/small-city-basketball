@@ -28,6 +28,9 @@ input {
   padding: 20rpx;
   background: #f4f6fa;
   border-radius: 12rpx;
+  font-size: 16px;
+  line-height: 24px;
+  min-height: 44px;
 }
 textarea {
   min-height: 160rpx;

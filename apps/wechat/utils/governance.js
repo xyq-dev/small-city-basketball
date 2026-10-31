@@ -168,7 +168,9 @@ async function recover(page, kind, cancel = false) {
         pending: null,
         notice: value.cancelled
           ? '原操作已明确取消，迟到请求不会执行。'
-          : '已取得原操作回执，请刷新核对。',
+          : value.completed
+            ? '原请求已经生效，本次没有撤销既有结果；请刷新查看当前可见资料。'
+            : '已取得原操作回执，请刷新核对。',
       });
       return value;
     }

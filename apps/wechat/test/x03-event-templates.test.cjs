@@ -38,9 +38,11 @@ function device(storage = new Map()) {
     request: async (url, method, body) => {
       requests.push({ url, method, body: body && structuredClone(body) });
       if (method === 'POST') {
+        if (state.postStatus) throw { status: state.postStatus, message: '当前无法核对' };
         if (state.fail) throw { status: 503, message: '中断' };
         return { data: receipt(body) };
       }
+      if (state.readStatus) throw { status: state.readStatus, message: '当前无法核对' };
       if (state.found) return { data: state.found };
       throw { status: 404, message: '未找到回执' };
     },
@@ -265,6 +267,33 @@ test('pending request is bound to actor and organization and cannot be overwritt
   assert.throws(() => d.model.save(actor, org, { ...body, clientRequestId: other }));
   assert.equal(d.model.clear(actor, org, { ...body, clientRequestId: other }), false);
   assert.equal(d.model.clear(actor, org, body), true);
+});
+test('authorization loss, hidden scope or temporary rejection preserves an unknown original request', async () => {
+  for (const status of [401, 403, 404, 408, 429]) {
+    const d = device();
+    d.state.fail = true;
+    let pending = d.h.page.create();
+    await ticks();
+    d.answer();
+    await pending;
+    const original = d.model.read(actor, org);
+    assert.ok(original);
+    d.state.fail = false;
+    d.state.readStatus = status;
+    d.state.postStatus = status;
+    pending = d.h.page.resumeTemplate();
+    await ticks();
+    d.answer();
+    await pending;
+    assert.equal(
+      JSON.stringify(d.model.read(actor, org)),
+      JSON.stringify(original),
+      String(status),
+    );
+    assert.equal(d.h.page.data.templatePending, true, String(status));
+    const posts = d.requests.filter((r) => r.method === 'POST');
+    assert.equal(posts.length, status === 404 ? 2 : 1);
+  }
 });
 test('saving a template reads the pinned server event and sends no team or unsaved rule snapshots', async () => {
   const d = device();

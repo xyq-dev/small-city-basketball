@@ -16,6 +16,22 @@ const summary = {
   score: { home: 0, away: 0 },
 };
 describe('strict scoring HTTP adapter', () => {
+  it('validates an optional administrative marker before exposing a private workbench', async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        response({
+          ...workbench,
+          match: { ...workbench.match, adjudication: { kind: 'CANCELLED' } },
+        }),
+      )
+      .mockResolvedValueOnce(
+        response({ ...workbench, match: { ...workbench.match, adjudication: { kind: 'OTHER' } } }),
+      );
+    const api = createScoringApi(createApiClient({ fetcher }), 'org-a');
+    expect((await api.workbench('match-a')).match.adjudication?.kind).toBe('CANCELLED');
+    await expect(api.workbench('match-a')).rejects.toMatchObject({ apiCode: 'INVALID_RESPONSE' });
+  });
   it('uses local organization paths, cookie client and takes every page', async () => {
     const fetcher = vi
       .fn<typeof fetch>()

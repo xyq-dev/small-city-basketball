@@ -145,6 +145,30 @@ test('definite validation rejection releases journal; idempotency conflict does 
   assert.equal(h.wx.storage.size, 0);
   assert.equal(h.gov.unknown({ status: 409, code: 'IDEMPOTENCY_CONFLICT' }), true);
 });
+test('an already completed original operation resolves protection without returning lost-scope private details or undoing its effect', async () => {
+  let available = false,
+    record;
+  const h = fixture({
+    answers: [true, true],
+    request: async (path, method) => {
+      if (!available) throw { status: 503 };
+      assert.equal(method, 'POST');
+      assert.equal(path, '/v1/me/governance/operations/' + record.commandId + '/cancel');
+      return { data: { commandId: record.commandId, completed: true, cancelled: false } };
+    },
+  });
+  await h.gov.perform(h.page, 'CASE', '/v1/me/governance/cases', {
+    body: 'secret previously submitted',
+  });
+  record = h.gov.readPending(id(1), 'CASE');
+  available = true;
+  const outcome = await h.gov.recover(h.page, 'CASE', true);
+  assert.equal(outcome.completed, true);
+  assert.equal(outcome.cancelled, false);
+  assert.deepEqual(Object.keys(outcome).sort(), ['cancelled', 'commandId', 'completed']);
+  assert.equal(h.gov.readPending(id(1), 'CASE'), null);
+  assert.match(h.page.data.notice, /已经生效/);
+});
 test('case, city and review pages clear sensitive lists/forms on lifecycle reset', () => {
   for (const route of [
     'governance',

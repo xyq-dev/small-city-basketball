@@ -486,7 +486,13 @@ Page({
       this.setData({
         busy: false,
         offlineDraft: false,
-        notice: '草稿已按原顺序同步，请核对正式记录。',
+        notice: this.data.offlineItems.length
+          ? '本次确认的 ' +
+            result.accepted +
+            ' 条已同步；另有 ' +
+            this.data.offlineItems.length +
+            ' 条新草稿待下次明确同步。'
+          : '草稿已按原顺序同步，请核对正式记录。',
       });
       this.refreshHistory();
     } catch (error) {
@@ -494,7 +500,10 @@ Page({
       this.refreshOffline();
       this.setData({
         busy: false,
-        error: '同步已停止，剩余原草稿已保留。' + scoring.failure(error),
+        error:
+          (error && error.code === 'OFFLINE_QUEUE_CHANGED'
+            ? '本地队列已变化，已停止同步；已接受记录可按原编号核对。'
+            : '同步已停止，剩余原草稿已保留。') + scoring.failure(error),
       });
       if (error && ['LEASE_CONFLICT', 'SESSION_CHANGED'].includes(error.code)) {
         this.dropControl();

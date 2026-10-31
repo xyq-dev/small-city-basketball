@@ -128,6 +128,18 @@ describe('anonymous entry and read-only rendering', () => {
     ).toEqual(['1', '1', '3']);
     expect(screen.getByText('未完成 · 暂列排名')).toBeVisible();
   });
+  it('administrative results never render a fabricated score or clock', () => {
+    render(
+      <PublicScoreboard
+        data={{ ...live, adjudication: { kind: 'FORFEIT', winner: live.home } }}
+        receivedAt={performance.now()}
+      />,
+    );
+    expect(screen.getByRole('region', { name: '行政裁定记录' })).toBeVisible();
+    expect(screen.getByText('弃权裁定')).toBeVisible();
+    expect(screen.queryByLabelText('比赛剩余时间')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('主队比分')).not.toBeInTheDocument();
+  });
   it('raw clock deducts server anchor and display elapsed exactly once', async () => {
     vi.useFakeTimers();
     const receivedAt = performance.now();

@@ -19,3 +19,9 @@ I5 x05-recruitment-check接capture/normalverify/quarantine，state.x05仅非密r
 CI130后修：P07 C22 barrier兼容031 actor users u + credential timestamp谓词，保持真实锁竞争/原5秒与全库回滚断言。2个本地观察语义测试通过；P07真实门槛此前18/19（只该barrier超时），HTTPS/重启/restore未运行。请CI重跑。
 
 CI130 API修：c02残留24与c22 legacy恢复后缀已改exact source迁移集合；不改冻结78表旧包。X05 PM fixture补合成合法结构身份号码遵C23，不放宽核验。只类型/格式检查，PG重跑待CI，API130原为468pass/8fail/5skip未通过。
+
+I6主接线依赖root先合X18 12d14cc、X12 fd8296a、X22 7d9c38c+5b5eace、X02 08a3f07。capture新域在commerce最终快照前，X02用DRAFT配置hook后GET版本再报名；非空真实行政head保留不伪记分。production远程HTTPS强制runtime；API本地loopback owner显式只作功能数据夹具，绝不算最小权限验收。刷新最终leaderSession及七个exact已知court IDs/DTO；normal新验证在原fingerprint后；quarantine仅停旧新授权不动已确认体育/历史。node语法/格式/空白通过，真正全链未运行。治理评价coverage仍false，若加短时真实履约再单独切片，不伪造COMPLETED。
+
+I7部署测试打包修复：Dockerfile db-tools显式COPY11脚本，.dockerignore scripts/*仅对应11个mjs窄例外；移除validator旧4bind，离线镜像逐source checksum+7helper import核compiled deps，API镜像无测试脚本+真实中文字形探测。X05 checker移除glibc sharp静态依赖，Node PNG流/CRC/metadata校验；真实渲染仍API容器。PNG2单测+tsconfig/格式/语法通过；Docker构建/业务恢复未本地执行。CI131真实P07为20/20，仅packaging缺模块阻TLS业务，下轮重跑。
+
+I7b必要补：checker仅!remoteUrl本地分支dynamic import createApi，防远程Alpine checker无用途加载governance-domain的glibc sharp；真实API仍原glibc镜像。仅语法/格式检查，待实际Docker。

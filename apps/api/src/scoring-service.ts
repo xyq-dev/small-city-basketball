@@ -1328,7 +1328,7 @@ export class ScoringService extends ApplicationService {
         if (time[0] > 23 || time[1] > 59 || time[2] > 59) invalid('无效分页游标');
       }
       const result = await c.query<Row>(
-        `SELECT m.*,e.name AS event_name,s.home_score,s.away_score,to_char(m.starts_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time FROM published_matches m JOIN events e ON e.org_id=m.org_id AND e.id=m.event_id LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id WHERE m.org_id=$1 AND ($2::uuid IS NULL OR m.event_id=$2) AND ($3::text IS NULL OR m.status=$3) AND ($4::boolean OR EXISTS(SELECT 1 FROM event_staff es WHERE es.org_id=m.org_id AND es.event_id=m.event_id AND es.user_id=$5 AND es.status='ACTIVE') OR EXISTS(SELECT 1 FROM match_staff ms WHERE ms.org_id=m.org_id AND ms.match_id=m.id AND ms.user_id=$5 AND ms.status='ACTIVE')) AND ($6::timestamptz IS NULL OR (m.starts_at,m.id)>($6::timestamptz,$7::uuid)) ORDER BY m.starts_at,m.id LIMIT $8`,
+        `SELECT m.*,e.name AS event_name,s.home_score,s.away_score,${exceptionResultSelect},to_jsonb(s) AS state,to_char(m.starts_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time FROM published_matches m JOIN events e ON e.org_id=m.org_id AND e.id=m.event_id LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id ${exceptionResultJoins} WHERE m.org_id=$1 AND ($2::uuid IS NULL OR m.event_id=$2) AND ($3::text IS NULL OR m.status=$3) AND ($4::boolean OR EXISTS(SELECT 1 FROM event_staff es WHERE es.org_id=m.org_id AND es.event_id=m.event_id AND es.user_id=$5 AND es.status='ACTIVE') OR EXISTS(SELECT 1 FROM match_staff ms WHERE ms.org_id=m.org_id AND ms.match_id=m.id AND ms.user_id=$5 AND ms.status='ACTIVE')) AND ($6::timestamptz IS NULL OR (m.starts_at,m.id)>($6::timestamptz,$7::uuid)) ORDER BY m.starts_at,m.id LIMIT $8`,
         [
           ctx.orgId,
           eventId,
@@ -1344,18 +1344,25 @@ export class ScoringService extends ApplicationService {
       const rows = result.rows.slice(0, q.limit);
       const last = rows.at(-1);
       return {
-        data: rows.map((r): ScoringMatchSummary => ({
-          matchId: r.id,
-          eventId: r.event_id,
-          eventName: r.event_name,
-          homeTeamName: r.home_team_name,
-          awayTeamName: r.away_team_name,
-          courtName: r.court_name,
-          startsAt: iso(r.starts_at),
-          status: r.status,
-          version: r.version,
-          score: r.home_score === null ? null : { home: r.home_score, away: r.away_score },
-        })),
+        data: rows.map((r): ScoringMatchSummary => {
+          const administration = administrativeResult(r);
+          return {
+            matchId: r.id,
+            eventId: r.event_id,
+            eventName: r.event_name,
+            homeTeamName: r.home_team_name,
+            awayTeamName: r.away_team_name,
+            courtName: r.court_name,
+            startsAt: iso(r.starts_at),
+            status: r.status,
+            version: r.version,
+            ...(administration ? { adjudication: { kind: administration.kind } } : {}),
+            score:
+              administration || r.home_score == null
+                ? null
+                : { home: r.home_score, away: r.away_score },
+          };
+        }),
         nextCursor:
           result.rows.length > q.limit && last ? this.next(scope, last.cursor_time, last.id) : null,
       };

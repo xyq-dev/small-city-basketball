@@ -80,12 +80,16 @@ function write(wxApi, scope, queue) {
 async function append(wxApi, scope, type, payload, version) {
   if (!TYPES.includes(type))
     throw error('OFFLINE_ONLINE_REQUIRED', '时钟、阵容、节次与确认须在线操作');
+  // Complete random-number awaits before reading shared device storage. The read/append/
+  // write below is synchronous, so another page cannot be overwritten by an older copy.
+  const candidateQueueId = await ui.uuid();
+  const intentId = await ui.uuid();
   let queue = read(wxApi, scope);
   if (!queue || !queue.items.length)
     queue = {
       schema: 1,
       scope: copy(scope),
-      queueId: await ui.uuid(),
+      queueId: candidateQueueId,
       baseVersion: version,
       nextOrdinal: 1,
       lastIntentId: null,
@@ -93,7 +97,6 @@ async function append(wxApi, scope, type, payload, version) {
     };
   if (queue.items.length >= 200)
     throw error('OFFLINE_QUEUE_FULL', '离线草稿已达200条，请先同步或人工核对');
-  const intentId = await ui.uuid();
   const intent = {
     intentId,
     queueId: queue.queueId,
@@ -122,7 +125,8 @@ async function sync(wxApi, scope, client, base, control, current, onAccepted) {
     latest = null,
     accepted = 0;
   if (!queue || !queue.items.length) return { accepted, latest };
-  while (queue.items.length) {
+  const confirmedThrough = queue.items[queue.items.length - 1].ordinal;
+  while (queue.items.length && queue.items[0].ordinal <= confirmedThrough) {
     if (!current()) throw error('SESSION_CHANGED', '登录身份或控制已变化，原草稿保留');
     const intent = queue.items[0];
     let result;
@@ -151,8 +155,23 @@ async function sync(wxApi, scope, client, base, control, current, onAccepted) {
     )
       throw error('OFFLINE_RECEIPT_INVALID', '原操作回执不一致，草稿保留待核对');
     if (typeof onAccepted === 'function') onAccepted(result);
-    queue.items.shift();
-    write(wxApi, scope, queue);
+    // A different page may append while the network is pending. Merge only this exact
+    // acknowledged head into the latest queue, and leave any newly appended tail for a
+    // separate explicit sync. A replaced/deleted queue must never be resurrected.
+    const currentQueue = read(wxApi, scope);
+    if (
+      !currentQueue ||
+      currentQueue.queueId !== queue.queueId ||
+      !currentQueue.items.length ||
+      JSON.stringify(currentQueue.items[0]) !== JSON.stringify(intent)
+    )
+      throw error(
+        'OFFLINE_QUEUE_CHANGED',
+        '本机原草稿已由另一页面变更，请重新核对；未覆盖当前队列',
+      );
+    currentQueue.items.shift();
+    write(wxApi, scope, currentQueue);
+    queue = currentQueue;
     accepted++;
     latest = result;
   }

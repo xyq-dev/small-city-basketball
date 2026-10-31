@@ -1,3 +1,4 @@
+import { exactFields, resolution, resolutionKeys } from './result-proofs';
 import { MATCH_STATUSES, STANDINGS_TIEBREAKERS } from '@small-city-basketball/contracts';
 import type {
   EventStandingsData,
@@ -98,10 +99,11 @@ function standings(v: unknown, publicOnly: boolean) {
     time(v.asOf) &&
     numbers(v, ['confirmedMatchCount', 'totalMatchCount']) &&
     bools(v, ['isComplete', 'hasSharedRanks']) &&
+    resolution(v, true) &&
     Array.isArray(v.rows) &&
     v.rows.every((item) => row(item, publicOnly)) &&
     (publicOnly
-      ? exact(v, [...standingsKeys, 'publicEventId', 'rules']) &&
+      ? exactFields(v, [...standingsKeys, 'publicEventId', 'rules'], resolutionKeys) &&
         strings(v, ['publicEventId']) &&
         publicRules(v.rules)
       : numbers(v, ['rulesetVersion']) && ['DRAFT_PREVIEW', 'PUBLISHED'].includes(String(v.mode)))
@@ -139,21 +141,25 @@ function publicEvent(v: unknown) {
       v.format === 'DOUBLE_ROUND_ROBIN' ||
       v.format === 'SINGLE_ELIMINATION' ||
       v.format === 'GROUP_KNOCKOUT') &&
-    exact(v, [
-      ...(v.format === undefined ? [] : ['format']),
-      'publicEventId',
-      'name',
-      'startDate',
-      'endDate',
-      'timezone',
-      'venueName',
-      'status',
-      'rules',
-      'confirmedMatchCount',
-      'totalMatchCount',
-      'isComplete',
-      'serverTime',
-    ]) &&
+    exactFields(
+      v,
+      [
+        ...(v.format === undefined ? [] : ['format']),
+        'publicEventId',
+        'name',
+        'startDate',
+        'endDate',
+        'timezone',
+        'venueName',
+        'status',
+        'rules',
+        'confirmedMatchCount',
+        'totalMatchCount',
+        'isComplete',
+        'serverTime',
+      ],
+      resolutionKeys,
+    ) &&
     obj(v) &&
     strings(v, [
       'publicEventId',
@@ -168,6 +174,7 @@ function publicEvent(v: unknown) {
     (v.format === 'SINGLE_ELIMINATION' ? v.rules === null : publicRules(v.rules)) &&
     numbers(v, ['confirmedMatchCount', 'totalMatchCount']) &&
     typeof v.isComplete === 'boolean' &&
+    resolution(v, v.format !== 'SINGLE_ELIMINATION') &&
     time(v.serverTime)
   );
 }
@@ -188,6 +195,31 @@ const matchKeys = [
   'score',
   'resultStatus',
 ];
+function adjudication(v: Obj) {
+  if (v.adjudication === undefined) return true;
+  const a = v.adjudication;
+  if (
+    !exact(a, ['kind', 'winner']) ||
+    !obj(a) ||
+    !['SCHEDULED', 'READY'].includes(String(v.status)) ||
+    v.score !== null ||
+    v.resultStatus !== 'UNCONFIRMED'
+  )
+    return false;
+  if (a.kind === 'CANCELLED') return a.winner === null;
+  return (
+    a.kind === 'FORFEIT' &&
+    team(a.winner) &&
+    obj(a.winner) &&
+    [v.home, v.away].some(
+      (t) =>
+        obj(t) &&
+        obj(a.winner) &&
+        t.teamKey === a.winner.teamKey &&
+        t.teamName === a.winner.teamName,
+    )
+  );
+}
 function matchFields(v: unknown) {
   return (
     obj(v) &&
@@ -197,11 +229,12 @@ function matchFields(v: unknown) {
     team(v.away) &&
     matchStatus(v.status) &&
     resultStatus(v.resultStatus) &&
+    adjudication(v) &&
     (v.score === null || (exact(v.score, ['home', 'away']) && numbers(v.score, ['home', 'away'])))
   );
 }
 function scheduleMatch(v: unknown) {
-  return exact(v, matchKeys) && matchFields(v);
+  return exactFields(v, matchKeys, ['adjudication']) && matchFields(v);
 }
 const totals = (v: unknown) =>
   exact(v, ['score', 'fouls', 'timeouts']) && numbers(v, ['score', 'fouls', 'timeouts']);
@@ -238,17 +271,21 @@ function scoringRules(v: unknown) {
 }
 function publicSnapshot(v: unknown) {
   if (
-    !exact(v, [
-      ...matchKeys,
-      'publicEventId',
-      'eventName',
-      'totals',
-      'periods',
-      'rules',
-      'clock',
-      'collected',
-      'serverTime',
-    ]) ||
+    !exactFields(
+      v,
+      [
+        ...matchKeys,
+        'publicEventId',
+        'eventName',
+        'totals',
+        'periods',
+        'rules',
+        'clock',
+        'collected',
+        'serverTime',
+      ],
+      ['adjudication'],
+    ) ||
     !matchFields(v) ||
     !obj(v) ||
     !strings(v, ['publicEventId', 'eventName', 'serverTime']) ||

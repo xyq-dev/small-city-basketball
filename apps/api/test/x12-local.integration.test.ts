@@ -220,10 +220,9 @@ describe(
           scopeChecked: true,
         }),
       ).rejects.toMatchObject({ status: 422 });
-      await assertCode(
-        service.publicDetail(created.resourceId, 'x12-medic'),
-        'LOCAL_SUPPLY_UNAVAILABLE',
-      );
+      await expect(service.publicDetail(created.resourceId, 'x12-medic')).rejects.toMatchObject({
+        status: 404,
+      });
     });
     test('supply options reveal only current names and IDs to own managers; delegated callback preserves independent institutional review', async () => {
       const s = await supply();
@@ -251,7 +250,7 @@ describe(
         false,
       );
     });
-    test('governance completion facts accept only actual active booking parties', async () => {
+    test('governance facts require an active actual actor and retain the stricter completed-review policy', async () => {
       const s = await supply('REFEREE');
       const b = await service.book(h.leader.cookie, bookBody(s));
       const c = await h.api.pool.connect();
@@ -271,9 +270,16 @@ describe(
         ).rejects.toMatchObject({ status: 404 });
         await c.query('BEGIN');
         await c.query("UPDATE users SET status='DISABLED' WHERE id=$1", [h.leader.id]);
+        expect(await verifiedGovernanceBooking(c, b.resourceId, h.owner.id, false)).toMatchObject({
+          providerUserId: h.owner.id,
+          buyerUserId: h.leader.id,
+        });
         await expect(
-          verifiedGovernanceBooking(c, b.resourceId, h.owner.id, false),
+          verifiedGovernanceBooking(c, b.resourceId, h.leader.id, false),
         ).rejects.toMatchObject({ status: 404 });
+        await expect(verifiedCompletedBooking(c, b.resourceId, h.owner.id)).rejects.toMatchObject({
+          status: 404,
+        });
       } finally {
         await c.query('ROLLBACK');
         c.release();
@@ -595,6 +601,7 @@ describe(
       const activation = {
         commandId: command(),
         type: 'ACTIVATE',
+        eligibilityConfirmed: true,
         appearanceId: conditional.appearances[0]!.id,
         expectedVersion: 1,
         reportAt: s.start,
@@ -898,6 +905,133 @@ describe(
         ).toBe(0);
       }
     }, 15000);
+    test('public personnel availability includes the same trailing travel buffer as atomic booking while courts stay unbuffered', async () => {
+      const later = await supply('REFEREE'),
+        b = await service.book(h.leader.cookie, bookBody(later));
+      const beforeHours = (Date.parse(later.start) - base) / 3600000 - 1,
+        earlier = await supply('REFEREE', beforeHours);
+      expect(
+        (await service.publicDetail(earlier.id, 'synthetic-preceding-personnel')).slots.find(
+          (r) => r.id === earlier.slotId,
+        )?.available,
+      ).toBe(false);
+      await assertCode(service.book(h.leader.cookie, bookBody(earlier)), 'LOCAL_TIME_CONFLICT');
+      await service.bookingCommand(h.leader.cookie, b.resourceId, {
+        commandId: command(),
+        expectedVersion: 1,
+        type: 'CANCEL',
+        reason: '释放相邻服务前的必要交通缓冲',
+      });
+      expect(
+        (await service.publicDetail(earlier.id, 'synthetic-preceding-personnel')).slots.find(
+          (r) => r.id === earlier.slotId,
+        )?.available,
+      ).toBe(true);
+      const ground = await supply();
+      const next = await service.createSlot(h.owner.cookie, ground.id, {
+        commandId: command(),
+        expectedVersion: 4,
+        startsAt: ground.end,
+        endsAt: new Date(Date.parse(ground.end) + 3600000).toISOString(),
+      });
+      await service.book(h.leader.cookie, { ...bookBody(ground), slotId: next.slotId });
+      expect(
+        (await service.publicDetail(ground.id, 'synthetic-adjacent-court')).slots.find(
+          (r) => r.id === ground.slotId,
+        )?.available,
+      ).toBe(true);
+      expect(await service.book(h.leader.cookie, bookBody(ground))).toHaveProperty('resourceId');
+    });
+    test('disabled providers cannot trap historical buyer cancellation, disputes or private reports while new supply remains closed', async () => {
+      const first = await supply('REFEREE'),
+        second = await supply('REFEREE');
+      const cancelled = await service.book(h.leader.cookie, bookBody(first)),
+        disputed = await service.book(h.leader.cookie, bookBody(second));
+      for (const b of [cancelled, disputed])
+        await service.bookingCommand(h.owner.cookie, b.resourceId, {
+          commandId: command(),
+          expectedVersion: 1,
+          type: 'ACCEPT',
+          reason: '本人确认本次真实服务档期',
+        });
+      await h.api.pool.query("UPDATE users SET status='DISABLED' WHERE id=$1", [h.owner.id]);
+      try {
+        expect(
+          (await service.bookings(h.leader.cookie)).items.some(
+            (b) => b.id === cancelled.resourceId,
+          ),
+        ).toBe(true);
+        await service.bookingCommand(h.leader.cookie, cancelled.resourceId, {
+          commandId: command(),
+          expectedVersion: 2,
+          type: 'CANCEL',
+          reason: '服务者停用后买方仍可释放未履约预约',
+        });
+        expect((await service.bookingDetail(h.leader.cookie, cancelled.resourceId)).status).toBe(
+          'CANCELLED',
+        );
+        expect(
+          (
+            await h.api.pool.query(
+              'SELECT 1 FROM local_resource_reservations WHERE booking_id=$1 AND active',
+              [cancelled.resourceId],
+            )
+          ).rowCount,
+        ).toBe(0);
+        await service.bookingCommand(h.leader.cookie, disputed.resourceId, {
+          commandId: command(),
+          expectedVersion: 2,
+          type: 'DISPUTE',
+          reason: '服务者停用后保留原服务事实并提出争议',
+        });
+        expect((await service.bookingDetail(h.leader.cookie, disputed.resourceId)).status).toBe(
+          'DISPUTED',
+        );
+        const c = await h.api.pool.connect();
+        try {
+          expect(
+            await verifiedGovernanceBooking(c, disputed.resourceId, h.leader.id, false),
+          ).toMatchObject({
+            buyerUserId: h.leader.id,
+            providerUserId: h.owner.id,
+            completed: false,
+          });
+          await expect(
+            verifiedGovernanceBooking(c, disputed.resourceId, h.owner.id, false),
+          ).rejects.toMatchObject({ status: 404 });
+          await expect(
+            verifiedGovernanceBooking(c, disputed.resourceId, h.otherOwner.id, false),
+          ).rejects.toMatchObject({ status: 404 });
+          await expect(
+            verifiedCompletedBooking(c, disputed.resourceId, h.leader.id),
+          ).rejects.toMatchObject({ status: 404 });
+        } finally {
+          c.release();
+        }
+        const body = {
+          commandId: command(),
+          kind: 'REPORT',
+          title: '合成服务停用后的实际订单举报',
+          body: '买方仍可提供真实服务关联事实，供当前有权人私下处理。',
+          source: { kind: 'LOCAL_BOOKING', id: disputed.resourceId },
+        };
+        const report = await call(h.api, 'post', '/v1/me/governance/cases', {
+          cookie: h.leader.cookie,
+          body,
+        });
+        expect(report.status).toBe(200);
+        const outsider = await call(h.api, 'post', '/v1/me/governance/cases', {
+          cookie: h.otherOwner.cookie,
+          body: { ...body, commandId: command() },
+        });
+        expect(outsider.status).toBe(404);
+        await expect(service.book(h.leader.cookie, bookBody(second))).rejects.toMatchObject({
+          status: 404,
+        });
+      } finally {
+        await h.api.pool.query("UPDATE users SET status='ACTIVE' WHERE id=$1", [h.owner.id]);
+      }
+    });
     test('same command and content returns one original receipt; changed content is rejected', async () => {
       const s = await supply();
       const body = bookBody(s);

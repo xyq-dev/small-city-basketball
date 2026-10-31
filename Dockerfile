@@ -63,6 +63,8 @@ COPY apps/api/migrations ./apps/api/migrations
 COPY packages/contracts/package.json packages/contracts/index.js packages/contracts/runtime-privileges.json ./packages/contracts/
 COPY ops/db ./ops/db
 COPY ops/recovery ./ops/recovery
+# Immutable acceptance modules ship with the tools image; no source-tree mounts or native image addon.
+COPY scripts/check-database-restart.mjs scripts/c05-media-fixtures.mjs scripts/c05-commerce-check.mjs scripts/c23-participant-material-check.mjs scripts/x02-adjudication-check.mjs scripts/x03-template-check.mjs scripts/x05-recruitment-check.mjs scripts/x08-archive-check.mjs scripts/x12-local-check.mjs scripts/x18-governance-check.mjs scripts/x22-account-recovery-check.mjs ./scripts/
 USER 10001:10001
 ENTRYPOINT []
 CMD ["node", "--version"]

@@ -1631,6 +1631,16 @@ describe(
       expect(adjudicatedWb.capabilities.canManageStaff).toBe(false);
       expect(adjudicatedWb.match.status).toBe('READY');
       expect(adjudicatedWb.snapshot?.adjudication).toEqual({ kind: 'CANCELLED' });
+      const tasks = data<any[]>(
+        await call(h.api, 'get', `${root}/scoring-matches?eventId=${eventId}`, {
+          cookie: h.owner.cookie,
+        }),
+      );
+      expect(tasks.find((m) => m.matchId === matchId)).toMatchObject({
+        status: 'READY',
+        adjudication: { kind: 'CANCELLED' },
+        score: null,
+      });
       const eventStats = data<any>(
         await call(h.api, 'get', `${root}/events/${eventId}/player-statistics`, {
           cookie: h.owner.cookie,

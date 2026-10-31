@@ -354,13 +354,14 @@ export class LocalServicesService extends ApplicationService {
       }
       const slots = (
         await c.query(
-          `SELECT s.*,NOT EXISTS(SELECT 1 FROM local_resource_reservations r LEFT JOIN local_bookings b ON b.id=r.booking_id LEFT JOIN local_matchups m ON m.id=r.matchup_id WHERE r.active AND r.resource_key=$2 AND tstzrange(r.starts_at,r.ends_at,'[)') && tstzrange(s.starts_at,s.ends_at,'[)') AND NOT COALESCE((b.status IN ('HELD','REQUESTED') AND b.hold_expires_at<=clock_timestamp()),false) AND NOT COALESCE((m.status='OPEN' AND m.expires_at<=clock_timestamp()),false)) AND NOT EXISTS(SELECT 1 FROM court_reservations old WHERE old.court_id=$4 AND tstzrange(old.starts_at,old.ends_at,'[)') && tstzrange(s.starts_at,s.ends_at,'[)')) AND NOT EXISTS(SELECT 1 FROM booking_appearances old WHERE old.player_user_id=$5 AND old.status IN ('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED') AND NOT (old.status='REQUESTED' AND old.expires_at<=clock_timestamp()) AND c06_booking_window(old.report_at,old.end_at) && tstzrange(s.starts_at,s.ends_at+interval '30 minutes','[)')) AS available FROM local_slots s WHERE s.listing_id=$1 AND s.status='OPEN' AND s.starts_at>clock_timestamp() AND s.ends_at<=$3 ORDER BY s.starts_at,s.id LIMIT 100`,
+          `SELECT s.*,NOT EXISTS(SELECT 1 FROM local_resource_reservations r LEFT JOIN local_bookings b ON b.id=r.booking_id LEFT JOIN local_matchups m ON m.id=r.matchup_id WHERE r.active AND r.resource_key=$2 AND tstzrange(r.starts_at,r.ends_at,'[)') && tstzrange(s.starts_at,CASE WHEN $6::boolean THEN s.ends_at ELSE s.ends_at+interval '30 minutes' END,'[)') AND NOT COALESCE((b.status IN ('HELD','REQUESTED') AND b.hold_expires_at<=clock_timestamp()),false) AND NOT COALESCE((m.status='OPEN' AND m.expires_at<=clock_timestamp()),false)) AND NOT EXISTS(SELECT 1 FROM court_reservations old WHERE old.court_id=$4 AND tstzrange(old.starts_at,old.ends_at,'[)') && tstzrange(s.starts_at,s.ends_at,'[)')) AND NOT EXISTS(SELECT 1 FROM booking_appearances old WHERE old.player_user_id=$5 AND old.status IN ('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED') AND NOT (old.status='REQUESTED' AND old.expires_at<=clock_timestamp()) AND c06_booking_window(old.report_at,old.end_at) && tstzrange(s.starts_at,s.ends_at+interval '30 minutes','[)')) AS available FROM local_slots s WHERE s.listing_id=$1 AND s.status='OPEN' AND s.starts_at>clock_timestamp() AND s.ends_at<=$3 ORDER BY s.starts_at,s.id LIMIT 100`,
           [
             row.id,
             row.kind === 'COURT' ? `court:${row.court_id}` : `user:${row.provider_user_id}`,
             row.qualified_until,
             row.kind === 'COURT' ? row.court_id : null,
             row.kind === 'COURT' ? null : row.provider_user_id,
+            row.kind === 'COURT',
           ],
         )
       ).rows;
@@ -985,7 +986,12 @@ export class LocalServicesService extends ApplicationService {
         const now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
         if (['HELD', 'REQUESTED'].includes(b.status) && b.hold_expires_at <= now)
           localFail('LOCAL_HOLD_EXPIRED', '预约占用已到期，请核对原结果后重新选时段');
-        const listing = await this.listing(c, b.listing_id);
+        // Releasing or disputing an already authorized historical booking must remain
+        // possible when the counterparty is disabled. New supply-dependent actions
+        // still use the current active-provider lookup below.
+        const listing = ['CANCEL', 'DISPUTE'].includes(input.type)
+          ? b.snapshot
+          : await this.listing(c, b.listing_id);
         let status: LocalBookingStatus = b.status,
           change = b.change_request,
           slotId = b.slot_id,
@@ -1495,7 +1501,7 @@ export async function verifiedGovernanceBooking(
 ) {
   const b = (
     await c.query(
-      "SELECT b.*,l.region_catalog_version,l.region_id FROM local_bookings b JOIN local_listings l ON l.id=b.listing_id JOIN organizations o ON o.id=b.org_id JOIN users buyer ON buyer.id=b.buyer_user_id JOIN users provider ON provider.id=b.provider_user_id WHERE b.id=$1 AND (NOT $3::boolean OR b.status='COMPLETED') AND o.status='ACTIVE' AND buyer.status='ACTIVE' AND provider.status='ACTIVE' AND (b.buyer_user_id=$2 OR b.provider_user_id=$2)",
+      "SELECT b.*,l.region_catalog_version,l.region_id FROM local_bookings b JOIN local_listings l ON l.id=b.listing_id JOIN organizations o ON o.id=b.org_id JOIN users buyer ON buyer.id=b.buyer_user_id JOIN users provider ON provider.id=b.provider_user_id WHERE b.id=$1 AND (NOT $3::boolean OR b.status='COMPLETED') AND o.status='ACTIVE' AND ((buyer.status='ACTIVE' AND provider.status='ACTIVE') OR (NOT $3::boolean AND ((b.buyer_user_id=$2 AND buyer.status='ACTIVE' AND provider.status='DISABLED') OR (b.provider_user_id=$2 AND provider.status='ACTIVE' AND buyer.status='DISABLED')))) AND (b.buyer_user_id=$2 OR b.provider_user_id=$2)",
       [resourceId(bookingId), resourceId(actorUserId), requireCompleted],
     )
   ).rows[0];

@@ -234,6 +234,14 @@ function GroupPage({
             <p>
               {competition.confirmedMatchCount} / {competition.totalMatchCount}场有效独立确认 ·{' '}
               {competition.publishedMatchCount}场已发布
+              {competition.resolvedMatchCount !== undefined && (
+                <>
+                  {' '}
+                  · {competition.adjudicatedMatchCount}场弃权裁定 ·{' '}
+                  {competition.cancelledMatchCount}场取消 · 共{competition.resolvedMatchCount}
+                  场已处理
+                </>
+              )}
             </p>
             <p>
               资格首轮及每个后轮均须显式发布。已被晋级采用的组赛和淘汰赛赛果不得重开；场地与休息间隔在服务端重新检查。

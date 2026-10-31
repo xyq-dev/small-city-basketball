@@ -39,9 +39,23 @@ async function row(pool, sql, args) {
 async function retained(pool, saved) {
   const caseRow = await row(
     pool,
-    "SELECT encode(sha256(convert_to(to_jsonb(c)::text,'UTF8')),'hex') AS hash FROM governance_cases c WHERE id=$1",
+    "SELECT version,encode(sha256(convert_to(to_jsonb(c)::text,'UTF8')),'hex') AS hash FROM governance_cases c WHERE id=$1",
     [saved.caseId],
   );
+  assert.equal(caseRow.version, saved.caseVersion);
+  const messages = (
+    await pool.query(
+      `SELECT id,visibility,encode(sha256(convert_to(body,'UTF8')),'hex') AS body_hash,
+      encode(sha256(convert_to(to_jsonb(m)::text,'UTF8')),'hex') AS hash
+      FROM governance_case_messages m WHERE case_id=$1 ORDER BY id`,
+      [saved.caseId],
+    )
+  ).rows;
+  assert.equal(messages.length, 2, 'The initial message and actual requester reply must persist');
+  const reply = messages.find((m) => m.id === saved.replyMessageId);
+  assert.ok(reply, 'The original requester reply must remain reachable');
+  assert.equal(reply.visibility, 'REQUESTER');
+  assert.equal(reply.body_hash, saved.replyMessageSha256);
   const attachment = await row(
     pool,
     `SELECT id,case_id,content_type,byte_length,content_hash,encode(sha256(content),'hex') AS actual_hash,
@@ -86,7 +100,7 @@ async function retained(pool, saved) {
     [saved.sponsorPublicationId, saved.impressionCommandId],
   );
   assert.equal(impressions.n, 1, 'Repeated impression UUID must still count once');
-  return { case: caseRow, attachment, entry, staff, operations, impressions };
+  return { case: caseRow, messages, attachment, entry, staff, operations, impressions };
 }
 async function publications(pool, saved) {
   const sponsor = await row(
@@ -211,6 +225,16 @@ export async function captureX18Governance({ call, state, readPool, fetchFile })
     404,
     'An unrelated non-operator cannot read a private case attachment',
   );
+  const replyBody = '合成请求人补充：原工单与附件用于验证恢复后的真实消息保留';
+  const reply = await command(
+    `/v1/me/governance/cases/${createdCase.id}/messages`,
+    owner,
+    state.userId,
+    { expectedVersion: attachment.version, body: replyBody, visibility: 'REQUESTER' },
+  );
+  assert.ok(uuid(reply.messageId));
+  assert.equal(reply.id, createdCase.id);
+  assert.equal(reply.version, attachment.version + 1);
   const grant = await command(
     '/v1/platform/city-operations/grants',
     platform.cookie,
@@ -329,6 +353,9 @@ export async function captureX18Governance({ call, state, readPool, fetchFile })
   const saved = {
     orgId: state.orgId,
     caseId: createdCase.id,
+    caseVersion: reply.version,
+    replyMessageId: reply.messageId,
+    replyMessageSha256: sha(replyBody),
     attachmentId: attachment.attachmentId,
     attachmentCommandId,
     cityGrantId: grant.id,
@@ -348,6 +375,7 @@ export async function captureX18Governance({ call, state, readPool, fetchFile })
     attachmentBytes: bytes.length,
     coverage: {
       privateCase: true,
+      requesterReply: true,
       privateAttachment: true,
       cityGrant: true,
       sponsorship: true,
@@ -377,6 +405,11 @@ export async function verifyX18Governance({ call, state, readPool, fetchFile, sa
   const privateCase = (await call('/v1/me/governance/cases/' + saved.caseId, { cookie: owner }))
     .data;
   assert.equal(privateCase.id, saved.caseId);
+  assert.equal(privateCase.version, saved.caseVersion);
+  const reply = privateCase.messages.find((m) => m.id === saved.replyMessageId);
+  assert.ok(reply, 'The requester reply must remain readable after normal restart or restore');
+  assert.equal(reply.visibility, 'REQUESTER');
+  assert.equal(sha(reply.body), saved.replyMessageSha256);
   const bytes = await attachmentBytes(
     fetchFile,
     `/v1/me/governance/cases/${saved.caseId}/attachments/${saved.attachmentId}/content`,

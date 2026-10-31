@@ -134,7 +134,7 @@ describe(
         ).toBe(0);
       };
       await assertOldRegistrationSchema();
-      // Fixed historical registration SQL is injected only by this fixture factory.
+      // Fixed historical registration/scheduling/standings SQL is injected only by this fixture.
       // The genuine 001–022 schema is never extended before the upgrade baseline.
       api = await createC22LegacyRegistrationApi({ databaseUrl: old.url, appOrigin: ORIGIN });
       const owner = await register(api, 'c22-old-owner');

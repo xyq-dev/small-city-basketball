@@ -1,11 +1,27 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
-import { createApi } from '../apps/api/dist/app.js';
 import pg from 'pg';
 import { loadManifest } from '../ops/db/privileges.mjs';
 import { exactTableRows } from '../ops/recovery/fingerprint-rows.mjs';
 import { captureEventTemplates, verifyEventTemplates } from './x03-template-check.mjs';
+import {
+  configureX02AdjudicationRules,
+  captureX02Adjudication,
+  verifyX02Adjudication,
+  verifyX02AdjudicationQuarantine,
+} from './x02-adjudication-check.mjs';
+import { captureX12Local, verifyX12Local, verifyX12LocalQuarantine } from './x12-local-check.mjs';
+import {
+  captureX18Governance,
+  verifyX18Governance,
+  verifyX18GovernanceQuarantine,
+} from './x18-governance-check.mjs';
+import {
+  captureX22AccountRecovery,
+  verifyX22AccountRecovery,
+  verifyX22AccountRecoveryQuarantine,
+} from './x22-account-recovery-check.mjs';
 import {
   captureX05Recruitment,
   verifyX05Recruitment,
@@ -102,7 +118,9 @@ if (!participantDataKey)
 const origin = process.env.APP_ORIGIN ?? 'http://127.0.0.1:5173';
 const instance = remoteUrl
   ? { app: null, pool: new pg.Pool({ connectionString: databaseUrl }) }
-  : await createApi({
+  : await (
+      await import('../apps/api/dist/app.js')
+    ).createApi({
       databaseUrl,
       appOrigin: origin,
       commerceMode: 'ENFORCED',
@@ -143,6 +161,7 @@ async function captureRegistration(
   existingLeader,
   format = 'ROUND_ROBIN',
   teamCount = 3,
+  configureEvent = null,
 ) {
   const root = `/v1/orgs/${orgId}`;
   const leader = existingLeader
@@ -171,6 +190,10 @@ async function captureRegistration(
     },
   });
   const path = `${root}/events/${event.data.id}`;
+  if (configureEvent) {
+    await configureEvent(event.data);
+    event.data = (await call(path, { cookie: ownerCookie })).data;
+  }
   let workspace = (
     await call(`${path}/registration-rules`, {
       method: 'PUT',
@@ -1753,6 +1776,47 @@ try {
       fetchFile: (route, actorCookie) =>
         fetch(baseUrl + route, { headers: { Cookie: actorCookie } }),
     });
+    const fixtureState = {
+      orgId,
+      cookie,
+      userId: registration.data.user.id,
+      registration: frozenRegistration,
+      scheduling,
+      scoring,
+      commerce: { operators: commerceSetup.operators },
+    };
+    const x18 = await captureX18Governance({
+      call,
+      state: fixtureState,
+      readPool,
+      fetchFile: (route, actorCookie) =>
+        fetch(baseUrl + route, { headers: { Cookie: actorCookie } }),
+    });
+    const x12 = await captureX12Local({ call, state: fixtureState, readPool, assertPublicMissing });
+    const x22 = await captureX22AccountRecovery({
+      call,
+      state: fixtureState,
+      runtimePool: instance.pool,
+      readPool,
+      databaseUrl,
+      appOrigin: origin,
+      requireRuntimeRole: !!remoteUrl,
+    });
+    const x02Registration = await captureRegistration(
+      orgId,
+      cookie,
+      `${suffix}-x02`,
+      frozenRegistration,
+      'ROUND_ROBIN',
+      3,
+      (event) => configureX02AdjudicationRules({ call, state: fixtureState, event }),
+    );
+    const x02Scheduling = await captureScheduling(orgId, cookie, x02Registration);
+    const x02 = await captureX02Adjudication({
+      call,
+      state: { ...fixtureState, x02Scheduling },
+      readPool,
+    });
     const commerce = await captureCommerceEnd({
       call,
       cookie,
@@ -1791,6 +1855,20 @@ try {
       saved.workspace = (
         await call(`/v1/orgs/${orgId}/matches/${saved.matchId}/overlay`, { cookie })
       ).data;
+    const courts = (await call(`/v1/orgs/${orgId}/courts`, { cookie })).data;
+    assert.deepEqual(
+      courts.map((c) => c.id).sort(),
+      [
+        scheduling.court.id,
+        lifecycle.court.id,
+        knockout.court.id,
+        groups.court.id,
+        x08Scheduling.court.id,
+        x12.courtId,
+        x02Scheduling.court.id,
+      ].sort(),
+      'Capture every original and explicitly added owned court with no extra rows',
+    );
     const state = {
       cookie,
       userId: registration.data.user.id,
@@ -1811,6 +1889,11 @@ try {
       x03Templates,
       x08,
       x05,
+      x18,
+      x12,
+      x22,
+      x02,
+      courts,
       participantKeyFixtureDatabase,
       fingerprint: await fingerprint(),
     };
@@ -1823,6 +1906,10 @@ try {
     await verifyParticipantQuarantine({ readPool, saved: state.participantMaterials });
     await verifyX08ArchiveQuarantine({ readPool, saved: state.x08, assertPublicMissing });
     await verifyX05RecruitmentQuarantine({ readPool, saved: state.x05, assertPublicMissing });
+    await verifyX18GovernanceQuarantine({ readPool, saved: state.x18, assertPublicMissing });
+    await verifyX22AccountRecoveryQuarantine({ readPool, saved: state.x22 });
+    await verifyX02AdjudicationQuarantine({ readPool, saved: state.x02 });
+    await verifyX12LocalQuarantine({ readPool, saved: state.x12, assertPublicMissing });
     const denied = await fetch(baseUrl + state.participantMaterials.materialPath + '/mine', {
       headers: { Cookie: state.participantMaterials.cookie },
     });
@@ -1884,9 +1971,7 @@ try {
     const byId = (a, b) => a.id.localeCompare(b.id);
     assert.deepEqual(
       [...courts.data].sort(byId),
-      [scheduling.court, state.lifecycle.court, state.knockout.court, state.groups.court].sort(
-        byId,
-      ),
+      [...state.courts].sort(byId),
       'All owned scenario courts survive restart and full restore without extra rows',
     );
     const scoring = state.scoring;
@@ -1987,6 +2072,17 @@ try {
       fetchFile: (route, actorCookie) =>
         fetch(baseUrl + route, { headers: { Cookie: actorCookie } }),
     });
+    await verifyX18Governance({
+      call,
+      state,
+      readPool,
+      saved: state.x18,
+      fetchFile: (route, actorCookie) =>
+        fetch(baseUrl + route, { headers: { Cookie: actorCookie } }),
+    });
+    await verifyX22AccountRecovery({ readPool, saved: state.x22 });
+    await verifyX02Adjudication({ readPool, saved: state.x02 });
+    await verifyX12Local({ call, state, readPool, saved: state.x12, assertPublicMissing });
     await verifyParticipantMaterials({
       call,
       readPool,

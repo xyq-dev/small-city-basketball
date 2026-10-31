@@ -1,3 +1,4 @@
+import { resolution, resolutionKeys, exactFields, sourceList } from './result-proofs';
 import type {
   DrawGroupTieInput,
   EventGroupKnockoutData,
@@ -7,8 +8,7 @@ import type {
 } from '@small-city-basketball/contracts';
 import type { ApiClient } from './client';
 import { ApiError } from './client';
-import { publicKnockout } from './knockout';
-import { MATCH_STATUSES } from '@small-city-basketball/contracts';
+import { publicKnockout, privateKnockout, bracketSources } from './knockout';
 
 type Obj = Record<string, unknown>;
 const obj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -36,8 +36,6 @@ const totals = [
   'scoreDifference',
   'leaguePoints',
 ];
-const matchStatus = (v: unknown) =>
-  v === 'BYE' || v === 'WAITING' || (MATCH_STATUSES as readonly unknown[]).includes(v);
 const row = (v: unknown, publicOnly: boolean) =>
   obj(v) &&
   totals.every((key) => Number.isSafeInteger(v[key])) &&
@@ -60,7 +58,7 @@ function metrics(v: Obj) {
     Number(v.confirmedMatchCount) <= Number(v.publishedMatchCount) &&
     Number(v.publishedMatchCount) <= Number(v.totalMatchCount) &&
     typeof v.isComplete === 'boolean' &&
-    (!v.isComplete || v.confirmedMatchCount === v.totalMatchCount)
+    resolution(v, true)
   );
 }
 function rules(v: unknown) {
@@ -85,77 +83,43 @@ function rules(v: unknown) {
   );
 }
 function privateBracket(v: unknown, groupCount: unknown) {
-  return (
-    obj(v) &&
-    v.algorithmVersion === 'SE_SEEDED_V1' &&
-    hash(v.sourceHash) &&
-    time(v.asOf) &&
-    v.participantCount === Number(groupCount) * 2 &&
-    v.totalMatchCount === Number(groupCount) * 2 - 1 &&
-    count(v.publishedMatchCount) &&
-    count(v.confirmedMatchCount) &&
-    typeof v.isComplete === 'boolean' &&
-    Array.isArray(v.rounds) &&
-    v.rounds.length > 0 &&
-    v.rounds.length <= 4 &&
-    v.rounds.every(
-      (r) =>
-        obj(r) &&
-        count(r.roundNo) &&
-        Number(r.roundNo) > 0 &&
-        Number(r.roundNo) <= 31 &&
-        text(r.label) &&
-        typeof r.published === 'boolean' &&
-        Array.isArray(r.slots) &&
-        r.slots.length > 0 &&
-        r.slots.every(
-          (s) =>
-            obj(s) &&
-            text(s.fixtureKey) &&
-            count(s.roundNo) &&
-            count(s.positionNo) &&
-            [
-              'homeEntryId',
-              'awayEntryId',
-              'homeSource',
-              'awaySource',
-              'byeEntryId',
-              'matchId',
-              'winnerEntryId',
-            ].every((key) => s[key] === null || text(s[key])) &&
-            matchStatus(s.status),
-        ),
-    ) &&
-    Array.isArray(v.placements) &&
-    v.placements.every(
-      (p) =>
-        obj(p) &&
-        text(p.entryId) &&
-        text(p.teamName) &&
-        rank(p.rank) &&
-        typeof p.tied === 'boolean',
-    )
-  );
+  return obj(v) && v.participantCount === Number(groupCount) * 2 && privateKnockout(v);
+}
+function groupSources(competition: Obj, sources: unknown) {
+  if (!Array.isArray(competition.groups)) return false;
+  const entrants = new Set<string>();
+  for (const group of competition.groups) {
+    if (!obj(group) || !Array.isArray(group.participants)) return false;
+    for (const participant of group.participants) {
+      if (!obj(participant) || !text(participant.entryId)) return false;
+      entrants.add(participant.entryId);
+    }
+  }
+  return sourceList(sources, true, entrants);
 }
 /** Exact public whitelist; private IDs, draw seeds and source confirmations are rejected. */
 export function publicGroups(v: unknown): v is PublicGroupKnockoutData {
   return (
-    exact(v, [
-      'publicEventId',
-      'algorithmVersion',
-      'sourceHash',
-      'asOf',
-      'groupCount',
-      'totalMatchCount',
-      'publishedMatchCount',
-      'confirmedMatchCount',
-      'isComplete',
-      'rules',
-      'groups',
-      'qualificationStatus',
-      'bracket',
-      'placements',
-    ]) &&
+    exactFields(
+      v,
+      [
+        'publicEventId',
+        'algorithmVersion',
+        'sourceHash',
+        'asOf',
+        'groupCount',
+        'totalMatchCount',
+        'publishedMatchCount',
+        'confirmedMatchCount',
+        'isComplete',
+        'rules',
+        'groups',
+        'qualificationStatus',
+        'bracket',
+        'placements',
+      ],
+      resolutionKeys,
+    ) &&
     text(v.publicEventId) &&
     v.algorithmVersion === 'GK_BALANCED_V1' &&
     metrics(v) &&
@@ -165,17 +129,22 @@ export function publicGroups(v: unknown): v is PublicGroupKnockoutData {
     v.groups.length === v.groupCount &&
     v.groups.every(
       (g) =>
-        exact(g, [
-          'groupKey',
-          'label',
-          'confirmedMatchCount',
-          'totalMatchCount',
-          'isComplete',
-          'rows',
-          'qualified',
-          'tieBreakRequired',
-          'tieDrawApplied',
-        ]) &&
+        exactFields(
+          g,
+          [
+            'groupKey',
+            'label',
+            'confirmedMatchCount',
+            'totalMatchCount',
+            'isComplete',
+            'rows',
+            'qualified',
+            'tieBreakRequired',
+            'tieDrawApplied',
+          ],
+          resolutionKeys,
+        ) &&
+        resolution(g, true) &&
         text(g.groupKey) &&
         text(g.label) &&
         count(g.confirmedMatchCount) &&
@@ -270,6 +239,7 @@ export function checkedGroups(v: unknown, eventId: string): EventGroupKnockoutDa
             ) &&
             obj(g.standings) &&
             hash(g.standings.sourceHash) &&
+            resolution(g.standings, true) &&
             Array.isArray(g.standings.rows) &&
             g.standings.rows.every((r) => row(r, false)) &&
             Array.isArray(g.unresolvedTieEntryIds) &&
@@ -289,6 +259,13 @@ export function checkedGroups(v: unknown, eventId: string): EventGroupKnockoutDa
         obj(v.competition.qualification) &&
         statuses.includes(String(v.competition.qualification.status)) &&
         hash(v.competition.qualification.sourceHash) &&
+        groupSources(v.competition, v.competition.qualification.sources) &&
+        Array.isArray(v.competition.qualification.slots) &&
+        v.competition.qualification.slots.every(text) &&
+        Array.isArray(v.competition.qualification.unresolvedGroups) &&
+        v.competition.qualification.unresolvedGroups.every(text) &&
+        (v.competition.qualification.publicationId === null ||
+          text(v.competition.qualification.publicationId)) &&
         Array.isArray(v.competition.placements) &&
         v.competition.placements.every(
           (p) =>
@@ -306,7 +283,12 @@ export function checkedGroups(v: unknown, eventId: string): EventGroupKnockoutDa
           (obj(v.competition.nextRound) &&
             count(v.competition.nextRound.roundNo) &&
             hash(v.competition.nextRound.sourceHash) &&
+            (v.competition.bracket === null
+              ? groupSources(v.competition, v.competition.nextRound.sources)
+              : obj(v.competition.bracket) &&
+                bracketSources(v.competition.bracket, v.competition.nextRound.sources)) &&
             Array.isArray(v.competition.nextRound.fixtures) &&
+            v.competition.nextRound.fixtures.length > 0 &&
             v.competition.nextRound.fixtures.every(fixture)))));
   if (!valid)
     throw new ApiError(200, 'INVALID_RESPONSE', '服务返回的分组晋级资料不完整，请重新读取');

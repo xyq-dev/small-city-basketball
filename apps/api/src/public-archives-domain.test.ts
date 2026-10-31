@@ -478,3 +478,22 @@ describe('public archive permission-lock retries', () => {
     expect(attempts).toBe(2);
   });
 });
+
+test('legacy team-only proof with contradictory professional JSON cannot retain score after source rejection', () => {
+  const m = final(1, 1, 2, 'TEAM_ONLY');
+  m.state.technical_collection = false;
+  m.confirmation.technical_collection = false;
+  m.state.professional_stats = { algorithmVersion: 'PLAYER_TECHNICAL_V1' };
+  m.confirmation.professional_stats = structuredClone(m.state.professional_stats);
+  const result = archiveProjection(
+    { ...profile, kind: 'TEAM' },
+    [sample(m)],
+    1,
+    '2026-10-31T00:00:01Z',
+  );
+  expect(result.invalidMatchCount).toBe(1);
+  expect(result.recordedMatchCount).toBe(0);
+  expect(result.confirmedMatchCount).toBe(0);
+  expect(result.points).toBeNull();
+  expect(result.technical).toBeNull();
+});

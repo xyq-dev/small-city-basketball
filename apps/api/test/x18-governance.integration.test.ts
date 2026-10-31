@@ -132,8 +132,9 @@ describe(
       });
       const updated = await g.getCase(handler.cookie, row.id as string);
       expect(updated.status).toBe('ASSIGNED');
+      const replyCommand = randomUUID();
       await g.reply(handler.cookie, row.id as string, {
-        commandId: randomUUID(),
+        commandId: replyCommand,
         expectedVersion: 2,
         body: '合成内部处理线索',
         visibility: 'INTERNAL',
@@ -145,6 +146,13 @@ describe(
         expectedVersion: 1,
         reason: '撤销合成有限权限',
       });
+      await expect(g.operationReceipt(handler.cookie, replyCommand)).rejects.toMatchObject({
+        status: 404,
+      });
+      expect(
+        await g.cancelOperation(handler.cookie, replyCommand, { reason: '明确核对原请求已生效' }),
+      ).toEqual({ commandId: replyCommand, completed: true, cancelled: false });
+      expect((await g.getCase(owner.cookie, row.id as string)).version).toBe(3);
       await expect(g.getCase(handler.cookie, row.id as string)).rejects.toMatchObject({
         status: 404,
       });
@@ -281,6 +289,9 @@ describe(
       const abandoned = randomUUID();
       expect(
         await g.cancelOperation(owner.cookie, abandoned, { reason: '明确放弃合成操作' }),
+      ).toEqual({ commandId: abandoned, cancelled: true });
+      expect(
+        await g.cancelOperation(owner.cookie, abandoned, { reason: '重复核对原取消结果' }),
       ).toEqual({ commandId: abandoned, cancelled: true });
       await expect(
         g.createCase(owner.cookie, { ...raw, commandId: abandoned }),
@@ -527,6 +538,106 @@ describe(
         blocker.release();
       }
       await expect(g.publicReview(row.publicKey as string)).rejects.toMatchObject({ status: 404 });
+      const market = data<BookingWorkspaceData>(
+        await call(api, 'get', '/v1/player-bookings/workspace', { cookie: owner.cookie }),
+      );
+      const cached = {
+        commandId: randomUUID(),
+        orgId: owner.orgId,
+        teamId: team.id,
+        eventName: '合成停用服务方历史订单',
+        scope: 'SINGLE',
+        eligibilityConfirmed: true,
+        reviewedSettingsVersion: market.settings.version,
+        reviewedProfileVersions: { [profile.id]: quote!.version },
+        appearances: [
+          {
+            profileId: profile.id,
+            label: '停用后可取消的历史预约',
+            reportAt: at(2 * 86400000),
+            startAt: at(2 * 86400000 + 30 * 60000),
+            endAt: at(2 * 86400000 + 90 * 60000),
+            venue: '合成隔离球场',
+            conditional: false,
+          },
+        ],
+      };
+      const pendingOrder = data<BookingOrderData>(
+        await call(api, 'post', '/v1/player-bookings/orders', {
+          cookie: owner.cookie,
+          body: cached,
+        }),
+      );
+      await api.pool.query("UPDATE users SET status='DISABLED' WHERE id=$1", [handler.id]);
+      try {
+        await expect(
+          g.createReview(owner.cookie, {
+            commandId: randomUUID(),
+            sourceKind: 'PLAYER_BOOKING',
+            sourceId: appearanceId,
+            score: 4,
+            body: '停用方不能进入新的公开评价',
+            publicConsent: true,
+          }),
+        ).rejects.toMatchObject({ status: 404 });
+        const cancelled = data<BookingOrderData>(
+          await call(api, 'post', `/v1/player-bookings/orders/${pendingOrder.id}/commands`, {
+            cookie: owner.cookie,
+            body: {
+              commandId: randomUUID(),
+              expectedVersion: pendingOrder.appearances[0]!.version,
+              appearanceId: pendingOrder.appearances[0]!.id,
+              type: 'CANCEL',
+              reason: '服务方停用后买方取消历史预约',
+            },
+          }),
+        );
+        expect(cancelled.appearances[0]!.status).toBe('CANCELLED');
+        order = data<BookingOrderData>(
+          await call(api, 'post', `/v1/player-bookings/orders/${order.id}/commands`, {
+            cookie: owner.cookie,
+            body: {
+              commandId: randomUUID(),
+              expectedVersion: order.appearances[0]!.version,
+              appearanceId,
+              type: 'DISPUTE',
+              reason: '服务方停用后买方提出历史履约争议',
+            },
+          }),
+        );
+        expect(order.appearances[0]!.status).toBe('DISPUTED');
+        const report = {
+          commandId: randomUUID(),
+          kind: 'REPORT',
+          title: '合成停用服务方私有举报',
+          body: '仅向明确授权处理人说明历史服务问题',
+          source: { kind: 'PLAYER_BOOKING', id: appearanceId },
+        };
+        const support = await g.createCase(owner.cookie, report);
+        expect((await g.getCase(owner.cookie, support.id as string)).orgId).toBe(owner.orgId);
+        await expect(
+          g.createCase(stranger.cookie, { ...report, commandId: randomUUID() }),
+        ).rejects.toMatchObject({ status: 404 });
+        await expect(
+          g.createCase(handler.cookie, { ...report, commandId: randomUUID() }),
+        ).rejects.toMatchObject({ status: 401 });
+        const fresh = data<BookingWorkspaceData>(
+          await call(api, 'get', '/v1/player-bookings/workspace', { cookie: owner.cookie }),
+        );
+        const denied = await call(api, 'post', '/v1/player-bookings/orders', {
+          cookie: owner.cookie,
+          body: {
+            ...cached,
+            commandId: randomUUID(),
+            reviewedSettingsVersion: fresh.settings.version,
+          },
+        });
+        expect(denied.status).toBe(409);
+        expect(denied.body.error.code).toBe('PLAYER_UNAVAILABLE');
+      } finally {
+        await api.pool.query("UPDATE users SET status='ACTIVE' WHERE id=$1", [handler.id]);
+        handler.cookie = await login(api, handler);
+      }
     });
     test('sponsor requires independent review; reports deduplicate by publication and revocation never revives old key', async () => {
       const input = {

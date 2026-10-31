@@ -29,3 +29,12 @@ I5脚本语法/格式与git diff --check通过，真实HTTP/PNG/PG未执行（�
 CI130真实门槛：migrate-and-grant已通过，P07 runtime文件与大部分quarantine合计18/19通过；唯一C22竞争测试barrier超时。已定位lockActor在031账号恢复加入users别名/credential_reset_at谓词，旧测试等整段无别名SQL而没暂停真实请求。修正仅观察语义（users本人$1且FOR SHARE），仍等实际SQL成功后暂停，保留5秒NOWAIT拒绝/全库不变/排空后重试全部断言；不延时、不跳过、不改业务锁。2单测覆盖旧/新/多行语句与非actor/无锁拒绝，真实PG重跑待CI。尚未到HTTPS/restart/full restore。
 
 CI130 API真实结果468通过/8失败/5跳过（整体未过）。本组后续修正：c02 checksum拒绝测试残留24条断言改完整source迁移名集合；c22 frozen legacy恢复升级残留023/024后缀改完整source>022精确集合，冻结旧78表包与原历史数据断言保留。X05照片真实PG资料提交失败IDENTITY_REQUIRED，按C23补四个非真实990000区码/有效日期和校验位的合成身份，不降低真实身份/照片/独立审核要求。完整API tsconfig/格式通过，以上真实PG待CI重跑。
+
+I6主入口已接X12/X18/X22非空helpers及X02行政裁定：同城两新队/独立审核供给/真实预约库存/双队约赛/仅哈希核销；工单私密附件/城市权/赞助曝光/双人经费公示；实际AccountRecoveryService产生五表邮件密文/token/request/cancel/config且不启动worker不发外部邮件。production HTTPS默认严格scb_runtime；API job本地仅loopback HTTP/DB明确owner模式，不把本地owner当最小权限证据。X02独立新赛事在DRAFT hook先配规则再重读版本，后冻结排程并独立提议/批准，真实head/四表回执hash在normal/quarantine不变，不伪记分或清裁定。全部新商业激活发生在最终commerce基线前。
+新增fixtures会增加真实球场，最终courts先断言exact七个已知原/新增ID无额外行，再保存完整DTO并在恢复精确比较；原leaderSession也在全部新grant后重抓。新私有/公开GET可能写审计或限流，normal新helper验证统一放原完整fingerprint相等之后。治理评价仍明确coverage:false（未伪未来订单完成），local正评估可用真实短时履约另补。
+依赖helper：X18 12d14cc、X12 fd8296a（G2 ada057+E列）、X22 7d9c38c+5b5eace、X02 08a3f07。主脚本node --check/Prettier/diff通过，真实HTTP/PG/restart/dump/full-restore尚未运行，等待下一CI头。
+
+CI131生产真实结果：P07两文件20/20通过，API启动3300，TLS业务链尚未开始业务就因validator容器缺x03 helper而ERR_MODULE_NOT_FOUND。根授权Dockerfile/测试镜像清单补齐；发现.dockerignore原排除整个scripts也需窄例外。现db-tools镜像明确COPY11个验收脚本/依赖，.dockerignore只放行这些mjs，validator移除旧四个脚本逐个bind避免漏挂/漂移，镜像离线逐源checksum并import7域helper检查compiled dist依赖；应用API镜像不包含测试scripts，且额外实际中文glyph probe。
+I7同时删除checker对glibc sharp的静态import，避免Alpine db-tools复用API生产依赖时libc不匹配；只用Node内建检查实际PNG签名、尺寸、完整chunk流/CRC与无EXIF/text。真正渲染仍在有Noto的API容器，未换模板或生成来源。2个本地真实Sharp PNG→portable verifier测试通过（CRC/截断/尺寸/JPEG/EXIF负向），完整API tsconfig、脚本语法/格式通过；本地无Docker，不声称新镜像构建/HTTPS业务/重启/完整恢复已通过，等待CI重跑。
+
+I7b：进一步只读发现新治理domain合法静态导入sharp，旧checker顶部静态createApi会把完整应用（含glibc sharp）加载进Alpine db-tools，即使remote模式根本不启动API。改为仅本地API job分支动态import createApi；production远程只运行HTTP/SQL验收helper和独立mail service，不加载治理图像addon。真实应用API代码不改。脚本语法/格式检查通过，Docker实跑待CI。

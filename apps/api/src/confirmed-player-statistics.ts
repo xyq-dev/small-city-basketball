@@ -11,8 +11,26 @@ export function confirmedPlayerStatistics(match: ResultRow): MatchPlayerStatisti
   const state = match.state;
   const confirmation = match.confirmation;
   if (state.collection_mode !== confirmation.collection_mode) resultSourceInvalid();
+  const technical = state.technical_collection === undefined ? false : state.technical_collection;
+  const confirmedTechnical =
+    confirmation.technical_collection === undefined ? false : confirmation.technical_collection;
+  if (
+    (technical !== true && technical !== false) ||
+    (confirmedTechnical !== true && confirmedTechnical !== false) ||
+    technical !== confirmedTechnical ||
+    !isDeepStrictEqual(state.professional_stats ?? null, confirmation.professional_stats ?? null)
+  )
+    resultSourceInvalid();
+
   if (state.collection_mode === 'TEAM_ONLY') {
-    if (state.player_stats !== null || confirmation.player_stats !== null) resultSourceInvalid();
+    if (
+      state.player_stats !== null ||
+      confirmation.player_stats !== null ||
+      technical ||
+      state.professional_stats != null ||
+      confirmation.professional_stats != null
+    )
+      resultSourceInvalid();
     return null;
   }
   if (
@@ -28,12 +46,7 @@ export function confirmedPlayerStatistics(match: ResultRow): MatchPlayerStatisti
   }
   // Stored sources must also have the exact C02 shape, while the returned value is rebuilt.
   if (!stats || !isDeepStrictEqual(stats, confirmation.player_stats)) resultSourceInvalid();
-  if (
-    !!state.technical_collection !== !!confirmation.technical_collection ||
-    !isDeepStrictEqual(state.professional_stats ?? null, confirmation.professional_stats ?? null)
-  )
-    resultSourceInvalid();
-  if (state.technical_collection) {
+  if (technical) {
     let professional;
     try {
       professional = professionalStatisticsDto(confirmation.professional_stats);

@@ -1,7 +1,62 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import sharp from 'sharp';
 const sha = (value) => createHash('sha256').update(value).digest('hex');
+/** Verify actual PNG framing, geometry and CRCs without a glibc image addon in Alpine tools. */
+export function assertPosterPng(bytes, width = 1080, height = 1440) {
+  assert.ok(
+    Buffer.isBuffer(bytes) && bytes.length >= 33 && bytes.length <= 8 * 1024 * 1024,
+    'Bounded PNG bytes required',
+  );
+  assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', 'PNG signature required');
+  let offset = 8,
+    header = false,
+    data = false,
+    ended = false;
+  while (offset + 12 <= bytes.length) {
+    const length = bytes.readUInt32BE(offset),
+      end = offset + 12 + length;
+    assert.ok(length <= 8 * 1024 * 1024 && end <= bytes.length, 'Truncated PNG chunk');
+    const type = bytes.toString('ascii', offset + 4, offset + 8);
+    assert.match(type, /^[A-Za-z]{4}$/);
+    assert.ok(
+      !['eXIf', 'tEXt', 'iTXt', 'zTXt'].includes(type),
+      'Private PNG metadata is forbidden',
+    );
+    let crc = 0xffffffff;
+    for (let i = offset + 4; i < offset + 8 + length; i++) {
+      crc ^= bytes[i];
+      for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+    assert.equal(
+      (crc ^ 0xffffffff) >>> 0,
+      bytes.readUInt32BE(offset + 8 + length),
+      'PNG chunk CRC must match',
+    );
+    if (!header) {
+      assert.equal(type, 'IHDR');
+      assert.equal(length, 13);
+      assert.equal(bytes.readUInt32BE(offset + 8), width);
+      assert.equal(bytes.readUInt32BE(offset + 12), height);
+      header = true;
+    } else if (type === 'IHDR') assert.fail('PNG contains repeated geometry');
+    if (type === 'IDAT') {
+      assert.ok(length > 0);
+      data = true;
+    }
+    if (type === 'IEND') {
+      assert.equal(length, 0);
+      ended = true;
+      offset = end;
+      break;
+    }
+    offset = end;
+  }
+  assert.ok(
+    header && data && ended && offset === bytes.length,
+    'Complete PNG chunk stream required',
+  );
+  return { width, height };
+}
 /** Actual HTTP under scb_runtime; state contains only synthetic references and digests. */
 export async function captureX05Recruitment({
   call,
@@ -154,13 +209,8 @@ export async function captureX05Recruitment({
   assert.equal(file.status, 200);
   assert.match(file.headers.get('content-type'), /^image\/png/);
   assert.equal(file.headers.get('cache-control'), 'private, no-store');
-  const bytes = Buffer.from(await file.arrayBuffer()),
-    metadata = await sharp(bytes).metadata();
-  assert.deepEqual(
-    { format: metadata.format, width: metadata.width, height: metadata.height },
-    { format: 'png', width: 1080, height: 1440 },
-  );
-  assert.equal(metadata.exif, undefined);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  assertPosterPng(bytes);
   const saved = {
     eventId: event.id,
     publicationId: published.publication.id,

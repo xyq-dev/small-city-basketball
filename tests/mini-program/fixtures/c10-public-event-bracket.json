@@ -17,7 +17,8 @@
       "formatLabel": "分组循环接淘汰",
       "confirmedMatchCount": 6,
       "totalMatchCount": 16,
-      "serverTime": "2026-10-25T11:30:00Z"
+      "serverTime": "2026-10-25T11:30:00Z",
+      "progressLabel": "已确认 6 / 16 场"
     },
     "matches": [
       {
@@ -90,7 +91,11 @@
               "status": "WAITING",
               "statusLabel": "尚未发布",
               "winner": null,
-              "publicMatchId": null
+              "publicMatchId": null,
+              "homeLabel": "合成青锋",
+              "awayLabel": "合成长青",
+              "label": "",
+              "winnerLabel": "晋级"
             },
             {
               "positionNo": 2,
@@ -106,7 +111,11 @@
               "status": "WAITING",
               "statusLabel": "尚未发布",
               "winner": null,
-              "publicMatchId": null
+              "publicMatchId": null,
+              "homeLabel": "合成清风",
+              "awayLabel": "合成金塘",
+              "label": "",
+              "winnerLabel": "晋级"
             }
           ]
         }

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 
 const sha = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const tokenHash = (value) => createHash('sha256').update(value).digest('hex');
@@ -75,7 +76,7 @@ export async function captureX12Local({ call, state, readPool, assertPublicMissi
       body: { name: `合成同城经营球场-${unique}` },
     })
   ).data;
-  const now = (await readPool.query('SELECT clock_timestamp() AS now')).rows[0].now;
+  const now = new Date((await readPool.query('SELECT clock_timestamp() AS now')).rows[0].now);
   const commandIds = [];
   async function send(path, cookie, body) {
     const commandId = randomUUID();
@@ -281,6 +282,7 @@ export async function verifyX12Local({ call, state, readPool, saved, assertPubli
   const match = (
     await call('/v1/local-matchups', { cookie: state.registration.leaderCookie })
   ).data.items.find((r) => r.id === saved.matchupId);
+  assert.ok(match, 'Confirmed X12 matchup must remain accessible after restart');
   assert.equal(sha(match), saved.matchupHash);
   const rows = await preservedRows(readPool, saved);
   assert.equal(sha(rows.ledger), saved.ledgerHash);
@@ -292,6 +294,19 @@ export async function verifyX12Local({ call, state, readPool, saved, assertPubli
     ])
   ).rows[0];
   assert.equal(nonce.checkin_hash, saved.checkinHash);
+  if (saved.completedService) {
+    const completed = saved.completedService;
+    const booking = (
+      await call(`/v1/local-bookings/${completed.bookingId}`, {
+        cookie: state.registration.leaderCookie,
+      })
+    ).data;
+    assert.equal(sha(booking), completed.bookingHash);
+    const rows = await completedEvidence(readPool, completed);
+    assert.equal(sha(rows.receipts), completed.receiptsHash);
+    assert.equal(sha(rows.history), completed.historyHash);
+    assert.equal(sha(rows.ledger), completed.ledgerHash);
+  }
 }
 
 export async function verifyX12LocalQuarantine({ readPool, saved, assertPublicMissing }) {
@@ -350,4 +365,151 @@ export async function verifyX12LocalQuarantine({ readPool, saved, assertPublicMi
     saved.historyHash,
     'Recovery must retain immutable original fulfillment audit',
   );
+  if (saved.completedService) {
+    const completed = saved.completedService;
+    const booking = (
+      await readPool.query(
+        'SELECT status,version,checkin_hash,checkin_expires_at FROM local_bookings WHERE id=$1',
+        [completed.bookingId],
+      )
+    ).rows[0];
+    assert.equal(booking.status, 'COMPLETED');
+    assert.equal(booking.version, completed.version);
+    assert.equal(booking.checkin_hash, null);
+    assert.equal(booking.checkin_expires_at, null);
+    const slot = (
+      await readPool.query('SELECT status,version FROM local_slots WHERE id=$1', [completed.slotId])
+    ).rows[0];
+    assert.equal(slot.status, 'CLOSED');
+    assert.ok(slot.version > completed.slotVersion);
+    const rows = await completedEvidence(readPool, completed);
+    assert.equal(sha(rows.receipts), completed.receiptsHash);
+    assert.equal(sha(rows.history), completed.historyHash);
+    assert.equal(rows.ledger.length, 1);
+    assert.ok(rows.ledger.every((r) => !r.active));
+  }
+}
+
+async function completedEvidence(readPool, saved) {
+  const [receipts, history, ledger] = await Promise.all([
+    readPool.query(
+      'SELECT actor_id,command_id,request_hash,result FROM local_command_receipts WHERE command_id=ANY($1::uuid[]) ORDER BY command_id',
+      [saved.commandIds],
+    ),
+    readPool.query(
+      'SELECT id,actor_id,resource_id,action,version,reason,created_at FROM local_service_history WHERE id=ANY($1::uuid[]) ORDER BY id',
+      [saved.historyIds],
+    ),
+    readPool.query(
+      'SELECT id,resource_key,booking_id,starts_at,ends_at,active FROM local_resource_reservations WHERE booking_id=$1 ORDER BY id',
+      [saved.bookingId],
+    ),
+  ]);
+  return { receipts: receipts.rows, history: history.rows, ledger: ledger.rows };
+}
+
+/** Optional bounded verification of an existing short personnel fulfillment flow, via HTTP only. */
+export async function captureX12CompletedService({ call, state, readPool, saved }) {
+  requireState(state);
+  assert.ok(saved?.supplies, 'Create the normal X12 supply fixture first');
+  const supply = saved.supplies.find((r) => r.kind === 'REFEREE');
+  assert.ok(supply, 'Create the normal X12 supply fixture first');
+  const detail = (await call(`${serviceRoot}${supply.listingId}`, { cookie: state.cookie })).data;
+  const now = new Date((await readPool.query('SELECT clock_timestamp() AS now')).rows[0].now);
+  const startsAt = new Date(now.getTime() + 15000).toISOString();
+  const endsAt = new Date(now.getTime() + 22000).toISOString();
+  const deadline = now.getTime() + 30000;
+  const monotonicDeadline = performance.now() + 30000;
+  const commandIds = [];
+  async function send(path, cookie, body) {
+    const commandId = randomUUID();
+    const result = await call(path, { method: 'POST', cookie, body: { ...body, commandId } });
+    commandIds.push(commandId);
+    return result.data;
+  }
+  async function waitForDb(target) {
+    for (;;) {
+      const current = new Date(
+        (await readPool.query('SELECT clock_timestamp() AS now')).rows[0].now,
+      ).getTime();
+      assert.ok(
+        current <= deadline && performance.now() <= monotonicDeadline,
+        'Bounded X12 completion exceeded its 30-second deadline',
+      );
+      if (current >= target) return;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(250, target - current)));
+    }
+  }
+  const slot = await send(`${serviceRoot}${supply.listingId}/slots`, state.cookie, {
+    expectedVersion: detail.listing.version,
+    startsAt,
+    endsAt,
+  });
+  const booking = await send('/v1/local-bookings', state.registration.leaderCookie, {
+    listingId: supply.listingId,
+    slotId: slot.slotId,
+    serviceRegion: detail.listing.region,
+    acceptedTerms: true,
+    serviceAddress: '仅隔离权限与恢复验证的合成短时服务场馆',
+  });
+  const path = `/v1/local-bookings/${booking.resourceId}`;
+  await send(`${path}/commands`, state.cookie, {
+    type: 'ACCEPT',
+    expectedVersion: 1,
+    reason: '实际提供者本人接取隔离合成短时服务',
+  });
+  await waitForDb(Date.parse(startsAt));
+  await send(`${path}/commands`, state.cookie, {
+    type: 'ARRIVE',
+    expectedVersion: 2,
+    reason: '实际提供者在数据库服务时段开始后登记合成到场',
+  });
+  await send(`${path}/commands`, state.cookie, {
+    type: 'DELIVER',
+    expectedVersion: 3,
+    reason: '实际提供者登记短时合成服务交付，等待需求方确认',
+  });
+  await waitForDb(Date.parse(endsAt));
+  await send(`${path}/commands`, state.registration.leaderCookie, {
+    type: 'COMPLETE',
+    expectedVersion: 4,
+    reason: '需求方在数据库服务时段结束后确认合成服务完成',
+  });
+  const completed = (await call(path, { cookie: state.registration.leaderCookie })).data;
+  assert.equal(completed.status, 'COMPLETED');
+  assert.equal(completed.kind, 'REFEREE');
+  assert.equal(completed.version, 5);
+  const evidence = {
+    sourceKind: 'LOCAL_BOOKING',
+    sourceId: booking.resourceId,
+    bookingId: booking.resourceId,
+    version: completed.version,
+    bookingHash: sha(completed),
+    listingId: supply.listingId,
+    slotId: slot.slotId,
+    slotVersion: 1,
+    buyerUserId: saved.buyerUserId,
+    providerUserId: saved.providerUserId,
+    commandIds,
+    historyIds: (
+      await readPool.query(
+        'SELECT id FROM local_service_history WHERE resource_id=ANY($1::uuid[]) ORDER BY id',
+        [[slot.slotId, booking.resourceId]],
+      )
+    ).rows.map((r) => r.id),
+  };
+  const rows = await completedEvidence(readPool, evidence);
+  assert.equal(rows.receipts.length, commandIds.length);
+  assert.equal(rows.history.length, commandIds.length);
+  assert.equal(rows.ledger.length, 1);
+  evidence.receiptsHash = sha(rows.receipts);
+  evidence.historyHash = sha(rows.history);
+  evidence.ledgerHash = sha(rows.ledger);
+  // This extra slot changes the original private detail, while the two original
+  // confirmed inventory contracts and their ledger/receipt/history hashes remain intact.
+  supply.privateHash = sha(
+    (await call(`${serviceRoot}${supply.listingId}`, { cookie: state.cookie })).data,
+  );
+  saved.completedService = evidence;
+  return evidence;
 }

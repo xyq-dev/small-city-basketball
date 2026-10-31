@@ -7,6 +7,7 @@ const groups = [
   { key: 'live', label: '进行中', statuses: ['LIVE'] },
   { key: 'ready', label: '已准备 · 待开赛', statuses: ['READY'] },
   { key: 'pending', label: '已结束 · 待独立确认', statuses: ['PENDING_CONFIRMATION'] },
+  { key: 'adjudicated', label: '行政弃权／取消 · 不计个人统计', statuses: [] },
   { key: 'scheduled', label: '待准备', statuses: ['SCHEDULED'] },
   { key: 'final', label: '已确认', statuses: ['FINAL'] },
 ];
@@ -79,6 +80,16 @@ Page({
               (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''),
           );
           if (!Array.isArray(response.data)) throw { message: '比赛资料格式无效' };
+          for (const m of response.data)
+            if (
+              m.adjudication !== undefined &&
+              (!m.adjudication ||
+                typeof m.adjudication !== 'object' ||
+                Array.isArray(m.adjudication) ||
+                !['FORFEIT', 'CANCELLED'].includes(m.adjudication.kind) ||
+                !['SCHEDULED', 'READY'].includes(m.status))
+            )
+              throw { message: '比赛行政裁定资料格式无效' };
           for (const m of response.data) rows.push({ org, m });
           cursor = response.meta.nextCursor;
           if (!cursor) break;
@@ -96,7 +107,11 @@ Page({
         key: g.key,
         label: g.label,
         items: rows
-          .filter((r) => g.statuses.includes(r.m.status))
+          .filter((r) =>
+            r.m.adjudication
+              ? g.key === 'adjudicated'
+              : g.key !== 'adjudicated' && g.statuses.includes(r.m.status),
+          )
           .slice(0, g.key === 'final' ? 20 : 200)
           .map(({ org, m }) => ({
             key: org.id + ':' + m.matchId,
@@ -105,9 +120,13 @@ Page({
             title: m.homeTeamName + ' vs ' + m.awayTeamName,
             meta:
               m.eventName + ' · ' + ui.localTime(m.startsAt) + ' · ' + (m.courtName || '场地待定'),
-            score: m.score ? m.score.home + ' : ' + m.score.away : '',
-            statusLabel: api.matchStatus(m.status),
-            live: m.status === 'LIVE',
+            score: !m.adjudication && m.score ? m.score.home + ' : ' + m.score.away : '',
+            statusLabel: m.adjudication
+              ? m.adjudication.kind === 'FORFEIT'
+                ? '行政弃权已生效'
+                : '本场已取消'
+              : api.matchStatus(m.status),
+            live: !m.adjudication && m.status === 'LIVE',
           })),
       }))
       .filter((s) => s.items.length);

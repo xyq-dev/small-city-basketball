@@ -66,7 +66,11 @@ function clear(actor, org, body) {
   }
 }
 const unknown = (error) =>
-  !error || !error.status || error.status >= 500 || error.code === 'IDEMPOTENCY_KEY_REUSED';
+  !error ||
+  !error.status ||
+  error.status >= 500 ||
+  [401, 403, 404, 408, 429].includes(error.status) ||
+  error.code === 'IDEMPOTENCY_KEY_REUSED';
 function receipt(value, body) {
   const operation = body.type === 'CREATE_FROM_EVENT' ? 'CREATE_TEMPLATE' : body.type;
   if (

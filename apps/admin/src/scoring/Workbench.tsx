@@ -54,7 +54,8 @@ export function MatchWorkbench({
     setSelectedPlayers({ HOME: '', AWAY: '' });
   }, [matchId]);
   const wb = model.data?.workbench,
-    snapshot = wb?.snapshot;
+    snapshot = wb?.snapshot,
+    adjudication = wb?.match.adjudication ?? snapshot?.adjudication;
   const confirmationExpired = Boolean(
     reviewedSnapshot && snapshot && reviewedSnapshot.version !== snapshot.version,
   );
@@ -189,7 +190,12 @@ export function MatchWorkbench({
         />
       ) : (
         <>
-          {snapshot ? (
+          {adjudication ? (
+            <section className="panel" role="status">
+              <h2>{adjudication.kind === 'FORFEIT' ? '弃权裁定' : '本场取消'}</h2>
+              <p>本场已有独立复核的行政裁定，不生成比赛比分、计时或个人技术数据。</p>
+            </section>
+          ) : snapshot ? (
             <Scoreboard snapshot={snapshot} />
           ) : (
             <section className="panel score-empty">
@@ -249,7 +255,7 @@ export function MatchWorkbench({
               )}
             </section>
           )}
-          {snapshot && (
+          {snapshot && !adjudication && (
             <>
               <section className="panel score-control">
                 <div className="score-control-icon">
@@ -586,7 +592,7 @@ export function MatchWorkbench({
           </div>
         </>
       )}
-      {snapshot && dialog === 'clock' && !model.pending && (
+      {snapshot && !adjudication && dialog === 'clock' && !model.pending && (
         <ClockDialog
           snapshot={snapshot}
           busy={modalBusy}
@@ -596,7 +602,7 @@ export function MatchWorkbench({
           onClose={() => setDialog(null)}
         />
       )}
-      {snapshot && dialog === 'correction' && !model.pending && (
+      {snapshot && !adjudication && dialog === 'correction' && !model.pending && (
         <CorrectionDialog
           snapshot={snapshot}
           playerRoster={wb?.playerRoster}
@@ -674,7 +680,7 @@ export function MatchWorkbench({
           </div>
         </Modal>
       )}
-      {snapshot && dialog === 'reopen' && !model.pending && (
+      {snapshot && !adjudication && dialog === 'reopen' && !model.pending && (
         <Modal title="重开赛果" busy={modalBusy} onClose={() => setDialog(null)}>
           <p>原正式结果保留并标记待重新确认；不会回到比赛进行中。</p>
           <label className="score-field">

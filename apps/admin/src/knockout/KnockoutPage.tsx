@@ -183,7 +183,7 @@ function KnockoutPage({
       <PageHeading
         eyebrow="CONFIRMED WINNERS. CONTROLLED ADVANCEMENT."
         title={data?.event.name ?? '淘汰赛晋级'}
-        description="从固定签位和当前有效独立确认赛果推进下一轮，正式发布前核对场地与休息安排。"
+        description="从固定签位和当前有效独立确认或弃权裁定推进下一轮，正式发布前核对场地与休息安排。"
       >
         <button
           className="button button-secondary"
@@ -211,9 +211,14 @@ function KnockoutPage({
         <>
           <section className="panel view-panel">
             <h2>单淘汰赛规则</h2>
-            <p>2–32队 · 平局进入加时 · 首轮轮空不生成比赛 · 不设三四名赛。</p>
             <p>
-              仅当前有效独立确认决定晋级。下一轮一经正式发布，来源赛果不再允许重开；未发布下游前，更正仍需重开及独立重新确认。
+              2–32队 · 平局进入加时 · 首轮轮空不生成比赛 ·{' '}
+              {data.bracket?.rounds.some((r) => r.slots.some((s) => s.kind === 'THIRD_PLACE'))
+                ? '设季军赛，半决赛负者争夺第三名。'
+                : '本签位未设三四名赛。'}
+            </p>
+            <p>
+              当前有效独立确认或弃权裁定决定晋级；取消场次无晋级者。下一轮正式发布后，来源赛果不能直接重开或撤销裁定，须先撤销未开赛子轮；当前版本尚未支持子轮撤销，不可直接更改。未发布下游时，普通赛果更正仍需重开及独立重新确认，裁定更正须独立复核撤销。
             </p>
             <div className="view-actions">
               <Link
@@ -256,13 +261,20 @@ function KnockoutPage({
                 <span>
                   <strong>{data.bracket.confirmedMatchCount}</strong>场有效独立确认
                 </span>
+                {data.bracket.resolvedMatchCount !== undefined && (
+                  <span>
+                    {data.bracket.adjudicatedMatchCount}场弃权裁定 ·{' '}
+                    {data.bracket.cancelledMatchCount}场取消 · 共{data.bracket.resolvedMatchCount}
+                    场已处理
+                  </span>
+                )}
               </section>
               <Bracket bracket={data.bracket} participants={data.participants} />
               {next && data.capabilities.canPublishNextRound ? (
                 <section className="panel view-panel" aria-label="下一轮发布安排">
                   <h2>安排第{next.roundNo}轮</h2>
                   <p>
-                    晋级来源已独立确认。填写本轮全部比赛的场地和时间；发布时服务端重新校验来源、休息间隔及共享场地冲突。时间为中国标准时间（UTC+8）。
+                    晋级来源已有效独立确认或弃权裁定。填写本轮全部比赛的场地和时间；发布时服务端重新校验来源、休息间隔及共享场地冲突。时间为中国标准时间（UTC+8）。
                   </p>
                   <form className="score-form" onSubmit={review} noValidate>
                     {next.fixtures.map((fixture) => {

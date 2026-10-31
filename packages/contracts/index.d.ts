@@ -634,6 +634,7 @@ export interface ScoringWorkbenchData {
   };
 }
 export interface ScoringMatchSummary {
+  adjudication?: { kind: 'FORFEIT' | 'CANCELLED' };
   matchId: string;
   eventId: string;
   eventName: string;

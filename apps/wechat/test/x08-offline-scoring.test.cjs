@@ -215,3 +215,110 @@ test('deleting or exporting a draft handles local failures without claiming succ
   assert.equal(h.store.read(h.wx, scope).items.length, 1);
   assert.doesNotMatch(h.page.data.notice, /已复制/);
 });
+
+test('concurrent draft appends cannot overwrite another original operation', async () => {
+  const h = setup();
+  await Promise.all([
+    h.store.append(h.wx, scope, 'RECORD_STAT', payload, 8),
+    h.store.append(h.wx, scope, 'RECORD_STAT', { side: 'HOME', kind: 'FOUL', value: 1 }, 8),
+  ]);
+  const queue = h.store.read(h.wx, scope);
+  assert.equal(queue.items.length, 2);
+  assert.deepEqual(
+    Array.from(queue.items, (item) => item.ordinal),
+    [1, 2],
+  );
+  assert.equal(new Set(queue.items.map((item) => item.intentId)).size, 2);
+});
+
+test('an append during a pending receipt stays queued outside the explicitly confirmed sync prefix', async () => {
+  const h = setup();
+  await h.store.append(h.wx, scope, 'RECORD_STAT', payload, 8);
+  let started, resume;
+  const posting = new Promise((resolve) => {
+    started = resolve;
+  });
+  const gate = new Promise((resolve) => {
+    resume = resolve;
+  });
+  const requests = [];
+  const client = {
+    async request(path, method, body) {
+      if (method !== 'POST') throw { code: 'OFFLINE_INTENT_NOT_FOUND' };
+      requests.push(body.intent);
+      started();
+      await gate;
+      return {
+        data: {
+          intentId: body.intent.intentId,
+          receipt: {
+            commandId: body.intent.intentId,
+            appliedVersion: body.intent.command.expectedVersion + 1,
+          },
+          snapshot: { version: body.intent.command.expectedVersion + 1 },
+        },
+      };
+    },
+  };
+  const syncing = h.store.sync(h.wx, scope, client, '/match', {}, () => true);
+  await posting;
+  const appended = await h.store.append(
+    h.wx,
+    scope,
+    'RECORD_STAT',
+    { side: 'AWAY', kind: 'SCORE', value: 3 },
+    8,
+  );
+  const tailId = appended.items[1].intentId;
+  resume();
+  const result = await syncing;
+  assert.equal(result.accepted, 1);
+  assert.equal(requests.length, 1);
+  const remaining = h.store.read(h.wx, scope).items;
+  assert.equal(remaining.length, 1);
+  assert.equal(remaining[0].intentId, tailId);
+  assert.equal(remaining[0].command.expectedVersion, 9);
+});
+
+test('a replaced queue during a pending acceptance is preserved and cannot be silently imported', async () => {
+  const h = setup();
+  const original = await h.store.append(h.wx, scope, 'RECORD_STAT', payload, 8);
+  let started, resume;
+  const posting = new Promise((resolve) => {
+      started = resolve;
+    }),
+    gate = new Promise((resolve) => {
+      resume = resolve;
+    });
+  const client = {
+    async request(path, method, body) {
+      if (method !== 'POST') throw { code: 'OFFLINE_INTENT_NOT_FOUND' };
+      started();
+      await gate;
+      return {
+        data: {
+          intentId: body.intent.intentId,
+          receipt: { commandId: body.intent.intentId, appliedVersion: 9 },
+          snapshot: { version: 9 },
+        },
+      };
+    },
+  };
+  const syncing = h.store.sync(h.wx, scope, client, '/match', {}, () => true);
+  await posting;
+  h.store.discard(h.wx, scope);
+  const replacement = await h.store.append(
+    h.wx,
+    scope,
+    'RECORD_STAT',
+    { side: 'AWAY', kind: 'SCORE', value: 3 },
+    9,
+  );
+  resume();
+  await assert.rejects(syncing, (error) => error.code === 'OFFLINE_QUEUE_CHANGED');
+  const current = h.store.read(h.wx, scope);
+  assert.notEqual(current.queueId, original.queueId);
+  assert.equal(current.queueId, replacement.queueId);
+  assert.equal(current.items[0].intentId, replacement.items[0].intentId);
+  assert.equal(current.items.length, 1);
+});

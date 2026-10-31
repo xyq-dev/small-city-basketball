@@ -386,12 +386,16 @@ function PublicMatchCard({
         <span
           className={`status-badge ${match.status === 'LIVE' ? 'blue' : match.resultStatus === 'CONFIRMED' ? 'green' : 'neutral'}`}
         >
-          {statusLabels[match.status]}
+          {match.adjudication
+            ? match.adjudication.kind === 'FORFEIT'
+              ? '弃权裁定'
+              : '本场取消'
+            : statusLabels[match.status]}
         </span>
       </div>
       <div className="watch-matchup">
         <h3>{match.home.teamName}</h3>
-        {match.score ? (
+        {match.score && !match.adjudication ? (
           <strong>
             {match.score.home} : {match.score.away}
           </strong>
@@ -404,7 +408,9 @@ function PublicMatchCard({
         {match.courtName} · {moment(match.startsAt)}
       </div>
       <div className="watch-match-bottom">
-        <span>{resultLabels[match.resultStatus]}</span>
+        <span>
+          {match.adjudication ? '行政裁定，无实际比分或个人统计' : resultLabels[match.resultStatus]}
+        </span>
         <Link
           to={`/watch/${encodeURIComponent(publicEventId)}/matches/${encodeURIComponent(match.publicMatchId)}`}
         >
@@ -555,11 +561,23 @@ export function PublicScoreboard({
 }) {
   const [elapsed, setElapsed] = useState(() => Math.max(0, performance.now() - receivedAt));
   useEffect(() => {
+    if (data.adjudication) return;
     const tick = () => setElapsed(Math.max(0, performance.now() - receivedAt));
     tick();
     const timer = setInterval(tick, 100);
     return () => clearInterval(timer);
-  }, [receivedAt]);
+  }, [receivedAt, data.adjudication?.kind]);
+  if (data.adjudication)
+    return (
+      <section className="panel" aria-label="行政裁定记录">
+        <h2>{data.adjudication.kind === 'FORFEIT' ? '弃权裁定' : '本场取消'}</h2>
+        <p>
+          {data.home.teamName} · {data.away.teamName}
+        </p>
+        {data.adjudication.winner && <p>裁定胜方：{data.adjudication.winner.teamName}</p>}
+        <p>独立复核的行政裁定，不生成实际比分、计时或个人技术统计。</p>
+      </section>
+    );
   const clock = data.clock;
   return (
     <>
