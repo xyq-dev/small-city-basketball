@@ -10,6 +10,7 @@ import {
 } from './youth-guardians-eligibility.js';
 import type { YouthQualificationReader } from './youth-guardians-eligibility.js';
 import { guardianThresholdDate } from './youth-guardians-domain.js';
+import { readAdultPublicConsentEpoch } from './youth-adult-data-consent.js';
 
 type MemberPurposeInput = {
   orgId: string;
@@ -24,6 +25,7 @@ export type YouthPublicationDecision = YouthEligibility & {
   trustedAdult: boolean;
   qualificationId: string | null;
   adultConsentAfter?: string | null;
+  publicConsentEpoch?: string | null;
 };
 export type YouthPublicationGuard = (
   c: PoolClient,
@@ -47,7 +49,7 @@ export function createYouthPublicationGuard(
   return async (c, input, purpose) => {
     const policy = (
       await c.query(
-        'SELECT enabled,guardian_age_threshold FROM youth_event_policies WHERE org_id=$1 AND event_id=$2',
+        'SELECT enabled,guardian_age_threshold,version FROM youth_event_policies WHERE org_id=$1 AND event_id=$2',
         [input.orgId, input.eventId],
       )
     ).rows[0];
@@ -92,10 +94,25 @@ export function createYouthPublicationGuard(
     };
     const q = await reader(c, scope);
     const result = await readYouthEligibility(c, scope, async () => q);
+    const publicConsentEpoch =
+      result.ready && !result.required && q.ready && q.subjectUserId
+        ? await readAdultPublicConsentEpoch(
+            c,
+            {
+              orgId: input.orgId,
+              eventId: input.eventId,
+              userId: q.subjectUserId,
+              entryId: entry.id,
+              memberId: input.memberId,
+            },
+            policy.version,
+          )
+        : null;
     return {
       ...result,
       trustedAdult: result.ready && !result.required && q.ready,
       qualificationId: q.qualificationId,
+      publicConsentEpoch,
       adultConsentAfter:
         result.ready && !result.required && q.ready && q.birthDate
           ? guardianThresholdDate(q.birthDate, policy.guardian_age_threshold)

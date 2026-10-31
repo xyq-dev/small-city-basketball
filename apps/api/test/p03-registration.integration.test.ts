@@ -76,7 +76,14 @@ describe(
     const instances: Api[] = [];
 
     async function anotherApi(): Promise<Api> {
-      const instance = await createApi({ databaseUrl, appOrigin: ORIGIN });
+      // These cases identify the blocked HTTP transaction by its backend PID.
+      // Automatic notification workers can wait on the same event and must not
+      // be mistaken for the deliberately blocked submission/review transaction.
+      const instance = await createApi({
+        databaseUrl,
+        appOrigin: ORIGIN,
+        backgroundWorkersEnabled: false,
+      });
       instances.push(instance);
       return instance;
     }

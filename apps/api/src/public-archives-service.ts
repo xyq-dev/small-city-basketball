@@ -112,8 +112,13 @@ export class PublicArchivesService extends ApplicationService {
       return Boolean(
         (
           await c.query(
-            "SELECT 1 FROM participant_qualification_prechecks WHERE id=$1 AND created_at<=$2::timestamptz AND $2::timestamptz>=($3::date::timestamp AT TIME ZONE 'Asia/Shanghai')",
-            [decision.qualificationId, row.consented_at, decision.adultConsentAfter],
+            "SELECT 1 FROM participant_qualification_prechecks q JOIN public_archive_sources s ON s.id=$2 WHERE q.id=$1 AND q.created_at<=s.consented_at AND s.consented_at>=($3::date::timestamp AT TIME ZONE 'Asia/Shanghai') AND ($4::timestamptz IS NULL OR s.consented_at>=$4::timestamptz)",
+            [
+              decision.qualificationId,
+              row.id,
+              decision.adultConsentAfter,
+              decision.publicConsentEpoch ?? null,
+            ],
           )
         ).rowCount,
       );

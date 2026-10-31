@@ -357,6 +357,7 @@ export class AccountClosureService extends ApplicationService {
             OR (o.status='PAID' AND NOT EXISTS(SELECT 1 FROM event_commercial_activations a
               JOIN event_entitlements entitlement ON entitlement.org_id=a.org_id AND entitlement.event_id=a.event_id AND entitlement.id=a.entitlement_id
               WHERE a.org_id=o.org_id AND a.event_id=o.event_id AND a.source='PAID' AND entitlement.order_id=o.id))
+            OR EXISTS(SELECT 1 FROM billing_payment_reviews review WHERE review.order_id=o.id AND review.status='PENDING_REVIEW')
             OR EXISTS(SELECT 1 FROM billing_refunds f WHERE f.order_id=o.id AND f.status IN('REQUESTED','PENDING_REVIEW','PROCESSING','UNKNOWN')))) AS money,
          EXISTS(SELECT 1 FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id
            WHERE (o.buyer_user_id=$1 OR a.player_user_id=$1) AND

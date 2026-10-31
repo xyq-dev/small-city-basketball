@@ -105,7 +105,9 @@ describe('E08 current publication purposes', () => {
       purged_at: null,
       key_id: 'key',
       material_consent_date: '2026-10-31',
+      material_consent_at: '2026-11-01T00:01:00.000001Z',
     };
+    let publicConsentEpoch: string | null = null;
     const seen: string[] = [],
       service = new PosterService({} as Pool, {
         databaseUrl: 'postgresql://localhost/scb_test_unit',
@@ -117,6 +119,7 @@ describe('E08 current publication purposes', () => {
             required: false,
             trustedAdult: true,
             adultConsentAfter: '2026-11-01',
+            publicConsentEpoch,
           };
         },
       }) as any;
@@ -160,7 +163,11 @@ describe('E08 current publication purposes', () => {
     material.material_consent_date = '2026-11-01';
     const current = await service.recipe(c, access, input);
     expect(current.players).toHaveLength(1);
-    expect(seen).toEqual(['PUBLICITY', 'PUBLICITY']);
+    publicConsentEpoch = '2026-11-01T00:02:00.000001Z';
+    expect((await service.recipe(c, access, input)).players).toEqual([]);
+    material.material_consent_at = '2026-11-01T00:03:00.000001Z';
+    expect((await service.recipe(c, access, input)).players).toHaveLength(1);
+    expect(seen).toEqual(['PUBLICITY', 'PUBLICITY', 'PUBLICITY', 'PUBLICITY']);
     material.publicity_consent = false;
     expect((await service.recipe(c, access, input)).players).toEqual([]);
   });
@@ -187,6 +194,7 @@ describe('E08 current publication purposes', () => {
       required: false,
       trustedAdult: true,
       adultConsentAfter: '2026-01-01',
+      publicConsentEpoch: '2026-10-31T00:10:00.000001Z',
     };
     const stale = fixture({ decision, adultReconsent: false });
     expect(await stale.service.permitted(stale.c)).toEqual([]);
@@ -195,6 +203,12 @@ describe('E08 current publication purposes', () => {
     expect(
       f.queries.find((q) => q.sql.includes('FROM participant_qualification_prechecks'))?.args[2],
     ).toBe('2026-01-01');
+    expect(
+      f.queries.find((q) => q.sql.includes('FROM participant_qualification_prechecks'))?.args[1],
+    ).toBe('youth');
+    expect(
+      f.queries.find((q) => q.sql.includes('FROM participant_qualification_prechecks'))?.args[3],
+    ).toBe('2026-10-31T00:10:00.000001Z');
   });
   it('keeps legacy adult archives and pure team aggregation available without expanding youth permission', async () => {
     const legacy = fixture({ known: false, rows: [source('legacy', false)] });

@@ -103,6 +103,14 @@ export async function purgeParticipantMaterials(pool, options) {
         [orgId, event.id, revisions.rows.map((row) => row.id)],
       );
       if (!updated.rowCount) continue;
+      // Anonymous archive/search readers use RR and lock this event before evaluating
+      // current qualification. A lock alone does not invalidate an older RR snapshot;
+      // change the tuple in this same successful purge transaction without changing
+      // the event's business version, status, or displayed timestamp.
+      await client.query('UPDATE events SET updated_at=updated_at WHERE org_id=$1 AND id=$2', [
+        orgId,
+        event.id,
+      ]);
       await client.query(
         `INSERT INTO audit_logs(id,org_id,actor_id,action,resource_type,resource_id,metadata)
          VALUES($1,$2,$3,'PARTICIPANT_MATERIALS_PURGED','event',$4,$5::jsonb)`,

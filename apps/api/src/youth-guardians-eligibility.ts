@@ -4,6 +4,7 @@ import {
   createYouthAdultAgeReader,
   readAdultSelfDataConsent,
   withdrawAdultDataForClosure,
+  fenceYouthEvent,
 } from './youth-adult-data-consent.js';
 import type { YouthAdultAgeReader } from './youth-adult-data-consent.js';
 import type {
@@ -329,6 +330,7 @@ export async function revokeYouthForClosure(c: PoolClient, userId: string): Prom
       );
       count++;
     }
+    await fenceYouthEvent(c, e.org_id, e.event_id);
   }
   const pre = (
     await c.query(

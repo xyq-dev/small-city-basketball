@@ -29,9 +29,13 @@ export class UnifiedSearchService extends PublicArchivesService {
         JOIN events e ON e.org_id=l.org_id AND e.id=l.event_id
         JOIN public_event_publications sp ON sp.org_id=l.org_id AND sp.event_id=l.event_id AND sp.id=l.publication_id AND sp.revoked_at IS NULL
         LEFT JOIN region_legacy_aliases legacy ON l.region_id IS NULL AND legacy.catalog_version=$5 AND legacy.label=l.display_city`;
-      const rows = (
-        await c.query<Row>(
-          `WITH RECURSIVE selected_regions AS (
+      // Current youth/public-purpose checks happen after candidate discovery. Fill a
+      // visible page without letting old ineligible profiles hide later matches.
+      const batchSize = 20;
+      const candidates = async (after: string) =>
+        (
+          await c.query<Row>(
+            `WITH RECURSIVE selected_regions AS (
         SELECT region_id FROM region_catalog_nodes WHERE region_id=$4::uuid AND catalog_version=$5
         UNION ALL SELECT n.region_id FROM region_catalog_nodes n JOIN selected_regions r ON n.parent_region_id=r.region_id WHERE n.catalog_version=$5
       ), candidates AS (
@@ -54,64 +58,77 @@ export class UnifiedSearchService extends PublicArchivesService {
               AND ($3::text IS NULL OR l.display_city=$3) AND ${region}
           ))
       ) SELECT * FROM candidates WHERE key COLLATE "C" > $6 ORDER BY key COLLATE "C" LIMIT $7`,
-          [
-            literalSearchPattern(q.q),
-            q.kind,
-            q.city,
-            q.regionId,
-            q.catalogVersion,
-            q.after,
-            q.limit + 1,
-          ],
-        )
-      ).rows;
-      const page = rows.slice(0, q.limit),
-        profiles = page.filter((r) => r.profile).map((r) => r.profile);
-      await this.lockPublicSources(c, profiles);
-      const ids = page.filter((r) => r.listing_id).map((r) => r.listing_id);
-      if (ids.length)
-        await c.query(
-          `SELECT l.id FROM event_directory_listings l JOIN organizations o ON o.id=l.org_id JOIN events e ON e.org_id=l.org_id AND e.id=l.event_id JOIN public_event_publications sp ON sp.id=l.publication_id WHERE l.id=ANY($1::uuid[]) ORDER BY o.id,e.id,l.id FOR SHARE OF o,e,sp,l NOWAIT`,
-          [ids],
-        );
+            [
+              literalSearchPattern(q.q),
+              q.kind,
+              q.city,
+              q.regionId,
+              q.catalogVersion,
+              after,
+              batchSize + 1,
+            ],
+          )
+        ).rows;
       const asOf = new Date(
         (await c.query<Row>('SELECT statement_timestamp() AS now')).rows[0]!.now,
       ).toISOString();
       const items: PublicSearchItem[] = [];
-      for (const r of page) {
-        if (r.profile) {
-          const permitted = await this.currentArchiveSources(c, [r.profile]);
-          if (!permitted.length) continue;
-          if (q.city || q.regionId) {
-            const sourceRegion = region.replaceAll('$4', '$2').replaceAll('$5', '$3');
-            const sourceListing = publicListing.replaceAll('$5', '$3');
-            const regionMatch = await c.query(
-              `WITH RECURSIVE selected_regions AS (
+      let after = q.after,
+        hasMore = false;
+      // At most 200 inspected candidates and 10 queries, plus one lookahead per
+      // query. A bounded empty page retains a cursor to the next unchecked item.
+      for (let batch = 0; batch < 10 && items.length < q.limit; batch++) {
+        const rows = await candidates(after);
+        const page = rows.slice(0, batchSize),
+          profiles = page.filter((r) => r.profile).map((r) => r.profile);
+        await this.lockPublicSources(c, profiles);
+        const ids = page.filter((r) => r.listing_id).map((r) => r.listing_id);
+        if (ids.length)
+          await c.query(
+            `SELECT l.id FROM event_directory_listings l JOIN organizations o ON o.id=l.org_id JOIN events e ON e.org_id=l.org_id AND e.id=l.event_id JOIN public_event_publications sp ON sp.id=l.publication_id WHERE l.id=ANY($1::uuid[]) ORDER BY o.id,e.id,l.id FOR SHARE OF o,e,sp,l NOWAIT`,
+            [ids],
+          );
+        hasMore = false;
+        for (let index = 0; index < page.length; index++) {
+          const r = page[index]!;
+          after = r.key;
+          hasMore = index + 1 < rows.length;
+          if (r.profile) {
+            const permitted = await this.currentArchiveSources(c, [r.profile]);
+            if (!permitted.length) continue;
+            if (q.city || q.regionId) {
+              const sourceRegion = region.replaceAll('$4', '$2').replaceAll('$5', '$3');
+              const sourceListing = publicListing.replaceAll('$5', '$3');
+              const regionMatch = await c.query(
+                `WITH RECURSIVE selected_regions AS (
               SELECT region_id FROM region_catalog_nodes WHERE region_id=$2::uuid AND catalog_version=$3
               UNION ALL SELECT n.region_id FROM region_catalog_nodes n JOIN selected_regions r ON n.parent_region_id=r.region_id WHERE n.catalog_version=$3
             ) SELECT l.id FROM public_archive_sources g JOIN event_directory_listings l ON l.org_id=g.org_id AND l.event_id=g.event_id ${sourceListing}
               WHERE g.id=ANY($4::uuid[]) AND l.status='ACTIVE' AND (${live}) AND ($1::text IS NULL OR l.display_city=$1) AND ${sourceRegion}
               ORDER BY l.id LIMIT 1 FOR SHARE OF l,sp NOWAIT`,
-              [q.city, q.regionId, q.catalogVersion, permitted.map((s) => s.id)],
-            );
-            if (!regionMatch.rowCount) continue;
+                [q.city, q.regionId, q.catalogVersion, permitted.map((s) => s.id)],
+              );
+              if (!regionMatch.rowCount) continue;
+            }
+            const current = await this.projection(c, r.profile, asOf, permitted);
+            if (current.authorizedSourceCount < 1) continue;
           }
-          const current = await this.projection(c, r.profile, asOf, permitted);
-          if (current.authorizedSourceCount < 1) continue;
+          items.push({
+            kind: r.kind,
+            publicKey: r.public_key,
+            displayName: r.display_name,
+            city: r.city,
+            startsOn: r.starts_on,
+            endsOn: r.ends_on,
+          });
+          if (items.length === q.limit) break;
         }
-        items.push({
-          kind: r.kind,
-          publicKey: r.public_key,
-          displayName: r.display_name,
-          city: r.city,
-          startsOn: r.starts_on,
-          endsOn: r.ends_on,
-        });
+        if (!hasMore) break;
       }
       return {
         query: q.q,
         items,
-        nextCursor: rows.length > q.limit ? publicSearchCursor(q.context, page.at(-1)!.key) : null,
+        nextCursor: hasMore ? publicSearchCursor(q.context, after) : null,
         asOf,
         notice:
           '仅搜索当前获准公开的赛事、球队及球员。地区筛选按已公开来源赛事判断；没有可公开来源的档案不显示。',

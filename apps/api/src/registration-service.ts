@@ -598,6 +598,11 @@ export class RegistrationService extends ApplicationService {
         ON CONFLICT(org_id,team_id,user_id) DO UPDATE SET status=EXCLUDED.status,updated_at=clock_timestamp()`,
         [ctx.orgId, team.id, targetUserId, input.status],
       );
+      // Public snapshots lock this team tuple before checking reviewer independence.
+      await client.query('UPDATE teams SET updated_at=updated_at WHERE org_id=$1 AND id=$2', [
+        ctx.orgId,
+        team.id,
+      ]);
       await this.audit(client, ctx.user.id, ctx.orgId, 'TEAM_GRANT_CHANGED', 'team', team.id, {
         userId: targetUserId,
         status: input.status,
@@ -684,6 +689,10 @@ export class RegistrationService extends ApplicationService {
         ON CONFLICT(org_id,team_id,user_id) DO UPDATE SET status='ACTIVE',updated_at=clock_timestamp()`,
         [ctx.orgId, team.id, actor.user.id],
       );
+      await client.query('UPDATE teams SET updated_at=updated_at WHERE org_id=$1 AND id=$2', [
+        ctx.orgId,
+        team.id,
+      ]);
       await this.audit(
         client,
         actor.user.id,
@@ -871,21 +880,31 @@ export class RegistrationService extends ApplicationService {
       : null;
     const canManage = event.canManage && !event.frozen;
     let materialsReady = true;
+    let financialReady = true;
     const materialKeyId = this.materialKeyId();
     if (rules?.requireParticipantMaterials) {
       materialsReady = materialKeyId !== null;
       if (materialsReady) await assertParticipantKeyConsistency(client, materialKeyId);
-      if (row.status === 'REGISTRATION_CLOSED') {
-        const approved = await client.query<EntryRow>(
-          "SELECT * FROM entries WHERE org_id=$1 AND event_id=$2 AND status='APPROVED' ORDER BY id",
-          [row.org_id, row.id],
-        );
-        for (const entry of approved.rows) {
+    }
+    if (row.status === 'REGISTRATION_CLOSED') {
+      const approved = await client.query<EntryRow>(
+        "SELECT * FROM entries WHERE org_id=$1 AND event_id=$2 AND status='APPROVED' ORDER BY id",
+        [row.org_id, row.id],
+      );
+      for (const entry of approved.rows) {
+        try {
           await this.trade?.assertSourceFinancialGate(client, 'ENTRY_FEE', entry.id);
           await this.trade?.assertSourceFinancialGate(client, 'ENTRY_DEPOSIT', entry.id);
-          if (!(await this.materialEligibility(client, event, entry, rules)).ready)
-            materialsReady = false;
+        } catch (error) {
+          if (!(error instanceof ApiError) || error.code !== 'TRADE_PAYMENT_REQUIRED') throw error;
+          financialReady = false;
         }
+        if (
+          rules?.requireParticipantMaterials &&
+          materialsReady &&
+          !(await this.materialEligibility(client, event, entry, rules)).ready
+        )
+          materialsReady = false;
       }
     }
     return {
@@ -909,6 +928,7 @@ export class RegistrationService extends ApplicationService {
           canManage &&
           row.status === 'REGISTRATION_CLOSED' &&
           materialsReady &&
+          financialReady &&
           counts.APPROVED >= 2 &&
           !counts.SUBMITTED &&
           !counts.CHANGES_REQUESTED,
@@ -1044,6 +1064,8 @@ export class RegistrationService extends ApplicationService {
           await this.team(client, ctx, teamId, false);
         const entries: FrozenEntryData[] = [];
         for (const entry of approved.rows) {
+          await this.trade?.assertSourceFinancialGate(client, 'ENTRY_FEE', entry.id);
+          await this.trade?.assertSourceFinancialGate(client, 'ENTRY_DEPOSIT', entry.id);
           if (!entry.roster_revision_id || entry.ruleset_id !== rules.id)
             stateError('获批报名缺少对应规则或名单快照');
           const players = await this.players(client, ctx.orgId, entry.id, entry.roster_revision_id);

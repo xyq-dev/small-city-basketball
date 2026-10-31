@@ -33,18 +33,22 @@ describe('trusted internal notification source scope', () => {
     const scheduler = vi.spyOn(service, 'scheduleStarts');
     await service.drain(sourceId);
     expect(scheduler).not.toHaveBeenCalled();
-    expect(query).toHaveBeenCalledTimes(4);
+    expect(query).toHaveBeenCalledTimes(5);
     const calls = query.mock.calls as unknown as [string, unknown[]][];
     expect(calls[0]![0]).toContain('AND s.id=$1');
-    expect(calls[1]![0]).toContain('AND m.source_id=$1');
+    expect(calls[0]![0]).toContain('LIMIT 100 FOR UPDATE OF f SKIP LOCKED');
+    expect(calls[1]![0]).toContain('AND s.id=$1');
+    expect(calls[1]![0]).toContain("interval '2 hours' THEN 0 ELSE 1 END");
+    expect(calls[1]![0]).toContain('f.updated_at,s.expires_at,s.id LIMIT 10');
     expect(calls[2]![0]).toContain('m.source_id=$1');
     expect(calls[3]![0]).toContain('m.source_id=$1');
-    expect(calls[3]![0]).toContain("g.status='AVAILABLE'");
-    expect(calls[3]![0]).toContain("i.status='ACTIVE'");
-    expect(calls[3]![0]).toContain('permission_position=1');
+    expect(calls[4]![0]).toContain('m.source_id=$1');
+    expect(calls[4]![0]).toContain("g.status='AVAILABLE'");
+    expect(calls[4]![0]).toContain("i.status='ACTIVE'");
+    expect(calls[4]![0]).toContain('permission_position=1');
     for (const [, params] of calls) expect(params[0]).toEqual(sourceId);
-    expect(calls[3]![1]).toHaveLength(4);
-    expect(calls[3]![0]).toContain('make_interval(mins=>$4)');
+    expect(calls[4]![1]).toHaveLength(4);
+    expect(calls[4]![0]).toContain('make_interval(mins=>$4)');
   });
   it('keeps ordinary worker scheduling and global operation unchanged without a scope', async () => {
     const { service, query } = fixture();
@@ -54,7 +58,8 @@ describe('trusted internal notification source scope', () => {
     const calls = query.mock.calls as unknown as [string, unknown[]][];
     expect(calls[0]![1]).toEqual([]);
     expect(calls[1]![1]).toEqual([]);
-    expect(calls[2]![1]).toEqual([null, 15]);
+    expect(calls[2]![1]).toEqual([]);
+    expect(calls[3]![1]).toEqual([null, 15]);
   });
   it.each(['not-a-uuid', '', sourceId + "' OR true --"])(
     'rejects malformed source scope before any persistence: %s',

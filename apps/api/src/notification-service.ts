@@ -685,9 +685,23 @@ export class NotificationService extends ApplicationService {
   }
   async fanout(sourceId?: string) {
     if (sourceId !== undefined) resourceId(sourceId);
+    // Expired work must not occupy the live ten-source budget. Retire a separate bounded
+    // page, preserving every immutable source and any already recorded delivery outcome.
+    await this.pool.query(
+      `WITH expired AS (
+        SELECT f.source_id FROM notification_fanout_state f JOIN notification_source_events s ON s.id=f.source_id
+        WHERE f.done=false AND s.expires_at<=clock_timestamp() ${sourceId === undefined ? '' : 'AND s.id=$1'}
+        ORDER BY s.expires_at,s.id LIMIT 100 FOR UPDATE OF f SKIP LOCKED
+      ) UPDATE notification_fanout_state f SET done=true,updated_at=clock_timestamp()
+      FROM expired x WHERE f.source_id=x.source_id`,
+      sourceId === undefined ? [] : [sourceId],
+    );
     const sources = await this.pool.query<Row>(
       `SELECT s.* FROM notification_source_events s JOIN notification_fanout_state f ON f.source_id=s.id
-      WHERE f.done=false AND s.due_at<=clock_timestamp() ${sourceId === undefined ? '' : 'AND s.id=$1'} ORDER BY f.updated_at,s.id LIMIT 10`,
+      WHERE f.done=false AND s.due_at<=clock_timestamp() AND s.expires_at>clock_timestamp()
+      ${sourceId === undefined ? '' : 'AND s.id=$1'}
+      ORDER BY CASE WHEN s.expires_at<=clock_timestamp()+interval '2 hours' THEN 0 ELSE 1 END,
+      f.updated_at,s.expires_at,s.id LIMIT 10`,
       sourceId === undefined ? [] : [sourceId],
     );
     for (const raw of sources.rows)

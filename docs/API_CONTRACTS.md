@@ -460,3 +460,5 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 ### E08 成年本人资料处理重新确认（042）
 
 `GET /v1/orgs/:orgId/events/:eventId/youth-adult-data-consent?entryId=UUID&memberId=UUID` 仅返回当前本人材料scope的最小操作能力；不返回年龄、生日或身份明文。`POST`同路径接受当前能力给出的精确scope、材料/政策/条款版本和独立年龄证据标识，以及独立幂等request ID；客户端声明年龄不能产生权限。CONSENT只恢复当前本人资料处理，仍须正常当前资格及最终独立审核；WITHDRAW无需重新解密年龄证据。公开档案、照片宣传与直播分别核验其原有独立用途授权，不因本次资料同意自动开放。
+
+成年本人处理许可经历WITHDRAW或当前政策更换后，公开用途还须新独立动作：档案来源同意不能早于当前政策撤回后的首个CONSENT，宣传照片还须当前材料的独立照片同意版本晚于该时点。普通换照片后的资料再同意沿用该轮起点，避免重新上传与处理同意互锁；LIVE继续独立核实际直播/录像内容权利，不由资料处理许可代替。

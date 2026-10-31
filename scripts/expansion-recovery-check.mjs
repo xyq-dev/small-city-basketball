@@ -576,6 +576,9 @@ async function captureStreaming(c) {
       expectedVersion: current.version,
     });
     await service.drain();
+    // Shutdown persists its final UNKNOWN/held-slot evidence. Capture that
+    // quiescent state so the later full-table snapshot observes the same facts.
+    await service.onModuleDestroy();
     assert.equal(starts, 1, 'Replayed START cannot dispatch another external operation');
     assert.equal(records, 1);
     assert.equal(transforms, 2);

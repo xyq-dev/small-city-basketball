@@ -87,8 +87,40 @@ async function soon(s: NotificationService) {
       )
     ).rows[0]!.n,
   ).toBeGreaterThan(0);
-  await tx((c) => s.captureEventMatches(c, h.owner.orgId, eventId));
+  const sourceId = (
+    await h.api.pool.query(
+      "SELECT id FROM notification_source_events WHERE org_id=$1 AND resource_id=$2 AND kind='MATCH_STARTING'",
+      [h.owner.orgId, matchId],
+    )
+  ).rows[0]!.id;
+  const queued = (
+    await h.api.pool.query(`SELECT
+    count(*) FILTER(WHERE s.expires_at<=clock_timestamp()+interval '2 hours')::int AS urgent,
+    count(*) FILTER(WHERE s.expires_at>clock_timestamp()+interval '2 hours')::int AS long_lived
+    FROM notification_fanout_state f JOIN notification_source_events s ON s.id=f.source_id
+    WHERE f.done=false AND s.due_at<=clock_timestamp() AND s.expires_at>clock_timestamp()`)
+  ).rows[0]!;
+  // The publication hook already captured this source. Explicitly run the real global
+  // queue: no test relies on a background timer or a source-scoped shortcut to create it.
   await s.fanout();
+  if (queued.urgent <= 10) {
+    expect(
+      (
+        await h.api.pool.query('SELECT done FROM notification_fanout_state WHERE source_id=$1', [
+          sourceId,
+        ])
+      ).rows[0]?.done,
+    ).toBe(true);
+    if (queued.long_lived > 10)
+      expect(
+        (
+          await h.api.pool.query(
+            `SELECT count(*)::int AS n FROM notification_fanout_state f JOIN notification_source_events s ON s.id=f.source_id WHERE f.done=false AND s.due_at<=clock_timestamp() AND s.expires_at>clock_timestamp()+interval '2 hours'`,
+          )
+        ).rows[0]!.n,
+      ).toBeGreaterThan(0);
+  }
+  await fanoutCommitted(s, sourceId);
   const source = {
     kind: 'MATCH_STARTING' as const,
     orgId: h.owner.orgId,
@@ -124,7 +156,23 @@ async function delivery(id: string) {
     .rows[0];
 }
 async function fanoutCommitted(s: NotificationService, sourceId: string) {
-  for (let round = 0; round < 30; round++) {
+  if (
+    (
+      await h.api.pool.query('SELECT done FROM notification_fanout_state WHERE source_id=$1', [
+        sourceId,
+      ])
+    ).rows[0]?.done
+  )
+    return;
+  const pending = Number(
+    (
+      await h.api.pool.query(
+        `SELECT count(*)::int AS n FROM notification_fanout_state f JOIN notification_source_events s ON s.id=f.source_id WHERE f.done=false AND s.due_at<=clock_timestamp() AND s.expires_at>clock_timestamp()`,
+      )
+    ).rows[0]!.n,
+  );
+  for (let round = 0; round <= pending; round++) {
+    const marker = (await h.api.pool.query('SELECT clock_timestamp()::text AS at')).rows[0]!.at;
     await s.fanout();
     if (
       (
@@ -134,8 +182,20 @@ async function fanoutCommitted(s: NotificationService, sourceId: string) {
       ).rows[0]?.done
     )
       return;
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT count(*)::int AS n FROM notification_fanout_state WHERE updated_at>=$1::timestamptz',
+          [marker],
+        )
+      ).rows[0]!.n,
+    ).toBeGreaterThan(0);
   }
-  throw Error('The committed source did not progress through the bounded global fanout queue');
+  throw Error(
+    'The committed source did not progress through ' +
+      String(pending + 1) +
+      ' global rounds derived from the real due queue',
+  );
 }
 async function allMessages(s: NotificationService, cookie: string) {
   const result = [];
@@ -737,5 +797,71 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
     expect(
       (await s.list(h.leader.cookie, {})).items.some((x) => x.eventName === current.event.name),
     ).toBe(false);
+  });
+
+  it('gives reviews inside the two-hour boundary a fair slot alongside starts and retires expired work separately', async () => {
+    const s = new NotificationService(
+      h.api.pool,
+      { databaseUrl: h.databaseUrl, appOrigin: ORIGIN },
+      { autoDispatch: false },
+    );
+    services.push(s);
+    const eventId = (
+      await h.api.pool.query(
+        'SELECT id FROM events WHERE org_id=$1 ORDER BY created_at,id LIMIT 1',
+        [h.owner.orgId],
+      )
+    ).rows[0]!.id;
+    const within = randomUUID(),
+      outside = randomUUID(),
+      expired = randomUUID(),
+      starts = Array.from({ length: 12 }, () => randomUUID());
+    const probes = [
+      { id: within, kind: 'REGISTRATION_REVIEW', ttl: '2 hours', touched: '2000-01-01' },
+      { id: outside, kind: 'REGISTRATION_REVIEW', ttl: '121 minutes', touched: '1990-01-01' },
+      { id: expired, kind: 'REGISTRATION_REVIEW', ttl: null, touched: '1990-01-01' },
+      ...starts.map((id) => ({
+        id,
+        kind: 'MATCH_STARTING',
+        ttl: '10 minutes',
+        touched: '2000-01-02',
+      })),
+    ];
+    await tx(async (c) => {
+      for (const p of probes) {
+        // Queue-priority probes intentionally lack a current business proof. They must be
+        // inspected fairly and retired, and must never fabricate a notification body/send.
+        await c.query(
+          `INSERT INTO notification_source_events(id,org_id,event_id,kind,resource_id,source_fingerprint,due_at,expires_at)
+       VALUES($1,$2,$3,$4,$5,$6,CASE WHEN $7::text IS NULL THEN '1999-01-01'::timestamptz ELSE statement_timestamp()-interval '1 minute' END,
+       CASE WHEN $7::text IS NULL THEN '2000-01-01'::timestamptz ELSE statement_timestamp()+$7::interval END)`,
+          [p.id, h.owner.orgId, eventId, p.kind, randomUUID(), hashToken(p.id), p.ttl],
+        );
+        await c.query(
+          'INSERT INTO notification_fanout_state(source_id,updated_at) VALUES($1,$2::timestamptz)',
+          [p.id, p.touched],
+        );
+      }
+    });
+    await s.fanout();
+    const states = (
+      await h.api.pool.query(
+        'SELECT source_id,done FROM notification_fanout_state WHERE source_id=ANY($1::uuid[])',
+        [probes.map((p) => p.id)],
+      )
+    ).rows;
+    expect(states.find((p) => p.source_id === within)?.done).toBe(true);
+    expect(states.find((p) => p.source_id === outside)?.done).toBe(false);
+    expect(states.find((p) => p.source_id === expired)?.done).toBe(true);
+    expect(states.filter((p) => starts.includes(p.source_id) && p.done)).toHaveLength(9);
+    expect(states.filter((p) => starts.includes(p.source_id) && !p.done)).toHaveLength(3);
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT count(*)::int AS n FROM notification_messages WHERE source_id=ANY($1::uuid[])',
+          [probes.map((p) => p.id)],
+        )
+      ).rows[0]!.n,
+    ).toBe(0);
   });
 });

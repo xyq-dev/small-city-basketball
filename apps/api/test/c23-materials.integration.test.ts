@@ -5,7 +5,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import type { EntryData, EventRegistrationData, TeamData } from '@small-city-basketball/contracts';
 import { createApi } from '../src/app.js';
 import { migrate } from '../src/database/migrate.js';
-import { ORIGIN, call, data, error, membersPath, register } from './support.js';
+import { ORIGIN, call, data, error, membersPath, register, createEvent } from './support.js';
+import { knownYouthAccount } from '../src/youth-guardians-publication.js';
 import type { Api, User } from './support.js';
 import {
   command,
@@ -19,6 +20,8 @@ import {
   registrationCommand,
   registrationCommandsPath,
   registrationDatabaseUrl,
+  rules,
+  rulesPath,
   roster,
   team,
   teamPath,
@@ -697,6 +700,146 @@ describe('C23 private participant materials on isolated PostgreSQL', { concurren
       )
     ).rows[0]!;
     expect(row.publicity_consent).toBe(false);
+  });
+
+  test('first material in another youth context invalidates an older RR user permission snapshot', async () => {
+    const actor = await participant(api, 'c23-first-youth-' + randomUUID().slice(0, 8)),
+      second = await participant(api, 'c23-first-youth-other-' + randomUUID().slice(0, 8));
+    const draft = await createEvent(api, owner, '合成跨赛事青年授权fence');
+    const configured = data<EventRegistrationData>(
+      await call(api, 'put', rulesPath(owner.orgId, draft.id), {
+        cookie: owner.cookie,
+        body: rules(draft.version, {
+          requireParticipantMaterials: true,
+          requireIdentity: true,
+          requireInsurance: false,
+          minPlayers: 2,
+          maxPlayers: 2,
+        }),
+      }),
+    );
+    data(
+      await call(api, 'put', `/v1/orgs/${owner.orgId}/events/${draft.id}/youth-policy`, {
+        cookie: owner.cookie,
+        body: {
+          clientRequestId: randomUUID(),
+          expectedVersion: null,
+          enabled: true,
+          guardianAgeThreshold: 18,
+        },
+      }),
+    );
+    const opened = await registrationCommand(api, owner, configured, 'OPEN_REGISTRATION'),
+      f = await fixture(false, [actor, second], opened);
+    const reader = await api.pool.connect();
+    try {
+      await reader.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+      expect(await knownYouthAccount(reader, actor.id)).toBe(false);
+      const before = (await reader.query('SELECT updated_at FROM users WHERE id=$1', [actor.id]))
+        .rows[0]!.updated_at;
+      const patch = completePatch(31);
+      const saved = data<Workspace>(await save(f, patch, actor));
+      // RR still sees the old append-only child set, so the common user tuple must force retry.
+      expect(await knownYouthAccount(reader, actor.id)).toBe(false);
+      await expect(
+        reader.query('SELECT id FROM users WHERE id=$1 FOR SHARE NOWAIT', [actor.id]),
+      ).rejects.toMatchObject({ code: '40001' });
+      await reader.query('ROLLBACK');
+      await reader.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+      expect(await knownYouthAccount(reader, actor.id)).toBe(true);
+      await reader.query('SELECT id FROM users WHERE id=$1 FOR SHARE NOWAIT', [actor.id]);
+      // An already-declared receipt replay must not unnecessarily upgrade this shared user lock.
+      expect(data<Workspace>(await save(f, patch, actor)).material!.revisionId).toBe(
+        saved.material!.revisionId,
+      );
+      expect(
+        (await reader.query('SELECT updated_at FROM users WHERE id=$1', [actor.id])).rows[0]!
+          .updated_at,
+      ).toEqual(before);
+    } finally {
+      await reader.query('ROLLBACK').catch(() => {});
+      reader.release();
+    }
+  });
+
+  test('successful terminal purge forces an older RR event permission snapshot to restart without changing business fields', async () => {
+    const f = await fixture(),
+      material = data<Workspace>(await save(f, completePatch())).material!;
+    await api.pool.query(
+      "UPDATE events SET start_date=current_date-92,end_date=current_date-91,status='ARCHIVED',version=version+1 WHERE org_id=$1 AND id=$2",
+      [owner.orgId, f.registration.event.id],
+    );
+    const reader = await api.pool.connect(),
+      writer = await api.pool.connect();
+    try {
+      await reader.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+      const before = (
+        await reader.query(
+          'SELECT version,updated_at,status FROM events WHERE org_id=$1 AND id=$2',
+          [owner.orgId, f.registration.event.id],
+        )
+      ).rows[0]!;
+      await writer.query('BEGIN');
+      await writer.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR UPDATE', [
+        owner.orgId,
+        f.registration.event.id,
+      ]);
+      // Owned synthetic maintenance transaction: the real C23 trigger checks retention and legal hold.
+      expect(
+        (
+          await writer.query(
+            'UPDATE participant_material_revisions SET payload_ciphertext=NULL,purged_at=clock_timestamp() WHERE id=$1',
+            [material.revisionId],
+          )
+        ).rowCount,
+      ).toBe(1);
+      await writer.query('UPDATE events SET updated_at=updated_at WHERE org_id=$1 AND id=$2', [
+        owner.orgId,
+        f.registration.event.id,
+      ]);
+      await writer.query('COMMIT');
+      expect(
+        (
+          await reader.query(
+            'SELECT payload_ciphertext IS NOT NULL AS retained FROM participant_material_revisions WHERE id=$1',
+            [material.revisionId],
+          )
+        ).rows[0]!.retained,
+      ).toBe(true);
+      await expect(
+        reader.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR SHARE NOWAIT', [
+          owner.orgId,
+          f.registration.event.id,
+        ]),
+      ).rejects.toMatchObject({ code: '40001' });
+      await reader.query('ROLLBACK');
+      await reader.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+      await reader.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR SHARE NOWAIT', [
+        owner.orgId,
+        f.registration.event.id,
+      ]);
+      expect(
+        (
+          await reader.query(
+            'SELECT version,updated_at,status FROM events WHERE org_id=$1 AND id=$2',
+            [owner.orgId, f.registration.event.id],
+          )
+        ).rows[0],
+      ).toEqual(before);
+      expect(
+        (
+          await reader.query(
+            'SELECT payload_ciphertext IS NOT NULL AS retained FROM participant_material_revisions WHERE id=$1',
+            [material.revisionId],
+          )
+        ).rows[0]!.retained,
+      ).toBe(false);
+    } finally {
+      await reader.query('ROLLBACK').catch(() => {});
+      await writer.query('ROLLBACK').catch(() => {});
+      reader.release();
+      writer.release();
+    }
   });
 
   test('revision receipts are immutable; ciphertext purge requires ended retention, terminal event and no hold', async () => {

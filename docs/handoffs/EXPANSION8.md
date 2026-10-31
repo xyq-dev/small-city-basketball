@@ -1,6 +1,6 @@
 # EXPANSION8 恢复入口
 
-2026-10-31 Asia/Shanghai；Codex root；IN_PROGRESS / LOCAL_ONLY。
+2026-10-31 Asia/Shanghai；Codex root；IN_PROGRESS / BRANCH_ONLY，PR34隔离验收中。
 
 先核对远端main与本地branch/dirty，再读父任务EXPANSION8.md八项完整清单及本文末检查点。集成目录/workspace/scratch/6da762100066/scb-expansion8，feat/commercial-expansion-8，初始本地8e1ae91与远端4729336同tree042af74a。各域独立worktree，由root统一接线/规范/权限/恢复清单和GitHub同步。生产、真实费用、正式新凭据均禁止。
 
@@ -21,3 +21,13 @@ root检查点6：PR34 draft，remote批次0493469触发CI41181003895，API build
 root检查点7：首次41链实际成功证据CI41182154976/api124481591194，036—041 checksum已冻结，script --static也强制对冻结清单。此后不可修原迁移，只新042+。本地1135/561/998+1skip完整过，第三CI业务PG仍进行。root调current C23/qualification guards精确entry/member，保险scope由riskowner下一片补，E08 factory将只用server-age-evidence授独立成年处理许可。
 
 检查点8（2026-10-31 Asia/Shanghai）：第三CI41182154976 admin完整SUCCESS，1135 API/561 admin/998原生源码+1skip、1067兼容浏览器与1053布局PNG；真实PG533过/27失败/7跳过，production启动缺ops/db模块。现整合E01真实APPROVE依据、E07正确权益关联/P07测试分段、E05全局无许可积压公平派发与补扫、E03原单query-only预算恢复、042独立成年资料处理再授权及14VM。root补042最小权限/原生allowlist/恢复追加撤权SQL一致性、C19初始调度行、E04独立审核人、旧导入预览timestamp约束、测试定时worker静止及Docker运行依赖；42/176/117静态和完整类型通过。环境回收旧scratch导致共享git/node backing消失，已保全各域源码，依缓存离线恢复依赖；从GitHub精确重建778dffa4 commit/tree/blobs浅历史，当前文件未回退。此前本地555b1e5至c09a6d3提交对象随回收消失，但源码和原卡证据完整，本片将从远端778重新commit普通快进；未force push。E08并发撤权fence/用途独立epoch与E07人工收款未决claim仍由owner下一片完成，所有外部零真实调用。
+
+检查点9：第四CI41184782485/api124489387413完整42链首次成功，042 checksum和单独证据已补冻结清单，后续DDL从043开始，001—042不可回改。第四production build因root误将build-stage ops/db只复制两个.mjs而漏.d.mts失败，已恢复build-stage完整ops/db，runtime仅保留实际必需privileges/common；此前运行时缺模块问题仍需下一CI确认。1149 API源码过/1 readiness静态旧41计数失败，已将实际42及新adult表不可变权限验收补齐，针对17项通过/构建通过；本地原生进程exit0但日志没有最终聚合，故不以推算数字记通过数。E07新增真实待审人工到账claim阻塞/独立终结PG片84d76a7已整合，未执行新PG；不得把已有preflight当完整业务/恢复通过。
+
+检查点10：root独立复核E06原始LIMIT会让已撤权候选占首页，已整合22b5eff有界补扫/精确cursor和4服务回归（不放宽当前授权）；E04独立审查发现默认无材料要求时FREEZE遗漏资金门槛，root在每个获批entry冻结前独立核两资金kind，GET能力仅将明确TRADE_PAYMENT_REQUIRED显示canFreeze=false；真实退款后freeze及免费对照PG正由E04owner补。RR资格独立性由team grants/bindings决定，root对实际领队授权、邀请接受及历史认领新binding做现有team tuple fence，不改业务version/更新时间；C23/青年owner分别补材料清除和授权append事实fence，均无DDL。恢复只读审查发现stop proof早于graceful shutdown，876227c已在静止后取exact proof；账单日改取本次paid_at而非当前时钟，避免跨午夜。最新本地完整API1150/1150，原生明确TAP1008通过+1平台skip/1009，42静态及类型通过；新PG仍待，外部服务零真实调用。
+
+检查点11：第四CI API最终555通过/15失败，真实E03四场景、E04七场景、E07十二场景、E08原四场景及新成年三场景均通过；仍失败E01七条同APPROVE参数类型、E05七条全局fanout准备、旧P03一条锁等待观察。root已整合cb98b2c显式uuid cast并补录制开关PG；aa36783新增收费报名真实退款pending/processing/success禁止freeze和旧免费对照三PG源码。P03只关闭该等待PID测试harness的自动worker，保持实际提交/审核/冻结互锁和全断言，防通知worker同event等待被误认HTTP事务，仍待真实复验。19ab404补首次青年material用户tuple、实际清除event tuple和五条实际RR接口契约；root先接已获E08owner同意的稳定helper以解依赖。全项目类型/51针对源码及E06/权限25项过；cleanup10项另检。通知owner已定位紧急开赛源被7天审核源FIFO压住，将做有限10页紧急优先/轮转和真实pending规模显式全局准备，E08epoch/fence最后片正收口。42冻结DDL/生产边界不变。
+
+检查点12：24389a6整合E08当前event与首次global youth user tuple fence、成年处理撤回后的独立公开用途epoch；3新真实PG源码（其中adult公开case扩原文件）均待验，不回改042。root复核users/team/event顺序、closure union preconsents与原事实保留，未见新增确定问题；独立同伴review通过。最新完整API1158/1158、格式/全类型/APIbuild过，原生TAP1008+1skip为前一UI相同候选；最终E05紧急fanout片待集成后启动第五CI。同步将普通快进现有PR34，仍draft，不提前merge。
+
+检查点13：E05当前完整修片2783e8e已整合：live fanout仍每轮10源，2h紧急层优先、层内updated_at轮转，过期独立最多100收尾；不以增加LIMIT掩盖积压。PG显式按真实pending规模推进全局源，逐轮要求进展，保留25条无订阅更老积压和紧急review共享份额/到期边界探针，仍待CI实际执行。root当前全类型/44通知源码/42静态通过；下一操作将所有已提交集成普通同步PR34并跑第五CI。主源码1158完整已过（本E05业务改动随后44针对回归），所有外部零调用。

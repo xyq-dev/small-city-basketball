@@ -207,7 +207,7 @@ describe('complete expansion migration and least-privilege surface', () => {
   }
   it('matches every checked-in table, function signature and granted update column across the full contiguous sequence', async () => {
     const v = await checkedIn();
-    expect(v.names).toHaveLength(41);
+    expect(v.names).toHaveLength(42);
     expect(assertMigrationManifestSurface(v.manifest, v.sources)).toEqual({
       tables: Object.keys(v.manifest.tables).length,
       functions: Object.keys(v.manifest.functions).length,
@@ -239,6 +239,7 @@ describe('complete expansion migration and least-privilege surface', () => {
       'youth_guardian_history',
       'youth_guardian_commands',
       'youth_preconsent_history',
+      'youth_adult_data_consents',
     ]) {
       expect(manifest.tables[table], table).toEqual({
         privileges: ['SELECT', 'INSERT'],
@@ -277,7 +278,7 @@ describe('complete expansion migration and least-privilege surface', () => {
       assertMigrationManifestSurface(v.manifest, [
         ...v.sources,
         {
-          name: '042_bad.sql',
+          name: '043_bad.sql',
           sql: 'CREATE FUNCTION unreviewed(bigint) RETURNS void LANGUAGE SQL AS $$ SELECT 1 $$;',
         },
       ]),

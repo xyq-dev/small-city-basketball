@@ -5,6 +5,7 @@ import { createApi } from '../src/app.js';
 import { CommerceService } from '../src/commerce/service.js';
 import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
 import { activateEventCommerce } from '../src/commerce/activation.js';
+import { makeQuote } from '../src/commerce/domain.js';
 import type { CommerceCommandResult } from '@small-city-basketball/contracts';
 import { migrate } from '../src/database/migrate.js';
 import { hashPassword } from '../src/security.js';
@@ -20,6 +21,7 @@ import {
   createEvent,
   data,
   error,
+  eventually,
   login,
   register,
   testDatabaseUrl,
@@ -330,6 +332,144 @@ describe(
           .map((o) => ({ id: o.id, status: 'PAID' }))
           .sort((a, b) => a.id.localeCompare(b.id)),
       );
+    }, 30000);
+    test('an unresolved manual payment claim blocks after quote expiry and replacement; independent rejection clears only that claim', async () => {
+      const buyer = await register(api, 'e07-review-buyer'),
+        submitter = await user('review-submitter'),
+        reviewer = await user('review-reviewer');
+      const commerce = new CommerceService(api.pool, {
+        databaseUrl,
+        appOrigin: ORIGIN,
+        commerceMode: 'ENFORCED',
+      });
+      for (const actor of [submitter, reviewer])
+        await maintainPlatformOperator(api.pool, {
+          email: actor.email,
+          status: 'ACTIVE',
+          reason: '合成过期到账申明独立复核',
+        });
+      const plan = (
+        await commerce.createPlan(submitter.cookie, {
+          commandId: randomUUID(),
+          code: 'e07_review_' + RUN_ID.slice(0, 12),
+          name: '合成到账申明核对套餐',
+          currency: 'CNY',
+          amountFen: 9900,
+          maxTeams: 32,
+          maxMatches: 1024,
+          validDays: 365,
+          reason: '合成注销待核到账测试',
+        })
+      ).plan;
+      const event = await createEvent(api, buyer, '合成报价过期待核到账赛事'),
+        orderId = randomUUID();
+      const planRow = (
+        await api.pool.query('SELECT * FROM billing_plan_versions WHERE id=$1', [plan.id])
+      ).rows[0];
+      // Only initial historical pending data is seeded. All payment-review and order
+      // transitions below use real commands, with immutable quote/expiry guards intact.
+      await api.pool.query(
+        `INSERT INTO billing_orders(id,org_id,event_id,plan_id,quote,amount_fen,currency,out_trade_no,created_by,created_at,expires_at)
+         VALUES($1,$2,$3,$4,$5::jsonb,$6,'CNY',$7,$8,
+           statement_timestamp()-interval '24 hours'+interval '8 seconds',statement_timestamp()+interval '8 seconds')`,
+        [
+          orderId,
+          buyer.orgId,
+          event.id,
+          plan.id,
+          JSON.stringify(makeQuote(planRow)),
+          planRow.amount_fen,
+          orderId.replaceAll('-', ''),
+          buyer.id,
+        ],
+      );
+      const submitted = await commerce.platformCommand(submitter.cookie, orderId, {
+        commandId: randomUUID(),
+        type: 'SUBMIT_PAYMENT',
+        expectedOrderVersion: 1,
+        externalReference: 'e07-review-synthetic-' + randomUUID(),
+        reason: '合成到账申明提交待独立核对',
+      });
+      expect(submitted.order.status).toBe('PENDING_PAYMENT');
+      await eventually(
+        async () =>
+          (
+            await api.pool.query(
+              'SELECT expires_at<=clock_timestamp() AS expired FROM billing_orders WHERE id=$1',
+              [orderId],
+            )
+          ).rows[0].expired as boolean,
+        (expired) => expired,
+        'Synthetic quote did not expire under the database clock',
+        15000,
+      );
+      const service = make(),
+        request = await service.request(buyer.cookie, requestInput());
+      expect(await service.processOne(request.id)).toBe('BLOCKED');
+      expect((await service.workspace(buyer.cookie)).request?.blockers).toEqual([
+        'OWNER_TRANSFER_REQUIRED',
+        'SOFTWARE_MONEY_UNRESOLVED',
+      ]);
+      const replacement = (
+        (await commerce.createOrder(buyer.cookie, buyer.orgId, {
+          commandId: randomUUID(),
+          eventId: event.id,
+          planId: plan.id,
+          expectedEventVersion: event.version,
+        })) as CommerceCommandResult
+      ).order;
+      expect(replacement.id).not.toBe(orderId);
+      await commerce.buyerCommand(buyer.cookie, buyer.orgId, replacement.id, {
+        commandId: randomUUID(),
+        type: 'CANCEL',
+        expectedOrderVersion: replacement.version,
+        reason: '合成取消新报价以单独核验旧到账申明',
+      });
+      const expired = (
+        await api.pool.query('SELECT status,version,channel FROM billing_orders WHERE id=$1', [
+          orderId,
+        ])
+      ).rows[0];
+      expect(expired).toMatchObject({ status: 'EXPIRED', channel: null });
+      expect(await service.processOne(request.id)).toBe('BLOCKED');
+      expect((await service.workspace(buyer.cookie)).request?.blockers).toContain(
+        'SOFTWARE_MONEY_UNRESOLVED',
+      );
+      await expect(
+        commerce.platformCommand(submitter.cookie, orderId, {
+          commandId: randomUUID(),
+          type: 'REJECT_PAYMENT',
+          expectedOrderVersion: expired.version,
+          reason: '合成提交人不能自行终结申明',
+        }),
+      ).rejects.toMatchObject({ status: 403 });
+      await expect(
+        commerce.platformCommand(reviewer.cookie, orderId, {
+          commandId: randomUUID(),
+          type: 'CONFIRM_PAYMENT',
+          expectedOrderVersion: expired.version,
+          reason: '合成过期报价不能确认到账',
+        }),
+      ).rejects.toMatchObject({ code: 'INVALID_ORDER_STATE' });
+      const rejected = await commerce.platformCommand(reviewer.cookie, orderId, {
+        commandId: randomUUID(),
+        type: 'REJECT_PAYMENT',
+        expectedOrderVersion: expired.version,
+        reason: '合成独立核对未到账并终结本次申明',
+      });
+      expect(rejected.order.status).toBe('EXPIRED');
+      expect(
+        (
+          await api.pool.query(
+            'SELECT status,submitted_by,reviewed_by FROM billing_payment_reviews WHERE order_id=$1',
+            [orderId],
+          )
+        ).rows,
+      ).toEqual([{ status: 'REJECTED', submitted_by: submitter.id, reviewed_by: reviewer.id }]);
+      expect(await service.processOne(request.id)).toBe('BLOCKED');
+      expect((await service.workspace(buyer.cookie)).request?.blockers).toEqual([
+        'OWNER_TRANSFER_REQUIRED',
+      ]);
     }, 30000);
     test('unresolved external-domain facts block and can be reevaluated without clearing history', async () => {
       const u = await user('blocked');

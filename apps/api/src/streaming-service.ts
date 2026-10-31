@@ -479,7 +479,7 @@ export class StreamingService extends ApplicationService {
             liveFail('STREAM_EVENT_CLOSED');
           s = (
             await c.query<Row>(
-              "UPDATE broadcast_sessions SET approved_by=$2,approved_at=clock_timestamp(),approval_expires_at=clock_timestamp()+($3::text||' seconds')::interval,recording_approved_by=CASE WHEN record_enabled THEN $2 ELSE NULL END,recording_approved_at=CASE WHEN record_enabled THEN clock_timestamp() ELSE NULL END,version=version+1 WHERE id=$1 RETURNING *",
+              "UPDATE broadcast_sessions SET approved_by=$2::uuid,approved_at=clock_timestamp(),approval_expires_at=clock_timestamp()+($3::text||' seconds')::interval,recording_approved_by=CASE WHEN record_enabled THEN $2::uuid ELSE NULL::uuid END,recording_approved_at=CASE WHEN record_enabled THEN clock_timestamp() ELSE NULL END,version=version+1 WHERE id=$1 RETURNING *",
               [s.id, a.ctx.user.id, s.maximum_seconds + 60],
             )
           ).rows[0]!;

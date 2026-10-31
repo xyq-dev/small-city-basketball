@@ -26,6 +26,7 @@ import type {
 } from './participant-materials-domain.js';
 import { assertParticipantKeyConsistency } from './participant-materials-eligibility.js';
 import { MEDIA_ORG_LIMIT_BYTES } from './media-domain.js';
+import { fenceYouthSubject } from './youth-permission-fence.js';
 import {
   readParticipantDataConsent,
   readParticipantMaterialGuards,
@@ -88,9 +89,24 @@ export class ParticipantMaterialsService extends ApplicationService {
     cookie: string | undefined,
     org: string,
     writing: boolean,
+    youthDeclarationEntry?: string,
   ): Promise<Context> {
     const actor = await this.lockActor(c, cookie);
     const orgId = resourceId(org);
+    if (youthDeclarationEntry) {
+      // A first material in any enabled youth context changes the global public gate,
+      // including archives sourced from other events. Fence its already-shared user
+      // tuple before event locks; existing declarations and receipt replays need none.
+      const first = (
+        await c.query(
+          `SELECT 1 FROM entries en JOIN youth_event_policies p ON p.org_id=en.org_id AND p.event_id=en.event_id AND p.enabled
+        WHERE en.org_id=$1 AND en.id=$2 AND NOT EXISTS(SELECT 1 FROM youth_guardian_preconsents g JOIN youth_event_policies gp ON gp.org_id=g.org_id AND gp.event_id=g.event_id AND gp.enabled WHERE g.subject_user_id=$3)
+        AND NOT EXISTS(SELECT 1 FROM participant_materials m JOIN youth_event_policies mp ON mp.org_id=m.org_id AND mp.event_id=m.event_id AND mp.enabled WHERE m.user_id=$3)`,
+          [orgId, resourceId(youthDeclarationEntry), actor.user.id],
+        )
+      ).rowCount;
+      if (first) await fenceYouthSubject(c, actor.user.id);
+    }
     const organization = await c.query(
       `SELECT id FROM organizations WHERE id=$1 AND status='ACTIVE' FOR ${writing ? 'UPDATE' : 'SHARE'}`,
       [orgId],
@@ -112,8 +128,9 @@ export class ParticipantMaterialsService extends ApplicationService {
     org: string,
     entryId: string,
     writing = false,
+    youthDeclaration = false,
   ): Promise<Access> {
-    const ctx = await this.context(c, cookie, org, writing);
+    const ctx = await this.context(c, cookie, org, writing, youthDeclaration ? entryId : undefined);
     const route = (
       await c.query('SELECT event_id,team_id FROM entries WHERE org_id=$1 AND id=$2', [
         ctx.orgId,
@@ -642,7 +659,7 @@ export class ParticipantMaterialsService extends ApplicationService {
   async save(cookie: string | undefined, org: string, entry: string, raw: unknown) {
     const input = parseParticipantDraft(raw);
     return this.transaction(async (c) => {
-      const a = await this.access(c, cookie, org, entry, true);
+      const a = await this.access(c, cookie, org, entry, true, true);
       let mine = await this.mine(c, a, true);
       const fingerprint = participantRequestFingerprint(input, a.key, [
         a.ctx.orgId,

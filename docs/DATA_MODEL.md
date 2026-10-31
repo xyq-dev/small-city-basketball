@@ -269,4 +269,4 @@ SE首轮比赛数n−nextPow2(n)/2，后轮只能精确同事务凭证追加全�
 
 ### E08 042 成年资料处理事实
 
-新增append-only `youth_adult_data_consents`，绑定actor及performed_by、org/event/team/entry/member/binding、当前material/revision、独立age_evidence_qualification、policy/terms与递增version；decision为CONSENT/WITHDRAW，cause为SELF/ACCOUNT_CLOSURE/RESTORE_QUARANTINE。不保存生日或身份明文，runtime仅SELECT/INSERT；本人同意必须performed_by=actor。注销与恢复隔离追加WITHDRAW，保留旧事实。年龄证据只授权处理资料，不代替当前参赛、保险、照片或公开资格。042尚待隔离数据库首次执行，036—041冻结校验保持。
+新增append-only `youth_adult_data_consents`，绑定actor及performed_by、org/event/team/entry/member/binding、当前material/revision、独立age_evidence_qualification、policy/terms与递增version；decision为CONSENT/WITHDRAW，cause为SELF/ACCOUNT_CLOSURE/RESTORE_QUARANTINE。不保存生日或身份明文，runtime仅SELECT/INSERT；本人同意必须performed_by=actor。注销与恢复隔离追加WITHDRAW，保留旧事实。年龄证据只授权处理资料，不代替当前参赛、保险、照片或公开资格。042已在隔离CI41184782485首次执行并冻结，036—041冻结校验保持；生产未执行。

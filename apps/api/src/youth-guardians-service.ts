@@ -44,8 +44,11 @@ import {
   createYouthAdultAgeReader,
   YOUTH_ADULT_DATA_TERMS,
   appendAdultWithdrawal,
+  fenceYouthEvent,
 } from './youth-adult-data-consent.js';
 import type { YouthAdultAgeReader } from './youth-adult-data-consent.js';
+import { fenceYouthSubject } from './youth-permission-fence.js';
+import { knownYouthAccount } from './youth-guardians-publication.js';
 type Row = Record<string, any>;
 type Context = { actor: Actor; orgId: string; event: Row; today: string };
 export interface YouthGuardianOptions extends ApiOptions {
@@ -255,6 +258,7 @@ export class YouthGuardiansService extends ApplicationService {
       requestId ?? a.event.id,
       { eventId: a.event.id },
     );
+    await fenceYouthEvent(c, a.orgId, a.event.id);
     await this.fresh(c, a);
     return result;
   }
@@ -384,7 +388,9 @@ export class YouthGuardiansService extends ApplicationService {
       youthFail('YOUTH_DECLARATION_REQUIRED', '请选择青年报名入口；年龄声明不替代后续核验', 422);
     const hash = simpleHash(['DATA_INVITE', guardian, policyVersion, alias]);
     return this.transaction(async (c) => {
-      const a = await this.context(c, await this.lockActor(c, cookie), org, event, true);
+      const actor = await this.lockActor(c, cookie);
+      if (!(await knownYouthAccount(c, actor.user.id))) await fenceYouthSubject(c, actor.user.id);
+      const a = await this.context(c, actor, org, event, true);
       this.writable(a);
       if (!(await this.boundSubject(c, a))) throw notFound();
       const replay = await this.replay(c, a, id, hash);

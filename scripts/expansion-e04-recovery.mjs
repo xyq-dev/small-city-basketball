@@ -304,7 +304,8 @@ export async function captureExpansionTrade(c) {
   ]);
   const day = (
     await readPool.query(
-      "SELECT to_char(clock_timestamp() AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS day",
+      "SELECT to_char(paid_at AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS day FROM trade_payment_attempts WHERE id=$1 AND status='PAID'",
+      [attempt.id],
     )
   ).rows[0].day;
   const reconciliation = await service.reconcile(state.cookie, state.orgId, {

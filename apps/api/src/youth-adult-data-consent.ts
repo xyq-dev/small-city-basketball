@@ -245,6 +245,7 @@ export async function withdrawAdultDataForClosure(c: PoolClient, userId: string)
       f.event_id,
     ]);
     await appendAdultWithdrawal(c, f, userId, randomUUID(), 'ACCOUNT_CLOSURE');
+    await fenceYouthEvent(c, f.org_id, f.event_id);
     n++;
   }
   return n;
@@ -273,4 +274,29 @@ export const QUARANTINE_ADULT_DATA_CONSENTS_SQL = `WITH latest AS MATERIALIZED (
  SELECT gen_random_uuid(),actor_id,$1::uuid,gen_random_uuid(),org_id,event_id,team_id,entry_id,member_id,binding_id,material_id,material_revision_id,age_evidence_qualification_id,policy_version,terms_version,material_version,version+1,'WITHDRAW','RESTORE_QUARANTINE' FROM latest WHERE decision='CONSENT' RETURNING id`;
 export async function quarantineAdultDataConsents(c: PoolClient, systemActor: string) {
   return (await c.query(QUARANTINE_ADULT_DATA_CONSENTS_SQL, [systemActor])).rowCount ?? 0;
+}
+
+/** A processing renewal is not a publication grant. Only the first consent after a withdrawal/current-policy change starts the public-purpose epoch. */
+export async function readAdultPublicConsentEpoch(
+  c: PoolClient,
+  input: { orgId: string; eventId: string; userId: string; entryId: string; memberId: string },
+  policyVersion: number,
+): Promise<string | null> {
+  const row = (
+    await c.query(
+      `SELECT to_char(f.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS epoch
+ FROM youth_adult_data_consents f WHERE f.actor_id=$1 AND f.org_id=$2 AND f.event_id=$3 AND f.entry_id=$4 AND f.member_id=$5 AND f.policy_version=$6 AND f.decision='CONSENT'
+ AND f.version>COALESCE((SELECT max(w.version) FROM youth_adult_data_consents w WHERE w.actor_id=$1 AND w.org_id=$2 AND w.event_id=$3 AND w.entry_id=$4 AND w.member_id=$5 AND w.decision='WITHDRAW'),0)
+ ORDER BY f.version LIMIT 1`,
+      [input.userId, input.orgId, input.eventId, input.entryId, input.memberId, policyVersion],
+    )
+  ).rows[0];
+  return row?.epoch ?? null;
+}
+/** Physical tuple fence for RR readers, after caller has locked the event. Logical business version/time stay unchanged. */
+export async function fenceYouthEvent(c: PoolClient, orgId: string, eventId: string) {
+  await c.query('UPDATE events SET updated_at=updated_at WHERE org_id=$1 AND id=$2', [
+    orgId,
+    eventId,
+  ]);
 }

@@ -1432,6 +1432,11 @@ export class TeamMembershipService extends ApplicationService {
          VALUES($1,$2,$3,$4,$5,'CLAIM',$6)`,
         [bindingId, claim.org_id, claim.team_id, claim.member_id, actor.user.id, claim.id],
       );
+      // A newly associated reviewer invalidates current public qualification.
+      await client.query('UPDATE teams SET updated_at=updated_at WHERE org_id=$1 AND id=$2', [
+        claim.org_id,
+        claim.team_id,
+      ]);
       await client.query(
         "UPDATE team_member_claims SET status='ACCEPTED',decided_at=clock_timestamp() WHERE id=$1",
         [claim.id],

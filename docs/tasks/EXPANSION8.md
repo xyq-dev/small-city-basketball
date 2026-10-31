@@ -1,6 +1,6 @@
 # EXPANSION8：商业版剩余八项真实实现
 
-2026-10-31 Asia/Shanghai；集成人本会话Codex root；IN_PROGRESS / LOCAL_ONLY。
+2026-10-31 Asia/Shanghai；集成人本会话Codex root；IN_PROGRESS / BRANCH_ONLY，PR34隔离验收中。
 
 用户本轮明确要求下列八项全部先开发代码。总范围不因某切片完成而缩减；缺真实供应商时完成持久业务流程、严格provider边界、页面和隔离验证，实际外部开通另列，不把接口空壳/Mock当实际完成。现有代码及前批F01—F22保留复用。
 
@@ -12,14 +12,14 @@
 
 | ID  | 范围                                   | 状态         | 负责人                             | 必须交付                                                                      |
 | --- | -------------------------------------- | ------------ | ---------------------------------- | ----------------------------------------------------------------------------- |
-| E01 | 手机直播/云端比分合成/多平台分发与停流 | IMPLEMENTING | streaming                          | DOC005真实任务/源/目标/epoch/fence、预检、密钥边界、provider、页面与恢复      |
-| E02 | 整场录像/转码/自动集锦                 | IMPLEMENTING | streaming                          | 与直播独立的媒体任务、实际FFmpeg/产物/授权/用量、失败和撤销链                 |
-| E03 | 在线保险                               | IMPLEMENTING | insurance                          | 产品/报价/投保/外部付款/出单/查单/退保和资格联动，保单与支付分离              |
-| E04 | 真实业务资金闭环                       | IMPLEMENTING | trade                              | 现有预约/报名/保证金的服务端报价、支付/退款/对账/结算；不建钱包，不复制造款   |
-| E05 | 微信通知/消息中心                      | IMPLEMENTING | notification                       | 显式订阅、真实业务事件、可靠outbox/worker/幂等/重试与授权撤销                 |
-| E06 | 跨赛事/球队/球员统一搜索               | IMPLEMENTING | root                               | 当前公开授权和白名单、城市与分类、分页及来源撤回即失效、页面                  |
-| E07 | 自助账号注销                           | IMPLEMENTING | closure（原risk_review，root终审） | 重新认证、业务阻塞/延期、冷静期/撤销、会话/授权清除、最小历史保留及恢复防复活 |
-| E08 | 青少年/监护确认                        | IMPLEMENTING | youth                              | 未成年身份/监护关联验证、本人及监护独立同意/撤销、报名冻结门槛和隐私边界      |
+| E01 | 手机直播/云端比分合成/多平台分发与停流 | VERIFYING    | streaming                          | DOC005真实任务/源/目标/epoch/fence、预检、密钥边界、provider、页面与恢复      |
+| E02 | 整场录像/转码/自动集锦                 | VERIFYING    | streaming                          | 与直播独立的媒体任务、实际FFmpeg/产物/授权/用量、失败和撤销链                 |
+| E03 | 在线保险                               | VERIFYING    | insurance                          | 产品/报价/投保/外部付款/出单/查单/退保和资格联动，保单与支付分离              |
+| E04 | 真实业务资金闭环                       | VERIFYING    | trade                              | 现有预约/报名/保证金的服务端报价、支付/退款/对账/结算；不建钱包，不复制造款   |
+| E05 | 微信通知/消息中心                      | VERIFYING    | notification                       | 显式订阅、真实业务事件、可靠outbox/worker/幂等/重试与授权撤销                 |
+| E06 | 跨赛事/球队/球员统一搜索               | VERIFYING    | root                               | 当前公开授权和白名单、城市与分类、分页及来源撤回即失效、页面                  |
+| E07 | 自助账号注销                           | VERIFYING    | closure（原risk_review，root终审） | 重新认证、业务阻塞/延期、冷静期/撤销、会话/授权清除、最小历史保留及恢复防复活 |
+| E08 | 青少年/监护确认                        | VERIFYING    | youth                              | 未成年身份/监护关联验证、本人及监护独立同意/撤销、报名冻结门槛和隐私边界      |
 
 所有域先提交简短规则/数据/API/权限/失败恢复设计，由root及独立review完成必要高风险审查后开始业务写入。已通过的独立域可先推进，不等外部凭据。
 
@@ -27,7 +27,9 @@
 
 各域独立worktree/分支；仅写新域独占service/domain/controller/provider/测试、分配的新页面/组件、专属contracts文件和自己的E卡/交接。root独占app.ts、service.ts、共享index.js/index.d.ts/package.json、全局app.json/路由allowlist、现有核心业务接线、依赖/锁文件、运行时/ops/CI、API_CONTRACTS/DATA_MODEL及汇总；不得他人覆盖共享文件。
 
-迁移连续分配：036_e01_streaming_media.sql给streaming；037_e03_insurance.sql给insurance；038_e04_trade.sql给trade；039_e05_notifications.sql给notification；040_e07_account_closure.sql给root；041_e08_youth_guardians.sql给youth。旧001—035冻结；各域允许本地编写DDL，不自行运行任何数据库。root统一41迁移链、最小权限、readiness、非空重启/备份恢复；新迁移首次成功执行后不回改，后续另加迁移。
+迁移连续分配：036_e01_streaming_media.sql给streaming；037_e03_insurance.sql给insurance；038_e04_trade.sql给trade；039_e05_notifications.sql给notification；040_e07_account_closure.sql给root；041_e08_youth_guardians.sql给youth。旧001—035冻结；各域允许本地编写DDL，不自行运行任何数据库。root统一迁移链、最小权限、readiness、非空重启/备份恢复；新迁移首次成功执行后不回改，后续另加迁移。
+
+当前036—042均已在隔离CI首次执行并冻结，042为成年本人资料再同意；生产未执行，后续DDL从043追加。
 
 每个可验证切片与自卡本地commit后给root SHA；root核验、整合并同步GitHub后继续下片。最迟15分钟记录checkpoint。外部官方协议仅依官方资料实现；没有选定保险/云供应商的流程明确不可真实执行，不伪造发信/推流/投保/支付成功。
 
@@ -54,3 +56,13 @@
 检查点7（2026-10-31 Asia/Shanghai）：CI41182154976（remote778dffa4）API job124481591194完整001—041迁移预检SUCCESS，第一次实际提交本轮DDL；036—041由[冻结清单](EXPANSION8_FROZEN_MIGRATIONS.json)固定sha256，后续DDL从042增加，不再回改已执行文件。业务PG/恢复/浏览器尚在运行，不能记作全CI成功。最新本地完整1135 API／561 admin／998小程序通过＋1平台skip，类型/格式/构建过。第二轮浏览器9失败均为直播/媒体input高度<44px或字号14<16px，root已修两页输入框尺寸，6VM过，第三轮浏览器待核。新增042成年自同意正在实现（独立年龄证据+当前材料scope pin、不能恢复旧公开许可）；root已把C23/qualification guard实际entry/member scope接好，避免跨材料授权。当前外部仍零调用。
 
 检查点8（2026-10-31 Asia/Shanghai）：第三CI41182154976 admin完整SUCCESS，1135 API/561 admin/998原生源码+1skip、1067兼容浏览器与1053布局PNG；真实PG533过/27失败/7跳过，production启动缺ops/db模块。现整合E01真实APPROVE依据、E07正确权益关联/P07测试分段、E05全局无许可积压公平派发与补扫、E03原单query-only预算恢复、042独立成年资料处理再授权及14VM。root补042最小权限/原生allowlist/恢复追加撤权SQL一致性、C19初始调度行、E04独立审核人、旧导入预览timestamp约束、测试定时worker静止及Docker运行依赖；42/176/117静态和完整类型通过。环境回收旧scratch导致共享git/node backing消失，已保全各域源码，依缓存离线恢复依赖；从GitHub精确重建778dffa4 commit/tree/blobs浅历史，当前文件未回退。此前本地555b1e5至c09a6d3提交对象随回收消失，但源码和原卡证据完整，本片将从远端778重新commit普通快进；未force push。E08并发撤权fence/用途独立epoch与E07人工收款未决claim仍由owner下一片完成，所有外部零真实调用。
+
+检查点9：第四CI41184782485/api124489387413完整42链首次成功，042 checksum和单独证据已补冻结清单，后续DDL从043开始，001—042不可回改。第四production build因root误将build-stage ops/db只复制两个.mjs而漏.d.mts失败，已恢复build-stage完整ops/db，runtime仅保留实际必需privileges/common；此前运行时缺模块问题仍需下一CI确认。1149 API源码过/1 readiness静态旧41计数失败，已将实际42及新adult表不可变权限验收补齐，针对17项通过/构建通过；本地原生进程exit0但日志没有最终聚合，故不以推算数字记通过数。E07新增真实待审人工到账claim阻塞/独立终结PG片84d76a7已整合，未执行新PG；不得把已有preflight当完整业务/恢复通过。
+
+检查点10：root独立复核E06原始LIMIT会让已撤权候选占首页，已整合22b5eff有界补扫/精确cursor和4服务回归（不放宽当前授权）；E04独立审查发现默认无材料要求时FREEZE遗漏资金门槛，root在每个获批entry冻结前独立核两资金kind，GET能力仅将明确TRADE_PAYMENT_REQUIRED显示canFreeze=false；真实退款后freeze及免费对照PG正由E04owner补。RR资格独立性由team grants/bindings决定，root对实际领队授权、邀请接受及历史认领新binding做现有team tuple fence，不改业务version/更新时间；C23/青年owner分别补材料清除和授权append事实fence，均无DDL。恢复只读审查发现stop proof早于graceful shutdown，876227c已在静止后取exact proof；账单日改取本次paid_at而非当前时钟，避免跨午夜。最新本地完整API1150/1150，原生明确TAP1008通过+1平台skip/1009，42静态及类型通过；新PG仍待，外部服务零真实调用。
+
+检查点11：第四CI API最终555通过/15失败，真实E03四场景、E04七场景、E07十二场景、E08原四场景及新成年三场景均通过；仍失败E01七条同APPROVE参数类型、E05七条全局fanout准备、旧P03一条锁等待观察。root已整合cb98b2c显式uuid cast并补录制开关PG；aa36783新增收费报名真实退款pending/processing/success禁止freeze和旧免费对照三PG源码。P03只关闭该等待PID测试harness的自动worker，保持实际提交/审核/冻结互锁和全断言，防通知worker同event等待被误认HTTP事务，仍待真实复验。19ab404补首次青年material用户tuple、实际清除event tuple和五条实际RR接口契约；root先接已获E08owner同意的稳定helper以解依赖。全项目类型/51针对源码及E06/权限25项过；cleanup10项另检。通知owner已定位紧急开赛源被7天审核源FIFO压住，将做有限10页紧急优先/轮转和真实pending规模显式全局准备，E08epoch/fence最后片正收口。42冻结DDL/生产边界不变。
+
+检查点12：24389a6整合E08当前event与首次global youth user tuple fence、成年处理撤回后的独立公开用途epoch；3新真实PG源码（其中adult公开case扩原文件）均待验，不回改042。root复核users/team/event顺序、closure union preconsents与原事实保留，未见新增确定问题；独立同伴review通过。最新完整API1158/1158、格式/全类型/APIbuild过，原生TAP1008+1skip为前一UI相同候选；最终E05紧急fanout片待集成后启动第五CI。同步将普通快进现有PR34，仍draft，不提前merge。
+
+检查点13：E05当前完整修片2783e8e已整合：live fanout仍每轮10源，2h紧急层优先、层内updated_at轮转，过期独立最多100收尾；不以增加LIMIT掩盖积压。PG显式按真实pending规模推进全局源，逐轮要求进展，保留25条无订阅更老积压和紧急review共享份额/到期边界探针，仍待CI实际执行。root当前全类型/44通知源码/42静态通过；下一操作将所有已提交集成普通同步PR34并跑第五CI。主源码1158完整已过（本E05业务改动随后44针对回归），所有外部零调用。

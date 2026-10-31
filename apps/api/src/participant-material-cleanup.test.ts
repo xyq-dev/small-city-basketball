@@ -11,7 +11,14 @@ import {
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const options = { orgId: id(1), actorId: id(2), limit: 1 };
 function harness(
-  mode: 'normal' | 'wrong-role' | 'no-admin' | 'stale' | 'held' | 'audit-failure' = 'normal',
+  mode:
+    | 'normal'
+    | 'wrong-role'
+    | 'no-admin'
+    | 'stale'
+    | 'held'
+    | 'audit-failure'
+    | 'fence-failure' = 'normal',
 ) {
   const query = vi.fn(async (sql: string, _params?: unknown[]) => {
     if (sql.startsWith('SELECT current_user'))
@@ -39,6 +46,8 @@ function harness(
       };
     if (sql.includes('UPDATE participant_material_revisions'))
       return { rows: mode === 'held' ? [] : [{ id: id(5) }], rowCount: mode === 'held' ? 0 : 1 };
+    if (sql.startsWith('UPDATE events SET updated_at=updated_at') && mode === 'fence-failure')
+      throw Error('synthetic-event-fence-failure');
     if (sql.includes('INSERT INTO audit_logs') && mode === 'audit-failure')
       throw new Error('synthetic-private-marker');
     return { rows: [], rowCount: 0 };
@@ -103,6 +112,16 @@ describe('bounded private participant ciphertext maintenance', () => {
       count: 1,
       retention: 'TERMINAL_EVENT_END_PLUS_90_DAYS',
     });
+    const fence = h.query.mock.calls.findIndex(([sql]) =>
+      sql.startsWith('UPDATE events SET updated_at=updated_at'),
+    );
+    const purge = h.query.mock.calls.findIndex(([sql]) =>
+      sql.includes('UPDATE participant_material_revisions'),
+    );
+    const audited = h.query.mock.calls.findIndex(([sql]) => sql.includes('INSERT INTO audit_logs'));
+    expect(fence).toBeGreaterThan(purge);
+    expect(audited).toBeGreaterThan(fence);
+    expect(h.query.mock.calls[fence]?.[1]).toEqual([options.orgId, id(3)]);
     expect(h.query.mock.calls.at(-1)?.[0]).toBe('COMMIT');
   });
 
@@ -118,10 +137,24 @@ describe('bounded private participant ciphertext maintenance', () => {
       expect(h.query.mock.calls.some(([sql]) => sql.includes('INSERT INTO audit_logs'))).toBe(
         false,
       );
+      expect(
+        h.query.mock.calls.some(([sql]) =>
+          sql.startsWith('UPDATE events SET updated_at=updated_at'),
+        ),
+      ).toBe(false);
       expect(h.query.mock.calls.at(-1)?.[0]).toBe('COMMIT');
     },
   );
 
+  it('rolls back the purge when its shared public-read tuple fence cannot be written', async () => {
+    const h = harness('fence-failure');
+    await expect(purgeParticipantMaterials(h.pool, options)).rejects.toThrow(
+      'Participant material cleanup failed',
+    );
+    expect(h.query.mock.calls.some(([sql]) => sql.includes('INSERT INTO audit_logs'))).toBe(false);
+    expect(h.query.mock.calls.at(-1)?.[0]).toBe('ROLLBACK');
+    expect(h.release).toHaveBeenCalledOnce();
+  });
   it('rolls back a ciphertext purge when its audit cannot be committed and never reflects private diagnostics', async () => {
     const h = harness('audit-failure');
     try {

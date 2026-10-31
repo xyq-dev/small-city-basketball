@@ -13,6 +13,16 @@
     "038_e04_trade.sql": "84c10923ec70d68ca907d0c66d9e6d2eb8ac7ab6dd1e8accada7b518571b0a07",
     "039_e05_notifications.sql": "eb90c0a73e2fb2dd6eeb09744b50bf44ceff572331c6dcc5561cd219acc95e28",
     "040_e07_account_closure.sql": "e53a49bfa1e4358cefedb08af9d401e85383f03af59cf1f9027fc70133ef00da",
-    "041_e08_youth_guardians.sql": "17ad2125031c4aeaae5a354a64dbda0e4fd69a7d1a443b1992e6f232c0bdd262"
+    "041_e08_youth_guardians.sql": "17ad2125031c4aeaae5a354a64dbda0e4fd69a7d1a443b1992e6f232c0bdd262",
+    "042_e08_adult_data_consent.sql": "53b072e535d3883186f0a2fac46c98391256b20615fda684dbd44d7ab0f19135"
+  },
+  "additionalEvidence": {
+    "042_e08_adult_data_consent.sql": {
+      "runId": 41184782485,
+      "jobId": 124489387413,
+      "commit": "b27a7f5bf0bddbc73bdac09aac08d650e312b2bd",
+      "stage": "Verify complete isolated migration chain before running dependent suites",
+      "conclusion": "success"
+    }
   }
 }

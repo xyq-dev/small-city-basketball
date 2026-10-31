@@ -61,7 +61,7 @@ describe(
       for (const s of services) await s.onModuleDestroy();
       if (h) await closeHarness(h);
     }, 30000);
-    async function setup() {
+    async function setup(record = false) {
       const fixture = await published(h, h.teams.slice(0, 2)),
         match = fixture.matches[0]!.id;
       await h.api.pool.query(
@@ -118,7 +118,7 @@ describe(
         channelIds: [channel],
         maximumSeconds: 60,
         budgetFen: 20,
-        record: false,
+        record,
       };
       const first = await service.command(h.otherOwner.cookie, h.owner.orgId, match, create);
       const replay = await service.command(h.otherOwner.cookie, h.owner.orgId, match, create);
@@ -148,6 +148,20 @@ describe(
         },
       };
     }
+    test('approval binds the UUID actor in both recording and non-recording CASE branches', async () => {
+      for (const record of [false, true]) {
+        const f = await setup(record);
+        const row = (
+          await h.api.pool.query(
+            'SELECT approved_by,recording_approved_by,recording_approved_at FROM broadcast_sessions WHERE id=$1',
+            [f.session],
+          )
+        ).rows[0]!;
+        expect(row.approved_by).toBe(h.owner.id);
+        expect(row.recording_approved_by).toBe(record ? h.owner.id : null);
+        expect(row.recording_approved_at !== null).toBe(record);
+      }
+    });
     test('same START receipt returns the same source generation, never duplicates a job or stores raw push credentials', async () => {
       const f = await setup(),
         a = await f.service.command(h.otherOwner.cookie, h.owner.orgId, f.match, f.start),

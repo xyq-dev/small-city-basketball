@@ -11,16 +11,25 @@ import { createYouthDataConsentGuard } from '../src/youth-guardians-eligibility.
 import {
   createYouthAdultAgeReader,
   YOUTH_ADULT_DATA_TERMS,
+  readAdultPublicConsentEpoch,
 } from '../src/youth-adult-data-consent.js';
 import {
   QualificationPrecheckService,
   createYouthQualificationReader,
 } from '../src/qualification-precheck-service.js';
+import { PublicArchivesService } from '../src/public-archives-service.js';
 import { SCB_ACCOUNT_CLOSURE } from '../src/account-closure-controller.js';
 import type { AccountClosureService } from '../src/account-closure-service.js';
 import { ORIGIN, PASSWORD, call, data, membersPath, register } from './support.js';
 import type { Api, User } from './support.js';
-import { participant, registrationDatabaseUrl } from './p03-support.js';
+import {
+  command,
+  getEntry,
+  participant,
+  registration,
+  registrationCommand,
+  registrationDatabaseUrl,
+} from './p03-support.js';
 import type { Actor } from './p03-support.js';
 import { createYouthRosterFixture } from './fixtures/youth-registration.js';
 import type { YouthRosterFixture } from './fixtures/youth-registration.js';
@@ -195,7 +204,7 @@ describe(
           : {}),
       };
     }
-    let grantedId: string, oldAgeEvidence: string;
+    let grantedId: string, oldAgeEvidence: string, firstProcessingEpoch: string | null;
     test('event policy leaves undeclared adult processing intact; guardian closure blocks the declared context until explicit trusted self renewal', async () => {
       expect(await locked((c) => guard(c, scope(1)))).toMatchObject({
         required: false,
@@ -244,6 +253,8 @@ describe(
         );
       grantedId = saved.adultConsentId;
       oldAgeEvidence = cap.evidenceQualificationId!;
+      firstProcessingEpoch = await locked((c) => readAdultPublicConsentEpoch(c, scope(), 1));
+      expect(firstProcessingEpoch).toEqual(expect.any(String));
       expect(
         await youth.adultDataCommand(
           subjects[0]!.cookie,
@@ -439,5 +450,201 @@ describe(
         ).rowCount,
       ).toBe(1);
     }, 90000);
+    test('adult data renewal after withdrawal cannot restore an old public archive source; a fresh exact publication consent is required', async () => {
+      const actors: Actor[] = [];
+      for (let n = 0; n < 4; n++) actors.push(await participant(api, 'e08-adult-public-' + n));
+      let prior: { id: string; version: number } | undefined;
+      const first = await createYouthRosterFixture({
+        api,
+        owner,
+        leader,
+        reviewer,
+        subjects: actors.slice(0, 2),
+        birthDates: ['1992-01-01', '1993-01-01'],
+        requireInsurance: false,
+        beforeOpen: async (reg) => {
+          await youth.setPolicy(owner.cookie, owner.orgId, reg.event.id, {
+            clientRequestId: randomUUID(),
+            expectedVersion: null,
+            enabled: true,
+            guardianAgeThreshold: 18,
+          });
+        },
+        beforeMaterial: async (r) => {
+          if (r.subject.id !== actors[0]!.id) return;
+          const p = await youth.inviteData(r.subject.cookie, r.orgId, r.eventId, {
+            clientRequestId: randomUUID(),
+            expectedPolicyVersion: 1,
+            guardianUserId: owner.id,
+            subjectAlias: '合成成年人历史青年上下文',
+            declaredYouth: true,
+          });
+          const consent = await youth.dataDecision(owner.cookie, p.preconsentId, {
+            clientRequestId: randomUUID(),
+            expectedVersion: p.version,
+            decision: 'CONSENT',
+            acceptedDataProcessing: true,
+            dataTermsVersion: 'youth-data-processing-v1',
+          });
+          prior = { id: p.preconsentId, version: consent.version };
+        },
+      });
+      const second = await createYouthRosterFixture({
+        api,
+        owner,
+        leader,
+        reviewer,
+        subjects: actors.slice(2, 4),
+        birthDates: ['1994-01-01', '1995-01-01'],
+        requireInsurance: false,
+        registration: first.registration,
+      });
+      for (const current of [first, second]) {
+        for (const m of current.members) {
+          const req = await qualification.request(m.actor.cookie, owner.orgId, current.entry.id, {
+            clientRequestId: randomUUID(),
+            memberId: m.memberId,
+            expectedMaterialVersion: m.materialVersion,
+            acceptedTermsVersion: 'qualification-precheck-v1',
+          });
+          await qualification.review(reviewer.cookie, owner.orgId, current.entry.id, {
+            clientRequestId: randomUUID(),
+            memberId: m.memberId,
+            expectedMaterialVersion: m.materialVersion,
+            requestId: req.requestId,
+            decision: 'APPROVED',
+            reason: '合成成年人资格独立核验',
+            identityReviewed: true,
+            portraitReviewed: true,
+            signatureReviewed: true,
+          });
+          const submitted = data<{ material: { version: number } }>(
+            await call(
+              api,
+              'post',
+              `/v1/orgs/${owner.orgId}/entries/${current.entry.id}/participant-materials/mine/submit`,
+              { cookie: m.actor.cookie, body: { expectedVersion: m.materialVersion } },
+            ),
+          );
+          data(
+            await call(
+              api,
+              'post',
+              `/v1/orgs/${owner.orgId}/entries/${current.entry.id}/participant-materials/${m.memberId}/review`,
+              {
+                cookie: reviewer.cookie,
+                body: {
+                  expectedVersion: submitted.material.version,
+                  decision: 'APPROVE',
+                  reason: '合成成年人最终材料核验',
+                  identityChecked: true,
+                  portraitChecked: true,
+                  insuranceChecked: false,
+                },
+              },
+            ),
+          );
+        }
+        let currentEntry = await getEntry(api, owner, current.entry.id);
+        currentEntry = await command(api, owner, currentEntry, leader, 'SUBMIT');
+        await command(api, owner, currentEntry, owner, 'APPROVE');
+      }
+      const target = actors[0]!,
+        member = first.members[0]!,
+        event = first.registration.event.id;
+      await youth.dataDecision(owner.cookie, prior!.id, {
+        clientRequestId: randomUUID(),
+        expectedVersion: prior!.version,
+        decision: 'WITHDRAW',
+      });
+      const renew = async () => {
+        const c = await youth.adultCapability(target.cookie, owner.orgId, event, {
+          entryId: first.entry.id,
+          memberId: member.memberId,
+        });
+        return youth.adultDataCommand(target.cookie, owner.orgId, event, body(c));
+      };
+      const original = await renew();
+      let reg = await registration(api, owner, event);
+      reg = await registrationCommand(api, owner, reg, 'CLOSE_REGISTRATION');
+      await registrationCommand(api, owner, reg, 'FREEZE_REGISTRATION');
+      const publicArchives = new PublicArchivesService(api.pool, {
+          databaseUrl,
+          appOrigin: ORIGIN,
+          participantDataKey,
+        }),
+        profile = await publicArchives.create(target.cookie, {
+          commandId: randomUUID(),
+          kind: 'PLAYER',
+          displayName: '合成成年独立公开许可',
+        });
+      const nominate = () =>
+        publicArchives.nominate(owner.cookie, {
+          commandId: randomUUID(),
+          profileId: profile.id,
+          orgId: owner.orgId,
+          eventId: event,
+          teamId: first.team.id,
+          memberId: member.memberId,
+          publisherConsent: true,
+          reason: '合成精确来源独立公开提名',
+        });
+      const source = await nominate(),
+        accepted = await publicArchives.sourceCommand(target.cookie, source.id, {
+          commandId: randomUUID(),
+          expectedVersion: source.version,
+          type: 'CONSENT',
+          playerConsent: true,
+          reason: '合成本人初次独立公开许可',
+        }),
+        published = await publicArchives.command(target.cookie, profile.id, {
+          commandId: randomUUID(),
+          expectedVersion: profile.version,
+          type: 'PUBLISH',
+          publicConsent: true,
+        });
+      expect(
+        (await publicArchives.publicOne(published.publicKey!, 'adult-epoch')).authorizedSourceCount,
+      ).toBe(1);
+      await youth.adultDataCommand(target.cookie, owner.orgId, event, {
+        clientRequestId: randomUUID(),
+        entryId: first.entry.id,
+        memberId: member.memberId,
+        expectedAdultVersion: original.version,
+        decision: 'WITHDRAW',
+      });
+      await expect(
+        publicArchives.publicOne(published.publicKey!, 'adult-epoch'),
+      ).rejects.toMatchObject({ status: 404 });
+      await renew();
+      data(
+        await call(
+          api,
+          'get',
+          `/v1/orgs/${owner.orgId}/entries/${first.entry.id}/participant-materials/${member.memberId}/private`,
+          { cookie: target.cookie },
+        ),
+      );
+      await expect(
+        publicArchives.publicOne(published.publicKey!, 'adult-epoch'),
+      ).rejects.toMatchObject({ status: 404 });
+      await publicArchives.sourceCommand(target.cookie, source.id, {
+        commandId: randomUUID(),
+        expectedVersion: accepted.version,
+        type: 'REVOKE',
+        reason: '合成撤旧许可并重新单独确认',
+      });
+      const replacement = await nominate();
+      await publicArchives.sourceCommand(target.cookie, replacement.id, {
+        commandId: randomUUID(),
+        expectedVersion: replacement.version,
+        type: 'CONSENT',
+        playerConsent: true,
+        reason: '合成资料恢复后新公开用途许可',
+      });
+      expect(
+        (await publicArchives.publicOne(published.publicKey!, 'adult-epoch')).authorizedSourceCount,
+      ).toBe(1);
+    }, 120000);
   },
 );

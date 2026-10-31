@@ -209,7 +209,7 @@ export class PosterService extends StandingsService {
       const materials = (
         await c.query<Row>(
           `SELECT m.id AS material_id,m.version AS material_version,m.member_id,m.user_id,m.status,m.publicity_consent,m.reservation_active,m.reviewed_start_date::text,m.reviewed_end_date::text,m.key_id AS head_key_id,
-          r.id AS revision_id,r.roster_revision_id,r.ruleset_id,r.jersey_no,r.terms_version,r.has_signature,r.portrait_sha256,r.portrait_bytes,r.purged_at,r.key_id,to_char(r.created_at AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS material_consent_date
+          r.id AS revision_id,r.roster_revision_id,r.ruleset_id,r.jersey_no,r.terms_version,r.has_signature,r.portrait_sha256,r.portrait_bytes,r.purged_at,r.key_id,to_char(r.created_at AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS material_consent_date,to_char(r.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS material_consent_at
         FROM participant_materials m
         JOIN participant_material_revisions r ON r.id=m.current_revision_id AND r.material_id=m.id
         JOIN team_member_bindings bind ON bind.id=m.binding_id AND bind.org_id=m.org_id AND bind.team_id=m.team_id AND bind.member_id=m.member_id AND bind.user_id=m.user_id AND bind.status='ACTIVE'
@@ -262,7 +262,9 @@ export class PosterService extends StandingsService {
           (youth.trustedAdult &&
             (!youth.adultConsentAfter ||
               !m.material_consent_date ||
-              m.material_consent_date < youth.adultConsentAfter))
+              m.material_consent_date < youth.adultConsentAfter ||
+              (youth.publicConsentEpoch &&
+                (!m.material_consent_at || m.material_consent_at < youth.publicConsentEpoch))))
         ) {
           recipe.omittedPlayerCount++;
           continue;
