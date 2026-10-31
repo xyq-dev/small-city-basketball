@@ -1,5 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { assertOwnedRestoreTarget, isMain, loadRestoreTarget, runAsCli } from '../db/common.mjs';
+import { loadManifest } from '../db/privileges.mjs';
+import { quoteIdentifier } from '../db/common.mjs';
 
 const REASON = 'ISOLATED_RESTORE_QUARANTINE';
 
@@ -18,12 +20,17 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
     // locks sessions/users before organizations and could otherwise form a lock cycle.
     // NOWAIT rejects and rolls back the entire operation before any revocation. The
     // operator may retry after draining writers; quarantine never retries automatically.
-    await client.query(`LOCK TABLE organizations, events, users, sessions,
-      team_invitations, public_event_publications, event_directory_listings, overlay_grants, scoring_leases,
-      platform_operators, wechat_identities, wechat_auth_attempts,
-      team_request_links, team_join_codes, team_member_claims,
-      media_upload_sessions, media_upload_chunks, season_data_grants, participant_materials
-      IN EXCLUSIVE MODE NOWAIT`);
+    const manifest = await loadManifest();
+    const first = ['organizations', 'events', 'users', 'sessions'];
+    const tables = [
+      ...first,
+      ...Object.keys(manifest.tables)
+        .sort()
+        .filter((table) => !first.includes(table)),
+    ];
+    await client.query(
+      `LOCK TABLE ${tables.map(quoteIdentifier).join(', ')} IN EXCLUSIVE MODE NOWAIT`,
+    );
     const now = (await client.query('SELECT clock_timestamp()::text AS now')).rows[0].now;
     const systemUserId = randomUUID();
     // This is deliberately not a password hash accepted by verifyPassword.
@@ -92,6 +99,92 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
       `UPDATE participant_materials SET publicity_consent=false,version=version+1,updated_at=$1::timestamptz WHERE publicity_consent`,
       [now],
     );
+    // Independent new public purposes are all permanently closed. Immutable receipts,
+    // nominations, private reports and confirmed sporting decisions remain untouched.
+    const recruitment = await client.query(
+      `UPDATE recruitment_publications SET status='REVOKED',version=version+1,revoked_at=$1::timestamptz,revoked_by=$2,revoke_reason=$3 WHERE status='ACTIVE' RETURNING event_id`,
+      [now, systemUserId, '恢复隔离撤销赛事招募'],
+    );
+    const eventInvitations = await client.query(
+      `UPDATE event_invitations SET status='REVOKED',version=version+1,decided_at=$1::timestamptz WHERE status='PENDING'`,
+      [now],
+    );
+    const posters = await client.query(
+      `UPDATE poster_exports SET revoked_at=$1::timestamptz,revoked_by=$2,revoke_reason=$3 WHERE revoked_at IS NULL RETURNING event_id`,
+      [now, systemUserId, '恢复隔离撤销海报导出'],
+    );
+    const archivePublications = await client.query(
+      `UPDATE public_archive_publications SET status='REVOKED',revoked_at=$1::timestamptz WHERE status='ACTIVE'`,
+      [now],
+    );
+    const archiveProfiles = await client.query(
+      `UPDATE public_archive_profiles SET status='REVOKED',public_key=NULL,version=version+1,updated_at=$1::timestamptz WHERE status='PUBLISHED'`,
+      [now],
+    );
+    const archiveSources = await client.query(
+      `UPDATE public_archive_sources SET status='REVOKED',revoked_at=$1::timestamptz,revoke_reason=$2,version=version+1 WHERE status IN ('PENDING','APPROVED')`,
+      [now, '恢复隔离撤销公开档案授权'],
+    );
+    const cities = await client.query(
+      `UPDATE city_operation_grants SET status='REVOKED',version=version+1,revoked_at=$1::timestamptz,revoked_by=$2,revoke_reason=$3 WHERE status='ACTIVE'`,
+      [now, systemUserId, '恢复隔离撤销城市运营授权'],
+    );
+    const advertisements = await client.query(
+      `UPDATE sponsorship_publications SET revoked_at=$1::timestamptz,revoked_by=$2,revoke_reason=$3 WHERE revoked_at IS NULL`,
+      [now, systemUserId, '恢复隔离撤销赞助公开授权'],
+    );
+    const campaigns = await client.query(
+      `UPDATE sponsorship_campaigns SET status='WITHDRAWN',version=version+1,updated_at=$1::timestamptz WHERE status<>'WITHDRAWN'`,
+      [now],
+    );
+    const ledgerPublications = await client.query(
+      `UPDATE public_ledger_publications SET revoked_at=$1::timestamptz,revoked_by=$2,revoke_reason=$3 WHERE revoked_at IS NULL`,
+      [now, systemUserId, '恢复隔离撤销经费公示授权'],
+    );
+    const ledgerAccounts = await client.query(
+      `UPDATE public_ledger_accounts SET status='CLOSED',version=version+1 WHERE status='ACTIVE'`,
+    );
+    const reviews = await client.query(
+      `UPDATE governance_reviews SET status='WITHDRAWN',version=version+1,review_reason=$2,updated_at=$1::timestamptz WHERE status<>'WITHDRAWN'`,
+      [now, '恢复隔离撤回评价公开授权'],
+    );
+    // Expire both pending and used bearer actions; retain their permanent original-ID
+    // tombstones. No restored encrypted envelope may be retried by a future mail worker.
+    const accountTokens = await client.query(
+      `UPDATE account_action_tokens SET revoked_at=$1::timestamptz WHERE revoked_at IS NULL`,
+      [now],
+    );
+    const accountJobs = await client.query(
+      `UPDATE account_mail_jobs SET status='EXPIRED',envelope=NULL,lease_id=NULL,lease_until=NULL,updated_at=$1::timestamptz WHERE status IN ('PENDING','SENDING','UNKNOWN','FAILED') OR envelope IS NOT NULL`,
+      [now],
+    );
+    const localListings = await client.query(
+      `UPDATE local_listings SET status='SUSPENDED',published=false,version=version+1,updated_at=$1::timestamptz WHERE status<>'SUSPENDED' OR published`,
+      [now],
+    );
+    const localSlots = await client.query(
+      `UPDATE local_slots SET status='CLOSED',reason=$1,version=version+1 WHERE status='OPEN'`,
+      ['恢复隔离关闭可预约时段'],
+    );
+    const localBookings = await client.query(
+      `UPDATE local_bookings SET status=CASE WHEN status IN ('ARRIVED','DELIVERED','DISPUTED') THEN 'DISPUTED' ELSE 'CANCELLED' END,change_request=NULL,checkin_hash=NULL,checkin_expires_at=NULL,reason=$2,version=version+1,updated_at=$1::timestamptz WHERE status IN ('HELD','REQUESTED','CONFIRMED','ARRIVED','DELIVERED') OR (status='DISPUTED' AND (change_request IS NOT NULL OR checkin_hash IS NOT NULL OR checkin_expires_at IS NOT NULL))`,
+      [now, '恢复隔离取消未履约预约或转争议'],
+    );
+    const localMatchups = await client.query(
+      `UPDATE local_matchups SET status='CANCELLED',reason=$2,version=version+1,updated_at=$1::timestamptz WHERE status IN ('OPEN','CONFIRMED')`,
+      [now, '恢复隔离取消双方约赛'],
+    );
+    const localReservations = await client.query(
+      `UPDATE local_resource_reservations SET active=false WHERE active`,
+    );
+    if (
+      (
+        await client.query(
+          `SELECT 1 FROM local_bookings WHERE checkin_hash IS NOT NULL OR checkin_expires_at IS NOT NULL LIMIT 1`,
+        )
+      ).rowCount
+    )
+      throw new Error();
     const publicGrants = await client.query(
       `UPDATE public_event_publications SET revoked_at=$1::timestamptz,revoked_by=$2
        WHERE revoked_at IS NULL RETURNING event_id`,
@@ -116,7 +209,13 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
     );
     const affectedEvents = [
       ...new Set(
-        [...publicGrants.rows, ...overlayGrants.rows, ...leases.rows].map((row) => row.event_id),
+        [
+          ...publicGrants.rows,
+          ...overlayGrants.rows,
+          ...leases.rows,
+          ...recruitment.rows,
+          ...posters.rows,
+        ].map((row) => row.event_id),
       ),
     ];
     const events = await client.query(
@@ -137,6 +236,25 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
       uploadChunksReleased: uploadChunks.rowCount,
       seasonDataGrantsWithdrawn: seasonGrants.rowCount,
       participantPublicityConsentsWithdrawn: participantConsents.rowCount,
+      recruitmentPublicationsRevoked: recruitment.rowCount,
+      eventInvitationsRevoked: eventInvitations.rowCount,
+      posterExportsRevoked: posters.rowCount,
+      archivePublicationsRevoked: archivePublications.rowCount,
+      archiveProfilesRevoked: archiveProfiles.rowCount,
+      archiveSourcesRevoked: archiveSources.rowCount,
+      cityOperationGrantsRevoked: cities.rowCount,
+      sponsorshipPublicationsRevoked: advertisements.rowCount,
+      sponsorshipCampaignsWithdrawn: campaigns.rowCount,
+      ledgerPublicationsRevoked: ledgerPublications.rowCount,
+      ledgerAccountsClosed: ledgerAccounts.rowCount,
+      governanceReviewsWithdrawn: reviews.rowCount,
+      accountActionTokensRevoked: accountTokens.rowCount,
+      accountMailJobsExpired: accountJobs.rowCount,
+      localListingsSuspended: localListings.rowCount,
+      localSlotsClosed: localSlots.rowCount,
+      localBookingsQuarantined: localBookings.rowCount,
+      localMatchupsCancelled: localMatchups.rowCount,
+      localReservationsReleased: localReservations.rowCount,
       publicPublicationsRevoked: publicGrants.rowCount,
       overlayGrantsRevoked: overlayGrants.rowCount,
       activeLeasesExpired: leases.rowCount,

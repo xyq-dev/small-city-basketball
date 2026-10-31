@@ -207,6 +207,11 @@ Page({
       if (ui.live(this, token)) this.setData({ busy: false });
     }
   },
+  operations(e) {
+    const key = e.currentTarget.dataset.page;
+    if (this.data.allowed && ['governance', 'governance-reviews', 'city-operations'].includes(key))
+      ui.open(key, { mode: 'platform' });
+  },
   order(e) {
     if (ui.live(this, this.loadedToken))
       ui.open('booking-detail', { id: e.currentTarget.dataset.id });

@@ -1,0 +1,1 @@
+.field { box-sizing: border-box; width: 100%; margin: 16rpx 0; } .row { display: flex; flex-wrap: wrap; gap: 12rpx; padding: 12rpx 0; } .row button { flex: 1; min-width: 180rpx; } .card button { margin-top: 16rpx; }

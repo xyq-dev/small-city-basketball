@@ -10,6 +10,7 @@ export type { CreateEventInput, EventFormat, EventStatus };
 export type EventRecord = EventData;
 
 export const EVENT_FORMAT_LABELS: Record<EventFormat, string> = {
+  DOUBLE_ROUND_ROBIN: '双循环',
   ROUND_ROBIN: '循环赛',
   GROUP_KNOCKOUT: '分组后淘汰',
   SINGLE_ELIMINATION: '单淘汰',

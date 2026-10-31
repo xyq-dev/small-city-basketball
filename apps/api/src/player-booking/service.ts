@@ -70,6 +70,16 @@ const appearanceAudit = (a: Row) => ({
     totalFen: a.total_fen,
   },
 });
+// PostgreSQL exclusion and X12 cross-calendar triggers abort the current effects.
+// Convert only this known business conflict, inside the caller's savepoint boundary.
+const reservationConflict = (error: unknown) =>
+  (error as { code?: string })?.code === '23P01'
+    ? new ApiError(
+        409,
+        'BOOKING_TIME_CONFLICT',
+        '球员或同城服务档期冲突，场次间需预留30分钟交通时间',
+      )
+    : error;
 const checkVersion = (actual: number, expected: number) => {
   if (actual !== expected) bookingFail('VERSION_CONFLICT', '预约资料已更新，请刷新后核对再操作');
 };
@@ -105,11 +115,13 @@ export class PlayerBookingService extends ApplicationService {
     if (!identity.replay) await this.rateLimit(`booking-${namespace}:${identity.userId}`, 20, 3600);
     // Authority and receipt hash are checked again inside the following transaction.
   }
+  // lockActor holds this user's SHARE lock. Offline maintenance takes that user
+  // FOR UPDATE before changing roles; the runtime role table stays SELECT-only.
   private async operator(c: PoolClient, userId: string) {
     return Boolean(
       (
         await c.query(
-          "SELECT user_id FROM platform_operators WHERE user_id=$1 AND status='ACTIVE' FOR SHARE",
+          "SELECT p.user_id FROM platform_operators p JOIN users u ON u.id=p.user_id WHERE p.user_id=$1 AND p.status='ACTIVE' AND u.status='ACTIVE' FOR SHARE OF u",
           [userId],
         )
       ).rowCount,
@@ -835,7 +847,8 @@ export class PlayerBookingService extends ApplicationService {
         const order = await this.orderDto(c, await this.context(c, actor, orderId));
         await c.query('RELEASE SAVEPOINT booking_create_effects');
         return { order };
-      } catch (error) {
+      } catch (sourceError) {
+        const error = reservationConflict(sourceError);
         if (!(error instanceof ApiError) || error.status < 400 || error.status >= 500) throw error;
         await c.query('ROLLBACK TO SAVEPOINT booking_create_effects');
         await c.query('RELEASE SAVEPOINT booking_create_effects');
@@ -878,7 +891,7 @@ export class PlayerBookingService extends ApplicationService {
     raw: unknown,
   ): Promise<BookingOrderData> {
     const input = parseCommand(raw);
-    return this.transaction(async (c) => {
+    const outcome = await this.transaction<CreateAttempt>(async (c) => {
       const actor = await this.lockActor(c, cookie);
       const ctx = await this.context(c, actor, orderId, 'AUTH');
       // Recheck current authority before even reading an idempotency receipt.
@@ -905,147 +918,129 @@ export class PlayerBookingService extends ApplicationService {
       ).rows[0]!;
       const profile = await this.profileLock(c, ref.profile_id);
       await this.expire(c, [profile.id]);
-      if (replay) return this.orderDto(c, ctx);
-      const a = (
-        await c.query<Row>(
-          'SELECT * FROM booking_appearances WHERE id=$1 AND order_id=$2 FOR UPDATE',
-          [input.appearanceId, ctx.order.id],
-        )
-      ).rows[0]!;
-      checkVersion(a.version, input.expectedVersion);
-      const dto = await this.orderDto(c, ctx);
-      const current = dto.appearances.find((x) => x.id === a.id)!;
-      const capability: Record<string, keyof BookingAppearanceData['capabilities']> = {
-        ACCEPT: 'canAccept',
-        DECLINE: 'canDecline',
-        CANCEL: 'canCancel',
-        ACTIVATE: 'canActivate',
-        PROPOSE_CHANGE: 'canProposeChange',
-        ACCEPT_CHANGE: 'canAcceptChange',
-        REJECT_CHANGE: 'canRejectChange',
-        ARRIVE: 'canArrive',
-        COMPLETE: 'canComplete',
-        DISPUTE: 'canDispute',
-        RESOLVE_DISPUTE: 'canResolveDispute',
-      };
-      if (!current.capabilities[capability[input.type]!])
-        bookingFail('BOOKING_ACTION_NOT_ALLOWED', '当前身份或场次状态不允许此操作');
-      const now = (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
-      let status = a.status;
-      let reportAt = iso(a.report_at),
-        startAt = iso(a.start_at),
-        endAt = iso(a.end_at),
-        venue = a.venue;
-      let expiresAt = iso(a.expires_at),
-        acceptedAt = iso(a.accepted_at),
-        arrivedAt = iso(a.arrived_at),
-        completedAt = iso(a.completed_at);
-      let change: BookingChangeData | null = a.change_request;
-      let cancellationReason = a.cancellation_reason;
-      if (input.type === 'ACCEPT') {
-        await this.scheduleAllowed(c, profile, reportAt!, endAt!, now, a.id);
-        await this.eventAllowed(
-          c,
-          ctx.order.org_id,
-          ctx.order.team_id,
-          ctx.order.event_id ?? undefined,
-        );
-        await this.officialMatch(
-          c,
-          { matchId: a.match_id ?? undefined, startAt: startAt!, endAt: endAt!, venue },
-          ctx.order.org_id,
-          ctx.order.team_id,
-          ctx.order.event_id ?? undefined,
-        );
-        await this.representativeAllowed(
-          c,
-          profile,
-          ctx.order.team_id,
-          ctx.order.event_id ?? undefined,
-        );
-        status = 'ACCEPTED';
-        acceptedAt = now.toISOString();
-        expiresAt = null;
-      } else if (input.type === 'DECLINE' || input.type === 'CANCEL') {
-        status = input.type === 'DECLINE' ? 'DECLINED' : 'CANCELLED';
-        cancellationReason = input.reason;
-        change = null;
-      } else if (input.type === 'ACTIVATE') {
-        await this.requirePendingCapacity(c, ctx.order.buyer_user_id, 1);
-        await this.eventAllowed(
-          c,
-          ctx.order.org_id,
-          ctx.order.team_id,
-          ctx.order.event_id ?? undefined,
-        );
-        await this.representativeAllowed(
-          c,
-          profile,
-          ctx.order.team_id,
-          ctx.order.event_id ?? undefined,
-        );
-        await this.scheduleAllowed(c, profile, input.reportAt!, input.endAt!, now, a.id);
-        status = 'REQUESTED';
-        reportAt = input.reportAt!;
-        startAt = input.startAt!;
-        endAt = input.endAt!;
-        venue = input.venue!;
-        expiresAt = new Date(now.getTime() + REQUEST_MINUTES * 60_000).toISOString();
-      } else if (input.type === 'PROPOSE_CHANGE') {
-        await this.scheduleAllowed(c, profile, input.reportAt!, input.endAt!, now, a.id);
-        change = {
-          proposedByUserId: actor.user.id,
-          proposedByRole: player ? 'PLAYER' : 'BUYER',
-          reportAt: input.reportAt!,
-          startAt: input.startAt!,
-          endAt: input.endAt!,
-          venue: input.venue!,
-          reason: input.reason!,
-          createdAt: now.toISOString(),
+      if (replay) {
+        if (replay.outcome === 'REJECTED') return { rejection: replay as CreateRejection };
+        return { order: await this.orderDto(c, ctx) };
+      }
+      await c.query('SAVEPOINT booking_command_effects');
+      try {
+        const a = (
+          await c.query<Row>(
+            'SELECT * FROM booking_appearances WHERE id=$1 AND order_id=$2 FOR UPDATE',
+            [input.appearanceId, ctx.order.id],
+          )
+        ).rows[0]!;
+        checkVersion(a.version, input.expectedVersion);
+        const dto = await this.orderDto(c, ctx);
+        const current = dto.appearances.find((x) => x.id === a.id)!;
+        const capability: Record<string, keyof BookingAppearanceData['capabilities']> = {
+          ACCEPT: 'canAccept',
+          DECLINE: 'canDecline',
+          CANCEL: 'canCancel',
+          ACTIVATE: 'canActivate',
+          PROPOSE_CHANGE: 'canProposeChange',
+          ACCEPT_CHANGE: 'canAcceptChange',
+          REJECT_CHANGE: 'canRejectChange',
+          ARRIVE: 'canArrive',
+          COMPLETE: 'canComplete',
+          DISPUTE: 'canDispute',
+          RESOLVE_DISPUTE: 'canResolveDispute',
         };
-      } else if (input.type === 'ACCEPT_CHANGE') {
-        await this.scheduleAllowed(c, profile, change!.reportAt, change!.endAt, now, a.id);
-        reportAt = change!.reportAt;
-        startAt = change!.startAt;
-        endAt = change!.endAt;
-        venue = change!.venue;
-        change = null;
-      } else if (input.type === 'REJECT_CHANGE') {
-        change = null;
-      } else if (input.type === 'ARRIVE') {
-        await this.officialMatch(
-          c,
-          { matchId: a.match_id ?? undefined, startAt: startAt!, endAt: endAt!, venue },
-          ctx.order.org_id,
-          ctx.order.team_id,
-          ctx.order.event_id ?? undefined,
-        );
-        status = 'ARRIVED';
-        arrivedAt = now.toISOString();
-      } else if (input.type === 'COMPLETE') {
-        await this.officialMatch(
-          c,
-          { matchId: a.match_id ?? undefined, startAt: startAt!, endAt: endAt!, venue },
-          ctx.order.org_id,
-          ctx.order.team_id,
-          ctx.order.event_id ?? undefined,
-        );
-        status = 'COMPLETED';
-        completedAt = now.toISOString();
-      } else if (input.type === 'DISPUTE') {
-        status = 'DISPUTED';
-        cancellationReason = input.reason;
-        change = null;
-      } else if (input.type === 'RESOLVE_DISPUTE') {
-        cancellationReason = input.reason;
-        change = null;
-        if (input.resolution === 'CANCEL') status = 'CANCELLED';
-        else if (input.resolution === 'COMPLETE') {
-          if (!arrivedAt || !endAt || Date.parse(endAt) > now.getTime())
-            bookingFail(
-              'COMPLETION_NOT_PROVEN',
-              '须先有球员报到记录且服务时段已结束，才能确认服务完成',
-            );
+        if (!current.capabilities[capability[input.type]!])
+          bookingFail('BOOKING_ACTION_NOT_ALLOWED', '当前身份或场次状态不允许此操作');
+        const now = (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
+        let status = a.status;
+        let reportAt = iso(a.report_at),
+          startAt = iso(a.start_at),
+          endAt = iso(a.end_at),
+          venue = a.venue;
+        let expiresAt = iso(a.expires_at),
+          acceptedAt = iso(a.accepted_at),
+          arrivedAt = iso(a.arrived_at),
+          completedAt = iso(a.completed_at);
+        let change: BookingChangeData | null = a.change_request;
+        let cancellationReason = a.cancellation_reason;
+        if (input.type === 'ACCEPT') {
+          await this.scheduleAllowed(c, profile, reportAt!, endAt!, now, a.id);
+          await this.eventAllowed(
+            c,
+            ctx.order.org_id,
+            ctx.order.team_id,
+            ctx.order.event_id ?? undefined,
+          );
+          await this.officialMatch(
+            c,
+            { matchId: a.match_id ?? undefined, startAt: startAt!, endAt: endAt!, venue },
+            ctx.order.org_id,
+            ctx.order.team_id,
+            ctx.order.event_id ?? undefined,
+          );
+          await this.representativeAllowed(
+            c,
+            profile,
+            ctx.order.team_id,
+            ctx.order.event_id ?? undefined,
+          );
+          status = 'ACCEPTED';
+          acceptedAt = now.toISOString();
+          expiresAt = null;
+        } else if (input.type === 'DECLINE' || input.type === 'CANCEL') {
+          status = input.type === 'DECLINE' ? 'DECLINED' : 'CANCELLED';
+          cancellationReason = input.reason;
+          change = null;
+        } else if (input.type === 'ACTIVATE') {
+          await this.requirePendingCapacity(c, ctx.order.buyer_user_id, 1);
+          await this.eventAllowed(
+            c,
+            ctx.order.org_id,
+            ctx.order.team_id,
+            ctx.order.event_id ?? undefined,
+          );
+          await this.representativeAllowed(
+            c,
+            profile,
+            ctx.order.team_id,
+            ctx.order.event_id ?? undefined,
+          );
+          await this.scheduleAllowed(c, profile, input.reportAt!, input.endAt!, now, a.id);
+          status = 'REQUESTED';
+          reportAt = input.reportAt!;
+          startAt = input.startAt!;
+          endAt = input.endAt!;
+          venue = input.venue!;
+          expiresAt = new Date(now.getTime() + REQUEST_MINUTES * 60_000).toISOString();
+        } else if (input.type === 'PROPOSE_CHANGE') {
+          await this.scheduleAllowed(c, profile, input.reportAt!, input.endAt!, now, a.id);
+          change = {
+            proposedByUserId: actor.user.id,
+            proposedByRole: player ? 'PLAYER' : 'BUYER',
+            reportAt: input.reportAt!,
+            startAt: input.startAt!,
+            endAt: input.endAt!,
+            venue: input.venue!,
+            reason: input.reason!,
+            createdAt: now.toISOString(),
+          };
+        } else if (input.type === 'ACCEPT_CHANGE') {
+          await this.scheduleAllowed(c, profile, change!.reportAt, change!.endAt, now, a.id);
+          reportAt = change!.reportAt;
+          startAt = change!.startAt;
+          endAt = change!.endAt;
+          venue = change!.venue;
+          change = null;
+        } else if (input.type === 'REJECT_CHANGE') {
+          change = null;
+        } else if (input.type === 'ARRIVE') {
+          await this.officialMatch(
+            c,
+            { matchId: a.match_id ?? undefined, startAt: startAt!, endAt: endAt!, venue },
+            ctx.order.org_id,
+            ctx.order.team_id,
+            ctx.order.event_id ?? undefined,
+          );
+          status = 'ARRIVED';
+          arrivedAt = now.toISOString();
+        } else if (input.type === 'COMPLETE') {
           await this.officialMatch(
             c,
             { matchId: a.match_id ?? undefined, startAt: startAt!, endAt: endAt!, venue },
@@ -1055,94 +1050,160 @@ export class PlayerBookingService extends ApplicationService {
           );
           status = 'COMPLETED';
           completedAt = now.toISOString();
-        } else {
-          if (!reportAt || !endAt || completedAt)
-            bookingFail('BOOKING_ACTION_NOT_ALLOWED', '该争议场次不能恢复履约');
-          if (!arrivedAt) await this.scheduleAllowed(c, profile, reportAt, endAt, now, a.id);
-          status = arrivedAt ? 'ARRIVED' : acceptedAt ? 'ACCEPTED' : 'REQUESTED';
-          if (status === 'REQUESTED') {
-            await this.requirePendingCapacity(c, ctx.order.buyer_user_id, 1);
-            expiresAt = new Date(now.getTime() + REQUEST_MINUTES * 60_000).toISOString();
+        } else if (input.type === 'DISPUTE') {
+          status = 'DISPUTED';
+          cancellationReason = input.reason;
+          change = null;
+        } else if (input.type === 'RESOLVE_DISPUTE') {
+          cancellationReason = input.reason;
+          change = null;
+          if (input.resolution === 'CANCEL') status = 'CANCELLED';
+          else if (input.resolution === 'COMPLETE') {
+            if (!arrivedAt || !endAt || Date.parse(endAt) > now.getTime())
+              bookingFail(
+                'COMPLETION_NOT_PROVEN',
+                '须先有球员报到记录且服务时段已结束，才能确认服务完成',
+              );
+            await this.officialMatch(
+              c,
+              { matchId: a.match_id ?? undefined, startAt: startAt!, endAt: endAt!, venue },
+              ctx.order.org_id,
+              ctx.order.team_id,
+              ctx.order.event_id ?? undefined,
+            );
+            status = 'COMPLETED';
+            completedAt = now.toISOString();
+          } else {
+            if (!reportAt || !endAt || completedAt)
+              bookingFail('BOOKING_ACTION_NOT_ALLOWED', '该争议场次不能恢复履约');
+            if (!arrivedAt) await this.scheduleAllowed(c, profile, reportAt, endAt, now, a.id);
+            status = arrivedAt ? 'ARRIVED' : acceptedAt ? 'ACCEPTED' : 'REQUESTED';
+            if (status === 'REQUESTED') {
+              await this.requirePendingCapacity(c, ctx.order.buyer_user_id, 1);
+              expiresAt = new Date(now.getTime() + REQUEST_MINUTES * 60_000).toISOString();
+            }
           }
         }
-      }
-      // A change to an official match cannot silently keep a stale match link.
-      const matchId = a.match_id;
-      if (['ACTIVATE', 'ACCEPT_CHANGE'].includes(input.type) && matchId) {
-        await this.officialMatch(
-          c,
-          { matchId, startAt: startAt!, endAt: endAt!, venue },
-          ctx.order.org_id,
-          ctx.order.team_id,
-          ctx.order.event_id ?? undefined,
-        );
-      }
-      await c.query(
-        `UPDATE booking_appearances SET status=$2,report_at=$3,start_at=$4,end_at=$5,venue=$6,expires_at=$7,accepted_at=$8,arrived_at=$9,completed_at=$10,change_request=$11::jsonb,cancellation_reason=$12,version=version+1,updated_at=clock_timestamp() WHERE id=$1`,
-        [
-          a.id,
-          status,
-          reportAt,
-          startAt,
-          endAt,
-          venue,
-          expiresAt,
-          acceptedAt,
-          arrivedAt,
-          completedAt,
-          change ? JSON.stringify(change) : null,
-          cancellationReason,
-        ],
-      );
-      const statuses = (
-        await c.query<{ status: string }>(
-          'SELECT status FROM booking_appearances WHERE order_id=$1',
-          [ctx.order.id],
-        )
-      ).rows;
-      const orderStatus = statuses.every((x) =>
-        ['CANCELLED', 'DECLINED', 'EXPIRED'].includes(x.status),
-      )
-        ? 'CANCELLED'
-        : statuses.every((x) => terminal.has(x.status))
-          ? 'COMPLETED'
-          : 'ACTIVE';
-      ctx.order = (
-        await c.query<Row>(
-          'UPDATE booking_orders SET status=$2,version=version+1,updated_at=clock_timestamp() WHERE id=$1 RETURNING *',
-          [ctx.order.id, orderStatus],
-        )
-      ).rows[0]!;
-      await this.audit(
-        c,
-        actor.user.id,
-        ctx.order.org_id,
-        `BOOKING_${input.type}`,
-        'booking_appearance',
-        a.id,
-        {
-          reason: input.reason ?? null,
-          resolution: input.resolution ?? null,
-          previousVersion: a.version,
-          paymentAvailable: false,
-          before: appearanceAudit(a),
-          after: appearanceAudit({
-            ...a,
+        // A change to an official match cannot silently keep a stale match link.
+        const matchId = a.match_id;
+        if (['ACTIVATE', 'ACCEPT_CHANGE'].includes(input.type) && matchId) {
+          await this.officialMatch(
+            c,
+            { matchId, startAt: startAt!, endAt: endAt!, venue },
+            ctx.order.org_id,
+            ctx.order.team_id,
+            ctx.order.event_id ?? undefined,
+          );
+        }
+        await c.query(
+          `UPDATE booking_appearances SET status=$2,report_at=$3,start_at=$4,end_at=$5,venue=$6,expires_at=$7,accepted_at=$8,arrived_at=$9,completed_at=$10,change_request=$11::jsonb,cancellation_reason=$12,version=version+1,updated_at=clock_timestamp() WHERE id=$1`,
+          [
+            a.id,
             status,
-            version: a.version + 1,
-            report_at: reportAt,
-            start_at: startAt,
-            end_at: endAt,
+            reportAt,
+            startAt,
+            endAt,
             venue,
-            accepted_at: acceptedAt,
-            arrived_at: arrivedAt,
-            completed_at: completedAt,
-            change_request: change,
-          }),
-        },
-      );
-      await this.finish(c, actor, input.commandId, ctx.order.id);
-      return this.orderDto(c, ctx);
+            expiresAt,
+            acceptedAt,
+            arrivedAt,
+            completedAt,
+            change ? JSON.stringify(change) : null,
+            cancellationReason,
+          ],
+        );
+        const statuses = (
+          await c.query<{ status: string }>(
+            'SELECT status FROM booking_appearances WHERE order_id=$1',
+            [ctx.order.id],
+          )
+        ).rows;
+        const orderStatus = statuses.every((x) =>
+          ['CANCELLED', 'DECLINED', 'EXPIRED'].includes(x.status),
+        )
+          ? 'CANCELLED'
+          : statuses.every((x) => terminal.has(x.status))
+            ? 'COMPLETED'
+            : 'ACTIVE';
+        ctx.order = (
+          await c.query<Row>(
+            'UPDATE booking_orders SET status=$2,version=version+1,updated_at=clock_timestamp() WHERE id=$1 RETURNING *',
+            [ctx.order.id, orderStatus],
+          )
+        ).rows[0]!;
+        await this.audit(
+          c,
+          actor.user.id,
+          ctx.order.org_id,
+          `BOOKING_${input.type}`,
+          'booking_appearance',
+          a.id,
+          {
+            reason: input.reason ?? null,
+            resolution: input.resolution ?? null,
+            previousVersion: a.version,
+            paymentAvailable: false,
+            before: appearanceAudit(a),
+            after: appearanceAudit({
+              ...a,
+              status,
+              version: a.version + 1,
+              report_at: reportAt,
+              start_at: startAt,
+              end_at: endAt,
+              venue,
+              accepted_at: acceptedAt,
+              arrived_at: arrivedAt,
+              completed_at: completedAt,
+              change_request: change,
+            }),
+          },
+        );
+        await this.finish(c, actor, input.commandId, ctx.order.id);
+        const order = await this.orderDto(c, ctx);
+        await c.query('RELEASE SAVEPOINT booking_command_effects');
+        return { order };
+      } catch (sourceError) {
+        const error = reservationConflict(sourceError);
+        // Preserve existing command semantics for all other business/SQL failures.
+        if ((sourceError as { code?: string })?.code !== '23P01' || !(error instanceof ApiError))
+          throw sourceError;
+        await c.query('ROLLBACK TO SAVEPOINT booking_command_effects');
+        await c.query('RELEASE SAVEPOINT booking_command_effects');
+        const rejection: CreateRejection = {
+          outcome: 'REJECTED',
+          status: error.status,
+          code: error.code,
+          message: error.message,
+        };
+        await c.query(
+          'UPDATE booking_operations SET result=$3::jsonb WHERE actor_id=$1 AND command_id=$2',
+          [actor.user.id, input.commandId, JSON.stringify(rejection)],
+        );
+        await this.audit(
+          c,
+          actor.user.id,
+          ctx.order.org_id,
+          'BOOKING_COMMAND_REJECTED',
+          'booking_command',
+          input.commandId,
+          {
+            commandId: input.commandId,
+            type: input.type,
+            status: rejection.status,
+            code: rejection.code,
+          },
+        );
+        return { rejection };
+      }
     });
+    if ('rejection' in outcome)
+      throw new ApiError(
+        outcome.rejection.status,
+        outcome.rejection.code,
+        outcome.rejection.message,
+        { bookingCommandOutcome: 'REJECTED', commandId: input.commandId },
+      );
+    return outcome.order;
   }
 }

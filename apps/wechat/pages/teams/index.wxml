@@ -23,4 +23,4 @@
   <button class="secondary team-action" bindtap="invitation">接受球队邀请</button>
   <button class="quiet" bindtap="load" disabled="{{busy || loading}}">刷新当前授权与球队</button>
 </view>
-<scb-nav active="Account" disabled="{{busy || loading || uncertain || newName !== ''}}"/>
+<scb-nav active="Teams" disabled="{{busy || loading || uncertain || newName !== ''}}"/>

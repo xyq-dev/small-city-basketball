@@ -2,15 +2,16 @@
  <view class="home-hero">
   <image class="home-court" src="/assets/approved-ui/court-night.jpg" mode="aspectFill" aria-hidden="true"/>
   <view class="home-shade"></view>
-  <scb-header home="{{true}}" dark="{{true}}" back="{{false}}" bind:search="openEvents"/>
+  <scb-header location-label="{{citySelection.label}}" home="{{true}}" dark="{{true}}" back="{{false}}" bind:search="openEvents"/>
   <view class="home-hero-content"><view class="home-headline"><image src="/assets/approved-ui/home-slogan.png" mode="widthFix" aria-label="每一场，都有合适的人"/><text class="accessible-headline">每一场，都有合适的人</text></view><view class="home-tagline">看赛事 · 管球队 · 查数据</view><button class="accent home-primary" bindtap="openEvents">看赛事<scb-icon name="arrow-right" tone="white" size="22"/></button></view>
  </view>
  <view class="home-content">
   <view class="home-city-bar"><view class="home-city-copy"><view class="home-event-name">{{citySelection.label}} · 公开赛事</view><view class="muted small">{{citySelection.source}} · {{citySelection.description}}</view></view><button class="secondary home-city-button" bindtap="chooseCity">切换城市</button></view>
-  <view wx:if="{{citySelection.guide}}" class="home-city-guide"><view class="home-event-name">先看看全国，或选择你的城市</view><view class="muted small">浏览公开赛事无需登录。定位暂未开放，手动选城不读取当前位置。</view><view class="home-event-actions"><button class="primary" bindtap="chooseCity">手动选城</button><button class="secondary" bindtap="nationwide">先浏览全国</button></view></view>
+  <view wx:if="{{citySelection.guide}}" class="home-city-guide"><view class="home-event-name">先看看全国，或选择你的城市</view><view class="muted small">浏览公开赛事无需登录。首页不读取当前位置；附近定位在同城由你主动发起。</view><view class="home-event-actions"><button class="primary" bindtap="chooseCity">手动选城</button><button class="secondary" bindtap="nationwide">先浏览全国</button></view></view>
   <view wx:if="{{citySelection.mode === 'REGION'}}" class="muted small">包含按历史城市标签匹配的赛事；以赛事地点说明为准。</view>
   <view wx:if="{{citySelection.warning}}" class="notice warning small">{{citySelection.warning}}</view>
-  <view class="home-section-head"><view class="home-section-title">正在进行的公开赛事</view><button class="home-more-toggle" bindtap="openEvents">全部公开赛事<scb-icon name="chevron-right" size="14"/></button></view>
+  <sponsorship-slot region-id="{{citySelection.regionId || ''}}" catalog-version="{{citySelection.catalogVersion || ''}}" visible="{{sponsorVisible}}"/>
+<view class="home-section-head"><view class="home-section-title">正在进行的公开赛事</view><button class="home-more-toggle" bindtap="openEvents">全部公开赛事<scb-icon name="chevron-right" size="14"/></button></view>
   <view wx:if="{{publicLoading}}" class="home-event-state"><view class="muted">正在读取公开赛事…</view></view>
   <view wx:elif="{{publicError}}" class="home-event-state"><view class="home-event-name">公开赛事暂时无法读取</view><view class="muted">{{publicError}}</view><button class="secondary" bindtap="loadPublicEvents">重新读取</button></view>
   <view wx:elif="{{publicLoaded && !publicEvents.length}}" class="home-event-state"><view class="muted">{{citySelection.label}}暂无已列入目录的进行中赛事。</view><view class="home-event-actions"><button class="secondary" bindtap="openEvents">查看其他赛事阶段</button><button wx:if="{{citySelection.mode !== 'NATIONWIDE'}}" class="secondary" bindtap="nationwide">浏览全国</button></view></view>
@@ -25,9 +26,10 @@
   <view class="home-service-grid">
    <button class="home-service" data-page="watch" bindtap="go"><view><view class="home-service-title">赛事观赛</view><view class="home-service-copy"><view>赛程 · 比分</view><view>排名与晋级</view></view></view><scb-icon name="court" size="36"/></button>
    <button class="home-service" data-page="teams" bindtap="go"><view><view class="home-service-title">我的球队</view><view class="home-service-copy"><view>组建球队</view><view>赛事报名</view></view></view><scb-icon name="users" size="36"/></button>
-   <button class="home-service" data-page="watch" bindtap="go"><view><view class="home-service-title">赛事数据</view><view class="home-service-copy"><view>球员得分榜</view><view>未采集显示未统计</view></view></view><scb-icon name="chart" size="36"/></button>
+   <button class="home-service" data-page="public-archive" bindtap="go"><view><view class="home-service-title">赛事数据</view><view class="home-service-copy"><view>公开跨届榜单</view><view>仅已授权样本</view></view></view><scb-icon name="chart" size="36"/></button>
    <button class="home-service" data-page="media" bindtap="go"><view><view class="home-service-title">比赛视频</view><view class="home-service-copy"><view>已发布图片</view><view>小视频与片段</view></view></view><scb-icon name="play" size="36"/></button>
   </view>
+  <view class="home-extension"><view class="home-section-head"><view class="home-section-title">同城一起打球</view><button class="home-more-toggle" bindtap="openLocal">找场地与服务<scb-icon name="chevron-right" size="14"/></button></view><view class="small muted">选择城市，找已审核球场和人员，按需定位查附近；球队可双方确认约赛。</view><button class="secondary" bindtap="openLocal">进入同城篮球</button></view>
   <view class="home-extension">
    <view class="home-section-head"><view><view class="home-extension-tag">扩展服务</view><view class="home-section-title">按位置找球员</view></view><button class="home-more-toggle" bindtap="openPlayers">找球员<scb-icon name="chevron-right" size="14"/></button></view>
    <view class="position-grid"><button wx:for="{{positions}}" wx:key="code" class="position-button" data-position="{{item.code}}" bindtap="position"><scb-icon name="{{item.icon}}" size="40"/><text>{{item.name}}</text></button></view>

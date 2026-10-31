@@ -68,6 +68,22 @@ function pathAllowed(path, method = 'GET') {
     '/v1/auth/wechat/unbind': 'POST',
   };
   if (Object.prototype.hasOwnProperty.call(auth, base)) return noQuery && auth[base] === method;
+  if (['/v1/account-recovery/capabilities', '/v1/account-recovery/me'].includes(base))
+    return noQuery && method === 'GET';
+  if (
+    ['reset-requests', 'verification-requests', 'consume', 'receipts', 'cancel'].some(
+      (v) => base === '/v1/account-recovery/' + v,
+    )
+  )
+    return noQuery && method === 'POST';
+  if (matches('/v1/orgs/' + uuidPattern + '/staff-configuration'))
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['eventId']) &&
+      (!query.eventId || uuidRegex.test(query.eventId))
+    );
+  if (matches('/v1/orgs/' + uuidPattern + '/staff-configuration/commands'))
+    return noQuery && method === 'POST';
   if (base === '/v1/public/regions') return method === 'GET' && parts.length === 1;
   // Public directory: exact parameters only; sent without any session cookie.
   if (base === '/v1/public/directory')
@@ -126,6 +142,151 @@ function pathAllowed(path, method = 'GET') {
   // C23 private participant materials: explicit methods, no anonymous or query access.
   if (base === '/v1/me/participant-entries') return noQuery && method === 'GET';
   const org = '/v1/orgs/' + uuidPattern;
+  const tokenPattern = '[A-Za-z0-9_-]{43}';
+  const beforePage = (extra = []) =>
+    method === 'GET' &&
+    queryAllowed(query, ['before', 'limit', ...extra]) &&
+    (!query.before || uuidRegex.test(query.before)) &&
+    (!query.limit || /^(?:[1-9]|[1-4]\d|50)$/.test(query.limit));
+  if (matches('/v1/public/recruitments/' + tokenPattern)) return noQuery && method === 'GET';
+  if (matches('/v1/public/recruitments/' + tokenPattern + '/applications'))
+    return noQuery && method === 'POST';
+  if (base === '/v1/public/local-listings')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['regionId', 'catalogVersion', 'kind', 'q', 'limit', 'cursor']) &&
+      'regionId' in query === 'catalogVersion' in query &&
+      (!query.regionId || uuidRegex.test(query.regionId))
+    );
+  if (matches('/v1/public/local-listings/' + uuidPattern)) return noQuery && method === 'GET';
+  if (['/v1/public/local-search', '/v1/public/local-location'].includes(base))
+    return noQuery && method === 'POST';
+  if (matches('/v1/public/governance/reviews/' + tokenPattern)) return noQuery && method === 'GET';
+  if (matches(org + '/sponsorships'))
+    return method === 'GET' ? beforePage() : noQuery && method === 'POST';
+  if (matches(org + '/sponsorships/options'))
+    return method === 'GET' && queryAllowed(query, ['query']);
+  if (matches(org + '/sponsorships/' + uuidPattern))
+    return noQuery && ['GET', 'PUT'].includes(method);
+  if (
+    matches(org + '/sponsorships/' + uuidPattern + '/commands') ||
+    matches('/v1/me/sponsorships/' + uuidPattern + '/commands')
+  )
+    return noQuery && method === 'POST';
+  if (base === '/v1/me/sponsorships/review-queue') return beforePage();
+  if (base === '/v1/public/sponsorships')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['regionId', 'catalogVersion', 'eventPublicId', 'limit']) &&
+      uuidRegex.test(query.regionId || '') &&
+      !!query.catalogVersion &&
+      (!query.eventPublicId || opaque.test(query.eventPublicId))
+    );
+  if (matches('/v1/public/sponsorships/' + tokenPattern)) return noQuery && method === 'GET';
+  if (matches('/v1/public/sponsorships/' + tokenPattern + '/impressions'))
+    return noQuery && method === 'POST';
+  if (base === '/v1/me/public-archives') return noQuery && ['GET', 'POST'].includes(method);
+  if (matches('/v1/me/public-archives/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  if (matches(org + '/events/' + uuidPattern + '/public-archive-sources'))
+    return noQuery && method === 'GET';
+  if (
+    base === '/v1/public-archive-sources' ||
+    matches('/v1/public-archive-sources/' + uuidPattern + '/commands')
+  )
+    return noQuery && method === 'POST';
+  if (base === '/v1/public/archives/rankings')
+    return (
+      method === 'GET' && queryAllowed(query, ['kind']) && ['PLAYER', 'TEAM'].includes(query.kind)
+    );
+  if (matches('/v1/public/archives/' + tokenPattern)) return noQuery && method === 'GET';
+  if (matches(org + '/public-ledgers'))
+    return method === 'GET' ? beforePage() : noQuery && method === 'POST';
+  if (matches(org + '/public-ledgers/options'))
+    return method === 'GET' && queryAllowed(query, ['query']);
+  if (matches(org + '/public-ledgers/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(org + '/public-ledgers/' + uuidPattern + '/(entries|commands)'))
+    return noQuery && method === 'POST';
+  if (matches('/v1/public/ledgers/' + tokenPattern)) return noQuery && method === 'GET';
+  if (matches(org + '/event-templates')) return noQuery && method === 'GET';
+  if (matches(org + '/event-template-commands')) return noQuery && method === 'POST';
+  if (matches(org + '/event-template-commands/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/setup-guide')) return noQuery && method === 'GET';
+  if (matches(org + '/events/' + uuidPattern + '/exception-rules'))
+    return noQuery && ['GET', 'PUT'].includes(method);
+  if (matches(org + '/matches/' + uuidPattern + '/exceptions')) return noQuery && method === 'GET';
+  if (
+    matches(org + '/matches/' + uuidPattern + '/exceptions/(proposals|' + uuidPattern + '/review)')
+  )
+    return noQuery && method === 'POST';
+  if (
+    matches(org + '/schedule-revisions/' + uuidPattern + '/optimization-preview') ||
+    matches(org + '/events/' + uuidPattern + '/(knockout|group)-optimization-preview')
+  )
+    return noQuery && method === 'POST';
+  const eventRoot = org + '/events/' + uuidPattern;
+  if (matches(eventRoot + '/recruitment')) return noQuery && method === 'GET';
+  if (matches(eventRoot + '/recruitment/(publish|revoke)')) return noQuery && method === 'POST';
+  if (matches(eventRoot + '/(recruitment-applications|event-invitations)'))
+    return method === 'GET'
+      ? beforePage()
+      : noQuery && method === 'POST' && base.endsWith('/event-invitations');
+  if (
+    matches(eventRoot + '/recruitment-applications/' + uuidPattern + '/commands') ||
+    matches(eventRoot + '/team-import/(previews|commit)')
+  )
+    return noQuery && method === 'POST';
+  if (matches('/v1/me/(recruitment-applications|event-invitations)')) return beforePage();
+  if (matches('/v1/me/recruitment-requests/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches('/v1/event-invitations/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  if (matches(eventRoot + '/posters')) return noQuery && ['GET', 'POST'].includes(method);
+  if (matches(eventRoot + '/posters/' + uuidPattern + '/revoke'))
+    return noQuery && method === 'POST';
+  if (matches(org + '/local-services(?:/options|/listings/' + uuidPattern + ')?'))
+    return noQuery && method === 'GET';
+  if (matches(org + '/local-services/listings')) return noQuery && method === 'POST';
+  if (matches('/v1/local-services/(mine|receipts/' + uuidPattern + ')'))
+    return noQuery && method === 'GET';
+  if (matches('/v1/local-services/listings/' + uuidPattern))
+    return noQuery && ['GET', 'PUT'].includes(method);
+  if (
+    matches(
+      '/v1/local-services/listings/' +
+        uuidPattern +
+        '/(commands|slots|slots/' +
+        uuidPattern +
+        '/close)',
+    )
+  )
+    return noQuery && method === 'POST';
+  if (['/v1/local-bookings', '/v1/local-matchups'].includes(base))
+    return noQuery && ['GET', 'POST'].includes(method);
+  if (matches('/v1/local-bookings/' + uuidPattern + '/checkin'))
+    return noQuery && method === 'POST';
+  if (matches('/v1/local-bookings/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches('/v1/local-(bookings|matchups)/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  if (matches('/v1/(me|platform)/governance/(cases|reviews)'))
+    return method === 'GET'
+      ? beforePage(['assigned'])
+      : base.startsWith('/v1/me/') && noQuery && method === 'POST';
+  const govCase = '/v1/me/governance/cases/' + uuidPattern;
+  if (matches(govCase + '(?:/assignees)?')) return noQuery && method === 'GET';
+  if (matches(govCase + '/messages'))
+    return method === 'GET' ? beforePage() : noQuery && method === 'POST';
+  if (matches(govCase + '/commands')) return noQuery && method === 'POST';
+  if (matches(govCase + '/attachments/' + uuidPattern)) return noQuery && method === 'PUT';
+  if (matches(govCase + '/attachment-receipts/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches('/v1/me/governance/reviews/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  if (matches('/v1/me/governance/operations/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches('/v1/me/governance/operations/' + uuidPattern + '/cancel'))
+    return noQuery && method === 'POST';
+  if (matches('/v1/(me|platform)/city-operations')) return beforePage(['orgQuery', 'userQuery']);
+  if (matches('/v1/platform/city-operations/grants(?:/' + uuidPattern + '/revoke)?'))
+    return noQuery && method === 'POST';
+
   const participant = org + '/entries/' + uuidPattern + '/participant-materials';
   if (matches(participant)) return noQuery && method === 'GET';
   if (matches(participant + '/mine')) return noQuery && ['GET', 'PUT'].includes(method);
@@ -154,6 +315,8 @@ function pathAllowed(path, method = 'GET') {
   const match = org + '/matches/' + uuidPattern;
   if (matches(match + '/(scoring|snapshot)')) return noQuery && method === 'GET';
   if (matches(match + '/(scoring-events|result-confirmations)')) return paged;
+  if (matches(match + '/offline-intents')) return noQuery && method === 'POST';
+  if (matches(match + '/offline-intents/' + uuidPattern)) return noQuery && method === 'GET';
   if (matches(match + '/commands')) return noQuery && method === 'POST';
   if (matches(match + '/commands/' + uuidPattern)) return noQuery && method === 'GET';
   if (matches(match + '/scorekeeper-lease')) return noQuery && ['POST', 'DELETE'].includes(method);
@@ -378,10 +541,28 @@ function createClient(wxApi) {
       !pathAllowed(path, method) ||
       (anonymous &&
         !(
-          method === 'GET' &&
-          (/^\/v1\/player-bookings\/players\//.test(path) ||
-            /^\/v1\/public\/directory(?:\?|$)/.test(path) ||
-            path === '/v1/public/regions')
+          (method === 'GET' &&
+            (/^\/v1\/public\/recruitments\/[A-Za-z0-9_-]{43}$/.test(path) ||
+              /^\/v1\/public\/local-listings(?:\?|\/|$)/.test(path) ||
+              /^\/v1\/public\/governance\/reviews\/[A-Za-z0-9_-]{43}$/.test(path))) ||
+          (method === 'POST' &&
+            ['/v1/public/local-search', '/v1/public/local-location'].includes(path)) ||
+          (method === 'GET' && /^\/v1\/public\/sponsorships(?:\?|\/|$)/.test(path)) ||
+          (method === 'POST' &&
+            /^\/v1\/public\/sponsorships\/[A-Za-z0-9_-]{43}\/impressions$/.test(path)) ||
+          (method === 'GET' && /^\/v1\/public\/events\/[A-Za-z0-9_-]{43}(?:\/|\?|$)/.test(path)) ||
+          (method === 'GET' &&
+            /^\/v1\/public\/archives\/(?:[A-Za-z0-9_-]{43}$|rankings\?)/.test(path)) ||
+          (method === 'GET' && /^\/v1\/public\/ledgers\/[A-Za-z0-9_-]{43}$/.test(path)) ||
+          (path === '/v1/account-recovery/capabilities' && method === 'GET') ||
+          (['reset-requests', 'consume', 'receipts', 'cancel'].some(
+            (v) => path === '/v1/account-recovery/' + v,
+          ) &&
+            method === 'POST') ||
+          (method === 'GET' &&
+            (/^\/v1\/player-bookings\/players\//.test(path) ||
+              /^\/v1\/public\/directory(?:\?|$)/.test(path) ||
+              path === '/v1/public/regions'))
         ))
     )
       return Promise.reject({ code: 'INVALID_PATH', message: '请求入口无效' });
@@ -508,12 +689,34 @@ function createClient(wxApi) {
           '/files/(portrait|insurance)$',
         'i',
       ).test(path);
-      const scope = participant ? 'participant' : (content.exec(path) || [])[1];
+      const poster = new RegExp(
+        '^/v1/orgs/' +
+          uuidPattern +
+          '/events/' +
+          uuidPattern +
+          '/posters/' +
+          uuidPattern +
+          '/content$',
+        'i',
+      ).test(path);
+      const evidence = new RegExp(
+        '^/v1/me/governance/cases/' + uuidPattern + '/attachments/' + uuidPattern + '/content$',
+        'i',
+      ).test(path);
+      const scope = poster
+        ? 'poster'
+        : evidence
+          ? 'evidence'
+          : participant
+            ? 'participant'
+            : (content.exec(path) || [])[1];
       if (!scope) return Promise.reject({ code: 'INVALID_PATH', message: '文件入口无效' });
       const allowed =
-        scope.toLowerCase() === 'matches'
-          ? ['image/png', 'image/jpeg', 'video/mp4']
-          : ['image/png', 'image/jpeg', 'application/pdf'];
+        scope === 'poster'
+          ? ['image/png']
+          : scope.toLowerCase() === 'matches'
+            ? ['image/png', 'image/jpeg', 'video/mp4']
+            : ['image/png', 'image/jpeg', 'application/pdf'];
       const started = revision;
       return new Promise((resolve, reject) =>
         wxApi.request({
@@ -600,6 +803,9 @@ async function allSchedule(client, event) {
         publicId(event) +
         '/schedule?limit=50' +
         (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''),
+      'GET',
+      undefined,
+      true,
     );
     if (!Array.isArray(response.data)) throw new Error('赛程资料无效');
     rows = rows.concat(response.data);
@@ -689,6 +895,7 @@ module.exports = {
   eventFormat: (value) =>
     ({
       ROUND_ROBIN: '单循环赛事',
+      DOUBLE_ROUND_ROBIN: '双循环赛事',
       SINGLE_ELIMINATION: '单淘汰赛事',
       GROUP_KNOCKOUT: '分组循环接淘汰',
     })[value] || '单循环赛事',

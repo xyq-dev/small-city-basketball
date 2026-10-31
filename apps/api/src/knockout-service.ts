@@ -1,3 +1,9 @@
+import type { KnockoutOptimizationPreview } from '../../../packages/contracts/knockout-optimization.js';
+import {
+  administrativeResult,
+  exceptionResultSelect,
+  exceptionResultJoins,
+} from './match-exception-domain.js';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type {
@@ -25,14 +31,14 @@ export class KnockoutService extends SchedulingService {
   protected async resultRows(c: PoolClient, org: string, event: string): Promise<ResultRow[]> {
     return (
       await c.query<ResultRow>(
-        `SELECT m.*,to_jsonb(s) AS state,to_jsonb(cf) AS confirmation,to_jsonb(le) AS last_event,to_jsonb(rc) AS last_command,to_jsonb(sr) AS scoring_rules
+        `SELECT m.*,${exceptionResultSelect},to_jsonb(s) AS state,to_jsonb(cf) AS confirmation,to_jsonb(le) AS last_event,to_jsonb(rc) AS last_command,to_jsonb(sr) AS scoring_rules
        FROM published_matches m
        LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id
        LEFT JOIN result_confirmations cf ON cf.org_id=m.org_id AND cf.match_id=m.id AND cf.id=s.latest_confirmation_id
        LEFT JOIN scoring_events le ON le.org_id=m.org_id AND le.match_id=m.id AND le.seq=s.last_event_seq
        LEFT JOIN scoring_commands rc ON rc.org_id=m.org_id AND rc.match_id=m.id AND rc.actor_id=le.actor_id AND rc.command_id=le.command_id
        LEFT JOIN scoring_rulesets sr ON sr.org_id=m.org_id AND sr.event_id=m.event_id AND sr.id=s.ruleset_id
-       WHERE m.org_id=$1 AND m.event_id=$2 ORDER BY m.round_no,m.position_no`,
+       ${exceptionResultJoins} WHERE m.org_id=$1 AND m.event_id=$2 ORDER BY m.round_no,m.position_no`,
         [org, event],
       )
     ).rows;
@@ -108,6 +114,54 @@ export class KnockoutService extends SchedulingService {
       const { response } = await this.view(c, ctx, event);
       await this.ensureFreshSession(c, ctx);
       return response;
+    });
+  }
+  /** Read-only suggestion over genuine qualified entrants. Publish replays all source proofs. */
+  async previewNextRoundOptimization(
+    cookie: string | undefined,
+    org: string,
+    id: string,
+    raw: unknown,
+  ): Promise<KnockoutOptimizationPreview> {
+    const input = objectInput(raw, ['expectedEventVersion', 'expectedSourceHash']);
+    const expected = expectedVersion(input.expectedEventVersion);
+    if (
+      input.expectedSourceHash !== undefined &&
+      (typeof input.expectedSourceHash !== 'string' ||
+        !/^[0-9a-f]{64}$/.test(input.expectedSourceHash))
+    )
+      invalid('晋级来源摘要无效');
+    return this.transaction(async (c) => {
+      const ctx = await this.context(c, cookie, org),
+        event = await this.event(c, ctx, id, false);
+      if (!event.canManage) throw forbidden();
+      if (event.row.version !== expected) fail('VERSION_CONFLICT', '赛事已更新，请重新读取');
+      if (!['SCHEDULED', 'RUNNING'].includes(event.row.status))
+        fail('INVALID_EVENT_STATE', '当前赛事不可安排晋级轮次');
+      const { revision, nextRound: next } = await this.view(c, ctx, event);
+      if (!next) {
+        await this.ensureFreshSession(c, ctx);
+        return {
+          status: 'WAITING_FOR_RESULTS',
+          eventVersion: event.row.version,
+          revisionVersion: revision?.version ?? null,
+        };
+      }
+      if (!revision || revision.status !== 'PUBLISHED')
+        fail('RESULT_SOURCE_INVALID', '正式排赛来源无法核验');
+      if (next.sourceHash !== input.expectedSourceHash)
+        fail('KNOCKOUT_SOURCE_CONFLICT', '晋级来源已更新，请重新读取签位');
+      const optimization = await this.optimizeFixturePlan(c, ctx, event, revision!, next.fixtures, {
+        preserveAssigned: false,
+      });
+      return {
+        status: 'READY',
+        eventVersion: event.row.version,
+        revisionVersion: revision!.version,
+        sourceHash: next.sourceHash,
+        roundNo: next.roundNo,
+        optimization,
+      };
     });
   }
   protected async publishRound(
@@ -209,8 +263,8 @@ export class KnockoutService extends SchedulingService {
             starts_at: Date;
             ends_at: Date;
           }>(
-            `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations WHERE org_id=$1 AND publication_id<>$2 AND starts_at<$4::timestamptz AND ends_at>$3::timestamptz
-           UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations WHERE org_id=$1 AND publication_id<>$2 AND starts_at<$4::timestamptz AND ends_at>$3::timestamptz`,
+            `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations WHERE org_id=$1 AND publication_id<>$2 AND starts_at<$4::timestamptz+$5::double precision*interval '1 millisecond' AND ends_at>$3::timestamptz-$5::double precision*interval '1 millisecond'
+           UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations WHERE org_id=$1 AND publication_id<>$2 AND starts_at<$4::timestamptz+$5::double precision*interval '1 millisecond' AND ends_at>$3::timestamptz-$5::double precision*interval '1 millisecond'`,
             [
               ctx.orgId,
               publication!.id,
@@ -221,6 +275,10 @@ export class KnockoutService extends SchedulingService {
                   .sort()
                   .at(-1),
               ],
+              Math.max(
+                revision!.policy.minRestMinutes * 60000,
+                (revision!.policy.minLocalDayGap + 1) * 86400000,
+              ),
             ],
           )
         ).rows;
@@ -235,12 +293,31 @@ export class KnockoutService extends SchedulingService {
           policy: revision!.policy,
           fixtures: allFixtures,
           courts,
-          reservations: booked.map((r) => ({
-            kind: r.kind,
-            resourceId: r.resource_id,
-            startsAt: r.starts_at.toISOString(),
-            endsAt: r.ends_at.toISOString(),
-          })),
+          reservations: booked
+            .map((r) => ({
+              kind: r.kind,
+              resourceId: r.resource_id,
+              startsAt: r.starts_at.toISOString(),
+              endsAt: r.ends_at.toISOString(),
+            }))
+            .concat(
+              await this.localReservations(
+                c,
+                [
+                  ...courts.map((court) => 'court:' + court.id),
+                  ...revision!.source.entries.map((entry) => 'team:' + entry.teamId),
+                ],
+                fixtures.map((f) => f.startsAt!).sort()[0]!,
+                fixtures
+                  .map((f) => f.endsAt!)
+                  .sort()
+                  .at(-1)!,
+                Math.max(
+                  revision!.policy.minRestMinutes * 60000,
+                  (revision!.policy.minLocalDayGap + 1) * 86400000,
+                ),
+              ),
+            ),
         });
         // Past unrelated conflicts must not block a new round, but every new fixture is checked.
         const keys = new Set(fixtures.map((f) => f.fixtureKey));
@@ -359,7 +436,9 @@ export class KnockoutService extends SchedulingService {
             reason,
           },
         );
-        return (await this.view(c, ctx, await this.event(c, ctx, id, false))).response;
+        const response = (await this.view(c, ctx, await this.event(c, ctx, id, false))).response;
+        await this.ensureFreshSession(c, ctx);
+        return response;
       });
     } catch (error) {
       if ((error as { code?: string }).code === '23P01')

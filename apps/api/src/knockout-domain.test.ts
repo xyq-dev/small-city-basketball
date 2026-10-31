@@ -146,9 +146,9 @@ function final(match: ResultRow, homeScore = 10, awayScore = 8): ResultRow {
   };
 }
 type Proof = { roundNo: number; sources: KnockoutSource[] };
-function fixture(count: number) {
+function fixture(count: number, selectedPolicy: SchedulePolicy = policy) {
   const source = freeze(count);
-  const draw = generateKnockoutPairings(source, policy, seed);
+  const draw = generateKnockoutPairings(source, selectedPolicy, seed);
   const matches = draw.fixtures.map((f) => scheduled(source, f));
   const roundPublications: Proof[] = [];
   const read = (overrides: Partial<Parameters<typeof calculateKnockout>[0]> = {}) =>
@@ -156,7 +156,7 @@ function fixture(count: number) {
       publicationId,
       source,
       seed,
-      policy,
+      policy: selectedPolicy,
       matches,
       asOf,
       roundPublications,
@@ -567,7 +567,9 @@ describe('knockout projection uses authoritative confirmations, never copied sco
         roundPublications: [
           {
             roundNo: 2,
-            sources: [{ ...original[0]!.sources[0]!, copiedScore: 42 } as KnockoutSource],
+            sources: [
+              { ...original[0]!.sources[0]!, copiedScore: 42 } as unknown as KnockoutSource,
+            ],
           },
         ],
       }),
@@ -580,5 +582,165 @@ describe('knockout projection uses authoritative confirmations, never copied sco
         })),
       }).rounds[1]!.published,
     ).toBe(true);
+  });
+});
+
+describe('X01 optional third-place game over genuine semifinal losers', () => {
+  const bronzePolicy = { ...policy, thirdPlaceMatch: true };
+  it.each([2, 3])('%i teams cannot opt into nonexistent semifinal losers', (n) => {
+    expect(() => generateKnockoutPairings(freeze(n), bronzePolicy, seed)).toThrowError(
+      expect.objectContaining({ status: 422 }),
+    );
+  });
+  it.each(Array.from({ length: 29 }, (_, i) => i + 4))(
+    '%i teams: exact championship and bronze places',
+    (n) => {
+      const f = fixture(n, bronzePolicy);
+      let b = f.read();
+      for (let round = 1; round <= b.rounds.length; round++) {
+        b = finishRound(f, round);
+        if (b.nextRound) b = publishNext(f, b);
+      }
+      expect(b.isComplete).toBe(true);
+      expect(b.totalMatchCount).toBe(n);
+      expect(b.publishedMatchCount).toBe(n);
+      expect(b.confirmedMatchCount).toBe(n);
+      expect(b.placements).toHaveLength(n);
+      expect(new Set(b.placements.map((p) => p.entryId)).size).toBe(n);
+      expect(b.placements.slice(0, 4).map((p) => p.rank)).toEqual([1, 2, 3, 4]);
+      expect(b.placements.slice(0, 4).every((p) => !p.tied)).toBe(true);
+      const last = b.rounds.at(-1)!;
+      expect(last.label).toBe('决赛与季军赛');
+      expect(last.slots).toHaveLength(2);
+      expect(last.slots[1]).toMatchObject({ kind: 'THIRD_PLACE', sourceOutcome: 'LOSER' });
+      expect([last.slots[1]!.homeEntryId, last.slots[1]!.awayEntryId]).toEqual(
+        b.rounds
+          .at(-2)!
+          .slots.map((s) => (s.winnerEntryId === s.homeEntryId ? s.awayEntryId : s.homeEntryId)),
+      );
+    },
+  );
+  it('one confirmed final cannot complete an outstanding bronze game', () => {
+    const f = fixture(4, bronzePolicy);
+    const next = finishRound(f, 1).nextRound!;
+    expect(next.fixtures.map((m) => m.fixtureKey)).toEqual(['R2-P1', 'R2-P2']);
+    expect(next.sources).toHaveLength(2);
+    publishNext(f, f.read());
+    f.matches[2] = final(f.matches[2]!);
+    expect(f.read()).toMatchObject({ isComplete: false, placements: [], confirmedMatchCount: 3 });
+    f.matches[3] = final(f.matches[3]!);
+    expect(f.read().isComplete).toBe(true);
+  });
+  it('rejects copied winners and a missing bronze fixture', () => {
+    const f = fixture(4, bronzePolicy);
+    publishNext(f, finishRound(f, 1));
+    const bronze = f.matches[3]!,
+      original = structuredClone(bronze),
+      championship = f.matches[2]!;
+    for (const field of ['entry_id', 'team_id', 'team_name', 'roster_revision_id'] as const)
+      bronze[`home_${field}`] = championship[`home_${field}`];
+    invalid(() => f.read());
+    f.matches[3] = original;
+    f.matches.pop();
+    invalid(() => f.read());
+  });
+  it('stale semifinal confirmation cannot become a valid loser proof', () => {
+    const f = fixture(4, bronzePolicy);
+    publishNext(f, finishRound(f, 1));
+    f.matches[0]!.confirmation.home_score = 1;
+    invalid(() => f.read());
+  });
+  it('false/omitted policy keeps old hashes and tied third places', () => {
+    expect(
+      generateKnockoutPairings(
+        freeze(4),
+        { ...policy, thirdPlaceMatch: false } as SchedulePolicy,
+        seed,
+      ),
+    ).toEqual(generateKnockoutPairings(freeze(4), policy, seed));
+    const f = fixture(4);
+    publishNext(f, finishRound(f, 1));
+    const b = finishRound(f, 2);
+    expect(b.totalMatchCount).toBe(3);
+    expect(b.placements.map((p) => p.rank)).toEqual([1, 2, 3, 3]);
+    expect(b.rounds.at(-1)!.slots).toHaveLength(1);
+    expect(b.rounds.at(-1)!.slots[0]).not.toHaveProperty('kind');
+  });
+});
+
+describe('X02 administrative knockout sources', () => {
+  function decide(m: ResultRow, kind = 'FORFEIT') {
+    const requestId = id(9700 + m.position_no);
+    return {
+      ...m,
+      exception_checked: true,
+      exception_head: { version: 2, active_request_id: requestId },
+      exception_request: {
+        id: requestId,
+        event_id: m.event_id,
+        match_id: m.id,
+        status: 'APPROVED',
+        operation: 'DECLARE',
+        version: 2,
+        source_match_version: m.version,
+        rules_id: id(9800),
+        rules_version: 1,
+        proposed_by: id(9801),
+        reviewed_by: id(9802),
+        reviewed_at: asOf,
+        kind,
+        forfeiting_side: kind === 'FORFEIT' ? 'HOME' : null,
+        winner_entry_id: kind === 'FORFEIT' ? m.away_entry_id : null,
+        loser_entry_id: kind === 'FORFEIT' ? m.home_entry_id : null,
+      },
+      exception_rules: {
+        id: id(9800),
+        event_id: m.event_id,
+        version: 1,
+        forfeit_win_points: 2,
+        forfeit_loss_points: 0,
+        cancellation_policy: 'EXCLUDE_FROM_TABLE',
+      },
+    };
+  }
+  it('forfeit advances opponent and genuine semifinal loser to bronze with administrative proof', () => {
+    const f = fixture(4, { ...policy, thirdPlaceMatch: true });
+    f.matches[0] = decide(f.matches[0]!);
+    f.matches[1] = decide(f.matches[1]!);
+    const b = f.read();
+    expect(b.confirmedMatchCount).toBe(0);
+    expect(b).toMatchObject({
+      adjudicatedMatchCount: 2,
+      cancelledMatchCount: 0,
+      resolvedMatchCount: 2,
+    });
+    expect(
+      b.nextRound!.sources.every(
+        (s) => 'kind' in s && s.kind === 'ADJUDICATION' && !('confirmationId' in s),
+      ),
+    ).toBe(true);
+    expect(b.nextRound!.fixtures[0]!.homeEntryId).toBe(f.matches[0]!.away_entry_id);
+    expect(b.nextRound!.fixtures[1]!.homeEntryId).toBe(f.matches[0]!.home_entry_id);
+    publishNext(f, b);
+    finishRound(f, 2);
+    expect(f.read().isComplete).toBe(true);
+    f.matches[0]!.exception_head.active_request_id = null;
+    f.matches[0]!.exception_request = null;
+    invalid(() => f.read());
+  });
+  it('cancelled semifinal never invents a winner or a next round', () => {
+    const f = fixture(4);
+    f.matches[0] = decide(f.matches[0]!, 'CANCELLED');
+    f.matches[1] = decide(f.matches[1]!);
+    const b = f.read();
+    expect(b.nextRound).toBeNull();
+    expect(b.isComplete).toBe(false);
+    expect(b).toMatchObject({
+      adjudicatedMatchCount: 1,
+      cancelledMatchCount: 1,
+      resolvedMatchCount: 2,
+    });
+    expect(b.rounds[0]!.slots[0]!.adjudication).toEqual({ kind: 'CANCELLED' });
+    expect(b.rounds[0]!.slots[0]!.winnerEntryId).toBeNull();
   });
 });

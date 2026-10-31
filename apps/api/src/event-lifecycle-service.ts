@@ -1,3 +1,4 @@
+import { resolutionCounts } from './match-exception-domain.js';
 import type { PoolClient } from 'pg';
 import type { EventLifecycleData } from '@small-city-basketball/contracts';
 import { ApiError, forbidden } from './errors.js';
@@ -20,6 +21,7 @@ export class EventLifecycleService extends StandingsService {
       if (a.event.format === 'GROUP_KNOCKOUT' && plan) {
         const competition = await this.groupCompetition(c, a.event, plan, matches, now);
         return {
+          ...resolutionCounts(competition),
           totalMatchCount: competition.totalMatchCount,
           confirmedMatchCount: competition.confirmedMatchCount,
           ready: competition.isComplete,
@@ -39,6 +41,8 @@ export class EventLifecycleService extends StandingsService {
         });
       const rules = await this.rules(c, a.ctx.orgId, a.event.locked_standings_ruleset_id);
       return completionReadiness({
+        format:
+          String(a.event.format) === 'DOUBLE_ROUND_ROBIN' ? 'DOUBLE_ROUND_ROBIN' : 'ROUND_ROBIN',
         publicationId: plan?.id ?? null,
         participants: plan ? this.participants(plan) : null,
         rules,

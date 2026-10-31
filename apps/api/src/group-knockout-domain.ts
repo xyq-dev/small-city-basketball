@@ -1,3 +1,5 @@
+import { administrativeResult } from './match-exception-domain.js';
+import type { GroupResultSource } from '../../../packages/contracts/match-exceptions.js';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type {
@@ -17,7 +19,11 @@ import type {
 import { MATCH_STATUSES } from '@small-city-basketball/contracts';
 import { invalid, objectInput, resourceId } from './validation.js';
 import { canonicalFreeze, generatePairings, parseSchedulePolicy } from './scheduling-domain.js';
-import { calculateKnockout, generateKnockoutPairings } from './knockout-domain.js';
+import {
+  canonicalKnockoutSources,
+  calculateKnockout,
+  generateKnockoutPairings,
+} from './knockout-domain.js';
 import { calculateStandings, confirmedResult, resultSourceInvalid } from './standings-domain.js';
 import type { ResultRow } from './standings-domain.js';
 import { confirmedPlayerStatistics } from './confirmed-player-statistics.js';
@@ -25,16 +31,45 @@ import { confirmedPlayerStatistics } from './confirmed-player-statistics.js';
 const ascii = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const hash = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex');
 const key = (r: number, p: number) => `R${r}-P${p}`;
-const canonicalSources = (sources: KnockoutSource[]) =>
-  [...sources]
-    .sort((a, b) => ascii(a.fixtureKey, b.fixtureKey))
-    .map((s) => ({
-      fixtureKey: s.fixtureKey,
-      matchId: s.matchId,
-      confirmationId: s.confirmationId,
-      matchVersion: s.matchVersion,
-      winnerEntryId: s.winnerEntryId,
-    }));
+const canonicalSources = (sources: GroupResultSource[]): GroupResultSource[] =>
+  sources
+    .map((s) => {
+      if ('kind' in s && s.kind === 'CANCELLATION') {
+        if (
+          Object.keys(s).sort().join('|') !==
+            [
+              'kind',
+              'fixtureKey',
+              'matchId',
+              'adjudicationId',
+              'adjudicationVersion',
+              'matchVersion',
+              'winnerEntryId',
+              'loserEntryId',
+            ]
+              .sort()
+              .join('|') ||
+          s.winnerEntryId !== null ||
+          s.loserEntryId !== null ||
+          s.adjudicationVersion !== 2 ||
+          !Number.isInteger(s.matchVersion) ||
+          s.matchVersion < 1
+        )
+          resultSourceInvalid();
+        return {
+          kind: 'CANCELLATION' as const,
+          fixtureKey: s.fixtureKey,
+          matchId: s.matchId,
+          adjudicationId: s.adjudicationId,
+          adjudicationVersion: s.adjudicationVersion,
+          matchVersion: s.matchVersion,
+          winnerEntryId: null,
+          loserEntryId: null,
+        };
+      }
+      return canonicalKnockoutSources([s as KnockoutSource])[0]!;
+    })
+    .sort((a, b) => ascii(a.fixtureKey, b.fixtureKey));
 export function parseGroupConfig(
   freeze: RegistrationFreezeData,
   raw: unknown,
@@ -155,7 +190,7 @@ function fixedBracket(input: {
   offset: number;
   matches: ResultRow[];
   asOf: string;
-  roundPublications: { roundNo: number; sources: KnockoutSource[] }[];
+  roundPublications: { roundNo: number; sources: GroupResultSource[] }[];
 }): KnockoutBracket {
   const toLocal = (s: KnockoutSource) => ({
     ...s,
@@ -223,7 +258,7 @@ export function calculateGroupKnockout(input: {
   asOf: string;
   draws?: GroupTieDrawData[];
   qualification?: GroupQualificationProof | null;
-  roundPublications?: { roundNo: number; sources: KnockoutSource[] }[];
+  roundPublications?: { roundNo: number; sources: GroupResultSource[] }[];
 }): GroupKnockoutProjection {
   let draw: ReturnType<typeof generateGroupPairings>;
   try {
@@ -243,7 +278,7 @@ export function calculateGroupKnockout(input: {
     new Set(input.matches.map((m) => m.revision_id)).size !== 1
   )
     resultSourceInvalid();
-  const sources: KnockoutSource[] = [];
+  const sources: GroupResultSource[] = [];
   for (const m of groupMatches) {
     const f = expected.get(m.fixture_key);
     if (
@@ -279,8 +314,22 @@ export function calculateGroupKnockout(input: {
         resultSourceInvalid();
     }
     if (m.state && m.scoring_rules?.tie_policy !== 'OVERTIME') resultSourceInvalid();
-    const result = confirmedResult(m),
-      stats = confirmedPlayerStatistics(m);
+    const admin = administrativeResult(m);
+    const result = admin ? null : confirmedResult(m),
+      stats = admin ? null : confirmedPlayerStatistics(m);
+    if (admin)
+      sources.push(
+        admin.source ?? {
+          kind: 'CANCELLATION',
+          fixtureKey: m.fixture_key,
+          matchId: m.id,
+          adjudicationId: admin.adjudicationId,
+          adjudicationVersion: admin.adjudicationVersion,
+          matchVersion: m.exception_request.source_match_version,
+          winnerEntryId: null,
+          loserEntryId: null,
+        },
+      );
     if (stats)
       for (const side of ['home', 'away'] as const) {
         const expectedPlayers = [...entrants.get(m[`${side}_entry_id`])!.players].sort((a, b) =>
@@ -427,7 +476,11 @@ export function calculateGroupKnockout(input: {
       }
     }
   }
-  const totalMatchCount = draw.fixtures.length + draw.config.groupCount * 2 - 1;
+  const totalMatchCount =
+    draw.fixtures.length +
+    draw.config.groupCount * 2 -
+    1 +
+    ((input.policy as SchedulePolicy & { thirdPlaceMatch?: boolean }).thirdPlaceMatch ? 1 : 0);
   const isComplete = !!bracket?.isComplete && allComplete;
   const placements: GroupKnockoutProjection['placements'] = [];
   if (isComplete) {
@@ -479,7 +532,24 @@ export function calculateGroupKnockout(input: {
           fixtures: initialFixtures,
         }
       : null;
+  const adjudicatedMatchCount =
+      groups.reduce((sum, g) => sum + (g.standings.adjudicatedMatchCount ?? 0), 0) +
+      (bracket?.adjudicatedMatchCount ?? 0),
+    cancelledMatchCount =
+      groups.reduce((sum, g) => sum + (g.standings.cancelledMatchCount ?? 0), 0) +
+      (bracket?.cancelledMatchCount ?? 0);
   return {
+    ...(adjudicatedMatchCount + cancelledMatchCount
+      ? {
+          adjudicatedMatchCount,
+          cancelledMatchCount,
+          resolvedMatchCount:
+            groups.reduce(
+              (sum, g) => sum + (g.standings.resolvedMatchCount ?? g.standings.confirmedMatchCount),
+              0,
+            ) + (bracket?.resolvedMatchCount ?? bracket?.confirmedMatchCount ?? 0),
+        }
+      : {}),
     algorithmVersion: 'GK_BALANCED_V1',
     groupCount: draw.config.groupCount,
     sourceHash,
@@ -487,7 +557,8 @@ export function calculateGroupKnockout(input: {
     groupRoundCount: draw.groupRoundCount,
     totalMatchCount,
     publishedMatchCount: input.matches.length,
-    confirmedMatchCount: sources.length + (bracket?.confirmedMatchCount ?? 0),
+    confirmedMatchCount:
+      sources.filter((s) => !('kind' in s)).length + (bracket?.confirmedMatchCount ?? 0),
     isComplete,
     groups,
     qualification: {

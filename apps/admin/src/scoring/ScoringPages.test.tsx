@@ -25,6 +25,27 @@ const context = (fetcher: typeof fetch): RegistrationWorkspace => ({
   onSessionRefresh: async () => {},
 });
 describe('scoring controls and review boundaries', () => {
+  it('adjudicated matches expose the decision instead of a prepared zero scoreboard or commands', async () => {
+    const dto = {
+      ...workbench,
+      match: { ...workbench.match, adjudication: { kind: 'CANCELLED' as const } },
+      snapshot: { ...snapshot, adjudication: { kind: 'CANCELLED' as const } },
+    };
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async (p) => response(String(p).endsWith('/scoring') ? dto : []));
+    render(
+      <MemoryRouter>
+        <MatchWorkbench
+          context={{ ...context(fetcher), organizationId: 'org-a' }}
+          matchId="match-a"
+        />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('本场取消')).toBeVisible();
+    expect(screen.queryByLabelText('主队比分')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '开始比赛' })).not.toBeInTheDocument();
+  });
   it('fixes single-elimination tie handling to overtime and requires an explicit overtime duration', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(

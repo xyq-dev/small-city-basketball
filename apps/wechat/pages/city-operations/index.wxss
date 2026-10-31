@@ -1,0 +1,51 @@
+.page {
+  padding: 24rpx;
+}
+.card {
+  margin: 20rpx 0;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 20rpx;
+}
+.subtitle {
+  font-weight: 600;
+}
+.notice {
+  padding: 16rpx;
+  background: #f1f4f8;
+  overflow-wrap: anywhere;
+}
+.warning {
+  color: #933;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+}
+.tabs button {
+  flex: 1;
+  min-width: 220rpx;
+}
+.picker,
+input {
+  padding: 18rpx;
+  background: #f5f7fa;
+  margin: 12rpx 0;
+}
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  background: #f5f7fa;
+  font-size: 16px;
+  line-height: 24px;
+  min-height: 96px;
+}
+input {
+  font-size: 16px;
+  line-height: 24px;
+  min-height: 44px;
+}
+button {
+  margin-top: 14rpx;
+  white-space: normal;
+}

@@ -246,3 +246,54 @@ describe('C07 limited personal performance projection', () => {
     expect(result.recentRecords.at(-1)?.date).toBe('2026-10-03');
   });
 });
+
+it('excludes a proven administrative forfeit from public personal and pending samples', () => {
+  const m = match();
+  m.status = 'SCHEDULED';
+  m.version = 2;
+  m.state = null;
+  m.confirmation = null;
+  m.event_id = uuid(8000);
+  m.fixture_key = 'R1-P1';
+  const request = {
+    id: uuid(8001),
+    match_id: m.id,
+    event_id: m.event_id,
+    status: 'APPROVED',
+    operation: 'DECLARE',
+    version: 2,
+    proposed_by: uuid(8002),
+    reviewed_by: uuid(8003),
+    reviewed_at: '2026-10-31T00:00:00Z',
+    source_match_version: 1,
+    rules_id: uuid(8004),
+    rules_version: 1,
+    kind: 'FORFEIT',
+    forfeiting_side: 'HOME',
+    winner_entry_id: m.away_entry_id,
+    loser_entry_id: m.home_entry_id,
+  };
+  Object.assign(m, {
+    exception_checked: true,
+    exception_head: { version: 2, active_request_id: request.id },
+    exception_request: request,
+    exception_rules: {
+      id: uuid(8004),
+      event_id: m.event_id,
+      version: 1,
+      forfeit_win_points: 2,
+      forfeit_loss_points: 0,
+      cancellation_policy: 'EXCLUDE_FROM_TABLE',
+    },
+  });
+  const result = project([sample(m)]);
+  expect(result).toMatchObject({
+    recordedMatchCount: 0,
+    confirmedMatchCount: 0,
+    pendingMatchCount: 0,
+    excludedAdministrativeMatchCount: 1,
+    totalPoints: null,
+    recentRecords: [],
+  });
+  expect(result.completenessNotice).toContain('不记为参赛');
+});

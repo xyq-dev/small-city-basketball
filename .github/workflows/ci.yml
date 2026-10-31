@@ -55,12 +55,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Install Chinese fonts for poster rendering and layout verification
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra fontconfig
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - name: Install Chinese sans-serif font for design comparison
-        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - name: Verify native compatibility evidence files
@@ -102,19 +102,22 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Install Chinese fonts for actual poster rasterization
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fontconfig
       - name: Prepare exact PostgreSQL archive clients and isolated restore role
         run: |
           node --test scripts/ci-postgres-clients.test.mjs
           node scripts/prepare-ci-postgres-clients.mjs
+      - name: Verify complete isolated migration chain before running dependent suites
+        id: schema_preflight
+        run: node --import tsx scripts/check-migrations.mjs
       - name: Existing PostgreSQL integration checks
         run: npm run test:integration --workspace @small-city-basketball/api -- --exclude '**/p07-*.integration.test.ts'
-      # The page suite owns separate child databases. Collect its failures even when
-      # an integration test fails; that failed step still makes the job fail.
+      # Stop dependent suites on a failed prerequisite so its archived log is available promptly.
+      # A successful run still executes build, native pages, restart and browser checks.
       - id: api_build
-        if: ${{ !cancelled() }}
         run: npm run build --workspace @small-city-basketball/api
       - name: Native mini program pages against the real API
-        if: ${{ !cancelled() && steps.api_build.outcome == 'success' }}
         run: npm run test:wechat:api
       - name: Capture sessions, scoring, standings and public identities
         run: node scripts/check-database-restart.mjs capture

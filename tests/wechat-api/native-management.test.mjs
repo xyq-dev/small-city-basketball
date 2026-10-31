@@ -173,8 +173,13 @@ async function publishSchedule(d, event, configure) {
   await schedule.page.generate();
   await d.settle(schedule);
   assert.equal(schedule.page.data.state, 'draft', schedule.page.data.error);
+  d.approve();
   await schedule.page.autoAssign();
   await d.settle(schedule);
+  assert.ok(
+    schedule.page.data.fixtures.every((f) => f.assigned),
+    schedule.page.data.error,
+  );
   await schedule.page.validate();
   await d.settle(schedule);
   assert.deepEqual(schedule.page.data.conflicts, [], schedule.page.data.error);

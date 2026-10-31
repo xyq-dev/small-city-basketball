@@ -322,6 +322,10 @@ Page({
     if (this.data.busy || this.commandBusy) return;
     this.setData({ securityOpen: false });
   },
+  copyMemberId() {
+    if (this.data.user?.id && typeof wx.setClipboardData === 'function')
+      wx.setClipboardData({ data: this.data.user.id });
+  },
   go(e) {
     const key = e.currentTarget.dataset.page;
     if (this.data.busy) return;
@@ -330,7 +334,14 @@ Page({
       return;
     }
     const kind = e.currentTarget.dataset.kind;
-    const query = ['seasons', 'team-requests'].includes(key)
+    const query = [
+      'seasons',
+      'team-requests',
+      'staff-configuration',
+      'local-manage',
+      'sponsorships',
+      'public-ledgers',
+    ].includes(key)
       ? { orgId: api.uuid(e.currentTarget.dataset.org) }
       : key === 'bookings'
         ? { view: 'sent' }

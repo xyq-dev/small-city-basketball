@@ -205,7 +205,7 @@ test('static preview refuses components with top-level request side effects', ()
 
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
 if (manifest.usingComponents?.['scb-nav']) {
-  test('actual scb-nav reads active Account and exposes its four navigation labels', () => {
+  test('actual scb-nav reads active Account and exposes its five nationwide navigation labels', () => {
     const result = buildPreview({
       root,
       route: 'pages/account/index',
@@ -220,7 +220,7 @@ if (manifest.usingComponents?.['scb-nav']) {
     });
     const navigation = result.components.find((component) => component.tag === 'scb-nav');
     assert.equal(navigation?.properties.active, 'Account');
-    for (const label of ['首页', '赛事', '视频', '我的'])
+    for (const label of ['首页', '赛事', '同城', '球队', '我的'])
       assert.ok(result.phone.includes('>' + label + '</div>'), label);
     assert.match(result.phone, /class="nav-item selected" data-key="Account"/);
   });

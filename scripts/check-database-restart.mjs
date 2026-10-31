@@ -1,10 +1,42 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
-import { createApi } from '../apps/api/dist/app.js';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import pg from 'pg';
 import { loadManifest } from '../ops/db/privileges.mjs';
 import { exactTableRows } from '../ops/recovery/fingerprint-rows.mjs';
+import { captureEventTemplates, verifyEventTemplates } from './x03-template-check.mjs';
+import {
+  configureX02AdjudicationRules,
+  captureX02Adjudication,
+  verifyX02Adjudication,
+  verifyX02AdjudicationQuarantine,
+} from './x02-adjudication-check.mjs';
+import {
+  captureX12Local,
+  captureX12CompletedService,
+  verifyX12Local,
+  verifyX12LocalQuarantine,
+} from './x12-local-check.mjs';
+import {
+  captureX18Governance,
+  verifyX18Governance,
+  verifyX18GovernanceQuarantine,
+} from './x18-governance-check.mjs';
+import {
+  captureX22AccountRecovery,
+  verifyX22AccountRecovery,
+  verifyX22AccountRecoveryQuarantine,
+} from './x22-account-recovery-check.mjs';
+import {
+  captureX05Recruitment,
+  verifyX05Recruitment,
+  verifyX05RecruitmentQuarantine,
+} from './x05-recruitment-check.mjs';
+import {
+  captureX08Archive,
+  verifyX08Archive,
+  verifyX08ArchiveQuarantine,
+} from './x08-archive-check.mjs';
 import { syntheticPdf, syntheticPng, syntheticMp4 } from './c05-media-fixtures.mjs';
 import {
   captureParticipantMaterials,
@@ -19,7 +51,7 @@ import {
 } from './c05-commerce-check.mjs';
 
 // The production package runs this same synthetic business chain against its real TLS API.
-// SQL remains read-only here; use the separately scoped backup role for the 83-table digest.
+// SQL remains read-only here; use the separately scoped backup role for the complete manifest-table digest.
 async function privateValue(name) {
   const inline = process.env[name];
   const file = process.env[name + '_FILE'];
@@ -91,7 +123,9 @@ if (!participantDataKey)
 const origin = process.env.APP_ORIGIN ?? 'http://127.0.0.1:5173';
 const instance = remoteUrl
   ? { app: null, pool: new pg.Pool({ connectionString: databaseUrl }) }
-  : await createApi({
+  : await (
+      await import('../apps/api/dist/app.js')
+    ).createApi({
       databaseUrl,
       appOrigin: origin,
       commerceMode: 'ENFORCED',
@@ -124,6 +158,99 @@ async function fingerprint() {
   }
   return hash.digest('hex');
 }
+async function completionTableCounts() {
+  const directory = new URL('../apps/api/migrations/', import.meta.url),
+    manifest = await loadManifest(),
+    names = new Set();
+  for (const file of (await readdir(directory)).filter(
+    (name) => /^\d+_[a-z0-9_]+\.sql$/.test(name) && Number(name.slice(0, name.indexOf('_'))) >= 25,
+  )) {
+    const sql = await readFile(new URL(file, directory), 'utf8');
+    for (const match of sql.matchAll(/\bCREATE TABLE\s+([a-z][a-z0-9_]+)\s*\(/g))
+      names.add(match[1]);
+  }
+  assert.ok(names.size > 0, 'Completion migration table inventory must not be empty');
+  const counts = {};
+  for (const table of [...names].sort()) {
+    assert.ok(
+      manifest.tables[table],
+      'Every completion table must have exact reviewed runtime privileges',
+    );
+    const result = await readPool.query(`SELECT count(*)::integer AS count FROM public."${table}"`);
+    assert.ok(
+      result.rows[0].count > 0,
+      `Completion table ${table} requires a real nonempty acceptance fixture`,
+    );
+    counts[table] = result.rows[0].count;
+  }
+  return counts;
+}
+async function captureCompletedReview(state, completed) {
+  const input = {
+    commandId: randomUUID(),
+    sourceKind: 'LOCAL_BOOKING',
+    sourceId: completed.bookingId,
+    score: 5,
+    body: '合成真实双方完成短时服务后评价',
+    publicConsent: true,
+  };
+  const created = (
+    await call('/v1/me/governance/reviews', {
+      method: 'POST',
+      cookie: state.registration.leaderCookie,
+      body: input,
+    })
+  ).data;
+  const published = (
+    await call(`/v1/me/governance/reviews/${created.id}/commands`, {
+      method: 'POST',
+      cookie: state.commerce.operators[0].cookie,
+      body: {
+        commandId: randomUUID(),
+        expectedVersion: created.version,
+        type: 'PUBLISH',
+        reason: '独立核对真实合成履约评价',
+      },
+    })
+  ).data;
+  assert.equal(published.status, 'PUBLISHED');
+  const row = (
+    await readPool.query(
+      `SELECT public_key,status,version,encode(sha256(convert_to((to_jsonb(r)-ARRAY['status','version','review_reason','updated_at'])::text,'UTF8')),'hex') AS core_hash FROM governance_reviews r WHERE id=$1`,
+      [created.id],
+    )
+  ).rows[0];
+  const publicData = (await call('/v1/public/governance/reviews/' + row.public_key)).data;
+  return {
+    id: created.id,
+    bookingId: completed.bookingId,
+    version: published.version,
+    keyHash: createHash('sha256').update(row.public_key).digest('hex'),
+    coreHash: row.core_hash,
+    publicHash: createHash('sha256').update(JSON.stringify(publicData)).digest('hex'),
+  };
+}
+async function verifyCompletedReview(saved, quarantined = false) {
+  const row = (
+    await readPool.query(
+      `SELECT public_key,status,version,encode(sha256(convert_to((to_jsonb(r)-ARRAY['status','version','review_reason','updated_at'])::text,'UTF8')),'hex') AS core_hash FROM governance_reviews r WHERE id=$1`,
+      [saved.id],
+    )
+  ).rows[0];
+  assert.equal(row.core_hash, saved.coreHash);
+  assert.equal(createHash('sha256').update(row.public_key).digest('hex'), saved.keyHash);
+  assert.equal(row.version, saved.version + (quarantined ? 1 : 0));
+  assert.equal(row.status, quarantined ? 'WITHDRAWN' : 'PUBLISHED');
+  const path = '/v1/public/governance/reviews/' + row.public_key;
+  if (quarantined) await assertPublicMissing(path);
+  else
+    assert.equal(
+      createHash('sha256')
+        .update(JSON.stringify((await call(path)).data))
+        .digest('hex'),
+      saved.publicHash,
+    );
+}
 let commerceSetup;
 async function captureRegistration(
   orgId,
@@ -132,6 +259,7 @@ async function captureRegistration(
   existingLeader,
   format = 'ROUND_ROBIN',
   teamCount = 3,
+  configureEvent = null,
 ) {
   const root = `/v1/orgs/${orgId}`;
   const leader = existingLeader
@@ -160,6 +288,10 @@ async function captureRegistration(
     },
   });
   const path = `${root}/events/${event.data.id}`;
+  if (configureEvent) {
+    await configureEvent(event.data);
+    event.data = (await call(path, { cookie: ownerCookie })).data;
+  }
   let workspace = (
     await call(`${path}/registration-rules`, {
       method: 'PUT',
@@ -1704,12 +1836,100 @@ try {
       ownerCookie: cookie,
       suffix,
     });
+    // New purposes use their own fixtures. Finishing the main event's last unprepared
+    // match would invalidate the independently captured rescheduling/viewing/OBS proofs.
+    const x03Templates = await captureEventTemplates({ call, state: { orgId, cookie } });
+    const x08Registration = await captureRegistration(orgId, cookie, `${suffix}-x08`);
+    const x08Scheduling = await captureScheduling(orgId, cookie, x08Registration);
+    await call(`/v1/orgs/${orgId}/events/${x08Scheduling.workspace.event.id}/scoring-rules`, {
+      method: 'PUT',
+      cookie,
+      body: {
+        expectedEventVersion: x08Scheduling.workspace.event.version,
+        regulationPeriods: 1,
+        periodDurationSeconds: 3600,
+        allowedScoreValues: [1, 2, 3],
+        tiePolicy: 'ALLOW_DRAW',
+        overtimeDurationSeconds: null,
+      },
+    });
+    const x08 = await captureX08Archive({
+      call,
+      state: { orgId, cookie, scoring, scheduling: x08Scheduling },
+      readPool,
+      assertPublicMissing,
+    });
+    const x05 = await captureX05Recruitment({
+      call,
+      state: {
+        orgId,
+        cookie,
+        userId: registration.data.user.id,
+        registration: frozenRegistration,
+        scheduling,
+        scoring,
+      },
+      readPool,
+      assertPublicMissing,
+      fetchFile: (route, actorCookie) =>
+        fetch(baseUrl + route, { headers: { Cookie: actorCookie } }),
+    });
+    const fixtureState = {
+      orgId,
+      cookie,
+      userId: registration.data.user.id,
+      registration: frozenRegistration,
+      scheduling,
+      scoring,
+      commerce: { operators: commerceSetup.operators },
+    };
+    const x18 = await captureX18Governance({
+      call,
+      state: fixtureState,
+      readPool,
+      fetchFile: (route, actorCookie) =>
+        fetch(baseUrl + route, { headers: { Cookie: actorCookie } }),
+    });
+    const x12 = await captureX12Local({ call, state: fixtureState, readPool, assertPublicMissing });
+    const completedService = await captureX12CompletedService({
+      call,
+      state: fixtureState,
+      readPool,
+      saved: x12,
+    });
+    const x18Review = await captureCompletedReview(fixtureState, completedService);
+    x18.coverage.verifiedBookingReview = true;
+    const x22 = await captureX22AccountRecovery({
+      call,
+      state: fixtureState,
+      runtimePool: instance.pool,
+      readPool,
+      databaseUrl,
+      appOrigin: origin,
+      requireRuntimeRole: !!remoteUrl,
+    });
+    const x02Registration = await captureRegistration(
+      orgId,
+      cookie,
+      `${suffix}-x02`,
+      frozenRegistration,
+      'ROUND_ROBIN',
+      3,
+      (event) => configureX02AdjudicationRules({ call, state: fixtureState, event }),
+    );
+    const x02Scheduling = await captureScheduling(orgId, cookie, x02Registration);
+    const x02 = await captureX02Adjudication({
+      call,
+      state: { ...fixtureState, x02Scheduling },
+      readPool,
+    });
     const commerce = await captureCommerceEnd({
       call,
       cookie,
       orgId,
       eventId: created.data.id,
       setup: commerceSetup,
+      organizationReviewerId: commerceSetup.operators[0].userId,
     });
     // Every byte-producing fixture is complete now. Media DTO usage is org-wide and
     // therefore includes the later C23 ciphertext; retain its exact final baseline.
@@ -1742,6 +1962,20 @@ try {
       saved.workspace = (
         await call(`/v1/orgs/${orgId}/matches/${saved.matchId}/overlay`, { cookie })
       ).data;
+    const courts = (await call(`/v1/orgs/${orgId}/courts`, { cookie })).data;
+    assert.deepEqual(
+      courts.map((c) => c.id).sort(),
+      [
+        scheduling.court.id,
+        lifecycle.court.id,
+        knockout.court.id,
+        groups.court.id,
+        x08Scheduling.court.id,
+        x12.courtId,
+        x02Scheduling.court.id,
+      ].sort(),
+      'Capture every original and explicitly added owned court with no extra rows',
+    );
     const state = {
       cookie,
       userId: registration.data.user.id,
@@ -1759,7 +1993,17 @@ try {
       media,
       commerce,
       participantMaterials,
+      x03Templates,
+      x08,
+      x05,
+      x18,
+      x18Review,
+      x12,
+      x22,
+      x02,
+      courts,
       participantKeyFixtureDatabase,
+      completionTableCounts: await completionTableCounts(),
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
@@ -1769,6 +2013,14 @@ try {
   } else if (mode === 'quarantine') {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     await verifyParticipantQuarantine({ readPool, saved: state.participantMaterials });
+    await verifyX08ArchiveQuarantine({ readPool, saved: state.x08, assertPublicMissing });
+    await verifyX05RecruitmentQuarantine({ readPool, saved: state.x05, assertPublicMissing });
+    await verifyX18GovernanceQuarantine({ readPool, saved: state.x18, assertPublicMissing });
+    await verifyCompletedReview(state.x18Review, true);
+    assert.deepEqual(await completionTableCounts(), state.completionTableCounts);
+    await verifyX22AccountRecoveryQuarantine({ readPool, saved: state.x22 });
+    await verifyX02AdjudicationQuarantine({ readPool, saved: state.x02 });
+    await verifyX12LocalQuarantine({ readPool, saved: state.x12, assertPublicMissing });
     const denied = await fetch(baseUrl + state.participantMaterials.materialPath + '/mine', {
       headers: { Cookie: state.participantMaterials.cookie },
     });
@@ -1781,7 +2033,7 @@ try {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     state.fingerprint = await fingerprint();
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
-    console.log('Captured the quiescent 83-table backup baseline.');
+    console.log('Captured the quiescent full manifest-table backup baseline.');
   } else {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     const session = await call('/v1/auth/session', { cookie: state.cookie });
@@ -1830,9 +2082,7 @@ try {
     const byId = (a, b) => a.id.localeCompare(b.id);
     assert.deepEqual(
       [...courts.data].sort(byId),
-      [scheduling.court, state.lifecycle.court, state.knockout.court, state.groups.court].sort(
-        byId,
-      ),
+      [...state.courts].sort(byId),
       'All owned scenario courts survive restart and full restore without extra rows',
     );
     const scoring = state.scoring;
@@ -1923,6 +2173,29 @@ try {
     await verifyMedia(state.media, state.cookie, state.registration.leaderCookie);
     await verifyCommerce({ call, saved: state.commerce, cookie: state.cookie, orgId: state.orgId });
     assert.equal(await fingerprint(), state.fingerprint);
+    await verifyEventTemplates({ call, state });
+    await verifyX08Archive({ call, state, readPool, saved: state.x08, assertPublicMissing });
+    await verifyX05Recruitment({
+      call,
+      state,
+      readPool,
+      saved: state.x05,
+      fetchFile: (route, actorCookie) =>
+        fetch(baseUrl + route, { headers: { Cookie: actorCookie } }),
+    });
+    await verifyX18Governance({
+      call,
+      state,
+      readPool,
+      saved: state.x18,
+      fetchFile: (route, actorCookie) =>
+        fetch(baseUrl + route, { headers: { Cookie: actorCookie } }),
+    });
+    await verifyX22AccountRecovery({ readPool, saved: state.x22 });
+    await verifyCompletedReview(state.x18Review);
+    assert.deepEqual(await completionTableCounts(), state.completionTableCounts);
+    await verifyX02Adjudication({ readPool, saved: state.x02 });
+    await verifyX12Local({ call, state, readPool, saved: state.x12, assertPublicMissing });
     await verifyParticipantMaterials({
       call,
       readPool,
@@ -1941,7 +2214,7 @@ try {
       'Lease fence remains monotonic across PostgreSQL restart',
     );
     console.log(
-      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across all 83 tables.',
+      'PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across every manifest table.',
     );
   }
 } finally {

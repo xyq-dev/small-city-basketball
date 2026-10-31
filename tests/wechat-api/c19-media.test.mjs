@@ -164,8 +164,13 @@ test('match media page: lost responses recovered by receipt; chunked upload resu
   owner.approve();
   await schedule.page.generate();
   await owner.settle(schedule);
+  owner.approve();
   await schedule.page.autoAssign();
   await owner.settle(schedule);
+  assert.ok(
+    schedule.page.data.fixtures.every((f) => f.assigned),
+    schedule.page.data.error,
+  );
   await schedule.page.validate();
   await owner.settle(schedule);
   owner.approve();

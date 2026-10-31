@@ -81,9 +81,12 @@ function StandingsIndex({ repository }: { repository: EventRepository }) {
       ) : (
         <div className="view-event-grid">
           {resource.data.map((event) => {
-            const supported = ['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
-              event.format,
-            );
+            const supported = [
+              'ROUND_ROBIN',
+              'DOUBLE_ROUND_ROBIN',
+              'SINGLE_ELIMINATION',
+              'GROUP_KNOCKOUT',
+            ].includes(event.format);
             const content = (
               <>
                 <span className="status-badge neutral">{EVENT_FORMAT_LABELS[event.format]}</span>
@@ -278,7 +281,7 @@ function EventStandings({
               </Link>
             </section>
           )}
-          {(data.event.format === 'ROUND_ROBIN' || data.event.format === 'GROUP_KNOCKOUT') && (
+          {['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN', 'GROUP_KNOCKOUT'].includes(data.event.format) && (
             <StandingsRulesForm
               key={`${data.rules?.id ?? 'none'}:${data.event.version}`}
               data={data}
@@ -305,7 +308,7 @@ function EventStandings({
               </button>
             </section>
           )}
-          {data.event.format === 'ROUND_ROBIN' &&
+          {['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN'].includes(data.event.format) &&
             (data.standings ? (
               <StandingsTable
                 data={data.standings}
@@ -404,7 +407,7 @@ function EventStandings({
           <div className="view-note">
             <ShieldCheck size={19} />
             <p>
-              仅当前有效确认计入榜单。重开后立即整场撤出，重确认只计最新一次；共享名次采用1、1、3，不使用隐藏判定。高级统计未统计，可靠离线与真实视频尚未接入；OBS授权独立管理。
+              仅当前有效确认计入榜单。重开后立即整场撤出，重确认只计最新一次；共享名次采用1、1、3，不使用隐藏判定。本页汇总基本得分与犯规；专业统计与实际时间请查看小程序已开启专业采集的单场报表。比赛媒体与OBS授权由对应入口管理。
             </p>
           </div>
         </>

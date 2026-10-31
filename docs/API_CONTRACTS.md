@@ -1,5 +1,28 @@
 # API 契约
 
+## COMPLETION22 当前契约增量
+
+2026-10-31 Asia/Shanghai；当前源码支持下述增量，整合与环境状态见[总任务](tasks/COMPLETION22.md)、[当前状态](CURRENT_STATUS.md)。下方P01至C03等段落保留历史实施范围，本节与当前共享契约覆盖其中已过时的“未实现”描述；不能由源码支持推断正式外部服务或生产已启用。
+
+`EventFormat` 的完整取值为 `ROUND_ROBIN | GROUP_KNOCKOUT | SINGLE_ELIMINATION | DOUBLE_ROUND_ROBIN`，与[运行时枚举](../packages/contracts/index.js)及[共享类型](../packages/contracts/index.d.ts)一致。`DOUBLE_ROUND_ROBIN` 是独立赛制，使用 `DRR_CIRCLE_V1`；每对球队主客互换各打一场，共n(n−1)场，不能按单循环场数截断或只在客户端加标签。原 `ROUND_ROBIN` 仍使用 `RR_CIRCLE_V1`，既有赛事不自动转换。
+
+单淘汰/分组接淘汰的排赛policy可显式指定 `thirdPlaceMatch:true`；false或省略保留旧规范化形状及hash。启用后半决赛负者进入季军赛，冠军赛与季军赛来源分别校验并独立确认，赛事闭赛和套餐额度包含季军赛；旧默认继续不设季军赛。排时优化只生成有界建议，不承诺全局最优或占用正式资源；采用/发布仍检查CAS、当前来源、跨业务日历及会话有效性。
+
+| 能力 | 当前入口/权威共享类型 | 关键约束 |
+| --- | --- | --- |
+| 双循环/排程/晋级优化 | 原schedule-revisions及后轮发布；[scheduling-completion](../packages/contracts/scheduling-completion.d.ts)、[knockout-optimization](../packages/contracts/knockout-optimization.d.ts) | 独立算法、完整两回合；来源与休息/比赛日间隔不由客户端绕过 |
+| 版本模板与办赛向导 | `/v1/orgs/:orgId/event-templates`、`event-template-commands`、`events/:eventId/setup-guide`；[event-templates](../packages/contracts/event-templates.d.ts) | 模板只复制配置，不复制人员、日期、权限或公开状态 |
+| 招募/导入/本届邀请/海报 | `/v1/public/recruitments/:publicId`及所属机构的recruitment、team-import、event-invitations、posters；[recruitment](../packages/contracts/recruitment.d.ts) | 招募与正式观赛授权分开；导入先预览；邀请不授机构权限；海报逐次核当前来源与照片许可 |
+| 行政裁定 | `/v1/orgs/:orgId/events/:eventId/exception-rules`、`matches/:matchId/exceptions`及其proposals/review；[match-exceptions](../packages/contracts/match-exceptions.d.ts) | FORFEIT/CANCELLED独立审批及撤回；READY读取真实scoring state；不伪造0比分/个人统计；消费后的来源不能直接撤回 |
+| 专业统计/阵容/持久离线命令 | 现有记分commands及受控离线意向；[professional-statistics](../packages/contracts/professional-statistics.d.ts)、[scoring-offline](../packages/contracts/scoring-offline.d.ts) | 显式采集、权威时钟、原命令顺序和fence；未知先核回执，冲突不自动合并；未采集保持未统计 |
+| 公开长期档案 | `/v1/me/public-archives`、`public-archive-sources`、`public/archives/:key`；[public-archives](../packages/contracts/public-archives.d.ts) | 独立发布/撤回及来源授权，明确身份关联，禁止按同名合并 |
+| 地点/球场与人员预约/球队约赛 | `/v1/public/local-listings`、`local-search`、`local-location`；私有local-services、local-bookings、local-matchups；[local-services](../packages/contracts/local-services.d.ts) | 原子锁位、DB到期释放、真实履约和一次性核销；地图未配时保留手选，不能伪造定位成功 |
+| 工作人员 | `/v1/orgs/:orgId/staff-configuration`及commands；[共享类型](../packages/contracts/index.d.ts) | 现有机构/赛事角色，缺行CAS和锁后session尾核；不能凭orgId扩权 |
+| 治理/城市运营/赞助/经费公示 | `/v1/me/governance`、`platform/governance`、city-operations、机构sponsorships/public-ledgers与对应公开入口；[governance](../packages/contracts/governance.d.ts) | 城市+机构+动作授权；独立审核/发布；真实曝光去重；账务是线下事实公示，不是钱包或募款 |
+| 邮箱验证/找回 | `/v1/account-recovery/{capabilities,me,reset-requests,verification-requests,consume,receipts,cancel}` | 重置码15分钟/验证码24小时、单次token、会话撤销；新有效同账号码可核对/取消旧unknown，迟到原请求受取消墓碑阻断；通道受理不代表送达 |
+
+正式微信/地图/邮件、真实支付/在线投保和DOC005多平台开播不由上述合同自动开通。精确字段与方法白名单以对应共享类型及控制器为准；保持每请求资源归属、当前授权、版本与未知请求恢复规则。
+
 ## C03增量（已合并PR11，生产未更新）
 
 精确DTO见 `packages/contracts/index.d.ts`，本轮范围及执行证据见[C03任务](tasks/C03.md)和[交接](handoffs/C03.md)。以下合同已由最终CI39941294620验证并合并，合并后检查状态以交接为准。
@@ -46,7 +69,7 @@ COMPLETED/ARCHIVED拒绝记分业务命令及新建/续租控制权；读取、�
 后台表单与 Mock adapter 先约定以下对象，不提前实现真实登录或机构隔离：
 
 ```ts
-type EventFormat = 'ROUND_ROBIN' | 'GROUP_KNOCKOUT' | 'SINGLE_ELIMINATION';
+type EventFormat = 'ROUND_ROBIN' | 'GROUP_KNOCKOUT' | 'SINGLE_ELIMINATION' | 'DOUBLE_ROUND_ROBIN';
 type CreateEventInput = {
   name: string;
   startDate: string;

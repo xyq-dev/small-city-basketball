@@ -7,7 +7,7 @@
   <button wx:if="{{!organizer}}" class="secondary" bindtap="nationwide">浏览全国</button>
   <view class="card">
     <view class="subtitle">按标准地区选择</view>
-    <view class="muted small">选择本地区包含其下辖地区；只确定到上级的赛事不会自动进入具体市县。定位暂未开放。</view>
+    <view class="muted small">选择本地区包含其下辖地区；只确定到上级的赛事不会自动进入具体市县。本页手动选城，附近定位请进入同城。</view>
     <view wx:if="{{catalogLoading}}" class="muted">正在读取地区目录…</view>
     <view wx:elif="{{catalogError}}" class="notice warning">{{catalogError}}<button class="secondary" bindtap="loadCatalog">重试读取地区目录</button></view>
     <block wx:else>
@@ -40,5 +40,5 @@
       <button class="secondary" bindtap="apply">使用此城市文字</button>
     </view>
   </block>
-  <view class="card city-location"><view class="subtitle">定位当前城市</view><view class="muted">定位暂未开放，请手动选城或浏览全国。这里不会读取你的当前位置。</view></view>
+  <view class="card city-location"><view class="subtitle">定位当前城市</view><view class="muted">本页手动选城，附近定位请进入同城，请手动选城或浏览全国。这里不会读取你的当前位置。</view></view>
 </view>

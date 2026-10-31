@@ -24,6 +24,29 @@ function fixture() {
 }
 
 describe('bounded request ingestion', () => {
+  it('governance evidence alone accepts up to 6MiB and neighbouring or wrong-method routes remain small', async () => {
+    const path =
+      '/v1/me/governance/cases/00000000-0000-4000-8000-000000000001/attachments/00000000-0000-4000-8000-000000000002';
+    const app = express();
+    app.use(requestBodyMiddleware());
+    app.all(/.*/, (_req, res) => res.sendStatus(200));
+    app.use(failure);
+    const body = { base64: 'A'.repeat(200000) };
+    expect((await request(app).put(path).send(body)).status).toBe(200);
+    for (const [method, url] of [
+      ['post', path],
+      ['put', path + '/content'],
+      ['put', path + '/commands'],
+    ] as const)
+      expect((await request(app)[method](url).send(body)).status).toBe(413);
+    expect(
+      (
+        await request(app)
+          .put(path)
+          .send({ base64: 'A'.repeat(6 * 1024 * 1024) })
+      ).status,
+    ).toBe(413);
+  });
   it('C23: private draft PUT shares the bounded upload lane without enlarging review or neighbouring writes', async () => {
     const path = upload
       .replace('/matches/', '/entries/')

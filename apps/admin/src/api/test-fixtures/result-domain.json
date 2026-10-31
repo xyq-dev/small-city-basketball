@@ -1,0 +1,1513 @@
+{
+  "knockout": {
+    "event": {
+      "id": "00000000-0000-4000-8000-000000000501",
+      "name": "合成裁定赛事",
+      "startDate": "2026-11-01",
+      "endDate": "2026-11-10",
+      "timezone": "Asia/Shanghai",
+      "venueName": "合成球馆",
+      "format": "SINGLE_ELIMINATION",
+      "status": "SCHEDULED",
+      "version": 7,
+      "createdAt": "2026-10-31T00:00:00.000Z",
+      "updatedAt": "2026-10-31T00:00:00.000Z"
+    },
+    "publicationId": "00000000-0000-4000-8000-000000000900",
+    "participants": [
+      {
+        "entryId": "00000000-0000-4000-8000-000000000001",
+        "teamId": "00000000-0000-4000-8000-000000000101",
+        "teamName": "合成队1",
+        "rosterRevisionId": "00000000-0000-4000-8000-000000000201"
+      },
+      {
+        "entryId": "00000000-0000-4000-8000-000000000002",
+        "teamId": "00000000-0000-4000-8000-000000000102",
+        "teamName": "合成队2",
+        "rosterRevisionId": "00000000-0000-4000-8000-000000000202"
+      },
+      {
+        "entryId": "00000000-0000-4000-8000-000000000003",
+        "teamId": "00000000-0000-4000-8000-000000000103",
+        "teamName": "合成队3",
+        "rosterRevisionId": "00000000-0000-4000-8000-000000000203"
+      },
+      {
+        "entryId": "00000000-0000-4000-8000-000000000004",
+        "teamId": "00000000-0000-4000-8000-000000000104",
+        "teamName": "合成队4",
+        "rosterRevisionId": "00000000-0000-4000-8000-000000000204"
+      }
+    ],
+    "bracket": {
+      "algorithmVersion": "SE_SEEDED_V1",
+      "sourceHash": "acc506a5867f67cb2ac9aef0419c866dd02927f5d51ed9a1dfb43747d3a0e444",
+      "asOf": "2026-10-31T00:00:00.000Z",
+      "participantCount": 4,
+      "totalMatchCount": 4,
+      "publishedMatchCount": 2,
+      "confirmedMatchCount": 0,
+      "adjudicatedMatchCount": 2,
+      "cancelledMatchCount": 0,
+      "resolvedMatchCount": 2,
+      "isComplete": false,
+      "rounds": [
+        {
+          "roundNo": 1,
+          "label": "半决赛",
+          "published": true,
+          "slots": [
+            {
+              "adjudication": {
+                "kind": "FORFEIT"
+              },
+              "fixtureKey": "R1-P1",
+              "roundNo": 1,
+              "positionNo": 1,
+              "homeEntryId": "00000000-0000-4000-8000-000000000004",
+              "awayEntryId": "00000000-0000-4000-8000-000000000003",
+              "homeSource": null,
+              "awaySource": null,
+              "byeEntryId": null,
+              "matchId": "00000000-0000-4000-8000-000000001101",
+              "status": "SCHEDULED",
+              "winnerEntryId": "00000000-0000-4000-8000-000000000003"
+            },
+            {
+              "adjudication": {
+                "kind": "FORFEIT"
+              },
+              "fixtureKey": "R1-P2",
+              "roundNo": 1,
+              "positionNo": 2,
+              "homeEntryId": "00000000-0000-4000-8000-000000000001",
+              "awayEntryId": "00000000-0000-4000-8000-000000000002",
+              "homeSource": null,
+              "awaySource": null,
+              "byeEntryId": null,
+              "matchId": "00000000-0000-4000-8000-000000001102",
+              "status": "SCHEDULED",
+              "winnerEntryId": "00000000-0000-4000-8000-000000000002"
+            }
+          ]
+        },
+        {
+          "roundNo": 2,
+          "label": "决赛与季军赛",
+          "published": false,
+          "slots": [
+            {
+              "kind": "CHAMPIONSHIP",
+              "sourceOutcome": "WINNER",
+              "fixtureKey": "R2-P1",
+              "roundNo": 2,
+              "positionNo": 1,
+              "homeEntryId": "00000000-0000-4000-8000-000000000003",
+              "awayEntryId": "00000000-0000-4000-8000-000000000002",
+              "homeSource": "R1-P1",
+              "awaySource": "R1-P2",
+              "byeEntryId": null,
+              "matchId": null,
+              "status": "WAITING",
+              "winnerEntryId": null
+            },
+            {
+              "kind": "THIRD_PLACE",
+              "sourceOutcome": "LOSER",
+              "fixtureKey": "R2-P2",
+              "roundNo": 2,
+              "positionNo": 2,
+              "homeEntryId": "00000000-0000-4000-8000-000000000004",
+              "awayEntryId": "00000000-0000-4000-8000-000000000001",
+              "homeSource": "R1-P1",
+              "awaySource": "R1-P2",
+              "byeEntryId": null,
+              "matchId": null,
+              "status": "WAITING",
+              "winnerEntryId": null
+            }
+          ]
+        }
+      ],
+      "placements": [],
+      "nextRound": {
+        "roundNo": 2,
+        "sourceHash": "acc506a5867f67cb2ac9aef0419c866dd02927f5d51ed9a1dfb43747d3a0e444",
+        "sources": [
+          {
+            "kind": "ADJUDICATION",
+            "fixtureKey": "R1-P1",
+            "matchId": "00000000-0000-4000-8000-000000001101",
+            "adjudicationId": "00000000-0000-4000-8000-000000005101",
+            "adjudicationVersion": 2,
+            "matchVersion": 1,
+            "winnerEntryId": "00000000-0000-4000-8000-000000000003",
+            "loserEntryId": "00000000-0000-4000-8000-000000000004"
+          },
+          {
+            "kind": "ADJUDICATION",
+            "fixtureKey": "R1-P2",
+            "matchId": "00000000-0000-4000-8000-000000001102",
+            "adjudicationId": "00000000-0000-4000-8000-000000005102",
+            "adjudicationVersion": 2,
+            "matchVersion": 1,
+            "winnerEntryId": "00000000-0000-4000-8000-000000000002",
+            "loserEntryId": "00000000-0000-4000-8000-000000000001"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixtureKey": "R2-P1",
+            "roundNo": 2,
+            "positionNo": 1,
+            "homeEntryId": "00000000-0000-4000-8000-000000000003",
+            "awayEntryId": "00000000-0000-4000-8000-000000000002",
+            "courtId": null,
+            "startsAt": null,
+            "endsAt": null
+          },
+          {
+            "fixtureKey": "R2-P2",
+            "roundNo": 2,
+            "positionNo": 2,
+            "homeEntryId": "00000000-0000-4000-8000-000000000004",
+            "awayEntryId": "00000000-0000-4000-8000-000000000001",
+            "courtId": null,
+            "startsAt": null,
+            "endsAt": null
+          }
+        ]
+      }
+    },
+    "capabilities": {
+      "canPublishNextRound": true
+    }
+  },
+  "knockoutComplete": {
+    "event": {
+      "id": "00000000-0000-4000-8000-000000000501",
+      "name": "合成裁定赛事",
+      "startDate": "2026-11-01",
+      "endDate": "2026-11-10",
+      "timezone": "Asia/Shanghai",
+      "venueName": "合成球馆",
+      "format": "SINGLE_ELIMINATION",
+      "status": "SCHEDULED",
+      "version": 7,
+      "createdAt": "2026-10-31T00:00:00.000Z",
+      "updatedAt": "2026-10-31T00:00:00.000Z"
+    },
+    "publicationId": "00000000-0000-4000-8000-000000000900",
+    "participants": [
+      {
+        "entryId": "00000000-0000-4000-8000-000000000001",
+        "teamId": "00000000-0000-4000-8000-000000000101",
+        "teamName": "合成队1",
+        "rosterRevisionId": "00000000-0000-4000-8000-000000000201"
+      },
+      {
+        "entryId": "00000000-0000-4000-8000-000000000002",
+        "teamId": "00000000-0000-4000-8000-000000000102",
+        "teamName": "合成队2",
+        "rosterRevisionId": "00000000-0000-4000-8000-000000000202"
+      },
+      {
+        "entryId": "00000000-0000-4000-8000-000000000003",
+        "teamId": "00000000-0000-4000-8000-000000000103",
+        "teamName": "合成队3",
+        "rosterRevisionId": "00000000-0000-4000-8000-000000000203"
+      },
+      {
+        "entryId": "00000000-0000-4000-8000-000000000004",
+        "teamId": "00000000-0000-4000-8000-000000000104",
+        "teamName": "合成队4",
+        "rosterRevisionId": "00000000-0000-4000-8000-000000000204"
+      }
+    ],
+    "bracket": {
+      "algorithmVersion": "SE_SEEDED_V1",
+      "sourceHash": "3c76fbc47a96e837fe71bba384adc5288c29ab4b253d9fde8ea2c9b9a1c99f54",
+      "asOf": "2026-10-31T00:00:00.000Z",
+      "participantCount": 4,
+      "totalMatchCount": 4,
+      "publishedMatchCount": 4,
+      "confirmedMatchCount": 0,
+      "adjudicatedMatchCount": 4,
+      "cancelledMatchCount": 0,
+      "resolvedMatchCount": 4,
+      "isComplete": true,
+      "rounds": [
+        {
+          "roundNo": 1,
+          "label": "半决赛",
+          "published": true,
+          "slots": [
+            {
+              "adjudication": {
+                "kind": "FORFEIT"
+              },
+              "fixtureKey": "R1-P1",
+              "roundNo": 1,
+              "positionNo": 1,
+              "homeEntryId": "00000000-0000-4000-8000-000000000004",
+              "awayEntryId": "00000000-0000-4000-8000-000000000003",
+              "homeSource": null,
+              "awaySource": null,
+              "byeEntryId": null,
+              "matchId": "00000000-0000-4000-8000-000000001101",
+              "status": "SCHEDULED",
+              "winnerEntryId": "00000000-0000-4000-8000-000000000003"
+            },
+            {
+              "adjudication": {
+                "kind": "FORFEIT"
+              },
+              "fixtureKey": "R1-P2",
+              "roundNo": 1,
+              "positionNo": 2,
+              "homeEntryId": "00000000-0000-4000-8000-000000000001",
+              "awayEntryId": "00000000-0000-4000-8000-000000000002",
+              "homeSource": null,
+              "awaySource": null,
+              "byeEntryId": null,
+              "matchId": "00000000-0000-4000-8000-000000001102",
+              "status": "SCHEDULED",
+              "winnerEntryId": "00000000-0000-4000-8000-000000000002"
+            }
+          ]
+        },
+        {
+          "roundNo": 2,
+          "label": "决赛与季军赛",
+          "published": true,
+          "slots": [
+            {
+              "adjudication": {
+                "kind": "FORFEIT"
+              },
+              "kind": "CHAMPIONSHIP",
+              "sourceOutcome": "WINNER",
+              "fixtureKey": "R2-P1",
+              "roundNo": 2,
+              "positionNo": 1,
+              "homeEntryId": "00000000-0000-4000-8000-000000000003",
+              "awayEntryId": "00000000-0000-4000-8000-000000000002",
+              "homeSource": "R1-P1",
+              "awaySource": "R1-P2",
+              "byeEntryId": null,
+              "matchId": "00000000-0000-4000-8000-000000001201",
+              "status": "SCHEDULED",
+              "winnerEntryId": "00000000-0000-4000-8000-000000000002"
+            },
+            {
+              "adjudication": {
+                "kind": "FORFEIT"
+              },
+              "kind": "THIRD_PLACE",
+              "sourceOutcome": "LOSER",
+              "fixtureKey": "R2-P2",
+              "roundNo": 2,
+              "positionNo": 2,
+              "homeEntryId": "00000000-0000-4000-8000-000000000004",
+              "awayEntryId": "00000000-0000-4000-8000-000000000001",
+              "homeSource": "R1-P1",
+              "awaySource": "R1-P2",
+              "byeEntryId": null,
+              "matchId": "00000000-0000-4000-8000-000000001202",
+              "status": "SCHEDULED",
+              "winnerEntryId": "00000000-0000-4000-8000-000000000001"
+            }
+          ]
+        }
+      ],
+      "placements": [
+        {
+          "entryId": "00000000-0000-4000-8000-000000000002",
+          "teamName": "合成队2",
+          "rank": 1,
+          "tied": false
+        },
+        {
+          "entryId": "00000000-0000-4000-8000-000000000003",
+          "teamName": "合成队3",
+          "rank": 2,
+          "tied": false
+        },
+        {
+          "entryId": "00000000-0000-4000-8000-000000000001",
+          "teamName": "合成队1",
+          "rank": 3,
+          "tied": false
+        },
+        {
+          "entryId": "00000000-0000-4000-8000-000000000004",
+          "teamName": "合成队4",
+          "rank": 4,
+          "tied": false
+        }
+      ],
+      "nextRound": null
+    },
+    "capabilities": {
+      "canPublishNextRound": false
+    }
+  },
+  "publicKnockout": {
+    "publicEventId": "public-synthetic-event",
+    "algorithmVersion": "SE_SEEDED_V1",
+    "sourceHash": "acc506a5867f67cb2ac9aef0419c866dd02927f5d51ed9a1dfb43747d3a0e444",
+    "asOf": "2026-10-31T00:00:00.000Z",
+    "participantCount": 4,
+    "totalMatchCount": 4,
+    "publishedMatchCount": 2,
+    "resolvedMatchCount": 2,
+    "adjudicatedMatchCount": 2,
+    "cancelledMatchCount": 0,
+    "confirmedMatchCount": 0,
+    "isComplete": false,
+    "rounds": [
+      {
+        "roundNo": 1,
+        "label": "半决赛",
+        "published": true,
+        "slots": [
+          {
+            "adjudication": {
+              "kind": "FORFEIT"
+            },
+            "positionNo": 1,
+            "home": {
+              "teamKey": "3333333333333333333333",
+              "teamName": "合成队4"
+            },
+            "away": {
+              "teamKey": "2222222222222222222222",
+              "teamName": "合成队3"
+            },
+            "bye": null,
+            "publicMatchId": "0000000000000000000000000000000000000000101",
+            "status": "SCHEDULED",
+            "winner": {
+              "teamKey": "2222222222222222222222",
+              "teamName": "合成队3"
+            }
+          },
+          {
+            "adjudication": {
+              "kind": "FORFEIT"
+            },
+            "positionNo": 2,
+            "home": {
+              "teamKey": "0000000000000000000000",
+              "teamName": "合成队1"
+            },
+            "away": {
+              "teamKey": "1111111111111111111111",
+              "teamName": "合成队2"
+            },
+            "bye": null,
+            "publicMatchId": "0000000000000000000000000000000000000000102",
+            "status": "SCHEDULED",
+            "winner": {
+              "teamKey": "1111111111111111111111",
+              "teamName": "合成队2"
+            }
+          }
+        ]
+      },
+      {
+        "roundNo": 2,
+        "label": "决赛与季军赛",
+        "published": false,
+        "slots": [
+          {
+            "kind": "CHAMPIONSHIP",
+            "sourceOutcome": "WINNER",
+            "positionNo": 1,
+            "home": {
+              "teamKey": "2222222222222222222222",
+              "teamName": "合成队3"
+            },
+            "away": {
+              "teamKey": "1111111111111111111111",
+              "teamName": "合成队2"
+            },
+            "bye": null,
+            "publicMatchId": null,
+            "status": "WAITING",
+            "winner": null
+          },
+          {
+            "kind": "THIRD_PLACE",
+            "sourceOutcome": "LOSER",
+            "positionNo": 2,
+            "home": {
+              "teamKey": "3333333333333333333333",
+              "teamName": "合成队4"
+            },
+            "away": {
+              "teamKey": "0000000000000000000000",
+              "teamName": "合成队1"
+            },
+            "bye": null,
+            "publicMatchId": null,
+            "status": "WAITING",
+            "winner": null
+          }
+        ]
+      }
+    ],
+    "placements": []
+  },
+  "publicKnockoutComplete": {
+    "publicEventId": "public-synthetic-event",
+    "algorithmVersion": "SE_SEEDED_V1",
+    "sourceHash": "3c76fbc47a96e837fe71bba384adc5288c29ab4b253d9fde8ea2c9b9a1c99f54",
+    "asOf": "2026-10-31T00:00:00.000Z",
+    "participantCount": 4,
+    "totalMatchCount": 4,
+    "publishedMatchCount": 4,
+    "resolvedMatchCount": 4,
+    "adjudicatedMatchCount": 4,
+    "cancelledMatchCount": 0,
+    "confirmedMatchCount": 0,
+    "isComplete": true,
+    "rounds": [
+      {
+        "roundNo": 1,
+        "label": "半决赛",
+        "published": true,
+        "slots": [
+          {
+            "adjudication": {
+              "kind": "FORFEIT"
+            },
+            "positionNo": 1,
+            "home": {
+              "teamKey": "3333333333333333333333",
+              "teamName": "合成队4"
+            },
+            "away": {
+              "teamKey": "2222222222222222222222",
+              "teamName": "合成队3"
+            },
+            "bye": null,
+            "publicMatchId": "0000000000000000000000000000000000000000101",
+            "status": "SCHEDULED",
+            "winner": {
+              "teamKey": "2222222222222222222222",
+              "teamName": "合成队3"
+            }
+          },
+          {
+            "adjudication": {
+              "kind": "FORFEIT"
+            },
+            "positionNo": 2,
+            "home": {
+              "teamKey": "0000000000000000000000",
+              "teamName": "合成队1"
+            },
+            "away": {
+              "teamKey": "1111111111111111111111",
+              "teamName": "合成队2"
+            },
+            "bye": null,
+            "publicMatchId": "0000000000000000000000000000000000000000102",
+            "status": "SCHEDULED",
+            "winner": {
+              "teamKey": "1111111111111111111111",
+              "teamName": "合成队2"
+            }
+          }
+        ]
+      },
+      {
+        "roundNo": 2,
+        "label": "决赛与季军赛",
+        "published": true,
+        "slots": [
+          {
+            "adjudication": {
+              "kind": "FORFEIT"
+            },
+            "kind": "CHAMPIONSHIP",
+            "sourceOutcome": "WINNER",
+            "positionNo": 1,
+            "home": {
+              "teamKey": "2222222222222222222222",
+              "teamName": "合成队3"
+            },
+            "away": {
+              "teamKey": "1111111111111111111111",
+              "teamName": "合成队2"
+            },
+            "bye": null,
+            "publicMatchId": "0000000000000000000000000000000000000000201",
+            "status": "SCHEDULED",
+            "winner": {
+              "teamKey": "1111111111111111111111",
+              "teamName": "合成队2"
+            }
+          },
+          {
+            "adjudication": {
+              "kind": "FORFEIT"
+            },
+            "kind": "THIRD_PLACE",
+            "sourceOutcome": "LOSER",
+            "positionNo": 2,
+            "home": {
+              "teamKey": "3333333333333333333333",
+              "teamName": "合成队4"
+            },
+            "away": {
+              "teamKey": "0000000000000000000000",
+              "teamName": "合成队1"
+            },
+            "bye": null,
+            "publicMatchId": "0000000000000000000000000000000000000000202",
+            "status": "SCHEDULED",
+            "winner": {
+              "teamKey": "0000000000000000000000",
+              "teamName": "合成队1"
+            }
+          }
+        ]
+      }
+    ],
+    "placements": [
+      {
+        "team": {
+          "teamKey": "1111111111111111111111",
+          "teamName": "合成队2"
+        },
+        "rank": 1,
+        "tied": false
+      },
+      {
+        "team": {
+          "teamKey": "2222222222222222222222",
+          "teamName": "合成队3"
+        },
+        "rank": 2,
+        "tied": false
+      },
+      {
+        "team": {
+          "teamKey": "0000000000000000000000",
+          "teamName": "合成队1"
+        },
+        "rank": 3,
+        "tied": false
+      },
+      {
+        "team": {
+          "teamKey": "3333333333333333333333",
+          "teamName": "合成队4"
+        },
+        "rank": 4,
+        "tied": false
+      }
+    ]
+  },
+  "groups": {
+    "event": {
+      "id": "00000000-0000-4000-8000-000000000501",
+      "name": "合成裁定赛事",
+      "startDate": "2026-11-01",
+      "endDate": "2026-11-10",
+      "timezone": "Asia/Shanghai",
+      "venueName": "合成球馆",
+      "format": "GROUP_KNOCKOUT",
+      "status": "SCHEDULED",
+      "version": 7,
+      "createdAt": "2026-10-31T00:00:00.000Z",
+      "updatedAt": "2026-10-31T00:00:00.000Z"
+    },
+    "publicationId": "00000000-0000-4000-8000-000000000900",
+    "config": {
+      "groupCount": 2,
+      "seededEntryIds": [
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "competition": {
+      "adjudicatedMatchCount": 2,
+      "cancelledMatchCount": 0,
+      "resolvedMatchCount": 2,
+      "algorithmVersion": "GK_BALANCED_V1",
+      "groupCount": 2,
+      "sourceHash": "a3a9546082608d3867b3a8d3b88c032cf016b0edab9752e3928f7b6bdd884df0",
+      "asOf": "2026-10-31T00:00:00.000Z",
+      "groupRoundCount": 1,
+      "totalMatchCount": 6,
+      "publishedMatchCount": 2,
+      "confirmedMatchCount": 0,
+      "isComplete": false,
+      "groups": [
+        {
+          "groupKey": "A",
+          "label": "A组",
+          "participants": [
+            {
+              "entryId": "00000000-0000-4000-8000-000000000001",
+              "teamId": "00000000-0000-4000-8000-000000000101",
+              "teamName": "合成队1",
+              "rosterRevisionId": "00000000-0000-4000-8000-000000000201"
+            },
+            {
+              "entryId": "00000000-0000-4000-8000-000000000004",
+              "teamId": "00000000-0000-4000-8000-000000000104",
+              "teamName": "合成队4",
+              "rosterRevisionId": "00000000-0000-4000-8000-000000000204"
+            }
+          ],
+          "standings": {
+            "mode": "PUBLISHED",
+            "rulesetVersion": 1,
+            "sourceHash": "797ff7445ec152e2208a3170460906e3ed8032cf581f29a7765baa1860f91175",
+            "asOf": "2026-10-31T00:00:00.000Z",
+            "confirmedMatchCount": 0,
+            "totalMatchCount": 1,
+            "isComplete": true,
+            "resolvedMatchCount": 1,
+            "adjudicatedMatchCount": 1,
+            "cancelledMatchCount": 0,
+            "hasSharedRanks": false,
+            "rows": [
+              {
+                "entryId": "00000000-0000-4000-8000-000000000001",
+                "teamId": "00000000-0000-4000-8000-000000000101",
+                "teamName": "合成队1",
+                "rosterRevisionId": "00000000-0000-4000-8000-000000000201",
+                "played": 1,
+                "wins": 1,
+                "draws": 0,
+                "losses": 0,
+                "pointsFor": 0,
+                "pointsAgainst": 0,
+                "scoreDifference": 0,
+                "leaguePoints": 2,
+                "rank": 1,
+                "tied": false
+              },
+              {
+                "entryId": "00000000-0000-4000-8000-000000000004",
+                "teamId": "00000000-0000-4000-8000-000000000104",
+                "teamName": "合成队4",
+                "rosterRevisionId": "00000000-0000-4000-8000-000000000204",
+                "played": 1,
+                "wins": 0,
+                "draws": 0,
+                "losses": 1,
+                "pointsFor": 0,
+                "pointsAgainst": 0,
+                "scoreDifference": 0,
+                "leaguePoints": 0,
+                "rank": 2,
+                "tied": false
+              }
+            ]
+          },
+          "qualifiedEntryIds": [
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000004"
+          ],
+          "unresolvedTieEntryIds": [],
+          "draw": null
+        },
+        {
+          "groupKey": "B",
+          "label": "B组",
+          "participants": [
+            {
+              "entryId": "00000000-0000-4000-8000-000000000002",
+              "teamId": "00000000-0000-4000-8000-000000000102",
+              "teamName": "合成队2",
+              "rosterRevisionId": "00000000-0000-4000-8000-000000000202"
+            },
+            {
+              "entryId": "00000000-0000-4000-8000-000000000003",
+              "teamId": "00000000-0000-4000-8000-000000000103",
+              "teamName": "合成队3",
+              "rosterRevisionId": "00000000-0000-4000-8000-000000000203"
+            }
+          ],
+          "standings": {
+            "mode": "PUBLISHED",
+            "rulesetVersion": 1,
+            "sourceHash": "73265895831b65018dcfb2a5892cef9d1e47196f5775fdeaf442d9d88802ce3f",
+            "asOf": "2026-10-31T00:00:00.000Z",
+            "confirmedMatchCount": 0,
+            "totalMatchCount": 1,
+            "isComplete": true,
+            "resolvedMatchCount": 1,
+            "adjudicatedMatchCount": 1,
+            "cancelledMatchCount": 0,
+            "hasSharedRanks": false,
+            "rows": [
+              {
+                "entryId": "00000000-0000-4000-8000-000000000003",
+                "teamId": "00000000-0000-4000-8000-000000000103",
+                "teamName": "合成队3",
+                "rosterRevisionId": "00000000-0000-4000-8000-000000000203",
+                "played": 1,
+                "wins": 1,
+                "draws": 0,
+                "losses": 0,
+                "pointsFor": 0,
+                "pointsAgainst": 0,
+                "scoreDifference": 0,
+                "leaguePoints": 2,
+                "rank": 1,
+                "tied": false
+              },
+              {
+                "entryId": "00000000-0000-4000-8000-000000000002",
+                "teamId": "00000000-0000-4000-8000-000000000102",
+                "teamName": "合成队2",
+                "rosterRevisionId": "00000000-0000-4000-8000-000000000202",
+                "played": 1,
+                "wins": 0,
+                "draws": 0,
+                "losses": 1,
+                "pointsFor": 0,
+                "pointsAgainst": 0,
+                "scoreDifference": 0,
+                "leaguePoints": 0,
+                "rank": 2,
+                "tied": false
+              }
+            ]
+          },
+          "qualifiedEntryIds": [
+            "00000000-0000-4000-8000-000000000003",
+            "00000000-0000-4000-8000-000000000002"
+          ],
+          "unresolvedTieEntryIds": [],
+          "draw": null
+        }
+      ],
+      "qualification": {
+        "status": "READY",
+        "sourceHash": "f6d74e370a43d3da06a7f3ca1b61a1c222088fbd6dc2e66af2126338cc00a409",
+        "sources": [
+          {
+            "kind": "ADJUDICATION",
+            "fixtureKey": "R1-P1",
+            "matchId": "00000000-0000-4000-8000-000000001101",
+            "adjudicationId": "00000000-0000-4000-8000-000000005101",
+            "adjudicationVersion": 2,
+            "matchVersion": 1,
+            "winnerEntryId": "00000000-0000-4000-8000-000000000001",
+            "loserEntryId": "00000000-0000-4000-8000-000000000004"
+          },
+          {
+            "kind": "ADJUDICATION",
+            "fixtureKey": "R1-P2",
+            "matchId": "00000000-0000-4000-8000-000000001102",
+            "adjudicationId": "00000000-0000-4000-8000-000000005102",
+            "adjudicationVersion": 2,
+            "matchVersion": 1,
+            "winnerEntryId": "00000000-0000-4000-8000-000000000003",
+            "loserEntryId": "00000000-0000-4000-8000-000000000002"
+          }
+        ],
+        "slots": [
+          "00000000-0000-4000-8000-000000000001",
+          "00000000-0000-4000-8000-000000000002",
+          "00000000-0000-4000-8000-000000000003",
+          "00000000-0000-4000-8000-000000000004"
+        ],
+        "unresolvedGroups": [],
+        "publicationId": null
+      },
+      "bracket": null,
+      "placements": [],
+      "nextRound": {
+        "roundNo": 2,
+        "sourceHash": "f6d74e370a43d3da06a7f3ca1b61a1c222088fbd6dc2e66af2126338cc00a409",
+        "sources": [
+          {
+            "kind": "ADJUDICATION",
+            "fixtureKey": "R1-P1",
+            "matchId": "00000000-0000-4000-8000-000000001101",
+            "adjudicationId": "00000000-0000-4000-8000-000000005101",
+            "adjudicationVersion": 2,
+            "matchVersion": 1,
+            "winnerEntryId": "00000000-0000-4000-8000-000000000001",
+            "loserEntryId": "00000000-0000-4000-8000-000000000004"
+          },
+          {
+            "kind": "ADJUDICATION",
+            "fixtureKey": "R1-P2",
+            "matchId": "00000000-0000-4000-8000-000000001102",
+            "adjudicationId": "00000000-0000-4000-8000-000000005102",
+            "adjudicationVersion": 2,
+            "matchVersion": 1,
+            "winnerEntryId": "00000000-0000-4000-8000-000000000003",
+            "loserEntryId": "00000000-0000-4000-8000-000000000002"
+          }
+        ],
+        "fixtures": [
+          {
+            "fixtureKey": "R2-P1",
+            "roundNo": 2,
+            "positionNo": 1,
+            "homeEntryId": "00000000-0000-4000-8000-000000000001",
+            "awayEntryId": "00000000-0000-4000-8000-000000000002",
+            "courtId": null,
+            "startsAt": null,
+            "endsAt": null
+          },
+          {
+            "fixtureKey": "R2-P2",
+            "roundNo": 2,
+            "positionNo": 2,
+            "homeEntryId": "00000000-0000-4000-8000-000000000003",
+            "awayEntryId": "00000000-0000-4000-8000-000000000004",
+            "courtId": null,
+            "startsAt": null,
+            "endsAt": null
+          }
+        ]
+      }
+    },
+    "capabilities": {
+      "canDrawTies": true,
+      "canPublishQualification": true,
+      "canPublishNextRound": false
+    }
+  },
+  "cancelledGroups": {
+    "event": {
+      "id": "00000000-0000-4000-8000-000000000501",
+      "name": "合成裁定赛事",
+      "startDate": "2026-11-01",
+      "endDate": "2026-11-10",
+      "timezone": "Asia/Shanghai",
+      "venueName": "合成球馆",
+      "format": "GROUP_KNOCKOUT",
+      "status": "SCHEDULED",
+      "version": 7,
+      "createdAt": "2026-10-31T00:00:00.000Z",
+      "updatedAt": "2026-10-31T00:00:00.000Z"
+    },
+    "publicationId": "00000000-0000-4000-8000-000000000900",
+    "config": {
+      "groupCount": 2,
+      "seededEntryIds": [
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000002"
+      ]
+    },
+    "competition": {
+      "adjudicatedMatchCount": 0,
+      "cancelledMatchCount": 2,
+      "resolvedMatchCount": 2,
+      "algorithmVersion": "GK_BALANCED_V1",
+      "groupCount": 2,
+      "sourceHash": "ce96a511beeaf5b6f59c7155eff94fbf0bb4916cc09e6c6983ceb4257af6eafd",
+      "asOf": "2026-10-31T00:00:00.000Z",
+      "groupRoundCount": 1,
+      "totalMatchCount": 6,
+      "publishedMatchCount": 2,
+      "confirmedMatchCount": 0,
+      "isComplete": false,
+      "groups": [
+        {
+          "groupKey": "A",
+          "label": "A组",
+          "participants": [
+            {
+              "entryId": "00000000-0000-4000-8000-000000000001",
+              "teamId": "00000000-0000-4000-8000-000000000101",
+              "teamName": "合成队1",
+              "rosterRevisionId": "00000000-0000-4000-8000-000000000201"
+            },
+            {
+              "entryId": "00000000-0000-4000-8000-000000000004",
+              "teamId": "00000000-0000-4000-8000-000000000104",
+              "teamName": "合成队4",
+              "rosterRevisionId": "00000000-0000-4000-8000-000000000204"
+            }
+          ],
+          "standings": {
+            "mode": "PUBLISHED",
+            "rulesetVersion": 1,
+            "sourceHash": "8ecadde9a16fcd4ba4b8adff37c45ddb00647ecac9fafb2da459775f5ee4e6a7",
+            "asOf": "2026-10-31T00:00:00.000Z",
+            "confirmedMatchCount": 0,
+            "totalMatchCount": 1,
+            "isComplete": true,
+            "resolvedMatchCount": 1,
+            "adjudicatedMatchCount": 0,
+            "cancelledMatchCount": 1,
+            "hasSharedRanks": true,
+            "rows": [
+              {
+                "entryId": "00000000-0000-4000-8000-000000000001",
+                "teamId": "00000000-0000-4000-8000-000000000101",
+                "teamName": "合成队1",
+                "rosterRevisionId": "00000000-0000-4000-8000-000000000201",
+                "played": 0,
+                "wins": 0,
+                "draws": 0,
+                "losses": 0,
+                "pointsFor": 0,
+                "pointsAgainst": 0,
+                "scoreDifference": 0,
+                "leaguePoints": 0,
+                "rank": 1,
+                "tied": true
+              },
+              {
+                "entryId": "00000000-0000-4000-8000-000000000004",
+                "teamId": "00000000-0000-4000-8000-000000000104",
+                "teamName": "合成队4",
+                "rosterRevisionId": "00000000-0000-4000-8000-000000000204",
+                "played": 0,
+                "wins": 0,
+                "draws": 0,
+                "losses": 0,
+                "pointsFor": 0,
+                "pointsAgainst": 0,
+                "scoreDifference": 0,
+                "leaguePoints": 0,
+                "rank": 1,
+                "tied": true
+              }
+            ]
+          },
+          "qualifiedEntryIds": null,
+          "unresolvedTieEntryIds": [
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000004"
+          ],
+          "draw": null
+        },
+        {
+          "groupKey": "B",
+          "label": "B组",
+          "participants": [
+            {
+              "entryId": "00000000-0000-4000-8000-000000000002",
+              "teamId": "00000000-0000-4000-8000-000000000102",
+              "teamName": "合成队2",
+              "rosterRevisionId": "00000000-0000-4000-8000-000000000202"
+            },
+            {
+              "entryId": "00000000-0000-4000-8000-000000000003",
+              "teamId": "00000000-0000-4000-8000-000000000103",
+              "teamName": "合成队3",
+              "rosterRevisionId": "00000000-0000-4000-8000-000000000203"
+            }
+          ],
+          "standings": {
+            "mode": "PUBLISHED",
+            "rulesetVersion": 1,
+            "sourceHash": "9e6f4e8a0b593337f988c935311c48a5a24625911b7368c2fd692a0ce0bf9237",
+            "asOf": "2026-10-31T00:00:00.000Z",
+            "confirmedMatchCount": 0,
+            "totalMatchCount": 1,
+            "isComplete": true,
+            "resolvedMatchCount": 1,
+            "adjudicatedMatchCount": 0,
+            "cancelledMatchCount": 1,
+            "hasSharedRanks": true,
+            "rows": [
+              {
+                "entryId": "00000000-0000-4000-8000-000000000002",
+                "teamId": "00000000-0000-4000-8000-000000000102",
+                "teamName": "合成队2",
+                "rosterRevisionId": "00000000-0000-4000-8000-000000000202",
+                "played": 0,
+                "wins": 0,
+                "draws": 0,
+                "losses": 0,
+                "pointsFor": 0,
+                "pointsAgainst": 0,
+                "scoreDifference": 0,
+                "leaguePoints": 0,
+                "rank": 1,
+                "tied": true
+              },
+              {
+                "entryId": "00000000-0000-4000-8000-000000000003",
+                "teamId": "00000000-0000-4000-8000-000000000103",
+                "teamName": "合成队3",
+                "rosterRevisionId": "00000000-0000-4000-8000-000000000203",
+                "played": 0,
+                "wins": 0,
+                "draws": 0,
+                "losses": 0,
+                "pointsFor": 0,
+                "pointsAgainst": 0,
+                "scoreDifference": 0,
+                "leaguePoints": 0,
+                "rank": 1,
+                "tied": true
+              }
+            ]
+          },
+          "qualifiedEntryIds": null,
+          "unresolvedTieEntryIds": [
+            "00000000-0000-4000-8000-000000000002",
+            "00000000-0000-4000-8000-000000000003"
+          ],
+          "draw": null
+        }
+      ],
+      "qualification": {
+        "status": "TIE_BREAK_REQUIRED",
+        "sourceHash": "0e5f78833dda439f6201c4448916b6e7780071c64afcf20f038c9685ed00db3d",
+        "sources": [
+          {
+            "kind": "CANCELLATION",
+            "fixtureKey": "R1-P1",
+            "matchId": "00000000-0000-4000-8000-000000001101",
+            "adjudicationId": "00000000-0000-4000-8000-000000005101",
+            "adjudicationVersion": 2,
+            "matchVersion": 1,
+            "winnerEntryId": null,
+            "loserEntryId": null
+          },
+          {
+            "kind": "CANCELLATION",
+            "fixtureKey": "R1-P2",
+            "matchId": "00000000-0000-4000-8000-000000001102",
+            "adjudicationId": "00000000-0000-4000-8000-000000005102",
+            "adjudicationVersion": 2,
+            "matchVersion": 1,
+            "winnerEntryId": null,
+            "loserEntryId": null
+          }
+        ],
+        "slots": [],
+        "unresolvedGroups": ["A", "B"],
+        "publicationId": null
+      },
+      "bracket": null,
+      "placements": [],
+      "nextRound": null
+    },
+    "capabilities": {
+      "canDrawTies": true,
+      "canPublishQualification": true,
+      "canPublishNextRound": false
+    }
+  },
+  "publicGroups": {
+    "publicEventId": "public-synthetic-event",
+    "algorithmVersion": "GK_BALANCED_V1",
+    "sourceHash": "a3a9546082608d3867b3a8d3b88c032cf016b0edab9752e3928f7b6bdd884df0",
+    "asOf": "2026-10-31T00:00:00.000Z",
+    "groupCount": 2,
+    "totalMatchCount": 6,
+    "publishedMatchCount": 2,
+    "resolvedMatchCount": 2,
+    "adjudicatedMatchCount": 2,
+    "cancelledMatchCount": 0,
+    "confirmedMatchCount": 0,
+    "isComplete": false,
+    "rules": {
+      "version": 1,
+      "algorithmVersion": "RR_STANDINGS_V1",
+      "winPoints": 2,
+      "lossPoints": 0,
+      "drawPoints": 1,
+      "tiebreakers": ["WINS"]
+    },
+    "qualificationStatus": "READY",
+    "groups": [
+      {
+        "groupKey": "A",
+        "label": "A组",
+        "resolvedMatchCount": 1,
+        "adjudicatedMatchCount": 1,
+        "cancelledMatchCount": 0,
+        "confirmedMatchCount": 0,
+        "totalMatchCount": 1,
+        "isComplete": true,
+        "rows": [
+          {
+            "teamKey": "0000000000000000000000",
+            "teamName": "合成队1",
+            "rank": 1,
+            "tied": false,
+            "played": 1,
+            "wins": 1,
+            "draws": 0,
+            "losses": 0,
+            "pointsFor": 0,
+            "pointsAgainst": 0,
+            "scoreDifference": 0,
+            "leaguePoints": 2
+          },
+          {
+            "teamKey": "3333333333333333333333",
+            "teamName": "合成队4",
+            "rank": 2,
+            "tied": false,
+            "played": 1,
+            "wins": 0,
+            "draws": 0,
+            "losses": 1,
+            "pointsFor": 0,
+            "pointsAgainst": 0,
+            "scoreDifference": 0,
+            "leaguePoints": 0
+          }
+        ],
+        "qualified": [
+          {
+            "teamKey": "0000000000000000000000",
+            "teamName": "合成队1"
+          },
+          {
+            "teamKey": "3333333333333333333333",
+            "teamName": "合成队4"
+          }
+        ],
+        "tieBreakRequired": false,
+        "tieDrawApplied": false
+      },
+      {
+        "groupKey": "B",
+        "label": "B组",
+        "resolvedMatchCount": 1,
+        "adjudicatedMatchCount": 1,
+        "cancelledMatchCount": 0,
+        "confirmedMatchCount": 0,
+        "totalMatchCount": 1,
+        "isComplete": true,
+        "rows": [
+          {
+            "teamKey": "2222222222222222222222",
+            "teamName": "合成队3",
+            "rank": 1,
+            "tied": false,
+            "played": 1,
+            "wins": 1,
+            "draws": 0,
+            "losses": 0,
+            "pointsFor": 0,
+            "pointsAgainst": 0,
+            "scoreDifference": 0,
+            "leaguePoints": 2
+          },
+          {
+            "teamKey": "1111111111111111111111",
+            "teamName": "合成队2",
+            "rank": 2,
+            "tied": false,
+            "played": 1,
+            "wins": 0,
+            "draws": 0,
+            "losses": 1,
+            "pointsFor": 0,
+            "pointsAgainst": 0,
+            "scoreDifference": 0,
+            "leaguePoints": 0
+          }
+        ],
+        "qualified": [
+          {
+            "teamKey": "2222222222222222222222",
+            "teamName": "合成队3"
+          },
+          {
+            "teamKey": "1111111111111111111111",
+            "teamName": "合成队2"
+          }
+        ],
+        "tieBreakRequired": false,
+        "tieDrawApplied": false
+      }
+    ],
+    "bracket": null,
+    "placements": []
+  },
+  "publicCancelledGroups": {
+    "publicEventId": "public-synthetic-event",
+    "algorithmVersion": "GK_BALANCED_V1",
+    "sourceHash": "ce96a511beeaf5b6f59c7155eff94fbf0bb4916cc09e6c6983ceb4257af6eafd",
+    "asOf": "2026-10-31T00:00:00.000Z",
+    "groupCount": 2,
+    "totalMatchCount": 6,
+    "publishedMatchCount": 2,
+    "resolvedMatchCount": 2,
+    "adjudicatedMatchCount": 0,
+    "cancelledMatchCount": 2,
+    "confirmedMatchCount": 0,
+    "isComplete": false,
+    "rules": {
+      "version": 1,
+      "algorithmVersion": "RR_STANDINGS_V1",
+      "winPoints": 2,
+      "lossPoints": 0,
+      "drawPoints": 1,
+      "tiebreakers": ["WINS"]
+    },
+    "qualificationStatus": "TIE_BREAK_REQUIRED",
+    "groups": [
+      {
+        "groupKey": "A",
+        "label": "A组",
+        "resolvedMatchCount": 1,
+        "adjudicatedMatchCount": 0,
+        "cancelledMatchCount": 1,
+        "confirmedMatchCount": 0,
+        "totalMatchCount": 1,
+        "isComplete": true,
+        "rows": [
+          {
+            "teamKey": "0000000000000000000000",
+            "teamName": "合成队1",
+            "rank": 1,
+            "tied": true,
+            "played": 0,
+            "wins": 0,
+            "draws": 0,
+            "losses": 0,
+            "pointsFor": 0,
+            "pointsAgainst": 0,
+            "scoreDifference": 0,
+            "leaguePoints": 0
+          },
+          {
+            "teamKey": "3333333333333333333333",
+            "teamName": "合成队4",
+            "rank": 1,
+            "tied": true,
+            "played": 0,
+            "wins": 0,
+            "draws": 0,
+            "losses": 0,
+            "pointsFor": 0,
+            "pointsAgainst": 0,
+            "scoreDifference": 0,
+            "leaguePoints": 0
+          }
+        ],
+        "qualified": [],
+        "tieBreakRequired": true,
+        "tieDrawApplied": false
+      },
+      {
+        "groupKey": "B",
+        "label": "B组",
+        "resolvedMatchCount": 1,
+        "adjudicatedMatchCount": 0,
+        "cancelledMatchCount": 1,
+        "confirmedMatchCount": 0,
+        "totalMatchCount": 1,
+        "isComplete": true,
+        "rows": [
+          {
+            "teamKey": "1111111111111111111111",
+            "teamName": "合成队2",
+            "rank": 1,
+            "tied": true,
+            "played": 0,
+            "wins": 0,
+            "draws": 0,
+            "losses": 0,
+            "pointsFor": 0,
+            "pointsAgainst": 0,
+            "scoreDifference": 0,
+            "leaguePoints": 0
+          },
+          {
+            "teamKey": "2222222222222222222222",
+            "teamName": "合成队3",
+            "rank": 1,
+            "tied": true,
+            "played": 0,
+            "wins": 0,
+            "draws": 0,
+            "losses": 0,
+            "pointsFor": 0,
+            "pointsAgainst": 0,
+            "scoreDifference": 0,
+            "leaguePoints": 0
+          }
+        ],
+        "qualified": [],
+        "tieBreakRequired": true,
+        "tieDrawApplied": false
+      }
+    ],
+    "bracket": null,
+    "placements": []
+  },
+  "publicEvent": {
+    "publicEventId": "public-synthetic-event",
+    "name": "合成裁定赛事",
+    "startDate": "2026-11-01",
+    "endDate": "2026-11-10",
+    "timezone": "Asia/Shanghai",
+    "venueName": "合成球馆",
+    "status": "SCHEDULED",
+    "format": "DOUBLE_ROUND_ROBIN",
+    "rules": {
+      "version": 1,
+      "algorithmVersion": "RR_STANDINGS_V1",
+      "winPoints": 2,
+      "lossPoints": 0,
+      "drawPoints": 1,
+      "tiebreakers": ["WINS"]
+    },
+    "resolvedMatchCount": 2,
+    "adjudicatedMatchCount": 1,
+    "cancelledMatchCount": 1,
+    "confirmedMatchCount": 0,
+    "totalMatchCount": 2,
+    "isComplete": true,
+    "serverTime": "2026-10-31T00:00:00.000Z"
+  },
+  "publicStandings": {
+    "publicEventId": "public-synthetic-event",
+    "rules": {
+      "version": 1,
+      "algorithmVersion": "RR_STANDINGS_V1",
+      "winPoints": 2,
+      "lossPoints": 0,
+      "drawPoints": 1,
+      "tiebreakers": ["WINS"]
+    },
+    "sourceHash": "19d3a65daadd5740718bc0edc0a7551214b1a7b1d5ed2cd451c70a1e622c8523",
+    "asOf": "2026-10-31T00:00:00.000Z",
+    "resolvedMatchCount": 2,
+    "adjudicatedMatchCount": 1,
+    "cancelledMatchCount": 1,
+    "confirmedMatchCount": 0,
+    "totalMatchCount": 2,
+    "isComplete": true,
+    "hasSharedRanks": false,
+    "rows": [
+      {
+        "teamKey": "1111111111111111111111",
+        "teamName": "合成队2",
+        "rank": 1,
+        "tied": false,
+        "played": 1,
+        "wins": 1,
+        "draws": 0,
+        "losses": 0,
+        "pointsFor": 0,
+        "pointsAgainst": 0,
+        "scoreDifference": 0,
+        "leaguePoints": 2
+      },
+      {
+        "teamKey": "0000000000000000000000",
+        "teamName": "合成队1",
+        "rank": 2,
+        "tied": false,
+        "played": 1,
+        "wins": 0,
+        "draws": 0,
+        "losses": 1,
+        "pointsFor": 0,
+        "pointsAgainst": 0,
+        "scoreDifference": 0,
+        "leaguePoints": 0
+      }
+    ]
+  },
+  "publicForfeit": {
+    "adjudication": {
+      "kind": "FORFEIT",
+      "winner": {
+        "teamKey": "1111111111111111111111",
+        "teamName": "合成队2"
+      }
+    },
+    "publicMatchId": "0000000000000000000000000000000000000000101",
+    "roundNo": 1,
+    "positionNo": 1,
+    "home": {
+      "teamKey": "0000000000000000000000",
+      "teamName": "合成队1"
+    },
+    "away": {
+      "teamKey": "1111111111111111111111",
+      "teamName": "合成队2"
+    },
+    "courtName": "合成场地",
+    "startsAt": "2026-11-02T00:00:00.000Z",
+    "endsAt": "2026-11-02T01:00:00.000Z",
+    "status": "SCHEDULED",
+    "version": 1,
+    "score": null,
+    "resultStatus": "UNCONFIRMED"
+  },
+  "publicCancellation": {
+    "adjudication": {
+      "kind": "CANCELLED",
+      "winner": null
+    },
+    "publicMatchId": "0000000000000000000000000000000000000000201",
+    "roundNo": 2,
+    "positionNo": 1,
+    "home": {
+      "teamKey": "1111111111111111111111",
+      "teamName": "合成队2"
+    },
+    "away": {
+      "teamKey": "0000000000000000000000",
+      "teamName": "合成队1"
+    },
+    "courtName": "合成场地",
+    "startsAt": "2026-11-03T00:00:00.000Z",
+    "endsAt": "2026-11-03T01:00:00.000Z",
+    "status": "SCHEDULED",
+    "version": 1,
+    "score": null,
+    "resultStatus": "UNCONFIRMED"
+  },
+  "publicSnapshot": {
+    "adjudication": {
+      "kind": "FORFEIT",
+      "winner": {
+        "teamKey": "1111111111111111111111",
+        "teamName": "合成队2"
+      }
+    },
+    "publicMatchId": "0000000000000000000000000000000000000000101",
+    "roundNo": 1,
+    "positionNo": 1,
+    "home": {
+      "teamKey": "0000000000000000000000",
+      "teamName": "合成队1"
+    },
+    "away": {
+      "teamKey": "1111111111111111111111",
+      "teamName": "合成队2"
+    },
+    "courtName": "合成场地",
+    "startsAt": "2026-11-02T00:00:00.000Z",
+    "endsAt": "2026-11-02T01:00:00.000Z",
+    "status": "SCHEDULED",
+    "version": 1,
+    "score": null,
+    "resultStatus": "UNCONFIRMED",
+    "publicEventId": "public-synthetic-event",
+    "eventName": "合成裁定赛事",
+    "totals": null,
+    "periods": null,
+    "rules": null,
+    "clock": null,
+    "collected": {
+      "teamScore": false,
+      "teamFouls": false,
+      "teamTimeouts": false,
+      "playerStatistics": false
+    },
+    "serverTime": "2026-10-31T00:00:00.000Z"
+  }
+}

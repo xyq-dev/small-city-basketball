@@ -1,0 +1,30 @@
+<scb-header title="同城篮球"/>
+<view class="page local-page">
+ <view class="local-heading"><view><view class="title">找到一起上场的人</view><view class="muted">球场 · 裁判 · 记录 · 直播摄影 · 医务</view></view><button bindtap="chooseCity">{{selection.label}} · 选城</button></view>
+ <view class="local-actions"><button bindtap="bookings">我的预约</button><button bindtap="matchups">球队约赛</button><button bindtap="manage">经营与服务方</button></view>
+ <view class="notice" wx:if="{{selection.mode==='LEGACY_CITY'}}">当前为历史城市标签。请从地区目录重新选择，供给覆盖和附近筛选需要具体地区。</view>
+ <view class="card">
+  <view class="chips"><button wx:for="{{kinds}}" wx:key="value" class="chip {{kind===item.value?'picked':''}}" data-value="{{item.value}}" bindtap="kind">{{item.label}}</button></view>
+  <input class="field" value="{{q}}" data-field="q" bindinput="input" placeholder="搜索已审核供给名称" maxlength="100"/>
+  <button class="primary" bindtap="search" disabled="{{loading}}">查找供给</button>
+  <view class="local-actions"><button bindtap="locate" loading="{{locationBusy}}" disabled="{{locationBusy}}">按需定位找附近</button><button bindtap="nationwide">浏览全国</button></view>
+  <view class="muted">{{originLabel}}。位置只在本页内存使用，离开后清除；拒绝定位也可手动选城。</view>
+  <view wx:if="{{hasOrigin}}"><picker class="field" range="{{radii}}" range-key="label" value="{{radiusIndex}}" bindchange="radius">搜索半径：{{radii[radiusIndex].label}}</picker><button class="quiet" bindtap="clearOrigin">清除距离起点</button></view>
+  <input class="field" data-field="placeQuery" value="{{placeQuery}}" bindinput="input" placeholder="输入场馆、街道等地图地点" maxlength="100"/>
+  <button bindtap="searchPlaces" loading="{{placesBusy}}" disabled="{{placesBusy}}">在所选地区查地图地点</button>
+  <view class="muted">地图地点仅帮助选地址和搜索起点，可预约档期由经营方实际发布。</view>
+  <view wx:if="{{!locationEnabled}}" class="muted">地图地点解析暂未开放，仍可手动选城、输入实际服务地址。</view>
+  <view wx:if="{{locationError}}" class="error">{{locationError}}</view><view wx:for="{{locatedRegions}}" wx:key="index" class="place-row"><view>定位建议：{{item.regionLabel}}</view><view class="muted">{{item.address}}，确认前不会切换城市。</view><button data-index="{{index}}" bindtap="confirmLocatedRegion">确认此地区并查询附近</button></view>
+  <view wx:for="{{places}}" wx:key="index" class="place-row"><view>{{item.title}}</view><view class="muted">{{item.address}} · 地图候选</view><button data-index="{{index}}" data-purpose="origin" bindtap="usePlace">作为搜索起点</button><button wx:if="{{detail && detail.listing.kind!=='COURT'}}" data-index="{{index}}" data-purpose="service" bindtap="usePlace">明确选为本次服务地址</button></view>
+ </view>
+ <view wx:if="{{pending || pendingError}}" class="notice warning"><view>{{pendingError || '上次操作尚未核对，请先处理。'}}</view><button bindtap="recover" disabled="{{busy}}">查询原操作回执</button><button wx:if="{{pending}}" bindtap="retry" disabled="{{busy}}">重试原操作</button></view>
+ <view wx:if="{{error}}" class="error">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view>
+ <view class="local-actions"><view class="subtitle">{{selection.label}}的已审核供给</view><button bindtap="toggleMap">{{mapVisible?'收起地图':'查看地图'}}</button></view>
+ <view wx:if="{{mapVisible}}" class="card"><map wx:if="{{mapCenter}}" class="local-map" latitude="{{mapCenter.latitude}}" longitude="{{mapCenter.longitude}}" markers="{{markers}}" bindmarkertap="marker" scale="13" show-location="{{false}}"/><view wx:else class="muted">当前列表没有已确认坐标。可选距离起点，或查看文字地址。</view><view class="muted">仅标记当前列表中已发布的供给；未提供坐标时不显示距离。</view></view>
+ <view wx:if="{{loading}}" class="muted">读取供给中…</view>
+ <button wx:for="{{items}}" wx:key="id" class="card listing-card" data-id="{{item.id}}" bindtap="detail"><view class="kind-label">{{item.kindText}}</view><view class="subtitle">{{item.title}}</view><view>{{item.address}}</view><view class="muted">{{item.organizationName}} · {{item.distanceLabel}}</view><view class="muted">{{item.qualificationText}}</view><view class="link">查看真实档期与合作约定</view></button>
+ <view wx:if="{{loaded && !items.length}}" class="card">暂无符合条件的已审核供给。可以调整地区、类型或距离半径。</view>
+ <button wx:if="{{nextCursor}}" bindtap="more" disabled="{{loadingMore}}" loading="{{loadingMore}}">加载更多</button>
+ <view wx:if="{{detailLoading}}" class="notice">读取供给详情…</view>
+ <view wx:if="{{detail}}" class="card detail-card"><view class="local-actions"><view class="subtitle">{{detail.listing.title}}</view><button bindtap="closeDetail" disabled="{{busy}}">关闭详情</button></view><view>{{detail.listing.description}}</view><view>{{detail.listing.address}}</view><button wx:if="{{detail.listing.point}}" bindtap="navigate">导航到已发布地址</button><view class="muted">{{detail.listing.qualificationText}}。资质由独立审核人核对，医务标签本身不代表已获执业认证。</view><view class="section-title">可预约档期（北京时间）</view><button wx:for="{{detail.slots}}" wx:key="id" class="slot {{selectedSlot===item.id?'picked':''}}" data-id="{{item.id}}" bindtap="slot" disabled="{{!item.available || busy}}">{{item.timeText}} · {{item.available?'可预约':'已被占用'}}</button><view wx:if="{{!detail.slots.length}}" class="muted">暂无有效开放档期。</view><view wx:if="{{detail.listing.kind!=='COURT'}}"><view class="field-label">本次服务地区：{{selection.label}}，如有变化请先选城</view><input class="field" data-field="serviceAddress" value="{{serviceAddress}}" bindinput="input" placeholder="请明确填写实际服务地址" maxlength="200"/><view class="muted">设备定位不会自动当作服务地址；也可在上方查地图地点后明确选择。</view></view><view class="section-title">合作约定</view><view>{{detail.terms}}</view><checkbox-group bindchange="accept"><label><checkbox value="yes" checked="{{accepted}}" disabled="{{busy}}"/>我已阅读并接受以上约定与实际服务地点</label></checkbox-group><view class="muted">此版本不收款。最终可用性以服务器原子锁位为准，提交后请及时查看预约状态。</view><button class="primary" bindtap="book" disabled="{{busy || pending || pendingError || !accepted || !selectedSlot}}" loading="{{busy}}">提交预约</button><button wx:if="{{loginRequired}}" bindtap="book">登录后继续预约</button></view>
+</view><scb-nav active="Local" disabled="{{busy}}"/>

@@ -5,12 +5,11 @@ import type { Pool } from 'pg';
 import { Pool as PgPool } from 'pg';
 import { isDirectExecution, loadRootEnv } from '../env.js';
 import { readDatabaseUrl } from '../runtime-config.js';
+import { orderedMigrationNames, assertAppliedMigrationPrefix } from './migration-plan.js';
 
 export async function migrate(pool: Pool): Promise<string[]> {
   const directory = fileURLToPath(new URL('../../migrations/', import.meta.url));
-  const files = (await readdir(directory))
-    .filter((name) => /^\d+_[a-z0-9_]+\.sql$/.test(name))
-    .sort();
+  const files = orderedMigrationNames(await readdir(directory));
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -18,6 +17,13 @@ export async function migrate(pool: Pool): Promise<string[]> {
     await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
       name text PRIMARY KEY, checksum char(64) NOT NULL CHECK (checksum ~ '^[0-9a-f]{64}$'), applied_at timestamptz NOT NULL DEFAULT clock_timestamp()
     )`);
+    const history = await client.query<{ name: string }>(
+      'SELECT name FROM schema_migrations ORDER BY name',
+    );
+    assertAppliedMigrationPrefix(
+      files,
+      history.rows.map((row) => row.name),
+    );
     const applied: string[] = [];
     for (const name of files) {
       const sql = await readFile(`${directory}/${name}`, 'utf8');

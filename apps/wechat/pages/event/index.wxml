@@ -15,16 +15,18 @@
     <button wx:if="{{unavailable && follow.state!=='signedOut'}}" class="quiet" bindtap="openFollows">查看我的关注</button>
   </view>
   <block wx:else>
+<sponsorship-slot region-id="{{sponsorRegionId}}" catalog-version="{{sponsorCatalogVersion}}" event-public-id="{{sponsorEventPublicId}}" visible="{{sponsorVisible && !!event}}"/>
     <view wx:if="{{error}}" class="notice warning">{{error}}<view wx:if="{{stale}}" class="small">现有资料已陈旧，请恢复连接后刷新。</view></view>
     <view wx:if="{{overview}}" class="public-panel event-summary">
       <view class="subtitle">{{event.name}}</view>
       <view class="muted">{{event.dateLabel || event.startDate + '—' + event.endDate}} · {{event.venueName || '场地待说明'}}</view>
       <view class="event-status {{event.status==='RUNNING' ? 'running' : ''}}">{{event.statusLabel}}</view>
       <view class="title">{{event.formatLabel}}</view>
-      <view class="event-progress">已确认 {{event.confirmedMatchCount}} / {{event.totalMatchCount}} 场</view>
+      <view class="event-progress">{{event.progressLabel}}</view>
       <image class="event-court" src="/assets/court.png" mode="widthFix"/>
     </view>
     <view wx:if="{{overview}}" class="event-menu">
+<button class="quiet" bindtap="report">赛事问题与举报</button>
       <button class="primary" data-tab="schedule" bindtap="tab" disabled="{{loading}}">查看赛程</button>
       <button class="secondary" data-tab="ranking" bindtap="tab" disabled="{{loading}}">分组排名与晋级</button>
       <button class="secondary" data-tab="media" bindtap="tab" disabled="{{loading}}">比赛视频与图片</button>
@@ -56,7 +58,7 @@
       <view wx:if="{{groups}}" class="notice schedule-note"><view class="state-strong">分组循环与晋级</view><view class="small">{{qualificationLabel || '以主办方发布的当前有效资格为准'}}。组内截线同分需明确抽签，不生成跨组总排名。</view></view>
       <block wx:if="{{groups}}" wx:for="{{groups.groups}}" wx:key="groupKey" wx:for-item="group">
         <view class="public-panel standings-panel">
-          <view class="subtitle">{{group.label}} · 本组排名</view><view class="muted">已确认 {{group.confirmedMatchCount}} / {{group.totalMatchCount}} 场</view>
+          <view class="subtitle">{{group.label}} · 本组排名</view><view class="muted">{{group.progressLabel}}</view>
           <view wx:if="{{group.tieBreakRequired}}" class="notice warning small">同分待抽签，资格尚未确定</view>
           <view class="standings-table"><view class="standings-row table-head"><text class="team-cell">球队</text><text class="games-cell">胜/负</text><text class="points-cell">积分</text></view>
             <view wx:for="{{group.rows}}" wx:key="teamKey" class="standings-row"><view class="team-cell">{{item.teamName}}<text wx:if="{{item.tied}}" class="small muted"> · 并列</text></view><text class="games-cell">{{item.wins}}/{{item.losses}}</text><text class="points-cell">{{item.leaguePoints}}</text></view>
@@ -65,8 +67,8 @@
       </block>
       <view wx:if="{{standings}}" class="public-panel standings-panel"><view class="subtitle">正式积分</view><view class="muted">仅纳入当前独立确认的正式赛果。</view><view class="standings-table"><view class="standings-row table-head"><text class="team-cell">球队</text><text class="games-cell">胜/负</text><text class="points-cell">积分</text></view><view wx:for="{{standings.rows}}" wx:key="teamKey" class="standings-row"><view class="team-cell">{{item.rank || '暂列'}} · {{item.teamName}}</view><text class="games-cell">{{item.wins}}/{{item.losses}}</text><text class="points-cell">{{item.leaguePoints}}</text></view></view></view>
       <block wx:if="{{bracket}}">
-        <view class="notice schedule-note"><view class="state-strong">淘汰签位</view><view class="small">未有当前有效确认的赛果不能晋级，轮空不计作比赛。</view></view>
-        <block wx:for="{{bracket.rounds}}" wx:key="roundNo" wx:for-item="round"><view wx:for="{{round.slots}}" wx:key="positionNo" class="public-panel bracket-card"><view class="subtitle">{{round.label}} · {{item.positionNo}}</view><view class="muted bracket-teams"><block wx:if="{{item.bye}}">{{item.bye.teamName}} · 轮空</block><block wx:else>{{item.home ? item.home.teamName : '待晋级'}} / {{item.away ? item.away.teamName : '待晋级'}}</block></view><view class="event-status">{{item.statusLabel || '以正式赛程为准'}}</view><view wx:if="{{item.winner}}" class="match-status">晋级：{{item.winner.teamName}}</view><view wx:elif="{{!round.published}}" class="muted">时间与场地待负责人明确发布</view></view></block>
+        <view class="notice schedule-note"><view class="state-strong">淘汰签位</view><view class="small">晋级依据有效独立确认或弃权裁定；取消场次不产生晋级者，轮空不计作比赛。</view></view>
+        <block wx:for="{{bracket.rounds}}" wx:key="roundNo" wx:for-item="round"><view wx:for="{{round.slots}}" wx:key="positionNo" class="public-panel bracket-card"><view class="subtitle">{{item.label || round.label}} · {{item.positionNo}}</view><view class="muted bracket-teams"><block wx:if="{{item.bye}}">{{item.bye.teamName}} · 轮空</block><block wx:else>{{item.homeLabel}} / {{item.awayLabel}}</block></view><view class="event-status">{{item.statusLabel || '以正式赛程为准'}}</view><view wx:if="{{item.winner}}" class="match-status">{{item.winnerLabel || '晋级'}}：{{item.winner.teamName}}</view><view wx:elif="{{!round.published}}" class="muted">时间与场地待负责人明确发布</view></view></block>
         <view wx:if="{{bracket.isComplete}}" class="public-panel placements-panel"><view class="subtitle">最终名次</view><view wx:for="{{bracket.placements}}" wx:key="index" class="placement-row"><text class="placement-rank">{{item.rank}}</text><view>{{item.team.teamName}}<view wx:if="{{item.tied}}" class="small muted">并列名次</view></view></view></view>
       </block>
       <view wx:if="{{!groups && !standings && !bracket}}" class="public-panel public-state compact-state"><view class="subtitle">排名资料待发布</view><view class="muted">当前没有可公开展示的积分或晋级资料。</view></view>

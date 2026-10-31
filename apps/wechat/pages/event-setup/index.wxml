@@ -1,9 +1,24 @@
 <view class="page mgmt-page setup-page">
   <view wx:if="{{error}}" class="notice warning">{{error}}</view>
   <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
+  <view wx:if="{{templatePending}}" class="card"><view class="subtitle">有模板请求待核对</view><view class="muted">原编号和内容已保存在当前账号、机构下。核对完成前不能创建另一个模板或赛事。</view><button class="primary" bindtap="resumeTemplate" disabled="{{busy}}">核对并重试原请求</button></view>
 
   <block wx:if="{{creating}}">
     <view class="intro-card"><view class="subtitle">创建赛事草稿</view><view class="muted">草稿只对本机构工作人员可见。之后设置报名规则、开放报名、审核并冻结名单，再排赛发布。</view></view>
+    <view class="card">
+      <view class="subtitle">从模板开始</view>
+      <view wx:if="{{templateLoading}}" class="muted">正在读取机构模板</view>
+      <view wx:if="{{templateError}}" class="notice small">{{templateError}}</view>
+      <picker wx:if="{{templateCanManage}}" class="field" range="{{templateOptions}}" range-key="label" value="{{templateIndex}}" bindchange="pickTemplate" disabled="{{busy || templatePending}}">{{templateOptions[templateIndex].label}}</picker>
+      <view wx:if="{{templatePreview}}" class="notice small">
+        <view>{{templatePreview.formatLabel}} · {{templatePreview.teams}}</view><view>每队 {{templatePreview.players}}</view><view>{{templatePreview.schedule}}</view>
+        <view wx:if="{{templatePreview.groups}}">{{templatePreview.groups}}组，组内循环后固定交叉晋级{{templatePreview.bronze ? '，含季军赛' : ''}}</view>
+        <view wx:elif="{{templatePreview.bronze}}">半决赛负者参加季军赛</view>
+        <view>只复制配置，报名、球队与人员重新办理。8队2组且保留季军赛时为完整16场；冻结队数须符合模板。</view>
+      </view>
+      <button class="quiet" bindtap="loadTemplates" disabled="{{busy || templateLoading}}">刷新模板</button>
+      <block wx:if="{{templateCanArchive}}"><text class="field-label">归档此模板的原因</text><textarea class="field" value="{{templateArchiveReason}}" data-field="templateArchiveReason" bindinput="templateField" maxlength="500"/><button class="danger" bindtap="archiveTemplate" disabled="{{busy || templatePending}}">归档所选模板</button></block>
+    </view>
     <view class="card">
       <text class="field-label">赛事名称</text>
       <input class="field" value="{{draft.name}}" data-section="draft" data-field="name" bindinput="field" maxlength="80" placeholder="例如 青锋杯·冬季赛"/>
@@ -14,8 +29,9 @@
       <text class="field-label">场地（可选）</text>
       <input class="field" value="{{draft.venueName}}" data-section="draft" data-field="venueName" bindinput="field" maxlength="100" placeholder="例如 石鼓公园篮球场"/>
       <text class="field-label">赛制</text>
-      <picker class="field" range="{{formats}}" range-key="label" value="{{draft.formatIndex}}" data-section="draft" data-field="formatIndex" bindchange="field">{{formats[draft.formatIndex].label}}</picker>
-      <button class="primary" bindtap="create" disabled="{{busy}}">创建草稿</button>
+      <picker wx:if="{{!templatePreview}}" class="field" range="{{formats}}" range-key="label" value="{{draft.formatIndex}}" data-section="draft" data-field="formatIndex" bindchange="field">{{formats[draft.formatIndex].label}}</picker>
+      <view wx:else class="field">{{templatePreview.formatLabel}}（使用所选模板）</view>
+      <button class="primary" bindtap="create" disabled="{{busy || templatePending}}">{{templatePreview ? '按模板创建草稿' : '创建草稿'}}</button>
     </view>
   </block>
 
@@ -36,6 +52,15 @@
       <button bindtap="openEvent">赛事详情</button>
       <button bindtap="openReview">报名审核</button>
       <button bindtap="openSchedule">排赛</button>
+    </view>
+    <view class="card">
+      <view class="subtitle">办赛向导</view>
+      <view wx:if="{{guideError}}" class="notice small">{{guideError}}。请刷新后核对当前步骤。</view>
+      <block wx:if="{{setupGuide}}">
+        <view class="muted">已批准 {{setupGuide.counts.approved}} 队 · 已冻结 {{setupGuide.counts.frozen}} 队 · 已排时 {{setupGuide.counts.assigned}} / {{setupGuide.counts.fixtures}} 场</view>
+        <view wx:if="{{setupGuide.template}}" class="notice small">使用已保存的模板版本；{{setupGuide.template.expectedTeams ? '预期冻结 ' + setupGuide.template.expectedTeams + ' 队。' : '按实际批准队数办赛。'}}配置变更仍需各自保存和确认。</view>
+        <view wx:for="{{setupGuide.steps}}" wx:key="code" class="setup-switch"><view><view>{{index + 1}}. {{item.title}} · {{item.stateLabel}}</view><view wx:for="{{item.blockers}}" wx:for-item="blocker" wx:key="*this" class="muted">{{blocker}}</view></view><button wx:if="{{setupGuide.canManage && item.state !== 'WAITING'}}" class="quiet small-button" data-index="{{index}}" bindtap="openGuideStep">查看</button></view>
+      </block>
     </view>
 
     <view wx:if="{{draft}}" class="card">
@@ -145,6 +170,18 @@
         <button wx:if="{{directory.canReplaceRegion}}" class="secondary" bindtap="replaceDirectoryRegion" disabled="{{busy || !directory.selectedRegion}}">确认更正标准地区</button>
         <button wx:if="{{directory.canUnlist}}" class="danger" bindtap="unlistDirectory" disabled="{{busy}}">撤出目录（保留分享链接）</button>
       </block>
+    </view>
+    <view wx:if="{{templateCanManage}}" class="card">
+      <view class="subtitle">保存为可复用办赛模板</view>
+      <view class="muted">复制服务器上已保存的报名、记分和积分规则。队伍、人员、场地编号、日期、权限与公开状态均不复制。</view>
+      <text class="field-label">模板名称</text><input class="field" value="{{templateName}}" data-field="templateName" bindinput="templateField" maxlength="80"/>
+      <text class="field-label">预期冻结队数（留空按实际批准队数）</text><input class="field" type="number" value="{{templateExpectedTeams}}" data-field="templateExpectedTeams" bindinput="templateField"/>
+      <view class="setup-pair"><view><text class="field-label">每日开始</text><picker mode="time" class="field" value="{{templateScheduling.dailyStart}}" data-field="dailyStart" bindchange="templateField">{{templateScheduling.dailyStart}}</picker></view><view><text class="field-label">每日结束</text><picker mode="time" class="field" value="{{templateScheduling.dailyEnd}}" data-field="dailyEnd" bindchange="templateField">{{templateScheduling.dailyEnd}}</picker></view></view>
+      <view class="setup-trio"><view><text class="field-label">每场分钟</text><input class="field" type="number" value="{{templateScheduling.slotDurationMinutes}}" data-field="slotDurationMinutes" bindinput="templateField"/></view><view><text class="field-label">最短休息</text><input class="field" type="number" value="{{templateScheduling.minRestMinutes}}" data-field="minRestMinutes" bindinput="templateField"/></view><view><text class="field-label">日期间隔</text><input class="field" type="number" value="{{templateScheduling.minLocalDayGap}}" data-field="minLocalDayGap" bindinput="templateField"/></view></view>
+      <block wx:if="{{event.groups}}"><text class="field-label">分组数（2、4或8组，每组至少2队）</text><input class="field" type="number" value="{{templateScheduling.groupCount}}" data-field="groupCount" bindinput="templateField"/></block>
+      <view wx:if="{{event.groups || event.knockout}}" class="setup-switch" bindtap="toggleTemplateBronze"><text>安排季军赛</text><text>{{templateScheduling.thirdPlaceMatch ? '启用' : '不安排'}}</text></view>
+      <button class="secondary" bindtap="saveAsTemplate" disabled="{{busy || templatePending}}">保存可复用模板</button>
+      <view wx:if="{{templateError}}" class="notice small">{{templateError}}</view>
     </view>
     <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
   </block>

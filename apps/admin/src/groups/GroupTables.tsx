@@ -33,7 +33,7 @@ export function GroupTables({ competition }: { competition: GroupKnockoutProject
               <p>
                 {group.unresolvedTieEntryIds.length
                   ? '晋级顺序存在同分，须先独立保存抽签。'
-                  : '等待全部组赛有效独立确认。'}
+                  : '等待全部组赛有效独立确认或行政裁定。'}
               </p>
             )}
             {group.draw && (
@@ -107,7 +107,7 @@ function GroupPlacements({
           ))}
         </ol>
       ) : (
-        <p>本届尚未全部有效独立确认，最终名次未产生。</p>
+        <p>本届尚未全部决出，最终名次未产生。</p>
       )}
     </section>
   );
@@ -131,6 +131,13 @@ export function PublicGroupTables({ data }: { data: PublicGroupKnockoutData }) {
               sourceHash: data.sourceHash,
               asOf: data.asOf,
               rules: data.rules,
+              ...(group.resolvedMatchCount !== undefined
+                ? {
+                    resolvedMatchCount: group.resolvedMatchCount,
+                    adjudicatedMatchCount: group.adjudicatedMatchCount,
+                    cancelledMatchCount: group.cancelledMatchCount,
+                  }
+                : {}),
               confirmedMatchCount: group.confirmedMatchCount,
               totalMatchCount: group.totalMatchCount,
               isComplete: group.isComplete,
@@ -145,7 +152,7 @@ export function PublicGroupTables({ data }: { data: PublicGroupKnockoutData }) {
               <p>
                 {group.tieBreakRequired
                   ? '晋级顺序同分，等待独立抽签。'
-                  : '等待全部组赛有效独立确认。'}
+                  : '等待全部组赛有效独立确认或行政裁定。'}
               </p>
             )}
             {group.tieDrawApplied && <p>已应用独立保存的同分抽签。</p>}

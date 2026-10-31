@@ -1,0 +1,25 @@
+<view class="page governance-page">
+ <scb-header title="客服与治理"/>
+ <view wx:if="{{loginRequired}}" class="card"><view>登录后仅查看本人或明确分派的工单。</view><button bindtap="login">登录</button></view>
+ <view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view>
+ <view wx:if="{{pending}}" class="card"><view>有原操作待核对，不能更换编号重发。</view><button bindtap="recover">查询原操作</button><button data-cancel="true" bindtap="recover">明确放弃未确认操作</button></view>
+ <view wx:if="{{!loginRequired}}" class="tabs"><button data-mode="mine" bindtap="changeMode">我的工单</button><button data-mode="assigned" bindtap="changeMode">分派给我</button><button wx:if="{{isOperator}}" data-mode="platform" bindtap="changeMode">平台分派</button></view>
+ <view wx:if="{{loading}}" class="notice">正在读取当前权限和资料…</view>
+ <view wx:if="{{selected}}" class="card">
+  <view class="title">{{selected.title}}</view><view>{{selected.statusLabel}} · 第{{selected.version}}版</view>
+  <button wx:if="{{selected.messagesBefore}}" bindtap="history" disabled="{{busy}}">读取更早记录</button>
+  <view wx:for="{{selected.messages}}" wx:key="id" class="message"><view class="small muted">{{item.createdAt}} · {{item.visibility==='INTERNAL'?'内部记录':'双方可见'}}</view><view>{{item.body}}</view></view>
+  <view wx:for="{{selected.attachments}}" wx:key="id"><button data-id="{{item.id}}" bindtap="preview">查看私有附件：{{item.fileName}}</button></view>
+  <block wx:if="{{selected.capabilities.canReply}}"><textarea data-field="replyText" bindinput="field" value="{{replyText}}" maxlength="4000" placeholder="补充说明或处理回复"/><switch wx:if="{{selected.capabilities.canResolve || selected.capabilities.canAssign}}" checked="{{internal}}" bindchange="internal"/> <text wx:if="{{selected.capabilities.canResolve || selected.capabilities.canAssign}}">仅处理人员可见</text><button disabled="{{busy || !!pending}}" bindtap="reply">提交回复</button><button disabled="{{busy || !!pending}}" bindtap="choose">选择JPEG／PNG／PDF附件</button><view>{{chosenFile}}</view><button wx:if="{{chosenFile}}" disabled="{{busy || !!pending}}" bindtap="upload">上传私有附件</button></block>
+  <textarea data-field="reason" bindinput="field" value="{{reason}}" maxlength="500" placeholder="操作原因（至少4字）"/>
+  <block wx:if="{{selected.capabilities.canAssign}}"><picker range="{{assignees}}" range-key="displayName" value="{{assigneeIndex}}" bindchange="assignee"><view class="picker">处理人：{{assignees[assigneeIndex].displayName || '暂无合格处理人'}}</view></picker><button data-type="ASSIGN" disabled="{{busy || !!pending || !assignees.length}}" bindtap="command">明确分派</button></block>
+  <button wx:if="{{selected.capabilities.canResolve}}" data-type="RESOLVE" disabled="{{busy || !!pending}}" bindtap="command">提交处理结论</button><button wx:if="{{selected.capabilities.canClose}}" data-type="CLOSE" disabled="{{busy || !!pending}}" bindtap="command">关闭工单</button><button wx:if="{{selected.capabilities.canReopen}}" data-type="REOPEN" disabled="{{busy || !!pending}}" bindtap="command">重新打开</button><button wx:if="{{selected.capabilities.canReopen}}" bindtap="appeal">提交独立申诉</button>
+ </view>
+ <view wx:else>
+  <view wx:for="{{items}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="select"><view class="subtitle">{{item.title}}</view><view>{{item.statusLabel}} · {{item.createdAt}}</view></view>
+  <button wx:if="{{nextCursor}}" disabled="{{loading || busy}}" bindtap="more">读取更多</button>
+  <view wx:if="{{!loading && !items.length && !loginRequired}}" class="notice">当前没有可查看的工单。</view>
+  <view wx:if="{{!loginRequired}}" class="card"><view class="subtitle">提交支持／举报／申诉</view><picker range="{{kinds}}" value="{{kindIndex}}" bindchange="kind"><view class="picker">{{kinds[kindIndex]}}</view></picker><picker wx:if="{{organizations.length}}" range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="org"><view class="picker">收件机构：{{organizations[orgIndex].name}}</view></picker><view class="small muted">从具体赛事或订单进入时，服务端核对对应来源。举报不能凭空指定私人资料。</view><picker wx:if="{{regions.length}}" range="{{regions}}" range-key="path" value="{{regionIndex}}" bindchange="region"><view class="picker">相关地区：{{regionIndex>=0 ? regions[regionIndex].path : '可选，用于有限城市分派'}}</view></picker><input data-field="title" value="{{title}}" bindinput="field" maxlength="120" placeholder="工单标题"/><textarea data-field="body" value="{{body}}" bindinput="field" maxlength="4000" placeholder="描述问题；不要填写密码、支付密钥或无关证件"/><button class="primary" disabled="{{busy || !!pending}}" bindtap="create">提交</button></view>
+ </view>
+ <button disabled="{{busy}}" bindtap="load">刷新当前状态</button>
+</view>

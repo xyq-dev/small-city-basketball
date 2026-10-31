@@ -1,3 +1,8 @@
+import {
+  administrativeResult,
+  exceptionResultSelect,
+  exceptionResultJoins,
+} from './match-exception-domain.js';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { PoolClient } from 'pg';
@@ -21,7 +26,12 @@ import type {
   MatchPlayerRoster,
 } from '@small-city-basketball/contracts';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
-import type { EventRow, OrgActor } from './service.js';
+import type { Actor, EventRow, OrgActor } from './service.js';
+import {
+  projectProfessionalStatistics,
+  professionalStatisticsDto,
+  technicalCollectionEnabled,
+} from './professional-statistics.js';
 import { ApiError, forbidden, notFound, unauthenticated } from './errors.js';
 import { calendarDate, invalid, objectInput, resourceId } from './validation.js';
 import { expectedVersion, pageInput } from './registration-validation.js';
@@ -39,6 +49,7 @@ import {
   recordedCollectionMode,
   scoringCollectionMode,
 } from './player-statistics.js';
+import { offlineIntentHash, parseOfflineScoringIntent } from './scoring-offline.js';
 import { activeEvent, assertActiveEvent } from './event-lifecycle-domain.js';
 
 type Row = Record<string, any>;
@@ -70,8 +81,35 @@ function inputUuid(value: unknown, field: string): string {
     invalid('无效控制实例编号', { [field]: '请提供有效UUID' });
   return value.toLowerCase();
 }
+const CONFIGURABLE_EVENTS = [
+  'DRAFT',
+  'REGISTRATION_OPEN',
+  'REGISTRATION_CLOSED',
+  'SCHEDULED',
+  'RUNNING',
+];
 const iso = (v: Date | string) => (v instanceof Date ? v.toISOString() : new Date(v).toISOString());
 export class ScoringService extends ApplicationService {
+  private readonly transactionActors = new WeakMap<PoolClient, Actor>();
+  protected override async lockActor(c: PoolClient, cookie: string | undefined): Promise<Actor> {
+    const actor = await super.lockActor(c, cookie);
+    this.transactionActors.set(c, actor);
+    return actor;
+  }
+  protected override async transaction<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
+    return super.transaction(async (c) => {
+      this.transactionActors.delete(c);
+      try {
+        const result = await work(c);
+        const actor = this.transactionActors.get(c);
+        if (actor) await this.ensureFreshSession(c, actor);
+        return result;
+      } finally {
+        this.transactionActors.delete(c);
+      }
+    });
+  }
+
   private async context(c: PoolClient, cookie: string | undefined, org: string) {
     return this.lockOrganization(c, await this.lockActor(c, cookie), org);
   }
@@ -111,6 +149,7 @@ export class ScoringService extends ApplicationService {
     );
     const match = result.rows[0];
     if (!match) throw notFound();
+    if (write) await this.assertNotAdjudicated(c, ctx.orgId, id);
     const own = await c.query<Row>(
       'SELECT * FROM match_staff WHERE org_id=$1 AND match_id=$2 AND user_id=$3 FOR SHARE',
       [ctx.orgId, id, ctx.user.id],
@@ -118,6 +157,27 @@ export class ScoringService extends ApplicationService {
     const staff = own.rows[0]?.status === 'ACTIVE' ? own.rows[0] : null;
     if (!ev.eventReader && !staff) throw notFound();
     return { ctx, ...ev, match, staff };
+  }
+  private async assertNotAdjudicated(c: PoolClient, org: string, id: string) {
+    const head = await c.query(
+      'SELECT 1 FROM match_exception_heads WHERE org_id=$1 AND match_id=$2 AND active_request_id IS NOT NULL',
+      [org, id],
+    );
+    if (head.rowCount) conflict('MATCH_ADJUDICATED', '本场存在生效中的弃权或取消裁定，不能记分');
+  }
+  private async adjudication(
+    c: PoolClient,
+    a: Access,
+  ): Promise<{ kind: 'FORFEIT' | 'CANCELLED' } | null> {
+    const proof = (
+      await c.query<Row>(
+        `SELECT ${exceptionResultSelect},to_jsonb(s) AS state FROM published_matches m LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id ${exceptionResultJoins} WHERE m.org_id=$1 AND m.id=$2`,
+        [a.ctx.orgId, a.match.id],
+      )
+    ).rows[0];
+    if (!proof) throw notFound();
+    const result = administrativeResult({ ...a.match, ...proof });
+    return result ? { kind: result.kind } : null;
   }
   private async now(c: PoolClient, ctx: OrgActor): Promise<string> {
     const result = await c.query<{ now: Date }>('SELECT clock_timestamp() AS now');
@@ -269,6 +329,9 @@ export class ScoringService extends ApplicationService {
       away: { score: r.away_score, fouls: r.away_fouls, timeouts: r.away_timeouts },
       periods: r.period_stats,
       playerStatistics,
+      ...(r.technical_collection
+        ? { professionalStatistics: professionalStatisticsDto(r.professional_stats) }
+        : {}),
       confirmedAt: iso(r.confirmed_at),
     };
   }
@@ -295,6 +358,15 @@ export class ScoringService extends ApplicationService {
       !isDeepStrictEqual(s.player_stats, playerStatistics)
     )
       conflict('PROJECTION_MISMATCH', '记分流水与球员统计投影不一致');
+    const professionalStored = projectProfessionalStatistics(history, rules, roster);
+    if (
+      !!s.technical_collection !== technicalCollectionEnabled(history) ||
+      !isDeepStrictEqual(s.professional_stats ?? null, professionalStored)
+    )
+      conflict('PROJECTION_MISMATCH', '专业统计流水与当前投影不一致');
+    const professionalStatistics = s.technical_collection
+      ? projectProfessionalStatistics(history, rules, roster, now)
+      : null;
     let latestConfirmation: ResultConfirmationData | null = null;
     if (s.latest_confirmation_id) {
       const r = await c.query<Row>(
@@ -306,13 +378,19 @@ export class ScoringService extends ApplicationService {
         if (
           a.match.status === 'FINAL' &&
           !s.requires_reconfirmation &&
-          !isDeepStrictEqual(latestConfirmation.playerStatistics, playerStatistics)
+          (!isDeepStrictEqual(latestConfirmation.playerStatistics, playerStatistics) ||
+            !isDeepStrictEqual(
+              latestConfirmation.professionalStatistics ?? null,
+              professionalStored,
+            ))
         )
           conflict('PROJECTION_MISMATCH', '当前有效确认与球员统计投影不一致');
       }
     }
     const m = this.matchDto(a.match);
+    const adjudication = await this.adjudication(c, a);
     return {
+      ...(adjudication ? { adjudication } : {}),
       matchId: m.id,
       eventId: m.eventId,
       eventName: a.event.name,
@@ -331,6 +409,7 @@ export class ScoringService extends ApplicationService {
       latestConfirmation,
       requiresReconfirmation: s.requires_reconfirmation,
       playerStatistics,
+      ...(s.technical_collection ? { professionalStatistics } : {}),
       collected: {
         teamScore: true,
         teamFouls: true,
@@ -398,9 +477,10 @@ export class ScoringService extends ApplicationService {
     const l = await this.lease(c, a);
     const held = !!(l?.expires_at && iso(l.expires_at) > now);
     const scorer = a.staff?.role === 'SCORER';
-    const writable = activeEvent(a.event.status);
+    const adjudication = await this.adjudication(c, a);
+    const writable = activeEvent(a.event.status) && !adjudication;
     return {
-      match: this.matchDto(a.match),
+      match: { ...this.matchDto(a.match), ...(adjudication ? { adjudication } : {}) },
       event: {
         id: a.event.id,
         name: a.event.name,
@@ -427,7 +507,7 @@ export class ScoringService extends ApplicationService {
         holderUserId: held ? l!.holder_user_id : null,
       },
       capabilities: {
-        canManageStaff: a.manager,
+        canManageStaff: a.manager && !adjudication,
         canPrepare: writable && a.manager && a.match.status === 'SCHEDULED',
         canAcquireControl:
           writable &&
@@ -461,7 +541,9 @@ export class ScoringService extends ApplicationService {
         locked: !!a.event.locked_scoring_ruleset_id,
         capabilities: {
           canManageRules:
-            activeEvent(a.event.status) && a.manager && !a.event.locked_scoring_ruleset_id,
+            CONFIGURABLE_EVENTS.includes(a.event.status) &&
+            a.manager &&
+            !a.event.locked_scoring_ruleset_id,
         },
       };
     });
@@ -486,8 +568,8 @@ export class ScoringService extends ApplicationService {
       await this.now(c, ctx);
       checkVersion(a.event.version, version);
       if (a.event.locked_scoring_ruleset_id) conflict('SCORING_RULES_LOCKED', '赛事记分规则已锁定');
-      if (!['SCHEDULED', 'RUNNING'].includes(a.event.status))
-        conflict('INVALID_EVENT_STATE', '仅已排赛赛事可配置记分规则');
+      if (!CONFIGURABLE_EVENTS.includes(a.event.status))
+        conflict('INVALID_EVENT_STATE', '赛事当前不可配置记分规则');
       if (
         ['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(a.event.format) &&
         rules.tiePolicy !== 'OVERTIME'
@@ -776,212 +858,182 @@ export class ScoringService extends ApplicationService {
     raw: unknown,
   ): Promise<ScoringCommandResponse> {
     const command = parseScoringCommand(raw);
+    return this.transaction((c) => this.executeCommandInTransaction(c, cookie, org, id, command));
+  }
+  private async executeCommandInTransaction(
+    c: PoolClient,
+    cookie: string | undefined,
+    org: string,
+    id: string,
+    command: ScoringCommandInput,
+  ): Promise<ScoringCommandResponse> {
     const hash = commandHash(command);
-    return this.transaction(async (c) => {
-      const ctx = await this.context(c, cookie, org);
-      const a = await this.access(
-        c,
-        ctx,
-        id,
-        true,
-        command.type === 'PREPARE_MATCH' || command.type === 'START_MATCH',
-      );
-      const l = await this.lease(c, a, true);
-      // A confirmation holds both Team locks before checking current leader grants.
-      if (command.type === 'CONFIRM_RESULT')
-        await c.query(
-          'SELECT id FROM teams WHERE org_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR UPDATE',
-          [ctx.orgId, [a.match.home_team_id, a.match.away_team_id]],
-        );
-      const activeScorers =
-        command.type === 'PREPARE_MATCH'
-          ? await c.query(
-              "SELECT s.user_id FROM match_staff s JOIN organization_memberships m ON m.org_id=s.org_id AND m.user_id=s.user_id JOIN users u ON u.id=s.user_id WHERE s.org_id=$1 AND s.match_id=$2 AND s.role='SCORER' AND s.status='ACTIVE' AND m.status='ACTIVE' AND u.status='ACTIVE' ORDER BY s.user_id FOR SHARE OF s,m,u",
-              [ctx.orgId, id],
-            )
-          : null;
-      const now = await this.now(c, ctx);
-      await this.commandPermission(c, a, command, l, now);
-      // Closed events reject even an otherwise valid idempotent command replay.
-      // Dedicated receipt/snapshot reads remain available for private history.
-      assertActiveEvent(a.event.status);
-      // Event SHARE serializes this check with next-round publication's UPDATE lock.
-      // A consumed result cannot be reopened, including an old idempotent replay.
-      if (command.type === 'REOPEN_RESULT' && (await this.resultConsumed(c, a)))
-        conflict('KNOCKOUT_RESULT_CONSUMED', '该赛果已用于正式发布下轮，不能重开或更换晋级球队');
-      const previous = await c.query<Row>(
-        'SELECT * FROM scoring_commands WHERE org_id=$1 AND actor_id=$2 AND match_id=$3 AND command_id=$4',
-        [ctx.orgId, ctx.user.id, id, command.commandId],
-      );
-      if (previous.rows[0]) {
-        if (previous.rows[0].request_hash !== hash)
-          conflict('IDEMPOTENCY_CONFLICT', '同一命令编号已用于不同内容');
-        const snap = await this.snapshot(c, a, now);
-        if (!snap) conflict('MATCH_NOT_PREPARED', '比赛尚未准备');
-        return { receipt: this.receipt(previous.rows[0]), snapshot: snap! };
-      }
-      checkVersion(a.match.version, command.expectedVersion);
-      if (command.control) this.assertLease(l, a, command.control, now);
-      let st = await this.state(c, a);
-      let ruleId =
-        st?.ruleset_id ?? a.event.locked_scoring_ruleset_id ?? a.event.current_scoring_ruleset_id;
-      if (command.type === 'PREPARE_MATCH') {
-        checkVersion(a.event.version, command.payload.expectedEventVersion);
-        if (a.event.status !== 'SCHEDULED' && a.event.status !== 'RUNNING')
-          conflict('INVALID_EVENT_STATE', '赛事当前不能准备比赛');
-        if (!ruleId) throw new ApiError(422, 'SCORING_RULES_REQUIRED', '请先明确配置赛事记分规则');
-        if (!activeScorers?.rowCount) conflict('SCORER_REQUIRED', '请先分配至少一名有效记分员');
-      }
-      if (command.type === 'START_MATCH') {
-        checkVersion(a.event.version, command.payload.expectedEventVersion);
-        if (!['SCHEDULED', 'RUNNING'].includes(a.event.status))
-          conflict('INVALID_EVENT_STATE', '赛事当前不能开赛');
-      }
-      if (!ruleId) conflict('MATCH_NOT_PREPARED', '比赛尚未准备');
-      const rules = await this.rules(c, ctx.orgId, ruleId);
-      if (!rules) throw notFound();
-      if (
-        ['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(a.event.format) &&
-        rules.tiePolicy !== 'OVERTIME'
-      )
-        throw new ApiError(422, 'RULE_CONFLICT', '单淘汰与分组接淘汰赛事必须设置平分加时规则');
-      const history = await this.events(c, a);
-      const projection = replayStats(history, rules, st?.period ?? 1);
-      const mode = st
-        ? scoringCollectionMode(st.collection_mode)
-        : command.type === 'PREPARE_MATCH'
-          ? (command.payload.collectionMode ?? 'TEAM_ONLY')
-          : 'TEAM_ONLY';
-      const roster =
-        mode === 'PLAYER_BASIC' ? await this.playerRoster(c, a) : { home: [], away: [] };
-      const previousPlayerStatistics = projectPlayerStatistics(mode, projection, roster);
-      if (
-        st &&
-        (recordedCollectionMode(history) !== mode ||
-          !isDeepStrictEqual(st.player_stats, previousPlayerStatistics))
-      )
-        conflict('PROJECTION_MISMATCH', '记分流水与球员统计投影不一致');
-      if (
-        st &&
-        (history.length !== st.last_event_seq ||
-          st.ruleset_id !== a.event.locked_scoring_ruleset_id ||
-          st.source_version !== a.match.version ||
-          !isDeepStrictEqual(st.period_stats, projection.periods) ||
-          st.home_score !== projection.home.score ||
-          st.away_score !== projection.away.score ||
-          st.home_fouls !== projection.home.fouls ||
-          st.away_fouls !== projection.away.fouls ||
-          st.home_timeouts !== projection.home.timeouts ||
-          st.away_timeouts !== projection.away.timeouts)
-      )
-        conflict('PROJECTION_MISMATCH', '记分流水与当前投影不一致，请联系赛事管理员');
-      const plan = planCommand({
-        status: a.match.status,
-        clock: st ? this.clock(st) : null,
-        rules,
-        events: history,
-        command,
-        now,
-      });
-      const newVersion = a.match.version + 1;
-      let seq = st?.last_event_seq ?? 0;
-      const first = plan.events.length ? seq + 1 : null;
-      for (const e of plan.events) {
-        const event: ScoringEventData = {
-          id: randomUUID(),
-          seq: ++seq,
-          type: e.type,
-          payload: e.payload,
-          actorId: ctx.user.id,
-          commandId: command.commandId,
-          capturedAt: command.capturedAt,
-          serverTime: now,
-          targetEventId: e.targetEventId ?? null,
-        };
-        await c.query(
-          'INSERT INTO scoring_events(id,org_id,event_id,match_id,seq,type,payload,actor_id,command_id,captured_at,server_time,target_event_id) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12)',
-          [
-            event.id,
-            ctx.orgId,
-            a.event.id,
-            id,
-            event.seq,
-            event.type,
-            JSON.stringify(event.payload),
-            ctx.user.id,
-            command.commandId,
-            command.capturedAt,
-            now,
-            event.targetEventId,
-          ],
-        );
-        history.push(event);
-      }
-      const totals = replayStats(history, rules, plan.clock.period);
-      const playerStatistics = projectPlayerStatistics(mode, totals, roster);
-      let confirmationId = st?.latest_confirmation_id ?? null;
-      let requires = !!st?.requires_reconfirmation || plan.isReopen;
-      if (plan.isConfirmation) {
-        confirmationId = randomUUID();
-        await c.query(
-          'INSERT INTO result_confirmations(id,org_id,event_id,match_id,confirming_user_id,ruleset_id,ruleset_version,source_match_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,confirmed_at,collection_mode,player_stats) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19::jsonb)',
-          [
-            confirmationId,
-            ctx.orgId,
-            a.event.id,
-            id,
-            ctx.user.id,
-            ruleId,
-            rules.version,
-            a.match.version,
-            st?.last_event_seq ?? 0,
-            totals.home.score,
-            totals.away.score,
-            totals.home.fouls,
-            totals.away.fouls,
-            totals.home.timeouts,
-            totals.away.timeouts,
-            JSON.stringify(totals.periods),
-            now,
-            mode,
-            playerStatistics === null ? null : JSON.stringify(playerStatistics),
-          ],
-        );
-        requires = false;
-      }
-      if (command.type === 'PREPARE_MATCH') {
-        await c.query(
-          'UPDATE events SET locked_scoring_ruleset_id=$3,version=version+1,updated_at=$4 WHERE org_id=$1 AND id=$2',
-          [ctx.orgId, a.event.id, ruleId, now],
-        );
-        a.event.locked_scoring_ruleset_id = ruleId;
-        a.event.version++;
-      }
-      if (command.type === 'START_MATCH' && a.event.status === 'SCHEDULED') {
-        await c.query(
-          "UPDATE events SET status='RUNNING',version=version+1,updated_at=$3 WHERE org_id=$1 AND id=$2",
-          [ctx.orgId, a.event.id, now],
-        );
-        a.event.status = 'RUNNING';
-        a.event.version++;
-      }
-      await c.query('UPDATE published_matches SET status=$3,version=$4 WHERE org_id=$1 AND id=$2', [
-        ctx.orgId,
-        id,
-        plan.status,
-        newVersion,
-      ]);
-      a.match.status = plan.status;
-      a.match.version = newVersion;
+    const ctx = await this.context(c, cookie, org);
+    const a = await this.access(
+      c,
+      ctx,
+      id,
+      true,
+      command.type === 'PREPARE_MATCH' || command.type === 'START_MATCH',
+    );
+    const l = await this.lease(c, a, true);
+    // A confirmation holds both Team locks before checking current leader grants.
+    if (command.type === 'CONFIRM_RESULT')
       await c.query(
-        'INSERT INTO scoring_states(org_id,event_id,match_id,ruleset_id,source_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,period,remaining_ms,clock_running,anchor_server_time,clock_version,latest_confirmation_id,requires_reconfirmation,updated_at,collection_mode,player_stats) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23::jsonb) ON CONFLICT(org_id,match_id) DO UPDATE SET source_version=EXCLUDED.source_version,last_event_seq=EXCLUDED.last_event_seq,home_score=EXCLUDED.home_score,away_score=EXCLUDED.away_score,home_fouls=EXCLUDED.home_fouls,away_fouls=EXCLUDED.away_fouls,home_timeouts=EXCLUDED.home_timeouts,away_timeouts=EXCLUDED.away_timeouts,period_stats=EXCLUDED.period_stats,period=EXCLUDED.period,remaining_ms=EXCLUDED.remaining_ms,clock_running=EXCLUDED.clock_running,anchor_server_time=EXCLUDED.anchor_server_time,clock_version=EXCLUDED.clock_version,latest_confirmation_id=EXCLUDED.latest_confirmation_id,requires_reconfirmation=EXCLUDED.requires_reconfirmation,updated_at=EXCLUDED.updated_at,player_stats=EXCLUDED.player_stats',
+        'SELECT id FROM teams WHERE org_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR UPDATE',
+        [ctx.orgId, [a.match.home_team_id, a.match.away_team_id]],
+      );
+    const activeScorers =
+      command.type === 'PREPARE_MATCH'
+        ? await c.query(
+            "SELECT s.user_id FROM match_staff s JOIN organization_memberships m ON m.org_id=s.org_id AND m.user_id=s.user_id JOIN users u ON u.id=s.user_id WHERE s.org_id=$1 AND s.match_id=$2 AND s.role='SCORER' AND s.status='ACTIVE' AND m.status='ACTIVE' AND u.status='ACTIVE' ORDER BY s.user_id FOR SHARE OF s,m,u",
+            [ctx.orgId, id],
+          )
+        : null;
+    const now = await this.now(c, ctx);
+    await this.commandPermission(c, a, command, l, now);
+    // Closed events reject even an otherwise valid idempotent command replay.
+    // Dedicated receipt/snapshot reads remain available for private history.
+    assertActiveEvent(a.event.status);
+    // Event SHARE serializes this check with next-round publication's UPDATE lock.
+    // A consumed result cannot be reopened, including an old idempotent replay.
+    if (command.type === 'REOPEN_RESULT' && (await this.resultConsumed(c, a)))
+      conflict('KNOCKOUT_RESULT_CONSUMED', '该赛果已用于正式发布下轮，不能重开或更换晋级球队');
+    const previous = await c.query<Row>(
+      'SELECT * FROM scoring_commands WHERE org_id=$1 AND actor_id=$2 AND match_id=$3 AND command_id=$4',
+      [ctx.orgId, ctx.user.id, id, command.commandId],
+    );
+    if (previous.rows[0]) {
+      if (previous.rows[0].request_hash !== hash)
+        conflict('IDEMPOTENCY_CONFLICT', '同一命令编号已用于不同内容');
+      const snap = await this.snapshot(c, a, now);
+      if (!snap) conflict('MATCH_NOT_PREPARED', '比赛尚未准备');
+      return { receipt: this.receipt(previous.rows[0]), snapshot: snap! };
+    }
+    checkVersion(a.match.version, command.expectedVersion);
+    if (command.control) this.assertLease(l, a, command.control, now);
+    let st = await this.state(c, a);
+    let ruleId =
+      st?.ruleset_id ?? a.event.locked_scoring_ruleset_id ?? a.event.current_scoring_ruleset_id;
+    if (command.type === 'PREPARE_MATCH') {
+      checkVersion(a.event.version, command.payload.expectedEventVersion);
+      if (a.event.status !== 'SCHEDULED' && a.event.status !== 'RUNNING')
+        conflict('INVALID_EVENT_STATE', '赛事当前不能准备比赛');
+      if (!ruleId) throw new ApiError(422, 'SCORING_RULES_REQUIRED', '请先明确配置赛事记分规则');
+      if (!activeScorers?.rowCount) conflict('SCORER_REQUIRED', '请先分配至少一名有效记分员');
+    }
+    if (command.type === 'START_MATCH') {
+      checkVersion(a.event.version, command.payload.expectedEventVersion);
+      if (!['SCHEDULED', 'RUNNING'].includes(a.event.status))
+        conflict('INVALID_EVENT_STATE', '赛事当前不能开赛');
+    }
+    if (!ruleId) conflict('MATCH_NOT_PREPARED', '比赛尚未准备');
+    const rules = await this.rules(c, ctx.orgId, ruleId);
+    if (!rules) throw notFound();
+    if (
+      ['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(a.event.format) &&
+      rules.tiePolicy !== 'OVERTIME'
+    )
+      throw new ApiError(422, 'RULE_CONFLICT', '单淘汰与分组接淘汰赛事必须设置平分加时规则');
+    const history = await this.events(c, a);
+    const projection = replayStats(history, rules, st?.period ?? 1);
+    const mode = st
+      ? scoringCollectionMode(st.collection_mode)
+      : command.type === 'PREPARE_MATCH'
+        ? (command.payload.collectionMode ?? 'TEAM_ONLY')
+        : 'TEAM_ONLY';
+    const roster = mode === 'PLAYER_BASIC' ? await this.playerRoster(c, a) : { home: [], away: [] };
+    const previousPlayerStatistics = projectPlayerStatistics(mode, projection, roster);
+    if (
+      st &&
+      (recordedCollectionMode(history) !== mode ||
+        !isDeepStrictEqual(st.player_stats, previousPlayerStatistics))
+    )
+      conflict('PROJECTION_MISMATCH', '记分流水与球员统计投影不一致');
+    if (
+      st &&
+      (history.length !== st.last_event_seq ||
+        st.ruleset_id !== a.event.locked_scoring_ruleset_id ||
+        st.source_version !== a.match.version ||
+        !isDeepStrictEqual(st.period_stats, projection.periods) ||
+        st.home_score !== projection.home.score ||
+        st.away_score !== projection.away.score ||
+        st.home_fouls !== projection.home.fouls ||
+        st.away_fouls !== projection.away.fouls ||
+        st.home_timeouts !== projection.home.timeouts ||
+        st.away_timeouts !== projection.away.timeouts)
+    )
+      conflict('PROJECTION_MISMATCH', '记分流水与当前投影不一致，请联系赛事管理员');
+    const previousProfessional = projectProfessionalStatistics(history, rules, roster);
+    if (
+      st &&
+      (!!st.technical_collection !== technicalCollectionEnabled(history) ||
+        !isDeepStrictEqual(st.professional_stats ?? null, previousProfessional))
+    )
+      conflict('PROJECTION_MISMATCH', '专业统计流水与当前投影不一致');
+    const plan = planCommand({
+      status: a.match.status,
+      clock: st ? this.clock(st) : null,
+      rules,
+      events: history,
+      command,
+      now,
+      roster,
+    });
+    const newVersion = a.match.version + 1;
+    let seq = st?.last_event_seq ?? 0;
+    const first = plan.events.length ? seq + 1 : null;
+    for (const e of plan.events) {
+      const event: ScoringEventData = {
+        id: randomUUID(),
+        seq: ++seq,
+        type: e.type,
+        payload: e.payload,
+        actorId: ctx.user.id,
+        commandId: command.commandId,
+        capturedAt: command.capturedAt,
+        serverTime: now,
+        targetEventId: e.targetEventId ?? null,
+      };
+      await c.query(
+        'INSERT INTO scoring_events(id,org_id,event_id,match_id,seq,type,payload,actor_id,command_id,captured_at,server_time,target_event_id) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12)',
         [
+          event.id,
           ctx.orgId,
           a.event.id,
           id,
+          event.seq,
+          event.type,
+          JSON.stringify(event.payload),
+          ctx.user.id,
+          command.commandId,
+          command.capturedAt,
+          now,
+          event.targetEventId,
+        ],
+      );
+      history.push(event);
+    }
+    const totals = replayStats(history, rules, plan.clock.period);
+    const playerStatistics = projectPlayerStatistics(mode, totals, roster);
+    const professionalStatistics = projectProfessionalStatistics(history, rules, roster);
+    const technicalCollection = technicalCollectionEnabled(history);
+    let confirmationId = st?.latest_confirmation_id ?? null;
+    let requires = !!st?.requires_reconfirmation || plan.isReopen;
+    if (plan.isConfirmation) {
+      confirmationId = randomUUID();
+      await c.query(
+        'INSERT INTO result_confirmations(id,org_id,event_id,match_id,confirming_user_id,ruleset_id,ruleset_version,source_match_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,confirmed_at,collection_mode,player_stats,technical_collection,professional_stats) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19::jsonb,$20,$21::jsonb)',
+        [
+          confirmationId,
+          ctx.orgId,
+          a.event.id,
+          id,
+          ctx.user.id,
           ruleId,
-          newVersion,
-          seq,
+          rules.version,
+          a.match.version,
+          st?.last_event_seq ?? 0,
           totals.home.score,
           totals.away.score,
           totals.home.fouls,
@@ -989,42 +1041,179 @@ export class ScoringService extends ApplicationService {
           totals.home.timeouts,
           totals.away.timeouts,
           JSON.stringify(totals.periods),
-          plan.clock.period,
-          plan.clock.remainingMs,
-          plan.clock.running,
-          plan.clock.anchorServerTime,
-          plan.clock.clockVersion,
-          confirmationId,
-          requires,
           now,
           mode,
           playerStatistics === null ? null : JSON.stringify(playerStatistics),
+          technicalCollection,
+          professionalStatistics === null ? null : JSON.stringify(professionalStatistics),
         ],
       );
-      const receiptRow = await c.query<Row>(
-        'INSERT INTO scoring_commands(org_id,event_id,match_id,actor_id,command_id,request_hash,command_type,applied_version,first_event_seq,last_event_seq,accepted_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
+      requires = false;
+    }
+    if (command.type === 'PREPARE_MATCH') {
+      await c.query(
+        'UPDATE events SET locked_scoring_ruleset_id=$3,version=version+1,updated_at=$4 WHERE org_id=$1 AND id=$2',
+        [ctx.orgId, a.event.id, ruleId, now],
+      );
+      a.event.locked_scoring_ruleset_id = ruleId;
+      a.event.version++;
+    }
+    if (command.type === 'START_MATCH' && a.event.status === 'SCHEDULED') {
+      await c.query(
+        "UPDATE events SET status='RUNNING',version=version+1,updated_at=$3 WHERE org_id=$1 AND id=$2",
+        [ctx.orgId, a.event.id, now],
+      );
+      a.event.status = 'RUNNING';
+      a.event.version++;
+    }
+    await c.query('UPDATE published_matches SET status=$3,version=$4 WHERE org_id=$1 AND id=$2', [
+      ctx.orgId,
+      id,
+      plan.status,
+      newVersion,
+    ]);
+    a.match.status = plan.status;
+    a.match.version = newVersion;
+    await c.query(
+      'INSERT INTO scoring_states(org_id,event_id,match_id,ruleset_id,source_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,period,remaining_ms,clock_running,anchor_server_time,clock_version,latest_confirmation_id,requires_reconfirmation,updated_at,collection_mode,player_stats,technical_collection,professional_stats) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23::jsonb,$24,$25::jsonb) ON CONFLICT(org_id,match_id) DO UPDATE SET source_version=EXCLUDED.source_version,last_event_seq=EXCLUDED.last_event_seq,home_score=EXCLUDED.home_score,away_score=EXCLUDED.away_score,home_fouls=EXCLUDED.home_fouls,away_fouls=EXCLUDED.away_fouls,home_timeouts=EXCLUDED.home_timeouts,away_timeouts=EXCLUDED.away_timeouts,period_stats=EXCLUDED.period_stats,period=EXCLUDED.period,remaining_ms=EXCLUDED.remaining_ms,clock_running=EXCLUDED.clock_running,anchor_server_time=EXCLUDED.anchor_server_time,clock_version=EXCLUDED.clock_version,latest_confirmation_id=EXCLUDED.latest_confirmation_id,requires_reconfirmation=EXCLUDED.requires_reconfirmation,updated_at=EXCLUDED.updated_at,player_stats=EXCLUDED.player_stats,professional_stats=EXCLUDED.professional_stats',
+      [
+        ctx.orgId,
+        a.event.id,
+        id,
+        ruleId,
+        newVersion,
+        seq,
+        totals.home.score,
+        totals.away.score,
+        totals.home.fouls,
+        totals.away.fouls,
+        totals.home.timeouts,
+        totals.away.timeouts,
+        JSON.stringify(totals.periods),
+        plan.clock.period,
+        plan.clock.remainingMs,
+        plan.clock.running,
+        plan.clock.anchorServerTime,
+        plan.clock.clockVersion,
+        confirmationId,
+        requires,
+        now,
+        mode,
+        playerStatistics === null ? null : JSON.stringify(playerStatistics),
+        technicalCollection,
+        professionalStatistics === null ? null : JSON.stringify(professionalStatistics),
+      ],
+    );
+    const receiptRow = await c.query<Row>(
+      'INSERT INTO scoring_commands(org_id,event_id,match_id,actor_id,command_id,request_hash,command_type,applied_version,first_event_seq,last_event_seq,accepted_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
+      [
+        ctx.orgId,
+        a.event.id,
+        id,
+        ctx.user.id,
+        command.commandId,
+        hash,
+        command.type,
+        newVersion,
+        first,
+        plan.events.length ? seq : null,
+        now,
+      ],
+    );
+    await this.audit(c, ctx.user.id, ctx.orgId, 'scoring.command.accepted', 'match', id, {
+      commandId: command.commandId,
+      type: command.type,
+      version: newVersion,
+    });
+    const snapshot = await this.snapshot(c, a, now);
+    if (!snapshot) throw notFound();
+    return { receipt: this.receipt(receiptRow.rows[0]!), snapshot: snapshot! };
+  }
+
+  async submitOfflineIntent(cookie: string | undefined, org: string, id: string, raw: unknown) {
+    const input = objectInput(raw, ['intent', 'control', 'confirmImport']);
+    if (input.confirmImport !== true) invalid('请明确确认按原顺序导入离线草稿');
+    const intent = parseOfflineScoringIntent(input.intent);
+    const hash = offlineIntentHash(intent);
+    const control = this.parseControl(input.control);
+    return this.transaction(async (c) => {
+      const ctx = await this.context(c, cookie, org);
+      const a = await this.access(c, ctx, id, true);
+      this.scorer(a);
+      assertActiveEvent(a.event.status);
+      const now = await this.now(c, ctx);
+      this.assertLease(await this.lease(c, a, true), a, control, now);
+      const prior = await c.query<Row>(
+        'SELECT i.*,s.* FROM scoring_offline_intents i JOIN scoring_commands s ON s.org_id=i.org_id AND s.actor_id=i.actor_id AND s.match_id=i.match_id AND s.command_id=i.command_id WHERE i.org_id=$1 AND i.actor_id=$2 AND i.match_id=$3 AND i.intent_id=$4',
+        [ctx.orgId, ctx.user.id, id, intent.intentId],
+      );
+      if (prior.rows[0]) {
+        if (prior.rows[0].intent_hash !== hash)
+          conflict('IDEMPOTENCY_CONFLICT', '同一离线编号已用于不同内容');
+        const snapshot = await this.snapshot(c, a, now);
+        if (!snapshot) conflict('MATCH_NOT_PREPARED', '比赛尚未准备');
+        return { intentId: intent.intentId, receipt: this.receipt(prior.rows[0]), snapshot };
+      }
+      const position = await c.query<Row>(
+        'SELECT * FROM scoring_offline_intents WHERE org_id=$1 AND actor_id=$2 AND match_id=$3 AND queue_id=$4 AND ordinal=$5',
+        [ctx.orgId, ctx.user.id, id, intent.queueId, intent.ordinal],
+      );
+      if (position.rowCount)
+        conflict('OFFLINE_ORDER_CONFLICT', '此离线顺序已用于另一条原操作，请逐条核对');
+      if (intent.ordinal > 1) {
+        const previous = await c.query<Row>(
+          'SELECT i.*,s.applied_version FROM scoring_offline_intents i JOIN scoring_commands s ON s.org_id=i.org_id AND s.actor_id=i.actor_id AND s.match_id=i.match_id AND s.command_id=i.command_id WHERE i.org_id=$1 AND i.actor_id=$2 AND i.match_id=$3 AND i.intent_id=$4 AND i.queue_id=$5 AND i.ordinal=$6',
+          [ctx.orgId, ctx.user.id, id, intent.previousIntentId, intent.queueId, intent.ordinal - 1],
+        );
+        if (
+          !previous.rows[0] ||
+          previous.rows[0].applied_version !== intent.command.expectedVersion
+        )
+          conflict('OFFLINE_ORDER_CONFLICT', '前一条离线操作尚未接受或原版本链不一致');
+      }
+      const normal = await c.query(
+        'SELECT 1 FROM scoring_commands WHERE org_id=$1 AND actor_id=$2 AND match_id=$3 AND command_id=$4',
+        [ctx.orgId, ctx.user.id, id, intent.intentId],
+      );
+      if (normal.rowCount)
+        conflict('OFFLINE_ID_CONFLICT', '原编号已用于在线命令，请核对原回执，不能另作导入');
+      const result = await this.executeCommandInTransaction(c, cookie, org, id, {
+        ...intent.command,
+        control,
+      } as ScoringCommandInput);
+      await c.query(
+        'INSERT INTO scoring_offline_intents(org_id,event_id,match_id,actor_id,intent_id,queue_id,ordinal,previous_intent_id,intent_hash,command_id,accepted_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$5,$10)',
         [
           ctx.orgId,
           a.event.id,
           id,
           ctx.user.id,
-          command.commandId,
+          intent.intentId,
+          intent.queueId,
+          intent.ordinal,
+          intent.previousIntentId,
           hash,
-          command.type,
-          newVersion,
-          first,
-          plan.events.length ? seq : null,
-          now,
+          result.receipt.acceptedAt,
         ],
       );
-      await this.audit(c, ctx.user.id, ctx.orgId, 'scoring.command.accepted', 'match', id, {
-        commandId: command.commandId,
-        type: command.type,
-        version: newVersion,
-      });
-      const snapshot = await this.snapshot(c, a, now);
-      if (!snapshot) throw notFound();
-      return { receipt: this.receipt(receiptRow.rows[0]!), snapshot: snapshot! };
+      return { intentId: intent.intentId, ...result };
+    });
+  }
+  async getOfflineIntent(cookie: string | undefined, org: string, id: string, intentId: string) {
+    resourceId(intentId);
+    return this.transaction(async (c) => {
+      const ctx = await this.context(c, cookie, org);
+      const a = await this.access(c, ctx, id);
+      this.scorer(a);
+      const row = await c.query<Row>(
+        'SELECT s.* FROM scoring_offline_intents i JOIN scoring_commands s ON s.org_id=i.org_id AND s.actor_id=i.actor_id AND s.match_id=i.match_id AND s.command_id=i.command_id WHERE i.org_id=$1 AND i.actor_id=$2 AND i.match_id=$3 AND i.intent_id=$4',
+        [ctx.orgId, ctx.user.id, id, intentId],
+      );
+      if (!row.rows[0])
+        throw new ApiError(404, 'OFFLINE_INTENT_NOT_FOUND', '未找到本账号的原离线回执');
+      const snapshot = await this.snapshot(c, a, await this.now(c, ctx));
+      if (!snapshot) conflict('MATCH_NOT_PREPARED', '比赛尚未准备');
+      return { intentId, receipt: this.receipt(row.rows[0]), snapshot };
     });
   }
   async getCommand(cookie: string | undefined, org: string, id: string, commandId: string) {
@@ -1139,7 +1328,7 @@ export class ScoringService extends ApplicationService {
         if (time[0] > 23 || time[1] > 59 || time[2] > 59) invalid('无效分页游标');
       }
       const result = await c.query<Row>(
-        `SELECT m.*,e.name AS event_name,s.home_score,s.away_score,to_char(m.starts_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time FROM published_matches m JOIN events e ON e.org_id=m.org_id AND e.id=m.event_id LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id WHERE m.org_id=$1 AND ($2::uuid IS NULL OR m.event_id=$2) AND ($3::text IS NULL OR m.status=$3) AND ($4::boolean OR EXISTS(SELECT 1 FROM event_staff es WHERE es.org_id=m.org_id AND es.event_id=m.event_id AND es.user_id=$5 AND es.status='ACTIVE') OR EXISTS(SELECT 1 FROM match_staff ms WHERE ms.org_id=m.org_id AND ms.match_id=m.id AND ms.user_id=$5 AND ms.status='ACTIVE')) AND ($6::timestamptz IS NULL OR (m.starts_at,m.id)>($6::timestamptz,$7::uuid)) ORDER BY m.starts_at,m.id LIMIT $8`,
+        `SELECT m.*,e.name AS event_name,s.home_score,s.away_score,${exceptionResultSelect},to_jsonb(s) AS state,to_char(m.starts_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time FROM published_matches m JOIN events e ON e.org_id=m.org_id AND e.id=m.event_id LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id ${exceptionResultJoins} WHERE m.org_id=$1 AND ($2::uuid IS NULL OR m.event_id=$2) AND ($3::text IS NULL OR m.status=$3) AND ($4::boolean OR EXISTS(SELECT 1 FROM event_staff es WHERE es.org_id=m.org_id AND es.event_id=m.event_id AND es.user_id=$5 AND es.status='ACTIVE') OR EXISTS(SELECT 1 FROM match_staff ms WHERE ms.org_id=m.org_id AND ms.match_id=m.id AND ms.user_id=$5 AND ms.status='ACTIVE')) AND ($6::timestamptz IS NULL OR (m.starts_at,m.id)>($6::timestamptz,$7::uuid)) ORDER BY m.starts_at,m.id LIMIT $8`,
         [
           ctx.orgId,
           eventId,
@@ -1155,18 +1344,25 @@ export class ScoringService extends ApplicationService {
       const rows = result.rows.slice(0, q.limit);
       const last = rows.at(-1);
       return {
-        data: rows.map((r): ScoringMatchSummary => ({
-          matchId: r.id,
-          eventId: r.event_id,
-          eventName: r.event_name,
-          homeTeamName: r.home_team_name,
-          awayTeamName: r.away_team_name,
-          courtName: r.court_name,
-          startsAt: iso(r.starts_at),
-          status: r.status,
-          version: r.version,
-          score: r.home_score === null ? null : { home: r.home_score, away: r.away_score },
-        })),
+        data: rows.map((r): ScoringMatchSummary => {
+          const administration = administrativeResult(r);
+          return {
+            matchId: r.id,
+            eventId: r.event_id,
+            eventName: r.event_name,
+            homeTeamName: r.home_team_name,
+            awayTeamName: r.away_team_name,
+            courtName: r.court_name,
+            startsAt: iso(r.starts_at),
+            status: r.status,
+            version: r.version,
+            ...(administration ? { adjudication: { kind: administration.kind } } : {}),
+            score:
+              administration || r.home_score == null
+                ? null
+                : { home: r.home_score, away: r.away_score },
+          };
+        }),
         nextCursor:
           result.rows.length > q.limit && last ? this.next(scope, last.cursor_time, last.id) : null,
       };

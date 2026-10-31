@@ -1,7 +1,8 @@
 const destinations = {
   Home: '/pages/home/index',
   Events: '/pages/watch/index',
-  Video: '/pages/media/index',
+  Local: '/pages/local/index',
+  Teams: '/pages/teams/index',
   Account: '/pages/account/index',
 };
 Component({
@@ -15,7 +16,8 @@ Component({
     items: [
       { key: 'Home', label: '首页', icon: 'home' },
       { key: 'Events', label: '赛事', icon: 'trophy' },
-      { key: 'Video', label: '视频', icon: 'play' },
+      { key: 'Local', label: '同城', icon: 'pin' },
+      { key: 'Teams', label: '球队', icon: 'users' },
       { key: 'Account', label: '我的', icon: 'user' },
     ],
   },
@@ -23,7 +25,9 @@ Component({
     go(e) {
       if (this.properties.disabled) return;
       const key = e.currentTarget.dataset.key;
-      if (Object.prototype.hasOwnProperty.call(destinations, key) && key !== this.properties.active)
+      // Video remains reachable from the homepage; legacy media pages belong to Events.
+      const active = this.properties.active === 'Video' ? 'Events' : this.properties.active;
+      if (Object.prototype.hasOwnProperty.call(destinations, key) && key !== active)
         wx.redirectTo({ url: destinations[key] });
     },
   },

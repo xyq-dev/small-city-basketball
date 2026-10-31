@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const scoring = require('../../utils/scoring');
+const offline = require('../../utils/scoring-offline');
 
 const RENEW_MS = 10000;
 const TICK_MS = 1000;
@@ -12,11 +13,19 @@ const privateDefaults = {
   history: [],
   roster: { home: [NO_PLAYER], away: [NO_PLAYER] },
   pick: { home: 0, away: 0 },
+  proGroups: [],
+  lineupCorrection: null,
+  lineupDraft: { home: [], away: [] },
+  subOut: { home: 0, away: 0 },
+  subIn: { home: 0, away: 0 },
   held: false,
   canControl: false,
   leaseNote: '',
   unavailable: false,
   pending: null,
+  offlineDraft: false,
+  offlineItems: [],
+  offlineError: '',
   voidTarget: null,
   voidReason: '',
   clockOpen: false,
@@ -34,10 +43,26 @@ function rosterOptions(list) {
 }
 
 Page({
-  data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
+  data: {
+    loading: false,
+    busy: false,
+    error: '',
+    notice: '',
+    technicalKinds: [
+      { kind: 'REBOUND', label: '篮板' },
+      { kind: 'ASSIST', label: '助攻' },
+      { kind: 'STEAL', label: '抢断' },
+      { kind: 'BLOCK', label: '盖帽' },
+      { kind: 'TURNOVER', label: '失误' },
+    ],
+    ...privateDefaults,
+  },
   onLoad(query) {
     this._alive = true;
+    this._visible = true;
     try {
+      this._reportOnly = query.readOnly === '1';
+      this.setData({ reportOnly: this._reportOnly });
       this.orgId = api.uuid(query.orgId);
       this.matchId = api.uuid(query.matchId);
     } catch {
@@ -46,16 +71,46 @@ Page({
     }
     this.load();
   },
-  onUnload() {
-    this._alive = false;
+  onShow() {
+    if (!this._alive || this._visible !== false) return;
+    this._visible = true;
+    // Returning only refreshes state. Control and unknown commands require explicit action.
+    this.load();
+  },
+  onHide() {
+    if (this._visible === false) return;
+    this._visible = false;
     this._load = (this._load || 0) + 1;
-    this.release();
+    this._acquireOp = (this._acquireOp || 0) + 1;
+    this._instance = null;
+    const pending = this._inflightCommand || this.data.pending;
+    // Never race a lease release against a command whose acceptance is unknown. Stop local
+    // renewal/writes and let that lease expire within 30s; retain the original operation.
+    if (pending || this._offlineSync) this.dropControl();
+    else this.release();
+    ui.close(this);
+    this.setData({
+      held: false,
+      canControl: false,
+      busy: false,
+      loading: false,
+      ...(pending ? { pending } : {}),
+      notice: pending
+        ? '记分页已离开，原操作结果待核对；返回后请先核对原编号，不会自动重发。'
+        : '记分页已离开，控制已停止；返回后请核对状态并明确取得控制。',
+    });
+  },
+  onUnload() {
+    this.onHide();
+    this._alive = false;
     ui.close(this);
   },
   onSessionReset() {
     this._load = (this._load || 0) + 1;
     this._acquireOp = (this._acquireOp || 0) + 1;
     this._instance = null;
+    this._inflightCommand = null;
+    this._offlineSync = null;
     this.dropControl();
     this.setData({
       ...privateDefaults,
@@ -92,10 +147,37 @@ Page({
     if (snapshot)
       this.setData({
         'match.status': snapshot.status,
-        'match.statusLabel': api.matchStatus(snapshot.status),
+        'match.statusLabel': snapshot.adjudication
+          ? snapshot.adjudication.kind === 'FORFEIT'
+            ? '行政弃权已生效'
+            : '本场已取消'
+          : api.matchStatus(snapshot.status),
       });
-    this.setData({ board });
-    if (board && board.running && !this._tick)
+    const pro = snapshot && snapshot.professionalStatistics;
+    const proGroups = pro
+      ? ['home', 'away'].map((key) => ({
+          key,
+          side: key === 'home' ? 'HOME' : 'AWAY',
+          name: snapshot[key].teamName,
+          players: pro[key].players.map((p) => ({
+            ...p,
+            label: p.jerseyNo + '号 ' + p.name,
+            time:
+              Math.floor(p.playingMs / 60000) +
+              ':' +
+              String(Math.floor(p.playingMs / 1000) % 60).padStart(2, '0'),
+            shooting: p.fieldGoalsMade + '/' + p.fieldGoalsAttempted,
+            percent: p.fieldGoalPercentage === null ? '无出手' : p.fieldGoalPercentage + '%',
+            checked: pro[key].lineup.includes(p.memberId),
+          })),
+        }))
+      : [];
+    this.setData({
+      board,
+      proGroups,
+      ...(pro ? { lineupDraft: { home: pro.home.lineup, away: pro.away.lineup } } : {}),
+    });
+    if (board && board.running && !this._tick && this._visible !== false)
       this._tick = setInterval(() => {
         if (this._snapshot)
           this.setData({
@@ -108,7 +190,7 @@ Page({
     }
   },
   async load() {
-    if (!this.orgId || this.data.loading || this.data.busy) return;
+    if (this._visible === false || !this.orgId || this.data.loading || this.data.busy) return;
     const client = api.getClient();
     const load = (this._load = (this._load || 0) + 1);
     const current = () => this._alive && load === this._load;
@@ -130,6 +212,7 @@ Page({
       this.setData({ ...privateDefaults });
     }
     this._viewer = session.user.id;
+    this.refreshOffline();
     const token = ui.begin(this);
     try {
       const wb = (await client.request(this.base() + '/scoring')).data;
@@ -144,13 +227,19 @@ Page({
       this.setData({
         loading: false,
         unavailable: false,
-        canControl: !!wb.capabilities.canAcquireControl,
+        canControl: !this._reportOnly && !!wb.capabilities.canAcquireControl,
+        reportOnly: !!this._reportOnly,
         match: {
           eventName: wb.event.name,
           home: wb.match.home.teamName,
           away: wb.match.away.teamName,
           status: wb.match.status,
-          statusLabel: api.matchStatus(wb.match.status),
+          statusLabel: wb.match.adjudication
+            ? wb.match.adjudication.kind === 'FORFEIT'
+              ? '行政弃权已生效'
+              : '本场已取消'
+            : api.matchStatus(wb.match.status),
+          adjudication: wb.match.adjudication || null,
           closed: ['COMPLETED', 'ARCHIVED'].includes(wb.event.status),
         },
         roster: {
@@ -163,8 +252,18 @@ Page({
             : '',
       });
       this.show(wb.snapshot, receivedAt);
+      this.refreshOffline();
       if (wb.snapshot) this.refreshHistory();
-      if (!wb.capabilities.canAcquireControl && !this._control)
+      if (wb.match.adjudication) {
+        this.dropControl();
+        this.setData({
+          held: false,
+          error: '',
+          notice: '本场行政裁定已生效，不能记分，不计个人样本或出场。',
+        });
+      } else if (this._reportOnly) {
+        this.setData({ error: '', notice: '专业统计与上场时间报表，只读查看。' });
+      } else if (!wb.capabilities.canAcquireControl && !this._control)
         this.setData({ error: '当前身份不是本场有效记分员，只能查看。' });
     } catch (error) {
       if (!ui.live(this, token) || !current()) return;
@@ -191,7 +290,7 @@ Page({
     }
   },
   async acquire() {
-    if (this.data.busy || this._control) return;
+    if (this._visible === false || this._reportOnly || this.data.busy || this._control) return;
     // Bound to this page, session and attempt before the instance-id wait; a late id is
     // neither sent nor kept once the account changed, the user signed out or the page closed.
     const token = ui.hold(this);
@@ -212,7 +311,7 @@ Page({
           .getClient()
           .request(this.base() + '/scorekeeper-lease', 'POST', { clientInstanceId: this._instance })
       ).data;
-      if (!ui.held(this, token)) return;
+      if (!live()) return;
       this._control = {
         leaseId: lease.leaseId,
         fencingToken: lease.fencingToken,
@@ -226,7 +325,7 @@ Page({
   },
   async renew() {
     const control = this._control;
-    if (!control) return;
+    if (this._visible === false || !control) return;
     try {
       await api.getClient().request(this.base() + '/scorekeeper-lease/renew', 'POST', { control });
     } catch (error) {
@@ -248,8 +347,24 @@ Page({
   // `expected`: for confirmed commands, the match version the scorer saw when the dialog
   // opened; the command is sent with it, and not at all if the page has moved on since.
   async command(type, payload, label, op, expected) {
+    if (this._visible === false) return;
+    if (this._reportOnly) {
+      this.setData({ error: '当前为只读报表。' });
+      return;
+    }
     if (this.data.busy || this.data.pending) return;
     if (op && !op.valid()) return;
+    if (this.data.offlineDraft) {
+      if (!offline.TYPES.includes(type)) {
+        this.setData({ error: '此操作须在线完成，离线草稿只记录统计与更正。' });
+        return;
+      }
+      return this.saveOffline(type, payload, label);
+    }
+    if (this.data.offlineItems.length) {
+      this.setData({ error: '存在未同步草稿，请先按原顺序同步并核对。' });
+      return;
+    }
     if (!this._control) {
       this.setData({ error: '请先取得记分控制。' });
       return;
@@ -264,12 +379,15 @@ Page({
       (expected === undefined || this._matchVersion === expected);
     if (!live()) return;
     this.setData({ busy: true, loading: false, error: '', notice: '' });
+    let inflight;
     try {
       const body = await scoring.envelope(type, payload, version, control);
       if (!live()) {
         if (ui.held(this, token)) this.setData({ busy: false });
         return;
       }
+      inflight = { body, label };
+      this._inflightCommand = inflight;
       const outcome = await scoring.send(api.getClient(), this.base(), body);
       if (!ui.held(this, token)) return;
       if (!outcome.done) {
@@ -291,11 +409,207 @@ Page({
         this.setData({ held: false });
       }
       if (error && ['VERSION_CONFLICT', 'INVALID_MATCH_STATE'].includes(error.code)) this.load();
+    } finally {
+      if (this._inflightCommand === inflight) this._inflightCommand = null;
     }
   },
+  offlineScope() {
+    return { actorId: this._viewer, orgId: this.orgId, matchId: this.matchId };
+  },
+  refreshOffline() {
+    if (!this._viewer) return;
+    try {
+      const queue = offline.read(wx, this.offlineScope());
+      this.setData({
+        offlineItems: queue
+          ? queue.items.map((i) => ({
+              id: i.intentId,
+              ordinal: i.ordinal,
+              label: scoring.commandNames[i.command.type] || i.command.type,
+              detail:
+                (i.command.payload.side === 'HOME'
+                  ? '主队'
+                  : i.command.payload.side === 'AWAY'
+                    ? '客队'
+                    : '更正') +
+                ' · ' +
+                (scoring.kinds[i.command.payload.kind] ||
+                  (i.command.payload.shotValue
+                    ? i.command.payload.shotValue +
+                      '分投篮' +
+                      (i.command.payload.made ? '命中' : '未中')
+                    : '撤销记录')) +
+                ' ' +
+                (i.command.payload.value || '') +
+                ' ' +
+                (i.command.payload.reason || ''),
+            }))
+          : [],
+        offlineError: '',
+      });
+    } catch (error) {
+      this.setData({ offlineError: ui.message(error) });
+    }
+  },
+  toggleOffline() {
+    if (
+      this._visible === false ||
+      this.data.busy ||
+      this.data.pending ||
+      !this._viewer ||
+      !this._snapshot ||
+      !this.data.canControl
+    )
+      return;
+    this.setData({ offlineDraft: !this.data.offlineDraft, error: '', notice: '' });
+    if (this.data.offlineDraft)
+      this.setData({
+        notice: '离线草稿模式：未同步记录不计入正式比分；时钟、换人、节次和确认须在线完成。',
+      });
+  },
+  async saveOffline(type, payload, label) {
+    if (
+      this._visible === false ||
+      this.data.offlineError ||
+      !this._viewer ||
+      !this._snapshot ||
+      !this.data.canControl
+    )
+      return;
+    const actor = this._viewer,
+      token = ui.hold(this),
+      scope = this.offlineScope();
+    this.setData({ busy: true, error: '' });
+    try {
+      await offline.append(wx, scope, type, payload, this._matchVersion);
+      if (!ui.held(this, token) || actor !== this._viewer) return;
+      this.refreshOffline();
+      this.setData({ busy: false, notice: label + ' 已保存为本账号离线草稿，尚未同步。' });
+    } catch (error) {
+      if (ui.held(this, token)) this.setData({ busy: false, error: ui.message(error) });
+    }
+  },
+  async syncOffline() {
+    if (
+      this._visible === false ||
+      this.data.busy ||
+      this.data.pending ||
+      !this._control ||
+      !this.data.offlineItems.length ||
+      this.data.offlineError
+    )
+      return;
+    const op = await ui.confirmOp(
+      this,
+      '同步离线草稿',
+      '按原顺序同步' +
+        this.data.offlineItems.length +
+        '条草稿？版本冲突会停止，已接受记录可按原编号核对，不会自动改版重发。',
+    );
+    if (!op || !op.valid()) return;
+    const token = ui.hold(this),
+      actor = this._viewer,
+      control = this._control,
+      scope = this.offlineScope();
+    const current = () =>
+      ui.held(this, token) && this._viewer === actor && this._control === control;
+    const sync = {};
+    this._offlineSync = sync;
+    this.setData({ busy: true, error: '' });
+    try {
+      const result = await offline.sync(
+        wx,
+        scope,
+        api.getClient(),
+        this.base(),
+        control,
+        current,
+        (accepted) => {
+          if (current()) this.show(accepted.snapshot, Date.now());
+        },
+      );
+      if (!current()) return;
+      if (result.latest) this.show(result.latest.snapshot, Date.now());
+      this.refreshOffline();
+      this.setData({
+        busy: false,
+        offlineDraft: false,
+        notice: this.data.offlineItems.length
+          ? '本次确认的 ' +
+            result.accepted +
+            ' 条已同步；另有 ' +
+            this.data.offlineItems.length +
+            ' 条新草稿待下次明确同步。'
+          : '草稿已按原顺序同步，请核对正式记录。',
+      });
+      this.refreshHistory();
+    } catch (error) {
+      if (!ui.held(this, token)) return;
+      this.refreshOffline();
+      this.setData({
+        busy: false,
+        error:
+          (error && error.code === 'OFFLINE_QUEUE_CHANGED'
+            ? '本地队列已变化，已停止同步；已接受记录可按原编号核对。'
+            : '同步已停止，剩余原草稿已保留。') + scoring.failure(error),
+      });
+      if (error && ['LEASE_CONFLICT', 'SESSION_CHANGED'].includes(error.code)) {
+        this.dropControl();
+        this.setData({ held: false });
+      }
+    } finally {
+      if (this._offlineSync === sync) this._offlineSync = null;
+    }
+  },
+  async exportOffline() {
+    if (this.data.busy || !this._viewer || this.data.offlineError) return;
+    const actor = this._viewer,
+      scope = this.offlineScope();
+    const op = await ui.confirmOp(
+      this,
+      '导出原草稿',
+      '复制尚未同步的原操作编号、原版本和记录内容，用于逐条人工核对。',
+    );
+    if (!op || !op.valid() || actor !== this._viewer) return;
+    try {
+      const queue = offline.read(wx, scope);
+      if (!queue) return;
+      wx.setClipboardData({
+        data: JSON.stringify(queue, null, 2),
+        success: () => {
+          if (op.valid() && actor === this._viewer)
+            this.setData({ notice: '原草稿已复制，可逐条核对；原队列保持。' });
+        },
+        fail: (error) => {
+          if (op.valid() && actor === this._viewer) this.setData({ error: ui.message(error) });
+        },
+      });
+    } catch (error) {
+      if (op.valid() && actor === this._viewer) this.setData({ error: ui.message(error) });
+    }
+  },
+  async discardOffline() {
+    if (this.data.busy || !this._viewer) return;
+    const scope = this.offlineScope(),
+      actor = this._viewer;
+    const op = await ui.confirmOp(
+      this,
+      '删除离线草稿',
+      '删除本账号本场尚未同步的草稿？已在服务端接受的原回执不会删除。建议先逐条核对。',
+    );
+    if (!op || !op.valid() || actor !== this._viewer) return;
+    try {
+      offline.discard(wx, scope);
+      this.refreshOffline();
+      this.setData({ offlineDraft: false, notice: '本地草稿已删除。' });
+    } catch (error) {
+      if (op.valid() && actor === this._viewer) this.setData({ error: ui.message(error) });
+    }
+  },
+
   async checkPending() {
     const pending = this.data.pending;
-    if (!pending || this.data.busy) return;
+    if (this._visible === false || !pending || this.data.busy) return;
     this.setData({ busy: true, loading: false, error: '' });
     const token = ui.hold(this);
     try {
@@ -316,7 +630,7 @@ Page({
   },
   async resendPending() {
     const pending = this.data.pending;
-    if (!pending || this.data.busy) return;
+    if (this._visible === false || !pending || this.data.busy) return;
     this.setData({ busy: true, loading: false, error: '' });
     const token = ui.hold(this);
     try {
@@ -346,16 +660,137 @@ Page({
     const value = Number(e.currentTarget.dataset.value || 1);
     if (!['HOME', 'AWAY'].includes(side) || !scoring.kinds[kind]) return;
     const key = side === 'HOME' ? 'home' : 'away';
+    if (
+      this.data.board &&
+      this.data.board.proMode &&
+      kind === 'SCORE' &&
+      !this.professionalPlayer(side)
+    )
+      return;
     const payload = { kind, side, value };
     const option = this.data.roster[key][this.data.pick[key]];
     if (this.data.board && this.data.board.playerMode && kind !== 'TIMEOUT' && option)
       payload.memberId = option.memberId || null;
     const team = this.data.match[key];
     this.command(
-      'RECORD_STAT',
-      payload,
+      this.data.board.proMode && kind === 'SCORE' ? 'RECORD_SHOT' : 'RECORD_STAT',
+      this.data.board.proMode && kind === 'SCORE'
+        ? { side, memberId: payload.memberId, shotValue: value, made: true }
+        : payload,
       team + ' ' + scoring.kinds[kind] + (kind === 'SCORE' ? ' +' + value : ''),
     );
+  },
+  professionalPlayer(side) {
+    const key = side === 'HOME' ? 'home' : 'away';
+    const p = this.data.roster[key][this.data.pick[key]];
+    if (!p || !p.memberId) {
+      this.setData({ error: '专业统计请先选择当前在场球员。' });
+      return null;
+    }
+    return p.memberId;
+  },
+  missShot(e) {
+    const side = e.currentTarget.dataset.side,
+      memberId = this.professionalPlayer(side);
+    if (memberId)
+      this.command(
+        'RECORD_SHOT',
+        { side, memberId, shotValue: Number(e.currentTarget.dataset.value), made: false },
+        '记录未命中投篮',
+      );
+  },
+  technical(e) {
+    const side = e.currentTarget.dataset.side,
+      memberId = this.professionalPlayer(side);
+    if (memberId)
+      this.command(
+        'RECORD_TECHNICAL',
+        { side, memberId, kind: e.currentTarget.dataset.kind },
+        '记录' + scoring.kinds[e.currentTarget.dataset.kind],
+      );
+  },
+  pickLineup(e) {
+    const key = e.currentTarget.dataset.side;
+    if (['home', 'away'].includes(key)) this.setData({ ['lineupDraft.' + key]: e.detail.value });
+  },
+  setLineup(e) {
+    const key = e.currentTarget.dataset.side;
+    if (['home', 'away'].includes(key))
+      this.command(
+        'SET_LINEUP',
+        { side: key === 'home' ? 'HOME' : 'AWAY', memberIds: this.data.lineupDraft[key] },
+        '设置首发',
+      );
+  },
+  subPick(e) {
+    const key = e.currentTarget.dataset.side,
+      role = e.currentTarget.dataset.role;
+    if (['home', 'away'].includes(key) && ['out', 'in'].includes(role))
+      this.setData({
+        [(role === 'out' ? 'subOut.' : 'subIn.') + key]: Number(e.detail.value) || 0,
+      });
+  },
+  substitute(e) {
+    const key = e.currentTarget.dataset.side,
+      group = this.data.proGroups.find((g) => g.key === key);
+    if (!group) return;
+    const out = group.players[this.data.subOut[key]],
+      into = group.players[this.data.subIn[key]];
+    if (out && into)
+      this.command(
+        'SUBSTITUTE_PLAYER',
+        {
+          side: key === 'home' ? 'HOME' : 'AWAY',
+          outMemberId: out.memberId,
+          inMemberId: into.memberId,
+        },
+        '换人',
+      );
+  },
+  correctLineup(e) {
+    const row = this.data.history.find(
+      (r) => r.id === e.currentTarget.dataset.id && r.canCorrectLineup,
+    );
+    if (!row || !this.data.board || this.data.board.running) return;
+    const group = this.data.proGroups.find((g) => g.side === row.side);
+    if (group)
+      this.setData({
+        lineupCorrection: {
+          targetEventId: row.id,
+          side: row.side,
+          memberIds: row.memberIds,
+          reason: '',
+          players: group.players.map((p) => ({
+            ...p,
+            checked: row.memberIds.includes(p.memberId),
+          })),
+        },
+      });
+  },
+  correctionLineupPick(e) {
+    if (this.data.lineupCorrection) this.setData({ 'lineupCorrection.memberIds': e.detail.value });
+  },
+  correctionLineupReason(e) {
+    if (this.data.lineupCorrection)
+      this.setData({ 'lineupCorrection.reason': String(e.detail.value || '').slice(0, 500) });
+  },
+  submitLineupCorrection() {
+    const draft = this.data.lineupCorrection;
+    if (!draft) return;
+    const reason = draft.reason.trim();
+    if (!reason) {
+      this.setData({ error: '请填写阵容更正原因。' });
+      return;
+    }
+    this.setData({ lineupCorrection: null });
+    this.command(
+      'CORRECT_LINEUP',
+      { targetEventId: draft.targetEventId, memberIds: draft.memberIds, reason },
+      '更正历史阵容',
+    );
+  },
+  cancelLineupCorrection() {
+    this.setData({ lineupCorrection: null });
   },
   start() {
     this.command('START_MATCH', { expectedEventVersion: this._eventVersion }, '开始比赛');
@@ -420,7 +855,8 @@ Page({
   askVoid(e) {
     const id = e.currentTarget.dataset.id;
     const row = this.data.history.find((h) => h.id === id && h.canVoid);
-    if (row) this.setData({ voidTarget: { id, text: row.text }, voidReason: '' });
+    if (row)
+      this.setData({ voidTarget: { id, text: row.text, voidType: row.voidType }, voidReason: '' });
   },
   voidInput(e) {
     this.setData({ voidReason: String(e.detail.value || '').slice(0, 500) });
@@ -438,7 +874,7 @@ Page({
     }
     this.setData({ voidTarget: null, voidReason: '' });
     this.command(
-      'VOID_STAT',
+      target.voidType || 'VOID_STAT',
       { targetEventId: api.uuid(target.id), reason },
       '撤销：' + target.text,
     );
@@ -481,6 +917,7 @@ Page({
     if (field === 'value') this.setData({ 'fix.value': Number(raw) || 1 });
     if (field === 'period')
       this.setData({ 'fix.period': Math.max(1, Math.min(99, Number(raw) || 1)) });
+    if (field === 'made') this.setData({ 'fix.made': raw !== 'false' && raw !== false });
     if (field === 'reason') this.setData({ 'fix.reason': String(raw || '').slice(0, 500) });
   },
   submitFix() {
@@ -497,13 +934,18 @@ Page({
       period: fix.period,
       reason,
     };
-    if (this.data.board && this.data.board.playerMode && fix.kind !== 'TIMEOUT')
+    let type = 'ADD_CORRECTION';
+    if (this.data.board && this.data.board.proMode && !['FOUL', 'TIMEOUT'].includes(fix.kind)) {
+      const memberId = this.professionalPlayer(fix.side);
+      if (!memberId) return;
+      type = 'ADD_PRO_CORRECTION';
+      Object.assign(payload, { memberId, kind: fix.kind === 'SCORE' ? 'SHOT' : fix.kind });
+      delete payload.value;
+      if (fix.kind === 'SCORE')
+        Object.assign(payload, { shotValue: fix.value, made: fix.made !== false });
+    } else if (this.data.board && this.data.board.playerMode && fix.kind !== 'TIMEOUT')
       payload.memberId = null;
     this.setData({ fixOpen: false });
-    this.command(
-      'ADD_CORRECTION',
-      payload,
-      '补录' + scoring.sides[fix.side] + scoring.kinds[fix.kind],
-    );
+    this.command(type, payload, '补录' + scoring.sides[fix.side] + scoring.kinds[fix.kind]);
   },
 });

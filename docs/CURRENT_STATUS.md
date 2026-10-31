@@ -1,5 +1,15 @@
 # 当前状态
 
+## COMPLETION22（REVIEW / BRANCH_ONLY，补片已整合，待完整复验）
+
+2026-10-31 Asia/Shanghai；本会话root集成，分支feat/commercial-completion-22、main基线dff0a8d，[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)尚未合并。全部22项已有源码和消费者，范围见[总任务](tasks/COMPLETION22.md)、[恢复入口](handoffs/COMPLETION22.md)。
+
+补片前00b8e44的[CI41165348026](https://github.com/xyq-dev/small-city-basketball/actions/runs/41165348026)三job完整SUCCESS，root已读取原始日志：516真实PG、16页面HTTP、24真实API浏览器、20最小权限PG、4 HTTPS，127表重启/非空完整恢复/隔离及自有清理通过；源码914 API／561 admin／924原生通过及1既有平台跳过，995兼容浏览器／981布局PNG通过。此证据不替代补片后验证。
+
+追加复审确认READY裁定读取未传真实scoring state，已整合abfbb1c并保留严格来源校验；6项单测与2项PG覆盖弃权/取消后读取和独立撤回。账号找回初判撤回，既有新码核对/取消旧unknown已支持；9599fcb只补该路径2项PG及1项VM，不改账号业务或授权。root整合后全类型、局部格式、27项裁定单测与8项消费者VM通过；新增4项PG未本地运行，待完整精确候选CI，全部22项保持REVIEW。
+
+已保留全部旧checkout/worktree及既有未同步验收记录；没有改成功迁移。DOC005直播仍仅设计；正式地图/邮件、微信开发者工具/真机、真实支付/在线保险、生产部署及生产Migration均未执行。
+
 ## DOC005 小程序直接开播与多平台分发（设计文档）
 
 2026-10-31 Asia/Shanghai；负责人及集成人Codex root。用户要求手机直接在小程序采集开播，由云端合成权威比分并分发至多个已授权外站；首版单手机横屏、一场比赛、两目标验证，OBS为后续输入扩展。[专项设计](design/MINI_PROGRAM_MULTIPLATFORM_LIVE.md)、[任务](tasks/DOC005.md)、[交接](handoffs/DOC005.md)。

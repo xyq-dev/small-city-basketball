@@ -39,6 +39,11 @@ export function StandingsTable({
   preview?: boolean;
   title?: string;
 }) {
+  const adjudicated = data.adjudicatedMatchCount ?? 0;
+  const cancelled = data.cancelledMatchCount ?? 0;
+  const resolved = data.resolvedMatchCount ?? data.confirmedMatchCount;
+  const administrative = adjudicated > 0 || cancelled > 0;
+  const counted = data.confirmedMatchCount + adjudicated;
   return (
     <section className="panel view-panel" aria-label={title}>
       <div className="view-section-title">
@@ -47,20 +52,39 @@ export function StandingsTable({
           <h2>{preview ? '草稿规则预览' : title}</h2>
         </div>
         <span className={`status-badge ${preview ? 'amber' : data.isComplete ? 'green' : 'blue'}`}>
-          {preview ? '未正式发布' : data.isComplete ? '全部场次已确认' : '未完成 · 暂列排名'}
+          {preview
+            ? '未正式发布'
+            : data.isComplete
+              ? administrative
+                ? '全部场次已处理'
+                : '全部场次已确认'
+              : '未完成 · 暂列排名'}
         </span>
       </div>
       <p className="view-muted">
-        已计入 {data.confirmedMatchCount} / {data.totalMatchCount} 场有效确认赛果。
+        {administrative ? (
+          <>
+            已处理 {resolved} / {data.totalMatchCount} 场：{data.confirmedMatchCount}场有效确认、
+            {adjudicated}场弃权裁定、{cancelled}场取消（不计入积分表）。
+          </>
+        ) : (
+          <>
+            已计入 {data.confirmedMatchCount} / {data.totalMatchCount} 场有效确认赛果。
+          </>
+        )}
         {data.hasSharedRanks
           ? '包含共享名次，采用1、1、3的竞赛排名。'
           : '排名不自动等于冠军或晋级。'}
       </p>
-      {data.confirmedMatchCount === 0 && (
+      {counted === 0 && (
         <div className="view-note">
           <div>
-            <strong>尚无已确认赛果</strong>
-            <p>所有球队尚无名次，不把未赛球队列为并列冠军。</p>
+            <strong>{cancelled > 0 ? '尚无计入积分的赛果' : '尚无已确认赛果'}</strong>
+            <p>
+              {cancelled > 0
+                ? '取消场次不产生胜负或积分，排名及晋级按赛事规则处理。'
+                : '所有球队尚无名次，不把未赛球队列为并列冠军。'}
+            </p>
           </div>
         </div>
       )}
@@ -153,7 +177,10 @@ export function StandingsTable({
       <p className="view-caption">
         截至{' '}
         {new Date(data.asOf).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })}{' '}
-        · 中国标准时间。只计当前有效确认；重开赛果后整场暂不计入。
+        · 中国标准时间。
+        {administrative
+          ? '计入当前有效确认和依规则裁定的弃权胜负积分；弃权不产生记录得失分，取消场次排除。'
+          : '只计当前有效确认；重开赛果后整场暂不计入。'}
       </p>
     </section>
   );

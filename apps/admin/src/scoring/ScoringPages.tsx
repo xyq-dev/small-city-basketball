@@ -102,7 +102,11 @@ function MatchCard({ match }: { match: ScoringMatchSummary }) {
       <span
         className={`status-badge ${match.status === 'LIVE' ? 'blue' : match.status === 'FINAL' ? 'green' : 'neutral'}`}
       >
-        {matchStatusLabels[match.status] ?? match.status}
+        {match.adjudication
+          ? match.adjudication.kind === 'FORFEIT'
+            ? '弃权裁定'
+            : '本场取消'
+          : (matchStatusLabels[match.status] ?? match.status)}
       </span>
       <p>{match.eventName}</p>
       <h2>
@@ -111,7 +115,7 @@ function MatchCard({ match }: { match: ScoringMatchSummary }) {
       <p>
         {match.courtName} · {localMoment(match.startsAt)}
       </p>
-      {match.score && (
+      {match.score && !match.adjudication && (
         <strong>
           {match.score.home} : {match.score.away}
         </strong>

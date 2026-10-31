@@ -341,7 +341,7 @@ describe('P07 real PostgreSQL audited runtime and backup identities', () => {
     });
   });
 
-  test('the backup identity reads all 83 tables but cannot lock, write or change schema', async () => {
+  test('the backup identity reads every exact manifest table but cannot lock, write or change schema', async () => {
     const manifest = await loadManifest();
     for (const name of Object.keys(manifest.tables)) {
       await expect(backup.query(`SELECT 1 FROM public."${name}" LIMIT 1`)).resolves.toBeDefined();
@@ -358,6 +358,47 @@ describe('P07 real PostgreSQL audited runtime and backup identities', () => {
       'SET ROLE scb_migrator',
     ]) {
       await expect(backup.query(sql)).rejects.toMatchObject({ code: '42501' });
+    }
+  });
+
+  test('only reviewed runtime helpers execute and PUBLIC, backup or trigger grants fail readiness', async () => {
+    await expect(runtime.query('SELECT x12_calendar_lock()')).resolves.toBeDefined();
+    await expect(runtime.query('SELECT x12_release_expired()')).resolves.toBeDefined();
+    await expect(backup.query('SELECT x12_calendar_lock()')).rejects.toMatchObject({
+      code: '42501',
+    });
+    await expect(runtime.query('SELECT x17_staff_receipt_immutable()')).rejects.toMatchObject({
+      code: '42501',
+    });
+    for (const grant of [
+      'GRANT EXECUTE ON FUNCTION x12_calendar_lock() TO PUBLIC',
+      'GRANT EXECUTE ON FUNCTION x12_calendar_lock() TO scb_backup',
+      'GRANT EXECUTE ON FUNCTION x17_staff_receipt_immutable() TO scb_runtime',
+    ]) {
+      try {
+        await target.pool.query(grant);
+        await expect(assertRuntimeReadiness(runtime)).rejects.toMatchObject({
+          code: 'SERVICE_UNAVAILABLE',
+        });
+      } finally {
+        await applyRuntimePrivileges(target.pool);
+      }
+      await expect(assertRuntimeReadiness(runtime)).resolves.toBeUndefined();
+    }
+    for (const [table, column] of [
+      ['event_template_versions', 'id'],
+      ['recruitment_request_receipts', 'actor_id'],
+      ['event_team_import_previews', 'id'],
+      ['scoring_offline_intents', 'intent_id'],
+      ['public_archive_operations', 'actor_id'],
+      ['staff_configuration_receipts', 'id'],
+    ]) {
+      await expect(
+        runtime.query(`SELECT "${column}" FROM public."${table}" FOR SHARE`),
+      ).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        runtime.query(`UPDATE public."${table}" SET "${column}"="${column}" WHERE false`),
+      ).rejects.toMatchObject({ code: '42501' });
     }
   });
 

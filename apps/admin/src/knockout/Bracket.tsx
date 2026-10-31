@@ -21,9 +21,14 @@ export function Bracket({
   participants: ScheduleParticipant[];
   hidePlacements?: boolean;
 }) {
+  const bronze = bracket.rounds.some((r) => r.slots.some((s) => s.kind === 'THIRD_PLACE'));
   const names = new Map(participants.map((p) => [p.entryId, p.teamName]));
-  const name = (entryId: string | null, source: string | null) =>
-    entryId ? (names.get(entryId) ?? '冻结参赛队') : source ? `${source} 胜者待定` : '空签位';
+  const name = (entryId: string | null, source: string | null, outcome?: 'WINNER' | 'LOSER') =>
+    entryId
+      ? (names.get(entryId) ?? '冻结参赛队')
+      : source
+        ? `${source} ${outcome === 'LOSER' ? '负者' : '胜者'}待定`
+        : '空签位';
   return (
     <>
       <div className="ko-rounds" role="region" aria-label="淘汰赛签位">
@@ -39,11 +44,21 @@ export function Bracket({
               {round.slots.map((slot) => (
                 <article className="ko-slot" key={slot.fixtureKey}>
                   <div className="ko-slot-meta">
-                    <strong>第{slot.positionNo}签位</strong>
+                    <strong>
+                      {slot.kind === 'THIRD_PLACE'
+                        ? '季军赛'
+                        : slot.kind === 'CHAMPIONSHIP'
+                          ? '决赛'
+                          : `第${slot.positionNo}签位`}
+                    </strong>
                     <span
                       className={`status-badge ${slot.status === 'FINAL' || slot.status === 'BYE' ? 'green' : 'neutral'}`}
                     >
-                      {label(slot.status)}
+                      {slot.adjudication?.kind === 'FORFEIT'
+                        ? '弃权裁定'
+                        : slot.adjudication?.kind === 'CANCELLED'
+                          ? '本场取消'
+                          : label(slot.status)}
                     </span>
                   </div>
                   {slot.byeEntryId ? (
@@ -52,14 +67,20 @@ export function Bracket({
                     </p>
                   ) : (
                     <div className="ko-pair">
-                      <strong>{name(slot.homeEntryId, slot.homeSource)}</strong>
+                      <strong>{name(slot.homeEntryId, slot.homeSource, slot.sourceOutcome)}</strong>
                       <span>VS</span>
-                      <strong>{name(slot.awayEntryId, slot.awaySource)}</strong>
+                      <strong>{name(slot.awayEntryId, slot.awaySource, slot.sourceOutcome)}</strong>
                     </div>
                   )}
                   {slot.winnerEntryId && !slot.byeEntryId && (
                     <p>
-                      独立确认晋级：<strong>{names.get(slot.winnerEntryId)}</strong>
+                      {slot.adjudication ? '裁定' : '独立确认'}
+                      {slot.kind === 'THIRD_PLACE'
+                        ? '季军'
+                        : slot.kind === 'CHAMPIONSHIP'
+                          ? '冠军'
+                          : '晋级'}
+                      ：<strong>{names.get(slot.winnerEntryId)}</strong>
                     </p>
                   )}
                   {slot.matchId && (
@@ -79,7 +100,10 @@ export function Bracket({
       {!hidePlacements && (
         <section className="panel view-panel" aria-label="淘汰赛最终名次">
           <h2>最终名次</h2>
-          <p>不设三四名赛；同轮淘汰者共享名次。所有正式赛果有效独立确认后才公布。</p>
+          <p>
+            {bronze ? '设季军赛；半决赛负者争夺第三名。' : '不设三四名赛；同轮淘汰者共享名次。'}
+            全部比赛有效独立确认或弃权裁定后公布；取消场次不产生晋级者。
+          </p>
           {bracket.isComplete ? (
             <ol className="ko-placements">
               {bracket.placements.map((row) => (
@@ -92,7 +116,7 @@ export function Bracket({
               ))}
             </ol>
           ) : (
-            <p className="view-muted">本届尚未全部确认，最终名次未产生。</p>
+            <p className="view-muted">本届尚未全部决出，最终名次未产生。</p>
           )}
         </section>
       )}
@@ -106,6 +130,7 @@ export function PublicBracket({
   data: PublicKnockoutData;
   groupStage?: boolean;
 }) {
+  const bronze = data.rounds.some((r) => r.slots.some((s) => s.kind === 'THIRD_PLACE'));
   return (
     <>
       <div className="view-note">
@@ -113,7 +138,8 @@ export function PublicBracket({
           {groupStage
             ? '淘汰阶段 · 小组前二固定交叉对阵 · 同组队决赛前不再相遇'
             : '单淘汰赛 · 首轮轮空无比赛'}{' '}
-          · 平分进入加时 · 不设三四名赛。仅有效独立确认决定晋级。
+          · 平分进入加时 · {bronze ? '设季军赛，半决赛负者争夺第三名' : '不设三四名赛'}
+          。有效独立确认或弃权裁定决定晋级；取消场次不产生晋级者。
         </p>
       </div>
       <div className="ko-rounds" role="region" aria-label="公开淘汰赛签位">
@@ -127,8 +153,20 @@ export function PublicBracket({
               {round.slots.map((slot) => (
                 <article key={slot.positionNo} className="ko-slot">
                   <div className="ko-slot-meta">
-                    <strong>第{slot.positionNo}签位</strong>
-                    <span>{label(slot.status)}</span>
+                    <strong>
+                      {slot.kind === 'THIRD_PLACE'
+                        ? '季军赛'
+                        : slot.kind === 'CHAMPIONSHIP'
+                          ? '决赛'
+                          : `第${slot.positionNo}签位`}
+                    </strong>
+                    <span>
+                      {slot.adjudication?.kind === 'FORFEIT'
+                        ? '弃权裁定'
+                        : slot.adjudication?.kind === 'CANCELLED'
+                          ? '本场取消'
+                          : label(slot.status)}
+                    </span>
                   </div>
                   {slot.bye ? (
                     <p>
@@ -136,14 +174,26 @@ export function PublicBracket({
                     </p>
                   ) : (
                     <div className="ko-pair">
-                      <strong>{slot.home?.teamName ?? '来源胜者待定'}</strong>
+                      <strong>
+                        {slot.home?.teamName ??
+                          (slot.sourceOutcome === 'LOSER' ? '半决赛负者待定' : '来源胜者待定')}
+                      </strong>
                       <span>VS</span>
-                      <strong>{slot.away?.teamName ?? '来源胜者待定'}</strong>
+                      <strong>
+                        {slot.away?.teamName ??
+                          (slot.sourceOutcome === 'LOSER' ? '半决赛负者待定' : '来源胜者待定')}
+                      </strong>
                     </div>
                   )}
                   {slot.winner && !slot.bye && (
                     <p>
-                      独立确认晋级：<strong>{slot.winner.teamName}</strong>
+                      {slot.adjudication ? '裁定' : '独立确认'}
+                      {slot.kind === 'THIRD_PLACE'
+                        ? '季军'
+                        : slot.kind === 'CHAMPIONSHIP'
+                          ? '冠军'
+                          : '晋级'}
+                      ：<strong>{slot.winner.teamName}</strong>
                     </p>
                   )}
                   {slot.publicMatchId && (
@@ -174,7 +224,7 @@ export function PublicBracket({
               ))}
             </ol>
           ) : (
-            <p>本届尚未全部确认，最终名次未产生。</p>
+            <p>本届尚未全部决出，最终名次未产生。</p>
           )}
         </section>
       )}

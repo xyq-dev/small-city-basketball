@@ -1,0 +1,42 @@
+.governance-page {
+  padding-bottom: 40rpx;
+}
+.tabs {
+  display: flex;
+  gap: 8rpx;
+  flex-wrap: wrap;
+}
+.tabs button {
+  flex: 1;
+  min-width: 160rpx;
+}
+.message {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #e7edf5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.picker {
+  padding: 24rpx 0;
+  color: #123c73;
+}
+textarea,
+input {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 16rpx 0;
+  padding: 20rpx;
+  background: #f4f6fa;
+  border-radius: 12rpx;
+  font-size: 16px;
+  line-height: 24px;
+  min-height: 44px;
+}
+textarea {
+  min-height: 160rpx;
+}
+.card button {
+  margin-top: 12rpx;
+  white-space: normal;
+  word-break: break-all;
+}

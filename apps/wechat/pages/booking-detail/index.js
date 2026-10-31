@@ -479,6 +479,20 @@ Page({
       this.finish(token, visit);
     }
   },
+  governance(e) {
+    const id = e.currentTarget.dataset.id;
+    if (
+      this.data.busy ||
+      !id ||
+      !this.data.order ||
+      !this.data.order.appearances.some((a) => a.id === id)
+    )
+      return;
+    ui.open(e.currentTarget.dataset.kind === 'review' ? 'governance-reviews' : 'governance', {
+      sourceKind: 'PLAYER_BOOKING',
+      sourceId: api.uuid(id),
+    });
+  },
   login() {
     ui.login(this.returnPath());
   },

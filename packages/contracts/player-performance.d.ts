@@ -19,6 +19,7 @@ export interface PlayerPerformanceData {
   confirmedMatchCount: number;
   teamOnlyMatchCount: number;
   pendingMatchCount: number;
+  excludedAdministrativeMatchCount?: number;
   invalidMatchCount: number;
   partialAttributionMatchCount: number;
   totalPoints: number | null;

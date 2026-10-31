@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const publicResults = require('../../utils/public-results');
 Page({
   data: {
     snapshot: null,
@@ -25,7 +26,7 @@ Page({
     this.poll = setInterval(() => this.load(), 5000);
     this.tick = setInterval(() => {
       if (this.data.snapshot)
-        this.setData({ clock: api.clockText(this.data.snapshot, this.receivedAt) });
+        this.setData({ clock: publicResults.clock(this.data.snapshot, this.receivedAt) });
     }, 250);
   },
   onHide() {
@@ -46,11 +47,9 @@ Page({
     try {
       const client = api.getClient();
       const base = '/v1/public/events/' + this.event + '/matches/' + this.matchId;
-      const raw = (await client.request(base)).data;
+      const raw = (await client.requestPublic(base)).data;
       const snapshot = {
-        ...raw,
-        statusLabel: api.matchStatus(raw.status),
-        resultLabel: api.resultStatus(raw.resultStatus),
+        ...publicResults.match(raw),
         startLabel: api.publicTime(raw.startsAt),
       };
       // Capture the scoring receipt immediately; a slow media request must not move the clock anchor.
@@ -58,13 +57,13 @@ Page({
       if (!this.closed)
         this.setData({
           snapshot,
-          clock: api.clockText(snapshot, this.receivedAt),
+          clock: publicResults.clock(snapshot, this.receivedAt),
           error: '',
           stale: false,
           unavailable: false,
         });
       try {
-        const result = (await client.request(base + '/media')).data;
+        const result = (await client.requestPublic(base + '/media')).data;
         const media = (result.media || []).map((item) => ({
           ...item,
           src: item.contentPath ? api.mediaUrl(item.contentPath) : null,

@@ -1,3 +1,4 @@
+import type { GroupResultSource } from './match-exceptions.js';
 import type {
   EventData,
   KnockoutBracket,
@@ -31,7 +32,7 @@ export interface GroupQualificationProof {
   id: string;
   sourceHash: string;
   /** Full, effective group-game confirmations, never fabricated wins. */
-  sources: KnockoutSource[];
+  sources: GroupResultSource[];
   /** Fixed first-round seats, e.g. A1,B2,C1,D2,B1,A2,D1,C2. */
   slots: string[];
   drawIds: string[];
@@ -65,12 +66,15 @@ export interface GroupKnockoutProjection {
   totalMatchCount: number;
   publishedMatchCount: number;
   confirmedMatchCount: number;
+  resolvedMatchCount?: number;
+  adjudicatedMatchCount?: number;
+  cancelledMatchCount?: number;
   isComplete: boolean;
   groups: GroupTableData[];
   qualification: {
     status: 'WAITING' | 'TIE_BREAK_REQUIRED' | 'READY' | 'PUBLISHED';
     sourceHash: string;
-    sources: KnockoutSource[];
+    sources: GroupResultSource[];
     slots: string[];
     unresolvedGroups: string[];
     publicationId: string | null;
@@ -81,7 +85,7 @@ export interface GroupKnockoutProjection {
   nextRound: {
     roundNo: number;
     sourceHash: string;
-    sources: KnockoutSource[];
+    sources: GroupResultSource[];
     fixtures: ScheduleFixtureData[];
   } | null;
 }
@@ -121,12 +125,18 @@ export interface PublicGroupKnockoutData {
   totalMatchCount: number;
   publishedMatchCount: number;
   confirmedMatchCount: number;
+  resolvedMatchCount?: number;
+  adjudicatedMatchCount?: number;
+  cancelledMatchCount?: number;
   isComplete: boolean;
   rules: PublicStandingsRules;
   groups: {
     groupKey: string;
     label: string;
     confirmedMatchCount: number;
+    resolvedMatchCount?: number;
+    adjudicatedMatchCount?: number;
+    cancelledMatchCount?: number;
     totalMatchCount: number;
     isComplete: boolean;
     rows: PublicStandingsRow[];

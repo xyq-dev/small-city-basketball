@@ -3,7 +3,8 @@
   <view wx:elif="{{!snapshot}}" class="match-panel public-state"><view class="state-tag warning">{{unavailable ? '请核对' : error ? '读取未完成' : '比赛资料'}}</view><view class="title">{{unavailable ? '该内容已停止公开' : error ? '暂时无法读取比赛' : '比赛资料尚未读取'}}</view><view class="notice {{error ? 'warning' : ''}}"><view>{{error || '请从当前有效的公开赛事选择一场比赛。'}}</view><view wx:if="{{unavailable}}" class="small">旧画面与媒体已清空，不回显已撤销的比赛资料。</view></view><button wx:if="{{error && !unavailable}}" class="primary" bindtap="load">重新读取</button><button class="{{error && !unavailable ? 'secondary' : 'primary'}}" bindtap="watch">返回观赛入口</button></view>
   <block wx:else>
     <view wx:if="{{error}}" class="notice warning">{{error}}<view wx:if="{{stale}}" class="small">比分和计时资料已陈旧，请恢复连接后刷新。</view></view>
-    <view wx:if="{{snapshot.resultStatus==='CONFIRMED'}}" class="match-panel confirmed-result">
+    <view wx:if="{{snapshot.adjudication}}" class="match-panel confirmed-result"><view class="subtitle">行政裁定</view><view class="match-badge">{{snapshot.statusLabel}}</view><view class="match-teams">{{snapshot.home.teamName}} / {{snapshot.away.teamName}}</view><view class="subtitle">{{snapshot.resultLabel}}</view><view class="muted">{{snapshot.resultNote}}</view></view>
+    <view wx:elif="{{snapshot.resultStatus==='CONFIRMED'}}" class="match-panel confirmed-result">
       <view class="subtitle">正式赛果</view><view class="match-badge">已独立确认</view>
       <view class="result-score">{{snapshot.home.teamName}} {{snapshot.score ? snapshot.score.home + ' : ' + snapshot.score.away : '比分待核对'}}</view><view class="subtitle">{{snapshot.away.teamName}}</view><view class="muted">来源为当前有效确认，完整分节记录见下方。</view>
     </view>
@@ -18,8 +19,8 @@
     <block wx:if="{{tab==='info'}}">
       <view class="match-panel detail-panel">
         <view class="detail-item"><text class="detail-bullet">•</text><view class="detail-content"><view class="detail-title">{{snapshot.courtName || '场地待确认'}} · 第{{snapshot.roundNo}}轮</view><view class="muted">{{snapshot.startLabel}}</view></view></view>
-        <view class="detail-item"><text class="detail-bullet">•</text><view class="detail-content"><view class="detail-title">{{snapshot.resultLabel}}</view><view class="muted">正式赛果须经独立人员确认</view></view></view>
-        <view class="detail-item"><text class="detail-bullet">•</text><view class="detail-content"><view class="detail-title">未采集个人技术统计</view><view class="muted">不从球队比分推算个人数据</view></view></view>
+        <view class="detail-item"><text class="detail-bullet">•</text><view class="detail-content"><view class="detail-title">{{snapshot.resultLabel}}</view><view class="muted">{{snapshot.resultNote}}</view></view></view>
+        <view class="detail-item"><text class="detail-bullet">•</text><view class="detail-content"><view class="detail-title">{{snapshot.adjudication ? '行政裁定不计个人统计' : '未采集个人技术统计'}}</view><view class="muted">不从球队比分推算个人数据</view></view></view>
       </view>
       <view wx:if="{{snapshot.periods && snapshot.periods.length}}" class="match-panel periods-panel"><view class="subtitle">分节比分</view><view class="period-row table-head"><text>节次</text><text>主队 : 客队</text></view><view wx:for="{{snapshot.periods}}" wx:key="period" class="period-row"><text>第{{item.period}}节</text><text class="numeric">{{item.home.score}} : {{item.away.score}}</text></view></view>
       <button class="secondary" bindtap="ranking" disabled="{{loading}}">查看分组排名与晋级</button>

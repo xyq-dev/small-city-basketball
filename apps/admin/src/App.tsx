@@ -1022,6 +1022,12 @@ function EventForm({
                     icon: LayoutGrid,
                   },
                   {
+                    value: 'DOUBLE_ROUND_ROBIN',
+                    label: '双循环',
+                    hint: '每两队主客各赛一场',
+                    icon: List,
+                  },
+                  {
                     value: 'SINGLE_ELIMINATION',
                     label: '单淘汰赛',
                     hint: '逐轮淘汰，直至决出冠军',

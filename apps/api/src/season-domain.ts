@@ -332,6 +332,12 @@ export function aggregateSeason(input: {
     includedMatchCount: e.summary?.includedMatchCount ?? 0,
     teamOnlyConfirmedMatchCount: e.summary?.teamOnlyConfirmedMatchCount ?? 0,
     pendingMatchCount: e.summary?.pendingMatchCount ?? 0,
+    ...(e.summary?.excludedAdministrativeMatchCount
+      ? {
+          excludedAdministrativeMatchCount: e.summary.excludedAdministrativeMatchCount,
+          recordableMatchCount: e.summary.recordableMatchCount,
+        }
+      : {}),
     coverageComplete: e.state === 'INCLUDED' && e.summary?.coverageComplete === true,
     attributionComplete: e.state === 'INCLUDED' && e.summary?.attributionComplete === true,
   }));

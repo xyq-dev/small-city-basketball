@@ -1,3 +1,12 @@
+import {
+  bronzeShape,
+  decisionMarker,
+  placementMetadata,
+  resolution,
+  resolutionKeys,
+  exactFields,
+  sourceList,
+} from './result-proofs';
 import { MATCH_STATUSES } from '@small-city-basketball/contracts';
 import type {
   EventKnockoutData,
@@ -26,13 +35,15 @@ function metrics(v: Obj) {
     Number.isSafeInteger(v.participantCount) &&
     Number(v.participantCount) >= 2 &&
     Number(v.participantCount) <= 32 &&
-    v.totalMatchCount === Number(v.participantCount) - 1 &&
+    bronzeShape(v.rounds) !== null &&
+    (!bronzeShape(v.rounds) || Number(v.participantCount) >= 4) &&
+    v.totalMatchCount === Number(v.participantCount) - 1 + (bronzeShape(v.rounds) ? 1 : 0) &&
     count(v.publishedMatchCount) &&
     count(v.confirmedMatchCount) &&
     Number(v.confirmedMatchCount) <= Number(v.publishedMatchCount) &&
     Number(v.publishedMatchCount) <= Number(v.totalMatchCount) &&
     typeof v.isComplete === 'boolean' &&
-    (!v.isComplete || v.confirmedMatchCount === v.totalMatchCount)
+    resolution(v)
   );
 }
 function roundShape(v: unknown, slot: (v: unknown) => boolean) {
@@ -49,6 +60,43 @@ function roundShape(v: unknown, slot: (v: unknown) => boolean) {
     v.slots.every(slot)
   );
 }
+function privateDecision(v: Obj) {
+  if (v.adjudication === undefined) return true;
+  if (
+    !decisionMarker(v) ||
+    !id(v.matchId) ||
+    !id(v.homeEntryId) ||
+    !id(v.awayEntryId) ||
+    v.homeEntryId === v.awayEntryId ||
+    v.byeEntryId !== null
+  )
+    return false;
+  return (v.adjudication as Obj).kind === 'CANCELLED'
+    ? v.winnerEntryId === null
+    : v.winnerEntryId === v.homeEntryId || v.winnerEntryId === v.awayEntryId;
+}
+function publicDecision(v: Obj) {
+  if (v.adjudication === undefined) return true;
+  if (
+    !decisionMarker(v) ||
+    !id(v.publicMatchId) ||
+    !obj(v.home) ||
+    !obj(v.away) ||
+    v.home.teamKey === v.away.teamKey ||
+    v.bye !== null
+  )
+    return false;
+  return (v.adjudication as Obj).kind === 'CANCELLED'
+    ? v.winner === null
+    : obj(v.winner) &&
+        [v.home, v.away].some(
+          (t) =>
+            obj(t) &&
+            obj(v.winner) &&
+            t.teamKey === v.winner.teamKey &&
+            t.teamName === v.winner.teamName,
+        );
+}
 function privateSlot(v: unknown) {
   return (
     obj(v) &&
@@ -64,7 +112,10 @@ function privateSlot(v: unknown) {
       'matchId',
       'winnerEntryId',
     ].every((key) => nullableId(v[key])) &&
-    status(v.status)
+    status(v.status) &&
+    placementMetadata(v) &&
+    decisionMarker(v) &&
+    privateDecision(v)
   );
 }
 function fixture(v: unknown) {
@@ -74,6 +125,52 @@ function fixture(v: unknown) {
     count(v.roundNo) &&
     count(v.positionNo) &&
     ['courtId', 'startsAt', 'endsAt'].every((key) => nullableId(v[key]))
+  );
+}
+export function bracketSources(bracket: Obj, sources: unknown): boolean {
+  if (!sourceList(sources, false) || !Array.isArray(bracket.rounds)) return false;
+  const slots = bracket.rounds.flatMap((r) => (obj(r) && Array.isArray(r.slots) ? r.slots : []));
+  return sources.every(
+    (s) =>
+      obj(s) &&
+      slots.some(
+        (slot) =>
+          obj(slot) &&
+          slot.fixtureKey === s.fixtureKey &&
+          slot.matchId === s.matchId &&
+          slot.winnerEntryId === s.winnerEntryId &&
+          (s.kind === undefined ||
+            (obj(slot.adjudication) &&
+              slot.adjudication.kind === 'FORFEIT' &&
+              [slot.homeEntryId, slot.awayEntryId].includes(s.loserEntryId) &&
+              s.loserEntryId !== s.winnerEntryId)),
+      ),
+  );
+}
+export function privateKnockout(v: unknown): boolean {
+  if (
+    !obj(v) ||
+    !metrics(v) ||
+    !Array.isArray(v.rounds) ||
+    v.rounds.length < 1 ||
+    v.rounds.length > 5 ||
+    !v.rounds.every((r) => roundShape(r, privateSlot)) ||
+    !Array.isArray(v.placements) ||
+    !v.placements.every(
+      (p) =>
+        obj(p) && id(p.entryId) && id(p.teamName) && count(p.rank) && typeof p.tied === 'boolean',
+    )
+  )
+    return false;
+  if (v.nextRound === null) return true;
+  return (
+    obj(v.nextRound) &&
+    count(v.nextRound.roundNo) &&
+    hash(v.nextRound.sourceHash) &&
+    bracketSources(v, v.nextRound.sources) &&
+    Array.isArray(v.nextRound.fixtures) &&
+    v.nextRound.fixtures.length > 0 &&
+    v.nextRound.fixtures.every(fixture)
   );
 }
 function checked(v: unknown, eventId: string): EventKnockoutData {
@@ -93,38 +190,7 @@ function checked(v: unknown, eventId: string): EventKnockoutData {
     ) &&
     obj(v.capabilities) &&
     typeof v.capabilities.canPublishNextRound === 'boolean' &&
-    (v.bracket === null ||
-      (obj(v.bracket) &&
-        metrics(v.bracket) &&
-        Array.isArray(v.bracket.rounds) &&
-        v.bracket.rounds.length >= 1 &&
-        v.bracket.rounds.length <= 5 &&
-        v.bracket.rounds.every((r) => roundShape(r, privateSlot)) &&
-        Array.isArray(v.bracket.placements) &&
-        v.bracket.placements.every(
-          (p) =>
-            obj(p) &&
-            id(p.entryId) &&
-            id(p.teamName) &&
-            count(p.rank) &&
-            typeof p.tied === 'boolean',
-        ) &&
-        (v.bracket.nextRound === null ||
-          (obj(v.bracket.nextRound) &&
-            count(v.bracket.nextRound.roundNo) &&
-            hash(v.bracket.nextRound.sourceHash) &&
-            Array.isArray(v.bracket.nextRound.sources) &&
-            v.bracket.nextRound.sources.every(
-              (s) =>
-                obj(s) &&
-                ['fixtureKey', 'matchId', 'confirmationId', 'winnerEntryId'].every((key) =>
-                  id(s[key]),
-                ) &&
-                count(s.matchVersion),
-            ) &&
-            Array.isArray(v.bracket.nextRound.fixtures) &&
-            v.bracket.nextRound.fixtures.length > 0 &&
-            v.bracket.nextRound.fixtures.every(fixture)))));
+    (v.bracket === null || privateKnockout(v.bracket));
   if (!valid) throw new ApiError(200, 'INVALID_RESPONSE', '服务返回的淘汰赛资料不完整，请重新读取');
   return structuredClone(v) as unknown as EventKnockoutData;
 }
@@ -137,19 +203,23 @@ const nullableTeam = (v: unknown) => v === null || publicTeam(v);
 /** A strict public whitelist: seed, internal IDs, rosters and control grants are never accepted. */
 export function publicKnockout(v: unknown): v is PublicKnockoutData {
   return (
-    exact(v, [
-      'publicEventId',
-      'algorithmVersion',
-      'sourceHash',
-      'asOf',
-      'participantCount',
-      'totalMatchCount',
-      'publishedMatchCount',
-      'confirmedMatchCount',
-      'isComplete',
-      'rounds',
-      'placements',
-    ]) &&
+    exactFields(
+      v,
+      [
+        'publicEventId',
+        'algorithmVersion',
+        'sourceHash',
+        'asOf',
+        'participantCount',
+        'totalMatchCount',
+        'publishedMatchCount',
+        'confirmedMatchCount',
+        'isComplete',
+        'rounds',
+        'placements',
+      ],
+      resolutionKeys,
+    ) &&
     id(v.publicEventId) &&
     metrics(v) &&
     Array.isArray(v.rounds) &&
@@ -161,15 +231,13 @@ export function publicKnockout(v: unknown): v is PublicKnockoutData {
         roundShape(
           r,
           (slot) =>
-            exact(slot, [
-              'positionNo',
-              'home',
-              'away',
-              'bye',
-              'publicMatchId',
-              'status',
-              'winner',
-            ]) &&
+            exactFields(
+              slot,
+              ['positionNo', 'home', 'away', 'bye', 'publicMatchId', 'status', 'winner'],
+              ['kind', 'sourceOutcome', 'adjudication'],
+            ) &&
+            placementMetadata(slot) &&
+            publicDecision(slot) &&
             count(slot.positionNo) &&
             ['home', 'away', 'bye', 'winner'].every((key) => nullableTeam(slot[key])) &&
             (slot.publicMatchId === null ||

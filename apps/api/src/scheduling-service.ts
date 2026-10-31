@@ -20,8 +20,17 @@ import type {
 import { generateGroupPairings, parseGroupConfig } from './group-knockout-domain.js';
 import { activateEventCommerce } from './commerce/activation.js';
 import { generateKnockoutPairings } from './knockout-domain.js';
+import { generateDoubleRoundRobinPairings } from './double-round-robin-domain.js';
+import { parseTemplateConfiguration } from './event-template-domain.js';
+import {
+  administrativeResult,
+  exceptionResultJoins,
+  exceptionResultSelect,
+} from './match-exception-domain.js';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
 import type { EventRow, OrgActor } from './service.js';
+import type { ScheduleOptimizationPreview } from '../../../packages/contracts/scheduling-completion.js';
+import { optimizeSchedule } from './schedule-optimization-domain.js';
 import { ApiError, forbidden, notFound } from './errors.js';
 import { calendarDate, invalid, objectInput, resourceId, text } from './validation.js';
 import { expectedVersion, pageInput } from './registration-validation.js';
@@ -52,7 +61,7 @@ export interface RevisionRow {
   org_id: string;
   event_id: string;
   freeze_id: string;
-  algorithm_version: 'RR_CIRCLE_V1' | 'SE_SEEDED_V1' | 'GK_BALANCED_V1';
+  algorithm_version: 'RR_CIRCLE_V1' | 'DRR_CIRCLE_V1' | 'SE_SEEDED_V1' | 'GK_BALANCED_V1';
   group_config: GroupKnockoutConfig | null;
   seed: string;
   input_hash: string;
@@ -88,6 +97,7 @@ function business(code: string, message: string, status = 422): never {
 }
 const cursorTime = (alias: string) =>
   `to_char(${alias}.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at`;
+const liveLocalReservation = `r.active AND NOT COALESCE((b.status IN ('HELD','REQUESTED') AND b.hold_expires_at<=clock_timestamp()),false) AND NOT COALESCE((lm.status='OPEN' AND lm.expires_at<=clock_timestamp()),false)`;
 export class SchedulingService extends ApplicationService {
   protected async context(client: PoolClient, cookie: string | undefined, org: string) {
     return this.lockOrganization(client, await this.lockActor(client, cookie), org);
@@ -252,6 +262,16 @@ export class SchedulingService extends ApplicationService {
           ).rowCount
         )
           business('COURT_HAS_RESERVATIONS', '该场地仍有未来或进行中的正式预约', 409);
+        if (
+          input.status === 'DISABLED' &&
+          (
+            await client.query(
+              `SELECT 1 FROM local_resource_reservations r LEFT JOIN local_bookings b ON b.id=r.booking_id LEFT JOIN local_matchups lm ON lm.id=r.matchup_id WHERE r.resource_key=$1 AND r.ends_at>clock_timestamp() AND ${liveLocalReservation} LIMIT 1`,
+              ['court:' + row.id],
+            )
+          ).rowCount
+        )
+          business('COURT_HAS_RESERVATIONS', '该场地仍有未来或进行中的同城锁位或预约', 409);
         await this.ensureFreshSession(client, ctx);
         const changed = await client.query<CourtRow>(
           'UPDATE courts SET name=$3,status=$4,version=version+1,updated_at=clock_timestamp() WHERE org_id=$1 AND id=$2 RETURNING *',
@@ -329,8 +349,12 @@ export class SchedulingService extends ApplicationService {
       : null;
   }
   private support(event: EventAccess, freeze: RegistrationFreezeData | null) {
-    if (!['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(event.row.format))
-      return { supported: false, reason: '当前支持单循环与单淘汰赛' };
+    if (
+      !['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
+        event.row.format,
+      )
+    )
+      return { supported: false, reason: '当前支持单/双循环、单淘汰和分组接淘汰赛' };
     if (event.row.format === 'GROUP_KNOCKOUT' && freeze && freeze.entries.length < 4)
       return { supported: false, reason: '分组接淘汰至少需要4支冻结球队' };
     if (!freeze) return { supported: false, reason: '请先冻结报名名单' };
@@ -338,7 +362,7 @@ export class SchedulingService extends ApplicationService {
       return { supported: false, reason: '当前支持2–32支冻结球队' };
     return { supported: true, reason: null };
   }
-  private async schedulingDto(
+  protected async schedulingDto(
     client: PoolClient,
     ctx: OrgActor,
     event: EventAccess,
@@ -354,12 +378,34 @@ export class SchedulingService extends ApplicationService {
       : null;
     const publication = await this.publication(client, ctx.orgId, event.row.id);
     const support = this.support(event, freeze);
+    const templateRow = (
+      await client.query(
+        'SELECT expected_team_count,configuration FROM event_template_instances WHERE org_id=$1 AND event_id=$2',
+        [ctx.orgId, event.row.id],
+      )
+    ).rows[0];
+    const template = templateRow
+      ? {
+          expectedTeams: templateRow.expected_team_count as number | null,
+          configuration: parseTemplateConfiguration(templateRow.configuration),
+        }
+      : null;
+    if (
+      template &&
+      template.expectedTeams !== null &&
+      freeze &&
+      freeze.entries.length !== template.expectedTeams
+    ) {
+      support.supported = false;
+      support.reason = `模板要求${template.expectedTeams}支球队，实际冻结${freeze.entries.length}支`;
+    }
     const can =
       event.canManage &&
       support.supported &&
       !publication &&
       event.row.status === 'REGISTRATION_CLOSED';
     return {
+      ...(template ? { template } : {}),
       event: this.dtoEvent(event),
       freeze: freeze
         ? {
@@ -489,6 +535,154 @@ export class SchedulingService extends ApplicationService {
       return this.revisionDto(client, event, revision);
     });
   }
+  /** Only authoritative court/team keys enter this private, read-only local-calendar projection. */
+  protected async localReservations(
+    client: PoolClient,
+    resourceKeys: string[],
+    from: string,
+    to: string,
+    padding: number,
+  ) {
+    const rows = await client.query<{
+      kind: 'COURT' | 'TEAM';
+      resource_id: string;
+      starts_at: Date;
+      ends_at: Date;
+    }>(
+      `SELECT CASE WHEN r.resource_key LIKE 'court:%' THEN 'COURT' ELSE 'TEAM' END AS kind,split_part(r.resource_key,':',2) AS resource_id,r.starts_at,r.ends_at
+       FROM local_resource_reservations r LEFT JOIN local_bookings b ON b.id=r.booking_id LEFT JOIN local_matchups lm ON lm.id=r.matchup_id
+       WHERE r.resource_key=ANY($1::text[]) AND ${liveLocalReservation}
+       AND r.starts_at<$3::timestamptz+$4::double precision*interval '1 millisecond' AND r.ends_at>$2::timestamptz-$4::double precision*interval '1 millisecond'
+       ORDER BY r.resource_key,r.starts_at,r.ends_at LIMIT 10001`,
+      [[...new Set(resourceKeys)].sort(), from, to, padding],
+    );
+    if (rows.rows.length > 10000)
+      business('SCHEDULE_RESOURCE_LIMIT', '本地资源占用超出有界校验范围，请缩小时段');
+    return rows.rows.map((r) => ({
+      kind: r.kind,
+      resourceId: r.resource_id,
+      startsAt: r.starts_at.toISOString(),
+      endsAt: r.ends_at.toISOString(),
+    }));
+  }
+  /** Server-only authoritative inputs; used by validated unpublished knockout rounds too. */
+  protected async optimizeFixturePlan(
+    client: PoolClient,
+    ctx: OrgActor,
+    event: EventAccess,
+    revision: RevisionRow,
+    fixtures: ScheduleFixtureData[],
+    options: { preserveAssigned?: boolean } = {},
+  ): Promise<ScheduleOptimizationPreview> {
+    const policy = parseSchedulePolicy(revision.policy);
+    const courts = await this.courts(
+      client,
+      ctx.orgId,
+      policy.courtWindows.map((w) => w.courtId),
+    );
+    const starts = policy.courtWindows.map((w) => w.startsAt).sort();
+    const ends = policy.courtWindows.map((w) => w.endsAt).sort();
+    const padding = Math.max(
+      policy.minRestMinutes * 60_000,
+      (policy.minLocalDayGap + 1) * 86_400_000,
+    );
+    const reservations = await client.query<{
+      kind: 'COURT' | 'TEAM';
+      resource_id: string;
+      starts_at: Date;
+      ends_at: Date;
+    }>(
+      `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations
+       WHERE org_id=$1 AND starts_at<$3::timestamptz+$4::double precision*interval '1 millisecond' AND ends_at>$2::timestamptz-$4::double precision*interval '1 millisecond'
+       UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations
+       WHERE org_id=$1 AND starts_at<$3::timestamptz+$4::double precision*interval '1 millisecond' AND ends_at>$2::timestamptz-$4::double precision*interval '1 millisecond'
+       ORDER BY kind,resource_id,starts_at,ends_at LIMIT 10001`,
+      [ctx.orgId, starts[0], ends.at(-1), padding],
+    );
+    if (reservations.rows.length > 10000)
+      business('SCHEDULE_OPTIMIZATION_LIMIT', '当前资源占用超出有界优化范围，请缩小可用时段');
+    const local = await this.localReservations(
+      client,
+      [
+        ...courts.map((c) => 'court:' + c.id),
+        ...revision.source.entries.map((e) => 'team:' + e.teamId),
+      ],
+      starts[0]!,
+      ends.at(-1)!,
+      padding,
+    );
+    if (reservations.rows.length + local.length > 10000)
+      business('SCHEDULE_OPTIMIZATION_LIMIT', '当前资源占用超出有界优化范围，请缩小可用时段');
+    const priorEnd =
+      revision.status === 'PUBLISHED'
+        ? (
+            await client.query<{ latest: Date | null }>(
+              'SELECT max(ends_at) AS latest FROM published_matches WHERE org_id=$1 AND event_id=$2',
+              [ctx.orgId, event.row.id],
+            )
+          ).rows[0]?.latest?.toISOString()
+        : undefined;
+    const result = optimizeSchedule(
+      {
+        event: {
+          id: event.row.id,
+          startDate: event.row.start_date,
+          endDate: event.row.end_date,
+          timezone: event.row.timezone,
+        },
+        freeze: revision.source,
+        policy,
+        fixtures,
+        courts,
+        reservations: reservations.rows
+          .map((r) => ({
+            kind: r.kind,
+            resourceId: r.resource_id,
+            startsAt: r.starts_at.toISOString(),
+            endsAt: r.ends_at.toISOString(),
+          }))
+          .concat(local),
+      },
+      { ...options, ...(priorEnd ? { earliestStart: priorEnd } : {}) },
+    );
+    await this.ensureFreshSession(client, ctx);
+    return { ...result, eventVersion: event.row.version, revisionVersion: revision.version };
+  }
+  async previewOptimization(
+    cookie: string | undefined,
+    org: string,
+    id: string,
+    raw: unknown,
+  ): Promise<ScheduleOptimizationPreview> {
+    const input = objectInput(raw, [
+      'expectedEventVersion',
+      'expectedRevisionVersion',
+      'preserveAssigned',
+    ]);
+    const eventVersion = expectedVersion(input.expectedEventVersion),
+      revisionVersion = expectedVersion(input.expectedRevisionVersion);
+    if (input.preserveAssigned !== undefined && typeof input.preserveAssigned !== 'boolean')
+      invalid('请明确是否保留已有安排');
+    return this.transaction(async (client) => {
+      const ctx = await this.context(client, cookie, org);
+      const { event, revision } = await this.loadRevision(client, ctx, id, false);
+      if (!event.canManage) throw forbidden();
+      this.assertOpen(event, await this.publication(client, ctx.orgId, event.row.id));
+      if (revision.status !== 'DRAFT' || event.row.current_schedule_revision_id !== revision.id)
+        business('SCHEDULE_REVISION_NOT_CURRENT', '只能优化当前草稿', 409);
+      checkVersion(event.row.version, eventVersion);
+      checkVersion(revision.version, revisionVersion);
+      await this.validation(client, ctx, event, revision); // strict source replay before searching
+      return this.optimizeFixturePlan(
+        client,
+        ctx,
+        event,
+        revision,
+        await this.fixtures(client, revision),
+        { preserveAssigned: input.preserveAssigned as boolean | undefined },
+      );
+    });
+  }
   async createRevision(
     cookie: string | undefined,
     org: string,
@@ -506,7 +700,9 @@ export class SchedulingService extends ApplicationService {
     const version = expectedVersion(input.expectedEventVersion);
     const freezeId = resourceId(typeof input.freezeId === 'string' ? input.freezeId : '');
     if (
-      !['RR_CIRCLE_V1', 'SE_SEEDED_V1', 'GK_BALANCED_V1'].includes(input.algorithmVersion as string)
+      !['RR_CIRCLE_V1', 'DRR_CIRCLE_V1', 'SE_SEEDED_V1', 'GK_BALANCED_V1'].includes(
+        input.algorithmVersion as string,
+      )
     )
       business('UNSUPPORTED_SCHEDULE_ALGORITHM', '不支持的排赛算法');
     const policy = parseSchedulePolicy(input.policy);
@@ -520,15 +716,37 @@ export class SchedulingService extends ApplicationService {
       checkVersion(event.row.version, version);
       if (
         (event.row.format !== 'ROUND_ROBIN' || input.algorithmVersion !== 'RR_CIRCLE_V1') &&
+        (event.row.format !== 'DOUBLE_ROUND_ROBIN' || input.algorithmVersion !== 'DRR_CIRCLE_V1') &&
         (event.row.format !== 'SINGLE_ELIMINATION' || input.algorithmVersion !== 'SE_SEEDED_V1') &&
         (event.row.format !== 'GROUP_KNOCKOUT' || input.algorithmVersion !== 'GK_BALANCED_V1')
       )
         business('UNSUPPORTED_EVENT_FORMAT', '赛制与排赛算法不匹配');
+      if (
+        'thirdPlaceMatch' in policy &&
+        policy.thirdPlaceMatch === true &&
+        !['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(event.row.format)
+      )
+        business('UNSUPPORTED_SCHEDULE_POLICY', '仅淘汰赛制可以安排季军赛');
       const freeze = await this.freeze(client, ctx.orgId, event.row.id);
       if (!freeze || freeze.id !== freezeId)
         business('REGISTRATION_FREEZE_REQUIRED', '请使用当前赛事已冻结的报名来源');
       if (freeze.entries.length < 2 || freeze.entries.length > 32)
         business('UNSUPPORTED_TEAM_COUNT', '当前仅支持2–32支冻结球队');
+      const expectedTeams = (
+        await client.query<{ expected_team_count: number | null }>(
+          'SELECT expected_team_count FROM event_template_instances WHERE org_id=$1 AND event_id=$2',
+          [ctx.orgId, event.row.id],
+        )
+      ).rows[0]?.expected_team_count;
+      if (
+        expectedTeams !== undefined &&
+        expectedTeams !== null &&
+        freeze.entries.length !== expectedTeams
+      )
+        business(
+          'TEMPLATE_TEAM_COUNT_MISMATCH',
+          `模板要求${expectedTeams}支球队，实际冻结${freeze.entries.length}支，请调整报名或另建赛事`,
+        );
       const groupConfig =
         event.row.format === 'GROUP_KNOCKOUT' ? parseGroupConfig(freeze, input.groupConfig) : null;
       if (event.row.format !== 'GROUP_KNOCKOUT' && input.groupConfig !== undefined)
@@ -557,7 +775,9 @@ export class SchedulingService extends ApplicationService {
           ? generateGroupPairings(freeze, policy, seed, groupConfig)
           : event.row.format === 'SINGLE_ELIMINATION'
             ? generateKnockoutPairings(freeze, policy, seed)
-            : generatePairings(freeze, policy, seed);
+            : event.row.format === 'DOUBLE_ROUND_ROBIN'
+              ? generateDoubleRoundRobinPairings(freeze, policy, seed)
+              : generatePairings(freeze, policy, seed);
       await this.ensureFreshSession(client, ctx);
       if (previous)
         await client.query(
@@ -697,7 +917,7 @@ export class SchedulingService extends ApplicationService {
       );
     });
   }
-  private async validation(
+  protected async validation(
     client: PoolClient,
     ctx: OrgActor,
     event: EventAccess,
@@ -711,7 +931,9 @@ export class SchedulingService extends ApplicationService {
         ? generateGroupPairings(freeze!, revision.policy, revision.seed, revision.group_config)
         : revision.algorithm_version === 'SE_SEEDED_V1'
           ? generateKnockoutPairings(freeze!, revision.policy, revision.seed)
-          : generatePairings(freeze!, revision.policy, revision.seed);
+          : revision.algorithm_version === 'DRR_CIRCLE_V1'
+            ? generateDoubleRoundRobinPairings(freeze!, revision.policy, revision.seed)
+            : generatePairings(freeze!, revision.policy, revision.seed);
     const fixtures = await this.fixtures(client, revision);
     const identity = (f: ScheduleFixtureData) => [
       f.fixtureKey,
@@ -766,8 +988,16 @@ export class SchedulingService extends ApplicationService {
         starts_at: Date;
         ends_at: Date;
       }>(
-        `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations WHERE org_id=$1 AND starts_at<$3::timestamptz AND ends_at>$2::timestamptz UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations WHERE org_id=$1 AND starts_at<$3::timestamptz AND ends_at>$2::timestamptz`,
-        [ctx.orgId, min, max],
+        `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations WHERE org_id=$1 AND starts_at<$3::timestamptz AND ends_at>$2::timestamptz UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations WHERE org_id=$1 AND starts_at<$3::timestamptz+$4::double precision*interval '1 millisecond' AND ends_at>$2::timestamptz-$4::double precision*interval '1 millisecond'`,
+        [
+          ctx.orgId,
+          min,
+          max,
+          Math.max(
+            revision.policy.minRestMinutes * 60000,
+            (revision.policy.minLocalDayGap + 1) * 86400000,
+          ),
+        ],
       );
       reservations = booked.rows.map((r) => ({
         kind: r.kind,
@@ -775,6 +1005,18 @@ export class SchedulingService extends ApplicationService {
         startsAt: r.starts_at.toISOString(),
         endsAt: r.ends_at.toISOString(),
       }));
+      reservations.push(
+        ...(await this.localReservations(
+          client,
+          [...courts.map((c) => 'court:' + c.id), ...freeze.entries.map((e) => 'team:' + e.teamId)],
+          min,
+          max,
+          Math.max(
+            revision.policy.minRestMinutes * 60000,
+            (revision.policy.minLocalDayGap + 1) * 86400000,
+          ),
+        )),
+      );
     }
     const conflicts = validateSchedule({
       event: {
@@ -840,12 +1082,15 @@ export class SchedulingService extends ApplicationService {
           business('STANDINGS_RULES_REQUIRED', '请先发布分组积分规则');
         const fixtures = await this.fixtures(client, revision);
         const participantCount = revision.source.entries.length;
+        const thirdPlaceCount = revision.policy.thirdPlaceMatch === true ? 1 : 0;
         const expectedMatchCount =
           event.row.format === 'GROUP_KNOCKOUT'
-            ? fixtures.length + revision.group_config!.groupCount * 2 - 1
+            ? fixtures.length + revision.group_config!.groupCount * 2 - 1 + thirdPlaceCount
             : event.row.format === 'SINGLE_ELIMINATION'
-              ? participantCount - 1
-              : (participantCount * (participantCount - 1)) / 2;
+              ? participantCount - 1 + thirdPlaceCount
+              : event.row.format === 'DOUBLE_ROUND_ROBIN'
+                ? participantCount * (participantCount - 1)
+                : (participantCount * (participantCount - 1)) / 2;
         await activateEventCommerce(client, {
           orgId: ctx.orgId,
           eventId: event.row.id,
@@ -932,7 +1177,13 @@ export class SchedulingService extends ApplicationService {
           event.row.id,
           { revisionId: revision.id, publicationId, publicationHash: hash },
         );
-        return this.schedulingDto(client, ctx, await this.event(client, ctx, event.row.id, false));
+        const response = await this.schedulingDto(
+          client,
+          ctx,
+          await this.event(client, ctx, event.row.id, false),
+        );
+        await this.ensureFreshSession(client, ctx);
+        return response;
       });
     } catch (error) {
       if ((error as { code?: string }).code === '23P01')
@@ -950,35 +1201,41 @@ export class SchedulingService extends ApplicationService {
       const scope = `matches:${ctx.orgId}:${ctx.user.id}:${event.row.id}:${event.row.version}`;
       const cur = this.cursor(query, scope);
       const result = await client.query(
-        `SELECT m.*,to_char(starts_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at FROM published_matches m WHERE org_id=$1 AND event_id=$2 AND ($3::timestamptz IS NULL OR (starts_at,id)>($3::timestamptz,$4::uuid)) ORDER BY starts_at,id LIMIT $5`,
+        `SELECT m.*,${exceptionResultSelect},to_jsonb(s) AS state,to_char(m.starts_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at
+         FROM published_matches m LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id
+         ${exceptionResultJoins} WHERE m.org_id=$1 AND m.event_id=$2 AND ($3::timestamptz IS NULL OR (m.starts_at,m.id)>($3::timestamptz,$4::uuid)) ORDER BY m.starts_at,m.id LIMIT $5`,
         [ctx.orgId, event.row.id, cur.createdAt, cur.id, query.limit + 1],
       );
-      const data: ScheduledMatchData[] = result.rows.slice(0, query.limit).map((r) => ({
-        id: r.id,
-        eventId: r.event_id,
-        publicationId: r.publication_id,
-        fixtureKey: r.fixture_key,
-        roundNo: r.round_no,
-        positionNo: r.position_no,
-        home: {
-          entryId: r.home_entry_id,
-          teamId: r.home_team_id,
-          teamName: r.home_team_name,
-          rosterRevisionId: r.home_roster_revision_id,
-        },
-        away: {
-          entryId: r.away_entry_id,
-          teamId: r.away_team_id,
-          teamName: r.away_team_name,
-          rosterRevisionId: r.away_roster_revision_id,
-        },
-        courtId: r.court_id,
-        courtName: r.court_name,
-        startsAt: r.starts_at.toISOString(),
-        endsAt: r.ends_at.toISOString(),
-        status: r.status,
-        version: r.version,
-      }));
+      const data: ScheduledMatchData[] = result.rows.slice(0, query.limit).map((r) => {
+        const outcome = administrativeResult(r);
+        return {
+          id: r.id,
+          eventId: r.event_id,
+          publicationId: r.publication_id,
+          fixtureKey: r.fixture_key,
+          roundNo: r.round_no,
+          positionNo: r.position_no,
+          home: {
+            entryId: r.home_entry_id,
+            teamId: r.home_team_id,
+            teamName: r.home_team_name,
+            rosterRevisionId: r.home_roster_revision_id,
+          },
+          away: {
+            entryId: r.away_entry_id,
+            teamId: r.away_team_id,
+            teamName: r.away_team_name,
+            rosterRevisionId: r.away_roster_revision_id,
+          },
+          courtId: r.court_id,
+          courtName: r.court_name,
+          startsAt: r.starts_at.toISOString(),
+          endsAt: r.ends_at.toISOString(),
+          status: r.status,
+          version: r.version,
+          ...(outcome ? { adjudication: { kind: outcome.kind } } : {}),
+        };
+      });
       return { data, nextCursor: this.next(result.rows, query.limit, scope) };
     });
   }
@@ -1093,6 +1350,12 @@ export class SchedulingService extends ApplicationService {
       createdAt: r.created_at.toISOString(),
     }));
     const state = await this.reschedulingState(c, ctx.orgId, match);
+    const adjudicated = !!(
+      await c.query(
+        'SELECT 1 FROM match_exception_heads WHERE org_id=$1 AND match_id=$2 AND active_request_id IS NOT NULL',
+        [ctx.orgId, match.id],
+      )
+    ).rowCount;
     return {
       event: this.dtoEvent(event),
       match: this.matchDto(match),
@@ -1103,6 +1366,7 @@ export class SchedulingService extends ApplicationService {
       capabilities: {
         canReschedule:
           event.canManage &&
+          !adjudicated &&
           state.sourceValid &&
           canRescheduleMatch(event.row.status, match.status, state.started),
       },
@@ -1127,6 +1391,15 @@ export class SchedulingService extends ApplicationService {
         const access = await this.reschedulingAccess(c, ctx, matchId, true);
         const { event, match, revision } = access;
         if (!event.canManage) throw forbidden();
+        if (
+          (
+            await c.query(
+              'SELECT 1 FROM match_exception_heads WHERE org_id=$1 AND match_id=$2 AND active_request_id IS NOT NULL',
+              [ctx.orgId, match.id],
+            )
+          ).rowCount
+        )
+          business('MATCH_ADJUDICATED', '比赛已有有效裁定，请先经独立审批撤回后再改期', 409);
         checkVersion(event.row.version, command.expectedEventVersion);
         checkVersion(match.version, command.expectedMatchVersion);
         if (!['SCHEDULED', 'RUNNING'].includes(event.row.status))
@@ -1152,7 +1425,7 @@ export class SchedulingService extends ApplicationService {
               `SELECT m.ends_at FROM knockout_round_publications p
               CROSS JOIN LATERAL jsonb_array_elements(p.sources) source(value)
               JOIN published_matches m ON m.org_id=p.org_id AND m.event_id=p.event_id AND m.id=(source.value->>'matchId')::uuid
-              WHERE p.org_id=$1 AND p.event_id=$2 AND p.round_no=$3 AND source.value->>'winnerEntryId'=ANY($4::text[])
+              WHERE p.org_id=$1 AND p.event_id=$2 AND p.round_no=$3 AND (m.home_entry_id::text=ANY($4::text[]) OR m.away_entry_id::text=ANY($4::text[]))
              UNION ALL SELECT m.ends_at FROM group_qualification_publications p
               CROSS JOIN LATERAL jsonb_array_elements(p.sources) source(value)
               JOIN published_matches m ON m.org_id=p.org_id AND m.event_id=p.event_id AND m.id=(source.value->>'matchId')::uuid
@@ -1182,10 +1455,29 @@ export class SchedulingService extends ApplicationService {
             starts_at: Date;
             ends_at: Date;
           }>(
-            `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations WHERE org_id=$1 AND publication_id<>$2 AND starts_at<$4::timestamptz AND ends_at>$3::timestamptz UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations WHERE org_id=$1 AND publication_id<>$2 AND starts_at<$4::timestamptz AND ends_at>$3::timestamptz`,
-            [ctx.orgId, current.publicationId, next.startsAt, next.endsAt],
+            `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations WHERE org_id=$1 AND publication_id<>$2 AND starts_at<$4::timestamptz AND ends_at>$3::timestamptz UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations WHERE org_id=$1 AND publication_id<>$2 AND starts_at<$4::timestamptz+$5::double precision*interval '1 millisecond' AND ends_at>$3::timestamptz-$5::double precision*interval '1 millisecond'`,
+            [
+              ctx.orgId,
+              current.publicationId,
+              next.startsAt,
+              next.endsAt,
+              Math.max(
+                revision.policy.minRestMinutes * 60000,
+                (revision.policy.minLocalDayGap + 1) * 86400000,
+              ),
+            ],
           )
         ).rows;
+        const local = await this.localReservations(
+          c,
+          [...courts.map((c) => 'court:' + c.id), ...frozen.entries.map((e) => 'team:' + e.teamId)],
+          next.startsAt,
+          next.endsAt,
+          Math.max(
+            revision.policy.minRestMinutes * 60000,
+            (revision.policy.minLocalDayGap + 1) * 86400000,
+          ),
+        );
         const conflicts = targetConflicts(
           validateSchedule({
             event: {
@@ -1198,12 +1490,14 @@ export class SchedulingService extends ApplicationService {
             policy: revision.policy,
             fixtures,
             courts,
-            reservations: booked.map((r) => ({
-              kind: r.kind,
-              resourceId: r.resource_id,
-              startsAt: r.starts_at.toISOString(),
-              endsAt: r.ends_at.toISOString(),
-            })),
+            reservations: booked
+              .map((r) => ({
+                kind: r.kind,
+                resourceId: r.resource_id,
+                startsAt: r.starts_at.toISOString(),
+                endsAt: r.ends_at.toISOString(),
+              }))
+              .concat(local),
           }),
           current.fixtureKey,
         );
@@ -1266,7 +1560,9 @@ export class SchedulingService extends ApplicationService {
           toMatchVersion: access.match.version,
           reason: command.reason,
         });
-        return this.reschedulingDto(c, ctx, access);
+        const response = await this.reschedulingDto(c, ctx, access);
+        await this.ensureFreshSession(c, ctx);
+        return response;
       });
     } catch (error) {
       if ((error as { code?: string }).code === '23P01')

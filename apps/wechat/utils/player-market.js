@@ -4,6 +4,7 @@ const positions = { PG: '控球后卫', SG: '得分后卫', SF: '小前锋', PF:
 const positionOptions = ['全部位置', '控球后卫', '得分后卫', '小前锋', '大前锋', '中锋'];
 const positionCodes = ['', 'PG', 'SG', 'SF', 'PF', 'C'];
 const formats = {
+  DOUBLE_ROUND_ROBIN: '双循环',
   ROUND_ROBIN: '单循环',
   SINGLE_ELIMINATION: '单淘汰',
   GROUP_KNOCKOUT: '分组接淘汰',

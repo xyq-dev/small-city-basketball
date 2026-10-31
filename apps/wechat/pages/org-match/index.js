@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const publicResults = require('../../utils/public-results');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const scoring = require('../../utils/scoring');
@@ -17,6 +18,7 @@ const privateDefaults = {
   reopenOpen: false,
   reopenReason: '',
   collectionMode: 'TEAM_ONLY',
+  technicalCollection: false,
   members: [],
   memberIndex: 0,
   roleIndex: 0,
@@ -185,7 +187,8 @@ Page({
         home: m.home.teamName,
         away: m.away.teamName,
         status: m.status,
-        statusLabel: api.matchStatus(m.status),
+        statusLabel: publicResults.status(m),
+        adjudication: m.adjudication || null,
         rulesLabel: wb.rules
           ? wb.rules.regulationPeriods +
             '节 × ' +
@@ -194,7 +197,7 @@ Page({
           : '赛事尚未设置记分规则',
         leaseHeld: !!(wb.lease && wb.lease.held),
       },
-      board: scoring.board(wb.snapshot, receivedAt),
+      board: m.adjudication ? null : scoring.board(wb.snapshot, receivedAt),
       history,
       historyError,
       confirmations,
@@ -293,7 +296,16 @@ Page({
   },
   setMode(e) {
     const mode = e.currentTarget.dataset.mode;
-    if (['TEAM_ONLY', 'PLAYER_BASIC'].includes(mode)) this.setData({ collectionMode: mode });
+    if (['TEAM_ONLY', 'PLAYER_BASIC'].includes(mode))
+      this.setData({
+        collectionMode: mode,
+        ...(mode === 'TEAM_ONLY' ? { technicalCollection: false } : {}),
+      });
+  },
+  setTechnical(e) {
+    this.setData({
+      technicalCollection: this.data.collectionMode === 'PLAYER_BASIC' && !!e.detail.value,
+    });
   },
   async run(type, payload, title, content) {
     if (this.data.busy || this.data.pending) return;
@@ -343,10 +355,17 @@ Page({
     const mode = this.data.collectionMode;
     this.run(
       'PREPARE_MATCH',
-      { expectedEventVersion: this._eventVersion, collectionMode: mode },
+      {
+        expectedEventVersion: this._eventVersion,
+        collectionMode: mode,
+        ...(this.data.technicalCollection ? { technicalCollection: true } : {}),
+      },
       '准备比赛',
-      (mode === 'PLAYER_BASIC' ? '逐人记录得分与犯规' : '只记录球队比分、犯规与暂停') +
-        '；准备后记分规则锁定，采集方式不可更改。',
+      (this.data.technicalCollection
+        ? '专业采集：逐人投篮、技术统计、首发换人与上场时间'
+        : mode === 'PLAYER_BASIC'
+          ? '逐人记录得分与犯规'
+          : '只记录球队比分、犯规与暂停') + '；准备后记分规则锁定，采集方式不可更改。',
     );
   },
   confirmResult() {
@@ -425,6 +444,12 @@ Page({
       this.setData({ busy: false, pending: null, error: scoring.failure(error) });
       await this.load(true);
     }
+  },
+  openExceptions() {
+    ui.open('match-exceptions', { orgId: this.orgId, matchId: this.matchId });
+  },
+  openProfessionalReport() {
+    ui.open('scorer', { orgId: this.orgId, matchId: this.matchId, readOnly: '1' });
   },
   openScorer() {
     ui.open('scorer', { orgId: this.orgId, matchId: this.matchId });

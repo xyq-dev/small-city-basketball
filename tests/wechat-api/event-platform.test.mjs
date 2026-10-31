@@ -253,6 +253,13 @@ test('event mainline runs end to end through native pages on the real API', asyn
   await schedule.page.autoAssign();
   await ownerDevice.settle(schedule);
   assert.ok(
+    schedule.page.data.fixtures.every((f) => !f.assigned),
+    'cancelled optimization preview must leave the draft unassigned',
+  );
+  ownerDevice.approve();
+  await schedule.page.autoAssign();
+  await ownerDevice.settle(schedule);
+  assert.ok(
     schedule.page.data.fixtures.every((f) => f.assigned),
     schedule.page.data.error,
   );

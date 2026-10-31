@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, writeFile, chmod, rm } from 'node:fs/promises';
+import { createHash, randomBytes } from 'node:crypto';
+import { mkdtemp, mkdir, readFile, readdir, writeFile, chmod, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
@@ -11,6 +11,43 @@ import { assertApiSecretMounts } from './check-api-secret-mounts.mjs';
 if (process.env.CI !== 'true' || !process.env.RUNNER_TEMP)
   throw new Error('Production checks require an isolated GitHub Actions runner');
 const root = fileURLToPath(new URL('../', import.meta.url));
+const migrationDirectory = path.join(root, 'apps/api/migrations');
+const expectedMigrations = Object.fromEntries(
+  await Promise.all(
+    (await readdir(migrationDirectory))
+      .filter((name) => /^\d+_[a-z0-9_]+\.sql$/.test(name))
+      .sort()
+      .map(async (name) => [
+        name,
+        createHash('sha256')
+          .update(await readFile(path.join(migrationDirectory, name)))
+          .digest('hex'),
+      ]),
+  ),
+);
+const checkScripts = [
+  'check-database-restart',
+  'c05-media-fixtures',
+  'c05-commerce-check',
+  'c23-participant-material-check',
+  'x02-adjudication-check',
+  'x03-template-check',
+  'x05-recruitment-check',
+  'x08-archive-check',
+  'x12-local-check',
+  'x18-governance-check',
+  'x22-account-recovery-check',
+];
+const expectedCheckScripts = Object.fromEntries(
+  await Promise.all(
+    checkScripts.map(async (name) => [
+      name + '.mjs',
+      createHash('sha256')
+        .update(await readFile(path.join(root, 'scripts', name + '.mjs')))
+        .digest('hex'),
+    ]),
+  ),
+);
 const temporary = await mkdtemp(path.join(process.env.RUNNER_TEMP, 'scb-production-'));
 await chmod(temporary, 0o700);
 const suffix = randomBytes(6).toString('hex');
@@ -267,22 +304,6 @@ async function validator(project, env, mode, recovery = false) {
     ...mount(path.join(sourceSecrets, 'bootstrap_owner_input'), '/check-owner'),
     ...mount(path.join(certificateDirectory, 'ca.crt'), '/check-ca.crt'),
     ...mount(stateDirectory, '/check-state', false),
-    ...mount(
-      path.join(root, 'scripts/check-database-restart.mjs'),
-      '/app/scripts/check-database-restart.mjs',
-    ),
-    ...mount(
-      path.join(root, 'scripts/c05-media-fixtures.mjs'),
-      '/app/scripts/c05-media-fixtures.mjs',
-    ),
-    ...mount(
-      path.join(root, 'scripts/c23-participant-material-check.mjs'),
-      '/app/scripts/c23-participant-material-check.mjs',
-    ),
-    ...mount(
-      path.join(root, 'scripts/c05-commerce-check.mjs'),
-      '/app/scripts/c05-commerce-check.mjs',
-    ),
     '--entrypoint',
     'node',
     `${prefix}/db-tools:local`,
@@ -614,7 +635,7 @@ secrets:
         `${prefix}/api:local`,
         '--input-type=module',
         '-e',
-        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,24);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
+        `import crypto from 'node:crypto';const expected=${JSON.stringify(expectedMigrations)};import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.deepEqual(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).sort(),Object.keys(expected));for(const [name,hash] of Object.entries(expected))assert.equal(crypto.createHash('sha256').update(fs.readFileSync('apps/api/migrations/'+name)).digest('hex'),hash);assert.ok(await(await import('./apps/api/dist/poster-domain.js')).posterChineseFontsAvailable(),'Packaged API must render real Chinese glyphs');assert.ok(!fs.existsSync('apps/api/src'));assert.ok(!fs.existsSync('scripts'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}`,
       ]);
       await run('docker', [
         'run',
@@ -626,7 +647,7 @@ secrets:
         `${prefix}/db-tools:local`,
         '--input-type=module',
         '-e',
-        "import assert from 'node:assert/strict';import pg from 'pg';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);assert.ok(pg.Pool)",
+        `import crypto from 'node:crypto';const expected=${JSON.stringify(expectedCheckScripts)};import assert from 'node:assert/strict';import fs from 'node:fs';import pg from 'pg';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);assert.ok(pg.Pool);for(const [name,hash] of Object.entries(expected)){assert.ok(fs.existsSync('scripts/'+name));assert.equal(crypto.createHash('sha256').update(fs.readFileSync('scripts/'+name)).digest('hex'),hash)}for(const name of ['x02-adjudication-check','x03-template-check','x05-recruitment-check','x08-archive-check','x12-local-check','x18-governance-check','x22-account-recovery-check'])await import('./scripts/'+name+'.mjs')`,
       ]);
       const version = await run('docker', [
         'run',
@@ -920,7 +941,7 @@ secrets:
     await waitReady();
     await validator(target, targetEnv, 'verify', true);
     console.log(
-      '[production] Full restore matched all 83 exact tables, business snapshots and backup-point fencing.',
+      '[production] Full restore matched all exact manifest tables, business snapshots and backup-point fencing.',
     );
   });
   await stage(

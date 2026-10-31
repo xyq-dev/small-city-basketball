@@ -5,6 +5,8 @@
     "pages/watch/index",
     "pages/media/index",
     "pages/account/index",
+    "pages/account-recovery/index",
+    "pages/staff-configuration/index",
     "pages/event/index",
     "pages/org-event/index",
     "pages/org-match/index",
@@ -39,7 +41,21 @@
     "pages/memberships/index",
     "pages/seasons/index",
     "pages/season-grants/index",
-    "pages/participant-materials/index"
+    "pages/participant-materials/index",
+    "pages/match-exceptions/index",
+    "pages/recruitment/index",
+    "pages/poster/index",
+    "pages/local/index",
+    "pages/local-manage/index",
+    "pages/local-bookings/index",
+    "pages/local-matchups/index",
+    "pages/governance/index",
+    "pages/governance-reviews/index",
+    "pages/city-operations/index",
+    "pages/sponsorships/index",
+    "pages/public-archives/index",
+    "pages/public-archive/index",
+    "pages/public-ledgers/index"
   ],
   "window": {
     "navigationBarTitleText": "小城市篮球",
@@ -55,6 +71,13 @@
   "usingComponents": {
     "scb-nav": "/components/navigation/index",
     "scb-header": "/components/header/index",
-    "scb-icon": "/components/icon/index"
-  }
+    "scb-icon": "/components/icon/index",
+    "sponsorship-slot": "/components/sponsorship-slot/index"
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于你主动查询附近球场与同城服务的距离"
+    }
+  },
+  "requiredPrivateInfos": ["getLocation"]
 }

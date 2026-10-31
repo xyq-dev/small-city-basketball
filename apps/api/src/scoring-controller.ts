@@ -92,6 +92,22 @@ export class ScoringController {
   ) {
     return envelope(r, await this.service.executeCommand(r.headers.cookie, org, id, b));
   }
+  @Post('matches/:matchId/offline-intents') @HttpCode(200) async offline(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Param('matchId') id: string,
+    @Body() b: unknown,
+  ) {
+    return envelope(r, await this.service.submitOfflineIntent(r.headers.cookie, org, id, b));
+  }
+  @Get('matches/:matchId/offline-intents/:intentId') async offlineReceipt(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Param('matchId') id: string,
+    @Param('intentId') intent: string,
+  ) {
+    return envelope(r, await this.service.getOfflineIntent(r.headers.cookie, org, id, intent));
+  }
   @Get('matches/:matchId/commands/:commandId') async receipt(
     @Req() r: ApiRequest,
     @Param('orgId') org: string,

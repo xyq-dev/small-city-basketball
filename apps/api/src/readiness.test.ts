@@ -5,6 +5,7 @@ import {
   migrationSetsMatch,
   participantKeyIdsMatch,
   privilegesMatch,
+  functionPrivilegesMatch,
 } from './readiness.js';
 import type { PrivilegeManifest, TablePrivileges } from './readiness.js';
 
@@ -13,6 +14,7 @@ const manifest: PrivilegeManifest = {
   schema: 'public',
   runtimeRole: 'scb_runtime',
   backupRole: 'scb_backup',
+  functions: { 'x12_calendar_lock()': ['EXECUTE'], 'x17_staff_receipt_immutable()': [] },
   tables: {
     overlay_sessions: { privileges: ['SELECT', 'INSERT'], updateColumns: ['id'] },
     audit_logs: { privileges: ['INSERT'], updateColumns: [] },
@@ -123,5 +125,46 @@ describe('runtime readiness invariants', () => {
       expect(String(error)).not.toContain('private-marker');
       expect((error as Error).cause).toBeUndefined();
     }
+  });
+});
+
+describe('explicit application function ACLs', () => {
+  const rows = [
+    {
+      signature: 'x12_calendar_lock()',
+      owner: 'scb_migrator',
+      definer: false,
+      runtimeExecute: true,
+      backupExecute: false,
+      publicExecute: false,
+    },
+    {
+      signature: 'x17_staff_receipt_immutable()',
+      owner: 'scb_migrator',
+      definer: false,
+      runtimeExecute: false,
+      backupExecute: false,
+      publicExecute: false,
+    },
+  ];
+  it('admits only named runtime helpers and leaves extension functions outside this set', () => {
+    expect(functionPrivilegesMatch(manifest, rows)).toBe(true);
+  });
+  it('rejects default PUBLIC, backup or direct trigger execution, definer escalation and missing/unknown functions', () => {
+    for (const patch of [
+      { publicExecute: true },
+      { backupExecute: true },
+      { definer: true },
+      { owner: 'scb_runtime' },
+      { runtimeExecute: false },
+    ])
+      expect(functionPrivilegesMatch(manifest, [{ ...rows[0]!, ...patch }, rows[1]!])).toBe(false);
+    expect(
+      functionPrivilegesMatch(manifest, [rows[0]!, { ...rows[1]!, runtimeExecute: true }]),
+    ).toBe(false);
+    expect(functionPrivilegesMatch(manifest, rows.slice(0, 1))).toBe(false);
+    expect(
+      functionPrivilegesMatch(manifest, [...rows, { ...rows[0]!, signature: 'unexpected()' }]),
+    ).toBe(false);
   });
 });

@@ -85,6 +85,7 @@ export function usePerformanceData(ids: string[]) {
   return useResource(read);
 }
 const formatLabels: Record<string, string> = {
+  DOUBLE_ROUND_ROBIN: '双循环',
   ROUND_ROBIN: '单循环',
   SINGLE_ELIMINATION: '单淘汰',
   GROUP_KNOCKOUT: '分组接淘汰',

@@ -14,7 +14,13 @@ import type {
   ScoringStatKind,
   ScoringTotals,
   ScoringCollectionMode,
+  MatchPlayerRoster,
 } from '@small-city-basketball/contracts';
+import {
+  projectProfessionalStatistics,
+  technicalCollectionEnabled,
+  assertProfessionalPlayerOnCourt,
+} from './professional-statistics.js';
 import { ApiError } from './errors.js';
 import { invalid, objectInput, text } from './validation.js';
 import { parseScheduleTimestamp } from './scheduling-domain.js';
@@ -153,7 +159,7 @@ export function parseScoringCommand(raw: unknown): ScoringCommandInput {
     const value = objectInput(
       input.payload,
       type === 'PREPARE_MATCH'
-        ? ['expectedEventVersion', 'collectionMode']
+        ? ['expectedEventVersion', 'collectionMode', 'technicalCollection']
         : ['expectedEventVersion'],
     );
     if (
@@ -162,11 +168,90 @@ export function parseScoringCommand(raw: unknown): ScoringCommandInput {
       value.collectionMode !== 'PLAYER_BASIC'
     )
       invalid('无效统计采集模式');
+    if (value.technicalCollection !== undefined && typeof value.technicalCollection !== 'boolean')
+      invalid('请选择是否采集专业统计');
+    if (value.technicalCollection && value.collectionMode !== 'PLAYER_BASIC')
+      invalid('专业统计须启用逐人采集');
     payload = {
       expectedEventVersion: integer(value.expectedEventVersion, 'expectedEventVersion', 1, INT_MAX),
       ...(value.collectionMode !== undefined
         ? { collectionMode: value.collectionMode as ScoringCollectionMode }
         : {}),
+      ...(value.technicalCollection !== undefined
+        ? { technicalCollection: value.technicalCollection as boolean }
+        : {}),
+    };
+  } else if (
+    type === 'RECORD_SHOT' ||
+    type === 'RECORD_TECHNICAL' ||
+    type === 'ADD_PRO_CORRECTION'
+  ) {
+    const correction = type === 'ADD_PRO_CORRECTION';
+    const shot = type === 'RECORD_SHOT';
+    const value = objectInput(
+      input.payload,
+      correction
+        ? ['side', 'memberId', 'kind', 'shotValue', 'made', 'period', 'reason']
+        : shot
+          ? ['side', 'memberId', 'shotValue', 'made']
+          : ['side', 'memberId', 'kind'],
+    );
+    const statKind = shot ? 'SHOT' : value.kind;
+    if (
+      !['SHOT', 'REBOUND', 'ASSIST', 'STEAL', 'BLOCK', 'TURNOVER'].includes(String(statKind)) ||
+      (!shot && !correction && statKind === 'SHOT')
+    )
+      invalid('专业统计类型无效');
+    if (
+      statKind === 'SHOT' &&
+      (typeof value.made !== 'boolean' ||
+        ![1, 2, 3].includes(Number(value.shotValue)) ||
+        !Number.isInteger(value.shotValue))
+    )
+      invalid('投篮须明确1/2/3分及命中结果');
+    if (statKind !== 'SHOT' && (value.made !== undefined || value.shotValue !== undefined))
+      invalid('非投篮不能携带投篮结果');
+    payload = {
+      side: side(value.side),
+      memberId: uuid(value.memberId, 'memberId'),
+      ...(!shot ? { kind: statKind } : {}),
+      ...(statKind === 'SHOT' ? { shotValue: value.shotValue, made: value.made } : {}),
+      ...(correction
+        ? {
+            period: integer(value.period, 'period', 1, INT_MAX),
+            reason: text(value.reason, 'reason', 1, 500),
+          }
+        : {}),
+    } as ScoringCommandPayload['payload'];
+  } else if (type === 'CORRECT_LINEUP') {
+    const value = objectInput(input.payload, ['targetEventId', 'memberIds', 'reason']);
+    if (!Array.isArray(value.memberIds) || value.memberIds.length < 1 || value.memberIds.length > 5)
+      invalid('阵容更正须为1至5名球员');
+    const memberIds = value.memberIds.map((id) => uuid(id, 'memberIds'));
+    if (new Set(memberIds).size !== memberIds.length) invalid('阵容更正球员不能重复');
+    payload = {
+      targetEventId: uuid(value.targetEventId, 'targetEventId'),
+      memberIds,
+      reason: text(value.reason, 'reason', 1, 500),
+    };
+  } else if (type === 'SET_LINEUP') {
+    const value = objectInput(input.payload, ['side', 'memberIds']);
+    if (!Array.isArray(value.memberIds) || value.memberIds.length < 1 || value.memberIds.length > 5)
+      invalid('首发须为1至5名球员');
+    const ids = value.memberIds.map((v) => uuid(v, 'memberIds'));
+    if (new Set(ids).size !== ids.length) invalid('首发球员不能重复');
+    payload = { side: side(value.side), memberIds: ids };
+  } else if (type === 'SUBSTITUTE_PLAYER') {
+    const value = objectInput(input.payload, ['side', 'outMemberId', 'inMemberId']);
+    const outMemberId = uuid(value.outMemberId, 'outMemberId'),
+      inMemberId = uuid(value.inMemberId, 'inMemberId');
+    if (outMemberId === inMemberId) invalid('换上换下不能同一球员');
+    payload = { side: side(value.side), outMemberId, inMemberId };
+  } else if (type === 'VOID_PRO_STAT') {
+    const value = objectInput(input.payload, ['targetEventId', 'reason']);
+    payload = {
+      targetEventId: uuid(value.targetEventId, 'targetEventId'),
+      reason: text(value.reason, 'reason', 1, 500),
     };
   } else if (type === 'RECORD_STAT' || type === 'ADD_CORRECTION') {
     const value = objectInput(
@@ -342,6 +427,7 @@ export interface ScoringPlanContext {
   events: ScoringEventData[];
   command: ScoringCommandInput;
   now: string;
+  roster?: MatchPlayerRoster;
 }
 function state(message: string): never {
   throw new ApiError(409, 'INVALID_MATCH_STATE', message);
@@ -381,10 +467,14 @@ export function planCommand(context: ScoringPlanContext): ScoringCommandPlan {
       events: [
         {
           type: command.type,
-          payload:
-            command.payload.collectionMode === undefined
+          payload: {
+            ...(command.payload.collectionMode === undefined
               ? {}
-              : { collectionMode: command.payload.collectionMode },
+              : { collectionMode: command.payload.collectionMode }),
+            ...(command.payload.technicalCollection === undefined
+              ? {}
+              : { technicalCollection: command.payload.technicalCollection }),
+          },
         },
       ],
       isConfirmation: false,
@@ -400,6 +490,10 @@ export function planCommand(context: ScoringPlanContext): ScoringCommandPlan {
   if (clock.remainingMs > maxRemaining) rule('当前时钟超出本节规则时长');
   const remaining = effectiveClock(clock, now);
   const stats = replayStats(context.events, rules, clock.period);
+  const proEnabled = technicalCollectionEnabled(context.events);
+  const pro = proEnabled
+    ? projectProfessionalStatistics(context.events, rules, context.roster ?? { home: [], away: [] })
+    : null;
   let status = context.status;
   const actual = (ACTUAL_SCORING_COMMANDS as readonly string[]).includes(command.type);
   const appendStat = (stat: ActiveStat, reason?: string) => {
@@ -424,8 +518,12 @@ export function planCommand(context: ScoringPlanContext): ScoringCommandPlan {
   if (command.type === 'START_MATCH') {
     if (status !== 'READY') state('仅已准备比赛可以开始');
     if (clock.running) state('开始比赛时比赛时钟须暂停');
+    if (proEnabled && (!pro?.home.lineup.length || !pro?.away.lineup.length))
+      rule('专业采集须先设置双方首发');
     status = 'LIVE';
   } else if (command.type === 'RECORD_STAT') {
+    if (proEnabled && command.payload.kind === 'SCORE')
+      rule('专业模式请记录投篮命中结果，不能另行加分');
     requireLive();
     appendStat({
       kind: command.payload.kind,
@@ -440,6 +538,12 @@ export function planCommand(context: ScoringPlanContext): ScoringCommandPlan {
     command.type === 'REPLACE_STAT'
   ) {
     if (status !== 'LIVE' && status !== 'PENDING_CONFIRMATION') state('当前比赛不允许统计修正');
+    if (
+      proEnabled &&
+      ((command.type === 'ADD_CORRECTION' && command.payload.kind === 'SCORE') ||
+        command.type === 'REPLACE_STAT')
+    )
+      rule('专业模式得分更正须撤销原投篮后补录正确投篮');
     if (command.type === 'ADD_CORRECTION')
       appendStat(
         {
@@ -481,6 +585,111 @@ export function planCommand(context: ScoringPlanContext): ScoringCommandPlan {
           command.payload.reason,
         );
     }
+  } else if (command.type === 'CORRECT_LINEUP') {
+    if (!proEnabled) rule('本场未启用专业统计');
+    if (clock.running || !['LIVE', 'PENDING_CONFIRMATION'].includes(status))
+      state('阵容更正须在暂停或待确认时执行');
+    const target = context.events.find(
+      (e) =>
+        e.id === command.payload.targetEventId &&
+        ['SET_LINEUP', 'SUBSTITUTE_PLAYER'].includes(e.type),
+    );
+    if (!target) rule('阵容更正目标无效');
+    events.push({
+      type: 'LINEUP_CORRECTED',
+      targetEventId: command.payload.targetEventId,
+      payload: {
+        side: target!.payload.side,
+        memberIds: command.payload.memberIds,
+        reason: command.payload.reason,
+      },
+    });
+  } else if (command.type === 'SET_LINEUP' || command.type === 'SUBSTITUTE_PLAYER') {
+    if (!proEnabled) rule('本场未启用专业统计');
+    if (clock.running || (command.type === 'SET_LINEUP' ? status !== 'READY' : status !== 'LIVE'))
+      state('首发在准备时设置，换人须在比赛中暂停计时');
+    events.push({
+      type: command.type,
+      payload: {
+        ...command.payload,
+        ...(command.type === 'SUBSTITUTE_PLAYER'
+          ? {
+              memberIds: pro![command.payload.side === 'HOME' ? 'home' : 'away'].lineup.map((id) =>
+                id === command.payload.outMemberId ? command.payload.inMemberId : id,
+              ),
+            }
+          : {}),
+      },
+    });
+  } else if (
+    command.type === 'RECORD_SHOT' ||
+    command.type === 'RECORD_TECHNICAL' ||
+    command.type === 'ADD_PRO_CORRECTION'
+  ) {
+    if (!proEnabled) rule('本场未启用专业统计');
+    const correction = command.type === 'ADD_PRO_CORRECTION';
+    if (correction ? !['LIVE', 'PENDING_CONFIRMATION'].includes(status) : status !== 'LIVE')
+      state('当前比赛不允许专业统计');
+    const p = command.payload;
+    if (!correction) assertProfessionalPlayerOnCourt(pro, p.side, p.memberId);
+    const statPeriod = correction
+      ? integer(command.payload.period, 'period', 1, clock.period)
+      : clock.period;
+    const reason = correction ? command.payload.reason : undefined;
+    const isShot =
+      command.type === 'RECORD_SHOT' ||
+      (command.type === 'ADD_PRO_CORRECTION' && command.payload.kind === 'SHOT');
+    if (isShot) {
+      const shot = p as {
+        side: ScoringSide;
+        memberId: string;
+        shotValue: 1 | 2 | 3;
+        made: boolean;
+      };
+      if (!rules.allowedScoreValues.includes(shot.shotValue)) rule('本场不允许该投篮分值');
+      if (shot.made)
+        events.push({
+          type: 'STAT_RECORDED',
+          payload: {
+            kind: 'SCORE',
+            side: shot.side,
+            memberId: shot.memberId,
+            value: shot.shotValue,
+            period: statPeriod,
+            shot: { shotValue: shot.shotValue, made: true },
+            ...(reason ? { reason } : {}),
+          },
+        });
+      else
+        events.push({
+          type: 'PRO_STAT_RECORDED',
+          payload: {
+            kind: 'SHOT',
+            side: shot.side,
+            memberId: shot.memberId,
+            shotValue: shot.shotValue,
+            made: false,
+            period: statPeriod,
+            ...(reason ? { reason } : {}),
+          },
+        });
+    } else events.push({ type: 'PRO_STAT_RECORDED', payload: { ...p, period: statPeriod } });
+  } else if (command.type === 'VOID_PRO_STAT') {
+    if (!proEnabled) rule('本场未启用专业统计');
+    if (!['LIVE', 'PENDING_CONFIRMATION'].includes(status)) state('当前比赛不允许专业统计更正');
+    const target = context.events.find(
+      (e) => e.id === command.payload.targetEventId && e.type === 'PRO_STAT_RECORDED',
+    );
+    if (
+      !target ||
+      context.events.some((e) => e.targetEventId === target.id && e.type === 'PRO_STAT_VOIDED')
+    )
+      rule('专业统计目标不存在或已撤销');
+    events.push({
+      type: 'PRO_STAT_VOIDED',
+      targetEventId: command.payload.targetEventId,
+      payload: { reason: command.payload.reason },
+    });
   } else if (command.type === 'CONFIRM_RESULT') {
     if (status !== 'PENDING_CONFIRMATION') state('仅待确认比赛可以确认赛果');
     requirePausedZero();

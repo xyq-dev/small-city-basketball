@@ -5,6 +5,7 @@
   <view wx:elif="{{loginRequired}}" class="card state-card empty"><view class="subtitle">登录后继续平台处理</view><view class="muted">平台身份与独立处理权限由当前账号核对。</view><button class="primary" bindtap="login">登录后继续</button></view>
   <view wx:elif="{{!allowed && !error}}" class="card state-card empty"><view class="subtitle">平台权限尚未就绪</view><view class="muted">核对当前账号后，才显示有权处理的资料与预约。</view><button class="secondary" bindtap="load">核对当前权限</button></view>
   <block wx:if="{{allowed}}">
+<view class="card"><view class="subtitle">城市与服务治理</view><button class="secondary" data-page="city-operations" bindtap="operations">城市运营权限</button><button class="secondary" data-page="governance" bindtap="operations">平台工单与举报</button><button class="secondary" data-page="governance-reviews" bindtap="operations">平台评价处理</button></view>
     <view class="notice warning platform-notice"><view class="notice-title">仅独立平台人员可操作</view><view class="small">拥有平台身份不代表可处理与本人或关联球队有关的订单。资料审核不等于实名、保险、参赛资格或实力认证。</view></view>
     <view wx:if="{{!reviewOpen}}" class="card platform-orders">
       <view class="subtitle">预约与争议</view>

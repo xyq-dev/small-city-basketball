@@ -1,5 +1,11 @@
 # 任务看板
 
+## COMPLETION22：22项功能实现与测试（REVIEW／BRANCH_ONLY）
+
+2026-10-31 Asia/Shanghai；[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)含全部22项源码及消费者，尚未合并。补片前00b8e44的CI41165348026三job成功，516PG／16页面HTTP／24真实API浏览器／4HTTPS／127表完整恢复通过，root已核原始日志。
+
+已整合READY裁定修复abfbb1c及账号新码恢复回归9599fcb；账号初判撤回，不改token有效期。root全类型、局部格式、27裁定单测／8消费者VM通过；新增4项PG待完整CI。全部范围及下一步见[总任务F01—F22](tasks/COMPLETION22.md)、[交接](handoffs/COMPLETION22.md)。正式地图/邮件、微信真机及生产未验，禁止生产与新付费资源。
+
 ## DOC005 小程序直接开播与多平台分发
 
 2026-10-31 Asia/Shanghai；负责人及集成人Codex root。用户已要求设计并同步GitHub；首选手机小程序采集→云端比分合成→多平台分发，OBS为后续输入扩展。

@@ -24,8 +24,12 @@
     <view wx:if="{{manage}}" class="card manage-card">
       <view class="subtitle">赛事管理</view>
       <view class="manage-links">
-        <button class="secondary" bindtap="openSetup">赛事设置与排赛</button>
-        <button wx:if="{{event.format !== 'ROUND_ROBIN'}}" class="secondary" bindtap="openBracket">{{event.format === 'GROUP_KNOCKOUT' ? '分组积分与晋级发布' : '签位与下一轮发布'}}</button>
+        <button class="secondary" data-page="recruitment" bindtap="openFeature">公开招募、导入与本届邀请</button>
+<button class="secondary" data-page="poster" bindtap="openFeature">授权宣传海报</button>
+<button class="secondary" data-page="staff-configuration" bindtap="openFeature">赛事工作人员</button>
+<button class="secondary" data-page="match-exceptions" bindtap="openFeature">弃权与取消规则</button>
+<button class="secondary" bindtap="openSetup">赛事设置与排赛</button>
+        <button wx:if="{{event.format !== 'ROUND_ROBIN' && event.format !== 'DOUBLE_ROUND_ROBIN'}}" class="secondary" bindtap="openBracket">{{event.format === 'GROUP_KNOCKOUT' ? '分组积分与晋级发布' : '签位与下一轮发布'}}</button>
         <button class="secondary" bindtap="openTasks">记分与赛果确认</button>
         <button wx:if="{{manage.review}}" class="secondary" bindtap="openReview">报名审核<text class="manage-sub">{{manage.reviewLabel}}</text></button>
         <button wx:if="{{manage.seasonGrants}}" class="secondary" bindtap="openSeasonGrants">私有赛季数据提名<text class="manage-sub">提名后仍需球员本人同意</text></button>
@@ -46,7 +50,7 @@
     </view>
     <view class="org-event-tabs">
       <button class="{{tab === 'schedule' ? 'selected' : ''}}" data-tab="schedule" bindtap="tab">赛程</button>
-      <button class="{{tab === 'ranking' ? 'selected' : ''}}" data-tab="ranking" bindtap="tab">{{event.format === 'ROUND_ROBIN' ? '积分排名' : '分组与淘汰'}}</button>
+      <button class="{{tab === 'ranking' ? 'selected' : ''}}" data-tab="ranking" bindtap="tab">{{event.format === 'ROUND_ROBIN' || event.format === 'DOUBLE_ROUND_ROBIN' ? '积分排名' : '分组与淘汰'}}</button>
       <button class="{{tab === 'stats' ? 'selected' : ''}}" data-tab="stats" bindtap="tab">球员数据</button>
     </view>
 
@@ -94,7 +98,7 @@
           <view wx:for="{{round.slots}}" wx:key="key" class="org-match">
             <view wx:if="{{item.bye}}" class="org-match-teams"><text>{{item.bye}}</text><text class="org-match-vs">轮空</text></view>
             <view wx:else class="org-match-teams"><text>{{item.home}}</text><text class="org-match-vs">VS</text><text>{{item.away}}</text></view>
-            <view class="org-match-status">{{item.statusLabel}}{{item.winner ? ' · 晋级：' + item.winner : ''}}</view>
+            <view wx:if="{{item.label}}" class="muted">{{item.label}}</view><view class="org-match-status">{{item.statusLabel}}{{item.winner ? ' · ' + item.winnerLabel + '：' + item.winner : ''}}</view>
           </view>
         </block>
         <view wx:if="{{ranking.bracket.isComplete && ranking.bracket.placements.length}}" class="card">
@@ -110,7 +114,7 @@
       <view wx:if="{{statsError}}" class="notice warning">{{statsError}}</view>
       <view wx:elif="{{stats && stats.empty}}" class="card empty"><view class="subtitle">暂无个人数据</view><view class="muted">尚无正式赛程或逐人采集的确认赛果。</view></view>
       <block wx:elif="{{stats}}">
-        <view class="notice small"><view>{{stats.progress}} · {{stats.coverageLabel}}</view><view wx:if="{{stats.attributionLabel}}">{{stats.attributionLabel}}</view><view wx:if="{{stats.pendingLabel}}">{{stats.pendingLabel}}</view></view>
+        <view class="notice small"><view>{{stats.progress}} · {{stats.coverageLabel}}</view><view wx:if="{{stats.administrativeLabel}}" class="muted">{{stats.administrativeLabel}}</view><view wx:if="{{stats.attributionLabel}}">{{stats.attributionLabel}}</view><view wx:if="{{stats.pendingLabel}}">{{stats.pendingLabel}}</view></view>
         <view class="card org-table-card">
           <view class="subtitle">本届得分榜</view>
           <view class="org-table">
@@ -121,8 +125,9 @@
           <view wx:if="{{stats.truncated}}" class="muted">仅显示前50名。</view>
         </view>
         <view class="card org-uncollected">
-          <view class="subtitle">未统计项目</view>
-          <view class="muted">篮板、助攻、抢断、盖帽、失误、命中率与上场时间：未统计。“名单场次”为冻结名单所含场次，不代表实际上场。</view>
+          <view class="subtitle">专业统计与实际上场时间</view>
+          <view class="muted">本页汇总得分与犯规。投篮、篮板等专业数据和实际时间，请查看已启用专业采集的单场报表；未启用的场次显示未统计。“名单场次”不代表实际上场。</view>
+          <button class="secondary" bindtap="openTasks">选择比赛查看记分与报表</button>
         </view>
       </block>
     </block>

@@ -85,3 +85,41 @@ describe('rescheduling HTTP boundary without PostgreSQL', () => {
     );
   });
 });
+
+describe('optimization preview HTTP boundary without PostgreSQL', () => {
+  const url =
+    '/v1/orgs/00000000-0000-0000-0000-000000000001/schedule-revisions/00000000-0000-0000-0000-000000000002/optimization-preview';
+  it('rejects Origin and caller-supplied private fixtures before a DB connection', async () => {
+    const a = await open();
+    const connect = vi.spyOn(a.pool, 'connect');
+    expect((await request(a.app.getHttpServer()).post(url).send({})).status).toBe(403);
+    const invalid = await request(a.app.getHttpServer())
+      .post(url)
+      .set('Origin', origin)
+      .send({ expectedEventVersion: 1, expectedRevisionVersion: 1, fixtures: [] });
+    expect(invalid.status).toBe(422);
+    expect(connect).not.toHaveBeenCalled();
+  });
+  it('returns a private HTTP200 envelope from the optimization service', async () => {
+    const a = await open();
+    const value = { algorithm: 'BALANCED_SEARCH_V1', allocations: [], status: 'PARTIAL' };
+    const read = vi
+      .spyOn(SchedulingService.prototype, 'previewOptimization')
+      .mockResolvedValueOnce(value as never);
+    const body = { expectedEventVersion: 1, expectedRevisionVersion: 2, preserveAssigned: true };
+    const response = await request(a.app.getHttpServer())
+      .post(url)
+      .set('Origin', origin)
+      .set('Cookie', 'scb.sid=test-session')
+      .send(body);
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual(value);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(read).toHaveBeenCalledWith(
+      'scb.sid=test-session',
+      '00000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      body,
+    );
+  });
+});

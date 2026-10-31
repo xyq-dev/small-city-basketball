@@ -184,6 +184,8 @@ export interface SeasonEventCoverage {
   includedMatchCount: number;
   teamOnlyConfirmedMatchCount: number;
   pendingMatchCount: number;
+  excludedAdministrativeMatchCount?: number;
+  recordableMatchCount?: number;
   coverageComplete: boolean;
   attributionComplete: boolean;
 }

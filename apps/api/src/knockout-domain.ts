@@ -1,3 +1,4 @@
+import { administrativeResult } from './match-exception-domain.js';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { MATCH_STATUSES } from '@small-city-basketball/contracts';
@@ -25,6 +26,10 @@ const uuid = (value: unknown): value is string =>
   typeof value === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const key = (roundNo: number, positionNo: number) => `R${roundNo}-P${positionNo}`;
+type PlacementSlot = KnockoutSlotData & {
+  kind?: 'CHAMPIONSHIP' | 'THIRD_PLACE';
+  sourceOutcome?: 'WINNER' | 'LOSER';
+};
 const label = (remaining: number, roundNo: number) =>
   remaining === 0
     ? '决赛'
@@ -101,6 +106,11 @@ export function generateKnockoutPairings(
   const source = canonicalSource(freeze);
   if (!/^[0-9a-f]{64}$/.test(seed)) invalid('抽签种子必须是256bit十六进制值');
   const normalizedPolicy = parseSchedulePolicy(policy);
+  if (
+    (normalizedPolicy as SchedulePolicy & { thirdPlaceMatch?: boolean }).thirdPlaceMatch &&
+    source.entries.length < 4
+  )
+    invalid('季军赛至少需要4支冻结参赛队');
   const orderedEntryIds = source.entries
     .map((e) => ({ id: e.entryId, rank: hashSeed(seed, e.entryId) }))
     .sort((a, b) => ascii(a.rank, b.rank) || ascii(a.id, b.id))
@@ -162,10 +172,48 @@ function iso(value: unknown): string {
   if (!Number.isFinite(parsed.getTime())) resultSourceInvalid();
   return parsed.toISOString();
 }
-function canonicalSources(sources: KnockoutSource[]): KnockoutSource[] {
+export function canonicalKnockoutSources(sources: KnockoutSource[]): KnockoutSource[] {
   if (!Array.isArray(sources)) resultSourceInvalid();
   return sources
     .map((source) => {
+      if ('kind' in source) {
+        if (
+          source.kind !== 'ADJUDICATION' ||
+          Object.keys(source).sort().join('|') !==
+            [
+              'kind',
+              'fixtureKey',
+              'matchId',
+              'adjudicationId',
+              'adjudicationVersion',
+              'matchVersion',
+              'winnerEntryId',
+              'loserEntryId',
+            ]
+              .sort()
+              .join('|') ||
+          !uuid(source.matchId) ||
+          !uuid(source.adjudicationId) ||
+          source.adjudicationVersion !== 2 ||
+          !uuid(source.winnerEntryId) ||
+          !uuid(source.loserEntryId) ||
+          source.winnerEntryId === source.loserEntryId ||
+          typeof source.fixtureKey !== 'string' ||
+          !Number.isInteger(source.matchVersion) ||
+          source.matchVersion < 1
+        )
+          resultSourceInvalid();
+        return {
+          kind: 'ADJUDICATION' as const,
+          fixtureKey: source.fixtureKey,
+          matchId: source.matchId,
+          adjudicationId: source.adjudicationId,
+          adjudicationVersion: source.adjudicationVersion,
+          matchVersion: source.matchVersion,
+          winnerEntryId: source.winnerEntryId,
+          loserEntryId: source.loserEntryId,
+        };
+      }
       if (
         !source ||
         Object.keys(source).sort().join('|') !==
@@ -223,6 +271,9 @@ export function calculateKnockout(input: {
   )
     resultSourceInvalid();
   const totalRounds = Math.log2(seats.length);
+  const thirdPlaceMatch =
+    (input.policy as SchedulePolicy & { thirdPlaceMatch?: boolean }).thirdPlaceMatch === true;
+  if (thirdPlaceMatch && source.entries.length < 4) resultSourceInvalid();
   const matches = new Map<string, ResultRow>();
   const ids = new Set<string>();
   const revisions = new Set<string>();
@@ -238,7 +289,7 @@ export function calculateKnockout(input: {
       proofs.has(proof.roundNo)
     )
       resultSourceInvalid();
-    proofs.set(proof.roundNo, canonicalSources(proof.sources));
+    proofs.set(proof.roundNo, canonicalKnockoutSources(proof.sources));
   }
   for (const match of input.matches) {
     if (
@@ -254,7 +305,10 @@ export function calculateKnockout(input: {
       match.round_no > totalRounds ||
       !Number.isInteger(match.position_no) ||
       match.position_no < 1 ||
-      match.position_no > seats.length / 2 ** match.round_no ||
+      match.position_no >
+        (thirdPlaceMatch && match.round_no === totalRounds
+          ? 2
+          : seats.length / 2 ** match.round_no) ||
       match.fixture_key !== key(match.round_no, match.position_no) ||
       !(MATCH_STATUSES as readonly unknown[]).includes(match.status) ||
       !Number.isInteger(match.version) ||
@@ -272,30 +326,46 @@ export function calculateKnockout(input: {
   if (revisions.size !== 1) resultSourceInvalid();
   const rounds: KnockoutRoundData[] = [];
   const sourcesByRound: KnockoutSource[][] = [];
-  const effectiveResults: { roundNo: number; loserEntryId: string }[] = [];
+  const effectiveResults: { roundNo: number; loserEntryId: string; thirdPlace: boolean }[] = [];
   const plans: unknown[] = [];
-  let previous: KnockoutSlotData[] = [];
+  let previous: PlacementSlot[] = [];
   let previousComplete = true;
   let confirmedMatchCount = 0;
+  let adjudicatedMatchCount = 0;
+  let cancelledMatchCount = 0;
   let publishedMatchCount = 0;
   let nextRound: KnockoutBracket['nextRound'] = null;
   for (let roundNo = 1; roundNo <= totalRounds; roundNo++) {
-    const slots: KnockoutSlotData[] = [];
-    const count = seats.length / 2 ** roundNo;
+    const slots: PlacementSlot[] = [];
+    const count = thirdPlaceMatch && roundNo === totalRounds ? 2 : seats.length / 2 ** roundNo;
     const current = input.matches.filter((match) => match.round_no === roundNo);
     const published = current.length > 0;
     if ((roundNo === 1 && !published) || (published && !previousComplete)) resultSourceInvalid();
     const roundSources: KnockoutSource[] = [];
     let realCount = 0;
     for (let positionNo = 1; positionNo <= count; positionNo++) {
-      const homeSource = roundNo === 1 ? null : key(roundNo - 1, positionNo * 2 - 1);
-      const awaySource = roundNo === 1 ? null : key(roundNo - 1, positionNo * 2);
+      const isThirdPlace = thirdPlaceMatch && roundNo === totalRounds && positionNo === 2;
+      const sourcePosition = isThirdPlace ? 1 : positionNo;
+      const homeSource = roundNo === 1 ? null : key(roundNo - 1, sourcePosition * 2 - 1);
+      const awaySource = roundNo === 1 ? null : key(roundNo - 1, sourcePosition * 2);
+      const loser = (slot: PlacementSlot) =>
+        slot.winnerEntryId && slot.homeEntryId && slot.awayEntryId
+          ? slot.winnerEntryId === slot.homeEntryId
+            ? slot.awayEntryId
+            : slot.homeEntryId
+          : null;
       const homeEntryId =
-        roundNo === 1 ? seats[(positionNo - 1) * 2]! : previous[positionNo * 2 - 2]!.winnerEntryId;
+        roundNo === 1
+          ? seats[(positionNo - 1) * 2]!
+          : isThirdPlace
+            ? loser(previous[0]!)
+            : previous[positionNo * 2 - 2]!.winnerEntryId;
       const awayEntryId =
         roundNo === 1
           ? seats[(positionNo - 1) * 2 + 1]!
-          : previous[positionNo * 2 - 1]!.winnerEntryId;
+          : isThirdPlace
+            ? loser(previous[1]!)
+            : previous[positionNo * 2 - 1]!.winnerEntryId;
       const fixtureKey = key(roundNo, positionNo);
       const match = matches.get(fixtureKey);
       const byeEntryId =
@@ -303,6 +373,7 @@ export function calculateKnockout(input: {
       if (byeEntryId && match) resultSourceInvalid();
       let winnerEntryId = byeEntryId;
       if (!byeEntryId) realCount++;
+      let administrativeKind: 'FORFEIT' | 'CANCELLED' | null = null;
       if (match) {
         if (!homeEntryId || !awayEntryId) resultSourceInvalid();
         if (roundNo > 1) {
@@ -324,8 +395,11 @@ export function calculateKnockout(input: {
             resultSourceInvalid();
         }
         if (match.state && match.scoring_rules?.tie_policy !== 'OVERTIME') resultSourceInvalid();
-        const result = confirmedResult(match);
-        const playerStatistics = confirmedPlayerStatistics(match);
+        const admin = administrativeResult(match);
+        administrativeKind = admin?.kind ?? null;
+        if (admin?.kind === 'CANCELLED') cancelledMatchCount++;
+        const result = admin ? null : confirmedResult(match);
+        const playerStatistics = admin ? null : confirmedPlayerStatistics(match);
         if (playerStatistics) {
           for (const side of ['home', 'away'] as const) {
             const frozen = side === 'home' ? home : away;
@@ -336,6 +410,16 @@ export function calculateKnockout(input: {
             if (!isDeepStrictEqual(actual, expected)) resultSourceInvalid();
           }
         }
+        if (admin?.kind === 'FORFEIT') {
+          winnerEntryId = admin.winnerEntryId!;
+          effectiveResults.push({
+            roundNo,
+            loserEntryId: admin.loserEntryId!,
+            thirdPlace: isThirdPlace,
+          });
+          roundSources.push(admin.source!);
+          adjudicatedMatchCount++;
+        }
         if (result) {
           if (
             match.scoring_rules?.tie_policy !== 'OVERTIME' ||
@@ -344,7 +428,7 @@ export function calculateKnockout(input: {
             resultSourceInvalid();
           winnerEntryId = result.homeScore > result.awayScore ? homeEntryId : awayEntryId;
           const loserEntryId = winnerEntryId === homeEntryId ? awayEntryId : homeEntryId;
-          effectiveResults.push({ roundNo, loserEntryId });
+          effectiveResults.push({ roundNo, loserEntryId, thirdPlace: isThirdPlace });
           roundSources.push({
             fixtureKey,
             matchId: match.id,
@@ -366,10 +450,26 @@ export function calculateKnockout(input: {
           startsAt: iso(match.starts_at),
           endsAt: iso(match.ends_at),
           status: match.status,
+          ...(admin
+            ? {
+                adjudication: {
+                  kind: admin.kind,
+                  id: admin.adjudicationId,
+                  version: admin.adjudicationVersion,
+                },
+              }
+            : {}),
           confirmation: result ? { ...result, matchVersion: result.sourceMatchVersion + 1 } : null,
         });
       }
       slots.push({
+        ...(administrativeKind ? { adjudication: { kind: administrativeKind } } : {}),
+        ...(thirdPlaceMatch && roundNo === totalRounds
+          ? {
+              kind: isThirdPlace ? ('THIRD_PLACE' as const) : ('CHAMPIONSHIP' as const),
+              sourceOutcome: isThirdPlace ? ('LOSER' as const) : ('WINNER' as const),
+            }
+          : {}),
         fixtureKey,
         roundNo,
         positionNo,
@@ -387,7 +487,10 @@ export function calculateKnockout(input: {
     if (roundNo > 1) {
       const proof = proofs.get(roundNo);
       if (published) {
-        if (!proof || !isDeepStrictEqual(proof, canonicalSources(sourcesByRound[roundNo - 2]!)))
+        if (
+          !proof ||
+          !isDeepStrictEqual(proof, canonicalKnockoutSources(sourcesByRound[roundNo - 2]!))
+        )
           resultSourceInvalid();
       } else if (proof) resultSourceInvalid();
       if (!published && previousComplete && !nextRound) {
@@ -407,7 +510,7 @@ export function calculateKnockout(input: {
         nextRound = {
           roundNo,
           sourceHash: '',
-          sources: canonicalSources(sourcesByRound[roundNo - 2]!),
+          sources: canonicalKnockoutSources(sourcesByRound[roundNo - 2]!),
           fixtures,
         };
       }
@@ -415,12 +518,20 @@ export function calculateKnockout(input: {
     previousComplete = published && slots.every((slot) => !!slot.winnerEntryId);
     previous = slots;
     sourcesByRound.push(roundSources);
-    rounds.push({ roundNo, label: label(totalRounds - roundNo, roundNo), published, slots });
+    rounds.push({
+      roundNo,
+      label:
+        thirdPlaceMatch && roundNo === totalRounds
+          ? '决赛与季军赛'
+          : label(totalRounds - roundNo, roundNo),
+      published,
+      slots,
+    });
   }
   const isComplete =
     previousComplete &&
-    publishedMatchCount === source.entries.length - 1 &&
-    confirmedMatchCount === publishedMatchCount;
+    publishedMatchCount === source.entries.length - 1 + (thirdPlaceMatch ? 1 : 0) &&
+    confirmedMatchCount + adjudicatedMatchCount === publishedMatchCount;
   const placements: KnockoutPlacement[] = [];
   if (isComplete) {
     const champion = previous[0]!.winnerEntryId!;
@@ -431,6 +542,7 @@ export function calculateKnockout(input: {
       tied: false,
     });
     for (const result of effectiveResults) {
+      if (result.thirdPlace || (thirdPlaceMatch && result.roundNo === totalRounds - 1)) continue;
       const rank = 2 ** (totalRounds - result.roundNo) + 1;
       placements.push({
         entryId: result.loserEntryId,
@@ -438,6 +550,21 @@ export function calculateKnockout(input: {
         rank,
         tied: false,
       });
+    }
+    if (thirdPlaceMatch) {
+      const bronze = previous[1]!;
+      const winner = bronze.winnerEntryId!;
+      const loser = winner === bronze.homeEntryId ? bronze.awayEntryId! : bronze.homeEntryId!;
+      for (const [entryId, rank] of [
+        [winner, 3],
+        [loser, 4],
+      ] as const)
+        placements.push({
+          entryId,
+          teamName: participants.get(entryId)!.teamName,
+          rank,
+          tied: false,
+        });
     }
     if (
       placements.length !== source.entries.length ||
@@ -465,9 +592,16 @@ export function calculateKnockout(input: {
     sourceHash,
     asOf: input.asOf,
     participantCount: source.entries.length,
-    totalMatchCount: source.entries.length - 1,
+    totalMatchCount: source.entries.length - 1 + (thirdPlaceMatch ? 1 : 0),
     publishedMatchCount,
     confirmedMatchCount,
+    ...(adjudicatedMatchCount + cancelledMatchCount
+      ? {
+          adjudicatedMatchCount,
+          cancelledMatchCount,
+          resolvedMatchCount: confirmedMatchCount + adjudicatedMatchCount + cancelledMatchCount,
+        }
+      : {}),
     isComplete,
     rounds,
     placements,

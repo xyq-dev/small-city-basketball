@@ -19,6 +19,7 @@ import {
   publicEventPath,
   savePublishRules,
 } from './p05b-support.js';
+import { actorShareLockQuery } from './fixtures/actor-share-lock.js';
 import { bootstrap, issue, overlayCookie, overlaySnapshot, rotate } from './p06-support.js';
 import { createOwnedRestoreDatabase } from './p07-support.js';
 
@@ -132,9 +133,7 @@ test('C22 an in-flight REPLACE makes offline quarantine fail immediately and who
     // Hold the real API transaction after sessions/users FOR SHARE, before it asks for
     // organizations. The old quarantine waits with org/event table locks for 15 seconds;
     // NOWAIT must reject within this 5-second observation while the API stays paused.
-    barrier = pauseAfter(seeded.h.api.pool, (sql) =>
-      sql.includes('FROM users WHERE id=$1 FOR SHARE'),
-    );
+    barrier = pauseAfter(seeded.h.api.pool, actorShareLockQuery);
     pendingReplace = call(seeded.h.api, 'post', request.path, {
       cookie: seeded.h.owner.cookie,
       body: request.body,
@@ -172,7 +171,7 @@ test('C22 quarantine holding every table lock commits before REPLACE and its rev
     // The recovery operation has actually acquired all EXCLUSIVE locks. This barrier is
     // before it chooses the revocation time; the HTTP request then demonstrably waits on
     // the sessions table and must observe revoked credentials after quarantine commits.
-    barrier = pauseAfter(target.pool, (sql) => /^LOCK TABLE organizations,/.test(sql));
+    barrier = pauseAfter(target.pool, (sql) => /^LOCK TABLE "?organizations"?,/.test(sql));
     pendingQuarantine = quarantineRestoredDatabase(target);
     await within(barrier.reached);
     pendingReplace = call(seeded.h.api, 'post', request.path, {

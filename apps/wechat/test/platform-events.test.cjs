@@ -402,7 +402,7 @@ test('org event page renders schedule, published standings and basic stats with 
   assert.equal(h.page.data.publicEventId, publicKey);
   assert.equal(h.page.data.stats.rows[0].score, 18);
   const stats = buildPreview({ root, route: 'pages/org-event/index', data: h.page.data });
-  assert.match(stats.phone, /篮板、助攻、抢断、盖帽、失误、命中率与上场时间：未统计/);
+  assert.match(stats.phone, /未启用的场次显示未统计/);
   assert.match(stats.phone, /2 场待确认，未纳入/);
   h.page.tab({ currentTarget: { dataset: { tab: 'ranking' } } });
   const ranking = buildPreview({ root, route: 'pages/org-event/index', data: h.page.data });

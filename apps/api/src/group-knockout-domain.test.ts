@@ -160,13 +160,17 @@ const rules: StandingsRulesetData = {
   tiebreakers: ['SCORE_DIFFERENCE', 'POINTS_FOR'],
   createdAt: asOf,
 };
-function groupFixture(count = 4, groupCount: 2 | 4 | 8 = 2) {
+function groupFixture(
+  count = 4,
+  groupCount: 2 | 4 | 8 = 2,
+  selectedPolicy: SchedulePolicy = policy,
+) {
   const source = freeze(count),
     config = {
       groupCount,
       seededEntryIds: source.entries.slice(0, groupCount).map((e) => e.entryId),
     },
-    draw = generateGroupPairings(source, policy, seed, config);
+    draw = generateGroupPairings(source, selectedPolicy, seed, config);
   const matches = draw.fixtures.map((f) => scheduled(source, f)),
     draws: GroupTieDrawData[] = [],
     roundPublications: { roundNo: number; sources: KnockoutSource[] }[] = [];
@@ -176,7 +180,7 @@ function groupFixture(count = 4, groupCount: 2 | 4 | 8 = 2) {
       publicationId,
       source,
       seed,
-      policy,
+      policy: selectedPolicy,
       config,
       rules,
       matches,
@@ -441,5 +445,128 @@ describe('GK_BALANCED_V1 deterministic group stage', () => {
     f.matches.push(...r.nextRound!.fixtures.map((m) => final(scheduled(f.source, m))));
     expect(f.read().isComplete).toBe(true);
     expect(f.read().totalMatchCount).toBe(243);
+  });
+});
+
+describe('X01 eight-team sixteen-game group and placement flow', () => {
+  it('twelve group games, two semifinals, final and genuine loser bronze', () => {
+    const f = groupFixture(8, 2, { ...policy, thirdPlaceMatch: true } as SchedulePolicy);
+    let c = finishGroupGames(f);
+    for (const [i, g] of c.groups.entries()) {
+      if (!g.unresolvedTieEntryIds.length) continue;
+      const drawSeed = String(i + 1).repeat(64);
+      f.draws.push({
+        id: id(930 + i),
+        groupKey: g.groupKey,
+        sourceHash: g.standings.sourceHash,
+        seed: drawSeed,
+        tiedEntryIds: g.unresolvedTieEntryIds,
+        orderedEntryIds: groupTieOrder(drawSeed, g.unresolvedTieEntryIds),
+        reason: '合成季军赛组内同分抽签',
+        createdAt: asOf,
+      });
+    }
+    c = qualify(f);
+    expect(f.draw.fixtures).toHaveLength(12);
+    expect(c.totalMatchCount).toBe(16);
+    for (let i = 0; i < f.matches.length; i++)
+      if (f.matches[i]!.status !== 'FINAL') f.matches[i] = final(f.matches[i]!);
+    c = f.read();
+    const next = c.nextRound!;
+    expect(next.fixtures).toHaveLength(2);
+    expect(next.sources).toHaveLength(2);
+    f.roundPublications.push({ roundNo: next.roundNo, sources: structuredClone(next.sources) });
+    f.matches.push(...next.fixtures.map((m) => scheduled(f.source, m)));
+    expect(f.read().bracket!.rounds.at(-1)!.slots[1]).toMatchObject({
+      kind: 'THIRD_PLACE',
+      sourceOutcome: 'LOSER',
+    });
+    for (let i = 0; i < f.matches.length; i++)
+      if (f.matches[i]!.status !== 'FINAL') f.matches[i] = final(f.matches[i]!);
+    c = f.read();
+    expect(c.isComplete).toBe(true);
+    expect(c.confirmedMatchCount).toBe(16);
+    expect(c.publishedMatchCount).toBe(16);
+    expect(
+      c.placements
+        .filter((p) => p.stage === 'KNOCKOUT')
+        .map((p) => p.rank)
+        .sort(),
+    ).toEqual([1, 2, 3, 4]);
+    expect(
+      c.placements.filter((p) => p.stage === 'GROUP_ELIMINATED').every((p) => p.rank === null),
+    ).toBe(true);
+  });
+});
+
+describe('X02 group exception sources', () => {
+  function decide(m: ResultRow, kind = 'FORFEIT') {
+    const requestId = id(9700 + m.round_no * 100 + m.position_no);
+    return {
+      ...m,
+      exception_checked: true,
+      exception_head: { version: 2, active_request_id: requestId },
+      exception_request: {
+        id: requestId,
+        event_id: m.event_id,
+        match_id: m.id,
+        status: 'APPROVED',
+        operation: 'DECLARE',
+        version: 2,
+        source_match_version: m.version,
+        rules_id: id(9800),
+        rules_version: 1,
+        proposed_by: id(9801),
+        reviewed_by: id(9802),
+        reviewed_at: asOf,
+        kind,
+        forfeiting_side: kind === 'FORFEIT' ? 'HOME' : null,
+        winner_entry_id: kind === 'FORFEIT' ? m.away_entry_id : null,
+        loser_entry_id: kind === 'FORFEIT' ? m.home_entry_id : null,
+      },
+      exception_rules: {
+        id: id(9800),
+        event_id: m.event_id,
+        version: 1,
+        forfeit_win_points: 2,
+        forfeit_loss_points: 0,
+        cancellation_policy: 'EXCLUDE_FROM_TABLE',
+      },
+    };
+  }
+  it('all forfeits resolve group standings and publish genuine administrative qualification', () => {
+    const f = groupFixture(4);
+    for (let i = 0; i < f.matches.length; i++) f.matches[i] = decide(f.matches[i]!);
+    const r = f.read();
+    expect(r.qualification.status).toBe('READY');
+    expect(r.confirmedMatchCount).toBe(0);
+    expect(r).toMatchObject({
+      adjudicatedMatchCount: 2,
+      cancelledMatchCount: 0,
+      resolvedMatchCount: 2,
+    });
+    expect(r.qualification.sources.every((s) => 'kind' in s && s.kind === 'ADJUDICATION')).toBe(
+      true,
+    );
+    qualify(f);
+    expect(f.read().qualification.status).toBe('PUBLISHED');
+  });
+  it('a cancelled group match is excluded and retained as an explicit no-winner proof requiring tie resolution', () => {
+    const f = groupFixture(4);
+    for (let i = 0; i < f.matches.length; i++) f.matches[i] = decide(f.matches[i]!, 'CANCELLED');
+    const r = f.read();
+    expect(r.qualification.status).toBe('TIE_BREAK_REQUIRED');
+    expect(
+      r.qualification.sources.every(
+        (s) => 'kind' in s && s.kind === 'CANCELLATION' && s.winnerEntryId === null,
+      ),
+    ).toBe(true);
+    expect(
+      r.groups.every(
+        (g) =>
+          g.standings.isComplete &&
+          g.standings.rows.every((row) => row.played === 0 && row.rank === 1),
+      ),
+    ).toBe(true);
   });
 });

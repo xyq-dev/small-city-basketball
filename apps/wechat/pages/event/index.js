@@ -2,6 +2,8 @@ const api = require('../../utils/api');
 const recent = require('../../utils/recent');
 const ui = require('../../utils/ui');
 const follows = require('../../utils/follows');
+const cities = require('../../utils/city-preference');
+const publicResults = require('../../utils/public-results');
 
 // Follow state is private to the signed-in account and kept apart from the public event data:
 // a session change resets only this block, and the public reads stay exactly as before.
@@ -26,20 +28,16 @@ function bracketView(bracket) {
     ...bracket,
     rounds: (bracket.rounds || []).map((round) => ({
       ...round,
-      slots: (round.slots || []).map((slot) => ({
-        ...slot,
-        statusLabel:
-          slot.status === 'WAITING'
-            ? '尚未发布'
-            : slot.status === 'BYE'
-              ? '轮空'
-              : api.matchStatus(slot.status),
-      })),
+      slots: (round.slots || []).map(publicResults.slot),
     })),
   };
 }
 Page({
   data: {
+    sponsorRegionId: '',
+    sponsorCatalogVersion: '',
+    sponsorEventPublicId: '',
+    sponsorVisible: false,
     event: null,
     matches: [],
     standings: null,
@@ -58,6 +56,7 @@ Page({
   onLoad(query) {
     try {
       this.id = api.publicId(query.event);
+      this.setData({ sponsorEventPublicId: this.id });
       if (['schedule', 'ranking', 'media'].includes(query.tab))
         this.setData({ tab: query.tab, overview: false });
     } catch {
@@ -69,13 +68,21 @@ Page({
     this.load();
   },
   onShow() {
+    const selection = cities.snapshot();
+    this.setData({
+      sponsorRegionId: selection.mode === 'REGION' ? selection.regionId : '',
+      sponsorCatalogVersion: selection.mode === 'REGION' ? selection.catalogVersion : '',
+      sponsorVisible: true,
+    });
     if (this.id && !this.timer) this.timer = setInterval(() => this.load(), 10000);
   },
   onHide() {
+    this.setData({ sponsorVisible: false });
     clearInterval(this.timer);
     this.timer = null;
   },
   onUnload() {
+    this.setData({ sponsorVisible: false });
     this.closed = true;
     clearInterval(this.timer);
     this._followGen = (this._followGen || 0) + 1;
@@ -87,29 +94,36 @@ Page({
     this.setData({ loading: true });
     try {
       const client = api.getClient();
-      const rawEvent = (await client.request('/v1/public/events/' + this.id)).data;
+      const rawEvent = (await client.requestPublic('/v1/public/events/' + this.id)).data;
       const event = {
         ...rawEvent,
         statusLabel: api.eventStatus(rawEvent.status),
         formatLabel: api.eventFormat(rawEvent.format),
+        progressLabel: publicResults.progress(rawEvent),
         dateLabel: shortDate(rawEvent.startDate) + '–' + shortDate(rawEvent.endDate),
       };
       const matches = (await api.allSchedule(client, this.id)).map((m) => ({
-        ...m,
+        ...publicResults.match(m),
         startLabel: api.publicTime(m.startsAt),
-        statusLabel: api.matchStatus(m.status),
-        resultLabel: api.resultStatus(m.resultStatus),
       }));
       let standings = null,
         groups = null,
         bracket = null;
       if (event.format === 'GROUP_KNOCKOUT') {
-        groups = (await client.request('/v1/public/events/' + this.id + '/groups')).data;
+        groups = (await client.requestPublic('/v1/public/events/' + this.id + '/groups')).data;
+        groups = {
+          ...groups,
+          groups: (groups.groups || []).map((g) => ({
+            ...g,
+            progressLabel: publicResults.progress(g),
+          })),
+        };
         bracket = groups.bracket;
       } else if (event.format === 'SINGLE_ELIMINATION') {
-        bracket = (await client.request('/v1/public/events/' + this.id + '/knockout')).data;
+        bracket = (await client.requestPublic('/v1/public/events/' + this.id + '/knockout')).data;
       } else {
-        standings = (await client.request('/v1/public/events/' + this.id + '/standings')).data;
+        standings = (await client.requestPublic('/v1/public/events/' + this.id + '/standings'))
+          .data;
       }
       if (!this.closed) recent.remember({ ...event, publicEventId: this.id });
       const firstView = !this.data.event;
@@ -316,6 +330,10 @@ Page({
         },
       });
     }
+  },
+  report() {
+    if (this.id && this.data.event)
+      ui.open('governance', { sourceKind: 'PUBLIC_EVENT', sourceId: this.id });
   },
   onShareAppMessage() {
     if (!this.id) return { title: '小城市篮球', path: '/pages/home/index' };

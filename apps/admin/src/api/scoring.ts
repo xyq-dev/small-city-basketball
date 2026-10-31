@@ -30,6 +30,14 @@ const totals = (v: unknown) => ints(v, ['score', 'fouls', 'timeouts']);
 const periods = (v: unknown) =>
   Array.isArray(v) &&
   v.every((p) => ints(p, ['period']) && obj(p) && totals(p.home) && totals(p.away));
+function administrativeMarker(v: Obj) {
+  if (!Object.hasOwn(v, 'adjudication')) return true;
+  return (
+    obj(v.adjudication) &&
+    Object.keys(v.adjudication).length === 1 &&
+    ['FORFEIT', 'CANCELLED'].includes(String(v.adjudication.kind))
+  );
+}
 function rosterPlayers(v: unknown) {
   if (!Array.isArray(v)) return false;
   const ids = new Set<string>();
@@ -119,6 +127,7 @@ function confirmation(v: unknown) {
 function snapshot(v: unknown) {
   return (
     obj(v) &&
+    administrativeMarker(v) &&
     str(v, ['matchId', 'eventId', 'eventName', 'serverTime']) &&
     time(v.serverTime) &&
     ints(v, ['version', 'lastEventSeq']) &&
@@ -157,6 +166,7 @@ function staff(v: unknown) {
 function match(v: unknown) {
   return (
     obj(v) &&
+    administrativeMarker(v) &&
     str(v, [
       'id',
       'eventId',
@@ -210,6 +220,7 @@ function workbench(v: unknown) {
 function summary(v: unknown) {
   return (
     obj(v) &&
+    administrativeMarker(v) &&
     str(v, [
       'matchId',
       'eventId',

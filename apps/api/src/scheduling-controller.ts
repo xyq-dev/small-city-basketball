@@ -85,6 +85,14 @@ export class SchedulingController {
   ) {
     return envelope(r, await this.service.validateRevision(r.headers.cookie, org, id, body));
   }
+  @Post('schedule-revisions/:id/optimization-preview') @HttpCode(200) async optimize(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return envelope(r, await this.service.previewOptimization(r.headers.cookie, org, id, body));
+  }
   @Post('schedule-revisions/:id/publish') @HttpCode(200) async publish(
     @Req() r: ApiRequest,
     @Param('orgId') org: string,

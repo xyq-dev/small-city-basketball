@@ -22,6 +22,70 @@ import type { Response, NextFunction } from 'express';
 import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
+import { PublicLedgerService } from './public-ledger-service.js';
+import {
+  PublicLedgerController,
+  PublicLedgerViewingController,
+  SCB_PUBLIC_LEDGER_SERVICE,
+} from './public-ledger-controller.js';
+import { PublicArchivesService } from './public-archives-service.js';
+import {
+  PublicArchivesController,
+  SCB_PUBLIC_ARCHIVES_SERVICE,
+} from './public-archives-controller.js';
+import { EventTemplateService } from './event-template-service.js';
+import {
+  EventTemplateController,
+  SCB_EVENT_TEMPLATE_SERVICE,
+} from './event-template-controller.js';
+import { MatchExceptionService } from './match-exception-service.js';
+import {
+  MatchExceptionController,
+  SCB_MATCH_EXCEPTION_SERVICE,
+} from './match-exception-controller.js';
+import { RecruitmentService } from './recruitment-service.js';
+import { RecruitmentController, SCB_RECRUITMENT_SERVICE } from './recruitment-controller.js';
+import { PosterService } from './poster-service.js';
+import { PosterController, SCB_POSTER_SERVICE } from './poster-controller.js';
+import { LocalServicesService, verifiedGovernanceBooking } from './local-services-service.js';
+import {
+  LocalBookingsController,
+  LocalMatchupsController,
+  OrgLocalServicesController,
+  PersonalLocalServicesController,
+  PublicLocalServicesController,
+  SCB_LOCAL_SERVICES_SERVICE,
+} from './local-services-controller.js';
+import { TencentLocationProvider } from './location-provider.js';
+import type { LocationProvider } from './location-provider.js';
+import { readRequiredSecret } from './env.js';
+import { SponsorshipService } from './sponsorship-service.js';
+import {
+  SponsorshipController,
+  SponsorshipReviewController,
+  PublicSponsorshipController,
+  SCB_SPONSORSHIP_SERVICE,
+} from './sponsorship-controller.js';
+import { GovernanceService } from './governance-service.js';
+import { CityOperationsService, assertCityOperation } from './city-operations-service.js';
+import {
+  GovernanceController,
+  PlatformGovernanceController,
+  PublicGovernanceController,
+  CityOperationsController,
+  PlatformCityOperationsController,
+  SCB_GOVERNANCE_SERVICE,
+  SCB_CITY_OPERATIONS_SERVICE,
+} from './governance-controller.js';
+import { StaffConfigurationService } from './staff-configuration-service.js';
+import {
+  StaffConfigurationController,
+  SCB_STAFF_CONFIGURATION,
+} from './staff-configuration-controller.js';
+import { AccountRecoveryService } from './account-recovery-service.js';
+import type { AccountRecoveryOptions } from './account-recovery-service.js';
+import { AccountRecoveryController, SCB_ACCOUNT_RECOVERY } from './account-recovery-controller.js';
+import { accountRecoveryRuntime } from './account-recovery-runtime.js';
 import { PlayerBookingService } from './player-booking/service.js';
 import { PlayerPerformanceService } from './player-booking/performance-service.js';
 import {
@@ -282,6 +346,8 @@ export async function createApi(
     wechat?: WechatServiceOptions;
     media?: { trustedExternalHosts?: string[] };
     commercePayments?: WechatPayClient;
+    accountRecovery?: AccountRecoveryOptions;
+    locationProvider?: LocationProvider;
   },
 ): Promise<{ app: INestApplication; pool: Pool }> {
   const options = resolveApiOptions(input);
@@ -294,6 +360,38 @@ export async function createApi(
   try {
     if (options.production) await assertRuntimeReadiness(pool, options.participantDataKey);
     const service = new RegistrationService(pool, options);
+    const publicLedgers = new PublicLedgerService(pool, options);
+    const publicArchives = new PublicArchivesService(pool, options);
+    const eventTemplates = new EventTemplateService(pool, options);
+    const matchExceptions = new MatchExceptionService(pool, options);
+    const recruitment = new RecruitmentService(pool, options);
+    const posters = new PosterService(pool, options);
+    const sponsorships = new SponsorshipService(pool, options);
+    const cityOperations = new CityOperationsService(pool, options);
+    const governance = new GovernanceService(pool, options, {
+      bookingVerifier: verifiedGovernanceBooking,
+    });
+    const locationProvider =
+      input.locationProvider ??
+      new TencentLocationProvider(
+        process.env.SCB_TENCENT_MAP_KEY !== undefined ||
+          process.env.SCB_TENCENT_MAP_KEY_FILE !== undefined
+          ? readRequiredSecret('SCB_TENCENT_MAP_KEY')
+          : undefined,
+      );
+    const localServices = new LocalServicesService(
+      pool,
+      options,
+      locationProvider,
+      assertCityOperation,
+    );
+    const staffConfiguration = new StaffConfigurationService(pool, options);
+    const accountRecovery = new AccountRecoveryService(
+      pool,
+      options,
+      input.accountRecovery ?? accountRecoveryRuntime(),
+    );
+    await accountRecovery.assertConfiguration();
     const participantMaterials = new ParticipantMaterialsService(pool, options);
     const playerBooking = new PlayerBookingService(pool, options);
     const playerPerformance = new PlayerPerformanceService(pool, options);
@@ -318,6 +416,28 @@ export async function createApi(
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
+        SponsorshipController,
+        SponsorshipReviewController,
+        PublicSponsorshipController,
+        PublicLedgerController,
+        PublicLedgerViewingController,
+        PublicArchivesController,
+        EventTemplateController,
+        MatchExceptionController,
+        RecruitmentController,
+        PosterController,
+        LocalBookingsController,
+        LocalMatchupsController,
+        OrgLocalServicesController,
+        PersonalLocalServicesController,
+        PublicLocalServicesController,
+        GovernanceController,
+        PlatformGovernanceController,
+        PublicGovernanceController,
+        CityOperationsController,
+        PlatformCityOperationsController,
+        StaffConfigurationController,
+        AccountRecoveryController,
         AuthController,
         PlayerBookingController,
         PlayerPerformanceController,
@@ -353,6 +473,18 @@ export async function createApi(
         SeasonController,
       ],
       providers: [
+        { provide: SCB_SPONSORSHIP_SERVICE, useValue: sponsorships },
+        { provide: SCB_PUBLIC_LEDGER_SERVICE, useValue: publicLedgers },
+        { provide: SCB_PUBLIC_ARCHIVES_SERVICE, useValue: publicArchives },
+        { provide: SCB_EVENT_TEMPLATE_SERVICE, useValue: eventTemplates },
+        { provide: SCB_MATCH_EXCEPTION_SERVICE, useValue: matchExceptions },
+        { provide: SCB_RECRUITMENT_SERVICE, useValue: recruitment },
+        { provide: SCB_POSTER_SERVICE, useValue: posters },
+        { provide: SCB_LOCAL_SERVICES_SERVICE, useValue: localServices },
+        { provide: SCB_GOVERNANCE_SERVICE, useValue: governance },
+        { provide: SCB_CITY_OPERATIONS_SERVICE, useValue: cityOperations },
+        { provide: SCB_STAFF_CONFIGURATION, useValue: staffConfiguration },
+        { provide: SCB_ACCOUNT_RECOVERY, useValue: accountRecovery },
         { provide: SERVICE, useValue: service },
         { provide: SCB_PARTICIPANT_MATERIALS_SERVICE, useValue: participantMaterials },
         { provide: SCB_PLAYER_BOOKING_SERVICE, useValue: playerBooking },
@@ -409,6 +541,7 @@ export async function createApi(
     });
     app.useGlobalFilters(new ApiExceptionFilter());
     await app.init();
+    accountRecovery.startWorker();
     return { app, pool };
   } catch (error) {
     await pool.end();

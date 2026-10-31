@@ -16,7 +16,7 @@ import {
   targetUrl,
   writePrivateJson,
 } from '../db/common.mjs';
-import { applyRuntimePrivileges } from '../db/privileges.mjs';
+import { loadManifest, applyRuntimePrivileges } from '../db/privileges.mjs';
 import { fingerprintDatabase } from './fingerprint.mjs';
 
 /** Creates a new database only. On failure it leaves it isolated; never drops/adopts any target. */
@@ -36,6 +36,7 @@ export async function restoreDatabase({
       throw new Error();
     await assertPrivatePath(archivePath);
     await assertPrivatePath(receiptPath, false);
+    const manifest = await loadManifest();
     const archive = await readPrivateJson(`${archivePath}.manifest.json`);
     const archiveSha256 = await hashPrivateFile(archivePath);
     if (
@@ -43,7 +44,8 @@ export async function restoreDatabase({
       archive.format !== 'SCB_FULL_CUSTOM_PG18' ||
       archive.archiveSha256 !== archiveSha256 ||
       archive.fingerprint?.version !== 1 ||
-      Object.keys(archive.fingerprint.tables ?? {}).length !== 83
+      JSON.stringify(Object.keys(archive.fingerprint.tables ?? {}).sort()) !==
+        JSON.stringify(Object.keys(manifest.tables).sort())
     )
       throw new Error();
     if (
@@ -105,7 +107,7 @@ export async function restoreDatabase({
     if (JSON.stringify(fingerprint) !== JSON.stringify(archive.fingerprint)) throw new Error();
     await assertOwnedRestoreTarget(targetPool, ownership);
     await writePrivateJson(receiptPath, { ...ownership, archiveSha256, fingerprint });
-    return { status: 'restored', databaseName, tables: 83 };
+    return { status: 'restored', databaseName, tables: Object.keys(fingerprint.tables).length };
   } catch {
     throw new Error('Database restore failed');
   } finally {

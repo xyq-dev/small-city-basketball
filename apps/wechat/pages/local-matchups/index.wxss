@@ -1,0 +1,1 @@
+.local-private { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }.local-actions { display:flex; gap:8px; }.local-actions button { flex:1; }.listing { text-align:left; }.check { display:block; margin:12px 0; }.slot-row { border-top:1px solid #e8edf2; padding-top:12px; margin-top:12px; }

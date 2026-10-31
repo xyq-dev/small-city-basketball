@@ -288,7 +288,7 @@ export class DirectoryService extends StandingsService {
            AND p.id=l.publication_id AND p.revoked_at IS NULL
          ${aliasJoin}
          WHERE l.status='ACTIVE' AND ${condition}
-           AND e.format IN ('ROUND_ROBIN','SINGLE_ELIMINATION','GROUP_KNOCKOUT')
+           AND e.format IN ('ROUND_ROBIN','DOUBLE_ROUND_ROBIN','SINGLE_ELIMINATION','GROUP_KNOCKOUT')
            AND ($1::text IS NULL OR l.display_city=$1::text) ${regionFilter} ${after}
          ORDER BY ${sort} ${history ? 'DESC' : 'ASC'}, p.public_event_id COLLATE "C" ASC
          LIMIT $2`,
