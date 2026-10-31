@@ -125,16 +125,20 @@ export class StaffConfigurationService extends ApplicationService {
       if ((current?.version ?? null) !== b.expectedVersion)
         throw new ApiError(409, 'VERSION_CONFLICT', '成员权限已变化，请刷新后重新确认');
       await this.ensureFreshSession(c, actor);
-      if (staff)
-        await c.query(
-          'INSERT INTO event_staff(org_id,event_id,user_id,role,status) VALUES($1,$2,$3,$4,$5) ON CONFLICT(org_id,event_id,user_id) DO UPDATE SET role=EXCLUDED.role,status=EXCLUDED.status,updated_at=clock_timestamp()',
-          [actor.orgId, eventId, userId, input.role, input.status],
-        );
-      else
-        await c.query(
-          'INSERT INTO organization_memberships(org_id,user_id,role,status) VALUES($1,$2,$3,$4) ON CONFLICT(org_id,user_id) DO UPDATE SET role=EXCLUDED.role,status=EXCLUDED.status,updated_at=clock_timestamp()',
-          [actor.orgId, userId, input.role, input.status],
-        );
+      const conflictAction = current
+        ? 'DO UPDATE SET role=EXCLUDED.role,status=EXCLUDED.status,updated_at=clock_timestamp()'
+        : 'DO NOTHING';
+      const written = staff
+        ? await c.query(
+            `INSERT INTO event_staff(org_id,event_id,user_id,role,status) VALUES($1,$2,$3,$4,$5) ON CONFLICT(org_id,event_id,user_id) ${conflictAction}`,
+            [actor.orgId, eventId, userId, input.role, input.status],
+          )
+        : await c.query(
+            `INSERT INTO organization_memberships(org_id,user_id,role,status) VALUES($1,$2,$3,$4) ON CONFLICT(org_id,user_id) ${conflictAction}`,
+            [actor.orgId, userId, input.role, input.status],
+          );
+      if (!written.rowCount)
+        throw new ApiError(409, 'VERSION_CONFLICT', '成员权限已变化，请刷新后重新确认');
       const result = {
         applied: true,
         type: b.type,
@@ -156,6 +160,7 @@ export class StaffConfigurationService extends ApplicationService {
         eventId ?? userId,
         { userId, role: input.role, status: input.status },
       );
+      await this.ensureFreshSession(c, actor);
       return result;
     });
   }

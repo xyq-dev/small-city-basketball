@@ -23,9 +23,11 @@ import {
   createScoringHarness,
   disable,
   enable,
+  privateStandings,
   published,
   reopen,
   savePublishRules,
+  viewingCommand,
 } from './p05b-support.js';
 import type { Harness } from './p05b-support.js';
 type Row = Record<string, any>;
@@ -139,6 +141,82 @@ describe(
       );
       await disable(h, event);
       error((await generate(event, 'MATCHUP', { matchId: f.matches[0]!.id })).response, 410);
+    });
+    test('honor PNG comes from a fully confirmed completed event and explicit history; withdrawn history never revives its old export', async () => {
+      const f = await published(h, h.teams),
+        event = f.event.event.id,
+        root = `/v1/orgs/${h.owner.orgId}/events/${event}`;
+      expect(f.matches).toHaveLength(1);
+      await savePublishRules(h, event);
+      await enable(h, event);
+      error((await generate(event, 'HONOR')).response, 410);
+      await confirmMatch(h, f, 0, 3, 1);
+      error((await generate(event, 'HONOR')).response, 410);
+      const lifecycle = data<Row>(
+        await call(h.api, 'get', root + '/lifecycle', { cookie: h.owner.cookie }),
+      );
+      expect(lifecycle.completion.ready).toBe(true);
+      const completed = data<Row>(
+        await call(h.api, 'post', root + '/lifecycle-commands', {
+          cookie: h.owner.cookie,
+          body: {
+            type: 'COMPLETE',
+            expectedEventVersion: lifecycle.event.version,
+            reason: '独立核对合成两队比赛和最终荣誉来源',
+          },
+        }),
+      );
+      expect(completed.event.status).toBe('COMPLETED');
+      error((await generate(event, 'HONOR')).response, 410);
+      const history = data<Row>(await viewingCommand(h, event, 'ENABLE_HISTORY')).publication;
+      expect(history).toMatchObject({ purpose: 'HISTORY', status: 'ACTIVE' });
+      const standings = (await privateStandings(h, event)).standings!;
+      expect(standings.isComplete).toBe(true);
+      expect(standings.confirmedMatchCount).toBe(1);
+      expect(standings.rows.map((row) => row.rank)).toEqual([1, 2]);
+      expect(standings.rows[0]!.entryId).toBe(f.matches[0]!.home.entryId);
+      const generated = await generate(event, 'HONOR'),
+        poster = data<Row>(generated.response, 201).poster,
+        path = base(event) + `/${poster.id}/content`;
+      const stored = (
+        await h.api.pool.query('SELECT source FROM poster_exports WHERE id=$1', [poster.id])
+      ).rows[0]!.source;
+      const publication = (
+        await h.api.pool.query(
+          'SELECT id,purpose FROM public_event_publications WHERE public_event_id=$1',
+          [history.publicEventId],
+        )
+      ).rows[0]!;
+      expect(publication.purpose).toBe('HISTORY');
+      expect(stored.publicationId).toBe(publication.id);
+      expect(stored.proof).toEqual({
+        sourceHash: standings.sourceHash,
+        ranked: standings.rows.map(({ entryId, teamName, rank, tied }) => ({
+          entryId,
+          teamName,
+          rank,
+          tied,
+        })),
+      });
+      const content = await call(h.api, 'get', path, { cookie: h.owner.cookie });
+      expect(content.status).toBe(200);
+      const metadata = await sharp(content.body as Buffer).metadata();
+      expect(metadata).toMatchObject({
+        format: 'png',
+        width: 1080,
+        height: 1440,
+      });
+      expect(metadata.exif).toBeUndefined();
+      await disable(h, event);
+      error(await call(h.api, 'get', path, { cookie: h.owner.cookie }), 410);
+      error(
+        await call(h.api, 'post', base(event), { cookie: h.owner.cookie, body: generated.body }),
+        410,
+      );
+      const republished = data<Row>(await viewingCommand(h, event, 'ENABLE_HISTORY')).publication;
+      expect(republished.publicEventId).not.toBe(history.publicEventId);
+      error(await call(h.api, 'get', path, { cookie: h.owner.cookie }), 410);
+      data((await generate(event, 'HONOR')).response, 201);
     });
     test('roster uses only exact current approved photo consent; withdrawal blocks old artifact and private originals remain protected', async () => {
       const reg = await openRegistration(h.api, h.owner, 'X05本人照片宣传', undefined, {

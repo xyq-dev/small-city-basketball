@@ -59,6 +59,7 @@ Page({
   },
   onLoad(query) {
     this._alive = true;
+    this._visible = true;
     try {
       this._reportOnly = query.readOnly === '1';
       this.setData({ reportOnly: this._reportOnly });
@@ -70,16 +71,46 @@ Page({
     }
     this.load();
   },
-  onUnload() {
-    this._alive = false;
+  onShow() {
+    if (!this._alive || this._visible !== false) return;
+    this._visible = true;
+    // Returning only refreshes state. Control and unknown commands require explicit action.
+    this.load();
+  },
+  onHide() {
+    if (this._visible === false) return;
+    this._visible = false;
     this._load = (this._load || 0) + 1;
-    this.release();
+    this._acquireOp = (this._acquireOp || 0) + 1;
+    this._instance = null;
+    const pending = this._inflightCommand || this.data.pending;
+    // Never race a lease release against a command whose acceptance is unknown. Stop local
+    // renewal/writes and let that lease expire within 30s; retain the original operation.
+    if (pending || this._offlineSync) this.dropControl();
+    else this.release();
+    ui.close(this);
+    this.setData({
+      held: false,
+      canControl: false,
+      busy: false,
+      loading: false,
+      ...(pending ? { pending } : {}),
+      notice: pending
+        ? '记分页已离开，原操作结果待核对；返回后请先核对原编号，不会自动重发。'
+        : '记分页已离开，控制已停止；返回后请核对状态并明确取得控制。',
+    });
+  },
+  onUnload() {
+    this.onHide();
+    this._alive = false;
     ui.close(this);
   },
   onSessionReset() {
     this._load = (this._load || 0) + 1;
     this._acquireOp = (this._acquireOp || 0) + 1;
     this._instance = null;
+    this._inflightCommand = null;
+    this._offlineSync = null;
     this.dropControl();
     this.setData({
       ...privateDefaults,
@@ -146,7 +177,7 @@ Page({
       proGroups,
       ...(pro ? { lineupDraft: { home: pro.home.lineup, away: pro.away.lineup } } : {}),
     });
-    if (board && board.running && !this._tick)
+    if (board && board.running && !this._tick && this._visible !== false)
       this._tick = setInterval(() => {
         if (this._snapshot)
           this.setData({
@@ -159,7 +190,7 @@ Page({
     }
   },
   async load() {
-    if (!this.orgId || this.data.loading || this.data.busy) return;
+    if (this._visible === false || !this.orgId || this.data.loading || this.data.busy) return;
     const client = api.getClient();
     const load = (this._load = (this._load || 0) + 1);
     const current = () => this._alive && load === this._load;
@@ -259,7 +290,7 @@ Page({
     }
   },
   async acquire() {
-    if (this._reportOnly || this.data.busy || this._control) return;
+    if (this._visible === false || this._reportOnly || this.data.busy || this._control) return;
     // Bound to this page, session and attempt before the instance-id wait; a late id is
     // neither sent nor kept once the account changed, the user signed out or the page closed.
     const token = ui.hold(this);
@@ -280,7 +311,7 @@ Page({
           .getClient()
           .request(this.base() + '/scorekeeper-lease', 'POST', { clientInstanceId: this._instance })
       ).data;
-      if (!ui.held(this, token)) return;
+      if (!live()) return;
       this._control = {
         leaseId: lease.leaseId,
         fencingToken: lease.fencingToken,
@@ -294,7 +325,7 @@ Page({
   },
   async renew() {
     const control = this._control;
-    if (!control) return;
+    if (this._visible === false || !control) return;
     try {
       await api.getClient().request(this.base() + '/scorekeeper-lease/renew', 'POST', { control });
     } catch (error) {
@@ -316,6 +347,7 @@ Page({
   // `expected`: for confirmed commands, the match version the scorer saw when the dialog
   // opened; the command is sent with it, and not at all if the page has moved on since.
   async command(type, payload, label, op, expected) {
+    if (this._visible === false) return;
     if (this._reportOnly) {
       this.setData({ error: '当前为只读报表。' });
       return;
@@ -347,12 +379,15 @@ Page({
       (expected === undefined || this._matchVersion === expected);
     if (!live()) return;
     this.setData({ busy: true, loading: false, error: '', notice: '' });
+    let inflight;
     try {
       const body = await scoring.envelope(type, payload, version, control);
       if (!live()) {
         if (ui.held(this, token)) this.setData({ busy: false });
         return;
       }
+      inflight = { body, label };
+      this._inflightCommand = inflight;
       const outcome = await scoring.send(api.getClient(), this.base(), body);
       if (!ui.held(this, token)) return;
       if (!outcome.done) {
@@ -374,6 +409,8 @@ Page({
         this.setData({ held: false });
       }
       if (error && ['VERSION_CONFLICT', 'INVALID_MATCH_STATE'].includes(error.code)) this.load();
+    } finally {
+      if (this._inflightCommand === inflight) this._inflightCommand = null;
     }
   },
   offlineScope() {
@@ -416,6 +453,7 @@ Page({
   },
   toggleOffline() {
     if (
+      this._visible === false ||
       this.data.busy ||
       this.data.pending ||
       !this._viewer ||
@@ -430,7 +468,14 @@ Page({
       });
   },
   async saveOffline(type, payload, label) {
-    if (this.data.offlineError || !this._viewer || !this._snapshot || !this.data.canControl) return;
+    if (
+      this._visible === false ||
+      this.data.offlineError ||
+      !this._viewer ||
+      !this._snapshot ||
+      !this.data.canControl
+    )
+      return;
     const actor = this._viewer,
       token = ui.hold(this),
       scope = this.offlineScope();
@@ -446,6 +491,7 @@ Page({
   },
   async syncOffline() {
     if (
+      this._visible === false ||
       this.data.busy ||
       this.data.pending ||
       !this._control ||
@@ -467,6 +513,8 @@ Page({
       scope = this.offlineScope();
     const current = () =>
       ui.held(this, token) && this._viewer === actor && this._control === control;
+    const sync = {};
+    this._offlineSync = sync;
     this.setData({ busy: true, error: '' });
     try {
       const result = await offline.sync(
@@ -509,6 +557,8 @@ Page({
         this.dropControl();
         this.setData({ held: false });
       }
+    } finally {
+      if (this._offlineSync === sync) this._offlineSync = null;
     }
   },
   async exportOffline() {
@@ -559,7 +609,7 @@ Page({
 
   async checkPending() {
     const pending = this.data.pending;
-    if (!pending || this.data.busy) return;
+    if (this._visible === false || !pending || this.data.busy) return;
     this.setData({ busy: true, loading: false, error: '' });
     const token = ui.hold(this);
     try {
@@ -580,7 +630,7 @@ Page({
   },
   async resendPending() {
     const pending = this.data.pending;
-    if (!pending || this.data.busy) return;
+    if (this._visible === false || !pending || this.data.busy) return;
     this.setData({ busy: true, loading: false, error: '' });
     const token = ui.hold(this);
     try {

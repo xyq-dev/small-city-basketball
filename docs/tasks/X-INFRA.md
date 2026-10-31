@@ -47,3 +47,8 @@ CI132实际结果：production job124415005227已过P07两文件20/20、11脚本
 
 I9：X18已通过真实MEMBER命令授独立审核员operators[0]本org的ORG_ADMIN，旧commerce恢复断言仍要求两个operator均无机构，必然冲突。root授权独占c05-commerce-check.mjs；captureCommerceEnd新增显式organizationReviewerId（主链精确传operator0，默认保持旧C05无机构合同），只允许该本人恰好本org/ORG_ADMIN，其他operator无机构，所有operator无teamContexts，再保存最终完整组织/球队上下文。commerce验收状态版本升2，normal按原用户顺序精确比较完整上下文，仍实际核platform capability与所有账单/原独立审批事实，不删权限断言。
 与local0fde4f1核对：其C06真实owner/operator workspace probe及normal身份/platform角色断言不改变session或授权，和I9快照可同时成立；该片由root合，不重复修改local helper。I9本地两脚本node语法、同根Prettier和空白检查通过，真实capture/重启/恢复待下一CI；未改任何已成功迁移。
+
+I10开工：root明确授权独占scripts/x18-governance-check.mjs及相关验证。为基于已整合helper生成干净delta，新建`/workspace/scratch/afa947228706/scb-infra-tail`、分支`work/completion-recovery-tail`，基线root3351b9203716910add628cc95ae2816e10821abe，origin仍xyq-dev/small-city-basketball，开工工作区干净；旧scb-x05保留8a07e85及已有成果。后续infra尾部切片使用新worktree，仍由root同步GitHub。
+CI133 production124418914383亲读：P07两文件20/20；全部真实capture已完成，含22秒短履约/独立发布评价及44张新增表非空；TLS浏览器4项、API地址变化后session保持通过。随后真实dump到第二PG集群恢复，normal中完整127表fingerprint及I9权限、模板/X08/X05核对已通过；首错为x18 helper422整包广告hash不等，quarantine未执行。确定原因是广告公开DTO每次返回clock_timestamp的serverTime，旧checker把动态时钟算进固定事实；不是据此宣称全业务恢复已过。
+修复仅验收helper：新增共用sponsorshipSnapshotHash，严格核公开字段集合、字段类型、region、label/measurement、三个ISO时间和startsAt<=serverTime<endsAt窗口，再只对固定发布条款及公开key精确hash。当前公开DTO没有expiresAt，startsAt/endsAt均已持久条款，未误删；未来额外字段会失败，不能悄悄丢字段。原工单/PDF/消息/回执/账本与隔离断言保持。
+I10本地两个意义回归通过（新有效serverTime不改变固定摘要、任何固定条款变更改变摘要；缺失/额外/非法/越窗时钟拒绝），脚本语法、Prettier、diff通过。API完整tsconfig通过临时paths/typeRoots映射当前worktree合同；初次直跑因共享node_modules链接解析到旧base合同而失败，不冒充该失败为源代码结果。新修尚未真实CI执行，不改成功迁移/业务/运行权限。

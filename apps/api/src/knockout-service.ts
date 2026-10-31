@@ -293,12 +293,31 @@ export class KnockoutService extends SchedulingService {
           policy: revision!.policy,
           fixtures: allFixtures,
           courts,
-          reservations: booked.map((r) => ({
-            kind: r.kind,
-            resourceId: r.resource_id,
-            startsAt: r.starts_at.toISOString(),
-            endsAt: r.ends_at.toISOString(),
-          })),
+          reservations: booked
+            .map((r) => ({
+              kind: r.kind,
+              resourceId: r.resource_id,
+              startsAt: r.starts_at.toISOString(),
+              endsAt: r.ends_at.toISOString(),
+            }))
+            .concat(
+              await this.localReservations(
+                c,
+                [
+                  ...courts.map((court) => 'court:' + court.id),
+                  ...revision!.source.entries.map((entry) => 'team:' + entry.teamId),
+                ],
+                fixtures.map((f) => f.startsAt!).sort()[0]!,
+                fixtures
+                  .map((f) => f.endsAt!)
+                  .sort()
+                  .at(-1)!,
+                Math.max(
+                  revision!.policy.minRestMinutes * 60000,
+                  (revision!.policy.minLocalDayGap + 1) * 86400000,
+                ),
+              ),
+            ),
         });
         // Past unrelated conflicts must not block a new round, but every new fixture is checked.
         const keys = new Set(fixtures.map((f) => f.fixtureKey));
@@ -417,7 +436,9 @@ export class KnockoutService extends SchedulingService {
             reason,
           },
         );
-        return (await this.view(c, ctx, await this.event(c, ctx, id, false))).response;
+        const response = (await this.view(c, ctx, await this.event(c, ctx, id, false))).response;
+        await this.ensureFreshSession(c, ctx);
+        return response;
       });
     } catch (error) {
       if ((error as { code?: string }).code === '23P01')

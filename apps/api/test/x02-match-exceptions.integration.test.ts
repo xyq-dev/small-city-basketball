@@ -11,7 +11,8 @@ import type {
   MatchExceptionWorkbench,
   EventLifecycleData,
 } from '@small-city-basketball/contracts';
-import { call, data, error, eventInput, eventsPath, staff } from './support.js';
+import { call, data, error, eventInput, eventsPath, staff, login, tokenHash } from './support.js';
+import type { User } from './support.js';
 import { command, entry, registrationCommand, roster, rules, rulesPath } from './p03-support.js';
 import {
   allocate,
@@ -422,4 +423,186 @@ describe('X02 real PostgreSQL administrative adjudication workflow', () => {
     },
     120000,
   );
+  test('natural session expiry during actual event/team lock waits rejects reads, writes and receipt replay', async () => {
+    const f = await fixture(h),
+      m = f.matches[0]!;
+    const applicationName = new URL(h.databaseUrl).searchParams.get('application_name');
+    expect(applicationName).toEqual(expect.any(String));
+    async function eventually(check: () => Promise<boolean>, description: string, timeout = 15000) {
+      const until = Date.now() + timeout;
+      while (Date.now() < until) {
+        if (await check()) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      throw new Error(description);
+    }
+    async function expiredAfterWait(
+      actor: User,
+      scope: 'EVENT' | 'TEAM',
+      operation: (cookie: string) => ReturnType<typeof call>,
+      eventId = f.event.id,
+    ) {
+      const cookie = await login(h.api, actor);
+      const hash = tokenHash(cookie);
+      const blocker = await h.api.pool.connect();
+      let held = false,
+        pending: ReturnType<typeof call> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        held = true;
+        if (scope === 'EVENT')
+          await blocker.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR UPDATE', [
+            h.owner.orgId,
+            eventId,
+          ]);
+        else
+          await blocker.query('SELECT id FROM teams WHERE org_id=$1 AND id=$2 FOR UPDATE', [
+            h.owner.orgId,
+            m.home.teamId,
+          ]);
+        await h.api.pool.query(
+          "UPDATE sessions SET expires_at=clock_timestamp()+interval '4 seconds' WHERE token_hash=$1",
+          [hash],
+        );
+        pending = operation(cookie);
+        const pattern =
+          scope === 'EVENT'
+            ? '% FROM events e WHERE org_id=$1 AND id=$2 FOR % OF e'
+            : 'SELECT id FROM teams WHERE org_id=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR UPDATE';
+        await eventually(
+          async () =>
+            Number(
+              (
+                await h.api.pool.query(
+                  "SELECT count(*)::int AS n FROM pg_stat_activity WHERE application_name=$1 AND pid<>pg_backend_pid() AND wait_event_type='Lock' AND state='active' AND query LIKE $2",
+                  [applicationName, pattern],
+                )
+              ).rows[0]!.n,
+            ) > 0,
+          'Expected actual adjudication request to reach its row-lock barrier',
+        );
+        await eventually(
+          async () =>
+            (
+              await h.api.pool.query(
+                'SELECT expires_at<=clock_timestamp() AS expired FROM sessions WHERE token_hash=$1',
+                [hash],
+              )
+            ).rows[0]?.expired === true,
+          'Expected natural session expiry while the request retained its session SHARE lock',
+        );
+        await blocker.query('ROLLBACK');
+        held = false;
+        const result = await pending;
+        error(result, 401);
+        expect(result.body.error.code).toBe('UNAUTHENTICATED');
+      } finally {
+        if (held) await blocker.query('ROLLBACK');
+        blocker.release();
+        if (pending) await pending.catch(() => {});
+      }
+    }
+    const before = await read(h, m.id);
+    const body = {
+      clientRequestId: randomUUID(),
+      expectedEventVersion: before.event.version,
+      expectedMatchVersion: before.match.version,
+      operation: 'DECLARE',
+      kind: 'FORFEIT',
+      forfeitingSide: 'HOME',
+      reason: '合成自然到期提案回滚',
+    };
+    await expiredAfterWait(h.owner, 'EVENT', (cookie) =>
+      call(h.api, 'post', url(h, m.id) + '/proposals', { cookie, body }),
+    );
+    expect((await read(h, m.id)).requests).toHaveLength(0);
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT count(*)::int AS n FROM match_exception_receipts WHERE user_id=$1 AND client_request_id=$2',
+          [h.owner.id, body.clientRequestId],
+        )
+      ).rows[0]!.n,
+    ).toBe(0);
+
+    const proposal = await propose(h, m.id),
+      current = await read(h, m.id, true);
+    const reviewBody = {
+      clientRequestId: randomUUID(),
+      expectedEventVersion: current.event.version,
+      expectedMatchVersion: current.match.version,
+      expectedRequestVersion: 1,
+      type: 'APPROVE',
+      reason: '合成自然到期复核回滚',
+    };
+    await expiredAfterWait(h.otherOwner, 'TEAM', (cookie) =>
+      call(h.api, 'post', url(h, m.id) + '/' + proposal.r.requestId + '/review', {
+        cookie,
+        body: reviewBody,
+      }),
+    );
+    const after = await read(h, m.id);
+    expect(after.event.version).toBe(current.event.version);
+    expect(after.active).toBeNull();
+    expect(after.requests[0]!.status).toBe('PENDING');
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT count(*)::int AS n FROM match_exception_receipts WHERE user_id=$1 AND client_request_id=$2',
+          [h.otherOwner.id, reviewBody.clientRequestId],
+        )
+      ).rows[0]!.n,
+    ).toBe(0);
+
+    await expiredAfterWait(h.owner, 'EVENT', (cookie) =>
+      call(h.api, 'post', url(h, m.id) + '/proposals', { cookie, body: proposal.body }),
+    );
+    await expiredAfterWait(h.owner, 'EVENT', (cookie) =>
+      call(h.api, 'get', url(h, m.id), { cookie }),
+    );
+    await expiredAfterWait(h.owner, 'EVENT', (cookie) =>
+      call(h.api, 'get', rulesUrl(h, f.event.id), { cookie }),
+    );
+    expect((await read(h, m.id)).requests).toHaveLength(1);
+
+    // A separate DRAFT proves rule writes roll back, not only proposals/reviews.
+    const draft = data<EventData>(
+      await call(h.api, 'post', eventsPath(h.owner.orgId), {
+        cookie: h.owner.cookie,
+        body: eventInput('合成自然到期草稿' + randomUUID().slice(0, 8)),
+      }),
+      201,
+    );
+    const rulesBody = {
+      clientRequestId: randomUUID(),
+      expectedEventVersion: draft.version,
+      expectedVersion: 0,
+      forfeitWinPoints: 2,
+      forfeitLossPoints: 0,
+      cancellationPolicy: 'EXCLUDE_FROM_TABLE',
+    };
+    await expiredAfterWait(
+      h.owner,
+      'EVENT',
+      (cookie) => call(h.api, 'put', rulesUrl(h, draft.id), { cookie, body: rulesBody }),
+      draft.id,
+    );
+
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT count(*)::int AS n FROM match_exception_rules WHERE org_id=$1 AND event_id=$2',
+          [h.owner.orgId, draft.id],
+        )
+      ).rows[0]!.n,
+    ).toBe(0);
+    expect(
+      (
+        await h.api.pool.query('SELECT version FROM events WHERE org_id=$1 AND id=$2', [
+          h.owner.orgId,
+          draft.id,
+        ])
+      ).rows[0]!.version,
+    ).toBe(draft.version);
+  }, 120000);
 });

@@ -1,5 +1,11 @@
 # 当前状态
 
+## COMPLETION22（TESTING / BRANCH_ONLY，尚未合并）
+
+2026-10-31 Asia/Shanghai；main基线dff0a8d，root整合分支feat/commercial-completion-22，[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)。用户所列22项已具备代码与消费者，逐项状态／证据见[总任务](tasks/COMPLETION22.md)及[交接](handoffs/COMPLETION22.md)。候选8738106实际真实PG498/498、Page→HTTP/PG16/16、admin及995兼容布局通过；后续候选5db14c7正在验证最小权限修复和完整127表非空重启／备份恢复，不能称全链验收或已上线。独立复核发现的边界问题继续修复，全部22项尚未标DONE。
+
+本段是分支进度，下方历史交付保持各自已验main范围。DOC005多平台直播仍仅设计；生产部署／生产Migration、真实邮件投递、正式地图凭据和微信真机均未执行。
+
 ## DOC005 小程序直接开播与多平台分发（设计文档）
 
 2026-10-31 Asia/Shanghai；负责人及集成人Codex root。用户要求手机直接在小程序采集开播，由云端合成权威比分并分发至多个已授权外站；首版单手机横屏、一场比赛、两目标验证，OBS为后续输入扩展。[专项设计](design/MINI_PROGRAM_MULTIPLATFORM_LIVE.md)、[任务](tasks/DOC005.md)、[交接](handoffs/DOC005.md)。

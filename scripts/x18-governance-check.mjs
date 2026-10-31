@@ -8,6 +8,60 @@ const uuid = (value) =>
   typeof value === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const opaque = (value) => typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value);
+/** Compare published terms exactly; a fresh, valid response clock is not a stored fact. */
+export function sponsorshipSnapshotHash(value) {
+  assert.ok(value && typeof value === 'object' && !Array.isArray(value));
+  assert.deepEqual(
+    Object.keys(value).sort(),
+    [
+      'publicKey',
+      'brand',
+      'title',
+      'body',
+      'label',
+      'startsAt',
+      'endsAt',
+      'region',
+      'measurement',
+      'serverTime',
+    ].sort(),
+    'Public sponsorship response fields must match its reviewed contract',
+  );
+  assert.ok(opaque(value.publicKey));
+  for (const field of ['brand', 'title', 'body']) {
+    assert.equal(typeof value[field], 'string');
+    assert.ok(value[field].length > 0);
+  }
+  assert.equal(value.label, '广告／赞助');
+  assert.equal(value.measurement, 'CLIENT_REPORTED_DEDUPLICATED');
+  assert.ok(value.region && typeof value.region === 'object' && !Array.isArray(value.region));
+  assert.deepEqual(Object.keys(value.region).sort(), ['catalogVersion', 'regionId']);
+  assert.equal(typeof value.region.catalogVersion, 'string');
+  assert.ok(value.region.catalogVersion.length > 0 && uuid(value.region.regionId));
+  const times = {};
+  for (const field of ['startsAt', 'endsAt', 'serverTime']) {
+    assert.equal(typeof value[field], 'string');
+    const date = new Date(value[field]);
+    assert.ok(Number.isFinite(date.getTime()), 'Public sponsorship time must be valid');
+    assert.equal(date.toISOString(), value[field], 'Public sponsorship time must be canonical ISO');
+    times[field] = date.getTime();
+  }
+  assert.ok(
+    times.startsAt <= times.serverTime && times.serverTime < times.endsAt,
+    'A public sponsorship response must be inside its published time window',
+  );
+  return jsonHash({
+    publicKey: value.publicKey,
+    brand: value.brand,
+    title: value.title,
+    body: value.body,
+    label: value.label,
+    startsAt: value.startsAt,
+    endsAt: value.endsAt,
+    region: { catalogVersion: value.region.catalogVersion, regionId: value.region.regionId },
+    measurement: value.measurement,
+  });
+}
 function context(state) {
   const operators = state?.commerce?.operators;
   assert.ok(
@@ -362,7 +416,7 @@ export async function captureX18Governance({ call, state, readPool, fetchFile })
     campaignId: campaign.id,
     sponsorPublicationId: sponsorPublication.id,
     sponsorKeyHash: sha(advertised.publicKey),
-    sponsorPublicHash: jsonHash(publicSponsor),
+    sponsorPublicHash: sponsorshipSnapshotHash(publicSponsor),
     impressionCommandId,
     ledgerAccountId: account.id,
     ledgerEntryId: added.entry.id,
@@ -419,7 +473,7 @@ export async function verifyX18Governance({ call, state, readPool, fetchFile, sa
   assert.equal(sha(bytes), saved.attachmentSha256);
   const publicSponsor = (await call('/v1/public/sponsorships/' + current.sponsor.public_key)).data;
   const publicLedger = (await call('/v1/public/ledgers/' + current.ledger.public_key)).data;
-  assert.equal(jsonHash(publicSponsor), saved.sponsorPublicHash);
+  assert.equal(sponsorshipSnapshotHash(publicSponsor), saved.sponsorPublicHash);
   assert.equal(jsonHash(publicLedger), saved.ledgerPublicHash);
   const privateLedger = (
     await call(root + '/public-ledgers/' + saved.ledgerAccountId, { cookie: owner })

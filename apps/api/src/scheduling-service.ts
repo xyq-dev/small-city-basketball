@@ -536,7 +536,7 @@ export class SchedulingService extends ApplicationService {
     });
   }
   /** Only authoritative court/team keys enter this private, read-only local-calendar projection. */
-  private async localReservations(
+  protected async localReservations(
     client: PoolClient,
     resourceKeys: string[],
     from: string,
@@ -1082,11 +1082,12 @@ export class SchedulingService extends ApplicationService {
           business('STANDINGS_RULES_REQUIRED', '请先发布分组积分规则');
         const fixtures = await this.fixtures(client, revision);
         const participantCount = revision.source.entries.length;
+        const thirdPlaceCount = revision.policy.thirdPlaceMatch === true ? 1 : 0;
         const expectedMatchCount =
           event.row.format === 'GROUP_KNOCKOUT'
-            ? fixtures.length + revision.group_config!.groupCount * 2 - 1
+            ? fixtures.length + revision.group_config!.groupCount * 2 - 1 + thirdPlaceCount
             : event.row.format === 'SINGLE_ELIMINATION'
-              ? participantCount - 1
+              ? participantCount - 1 + thirdPlaceCount
               : event.row.format === 'DOUBLE_ROUND_ROBIN'
                 ? participantCount * (participantCount - 1)
                 : (participantCount * (participantCount - 1)) / 2;
@@ -1176,7 +1177,13 @@ export class SchedulingService extends ApplicationService {
           event.row.id,
           { revisionId: revision.id, publicationId, publicationHash: hash },
         );
-        return this.schedulingDto(client, ctx, await this.event(client, ctx, event.row.id, false));
+        const response = await this.schedulingDto(
+          client,
+          ctx,
+          await this.event(client, ctx, event.row.id, false),
+        );
+        await this.ensureFreshSession(client, ctx);
+        return response;
       });
     } catch (error) {
       if ((error as { code?: string }).code === '23P01')
@@ -1418,7 +1425,7 @@ export class SchedulingService extends ApplicationService {
               `SELECT m.ends_at FROM knockout_round_publications p
               CROSS JOIN LATERAL jsonb_array_elements(p.sources) source(value)
               JOIN published_matches m ON m.org_id=p.org_id AND m.event_id=p.event_id AND m.id=(source.value->>'matchId')::uuid
-              WHERE p.org_id=$1 AND p.event_id=$2 AND p.round_no=$3 AND source.value->>'winnerEntryId'=ANY($4::text[])
+              WHERE p.org_id=$1 AND p.event_id=$2 AND p.round_no=$3 AND (m.home_entry_id::text=ANY($4::text[]) OR m.away_entry_id::text=ANY($4::text[]))
              UNION ALL SELECT m.ends_at FROM group_qualification_publications p
               CROSS JOIN LATERAL jsonb_array_elements(p.sources) source(value)
               JOIN published_matches m ON m.org_id=p.org_id AND m.event_id=p.event_id AND m.id=(source.value->>'matchId')::uuid
@@ -1553,7 +1560,9 @@ export class SchedulingService extends ApplicationService {
           toMatchVersion: access.match.version,
           reason: command.reason,
         });
-        return this.reschedulingDto(c, ctx, access);
+        const response = await this.reschedulingDto(c, ctx, access);
+        await this.ensureFreshSession(c, ctx);
+        return response;
       });
     } catch (error) {
       if ((error as { code?: string }).code === '23P01')

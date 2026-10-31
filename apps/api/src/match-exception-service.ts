@@ -73,6 +73,11 @@ export class MatchExceptionService extends ApplicationService {
     if (!allowed) throw notFound();
     return { ctx, event: e.rows[0], match, manager };
   }
+  /** Recheck natural expiry after every row-lock wait, including read/replay responses. */
+  private async fresh<T>(c: PoolClient, a: Access, response: T): Promise<T> {
+    await this.ensureFreshSession(c, a.ctx);
+    return response;
+  }
   private rulesDto(r: Row | null) {
     return r
       ? {
@@ -171,7 +176,7 @@ export class MatchExceptionService extends ApplicationService {
     const pending = requests.find((r) => r.status === 'PENDING');
     const unstarted = await this.unstarted(c, a, false);
     const live = ['SCHEDULED', 'RUNNING'].includes(a.event.status);
-    return {
+    return this.fresh(c, a, {
       event: { id: a.event.id, version: a.event.version, status: a.event.status },
       match: { id: a.match!.id, version: a.match!.version, status: a.match!.status },
       rules: this.rulesDto(rules),
@@ -182,7 +187,7 @@ export class MatchExceptionService extends ApplicationService {
         canRevoke: live && unstarted && !!active && !pending,
         canReview: !!pending && (await this.independent(c, a, pending.proposed_by)),
       },
-    };
+    });
   }
   private async replay(c: PoolClient, a: Access, client: string, fingerprint: string) {
     const r = (
@@ -199,7 +204,7 @@ export class MatchExceptionService extends ApplicationService {
       r.request_fingerprint !== fingerprint
     )
       exceptionFail('IDEMPOTENCY_CONFLICT', '操作编号已用于其他内容');
-    return r.response;
+    return this.fresh(c, a, r.response);
   }
   private async receipt(
     c: PoolClient,
@@ -222,7 +227,7 @@ export class MatchExceptionService extends ApplicationService {
         response,
       ],
     );
-    return response;
+    return this.fresh(c, a, response);
   }
   private async unstarted(c: PoolClient, a: Access, fail = true) {
     const m = a.match!;
@@ -259,11 +264,11 @@ export class MatchExceptionService extends ApplicationService {
   async getRules(cookie: string | undefined, org: string, event: string) {
     return this.transaction(async (c) => {
       const a = await this.access(c, cookie, org, event, false);
-      return {
+      return this.fresh(c, a, {
         event: { id: a.event.id, version: a.event.version, status: a.event.status },
         rules: this.rulesDto(await this.rules(c, a)),
         canEdit: a.manager && a.event.status === 'DRAFT',
-      };
+      });
     });
   }
   async setRules(cookie: string | undefined, org: string, event: string, raw: unknown) {

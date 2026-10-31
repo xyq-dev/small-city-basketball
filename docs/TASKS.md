@@ -2,7 +2,7 @@
 
 ## COMPLETION22：22项功能实现与测试（IN_PROGRESS／BRANCH_ONLY）
 
-2026-10-31 Asia/Shanghai；用户明确要求逐一编写并测试22项尚缺能力，全部范围见[总任务F01—F22](tasks/COMPLETION22.md)，恢复读[交接](handoffs/COMPLETION22.md)。root集成、六域独立工作；季军赛为起点，完成任一切片不等于总任务完成。当前只到设计认领，尚无新增功能验收结论；工作分支feat/commercial-completion-22，基线main dff0a8d。代码／文档分段同步，未知外部条件独立标记，禁止生产与新付费资源。
+2026-10-31 Asia/Shanghai；用户要求的22项均已写入[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)，正在联合测试与独立复核，尚未合并。全部范围及最新检查点见[总任务F01—F22](tasks/COMPLETION22.md)，恢复读[交接](handoffs/COMPLETION22.md)。候选8738106真实PG498/498、原生真HTTP16/16和admin995布局已通过；最新5db14c7继续跑最小权限、真实短时履约、重启及127表非空备份恢复，不能以旧候选结果代替最新全链。工作分支feat/commercial-completion-22，基线main dff0a8d；外部邮件／地图正式接入与微信真机仍单列，禁止生产与新付费资源。完成任一切片不等于总任务完成。
 
 ## DOC005 小程序直接开播与多平台分发
 

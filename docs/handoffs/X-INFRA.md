@@ -31,3 +31,5 @@ I8依赖local263d25c（第四export captureX12CompletedService）及消息3d9e4c
 CI132亲读：production124415005227 P07两文件20/20，脚本镜像打包与TLS前半业务成功，首错治理附件PUT500，owner按platform_operators SELECT-only锁因修业务，不扩ACL。尚未capture完成/重启/备份恢复，I8亦不在该旧head。035已由x18 helper真实MEMBER命令及原回执整行SHA覆盖。递归静态核查134个非test API TS只可作SQL字面量辅助审查，首轮顶层扫描曾漏子目录，不能当动态SQL/trigger或最小权限通过证明。
 
 I9需同时取c05-commerce-check.mjs与主入口：commerce状态v2保存最终operatorAuthorizations，主入口显式organizationReviewerId=operator0；capture严格核唯一预期本org ORG_ADMIN，其余无org、全员无team，normal精确比较完整上下文。默认独立C05调用仍预期全无机构，不放宽角色。local0fde4f1仅追加C06实际workspace身份/platform角色probe，无授权修改，与I9相容，由root取原片。语法/格式/空白通过，真实PG/重启/restore未跑；迁移不改。
+
+I10及后续infra改在scb-infra-tail / work/completion-recovery-tail，3351b92干净基线创建，旧scb-x05保留不切分支。root独占授权x18 helper。CI133实际通过全新域非空capture（含短时完成/真实评价）、127表物理恢复指纹与I9/template/X08/X05 normal；在x18公开广告hash误包含serverTime失败，未跑完正常业务/隔离。修共用稳定条款hash，仅分离动态serverTime，仍严格核精确字段/type/ISO/有效展示窗口；当前公开DTO无expiresAt，固定起止不排除。新增2回归、语法/格式/diff及映射当前合同的完整API tsc通过，真实新修待下轮CI；业务/迁移/ACL未改。

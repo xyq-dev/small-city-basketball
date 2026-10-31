@@ -31,3 +31,7 @@ X01季军树／025／原生晋级页、X05／X12／X18领域与027／029／030�
 检查点9：真实PG已486过2败5skip、附加PG20/20；本地完整912API/561admin/918native+1Win/type/format过（f67ee5b）。已接X03I/J真实确认/旧schema隔离、所有布局字体/静态fixture修、strict web行政source和counts、并发离线队列保尾部、I6/I7完整打包。pipeline131的2同城fixture首因已修，不声称新候选全绿。infra I8真实完成后公开评价非空表主接线仍待；下一步推9然后读新CI，持续修全22项，不能以旧main/C24/单组过关闭任务。
 
 检查点10：run41159925971真实PG498/498、真Page HTTP16/16、admin995布局通过/981不适用跳过，三个前置均确证。prod20/20后治理attachment PUT500定位SELECT-only平台表行锁，X18 c279ce6与C06 dd35d84改只锁users，不扩ACL；local0fde4f1补实际受限operator HTTP probe。API capture X22 helper漏databaseUrl参数根补。I8真实履约评价/全新表非空已整合，尚未实跑；I9最终commerce权限快照正在补。下一条同步10跑全链并读取实际首因；22项仍TESTING，不能以PG过替代恢复过或生产验收。
+
+10后审查片：X03 916e4d7+660c3a0（手工淘汰local休息/日间隔，PG用真实366天内日期）、X01 719884b+7db792f（裁定尾session，observer取实际application_name）、X08 0961641（scorer onHide停续租/写并保未知与持久队列）已根整合。仍待X17缺行CAS/尾核、季军quota+改期parent、R133赞助serverTime稳定验收hash修。根先等133归档，不随意取消正在跑的证据；全部修后同步下一候选并真PG。当前未合并/未生产。
+
+检查点11：已接X17 686a73b（nullCAS DO NOTHING+409、unique等待尾fresh，新增PG3）、X03 ec2b2a1/4aa0ad5/a957545（季军额度/父轮改期/calendar尾fresh，含先前O共12PG）、X05 8d6ca05真实HONOR PNG、infra84af94c严格分离公开serverTime动态字段。全部成功迁移未动。R133 admin成功，API PG与真Page阶段成功但完整job未归档；prod已真capture44新表非空、dump/第二集群restore到X18固定hash，首错为动态serverTime。I10已修，后续normal/quarantine仍未证。根本地API914、native924+1Win、最新type/format通过（精确各冻结态见父卡）。下一条推11完整验收；不能将source hash静态修当已恢复成功，也不能结束于任一模块。

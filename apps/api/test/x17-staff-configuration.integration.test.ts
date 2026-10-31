@@ -34,6 +34,159 @@ describe('X17 staff configuration real PostgreSQL permissions and receipts', () 
     status: 'ACTIVE',
     expectedVersion: null,
   });
+  async function waitForInsert(gatePid: number, table: string) {
+    await eventually(
+      async () =>
+        (
+          await h.api.pool.query<{ waiting: boolean }>(
+            'SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND $1::int=ANY(pg_blocking_pids(pid)) AND position($2 in query)>0) AS waiting',
+            [gatePid, `INSERT INTO ${table}`],
+          )
+        ).rows[0]!.waiting,
+      Boolean,
+      'staff command did not wait on the actual target unique key',
+    );
+  }
+  test.each(['MEMBER', 'STAFF'] as const)(
+    'concurrent insertion of an absent %s target cannot overwrite a winning creation',
+    async (type) => {
+      const target = await person();
+      let eventId: string | null = null;
+      if (type === 'STAFF') {
+        data(await send({ ...member(target.id), role: 'SCORER' }));
+        eventId = data<{ id: string }>(
+          await call(h.api, 'post', `/v1/orgs/${h.owner.orgId}/events`, {
+            cookie: h.owner.cookie,
+            body: eventInput('并发工作人员配置'),
+          }),
+          201,
+        ).id;
+      }
+      const body = { ...member(target.id), type, eventId, role: 'STREAMER' },
+        table = type === 'STAFF' ? 'event_staff' : 'organization_memberships';
+      const gate = await h.api.pool.connect();
+      let open = false,
+        pending: ReturnType<typeof send> | undefined;
+      try {
+        await gate.query('BEGIN');
+        open = true;
+        const pid = (await gate.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')).rows[0]!
+          .pid;
+        if (type === 'STAFF')
+          await gate.query(
+            "INSERT INTO event_staff(org_id,event_id,user_id,role,status) VALUES($1,$2,$3,'SCORER','ACTIVE')",
+            [h.owner.orgId, eventId, target.id],
+          );
+        else
+          await gate.query(
+            "INSERT INTO organization_memberships(org_id,user_id,role,status) VALUES($1,$2,'SCORER','ACTIVE')",
+            [h.owner.orgId, target.id],
+          );
+        pending = send(body);
+        await waitForInsert(pid, table);
+        await gate.query('COMMIT');
+        open = false;
+        const rejected = await pending;
+        error(rejected, 409);
+        expect(rejected.body.error.code).toBe('VERSION_CONFLICT');
+        const row =
+          type === 'STAFF'
+            ? (
+                await h.api.pool.query(
+                  'SELECT role,status FROM event_staff WHERE org_id=$1 AND event_id=$2 AND user_id=$3',
+                  [h.owner.orgId, eventId, target.id],
+                )
+              ).rows[0]
+            : (
+                await h.api.pool.query(
+                  'SELECT role,status FROM organization_memberships WHERE org_id=$1 AND user_id=$2',
+                  [h.owner.orgId, target.id],
+                )
+              ).rows[0];
+        expect(row).toEqual({ role: 'SCORER', status: 'ACTIVE' });
+        expect(
+          (
+            await h.api.pool.query(
+              'SELECT count(*)::int AS n FROM staff_configuration_receipts WHERE id=$1',
+              [body.clientRequestId],
+            )
+          ).rows[0]!.n,
+        ).toBe(0);
+      } finally {
+        if (open) await gate.query('ROLLBACK');
+        if (pending) await pending.catch(() => {});
+        gate.release();
+      }
+    },
+  );
+  test('a new grant waiting on an uncommitted target cannot commit writes or receipt after its session expires', async () => {
+    const target = await person(),
+      body = member(target.id),
+      cookie = h.owner.cookie,
+      gate = await h.api.pool.connect();
+    let open = false,
+      pending: ReturnType<typeof send> | undefined;
+    try {
+      await gate.query('BEGIN');
+      open = true;
+      const pid = (await gate.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')).rows[0]!
+        .pid;
+      await gate.query(
+        "INSERT INTO organization_memberships(org_id,user_id,role,status) VALUES($1,$2,'SCORER','ACTIVE')",
+        [h.owner.orgId, target.id],
+      );
+      await h.api.pool.query(
+        "UPDATE sessions SET expires_at=clock_timestamp()+interval '4 seconds' WHERE token_hash=$1",
+        [tokenHash(cookie)],
+      );
+      pending = send(body, cookie);
+      await waitForInsert(pid, 'organization_memberships');
+      await eventually(
+        async () =>
+          (
+            await h.api.pool.query<{ expired: boolean }>(
+              'SELECT expires_at<=clock_timestamp() AS expired FROM sessions WHERE token_hash=$1',
+              [tokenHash(cookie)],
+            )
+          ).rows[0]!.expired,
+        Boolean,
+        'session did not expire while target insertion waited',
+      );
+      await gate.query('ROLLBACK');
+      open = false;
+      const rejected = await pending;
+      error(rejected, 401);
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT count(*)::int AS n FROM organization_memberships WHERE org_id=$1 AND user_id=$2',
+            [h.owner.orgId, target.id],
+          )
+        ).rows[0]!.n,
+      ).toBe(0);
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT count(*)::int AS n FROM staff_configuration_receipts WHERE id=$1',
+            [body.clientRequestId],
+          )
+        ).rows[0]!.n,
+      ).toBe(0);
+      expect(
+        (
+          await h.api.pool.query(
+            "SELECT count(*)::int AS n FROM audit_logs WHERE org_id=$1 AND action='ORG_MEMBER_CONFIGURED' AND metadata->>'userId'=$2",
+            [h.owner.orgId, target.id],
+          )
+        ).rows[0]!.n,
+      ).toBe(0);
+    } finally {
+      if (open) await gate.query('ROLLBACK');
+      if (pending) await pending.catch(() => {});
+      gate.release();
+      h.owner.cookie = await login(h.api, h.owner);
+    }
+  });
   test('only current owner changes organization members, never owner itself or another organization', async () => {
     const target = await person();
     error(await send(member(target.id), h.otherOwner.cookie), 403);
