@@ -1,5 +1,7 @@
 # X-INFRA交接
 
+当前恢复点：CI135候选2490869已通过完整隔离生产形态非空恢复/授权隔离及cleanup，证据见本卡尾部；整体API/admin由root最终核对，PR33尚未合并/未生产。下一次从PR33远端当前HEAD与COMPLETION22总卡恢复，不重做下文早期切片。单写尾部目录scb-infra-tail / work/completion-recovery-tail，早期scb-x05保留历史。
+
 root批准infra独占见docs/tasks/X-INFRA.md。先接本片manifest127表/105应用函数（12helper runtime EXECUTE）；依赖完整025–035，尤其032公共档案4表与x08_public_archive_guard签名，不能在缺032时运行迁移/生产readiness后误判通过。所有当前新增表/列权限已按各owner逐一核对，不为SELECT行锁扩大immutable UPDATE；X05已另用80f2fc2去不必要锁，X03另修026。
 
 本片函数ACL适用于全部non-extension public应用函数，精确登记trigger+helper身份；btree_gist扩展函数保持其所需权限，禁止SECURITY DEFINER；普通runtime仅12非trigger helper执行，backup不执行应用函数，PUBLIC不执行。readiness核对权限；原table列权限核对保持。
@@ -33,3 +35,5 @@ CI132亲读：production124415005227 P07两文件20/20，脚本镜像打包与TL
 I9需同时取c05-commerce-check.mjs与主入口：commerce状态v2保存最终operatorAuthorizations，主入口显式organizationReviewerId=operator0；capture严格核唯一预期本org ORG_ADMIN，其余无org、全员无team，normal精确比较完整上下文。默认独立C05调用仍预期全无机构，不放宽角色。local0fde4f1仅追加C06实际workspace身份/platform角色probe，无授权修改，与I9相容，由root取原片。语法/格式/空白通过，真实PG/重启/restore未跑；迁移不改。
 
 I10及后续infra改在scb-infra-tail / work/completion-recovery-tail，3351b92干净基线创建，旧scb-x05保留不切分支。root独占授权x18 helper。CI133实际通过全新域非空capture（含短时完成/真实评价）、127表物理恢复指纹与I9/template/X08/X05 normal；在x18公开广告hash误包含serverTime失败，未跑完正常业务/隔离。修共用稳定条款hash，仅分离动态serverTime，仍严格核精确字段/type/ISO/有效展示窗口；当前公开DTO无expiresAt，固定起止不排除。新增2回归、语法/格式/diff及映射当前合同的完整API tsc通过，真实新修待下轮CI；业务/迁移/ACL未改。
+
+CI135 production124422845325 SUCCESS已亲读：P07 PG20、HTTPS浏览器4、全部runtime真实非空业务、44新表census、第二实例127表dump/restore及原指纹/业务/fencing、I9精确权限/I10广告时钟投影、quarantine新旧secret/公开许可关闭且历史保留、拒覆盖/源control不变和最后只移自有project/control volume保留全部通过。候选2490869e44f76aa67d759aab0fb2987c9b4d3c0d，run41162387014。此时API/admin未完，HONOR新增第4PG待其日志，不能提前称整轮全绿或已main/上线。

@@ -45,7 +45,6 @@ describe(
     let h: Harness, local: LocalServicesService, regionId: string;
     beforeAll(async () => {
       h = await createScoringHarness(4);
-      for (const team of h.teams) await grant(h.api, h.owner, team, h.owner);
       await grant(h.api, h.otherOwner, h.otherTeams[0]!, h.otherOwner);
       local = new LocalServicesService(h.api.pool, {
         databaseUrl: h.databaseUrl,
@@ -157,7 +156,7 @@ describe(
         startsAt,
         endsAt,
       });
-      const booking = await local.book(h.owner.cookie, {
+      const booking = await local.book(h.leader.cookie, {
         commandId: randomUUID(),
         listingId: listing.resourceId,
         slotId: slot.slotId,
@@ -170,7 +169,7 @@ describe(
         type: 'CONFIRM',
         reason: '实际经营方确认球场',
       });
-      const proposal = await local.createMatchup(h.owner.cookie, {
+      const proposal = await local.createMatchup(h.leader.cookie, {
         commandId: randomUUID(),
         homeOrgId: h.owner.orgId,
         homeTeamId: teamId,
@@ -223,7 +222,7 @@ describe(
       const input = await roundInput(h, current, fixture.court, `${day}T15:15:00+08:00`);
       const before = await knockoutFacts(h, id);
       await rejectsUnchanged(id, await publishRound(h, id, input), 'MIN_REST', before, occupied);
-      await local.matchupCommand(h.owner.cookie, occupied.id, {
+      await local.matchupCommand(h.leader.cookie, occupied.id, {
         commandId: randomUUID(),
         expectedVersion: occupied.version,
         type: 'CANCEL',

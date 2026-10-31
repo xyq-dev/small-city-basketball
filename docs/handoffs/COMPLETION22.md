@@ -37,3 +37,7 @@ X01季军树／025／原生晋级页、X05／X12／X18领域与027／029／030�
 检查点11：已接X17 686a73b（nullCAS DO NOTHING+409、unique等待尾fresh，新增PG3）、X03 ec2b2a1/4aa0ad5/a957545（季军额度/父轮改期/calendar尾fresh，含先前O共12PG）、X05 8d6ca05真实HONOR PNG、infra84af94c严格分离公开serverTime动态字段。全部成功迁移未动。R133 admin成功，API PG与真Page阶段成功但完整job未归档；prod已真capture44新表非空、dump/第二集群restore到X18固定hash，首错为动态serverTime。I10已修，后续normal/quarantine仍未证。根本地API914、native924+1Win、最新type/format通过（精确各冻结态见父卡）。下一条推11完整验收；不能将source hash静态修当已恢复成功，也不能结束于任一模块。
 
 11b：R133归档确认499PG、16真Page及重启成功，verify仍旧serverTime摘要错误。e4d6205给新增HONOR用真实participant→owner MEMBER授权的独立actor（6请求），保留既有10/60s限流和其他3测试原10请求；不把fixture累计429误改成生产阈值。根立即同步11b替代刚启动134，新的完整候选仍待验。
+
+检查点12：135最终API failed，PG511/516（3文件5失败），Native16成功；step10/11允许PG失败后继续，之前口头从active误推PG过已纠正。prod与admin真SUCCESS已核，不代表整CI全过。4个新X03前置错（owner兼队长导致独立审核403，READY漏SCORER），X03在修；HONOR500为真实poster双clock的TTL24h+1µs违反027check，X05修同statement时刻两列，绝不改冻结027或放宽check。X17 7、X02 7、quota5、calendar3已实测过。当前本地未推docs75f3f53/bb84ab5保留完整恢复证据和各域新恢复入口；这批会随下一源修一起同步，不能误当main。第一条等两owner SHA→cherry→type/必要test→sync checkpoint12，全CI再验。
+
+12修片已取2a2896e与5ec3b50；根b062e4f全type/format过。首次真实业务poster TTL修只改SQL稳定时刻，不触冻结Migration；全部成功海报PG断言exact24h，HONOR不放宽10/60s。135 admin完整914API/561admin/924native+1Win和995布局/981skip已亲读；不能因此补算5个失败PG。下一条同步12再看新CI每个step.conclusion，PG失败后仍会跑Native，禁止再按active位置推断先前通过。

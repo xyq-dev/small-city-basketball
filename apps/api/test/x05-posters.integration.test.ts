@@ -80,10 +80,16 @@ describe(
         kind,
         ...extra,
       };
-      return {
-        body,
-        response: await call(h.api, 'post', base(event), { cookie, body }),
-      };
+      const response = await call(h.api, 'post', base(event), { cookie, body });
+      if (response.status === 201) {
+        const rows = await h.api.pool.query(
+          "SELECT expires_at=created_at+interval '24 hours' AS exact_lifetime FROM poster_exports WHERE id=$1",
+          [response.body.data.poster.id],
+        );
+        expect(rows.rowCount).toBe(1);
+        expect(rows.rows[0]!.exact_lifetime).toBe(true);
+      }
+      return { body, response };
     };
     test('matchup uses formal public fixture and private PNG export revocation is permanent', async () => {
       const f = await published(h, h.teams),
@@ -239,6 +245,9 @@ describe(
       expect(republished.publicEventId).not.toBe(history.publicEventId);
       error(await call(h.api, 'get', path, { cookie: actor.cookie }), 410);
       data((await honor()).response, 201);
+      // Six genuine successful HONOR inserts in total, within this actor's unchanged
+      // ten-request budget, exercise precise timestamp consistency repeatedly.
+      for (let attempt = 0; attempt < 4; attempt++) data((await honor()).response, 201);
     });
     test('roster uses only exact current approved photo consent; withdrawal blocks old artifact and private originals remain protected', async () => {
       const reg = await openRegistration(h.api, h.owner, 'X05本人照片宣传', undefined, {

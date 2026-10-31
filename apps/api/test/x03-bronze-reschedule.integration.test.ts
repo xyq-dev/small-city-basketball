@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { call, data, error } from './support.js';
-import { closeHarness, createScoringHarness, act, workbench } from './p05-support.js';
+import { closeHarness, createScoringHarness, act, workbench, assign } from './p05-support.js';
 import type { Harness } from './p05-support.js';
 import {
   confirmKnockoutMatch,
@@ -33,6 +33,7 @@ describe(
       const current = await readKnockout(h, id);
       data(await publishRound(h, id, await roundInput(h, current, fixture.court)));
       const bronze = (await currentMatches(h, id)).find((m) => m.fixtureKey === 'R2-P2')!;
+      await assign(h, bronze.id, h.otherOwner);
       const beforePrepare = await workbench(h, bronze.id);
       await act(h, bronze.id, h.owner, {
         type: 'PREPARE_MATCH',

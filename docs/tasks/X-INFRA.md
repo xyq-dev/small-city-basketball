@@ -2,7 +2,7 @@
 
 2026-10-31；root交completion_recruitment负责。仅本地切片commit，root串行cherry并同步GitHub。
 
-状态IN_PROGRESS。root批准文件所有权：runtime-privileges.json、readiness及测试、database/migrate及migration-plan；ops/db/privileges；ops/recovery backup/restore/fingerprint/quarantine及types；production/restart脚本；P07 runtime/quarantine测试及独立completion fixtures。禁止业务app/service/ui和旧迁移001–024。
+状态TESTING。CI135候选2490869的完整隔离生产形态恢复/授权隔离/清理已通过，当前整体API/admin由root最终核对；尚未合并或生产上线。恢复先读PR33远端当前HEAD和本卡尾部，当前尾部目录scb-infra-tail / work/completion-recovery-tail；下文按顺序保留早期未执行等历史记录。root批准文件所有权：runtime-privileges.json、readiness及测试、database/migrate及migration-plan；ops/db/privileges；ops/recovery backup/restore/fingerprint/quarantine及types；production/restart脚本；P07 runtime/quarantine测试及独立completion fixtures。禁止业务app/service/ui和旧迁移001–024。
 
 已核对owner清单：025第三名无新表；026模板4表；027招募/邀请/海报6表；028技术统计仅scoring_states/result_confirmations新增技术字段；029同城7表；030治理/广告/经费12表；031邮箱找回5表与users验证/凭据更新时间；032公共档案4表；033行政裁定4表；034离线回执1表；035工作人员回执1表。总计127表/35迁移。当前根已落025–031及033–035，032由X08候选实际SQL读取并等待其正式SHA。
 
@@ -52,3 +52,5 @@ I10开工：root明确授权独占scripts/x18-governance-check.mjs及相关验�
 CI133 production124418914383亲读：P07两文件20/20；全部真实capture已完成，含22秒短履约/独立发布评价及44张新增表非空；TLS浏览器4项、API地址变化后session保持通过。随后真实dump到第二PG集群恢复，normal中完整127表fingerprint及I9权限、模板/X08/X05核对已通过；首错为x18 helper422整包广告hash不等，quarantine未执行。确定原因是广告公开DTO每次返回clock_timestamp的serverTime，旧checker把动态时钟算进固定事实；不是据此宣称全业务恢复已过。
 修复仅验收helper：新增共用sponsorshipSnapshotHash，严格核公开字段集合、字段类型、region、label/measurement、三个ISO时间和startsAt<=serverTime<endsAt窗口，再只对固定发布条款及公开key精确hash。当前公开DTO没有expiresAt，startsAt/endsAt均已持久条款，未误删；未来额外字段会失败，不能悄悄丢字段。原工单/PDF/消息/回执/账本与隔离断言保持。
 I10本地两个意义回归通过（新有效serverTime不改变固定摘要、任何固定条款变更改变摘要；缺失/额外/非法/越窗时钟拒绝），脚本语法、Prettier、diff通过。API完整tsconfig通过临时paths/typeRoots映射当前worktree合同；初次直跑因共享node_modules链接解析到旧base合同而失败，不冒充该失败为源代码结果。新修尚未真实CI执行，不改成功迁移/业务/运行权限。
+
+CI135 production124422845325完整SUCCESS，已亲读归档，候选2490869e44f76aa67d759aab0fb2987c9b4d3c0d：P07两文件20/20；真实runtime全业务capture与44新增表非空（含实际短时履约/独立发布评价）；TLS浏览器4项、API换地址后原session保留；排空后完整dump到第二PG实例/volume，127表原指纹、业务快照和backup-point fencing全部通过；I10固定广告投影正常恢复通过；拒覆盖/源及control不变、恢复后quarantine全部新旧公开/私有/overlay凭据失效、重登无隔离机构、原历史保留和自有清理全部通过。最终日志明确Production package/TLS/role/persistence/full restore/quarantine passed及独立control volume保留。run https://github.com/xyq-dev/small-city-basketball/actions/runs/41162387014/job/124422845325 。当前API/admin还在运行，不称整轮CI成功；未生产、真实外部邮件/地图调用或微信真机。

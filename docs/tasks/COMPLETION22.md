@@ -128,3 +128,13 @@ API capture另报X22 helper构造真实service时漏传已有databaseUrl，根�
 根d76eac0冻结态API73文件914项通过（含I10两回归），37a11af后原生全量925项924通过/1既有Windows专属跳过；最新9ec45cc全类型与全格式通过。前两套数字不冒称覆盖后到的staff业务，下一完整CI会复验最新头。下一条同步checkpoint11，继续查看真实PG/HTTPS/重启/127表非空恢复/quarantine与清理；只在全绿、复核无阻断后按授权合并，全部22项仍TESTING。
 
 11b前R133 API归档已核：51文件499/499、真Page16/16，capture与数据库重启成功，正常verify同样停在X18动态serverTime摘要，I10已修。新增HONOR真实PG用独立participant经owner真实STAFF MEMBER授本机构ORG_ADMIN，再由其6次海报请求验证流程；原三个案例继续原actor10次/60s，保留原限流，不清库或放宽阈值。该测试隔离补片e4d6205随后同步11b，134因新候选替代的取消不能记作通过。
+
+## 检查点12：归档纠正阶段误判，继续5项真实失败修复
+
+候选2490869/run41162387014最终：production和admin均SUCCESS，127表非空完整恢复/隔离/清理首次全部通过（完整日志已核）。API真实PG55文件511通过/5失败（516总数），随后build和Page→HTTP16/16仍会执行且通过，**后续步骤启动不代表前一PG步骤成功**；不能根据active步骤误判全绿，工作流各steps的conclusion和最终归档才是证据。API capture/restart/真浏览器因PG失败跳过，不能把production成功混作API job全过。root曾口头误判已明确纠正，未合并。
+
+四个新增X03测试失败在前置：三local场景让审核owner兼球队队长，触发现有独立审核403；改由真实leader约赛，不给审核人参赛队授权。另季军改期READY测试缺SCORER，须真实分配而非放宽PREPARE。第五项HONOR正向真正抓到poster生成bug：created_at默认clock_timestamp、expires_at另取clock+24h，实际差1微秒超DB上限23514；需在INSERT中以同一稳定statement时刻赋两列，保留027约束和全部成功迁移。两owner正在最小修，新增正向保精确24h断言，后续完整候选必须重跑。
+
+本轮已实证通过X17全部7项（含新CAS/到期）、X02全部7项（含新自然到期）、X03额度5/5及calendar到期3/3；其余具体见原始归档与领域卡，不把失败文件中未执行的后段补算通过。下一条整合这5处修复、更新GitHub检查点并继续全套隔离验收，F01—F22仍TESTING，不结束任务或合并失败分支。
+
+12修复整合：X03 2a2896e根f893fd9仅两测试真实前置（不改权限规则）；X05 5ec3b50根b062e4f生成SQL显式created_at和expires_at同一statement_timestamp，成功各kind精确24h校验，独立actor荣誉共6次成功插入/10请求预算不变。根最新全typecheck/format通过，真实PG仍等新CI。前述production成功与914/561/924源码单测、995布局（981不适用跳过）是2490869候选的实证，不用旧候选为新源SQL背书。下一步同步12后继续完整隔离验收。

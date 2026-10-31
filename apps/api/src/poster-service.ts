@@ -361,9 +361,10 @@ export class PosterService extends StandingsService {
         const recipe = await this.recipe(c, a, input);
         await this.rendered(c, a, recipe);
         const hash = requestFingerprint(recipe);
+        // Separate volatile clock reads can exceed the strict 24-hour bound by a microsecond.
         const row = (
           await c.query<Row>(
-            "INSERT INTO poster_exports(id,org_id,event_id,public_publication_id,actor_id,kind,input,source_hash,source,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9::jsonb,clock_timestamp()+interval '24 hours') RETURNING *",
+            "INSERT INTO poster_exports(id,org_id,event_id,public_publication_id,actor_id,kind,input,source_hash,source,created_at,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9::jsonb,statement_timestamp(),statement_timestamp()+interval '24 hours') RETURNING *",
             [
               randomUUID(),
               a.ctx.orgId,
