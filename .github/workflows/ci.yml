@@ -108,6 +108,8 @@ jobs:
         run: |
           node --test scripts/ci-postgres-clients.test.mjs
           node scripts/prepare-ci-postgres-clients.mjs
+      - id: api_build
+        run: npm run build --workspace @small-city-basketball/api
       - name: Verify complete isolated migration chain before running dependent suites
         id: schema_preflight
         run: node --import tsx scripts/check-migrations.mjs
@@ -115,8 +117,6 @@ jobs:
         run: npm run test:integration --workspace @small-city-basketball/api -- --exclude '**/p07-*.integration.test.ts'
       # Stop dependent suites on a failed prerequisite so its archived log is available promptly.
       # A successful run still executes build, native pages, restart and browser checks.
-      - id: api_build
-        run: npm run build --workspace @small-city-basketball/api
       - name: Native mini program pages against the real API
         run: npm run test:wechat:api
       - name: Capture sessions, scoring, standings and public identities

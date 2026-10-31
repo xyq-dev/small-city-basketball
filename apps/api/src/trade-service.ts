@@ -527,6 +527,25 @@ export class TradeService extends ApplicationService {
         !(await this.operator(c, a))
       )
         throw notFound();
+      if (!row) {
+        const ref = (
+          await c.query<Row>(
+            kind === 'LOCAL_BOOKING'
+              ? 'SELECT org_id,buyer_user_id,provider_user_id FROM local_bookings WHERE id=$1'
+              : kind === 'PLAYER_APPEARANCE'
+                ? 'SELECT o.org_id,o.buyer_user_id,a.player_user_id AS provider_user_id FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id WHERE a.id=$1'
+                : 'SELECT org_id,team_id FROM entries WHERE id=$1',
+            [sourceId],
+          )
+        ).rows[0];
+        if (!ref) throw notFound();
+        const party =
+          ref.buyer_user_id === a.user.id ||
+          ref.provider_user_id === a.user.id ||
+          (ref.team_id && (await this.teamGrant(c, a, ref.org_id, ref.team_id)));
+        if (!party && !(await this.manager(c, a, ref.org_id)) && !(await this.operator(c, a)))
+          throw notFound();
+      }
       await this.ensureFreshSession(c, a);
       return { orderId: row?.id ?? null };
     });

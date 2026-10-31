@@ -227,3 +227,28 @@ it('pre-create fee preview never discloses a private draft supply to an unrelate
   ).rejects.toMatchObject({ code: 'RESOURCE_NOT_FOUND' });
   expect(query.mock.calls.some(([sql]) => sql.includes('FROM trade_terms'))).toBe(false);
 });
+
+it('free-source lookup verifies the original buyer/provider instead of allowing unrelated resource probes', async () => {
+  const f = fixture();
+  let actor = 'unrelated';
+  const c = {
+    query: async (sql: string) => ({
+      rows: sql.includes('FROM local_bookings')
+        ? [{ org_id: org, buyer_user_id: 'buyer', provider_user_id: 'provider' }]
+        : [],
+      rowCount: 0,
+    }),
+  };
+  f.service.transaction = async (work: any) => work(c);
+  f.service.lockActor = async () => ({ user: { id: actor } });
+  f.service.manager = async () => false;
+  f.service.operator = async () => false;
+  f.service.ensureFreshSession = async () => {};
+  await expect(f.service.sourceOrder('synthetic', 'LOCAL_BOOKING', org)).rejects.toMatchObject({
+    code: 'RESOURCE_NOT_FOUND',
+  });
+  actor = 'buyer';
+  await expect(f.service.sourceOrder('synthetic', 'LOCAL_BOOKING', org)).resolves.toEqual({
+    orderId: null,
+  });
+});
