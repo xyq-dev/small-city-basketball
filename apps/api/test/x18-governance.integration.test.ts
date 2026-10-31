@@ -6,7 +6,7 @@ import { migrate } from '../src/database/migrate.js';
 import { hashPassword } from '../src/security.js';
 import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
 import { GovernanceService } from '../src/governance-service.js';
-import { CityOperationsService } from '../src/city-operations-service.js';
+import { CityOperationsService, governanceOperator } from '../src/city-operations-service.js';
 import { SponsorshipService } from '../src/sponsorship-service.js';
 import { PublicLedgerService } from '../src/public-ledger-service.js';
 import {
@@ -105,6 +105,41 @@ describe(
         region,
         ...extra,
       });
+    test('operator lookup needs only SELECT on platform roles and the existing users id lock privilege', async () => {
+      const c = await api.pool.connect(),
+        role = 'scb_x18_ro_' + randomUUID().replaceAll('-', '');
+      try {
+        await c.query('BEGIN');
+        await c.query(`CREATE ROLE "${role}" NOLOGIN NOINHERIT`);
+        await c.query(`GRANT USAGE ON SCHEMA public TO "${role}"`);
+        await c.query(`GRANT SELECT ON platform_operators,users TO "${role}"`);
+        await c.query(`GRANT UPDATE(id) ON users TO "${role}"`);
+        await c.query(`SET LOCAL ROLE "${role}"`);
+        const permissions = (
+          await c.query<{ platform_update: boolean; user_id_update: boolean }>(
+            "SELECT has_table_privilege(current_user,'public.platform_operators','UPDATE') AS platform_update,has_column_privilege(current_user,'public.users','id','UPDATE') AS user_id_update",
+          )
+        ).rows[0]!;
+        expect(permissions).toEqual({ platform_update: false, user_id_update: true });
+        for (const userId of [operator.id, owner.id]) {
+          await c.query('SAVEPOINT forbidden_role_lock');
+          await expect(
+            c.query(
+              'SELECT p.user_id FROM platform_operators p JOIN users u ON u.id=p.user_id WHERE p.user_id=$1 FOR SHARE OF p,u',
+              [userId],
+            ),
+          ).rejects.toMatchObject({ code: '42501' });
+          await c.query('ROLLBACK TO SAVEPOINT forbidden_role_lock');
+          await c.query('RELEASE SAVEPOINT forbidden_role_lock');
+        }
+        expect(await governanceOperator(c, operator.id)).toBe(true);
+        expect(await governanceOperator(c, owner.id)).toBe(false);
+        // The role and all grants disappear with the isolated test transaction.
+      } finally {
+        await c.query('ROLLBACK');
+        c.release();
+      }
+    });
     test('org owner and city grant do not imply access to another requester’s private case', async () => {
       const row = await create();
       await expect(g.getCase(stranger.cookie, row.id as string)).rejects.toMatchObject({

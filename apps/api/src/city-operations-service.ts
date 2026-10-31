@@ -17,10 +17,12 @@ import {
 import type { CityOperation, GovernanceRegion } from '../../../packages/contracts/governance.js';
 
 export async function governanceOperator(c: PoolClient, userId: string): Promise<boolean> {
+  // Maintenance locks this user before changing its platform role. Keep that
+  // serialization without requesting UPDATE on the read-only role table.
   return Boolean(
     (
       await c.query(
-        "SELECT p.user_id FROM platform_operators p JOIN users u ON u.id=p.user_id AND u.status='ACTIVE' WHERE p.user_id=$1 AND p.status='ACTIVE' FOR SHARE OF p,u",
+        "SELECT p.user_id FROM platform_operators p JOIN users u ON u.id=p.user_id AND u.status='ACTIVE' WHERE p.user_id=$1 AND p.status='ACTIVE' FOR SHARE OF u",
         [userId],
       )
     ).rowCount,

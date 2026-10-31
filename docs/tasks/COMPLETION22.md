@@ -110,3 +110,9 @@ admin131格式/类型/单测/build均过，兼容布局974过21失败：五新�
 production131已经迁移/权限成功且API启动，停于db-tools漏打包x03脚本；I7/I7b显式打包全部helper、离线源校验及避免Alpine误载glibc sharp已整合。X02真实独立裁定、X05招募/邀请/PNG、X03模板、X08专业/离线/档案、X12供给/库存/一次性码、X18工单/赞助/账本和X22加密mail非空helper已接；真实完成服务→评价的最后非空表覆盖主入口仍待infra I8。不能把源码/helper存在写成已通过恢复。
 
 根f67ee5b完整本地typecheck、format通过；API72文件912、admin61文件561、原生919项918过/1既有Windows跳过。I7b仅checker本地动态import窄补丁随后整合，未冒称运行Docker。下一条同步这批并继续PG/真实Page/三宽布局/非空备份还原的完整候选检查，只有全绿和独立复核后才合并。全部22项仍TESTING，没有生产部署或外部邮件/地图/微信真机验收。
+
+## 检查点10：真实数据库与页面已过，修复最小权限及恢复前置
+
+第四轮8738106/run41159925971：API真实PG51文件498/498通过，原生Page→真实HTTP/PG16/16通过；admin格式/类型/单测/build及兼容布局995通过、981个不适用组合跳过，job成功。production P07仍20/20通过，完整镜像helper校验、启动和TLS前半业务已过，首个业务阻断是治理附件PUT500。已定位平台角色查询错误锁只读platform_operators，X18与旧C06均改为仅锁可变users并沿用角色维护先锁users协议，不扩大权限；新增受限角色与HTTP回归等待下轮。
+
+API capture另报X22 helper构造真实service时漏传已有databaseUrl，根补显式参数，不放松URL或隔离校验。I8真实短时履约→独立公开评价及所有新增表非空门槛已整合，但尚未实际运行。新helper增加机构角色后，commerce恢复基线须准确保存最终授权快照，继续核对不能简单删断言。完整重启/非空备份还原/quarantine仍未过，不能合并或称上线。各域最终只读复核并行进行；下一条同步checkpoint10并执行完整候选，实际修错后才推进REVIEW/DONE。

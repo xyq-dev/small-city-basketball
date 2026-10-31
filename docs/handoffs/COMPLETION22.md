@@ -29,3 +29,5 @@ X01季军树／025／原生晋级页、X05／X12／X18领域与027／029／030�
 检查点8：22核心代码/原生消费者已写进入TESTING；PR33第二轮033已过，API468过8失败5skip、真Page12过4败、prod附加PG18过1败，具体首因/owner见父卡8。根接所有后续片与赞助组件，仍有X03旧schema/native确认fixture、infra最终helper主接线和治理取消回执后续未交；不能结束或报全绿。更新root901原生/904API本地证明不代表本次候选或真机。下一条同步checkpoint8，再修CI与完整恢复。
 
 检查点9：真实PG已486过2败5skip、附加PG20/20；本地完整912API/561admin/918native+1Win/type/format过（f67ee5b）。已接X03I/J真实确认/旧schema隔离、所有布局字体/静态fixture修、strict web行政source和counts、并发离线队列保尾部、I6/I7完整打包。pipeline131的2同城fixture首因已修，不声称新候选全绿。infra I8真实完成后公开评价非空表主接线仍待；下一步推9然后读新CI，持续修全22项，不能以旧main/C24/单组过关闭任务。
+
+检查点10：run41159925971真实PG498/498、真Page HTTP16/16、admin995布局通过/981不适用跳过，三个前置均确证。prod20/20后治理attachment PUT500定位SELECT-only平台表行锁，X18 c279ce6与C06 dd35d84改只锁users，不扩ACL；local0fde4f1补实际受限operator HTTP probe。API capture X22 helper漏databaseUrl参数根补。I8真实履约评价/全新表非空已整合，尚未实跑；I9最终commerce权限快照正在补。下一条同步10跑全链并读取实际首因；22项仍TESTING，不能以PG过替代恢复过或生产验收。

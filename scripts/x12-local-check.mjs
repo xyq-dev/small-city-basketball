@@ -44,6 +44,17 @@ export async function captureX12Local({ call, state, readPool, assertPublicMissi
   assert.notEqual(owner.id, buyer.id);
   assert.notEqual(buyer.id, away.id);
   assert.notEqual(reviewer.userId, owner.id);
+  // Real HTTP probes run through the API's exact restricted role. Detecting an
+  // operator must never require UPDATE on platform_operators.
+  const ownerBookingWorkspace = (
+    await call('/v1/player-bookings/workspace', { cookie: state.cookie })
+  ).data;
+  assert.equal(ownerBookingWorkspace.viewerUserId, owner.id);
+  const reviewerBookingWorkspace = (
+    await call('/v1/player-bookings/workspace', { cookie: reviewer.cookie })
+  ).data;
+  assert.equal(reviewerBookingWorkspace.viewerUserId, reviewer.userId);
+  assert.equal(reviewerBookingWorkspace.isPlatformOperator, true);
   const catalog = (await call('/v1/public/regions')).data;
   const county = catalog.regions.find((r) => r.level === 'COUNTY');
   assert.ok(county && catalog.catalogVersion, 'X12 needs a real current region catalog node');
@@ -265,6 +276,11 @@ export async function captureX12Local({ call, state, readPool, assertPublicMissi
 export async function verifyX12Local({ call, state, readPool, saved, assertPublicMissing }) {
   requireState(state);
   assert.equal(typeof assertPublicMissing, 'function');
+  const operator = (
+    await call('/v1/player-bookings/workspace', { cookie: state.commerce.operators[0].cookie })
+  ).data;
+  assert.equal(operator.isPlatformOperator, true);
+  assert.equal(operator.viewerUserId, saved.reviewerUserId);
   for (const row of saved.supplies) {
     const detail = (await call(`${serviceRoot}${row.listingId}`, { cookie: state.cookie })).data;
     const publicDetail = (await call(`/v1/public/local-listings/${row.listingId}`)).data;

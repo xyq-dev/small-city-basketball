@@ -115,11 +115,13 @@ export class PlayerBookingService extends ApplicationService {
     if (!identity.replay) await this.rateLimit(`booking-${namespace}:${identity.userId}`, 20, 3600);
     // Authority and receipt hash are checked again inside the following transaction.
   }
+  // lockActor holds this user's SHARE lock. Offline maintenance takes that user
+  // FOR UPDATE before changing roles; the runtime role table stays SELECT-only.
   private async operator(c: PoolClient, userId: string) {
     return Boolean(
       (
         await c.query(
-          "SELECT user_id FROM platform_operators WHERE user_id=$1 AND status='ACTIVE' FOR SHARE",
+          "SELECT p.user_id FROM platform_operators p JOIN users u ON u.id=p.user_id WHERE p.user_id=$1 AND p.status='ACTIVE' AND u.status='ACTIVE' FOR SHARE OF u",
           [userId],
         )
       ).rowCount,

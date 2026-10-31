@@ -163,7 +163,7 @@ export async function captureX22AccountRecovery({
   };
   const service = new AccountRecoveryService(
     runtimePool,
-    { appOrigin },
+    { databaseUrl, appOrigin },
     { provider, encryptionKey: encodedKey, autoDispatch: false },
   );
   try {

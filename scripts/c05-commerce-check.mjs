@@ -260,7 +260,19 @@ function facts(value) {
 }
 
 /** Refund a second, unactivated draft event and reconcile real persisted synthetic manual records. */
-export async function captureCommerceEnd({ call, cookie, orgId, eventId, setup }) {
+export async function captureCommerceEnd({
+  call,
+  cookie,
+  orgId,
+  eventId,
+  setup,
+  organizationReviewerId = null,
+}) {
+  assert.ok(
+    organizationReviewerId === null ||
+      setup.operators.some((operator) => operator.userId === organizationReviewerId),
+    'The explicit independent organization reviewer must be a known synthetic operator',
+  );
   let { order } = await ensureCommercialEntitlement({ call, cookie, orgId, eventId, setup });
   assert.equal(order.activated, false, 'The refund fixture must remain an unpublished draft');
   order = (
@@ -351,9 +363,26 @@ export async function captureCommerceEnd({ call, cookie, orgId, eventId, setup }
     organization.activations.some((item) => item.source === 'PAID'),
     'At least one original schedule must have activated its paid entitlement',
   );
+  const operatorAuthorizations = [];
+  for (const operator of setup.operators) {
+    const session = (await call('/v1/auth/session', { cookie: operator.cookie })).data;
+    assert.equal(session.user.id, operator.userId);
+    assert.deepEqual(
+      session.organizations.map(({ id, role }) => ({ id, role })),
+      operator.userId === organizationReviewerId ? [{ id: orgId, role: 'ORG_ADMIN' }] : [],
+      'Only the explicitly reviewed X18 membership may add organization authority',
+    );
+    assert.deepEqual(session.teamContexts, []);
+    operatorAuthorizations.push({
+      userId: operator.userId,
+      organizations: session.organizations,
+      teamContexts: session.teamContexts,
+    });
+  }
   return {
-    version: 1,
+    version: 2,
     operators: setup.operators,
+    operatorAuthorizations,
     planId: setup.plan.id,
     orderIds: setup.orderIds,
     refundOrderId: order.id,
@@ -365,12 +394,17 @@ export async function captureCommerceEnd({ call, cookie, orgId, eventId, setup }
 
 /** Read-only after actual PostgreSQL restart or full restore, before explicit quarantine. */
 export async function verifyCommerce({ call, saved, cookie, orgId }) {
-  assert.equal(saved?.version, 1);
-  for (const operator of saved.operators) {
+  assert.equal(saved?.version, 2);
+  assert.deepEqual(
+    saved.operatorAuthorizations.map((authorization) => authorization.userId),
+    saved.operators.map((operator) => operator.userId),
+    'Every original operator requires its exact captured authorization context',
+  );
+  for (const [index, operator] of saved.operators.entries()) {
     const session = (await call('/v1/auth/session', { cookie: operator.cookie })).data;
     assert.equal(session.user.id, operator.userId);
-    assert.deepEqual(session.organizations, []);
-    assert.deepEqual(session.teamContexts, []);
+    assert.deepEqual(session.organizations, saved.operatorAuthorizations[index].organizations);
+    assert.deepEqual(session.teamContexts, saved.operatorAuthorizations[index].teamContexts);
     const capabilities = (await call('/v1/commerce/capabilities', { cookie: operator.cookie }))
       .data;
     assert.equal(capabilities.platformOperator, true);

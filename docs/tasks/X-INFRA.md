@@ -38,3 +38,12 @@ CI131生产真实结果：P07两文件20/20通过，API启动3300，TLS业务链
 I7同时删除checker对glibc sharp的静态import，避免Alpine db-tools复用API生产依赖时libc不匹配；只用Node内建检查实际PNG签名、尺寸、完整chunk流/CRC与无EXIF/text。真正渲染仍在有Noto的API容器，未换模板或生成来源。2个本地真实Sharp PNG→portable verifier测试通过（CRC/截断/尺寸/JPEG/EXIF负向），完整API tsconfig、脚本语法/格式通过；本地无Docker，不声称新镜像构建/HTTPS业务/重启/完整恢复已通过，等待CI重跑。
 
 I7b：进一步只读发现新治理domain合法静态导入sharp，旧checker顶部静态createApi会把完整应用（含glibc sharp）加载进Alpine db-tools，即使remote模式根本不启动API。改为仅本地API job分支动态import createApi；production远程只运行HTTP/SQL验收helper和独立mail service，不加载治理图像addon。真实应用API代码不改。脚本语法/格式检查通过，Docker实跑待CI。
+
+I8：显式调用local263d25c真实短时REF服务（DB时钟+15s开始/+22s结束、30s硬限、只真实API ACCEPT/ARRIVE/DELIVER/COMPLETE，无SQL造终态），再由实际需求方创建评价并独立platform operator发布；只有两步成功后才将coverage.verifiedBookingReview记true。保存评价ID/原履约ID/key摘要/public与不可变core摘要，normal精确核公开快照、quarantine WITHDRAWN版本+1/旧key404/原履约历史不改。
+从实际025+SQL解析新增表清单，必须全部在权限manifest且真实非空，capture记录各表计数，normal/quarantine计数完全保留；不再让空表备份掩盖新模块未触达。依赖local263d25c及工单消息3d9e4c2，其他helper签名不变。此片只有脚本语法/格式/空白检查，真正22秒履约/评价/全新域非空门槛尚未CI运行，不能称通过。
+
+CI132实际结果：production job124415005227已过P07两文件20/20、11脚本源checksum/7域导入的镜像打包检查、API启动与TLS前半业务，首错是x18 helper207治理附件PUT500，尚未到capture完成/重启/备份恢复。领域owner定位只读platform_operators不必要行锁，修业务查询，不给不可变表扩UPDATE。I8不在132旧head中，仍须下一CI实际执行。035非空已由x18 helper真实MEMBER HTTP命令覆盖，原staff_configuration_receipts整行SHA在normal/quarantine retained中核对，不靠SQL造样本。
+静态辅助审查范围纠正：首次仅扫描API顶层TS，漏子目录，不能称全部API；随后递归扫描134个非test TS的完整SQL字面量。可疑不可变表JOIN明确OF可变别名的两处不扩大授权；动态SQL、触发器以及并发语义仍须真实runtime门槛，静态扫描不是权限通过证明。
+
+I9：X18已通过真实MEMBER命令授独立审核员operators[0]本org的ORG_ADMIN，旧commerce恢复断言仍要求两个operator均无机构，必然冲突。root授权独占c05-commerce-check.mjs；captureCommerceEnd新增显式organizationReviewerId（主链精确传operator0，默认保持旧C05无机构合同），只允许该本人恰好本org/ORG_ADMIN，其他operator无机构，所有operator无teamContexts，再保存最终完整组织/球队上下文。commerce验收状态版本升2，normal按原用户顺序精确比较完整上下文，仍实际核platform capability与所有账单/原独立审批事实，不删权限断言。
+与local0fde4f1核对：其C06真实owner/operator workspace probe及normal身份/platform角色断言不改变session或授权，和I9快照可同时成立；该片由root合，不重复修改local helper。I9本地两脚本node语法、同根Prettier和空白检查通过，真实capture/重启/恢复待下一CI；未改任何已成功迁移。

@@ -25,3 +25,9 @@ I6主接线依赖root先合X18 12d14cc、X12 fd8296a、X22 7d9c38c+5b5eace、X02
 I7部署测试打包修复：Dockerfile db-tools显式COPY11脚本，.dockerignore scripts/*仅对应11个mjs窄例外；移除validator旧4bind，离线镜像逐source checksum+7helper import核compiled deps，API镜像无测试脚本+真实中文字形探测。X05 checker移除glibc sharp静态依赖，Node PNG流/CRC/metadata校验；真实渲染仍API容器。PNG2单测+tsconfig/格式/语法通过；Docker构建/业务恢复未本地执行。CI131真实P07为20/20，仅packaging缺模块阻TLS业务，下轮重跑。
 
 I7b必要补：checker仅!remoteUrl本地分支dynamic import createApi，防远程Alpine checker无用途加载governance-domain的glibc sharp；真实API仍原glibc镜像。仅语法/格式检查，待实际Docker。
+
+I8依赖local263d25c（第四export captureX12CompletedService）及消息3d9e4c2：显式真实DB钟短履约后创建/独立发布评价，成功才改coverage true；评价core（保留原reviewer）/旧key/版本和完成订单历史在正常/隔离核验。main新增从025+SQL读取新增表清单的全非空门槛，normal/quarantine数量保留。仅语法/格式检查，真实履约与新全链未跑；不会延长或跳过现有失败断言。
+
+CI132亲读：production124415005227 P07两文件20/20，脚本镜像打包与TLS前半业务成功，首错治理附件PUT500，owner按platform_operators SELECT-only锁因修业务，不扩ACL。尚未capture完成/重启/备份恢复，I8亦不在该旧head。035已由x18 helper真实MEMBER命令及原回执整行SHA覆盖。递归静态核查134个非test API TS只可作SQL字面量辅助审查，首轮顶层扫描曾漏子目录，不能当动态SQL/trigger或最小权限通过证明。
+
+I9需同时取c05-commerce-check.mjs与主入口：commerce状态v2保存最终operatorAuthorizations，主入口显式organizationReviewerId=operator0；capture严格核唯一预期本org ORG_ADMIN，其余无org、全员无team，normal精确比较完整上下文。默认独立C05调用仍预期全无机构，不放宽角色。local0fde4f1仅追加C06实际workspace身份/platform角色probe，无授权修改，与I9相容，由root取原片。语法/格式/空白通过，真实PG/重启/restore未跑；迁移不改。
