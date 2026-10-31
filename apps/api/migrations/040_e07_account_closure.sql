@@ -59,3 +59,14 @@ BEGIN
 END;
 $$;
 CREATE TRIGGER account_closure_requests_guard BEFORE UPDATE OR DELETE ON account_closure_requests FOR EACH ROW EXECUTE FUNCTION e07_account_closure_guard();
+-- Within a backup containing the tombstone, even an ordinary maintenance UPDATE
+-- cannot revive a closed principal. Older backups still require quarantine/latest ledger.
+CREATE FUNCTION e07_closed_user_no_revive() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.status='ACTIVE' AND EXISTS(SELECT 1 FROM account_closure_tombstones WHERE user_id=NEW.id) THEN
+  RAISE EXCEPTION 'A closed principal cannot be reactivated' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END;
+$$;
+CREATE TRIGGER closed_user_no_revive BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION e07_closed_user_no_revive();

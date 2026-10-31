@@ -1,0 +1,4 @@
+{
+  "navigationBarTitleText": "账号自助注销",
+  "usingComponents": { "scb-header": "/components/scb-header/index" }
+}
