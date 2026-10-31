@@ -1,5 +1,9 @@
 # 任务看板
 
+## COMPLETION22：22项功能实现与测试（IN_PROGRESS／BRANCH_ONLY）
+
+2026-10-31 Asia/Shanghai；用户明确要求逐一编写并测试22项尚缺能力，全部范围见[总任务F01—F22](tasks/COMPLETION22.md)，恢复读[交接](handoffs/COMPLETION22.md)。root集成、六域独立工作；季军赛为起点，完成任一切片不等于总任务完成。当前只到设计认领，尚无新增功能验收结论；工作分支feat/commercial-completion-22，基线main dff0a8d。代码／文档分段同步，未知外部条件独立标记，禁止生产与新付费资源。
+
 ## DOC005 小程序直接开播与多平台分发
 
 2026-10-31 Asia/Shanghai；负责人及集成人Codex root。用户已要求设计并同步GitHub；首选手机小程序采集→云端比分合成→多平台分发，OBS为后续输入扩展。

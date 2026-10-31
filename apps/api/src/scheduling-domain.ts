@@ -61,6 +61,7 @@ export function parseSchedulePolicy(value: unknown): SchedulePolicy {
     'minRestMinutes',
     'minLocalDayGap',
     'courtWindows',
+    'thirdPlaceMatch',
   ]);
   const slotDurationMinutes = integer(input.slotDurationMinutes, 'slotDurationMinutes', 1, 1440);
   const minRestMinutes = integer(input.minRestMinutes, 'minRestMinutes', 0, 43200);
@@ -89,7 +90,16 @@ export function parseSchedulePolicy(value: unknown): SchedulePolicy {
     if (previous.courtId === current.courtId && previous.endsAt > current.startsAt)
       invalid('同一场地可用窗口不能重叠');
   }
-  return { slotDurationMinutes, minRestMinutes, minLocalDayGap, courtWindows };
+  if (input.thirdPlaceMatch !== undefined && typeof input.thirdPlaceMatch !== 'boolean')
+    invalid('请明确选择是否安排季军赛');
+  // Preserve the exact legacy policy/hash shape for omitted or false values.
+  return {
+    slotDurationMinutes,
+    minRestMinutes,
+    minLocalDayGap,
+    courtWindows,
+    ...(input.thirdPlaceMatch === true ? { thirdPlaceMatch: true } : {}),
+  };
 }
 
 export type ScheduleAllocation = Pick<

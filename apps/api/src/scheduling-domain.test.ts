@@ -54,6 +54,23 @@ const event = {
   endDate: '2026-11-04',
   timezone: 'Asia/Shanghai',
 };
+describe('可选季军策略的旧哈希兼容', () => {
+  it('false和省略保留旧策略形状，只有true新增字段', () => {
+    expect(parseSchedulePolicy({ ...policy, thirdPlaceMatch: false })).toEqual(policy);
+    expect(parseSchedulePolicy(policy)).toEqual(policy);
+    expect(parseSchedulePolicy({ ...policy, thirdPlaceMatch: true })).toEqual({
+      ...policy,
+      thirdPlaceMatch: true,
+    });
+    const old = generatePairings(freeze(3), policy, seed);
+    expect(
+      generatePairings(freeze(3), parseSchedulePolicy({ ...policy, thirdPlaceMatch: false }), seed),
+    ).toEqual(old);
+  });
+  it.each([null, 'true', 1, {}])('拒绝非布尔值%j', (thirdPlaceMatch) => {
+    expect(() => parseSchedulePolicy({ ...policy, thirdPlaceMatch })).toThrow();
+  });
+});
 function assigned(
   fixture: ScheduleFixtureData,
   startsAt: string,

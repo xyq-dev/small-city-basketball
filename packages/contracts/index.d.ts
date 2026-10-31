@@ -303,6 +303,8 @@ export interface UpdateCourtInput {
   status: 'ACTIVE' | 'DISABLED';
 }
 export interface SchedulePolicy {
+  /** Explicit opt-in; omitted/false keeps legacy scheduling hashes unchanged. */
+  thirdPlaceMatch?: boolean;
   slotDurationMinutes: number;
   minRestMinutes: number;
   minLocalDayGap: number;
