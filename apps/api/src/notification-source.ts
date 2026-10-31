@@ -208,7 +208,7 @@ export async function captureNotification(
   await c.query(
     refreshRecipients
       ? `INSERT INTO notification_fanout_state(source_id) VALUES($1)
-     ON CONFLICT(source_id) DO UPDATE SET cursor_user_id=NULL,done=false
+     ON CONFLICT(source_id) DO UPDATE SET cursor_user_id=NULL,done=false,updated_at=clock_timestamp()
      WHERE notification_fanout_state.done=true`
       : 'INSERT INTO notification_fanout_state(source_id) VALUES($1) ON CONFLICT DO NOTHING',
     [id],

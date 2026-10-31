@@ -11,7 +11,7 @@ import {
   createYouthQualificationReader,
 } from '../src/qualification-precheck-service.js';
 import {
-  readYouthDataProcessingConsent,
+  createYouthDataConsentGuard,
   readYouthEligibility,
   revokeYouthForClosure,
 } from '../src/youth-guardians-eligibility.js';
@@ -55,8 +55,9 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
     qualification: QualificationPrecheckService,
     archives: PublicArchivesService,
     search: UnifiedSearchService;
+  const dataConsentGuard = createYouthDataConsentGuard(participantDataKey);
   const reader = createYouthQualificationReader(participantDataKey, {
-    dataConsentGuard: readYouthDataProcessingConsent,
+    dataConsentGuard,
   });
   beforeAll(async () => {
     const pool = new Pool({ connectionString: databaseUrl });
@@ -87,7 +88,7 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
       );
     youth = new YouthGuardiansService(api.pool, { ...config, youthQualificationReader: reader });
     qualification = new QualificationPrecheckService(api.pool, config, {
-      dataConsentGuard: readYouthDataProcessingConsent,
+      dataConsentGuard,
     });
     archives = new PublicArchivesService(api.pool, config);
     search = new UnifiedSearchService(api.pool, config);
@@ -138,6 +139,7 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
       reviewer,
       subjects: actors,
       birthDates: actors.map(() => birthDate),
+      identitySequences: actors.map((a) => subjects.findIndex((s) => s.id === a.id) + 1),
       requireInsurance: insurance,
       registration: reuse,
       beforeOpen: async (reg) => {
@@ -148,7 +150,7 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
             )
           ).rows[0];
           data(
-            await call(api, 'put', `/v1/orgs/${owner.orgId}/events/${reg.event.id}`, {
+            await call(api, 'patch', `/v1/orgs/${owner.orgId}/events/${reg.event.id}`, {
               cookie: owner.cookie,
               body: {
                 expectedVersion: reg.event.version,
@@ -337,6 +339,12 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
     expect(
       (await youth.proofFile(reviewer.cookie, p.requestId)).body.subarray(0, 4).toString(),
     ).toBe('%PDF');
+    const reviewBefore = (
+      await api.pool.query(
+        'SELECT version,status,reviewer_id FROM youth_guardian_requests WHERE id=$1',
+        [p.requestId],
+      )
+    ).rows[0];
     for (const actor of [guardian, leader, m.actor])
       await expect(
         youth.review(actor.cookie, p.requestId, {
@@ -347,7 +355,23 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
           identityChecked: true,
           relationshipChecked: true,
         }),
-      ).rejects.toMatchObject({ status: 403 });
+      ).rejects.toMatchObject({ status: actor.id === leader.id ? 404 : 403 });
+    expect(
+      (
+        await api.pool.query(
+          'SELECT version,status,reviewer_id FROM youth_guardian_requests WHERE id=$1',
+          [p.requestId],
+        )
+      ).rows[0],
+    ).toEqual(reviewBefore);
+    expect(
+      (
+        await api.pool.query(
+          "SELECT count(*)::int AS n FROM youth_guardian_history WHERE request_id=$1 AND action='REVIEW_APPROVE'",
+          [p.requestId],
+        )
+      ).rows[0].n,
+    ).toBe(0);
     const approved = await approve(p.requestId, confirmed.version);
     expect(
       (await locked(f.registration.event.id, (c) => readYouthEligibility(c, scope(f, 0), reader)))
@@ -491,6 +515,13 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
         actors: subjects.slice(2, 4),
         insurance: false,
       });
+    const distinct = (
+      await api.pool.query(
+        'SELECT count(DISTINCT user_id)::int AS users,count(DISTINCT identity_digest)::int AS identities FROM participant_materials WHERE org_id=$1 AND event_id=$2',
+        [owner.orgId, first.registration.event.id],
+      )
+    ).rows[0];
+    expect(distinct).toEqual({ users: 4, identities: 4 });
     const approvals = [];
     for (const f of [first, second]) {
       for (let n = 0; n < 2; n++) {

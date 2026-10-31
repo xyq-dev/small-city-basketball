@@ -9,7 +9,7 @@ RUN npm ci
 COPY apps/api ./apps/api
 COPY apps/admin ./apps/admin
 COPY packages/contracts ./packages/contracts
-COPY ops/db ./ops/db
+COPY ops/db/privileges.mjs ops/db/common.mjs ./ops/db/
 COPY ops/recovery ./ops/recovery
 # The shipped static client always talks to the same-origin API.
 RUN npm run build --workspace @small-city-basketball/api \
@@ -36,6 +36,7 @@ COPY apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY apps/api/migrations ./apps/api/migrations
 COPY packages/contracts/package.json packages/contracts/index.js packages/contracts/runtime-privileges.json ./packages/contracts/
+COPY ops/db ./ops/db
 USER 10001:10001
 EXPOSE 3300
 ENTRYPOINT []
@@ -66,6 +67,7 @@ COPY ops/db ./ops/db
 COPY ops/recovery ./ops/recovery
 # Immutable acceptance modules ship with the tools image; no source-tree mounts or native image addon.
 COPY scripts/check-database-restart.mjs scripts/c05-media-fixtures.mjs scripts/c05-commerce-check.mjs scripts/c23-participant-material-check.mjs scripts/x02-adjudication-check.mjs scripts/x03-template-check.mjs scripts/x05-recruitment-check.mjs scripts/x08-archive-check.mjs scripts/x12-local-check.mjs scripts/x18-governance-check.mjs scripts/x22-account-recovery-check.mjs ./scripts/
+COPY scripts/expansion-recovery-check.mjs scripts/expansion-e03-recovery.mjs scripts/expansion-e04-recovery.mjs scripts/expansion-e05-recovery.mjs scripts/expansion-e08-recovery.mjs ./scripts/
 USER 10001:10001
 ENTRYPOINT []
 CMD ["node", "--version"]

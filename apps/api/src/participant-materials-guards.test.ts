@@ -54,6 +54,27 @@ const context = {
   material,
 };
 describe('C23 trusted current insurance and guardian gates', () => {
+  it('passes exact entry and member scope to data consent and independent precheck guards', async () => {
+    const guard = vi.fn().mockResolvedValue({ ready: true, required: false });
+    await readParticipantDataConsent(c, { dataConsentGuard: guard }, base);
+    expect(guard.mock.calls[0]?.[1]).toEqual({
+      orgId: base.orgId,
+      eventId: base.eventId,
+      userId: base.userId,
+      entryId: base.entryId,
+      memberId: base.memberId,
+      forceRequired: false,
+    });
+    await qualificationDataConsentReady(
+      c,
+      { dataConsentGuard: guard },
+      {
+        ...base,
+        birthDate: '1990-01-01',
+      },
+    );
+    expect(guard.mock.calls[1]?.[1]).toEqual(guard.mock.calls[0]?.[1]);
+  });
   it('a verified online policy substitutes only insurance, never identity, portrait or final approval', () => {
     expect(participantEligibility(context).eligible).toBe(false);
     expect(participantEligibility({ ...context, onlineInsuranceReady: true }).eligible).toBe(true);

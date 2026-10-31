@@ -123,6 +123,87 @@ async function delivery(id: string) {
   return (await h.api.pool.query('SELECT * FROM notification_deliveries WHERE id=$1', [id]))
     .rows[0];
 }
+async function fanoutCommitted(s: NotificationService, sourceId: string) {
+  for (let round = 0; round < 30; round++) {
+    await s.fanout();
+    if (
+      (
+        await h.api.pool.query('SELECT done FROM notification_fanout_state WHERE source_id=$1', [
+          sourceId,
+        ])
+      ).rows[0]?.done
+    )
+      return;
+  }
+  throw Error('The committed source did not progress through the bounded global fanout queue');
+}
+async function allMessages(s: NotificationService, cookie: string) {
+  const result = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < 30; page++) {
+    const data = await s.list(cookie, cursor ? { cursor } : {});
+    result.push(...data.items);
+    if (!data.nextCursor) return result;
+    expect(data.nextCursor).not.toBe(cursor);
+    cursor = data.nextCursor;
+  }
+  throw Error('Notification pagination did not advance');
+}
+async function createUnsubscribedBacklog(s: NotificationService) {
+  const source = (
+    await h.api.pool.query(
+      "SELECT id,event_id,resource_id FROM notification_source_events WHERE org_id=$1 AND kind='REGISTRATION_REVIEW' ORDER BY created_at,id LIMIT 1",
+      [h.owner.orgId],
+    )
+  ).rows[0]!;
+  const people = Array.from({ length: 25 }, (_, index) => ({
+    id: randomUUID(),
+    email: 'e05-waiting-' + randomUUID() + '@example.test',
+    name: '合成未订阅审核员' + index,
+  }));
+  // Fixture identities reuse the already synthetic harness password hash; no real person or
+  // credentials are imported. The current membership/staff relationships use real APIs.
+  await h.api.pool.query(
+    `INSERT INTO users(id,email,display_name,password_hash)
+    SELECT p.id,p.email,p.name,u.password_hash FROM jsonb_to_recordset($1::jsonb) p(id uuid,email text,name text)
+    JOIN users u ON u.id=$2`,
+    [JSON.stringify(people), h.owner.id],
+  );
+  for (const p of people) {
+    data(
+      await call(h.api, 'put', `/v1/orgs/${h.owner.orgId}/members/${p.id}`, {
+        cookie: h.owner.cookie,
+        body: { role: 'REVIEWER', status: 'ACTIVE' },
+      }),
+    );
+    data(
+      await call(
+        h.api,
+        'put',
+        `/v1/orgs/${h.owner.orgId}/events/${source.event_id}/staff/${p.id}`,
+        { cookie: h.owner.cookie, body: { role: 'REVIEWER', status: 'ACTIVE' } },
+      ),
+    );
+  }
+  await tx((c) =>
+    s.capture(c, {
+      kind: 'REGISTRATION_REVIEW',
+      orgId: h.owner.orgId,
+      eventId: source.event_id,
+      resourceId: source.resource_id,
+    }),
+  );
+  await fanoutCommitted(s, source.id);
+  expect(
+    (
+      await h.api.pool.query(
+        "SELECT count(*)::int AS n FROM notification_messages m JOIN notification_deliveries d ON d.message_id=m.id WHERE m.user_id=ANY($1::uuid[]) AND d.state='WAITING_PERMISSION'",
+        [people.map((p) => p.id)],
+      )
+    ).rows[0]!.n,
+  ).toBe(25);
+  return people.map((p) => p.id);
+}
 
 describe('E05 authoritative notifications in real PostgreSQL', () => {
   beforeAll(async () => {
@@ -272,7 +353,7 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
     expect(JSON.stringify(await s.settings(h.owner.cookie))).not.toContain(openid);
   });
 
-  it('persists SENDING before provider call; UNKNOWN consumes permission and only explicit fresh permission can retry', async () => {
+  it('global dispatch passes an older unconsented backlog, persists SENDING, and never repeats UNKNOWN without fresh permission', async () => {
     let sends = 0;
     const s = service(async () => {
       sends++;
@@ -285,10 +366,30 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
       expect(committed).toHaveLength(1);
       return sends === 1 ? { state: 'UNKNOWN' } : { state: 'ACCEPTED' };
     });
+    const backlog = await createUnsubscribedBacklog(s);
     const f = await soon(s);
     const first = await allow(s);
+    expect(
+      (
+        await h.api.pool.query(
+          `SELECT count(*)::int AS n FROM notification_deliveries d
+      JOIN notification_messages m ON m.id=d.message_id JOIN notification_deliveries target ON target.id=$2
+      WHERE m.user_id=ANY($1::uuid[]) AND d.state='WAITING_PERMISSION'
+      AND d.next_attempt_at<target.next_attempt_at`,
+          [backlog, f.row.delivery_id],
+        )
+      ).rows[0]!.n,
+    ).toBe(25);
     await s.drain();
     expect((await delivery(f.row.delivery_id)).state).toBe('UNKNOWN');
+    expect(
+      (
+        await h.api.pool.query(
+          "SELECT count(*)::int AS n FROM notification_deliveries d JOIN notification_messages m ON m.id=d.message_id WHERE m.user_id=ANY($1::uuid[]) AND d.state='WAITING_PERMISSION'",
+          [backlog],
+        )
+      ).rows[0]!.n,
+    ).toBe(25);
     expect(
       (
         await h.api.pool.query(
@@ -339,9 +440,24 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
     await s.drain();
     expect(sends).toBe(1);
     await h.api.pool.query(
-      'UPDATE notification_deliveries SET next_attempt_at=clock_timestamp() WHERE id=$1',
+      "UPDATE notification_deliveries SET next_attempt_at=clock_timestamp(),updated_at='2000-01-01'::timestamptz WHERE id=$1",
       [f.row.delivery_id],
     );
+    const disabled = new NotificationService(
+      h.api.pool,
+      { databaseUrl: h.databaseUrl, appOrigin: ORIGIN },
+      { autoDispatch: false },
+    );
+    services.push(disabled);
+    await disabled.drain();
+    expect((await delivery(f.row.delivery_id)).state).toBe('PENDING');
+    expect(
+      (
+        await h.api.pool.query('SELECT status FROM notification_subscription_grants WHERE id=$1', [
+          a.confirmed.subscriptionId,
+        ])
+      ).rows[0]!.status,
+    ).toBe('RESERVED');
     await s.drain();
     expect(sends).toBe(2);
     expect((await delivery(f.row.delivery_id)).state).toBe('ACCEPTED');
@@ -601,16 +717,20 @@ describe('E05 authoritative notifications in real PostgreSQL', () => {
         resourceId: reviewed.id,
       }),
     );
-    await s.fanout();
-    const owner = await s.list(h.owner.cookie, {}),
-      leader = await s.list(h.leader.cookie, {});
+    const sourceId = (
+      await h.api.pool.query(
+        "SELECT id FROM notification_source_events WHERE org_id=$1 AND resource_id=$2 AND kind='REGISTRATION_REVIEW'",
+        [h.owner.orgId, reviewed.id],
+      )
+    ).rows[0]!.id;
+    await fanoutCommitted(s, sourceId);
+    const owner = await allMessages(s, h.owner.cookie),
+      leader = await allMessages(s, h.leader.cookie);
     expect(
-      owner.items.some((x) => x.kind === 'REGISTRATION_REVIEW' && x.detail === '报名需要补充资料'),
+      owner.some((x) => x.kind === 'REGISTRATION_REVIEW' && x.detail === '报名需要补充资料'),
     ).toBe(true);
     expect(
-      leader.items.some(
-        (x) => x.kind === 'REGISTRATION_REVIEW' && x.eventName === current.event.name,
-      ),
+      leader.some((x) => x.kind === 'REGISTRATION_REVIEW' && x.eventName === current.event.name),
     ).toBe(true);
     expect(JSON.stringify(owner)).not.toContain('private-material-123');
     await grant(h.api, h.owner, submitted.team, h.leader, 'DISABLED');

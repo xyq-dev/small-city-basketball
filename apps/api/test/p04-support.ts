@@ -86,7 +86,9 @@ export async function createHarness(teamCount = 4): Promise<Harness> {
   } finally {
     await pool.end();
   }
-  const api = await createApi({ databaseUrl, appOrigin: ORIGIN });
+  // Each case drives durable workers explicitly; automatic timers must not
+  // mutate another file's shared database fixtures between assertions.
+  const api = await createApi({ databaseUrl, appOrigin: ORIGIN, backgroundWorkersEnabled: false });
   try {
     // Dedicated synthetic identities avoid spending the registration limiter's
     // shared IP budget. Production scrypt and real HTTP login remain unchanged.

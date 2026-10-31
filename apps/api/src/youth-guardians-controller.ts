@@ -30,6 +30,22 @@ export class YouthGuardiansController {
   ) {
     return wrap(r, await this.service.receipt(r.headers.cookie, id));
   }
+  @Get('orgs/:orgId/events/:eventId/youth-adult-data-consent') async adultCapability(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Param('eventId') event: string,
+    @Query() q: unknown,
+  ) {
+    return wrap(r, await this.service.adultCapability(r.headers.cookie, org, event, q));
+  }
+  @Post('orgs/:orgId/events/:eventId/youth-adult-data-consent') @HttpCode(200) async adultCommand(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Param('eventId') event: string,
+    @Body() body: unknown,
+  ) {
+    return wrap(r, await this.service.adultDataCommand(r.headers.cookie, org, event, body));
+  }
   @Get('orgs/:orgId/events/:eventId/youth-policy') async policy(
     @Req() r: ApiRequest,
     @Param('orgId') org: string,

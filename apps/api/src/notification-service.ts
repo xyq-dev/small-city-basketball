@@ -49,6 +49,13 @@ const disabled = () =>
   new ApiError(503, 'NOTIFICATIONS_DISABLED', '微信订阅提醒尚未配置，站内消息仍可查看');
 const ownId = (value: unknown) => resourceId(typeof value === 'string' ? value : '');
 const iso = (value: Date | string) => new Date(value).toISOString();
+// Queue selection is only an optimization; claim/deliver recheck the same current facts under locks.
+const CURRENT_GRANT_SQL = `EXISTS(
+ SELECT 1 FROM notification_subscription_grants g JOIN wechat_identities i ON i.id=g.identity_id
+ WHERE g.user_id=m.user_id AND g.kind=s.kind AND g.configuration_hash=$2 AND g.target_cipher IS NOT NULL
+ AND i.user_id=m.user_id AND i.app_id=$3 AND i.status='ACTIVE' AND i.version=g.identity_version
+ AND ((d.grant_id IS NULL AND g.status='AVAILABLE') OR (d.grant_id=g.id AND g.status='RESERVED'))
+)`;
 export class NotificationService extends ApplicationService {
   private readonly key?: Buffer;
   private readonly configurationHash: string;
@@ -476,28 +483,42 @@ export class NotificationService extends ApplicationService {
     }
     return this.transaction(async (c) => {
       const a = await this.lockActor(c, cookie);
-      const rows = await c.query<Row>(
-        `SELECT m.id,m.created_at FROM notification_messages m JOIN notification_source_events s ON s.id=m.source_id
-        WHERE m.user_id=$1 AND s.due_at<=clock_timestamp() AND s.expires_at>clock_timestamp()
-        ${cursor ? 'AND (m.created_at,m.id)<($2::timestamptz,$3::uuid)' : ''}
-        ORDER BY m.created_at DESC,m.id DESC LIMIT 21`,
-        cursor ? [a.user.id, cursor.at, cursor.id] : [a.user.id],
-      );
       const result: NotificationMessage[] = [];
-      for (const row of rows.rows.slice(0, 20)) {
-        const v = await this.message(c, a.user.id, row.id);
-        if (v)
-          result.push(
-            this.dto(v.row, v.source, ['FAILED', 'UNKNOWN'].includes(v.row.delivery_state)),
-          );
+      let after = cursor,
+        last: Row | undefined,
+        hasMore = false;
+      // Revoked generations are not messages the person can see. Scan a bounded number of
+      // raw references to fill a visible page instead of returning a misleading empty page.
+      for (let batch = 0; batch < 10 && result.length < 20; batch++) {
+        const rows = await c.query<Row>(
+          `SELECT m.id,to_char(m.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_at
+          FROM notification_messages m JOIN notification_source_events s ON s.id=m.source_id
+          WHERE m.user_id=$1 AND s.due_at<=clock_timestamp() AND s.expires_at>clock_timestamp()
+          ${after ? 'AND (m.created_at,m.id)<($2::timestamptz,$3::uuid)' : ''}
+          ORDER BY m.created_at DESC,m.id DESC LIMIT 21`,
+          after ? [a.user.id, after.at, after.id] : [a.user.id],
+        );
+        hasMore = false;
+        for (let index = 0; index < Math.min(20, rows.rows.length); index++) {
+          const row = rows.rows[index]!;
+          last = row;
+          const v = await this.message(c, a.user.id, row.id);
+          if (v)
+            result.push(
+              this.dto(v.row, v.source, ['FAILED', 'UNKNOWN'].includes(v.row.delivery_state)),
+            );
+          hasMore = index + 1 < rows.rows.length;
+          if (result.length === 20) break;
+        }
+        if (!hasMore || !last) break;
+        after = { at: last.cursor_at, id: last.id };
       }
-      const last = rows.rows.slice(0, 20).at(-1);
       await this.ensureFreshSession(c, a);
       return {
         items: result,
         nextCursor:
-          rows.rows.length > 20 && last
-            ? Buffer.from(JSON.stringify([iso(last.created_at), last.id])).toString('base64url')
+          hasMore && last
+            ? Buffer.from(JSON.stringify([last.cursor_at, last.id])).toString('base64url')
             : null,
       };
     });
@@ -602,7 +623,7 @@ export class NotificationService extends ApplicationService {
       [userId, id, action, hash, response],
     );
   }
-  private async cancelDelivery(c: PoolClient, id: string) {
+  private async cancelDelivery(c: PoolClient, id: string, reason = 'SOURCE_UNAVAILABLE') {
     const d = (
       await c.query<Row>('SELECT * FROM notification_deliveries WHERE id=$1 FOR UPDATE', [id])
     ).rows[0];
@@ -618,8 +639,8 @@ export class NotificationService extends ApplicationService {
       );
     }
     await c.query(
-      "UPDATE notification_deliveries SET state='CANCELLED',last_reason='SOURCE_UNAVAILABLE',updated_at=clock_timestamp() WHERE id=$1",
-      [id],
+      "UPDATE notification_deliveries SET state='CANCELLED',last_reason=$2,updated_at=clock_timestamp() WHERE id=$1",
+      [id, reason],
     );
   }
   /** Transaction hooks owned by root call these with business IDs, never user-authored text. */
@@ -666,7 +687,7 @@ export class NotificationService extends ApplicationService {
     if (sourceId !== undefined) resourceId(sourceId);
     const sources = await this.pool.query<Row>(
       `SELECT s.* FROM notification_source_events s JOIN notification_fanout_state f ON f.source_id=s.id
-      WHERE f.done=false AND s.due_at<=clock_timestamp() ${sourceId === undefined ? '' : 'AND s.id=$1'} ORDER BY s.due_at,s.id LIMIT 10`,
+      WHERE f.done=false AND s.due_at<=clock_timestamp() ${sourceId === undefined ? '' : 'AND s.id=$1'} ORDER BY f.updated_at,s.id LIMIT 10`,
       sourceId === undefined ? [] : [sourceId],
     );
     for (const raw of sources.rows)
@@ -714,6 +735,83 @@ export class NotificationService extends ApplicationService {
         await c.query(
           'UPDATE notification_fanout_state SET cursor_user_id=COALESCE($2,cursor_user_id),done=$3,updated_at=clock_timestamp() WHERE source_id=$1',
           [raw.id, users.at(-1) ?? null, users.length < 100],
+        );
+      });
+  }
+  /** Inspect a bounded rotating page without consuming permission or calling a provider. */
+  private async inspectPending(sourceId?: string) {
+    const rows = await this.pool.query<Row>(
+      `SELECT d.id,m.user_id,d.message_id FROM notification_deliveries d JOIN notification_messages m ON m.id=d.message_id
+      JOIN notification_source_events s ON s.id=m.source_id
+      WHERE d.state IN('WAITING_PERMISSION','PENDING') AND d.next_attempt_at<=clock_timestamp()
+      AND (s.kind<>'MATCH_STARTING' OR s.due_at=s.expires_at-make_interval(mins=>$2) OR s.expires_at<=clock_timestamp())
+      AND ($1::uuid IS NULL OR m.source_id=$1) ORDER BY d.updated_at,d.id LIMIT 20`,
+      [sourceId ?? null, this.leadMinutes],
+    );
+    for (const row of rows.rows)
+      await this.transaction(async (c) => {
+        await c.query('SELECT pg_advisory_xact_lock_shared(hashtextextended($1,0))', [
+          'scb-account-maintenance:' + row.user_id,
+        ]);
+        const user = (
+          await c.query<Row>('SELECT id,status FROM users WHERE id=$1 FOR SHARE', [row.user_id])
+        ).rows[0];
+        await this.settingsLock(c, row.user_id);
+        const current =
+          user?.status === 'ACTIVE' ? await this.message(c, row.user_id, row.message_id) : null;
+        const delivery = (
+          await c.query<Row>(
+            'SELECT *,next_attempt_at<=clock_timestamp() AS due FROM notification_deliveries WHERE id=$1 FOR UPDATE',
+            [row.id],
+          )
+        ).rows[0];
+        if (
+          !delivery ||
+          !['WAITING_PERMISSION', 'PENDING'].includes(delivery.state) ||
+          !delivery.due
+        )
+          return;
+        if (user?.status === 'ACTIVE' && delivery.grant_id) {
+          const foreign = (
+            await c.query<{ owned_elsewhere: boolean }>(
+              `SELECT EXISTS(SELECT 1 FROM notification_subscription_grants g JOIN wechat_identities i ON i.id=g.identity_id
+             JOIN notification_messages m ON m.id=$1 JOIN notification_source_events s ON s.id=m.source_id
+             WHERE g.id=$2 AND g.user_id=m.user_id AND g.kind=s.kind AND g.status='RESERVED'
+             AND g.configuration_hash<>$3 AND g.target_cipher IS NOT NULL AND i.user_id=g.user_id
+             AND i.version=g.identity_version AND i.status='ACTIVE' AND s.expires_at>clock_timestamp()) AS owned_elsewhere`,
+              [row.message_id, delivery.grant_id, this.configurationHash],
+            )
+          ).rows[0]?.owned_elsewhere;
+          if (foreign) {
+            await c.query(
+              'UPDATE notification_deliveries SET updated_at=clock_timestamp() WHERE id=$1',
+              [row.id],
+            );
+            return;
+          }
+        }
+        if (!current) {
+          await this.cancelDelivery(c, row.id);
+          return;
+        }
+        const ready = (
+          await c.query<{ ready: boolean }>(
+            `SELECT ${CURRENT_GRANT_SQL} AS ready
+       FROM notification_deliveries d JOIN notification_messages m ON m.id=d.message_id
+       JOIN notification_source_events s ON s.id=m.source_id WHERE d.id=$1`,
+            [row.id, this.configurationHash, this.notifications.appId ?? ''],
+          )
+        ).rows[0]?.ready;
+        if (ready) return;
+        if (delivery.grant_id) {
+          await this.cancelDelivery(c, row.id, 'IDENTITY_UNAVAILABLE');
+          return;
+        }
+        // Rotate inspection independently of send eligibility. In particular, a process with
+        // WeChat disabled cannot defer work that another current configuration can send.
+        await c.query(
+          'UPDATE notification_deliveries SET updated_at=clock_timestamp() WHERE id=$1',
+          [row.id],
         );
       });
   }
@@ -928,12 +1026,26 @@ export class NotificationService extends ApplicationService {
       if (sourceId === undefined) await this.scheduleStarts();
       await this.fanout(sourceId);
       await this.recoverExpiredLeases(sourceId);
+      await this.inspectPending(sourceId);
       if (!this.key || !this.notifications.provider) return;
       const rows = await this.pool.query<{ id: string }>(
-        `SELECT d.id FROM notification_deliveries d JOIN notification_messages m ON m.id=d.message_id
-        WHERE d.state IN('WAITING_PERMISSION','PENDING') AND d.next_attempt_at<=clock_timestamp()
-        ${sourceId === undefined ? '' : 'AND m.source_id=$1'} ORDER BY d.next_attempt_at,d.id LIMIT 20`,
-        sourceId === undefined ? [] : [sourceId],
+        `WITH candidates AS (
+          SELECT d.id,d.grant_id,d.next_attempt_at,
+          row_number() OVER(PARTITION BY m.user_id,s.kind,(d.grant_id IS NULL) ORDER BY d.next_attempt_at,d.id) AS permission_position
+          FROM notification_deliveries d JOIN notification_messages m ON m.id=d.message_id
+          JOIN notification_source_events s ON s.id=m.source_id JOIN users u ON u.id=m.user_id
+          WHERE d.state IN('WAITING_PERMISSION','PENDING') AND d.next_attempt_at<=clock_timestamp()
+          AND ($1::uuid IS NULL OR m.source_id=$1) AND u.status='ACTIVE'
+          AND (s.kind<>'MATCH_STARTING' OR s.due_at=s.expires_at-make_interval(mins=>$4))
+          AND s.due_at<=clock_timestamp() AND s.expires_at>clock_timestamp() AND ${CURRENT_GRANT_SQL}
+        ) SELECT id FROM candidates WHERE grant_id IS NOT NULL OR permission_position=1
+        ORDER BY next_attempt_at,id LIMIT 20`,
+        [
+          sourceId ?? null,
+          this.configurationHash,
+          this.notifications.appId ?? '',
+          this.leadMinutes,
+        ],
       );
       for (const row of rows.rows) {
         const claim = await this.claim(row.id);

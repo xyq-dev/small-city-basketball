@@ -8,20 +8,21 @@ import {
   assertExpansionQuarantineCounts,
 } from './expansion-recovery-check.mjs';
 
-test('all six checked-in expansion migrations map to exact recovery domains', async () => {
+test('all expansion migrations through 042 map to exact recovery domains', async () => {
   const inventory = await expansionInventory();
-  assert.equal(inventory.length, 48);
+  assert.equal(inventory.length, 49);
   assert.equal(new Set(inventory).size, inventory.length);
   assert.ok(inventory.includes('insurance_policy_facts'));
   assert.ok(inventory.includes('trade_settlement_returns'));
   assert.ok(inventory.includes('notification_start_scan'));
+  assert.ok(inventory.includes('youth_adult_data_consents'));
 });
 test('an omitted or newly introduced table cannot silently escape recovery acceptance', () => {
   const sql = Object.values(EXPANSION_DOMAINS)
     .flat()
     .map((name) => `CREATE TABLE ${name} (id uuid);`)
     .join('\n');
-  assert.equal(expansionTablesFromSql([sql]).length, 48);
+  assert.equal(expansionTablesFromSql([sql]).length, 49);
   assert.throws(() =>
     expansionTablesFromSql([sql.replace('CREATE TABLE insurance_policy_facts (id uuid);', '')]),
   );
@@ -95,4 +96,11 @@ test('quarantine may append guardian revocation history but cannot erase rows or
   );
   assert.throws(() => assertExpansionQuarantineCounts(before, { ...before, poster_exports: 4 }));
   assert.throws(() => assertExpansionQuarantineCounts(before, { ...before, unchecked_extra: 1 }));
+});
+test('quarantine may only append adult withdrawal facts, never erase retained consent history', () => {
+  const before = { youth_adult_data_consents: 1, poster_exports: 3 };
+  assertExpansionQuarantineCounts(before, { youth_adult_data_consents: 2, poster_exports: 3 });
+  assert.throws(() =>
+    assertExpansionQuarantineCounts(before, { youth_adult_data_consents: 0, poster_exports: 3 }),
+  );
 });

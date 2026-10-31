@@ -44,6 +44,7 @@ export interface YouthFixtureOptions {
   reviewer: Actor;
   subjects: Actor[];
   birthDates: string[];
+  identitySequences?: number[];
   requireInsurance?: boolean;
   /** Reuse an already opened event for the second actual team in a freeze fixture. */
   registration?: EventRegistrationData;
@@ -153,7 +154,10 @@ export async function createYouthRosterFixture(
             clientRequestId: randomUUID(),
             expectedVersion: 0,
             realName: '合成参赛者' + (n + 1),
-            identityNumber: syntheticYouthIdentity(options.birthDates[n]!, n + 1),
+            identityNumber: syntheticYouthIdentity(
+              options.birthDates[n]!,
+              options.identitySequences?.[n] ?? n + 1,
+            ),
             portrait,
             acceptedTerms: true,
             publicityConsent: false,

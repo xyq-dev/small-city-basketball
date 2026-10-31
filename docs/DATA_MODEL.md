@@ -1,6 +1,6 @@
 # 数据模型与状态
 
-## EXPANSION8：036—041分支模型（尚未执行）
+## EXPANSION8：036—041分支模型（隔离首次执行成功，生产未执行）
 
 本轮48张新表，全链175表/117函数，旧001—035不修改。以下以实际DDL清单为准；首次成功执行后新迁移冻结，后续变更另加迁移。支付/退款/保单/停播外部事实与工作意图分开，不能用界面成功或过期令牌代替真实回执。
 
@@ -265,3 +265,8 @@ SE首轮比赛数n−nextPow2(n)/2，后轮只能精确同事务凭证追加全�
 `event_rulesets.require_participant_materials` 默认false，旧锁定规则不自动启用。新 `participant_materials` 按机构/赛事/entry/member关联当前本人binding、key-id、当前revision/status/version和独立宣传许可；`participant_material_revisions` 以不可变revision保存规则/名单/号码/实际terms_version、经过完整解码重编码的照片与外部保单事实，私有文字及文件全部进入资源AAD绑定的AES-GCM密文。身份查重为专用HMAC，当前有效reservation的账号/身份同届唯一；历史无效占用按event锁释放，旧回执不复活。
 
 原clientRequestId、请求patch指纹和旧revision永久保留为回执墓碑，私有密文仅在赛事归档/取消且结束超过90日、无legal_hold时由人工维护清除；没有自动任务。清除不得修改既有revision元数据或冻结参赛事实。冻结snapshot只新增材料revision引用，不包含证件/照片/保单。宣传撤回作用于head的独立权限事实，不撤销参赛审核。当前83表／24迁移，001–023未修改；运行权限、readiness、重启/恢复精确清单已同步，执行证据以任务卡为准。
+
+
+### E08 042 成年资料处理事实
+
+新增append-only `youth_adult_data_consents`，绑定actor及performed_by、org/event/team/entry/member/binding、当前material/revision、独立age_evidence_qualification、policy/terms与递增version；decision为CONSENT/WITHDRAW，cause为SELF/ACCOUNT_CLOSURE/RESTORE_QUARANTINE。不保存生日或身份明文，runtime仅SELECT/INSERT；本人同意必须performed_by=actor。注销与恢复隔离追加WITHDRAW，保留旧事实。年龄证据只授权处理资料，不代替当前参赛、保险、照片或公开资格。042尚待隔离数据库首次执行，036—041冻结校验保持。

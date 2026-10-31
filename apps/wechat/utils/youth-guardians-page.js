@@ -7,6 +7,7 @@ const form = () => ({
   guardianUserId: '',
   declaredYouth: false,
   acceptedDataProcessing: false,
+  adultAcceptedDataProcessing: false,
   acceptedTerms: false,
   publicityConsent: false,
   archiveConsent: false,
@@ -24,6 +25,8 @@ function createPage(review = false) {
       hasMaterialScope: false,
       requests: [],
       preconsents: [],
+      adultDataScopes: [],
+      adultSelected: null,
       selected: null,
       policy: null,
       form: form(),
@@ -85,11 +88,14 @@ function createPage(review = false) {
     },
     clearPrivate() {
       this._selected = null;
+      this._adultSelected = null;
       this._chosen = null;
       this._pending = null;
       this.setData({
         requests: [],
         preconsents: [],
+        adultDataScopes: [],
+        adultSelected: null,
         selected: null,
         policy: null,
         privateDetails: null,
@@ -185,6 +191,15 @@ function createPage(review = false) {
             : more
               ? this.data.preconsents.concat(value.preconsents)
               : value.preconsents,
+          adultDataScopes: review
+            ? []
+            : more
+              ? this.data.adultDataScopes.concat(
+                  value.adultDataScopes.filter(
+                    (scope) => !this.data.adultDataScopes.some((prior) => prior.key === scope.key),
+                  ),
+                )
+              : value.adultDataScopes,
           nextCursor: value.nextCursor,
           loginRequired: false,
         });
@@ -233,6 +248,7 @@ function createPage(review = false) {
         [
           'declaredYouth',
           'acceptedDataProcessing',
+          'adultAcceptedDataProcessing',
           'acceptedTerms',
           'publicityConsent',
           'archiveConsent',
@@ -287,6 +303,78 @@ function createPage(review = false) {
       } catch (error) {
         if (ui.live(this, token)) this.setData({ error: ui.message(error) });
       }
+    },
+    async adultSelect(e) {
+      if (review || this.data.busy || this.data.loading || this.data.pending) return;
+      const chosen = this.data.adultDataScopes.find(
+        (scope) => scope.key === e.currentTarget.dataset.key,
+      );
+      if (!chosen) return;
+      const token = ui.hold(this);
+      this._adultSelected = null;
+      this.setData({
+        busy: true,
+        adultSelected: null,
+        'form.adultAcceptedDataProcessing': false,
+        error: '',
+      });
+      try {
+        if (!(await this.actor(token))) return;
+        const current = await this.repo().adultCapability(chosen);
+        if (ui.held(this, token) && this._visible) {
+          this._adultSelected = current;
+          this.setData({ adultSelected: current });
+        }
+      } catch (error) {
+        if (ui.held(this, token)) this.setData({ error: ui.message(error) });
+      } finally {
+        if (ui.held(this, token)) this.setData({ busy: false });
+      }
+    },
+    adultDataCommand(e) {
+      if (review || this.data.busy || this.data.loading || this.data.pending) return;
+      const scope = this._adultSelected,
+        decision = e.currentTarget.dataset.decision;
+      if (
+        !scope ||
+        !['CONSENT', 'WITHDRAW'].includes(decision) ||
+        (decision === 'CONSENT' && !scope.canConsent) ||
+        (decision === 'WITHDRAW' && !scope.canWithdraw)
+      )
+        return;
+      if (decision === 'CONSENT' && !this.data.form.adultAcceptedDataProcessing) {
+        this.setData({ error: '请本人阅读并明确同意当前资料处理内容。' });
+        return;
+      }
+      return this.mutate(
+        decision === 'CONSENT' ? '本人重新同意当前资料处理' : '撤回本人资料处理同意',
+        decision === 'CONSENT'
+          ? '仅重新确认本届当前材料的必要私有处理。成年状态由受保护的独立核验资料和服务器当前日期确认；本次不会恢复原有公开用途，也不代表参赛或保险审核通过。'
+          : '停止基于本次本人同意的后续资料处理，保留必要历史记录。本次撤回不需要重新提交身份证或关系证明。',
+        async () => {
+          if (
+            this._adultSelected !== scope ||
+            (decision === 'CONSENT' && !this.data.form.adultAcceptedDataProcessing)
+          )
+            return null;
+          return {
+            entryId: scope.entryId,
+            memberId: scope.memberId,
+            expectedAdultVersion: scope.expectedAdultVersion,
+            decision,
+            ...(decision === 'CONSENT'
+              ? {
+                  expectedMaterialVersion: scope.expectedMaterialVersion,
+                  expectedPolicyVersion: scope.policyVersion,
+                  evidenceQualificationId: scope.evidenceQualificationId,
+                  acceptedDataProcessing: true,
+                  termsVersion: scope.termsVersion,
+                }
+              : {}),
+          };
+        },
+        (body) => this.repo().adultData(scope, body),
+      );
     },
     async mutate(title, content, makeBody, send) {
       if (this.data.busy || this.data.loading || this.data.pending) return;
@@ -346,6 +434,7 @@ function createPage(review = false) {
             'form.identityNumber': '',
             'form.realName': '',
             'form.relationshipExplanation': '',
+            'form.adultAcceptedDataProcessing': false,
             proofName: '',
           });
           if (reload) await this.load();

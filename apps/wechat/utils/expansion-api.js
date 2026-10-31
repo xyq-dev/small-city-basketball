@@ -53,6 +53,14 @@ function expansionPathAllowed(base, method, query, uuidPattern) {
   )
     return method === 'GET' && noQuery;
   if (match(event + '/youth-policy')) return ['GET', 'PUT'].includes(method) && noQuery;
+  if (match(event + '/youth-adult-data-consent'))
+    return (
+      (method === 'GET' &&
+        keys('entryId', 'memberId') &&
+        uuid(query.entryId) &&
+        uuid(query.memberId)) ||
+      (method === 'POST' && noQuery)
+    );
   if (
     match(event + '/youth-data-invitations') ||
     match('/v1/youth-data-invitations/' + uuidPattern + '/commands') ||

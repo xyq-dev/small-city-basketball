@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
+import {
+  createYouthAdultAgeReader,
+  readAdultSelfDataConsent,
+  withdrawAdultDataForClosure,
+} from './youth-adult-data-consent.js';
+import type { YouthAdultAgeReader } from './youth-adult-data-consent.js';
 import type {
   YouthEligibility,
   YouthEntryEligibility,
@@ -41,6 +47,8 @@ export interface YouthDataConsentInput {
   eventId: string;
   userId: string;
   forceRequired?: boolean;
+  entryId?: string;
+  memberId?: string;
 }
 export interface YouthDataConsent {
   required: boolean;
@@ -49,11 +57,13 @@ export interface YouthDataConsent {
   guardianUserId: string | null;
   version: number | null;
   blockers: string[];
+  adultConsentId?: string;
 }
 /** Prior to child identity/portrait collection. Required youth/<14 collection cannot be exempted by event settings. */
 export async function readYouthDataProcessingConsent(
   c: PoolClient,
   input: YouthDataConsentInput,
+  adultReader?: YouthAdultAgeReader,
 ): Promise<YouthDataConsent> {
   const policy = (
     await c.query('SELECT * FROM youth_event_policies WHERE org_id=$1 AND event_id=$2', [
@@ -62,10 +72,53 @@ export async function readYouthDataProcessingConsent(
     ])
   ).rows[0];
   const empty = { preconsentId: null, guardianUserId: null, version: null };
-  if (!policy?.enabled && !input.forceRequired)
+  const declared = Boolean(
+    (
+      await c.query(
+        'SELECT 1 FROM youth_guardian_preconsents WHERE org_id=$1 AND event_id=$2 AND subject_user_id=$3 LIMIT 1',
+        [input.orgId, input.eventId, input.userId],
+      )
+    ).rowCount,
+  );
+  if (!input.forceRequired && !declared)
     return { required: false, ready: true, ...empty, blockers: [] };
   if (!policy?.enabled)
     return { required: true, ready: false, ...empty, blockers: ['YOUTH_POLICY_REQUIRED'] };
+  if (!input.forceRequired && (!input.entryId || !input.memberId)) {
+    const scoped = (
+      await c.query(
+        'SELECT 1 FROM youth_adult_data_consents WHERE actor_id=$1 AND org_id=$2 AND event_id=$3 LIMIT 1',
+        [input.userId, input.orgId, input.eventId],
+      )
+    ).rowCount;
+    if (scoped)
+      return {
+        required: true,
+        ready: false,
+        ...empty,
+        blockers: ['YOUTH_ADULT_DATA_SCOPE_REQUIRED'],
+      };
+  }
+  if (!input.forceRequired) {
+    const adult = await readAdultSelfDataConsent(c, input, policy.version, adultReader);
+    if (adult)
+      return { required: true, ready: true, ...empty, blockers: [], adultConsentId: adult.id };
+  }
+  if (!input.forceRequired && input.entryId && input.memberId) {
+    const previous = (
+      await c.query(
+        'SELECT decision FROM youth_adult_data_consents WHERE actor_id=$1 AND org_id=$2 AND event_id=$3 AND entry_id=$4 AND member_id=$5 ORDER BY version DESC LIMIT 1',
+        [input.userId, input.orgId, input.eventId, input.entryId, input.memberId],
+      )
+    ).rows[0];
+    if (previous)
+      return {
+        required: true,
+        ready: false,
+        ...empty,
+        blockers: ['YOUTH_ADULT_DATA_CONSENT_RENEWAL_REQUIRED'],
+      };
+  }
   const r = (
     await c.query(
       `SELECT p.*,su.status AS subject_status,gu.status AS guardian_status FROM youth_guardian_preconsents p JOIN users su ON su.id=p.subject_user_id JOIN users gu ON gu.id=p.guardian_user_id WHERE p.org_id=$1 AND p.event_id=$2 AND p.subject_user_id=$3 AND p.status='CONSENTED' ORDER BY p.created_at DESC,p.id DESC LIMIT 1`,
@@ -94,6 +147,13 @@ export async function readYouthDataProcessingConsent(
     version: r.version,
     blockers: [],
   };
+}
+
+/** Inject this same closure into C23, E03 and qualification; the special age reader never grants those domains eligibility. */
+export function createYouthDataConsentGuard(participantDataKey?: string) {
+  const reader = participantDataKey ? createYouthAdultAgeReader(participantDataKey) : undefined;
+  return (c: PoolClient, input: YouthDataConsentInput) =>
+    readYouthDataProcessingConsent(c, input, reader);
 }
 
 /** Caller holds the existing event lock. Never use a frozen historical consent as a current grant. */
@@ -283,5 +343,6 @@ export async function revokeYouthForClosure(c: PoolClient, userId: string): Prom
     );
     count++;
   }
+  count += await withdrawAdultDataForClosure(c, userId);
   return count;
 }

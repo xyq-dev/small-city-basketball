@@ -37,12 +37,30 @@ const row = (patch = {}) => ({
   capabilities: { canConfirm: true, canReview: false, canWithdraw: true, canReadProof: false },
   ...patch,
 });
+const adultScope = (patch = {}) => ({
+  orgId: org,
+  eventId: event,
+  eventName: '合成成年本人资料',
+  entryId: entry,
+  memberId: member,
+  expectedMaterialVersion: 4,
+  expectedAdultVersion: 0,
+  policyVersion: 1,
+  evidenceQualificationId: id(14),
+  termsVersion: 'youth-adult-data-processing-v1',
+  canConsent: true,
+  canWithdraw: false,
+  lastDecision: null,
+  blocker: '',
+  ...patch,
+});
 function setup({
   review = false,
   current = row(),
   custom,
   storage = new Map(),
   answers = [true, true],
+  adultScopes = [],
 } = {}) {
   const wx = createWx({ storage, modalAnswers: answers }),
     calls = [];
@@ -81,7 +99,23 @@ function setup({
           },
         };
       if (p.startsWith('/v1/me/youth-guardians'))
-        return { data: { requests: [current], preconsents: [], nextCursor: null } };
+        return {
+          data: {
+            requests: [current],
+            preconsents: [],
+            adultDataScopes: adultScopes,
+            nextCursor: null,
+          },
+        };
+      if (p.includes('/youth-adult-data-consent') && method === 'GET') {
+        const url = new URL('https://synthetic.invalid' + p);
+        const match = adultScopes.find(
+          (s) =>
+            s.entryId === url.searchParams.get('entryId') &&
+            s.memberId === url.searchParams.get('memberId'),
+        );
+        if (match) return { data: match };
+      }
       if (p.startsWith('/v1/orgs/') && p.includes('/youth-guardian-requests'))
         return { data: { requests: [current], nextCursor: null } };
       if (p === '/v1/youth-guardian-requests/' + request) return { data: current };
@@ -264,4 +298,222 @@ test('actual guardian and reviewer templates render capability-limited controls 
     assert.equal(h.page.data.identityChecked, false);
     assert.equal(h.page.data.relationshipChecked, false);
   }
+});
+
+test('adult processing capabilities expose only minimal scope and keep explicit self consent unselected', async () => {
+  const h = setup({
+    adultScopes: [
+      adultScope({
+        birthDate: 'SYNTHETIC_PRIVATE_BIRTH',
+        identityNumber: 'SYNTHETIC_PRIVATE_ID',
+        payload: { base64: 'SYNTHETIC_PRIVATE_BYTES' },
+      }),
+    ],
+  });
+  await h.page.load();
+  assert.equal(h.page.data.form.adultAcceptedDataProcessing, false);
+  assert.equal(h.page.data.adultDataScopes.length, 1);
+  const selected = h.page.data.adultDataScopes[0];
+  await h.page.adultSelect(tap({ key: selected.key }));
+  assert.equal(h.page.data.adultSelected.entryId, entry);
+  assert.equal(h.page.data.form.adultAcceptedDataProcessing, false);
+  for (const secret of [
+    'SYNTHETIC_PRIVATE_BIRTH',
+    'SYNTHETIC_PRIVATE_ID',
+    'SYNTHETIC_PRIVATE_BYTES',
+  ])
+    assert.equal(JSON.stringify(h.page.data).includes(secret), false);
+  await h.page.adultDataCommand(tap({ decision: 'CONSENT' }));
+  assert.equal(
+    h.calls.some((c) => c.method === 'POST'),
+    false,
+  );
+  assert.match(h.page.data.error, /明确同意/);
+});
+
+test('a client age declaration cannot turn a blocked adult capability into permission', async () => {
+  const h = setup({
+    adultScopes: [adultScope()],
+    custom: (p, method) =>
+      p.includes('/youth-adult-data-consent') && method === 'GET'
+        ? adultScope({
+            canConsent: false,
+            evidenceQualificationId: null,
+            blocker: '合成独立身份复核待完成',
+          })
+        : undefined,
+  });
+  await h.page.load();
+  await h.page.adultSelect(tap({ key: h.page.data.adultDataScopes[0].key }));
+  h.page.field(tap({ field: 'age' }, '18'));
+  h.page.field(tap({ field: 'birthDate' }, '2000-01-01'));
+  h.page.checkbox(tap({ field: 'adultAcceptedDataProcessing' }, ['yes']));
+  await h.page.adultDataCommand(tap({ decision: 'CONSENT' }));
+  assert.equal(
+    h.calls.some((c) => c.method === 'POST'),
+    false,
+  );
+  assert.equal(Object.hasOwn(h.page.data.form, 'age'), false);
+  assert.equal(Object.hasOwn(h.page.data.form, 'birthDate'), false);
+});
+
+test('adult self consent posts the exact current material, policy and independent evidence without reopening public purposes', async () => {
+  const h = setup({
+    adultScopes: [adultScope()],
+    custom: (p, method) =>
+      p.includes('/youth-adult-data-consent') && method === 'GET'
+        ? adultScope({
+            expectedMaterialVersion: 5,
+            expectedAdultVersion: 1,
+            policyVersion: 2,
+            evidenceQualificationId: id(15),
+          })
+        : method === 'POST' && p.endsWith('/youth-adult-data-consent')
+          ? { adultConsentId: id(20), version: 2, decision: 'CONSENT' }
+          : undefined,
+  });
+  await h.page.load();
+  await h.page.adultSelect(tap({ key: h.page.data.adultDataScopes[0].key }));
+  h.page.checkbox(tap({ field: 'adultAcceptedDataProcessing' }, ['yes']));
+  await h.page.adultDataCommand(tap({ decision: 'CONSENT' }));
+  const posted = h.calls.filter((c) => c.method === 'POST');
+  assert.equal(posted.length, 1);
+  const { clientRequestId, ...body } = posted[0].body;
+  assert.match(clientRequestId, /^[a-f0-9-]{36}$/);
+  assert.deepEqual(body, {
+    entryId: entry,
+    memberId: member,
+    expectedAdultVersion: 1,
+    decision: 'CONSENT',
+    expectedMaterialVersion: 5,
+    expectedPolicyVersion: 2,
+    evidenceQualificationId: id(15),
+    acceptedDataProcessing: true,
+    termsVersion: 'youth-adult-data-processing-v1',
+  });
+  assert.equal(h.page.data.form.adultAcceptedDataProcessing, false);
+  assert.equal(h.page.data.form.publicityConsent, false);
+  assert.equal(h.page.data.form.archiveConsent, false);
+  assert.equal(h.page.data.form.liveConsent, false);
+  assert.equal(h.wx.storage.size, 0);
+});
+
+test('adult withdrawal needs no age evidence, key or consent checkbox and unknown outcomes preserve IDs only', async () => {
+  let sent = 0;
+  const h = setup({
+    adultScopes: [
+      adultScope({
+        canConsent: false,
+        canWithdraw: true,
+        lastDecision: 'CONSENT',
+        expectedAdultVersion: 3,
+        evidenceQualificationId: null,
+        blocker: '合成私有证明暂不可读',
+      }),
+    ],
+    custom: (p, method) => {
+      if (method === 'POST' && p.endsWith('/youth-adult-data-consent')) {
+        sent++;
+        throw new Error('synthetic unknown adult withdrawal');
+      }
+    },
+  });
+  await h.page.load();
+  await h.page.adultSelect(tap({ key: h.page.data.adultDataScopes[0].key }));
+  assert.equal(h.page.data.form.adultAcceptedDataProcessing, false);
+  await h.page.adultDataCommand(tap({ decision: 'WITHDRAW' }));
+  assert.equal(sent, 1);
+  const posted = h.calls.find((c) => c.method === 'POST');
+  const { clientRequestId, ...body } = posted.body;
+  assert.deepEqual(body, {
+    entryId: entry,
+    memberId: member,
+    expectedAdultVersion: 3,
+    decision: 'WITHDRAW',
+  });
+  assert.equal(h.page.data.pending, true);
+  const stored = [...h.wx.storage.values()];
+  assert.equal(stored.length, 1);
+  assert.deepEqual(Object.keys(stored[0]).sort(), ['clientRequestId', 'userId']);
+  assert.equal(stored[0].clientRequestId, clientRequestId);
+  await h.page.adultDataCommand(tap({ decision: 'WITHDRAW' }));
+  assert.equal(sent, 1);
+});
+
+test('an account change while an adult command waits for a secure ID prevents the write and clears its capability', async () => {
+  const h = setup({ adultScopes: [adultScope()] });
+  await h.page.load();
+  await h.page.adultSelect(tap({ key: h.page.data.adultDataScopes[0].key }));
+  h.page.checkbox(tap({ field: 'adultAcceptedDataProcessing' }, ['yes']));
+  let random;
+  h.wx.getRandomValues = (o) => {
+    random = o;
+  };
+  const pending = h.page.adultDataCommand(tap({ decision: 'CONSENT' }));
+  await ticks();
+  assert.ok(random);
+  h.changeAccount(id(21));
+  random.success({ randomValues: new Uint8Array(16).buffer });
+  await pending;
+  assert.equal(
+    h.calls.some((c) => c.method === 'POST'),
+    false,
+  );
+  assert.equal(h.wx.storage.size, 0);
+  assert.equal(h.page.data.adultSelected, null);
+  assert.deepEqual(h.page.data.adultDataScopes, []);
+  assert.equal(h.page.data.form.adultAcceptedDataProcessing, false);
+});
+
+test('a late adult capability read after account change cannot restore the previous actor scope', async () => {
+  let resolve;
+  const h = setup({
+    adultScopes: [adultScope()],
+    custom: (p, method) =>
+      p.includes('/youth-adult-data-consent') && method === 'GET'
+        ? new Promise((r) => {
+            resolve = r;
+          })
+        : undefined,
+  });
+  await h.page.load();
+  const pending = h.page.adultSelect(tap({ key: h.page.data.adultDataScopes[0].key }));
+  await ticks();
+  assert.ok(resolve);
+  h.changeAccount(id(22));
+  resolve(adultScope());
+  await pending;
+  assert.equal(h.page.data.adultSelected, null);
+  assert.deepEqual(h.page.data.adultDataScopes, []);
+});
+
+test('an adult capability response for another entry is rejected before any mutation', async () => {
+  const h = setup({
+    adultScopes: [adultScope()],
+    custom: (p, method) =>
+      p.includes('/youth-adult-data-consent') && method === 'GET'
+        ? adultScope({ entryId: id(23) })
+        : undefined,
+  });
+  await h.page.load();
+  await h.page.adultSelect(tap({ key: h.page.data.adultDataScopes[0].key }));
+  assert.equal(h.page.data.adultSelected, null);
+  assert.match(h.page.data.error, /返回不完整/);
+  assert.equal(
+    h.calls.some((c) => c.method === 'POST'),
+    false,
+  );
+});
+
+test('independent review pages never start a personal adult-processing command', async () => {
+  const h = setup({ review: true, adultScopes: [adultScope()] });
+  await h.page.load();
+  assert.deepEqual(h.page.data.adultDataScopes, []);
+  h.page._adultSelected = adultScope();
+  h.page.setData({ 'form.adultAcceptedDataProcessing': true });
+  await h.page.adultDataCommand(tap({ decision: 'CONSENT' }));
+  assert.equal(
+    h.calls.some((c) => c.method === 'POST'),
+    false,
+  );
 });

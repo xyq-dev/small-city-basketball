@@ -18,7 +18,7 @@ import {
 } from './qualification-precheck-service.js';
 import { YouthGuardiansService } from './youth-guardians-service.js';
 import {
-  readYouthDataProcessingConsent,
+  createYouthDataConsentGuard,
   readYouthEligibility,
   revokeYouthForClosure,
 } from './youth-guardians-eligibility.js';
@@ -41,7 +41,7 @@ export async function createExpansionServices(
   input: ExpansionOptions,
   wechat: WechatService,
 ) {
-  const dataConsentGuard = readYouthDataProcessingConsent;
+  const dataConsentGuard = createYouthDataConsentGuard(options.participantDataKey);
   const workerOptions = options.backgroundWorkersEnabled === false ? { autoDispatch: false } : {};
   const qualificationOptions = { dataConsentGuard };
   const reader = options.participantDataKey

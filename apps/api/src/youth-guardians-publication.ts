@@ -5,7 +5,7 @@ import type {
 } from '../../../packages/contracts/youth-guardians.js';
 import { createYouthQualificationReader } from './qualification-precheck-service.js';
 import {
-  readYouthDataProcessingConsent,
+  createYouthDataConsentGuard,
   readYouthEligibility,
 } from './youth-guardians-eligibility.js';
 import type { YouthQualificationReader } from './youth-guardians-eligibility.js';
@@ -63,7 +63,7 @@ export function createYouthPublicationGuard(
     if (!reader) {
       if (!participantDataKey) return denied('YOUTH_QUALIFICATION_UNAVAILABLE');
       reader = createYouthQualificationReader(participantDataKey, {
-        dataConsentGuard: readYouthDataProcessingConsent,
+        dataConsentGuard: createYouthDataConsentGuard(participantDataKey),
       });
     }
     const entry = (

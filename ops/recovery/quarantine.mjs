@@ -4,6 +4,12 @@ import { loadManifest } from '../db/privileges.mjs';
 import { quoteIdentifier } from '../db/common.mjs';
 
 const REASON = 'ISOLATED_RESTORE_QUARANTINE';
+// Kept byte-for-byte with the domain contract; tested without importing API runtime modules.
+const ADULT_DATA_CONSENTS_WITHDRAW_SQL = `WITH latest AS MATERIALIZED (
+ SELECT DISTINCT ON(actor_id,org_id,event_id,entry_id,member_id) * FROM youth_adult_data_consents
+ ORDER BY actor_id,org_id,event_id,entry_id,member_id,version DESC
+) INSERT INTO youth_adult_data_consents(id,actor_id,performed_by,client_request_id,org_id,event_id,team_id,entry_id,member_id,binding_id,material_id,material_revision_id,age_evidence_qualification_id,policy_version,terms_version,material_version,version,decision,cause)
+ SELECT gen_random_uuid(),actor_id,$1::uuid,gen_random_uuid(),org_id,event_id,team_id,entry_id,member_id,binding_id,material_id,material_revision_id,age_evidence_qualification_id,policy_version,terms_version,material_version,version+1,'WITHDRAW','RESTORE_QUARANTINE' FROM latest WHERE decision='CONSENT' RETURNING id`;
 // Explicit minimum for the newly added writers, even when an older manifest is supplied.
 // The full current manifest still locks every source/history table before any mutation.
 const EXPANSION_TABLES = [
@@ -31,6 +37,7 @@ const EXPANSION_TABLES = [
   'youth_guardian_preconsents',
   'youth_guardian_history',
   'youth_preconsent_history',
+  'youth_adult_data_consents',
 ];
 
 /** Close restored credentials only in a newly created, receipt-owned restore database. */
@@ -302,6 +309,7 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
         `INSERT INTO youth_preconsent_history(id,preconsent_id,version,actor_id,action) VALUES($1,$2,$3,$4,'WITHDRAW')`,
         [randomUUID(), r.id, r.version, systemUserId],
       );
+    const adultDataConsents = await client.query(ADULT_DATA_CONSENTS_WITHDRAW_SQL, [systemUserId]);
     const localListings = await client.query(
       `UPDATE local_listings SET status='SUSPENDED',published=false,version=version+1,updated_at=$1::timestamptz WHERE status<>'SUSPENDED' OR published`,
       [now],
@@ -416,6 +424,7 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
       closureAuthorizationsExpired: closureRequests.rowCount,
       guardianConsentsWithdrawn: guardians.rowCount,
       guardianDataConsentsWithdrawn: preconsents.rowCount,
+      adultDataConsentsWithdrawn: adultDataConsents.rowCount,
       localListingsSuspended: localListings.rowCount,
       localSlotsClosed: localSlots.rowCount,
       localBookingsQuarantined: localBookings.rowCount,

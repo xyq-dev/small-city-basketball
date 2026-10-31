@@ -1,4 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { Pool } from 'pg';
 import { loadManifest, assertMigrationManifestSurface } from '../ops/db/privileges.mjs';
 
@@ -16,6 +17,21 @@ if (
   )
 )
   throw Error('Migration sequence is incomplete or ambiguous');
+const frozen = JSON.parse(
+  await readFile(
+    new URL('../docs/tasks/EXPANSION8_FROZEN_MIGRATIONS.json', import.meta.url),
+    'utf8',
+  ),
+);
+for (const [name, checksum] of Object.entries(frozen.migrations)) {
+  if (
+    !names.includes(name) ||
+    createHash('sha256')
+      .update(await readFile(new URL(name, directory)))
+      .digest('hex') !== checksum
+  )
+    throw Error('Frozen migration checksum changed: ' + name);
+}
 const surface = assertMigrationManifestSurface(
   await loadManifest(),
   await Promise.all(

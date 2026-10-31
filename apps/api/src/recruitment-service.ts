@@ -808,7 +808,7 @@ export class RecruitmentService extends ApplicationService {
         });
         const row = (
           await c.query<Row>(
-            "INSERT INTO event_team_import_previews(id,org_id,event_id,actor_id,event_version,preview_hash,rows,issues,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,clock_timestamp()+interval '30 minutes') RETURNING *",
+            "INSERT INTO event_team_import_previews(id,org_id,event_id,actor_id,event_version,preview_hash,rows,issues,created_at,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,statement_timestamp(),statement_timestamp()+interval '30 minutes') RETURNING *",
             [
               id,
               a.orgId,

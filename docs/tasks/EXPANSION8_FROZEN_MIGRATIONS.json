@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "evidence": {
+    "runId": 41182154976,
+    "jobId": 124481591194,
+    "commit": "778dffa425818081ff91bb761d65e1b66335d125",
+    "stage": "Verify complete isolated migration chain before running dependent suites",
+    "conclusion": "success"
+  },
+  "migrations": {
+    "036_e01_streaming_media.sql": "1361767a08249ffa92aa23a4d18a983aebcfb3d4f9ec80b14ef7031e205275c1",
+    "037_e03_insurance.sql": "a929002f7fab6162082235d6094d91d2a6bae0599d9f685f1881f743ded041d1",
+    "038_e04_trade.sql": "84c10923ec70d68ca907d0c66d9e6d2eb8ac7ab6dd1e8accada7b518571b0a07",
+    "039_e05_notifications.sql": "eb90c0a73e2fb2dd6eeb09744b50bf44ceff572331c6dcc5561cd219acc95e28",
+    "040_e07_account_closure.sql": "e53a49bfa1e4358cefedb08af9d401e85383f03af59cf1f9027fc70133ef00da",
+    "041_e08_youth_guardians.sql": "17ad2125031c4aeaae5a354a64dbda0e4fd69a7d1a443b1992e6f232c0bdd262"
+  }
+}

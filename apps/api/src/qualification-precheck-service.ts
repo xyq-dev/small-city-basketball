@@ -34,7 +34,14 @@ export interface YouthQualification {
 export interface QualificationOptions {
   dataConsentGuard?: (
     c: PoolClient,
-    input: { orgId: string; eventId: string; userId: string; forceRequired: boolean },
+    input: {
+      orgId: string;
+      eventId: string;
+      userId: string;
+      forceRequired: boolean;
+      entryId?: string;
+      memberId?: string;
+    },
   ) => Promise<{ ready: boolean }>;
 }
 export function qualificationBirthDate(identity: string): string {
@@ -60,7 +67,15 @@ export async function qualificationDataProcessingDate(c: PoolClient): Promise<st
 export async function qualificationDataConsentReady(
   c: PoolClient,
   options: QualificationOptions,
-  input: { orgId: string; eventId: string; userId: string; birthDate: string; policyDate: string },
+  input: {
+    orgId: string;
+    eventId: string;
+    userId: string;
+    birthDate: string;
+    policyDate: string;
+    entryId?: string;
+    memberId?: string;
+  },
 ): Promise<boolean> {
   const required = qualificationUnder14(input.birthDate, await qualificationDataProcessingDate(c));
   return options.dataConsentGuard
@@ -69,6 +84,8 @@ export async function qualificationDataConsentReady(
           orgId: input.orgId,
           eventId: input.eventId,
           userId: input.userId,
+          entryId: input.entryId,
+          memberId: input.memberId,
           forceRequired: required,
         })
       ).ready === true
@@ -236,6 +253,8 @@ export function createYouthQualificationReader(
         orgId: input.orgId,
         eventId: row.event_id,
         userId: row.user_id,
+        entryId: input.entryId,
+        memberId: input.memberId,
         birthDate: birth,
         policyDate: row.start_date,
       }))
@@ -434,6 +453,8 @@ export class QualificationPrecheckService extends ApplicationService {
           orgId: a.orgId,
           eventId: a.event.id,
           userId: row.user_id,
+          entryId: a.entryId,
+          memberId: member,
           birthDate: birth,
           policyDate: row.start_date,
         }))
@@ -603,6 +624,8 @@ export class QualificationPrecheckService extends ApplicationService {
           orgId: a.orgId,
           eventId: a.event.id,
           userId: row.user_id,
+          entryId: a.entryId,
+          memberId: member,
           birthDate: birth,
           policyDate: row.start_date,
         }))

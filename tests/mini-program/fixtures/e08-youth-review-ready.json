@@ -2,7 +2,7 @@
   "name": "e08-youth-review-ready",
   "route": "pages/youth-review/index",
   "state": "synthetic-populated",
-  "designSource": "E08 implemented independent-review native Page and WXML; explicit synthetic/static only; no real identity/evidence, legal determination or reviewer completion",
+  "designSource": "E08 implemented independent-review native Page and WXML; explicit synthetic/static only; no real identity/evidence, legal determination or reviewer completion; adult processing renewal capability is explicit synthetic/static data, not a real adulthood verification",
   "expectText": ["独立监护关系审核", "独立关系核验", "已核对必要关系证明"],
   "data": {
     "review": true,
@@ -85,7 +85,8 @@
       "realName": "",
       "identityNumber": "",
       "relationship": "PARENT",
-      "relationshipExplanation": ""
+      "relationshipExplanation": "",
+      "adultAcceptedDataProcessing": false
     },
     "proofName": "",
     "privateDetails": null,
@@ -100,6 +101,8 @@
     "nextCursor": null,
     "error": "",
     "message": "合成静态布局示例；审核勾选保持未选，私密资料保持隐藏。",
-    "loginRequired": false
+    "loginRequired": false,
+    "adultDataScopes": [],
+    "adultSelected": null
   }
 }

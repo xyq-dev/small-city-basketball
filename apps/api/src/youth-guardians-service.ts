@@ -40,10 +40,17 @@ import type {
   YouthQualificationReader,
 } from './youth-guardians-eligibility.js';
 
+import {
+  createYouthAdultAgeReader,
+  YOUTH_ADULT_DATA_TERMS,
+  appendAdultWithdrawal,
+} from './youth-adult-data-consent.js';
+import type { YouthAdultAgeReader } from './youth-adult-data-consent.js';
 type Row = Record<string, any>;
 type Context = { actor: Actor; orgId: string; event: Row; today: string };
 export interface YouthGuardianOptions extends ApiOptions {
   youthQualificationReader?: YouthQualificationReader;
+  youthAdultAgeReader?: YouthAdultAgeReader;
 }
 const iso = (v: Date | string | null) => (v ? new Date(v).toISOString() : null);
 const simpleHash = (value: unknown) =>
@@ -99,10 +106,14 @@ const nextCursor = (scope: string, row: Row | undefined) =>
 export class YouthGuardiansService extends ApplicationService {
   private readonly reader?: YouthQualificationReader;
   private readonly rawKey?: string;
+  private readonly adultAgeReader?: YouthAdultAgeReader;
   constructor(pool: Pool, options: YouthGuardianOptions) {
     super(pool, options);
     this.reader = options.youthQualificationReader;
     this.rawKey = options.participantDataKey;
+    this.adultAgeReader =
+      options.youthAdultAgeReader ??
+      (this.rawKey ? createYouthAdultAgeReader(this.rawKey) : undefined);
   }
   private key() {
     return participantKey(this.rawKey);
@@ -985,6 +996,201 @@ export class YouthGuardiansService extends ApplicationService {
       return value;
     });
   }
+  private async adultCapabilityIn(c: PoolClient, a: Context, entryId: string, memberId: string) {
+    const material = (
+      await c.query(
+        'SELECT id,version FROM participant_materials WHERE org_id=$1 AND event_id=$2 AND entry_id=$3 AND member_id=$4 AND user_id=$5',
+        [a.orgId, a.event.id, entryId, memberId, a.actor.user.id],
+      )
+    ).rows[0];
+    if (!material) throw notFound();
+    const policy = await this.policyRow(c, a),
+      declared = Boolean(
+        (
+          await c.query(
+            'SELECT 1 FROM youth_guardian_preconsents WHERE org_id=$1 AND event_id=$2 AND subject_user_id=$3 LIMIT 1',
+            [a.orgId, a.event.id, a.actor.user.id],
+          )
+        ).rowCount,
+      );
+    const fact = (
+      await c.query(
+        'SELECT * FROM youth_adult_data_consents WHERE actor_id=$1 AND org_id=$2 AND event_id=$3 AND entry_id=$4 AND member_id=$5 ORDER BY version DESC LIMIT 1',
+        [a.actor.user.id, a.orgId, a.event.id, entryId, memberId],
+      )
+    ).rows[0];
+    const age = this.adultAgeReader
+      ? await this.adultAgeReader(c, {
+          orgId: a.orgId,
+          eventId: a.event.id,
+          userId: a.actor.user.id,
+          entryId,
+          memberId,
+        })
+      : null;
+    return {
+      orgId: a.orgId,
+      eventId: a.event.id,
+      eventName: a.event.name,
+      entryId,
+      memberId,
+      expectedMaterialVersion: material.version,
+      expectedAdultVersion: fact?.version ?? 0,
+      policyVersion: policy?.version ?? 0,
+      evidenceQualificationId: age?.ageVerifiedAdult ? age.evidenceQualificationId : null,
+      termsVersion: YOUTH_ADULT_DATA_TERMS,
+      canConsent: Boolean(policy?.enabled && declared && age?.ageVerifiedAdult),
+      canWithdraw: fact?.decision === 'CONSENT',
+      lastDecision: fact?.decision ?? null,
+      blocker: age?.ageVerifiedAdult ? '' : '需要有权独立人员核实当前身份；不能通过自报年龄恢复。',
+    };
+  }
+  async adultCapability(cookie: string | undefined, org: string, event: string, raw: unknown) {
+    const b = objectInput(raw, ['entryId', 'memberId']),
+      entryId = youthId(b.entryId),
+      memberId = youthId(b.memberId);
+    return this.transaction(async (c) => {
+      const a = await this.context(c, await this.lockActor(c, cookie), org, event);
+      const dto = await this.adultCapabilityIn(c, a, entryId, memberId);
+      await this.fresh(c, a);
+      return dto;
+    });
+  }
+  async adultDataCommand(cookie: string | undefined, org: string, event: string, raw: unknown) {
+    const b = objectInput(raw, [
+        'clientRequestId',
+        'entryId',
+        'memberId',
+        'expectedMaterialVersion',
+        'expectedAdultVersion',
+        'expectedPolicyVersion',
+        'evidenceQualificationId',
+        'decision',
+        'acceptedDataProcessing',
+        'termsVersion',
+      ]),
+      id = youthId(b.clientRequestId),
+      entryId = youthId(b.entryId),
+      memberId = youthId(b.memberId);
+    if (
+      !['CONSENT', 'WITHDRAW'].includes(String(b.decision)) ||
+      !Number.isSafeInteger(b.expectedAdultVersion) ||
+      Number(b.expectedAdultVersion) < 0
+    )
+      youthFail('YOUTH_INPUT_INVALID', '请重新读取成年资料处理确认', 422);
+    const hash = simpleHash([
+      'ADULT_DATA',
+      entryId,
+      memberId,
+      b.expectedMaterialVersion,
+      b.expectedAdultVersion,
+      b.expectedPolicyVersion,
+      b.evidenceQualificationId,
+      b.decision,
+      b.acceptedDataProcessing,
+      b.termsVersion,
+    ]);
+    return this.transaction(async (c) => {
+      const a = await this.context(
+        c,
+        await this.lockActor(c, cookie),
+        org,
+        event,
+        true,
+        b.decision === 'WITHDRAW',
+      );
+      const old = await this.replay(c, a, id, hash);
+      if (old) return old;
+      const previous = (
+        await c.query(
+          'SELECT * FROM youth_adult_data_consents WHERE actor_id=$1 AND org_id=$2 AND event_id=$3 AND entry_id=$4 AND member_id=$5 ORDER BY version DESC LIMIT 1',
+          [a.actor.user.id, a.orgId, a.event.id, entryId, memberId],
+        )
+      ).rows[0];
+      if ((previous?.version ?? 0) !== b.expectedAdultVersion)
+        youthFail('VERSION_CONFLICT', '成年确认已变化，请重新读取');
+      let fact;
+      if (b.decision === 'WITHDRAW') {
+        if (!previous || previous.decision !== 'CONSENT')
+          youthFail('YOUTH_ADULT_CONSENT_STATE', '没有可撤回的成年资料处理同意');
+        fact = await appendAdultWithdrawal(c, previous, a.actor.user.id, id);
+      } else {
+        if (b.acceptedDataProcessing !== true || b.termsVersion !== YOUTH_ADULT_DATA_TERMS)
+          youthFail('YOUTH_ADULT_CONSENT_REQUIRED', '请本人明确同意当前必要资料处理', 422);
+        const expected = youthVersion(b.expectedMaterialVersion),
+          expectedPolicy = youthVersion(b.expectedPolicyVersion),
+          evidence = youthId(b.evidenceQualificationId),
+          policy = await this.policyRow(c, a);
+        if (!policy?.enabled || policy.version !== expectedPolicy)
+          youthFail('VERSION_CONFLICT', '当前青年政策已变化');
+        if (
+          !(
+            await c.query(
+              'SELECT 1 FROM youth_guardian_preconsents WHERE org_id=$1 AND event_id=$2 AND subject_user_id=$3 LIMIT 1',
+              [a.orgId, a.event.id, a.actor.user.id],
+            )
+          ).rowCount
+        )
+          throw notFound();
+        const input = {
+          orgId: a.orgId,
+          eventId: a.event.id,
+          userId: a.actor.user.id,
+          entryId,
+          memberId,
+          evidenceQualificationId: evidence,
+        };
+        const age = this.adultAgeReader ? await this.adultAgeReader(c, input) : null;
+        if (!age?.ageVerifiedAdult)
+          return youthFail(
+            'YOUTH_ADULT_IDENTITY_REVIEW_REQUIRED',
+            '当前身份需独立复核，不能通过自报年龄恢复资料处理',
+          );
+        if (age.materialVersion !== expected) youthFail('VERSION_CONFLICT', '当前本人材料已变化');
+        fact = (
+          await c.query(
+            `INSERT INTO youth_adult_data_consents(id,actor_id,performed_by,client_request_id,org_id,event_id,team_id,entry_id,member_id,binding_id,material_id,material_revision_id,age_evidence_qualification_id,policy_version,terms_version,material_version,version,decision) VALUES($1,$2,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'CONSENT') RETURNING *`,
+            [
+              randomUUID(),
+              a.actor.user.id,
+              id,
+              a.orgId,
+              a.event.id,
+              age.teamId,
+              entryId,
+              memberId,
+              age.bindingId,
+              age.materialId,
+              age.materialRevisionId,
+              age.evidenceQualificationId,
+              policy.version,
+              YOUTH_ADULT_DATA_TERMS,
+              expected,
+              (previous?.version ?? 0) + 1,
+            ],
+          )
+        ).rows[0];
+        const tail = this.adultAgeReader ? await this.adultAgeReader(c, input) : null;
+        if (
+          !tail?.ageVerifiedAdult ||
+          tail.materialRevisionId !== fact.material_revision_id ||
+          tail.materialVersion !== expected ||
+          tail.bindingId !== fact.binding_id
+        )
+          youthFail('GUARDIAN_SOURCE_CHANGED', '当前本人身份来源已变化');
+      }
+      await this.fresh(c, a);
+      return this.complete(
+        c,
+        a,
+        id,
+        hash,
+        null,
+        { adultConsentId: fact.id, version: fact.version, decision: fact.decision },
+        'YOUTH_ADULT_DATA_' + fact.decision,
+      );
+    });
+  }
   async workspace(cookie: string | undefined, raw: unknown = {}) {
     return this.transaction(async (c) => {
       const actor = await this.lockActor(c, cookie),
@@ -1007,7 +1213,8 @@ export class YouthGuardiansService extends ApplicationService {
       ).rows;
       const chosen = rows.slice(0, limit),
         requests: YouthGuardianRequestData[] = [],
-        preconsents: Row[] = [];
+        preconsents: Row[] = [],
+        adultDataScopes: Row[] = [];
       for (const item of chosen) {
         if (item.kind === 'REQUEST') {
           const { a, row, reviewer } = await this.requestAccess(c, actor, item.id);
@@ -1017,6 +1224,24 @@ export class YouthGuardiansService extends ApplicationService {
           const guardian = (
             await c.query('SELECT display_name FROM users WHERE id=$1', [r.guardian_user_id])
           ).rows[0];
+          if (r.subject_user_id === actor.user.id) {
+            const scopes = (
+              await c.query(
+                'SELECT entry_id,member_id FROM participant_materials WHERE org_id=$1 AND event_id=$2 AND user_id=$3 ORDER BY entry_id,member_id LIMIT 51',
+                [r.org_id, r.event_id, actor.user.id],
+              )
+            ).rows;
+            if (scopes.length > 50) youthFail('YOUTH_CAPACITY', '当前资料超过安全读取容量', 503);
+            for (const scope of scopes)
+              if (
+                !adultDataScopes.some(
+                  (v) => v.entryId === scope.entry_id && v.memberId === scope.member_id,
+                )
+              )
+                adultDataScopes.push(
+                  await this.adultCapabilityIn(c, a, scope.entry_id, scope.member_id),
+                );
+          }
           preconsents.push({
             id: r.id,
             orgId: r.org_id,
@@ -1037,6 +1262,7 @@ export class YouthGuardiansService extends ApplicationService {
       return {
         requests,
         preconsents,
+        adultDataScopes,
         nextCursor: rows.length > limit ? nextCursor(scope, chosen.at(-1)) : null,
       };
     });

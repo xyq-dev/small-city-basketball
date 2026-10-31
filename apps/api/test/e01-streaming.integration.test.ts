@@ -126,6 +126,7 @@ describe(
       const approve = await service.command(h.owner.cookie, h.owner.orgId, match, {
         clientRequestId: randomUUID(),
         type: 'APPROVE',
+        reason: '合成主办方已核对直播人员、频道与录像用途',
         sessionId: first.session.id,
         expectedVersion: first.session.version,
       });

@@ -2,8 +2,15 @@
   "name": "e08-guardian-ready",
   "route": "pages/guardian/index",
   "state": "synthetic-populated",
-  "designSource": "E08 implemented native Page and WXML; explicit synthetic/static only; no real consent, identity, relationship or WeChat runtime result",
-  "expectText": ["必要资料处理邀请", "监护人本人独立确认", "另行允许本届直播、录像与集锦"],
+  "designSource": "E08 implemented native Page and WXML; explicit synthetic/static only; no real consent, identity, relationship or WeChat runtime result; adult processing renewal capability is explicit synthetic/static data, not a real adulthood verification",
+  "expectText": [
+    "必要资料处理邀请",
+    "监护人本人独立确认",
+    "另行允许本届直播、录像与集锦",
+    "成年后的本人资料处理",
+    "本人已成年，重新同意当前资料处理",
+    "本次不会恢复原有公开用途"
+  ],
   "data": {
     "review": false,
     "hasMaterialScope": false,
@@ -91,7 +98,8 @@
       "realName": "",
       "identityNumber": "",
       "relationship": "PARENT",
-      "relationshipExplanation": ""
+      "relationshipExplanation": "",
+      "adultAcceptedDataProcessing": false
     },
     "proofName": "synthetic-relationship.pdf",
     "privateDetails": null,
@@ -105,7 +113,43 @@
     "pending": false,
     "nextCursor": null,
     "error": "",
-    "message": "合成静态布局示例；未上传真实材料，未完成任何真实审核。",
-    "loginRequired": false
+    "message": "合成静态布局示例；未发生真实成年核验、本人授权提交、材料上传或关系审核。",
+    "loginRequired": false,
+    "adultDataScopes": [
+      {
+        "orgId": "00000000-0000-4000-8000-000000000030",
+        "eventId": "00000000-0000-4000-8000-000000000031",
+        "eventName": "合成成年资料再确认示例",
+        "entryId": "00000000-0000-4000-8000-000000000032",
+        "memberId": "00000000-0000-4000-8000-000000000033",
+        "expectedMaterialVersion": 4,
+        "expectedAdultVersion": 1,
+        "policyVersion": 1,
+        "evidenceQualificationId": "00000000-0000-4000-8000-000000000034",
+        "termsVersion": "youth-adult-data-processing-v1",
+        "canConsent": true,
+        "canWithdraw": true,
+        "lastDecision": "CONSENT",
+        "blocker": "",
+        "key": "00000000-0000-4000-8000-000000000030:00000000-0000-4000-8000-000000000031:00000000-0000-4000-8000-000000000032:00000000-0000-4000-8000-000000000033"
+      }
+    ],
+    "adultSelected": {
+      "orgId": "00000000-0000-4000-8000-000000000030",
+      "eventId": "00000000-0000-4000-8000-000000000031",
+      "eventName": "合成成年资料再确认示例",
+      "entryId": "00000000-0000-4000-8000-000000000032",
+      "memberId": "00000000-0000-4000-8000-000000000033",
+      "expectedMaterialVersion": 4,
+      "expectedAdultVersion": 1,
+      "policyVersion": 1,
+      "evidenceQualificationId": "00000000-0000-4000-8000-000000000034",
+      "termsVersion": "youth-adult-data-processing-v1",
+      "canConsent": true,
+      "canWithdraw": true,
+      "lastDecision": "CONSENT",
+      "blocker": "",
+      "key": "00000000-0000-4000-8000-000000000030:00000000-0000-4000-8000-000000000031:00000000-0000-4000-8000-000000000032:00000000-0000-4000-8000-000000000033"
+    }
   }
 }

@@ -10,7 +10,14 @@ import {
 export interface ParticipantMaterialGuards {
   dataConsentGuard?: (
     c: PoolClient,
-    input: { orgId: string; eventId: string; userId: string; forceRequired: boolean },
+    input: {
+      orgId: string;
+      eventId: string;
+      userId: string;
+      forceRequired: boolean;
+      entryId?: string;
+      memberId?: string;
+    },
   ) => Promise<{ ready: boolean; required?: boolean }>;
   participationGuard?: (
     c: PoolClient,
@@ -28,6 +35,8 @@ export async function readParticipantDataConsent(
     orgId: string;
     eventId: string;
     userId: string;
+    entryId?: string;
+    memberId?: string;
     identityNumber: string | null;
     policyDate: string;
   },
@@ -44,6 +53,8 @@ export async function readParticipantDataConsent(
         orgId: input.orgId,
         eventId: input.eventId,
         userId: input.userId,
+        entryId: input.entryId,
+        memberId: input.memberId,
         forceRequired: required,
       })
     : { ready: !required, required };

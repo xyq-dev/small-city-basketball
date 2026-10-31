@@ -66,6 +66,7 @@ export const EXPANSION_DOMAINS = Object.freeze({
     'youth_guardian_history',
     'youth_guardian_commands',
     'youth_preconsent_history',
+    'youth_adult_data_consents',
   ],
 });
 
@@ -86,10 +87,16 @@ export function expansionTablesFromSql(sources) {
 }
 export async function expansionInventory() {
   const directory = new URL('../apps/api/migrations/', import.meta.url);
+  const first = 36,
+    last = 42;
   const files = (await readdir(directory))
-    .filter((name) => /^(?:036|037|038|039|040|041)_[a-z0-9_]+\.sql$/.test(name))
+    .filter((name) => /^\d{3}_[a-z0-9_]+\.sql$/.test(name) && Number(name.slice(0, 3)) >= first)
     .sort();
-  assert.equal(files.length, 6, 'All six expansion migrations must exist');
+  assert.deepEqual(
+    files.map((name) => Number(name.slice(0, 3))),
+    Array.from({ length: last - first + 1 }, (_, index) => first + index),
+    'Every expansion migration through 042 must have explicit recovery coverage',
+  );
   return expansionTablesFromSql(
     await Promise.all(files.map((name) => readFile(new URL(name, directory), 'utf8'))),
   );

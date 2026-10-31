@@ -167,6 +167,7 @@ Page({
       body.deviceId = await ui.uuid();
       if (!ui.held(this, guard)) return;
     }
+    if (type === 'APPROVE') body.reason = this.data.reason;
     if (['PAUSE', 'STOP', 'REVOKE'].includes(type)) {
       this.stopPhone();
       body.reason = this.data.reason;

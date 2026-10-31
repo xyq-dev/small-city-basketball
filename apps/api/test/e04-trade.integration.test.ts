@@ -49,7 +49,7 @@ describe(
       });
       await h.api.pool.query(
         "INSERT INTO booking_profiles(id,user_id,display_name,position,height_cm,city,bio,price_fen,status,reviewed_by,reviewed_at) VALUES($1,$2,'合成收费球员','PG',180,'合成市','仅隔离验收',1000,'APPROVED',$3,clock_timestamp())",
-        [profile, h.otherOwner.id, h.owner.id],
+        [profile, h.otherOwner.id, h.leader.id],
       );
       runtime = {
         encryptionKey: Buffer.alloc(32, 7),

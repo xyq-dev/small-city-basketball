@@ -236,15 +236,16 @@ export class InsuranceService extends ApplicationService {
     };
   }
   private async dataConsent(c: PoolClient, row: Row, applicant: InsuranceApplicant) {
-    if (
-      !(await qualificationDataConsentReady(c, this.insurance, {
-        orgId: row.org_id,
-        eventId: row.event_id,
-        userId: row.user_id,
-        birthDate: qualificationBirthDate(applicant.identityNumber),
-        policyDate: row.start_date,
-      }))
-    )
+    const consentInput = {
+      orgId: row.org_id,
+      eventId: row.event_id,
+      entryId: row.entry_id,
+      memberId: row.member_id,
+      userId: row.user_id,
+      birthDate: qualificationBirthDate(applicant.identityNumber),
+      policyDate: row.start_date,
+    };
+    if (!(await qualificationDataConsentReady(c, this.insurance, consentInput)))
       insuranceFail('YOUTH_DATA_CONSENT_REQUIRED', '当前资料须先取得有效监护人数据处理同意', 409);
   }
   private async authorization(c: PoolClient, row: Row): Promise<YouthQualification> {
@@ -547,7 +548,7 @@ export class InsuranceService extends ApplicationService {
   private async orderData(c: PoolClient, o: Row): Promise<InsuranceOrderData> {
     const pending = (
       await c.query(
-        "SELECT id FROM insurance_operations WHERE order_id=$1 AND status IN('PENDING','RUNNING','UNKNOWN') ORDER BY created_at LIMIT 1",
+        "SELECT id,status,attempt_count FROM insurance_operations WHERE order_id=$1 AND status IN('PENDING','RUNNING','UNKNOWN') ORDER BY created_at LIMIT 1",
         [o.id],
       )
     ).rows[0];
@@ -586,7 +587,9 @@ export class InsuranceService extends ApplicationService {
           ).rowCount,
         ),
       pendingOperation: pending?.id ?? null,
-      canRefresh: this.capabilities().enabled && !pending,
+      canRefresh:
+        this.capabilities().enabled &&
+        (!pending || (pending.status === 'UNKNOWN' && Number(pending.attempt_count) >= 12)),
       canRequestCancellation:
         this.capabilities().enabled &&
         !o.cancellation_requested_at &&
@@ -620,8 +623,24 @@ export class InsuranceService extends ApplicationService {
     const { key } = this.enabled(),
       b = parseInsuranceCommand(raw),
       hash = insuranceFingerprint(key, [id, b]);
+    // A manual refresh grants a bounded query budget. Authenticate without holding
+    // a pooled connection during rateLimit's separately committed counter writes.
+    const refreshActor =
+      b.type === 'REFRESH'
+        ? await this.transaction(async (c) => {
+            const a = await this.lockActor(c, cookie);
+            await this.ensureFreshSession(c, a);
+            return a;
+          })
+        : null;
+    if (refreshActor) await this.rateLimit(`insurance-refresh:${refreshActor.user.id}`, 12, 3600);
     return this.transaction(async (c) => {
       const a = await this.lockActor(c, cookie);
+      if (
+        refreshActor &&
+        (refreshActor.user.id !== a.user.id || refreshActor.sessionId !== a.sessionId)
+      )
+        insuranceFail('INSURANCE_SESSION_CHANGED', '本人登录已变化，请重新读取', 401);
       await this.requestLock(c, a, b.clientRequestId);
       const o = await this.ownOrder(c, a, resourceId(id)),
         replay = await this.replay(c, a, b.clientRequestId, hash);
@@ -661,6 +680,29 @@ export class InsuranceService extends ApplicationService {
               [randomUUID(), o.id],
             );
         }
+      } else if (pending?.status === 'UNKNOWN' && Number(pending.attempt_count) >= 12) {
+        // attempt_count is this explicit round's automatic-work budget, not a
+        // lifetime external-attempt ledger. The permanent receipt/audit keeps the
+        // exhausted round; the original task and external operation ID stay fixed.
+        await c.query(
+          "UPDATE insurance_operations SET attempt_count=0,reconcile_only=true,fence=fence+1,lease_id=NULL,lease_until=NULL,next_attempt_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=$1 AND status='UNKNOWN' AND attempt_count>=12",
+          [pending.id],
+        );
+        await this.audit(
+          c,
+          a.user.id,
+          o.org_id,
+          'INSURANCE_QUERY_BUDGET_REOPENED',
+          'insurance_order',
+          o.id,
+          {
+            operationId: pending.id,
+            previousBudgetUsed: Number(pending.attempt_count),
+            newBudgetUsed: 0,
+            automaticQueryBudget: 12,
+            reconcileOnly: true,
+          },
+        );
       } else if (!pending)
         await c.query("INSERT INTO insurance_operations(id,order_id,kind) VALUES($1,$2,'QUERY')", [
           randomUUID(),

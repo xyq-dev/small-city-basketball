@@ -8,3 +8,5 @@
 检查点2（2026-10-31 Asia/Shanghai）：最终接线源码已完成，覆盖E01/E02真实注册/排程/记分/确认、受控MP4录像/转码/校准自动集锦与未知停止，E03/E05/E08由对应owner专属helper交付，E04十表实际资金状态机和300分UNKNOWN退款预留，E07三种注销状态。共48张新表；normal restart/restore逐表摘要exact，quarantine逐来源身份证据/历史摘要留存并撤权，新追加青年WITHDRAW history允许增加但不得丢行，旧completion counts仍exact。
 
 验证：API build、全部helper无副作用import、5静态/隔离目标测试、node语法、格式/空白通过；无数据库执行。父CI基础链已开始，首次有效PG发现037缺UNIQUE外键，事务整体回滚，root正按现有三列entries键修复；不要回改任何成功提交后迁移。下一：root只cherry最终源码片（中间merge00b1da5不另取），开启完整CI并逐失败修复。数据库备份不含MP4文件；本样本字节校验与metadata/fencing证明不能表述为媒体文件灾备。
+
+检查点3：合并已知root405c3c1后，库存覆盖042及youth_adult_data_consents，动态摘要自动纳入第49张新表；quarantine只允许追加成年WITHDRAW事实，不丢原行，成人事实实际业务构造由E08恢复helper补齐。036—041已由CI预检成功并冻结，不再回改。后续仅取本owner库存/测试/自卡commit，等待E08对应小片与实际业务PG反馈；本owner仍未运行DB。

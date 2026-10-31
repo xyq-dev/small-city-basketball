@@ -19,7 +19,7 @@ import type {
   InsuranceQuote,
 } from '../src/insurance-provider.js';
 import { INSURANCE_TERMS_VERSION } from '../src/insurance-domain.js';
-import { ORIGIN, call, data, membersPath, register } from './support.js';
+import { ORIGIN, call, data, error, membersPath, register } from './support.js';
 import type { Api, User } from './support.js';
 import { participant, registrationDatabaseUrl } from './p03-support.js';
 import type { Actor } from './p03-support.js';
@@ -479,6 +479,11 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
         created.orderId,
       ])
     ).rows[0].operation_id;
+    // Reach the final automatic attempt through actual original-ID queries.
+    for (let n = 0; n < 10; n++) {
+      await readyOperation(created.orderId);
+      await insurance.drain(created.orderId);
+    }
     driver.issued(original);
     await readyOperation(created.orderId);
     let enter!: () => void, release!: () => void;
@@ -543,11 +548,16 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       ).toBe(0);
       const recovered = (
         await api.pool.query(
-          'SELECT status,reconcile_only,fence,lease_id FROM insurance_operations WHERE order_id=$1',
+          'SELECT status,reconcile_only,fence,lease_id,attempt_count FROM insurance_operations WHERE order_id=$1',
           [created.orderId],
         )
       ).rows[0];
-      expect(recovered).toMatchObject({ status: 'UNKNOWN', reconcile_only: true, lease_id: null });
+      expect(recovered).toMatchObject({
+        status: 'UNKNOWN',
+        reconcile_only: true,
+        lease_id: null,
+        attempt_count: 12,
+      });
       expect(Number(recovered.fence)).toBeGreaterThan(Number(lease.fence));
     } finally {
       clearTimeout(timeout);
@@ -555,7 +565,97 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       driver.query = originalQuery;
       if (pending) await pending;
     }
-    await readyOperation(created.orderId);
+    const exhausted = await insurance.get(subject.cookie, created.orderId);
+    expect(exhausted.canRefresh).toBe(true);
+    const originalTask = (
+      await api.pool.query(
+        "SELECT id,kind,fence FROM insurance_operations WHERE order_id=$1 AND status='UNKNOWN'",
+        [created.orderId],
+      )
+    ).rows[0];
+    const http = await createApi({
+      databaseUrl,
+      appOrigin: ORIGIN,
+      participantDataKey,
+      accountClosure: { autoDispatch: false },
+      insurance: { provider: driver, dataKey: insuranceKey, autoDispatch: false },
+    });
+    try {
+      const path = `/v1/insurance/orders/${created.orderId}/commands`;
+      const resume = {
+        clientRequestId: randomUUID(),
+        expectedVersion: exhausted.version,
+        type: 'REFRESH',
+      };
+      error(await call(http, 'post', path, { cookie: outsider.cookie, body: resume }), 404);
+      expect(
+        data(await call(http, 'post', path, { cookie: subject.cookie, body: resume })),
+      ).toEqual(created);
+      const restarted = (
+        await api.pool.query(
+          'SELECT id,kind,fence,attempt_count,reconcile_only,lease_id FROM insurance_operations WHERE id=$1',
+          [originalTask.id],
+        )
+      ).rows[0];
+      expect(restarted).toMatchObject({
+        id: originalTask.id,
+        kind: 'APPLY',
+        attempt_count: 0,
+        reconcile_only: true,
+        lease_id: null,
+      });
+      expect(Number(restarted.fence)).toBeGreaterThan(Number(originalTask.fence));
+      expect(
+        data(await call(http, 'post', path, { cookie: subject.cookie, body: resume })),
+      ).toEqual(created);
+      expect(
+        (
+          await api.pool.query('SELECT fence FROM insurance_operations WHERE id=$1', [
+            originalTask.id,
+          ])
+        ).rows[0].fence,
+      ).toBe(restarted.fence);
+      expect(
+        (
+          await api.pool.query(
+            "SELECT metadata FROM audit_logs WHERE actor_id=$1 AND action='INSURANCE_QUERY_BUDGET_REOPENED' AND resource_id=$2",
+            [subject.id, created.orderId],
+          )
+        ).rows[0].metadata,
+      ).toMatchObject({
+        operationId: originalTask.id,
+        previousBudgetUsed: 12,
+        newBudgetUsed: 0,
+        automaticQueryBudget: 12,
+        reconcileOnly: true,
+      });
+      // Manual HTTP refreshes have a separate user budget. Replaying is harmless,
+      // and an extra explicit command beyond the window is rejected before work.
+      for (let n = 0; n < 10; n++)
+        data(
+          await call(http, 'post', path, {
+            cookie: subject.cookie,
+            body: { ...resume, clientRequestId: randomUUID() },
+          }),
+        );
+      error(
+        await call(http, 'post', path, {
+          cookie: subject.cookie,
+          body: { ...resume, clientRequestId: randomUUID() },
+        }),
+        429,
+      );
+      expect(
+        (
+          await api.pool.query('SELECT fence,attempt_count FROM insurance_operations WHERE id=$1', [
+            originalTask.id,
+          ])
+        ).rows[0],
+      ).toEqual({ fence: restarted.fence, attempt_count: 0 });
+    } finally {
+      await http.app.close();
+      await http.pool.end();
+    }
     await insurance.drain(created.orderId);
     const issued = await insurance.get(subject.cookie, created.orderId);
     expect(issued).toMatchObject({ paymentStatus: 'PAID', policyStatus: 'ISSUED' });

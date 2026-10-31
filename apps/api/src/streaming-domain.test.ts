@@ -115,6 +115,21 @@ describe('E01/E02 authorization, transport and event-time boundaries', () => {
       }),
     ).toThrow();
   });
+  it('requires an explicit operation basis for each approval and source stop barrier', () => {
+    for (const type of ['APPROVE', 'PAUSE', 'STOP', 'REVOKE']) {
+      const command = {
+        clientRequestId: randomUUID(),
+        sessionId: randomUUID(),
+        expectedVersion: 1,
+        type,
+      };
+      expect(() => parseStreamingCommand(command)).toThrow('请填写操作依据');
+      expect(() => parseStreamingCommand({ ...command, reason: '简短' })).toThrow('请填写操作依据');
+      expect(
+        parseStreamingCommand({ ...command, reason: '主办方已核对本场直播与录像用途' }).reason,
+      ).toBe('主办方已核对本场直播与录像用途');
+    }
+  });
   it('ignores offline-captured and voided events and merges only calibrated real windows', () => {
     const anchor = '2026-01-01T00:00:00Z';
     expect(

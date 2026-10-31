@@ -455,3 +455,8 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 `GET /v1/me/participant-entries` 发现当前本人已列入名单的报名及仅撤宣传的历史入口。`/v1/orgs/:orgId/entries/:entryId/participant-materials` 提供 mine GET/PUT、mine/submit、mine/publicity-withdraw、mine/receipts/:clientRequestId、列表、:memberId、:memberId/private、:memberId/files/:kind、:memberId/review。普通DTO脱敏，原始证件仅明确授权private接口，文件不进入原整队media或匿名目录。当前活跃成员本人/独立审核人与领队进度权限分开；原资料本人退出后仍有数据主体只读与宣传撤回例外，不获得新球队权限。
 
 保存使用原clientRequestId与expectedVersion；未知结果查原回执，不用新ID绕过。照片或保单分次保存，精确PUT mine路由共享12MiB/2并发上传lane，邻接命令仍100KiB。材料通过、队伍提交、独立队伍批准、冻结分别执行；后面三个入口重查当前资料/签署/审核/保障版本。拒绝宣传不影响参赛。在线保险、支付和自动实名核验未开放。
+
+
+### E08 成年本人资料处理重新确认（042）
+
+`GET /v1/orgs/:orgId/events/:eventId/youth-adult-data-consent?entryId=UUID&memberId=UUID` 仅返回当前本人材料scope的最小操作能力；不返回年龄、生日或身份明文。`POST`同路径接受当前能力给出的精确scope、材料/政策/条款版本和独立年龄证据标识，以及独立幂等request ID；客户端声明年龄不能产生权限。CONSENT只恢复当前本人资料处理，仍须正常当前资格及最终独立审核；WITHDRAW无需重新解密年龄证据。公开档案、照片宣传与直播分别核验其原有独立用途授权，不因本次资料同意自动开放。

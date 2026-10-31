@@ -207,3 +207,46 @@ test('private policy PDF uses tracked temporary files and removes them on hide',
     false,
   );
 });
+
+test('exhausted unknown insurance resumes only a REFRESH of the original order and keeps the recovery id', async () => {
+  const h = setup();
+  h.page.setData({
+    quote: null,
+    workspace: {
+      enabled: true,
+      products: [],
+      orders: [
+        {
+          id: id(8),
+          version: 3,
+          canRefresh: true,
+          pendingOperation: id(9),
+          paymentStatus: 'PAID',
+          policyStatus: 'CANCEL_PENDING',
+          premiumFen: 100,
+          coverageStartDate: '2028-01-01',
+          coverageEndDate: '2028-01-02',
+        },
+      ],
+    },
+  });
+  const fs = require('node:fs');
+  const { renderWxml } = require('./helpers/native-preview.cjs');
+  const html = renderWxml(
+    fs
+      .readFileSync(path.join(root, 'pages/insurance/index.wxml'), 'utf8')
+      .replace(/<scb-header[^>]*\/>/, ''),
+    h.page.data,
+  );
+  assert.ok(html.includes('自动核对已暂停'));
+  assert.ok(html.includes('不会重复投保或退保'));
+  await h.page.command(tap({ id: id(8), type: 'REFRESH' }));
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].p, '/v1/insurance/orders/' + id(8) + '/commands');
+  assert.equal(h.calls[0].b.type, 'REFRESH');
+  assert.equal(h.calls[0].b.expectedVersion, 3);
+  const saved = h.wx.storage.get(key(id(1)));
+  assert.equal(saved.kind, 'COMMAND');
+  assert.equal(saved.body.clientRequestId, h.calls[0].b.clientRequestId);
+  assert.deepEqual(Object.keys(saved.body).sort(), ['clientRequestId', 'expectedVersion', 'type']);
+});

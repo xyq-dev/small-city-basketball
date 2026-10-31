@@ -30,6 +30,6 @@ API镜像内置FFmpeg/ffprobe和中文字体；生产compose为UID10001建立`/v
 
 ## 迁移与验收
 
-完整链001—041包含175张表、117个函数；036—041本轮首次执行前均为草稿，首次成功后冻结。权限由精确manifest授权：新事实历史/receipt不可普通修改或删除；审计runtime仅允许INSERT及action/resource_type两列SELECT。
+完整链001—042包含176张表、117个函数；036—041已在隔离CI41182154976首次成功执行并冻结，042成年本人资料处理再同意尚待执行。权限由精确manifest授权：新事实历史/receipt不可普通修改或删除；审计runtime仅允许INSERT及action/resource_type两列SELECT。
 
 验收分源码/类型/构建、真实PG/并发、原生页面到HTTP、320/390/430兼容布局、非空重启及dump/restore。`live-pusher`和`web-view`在兼容布局中仅为显式占位，不代表相机、真机或真实供应商页面已经验收。当前真实外部、正式微信工具和生产状态始终单独记录。

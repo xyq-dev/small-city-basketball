@@ -334,3 +334,18 @@ test('native conditions require explicit braces and actually hide management and
   assert.match(renderWxml(media, { ...data, canManage: true }), /录像时间校准|独立审核并公开产物/);
   h.page.onUnload();
 });
+
+test('approval sends the actual entered operation basis required by the server contract', async () => {
+  const h = fixture();
+  await h.open();
+  h.page.setData({ reason: '已核对赛事直播人员与录像用途' });
+  h.setHandler(async (p, m) =>
+    m === 'GET' ? { data: h.workspace } : { data: { session: snapshot({ version: 3 }) } },
+  );
+  await h.page.action(tap('APPROVE'));
+  const approval = h.calls.find((c) => c.b?.type === 'APPROVE');
+  assert.ok(approval);
+  assert.equal(approval.b.reason, '已核对赛事直播人员与录像用途');
+  assert.ok(approval.b.reason.trim().length >= 4);
+  h.page.onUnload();
+});

@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createApi } from '../src/app.js';
+import { CommerceService } from '../src/commerce/service.js';
+import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
+import { activateEventCommerce } from '../src/commerce/activation.js';
+import type { CommerceCommandResult } from '@small-city-basketball/contracts';
 import { migrate } from '../src/database/migrate.js';
 import { hashPassword } from '../src/security.js';
 import { AccountClosureService } from '../src/account-closure-service.js';
@@ -13,6 +17,7 @@ import {
   PASSWORD,
   RUN_ID,
   call,
+  createEvent,
   data,
   error,
   login,
@@ -197,6 +202,135 @@ describe(
         ).rows[0].status,
       ).toBe('ACTIVE');
     });
+    test('a paid software order blocks until that exact entitlement is activated; another event activation does not clear it', async () => {
+      const buyer = await register(api, 'e07-software-buyer'),
+        submitter = await user('software-submitter'),
+        reviewer = await user('software-reviewer');
+      const commerce = new CommerceService(api.pool, {
+        databaseUrl,
+        appOrigin: ORIGIN,
+        commerceMode: 'ENFORCED',
+      });
+      for (const actor of [submitter, reviewer])
+        await maintainPlatformOperator(api.pool, {
+          email: actor.email,
+          status: 'ACTIVE',
+          reason: '合成注销软件订单独立复核',
+        });
+      const plan = (
+        await commerce.createPlan(submitter.cookie, {
+          commandId: randomUUID(),
+          code: 'e07_' + RUN_ID.slice(0, 12),
+          name: '合成注销软件套餐',
+          currency: 'CNY',
+          amountFen: 9900,
+          maxTeams: 32,
+          maxMatches: 1024,
+          validDays: 365,
+          reason: '合成注销资格核验',
+        })
+      ).plan;
+      async function paidEvent(label: string) {
+        const event = await createEvent(api, buyer, label);
+        const created = (
+          (await commerce.createOrder(buyer.cookie, buyer.orgId, {
+            commandId: randomUUID(),
+            eventId: event.id,
+            planId: plan.id,
+            expectedEventVersion: event.version,
+          })) as CommerceCommandResult
+        ).order;
+        const submitted = await commerce.platformCommand(submitter.cookie, created.id, {
+          commandId: randomUUID(),
+          type: 'SUBMIT_PAYMENT',
+          expectedOrderVersion: created.version,
+          externalReference: 'e07-synthetic-' + randomUUID(),
+          reason: '合成离线收款提交',
+        });
+        const confirmed = await commerce.platformCommand(reviewer.cookie, created.id, {
+          commandId: randomUUID(),
+          type: 'CONFIRM_PAYMENT',
+          expectedOrderVersion: submitted.order.version,
+          reason: '合成独立核对到账',
+        });
+        expect(confirmed.order.status).toBe('PAID');
+        const entitlement = (
+          await api.pool.query('SELECT id,order_id FROM event_entitlements WHERE order_id=$1', [
+            created.id,
+          ])
+        ).rows[0];
+        expect(entitlement.order_id).toBe(created.id);
+        return { event, order: confirmed.order, entitlement };
+      }
+      async function activate(target: Awaited<ReturnType<typeof paidEvent>>) {
+        const c = await api.pool.connect();
+        try {
+          await c.query('BEGIN');
+          await c.query('SELECT id FROM organizations WHERE id=$1 FOR SHARE', [buyer.orgId]);
+          await c.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR UPDATE', [
+            buyer.orgId,
+            target.event.id,
+          ]);
+          await activateEventCommerce(c, {
+            orgId: buyer.orgId,
+            eventId: target.event.id,
+            participantCount: 2,
+            expectedMatchCount: 1,
+            mode: 'ENFORCED',
+            actorId: buyer.id,
+          });
+          await c.query('COMMIT');
+        } catch (error) {
+          await c.query('ROLLBACK');
+          throw error;
+        } finally {
+          c.release();
+        }
+        expect(
+          (
+            await api.pool.query(
+              'SELECT source,entitlement_id FROM event_commercial_activations WHERE org_id=$1 AND event_id=$2',
+              [buyer.orgId, target.event.id],
+            )
+          ).rows[0],
+        ).toEqual({ source: 'PAID', entitlement_id: target.entitlement.id });
+      }
+      const service = make(),
+        first = await paidEvent('合成待激活软件赛事');
+      const request = await service.request(buyer.cookie, requestInput());
+      expect(await service.processOne(request.id)).toBe('BLOCKED');
+      expect((await service.workspace(buyer.cookie)).request?.blockers).toEqual([
+        'OWNER_TRANSFER_REQUIRED',
+        'SOFTWARE_MONEY_UNRESOLVED',
+      ]);
+      await activate(first);
+      expect(await service.processOne(request.id)).toBe('BLOCKED');
+      expect((await service.workspace(buyer.cookie)).request?.blockers).toEqual([
+        'OWNER_TRANSFER_REQUIRED',
+      ]);
+      const second = await paidEvent('合成另一待激活软件赛事');
+      expect(await service.processOne(request.id)).toBe('BLOCKED');
+      expect((await service.workspace(buyer.cookie)).request?.blockers).toContain(
+        'SOFTWARE_MONEY_UNRESOLVED',
+      );
+      await activate(second);
+      expect(await service.processOne(request.id)).toBe('BLOCKED');
+      expect((await service.workspace(buyer.cookie)).request?.blockers).toEqual([
+        'OWNER_TRANSFER_REQUIRED',
+      ]);
+      expect(
+        (
+          await api.pool.query(
+            'SELECT id,status FROM billing_orders WHERE id=ANY($1::uuid[]) ORDER BY id',
+            [[first.order.id, second.order.id]],
+          )
+        ).rows,
+      ).toEqual(
+        [first.order, second.order]
+          .map((o) => ({ id: o.id, status: 'PAID' }))
+          .sort((a, b) => a.id.localeCompare(b.id)),
+      );
+    }, 30000);
     test('unresolved external-domain facts block and can be reevaluated without clearing history', async () => {
       const u = await user('blocked');
       let unsettled = true;

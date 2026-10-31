@@ -118,6 +118,45 @@ function policyView(v) {
     canInviteData: v.capabilities.canInviteData === true,
   };
 }
+function adultView(v) {
+  if (
+    !object(v) ||
+    !Number.isInteger(v.expectedMaterialVersion) ||
+    v.expectedMaterialVersion < 1 ||
+    !Number.isInteger(v.expectedAdultVersion) ||
+    v.expectedAdultVersion < 0 ||
+    !Number.isInteger(v.policyVersion) ||
+    v.policyVersion < 0 ||
+    !bool(v.canConsent) ||
+    !bool(v.canWithdraw) ||
+    ![null, 'CONSENT', 'WITHDRAW'].includes(v.lastDecision) ||
+    v.termsVersion !== 'youth-adult-data-processing-v1' ||
+    (v.canConsent && (v.policyVersion < 1 || v.evidenceQualificationId === null)) ||
+    (v.canWithdraw && (v.lastDecision !== 'CONSENT' || v.expectedAdultVersion < 1))
+  )
+    invalid();
+  const scope = {
+    orgId: materials.id(v.orgId),
+    eventId: materials.id(v.eventId),
+    entryId: materials.id(v.entryId),
+    memberId: materials.id(v.memberId),
+  };
+  return {
+    ...scope,
+    key: [scope.orgId, scope.eventId, scope.entryId, scope.memberId].join(':'),
+    eventName: String(v.eventName),
+    expectedMaterialVersion: v.expectedMaterialVersion,
+    expectedAdultVersion: v.expectedAdultVersion,
+    policyVersion: v.policyVersion,
+    evidenceQualificationId:
+      v.evidenceQualificationId === null ? null : materials.id(v.evidenceQualificationId),
+    termsVersion: v.termsVersion,
+    canConsent: v.canConsent,
+    canWithdraw: v.canWithdraw,
+    lastDecision: v.lastDecision,
+    blocker: typeof v.blocker === 'string' ? v.blocker : '',
+  };
+}
 const query = (cursor) =>
   cursor ? '?cursor=' + encodeURIComponent(cursor) + '&limit=20' : '?limit=20';
 function repository(orgId, eventId, client = api.getClient()) {
@@ -137,12 +176,14 @@ function repository(orgId, eventId, client = api.getClient()) {
       if (
         !Array.isArray(d?.requests) ||
         !Array.isArray(d.preconsents) ||
+        (d.adultDataScopes !== undefined && !Array.isArray(d.adultDataScopes)) ||
         (d.nextCursor !== null && typeof d.nextCursor !== 'string')
       )
         invalid();
       return {
         requests: d.requests.map(requestView),
         preconsents: d.preconsents.map(preView),
+        adultDataScopes: (d.adultDataScopes || []).map(adultView),
         nextCursor: d.nextCursor,
       };
     },
@@ -156,6 +197,40 @@ function repository(orgId, eventId, client = api.getClient()) {
       return { requests: d.requests.map(requestView), nextCursor: d.nextCursor };
     },
     policy: async () => policyView(await get(base + '/youth-policy')),
+    adultCapability: async (scope) => {
+      const target =
+        '/v1/orgs/' +
+        materials.id(scope.orgId) +
+        '/events/' +
+        materials.id(scope.eventId) +
+        '/youth-adult-data-consent';
+      const current = adultView(
+        await get(
+          target +
+            '?entryId=' +
+            materials.id(scope.entryId) +
+            '&memberId=' +
+            materials.id(scope.memberId),
+        ),
+      );
+      if (
+        ['orgId', 'eventId', 'entryId', 'memberId'].some(
+          (key) => current[key] !== materials.id(scope[key]),
+        )
+      )
+        invalid();
+      return current;
+    },
+    adultData: (scope, body) =>
+      command(
+        '/v1/orgs/' +
+          materials.id(scope.orgId) +
+          '/events/' +
+          materials.id(scope.eventId) +
+          '/youth-adult-data-consent',
+        'POST',
+        body,
+      ),
     detail: async (id) => requestView(await get('/v1/youth-guardian-requests/' + materials.id(id))),
     private: async (id) => {
       const d = await get('/v1/youth-guardian-requests/' + materials.id(id) + '/private');

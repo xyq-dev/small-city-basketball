@@ -26,6 +26,8 @@ function references(saved) {
     'withdrawnRequestId',
     'activePreconsentId',
     'withdrawnPreconsentId',
+    'adultSubjectId',
+    'adultCurrentConsentId',
   ])
     assert.ok(uuid(saved?.[k]), `E08 requires exact ${k}`);
   for (const k of [
@@ -38,6 +40,7 @@ function references(saved) {
     'historyIds',
     'prehistoryIds',
     'commandIds',
+    'adultConsentIds',
   ])
     assert.ok(
       Array.isArray(saved?.[k]) && saved[k].length && saved[k].every(uuid),
@@ -53,6 +56,8 @@ function references(saved) {
     'history',
     'prehistory',
     'commands',
+    'adultFacts',
+    'adultSource',
   ])
     assert.match(saved.hashes?.[k] ?? '', /^[a-f0-9]{64}$/);
 }
@@ -109,6 +114,18 @@ async function retained(readPool, saved) {
         [saved.orgId, saved.eventId, saved.commandIds],
       )
     ).rows;
+    const adultFacts = (
+      await c.query(
+        `SELECT id,version,encode(sha256(convert_to(to_jsonb(f)::text,'UTF8')),'hex') AS hash FROM youth_adult_data_consents f WHERE id=ANY($1::uuid[]) ORDER BY id`,
+        [saved.adultConsentIds],
+      )
+    ).rows;
+    const adultLatest = (
+      await c.query(
+        `SELECT id,decision,cause,version,encode(sha256(convert_to((to_jsonb(f)-ARRAY['id','client_request_id','performed_by','decision','cause','version','created_at'])::text,'UTF8')),'hex') AS source_hash FROM youth_adult_data_consents f WHERE actor_id=$1 AND org_id=$2 AND event_id=$3 AND entry_id=$4 AND member_id=$5 ORDER BY version DESC LIMIT 1`,
+        [saved.adultSubjectId, saved.orgId, saved.eventId, saved.entryId, saved.memberIds[2]],
+      )
+    ).rows[0];
     const liveSessions = (
       await c.query(
         'SELECT count(*)::int AS n FROM sessions WHERE user_id=ANY($1::uuid[]) AND revoked_at IS NULL AND expires_at>clock_timestamp()',
@@ -122,6 +139,8 @@ async function retained(readPool, saved) {
     assert.equal(history.length, saved.historyIds.length);
     assert.equal(prehistory.length, saved.prehistoryIds.length);
     assert.equal(commands.length, saved.commandIds.length);
+    assert.equal(adultFacts.length, saved.adultConsentIds.length);
+    assert.ok(adultLatest);
     assert.ok(
       requests.every((r) => r.proof_retained && /^[a-f0-9]{64}$/.test(r.ciphertext_hash)),
       'E08 private evidence must remain retained',
@@ -136,8 +155,17 @@ async function retained(readPool, saved) {
       history: sha(history),
       prehistory: sha(prehistory),
       commands: sha(commands),
+      adultFacts: sha(adultFacts.map((r) => ({ id: r.id, hash: r.hash }))),
+      adultSource: adultLatest.source_hash,
     };
-    return { digests, requests, preconsents, liveSessions };
+    return {
+      digests,
+      requests,
+      preconsents,
+      liveSessions,
+      adultLatest,
+      retainedAdultVersion: Math.max(...adultFacts.map((f) => f.version)),
+    };
   } catch (e) {
     try {
       await c.query('ROLLBACK');
@@ -147,7 +175,7 @@ async function retained(readPool, saved) {
     c.release();
   }
 }
-/** Only the isolated source harness calls this. Real HTTP/services create all six nonempty tables. */
+/** Only the isolated source harness calls this. Real HTTP/services create all seven nonempty E08 tables. */
 export async function captureExpansionGuardians({
   call,
   state,
@@ -228,7 +256,7 @@ export async function captureExpansionGuardians({
       body: {
         expectedVersion: event.version,
         minPlayers: 2,
-        maxPlayers: 2,
+        maxPlayers: 3,
         zeroAndDoubleZeroDistinct: false,
         requireIdentity: true,
         requireInsurance: false,
@@ -266,7 +294,7 @@ export async function captureExpansionGuardians({
     body: { status: 'ACTIVE' },
   });
   const members = [];
-  for (const [n, child] of [child1, child2].entries()) {
+  for (const [n, child] of [child1, child2, guardian].entries()) {
     const code = (
       await call(`${org}/teams/${team.id}/join-codes`, {
         method: 'POST',
@@ -305,7 +333,7 @@ export async function captureExpansionGuardians({
     requestIds = [],
     qualificationIds = [],
     materialIds = [];
-  for (const [n, m] of members.entries()) {
+  for (const [n, m] of members.slice(0, 2).entries()) {
     const pre = (
       await call(`${eventPath}/youth-data-invitations`, {
         method: 'POST',
@@ -432,12 +460,154 @@ export async function captureExpansionGuardians({
     });
     requestIds.push(proposed.requestId);
   }
+  // The already-registered guardian is also a distinct adult subject in this synthetic roster.
+  // Its former processing guardian is the owner; the independent reviewer remains unrelated.
+  const adultMember = members[2],
+    adultPath = `${eventPath}/youth-adult-data-consent`;
+  const adultPre = (
+    await call(`${eventPath}/youth-data-invitations`, {
+      method: 'POST',
+      cookie: guardian.cookie,
+      body: {
+        clientRequestId: randomUUID(),
+        expectedPolicyVersion: 1,
+        guardianUserId: state.userId,
+        subjectAlias: '合成历史青年现成年本人',
+        declaredYouth: true,
+      },
+    })
+  ).data;
+  const adultPreAccepted = (
+    await call(`/v1/youth-data-invitations/${adultPre.preconsentId}/commands`, {
+      method: 'POST',
+      cookie: state.cookie,
+      body: {
+        clientRequestId: randomUUID(),
+        expectedVersion: adultPre.version,
+        decision: 'CONSENT',
+        acceptedDataProcessing: true,
+        dataTermsVersion: 'youth-data-processing-v1',
+      },
+    })
+  ).data;
+  let adultMaterial = (
+    await call(`${entryPath}/participant-materials/mine`, {
+      method: 'PUT',
+      cookie: guardian.cookie,
+      body: {
+        clientRequestId: randomUUID(),
+        expectedVersion: 0,
+        realName: '合成恢复成年本人',
+        identityNumber: identity('1990-01-01'),
+        portrait: { fileName: 'synthetic-adult.png', contentType: 'image/png', base64: portrait },
+        acceptedTerms: true,
+        publicityConsent: true,
+      },
+    })
+  ).data.material;
+  materialIds.push(adultMaterial.id);
+  async function qualifyAdult() {
+    const requested = (
+      await call(`${entryPath}/qualification-precheck/requests`, {
+        method: 'POST',
+        cookie: guardian.cookie,
+        body: {
+          clientRequestId: randomUUID(),
+          memberId: adultMember.memberId,
+          expectedMaterialVersion: adultMaterial.version,
+          acceptedTermsVersion: 'qualification-precheck-v1',
+        },
+      })
+    ).data;
+    const result = (
+      await call(`${entryPath}/qualification-precheck/reviews`, {
+        method: 'POST',
+        cookie: reviewer.cookie,
+        body: {
+          clientRequestId: randomUUID(),
+          memberId: adultMember.memberId,
+          expectedMaterialVersion: adultMaterial.version,
+          requestId: requested.requestId,
+          decision: 'APPROVED',
+          reason: '合成恢复成年身份独立核验',
+          identityReviewed: true,
+          portraitReviewed: true,
+          signatureReviewed: true,
+        },
+      })
+    ).data;
+    qualificationIds.push(result.qualificationId);
+    return result.qualificationId;
+  }
+  const originalAdultAgeEvidence = await qualifyAdult();
+  await call(`/v1/youth-data-invitations/${adultPre.preconsentId}/commands`, {
+    method: 'POST',
+    cookie: state.cookie,
+    body: {
+      clientRequestId: randomUUID(),
+      expectedVersion: adultPreAccepted.version,
+      decision: 'WITHDRAW',
+    },
+  });
+  preconsentIds.push(adultPre.preconsentId);
+  const adultConsentIds = [];
+  async function renewAdult() {
+    const cap = (
+      await call(adultPath + '?entryId=' + entry.id + '&memberId=' + adultMember.memberId, {
+        cookie: guardian.cookie,
+      })
+    ).data;
+    assert.equal(cap.canConsent, true);
+    assert.equal(cap.evidenceQualificationId, originalAdultAgeEvidence);
+    const fact = (
+      await call(adultPath, {
+        method: 'POST',
+        cookie: guardian.cookie,
+        body: {
+          clientRequestId: randomUUID(),
+          entryId: entry.id,
+          memberId: adultMember.memberId,
+          expectedAdultVersion: cap.expectedAdultVersion,
+          expectedMaterialVersion: cap.expectedMaterialVersion,
+          expectedPolicyVersion: cap.policyVersion,
+          evidenceQualificationId: cap.evidenceQualificationId,
+          decision: 'CONSENT',
+          acceptedDataProcessing: true,
+          termsVersion: 'youth-adult-data-processing-v1',
+        },
+      })
+    ).data;
+    adultConsentIds.push(fact.adultConsentId);
+    return fact;
+  }
+  await renewAdult();
+  // A new revision with the same protected identity requires a fresh processing consent.
+  // Normal current photo qualification is still requested and independently reviewed afterward.
+  adultMaterial = (
+    await call(`${entryPath}/participant-materials/mine`, {
+      method: 'PUT',
+      cookie: guardian.cookie,
+      body: {
+        clientRequestId: randomUUID(),
+        expectedVersion: adultMaterial.version,
+        portrait: {
+          fileName: 'synthetic-adult-new.png',
+          contentType: 'image/png',
+          base64: portrait,
+        },
+        acceptedTerms: true,
+        publicityConsent: false,
+      },
+    })
+  ).data.material;
+  const adultCurrent = await renewAdult();
+  await qualifyAdult();
   const { createYouthQualificationReader } =
     await import('../apps/api/dist/qualification-precheck-service.js');
-  const { readYouthDataProcessingConsent, readYouthEligibility } =
+  const { createYouthDataConsentGuard, readYouthEligibility } =
     await import('../apps/api/dist/youth-guardians-eligibility.js');
   const reader = createYouthQualificationReader(participantDataKey, {
-    dataConsentGuard: readYouthDataProcessingConsent,
+    dataConsentGuard: createYouthDataConsentGuard(participantDataKey),
   });
   const c = await runtimePool.connect();
   try {
@@ -515,6 +685,9 @@ export async function captureExpansionGuardians({
     teamId: team.id,
     entryId: entry.id,
     guardianId: guardian.id,
+    adultSubjectId: guardian.id,
+    adultConsentIds,
+    adultCurrentConsentId: adultCurrent.adultConsentId,
     reviewerId: reviewer.id,
     userIds: [child1.id, child2.id, guardian.id, reviewer.id],
     memberIds: members.map((m) => m.memberId),
@@ -551,7 +724,10 @@ export async function captureExpansionGuardians({
 /** Exact data before quarantine; no HTTP writes, audit mutations or key reads during fingerprint checks. */
 export async function verifyExpansionGuardians({ readPool, saved }) {
   references(saved);
-  assert.deepEqual((await retained(readPool, saved)).digests, saved.hashes);
+  const now = await retained(readPool, saved);
+  assert.deepEqual(now.digests, saved.hashes);
+  assert.equal(now.adultLatest.id, saved.adultCurrentConsentId);
+  assert.equal(now.adultLatest.decision, 'CONSENT');
 }
 /** Restore quarantine retains private facts, fences both current authorities, and revokes old sessions. */
 export async function verifyExpansionGuardiansQuarantine({ readPool, saved }) {
@@ -565,6 +741,8 @@ export async function verifyExpansionGuardiansQuarantine({ readPool, saved }) {
     'history',
     'prehistory',
     'commands',
+    'adultFacts',
+    'adultSource',
   ])
     assert.equal(now.digests[k], saved.hashes[k], `E08 quarantine must retain ${k}`);
   for (const r of now.requests) {
@@ -585,6 +763,9 @@ export async function verifyExpansionGuardiansQuarantine({ readPool, saved }) {
         : p.version >= p.retained_history_version,
     );
   }
+  assert.equal(now.adultLatest.decision, 'WITHDRAW');
+  assert.equal(now.adultLatest.cause, 'RESTORE_QUARANTINE');
+  assert.ok(now.adultLatest.version > now.retainedAdultVersion);
   assert.equal(
     now.liveSessions,
     0,

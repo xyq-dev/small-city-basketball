@@ -360,11 +360,14 @@ export class ParticipantMaterialsService extends ApplicationService {
     a: Access,
     userId: string,
     identityNumber: string | null,
+    memberId?: string,
   ) {
     return readParticipantDataConsent(c, this.guards, {
       orgId: a.ctx.orgId,
       eventId: a.event.id,
       userId,
+      entryId: a.entry.id,
+      memberId,
       identityNumber,
       policyDate: a.event.start_date,
     });
@@ -374,8 +377,9 @@ export class ParticipantMaterialsService extends ApplicationService {
     a: Access,
     userId: string,
     identityNumber: string | null,
+    memberId?: string,
   ) {
-    const result = await this.dataConsent(c, a, userId, identityNumber);
+    const result = await this.dataConsent(c, a, userId, identityNumber, memberId);
     if (!result.ready)
       throw conflict(
         'YOUTH_DATA_PROCESSING_CONSENT_REQUIRED',
@@ -473,6 +477,7 @@ export class ParticipantMaterialsService extends ApplicationService {
       mine.head?.payload_ciphertext && !mine.head.purged_at
         ? this.payload(a, mine.head).identityNumber
         : null,
+      mine.binding?.member_id ?? mine.head?.member_id,
     );
     const canSubmit = Boolean(
       mine.head &&
@@ -569,7 +574,7 @@ export class ParticipantMaterialsService extends ApplicationService {
       if (!row || (!a.reviewer && row.user_id !== a.ctx.user.id)) throw notFound();
       await this.ensureFreshSession(c, a.ctx);
       const payload = this.payload(a, row);
-      await this.requireDataConsent(c, a, row.user_id, payload.identityNumber);
+      await this.requireDataConsent(c, a, row.user_id, payload.identityNumber, row.member_id);
       await this.audit(
         c,
         a.ctx.user.id,
@@ -600,7 +605,7 @@ export class ParticipantMaterialsService extends ApplicationService {
       const row = await this.head(c, a, member);
       if (!row || (!a.reviewer && row.user_id !== a.ctx.user.id)) throw notFound();
       const payload = this.payload(a, row);
-      await this.requireDataConsent(c, a, row.user_id, payload.identityNumber);
+      await this.requireDataConsent(c, a, row.user_id, payload.identityNumber, row.member_id);
       const file = kind === 'portrait' ? payload.portrait : payload.insurance?.document;
       if (!file) throw notFound();
       await this.ensureFreshSession(c, a.ctx);
@@ -685,6 +690,7 @@ export class ParticipantMaterialsService extends ApplicationService {
         input.identityNumber === undefined
           ? (previous?.identityNumber ?? null)
           : input.identityNumber,
+        mine.binding!.member_id,
       );
       if (previous) previous.publicityConsent = mine.head!.publicity_consent;
       const payload = await mergeParticipantDraft(previous, input);

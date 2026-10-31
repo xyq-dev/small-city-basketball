@@ -13,3 +13,5 @@
 检查点2（2026-10-31 Asia/Shanghai）：已合并root00b1da5并接E03/E05/E08专属helper；完整主capture/verify/freeze/quarantine已接check-database-restart，全部48表按实际DDL精确覆盖。E01新增独立注册/排程/真实记分与独立确认source，受控H264录制/转码及人工PTS校准→有效得分自动集锦，STOP结果UNKNOWN保源/外站槽；E04实际条款/绑定/幂等支付/事件/独立对账/扣减/分账/未知回退查原单/更正/未知退款，300分持续预留。E07使用六域真实hooks的CLOSED/CANCELLED/PENDING样本。
 
 原有C23 partial样本不变；额外源/用户独立。新样本在原有机构commerce/media最后快照之前创建，新增C23密文额度按SQL精确delta计入，新增球场以明确ID计入旧exact列表。quarantine仍要求旧completion表行数exact，仅新青年撤权history允许追加且原ID/hash逐项保留。后台auto workers由父新开关明确关闭，专项provider/drain都受控且不联网。5静态/隔离测试、所有模块无副作用import、API build、node语法/格式/空白通过；没有执行PG/重启/dump/restore。下一条交root整合并等待隔离CI暴露SQL/权限/行为差错后修复，不能据静态通过标DONE。
+
+检查点3（2026-10-31 Asia/Shanghai）：root已执行CI完整036—041预检并正式冻结这些迁移，证据位于EXPANSION8_FROZEN_MIGRATIONS.json。获批042新增成年自助数据再同意append-only表youth_adult_data_consents；本片只将恢复库存扩为036—042七迁移/49新增表，映射guardian域并允许quarantine追加WITHDRAW事实，旧completion计数仍exact。E08 owner负责该表的实际capture/verify/quarantine样本，待合并其恢复片；没有改DDL、ops或域模块，也没有执行数据库。
