@@ -22,6 +22,8 @@ import { activateEventCommerce } from './commerce/activation.js';
 import { generateKnockoutPairings } from './knockout-domain.js';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
 import type { EventRow, OrgActor } from './service.js';
+import type { ScheduleOptimizationPreview } from '../../../packages/contracts/scheduling-completion.js';
+import { optimizeSchedule } from './schedule-optimization-domain.js';
 import { ApiError, forbidden, notFound } from './errors.js';
 import { calendarDate, invalid, objectInput, resourceId, text } from './validation.js';
 import { expectedVersion, pageInput } from './registration-validation.js';
@@ -489,6 +491,110 @@ export class SchedulingService extends ApplicationService {
       return this.revisionDto(client, event, revision);
     });
   }
+  /** Server-only authoritative inputs; used by validated unpublished knockout rounds too. */
+  protected async optimizeFixturePlan(
+    client: PoolClient,
+    ctx: OrgActor,
+    event: EventAccess,
+    revision: RevisionRow,
+    fixtures: ScheduleFixtureData[],
+    options: { preserveAssigned?: boolean } = {},
+  ): Promise<ScheduleOptimizationPreview> {
+    const policy = parseSchedulePolicy(revision.policy);
+    const courts = await this.courts(
+      client,
+      ctx.orgId,
+      policy.courtWindows.map((w) => w.courtId),
+    );
+    const starts = policy.courtWindows.map((w) => w.startsAt).sort();
+    const ends = policy.courtWindows.map((w) => w.endsAt).sort();
+    const padding = Math.max(
+      policy.minRestMinutes * 60_000,
+      (policy.minLocalDayGap + 1) * 86_400_000,
+    );
+    const reservations = await client.query<{
+      kind: 'COURT' | 'TEAM';
+      resource_id: string;
+      starts_at: Date;
+      ends_at: Date;
+    }>(
+      `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations
+       WHERE org_id=$1 AND starts_at<$3::timestamptz+$4::double precision*interval '1 millisecond' AND ends_at>$2::timestamptz-$4::double precision*interval '1 millisecond'
+       UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations
+       WHERE org_id=$1 AND starts_at<$3::timestamptz+$4::double precision*interval '1 millisecond' AND ends_at>$2::timestamptz-$4::double precision*interval '1 millisecond'
+       ORDER BY kind,resource_id,starts_at,ends_at LIMIT 10001`,
+      [ctx.orgId, starts[0], ends.at(-1), padding],
+    );
+    if (reservations.rows.length > 10000)
+      business('SCHEDULE_OPTIMIZATION_LIMIT', '当前资源占用超出有界优化范围，请缩小可用时段');
+    const priorEnd =
+      revision.status === 'PUBLISHED'
+        ? (
+            await client.query<{ latest: Date | null }>(
+              'SELECT max(ends_at) AS latest FROM published_matches WHERE org_id=$1 AND event_id=$2',
+              [ctx.orgId, event.row.id],
+            )
+          ).rows[0]?.latest?.toISOString()
+        : undefined;
+    const result = optimizeSchedule(
+      {
+        event: {
+          id: event.row.id,
+          startDate: event.row.start_date,
+          endDate: event.row.end_date,
+          timezone: event.row.timezone,
+        },
+        freeze: revision.source,
+        policy,
+        fixtures,
+        courts,
+        reservations: reservations.rows.map((r) => ({
+          kind: r.kind,
+          resourceId: r.resource_id,
+          startsAt: r.starts_at.toISOString(),
+          endsAt: r.ends_at.toISOString(),
+        })),
+      },
+      { ...options, ...(priorEnd ? { earliestStart: priorEnd } : {}) },
+    );
+    await this.ensureFreshSession(client, ctx);
+    return { ...result, eventVersion: event.row.version, revisionVersion: revision.version };
+  }
+  async previewOptimization(
+    cookie: string | undefined,
+    org: string,
+    id: string,
+    raw: unknown,
+  ): Promise<ScheduleOptimizationPreview> {
+    const input = objectInput(raw, [
+      'expectedEventVersion',
+      'expectedRevisionVersion',
+      'preserveAssigned',
+    ]);
+    const eventVersion = expectedVersion(input.expectedEventVersion),
+      revisionVersion = expectedVersion(input.expectedRevisionVersion);
+    if (input.preserveAssigned !== undefined && typeof input.preserveAssigned !== 'boolean')
+      invalid('请明确是否保留已有安排');
+    return this.transaction(async (client) => {
+      const ctx = await this.context(client, cookie, org);
+      const { event, revision } = await this.loadRevision(client, ctx, id, false);
+      if (!event.canManage) throw forbidden();
+      this.assertOpen(event, await this.publication(client, ctx.orgId, event.row.id));
+      if (revision.status !== 'DRAFT' || event.row.current_schedule_revision_id !== revision.id)
+        business('SCHEDULE_REVISION_NOT_CURRENT', '只能优化当前草稿', 409);
+      checkVersion(event.row.version, eventVersion);
+      checkVersion(revision.version, revisionVersion);
+      await this.validation(client, ctx, event, revision); // strict source replay before searching
+      return this.optimizeFixturePlan(
+        client,
+        ctx,
+        event,
+        revision,
+        await this.fixtures(client, revision),
+        { preserveAssigned: input.preserveAssigned as boolean | undefined },
+      );
+    });
+  }
   async createRevision(
     cookie: string | undefined,
     org: string,
@@ -766,8 +872,16 @@ export class SchedulingService extends ApplicationService {
         starts_at: Date;
         ends_at: Date;
       }>(
-        `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations WHERE org_id=$1 AND starts_at<$3::timestamptz AND ends_at>$2::timestamptz UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations WHERE org_id=$1 AND starts_at<$3::timestamptz AND ends_at>$2::timestamptz`,
-        [ctx.orgId, min, max],
+        `SELECT 'COURT' AS kind,court_id AS resource_id,starts_at,ends_at FROM court_reservations WHERE org_id=$1 AND starts_at<$3::timestamptz AND ends_at>$2::timestamptz UNION ALL SELECT 'TEAM' AS kind,team_id AS resource_id,starts_at,ends_at FROM team_reservations WHERE org_id=$1 AND starts_at<$3::timestamptz+$4::double precision*interval '1 millisecond' AND ends_at>$2::timestamptz-$4::double precision*interval '1 millisecond'`,
+        [
+          ctx.orgId,
+          min,
+          max,
+          Math.max(
+            revision.policy.minRestMinutes * 60000,
+            (revision.policy.minLocalDayGap + 1) * 86400000,
+          ),
+        ],
       );
       reservations = booked.rows.map((r) => ({
         kind: r.kind,

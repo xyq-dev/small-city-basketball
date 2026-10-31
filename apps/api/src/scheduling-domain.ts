@@ -112,7 +112,7 @@ export function parseAllocationInput(
   slotMinutes: number,
 ): ScheduleAllocation[] {
   integer(slotMinutes, 'slotDurationMinutes', 1, 1440);
-  if (!Array.isArray(value) || value.length !== fixtureKeys.length || value.length > 496)
+  if (!Array.isArray(value) || value.length !== fixtureKeys.length || value.length > 992)
     invalid('分配必须精确覆盖本稿全部场次');
   const expected = new Set(fixtureKeys);
   const seen = new Set<string>();
@@ -330,7 +330,7 @@ export function validateSchedule(context: ScheduleValidationContext): ScheduleCo
       seen.has(fixture.fixtureKey) ||
       !Number.isInteger(fixture.roundNo) ||
       fixture.roundNo < 1 ||
-      fixture.roundNo > 31 ||
+      fixture.roundNo > 62 ||
       !Number.isInteger(fixture.positionNo) ||
       fixture.positionNo < 1 ||
       fixture.positionNo > 16 ||
@@ -440,6 +440,23 @@ export function validateSchedule(context: ScheduleValidationContext): ScheduleCo
           endsAt: a.endsAt,
           external: true,
         });
+      }
+      if (matches && reservation.kind === 'TEAM' && !overlaps(a, occupied)) {
+        const rest = a.start >= occupied.end ? a.start - occupied.end : occupied.start - a.end;
+        if (rest < policy.minRestMinutes * MINUTE)
+          conflicts.push({
+            code: 'MIN_REST',
+            fixtureKeys: [a.fixtureKey],
+            resourceId: reservation.resourceId,
+            external: true,
+          });
+        if (Math.abs(ordinal(a.start) - ordinal(occupied.start)) < policy.minLocalDayGap)
+          conflicts.push({
+            code: 'MIN_LOCAL_DAY_GAP',
+            fixtureKeys: [a.fixtureKey],
+            resourceId: reservation.resourceId,
+            external: true,
+          });
       }
     }
   }

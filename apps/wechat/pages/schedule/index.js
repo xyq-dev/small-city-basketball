@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const plan = require('../../utils/schedule');
+const optimization = require('../../utils/scheduling-optimization');
 
 // Scheduling over the existing revision API for all three formats: generate from the frozen
 // roster (round robin, seeded knockout bracket, or balanced groups), propose allocations,
@@ -36,11 +37,13 @@ const privateDefaults = {
 };
 const ALGORITHMS = {
   ROUND_ROBIN: 'RR_CIRCLE_V1',
+  DOUBLE_ROUND_ROBIN: 'DRR_CIRCLE_V1',
   SINGLE_ELIMINATION: 'SE_SEEDED_V1',
   GROUP_KNOCKOUT: 'GK_BALANCED_V1',
 };
 const GENERATE_TITLES = {
   ROUND_ROBIN: '生成单循环对阵',
+  DOUBLE_ROUND_ROBIN: '生成双循环主客对阵',
   SINGLE_ELIMINATION: '生成淘汰赛签位与首轮',
   GROUP_KNOCKOUT: '生成分组与组内循环',
 };
@@ -221,6 +224,7 @@ Page({
           slot: '60',
           rest: '0',
           gap: '0',
+          thirdPlace: !!(revision && revision.policy.thirdPlaceMatch),
         },
         revision: revision
           ? {
@@ -388,7 +392,17 @@ Page({
       minRestMinutes: n(f.rest, '最短休息（分钟）', 0, 43200),
       minLocalDayGap: n(f.gap, '比赛日间隔', 0, 365),
       courtWindows: windows,
+      ...((this.data.format === 'SINGLE_ELIMINATION' || this.data.format === 'GROUP_KNOCKOUT') &&
+      this._scheduling.freeze &&
+      this._scheduling.freeze.entryCount >= 4 &&
+      f.thirdPlace
+        ? { thirdPlaceMatch: true }
+        : {}),
     };
+  },
+  toggleThirdPlace() {
+    if (this.data.busy || !this.data.form) return;
+    this.setData({ 'form.thirdPlace': !this.data.form.thirdPlace });
   },
   pickGroups(e) {
     this.setData({ groupIndex: Number(e.detail.value) || 0 });
@@ -462,10 +476,45 @@ Page({
     )
       await this.load();
   },
-  async autoAssign() {
+  async autoAssign(e) {
     const r = this._revision;
     if (!r || !r.capabilities.canEditAllocations) return;
-    const proposal = plan.propose(r);
+    const preserveAssigned = !(e && e.currentTarget && e.currentTarget.dataset.mode === 'all');
+    const preview = await this.run(
+      this.org() + '/schedule-revisions/' + r.id + '/optimization-preview',
+      'POST',
+      {
+        expectedEventVersion: r.eventVersion,
+        expectedRevisionVersion: r.version,
+        preserveAssigned,
+      },
+      '',
+    );
+    if (!preview || this._revision !== r) return;
+    let proposal;
+    try {
+      proposal = optimization.parse(preview, r);
+    } catch (error) {
+      this.setData({ error: ui.message(error) });
+      return;
+    }
+    const op = await ui.confirmOp(
+      this,
+      preserveAssigned ? '采用补排建议' : '采用全稿均衡排程',
+      (preserveAssigned ? '保留已有安排，仅补充缺项。' : '将重排当前草稿全部场地和时间。') +
+        '建议排入' +
+        (proposal.allocations.length - proposal.unassigned) +
+        '场，未排' +
+        proposal.unassigned +
+        '场。首末场公平度指标' +
+        proposal.penalty +
+        '；有界搜索' +
+        proposal.checks +
+        '次' +
+        (proposal.limitReached ? '，已达搜索上限' : '') +
+        '，不保证全局最优，也不占用正式场地；发布前仍须校验。',
+    );
+    if (!op || this._revision !== r) return;
     const result = await this.run(
       this.org() + '/schedule-revisions/' + r.id + '/allocations',
       'PUT',
@@ -475,6 +524,7 @@ Page({
         allocations: proposal.allocations,
       },
       '',
+      op,
     );
     if (!result) return;
     this.setData({

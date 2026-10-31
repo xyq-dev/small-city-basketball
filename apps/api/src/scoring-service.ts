@@ -22,6 +22,11 @@ import type {
 } from '@small-city-basketball/contracts';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
 import type { EventRow, OrgActor } from './service.js';
+import {
+  projectProfessionalStatistics,
+  professionalStatisticsDto,
+  technicalCollectionEnabled,
+} from './professional-statistics.js';
 import { ApiError, forbidden, notFound, unauthenticated } from './errors.js';
 import { calendarDate, invalid, objectInput, resourceId } from './validation.js';
 import { expectedVersion, pageInput } from './registration-validation.js';
@@ -269,6 +274,9 @@ export class ScoringService extends ApplicationService {
       away: { score: r.away_score, fouls: r.away_fouls, timeouts: r.away_timeouts },
       periods: r.period_stats,
       playerStatistics,
+      ...(r.technical_collection
+        ? { professionalStatistics: professionalStatisticsDto(r.professional_stats) }
+        : {}),
       confirmedAt: iso(r.confirmed_at),
     };
   }
@@ -295,6 +303,15 @@ export class ScoringService extends ApplicationService {
       !isDeepStrictEqual(s.player_stats, playerStatistics)
     )
       conflict('PROJECTION_MISMATCH', '记分流水与球员统计投影不一致');
+    const professionalStored = projectProfessionalStatistics(history, rules, roster);
+    if (
+      !!s.technical_collection !== technicalCollectionEnabled(history) ||
+      !isDeepStrictEqual(s.professional_stats ?? null, professionalStored)
+    )
+      conflict('PROJECTION_MISMATCH', '专业统计流水与当前投影不一致');
+    const professionalStatistics = s.technical_collection
+      ? projectProfessionalStatistics(history, rules, roster, now)
+      : null;
     let latestConfirmation: ResultConfirmationData | null = null;
     if (s.latest_confirmation_id) {
       const r = await c.query<Row>(
@@ -306,7 +323,11 @@ export class ScoringService extends ApplicationService {
         if (
           a.match.status === 'FINAL' &&
           !s.requires_reconfirmation &&
-          !isDeepStrictEqual(latestConfirmation.playerStatistics, playerStatistics)
+          (!isDeepStrictEqual(latestConfirmation.playerStatistics, playerStatistics) ||
+            !isDeepStrictEqual(
+              latestConfirmation.professionalStatistics ?? null,
+              professionalStored,
+            ))
         )
           conflict('PROJECTION_MISMATCH', '当前有效确认与球员统计投影不一致');
       }
@@ -331,6 +352,7 @@ export class ScoringService extends ApplicationService {
       latestConfirmation,
       requiresReconfirmation: s.requires_reconfirmation,
       playerStatistics,
+      ...(s.technical_collection ? { professionalStatistics } : {}),
       collected: {
         teamScore: true,
         teamFouls: true,
@@ -875,6 +897,13 @@ export class ScoringService extends ApplicationService {
           st.away_timeouts !== projection.away.timeouts)
       )
         conflict('PROJECTION_MISMATCH', '记分流水与当前投影不一致，请联系赛事管理员');
+      const previousProfessional = projectProfessionalStatistics(history, rules, roster);
+      if (
+        st &&
+        (!!st.technical_collection !== technicalCollectionEnabled(history) ||
+          !isDeepStrictEqual(st.professional_stats ?? null, previousProfessional))
+      )
+        conflict('PROJECTION_MISMATCH', '专业统计流水与当前投影不一致');
       const plan = planCommand({
         status: a.match.status,
         clock: st ? this.clock(st) : null,
@@ -882,6 +911,7 @@ export class ScoringService extends ApplicationService {
         events: history,
         command,
         now,
+        roster,
       });
       const newVersion = a.match.version + 1;
       let seq = st?.last_event_seq ?? 0;
@@ -919,12 +949,14 @@ export class ScoringService extends ApplicationService {
       }
       const totals = replayStats(history, rules, plan.clock.period);
       const playerStatistics = projectPlayerStatistics(mode, totals, roster);
+      const professionalStatistics = projectProfessionalStatistics(history, rules, roster);
+      const technicalCollection = technicalCollectionEnabled(history);
       let confirmationId = st?.latest_confirmation_id ?? null;
       let requires = !!st?.requires_reconfirmation || plan.isReopen;
       if (plan.isConfirmation) {
         confirmationId = randomUUID();
         await c.query(
-          'INSERT INTO result_confirmations(id,org_id,event_id,match_id,confirming_user_id,ruleset_id,ruleset_version,source_match_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,confirmed_at,collection_mode,player_stats) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19::jsonb)',
+          'INSERT INTO result_confirmations(id,org_id,event_id,match_id,confirming_user_id,ruleset_id,ruleset_version,source_match_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,confirmed_at,collection_mode,player_stats,technical_collection,professional_stats) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18,$19::jsonb,$20,$21::jsonb)',
           [
             confirmationId,
             ctx.orgId,
@@ -945,6 +977,8 @@ export class ScoringService extends ApplicationService {
             now,
             mode,
             playerStatistics === null ? null : JSON.stringify(playerStatistics),
+            technicalCollection,
+            professionalStatistics === null ? null : JSON.stringify(professionalStatistics),
           ],
         );
         requires = false;
@@ -974,7 +1008,7 @@ export class ScoringService extends ApplicationService {
       a.match.status = plan.status;
       a.match.version = newVersion;
       await c.query(
-        'INSERT INTO scoring_states(org_id,event_id,match_id,ruleset_id,source_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,period,remaining_ms,clock_running,anchor_server_time,clock_version,latest_confirmation_id,requires_reconfirmation,updated_at,collection_mode,player_stats) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23::jsonb) ON CONFLICT(org_id,match_id) DO UPDATE SET source_version=EXCLUDED.source_version,last_event_seq=EXCLUDED.last_event_seq,home_score=EXCLUDED.home_score,away_score=EXCLUDED.away_score,home_fouls=EXCLUDED.home_fouls,away_fouls=EXCLUDED.away_fouls,home_timeouts=EXCLUDED.home_timeouts,away_timeouts=EXCLUDED.away_timeouts,period_stats=EXCLUDED.period_stats,period=EXCLUDED.period,remaining_ms=EXCLUDED.remaining_ms,clock_running=EXCLUDED.clock_running,anchor_server_time=EXCLUDED.anchor_server_time,clock_version=EXCLUDED.clock_version,latest_confirmation_id=EXCLUDED.latest_confirmation_id,requires_reconfirmation=EXCLUDED.requires_reconfirmation,updated_at=EXCLUDED.updated_at,player_stats=EXCLUDED.player_stats',
+        'INSERT INTO scoring_states(org_id,event_id,match_id,ruleset_id,source_version,last_event_seq,home_score,away_score,home_fouls,away_fouls,home_timeouts,away_timeouts,period_stats,period,remaining_ms,clock_running,anchor_server_time,clock_version,latest_confirmation_id,requires_reconfirmation,updated_at,collection_mode,player_stats,technical_collection,professional_stats) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23::jsonb,$24,$25::jsonb) ON CONFLICT(org_id,match_id) DO UPDATE SET source_version=EXCLUDED.source_version,last_event_seq=EXCLUDED.last_event_seq,home_score=EXCLUDED.home_score,away_score=EXCLUDED.away_score,home_fouls=EXCLUDED.home_fouls,away_fouls=EXCLUDED.away_fouls,home_timeouts=EXCLUDED.home_timeouts,away_timeouts=EXCLUDED.away_timeouts,period_stats=EXCLUDED.period_stats,period=EXCLUDED.period,remaining_ms=EXCLUDED.remaining_ms,clock_running=EXCLUDED.clock_running,anchor_server_time=EXCLUDED.anchor_server_time,clock_version=EXCLUDED.clock_version,latest_confirmation_id=EXCLUDED.latest_confirmation_id,requires_reconfirmation=EXCLUDED.requires_reconfirmation,updated_at=EXCLUDED.updated_at,player_stats=EXCLUDED.player_stats,professional_stats=EXCLUDED.professional_stats',
         [
           ctx.orgId,
           a.event.id,
@@ -999,6 +1033,8 @@ export class ScoringService extends ApplicationService {
           now,
           mode,
           playerStatistics === null ? null : JSON.stringify(playerStatistics),
+          technicalCollection,
+          professionalStatistics === null ? null : JSON.stringify(professionalStatistics),
         ],
       );
       const receiptRow = await c.query<Row>(

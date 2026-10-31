@@ -12,6 +12,11 @@ const privateDefaults = {
   history: [],
   roster: { home: [NO_PLAYER], away: [NO_PLAYER] },
   pick: { home: 0, away: 0 },
+  proGroups: [],
+  lineupCorrection: null,
+  lineupDraft: { home: [], away: [] },
+  subOut: { home: 0, away: 0 },
+  subIn: { home: 0, away: 0 },
   held: false,
   canControl: false,
   leaseNote: '',
@@ -34,7 +39,20 @@ function rosterOptions(list) {
 }
 
 Page({
-  data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
+  data: {
+    loading: false,
+    busy: false,
+    error: '',
+    notice: '',
+    technicalKinds: [
+      { kind: 'REBOUND', label: '篮板' },
+      { kind: 'ASSIST', label: '助攻' },
+      { kind: 'STEAL', label: '抢断' },
+      { kind: 'BLOCK', label: '盖帽' },
+      { kind: 'TURNOVER', label: '失误' },
+    ],
+    ...privateDefaults,
+  },
   onLoad(query) {
     this._alive = true;
     try {
@@ -94,7 +112,30 @@ Page({
         'match.status': snapshot.status,
         'match.statusLabel': api.matchStatus(snapshot.status),
       });
-    this.setData({ board });
+    const pro = snapshot && snapshot.professionalStatistics;
+    const proGroups = pro
+      ? ['home', 'away'].map((key) => ({
+          key,
+          side: key === 'home' ? 'HOME' : 'AWAY',
+          name: snapshot[key].teamName,
+          players: pro[key].players.map((p) => ({
+            ...p,
+            label: p.jerseyNo + '号 ' + p.name,
+            time:
+              Math.floor(p.playingMs / 60000) +
+              ':' +
+              String(Math.floor(p.playingMs / 1000) % 60).padStart(2, '0'),
+            shooting: p.fieldGoalsMade + '/' + p.fieldGoalsAttempted,
+            percent: p.fieldGoalPercentage === null ? '无出手' : p.fieldGoalPercentage + '%',
+            checked: pro[key].lineup.includes(p.memberId),
+          })),
+        }))
+      : [];
+    this.setData({
+      board,
+      proGroups,
+      ...(pro ? { lineupDraft: { home: pro.home.lineup, away: pro.away.lineup } } : {}),
+    });
     if (board && board.running && !this._tick)
       this._tick = setInterval(() => {
         if (this._snapshot)
@@ -346,16 +387,137 @@ Page({
     const value = Number(e.currentTarget.dataset.value || 1);
     if (!['HOME', 'AWAY'].includes(side) || !scoring.kinds[kind]) return;
     const key = side === 'HOME' ? 'home' : 'away';
+    if (
+      this.data.board &&
+      this.data.board.proMode &&
+      kind === 'SCORE' &&
+      !this.professionalPlayer(side)
+    )
+      return;
     const payload = { kind, side, value };
     const option = this.data.roster[key][this.data.pick[key]];
     if (this.data.board && this.data.board.playerMode && kind !== 'TIMEOUT' && option)
       payload.memberId = option.memberId || null;
     const team = this.data.match[key];
     this.command(
-      'RECORD_STAT',
-      payload,
+      this.data.board.proMode && kind === 'SCORE' ? 'RECORD_SHOT' : 'RECORD_STAT',
+      this.data.board.proMode && kind === 'SCORE'
+        ? { side, memberId: payload.memberId, shotValue: value, made: true }
+        : payload,
       team + ' ' + scoring.kinds[kind] + (kind === 'SCORE' ? ' +' + value : ''),
     );
+  },
+  professionalPlayer(side) {
+    const key = side === 'HOME' ? 'home' : 'away';
+    const p = this.data.roster[key][this.data.pick[key]];
+    if (!p || !p.memberId) {
+      this.setData({ error: '专业统计请先选择当前在场球员。' });
+      return null;
+    }
+    return p.memberId;
+  },
+  missShot(e) {
+    const side = e.currentTarget.dataset.side,
+      memberId = this.professionalPlayer(side);
+    if (memberId)
+      this.command(
+        'RECORD_SHOT',
+        { side, memberId, shotValue: Number(e.currentTarget.dataset.value), made: false },
+        '记录未命中投篮',
+      );
+  },
+  technical(e) {
+    const side = e.currentTarget.dataset.side,
+      memberId = this.professionalPlayer(side);
+    if (memberId)
+      this.command(
+        'RECORD_TECHNICAL',
+        { side, memberId, kind: e.currentTarget.dataset.kind },
+        '记录' + scoring.kinds[e.currentTarget.dataset.kind],
+      );
+  },
+  pickLineup(e) {
+    const key = e.currentTarget.dataset.side;
+    if (['home', 'away'].includes(key)) this.setData({ ['lineupDraft.' + key]: e.detail.value });
+  },
+  setLineup(e) {
+    const key = e.currentTarget.dataset.side;
+    if (['home', 'away'].includes(key))
+      this.command(
+        'SET_LINEUP',
+        { side: key === 'home' ? 'HOME' : 'AWAY', memberIds: this.data.lineupDraft[key] },
+        '设置首发',
+      );
+  },
+  subPick(e) {
+    const key = e.currentTarget.dataset.side,
+      role = e.currentTarget.dataset.role;
+    if (['home', 'away'].includes(key) && ['out', 'in'].includes(role))
+      this.setData({
+        [(role === 'out' ? 'subOut.' : 'subIn.') + key]: Number(e.detail.value) || 0,
+      });
+  },
+  substitute(e) {
+    const key = e.currentTarget.dataset.side,
+      group = this.data.proGroups.find((g) => g.key === key);
+    if (!group) return;
+    const out = group.players[this.data.subOut[key]],
+      into = group.players[this.data.subIn[key]];
+    if (out && into)
+      this.command(
+        'SUBSTITUTE_PLAYER',
+        {
+          side: key === 'home' ? 'HOME' : 'AWAY',
+          outMemberId: out.memberId,
+          inMemberId: into.memberId,
+        },
+        '换人',
+      );
+  },
+  correctLineup(e) {
+    const row = this.data.history.find(
+      (r) => r.id === e.currentTarget.dataset.id && r.canCorrectLineup,
+    );
+    if (!row || !this.data.board || this.data.board.running) return;
+    const group = this.data.proGroups.find((g) => g.side === row.side);
+    if (group)
+      this.setData({
+        lineupCorrection: {
+          targetEventId: row.id,
+          side: row.side,
+          memberIds: row.memberIds,
+          reason: '',
+          players: group.players.map((p) => ({
+            ...p,
+            checked: row.memberIds.includes(p.memberId),
+          })),
+        },
+      });
+  },
+  correctionLineupPick(e) {
+    if (this.data.lineupCorrection) this.setData({ 'lineupCorrection.memberIds': e.detail.value });
+  },
+  correctionLineupReason(e) {
+    if (this.data.lineupCorrection)
+      this.setData({ 'lineupCorrection.reason': String(e.detail.value || '').slice(0, 500) });
+  },
+  submitLineupCorrection() {
+    const draft = this.data.lineupCorrection;
+    if (!draft) return;
+    const reason = draft.reason.trim();
+    if (!reason) {
+      this.setData({ error: '请填写阵容更正原因。' });
+      return;
+    }
+    this.setData({ lineupCorrection: null });
+    this.command(
+      'CORRECT_LINEUP',
+      { targetEventId: draft.targetEventId, memberIds: draft.memberIds, reason },
+      '更正历史阵容',
+    );
+  },
+  cancelLineupCorrection() {
+    this.setData({ lineupCorrection: null });
   },
   start() {
     this.command('START_MATCH', { expectedEventVersion: this._eventVersion }, '开始比赛');
@@ -420,7 +582,8 @@ Page({
   askVoid(e) {
     const id = e.currentTarget.dataset.id;
     const row = this.data.history.find((h) => h.id === id && h.canVoid);
-    if (row) this.setData({ voidTarget: { id, text: row.text }, voidReason: '' });
+    if (row)
+      this.setData({ voidTarget: { id, text: row.text, voidType: row.voidType }, voidReason: '' });
   },
   voidInput(e) {
     this.setData({ voidReason: String(e.detail.value || '').slice(0, 500) });
@@ -438,7 +601,7 @@ Page({
     }
     this.setData({ voidTarget: null, voidReason: '' });
     this.command(
-      'VOID_STAT',
+      target.voidType || 'VOID_STAT',
       { targetEventId: api.uuid(target.id), reason },
       '撤销：' + target.text,
     );
@@ -481,6 +644,7 @@ Page({
     if (field === 'value') this.setData({ 'fix.value': Number(raw) || 1 });
     if (field === 'period')
       this.setData({ 'fix.period': Math.max(1, Math.min(99, Number(raw) || 1)) });
+    if (field === 'made') this.setData({ 'fix.made': raw !== 'false' && raw !== false });
     if (field === 'reason') this.setData({ 'fix.reason': String(raw || '').slice(0, 500) });
   },
   submitFix() {
@@ -497,13 +661,18 @@ Page({
       period: fix.period,
       reason,
     };
-    if (this.data.board && this.data.board.playerMode && fix.kind !== 'TIMEOUT')
+    let type = 'ADD_CORRECTION';
+    if (this.data.board && this.data.board.proMode && !['FOUL', 'TIMEOUT'].includes(fix.kind)) {
+      const memberId = this.professionalPlayer(fix.side);
+      if (!memberId) return;
+      type = 'ADD_PRO_CORRECTION';
+      Object.assign(payload, { memberId, kind: fix.kind === 'SCORE' ? 'SHOT' : fix.kind });
+      delete payload.value;
+      if (fix.kind === 'SCORE')
+        Object.assign(payload, { shotValue: fix.value, made: fix.made !== false });
+    } else if (this.data.board && this.data.board.playerMode && fix.kind !== 'TIMEOUT')
       payload.memberId = null;
     this.setData({ fixOpen: false });
-    this.command(
-      'ADD_CORRECTION',
-      payload,
-      '补录' + scoring.sides[fix.side] + scoring.kinds[fix.kind],
-    );
+    this.command(type, payload, '补录' + scoring.sides[fix.side] + scoring.kinds[fix.kind]);
   },
 });

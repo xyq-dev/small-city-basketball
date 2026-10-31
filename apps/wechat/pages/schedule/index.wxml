@@ -41,7 +41,8 @@
           <view class="muted">服务端随机均衡分组（组间人数差至多1队）并生成组内单循环；每组前二按固定交叉进入淘汰赛，不比较跨组第三名。</view>
         </block>
       </view>
-      <view wx:elif="{{format === 'SINGLE_ELIMINATION'}}" class="notice small">服务端从冻结名单随机生成固定签位；首轮轮空不生成比赛，下一轮须待来源比赛全部有效独立确认后再发布。不设三四名赛。</view>
+      <view wx:elif="{{format === 'SINGLE_ELIMINATION'}}" class="notice small">服务端从冻结名单随机生成固定签位；首轮轮空不生成比赛，下一轮须待来源比赛全部有效独立确认后再发布。</view>
+      <view wx:if="{{(format === 'SINGLE_ELIMINATION' || format === 'GROUP_KNOCKOUT') && event.teams >= 4}}" class="card"><view class="setup-switch" bindtap="toggleThirdPlace"><text>安排季军赛</text><text class="setup-flag {{form.thirdPlace ? 'on' : ''}}">{{form.thirdPlace ? '启用' : '不安排'}}</text></view><view class="muted">启用后半决赛负者进入季军赛；决赛和季军赛均须独立确认才能完赛。配置随本次抽签锁定。</view></view>
       <view class="card">
         <view class="subtitle">选择场地</view>
         <view wx:if="{{!courts.length}}" class="muted">机构还没有可用场地。</view>
@@ -72,7 +73,9 @@
       <view class="card">
         <view class="row-between"><view class="subtitle">对阵草稿</view><text class="badge">{{revision.rounds}} 轮 · {{revision.count}} 场</text></view>
         <view class="muted">草稿不占用正式场地。先自动排入时间，再由服务端校验冲突，通过后一次发布。</view>
-        <button wx:if="{{revision.canEdit}}" class="secondary" bindtap="autoAssign" disabled="{{busy}}">自动排入时间与场地</button>
+        <button wx:if="{{revision.canEdit}}" class="secondary" data-mode="preserve" bindtap="autoAssign" disabled="{{busy}}">保留已排，自动补充缺项</button>
+        <button wx:if="{{revision.canEdit}}" class="secondary" data-mode="all" bindtap="autoAssign" disabled="{{busy}}">全稿均衡优化</button>
+        <view wx:if="{{revision.canEdit}}" class="muted">服务端考虑本机构跨赛事占用、休息及比赛日间隔，按本稿实际首末场次数均衡；有界建议不保证全局最优，不占用正式场地。</view>
         <button wx:if="{{revision.canValidate}}" class="secondary" bindtap="validate" disabled="{{busy}}">校验冲突</button>
         <button wx:if="{{revision.canPublish}}" class="primary" bindtap="publish" disabled="{{busy}}">发布正式赛程</button>
       </view>

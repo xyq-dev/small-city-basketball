@@ -22,6 +22,10 @@ import type { Response, NextFunction } from 'express';
 import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
+import { AccountRecoveryService } from './account-recovery-service.js';
+import type { AccountRecoveryOptions } from './account-recovery-service.js';
+import { AccountRecoveryController, SCB_ACCOUNT_RECOVERY } from './account-recovery-controller.js';
+import { accountRecoveryRuntime } from './account-recovery-runtime.js';
 import { PlayerBookingService } from './player-booking/service.js';
 import { PlayerPerformanceService } from './player-booking/performance-service.js';
 import {
@@ -282,6 +286,7 @@ export async function createApi(
     wechat?: WechatServiceOptions;
     media?: { trustedExternalHosts?: string[] };
     commercePayments?: WechatPayClient;
+    accountRecovery?: AccountRecoveryOptions;
   },
 ): Promise<{ app: INestApplication; pool: Pool }> {
   const options = resolveApiOptions(input);
@@ -294,6 +299,12 @@ export async function createApi(
   try {
     if (options.production) await assertRuntimeReadiness(pool, options.participantDataKey);
     const service = new RegistrationService(pool, options);
+    const accountRecovery = new AccountRecoveryService(
+      pool,
+      options,
+      input.accountRecovery ?? accountRecoveryRuntime(),
+    );
+    await accountRecovery.assertConfiguration();
     const participantMaterials = new ParticipantMaterialsService(pool, options);
     const playerBooking = new PlayerBookingService(pool, options);
     const playerPerformance = new PlayerPerformanceService(pool, options);
@@ -318,6 +329,7 @@ export async function createApi(
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
+        AccountRecoveryController,
         AuthController,
         PlayerBookingController,
         PlayerPerformanceController,
@@ -353,6 +365,7 @@ export async function createApi(
         SeasonController,
       ],
       providers: [
+        { provide: SCB_ACCOUNT_RECOVERY, useValue: accountRecovery },
         { provide: SERVICE, useValue: service },
         { provide: SCB_PARTICIPANT_MATERIALS_SERVICE, useValue: participantMaterials },
         { provide: SCB_PLAYER_BOOKING_SERVICE, useValue: playerBooking },
@@ -409,6 +422,7 @@ export async function createApi(
     });
     app.useGlobalFilters(new ApiExceptionFilter());
     await app.init();
+    accountRecovery.startWorker();
     return { app, pool };
   } catch (error) {
     await pool.end();

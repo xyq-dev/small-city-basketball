@@ -550,6 +550,7 @@ export interface ResultConfirmationData {
   away: ScoringTotals;
   periods: ScoringPeriodTotals[];
   playerStatistics: MatchPlayerStatistics | null;
+  professionalStatistics?: import('./professional-statistics.js').ProfessionalStatistics | null;
   confirmedAt: string;
 }
 export interface ScoreSnapshot {
@@ -568,6 +569,7 @@ export interface ScoreSnapshot {
   latestConfirmation: ResultConfirmationData | null;
   requiresReconfirmation: boolean;
   playerStatistics: MatchPlayerStatistics | null;
+  professionalStatistics?: import('./professional-statistics.js').ProfessionalStatistics | null;
   collected: { teamScore: true; teamFouls: true; teamTimeouts: true; playerStatistics: boolean };
   serverTime: string;
 }
@@ -644,12 +646,24 @@ export const SCORING_COMMAND_TYPES: readonly [
   'END_MATCH',
   'CONFIRM_RESULT',
   'REOPEN_RESULT',
+  'RECORD_SHOT',
+  'RECORD_TECHNICAL',
+  'SET_LINEUP',
+  'SUBSTITUTE_PLAYER',
+  'VOID_PRO_STAT',
+  'ADD_PRO_CORRECTION',
+  'CORRECT_LINEUP',
 ];
 export type ScoringCommandType = (typeof SCORING_COMMAND_TYPES)[number];
 export type ScoringCommandPayload =
+  | import('./professional-statistics.js').ProfessionalCommandPayload
   | {
       type: 'PREPARE_MATCH';
-      payload: { expectedEventVersion: number; collectionMode?: ScoringCollectionMode };
+      payload: {
+        expectedEventVersion: number;
+        collectionMode?: ScoringCollectionMode;
+        technicalCollection?: boolean;
+      };
     }
   | { type: 'START_MATCH'; payload: { expectedEventVersion: number } }
   | {
@@ -1134,3 +1148,5 @@ export type * from './event-follows.js';
 export type * from './private-seasons.js';
 
 export type * from './participant-materials.js';
+export type * from './scheduling-completion.js';
+export type * from './professional-statistics.js';

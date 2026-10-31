@@ -40,6 +40,7 @@
         <button class="{{collectionMode === 'TEAM_ONLY' ? 'selected' : ''}}" data-mode="TEAM_ONLY" bindtap="setMode">只记球队</button>
         <button class="{{collectionMode === 'PLAYER_BASIC' ? 'selected' : ''}}" data-mode="PLAYER_BASIC" bindtap="setMode">逐人记分</button>
       </view>
+      <view wx:if="{{collectionMode === 'PLAYER_BASIC'}}" class="row-between"><view>专业统计与阵容时间（准备后锁定）</view><switch checked="{{technicalCollection}}" bindchange="setTechnical"/></view>
       <button class="primary" bindtap="prepare" disabled="{{busy || !!pending}}">准备比赛</button>
     </view>
     <view wx:elif="{{match.status === 'SCHEDULED'}}" class="notice small">{{match.rulesLabel}}。比赛由赛事负责人准备后才能记分。</view>

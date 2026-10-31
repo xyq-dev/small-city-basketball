@@ -3,7 +3,16 @@ const ui = require('./ui');
 
 // Native views of the existing P05-A scoring contract. The server owns the state machine,
 // clock, leases, CAS and confirmer independence; these helpers only shape requests/views.
-const kinds = { SCORE: '得分', FOUL: '犯规', TIMEOUT: '暂停' };
+const kinds = {
+  SCORE: '得分',
+  FOUL: '犯规',
+  TIMEOUT: '暂停',
+  REBOUND: '篮板',
+  ASSIST: '助攻',
+  STEAL: '抢断',
+  BLOCK: '盖帽',
+  TURNOVER: '失误',
+};
 const sides = { HOME: '主队', AWAY: '客队' };
 const eventNames = {
   PREPARE_MATCH: '准备比赛',
@@ -23,6 +32,13 @@ const commandNames = {
   ADD_CORRECTION: '补录更正',
   VOID_STAT: '撤销记录',
   REPLACE_STAT: '更正记录',
+  RECORD_SHOT: '记录投篮',
+  RECORD_TECHNICAL: '记录专业统计',
+  SET_LINEUP: '设置首发',
+  SUBSTITUTE_PLAYER: '换人',
+  VOID_PRO_STAT: '撤销专业统计',
+  ADD_PRO_CORRECTION: '补录专业统计',
+  CORRECT_LINEUP: '更正历史阵容',
 };
 const errorText = {
   VERSION_CONFLICT: '比赛已被其他操作更新，已重新读取，请核对后再操作。',
@@ -83,6 +99,7 @@ function board(snapshot, receivedAt, now = Date.now()) {
       home: p.home.score,
       away: p.away.score,
     })),
+    proMode: !!snapshot.professionalStatistics,
     playerMode: !!(snapshot.collected && snapshot.collected.playerStatistics),
   };
 }
@@ -100,7 +117,9 @@ function remaining(snapshot, receivedAt, now = Date.now()) {
 /** History rows newest first; voided records stay listed and are marked, never removed. */
 function history(events, snapshot, names = {}) {
   const voided = new Set(
-    events.filter((e) => e.type === 'STAT_VOIDED' && e.targetEventId).map((e) => e.targetEventId),
+    events
+      .filter((e) => ['STAT_VOIDED', 'PRO_STAT_VOIDED'].includes(e.type) && e.targetEventId)
+      .map((e) => e.targetEventId),
   );
   const team = (side) =>
     (snapshot && snapshot[side === 'HOME' ? 'home' : 'away'].teamName) || sides[side] || '';
@@ -117,7 +136,22 @@ function history(events, snapshot, names = {}) {
           (kinds[p.kind] || p.kind) +
           (p.kind === 'SCORE' ? ' +' + p.value : '') +
           (p.memberId && names[p.memberId] ? ' · ' + names[p.memberId] : '');
-      if (e.type === 'STAT_VOIDED') text = '撤销一条记录';
+      if (e.type === 'PRO_STAT_RECORDED')
+        text =
+          team(p.side) +
+          ' ' +
+          (p.kind === 'SHOT' ? p.shotValue + '分未命中' : kinds[p.kind] || p.kind) +
+          (names[p.memberId] ? ' · ' + names[p.memberId] : '');
+      if (e.type === 'SET_LINEUP') text = team(p.side) + ' 设置首发';
+      if (e.type === 'SUBSTITUTE_PLAYER')
+        text =
+          team(p.side) +
+          ' ' +
+          (names[p.outMemberId] || '球员') +
+          ' 换下 / ' +
+          (names[p.inMemberId] || '球员') +
+          ' 换上';
+      if (['STAT_VOIDED', 'PRO_STAT_VOIDED'].includes(e.type)) text = '撤销一条记录';
       return {
         key: e.id,
         id: e.id,
@@ -127,7 +161,11 @@ function history(events, snapshot, names = {}) {
         periodLabel: snapshot && p.period ? period(snapshot.rules, p.period) : '',
         time: ui.localTime(e.serverTime),
         voided: voided.has(e.id),
-        canVoid: e.type === 'STAT_RECORDED' && !voided.has(e.id),
+        canVoid: ['STAT_RECORDED', 'PRO_STAT_RECORDED'].includes(e.type) && !voided.has(e.id),
+        voidType: e.type === 'PRO_STAT_RECORDED' ? 'VOID_PRO_STAT' : 'VOID_STAT',
+        canCorrectLineup: ['SET_LINEUP', 'SUBSTITUTE_PLAYER'].includes(e.type),
+        side: p.side,
+        memberIds: Array.isArray(p.memberIds) ? p.memberIds : [],
       };
     });
 }

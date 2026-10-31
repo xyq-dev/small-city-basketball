@@ -42,7 +42,6 @@ CREATE TABLE recruitment_applications (
   decided_at timestamptz,
   entry_id uuid,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  UNIQUE (publication_id,applicant_id),
   UNIQUE (org_id,event_id,id),
   FOREIGN KEY (org_id,event_id,publication_id) REFERENCES recruitment_publications(org_id,event_id,id),
   FOREIGN KEY (org_id,team_id) REFERENCES teams(org_id,id),
@@ -55,6 +54,8 @@ CREATE TABLE recruitment_applications (
 );
 CREATE UNIQUE INDEX recruitment_team_once ON recruitment_applications(publication_id,team_id)
   WHERE team_id IS NOT NULL AND status IN ('PENDING','APPROVED');
+CREATE UNIQUE INDEX recruitment_applicant_once ON recruitment_applications(publication_id,applicant_id)
+  WHERE status IN ('PENDING','APPROVED');
 CREATE INDEX recruitment_applicant_history ON recruitment_applications(applicant_id,created_at DESC,id DESC);
 
 CREATE TABLE event_team_import_previews (

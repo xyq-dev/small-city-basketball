@@ -191,15 +191,15 @@ export class ApplicationService {
   protected async lockActor(client: PoolClient, cookie?: string): Promise<Actor> {
     const token = readSessionToken(cookie);
     if (!token) throw unauthenticated();
-    const session = await client.query<{ id: string; user_id: string }>(
-      'SELECT id,user_id FROM sessions WHERE token_hash=$1 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE',
+    const session = await client.query<{ id: string; user_id: string; issued_at: string }>(
+      'SELECT id,user_id,created_at::text AS issued_at FROM sessions WHERE token_hash=$1 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE',
       [hashToken(token)],
     );
     const row = session.rows[0];
     if (!row) throw unauthenticated();
     const user = await client.query<DbUser>(
-      'SELECT id,email,display_name,password_hash,status FROM users WHERE id=$1 FOR SHARE',
-      [row.user_id],
+      "SELECT u.id,u.email,u.display_name,u.password_hash,u.status FROM users u WHERE u.id=$1 AND $2::timestamptz>COALESCE((to_jsonb(u)->>'credential_reset_at')::timestamptz,'-infinity'::timestamptz) FOR SHARE",
+      [row.user_id, row.issued_at],
     );
     if (!user.rows[0] || user.rows[0].status !== 'ACTIVE') throw unauthenticated();
     return { sessionId: row.id, user: user.rows[0] };
