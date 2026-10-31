@@ -1,5 +1,10 @@
 # 当前状态
 
+## EXPANSION8（IN_PROGRESS / BRANCH_ONLY：八项剩余功能开发中）
+
+2026-10-31 Asia/Shanghai；本会话root集成，main基线4729336，分支feat/commercial-expansion-8。直播/云媒体、保险、业务资金、微信通知、统一搜索、账号注销、青少年监护八项已认领并完成必要首轮设计审查，正在实现；范围/所有权/权限见[总任务](tasks/EXPANSION8.md)、[恢复入口](handoffs/EXPANSION8.md)。已写E05通知domain/039/provider及18项作者单测，持久服务和页面仍待；其他域正在首片，不将设计或空接口算完成。没有生产、正式新凭据、真实付费或本轮Migration执行；下方COMPLETION22已合并事实不变。
+
+
 ## COMPLETION22（DONE / MAIN：源码与隔离验收，生产未更新）
 
 2026-10-31 Asia/Shanghai；本会话root集成。[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)已以merge commit `29179c0f047dde92c50d4dd7cb360d4f36eb77f5` 合入main。全部F01—F22的有界源码与消费者已整合，包括季军/双循环/异常裁定、排程/模板、招募/导入邀请/海报、专业统计/阵容/离线队列/档案、全国界面与同城预约约赛、工作人员及运营治理、赞助/经费公示和账号找回；[逐项验收](tasks/COMPLETION22.md)、[恢复入口](handoffs/COMPLETION22.md)、[使用指南](COMMERCIAL_USAGE.md)。

@@ -1,5 +1,10 @@
 # 任务看板
 
+## EXPANSION8（IN_PROGRESS / BRANCH_ONLY：八项剩余功能开发中）
+
+2026-10-31 Asia/Shanghai；本会话root集成，main基线4729336，分支feat/commercial-expansion-8。直播/云媒体、保险、业务资金、微信通知、统一搜索、账号注销、青少年监护八项已认领并完成必要首轮设计审查，正在实现；范围/所有权/权限见[总任务](tasks/EXPANSION8.md)、[恢复入口](handoffs/EXPANSION8.md)。已写E05通知domain/039/provider及18项作者单测，持久服务和页面仍待；其他域正在首片，不将设计或空接口算完成。没有生产、正式新凭据、真实付费或本轮Migration执行；下方COMPLETION22已合并事实不变。
+
+
 ## COMPLETION22：22项功能实现与测试（DONE／MAIN：源码与隔离验收）
 
 2026-10-31 Asia/Shanghai；[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)已合入main `29179c0f047dde92c50d4dd7cb360d4f36eb77f5`。F01—F22源码与消费者及约定隔离验收完成，56路由／35迁移／127表；[逐项及完整证据](tasks/COMPLETION22.md)、[恢复入口](handoffs/COMPLETION22.md)、[使用指南](COMMERCIAL_USAGE.md)。[CI41173913872](https://github.com/xyq-dev/small-city-basketball/actions/runs/41173913872)三job完整SUCCESS（attempt1），root已读取全部原始日志：920 API／561 admin／925小程序源码测试通过、1项既有平台跳过；520真实PG＋20最小权限PG、16页面HTTP、24真实API浏览器、4HTTPS、995兼容浏览器及981布局PNG通过。127表重启、44新增表非空业务capture、第二数据库完整恢复、业务快照/fencing/quarantine和自有清理全部通过。
