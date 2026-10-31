@@ -44,7 +44,8 @@ function stateLabel(status) {
 function slots(round, names) {
   return round.slots.map((s) => {
     const name = (id) => (id ? names[id] || '冻结参赛队' : '');
-    const waiting = (source) => (source ? '待定（' + source + '胜者）' : '待定');
+    const waiting = (source) =>
+      source ? '待定（' + source + (s.sourceOutcome === 'LOSER' ? '负者' : '胜者') + '）' : '待定';
     return {
       key: s.fixtureKey,
       matchId: s.matchId || '',
@@ -54,6 +55,12 @@ function slots(round, names) {
       status: s.status,
       statusLabel: stateLabel(s.status),
       winner: name(s.winnerEntryId),
+      ...(s.kind
+        ? {
+            label: s.kind === 'THIRD_PLACE' ? '季军赛' : '决赛',
+            winnerLabel: s.kind === 'THIRD_PLACE' ? '季军' : '冠军',
+          }
+        : {}),
     };
   });
 }

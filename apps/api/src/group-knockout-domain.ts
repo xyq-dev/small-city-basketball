@@ -427,7 +427,11 @@ export function calculateGroupKnockout(input: {
       }
     }
   }
-  const totalMatchCount = draw.fixtures.length + draw.config.groupCount * 2 - 1;
+  const totalMatchCount =
+    draw.fixtures.length +
+    draw.config.groupCount * 2 -
+    1 +
+    ((input.policy as SchedulePolicy & { thirdPlaceMatch?: boolean }).thirdPlaceMatch ? 1 : 0);
   const isComplete = !!bracket?.isComplete && allComplete;
   const placements: GroupKnockoutProjection['placements'] = [];
   if (isComplete) {

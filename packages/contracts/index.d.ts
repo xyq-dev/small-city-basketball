@@ -1028,6 +1028,10 @@ export interface KnockoutSource {
   winnerEntryId: string;
 }
 export interface KnockoutSlotData {
+  /** Present only for an opt-in championship/bronze final round. */
+  kind?: 'CHAMPIONSHIP' | 'THIRD_PLACE';
+  /** Bronze contestants are genuine losers of the cited semifinals. */
+  sourceOutcome?: 'WINNER' | 'LOSER';
   fixtureKey: string;
   roundNo: number;
   positionNo: number;
@@ -1063,7 +1067,7 @@ export interface KnockoutBracket {
   confirmedMatchCount: number;
   isComplete: boolean;
   rounds: KnockoutRoundData[];
-  /** Only populated after the final is independently confirmed. No third-place game. */
+  /** Only populated after every required final-round game is independently confirmed. */
   placements: KnockoutPlacement[];
   nextRound: {
     roundNo: number;
@@ -1102,6 +1106,8 @@ export interface PublicKnockoutData {
     label: string;
     published: boolean;
     slots: {
+      kind?: 'CHAMPIONSHIP' | 'THIRD_PLACE';
+      sourceOutcome?: 'WINNER' | 'LOSER';
       positionNo: number;
       home: PublicTeamData | null;
       away: PublicTeamData | null;

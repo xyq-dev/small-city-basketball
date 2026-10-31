@@ -183,9 +183,16 @@ Page({
           ? next.fixtures.map((f) => {
               const old = previous[f.fixtureKey] || {};
               const index = active.findIndex((x) => x.id === old.courtId);
+              const slot =
+                b && b.rounds.flatMap((r) => r.slots).find((s) => s.fixtureKey === f.fixtureKey);
               return {
                 key: f.fixtureKey,
                 label:
+                  (slot && slot.kind
+                    ? slot.kind === 'THIRD_PLACE'
+                      ? '季军赛 · '
+                      : '决赛 · '
+                    : '') +
                   (names[f.homeEntryId] || '冻结参赛队') +
                   ' VS ' +
                   (names[f.awayEntryId] || '冻结参赛队'),
