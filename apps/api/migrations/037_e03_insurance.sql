@@ -42,7 +42,7 @@ CREATE TABLE insurance_quotes (
   expires_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   FOREIGN KEY(org_id,event_id) REFERENCES events(org_id,id),
-  FOREIGN KEY(org_id,entry_id) REFERENCES entries(org_id,id),
+  FOREIGN KEY(org_id,event_id,entry_id) REFERENCES entries(org_id,event_id,id),
   CHECK(coverage_end_date>=coverage_start_date),
   CHECK(expires_at>created_at AND expires_at<=created_at+interval '15 minutes')
 );
@@ -71,7 +71,7 @@ CREATE TABLE insurance_orders (
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   FOREIGN KEY(org_id,event_id) REFERENCES events(org_id,id),
-  FOREIGN KEY(org_id,entry_id) REFERENCES entries(org_id,id),
+  FOREIGN KEY(org_id,event_id,entry_id) REFERENCES entries(org_id,event_id,id),
   CHECK(policy_status<>'ISSUED' OR payment_status='PAID')
 );
 CREATE UNIQUE INDEX insurance_provider_order_unique ON insurance_orders(provider_id,provider_order_id) WHERE provider_order_id IS NOT NULL;
@@ -148,7 +148,7 @@ CREATE TABLE participant_qualification_requests (
   accepted_terms_version text NOT NULL CHECK(accepted_terms_version='qualification-precheck-v1'),
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   FOREIGN KEY(org_id,event_id) REFERENCES events(org_id,id),
-  FOREIGN KEY(org_id,entry_id) REFERENCES entries(org_id,id),
+  FOREIGN KEY(org_id,event_id,entry_id) REFERENCES entries(org_id,event_id,id),
   CHECK(event_end_date>=event_start_date)
 );
 CREATE INDEX qualification_request_current ON participant_qualification_requests(org_id,entry_id,member_id,created_at DESC,id DESC);
@@ -175,7 +175,7 @@ CREATE TABLE participant_qualification_prechecks (
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   UNIQUE(org_id,entry_id,member_id,version),
   FOREIGN KEY(org_id,event_id) REFERENCES events(org_id,id),
-  FOREIGN KEY(org_id,entry_id) REFERENCES entries(org_id,id),
+  FOREIGN KEY(org_id,event_id,entry_id) REFERENCES entries(org_id,event_id,id),
   CHECK(user_id<>reviewed_by),
   CHECK(event_end_date>=event_start_date)
 );

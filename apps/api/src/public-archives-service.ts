@@ -107,12 +107,13 @@ export class PublicArchivesService extends ApplicationService {
     // An independently verified adult in a former youth context must explicitly grant
     // the archive source again after that current age/identity qualification.
     if (isKnown && decision.trustedAdult && !futureConsent) {
-      if (!row.consented_at || !decision.qualificationId) return false;
+      if (!row.consented_at || !decision.qualificationId || !decision.adultConsentAfter)
+        return false;
       return Boolean(
         (
           await c.query(
-            'SELECT 1 FROM participant_qualification_prechecks WHERE id=$1 AND created_at<=$2::timestamptz',
-            [decision.qualificationId, row.consented_at],
+            "SELECT 1 FROM participant_qualification_prechecks WHERE id=$1 AND created_at<=$2::timestamptz AND $2::timestamptz>=($3::date::timestamp AT TIME ZONE 'Asia/Shanghai')",
+            [decision.qualificationId, row.consented_at, decision.adultConsentAfter],
           )
         ).rowCount,
       );

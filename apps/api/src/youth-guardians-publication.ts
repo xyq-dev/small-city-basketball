@@ -9,6 +9,7 @@ import {
   readYouthEligibility,
 } from './youth-guardians-eligibility.js';
 import type { YouthQualificationReader } from './youth-guardians-eligibility.js';
+import { guardianThresholdDate } from './youth-guardians-domain.js';
 
 type MemberPurposeInput = {
   orgId: string;
@@ -22,6 +23,7 @@ type MemberPurposeInput = {
 export type YouthPublicationDecision = YouthEligibility & {
   trustedAdult: boolean;
   qualificationId: string | null;
+  adultConsentAfter?: string | null;
 };
 export type YouthPublicationGuard = (
   c: PoolClient,
@@ -44,10 +46,10 @@ export function createYouthPublicationGuard(
   let reader = injected;
   return async (c, input, purpose) => {
     const policy = (
-      await c.query('SELECT enabled FROM youth_event_policies WHERE org_id=$1 AND event_id=$2', [
-        input.orgId,
-        input.eventId,
-      ])
+      await c.query(
+        'SELECT enabled,guardian_age_threshold FROM youth_event_policies WHERE org_id=$1 AND event_id=$2',
+        [input.orgId, input.eventId],
+      )
     ).rows[0];
     if (!policy?.enabled)
       return {
@@ -94,6 +96,10 @@ export function createYouthPublicationGuard(
       ...result,
       trustedAdult: result.ready && !result.required && q.ready,
       qualificationId: q.qualificationId,
+      adultConsentAfter:
+        result.ready && !result.required && q.ready && q.birthDate
+          ? guardianThresholdDate(q.birthDate, policy.guardian_age_threshold)
+          : null,
     };
   };
 }

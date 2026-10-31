@@ -94,6 +94,23 @@ export async function expansionInventory() {
     await Promise.all(files.map((name) => readFile(new URL(name, directory), 'utf8'))),
   );
 }
+export function assertExpansionQuarantineCounts(before, after) {
+  assert.deepEqual(Object.keys(after).sort(), Object.keys(before).sort());
+  const expansion = new Set(Object.values(EXPANSION_DOMAINS).flat());
+  for (const [table, count] of Object.entries(before)) {
+    if (expansion.has(table))
+      assert.ok(
+        Number.isSafeInteger(after[table]) && after[table] >= count && count > 0,
+        `Quarantine cannot erase retained expansion rows from ${table}`,
+      );
+    else
+      assert.equal(
+        after[table],
+        count,
+        `Existing completion fixture row counts stay exact for ${table}`,
+      );
+  }
+}
 /** Full PostgreSQL JSON text is hashed without converting bigint fences through JS numbers. */
 export async function expansionSnapshot(readPool) {
   const tables = await expansionInventory();
@@ -139,8 +156,15 @@ export async function assertExpansionTarget({
   appOrigin,
   requireRuntimeRole = true,
 }) {
-  const database = new URL(databaseUrl),
+  let database, origin;
+  try {
+    database = new URL(databaseUrl);
     origin = new URL(appOrigin);
+  } catch {
+    throw new Error(
+      'Expansion acceptance requires explicit isolated database and application origins',
+    );
+  }
   assert.ok(['postgres:', 'postgresql:'].includes(database.protocol));
   const name = decodeURIComponent(database.pathname.slice(1));
   assert.match(
@@ -206,6 +230,7 @@ async function registrationFactory(context) {
 }
 
 export async function captureExpansion(context) {
+  await expansionInventory();
   await assertExpansionTarget(context);
   assert.ok(UUID.test(context.state.orgId) && UUID.test(context.state.userId));
   const registerSynthetic = await registrationFactory(context);
@@ -304,12 +329,14 @@ async function streamingProof(readPool, saved) {
     await readPool.query(
       `SELECT s.id,s.desired,s.observed,s.source_stopped,s.epoch,s.version,
       s.rights_revoked_at IS NOT NULL AS revoked,s.source_token_hash IS NULL AS no_token,
-      encode(sha256(convert_to((to_jsonb(s)-ARRAY['desired','observed','epoch','version','source_token_hash','source_expires_at','source_heartbeat_at','updated_at','rights_revoked_at','ended_at'])::text,'UTF8')),'hex') AS identity,
+      encode(sha256(convert_to((to_jsonb(s)-ARRAY['desired','observed','epoch','source_epoch','version','source_token_hash','source_expires_at','source_heartbeat_at','updated_at','rights_revoked_at','ended_at'])::text,'UTF8')),'hex') AS identity,
       r.slot_held,r.state AS relay_state,
       encode(sha256(convert_to((to_jsonb(r)-ARRAY['desired','state','epoch','worker_token','worker_until','observed_at','error_code'])::text,'UTF8')),'hex') AS relay_identity,
       encode(sha256(convert_to((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.id) FROM stream_command_receipts x WHERE x.session_id=s.id)::text,'UTF8')),'hex') AS receipts,
       encode(sha256(convert_to((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.id) FROM stream_usage_ledger x WHERE x.session_id=s.id)::text,'UTF8')),'hex') AS usage,
       (SELECT count(*)::int FROM stream_jobs j WHERE j.session_id=s.id AND j.state='UNKNOWN') AS unknown_jobs,
+      (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(j)-ARRAY['state','lease_token','lease_until','next_attempt_at','error_code'] ORDER BY j.id)::text,'UTF8')),'hex') FROM stream_jobs j WHERE j.session_id=s.id) AS stream_job_identity,
+      (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(j) ORDER BY j.id)::text,'UTF8')),'hex') FROM live_media_jobs j WHERE j.session_id=s.id) AS media_jobs,
       (SELECT count(*)::int FROM live_media_artifacts a WHERE a.session_id=s.id AND a.public_key IS NOT NULL AND a.revoked_at IS NULL) AS published,
       (SELECT encode(sha256(convert_to(jsonb_agg(to_jsonb(a)-ARRAY['public_key','published_by','published_at','revoked_at','version'] ORDER BY a.id)::text,'UTF8')),'hex') FROM live_media_artifacts a WHERE a.session_id=s.id) AS artifacts
      FROM broadcast_sessions s JOIN live_relays r ON r.session_id=s.id WHERE s.id=$1 AND r.id=$2`,
@@ -327,11 +354,18 @@ async function captureStreaming(c) {
   const { StreamingService } = await import('../apps/api/dist/streaming-service.js');
   const streamer = await c.registerSynthetic('合成恢复直播员');
   c.streamer = streamer;
-  const eventId = c.state.scheduling.workspace.event.id;
+  assert.equal(
+    typeof c.createScheduledSource,
+    'function',
+    'Streaming recovery needs its own actual registration and schedule',
+  );
+  const writer = await c.registerSynthetic('合成恢复集锦记分员');
+  const schedule = await c.createScheduledSource(streamer, writer);
+  const eventId = schedule.workspace.event.id;
   const match = (
     await c.readPool.query(
-      "SELECT m.id FROM published_matches m JOIN events e ON e.id=m.event_id WHERE m.org_id=$1 AND m.event_id=$2 AND e.status IN('SCHEDULED','RUNNING') ORDER BY m.id LIMIT 1",
-      [c.state.orgId, eventId],
+      "SELECT m.id FROM published_matches m JOIN events e ON e.id=m.event_id LEFT JOIN scoring_states st ON st.org_id=m.org_id AND st.match_id=m.id WHERE m.org_id=$1 AND m.event_id=$2 AND m.id=$3 AND e.status IN('SCHEDULED','RUNNING') AND (st.match_id IS NULL OR st.source_version=m.version)",
+      [c.state.orgId, eventId, schedule.highlightMatchId],
     )
   ).rows[0];
   assert.ok(match, 'Streaming recovery uses an actual published schedule');
@@ -469,10 +503,33 @@ async function captureStreaming(c) {
     await service.drain();
     let media;
     await eventually(async () => {
+      await service.drain();
       media = await service.mediaWorkspace(c.state.cookie, c.state.orgId, session.session.id);
       return media.artifacts.length === 1;
     }, 'Real media worker must persist its controlled recording result');
     const recorded = media.artifacts[0];
+    const recordedJob = (
+      await c.readPool.query(
+        "SELECT id,version FROM live_media_jobs WHERE session_id=$1 AND kind='RECORDING'",
+        [session.session.id],
+      )
+    ).rows[0];
+    const anchor = (
+      await c.readPool.query(
+        "SELECT captured_at FROM scoring_events WHERE org_id=$1 AND match_id=$2 AND type='STAT_RECORDED' AND payload->>'kind'='SCORE' AND NOT payload?'reason' ORDER BY seq LIMIT 1",
+        [c.state.orgId, match.id],
+      )
+    ).rows[0];
+    assert.ok(anchor, 'Automatic highlights must derive from an actual persisted score event');
+    await service.mediaCommand(c.state.cookie, c.state.orgId, session.session.id, {
+      clientRequestId: randomUUID(),
+      type: 'CALIBRATE',
+      jobId: recordedJob.id,
+      expectedVersion: recordedJob.version,
+      anchorAt: new Date(anchor.captured_at).toISOString(),
+      offsetMs: 0,
+      reason: '隔离合成单秒录像与实际得分时间校准',
+    });
     await service.mediaCommand(c.state.cookie, c.state.orgId, session.session.id, {
       clientRequestId: randomUUID(),
       type: 'TRANSCODE',
@@ -481,9 +538,21 @@ async function captureStreaming(c) {
     });
     await service.drain();
     await eventually(async () => {
+      await service.drain();
       media = await service.mediaWorkspace(c.state.cookie, c.state.orgId, session.session.id);
       return media.artifacts.length === 2;
     }, 'Derived media job must persist a second linked artifact');
+    await service.mediaCommand(c.state.cookie, c.state.orgId, session.session.id, {
+      clientRequestId: randomUUID(),
+      type: 'HIGHLIGHTS',
+      artifactId: recorded.id,
+      expectedVersion: recorded.version,
+    });
+    await eventually(async () => {
+      await service.drain();
+      media = await service.mediaWorkspace(c.state.cookie, c.state.orgId, session.session.id);
+      return media.artifacts.length === 3;
+    }, 'Automatic highlights must persist the confirmed result and calibrated score intervals');
     await service.mediaCommand(c.state.cookie, c.state.orgId, session.session.id, {
       clientRequestId: randomUUID(),
       type: 'PUBLISH',
@@ -502,11 +571,13 @@ async function captureStreaming(c) {
     await service.drain();
     assert.equal(starts, 1, 'Replayed START cannot dispatch another external operation');
     assert.equal(records, 1);
-    assert.equal(transforms, 1);
+    assert.equal(transforms, 2);
     const relay = (
       await c.readPool.query('SELECT id FROM live_relays WHERE session_id=$1', [session.session.id])
     ).rows[0];
     const saved = {
+      eventId,
+      courtId: schedule.court.id,
       sessionId: session.session.id,
       relayId: relay.id,
       artifactIds: media.artifacts.map((a) => a.id),
@@ -536,6 +607,8 @@ async function verifyStreaming(readPool, saved, quarantined = false) {
       'relay_identity',
       'receipts',
       'usage',
+      'stream_job_identity',
+      'media_jobs',
       'artifacts',
       'source_stopped',
       'slot_held',

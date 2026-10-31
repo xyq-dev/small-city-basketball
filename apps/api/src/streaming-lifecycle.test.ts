@@ -22,7 +22,7 @@ describe('E01 explicit application worker lifetime', () => {
     service.startWorker();
     service.startWorker();
     expect(vi.getTimerCount()).toBe(1);
-    await service.onModuleDestroy();
+    await Promise.all([service.onModuleDestroy(), service.onModuleDestroy()]);
     expect(vi.getTimerCount()).toBe(0);
     service.startWorker();
     expect(vi.getTimerCount()).toBe(0);

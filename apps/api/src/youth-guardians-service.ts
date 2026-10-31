@@ -17,6 +17,7 @@ import type { ParticipantFileInput } from './participant-materials-domain.js';
 import {
   ageOn,
   guardianText,
+  guardianRequestRequired,
   identityBirthDate,
   openGuardian,
   sealGuardian,
@@ -121,7 +122,7 @@ export class YouthGuardiansService extends ApplicationService {
     if (!o || (!security && o.status !== 'ACTIVE')) throw notFound();
     const e = (
       await c.query(
-        `SELECT e.*,e.start_date::text,e.end_date::text,to_char(clock_timestamp() AT TIME ZONE e.timezone,'YYYY-MM-DD') AS today FROM events e WHERE org_id=$1 AND id=$2 FOR ${write ? 'UPDATE' : 'SHARE'} OF e`,
+        `SELECT e.*,e.start_date::text,e.end_date::text,to_char(clock_timestamp() AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS today FROM events e WHERE org_id=$1 AND id=$2 FOR ${write ? 'UPDATE' : 'SHARE'} OF e`,
         [orgId, eventId],
       )
     ).rows[0];
@@ -569,7 +570,13 @@ export class YouthGuardiansService extends ApplicationService {
       data.preconsentId !== r.preconsent_id ||
       data.version !== r.preconsent_version ||
       data.guardianUserId !== r.guardian_user_id ||
-      ageOn(q.birthDate, a.event.start_date) >= policy.guardian_age_threshold
+      !guardianRequestRequired({
+        birthDate: q.birthDate,
+        policyDate: a.event.start_date,
+        processingDate: a.today,
+        threshold: policy.guardian_age_threshold,
+        purposes: r.subject_purposes,
+      })
     )
       youthFail('GUARDIAN_SOURCE_CHANGED', '本人资料、资格预审或监护同意已变化，请重新办理');
     return input;
@@ -611,7 +618,15 @@ export class YouthGuardiansService extends ApplicationService {
         youthFail('VERSION_CONFLICT', '青年规则已变化');
       if (!q.ready || !q.birthDate || !q.materialId || !q.materialRevisionId || !q.qualificationId)
         youthFail('YOUTH_QUALIFICATION_REQUIRED', '请先完成独立资格预审');
-      if (ageOn(q.birthDate!, a.event.start_date) >= policy.guardian_age_threshold)
+      if (
+        !guardianRequestRequired({
+          birthDate: q.birthDate!,
+          policyDate: a.event.start_date,
+          processingDate: a.today,
+          threshold: policy.guardian_age_threshold,
+          purposes,
+        })
+      )
         youthFail('GUARDIAN_NOT_REQUIRED', '当前已核验年龄不需要本赛事监护确认');
       const data = await readYouthDataProcessingConsent(c, {
         orgId: a.orgId,

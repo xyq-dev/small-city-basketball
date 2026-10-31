@@ -121,11 +121,15 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
     actors = subjects.slice(0, 2),
     insurance = true,
     probe = false,
+    birthDate = '2015-01-01',
+    futureAdult = false,
   }: {
     reuse?: YouthRosterFixture['registration'];
     actors?: Actor[];
     insurance?: boolean;
     probe?: boolean;
+    birthDate?: string;
+    futureAdult?: boolean;
   } = {}) {
     return createYouthRosterFixture({
       api,
@@ -133,10 +137,30 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
       leader,
       reviewer,
       subjects: actors,
-      birthDates: actors.map(() => '2015-01-01'),
+      birthDates: actors.map(() => birthDate),
       requireInsurance: insurance,
       registration: reuse,
       beforeOpen: async (reg) => {
+        if (futureAdult) {
+          const dates = (
+            await api.pool.query(
+              `SELECT to_char((clock_timestamp() AT TIME ZONE 'Asia/Shanghai')::date+2,'YYYY-MM-DD') AS starts,to_char((clock_timestamp() AT TIME ZONE 'Asia/Shanghai')::date+3,'YYYY-MM-DD') AS ends`,
+            )
+          ).rows[0];
+          data(
+            await call(api, 'put', `/v1/orgs/${owner.orgId}/events/${reg.event.id}`, {
+              cookie: owner.cookie,
+              body: {
+                expectedVersion: reg.event.version,
+                name: reg.event.name,
+                startDate: dates.starts,
+                endDate: dates.ends,
+                timezone: 'Asia/Shanghai',
+                format: 'ROUND_ROBIN',
+              },
+            }),
+          );
+        }
         await youth.setPolicy(owner.cookie, owner.orgId, reg.event.id, {
           clientRequestId: randomUUID(),
           expectedVersion: null,
@@ -373,6 +397,51 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
     ).toEqual(withdrawn);
     expect((await youth.receipt(m.actor.cookie, reqId)).found).toBe(true);
     expect((await youth.receipt(guardian.cookie, reqId)).found).toBe(false);
+  }, 90000);
+
+  test('today seventeen but adult on event day can independently authorize public purposes without adding a participation barrier', async () => {
+    const birth = (
+      await api.pool.query(
+        `SELECT to_char((clock_timestamp() AT TIME ZONE 'Asia/Shanghai')::date-INTERVAL '18 years'+INTERVAL '1 day','YYYY-MM-DD') AS birth`,
+      )
+    ).rows[0].birth;
+    const f = await fixture({ birthDate: birth, futureAdult: true });
+    await qualify(f, 0);
+    expect(
+      await locked(f.registration.event.id, (c) => readYouthEligibility(c, scope(f, 0), reader)),
+    ).toMatchObject({ required: false, ready: true });
+    expect(
+      await locked(f.registration.event.id, (c) =>
+        readYouthEligibility(c, { ...scope(f, 0), purpose: 'PUBLIC_ARCHIVE' }, reader),
+      ),
+    ).toMatchObject({ required: true, ready: false });
+    await expect(propose(f, 0)).rejects.toMatchObject({ code: 'GUARDIAN_NOT_REQUIRED' });
+    const p = await propose(f, 0, true),
+      confirmed = await youth.guardianConfirm(
+        guardian.cookie,
+        p.requestId,
+        confirmBody(p.version, true),
+      ),
+      approved = await approve(p.requestId, confirmed.version);
+    expect(
+      await locked(f.registration.event.id, (c) =>
+        readYouthEligibility(c, { ...scope(f, 0), purpose: 'PUBLIC_ARCHIVE' }, reader),
+      ),
+    ).toMatchObject({ required: true, ready: true });
+    await youth.withdraw(guardian.cookie, p.requestId, {
+      clientRequestId: randomUUID(),
+      expectedVersion: approved.version,
+    });
+    expect(
+      (
+        await locked(f.registration.event.id, (c) =>
+          readYouthEligibility(c, { ...scope(f, 0), purpose: 'LIVE_RECORDING' }, reader),
+        )
+      ).ready,
+    ).toBe(false);
+    expect(
+      await locked(f.registration.event.id, (c) => readYouthEligibility(c, scope(f, 0), reader)),
+    ).toMatchObject({ required: false, ready: true });
   }, 90000);
 
   test('current material replacement invalidates a reviewed relationship without granting access or reviving old confirmations', async () => {

@@ -8,6 +8,13 @@ import { pipeline } from 'node:stream/promises';
 import { endpoint } from './streaming-domain.js';
 import { secureInput, pinnedRtmp } from './streaming-provider.js';
 import type { RelayObserved } from '../../../packages/contracts/streaming.js';
+/** This failure proves no publishing subprocess was ever spawned for this operation. */
+export class LivePreflightError extends Error {
+  constructor() {
+    super('STREAM_PREFLIGHT_FAILED');
+    this.name = 'LivePreflightError';
+  }
+}
 export interface MediaExecutorOptions {
   root: string;
   ffmpeg: string;
@@ -287,30 +294,35 @@ export class FfmpegMediaExecutor implements LiveExecutor, MediaExecutor {
       throw Error('MEDIA_TRANSCODE_FAILED');
     }
   }
-  async start(run: RelayRun): Promise<void> {
-    if (this.relays.has(run.operationKey)) return;
-    if (
-      !Number.isInteger(run.maximumSeconds) ||
-      run.maximumSeconds < 1 ||
-      run.maximumSeconds > 14400
-    )
-      throw Error('STREAM_DURATION_INVALID');
-    const source = endpoint(run.inputUrl, 'https:', this.options.inputHosts),
-      target = endpoint(run.targetUrl, 'rtmps:', this.options.targetHosts);
-    await access(this.options.fontFile);
-    const transport = await pinnedRtmp(target);
+  private async livePreflight(run: RelayRun) {
+    let transport: Awaited<ReturnType<typeof pinnedRtmp>> | undefined;
     let input: Awaited<ReturnType<typeof secureInput>> | undefined;
-    let scoreFile: string;
+    let scoreFile: string | undefined;
     try {
+      if (
+        !Number.isInteger(run.maximumSeconds) ||
+        run.maximumSeconds < 1 ||
+        run.maximumSeconds > 14400
+      )
+        throw Error();
+      const source = endpoint(run.inputUrl, 'https:', this.options.inputHosts),
+        target = endpoint(run.targetUrl, 'rtmps:', this.options.targetHosts);
+      await access(this.options.fontFile);
+      transport = await pinnedRtmp(target);
       input = await secureInput(source);
       scoreFile = join(await this.root(), randomUUID() + '.score.txt');
       await writeFile(scoreFile, await run.readScore(), { mode: 0o600 });
+      return { transport, input, scoreFile };
     } catch {
       input?.destroy();
-      await transport.close();
-      throw Error('STREAM_PREFLIGHT_FAILED');
+      await transport?.close();
+      if (scoreFile) await unlink(scoreFile).catch(() => {});
+      throw new LivePreflightError();
     }
-    if (!input) throw Error('STREAM_PREFLIGHT_FAILED');
+  }
+  async start(run: RelayRun): Promise<void> {
+    if (this.relays.has(run.operationKey)) return;
+    const { transport, input, scoreFile } = await this.livePreflight(run);
     const sourceInput = input;
     let exited = false,
       closing = false,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Pool, PoolClient } from 'pg';
 import { PublicArchivesService } from './public-archives-service.js';
+import { PosterService } from './poster-service.js';
 import {
   createYouthLiveConsentGuard,
   createYouthPublicationGuard,
@@ -81,6 +82,88 @@ function fixture({
   return { service, c, queries };
 }
 describe('E08 current publication purposes', () => {
+  it('does not reuse a minor-era portrait consent as the newly adult subject permission', async () => {
+    const material: any = {
+      material_id: 'material',
+      material_version: 1,
+      member_id: 'member',
+      user_id: 'child',
+      status: 'APPROVED',
+      publicity_consent: true,
+      reservation_active: true,
+      reviewed_start_date: '2026-11-10',
+      reviewed_end_date: '2026-11-11',
+      head_key_id: 'key',
+      revision_id: 'revision',
+      roster_revision_id: 'roster',
+      ruleset_id: 'rules',
+      jersey_no: '1',
+      terms_version: 'registration-materials-v1',
+      has_signature: true,
+      portrait_sha256: 'hash',
+      portrait_bytes: 3,
+      purged_at: null,
+      key_id: 'key',
+      material_consent_date: '2026-10-31',
+    };
+    const seen: string[] = [],
+      service = new PosterService({} as Pool, {
+        databaseUrl: 'postgresql://localhost/scb_test_unit',
+        appOrigin: 'http://localhost:5173',
+        youthPublicationGuard: async (_c, _i, purpose) => {
+          seen.push(purpose);
+          return {
+            ...allowed,
+            required: false,
+            trustedAdult: true,
+            adultConsentAfter: '2026-11-01',
+          };
+        },
+      }) as any;
+    service.publication = async () => ({
+      id: 'publication',
+      public_event_id: 'public',
+      revoked_at: null,
+    });
+    service.publicBundle = async () => ({
+      event: {
+        name: '合成青年杯',
+        start_date: '2026-11-10',
+        end_date: '2026-11-11',
+        venue_name: null,
+      },
+      pub: { id: 'publication' },
+      plan: {
+        source: {
+          entries: [
+            {
+              entryId: 'entry',
+              teamId: 'team',
+              teamName: '合成球队',
+              rosterRevisionId: 'roster',
+              players: [{ memberId: 'member', name: '合成青年', jerseyNo: '1' }],
+            },
+          ],
+        },
+      },
+    });
+    const c = {
+      query: async (sql: string) => ({
+        rows: sql.includes('SELECT m.id AS material_id') ? [material] : [],
+      }),
+    } as unknown as PoolClient;
+    const access = { ctx: { orgId: 'org' }, event: { id: 'event', locked_ruleset_id: 'rules' } },
+      input = { kind: 'ROSTER', entryId: 'entry', memberIds: [], includePortraits: false };
+    const old = await service.recipe(c, access, input);
+    expect(old.players).toEqual([]);
+    expect(old.omittedPlayerCount).toBe(1);
+    material.material_consent_date = '2026-11-01';
+    const current = await service.recipe(c, access, input);
+    expect(current.players).toHaveLength(1);
+    expect(seen).toEqual(['PUBLICITY', 'PUBLICITY']);
+    material.publicity_consent = false;
+    expect((await service.recipe(c, access, input)).players).toEqual([]);
+  });
   it('known youth cannot regain a public identity through legacy adult-only source consent', async () => {
     const f = fixture({ decision: { ...allowed, ready: false } });
     expect(await f.service.permitted(f.c)).toEqual([]);
@@ -99,11 +182,19 @@ describe('E08 current publication purposes', () => {
     expect(proof.sql.indexOf('g.id=ANY($2::uuid[])')).toBeLessThan(proof.sql.indexOf(' LIMIT '));
   });
   it('an adult after a youth context needs fresh trusted qualification and a later explicit source purpose grant', async () => {
-    const decision = { ...allowed, required: false, trustedAdult: true };
+    const decision = {
+      ...allowed,
+      required: false,
+      trustedAdult: true,
+      adultConsentAfter: '2026-01-01',
+    };
     const stale = fixture({ decision, adultReconsent: false });
     expect(await stale.service.permitted(stale.c)).toEqual([]);
     const f = fixture({ decision, adultReconsent: true });
     expect((await f.service.permitted(f.c)).map((s) => s.id)).toEqual(['youth']);
+    expect(
+      f.queries.find((q) => q.sql.includes('FROM participant_qualification_prechecks'))?.args[2],
+    ).toBe('2026-01-01');
   });
   it('keeps legacy adult archives and pure team aggregation available without expanding youth permission', async () => {
     const legacy = fixture({ known: false, rows: [source('legacy', false)] });
@@ -147,6 +238,8 @@ describe('E08 current publication purposes', () => {
     const seen: string[] = [];
     const c = {
       query: async (sql: string, args: any[] = []) => {
+        if (sql.includes('AS youth_processing_date'))
+          return { rows: [{ youth_processing_date: '2026-10-31' }] };
         if (sql.includes('youth_event_policies'))
           return { rows: [{ enabled, version: 1, guardian_age_threshold: 18 }] };
         if (sql.includes('FROM published_matches'))

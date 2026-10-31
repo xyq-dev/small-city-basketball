@@ -17,6 +17,7 @@ import {
   highlightIntervals,
 } from './streaming-domain.js';
 import type { IngressProvider } from './streaming-provider.js';
+import { LivePreflightError } from './live-media-executor.js';
 import type { LiveExecutor, MediaExecutor, ArtifactResult } from './live-media-executor.js';
 import type {
   LiveMediaWorkspace,
@@ -57,11 +58,17 @@ export class StreamingService extends ApplicationService {
   private readonly config: StreamingOptions;
   private draining = false;
   private closing = false;
+  private shutdownFenced = false;
+  private shutdownCompletion: Promise<void> | undefined;
   private drainCompletion: Promise<void> | undefined;
   private readonly mediaTasks = new Set<Promise<void>>();
   private readonly localRelayKeys = new Set<string>();
   private timer: ReturnType<typeof setInterval> | undefined;
   private readonly mediaControllers = new Set<AbortController>();
+  private readonly ownedMediaJobs = new Map<
+    string,
+    { kind: string; sessionId: string; token: string }
+  >();
   constructor(pool: Pool, options: ApiOptions, config: StreamingOptions = {}) {
     super(pool, options);
     this.config = config;
@@ -723,6 +730,7 @@ export class StreamingService extends ApplicationService {
     return value;
   }
   private async workerScore(job: Row, token: string) {
+    if (this.shutdownFenced) liveFail('STREAM_WORKER_FENCED');
     return this.transaction(async (c) => {
       const s = await this.workerSource(c, job.session_id);
       if (!s?.authorized || s.epoch !== job.epoch || !this.ready())
@@ -815,6 +823,7 @@ export class StreamingService extends ApplicationService {
     });
   }
   private async streamJob() {
+    if (this.closing) return;
     const token = randomUUID();
     const job = await this.transaction(async (c) => {
       const r = (
@@ -861,7 +870,7 @@ export class StreamingService extends ApplicationService {
             ).rows[0];
             return r ? { s, r } : null;
           });
-          if (!start) {
+          if (!start || this.closing) {
             await this.pool.query(
               "UPDATE stream_jobs SET state='FAILED',error_code='FENCED_BEFORE_DISPATCH',lease_until=NULL WHERE id=$1 AND lease_token=$2",
               [job.id, token],
@@ -934,8 +943,12 @@ export class StreamingService extends ApplicationService {
             [job.relay_id, startKey],
           );
       }
-    } catch {
-      if (job.kind === 'START' && job.attempt === 1 && !dispatched) {
+    } catch (error) {
+      if (
+        job.kind === 'START' &&
+        job.attempt === 1 &&
+        (!dispatched || error instanceof LivePreflightError)
+      ) {
         await this.pool.query(
           "UPDATE stream_jobs SET state='FAILED',error_code='FENCED_BEFORE_DISPATCH',lease_until=NULL WHERE id=$1 AND lease_token=$2",
           [job.id, token],
@@ -955,24 +968,30 @@ export class StreamingService extends ApplicationService {
     );
   }
   private async observe() {
-    if (!this.config.executor) return;
+    if (!this.config.executor || !this.localRelayKeys.size) return;
     const rows = (
       await this.pool.query<Row>(
-        "SELECT * FROM live_relays WHERE desired='RUNNING' AND provider_id IS NOT NULL AND state IN('STARTING','CONNECTED','UNKNOWN') ORDER BY id LIMIT 100",
+        "SELECT * FROM live_relays WHERE provider_id=ANY($1::text[]) AND state IN('STARTING','CONNECTED','UNKNOWN','STOPPING') ORDER BY id LIMIT 100",
+        [[...this.localRelayKeys]],
       )
     ).rows;
     for (const r of rows) {
       const state = await this.config.executor.observe(r.provider_id);
       if (state === 'STOPPED') {
         await this.pool.query(
-          "UPDATE live_relays SET state='FAILED',desired='STOPPED',slot_held=false,worker_token=NULL,worker_until=NULL,observed_at=clock_timestamp(),error_code='OUTPUT_ENDED' WHERE id=$1 AND epoch=$2 AND provider_id=$3 AND desired='RUNNING'",
+          "UPDATE live_relays SET state=CASE WHEN desired='STOPPED' THEN 'STOPPED' ELSE 'FAILED' END,desired='STOPPED',slot_held=false,worker_token=NULL,worker_until=NULL,observed_at=clock_timestamp(),error_code=CASE WHEN desired='STOPPED' THEN NULL ELSE 'OUTPUT_ENDED' END WHERE id=$1 AND epoch=$2 AND provider_id=$3",
           [r.id, r.epoch, r.provider_id],
         );
-      } else
+        await this.pool.query(
+          "UPDATE stream_jobs SET state='SUCCEEDED',error_code='CONFIRMED_STOPPED',lease_token=NULL,lease_until=NULL WHERE operation_key IN($1,$2)",
+          [r.provider_id, String(r.provider_id).replace(/:START$/, ':STOP')],
+        );
+      } else if (r.desired === 'RUNNING') {
         await this.pool.query(
           "UPDATE live_relays SET state=$4,observed_at=clock_timestamp() WHERE id=$1 AND epoch=$2 AND provider_id=$3 AND desired='RUNNING'",
           [r.id, r.epoch, r.provider_id, state],
         );
+      }
     }
   }
   async drain() {
@@ -1364,6 +1383,7 @@ export class StreamingService extends ApplicationService {
     const execute = async () => {
       const controller = new AbortController();
       this.mediaControllers.add(controller);
+      this.ownedMediaJobs.set(job.id, { kind: job.kind, sessionId: job.session_id, token });
       let timer: ReturnType<typeof setInterval> | undefined;
       let output: ArtifactResult | undefined;
       try {
@@ -1459,6 +1479,7 @@ export class StreamingService extends ApplicationService {
       } finally {
         if (timer) clearInterval(timer);
         this.mediaControllers.delete(controller);
+        this.ownedMediaJobs.delete(job.id);
       }
     };
     const task = execute();
@@ -1522,16 +1543,176 @@ export class StreamingService extends ApplicationService {
       };
     });
   }
+  private async shutdownIntents(keys: string[], deadline: number) {
+    const c = await this.pool.connect();
+    let failed = true;
+    const query = (text: string, values?: unknown[]) => {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw Error('STREAM_SHUTDOWN_TIMEOUT');
+      // pg supports a per-query client read deadline as well as the server statement deadline.
+      return c.query({ text, values, query_timeout: Math.min(1500, remaining) } as {
+        text: string;
+        values?: unknown[];
+      });
+    };
+    const bounded = { query } as PoolClient;
+    try {
+      await query('BEGIN');
+      await query("SET LOCAL lock_timeout='1000ms'");
+      await query("SET LOCAL statement_timeout='1500ms'");
+      const recordings = [...this.ownedMediaJobs].filter(([, j]) => j.kind === 'RECORDING');
+      const recordingSessions = recordings.length
+        ? (
+            await query(
+              "SELECT j.session_id FROM live_media_jobs j JOIN broadcast_sessions s ON s.id=j.session_id JOIN unnest($1::uuid[],$2::uuid[]) owned(id,token) ON owned.id=j.id AND owned.token=j.worker_token WHERE j.status='RUNNING' AND j.source_epoch=s.source_epoch",
+              [recordings.map(([id]) => id), recordings.map(([, j]) => j.token)],
+            )
+          ).rows.map((r) => r.session_id)
+        : [];
+      const routes = (
+        await query(
+          `SELECT DISTINCT s.id,s.event_id FROM broadcast_sessions s LEFT JOIN live_relays r ON r.session_id=s.id WHERE r.provider_id=ANY($1::text[]) OR s.id=ANY($2::uuid[]) ORDER BY s.id`,
+          [keys, recordingSessions],
+        )
+      ).rows;
+      const sessions: Row[] = [];
+      if (routes.length) {
+        await query('SELECT id FROM events WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE NOWAIT', [
+          routes.map((r) => r.event_id),
+        ]);
+        const locked = (
+          await query(
+            'SELECT * FROM broadcast_sessions WHERE id=ANY($1::uuid[]) ORDER BY id FOR UPDATE NOWAIT',
+            [routes.map((r) => r.id)],
+          )
+        ).rows;
+        for (const row of locked)
+          sessions.push(row.desired === 'RUNNING' ? await this.halt(bounded, row, 'PAUSED') : row);
+      }
+      const transforms = [...this.ownedMediaJobs].filter(([, j]) => j.kind !== 'RECORDING');
+      if (transforms.length)
+        await query(
+          "UPDATE live_media_jobs j SET cancel_requested_at=clock_timestamp(),version=version+1 FROM unnest($1::uuid[],$2::uuid[]) owned(id,token) WHERE j.id=owned.id AND j.worker_token=owned.token AND j.status='RUNNING'",
+          [transforms.map(([id]) => id), transforms.map(([, j]) => j.token)],
+        );
+      await query('COMMIT');
+      failed = false;
+      return sessions;
+    } finally {
+      // Destroy an uncertain connection rather than releasing an open/unknown transaction to the pool.
+      c.release(failed);
+    }
+  }
+  private async shutdownEvidence(text: string, values: unknown[], deadline: number) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return;
+    await this.pool.query({ text, values, query_timeout: Math.min(1500, remaining) } as {
+      text: string;
+      values: unknown[];
+    });
+  }
   async onModuleDestroy() {
+    this.shutdownCompletion ??= this.shutdownOwned();
+    await this.shutdownCompletion;
+  }
+  private async shutdownOwned() {
+    if (this.closing) return;
     this.closing = true;
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
+    const deadline = Date.now() + 29000,
+      keys = [...this.localRelayKeys];
+    let sessions: Row[] = [];
+    if (keys.length || this.ownedMediaJobs.size) {
+      try {
+        sessions = await this.shutdownIntents(keys, Math.min(deadline, Date.now() + 5000));
+      } catch {
+        /* Unknown database intent keeps all persisted reservations. */
+      }
+    }
+    this.shutdownFenced = true;
     for (const c of this.mediaControllers) c.abort();
-    await this.drainCompletion;
-    if (this.config.executor)
-      await Promise.all(
-        [...this.localRelayKeys].map((key) => this.config.executor!.stop(key).catch(() => false)),
-      );
-    await Promise.allSettled([...this.mediaTasks]);
+    const cleanup = [
+      ...keys.map(async (key) => {
+        if (!this.config.executor || !(await this.config.executor.stop(key))) {
+          await this.shutdownEvidence(
+            "UPDATE live_relays SET state='UNKNOWN' WHERE provider_id=$1 AND desired='STOPPED' AND slot_held",
+            [key],
+            deadline,
+          );
+          await this.shutdownEvidence(
+            "UPDATE stream_jobs SET state='UNKNOWN',error_code='PROVIDER_RESULT_UNKNOWN',lease_token=NULL,lease_until=NULL,next_attempt_at=clock_timestamp()+interval '5 seconds' WHERE operation_key=$1",
+            [key.replace(/:START$/, ':STOP')],
+            deadline,
+          );
+          return;
+        }
+        await this.shutdownEvidence(
+          "UPDATE live_relays SET desired='STOPPED',state='STOPPED',slot_held=false,worker_token=NULL,worker_until=NULL,observed_at=clock_timestamp() WHERE provider_id=$1 AND desired='STOPPED'",
+          [key],
+          deadline,
+        );
+        await this.shutdownEvidence(
+          "UPDATE stream_jobs SET state='SUCCEEDED',error_code='CONFIRMED_STOPPED',lease_token=NULL,lease_until=NULL WHERE operation_key IN($1,$2)",
+          [key, key.replace(/:START$/, ':STOP')],
+          deadline,
+        );
+      }),
+      ...sessions
+        .filter((s) => s.source_stream_name && !s.source_stopped)
+        .map(async (s) => {
+          if (
+            !this.config.ingress?.enabled ||
+            !(await this.config.ingress.revoke(s.source_stream_name))
+          ) {
+            await this.shutdownEvidence(
+              "UPDATE broadcast_sessions SET observed='UNKNOWN' WHERE id=$1 AND source_stream_name=$2 AND desired IN('PAUSED','STOPPED') AND NOT source_stopped",
+              [s.id, s.source_stream_name],
+              deadline,
+            );
+            await this.shutdownEvidence(
+              "UPDATE stream_jobs SET state='UNKNOWN',error_code='PROVIDER_RESULT_UNKNOWN',lease_token=NULL,lease_until=NULL,next_attempt_at=clock_timestamp()+interval '5 seconds' WHERE session_id=$1 AND kind='STOP_SOURCE' AND split_part(operation_key,':',3)=$2",
+              [s.id, s.source_stream_name],
+              deadline,
+            );
+            return;
+          }
+          await this.shutdownEvidence(
+            "UPDATE broadcast_sessions SET source_stopped=true WHERE id=$1 AND source_stream_name=$2 AND desired IN('PAUSED','STOPPED')",
+            [s.id, s.source_stream_name],
+            deadline,
+          );
+          await this.shutdownEvidence(
+            "UPDATE stream_jobs SET state='SUCCEEDED',error_code=NULL,lease_token=NULL,lease_until=NULL WHERE session_id=$1 AND kind='STOP_SOURCE' AND split_part(operation_key,':',3)=$2",
+            [s.id, s.source_stream_name],
+            deadline,
+          );
+        }),
+    ];
+    const work = Promise.allSettled(cleanup).then(async () => {
+      await this.drainCompletion;
+      if (keys.length)
+        await this.shutdownEvidence(
+          "UPDATE live_relays r SET state='STOPPED',desired='STOPPED',slot_held=false,worker_token=NULL,worker_until=NULL,observed_at=clock_timestamp() FROM stream_jobs j WHERE j.operation_key=ANY($1::text[]) AND j.kind='START' AND j.state='FAILED' AND j.error_code='FENCED_BEFORE_DISPATCH' AND r.id=j.relay_id AND r.provider_id=j.operation_key AND r.desired='STOPPED'",
+          [keys],
+          deadline,
+        ).catch(() => {});
+      await Promise.allSettled([...this.mediaTasks]);
+      for (const s of sessions)
+        await this.shutdownEvidence(
+          "UPDATE broadcast_sessions SET observed=CASE WHEN desired='STOPPED' THEN 'ENDED' ELSE 'INTERRUPTED' END WHERE id=$1 AND desired IN('PAUSED','STOPPED') AND source_stopped AND NOT EXISTS(SELECT 1 FROM live_relays WHERE session_id=$1 AND slot_held)",
+          [s.id],
+          deadline,
+        ).catch(() => {});
+    });
+    const remaining = Math.max(1, deadline - Date.now());
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      work,
+      new Promise<void>((resolve) => {
+        timeout = setTimeout(resolve, remaining);
+      }),
+    ]);
+    if (timeout) clearTimeout(timeout);
   }
 }

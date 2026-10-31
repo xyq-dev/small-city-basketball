@@ -37,7 +37,12 @@ export async function migrate(pool: Pool): Promise<string[]> {
           throw new Error(`Migration checksum mismatch: ${name}`);
         continue;
       }
-      await client.query(sql);
+      try {
+        await client.query(sql);
+      } catch (error) {
+        if (error && typeof error === 'object') Object.assign(error, { migrationName: name });
+        throw error;
+      }
       await client.query('INSERT INTO schema_migrations(name,checksum) VALUES($1,$2)', [
         name,
         checksum,

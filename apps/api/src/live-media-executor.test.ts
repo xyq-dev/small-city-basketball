@@ -1,10 +1,26 @@
-import { describe, it, expect } from 'vitest';
-import { mkdtemp, rm, readFile, writeFile, symlink } from 'node:fs/promises';
+import { describe, it, expect, vi } from 'vitest';
+import { mkdtemp, rm, readFile, writeFile, symlink, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { FfmpegMediaExecutor } from './live-media-executor.js';
+import { FfmpegMediaExecutor, LivePreflightError } from './live-media-executor.js';
+const processWatch = vi.hoisted(() => ({
+  onFfmpeg: undefined as ((child: import('node:child_process').ChildProcess) => void) | undefined,
+}));
+vi.mock('node:child_process', async (importOriginal) => {
+  const real = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...real,
+    spawn: (...args: any[]) => {
+      const child = (real.spawn as (...args: any[]) => import('node:child_process').ChildProcess)(
+        ...args,
+      );
+      if (/(?:^|\/)ffmpeg$/.test(String(args[0]))) processWatch.onFfmpeg?.(child);
+      return child;
+    },
+  };
+});
 const hasFfmpeg =
   spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status === 0 &&
   spawnSync('ffprobe', ['-version'], { stdio: 'ignore' }).status === 0;
@@ -77,6 +93,100 @@ describe('E02 actual bounded FFmpeg artifact pipeline', () => {
     },
     30000,
   );
+  it.skipIf(!hasFfmpeg)(
+    'waits for the actual FFmpeg child close before an aborted transform settles and leaves no ready or partial output',
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), 'scb-e02-stop-'));
+      try {
+        const file = randomUUID() + '.mp4';
+        expect(
+          spawnSync(
+            'ffmpeg',
+            [
+              '-hide_banner',
+              '-loglevel',
+              'error',
+              '-f',
+              'lavfi',
+              '-i',
+              'testsrc=size=320x240:rate=30',
+              '-t',
+              '2',
+              '-c:v',
+              'libx264',
+              '-threads',
+              '1',
+              '-pix_fmt',
+              'yuv420p',
+              '-y',
+              join(root, file),
+            ],
+            { stdio: 'ignore' },
+          ).status,
+        ).toBe(0);
+        const e = new FfmpegMediaExecutor({
+            root,
+            ffmpeg: '/usr/bin/ffmpeg',
+            ffprobe: '/usr/bin/ffprobe',
+            fontFile: '/unused/font',
+            inputHosts: [],
+            targetHosts: [],
+          }),
+          controller = new AbortController();
+        let child: import('node:child_process').ChildProcess | undefined,
+          closed = false;
+        processWatch.onFfmpeg = (p) => {
+          child = p;
+          p.once('close', () => {
+            closed = true;
+          });
+          p.once('spawn', () => controller.abort());
+        };
+        await expect(e.transform(file, [], controller.signal)).rejects.toThrow(
+          'MEDIA_TRANSCODE_FAILED',
+        );
+        expect(child?.pid).toBeGreaterThan(0);
+        expect(closed).toBe(true);
+        expect(child!.exitCode !== null || child!.signalCode !== null).toBe(true);
+        expect(await readdir(root)).toEqual([file]);
+      } finally {
+        processWatch.onFfmpeg = undefined;
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+    30000,
+  );
+  it('classifies only failed preflight as proof that no publishing child existed', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'scb-e01-preflight-'));
+    let launched = false;
+    try {
+      processWatch.onFfmpeg = () => {
+        launched = true;
+      };
+      const e = new FfmpegMediaExecutor({
+        root,
+        ffmpeg: '/usr/bin/ffmpeg',
+        ffprobe: '/usr/bin/ffprobe',
+        fontFile: join(root, 'missing-font'),
+        inputHosts: ['source.example.com'],
+        targetHosts: ['relay.example.com'],
+      });
+      await expect(
+        e.start({
+          operationKey: 'preflight',
+          inputUrl: 'https://source.example.com/owned.flv',
+          targetUrl: 'rtmps://relay.example.com/live/synthetic-private-key',
+          maximumSeconds: 60,
+          readScore: async () => '',
+        }),
+      ).rejects.toBeInstanceOf(LivePreflightError);
+      expect(launched).toBe(false);
+      expect(await e.observe('preflight')).toBe('UNKNOWN');
+    } finally {
+      processWatch.onFfmpeg = undefined;
+      await rm(root, { recursive: true, force: true });
+    }
+  });
   it('rejects symlink and malformed artifacts and never claims a missing old process stopped', async () => {
     const root = await mkdtemp(join(tmpdir(), 'scb-e02-'));
     try {

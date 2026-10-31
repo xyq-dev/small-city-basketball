@@ -70,20 +70,23 @@ function fixture() {
     guardian_purposes: ['PARTICIPATION'],
   };
   const independent = { ok: true };
+  const processingDate = { youth_processing_date: '2026-10-31' };
   const c = {
     query: async (sql: string) => ({
-      rows: sql.includes('NOT EXISTS(SELECT 1 FROM team_access_grants')
-        ? [independent]
-        : sql.includes('youth_event_policies')
-          ? [policy]
-          : sql.includes('youth_guardian_preconsents')
-            ? [data]
-            : sql.includes('youth_guardian_requests')
-              ? [request]
-              : [],
+      rows: sql.includes('AS youth_processing_date')
+        ? [processingDate]
+        : sql.includes('NOT EXISTS(SELECT 1 FROM team_access_grants')
+          ? [independent]
+          : sql.includes('youth_event_policies')
+            ? [policy]
+            : sql.includes('youth_guardian_preconsents')
+              ? [data]
+              : sql.includes('youth_guardian_requests')
+                ? [request]
+                : [],
     }),
   } as unknown as PoolClient;
-  return { policy, data, request, c, independent };
+  return { policy, data, request, c, independent, processingDate };
 }
 describe('E08 current consent gate', () => {
   it('keeps legacy policy optional but cannot disable forced youth data consent', async () => {
@@ -177,4 +180,30 @@ describe('E08 current consent gate', () => {
     ).toBe(false);
     expect((await readYouthEligibility(f.c, input)).ready).toBe(false);
   });
+});
+
+it('uses today for public processing even when the verified event-date age is already adult', async () => {
+  const f = fixture(),
+    q = { ...qualification, birthDate: '2008-11-01' };
+  expect(await readYouthEligibility(f.c, input, async () => q)).toMatchObject({
+    required: false,
+    ready: true,
+  });
+  expect(
+    await readYouthEligibility(f.c, { ...input, purpose: 'PUBLIC_ARCHIVE' }, async () => q),
+  ).toMatchObject({ required: true, ready: false });
+  f.request.subject_purposes.push('PUBLIC_ARCHIVE');
+  f.request.guardian_purposes.push('PUBLIC_ARCHIVE');
+  expect(
+    await readYouthEligibility(f.c, { ...input, purpose: 'PUBLIC_ARCHIVE' }, async () => q),
+  ).toMatchObject({ required: true, ready: true });
+  f.request.status = 'WITHDRAWN';
+  expect(
+    (await readYouthEligibility(f.c, { ...input, purpose: 'PUBLIC_ARCHIVE' }, async () => q)).ready,
+  ).toBe(false);
+  expect((await readYouthEligibility(f.c, input, async () => q)).ready).toBe(true);
+  f.processingDate.youth_processing_date = '2026-11-01';
+  expect(
+    await readYouthEligibility(f.c, { ...input, purpose: 'PUBLIC_ARCHIVE' }, async () => q),
+  ).toMatchObject({ required: false, ready: true });
 });

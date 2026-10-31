@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, test } from 'vitest';
 import {
   ageOn,
+  guardianRequestRequired,
+  guardianThresholdDate,
   identityBirthDate,
   openGuardian,
   sealGuardian,
@@ -84,4 +86,25 @@ describe('youth age, purpose isolation and private proof envelope', () => {
       youthFingerprint(Buffer.alloc(32, 9), { proof: 'a' }),
     );
   });
+});
+
+test('future adult participants can still request guardian grants for today minor public purposes', () => {
+  const scope = {
+    birthDate: '2008-11-01',
+    policyDate: '2026-11-10',
+    processingDate: '2026-10-31',
+    threshold: 18,
+  };
+  expect(guardianRequestRequired({ ...scope, purposes: ['PARTICIPATION'] })).toBe(false);
+  for (const purpose of ['PUBLICITY', 'PUBLIC_ARCHIVE', 'LIVE_RECORDING'] as const)
+    expect(guardianRequestRequired({ ...scope, purposes: ['PARTICIPATION', purpose] })).toBe(true);
+  expect(
+    guardianRequestRequired({
+      ...scope,
+      processingDate: '2026-11-01',
+      purposes: ['PARTICIPATION', 'PUBLIC_ARCHIVE'],
+    }),
+  ).toBe(false);
+  expect(guardianThresholdDate('2008-11-01', 18)).toBe('2026-11-01');
+  expect(guardianThresholdDate('2008-02-29', 18)).toBe('2026-03-01');
 });

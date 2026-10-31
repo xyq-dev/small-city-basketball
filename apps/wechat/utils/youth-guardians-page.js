@@ -422,7 +422,7 @@ function createPage(review = false) {
         return;
       }
       return this.mutate(
-        '本人提出本届监护参赛确认',
+        '本人提出本届监护及用途确认',
         '仅针对当前已核验本人资料、名单和规则。监护人还需独立确认及提交证明，组委会另行核验关系。',
         async () => ({
           entryId: this._entry,

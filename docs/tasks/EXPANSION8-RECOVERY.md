@@ -9,3 +9,7 @@
 检查点0：读恢复脚本接口与新DDL，建立独立worktree；尚未新增验收代码或执行数据库。发现E05默认scheduler可能改变fingerprint，已告root配置验收时关闭后台worker；本地check实例显式autoDispatch=false，专项controlled drain仍执行。E04预告新增trade_settlement_returns，最终新增表将按实际DDL自动核对，不写死数量。
 
 检查点1（2026-10-31 Asia/Shanghai）：已写严格隔离目标检查、按实际036—041 DDL的48表精确库存/非空bigint-safe摘要，以及E01真实服务开播/录像/转码/未知停流和E07真实六域hooks注销/取消/延期样本源码。E03专属helper已由owner交root；E08/E05协作helper与E04恢复链尚待，主restart尚未接线，不能执行完整capture。新增MP4本地字节hash验证仅临时合成文件，DB归档不含媒体卷，root已另写运维边界。未执行任何数据库。
+
+检查点2（2026-10-31 Asia/Shanghai）：已合并root00b1da5并接E03/E05/E08专属helper；完整主capture/verify/freeze/quarantine已接check-database-restart，全部48表按实际DDL精确覆盖。E01新增独立注册/排程/真实记分与独立确认source，受控H264录制/转码及人工PTS校准→有效得分自动集锦，STOP结果UNKNOWN保源/外站槽；E04实际条款/绑定/幂等支付/事件/独立对账/扣减/分账/未知回退查原单/更正/未知退款，300分持续预留。E07使用六域真实hooks的CLOSED/CANCELLED/PENDING样本。
+
+原有C23 partial样本不变；额外源/用户独立。新样本在原有机构commerce/media最后快照之前创建，新增C23密文额度按SQL精确delta计入，新增球场以明确ID计入旧exact列表。quarantine仍要求旧completion表行数exact，仅新青年撤权history允许追加且原ID/hash逐项保留。后台auto workers由父新开关明确关闭，专项provider/drain都受控且不联网。5静态/隔离测试、所有模块无副作用import、API build、node语法/格式/空白通过；没有执行PG/重启/dump/restore。下一条交root整合并等待隔离CI暴露SQL/权限/行为差错后修复，不能据静态通过标DONE。

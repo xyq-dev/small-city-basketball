@@ -54,6 +54,7 @@ if (process.argv.includes('--static')) {
     console.error(
       JSON.stringify({
         code: typeof error.code === 'string' ? error.code : 'MIGRATION_FAILED',
+        migrationName: typeof error.migrationName === 'string' ? error.migrationName : undefined,
         message: typeof error.message === 'string' ? error.message : 'Migration failed',
         position: error.position,
         where: error.where,

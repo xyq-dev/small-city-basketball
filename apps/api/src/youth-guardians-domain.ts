@@ -29,6 +29,35 @@ export function identityBirthDate(identity: unknown, today: string): string {
   const n = participantIdentityNumber(identity, today);
   return `${n.slice(6, 10)}-${n.slice(10, 12)}-${n.slice(12, 14)}`;
 }
+/** Participation uses event age; public processing additionally needs today's minor consent. */
+export function guardianRequestRequired(input: {
+  birthDate: string;
+  policyDate: string;
+  processingDate: string;
+  threshold: number;
+  purposes: YouthPurpose[];
+}): boolean {
+  return (
+    ageOn(input.birthDate, input.policyDate) < input.threshold ||
+    (ageOn(input.birthDate, input.processingDate) < input.threshold &&
+      input.purposes.some((p) => p !== 'PARTICIPATION'))
+  );
+}
+/** ageOn reaches a non-leap-year birthday for February 29 on March 1. */
+export function guardianThresholdDate(birthDate: string, threshold: number): string {
+  calendarDate(birthDate, 'birthDate');
+  if (!Number.isInteger(threshold) || threshold < 18 || threshold > 21)
+    youthFail('YOUTH_SOURCE_INVALID', '年龄规则无法核验');
+  const year = Number(birthDate.slice(0, 4)) + threshold,
+    candidate = String(year).padStart(4, '0') + birthDate.slice(4);
+  try {
+    calendarDate(candidate, 'thresholdDate');
+    return candidate;
+  } catch {
+    if (birthDate.slice(5) === '02-29') return String(year).padStart(4, '0') + '-03-01';
+    return youthFail('YOUTH_SOURCE_INVALID', '年龄来源无法核验');
+  }
+}
 export function youthVersion(value: unknown): number {
   if (!Number.isSafeInteger(value) || Number(value) < 1)
     youthFail('YOUTH_INPUT_INVALID', '请重新读取当前版本', 422);

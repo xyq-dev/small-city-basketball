@@ -1,7 +1,7 @@
 /** Real PostgreSQL orchestration with synthetic trusted driver; no insurer network or real policy. */
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { createApi } from '../src/app.js';
 import { migrate } from '../src/database/migrate.js';
 import { InsuranceService } from '../src/insurance-service.js';
@@ -441,6 +441,182 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       paymentStatus: 'REFUNDED',
     });
   });
+  test('an expired untouched lease cannot refresh policy evidence and a replacement supplier cannot query or cancel the original order', async () => {
+    const member = f.members[1]!,
+      subject = subjects[1]!;
+    const request = await qualification.request(subject.cookie, owner.orgId, f.entry.id, {
+      clientRequestId: randomUUID(),
+      memberId: member.memberId,
+      expectedMaterialVersion: member.materialVersion,
+      acceptedTermsVersion: 'qualification-precheck-v1',
+    });
+    await qualification.review(reviewer.cookie, owner.orgId, f.entry.id, {
+      clientRequestId: randomUUID(),
+      memberId: member.memberId,
+      requestId: request.requestId,
+      expectedMaterialVersion: member.materialVersion,
+      decision: 'APPROVED',
+      reason: '合成独立身份照片签署核对',
+      identityReviewed: true,
+      portraitReviewed: true,
+      signatureReviewed: true,
+    });
+    const product = (await insurance.workspace(subject.cookie)).products[0]!;
+    const quote = (await insurance.quote(subject.cookie, {
+      clientRequestId: randomUUID(),
+      entryId: f.entry.id,
+      memberId: member.memberId,
+      productId: product.id,
+    })) as { quoteId: string };
+    const created = (await insurance.purchase(subject.cookie, {
+      clientRequestId: randomUUID(),
+      quoteId: quote.quoteId,
+      acceptedTermsVersion: INSURANCE_TERMS_VERSION,
+    })) as { orderId: string };
+    await insurance.drain(created.orderId);
+    const original = (
+      await api.pool.query('SELECT operation_id FROM insurance_orders WHERE id=$1', [
+        created.orderId,
+      ])
+    ).rows[0].operation_id;
+    driver.issued(original);
+    await readyOperation(created.orderId);
+    let enter!: () => void, release!: () => void;
+    const entered = new Promise<void>((resolve) => {
+        enter = resolve;
+      }),
+      hold = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    const originalQuery = driver.query;
+    driver.query = async (id) => {
+      const fact = await originalQuery.call(driver, id);
+      if (id === original) {
+        enter();
+        await hold;
+      }
+      return fact;
+    };
+    let pending: Promise<void> | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      pending = insurance.drain(created.orderId);
+      await Promise.race([
+        entered,
+        new Promise<never>((_, reject) => {
+          timeout = setTimeout(
+            () => reject(new Error('Original query barrier did not enter')),
+            5000,
+          );
+        }),
+      ]);
+      clearTimeout(timeout);
+      // Move only the real lease deadline, not the fence/state/result. No other worker
+      // claims it: this is the exact late-response-without-takeover boundary.
+      const lease = (
+        await api.pool.query(
+          "UPDATE insurance_operations SET lease_until=clock_timestamp()-interval '1 second' WHERE order_id=$1 AND status='RUNNING' RETURNING fence",
+          [created.orderId],
+        )
+      ).rows[0];
+      expect(lease).toBeTruthy();
+      release();
+      await pending;
+      pending = undefined;
+      const late = (
+        await api.pool.query(
+          'SELECT payment_status,policy_status,verified_at FROM insurance_orders WHERE id=$1',
+          [created.orderId],
+        )
+      ).rows[0];
+      expect(late).toEqual({
+        payment_status: 'UNPAID',
+        policy_status: 'PENDING',
+        verified_at: null,
+      });
+      expect(
+        (
+          await api.pool.query('SELECT * FROM insurance_policy_facts WHERE order_id=$1', [
+            created.orderId,
+          ])
+        ).rowCount,
+      ).toBe(0);
+      const recovered = (
+        await api.pool.query(
+          'SELECT status,reconcile_only,fence,lease_id FROM insurance_operations WHERE order_id=$1',
+          [created.orderId],
+        )
+      ).rows[0];
+      expect(recovered).toMatchObject({ status: 'UNKNOWN', reconcile_only: true, lease_id: null });
+      expect(Number(recovered.fence)).toBeGreaterThan(Number(lease.fence));
+    } finally {
+      clearTimeout(timeout);
+      release();
+      driver.query = originalQuery;
+      if (pending) await pending;
+    }
+    await readyOperation(created.orderId);
+    await insurance.drain(created.orderId);
+    const issued = await insurance.get(subject.cookie, created.orderId);
+    expect(issued).toMatchObject({ paymentStatus: 'PAID', policyStatus: 'ISSUED' });
+    expect(driver.applies.filter((id) => id === original)).toHaveLength(1);
+    await insurance.command(subject.cookie, created.orderId, {
+      clientRequestId: randomUUID(),
+      expectedVersion: issued.version,
+      type: 'REQUEST_CANCELLATION',
+    });
+    const noCall = vi.fn(async (): Promise<never> => {
+      throw new Error('Replacement supplier must never receive the original order');
+    });
+    const foreignProvider: InsuranceProvider = {
+      id: 'synthetic-e03-replacement',
+      allowedOrigins: ['https://synthetic.invalid'],
+      catalog: noCall,
+      quote: noCall,
+      apply: noCall,
+      query: noCall,
+      cancel: noCall,
+    };
+    const foreign = new InsuranceService(
+      api.pool,
+      { databaseUrl, appOrigin: ORIGIN, participantDataKey },
+      {
+        provider: foreignProvider,
+        dataKey: insuranceKey,
+        autoDispatch: false,
+        participationGuard: async () => ({ ready: true }),
+      },
+    );
+    // Normal startup already rejects changing the singleton supplier. The worker
+    // independently enforces the same pin even if a caller skipped that assertion.
+    await expect(foreign.assertConfiguration()).rejects.toThrow('Insurance configuration differs');
+    const before = (
+      await api.pool.query(
+        'SELECT provider_id,provider_order_id,payment_status,policy_status,refunded_fen,verified_at FROM insurance_orders WHERE id=$1',
+        [created.orderId],
+      )
+    ).rows[0];
+    await foreign.drain(created.orderId);
+    await readyOperation(created.orderId);
+    await foreign.drain(created.orderId);
+    expect(noCall).not.toHaveBeenCalled();
+    expect(
+      (
+        await api.pool.query(
+          'SELECT provider_id,provider_order_id,payment_status,policy_status,refunded_fen,verified_at FROM insurance_orders WHERE id=$1',
+          [created.orderId],
+        )
+      ).rows[0],
+    ).toEqual(before);
+    expect(
+      (
+        await api.pool.query(
+          "SELECT status,reconcile_only FROM insurance_operations WHERE order_id=$1 AND kind='CANCEL'",
+          [created.orderId],
+        )
+      ).rows[0],
+    ).toEqual({ status: 'UNKNOWN', reconcile_only: true });
+  }, 30000);
   test('today thirteen cannot bypass private collection by moving the event after the fourteenth birthday', async () => {
     const member = f.members[0]!,
       subject = subjects[0]!;

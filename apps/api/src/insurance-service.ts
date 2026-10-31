@@ -475,9 +475,12 @@ export class InsuranceService extends ApplicationService {
       )
         insuranceFail('INSURANCE_QUOTE_EXPIRED', '报价已到期或来源改变，请重新确认', 409);
       const product = (
-        await c.query('SELECT active FROM insurance_products WHERE id=$1 FOR SHARE', [q.product_id])
+        await c.query('SELECT active,provider_id FROM insurance_products WHERE id=$1 FOR SHARE', [
+          q.product_id,
+        ])
       ).rows[0];
-      if (!product?.active) insuranceFail('INSURANCE_PRODUCT_WITHDRAWN', '该保险产品已下架', 409);
+      if (!product?.active || product.provider_id !== provider.id)
+        insuranceFail('INSURANCE_PRODUCT_WITHDRAWN', '该保险产品或原供应商当前不可用', 409);
       await this.authorization(c, row);
       const unresolved = (
         await c.query(
@@ -681,6 +684,7 @@ export class InsuranceService extends ApplicationService {
       const a = await this.lockActor(c, cookie),
         o = await this.ownOrder(c, a, resourceId(id));
       if (
+        !this.orderProvider(o) ||
         o.cancellation_requested_at ||
         !['UNPAID', 'PENDING'].includes(o.payment_status) ||
         !o.policy_ciphertext
@@ -742,11 +746,14 @@ export class InsuranceService extends ApplicationService {
       insuranceFail('INSURANCE_NOTICE_INVALID', '保险通知无法核验', 401);
     await this.transaction(async (c) => {
       const order = (
-        await c.query('SELECT org_id,event_id,id FROM insurance_orders WHERE operation_id=$1', [
-          n.operationId,
-        ])
+        await c.query(
+          'SELECT org_id,event_id,id,provider_id FROM insurance_orders WHERE operation_id=$1',
+          [n.operationId],
+        )
       ).rows[0];
       if (!order) throw notFound();
+      if (order.provider_id !== provider.id)
+        insuranceFail('INSURANCE_NOTICE_INVALID', '保险通知与原供应商不匹配', 401);
       await this.lockScope(c, order.org_id, order.event_id);
       const hash = insuranceHash(n),
         old = (
@@ -799,6 +806,28 @@ export class InsuranceService extends ApplicationService {
       throw e;
     }
   }
+  /** Never substitute the current supplier for another order's immutable supplier pin. */
+  private orderProvider(order: Row): InsuranceProvider | undefined {
+    const provider = this.insurance.provider;
+    return provider &&
+      order.provider_id === provider.id &&
+      order.product_provider_id === provider.id
+      ? provider
+      : undefined;
+  }
+  private async finishOperation(
+    c: PoolClient,
+    work: { x: Row; lease: string; fence: number },
+    assignment: string,
+  ) {
+    const changed = await c.query(
+      `UPDATE insurance_operations SET ${assignment},lease_id=NULL,lease_until=NULL,updated_at=clock_timestamp()
+       WHERE id=$1 AND status='RUNNING' AND lease_id=$2 AND fence=$3 AND lease_until>clock_timestamp()`,
+      [work.x.id, work.lease, work.fence],
+    );
+    if (!changed.rowCount)
+      insuranceFail('INSURANCE_OPERATION_LEASE_EXPIRED', '保险处理租约已失效，将按原编号核对', 409);
+  }
   /** One lease-fenced operation. UNKNOWN and recovered leases query the original apply ID, never repeat charge-bearing calls. */
   async drain(orderId?: string) {
     const scope = orderId === undefined ? null : resourceId(orderId);
@@ -827,6 +856,17 @@ export class InsuranceService extends ApplicationService {
         if (!x) return null;
         const o = (await c.query(ORDER_SQL + ' WHERE o.id=$1 FOR UPDATE OF o', [x.order_id]))
           .rows[0];
+        const provider = this.orderProvider(o);
+        if (!provider) {
+          // Startup also pins the singleton supplier. Keep this boundary here so an
+          // independently invoked worker cannot send an old ID or cancellation to a
+          // replacement supplier. No original fact or financial claim is discarded.
+          await c.query(
+            "UPDATE insurance_operations SET status='UNKNOWN',reconcile_only=true,fence=fence+1,lease_id=NULL,lease_until=NULL,next_attempt_at=clock_timestamp()+interval '5 minutes',updated_at=clock_timestamp() WHERE id=$1",
+            [x.id],
+          );
+          return null;
+        }
         const authorized = await this.workerAuthorization(c, o),
           quote = openInsurance<InsuranceQuote>(this.key!, o.quote_id, o.quote_ciphertext),
           applicant = openInsurance<InsuranceApplicant>(
@@ -840,11 +880,7 @@ export class InsuranceService extends ApplicationService {
         ).rows[0].valid;
         if (
           initialApply &&
-          (!authorized ||
-            !valid ||
-            !o.product_active ||
-            o.provider_id !== this.insurance.provider!.id ||
-            o.cancellation_requested_at)
+          (!authorized || !valid || !o.product_active || o.cancellation_requested_at)
         ) {
           await c.query(
             "UPDATE insurance_operations SET status='FAILED',updated_at=clock_timestamp() WHERE id=$1",
@@ -862,142 +898,150 @@ export class InsuranceService extends ApplicationService {
           "UPDATE insurance_operations SET status='RUNNING',attempt_count=attempt_count+1,fence=$2,lease_id=$3,lease_until=clock_timestamp()+interval '30 seconds',updated_at=clock_timestamp() WHERE id=$1",
           [x.id, fence, lease],
         );
-        return { x, o, quote, applicant, lease, fence };
+        return { x, o, quote, applicant, lease, fence, provider };
       });
       if (!work) return;
       let fact: InsurancePolicyFact | null = null,
         rejected = false;
       try {
         if (work.x.kind === 'APPLY' && !work.x.reconcile_only) {
-          const result = await this.insurance.provider!.apply(work.o.operation_id, {
+          const result = await work.provider.apply(work.o.operation_id, {
             ...work.applicant,
             quote: work.quote,
           });
           rejected = result === 'REJECTED';
         } else if (work.x.kind === 'CANCEL' && !work.x.reconcile_only)
-          rejected =
-            (await this.insurance.provider!.cancel(work.x.id, work.o.operation_id)) === 'REJECTED';
+          rejected = (await work.provider.cancel(work.x.id, work.o.operation_id)) === 'REJECTED';
         if (!rejected) {
-          const value = await this.insurance.provider!.query(work.o.operation_id);
+          const value = await work.provider.query(work.o.operation_id);
           if (value)
             fact = checkInsurancePolicy(
               value,
               work.quote,
               work.o.operation_id,
-              this.insurance.provider!.allowedOrigins,
+              work.provider.allowedOrigins,
             );
         }
       } catch {
         /* Transport/result uncertainty: retain the original operation and reconcile only. */
       }
-      await this.transaction(async (c) => {
-        await this.lockScope(c, work.o.org_id, work.o.event_id);
-        const o = (await c.query(ORDER_SQL + ' WHERE o.id=$1 FOR UPDATE OF o', [work.o.id]))
-          .rows[0];
-        const x = (
-          await c.query(
-            "SELECT * FROM insurance_operations WHERE id=$1 AND status='RUNNING' AND lease_id=$2 AND fence=$3 FOR UPDATE",
-            [work.x.id, work.lease, work.fence],
-          )
-        ).rows[0];
-        if (!x) return;
-        if (fact) {
-          // Terminal provider facts and explicit cancellation intent cannot be resurrected by a stale query.
-          if (
-            o.provider_id !== this.insurance.provider!.id ||
-            (o.provider_order_id && fact.providerOrderId !== o.provider_order_id) ||
-            (o.payment_status === 'PAID' &&
-              ['UNPAID', 'PENDING', 'FAILED'].includes(fact.paymentStatus)) ||
-            (o.refunded_fen !== null && fact.refundedFen < Number(o.refunded_fen)) ||
-            (o.policy_status === 'CANCELLED' && fact.policyStatus !== 'CANCELLED') ||
-            (o.payment_status === 'REFUNDED' && fact.paymentStatus !== 'REFUNDED')
-          )
-            fact = null;
-        }
-        if (fact) {
-          const authorized = await this.workerAuthorization(c, o),
-            policy =
-              o.cancellation_requested_at && fact.policyStatus === 'ISSUED'
-                ? 'CANCEL_PENDING'
-                : fact.policyStatus;
-          const evidenceId = randomUUID();
-          await c.query(
-            'INSERT INTO insurance_policy_facts(id,order_id,order_version,key_id,fact_hash,fact_ciphertext,has_document) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(order_id,fact_hash) DO NOTHING',
-            [
-              evidenceId,
-              o.id,
-              Number(o.version) + 1,
-              insuranceKeyId(this.key!),
-              insuranceFingerprint(this.key!, fact),
-              sealInsurance(this.key!, evidenceId, fact),
-              Boolean(fact.document),
-            ],
-          );
-          await c.query(
-            'UPDATE insurance_orders SET provider_order_id=$2,payment_status=$3,policy_status=$4,policy_ciphertext=$5,verified_at=clock_timestamp(),authorization_valid=$6,refunded_fen=$7,version=version+1,updated_at=clock_timestamp() WHERE id=$1',
-            [
-              o.id,
-              fact.providerOrderId,
-              fact.paymentStatus,
-              policy,
-              sealInsurance(this.key!, o.id, fact),
-              authorized && !o.cancellation_requested_at,
-              fact.refundedFen,
-            ],
-          );
-          const stillPending =
-            ['PENDING', 'CANCEL_PENDING'].includes(fact.policyStatus) ||
-            ['PENDING', 'REFUND_PENDING'].includes(fact.paymentStatus) ||
-            Boolean(
-              o.cancellation_requested_at &&
-              fact.policyStatus !== 'CANCELLED' &&
-              work.x.kind === 'CANCEL',
-            );
-          if (stillPending)
+      try {
+        await this.transaction(async (c) => {
+          await this.lockScope(c, work.o.org_id, work.o.event_id);
+          const o = (await c.query(ORDER_SQL + ' WHERE o.id=$1 FOR UPDATE OF o', [work.o.id]))
+            .rows[0];
+          const x = (
             await c.query(
-              "UPDATE insurance_operations SET status=CASE WHEN attempt_count>=12 THEN 'FAILED' ELSE 'UNKNOWN' END,reconcile_only=true,lease_id=NULL,lease_until=NULL,next_attempt_at=clock_timestamp()+interval '30 seconds',updated_at=clock_timestamp() WHERE id=$1",
-              [x.id],
-            );
-          else
-            await c.query(
-              "UPDATE insurance_operations SET status='DONE',lease_id=NULL,lease_until=NULL,updated_at=clock_timestamp() WHERE id=$1",
-              [x.id],
-            );
-          if (
-            !stillPending &&
-            o.cancellation_requested_at &&
-            !['CANCELLED', 'CANCEL_PENDING'].includes(fact.policyStatus) &&
-            work.x.kind !== 'CANCEL'
-          )
-            await c.query(
-              "INSERT INTO insurance_operations(id,order_id,kind) VALUES($1,$2,'CANCEL')",
-              [randomUUID(), o.id],
-            );
-        } else if (rejected) {
-          await c.query(
-            "UPDATE insurance_operations SET status='FAILED',lease_id=NULL,lease_until=NULL,updated_at=clock_timestamp() WHERE id=$1",
-            [x.id],
-          );
-          if (work.x.kind === 'CANCEL') {
-            const previous = o.policy_ciphertext
-              ? openInsurance<InsurancePolicyFact>(this.key!, o.id, o.policy_ciphertext)
-              : null;
-            await c.query(
-              'UPDATE insurance_orders SET cancellation_requested_at=NULL,policy_status=$2,authorization_valid=false,version=version+1,updated_at=clock_timestamp() WHERE id=$1',
-              [o.id, previous?.policyStatus ?? 'PENDING'],
-            );
+              "SELECT * FROM insurance_operations WHERE id=$1 AND status='RUNNING' AND lease_id=$2 AND fence=$3 AND lease_until>clock_timestamp() FOR UPDATE",
+              [work.x.id, work.lease, work.fence],
+            )
+          ).rows[0];
+          if (!x) insuranceFail('INSURANCE_OPERATION_LEASE_EXPIRED', '保险处理租约已失效', 409);
+          if (fact) {
+            // Terminal provider facts and explicit cancellation intent cannot be resurrected by a stale query.
+            if (
+              this.orderProvider(o) !== work.provider ||
+              (o.provider_order_id && fact.providerOrderId !== o.provider_order_id) ||
+              (o.payment_status === 'PAID' &&
+                ['UNPAID', 'PENDING', 'FAILED'].includes(fact.paymentStatus)) ||
+              (o.refunded_fen !== null && fact.refundedFen < Number(o.refunded_fen)) ||
+              (o.policy_status === 'CANCELLED' && fact.policyStatus !== 'CANCELLED') ||
+              (o.payment_status === 'REFUNDED' && fact.paymentStatus !== 'REFUNDED')
+            )
+              fact = null;
           }
-          if (work.x.kind === 'APPLY')
+          if (fact) {
+            const authorized = await this.workerAuthorization(c, o),
+              policy =
+                o.cancellation_requested_at && fact.policyStatus === 'ISSUED'
+                  ? 'CANCEL_PENDING'
+                  : fact.policyStatus;
+            const evidenceId = randomUUID();
             await c.query(
-              "UPDATE insurance_orders SET policy_status='FAILED',payment_status='FAILED',authorization_valid=false,version=version+1,updated_at=clock_timestamp() WHERE id=$1",
-              [o.id],
+              'INSERT INTO insurance_policy_facts(id,order_id,order_version,key_id,fact_hash,fact_ciphertext,has_document) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(order_id,fact_hash) DO NOTHING',
+              [
+                evidenceId,
+                o.id,
+                Number(o.version) + 1,
+                insuranceKeyId(this.key!),
+                insuranceFingerprint(this.key!, fact),
+                sealInsurance(this.key!, evidenceId, fact),
+                Boolean(fact.document),
+              ],
             );
-        } else
+            await c.query(
+              'UPDATE insurance_orders SET provider_order_id=$2,payment_status=$3,policy_status=$4,policy_ciphertext=$5,verified_at=clock_timestamp(),authorization_valid=$6,refunded_fen=$7,version=version+1,updated_at=clock_timestamp() WHERE id=$1',
+              [
+                o.id,
+                fact.providerOrderId,
+                fact.paymentStatus,
+                policy,
+                sealInsurance(this.key!, o.id, fact),
+                authorized && !o.cancellation_requested_at,
+                fact.refundedFen,
+              ],
+            );
+            const stillPending =
+              ['PENDING', 'CANCEL_PENDING'].includes(fact.policyStatus) ||
+              ['PENDING', 'REFUND_PENDING'].includes(fact.paymentStatus) ||
+              Boolean(
+                o.cancellation_requested_at &&
+                fact.policyStatus !== 'CANCELLED' &&
+                work.x.kind === 'CANCEL',
+              );
+            if (stillPending)
+              await this.finishOperation(
+                c,
+                work,
+                "status=CASE WHEN attempt_count>=12 THEN 'FAILED' ELSE 'UNKNOWN' END,reconcile_only=true,next_attempt_at=clock_timestamp()+interval '30 seconds'",
+              );
+            else await this.finishOperation(c, work, "status='DONE'");
+            if (
+              !stillPending &&
+              o.cancellation_requested_at &&
+              !['CANCELLED', 'CANCEL_PENDING'].includes(fact.policyStatus) &&
+              work.x.kind !== 'CANCEL'
+            )
+              await c.query(
+                "INSERT INTO insurance_operations(id,order_id,kind) VALUES($1,$2,'CANCEL')",
+                [randomUUID(), o.id],
+              );
+          } else if (rejected) {
+            if (work.x.kind === 'CANCEL') {
+              const previous = o.policy_ciphertext
+                ? openInsurance<InsurancePolicyFact>(this.key!, o.id, o.policy_ciphertext)
+                : null;
+              await c.query(
+                'UPDATE insurance_orders SET cancellation_requested_at=NULL,policy_status=$2,authorization_valid=false,version=version+1,updated_at=clock_timestamp() WHERE id=$1',
+                [o.id, previous?.policyStatus ?? 'PENDING'],
+              );
+            }
+            if (work.x.kind === 'APPLY')
+              await c.query(
+                "UPDATE insurance_orders SET policy_status='FAILED',payment_status='FAILED',authorization_valid=false,version=version+1,updated_at=clock_timestamp() WHERE id=$1",
+                [o.id],
+              );
+            await this.finishOperation(c, work, "status='FAILED'");
+          } else
+            await this.finishOperation(
+              c,
+              work,
+              "status=CASE WHEN attempt_count>=12 THEN 'FAILED' ELSE 'UNKNOWN' END,reconcile_only=true,next_attempt_at=clock_timestamp()+interval '30 seconds'",
+            );
+        });
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.code !== 'INSURANCE_OPERATION_LEASE_EXPIRED')
+          throw error;
+        // The result transaction has rolled back every fact/freshness update. A newer
+        // lease owns its own outcome; release only our original expired lease.
+        await this.transaction(async (c) => {
+          await this.lockScope(c, work.o.org_id, work.o.event_id);
           await c.query(
-            "UPDATE insurance_operations SET status=CASE WHEN attempt_count>=12 THEN 'FAILED' ELSE 'UNKNOWN' END,reconcile_only=true,lease_id=NULL,lease_until=NULL,next_attempt_at=clock_timestamp()+interval '30 seconds',updated_at=clock_timestamp() WHERE id=$1",
-            [x.id],
+            "UPDATE insurance_operations SET status='UNKNOWN',reconcile_only=true,fence=fence+1,lease_id=NULL,lease_until=NULL,next_attempt_at=clock_timestamp()+interval '30 seconds',updated_at=clock_timestamp() WHERE id=$1 AND status='RUNNING' AND lease_id=$2 AND fence=$3 AND lease_until<=clock_timestamp()",
+            [work.x.id, work.lease, work.fence],
           );
-      });
+        });
+      }
     } finally {
       this.draining = false;
     }
@@ -1040,6 +1084,7 @@ export class InsuranceService extends ApplicationService {
     if (!o) return { ready: false, orderId: null, code: 'ONLINE_POLICY_REQUIRED' };
     const now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now;
     const ready =
+      Boolean(this.orderProvider(o)) &&
       !o.cancellation_requested_at &&
       insuranceCoverageEligible({
         paymentStatus: o.payment_status,

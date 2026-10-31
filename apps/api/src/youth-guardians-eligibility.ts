@@ -126,7 +126,18 @@ export async function readYouthEligibility(
     !q.qualificationId
   )
     return bad('YOUTH_QUALIFICATION_REQUIRED');
-  const age = ageOn(q.birthDate, input.policyDate);
+  const purpose = input.purpose ?? 'PARTICIPATION';
+  let ageDate = input.policyDate;
+  if (purpose !== 'PARTICIPATION') {
+    const today = (
+      await c.query(
+        "SELECT to_char(clock_timestamp() AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS youth_processing_date",
+      )
+    ).rows[0]?.youth_processing_date;
+    if (typeof today !== 'string') return bad('YOUTH_CURRENT_DATE_UNAVAILABLE');
+    ageDate = today;
+  }
+  const age = ageOn(q.birthDate, ageDate);
   if (age >= policy.guardian_age_threshold)
     return { required: false, ready: true, blockers: [], snapshot: null };
   const dataConsent = await readYouthDataProcessingConsent(c, {
@@ -182,7 +193,6 @@ export async function readYouthEligibility(
     )
   ).rows[0]?.ok;
   if (!independent) return bad('GUARDIAN_INDEPENDENT_REVIEW_REQUIRED');
-  const purpose = input.purpose ?? 'PARTICIPATION';
   if (!r.subject_purposes.includes(purpose) || !r.guardian_purposes.includes(purpose))
     return bad('GUARDIAN_PURPOSE_CONSENT_REQUIRED');
   return {

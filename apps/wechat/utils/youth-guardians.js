@@ -12,6 +12,17 @@ const names = {
   WITHDRAWN: '已撤回',
 };
 const purposes = ['PARTICIPATION', 'PUBLICITY', 'PUBLIC_ARCHIVE', 'LIVE_RECORDING'];
+const purposeNames = {
+  PARTICIPATION: '本届参赛',
+  PUBLICITY: '照片宣传',
+  PUBLIC_ARCHIVE: '公开档案',
+  LIVE_RECORDING: '直播、录像与集锦',
+};
+const blockerNames = {
+  GUARDIAN_SOURCE_CHANGED: '本人资料、资格预审、名单或监护确认已变化，请重新核验。',
+  GUARDIAN_INDEPENDENT_REVIEW_REQUIRED: '需要独立监护关系核验。',
+  GUARDIAN_PURPOSE_CONSENT_REQUIRED: '本人及监护人须分别确认该用途。',
+};
 const object = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const bool = (v) => typeof v === 'boolean';
 function invalid() {
@@ -51,7 +62,9 @@ function requestView(v) {
     role: v.role,
     current: v.current,
     reviewReason: typeof v.reviewReason === 'string' ? v.reviewReason : '',
-    blockerText: v.blockers.join('；'),
+    blockerText: v.blockers.map((code) => blockerNames[code] || '当前授权需重新核验。').join('；'),
+    subjectPurposeText: v.subjectPurposes.map((p) => purposeNames[p]).join('、') || '尚未确认',
+    guardianPurposeText: v.guardianPurposes.map((p) => purposeNames[p]).join('、') || '尚未确认',
     subjectPurposes: v.subjectPurposes.slice(),
     guardianPurposes: v.guardianPurposes.slice(),
     capabilities: Object.fromEntries(

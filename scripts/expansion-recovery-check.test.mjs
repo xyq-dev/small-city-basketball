@@ -5,6 +5,7 @@ import {
   expansionTablesFromSql,
   assertExpansionTarget,
   EXPANSION_DOMAINS,
+  assertExpansionQuarantineCounts,
 } from './expansion-recovery-check.mjs';
 
 test('all six checked-in expansion migrations map to exact recovery domains', async () => {
@@ -85,4 +86,13 @@ test('restricted capture checks the exact role and both pools on the same databa
       },
     }),
   );
+});
+test('quarantine may append guardian revocation history but cannot erase rows or weaken old completion counts', () => {
+  const before = { youth_guardian_history: 2, insurance_policy_facts: 1, poster_exports: 3 };
+  assertExpansionQuarantineCounts(before, { ...before, youth_guardian_history: 3 });
+  assert.throws(() =>
+    assertExpansionQuarantineCounts(before, { ...before, insurance_policy_facts: 0 }),
+  );
+  assert.throws(() => assertExpansionQuarantineCounts(before, { ...before, poster_exports: 4 }));
+  assert.throws(() => assertExpansionQuarantineCounts(before, { ...before, unchecked_extra: 1 }));
 });

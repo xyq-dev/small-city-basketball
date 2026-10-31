@@ -11,7 +11,10 @@ import type {
 } from './insurance-provider.js';
 const key = Buffer.alloc(32, 7),
   id = () => randomUUID();
-function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
+function harness(
+  kind: 'APPLY' | 'CANCEL' | 'QUERY' = 'APPLY',
+  currentProvider = 'synthetic-insurance-test',
+) {
   const quote: InsuranceQuote = {
     quoteReference: 'synthetic-quote',
     productExternalId: 'basketball',
@@ -56,6 +59,7 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
       cancellation_requested_at: kind === 'CANCEL' ? new Date() : null,
       product_active: true,
       provider_id: 'synthetic-insurance-test',
+      product_provider_id: 'synthetic-insurance-test',
     };
   const state = {
     op: {
@@ -67,6 +71,7 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
       attempt_count: 0,
       fence: 0,
       lease_id: null as string | null,
+      lease_until: null as Date | null,
     },
     valid: true,
     applyCalls: [] as string[],
@@ -76,6 +81,9 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
     orderWrites: 0,
     candidateScopes: [] as unknown[],
     stealFence: false,
+    databaseNow: Date.now(),
+    expireLeaseOnQuery: false,
+    expireLeaseOnSecondAuthorization: false,
   };
   const fact: InsurancePolicyFact = {
     ...quote,
@@ -95,7 +103,8 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
           values.length === 3 &&
           (state.op.lease_id !== values[1] ||
             state.op.fence !== values[2] ||
-            state.op.status !== 'RUNNING')
+            state.op.status !== 'RUNNING' ||
+            (state.op.lease_until !== null && state.op.lease_until.getTime() <= state.databaseNow))
         )
           return { rows: [] };
         return { rows: [{ ...state.op }] };
@@ -103,18 +112,34 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
       if (sql.startsWith('SELECT o.*')) return { rows: [{ ...order }] };
       if (sql.startsWith('SELECT $1::timestamptz')) return { rows: [{ valid: state.valid }] };
       if (sql.startsWith('UPDATE insurance_operations')) {
-        if (sql.includes("status='RUNNING'")) {
+        if (
+          sql.includes("WHERE id=$1 AND status='RUNNING'") &&
+          values.length === 3 &&
+          (state.op.status !== 'RUNNING' ||
+            state.op.lease_id !== values[1] ||
+            state.op.fence !== values[2])
+        )
+          return { rows: [], rowCount: 0 };
+        if (
+          sql.includes('lease_until>clock_timestamp()') &&
+          state.op.lease_until &&
+          state.op.lease_until.getTime() <= state.databaseNow
+        )
+          return { rows: [], rowCount: 0 };
+        if (sql.includes("SET status='RUNNING'")) {
           state.op.status = 'RUNNING';
           state.op.fence = values[1];
           state.op.lease_id = values[2];
+          state.op.lease_until = new Date(state.databaseNow + 30000);
           state.op.attempt_count++;
-        } else if (sql.includes("status='DONE'")) {
+        } else if (sql.includes("SET status='DONE'")) {
           state.op.status = 'DONE';
           state.op.lease_id = null;
-        } else if (sql.includes("status='FAILED'")) {
+        } else if (sql.includes("SET status='FAILED'")) {
           state.op.status = 'FAILED';
           state.op.lease_id = null;
         } else {
+          if (sql.includes('fence=fence+1')) state.op.fence++;
           state.op.status = 'UNKNOWN';
           state.op.reconcile_only = true;
           state.op.lease_id = null;
@@ -151,7 +176,7 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
     },
   } as unknown as Pool;
   const provider: InsuranceProvider = {
-    id: 'synthetic-insurance-test',
+    id: currentProvider,
     allowedOrigins: ['https://insurer.example.test'],
     catalog: async () => [],
     quote: async () => quote,
@@ -166,12 +191,25 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
     query: async (op) => {
       state.queryCalls.push(op);
       if (state.stealFence) state.op.fence++;
+      if (state.expireLeaseOnQuery) state.databaseNow += 31000;
       return state.fact;
     },
   };
   class Service extends InsuranceService {
     protected override async transaction<T>(work: (c: PoolClient) => Promise<T>) {
-      return work(client);
+      const snapshot = {
+        op: structuredClone(state.op),
+        order: structuredClone(order),
+        orderWrites: state.orderWrites,
+      };
+      try {
+        return await work(client);
+      } catch (error) {
+        state.op = snapshot.op;
+        Object.assign(order, snapshot.order);
+        state.orderWrites = snapshot.orderWrites;
+        throw error;
+      }
     }
   }
   const service = new Service(
@@ -190,7 +228,14 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
   );
   // These worker tests isolate transport/fencing; the real qualification reader has its own domain and PG tests.
   Object.defineProperty(service, 'lockScope', { value: async () => ({}) });
-  Object.defineProperty(service, 'workerAuthorization', { value: async () => true });
+  let authorizations = 0;
+  Object.defineProperty(service, 'workerAuthorization', {
+    value: async () => {
+      if (++authorizations === 2 && state.expireLeaseOnSecondAuthorization)
+        state.databaseNow += 31000;
+      return true;
+    },
+  });
   return { state, service, fact, order };
 }
 describe('durable insurance worker uncertainty and fencing', () => {
@@ -231,6 +276,32 @@ describe('durable insurance worker uncertainty and fencing', () => {
     await h.service.drain();
     expect(h.state.orderWrites).toBe(0);
     expect(h.order.policy_status).toBe('PENDING');
+    expect(h.state.op.status).toBe('RUNNING');
+    expect(h.state.op.fence).toBe(2);
+  });
+  it('a query delayed beyond its lease without another owner cannot mint a fresh policy observation', async () => {
+    const h = harness();
+    h.state.fact = h.fact;
+    h.state.expireLeaseOnQuery = true;
+    const originalFence = h.state.op.fence;
+    await h.service.drain();
+    expect(h.state.orderWrites).toBe(0);
+    expect(h.order.payment_status).toBe('UNPAID');
+    expect(h.order.policy_status).toBe('PENDING');
+    expect(h.state.op.status).toBe('UNKNOWN');
+    expect(h.state.op.reconcile_only).toBe(true);
+    expect(h.state.op.fence).toBeGreaterThan(originalFence);
+    expect(h.state.applyCalls).toEqual([h.order.operation_id]);
+  });
+  it('lease expiry after authorization rolls back every tentative policy write at the final update', async () => {
+    const h = harness();
+    h.state.fact = h.fact;
+    h.state.expireLeaseOnSecondAuthorization = true;
+    await h.service.drain();
+    expect(h.state.orderWrites).toBe(0);
+    expect(h.order.policy_status).toBe('PENDING');
+    expect(h.state.op.status).toBe('UNKNOWN');
+    expect(h.state.op.reconcile_only).toBe(true);
   });
   it('expired quote never dispatches a charge-bearing apply', async () => {
     const h = harness();
@@ -264,6 +335,34 @@ describe('durable insurance worker uncertainty and fencing', () => {
     expect(h.state.applyCalls).toHaveLength(0);
     await h.service.drain(h.order.id);
     expect(h.state.candidateScopes).toEqual([h.order.id]);
+  });
+  it.each(['APPLY', 'CANCEL', 'QUERY'] as const)(
+    'a %s for supplier A never reaches replacement supplier B',
+    async (kind) => {
+      const h = harness(kind, 'synthetic-supplier-B');
+      if (kind === 'APPLY') h.state.op.reconcile_only = true;
+      const originalPayment = h.order.payment_status,
+        originalPolicy = h.order.policy_status;
+      await h.service.drain();
+      await h.service.drain();
+      expect(h.state.applyCalls).toEqual([]);
+      expect(h.state.cancelCalls).toEqual([]);
+      expect(h.state.queryCalls).toEqual([]);
+      expect(h.state.op.status).toBe('UNKNOWN');
+      expect(h.state.op.reconcile_only).toBe(true);
+      expect(h.order.payment_status).toBe(originalPayment);
+      expect(h.order.policy_status).toBe(originalPolicy);
+      expect(h.order.provider_id).toBe('synthetic-insurance-test');
+      expect(h.state.orderWrites).toBe(0);
+    },
+  );
+  it('a product with another supplier pin cannot dispatch even if the order pin matches the current driver', async () => {
+    const h = harness();
+    h.order.product_provider_id = 'synthetic-supplier-B';
+    await h.service.drain();
+    expect(h.state.applyCalls).toEqual([]);
+    expect(h.state.queryCalls).toEqual([]);
+    expect(h.state.op.status).toBe('UNKNOWN');
   });
   it('no supplier configuration produces no network work and reports a closed feature', async () => {
     const service = new InsuranceService({} as Pool, {

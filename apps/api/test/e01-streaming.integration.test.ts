@@ -14,6 +14,7 @@ class ControlledExecutor implements LiveExecutor, MediaExecutor {
   runs: RelayRun[] = [];
   stopKnown = true;
   starts = 0;
+  beforeStop: ((key: string) => Promise<void>) | undefined;
   hold: Promise<void> | undefined;
   async start(run: RelayRun) {
     this.starts++;
@@ -23,6 +24,7 @@ class ControlledExecutor implements LiveExecutor, MediaExecutor {
     this.states.set(run.operationKey, 'CONNECTED');
   }
   async stop(key: string) {
+    await this.beforeStop?.(key);
     if (!this.stopKnown || !this.states.has(key)) return false;
     this.states.set(key, 'STOPPED');
     return true;
@@ -310,6 +312,82 @@ describe(
       await expect(
         h.api.pool.query('UPDATE live_media_jobs SET source_artifact_id=$2 WHERE id=$1', [jb, b]),
       ).rejects.toThrow('identity is immutable');
+    });
+    test('graceful shutdown commits the owning source and target fences before exit, retains unknown proof and leaves another instance alone', async () => {
+      const f = await setup(),
+        other = await setup();
+      const started = await f.service.command(h.otherOwner.cookie, h.owner.orgId, f.match, f.start);
+      await f.service.drain();
+      await other.service.command(h.otherOwner.cookie, h.owner.orgId, other.match, other.start);
+      await other.service.drain();
+      await f.service.drain();
+      expect(
+        (
+          await h.api.pool.query('SELECT state FROM live_relays WHERE session_id=$1', [
+            other.session,
+          ])
+        ).rows[0]!.state,
+      ).toBe('CONNECTED');
+      f.executor.beforeStop = async (key) => {
+        const row = (
+          await h.api.pool.query(
+            'SELECT s.desired,s.epoch,r.slot_held FROM broadcast_sessions s JOIN live_relays r ON r.session_id=s.id WHERE s.id=$1 AND r.provider_id=$2',
+            [f.session, key],
+          )
+        ).rows[0];
+        expect(row).toMatchObject({ desired: 'PAUSED', slot_held: true });
+        expect(row.epoch).toBeGreaterThan(started.session.epoch);
+        expect(
+          (
+            await h.api.pool.query(
+              "SELECT id FROM stream_jobs WHERE session_id=$1 AND kind IN('STOP','STOP_SOURCE')",
+              [f.session],
+            )
+          ).rowCount,
+        ).toBe(2);
+      };
+      await f.service.onModuleDestroy();
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT desired,observed,source_stopped FROM broadcast_sessions WHERE id=$1',
+            [f.session],
+          )
+        ).rows[0],
+      ).toMatchObject({ desired: 'PAUSED', observed: 'INTERRUPTED', source_stopped: true });
+      expect(
+        (
+          await h.api.pool.query('SELECT desired FROM broadcast_sessions WHERE id=$1', [
+            other.session,
+          ])
+        ).rows[0]!.desired,
+      ).toBe('RUNNING');
+      expect(
+        (
+          await h.api.pool.query('SELECT slot_held FROM live_relays WHERE session_id=$1', [
+            other.session,
+          ])
+        ).rows[0]!.slot_held,
+      ).toBe(true);
+      f.executor.beforeStop = undefined;
+      other.executor.stopKnown = false;
+      other.setSourceKnown(false);
+      await other.service.onModuleDestroy();
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT desired,source_stopped,observed FROM broadcast_sessions WHERE id=$1',
+            [other.session],
+          )
+        ).rows[0],
+      ).toMatchObject({ desired: 'PAUSED', source_stopped: false, observed: 'UNKNOWN' });
+      expect(
+        (
+          await h.api.pool.query('SELECT slot_held FROM live_relays WHERE session_id=$1', [
+            other.session,
+          ])
+        ).rows[0]!.slot_held,
+      ).toBe(true);
     });
     test('a source session belonging to a different active user cannot authorize frames', async () => {
       const f = await setup();

@@ -1,0 +1,66 @@
+{
+  "name": "e05-notification-settings-ready",
+  "route": "pages/notification-settings/index",
+  "state": "synthetic-populated",
+  "designSource": "Implemented native Page data; synthetic static layout fixture, not a real provider, delivery or account acceptance",
+  "expectText": [
+    "微信订阅提醒",
+    "关注赛事不代表已授权订阅",
+    "打开微信弹窗",
+    "报名审核更新",
+    "本次许可待使用",
+    "已撤销"
+  ],
+  "data": {
+    "enabled": true,
+    "kinds": [
+      {
+        "kind": "REGISTRATION_REVIEW",
+        "templateId": "synthetic-template-0",
+        "label": "报名审核更新"
+      },
+      {
+        "kind": "MATCH_RESCHEDULED",
+        "templateId": "synthetic-template-1",
+        "label": "比赛改期通知"
+      },
+      {
+        "kind": "MATCH_STARTING",
+        "templateId": "synthetic-template-2",
+        "label": "开赛前提醒"
+      }
+    ],
+    "selected": "MATCH_STARTING",
+    "intent": {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "kind": "MATCH_STARTING",
+      "templateId": "synthetic-template-2",
+      "state": "PENDING",
+      "expiresAt": "2028-06-01T10:05:00Z",
+      "subscriptionId": null
+    },
+    "pending": false,
+    "busy": false,
+    "error": "",
+    "message": "合成界面数据，仅供布局校验；未发生真实授权或发送。",
+    "subscriptions": [
+      {
+        "id": "00000000-0000-4000-8000-000000000004",
+        "kind": "MATCH_STARTING",
+        "state": "AVAILABLE",
+        "label": "开赛前提醒",
+        "stateLabel": "本次许可待使用",
+        "createdAt": "2028-06-01T10:00:00Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000005",
+        "kind": "REGISTRATION_REVIEW",
+        "state": "REVOKED",
+        "label": "报名审核更新",
+        "stateLabel": "已撤销",
+        "createdAt": "2028-05-31T10:00:00Z"
+      }
+    ],
+    "loginRequired": false
+  }
+}

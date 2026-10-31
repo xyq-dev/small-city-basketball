@@ -31,7 +31,9 @@
           "canReview": false,
           "canWithdraw": true,
           "canReadProof": false
-        }
+        },
+        "subjectPurposeText": "本届参赛、公开档案",
+        "guardianPurposeText": "尚未确认"
       }
     ],
     "preconsents": [
@@ -72,7 +74,9 @@
         "canReview": false,
         "canWithdraw": true,
         "canReadProof": false
-      }
+      },
+      "subjectPurposeText": "本届参赛、公开档案",
+      "guardianPurposeText": "尚未确认"
     },
     "policy": null,
     "form": {

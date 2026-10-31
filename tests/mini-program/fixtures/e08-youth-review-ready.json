@@ -31,7 +31,9 @@
           "canReview": true,
           "canWithdraw": false,
           "canReadProof": true
-        }
+        },
+        "subjectPurposeText": "本届参赛、公开档案",
+        "guardianPurposeText": "本届参赛、公开档案"
       }
     ],
     "preconsents": [],
@@ -58,7 +60,9 @@
         "canReview": true,
         "canWithdraw": false,
         "canReadProof": true
-      }
+      },
+      "subjectPurposeText": "本届参赛、公开档案",
+      "guardianPurposeText": "本届参赛、公开档案"
     },
     "policy": {
       "eventName": "合成青年静态示例杯",
