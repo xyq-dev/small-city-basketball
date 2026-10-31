@@ -1,8 +1,8 @@
 # EXPANSION8 恢复入口
 
-2026-10-31 Asia/Shanghai；Codex root；IN_PROGRESS / BRANCH_ONLY，PR34隔离验收中。
+2026-10-31 Asia/Shanghai；Codex root；DONE / MAIN：业务源码与隔离验收，正式外部未验；PR34已合并，最终检查点16。
 
-先核对远端main与本地branch/dirty，再读父任务EXPANSION8.md八项完整清单及本文末检查点。集成目录/workspace/scratch/6da762100066/scb-expansion8，feat/commercial-expansion-8，初始本地8e1ae91与远端4729336同tree042af74a。各域独立worktree，由root统一接线/规范/权限/恢复清单和GitHub同步。生产、真实费用、正式新凭据均禁止。
+PR34已合入main，先核对远端main与本地branch/dirty，再读父任务EXPANSION8.md八项完整清单及本文末最终检查点16。下文检查点0—15保留实施历史，不重做已通过的验证或重复合并。集成目录/workspace/scratch/6da762100066/scb-expansion8，feat/commercial-expansion-8，初始本地8e1ae91与远端4729336同tree042af74a。各域独立worktree，由root统一接线/规范/权限/恢复清单和GitHub同步。生产、真实费用、正式新凭据均禁止。
 
 检查点0：已建集成分支，正分配五个实现域及一名必要高风险设计审查。尚无新业务实现/测试/迁移执行。下一条按父卡E01—E08全部推进，缺外部账号不伪造完成、不阻塞可独立实现代码。
 
@@ -35,3 +35,9 @@ root检查点7：首次41链实际成功证据CI41182154976/api124481591194，03
 检查点14：第五CI41186594264/admin124494659094完整SUCCESS（1158 API/561 admin/1008原生+1skip、1067浏览器、1053布局PNG、类型格式构建），root已读原始日志并核artifact13036009981。API124494658981真实PG580过/4失败：新E04三case被旧DTO optional字段false省略断言卡住，c70bc1b兼容断言且加DB实际false证明；E05一case按两review source得50条正确消息，e95f1d9把三处统计固定到exact原source，仍严格25且不改单轮LIMIT/UNKNOWN断言。其余E01八、E08十、E07十三、C23十五、公开RR三及旧P03二十四等真实PG全过。production124494658902构建/健康/HTTPS/额外PG21过，captureStreaming缺APPROVE reason422，root同时补APPROVE/STOP合成依据；独立逐输入复核未见下一处确定阻断，仍待实际完整恢复。新增使用指南与真实菜单路径，未宣称外部开通。下一步普通同步当前全部修片，跑CI6；原迁移冻结、无生产/真实外部动作。
 
 检查点15：第六CI41187725651已终结：admin124497943783与production124497943571完整SUCCESS，原始日志已读。1158/561/1008+1skip、1067兼容浏览器/1053布局PNG、额外PG21与HTTPS4过；生产包检查真实完成176表精确备份、第二PG/卷恢复、业务快照/fencing、旧凭据与授权quarantine及仅自有清理。新增49表由实际capture与全非空库存断言覆盖；MP4仅合成字节检查，DB备份仍不含媒体文件。API124497943779的584真实PG全部通过，21原生HTTP中19过，两旧预约consumer仍同步调用新异步review，未等fee preview；root只补await/settle，未改应用或弱化资金断言，新5消费者全过。最终余下API重启/浏览器步骤因前置失败未执行；第七CI继续。独立文档复核发现DATA_MODEL首库存旧48/175与未执行文字、通知15分钟误写调度周期，现校正；README/需求/架构/验收入口对齐后续实现并保留历史，不把旧DOC设计当当前缺代码清单。
+
+检查点16（最终交付，2026-10-31 Asia/Shanghai）：最终候选120802fd2729db972020df5309100c25af11f545的[CI7 41189029140](https://github.com/xyq-dev/small-city-basketball/actions/runs/41189029140)整体completed/SUCCESS、attempt1，API124501785983、admin124501786098、production124501786278三job均完整SUCCESS，root已读全部原始日志。1158 API/561 admin/1008原生源码通过与1项既有Windows平台跳过；66文件584真实业务PG＋21最小权限PG、21原生页面到真实HTTP、1067兼容浏览器/1053布局PNG、桌面12＋移动12真实API浏览器、4隔离HTTPS全部通过。实际完成176表完整指纹重启及第二PG/卷完整备份恢复、业务快照/fencing/quarantine；49新增表全有非空业务样本。正常及故障浏览器子进程均只清理自有数据库并保留control与原失败退出状态。数据库dump不包含MP4，合成媒体字节验证不能当正式媒体卷归档。
+
+PR34已转Ready，合并前GitHub reviews/threads均为空；内部独立审查发现的资金/原单UNKNOWN、lease pin、RR授权、监护epoch及注销未决claim问题均已修并进入上述真实PG。已按既有授权正常merge至main：`9bfc54d12188846fa6a63605606dff89b783d025`，实际合并tree `73f20bdfa65192382ce8e03112ac6f08ec9a3661`与最终候选及测试merge-ref `10becc3a4eb4b58fe912c7572369225797a56bf6`精确相同，旧001—035零改动；036—042已执行并冻结。最终随附文档仅更新当前状态、任务/交接、运行说明及逐项验收，不改变应用、测试、依赖、迁移或工作流。
+
+当前DONE / MAIN仅指八项业务源码与约定隔离验收。实际保险供应商尚未选定、正式adapter未接且默认关闭；正式微信/商户/模板、腾讯直播/外站权限、真实服务联调和真机另验，无生产更新或真实资金/投保/推流/发信。最终完整映射见[验收对照](../audits/EXPANSION8_ACCEPTANCE.md)。恢复时先读CURRENT_STATUS和远端main；PR34已合并，不重复合并旧分支，不将历史检查点中的失败或待验当当前进度。后续按实际供应商契约另建明确专项，所有DDL从043追加，生产及真实外部操作仍需单独授权。

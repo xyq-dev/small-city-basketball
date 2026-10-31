@@ -1,10 +1,12 @@
 # 当前状态
 
-## EXPANSION8（IN_PROGRESS / BRANCH_ONLY：八项源码已接线，隔离验收中）
+## EXPANSION8（DONE / MAIN：业务源码与隔离验收，正式外部未验）
 
-2026-10-31 Asia/Shanghai；集成分支 `feat/commercial-expansion-8`，main基线4729336。八项持久服务、控制器、原生入口和旧业务门槛已接线：直播/云媒体、保险编排、收退款/对账/分账、订阅消息、统一搜索、注销、青年监护。范围及逐片证据见[总任务](tasks/EXPANSION8.md)、[恢复入口](handoffs/EXPANSION8.md)、[运行边界](EXPANSION8_OPERATIONS.md)。当前68条原生路由、42项Migration、176张表（本轮49张）；036—042均已在隔离CI执行并冻结，生产未执行。第六CI41187725651 admin与production包验收两个job完整SUCCESS：1158 API/561 admin源码、原生1008通过/1平台跳过、1067兼容浏览器及1053布局PNG，额外最小权限PG21/HTTPS4、176表精确非空重启/完整备份恢复/隔离均过。API业务PG584/584通过；原生页面→真实HTTP19/21通过，两个旧预约case未等待异步服务器报价，现仅补await及settle，保留完整履约/丢响应恢复断言。准备第七轮完成HTTP及余下API浏览器/同卷重启检查，整体仍不标DONE。使用入口见[八项扩展指南](EXPANSION8_USAGE.md)。
+2026-10-31 Asia/Shanghai；[PR34](https://github.com/xyq-dev/small-city-basketball/pull/34)已以merge commit `9bfc54d12188846fa6a63605606dff89b783d025`合入main，tree `73f20bdfa65192382ce8e03112ac6f08ec9a3661`与最终候选及测试merge-ref精确相同。八项持久服务、控制器、原生入口和旧业务门槛已接线：直播/云媒体、保险编排、收退款/对账/分账、订阅消息、统一搜索、注销、青年监护。[逐项代码与外部待办](audits/EXPANSION8_ACCEPTANCE.md)、[总任务](tasks/EXPANSION8.md)、[恢复入口](handoffs/EXPANSION8.md)、[使用指南](EXPANSION8_USAGE.md)、[运行边界](EXPANSION8_OPERATIONS.md)。当前68条原生路由、42项Migration、176张表（本轮49张）；001—042冻结，后续DDL从043追加，生产未执行。
 
-真实保险供应商未选定/未接实际adapter，购买编排默认关闭；微信支付/订阅及腾讯直播/多平台实现了受控驱动，但正式AppID、商户、模板、直播类目、外站权限及实际联调未验。没有生产更新、真实资金、真实投保、真实推流或发信。媒体已配独立持久卷；数据库备份不含MP4字节，需独立媒体归档恢复。下方COMPLETION22为上一批main的历史验收事实，不能当本轮八项已验收。
+最终候选120802fd2729db972020df5309100c25af11f545的[CI41189029140](https://github.com/xyq-dev/small-city-basketball/actions/runs/41189029140)三job完整SUCCESS（attempt1），root已读取全部原始日志：1158 API、561 admin、1008原生源码测试通过，1项既有Windows平台跳过；584真实业务PG＋21最小权限PG、21原生页面→真实HTTP、1067兼容浏览器/1053布局PNG、24真实API浏览器、4隔离HTTPS全部通过。176表精确指纹重启、第二PG/卷完整备份恢复、业务快照/fencing/quarantine和仅自有资源清理通过，新增49表全部有非空业务样本。此前失败及真实修复保留在检查点；合并后的自动重复CI不混作本次已通过的候选证据。
+
+真实保险供应商未选定、实际adapter未接，购买编排默认关闭；微信支付/订阅及腾讯直播/多平台已实现受控驱动，但正式AppID、商户、模板、直播类目、外站权限和真实联调未验。没有生产更新、真实资金、真实投保、真实推流或发信。兼容浏览器不代表官方微信运行时或真机；数据库备份不含MP4字节，正式媒体卷仍须独立归档恢复。这里的DONE仅指业务源码与约定隔离验收，下方各阶段保留历史范围。
 
 ## COMPLETION22（DONE / MAIN：源码与隔离验收，生产未更新）
 
