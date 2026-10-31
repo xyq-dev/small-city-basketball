@@ -16,6 +16,27 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["revoked_at", "used_at", "used_by", "used_request_hash"]
     },
+    "account_closure_operations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "account_closure_requests": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "blocked_reasons",
+        "fence",
+        "finished_at",
+        "lease_id",
+        "lease_until",
+        "status",
+        "updated_at",
+        "version"
+      ]
+    },
+    "account_closure_tombstones": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
     "account_mail_configuration": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
@@ -23,12 +44,12 @@
     "account_mail_jobs": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": [
-        "status",
+        "attempt_count",
         "envelope",
         "lease_id",
         "lease_until",
-        "attempt_count",
         "provider_id",
+        "status",
         "updated_at"
       ]
     },
@@ -130,26 +151,53 @@
     "booking_profiles": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": [
-        "display_name",
-        "position",
-        "height_cm",
-        "city",
-        "bio",
-        "price_fen",
-        "travel_fen",
         "accommodation_fen",
         "availability",
-        "version",
-        "status",
+        "bio",
+        "city",
+        "display_name",
+        "height_cm",
+        "position",
+        "price_fen",
         "review_reason",
-        "reviewed_by",
         "reviewed_at",
-        "updated_at"
+        "reviewed_by",
+        "status",
+        "travel_fen",
+        "updated_at",
+        "version"
       ]
     },
     "booking_settings": {
       "privileges": ["SELECT"],
       "updateColumns": ["fee_bps", "version", "updated_by", "updated_at"]
+    },
+    "broadcast_sessions": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "approval_expires_at",
+        "approved_at",
+        "approved_by",
+        "desired",
+        "ended_at",
+        "epoch",
+        "observed",
+        "recording_approved_at",
+        "recording_approved_by",
+        "rights_revoked_at",
+        "source_device_id",
+        "source_epoch",
+        "source_expires_at",
+        "source_heartbeat_at",
+        "source_owner_id",
+        "source_session_id",
+        "source_stopped",
+        "source_stream_name",
+        "source_token_hash",
+        "started_at",
+        "updated_at",
+        "version"
+      ]
     },
     "city_operation_grants": {
       "privileges": ["SELECT", "INSERT"],
@@ -200,7 +248,7 @@
     },
     "event_follows": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": ["status", "cancelled_at"]
+      "updateColumns": ["cancelled_at", "status"]
     },
     "event_invitations": {
       "privileges": ["SELECT", "INSERT"],
@@ -290,9 +338,98 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
     },
+    "insurance_configuration": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "insurance_operations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "attempt_count",
+        "fence",
+        "lease_id",
+        "lease_until",
+        "next_attempt_at",
+        "reconcile_only",
+        "status",
+        "updated_at"
+      ]
+    },
+    "insurance_orders": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "authorization_valid",
+        "cancellation_requested_at",
+        "payment_status",
+        "policy_ciphertext",
+        "policy_status",
+        "provider_order_id",
+        "refunded_fen",
+        "updated_at",
+        "verified_at",
+        "version"
+      ]
+    },
+    "insurance_policy_facts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "insurance_products": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["active"]
+    },
+    "insurance_provider_events": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "insurance_quotes": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "insurance_receipts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
     "knockout_round_publications": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
+    },
+    "live_channel_accounts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["revoked_at", "version"]
+    },
+    "live_media_artifacts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["public_key", "published_at", "published_by", "revoked_at", "version"]
+    },
+    "live_media_jobs": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "anchor_at",
+        "anchor_offset_ms",
+        "anchor_verified_by",
+        "artifact_id",
+        "cancel_requested_at",
+        "error_code",
+        "status",
+        "version",
+        "worker_token",
+        "worker_until"
+      ]
+    },
+    "live_relays": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "desired",
+        "epoch",
+        "error_code",
+        "observed_at",
+        "provider_id",
+        "slot_held",
+        "state",
+        "worker_token",
+        "worker_until"
+      ]
     },
     "local_bookings": {
       "privileges": ["SELECT", "INSERT"],
@@ -316,23 +453,23 @@
     "local_listings": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": [
-        "title",
-        "description",
         "address",
+        "coverage_region_ids",
+        "description",
         "latitude",
         "longitude",
-        "coverage_region_ids",
-        "qualification_note",
-        "terms",
-        "status",
+        "provider_confirmed",
         "published",
-        "reviewed_by",
-        "reviewed_at",
+        "qualification_note",
         "qualified_until",
         "review_reason",
-        "provider_confirmed",
-        "version",
-        "updated_at"
+        "reviewed_at",
+        "reviewed_by",
+        "status",
+        "terms",
+        "title",
+        "updated_at",
+        "version"
       ]
     },
     "local_matchups": {
@@ -413,6 +550,56 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["status", "version", "closed_at", "closed_by", "file_id"]
     },
+    "notification_commands": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "notification_configuration": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "notification_deliveries": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "accepted_at",
+        "attempt",
+        "grant_id",
+        "last_reason",
+        "lease_id",
+        "lease_until",
+        "next_attempt_at",
+        "state",
+        "updated_at"
+      ]
+    },
+    "notification_delivery_attempts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["finished_at", "state"]
+    },
+    "notification_fanout_state": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["cursor_user_id", "done", "updated_at"]
+    },
+    "notification_messages": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["read_at"]
+    },
+    "notification_source_events": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "notification_start_scan": {
+      "privileges": ["SELECT"],
+      "updateColumns": ["cursor_match_id", "cursor_starts_at", "updated_at"]
+    },
+    "notification_subscription_grants": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["revoked_at", "status", "target_cipher", "used_at"]
+    },
+    "notification_subscription_intents": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["code_hash", "confirm_request_id", "finished_at", "grant_id", "status"]
+    },
     "org_schedule_mutex": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["org_id"]
@@ -442,18 +629,30 @@
       "updateColumns": [
         "current_revision_id",
         "identity_digest",
-        "version",
-        "status",
+        "legal_hold",
         "publicity_consent",
         "reservation_active",
-        "legal_hold",
-        "reviewer_id",
         "review_reason",
-        "reviewed_start_date",
-        "reviewed_end_date",
         "reviewed_at",
-        "updated_at"
+        "reviewed_end_date",
+        "reviewed_start_date",
+        "reviewer_id",
+        "status",
+        "updated_at",
+        "version"
       ]
+    },
+    "participant_qualification_prechecks": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "participant_qualification_receipts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "participant_qualification_requests": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
     },
     "payment_notifications": {
       "privileges": ["SELECT", "INSERT"],
@@ -473,20 +672,20 @@
     },
     "public_archive_profiles": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": ["display_name", "status", "public_key", "version", "updated_at"]
+      "updateColumns": ["display_name", "public_key", "status", "updated_at", "version"]
     },
     "public_archive_publications": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": ["status", "revoked_at"]
+      "updateColumns": ["revoked_at", "status"]
     },
     "public_archive_sources": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": [
-        "status",
-        "consented_by",
         "consented_at",
+        "consented_by",
         "revoke_reason",
         "revoked_at",
+        "status",
         "version"
       ]
     },
@@ -693,6 +892,25 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
     },
+    "stream_command_receipts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "stream_jobs": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "attempt",
+        "error_code",
+        "lease_token",
+        "lease_until",
+        "next_attempt_at",
+        "state"
+      ]
+    },
+    "stream_usage_ledger": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
     "team_access_grants": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["status", "updated_at"]
@@ -707,7 +925,7 @@
     },
     "team_member_bindings": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": ["status", "ended_reason", "ended_by", "end_note", "ended_at"]
+      "updateColumns": ["end_note", "ended_at", "ended_by", "ended_reason", "status"]
     },
     "team_member_claims": {
       "privileges": ["SELECT", "INSERT"],
@@ -742,13 +960,76 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["name", "version", "updated_at"]
     },
+    "trade_deductions": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["review_reason", "reviewed_by", "status"]
+    },
+    "trade_operations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "trade_orders": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "updated_at", "version"]
+    },
+    "trade_payment_attempts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["checkout", "paid_at", "provider_transaction_id", "status", "updated_at"]
+    },
+    "trade_provider_events": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "trade_reconciliations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "trade_refunds": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "fence",
+        "provider_refund_id",
+        "review_reason",
+        "reviewed_by",
+        "status",
+        "success_at",
+        "updated_at"
+      ]
+    },
+    "trade_settlement_returns": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["provider_return_id", "status", "updated_at"]
+    },
+    "trade_settlements": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "fence",
+        "provider_detail_id",
+        "provider_order_id",
+        "provider_return_id",
+        "return_amount_fen",
+        "return_no",
+        "review_reason",
+        "reviewed_by",
+        "status",
+        "updated_at"
+      ]
+    },
+    "trade_terms": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["review_reason", "reviewed_at", "reviewed_by", "status", "version"]
+    },
     "users": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": [
-        "id",
-        "password_hash",
-        "email_verified_at",
         "credential_reset_at",
+        "display_name",
+        "email",
+        "email_verified_at",
+        "id",
+        "login_name",
+        "password_hash",
+        "status",
         "updated_at"
       ]
     },
@@ -758,7 +1039,57 @@
     },
     "wechat_identities": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": ["status", "version", "updated_at", "revoked_at"]
+      "updateColumns": ["revoked_at", "status", "updated_at", "version"]
+    },
+    "youth_event_policies": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "enabled",
+        "guardian_age_threshold",
+        "terms_version",
+        "updated_at",
+        "updated_by",
+        "version"
+      ]
+    },
+    "youth_guardian_commands": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "youth_guardian_history": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "youth_guardian_preconsents": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["guardian_confirmed_at", "status", "updated_at", "version"]
+    },
+    "youth_guardian_requests": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "guardian_adult_checked",
+        "guardian_confirmed_at",
+        "guardian_identity_checked",
+        "guardian_key_id",
+        "guardian_payload_bytes",
+        "guardian_payload_ciphertext",
+        "guardian_payload_hash",
+        "guardian_payload_version",
+        "guardian_purposes",
+        "proof_purged_at",
+        "relationship_checked",
+        "review_reason",
+        "reviewed_at",
+        "reviewed_payload_version",
+        "reviewer_id",
+        "status",
+        "updated_at",
+        "version"
+      ]
+    },
+    "youth_preconsent_history": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
     }
   },
   "functions": {
@@ -812,6 +1143,18 @@
     "c19_upload_session_guard()": [],
     "c22_region_reference_guard()": [],
     "c23_protect_material_revision()": [],
+    "e01_append_only()": [],
+    "e01_session_guard()": [],
+    "e02_job_identity_guard()": [],
+    "e03_immutable()": [],
+    "e04_trade_immutable()": [],
+    "e05_notification_attempt_guard()": [],
+    "e05_notification_history_guard()": [],
+    "e07_account_closure_guard()": [],
+    "e07_closed_user_no_revive()": [],
+    "e08_immutable_guardian_fact()": [],
+    "e08_protect_guardian_source()": [],
+    "e08_protect_preconsent_source()": [],
     "p03_protect_locked_ruleset()": [],
     "p03_reject_history_mutation()": [],
     "p04_current_revision_guard()": [],

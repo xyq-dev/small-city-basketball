@@ -140,3 +140,150 @@ export async function applyRuntimePrivileges(pool) {
     client.release();
   }
 }
+
+function withoutSqlComments(source) {
+  let result = '',
+    quoted = false;
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    if (c === "'") {
+      result += c;
+      if (quoted && source[i + 1] === "'") {
+        result += source[++i];
+        continue;
+      }
+      quoted = !quoted;
+      continue;
+    }
+    if (!quoted && c === '-' && source[i + 1] === '-') {
+      while (i < source.length && source[i] !== '\n') i++;
+      result += '\n';
+      continue;
+    }
+    if (!quoted && c === '/' && source[i + 1] === '*') {
+      i += 2;
+      let depth = 1;
+      while (i < source.length && depth) {
+        if (source[i] === '/' && source[i + 1] === '*') {
+          depth++;
+          i += 2;
+        } else if (source[i] === '*' && source[i + 1] === '/') {
+          depth--;
+          i += 2;
+        } else {
+          if (source[i] === '\n') result += '\n';
+          i++;
+        }
+      }
+      i--;
+      continue;
+    }
+    result += c;
+  }
+  return result;
+}
+function sqlList(source) {
+  const values = [];
+  let depth = 0,
+    quoted = false,
+    start = 0;
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    if (c === "'") {
+      if (quoted && source[i + 1] === "'") {
+        i++;
+        continue;
+      }
+      quoted = !quoted;
+      continue;
+    }
+    if (quoted) continue;
+    if (c === '(') depth++;
+    if (c === ')') depth--;
+    if (c === ',' && depth === 0) {
+      values.push(source.slice(start, i));
+      start = i + 1;
+    }
+  }
+  values.push(source.slice(start));
+  return values;
+}
+function tableBody(source, start) {
+  let depth = 1,
+    quoted = false;
+  for (let i = start; i < source.length; i++) {
+    const c = source[i];
+    if (c === "'") {
+      if (quoted && source[i + 1] === "'") {
+        i++;
+        continue;
+      }
+      quoted = !quoted;
+      continue;
+    }
+    if (quoted) continue;
+    if (c === '(') depth++;
+    if (c === ')' && --depth === 0) return source.slice(start, i);
+  }
+  throw Error('Incomplete checked-in table declaration');
+}
+/** Offline identity/column check for the deliberately constrained checked-in DDL. Real PostgreSQL remains the execution authority. */
+export function assertMigrationManifestSurface(manifest, sources) {
+  const tables = new Map([['schema_migrations', new Set(['name', 'checksum', 'applied_at'])]]),
+    functions = new Set();
+  for (const source of sources) {
+    const sql = withoutSqlComments(source.sql);
+    for (const m of sql.matchAll(/^\s*CREATE TABLE (?:IF NOT EXISTS )?([a-z][a-z0-9_]*)\s*\(/gm)) {
+      if (tables.has(m[1])) throw Error('Duplicate checked-in table identity');
+      const cols = new Set();
+      for (const declaration of sqlList(tableBody(sql, m.index + m[0].length))) {
+        const col = /^\s*([a-z][a-z0-9_]*)\s/i.exec(declaration)?.[1];
+        if (
+          col &&
+          !['UNIQUE', 'CHECK', 'CONSTRAINT', 'FOREIGN', 'PRIMARY'].includes(col.toUpperCase())
+        )
+          cols.add(col);
+      }
+      tables.set(m[1], cols);
+    }
+    for (const m of sql.matchAll(/^\s*ALTER TABLE ([a-z][a-z0-9_]*)\s+([\s\S]*?);/gm)) {
+      for (const col of m[2].matchAll(/(?:^|,)\s*ADD (?:COLUMN )?([a-z][a-z0-9_]*)\s/gi)) {
+        if (!['CONSTRAINT', 'CHECK', 'UNIQUE', 'FOREIGN', 'PRIMARY'].includes(col[1].toUpperCase()))
+          tables.get(m[1])?.add(col[1]);
+      }
+    }
+    for (const m of sql.matchAll(
+      /^\s*CREATE (?:OR REPLACE )?FUNCTION ([a-z][a-z0-9_]*)\(([\s\S]*?)\)\s*RETURNS/gm,
+    )) {
+      const types = m[2].trim()
+        ? sqlList(m[2]).map((arg) => {
+            const type = arg
+              .trim()
+              .replace(/\s+DEFAULT[\s\S]*$/i, '')
+              .replace(
+                /^[a-z][a-z0-9_]*\s+(?=(?:uuid|integer|text|jsonb|boolean|timestamptz|timestamp)\b)/i,
+                '',
+              )
+              .replace(/^timestamptz$/, 'timestamp with time zone')
+              .replace(/\s+/g, ' ');
+            if (!/^(uuid|integer|text|jsonb|boolean|timestamp with time zone)$/.test(type))
+              throw Error('Unreviewed checked-in function argument');
+            return type;
+          })
+        : [];
+      const signature = m[1] + '(' + types.join(',') + ')';
+      functionSql(signature);
+      functions.add(signature);
+    }
+  }
+  if (
+    JSON.stringify([...tables.keys()].sort()) !==
+      JSON.stringify(Object.keys(manifest.tables).sort()) ||
+    JSON.stringify([...functions].sort()) !== JSON.stringify(Object.keys(manifest.functions).sort())
+  )
+    throw Error('Checked-in migrations do not match the privilege manifest');
+  for (const [name, rule] of Object.entries(manifest.tables))
+    if (rule.updateColumns.some((col) => !tables.get(name).has(col)))
+      throw Error('Privilege manifest names a missing update column');
+  return { tables: tables.size, functions: functions.size };
+}

@@ -1,4 +1,7 @@
 import type { Pool } from 'pg';
+import { readFile, readdir } from 'node:fs/promises';
+import { loadManifest, assertMigrationManifestSurface } from '../../../ops/db/privileges.mjs';
+import { orderedMigrationNames } from './database/migration-plan.js';
 import { describe, expect, it } from 'vitest';
 import {
   assertRuntimeReadiness,
@@ -166,5 +169,93 @@ describe('explicit application function ACLs', () => {
     expect(
       functionPrivilegesMatch(manifest, [...rows, { ...rows[0]!, signature: 'unexpected()' }]),
     ).toBe(false);
+  });
+});
+
+describe('complete expansion migration and least-privilege surface', () => {
+  async function checkedIn() {
+    const directory = new URL('../migrations/', import.meta.url),
+      names = orderedMigrationNames(await readdir(directory));
+    const sources = await Promise.all(
+      names.map(async (name) => ({ name, sql: await readFile(new URL(name, directory), 'utf8') })),
+    );
+    return { manifest: await loadManifest(), sources, names };
+  }
+  it('matches every checked-in table, function signature and granted update column across the full contiguous sequence', async () => {
+    const v = await checkedIn();
+    expect(v.names).toHaveLength(41);
+    expect(assertMigrationManifestSurface(v.manifest, v.sources)).toEqual({
+      tables: Object.keys(v.manifest.tables).length,
+      functions: Object.keys(v.manifest.functions).length,
+    });
+    for (const source of v.sources.filter((s) => Number(s.name.slice(0, 3)) >= 36))
+      for (const m of source.sql.matchAll(/^CREATE TABLE ([a-z_]+)/gm))
+        expect(v.manifest.tables[m[1]!]!.privileges).not.toContain('DELETE');
+  });
+  it('keeps expansion history append-only and trigger functions uncallable by the runtime, backup and PUBLIC roles', async () => {
+    const { manifest } = await checkedIn();
+    for (const table of [
+      'stream_command_receipts',
+      'stream_usage_ledger',
+      'insurance_quotes',
+      'insurance_policy_facts',
+      'insurance_receipts',
+      'insurance_provider_events',
+      'participant_qualification_requests',
+      'participant_qualification_prechecks',
+      'participant_qualification_receipts',
+      'trade_provider_events',
+      'trade_operations',
+      'trade_reconciliations',
+      'notification_source_events',
+      'notification_configuration',
+      'notification_commands',
+      'account_closure_operations',
+      'account_closure_tombstones',
+      'youth_guardian_history',
+      'youth_guardian_commands',
+      'youth_preconsent_history',
+    ]) {
+      expect(manifest.tables[table], table).toEqual({
+        privileges: ['SELECT', 'INSERT'],
+        updateColumns: [],
+      });
+    }
+    expect(manifest.tables.notification_start_scan).toEqual({
+      privileges: ['SELECT'],
+      updateColumns: ['cursor_match_id', 'cursor_starts_at', 'updated_at'],
+    });
+    for (const [signature, privileges] of Object.entries(manifest.functions))
+      if (/^e0[1-8]_/.test(signature)) expect(privileges, signature).toEqual([]);
+    expect(
+      Object.entries(manifest.tables)
+        .filter(([, r]) => r.privileges.includes('DELETE'))
+        .map(([name]) => name)
+        .sort(),
+    ).toEqual(['auth_rate_limits', 'wechat_auth_attempts']);
+  });
+  it('rejects a missing or extra expansion object, unknown UPDATE column and unreviewed function argument type before connecting', async () => {
+    const v = await checkedIn();
+    for (const mutate of [
+      (m: PrivilegeManifest) => delete m.tables.live_media_jobs,
+      (m: PrivilegeManifest) =>
+        m.tables.live_media_jobs!.updateColumns.push('credential_ciphertext'),
+      (m: PrivilegeManifest) =>
+        (m.tables.unreviewed = { privileges: ['SELECT'], updateColumns: [] }),
+      (m: PrivilegeManifest) => delete m.functions['e02_job_identity_guard()'],
+    ]) {
+      const changed = structuredClone(v.manifest);
+      mutate(changed);
+      expect(() => assertMigrationManifestSurface(changed, v.sources)).toThrow();
+    }
+    expect(() =>
+      assertMigrationManifestSurface(v.manifest, [
+        ...v.sources,
+        {
+          name: '042_bad.sql',
+          sql: 'CREATE FUNCTION unreviewed(bigint) RETURNS void LANGUAGE SQL AS $$ SELECT 1 $$;',
+        },
+      ]),
+    ).toThrow();
   });
 });

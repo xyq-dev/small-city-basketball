@@ -18,3 +18,7 @@ export function assertManifestSchema(
   manifest: PrivilegeManifest,
 ): Promise<void>;
 export function applyRuntimePrivileges(pool: Pool): Promise<{ status: 'granted'; tables: number }>;
+export function assertMigrationManifestSurface(
+  manifest: PrivilegeManifest,
+  sources: readonly { name: string; sql: string }[],
+): { tables: number; functions: number };
