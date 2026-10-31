@@ -127,7 +127,8 @@ async function createOrder({ scope, player, name, slots, conditional = {}, perio
     }
     for (const [field, value] of fields) page.page.slotInput(tap({ index, field }, { value }));
   });
-  page.page.review();
+  await page.page.review();
+  await dev.settle(page);
   assert.equal(page.page.data.review, true, page.page.data.error);
   page.page.consent(tap({}, { value: ['agree'] }));
   if (lose)

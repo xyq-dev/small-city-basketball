@@ -1,8 +1,8 @@
 # 数据模型与状态
 
-## EXPANSION8：036—041分支模型（隔离首次执行成功，生产未执行）
+## EXPANSION8：036—042分支模型（隔离首次执行成功，生产未执行）
 
-本轮48张新表，全链175表/117函数，旧001—035不修改。以下以实际DDL清单为准；首次成功执行后新迁移冻结，后续变更另加迁移。支付/退款/保单/停播外部事实与工作意图分开，不能用界面成功或过期令牌代替真实回执。
+本轮49张新表，全链176表/117函数。001—042已冻结，后续DDL从043追加；冻结证据见[清单](tasks/EXPANSION8_FROZEN_MIGRATIONS.json)。以下以实际DDL清单为准。支付/退款/保单/停播外部事实与工作意图分开，不能用界面成功或过期令牌代替真实回执。
 
 | 迁移                        | 新表数 | 表                                                                                                                                                                                                                                                                                                              |
 | --------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -12,12 +12,13 @@
 | 039_e05_notifications.sql   | 10     | `notification_configuration`, `notification_source_events`, `notification_messages`, `notification_subscription_intents`, `notification_subscription_grants`, `notification_deliveries`, `notification_fanout_state`, `notification_delivery_attempts`, `notification_commands`, `notification_start_scan`      |
 | 040_e07_account_closure.sql | 3      | `account_closure_requests`, `account_closure_operations`, `account_closure_tombstones`                                                                                                                                                                                                                          |
 | 041_e08_youth_guardians.sql | 6      | `youth_event_policies`, `youth_guardian_preconsents`, `youth_guardian_requests`, `youth_guardian_history`, `youth_guardian_commands`, `youth_preconsent_history`                                                                                                                                                |
+| 042_e08_adult_data_consent.sql | 1 | `youth_adult_data_consents` |
 
 敏感保单/监护证明/通知目标单独加密，当前同意按来源/用途/版本读取；append-only事实及receipt不允许普通runtime UPDATE/DELETE。`trade_orders.money_version`在新实际账务事实同事务递增，对账精确pin后才可分账。审计表runtime仅INSERT及action/resource_type两列SELECT以检查永久恢复marker，不能读metadata/actor。MP4为独立媒体卷文件，artifact表只保留路径/大小/哈希与授权元数据；数据库备份不包含媒体字节。
 
 ## EXPANSION8 分支数据增量
 
-E06不新建搜索身份库或长期索引，直接按当前有效event_directory_listings/public_event_publications及public_archive_profiles/publications/sources投影，在同授权snapshot内验证。候选分页只保公开键和查询scope，源撤回不会因索引延迟继续可见。其余036—041为当前分支实施草稿，执行与冻结状态以[父任务](tasks/EXPANSION8.md)及迁移源码为准，尚未进行本轮数据库执行或生产修改。
+E06不新建搜索身份库或长期索引，直接按当前有效event_directory_listings/public_event_publications及public_archive_profiles/publications/sources投影，在同授权snapshot内验证。候选分页只保公开键和查询scope，源撤回不会因索引延迟继续可见。036—041已在隔离CI41182154976、042已在CI41184782485首次成功执行并冻结，详见[父任务](tasks/EXPANSION8.md)及冻结清单；生产未执行或修改。
 
 ## COMPLETION22 当前持久化增量
 
