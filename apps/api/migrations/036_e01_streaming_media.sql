@@ -60,7 +60,7 @@ CREATE TABLE live_media_jobs (
  anchor_at timestamptz, anchor_offset_ms integer, anchor_verified_by uuid REFERENCES users(id),
  source_match_id uuid, source_confirmation_id uuid,
  FOREIGN KEY(org_id,source_match_id,source_confirmation_id) REFERENCES result_confirmations(org_id,match_id,id),
- worker_token uuid, worker_until timestamptz, error_code text, created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ worker_token uuid, worker_until timestamptz, cancel_requested_at timestamptz, error_code text, created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  FOREIGN KEY(org_id,session_id) REFERENCES broadcast_sessions(org_id,id), UNIQUE(org_id,id)
 );
 CREATE UNIQUE INDEX e02_one_recording_epoch ON live_media_jobs(session_id,source_epoch) WHERE kind='RECORDING';

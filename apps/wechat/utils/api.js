@@ -678,6 +678,82 @@ function createClient(wxApi) {
   }
   return {
     request,
+    downloadLiveMedia(path) {
+      const allowed = new RegExp(
+        '^/v1/orgs/' +
+          uuidPattern +
+          '/broadcasts/' +
+          uuidPattern +
+          '/media/artifacts/' +
+          uuidPattern +
+          '/content$',
+        'i',
+      );
+      if (!allowed.test(path) || typeof wxApi.downloadFile !== 'function')
+        return Promise.reject({ code: 'INVALID_PATH', message: '录像下载入口不可用' });
+      const started = revision;
+      let mime = '',
+        task;
+      const cleanup = (filePath) => {
+        if (!filePath) return;
+        try {
+          wxApi.getFileSystemManager().unlink({ filePath, fail() {} });
+        } catch {
+          /* temporary file only */
+        }
+      };
+      return new Promise((resolve, reject) => {
+        task = wxApi.downloadFile({
+          url: API_ORIGIN + path,
+          timeout: 120000,
+          header: {
+            Origin: API_ORIGIN,
+            Accept: 'video/mp4',
+            ...(cookie ? { Cookie: cookie } : {}),
+          },
+          success(response) {
+            if (started !== revision) {
+              cleanup(response.tempFilePath);
+              reject({ code: 'SESSION_CHANGED', message: '登录身份已变化，已清除临时录像。' });
+              return;
+            }
+            if (response.statusCode === 401) invalidate('UNAUTHENTICATED');
+            if (
+              ![200, 206].includes(response.statusCode) ||
+              mime !== 'video/mp4' ||
+              typeof response.tempFilePath !== 'string' ||
+              !response.tempFilePath
+            ) {
+              cleanup(response.tempFilePath);
+              reject({ code: 'FILE_UNAVAILABLE', message: '录像不可读取，请重新核对权限。' });
+              return;
+            }
+            resolve({ tempFilePath: response.tempFilePath });
+          },
+          fail() {
+            reject({ code: 'NETWORK_ERROR', message: '录像下载中断，请重新核对权限后再试。' });
+          },
+        });
+        if (typeof task?.onHeadersReceived !== 'function') {
+          task?.abort?.();
+          reject({
+            code: 'DOWNLOAD_UNSUPPORTED',
+            message: '当前微信版本不支持安全录像下载，请升级后重试。',
+          });
+          return;
+        }
+        task.onHeadersReceived(({ header }) => {
+          const key = Object.keys(header || {}).find(
+            (name) => name.toLowerCase() === 'content-type',
+          );
+          mime = String(key ? header[key] : '')
+            .split(';')[0]
+            .trim()
+            .toLowerCase();
+          if (mime !== 'video/mp4' || started !== revision) task?.abort?.();
+        });
+      });
+    },
     download(path) {
       // Private file content only: registration files (PDF/images) and match media (images/MP4).
       const content = new RegExp(

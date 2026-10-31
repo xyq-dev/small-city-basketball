@@ -6,6 +6,7 @@ import type { RelayObserved } from '../../../packages/contracts/streaming.js';
 import { closeHarness, createScoringHarness, published } from './p05-support.js';
 import type { Harness } from './p05-support.js';
 import { ORIGIN, eventually } from './support.js';
+import { readStreamingClosureBlockers } from '../src/streaming-privacy.js';
 class ControlledExecutor implements LiveExecutor, MediaExecutor {
   readonly enabled = true;
   states = new Map<string, RelayObserved>();
@@ -70,6 +71,7 @@ describe(
         {
           encryptionKey: Buffer.alloc(32, 7).toString('base64'),
           capabilitiesVerified: true,
+          authorizeRecording: async () => true,
           baseFenPerMinute: 1,
           templates: [
             {
@@ -242,6 +244,16 @@ describe(
           ])
         ).rows[0]!.slot_held,
       ).toBe(true);
+      const c = await h.api.pool.connect();
+      try {
+        await c.query('BEGIN');
+        expect(await readStreamingClosureBlockers(c, h.otherOwner.id)).toEqual(
+          expect.arrayContaining([expect.objectContaining({ code: 'STREAMING_STOP_UNCONFIRMED' })]),
+        );
+      } finally {
+        await c.query('ROLLBACK');
+        c.release();
+      }
       const current = (await f.service.workspace(h.owner.cookie, h.owner.orgId, f.match))
         .sessions[0]!;
       await expect(

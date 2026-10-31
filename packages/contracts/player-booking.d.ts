@@ -61,6 +61,8 @@ export interface BookingAppearanceInput {
   conditional: boolean;
 }
 export interface BookingCreateInput {
+  acceptedTermsIds?: Record<string, string>;
+  chargeConsent?: true;
   reviewedSettingsVersion: number;
   reviewedProfileVersions: Record<string, number>;
   commandId: string;

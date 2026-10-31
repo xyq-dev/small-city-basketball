@@ -1,5 +1,5 @@
 import { randomUUID, timingSafeEqual } from 'node:crypto';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type {
   EntryCommandType,
   EntryData,
@@ -23,7 +23,10 @@ import type {
 } from '@small-city-basketball/contracts';
 import { ApiError, forbidden, notFound } from './errors.js';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
-import type { Actor, EventRow } from './service.js';
+import type { Actor, ApiOptions, EventRow } from './service.js';
+import type { SourceTradeHooks } from './trade-source-hooks.js';
+import { lockTradeSourceCalendar } from './trade-source-hooks.js';
+import { captureNotification } from './notification-source.js';
 import { hashPassword, hashToken, newSessionToken } from './security.js';
 import {
   calendarDate,
@@ -134,6 +137,13 @@ const assertNotFrozen = (frozen: boolean) => {
 
 /** P03 adds a separate team-grant context. P02 membership-only guards remain unchanged. */
 export class RegistrationService extends ApplicationService {
+  constructor(
+    pool: Pool,
+    options: ApiOptions,
+    private readonly trade?: SourceTradeHooks,
+  ) {
+    super(pool, options);
+  }
   async registerParticipant(
     body: unknown,
     ip: string,
@@ -864,6 +874,8 @@ export class RegistrationService extends ApplicationService {
           [row.org_id, row.id],
         );
         for (const entry of approved.rows) {
+          await this.trade?.assertSourceFinancialGate(client, 'ENTRY_FEE', entry.id);
+          await this.trade?.assertSourceFinancialGate(client, 'ENTRY_DEPOSIT', entry.id);
           if (!(await this.materialEligibility(client, event, entry, rules)).ready)
             materialsReady = false;
         }
@@ -980,6 +992,7 @@ export class RegistrationService extends ApplicationService {
     const input = registrationCommandInput(body);
     return this.transaction(async (client) => {
       const ctx = await this.context(client, cookie, org);
+      await lockTradeSourceCalendar(client, ctx.orgId);
       const event = await this.event(client, ctx, id, true);
       if (!event.canRead) throw notFound();
       if (!event.canManage) throw forbidden();
@@ -1345,10 +1358,18 @@ export class RegistrationService extends ApplicationService {
     eventId: string,
     body: unknown,
   ): Promise<EntryData> {
-    const input = objectInput(body, ['teamId']);
+    const input = objectInput(body, ['teamId', 'acceptedTermsIds', 'chargeConsent']);
+    if (input.chargeConsent !== undefined && input.chargeConsent !== true)
+      invalid('收费条款须明确确认');
+    const terms =
+      input.acceptedTermsIds === undefined
+        ? {}
+        : objectInput(input.acceptedTermsIds, ['ENTRY_FEE', 'ENTRY_DEPOSIT']);
+    for (const value of Object.values(terms)) resourceId(typeof value === 'string' ? value : '');
     const teamId = resourceId(typeof input.teamId === 'string' ? input.teamId : '');
     return this.transaction(async (client) => {
       const ctx = await this.context(client, cookie, org);
+      await lockTradeSourceCalendar(client, ctx.orgId);
       const event = await this.event(client, ctx, eventId, true);
       const team = await this.team(client, ctx, teamId, true);
       const leader = await this.leader(client, ctx, team.id);
@@ -1373,6 +1394,13 @@ export class RegistrationService extends ApplicationService {
         'INSERT INTO entries(id,org_id,event_id,team_id,team_name,ruleset_id,created_by) VALUES($1,$2,$3,$4,$5,$6,$7)',
         [id, ctx.orgId, event.row.id, team.id, team.name, event.row.locked_ruleset_id, ctx.user.id],
       );
+      for (const kind of ['ENTRY_FEE', 'ENTRY_DEPOSIT'] as const)
+        await this.trade?.captureSourceCharge(client, ctx, {
+          kind,
+          sourceId: id,
+          acceptedTermsId: terms[kind] as string | undefined,
+          chargeConsent: input.chargeConsent === true,
+        });
       await this.audit(client, ctx.user.id, ctx.orgId, 'ENTRY_CREATED', 'entry', id, {
         eventId: event.row.id,
         teamId: team.id,
@@ -1452,6 +1480,7 @@ export class RegistrationService extends ApplicationService {
     const input = entryCommandInput(body);
     return this.transaction(async (client) => {
       const ctx = await this.context(client, cookie, org);
+      await lockTradeSourceCalendar(client, ctx.orgId);
       const access = await this.entryAccess(client, ctx, id, true);
       const { event, leader, entry } = access;
       assertNotFrozen(event.frozen);
@@ -1459,6 +1488,10 @@ export class RegistrationService extends ApplicationService {
       if (!['REGISTRATION_OPEN', 'REGISTRATION_CLOSED'].includes(event.row.status))
         stateError('赛事当前不允许报名操作');
       let next: EntryStatus;
+      if (input.type === 'SUBMIT' || input.type === 'APPROVE') {
+        await this.trade?.assertSourceFinancialGate(client, 'ENTRY_FEE', entry.id);
+        await this.trade?.assertSourceFinancialGate(client, 'ENTRY_DEPOSIT', entry.id);
+      }
       if (input.type === 'SUBMIT') {
         if (!leader) throw forbidden();
         if (!this.editable(event, entry, leader)) stateError('当前状态不允许提交报名');
@@ -1521,6 +1554,13 @@ export class RegistrationService extends ApplicationService {
         fromVersion: entry.version,
         toVersion: entry.version + 1,
       });
+      if (['APPROVE', 'REQUEST_CHANGES', 'REJECT'].includes(input.type))
+        await captureNotification(client, {
+          kind: 'REGISTRATION_REVIEW',
+          orgId: ctx.orgId,
+          eventId: event.row.id,
+          resourceId: entry.id,
+        });
       return this.entryDto(client, await this.entryAccess(client, ctx, entry.id, true));
     });
   }

@@ -235,7 +235,7 @@ export async function revokeYouthForClosure(c: PoolClient, userId: string): Prom
   ).rows;
   let count = 0;
   for (const e of events) {
-    await c.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR UPDATE', [
+    await c.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR UPDATE NOWAIT', [
       e.org_id,
       e.event_id,
     ]);

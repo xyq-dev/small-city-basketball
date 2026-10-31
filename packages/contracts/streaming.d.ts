@@ -84,6 +84,7 @@ export interface MediaJobData {
   version: number;
   artifactId: string | null;
   error: string | null;
+  cancelRequested: boolean;
   createdAt: string;
 }
 export interface MediaArtifactData {

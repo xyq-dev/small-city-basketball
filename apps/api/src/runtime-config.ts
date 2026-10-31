@@ -13,6 +13,7 @@ export interface ResolvedApiOptions {
   organizationRegistrationEnabled: boolean;
   participantRegistrationEnabled: boolean;
   participantDataKey?: string;
+  notificationStartingLeadMinutes?: number;
   trustProxyHops: 0 | 1;
   production: boolean;
   commerceMode: CommerceMode;
@@ -94,6 +95,13 @@ export function validateDatabaseUrl(value: unknown): string {
 /** Shared by createApi and direct service construction; caller options cannot select a mode. */
 export function resolveApiOptions(options: ApiOptions): ResolvedApiOptions {
   const production = isProduction();
+  if (
+    options.notificationStartingLeadMinutes !== undefined &&
+    (!Number.isInteger(options.notificationStartingLeadMinutes) ||
+      options.notificationStartingLeadMinutes < 1 ||
+      options.notificationStartingLeadMinutes > 120)
+  )
+    throw new Error('Invalid notification lead time');
   const participantDataKey = options.participantDataKey;
   if (
     participantDataKey !== undefined &&
@@ -141,6 +149,9 @@ export function resolveApiOptions(options: ApiOptions): ResolvedApiOptions {
   return {
     databaseUrl: validateDatabaseUrl(options.databaseUrl),
     ...(participantDataKey === undefined ? {} : { participantDataKey }),
+    ...(options.notificationStartingLeadMinutes === undefined
+      ? {}
+      : { notificationStartingLeadMinutes: options.notificationStartingLeadMinutes }),
     appOrigin: options.appOrigin,
     sessionTtlSeconds: ttl,
     secureCookies: production || options.secureCookies === true,

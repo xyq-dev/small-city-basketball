@@ -44,6 +44,10 @@ export interface StreamingOptions {
   capabilitiesVerified?: boolean;
   baseFenPerMinute?: number;
   autoDispatch?: boolean;
+  authorizeRecording?: (
+    c: PoolClient,
+    input: { orgId: string; eventId: string; matchId: string; purpose: 'LIVE_RECORDING' },
+  ) => Promise<boolean>;
 }
 type Access = { ctx: OrgActor; event: Row; match: Row; manager: boolean; execute: boolean };
 const iso = (v: Date | string | null) => (v ? new Date(v).toISOString() : null);
@@ -80,6 +84,7 @@ export class StreamingService extends ApplicationService {
     return (
       !!this.key &&
       this.config.capabilitiesVerified === true &&
+      !!this.config.authorizeRecording &&
       this.config.ingress?.enabled === true &&
       this.config.executor?.enabled === true &&
       Number.isInteger(this.config.baseFenPerMinute) &&
@@ -462,6 +467,7 @@ export class StreamingService extends ApplicationService {
             )
           ).rows[0]!;
         } else if (b.type === 'START') {
+          await this.recordingEligibility(c, s);
           if (!this.ready()) liveFail('STREAMING_DISABLED', '直播准入与云执行配置未就绪', 503);
           if (
             !s.approved_at ||
@@ -544,6 +550,7 @@ export class StreamingService extends ApplicationService {
             );
           }
         } else if (b.type === 'HEARTBEAT') {
+          if (!(await this.workerSource(c, s.id))?.authorized) liveFail('STREAM_SOURCE_FENCED');
           if (
             s.desired !== 'RUNNING' ||
             s.source_owner_id !== a.ctx.user.id ||
@@ -676,7 +683,7 @@ export class StreamingService extends ApplicationService {
     });
   }
   private async workerSource(c: PoolClient, id: string) {
-    return (
+    const value = (
       await c.query<Row>(
         `SELECT s.*,m.home_team_name,m.away_team_name,m.version AS match_version,clock_timestamp() AS sampled_at,to_jsonb(st) AS scoring,
   (s.desired='RUNNING' AND s.rights_revoked_at IS NULL AND s.approval_expires_at>clock_timestamp() AND s.source_expires_at>clock_timestamp() AND s.started_at+s.maximum_seconds*interval '1 second'>clock_timestamp()
@@ -688,6 +695,14 @@ export class StreamingService extends ApplicationService {
         [id],
       )
     ).rows[0];
+    if (value?.authorized) {
+      try {
+        await this.recordingEligibility(c, value);
+      } catch {
+        value.authorized = false;
+      }
+    }
+    return value;
   }
   private async workerScore(job: Row, token: string) {
     return this.transaction(async (c) => {
@@ -849,7 +864,7 @@ export class StreamingService extends ApplicationService {
         }
       } else if (job.kind === 'STOP_SOURCE') {
         const name = String(job.operation_key).split(':')[2]!;
-        ok = this.ready() && (await this.config.ingress!.revoke(name));
+        ok = this.config.ingress?.enabled === true && (await this.config.ingress.revoke(name));
         unknown = !ok;
         if (ok)
           await this.pool.query(
@@ -956,6 +971,7 @@ export class StreamingService extends ApplicationService {
       version: j.version,
       artifactId: j.artifact_id,
       error: j.error_code,
+      cancelRequested: !!j.cancel_requested_at,
       createdAt: iso(j.created_at)!,
     };
   }
@@ -1164,7 +1180,7 @@ export class StreamingService extends ApplicationService {
       } else if (b.type === 'CANCEL_JOB') {
         const j = (
           await c.query<Row>(
-            "UPDATE live_media_jobs SET status='CANCELLED',version=version+1 WHERE org_id=$1 AND session_id=$2 AND id=$3 AND version=$4 AND status IN('QUEUED','RUNNING') RETURNING *",
+            "UPDATE live_media_jobs SET cancel_requested_at=clock_timestamp(),status=CASE WHEN status='QUEUED' THEN 'CANCELLED' ELSE status END,version=version+1 WHERE org_id=$1 AND session_id=$2 AND id=$3 AND version=$4 AND status IN('QUEUED','RUNNING') RETURNING *",
             [org, session, resourceId(String(b.jobId)), b.expectedVersion],
           )
         ).rows[0];
@@ -1194,6 +1210,18 @@ export class StreamingService extends ApplicationService {
     )
       liveFail('MEDIA_QUEUE_FULL', '媒体队列已满', 429);
   }
+  private async recordingEligibility(c: PoolClient, s: Row) {
+    if (
+      !this.config.authorizeRecording ||
+      !(await this.config.authorizeRecording(c, {
+        orgId: s.org_id,
+        eventId: s.event_id,
+        matchId: s.match_id,
+        purpose: 'LIVE_RECORDING',
+      }))
+    )
+      liveFail('LIVE_RECORDING_ELIGIBILITY_REQUIRED', '当前参赛者的直播与录像专项资格未确认');
+  }
   private async mediaRights(c: PoolClient, job: Row) {
     const s = (
       await c.query<Row>(
@@ -1205,6 +1233,7 @@ export class StreamingService extends ApplicationService {
       )
     ).rows[0];
     if (!s) throw Error('MEDIA_RIGHTS_REVOKED');
+    await this.recordingEligibility(c, s);
     if (
       job.source_artifact_id &&
       !(
@@ -1265,7 +1294,7 @@ export class StreamingService extends ApplicationService {
             if (
               !(
                 await c.query(
-                  "UPDATE live_media_jobs SET worker_until=clock_timestamp()+interval '20 seconds' WHERE id=$1 AND worker_token=$2 AND status='RUNNING' AND worker_until>clock_timestamp() RETURNING id",
+                  "UPDATE live_media_jobs SET worker_until=clock_timestamp()+interval '20 seconds' WHERE id=$1 AND worker_token=$2 AND status='RUNNING' AND cancel_requested_at IS NULL AND worker_until>clock_timestamp() RETURNING id",
                   [job.id, token],
                 )
               ).rowCount
@@ -1312,7 +1341,7 @@ export class StreamingService extends ApplicationService {
           await this.mediaRights(c, job);
           const locked = (
             await c.query<Row>(
-              "SELECT * FROM live_media_jobs WHERE id=$1 AND worker_token=$2 AND status='RUNNING' AND worker_until>clock_timestamp() FOR UPDATE",
+              "SELECT * FROM live_media_jobs WHERE id=$1 AND worker_token=$2 AND status='RUNNING' AND cancel_requested_at IS NULL AND worker_until>clock_timestamp() FOR UPDATE",
               [job.id, token],
             )
           ).rows[0];
@@ -1339,7 +1368,7 @@ export class StreamingService extends ApplicationService {
       } catch {
         if (output) await this.config.executor!.discard(output.fileName).catch(() => {});
         await this.pool.query(
-          "UPDATE live_media_jobs SET status='FAILED',error_code='MEDIA_EXECUTION_FAILED',worker_until=NULL,version=version+1 WHERE id=$1 AND worker_token=$2 AND status='RUNNING'",
+          "UPDATE live_media_jobs SET status=CASE WHEN cancel_requested_at IS NOT NULL THEN 'CANCELLED' ELSE 'FAILED' END,error_code=CASE WHEN cancel_requested_at IS NOT NULL THEN NULL ELSE 'MEDIA_EXECUTION_FAILED' END,worker_until=NULL,version=version+1 WHERE id=$1 AND worker_token=$2 AND status='RUNNING'",
           [job.id, token],
         );
       } finally {
@@ -1360,6 +1389,7 @@ export class StreamingService extends ApplicationService {
         )
       ).rows[0];
       if (!r || s.rights_revoked_at) throw notFound();
+      await this.recordingEligibility(c, s);
       await this.ensureFreshSession(c, a.ctx);
       return {
         path: await this.config.executor!.file(r.file_name),
@@ -1374,12 +1404,17 @@ export class StreamingService extends ApplicationService {
     return this.transaction(async (c) => {
       const r = (
         await c.query<Row>(
-          `SELECT a.*,s.match_id,s.recording_approved_at,s.rights_revoked_at,j.kind,j.source_confirmation_id,o.status AS org_status FROM live_media_artifacts a JOIN broadcast_sessions s ON s.org_id=a.org_id AND s.id=a.session_id JOIN live_media_jobs j ON j.id=a.job_id JOIN organizations o ON o.id=a.org_id WHERE a.public_key=$1 AND a.revoked_at IS NULL`,
+          `SELECT a.*,s.match_id,s.event_id,s.recording_approved_at,s.rights_revoked_at,j.kind,j.source_confirmation_id,o.status AS org_status FROM live_media_artifacts a JOIN broadcast_sessions s ON s.org_id=a.org_id AND s.id=a.session_id JOIN live_media_jobs j ON j.id=a.job_id JOIN organizations o ON o.id=a.org_id WHERE a.public_key=$1 AND a.revoked_at IS NULL`,
           [key],
         )
       ).rows[0];
       if (!r || r.org_status !== 'ACTIVE' || !r.recording_approved_at || r.rights_revoked_at)
         throw notFound();
+      try {
+        await this.recordingEligibility(c, r);
+      } catch {
+        throw notFound();
+      }
       if (r.kind === 'HIGHLIGHTS') {
         try {
           if (

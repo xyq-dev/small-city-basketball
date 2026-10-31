@@ -3,6 +3,7 @@ import type { RequestHandler } from 'express';
 import type { ApiRequest } from './errors.js';
 
 export const WECHAT_PAYMENT_NOTIFICATION_PATH = '/v1/payments/wechat/notifications';
+const tradeNotificationPath = /^\/v1\/trade-notifications\/[A-Za-z0-9_-]{1,60}$/;
 const uploadPath = /^\/v1\/orgs\/[0-9a-f-]{36}\/(?:entries|matches)\/[0-9a-f-]{36}\/media-files$/i;
 // C19: the idempotent whole-file upload shares the original upload lane and limit.
 const requestUploadPath =
@@ -14,7 +15,10 @@ const participantDraftPath =
 const chunkPath =
   /^\/v1\/orgs\/[0-9a-f-]{36}\/matches\/[0-9a-f-]{36}\/media-upload-sessions\/[0-9a-f-]{36}\/chunks\/\d{1,2}$/i;
 export function isPaymentNotificationRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
-  return request.method === 'POST' && request.path === WECHAT_PAYMENT_NOTIFICATION_PATH;
+  return (
+    request.method === 'POST' &&
+    (request.path === WECHAT_PAYMENT_NOTIFICATION_PATH || tradeNotificationPath.test(request.path))
+  );
 }
 export function isMediaUploadRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
   return (

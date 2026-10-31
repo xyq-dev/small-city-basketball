@@ -292,7 +292,9 @@ export class YouthGuardiansService extends ApplicationService {
         policy: this.policyDto(await this.policyRow(c, a)),
         capabilities: {
           canConfigure: manager && a.event.status === 'DRAFT',
-          canInviteData: await this.boundSubject(c, a),
+          canInviteData:
+            ['REGISTRATION_OPEN', 'REGISTRATION_CLOSED'].includes(a.event.status) &&
+            (await this.boundSubject(c, a)),
         },
       };
     });

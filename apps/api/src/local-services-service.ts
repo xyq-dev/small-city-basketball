@@ -18,6 +18,7 @@ import { assertCurrentRegionVersion } from './region-catalog-domain.js';
 import { REGION_CATALOG_VERSION } from './region-catalog-data.js';
 import { TencentLocationProvider } from './location-provider.js';
 import type { LocationProvider } from './location-provider.js';
+import type { SourceTradeHooks } from './trade-source-hooks.js';
 import {
   distanceMeters,
   localBookingTransition,
@@ -54,6 +55,7 @@ export class LocalServicesService extends ApplicationService {
     options: ApiOptions,
     locationProvider?: LocationProvider,
     private readonly reviewAuthorizer?: LocalReviewAuthorizer,
+    private readonly trade?: SourceTradeHooks,
   ) {
     super(pool, options);
     this.locationProvider = locationProvider ?? new TencentLocationProvider();
@@ -835,6 +837,12 @@ export class LocalServicesService extends ApplicationService {
           1,
           '本人确认当前条款和实际服务地点',
         );
+        await this.trade?.captureSourceCharge(c, actor, {
+          kind: 'LOCAL_BOOKING',
+          sourceId: id,
+          acceptedTermsId: input.acceptedTermsId,
+          chargeConsent: input.chargeConsent === true,
+        });
         return { resourceType: 'BOOKING', resourceId: id, version: 1 };
       });
     });
@@ -924,6 +932,7 @@ export class LocalServicesService extends ApplicationService {
         { id, expectedVersion, kind: 'ISSUE_CHECKIN' },
         async () => {
           this.checkVersion(b, expectedVersion);
+          await this.trade?.assertSourceFinancialGate(c, 'LOCAL_BOOKING', b.id);
           const listing = await this.listing(c, b.listing_id),
             now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
           if (
@@ -983,6 +992,8 @@ export class LocalServicesService extends ApplicationService {
       ).rows[0];
       return this.operation(c, actor, input.commandId, { id, input }, async () => {
         this.checkVersion(b, input.expectedVersion);
+        if (['CONFIRM', 'REDEEM_CHECKIN', 'ARRIVE', 'DELIVER', 'COMPLETE'].includes(input.type))
+          await this.trade?.assertSourceFinancialGate(c, 'LOCAL_BOOKING', b.id);
         const now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
         if (['HELD', 'REQUESTED'].includes(b.status) && b.hold_expires_at <= now)
           localFail('LOCAL_HOLD_EXPIRED', '预约占用已到期，请核对原结果后重新选时段');
