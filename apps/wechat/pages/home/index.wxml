@@ -2,7 +2,7 @@
  <view class="home-hero">
   <image class="home-court" src="/assets/approved-ui/court-night.jpg" mode="aspectFill" aria-hidden="true"/>
   <view class="home-shade"></view>
-  <scb-header location-label="{{citySelection.label}}" home="{{true}}" dark="{{true}}" back="{{false}}" bind:search="openEvents"/>
+  <scb-header location-label="{{citySelection.label}}" home="{{true}}" dark="{{true}}" back="{{false}}" bind:search="openSearch"/>
   <view class="home-hero-content"><view class="home-headline"><image src="/assets/approved-ui/home-slogan.png" mode="widthFix" aria-label="每一场，都有合适的人"/><text class="accessible-headline">每一场，都有合适的人</text></view><view class="home-tagline">看赛事 · 管球队 · 查数据</view><button class="accent home-primary" bindtap="openEvents">看赛事<scb-icon name="arrow-right" tone="white" size="22"/></button></view>
  </view>
  <view class="home-content">

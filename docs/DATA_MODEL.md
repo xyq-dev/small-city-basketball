@@ -1,5 +1,9 @@
 # 数据模型与状态
 
+## EXPANSION8 分支数据增量
+
+E06不新建搜索身份库或长期索引，直接按当前有效event_directory_listings/public_event_publications及public_archive_profiles/publications/sources投影，在同授权snapshot内验证。候选分页只保公开键和查询scope，源撤回不会因索引延迟继续可见。其余036—041为当前分支实施草稿，执行与冻结状态以[父任务](tasks/EXPANSION8.md)及迁移源码为准，尚未进行本轮数据库执行或生产修改。
+
 ## COMPLETION22 当前持久化增量
 
 2026-10-31 Asia/Shanghai；当前整合范围累计35项Migration、127张表，025—035新增44表并扩展既有比赛/采集约束。执行与合并事实见[当前状态](CURRENT_STATUS.md)，仅在隔离CI验证，不代表生产Migration已执行。下方早期阶段的“待新增”“仅三赛制”等历史描述不覆盖本节与第3节当前规范。

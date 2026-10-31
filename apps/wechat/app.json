@@ -2,6 +2,7 @@
   "pages": [
     "pages/home/index",
     "pages/city-select/index",
+    "pages/search/index",
     "pages/watch/index",
     "pages/media/index",
     "pages/account/index",

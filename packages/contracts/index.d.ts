@@ -1205,3 +1205,9 @@ export type * from './governance.js';
 
 export type * from './knockout-optimization.js';
 export type * from './public-archives.js';
+
+export type * from './unified-search.js';
+export type * from './notifications.js';
+export type * from './streaming.js';
+export type * from './insurance.js';
+export type * from './trade.js';

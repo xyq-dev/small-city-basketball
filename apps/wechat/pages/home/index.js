@@ -151,6 +151,9 @@ Page({
   openLocal() {
     localServices.open('local');
   },
+  openSearch() {
+    ui.open('search');
+  },
   openEvents() {
     ui.open('watch');
   },

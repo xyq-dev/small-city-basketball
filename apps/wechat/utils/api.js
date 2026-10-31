@@ -84,6 +84,16 @@ function pathAllowed(path, method = 'GET') {
     );
   if (matches('/v1/orgs/' + uuidPattern + '/staff-configuration/commands'))
     return noQuery && method === 'POST';
+  if (base === '/v1/public/search')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['q', 'kind', 'city', 'regionId', 'catalogVersion', 'limit', 'cursor']) &&
+      typeof query.q === 'string' &&
+      query.q.length > 0 &&
+      ['ALL', 'EVENT', 'TEAM', 'PLAYER'].includes(query.kind || 'ALL') &&
+      'regionId' in query === 'catalogVersion' in query &&
+      !(query.city && query.regionId)
+    );
   if (base === '/v1/public/regions') return method === 'GET' && parts.length === 1;
   // Public directory: exact parameters only; sent without any session cookie.
   if (base === '/v1/public/directory')
@@ -562,6 +572,7 @@ function createClient(wxApi) {
           (method === 'GET' &&
             (/^\/v1\/player-bookings\/players\//.test(path) ||
               /^\/v1\/public\/directory(?:\?|$)/.test(path) ||
+              /^\/v1\/public\/search\?/.test(path) ||
               path === '/v1/public/regions'))
         ))
     )

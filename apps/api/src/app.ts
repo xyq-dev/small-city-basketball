@@ -29,6 +29,8 @@ import {
   SCB_PUBLIC_LEDGER_SERVICE,
 } from './public-ledger-controller.js';
 import { PublicArchivesService } from './public-archives-service.js';
+import { UnifiedSearchService } from './unified-search-service.js';
+import { UnifiedSearchController, SCB_UNIFIED_SEARCH } from './unified-search-controller.js';
 import {
   PublicArchivesController,
   SCB_PUBLIC_ARCHIVES_SERVICE,
@@ -362,6 +364,7 @@ export async function createApi(
     const service = new RegistrationService(pool, options);
     const publicLedgers = new PublicLedgerService(pool, options);
     const publicArchives = new PublicArchivesService(pool, options);
+    const unifiedSearch = new UnifiedSearchService(pool, options);
     const eventTemplates = new EventTemplateService(pool, options);
     const matchExceptions = new MatchExceptionService(pool, options);
     const recruitment = new RecruitmentService(pool, options);
@@ -416,6 +419,7 @@ export async function createApi(
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
+        UnifiedSearchController,
         SponsorshipController,
         SponsorshipReviewController,
         PublicSponsorshipController,
@@ -473,6 +477,7 @@ export async function createApi(
         SeasonController,
       ],
       providers: [
+        { provide: SCB_UNIFIED_SEARCH, useValue: unifiedSearch },
         { provide: SCB_SPONSORSHIP_SERVICE, useValue: sponsorships },
         { provide: SCB_PUBLIC_LEDGER_SERVICE, useValue: publicLedgers },
         { provide: SCB_PUBLIC_ARCHIVES_SERVICE, useValue: publicArchives },

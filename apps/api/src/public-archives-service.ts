@@ -34,6 +34,7 @@ const POWER = `EXISTS(SELECT 1 FROM organization_memberships pm WHERE pm.org_id=
 const SOURCE_VALID = `o.status='ACTIVE' AND nu.status='ACTIVE' AND ${POWER} AND ((p.kind='TEAM' AND g.member_id IS NULL AND p.org_id=g.org_id AND p.team_id=g.team_id) OR (p.kind='PLAYER' AND owner.status='ACTIVE' AND g.target_user_id=p.owner_user_id AND b.org_id=g.org_id AND b.team_id=g.team_id AND b.member_id=g.member_id AND b.user_id=p.owner_user_id)) AND EXISTS(SELECT 1 FROM registration_freezes f WHERE f.org_id=g.org_id AND f.event_id=g.event_id AND f.snapshot->'entries' @> jsonb_build_array(jsonb_build_object('teamId',g.team_id::text)) AND (g.member_id IS NULL OR f.snapshot->'entries' @> jsonb_build_array(jsonb_build_object('teamId',g.team_id::text,'players',jsonb_build_array(jsonb_build_object('memberId',g.member_id::text))))))`;
 const EFFECTIVE = `g.status='APPROVED' AND g.consented_at IS NOT NULL AND (p.kind='TEAM' OR g.consented_by=p.owner_user_id) AND ${SOURCE_VALID}`;
 const SOURCE_SELECT = `SELECT g.*,e.name AS event_name,t.name AS team_name,tm.name AS member_name,(${EFFECTIVE}) AS effective FROM public_archive_sources g JOIN public_archive_profiles p ON p.id=g.profile_id JOIN users owner ON owner.id=p.owner_user_id JOIN organizations o ON o.id=g.org_id JOIN events e ON e.org_id=g.org_id AND e.id=g.event_id JOIN teams t ON t.org_id=g.org_id AND t.id=g.team_id JOIN users nu ON nu.id=g.nominated_by LEFT JOIN team_members tm ON tm.org_id=g.org_id AND tm.team_id=g.team_id AND tm.id=g.member_id LEFT JOIN team_member_bindings b ON b.id=g.binding_id`;
+export const ARCHIVE_EFFECTIVE_SOURCE_SQL = SOURCE_SELECT + ' WHERE (' + EFFECTIVE + ')';
 const PROOF = `SELECT g.id AS source_id,g.team_id,g.member_id,e.name AS event_name,to_char(m.starts_at AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS match_date,
  to_jsonb(m)||jsonb_build_object('state',to_jsonb(s),'confirmation',to_jsonb(cf),'last_event',to_jsonb(le),'last_command',to_jsonb(rc),'scoring_rules',to_jsonb(sr),
  'home_roster',(SELECT jsonb_agg(jsonb_build_object('memberId',rp.member_id,'name',rp.name,'jerseyNo',rp.jersey_no) ORDER BY rp.member_id) FROM entry_roster_players rp WHERE rp.org_id=m.org_id AND rp.entry_id=m.home_entry_id AND rp.revision_id=m.home_roster_revision_id),
@@ -70,7 +71,7 @@ export class PublicArchivesService extends ApplicationService {
     });
   }
 
-  private async snapshotRead<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
+  protected async snapshotRead<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
     for (let attempt = 0; attempt < 3; attempt++) {
       const c = await this.pool.connect();
       try {
@@ -94,7 +95,7 @@ export class PublicArchivesService extends ApplicationService {
     }
     throw new ApiError(503, 'PUBLIC_ARCHIVE_BUSY', '公开授权正在更新，请重新读取');
   }
-  private async lockPublicSources(c: PoolClient, profiles: Row[]) {
+  protected async lockPublicSources(c: PoolClient, profiles: Row[]) {
     if (!profiles.length) return;
     const ids = profiles.map((p) => p.id);
     const sources = (
@@ -608,7 +609,7 @@ export class PublicArchivesService extends ApplicationService {
       return this.privateSource(c, actor, id);
     });
   }
-  private async projection(c: PoolClient, p: Row, asOf: string): Promise<PublicArchiveData> {
+  protected async projection(c: PoolClient, p: Row, asOf: string): Promise<PublicArchiveData> {
     const sources = await c.query<Row>(
       SOURCE_SELECT + ' WHERE g.profile_id=$1 AND (' + EFFECTIVE + ')',
       [p.id],

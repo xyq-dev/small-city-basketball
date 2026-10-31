@@ -1,5 +1,9 @@
 # API 契约
 
+## EXPANSION8 实施增量（分支开发中）
+
+E06新增匿名 `GET /v1/public/search`：q必填1—80字符、kind=ALL/EVENT/TEAM/PLAYER、city可选且与regionId/catalogVersion互斥、limit默认20且最多20、cursor绑定原查询/分类/地区/页宽。文本按字面匹配，通配字符不扩大查询。只返回kind/publicKey/displayName/city/startsOn/endsOn及asOf/nextCursor/notice，私有ID、身份、联系方式与写权限不出结果；空档案无当前有效公开来源则不搜索。地区依据已公开来源赛事，不把球员资料中的地址公开。每页复核当前目录/公开档案授权和来源；来源/主体变更时重读或安全失败，不依赖旧缓存。首页入口、分页与迟到响应保护已写，真实PG与目标环境验收待证，详见[E06](tasks/E06.md)。其余EXPANSION8模块仍实施中，不把provider接口或DDL草稿写成完整已上线功能。
+
 ## COMPLETION22 当前契约增量
 
 2026-10-31 Asia/Shanghai；当前源码支持下述增量，整合与环境状态见[总任务](tasks/COMPLETION22.md)、[当前状态](CURRENT_STATUS.md)。下方P01至C03等段落保留历史实施范围，本节与当前共享契约覆盖其中已过时的“未实现”描述；不能由源码支持推断正式外部服务或生产已启用。

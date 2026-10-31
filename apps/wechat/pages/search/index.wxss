@@ -1,0 +1,1 @@
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.filters button{flex:1;min-width:60px;margin:0;font-size:16px;min-height:44px}.result .subtitle{overflow-wrap:anywhere}.result{font-size:16px}
