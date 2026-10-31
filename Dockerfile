@@ -27,14 +27,16 @@ RUN npm ci --omit=dev --workspace @small-city-basketball/api --include-workspace
 FROM node:24.22.1-bookworm-slim AS api
 ENV NODE_ENV=production
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk fontconfig \
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk fontconfig ffmpeg \
     && rm -rf /var/lib/apt/lists/*
-RUN groupadd --gid 10001 scb && useradd --uid 10001 --gid 10001 --no-create-home scb
+RUN groupadd --gid 10001 scb && useradd --uid 10001 --gid 10001 --no-create-home scb \
+    && install -d -m 0700 -o 10001 -g 10001 /var/lib/scb/live-media
 COPY --from=api-deps /app/node_modules ./node_modules
 COPY apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY apps/api/migrations ./apps/api/migrations
 COPY packages/contracts/package.json packages/contracts/index.js packages/contracts/runtime-privileges.json ./packages/contracts/
+COPY ops/db/privileges.mjs ops/db/common.mjs ./ops/db/
 USER 10001:10001
 EXPOSE 3300
 ENTRYPOINT []
@@ -65,6 +67,7 @@ COPY ops/db ./ops/db
 COPY ops/recovery ./ops/recovery
 # Immutable acceptance modules ship with the tools image; no source-tree mounts or native image addon.
 COPY scripts/check-database-restart.mjs scripts/c05-media-fixtures.mjs scripts/c05-commerce-check.mjs scripts/c23-participant-material-check.mjs scripts/x02-adjudication-check.mjs scripts/x03-template-check.mjs scripts/x05-recruitment-check.mjs scripts/x08-archive-check.mjs scripts/x12-local-check.mjs scripts/x18-governance-check.mjs scripts/x22-account-recovery-check.mjs ./scripts/
+COPY scripts/expansion-recovery-check.mjs scripts/expansion-e03-recovery.mjs scripts/expansion-e04-recovery.mjs scripts/expansion-e05-recovery.mjs scripts/expansion-e08-recovery.mjs ./scripts/
 USER 10001:10001
 ENTRYPOINT []
 CMD ["node", "--version"]

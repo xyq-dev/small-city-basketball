@@ -12,6 +12,8 @@ import { ApiError } from '../errors.js';
 
 export interface WechatPayConfig {
   enabled: boolean;
+  /** Explicitly opt into JSAPI queries/notifications; legacy software checkout stays Native-only. */
+  allowJsapi?: boolean;
   appId?: string;
   merchantId?: string;
   serialNo?: string;
@@ -204,6 +206,8 @@ export class WechatPayClient {
     this.privateKey = null;
     if (config.enabled !== undefined && typeof config.enabled !== 'boolean')
       throw new Error('Invalid WechatPay enabled flag');
+    if (config.allowJsapi !== undefined && typeof config.allowJsapi !== 'boolean')
+      throw new Error('Invalid WechatPay JSAPI flag');
     if (!this.enabled) return;
     try {
       if (
@@ -323,8 +327,10 @@ export class WechatPayClient {
     totalFen: number;
     currency: 'CNY';
     expiresAt?: string;
+    profitSharing?: boolean;
   }): Promise<{ codeUrl: string }> {
     const no = outTradeNo(order.outTradeNo);
+    if (order.profitSharing !== undefined && typeof order.profitSharing !== 'boolean') invalid();
     if (
       order.currency !== 'CNY' ||
       !Number.isSafeInteger(order.totalFen) ||
@@ -349,6 +355,7 @@ export class WechatPayClient {
       notify_url: this.config.notifyUrl,
       ...(order.expiresAt ? { time_expire: timestamp(order.expiresAt) } : {}),
       amount: { total: order.totalFen, currency: 'CNY' },
+      ...(order.profitSharing === true ? { settle_info: { profit_sharing: true } } : {}),
     });
     const codeUrl = str(result.code_url, 2048);
     try {
@@ -368,11 +375,80 @@ export class WechatPayClient {
     }
     return { codeUrl };
   }
+  async jsapi(order: {
+    outTradeNo: string;
+    description: string;
+    totalFen: number;
+    currency: 'CNY';
+    expiresAt?: string;
+    profitSharing?: boolean;
+    openid: string;
+  }): Promise<{
+    timeStamp: string;
+    nonceStr: string;
+    package: string;
+    signType: 'RSA';
+    paySign: string;
+  }> {
+    this.assertEnabled();
+    if (this.config.allowJsapi !== true)
+      throw new ApiError(503, 'PAYMENT_CHANNEL_DISABLED', '当前商户未启用小程序支付');
+    const no = outTradeNo(order.outTradeNo);
+    if (
+      order.currency !== 'CNY' ||
+      !Number.isSafeInteger(order.totalFen) ||
+      order.totalFen < 1 ||
+      order.totalFen > WECHATPAY_MAX_FEN ||
+      typeof order.description !== 'string' ||
+      Array.from(order.description).length < 1 ||
+      Array.from(order.description).length > 127 ||
+      /[\u0000-\u001f\u007f]/.test(order.description) ||
+      typeof order.openid !== 'string' ||
+      !/^[A-Za-z0-9_-]{1,128}$/.test(order.openid) ||
+      (order.profitSharing !== undefined && typeof order.profitSharing !== 'boolean') ||
+      (order.expiresAt !== undefined &&
+        (!Number.isFinite(Date.parse(order.expiresAt)) ||
+          Date.parse(order.expiresAt) <= this.now()))
+    )
+      invalid();
+    const result = await this.request('POST', '/v3/pay/transactions/jsapi', {
+      appid: this.config.appId,
+      mchid: this.config.merchantId,
+      description: order.description,
+      out_trade_no: no,
+      notify_url: this.config.notifyUrl,
+      ...(order.expiresAt ? { time_expire: timestamp(order.expiresAt) } : {}),
+      amount: { total: order.totalFen, currency: 'CNY' },
+      payer: { openid: order.openid },
+      ...(order.profitSharing === true ? { settle_info: { profit_sharing: true } } : {}),
+    });
+    const prepay = str(result.prepay_id, 128);
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(prepay)) throw resultError();
+    const timeStamp = String(Math.floor(this.now() / 1000)),
+      nonceStr = this.nonce(),
+      packageValue = 'prepay_id=' + prepay;
+    if (!/^[0-9]{1,16}$/.test(timeStamp) || !/^[A-Za-z0-9_-]{1,64}$/.test(nonceStr))
+      throw resultError();
+    return {
+      timeStamp,
+      nonceStr,
+      package: packageValue,
+      signType: 'RSA',
+      paySign: sign(
+        'RSA-SHA256',
+        Buffer.from(`${this.config.appId}\n${timeStamp}\n${nonceStr}\n${packageValue}\n`),
+        this.privateKey!,
+      ).toString('base64'),
+    };
+  }
   private order(value: Json): WechatPayOrder {
     if (
       value.appid !== this.config.appId ||
       value.mchid !== this.config.merchantId ||
-      value.trade_type !== 'NATIVE'
+      !(
+        value.trade_type === 'NATIVE' ||
+        (this.config.allowJsapi === true && value.trade_type === 'JSAPI')
+      )
     )
       throw resultError();
     const amount = obj(value.amount);

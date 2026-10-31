@@ -29,6 +29,34 @@ import {
   SCB_PUBLIC_LEDGER_SERVICE,
 } from './public-ledger-controller.js';
 import { PublicArchivesService } from './public-archives-service.js';
+import { UnifiedSearchService } from './unified-search-service.js';
+import { UnifiedSearchController, SCB_UNIFIED_SEARCH } from './unified-search-controller.js';
+import { createExpansionServices } from './expansion-services.js';
+import type { ExpansionOptions } from './expansion-services.js';
+import { readNotificationOptions } from './notification-runtime.js';
+import { readTradeRuntime } from './trade-runtime.js';
+import { NotificationController, SCB_NOTIFICATIONS } from './notification-controller.js';
+import {
+  StreamingController,
+  PublicLiveMediaController,
+  SCB_STREAMING_SERVICE,
+} from './streaming-controller.js';
+import {
+  TradeController,
+  TradeNotificationController,
+  SCB_TRADE_SERVICE,
+} from './trade-controller.js';
+import {
+  InsuranceController,
+  QualificationPrecheckController,
+  SCB_INSURANCE_SERVICE,
+  SCB_QUALIFICATION_PRECHECK_SERVICE,
+} from './insurance-controller.js';
+import {
+  YouthGuardiansController,
+  SCB_YOUTH_GUARDIANS_SERVICE,
+} from './youth-guardians-controller.js';
+import { AccountClosureController, SCB_ACCOUNT_CLOSURE } from './account-closure-controller.js';
 import {
   PublicArchivesController,
   SCB_PUBLIC_ARCHIVES_SERVICE,
@@ -175,7 +203,11 @@ import { clearedSessionCookie, sessionCookie } from './security.js';
 import { objectInput } from './validation.js';
 import { resolveApiOptions } from './runtime-config.js';
 import { assertRuntimeReadiness } from './readiness.js';
-import { isPaymentNotificationRequest, requestBodyMiddleware } from './request-body.js';
+import {
+  isPaymentNotificationRequest,
+  isInsuranceProviderNoticeRequest,
+  requestBodyMiddleware,
+} from './request-body.js';
 
 const SERVICE = 'SCB_APPLICATION_SERVICE';
 const SCHEDULING_SERVICE = 'SCB_SCHEDULING_SERVICE';
@@ -342,15 +374,16 @@ class HealthController {
 }
 
 export async function createApi(
-  input: ApiOptions & {
-    wechat?: WechatServiceOptions;
-    media?: { trustedExternalHosts?: string[] };
-    commercePayments?: WechatPayClient;
-    accountRecovery?: AccountRecoveryOptions;
-    locationProvider?: LocationProvider;
-  },
+  input: ApiOptions &
+    ExpansionOptions & {
+      wechat?: WechatServiceOptions;
+      media?: { trustedExternalHosts?: string[] };
+      commercePayments?: WechatPayClient;
+      accountRecovery?: AccountRecoveryOptions;
+      locationProvider?: LocationProvider;
+    },
 ): Promise<{ app: INestApplication; pool: Pool }> {
-  const options = resolveApiOptions(input);
+  let options = resolveApiOptions(input);
   const pool = new Pool({
     connectionString: options.databaseUrl,
     max: 12,
@@ -359,9 +392,59 @@ export async function createApi(
   pool.on('error', () => console.error('Database idle connection error'));
   try {
     if (options.production) await assertRuntimeReadiness(pool, options.participantDataKey);
-    const service = new RegistrationService(pool, options);
+    let restored: boolean;
+    try {
+      restored =
+        (
+          await pool.query(
+            "SELECT EXISTS(SELECT 1 FROM audit_logs WHERE action='RESTORE_QUARANTINE' AND resource_type='restore') AS quarantined",
+          )
+        ).rows[0]?.quarantined === true;
+    } catch (error) {
+      if (options.production) throw error;
+      // Development can still serve pure HTTP validation with no database.
+      // An unverified database never enables any external runtime capability.
+      restored = true;
+    }
+    if (restored) {
+      // A restore marker is durable across API restarts. Retained observations
+      // and financial claims never authorize dispatch from an isolated restore.
+      input = {
+        ...input,
+        wechat: { configuration: { enabled: false } },
+        commercePayments: new WechatPayClient({ enabled: false }),
+        accountRecovery: { autoDispatch: false },
+        notifications: { autoDispatch: false },
+        trade: {},
+        insurance: { autoDispatch: false },
+        streaming: { autoDispatch: false },
+        accountClosure: { enabled: false, autoDispatch: false },
+        locationProvider: new TencentLocationProvider(),
+      };
+    } else {
+      input = {
+        ...input,
+        notifications: input.notifications ?? readNotificationOptions(),
+        trade: input.trade ?? readTradeRuntime(options.appOrigin),
+      };
+    }
+    options = resolveApiOptions({
+      ...options,
+      ...(restored ? { commerceMode: 'OFF', wechatPay: { enabled: false } } : {}),
+      notificationStartingLeadMinutes:
+        input.notifications?.startingLeadMinutes ?? input.notificationStartingLeadMinutes,
+    });
+    const wechat = new WechatService(pool, options, input.wechat);
+    const expansion = await createExpansionServices(pool, options, input, wechat);
+    const service = new RegistrationService(
+      pool,
+      options,
+      expansion.trade,
+      expansion.materialGuards,
+    );
     const publicLedgers = new PublicLedgerService(pool, options);
     const publicArchives = new PublicArchivesService(pool, options);
+    const unifiedSearch = new UnifiedSearchService(pool, options);
     const eventTemplates = new EventTemplateService(pool, options);
     const matchExceptions = new MatchExceptionService(pool, options);
     const recruitment = new RecruitmentService(pool, options);
@@ -384,19 +467,22 @@ export async function createApi(
       options,
       locationProvider,
       assertCityOperation,
+      expansion.trade,
     );
     const staffConfiguration = new StaffConfigurationService(pool, options);
-    const accountRecovery = new AccountRecoveryService(
+    const accountRecovery = new AccountRecoveryService(pool, options, {
+      ...(input.accountRecovery ?? accountRecoveryRuntime()),
+      ...(options.backgroundWorkersEnabled === false ? { autoDispatch: false } : {}),
+    });
+    await accountRecovery.assertConfiguration();
+    const participantMaterials = new ParticipantMaterialsService(
       pool,
       options,
-      input.accountRecovery ?? accountRecoveryRuntime(),
+      expansion.materialGuards,
     );
-    await accountRecovery.assertConfiguration();
-    const participantMaterials = new ParticipantMaterialsService(pool, options);
-    const playerBooking = new PlayerBookingService(pool, options);
+    const playerBooking = new PlayerBookingService(pool, options, expansion.trade);
     const playerPerformance = new PlayerPerformanceService(pool, options);
     const scheduling = new SchedulingService(pool, options);
-    const wechat = new WechatService(pool, options, input.wechat);
     const knockout = new GroupKnockoutService(pool, options);
     const mediaOptions = input.media ?? {
       trustedExternalHosts: (process.env.SCB_MEDIA_TRUSTED_HOSTS ?? '').split(',').filter(Boolean),
@@ -416,6 +502,16 @@ export async function createApi(
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
+        NotificationController,
+        StreamingController,
+        PublicLiveMediaController,
+        TradeController,
+        TradeNotificationController,
+        InsuranceController,
+        QualificationPrecheckController,
+        YouthGuardiansController,
+        AccountClosureController,
+        UnifiedSearchController,
         SponsorshipController,
         SponsorshipReviewController,
         PublicSponsorshipController,
@@ -473,6 +569,14 @@ export async function createApi(
         SeasonController,
       ],
       providers: [
+        { provide: SCB_NOTIFICATIONS, useValue: expansion.notifications },
+        { provide: SCB_STREAMING_SERVICE, useValue: expansion.streaming },
+        { provide: SCB_TRADE_SERVICE, useValue: expansion.trade },
+        { provide: SCB_INSURANCE_SERVICE, useValue: expansion.insurance },
+        { provide: SCB_QUALIFICATION_PRECHECK_SERVICE, useValue: expansion.qualification },
+        { provide: SCB_YOUTH_GUARDIANS_SERVICE, useValue: expansion.youth },
+        { provide: SCB_ACCOUNT_CLOSURE, useValue: expansion.closure },
+        { provide: SCB_UNIFIED_SEARCH, useValue: unifiedSearch },
         { provide: SCB_SPONSORSHIP_SERVICE, useValue: sponsorships },
         { provide: SCB_PUBLIC_LEDGER_SERVICE, useValue: publicLedgers },
         { provide: SCB_PUBLIC_ARCHIVES_SERVICE, useValue: publicArchives },
@@ -520,6 +624,7 @@ export async function createApi(
       if (
         ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method) &&
         !isPaymentNotificationRequest(request) &&
+        !isInsuranceProviderNoticeRequest(request) &&
         request.headers.origin !== options.appOrigin
       ) {
         response.status(403).json({
@@ -542,6 +647,10 @@ export async function createApi(
     app.useGlobalFilters(new ApiExceptionFilter());
     await app.init();
     accountRecovery.startWorker();
+    expansion.notifications.startWorker();
+    expansion.streaming.startWorker();
+    expansion.insurance.startWorker();
+    expansion.closure.startWorker();
     return { app, pool };
   } catch (error) {
     await pool.end();

@@ -9,6 +9,7 @@ import type {
 import { ApplicationService } from './service.js';
 import type { Actor, ApiOptions, DbUser } from './service.js';
 import { ApiError, unauthenticated } from './errors.js';
+import { revokeNotificationGrants } from './notification-service.js';
 import { hashToken, newSessionToken, readSessionToken, verifyPassword } from './security.js';
 import { invalid, objectInput, passwordInput, resourceId } from './validation.js';
 import {
@@ -359,6 +360,7 @@ export class WechatService extends ApplicationService {
         "UPDATE wechat_identities SET status='REVOKED',version=version+1,updated_at=clock_timestamp(),revoked_at=clock_timestamp() WHERE id=$1",
         [identity.id],
       );
+      await revokeNotificationGrants(c, actor.user.id);
       await c.query(
         'UPDATE sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL',
         [actor.user.id],

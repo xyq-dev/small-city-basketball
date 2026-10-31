@@ -86,6 +86,8 @@ function renderWxml(source, data, options = {}) {
     label: 'label',
     image: 'img',
     video: 'video',
+    'live-pusher': 'div',
+    'web-view': 'div',
     navigator: 'a',
     'scroll-view': 'div',
     'checkbox-group': 'div',
@@ -316,6 +318,8 @@ function renderWxml(source, data, options = {}) {
       throw new Error('Unregistered native component: ' + node.name);
     const tag = tagNames[node.name] || 'div';
     const result = ['data-mini-tag="' + escape(node.name) + '"'];
+    if (['live-pusher', 'web-view'].includes(node.name))
+      result.push('data-mini-native-placeholder="true"');
     let textareaValue = null;
     for (const [key, raw] of Object.entries(a)) {
       if (key.startsWith('wx:')) continue;

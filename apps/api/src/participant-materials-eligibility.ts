@@ -1,6 +1,13 @@
 import type { PoolClient } from 'pg';
 import { ApiError } from './errors.js';
-import { participantEligibility } from './participant-materials-domain.js';
+import {
+  participantEligibility,
+  decryptParticipantPayload,
+  participantKey,
+  participantIdentityNumber,
+} from './participant-materials-domain.js';
+import { readParticipantMaterialGuards } from './participant-materials-guards.js';
+import type { ParticipantMaterialGuards } from './participant-materials-guards.js';
 
 export interface EntryParticipantEligibilityInput {
   orgId: string;
@@ -13,6 +20,7 @@ export interface EntryParticipantEligibilityInput {
   requireParticipantMaterials: boolean;
   requireInsurance: boolean;
   keyId: string | null;
+  participantDataKey?: string;
 }
 export interface EntryParticipantEligibility {
   ready: boolean;
@@ -22,12 +30,15 @@ export interface EntryParticipantEligibility {
     materialId: string;
     revisionId: string;
     materialVersion: number;
+    onlineInsuranceOrderId?: string;
+    guardianSnapshot?: unknown;
   }[];
 }
 /** Call only under the existing event lock: material writes take that same event UPDATE lock. */
 export async function readEntryParticipantEligibility(
   client: PoolClient,
   input: EntryParticipantEligibilityInput,
+  guards: ParticipantMaterialGuards = {},
 ): Promise<EntryParticipantEligibility> {
   const result: EntryParticipantEligibility = { ready: true, blockers: [], snapshots: [] };
   if (!input.requireParticipantMaterials) return result;
@@ -36,7 +47,7 @@ export async function readEntryParticipantEligibility(
       m.reservation_active,m.reviewed_start_date::text,m.reviewed_end_date::text,m.key_id AS material_key_id,
       r.id AS revision_id,r.ruleset_id,r.roster_revision_id,r.jersey_no AS saved_jersey_no,
       r.key_id,r.terms_version,r.has_identity,r.has_real_name,r.has_signature,r.portrait_bytes,r.insurance_bytes,
-      r.insurance_start_date::text,r.insurance_end_date::text,r.purged_at,
+      r.insurance_start_date::text,r.insurance_end_date::text,r.purged_at,r.payload_ciphertext,
       EXISTS(SELECT 1 FROM team_member_bindings b JOIN users u ON u.id=b.user_id AND u.status='ACTIVE'
         JOIN team_members tm ON tm.org_id=b.org_id AND tm.team_id=b.team_id AND tm.id=b.member_id AND tm.status='ACTIVE'
         WHERE b.id=m.binding_id AND b.org_id=p.org_id AND b.team_id=p.team_id AND b.member_id=p.member_id
@@ -53,9 +64,50 @@ export async function readEntryParticipantEligibility(
     return result;
   }
   for (const row of players.rows) {
+    let identityNumber: string | null = null;
+    if (
+      input.participantDataKey &&
+      row.payload_ciphertext &&
+      row.key_id === input.keyId &&
+      row.material_key_id === input.keyId
+    ) {
+      const p = decryptParticipantPayload(
+        row.payload_ciphertext,
+        participantKey(input.participantDataKey),
+        {
+          orgId: input.orgId,
+          eventId: input.eventId,
+          entryId: input.entryId,
+          memberId: row.member_id,
+          userId: row.user_id,
+          revisionId: row.revision_id,
+        },
+      );
+      if (p.identityNumber)
+        identityNumber = participantIdentityNumber(p.identityNumber, input.startDate);
+    }
+    const guard = await readParticipantMaterialGuards(
+      client,
+      guards,
+      {
+        orgId: input.orgId,
+        eventId: input.eventId,
+        entryId: input.entryId,
+        memberId: row.member_id,
+        rosterRevisionId: input.rosterRevisionId!,
+        rulesetId: input.rulesetId,
+        policyDate: input.startDate,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        userId: row.user_id,
+        identityNumber,
+      },
+      input.requireInsurance,
+    );
     const assessment = participantEligibility({
       required: true,
       requireInsurance: input.requireInsurance,
+      onlineInsuranceReady: guard.onlineInsuranceReady,
       keyAvailable: Boolean(
         input.keyId &&
         (!row.material_id || (row.key_id === input.keyId && row.material_key_id === input.keyId)),
@@ -85,7 +137,17 @@ export async function readEntryParticipantEligibility(
           }
         : null,
     });
-    if (!assessment.eligible) {
+    if (!guard.dataConsent.ready)
+      assessment.blockers.push({
+        code: 'YOUTH_DATA_PROCESSING_CONSENT_REQUIRED',
+        message: '当前资料处理监护同意尚未完成',
+      });
+    if (!guard.participationReady)
+      assessment.blockers.push({
+        code: 'YOUTH_PARTICIPATION_BLOCKED',
+        message: '当前参赛监护确认尚未完成',
+      });
+    if (!assessment.eligible || assessment.blockers.length) {
       result.ready = false;
       result.blockers.push(...assessment.blockers.map((b) => ({ memberId: row.member_id, ...b })));
     } else {
@@ -94,6 +156,10 @@ export async function readEntryParticipantEligibility(
         materialId: row.material_id,
         revisionId: row.revision_id,
         materialVersion: row.version,
+        ...(guard.onlineInsuranceOrderId
+          ? { onlineInsuranceOrderId: guard.onlineInsuranceOrderId }
+          : {}),
+        ...(guard.guardianSnapshot ? { guardianSnapshot: guard.guardianSnapshot } : {}),
       });
     }
   }

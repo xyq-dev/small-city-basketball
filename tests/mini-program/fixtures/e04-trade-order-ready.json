@@ -1,0 +1,95 @@
+{
+  "name": "e04-trade-order-ready",
+  "route": "pages/trade-order/index",
+  "state": "ready",
+  "referenceKind": "derived",
+  "evidenceKind": "synthetic-static",
+  "synthetic": true,
+  "primary": true,
+  "expectText": ["实际收款方", "查询此原支付", "独立同意退款", "查询原分账"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "message": "合成静态布局夹具：资金数据仅用于三宽排版，不代表实际收付款。",
+    "order": {
+      "id": "00000001-0000-4000-8000-000000000001",
+      "orgId": "00000002-0000-4000-8000-000000000001",
+      "kind": "ENTRY_DEPOSIT",
+      "sourceId": "00000003-0000-4000-8000-000000000001",
+      "sourceVersion": 2,
+      "version": 12,
+      "status": "SOURCE_CONFLICT",
+      "title": "合成静态：城市联赛保证金资金核对示例",
+      "merchantName": "合成赛事收款主体（仅布局夹具）",
+      "terms": "合成静态条款：赛后按真实履约证据独立审核扣减，剩余保证金原路退款；已分账须核实回退后退款。此页面不构成真实支付、实收、退款或到账证据。",
+      "totalText": "¥1,000.00",
+      "paidText": "¥1,000.00",
+      "refundText": "¥0.00",
+      "refundableText": "¥700.00",
+      "settledText": "¥0.00",
+      "refundReservedText": "¥100.00",
+      "deductionReservedText": "¥200.00",
+      "totalFen": 100000,
+      "paidFen": 100000,
+      "refundedFen": 0,
+      "refundableFen": 70000,
+      "settledFen": 0,
+      "canStartPayment": false,
+      "capabilities": {
+        "canPay": false,
+        "native": true,
+        "jsapi": true,
+        "canManage": true,
+        "canRequestRefund": true,
+        "settlementAvailable": true
+      },
+      "attempts": [
+        {
+          "id": "00000004-0000-4000-8000-000000000001",
+          "channel": "JSAPI",
+          "status": "PAID",
+          "checkout": null
+        },
+        {
+          "id": "00000005-0000-4000-8000-000000000001",
+          "channel": "NATIVE",
+          "status": "UNKNOWN",
+          "checkout": null
+        }
+      ],
+      "refunds": [
+        {
+          "id": "00000006-0000-4000-8000-000000000001",
+          "amountText": "¥100.00",
+          "status": "PENDING_REVIEW",
+          "reason": "合成静态：根据完整服务事实申请部分退款，等待独立人员复核。"
+        }
+      ],
+      "deductions": [
+        {
+          "id": "00000007-0000-4000-8000-000000000001",
+          "amountText": "¥200.00",
+          "status": "APPROVED",
+          "reason": "合成静态：按已确认保证金约定与真实证据作独立扣减。",
+          "evidenceReference": "SYNTHETIC-EVIDENCE-ONLY"
+        }
+      ],
+      "settlements": [
+        {
+          "id": "00000008-0000-4000-8000-000000000001",
+          "amountText": "¥200.00",
+          "returnedText": "¥0.00",
+          "status": "PROCESSING"
+        }
+      ]
+    },
+    "orders": [],
+    "pending": null,
+    "consent": false,
+    "amount": "10000",
+    "reason": "合成静态独立审核理由",
+    "evidence": "SYNTHETIC-EVIDENCE-ONLY",
+    "noCharge": false
+  }
+}

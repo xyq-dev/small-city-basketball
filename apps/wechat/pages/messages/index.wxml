@@ -1,0 +1,20 @@
+<view class="page">
+  <scb-header title="我的消息"/>
+  <view wx:if="{{loginRequired}}" class="card"><view>登录后查看本人的消息</view><button class="primary" bindtap="login">登录并继续</button></view>
+  <view class="notice">仅显示当前仍有权读取的业务通知。撤回的公开内容、已失去的角色或过时赛程不会继续展示。</view>
+  <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+  <view wx:if="{{message}}" class="notice">{{message}}</view>
+  <button class="secondary" bindtap="settings">管理微信订阅提醒</button>
+  <view wx:if="{{pending}}" class="card"><view class="subtitle">有重试请求待核对</view><view>保留原编号，核对完成前不会另发第二个请求。</view><button class="primary" bindtap="resume" disabled="{{busy}}">用原编号核对并继续</button></view>
+  <view wx:if="{{loading}}" class="card">正在读取消息</view>
+  <view wx:elif="{{!items.length}}" class="card">暂无当前可读消息</view>
+  <view wx:for="{{items}}" wx:key="id" class="card message-card">
+    <view class="subtitle">{{item.title}}</view><view>{{item.eventName}}</view><view>{{item.detail}}</view>
+    <view>{{item.timeLabel}}</view><view wx:if="{{item.location}}">场地：{{item.location}}</view>
+    <view class="small muted">{{item.deliveryLabel}}</view>
+    <button wx:if="{{!item.readAt}}" class="secondary" data-id="{{item.id}}" bindtap="read" disabled="{{busy}}">标记已读</button>
+    <button wx:if="{{item.canRetry}}" class="secondary" data-id="{{item.id}}" bindtap="retry" disabled="{{busy || pending}}">使用新订阅明确重试</button>
+  </view>
+  <button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loadingMore || busy}}">{{loadingMore ? '正在读取' : '读取更多'}}</button>
+  <button class="secondary" bindtap="load" disabled="{{loading || busy}}">刷新消息</button>
+</view>

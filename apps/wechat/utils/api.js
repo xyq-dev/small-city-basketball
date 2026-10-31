@@ -1,5 +1,6 @@
 // Fixed build-time origin. Shared links and QR payloads never select a server.
 const API_ORIGIN = 'https://basketball.playhubs.cn';
+const { expansionPathAllowed } = require('./expansion-api');
 const opaque = /^[A-Za-z0-9_-]{43}$/;
 const uuidPattern = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const uuidRegex = new RegExp('^' + uuidPattern + '$', 'i');
@@ -53,6 +54,7 @@ function pathAllowed(path, method = 'GET') {
     query = queryValues(parts[1]);
   if (!query) return false;
   const noQuery = Object.keys(query).length === 0;
+  if (expansionPathAllowed(base, method, query, uuidPattern)) return true;
   const matches = (value) => new RegExp('^' + value + '$', 'i').test(base);
   const auth = {
     '/v1/auth/capabilities': 'GET',
@@ -84,6 +86,16 @@ function pathAllowed(path, method = 'GET') {
     );
   if (matches('/v1/orgs/' + uuidPattern + '/staff-configuration/commands'))
     return noQuery && method === 'POST';
+  if (base === '/v1/public/search')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['q', 'kind', 'city', 'regionId', 'catalogVersion', 'limit', 'cursor']) &&
+      typeof query.q === 'string' &&
+      query.q.length > 0 &&
+      ['ALL', 'EVENT', 'TEAM', 'PLAYER'].includes(query.kind || 'ALL') &&
+      'regionId' in query === 'catalogVersion' in query &&
+      !(query.city && query.regionId)
+    );
   if (base === '/v1/public/regions') return method === 'GET' && parts.length === 1;
   // Public directory: exact parameters only; sent without any session cookie.
   if (base === '/v1/public/directory')
@@ -562,6 +574,7 @@ function createClient(wxApi) {
           (method === 'GET' &&
             (/^\/v1\/player-bookings\/players\//.test(path) ||
               /^\/v1\/public\/directory(?:\?|$)/.test(path) ||
+              /^\/v1\/public\/search\?/.test(path) ||
               path === '/v1/public/regions'))
         ))
     )
@@ -667,6 +680,82 @@ function createClient(wxApi) {
   }
   return {
     request,
+    downloadLiveMedia(path) {
+      const allowed = new RegExp(
+        '^/v1/orgs/' +
+          uuidPattern +
+          '/broadcasts/' +
+          uuidPattern +
+          '/media/artifacts/' +
+          uuidPattern +
+          '/content$',
+        'i',
+      );
+      if (!allowed.test(path) || typeof wxApi.downloadFile !== 'function')
+        return Promise.reject({ code: 'INVALID_PATH', message: '录像下载入口不可用' });
+      const started = revision;
+      let mime = '',
+        task;
+      const cleanup = (filePath) => {
+        if (!filePath) return;
+        try {
+          wxApi.getFileSystemManager().unlink({ filePath, fail() {} });
+        } catch {
+          /* temporary file only */
+        }
+      };
+      return new Promise((resolve, reject) => {
+        task = wxApi.downloadFile({
+          url: API_ORIGIN + path,
+          timeout: 120000,
+          header: {
+            Origin: API_ORIGIN,
+            Accept: 'video/mp4',
+            ...(cookie ? { Cookie: cookie } : {}),
+          },
+          success(response) {
+            if (started !== revision) {
+              cleanup(response.tempFilePath);
+              reject({ code: 'SESSION_CHANGED', message: '登录身份已变化，已清除临时录像。' });
+              return;
+            }
+            if (response.statusCode === 401) invalidate('UNAUTHENTICATED');
+            if (
+              ![200, 206].includes(response.statusCode) ||
+              mime !== 'video/mp4' ||
+              typeof response.tempFilePath !== 'string' ||
+              !response.tempFilePath
+            ) {
+              cleanup(response.tempFilePath);
+              reject({ code: 'FILE_UNAVAILABLE', message: '录像不可读取，请重新核对权限。' });
+              return;
+            }
+            resolve({ tempFilePath: response.tempFilePath });
+          },
+          fail() {
+            reject({ code: 'NETWORK_ERROR', message: '录像下载中断，请重新核对权限后再试。' });
+          },
+        });
+        if (typeof task?.onHeadersReceived !== 'function') {
+          task?.abort?.();
+          reject({
+            code: 'DOWNLOAD_UNSUPPORTED',
+            message: '当前微信版本不支持安全录像下载，请升级后重试。',
+          });
+          return;
+        }
+        task.onHeadersReceived(({ header }) => {
+          const key = Object.keys(header || {}).find(
+            (name) => name.toLowerCase() === 'content-type',
+          );
+          mime = String(key ? header[key] : '')
+            .split(';')[0]
+            .trim()
+            .toLowerCase();
+          if (mime !== 'video/mp4' || started !== revision) task?.abort?.();
+        });
+      });
+    },
     download(path) {
       // Private file content only: registration files (PDF/images) and match media (images/MP4).
       const content = new RegExp(
@@ -703,9 +792,16 @@ function createClient(wxApi) {
         '^/v1/me/governance/cases/' + uuidPattern + '/attachments/' + uuidPattern + '/content$',
         'i',
       ).test(path);
+      const policy = new RegExp('^/v1/insurance/orders/' + uuidPattern + '/document$', 'i').test(
+        path,
+      );
+      const guardianProof = new RegExp(
+        '^/v1/youth-guardian-requests/' + uuidPattern + '/proof$',
+        'i',
+      ).test(path);
       const scope = poster
         ? 'poster'
-        : evidence
+        : evidence || policy || guardianProof
           ? 'evidence'
           : participant
             ? 'participant'

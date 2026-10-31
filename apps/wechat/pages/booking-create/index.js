@@ -1,3 +1,4 @@
+const trade = require('../trade-order/client');
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const sdk = require('../../utils/booking');
@@ -75,6 +76,7 @@ Page({
     editorOpen: false,
     compactQuote: {},
     consent: false,
+    feePreview: null,
     quote: EMPTY_QUOTES,
     pending: false,
     invalidRecovery: false,
@@ -115,6 +117,7 @@ Page({
     if (this._loading || this._busy) return;
     this._loading = true;
     this.workspace = null;
+    this._feePreview = null;
     this.setData({
       loading: true,
       ready: false,
@@ -129,6 +132,7 @@ Page({
       originalResolvedId: '',
       originalRejected: '',
       quote: EMPTY_QUOTES,
+      feePreview: null,
       detailsOpen: false,
       editorOpen: false,
       compactQuote: {},
@@ -526,18 +530,48 @@ Page({
     else this.draft.slots = this.draft.slots.filter((s) => s.matchId !== match.id).concat(slot);
     this.changed();
   },
-  review() {
+  async review() {
     if (!this.editable()) return;
     if (this.needsRequote) {
       this.setData({ error: '请先读取最新报价，再重新核对本次合作费用' });
       return;
     }
     try {
-      form.buildCreate({ ...this.draft, consent: true }, this.workspace, PLACEHOLDER_COMMAND);
+      const input = form.buildCreate(
+        { ...this.draft, consent: true },
+        this.workspace,
+        PLACEHOLDER_COMMAND,
+      );
+      this._busy = true;
+      this.setData({ busy: true, feePreview: null });
+      const preview = await trade.post('/preview', {
+        kind: 'PLAYER_APPEARANCE',
+        orgId: input.orgId,
+        teamId: input.teamId,
+        profileIds: this.draft.selectedIds,
+      });
+      if (this.closed) return;
+      if (preview.enabled) {
+        if (
+          !Array.isArray(preview.quotes) ||
+          preview.quotes.some(
+            (q) =>
+              q.profileVersion !== input.reviewedProfileVersions[q.profileId] ||
+              q.settingsVersion !== input.reviewedSettingsVersion,
+          )
+        )
+          throw Error('服务端球员报价已变化，请重新读取再核对');
+        preview.quotes = preview.quotes.map((q) => ({ ...q, totalText: trade.money(q.totalFen) }));
+      }
+      this._feePreview = preview;
+      this.setData({ feePreview: preview });
       this.draft.consent = false;
       this.setData({ review: true, consent: false, error: '', notice: '' });
     } catch (error) {
       this.setData({ error: ui.message(error) });
+    } finally {
+      this._busy = false;
+      if (!this.closed) this.setData({ busy: false });
     }
   },
   edit() {
@@ -571,6 +605,13 @@ Page({
       const commandId = await ui.uuid();
       if (!ui.live(this, token)) return;
       const input = form.buildCreate(this.draft, this.workspace, commandId);
+      if (!this._feePreview) throw Error('请重新核对服务端收费条款');
+      if (this._feePreview.enabled) {
+        input.chargeConsent = true;
+        input.acceptedTermsIds = Object.fromEntries(
+          this._feePreview.quotes.map((q) => [q.profileId, q.termsId]),
+        );
+      }
       this.entry = recoveryStore.begin(this.actor, JSON.stringify(input));
       this.renderRecovery();
       await this.sendOriginal(this.entry, token);

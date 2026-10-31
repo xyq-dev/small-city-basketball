@@ -1,0 +1,53 @@
+{
+  "name": "e05-messages-ready",
+  "route": "pages/messages/index",
+  "state": "synthetic-populated",
+  "designSource": "Implemented native Page data; synthetic static layout fixture, not a real provider, delivery or account acceptance",
+  "expectText": [
+    "我的消息",
+    "合成市青少年篮球公开邀请赛",
+    "报名需要补充资料",
+    "发送结果未知，不会自动重发",
+    "保留原编号"
+  ],
+  "data": {
+    "items": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "kind": "REGISTRATION_REVIEW",
+        "title": "报名审核更新",
+        "eventName": "合成市青少年篮球公开邀请赛",
+        "detail": "报名需要补充资料",
+        "time": "2028-06-01T02:00:00Z",
+        "timeLabel": "06月01日 10:00",
+        "location": null,
+        "delivery": "WAITING_PERMISSION",
+        "deliveryLabel": "待本人订阅",
+        "readAt": null,
+        "canRetry": false
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "kind": "MATCH_STARTING",
+        "title": "比赛即将开始",
+        "eventName": "合成市青少年篮球公开邀请赛",
+        "detail": "请按当前赛程准备参赛或观赛",
+        "time": "2028-06-01T11:00:00Z",
+        "timeLabel": "06月01日 19:00",
+        "location": "合成市全民健身中心二楼东侧篮球场",
+        "delivery": "UNKNOWN",
+        "deliveryLabel": "发送结果未知，不会自动重发",
+        "readAt": "2028-06-01T10:40:00Z",
+        "canRetry": true
+      }
+    ],
+    "nextCursor": "synthetic-layout-cursor",
+    "loading": false,
+    "loadingMore": false,
+    "busy": false,
+    "error": "",
+    "message": "合成界面数据，仅供布局校验。",
+    "pending": true,
+    "loginRequired": false
+  }
+}

@@ -1,0 +1,2 @@
+.message-card { font-size: 16px; line-height: 1.6; }
+.message-card button { min-height: 44px; }

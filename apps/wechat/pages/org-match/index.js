@@ -203,6 +203,11 @@ Page({
       confirmations,
       staff: staffView(wb.staff),
       caps: {
+        live: (session.organizations || []).some(
+          (o) =>
+            o.id === this.orgId &&
+            ['ORG_OWNER', 'ORG_ADMIN', 'EVENT_MANAGER', 'STREAMER'].includes(o.role),
+        ),
         staff: !!wb.capabilities.canManageStaff,
         prepare: !!wb.capabilities.canPrepare && !!wb.rules,
         score: !!wb.capabilities.canAcquireControl,
@@ -459,6 +464,10 @@ Page({
   },
   openMedia() {
     ui.open('match-media', { orgId: this.orgId, matchId: this.matchId });
+  },
+  openLive() {
+    if (!this.data.busy && this.data.match)
+      ui.open('live-studio', { orgId: this.orgId, matchId: this.matchId });
   },
   openEvent() {
     const m = this.data.match;

@@ -26,6 +26,12 @@ import type {
 } from './participant-materials-domain.js';
 import { assertParticipantKeyConsistency } from './participant-materials-eligibility.js';
 import { MEDIA_ORG_LIMIT_BYTES } from './media-domain.js';
+import { fenceYouthSubject } from './youth-permission-fence.js';
+import {
+  readParticipantDataConsent,
+  readParticipantMaterialGuards,
+} from './participant-materials-guards.js';
+import type { ParticipantMaterialGuards } from './participant-materials-guards.js';
 
 type Row = Record<string, any>;
 type Context = Actor & { orgId: string; role: OrgRole | null };
@@ -70,7 +76,11 @@ const stateWritable = (a: Access) =>
 /** Private per-person material storage. ENTRY media/team-manager grants never authorize private reads. */
 export class ParticipantMaterialsService extends ApplicationService {
   private readonly rawKey: string | undefined;
-  constructor(pool: Pool, options: ApiOptions & { participantDataKey?: string }) {
+  constructor(
+    pool: Pool,
+    options: ApiOptions & { participantDataKey?: string },
+    private readonly guards: ParticipantMaterialGuards = {},
+  ) {
     super(pool, options);
     this.rawKey = options.participantDataKey;
   }
@@ -79,9 +89,24 @@ export class ParticipantMaterialsService extends ApplicationService {
     cookie: string | undefined,
     org: string,
     writing: boolean,
+    youthDeclarationEntry?: string,
   ): Promise<Context> {
     const actor = await this.lockActor(c, cookie);
     const orgId = resourceId(org);
+    if (youthDeclarationEntry) {
+      // A first material in any enabled youth context changes the global public gate,
+      // including archives sourced from other events. Fence its already-shared user
+      // tuple before event locks; existing declarations and receipt replays need none.
+      const first = (
+        await c.query(
+          `SELECT 1 FROM entries en JOIN youth_event_policies p ON p.org_id=en.org_id AND p.event_id=en.event_id AND p.enabled
+        WHERE en.org_id=$1 AND en.id=$2 AND NOT EXISTS(SELECT 1 FROM youth_guardian_preconsents g JOIN youth_event_policies gp ON gp.org_id=g.org_id AND gp.event_id=g.event_id AND gp.enabled WHERE g.subject_user_id=$3)
+        AND NOT EXISTS(SELECT 1 FROM participant_materials m JOIN youth_event_policies mp ON mp.org_id=m.org_id AND mp.event_id=m.event_id AND mp.enabled WHERE m.user_id=$3)`,
+          [orgId, resourceId(youthDeclarationEntry), actor.user.id],
+        )
+      ).rowCount;
+      if (first) await fenceYouthSubject(c, actor.user.id);
+    }
     const organization = await c.query(
       `SELECT id FROM organizations WHERE id=$1 AND status='ACTIVE' FOR ${writing ? 'UPDATE' : 'SHARE'}`,
       [orgId],
@@ -103,8 +128,9 @@ export class ParticipantMaterialsService extends ApplicationService {
     org: string,
     entryId: string,
     writing = false,
+    youthDeclaration = false,
   ): Promise<Access> {
-    const ctx = await this.context(c, cookie, org, writing);
+    const ctx = await this.context(c, cookie, org, writing, youthDeclaration ? entryId : undefined);
     const route = (
       await c.query('SELECT event_id,team_id FROM entries WHERE org_id=$1 AND id=$2', [
         ctx.orgId,
@@ -264,16 +290,37 @@ export class ParticipantMaterialsService extends ApplicationService {
       revisionId: row.revision_id,
     });
   }
-  private assessment(
+  private async assessment(
+    c: PoolClient,
     a: Access,
     row: Row | null,
     binding: Row | null,
     jerseyNo: string,
     requireApproval = true,
   ) {
-    return participantEligibility({
+    const guard = await readParticipantMaterialGuards(
+      c,
+      this.guards,
+      {
+        orgId: a.ctx.orgId,
+        eventId: a.event.id,
+        entryId: a.entry.id,
+        memberId: row?.member_id ?? binding?.member_id,
+        userId: row?.user_id ?? binding?.user_id,
+        identityNumber:
+          row?.payload_ciphertext && !row.purged_at ? this.payload(a, row).identityNumber : null,
+        rosterRevisionId: a.entry.roster_revision_id,
+        rulesetId: a.entry.ruleset_id,
+        policyDate: a.event.start_date,
+        startDate: a.event.start_date,
+        endDate: a.event.end_date,
+      },
+      a.rules.require_insurance,
+    );
+    const assessed = participantEligibility({
       required: true,
       requireInsurance: a.rules.require_insurance,
+      onlineInsuranceReady: guard.onlineInsuranceReady,
       keyAvailable: !row || (row.key_id === a.keyId && row.revision_key_id === a.keyId),
       bindingActive: Boolean(
         binding &&
@@ -307,6 +354,55 @@ export class ParticipantMaterialsService extends ApplicationService {
           }
         : null,
     });
+    if (!guard.dataConsent.ready)
+      assessed.blockers.push({
+        code: 'YOUTH_DATA_PROCESSING_CONSENT_REQUIRED',
+        message: '当前资料处理监护同意尚未完成',
+      });
+    if (!guard.participationReady)
+      assessed.blockers.push({
+        code: 'YOUTH_PARTICIPATION_BLOCKED',
+        message: '当前参赛监护确认尚未完成',
+      });
+    return {
+      ...assessed,
+      eligible: assessed.blockers.length === 0,
+      dataConsent: guard.dataConsent,
+      onlineInsuranceReady: guard.onlineInsuranceReady,
+      onlineInsuranceOrderId: guard.onlineInsuranceOrderId,
+    };
+  }
+  private async dataConsent(
+    c: PoolClient,
+    a: Access,
+    userId: string,
+    identityNumber: string | null,
+    memberId?: string,
+  ) {
+    return readParticipantDataConsent(c, this.guards, {
+      orgId: a.ctx.orgId,
+      eventId: a.event.id,
+      userId,
+      entryId: a.entry.id,
+      memberId,
+      identityNumber,
+      policyDate: a.event.start_date,
+    });
+  }
+  private async requireDataConsent(
+    c: PoolClient,
+    a: Access,
+    userId: string,
+    identityNumber: string | null,
+    memberId?: string,
+  ) {
+    const result = await this.dataConsent(c, a, userId, identityNumber, memberId);
+    if (!result.ready)
+      throw conflict(
+        'YOUTH_DATA_PROCESSING_CONSENT_REQUIRED',
+        '请先完成当前监护人数据处理同意，再填写或查看私有资料',
+      );
+    return result;
   }
   private async dto(
     c: PoolClient,
@@ -316,7 +412,8 @@ export class ParticipantMaterialsService extends ApplicationService {
     privateAllowed: boolean,
   ) {
     const binding = await this.binding(c, a, player.member_id);
-    const assessed = this.assessment(a, row, binding, player.jersey_no);
+    const assessed = await this.assessment(c, a, row, binding, player.jersey_no);
+    privateAllowed = privateAllowed && assessed.dataConsent.ready;
     if (!row)
       return {
         id: null,
@@ -365,6 +462,9 @@ export class ParticipantMaterialsService extends ApplicationService {
             document: fileMeta(payload.insurance.document),
           }
         : null,
+      onlineInsurance: assessed.onlineInsuranceReady
+        ? { ready: true, orderId: assessed.onlineInsuranceOrderId }
+        : null,
       acceptedTerms: Boolean(
         row.has_signature &&
         row.terms_version === PARTICIPANT_TERMS_VERSION &&
@@ -387,6 +487,20 @@ export class ParticipantMaterialsService extends ApplicationService {
     a: Access,
     mine: Awaited<ReturnType<ParticipantMaterialsService['mine']>>,
   ) {
+    const consent = await this.dataConsent(
+      c,
+      a,
+      mine.head?.user_id ?? a.ctx.user.id,
+      mine.head?.payload_ciphertext && !mine.head.purged_at
+        ? this.payload(a, mine.head).identityNumber
+        : null,
+      mine.binding?.member_id ?? mine.head?.member_id,
+    );
+    const canSubmit = Boolean(
+      mine.head &&
+      ['DRAFT', 'CHANGES_REQUESTED'].includes(mine.head.status) &&
+      (await this.assessment(c, a, mine.head, mine.binding, mine.jerseyNo, false)).eligible,
+    );
     const material = mine.head
       ? await this.dto(
           c,
@@ -398,6 +512,7 @@ export class ParticipantMaterialsService extends ApplicationService {
       : null;
     return {
       entryId: a.entry.id,
+      eventId: a.event.id,
       memberId: mine.memberId,
       eventName: a.event.name,
       teamName: a.team.name,
@@ -409,17 +524,11 @@ export class ParticipantMaterialsService extends ApplicationService {
       },
       enabled: Boolean(a.rules.require_participant_materials),
       frozen: a.frozen,
+      dataProcessingConsent: consent,
       material,
       capabilities: {
-        canSave: mine.current && stateWritable(a),
-        canSubmit:
-          mine.current &&
-          stateWritable(a) &&
-          Boolean(
-            mine.head &&
-            ['DRAFT', 'CHANGES_REQUESTED'].includes(mine.head.status) &&
-            this.assessment(a, mine.head, mine.binding, mine.jerseyNo, false).eligible,
-          ),
+        canSave: mine.current && stateWritable(a) && consent.ready,
+        canSubmit: mine.current && stateWritable(a) && canSubmit,
         canWithdrawPublicity: Boolean(mine.head?.publicity_consent),
       },
     };
@@ -482,6 +591,7 @@ export class ParticipantMaterialsService extends ApplicationService {
       if (!row || (!a.reviewer && row.user_id !== a.ctx.user.id)) throw notFound();
       await this.ensureFreshSession(c, a.ctx);
       const payload = this.payload(a, row);
+      await this.requireDataConsent(c, a, row.user_id, payload.identityNumber, row.member_id);
       await this.audit(
         c,
         a.ctx.user.id,
@@ -512,6 +622,7 @@ export class ParticipantMaterialsService extends ApplicationService {
       const row = await this.head(c, a, member);
       if (!row || (!a.reviewer && row.user_id !== a.ctx.user.id)) throw notFound();
       const payload = this.payload(a, row);
+      await this.requireDataConsent(c, a, row.user_id, payload.identityNumber, row.member_id);
       const file = kind === 'portrait' ? payload.portrait : payload.insurance?.document;
       if (!file) throw notFound();
       await this.ensureFreshSession(c, a.ctx);
@@ -548,7 +659,7 @@ export class ParticipantMaterialsService extends ApplicationService {
   async save(cookie: string | undefined, org: string, entry: string, raw: unknown) {
     const input = parseParticipantDraft(raw);
     return this.transaction(async (c) => {
-      const a = await this.access(c, cookie, org, entry, true);
+      const a = await this.access(c, cookie, org, entry, true, true);
       let mine = await this.mine(c, a, true);
       const fingerprint = participantRequestFingerprint(input, a.key, [
         a.ctx.orgId,
@@ -589,6 +700,15 @@ export class ParticipantMaterialsService extends ApplicationService {
       if (mine.head && mine.head.binding_id !== mine.binding!.id)
         throw conflict('PARTICIPANT_BINDING_CHANGED', '本人账号绑定已变更，请联系主办方核对');
       const previous = mine.head ? this.payload(a, mine.head) : null;
+      await this.requireDataConsent(
+        c,
+        a,
+        a.ctx.user.id,
+        input.identityNumber === undefined
+          ? (previous?.identityNumber ?? null)
+          : input.identityNumber,
+        mine.binding!.member_id,
+      );
       if (previous) previous.publicityConsent = mine.head!.publicity_consent;
       const payload = await mergeParticipantDraft(previous, input);
       if (
@@ -760,11 +880,19 @@ export class ParticipantMaterialsService extends ApplicationService {
       this.checkVersion(mine.head, input.expectedVersion);
       if (!mine.head || !['DRAFT', 'CHANGES_REQUESTED'].includes(mine.head.status))
         throw conflict('PARTICIPANT_MATERIALS_STATE', '请先保存当前本人资料再提交');
-      const eligibility = this.assessment(a, mine.head, mine.binding, mine.jerseyNo, false);
+      const eligibility = await this.assessment(
+        c,
+        a,
+        mine.head,
+        mine.binding,
+        mine.jerseyNo,
+        false,
+      );
       const payload = this.payload(a, mine.head);
       if (
         !eligibility.eligible ||
         (a.rules.require_insurance &&
+          !eligibility.onlineInsuranceReady &&
           (!payload.insurance?.insurer || !payload.insurance.policyNumber))
       )
         throw new ApiError(
@@ -812,11 +940,12 @@ export class ParticipantMaterialsService extends ApplicationService {
         throw conflict('PARTICIPANT_MATERIALS_STATE', '仅待审本人资料可以审核');
       const binding = await this.binding(c, a, member);
       if (input.decision === 'APPROVE') {
-        const check = this.assessment(a, row, binding, player.jersey_no, false);
+        const check = await this.assessment(c, a, row, binding, player.jersey_no, false);
         const payload = this.payload(a, row);
         if (
           !check.eligible ||
           (a.rules.require_insurance &&
+            !check.onlineInsuranceReady &&
             (!payload.insurance?.insurer || !payload.insurance.policyNumber))
         )
           throw new ApiError(

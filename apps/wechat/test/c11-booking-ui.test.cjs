@@ -14,11 +14,20 @@ const actor = '90000000-0000-4000-8000-000000000099';
 function booking() {
   const f = read('c11-booking-create-ready');
   let revision = 1;
+  const previewCalls = [];
   const client = { sessionRevision: () => revision, onSessionChange: () => () => {} };
   const h = loadPage({
     root,
     route: f.route,
-    modules: { [path.join(root, 'utils/api.js')]: { getClient: () => client } },
+    modules: {
+      [path.join(root, 'utils/api.js')]: { getClient: () => client },
+      [path.join(root, 'pages/trade-order/client.js')]: {
+        post: async (path, body) => {
+          previewCalls.push({ path, body });
+          return { enabled: false, quotes: [] };
+        },
+      },
+    },
   });
   const p = h.page;
   p.onLoad({});
@@ -80,13 +89,14 @@ function booking() {
   p.renderForm();
   return {
     ...h,
+    previewCalls,
     setRevision: (value) => {
       revision = value;
     },
   };
 }
 
-test('compact summary opens the full original editor without losing continuous input or granting consent', () => {
+test('compact summary opens the full original editor without losing continuous input or granting consent', async () => {
   const h = booking();
   const p = h.page;
   const original = JSON.stringify(p.draft);
@@ -109,8 +119,11 @@ test('compact summary opens the full original editor without losing continuous i
   assert.equal(p.data.slots[0].venue, '石鼓公园篮球场二号场');
   assert.equal(p.draft.consent, false);
   assert.equal(p.data.consent, false);
-  p.review();
+  await p.review();
   assert.equal(p.data.review, true);
+  assert.equal(h.previewCalls.length, 1);
+  assert.equal(h.previewCalls[0].path, '/preview');
+  assert.equal(h.previewCalls[0].body.kind, 'PLAYER_APPEARANCE');
   assert.equal(p.data.consent, false);
   p.openEditor();
   assert.equal(

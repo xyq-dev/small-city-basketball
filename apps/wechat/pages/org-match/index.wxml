@@ -87,12 +87,13 @@
       <view wx:for="{{history}}" wx:key="key" class="row history-row {{item.voided ? 'voided' : ''}}"><view>{{item.text}}{{item.voided ? '（已撤销）' : ''}}</view><view class="muted">{{item.periodLabel}} {{item.time}}{{item.reason ? ' · ' + item.reason : ''}}</view></view>
     </view>
 
-    <view wx:if="{{caps.staff || caps.prepare || caps.confirm || caps.reopen}}" class="card">
+    <view wx:if="{{caps.staff || caps.prepare || caps.confirm || caps.reopen || caps.live}}" class="card">
       <view class="subtitle">比赛管理</view>
       <view class="muted">改期与媒体的权限、状态由服务端判定；进入后显示能否操作及原因。</view>
       <view class="mode-choice">
-        <button wx:if="{{match.status === 'SCHEDULED' || match.status === 'READY'}}" class="secondary" bindtap="openReschedule" disabled="{{busy}}">正式改期</button>
-        <button class="secondary" bindtap="openMedia" disabled="{{busy}}">比赛媒体</button>
+        <button wx:if="{{(caps.staff || caps.prepare || caps.confirm || caps.reopen) && (match.status === 'SCHEDULED' || match.status === 'READY')}}" class="secondary" bindtap="openReschedule" disabled="{{busy}}">正式改期</button>
+        <button wx:if="{{caps.staff || caps.prepare || caps.confirm || caps.reopen}}" class="secondary" bindtap="openMedia" disabled="{{busy}}">比赛媒体</button>
+        <button wx:if="{{caps.live}}" class="secondary" bindtap="openLive" disabled="{{busy}}">开播、分发与录像</button>
       </view>
     </view>
 

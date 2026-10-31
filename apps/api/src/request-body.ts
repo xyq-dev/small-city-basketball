@@ -3,6 +3,7 @@ import type { RequestHandler } from 'express';
 import type { ApiRequest } from './errors.js';
 
 export const WECHAT_PAYMENT_NOTIFICATION_PATH = '/v1/payments/wechat/notifications';
+const tradeNotificationPath = /^\/v1\/trade-notifications\/[A-Za-z0-9_-]{1,80}$/;
 const uploadPath = /^\/v1\/orgs\/[0-9a-f-]{36}\/(?:entries|matches)\/[0-9a-f-]{36}\/media-files$/i;
 // C19: the idempotent whole-file upload shares the original upload lane and limit.
 const requestUploadPath =
@@ -14,7 +15,10 @@ const participantDraftPath =
 const chunkPath =
   /^\/v1\/orgs\/[0-9a-f-]{36}\/matches\/[0-9a-f-]{36}\/media-upload-sessions\/[0-9a-f-]{36}\/chunks\/\d{1,2}$/i;
 export function isPaymentNotificationRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
-  return request.method === 'POST' && request.path === WECHAT_PAYMENT_NOTIFICATION_PATH;
+  return (
+    request.method === 'POST' &&
+    (request.path === WECHAT_PAYMENT_NOTIFICATION_PATH || tradeNotificationPath.test(request.path))
+  );
 }
 export function isMediaUploadRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
   return (
@@ -33,6 +37,15 @@ export function isGovernanceAttachmentRequest(request: Pick<ApiRequest, 'method'
     /^\/v1\/me\/governance\/cases\/[0-9a-f-]{36}\/attachments\/[0-9a-f-]{36}$/i.test(request.path)
   );
 }
+export function isGuardianProofRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
+  return (
+    request.method === 'POST' &&
+    /^\/v1\/youth-guardian-requests\/[0-9a-f-]{36}\/confirm$/i.test(request.path)
+  );
+}
+export function isInsuranceProviderNoticeRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
+  return request.method === 'POST' && request.path === '/v1/insurance/provider-notices';
+}
 
 type Lane = { active: number; max: number; parser: RequestHandler };
 
@@ -41,6 +54,7 @@ export function requestBodyMiddleware(): RequestHandler {
   const ordinary = json({ limit: '100kb', inflate: false });
   const upload: Lane = { active: 0, max: 2, parser: json({ limit: '12mb', inflate: false }) };
   const governance: Lane = { active: 0, max: 2, parser: json({ limit: '6mb', inflate: false }) };
+  const guardian: Lane = { active: 0, max: 2, parser: json({ limit: '12mb', inflate: false }) };
   const chunk: Lane = { active: 0, max: 8, parser: json({ limit: '1mb', inflate: false }) };
   const notification = json({
     limit: '100kb',
@@ -52,13 +66,15 @@ export function requestBodyMiddleware(): RequestHandler {
   return (incoming, response, next) => {
     const request = incoming as ApiRequest;
     if (isPaymentNotificationRequest(request)) return notification(request, response, next);
-    const lane = isGovernanceAttachmentRequest(request)
-      ? governance
-      : isMediaUploadRequest(request)
-        ? upload
-        : isMediaChunkRequest(request)
-          ? chunk
-          : null;
+    const lane = isGuardianProofRequest(request)
+      ? guardian
+      : isGovernanceAttachmentRequest(request)
+        ? governance
+        : isMediaUploadRequest(request)
+          ? upload
+          : isMediaChunkRequest(request)
+            ? chunk
+            : null;
     if (!lane) return ordinary(request, response, next);
     if (lane.active >= lane.max) {
       response.setHeader('Retry-After', '1');

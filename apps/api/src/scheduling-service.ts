@@ -1,4 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { captureEventMatchNotifications, captureNotification } from './notification-source.js';
+import { notificationLeadMinutes } from './notification-runtime.js';
 import type { PoolClient } from 'pg';
 import type {
   CourtData,
@@ -1182,6 +1184,12 @@ export class SchedulingService extends ApplicationService {
           ctx,
           await this.event(client, ctx, event.row.id, false),
         );
+        await captureEventMatchNotifications(
+          client,
+          ctx.orgId,
+          event.row.id,
+          notificationLeadMinutes(this.options),
+        );
         await this.ensureFreshSession(client, ctx);
         return response;
       });
@@ -1561,6 +1569,22 @@ export class SchedulingService extends ApplicationService {
           reason: command.reason,
         });
         const response = await this.reschedulingDto(c, ctx, access);
+        await captureNotification(
+          c,
+          {
+            kind: 'MATCH_RESCHEDULED',
+            orgId: ctx.orgId,
+            eventId: event.row.id,
+            resourceId: match.id,
+          },
+          notificationLeadMinutes(this.options),
+        );
+        await captureEventMatchNotifications(
+          c,
+          ctx.orgId,
+          event.row.id,
+          notificationLeadMinutes(this.options),
+        );
         await this.ensureFreshSession(c, ctx);
         return response;
       });

@@ -269,7 +269,11 @@ describe(
       owned.delete(database);
     }
     async function startApi(databaseUrl: string) {
-      const instance = await createApi({ databaseUrl, appOrigin: fixture.origin });
+      const instance = await createApi({
+        databaseUrl,
+        appOrigin: fixture.origin,
+        backgroundWorkersEnabled: false,
+      });
       await instance.app.listen(0, '127.0.0.1');
       const base = (await instance.app.getUrl()).replace('[::1]', '127.0.0.1');
       async function call(
@@ -1263,6 +1267,8 @@ const SEEDED_CONFIGURATION: Record<string, number> = {
   region_legacy_aliases: 3151,
   booking_settings: 1,
   event_commercial_activations: 1,
+  // E05's only initial scheduling row has no recipient, grant, source or message.
+  notification_start_scan: 1,
 };
 // New columns on legacy rows take only neutral defaults: a legacy publication is LIVE, legacy
 // scoring stays team-only without player statistics, no group config, no login name.

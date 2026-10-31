@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type {
   BookingAppearanceData,
   BookingChangeData,
@@ -10,7 +10,9 @@ import type {
   BookingWindow,
 } from '@small-city-basketball/contracts';
 import { ApplicationService, isAdministrator } from '../service.js';
-import type { Actor } from '../service.js';
+import type { Actor, ApiOptions } from '../service.js';
+import type { SourceTradeHooks } from '../trade-source-hooks.js';
+import { lockTradeSourceCalendar } from '../trade-source-hooks.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { objectInput, text } from '../validation.js';
 import { expectedVersion } from '../registration-validation.js';
@@ -86,6 +88,13 @@ const checkVersion = (actual: number, expected: number) => {
 
 /** No payment credentials or dispatch calls exist in this module. */
 export class PlayerBookingService extends ApplicationService {
+  constructor(
+    pool: Pool,
+    options: ApiOptions,
+    private readonly trade?: SourceTradeHooks,
+  ) {
+    super(pool, options);
+  }
   private async lockBuyerQuota(c: PoolClient, buyerUserId: string) {
     await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
       `scb-booking-buyer:${buyerUserId}`,
@@ -736,6 +745,7 @@ export class PlayerBookingService extends ApplicationService {
     await this.preflight(cookie, 'create', input.commandId);
     const outcome = await this.transaction<CreateAttempt>(async (c) => {
       const actor = await this.lockActor(c, cookie);
+      await lockTradeSourceCalendar(c, input.orgId);
       const access = await this.teamAccess(c, actor, input.orgId, input.teamId);
       if (!access.allowed) throw notFound();
       await this.lockBuyerQuota(c, actor.user.id);
@@ -783,6 +793,7 @@ export class PlayerBookingService extends ApplicationService {
           ],
         );
         for (const appearance of input.appearances) {
+          const appearanceId = randomUUID();
           const profile = profiles.get(appearance.profileId)!;
           if (profile.user_id === actor.user.id)
             bookingFail('SELF_BOOKING_NOT_ALLOWED', '不能预约自己的参赛服务');
@@ -801,7 +812,7 @@ export class PlayerBookingService extends ApplicationService {
           await c.query(
             `INSERT INTO booking_appearances(id,order_id,profile_id,player_user_id,match_id,label,condition_text,status,report_at,start_at,end_at,venue,service_fen,travel_fen,accommodation_fen,platform_fee_fen,total_fen,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,CASE WHEN $8='REQUESTED' THEN clock_timestamp()+interval '20 minutes' ELSE NULL END)`,
             [
-              randomUUID(),
+              appearanceId,
               orderId,
               profile.id,
               profile.user_id,
@@ -820,6 +831,12 @@ export class PlayerBookingService extends ApplicationService {
               price.totalFen,
             ],
           );
+          await this.trade?.captureSourceCharge(c, actor, {
+            kind: 'PLAYER_APPEARANCE',
+            sourceId: appearanceId,
+            acceptedTermsId: input.acceptedTermsIds?.[profile.id],
+            chargeConsent: input.chargeConsent === true,
+          });
         }
         const initialAppearances = (
           await c.query<Row>(
@@ -893,6 +910,10 @@ export class PlayerBookingService extends ApplicationService {
     const input = parseCommand(raw);
     const outcome = await this.transaction<CreateAttempt>(async (c) => {
       const actor = await this.lockActor(c, cookie);
+      const source = (await c.query('SELECT org_id FROM booking_orders WHERE id=$1', [id(orderId)]))
+        .rows[0];
+      if (!source) throw notFound();
+      await lockTradeSourceCalendar(c, source.org_id);
       const ctx = await this.context(c, actor, orderId, 'AUTH');
       // Recheck current authority before even reading an idempotency receipt.
       const ref = (
@@ -931,6 +952,12 @@ export class PlayerBookingService extends ApplicationService {
           )
         ).rows[0]!;
         checkVersion(a.version, input.expectedVersion);
+        if (
+          input.type === 'ARRIVE' ||
+          input.type === 'COMPLETE' ||
+          (input.type === 'RESOLVE_DISPUTE' && input.resolution === 'COMPLETE')
+        )
+          await this.trade?.assertSourceFinancialGate(c, 'PLAYER_APPEARANCE', a.id);
         const dto = await this.orderDto(c, ctx);
         const current = dto.appearances.find((x) => x.id === a.id)!;
         const capability: Record<string, keyof BookingAppearanceData['capabilities']> = {

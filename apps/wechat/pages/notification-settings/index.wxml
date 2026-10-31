@@ -1,0 +1,16 @@
+<view class="page">
+ <scb-header title="微信订阅提醒"/>
+ <view wx:if="{{loginRequired}}" class="card"><view>登录并绑定当前小程序微信身份后，可逐次选择提醒。</view><button class="primary" bindtap="login">登录并继续</button></view>
+ <view class="notice">关注赛事不代表已授权订阅。每次由本人在微信弹窗选择，一次许可只安排一次提醒；微信受理不代表已经送达。</view>
+ <view wx:if="{{!enabled}}" class="notice warning">正式微信模板或通道尚未配置。当前可查看站内消息，不会发送微信提醒。</view>
+ <view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view>
+ <view class="card"><view class="subtitle">选择本次提醒</view>
+  <button wx:for="{{kinds}}" wx:key="kind" class="secondary" data-kind="{{item.kind}}" bindtap="choose" disabled="{{busy || pending || !item.templateId}}">{{selected === item.kind ? '已选择：' : ''}}{{item.label}}</button>
+  <button class="primary" bindtap="prepare" disabled="{{busy || pending || !enabled}}">准备本次订阅</button>
+  <button wx:if="{{intent}}" class="primary" bindtap="subscribe" disabled="{{busy || pending}}">打开微信弹窗，决定本次订阅</button>
+ </view>
+ <view wx:if="{{pending}}" class="card"><view class="subtitle">原请求待核对</view><view>核对原请求后继续，避免重复申请。身份验证信息不会保存到本机恢复记录。</view><button class="primary" bindtap="recover" disabled="{{busy}}">核对原请求</button></view>
+ <button class="secondary" bindtap="revoke" disabled="{{busy}}">明确撤销本类许可及待发提醒</button>
+ <view class="card"><view class="subtitle">最近订阅记录</view><view wx:for="{{subscriptions}}" wx:key="id">{{item.label}} · {{item.stateLabel}}</view><view wx:if="{{!subscriptions.length}}">暂无订阅许可记录</view></view>
+ <button class="secondary" bindtap="messages">查看站内消息</button>
+</view>

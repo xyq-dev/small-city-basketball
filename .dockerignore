@@ -36,5 +36,10 @@ scripts/*
 !scripts/x12-local-check.mjs
 !scripts/x18-governance-check.mjs
 !scripts/x22-account-recovery-check.mjs
+!scripts/expansion-recovery-check.mjs
+!scripts/expansion-e03-recovery.mjs
+!scripts/expansion-e04-recovery.mjs
+!scripts/expansion-e05-recovery.mjs
+!scripts/expansion-e08-recovery.mjs
 .github
 .DS_Store

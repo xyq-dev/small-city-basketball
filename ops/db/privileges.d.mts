@@ -7,7 +7,11 @@ export interface PrivilegeManifest {
   functions: Record<string, 'EXECUTE'[]>;
   tables: Record<
     string,
-    { privileges: ('SELECT' | 'INSERT' | 'DELETE')[]; updateColumns: string[] }
+    {
+      privileges: ('SELECT' | 'INSERT' | 'DELETE')[];
+      updateColumns: string[];
+      selectColumns?: string[];
+    }
   >;
 }
 export function loadManifest(): Promise<PrivilegeManifest>;
@@ -18,3 +22,7 @@ export function assertManifestSchema(
   manifest: PrivilegeManifest,
 ): Promise<void>;
 export function applyRuntimePrivileges(pool: Pool): Promise<{ status: 'granted'; tables: number }>;
+export function assertMigrationManifestSurface(
+  manifest: PrivilegeManifest,
+  sources: readonly { name: string; sql: string }[],
+): { tables: number; functions: number };

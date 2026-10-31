@@ -154,7 +154,8 @@ test('booking extension runs from selection to per-appearance completion on the 
     ['endTime', end.time],
   ])
     create.page.slotInput(tap({ index: 0, field }, { value }));
-  create.page.review();
+  await create.page.review();
+  await leaderDevice.settle(create);
   assert.equal(create.page.data.review, true, create.page.data.error);
   create.page.consent(tap({}, { value: ['agree'] }));
   // The order is created but the response is lost: recovery resends the original command.

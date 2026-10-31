@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { captureEventMatchNotifications } from './notification-source.js';
+import { notificationLeadMinutes } from './notification-runtime.js';
 import type { PoolClient } from 'pg';
 import type { FollowData } from '@small-city-basketball/contracts';
 import { notFound, unauthenticated } from './errors.js';
@@ -31,7 +33,8 @@ type Row = FollowRow & { cursor_at: string };
  * C19 event follows (docs/design/C19_CONTRACTS.md §4). Every route acts only on the signed-in
  * account's own rows. Following re-runs the anonymous public-read gate on the server and binds
  * to the publication row; lock order: identity -> organization -> event -> publication -> follow.
- * No WeChat message is sent or scheduled here.
+ * Following only makes current public sources eligible; each external send still needs a
+ * separate, current, one-use subscription grant. No provider request occurs in this transaction.
  */
 export class EventFollowService extends StandingsService {
   private async one(c: PoolClient, where: string, values: unknown[]): Promise<Row | null> {
@@ -71,6 +74,14 @@ export class EventFollowService extends StandingsService {
         [actor.user.id, pub.id],
       );
       if (!row) throw notFound();
+      if (created)
+        await captureEventMatchNotifications(
+          c,
+          pub.org_id,
+          pub.event_id,
+          notificationLeadMinutes(this.options),
+        );
+      await this.ensureFreshSession(c, actor);
       return { created, data: followDto(row) };
     });
   }

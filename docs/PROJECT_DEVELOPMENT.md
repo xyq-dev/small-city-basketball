@@ -1,5 +1,7 @@
 # 小城市篮球：项目开发总文档
 
+最新实现接续：[八项商业扩展任务](tasks/EXPANSION8.md)、[恢复入口](handoffs/EXPANSION8.md)、[使用路径](EXPANSION8_USAGE.md)与[运行边界](EXPANSION8_OPERATIONS.md)。当前合并/隔离验收和正式外部状态以[CURRENT_STATUS](CURRENT_STATUS.md)为准；下方分期为历史入口。
+
 ## 2026-10-29 全国化开发入口
 
 - 最新完整功能要求：[全国平台与同城服务](NATIONWIDE_LOCAL_REQUIREMENTS.md)；同步任务：[DOC002](tasks/DOC002.md)，接续：[交接](handoffs/DOC002.md)。

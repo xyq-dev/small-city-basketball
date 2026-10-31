@@ -25,6 +25,8 @@
       <view class="subtitle">赛事管理</view>
       <view class="manage-links">
         <button class="secondary" data-page="recruitment" bindtap="openFeature">公开招募、导入与本届邀请</button>
+        <button class="secondary" data-page="youth-review" bindtap="openFeature">青少年与监护独立审核</button>
+        <button class="secondary" data-page="trade-manage" bindtap="openFeature">报名费、保证金与收款条款</button>
 <button class="secondary" data-page="poster" bindtap="openFeature">授权宣传海报</button>
 <button class="secondary" data-page="staff-configuration" bindtap="openFeature">赛事工作人员</button>
 <button class="secondary" data-page="match-exceptions" bindtap="openFeature">弃权与取消规则</button>

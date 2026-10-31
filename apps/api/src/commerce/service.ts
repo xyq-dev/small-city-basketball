@@ -846,7 +846,14 @@ export class CommerceService extends ApplicationService {
           !(await this.independent(c, ctx, o, review.submitted_by))
         )
           throw forbidden();
-        if (o.status !== 'PENDING_PAYMENT' || o.channel)
+        // A replacement quote may have expired this original order while its
+        // manual receipt is still under review. Independent rejection must be
+        // able to resolve that claim without reopening or settling the order.
+        if (
+          o.channel ||
+          (o.status !== 'PENDING_PAYMENT' &&
+            !(input.type === 'REJECT_PAYMENT' && o.status === 'EXPIRED'))
+        )
           fail('INVALID_ORDER_STATE', '原订单不能人工确认付款');
         if (input.type === 'CONFIRM_PAYMENT' && new Date(o.expires_at).getTime() <= Date.now())
           fail('ORDER_EXPIRED', '原订单报价已过期，请核对收款及重新报价');

@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
+import type { ApiOptions } from './service.js';
+import { createYouthPublicationGuard } from './youth-guardians-publication.js';
+import type { YouthPublicationGuard } from './youth-guardians-publication.js';
+import type { YouthSnapshot } from '../../../packages/contracts/youth-guardians.js';
 import { ApiError, forbidden, notFound } from './errors.js';
 import { StandingsService } from './standings-service.js';
 import type { StandingsAccess } from './standings-service.js';
@@ -29,7 +33,17 @@ function unavailable(message = '海报来源或授权已变化，请重新生成
 let activeRenders = 0;
 
 /** Private recipes, no cached private originals or permanent anonymous image URLs. */
+export interface YouthPosterOptions extends ApiOptions {
+  youthPublicationGuard?: YouthPublicationGuard;
+}
 export class PosterService extends StandingsService {
+  private readonly youthGuard: YouthPublicationGuard;
+  constructor(pool: Pool, options: YouthPosterOptions) {
+    super(pool, options);
+    this.youthGuard =
+      options.youthPublicationGuard ?? createYouthPublicationGuard(options.participantDataKey);
+  }
+
   private async manager(
     c: PoolClient,
     cookie: string | undefined,
@@ -195,7 +209,7 @@ export class PosterService extends StandingsService {
       const materials = (
         await c.query<Row>(
           `SELECT m.id AS material_id,m.version AS material_version,m.member_id,m.user_id,m.status,m.publicity_consent,m.reservation_active,m.reviewed_start_date::text,m.reviewed_end_date::text,m.key_id AS head_key_id,
-          r.id AS revision_id,r.roster_revision_id,r.ruleset_id,r.jersey_no,r.terms_version,r.has_signature,r.portrait_sha256,r.portrait_bytes,r.purged_at,r.key_id
+          r.id AS revision_id,r.roster_revision_id,r.ruleset_id,r.jersey_no,r.terms_version,r.has_signature,r.portrait_sha256,r.portrait_bytes,r.purged_at,r.key_id,to_char(r.created_at AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS material_consent_date,to_char(r.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS material_consent_at
         FROM participant_materials m
         JOIN participant_material_revisions r ON r.id=m.current_revision_id AND r.material_id=m.id
         JOIN team_member_bindings bind ON bind.id=m.binding_id AND bind.org_id=m.org_id AND bind.team_id=m.team_id AND bind.member_id=m.member_id AND bind.user_id=m.user_id AND bind.status='ACTIVE'
@@ -207,6 +221,7 @@ export class PosterService extends StandingsService {
         )
       ).rows;
       const byMember = new Map(materials.map((m) => [m.member_id, m]));
+      const youthSnapshots: YouthSnapshot[] = [];
       for (const player of selected) {
         const m = byMember.get(player.memberId);
         if (
@@ -229,6 +244,32 @@ export class PosterService extends StandingsService {
           recipe.omittedPlayerCount++;
           continue;
         }
+        const youth = await this.youthGuard(
+          c,
+          {
+            orgId: a.ctx.orgId,
+            eventId: a.event.id,
+            entryId: entry.entryId,
+            teamId: entry.teamId,
+            memberId: player.memberId,
+            rosterRevisionId: entry.rosterRevisionId,
+            rulesetId: (a.event as unknown as Row).locked_ruleset_id,
+          },
+          'PUBLICITY',
+        );
+        if (
+          !youth.ready ||
+          (youth.trustedAdult &&
+            (!youth.adultConsentAfter ||
+              !m.material_consent_date ||
+              m.material_consent_date < youth.adultConsentAfter ||
+              (youth.publicConsentEpoch &&
+                (!m.material_consent_at || m.material_consent_at < youth.publicConsentEpoch))))
+        ) {
+          recipe.omittedPlayerCount++;
+          continue;
+        }
+        if (youth.snapshot) youthSnapshots.push(youth.snapshot);
         if (
           input.includePortraits &&
           m.key_id !== participantKeyId(participantKey(this.options.participantDataKey))
@@ -253,6 +294,7 @@ export class PosterService extends StandingsService {
         rosterRevisionId: entry.rosterRevisionId,
         rulesetId: (a.event as unknown as Row).locked_ruleset_id,
         selectedMemberIds: selected.map((p) => p.memberId),
+        youthSnapshots,
       };
     } else if (input.kind === 'MATCHUP' || input.kind === 'RESULT') {
       const match = b.rows.find((m) => m.id === input.matchId);

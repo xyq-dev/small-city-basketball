@@ -1,6 +1,14 @@
 <view class="page registration-page">
   <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">暂时无法读取可报名赛事</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice warning">{{message}}</view>
+  <view wx:if="{{chargeDraft}}" class="card event-panel charge-panel">
+    <view class="subtitle">先核对本届收费条款</view><view>{{chargeDraft.eventName}}</view><view>为{{team.name}}创建本届报名草稿</view>
+    <view wx:for="{{chargeDraft.items}}" wx:key="kind" class="charge-item"><view class="subtitle">{{item.kindLabel}} · {{item.amountLabel}}（人民币）</view><view>收费主体：{{item.merchantName}}</view><view>{{item.title}}</view><text class="charge-terms" selectable="true">{{item.terms}}</text></view>
+    <view class="muted">创建草稿会绑定以上收费条款。支付和报名审核分别办理，创建不代表付款成功或审核通过。</view>
+    <checkbox-group bindchange="chargeAgree"><label class="consent"><checkbox value="yes" checked="{{chargeAccepted}}" disabled="{{busy}}"/><text>我已核对收费主体、金额及以上每项条款，明确同意本次报名收费与保证金约定。</text></label></checkbox-group>
+    <button class="primary" bindtap="confirmCharge" disabled="{{busy || !chargeAccepted}}" loading="{{busy}}">同意以上收费条款并创建报名草稿</button>
+    <button class="secondary" bindtap="cancelCharge" disabled="{{busy}}">暂不接受，返回赛事列表</button>
+  </view>
   <view wx:if="{{loginRequired}}" class="card event-panel state-panel"><view class="subtitle">登录后继续本队报名</view><view class="muted">仅展示当前账号可管理的报名范围。</view><button class="primary" bindtap="login">登录并继续</button></view>
   <view wx:if="{{loading}}" class="card event-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取可报名赛事</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
   <view wx:for="{{events}}" wx:key="id" class="card event-panel event-card">
@@ -10,7 +18,7 @@
     <view wx:if="{{team}}" class="muted">为{{team.name}}管理本届独立报名。</view>
     <view wx:if="{{item.rules}}" class="muted">{{item.rules.minPlayers}}–{{item.rules.maxPlayers}}人 · {{item.rules.zeroAndDoubleZeroDistinct ? '0与00不同号' : '0与00视为同号'}}</view>
     <block wx:if="{{item.entry}}"><view class="notice entry-state">{{item.entryStatus}}</view><view wx:if="{{item.entry.latestReviewReason}}" class="notice warning">审核意见：{{item.entry.latestReviewReason}}</view><button class="primary" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy}}">查看本队报名</button></block>
-    <button wx:elif="{{item.capabilities.canCreateEntry}}" class="primary" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy}}" loading="{{busy}}">为本队报名</button>
+    <button wx:elif="{{item.capabilities.canCreateEntry}}" class="primary" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy || chargeDraft}}" loading="{{busy}}">查看本次要求并为本队报名</button>
     <view wx:else class="small muted">当前不能新建本队报名。</view>
   </view>
   <view wx:if="{{!loading && !events.length && !loginRequired && !error}}" class="card event-panel state-panel"><view class="subtitle">暂无可报名赛事</view><view class="muted">请等待主办方开放报名，或刷新本队已有报名。</view></view>

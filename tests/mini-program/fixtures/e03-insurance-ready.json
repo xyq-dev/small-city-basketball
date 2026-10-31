@@ -1,0 +1,93 @@
+{
+  "name": "e03-insurance-ready",
+  "route": "pages/insurance/index",
+  "state": "synthetic-populated",
+  "designSource": "E03 implemented native Page and contracts; synthetic layout data, not real insurance acceptance",
+  "expectText": [
+    "保险与保障",
+    "保费由实际保险服务方收取",
+    "服务方当前报价",
+    "明确申请退保",
+    "历史保单文件仅供记录"
+  ],
+  "data": {
+    "orgId": "00000000-0000-4000-8000-000000000001",
+    "entryId": "00000000-0000-4000-8000-000000000002",
+    "memberId": "00000000-0000-4000-8000-000000000003",
+    "userId": "00000000-0000-4000-8000-000000000004",
+    "workspace": {
+      "enabled": true,
+      "reason": null,
+      "products": [
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "name": "合成篮球活动保障方案",
+          "insurer": "合成测试保险服务方",
+          "termsVersion": "synthetic-terms-v1",
+          "termsUrl": "https://synthetic.invalid/terms",
+          "basketballCovered": true
+        }
+      ],
+      "orders": [
+        {
+          "id": "00000000-0000-4000-8000-000000000007",
+          "entryId": "00000000-0000-4000-8000-000000000002",
+          "memberId": "00000000-0000-4000-8000-000000000003",
+          "version": 2,
+          "premiumFen": 123,
+          "refundedFen": 0,
+          "currency": "CNY",
+          "coverageStartDate": "2028-05-01",
+          "coverageEndDate": "2028-05-03",
+          "paymentStatus": "PAID",
+          "policyStatus": "ISSUED",
+          "verifiedAt": "2028-04-01T10:00:00Z",
+          "maskedPolicyNumber": "****0001",
+          "canDownloadDocument": true,
+          "pendingOperation": null,
+          "canRefresh": true,
+          "canRequestCancellation": true,
+          "currentMaterial": true
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000008",
+          "entryId": "00000000-0000-4000-8000-000000000002",
+          "memberId": "00000000-0000-4000-8000-000000000003",
+          "version": 3,
+          "premiumFen": 123,
+          "refundedFen": null,
+          "currency": "CNY",
+          "coverageStartDate": "2028-05-01",
+          "coverageEndDate": "2028-05-03",
+          "paymentStatus": "REFUND_PENDING",
+          "policyStatus": "CANCEL_PENDING",
+          "verifiedAt": "2028-04-01T10:01:00Z",
+          "maskedPolicyNumber": "****0002",
+          "canDownloadDocument": true,
+          "pendingOperation": "00000000-0000-4000-8000-000000000009",
+          "canRefresh": false,
+          "canRequestCancellation": false,
+          "currentMaterial": false
+        }
+      ]
+    },
+    "quote": {
+      "quoteId": "00000000-0000-4000-8000-000000000006",
+      "premiumFen": 123,
+      "currency": "CNY",
+      "coverageStartDate": "2028-05-01",
+      "coverageEndDate": "2028-05-03",
+      "expiresAt": "2028-04-01T10:10:00Z",
+      "termsVersion": "synthetic-terms-v1",
+      "consentVersion": "insurance-purchase-consent-v1"
+    },
+    "selectedProduct": "00000000-0000-4000-8000-000000000005",
+    "consent": false,
+    "pending": null,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "message": "合成界面数据，仅供布局校验。",
+    "checkoutUrl": ""
+  }
+}

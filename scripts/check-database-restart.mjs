@@ -4,6 +4,12 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 import pg from 'pg';
 import { loadManifest } from '../ops/db/privileges.mjs';
 import { exactTableRows } from '../ops/recovery/fingerprint-rows.mjs';
+import {
+  captureExpansion,
+  verifyExpansion,
+  verifyExpansionQuarantine,
+  assertExpansionQuarantineCounts,
+} from './expansion-recovery-check.mjs';
 import { captureEventTemplates, verifyEventTemplates } from './x03-template-check.mjs';
 import {
   configureX02AdjudicationRules,
@@ -130,6 +136,7 @@ const instance = remoteUrl
       appOrigin: origin,
       commerceMode: 'ENFORCED',
       participantDataKey,
+      backgroundWorkersEnabled: false,
     });
 if (instance.app) await instance.app.listen(0, '127.0.0.1');
 const baseUrl = remoteUrl ?? (await instance.app.getUrl());
@@ -1923,6 +1930,53 @@ try {
       state: { ...fixtureState, x02Scheduling },
       readPool,
     });
+    const materialBytesBeforeExpansion = (
+      await readPool.query(
+        'SELECT COALESCE(sum(payload_byte_length),0)::int AS used FROM participant_material_revisions WHERE org_id=$1 AND payload_ciphertext IS NOT NULL',
+        [orgId],
+      )
+    ).rows[0].used;
+    const expansion = await captureExpansion({
+      call,
+      state: {
+        cookie,
+        userId: registration.data.user.id,
+        orgId,
+        registration: frozenRegistration,
+        scheduling,
+        scoring,
+        commerce: { operators: commerceSetup.operators },
+      },
+      runtimePool: instance.pool,
+      readPool,
+      databaseUrl,
+      appOrigin: origin,
+      participantDataKey,
+      requireRuntimeRole: !!remoteUrl,
+      createScheduledSource: async (actor, writer) => {
+        const registration = await captureRegistration(orgId, cookie, `${suffix}-expansion-live`, {
+          leaderCookie: actor.cookie,
+          leaderSession: actor.session,
+        });
+        const schedule = await captureScheduling(orgId, cookie, registration);
+        const results = await captureScoring(orgId, cookie, schedule, `${suffix}-expansion-live`, {
+          writerUserId: writer.id,
+          writerCookie: writer.cookie,
+        });
+        return { ...schedule, highlightMatchId: results.saved[1].id };
+      },
+    });
+    const materialBytesAfterExpansion = (
+      await readPool.query(
+        'SELECT COALESCE(sum(payload_byte_length),0)::int AS used FROM participant_material_revisions WHERE org_id=$1 AND payload_ciphertext IS NOT NULL',
+        [orgId],
+      )
+    ).rows[0].used;
+    const expansionMaterialBytes = materialBytesAfterExpansion - materialBytesBeforeExpansion;
+    assert.ok(
+      expansionMaterialBytes > 0,
+      'Independent insurance/youth fixtures must retain additional encrypted material',
+    );
     const commerce = await captureCommerceEnd({
       call,
       cookie,
@@ -1941,8 +1995,8 @@ try {
     assert.deepEqual(media.entryWorkspace.usage, media.matchWorkspace.usage);
     assert.equal(
       media.matchWorkspace.usage.usedBytes,
-      previousMediaUsedBytes + participantMaterials.snapshot.stored_length,
-      'Final shared media quota must include the nonempty C23 ciphertext exactly once',
+      previousMediaUsedBytes + participantMaterials.snapshot.stored_length + expansionMaterialBytes,
+      'Final shared media quota must include original C23 and independent insurance/youth ciphertext exactly once',
     );
     frozenRegistration.leaderSession = (
       await call('/v1/auth/session', { cookie: frozenRegistration.leaderCookie })
@@ -1973,6 +2027,7 @@ try {
         x08Scheduling.court.id,
         x12.courtId,
         x02Scheduling.court.id,
+        expansion.streaming.courtId,
       ].sort(),
       'Capture every original and explicitly added owned court with no extra rows',
     );
@@ -2003,6 +2058,7 @@ try {
       x02,
       courts,
       participantKeyFixtureDatabase,
+      expansion,
       completionTableCounts: await completionTableCounts(),
       fingerprint: await fingerprint(),
     };
@@ -2017,7 +2073,8 @@ try {
     await verifyX05RecruitmentQuarantine({ readPool, saved: state.x05, assertPublicMissing });
     await verifyX18GovernanceQuarantine({ readPool, saved: state.x18, assertPublicMissing });
     await verifyCompletedReview(state.x18Review, true);
-    assert.deepEqual(await completionTableCounts(), state.completionTableCounts);
+    assertExpansionQuarantineCounts(state.completionTableCounts, await completionTableCounts());
+    await verifyExpansionQuarantine({ readPool, saved: state.expansion, baseUrl });
     await verifyX22AccountRecoveryQuarantine({ readPool, saved: state.x22 });
     await verifyX02AdjudicationQuarantine({ readPool, saved: state.x02 });
     await verifyX12LocalQuarantine({ readPool, saved: state.x12, assertPublicMissing });
@@ -2031,6 +2088,7 @@ try {
   } else if (mode === 'freeze') {
     // The caller has stopped every API writer before this point and keeps them stopped until dump finishes.
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
+    await verifyExpansion({ readPool, saved: state.expansion });
     state.fingerprint = await fingerprint();
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
     console.log('Captured the quiescent full manifest-table backup baseline.');
@@ -2173,6 +2231,7 @@ try {
     await verifyMedia(state.media, state.cookie, state.registration.leaderCookie);
     await verifyCommerce({ call, saved: state.commerce, cookie: state.cookie, orgId: state.orgId });
     assert.equal(await fingerprint(), state.fingerprint);
+    await verifyExpansion({ readPool, saved: state.expansion });
     await verifyEventTemplates({ call, state });
     await verifyX08Archive({ call, state, readPool, saved: state.x08, assertPublicMissing });
     await verifyX05Recruitment({

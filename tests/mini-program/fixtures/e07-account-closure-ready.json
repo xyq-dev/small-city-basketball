@@ -1,0 +1,39 @@
+{
+  "name": "e07-account-closure-ready",
+  "route": "pages/account-closure/index",
+  "state": "synthetic-populated",
+  "designSource": "Implemented native Page data; synthetic static layout fixture, not a real provider, delivery or account acceptance",
+  "expectText": [
+    "账号自助注销",
+    "注销影响",
+    "有事项需要先处理",
+    "取消本次注销申请",
+    "请先移交仍在运营的机构负责人权限"
+  ],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "loginRequired": false,
+    "enabled": true,
+    "password": "",
+    "confirmed": false,
+    "coolingOffDays": 1,
+    "dayOptions": ["立即检查", "1天", "2天", "3天", "4天", "5天", "6天", "7天"],
+    "request": {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "version": 2,
+      "status": "BLOCKED",
+      "label": "有事项需要先处理",
+      "coolingOffDays": 1,
+      "requestedAt": "2028-06-01T10:00:00Z",
+      "executeAfter": "2028-06-02T10:00:00Z",
+      "executeText": "2028年06月02日 18:00",
+      "finishedAt": null,
+      "blockers": ["请先移交仍在运营的机构负责人权限", "平台套餐付款或退款尚未处理完成"],
+      "canCancel": true
+    },
+    "pending": false,
+    "error": "",
+    "message": "合成界面数据，仅供布局校验；申请未实际提交。"
+  }
+}

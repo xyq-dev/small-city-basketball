@@ -1,0 +1,254 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { Pool } from 'pg';
+import { TradeService } from './trade-service.js';
+import { tradeHash } from './trade-domain.js';
+const options = {
+  databaseUrl: 'postgres://unused@127.0.0.1/unused',
+  appOrigin: 'http://127.0.0.1:5173',
+};
+const org = '00000000-0000-4000-8000-000000000001';
+function fixture(status = 'UNKNOWN', valid = true) {
+  const merchant = {
+    key: 'synthetic-merchant',
+    merchantId: 'synthetic-mch',
+    appId: 'synthetic-app',
+    displayName: '合成收款方',
+    payments: { enabled: true },
+    receivers: {},
+  };
+  const service = new TradeService({} as Pool, options, {
+    merchants: { [org]: merchant as any },
+  }) as any;
+  const identity = { id: 'source', totalFen: 1000 };
+  const order = {
+    id: 'order',
+    order_id: 'order',
+    attempt_id: 'attempt',
+    org_id: org,
+    kind: 'LOCAL_BOOKING',
+    source_id: 'source',
+    terms_id: null,
+    merchant_key: merchant.key,
+    merchant_id: merchant.merchantId,
+    merchant_app_id: merchant.appId,
+    source_hash: tradeHash(identity),
+  };
+  const attempt = {
+    id: 'attempt',
+    status,
+    total_fen: 1000,
+    provider_transaction_id: status === 'PAID' ? 'provider-transaction' : null,
+  };
+  const writes: string[] = [];
+  const client = {
+    query: vi.fn(async (sql: string): Promise<any> => {
+      if (sql.startsWith('SELECT p.id AS attempt_id')) return { rows: [order] };
+      if (sql.startsWith('SELECT * FROM trade_orders')) return { rows: [order] };
+      if (sql.startsWith('SELECT * FROM trade_payment_attempts')) return { rows: [attempt] };
+      if (sql.startsWith('SELECT id FROM trade_payment_attempts')) return { rows: [], rowCount: 0 };
+      if (sql.startsWith('UPDATE')) writes.push(sql);
+      return { rows: [], rowCount: 0 };
+    }),
+  };
+  service.transaction = vi.fn(async (work: any) => work(client));
+  service.source = vi.fn(async () => ({ valid, disputed: false, identity }));
+  service.bump = vi.fn();
+  return { service, merchant, client, writes };
+}
+const paid = {
+  outTradeNo: 'E4stable',
+  transactionId: 'provider-transaction',
+  state: 'SUCCESS',
+  totalFen: 1000,
+  currency: 'CNY',
+  successTime: '2026-10-30T00:00:00Z',
+};
+describe('trade source and verified payment boundaries', () => {
+  it('keeps actual payment even after source expiry, without reviving source inventory', async () => {
+    const f = fixture('UNKNOWN', false);
+    await f.service.applyPayment(org, f.merchant, paid);
+    expect(f.writes.some((x) => x.includes("status='PAID'"))).toBe(true);
+    expect(f.writes.some((x) => x.includes("status='SOURCE_CONFLICT'"))).toBe(true);
+    expect(f.writes.every((x) => x.startsWith('UPDATE trade_'))).toBe(true);
+  });
+  it('never regresses PAID from delayed NOTPAY or CLOSED', async () => {
+    const f = fixture('PAID');
+    await f.service.applyPayment(org, f.merchant, {
+      ...paid,
+      state: 'NOTPAY',
+      transactionId: null,
+      successTime: null,
+    });
+    await f.service.applyPayment(org, f.merchant, {
+      ...paid,
+      state: 'CLOSED',
+      transactionId: null,
+      successTime: null,
+    });
+    expect(f.writes).toEqual([]);
+  });
+  it('rejects a provider total mismatch before any ledger write', async () => {
+    const f = fixture();
+    await expect(
+      f.service.applyPayment(org, f.merchant, { ...paid, totalFen: 1 }),
+    ).rejects.toMatchObject({ code: 'TRADE_PAYMENT_AMOUNT' });
+    expect(f.writes).toEqual([]);
+  });
+  it('rejects a replacement merchant configuration for an old invoice', async () => {
+    const f = fixture();
+    await expect(
+      f.service.applyPayment(org, { ...f.merchant, merchantId: 'new-mch' }, paid),
+    ).rejects.toMatchObject({ code: 'TRADE_PAYMENT_IDENTITY' });
+    expect(f.writes).toEqual([]);
+  });
+  it('does not touch fee tables or change legacy free sources with funds execution disabled', async () => {
+    const service = new TradeService({} as Pool, options);
+    const query = vi.fn();
+    expect(
+      await service.captureSourceCharge({ query } as any, {} as any, {
+        kind: 'LOCAL_BOOKING',
+        sourceId: org,
+        chargeConsent: false,
+      }),
+    ).toBeNull();
+    expect(query).not.toHaveBeenCalled();
+    query.mockResolvedValue({ rows: [], rowCount: 0 });
+    await service.assertSourceFinancialGate({ query } as any, 'LOCAL_BOOKING', org);
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+  it('requires globally unambiguous merchant identity for callback and reconciliation scope', () => {
+    const f = fixture();
+    expect(
+      () =>
+        new TradeService({} as Pool, options, {
+          merchants: { [org]: f.merchant as any, other: f.merchant as any },
+        }),
+    ).toThrow('exactly one organization');
+  });
+  it('applies a new signed event and inserts receipt in the same transaction, rejects event-id mutation', async () => {
+    const f = fixture();
+    const event = { id: 'synthetic-event', kind: 'PAYMENT', payment: paid };
+    (f.merchant.payments as any).verifyNotification = () => event;
+    f.service.applyPayment = vi.fn(async (...args: any[]) => {
+      expect(args[3]).toBe(f.client);
+    });
+    await f.service.notification(f.merchant.key, Buffer.from('{}'), {});
+    expect(f.service.transaction).toHaveBeenCalledTimes(1);
+    expect(f.service.applyPayment).toHaveBeenCalledTimes(1);
+    expect(
+      f.client.query.mock.calls.some(([sql]: any[]) =>
+        sql.startsWith('INSERT INTO trade_provider_events'),
+      ),
+    ).toBe(true);
+    f.client.query.mockImplementation(async (sql: string) => ({
+      rows: sql.startsWith('SELECT event_hash') ? [{ event_hash: 'different' }] : [],
+      rowCount: 0,
+    }));
+    await expect(
+      f.service.notification(f.merchant.key, Buffer.from('{}'), {}),
+    ).rejects.toMatchObject({ code: 'TRADE_NOTIFICATION_CONFLICT' });
+    expect(f.service.applyPayment).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('immutable source pricing across fulfillment transitions', () => {
+  it('keeps player identity hash through REQUESTED, ACCEPTED, ARRIVED and COMPLETED', async () => {
+    const service = new TradeService({} as Pool, options) as any;
+    let status = 'REQUESTED';
+    const row = {
+      id: 'appearance',
+      order_id: 'booking',
+      profile_id: 'profile',
+      profile_version: 3,
+      settings_version: 2,
+      buyer_user_id: 'buyer',
+      player_user_id: 'player',
+      beneficiary_name: '合成球员',
+      label: '合成场次',
+      order_status: 'ACTIVE',
+      status,
+      version: 1,
+      total_fen: 1100,
+      platform_fee_fen: 100,
+      service_fen: 1000,
+      travel_fen: 0,
+      accommodation_fen: 0,
+      report_at: '2026-11-01T00:00:00Z',
+      start_at: '2026-11-01T00:30:00Z',
+      end_at: '2026-11-01T01:30:00Z',
+      venue: '合成场地',
+    };
+    const c = {
+      query: async (sql: string) => {
+        if (sql === 'SELECT status FROM organizations WHERE id=$1')
+          return { rows: [{ status: 'ACTIVE' }] };
+        if (sql.startsWith('SELECT o.org_id')) return { rows: [{ org_id: org }] };
+        if (sql.startsWith('SELECT o.id AS order_id'))
+          return { rows: [{ order_id: 'booking', team_id: 'team' }] };
+        if (sql.startsWith('SELECT a.*')) return { rows: [{ ...row, status }] };
+        return { rows: [], rowCount: 0 };
+      },
+    };
+    const before = await service.source(c, 'PLAYER_APPEARANCE', 'appearance');
+    expect(before.payable).toBe(false);
+    for (const next of ['ACCEPTED', 'ARRIVED', 'COMPLETED']) {
+      status = next;
+      const source = await service.source(c, 'PLAYER_APPEARANCE', 'appearance');
+      expect(source.payable).toBe(true);
+      expect(tradeHash(source.identity)).toBe(tradeHash(before.identity));
+    }
+  });
+});
+
+it('pre-create fee preview never discloses a private draft supply to an unrelated signed-in user', async () => {
+  const f = fixture();
+  const query = vi.fn(async (sql: string) => ({
+    rows: sql.includes('FROM local_listings')
+      ? [
+          {
+            org_id: org,
+            provider_user_id: 'private-owner',
+            title: 'private-title',
+            status: 'DRAFT',
+            published: false,
+            provider_confirmed: false,
+          },
+        ]
+      : [],
+    rowCount: 0,
+  }));
+  f.service.transaction = async (work: any) => work({ query });
+  f.service.lockActor = async () => ({ user: { id: 'unrelated' } });
+  f.service.calendar = async () => {};
+  f.service.manager = async () => false;
+  f.service.operator = async () => false;
+  await expect(
+    f.service.preview('synthetic-cookie', { kind: 'LOCAL_BOOKING', sourceId: org }),
+  ).rejects.toMatchObject({ code: 'RESOURCE_NOT_FOUND' });
+  expect(query.mock.calls.some(([sql]) => sql.includes('FROM trade_terms'))).toBe(false);
+});
+
+it('free-source lookup verifies the original buyer/provider instead of allowing unrelated resource probes', async () => {
+  const f = fixture();
+  let actor = 'unrelated';
+  const c = {
+    query: async (sql: string) => ({
+      rows: sql.includes('FROM local_bookings')
+        ? [{ org_id: org, buyer_user_id: 'buyer', provider_user_id: 'provider' }]
+        : [],
+      rowCount: 0,
+    }),
+  };
+  f.service.transaction = async (work: any) => work(c);
+  f.service.lockActor = async () => ({ user: { id: actor } });
+  f.service.manager = async () => false;
+  f.service.operator = async () => false;
+  f.service.ensureFreshSession = async () => {};
+  await expect(f.service.sourceOrder('synthetic', 'LOCAL_BOOKING', org)).rejects.toMatchObject({
+    code: 'RESOURCE_NOT_FOUND',
+  });
+  actor = 'buyer';
+  await expect(f.service.sourceOrder('synthetic', 'LOCAL_BOOKING', org)).resolves.toEqual({
+    orderId: null,
+  });
+});

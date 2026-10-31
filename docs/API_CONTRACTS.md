@@ -1,5 +1,28 @@
 # API 契约
 
+## EXPANSION8：分支源码合同（实际外部未验）
+
+所有写入口继续同源Origin、服务端当前身份/角色、版本和原命令幂等校验；仅受控微信支付回调和验签保险notice采用供应方签名认证。投保/付款/native callback/发送受理分别不等同于保单生效、已收款或已送达。
+
+| 功能                     | 入口及共享合同                                                                                                                                                           | 当前业务边界                                                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 手机直播、比分合成、分发 | `/v1/orgs/:orgId/matches/:matchId/streaming`、`streaming/commands`；[streaming](../packages/contracts/streaming.d.ts)                                                    | 独立批准、短租约、epoch/fence、可信频道和费用上限；STOP未知保留占用，重连须显式；当前LIVE_RECORDING授权撤回即阻断                                     |
+| 全场录像、转码、集锦     | `/v1/orgs/:orgId/broadcasts/:sessionId/media`、`media/commands`；私有artifact及32字节公开key内容                                                                         | 实际FFmpeg/ffprobe/哈希；集锦只用明确校准PTS锚点；派生链继承源撤回，旧赛果确认失效禁新公开；MP4不在DB dump内                                          |
+| 在线保险、独立预审       | `/v1/insurance`、quotes/purchases/orders/commands/document；`/v1/orgs/:orgId/entries/:entryId/qualification-precheck`；[insurance](../packages/contracts/insurance.d.ts) | 完整DRAFT本人显式REQUEST后独立预审；原operation UNKNOWN只查不新投/退；供应商端付款，平台不伪造出单；不可变policy facts保存历史PDF，历史文档不恢复保障 |
+| 业务真实资金             | `/v1/trades/preview`、source/orders/payments/refunds/deductions/settlements；[trade](../packages/contracts/trade.d.ts)                                                   | 预创建服务端条款/金额及显式同意，旧无绑定来源免费；JSAPI当前微信绑定双核；退款占用/独立审批、当前money_version账日对账/分账回退，实收与履约分开       |
+| 微信订阅、消息中心       | `/v1/me/notifications`、settings/intents/confirmations/subscriptions/revoke；[notifications](../packages/contracts/notifications.d.ts)                                   | 关注不等于订阅；原业务事务capture、DB开赛窗口/扇出/失败outbox；SENDING网络未知不自动重发，当前来源/授权失效立即隐藏/停发                              |
+| 全国统一搜索             | `/v1/public/search`；[unified-search](../packages/contracts/unified-search.d.ts)                                                                                         | EVENT/TEAM/PLAYER公开白名单、城市/行政区、query-bound cursor；当前来源及青年PUBLIC_ARCHIVE用途逐次重核，不返回私有编号                                |
+| 账号自助注销             | `/v1/account-closure/capabilities`、me/requests/cancel；[account-closure](../packages/contracts/account-closure.d.ts)                                                    | 当前密码重认证、默认零延期/自选0—7天；真实六域阻塞、busy重试、撤会话/授权并保留必要不可变历史；旧备份依永久quarantine隔离，不声称tombstone覆盖旧备份  |
+| 青年与监护人             | `/v1/me/youth-guardians`、event youth-policy/data-invitations/guardian-requests、私有proof；[youth-guardians](../packages/contracts/youth-guardians.d.ts)                | <14资料处理预同意与参赛/宣传/档案/录播各用途分开；双方现有独立账号+独立机构审核；版本pin，撤回不改旧比分；政策按赛事显式启用，默认18为产品阈值        |
+
+参考配置、真实外部准入、媒体持久化和恢复隔离见[运行边界](EXPANSION8_OPERATIONS.md)。当前分支尚未完成隔离全链验收。
+
+## EXPANSION8 实施增量（分支开发中）
+
+E04低层支付适配增量：WechatPayClient新增显式allowJsapi配置与JSAPI下单/预支付RSA参数，默认仍只接受旧NATIVE通道；Native/JSAPI仅显式profitSharing:true时发送settle_info.profit_sharing。raw openid只能由服务端可信code交换及当前绑定核验获取，不是HTTP输入字段；wx.requestPayment返回值不改变PAID状态，仍需原商户验签通知/主动查单。当前provider源码55测试通过，真实商户和交易业务接线待验。协议依据为[微信支付官方JSAPI SDK文档](https://github.com/wechatpay-apiv3/wechatpay-go/blob/main/docs/payments/jsapi/JsapiApi.md)。
+
+E06新增匿名 `GET /v1/public/search`：q必填1—80字符、kind=ALL/EVENT/TEAM/PLAYER、city可选且与regionId/catalogVersion互斥、limit默认20且最多20、cursor绑定原查询/分类/地区/页宽。文本按字面匹配，通配字符不扩大查询。只返回kind/publicKey/displayName/city/startsOn/endsOn及asOf/nextCursor/notice，私有ID、身份、联系方式与写权限不出结果；空档案无当前有效公开来源则不搜索。地区依据已公开来源赛事，不把球员资料中的地址公开。每页复核当前目录/公开档案授权和来源；来源/主体变更时重读或安全失败，不依赖旧缓存。首页入口、分页与迟到响应保护已写，真实PG与目标环境验收待证，详见[E06](tasks/E06.md)。其余EXPANSION8模块仍实施中，不把provider接口或DDL草稿写成完整已上线功能。
+
 ## COMPLETION22 当前契约增量
 
 2026-10-31 Asia/Shanghai；当前源码支持下述增量，整合与环境状态见[总任务](tasks/COMPLETION22.md)、[当前状态](CURRENT_STATUS.md)。下方P01至C03等段落保留历史实施范围，本节与当前共享契约覆盖其中已过时的“未实现”描述；不能由源码支持推断正式外部服务或生产已启用。
@@ -8,18 +31,18 @@
 
 单淘汰/分组接淘汰的排赛policy可显式指定 `thirdPlaceMatch:true`；false或省略保留旧规范化形状及hash。启用后半决赛负者进入季军赛，冠军赛与季军赛来源分别校验并独立确认，赛事闭赛和套餐额度包含季军赛；旧默认继续不设季军赛。排时优化只生成有界建议，不承诺全局最优或占用正式资源；采用/发布仍检查CAS、当前来源、跨业务日历及会话有效性。
 
-| 能力 | 当前入口/权威共享类型 | 关键约束 |
-| --- | --- | --- |
-| 双循环/排程/晋级优化 | 原schedule-revisions及后轮发布；[scheduling-completion](../packages/contracts/scheduling-completion.d.ts)、[knockout-optimization](../packages/contracts/knockout-optimization.d.ts) | 独立算法、完整两回合；来源与休息/比赛日间隔不由客户端绕过 |
-| 版本模板与办赛向导 | `/v1/orgs/:orgId/event-templates`、`event-template-commands`、`events/:eventId/setup-guide`；[event-templates](../packages/contracts/event-templates.d.ts) | 模板只复制配置，不复制人员、日期、权限或公开状态 |
-| 招募/导入/本届邀请/海报 | `/v1/public/recruitments/:publicId`及所属机构的recruitment、team-import、event-invitations、posters；[recruitment](../packages/contracts/recruitment.d.ts) | 招募与正式观赛授权分开；导入先预览；邀请不授机构权限；海报逐次核当前来源与照片许可 |
-| 行政裁定 | `/v1/orgs/:orgId/events/:eventId/exception-rules`、`matches/:matchId/exceptions`及其proposals/review；[match-exceptions](../packages/contracts/match-exceptions.d.ts) | FORFEIT/CANCELLED独立审批及撤回；READY读取真实scoring state；不伪造0比分/个人统计；消费后的来源不能直接撤回 |
-| 专业统计/阵容/持久离线命令 | 现有记分commands及受控离线意向；[professional-statistics](../packages/contracts/professional-statistics.d.ts)、[scoring-offline](../packages/contracts/scoring-offline.d.ts) | 显式采集、权威时钟、原命令顺序和fence；未知先核回执，冲突不自动合并；未采集保持未统计 |
-| 公开长期档案 | `/v1/me/public-archives`、`public-archive-sources`、`public/archives/:key`；[public-archives](../packages/contracts/public-archives.d.ts) | 独立发布/撤回及来源授权，明确身份关联，禁止按同名合并 |
-| 地点/球场与人员预约/球队约赛 | `/v1/public/local-listings`、`local-search`、`local-location`；私有local-services、local-bookings、local-matchups；[local-services](../packages/contracts/local-services.d.ts) | 原子锁位、DB到期释放、真实履约和一次性核销；地图未配时保留手选，不能伪造定位成功 |
-| 工作人员 | `/v1/orgs/:orgId/staff-configuration`及commands；[共享类型](../packages/contracts/index.d.ts) | 现有机构/赛事角色，缺行CAS和锁后session尾核；不能凭orgId扩权 |
-| 治理/城市运营/赞助/经费公示 | `/v1/me/governance`、`platform/governance`、city-operations、机构sponsorships/public-ledgers与对应公开入口；[governance](../packages/contracts/governance.d.ts) | 城市+机构+动作授权；独立审核/发布；真实曝光去重；账务是线下事实公示，不是钱包或募款 |
-| 邮箱验证/找回 | `/v1/account-recovery/{capabilities,me,reset-requests,verification-requests,consume,receipts,cancel}` | 重置码15分钟/验证码24小时、单次token、会话撤销；新有效同账号码可核对/取消旧unknown，迟到原请求受取消墓碑阻断；通道受理不代表送达 |
+| 能力                         | 当前入口/权威共享类型                                                                                                                                                                | 关键约束                                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| 双循环/排程/晋级优化         | 原schedule-revisions及后轮发布；[scheduling-completion](../packages/contracts/scheduling-completion.d.ts)、[knockout-optimization](../packages/contracts/knockout-optimization.d.ts) | 独立算法、完整两回合；来源与休息/比赛日间隔不由客户端绕过                                                                        |
+| 版本模板与办赛向导           | `/v1/orgs/:orgId/event-templates`、`event-template-commands`、`events/:eventId/setup-guide`；[event-templates](../packages/contracts/event-templates.d.ts)                           | 模板只复制配置，不复制人员、日期、权限或公开状态                                                                                 |
+| 招募/导入/本届邀请/海报      | `/v1/public/recruitments/:publicId`及所属机构的recruitment、team-import、event-invitations、posters；[recruitment](../packages/contracts/recruitment.d.ts)                           | 招募与正式观赛授权分开；导入先预览；邀请不授机构权限；海报逐次核当前来源与照片许可                                               |
+| 行政裁定                     | `/v1/orgs/:orgId/events/:eventId/exception-rules`、`matches/:matchId/exceptions`及其proposals/review；[match-exceptions](../packages/contracts/match-exceptions.d.ts)                | FORFEIT/CANCELLED独立审批及撤回；READY读取真实scoring state；不伪造0比分/个人统计；消费后的来源不能直接撤回                      |
+| 专业统计/阵容/持久离线命令   | 现有记分commands及受控离线意向；[professional-statistics](../packages/contracts/professional-statistics.d.ts)、[scoring-offline](../packages/contracts/scoring-offline.d.ts)         | 显式采集、权威时钟、原命令顺序和fence；未知先核回执，冲突不自动合并；未采集保持未统计                                            |
+| 公开长期档案                 | `/v1/me/public-archives`、`public-archive-sources`、`public/archives/:key`；[public-archives](../packages/contracts/public-archives.d.ts)                                            | 独立发布/撤回及来源授权，明确身份关联，禁止按同名合并                                                                            |
+| 地点/球场与人员预约/球队约赛 | `/v1/public/local-listings`、`local-search`、`local-location`；私有local-services、local-bookings、local-matchups；[local-services](../packages/contracts/local-services.d.ts)       | 原子锁位、DB到期释放、真实履约和一次性核销；地图未配时保留手选，不能伪造定位成功                                                 |
+| 工作人员                     | `/v1/orgs/:orgId/staff-configuration`及commands；[共享类型](../packages/contracts/index.d.ts)                                                                                        | 现有机构/赛事角色，缺行CAS和锁后session尾核；不能凭orgId扩权                                                                     |
+| 治理/城市运营/赞助/经费公示  | `/v1/me/governance`、`platform/governance`、city-operations、机构sponsorships/public-ledgers与对应公开入口；[governance](../packages/contracts/governance.d.ts)                      | 城市+机构+动作授权；独立审核/发布；真实曝光去重；账务是线下事实公示，不是钱包或募款                                              |
+| 邮箱验证/找回                | `/v1/account-recovery/{capabilities,me,reset-requests,verification-requests,consume,receipts,cancel}`                                                                                | 重置码15分钟/验证码24小时、单次token、会话撤销；新有效同账号码可核对/取消旧unknown，迟到原请求受取消墓碑阻断；通道受理不代表送达 |
 
 正式微信/地图/邮件、真实支付/在线投保和DOC005多平台开播不由上述合同自动开通。精确字段与方法白名单以对应共享类型及控制器为准；保持每请求资源归属、当前授权、版本与未知请求恢复规则。
 
@@ -27,11 +50,11 @@
 
 精确DTO见 `packages/contracts/index.d.ts`，本轮范围及执行证据见[C03任务](tasks/C03.md)和[交接](handoffs/C03.md)。以下合同已由最终CI39941294620验证并合并，合并后检查状态以交接为准。
 
-| 私有入口 | 输入与语义 |
-|---|---|
-| GET `/v1/orgs/:orgId/events/:eventId/lifecycle` | EventLifecycleData：赛事、已确认/总场次、完赛门槛及capabilities |
+| 私有入口                                                  | 输入与语义                                                                                                       |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| GET `/v1/orgs/:orgId/events/:eventId/lifecycle`           | EventLifecycleData：赛事、已确认/总场次、完赛门槛及capabilities                                                  |
 | POST `/v1/orgs/:orgId/events/:eventId/lifecycle-commands` | 精确`{type:COMPLETE或ARCHIVE或REOPEN,expectedEventVersion,reason}`；reason去首尾空白4–500字，版本CAS与审计同事务 |
-| GET `/v1/orgs/:orgId/events/:eventId/player-statistics` | EventPlayerStatisticsData；无正式赛程summary=null，仅管理员或该届实际event_staff可读；仅match_staff不扩权 |
+| GET `/v1/orgs/:orgId/events/:eventId/player-statistics`   | EventPlayerStatisticsData；无正式赛程summary=null，仅管理员或该届实际event_staff可读；仅match_staff不扩权        |
 
 COMPLETE只从SCHEDULED/RUNNING进入COMPLETED，要求正式赛程、锁定排名规则、全部当前有效FINAL独立确认、完整排名及C02个人确认一致；撤销当前公开观赛身份。ARCHIVE只从COMPLETED进入ARCHIVED，不删除历史，可保留已显式签发的HISTORY。REOPEN从COMPLETED/ARCHIVED进入RUNNING，撤销当前公开/历史观赛身份，不修改任何单场FINAL；改分仍须原单场重开、更正及独立重确认。三动作仅管理员/实际EVENT_MANAGER；归属隐藏404，可见但无写权403。
 
@@ -90,31 +113,31 @@ type CreateEventInput = {
 
 下表私有路径均省略 `/v1/orgs/{orgId}`；资源 ID 需按其所属赛事/机构重新校验。
 
-| 方法与路径 | 作用 | 最低授权/阶段 |
-|---|---|---|
-| GET/POST `/events`；GET `/events/{eventId}` | 列表、创建草稿、详情 | 按授权赛事范围读取，列表也裁剪范围；有机构创建权限者建草稿；P02 |
-| PATCH `/events/{eventId}` | 编辑草稿 | EVENT_MANAGER，版本匹配且 DRAFT；P02 |
-| POST `/events/{eventId}/commands` | 未设置的旧泛化目标路由 | C03完赛/归档/重开实际使用本页C03节lifecycle-commands；报名/冻结仍用registration-commands，赛程发布仍用revision publish |
-| GET/POST `/teams`；GET/PATCH `/teams/{teamId}` | 长期球队资料 | OWNER/ADMIN创建；管理资料须OWNER/ADMIN或本队有效领队；P03-A已实现 |
-| POST `/teams/{teamId}/invitations` | 邀请既有用户管理球队 | 仅OWNER/ADMIN，绑定targetUserId；P03-A已实现 |
-| POST `/events/{eventId}/entries` | 建立球队参赛草稿 | 本队有效TEAM_MANAGER；工作人员也须另有该队grant；P03-A已实现 |
-| PUT `/entries/{entryId}/roster` | 更新本届名单 | 本队领队，版本和名单锁定检查；P03-A已实现 |
-| GET/PATCH `/participants/{playerId}/profile` | 读取/补充本人参赛资料 | 本人绑定；领队仅在赛事规则允许的受托字段范围内代填，不能默认读取全部证件；P03 |
-| POST `/entries/{entryId}/commands` | 提交/撤回/审核/退回补齐 | 领队或独立 REVIEWER 按具体命令；P03 |
-| POST `/participants/{playerId}/insurance-evidence` | 登记受控上传凭证引用 | 本人/本队领队；P03 |
-| POST `/insurance-evidence/{evidenceId}/review` | 审核凭证 | REVIEWER；P03 |
-| POST `/events/{eventId}/draws` | 分组抽签后续目标 | 尚未实现；P04-A单循环生成及重抽使用第7节schedule-revisions |
-| POST `/events/{eventId}/schedule-revisions` | 生成或有理由重抽单循环草稿 | P04-A已实现；具体输入、权限及能力边界见第7节 |
-| POST `/schedule-revisions/{revisionId}/validate` | 检查当前草稿并返回冲突 | P04-A已实现；管理权限及双版本检查 |
-| POST `/schedule-revisions/{revisionId}/publish` | 一次正式发布当前草稿 | P04-A已实现；事务内重新校验，发布后不支持替换 |
-| POST/DELETE `/matches/{matchId}/scorekeeper-lease` | 获取/释放主记分租约 | 本match显式有效SCORER；P05-A已实现，见第8节 |
-| POST `/matches/{matchId}/scorekeeper-lease/renew` | 续约 | 同session／tab／lease／fence绑定；P05-A已实现 |
-| POST `/matches/{matchId}/commands` | 准备／记分／时钟／确认／重开 | 每type独立授权，P05-A统一命令已实现，见第8节 |
-| POST `/matches/{matchId}/result-confirmations` | 独立确认写入口的长期目标 | 尚未实现；P05-A使用commands的CONFIRM_RESULT，GET同名路径只读历史 |
-| POST `/matches/{matchId}/reopen` | 独立重开写入口的长期目标 | 尚未实现；P05-A使用commands的REOPEN_RESULT |
-| POST `/matches/{matchId}/broadcast-sessions` | 绑定本场直播会话 | STREAMER；P06 |
-| POST `/broadcast-sessions/{sessionId}/overlay-grants` | 签发只读包装授权 | STREAMER；P06 |
-| POST `/overlay-grants/{grantId}/revoke` | 撤销包装授权 | STREAMER/机构管理员；P06 |
+| 方法与路径                                            | 作用                         | 最低授权/阶段                                                                                                          |
+| ----------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| GET/POST `/events`；GET `/events/{eventId}`           | 列表、创建草稿、详情         | 按授权赛事范围读取，列表也裁剪范围；有机构创建权限者建草稿；P02                                                        |
+| PATCH `/events/{eventId}`                             | 编辑草稿                     | EVENT_MANAGER，版本匹配且 DRAFT；P02                                                                                   |
+| POST `/events/{eventId}/commands`                     | 未设置的旧泛化目标路由       | C03完赛/归档/重开实际使用本页C03节lifecycle-commands；报名/冻结仍用registration-commands，赛程发布仍用revision publish |
+| GET/POST `/teams`；GET/PATCH `/teams/{teamId}`        | 长期球队资料                 | OWNER/ADMIN创建；管理资料须OWNER/ADMIN或本队有效领队；P03-A已实现                                                      |
+| POST `/teams/{teamId}/invitations`                    | 邀请既有用户管理球队         | 仅OWNER/ADMIN，绑定targetUserId；P03-A已实现                                                                           |
+| POST `/events/{eventId}/entries`                      | 建立球队参赛草稿             | 本队有效TEAM_MANAGER；工作人员也须另有该队grant；P03-A已实现                                                           |
+| PUT `/entries/{entryId}/roster`                       | 更新本届名单                 | 本队领队，版本和名单锁定检查；P03-A已实现                                                                              |
+| GET/PATCH `/participants/{playerId}/profile`          | 读取/补充本人参赛资料        | 本人绑定；领队仅在赛事规则允许的受托字段范围内代填，不能默认读取全部证件；P03                                          |
+| POST `/entries/{entryId}/commands`                    | 提交/撤回/审核/退回补齐      | 领队或独立 REVIEWER 按具体命令；P03                                                                                    |
+| POST `/participants/{playerId}/insurance-evidence`    | 登记受控上传凭证引用         | 本人/本队领队；P03                                                                                                     |
+| POST `/insurance-evidence/{evidenceId}/review`        | 审核凭证                     | REVIEWER；P03                                                                                                          |
+| POST `/events/{eventId}/draws`                        | 分组抽签后续目标             | 尚未实现；P04-A单循环生成及重抽使用第7节schedule-revisions                                                             |
+| POST `/events/{eventId}/schedule-revisions`           | 生成或有理由重抽单循环草稿   | P04-A已实现；具体输入、权限及能力边界见第7节                                                                           |
+| POST `/schedule-revisions/{revisionId}/validate`      | 检查当前草稿并返回冲突       | P04-A已实现；管理权限及双版本检查                                                                                      |
+| POST `/schedule-revisions/{revisionId}/publish`       | 一次正式发布当前草稿         | P04-A已实现；事务内重新校验，发布后不支持替换                                                                          |
+| POST/DELETE `/matches/{matchId}/scorekeeper-lease`    | 获取/释放主记分租约          | 本match显式有效SCORER；P05-A已实现，见第8节                                                                            |
+| POST `/matches/{matchId}/scorekeeper-lease/renew`     | 续约                         | 同session／tab／lease／fence绑定；P05-A已实现                                                                          |
+| POST `/matches/{matchId}/commands`                    | 准备／记分／时钟／确认／重开 | 每type独立授权，P05-A统一命令已实现，见第8节                                                                           |
+| POST `/matches/{matchId}/result-confirmations`        | 独立确认写入口的长期目标     | 尚未实现；P05-A使用commands的CONFIRM_RESULT，GET同名路径只读历史                                                       |
+| POST `/matches/{matchId}/reopen`                      | 独立重开写入口的长期目标     | 尚未实现；P05-A使用commands的REOPEN_RESULT                                                                             |
+| POST `/matches/{matchId}/broadcast-sessions`          | 绑定本场直播会话             | STREAMER；P06                                                                                                          |
+| POST `/broadcast-sessions/{sessionId}/overlay-grants` | 签发只读包装授权             | STREAMER；P06                                                                                                          |
+| POST `/overlay-grants/{grantId}/revoke`               | 撤销包装授权                 | STREAMER/机构管理员；P06                                                                                               |
 
 全局身份路由单独使用 `GET /v1/me`、`GET /v1/me/organizations`（工作人员上下文）、`GET /v1/me/team-contexts`（本人球队/参赛上下文）。它们只返回本人可进入的范围，不因参加赛事而获得机构后台权限。
 
@@ -134,18 +157,18 @@ P05-A通过私有snapshot轮询读取，不提供SSE、WebSocket或outbox。后�
 
 P02状态DONE / MAIN，范围已通过真实数据库和API浏览器验收；CI及交接见[TESTING](TESTING.md)。使用 `packages/contracts` 的SessionData/EventData。事件字段沿P01，私有API的每个赛事额外返回 `permissions:{canEditDraft:boolean}`，依据该场真实授权及DRAFT计算；Mock允许省略。机构EVENT_MANAGER可能只分配某场SCORER，因此前端不能用全局角色推断编辑权；服务端再次执行动作授权。
 
-| 方法与路径 | 输入/响应与权限 |
-|---|---|
-| POST `/v1/auth/register` | `{email,password,displayName,organizationName}`，201返回SessionData并建会话；机构初始OWNER。生产默认关闭自主注册，没有邮箱验证/微信身份声明 |
-| POST `/v1/auth/login` | `{email,password}`，200返回SessionData并轮换浏览器Cookie；错误登录401通用文案 |
-| GET `/v1/auth/session` | `{user:{id,email,displayName},organizations:[{id,name,role}],teamContexts:[{orgId,organizationName,teamId,teamName}]}`；teamContexts由P03-A增加，仅本人当前有效范围 |
-| POST `/v1/auth/logout` | 200 `data:null`，撤销当前令牌并清Cookie；无Cookie幂等退出 |
-| GET/POST `/v1/orgs/{orgId}/events` | 列表先授权裁剪，创建仅OWNER/ADMIN，初始DRAFT |
-| GET/PATCH `/v1/orgs/{orgId}/events/{id}` | OWNER/ADMIN管理本机构赛事；其他仅分配赛事可读，具体EVENT_MANAGER分配可编辑草稿；PATCH是完整CreateEventInput+expectedVersion |
-| GET `/v1/orgs/{orgId}/members` | 仅OWNER列机构成员；不返回密码哈希或会话 |
-| PUT `/v1/orgs/{orgId}/members/{userId}` | OWNER对已存在用户增改 `{role,status}`；不授予或修改OWNER，status ACTIVE/DISABLED |
-| PUT `/v1/orgs/{orgId}/events/{id}/staff/{userId}` | OWNER/ADMIN对有效机构成员增改 `{role,status}`；staff role EVENT_MANAGER/REVIEWER/SCORER/STREAMER |
-| GET `/health` | 数据库探测；只返回健康状态或固定故障文案 |
+| 方法与路径                                        | 输入/响应与权限                                                                                                                                                     |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST `/v1/auth/register`                          | `{email,password,displayName,organizationName}`，201返回SessionData并建会话；机构初始OWNER。生产默认关闭自主注册，没有邮箱验证/微信身份声明                         |
+| POST `/v1/auth/login`                             | `{email,password}`，200返回SessionData并轮换浏览器Cookie；错误登录401通用文案                                                                                       |
+| GET `/v1/auth/session`                            | `{user:{id,email,displayName},organizations:[{id,name,role}],teamContexts:[{orgId,organizationName,teamId,teamName}]}`；teamContexts由P03-A增加，仅本人当前有效范围 |
+| POST `/v1/auth/logout`                            | 200 `data:null`，撤销当前令牌并清Cookie；无Cookie幂等退出                                                                                                           |
+| GET/POST `/v1/orgs/{orgId}/events`                | 列表先授权裁剪，创建仅OWNER/ADMIN，初始DRAFT                                                                                                                        |
+| GET/PATCH `/v1/orgs/{orgId}/events/{id}`          | OWNER/ADMIN管理本机构赛事；其他仅分配赛事可读，具体EVENT_MANAGER分配可编辑草稿；PATCH是完整CreateEventInput+expectedVersion                                         |
+| GET `/v1/orgs/{orgId}/members`                    | 仅OWNER列机构成员；不返回密码哈希或会话                                                                                                                             |
+| PUT `/v1/orgs/{orgId}/members/{userId}`           | OWNER对已存在用户增改 `{role,status}`；不授予或修改OWNER，status ACTIVE/DISABLED                                                                                    |
+| PUT `/v1/orgs/{orgId}/events/{id}/staff/{userId}` | OWNER/ADMIN对有效机构成员增改 `{role,status}`；staff role EVENT_MANAGER/REVIEWER/SCORER/STREAMER                                                                    |
+| GET `/health`                                     | 数据库探测；只返回健康状态或固定故障文案                                                                                                                            |
 
 列表仅接收 `q/status/limit/cursor`，省略status表示全部（不传ALL）；limit默认20、范围1–100。按createdAt/id倒序稳定分页，保留PG微秒精度；cursor绑定机构、用户及筛选。前端Http adapter依次取完分页，有后页错误时整个读取失败，不返回不完整成功结果。
 
@@ -159,23 +182,23 @@ P02没有删除、任意改赛事status、邮件验证、密码重置、工作�
 
 共享类型以 `packages/contracts/index.d.ts` 为准。代码head `c2d96b2f2b3801bedcb7e73258b48f5d05c88a83` 经[CI39735150535](https://github.com/xyq-dev/small-city-basketball/actions/runs/39735150535)全部通过并由PR #3合并main：100项单元／组件／HTTP检查、44项独立PG场景、实际PG重启，以及12项Mock和6项真实API浏览器场景。下列业务路径均在 `/v1/orgs/{orgId}` 下，身份及接受邀请入口除外；此交付不代表生产部署。
 
-| 方法与路径 | 行为与授权 |
-|---|---|
-| POST `/v1/auth/register-participant` | email/password/displayName；只创建User+Session，没有机构或工作人员成员；返回SessionData |
-| GET `/v1/auth/session` | P03新增teamContexts，和organizations分别返回；不因接受邀请获得机构后台权限 |
-| GET/POST `/teams`；GET/PATCH `/teams/{id}` | OWNER/ADMIN创建，初始不自动授领队；OWNER/ADMIN或当前本队领队读取和管理，其他工作人员身份不自动授予球队管理权 |
-| PUT `/teams/{id}/members` | `{expectedVersion,members:[{id?,name}]}`；最多60人，新人服务端生成id，移出归档，旧报名快照不变 |
-| GET/POST `/teams/{id}/invitations` | 仅OWNER/ADMIN签发明确existing targetUserId；expiresInHours整数1–168；创建一次返回`{invitation,token}`，读取不返回token/hash |
-| POST `/teams/{id}/invitations/{inviteId}/revoke`；PUT `/teams/{id}/grants/{userId}` | OWNER/ADMIN分别撤销未消费邀请或改grant ACTIVE/DISABLED；撤销邀请不代替停用已接受的授权 |
-| POST `/v1/invitations/{id}/accept` | 已登录明确target，body仅token；检查用途/hash/期限/撤销/邀请人当前资格；已消费且当前grant仍ACTIVE时安全返回既有TeamContext，不更新邀请、grant或审计；当前grant缺失/DISABLED则409，不恢复授权 |
-| GET `/teams/{id}/registration-events` | 领队可见已开放赛事及本队已有报名；不泄露其他球队名单或未公开草稿 |
-| GET `/events/{id}/registration` | 授权工作人员读取event/rules/counts/freeze/capabilities |
-| PUT `/events/{id}/registration-rules` | DRAFT及赛事管理权，expectedVersion为event.version；人数上下限、0/00规则、是否要求身份/保险，追加不可变规则版本 |
-| POST `/events/{id}/registration-commands` | OPEN_REGISTRATION / CLOSE_REGISTRATION / FREEZE_REGISTRATION，CAS及具体状态守卫；不支持任意改状态 |
-| GET `/events/{id}/entries` | 按工作人员赛事范围或本队grant范围返回分页EntrySummary；筛选与授权在分页前执行 |
-| POST `/events/{id}/entries`；GET `/entries/{id}` | 创建仅有效领队、OPEN、同赛事同队唯一；详情按工作人员赛事范围或本队grant范围返回完整EntryData |
-| PUT `/entries/{id}/roster` | expectedVersion+memberId/jerseyNo；从当前有效本队成员快照姓名，始终新建不可变revision |
-| POST `/entries/{id}/commands` | SUBMIT/WITHDRAW/APPROVE/REQUEST_CHANGES/REJECT，CAS；退回及拒绝reason1–500必填 |
+| 方法与路径                                                                          | 行为与授权                                                                                                                                                                                  |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST `/v1/auth/register-participant`                                                | email/password/displayName；只创建User+Session，没有机构或工作人员成员；返回SessionData                                                                                                     |
+| GET `/v1/auth/session`                                                              | P03新增teamContexts，和organizations分别返回；不因接受邀请获得机构后台权限                                                                                                                  |
+| GET/POST `/teams`；GET/PATCH `/teams/{id}`                                          | OWNER/ADMIN创建，初始不自动授领队；OWNER/ADMIN或当前本队领队读取和管理，其他工作人员身份不自动授予球队管理权                                                                                |
+| PUT `/teams/{id}/members`                                                           | `{expectedVersion,members:[{id?,name}]}`；最多60人，新人服务端生成id，移出归档，旧报名快照不变                                                                                              |
+| GET/POST `/teams/{id}/invitations`                                                  | 仅OWNER/ADMIN签发明确existing targetUserId；expiresInHours整数1–168；创建一次返回`{invitation,token}`，读取不返回token/hash                                                                 |
+| POST `/teams/{id}/invitations/{inviteId}/revoke`；PUT `/teams/{id}/grants/{userId}` | OWNER/ADMIN分别撤销未消费邀请或改grant ACTIVE/DISABLED；撤销邀请不代替停用已接受的授权                                                                                                      |
+| POST `/v1/invitations/{id}/accept`                                                  | 已登录明确target，body仅token；检查用途/hash/期限/撤销/邀请人当前资格；已消费且当前grant仍ACTIVE时安全返回既有TeamContext，不更新邀请、grant或审计；当前grant缺失/DISABLED则409，不恢复授权 |
+| GET `/teams/{id}/registration-events`                                               | 领队可见已开放赛事及本队已有报名；不泄露其他球队名单或未公开草稿                                                                                                                            |
+| GET `/events/{id}/registration`                                                     | 授权工作人员读取event/rules/counts/freeze/capabilities                                                                                                                                      |
+| PUT `/events/{id}/registration-rules`                                               | DRAFT及赛事管理权，expectedVersion为event.version；人数上下限、0/00规则、是否要求身份/保险，追加不可变规则版本                                                                              |
+| POST `/events/{id}/registration-commands`                                           | OPEN_REGISTRATION / CLOSE_REGISTRATION / FREEZE_REGISTRATION，CAS及具体状态守卫；不支持任意改状态                                                                                           |
+| GET `/events/{id}/entries`                                                          | 按工作人员赛事范围或本队grant范围返回分页EntrySummary；筛选与授权在分页前执行                                                                                                               |
+| POST `/events/{id}/entries`；GET `/entries/{id}`                                    | 创建仅有效领队、OPEN、同赛事同队唯一；详情按工作人员赛事范围或本队grant范围返回完整EntryData                                                                                                |
+| PUT `/entries/{id}/roster`                                                          | expectedVersion+memberId/jerseyNo；从当前有效本队成员快照姓名，始终新建不可变revision                                                                                                       |
+| POST `/entries/{id}/commands`                                                       | SUBMIT/WITHDRAW/APPROVE/REQUEST_CHANGES/REJECT，CAS；退回及拒绝reason1–500必填                                                                                                              |
 
 列表默认20、最多100，nextCursor绑定当前用户/机构/资源/筛选。EntrySummary仅含 `id/eventId/teamId/teamName/status/version/rosterRevisionId/lastSubmittedBy/latestReviewReason` 九字段，不展开players、rules、history或动作capabilities；这些仅在独立鉴权的EntryData详情读取。其他带动作的资源DTO显式返回capabilities。UI逐页取完才返回成功，后页失败、非法或循环游标整体报错；具体操作依赖服务端资源权限并再次鉴权。
 
@@ -193,16 +216,16 @@ P02没有删除、任意改赛事status、邮件验证、密码重置、工作�
 
 以下路径均省略 `/v1/orgs/{orgId}`，继续执行当前会话、机构成员、实际赛事分配及Origin守卫；球队grant不授后台排赛权限。OWNER/ADMIN或该场实际EVENT_MANAGER可生成、重抽、分配、校验和发布，其他已分配工作人员只读；capabilities由服务端逐资源返回。
 
-| 方法与路径 | 输入、响应与状态 |
-|---|---|
-| GET/POST `/courts`；PATCH `/courts/{id}` | 机构共享Court；仅OWNER/ADMIN创建、改名或改ACTIVE/DISABLED，name去首尾空白后1–80，机构内lower名称唯一；列表meta.capabilities.canCreateCourt。停用仍有未来或进行中正式预约的场地409 COURT_HAS_RESERVATIONS |
-| GET `/events/{eventId}/scheduling` | EventSchedulingData：event、freeze摘要、currentRevision、publication、support及capabilities |
+| 方法与路径                                  | 输入、响应与状态                                                                                                                                                                                           |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET/POST `/courts`；PATCH `/courts/{id}`    | 机构共享Court；仅OWNER/ADMIN创建、改名或改ACTIVE/DISABLED，name去首尾空白后1–80，机构内lower名称唯一；列表meta.capabilities.canCreateCourt。停用仍有未来或进行中正式预约的场地409 COURT_HAS_RESERVATIONS   |
+| GET `/events/{eventId}/scheduling`          | EventSchedulingData：event、freeze摘要、currentRevision、publication、support及capabilities                                                                                                                |
 | POST `/events/{eventId}/schedule-revisions` | expectedEventVersion、freezeId、algorithmVersion RR_CIRCLE_V1、policy；创建／重抽201 ScheduleRevisionData。重抽必填redrawReason1–500，新seed和新revision，旧稿SUPERSEDED只读；previousRevisionId保留历史链 |
-| GET `/schedule-revisions/{id}` | 当前或历史ScheduleRevisionData，批量读取source、policy、轮次／轮空、participants和至多496场fixtures；eventVersion是当前赛事版本，不能用freeze.eventVersion替代 |
-| PUT `/schedule-revisions/{id}/allocations` | expectedEventVersion、expectedRevisionVersion及精确覆盖全部fixtureKey的allocations；每项courtId/startsAt同时null表示未分配。只能改当前DRAFT；成功递增赛事和revision版本，200返回新ScheduleRevisionData |
-| POST `/schedule-revisions/{id}/validate` | 双版本，200 ScheduleValidationData，包含精确版本、checkedAt、valid和conflicts；只读，不修改版本 |
-| POST `/schedule-revisions/{id}/publish` | 双版本，事务内重新验证后200返回新EventSchedulingData；唯一event publication，正式场次、预约、PUBLISHED和赛事REGISTRATION_CLOSED→SCHEDULED/version及audit同事务 |
-| GET `/events/{eventId}/matches` | ScheduledMatchData分页，按startsAt/id正序稳定读取正式场次；暂无公开或球队grant读取路径 |
+| GET `/schedule-revisions/{id}`              | 当前或历史ScheduleRevisionData，批量读取source、policy、轮次／轮空、participants和至多496场fixtures；eventVersion是当前赛事版本，不能用freeze.eventVersion替代                                             |
+| PUT `/schedule-revisions/{id}/allocations`  | expectedEventVersion、expectedRevisionVersion及精确覆盖全部fixtureKey的allocations；每项courtId/startsAt同时null表示未分配。只能改当前DRAFT；成功递增赛事和revision版本，200返回新ScheduleRevisionData     |
+| POST `/schedule-revisions/{id}/validate`    | 双版本，200 ScheduleValidationData，包含精确版本、checkedAt、valid和conflicts；只读，不修改版本                                                                                                            |
+| POST `/schedule-revisions/{id}/publish`     | 双版本，事务内重新验证后200返回新EventSchedulingData；唯一event publication，正式场次、预约、PUBLISHED和赛事REGISTRATION_CLOSED→SCHEDULED/version及audit同事务                                             |
+| GET `/events/{eventId}/matches`             | ScheduledMatchData分页，按startsAt/id正序稳定读取正式场次；暂无公开或球队grant读取路径                                                                                                                     |
 
 Court及matches列表默认20、最大100，游标绑定当前机构、用户和资源。前端逐页读完才成功，后页失败不退Mock。Court改名不改变已发布courtName快照，服务没有Court删除接口。
 
@@ -214,27 +237,26 @@ SchedulePolicy必须明确slotDurationMinutes整数1–1440、minRestMinutes整�
 
 发布前重算所有内部及本机构已发布Court/Team占用；validate不是发布凭证。外部赛事冲突只返回本方fixture/resource/time，不泄露另一赛事ID、名称或名单。一次发布后不能编辑、重抽或再次发布；P04-A不包含自动排时、其他赛制、改期／取消占用、公开赛程、小程序或OBS。记分／赛果已由第8节P05-A扩展，预计场地占用与实际比赛时钟仍分离，机构内资源检查不覆盖跨机构同一物理球场。
 
-
 ## 8. P05-A在线基础记分实施契约（DONE / MAIN）
 
 [PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并main `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`；验收代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079` 经[第二CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)全部成功：212项源码／组件／HTTP、88项独立PG、实际PG18.6重启、12项Mock及10项API浏览器。精确DTO以[共享契约](../packages/contracts/index.d.ts)为准；首轮失败与修复、自动审查状态及证据边界见[TESTING](TESTING.md)。没有生产执行。
 
 以下路径均省略 `/v1/orgs/{orgId}`，每请求复核session/user、机构成员、资源归属及具体动作；所有写操作继续要求精确Origin。成功写及控制操作为200，不新增另一套CONFIRM／REOPEN写入口。
 
-| 方法与路径 | 输入、响应与授权 |
-|---|---|
-| GET `/scoring-matches` | 可选eventId/status及limit/cursor；SQL先过滤OWNER/ADMIN、实际event staff或本match有效staff可见范围，再分页返回ScoringMatchSummary[] |
-| GET `/events/{eventId}/scoring` | EventScoringData：event、当前／锁定rules、locked和canManageRules；赛事管理者／实际赛事工作人员可读，只有单场分配者不因此获得整赛事资料 |
-| PUT `/events/{eventId}/scoring-rules` | 显式规则+expectedEventVersion，追加规则版本并递增Event.version；OWNER/ADMIN或实际EVENT_MANAGER，首次READY后永久锁定 |
-| GET `/matches/{matchId}/scoring` | ScoringWorkbenchData：match、当前event版本、绑定rules、可空snapshot、staff、脱敏lease占用摘要及资源capabilities；不得当作公开DTO |
-| PUT `/matches/{matchId}/staff/{userId}` | expectedMatchVersion、role SCORER/RESULT_REVIEWER、status ACTIVE/DISABLED；赛事管理权。ACTIVE要求用户及机构成员有效；DISABLED只更新既有本场分配，允许机构成员／用户已停用，不能空建DISABLED；同时使受影响旧lease过期。返回新workbench |
-| POST `/matches/{matchId}/scorekeeper-lease` | `{clientInstanceId}`；显式有效SCORER可在READY/LIVE/PENDING_CONFIRMATION取得控制，返回ScorekeeperLeaseData |
-| POST `/matches/{matchId}/scorekeeper-lease/renew`；DELETE同主路径 | `{control:{leaseId,fencingToken,clientInstanceId}}`；当前有效绑定才可续约／释放。续约返回lease，释放data:null |
-| POST `/matches/{matchId}/commands` | ScoringCommandInput，按type检查当前动作权限；返回 `{receipt,snapshot}`，原receipt.appliedVersion与当前snapshot.version分别解释 |
-| GET `/matches/{matchId}/commands/{commandId}` | 当前身份在本match的收据，match读锁等待在途写提交；返回receipt+当前snapshot，未知404 COMMAND_NOT_FOUND。重新检查对应动作权限 |
-| GET `/matches/{matchId}/snapshot` | 私有ScoreSnapshot；未准备409 MATCH_NOT_PREPARED，workbench中的snapshot此时为null |
-| GET `/matches/{matchId}/scoring-events` | ScoringEventData[]，seq正序，top-level targetEventId表示撤销目标；同场读取权限 |
-| GET `/matches/{matchId}/result-confirmations` | ResultConfirmationData[]，sourceMatchVersion/id正序，保留旧确认与确认人；私有读取，不是POST确认入口 |
+| 方法与路径                                                        | 输入、响应与授权                                                                                                                                                                                                                      |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET `/scoring-matches`                                            | 可选eventId/status及limit/cursor；SQL先过滤OWNER/ADMIN、实际event staff或本match有效staff可见范围，再分页返回ScoringMatchSummary[]                                                                                                    |
+| GET `/events/{eventId}/scoring`                                   | EventScoringData：event、当前／锁定rules、locked和canManageRules；赛事管理者／实际赛事工作人员可读，只有单场分配者不因此获得整赛事资料                                                                                                |
+| PUT `/events/{eventId}/scoring-rules`                             | 显式规则+expectedEventVersion，追加规则版本并递增Event.version；OWNER/ADMIN或实际EVENT_MANAGER，首次READY后永久锁定                                                                                                                   |
+| GET `/matches/{matchId}/scoring`                                  | ScoringWorkbenchData：match、当前event版本、绑定rules、可空snapshot、staff、脱敏lease占用摘要及资源capabilities；不得当作公开DTO                                                                                                      |
+| PUT `/matches/{matchId}/staff/{userId}`                           | expectedMatchVersion、role SCORER/RESULT_REVIEWER、status ACTIVE/DISABLED；赛事管理权。ACTIVE要求用户及机构成员有效；DISABLED只更新既有本场分配，允许机构成员／用户已停用，不能空建DISABLED；同时使受影响旧lease过期。返回新workbench |
+| POST `/matches/{matchId}/scorekeeper-lease`                       | `{clientInstanceId}`；显式有效SCORER可在READY/LIVE/PENDING_CONFIRMATION取得控制，返回ScorekeeperLeaseData                                                                                                                             |
+| POST `/matches/{matchId}/scorekeeper-lease/renew`；DELETE同主路径 | `{control:{leaseId,fencingToken,clientInstanceId}}`；当前有效绑定才可续约／释放。续约返回lease，释放data:null                                                                                                                         |
+| POST `/matches/{matchId}/commands`                                | ScoringCommandInput，按type检查当前动作权限；返回 `{receipt,snapshot}`，原receipt.appliedVersion与当前snapshot.version分别解释                                                                                                        |
+| GET `/matches/{matchId}/commands/{commandId}`                     | 当前身份在本match的收据，match读锁等待在途写提交；返回receipt+当前snapshot，未知404 COMMAND_NOT_FOUND。重新检查对应动作权限                                                                                                           |
+| GET `/matches/{matchId}/snapshot`                                 | 私有ScoreSnapshot；未准备409 MATCH_NOT_PREPARED，workbench中的snapshot此时为null                                                                                                                                                      |
+| GET `/matches/{matchId}/scoring-events`                           | ScoringEventData[]，seq正序，top-level targetEventId表示撤销目标；同场读取权限                                                                                                                                                        |
+| GET `/matches/{matchId}/result-confirmations`                     | ResultConfirmationData[]，sourceMatchVersion/id正序，保留旧确认与确认人；私有读取，不是POST确认入口                                                                                                                                   |
 
 三个列表默认20／最多100。scoring-matches按startsAt/id正序，游标绑定org/user/event/status；事件和确认游标绑定org/user/match及资源类型。前端取完所有页才报告完整成功，后页失败不接受部分数据、不退Mock。
 
@@ -242,19 +264,19 @@ SchedulePolicy必须明确slotDurationMinutes整数1–1440、minRestMinutes整�
 
 规则必须显式给出regulationPeriods整数1–8、periodDurationSeconds整数1–3600、allowedScoreValues为[1,2,3]非空不重复子集、tiePolicy ALLOW_DRAW/OVERTIME；OVERTIME需overtimeDurationSeconds整数1–1800，ALLOW_DRAW为null。不暗设FIBA节长、罚球、暂停配额或排名积分。
 
-| type | payload与状态守卫 | 控制／最低授权 |
-|---|---|---|
-| PREPARE_MATCH | `{expectedEventVersion}`；SCHEDULED→READY，已有正式冻结来源、规则及至少一个仍有效SCORER；初始化第1节、暂停、完整节长并锁定规则 | 禁止control，赛事管理权 |
-| START_MATCH | `{expectedEventVersion}`；READY→LIVE，时钟仍暂停；首场开始使Event SCHEDULED→RUNNING，同事务CAS | 必须control，显式SCORER |
-| RECORD_STAT | `{kind,side,value}`；仅LIVE；kind SCORE/FOUL/TIMEOUT、side HOME/AWAY；SCORE遵循允许分值，FOUL/TIMEOUT每次1 | 必须control，显式SCORER |
-| ADD_CORRECTION | `{kind,side,value,period,reason}`；LIVE或PENDING，period须已有节次 | 必须control，显式SCORER |
-| VOID_STAT／REPLACE_STAT | 前者`{targetEventId,reason}`，后者再含side/value；只针对本场仍有效统计，替换保留原kind及period，原子追加STAT_VOIDED+STAT_RECORDED | 必须control，显式SCORER |
-| CLOCK_START／CLOCK_PAUSE | `{}`；仅LIVE；显式启动／暂停，暂停保存服务端有效剩余 | 必须control，显式SCORER |
-| CLOCK_SET | `{remainingMs,reason}`；0至本节时长，运行中校时保持running并重设锚点 | 必须control，显式SCORER |
-| NEXT_PERIOD／START_OVERTIME | `{}`；暂停且有效剩余0；前者仅下一常规节，后者仅常规／加时结束后平分且规则允许 | 必须control，显式SCORER |
-| END_MATCH | `{}`；末常规／加时已归零且暂停，OVERTIME不允许平分；LIVE→PENDING_CONFIRMATION | 必须control，显式SCORER |
-| CONFIRM_RESULT | `{}`；精确当前版本、投影按事件重放一致，PENDING→FINAL；OVERTIME平分拒绝 | 禁止control；管理者或本场RESULT_REVIEWER，且必须满足独立性 |
-| REOPEN_RESULT | `{reason}`；FINAL→PENDING，保留旧确认并requiresReconfirmation；不恢复LIVE | 禁止control，赛事管理权 |
+| type                        | payload与状态守卫                                                                                                                 | 控制／最低授权                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| PREPARE_MATCH               | `{expectedEventVersion}`；SCHEDULED→READY，已有正式冻结来源、规则及至少一个仍有效SCORER；初始化第1节、暂停、完整节长并锁定规则    | 禁止control，赛事管理权                                    |
+| START_MATCH                 | `{expectedEventVersion}`；READY→LIVE，时钟仍暂停；首场开始使Event SCHEDULED→RUNNING，同事务CAS                                    | 必须control，显式SCORER                                    |
+| RECORD_STAT                 | `{kind,side,value}`；仅LIVE；kind SCORE/FOUL/TIMEOUT、side HOME/AWAY；SCORE遵循允许分值，FOUL/TIMEOUT每次1                        | 必须control，显式SCORER                                    |
+| ADD_CORRECTION              | `{kind,side,value,period,reason}`；LIVE或PENDING，period须已有节次                                                                | 必须control，显式SCORER                                    |
+| VOID_STAT／REPLACE_STAT     | 前者`{targetEventId,reason}`，后者再含side/value；只针对本场仍有效统计，替换保留原kind及period，原子追加STAT_VOIDED+STAT_RECORDED | 必须control，显式SCORER                                    |
+| CLOCK_START／CLOCK_PAUSE    | `{}`；仅LIVE；显式启动／暂停，暂停保存服务端有效剩余                                                                              | 必须control，显式SCORER                                    |
+| CLOCK_SET                   | `{remainingMs,reason}`；0至本节时长，运行中校时保持running并重设锚点                                                              | 必须control，显式SCORER                                    |
+| NEXT_PERIOD／START_OVERTIME | `{}`；暂停且有效剩余0；前者仅下一常规节，后者仅常规／加时结束后平分且规则允许                                                     | 必须control，显式SCORER                                    |
+| END_MATCH                   | `{}`；末常规／加时已归零且暂停，OVERTIME不允许平分；LIVE→PENDING_CONFIRMATION                                                     | 必须control，显式SCORER                                    |
+| CONFIRM_RESULT              | `{}`；精确当前版本、投影按事件重放一致，PENDING→FINAL；OVERTIME平分拒绝                                                           | 禁止control；管理者或本场RESULT_REVIEWER，且必须满足独立性 |
+| REOPEN_RESULT               | `{reason}`；FINAL→PENDING，保留旧确认并requiresReconfirmation；不恢复LIVE                                                         | 禁止control，赛事管理权                                    |
 
 reason去首尾空白后1–500字符。命令公共字段commandId为UUID、expectedVersion为当前match版本、capturedAt为真实带时区时间；后者只作不可信采集元数据，不决定服务器计时或seq。PREPARE/START另校验payload.expectedEventVersion，其他命令不伪造Event CAS。每次业务变更增加match.version，人员变更也同步projection.sourceVersion；lease心跳不增加比赛版本，clockVersion只随实际时钟／节次动作变化。
 
@@ -284,12 +306,12 @@ P05-A只实现在线基础记分及私有读取；共享MATCH_STATUSES为SCHEDUL
 
 私有路径省略 `/v1/orgs/{orgId}`。读取要求当前有效机构成员，且为OWNER/ADMIN或本event实际有效工作人员；仅有MatchStaff不授予整届排名权限。写入限OWNER/ADMIN或本event实际EVENT_MANAGER，重新检查会话、成员、分配及精确Origin；全局角色不能替代赛事分配。
 
-| 方法与路径 | 精确输入与成功结果 |
-|---|---|
-| GET `/events/{eventId}/standings` | 返回EventStandingsData；尚无规则或正式赛程时standings为null，已有未锁规则及赛程时mode为DRAFT_PREVIEW |
-| PUT `/events/{eventId}/standings-rules` | `{expectedEventVersion,winPoints,lossPoints,drawPoints,tiebreakers}`；追加不可变当前草稿，递增Event.version，200返回EventStandingsData |
-| POST `/events/{eventId}/standings-rule-commands` | `{type:'PUBLISH_STANDINGS_RULES',rulesetId,expectedEventVersion}`；仅发布本届当前草稿，永久锁定规则，200返回EventStandingsData |
-| POST `/events/{eventId}/public-viewing-commands` | `{type:'ENABLE'|'DISABLE',expectedEventVersion}`；启用须已锁排名规则及正式单循环赛程；每次重新启用创建全新公开身份；200返回EventStandingsData |
+| 方法与路径                                       | 精确输入与成功结果                                                                                                                     |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| GET `/events/{eventId}/standings`                | 返回EventStandingsData；尚无规则或正式赛程时standings为null，已有未锁规则及赛程时mode为DRAFT_PREVIEW                                   |
+| PUT `/events/{eventId}/standings-rules`          | `{expectedEventVersion,winPoints,lossPoints,drawPoints,tiebreakers}`；追加不可变当前草稿，递增Event.version，200返回EventStandingsData |
+| POST `/events/{eventId}/standings-rule-commands` | `{type:'PUBLISH_STANDINGS_RULES',rulesetId,expectedEventVersion}`；仅发布本届当前草稿，永久锁定规则，200返回EventStandingsData         |
+| POST `/events/{eventId}/public-viewing-commands` | `{type:'ENABLE'                                                                                                                        | 'DISABLE',expectedEventVersion}`；启用须已锁排名规则及正式单循环赛程；每次重新启用创建全新公开身份；200返回EventStandingsData |
 
 `winPoints/lossPoints/drawPoints`均显式必填整数0–1000；tiebreakers显式数组，可为空或为SCORE_DIFFERENCE、POINTS_FOR、WINS的不重复有序子集。仅支持2–32队单回合ROUND_ROBIN；不支持HEAD_TO_HEAD、胜率、分组／淘汰、弃权、处罚积分或净胜分封顶，不预设FIBA积分。
 
@@ -303,21 +325,21 @@ DISABLE不依赖榜单来源健康：授权、CAS、撤销及audit成功后返�
 
 公开路径前缀 `/v1/public/events/{publicEventId}`，四个入口均GET，无写路由、目录搜索或登录要求。控制器不读取Cookie；相同公开身份不因调用者是否登录而扩大字段。前端独立public fetch使用`credentials:'omit'`，不触发私有会话处理；此处不授权OBS或记分。
 
-| 方法与后缀 | data及分页 |
-|---|---|
-| GET主路径 | PublicEventData |
-| GET `/schedule` | PublicScheduleMatchData[]；limit默认20／最多100，可选status和cursor；meta.nextCursor为下一页或null |
-| GET `/standings` | PublicStandingsData |
-| GET `/matches/{publicMatchId}` | PublicMatchSnapshotData；必须属于本次公开publication |
+| 方法与后缀                     | data及分页                                                                                         |
+| ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| GET主路径                      | PublicEventData                                                                                    |
+| GET `/schedule`                | PublicScheduleMatchData[]；limit默认20／最多100，可选status和cursor；meta.nextCursor为下一页或null |
+| GET `/standings`               | PublicStandingsData                                                                                |
+| GET `/matches/{publicMatchId}` | PublicMatchSnapshotData；必须属于本次公开publication                                               |
 
 公开身份独立于内部UUID：publicEventId／publicMatchId为32随机字节的43字符base64url文本，teamKey为本次publication独立16随机字节的22字符文本。重新启用后全部重新生成，旧链接永久失效。schedule按真实startsAt及publicMatchId正序；游标明文仅含`{scope:'public-schedule:<publicEventId>:<status或空>',time:<UTC六位小数时间>,publicMatchId}`再作base64url编码，不能夹带org/user/event/match/entry/team内部ID，跨父身份或筛选的游标拒绝。
 
-| 公开DTO | 完整允许字段 |
-|---|---|
-| PublicStandingsRules | version、algorithmVersion、winPoints、lossPoints、drawPoints、tiebreakers；没有私有rulesetId/eventId/createdBy |
-| PublicEventData | publicEventId、name、startDate、endDate、timezone、venueName:null或string、status、rules、confirmedMatchCount、totalMatchCount、isComplete、serverTime |
-| PublicStandingsData | publicEventId、rules、sourceHash、asOf、confirmedMatchCount、totalMatchCount、isComplete、hasSharedRanks、rows；每行仅teamKey、teamName、rank、tied及上述八项累计统计 |
-| PublicScheduleMatchData | publicMatchId、roundNo、positionNo、home/away各`{teamKey,teamName}`、courtName、startsAt、endsAt、status、version、score:null或`{home,away}`、resultStatus |
+| 公开DTO                 | 完整允许字段                                                                                                                                                                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PublicStandingsRules    | version、algorithmVersion、winPoints、lossPoints、drawPoints、tiebreakers；没有私有rulesetId/eventId/createdBy                                                                                                                          |
+| PublicEventData         | publicEventId、name、startDate、endDate、timezone、venueName:null或string、status、rules、confirmedMatchCount、totalMatchCount、isComplete、serverTime                                                                                  |
+| PublicStandingsData     | publicEventId、rules、sourceHash、asOf、confirmedMatchCount、totalMatchCount、isComplete、hasSharedRanks、rows；每行仅teamKey、teamName、rank、tied及上述八项累计统计                                                                   |
+| PublicScheduleMatchData | publicMatchId、roundNo、positionNo、home/away各`{teamKey,teamName}`、courtName、startsAt、endsAt、status、version、score:null或`{home,away}`、resultStatus                                                                              |
 | PublicMatchSnapshotData | schedule单场字段，再含publicEventId、eventName、totals、periods、rules、clock、collected、serverTime；totals为双方`{score,fouls,timeouts}`，periods每项为`{period,home:{score,fouls,timeouts},away:{score,fouls,timeouts}}`，两者可null |
 
 单场rules为`ScoringRules & {version}`或null，clock为`{period,remainingMs,running,anchorServerTime,clockVersion}`或null；raw remainingMs不先扣时，客户端据serverTime和锚点只插值一次。未准备比赛score/totals/periods/rules/clock为null，collected的teamScore/teamFouls/teamTimeouts为false；准备后真实0可展示，playerStatistics始终false。resultStatus仅UNCONFIRMED、CONFIRMED、REQUIRES_RECONFIRMATION。正式统计从有效确认取证，重开不展示旧确认作为当前正式结果。
@@ -342,29 +364,35 @@ P06-A已通过[PR #7](https://github.com/xyq-dev/small-city-basketball/pull/7)�
 
 全部成功200，采用统一`{data,meta:{requestId}}`及no-store。私有GET／命令每次验证当前私人会话、机构成员、资源归属；源入口完全独立，不调用私人登录流程。两个POST仍要求精确APP_ORIGIN，不放宽全局写Origin守卫。
 
-| 方法与完整路径 | 输入与data |
-|---|---|
-| GET `/v1/orgs/{orgId}/matches/{matchId}/overlay` | 无body，返回OverlayWorkbenchData；有本赛事实际staff或OWNER/ADMIN可读，单场授权不等于赛事权限 |
+| 方法与完整路径                                             | 输入与data                                                                                                                   |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| GET `/v1/orgs/{orgId}/matches/{matchId}/overlay`           | 无body，返回OverlayWorkbenchData；有本赛事实际staff或OWNER/ADMIN可读，单场授权不等于赛事权限                                 |
 | POST `/v1/orgs/{orgId}/matches/{matchId}/overlay-commands` | 下列ISSUE／ROTATE／REVOKE输入，返回OverlayCommandResponse；写仅OWNER/ADMIN或本event实际EVENT_MANAGER／STREAMER且当前成员有效 |
-| POST `/v1/overlays/{overlayId}/bootstrap` | `{token}`；成功data仅`{overlayId,expiresAt,serverTime}`，session只由Set-Cookie交付，不进JSON |
-| GET `/v1/overlays/{overlayId}/snapshot` | 仅认专用Cookie；返回OverlaySnapshotData，无读取计数／更新时间／续期写入 |
+| POST `/v1/overlays/{overlayId}/bootstrap`                  | `{token}`；成功data仅`{overlayId,expiresAt,serverTime}`，session只由Set-Cookie交付，不进JSON                                 |
+| GET `/v1/overlays/{overlayId}/snapshot`                    | 仅认专用Cookie；返回OverlaySnapshotData，无读取计数／更新时间／续期写入                                                      |
 
 管理写的精确body如下；未知字段422，TTL无默认值，理由去首尾空白后1–200字符。Event UPDATE从入口持有，ROTATE／REVOKE另检查精确当前overlayId及Grant版本；成功touch Event.version与audit同事务，不更改Match.version、记分projection、确认或lease。
 
 ```ts
-{ type: 'ISSUE', expectedEventVersion, expiresInMinutes }
-{ type: 'ROTATE', expectedEventVersion, overlayId, expectedGrantVersion, expiresInMinutes, reason }
-{ type: 'REVOKE', expectedEventVersion, overlayId, expectedGrantVersion, reason }
+{
+  type: ('ISSUE', expectedEventVersion, expiresInMinutes);
+}
+{
+  type: ('ROTATE', expectedEventVersion, overlayId, expectedGrantVersion, expiresInMinutes, reason);
+}
+{
+  type: ('REVOKE', expectedEventVersion, overlayId, expectedGrantVersion, reason);
+}
 // expected*为正整数；expiresInMinutes为必填整数1–10080。
 ```
 
 ISSUE仅在没有有效当前Grant时成功；已过期未撤销记录先以固定SUPERSEDED_AFTER_EXPIRY原子关闭后新建。ROTATE永久关闭当前身份再生成新overlayId／secret；REVOKE只关闭。Grant初始version1，撤销后2，到期本身不写库。当前记录包括EXPIRED，history仅最近20条REVOKED，按createdAt／overlayId降序，LIMIT21判断historyTruncated；没有未实现的历史游标。管理命令无自动重放或secret恢复：响应未知先GET核对；若已签发但secret丢失，显式ROTATE，不盲目再ISSUE。
 
-| 管理DTO | 完整允许字段 |
-|---|---|
-| OverlayGrantData | overlayId、template固定SCOREBAR_1080P_V1、status为ACTIVE／EXPIRED／REVOKED、version、createdAt、expiresAt、revokedAt:null或时间、revocationReason:null或理由 |
-| OverlayWorkbenchData | event仅`{id,name,version}`、matchId、preview:null或OverlayPreviewData、previewError:null或`{code:'RESULT_SOURCE_INVALID',message}`、currentGrant:null或未撤销Grant、history、historyLimit:20、historyTruncated、capabilities仅canIssue/canRotate/canRevoke三个boolean、serverTime |
-| OverlayCommandResponse | Workbench全部字段加credential；仅成功ISSUE／ROTATE为`{overlayId,token}`，REVOKE为null，GET不能恢复credential |
+| 管理DTO                | 完整允许字段                                                                                                                                                                                                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OverlayGrantData       | overlayId、template固定SCOREBAR_1080P_V1、status为ACTIVE／EXPIRED／REVOKED、version、createdAt、expiresAt、revokedAt:null或时间、revocationReason:null或理由                                                                                                                      |
+| OverlayWorkbenchData   | event仅`{id,name,version}`、matchId、preview:null或OverlayPreviewData、previewError:null或`{code:'RESULT_SOURCE_INVALID',message}`、currentGrant:null或未撤销Grant、history、historyLimit:20、historyTruncated、capabilities仅canIssue/canRotate/canRevoke三个boolean、serverTime |
+| OverlayCommandResponse | Workbench全部字段加credential；仅成功ISSUE／ROTATE为`{overlayId,token}`，REVOKE为null，GET不能恢复credential                                                                                                                                                                      |
 
 坏FINAL时私有preview=null及有限previewError，仍返回freshEventVersion、Grant历史及能力；ISSUE／ROTATE／REVOKE成功响应也不能因预览来源错误回滚授权命令。仅场次SCORER／RESULT_REVIEWER、TeamAccessGrant或未实际分配的global STREAMER不能管理；其他本赛事实际staff只读，前端只按capabilities显示动作。
 
@@ -388,11 +416,9 @@ OverlayPreviewData逐层白名单完整为：eventName、home/away各`{teamName}
 
 实际错误：422 VALIDATION_ERROR；409 VERSION_CONFLICT／OVERLAY_ALREADY_ISSUED／OVERLAY_GRANT_NOT_CURRENT／OVERLAY_GRANT_VERSION_CONFLICT／RESULT_SOURCE_INVALID；私有未知／跨scope或无赛事可见权404 RESOURCE_NOT_FOUND、可见只读staff写403 FORBIDDEN、私人未认证401；独立授权失败统一404，不暴露撤销／过期／错secret／错Grant差异。POST Origin拒绝403 ORIGIN_REJECTED。schema与执行边界见[DATA_MODEL第11节](DATA_MODEL.md)、[TESTING](TESTING.md)。
 
-
 ### P06-A两轮成功CI与恢复来源
 
 首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）也全部成功；后续15份Markdown只修可达恢复点及记录，没有业务或Migration变化。最终CI再次全部成功后合并PR7。首head文档P2已resolved／outdated，最终addeb自动CodeReview completed且无finding（comment6337630278），security未运行。恢复使用上述main合并点或最终远端source；本地19d5801仅作历史来源，不是fresh checkout恢复入口。两轮run／job与边界见[TESTING](TESTING.md)。原生OBS／CEF、生产与备份恢复仍未验收。
-
 
 ## 11. P07-A运行能力与就绪合同（DONE / MAIN，PR8）
 
@@ -414,7 +440,6 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 
 错误沿用401/403 FORBIDDEN/ORIGIN_REJECTED、隐藏或跨scope404 RESOURCE_NOT_FOUND；422 VALIDATION_ERROR；409 VERSION_CONFLICT/RESCHEDULE_UNCHANGED/SCHEDULE_CONFLICT/INVALID_EVENT_STATE/MATCH_CANNOT_RESCHEDULE/RESCHEDULE_SOURCE_INVALID。冲突仅目标fixture及必要Court/Team/时间，不能泄露不可见外部赛事详情。响应未知或版本冲突须fresh GET核对，不自动重放。007将精确运行/恢复期望扩为40表、7Migration，历史P07-A的39表证据仍仅属于该版本。
 
-
 ## C04 单淘汰契约
 
 2026-10-23，已合并PR12，验证状态见[C04](tasks/C04.md)。原调度API按赛事format支持`SE_SEEDED_V1`：首轮生成/分配/校验/发布沿原CAS与冻结来源；既有RR_CIRCLE_V1不变。新私有GET `/v1/orgs/{orgId}/events/{eventId}/knockout`返回`EventKnockoutData`；POST同前缀`knockout-round-commands`严格`PublishKnockoutRoundInput`，reason去空白4–500 Unicode字符，expectedEventVersion及expectedSourceHash必须同时匹配。本轮所有场地/时间精确覆盖nextRound.fixtures，未分配不发布，冲突全回滚。错误含409 KNOCKOUT_SOURCE_CONFLICT/KNOCKOUT_ROUND_NOT_READY/KNOCKOUT_DEPENDENCY_ORDER/SCHEDULE_CONFLICT/VERSION_CONFLICT、既有401/403/404。复用原赛事管理员授权和orgmutex→event锁序。
@@ -430,3 +455,10 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 `GET /v1/me/participant-entries` 发现当前本人已列入名单的报名及仅撤宣传的历史入口。`/v1/orgs/:orgId/entries/:entryId/participant-materials` 提供 mine GET/PUT、mine/submit、mine/publicity-withdraw、mine/receipts/:clientRequestId、列表、:memberId、:memberId/private、:memberId/files/:kind、:memberId/review。普通DTO脱敏，原始证件仅明确授权private接口，文件不进入原整队media或匿名目录。当前活跃成员本人/独立审核人与领队进度权限分开；原资料本人退出后仍有数据主体只读与宣传撤回例外，不获得新球队权限。
 
 保存使用原clientRequestId与expectedVersion；未知结果查原回执，不用新ID绕过。照片或保单分次保存，精确PUT mine路由共享12MiB/2并发上传lane，邻接命令仍100KiB。材料通过、队伍提交、独立队伍批准、冻结分别执行；后面三个入口重查当前资料/签署/审核/保障版本。拒绝宣传不影响参赛。在线保险、支付和自动实名核验未开放。
+
+
+### E08 成年本人资料处理重新确认（042）
+
+`GET /v1/orgs/:orgId/events/:eventId/youth-adult-data-consent?entryId=UUID&memberId=UUID` 仅返回当前本人材料scope的最小操作能力；不返回年龄、生日或身份明文。`POST`同路径接受当前能力给出的精确scope、材料/政策/条款版本和独立年龄证据标识，以及独立幂等request ID；客户端声明年龄不能产生权限。CONSENT只恢复当前本人资料处理，仍须正常当前资格及最终独立审核；WITHDRAW无需重新解密年龄证据。公开档案、照片宣传与直播分别核验其原有独立用途授权，不因本次资料同意自动开放。
+
+成年本人处理许可经历WITHDRAW或当前政策更换后，公开用途还须新独立动作：档案来源同意不能早于当前政策撤回后的首个CONSENT，宣传照片还须当前材料的独立照片同意版本晚于该时点。普通换照片后的资料再同意沿用该轮起点，避免重新上传与处理同意互锁；LIVE继续独立核实际直播/录像内容权利，不由资料处理许可代替。

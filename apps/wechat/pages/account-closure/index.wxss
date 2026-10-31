@@ -1,0 +1,4 @@
+@import "../../app.wxss";
+.confirmation { display:flex; align-items:center; min-height:44px; font-size:16px; line-height:1.6; padding:12px 0; }
+.small { font-size:16px; line-height:1.6; }
+.field { min-height:44px; font-size:16px; }

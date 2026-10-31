@@ -5,6 +5,7 @@ import { ApiError } from './errors.js';
 import { participantKey, participantKeyId } from './participant-materials-domain.js';
 import { readVerifiedRegionCatalog } from './region-catalog-integrity.js';
 import { orderedMigrationNames } from './database/migration-plan.js';
+import { assertMigrationManifestSurface } from '../../../ops/db/privileges.mjs';
 
 export interface PrivilegeManifest {
   version: 1;
@@ -14,7 +15,11 @@ export interface PrivilegeManifest {
   functions: Record<string, 'EXECUTE'[]>;
   tables: Record<
     string,
-    { privileges: ('SELECT' | 'INSERT' | 'DELETE')[]; updateColumns: string[] }
+    {
+      privileges: ('SELECT' | 'INSERT' | 'DELETE')[];
+      updateColumns: string[];
+      selectColumns?: string[];
+    }
   >;
 }
 export interface TablePrivileges {
@@ -89,11 +94,12 @@ export function privilegesMatch(manifest: PrivilegeManifest, tables: TablePrivil
     )
       return false;
     const columns = new Set(t.columns.map((c) => c.name));
-    if (rule.updateColumns.some((name) => !columns.has(name))) return false;
+    if ([...rule.updateColumns, ...(rule.selectColumns ?? [])].some((name) => !columns.has(name)))
+      return false;
     return t.columns.every(
       (c) =>
         c.update === rule.updateColumns.includes(c.name) &&
-        c.select === p.has('SELECT') &&
+        c.select === (p.has('SELECT') || (rule.selectColumns ?? []).includes(c.name)) &&
         c.insert === p.has('INSERT') &&
         !c.references,
     );
@@ -128,6 +134,10 @@ async function expectations() {
       !/^[a-z][a-z_]+$/.test(name) ||
       !Array.isArray(t.privileges) ||
       !Array.isArray(t.updateColumns) ||
+      !Array.isArray(t.selectColumns ?? []) ||
+      (t.privileges.includes('SELECT') && (t.selectColumns ?? []).length > 0) ||
+      new Set(t.selectColumns ?? []).size !== (t.selectColumns ?? []).length ||
+      (t.selectColumns ?? []).some((v) => !/^[a-z][a-z_]+$/.test(v)) ||
       t.privileges.some((p) => !['SELECT', 'INSERT', 'DELETE'].includes(p)) ||
       (t.privileges.includes('DELETE') &&
         !['auth_rate_limits', 'wechat_auth_attempts'].includes(name)) ||
@@ -150,18 +160,12 @@ async function expectations() {
   }
   const directory = new URL('../migrations/', import.meta.url);
   const names = orderedMigrationNames(await readdir(directory));
+  const sources = await Promise.all(
+    names.map(async (name) => ({ name, sql: await readFile(new URL(name, directory), 'utf8') })),
+  );
+  assertMigrationManifestSurface(manifest, sources);
   const expected = new Map(
-    await Promise.all(
-      names.map(
-        async (name) =>
-          [
-            name,
-            createHash('sha256')
-              .update(await readFile(new URL(name, directory)))
-              .digest('hex'),
-          ] as const,
-      ),
-    ),
+    sources.map(({ name, sql }) => [name, createHash('sha256').update(sql).digest('hex')]),
   );
   return { manifest, expected };
 }
@@ -219,7 +223,7 @@ export async function assertRuntimeReadiness(
     );
     if (extra.rows[0]?.present !== false) throw new Error();
     const materialKeys = await client.query<{ key_id: string }>(
-      'SELECT DISTINCT key_id FROM participant_material_revisions WHERE payload_ciphertext IS NOT NULL ORDER BY key_id',
+      `SELECT DISTINCT key_id FROM (SELECT key_id FROM participant_material_revisions WHERE payload_ciphertext IS NOT NULL UNION ALL SELECT guardian_key_id AS key_id FROM youth_guardian_requests WHERE guardian_payload_ciphertext IS NOT NULL) retained ORDER BY key_id`,
     );
     const keyId =
       participantDataKey === undefined

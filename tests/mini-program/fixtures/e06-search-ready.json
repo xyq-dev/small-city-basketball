@@ -1,0 +1,69 @@
+{
+  "name": "e06-search-ready",
+  "route": "pages/search/index",
+  "state": "synthetic-populated",
+  "designSource": "Implemented native Page data; synthetic static layout fixture, not a real provider, delivery or account acceptance",
+  "expectText": [
+    "搜索赛事、球队与球员",
+    "合成城市周末篮球邀请赛",
+    "合成青锋篮球俱乐部",
+    "合成球员甲",
+    "继续加载"
+  ],
+  "data": {
+    "query": "合成",
+    "city": "合成市",
+    "kind": "ALL",
+    "kinds": [
+      {
+        "key": "ALL",
+        "label": "全部"
+      },
+      {
+        "key": "EVENT",
+        "label": "赛事"
+      },
+      {
+        "key": "TEAM",
+        "label": "球队"
+      },
+      {
+        "key": "PLAYER",
+        "label": "球员"
+      }
+    ],
+    "items": [
+      {
+        "kind": "EVENT",
+        "kindLabel": "赛事",
+        "publicKey": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+        "key": "EVENT:EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+        "displayName": "合成城市周末篮球邀请赛",
+        "city": "合成市",
+        "startsOn": "2028-06-01",
+        "endsOn": "2028-06-03"
+      },
+      {
+        "kind": "TEAM",
+        "kindLabel": "球队",
+        "publicKey": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+        "key": "TEAM:TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+        "displayName": "合成青锋篮球俱乐部",
+        "city": null
+      },
+      {
+        "kind": "PLAYER",
+        "kindLabel": "球员",
+        "publicKey": "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+        "key": "PLAYER:PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+        "displayName": "合成球员甲",
+        "city": null
+      }
+    ],
+    "cursor": "synthetic-layout-search-cursor",
+    "busy": false,
+    "searched": true,
+    "error": "",
+    "notice": "仅展示当前仍获公开授权的结果。合成界面数据，仅供布局校验。"
+  }
+}

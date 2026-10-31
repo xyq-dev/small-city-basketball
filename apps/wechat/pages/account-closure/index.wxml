@@ -1,0 +1,17 @@
+<view class="page">
+  <scb-header title="账号自助注销"/>
+  <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+  <view wx:if="{{message}}" class="notice">{{message}}</view>
+  <view wx:if="{{loginRequired}}" class="card"><view>请先登录核对本人账号。</view><button class="primary" bindtap="login">前往登录</button></view>
+  <block wx:else>
+    <view class="card"><view class="subtitle">注销影响</view><view class="small">检查通过后账号会停用并撤销登录、关联与公开授权，无法恢复。已确认比赛、财务及争议历史会按必要保留规则保存，注销不等于立即删除所有记录。</view><view class="small">待处理交易、退款、保险、直播及履约争议须先处理；机构负责人须先移交。未完成检查不会显示“已注销”。</view></view>
+    <view wx:if="{{!enabled}}" class="notice warning">安全检查尚未完整配置，当前不能发起新申请。已有申请仍可核对或取消。</view>
+    <view wx:if="{{request}}" class="card"><view class="subtitle">{{request.label}}</view><view>最早检查时间：{{request.executeText}}</view><view wx:for="{{request.blockers}}" wx:key="*this" class="notice warning">{{item}}</view><button class="secondary" bindtap="load" disabled="{{busy || loading}}">刷新核对结果</button></view>
+    <view class="card"><text class="field-label">当前密码</text><input class="field" password value="{{password}}" data-field="password" bindinput="input" disabled="{{busy}}" maxlength="128"/>
+      <block wx:if="{{!pending && (!request || !request.canCancel)}}"><text class="field-label">自选等待期（每日按24小时计算）</text><picker range="{{dayOptions}}" value="{{coolingOffDays}}" bindchange="chooseDays" disabled="{{busy}}"><view class="field">{{dayOptions[coolingOffDays]}}</view></picker><checkbox-group bindchange="confirmTerms"><label class="confirmation"><checkbox value="close" checked="{{confirmed}}" disabled="{{busy}}"/>我已理解账号停用不可恢复，必要历史按规则保留。</label></checkbox-group><button class="danger" bindtap="requestClosure" disabled="{{busy || loading || !enabled || !confirmed}}">申请注销并开始安全检查</button></block>
+      <button wx:if="{{!pending && request && request.canCancel}}" class="secondary" bindtap="cancelClosure" disabled="{{busy || loading}}">取消本次注销申请</button>
+      <block wx:if="{{pending}}"><view class="notice warning">原请求结果尚未确认，保留了原编号。请重新填写当前密码核对原操作，不要创建新请求。</view><button class="primary" bindtap="retry" disabled="{{busy || loading}}">按原编号核对并重试</button></block>
+      <view class="small muted">密码不会写入本机恢复记录；离开页面会清除输入。账号安全信息变化后，旧注销授权失效，需重新确认。</view>
+    </view>
+  </block>
+</view>

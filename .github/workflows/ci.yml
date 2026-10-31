@@ -45,7 +45,7 @@ concurrency:
 jobs:
   admin:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -56,7 +56,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Chinese fonts for poster rendering and layout verification
-        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra fontconfig
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra fontconfig ffmpeg
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
@@ -76,7 +76,7 @@ jobs:
   api:
     runs-on: ubuntu-latest
     # C05 adds commercial, group and media flows in both isolated browser projects.
-    timeout-minutes: 35
+    timeout-minutes: 55
     services:
       postgres:
         image: postgres:18.6-alpine3.24
@@ -103,11 +103,13 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Chinese fonts for actual poster rasterization
-        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fontconfig
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk fontconfig ffmpeg
       - name: Prepare exact PostgreSQL archive clients and isolated restore role
         run: |
           node --test scripts/ci-postgres-clients.test.mjs
           node scripts/prepare-ci-postgres-clients.mjs
+      - id: api_build
+        run: npm run build --workspace @small-city-basketball/api
       - name: Verify complete isolated migration chain before running dependent suites
         id: schema_preflight
         run: node --import tsx scripts/check-migrations.mjs
@@ -115,8 +117,6 @@ jobs:
         run: npm run test:integration --workspace @small-city-basketball/api -- --exclude '**/p07-*.integration.test.ts'
       # Stop dependent suites on a failed prerequisite so its archived log is available promptly.
       # A successful run still executes build, native pages, restart and browser checks.
-      - id: api_build
-        run: npm run build --workspace @small-city-basketball/api
       - name: Native mini program pages against the real API
         run: npm run test:wechat:api
       - name: Capture sessions, scoring, standings and public identities
@@ -152,7 +152,7 @@ jobs:
 
   production:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

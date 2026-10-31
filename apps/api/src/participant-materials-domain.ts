@@ -453,6 +453,8 @@ export interface ParticipantEligibilityContext {
   eventStartDate: string;
   eventEndDate: string;
   requireApproval?: boolean;
+  /** Server-verified current policy proof; never parsed from the participant request. */
+  onlineInsuranceReady?: boolean;
   material: ParticipantEligibilityMaterial | null;
 }
 export interface ParticipantEligibilityBlocker {
@@ -483,9 +485,9 @@ export function participantEligibility(input: ParticipantEligibilityContext): {
     if (!m.hasPortrait) add('PORTRAIT_REQUIRED', '需上传本人清晰正面照片');
     if (m.termsVersion !== PARTICIPANT_TERMS_VERSION)
       add('TERMS_REQUIRED', '需本人确认当前规程与资料用途');
-    if (input.requireInsurance) {
+    if (input.requireInsurance && input.onlineInsuranceReady !== true) {
       if (!m.hasInsurance || !m.insuranceStartDate || !m.insuranceEndDate)
-        add('INSURANCE_REQUIRED', '需补齐外部保单资料');
+        add('INSURANCE_REQUIRED', '需有效外部保单或已出单的在线保障');
       else if (
         m.insuranceStartDate > input.eventStartDate ||
         m.insuranceEndDate < input.eventEndDate

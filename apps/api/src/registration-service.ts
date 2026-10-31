@@ -1,5 +1,5 @@
 import { randomUUID, timingSafeEqual } from 'node:crypto';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type {
   EntryCommandType,
   EntryData,
@@ -23,7 +23,11 @@ import type {
 } from '@small-city-basketball/contracts';
 import { ApiError, forbidden, notFound } from './errors.js';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
-import type { Actor, EventRow } from './service.js';
+import type { Actor, ApiOptions, EventRow } from './service.js';
+import type { SourceTradeHooks } from './trade-source-hooks.js';
+import type { ParticipantMaterialGuards } from './participant-materials-guards.js';
+import { lockTradeSourceCalendar } from './trade-source-hooks.js';
+import { captureNotification } from './notification-source.js';
 import { hashPassword, hashToken, newSessionToken } from './security.js';
 import {
   calendarDate,
@@ -134,6 +138,14 @@ const assertNotFrozen = (frozen: boolean) => {
 
 /** P03 adds a separate team-grant context. P02 membership-only guards remain unchanged. */
 export class RegistrationService extends ApplicationService {
+  constructor(
+    pool: Pool,
+    options: ApiOptions,
+    private readonly trade?: SourceTradeHooks,
+    private readonly materialGuards: ParticipantMaterialGuards = {},
+  ) {
+    super(pool, options);
+  }
   async registerParticipant(
     body: unknown,
     ip: string,
@@ -586,6 +598,11 @@ export class RegistrationService extends ApplicationService {
         ON CONFLICT(org_id,team_id,user_id) DO UPDATE SET status=EXCLUDED.status,updated_at=clock_timestamp()`,
         [ctx.orgId, team.id, targetUserId, input.status],
       );
+      // Public snapshots lock this team tuple before checking reviewer independence.
+      await client.query('UPDATE teams SET updated_at=updated_at WHERE org_id=$1 AND id=$2', [
+        ctx.orgId,
+        team.id,
+      ]);
       await this.audit(client, ctx.user.id, ctx.orgId, 'TEAM_GRANT_CHANGED', 'team', team.id, {
         userId: targetUserId,
         status: input.status,
@@ -672,6 +689,10 @@ export class RegistrationService extends ApplicationService {
         ON CONFLICT(org_id,team_id,user_id) DO UPDATE SET status='ACTIVE',updated_at=clock_timestamp()`,
         [ctx.orgId, team.id, actor.user.id],
       );
+      await client.query('UPDATE teams SET updated_at=updated_at WHERE org_id=$1 AND id=$2', [
+        ctx.orgId,
+        team.id,
+      ]);
       await this.audit(
         client,
         actor.user.id,
@@ -769,18 +790,23 @@ export class RegistrationService extends ApplicationService {
     entry: EntryRow,
     rules: EventRulesetData,
   ) {
-    return readEntryParticipantEligibility(client, {
-      orgId: entry.org_id,
-      eventId: entry.event_id,
-      entryId: entry.id,
-      rosterRevisionId: entry.roster_revision_id,
-      rulesetId: rules.id,
-      startDate: event.row.start_date,
-      endDate: event.row.end_date,
-      requireParticipantMaterials: rules.requireParticipantMaterials === true,
-      requireInsurance: rules.requireInsurance,
-      keyId: this.materialKeyId(),
-    });
+    return readEntryParticipantEligibility(
+      client,
+      {
+        orgId: entry.org_id,
+        eventId: entry.event_id,
+        entryId: entry.id,
+        rosterRevisionId: entry.roster_revision_id,
+        rulesetId: rules.id,
+        startDate: event.row.start_date,
+        endDate: event.row.end_date,
+        requireParticipantMaterials: rules.requireParticipantMaterials === true,
+        requireInsurance: rules.requireInsurance,
+        keyId: this.materialKeyId(),
+        participantDataKey: this.options.participantDataKey,
+      },
+      this.materialGuards,
+    );
   }
   private publicEvent(event: EventAccess) {
     const row = event.row;
@@ -854,19 +880,31 @@ export class RegistrationService extends ApplicationService {
       : null;
     const canManage = event.canManage && !event.frozen;
     let materialsReady = true;
+    let financialReady = true;
     const materialKeyId = this.materialKeyId();
     if (rules?.requireParticipantMaterials) {
       materialsReady = materialKeyId !== null;
       if (materialsReady) await assertParticipantKeyConsistency(client, materialKeyId);
-      if (row.status === 'REGISTRATION_CLOSED') {
-        const approved = await client.query<EntryRow>(
-          "SELECT * FROM entries WHERE org_id=$1 AND event_id=$2 AND status='APPROVED' ORDER BY id",
-          [row.org_id, row.id],
-        );
-        for (const entry of approved.rows) {
-          if (!(await this.materialEligibility(client, event, entry, rules)).ready)
-            materialsReady = false;
+    }
+    if (row.status === 'REGISTRATION_CLOSED') {
+      const approved = await client.query<EntryRow>(
+        "SELECT * FROM entries WHERE org_id=$1 AND event_id=$2 AND status='APPROVED' ORDER BY id",
+        [row.org_id, row.id],
+      );
+      for (const entry of approved.rows) {
+        try {
+          await this.trade?.assertSourceFinancialGate(client, 'ENTRY_FEE', entry.id);
+          await this.trade?.assertSourceFinancialGate(client, 'ENTRY_DEPOSIT', entry.id);
+        } catch (error) {
+          if (!(error instanceof ApiError) || error.code !== 'TRADE_PAYMENT_REQUIRED') throw error;
+          financialReady = false;
         }
+        if (
+          rules?.requireParticipantMaterials &&
+          materialsReady &&
+          !(await this.materialEligibility(client, event, entry, rules)).ready
+        )
+          materialsReady = false;
       }
     }
     return {
@@ -890,6 +928,7 @@ export class RegistrationService extends ApplicationService {
           canManage &&
           row.status === 'REGISTRATION_CLOSED' &&
           materialsReady &&
+          financialReady &&
           counts.APPROVED >= 2 &&
           !counts.SUBMITTED &&
           !counts.CHANGES_REQUESTED,
@@ -980,6 +1019,7 @@ export class RegistrationService extends ApplicationService {
     const input = registrationCommandInput(body);
     return this.transaction(async (client) => {
       const ctx = await this.context(client, cookie, org);
+      await lockTradeSourceCalendar(client, ctx.orgId);
       const event = await this.event(client, ctx, id, true);
       if (!event.canRead) throw notFound();
       if (!event.canManage) throw forbidden();
@@ -1024,6 +1064,8 @@ export class RegistrationService extends ApplicationService {
           await this.team(client, ctx, teamId, false);
         const entries: FrozenEntryData[] = [];
         for (const entry of approved.rows) {
+          await this.trade?.assertSourceFinancialGate(client, 'ENTRY_FEE', entry.id);
+          await this.trade?.assertSourceFinancialGate(client, 'ENTRY_DEPOSIT', entry.id);
           if (!entry.roster_revision_id || entry.ruleset_id !== rules.id)
             stateError('获批报名缺少对应规则或名单快照');
           const players = await this.players(client, ctx.orgId, entry.id, entry.roster_revision_id);
@@ -1345,10 +1387,18 @@ export class RegistrationService extends ApplicationService {
     eventId: string,
     body: unknown,
   ): Promise<EntryData> {
-    const input = objectInput(body, ['teamId']);
+    const input = objectInput(body, ['teamId', 'acceptedTermsIds', 'chargeConsent']);
+    if (input.chargeConsent !== undefined && input.chargeConsent !== true)
+      invalid('收费条款须明确确认');
+    const terms =
+      input.acceptedTermsIds === undefined
+        ? {}
+        : objectInput(input.acceptedTermsIds, ['ENTRY_FEE', 'ENTRY_DEPOSIT']);
+    for (const value of Object.values(terms)) resourceId(typeof value === 'string' ? value : '');
     const teamId = resourceId(typeof input.teamId === 'string' ? input.teamId : '');
     return this.transaction(async (client) => {
       const ctx = await this.context(client, cookie, org);
+      await lockTradeSourceCalendar(client, ctx.orgId);
       const event = await this.event(client, ctx, eventId, true);
       const team = await this.team(client, ctx, teamId, true);
       const leader = await this.leader(client, ctx, team.id);
@@ -1373,6 +1423,13 @@ export class RegistrationService extends ApplicationService {
         'INSERT INTO entries(id,org_id,event_id,team_id,team_name,ruleset_id,created_by) VALUES($1,$2,$3,$4,$5,$6,$7)',
         [id, ctx.orgId, event.row.id, team.id, team.name, event.row.locked_ruleset_id, ctx.user.id],
       );
+      for (const kind of ['ENTRY_FEE', 'ENTRY_DEPOSIT'] as const)
+        await this.trade?.captureSourceCharge(client, ctx, {
+          kind,
+          sourceId: id,
+          acceptedTermsId: terms[kind] as string | undefined,
+          chargeConsent: input.chargeConsent === true,
+        });
       await this.audit(client, ctx.user.id, ctx.orgId, 'ENTRY_CREATED', 'entry', id, {
         eventId: event.row.id,
         teamId: team.id,
@@ -1452,6 +1509,7 @@ export class RegistrationService extends ApplicationService {
     const input = entryCommandInput(body);
     return this.transaction(async (client) => {
       const ctx = await this.context(client, cookie, org);
+      await lockTradeSourceCalendar(client, ctx.orgId);
       const access = await this.entryAccess(client, ctx, id, true);
       const { event, leader, entry } = access;
       assertNotFrozen(event.frozen);
@@ -1459,6 +1517,10 @@ export class RegistrationService extends ApplicationService {
       if (!['REGISTRATION_OPEN', 'REGISTRATION_CLOSED'].includes(event.row.status))
         stateError('赛事当前不允许报名操作');
       let next: EntryStatus;
+      if (input.type === 'SUBMIT' || input.type === 'APPROVE') {
+        await this.trade?.assertSourceFinancialGate(client, 'ENTRY_FEE', entry.id);
+        await this.trade?.assertSourceFinancialGate(client, 'ENTRY_DEPOSIT', entry.id);
+      }
       if (input.type === 'SUBMIT') {
         if (!leader) throw forbidden();
         if (!this.editable(event, entry, leader)) stateError('当前状态不允许提交报名');
@@ -1521,6 +1583,13 @@ export class RegistrationService extends ApplicationService {
         fromVersion: entry.version,
         toVersion: entry.version + 1,
       });
+      if (['APPROVE', 'REQUEST_CHANGES', 'REJECT'].includes(input.type))
+        await captureNotification(client, {
+          kind: 'REGISTRATION_REVIEW',
+          orgId: ctx.orgId,
+          eventId: event.row.id,
+          resourceId: entry.id,
+        });
       return this.entryDto(client, await this.entryAccess(client, ctx, entry.id, true));
     });
   }

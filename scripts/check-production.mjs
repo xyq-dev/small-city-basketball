@@ -139,6 +139,7 @@ function configuration(secretDirectory, database = sourceDatabase) {
     SCB_BACKUP_DIR: archives,
     POSTGRES_DB: database,
     COMMERCE_MODE: 'ENFORCED',
+    SCB_BACKGROUND_WORKERS_ENABLED: 'false',
   };
 }
 const sourceEnv = configuration(sourceSecrets);

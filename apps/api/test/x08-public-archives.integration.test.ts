@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { PublicArchivesService } from '../src/public-archives-service.js';
 import { team } from './p03-support.js';
 import { hashToken, readSessionToken } from '../src/security.js';
-import { ORIGIN, testDatabaseUrl, login } from './support.js';
+import { ORIGIN, testDatabaseUrl, login, call, data } from './support.js';
 import {
   acquire,
   act,
@@ -135,6 +135,53 @@ describe(
       ])
         expect(JSON.stringify(result)).not.toContain(secret);
     });
+    test('unified search uses authorized public projections and immediately drops revoked profiles', async () => {
+      const f = await scored(),
+        label = '跨域合成搜索' + randomUUID().slice(0, 8);
+      const p = await s.create(h.owner.cookie, {
+        commandId: randomUUID(),
+        kind: 'TEAM',
+        displayName: label,
+        orgId: h.owner.orgId,
+        teamId: f.teamId,
+      });
+      const pub = await publish(p, h.owner.cookie);
+      await s.nominate(h.owner.cookie, {
+        commandId: randomUUID(),
+        profileId: p.id,
+        orgId: h.owner.orgId,
+        eventId: f.eventId,
+        teamId: f.teamId,
+        memberId: null,
+        publisherConsent: true,
+        reason: '合成跨域搜索公开来源',
+      });
+      const path = '/v1/public/search?q=' + encodeURIComponent(label) + '&kind=TEAM';
+      const found = data<{ items: Record<string, unknown>[] }>(await call(h.api, 'get', path));
+      expect(found.items).toEqual([
+        {
+          kind: 'TEAM',
+          publicKey: pub.publicKey,
+          displayName: label,
+          city: null,
+          startsOn: null,
+          endsOn: null,
+        },
+      ]);
+      for (const secret of [p.id, f.teamId, f.eventId, h.owner.id, h.owner.email])
+        expect(JSON.stringify(found)).not.toContain(secret);
+      const scoped = data<{ items: unknown[] }>(
+        await call(h.api, 'get', path + '&city=' + encodeURIComponent('未公开合成城市')),
+      );
+      expect(scoped.items).toEqual([]);
+      await s.command(h.owner.cookie, p.id, {
+        commandId: randomUUID(),
+        expectedVersion: pub.version,
+        type: 'REVOKE',
+        reason: '合成撤回搜索公开权限',
+      });
+      expect(data<{ items: unknown[] }>(await call(h.api, 'get', path)).items).toEqual([]);
+    }, 120000);
     test('same-name members cannot nominate to another account; revoked keys never revive after republication', async () => {
       const f = await scored();
       const p = await s.create(h.otherOwner.cookie, {

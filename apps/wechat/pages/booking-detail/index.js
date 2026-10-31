@@ -45,6 +45,14 @@ Page({
     pendingAcknowledged: false,
     resolutionLabels: model.RESOLUTION_LABELS,
   },
+  trade(e) {
+    if (!this.data.busy)
+      wx.navigateTo({
+        url:
+          '/pages/trade-order/index?kind=PLAYER_APPEARANCE&sourceId=' +
+          encodeURIComponent(model.id(e.currentTarget.dataset.id)),
+      });
+  },
   onLoad(query) {
     try {
       this.orderId = model.id(query && (query.id || query.orderId));

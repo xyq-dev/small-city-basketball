@@ -294,12 +294,28 @@ function rankingHarness(profiles: any[], proofs: any[]) {
       if (sql.startsWith('BEGIN') || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
       if (sql.startsWith('SELECT p.*,k.consented_at')) return { rows: profiles };
       if (
-        sql.startsWith('SELECT id,org_id,event_id,nominated_by FROM public_archive_sources') ||
+        sql.startsWith(
+          'SELECT id,org_id,event_id,team_id,nominated_by FROM public_archive_sources',
+        ) ||
         sql.includes('FOR SHARE')
       )
         return { rows: [] };
       if (sql === 'SELECT statement_timestamp() AS now')
         return { rows: [{ now: new Date('2026-10-31T00:00:00Z') }] };
+      if (sql.startsWith('SELECT EXISTS(SELECT 1 FROM youth_guardian_preconsents'))
+        return { rows: [{ known: false }] };
+      if (sql.includes('FROM public_archive_sources s JOIN youth_event_policies'))
+        return { rows: [] };
+      if (sql.startsWith('SELECT g.*,p.kind'))
+        return {
+          rows: profiles.map((p) => ({
+            id: p.id,
+            profile_id: p.id,
+            profile_kind: p.kind,
+            owner_user_id: p.owner_user_id,
+            youth_enabled: false,
+          })),
+        };
       if (sql.startsWith('SELECT profile_id,count'))
         return { rows: profiles.map((p) => ({ profile_id: p.id, count: 1 })) };
       if (sql.startsWith('SELECT requested.id')) return { rows: proofs };
@@ -415,7 +431,8 @@ describe('public archive permission-lock retries', () => {
               return { rows: [] };
             }
             if (sql.startsWith('SELECT p.*,k.consented_at')) return { rows: [p] };
-            if (sql.startsWith('SELECT id,org_id,event_id,nominated_by')) return { rows: [] };
+            if (sql.startsWith('SELECT id,org_id,event_id,team_id,nominated_by'))
+              return { rows: [] };
             if (sql.includes('FOR SHARE')) throw Object.assign(Error('busy'), { code: '55P03' });
             projectionReads++;
             throw Error('Old projection must not be read');
@@ -462,7 +479,8 @@ describe('public archive permission-lock retries', () => {
             if (sql.startsWith('BEGIN') || sql === 'ROLLBACK') return { rows: [] };
             if (sql.startsWith('SELECT p.*,k.consented_at'))
               return { rows: attempt === 1 ? [p] : [] };
-            if (sql.startsWith('SELECT id,org_id,event_id,nominated_by')) return { rows: [] };
+            if (sql.startsWith('SELECT id,org_id,event_id,team_id,nominated_by'))
+              return { rows: [] };
             if (sql.includes('FOR SHARE')) throw Object.assign(Error('changed'), { code: '40001' });
             throw Error('Unexpected stale read');
           },

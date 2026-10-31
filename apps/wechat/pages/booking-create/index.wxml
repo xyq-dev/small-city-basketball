@@ -467,7 +467,7 @@
               ></block
             ></view
         >
-        <template is="fees" data="{{quote: quote}}" />
+        <template is="fees" data="{{quote: quote}}" /><view wx:if="{{feePreview.enabled}}" class="card"><view class="subtitle">服务器实际收费条款</view><view>实际收款方：{{feePreview.merchantName}}</view><view wx:for="{{feePreview.quotes}}" wx:key="profileId">每场固定金额 {{item.totalText}} · {{item.profileId}}</view><view>{{feePreview.terms}}</view></view><view wx:elif="{{feePreview}}" class="notice">当前机构未启用在线收费；此次创建不绑定收费，后续不追溯收取。</view>
         <view class="card"
           ><view class="subtitle">请逐项核对</view
           ><view class="muted">我有权代表所选球队预约。</view
@@ -489,7 +489,7 @@
       <view wx:if="{{review || editorOpen || detailsOpen || !selectedCount || !eventName || !teamId}}" class="booking-boundary small muted"
         ><view class="boundary-title">当前仅提交合作预约</view
         ><view
-          >在线支付与个人分账尚未开放；提交不扣款，不自动加入报名名单。实收、退款到账和已结算均为¥0。</view
+          >提交不扣款、不自动加入报名名单；收费仅在明确同意服务器条款后绑定。球员接单后查看本场资金订单，渠道核实后才确认付款。</view
         ></view
       >
     </block>

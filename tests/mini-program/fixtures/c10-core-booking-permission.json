@@ -154,7 +154,8 @@
     "successOrderId": "",
     "noTeams": true,
     "noPlayers": false,
-    "quoteInvalid": false
+    "quoteInvalid": false,
+    "feePreview": null
   },
   "expectAbsentText": [
     "合成林越",

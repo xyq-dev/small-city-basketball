@@ -1,17 +1,17 @@
 <view class="page">
  <view class="card"><text class="title">比赛异常裁定</text><text class="muted">只允许尚未开赛的比赛。弃权独立计积分，取消排除出积分表；不会生成投篮、上场时间或虚假比分。</text><text class="muted">提议与复核须由不同人员完成；参赛人员和本场实际记分人员不能复核。已被下一轮消费的裁定当前不可直接撤回。</text></view>
- <view wx:if="error" class="card error">{{error}}</view><view wx:if="notice" class="card">{{notice}}</view>
+ <view wx:if="{{error}}" class="card error">{{error}}</view><view wx:if="{{notice}}" class="card">{{notice}}</view>
  <button bindtap="load" loading="{{loading}}" disabled="{{loading || busy}}">刷新核对状态</button>
- <button wx:if="uncertain" bindtap="retry" disabled="{{busy}}">使用原操作编号重试</button>
- <view wx:if="event" class="card">
-  <text class="title">已锁定规则</text><text wx:if="!rules">赛事发布前未配置异常规则，当前不能裁定。</text>
+ <button wx:if="{{uncertain}}" bindtap="retry" disabled="{{busy}}">使用原操作编号重试</button>
+ <view wx:if="{{event}}" class="card">
+  <text class="title">已锁定规则</text><text wx:if="{{!rules}}">赛事发布前未配置异常规则，当前不能裁定。</text>
   <text wx:else>弃权胜方 {{rules.forfeitWinPoints}} 分，负方 {{rules.forfeitLossPoints}} 分；取消不计积分。</text>
-  <block wx:if="canEdit"><text>弃权胜方积分</text><input type="number" value="{{winPoints}}" data-field="winPoints" bindinput="input" disabled="{{busy || uncertain}}"/><text>弃权负方积分</text><input type="number" value="{{lossPoints}}" data-field="lossPoints" bindinput="input" disabled="{{busy || uncertain}}"/><button bindtap="saveRules" disabled="{{busy || uncertain}}">保存草稿规则</button></block>
+  <block wx:if="{{canEdit}}"><text>弃权胜方积分</text><input type="number" value="{{winPoints}}" data-field="winPoints" bindinput="input" disabled="{{busy || uncertain}}"/><text>弃权负方积分</text><input type="number" value="{{lossPoints}}" data-field="lossPoints" bindinput="input" disabled="{{busy || uncertain}}"/><button bindtap="saveRules" disabled="{{busy || uncertain}}">保存草稿规则</button></block>
  </view>
- <view wx:if="active" class="card"><text class="title">当前生效：{{active.title}}</text><text>{{active.sideLabel}}</text><text>{{active.reason}}</text><button wx:if="canRevoke" data-operation="REVOKE" bindtap="propose" disabled="{{busy || uncertain}}">提议撤回当前裁定</button></view>
- <view wx:if="!rulesOnly && event" class="card"><text class="title">操作原因</text><textarea maxlength="500" value="{{reason}}" data-field="reason" bindinput="input" placeholder="填写4至500字原因，保存到审核记录" disabled="{{busy || uncertain}}"/>
-  <block wx:if="canPropose"><button class="{{kind === 'FORFEIT' ? 'selected-choice' : ''}}" data-field="kind" data-value="FORFEIT" bindtap="choose">单场弃权</button><button class="{{kind === 'CANCELLED' ? 'selected-choice' : ''}}" data-field="kind" data-value="CANCELLED" bindtap="choose">单场取消</button><view wx:if="kind === 'FORFEIT'"><button class="{{side === 'HOME' ? 'selected-choice' : ''}}" data-field="side" data-value="HOME" bindtap="choose">主队弃权</button><button class="{{side === 'AWAY' ? 'selected-choice' : ''}}" data-field="side" data-value="AWAY" bindtap="choose">客队弃权</button></view><button bindtap="propose" disabled="{{busy || uncertain}}">提交独立复核</button></block>
-  <block wx:if="pending && canReview"><text>待复核：{{pending.title}}／{{pending.sideLabel}}</text><text>{{pending.reason}}</text><button data-type="APPROVE" bindtap="review" disabled="{{busy || uncertain}}">批准提案</button><button data-type="REJECT" bindtap="review" disabled="{{busy || uncertain}}">驳回提案</button></block>
+ <view wx:if="{{active}}" class="card"><text class="title">当前生效：{{active.title}}</text><text>{{active.sideLabel}}</text><text>{{active.reason}}</text><button wx:if="{{canRevoke}}" data-operation="REVOKE" bindtap="propose" disabled="{{busy || uncertain}}">提议撤回当前裁定</button></view>
+ <view wx:if="{{!rulesOnly && event}}" class="card"><text class="title">操作原因</text><textarea maxlength="500" value="{{reason}}" data-field="reason" bindinput="input" placeholder="填写4至500字原因，保存到审核记录" disabled="{{busy || uncertain}}"/>
+  <block wx:if="{{canPropose}}"><button class="{{kind === 'FORFEIT' ? 'selected-choice' : ''}}" data-field="kind" data-value="FORFEIT" bindtap="choose">单场弃权</button><button class="{{kind === 'CANCELLED' ? 'selected-choice' : ''}}" data-field="kind" data-value="CANCELLED" bindtap="choose">单场取消</button><view wx:if="{{kind === 'FORFEIT'}}"><button class="{{side === 'HOME' ? 'selected-choice' : ''}}" data-field="side" data-value="HOME" bindtap="choose">主队弃权</button><button class="{{side === 'AWAY' ? 'selected-choice' : ''}}" data-field="side" data-value="AWAY" bindtap="choose">客队弃权</button></view><button bindtap="propose" disabled="{{busy || uncertain}}">提交独立复核</button></block>
+  <block wx:if="{{pending && canReview}}"><text>待复核：{{pending.title}}／{{pending.sideLabel}}</text><text>{{pending.reason}}</text><button data-type="APPROVE" bindtap="review" disabled="{{busy || uncertain}}">批准提案</button><button data-type="REJECT" bindtap="review" disabled="{{busy || uncertain}}">驳回提案</button></block>
  </view>
- <view wx:for="requests" wx:key="id" class="card"><text>{{item.title}} · {{item.statusLabel}}</text><text>{{item.sideLabel}}</text><text>{{item.reason}}</text><text wx:if="item.reviewReason">复核：{{item.reviewReason}}</text></view>
+ <view wx:for="{{requests}}" wx:key="id" class="card"><text>{{item.title}} · {{item.statusLabel}}</text><text>{{item.sideLabel}}</text><text>{{item.reason}}</text><text wx:if="{{item.reviewReason}}">复核：{{item.reviewReason}}</text></view>
 </view>

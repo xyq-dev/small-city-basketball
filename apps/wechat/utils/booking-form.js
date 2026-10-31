@@ -260,7 +260,7 @@ function validPayload(serialized) {
   ];
   if (
     !object(value) ||
-    !ownKeys(value, required, required.concat('eventId')) ||
+    !ownKeys(value, required, required.concat('eventId', 'acceptedTermsIds', 'chargeConsent')) ||
     !id(value.commandId) ||
     !id(value.orgId) ||
     !id(value.teamId) ||
@@ -275,6 +275,22 @@ function validPayload(serialized) {
     value.appearances.length > 64
   )
     return false;
+  if (value.acceptedTermsIds !== undefined || value.chargeConsent !== undefined) {
+    if (
+      value.chargeConsent !== true ||
+      !object(value.acceptedTermsIds) ||
+      !Object.keys(value.acceptedTermsIds).length ||
+      Object.keys(value.acceptedTermsIds).length > 64 ||
+      Object.entries(value.acceptedTermsIds).some(
+        ([profile, terms]) =>
+          !id(profile) ||
+          !Object.prototype.hasOwnProperty.call(value.reviewedProfileVersions, profile) ||
+          typeof terms !== 'string' ||
+          !/^[a-f0-9]{64}$/.test(terms),
+      )
+    )
+      return false;
+  }
   const profiles = new Set();
   for (const a of value.appearances) {
     const keys = ['profileId', 'label', 'venue', 'conditional'];

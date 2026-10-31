@@ -145,7 +145,25 @@ export function parseCreate(raw: unknown): BookingCreateInput {
     'reviewedSettingsVersion',
     'reviewedProfileVersions',
     'appearances',
+    'acceptedTermsIds',
+    'chargeConsent',
   ]);
+  if (v.chargeConsent !== undefined && v.chargeConsent !== true) invalid('收费条款须明确确认');
+  let acceptedTermsIds: Record<string, string> | undefined;
+  if (v.acceptedTermsIds !== undefined) {
+    if (
+      !v.acceptedTermsIds ||
+      typeof v.acceptedTermsIds !== 'object' ||
+      Array.isArray(v.acceptedTermsIds) ||
+      Object.keys(v.acceptedTermsIds).length > 64
+    )
+      invalid('收费条款编号无效');
+    acceptedTermsIds = {};
+    for (const [key, value] of Object.entries(v.acceptedTermsIds)) {
+      if (typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value)) invalid('收费条款编号无效');
+      acceptedTermsIds[id(key)] = value;
+    }
+  }
   if (!['SINGLE', 'MULTI', 'TOURNAMENT', 'SEASON', 'TIME_BLOCK'].includes(String(v.scope)))
     invalid('请选择预约范围');
   if (v.eligibilityConfirmed !== true)
@@ -193,6 +211,8 @@ export function parseCreate(raw: unknown): BookingCreateInput {
     scope: v.scope as BookingScope,
     eligibilityConfirmed: true,
     appearances,
+    ...(v.chargeConsent !== undefined ? { chargeConsent: true as const } : {}),
+    ...(acceptedTermsIds !== undefined ? { acceptedTermsIds } : {}),
   };
 }
 const commands: BookingCommandType[] = [

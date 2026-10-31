@@ -192,14 +192,21 @@ export function parseLocalBooking(raw: unknown) {
     'acceptedTerms',
     'serviceAddress',
     'servicePoint',
+    'acceptedTermsId',
+    'chargeConsent',
   ]);
   if (x.acceptedTerms !== true) invalid('请确认当前服务和取消条款');
+  if (x.chargeConsent !== undefined && x.chargeConsent !== true) invalid('收费条款须明确确认');
   return {
     commandId: localCommandId(x.commandId),
     listingId: resourceId(String(x.listingId)),
     slotId: resourceId(String(x.slotId)),
     serviceRegion: parseRegionSelection(x.serviceRegion, invalid),
     acceptedTerms: true,
+    ...(x.chargeConsent !== undefined ? { chargeConsent: true as const } : {}),
+    ...(x.acceptedTermsId !== undefined
+      ? { acceptedTermsId: resourceId(String(x.acceptedTermsId)) }
+      : {}),
     serviceAddress:
       x.serviceAddress === undefined ? null : text(x.serviceAddress, 'serviceAddress', 1, 200),
     servicePoint:

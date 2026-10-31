@@ -1,5 +1,11 @@
 # 当前状态
 
+## EXPANSION8（IN_PROGRESS / BRANCH_ONLY：八项源码已接线，隔离验收中）
+
+2026-10-31 Asia/Shanghai；集成分支 `feat/commercial-expansion-8`，main基线4729336。八项持久服务、控制器、原生入口和旧业务门槛已接线：直播/云媒体、保险编排、收退款/对账/分账、订阅消息、统一搜索、注销、青年监护。范围及逐片证据见[总任务](tasks/EXPANSION8.md)、[恢复入口](handoffs/EXPANSION8.md)、[运行边界](EXPANSION8_OPERATIONS.md)。当前68条原生路由、42项Migration、176张表（本轮49张）；036—042均已在隔离CI执行并冻结，生产未执行。第六CI41187725651 admin与production包验收两个job完整SUCCESS：1158 API/561 admin源码、原生1008通过/1平台跳过、1067兼容浏览器及1053布局PNG，额外最小权限PG21/HTTPS4、176表精确非空重启/完整备份恢复/隔离均过。API业务PG584/584通过；原生页面→真实HTTP19/21通过，两个旧预约case未等待异步服务器报价，现仅补await及settle，保留完整履约/丢响应恢复断言。准备第七轮完成HTTP及余下API浏览器/同卷重启检查，整体仍不标DONE。使用入口见[八项扩展指南](EXPANSION8_USAGE.md)。
+
+真实保险供应商未选定/未接实际adapter，购买编排默认关闭；微信支付/订阅及腾讯直播/多平台实现了受控驱动，但正式AppID、商户、模板、直播类目、外站权限及实际联调未验。没有生产更新、真实资金、真实投保、真实推流或发信。媒体已配独立持久卷；数据库备份不含MP4字节，需独立媒体归档恢复。下方COMPLETION22为上一批main的历史验收事实，不能当本轮八项已验收。
+
 ## COMPLETION22（DONE / MAIN：源码与隔离验收，生产未更新）
 
 2026-10-31 Asia/Shanghai；本会话root集成。[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)已以merge commit `29179c0f047dde92c50d4dd7cb360d4f36eb77f5` 合入main。全部F01—F22的有界源码与消费者已整合，包括季军/双循环/异常裁定、排程/模板、招募/导入邀请/海报、专业统计/阵容/离线队列/档案、全国界面与同城预约约赛、工作人员及运营治理、赞助/经费公示和账号找回；[逐项验收](tasks/COMPLETION22.md)、[恢复入口](handoffs/COMPLETION22.md)、[使用指南](COMMERCIAL_USAGE.md)。
