@@ -58,9 +58,12 @@ CREATE TABLE live_media_jobs (
  version integer NOT NULL DEFAULT 1 CHECK(version>0), source_artifact_id uuid, artifact_id uuid,
  source_epoch integer NOT NULL, intervals jsonb NOT NULL DEFAULT '[]'::jsonb CHECK(jsonb_typeof(intervals)='array'),
  anchor_at timestamptz, anchor_offset_ms integer, anchor_verified_by uuid REFERENCES users(id),
+ source_match_id uuid, source_confirmation_id uuid,
+ FOREIGN KEY(org_id,source_match_id,source_confirmation_id) REFERENCES result_confirmations(org_id,match_id,id),
  worker_token uuid, worker_until timestamptz, error_code text, created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  FOREIGN KEY(org_id,session_id) REFERENCES broadcast_sessions(org_id,id), UNIQUE(org_id,id)
 );
+CREATE UNIQUE INDEX e02_one_recording_epoch ON live_media_jobs(session_id,source_epoch) WHERE kind='RECORDING';
 CREATE TABLE live_media_artifacts (
  id uuid PRIMARY KEY, org_id uuid NOT NULL, session_id uuid NOT NULL, job_id uuid NOT NULL UNIQUE,
  file_name text NOT NULL UNIQUE CHECK(file_name ~ '^[a-f0-9-]{36}\.mp4$'), sha256 char(64) NOT NULL,

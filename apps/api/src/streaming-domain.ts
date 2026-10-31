@@ -3,9 +3,9 @@ import { isIP } from 'node:net';
 import { ApiError } from './errors.js';
 import { objectInput, resourceId } from './validation.js';
 import type { LiveDesired, RelayObserved } from '../../../packages/contracts/streaming.js';
-export const liveFail = (code: string, message = '直播操作无法完成', status = 409): never => {
+export function liveFail(code: string, message = '直播操作无法完成', status = 409): never {
   throw new ApiError(status, code, message);
-};
+}
 export const streamHash = (v: string) => createHash('sha256').update(v).digest('hex');
 export function streamKey(value: unknown): Buffer {
   if (

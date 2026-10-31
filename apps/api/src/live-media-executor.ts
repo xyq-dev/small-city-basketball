@@ -45,9 +45,11 @@ export interface MediaExecutor {
   transform(
     fileName: string,
     intervals: { startMs: number; endMs: number }[],
+    signal?: AbortSignal,
   ): Promise<ArtifactResult>;
   probe(fileName: string): Promise<MediaProbe>;
   file(fileName: string): Promise<string>;
+  discard(fileName: string): Promise<void>;
 }
 async function processRun(
   binary: string,
@@ -109,6 +111,9 @@ export class FfmpegMediaExecutor implements LiveExecutor, MediaExecutor {
     if (!s.isFile() || s.isSymbolicLink() || (await realpath(p)) !== p)
       throw Error('MEDIA_ARTIFACT_INVALID');
     return p;
+  }
+  async discard(name: string) {
+    await unlink(await this.file(name));
   }
   private async inspect(path: string): Promise<MediaProbe> {
     const raw = await processRun(this.options.ffprobe, [
@@ -188,6 +193,13 @@ export class FfmpegMediaExecutor implements LiveExecutor, MediaExecutor {
       );
       return await this.artifact(path, id);
     } catch {
+      if (signal.aborted) {
+        try {
+          return await this.artifact(path, id);
+        } catch {
+          /* A partial file is ready only after an actual successful probe. */
+        }
+      }
       await unlink(path).catch(() => {});
       throw Error('MEDIA_RECORDING_FAILED');
     } finally {
@@ -197,6 +209,7 @@ export class FfmpegMediaExecutor implements LiveExecutor, MediaExecutor {
   async transform(
     fileName: string,
     intervals: { startMs: number; endMs: number }[],
+    signal?: AbortSignal,
   ): Promise<ArtifactResult> {
     const source = await this.file(fileName),
       probe = await this.inspect(source),
@@ -260,7 +273,14 @@ export class FfmpegMediaExecutor implements LiveExecutor, MediaExecutor {
       path,
     );
     try {
-      await processRun(this.options.ffmpeg, args, undefined, AbortSignal.timeout(300000));
+      await processRun(
+        this.options.ffmpeg,
+        args,
+        undefined,
+        signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(300000)])
+          : AbortSignal.timeout(300000),
+      );
       return await this.artifact(path, id);
     } catch {
       await unlink(path).catch(() => {});
