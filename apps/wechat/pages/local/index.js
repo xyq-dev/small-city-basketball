@@ -18,6 +18,7 @@ Page({
     locationError: '',
     locationBusy: false,
     locationEnabled: false,
+    locatedRegions: [],
     originLabel: '未选择距离起点',
     hasOrigin: false,
     radii: [
@@ -73,11 +74,13 @@ Page({
     this._places = (this._places || 0) + 1;
     this._detail = (this._detail || 0) + 1;
     this._point = null;
+    this._detectedPoint = null;
     this.setData({
       hasOrigin: false,
       originLabel: '未选择距离起点',
       locationBusy: false,
       placesBusy: false,
+      locatedRegions: [],
       places: [],
       servicePlace: null,
       mapVisible: false,
@@ -88,6 +91,7 @@ Page({
   onUnload() {
     this._alive = false;
     this._point = null;
+    this._detectedPoint = null;
     this._generation++;
     this._locating = (this._locating || 0) + 1;
     this._places = (this._places || 0) + 1;
@@ -187,11 +191,25 @@ Page({
   async locate() {
     if (this.data.locationBusy) return;
     const n = (this._locating = (this._locating || 0) + 1);
-    this.setData({ locationBusy: true, locationError: '' });
+    this.setData({ locationBusy: true, locationError: '', locatedRegions: [] });
     try {
-      ls.selectedRegion(this.data.selection);
+      const manual = this.data.selection.mode === 'REGION';
+      if (!manual && !this.data.locationEnabled)
+        throw new Error('地图地区解析尚未开放，请先手动选择城市；选择后可按需定位查距离。');
       const p = await ls.locateOnce(wx);
       if (!this._alive || this._hidden || n !== this._locating) return;
+      if (!manual) {
+        const candidates = await ls.repository().locate({ type: 'REVERSE', point: p });
+        if (!this._alive || this._hidden || n !== this._locating) return;
+        const locatedRegions = candidates.filter((v) => v.region);
+        this._detectedPoint = locatedRegions.length ? p : null;
+        this.setData({
+          locatedRegions,
+          locationBusy: false,
+          locationError: locatedRegions.length ? '' : '无法匹配当前地区目录，请手动选城。',
+        });
+        return;
+      }
       this._point = p;
       this.setData({
         hasOrigin: true,
@@ -204,6 +222,40 @@ Page({
         this.setData({ locationBusy: false, locationError: ui.message(e) });
     }
   },
+  async confirmLocatedRegion(e) {
+    const candidate = this.data.locatedRegions[Number(e.currentTarget.dataset.index)],
+      n = this._locating,
+      point = this._detectedPoint;
+    if (!candidate || !point || this._hidden || !this._alive) return;
+    const yes = await ui.confirm(
+      '确认定位建议地区',
+      candidate.regionLabel +
+        '，' +
+        candidate.address +
+        '。确认后按该地区及下辖地区查找供给，本次位置仅作为距离起点。',
+    );
+    if (!yes || !this._alive || this._hidden || n !== this._locating) return;
+    try {
+      const selection = cities.chooseSelection({
+        mode: 'REGION',
+        ...candidate.region,
+        label: candidate.regionLabel,
+        level: candidate.regionLevel,
+      });
+      this._point = point;
+      this._detectedPoint = null;
+      this.setData({
+        selection,
+        locatedRegions: [],
+        hasOrigin: true,
+        originLabel: '本次设备位置（地区经本人确认）',
+        locationError: '',
+      });
+      await this.load();
+    } catch (e) {
+      this.setData({ locationError: ui.message(e) });
+    }
+  },
   clearOrigin() {
     this._point = null;
     this._locating = (this._locating || 0) + 1;
@@ -212,7 +264,9 @@ Page({
       originLabel: '未选择距离起点',
       locationBusy: false,
       locationError: '',
+      locatedRegions: [],
     });
+    this._detectedPoint = null;
     this.load();
   },
   async searchPlaces() {

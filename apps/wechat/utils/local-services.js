@@ -325,8 +325,13 @@ function candidate(raw) {
     'kind',
     'region',
     'regionLabel',
+    'regionLevel',
   ]);
-  if (r.source !== 'TENCENT' || !['PLACE', 'REVERSE'].includes(r.kind))
+  if (
+    r.source !== 'TENCENT' ||
+    !['PLACE', 'REVERSE'].includes(r.kind) ||
+    (r.region && !['PROVINCE', 'PREFECTURE', 'COUNTY'].includes(r.regionLevel))
+  )
     throw new Error('地图候选资料无效');
   return {
     title: text(r.title, '地点', 1, 200),
@@ -336,7 +341,11 @@ function candidate(raw) {
     source: r.source,
     kind: r.kind,
     ...(r.region
-      ? { region: region(r.region), regionLabel: text(r.regionLabel, '地区', 1, 100) }
+      ? {
+          region: region(r.region),
+          regionLabel: text(r.regionLabel, '地区', 1, 100),
+          regionLevel: r.regionLevel,
+        }
       : {}),
   };
 }

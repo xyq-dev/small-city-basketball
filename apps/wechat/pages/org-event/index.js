@@ -258,6 +258,11 @@ Page({
   openReview() {
     ui.open('entry-review', { orgId: this.orgId, eventId: this.eventId });
   },
+  openFeature(e) {
+    const key = e.currentTarget.dataset.page;
+    if (['recruitment', 'poster', 'staff-configuration', 'match-exceptions'].includes(key))
+      ui.open(key, { orgId: this.orgId, eventId: this.eventId });
+  },
   openSetup() {
     ui.open('event-setup', { orgId: this.orgId, eventId: this.eventId });
   },

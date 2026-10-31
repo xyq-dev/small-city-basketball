@@ -4,6 +4,7 @@ const events = require('../../utils/events');
 const scoringView = require('../../utils/scoring');
 const directoryUtil = require('../../utils/directory');
 const regions = require('../../utils/regions');
+const templates = require('../../utils/event-templates');
 
 // Native forms over the existing event-setup commands. Each section is shown only when the
 // server's capabilities allow it, and every write carries the version it was read at.
@@ -27,6 +28,20 @@ const privateDefaults = {
   viewing: null,
   directory: null,
   unavailable: false,
+  setupGuide: null,
+  guideError: '',
+  templateOptions: [{ label: '不使用模板' }],
+  templateIndex: 0,
+  templatePreview: null,
+  templateCanManage: false,
+  templateLoading: false,
+  templateError: '',
+  templatePending: false,
+  templateName: '',
+  templateExpectedTeams: '',
+  templateScheduling: null,
+  templateCanArchive: false,
+  templateArchiveReason: '',
 };
 const DIRECTORY_GROUP_LABELS = { LIVE: '进行中', UPCOMING: '即将开始', HISTORY: '历史赛事' };
 const DIRECTORY_REVOKED = {
@@ -139,6 +154,7 @@ Page({
           formatIndex: 0,
         },
       });
+      this.loadTemplates();
       return;
     }
     this.load();
@@ -151,6 +167,11 @@ Page({
   onSessionReset() {
     this._load = (this._load || 0) + 1;
     this._directory = null;
+    this._templateLoad = (this._templateLoad || 0) + 1;
+    this._templateRows = null;
+    this._selectedTemplate = null;
+    this._pendingTemplate = null;
+    this._guide = null;
     this._regionPick = (this._regionPick || 0) + 1;
     this._directoryEdit = (this._directoryEdit || 0) + 1;
     this.setData({
@@ -197,14 +218,23 @@ Page({
       });
       return;
     }
-    const [registration, scoring, standings, directory] = await Promise.all([
+    const [registration, scoring, standings, directory, guide] = await Promise.all([
       quiet(client.request(this.base() + '/registration')),
       quiet(client.request(this.base() + '/scoring')),
       quiet(client.request(this.base() + '/standings')),
       quiet(client.request(this.base() + '/directory')),
+      quiet(client.request(this.base() + '/setup-guide')),
     ]);
     if (!live()) return;
     this._event = event;
+    let setupGuide = null,
+      guideError = '';
+    try {
+      setupGuide = templates.guide(guide, event.version);
+    } catch (error) {
+      guideError = ui.message(error);
+    }
+    this._guide = setupGuide;
     const editable = !!(event.permissions && event.permissions.canEditDraft);
     const reg = registration;
     const rules = reg && reg.rules;
@@ -298,9 +328,353 @@ Page({
           }
         : null,
       directory: this.directoryView(directory),
+      setupGuide,
+      guideError,
+      templateScheduling:
+        this.data.templateScheduling ||
+        (setupGuide && setupGuide.template
+          ? setupGuide.template.configuration.scheduling
+          : {
+              dailyStart: '09:00',
+              dailyEnd: '21:00',
+              slotDurationMinutes: 60,
+              minRestMinutes: 0,
+              minLocalDayGap: 0,
+              groupCount: event.format === 'GROUP_KNOCKOUT' ? 2 : null,
+              thirdPlaceMatch: false,
+            }),
+      templateExpectedTeams:
+        this.data.templateExpectedTeams ||
+        (setupGuide && setupGuide.template && setupGuide.template.expectedTeams
+          ? String(setupGuide.template.expectedTeams)
+          : ''),
     });
     this._directory = directory;
     this.loadCurrentDirectoryRegion(directory);
+    this.loadTemplates();
+  },
+  async loadTemplates() {
+    if (!this._alive || this.data.busy) return;
+    const client = api.getClient(),
+      generation = (this._templateLoad = (this._templateLoad || 0) + 1);
+    this.setData({ templateLoading: true, templateError: '' });
+    try {
+      await events.session(client);
+      if (!this._alive || generation !== this._templateLoad) return;
+      const token = ui.guard(this),
+        actor = client.viewerId();
+      this._pendingTemplate = templates.read(actor, this.orgId);
+      this.setData({ templatePending: !!this._pendingTemplate });
+      const result = templates.catalog(
+        (await client.request('/v1/orgs/' + this.orgId + '/event-templates')).data,
+      );
+      if (!ui.held(this, token) || generation !== this._templateLoad) return;
+      this._templateRows = result.rows;
+      const previous = this._selectedTemplate && this._selectedTemplate.key;
+      const index = Math.max(
+        0,
+        result.rows.findIndex((t) => t.key === previous),
+      );
+      this.setData({
+        templateOptions: result.rows.map((t) => ({ label: t.label })),
+        templateIndex: index,
+        templateCanManage: result.canManage,
+        templateLoading: false,
+        templateError: result.truncated ? '仅显示最新100个机构模板。已有版本和实例仍保留。' : '',
+      });
+      this.selectTemplate(index);
+    } catch (error) {
+      if (!this._alive || generation !== this._templateLoad) return;
+      this.setData({
+        templateLoading: false,
+        templateCanManage: false,
+        templateError: ui.message(error),
+      });
+    }
+  },
+  pickTemplate(e) {
+    if (!this.data.busy && !this.data.templatePending) this.selectTemplate(Number(e.detail.value));
+  },
+  selectTemplate(index) {
+    const selected = this._templateRows && this._templateRows[index];
+    this._selectedTemplate = selected && selected.configuration ? selected : null;
+    const cfg = this._selectedTemplate && this._selectedTemplate.configuration;
+    this.setData({
+      templateIndex: index,
+      templateCanArchive: !!(this._selectedTemplate && !this._selectedTemplate.preset),
+      templatePreview: cfg
+        ? {
+            formatLabel: api.eventFormat(cfg.format),
+            teams:
+              cfg.expectedTeams === null
+                ? '按实际批准队数'
+                : cfg.expectedTeams + '支（冻结时须一致）',
+            players: cfg.registration.minPlayers + '–' + cfg.registration.maxPlayers + '人',
+            schedule:
+              cfg.scheduling.dailyStart +
+              '–' +
+              cfg.scheduling.dailyEnd +
+              ' · 每场' +
+              cfg.scheduling.slotDurationMinutes +
+              '分钟 · 休息' +
+              cfg.scheduling.minRestMinutes +
+              '分钟',
+            bronze: cfg.scheduling.thirdPlaceMatch,
+            groups: cfg.scheduling.groupCount,
+          }
+        : null,
+      ...(cfg && this.data.creating
+        ? {
+            'draft.format': cfg.format,
+            'draft.formatIndex': FORMATS.findIndex((f) => f.value === cfg.format),
+          }
+        : {}),
+    });
+  },
+  templateField(e) {
+    if (this.data.busy || this.data.templatePending) return;
+    const field = e.currentTarget.dataset.field;
+    if (['templateName', 'templateExpectedTeams', 'templateArchiveReason'].includes(field))
+      this.setData({ [field]: e.detail.value });
+    else if (
+      [
+        'dailyStart',
+        'dailyEnd',
+        'slotDurationMinutes',
+        'minRestMinutes',
+        'minLocalDayGap',
+        'groupCount',
+      ].includes(field)
+    )
+      this.setData({ ['templateScheduling.' + field]: e.detail.value });
+  },
+  toggleTemplateBronze() {
+    if (!this.data.busy && !this.data.templatePending)
+      this.setData({
+        'templateScheduling.thirdPlaceMatch': !this.data.templateScheduling.thirdPlaceMatch,
+      });
+  },
+  openGuideStep(e) {
+    const step =
+      this.data.setupGuide && this.data.setupGuide.steps[Number(e.currentTarget.dataset.index)];
+    if (!step) return;
+    if (step.action === 'REGISTRATION') this.openReview();
+    else if (step.action === 'SCHEDULING') this.openSchedule();
+    else if (step.action === 'EVENT') this.openEvent();
+    else this.setData({ notice: '请在下方保存规则，并按向导处理缺项。' });
+  },
+  async executeTemplate(body, label, op) {
+    if (this.data.busy || !op || !op.valid()) return null;
+    const client = api.getClient(),
+      actor = client.viewerId(),
+      org = this.orgId,
+      token = ui.hold(this);
+    const valid = () =>
+      op.valid() && ui.held(this, token) && client.viewerId() === actor && this.orgId === org;
+    this.setData({ busy: true, error: '', notice: '' });
+    let sent = body;
+    try {
+      if (!sent.clientRequestId) sent = { ...sent, clientRequestId: await ui.uuid() };
+      if (!valid()) return null;
+      templates.save(actor, org, sent);
+      this._pendingTemplate = sent;
+      this.setData({ templatePending: true });
+      let result;
+      try {
+        result = (
+          await client.request(
+            '/v1/orgs/' + org + '/event-template-commands/' + sent.clientRequestId,
+          )
+        ).data;
+      } catch (error) {
+        if (!valid()) return null;
+        if (error.status !== 404) throw error;
+      }
+      if (!valid()) return null;
+      if (!result)
+        result = (
+          await client.request('/v1/orgs/' + org + '/event-template-commands', 'POST', sent)
+        ).data;
+      if (!valid()) return null;
+      const confirmed = templates.receipt(result, sent),
+        cleared = templates.clear(actor, org, sent);
+      this._pendingTemplate = cleared ? null : sent;
+      this.setData({
+        templatePending: !cleared,
+        notice: label + '已完成' + (cleared ? '。' : '；本机记录未清除，下次仍可沿原编号核对。'),
+      });
+      return confirmed;
+    } catch (error) {
+      if (!valid()) return null;
+      if (!templates.unknown(error) && sent.clientRequestId) {
+        const cleared = templates.clear(actor, org, sent);
+        if (cleared) this._pendingTemplate = null;
+      }
+      this.setData({
+        templatePending: !!this._pendingTemplate,
+        error: this._pendingTemplate
+          ? '结果尚待核对，请点“核对并重试原请求”；原编号和内容已保留。 ' + ui.message(error)
+          : ui.message(error),
+      });
+      return null;
+    } finally {
+      if (valid()) this.setData({ busy: false });
+    }
+  },
+  async finishTemplate(receipt) {
+    if (!receipt) return;
+    if (receipt.event) {
+      this.eventId = api.uuid(receipt.event.id);
+      this.setData({ creating: false, templateScheduling: null, templateExpectedTeams: '' });
+      await this.load();
+    } else await this.loadTemplates();
+  },
+  async resumeTemplate() {
+    if (this.data.busy) return;
+    let body;
+    try {
+      body = templates.read(api.getClient().viewerId(), this.orgId);
+    } catch (error) {
+      this.setData({ error: ui.message(error) });
+      return;
+    }
+    if (!body) return;
+    const op = await ui.confirmOp(
+      this,
+      '核对原模板请求',
+      (body.event ? body.event.name : body.name || '原模板操作') +
+        '。先查询原编号；只有未找到回执才沿原编号重试。',
+    );
+    if (!op) return;
+    await this.finishTemplate(await this.executeTemplate(body, '原请求', op));
+  },
+  async createFromTemplate(input) {
+    const chosen = this._selectedTemplate;
+    if (!chosen || this.data.templatePending) return;
+    const snapshot = JSON.stringify(this.data.draft);
+    const body = {
+      type: 'INSTANTIATE',
+      ...(chosen.preset
+        ? { presetKey: chosen.key }
+        : {
+            templateId: chosen.key,
+            templateVersionId: chosen.versionId,
+            expectedTemplateVersion: chosen.version,
+          }),
+      event: {
+        name: input.name,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        ...(input.venueName ? { venueName: input.venueName } : {}),
+      },
+    };
+    const op = await ui.confirmOp(
+      this,
+      '按模板创建草稿',
+      input.name +
+        '，使用' +
+        chosen.label +
+        '。复制规则配置，球队和人员另行报名；不会自动开放或发布。',
+    );
+    if (!op || this._selectedTemplate !== chosen || JSON.stringify(this.data.draft) !== snapshot)
+      return;
+    await this.finishTemplate(await this.executeTemplate(body, '模板草稿', op));
+  },
+  async saveAsTemplate() {
+    if (!this._event || !this.data.templateCanManage || this.data.templatePending || this.data.busy)
+      return;
+    const event = this._event,
+      s = this.data.templateScheduling,
+      source = JSON.stringify({
+        name: this.data.templateName,
+        expected: this.data.templateExpectedTeams,
+        s,
+      });
+    let body;
+    try {
+      const name = String(this.data.templateName || '').trim();
+      if (!name || name.length > 80) throw new Error('模板名称请填写1至80字');
+      body = {
+        type: 'CREATE_FROM_EVENT',
+        eventId: event.id,
+        expectedEventVersion: event.version,
+        name,
+        expectedTeams:
+          String(this.data.templateExpectedTeams).trim() === ''
+            ? null
+            : int(this.data.templateExpectedTeams, '预期队数', 2, 32),
+        scheduling: {
+          dailyStart: s.dailyStart,
+          dailyEnd: s.dailyEnd,
+          slotDurationMinutes: int(s.slotDurationMinutes, '每场分钟', 1, 1440),
+          minRestMinutes: int(s.minRestMinutes, '休息分钟', 0, 43200),
+          minLocalDayGap: int(s.minLocalDayGap, '日期间隔', 0, 365),
+          groupCount: event.format === 'GROUP_KNOCKOUT' ? int(s.groupCount, '分组数', 2, 8) : null,
+          thirdPlaceMatch:
+            ['GROUP_KNOCKOUT', 'SINGLE_ELIMINATION'].includes(event.format) &&
+            s.thirdPlaceMatch === true,
+        },
+      };
+    } catch (error) {
+      this.setData({ error: ui.message(error) });
+      return;
+    }
+    const op = await ui.confirmOp(
+      this,
+      '保存可复用模板',
+      '保存服务器上已保存的规则和以下排程偏好，不含球队、人员、场地编号或原赛事日期。',
+    );
+    if (
+      !op ||
+      this._event !== event ||
+      source !==
+        JSON.stringify({
+          name: this.data.templateName,
+          expected: this.data.templateExpectedTeams,
+          s: this.data.templateScheduling,
+        })
+    )
+      return;
+    await this.finishTemplate(await this.executeTemplate(body, '可复用模板', op));
+  },
+  async archiveTemplate() {
+    const chosen = this._selectedTemplate,
+      reason = String(this.data.templateArchiveReason || '').trim();
+    if (
+      !chosen ||
+      chosen.preset ||
+      !this.data.templateCanManage ||
+      this.data.templatePending ||
+      this.data.busy
+    )
+      return;
+    if (reason.length < 4 || reason.length > 500) {
+      this.setData({ error: '归档原因请填写4至500字' });
+      return;
+    }
+    const op = await ui.confirmOp(
+      this,
+      '归档办赛模板',
+      chosen.label + '。归档后不再用于创建赛事，既有赛事和版本记录仍保留。',
+    );
+    if (
+      !op ||
+      this._selectedTemplate !== chosen ||
+      String(this.data.templateArchiveReason || '').trim() !== reason
+    )
+      return;
+    const receipt = await this.executeTemplate(
+      {
+        type: 'ARCHIVE_TEMPLATE',
+        templateId: chosen.key,
+        expectedTemplateVersion: chosen.version,
+        reason,
+      },
+      '模板归档',
+      op,
+    );
+    if (receipt) this.setData({ templateArchiveReason: '' });
+    await this.finishTemplate(receipt);
   },
   async loadCurrentDirectoryRegion(d) {
     if (!d || !d.listing || !d.listing.region || !d.regionCatalogVersion) return;
@@ -407,10 +781,15 @@ Page({
     let input;
     try {
       input = eventInput(this.data.draft);
+      if (this.data.templatePending) throw new Error('请先核对原模板请求，再创建另一赛事。');
+      const actor = api.getClient().viewerId && api.getClient().viewerId();
+      if (actor && templates.read(actor, this.orgId))
+        throw new Error('存在待核对的原模板请求，请先核对并重试。');
     } catch (error) {
       this.setData({ error: ui.message(error) });
       return;
     }
+    if (this._selectedTemplate) return this.createFromTemplate(input);
     const op = await ui.confirmOp(
       this,
       '创建赛事草稿',

@@ -128,7 +128,7 @@ describe(
       acceptedTerms: true,
       ...(s.kind === 'COURT' ? {} : { serviceAddress: '双方确认的实际比赛场馆地址' }),
     });
-    async function oldAppearance(start: string, end: string) {
+    async function oldAppearance(start: string, end: string, expired = false) {
       const settings = (
         await h.api.pool.query('SELECT fee_bps,version FROM booking_settings WHERE id')
       ).rows[0];
@@ -148,8 +148,8 @@ describe(
         ],
       );
       await h.api.pool.query(
-        "INSERT INTO booking_appearances(id,order_id,profile_id,player_user_id,label,status,report_at,start_at,end_at,venue,service_fen,platform_fee_fen,total_fen,expires_at) VALUES($1,$2,$3,$4,'合成旧预约','REQUESTED',$5,$5,$6,'合成场馆',10000,$7,$8,clock_timestamp()+interval '20 minutes')",
-        [id, orderId, profileId, h.owner.id, start, end, fee, 10000 + fee],
+        "INSERT INTO booking_appearances(id,order_id,profile_id,player_user_id,label,status,report_at,start_at,end_at,venue,service_fen,platform_fee_fen,total_fen,expires_at,created_at,updated_at) VALUES($1,$2,$3,$4,'合成旧预约','REQUESTED',$5,$5,$6,'合成场馆',10000,$7,$8,CASE WHEN $9 THEN statement_timestamp()-interval '1 minute' ELSE statement_timestamp()+interval '10 minutes' END,CASE WHEN $9 THEN statement_timestamp()-interval '2 minutes' ELSE statement_timestamp() END,CASE WHEN $9 THEN statement_timestamp()-interval '2 minutes' ELSE statement_timestamp() END)",
+        [id, orderId, profileId, h.owner.id, start, end, fee, 10000 + fee, expired],
       );
       return id;
     }
@@ -275,6 +275,62 @@ describe(
         await c.query('ROLLBACK');
         c.release();
       }
+    });
+    test('reverse geocoder maps only verified official source codes to current catalog metadata', async () => {
+      const node = (
+        await h.api.pool.query(
+          'SELECT source_code,level,name FROM region_catalog_nodes WHERE catalog_version=$1 AND region_id=$2',
+          [REGION_CATALOG_VERSION, regionId],
+        )
+      ).rows[0];
+      const p = { latitude: 22.9, longitude: 110.8, coordinateSystem: 'GCJ02' as const };
+      const adapter = {
+        enabled: true,
+        search: async () => [],
+        reverse: async () => [
+          {
+            title: '合成定位建议',
+            address: '合成地址',
+            point: p,
+            sourceCode: node.source_code,
+            source: 'TENCENT' as const,
+            kind: 'REVERSE' as const,
+          },
+          {
+            title: '未知地区',
+            address: '未知地址',
+            point: p,
+            sourceCode: '000000',
+            source: 'TENCENT' as const,
+            kind: 'REVERSE' as const,
+          },
+        ],
+      };
+      const mapped = new LocalServicesService(
+        h.api.pool,
+        { databaseUrl: h.databaseUrl, appOrigin: ORIGIN },
+        adapter,
+      );
+      const result = await mapped.location({ type: 'REVERSE', point: p }, 'synthetic-x12-reverse');
+      expect(result.inventoryVerified).toBe(false);
+      expect(result.candidates[0]).toMatchObject({
+        region: region(),
+        regionLabel: node.name,
+        regionLevel: node.level,
+      });
+      expect(result.candidates[1]).not.toHaveProperty('region');
+    });
+    test('already expired legacy requests do not gain occupancy by an unrelated write', async () => {
+      const s = await supply('REFEREE');
+      const b = await service.book(h.leader.cookie, bookBody(s));
+      const old = await oldAppearance(s.start, s.end, true);
+      await expect(
+        h.api.pool.query(
+          "UPDATE booking_appearances SET expires_at=statement_timestamp()+interval '10 minutes',updated_at=statement_timestamp(),version=version+1 WHERE id=$1",
+          [old],
+        ),
+      ).rejects.toMatchObject({ code: '23P01' });
+      expect((await service.bookingDetail(h.leader.cookie, b.resourceId)).status).toBe('REQUESTED');
     });
     test('same command and content returns one original receipt; changed content is rejected', async () => {
       const s = await supply();

@@ -106,7 +106,11 @@ export class StaffConfigurationService extends ApplicationService {
         : null;
       if (staff && member?.status !== 'ACTIVE')
         throw new ApiError(409, 'MEMBERSHIP_REQUIRED', '请先配置有效机构成员');
-      if (eventId) await this.lockEvent(c, actor, eventId);
+      if (eventId) {
+        await this.lockEvent(c, actor, eventId);
+        await this.assertStaffMutable(c, eventId);
+      }
+      if (!staff && userId === actor.user.id) throw forbidden();
       const table = staff ? 'event_staff' : 'organization_memberships';
       const params = staff ? [actor.orgId, userId, eventId] : [actor.orgId, userId];
       const current = (

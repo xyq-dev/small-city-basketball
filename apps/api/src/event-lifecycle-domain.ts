@@ -1,4 +1,4 @@
-import { administrativeResult } from './match-exception-domain.js';
+import { administrativeResult, resolutionCounts } from './match-exception-domain.js';
 import type {
   EventLifecycleCommandInput,
   EventLifecycleData,
@@ -82,6 +82,7 @@ export function completionReadiness(input: {
         mode: 'PUBLISHED',
       });
       completion.confirmedMatchCount = standings.confirmedMatchCount;
+      Object.assign(completion, resolutionCounts(standings));
       completion.sourceHash = standings.sourceHash;
       if (!standings.isComplete) completion.blockers.push('UNCONFIRMED_MATCHES');
     } else if (!input.matches.length || completion.confirmedMatchCount !== input.matches.length) {
@@ -131,6 +132,7 @@ export function knockoutCompletionReadiness(input: {
     });
     completion.totalMatchCount = bracket.totalMatchCount;
     completion.confirmedMatchCount = bracket.confirmedMatchCount;
+    Object.assign(completion, resolutionCounts(bracket));
     completion.sourceHash = bracket.sourceHash;
     if (!bracket.isComplete) completion.blockers.push('UNCONFIRMED_MATCHES');
   } catch (error) {

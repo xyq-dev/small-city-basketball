@@ -7,6 +7,7 @@ import type {
   PublicGroupKnockoutData,
   SchedulePolicy,
   ScheduleRevisionData,
+  KnockoutOptimizationPreview,
 } from '@small-city-basketball/contracts';
 import { call, data, error } from './support.js';
 import {
@@ -143,9 +144,40 @@ describe(
     test('four-team bronze uses actual semifinal losers and blocks closure until both final-round results', async () => {
       const f = await knockoutFixture(h, 4, thirdPlace),
         id = f.event.event.id;
+      const previewPath = `/v1/orgs/${h.owner.orgId}/events/${id}/knockout-optimization-preview`;
+      const waiting = data<KnockoutOptimizationPreview>(
+        await call(h.api, 'post', previewPath, {
+          cookie: h.owner.cookie,
+          body: { expectedEventVersion: f.event.event.version },
+        }),
+      );
+      expect(waiting.status).toBe('WAITING_FOR_RESULTS');
       for (const m of f.matches) await confirmKnockoutMatch(h, m.id);
       let current = await readKnockout(h, id);
       const next = current.bracket!.nextRound!;
+      const beforeOptimization = await knockoutFacts(h, id);
+      const suggestion = data<KnockoutOptimizationPreview>(
+        await call(h.api, 'post', previewPath, {
+          cookie: h.owner.cookie,
+          body: {
+            expectedEventVersion: current.event.version,
+            expectedSourceHash: next.sourceHash,
+          },
+        }),
+      );
+      expect(suggestion.status).toBe('READY');
+      if (suggestion.status !== 'READY') throw new Error('Expected qualified preview');
+      expect(suggestion.optimization.status).toBe('COMPLETE');
+      expect(suggestion.optimization.allocations).toHaveLength(2);
+      expect(
+        suggestion.optimization.allocations.every(
+          (a) =>
+            !!a.courtId &&
+            Date.parse(a.startsAt!) >= Math.max(...f.matches.map((m) => Date.parse(m.endsAt))),
+        ),
+      ).toBe(true);
+      expect(await knockoutFacts(h, id)).toEqual(beforeOptimization);
+
       expect(next.fixtures).toHaveLength(2);
       const semis = current.bracket!.rounds[0]!.slots;
       expect([next.fixtures[1]!.homeEntryId, next.fixtures[1]!.awayEntryId]).toEqual(

@@ -1,5 +1,6 @@
 import {
   administrativeResult,
+  resolutionCounts,
   exceptionResultSelect,
   exceptionResultJoins,
 } from './match-exception-domain.js';
@@ -746,6 +747,7 @@ export class StandingsService extends ApplicationService {
         // Keep the original strict ROUND_ROBIN public DTO backward compatible.
         ...(b.event.format !== 'ROUND_ROBIN' ? { format: b.event.format } : {}),
         rules: b.rules ? this.publicRules(b.rules) : null,
+        ...resolutionCounts(b.groupCompetition ?? b.bracket ?? b.standings),
         confirmedMatchCount: (b.groupCompetition ?? b.bracket ?? b.standings)!.confirmedMatchCount,
         totalMatchCount: (b.groupCompetition ?? b.bracket ?? b.standings)!.totalMatchCount,
         isComplete: (b.groupCompetition ?? b.bracket ?? b.standings)!.isComplete,
@@ -763,6 +765,7 @@ export class StandingsService extends ApplicationService {
         rules: this.publicRules(b.rules),
         sourceHash: b.standings.sourceHash,
         asOf: b.now,
+        ...resolutionCounts(b.standings),
         confirmedMatchCount: b.standings.confirmedMatchCount,
         totalMatchCount: b.standings.totalMatchCount,
         isComplete: b.standings.isComplete,
@@ -813,6 +816,7 @@ export class StandingsService extends ApplicationService {
       participantCount: b.bracket.participantCount,
       totalMatchCount: b.bracket.totalMatchCount,
       publishedMatchCount: b.bracket.publishedMatchCount,
+      ...resolutionCounts(b.bracket),
       confirmedMatchCount: b.bracket.confirmedMatchCount,
       isComplete: b.bracket.isComplete,
       rounds: b.bracket.rounds.map((round) => ({
@@ -823,6 +827,7 @@ export class StandingsService extends ApplicationService {
           const match = slot.matchId === null ? null : matches.get(slot.matchId);
           if (slot.matchId !== null && !match?.public_match_id) resultSourceInvalid();
           return {
+            ...(slot.adjudication ? { adjudication: slot.adjudication } : {}),
             ...(slot.kind ? { kind: slot.kind, sourceOutcome: slot.sourceOutcome } : {}),
             positionNo: slot.positionNo,
             home: team(slot.homeEntryId),
@@ -855,6 +860,7 @@ export class StandingsService extends ApplicationService {
         groupCount: competition.groupCount,
         totalMatchCount: competition.totalMatchCount,
         publishedMatchCount: competition.publishedMatchCount,
+        ...resolutionCounts(competition),
         confirmedMatchCount: competition.confirmedMatchCount,
         isComplete: competition.isComplete,
         rules: this.publicRules(b.rules),
@@ -862,6 +868,7 @@ export class StandingsService extends ApplicationService {
         groups: competition.groups.map((g) => ({
           groupKey: g.groupKey,
           label: g.label,
+          ...resolutionCounts(g.standings),
           confirmedMatchCount: g.standings.confirmedMatchCount,
           totalMatchCount: g.standings.totalMatchCount,
           isComplete: g.standings.isComplete,

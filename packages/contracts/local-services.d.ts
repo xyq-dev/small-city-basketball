@@ -106,4 +106,5 @@ export interface LocalLocationCandidate {
   kind: 'PLACE' | 'REVERSE';
   region?: LocalRegion;
   regionLabel?: string;
+  regionLevel?: 'PROVINCE' | 'PREFECTURE' | 'COUNTY';
 }

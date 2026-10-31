@@ -10,7 +10,12 @@ const PUBLIC_ID = /^[A-Za-z0-9_-]{43}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Cursor timestamps keep PostgreSQL's microseconds so equal-millisecond rows never skip.
 const STAMP = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})\.\d{6}Z$/;
-export const PUBLIC_FORMATS = ['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'];
+export const PUBLIC_FORMATS = [
+  'ROUND_ROBIN',
+  'DOUBLE_ROUND_ROBIN',
+  'SINGLE_ELIMINATION',
+  'GROUP_KNOCKOUT',
+];
 
 const badQuery = (message: string): never => {
   throw new ApiError(400, 'INVALID_QUERY', message);

@@ -26,6 +26,8 @@
       <view class="card appearance-summary">
         <view class="appearance-status {{item.tone}}">{{item.statusText}}{{item.status === 'EXPIRED' ? ' · 本项档期已释放' : ''}}</view>
         <view class="subtitle">{{item.playerName}} · {{item.label}}</view>
+<button class="quiet" data-id="{{item.id}}" data-kind="report" bindtap="governance" disabled="{{busy}}">本场服务举报或工单</button>
+<button wx:if="{{item.status === 'COMPLETED'}}" class="quiet" data-id="{{item.id}}" data-kind="review" bindtap="governance" disabled="{{busy}}">评价本场已完成服务</button>
         <view wx:if="{{item.status === 'CONDITIONAL'}}" class="small">条件满足后补齐具体时间</view>
         <view wx:elif="{{item.scheduleText}}" class="small">{{item.scheduleText}}</view>
         <block wx:else><view class="small">{{item.startText}} — {{item.endText}}</view><view class="small muted">报到 {{item.reportText}}</view></block>

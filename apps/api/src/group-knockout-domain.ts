@@ -532,7 +532,24 @@ export function calculateGroupKnockout(input: {
           fixtures: initialFixtures,
         }
       : null;
+  const adjudicatedMatchCount =
+      groups.reduce((sum, g) => sum + (g.standings.adjudicatedMatchCount ?? 0), 0) +
+      (bracket?.adjudicatedMatchCount ?? 0),
+    cancelledMatchCount =
+      groups.reduce((sum, g) => sum + (g.standings.cancelledMatchCount ?? 0), 0) +
+      (bracket?.cancelledMatchCount ?? 0);
   return {
+    ...(adjudicatedMatchCount + cancelledMatchCount
+      ? {
+          adjudicatedMatchCount,
+          cancelledMatchCount,
+          resolvedMatchCount:
+            groups.reduce(
+              (sum, g) => sum + (g.standings.resolvedMatchCount ?? g.standings.confirmedMatchCount),
+              0,
+            ) + (bracket?.resolvedMatchCount ?? bracket?.confirmedMatchCount ?? 0),
+        }
+      : {}),
     algorithmVersion: 'GK_BALANCED_V1',
     groupCount: draw.config.groupCount,
     sourceHash,

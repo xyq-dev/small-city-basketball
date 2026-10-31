@@ -24,8 +24,12 @@
     <view wx:if="{{manage}}" class="card manage-card">
       <view class="subtitle">赛事管理</view>
       <view class="manage-links">
-        <button class="secondary" bindtap="openSetup">赛事设置与排赛</button>
-        <button wx:if="{{event.format !== 'ROUND_ROBIN'}}" class="secondary" bindtap="openBracket">{{event.format === 'GROUP_KNOCKOUT' ? '分组积分与晋级发布' : '签位与下一轮发布'}}</button>
+        <button class="secondary" data-page="recruitment" bindtap="openFeature">公开招募、导入与本届邀请</button>
+<button class="secondary" data-page="poster" bindtap="openFeature">授权宣传海报</button>
+<button class="secondary" data-page="staff-configuration" bindtap="openFeature">赛事工作人员</button>
+<button class="secondary" data-page="match-exceptions" bindtap="openFeature">弃权与取消规则</button>
+<button class="secondary" bindtap="openSetup">赛事设置与排赛</button>
+        <button wx:if="{{event.format !== 'ROUND_ROBIN' && event.format !== 'DOUBLE_ROUND_ROBIN'}}" class="secondary" bindtap="openBracket">{{event.format === 'GROUP_KNOCKOUT' ? '分组积分与晋级发布' : '签位与下一轮发布'}}</button>
         <button class="secondary" bindtap="openTasks">记分与赛果确认</button>
         <button wx:if="{{manage.review}}" class="secondary" bindtap="openReview">报名审核<text class="manage-sub">{{manage.reviewLabel}}</text></button>
         <button wx:if="{{manage.seasonGrants}}" class="secondary" bindtap="openSeasonGrants">私有赛季数据提名<text class="manage-sub">提名后仍需球员本人同意</text></button>
@@ -46,7 +50,7 @@
     </view>
     <view class="org-event-tabs">
       <button class="{{tab === 'schedule' ? 'selected' : ''}}" data-tab="schedule" bindtap="tab">赛程</button>
-      <button class="{{tab === 'ranking' ? 'selected' : ''}}" data-tab="ranking" bindtap="tab">{{event.format === 'ROUND_ROBIN' ? '积分排名' : '分组与淘汰'}}</button>
+      <button class="{{tab === 'ranking' ? 'selected' : ''}}" data-tab="ranking" bindtap="tab">{{event.format === 'ROUND_ROBIN' || event.format === 'DOUBLE_ROUND_ROBIN' ? '积分排名' : '分组与淘汰'}}</button>
       <button class="{{tab === 'stats' ? 'selected' : ''}}" data-tab="stats" bindtap="tab">球员数据</button>
     </view>
 

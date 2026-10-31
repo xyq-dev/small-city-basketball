@@ -1048,7 +1048,7 @@ export class LocalServicesService extends ApplicationService {
         const node = candidate.sourceCode
           ? (
               await this.pool.query(
-                'SELECT region_id,name FROM region_catalog_nodes WHERE catalog_version=$1 AND source_code=$2',
+                'SELECT region_id,name,level FROM region_catalog_nodes WHERE catalog_version=$1 AND source_code=$2',
                 [REGION_CATALOG_VERSION, candidate.sourceCode],
               )
             ).rows[0]
@@ -1059,6 +1059,7 @@ export class LocalServicesService extends ApplicationService {
             ? {
                 region: { catalogVersion: REGION_CATALOG_VERSION, regionId: node.region_id },
                 regionLabel: node.name,
+                regionLevel: node.level,
               }
             : {}),
         });

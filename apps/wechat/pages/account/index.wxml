@@ -14,6 +14,7 @@
       </view>
       <view class="menu-group">
         <view class="menu-title">球队</view>
+<view class="menu-row" data-page="recruitment" bindtap="go"><view class="menu-text"><view>本届赛事申请与邀请</view><view class="menu-sub">公开招募报名、我的申请和本届邀请</view></view></view>
         <view class="menu-row" data-page="teams" bindtap="go"><scb-icon name="users" size="20"/><view class="menu-text"><view>我的球队与本届报名</view><view class="menu-sub">{{teamCount ? '可管理 ' + teamCount + ' 支球队' : '接受球队邀请后在此管理'}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view class="menu-row" data-page="invitation" bindtap="go"><scb-icon name="check" size="20"/><view class="menu-text"><view>接受球队邀请</view><view class="menu-sub">使用主办方发给本人的邀请</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view class="menu-row" data-page="participant-materials" bindtap="go"><scb-icon name="shield" size="20"/><view class="menu-text"><view>本人赛事报名与照片</view><view class="menu-sub">本人填写、外部保单核验与宣传授权</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
@@ -24,6 +25,8 @@
       <view wx:if="{{managedOrgs.length}}" class="menu-group">
         <view class="menu-title">机构管理</view>
         <block wx:for="{{managedOrgs}}" wx:key="id">
+<view class="menu-row" data-page="staff-configuration" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>成员与工作人员权限</view><view class="menu-sub">{{item.name}}</view></view></view>
+<view class="menu-row" data-page="local-manage" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>球场与同城服务管理</view><view class="menu-sub">{{item.name}} · 供给、档期与审核</view></view></view>
           <view class="menu-row" data-page="team-requests" data-org="{{item.id}}" bindtap="go"><scb-icon name="users" size="20"/><view class="menu-text"><view>建队申请审批</view><view class="menu-sub">{{item.name}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
           <view class="menu-row" data-page="seasons" data-org="{{item.id}}" bindtap="go"><scb-icon name="chart" size="20"/><view class="menu-text"><view>私有赛季管理</view><view class="menu-sub">{{item.name}} · 仅机构内已授权统计</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         </block>
@@ -40,6 +43,11 @@
       </view>
       <view class="menu-group">
         <view class="menu-title">账号</view>
+<view class="menu-row" data-page="local-bookings" bindtap="go"><view class="menu-text"><view>我的球场与服务订单</view></view></view>
+<view class="menu-row" data-page="local-matchups" bindtap="go"><view class="menu-text"><view>球队约赛</view></view></view>
+<view class="menu-row" data-page="governance" bindtap="go"><view class="menu-text"><view>客服、举报与申诉</view></view></view>
+<view class="menu-row" data-page="governance-reviews" bindtap="go"><view class="menu-text"><view>我的服务评价</view></view></view>
+<view class="menu-row" data-page="city-operations" bindtap="go"><view class="menu-text"><view>城市运营授权</view><view class="menu-sub">按当前账号被委派的范围管理</view></view></view>
         <view class="menu-row" data-page="account-recovery" bindtap="go"><view class="menu-text">邮箱验证与账号找回</view></view>
         <view class="menu-row" bindtap="showSecurity"><scb-icon name="shield" size="20"/><view class="menu-text"><view>账号与微信绑定</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view class="menu-row" data-page="planned" data-kind="messages" bindtap="go"><scb-icon name="chat" size="20"/><view class="menu-text"><view>微信提醒说明</view><view class="menu-sub">关注已开放，订阅消息尚未启用</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>

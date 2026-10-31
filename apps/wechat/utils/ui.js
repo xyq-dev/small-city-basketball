@@ -2,6 +2,17 @@ const api = require('./api');
 const routes = {};
 for (const key of [
   'home',
+  'match-exceptions',
+  'recruitment',
+  'poster',
+  'local',
+  'local-manage',
+  'local-bookings',
+  'local-matchups',
+  'governance',
+  'governance-reviews',
+  'city-operations',
+
   'city-select',
   'watch',
   'media',

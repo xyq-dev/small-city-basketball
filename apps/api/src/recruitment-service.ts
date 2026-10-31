@@ -137,7 +137,7 @@ export class RecruitmentService extends ApplicationService {
     const fingerprint = requestFingerprint(input);
     const row = (
       await c.query<Row>(
-        'SELECT * FROM recruitment_request_receipts WHERE actor_id=$1 AND client_request_id=$2 FOR SHARE',
+        'SELECT * FROM recruitment_request_receipts WHERE actor_id=$1 AND client_request_id=$2',
         [a.user.id, input.clientRequestId],
       )
     ).rows[0];
@@ -846,7 +846,7 @@ export class RecruitmentService extends ApplicationService {
         checkVersion(a.event.version, input.expectedEventVersion);
         const preview = (
           await c.query<Row>(
-            'SELECT * FROM event_team_import_previews WHERE org_id=$1 AND event_id=$2 AND actor_id=$3 AND id=$4 FOR SHARE',
+            'SELECT * FROM event_team_import_previews WHERE org_id=$1 AND event_id=$2 AND actor_id=$3 AND id=$4',
             [a.orgId, a.event.id, a.user.id, input.previewId],
           )
         ).rows[0];

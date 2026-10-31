@@ -622,7 +622,7 @@ export class ApplicationService {
         await this.lockActor(client, cookie),
         organizationId,
       );
-      if (actor.role !== 'ORG_OWNER') throw forbidden();
+      if (actor.role !== 'ORG_OWNER' || targetUserId === actor.user.id) throw forbidden();
       const targetUser = await client.query<{ id: string; status: string }>(
         'SELECT id,status FROM users WHERE id=$1 FOR SHARE',
         [targetUserId],
@@ -652,6 +652,19 @@ export class ApplicationService {
     });
   }
 
+  protected async assertStaffMutable(client: PoolClient, eventId: string) {
+    const r = await client.query(
+      'SELECT 1 FROM match_exception_heads WHERE event_id=$1 AND active_request_id IS NOT NULL LIMIT 1',
+      [eventId],
+    );
+    if (r.rowCount)
+      throw new ApiError(
+        409,
+        'MATCH_ADJUDICATED',
+        '赛事含有效比赛裁定，请先按独立流程撤销裁定后调整工作人员',
+      );
+  }
+
   async putStaff(
     cookie: string | undefined,
     organizationId: string,
@@ -675,6 +688,7 @@ export class ApplicationService {
       );
       if (target.rows[0]?.status !== 'ACTIVE') throw notFound();
       const event = await this.lockEvent(client, actor, eventId);
+      await this.assertStaffMutable(client, event.row.id);
       await this.ensureFreshSession(client, actor);
       await client.query(
         `INSERT INTO event_staff(org_id,event_id,user_id,role,status) VALUES($1,$2,$3,$4,$5)

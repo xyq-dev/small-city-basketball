@@ -709,6 +709,11 @@ describe('X02 administrative knockout sources', () => {
     f.matches[1] = decide(f.matches[1]!);
     const b = f.read();
     expect(b.confirmedMatchCount).toBe(0);
+    expect(b).toMatchObject({
+      adjudicatedMatchCount: 2,
+      cancelledMatchCount: 0,
+      resolvedMatchCount: 2,
+    });
     expect(
       b.nextRound!.sources.every(
         (s) => 'kind' in s && s.kind === 'ADJUDICATION' && !('confirmationId' in s),
@@ -730,6 +735,12 @@ describe('X02 administrative knockout sources', () => {
     const b = f.read();
     expect(b.nextRound).toBeNull();
     expect(b.isComplete).toBe(false);
+    expect(b).toMatchObject({
+      adjudicatedMatchCount: 1,
+      cancelledMatchCount: 1,
+      resolvedMatchCount: 2,
+    });
+    expect(b.rounds[0]!.slots[0]!.adjudication).toEqual({ kind: 'CANCELLED' });
     expect(b.rounds[0]!.slots[0]!.winnerEntryId).toBeNull();
   });
 });

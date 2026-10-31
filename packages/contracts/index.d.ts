@@ -866,6 +866,9 @@ export interface PublicEventData {
   format?: EventFormat;
   rules: PublicStandingsRules | null;
   confirmedMatchCount: number;
+  resolvedMatchCount?: number;
+  adjudicatedMatchCount?: number;
+  cancelledMatchCount?: number;
   totalMatchCount: number;
   isComplete: boolean;
   serverTime: string;
@@ -1003,6 +1006,9 @@ export interface EventLifecycleData {
   completion: {
     totalMatchCount: number;
     confirmedMatchCount: number;
+    resolvedMatchCount?: number;
+    adjudicatedMatchCount?: number;
+    cancelledMatchCount?: number;
     ready: boolean;
     blockers: string[];
     sourceHash: string | null;
@@ -1065,6 +1071,7 @@ export type KnockoutSource =
 export interface KnockoutSlotData {
   /** Present only for an opt-in championship/bronze final round. */
   kind?: 'CHAMPIONSHIP' | 'THIRD_PLACE';
+  adjudication?: { kind: 'FORFEIT' | 'CANCELLED' };
   /** Bronze contestants are genuine losers of the cited semifinals. */
   sourceOutcome?: 'WINNER' | 'LOSER';
   fixtureKey: string;
@@ -1100,6 +1107,9 @@ export interface KnockoutBracket {
   totalMatchCount: number;
   publishedMatchCount: number;
   confirmedMatchCount: number;
+  resolvedMatchCount?: number;
+  adjudicatedMatchCount?: number;
+  cancelledMatchCount?: number;
   isComplete: boolean;
   rounds: KnockoutRoundData[];
   /** Only populated after every required final-round game is independently confirmed. */
@@ -1135,6 +1145,9 @@ export interface PublicKnockoutData {
   totalMatchCount: number;
   publishedMatchCount: number;
   confirmedMatchCount: number;
+  resolvedMatchCount?: number;
+  adjudicatedMatchCount?: number;
+  cancelledMatchCount?: number;
   isComplete: boolean;
   rounds: {
     roundNo: number;
@@ -1142,6 +1155,7 @@ export interface PublicKnockoutData {
     published: boolean;
     slots: {
       kind?: 'CHAMPIONSHIP' | 'THIRD_PLACE';
+      adjudication?: { kind: 'FORFEIT' | 'CANCELLED' };
       sourceOutcome?: 'WINNER' | 'LOSER';
       positionNo: number;
       home: PublicTeamData | null;
@@ -1176,3 +1190,9 @@ export type * from './event-templates.js';
 export type * from './match-exceptions.js';
 
 export type * from './scoring-offline.js';
+
+export type * from './recruitment.js';
+export type * from './local-services.js';
+export type * from './governance.js';
+
+export type * from './knockout-optimization.js';

@@ -443,6 +443,9 @@ Page({
       await this.load(true);
     }
   },
+  openExceptions() {
+    ui.open('match-exceptions', { orgId: this.orgId, matchId: this.matchId });
+  },
   openScorer() {
     ui.open('scorer', { orgId: this.orgId, matchId: this.matchId });
   },

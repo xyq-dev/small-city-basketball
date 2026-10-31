@@ -75,3 +75,10 @@ export interface AdministrativeCancellationSource {
   loserEntryId: null;
 }
 export type GroupResultSource = import('./index.js').KnockoutSource;
+
+/** Administrative decisions resolve fixtures without claiming recorded confirmations. */
+export interface MatchResolutionCounts {
+  resolvedMatchCount?: number;
+  adjudicatedMatchCount?: number;
+  cancelledMatchCount?: number;
+}

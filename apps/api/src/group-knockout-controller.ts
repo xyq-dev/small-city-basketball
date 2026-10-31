@@ -37,4 +37,15 @@ export class GroupKnockoutController {
       meta: { requestId: r.requestId },
     };
   }
+  @Post('group-optimization-preview') @HttpCode(200) async optimize(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Param('eventId') event: string,
+    @Body() body: unknown,
+  ) {
+    return {
+      data: await this.service.previewNextRoundOptimization(r.headers.cookie, org, event, body),
+      meta: { requestId: r.requestId },
+    };
+  }
 }

@@ -262,3 +262,19 @@ export function administrativeResult(m: Record<string, any>): AdministrativeMatc
     rules: m.exception_rules,
   });
 }
+
+/** Optional fields preserve legacy response shapes when there are no adjudications. */
+export function resolutionCounts(
+  value:
+    | { resolvedMatchCount?: number; adjudicatedMatchCount?: number; cancelledMatchCount?: number }
+    | null
+    | undefined,
+) {
+  return value && (value.adjudicatedMatchCount ?? 0) + (value.cancelledMatchCount ?? 0) > 0
+    ? {
+        resolvedMatchCount: value.resolvedMatchCount!,
+        adjudicatedMatchCount: value.adjudicatedMatchCount ?? 0,
+        cancelledMatchCount: value.cancelledMatchCount ?? 0,
+      }
+    : {};
+}

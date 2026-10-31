@@ -14,7 +14,7 @@
   <button bindtap="searchPlaces" loading="{{placesBusy}}" disabled="{{placesBusy}}">在所选地区查地图地点</button>
   <view class="muted">地图地点仅帮助选地址和搜索起点，可预约档期由经营方实际发布。</view>
   <view wx:if="{{!locationEnabled}}" class="muted">地图地点解析暂未开放，仍可手动选城、输入实际服务地址。</view>
-  <view wx:if="{{locationError}}" class="error">{{locationError}}</view>
+  <view wx:if="{{locationError}}" class="error">{{locationError}}</view><view wx:for="{{locatedRegions}}" wx:key="index" class="place-row"><view>定位建议：{{item.regionLabel}}</view><view class="muted">{{item.address}}，确认前不会切换城市。</view><button data-index="{{index}}" bindtap="confirmLocatedRegion">确认此地区并查询附近</button></view>
   <view wx:for="{{places}}" wx:key="index" class="place-row"><view>{{item.title}}</view><view class="muted">{{item.address}} · 地图候选</view><button data-index="{{index}}" data-purpose="origin" bindtap="usePlace">作为搜索起点</button><button wx:if="{{detail && detail.listing.kind!=='COURT'}}" data-index="{{index}}" data-purpose="service" bindtap="usePlace">明确选为本次服务地址</button></view>
  </view>
  <view wx:if="{{pending || pendingError}}" class="notice warning"><view>{{pendingError || '上次操作尚未核对，请先处理。'}}</view><button bindtap="recover" disabled="{{busy}}">查询原操作回执</button><button wx:if="{{pending}}" bindtap="retry" disabled="{{busy}}">重试原操作</button></view>

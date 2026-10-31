@@ -312,6 +312,96 @@ test('POI candidates cannot be interpreted as stock or silently change the selec
   );
 });
 
+test('disabled reverse lookup keeps nationwide without requesting device permission', async () => {
+  const h = harness('local', { request: () => envelope(searchData()) });
+  h.page.onShow();
+  await h.flush();
+  await h.page.locate();
+  assert.match(h.page.data.locationError, /先手动选择/);
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.page.data.selection.mode, 'NATIONWIDE');
+  assert.equal(h.storage.size, 0);
+});
+test('on-demand reverse lookup suggests an exact catalog region and only explicit confirmation persists the region', async () => {
+  const candidate = {
+    title: '合成区',
+    address: '合成区合成路',
+    point,
+    sourceCode: '123456',
+    source: 'TENCENT',
+    kind: 'REVERSE',
+    region,
+    regionLabel: '合成区',
+    regionLevel: 'COUNTY',
+  };
+  const h = harness('local', {
+    request: ({ url }) =>
+      url.endsWith('local-location')
+        ? envelope({ candidates: [candidate], inventoryVerified: false })
+        : envelope({
+            ...searchData(),
+            locationCapability: { enabled: true, coordinateSystem: 'GCJ02' },
+          }),
+  });
+  h.page.onShow();
+  await h.flush();
+  h.wx.getLocation = (o) => o.success(point);
+  await h.page.locate();
+  assert.equal(h.page.data.selection.mode, 'NATIONWIDE');
+  assert.equal(h.storage.size, 0);
+  assert.equal(h.page.data.locatedRegions.length, 1);
+  assert.equal(h.calls.at(-1).body.type, 'REVERSE');
+  await h.page.confirmLocatedRegion(tap({ index: 0 }));
+  assert.equal(h.page.data.selection.regionId, R);
+  assert.equal(h.page.data.selection.level, 'COUNTY');
+  assert.equal(h.page.data.hasOrigin, true);
+  assert.equal(h.storage.size, 1);
+  const stored = JSON.stringify([...h.storage.values()]);
+  assert.equal(stored.includes('latitude'), false);
+  assert.equal(stored.includes('longitude'), false);
+  assert.equal(h.calls.at(-1).url, '/v1/public/local-search');
+});
+test('a reverse lookup that arrives after leaving the page cannot present or select a city', async () => {
+  const d = deferred(),
+    h = harness('local', {
+      request: ({ url }) =>
+        url.endsWith('local-location')
+          ? d.promise
+          : envelope({
+              ...searchData(),
+              locationCapability: { enabled: true, coordinateSystem: 'GCJ02' },
+            }),
+    });
+  h.page.onShow();
+  await h.flush();
+  h.wx.getLocation = (o) => o.success(point);
+  const task = h.page.locate();
+  await ticks();
+  h.page.onHide();
+  d.resolve(
+    envelope({
+      candidates: [
+        {
+          title: '合成区',
+          address: '合成地址',
+          point,
+          sourceCode: '123456',
+          source: 'TENCENT',
+          kind: 'REVERSE',
+          region,
+          regionLabel: '合成区',
+          regionLevel: 'COUNTY',
+        },
+      ],
+      inventoryVerified: false,
+    }),
+  );
+  await task;
+  assert.equal(h.page.data.locatedRegions.length, 0);
+  assert.equal(h.page.data.selection.mode, 'NATIONWIDE');
+  assert.equal(h.storage.size, 0);
+});
+
 test('closing a detail prevents late server data from reopening the booking form', async () => {
   const d = deferred(),
     h = harness('local', { request: () => d.promise });

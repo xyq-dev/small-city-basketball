@@ -124,7 +124,7 @@ BEGIN
  IF TG_TABLE_NAME='court_reservations' THEN k:='court:'||NEW.court_id; s:=NEW.starts_at; e:=NEW.ends_at;
  ELSIF TG_TABLE_NAME='team_reservations' THEN k:='team:'||NEW.team_id; s:=NEW.starts_at; e:=NEW.ends_at;
  ELSE
-  IF NEW.status NOT IN ('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED') THEN RETURN NEW; END IF;
+  IF NEW.status NOT IN ('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED') OR (NEW.status='REQUESTED' AND NEW.expires_at<=clock_timestamp()) THEN RETURN NEW; END IF;
   k:='user:'||NEW.player_user_id; s:=NEW.report_at; e:=NEW.end_at+interval '30 minutes';
  END IF;
  IF EXISTS(SELECT 1 FROM local_resource_reservations WHERE active AND resource_key=k AND tstzrange(starts_at,ends_at,'[)') && tstzrange(s,e,'[)')) THEN

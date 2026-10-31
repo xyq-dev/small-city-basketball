@@ -66,6 +66,9 @@ export interface GroupKnockoutProjection {
   totalMatchCount: number;
   publishedMatchCount: number;
   confirmedMatchCount: number;
+  resolvedMatchCount?: number;
+  adjudicatedMatchCount?: number;
+  cancelledMatchCount?: number;
   isComplete: boolean;
   groups: GroupTableData[];
   qualification: {
@@ -122,12 +125,18 @@ export interface PublicGroupKnockoutData {
   totalMatchCount: number;
   publishedMatchCount: number;
   confirmedMatchCount: number;
+  resolvedMatchCount?: number;
+  adjudicatedMatchCount?: number;
+  cancelledMatchCount?: number;
   isComplete: boolean;
   rules: PublicStandingsRules;
   groups: {
     groupKey: string;
     label: string;
     confirmedMatchCount: number;
+    resolvedMatchCount?: number;
+    adjudicatedMatchCount?: number;
+    cancelledMatchCount?: number;
     totalMatchCount: number;
     isComplete: boolean;
     rows: PublicStandingsRow[];

@@ -299,17 +299,23 @@ function EventSchedulingContent({
               <ShieldCheck size={30} />
               <h2>
                 {!overview.freeze &&
-                ['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
-                  overview.event.format,
-                )
+                [
+                  'ROUND_ROBIN',
+                  'DOUBLE_ROUND_ROBIN',
+                  'SINGLE_ELIMINATION',
+                  'GROUP_KNOCKOUT',
+                ].includes(overview.event.format)
                   ? '请先冻结参赛名单'
                   : '当前赛事暂不支持排赛'}
               </h2>
               <p>{overview.support.reason || '请核对赛制、冻结名单及每组至少2队的分组要求。'}</p>
               {!overview.freeze &&
-                ['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
-                  overview.event.format,
-                ) && (
+                [
+                  'ROUND_ROBIN',
+                  'DOUBLE_ROUND_ROBIN',
+                  'SINGLE_ELIMINATION',
+                  'GROUP_KNOCKOUT',
+                ].includes(overview.event.format) && (
                   <Link className="button button-secondary" to={`/events/${eventId}/registration`}>
                     前往报名审核
                   </Link>

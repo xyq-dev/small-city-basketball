@@ -82,3 +82,35 @@ test('X01 historical slots retain their original view-model shape', () => {
   assert.equal(Object.hasOwn(slot, 'label'), false);
   assert.equal(Object.hasOwn(slot, 'winnerLabel'), false);
 });
+
+test('X02 administrative slots label the actual decision while preserving the original match state', () => {
+  const h = loadPage({ root, route: 'pages/bracket/index', wx: createWx() });
+  const bracket = h.requireLocal('utils/bracket.js');
+  for (const kind of ['FORFEIT', 'CANCELLED']) {
+    const slot = bracket.rounds(
+      {
+        rounds: [
+          {
+            roundNo: 1,
+            label: '决赛',
+            published: true,
+            slots: [
+              {
+                fixtureKey: 'R1-P1',
+                status: 'SCHEDULED',
+                adjudication: { kind },
+                homeEntryId: 'a',
+                awayEntryId: 'b',
+                winnerEntryId: kind === 'FORFEIT' ? 'b' : null,
+              },
+            ],
+          },
+        ],
+      },
+      { a: '甲', b: '乙' },
+    )[0].slots[0];
+    assert.equal(slot.status, 'SCHEDULED');
+    assert.equal(slot.statusLabel, kind === 'FORFEIT' ? '弃权裁定' : '本场取消');
+    assert.equal(slot.winner, kind === 'FORFEIT' ? '乙' : '');
+  }
+});

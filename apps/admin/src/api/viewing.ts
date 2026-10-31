@@ -136,6 +136,7 @@ function publicEvent(v: unknown) {
     obj(v) &&
     (v.format === undefined ||
       v.format === 'ROUND_ROBIN' ||
+      v.format === 'DOUBLE_ROUND_ROBIN' ||
       v.format === 'SINGLE_ELIMINATION' ||
       v.format === 'GROUP_KNOCKOUT') &&
     exact(v, [

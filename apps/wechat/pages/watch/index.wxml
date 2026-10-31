@@ -3,7 +3,7 @@
 
   <view class="watch-section-head"><view class="subtitle">公开赛事</view><text wx:if="{{dir.loaded && dir.items.length}}" class="muted">已显示 {{dir.items.length}} 届</text></view>
   <view class="watch-city-summary"><view><view class="watch-strong">{{citySelection.label}} · {{citySelection.source}}</view><view class="muted small">{{citySelection.description}}</view></view><button class="secondary small-button" bindtap="chooseCity">选择城市</button></view>
-  <view wx:if="{{citySelection.guide}}" class="notice small">未登录也能浏览全国赛事。可手动选城；定位暂未开放，不读取当前位置。<button class="quiet" bindtap="clearDirCity">先浏览全国</button></view>
+  <view wx:if="{{citySelection.guide}}" class="notice small">未登录也能浏览全国赛事。可手动选城；本页手动选城，附近定位请进入同城，不读取当前位置。<button class="quiet" bindtap="clearDirCity">先浏览全国</button></view>
   <view wx:if="{{citySelection.mode === 'REGION'}}" class="muted small">包含按历史城市标签匹配的赛事；以赛事地点说明为准。</view>
   <view wx:if="{{citySelection.warning}}" class="notice warning small">{{citySelection.warning}}</view>
   <view class="mode-choice">

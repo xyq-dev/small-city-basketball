@@ -1,0 +1,6 @@
+.selected-choice {
+  border: 2rpx solid #1c7467;
+  color: #155b51;
+  background: #e5f4ef;
+  font-weight: 600;
+}

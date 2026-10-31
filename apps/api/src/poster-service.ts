@@ -64,7 +64,7 @@ export class PosterService extends StandingsService {
     const hash = requestFingerprint(input);
     const old = (
       await c.query<Row>(
-        'SELECT * FROM recruitment_request_receipts WHERE actor_id=$1 AND client_request_id=$2 FOR SHARE',
+        'SELECT * FROM recruitment_request_receipts WHERE actor_id=$1 AND client_request_id=$2',
         [a.ctx.user.id, input.clientRequestId],
       )
     ).rows[0];

@@ -53,7 +53,11 @@ function slots(round, names) {
       home: s.status === 'BYE' ? name(s.byeEntryId) : name(s.homeEntryId) || waiting(s.homeSource),
       away: s.status === 'BYE' ? '轮空' : name(s.awayEntryId) || waiting(s.awaySource),
       status: s.status,
-      statusLabel: stateLabel(s.status),
+      statusLabel: s.adjudication
+        ? s.adjudication.kind === 'FORFEIT'
+          ? '弃权裁定'
+          : '本场取消'
+        : stateLabel(s.status),
       winner: name(s.winnerEntryId),
       ...(s.kind
         ? {

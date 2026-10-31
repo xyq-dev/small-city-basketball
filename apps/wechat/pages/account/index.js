@@ -330,7 +330,7 @@ Page({
       return;
     }
     const kind = e.currentTarget.dataset.kind;
-    const query = ['seasons', 'team-requests'].includes(key)
+    const query = ['seasons', 'team-requests', 'staff-configuration', 'local-manage'].includes(key)
       ? { orgId: api.uuid(e.currentTarget.dataset.org) }
       : key === 'bookings'
         ? { view: 'sent' }

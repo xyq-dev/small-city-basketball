@@ -3,6 +3,7 @@ const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const bracket = require('../../utils/bracket');
 const plan = require('../../utils/schedule');
+const optimization = require('../../utils/scheduling-optimization');
 
 // Native group draw records, qualification and round-by-round knockout publication over the
 // existing C04/C05 commands. Advancement, eligibility, locking and versions come from the
@@ -147,7 +148,10 @@ Page({
         ? x.confirmedMatchCount +
           ' / ' +
           x.totalMatchCount +
-          ' 场有效独立确认 · 已发布 ' +
+          ' 场有效独立确认' +
+          (x.adjudicatedMatchCount ? ' · 弃权裁定 ' + x.adjudicatedMatchCount + ' 场' : '') +
+          (x.cancelledMatchCount ? ' · 取消 ' + x.cancelledMatchCount + ' 场' : '') +
+          ' · 已发布 ' +
           x.publishedMatchCount +
           ' 场'
         : '';
@@ -214,6 +218,82 @@ Page({
           }
         : {}),
     });
+  },
+  async optimizeNext() {
+    const data = this._data;
+    if (!data || !this.data.next || this.data.busy || this.data.uncertain) return;
+    const group = this.data.kind === 'GROUP_KNOCKOUT';
+    const next = group ? data.competition.nextRound : data.bracket.nextRound;
+    if (!next) return;
+    const token = ui.begin(this);
+    this.setData({ busy: true, error: '' });
+    let proposal;
+    try {
+      const value = (
+        await api
+          .getClient()
+          .request(
+            this.base() +
+              (group ? '/group-optimization-preview' : '/knockout-optimization-preview'),
+            'POST',
+            { expectedEventVersion: data.event.version, expectedSourceHash: next.sourceHash },
+          )
+      ).data;
+      if (!ui.live(this, token) || this._data !== data) return;
+      if (value.status === 'WAITING_FOR_RESULTS') throw new Error('来源结果已变化，请刷新后核对。');
+      if (
+        value.status !== 'READY' ||
+        value.sourceHash !== next.sourceHash ||
+        value.roundNo !== next.roundNo ||
+        value.eventVersion !== data.event.version ||
+        !Number.isInteger(value.revisionVersion) ||
+        value.revisionVersion < 1
+      )
+        throw new Error('晋级优化来源不一致，请刷新。');
+      proposal = optimization.parse(value.optimization, {
+        eventVersion: data.event.version,
+        version: value.revisionVersion,
+        fixtures: next.fixtures,
+      });
+      if (
+        proposal.allocations.some(
+          (a) => a.courtId && !this.data.courts.some((c) => c.id === a.courtId),
+        )
+      )
+        throw new Error('建议场地已变化，请刷新。');
+    } catch (error) {
+      if (ui.live(this, token)) this.setData({ error: ui.message(error) });
+      return;
+    } finally {
+      if (ui.live(this, token)) this.setData({ busy: false });
+    }
+    if (!proposal || this._data !== data) return;
+    const op = await ui.confirmOp(
+      this,
+      '采用晋级轮次排时建议',
+      '使用真实晋级球队安排' +
+        (proposal.allocations.length - proposal.unassigned) +
+        '场，未排' +
+        proposal.unassigned +
+        '场；首末场均衡指标' +
+        proposal.penalty +
+        '。有界搜索不保证全局最优；此操作只填写草稿，正式发布仍复核来源、场地、球队及休息间隔。',
+    );
+    if (!op || this._data !== data || this._sourceHash !== next.sourceHash) return;
+    const allocated = new Map(proposal.allocations.map((a) => [a.fixtureKey, a]));
+    const fixtures = this.data.fixtures.map((f) => {
+      const a = allocated.get(f.key),
+        index = this.data.courts.findIndex((c) => c.id === a?.courtId);
+
+      return {
+        ...f,
+        courtId: a?.courtId || '',
+        courtIndex: index < 0 ? 0 : index,
+        date: a?.startsAt ? ui.datePart(a.startsAt) : '',
+        time: a?.startsAt ? ui.timePart(a.startsAt) : '',
+      };
+    });
+    if (op.valid()) this.setData({ fixtures, notice: '已填写排时建议；请核对后正式发布。' });
   },
   reasonInput(e) {
     this.setData({ reason: String(e.detail.value || '').slice(0, 500) });

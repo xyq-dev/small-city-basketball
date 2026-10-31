@@ -21,7 +21,8 @@
       <button class="secondary" bindtap="resendPending" disabled="{{busy}}">按原编号重发</button>
     </view>
 
-    <view class="board">
+    <button class="secondary" bindtap="openExceptions">弃权／取消及独立裁定</button>
+<view class="board">
       <view class="board-meta" bindtap="openEvent">{{match.eventName}} · {{match.round}}</view>
       <view class="board-meta">{{match.time}} · {{match.court}}</view>
       <view class="board-row">

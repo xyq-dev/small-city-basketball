@@ -540,6 +540,11 @@ describe('X02 group exception sources', () => {
     const r = f.read();
     expect(r.qualification.status).toBe('READY');
     expect(r.confirmedMatchCount).toBe(0);
+    expect(r).toMatchObject({
+      adjudicatedMatchCount: 2,
+      cancelledMatchCount: 0,
+      resolvedMatchCount: 2,
+    });
     expect(r.qualification.sources.every((s) => 'kind' in s && s.kind === 'ADJUDICATION')).toBe(
       true,
     );

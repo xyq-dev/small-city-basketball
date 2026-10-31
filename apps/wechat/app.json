@@ -41,7 +41,17 @@
     "pages/memberships/index",
     "pages/seasons/index",
     "pages/season-grants/index",
-    "pages/participant-materials/index"
+    "pages/participant-materials/index",
+    "pages/match-exceptions/index",
+    "pages/recruitment/index",
+    "pages/poster/index",
+    "pages/local/index",
+    "pages/local-manage/index",
+    "pages/local-bookings/index",
+    "pages/local-matchups/index",
+    "pages/governance/index",
+    "pages/governance-reviews/index",
+    "pages/city-operations/index"
   ],
   "window": {
     "navigationBarTitleText": "小城市篮球",
@@ -58,5 +68,11 @@
     "scb-nav": "/components/navigation/index",
     "scb-header": "/components/header/index",
     "scb-icon": "/components/icon/index"
-  }
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于你主动查询附近球场与同城服务的距离"
+    }
+  },
+  "requiredPrivateInfos": ["getLocation"]
 }

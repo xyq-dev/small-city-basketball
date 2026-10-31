@@ -27,12 +27,20 @@ export function isMediaChunkRequest(request: Pick<ApiRequest, 'method' | 'path'>
   return request.method === 'PUT' && chunkPath.test(request.path);
 }
 
+export function isGovernanceAttachmentRequest(request: Pick<ApiRequest, 'method' | 'path'>) {
+  return (
+    request.method === 'PUT' &&
+    /^\/v1\/me\/governance\/cases\/[0-9a-f-]{36}\/attachments\/[0-9a-f-]{36}$/i.test(request.path)
+  );
+}
+
 type Lane = { active: number; max: number; parser: RequestHandler };
 
 /** Apply a larger limit only after the exact upload route claims a bounded slot. */
 export function requestBodyMiddleware(): RequestHandler {
   const ordinary = json({ limit: '100kb', inflate: false });
   const upload: Lane = { active: 0, max: 2, parser: json({ limit: '12mb', inflate: false }) };
+  const governance: Lane = { active: 0, max: 2, parser: json({ limit: '6mb', inflate: false }) };
   const chunk: Lane = { active: 0, max: 8, parser: json({ limit: '1mb', inflate: false }) };
   const notification = json({
     limit: '100kb',
@@ -44,11 +52,13 @@ export function requestBodyMiddleware(): RequestHandler {
   return (incoming, response, next) => {
     const request = incoming as ApiRequest;
     if (isPaymentNotificationRequest(request)) return notification(request, response, next);
-    const lane = isMediaUploadRequest(request)
-      ? upload
-      : isMediaChunkRequest(request)
-        ? chunk
-        : null;
+    const lane = isGovernanceAttachmentRequest(request)
+      ? governance
+      : isMediaUploadRequest(request)
+        ? upload
+        : isMediaChunkRequest(request)
+          ? chunk
+          : null;
     if (!lane) return ordinary(request, response, next);
     if (lane.active >= lane.max) {
       response.setHeader('Retry-After', '1');

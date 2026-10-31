@@ -81,9 +81,12 @@ function StandingsIndex({ repository }: { repository: EventRepository }) {
       ) : (
         <div className="view-event-grid">
           {resource.data.map((event) => {
-            const supported = ['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
-              event.format,
-            );
+            const supported = [
+              'ROUND_ROBIN',
+              'DOUBLE_ROUND_ROBIN',
+              'SINGLE_ELIMINATION',
+              'GROUP_KNOCKOUT',
+            ].includes(event.format);
             const content = (
               <>
                 <span className="status-badge neutral">{EVENT_FORMAT_LABELS[event.format]}</span>
@@ -278,7 +281,7 @@ function EventStandings({
               </Link>
             </section>
           )}
-          {(data.event.format === 'ROUND_ROBIN' || data.event.format === 'GROUP_KNOCKOUT') && (
+          {['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN', 'GROUP_KNOCKOUT'].includes(data.event.format) && (
             <StandingsRulesForm
               key={`${data.rules?.id ?? 'none'}:${data.event.version}`}
               data={data}
@@ -305,7 +308,7 @@ function EventStandings({
               </button>
             </section>
           )}
-          {data.event.format === 'ROUND_ROBIN' &&
+          {['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN'].includes(data.event.format) &&
             (data.standings ? (
               <StandingsTable
                 data={data.standings}

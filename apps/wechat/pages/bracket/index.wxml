@@ -59,6 +59,7 @@
       <view class="subtitle">发布{{next.title}}</view>
       <view class="muted">{{next.note}}时间为北京时间；场地、球队占用与休息间隔由服务端复检。</view>
       <view wx:if="{{!courts.length}}" class="notice warning small">机构没有可用场地，请先在排赛中添加场地。</view>
+      <button class="secondary" bindtap="optimizeNext" disabled="{{busy || uncertain || !courts.length}}">自动建议本轮时间与场地</button>
       <view wx:for="{{fixtures}}" wx:key="key" class="setup-block">
         <view class="section-label">{{item.label}}</view>
         <picker class="field" range="{{courts}}" range-key="name" value="{{item.courtIndex}}" data-index="{{index}}" bindchange="pickCourt">{{courts[item.courtIndex].name || '选择场地'}}</picker>

@@ -332,6 +332,7 @@ export function calculateKnockout(input: {
   let previousComplete = true;
   let confirmedMatchCount = 0;
   let adjudicatedMatchCount = 0;
+  let cancelledMatchCount = 0;
   let publishedMatchCount = 0;
   let nextRound: KnockoutBracket['nextRound'] = null;
   for (let roundNo = 1; roundNo <= totalRounds; roundNo++) {
@@ -372,6 +373,7 @@ export function calculateKnockout(input: {
       if (byeEntryId && match) resultSourceInvalid();
       let winnerEntryId = byeEntryId;
       if (!byeEntryId) realCount++;
+      let administrativeKind: 'FORFEIT' | 'CANCELLED' | null = null;
       if (match) {
         if (!homeEntryId || !awayEntryId) resultSourceInvalid();
         if (roundNo > 1) {
@@ -394,6 +396,8 @@ export function calculateKnockout(input: {
         }
         if (match.state && match.scoring_rules?.tie_policy !== 'OVERTIME') resultSourceInvalid();
         const admin = administrativeResult(match);
+        administrativeKind = admin?.kind ?? null;
+        if (admin?.kind === 'CANCELLED') cancelledMatchCount++;
         const result = admin ? null : confirmedResult(match);
         const playerStatistics = admin ? null : confirmedPlayerStatistics(match);
         if (playerStatistics) {
@@ -459,6 +463,7 @@ export function calculateKnockout(input: {
         });
       }
       slots.push({
+        ...(administrativeKind ? { adjudication: { kind: administrativeKind } } : {}),
         ...(thirdPlaceMatch && roundNo === totalRounds
           ? {
               kind: isThirdPlace ? ('THIRD_PLACE' as const) : ('CHAMPIONSHIP' as const),
@@ -590,8 +595,12 @@ export function calculateKnockout(input: {
     totalMatchCount: source.entries.length - 1 + (thirdPlaceMatch ? 1 : 0),
     publishedMatchCount,
     confirmedMatchCount,
-    ...(adjudicatedMatchCount
-      ? { adjudicatedMatchCount, resolvedMatchCount: confirmedMatchCount + adjudicatedMatchCount }
+    ...(adjudicatedMatchCount + cancelledMatchCount
+      ? {
+          adjudicatedMatchCount,
+          cancelledMatchCount,
+          resolvedMatchCount: confirmedMatchCount + adjudicatedMatchCount + cancelledMatchCount,
+        }
       : {}),
     isComplete,
     rounds,

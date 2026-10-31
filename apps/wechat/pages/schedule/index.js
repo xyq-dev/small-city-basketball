@@ -159,6 +159,7 @@ Page({
       for (const p of (revision && revision.participants) || []) names[p.entryId] = p.teamName;
       const entries = frozen ? frozen.entries : [];
       const counts = [2, 4, 8].filter((n) => entries.length >= n * 2);
+      const defaults = data.template && data.template.configuration.scheduling;
       const keepSeeds = new Set(this.data.seeds.filter((x) => x.on).map((x) => x.id));
       const byeIds = revision
         ? revision.rounds.flatMap((r) => r.byeEntryIds || (r.byeEntryId ? [r.byeEntryId] : []))
@@ -177,7 +178,10 @@ Page({
         state,
         format: e.format,
         groupCounts: counts.map((n) => ({ value: n, label: n + ' 组' })),
-        groupIndex: Math.min(this.data.groupIndex, Math.max(counts.length - 1, 0)),
+        groupIndex:
+          !this.data.form && defaults && counts.includes(defaults.groupCount)
+            ? counts.indexOf(defaults.groupCount)
+            : Math.min(this.data.groupIndex, Math.max(counts.length - 1, 0)),
         seeds: entries.map((x) => ({
           id: x.entryId,
           name: x.teamName,
@@ -219,12 +223,14 @@ Page({
             active: c.status === 'ACTIVE',
           })),
         form: this.data.form || {
-          dayStart: '09:00',
-          dayEnd: '21:00',
-          slot: '60',
-          rest: '0',
-          gap: '0',
-          thirdPlace: !!(revision && revision.policy.thirdPlaceMatch),
+          dayStart: defaults ? defaults.dailyStart : '09:00',
+          dayEnd: defaults ? defaults.dailyEnd : '21:00',
+          slot: String(defaults ? defaults.slotDurationMinutes : 60),
+          rest: String(defaults ? defaults.minRestMinutes : 0),
+          gap: String(defaults ? defaults.minLocalDayGap : 0),
+          thirdPlace: revision
+            ? !!revision.policy.thirdPlaceMatch
+            : !!(defaults && defaults.thirdPlaceMatch),
         },
         revision: revision
           ? {
