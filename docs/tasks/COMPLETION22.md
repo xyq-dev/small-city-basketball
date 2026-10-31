@@ -32,7 +32,7 @@
 | F14 | 球场预约 | IMPLEMENTING | local／X12 | 经营方审核、时隙／库存原子锁位、过期释放、核销、天气取消 |
 | F15 | 同城人员服务 | IMPLEMENTING | local／X12 | 资质人工审核、覆盖／档期、接单到场交付、改期及争议 |
 | F16 | 球队约赛 | IMPLEMENTING | local／X12 | 双方队长确认、真实地点／时段、球队与场地冲突 |
-| F17 | 工作人员配置界面 | DESIGN | root／X17 | 机构成员／角色、赛事工作人员、现有授权API的真实消费者 |
+| F17 | 工作人员配置界面 | IMPLEMENTING | root／X17 | 机构成员／角色、赛事工作人员、现有授权API的真实消费者 |
 | F18 | 客服与治理 | IMPLEMENTING | governance／X18 | 工单分派／回复／申诉／举报、真实参与评价与访问隔离 |
 | F19 | 城市运营后台 | IMPLEMENTING | governance／X18 | 城市＋机构＋操作范围、供给质量与下架，不跨机构越权 |
 | F20 | 广告与赞助 | IMPLEMENTING | governance／X18 | 城市／赛事／时段审批投放、撤销、真实曝光去重统计 |
@@ -43,7 +43,7 @@
 
 各agent仅在独立worktree写已分配路径与自己的任务／交接，root独占汇总、共享app.ts/service.ts、contracts/index.*、全局路由及allowlist、基础设施和跨模块消费者接线。发现冲突先协调，不互相覆盖。模板使用既有球员、赛事和冻结资源，不复制第二套身份或比分权威。
 
-迁移预留025 competition、026 scheduling/templates、027 recruitment/posters、028 statistics/lineups、029 local、030 governance、031 root identity、032 public profiles。旧001—024不得改；若某文件仍未完成，不把迁移链和整套测试冒称完整通过。新表精确权限、readiness、重启与非空备份恢复由root整合验收。
+迁移预留025 competition、026 scheduling/templates、027 recruitment/posters、028 statistics/lineups、029 local、030 governance、031 root identity、032 public profiles、033比赛裁定、034离线队列、035工作人员回执。旧001—024不得改；若某文件仍未完成，不把迁移链和整套测试冒称完整通过。新表精确权限、readiness、重启与非空备份恢复由root整合验收。
 
 ## 检查点0：认领与设计
 
@@ -70,3 +70,7 @@ root整合后的全项目typecheck已通过，API全量单测正在执行，不�
 root上一整合态API54文件733项全部通过，含已同步的季军／三域内核。现再整合X03 fb0ad8f有界优化预览/原生应用、X08 e87103d专业统计/阵容/权威时间与原生准备开关、X05 79726c5持久招募/批量导入/接收人邀请；各作者测试和失败修复见对应X卡，真实PG仍未执行，不能当全闭环通过。root新增X22加密邮件outbox/单次token/密码重置会话时间屏障、固定官方邮件adapter及API；4项领域/provider测试、全项目typecheck通过，UI与PG仍待补。
 
 028/031已编写；034预留统计离线，033异常裁定，032长期档案。当前新增schema均未执行；026待排程owner冻结，根readiness/最小权限/完整非空恢复清单尚待整合。海报PNG需要中文字体，root补API Docker与CI字体并尝试本地安装，不把中文字方框当导出通过。下一条：同步本切片后，各域继续后续完整闭环；root补X17与X22消费者/PG，以及共享路由/DI/返回类型和基础设施。全部22项继续有效。
+
+## 检查点4：跨模块服务与原生消费者整合中
+
+X17工作人员配置与X22账号恢复消费者已写，原命令回执／取消串行边界已补；本次尚待消费者VM与真实PG。正在整合X01异常裁定、X03双循环模板、X08离线队列、X05海报消费者、X12预约服务与X18治理；各作者单测记录以对应任务卡为准，不能当根整套或真实PG通过。026—035新增迁移尚未执行，统一权限/恢复清单正在补齐。下一步同步后继续所有22项、接线和隔离CI，未宣布任一全量交付。

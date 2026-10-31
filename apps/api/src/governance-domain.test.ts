@@ -33,6 +33,14 @@ describe('X18 governance boundaries', () => {
       body: '请核对授权',
     };
     expect(() => parseCaseCreate(input)).toThrow();
+    expect(() => parseCaseCreate({ ...input, orgId: undefined, kind: 'SUPPORT' })).toThrow();
+    expect(
+      parseCaseCreate({
+        ...input,
+        orgId: undefined,
+        source: { kind: 'PUBLIC_EVENT', id: 'a'.repeat(43) },
+      }).orgId,
+    ).toBeNull();
     expect(
       parseCaseCreate({ ...input, source: { kind: 'PUBLIC_EVENT', id: 'a'.repeat(43) } }).source
         ?.kind,
@@ -50,6 +58,7 @@ describe('X18 governance boundaries', () => {
     const handler = { requester: false, handler: true, operator: false };
     expect(caseNextState('OPEN', 'CLOSE', requester)).toBe('CLOSED');
     expect(caseNextState('CLOSED', 'REOPEN', requester)).toBe('OPEN');
+    expect(() => caseNextState('CLOSED', 'CLOSE', requester)).toThrow();
     expect(() => caseNextState('OPEN', 'ASSIGN', requester)).toThrow();
     expect(() => caseNextState('OPEN', 'RESOLVE', handler)).toThrow();
     expect(caseNextState('ASSIGNED', 'RESOLVE', handler)).toBe('RESOLVED');

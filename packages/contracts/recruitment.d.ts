@@ -95,6 +95,6 @@ export interface PosterExportData {
   expiresAt: string;
   revokedAt: string | null;
   width: 1080;
-  height: 1440;
+  height: number;
   contentType: 'image/png';
 }

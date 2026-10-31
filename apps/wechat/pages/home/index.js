@@ -3,6 +3,7 @@ const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const directory = require('../../utils/directory');
 const cities = require('../../utils/city-preference');
+const localServices = require('../../utils/local-services');
 
 const privateEvents = {
   signedIn: false,
@@ -144,6 +145,9 @@ Page({
           eventsError: ui.message(error),
         });
     }
+  },
+  openLocal() {
+    localServices.open('local');
   },
   openEvents() {
     ui.open('watch');

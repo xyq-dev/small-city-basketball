@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const scoring = require('../../utils/scoring');
+const offline = require('../../utils/scoring-offline');
 
 const RENEW_MS = 10000;
 const TICK_MS = 1000;
@@ -22,6 +23,9 @@ const privateDefaults = {
   leaseNote: '',
   unavailable: false,
   pending: null,
+  offlineDraft: false,
+  offlineItems: [],
+  offlineError: '',
   voidTarget: null,
   voidReason: '',
   clockOpen: false,
@@ -171,6 +175,7 @@ Page({
       this.setData({ ...privateDefaults });
     }
     this._viewer = session.user.id;
+    this.refreshOffline();
     const token = ui.begin(this);
     try {
       const wb = (await client.request(this.base() + '/scoring')).data;
@@ -291,6 +296,17 @@ Page({
   async command(type, payload, label, op, expected) {
     if (this.data.busy || this.data.pending) return;
     if (op && !op.valid()) return;
+    if (this.data.offlineDraft) {
+      if (!offline.TYPES.includes(type)) {
+        this.setData({ error: '此操作须在线完成，离线草稿只记录统计与更正。' });
+        return;
+      }
+      return this.saveOffline(type, payload, label);
+    }
+    if (this.data.offlineItems.length) {
+      this.setData({ error: '存在未同步草稿，请先按原顺序同步并核对。' });
+      return;
+    }
     if (!this._control) {
       this.setData({ error: '请先取得记分控制。' });
       return;
@@ -333,6 +349,119 @@ Page({
       }
       if (error && ['VERSION_CONFLICT', 'INVALID_MATCH_STATE'].includes(error.code)) this.load();
     }
+  },
+  offlineScope() {
+    return { actorId: this._viewer, orgId: this.orgId, matchId: this.matchId };
+  },
+  refreshOffline() {
+    if (!this._viewer) return;
+    try {
+      const queue = offline.read(wx, this.offlineScope());
+      this.setData({
+        offlineItems: queue
+          ? queue.items.map((i) => ({
+              id: i.intentId,
+              ordinal: i.ordinal,
+              label: scoring.commandNames[i.command.type] || i.command.type,
+            }))
+          : [],
+        offlineError: '',
+      });
+    } catch (error) {
+      this.setData({ offlineError: ui.message(error) });
+    }
+  },
+  toggleOffline() {
+    if (
+      this.data.busy ||
+      this.data.pending ||
+      !this._viewer ||
+      !this._snapshot ||
+      !this.data.canControl
+    )
+      return;
+    this.setData({ offlineDraft: !this.data.offlineDraft, error: '', notice: '' });
+    if (this.data.offlineDraft)
+      this.setData({
+        notice: '离线草稿模式：未同步记录不计入正式比分；时钟、换人、节次和确认须在线完成。',
+      });
+  },
+  async saveOffline(type, payload, label) {
+    if (this.data.offlineError || !this._viewer || !this._snapshot || !this.data.canControl) return;
+    const actor = this._viewer,
+      token = ui.hold(this),
+      scope = this.offlineScope();
+    this.setData({ busy: true, error: '' });
+    try {
+      await offline.append(wx, scope, type, payload, this._matchVersion);
+      if (!ui.held(this, token) || actor !== this._viewer) return;
+      this.refreshOffline();
+      this.setData({ busy: false, notice: label + ' 已保存为本账号离线草稿，尚未同步。' });
+    } catch (error) {
+      if (ui.held(this, token)) this.setData({ busy: false, error: ui.message(error) });
+    }
+  },
+  async syncOffline() {
+    if (
+      this.data.busy ||
+      this.data.pending ||
+      !this._control ||
+      !this.data.offlineItems.length ||
+      this.data.offlineError
+    )
+      return;
+    const op = await ui.confirmOp(
+      this,
+      '同步离线草稿',
+      '按原顺序同步' +
+        this.data.offlineItems.length +
+        '条草稿？版本冲突会停止，已接受记录可按原编号核对，不会自动改版重发。',
+    );
+    if (!op || !op.valid()) return;
+    const token = ui.hold(this),
+      actor = this._viewer,
+      control = this._control,
+      scope = this.offlineScope();
+    const current = () =>
+      ui.held(this, token) && this._viewer === actor && this._control === control;
+    this.setData({ busy: true, error: '' });
+    try {
+      const result = await offline.sync(wx, scope, api.getClient(), this.base(), control, current);
+      if (!current()) return;
+      if (result.latest) this.show(result.latest.snapshot, Date.now());
+      this.refreshOffline();
+      this.setData({
+        busy: false,
+        offlineDraft: false,
+        notice: '草稿已按原顺序同步，请核对正式记录。',
+      });
+      this.refreshHistory();
+    } catch (error) {
+      if (!ui.held(this, token)) return;
+      this.refreshOffline();
+      this.setData({
+        busy: false,
+        error: '同步已停止，剩余原草稿已保留。' + scoring.failure(error),
+      });
+      if (error && ['LEASE_CONFLICT', 'SESSION_CHANGED'].includes(error.code)) {
+        this.dropControl();
+        this.setData({ held: false });
+      }
+    }
+  },
+  async discardOffline() {
+    if (this.data.busy || !this._viewer) return;
+    const scope = this.offlineScope(),
+      actor = this._viewer;
+    const op = await ui.confirmOp(
+      this,
+      '删除离线草稿',
+      '删除本账号本场尚未同步的草稿？已在服务端接受的原回执不会删除。建议先逐条核对。',
+    );
+    if (!op || !op.valid() || actor !== this._viewer) return;
+    offline.discard(wx, scope);
+    this.refreshOffline();
+    this.setData({ offlineDraft: false, notice: '本地草稿已删除。' });
   },
   async checkPending() {
     const pending = this.data.pending;

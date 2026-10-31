@@ -776,7 +776,7 @@ export class RecruitmentService extends ApplicationService {
           row.teamId &&
           (
             await c.query(
-              "SELECT user_id FROM team_access_grants WHERE org_id=$1 AND team_id=$2 AND (status='ACTIVE' OR user_id=$3) AND NOT(user_id=$3 AND status='ACTIVE') LIMIT 1",
+              "SELECT user_id FROM team_access_grants WHERE org_id=$1 AND team_id=$2 AND (status='ACTIVE' OR user_id=$3) AND NOT(user_id=$3 AND status='ACTIVE') AND NOT EXISTS(SELECT 1 FROM team_access_grants current_leader WHERE current_leader.org_id=$1 AND current_leader.team_id=$2 AND current_leader.user_id=$3 AND current_leader.status='ACTIVE') LIMIT 1",
               [a.orgId, row.teamId, row.leaderUserId],
             )
           ).rowCount

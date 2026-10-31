@@ -11,6 +11,7 @@ import type {
   StandingsRulesetData,
   StandingsTiebreaker,
 } from '@small-city-basketball/contracts';
+import { administrativeResult } from './match-exception-domain.js';
 import { ApiError } from './errors.js';
 import { invalid, objectInput } from './validation.js';
 export type ResultRow = Record<string, any>;
@@ -143,6 +144,7 @@ export function calculateStandings(input: {
   publicationId: string;
   asOf: string;
   mode: StandingsData['mode'];
+  format?: 'ROUND_ROBIN' | 'DOUBLE_ROUND_ROBIN';
 }): StandingsData {
   const { participants, matches, rules } = input;
   parseStandingsRules({
@@ -156,7 +158,9 @@ export function calculateStandings(input: {
     participants.length > 32 ||
     new Set(participants.map((p) => p.entryId)).size !== participants.length ||
     new Set(participants.map((p) => p.teamId)).size !== participants.length ||
-    matches.length !== (participants.length * (participants.length - 1)) / 2
+    matches.length !==
+      (participants.length * (participants.length - 1)) /
+        (input.format === 'DOUBLE_ROUND_ROBIN' ? 1 : 2)
   )
     resultSourceInvalid();
   const rows: StandingsRow[] = participants.map((p) => ({
@@ -174,6 +178,9 @@ export function calculateStandings(input: {
   }));
   const byId = new Map(rows.map((r) => [r.entryId, r]));
   const results: ConfirmedResult[] = [];
+  const administrative: unknown[] = [];
+  let adjudicated = 0,
+    cancelled = 0;
   const pairs = new Set<string>();
   const matchIds = new Set<string>();
   for (const m of matches) {
@@ -182,9 +189,40 @@ export function calculateStandings(input: {
     const home = byId.get(m.home_entry_id),
       away = byId.get(m.away_entry_id);
     if (!home || !away || home === away) resultSourceInvalid();
-    const pair = [m.home_entry_id, m.away_entry_id].sort().join('|');
+    const pair = (
+      input.format === 'DOUBLE_ROUND_ROBIN'
+        ? [m.home_entry_id, m.away_entry_id]
+        : [m.home_entry_id, m.away_entry_id].sort()
+    ).join('|');
     if (pairs.has(pair)) resultSourceInvalid();
     pairs.add(pair);
+    const admin = administrativeResult(m);
+    if (admin) {
+      administrative.push([
+        m.id,
+        admin.adjudicationId,
+        admin.adjudicationVersion,
+        admin.kind,
+        admin.winnerEntryId,
+        admin.loserEntryId,
+        admin.homeLeaguePoints,
+        admin.awayLeaguePoints,
+      ]);
+      if (admin.kind === 'CANCELLED') {
+        cancelled++;
+        continue;
+      }
+      adjudicated++;
+      home.played++;
+      away.played++;
+      const win = admin.winnerEntryId === home.entryId ? home : away,
+        loss = win === home ? away : home;
+      win.wins++;
+      loss.losses++;
+      home.leaguePoints += admin.homeLeaguePoints!;
+      away.leaguePoints += admin.awayLeaguePoints!;
+      continue;
+    }
     const result = confirmedResult(m);
     if (!result) continue;
     results.push(result);
@@ -220,7 +258,7 @@ export function calculateStandings(input: {
     return d;
   };
   rows.sort(compare);
-  if (results.length) {
+  if (results.length + adjudicated + cancelled) {
     for (let start = 0; start < rows.length;) {
       let end = start + 1;
       while (end < rows.length && compare(rows[start]!, rows[end]!) === 0) end++;
@@ -242,6 +280,14 @@ export function calculateStandings(input: {
       drawPoints: rules.drawPoints,
       tiebreakers: rules.tiebreakers,
     }),
+    ...(input.format === 'DOUBLE_ROUND_ROBIN' ? { format: input.format } : {}),
+    ...(administrative.length
+      ? {
+          administrative: administrative.sort((a: any, b: any) =>
+            String(a[0]).localeCompare(String(b[0])),
+          ),
+        }
+      : {}),
     participants: participants.map((p) => [p.entryId, p.teamId, p.teamName]),
     results: results
       .sort((a, b) => (a.matchId < b.matchId ? -1 : a.matchId > b.matchId ? 1 : 0))
@@ -263,7 +309,14 @@ export function calculateStandings(input: {
     asOf: input.asOf,
     confirmedMatchCount: results.length,
     totalMatchCount: matches.length,
-    isComplete: matches.length > 0 && results.length === matches.length,
+    isComplete: matches.length > 0 && results.length + adjudicated + cancelled === matches.length,
+    ...(administrative.length
+      ? {
+          resolvedMatchCount: results.length + adjudicated + cancelled,
+          adjudicatedMatchCount: adjudicated,
+          cancelledMatchCount: cancelled,
+        }
+      : {}),
     hasSharedRanks: rows.some((r) => r.tied),
     rows,
   };

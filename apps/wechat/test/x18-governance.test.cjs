@@ -1,0 +1,169 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const { loadPage, createWx } = require('./helpers/native-page.cjs');
+const root = path.resolve(__dirname, '..');
+const id = (n) => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
+function fixture({
+  request = async () => ({ data: { id: id(9), version: 1 } }),
+  answers = [true],
+  route = 'governance',
+} = {}) {
+  let revision = 0;
+  const listeners = new Set();
+  const wx = createWx({ modalAnswers: answers });
+  const client = {
+    request,
+    sessionRevision: () => revision,
+    onSessionChange: (f) => {
+      listeners.add(f);
+      return () => listeners.delete(f);
+    },
+  };
+  const api = { getClient: () => client, uuid: (v) => v, publicId: (v) => v };
+  const h = loadPage({
+    root,
+    route: 'pages/' + route + '/index',
+    wx,
+    modules: { [path.join(root, 'utils/api.js')]: api },
+  });
+  h.page.onLoad({});
+  h.page._viewer = id(1);
+  h.requireLocal('utils/ui.js').begin(h.page);
+  return {
+    ...h,
+    gov: h.requireLocal('utils/governance.js'),
+    change() {
+      revision++;
+      for (const f of [...listeners]) f();
+    },
+  };
+}
+test('an unknown write keeps only actor/kind/command metadata and refuses a replacement ID', async () => {
+  let calls = 0;
+  const h = fixture({
+    request: async () => {
+      calls++;
+      throw { status: 503, code: 'UNAVAILABLE' };
+    },
+  });
+  await h.gov.perform(h.page, 'CASE', '/v1/me/governance/cases', {
+    body: 'secret identity body',
+    base64: 'secret file',
+  });
+  assert.equal(calls, 1);
+  const records = [...h.wx.storage.values()];
+  assert.equal(records.length, 1);
+  assert.deepEqual(Object.keys(records[0]).sort(), ['commandId', 'kind', 'userId']);
+  assert.equal(JSON.stringify(records).includes('secret'), false);
+  h.wx.showModal = (o) => o.success({ confirm: true });
+  await assert.rejects(h.gov.perform(h.page, 'CASE', '/v1/me/governance/cases', {}), /核对/);
+  assert.equal(calls, 1);
+});
+test('unwritable journal stops the write before any network request', async () => {
+  let calls = 0;
+  const h = fixture({
+    request: async () => {
+      calls++;
+      return { data: {} };
+    },
+  });
+  h.wx.setStorageSync = () => {
+    throw new Error('full');
+  };
+  await assert.rejects(h.gov.perform(h.page, 'CASE', '/v1/me/governance/cases', {}), /保存失败/);
+  assert.equal(calls, 0);
+});
+test('late confirmation after account change cannot start a write', async () => {
+  let confirm,
+    calls = 0;
+  const h = fixture({
+    request: async () => {
+      calls++;
+      return { data: {} };
+    },
+  });
+  h.wx.showModal = (o) => {
+    confirm = o.success;
+  };
+  const pending = h.gov.perform(h.page, 'CASE', '/v1/me/governance/cases', { body: 'old secret' });
+  h.change();
+  confirm({ confirm: true });
+  assert.equal(await pending, null);
+  assert.equal(calls, 0);
+  assert.equal(h.wx.storage.size, 0);
+  assert.equal(h.page._viewer, null);
+});
+test('success after page hide clears only its original journal and never restores private UI', async () => {
+  let finish;
+  const h = fixture({
+    request: () =>
+      new Promise((r) => {
+        finish = r;
+      }),
+  });
+  const pending = h.gov.perform(h.page, 'CASE', '/v1/me/governance/cases', { body: 'private' });
+  await new Promise((r) => setImmediate(r));
+  assert.ok(finish);
+  h.page.onHide();
+  finish({ data: { id: id(9), version: 1 } });
+  assert.equal(await pending, null);
+  assert.equal(h.wx.storage.size, 0);
+  assert.equal(h.page.data.selected, null);
+  assert.equal(h.page.data.body, '');
+});
+test('receipt 404 keeps the original ID; explicit cancellation uses that exact ID', async () => {
+  const paths = [];
+  let missing = true;
+  const h = fixture({
+    request: async (p, m) => {
+      paths.push([p, m]);
+      if (missing) throw { status: 503 };
+      return { data: { cancelled: true, commandId: record.commandId } };
+    },
+    answers: [true, true],
+  });
+  await h.gov.perform(h.page, 'CASE', '/v1/me/governance/cases', {});
+  const record = h.gov.readPending(id(1), 'CASE');
+  await h.gov.recover(h.page, 'CASE');
+  assert.equal(h.gov.readPending(id(1), 'CASE').commandId, record.commandId);
+  missing = false;
+  await h.gov.recover(h.page, 'CASE', true);
+  assert.equal(h.gov.readPending(id(1), 'CASE'), null);
+  assert.deepEqual(paths.at(-1), [
+    '/v1/me/governance/operations/' + record.commandId + '/cancel',
+    'POST',
+  ]);
+});
+test('definite validation rejection releases journal; idempotency conflict does not', async () => {
+  const h = fixture({
+    request: async () => {
+      throw { status: 422, code: 'VALIDATION_ERROR' };
+    },
+  });
+  await h.gov.perform(h.page, 'CASE', '/v1/me/governance/cases', {});
+  assert.equal(h.wx.storage.size, 0);
+  assert.equal(h.gov.unknown({ status: 409, code: 'IDEMPOTENCY_CONFLICT' }), true);
+});
+test('case, city and review pages clear sensitive lists/forms on lifecycle reset', () => {
+  for (const route of ['governance', 'governance-reviews', 'city-operations']) {
+    const h = fixture({ route });
+    h.page.setData({
+      items: [{ body: 'secret' }],
+      reason: 'secret',
+      pending: { commandId: id(7) },
+    });
+    h.page.onHide();
+    assert.equal(h.page.data.items.length, 0);
+    assert.equal(h.page.data.reason, '');
+    assert.equal(h.page._viewer, null);
+    assert.equal(h.page.data.pending, null);
+  }
+});
+test('oversized attachments are refused before reading any file', async () => {
+  const h = fixture();
+  await assert.rejects(
+    h.gov.attachmentBody({}, { size: 4 * 1024 * 1024 + 1 }, 1, 'REQUESTER'),
+    /4MiB/,
+  );
+});

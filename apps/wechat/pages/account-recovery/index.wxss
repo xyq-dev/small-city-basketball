@@ -1,0 +1,1 @@
+.field { box-sizing: border-box; width: 100%; margin-bottom: 16rpx; } .card button { margin-top: 16rpx; } .small { margin-top: 14rpx; }

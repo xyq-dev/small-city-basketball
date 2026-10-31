@@ -1,4 +1,9 @@
-export const EVENT_FORMATS = Object.freeze(['ROUND_ROBIN', 'GROUP_KNOCKOUT', 'SINGLE_ELIMINATION']);
+export const EVENT_FORMATS = Object.freeze([
+  'ROUND_ROBIN',
+  'GROUP_KNOCKOUT',
+  'SINGLE_ELIMINATION',
+  'DOUBLE_ROUND_ROBIN',
+]);
 export const EVENT_STATUSES = Object.freeze([
   'DRAFT',
   'REGISTRATION_OPEN',

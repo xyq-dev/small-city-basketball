@@ -91,4 +91,14 @@ describe('X12 local supply invariants', () => {
     ).toThrow();
     expect(() => parseLocalQuery({ q: '', secret: 'unknown' })).toThrow();
   });
+  test('paging binds selected region, filters and explicit origin instead of mixing nearby results', () => {
+    const q = parseLocalQuery({ q: '球场' });
+    const cursor = Buffer.from(
+      JSON.stringify({ v: 1, scope: q.scope, id, distance: null }),
+    ).toString('base64url');
+    expect(parseLocalQuery({ q: '球场', cursor }).cursor).toEqual({ id, distance: null });
+    expect(() => parseLocalQuery({ q: '裁判', cursor })).toThrow();
+    expect(() => parseLocalQuery({ q: '球场', point, cursor })).toThrow();
+    expect(() => localInterval('2030-02-30T10:00:00Z', '2030-02-30T11:00:00Z')).toThrow();
+  });
 });

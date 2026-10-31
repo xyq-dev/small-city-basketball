@@ -20,6 +20,8 @@ import type {
 import { generateGroupPairings, parseGroupConfig } from './group-knockout-domain.js';
 import { activateEventCommerce } from './commerce/activation.js';
 import { generateKnockoutPairings } from './knockout-domain.js';
+import { generateDoubleRoundRobinPairings } from './double-round-robin-domain.js';
+import { parseTemplateConfiguration } from './event-template-domain.js';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
 import type { EventRow, OrgActor } from './service.js';
 import type { ScheduleOptimizationPreview } from '../../../packages/contracts/scheduling-completion.js';
@@ -54,7 +56,7 @@ export interface RevisionRow {
   org_id: string;
   event_id: string;
   freeze_id: string;
-  algorithm_version: 'RR_CIRCLE_V1' | 'SE_SEEDED_V1' | 'GK_BALANCED_V1';
+  algorithm_version: 'RR_CIRCLE_V1' | 'DRR_CIRCLE_V1' | 'SE_SEEDED_V1' | 'GK_BALANCED_V1';
   group_config: GroupKnockoutConfig | null;
   seed: string;
   input_hash: string;
@@ -331,8 +333,12 @@ export class SchedulingService extends ApplicationService {
       : null;
   }
   private support(event: EventAccess, freeze: RegistrationFreezeData | null) {
-    if (!['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(event.row.format))
-      return { supported: false, reason: '当前支持单循环与单淘汰赛' };
+    if (
+      !['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
+        event.row.format,
+      )
+    )
+      return { supported: false, reason: '当前支持单/双循环、单淘汰和分组接淘汰赛' };
     if (event.row.format === 'GROUP_KNOCKOUT' && freeze && freeze.entries.length < 4)
       return { supported: false, reason: '分组接淘汰至少需要4支冻结球队' };
     if (!freeze) return { supported: false, reason: '请先冻结报名名单' };
@@ -340,7 +346,7 @@ export class SchedulingService extends ApplicationService {
       return { supported: false, reason: '当前支持2–32支冻结球队' };
     return { supported: true, reason: null };
   }
-  private async schedulingDto(
+  protected async schedulingDto(
     client: PoolClient,
     ctx: OrgActor,
     event: EventAccess,
@@ -356,12 +362,34 @@ export class SchedulingService extends ApplicationService {
       : null;
     const publication = await this.publication(client, ctx.orgId, event.row.id);
     const support = this.support(event, freeze);
+    const templateRow = (
+      await client.query(
+        'SELECT expected_team_count,configuration FROM event_template_instances WHERE org_id=$1 AND event_id=$2',
+        [ctx.orgId, event.row.id],
+      )
+    ).rows[0];
+    const template = templateRow
+      ? {
+          expectedTeams: templateRow.expected_team_count as number | null,
+          configuration: parseTemplateConfiguration(templateRow.configuration),
+        }
+      : null;
+    if (
+      template &&
+      template.expectedTeams !== null &&
+      freeze &&
+      freeze.entries.length !== template.expectedTeams
+    ) {
+      support.supported = false;
+      support.reason = `模板要求${template.expectedTeams}支球队，实际冻结${freeze.entries.length}支`;
+    }
     const can =
       event.canManage &&
       support.supported &&
       !publication &&
       event.row.status === 'REGISTRATION_CLOSED';
     return {
+      ...(template ? { template } : {}),
       event: this.dtoEvent(event),
       freeze: freeze
         ? {
@@ -612,7 +640,9 @@ export class SchedulingService extends ApplicationService {
     const version = expectedVersion(input.expectedEventVersion);
     const freezeId = resourceId(typeof input.freezeId === 'string' ? input.freezeId : '');
     if (
-      !['RR_CIRCLE_V1', 'SE_SEEDED_V1', 'GK_BALANCED_V1'].includes(input.algorithmVersion as string)
+      !['RR_CIRCLE_V1', 'DRR_CIRCLE_V1', 'SE_SEEDED_V1', 'GK_BALANCED_V1'].includes(
+        input.algorithmVersion as string,
+      )
     )
       business('UNSUPPORTED_SCHEDULE_ALGORITHM', '不支持的排赛算法');
     const policy = parseSchedulePolicy(input.policy);
@@ -626,6 +656,7 @@ export class SchedulingService extends ApplicationService {
       checkVersion(event.row.version, version);
       if (
         (event.row.format !== 'ROUND_ROBIN' || input.algorithmVersion !== 'RR_CIRCLE_V1') &&
+        (event.row.format !== 'DOUBLE_ROUND_ROBIN' || input.algorithmVersion !== 'DRR_CIRCLE_V1') &&
         (event.row.format !== 'SINGLE_ELIMINATION' || input.algorithmVersion !== 'SE_SEEDED_V1') &&
         (event.row.format !== 'GROUP_KNOCKOUT' || input.algorithmVersion !== 'GK_BALANCED_V1')
       )
@@ -635,6 +666,21 @@ export class SchedulingService extends ApplicationService {
         business('REGISTRATION_FREEZE_REQUIRED', '请使用当前赛事已冻结的报名来源');
       if (freeze.entries.length < 2 || freeze.entries.length > 32)
         business('UNSUPPORTED_TEAM_COUNT', '当前仅支持2–32支冻结球队');
+      const expectedTeams = (
+        await client.query<{ expected_team_count: number | null }>(
+          'SELECT expected_team_count FROM event_template_instances WHERE org_id=$1 AND event_id=$2',
+          [ctx.orgId, event.row.id],
+        )
+      ).rows[0]?.expected_team_count;
+      if (
+        expectedTeams !== undefined &&
+        expectedTeams !== null &&
+        freeze.entries.length !== expectedTeams
+      )
+        business(
+          'TEMPLATE_TEAM_COUNT_MISMATCH',
+          `模板要求${expectedTeams}支球队，实际冻结${freeze.entries.length}支，请调整报名或另建赛事`,
+        );
       const groupConfig =
         event.row.format === 'GROUP_KNOCKOUT' ? parseGroupConfig(freeze, input.groupConfig) : null;
       if (event.row.format !== 'GROUP_KNOCKOUT' && input.groupConfig !== undefined)
@@ -663,7 +709,9 @@ export class SchedulingService extends ApplicationService {
           ? generateGroupPairings(freeze, policy, seed, groupConfig)
           : event.row.format === 'SINGLE_ELIMINATION'
             ? generateKnockoutPairings(freeze, policy, seed)
-            : generatePairings(freeze, policy, seed);
+            : event.row.format === 'DOUBLE_ROUND_ROBIN'
+              ? generateDoubleRoundRobinPairings(freeze, policy, seed)
+              : generatePairings(freeze, policy, seed);
       await this.ensureFreshSession(client, ctx);
       if (previous)
         await client.query(
@@ -803,7 +851,7 @@ export class SchedulingService extends ApplicationService {
       );
     });
   }
-  private async validation(
+  protected async validation(
     client: PoolClient,
     ctx: OrgActor,
     event: EventAccess,
@@ -817,7 +865,9 @@ export class SchedulingService extends ApplicationService {
         ? generateGroupPairings(freeze!, revision.policy, revision.seed, revision.group_config)
         : revision.algorithm_version === 'SE_SEEDED_V1'
           ? generateKnockoutPairings(freeze!, revision.policy, revision.seed)
-          : generatePairings(freeze!, revision.policy, revision.seed);
+          : revision.algorithm_version === 'DRR_CIRCLE_V1'
+            ? generateDoubleRoundRobinPairings(freeze!, revision.policy, revision.seed)
+            : generatePairings(freeze!, revision.policy, revision.seed);
     const fixtures = await this.fixtures(client, revision);
     const identity = (f: ScheduleFixtureData) => [
       f.fixtureKey,
@@ -959,7 +1009,9 @@ export class SchedulingService extends ApplicationService {
             ? fixtures.length + revision.group_config!.groupCount * 2 - 1
             : event.row.format === 'SINGLE_ELIMINATION'
               ? participantCount - 1
-              : (participantCount * (participantCount - 1)) / 2;
+              : event.row.format === 'DOUBLE_ROUND_ROBIN'
+                ? participantCount * (participantCount - 1)
+                : (participantCount * (participantCount - 1)) / 2;
         await activateEventCommerce(client, {
           orgId: ctx.orgId,
           eventId: event.row.id,
@@ -1207,6 +1259,12 @@ export class SchedulingService extends ApplicationService {
       createdAt: r.created_at.toISOString(),
     }));
     const state = await this.reschedulingState(c, ctx.orgId, match);
+    const adjudicated = !!(
+      await c.query(
+        'SELECT 1 FROM match_exception_heads WHERE org_id=$1 AND match_id=$2 AND active_request_id IS NOT NULL',
+        [ctx.orgId, match.id],
+      )
+    ).rowCount;
     return {
       event: this.dtoEvent(event),
       match: this.matchDto(match),
@@ -1217,6 +1275,7 @@ export class SchedulingService extends ApplicationService {
       capabilities: {
         canReschedule:
           event.canManage &&
+          !adjudicated &&
           state.sourceValid &&
           canRescheduleMatch(event.row.status, match.status, state.started),
       },
@@ -1241,6 +1300,15 @@ export class SchedulingService extends ApplicationService {
         const access = await this.reschedulingAccess(c, ctx, matchId, true);
         const { event, match, revision } = access;
         if (!event.canManage) throw forbidden();
+        if (
+          (
+            await c.query(
+              'SELECT 1 FROM match_exception_heads WHERE org_id=$1 AND match_id=$2 AND active_request_id IS NOT NULL',
+              [ctx.orgId, match.id],
+            )
+          ).rowCount
+        )
+          business('MATCH_ADJUDICATED', '比赛已有有效裁定，请先经独立审批撤回后再改期', 409);
         checkVersion(event.row.version, command.expectedEventVersion);
         checkVersion(match.version, command.expectedMatchVersion);
         if (!['SCHEDULED', 'RUNNING'].includes(event.row.status))

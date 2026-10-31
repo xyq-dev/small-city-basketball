@@ -149,6 +149,8 @@ describe('X05 bounded recruitment requests and source fingerprints', () => {
       expiresAt: '2028-01-01T10:00:00Z',
     };
     expect(eventInvitationInput(input).targetUserId).toBe(input.targetUserId);
+    expect(() => eventInvitationInput({ ...input, expiresAt: '2028-01-01T10:00:00' })).toThrow();
+    expect(() => eventInvitationInput({ ...input, expiresAt: '2028-02-30T10:00:00Z' })).toThrow();
     expect(() => eventInvitationInput({ ...input, role: 'ORG_OWNER' })).toThrow();
     expect(
       eventInvitationDecisionInput({ clientRequestId: cid(), expectedVersion: 1, type: 'DECLINE' })

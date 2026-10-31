@@ -498,3 +498,70 @@ describe('X01 eight-team sixteen-game group and placement flow', () => {
     ).toBe(true);
   });
 });
+
+describe('X02 group exception sources', () => {
+  function decide(m: ResultRow, kind = 'FORFEIT') {
+    const requestId = id(9700 + m.round_no * 100 + m.position_no);
+    return {
+      ...m,
+      exception_checked: true,
+      exception_head: { version: 2, active_request_id: requestId },
+      exception_request: {
+        id: requestId,
+        event_id: m.event_id,
+        match_id: m.id,
+        status: 'APPROVED',
+        operation: 'DECLARE',
+        version: 2,
+        source_match_version: m.version,
+        rules_id: id(9800),
+        rules_version: 1,
+        proposed_by: id(9801),
+        reviewed_by: id(9802),
+        reviewed_at: asOf,
+        kind,
+        forfeiting_side: kind === 'FORFEIT' ? 'HOME' : null,
+        winner_entry_id: kind === 'FORFEIT' ? m.away_entry_id : null,
+        loser_entry_id: kind === 'FORFEIT' ? m.home_entry_id : null,
+      },
+      exception_rules: {
+        id: id(9800),
+        event_id: m.event_id,
+        version: 1,
+        forfeit_win_points: 2,
+        forfeit_loss_points: 0,
+        cancellation_policy: 'EXCLUDE_FROM_TABLE',
+      },
+    };
+  }
+  it('all forfeits resolve group standings and publish genuine administrative qualification', () => {
+    const f = groupFixture(4);
+    for (let i = 0; i < f.matches.length; i++) f.matches[i] = decide(f.matches[i]!);
+    const r = f.read();
+    expect(r.qualification.status).toBe('READY');
+    expect(r.confirmedMatchCount).toBe(0);
+    expect(r.qualification.sources.every((s) => 'kind' in s && s.kind === 'ADJUDICATION')).toBe(
+      true,
+    );
+    qualify(f);
+    expect(f.read().qualification.status).toBe('PUBLISHED');
+  });
+  it('a cancelled group match is excluded and retained as an explicit no-winner proof requiring tie resolution', () => {
+    const f = groupFixture(4);
+    for (let i = 0; i < f.matches.length; i++) f.matches[i] = decide(f.matches[i]!, 'CANCELLED');
+    const r = f.read();
+    expect(r.qualification.status).toBe('TIE_BREAK_REQUIRED');
+    expect(
+      r.qualification.sources.every(
+        (s) => 'kind' in s && s.kind === 'CANCELLATION' && s.winnerEntryId === null,
+      ),
+    ).toBe(true);
+    expect(
+      r.groups.every(
+        (g) =>
+          g.standings.isComplete &&
+          g.standings.rows.every((row) => row.played === 0 && row.rank === 1),
+      ),
+    ).toBe(true);
+  });
+});

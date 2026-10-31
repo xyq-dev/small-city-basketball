@@ -5,6 +5,9 @@ export const SCB_ACCOUNT_RECOVERY = 'SCB_ACCOUNT_RECOVERY';
 const wrap = (r: ApiRequest, data: unknown) => ({ data, meta: { requestId: r.requestId } });
 @Controller('v1/account-recovery')
 export class AccountRecoveryController {
+  @Post('cancel') @HttpCode(200) async cancel(@Req() r: ApiRequest, @Body() b: unknown) {
+    return wrap(r, await this.service.cancel(b, r.ip || r.socket.remoteAddress || 'unknown'));
+  }
   constructor(@Inject(SCB_ACCOUNT_RECOVERY) private readonly service: AccountRecoveryService) {}
   @Get('capabilities') capabilities(@Req() r: ApiRequest) {
     return wrap(r, this.service.capabilities());

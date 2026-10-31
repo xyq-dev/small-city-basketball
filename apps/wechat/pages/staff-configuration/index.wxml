@@ -1,0 +1,16 @@
+<view class="page">
+  <scb-header title="成员与工作人员"/>
+  <view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view>
+  <button wx:if="{{loginRequired}}" class="primary" bindtap="login">登录后查看权限</button>
+  <picker range="{{organizations}}" range-key="name" value="{{selectedOrg}}" bindchange="organization" disabled="{{busy || pending}}"><view class="card">机构：{{organizations[selectedOrg].name || '请选择有权机构'}}</view></picker>
+  <view class="card"><view class="subtitle">机构成员</view><view wx:for="{{members}}" wx:key="id" class="row" data-id="{{item.id}}" bindtap="select"><view>{{item.name}}</view><view class="small">{{item.role}} · {{item.status}}</view></view></view>
+  <view class="card"><view class="subtitle">赛事工作人员</view><input class="field" data-field="eventId" value="{{eventId}}" bindinput="input" disabled="{{busy || pending}}" placeholder="从赛事工作台进入，或填写本机构赛事编号"/><button class="secondary" bindtap="load" disabled="{{busy}}">读取当前赛事配置</button><view wx:for="{{staff}}" wx:key="id" data-id="{{item.id}}" bindtap="select">{{item.name}} · {{item.role}} · {{item.status}}</view></view>
+  <view wx:if="{{workspace}}" class="card"><view class="subtitle">明确修改一项授权</view>
+    <view class="row"><button class="secondary" data-type="MEMBER" bindtap="type" disabled="{{busy || pending || !workspace.capabilities.canManageMembers}}">机构成员</button><button class="secondary" data-type="STAFF" bindtap="type" disabled="{{busy || pending || !workspace.capabilities.canManageStaff}}">本赛事工作人员</button></view>
+    <view class="small">当前：{{type==='STAFF' ? '赛事授权' : '机构成员'}}；点击上方成员选择，新增成员需本人分享其用户编号。</view>
+    <input class="field" data-field="userId" value="{{userId}}" bindinput="input" disabled="{{busy || pending}}" placeholder="目标用户编号"/>
+    <picker range="{{roles}}" value="{{roleIndex}}" bindchange="role" disabled="{{busy || pending}}"><view class="field">角色：{{roles[roleIndex]}}</view></picker>
+    <label><switch checked="{{disabled}}" bindchange="status" disabled="{{busy || pending}}"/>停用此项授权</label>
+    <button wx:if="{{!pending}}" class="primary" bindtap="save" disabled="{{busy}}">确认变更</button><button wx:else class="primary" bindtap="retry" disabled="{{busy}}">使用原编号核对权限操作</button>
+  </view>
+</view>

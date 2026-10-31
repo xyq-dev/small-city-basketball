@@ -72,7 +72,7 @@ test('first visit: anonymous events and dismissible city guide', async () => {
   const html = buildPreview({ root, route: h.page.route, data: h.page.data }).phone;
   assert.match(html, /合成公开赛事a/);
   assert.match(html, /手动选城/);
-  assert.match(html, /定位暂未开放/);
+  assert.match(html, /首页不读取当前位置/);
   h.page.nationwide();
   await h.flush();
   assert.equal(h.page.data.citySelection.guide, false);

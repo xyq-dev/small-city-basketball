@@ -20,6 +20,17 @@
       <button class="secondary" bindtap="resendPending" disabled="{{busy}}">按原编号重发</button>
     </view>
 
+    <view wx:if="{{board && canControl}}" class="card">
+      <view class="subtitle">可靠离线草稿</view>
+      <view class="muted small">草稿按登录账号与场次保存在本机，未同步不计入比分。离线时钟、阵容、节次与确认不可操作。恢复网络后重新取得控制，明确按原顺序导入；冲突会停止并保留。</view>
+      <view wx:if="{{offlineError}}" class="notice warning">{{offlineError}}</view>
+      <view wx:if="{{offlineItems.length}}" class="notice warning">{{offlineItems.length}} 条未同步草稿</view>
+      <view wx:for="{{offlineItems}}" wx:key="id" class="muted small">第{{item.ordinal}}条：{{item.label}} · 未同步</view>
+      <button class="secondary" bindtap="toggleOffline" disabled="{{busy || !!pending || !!offlineError}}">{{offlineDraft?'退出离线草稿模式':'进入离线草稿模式'}}</button>
+      <button wx:if="{{offlineItems.length}}" class="primary" bindtap="syncOffline" disabled="{{busy || !held || !!pending || !!offlineError}}">按原顺序同步并核对</button>
+      <button wx:if="{{offlineItems.length || offlineError}}" class="quiet" bindtap="discardOffline" disabled="{{busy}}">删除本地草稿</button>
+    </view>
+
     <view class="board">
       <view class="board-meta">{{match.eventName}}</view>
       <view class="board-row">
@@ -53,14 +64,14 @@
     </view>
 
     <view wx:if="{{match.closed}}" class="notice warning">本届赛事已完赛或归档，不再接受记分。</view>
-    <block wx:elif="{{!held}}">
+    <block wx:elif="{{!held && !offlineDraft}}">
       <view wx:if="{{leaseNote}}" class="notice small">{{leaseNote}}</view>
       <view wx:if="{{!board}}" class="notice small">比赛尚未准备。请赛事负责人在比赛详情中准备比赛。</view>
       <button wx:if="{{canControl && board}}" class="primary" bindtap="acquire" disabled="{{busy}}">取得记分控制</button>
       <view class="muted">同一时间只有一个记分端可以写入；控制每10秒自动续约，断网或离开页面即停止写入。</view>
     </block>
     <block wx:else>
-      <button wx:if="{{match.status === 'READY'}}" class="accent" bindtap="start" disabled="{{busy || !!pending}}">开始比赛</button>
+      <button wx:if="{{match.status === 'READY' && !offlineDraft}}" class="accent" bindtap="start" disabled="{{busy || !!pending}}">开始比赛</button>
 
       <block wx:if="{{match.status === 'LIVE'}}">
         <view class="pad">
@@ -87,6 +98,7 @@
             </view>
           </view>
         </view>
+        <block wx:if="{{!offlineDraft}}">
         <button class="primary" bindtap="clock" disabled="{{busy || !!pending}}">{{board.running ? '暂停计时' : '启动计时'}}</button>
         <view class="mode-choice">
           <button bindtap="nextPeriod" disabled="{{busy || !!pending}}">下一节</button>
@@ -101,6 +113,7 @@
           <button class="primary" bindtap="submitClock" disabled="{{busy}}">确认校时</button>
         </view>
         <button class="danger" bindtap="end" disabled="{{busy || !!pending}}">结束比赛</button>
+        </block>
       </block>
 
       <view wx:if="{{match.status === 'PENDING_CONFIRMATION'}}" class="notice small">比赛已结束，等待独立确认。确认前可撤销错误记录或补录更正。</view>

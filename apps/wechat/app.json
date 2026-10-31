@@ -5,6 +5,8 @@
     "pages/watch/index",
     "pages/media/index",
     "pages/account/index",
+    "pages/account-recovery/index",
+    "pages/staff-configuration/index",
     "pages/event/index",
     "pages/org-event/index",
     "pages/org-match/index",

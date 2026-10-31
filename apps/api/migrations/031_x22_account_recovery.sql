@@ -32,6 +32,11 @@ CREATE TABLE account_action_tokens (
         (used_at IS NOT NULL AND used_by IS NOT NULL AND used_request_hash IS NOT NULL))
 );
 CREATE INDEX account_action_user ON account_action_tokens(user_id,purpose,created_at);
+CREATE TABLE account_action_cancellations (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
 CREATE TABLE account_mail_jobs (
   id uuid PRIMARY KEY,
   token_id uuid NOT NULL UNIQUE REFERENCES account_action_tokens(id),
@@ -50,4 +55,6 @@ CREATE INDEX account_mail_pending ON account_mail_jobs(status,created_at);
 CREATE FUNCTION x22_account_receipt_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN RAISE EXCEPTION 'Account request receipts are immutable'; END $$;
 CREATE TRIGGER x22_account_request_immutable BEFORE UPDATE OR DELETE ON account_action_requests
+FOR EACH ROW EXECUTE FUNCTION x22_account_receipt_immutable();
+CREATE TRIGGER x22_account_cancel_immutable BEFORE UPDATE OR DELETE ON account_action_cancellations
 FOR EACH ROW EXECUTE FUNCTION x22_account_receipt_immutable();

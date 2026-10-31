@@ -62,11 +62,18 @@ export interface LocalBookingData {
   endsAt: string;
   holdExpiresAt: string | null;
   title: string;
+  kind: LocalServiceKind;
   address: string;
   location: LocalPoint | null;
   terms: string;
   reason: string | null;
-  change: { slotId: string; proposedBy: string; reason: string } | null;
+  change: {
+    slotId: string;
+    proposedBy: string;
+    reason: string;
+    startsAt: string;
+    endsAt: string;
+  } | null;
   paymentStatus: 'NOT_ENABLED';
   canActAs: 'BUYER' | 'PROVIDER' | 'ADMIN';
 }
@@ -97,4 +104,6 @@ export interface LocalLocationCandidate {
   sourceCode: string | null;
   source: 'TENCENT';
   kind: 'PLACE' | 'REVERSE';
+  region?: LocalRegion;
+  regionLabel?: string;
 }

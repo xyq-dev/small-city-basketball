@@ -1,6 +1,6 @@
 <view class="scb-header {{dark ? 'dark' : ''}}" style="padding-top:{{statusBarHeight}}px">
  <view class="header-row">
-  <view wx:if="{{home}}" class="header-location"><scb-icon name="pin" tone="{{dark ? 'white' : 'navy'}}" size="14"/><text>高州 · 石鼓</text></view>
+  <view wx:if="{{home}}" class="header-location"><scb-icon name="pin" tone="{{dark ? 'white' : 'navy'}}" size="14"/><text>{{locationLabel}}</text></view>
   <button wx:elif="{{back}}" class="header-back" bindtap="goBack" disabled="{{disabled}}" aria-label="返回"><scb-icon name="chevron-left" tone="{{dark ? 'white' : 'navy'}}" size="22"/></button>
   <view class="header-title">{{home ? '小城市篮球' : title}}</view>
   <button wx:if="{{home && !capsulePresent}}" class="header-search" bindtap="search" disabled="{{disabled}}" aria-label="搜索球员"><scb-icon name="search" tone="{{dark ? 'white' : 'navy'}}" size="22"/></button>

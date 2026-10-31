@@ -1,3 +1,4 @@
+import { administrativeResult } from './match-exception-domain.js';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { MATCH_STATUSES } from '@small-city-basketball/contracts';
@@ -171,10 +172,48 @@ function iso(value: unknown): string {
   if (!Number.isFinite(parsed.getTime())) resultSourceInvalid();
   return parsed.toISOString();
 }
-function canonicalSources(sources: KnockoutSource[]): KnockoutSource[] {
+export function canonicalKnockoutSources(sources: KnockoutSource[]): KnockoutSource[] {
   if (!Array.isArray(sources)) resultSourceInvalid();
   return sources
     .map((source) => {
+      if ('kind' in source) {
+        if (
+          source.kind !== 'ADJUDICATION' ||
+          Object.keys(source).sort().join('|') !==
+            [
+              'kind',
+              'fixtureKey',
+              'matchId',
+              'adjudicationId',
+              'adjudicationVersion',
+              'matchVersion',
+              'winnerEntryId',
+              'loserEntryId',
+            ]
+              .sort()
+              .join('|') ||
+          !uuid(source.matchId) ||
+          !uuid(source.adjudicationId) ||
+          source.adjudicationVersion !== 2 ||
+          !uuid(source.winnerEntryId) ||
+          !uuid(source.loserEntryId) ||
+          source.winnerEntryId === source.loserEntryId ||
+          typeof source.fixtureKey !== 'string' ||
+          !Number.isInteger(source.matchVersion) ||
+          source.matchVersion < 1
+        )
+          resultSourceInvalid();
+        return {
+          kind: 'ADJUDICATION' as const,
+          fixtureKey: source.fixtureKey,
+          matchId: source.matchId,
+          adjudicationId: source.adjudicationId,
+          adjudicationVersion: source.adjudicationVersion,
+          matchVersion: source.matchVersion,
+          winnerEntryId: source.winnerEntryId,
+          loserEntryId: source.loserEntryId,
+        };
+      }
       if (
         !source ||
         Object.keys(source).sort().join('|') !==
@@ -250,7 +289,7 @@ export function calculateKnockout(input: {
       proofs.has(proof.roundNo)
     )
       resultSourceInvalid();
-    proofs.set(proof.roundNo, canonicalSources(proof.sources));
+    proofs.set(proof.roundNo, canonicalKnockoutSources(proof.sources));
   }
   for (const match of input.matches) {
     if (
@@ -292,6 +331,7 @@ export function calculateKnockout(input: {
   let previous: PlacementSlot[] = [];
   let previousComplete = true;
   let confirmedMatchCount = 0;
+  let adjudicatedMatchCount = 0;
   let publishedMatchCount = 0;
   let nextRound: KnockoutBracket['nextRound'] = null;
   for (let roundNo = 1; roundNo <= totalRounds; roundNo++) {
@@ -353,8 +393,9 @@ export function calculateKnockout(input: {
             resultSourceInvalid();
         }
         if (match.state && match.scoring_rules?.tie_policy !== 'OVERTIME') resultSourceInvalid();
-        const result = confirmedResult(match);
-        const playerStatistics = confirmedPlayerStatistics(match);
+        const admin = administrativeResult(match);
+        const result = admin ? null : confirmedResult(match);
+        const playerStatistics = admin ? null : confirmedPlayerStatistics(match);
         if (playerStatistics) {
           for (const side of ['home', 'away'] as const) {
             const frozen = side === 'home' ? home : away;
@@ -364,6 +405,16 @@ export function calculateKnockout(input: {
               .sort((a, b) => ascii(a.memberId, b.memberId));
             if (!isDeepStrictEqual(actual, expected)) resultSourceInvalid();
           }
+        }
+        if (admin?.kind === 'FORFEIT') {
+          winnerEntryId = admin.winnerEntryId!;
+          effectiveResults.push({
+            roundNo,
+            loserEntryId: admin.loserEntryId!,
+            thirdPlace: isThirdPlace,
+          });
+          roundSources.push(admin.source!);
+          adjudicatedMatchCount++;
         }
         if (result) {
           if (
@@ -395,6 +446,15 @@ export function calculateKnockout(input: {
           startsAt: iso(match.starts_at),
           endsAt: iso(match.ends_at),
           status: match.status,
+          ...(admin
+            ? {
+                adjudication: {
+                  kind: admin.kind,
+                  id: admin.adjudicationId,
+                  version: admin.adjudicationVersion,
+                },
+              }
+            : {}),
           confirmation: result ? { ...result, matchVersion: result.sourceMatchVersion + 1 } : null,
         });
       }
@@ -422,7 +482,10 @@ export function calculateKnockout(input: {
     if (roundNo > 1) {
       const proof = proofs.get(roundNo);
       if (published) {
-        if (!proof || !isDeepStrictEqual(proof, canonicalSources(sourcesByRound[roundNo - 2]!)))
+        if (
+          !proof ||
+          !isDeepStrictEqual(proof, canonicalKnockoutSources(sourcesByRound[roundNo - 2]!))
+        )
           resultSourceInvalid();
       } else if (proof) resultSourceInvalid();
       if (!published && previousComplete && !nextRound) {
@@ -442,7 +505,7 @@ export function calculateKnockout(input: {
         nextRound = {
           roundNo,
           sourceHash: '',
-          sources: canonicalSources(sourcesByRound[roundNo - 2]!),
+          sources: canonicalKnockoutSources(sourcesByRound[roundNo - 2]!),
           fixtures,
         };
       }
@@ -463,7 +526,7 @@ export function calculateKnockout(input: {
   const isComplete =
     previousComplete &&
     publishedMatchCount === source.entries.length - 1 + (thirdPlaceMatch ? 1 : 0) &&
-    confirmedMatchCount === publishedMatchCount;
+    confirmedMatchCount + adjudicatedMatchCount === publishedMatchCount;
   const placements: KnockoutPlacement[] = [];
   if (isComplete) {
     const champion = previous[0]!.winnerEntryId!;
@@ -527,6 +590,9 @@ export function calculateKnockout(input: {
     totalMatchCount: source.entries.length - 1 + (thirdPlaceMatch ? 1 : 0),
     publishedMatchCount,
     confirmedMatchCount,
+    ...(adjudicatedMatchCount
+      ? { adjudicatedMatchCount, resolvedMatchCount: confirmedMatchCount + adjudicatedMatchCount }
+      : {}),
     isComplete,
     rounds,
     placements,

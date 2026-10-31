@@ -11,6 +11,7 @@ const FORMATS = [
   { value: 'ROUND_ROBIN', label: '单循环' },
   { value: 'SINGLE_ELIMINATION', label: '单淘汰' },
   { value: 'GROUP_KNOCKOUT', label: '分组循环接淘汰' },
+  { value: 'DOUBLE_ROUND_ROBIN', label: '双循环（主客各一场）' },
 ];
 const TIEBREAKERS = [
   { value: 'SCORE_DIFFERENCE', label: '净胜分' },
@@ -220,7 +221,7 @@ Page({
         formatLabel: api.eventFormat(event.format),
         dateLabel: event.startDate + ' 至 ' + event.endDate,
         venueName: event.venueName || '场地待定',
-        roundRobin: event.format === 'ROUND_ROBIN',
+        roundRobin: ['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN'].includes(event.format),
         knockout: event.format === 'SINGLE_ELIMINATION',
         groups: event.format === 'GROUP_KNOCKOUT',
       },

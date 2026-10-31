@@ -104,9 +104,11 @@ export function parseCaseCreate(raw: unknown) {
   if (o.kind === 'REPORT' && !source) invalid('举报必须绑定可核验来源');
   const parentCaseId = o.parentCaseId == null ? null : govId(o.parentCaseId);
   if ((o.kind === 'APPEAL') !== Boolean(parentCaseId)) invalid('申诉必须且只能关联本人的已有工单');
+  const orgId = o.orgId == null ? null : govId(o.orgId);
+  if (!orgId && !source && !parentCaseId) invalid('请选择收件机构或有效的关联来源');
   return {
     commandId: govCommand(o.commandId),
-    orgId: govId(o.orgId),
+    orgId,
     kind: o.kind as 'SUPPORT' | 'REPORT' | 'APPEAL',
     title: govText(o.title, 'title', 1, 120),
     body: govText(o.body, 'body', 1, 4000),
@@ -128,7 +130,8 @@ export function caseNextState(
       if (!rights.handler || rights.requester || current !== 'ASSIGNED') break;
       return 'RESOLVED';
     case 'CLOSE':
-      if (rights.requester || (rights.handler && current === 'RESOLVED')) return 'CLOSED';
+      if (current !== 'CLOSED' && (rights.requester || (rights.handler && current === 'RESOLVED')))
+        return 'CLOSED';
       break;
     case 'REOPEN':
       if (rights.requester && ['RESOLVED', 'CLOSED'].includes(current)) return 'OPEN';

@@ -363,7 +363,7 @@ export class ApplicationService {
     });
   }
 
-  private async lockEvent(
+  protected async lockEvent(
     client: PoolClient,
     actor: OrgActor,
     id: string,

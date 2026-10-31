@@ -22,6 +22,11 @@ import type { Response, NextFunction } from 'express';
 import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
+import { StaffConfigurationService } from './staff-configuration-service.js';
+import {
+  StaffConfigurationController,
+  SCB_STAFF_CONFIGURATION,
+} from './staff-configuration-controller.js';
 import { AccountRecoveryService } from './account-recovery-service.js';
 import type { AccountRecoveryOptions } from './account-recovery-service.js';
 import { AccountRecoveryController, SCB_ACCOUNT_RECOVERY } from './account-recovery-controller.js';
@@ -299,6 +304,7 @@ export async function createApi(
   try {
     if (options.production) await assertRuntimeReadiness(pool, options.participantDataKey);
     const service = new RegistrationService(pool, options);
+    const staffConfiguration = new StaffConfigurationService(pool, options);
     const accountRecovery = new AccountRecoveryService(
       pool,
       options,
@@ -329,6 +335,7 @@ export async function createApi(
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
+        StaffConfigurationController,
         AccountRecoveryController,
         AuthController,
         PlayerBookingController,
@@ -365,6 +372,7 @@ export async function createApi(
         SeasonController,
       ],
       providers: [
+        { provide: SCB_STAFF_CONFIGURATION, useValue: staffConfiguration },
         { provide: SCB_ACCOUNT_RECOVERY, useValue: accountRecovery },
         { provide: SERVICE, useValue: service },
         { provide: SCB_PARTICIPANT_MATERIALS_SERVICE, useValue: participantMaterials },

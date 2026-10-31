@@ -40,6 +40,7 @@
       </view>
       <view class="menu-group">
         <view class="menu-title">账号</view>
+        <view class="menu-row" data-page="account-recovery" bindtap="go"><view class="menu-text">邮箱验证与账号找回</view></view>
         <view class="menu-row" bindtap="showSecurity"><scb-icon name="shield" size="20"/><view class="menu-text"><view>账号与微信绑定</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view class="menu-row" data-page="planned" data-kind="messages" bindtap="go"><scb-icon name="chat" size="20"/><view class="menu-text"><view>微信提醒说明</view><view class="menu-sub">关注已开放，订阅消息尚未启用</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view wx:if="{{platformOperator}}" class="menu-row" data-page="platform" bindtap="go"><scb-icon name="info" size="20"/><view class="menu-text"><view>平台服务资料与独立处理</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
@@ -86,4 +87,5 @@
   <button wx:if="{{canRegister || registerMode}}" class="quiet" bindtap="toggleRegister" disabled="{{busy}}">{{registerMode ? '返回已有账号登录' : '创建个人账号'}}</button>
   <button wx:else class="quiet" data-page="home" bindtap="go" disabled="{{busy}}">返回首页</button>
 </view>
+<view wx:if="{{!user}}" class="page"><button class="quiet" data-page="account-recovery" bindtap="go">忘记密码／验证邮箱</button></view>
 <scb-nav wx:if="{{user || loading}}" active="Account" disabled="{{busy}}"/>

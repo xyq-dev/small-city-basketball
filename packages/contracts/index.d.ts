@@ -1,5 +1,10 @@
 import type { GroupKnockoutConfig } from './group-knockout.js';
-export const EVENT_FORMATS: readonly ['ROUND_ROBIN', 'GROUP_KNOCKOUT', 'SINGLE_ELIMINATION'];
+export const EVENT_FORMATS: readonly [
+  'ROUND_ROBIN',
+  'GROUP_KNOCKOUT',
+  'SINGLE_ELIMINATION',
+  'DOUBLE_ROUND_ROBIN',
+];
 export type EventFormat = (typeof EVENT_FORMATS)[number];
 export const EVENT_STATUSES: readonly [
   'DRAFT',
@@ -282,7 +287,8 @@ export interface TeamRegistrationEventData {
   capabilities: { canCreateEntry: boolean };
 }
 
-export type ScheduleAlgorithmVersion = 'RR_CIRCLE_V1' | 'SE_SEEDED_V1' | 'GK_BALANCED_V1';
+export type ScheduleAlgorithmVersion =
+  'RR_CIRCLE_V1' | 'DRR_CIRCLE_V1' | 'SE_SEEDED_V1' | 'GK_BALANCED_V1';
 export type ScheduleRevisionStatus = 'DRAFT' | 'SUPERSEDED' | 'PUBLISHED';
 export interface CourtData {
   id: string;
@@ -373,6 +379,10 @@ export interface SchedulePublicationData {
   matchCount: number;
 }
 export interface EventSchedulingData {
+  template?: {
+    expectedTeams: number | null;
+    configuration: import('./event-templates.js').EventTemplateConfiguration;
+  };
   event: EventData;
   freeze: ScheduleFreezeSummary | null;
   currentRevision: ScheduleRevisionSummary | null;
@@ -779,6 +789,9 @@ export interface StandingsData {
   sourceHash: string;
   asOf: string;
   confirmedMatchCount: number;
+  resolvedMatchCount?: number;
+  adjudicatedMatchCount?: number;
+  cancelledMatchCount?: number;
   totalMatchCount: number;
   isComplete: boolean;
   hasSharedRanks: boolean;
@@ -833,6 +846,9 @@ export interface PublicStandingsData {
   sourceHash: string;
   asOf: string;
   confirmedMatchCount: number;
+  resolvedMatchCount?: number;
+  adjudicatedMatchCount?: number;
+  cancelledMatchCount?: number;
   totalMatchCount: number;
   isComplete: boolean;
   hasSharedRanks: boolean;
@@ -860,6 +876,7 @@ export interface PublicTeamData {
 }
 export type PublicResultStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REQUIRES_RECONFIRMATION';
 export interface PublicScheduleMatchData {
+  adjudication?: { kind: 'FORFEIT' | 'CANCELLED'; winner: PublicTeamData | null };
   publicMatchId: string;
   roundNo: number;
   positionNo: number;
@@ -1033,7 +1050,7 @@ export interface EventPlayerStatisticsData {
 }
 
 /** C04: bracket projection over original published_matches and effective confirmations. */
-export interface KnockoutSource {
+export interface ConfirmedKnockoutSource {
   fixtureKey: string;
   matchId: string;
   confirmationId: string;
@@ -1041,6 +1058,10 @@ export interface KnockoutSource {
   matchVersion: number;
   winnerEntryId: string;
 }
+export type KnockoutSource =
+  | ConfirmedKnockoutSource
+  | import('./match-exceptions.js').AdministrativeMatchSource
+  | import('./match-exceptions.js').AdministrativeCancellationSource;
 export interface KnockoutSlotData {
   /** Present only for an opt-in championship/bronze final round. */
   kind?: 'CHAMPIONSHIP' | 'THIRD_PLACE';
@@ -1150,3 +1171,8 @@ export type * from './private-seasons.js';
 export type * from './participant-materials.js';
 export type * from './scheduling-completion.js';
 export type * from './professional-statistics.js';
+export type * from './event-templates.js';
+
+export type * from './match-exceptions.js';
+
+export type * from './scoring-offline.js';

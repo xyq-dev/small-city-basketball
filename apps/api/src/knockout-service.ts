@@ -1,3 +1,8 @@
+import {
+  administrativeResult,
+  exceptionResultSelect,
+  exceptionResultJoins,
+} from './match-exception-domain.js';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type {
@@ -25,14 +30,14 @@ export class KnockoutService extends SchedulingService {
   protected async resultRows(c: PoolClient, org: string, event: string): Promise<ResultRow[]> {
     return (
       await c.query<ResultRow>(
-        `SELECT m.*,to_jsonb(s) AS state,to_jsonb(cf) AS confirmation,to_jsonb(le) AS last_event,to_jsonb(rc) AS last_command,to_jsonb(sr) AS scoring_rules
+        `SELECT m.*,${exceptionResultSelect},to_jsonb(s) AS state,to_jsonb(cf) AS confirmation,to_jsonb(le) AS last_event,to_jsonb(rc) AS last_command,to_jsonb(sr) AS scoring_rules
        FROM published_matches m
        LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id
        LEFT JOIN result_confirmations cf ON cf.org_id=m.org_id AND cf.match_id=m.id AND cf.id=s.latest_confirmation_id
        LEFT JOIN scoring_events le ON le.org_id=m.org_id AND le.match_id=m.id AND le.seq=s.last_event_seq
        LEFT JOIN scoring_commands rc ON rc.org_id=m.org_id AND rc.match_id=m.id AND rc.actor_id=le.actor_id AND rc.command_id=le.command_id
        LEFT JOIN scoring_rulesets sr ON sr.org_id=m.org_id AND sr.event_id=m.event_id AND sr.id=s.ruleset_id
-       WHERE m.org_id=$1 AND m.event_id=$2 ORDER BY m.round_no,m.position_no`,
+       ${exceptionResultJoins} WHERE m.org_id=$1 AND m.event_id=$2 ORDER BY m.round_no,m.position_no`,
         [org, event],
       )
     ).rows;

@@ -57,8 +57,8 @@ test('every literal icon name/tone in templates resolves to a local asset', () =
   }
 });
 
-test('navigation uses house/trophy/play/person with orange selected and gray idle on every tab', () => {
-  for (const active of ['Home', 'Events', 'Video', 'Account']) {
+test('nationwide navigation uses five icons with orange selected and gray idle on every tab', () => {
+  for (const active of ['Home', 'Events', 'Local', 'Teams', 'Account']) {
     const nav = loadComponent({
       root,
       route: 'components/navigation/index',
@@ -66,22 +66,26 @@ test('navigation uses house/trophy/play/person with orange selected and gray idl
     });
     assert.deepEqual(
       nav.instance.data.items.map((item) => item.icon),
-      ['home', 'trophy', 'play', 'user'],
+      ['home', 'trophy', 'pin', 'users', 'user'],
     );
   }
-  // The video tab renders the shared bar: its own icon in orange, the other three in gray.
+  // The retained video page belongs to Events; the nationwide bar keeps five destinations.
   const bar = buildPreview({ root, route: 'pages/media/index' })
     .assets.map((asset) => path.basename(asset.path))
-    .filter((file) => /^icon-(home|trophy|play|user)-/.test(file))
+    .filter((file) => /^icon-(home|trophy|pin|users|user)-/.test(file))
     .sort();
   assert.deepEqual(bar, [
     'icon-home-gray.png',
-    'icon-play-orange.png',
-    'icon-trophy-gray.png',
+    'icon-pin-gray.png',
+    'icon-trophy-orange.png',
     'icon-user-gray.png',
+    'icon-users-gray.png',
   ]);
   const html = fs.readFileSync(path.join(root, 'components/navigation/index.wxml'), 'utf8');
-  assert.match(html, /tone="\{\{active===item\.key \? 'orange' : 'gray'\}\}"/);
+  assert.match(
+    html,
+    /tone="\{\{\(active==='Video'\?'Events':active\)===item\.key \? 'orange' : 'gray'\}\}"/,
+  );
   assert.doesNotMatch(html, /nav-dot|wx:else/);
 });
 

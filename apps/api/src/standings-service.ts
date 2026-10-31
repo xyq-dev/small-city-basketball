@@ -1,3 +1,8 @@
+import {
+  administrativeResult,
+  exceptionResultSelect,
+  exceptionResultJoins,
+} from './match-exception-domain.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { MATCH_STATUSES, STANDINGS_ALGORITHM_VERSION } from '@small-city-basketball/contracts';
@@ -81,8 +86,16 @@ export class StandingsService extends ApplicationService {
       [ctx.orgId, event.id, ctx.user.id],
     );
     if (!isAdministrator(ctx.role) && !staff.rows[0]) throw notFound();
-    if (!['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(event.format))
-      throw new ApiError(422, 'UNSUPPORTED_STANDINGS_FORMAT', '仅支持2至32队单回合单循环排名');
+    if (
+      !['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
+        event.format,
+      )
+    )
+      throw new ApiError(
+        422,
+        'UNSUPPORTED_STANDINGS_FORMAT',
+        '仅支持2至32队循环排名、单淘汰或分组接淘汰',
+      );
     return {
       ctx,
       event,
@@ -180,7 +193,7 @@ export class StandingsService extends ApplicationService {
   ): Promise<ResultRow[]> {
     return (
       await c.query<ResultRow>(
-        `SELECT m.*,to_jsonb(s) AS state,to_jsonb(cf) AS confirmation,to_jsonb(le) AS last_event,to_jsonb(rc) AS last_command,to_jsonb(sr) AS scoring_rules,pl.public_match_id,to_char(m.starts_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time FROM published_matches m LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id LEFT JOIN result_confirmations cf ON cf.org_id=m.org_id AND cf.match_id=m.id AND cf.id=s.latest_confirmation_id LEFT JOIN scoring_events le ON le.org_id=m.org_id AND le.match_id=m.id AND le.seq=s.last_event_seq LEFT JOIN scoring_commands rc ON rc.org_id=m.org_id AND rc.match_id=m.id AND rc.actor_id=le.actor_id AND rc.command_id=le.command_id LEFT JOIN scoring_rulesets sr ON sr.org_id=m.org_id AND sr.event_id=m.event_id AND sr.id=s.ruleset_id LEFT JOIN public_match_links pl ON pl.org_id=m.org_id AND pl.event_id=m.event_id AND pl.match_id=m.id AND pl.publication_id=$3 WHERE m.org_id=$1 AND m.event_id=$2 ORDER BY m.starts_at,m.id`,
+        `SELECT m.*,${exceptionResultSelect},to_jsonb(s) AS state,to_jsonb(cf) AS confirmation,to_jsonb(le) AS last_event,to_jsonb(rc) AS last_command,to_jsonb(sr) AS scoring_rules,pl.public_match_id,to_char(m.starts_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time FROM published_matches m LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id LEFT JOIN result_confirmations cf ON cf.org_id=m.org_id AND cf.match_id=m.id AND cf.id=s.latest_confirmation_id LEFT JOIN scoring_events le ON le.org_id=m.org_id AND le.match_id=m.id AND le.seq=s.last_event_seq LEFT JOIN scoring_commands rc ON rc.org_id=m.org_id AND rc.match_id=m.id AND rc.actor_id=le.actor_id AND rc.command_id=le.command_id LEFT JOIN scoring_rulesets sr ON sr.org_id=m.org_id AND sr.event_id=m.event_id AND sr.id=s.ruleset_id LEFT JOIN public_match_links pl ON pl.org_id=m.org_id AND pl.event_id=m.event_id AND pl.match_id=m.id AND pl.publication_id=$3 ${exceptionResultJoins} WHERE m.org_id=$1 AND m.event_id=$2 ORDER BY m.starts_at,m.id`,
         [org, event, publicPublicationId],
       )
     ).rows;
@@ -235,9 +248,16 @@ export class StandingsService extends ApplicationService {
       );
       historyReady = closedEvent(a.event.status) && competition.isComplete;
     }
-    if (a.event.format === 'ROUND_ROBIN' && rules && plan && !skipStandings) {
+    if (
+      ['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN'].includes(a.event.format) &&
+      rules &&
+      plan &&
+      !skipStandings
+    ) {
       const matches = await this.matches(c, a.ctx.orgId, a.event.id);
       standings = calculateStandings({
+        format:
+          String(a.event.format) === 'DOUBLE_ROUND_ROBIN' ? 'DOUBLE_ROUND_ROBIN' : 'ROUND_ROBIN',
         participants: this.participants(plan),
         matches,
         rules,
@@ -247,6 +267,8 @@ export class StandingsService extends ApplicationService {
       });
       if (closedEvent(a.event.status) && a.event.locked_standings_ruleset_id)
         historyReady = completionReadiness({
+          format:
+            String(a.event.format) === 'DOUBLE_ROUND_ROBIN' ? 'DOUBLE_ROUND_ROBIN' : 'ROUND_ROBIN',
           participants: this.participants(plan),
           matches,
           rules,
@@ -314,7 +336,7 @@ export class StandingsService extends ApplicationService {
     return this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, org);
       const a = await this.event(c, ctx, id, true);
-      if (!['ROUND_ROBIN', 'GROUP_KNOCKOUT'].includes(a.event.format))
+      if (!['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN', 'GROUP_KNOCKOUT'].includes(a.event.format))
         throw new ApiError(
           422,
           'UNSUPPORTED_STANDINGS_FORMAT',
@@ -370,7 +392,7 @@ export class StandingsService extends ApplicationService {
     return this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, org);
       const a = await this.event(c, ctx, id, true);
-      if (!['ROUND_ROBIN', 'GROUP_KNOCKOUT'].includes(a.event.format))
+      if (!['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN', 'GROUP_KNOCKOUT'].includes(a.event.format))
         throw new ApiError(
           422,
           'UNSUPPORTED_STANDINGS_FORMAT',
@@ -478,6 +500,8 @@ export class StandingsService extends ApplicationService {
           );
       } else {
         const standings = calculateStandings({
+          format:
+            String(a.event.format) === 'DOUBLE_ROUND_ROBIN' ? 'DOUBLE_ROUND_ROBIN' : 'ROUND_ROBIN',
           participants: this.participants(plan),
           matches: rows,
           rules: rules!,
@@ -487,6 +511,10 @@ export class StandingsService extends ApplicationService {
         });
         if (purpose === 'HISTORY') {
           const completion = completionReadiness({
+            format:
+              String(a.event.format) === 'DOUBLE_ROUND_ROBIN'
+                ? 'DOUBLE_ROUND_ROBIN'
+                : 'ROUND_ROBIN',
             participants: this.participants(plan),
             matches: rows,
             rules,
@@ -559,7 +587,12 @@ export class StandingsService extends ApplicationService {
         [ref.org_id, ref.event_id],
       )
     ).rows[0];
-    if (!event || !['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(event.format))
+    if (
+      !event ||
+      !['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
+        event.format,
+      )
+    )
       throw notFound();
     const pub = (
       await c.query<Row>(
@@ -618,6 +651,10 @@ export class StandingsService extends ApplicationService {
       knockout || groupCompetition
         ? null
         : calculateStandings({
+            format:
+              String(a.event.format) === 'DOUBLE_ROUND_ROBIN'
+                ? 'DOUBLE_ROUND_ROBIN'
+                : 'ROUND_ROBIN',
             participants: this.participants(plan),
             matches: rows,
             rules: rules!,
@@ -640,6 +677,10 @@ export class StandingsService extends ApplicationService {
               asOf: now,
             })
           : completionReadiness({
+              format:
+                String(a.event.format) === 'DOUBLE_ROUND_ROBIN'
+                  ? 'DOUBLE_ROUND_ROBIN'
+                  : 'ROUND_ROBIN',
               participants: this.participants(plan),
               matches: rows,
               rules,
@@ -656,7 +697,22 @@ export class StandingsService extends ApplicationService {
     return { teamKey: key, teamName: name };
   }
   private publicMatch(m: ResultRow, pub: Row): PublicScheduleMatchData {
+    const admin = administrativeResult(m);
     return {
+      ...(admin
+        ? {
+            adjudication: {
+              kind: admin.kind,
+              winner: admin.winnerEntryId
+                ? this.team(
+                    pub,
+                    admin.winnerEntryId,
+                    admin.winnerEntryId === m.home_entry_id ? m.home_team_name : m.away_team_name,
+                  )
+                : null,
+            },
+          }
+        : {}),
       publicMatchId: m.public_match_id,
       roundNo: m.round_no,
       positionNo: m.position_no,
@@ -667,7 +723,7 @@ export class StandingsService extends ApplicationService {
       endsAt: iso(m.ends_at),
       status: m.status,
       version: m.version,
-      score: m.state ? { home: m.state.home_score, away: m.state.away_score } : null,
+      score: !admin && m.state ? { home: m.state.home_score, away: m.state.away_score } : null,
       resultStatus:
         m.status === 'FINAL'
           ? 'CONFIRMED'
@@ -767,6 +823,7 @@ export class StandingsService extends ApplicationService {
           const match = slot.matchId === null ? null : matches.get(slot.matchId);
           if (slot.matchId !== null && !match?.public_match_id) resultSourceInvalid();
           return {
+            ...(slot.kind ? { kind: slot.kind, sourceOutcome: slot.sourceOutcome } : {}),
             positionNo: slot.positionNo,
             home: team(slot.homeEntryId),
             away: team(slot.awayEntryId),
@@ -968,10 +1025,12 @@ export class StandingsService extends ApplicationService {
       const b = await this.publicBundle(c, id, match);
       const m = b.rows.find((r) => r.public_match_id === match);
       if (!m) throw notFound();
-      const s = m.state,
+      const admin = administrativeResult(m);
+      const s = admin ? null : m.state,
         r = m.scoring_rules;
       const base = this.publicMatch(m, b.pub);
       return {
+        ...(base.adjudication ? { adjudication: base.adjudication } : {}),
         publicMatchId: base.publicMatchId,
         roundNo: base.roundNo,
         positionNo: base.positionNo,

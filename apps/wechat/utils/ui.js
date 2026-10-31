@@ -18,6 +18,8 @@ for (const key of [
   'match-media',
   'match',
   'account',
+  'account-recovery',
+  'staff-configuration',
   'players',
   'player',
   'compare',

@@ -39,6 +39,8 @@ export class EventLifecycleService extends StandingsService {
         });
       const rules = await this.rules(c, a.ctx.orgId, a.event.locked_standings_ruleset_id);
       return completionReadiness({
+        format:
+          String(a.event.format) === 'DOUBLE_ROUND_ROBIN' ? 'DOUBLE_ROUND_ROBIN' : 'ROUND_ROBIN',
         publicationId: plan?.id ?? null,
         participants: plan ? this.participants(plan) : null,
         rules,

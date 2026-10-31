@@ -161,7 +161,7 @@ export function parseLocalListingCommand(raw: unknown) {
     invalid('不支持的供给操作');
   const type = x.type as string;
   const qualifiedUntil =
-    x.qualifiedUntil === undefined ? null : text(x.qualifiedUntil, 'qualifiedUntil', 20, 35);
+    x.qualifiedUntil === undefined ? null : parseScheduleTimestamp(x.qualifiedUntil);
   if (
     type === 'APPROVE' &&
     (x.qualificationChecked !== true ||
@@ -190,6 +190,8 @@ export function parseLocalBooking(raw: unknown) {
     'slotId',
     'serviceRegion',
     'acceptedTerms',
+    'serviceAddress',
+    'servicePoint',
   ]);
   if (x.acceptedTerms !== true) invalid('请确认当前服务和取消条款');
   return {
@@ -198,6 +200,10 @@ export function parseLocalBooking(raw: unknown) {
     slotId: resourceId(String(x.slotId)),
     serviceRegion: parseRegionSelection(x.serviceRegion, invalid),
     acceptedTerms: true,
+    serviceAddress:
+      x.serviceAddress === undefined ? null : text(x.serviceAddress, 'serviceAddress', 1, 200),
+    servicePoint:
+      x.servicePoint === undefined || x.servicePoint === null ? null : localPoint(x.servicePoint),
   };
 }
 export function parseLocalBookingCommand(raw: unknown) {
@@ -287,14 +293,46 @@ export function parseLocalQuery(raw: unknown) {
     invalid('距离筛选需有效起点和1／3／5／10公里半径');
   const limit = q.limit === undefined ? 20 : Number(q.limit);
   if (!Number.isInteger(limit) || limit < 1 || limit > 50) invalid('分页数量须为1–50');
-  const cursor = q.cursor === undefined ? null : resourceId(String(q.cursor));
+  const needle = q.q === undefined ? '' : text(q.q, 'q', 0, 80);
+  const scope = localHash({ region, kind: q.kind ?? null, q: needle, point, radius });
+  let cursor: { id: string; distance: number | null } | null = null;
+  if (q.cursor !== undefined) {
+    try {
+      if (
+        typeof q.cursor !== 'string' ||
+        q.cursor.length > 1000 ||
+        !/^[A-Za-z0-9_-]+$/.test(q.cursor)
+      )
+        invalid('分页游标无效');
+      const value = objectInput(JSON.parse(Buffer.from(q.cursor, 'base64url').toString('utf8')), [
+        'v',
+        'scope',
+        'id',
+        'distance',
+      ]);
+      if (
+        value.v !== 1 ||
+        value.scope !== scope ||
+        (point
+          ? typeof value.distance !== 'number' ||
+            !Number.isSafeInteger(value.distance) ||
+            value.distance < 0
+          : value.distance !== null)
+      )
+        invalid('分页游标与当前地区或起点不匹配');
+      cursor = { id: resourceId(String(value.id)), distance: value.distance as number | null };
+    } catch {
+      invalid('分页游标与当前地区或起点不匹配，请从第一页重新读取');
+    }
+  }
   return {
     region,
     kind: q.kind as LocalServiceKind | undefined,
-    q: q.q === undefined ? '' : text(q.q, 'q', 0, 80),
+    q: needle,
     point,
     radius,
     limit,
     cursor,
+    scope,
   };
 }

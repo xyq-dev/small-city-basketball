@@ -197,10 +197,21 @@ export class AccountRecoveryService extends ApplicationService {
       token = recoveryToken(b.token);
     await this.rateLimit(`account-consume:${accountTokenHash(peer)}`, 60, 3600);
     return this.transaction(async (c) => {
-      const r = await c.query('SELECT used_by FROM account_action_tokens WHERE token_hash=$1', [
-        accountTokenHash(token),
-      ]);
-      return { completed: r.rows[0]?.used_by === id };
+      const hash = accountTokenHash(token);
+      const current = (
+        await c.query('SELECT user_id FROM account_action_tokens WHERE token_hash=$1', [hash])
+      ).rows[0];
+      if (!current) throw invalidCode();
+      const completed = (
+        await c.query('SELECT user_id FROM account_action_tokens WHERE used_by=$1', [id])
+      ).rows[0];
+      const cancelled = (
+        await c.query('SELECT user_id FROM account_action_cancellations WHERE id=$1', [id])
+      ).rows[0];
+      return {
+        completed: completed?.user_id === current.user_id,
+        cancelled: cancelled?.user_id === current.user_id,
+      };
     });
   }
   async consume(raw: unknown, peer: string) {
@@ -222,6 +233,14 @@ export class AccountRecoveryService extends ApplicationService {
       throw invalidCode();
     const newHash = p.newPassword === undefined ? null : await hashPassword(p.newPassword);
     return this.transaction(async (c) => {
+      await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `account-consume:${p.clientRequestId}`,
+      ]);
+      const used = (
+        await c.query('SELECT id FROM account_action_tokens WHERE used_by=$1', [p.clientRequestId])
+      ).rows[0];
+      if (used && used.id !== candidate.id)
+        throw new ApiError(409, 'ACCOUNT_REQUEST_CONFLICT', '原操作编号内容不同');
       // Session invalidation is a user timestamp barrier, not session-row UPDATE:
       // lockActor holds session->user SHARE; avoiding inverse row locks prevents deadlock.
       const user = (
@@ -238,6 +257,18 @@ export class AccountRecoveryService extends ApplicationService {
       ).rows[0];
       if (!user || user.status !== 'ACTIVE' || !t || t.email_snapshot !== user.email)
         throw invalidCode();
+      if (
+        (
+          await c.query('SELECT id FROM account_action_cancellations WHERE id=$1', [
+            p.clientRequestId,
+          ])
+        ).rowCount
+      )
+        throw new ApiError(
+          410,
+          'ACCOUNT_REQUEST_CANCELLED',
+          '原操作已取消，请重新确认后开始新操作',
+        );
       if (t.used_at) {
         if (t.used_by === p.clientRequestId && t.used_request_hash === fingerprint)
           return { completed: true, purpose: t.purpose };
@@ -280,6 +311,66 @@ export class AccountRecoveryService extends ApplicationService {
       return { completed: true, purpose: t.purpose };
     });
   }
+  async cancel(raw: unknown, peer: string) {
+    const b = objectInput(raw, ['clientRequestId', 'token']);
+    const id = recoveryId(b.clientRequestId),
+      token = recoveryToken(b.token),
+      hash = accountTokenHash(token);
+    await this.rateLimit(`account-consume:${accountTokenHash(peer)}`, 60, 3600);
+    const candidate = (
+      await this.pool.query<TokenRow>('SELECT * FROM account_action_tokens WHERE token_hash=$1', [
+        hash,
+      ])
+    ).rows[0];
+    if (!candidate) throw invalidCode();
+    return this.transaction(async (c) => {
+      await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `account-consume:${id}`,
+      ]);
+      const completed = (
+        await c.query('SELECT user_id FROM account_action_tokens WHERE used_by=$1', [id])
+      ).rows[0];
+      if (completed) {
+        if (completed.user_id !== candidate.user_id) throw invalidCode();
+        return { completed: true, cancelled: false };
+      }
+      const user = (
+        await c.query<DbUser>(
+          'SELECT id,email,display_name,password_hash,status FROM users WHERE id=$1 FOR UPDATE',
+          [candidate.user_id],
+        )
+      ).rows[0];
+      if (user?.status !== 'ACTIVE') throw invalidCode();
+      const t = (
+        await c.query<TokenRow>(
+          'SELECT *,expires_at>clock_timestamp() AS valid FROM account_action_tokens WHERE id=$1 FOR UPDATE',
+          [candidate.id],
+        )
+      ).rows[0];
+      const old = (
+        await c.query('SELECT user_id FROM account_action_cancellations WHERE id=$1', [id])
+      ).rows[0];
+      if (old) {
+        if (old.user_id !== candidate.user_id) throw invalidCode();
+        return { completed: false, cancelled: true };
+      }
+      if (
+        !t ||
+        !t.valid ||
+        t.revoked_at ||
+        t.used_at ||
+        t.email_snapshot !== user.email ||
+        t.credential_fingerprint !== accountTokenHash(user.password_hash)
+      )
+        throw invalidCode();
+      await c.query('INSERT INTO account_action_cancellations(id,user_id) VALUES($1,$2)', [
+        id,
+        candidate.user_id,
+      ]);
+      return { completed: false, cancelled: true };
+    });
+  }
+
   async drain() {
     if (!this.key || !this.recovery.provider || this.dispatching) return;
     this.dispatching = true;

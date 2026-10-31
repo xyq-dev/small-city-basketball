@@ -68,6 +68,22 @@ function pathAllowed(path, method = 'GET') {
     '/v1/auth/wechat/unbind': 'POST',
   };
   if (Object.prototype.hasOwnProperty.call(auth, base)) return noQuery && auth[base] === method;
+  if (['/v1/account-recovery/capabilities', '/v1/account-recovery/me'].includes(base))
+    return noQuery && method === 'GET';
+  if (
+    ['reset-requests', 'verification-requests', 'consume', 'receipts', 'cancel'].some(
+      (v) => base === '/v1/account-recovery/' + v,
+    )
+  )
+    return noQuery && method === 'POST';
+  if (matches('/v1/orgs/' + uuidPattern + '/staff-configuration'))
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['eventId']) &&
+      (!query.eventId || uuidRegex.test(query.eventId))
+    );
+  if (matches('/v1/orgs/' + uuidPattern + '/staff-configuration/commands'))
+    return noQuery && method === 'POST';
   if (base === '/v1/public/regions') return method === 'GET' && parts.length === 1;
   // Public directory: exact parameters only; sent without any session cookie.
   if (base === '/v1/public/directory')
@@ -378,10 +394,15 @@ function createClient(wxApi) {
       !pathAllowed(path, method) ||
       (anonymous &&
         !(
-          method === 'GET' &&
-          (/^\/v1\/player-bookings\/players\//.test(path) ||
-            /^\/v1\/public\/directory(?:\?|$)/.test(path) ||
-            path === '/v1/public/regions')
+          (path === '/v1/account-recovery/capabilities' && method === 'GET') ||
+          (['reset-requests', 'consume', 'receipts', 'cancel'].some(
+            (v) => path === '/v1/account-recovery/' + v,
+          ) &&
+            method === 'POST') ||
+          (method === 'GET' &&
+            (/^\/v1\/player-bookings\/players\//.test(path) ||
+              /^\/v1\/public\/directory(?:\?|$)/.test(path) ||
+              path === '/v1/public/regions'))
         ))
     )
       return Promise.reject({ code: 'INVALID_PATH', message: '请求入口无效' });

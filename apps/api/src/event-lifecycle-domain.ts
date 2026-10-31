@@ -1,3 +1,4 @@
+import { administrativeResult } from './match-exception-domain.js';
 import type {
   EventLifecycleCommandInput,
   EventLifecycleData,
@@ -53,6 +54,7 @@ export function completionReadiness(input: {
   rules: StandingsRulesetData | null;
   matches: ResultRow[];
   asOf: string;
+  format?: 'ROUND_ROBIN' | 'DOUBLE_ROUND_ROBIN';
 }): EventLifecycleData['completion'] {
   const completion: EventLifecycleData['completion'] = {
     totalMatchCount: input.matches.length,
@@ -66,11 +68,12 @@ export function completionReadiness(input: {
   try {
     for (const match of input.matches) {
       // Validates TEAM_ONLY as well as PLAYER_BASIC confirmations, without another transaction.
-      confirmedPlayerStatistics(match);
+      if (!administrativeResult(match)) confirmedPlayerStatistics(match);
       if (match.status === 'FINAL') completion.confirmedMatchCount++;
     }
     if (input.publicationId && input.participants && input.rules) {
       const standings = calculateStandings({
+        format: input.format,
         participants: input.participants,
         matches: input.matches,
         rules: input.rules,
@@ -115,7 +118,8 @@ export function knockoutCompletionReadiness(input: {
     return completion;
   }
   try {
-    for (const match of input.matches) confirmedPlayerStatistics(match);
+    for (const match of input.matches)
+      if (!administrativeResult(match)) confirmedPlayerStatistics(match);
     const bracket = calculateKnockout({
       publicationId: input.publicationId,
       source: input.source,

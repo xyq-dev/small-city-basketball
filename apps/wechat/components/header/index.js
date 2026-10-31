@@ -2,6 +2,7 @@ const ui = require('../../utils/ui');
 Component({
   properties: {
     title: { type: String, value: '' },
+    locationLabel: { type: String, value: '全国' },
     dark: { type: Boolean, value: false },
     home: { type: Boolean, value: false },
     disabled: { type: Boolean, value: false },

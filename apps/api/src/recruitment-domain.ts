@@ -167,8 +167,13 @@ export function eventInvitationInput(raw: unknown) {
     'targetUserId',
     'expiresAt',
   ]);
-  if (typeof i.expiresAt !== 'string' || !Number.isFinite(Date.parse(i.expiresAt)))
+  if (
+    typeof i.expiresAt !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(i.expiresAt) ||
+    !Number.isFinite(Date.parse(i.expiresAt))
+  )
     invalid('请填写有效邀请期限');
+  calendarDate(i.expiresAt.slice(0, 10), 'expiresAt');
   return {
     clientRequestId: requestId(i.clientRequestId),
     expectedEventVersion: versionInput(i.expectedEventVersion),

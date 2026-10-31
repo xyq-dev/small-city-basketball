@@ -108,7 +108,7 @@ BEGIN
  IF NEW.resource_key LIKE 'team:%' AND EXISTS(SELECT 1 FROM team_reservations WHERE team_id=rid AND tstzrange(starts_at,ends_at,'[)') && tstzrange(NEW.starts_at,NEW.ends_at,'[)')) THEN
   RAISE EXCEPTION 'Team conflicts with published match' USING ERRCODE='23P01';
  END IF;
- IF NEW.resource_key LIKE 'user:%' AND EXISTS(SELECT 1 FROM booking_appearances WHERE player_user_id=rid AND status IN ('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED') AND c06_booking_window(report_at,end_at) && tstzrange(NEW.starts_at,NEW.ends_at,'[)')) THEN
+ IF NEW.resource_key LIKE 'user:%' AND EXISTS(SELECT 1 FROM booking_appearances WHERE player_user_id=rid AND status IN ('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED') AND NOT (status='REQUESTED' AND expires_at<=clock_timestamp()) AND c06_booking_window(report_at,end_at) && tstzrange(NEW.starts_at,NEW.ends_at,'[)')) THEN
   RAISE EXCEPTION 'Person conflicts with player service' USING ERRCODE='23P01';
  END IF;
  RETURN NEW;
@@ -145,14 +145,22 @@ BEGIN
  IF NEW.id<>OLD.id OR NEW.created_at<>OLD.created_at OR NEW.version<>OLD.version+1 THEN
   RAISE EXCEPTION 'Local changes require immutable identity and next version' USING ERRCODE='23514';
  END IF;
- IF TG_TABLE_NAME='local_listings' AND (NEW.org_id<>OLD.org_id OR NEW.provider_user_id<>OLD.provider_user_id OR NEW.created_by<>OLD.created_by OR NEW.kind<>OLD.kind OR NEW.court_id IS DISTINCT FROM OLD.court_id OR NEW.region_catalog_version<>OLD.region_catalog_version OR NEW.region_id<>OLD.region_id) THEN
+ IF TG_TABLE_NAME='local_listings' THEN
+  IF (NEW.org_id<>OLD.org_id OR NEW.provider_user_id<>OLD.provider_user_id OR NEW.created_by<>OLD.created_by OR NEW.kind<>OLD.kind OR NEW.court_id IS DISTINCT FROM OLD.court_id OR NEW.region_catalog_version<>OLD.region_catalog_version OR NEW.region_id<>OLD.region_id) THEN
   RAISE EXCEPTION 'Supply identity and scope are immutable' USING ERRCODE='23514';
- ELSIF TG_TABLE_NAME='local_slots' AND (NEW.org_id<>OLD.org_id OR NEW.listing_id<>OLD.listing_id OR NEW.starts_at<>OLD.starts_at OR NEW.ends_at<>OLD.ends_at OR OLD.status='CLOSED') THEN
+ END IF;
+ ELSIF TG_TABLE_NAME='local_slots' THEN
+  IF (NEW.org_id<>OLD.org_id OR NEW.listing_id<>OLD.listing_id OR NEW.starts_at<>OLD.starts_at OR NEW.ends_at<>OLD.ends_at OR OLD.status='CLOSED') THEN
   RAISE EXCEPTION 'Slot identity/time is immutable and closure permanent' USING ERRCODE='23514';
- ELSIF TG_TABLE_NAME='local_bookings' AND (NEW.org_id<>OLD.org_id OR NEW.listing_id<>OLD.listing_id OR NEW.buyer_user_id<>OLD.buyer_user_id OR NEW.provider_user_id<>OLD.provider_user_id OR NEW.snapshot<>OLD.snapshot OR OLD.status IN ('COMPLETED','DECLINED','CANCELLED','EXPIRED')) THEN
+ END IF;
+ ELSIF TG_TABLE_NAME='local_bookings' THEN
+  IF (NEW.org_id<>OLD.org_id OR NEW.listing_id<>OLD.listing_id OR NEW.buyer_user_id<>OLD.buyer_user_id OR NEW.provider_user_id<>OLD.provider_user_id OR NEW.snapshot<>OLD.snapshot OR OLD.status IN ('COMPLETED','DECLINED','CANCELLED','EXPIRED')) THEN
   RAISE EXCEPTION 'Booking identity, snapshot and terminal history are immutable' USING ERRCODE='23514';
- ELSIF TG_TABLE_NAME='local_matchups' AND (NEW.home_org_id<>OLD.home_org_id OR NEW.home_team_id<>OLD.home_team_id OR NEW.away_org_id<>OLD.away_org_id OR NEW.away_team_id<>OLD.away_team_id OR NEW.court_booking_id<>OLD.court_booking_id OR NEW.created_by<>OLD.created_by OR NEW.home_confirmed_by<>OLD.home_confirmed_by OR NEW.snapshot<>OLD.snapshot OR NEW.starts_at<>OLD.starts_at OR NEW.ends_at<>OLD.ends_at OR NEW.expires_at<>OLD.expires_at OR OLD.status IN ('COMPLETED','DECLINED','CANCELLED')) THEN
+ END IF;
+ ELSIF TG_TABLE_NAME='local_matchups' THEN
+  IF (NEW.home_org_id<>OLD.home_org_id OR NEW.home_team_id<>OLD.home_team_id OR NEW.away_org_id<>OLD.away_org_id OR NEW.away_team_id<>OLD.away_team_id OR NEW.court_booking_id<>OLD.court_booking_id OR NEW.created_by<>OLD.created_by OR NEW.home_confirmed_by<>OLD.home_confirmed_by OR NEW.snapshot<>OLD.snapshot OR NEW.starts_at<>OLD.starts_at OR NEW.ends_at<>OLD.ends_at OR NEW.expires_at<>OLD.expires_at OR OLD.status IN ('COMPLETED','DECLINED','CANCELLED')) THEN
   RAISE EXCEPTION 'Matchup identity, snapshot and terminal history are immutable' USING ERRCODE='23514';
+  END IF;
  END IF;
  RETURN NEW;
 END; $$;
