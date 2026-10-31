@@ -45,3 +45,25 @@ X01季军树／025／原生晋级页、X05／X12／X18领域与027／029／030�
 13前：136 PG step9=FAILURE，prod/admin=SUCCESS，Native还在运行，case日志待归档。root已本地改ci.yml去掉build/Native的!cancelled绕过，默认success门控会在PG失败立即归档、成功全路径不减测试；尚未推，等当前归档后和实际修复同步。第一条取API124427527178完整日志，X03与X05监各自case。当前GitHub仍61c108e，不能把未同步CI改进当远端已生效。
 
 检查点13：136最终PG513/516，唯一失败文件O3均COURT HELD用PROVIDER CONFIRM错角色；Native16与prod/admin成功。HONOR四类/重复TTL与bronze改期已真PG过。根已取a07d725→abd533b改实际BUYER确认，目标三断言未运行仍待验；root c4aaf69默认success门控让PG失败直接归档，成功路径完整测试不减。全type/format过。下一条同步13，取新workflow按每个named step.conclusion核查，不看后续active推断前面。最新源SQL仍b062e4f稳定海报时间，001—035迁移未再改，生产禁止范围保持。
+
+
+## 接续检查点14：完整候选成功，追加复审发现两处阻断
+
+2026-10-31T13:41:03+08:00；本会话Codex root接任唯一集成人，实际目录/分支不变，HEAD6e16685，开工干净，已fetch核验远端main dff0a8d、PR33 head00b8e44。本地相对远端仅X05/X-INFRA四份验收Markdown差异，apps/packages/scripts/ops/工作流子树完全相同；未重置或清理旧分支。
+
+CI41165348026（R137，00b8e44，实际merge-ref62ec2d2、tree3434e132ce45bbbec2ac2b7ec61dcf52a39deca7）三job最终SUCCESS，root已读取三套完整原始日志及每步conclusion：55文件516/516真实PG（含原最后X03三例）、16/16真实页面HTTP、24真实API浏览器、20最小权限PG、4 HTTPS、127表重启/非空完整恢复/业务快照与fencing/quarantine/自有清理；源码914 API+561 admin+924原生通过/1既有平台跳过，995浏览器、981布局PNG通过/981不适用重复组合跳过。PR当前无外部review提交或review thread，此事实不代替独立代码复核。
+
+root追加独立复核发现两处明确P2并暂停合并：1) match-exception-service.view未向严格administrativeOutcome传真实scoring_states，PREPARE后的READY裁定读页失败；2) account-recovery.cancel拒绝已过期原token，使网络未知且尚未执行的本地pending无法解除。分别由review_competition与review_flows在独立worktree scb-exception-fix/scb-recovery-fix、fix/completion-ready-exceptions/fix/completion-account-recovery修复，基线6e16685。仅各自service/针对测试及自卡，root独占汇总和共享文件，禁止改已成功迁移。补片前全绿不充作补片后验证；整合后重新跑必要本地验证及完整精确候选CI，全部22项保持REVIEW/待合并。
+
+授权沿用本项目开发/测试/commit/普通push/PR及审查后合并；不部署生产、不运行生产Migration/改数据、不配置新外部凭据或付费资源。DOC005直播仍为独立设计。下一条具体操作：审查并整合两处最小修复和回归，将本检查点及既有未同步文档一起普通同步至原PR33，再核对完整新候选CI。
+
+检查点14复核纠正：账号找回初判撤回。既有WXML明确支持同账号新申请码核对/取消原请求，API按token归属用户及requestId fence实现，pending不禁止申请新码；无需清存储，不存在已证永久卡死。review_flows仅补旧码过期/撤销→新码取消旧unknown→迟到请求拒绝→新编号成功的真实PG/VM证据，业务与token授权保持。确认阻断只有READY裁定读取缺少scoring state。前文初判保留为调查过程，不作为最终缺陷或扩权依据。
+
+
+## 接续检查点15：READY缺陷最小修复已整合，提交完整新候选
+
+2026-10-31T13:45:05+08:00；root整合作者166a970为abfbb1c，读取scoring_states后传严格administrativeOutcome；6项service回归中旧源码正向2项确实失败、修后全过，PG新增FORFEIT/CANCELLED真实PREPARE→独立裁定→双身份GET→独立撤回→原记分事实不变。作者ebe3254整合为9599fcb，仅补旧码过期/撤销后同账号新码取消旧unknown、迟到请求拒绝、新编号完成的PG2项和VM1项；没有改账号业务或授权。
+
+root实际执行npm run typecheck、五个改动源/测试的Prettier、git diff --check通过；vitest两个裁定文件27/27、x17-x22消费者8/8通过。作者另执行197项相关单测与旧源反证，不冒称root重跑。新增4项PG本地无PG未执行，目标总数516变520，待完整精确候选CI。未改Migration/依赖/锁文件/外部配置；既有35迁移仅隔离CI执行，不操作生产。
+
+同步前执行环境短暂断开，失败命令没有创建进程；恢复后重新核验HEAD9599fcb与dirty，全部已提交源代码及未提交汇总均保留，未走GitHub接口重建或覆盖代码。下一条：连同既有X05/X-INFRA验收记录普通push至PR33，核完整新候选CI和必要审查后才合并，再记录main及合并后CI，不能提前称上线。

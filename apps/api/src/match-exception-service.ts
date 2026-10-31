@@ -161,7 +161,14 @@ export class MatchExceptionService extends ApplicationService {
     const rules = await this.rules(c, a),
       head = await this.head(c, a),
       active = await this.current(c, a, head);
-    administrativeOutcome(a.match as any, {
+    const state =
+      (
+        await c.query<Row>(
+          'SELECT to_jsonb(s) AS state FROM scoring_states s WHERE org_id=$1 AND match_id=$2',
+          [a.ctx.orgId, a.match!.id],
+        )
+      ).rows[0]?.state ?? null;
+    administrativeOutcome({ ...a.match!, state } as any, {
       checked: true,
       head: head as any,
       request: active,

@@ -40,6 +40,47 @@ test('account reset unknown retains only operation id, and a fresh mail does not
   assert.equal(calls.at(-1).p, '/v1/account-recovery/reset-requests');
   assert.deepEqual(h.wx.storage.get(pendingKey), stored);
 });
+test('fresh same-account code can cancel an unknown reset and submit a new operation without clearing storage', async () => {
+  const h = page('account-recovery');
+  const calls = [];
+  let consumes = 0;
+  h.requireLocal('utils/api.js').getClient = () => ({
+    request: async (p, m, b) => {
+      calls.push({ p, m, b: structuredClone(b) });
+      if (p.endsWith('/consume')) {
+        if (++consumes === 1) throw Error('response lost');
+        return { data: { completed: true } };
+      }
+      if (p.endsWith('/cancel')) return { data: { completed: false, cancelled: true } };
+      return { data: { accepted: true } };
+    },
+  });
+  h.page._closed = false;
+  h.page.setData({
+    enabled: true,
+    email: 'me@example.test',
+    token: 'original-code',
+    newPassword: 'original-password',
+  });
+  await h.page.consume();
+  const original = structuredClone(h.wx.storage.get(pendingKey));
+  assert.equal(h.page.data.pending, true);
+  await h.page.request(tap({ kind: 'reset' }));
+  assert.equal(calls.at(-1).p, '/v1/account-recovery/reset-requests');
+  assert.deepEqual(h.wx.storage.get(pendingKey), original);
+  h.page.input({ currentTarget: { dataset: { field: 'token' } }, detail: { value: 'fresh-code' } });
+  await h.page.resolve(tap({ kind: 'cancel' }));
+  assert.deepEqual(calls.at(-1).b, { clientRequestId: original.id, token: 'fresh-code' });
+  assert.equal(h.page.data.pending, false);
+  assert.equal(h.wx.storage.has(pendingKey), false);
+  h.page.setData({ token: 'fresh-code', newPassword: 'fresh-password' });
+  await h.page.consume();
+  assert.equal(consumes, 2);
+  assert.notEqual(calls.at(-1).b.clientRequestId, original.id);
+  assert.equal(calls.at(-1).b.token, 'fresh-code');
+  assert.equal(h.page.data.pending, false);
+  assert.equal(h.wx.storage.has(pendingKey), false);
+});
 test('hidden reset cannot send after delayed secure UUID, and secrets clear', async () => {
   const h = page('account-recovery');
   const wait = deferred();

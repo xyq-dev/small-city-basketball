@@ -1,8 +1,10 @@
 # 任务看板
 
-## COMPLETION22：22项功能实现与测试（IN_PROGRESS／BRANCH_ONLY）
+## COMPLETION22：22项功能实现与测试（REVIEW／BRANCH_ONLY）
 
-2026-10-31 Asia/Shanghai；用户要求的22项均已写入[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)，正在联合测试与独立复核，尚未合并。全部范围及最新检查点见[总任务F01—F22](tasks/COMPLETION22.md)，恢复读[交接](handoffs/COMPLETION22.md)。候选8738106真实PG498/498、原生真HTTP16/16和admin995布局已通过；最新5db14c7继续跑最小权限、真实短时履约、重启及127表非空备份恢复，不能以旧候选结果代替最新全链。工作分支feat/commercial-completion-22，基线main dff0a8d；外部邮件／地图正式接入与微信真机仍单列，禁止生产与新付费资源。完成任一切片不等于总任务完成。
+2026-10-31 Asia/Shanghai；[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)含全部22项源码及消费者，尚未合并。补片前00b8e44的CI41165348026三job成功，516PG／16页面HTTP／24真实API浏览器／4HTTPS／127表完整恢复通过，root已核原始日志。
+
+已整合READY裁定修复abfbb1c及账号新码恢复回归9599fcb；账号初判撤回，不改token有效期。root全类型、局部格式、27裁定单测／8消费者VM通过；新增4项PG待完整CI。全部范围及下一步见[总任务F01—F22](tasks/COMPLETION22.md)、[交接](handoffs/COMPLETION22.md)。正式地图/邮件、微信真机及生产未验，禁止生产与新付费资源。
 
 ## DOC005 小程序直接开播与多平台分发
 

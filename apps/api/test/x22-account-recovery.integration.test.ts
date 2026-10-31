@@ -282,6 +282,61 @@ describe(
         if (consuming) await consuming.catch(() => {});
       }
     }, 120000);
+    test.each(['expired', 'revoked'] as const)(
+      'a fresh same-account code cancels an unknown request with an %s code before a new reset',
+      async (terminal) => {
+        const u = await user(`unknown-${terminal}`),
+          original = await issue(u),
+          unknownId = randomUUID();
+        // The device saved an operation ID, but its consume request never reached the API.
+        expect(data(await receipt(original.token, unknownId))).toEqual({
+          completed: false,
+          cancelled: false,
+        });
+        if (terminal === 'expired') {
+          await api.pool.query(
+            "UPDATE account_action_tokens SET created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 day' WHERE id=(SELECT token_id FROM account_mail_jobs WHERE id=$1)",
+            [original.jobId],
+          );
+          error(await cancel(original.token, unknownId), 422);
+        }
+        const fresh = await issue(u);
+        // Fresh issuance revokes the original code; expiry/revocation still cannot authorize cancel.
+        error(await cancel(original.token, unknownId), 422);
+        expect(data(await cancel(fresh.token, unknownId))).toEqual({
+          completed: false,
+          cancelled: true,
+        });
+        expect(data(await receipt(fresh.token, unknownId))).toEqual({
+          completed: false,
+          cancelled: true,
+        });
+        // The tombstone wins even if the lost original request arrives after cancellation.
+        const delayed = await consume(original.token, unknownId);
+        error(delayed, 410);
+        expect(delayed.body.error.code).toBe('ACCOUNT_REQUEST_CANCELLED');
+        const reusedId = await consume(fresh.token, unknownId);
+        error(reusedId, 410);
+        expect(reusedId.body.error.code).toBe('ACCOUNT_REQUEST_CANCELLED');
+        // Cancellation neither consumes the fresh code nor resets credentials.
+        data(await call(api, 'get', '/v1/auth/session', { cookie: u.cookie }));
+        const newId = randomUUID();
+        expect(data(await consume(fresh.token, newId))).toEqual({
+          completed: true,
+          purpose: 'RESET_PASSWORD',
+        });
+        expect(data(await receipt(original.token, newId))).toEqual({
+          completed: true,
+          cancelled: false,
+        });
+        expect(data(await cancel(fresh.token, newId))).toEqual({
+          completed: true,
+          cancelled: false,
+        });
+        error(await call(api, 'get', '/v1/auth/session', { cookie: u.cookie }), 401);
+      },
+      120000,
+    );
     test('UNKNOWN provider outcomes are not resent and new requests revoke and erase the old pending envelope', async () => {
       const u = await user('unknown-worker');
       mailbox.state = 'UNKNOWN';

@@ -1,10 +1,14 @@
 # 当前状态
 
-## COMPLETION22（TESTING / BRANCH_ONLY，尚未合并）
+## COMPLETION22（REVIEW / BRANCH_ONLY，补片已整合，待完整复验）
 
-2026-10-31 Asia/Shanghai；main基线dff0a8d，root整合分支feat/commercial-completion-22，[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)。用户所列22项已具备代码与消费者，逐项状态／证据见[总任务](tasks/COMPLETION22.md)及[交接](handoffs/COMPLETION22.md)。候选8738106实际真实PG498/498、Page→HTTP/PG16/16、admin及995兼容布局通过；后续候选5db14c7正在验证最小权限修复和完整127表非空重启／备份恢复，不能称全链验收或已上线。独立复核发现的边界问题继续修复，全部22项尚未标DONE。
+2026-10-31 Asia/Shanghai；本会话root集成，分支feat/commercial-completion-22、main基线dff0a8d，[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)尚未合并。全部22项已有源码和消费者，范围见[总任务](tasks/COMPLETION22.md)、[恢复入口](handoffs/COMPLETION22.md)。
 
-本段是分支进度，下方历史交付保持各自已验main范围。DOC005多平台直播仍仅设计；生产部署／生产Migration、真实邮件投递、正式地图凭据和微信真机均未执行。
+补片前00b8e44的[CI41165348026](https://github.com/xyq-dev/small-city-basketball/actions/runs/41165348026)三job完整SUCCESS，root已读取原始日志：516真实PG、16页面HTTP、24真实API浏览器、20最小权限PG、4 HTTPS，127表重启/非空完整恢复/隔离及自有清理通过；源码914 API／561 admin／924原生通过及1既有平台跳过，995兼容浏览器／981布局PNG通过。此证据不替代补片后验证。
+
+追加复审确认READY裁定读取未传真实scoring state，已整合abfbb1c并保留严格来源校验；6项单测与2项PG覆盖弃权/取消后读取和独立撤回。账号找回初判撤回，既有新码核对/取消旧unknown已支持；9599fcb只补该路径2项PG及1项VM，不改账号业务或授权。root整合后全类型、局部格式、27项裁定单测与8项消费者VM通过；新增4项PG未本地运行，待完整精确候选CI，全部22项保持REVIEW。
+
+已保留全部旧checkout/worktree及既有未同步验收记录；没有改成功迁移。DOC005直播仍仅设计；正式地图/邮件、微信开发者工具/真机、真实支付/在线保险、生产部署及生产Migration均未执行。
 
 ## DOC005 小程序直接开播与多平台分发（设计文档）
 

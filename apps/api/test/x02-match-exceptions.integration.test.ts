@@ -28,6 +28,7 @@ import {
   closeHarness,
   createScoringHarness,
   defaultRules,
+  prepare,
   scoringRulesPath,
   workbenchPath,
 } from './p05-support.js';
@@ -420,6 +421,45 @@ describe('X02 real PostgreSQL administrative adjudication workflow', () => {
       });
       error(fresh, 410);
       expect(fresh.body.error.code).toBe('POSTER_SOURCE_UNAVAILABLE');
+    },
+    120000,
+  );
+  test.each(['FORFEIT', 'CANCELLED'] as const)(
+    'prepared %s stays readable and can be independently revoked without changing scoring facts',
+    async (kind) => {
+      const f = await fixture(h),
+        m = f.matches[0]!;
+      await assign(h, m.id, h.owner, 'SCORER');
+      const prepared = await prepare(h, m.id);
+      expect(prepared.snapshot.status).toBe('READY');
+      const scoringFacts = async () =>
+        (
+          await h.api.pool.query(
+            `SELECT to_jsonb(s) AS state,
+            (SELECT count(*)::int FROM scoring_events WHERE org_id=$1 AND match_id=$2) AS events,
+            (SELECT count(*)::int FROM result_confirmations WHERE org_id=$1 AND match_id=$2) AS confirmations
+            FROM scoring_states s WHERE org_id=$1 AND match_id=$2`,
+            [h.owner.orgId, m.id],
+          )
+        ).rows[0];
+      const originalFacts = await scoringFacts();
+      const p = await propose(h, m.id, kind);
+      data(await approve(h, m.id, p.r.requestId));
+      for (const reviewer of [false, true]) {
+        const v = await read(h, m.id, reviewer);
+        expect(v.match.status).toBe('READY');
+        expect(v.active).toMatchObject({ id: p.r.requestId, kind, status: 'APPROVED' });
+        expect(v.capabilities).toMatchObject({ canPropose: false, canRevoke: true });
+      }
+      const revoke = await propose(h, m.id, kind, true);
+      data(await approve(h, m.id, revoke.r.requestId));
+      for (const reviewer of [false, true]) {
+        const v = await read(h, m.id, reviewer);
+        expect(v.match.status).toBe('READY');
+        expect(v.active).toBeNull();
+        expect(v.capabilities).toMatchObject({ canPropose: true, canRevoke: false });
+      }
+      expect(await scoringFacts()).toEqual(originalFacts);
     },
     120000,
   );

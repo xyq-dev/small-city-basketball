@@ -1,6 +1,6 @@
 # X-INFRA交接
 
-当前恢复点：CI135候选2490869已通过完整隔离生产形态非空恢复/授权隔离及cleanup，证据见本卡尾部；整体API/admin由root最终核对，PR33尚未合并/未生产。下一次从PR33远端当前HEAD与COMPLETION22总卡恢复，不重做下文早期切片。单写尾部目录scb-infra-tail / work/completion-recovery-tail，早期scb-x05保留历史。
+当前恢复点：CI136候选61c108e在海报单语句时钟修复后再次通过完整隔离生产形态非空恢复/授权隔离及cleanup，admin亦成功；API海报4项及native16通过，但整体PG513/516仅X03三联合fixture失败待其owner/root处理，PR33尚未合并/未生产。下一次从PR33远端当前HEAD与COMPLETION22总卡恢复，不重做下文早期切片。单写尾部目录scb-infra-tail / work/completion-recovery-tail，早期scb-x05保留历史。
 
 root批准infra独占见docs/tasks/X-INFRA.md。先接本片manifest127表/105应用函数（12helper runtime EXECUTE）；依赖完整025–035，尤其032公共档案4表与x08_public_archive_guard签名，不能在缺032时运行迁移/生产readiness后误判通过。所有当前新增表/列权限已按各owner逐一核对，不为SELECT行锁扩大immutable UPDATE；X05已另用80f2fc2去不必要锁，X03另修026。
 
@@ -37,3 +37,5 @@ I9需同时取c05-commerce-check.mjs与主入口：commerce状态v2保存最终o
 I10及后续infra改在scb-infra-tail / work/completion-recovery-tail，3351b92干净基线创建，旧scb-x05保留不切分支。root独占授权x18 helper。CI133实际通过全新域非空capture（含短时完成/真实评价）、127表物理恢复指纹与I9/template/X08/X05 normal；在x18公开广告hash误包含serverTime失败，未跑完正常业务/隔离。修共用稳定条款hash，仅分离动态serverTime，仍严格核精确字段/type/ISO/有效展示窗口；当前公开DTO无expiresAt，固定起止不排除。新增2回归、语法/格式/diff及映射当前合同的完整API tsc通过，真实新修待下轮CI；业务/迁移/ACL未改。
 
 CI135 production124422845325 SUCCESS已亲读：P07 PG20、HTTPS浏览器4、全部runtime真实非空业务、44新表census、第二实例127表dump/restore及原指纹/业务/fencing、I9精确权限/I10广告时钟投影、quarantine新旧secret/公开许可关闭且历史保留、拒覆盖/源control不变和最后只移自有project/control volume保留全部通过。候选2490869e44f76aa67d759aab0fb2987c9b4d3c0d，run41162387014。此时API/admin未完，HONOR新增第4PG待其日志，不能提前称整轮全绿或已main/上线。
+
+CI136新候选61c108e production124427526901全SUCCESS已读，20 PG/4 HTTPS/127表与44新表非空/完整正常和隔离恢复/fencing/source-control保护/自有cleanup全部复验成功。API124427527178海报4/4含HONOR6次新INSERT和原生PG期限断言、招募5/5、native16/16均过；整体PG513/516剩X03三fixture失败，不把后续阶段继续当PG通过。无新增infra改动，其他修复与整轮CI交root处理。
