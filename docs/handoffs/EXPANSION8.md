@@ -7,3 +7,6 @@
 检查点0：已建集成分支，正分配五个实现域及一名必要高风险设计审查。尚无新业务实现/测试/迁移执行。下一条按父卡E01—E08全部推进，缺外部账号不伪造完成、不阻塞可独立实现代码。
 
 检查点1：E07已重分配closure agent实施，root终审；E03资格预审/E08儿童预同意/JSAPI接线设计已收口。E05两首片已整合f89582e，18单测/类型由作者通过，尚无新增数据库执行。下一条同步分支与主入口，再继续所有8项持久服务/页面/PG和root搜索/共享接线。
+
+
+检查点2（2026-10-31 Asia/Shanghai）：root已写WechatPayClient可选JSAPI及profitSharing，旧Native默认payload和查询通道不变。JSAPI绑定配置AppID/merchant/可信openid与预支付号，生成小程序RSA paySign；显式allowJsapi才接JSAPI query/notification，调用后不认定已付款。现有+新增55项支付provider源码测试及全项目typecheck通过；首轮两项失败因合成Response被多次读取，改为每次新signed Response后通过，未弱化验签。真实微信/商户资金未调用；payer resolver和trade实际页面/业务接线尚待。E06已同步，E05/E07/E08新域内核仍待完整service/UI/真实PG；八项总范围保持。

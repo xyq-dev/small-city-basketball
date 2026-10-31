@@ -41,3 +41,6 @@
 检查点1（2026-10-31 Asia/Shanghai）：五域设计及root注销/搜索设计已完成必要审查，已批准开工；原risk_review转为E07独立实施，由root最终复核。E03新增资格预审（037，qualification-precheck模块/页面，owner仍insurance）打破C23最终审核先保险与投保前资格互锁；E08增加未满14数据处理预同意，参与与公开用途另核。E04必须JSAPI及NATIVE两通道，不把不可逆openid_hash当付款地址；root负责旧支付client可选JSAPI扩展和可信payer resolver。E07默认无强制等待、可选最多7天延期，绑定安全版本，旧备份依赖quarantine，不虚称DB tombstone永久覆盖所有备份。
 
 已整合E05首片ea9a439+cee49bd为eddb7fe/f89582e：039/domain/固定官方微信REST provider/共享类型与18单测，作者全API类型/格式通过；DDL未执行，service/UI/PG仍待，不报完成。root将同步分支后通知继续后片。
+
+
+检查点2（2026-10-31 Asia/Shanghai）：root已写WechatPayClient可选JSAPI及profitSharing，旧Native默认payload和查询通道不变。JSAPI绑定配置AppID/merchant/可信openid与预支付号，生成小程序RSA paySign；显式allowJsapi才接JSAPI query/notification，调用后不认定已付款。现有+新增55项支付provider源码测试及全项目typecheck通过；首轮两项失败因合成Response被多次读取，改为每次新signed Response后通过，未弱化验签。真实微信/商户资金未调用；payer resolver和trade实际页面/业务接线尚待。E06已同步，E05/E07/E08新域内核仍待完整service/UI/真实PG；八项总范围保持。

@@ -112,3 +112,42 @@ $$;
 CREATE TRIGGER notification_source_events_guard BEFORE UPDATE OR DELETE ON notification_source_events FOR EACH ROW EXECUTE FUNCTION e05_notification_history_guard();
 CREATE TRIGGER notification_messages_guard BEFORE UPDATE OR DELETE ON notification_messages FOR EACH ROW EXECUTE FUNCTION e05_notification_history_guard();
 CREATE TRIGGER notification_subscription_grants_guard BEFORE UPDATE OR DELETE ON notification_subscription_grants FOR EACH ROW EXECUTE FUNCTION e05_notification_history_guard();
+
+CREATE TABLE notification_fanout_state (
+  source_id uuid PRIMARY KEY REFERENCES notification_source_events(id),
+  cursor_user_id uuid,
+  done boolean NOT NULL DEFAULT false,
+  updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TABLE notification_delivery_attempts (
+  id uuid PRIMARY KEY,
+  delivery_id uuid NOT NULL REFERENCES notification_deliveries(id),
+  grant_id uuid NOT NULL UNIQUE REFERENCES notification_subscription_grants(id),
+  lease_id uuid NOT NULL UNIQUE,
+  state text NOT NULL CHECK(state IN('SENDING','ACCEPTED','UNKNOWN','FAILED','CANCELLED','EXPIRED')),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  finished_at timestamptz,
+  CHECK((state='SENDING')=(finished_at IS NULL))
+);
+CREATE FUNCTION e05_notification_attempt_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP='DELETE' OR OLD.state<>'SENDING' OR NEW.state='SENDING' OR
+    (to_jsonb(NEW)-ARRAY['state','finished_at']) IS DISTINCT FROM
+    (to_jsonb(OLD)-ARRAY['state','finished_at']) THEN
+    RAISE EXCEPTION 'Notification attempt outcomes cannot revive' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER notification_delivery_attempts_guard BEFORE UPDATE OR DELETE ON notification_delivery_attempts FOR EACH ROW EXECUTE FUNCTION e05_notification_attempt_guard();
+
+CREATE TABLE notification_commands (
+  user_id uuid NOT NULL REFERENCES users(id),
+  client_request_id uuid NOT NULL,
+  action text NOT NULL CHECK(action IN('REVOKE','RETRY')),
+  request_hash char(64) NOT NULL CHECK(request_hash ~ '^[0-9a-f]{64}$'),
+  response jsonb NOT NULL CHECK(jsonb_typeof(response)='object'),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY(user_id,client_request_id)
+);
+CREATE TRIGGER notification_commands_guard BEFORE UPDATE OR DELETE ON notification_commands FOR EACH ROW EXECUTE FUNCTION p03_reject_history_mutation();

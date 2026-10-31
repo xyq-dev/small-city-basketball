@@ -677,3 +677,85 @@ describe('provider refund acceptance time and official historical bill snapshots
     expect(parseWechatPayBill(raw, config.merchantId!, config.appId!)[0]?.totalFen).toBe(100);
   });
 });
+
+describe('explicit JSAPI and settlement request compatibility', () => {
+  const input = {
+    outTradeNo: 'SCB_JSAPI_1',
+    description: '合成小程序订单',
+    totalFen: 100,
+    currency: 'CNY' as const,
+  };
+  const jsapiClient = () =>
+    new WechatPayClient(
+      { ...config, allowJsapi: true },
+      { fetch: transport as typeof fetch, now: () => clock, nonce: () => 'merchant-nonce' },
+    );
+  test('real JSAPI payload and mini-program RSA signature bind app, time, nonce and prepay id', async () => {
+    transport.mockResolvedValue(response({ prepay_id: 'wx_synthetic_prepay_1' }));
+    const checkout = await jsapiClient().jsapi({
+      ...input,
+      openid: 'o_synthetic_current_payer',
+      profitSharing: true,
+    });
+    const [url, request] = transport.mock.calls[0]!;
+    expect(url).toBe('https://api.mch.weixin.qq.com/v3/pay/transactions/jsapi');
+    expect(JSON.parse(request.body)).toMatchObject({
+      payer: { openid: 'o_synthetic_current_payer' },
+      settle_info: { profit_sharing: true },
+      out_trade_no: input.outTradeNo,
+      amount: { total: 100, currency: 'CNY' },
+    });
+    expect(checkout.signType).toBe('RSA');
+    expect(
+      verify(
+        'RSA-SHA256',
+        Buffer.from(
+          `${config.appId}\n${checkout.timeStamp}\n${checkout.nonceStr}\n${checkout.package}\n`,
+        ),
+        merchant.publicKey,
+        Buffer.from(checkout.paySign, 'base64'),
+      ),
+    ).toBe(true);
+    expect(
+      verify(
+        'RSA-SHA256',
+        Buffer.from(
+          `${config.appId}\n${checkout.timeStamp}\n${checkout.nonceStr}\nprepay_id=other\n`,
+        ),
+        merchant.publicKey,
+        Buffer.from(checkout.paySign, 'base64'),
+      ),
+    ).toBe(false);
+  });
+  test('JSAPI remains closed for legacy Native-only configuration without any network request', async () => {
+    await expect(client().jsapi({ ...input, openid: 'synthetic' })).rejects.toMatchObject({
+      code: 'PAYMENT_CHANNEL_DISABLED',
+    });
+    expect(transport).not.toHaveBeenCalled();
+  });
+  test('query response accepts JSAPI only for an explicitly opted-in merchant client', async () => {
+    transport.mockImplementation(async () => response({ ...payment(), trade_type: 'JSAPI' }));
+    expect((await jsapiClient().queryOrder('SCB_ORDER_1')).state).toBe('SUCCESS');
+    await expect(client().queryOrder('SCB_ORDER_1')).rejects.toMatchObject({
+      code: 'PAYMENT_PROVIDER_INVALID_RESPONSE',
+    });
+  });
+  test('Native sharing flag is explicit and absent by default, preserving prior request payload', async () => {
+    transport.mockImplementation(async () =>
+      response({ code_url: 'weixin://wxpay/bizpayurl?pr=synthetic' }),
+    );
+    await client().native(input);
+    expect(JSON.parse(transport.mock.calls[0]![1].body)).not.toHaveProperty('settle_info');
+    await client().native({ ...input, profitSharing: true });
+    expect(JSON.parse(transport.mock.calls[1]![1].body).settle_info).toEqual({
+      profit_sharing: true,
+    });
+  });
+  test('invalid prepay bytes or payer identity never become executable checkout parameters', async () => {
+    transport.mockResolvedValue(response({ prepay_id: 'bad\nprepay' }));
+    await expect(jsapiClient().jsapi({ ...input, openid: 'synthetic' })).rejects.toBeDefined();
+    transport.mockClear();
+    await expect(jsapiClient().jsapi({ ...input, openid: 'bad\nopenid' })).rejects.toBeDefined();
+    expect(transport).not.toHaveBeenCalled();
+  });
+});
