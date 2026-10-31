@@ -1,6 +1,10 @@
 import type { PoolClient } from 'pg';
 import type { QualificationInput } from './qualification-precheck-service.js';
-import { qualificationBirthDate, qualificationUnder14 } from './qualification-precheck-service.js';
+import {
+  qualificationBirthDate,
+  qualificationUnder14,
+  qualificationDataProcessingDate,
+} from './qualification-precheck-service.js';
 
 /** Inject trusted current-data readers only. No provider network call is permitted within material transactions. */
 export interface ParticipantMaterialGuards {
@@ -30,7 +34,10 @@ export async function readParticipantDataConsent(
 ) {
   const required = Boolean(
     input.identityNumber &&
-    qualificationUnder14(qualificationBirthDate(input.identityNumber), input.policyDate),
+    qualificationUnder14(
+      qualificationBirthDate(input.identityNumber),
+      await qualificationDataProcessingDate(c),
+    ),
   );
   const result = guards.dataConsentGuard
     ? await guards.dataConsentGuard(c, {

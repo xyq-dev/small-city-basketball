@@ -259,7 +259,7 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
     await expect(insurance.get(outsider.cookie, created.orderId)).rejects.toMatchObject({
       status: 404,
     });
-    await insurance.drain();
+    await insurance.drain(created.orderId);
     expect(driver.applies).toHaveLength(1);
     const operation = driver.applies[0]!;
     const stored = (
@@ -269,6 +269,10 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       )
     ).rows[0];
     expect(stored).toMatchObject({ status: 'UNKNOWN', reconcile_only: true });
+    expect(await locked((c) => insurance.closureBlockers(c, s.id))).toContainEqual({
+      code: 'INSURANCE_ORDER_PENDING',
+      resourceId: created.orderId,
+    });
     const duplicateQuote = (await insurance.quote(s.cookie, {
       clientRequestId: randomUUID(),
       entryId: f.entry.id,
@@ -285,7 +289,7 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
     expect((await locked((c) => insurance.readEligibility(c, input()))).ready).toBe(false);
     driver.issued(operation);
     await readyOperation(created.orderId);
-    await insurance.drain();
+    await insurance.drain(created.orderId);
     expect(driver.applies).toEqual([operation]);
     expect(driver.queries).toEqual([operation, operation]);
     const issued = await insurance.get(s.cookie, created.orderId);
@@ -357,9 +361,9 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
     });
     expect(cancel).toEqual(created);
     expect((await locked((c) => insurance.readEligibility(c, input()))).ready).toBe(false);
-    await insurance.drain();
+    await insurance.drain(created.orderId);
     await readyOperation(created.orderId);
-    await insurance.drain();
+    await insurance.drain(created.orderId);
     expect(driver.cancels).toEqual([operation]);
     driver.facts.set(operation, {
       ...driver.facts.get(operation)!,
@@ -369,7 +373,7 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       document: null,
     });
     await readyOperation(created.orderId);
-    await insurance.drain();
+    await insurance.drain(created.orderId);
     expect(await insurance.get(s.cookie, created.orderId)).toMatchObject({
       policyStatus: 'CANCELLED',
       paymentStatus: 'REFUNDED',
@@ -381,6 +385,7 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       ])
     ).rows[0].policy_ciphertext;
     expect(policy).not.toContain('synthetic-policy');
+    expect(await locked((c) => insurance.closureBlockers(c, s.id))).toEqual([]);
     expect((await insurance.document(s.cookie, created.orderId)).body.equals(syntheticPdf)).toBe(
       true,
     );
@@ -430,15 +435,24 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       ).rows[0].n,
     ).toBe(1);
     driver.issued(order.operation_id);
-    await insurance.drain();
+    await insurance.drain(order.id);
     expect(await insurance.get(subjects[0]!.cookie, order.id)).toMatchObject({
       policyStatus: 'CANCELLED',
       paymentStatus: 'REFUNDED',
     });
   });
-  test('under14 identity replacement cannot be persisted before data-processing guardian consent', async () => {
+  test('today thirteen cannot bypass private collection by moving the event after the fourteenth birthday', async () => {
     const member = f.members[0]!,
       subject = subjects[0]!;
+    const calendar = (
+      await api.pool.query(
+        "SELECT d::text AS today,(d-interval '13 years')::date::text AS birth_date,(d+interval '1 year')::date::text AS future_start FROM (SELECT (clock_timestamp() AT TIME ZONE 'Asia/Shanghai')::date AS d) t",
+      )
+    ).rows[0];
+    await api.pool.query(
+      'UPDATE events SET start_date=$3::date,end_date=$3::date+1 WHERE org_id=$1 AND id=$2',
+      [owner.orgId, f.registration.event.id, calendar.future_start],
+    );
     const before = (
       await api.pool.query(
         'SELECT version,current_revision_id FROM participant_materials WHERE id=$1',
@@ -449,7 +463,7 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       materials.save(subject.cookie, owner.orgId, f.entry.id, {
         clientRequestId: randomUUID(),
         expectedVersion: before.version,
-        identityNumber: syntheticYouthIdentity('2015-01-01', 91),
+        identityNumber: syntheticYouthIdentity(calendar.birth_date, 91),
       }),
     ).rejects.toMatchObject({ code: 'YOUTH_DATA_PROCESSING_CONSENT_REQUIRED' });
     const after = (

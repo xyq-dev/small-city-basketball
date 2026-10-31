@@ -74,6 +74,7 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
     queryCalls: [] as string[],
     fact: null as InsurancePolicyFact | null,
     orderWrites: 0,
+    candidateScopes: [] as unknown[],
     stealFence: false,
   };
   const fact: InsurancePolicyFact = {
@@ -135,15 +136,17 @@ function harness(kind: 'APPLY' | 'CANCEL' = 'APPLY') {
     },
   } as unknown as PoolClient;
   const pool = {
-    query: async (sql: string) => {
+    query: async (sql: string, values: unknown[] = []) => {
       if (sql.startsWith('UPDATE insurance_operations')) return { rows: [] };
-      if (sql.startsWith('SELECT x.id'))
+      if (sql.startsWith('SELECT x.id')) {
+        state.candidateScopes.push(values[0]);
         return {
           rows:
             state.op.status === 'DONE'
               ? []
               : [{ id: state.op.id, org_id: order.org_id, event_id: order.event_id }],
         };
+      }
       throw Error(sql);
     },
   } as unknown as Pool;
@@ -254,6 +257,13 @@ describe('durable insurance worker uncertainty and fencing', () => {
     await h.service.drain();
     expect(h.state.orderWrites).toBe(0);
     expect(h.state.op.status).toBe('UNKNOWN');
+  });
+  it('trusted scoped batches validate a UUID and restrict both candidate selection and lease recovery', async () => {
+    const h = harness();
+    await expect(h.service.drain('not-a-uuid')).rejects.toThrow();
+    expect(h.state.applyCalls).toHaveLength(0);
+    await h.service.drain(h.order.id);
+    expect(h.state.candidateScopes).toEqual([h.order.id]);
   });
   it('no supplier configuration produces no network work and reports a closed feature', async () => {
     const service = new InsuranceService({} as Pool, {

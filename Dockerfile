@@ -29,7 +29,8 @@ ENV NODE_ENV=production
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk fontconfig ffmpeg \
     && rm -rf /var/lib/apt/lists/*
-RUN groupadd --gid 10001 scb && useradd --uid 10001 --gid 10001 --no-create-home scb
+RUN groupadd --gid 10001 scb && useradd --uid 10001 --gid 10001 --no-create-home scb \
+    && install -d -m 0700 -o 10001 -g 10001 /var/lib/scb/live-media
 COPY --from=api-deps /app/node_modules ./node_modules
 COPY apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/apps/api/dist ./apps/api/dist

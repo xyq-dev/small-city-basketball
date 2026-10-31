@@ -78,6 +78,8 @@ services:
       PARTICIPANT_REGISTRATION_ENABLED: 'true'
       TRUST_PROXY_HOPS: '1'
       COMMERCE_MODE: ${COMMERCE_MODE:-OFF}
+      SCB_BACKGROUND_WORKERS_ENABLED: ${SCB_BACKGROUND_WORKERS_ENABLED:-true}
+      SCB_LIVE_MEDIA_ROOT: /var/lib/scb/live-media
       WECHAT_PAY_ENABLED: 'false'
       WECHAT_MINI_LOGIN_ENABLED: 'false'
       DATABASE_URL_FILE: /run/secrets/database_runtime_url
@@ -87,6 +89,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=16m,mode=1777
+    volumes:
+      - live_media:/var/lib/scb/live-media
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
@@ -245,6 +249,7 @@ secrets:
 
 volumes:
   postgres_data:
+  live_media:
 
 networks:
   # Only the reverse proxy has a network that supports host port publishing.

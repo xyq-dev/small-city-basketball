@@ -7,7 +7,11 @@ export interface PrivilegeManifest {
   functions: Record<string, 'EXECUTE'[]>;
   tables: Record<
     string,
-    { privileges: ('SELECT' | 'INSERT' | 'DELETE')[]; updateColumns: string[] }
+    {
+      privileges: ('SELECT' | 'INSERT' | 'DELETE')[];
+      updateColumns: string[];
+      selectColumns?: string[];
+    }
   >;
 }
 export function loadManifest(): Promise<PrivilegeManifest>;

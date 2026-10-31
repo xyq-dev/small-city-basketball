@@ -1,5 +1,20 @@
 # 数据模型与状态
 
+## EXPANSION8：036—041分支模型（尚未执行）
+
+本轮48张新表，全链175表/117函数，旧001—035不修改。以下以实际DDL清单为准；首次成功执行后新迁移冻结，后续变更另加迁移。支付/退款/保单/停播外部事实与工作意图分开，不能用界面成功或过期令牌代替真实回执。
+
+| 迁移                        | 新表数 | 表                                                                                                                                                                                                                                                                                                              |
+| --------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 036_e01_streaming_media.sql | 8      | `live_channel_accounts`, `broadcast_sessions`, `live_relays`, `stream_command_receipts`, `stream_jobs`, `stream_usage_ledger`, `live_media_jobs`, `live_media_artifacts`                                                                                                                                        |
+| 037_e03_insurance.sql       | 11     | `insurance_configuration`, `insurance_products`, `insurance_quotes`, `insurance_orders`, `insurance_policy_facts`, `insurance_operations`, `insurance_receipts`, `insurance_provider_events`, `participant_qualification_requests`, `participant_qualification_prechecks`, `participant_qualification_receipts` |
+| 038_e04_trade.sql           | 10     | `trade_terms`, `trade_orders`, `trade_payment_attempts`, `trade_refunds`, `trade_deductions`, `trade_settlements`, `trade_provider_events`, `trade_operations`, `trade_reconciliations`, `trade_settlement_returns`                                                                                             |
+| 039_e05_notifications.sql   | 10     | `notification_configuration`, `notification_source_events`, `notification_messages`, `notification_subscription_intents`, `notification_subscription_grants`, `notification_deliveries`, `notification_fanout_state`, `notification_delivery_attempts`, `notification_commands`, `notification_start_scan`      |
+| 040_e07_account_closure.sql | 3      | `account_closure_requests`, `account_closure_operations`, `account_closure_tombstones`                                                                                                                                                                                                                          |
+| 041_e08_youth_guardians.sql | 6      | `youth_event_policies`, `youth_guardian_preconsents`, `youth_guardian_requests`, `youth_guardian_history`, `youth_guardian_commands`, `youth_preconsent_history`                                                                                                                                                |
+
+敏感保单/监护证明/通知目标单独加密，当前同意按来源/用途/版本读取；append-only事实及receipt不允许普通runtime UPDATE/DELETE。`trade_orders.money_version`在新实际账务事实同事务递增，对账精确pin后才可分账。审计表runtime仅INSERT及action/resource_type两列SELECT以检查永久恢复marker，不能读metadata/actor。MP4为独立媒体卷文件，artifact表只保留路径/大小/哈希与授权元数据；数据库备份不包含媒体字节。
+
 ## EXPANSION8 分支数据增量
 
 E06不新建搜索身份库或长期索引，直接按当前有效event_directory_listings/public_event_publications及public_archive_profiles/publications/sources投影，在同授权snapshot内验证。候选分页只保公开键和查询scope，源撤回不会因索引延迟继续可见。其余036—041为当前分支实施草稿，执行与冻结状态以[父任务](tasks/EXPANSION8.md)及迁移源码为准，尚未进行本轮数据库执行或生产修改。
@@ -8,19 +23,19 @@ E06不新建搜索身份库或长期索引，直接按当前有效event_director
 
 2026-10-31 Asia/Shanghai；当前整合范围累计35项Migration、127张表，025—035新增44表并扩展既有比赛/采集约束。执行与合并事实见[当前状态](CURRENT_STATUS.md)，仅在隔离CI验证，不代表生产Migration已执行。下方早期阶段的“待新增”“仅三赛制”等历史描述不覆盖本节与第3节当前规范。
 
-| Migration | 新增表/变更范围 |
-| --- | --- |
-| [025_x01_third_place.sql](../apps/api/migrations/025_x01_third_place.sql) | 扩展既有表/函数及约束，不新增表 |
-| [026_x03_scheduling_templates.sql](../apps/api/migrations/026_x03_scheduling_templates.sql) | `event_templates`, `event_template_versions`, `event_template_instances`, `event_template_commands` |
-| [027_x05_recruitment_posters.sql](../apps/api/migrations/027_x05_recruitment_posters.sql) | `recruitment_publications`, `recruitment_applications`, `event_team_import_previews`, `event_invitations`, `recruitment_request_receipts`, `poster_exports` |
-| [028_x08_professional_statistics.sql](../apps/api/migrations/028_x08_professional_statistics.sql) | 扩展既有表/函数及约束，不新增表 |
-| [029_x12_local_services.sql](../apps/api/migrations/029_x12_local_services.sql) | `local_listings`, `local_slots`, `local_bookings`, `local_matchups`, `local_resource_reservations`, `local_command_receipts`, `local_service_history` |
-| [030_x18_governance.sql](../apps/api/migrations/030_x18_governance.sql) | `governance_operations`, `city_operation_grants`, `governance_cases`, `governance_case_messages`, `governance_case_attachments`, `governance_reviews`, `sponsorship_campaigns`, `sponsorship_publications`, `sponsorship_impressions`, `public_ledger_accounts`, `public_ledger_entries`, `public_ledger_publications` |
-| [031_x22_account_recovery.sql](../apps/api/migrations/031_x22_account_recovery.sql) | `account_mail_configuration`, `account_action_requests`, `account_action_tokens`, `account_action_cancellations`, `account_mail_jobs` |
-| [032_x08_public_archives.sql](../apps/api/migrations/032_x08_public_archives.sql) | `public_archive_profiles`, `public_archive_publications`, `public_archive_sources`, `public_archive_operations` |
-| [033_x02_match_exceptions.sql](../apps/api/migrations/033_x02_match_exceptions.sql) | `match_exception_rules`, `match_exception_heads`, `match_exception_requests`, `match_exception_receipts` |
-| [034_x08_scoring_offline_intents.sql](../apps/api/migrations/034_x08_scoring_offline_intents.sql) | `scoring_offline_intents` |
-| [035_x17_staff_configuration.sql](../apps/api/migrations/035_x17_staff_configuration.sql) | `staff_configuration_receipts` |
+| Migration                                                                                         | 新增表/变更范围                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [025_x01_third_place.sql](../apps/api/migrations/025_x01_third_place.sql)                         | 扩展既有表/函数及约束，不新增表                                                                                                                                                                                                                                                                                        |
+| [026_x03_scheduling_templates.sql](../apps/api/migrations/026_x03_scheduling_templates.sql)       | `event_templates`, `event_template_versions`, `event_template_instances`, `event_template_commands`                                                                                                                                                                                                                    |
+| [027_x05_recruitment_posters.sql](../apps/api/migrations/027_x05_recruitment_posters.sql)         | `recruitment_publications`, `recruitment_applications`, `event_team_import_previews`, `event_invitations`, `recruitment_request_receipts`, `poster_exports`                                                                                                                                                            |
+| [028_x08_professional_statistics.sql](../apps/api/migrations/028_x08_professional_statistics.sql) | 扩展既有表/函数及约束，不新增表                                                                                                                                                                                                                                                                                        |
+| [029_x12_local_services.sql](../apps/api/migrations/029_x12_local_services.sql)                   | `local_listings`, `local_slots`, `local_bookings`, `local_matchups`, `local_resource_reservations`, `local_command_receipts`, `local_service_history`                                                                                                                                                                  |
+| [030_x18_governance.sql](../apps/api/migrations/030_x18_governance.sql)                           | `governance_operations`, `city_operation_grants`, `governance_cases`, `governance_case_messages`, `governance_case_attachments`, `governance_reviews`, `sponsorship_campaigns`, `sponsorship_publications`, `sponsorship_impressions`, `public_ledger_accounts`, `public_ledger_entries`, `public_ledger_publications` |
+| [031_x22_account_recovery.sql](../apps/api/migrations/031_x22_account_recovery.sql)               | `account_mail_configuration`, `account_action_requests`, `account_action_tokens`, `account_action_cancellations`, `account_mail_jobs`                                                                                                                                                                                  |
+| [032_x08_public_archives.sql](../apps/api/migrations/032_x08_public_archives.sql)                 | `public_archive_profiles`, `public_archive_publications`, `public_archive_sources`, `public_archive_operations`                                                                                                                                                                                                        |
+| [033_x02_match_exceptions.sql](../apps/api/migrations/033_x02_match_exceptions.sql)               | `match_exception_rules`, `match_exception_heads`, `match_exception_requests`, `match_exception_receipts`                                                                                                                                                                                                               |
+| [034_x08_scoring_offline_intents.sql](../apps/api/migrations/034_x08_scoring_offline_intents.sql) | `scoring_offline_intents`                                                                                                                                                                                                                                                                                              |
+| [035_x17_staff_configuration.sql](../apps/api/migrations/035_x17_staff_configuration.sql)         | `staff_configuration_receipts`                                                                                                                                                                                                                                                                                         |
 
 双循环必须在events.format与schedule_revisions.algorithm_version中同时匹配，使用独立DRR_CIRCLE_V1，不能把双回合拼入单循环来源。季军赛复用既有晋级来源及发布结构；半决赛负者proof、闭赛场数和完整赛事权益同时校验。行政结果保存在独立rules/head/request/receipt中，不改写记分事件；READY的有效行政来源必须核scoring_states的当前source_version、暂停时钟及未确认状态。
 
@@ -50,34 +65,34 @@ P02主键使用服务端生成的UUID；后续实体沿用不透明ID原则。�
 
 ## 2. 核心实体
 
-| 实体 | 主要字段与关系 | 关键约束 |
-|---|---|---|
-| User | id、登录主体引用、公开昵称 | 登录主体唯一；私密身份资料独立保护 |
-| Organization | id、name、status | 禁用机构阻止新增写入，保留授权读取策略 |
-| OrganizationMembership | orgId、userId、role、status | 同机构同用户唯一；权限变更审计 |
-| EventStaff | orgId、eventId、userId、role、status | 已实现的赛事工作人员授权；场次授权由独立MatchStaff承担 |
-| MatchStaff | orgId、eventId、matchId、userId、role、status | P05-A显式SCORER／RESULT_REVIEWER，ACTIVE分配要求有效机构成员；不要求额外EventStaff |
-| EventSeries | orgId、name、品牌引用 | 可选的长期赛事品牌，关联多届赛事；P01 不建立 |
-| Event | orgId、可选seriesId/seasonLabel/editionLabel、name、startDate、endDate、timezone、可空venueName、format、status、version | 日期有序；format 为约定枚举；创建状态 DRAFT；P01不要求设置系列 |
-| Division / CompetitionStage / Group | orgId、eventId；组别/阶段/小组名称、顺序、规则版本与晋级来源 | P04按需新增；阶段与小组均属于同一届赛事，不能将所有小组积分混算 |
-| EventRuleset | orgId、eventId、version、rules、lockedAt | 同赛事版本唯一；使用后的版本不可覆盖 |
-| Team / TeamMember | orgId、name、badge；teamId、可选userId、展示资料 | 长期球队档案；证件不放公开成员字段 |
-| TeamAccessGrant | orgId、teamId、userId、role、status、可选expiresAt | 领队/球队管理授权独立于机构成员；授权撤销后不能继续操作本队报名 |
-| ParticipantLink / Invitation | orgId、entryPlayerId、userId、status；邀请用途、受邀对象、资源范围、令牌hash、expiresAt、acceptedAt | 本人身份绑定可追溯；邀请限期且一次接受，不能靠客户端userId认领他人资料；接受不授予工作人员身份 |
-| EventEntry | orgId、eventId、teamId、teamNameSnapshot、status、version | 同赛事同球队唯一；外部导入先生成本机构授权档案/快照 |
-| EntryPlayer | orgId、eventId、entryId、memberId、nameSnapshot、jerseyNo、eligibilityStatus | 本届名单独立保存；号码在当前有效报名名单内唯一 |
-| PrivateParticipantData | orgId、entryPlayerId、受保护身份/联系信息引用 | 单独权限；不作为公开球员 DTO 的默认关系 |
-| InsuranceEvidence | orgId、entryPlayerId、objectKey、source、reviewStatus、reviewerId | 凭证文件私有；EXTERNAL 仅表示来源，不等于审核通过 |
-| Venue / Court | orgId、name、位置说明；venueId、courtName | 场地冲突以 courtId 和时间区间判断 |
-| Draw / ScheduleRevision | orgId、eventId、rulesetVersion、输入/随机结果快照、version、发布人 | 重抽说明原因；发布版本不可原地改写 |
-| Match | orgId、eventId、scheduleRevisionId、适用的divisionId/stageId/groupId、双方entryId、courtId、startsAt、status、version | 双方不同且属于本赛事；阶段/小组归属一致；锁定使用的规则版本 |
-| MatchRoster | orgId、matchId、entryPlayerId、比赛名单快照 | 只能来自批准报名名单；赛后人员变动不改历史 |
-| MatchEvent | orgId、matchId、seq、commandId、type、payload、actorId、captureTime、serverTime、correctionOf | `(matchId,seq)`唯一；事件追加；修正引用同场合法事件 |
-| MatchProjection / ClockState | orgId、matchId、比分/统计、sourceVersion；计时锚点 | 一场一份当前投影；记录采集模式及未采集字段 |
-| ScorekeeperLease | orgId、matchId、holderId、deviceId、expiresAt、fencingToken | 一场一个有效主写租约；转移递增栅栏版本 |
-| ResultConfirmation | orgId、matchId、matchVersion、确认人、结果快照 | 每个确认版本不可变；重开保留旧确认历史 |
-| StandingProjection | orgId、eventId、适用的divisionId/stageId/groupId、rulesetVersion、sourceResultVersion、排名数据 | 仅基于已确认赛果；重算不能混入旧版本和不同组别/小组 |
-| IdempotencyRecord / AuditLog / Outbox | 请求作用域及hash/结果；操作者及变更引用；已提交待投递事件 | 与相关业务事务一致；重放仍需重新鉴权 |
+| 实体                                  | 主要字段与关系                                                                                                           | 关键约束                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| User                                  | id、登录主体引用、公开昵称                                                                                               | 登录主体唯一；私密身份资料独立保护                                                             |
+| Organization                          | id、name、status                                                                                                         | 禁用机构阻止新增写入，保留授权读取策略                                                         |
+| OrganizationMembership                | orgId、userId、role、status                                                                                              | 同机构同用户唯一；权限变更审计                                                                 |
+| EventStaff                            | orgId、eventId、userId、role、status                                                                                     | 已实现的赛事工作人员授权；场次授权由独立MatchStaff承担                                         |
+| MatchStaff                            | orgId、eventId、matchId、userId、role、status                                                                            | P05-A显式SCORER／RESULT_REVIEWER，ACTIVE分配要求有效机构成员；不要求额外EventStaff             |
+| EventSeries                           | orgId、name、品牌引用                                                                                                    | 可选的长期赛事品牌，关联多届赛事；P01 不建立                                                   |
+| Event                                 | orgId、可选seriesId/seasonLabel/editionLabel、name、startDate、endDate、timezone、可空venueName、format、status、version | 日期有序；format 为约定枚举；创建状态 DRAFT；P01不要求设置系列                                 |
+| Division / CompetitionStage / Group   | orgId、eventId；组别/阶段/小组名称、顺序、规则版本与晋级来源                                                             | P04按需新增；阶段与小组均属于同一届赛事，不能将所有小组积分混算                                |
+| EventRuleset                          | orgId、eventId、version、rules、lockedAt                                                                                 | 同赛事版本唯一；使用后的版本不可覆盖                                                           |
+| Team / TeamMember                     | orgId、name、badge；teamId、可选userId、展示资料                                                                         | 长期球队档案；证件不放公开成员字段                                                             |
+| TeamAccessGrant                       | orgId、teamId、userId、role、status、可选expiresAt                                                                       | 领队/球队管理授权独立于机构成员；授权撤销后不能继续操作本队报名                                |
+| ParticipantLink / Invitation          | orgId、entryPlayerId、userId、status；邀请用途、受邀对象、资源范围、令牌hash、expiresAt、acceptedAt                      | 本人身份绑定可追溯；邀请限期且一次接受，不能靠客户端userId认领他人资料；接受不授予工作人员身份 |
+| EventEntry                            | orgId、eventId、teamId、teamNameSnapshot、status、version                                                                | 同赛事同球队唯一；外部导入先生成本机构授权档案/快照                                            |
+| EntryPlayer                           | orgId、eventId、entryId、memberId、nameSnapshot、jerseyNo、eligibilityStatus                                             | 本届名单独立保存；号码在当前有效报名名单内唯一                                                 |
+| PrivateParticipantData                | orgId、entryPlayerId、受保护身份/联系信息引用                                                                            | 单独权限；不作为公开球员 DTO 的默认关系                                                        |
+| InsuranceEvidence                     | orgId、entryPlayerId、objectKey、source、reviewStatus、reviewerId                                                        | 凭证文件私有；EXTERNAL 仅表示来源，不等于审核通过                                              |
+| Venue / Court                         | orgId、name、位置说明；venueId、courtName                                                                                | 场地冲突以 courtId 和时间区间判断                                                              |
+| Draw / ScheduleRevision               | orgId、eventId、rulesetVersion、输入/随机结果快照、version、发布人                                                       | 重抽说明原因；发布版本不可原地改写                                                             |
+| Match                                 | orgId、eventId、scheduleRevisionId、适用的divisionId/stageId/groupId、双方entryId、courtId、startsAt、status、version    | 双方不同且属于本赛事；阶段/小组归属一致；锁定使用的规则版本                                    |
+| MatchRoster                           | orgId、matchId、entryPlayerId、比赛名单快照                                                                              | 只能来自批准报名名单；赛后人员变动不改历史                                                     |
+| MatchEvent                            | orgId、matchId、seq、commandId、type、payload、actorId、captureTime、serverTime、correctionOf                            | `(matchId,seq)`唯一；事件追加；修正引用同场合法事件                                            |
+| MatchProjection / ClockState          | orgId、matchId、比分/统计、sourceVersion；计时锚点                                                                       | 一场一份当前投影；记录采集模式及未采集字段                                                     |
+| ScorekeeperLease                      | orgId、matchId、holderId、deviceId、expiresAt、fencingToken                                                              | 一场一个有效主写租约；转移递增栅栏版本                                                         |
+| ResultConfirmation                    | orgId、matchId、matchVersion、确认人、结果快照                                                                           | 每个确认版本不可变；重开保留旧确认历史                                                         |
+| StandingProjection                    | orgId、eventId、适用的divisionId/stageId/groupId、rulesetVersion、sourceResultVersion、排名数据                          | 仅基于已确认赛果；重算不能混入旧版本和不同组别/小组                                            |
+| IdempotencyRecord / AuditLog / Outbox | 请求作用域及hash/结果；操作者及变更引用；已提交待投递事件                                                                | 与相关业务事务一致；重放仍需重新鉴权                                                           |
 
 BroadcastSession、MediaAnchor、SponsorPlacement、Entitlement和UsageLedger在对应阶段新增；P06-A已交付的OverlayGrant及session表见第11节，已在隔离CI执行。视频存引用与时长/用量，不存二进制；软件权益与视频用量分账。支付、退款、保险交易模型尚未定稿，不把报名审核状态当作支付状态。
 
@@ -133,16 +148,16 @@ P03-A经[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并ma
 
 [PR #4](https://github.com/xyq-dev/small-city-basketball/pull/4)合并main `9fc9b3019eeef52d5b7a66643b01f0fe993af09f`；代码 `7336bfa01a6a3b6afb08dd2c90260f8497b1239e` 经[CI39737812114](https://github.com/xyq-dev/small-city-basketball/actions/runs/39737812114)全部成功。`003_p04_scheduling.sql`的SHA256为`6469c7d5783ac1c025c0981addb8da77d0174169556b79e971347cd5ea78122f`。001→002→003已在隔离PostgreSQL18.6执行，复跑校验和并跳过已应用版本；68项独立PG场景通过（P02 20＋P03-A 24＋P04-A 24）。真实数据库重启后已发布排赛、正式场次、预约及原授权／名单／审计／校验和保持，详见[TESTING](TESTING.md)。无生产执行。
 
-| 新增表 | 责任与关键约束 |
-|---|---|
-| courts | org共享稳定场地，规范化名称唯一、ACTIVE/DISABLED及CAS版本 |
-| org_schedule_mutex | org_id主键；写场地及发布同事务INSERT ON CONFLICT后FOR UPDATE，覆盖既有和新机构 |
-| schedule_revisions | freeze/source/policy/seed/hash/轮次及顺序、DRAFT/SUPERSEDED/PUBLISHED、版本和重抽历史；来源始终不可改 |
-| schedule_fixtures | 主键(org_id,revision_id,fixture_key)，双方entry/team及轮次固定；仅DRAFT可改场地和时间分配 |
-| schedule_publications | event唯一发布，绑定revision及publicationHash；禁止更新、删除或发布后追加篡改 |
-| published_matches | 固定双方entry/team/name/rosterRevision、courtName、时间及来源引用；初始SCHEDULED/version1，P05-A受控记分只更新status/version |
-| court_reservations | 每场一条，主键(org_id,match_id)，正式场地及半开时间占用 |
-| team_reservations | 每场每队一条，主键(org_id,match_id,team_id)，按长期canonical Team防跨赛事重叠 |
+| 新增表                | 责任与关键约束                                                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| courts                | org共享稳定场地，规范化名称唯一、ACTIVE/DISABLED及CAS版本                                                                    |
+| org_schedule_mutex    | org_id主键；写场地及发布同事务INSERT ON CONFLICT后FOR UPDATE，覆盖既有和新机构                                               |
+| schedule_revisions    | freeze/source/policy/seed/hash/轮次及顺序、DRAFT/SUPERSEDED/PUBLISHED、版本和重抽历史；来源始终不可改                        |
+| schedule_fixtures     | 主键(org_id,revision_id,fixture_key)，双方entry/team及轮次固定；仅DRAFT可改场地和时间分配                                    |
+| schedule_publications | event唯一发布，绑定revision及publicationHash；禁止更新、删除或发布后追加篡改                                                 |
+| published_matches     | 固定双方entry/team/name/rosterRevision、courtName、时间及来源引用；初始SCHEDULED/version1，P05-A受控记分只更新status/version |
+| court_reservations    | 每场一条，主键(org_id,match_id)，正式场地及半开时间占用                                                                      |
+| team_reservations     | 每场每队一条，主键(org_id,match_id,team_id)，按长期canonical Team防跨赛事重叠                                                |
 
 同时增加events.current_schedule_revision_id及registration_freezes复合唯一键。真实复合FK约束org/event/revision/entry/team/roster来源；每场一Court、两Team，`btree_gist`与`tstzrange(starts_at,ends_at,'[)')`GiST排他约束防同机构同资源重叠。发布后来源、fixtures、publication、reservations不可更新、删除或追加；match计划事实不可变；P05-A已通过受控commands更新status/version，以独立状态实体保存比分及clock，不能借status/version改计划。
 
@@ -150,20 +165,19 @@ P03-A经[PR #3](https://github.com/xyq-dev/small-city-basketball/pull/3)合并ma
 
 本卡只支持2–32队单回合ROUND_ROBIN、显式占用／休息／本地日期间隔及时间窗口、手工分配和一次发布。重抽新建来源、旧稿SUPERSEDED只读；没有自动排时、淘汰／分组、改期或释放预约。机构内canonical Court/Team协调不等于跨机构物理场地共享；本节只验收P04-A；有限正式排名／公开观赛已由第10节P05-B交付，完整P04及P06仍未完成。
 
-
 ## 9. P05-A记分持久化（DONE / MAIN，隔离测试库已执行）
 
 [PR #5](https://github.com/xyq-dev/small-city-basketball/pull/5)合并main `3c0bf8408b181d6e96c00b348d7cebb7bad54aef`；验收代码 `1cb8e41400de4e497580e98c7eb77d6a7a02e079`、tree `9f23899a9e118304db2749b8505d04c5468c5dfe` 经[CI39743710053](https://github.com/xyq-dev/small-city-basketball/actions/runs/39743710053)全部成功。`004_p05_scoring.sql` SHA-256为 `ebf454ab7e5bcb86e9453bab0e9783d792f5c0755fd7621878aa96a3c997ab83`。001→002→003→004已在隔离PostgreSQL18.6执行及复跑校验，88项独立PG通过（P02 20＋P03-A 24＋P04-A 24＋P05-A 20）；真实PG重启保留运行中clock锚点、已释放lease及fence、追加事件／receipt、重开后两份确认，以及原授权／报名／排赛／预约／审计／checksum。没有生产数据库或生产执行。
 
-| 新增表 | 主要字段与提交约束 |
-|---|---|
-| scoring_rulesets | id、org/event、version及显式节数／节长／允许分值／平分与加时规则；同赛事版本唯一，规则不可UPDATE/DELETE |
-| match_staff | 主键(org_id,match_id,user_id)，SCORER／RESULT_REVIEWER及ACTIVE／DISABLED；复合FK绑定同机构成员与正式比赛，不把全局角色当作场次授权 |
-| scoring_states | 主键(org_id,match_id)，绑定ruleset、source_version、last_event_seq、双方score/fouls/timeouts、period_stats、clock及最新确认指针／requires_reconfirmation；绑定来源不可替换，版本不回退 |
-| scoring_leases | 主键(org_id,match_id)，holder_user_id／holder_session_id／client_instance_id／lease_id、int64 fencing_token和expires_at；永久计数，不DELETE；换绑定需新leaseId及更高fence，触发器核对session归属 |
-| scoring_commands | 主键(org_id,actor_id,match_id,command_id)，规范request_hash、type、applied_version、首末event seq、accepted_at；不可变最小收据，不保存控制凭据或整份历史workbench |
-| scoring_events | id、同场连续seq、type/payload、actor/command、captured_at/server_time、target_event_id；同场目标FK、STAT_VOIDED目标唯一、只追加；receipt关联延迟到commit验证 |
-| result_confirmations | 不可变id、org/event/match、确认人、规则id/version、确认前source_match_version／last_event_seq、双方基础统计及period_stats、confirmed_at；同场来源版本唯一 |
+| 新增表               | 主要字段与提交约束                                                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| scoring_rulesets     | id、org/event、version及显式节数／节长／允许分值／平分与加时规则；同赛事版本唯一，规则不可UPDATE/DELETE                                                                                          |
+| match_staff          | 主键(org_id,match_id,user_id)，SCORER／RESULT_REVIEWER及ACTIVE／DISABLED；复合FK绑定同机构成员与正式比赛，不把全局角色当作场次授权                                                               |
+| scoring_states       | 主键(org_id,match_id)，绑定ruleset、source_version、last_event_seq、双方score/fouls/timeouts、period_stats、clock及最新确认指针／requires_reconfirmation；绑定来源不可替换，版本不回退           |
+| scoring_leases       | 主键(org_id,match_id)，holder_user_id／holder_session_id／client_instance_id／lease_id、int64 fencing_token和expires_at；永久计数，不DELETE；换绑定需新leaseId及更高fence，触发器核对session归属 |
+| scoring_commands     | 主键(org_id,actor_id,match_id,command_id)，规范request_hash、type、applied_version、首末event seq、accepted_at；不可变最小收据，不保存控制凭据或整份历史workbench                                |
+| scoring_events       | id、同场连续seq、type/payload、actor/command、captured_at/server_time、target_event_id；同场目标FK、STAT_VOIDED目标唯一、只追加；receipt关联延迟到commit验证                                     |
+| result_confirmations | 不可变id、org/event/match、确认人、规则id/version、确认前source_match_version／last_event_seq、双方基础统计及period_stats、confirmed_at；同场来源版本唯一                                        |
 
 events增加current_scoring_ruleset_id／locked_scoring_ruleset_id复合FK；首次READY后锁定指针永久不清除或替换，current必须等于locked。规则整数范围与非空不重复分值子集有CHECK；projection基础计数非负、时钟有界，所有业务引用按org/event/match组合校验。`scoring_states.source_version`必须与`published_matches.version`同事务提交，由两个表上的deferred constraint trigger验证；因此人员变更在已有projection时也同步版本，不改变比分或clockVersion。003的正式计划不可变触发器保持，只有match.status/version允许受控更新。
 
@@ -183,11 +197,11 @@ STAT_RECORDED保存kind/side/value/period及可选reason；更正用STAT_VOIDED�
 
 `apps/api/migrations/005_p05_standings_public.sql` SHA-256保持`e6c786b60b2143409b192c47398f951861be0964ac954ea5ebfd5cd2af5ac221`。独立静态CLEAR后，已随PR #6合并main `bd38318fdfdbaeb9cfee1033c0d025e79c6cc797`。[最终CI39751848322](https://github.com/xyq-dev/small-city-basketball/actions/runs/39751848322)按001→005隔离执行／复跑checksum，106项独立PG及实际PG18.6重启通过，指纹覆盖36个migration应用表与schema_migrations共37表，含本卡三表、规则锁、有效／撤销公开身份、全量映射和sourceHash；12Mock＋12真实API官方浏览器通过。首CI429、第二轮取消、第三轮负向checker SQL绑定失败及最终修复均保留[TESTING](TESTING.md)。无生产数据库或生产执行。
 
-| 新表 | 主键、引用与约束 |
-|---|---|
-| standings_rulesets | UUID id；org_id/event_id/version唯一，复合FK指向本届Event；algorithm_version固定RR_STANDINGS_V1，三种积分各0–1000，tiebreakers允许空或三个受支持项的不重复有序子集；规则禁止UPDATE/DELETE |
+| 新表                      | 主键、引用与约束                                                                                                                                                                                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| standings_rulesets        | UUID id；org_id/event_id/version唯一，复合FK指向本届Event；algorithm_version固定RR_STANDINGS_V1，三种积分各0–1000，tiebreakers允许空或三个受支持项的不重复有序子集；规则禁止UPDATE/DELETE                                                                                                         |
 | public_event_publications | UUID id及org/event/schedule_publication_id/ruleset_id；复合FK绑定同届正式赛程和排名规则。public_event_id为全历史唯一43字符公开身份；team_keys为entryId→22字符随机公开teamKey映射，仅服务端内部保存。created_by/at、created_xid、revoked_by/at留历史；同event仅一条revoked_at为空的有效publication |
-| public_match_links | 主键(publication_id,match_id)；org/event/publication/schedule组合FK指向公开publication，org/event/match及org/schedule_publication/match两条复合FK共同绑定本届同一次正式赛程的比赛；public_match_id全历史唯一43字符，禁止UPDATE/DELETE |
+| public_match_links        | 主键(publication_id,match_id)；org/event/publication/schedule组合FK指向公开publication，org/event/match及org/schedule_publication/match两条复合FK共同绑定本届同一次正式赛程的比赛；public_match_id全历史唯一43字符，禁止UPDATE/DELETE                                                             |
 
 events增加current_standings_ruleset_id及locked_standings_ruleset_id，同org/event复合FK引用规则；locked一旦非null就不能清除／替换，CHECK要求current等于locked。保存追加新草稿并CAS更新current，单独发布当前规则后永久锁定；首次READY锁的是P05-A记分规则，两类指针不能混用。积分和排序策略不改变原记分／报名／正式计划。
 
@@ -205,10 +219,10 @@ deferred提交守卫读取不可变P04 revision.source.entries：要求2–32个
 
 P06-A已通过[PR #7](https://github.com/xyq-dev/small-city-basketball/pull/7)合并main `f8af5c99fba294a40334c49a5d2e32f80c6acbf9`，DONE / MAIN；最终验收source `addeb8f38c016ea60d3a9c3bd7de3e34e1c70d11`、tree `2a719b4b3e8fd4f67996144c687f5bbb72902519`。 `apps/api/migrations/006_p06_overlay.sql` SHA-256保持`94a54d6ae997774fd9b511dd39f5d4e1596b71c97384f2162e5c1dd8a7a39be6`。[最终CI39758913295](https://github.com/xyq-dev/small-city-basketball/actions/runs/39758913295)全部成功：372项源码（admin171／API201）、123项独立PG、001→006隔离执行／复跑checksum、真实PG18.6重启与39表完整指纹、12Mock及桌面7＋手机7真实API官方Chromium151.0.7922.34浏览器。正常及故意失败流程只清本次owned子库，控制库保留。 38个migration应用表及schema_migrations共39表，包含Grant／session、活跃／撤销身份、精确截止和原业务。001–005未修改；没有生产数据库、生产Migration或备份恢复证据。
 
-| 006已在隔离CI建立的表 | 主键、归属与约束 |
-|---|---|
-| overlay_grants | UUID id主键；org_id/event_id/match_id复合FK指向同机构、同赛事正式published_matches；overlay_id为全历史唯一43字符身份，secret_hash为唯一64字符SHA-256十六进制；固定SCOREBAR_1080P_V1、issuer_id→users、created_at/expires_at、version、revoked_at/revocation_reason。另有(org,event,match,id,expires_at)唯一键供session精确引用 |
-| overlay_sessions | UUID id主键；org/event/match复合FK指向正式场次，(org,event,match,grant_id,expires_at)复合FK引用Grant，截止必须完全相等，不能JS Date截断微秒后重存。token_hash全局唯一，created_at/expires_at有限且有序；UPDATE／DELETE一律拒绝 |
+| 006已在隔离CI建立的表 | 主键、归属与约束                                                                                                                                                                                                                                                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| overlay_grants        | UUID id主键；org_id/event_id/match_id复合FK指向同机构、同赛事正式published_matches；overlay_id为全历史唯一43字符身份，secret_hash为唯一64字符SHA-256十六进制；固定SCOREBAR_1080P_V1、issuer_id→users、created_at/expires_at、version、revoked_at/revocation_reason。另有(org,event,match,id,expires_at)唯一键供session精确引用 |
+| overlay_sessions      | UUID id主键；org/event/match复合FK指向正式场次，(org,event,match,grant_id,expires_at)复合FK引用Grant，截止必须完全相等，不能JS Date截断微秒后重存。token_hash全局唯一，created_at/expires_at有限且有序；UPDATE／DELETE一律拒绝                                                                                                 |
 
 Grant创建固定version=1且未撤销；仅允许一次version1→2并填写撤销时间／理由。除version、revoked_at、revocation_reason外全部字段不可变，删除、重复撤销、回活、更改secret／身份／创建者／TTL均拒绝。expires_at必须晚于created_at且不超过10080分钟；HTTP另要求明确整数1–10080分钟。索引(org_id,match_id) WHERE revoked_at IS NULL保证每场只有一条未撤销记录，包含已过期记录；到期本身不更新DB。ISSUE遇已过期当前记录须同事务以SUPERSEDED_AFTER_EXPIRY撤销后新建；ROTATE撤销当前并新建，REVOKE只关闭当前，历史不删除／复用。历史索引按org/event/match及created_at DESC、overlay_id DESC，管理仅返回最近20条已撤销记录与truncated。
 
@@ -218,11 +232,9 @@ overlayId、bootstrap secret及专用session token都由服务端随机256bit生
 
 DDL保证归属、固定截止及不可变历史；实际STREAMER／当前成员授权、secret校验、来源投影、审计和等锁后时间由应用守卫证明。单场来源SQL复用P05-B有效FINAL证明，合法staff升版本不使结果失效。私有坏预览保留元数据和freshEvent CAS，公开包装快照仍409。详见[API第10节](API_CONTRACTS.md)及[TESTING](TESTING.md)；P06媒体、视频、云推流及权益账本没有因此建表或完成。
 
-
 ### P06-A两轮成功CI与恢复来源
 
 首CI39756976748在远端source7ba9d01bb46d8c4b7a5ce72081aef50719d05539（tree52f2681a727b9a5ea4944c6019a8f0eaa0cda8cd）也全部成功；后续15份Markdown只修可达恢复点及记录，没有业务或Migration变化。最终CI再次全部成功后合并PR7。首head文档P2已resolved／outdated，最终addeb自动CodeReview completed且无finding（comment6337630278），security未运行。恢复使用上述main合并点或最终远端source；本地19d5801仅作历史来源，不是fresh checkout恢复入口。两轮run／job与边界见[TESTING](TESTING.md)。原生OBS／CEF、生产与备份恢复仍未验收。
-
 
 ## 12. P07-A角色权限与恢复隔离（DONE / MAIN，PR8）
 
@@ -239,7 +251,6 @@ quarantine使用新DISABLED系统User，无机构成员权及可验证密码；�
 数据库只允许同事务精确history证明的比赛计划与预约必要列更新，状态/对阵/来源身份不能借改期变化。history commit守卫核对最终match/event版本及计划、恰一Court与双方两Team预约，现有排他与scoring source_version提交约束保持。策略窗口/日期/休息由锁保护下的现有validateSchedule校验，不在SQL复制第二套算法。无proof、孤立或不一致history、删预约/历史须拒绝；审计及任何阶段失败全部回滚。
 
 runtime新增history SELECT/INSERT与match/court/team预约必要列UPDATE，backup仍只读，未新增高权或SECURITY DEFINER入口。40表与7Migration精确就绪/恢复指纹随本卡更新。007已在隔离CI实际执行，40表实际重启及完整dump恢复通过，证据见[交接](handoffs/P04-B.md)；生产执行为0。
-
 
 ## C04 单淘汰推进凭证
 

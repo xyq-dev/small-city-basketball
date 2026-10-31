@@ -78,6 +78,9 @@ Page({
     this._detectedPoint = null;
     this.setData({
       hasOrigin: false,
+      feeRead: false,
+      feePreview: null,
+      chargeConsent: false,
       originLabel: '未选择距离起点',
       locationBusy: false,
       placesBusy: false,
@@ -106,6 +109,9 @@ Page({
       pending: null,
       pendingError: '',
       accepted: false,
+      feeRead: false,
+      feePreview: null,
+      chargeConsent: false,
       serviceAddress: '',
       servicePlace: null,
       loginRequired: false,
@@ -262,6 +268,9 @@ Page({
     this._locating = (this._locating || 0) + 1;
     this.setData({
       hasOrigin: false,
+      feeRead: false,
+      feePreview: null,
+      chargeConsent: false,
       originLabel: '未选择距离起点',
       locationBusy: false,
       locationError: '',

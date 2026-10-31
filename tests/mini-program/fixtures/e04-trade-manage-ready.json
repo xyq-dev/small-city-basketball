@@ -1,0 +1,60 @@
+{
+  "name": "e04-trade-manage-ready",
+  "route": "pages/trade-manage/index",
+  "state": "ready",
+  "referenceKind": "derived",
+  "evidenceKind": "synthetic-static",
+  "synthetic": true,
+  "primary": true,
+  "expectText": [
+    "新增后续来源收费条款",
+    "实际收款主体与分账接收方由服务端配置",
+    "独立发布",
+    "渠道日账核对"
+  ],
+  "data": {
+    "orgId": "00000002-0000-4000-8000-000000000001",
+    "orders": [
+      {
+        "id": "00000001-0000-4000-8000-000000000001",
+        "title": "合成保证金待复核资金",
+        "totalText": "¥1,000.00",
+        "status": "SOURCE_CONFLICT"
+      },
+      {
+        "id": "00000009-0000-4000-8000-000000000001",
+        "title": "合成场地服务退款记录",
+        "totalText": "¥300.00",
+        "status": "OPEN"
+      }
+    ],
+    "terms": [
+      {
+        "id": "00000010-0000-4000-8000-000000000001",
+        "version": 1,
+        "kind": "ENTRY_FEE",
+        "amountText": "¥200.00",
+        "status": "PENDING",
+        "terms": "合成静态：报名费按实际赛事费用收取；提交不代表资格审核通过，取消与退款按已明确确认的条款处理。"
+      },
+      {
+        "id": "00000011-0000-4000-8000-000000000001",
+        "version": 2,
+        "kind": "ENTRY_DEPOSIT",
+        "amountText": "¥1,000.00",
+        "status": "ACTIVE",
+        "terms": "合成静态：保证金独立保管，未批准扣减的部分不能作为可分账收入；赛后独立核对后原路退回。"
+      }
+    ],
+    "busy": false,
+    "error": "",
+    "message": "合成静态布局夹具，仅用于检查主操作、条款和列表排版。",
+    "kind": "ENTRY_FEE",
+    "sourceId": "00000003-0000-4000-8000-000000000001",
+    "amount": "20000",
+    "termsText": "合成静态收费与退款条款：按赛事实际服务执行，改期或取消须向参与者说明并保留证据。",
+    "reason": "合成静态：独立核对服务及退款条款",
+    "date": "2026-10-31",
+    "pending": null
+  }
+}

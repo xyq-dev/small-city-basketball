@@ -16,6 +16,15 @@ afterEach(() => {
 });
 
 describe('central runtime configuration', () => {
+  it('can quiesce background workers without changing business permissions', () => {
+    expect(resolveApiOptions(options).backgroundWorkersEnabled).toBeUndefined();
+    expect(resolveApiOptions({ ...options, backgroundWorkersEnabled: false })).toMatchObject({
+      backgroundWorkersEnabled: false,
+    });
+    expect(() =>
+      resolveApiOptions({ ...options, backgroundWorkersEnabled: 'false' as never }),
+    ).toThrow('boolean');
+  });
   it('C23: missing participant key stays disabled and malformed keys never appear in errors', () => {
     expect(resolveApiOptions(options).participantDataKey).toBeUndefined();
     const synthetic = Buffer.alloc(32, 7).toString('base64');

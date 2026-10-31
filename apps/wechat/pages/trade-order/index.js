@@ -9,6 +9,7 @@ Page({
     order: null,
     orders: [],
     pending: null,
+    pendingAcknowledged: false,
     consent: false,
     amount: '',
     reason: '',
@@ -31,7 +32,15 @@ Page({
   },
   onHide() {
     this._visible = false;
-    this.setData({ consent: false, order: null });
+    this.setData({
+      consent: false,
+      order: null,
+      amount: '',
+      reason: '',
+      evidence: '',
+      pendingAcknowledged: false,
+      message: '',
+    });
     ui.close(this);
   },
   onUnload() {
@@ -45,6 +54,12 @@ Page({
       order: null,
       orders: [],
       pending: null,
+      amount: '',
+      reason: '',
+      evidence: '',
+      message: '',
+      pendingAcknowledged: false,
+      busy: false,
       consent: false,
       error: '身份已变化，请重新读取',
     });

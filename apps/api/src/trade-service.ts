@@ -443,13 +443,31 @@ export class TradeService extends ApplicationService {
       const ref = (
         await c.query<Row>(
           kind === 'LOCAL_BOOKING'
-            ? 'SELECT org_id,provider_user_id,title,status FROM local_listings WHERE id=$1'
+            ? 'SELECT org_id,provider_user_id,title,status,published,provider_confirmed FROM local_listings WHERE id=$1'
             : 'SELECT org_id,name AS title,status FROM events WHERE id=$1',
           [anchor],
         )
       ).rows[0];
       if (!ref) throw notFound();
       await this.calendar(c, ref.org_id);
+      const publiclyAvailable =
+        kind === 'LOCAL_BOOKING'
+          ? ref.status === 'APPROVED' && ref.published && ref.provider_confirmed
+          : [
+              'REGISTRATION_OPEN',
+              'REGISTRATION_CLOSED',
+              'SCHEDULED',
+              'RUNNING',
+              'COMPLETED',
+              'ARCHIVED',
+            ].includes(ref.status);
+      if (
+        !publiclyAvailable &&
+        ref.provider_user_id !== a.user.id &&
+        !(await this.manager(c, a, ref.org_id)) &&
+        !(await this.operator(c, a))
+      )
+        throw notFound();
       const m = this.merchant(ref.org_id);
       if (!m?.payments.enabled) {
         await this.ensureFreshSession(c, a);
@@ -463,6 +481,8 @@ export class TradeService extends ApplicationService {
       ).rows[0];
       await this.ensureFreshSession(c, a);
       if (!term) return { enabled: false };
+      if (term.merchant_key !== m.key)
+        tradeFail('TRADE_PROVIDER_DISABLED', '收费条款收款主体配置已变化，请联系管理方核对', 503);
       return {
         enabled: true,
         termsId: term.id,
@@ -699,6 +719,7 @@ export class TradeService extends ApplicationService {
         capabilities: {
           canPay:
             a.user.id === o.payer_user_id &&
+            o.status === 'OPEN' &&
             valid &&
             s.payable &&
             money.balances.paidFen === 0 &&
@@ -762,6 +783,9 @@ export class TradeService extends ApplicationService {
       [id],
     );
   }
+  private async bumpMoney(c: PoolClient, id: string) {
+    await c.query('UPDATE trade_orders SET money_version=money_version+1 WHERE id=$1', [id]);
+  }
   private async recordUnknown(attemptId: string, fence: string, notDispatched = false) {
     await this.transaction(async (c) => {
       const ref = (
@@ -809,7 +833,13 @@ export class TradeService extends ApplicationService {
           tradeFail('TRADE_PAYMENT_UNRESOLVED', '原支付结果尚未确认，请查询原编号');
         if (money.attempts.length >= 10)
           tradeFail('TRADE_ATTEMPT_LIMIT', '支付尝试已达上限，请联系主办方');
-        if (!s.payable || !s.valid || s.disputed || tradeHash(s.identity) !== o.source_hash)
+        if (
+          o.status !== 'OPEN' ||
+          !s.payable ||
+          !s.valid ||
+          s.disputed ||
+          tradeHash(s.identity) !== o.source_hash
+        )
           tradeFail('TRADE_SOURCE_NOT_PAYABLE', '来源或条款已变化，请核对后再付款');
         const now = (await c.query<Row>('SELECT clock_timestamp() AS now')).rows[0]!.now,
           expiresAt = new Date(
@@ -879,6 +909,7 @@ export class TradeService extends ApplicationService {
         if (
           ctx.a.sessionId !== i.actor.sessionId ||
           ctx.a.user.id !== i.actor.user.id ||
+          ctx.order.status !== 'OPEN' ||
           !ctx.s.payable ||
           tradeHash(ctx.s.identity) !== ctx.order.source_hash ||
           this.merchant(ctx.order.org_id, ctx.order) !== i.merchant
@@ -971,6 +1002,7 @@ export class TradeService extends ApplicationService {
           "UPDATE trade_payment_attempts SET status='PAID',provider_transaction_id=$2,paid_at=$3,checkout=NULL,updated_at=clock_timestamp() WHERE id=$1",
           [a.id, p.transactionId, p.successTime],
         );
+        await this.bumpMoney(c, order.id);
         const already = (
           await c.query(
             "SELECT id FROM trade_payment_attempts WHERE order_id=$1 AND status='PAID' AND id<>$2",
@@ -1319,8 +1351,14 @@ export class TradeService extends ApplicationService {
           tradeFail('TRADE_REFUND_IDENTITY', '退款渠道标识冲突', 422);
         return;
       }
-      if (!['SENDING', 'UNKNOWN', 'PROCESSING'].includes(local.status))
+      if (local.status === 'FAILED' && r.state !== 'SUCCESS') return;
+      if (
+        !['SENDING', 'UNKNOWN', 'PROCESSING'].includes(local.status) &&
+        !(local.status === 'FAILED' && r.state === 'SUCCESS')
+      )
         tradeFail('TRADE_REFUND_STATE', '退款未获当前执行授权');
+      if (local.provider_refund_id && local.provider_refund_id !== r.refundId)
+        tradeFail('TRADE_REFUND_IDENTITY', '原退款渠道标识冲突', 422);
       const status =
         r.state === 'SUCCESS'
           ? 'SUCCEEDED'
@@ -1333,6 +1371,17 @@ export class TradeService extends ApplicationService {
         'UPDATE trade_refunds SET status=$2,provider_refund_id=$3,success_at=$4,updated_at=clock_timestamp() WHERE id=$1',
         [local.id, status, r.refundId, r.state === 'SUCCESS' ? r.successTime : null],
       );
+      if (r.state === 'SUCCESS') {
+        await this.bumpMoney(c, ref.id);
+        const excess = (
+          await c.query<Row>(
+            `SELECT (SELECT COALESCE(sum(amount_fen),0) FROM trade_refunds WHERE order_id=$1 AND status NOT IN('REJECTED','FAILED'))+(SELECT COALESCE(sum(amount_fen),0) FROM trade_deductions WHERE order_id=$1 AND status IN('PENDING_REVIEW','APPROVED','REVERSAL_PENDING'))>(SELECT COALESCE(sum(total_fen),0) FROM trade_payment_attempts WHERE order_id=$1 AND status='PAID') AS conflict`,
+            [ref.id],
+          )
+        ).rows[0];
+        if (excess?.conflict)
+          await c.query("UPDATE trade_orders SET status='SOURCE_CONFLICT' WHERE id=$1", [ref.id]);
+      }
       await this.bump(c, ref.id);
     };
     if (client) await work(client);
@@ -1374,18 +1423,25 @@ export class TradeService extends ApplicationService {
       money.deductions.some((d) => ['PENDING_REVIEW', 'REVERSAL_PENDING'].includes(d.status))
     )
       tradeFail('TRADE_SETTLEMENT_UNRESOLVED', '先处理全部未决退款和扣减');
-    const rec = (
+    const records = (
       await c.query<Row>(
-        "SELECT result FROM trade_reconciliations WHERE org_id=$1 AND merchant_key=$2 AND bill_date=($3::timestamptz AT TIME ZONE 'Asia/Shanghai')::date ORDER BY created_at DESC LIMIT 1",
-        [
-          o.org_id,
-          o.merchant_key,
-          money.attempts.find((p) => p.status === 'PAID')?.paid_at ?? null,
-        ],
+        `SELECT d.day,r.result FROM (
+      SELECT DISTINCT (paid_at AT TIME ZONE 'Asia/Shanghai')::date AS day FROM trade_payment_attempts WHERE order_id=$1 AND status='PAID'
+      UNION SELECT DISTINCT (success_at AT TIME ZONE 'Asia/Shanghai')::date FROM trade_refunds WHERE order_id=$1 AND status='SUCCEEDED'
+    ) d LEFT JOIN LATERAL (SELECT result FROM trade_reconciliations WHERE org_id=$2 AND merchant_key=$3 AND bill_date=d.day ORDER BY created_at DESC,id DESC LIMIT 1) r ON true`,
+        [o.id, o.org_id, o.merchant_key],
       )
-    ).rows[0];
-    if (!rec || rec.result.issues?.length !== 0)
-      tradeFail('TRADE_RECONCILIATION_REQUIRED', '原付款账单尚未核对一致');
+    ).rows;
+    if (
+      !records.length ||
+      records.some(
+        (r) =>
+          !r.result ||
+          r.result.issues?.length !== 0 ||
+          r.result.orderMoneyVersions?.[o.id] !== o.money_version,
+      )
+    )
+      tradeFail('TRADE_RECONCILIATION_REQUIRED', '原付款与实际退款账日尚未按当前资金事实核对一致');
     return money;
   }
   async proposeSettlement(cookie: string | undefined, id: string, raw: unknown) {
@@ -1951,18 +2007,20 @@ export class TradeService extends ApplicationService {
       if (this.merchant(org) !== initial.m)
         tradeFail('TRADE_PROVIDER_CHANGED', '对账商户配置已变化');
       return this.operation(c, a, command, { op: 'RECONCILE', org, ...b }, null, async () => {
-        const payments = (
+        // One PostgreSQL statement snapshot captures facts and their money version atomically.
+        const snapshot = (
           await c.query<Row>(
-            `SELECT p.*,o.merchant_key FROM trade_payment_attempts p JOIN trade_orders o ON o.id=p.order_id WHERE o.org_id=$1 AND o.merchant_key=$2 AND p.status='PAID' AND (p.paid_at AT TIME ZONE 'Asia/Shanghai')::date=$3::date`,
+            `SELECT
+          COALESCE((SELECT json_agg(f) FROM (SELECT p.*,o.money_version FROM trade_payment_attempts p JOIN trade_orders o ON o.id=p.order_id WHERE o.org_id=$1 AND o.merchant_key=$2 AND p.status='PAID' AND (p.paid_at AT TIME ZONE 'Asia/Shanghai')::date=$3::date) f),'[]'::json) AS payments,
+          COALESCE((SELECT json_agg(f) FROM (SELECT r.*,p.out_trade_no,p.provider_transaction_id,o.money_version FROM trade_refunds r JOIN trade_payment_attempts p ON p.id=r.payment_id JOIN trade_orders o ON o.id=r.order_id WHERE o.org_id=$1 AND o.merchant_key=$2 AND r.status='SUCCEEDED' AND (r.success_at AT TIME ZONE 'Asia/Shanghai')::date=$3::date) f),'[]'::json) AS refunds`,
             [org, initial.m.key, date],
           )
-        ).rows;
-        const refunds = (
-          await c.query<Row>(
-            `SELECT r.*,p.out_trade_no,p.provider_transaction_id FROM trade_refunds r JOIN trade_payment_attempts p ON p.id=r.payment_id JOIN trade_orders o ON o.id=r.order_id WHERE o.org_id=$1 AND o.merchant_key=$2 AND r.status='SUCCEEDED' AND (r.success_at AT TIME ZONE 'Asia/Shanghai')::date=$3::date`,
-            [org, initial.m.key, date],
-          )
-        ).rows;
+        ).rows[0]!;
+        const payments = snapshot.payments as Row[],
+          refunds = snapshot.refunds as Row[];
+        const orderMoneyVersions = Object.fromEntries(
+          [...payments, ...refunds].map((x) => [x.order_id, x.money_version]),
+        );
         const expected: WechatPayBillRow[] = [
           ...payments.map((p) => ({
             outTradeNo: p.out_trade_no,
@@ -1989,7 +2047,7 @@ export class TradeService extends ApplicationService {
           result = reconcileWechatPayBill(scoped, expected),
           id = randomUUID();
         await c.query(
-          'INSERT INTO trade_reconciliations(id,org_id,merchant_key,bill_date,body_hash,result,created_by) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7) ON CONFLICT(merchant_key,bill_date,body_hash) DO NOTHING',
+          'INSERT INTO trade_reconciliations(id,org_id,merchant_key,bill_date,body_hash,result,created_by) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7)',
           [
             id,
             org,
@@ -1999,6 +2057,7 @@ export class TradeService extends ApplicationService {
             JSON.stringify({
               ...result,
               scope: 'E04_BUSINESS_ONLY',
+              orderMoneyVersions,
               ignoredNonTradeRows: bill.rows.length - scoped.length,
             }),
             a.user.id,

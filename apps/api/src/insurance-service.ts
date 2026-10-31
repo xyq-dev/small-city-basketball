@@ -800,16 +800,19 @@ export class InsuranceService extends ApplicationService {
     }
   }
   /** One lease-fenced operation. UNKNOWN and recovered leases query the original apply ID, never repeat charge-bearing calls. */
-  async drain() {
+  async drain(orderId?: string) {
+    const scope = orderId === undefined ? null : resourceId(orderId);
     if (this.draining || !this.capabilities().enabled) return;
     this.draining = true;
     try {
       await this.pool.query(
-        "UPDATE insurance_operations SET status='UNKNOWN',reconcile_only=true,fence=fence+1,lease_id=NULL,lease_until=NULL,next_attempt_at=clock_timestamp(),updated_at=clock_timestamp() WHERE status='RUNNING' AND lease_until<=clock_timestamp()",
+        "UPDATE insurance_operations SET status='UNKNOWN',reconcile_only=true,fence=fence+1,lease_id=NULL,lease_until=NULL,next_attempt_at=clock_timestamp(),updated_at=clock_timestamp() WHERE status='RUNNING' AND lease_until<=clock_timestamp() AND ($1::uuid IS NULL OR order_id=$1)",
+        [scope],
       );
       const candidate = (
         await this.pool.query(
-          `SELECT x.id,o.org_id,o.event_id FROM insurance_operations x JOIN insurance_orders o ON o.id=x.order_id WHERE x.status IN('PENDING','UNKNOWN') AND x.attempt_count<12 AND x.next_attempt_at<=clock_timestamp() ORDER BY x.created_at,x.id LIMIT 1`,
+          `SELECT x.id,o.org_id,o.event_id FROM insurance_operations x JOIN insurance_orders o ON o.id=x.order_id WHERE x.status IN('PENDING','UNKNOWN') AND x.attempt_count<12 AND x.next_attempt_at<=clock_timestamp() AND ($1::uuid IS NULL OR o.id=$1) ORDER BY x.created_at,x.id LIMIT 1`,
+          [scope],
         )
       ).rows[0];
       if (!candidate) return;

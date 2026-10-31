@@ -15,6 +15,7 @@ Page({
     reason: '',
     date: '',
     pending: null,
+    pendingAcknowledged: false,
   },
   onLoad(q) {
     this._alive = true;
@@ -35,16 +36,40 @@ Page({
   },
   onHide() {
     this._visible = false;
-    this.setData({ orders: [], terms: [], pending: null });
+    this.setData({
+      orders: [],
+      terms: [],
+      pending: null,
+      amount: '',
+      termsText: '',
+      reason: '',
+      message: '',
+      pendingAcknowledged: false,
+    });
     ui.close(this);
   },
   onUnload() {
     this._alive = false;
+    this._visible = false;
     ui.close(this);
   },
   onSessionReset() {
     this.actor = '';
-    this.setData({ orders: [], terms: [], pending: null, error: '身份已变化，请重新读取' });
+    this.orgId = '';
+    this.setData({
+      orgId: '',
+      sourceId: '',
+      amount: '',
+      termsText: '',
+      reason: '',
+      message: '',
+      pendingAcknowledged: false,
+      busy: false,
+      orders: [],
+      terms: [],
+      pending: null,
+      error: '身份已变化，请重新读取',
+    });
   },
   pendingState() {
     try {

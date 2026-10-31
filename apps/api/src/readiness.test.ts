@@ -110,6 +110,30 @@ describe('runtime readiness invariants', () => {
       false,
     );
   });
+  it('grants only the two restore-marker audit columns without exposing audit metadata or whole-table reads', () => {
+    const scoped = structuredClone(manifest),
+      actual = structuredClone(tables);
+    scoped.tables.audit_logs!.selectColumns = ['action', 'resource_type'];
+    actual[1]!.columns.push(
+      { name: 'action', select: true, insert: true, update: false, references: false },
+      { name: 'resource_type', select: true, insert: true, update: false, references: false },
+      { name: 'metadata', select: false, insert: true, update: false, references: false },
+    );
+    expect(privilegesMatch(scoped, actual)).toBe(true);
+    for (const mutate of [
+      (rows: TablePrivileges[]) => (rows[1]!.select = true),
+      (rows: TablePrivileges[]) =>
+        (rows[1]!.columns.find((c) => c.name === 'metadata')!.select = true),
+      (rows: TablePrivileges[]) =>
+        (rows[1]!.columns.find((c) => c.name === 'action')!.select = false),
+      (rows: TablePrivileges[]) =>
+        (rows[1]!.columns.find((c) => c.name === 'resource_type')!.select = false),
+    ]) {
+      const changed = structuredClone(actual);
+      mutate(changed);
+      expect(privilegesMatch(scoped, changed)).toBe(false);
+    }
+  });
   it('maps unavailable database diagnostics to a fixed public503 without a cause', async () => {
     const pool = {
       connect: async () => {
@@ -243,6 +267,7 @@ describe('complete expansion migration and least-privilege surface', () => {
       (m: PrivilegeManifest) =>
         (m.tables.unreviewed = { privileges: ['SELECT'], updateColumns: [] }),
       (m: PrivilegeManifest) => delete m.functions['e02_job_identity_guard()'],
+      (m: PrivilegeManifest) => m.tables.audit_logs!.selectColumns!.push('not_a_column'),
     ]) {
       const changed = structuredClone(v.manifest);
       mutate(changed);

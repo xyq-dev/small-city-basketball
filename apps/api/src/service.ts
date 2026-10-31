@@ -46,6 +46,7 @@ export interface ApiOptions {
   /** Dedicated canonical base64 AES-256 key; absent keeps new material workflows closed. */
   participantDataKey?: string;
   notificationStartingLeadMinutes?: number;
+  backgroundWorkersEnabled?: boolean;
   trustProxyHops?: 0 | 1;
   commerceMode?: CommerceMode;
   wechatPay?: WechatPayConfig;

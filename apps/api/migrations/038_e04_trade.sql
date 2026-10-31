@@ -14,7 +14,7 @@ CREATE TABLE trade_orders (
  payer_user_id uuid NOT NULL REFERENCES users(id),beneficiary_user_id uuid NOT NULL REFERENCES users(id),terms_id uuid REFERENCES trade_terms(id),
  merchant_key text NOT NULL,merchant_id text NOT NULL,merchant_app_id text NOT NULL,merchant_name text NOT NULL,total_fen integer NOT NULL CHECK(total_fen BETWEEN 1 AND 100000000),currency text NOT NULL DEFAULT 'CNY' CHECK(currency='CNY'),
  quote jsonb NOT NULL CHECK(jsonb_typeof(quote)='object'),status text NOT NULL DEFAULT 'OPEN' CHECK(status IN('OPEN','SOURCE_CONFLICT','COMPLETED')),
- version integer NOT NULL DEFAULT 1 CHECK(version>0),created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ version integer NOT NULL DEFAULT 1 CHECK(version>0),money_version integer NOT NULL DEFAULT 1 CHECK(money_version>0),created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  UNIQUE(kind,source_id)
 );
 CREATE INDEX trade_orders_payer ON trade_orders(payer_user_id,created_at DESC,id);
@@ -65,12 +65,24 @@ CREATE TABLE trade_operations (
 );
 CREATE TABLE trade_reconciliations (
  id uuid PRIMARY KEY,org_id uuid NOT NULL REFERENCES organizations(id),merchant_key text NOT NULL,bill_date date NOT NULL,body_hash char(64) NOT NULL,
- result jsonb NOT NULL CHECK(jsonb_typeof(result)='object'),created_by uuid NOT NULL REFERENCES users(id),created_at timestamptz NOT NULL DEFAULT clock_timestamp(),UNIQUE(merchant_key,bill_date,body_hash)
+ result jsonb NOT NULL CHECK(jsonb_typeof(result)='object'),created_by uuid NOT NULL REFERENCES users(id),created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 CREATE FUNCTION e04_trade_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Financial history cannot be deleted' USING ERRCODE='23514'; END IF;
- IF TG_TABLE_NAME='trade_orders' AND (to_jsonb(NEW)-ARRAY['status','version','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','version','updated_at']) THEN
+ IF TG_TABLE_NAME IN('trade_reconciliations','trade_operations','trade_provider_events') THEN RAISE EXCEPTION 'Financial audit records are append only' USING ERRCODE='23514'; END IF;
+ IF TG_TABLE_NAME='trade_payment_attempts' THEN
+ IF ((to_jsonb(NEW)-ARRAY['status','checkout','provider_transaction_id','paid_at','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','checkout','provider_transaction_id','paid_at','updated_at']) OR (OLD.status='PAID' AND (NEW.status<>'PAID' OR NEW.provider_transaction_id IS DISTINCT FROM OLD.provider_transaction_id OR NEW.paid_at IS DISTINCT FROM OLD.paid_at))) THEN RAISE EXCEPTION 'Payment intent and confirmed payment are immutable' USING ERRCODE='23514'; END IF;
+ END IF;
+ IF TG_TABLE_NAME='trade_refunds' THEN
+ IF ((to_jsonb(NEW)-ARRAY['status','reviewed_by','review_reason','fence','provider_refund_id','success_at','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','reviewed_by','review_reason','fence','provider_refund_id','success_at','updated_at']) OR (OLD.status='SUCCEEDED' AND (NEW.status<>'SUCCEEDED' OR NEW.provider_refund_id IS DISTINCT FROM OLD.provider_refund_id OR NEW.success_at IS DISTINCT FROM OLD.success_at))) THEN RAISE EXCEPTION 'Refund intent and actual refund are immutable' USING ERRCODE='23514'; END IF;
+ END IF;
+ IF TG_TABLE_NAME='trade_deductions' AND (to_jsonb(NEW)-ARRAY['status','reviewed_by','review_reason']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','reviewed_by','review_reason']) THEN RAISE EXCEPTION 'Deduction evidence and amount are immutable' USING ERRCODE='23514'; END IF;
+ IF TG_TABLE_NAME='trade_settlements' AND (to_jsonb(NEW)-ARRAY['status','reviewed_by','review_reason','fence','provider_order_id','provider_detail_id','return_no','return_amount_fen','provider_return_id','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','reviewed_by','review_reason','fence','provider_order_id','provider_detail_id','return_no','return_amount_fen','provider_return_id','updated_at']) THEN RAISE EXCEPTION 'Settlement destination and amount are immutable' USING ERRCODE='23514'; END IF;
+ IF TG_TABLE_NAME='trade_settlement_returns' THEN
+ IF ((to_jsonb(NEW)-ARRAY['status','provider_return_id','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','provider_return_id','updated_at']) OR (OLD.status='SUCCEEDED' AND (NEW.status<>'SUCCEEDED' OR NEW.provider_return_id IS DISTINCT FROM OLD.provider_return_id))) THEN RAISE EXCEPTION 'Return intent and actual return are immutable' USING ERRCODE='23514'; END IF;
+ END IF;
+ IF TG_TABLE_NAME='trade_orders' AND (to_jsonb(NEW)-ARRAY['status','version','money_version','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','version','money_version','updated_at']) THEN
  RAISE EXCEPTION 'Financial quote and source are immutable' USING ERRCODE='23514'; END IF;
  IF TG_TABLE_NAME='trade_terms' AND (to_jsonb(NEW)-ARRAY['status','reviewed_by','review_reason','reviewed_at','version']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','reviewed_by','review_reason','reviewed_at','version']) THEN
  RAISE EXCEPTION 'Fee terms are immutable; create a new version' USING ERRCODE='23514'; END IF;
@@ -84,3 +96,13 @@ CREATE TABLE trade_settlement_returns (
  fence uuid NOT NULL,provider_return_id text,created_by uuid NOT NULL REFERENCES users(id),created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 CREATE UNIQUE INDEX trade_unresolved_return ON trade_settlement_returns(settlement_id) WHERE status IN('SENDING','UNKNOWN','PROCESSING');
+
+CREATE INDEX trade_reconciliation_day ON trade_reconciliations(org_id,merchant_key,bill_date,created_at DESC,id DESC);
+CREATE TRIGGER trade_payment_history BEFORE UPDATE OR DELETE ON trade_payment_attempts FOR EACH ROW EXECUTE FUNCTION e04_trade_immutable();
+CREATE TRIGGER trade_refund_history BEFORE UPDATE OR DELETE ON trade_refunds FOR EACH ROW EXECUTE FUNCTION e04_trade_immutable();
+CREATE TRIGGER trade_deduction_history BEFORE UPDATE OR DELETE ON trade_deductions FOR EACH ROW EXECUTE FUNCTION e04_trade_immutable();
+CREATE TRIGGER trade_settlement_history BEFORE UPDATE OR DELETE ON trade_settlements FOR EACH ROW EXECUTE FUNCTION e04_trade_immutable();
+CREATE TRIGGER trade_return_history BEFORE UPDATE OR DELETE ON trade_settlement_returns FOR EACH ROW EXECUTE FUNCTION e04_trade_immutable();
+CREATE TRIGGER trade_operation_history BEFORE UPDATE OR DELETE ON trade_operations FOR EACH ROW EXECUTE FUNCTION e04_trade_immutable();
+CREATE TRIGGER trade_event_history BEFORE UPDATE OR DELETE ON trade_provider_events FOR EACH ROW EXECUTE FUNCTION e04_trade_immutable();
+CREATE TRIGGER trade_reconciliation_history BEFORE UPDATE OR DELETE ON trade_reconciliations FOR EACH ROW EXECUTE FUNCTION e04_trade_immutable();

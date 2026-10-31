@@ -34,6 +34,9 @@ export async function loadManifest() {
     if (
       !Array.isArray(rule.privileges) ||
       !Array.isArray(rule.updateColumns) ||
+      !Array.isArray(rule.selectColumns ?? []) ||
+      new Set(rule.selectColumns ?? []).size !== (rule.selectColumns ?? []).length ||
+      (rule.privileges.includes('SELECT') && (rule.selectColumns ?? []).length > 0) ||
       new Set(rule.privileges).size !== rule.privileges.length ||
       new Set(rule.updateColumns).size !== rule.updateColumns.length ||
       rule.privileges.some((p) => !['SELECT', 'INSERT', 'DELETE'].includes(p)) ||
@@ -42,6 +45,7 @@ export async function loadManifest() {
     )
       throw new Error('Invalid privilege manifest');
     rule.updateColumns.forEach(quoteIdentifier);
+    (rule.selectColumns ?? []).forEach(quoteIdentifier);
   }
   for (const [signature, privileges] of Object.entries(manifest.functions)) {
     functionSql(signature);
@@ -101,7 +105,11 @@ export async function applyRuntimePrivileges(pool) {
           [table],
         )
       ).rows.map((r) => r.attname);
-      if (rule.updateColumns.some((column) => !columns.includes(column)))
+      if (
+        [...rule.updateColumns, ...(rule.selectColumns ?? [])].some(
+          (column) => !columns.includes(column),
+        )
+      )
         throw new Error('Invalid privilege manifest column');
       await client.query(
         `REVOKE ALL PRIVILEGES ON TABLE ${name} FROM PUBLIC,scb_runtime,scb_backup`,
@@ -111,6 +119,10 @@ export async function applyRuntimePrivileges(pool) {
       );
       if (rule.privileges.length)
         await client.query(`GRANT ${rule.privileges.join(',')} ON TABLE ${name} TO scb_runtime`);
+      if (rule.selectColumns?.length)
+        await client.query(
+          `GRANT SELECT (${rule.selectColumns.map(quoteIdentifier).join(',')}) ON TABLE ${name} TO scb_runtime`,
+        );
       if (rule.updateColumns.length)
         await client.query(
           `GRANT UPDATE (${rule.updateColumns.map(quoteIdentifier).join(',')}) ON TABLE ${name} TO scb_runtime`,
@@ -283,7 +295,11 @@ export function assertMigrationManifestSurface(manifest, sources) {
   )
     throw Error('Checked-in migrations do not match the privilege manifest');
   for (const [name, rule] of Object.entries(manifest.tables))
-    if (rule.updateColumns.some((col) => !tables.get(name).has(col)))
+    if (
+      [...rule.updateColumns, ...(rule.selectColumns ?? [])].some(
+        (col) => !tables.get(name).has(col),
+      )
+    )
       throw Error('Privilege manifest names a missing update column');
   return { tables: tables.size, functions: functions.size };
 }

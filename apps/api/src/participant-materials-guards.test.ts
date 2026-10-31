@@ -5,11 +5,14 @@ import {
   readParticipantMaterialGuards,
 } from './participant-materials-guards.js';
 import { readEntryParticipantEligibility } from './participant-materials-eligibility.js';
+import { qualificationDataConsentReady } from './qualification-precheck-service.js';
 import {
   participantEligibility,
   PARTICIPANT_TERMS_VERSION,
 } from './participant-materials-domain.js';
-const c = {} as PoolClient;
+const c = {
+  query: vi.fn().mockResolvedValue({ rows: [{ today: '2026-10-31' }] }),
+} as unknown as PoolClient;
 const base = {
   orgId: 'org',
   eventId: 'event',
@@ -78,6 +81,40 @@ describe('C23 trusted current insurance and guardian gates', () => {
       false,
     );
     expect(guard.mock.calls[0]?.[1].forceRequired).toBe(true);
+  });
+  it('today thirteen cannot bypass processing consent by scheduling after the fourteenth birthday', async () => {
+    const guard = vi.fn().mockResolvedValue({ ready: false, required: true });
+    const input = { ...base, identityNumber: '990000201211010000', policyDate: '2027-11-02' };
+    expect((await readParticipantDataConsent(c, { dataConsentGuard: guard }, input)).ready).toBe(
+      false,
+    );
+    expect(guard.mock.calls[0]?.[1].forceRequired).toBe(true);
+    expect(
+      (await readParticipantDataConsent(c, {}, { ...input, policyDate: '2030-11-02' })).ready,
+    ).toBe(false);
+  });
+  it('qualification processing uses the same current database date and fails closed without it', async () => {
+    expect(
+      await qualificationDataConsentReady(
+        c,
+        {},
+        {
+          orgId: 'org',
+          eventId: 'event',
+          userId: 'subject',
+          birthDate: '2012-11-01',
+          policyDate: '2027-11-02',
+        },
+      ),
+    ).toBe(false);
+    const unavailable = { query: vi.fn().mockResolvedValue({ rows: [] }) } as unknown as PoolClient;
+    await expect(
+      readParticipantDataConsent(
+        unavailable,
+        {},
+        { ...base, identityNumber: '990000201211010000' },
+      ),
+    ).rejects.toMatchObject({ code: 'YOUTH_PROCESSING_DATE_UNAVAILABLE', status: 503 });
   });
   it('policy-required consent can block adult processing too; no later guard runs before consent', async () => {
     const participation = vi.fn(),

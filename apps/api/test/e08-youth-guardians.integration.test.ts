@@ -344,12 +344,14 @@ describe('E08 youth and guardian authority on isolated PostgreSQL', { concurrent
       { cookie: m.actor.cookie, body: { expectedVersion: m.materialVersion } },
     );
     expect(submit.status).toBe(422);
-    const ciphertext = (
+    const storedProof = (
       await api.pool.query(
-        'SELECT guardian_payload_ciphertext FROM youth_guardian_requests WHERE id=$1',
+        'SELECT guardian_payload_ciphertext,guardian_payload_bytes,octet_length(guardian_payload_ciphertext) AS actual_bytes FROM youth_guardian_requests WHERE id=$1',
         [p.requestId],
       )
-    ).rows[0].guardian_payload_ciphertext;
+    ).rows[0];
+    expect(storedProof.guardian_payload_bytes).toBe(storedProof.actual_bytes);
+    const ciphertext = storedProof.guardian_payload_ciphertext;
     expect(ciphertext).not.toContain(syntheticYouthIdentity('1990-01-01'));
     expect(ciphertext).not.toContain(proof.base64);
     const page = await youth.workspace(guardian.cookie, { limit: '1' });

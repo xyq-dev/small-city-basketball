@@ -109,6 +109,8 @@ function fixture(
   Object.assign(row, change);
   const client = {
     query: async (sql: string) => {
+      if (sql.startsWith("SELECT (clock_timestamp() AT TIME ZONE 'Asia/Shanghai')"))
+        return { rows: [{ today: '2026-10-31' }] };
       if (sql.startsWith('SELECT team_id FROM entries'))
         return { rows: [{ team_id: row.team_id }] };
       if (sql.startsWith('SELECT id FROM teams'))

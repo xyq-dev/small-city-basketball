@@ -1,9 +1,10 @@
 # 当前状态
 
-## EXPANSION8（IN_PROGRESS / BRANCH_ONLY：八项剩余功能开发中）
+## EXPANSION8（IN_PROGRESS / BRANCH_ONLY：八项源码已接线，隔离验收中）
 
-2026-10-31 Asia/Shanghai；本会话root集成，main基线4729336，分支feat/commercial-expansion-8。直播/云媒体、保险、业务资金、微信通知、统一搜索、账号注销、青少年监护八项已认领并完成必要首轮设计审查，正在实现；范围/所有权/权限见[总任务](tasks/EXPANSION8.md)、[恢复入口](handoffs/EXPANSION8.md)。已写E05通知domain/039/provider及18项作者单测，持久服务和页面仍待；其他域正在首片，不将设计或空接口算完成。没有生产、正式新凭据、真实付费或本轮Migration执行；下方COMPLETION22已合并事实不变。
+2026-10-31 Asia/Shanghai；集成分支 `feat/commercial-expansion-8`，main基线4729336。八项持久服务、控制器、原生入口和旧业务门槛已接线：直播/云媒体、保险编排、收退款/对账/分账、订阅消息、统一搜索、注销、青年监护。范围及逐片证据见[总任务](tasks/EXPANSION8.md)、[恢复入口](handoffs/EXPANSION8.md)、[运行边界](EXPANSION8_OPERATIONS.md)。当前68条原生路由、41项Migration、175张表（本轮48张）；完整DDL/权限对象已静态核对，尚未执行036—041。近期候选1114 API及561 admin测试通过；原生997项中995通过、1平台跳过、1旧异步消费者回归待修。最新整合仍需完整PG、真实HTTP/浏览器、三宽布局和非空重启/恢复验证，均不得据源码单测记作通过。
 
+真实保险供应商未选定/未接实际adapter，购买编排默认关闭；微信支付/订阅及腾讯直播/多平台实现了受控驱动，但正式AppID、商户、模板、直播类目、外站权限及实际联调未验。没有生产更新、真实资金、真实投保、真实推流或发信。媒体已配独立持久卷；数据库备份不含MP4字节，需独立媒体归档恢复。下方COMPLETION22为上一批main的历史验收事实，不能当本轮八项已验收。
 
 ## COMPLETION22（DONE / MAIN：源码与隔离验收，生产未更新）
 

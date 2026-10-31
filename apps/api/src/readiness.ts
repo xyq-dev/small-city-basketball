@@ -15,7 +15,11 @@ export interface PrivilegeManifest {
   functions: Record<string, 'EXECUTE'[]>;
   tables: Record<
     string,
-    { privileges: ('SELECT' | 'INSERT' | 'DELETE')[]; updateColumns: string[] }
+    {
+      privileges: ('SELECT' | 'INSERT' | 'DELETE')[];
+      updateColumns: string[];
+      selectColumns?: string[];
+    }
   >;
 }
 export interface TablePrivileges {
@@ -90,11 +94,12 @@ export function privilegesMatch(manifest: PrivilegeManifest, tables: TablePrivil
     )
       return false;
     const columns = new Set(t.columns.map((c) => c.name));
-    if (rule.updateColumns.some((name) => !columns.has(name))) return false;
+    if ([...rule.updateColumns, ...(rule.selectColumns ?? [])].some((name) => !columns.has(name)))
+      return false;
     return t.columns.every(
       (c) =>
         c.update === rule.updateColumns.includes(c.name) &&
-        c.select === p.has('SELECT') &&
+        c.select === (p.has('SELECT') || (rule.selectColumns ?? []).includes(c.name)) &&
         c.insert === p.has('INSERT') &&
         !c.references,
     );
@@ -129,6 +134,10 @@ async function expectations() {
       !/^[a-z][a-z_]+$/.test(name) ||
       !Array.isArray(t.privileges) ||
       !Array.isArray(t.updateColumns) ||
+      !Array.isArray(t.selectColumns ?? []) ||
+      (t.privileges.includes('SELECT') && (t.selectColumns ?? []).length > 0) ||
+      new Set(t.selectColumns ?? []).size !== (t.selectColumns ?? []).length ||
+      (t.selectColumns ?? []).some((v) => !/^[a-z][a-z_]+$/.test(v)) ||
       t.privileges.some((p) => !['SELECT', 'INSERT', 'DELETE'].includes(p)) ||
       (t.privileges.includes('DELETE') &&
         !['auth_rate_limits', 'wechat_auth_attempts'].includes(name)) ||

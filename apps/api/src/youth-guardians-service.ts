@@ -285,7 +285,15 @@ export class YouthGuardiansService extends ApplicationService {
     return this.transaction(async (c) => {
       const a = await this.context(c, await this.lockActor(c, cookie), org, event);
       const manager = await this.manager(c, a);
-      if (!manager && !(await this.boundSubject(c, a))) throw notFound();
+      const relatedGuardian = Boolean(
+        (
+          await c.query(
+            `SELECT 1 FROM youth_guardian_preconsents WHERE org_id=$1 AND event_id=$2 AND guardian_user_id=$3 UNION ALL SELECT 1 FROM youth_guardian_requests WHERE org_id=$1 AND event_id=$2 AND guardian_user_id=$3 LIMIT 1`,
+            [a.orgId, a.event.id, a.actor.user.id],
+          )
+        ).rowCount,
+      );
+      if (!manager && !(await this.boundSubject(c, a)) && !relatedGuardian) throw notFound();
       await this.fresh(c, a);
       return {
         event: { id: a.event.id, name: a.event.name, status: a.event.status },
@@ -734,7 +742,7 @@ export class YouthGuardiansService extends ApplicationService {
           proof,
         };
       const cipher = sealGuardian(payload, key, a.orgId, requestId, row.guardian_user_id, next),
-        bytes = Buffer.byteLength(JSON.stringify(payload));
+        bytes = Buffer.byteLength(cipher);
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `youth-proof-quota:${a.orgId}`,
       ]);

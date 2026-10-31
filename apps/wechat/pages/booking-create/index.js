@@ -76,6 +76,7 @@ Page({
     editorOpen: false,
     compactQuote: {},
     consent: false,
+    feePreview: null,
     quote: EMPTY_QUOTES,
     pending: false,
     invalidRecovery: false,
@@ -116,6 +117,7 @@ Page({
     if (this._loading || this._busy) return;
     this._loading = true;
     this.workspace = null;
+    this._feePreview = null;
     this.setData({
       loading: true,
       ready: false,
@@ -130,6 +132,7 @@ Page({
       originalResolvedId: '',
       originalRejected: '',
       quote: EMPTY_QUOTES,
+      feePreview: null,
       detailsOpen: false,
       editorOpen: false,
       compactQuote: {},

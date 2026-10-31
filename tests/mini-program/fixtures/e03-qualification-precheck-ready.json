@@ -1,0 +1,60 @@
+{
+  "name": "e03-qualification-precheck-ready",
+  "route": "pages/qualification-precheck/index",
+  "state": "synthetic-populated",
+  "designSource": "E03 independent precheck implemented Page; synthetic layout data, not identity or policy acceptance",
+  "expectText": ["独立资格预审", "无需先买保险", "当前版本已明确申请", "通过预审", "退回补充"],
+  "data": {
+    "orgId": "00000000-0000-4000-8000-000000000001",
+    "entryId": "00000000-0000-4000-8000-000000000002",
+    "userId": "00000000-0000-4000-8000-000000000010",
+    "workspace": {
+      "entryId": "00000000-0000-4000-8000-000000000002",
+      "canReview": true,
+      "participants": [
+        {
+          "memberId": "00000000-0000-4000-8000-000000000003",
+          "canRequest": false,
+          "materialVersion": 1,
+          "requestId": "00000000-0000-4000-8000-000000000011",
+          "requestCurrent": true,
+          "materialRevisionId": "00000000-0000-4000-8000-000000000012",
+          "hasPortrait": true,
+          "hasIdentity": true,
+          "hasRealName": true,
+          "hasSignature": true,
+          "qualification": {
+            "id": "00000000-0000-4000-8000-000000000013",
+            "status": "APPROVED",
+            "current": true,
+            "reason": "合成身份、照片及本人签署已独立人工核对"
+          }
+        },
+        {
+          "memberId": "00000000-0000-4000-8000-000000000014",
+          "canRequest": false,
+          "materialVersion": 2,
+          "requestId": "00000000-0000-4000-8000-000000000015",
+          "requestCurrent": false,
+          "materialRevisionId": "00000000-0000-4000-8000-000000000016",
+          "hasPortrait": true,
+          "hasIdentity": true,
+          "hasRealName": true,
+          "hasSignature": true,
+          "qualification": {
+            "id": "00000000-0000-4000-8000-000000000017",
+            "status": "REJECTED",
+            "current": false,
+            "reason": "合成资料需补充当前清晰本人照片并重新明确提交"
+          }
+        }
+      ]
+    },
+    "pending": null,
+    "consent": false,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "message": "合成界面状态，仅供布局校验；预审不等于最终参赛或投保成功。"
+  }
+}

@@ -391,12 +391,21 @@ export async function createApi(
   });
   pool.on('error', () => console.error('Database idle connection error'));
   try {
-    const restored =
-      (
-        await pool.query(
-          "SELECT EXISTS(SELECT 1 FROM audit_logs WHERE action='RESTORE_QUARANTINE' AND resource_type='restore') AS quarantined",
-        )
-      ).rows[0]?.quarantined === true;
+    if (options.production) await assertRuntimeReadiness(pool, options.participantDataKey);
+    let restored: boolean;
+    try {
+      restored =
+        (
+          await pool.query(
+            "SELECT EXISTS(SELECT 1 FROM audit_logs WHERE action='RESTORE_QUARANTINE' AND resource_type='restore') AS quarantined",
+          )
+        ).rows[0]?.quarantined === true;
+    } catch (error) {
+      if (options.production) throw error;
+      // Development can still serve pure HTTP validation with no database.
+      // An unverified database never enables any external runtime capability.
+      restored = true;
+    }
     if (restored) {
       // A restore marker is durable across API restarts. Retained observations
       // and financial claims never authorize dispatch from an isolated restore.
@@ -425,7 +434,6 @@ export async function createApi(
       notificationStartingLeadMinutes:
         input.notifications?.startingLeadMinutes ?? input.notificationStartingLeadMinutes,
     });
-    if (options.production) await assertRuntimeReadiness(pool, options.participantDataKey);
     const wechat = new WechatService(pool, options, input.wechat);
     const expansion = await createExpansionServices(pool, options, input, wechat);
     const service = new RegistrationService(
@@ -462,11 +470,10 @@ export async function createApi(
       expansion.trade,
     );
     const staffConfiguration = new StaffConfigurationService(pool, options);
-    const accountRecovery = new AccountRecoveryService(
-      pool,
-      options,
-      input.accountRecovery ?? accountRecoveryRuntime(),
-    );
+    const accountRecovery = new AccountRecoveryService(pool, options, {
+      ...(input.accountRecovery ?? accountRecoveryRuntime()),
+      ...(options.backgroundWorkersEnabled === false ? { autoDispatch: false } : {}),
+    });
     await accountRecovery.assertConfiguration();
     const participantMaterials = new ParticipantMaterialsService(
       pool,

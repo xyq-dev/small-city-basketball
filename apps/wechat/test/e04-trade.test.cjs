@@ -247,3 +247,37 @@ test('new funds templates compile and each event handler exists', () => {
     assert.match(source, /disabled="\{\{busy/);
   }
 });
+
+test('account reset clears private refund evidence and unpublished fee drafts before another actor can load', () => {
+  const orderPage = page('trade-order');
+  orderPage.actor = actor;
+  orderPage.setData({
+    amount: '12345',
+    reason: 'PRIVATE_REFUND_REASON',
+    evidence: 'PRIVATE_EVIDENCE',
+    pendingAcknowledged: true,
+    order: { id: order },
+  });
+  orderPage.onSessionReset();
+  assert.equal(orderPage.data.reason, '');
+  assert.equal(orderPage.data.evidence, '');
+  assert.equal(orderPage.data.amount, '');
+  assert.equal(orderPage.data.order, null);
+  assert.equal(orderPage.data.pendingAcknowledged, false);
+  const manager = page('trade-manage');
+  manager.actor = actor;
+  manager.orgId = order;
+  manager.setData({
+    orgId: order,
+    sourceId: order,
+    amount: '12345',
+    termsText: 'PRIVATE_UNPUBLISHED_FEE_DRAFT',
+    reason: 'PRIVATE_REVIEW_REASON',
+  });
+  manager.onSessionReset();
+  assert.equal(manager.data.termsText, '');
+  assert.equal(manager.data.reason, '');
+  assert.equal(manager.data.orgId, '');
+  assert.equal(manager.data.sourceId, '');
+  assert.equal(manager.actor, '');
+});

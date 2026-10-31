@@ -1,0 +1,107 @@
+{
+  "name": "e08-guardian-ready",
+  "route": "pages/guardian/index",
+  "state": "synthetic-populated",
+  "designSource": "E08 implemented native Page and WXML; explicit synthetic/static only; no real consent, identity, relationship or WeChat runtime result",
+  "expectText": ["必要资料处理邀请", "监护人本人独立确认", "另行允许本届直播、录像与集锦"],
+  "data": {
+    "review": false,
+    "hasMaterialScope": false,
+    "requests": [
+      {
+        "id": "00000000-0000-4000-8000-000000000006",
+        "orgId": "00000000-0000-4000-8000-000000000001",
+        "eventId": "00000000-0000-4000-8000-000000000002",
+        "entryId": "00000000-0000-4000-8000-000000000003",
+        "memberId": "00000000-0000-4000-8000-000000000004",
+        "eventName": "合成青年静态示例杯",
+        "subjectName": "合成青年甲",
+        "guardianName": "合成监护账号",
+        "status": "AWAITING_GUARDIAN",
+        "statusLabel": "待监护人独立确认",
+        "version": 1,
+        "role": "GUARDIAN",
+        "current": true,
+        "reviewReason": "",
+        "blockerText": "",
+        "subjectPurposes": ["PARTICIPATION", "PUBLIC_ARCHIVE"],
+        "guardianPurposes": [],
+        "capabilities": {
+          "canConfirm": true,
+          "canReview": false,
+          "canWithdraw": true,
+          "canReadProof": false
+        }
+      }
+    ],
+    "preconsents": [
+      {
+        "id": "00000000-0000-4000-8000-000000000009",
+        "orgId": "00000000-0000-4000-8000-000000000001",
+        "eventId": "00000000-0000-4000-8000-000000000002",
+        "eventName": "另一份合成青年静态示例",
+        "subjectAlias": "合成青年乙别名",
+        "guardianName": "合成监护账号",
+        "status": "INVITED",
+        "statusLabel": "待监护人确认必要资料处理",
+        "version": 1,
+        "role": "GUARDIAN",
+        "dataTermsVersion": "youth-data-processing-v1"
+      }
+    ],
+    "selected": {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "orgId": "00000000-0000-4000-8000-000000000001",
+      "eventId": "00000000-0000-4000-8000-000000000002",
+      "entryId": "00000000-0000-4000-8000-000000000003",
+      "memberId": "00000000-0000-4000-8000-000000000004",
+      "eventName": "合成青年静态示例杯",
+      "subjectName": "合成青年甲",
+      "guardianName": "合成监护账号",
+      "status": "AWAITING_GUARDIAN",
+      "statusLabel": "待监护人独立确认",
+      "version": 1,
+      "role": "GUARDIAN",
+      "current": true,
+      "reviewReason": "",
+      "blockerText": "",
+      "subjectPurposes": ["PARTICIPATION", "PUBLIC_ARCHIVE"],
+      "guardianPurposes": [],
+      "capabilities": {
+        "canConfirm": true,
+        "canReview": false,
+        "canWithdraw": true,
+        "canReadProof": false
+      }
+    },
+    "policy": null,
+    "form": {
+      "subjectAlias": "",
+      "guardianUserId": "",
+      "declaredYouth": false,
+      "acceptedDataProcessing": false,
+      "acceptedTerms": false,
+      "publicityConsent": false,
+      "archiveConsent": false,
+      "liveConsent": false,
+      "realName": "",
+      "identityNumber": "",
+      "relationship": "PARENT",
+      "relationshipExplanation": ""
+    },
+    "proofName": "synthetic-relationship.pdf",
+    "privateDetails": null,
+    "reason": "",
+    "identityChecked": false,
+    "relationshipChecked": false,
+    "policyEnabled": false,
+    "threshold": "18",
+    "loading": false,
+    "busy": false,
+    "pending": false,
+    "nextCursor": null,
+    "error": "",
+    "message": "合成静态布局示例；未上传真实材料，未完成任何真实审核。",
+    "loginRequired": false
+  }
+}

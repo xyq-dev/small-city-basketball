@@ -51,7 +51,7 @@ CREATE TABLE youth_guardian_requests (
   guardian_confirmed_at timestamptz,
   guardian_payload_version integer NOT NULL DEFAULT 0 CHECK(guardian_payload_version>=0),
   guardian_payload_ciphertext text,
-  guardian_payload_bytes integer NOT NULL DEFAULT 0 CHECK(guardian_payload_bytes BETWEEN 0 AND 12582912),
+  guardian_payload_bytes integer NOT NULL DEFAULT 0 CHECK(guardian_payload_bytes BETWEEN 0 AND 20971520),
   guardian_payload_hash char(64),
   guardian_key_id char(64),
   reviewed_payload_version integer,

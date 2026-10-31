@@ -42,6 +42,7 @@ export async function createExpansionServices(
   wechat: WechatService,
 ) {
   const dataConsentGuard = readYouthDataProcessingConsent;
+  const workerOptions = options.backgroundWorkersEnabled === false ? { autoDispatch: false } : {};
   const qualificationOptions = { dataConsentGuard };
   const reader = options.participantDataKey
     ? createYouthQualificationReader(options.participantDataKey, qualificationOptions)
@@ -52,6 +53,7 @@ export async function createExpansionServices(
   ) => readYouthEligibility(c, { ...i, purpose: 'PARTICIPATION' }, reader);
   const insurance = new InsuranceService(pool, options, {
     ...input.insurance,
+    ...workerOptions,
     dataConsentGuard,
     participationGuard,
   });
@@ -73,18 +75,23 @@ export async function createExpansionServices(
         ...tradeRuntime.historicalMerchants,
       }),
   });
-  const notifications = new NotificationService(pool, options, input.notifications);
+  const notifications = new NotificationService(pool, options, {
+    ...input.notifications,
+    ...workerOptions,
+  });
   await notifications.assertConfiguration();
   const liveConsent = createYouthLiveConsentGuard(options.participantDataKey, reader);
   const authorizeRecording: NonNullable<StreamingOptions['authorizeRecording']> = async (c, i) =>
     (await liveConsent(c, i)).ready;
   const streaming = new StreamingService(pool, options, {
     ...(input.streaming ?? readStreamingOptions(authorizeRecording)),
+    ...workerOptions,
     authorizeRecording,
   });
   const closure = new AccountClosureService(pool, options, {
     enabled: true,
     ...input.accountClosure,
+    ...workerOptions,
     hooks: createAccountClosureHooks({
       streaming: { inspect: readStreamingClosureBlockers, revoke: revokeStreamingPrivacy },
       insurance: {

@@ -662,10 +662,13 @@ export class NotificationService extends ApplicationService {
       );
     });
   }
-  async fanout() {
-    const sources = await this.pool
-      .query<Row>(`SELECT s.* FROM notification_source_events s JOIN notification_fanout_state f ON f.source_id=s.id
-      WHERE f.done=false AND s.due_at<=clock_timestamp() ORDER BY s.due_at,s.id LIMIT 10`);
+  async fanout(sourceId?: string) {
+    if (sourceId !== undefined) resourceId(sourceId);
+    const sources = await this.pool.query<Row>(
+      `SELECT s.* FROM notification_source_events s JOIN notification_fanout_state f ON f.source_id=s.id
+      WHERE f.done=false AND s.due_at<=clock_timestamp() ${sourceId === undefined ? '' : 'AND s.id=$1'} ORDER BY s.due_at,s.id LIMIT 10`,
+      sourceId === undefined ? [] : [sourceId],
+    );
     for (const raw of sources.rows)
       await this.transaction(async (c) => {
         const source = await resolveNotificationSource(
@@ -917,16 +920,20 @@ export class NotificationService extends ApplicationService {
       );
     });
   }
-  async drain() {
+  async drain(sourceId?: string) {
+    if (sourceId !== undefined) resourceId(sourceId);
     if (this.draining) return;
     this.draining = true;
     try {
-      await this.scheduleStarts();
-      await this.fanout();
-      await this.recoverExpiredLeases();
+      if (sourceId === undefined) await this.scheduleStarts();
+      await this.fanout(sourceId);
+      await this.recoverExpiredLeases(sourceId);
       if (!this.key || !this.notifications.provider) return;
       const rows = await this.pool.query<{ id: string }>(
-        "SELECT id FROM notification_deliveries WHERE state IN('WAITING_PERMISSION','PENDING') AND next_attempt_at<=clock_timestamp() ORDER BY next_attempt_at,id LIMIT 20",
+        `SELECT d.id FROM notification_deliveries d JOIN notification_messages m ON m.id=d.message_id
+        WHERE d.state IN('WAITING_PERMISSION','PENDING') AND d.next_attempt_at<=clock_timestamp()
+        ${sourceId === undefined ? '' : 'AND m.source_id=$1'} ORDER BY d.next_attempt_at,d.id LIMIT 20`,
+        sourceId === undefined ? [] : [sourceId],
       );
       for (const row of rows.rows) {
         const claim = await this.claim(row.id);
@@ -936,9 +943,12 @@ export class NotificationService extends ApplicationService {
       this.draining = false;
     }
   }
-  async recoverExpiredLeases() {
+  async recoverExpiredLeases(sourceId?: string) {
+    if (sourceId !== undefined) resourceId(sourceId);
     const rows = await this.pool.query<Row>(
-      "SELECT id FROM notification_deliveries WHERE state='SENDING' AND lease_until<=clock_timestamp() ORDER BY lease_until,id LIMIT 20",
+      `SELECT d.id FROM notification_deliveries d JOIN notification_messages m ON m.id=d.message_id
+      WHERE d.state='SENDING' AND d.lease_until<=clock_timestamp() ${sourceId === undefined ? '' : 'AND m.source_id=$1'} ORDER BY d.lease_until,d.id LIMIT 20`,
+      sourceId === undefined ? [] : [sourceId],
     );
     for (const row of rows.rows)
       await this.transaction(async (c) => {

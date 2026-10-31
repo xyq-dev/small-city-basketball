@@ -199,3 +199,31 @@ describe('immutable source pricing across fulfillment transitions', () => {
     }
   });
 });
+
+it('pre-create fee preview never discloses a private draft supply to an unrelated signed-in user', async () => {
+  const f = fixture();
+  const query = vi.fn(async (sql: string) => ({
+    rows: sql.includes('FROM local_listings')
+      ? [
+          {
+            org_id: org,
+            provider_user_id: 'private-owner',
+            title: 'private-title',
+            status: 'DRAFT',
+            published: false,
+            provider_confirmed: false,
+          },
+        ]
+      : [],
+    rowCount: 0,
+  }));
+  f.service.transaction = async (work: any) => work({ query });
+  f.service.lockActor = async () => ({ user: { id: 'unrelated' } });
+  f.service.calendar = async () => {};
+  f.service.manager = async () => false;
+  f.service.operator = async () => false;
+  await expect(
+    f.service.preview('synthetic-cookie', { kind: 'LOCAL_BOOKING', sourceId: org }),
+  ).rejects.toMatchObject({ code: 'RESOURCE_NOT_FOUND' });
+  expect(query.mock.calls.some(([sql]) => sql.includes('FROM trade_terms'))).toBe(false);
+});

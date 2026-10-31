@@ -14,6 +14,7 @@ export interface ResolvedApiOptions {
   participantRegistrationEnabled: boolean;
   participantDataKey?: string;
   notificationStartingLeadMinutes?: number;
+  backgroundWorkersEnabled?: boolean;
   trustProxyHops: 0 | 1;
   production: boolean;
   commerceMode: CommerceMode;
@@ -62,6 +63,7 @@ export function readRuntimeConfig(): RuntimeConfig {
           ? readRequiredSecret('SCB_PARTICIPANT_DATA_KEY')
           : undefined,
       trustProxyHops: Number(rawHops) as 0 | 1,
+      backgroundWorkersEnabled: booleanEnv('SCB_BACKGROUND_WORKERS_ENABLED'),
       commerceMode: readCommerceMode(),
       wechatPay: readWechatPayConfig(process.env.APP_ORIGIN ?? ''),
     }),
@@ -126,6 +128,7 @@ export function resolveApiOptions(options: ApiOptions): ResolvedApiOptions {
     options.organizationRegistrationEnabled,
     options.participantRegistrationEnabled,
     options.secureCookies,
+    options.backgroundWorkersEnabled,
   ];
   if (flags.some((v) => v !== undefined && typeof v !== 'boolean'))
     throw new Error('Registration and Cookie flags must be boolean');
@@ -148,6 +151,9 @@ export function resolveApiOptions(options: ApiOptions): ResolvedApiOptions {
   if (hops !== 0 && hops !== 1) throw new Error('trustProxyHops must be 0 or 1');
   return {
     databaseUrl: validateDatabaseUrl(options.databaseUrl),
+    ...(options.backgroundWorkersEnabled === undefined
+      ? {}
+      : { backgroundWorkersEnabled: options.backgroundWorkersEnabled }),
     ...(participantDataKey === undefined ? {} : { participantDataKey }),
     ...(options.notificationStartingLeadMinutes === undefined
       ? {}

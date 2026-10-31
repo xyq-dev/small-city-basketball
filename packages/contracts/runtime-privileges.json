@@ -55,7 +55,8 @@
     },
     "audit_logs": {
       "privileges": ["INSERT"],
-      "updateColumns": []
+      "updateColumns": [],
+      "selectColumns": ["action", "resource_type"]
     },
     "auth_rate_limits": {
       "privileges": ["SELECT", "INSERT", "DELETE"],
@@ -970,7 +971,7 @@
     },
     "trade_orders": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": ["status", "updated_at", "version"]
+      "updateColumns": ["money_version", "status", "updated_at", "version"]
     },
     "trade_payment_attempts": {
       "privileges": ["SELECT", "INSERT"],

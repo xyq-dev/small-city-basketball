@@ -48,12 +48,21 @@ export function qualificationUnder14(birthDate: string, policyDate: string): boo
     14
   );
 }
+/** Sensitive data is processed today, even when the sporting event starts after a child's birthday. */
+export async function qualificationDataProcessingDate(c: PoolClient): Promise<string> {
+  const today = (
+    await c.query("SELECT (clock_timestamp() AT TIME ZONE 'Asia/Shanghai')::date::text AS today")
+  ).rows[0]?.today;
+  if (typeof today !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(today))
+    insuranceFail('YOUTH_PROCESSING_DATE_UNAVAILABLE', '当前资料处理日期无法核验', 503);
+  return today;
+}
 export async function qualificationDataConsentReady(
   c: PoolClient,
   options: QualificationOptions,
   input: { orgId: string; eventId: string; userId: string; birthDate: string; policyDate: string },
 ): Promise<boolean> {
-  const required = qualificationUnder14(input.birthDate, input.policyDate);
+  const required = qualificationUnder14(input.birthDate, await qualificationDataProcessingDate(c));
   return options.dataConsentGuard
     ? (
         await options.dataConsentGuard(c, {
