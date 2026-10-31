@@ -21,6 +21,7 @@ import {
   fullAllocations,
   publish,
   revision,
+  validate,
 } from './p04-support.js';
 import type { Harness } from './p04-support.js';
 
@@ -580,7 +581,7 @@ describe(
       const conditional = await legacy.createOrder(h.leader.cookie, {
         ...draft,
         commandId: command(),
-        scope: 'SINGLE',
+        scope: 'TIME_BLOCK',
         appearances: [
           {
             profileId,
@@ -697,6 +698,206 @@ describe(
         );
       }
     }, 120000);
+    test('disabled physical courts stay manageable but disappear from public supply and cannot accept new local bookings', async () => {
+      const s = await supply(),
+        privateView = await service.privateListing(h.owner.cookie, s.id);
+      const actual = (
+        await h.api.pool.query('SELECT name,version FROM courts WHERE id=$1', [s.courtId])
+      ).rows[0];
+      data(
+        await call(h.api, 'patch', `/v1/orgs/${h.owner.orgId}/courts/${s.courtId}`, {
+          cookie: h.owner.cookie,
+          body: { expectedVersion: actual.version, name: actual.name, status: 'DISABLED' },
+        }),
+      );
+      expect((await service.privateListing(h.owner.cookie, s.id)).listing.id).toBe(s.id);
+      expect(
+        (
+          await service.publicList(
+            { q: privateView.listing.title, regionId, catalogVersion: REGION_CATALOG_VERSION },
+            'synthetic-disabled-court',
+          )
+        ).items,
+      ).toHaveLength(0);
+      await expect(service.publicDetail(s.id, 'synthetic-disabled-court')).rejects.toMatchObject({
+        status: 404,
+      });
+      await assertCode(service.book(h.leader.cookie, bookBody(s)), 'LOCAL_SUPPLY_UNAVAILABLE');
+    });
+    test('legacy scheduling refuses active local holds, avoids them in previews and ignores only DB-expired holds', async () => {
+      const s = await supply(),
+        local = await service.book(h.leader.cookie, bookBody(s));
+      const actual = (
+        await h.api.pool.query('SELECT name,version FROM courts WHERE id=$1', [s.courtId])
+      ).rows[0];
+      const disable = () =>
+        call(h.api, 'patch', `/v1/orgs/${h.owner.orgId}/courts/${s.courtId}`, {
+          cookie: h.owner.cookie,
+          body: { expectedVersion: actual.version, name: actual.name, status: 'DISABLED' },
+        });
+      const blocked = await disable();
+      expect(blocked.status).toBe(409);
+      expect(blocked.body.error.code).toBe('COURT_HAS_RESERVATIONS');
+      const f = await frozen(h, h.owner, h.teams, {
+        startDate: new Date(Date.parse(s.start) - 86400000).toISOString().slice(0, 10),
+        endDate: new Date(Date.parse(s.end) + 86400000).toISOString().slice(0, 10),
+      });
+      const physical = { id: s.courtId! } as Awaited<ReturnType<typeof court>>;
+      let draft = await revision(h.api, h.owner, f, [physical], {
+        courtWindows: [
+          {
+            courtId: physical.id,
+            startsAt: s.start,
+            endsAt: new Date(Date.parse(s.end) + 3 * 3600000).toISOString(),
+          },
+        ],
+      });
+      draft = await allocate(h.api, h.owner, draft, fullAllocations(draft, physical, s.start));
+      const busy = await validate(h.api, h.owner, draft);
+      expect(busy.valid).toBe(false);
+      expect(busy.conflicts.some((c) => c.code === 'COURT_OVERLAP' && c.external)).toBe(true);
+      expect(JSON.stringify(busy)).not.toContain(local.resourceId);
+      const preview = data<{
+        status: string;
+        score: { assignedCount: number };
+        allocations: Array<{ startsAt: string }>;
+      }>(
+        await call(
+          h.api,
+          'post',
+          `/v1/orgs/${h.owner.orgId}/schedule-revisions/${draft.id}/optimization-preview`,
+          {
+            cookie: h.owner.cookie,
+            body: {
+              expectedEventVersion: draft.eventVersion,
+              expectedRevisionVersion: draft.version,
+              preserveAssigned: false,
+            },
+          },
+        ),
+      );
+      expect(preview.status).toBe('COMPLETE');
+      expect(preview.score.assignedCount).toBe(draft.fixtures.length);
+      expect(preview.allocations.every((a) => Date.parse(a.startsAt) >= Date.parse(s.end))).toBe(
+        true,
+      );
+      await h.api.pool.query(
+        "UPDATE local_bookings SET hold_expires_at=clock_timestamp()-interval '1 second',version=version+1 WHERE id=$1",
+        [local.resourceId],
+      );
+      expect((await validate(h.api, h.owner, draft)).valid).toBe(true);
+      expect((await disable()).status).toBe(200);
+      await assertCode(service.book(h.leader.cookie, bookBody(s)), 'LOCAL_SUPPLY_UNAVAILABLE');
+    }, 120000);
+    test('scoped review rechecks the pinned grant after calendar waits and rolls back expired or replaced authority', async () => {
+      for (const mode of ['EXPIRE', 'REPLACE']) {
+        const draft = await service.createListing(h.owner.cookie, h.owner.orgId, {
+          commandId: command(),
+          kind: 'REFEREE',
+          title: '合成城市委派复核',
+          description: '仅验证授权回调在锁等待后的DB时钟复核',
+          address: '公开服务地址',
+          region: region(),
+          coverageRegionIds: [regionId],
+          providerUserId: h.owner.id,
+          qualificationNote: '待独立核验服务主体与必要资格',
+          terms: '按实际服务范围和到场约定履约',
+        });
+        await service.listingCommand(h.owner.cookie, draft.resourceId, {
+          commandId: command(),
+          expectedVersion: 1,
+          type: 'SUBMIT',
+          reason: '等待独立城市范围复核',
+        });
+        const grantId = command(),
+          replacement = command(),
+          scopeCalls: Array<{ grantId?: string | null }> = [];
+        let first!: () => void, expiresAt: Date | undefined;
+        const ready = new Promise<void>((resolve) => {
+          first = resolve;
+        });
+        const scoped = new LocalServicesService(
+          h.api.pool,
+          { databaseUrl: h.databaseUrl, appOrigin: ORIGIN },
+          undefined,
+          async (c, _actor, input) => {
+            scopeCalls.push(input);
+            if (!expiresAt) {
+              expiresAt = (
+                await c.query("SELECT clock_timestamp()+interval '200 milliseconds' AS expiry")
+              ).rows[0].expiry;
+              first();
+              return { grantId, platformOperator: false };
+            }
+            expect(input.grantId).toBe(grantId);
+            if (
+              mode === 'EXPIRE' &&
+              !(await c.query('SELECT clock_timestamp()<$1::timestamptz AS valid', [expiresAt]))
+                .rows[0].valid
+            )
+              throw forbidden();
+            return { grantId: mode === 'REPLACE' ? replacement : grantId, platformOperator: false };
+          },
+        );
+        const locker = await h.api.pool.connect();
+        await locker.query('BEGIN');
+        await locker.query('SELECT x12_calendar_lock()');
+        const commandId = command();
+        const outcome = scoped
+          .listingCommand(h.leader.cookie, draft.resourceId, {
+            commandId,
+            expectedVersion: 2,
+            type: 'APPROVE',
+            reason: '在等待calendar锁后必须仍有原授权',
+            qualifiedUntil: at(1000),
+            qualificationChecked: true,
+            scopeChecked: true,
+          })
+          .then(
+            (value) => ({ ok: true as const, value }),
+            (error) => ({ ok: false as const, error }),
+          );
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([
+            ready,
+            outcome.then(() => {
+              throw new Error('Review must wait for the held calendar lock');
+            }),
+            new Promise<void>((_resolve, reject) => {
+              timer = setTimeout(
+                () => reject(new Error('Review never reached initial authority')),
+                3000,
+              );
+            }),
+          ]);
+          await locker.query('SELECT pg_sleep(0.35)');
+        } finally {
+          if (timer) clearTimeout(timer);
+          await locker.query('ROLLBACK');
+          locker.release();
+        }
+        const result = await outcome;
+        if (result.ok) throw new Error('Expired or replaced authority must not commit');
+        expect(result.error).toMatchObject({ status: 403 });
+        expect(scopeCalls).toHaveLength(2);
+        expect(
+          (
+            await h.api.pool.query('SELECT status,version FROM local_listings WHERE id=$1', [
+              draft.resourceId,
+            ])
+          ).rows[0],
+        ).toEqual({ status: 'PENDING', version: 2 });
+        expect(
+          (
+            await h.api.pool.query(
+              'SELECT 1 FROM local_command_receipts WHERE actor_id=$1 AND command_id=$2',
+              [h.leader.id, commandId],
+            )
+          ).rowCount,
+        ).toBe(0);
+      }
+    }, 15000);
     test('same command and content returns one original receipt; changed content is rejected', async () => {
       const s = await supply();
       const body = bookBody(s);

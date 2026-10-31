@@ -293,6 +293,11 @@ function rankingHarness(profiles: any[], proofs: any[]) {
       statements.push(sql);
       if (sql.startsWith('BEGIN') || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
       if (sql.startsWith('SELECT p.*,k.consented_at')) return { rows: profiles };
+      if (
+        sql.startsWith('SELECT id,org_id,event_id,nominated_by FROM public_archive_sources') ||
+        sql.includes('FOR SHARE')
+      )
+        return { rows: [] };
       if (sql === 'SELECT statement_timestamp() AS now')
         return { rows: [{ now: new Date('2026-10-31T00:00:00Z') }] };
       if (sql.startsWith('SELECT profile_id,count'))
@@ -323,6 +328,7 @@ describe('public ranking completeness', () => {
     id: id(600 + n),
     public_key: String.fromCharCode(65 + n).repeat(43),
     kind: 'PLAYER',
+    owner_user_id: id(700 + n),
     display_name: '公开' + n,
     consented_at: '2026-10-31T00:00:00Z',
   });
@@ -378,5 +384,97 @@ describe('public ranking completeness', () => {
     expect(result.entries[0]!.archive.points).toBe(3);
     expect(result.entries[0]!.rank).toBe(1);
     expect(h.statements.at(-1)).toBe('COMMIT');
+  });
+});
+
+describe('public archive permission-lock retries', () => {
+  test('bounded NOWAIT conflicts return unavailable without projecting old data', async () => {
+    let attempts = 0,
+      rollbacks = 0,
+      releases = 0,
+      projectionReads = 0;
+    const p = {
+      id: id(600),
+      kind: 'PLAYER',
+      owner_user_id: id(601),
+      public_key: 'A'.repeat(43),
+      display_name: '旧公开姓名',
+      consented_at: '2026-10-31T00:00:00Z',
+    };
+    const pool = {
+      async query() {
+        return { rows: [{ attempts: 1 }] };
+      },
+      async connect() {
+        attempts++;
+        return {
+          async query(sql: string) {
+            if (sql.startsWith('BEGIN')) return { rows: [] };
+            if (sql === 'ROLLBACK') {
+              rollbacks++;
+              return { rows: [] };
+            }
+            if (sql.startsWith('SELECT p.*,k.consented_at')) return { rows: [p] };
+            if (sql.startsWith('SELECT id,org_id,event_id,nominated_by')) return { rows: [] };
+            if (sql.includes('FOR SHARE')) throw Object.assign(Error('busy'), { code: '55P03' });
+            projectionReads++;
+            throw Error('Old projection must not be read');
+          },
+          release() {
+            releases++;
+          },
+        };
+      },
+    };
+    const service = new PublicArchivesService(pool as unknown as Pool, {
+      databaseUrl: 'postgresql://localhost/scb_test_unit',
+      appOrigin: 'http://localhost:5173',
+    });
+    await expect(service.publicOne(p.public_key, 'unit')).rejects.toMatchObject({
+      status: 503,
+      code: 'PUBLIC_ARCHIVE_BUSY',
+    });
+    expect({ attempts, rollbacks, releases, projectionReads }).toEqual({
+      attempts: 3,
+      rollbacks: 3,
+      releases: 3,
+      projectionReads: 0,
+    });
+  });
+  test('serialization change after an old publication lookup restarts and sees the revoked profile', async () => {
+    let attempts = 0;
+    const p = {
+      id: id(600),
+      kind: 'PLAYER',
+      owner_user_id: id(601),
+      public_key: 'A'.repeat(43),
+      display_name: '已撤回姓名',
+      consented_at: '2026-10-31T00:00:00Z',
+    };
+    const pool = {
+      async query() {
+        return { rows: [{ attempts: 1 }] };
+      },
+      async connect() {
+        const attempt = ++attempts;
+        return {
+          async query(sql: string) {
+            if (sql.startsWith('BEGIN') || sql === 'ROLLBACK') return { rows: [] };
+            if (sql.startsWith('SELECT p.*,k.consented_at'))
+              return { rows: attempt === 1 ? [p] : [] };
+            if (sql.startsWith('SELECT id,org_id,event_id,nominated_by')) return { rows: [] };
+            if (sql.includes('FOR SHARE')) throw Object.assign(Error('changed'), { code: '40001' });
+            throw Error('Unexpected stale read');
+          },
+          release() {},
+        };
+      },
+    };
+    const service = new PublicArchivesService(pool as unknown as Pool, {
+      databaseUrl: 'postgresql://localhost/scb_test_unit',
+      appOrigin: 'http://localhost:5173',
+    });
+    await expect(service.publicOne(p.public_key, 'unit')).rejects.toMatchObject({ status: 404 });
+    expect(attempts).toBe(2);
   });
 });

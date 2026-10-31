@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const recent = require('../../utils/recent');
 const ui = require('../../utils/ui');
 const follows = require('../../utils/follows');
+const cities = require('../../utils/city-preference');
 const publicResults = require('../../utils/public-results');
 
 // Follow state is private to the signed-in account and kept apart from the public event data:
@@ -33,6 +34,10 @@ function bracketView(bracket) {
 }
 Page({
   data: {
+    sponsorRegionId: '',
+    sponsorCatalogVersion: '',
+    sponsorEventPublicId: '',
+    sponsorVisible: false,
     event: null,
     matches: [],
     standings: null,
@@ -51,6 +56,7 @@ Page({
   onLoad(query) {
     try {
       this.id = api.publicId(query.event);
+      this.setData({ sponsorEventPublicId: this.id });
       if (['schedule', 'ranking', 'media'].includes(query.tab))
         this.setData({ tab: query.tab, overview: false });
     } catch {
@@ -62,13 +68,21 @@ Page({
     this.load();
   },
   onShow() {
+    const selection = cities.snapshot();
+    this.setData({
+      sponsorRegionId: selection.mode === 'REGION' ? selection.regionId : '',
+      sponsorCatalogVersion: selection.mode === 'REGION' ? selection.catalogVersion : '',
+      sponsorVisible: true,
+    });
     if (this.id && !this.timer) this.timer = setInterval(() => this.load(), 10000);
   },
   onHide() {
+    this.setData({ sponsorVisible: false });
     clearInterval(this.timer);
     this.timer = null;
   },
   onUnload() {
+    this.setData({ sponsorVisible: false });
     this.closed = true;
     clearInterval(this.timer);
     this._followGen = (this._followGen || 0) + 1;

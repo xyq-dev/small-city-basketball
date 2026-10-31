@@ -157,3 +157,61 @@ test('private season coverage explicitly removes administrative games from stati
   assert.match(rows[0].text, /逐人确认 2 \/ 2/);
   assert.match(rows[0].text, /行政裁定.*排除 1 场，不记出场/);
 });
+
+test('partial synchronization exposes each verified server snapshot even when a later item conflicts', async () => {
+  const h = setup();
+  await h.store.append(h.wx, scope, 'RECORD_STAT', payload, 8);
+  await h.store.append(h.wx, scope, 'RECORD_STAT', payload, 8);
+  let posts = 0;
+  const snapshots = [];
+  const client = {
+    async request(path, method, body) {
+      if (method !== 'POST') throw { code: 'OFFLINE_INTENT_NOT_FOUND' };
+      if (++posts === 2) throw { status: 409, code: 'VERSION_CONFLICT' };
+      return {
+        data: {
+          intentId: body.intent.intentId,
+          receipt: { commandId: body.intent.intentId, appliedVersion: 9 },
+          snapshot: { version: 9, knownScore: 2 },
+        },
+      };
+    },
+  };
+  await assert.rejects(() =>
+    h.store.sync(
+      h.wx,
+      scope,
+      client,
+      '/match',
+      {},
+      () => true,
+      (result) => snapshots.push(result.snapshot),
+    ),
+  );
+  assert.equal(snapshots.length, 1);
+  assert.equal(snapshots[0].knownScore, 2);
+  assert.equal(h.store.read(h.wx, scope).items.length, 1);
+});
+test('deleting or exporting a draft handles local failures without claiming success or losing the queue', async () => {
+  const h = setup(),
+    answers = [true, true];
+  h.wx.showModal = (options) =>
+    queueMicrotask(() => options.success({ confirm: answers.shift(), cancel: false }));
+  h.page._viewer = scope.actorId;
+  h.page.orgId = scope.orgId;
+  h.page.matchId = scope.matchId;
+  await h.store.append(h.wx, scope, 'RECORD_STAT', payload, 8);
+  h.page.refreshOffline();
+  h.wx.removeStorageSync = () => {
+    throw Error('磁盘不可写');
+  };
+  await h.page.discardOffline();
+  assert.match(h.page.data.error, /不可写/);
+  assert.equal(h.store.read(h.wx, scope).items.length, 1);
+  assert.doesNotMatch(h.page.data.notice, /已删除/);
+  h.wx.setClipboardData = (options) => options.fail({ message: '复制失败' });
+  await h.page.exportOffline();
+  assert.match(h.page.data.error, /复制失败/);
+  assert.equal(h.store.read(h.wx, scope).items.length, 1);
+  assert.doesNotMatch(h.page.data.notice, /已复制/);
+});

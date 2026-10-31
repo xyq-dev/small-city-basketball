@@ -61,7 +61,7 @@ Page({
               : gov.id(query.sourceId),
         };
       }
-      if (query.mode === 'assigned') this.setData({ mode: 'assigned' });
+      if (['assigned', 'platform'].includes(query.mode)) this.setData({ mode: query.mode });
     } catch (error) {
       this._invalid = true;
       this.setData({ error: ui.message(error) });

@@ -22,6 +22,12 @@ import type { Response, NextFunction } from 'express';
 import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
+import { PublicLedgerService } from './public-ledger-service.js';
+import {
+  PublicLedgerController,
+  PublicLedgerViewingController,
+  SCB_PUBLIC_LEDGER_SERVICE,
+} from './public-ledger-controller.js';
 import { PublicArchivesService } from './public-archives-service.js';
 import {
   PublicArchivesController,
@@ -354,6 +360,7 @@ export async function createApi(
   try {
     if (options.production) await assertRuntimeReadiness(pool, options.participantDataKey);
     const service = new RegistrationService(pool, options);
+    const publicLedgers = new PublicLedgerService(pool, options);
     const publicArchives = new PublicArchivesService(pool, options);
     const eventTemplates = new EventTemplateService(pool, options);
     const matchExceptions = new MatchExceptionService(pool, options);
@@ -412,6 +419,8 @@ export async function createApi(
         SponsorshipController,
         SponsorshipReviewController,
         PublicSponsorshipController,
+        PublicLedgerController,
+        PublicLedgerViewingController,
         PublicArchivesController,
         EventTemplateController,
         MatchExceptionController,
@@ -465,6 +474,7 @@ export async function createApi(
       ],
       providers: [
         { provide: SCB_SPONSORSHIP_SERVICE, useValue: sponsorships },
+        { provide: SCB_PUBLIC_LEDGER_SERVICE, useValue: publicLedgers },
         { provide: SCB_PUBLIC_ARCHIVES_SERVICE, useValue: publicArchives },
         { provide: SCB_EVENT_TEMPLATE_SERVICE, useValue: eventTemplates },
         { provide: SCB_MATCH_EXCEPTION_SERVICE, useValue: matchExceptions },

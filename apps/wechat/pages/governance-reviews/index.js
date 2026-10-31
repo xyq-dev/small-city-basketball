@@ -27,6 +27,7 @@ Page({
   onLoad(q = {}) {
     this._alive = true;
     this._visible = true;
+    if (q.mode === 'platform') this.setData({ mode: 'platform' });
     try {
       if (q.publicKey) {
         if (!/^[A-Za-z0-9_-]{43}$/.test(q.publicKey)) throw new Error('公开评价地址无效');
@@ -49,7 +50,12 @@ Page({
     this._visible = false;
     ui.close(this);
     this._viewer = null;
-    this.setData({ ...initial(), sourceReady: !!this._source, isPublic: !!this._publicKey });
+    this.setData({
+      ...initial(),
+      mode: this.data.mode,
+      sourceReady: !!this._source,
+      isPublic: !!this._publicKey,
+    });
   },
   onUnload() {
     this._alive = false;

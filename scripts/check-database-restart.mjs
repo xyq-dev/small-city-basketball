@@ -5,6 +5,17 @@ import { createApi } from '../apps/api/dist/app.js';
 import pg from 'pg';
 import { loadManifest } from '../ops/db/privileges.mjs';
 import { exactTableRows } from '../ops/recovery/fingerprint-rows.mjs';
+import { captureEventTemplates, verifyEventTemplates } from './x03-template-check.mjs';
+import {
+  captureX05Recruitment,
+  verifyX05Recruitment,
+  verifyX05RecruitmentQuarantine,
+} from './x05-recruitment-check.mjs';
+import {
+  captureX08Archive,
+  verifyX08Archive,
+  verifyX08ArchiveQuarantine,
+} from './x08-archive-check.mjs';
 import { syntheticPdf, syntheticPng, syntheticMp4 } from './c05-media-fixtures.mjs';
 import {
   captureParticipantMaterials,
@@ -1704,6 +1715,44 @@ try {
       ownerCookie: cookie,
       suffix,
     });
+    // New purposes use their own fixtures. Finishing the main event's last unprepared
+    // match would invalidate the independently captured rescheduling/viewing/OBS proofs.
+    const x03Templates = await captureEventTemplates({ call, state: { orgId, cookie } });
+    const x08Registration = await captureRegistration(orgId, cookie, `${suffix}-x08`);
+    const x08Scheduling = await captureScheduling(orgId, cookie, x08Registration);
+    await call(`/v1/orgs/${orgId}/events/${x08Scheduling.workspace.event.id}/scoring-rules`, {
+      method: 'PUT',
+      cookie,
+      body: {
+        expectedEventVersion: x08Scheduling.workspace.event.version,
+        regulationPeriods: 1,
+        periodDurationSeconds: 3600,
+        allowedScoreValues: [1, 2, 3],
+        tiePolicy: 'ALLOW_DRAW',
+        overtimeDurationSeconds: null,
+      },
+    });
+    const x08 = await captureX08Archive({
+      call,
+      state: { orgId, cookie, scoring, scheduling: x08Scheduling },
+      readPool,
+      assertPublicMissing,
+    });
+    const x05 = await captureX05Recruitment({
+      call,
+      state: {
+        orgId,
+        cookie,
+        userId: registration.data.user.id,
+        registration: frozenRegistration,
+        scheduling,
+        scoring,
+      },
+      readPool,
+      assertPublicMissing,
+      fetchFile: (route, actorCookie) =>
+        fetch(baseUrl + route, { headers: { Cookie: actorCookie } }),
+    });
     const commerce = await captureCommerceEnd({
       call,
       cookie,
@@ -1759,6 +1808,9 @@ try {
       media,
       commerce,
       participantMaterials,
+      x03Templates,
+      x08,
+      x05,
       participantKeyFixtureDatabase,
       fingerprint: await fingerprint(),
     };
@@ -1769,6 +1821,8 @@ try {
   } else if (mode === 'quarantine') {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     await verifyParticipantQuarantine({ readPool, saved: state.participantMaterials });
+    await verifyX08ArchiveQuarantine({ readPool, saved: state.x08, assertPublicMissing });
+    await verifyX05RecruitmentQuarantine({ readPool, saved: state.x05, assertPublicMissing });
     const denied = await fetch(baseUrl + state.participantMaterials.materialPath + '/mine', {
       headers: { Cookie: state.participantMaterials.cookie },
     });
@@ -1923,6 +1977,16 @@ try {
     await verifyMedia(state.media, state.cookie, state.registration.leaderCookie);
     await verifyCommerce({ call, saved: state.commerce, cookie: state.cookie, orgId: state.orgId });
     assert.equal(await fingerprint(), state.fingerprint);
+    await verifyEventTemplates({ call, state });
+    await verifyX08Archive({ call, state, readPool, saved: state.x08, assertPublicMissing });
+    await verifyX05Recruitment({
+      call,
+      state,
+      readPool,
+      saved: state.x05,
+      fetchFile: (route, actorCookie) =>
+        fetch(baseUrl + route, { headers: { Cookie: actorCookie } }),
+    });
     await verifyParticipantMaterials({
       call,
       readPool,

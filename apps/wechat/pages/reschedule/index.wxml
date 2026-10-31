@@ -34,7 +34,7 @@
       <textarea class="field" maxlength="500" value="{{reason}}" bindinput="reasonInput" placeholder="例如：原场地灯光检修"/>
       <view wx:if="{{conflicts.length}}" class="setup-block">
         <view class="section-label">服务端检查发现冲突</view>
-        <view wx:for="{{conflicts}}" wx:key="key" class="muted">· {{item.label}}（{{item.scope}}{{item.external ? '，本机构其他赛事' : ''}}）</view>
+        <view wx:for="{{conflicts}}" wx:key="key" class="muted">· {{item.label}}（{{item.scope}}{{item.external ? '，已有资源安排' : ''}}）</view>
       </view>
       <button class="primary" bindtap="submit" disabled="{{busy || uncertain || !courts.length}}">检查并保存改期</button>
     </view>

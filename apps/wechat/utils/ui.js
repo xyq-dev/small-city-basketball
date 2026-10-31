@@ -9,6 +9,7 @@ for (const key of [
   'local-manage',
   'local-bookings',
   'local-matchups',
+  'public-ledgers',
   'public-archives',
   'public-archive',
   'sponsorships',

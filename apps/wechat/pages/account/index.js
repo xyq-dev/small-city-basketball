@@ -340,6 +340,7 @@ Page({
       'staff-configuration',
       'local-manage',
       'sponsorships',
+      'public-ledgers',
     ].includes(key)
       ? { orgId: api.uuid(e.currentTarget.dataset.org) }
       : key === 'bookings'

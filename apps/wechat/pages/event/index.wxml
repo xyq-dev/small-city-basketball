@@ -15,6 +15,7 @@
     <button wx:if="{{unavailable && follow.state!=='signedOut'}}" class="quiet" bindtap="openFollows">查看我的关注</button>
   </view>
   <block wx:else>
+<sponsorship-slot region-id="{{sponsorRegionId}}" catalog-version="{{sponsorCatalogVersion}}" event-public-id="{{sponsorEventPublicId}}" visible="{{sponsorVisible && !!event}}"/>
     <view wx:if="{{error}}" class="notice warning">{{error}}<view wx:if="{{stale}}" class="small">现有资料已陈旧，请恢复连接后刷新。</view></view>
     <view wx:if="{{overview}}" class="public-panel event-summary">
       <view class="subtitle">{{event.name}}</view>

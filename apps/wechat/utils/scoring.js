@@ -73,6 +73,11 @@ function totals(value) {
 }
 function resultLabel(snapshot) {
   if (!snapshot) return '尚未开始记分';
+  if (snapshot.adjudication)
+    return (
+      (snapshot.adjudication.kind === 'FORFEIT' ? '行政弃权已生效' : '本场已取消') +
+      '，本场不计个人统计'
+    );
   if (snapshot.requiresReconfirmation) return '赛果已重开，待重新独立确认';
   if (snapshot.status === 'FINAL') return '赛果已独立确认';
   if (snapshot.status === 'PENDING_CONFIRMATION') return '比赛已结束，待独立确认';
@@ -84,6 +89,7 @@ function board(snapshot, receivedAt, now = Date.now()) {
   return {
     version: snapshot.version,
     status: snapshot.status,
+    adjudicated: snapshot.adjudication ? snapshot.adjudication.kind : null,
     statusLabel: api.matchStatus(snapshot.status),
     resultLabel: resultLabel(snapshot),
     final: snapshot.status === 'FINAL' && !snapshot.requiresReconfirmation,

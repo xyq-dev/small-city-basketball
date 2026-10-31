@@ -355,7 +355,7 @@ Page({
           home: (m.home && m.home.teamName) || '待定',
           away: (m.away && m.away.teamName) || '待定',
           status: m.status,
-          statusLabel: api.matchStatus(m.status),
+          statusLabel: publicResults.status(m),
         })),
       };
     } catch (error) {

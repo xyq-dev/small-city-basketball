@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createHarness, closeHarness } from './p04-support.js';
 import type { Harness } from './p04-support.js';
-import { call, data, error, eventInput, login } from './support.js';
+import { call, data, error, eventInput, login, eventually, tokenHash } from './support.js';
 
 describe('X17 staff configuration real PostgreSQL permissions and receipts', () => {
   let h: Harness;
@@ -36,7 +36,9 @@ describe('X17 staff configuration real PostgreSQL permissions and receipts', () 
   });
   test('only current owner changes organization members, never owner itself or another organization', async () => {
     const target = await person();
-    error(await send(member(target.id), h.otherOwner.cookie), 404);
+    error(await send(member(target.id), h.otherOwner.cookie), 403);
+    const outsider = await person();
+    error(await send(member(target.id), outsider.cookie), 404);
     error(await send(member(h.owner.id)), 403);
     data(await send(member(target.id)));
     const other = await person();
@@ -116,5 +118,55 @@ describe('X17 staff configuration real PostgreSQL permissions and receipts', () 
       )
     ).rows[0];
     expect(row).toMatchObject({ role: 'SCORER', status: 'ACTIVE' });
+  });
+  test('receipt replay waiting on command fence cannot outlive its session', async () => {
+    const target = await person(),
+      body = member(target.id);
+    data(await send(body));
+    const cookie = h.owner.cookie,
+      gate = await h.api.pool.connect();
+    let open = false;
+    try {
+      const gatePid = (await gate.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+      await gate.query('BEGIN');
+      open = true;
+      await gate.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `staff-command:${body.clientRequestId}`,
+      ]);
+      await h.api.pool.query(
+        "UPDATE sessions SET expires_at=clock_timestamp()+interval '4 seconds' WHERE token_hash=$1",
+        [tokenHash(cookie)],
+      );
+      const result = send(body, cookie);
+      await eventually(
+        async () =>
+          (
+            await h.api.pool.query(
+              'SELECT count(*)::int n FROM pg_stat_activity WHERE $1::int=ANY(pg_blocking_pids(pid))',
+              [gatePid],
+            )
+          ).rows[0].n,
+        (n) => n > 0,
+        'staff replay did not reach operation fence',
+      );
+      await eventually(
+        async () =>
+          (
+            await h.api.pool.query(
+              'SELECT expires_at<=clock_timestamp() AS expired FROM sessions WHERE token_hash=$1',
+              [tokenHash(cookie)],
+            )
+          ).rows[0].expired,
+        Boolean,
+        'session did not expire while replay waited',
+      );
+      await gate.query('COMMIT');
+      open = false;
+      error(await result, 401);
+    } finally {
+      if (open) await gate.query('ROLLBACK');
+      gate.release();
+      h.owner.cookie = await login(h.api, h.owner);
+    }
   });
 });

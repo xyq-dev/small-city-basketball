@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -190,10 +190,10 @@ test('C20 archive is restored with its frozen package, quarantined, then upgrade
     const retained = (
       await target.query('SELECT to_jsonb(o) AS value FROM organizations o ORDER BY id')
     ).rows;
-    expect(await migrate(target)).toEqual([
-      '023_c21_region_directory.sql',
-      '024_c23_participant_materials.sql',
-    ]);
+    const expectedSuffix = (await readdir(new URL('../migrations/', import.meta.url)))
+      .filter((name) => /^\d+_[a-z0-9_]+\.sql$/.test(name) && Number(name.slice(0, 3)) > 22)
+      .sort();
+    expect(await migrate(target)).toEqual(expectedSuffix);
     await applyRuntimePrivileges(target);
     expect(
       (await target.query('SELECT to_jsonb(o) AS value FROM organizations o ORDER BY id')).rows,

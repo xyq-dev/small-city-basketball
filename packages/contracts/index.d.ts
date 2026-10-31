@@ -429,6 +429,8 @@ export interface ScheduleValidationData extends ScheduleVersionInput {
   conflicts: ScheduleConflict[];
 }
 export interface ScheduledMatchData {
+  /** Administrative outcome, validated separately from actual recorded match status. */
+  adjudication?: { kind: 'FORFEIT' | 'CANCELLED' };
   id: string;
   eventId: string;
   publicationId: string;
@@ -564,6 +566,8 @@ export interface ResultConfirmationData {
   confirmedAt: string;
 }
 export interface ScoreSnapshot {
+  /** An independently approved administrative outcome; never a recorded score. */
+  adjudication?: { kind: 'FORFEIT' | 'CANCELLED' };
   matchId: string;
   eventId: string;
   eventName: string;

@@ -5,6 +5,24 @@ import { court, overview, revision, response, officialMatches } from '../schedul
 import { localInput, offsetTime } from '../scheduling/shared';
 
 describe('排赛时间与HTTP边界', () => {
+  it('双循环服务端修订能够通过现有工作台HTTP合同读取', async () => {
+    const drr = { ...revision, algorithmVersion: 'DRR_CIRCLE_V1' };
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        response({
+          ...overview,
+          event: { ...overview.event, format: 'DOUBLE_ROUND_ROBIN' },
+          currentRevision: drr,
+        }),
+      )
+      .mockResolvedValueOnce(response(drr));
+    const api = createSchedulingApi(createApiClient({ fetcher }), 'org-a');
+    expect((await api.scheduling('event-a')).currentRevision?.algorithmVersion).toBe(
+      'DRR_CIRCLE_V1',
+    );
+    expect((await api.revision('revision-a')).algorithmVersion).toBe('DRR_CIRCLE_V1');
+  });
   it('本地输入明确采用UTC+8，不依赖浏览器所在地，并严格拒绝无效日历', () => {
     expect(offsetTime('2026-12-01T09:00')).toBe('2026-12-01T09:00:00.000+08:00');
     expect(new Date(offsetTime('2026-12-01T09:00')).toISOString()).toBe('2026-12-01T01:00:00.000Z');

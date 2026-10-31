@@ -9,6 +9,7 @@ import type {
 import { templatePresets } from '../src/event-template-domain.js';
 import { call, data, error } from './support.js';
 import {
+  blockedPid,
   closeHarness,
   court,
   createHarness,
@@ -270,5 +271,60 @@ describe('X03 versioned templates and setup guide with real PostgreSQL', () => {
         ])
       ).rows[0].n,
     ).toBe(0);
+  });
+  test('receipt replay rechecks expiration after waiting for the original command lock', async () => {
+    const body = {
+      type: 'CREATE_TEMPLATE',
+      clientRequestId: randomUUID(),
+      name: '过期回执边界',
+      configuration: rrConfig(),
+    };
+    data<EventTemplateCommandReceipt>(await execute(body));
+    const sessions = (
+      await h.api.pool.query<{ id: string; expires_at: Date }>(
+        'SELECT id,expires_at FROM sessions WHERE user_id=$1 AND revoked_at IS NULL',
+        [h.owner.id],
+      )
+    ).rows;
+    const blocker = await h.api.pool.connect();
+    let pending: ReturnType<typeof execute> | null = null;
+    try {
+      await blocker.query('BEGIN');
+      const pid = (await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')).rows[0]!
+        .pid;
+      await blocker.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `x03:${h.owner.orgId}:${h.owner.id}:${body.clientRequestId}`,
+      ]);
+      await h.api.pool.query(
+        "UPDATE sessions SET expires_at=clock_timestamp()+interval '2 seconds' WHERE user_id=$1 AND revoked_at IS NULL",
+        [h.owner.id],
+      );
+      pending = execute(body);
+      await blockedPid(
+        h.api.pool,
+        pid,
+        'Template receipt replay waits on the existing command lock',
+      );
+      await h.api.pool.query('SELECT pg_sleep(2.1)');
+      await blocker.query('COMMIT');
+      error(await pending, 401);
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT count(*)::int n FROM event_template_commands WHERE org_id=$1 AND actor_id=$2 AND client_request_id=$3',
+            [h.owner.orgId, h.owner.id, body.clientRequestId],
+          )
+        ).rows[0].n,
+      ).toBe(1);
+    } finally {
+      await blocker.query('ROLLBACK').catch(() => {});
+      blocker.release();
+      if (pending) await pending.catch(() => null);
+      for (const s of sessions)
+        await h.api.pool.query('UPDATE sessions SET expires_at=$2 WHERE id=$1', [
+          s.id,
+          s.expires_at,
+        ]);
+    }
   });
 });

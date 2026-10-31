@@ -200,6 +200,14 @@ function pathAllowed(path, method = 'GET') {
       method === 'GET' && queryAllowed(query, ['kind']) && ['PLAYER', 'TEAM'].includes(query.kind)
     );
   if (matches('/v1/public/archives/' + tokenPattern)) return noQuery && method === 'GET';
+  if (matches(org + '/public-ledgers'))
+    return method === 'GET' ? beforePage() : noQuery && method === 'POST';
+  if (matches(org + '/public-ledgers/options'))
+    return method === 'GET' && queryAllowed(query, ['query']);
+  if (matches(org + '/public-ledgers/' + uuidPattern)) return noQuery && method === 'GET';
+  if (matches(org + '/public-ledgers/' + uuidPattern + '/(entries|commands)'))
+    return noQuery && method === 'POST';
+  if (matches('/v1/public/ledgers/' + tokenPattern)) return noQuery && method === 'GET';
   if (matches(org + '/event-templates')) return noQuery && method === 'GET';
   if (matches(org + '/event-template-commands')) return noQuery && method === 'POST';
   if (matches(org + '/event-template-commands/' + uuidPattern)) return noQuery && method === 'GET';
@@ -545,6 +553,7 @@ function createClient(wxApi) {
           (method === 'GET' && /^\/v1\/public\/events\/[A-Za-z0-9_-]{43}(?:\/|\?|$)/.test(path)) ||
           (method === 'GET' &&
             /^\/v1\/public\/archives\/(?:[A-Za-z0-9_-]{43}$|rankings\?)/.test(path)) ||
+          (method === 'GET' && /^\/v1\/public\/ledgers\/[A-Za-z0-9_-]{43}$/.test(path)) ||
           (path === '/v1/account-recovery/capabilities' && method === 'GET') ||
           (['reset-requests', 'consume', 'receipts', 'cancel'].some(
             (v) => path === '/v1/account-recovery/' + v,

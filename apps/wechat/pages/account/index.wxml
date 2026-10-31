@@ -25,6 +25,7 @@
       <view wx:if="{{managedOrgs.length}}" class="menu-group">
         <view class="menu-title">机构管理</view>
         <block wx:for="{{managedOrgs}}" wx:key="id">
+<view class="menu-row" data-page="public-ledgers" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>授权经费记账与公示</view><view class="menu-sub">{{item.name}} · 独立审核、追加更正</view></view></view>
 <view class="menu-row" data-page="sponsorships" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>广告与赞助投放</view><view class="menu-sub">{{item.name}} · 地区、赛事与时段</view></view></view>
 <view class="menu-row" data-page="staff-configuration" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>成员与工作人员权限</view><view class="menu-sub">{{item.name}}</view></view></view>
 <view class="menu-row" data-page="local-manage" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>球场与同城服务管理</view><view class="menu-sub">{{item.name}} · 供给、档期与审核</view></view></view>

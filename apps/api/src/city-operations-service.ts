@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { ApplicationService } from './service.js';
 import type { Actor } from './service.js';
-import { forbidden, notFound } from './errors.js';
+import { forbidden, notFound, unauthenticated } from './errors.js';
 import { objectInput } from './validation.js';
 import {
   govCheckVersion,
@@ -126,6 +126,15 @@ export async function governanceReceipt(
   if (row.result._cancelled === true)
     throw new ApiError(409, 'GOVERNANCE_OPERATION_CANCELLED', '原操作已明确取消，不会再次执行');
   if (row.request_hash !== govHash(request)) throw new ErrorReceiptConflict();
+  if (
+    !(
+      await c.query(
+        'SELECT id FROM sessions WHERE id=$1 AND revoked_at IS NULL AND expires_at>clock_timestamp()',
+        [actor.sessionId],
+      )
+    ).rowCount
+  )
+    throw unauthenticated();
   const { _receiptScope: _, ...publicResult } = row.result;
   return publicResult;
 }
@@ -169,6 +178,15 @@ export async function governanceFinish(
       JSON.stringify({ ...output, _receiptScope: { kind, resourceId } }),
     ],
   );
+  if (
+    !(
+      await c.query(
+        'SELECT id FROM sessions WHERE id=$1 AND revoked_at IS NULL AND expires_at>clock_timestamp()',
+        [actor.sessionId],
+      )
+    ).rowCount
+  )
+    throw unauthenticated();
 }
 const dto = (r: Record<string, any>) => ({
   id: r.id,
@@ -221,6 +239,7 @@ export class CityOperationsService extends ApplicationService {
             )
           ).rows
         : [];
+      await this.ensureFreshSession(c, actor);
       return {
         items: rows.slice(0, q.limit).map(dto),
         nextCursor: rows.length > q.limit ? (rows[q.limit - 1]?.id ?? null) : null,

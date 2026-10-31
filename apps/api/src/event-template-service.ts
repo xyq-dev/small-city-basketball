@@ -208,6 +208,7 @@ export class EventTemplateService extends SchedulingService {
             'IDEMPOTENCY_KEY_REUSED',
             '命令编号已用于不同内容，请先核对原请求',
           );
+        await this.ensureFreshSession(c, ctx);
         return previous.result;
       }
       let template: EventTemplateData;

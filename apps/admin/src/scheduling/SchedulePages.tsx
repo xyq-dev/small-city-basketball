@@ -203,7 +203,9 @@ function EventSchedulingContent({
               ? 'GK_BALANCED_V1'
               : current.overview.event.format === 'SINGLE_ELIMINATION'
                 ? 'SE_SEEDED_V1'
-                : 'RR_CIRCLE_V1',
+                : current.overview.event.format === 'DOUBLE_ROUND_ROBIN'
+                  ? 'DRR_CIRCLE_V1'
+                  : 'RR_CIRCLE_V1',
           policy,
           ...(groupConfig ? { groupConfig } : {}),
           ...(reason ? { redrawReason: reason } : {}),

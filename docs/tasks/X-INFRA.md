@@ -19,3 +19,13 @@ I2b兼容门槛：root授权c02/c22旧测试从固定008–024/24迁移/83表改
 
 I3离线恢复隔离：先对完整manifest127表一次EXCLUSIVE NOWAIT锁（任何冲突在主体写入前回滚）。永久撤销招募、本届待接邀请、海报导出、公共档案key/profile/source、城市运营权、赞助公开与活动、经费公开与账号、评价；账号所有动作token撤销、未决/未知邮件任务EXPIRED并清加密envelope/lease，防恢复后重发。关闭同城供给/时段，未履约预约取消、已到场/交付转争议，未决约赛取消，全部库存ledger释放，核销hash/expiry清空并断言无遗留。保留私有工单/附件/账目/所有原请求/离线回执/模板历史/已独立确认行政裁定head，不直接重写体育行政事实。原C23宣传撤回与旧凭据隔离保持。
 依赖X12 E@25b7fc8，029新增checkin_hash/checkin_expires_at列，manifest只加这两个实际UPDATE字段；DB保证只有CONFIRMED可留hash，历史终态不改。19个本地infra单测（含锁冲突、审计失败、核销遗留固定错误及整体回滚）通过，API完整tsconfig与脚本语法/格式通过。真PG/quarantine/restore未执行；CI129生产已在migrate-and-grant失败，尚未进入恢复，正在排根因。
+
+I4a：将X03模板创建/固定版本实例化/原编号重放与X08专业比赛+永久离线意图+公共TEAM档案撤回/重发真实HTTP helper接入production/restart主链。X08另建独立合成事件，避免打完原事件最后未准备场破坏原rescheduling/viewing/OBS证据；主状态存X03配置回执及X08非密refs/hash/version，正常恢复原fingerprint核对后再验证，quarantine检所有旧档案key失效/离线ledger不变。另P07真实runtime新增helper正向执行、PUBLIC/backup/直接trigger授EXECUTE失败readiness、immutable表行锁及UPDATE拒绝；尚未执行。
+I4a脚本语法/格式、API tsconfig通过（最终重查），依赖root已接scripts/x03-template-check与x08-archive-check。CI129首因已定位033长IF CASE语法，由X01修，所有新PG与production此前只证明迁移阻断，无下游功能/恢复结果。继续X05/本地供给/治理非空fixtures，未标DONE。
+
+I5：新增x05-recruitment-check真实runtime HTTP helper并接主链：赛前独立招募→本人申请→独立DRAFT批准→逐行预览→原ID整批提交重放→本届本人接受→保留待接邀请，以及正式独立确认赛果海报生成/实际PNG下载。新6表全部非空；state只存ID/源hash/PNG摘要，公开招募key从DB重取不新增原文，图片不落state。正常重启/restore核原回执与真实PNG字节相同；quarantine旧招募404/待接邀请REVOKED/已接历史不改/海报revoked/原回执和预览保留。下载核权会写审计，因此正常验证放原fingerprint相等之后。
+I5脚本语法/格式与git diff --check通过，真实HTTP/PNG/PG未执行（第一轮CI被033语法阻断）。X12、X18、X22非空helper已分别协同local、scheduling、competition并行编写；我保持主入口/infra所有权，待单独SHA根整合后接线。
+
+CI130真实门槛：migrate-and-grant已通过，P07 runtime文件与大部分quarantine合计18/19通过；唯一C22竞争测试barrier超时。已定位lockActor在031账号恢复加入users别名/credential_reset_at谓词，旧测试等整段无别名SQL而没暂停真实请求。修正仅观察语义（users本人$1且FOR SHARE），仍等实际SQL成功后暂停，保留5秒NOWAIT拒绝/全库不变/排空后重试全部断言；不延时、不跳过、不改业务锁。2单测覆盖旧/新/多行语句与非actor/无锁拒绝，真实PG重跑待CI。尚未到HTTPS/restart/full restore。
+
+CI130 API真实结果468通过/8失败/5跳过（整体未过）。本组后续修正：c02 checksum拒绝测试残留24条断言改完整source迁移名集合；c22 frozen legacy恢复升级残留023/024后缀改完整source>022精确集合，冻结旧78表包与原历史数据断言保留。X05照片真实PG资料提交失败IDENTITY_REQUIRED，按C23补四个非真实990000区码/有效日期和校验位的合成身份，不降低真实身份/照片/独立审核要求。完整API tsconfig/格式通过，以上真实PG待CI重跑。

@@ -60,6 +60,8 @@ Page({
   onLoad(query) {
     this._alive = true;
     try {
+      this._reportOnly = query.readOnly === '1';
+      this.setData({ reportOnly: this._reportOnly });
       this.orgId = api.uuid(query.orgId);
       this.matchId = api.uuid(query.matchId);
     } catch {
@@ -114,7 +116,11 @@ Page({
     if (snapshot)
       this.setData({
         'match.status': snapshot.status,
-        'match.statusLabel': api.matchStatus(snapshot.status),
+        'match.statusLabel': snapshot.adjudication
+          ? snapshot.adjudication.kind === 'FORFEIT'
+            ? '行政弃权已生效'
+            : '本场已取消'
+          : api.matchStatus(snapshot.status),
       });
     const pro = snapshot && snapshot.professionalStatistics;
     const proGroups = pro
@@ -190,13 +196,19 @@ Page({
       this.setData({
         loading: false,
         unavailable: false,
-        canControl: !!wb.capabilities.canAcquireControl,
+        canControl: !this._reportOnly && !!wb.capabilities.canAcquireControl,
+        reportOnly: !!this._reportOnly,
         match: {
           eventName: wb.event.name,
           home: wb.match.home.teamName,
           away: wb.match.away.teamName,
           status: wb.match.status,
-          statusLabel: api.matchStatus(wb.match.status),
+          statusLabel: wb.match.adjudication
+            ? wb.match.adjudication.kind === 'FORFEIT'
+              ? '行政弃权已生效'
+              : '本场已取消'
+            : api.matchStatus(wb.match.status),
+          adjudication: wb.match.adjudication || null,
           closed: ['COMPLETED', 'ARCHIVED'].includes(wb.event.status),
         },
         roster: {
@@ -211,7 +223,16 @@ Page({
       this.show(wb.snapshot, receivedAt);
       this.refreshOffline();
       if (wb.snapshot) this.refreshHistory();
-      if (!wb.capabilities.canAcquireControl && !this._control)
+      if (wb.match.adjudication) {
+        this.dropControl();
+        this.setData({
+          held: false,
+          error: '',
+          notice: '本场行政裁定已生效，不能记分，不计个人样本或出场。',
+        });
+      } else if (this._reportOnly) {
+        this.setData({ error: '', notice: '专业统计与上场时间报表，只读查看。' });
+      } else if (!wb.capabilities.canAcquireControl && !this._control)
         this.setData({ error: '当前身份不是本场有效记分员，只能查看。' });
     } catch (error) {
       if (!ui.live(this, token) || !current()) return;
@@ -238,7 +259,7 @@ Page({
     }
   },
   async acquire() {
-    if (this.data.busy || this._control) return;
+    if (this._reportOnly || this.data.busy || this._control) return;
     // Bound to this page, session and attempt before the instance-id wait; a late id is
     // neither sent nor kept once the account changed, the user signed out or the page closed.
     const token = ui.hold(this);
@@ -295,6 +316,10 @@ Page({
   // `expected`: for confirmed commands, the match version the scorer saw when the dialog
   // opened; the command is sent with it, and not at all if the page has moved on since.
   async command(type, payload, label, op, expected) {
+    if (this._reportOnly) {
+      this.setData({ error: '当前为只读报表。' });
+      return;
+    }
     if (this.data.busy || this.data.pending) return;
     if (op && !op.valid()) return;
     if (this.data.offlineDraft) {
@@ -444,7 +469,17 @@ Page({
       ui.held(this, token) && this._viewer === actor && this._control === control;
     this.setData({ busy: true, error: '' });
     try {
-      const result = await offline.sync(wx, scope, api.getClient(), this.base(), control, current);
+      const result = await offline.sync(
+        wx,
+        scope,
+        api.getClient(),
+        this.base(),
+        control,
+        current,
+        (accepted) => {
+          if (current()) this.show(accepted.snapshot, Date.now());
+        },
+      );
       if (!current()) return;
       if (result.latest) this.show(result.latest.snapshot, Date.now());
       this.refreshOffline();
@@ -477,15 +512,22 @@ Page({
       '复制尚未同步的原操作编号、原版本和记录内容，用于逐条人工核对。',
     );
     if (!op || !op.valid() || actor !== this._viewer) return;
-    const queue = offline.read(wx, scope);
-    if (!queue) return;
-    wx.setClipboardData({
-      data: JSON.stringify(queue, null, 2),
-      success: () => {
-        if (op.valid() && actor === this._viewer)
-          this.setData({ notice: '原草稿已复制，可逐条核对；原队列保持。' });
-      },
-    });
+    try {
+      const queue = offline.read(wx, scope);
+      if (!queue) return;
+      wx.setClipboardData({
+        data: JSON.stringify(queue, null, 2),
+        success: () => {
+          if (op.valid() && actor === this._viewer)
+            this.setData({ notice: '原草稿已复制，可逐条核对；原队列保持。' });
+        },
+        fail: (error) => {
+          if (op.valid() && actor === this._viewer) this.setData({ error: ui.message(error) });
+        },
+      });
+    } catch (error) {
+      if (op.valid() && actor === this._viewer) this.setData({ error: ui.message(error) });
+    }
   },
   async discardOffline() {
     if (this.data.busy || !this._viewer) return;
@@ -497,10 +539,15 @@ Page({
       '删除本账号本场尚未同步的草稿？已在服务端接受的原回执不会删除。建议先逐条核对。',
     );
     if (!op || !op.valid() || actor !== this._viewer) return;
-    offline.discard(wx, scope);
-    this.refreshOffline();
-    this.setData({ offlineDraft: false, notice: '本地草稿已删除。' });
+    try {
+      offline.discard(wx, scope);
+      this.refreshOffline();
+      this.setData({ offlineDraft: false, notice: '本地草稿已删除。' });
+    } catch (error) {
+      if (op.valid() && actor === this._viewer) this.setData({ error: ui.message(error) });
+    }
   },
+
   async checkPending() {
     const pending = this.data.pending;
     if (!pending || this.data.busy) return;

@@ -29,6 +29,14 @@ import {
 } from './p05b-support.js';
 import type { Harness } from './p05b-support.js';
 type Row = Record<string, any>;
+// Non-real district prefix; the checksum/date are structurally valid without using person data.
+function syntheticIdentity(sequence: number): string {
+  const first = '99000019900101' + String(sequence).padStart(3, '0'),
+    weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+  return (
+    first + '10X98765432'[weights.reduce((sum, w, index) => sum + Number(first[index]) * w, 0) % 11]
+  );
+}
 describe(
   'X05 authorized posters against current PostgreSQL provenance',
   { concurrent: false },
@@ -188,6 +196,7 @@ describe(
                 clientRequestId: randomUUID(),
                 expectedVersion: 0,
                 realName: '合成测试本人' + n + i,
+                identityNumber: syntheticIdentity(n * 2 + i + 1),
                 portrait: png,
                 acceptedTerms: true,
                 publicityConsent: n === 0 && i === 0,

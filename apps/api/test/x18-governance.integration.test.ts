@@ -8,8 +8,24 @@ import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
 import { GovernanceService } from '../src/governance-service.js';
 import { CityOperationsService } from '../src/city-operations-service.js';
 import { SponsorshipService } from '../src/sponsorship-service.js';
-import { testDatabaseUrl, ORIGIN, PASSWORD, RUN_ID, login, createEvent } from './support.js';
+import { PublicLedgerService } from '../src/public-ledger-service.js';
+import {
+  testDatabaseUrl,
+  ORIGIN,
+  PASSWORD,
+  RUN_ID,
+  login,
+  createEvent,
+  eventually,
+} from './support.js';
 import type { Api, User } from './support.js';
+import type {
+  BookingPlayerData,
+  BookingWorkspaceData,
+  BookingOrderData,
+  BookingCommandInput,
+} from '@small-city-basketball/contracts';
+import { call, data } from './support.js';
 // Real PostgreSQL services plus real HTTP session authentication. Controller/body-lane wiring
 // belongs to root integration; this file does not misrepresent service tests as HTTP acceptance.
 describe(
@@ -18,6 +34,7 @@ describe(
   () => {
     let api: Api, g: GovernanceService, city: CityOperationsService;
     let sponsor: SponsorshipService;
+    let ledger: PublicLedgerService;
     let owner: User, operator: User, handler: User, stranger: User;
     let region: { catalogVersion: string; regionId: string };
     beforeAll(async () => {
@@ -32,6 +49,7 @@ describe(
       g = new GovernanceService(api.pool, { databaseUrl, appOrigin: ORIGIN });
       city = new CityOperationsService(api.pool, { databaseUrl, appOrigin: ORIGIN });
       sponsor = new SponsorshipService(api.pool, { databaseUrl, appOrigin: ORIGIN });
+      ledger = new PublicLedgerService(api.pool, { databaseUrl, appOrigin: ORIGIN });
       const passwordHash = await hashPassword(PASSWORD);
       const actors: User[] = [];
       for (const name of ['owner', 'operator', 'handler', 'stranger']) {
@@ -57,6 +75,10 @@ describe(
         actors.push(user);
       }
       [owner, operator, handler, stranger] = actors as [User, User, User, User];
+      await api.pool.query(
+        "INSERT INTO organization_memberships(org_id,user_id,role) VALUES($1,$2,'ORG_ADMIN')",
+        [owner.orgId, handler.id],
+      );
       await maintainPlatformOperator(api.pool, {
         email: operator.email,
         status: 'ACTIVE',
@@ -140,6 +162,104 @@ describe(
         status: 404,
       });
     });
+    test('exact city grant expiry during a command lock wait rolls back message, version, audit effect and receipt', async () => {
+      const grant = await city.create(operator.cookie, {
+        commandId: randomUUID(),
+        orgId: owner.orgId,
+        userId: handler.id,
+        region,
+        action: 'CASE_MANAGE',
+        expiresAt: new Date(Date.now() + 5000).toISOString(),
+        reason: '合成短期精确权限核验',
+      });
+      const row = await create();
+      const caseId = row.id as string;
+      await g.caseCommand(operator.cookie, caseId, {
+        commandId: randomUUID(),
+        expectedVersion: 1,
+        type: 'ASSIGN',
+        assigneeId: handler.id,
+        grantId: grant.id,
+        reason: '绑定本项短期精确授权',
+      });
+      const commandId = randomUUID(),
+        tag = '到期后不得落盘-' + randomUUID();
+      const blocker = await api.pool.connect();
+      try {
+        await blocker.query('BEGIN');
+        const pid = (await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid'))
+          .rows[0]!.pid;
+        await blocker.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          `scb-governance:${handler.id}:${commandId}`,
+        ]);
+        const pending = g
+          .reply(handler.cookie, caseId, {
+            commandId,
+            expectedVersion: 2,
+            body: tag,
+            visibility: 'INTERNAL',
+          })
+          .then(
+            (value) => ({ value, error: null }),
+            (error) => ({ value: null, error }),
+          );
+        await eventually(
+          async () =>
+            (
+              await api.pool.query<{ waiting: boolean }>(
+                'SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid<>$1 AND $1=ANY(pg_blocking_pids(pid))) AS waiting',
+                [pid],
+              )
+            ).rows[0]!.waiting,
+          (v) => v,
+          'case reply did not wait on the real command lock',
+        );
+        await eventually(
+          async () =>
+            (
+              await api.pool.query<{ expired: boolean }>(
+                'SELECT expires_at<=clock_timestamp() AS expired FROM city_operation_grants WHERE id=$1',
+                [grant.id],
+              )
+            ).rows[0]!.expired,
+          (v) => v,
+          'city grant did not expire while the command was blocked',
+          10000,
+        );
+        await blocker.query('ROLLBACK');
+        const outcome = await pending;
+        expect(outcome.error).toMatchObject({ status: 403 });
+        expect(outcome.value).toBeNull();
+        expect((await g.getCase(owner.cookie, caseId)).version).toBe(2);
+        expect(
+          (
+            await api.pool.query(
+              'SELECT count(*) FROM governance_case_messages WHERE case_id=$1 AND body=$2',
+              [caseId, tag],
+            )
+          ).rows[0]!.count,
+        ).toBe('0');
+        expect(
+          (
+            await api.pool.query(
+              'SELECT count(*) FROM governance_operations WHERE actor_id=$1 AND command_id=$2',
+              [handler.id, commandId],
+            )
+          ).rows[0]!.count,
+        ).toBe('0');
+        expect(
+          (
+            await api.pool.query(
+              "SELECT count(*) FROM audit_logs WHERE actor_id=$1 AND resource_id=$2 AND action='governance.case_replied'",
+              [handler.id, caseId],
+            )
+          ).rows[0]!.count,
+        ).toBe('0');
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+      }
+    }, 20000);
     test('command replay is stable, changed body conflicts and cancellation blocks delayed original', async () => {
       const commandId = randomUUID();
       const raw = {
@@ -241,27 +361,104 @@ describe(
       ).toBe('OPEN');
     });
     test('completed server booking supports independent publication and permanent withdrawal without public identifiers', async () => {
-      const teamId = randomUUID(),
-        profileId = randomUUID(),
-        orderId = randomUUID(),
-        appearanceId = randomUUID();
-      await api.pool.query('INSERT INTO teams(id,org_id,name) VALUES($1,$2,$3)', [
-        teamId,
-        owner.orgId,
-        '合成评价服务球队',
-      ]);
-      await api.pool.query(
-        "INSERT INTO booking_profiles(id,user_id,display_name,position,height_cm,city,bio,price_fen,status,reviewed_by,reviewed_at) VALUES($1,$2,'合成服务方','PG',180,'合成城市','合成测试',1000,'APPROVED',$3,clock_timestamp())",
-        [profileId, handler.id, operator.id],
+      const base = Date.now(),
+        at = (offset: number) => new Date(base + offset).toISOString();
+      const team = data<{ id: string }>(
+        await call(api, 'post', `/v1/orgs/${owner.orgId}/teams`, {
+          cookie: owner.cookie,
+          body: { name: '合成评价服务球队' },
+        }),
+        201,
       );
-      await api.pool.query(
-        "INSERT INTO booking_orders(id,org_id,team_id,event_name,team_name,buyer_user_id,scope,fee_bps,settings_version,status) VALUES($1,$2,$3,'合成履约赛事','合成评价服务球队',$4,'SINGLE',0,1,'COMPLETED')",
-        [orderId, owner.orgId, teamId, owner.id],
+      const profile = data<BookingPlayerData>(
+        await call(api, 'put', '/v1/player-bookings/profile', {
+          cookie: handler.cookie,
+          body: {
+            commandId: randomUUID(),
+            expectedVersion: 0,
+            displayName: '合成服务方',
+            position: 'PG',
+            heightCm: 180,
+            city: '合成城市',
+            bio: '仅隔离评价测试',
+            priceFen: 1000,
+            travelFen: 0,
+            accommodationFen: 0,
+            availability: [{ startAt: at(-86400000), endAt: at(14 * 86400000) }],
+            adultConfirmed: true,
+          },
+        }),
       );
-      await api.pool.query(
-        "INSERT INTO booking_appearances(id,order_id,profile_id,player_user_id,label,status,report_at,start_at,end_at,venue,service_fen,platform_fee_fen,total_fen,accepted_at,arrived_at,completed_at) VALUES($1,$2,$3,$4,'合成已完成服务','COMPLETED','2024-01-01T10:00:00Z','2024-01-01T10:30:00Z','2024-01-01T11:30:00Z','合成隔离球场',1000,0,1000,'2024-01-01T09:00:00Z','2024-01-01T10:00:00Z','2024-01-01T11:30:00Z')",
-        [appearanceId, orderId, profileId, handler.id],
+      data<BookingPlayerData>(
+        await call(api, 'post', `/v1/player-bookings/profiles/${profile.id}/review`, {
+          cookie: operator.cookie,
+          body: {
+            commandId: randomUUID(),
+            expectedVersion: profile.version,
+            status: 'APPROVED',
+            reason: '独立审核合成服务方',
+          },
+        }),
       );
+      const workspace = data<BookingWorkspaceData>(
+        await call(api, 'get', '/v1/player-bookings/workspace', { cookie: owner.cookie }),
+      );
+      const quote = workspace.players.find((p) => p.id === profile.id);
+      expect(quote).toBeDefined();
+      let order = data<BookingOrderData>(
+        await call(api, 'post', '/v1/player-bookings/orders', {
+          cookie: owner.cookie,
+          body: {
+            commandId: randomUUID(),
+            orgId: owner.orgId,
+            teamId: team.id,
+            eventName: '合成履约赛事',
+            scope: 'SINGLE',
+            eligibilityConfirmed: true,
+            reviewedSettingsVersion: workspace.settings.version,
+            reviewedProfileVersions: { [profile.id]: quote!.version },
+            appearances: [
+              {
+                profileId: profile.id,
+                label: '合成真实履约',
+                reportAt: at(10 * 60000),
+                startAt: at(30 * 60000),
+                endAt: at(90 * 60000),
+                venue: '合成隔离球场',
+                conditional: false,
+              },
+            ],
+          },
+        }),
+      );
+      async function act(type: BookingCommandInput['type'], actor: User) {
+        order = data<BookingOrderData>(
+          await call(api, 'post', `/v1/player-bookings/orders/${order.id}/commands`, {
+            cookie: actor.cookie,
+            body: {
+              commandId: randomUUID(),
+              expectedVersion: order.appearances[0]!.version,
+              appearanceId: order.appearances[0]!.id,
+              type,
+              ...(type === 'ACCEPT' ? { eligibilityConfirmed: true } : {}),
+            },
+          }),
+        );
+      }
+      await act('ACCEPT', handler);
+      await act('ARRIVE', handler);
+      const appearanceId = order.appearances[0]!.id;
+      // Advance only this owned synthetic schedule, following C06's own fixture pattern.
+      // All state transitions, fee/profile snapshots and the completion time guard use real HTTP.
+      await api.pool.query(
+        "UPDATE booking_appearances SET report_at=clock_timestamp()-interval '3 hours',start_at=clock_timestamp()-interval '2 hours',end_at=clock_timestamp()-interval '1 hour',version=version+1,updated_at=clock_timestamp() WHERE id=$1",
+        [appearanceId],
+      );
+      order = data<BookingOrderData>(
+        await call(api, 'get', `/v1/player-bookings/orders/${order.id}`, { cookie: owner.cookie }),
+      );
+      await act('COMPLETE', owner);
+      expect(order.appearances[0]!.status).toBe('COMPLETED');
       const row = await g.createReview(owner.cookie, {
         commandId: randomUUID(),
         sourceKind: 'PLAYER_BOOKING',
@@ -292,12 +489,43 @@ describe(
           publicConsent: true,
         }),
       ).rejects.toMatchObject({ code: 'REVIEW_ALREADY_EXISTS' });
-      await g.reviewCommand(owner.cookie, row.id as string, {
-        commandId: randomUUID(),
-        expectedVersion: 2,
-        type: 'WITHDRAW',
-        reason: '本人撤回公开评价正文',
-      });
+      const blocker = await api.pool.connect();
+      try {
+        await blocker.query('BEGIN');
+        const pid = (await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid'))
+          .rows[0]!.pid;
+        await blocker.query('SELECT id FROM booking_appearances WHERE id=$1 FOR UPDATE', [
+          appearanceId,
+        ]);
+        const pending = g.publicReview(row.publicKey as string).then(
+          (value) => ({ value, error: null }),
+          (error) => ({ value: null, error }),
+        );
+        await eventually(
+          async () =>
+            (
+              await api.pool.query<{ waiting: boolean }>(
+                'SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid<>$1 AND $1=ANY(pg_blocking_pids(pid))) AS waiting',
+                [pid],
+              )
+            ).rows[0]!.waiting,
+          (v) => v,
+          'public review did not wait on the real source row',
+        );
+        await g.reviewCommand(owner.cookie, row.id as string, {
+          commandId: randomUUID(),
+          expectedVersion: 2,
+          type: 'WITHDRAW',
+          reason: '来源核验等待期间撤回公开评价',
+        });
+        await blocker.query('ROLLBACK');
+        const outcome = await pending;
+        expect(outcome.error).toMatchObject({ status: 404 });
+        expect(outcome.value).toBeNull();
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+      }
       await expect(g.publicReview(row.publicKey as string)).rejects.toMatchObject({ status: 404 });
     });
     test('sponsor requires independent review; reports deduplicate by publication and revocation never revives old key', async () => {
@@ -433,6 +661,249 @@ describe(
           reason: '不允许跳过赛事公开页面',
         }),
       ).rejects.toMatchObject({ code: 'SPONSOR_EVENT_NOT_PUBLIC' });
+    });
+    test('sponsor lock wait crossing its exact end cannot return old content or record an impression', async () => {
+      const row = await sponsor.save(owner.cookie, owner.orgId, null, {
+        commandId: randomUUID(),
+        region,
+        brand: '合成短时投放',
+        title: '跨锁等待结束边界',
+        body: '时段结束后不可展示',
+        startsAt: new Date(Date.now() - 3600000).toISOString(),
+        endsAt: new Date(Date.now() + 5000).toISOString(),
+      });
+      const id = row.id as string;
+      await sponsor.command(owner.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 1,
+        type: 'SUBMIT',
+        reason: '提交合成短时投放',
+      });
+      await sponsor.command(operator.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 2,
+        type: 'APPROVE',
+        reason: '独立审核合成短时投放',
+      });
+      const publication = await sponsor.command(owner.cookie, owner.orgId, id, {
+          commandId: randomUUID(),
+          expectedVersion: 3,
+          type: 'PUBLISH',
+          reason: '发布合成短时投放',
+        }),
+        key = publication.publicKey as string;
+      const blocker = await api.pool.connect();
+      try {
+        await blocker.query('BEGIN');
+        const pid = (await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid'))
+          .rows[0]!.pid;
+        await blocker.query(
+          'SELECT id FROM sponsorship_publications WHERE public_key=$1 FOR UPDATE',
+          [key],
+        );
+        const pending = sponsor.publicOne(key).then(
+          (value) => ({ value, error: null }),
+          (error) => ({ value: null, error }),
+        );
+        await eventually(
+          async () =>
+            (
+              await api.pool.query<{ waiting: boolean }>(
+                'SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid<>$1 AND $1=ANY(pg_blocking_pids(pid))) AS waiting',
+                [pid],
+              )
+            ).rows[0]!.waiting,
+          (v) => v,
+          'sponsor public read did not wait on its real publication row',
+        );
+        await eventually(
+          async () =>
+            (
+              await api.pool.query<{ expired: boolean }>(
+                'SELECT ends_at<=clock_timestamp() AS expired FROM sponsorship_campaigns WHERE id=$1',
+                [id],
+              )
+            ).rows[0]!.expired,
+          (v) => v,
+          'sponsor window did not end during the lock wait',
+          10000,
+        );
+        await blocker.query('ROLLBACK');
+        const outcome = await pending;
+        expect(outcome.error).toMatchObject({ status: 404 });
+        expect(outcome.value).toBeNull();
+        await expect(
+          sponsor.impression(key, { commandId: randomUUID() }, 'synthetic-window-source'),
+        ).rejects.toMatchObject({ status: 404 });
+        expect(
+          (
+            await api.pool.query(
+              'SELECT count(*) FROM sponsorship_impressions i JOIN sponsorship_publications p ON p.id=i.publication_id WHERE p.public_key=$1',
+              [key],
+            )
+          ).rows[0]!.count,
+        ).toBe('0');
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+      }
+    }, 20000);
+    test('offline ledger requires current org authority, independent entry review and a second publisher; private identifiers stay private', async () => {
+      const commandId = randomUUID();
+      const account = await ledger.create(owner.cookie, owner.orgId, {
+        commandId,
+        title: '合成公益线下账本',
+        description: '已授权线下记账；无支付业务',
+        authorizationConfirmed: true,
+      });
+      await expect(
+        ledger.get(stranger.cookie, owner.orgId, account.id as string),
+      ).rejects.toMatchObject({ status: 404 });
+      const added = await ledger.addEntry(owner.cookie, owner.orgId, account.id as string, {
+        commandId: randomUUID(),
+        expectedVersion: 1,
+        occurredOn: '2026-10-30',
+        label: '合成已发生场地支出',
+        kind: 'EXPENSE',
+        amountFen: -5000,
+      });
+      const entry = (added as { entry: { id: string; occurredOn: string } }).entry;
+      expect(entry.occurredOn).toBe('2026-10-30');
+      await expect(
+        ledger.command(owner.cookie, owner.orgId, account.id as string, {
+          commandId: randomUUID(),
+          expectedVersion: 2,
+          type: 'APPROVE_ENTRY',
+          entryId: entry.id,
+          entryVersion: 1,
+          reason: '不允许自己审批本人记录',
+        }),
+      ).rejects.toMatchObject({ status: 403 });
+      await ledger.command(handler.cookie, owner.orgId, account.id as string, {
+        commandId: randomUUID(),
+        expectedVersion: 2,
+        type: 'APPROVE_ENTRY',
+        entryId: entry.id,
+        entryVersion: 1,
+        reason: '另一管理员核对合成支出',
+      });
+      await expect(
+        ledger.command(owner.cookie, owner.orgId, account.id as string, {
+          commandId: randomUUID(),
+          expectedVersion: 3,
+          type: 'PUBLISH',
+          publicConsent: true,
+          reason: '创建人不得自行公示',
+        }),
+      ).rejects.toMatchObject({ code: 'LEDGER_INDEPENDENT_PUBLISHER' });
+      const published = await ledger.command(handler.cookie, owner.orgId, account.id as string, {
+        commandId: randomUUID(),
+        expectedVersion: 3,
+        type: 'PUBLISH',
+        publicConsent: true,
+        reason: '第二人核对后公示合成账目',
+      });
+      const key = published.publicKey as string;
+      const snapshot = await ledger.publicSnapshot(key);
+      expect(snapshot.approvedNetFen).toBe(-5000);
+      expect(JSON.stringify(snapshot)).not.toContain(owner.id);
+      expect(JSON.stringify(snapshot)).not.toContain(owner.orgId);
+      expect(snapshot.entries[0]).not.toHaveProperty('id');
+      expect(snapshot.entries[0]!.occurredOn).toBe('2026-10-30');
+      expect((await g.operationReceipt(owner.cookie, commandId)).id).toBe(account.id);
+      await ledger.command(owner.cookie, owner.orgId, account.id as string, {
+        commandId: randomUUID(),
+        expectedVersion: 4,
+        type: 'CLOSE',
+        reason: '永久关闭合成授权账本',
+      });
+      await expect(ledger.publicSnapshot(key)).rejects.toMatchObject({ status: 404 });
+      await expect(
+        ledger.addEntry(owner.cookie, owner.orgId, account.id as string, {
+          commandId: randomUUID(),
+          expectedVersion: 5,
+          occurredOn: '2026-10-30',
+          label: '关闭后不能记账',
+          kind: 'INCOME',
+          amountFen: 100,
+        }),
+      ).rejects.toMatchObject({ code: 'LEDGER_CLOSED' });
+    });
+    test('ledger correction is an independently reviewed exact reversal and republishing never revives the old snapshot key', async () => {
+      const account = await ledger.create(owner.cookie, owner.orgId, {
+        commandId: randomUUID(),
+        title: '合成冲销账本',
+        description: '只记录合成线下事实',
+        authorizationConfirmed: true,
+      });
+      const id = account.id as string;
+      const added = await ledger.addEntry(owner.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 1,
+        occurredOn: '2026-10-29',
+        label: '原合成收入',
+        kind: 'INCOME',
+        amountFen: 10000,
+      });
+      const original = (added as { entry: { id: string } }).entry;
+      await ledger.command(handler.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 2,
+        type: 'APPROVE_ENTRY',
+        entryId: original.id,
+        entryVersion: 1,
+        reason: '独立审核原合成收入',
+      });
+      const publicBefore = await ledger.command(handler.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 3,
+        type: 'PUBLISH',
+        publicConsent: true,
+        reason: '公示原始合成记账快照',
+      });
+      const oldKey = publicBefore.publicKey as string;
+      const reversal = {
+        commandId: randomUUID(),
+        expectedVersion: 4,
+        occurredOn: '2026-10-30',
+        label: '冲销原合成收入',
+        kind: 'REVERSAL',
+        amountFen: -10000,
+        reversesEntryId: original.id,
+      };
+      await expect(
+        ledger.addEntry(owner.cookie, owner.orgId, id, { ...reversal, amountFen: -9999 }),
+      ).rejects.toMatchObject({ code: 'LEDGER_REVERSAL_REFUSED' });
+      const reversed = await ledger.addEntry(owner.cookie, owner.orgId, id, reversal);
+      const reverseEntry = (reversed as { entry: { id: string } }).entry;
+      await expect(
+        ledger.addEntry(owner.cookie, owner.orgId, id, {
+          ...reversal,
+          commandId: randomUUID(),
+          expectedVersion: 5,
+        }),
+      ).rejects.toMatchObject({ code: 'LEDGER_ALREADY_REVERSED' });
+      expect((await ledger.publicSnapshot(oldKey)).approvedNetFen).toBe(10000);
+      await ledger.command(handler.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 5,
+        type: 'APPROVE_ENTRY',
+        entryId: reverseEntry.id,
+        entryVersion: 1,
+        reason: '独立审核精确反向冲销',
+      });
+      const fresh = await ledger.command(handler.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 6,
+        type: 'PUBLISH',
+        publicConsent: true,
+        reason: '发布包含冲销的新快照',
+      });
+      expect(fresh.publicKey).not.toBe(oldKey);
+      await expect(ledger.publicSnapshot(oldKey)).rejects.toMatchObject({ status: 404 });
+      const now = await ledger.publicSnapshot(fresh.publicKey as string);
+      expect(now.approvedNetFen).toBe(0);
+      expect(now.entries[1]!.reversesSeq).toBe(1);
     });
     test('arbitrary UUID, self-reported completion and no local verifier cannot manufacture a public review', async () => {
       await expect(

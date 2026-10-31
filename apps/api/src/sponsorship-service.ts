@@ -17,12 +17,10 @@ import {
   sponsorshipTransition,
 } from './governance-domain.js';
 import {
-  assertCityOperation,
   governanceActiveOrg,
   governanceFinish,
   governanceReceipt,
   governanceRegion,
-  regionContains,
 } from './city-operations-service.js';
 import type { GovernanceRegion } from '../../../packages/contracts/governance.js';
 type Row = Record<string, any>;
@@ -171,7 +169,7 @@ export class SponsorshipService extends GovernanceService {
       for (const row of refs.slice(0, q.limit)) {
         if (row.created_by === actor.user.id) continue;
         try {
-          await assertCityOperation(c, actor, {
+          await this.requireCityScope(c, actor, {
             orgId: row.org_id,
             region: region(row),
             action: 'SPONSOR_REVIEW',
@@ -263,7 +261,7 @@ export class SponsorshipService extends GovernanceService {
       const reviewing = ['APPROVE', 'REJECT'].includes(input.type);
       if (reviewing) {
         if (row.created_by === actor.user.id) throw forbidden();
-        await assertCityOperation(c, actor, {
+        await this.requireCityScope(c, actor, {
           orgId,
           region: region(row),
           action: 'SPONSOR_REVIEW',
@@ -320,20 +318,40 @@ export class SponsorshipService extends GovernanceService {
     });
   }
   private async publicRow(c: PoolClient, key: string) {
-    const row = (
+    const ref = (
       await c.query<Row>(
-        `SELECT s.*,p.id AS publication_id,p.public_key FROM sponsorship_publications p JOIN sponsorship_campaigns s ON s.id=p.campaign_id JOIN organizations o ON o.id=s.org_id AND o.status='ACTIVE' WHERE p.public_key=$1 AND p.revoked_at IS NULL AND s.status='APPROVED' AND p.campaign_version=s.version AND s.starts_at<=clock_timestamp() AND s.ends_at>clock_timestamp() FOR SHARE OF p,s,o`,
+        'SELECT s.id,s.org_id FROM sponsorship_publications p JOIN sponsorship_campaigns s ON s.id=p.campaign_id WHERE p.public_key=$1',
         [govKey(key)],
       )
     ).rows[0];
-    if (!row) throw notFound();
+    if (!ref) throw notFound();
+    const campaign = await this.row(c, ref.org_id, ref.id);
+    if (campaign.status !== 'APPROVED') throw notFound();
     try {
-      await this.sponsorEvent(c, row.org_id, row.event_id, true);
+      await this.sponsorEvent(c, campaign.org_id, campaign.event_id, true);
     } catch (error) {
       if (error instanceof ApiError) throw notFound();
       throw error;
     }
-    return row;
+    const row = (
+      await c.query<Row>(
+        'SELECT id AS publication_id,public_key,clock_timestamp() AS server_time FROM sponsorship_publications WHERE public_key=$1 AND campaign_id=$2 AND revoked_at IS NULL AND campaign_version=$3 AND $4::timestamptz<=clock_timestamp() AND $5::timestamptz>clock_timestamp() FOR SHARE',
+        [govKey(key), campaign.id, campaign.version, campaign.starts_at, campaign.ends_at],
+      )
+    ).rows[0];
+    if (!row) throw notFound();
+    this.checkAtCommit(c, 'sponsor-window:' + row.publication_id, async () => {
+      if (
+        !(
+          await c.query(
+            "SELECT p.id FROM sponsorship_publications p JOIN sponsorship_campaigns s ON s.id=p.campaign_id WHERE p.id=$1 AND p.revoked_at IS NULL AND s.status='APPROVED' AND p.campaign_version=s.version AND s.starts_at<=clock_timestamp() AND s.ends_at>clock_timestamp()",
+            [row.publication_id],
+          )
+        ).rowCount
+      )
+        throw notFound();
+    });
+    return { ...campaign, ...row };
   }
   private publicDto(row: Row) {
     return {
@@ -346,6 +364,7 @@ export class SponsorshipService extends GovernanceService {
       endsAt: iso(row.ends_at),
       region: region(row),
       measurement: MEASUREMENT,
+      serverTime: iso(row.server_time),
     };
   }
   async publicOne(key: string) {
@@ -362,20 +381,35 @@ export class SponsorshipService extends GovernanceService {
     return this.transaction(async (c) => {
       await governanceRegion(c, selected);
       const event = eventKey ? await this.publicAccess(c, eventKey) : null;
+      const ancestorIds = (
+        await c.query<{ region_id: string }>(
+          `WITH RECURSIVE ancestors AS (SELECT region_id,parent_region_id FROM region_catalog_nodes WHERE catalog_version=$1 AND region_id=$2 UNION ALL SELECT n.region_id,n.parent_region_id FROM region_catalog_nodes n JOIN ancestors a ON n.region_id=a.parent_region_id WHERE n.catalog_version=$1) SELECT region_id FROM ancestors`,
+          [selected.catalogVersion, selected.regionId],
+        )
+      ).rows.map((r) => r.region_id);
       const refs = (
         await c.query<Row>(
-          `SELECT s.*,p.public_key FROM sponsorship_publications p JOIN sponsorship_campaigns s ON s.id=p.campaign_id JOIN organizations o ON o.id=s.org_id AND o.status='ACTIVE' WHERE p.revoked_at IS NULL AND p.campaign_version=s.version AND s.status='APPROVED' AND s.starts_at<=clock_timestamp() AND s.ends_at>clock_timestamp() AND s.region_catalog_version=$1 AND (s.event_id IS NULL OR (s.event_id=$2 AND s.org_id=$3)) ORDER BY s.starts_at,s.id LIMIT 501`,
-          [selected.catalogVersion, event?.event.id ?? null, event?.pub.org_id ?? null],
+          `SELECT p.public_key FROM sponsorship_publications p JOIN sponsorship_campaigns s ON s.id=p.campaign_id JOIN organizations o ON o.id=s.org_id AND o.status='ACTIVE' WHERE p.revoked_at IS NULL AND p.campaign_version=s.version AND s.status='APPROVED' AND s.starts_at<=clock_timestamp() AND s.ends_at>clock_timestamp() AND s.region_catalog_version=$1 AND s.region_id=ANY($4::uuid[]) AND (s.event_id IS NULL OR (s.event_id=$2 AND s.org_id=$3)) ORDER BY (s.event_id IS NOT NULL) DESC,s.starts_at,s.id LIMIT $5`,
+          [
+            selected.catalogVersion,
+            event?.event.id ?? null,
+            event?.pub.org_id ?? null,
+            ancestorIds,
+            q.limit + 1,
+          ],
         )
       ).rows;
       const eligible: Row[] = [];
-      for (const row of refs) {
-        if (await regionContains(c, region(row), selected)) eligible.push(row);
-        if (eligible.length > q.limit) break;
+      for (const row of refs.slice(0, q.limit)) {
+        try {
+          eligible.push(await this.publicRow(c, row.public_key));
+        } catch (error) {
+          if (!(error instanceof ApiError) || error.status !== 404) throw error;
+        }
       }
       return {
         items: eligible.slice(0, q.limit).map((r) => this.publicDto(r)),
-        truncated: eligible.length > q.limit || refs.length > 500,
+        truncated: refs.length > q.limit,
         measurement: MEASUREMENT,
       };
     });

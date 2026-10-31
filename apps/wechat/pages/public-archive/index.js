@@ -18,7 +18,7 @@ Page({
   },
   async load() {
     const token = ui.begin(this);
-    this.setData({ loading: true, error: '' });
+    this.setData({ loading: true, error: '', archive: null, entries: [], notice: '' });
     try {
       const path = this.key
         ? '/v1/public/archives/' + this.key

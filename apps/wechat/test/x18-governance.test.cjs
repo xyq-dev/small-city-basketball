@@ -146,7 +146,13 @@ test('definite validation rejection releases journal; idempotency conflict does 
   assert.equal(h.gov.unknown({ status: 409, code: 'IDEMPOTENCY_CONFLICT' }), true);
 });
 test('case, city and review pages clear sensitive lists/forms on lifecycle reset', () => {
-  for (const route of ['governance', 'governance-reviews', 'city-operations']) {
+  for (const route of [
+    'governance',
+    'governance-reviews',
+    'city-operations',
+    'sponsorships',
+    'public-ledgers',
+  ]) {
     const h = fixture({ route });
     h.page.setData({
       items: [{ body: 'secret' }],
@@ -186,7 +192,13 @@ test('all X18 templates parse with direct binding operators and default/denied s
   const fs = require('node:fs');
   const { parseWxml } = require('./helpers/wxml.cjs');
   const { renderWxml } = require('./helpers/native-preview.cjs');
-  for (const route of ['governance', 'governance-reviews', 'city-operations', 'sponsorships']) {
+  for (const route of [
+    'governance',
+    'governance-reviews',
+    'city-operations',
+    'sponsorships',
+    'public-ledgers',
+  ]) {
     const h = fixture({ route });
     const source = fs.readFileSync(path.join(root, 'pages', route, 'index.wxml'), 'utf8');
     const mapping = JSON.parse(
@@ -225,6 +237,7 @@ test('sponsor only reports a visible current card and concurrent callbacks share
     disconnect() {},
   });
   h.page.setData({ mode: 'public', publicCard: { publicKey: 'a'.repeat(43) } });
+  h.page.armPublication(h.page.data.publicCard, 10000, Date.now());
   h.page.observe();
   callback({ intersectionRatio: 0.2 });
   await new Promise((r) => setImmediate(r));
@@ -237,4 +250,32 @@ test('sponsor only reports a visible current card and concurrent callbacks share
   callback({ intersectionRatio: 1 });
   await new Promise((r) => setImmediate(r));
   assert.equal(calls, 1);
+});
+test('offline money uses exact cents and rejects coercion, signs, excess fractions and out-of-range values', () => {
+  const h = fixture({ route: 'public-ledgers' });
+  const ledger = h.requireLocal('utils/public-ledger.js');
+  assert.equal(ledger.fen('0.29'), 29);
+  assert.equal(ledger.fen('1000000.00'), 100000000);
+  assert.equal(ledger.money(-5001), '-50.01');
+  for (const invalid of ['0', '-5', '+5', '1e2', '1.001', '1000000.01', '1,000', 'NaN'])
+    assert.throws(() => ledger.fen(invalid));
+});
+test('platform query modes are explicit and public ledger hide releases its polling timer', () => {
+  for (const route of ['governance', 'governance-reviews', 'city-operations']) {
+    const h = fixture({ route });
+    h.page.onLoad({ mode: 'platform' });
+    assert.equal(
+      route === 'city-operations' ? h.page.data.platform : h.page.data.mode,
+      route === 'city-operations' ? true : 'platform',
+    );
+  }
+  const h = fixture({ route: 'public-ledgers' });
+  h.page.onLoad({ publicKey: 'a'.repeat(43) });
+  h.page.onShow();
+  assert.equal(h.intervals.size, 1);
+  h.page.onHide();
+  assert.equal(h.intervals.size, 0);
+  assert.equal(h.page._timer, null);
+  assert.equal(h.page.data.publicSnapshot, null);
+  assert.equal(h.page.data.isPublic, true);
 });

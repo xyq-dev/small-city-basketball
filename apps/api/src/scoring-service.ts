@@ -1,3 +1,8 @@
+import {
+  administrativeResult,
+  exceptionResultSelect,
+  exceptionResultJoins,
+} from './match-exception-domain.js';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { PoolClient } from 'pg';
@@ -21,7 +26,7 @@ import type {
   MatchPlayerRoster,
 } from '@small-city-basketball/contracts';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from './service.js';
-import type { EventRow, OrgActor } from './service.js';
+import type { Actor, EventRow, OrgActor } from './service.js';
 import {
   projectProfessionalStatistics,
   professionalStatisticsDto,
@@ -85,6 +90,26 @@ const CONFIGURABLE_EVENTS = [
 ];
 const iso = (v: Date | string) => (v instanceof Date ? v.toISOString() : new Date(v).toISOString());
 export class ScoringService extends ApplicationService {
+  private readonly transactionActors = new WeakMap<PoolClient, Actor>();
+  protected override async lockActor(c: PoolClient, cookie: string | undefined): Promise<Actor> {
+    const actor = await super.lockActor(c, cookie);
+    this.transactionActors.set(c, actor);
+    return actor;
+  }
+  protected override async transaction<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
+    return super.transaction(async (c) => {
+      this.transactionActors.delete(c);
+      try {
+        const result = await work(c);
+        const actor = this.transactionActors.get(c);
+        if (actor) await this.ensureFreshSession(c, actor);
+        return result;
+      } finally {
+        this.transactionActors.delete(c);
+      }
+    });
+  }
+
   private async context(c: PoolClient, cookie: string | undefined, org: string) {
     return this.lockOrganization(c, await this.lockActor(c, cookie), org);
   }
@@ -139,6 +164,20 @@ export class ScoringService extends ApplicationService {
       [org, id],
     );
     if (head.rowCount) conflict('MATCH_ADJUDICATED', '本场存在生效中的弃权或取消裁定，不能记分');
+  }
+  private async adjudication(
+    c: PoolClient,
+    a: Access,
+  ): Promise<{ kind: 'FORFEIT' | 'CANCELLED' } | null> {
+    const proof = (
+      await c.query<Row>(
+        `SELECT ${exceptionResultSelect},to_jsonb(s) AS state FROM published_matches m LEFT JOIN scoring_states s ON s.org_id=m.org_id AND s.match_id=m.id ${exceptionResultJoins} WHERE m.org_id=$1 AND m.id=$2`,
+        [a.ctx.orgId, a.match.id],
+      )
+    ).rows[0];
+    if (!proof) throw notFound();
+    const result = administrativeResult({ ...a.match, ...proof });
+    return result ? { kind: result.kind } : null;
   }
   private async now(c: PoolClient, ctx: OrgActor): Promise<string> {
     const result = await c.query<{ now: Date }>('SELECT clock_timestamp() AS now');
@@ -349,7 +388,9 @@ export class ScoringService extends ApplicationService {
       }
     }
     const m = this.matchDto(a.match);
+    const adjudication = await this.adjudication(c, a);
     return {
+      ...(adjudication ? { adjudication } : {}),
       matchId: m.id,
       eventId: m.eventId,
       eventName: a.event.name,
@@ -436,15 +477,10 @@ export class ScoringService extends ApplicationService {
     const l = await this.lease(c, a);
     const held = !!(l?.expires_at && iso(l.expires_at) > now);
     const scorer = a.staff?.role === 'SCORER';
-    const adjudicated = !!(
-      await c.query(
-        'SELECT 1 FROM match_exception_heads WHERE org_id=$1 AND match_id=$2 AND active_request_id IS NOT NULL',
-        [a.ctx.orgId, a.match.id],
-      )
-    ).rowCount;
-    const writable = activeEvent(a.event.status) && !adjudicated;
+    const adjudication = await this.adjudication(c, a);
+    const writable = activeEvent(a.event.status) && !adjudication;
     return {
-      match: this.matchDto(a.match),
+      match: { ...this.matchDto(a.match), ...(adjudication ? { adjudication } : {}) },
       event: {
         id: a.event.id,
         name: a.event.name,
@@ -471,7 +507,7 @@ export class ScoringService extends ApplicationService {
         holderUserId: held ? l!.holder_user_id : null,
       },
       capabilities: {
-        canManageStaff: a.manager,
+        canManageStaff: a.manager && !adjudication,
         canPrepare: writable && a.manager && a.match.status === 'SCHEDULED',
         canAcquireControl:
           writable &&

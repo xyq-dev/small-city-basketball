@@ -1,0 +1,43 @@
+.sponsorship-slot {
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  margin: 20rpx 0;
+  padding: 24rpx;
+  border: 1px solid #e0e5ed;
+  border-radius: 20rpx;
+  background: #f8fafc;
+  color: #273244;
+}
+.ad-label {
+  display: inline-block;
+  padding: 6rpx 14rpx;
+  border: 1px solid #d4dce8;
+  border-radius: 10rpx;
+  color: #647184;
+  font-size: 22rpx;
+}
+.brand {
+  margin-top: 14rpx;
+  font-weight: 700;
+  font-size: 28rpx;
+}
+.title {
+  margin-top: 8rpx;
+  font-weight: 600;
+  font-size: 30rpx;
+}
+.body {
+  margin-top: 12rpx;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+.more {
+  margin-top: 14rpx;
+  color: #536780;
+  font-size: 24rpx;
+}

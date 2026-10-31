@@ -83,6 +83,7 @@ export interface PublicSponsorshipData {
   endsAt: string;
   region: GovernanceRegion;
   measurement: 'CLIENT_REPORTED_DEDUPLICATED';
+  serverTime: string;
 }
 export interface PublicLedgerEntryData {
   id: string;
@@ -119,4 +120,22 @@ export interface GovernanceReviewData {
   status: 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'WITHDRAWN';
   version: number;
   createdAt: string;
+}
+export interface PublicLedgerSnapshotData {
+  publicKey: string;
+  publishedAt: string;
+  title: string;
+  description: string;
+  asOf: string;
+  entries: {
+    seq: number;
+    occurredOn: string;
+    label: string;
+    kind: 'INCOME' | 'EXPENSE' | 'REVERSAL';
+    amountFen: number;
+    reversesSeq: number | null;
+  }[];
+  approvedNetFen: number;
+  entryCount: number;
+  notice: string;
 }

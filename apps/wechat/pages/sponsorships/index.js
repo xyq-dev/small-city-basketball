@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const gov = require('../../utils/governance');
 const regions = require('../../utils/regions');
+const sponsorship = require('../../utils/sponsorship');
 const PATH = '/pages/sponsorships/index';
 const initial = () => ({
   mode: 'manage',
@@ -34,16 +35,8 @@ const initial = () => ({
   measurementNotice:
     '展示数仅为客户端按发布批次和操作编号去重的上报数，不代表独立人数、真实观看或结算凭证。',
 });
-function publicCard(v) {
-  if (
-    !v ||
-    typeof v !== 'object' ||
-    !/^[A-Za-z0-9_-]{43}$/.test(v.publicKey || '') ||
-    v.label !== '广告／赞助' ||
-    v.measurement !== 'CLIENT_REPORTED_DEDUPLICATED'
-  )
-    throw new Error('赞助资料无效');
-  return v;
+function publicCard(raw) {
+  return sponsorship.card(raw);
 }
 function localParts(v) {
   const d = new Date(v);
@@ -77,11 +70,17 @@ Page({
   onShow() {
     this._visible = true;
     this.load();
+    if (this._publicKey && !this._publicPoll)
+      this._publicPoll = setInterval(() => {
+        if (this._visible && !this.data.busy && !this.data.loading) this.load();
+      }, 15000);
   },
   onHide() {
     this._visible = false;
     ui.close(this);
     this.stopObserver();
+    this.stopPublication();
+    this.stopPolling();
     this._viewer = null;
     this._catalog = null;
     const mode = this.data.mode;
@@ -93,6 +92,7 @@ Page({
   },
   onSessionReset() {
     this.stopObserver();
+    this.stopPublication();
     this._viewer = null;
     this.setData({
       ...initial(),
@@ -113,6 +113,7 @@ Page({
     if (!this._alive || !this._visible || this._invalid || this.data.busy) return;
     const t = ui.begin(this);
     this.stopObserver();
+    this.stopPublication();
     this.setData({
       loading: true,
       error: '',
@@ -124,11 +125,17 @@ Page({
     try {
       if (this.data.mode === 'public') {
         if (this._publicKey) {
+          const requestedAt = Date.now();
           const r = await api
             .getClient()
             .requestPublic('/v1/public/sponsorships/' + this._publicKey);
-          if (ui.live(this, t))
-            this.setData({ publicCard: publicCard(r.data), loading: false }, () => this.observe());
+          if (ui.live(this, t)) {
+            const value = publicCard(r.data),
+              receivedAt = Date.now(),
+              remaining = sponsorship.remaining(value, requestedAt, receivedAt);
+            this.armPublication(value, remaining, receivedAt);
+            this.setData({ publicCard: value, loading: false }, () => this.observe());
+          }
           return;
         }
         const catalog = await regions.fetchCatalog();
@@ -180,6 +187,8 @@ Page({
   mode(e) {
     if (this.data.busy) return;
     this.stopObserver();
+    this.stopPublication();
+    this.stopPolling();
     this._publicKey = null;
     this.setData({ mode: e.currentTarget.dataset.mode, selected: null });
     this.load();
@@ -407,11 +416,53 @@ Page({
     const key = e.currentTarget.dataset.key || this.data.selected?.publicKey;
     if (/^[A-Za-z0-9_-]{43}$/.test(key || '')) wx.navigateTo({ url: PATH + '?publicKey=' + key });
   },
+  publicationLive(key) {
+    return (
+      this._alive &&
+      this._visible &&
+      this.data.publicCard?.publicKey === key &&
+      Number.isFinite(this._publicDeadline) &&
+      Date.now() < this._publicDeadline
+    );
+  },
+  stopPublication() {
+    this._publicDeadline = 0;
+    this._windowSequence = (this._windowSequence || 0) + 1;
+    if (this._windowTimer) {
+      clearTimeout(this._windowTimer);
+      this._windowTimer = null;
+    }
+  },
+  stopPolling() {
+    if (this._publicPoll) {
+      clearInterval(this._publicPoll);
+      this._publicPoll = null;
+    }
+  },
+  armPublication(value, remaining, receivedAt) {
+    this.stopPublication();
+    this._publicDeadline = receivedAt + remaining;
+    const sequence = this._windowSequence;
+    this._windowTimer = setTimeout(
+      () => {
+        if (
+          sequence === this._windowSequence &&
+          this._visible &&
+          this.data.publicCard?.publicKey === value.publicKey
+        ) {
+          this.stopObserver();
+          this._publicDeadline = 0;
+          this._windowTimer = null;
+          this.setData({ publicCard: null, notice: '当前投放时段已结束。' });
+        }
+      },
+      Math.min(remaining, 2147483647),
+    );
+  },
   observe() {
     this.stopObserver();
     if (
-      !this._visible ||
-      !this.data.publicCard ||
+      !this.publicationLive(this.data.publicCard?.publicKey) ||
       typeof wx.createIntersectionObserver !== 'function'
     )
       return;
@@ -422,7 +473,7 @@ Page({
     observer.relativeToViewport().observe('#sponsor-public-card', (r) => {
       if (
         r.intersectionRatio >= 0.5 &&
-        this._visible &&
+        this.publicationLive(key) &&
         ui.held(this, token) &&
         this.data.publicCard?.publicKey === key
       ) {
@@ -448,10 +499,11 @@ Page({
     try {
       if (!record.commandId) {
         const commandId = await ui.uuid();
-        if (!this._visible || !ui.held(this, token)) return;
+        if (!this.publicationLive(key) || !ui.held(this, token)) return;
         record.commandId = commandId;
       }
-      await api
+      if (!this.publicationLive(key) || !ui.held(this, token)) return;
+      const response = await api
         .getClient()
         .request(
           '/v1/public/sponsorships/' + key + '/impressions',
@@ -459,8 +511,23 @@ Page({
           { commandId: record.commandId },
           true,
         );
+      if (
+        response.data?.commandId !== record.commandId ||
+        response.data?.publicKey !== key ||
+        response.data?.measurement !== 'CLIENT_REPORTED_DEDUPLICATED'
+      )
+        throw new Error('展示上报尚未确认');
       record.sent = true;
-    } catch {
+    } catch (error) {
+      if (
+        [404, 410].includes(error?.status) &&
+        this._visible &&
+        this.data.publicCard?.publicKey === key
+      ) {
+        this.stopObserver();
+        this.stopPublication();
+        this.setData({ publicCard: null });
+      }
     } finally {
       record.inflight = false;
     }

@@ -107,11 +107,15 @@ export class TencentLocationProvider implements LocationProvider {
     sourceCode: string,
     rawPoint?: LocalPoint,
   ): Promise<LocalLocationCandidate[]> {
-    if (keyword.trim().length < 1 || keyword.length > 80 || !/^[1-9]\d{5}$/.test(sourceCode))
+    if (
+      keyword.trim().length < 1 ||
+      Buffer.byteLength(keyword, 'utf8') > 96 ||
+      !/^[1-9]\d{5}$/.test(sourceCode)
+    )
       throw new ApiError(422, 'VALIDATION_ERROR', '请填写有效地区与地点关键词');
     const point = rawPoint ? localPoint(rawPoint) : undefined;
     const boundary = point
-      ? `nearby(${point.latitude},${point.longitude},10000)`
+      ? `region(${sourceCode},0,${point.latitude},${point.longitude})`
       : `region(${sourceCode},0)`;
     const data = await this.request('/ws/place/v1/search', {
       keyword,

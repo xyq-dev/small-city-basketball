@@ -33,9 +33,10 @@ const initial = () => ({
 });
 Page({
   data: initial(),
-  onLoad() {
+  onLoad(q = {}) {
     this._alive = true;
     this._visible = true;
+    if (q.mode === 'platform') this.setData({ platform: true });
   },
   onShow() {
     this._visible = true;
@@ -46,7 +47,7 @@ Page({
     ui.close(this);
     this._viewer = null;
     this._catalog = null;
-    this.setData(initial());
+    this.setData({ ...initial(), platform: this.data.platform });
   },
   onUnload() {
     this._alive = false;

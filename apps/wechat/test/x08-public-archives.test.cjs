@@ -95,3 +95,31 @@ test('private management layouts keep consent, source revoke and unknown-result 
     assert.match(preview.html, /PUBLIC_ARCHIVE/);
   }
 });
+
+test('a refreshing or unavailable public read clears the previous archive and ranking immediately', async () => {
+  const h = loadPage({ root, route: 'pages/public-archive/index' }),
+    api = h.requireLocal('utils/api.js');
+  let fail;
+  api.getClient = () => ({
+    sessionRevision: () => 1,
+    onSessionChange: () => () => {},
+    requestPublic: () =>
+      new Promise((resolve, reject) => {
+        fail = reject;
+      }),
+  });
+  h.page.key = 'A'.repeat(43);
+  h.page.setData({
+    archive: { displayName: '已撤回的旧姓名' },
+    entries: [{ key: 'old' }],
+    notice: '旧数据',
+  });
+  const reading = h.page.load();
+  assert.equal(h.page.data.archive, null);
+  assert.equal(h.page.data.entries.length, 0);
+  fail({ status: 503, code: 'PUBLIC_ARCHIVE_BUSY', message: '公开授权正在更新，请重新读取' });
+  await reading;
+  assert.equal(h.page.data.archive, null);
+  assert.equal(h.page.data.entries.length, 0);
+  assert.match(h.page.data.error, /授权正在更新/);
+});

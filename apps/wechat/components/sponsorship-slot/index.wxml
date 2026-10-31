@@ -1,0 +1,1 @@
+<view wx:if="{{visible && card}}" id="sponsorship-slot-card" class="sponsorship-slot" bindtap="open"><view class="ad-label">广告／赞助</view><view class="brand">{{card.brand}}</view><view class="title">{{card.title}}</view><view class="body">{{card.body}}</view><view class="more">查看当前投放 ›</view></view>

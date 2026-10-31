@@ -35,14 +35,14 @@
     <view class="board">
       <view class="board-meta">{{match.eventName}}</view>
       <view class="board-row">
-        <view class="board-team"><view class="board-name">{{match.home}}</view><view class="board-score">{{board ? board.home.score : '–'}}</view></view>
-        <view class="board-mid"><view class="board-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</view><view wx:if="{{board}}" class="board-clock">{{board.clockLabel}}</view><view wx:if="{{board}}" class="board-period">{{board.periodLabel}}</view><view wx:if="{{board}}" class="board-period">{{board.running ? '计时中' : '已暂停'}}</view></view>
-        <view class="board-team"><view class="board-name">{{match.away}}</view><view class="board-score">{{board ? board.away.score : '–'}}</view></view>
+        <view class="board-team"><view class="board-name">{{match.home}}</view><view class="board-score">{{board && !board.adjudicated ? board.home.score : '–'}}</view></view>
+        <view class="board-mid"><view class="board-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-clock">{{board.clockLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-period">{{board.periodLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-period">{{board.running ? '计时中' : '已暂停'}}</view></view>
+        <view class="board-team"><view class="board-name">{{match.away}}</view><view class="board-score">{{board && !board.adjudicated ? board.away.score : '–'}}</view></view>
       </view>
-      <view wx:if="{{board}}" class="board-sub">犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>
+      <view wx:if="{{board && !board.adjudicated}}" class="board-sub">犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>
     </view>
 
-    <view wx:if="{{board && board.proMode}}" class="card">
+    <view wx:if="{{board && board.proMode && !board.adjudicated}}" class="card">
       <view class="subtitle">专业统计与实际阵容时间</view>
       <view class="muted small">上场时间截至最近读取的权威时钟快照。校时不虚增时间，未登场球员不会计为出场。</view>
       <view wx:for="{{proGroups}}" wx:key="key" class="section">
@@ -65,6 +65,7 @@
     </view>
 
     <view wx:if="{{match.closed}}" class="notice warning">本届赛事已完赛或归档，不再接受记分。</view>
+    <view wx:elif="{{match.adjudication}}" class="notice warning">{{match.statusLabel}}，不能记分；本场不计个人样本或出场。</view>
     <block wx:elif="{{!held && !offlineDraft}}">
       <view wx:if="{{leaseNote}}" class="notice small">{{leaseNote}}</view>
       <view wx:if="{{!board}}" class="notice small">比赛尚未准备。请赛事负责人在比赛详情中准备比赛。</view>

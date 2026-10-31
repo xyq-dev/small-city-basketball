@@ -388,9 +388,14 @@ describe(
           `Migration checksum mismatch: ${original.name}`,
         );
         expect(await userFacts()).toEqual(legacyUser);
-        expect((await pool!.query('SELECT count(*)::int n FROM schema_migrations')).rows[0].n).toBe(
-          24,
-        );
+        const expectedNames = (await readdir(migrations))
+          .filter((name) => /^\d+_[a-z0-9_]+\.sql$/.test(name))
+          .sort();
+        expect(
+          (await pool!.query('SELECT name FROM schema_migrations ORDER BY name')).rows.map(
+            (row) => row.name,
+          ),
+        ).toEqual(expectedNames);
       } finally {
         await pool!.query('UPDATE schema_migrations SET checksum=$2 WHERE name=$1', [
           original.name,

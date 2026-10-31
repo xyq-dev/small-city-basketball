@@ -41,6 +41,8 @@ import {
   assign,
   closeHarness,
   createScoringHarness,
+  defaultRules,
+  scoringRulesPath,
   finish,
   published,
   start,
@@ -1571,7 +1573,13 @@ describe(
         schedule,
         fullAllocations(schedule, resource, `${registration.event.startDate}T09:00:00+08:00`),
       );
-      data(await publish(h.api, h.owner, schedule));
+      const publication = data<any>(await publish(h.api, h.owner, schedule));
+      data(
+        await call(h.api, 'put', scoringRulesPath(h.owner.orgId, created.id), {
+          cookie: h.owner.cookie,
+          body: { expectedEventVersion: publication.event.version, ...defaultRules() },
+        }),
+      );
       const matches = data<any[]>(
         await call(h.api, 'get', matchesPath(h.owner.orgId, created.id), {
           cookie: h.owner.cookie,
@@ -1581,6 +1589,12 @@ describe(
         matchId = matches[0].id,
         base = `${root}/matches/${matchId}/exceptions`;
       await assign(h, matchId, h.otherOwner, 'RESULT_REVIEWER');
+      await assign(h, matchId, h.owner, 'SCORER');
+      const ready = await workbench(h, matchId);
+      await act(h, matchId, h.owner, {
+        type: 'PREPARE_MATCH',
+        payload: { expectedEventVersion: ready.event.version },
+      });
       const current = data<any>(await call(h.api, 'get', base, { cookie: h.owner.cookie }));
       const proposed = data<{ requestId: string }>(
         await call(h.api, 'post', base + '/proposals', {
@@ -1611,6 +1625,12 @@ describe(
           },
         }),
       );
+      const adjudicatedWb = await workbench(h, matchId);
+      expect((adjudicatedWb.match as any).adjudication).toEqual({ kind: 'CANCELLED' });
+      expect(adjudicatedWb.capabilities.canPrepare).toBe(false);
+      expect(adjudicatedWb.capabilities.canManageStaff).toBe(false);
+      expect(adjudicatedWb.match.status).toBe('READY');
+      expect(adjudicatedWb.snapshot?.adjudication).toEqual({ kind: 'CANCELLED' });
       const eventStats = data<any>(
         await call(h.api, 'get', `${root}/events/${eventId}/player-statistics`, {
           cookie: h.owner.cookie,

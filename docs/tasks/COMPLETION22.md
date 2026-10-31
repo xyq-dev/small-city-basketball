@@ -16,28 +16,28 @@
 
 | ID | 用户功能 | 当前状态 | 负责人／恢复卡 | 必须交付的验收边界 |
 | --- | --- | --- | --- | --- |
-| F01 | 季军赛 | IMPLEMENTING | competition／X01 | 半决赛负者、第三名、8队16场、独立确认与更正失效 |
-| F02 | 更多赛制与异常处理 | IMPLEMENTING | competition＋scheduling／X01、X03 | 双循环、弃权／取消独立裁定、排名与晋级联动，不伪造个人统计 |
-| F03 | 排程优化 | IMPLEMENTING | scheduling／X03 | 有界全局优化、首末场均衡、淘汰轮次已知对阵自动排时、硬冲突复检 |
-| F04 | 办赛向导与模板 | IMPLEMENTING | scheduling／X03 | 模板保存／版本／实例化、配置到发布的真实阻塞引导 |
-| F05 | 公开报名招募 | IMPLEMENTING | recruitment／X05 | 正式赛程前独立招募、申请／独立审核／撤销与公开白名单 |
-| F06 | 批量录入与报名邀请 | IMPLEMENTING | recruitment／X05 | 导入预览逐行错误、幂等提交、本届邀请、接受不授机构权限 |
-| F07 | 宣传海报 | IMPLEMENTING | recruitment／X05 | 四类真实来源海报及PNG导出、照片许可版本与每次下载复检 |
-| F08 | 专业技术统计 | IMPLEMENTING | statistics／X08 | 投篮／命中率、篮板助攻抢断盖帽失误，采集模式和旧赛兼容 |
-| F09 | 阵容与上场时间 | IMPLEMENTING | statistics／X08 | 首发／换人／权威时钟区间／实际上场时间及报表 |
-| F10 | 可靠离线记分 | IMPLEMENTING | statistics／X08 | 持久原命令队列、同账号租约fence、顺序同步、冲突拒绝与恢复 |
-| F11 | 公开长期档案 | IMPLEMENTING | statistics／X08 | 独立发布授权、公共球队球员页、跨届有效榜单、身份关联不按同名 |
-| F12 | 全国版界面 | IMPLEMENTING | local／X12 | 五导航、全国首页、旧视频／赛事／预约入口保留与移动布局 |
-| F13 | GPS与附近发现 | IMPLEMENTING | local／X12 | 按需定位、手选回退、受控地图adapter、真实距离与地点导航 |
-| F14 | 球场预约 | IMPLEMENTING | local／X12 | 经营方审核、时隙／库存原子锁位、过期释放、核销、天气取消 |
-| F15 | 同城人员服务 | IMPLEMENTING | local／X12 | 资质人工审核、覆盖／档期、接单到场交付、改期及争议 |
-| F16 | 球队约赛 | IMPLEMENTING | local／X12 | 双方队长确认、真实地点／时段、球队与场地冲突 |
-| F17 | 工作人员配置界面 | IMPLEMENTING | root／X17 | 机构成员／角色、赛事工作人员、现有授权API的真实消费者 |
-| F18 | 客服与治理 | IMPLEMENTING | governance／X18 | 工单分派／回复／申诉／举报、真实参与评价与访问隔离 |
-| F19 | 城市运营后台 | IMPLEMENTING | governance／X18 | 城市＋机构＋操作范围、供给质量与下架，不跨机构越权 |
-| F20 | 广告与赞助 | IMPLEMENTING | governance／X18 | 城市／赛事／时段审批投放、撤销、真实曝光去重统计 |
-| F21 | 经费公示 | IMPLEMENTING | governance／X18 | 线下账务追加更正、审批／授权公示，不做钱包或募款 |
-| F22 | 账号自助服务 | IMPLEMENTING | root／X22 | 邮箱验证与找回、短期单次token、枚举防护、会话撤销、真实投递adapter |
+| F01 | 季军赛 | TESTING | competition／X01 | 半决赛负者、第三名、8队16场、独立确认与更正失效 |
+| F02 | 更多赛制与异常处理 | TESTING | competition＋scheduling／X01、X03 | 双循环、弃权／取消独立裁定、排名与晋级联动，不伪造个人统计 |
+| F03 | 排程优化 | TESTING | scheduling／X03 | 有界全局优化、首末场均衡、淘汰轮次已知对阵自动排时、硬冲突复检 |
+| F04 | 办赛向导与模板 | TESTING | scheduling／X03 | 模板保存／版本／实例化、配置到发布的真实阻塞引导 |
+| F05 | 公开报名招募 | TESTING | recruitment／X05 | 正式赛程前独立招募、申请／独立审核／撤销与公开白名单 |
+| F06 | 批量录入与报名邀请 | TESTING | recruitment／X05 | 导入预览逐行错误、幂等提交、本届邀请、接受不授机构权限 |
+| F07 | 宣传海报 | TESTING | recruitment／X05 | 四类真实来源海报及PNG导出、照片许可版本与每次下载复检 |
+| F08 | 专业技术统计 | TESTING | statistics／X08 | 投篮／命中率、篮板助攻抢断盖帽失误，采集模式和旧赛兼容 |
+| F09 | 阵容与上场时间 | TESTING | statistics／X08 | 首发／换人／权威时钟区间／实际上场时间及报表 |
+| F10 | 可靠离线记分 | TESTING | statistics／X08 | 持久原命令队列、同账号租约fence、顺序同步、冲突拒绝与恢复 |
+| F11 | 公开长期档案 | TESTING | statistics／X08 | 独立发布授权、公共球队球员页、跨届有效榜单、身份关联不按同名 |
+| F12 | 全国版界面 | TESTING | local／X12 | 五导航、全国首页、旧视频／赛事／预约入口保留与移动布局 |
+| F13 | GPS与附近发现 | TESTING | local／X12 | 按需定位、手选回退、受控地图adapter、真实距离与地点导航 |
+| F14 | 球场预约 | TESTING | local／X12 | 经营方审核、时隙／库存原子锁位、过期释放、核销、天气取消 |
+| F15 | 同城人员服务 | TESTING | local／X12 | 资质人工审核、覆盖／档期、接单到场交付、改期及争议 |
+| F16 | 球队约赛 | TESTING | local／X12 | 双方队长确认、真实地点／时段、球队与场地冲突 |
+| F17 | 工作人员配置界面 | TESTING | root／X17 | 机构成员／角色、赛事工作人员、现有授权API的真实消费者 |
+| F18 | 客服与治理 | TESTING | governance／X18 | 工单分派／回复／申诉／举报、真实参与评价与访问隔离 |
+| F19 | 城市运营后台 | TESTING | governance／X18 | 城市＋机构＋操作范围、供给质量与下架，不跨机构越权 |
+| F20 | 广告与赞助 | TESTING | governance／X18 | 城市／赛事／时段审批投放、撤销、真实曝光去重统计 |
+| F21 | 经费公示 | TESTING | governance／X18 | 线下账务追加更正、审批／授权公示，不做钱包或募款 |
+| F22 | 账号自助服务 | TESTING | root／X22 | 邮箱验证与找回、短期单次token、枚举防护、会话撤销、真实投递adapter |
 
 ## 所有权、共享接线与迁移号
 
@@ -92,3 +92,11 @@ root已将模板/招募/海报/异常裁定/同城/城市治理service接入API 
 PR [33](https://github.com/xyq-dev/small-city-basketball/pull/33)，候选7d06d57，Actions run41155614997三job均失败。API归档明确033_x02_match_exceptions.sql于char19065报42601 syntax error at end of input；同一迁移阻断新旧PG与原生真API，不能把这些当功能验收。production在migrate-and-grant同阶段失败，未进入HTTPS/重启/恢复；admin仅I2新fingerprint test格式失败，根已格式化，全格式复跑通过。033整个事务rollback从未成功应用，此时修草稿拆长CASE条件，不改001—024；等待第二轮真实PG验证，不预先记成功。
 
 本片还整合一次性COURT核销、C06冲突REJECTED永久回执、X12不存在teams.status与实际court停用校验修复、公共行政/季军显示、专业统计/私有赛季行政源排除、I2b兼容升级/中性列及I3完整恢复隔离；实际核销/多方锁位/撤销等待/账号并发用例已写但仍待真PG。根定向Page14与路由9通过、类型检查通过；未经测试的新功能继续复跑。X21账本与嵌入赞助卡由治理owner继续；所有22项持续推进。下一条同步这片后修首轮真实错误，继续完整候选测试，不结束任务或合并失败分支。
+
+## 检查点8：22项核心消费者已写，进入联合验收与修复
+
+X21线下授权账本/独立审批与冲销公示、X20可视曝光与到期清卡组件已接入；首页/赛事只按本人明确所选地区请求，不猜城市，不默认读取GPS。X17权限用例纠正既有EVENT_MANAGER负例应403，另增完全无成员关系404；未放宽授权。X08公共权限撤回NOWAIT/RR与私有/记分尾部session复核、X12精确自然city grant尾核、X18同类撤回/自然期限定核已整合。I4/I5非空模板、专业/离线、档案、招募/邀请/PNG与新X12/X18/X22helper源码已写，最终主接线和实际恢复仍待验证。父表转TESTING代表已有代码正在测试／修复，不是DONE。
+
+第二轮630c7f4、run41156417729：完整迁移/最小权限成功，production附加PG18过1失败（旧C22 barrier仍匹配旧users锁SQL，观察器已补，不拉长超时）。API PG468过8失败5跳过、43文件过8失败：X01季军3/3、X03优化/双循环/模板11/11、X22真实账号恢复8/8已过；X02 5/6，列表marker缺失由后续X03G补，其后段未运行不能补算。其余失败包括旧包测试残留24/两迁移常量、旧schema新模板表依赖、C23合成身份、同城conditional错误scope与天气SQLversion歧义、root权限预期、治理合成订单缺当前费率；已分owner逐项修，绝不跳过／放宽真实规则。原生真HTTP/PG12过4失败，三旧fixture的显式优化确认步骤由X03补，不能写全绿。admin旧Page测试替身缺requestPublic导致卡住，根已修并给慢媒体等待加有界超时。
+
+根本地最近完整API70文件904通过，typecheck通过；原生此前902项901通过/1既有Windows跳过。新增嵌入组件与本片继续复跑，不混作这组旧本地证据。接下来同步并启下一完整候选，读取实际数据库/HTTP失败、完成全部helper接线和非空恢复、审查后才考虑合并；未部署生产，地图/邮件真实外部投递与微信真机仍单列未验。

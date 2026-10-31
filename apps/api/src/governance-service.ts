@@ -65,6 +65,60 @@ const maybeRegion = (r: Row): GovernanceRegion | null =>
   r.region_id ? { catalogVersion: r.region_catalog_version, regionId: r.region_id } : null;
 
 export class GovernanceService extends StandingsService {
+  private readonly transactionActors = new WeakMap<PoolClient, Map<string, Actor>>();
+  private readonly transactionScopes = new WeakMap<PoolClient, Map<string, () => Promise<void>>>();
+  protected checkAtCommit(c: PoolClient, key: string, check: () => Promise<void>) {
+    this.transactionScopes.get(c)?.set(key, check);
+  }
+  protected async requireCityScope(
+    c: PoolClient,
+    actor: Actor,
+    input: Parameters<typeof assertCityOperation>[2],
+  ) {
+    const authorization = await assertCityOperation(c, actor, input);
+    if (authorization.grantId) {
+      const grantId = authorization.grantId;
+      const key = [
+        actor.user.id,
+        input.orgId,
+        input.region.catalogVersion,
+        input.region.regionId,
+        input.action,
+        grantId,
+      ].join(':');
+      this.transactionScopes.get(c)?.set(key, async () => {
+        const current = await assertCityOperation(c, actor, { ...input, grantId });
+        if (
+          current.grantId !== grantId ||
+          current.platformOperator !== authorization.platformOperator
+        )
+          throw forbidden();
+      });
+    }
+    return authorization;
+  }
+  protected override async lockActor(c: PoolClient, cookie?: string) {
+    const actor = await super.lockActor(c, cookie);
+    this.transactionActors.get(c)?.set(actor.sessionId, actor);
+    return actor;
+  }
+  protected override async transaction<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
+    return super.transaction(async (c) => {
+      const actors = new Map<string, Actor>();
+      const scopes = new Map<string, () => Promise<void>>();
+      this.transactionActors.set(c, actors);
+      this.transactionScopes.set(c, scopes);
+      try {
+        const value = await work(c);
+        for (const check of scopes.values()) await check();
+        for (const actor of actors.values()) await this.ensureFreshSession(c, actor);
+        return value;
+      } finally {
+        this.transactionActors.delete(c);
+        this.transactionScopes.delete(c);
+      }
+    });
+  }
   readonly governanceOptions: GovernanceOptions;
   constructor(pool: Pool, options: ApiOptions, governanceOptions: GovernanceOptions = {}) {
     super(pool, options);
@@ -136,7 +190,7 @@ export class GovernanceService extends StandingsService {
         await this.govAdmin(c, actor, row.org_id);
       } catch (error) {
         if (!(error instanceof ApiError) || ![403, 404].includes(error.status)) throw error;
-        await assertCityOperation(c, actor, {
+        await this.requireCityScope(c, actor, {
           orgId: row.org_id,
           region: maybeRegion(row)!,
           action: 'SPONSOR_REVIEW',
@@ -312,7 +366,7 @@ export class GovernanceService extends StandingsService {
       row.region_id
     ) {
       try {
-        const access = await assertCityOperation(c, actor, {
+        const access = await this.requireCityScope(c, actor, {
           orgId: row.org_id,
           region: maybeRegion(row)!,
           action: 'CASE_MANAGE',
@@ -643,7 +697,7 @@ export class GovernanceService extends StandingsService {
         if (!user) throw notFound();
         if (!(await governanceOperator(c, user.id))) {
           if (!ctx.row.region_id || !input.grantId) throw forbidden();
-          const auth = await assertCityOperation(
+          const auth = await this.requireCityScope(
             c,
             { user, sessionId: '' },
             {
@@ -988,18 +1042,26 @@ export class GovernanceService extends StandingsService {
         )
       ).rows[0];
       if (!r) throw notFound();
+      await governanceActiveOrg(c, r.org_id);
       try {
         await this.verifiedBooking(c, r.source_kind, r.source_id, r.author_id);
       } catch (error) {
         if (error instanceof ApiError) throw notFound();
         throw error;
       }
+      const current = (
+        await c.query<Row>(
+          "SELECT score,body,created_at FROM governance_reviews WHERE id=$1 AND public_key=$2 AND status='PUBLISHED' FOR SHARE",
+          [r.id, publicKey],
+        )
+      ).rows[0];
+      if (!current) throw notFound();
       return {
         publicKey,
-        score: r.score,
-        body: r.body,
+        score: current.score,
+        body: current.body,
         authorLabel: '已完成服务的参与者',
-        createdAt: iso(r.created_at),
+        createdAt: iso(current.created_at),
         notice: '基于服务端核验的完成记录；不代表已付款，不公开账号或订单编号。',
       };
     });

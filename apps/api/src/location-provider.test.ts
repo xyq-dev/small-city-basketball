@@ -51,6 +51,17 @@ describe('X12 bounded fixed-host location adapter (synthetic transport only)', (
       }
     }
   });
+  test('POI search keeps its selected administrative boundary even with an explicit origin', async () => {
+    const transport = vi.fn(async () => response({ status: 0, data: [] }));
+    const adapter = new TencentLocationProvider('synthetic-key', transport);
+    await adapter.search('合成球场', '440981', point);
+    const [url] = transport.mock.calls[0]! as unknown as [string, RequestInit];
+    expect(new URL(url).searchParams.get('boundary')).toBe('region(440981,0,22.9,110.8)');
+    await expect(adapter.search('合成'.repeat(20), '440981')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
   test('POI remains map evidence rather than inventory or a guaranteed order', async () => {
     const adapter = new TencentLocationProvider(
       'synthetic-key',

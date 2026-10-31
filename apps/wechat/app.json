@@ -54,7 +54,8 @@
     "pages/city-operations/index",
     "pages/sponsorships/index",
     "pages/public-archives/index",
-    "pages/public-archive/index"
+    "pages/public-archive/index",
+    "pages/public-ledgers/index"
   ],
   "window": {
     "navigationBarTitleText": "小城市篮球",
@@ -70,7 +71,8 @@
   "usingComponents": {
     "scb-nav": "/components/navigation/index",
     "scb-header": "/components/header/index",
-    "scb-icon": "/components/icon/index"
+    "scb-icon": "/components/icon/index",
+    "sponsorship-slot": "/components/sponsorship-slot/index"
   },
   "permission": {
     "scope.userLocation": {

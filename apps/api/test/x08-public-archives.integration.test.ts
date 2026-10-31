@@ -1,8 +1,10 @@
+import type { Pool } from 'pg';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { PublicArchivesService } from '../src/public-archives-service.js';
 import { team } from './p03-support.js';
-import { ORIGIN, testDatabaseUrl } from './support.js';
+import { hashToken, readSessionToken } from '../src/security.js';
+import { ORIGIN, testDatabaseUrl, login } from './support.js';
 import {
   acquire,
   act,
@@ -31,7 +33,7 @@ describe(
     afterAll(async () => {
       if (h) await closeHarness(h);
     });
-    async function scored() {
+    async function scored(target = h.leader) {
       const pair = await Promise.all([
         team(h.api, h.owner, '合成公共主' + randomUUID().slice(0, 6), h.leader, [
           '合成甲',
@@ -71,7 +73,7 @@ describe(
       const bindingId = randomUUID();
       await h.api.pool.query(
         "INSERT INTO team_member_bindings(id,org_id,team_id,member_id,user_id,source,join_code_id) VALUES($1,$2,$3,$4,$5,'JOIN_CODE',$6)",
-        [bindingId, h.owner.orgId, teamId, memberId, h.leader.id, codeId],
+        [bindingId, h.owner.orgId, teamId, memberId, target.id, codeId],
       );
       return { matchId: id, eventId: f.event.event.id, teamId, memberId, bindingId, lease };
     }
@@ -218,6 +220,110 @@ describe(
         ),
       ).toBe(false);
     });
+    test('concurrent source/profile withdrawal cannot return the pre-withdrawal archive, and a busy consent row fails closed', async () => {
+      const f = await scored(h.otherOwner),
+        p = (await s.workspace(h.otherOwner.cookie)).profiles.find((p) => p.kind === 'PLAYER')!;
+      const nominated = await source(f, p);
+      await s.sourceCommand(h.otherOwner.cookie, nominated.id, {
+        commandId: randomUUID(),
+        expectedVersion: 1,
+        type: 'CONSENT',
+        playerConsent: true,
+        reason: '本人独立同意并发撤回验证',
+      });
+      expect((await s.publicOne(p.publicKey!, 'privacy')).points).toBe(2);
+      function pausedReader() {
+        let observed!: () => void,
+          unblock!: () => void,
+          once = true;
+        const started = new Promise<void>((resolve) => {
+            observed = resolve;
+          }),
+          resume = new Promise<void>((resolve) => {
+            unblock = resolve;
+          });
+        const pool = {
+          query: h.api.pool.query.bind(h.api.pool),
+          async connect() {
+            const c = await h.api.pool.connect();
+            return {
+              async query(sql: string, args?: any[]) {
+                const result = await c.query(sql, args);
+                if (once && sql.startsWith('SELECT p.*,k.consented_at')) {
+                  once = false;
+                  observed();
+                  await resume;
+                }
+                return result;
+              },
+              release() {
+                c.release();
+              },
+            };
+          },
+        };
+        return {
+          reader: new PublicArchivesService(pool as unknown as Pool, {
+            databaseUrl: testDatabaseUrl(),
+            appOrigin: ORIGIN,
+          }),
+          started,
+          release: () => unblock(),
+        };
+      }
+      const sourceGate = pausedReader(),
+        readingSource = sourceGate.reader.publicOne(p.publicKey!, 'privacy');
+      await Promise.race([
+        sourceGate.started,
+        readingSource.then(() => {
+          throw Error('Public read completed before concurrency gate');
+        }),
+      ]);
+      await s.sourceCommand(h.otherOwner.cookie, nominated.id, {
+        commandId: randomUUID(),
+        expectedVersion: 2,
+        type: 'REVOKE',
+        reason: '本人在读取快照后撤回来源',
+      });
+      sourceGate.release();
+      const afterSource = await readingSource;
+      expect(afterSource.points).toBeNull();
+      expect(afterSource.recordedMatchCount).toBe(0);
+      expect(afterSource.recentRecords).toEqual([]);
+      const blocker = await h.api.pool.connect();
+      try {
+        await blocker.query('BEGIN');
+        await blocker.query('SELECT id FROM public_archive_profiles WHERE id=$1 FOR UPDATE', [
+          p.id,
+        ]);
+        await expect(s.publicOne(p.publicKey!, 'privacy')).rejects.toMatchObject({
+          status: 503,
+          code: 'PUBLIC_ARCHIVE_BUSY',
+        });
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+      }
+      const profileGate = pausedReader(),
+        readingProfile = profileGate.reader.publicOne(p.publicKey!, 'privacy');
+      await Promise.race([
+        profileGate.started,
+        readingProfile.then(() => {
+          throw Error('Public read completed before concurrency gate');
+        }),
+      ]);
+      const current = (await s.workspace(h.otherOwner.cookie)).profiles.find(
+        (row) => row.id === p.id,
+      )!;
+      await s.command(h.otherOwner.cookie, p.id, {
+        commandId: randomUUID(),
+        expectedVersion: current.version,
+        type: 'REVOKE',
+        reason: '本人在读取快照后撤回档案',
+      });
+      profileGate.release();
+      await expect(readingProfile).rejects.toMatchObject({ status: 404 });
+    });
     test('current publisher authority and organization state gate public sources; subject can revoke even after organization suspension', async () => {
       const f = await scored();
       const p = (await s.workspace(h.leader.cookie)).profiles.find((p) => p.kind === 'PLAYER')!;
@@ -242,6 +348,94 @@ describe(
         reason: '本人在机构停用后撤销公开',
       });
       expect(revoked.status).toBe('REVOKED');
+    });
+    test('private writes, cached operation replies and workspace recheck natural session expiry after database waits', async () => {
+      let cookie = h.otherOwner.cookie;
+      const profile = (await s.workspace(cookie)).profiles.find((p) => p.kind === 'PLAYER')!;
+      const original = {
+        commandId: randomUUID(),
+        expectedVersion: profile.version,
+        type: 'UPDATE',
+        displayName: '合成尾部会话核验',
+      };
+      const accepted = await s.command(cookie, profile.id, original);
+      async function expireSoon() {
+        await h.api.pool.query(
+          "UPDATE sessions SET expires_at=clock_timestamp()+interval '1 second' WHERE token_hash=$1",
+          [hashToken(readSessionToken(cookie)!)],
+        );
+      }
+      function slowService(kind: 'operation' | 'workspace') {
+        let delayed = false;
+        const pool = {
+          query: h.api.pool.query.bind(h.api.pool),
+          async connect() {
+            const c = await h.api.pool.connect();
+            return {
+              async query(sql: string, args?: any[]) {
+                const result = await c.query(sql, args);
+                if (
+                  !delayed &&
+                  ((kind === 'operation' && sql.includes('pg_advisory_xact_lock')) ||
+                    (kind === 'workspace' && sql.includes('WHERE g.profile_id=$1 AND g.status<>')))
+                ) {
+                  delayed = true;
+                  await c.query('SELECT pg_sleep(1.1)');
+                }
+                return result;
+              },
+              release() {
+                c.release();
+              },
+            };
+          },
+        };
+        return {
+          service: new PublicArchivesService(pool as unknown as Pool, {
+            databaseUrl: testDatabaseUrl(),
+            appOrigin: ORIGIN,
+          }),
+          hit: () => delayed,
+        };
+      }
+      await expireSoon();
+      const replay = slowService('operation');
+      await expect(replay.service.command(cookie, profile.id, original)).rejects.toMatchObject({
+        status: 401,
+      });
+      expect(replay.hit()).toBe(true);
+      cookie = await login(h.api, h.otherOwner);
+      await expireSoon();
+      const fresh = slowService('operation'),
+        newCommand = randomUUID();
+      await expect(
+        fresh.service.command(cookie, profile.id, {
+          commandId: newCommand,
+          expectedVersion: accepted.version,
+          type: 'UPDATE',
+          displayName: '不得在过期后写入',
+        }),
+      ).rejects.toMatchObject({ status: 401 });
+      expect(fresh.hit()).toBe(true);
+      expect(
+        (
+          await h.api.pool.query('SELECT 1 FROM public_archive_operations WHERE command_id=$1', [
+            newCommand,
+          ])
+        ).rowCount,
+      ).toBe(0);
+      expect(
+        (
+          await h.api.pool.query('SELECT display_name FROM public_archive_profiles WHERE id=$1', [
+            profile.id,
+          ])
+        ).rows[0]!.display_name,
+      ).toBe(accepted.displayName);
+      cookie = await login(h.api, h.otherOwner);
+      await expireSoon();
+      const workspace = slowService('workspace');
+      await expect(workspace.service.workspace(cookie)).rejects.toMatchObject({ status: 401 });
+      expect(workspace.hit()).toBe(true);
     });
   },
 );

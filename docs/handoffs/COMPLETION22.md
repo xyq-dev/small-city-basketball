@@ -25,3 +25,5 @@ X01季军树／025／原生晋级页、X05／X12／X18领域与027／029／030�
 检查点6：完整35迁移源码/127表manifest已齐；root dec64c5类型/API882/native883+1skip/admin512通过。I2已cherry但quarantine/非空fixtures仍在infra agent后续。下一步同步并开Draft PR启动真PG，不能生产、不能提前合并失败候选。X21/核销/公共裁定/统计源等仍在后续交片；全部22项保留。
 
 检查点7：PR33/run41155614997失败已归档，唯一共同PG阻断为033语法42601(char19065)，X01 dc7aabd拆CASE修未应用草稿，根即推第二轮；admin I2格式已修。不得报PG成功。I3恢复隔离已接；X12 E/F核销/冲突回执/真实team/court校验已接，X08行政统计源与X01公开显示已接；X21/嵌入广告仍继续。下一步Actions首因修复、完整22项验收与非空恢复，详见父任务最新。
+
+检查点8：22核心代码/原生消费者已写进入TESTING；PR33第二轮033已过，API468过8失败5skip、真Page12过4败、prod附加PG18过1败，具体首因/owner见父卡8。根接所有后续片与赞助组件，仍有X03旧schema/native确认fixture、infra最终helper主接线和治理取消回执后续未交；不能结束或报全绿。更新root901原生/904API本地证明不代表本次候选或真机。下一条同步checkpoint8，再修CI与完整恢复。

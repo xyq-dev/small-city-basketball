@@ -39,8 +39,8 @@ type Action = 'SUPPLY_REVIEW' | 'SUPPLY_SUSPEND';
 export type LocalReviewAuthorizer = (
   c: PoolClient,
   actor: Actor,
-  input: { orgId: string; region: LocalRegion; action: Action },
-) => Promise<unknown>;
+  input: { orgId: string; region: LocalRegion; action: Action; grantId?: string | null },
+) => Promise<{ grantId: string | null; platformOperator: boolean }>;
 const iso = (v: Date | string) => new Date(v).toISOString();
 const active = ['HELD', 'REQUESTED', 'CONFIRMED', 'ARRIVED', 'DELIVERED', 'DISPUTED'];
 const baseListing = `SELECT l.*,clock_timestamp() AS db_now,o.name AS organization_name,actual_court.status AS court_status FROM local_listings l JOIN organizations o ON o.id=l.org_id JOIN users provider ON provider.id=l.provider_user_id LEFT JOIN courts actual_court ON actual_court.id=l.court_id AND actual_court.org_id=l.org_id WHERE o.status='ACTIVE' AND provider.status='ACTIVE'`;
@@ -86,6 +86,7 @@ export class LocalServicesService extends ApplicationService {
     commandId: string,
     input: unknown,
     work: () => Promise<Row>,
+    revalidate?: () => Promise<void>,
   ): Promise<Row> {
     const requestHash = localHash(input);
     const old = (
@@ -97,6 +98,8 @@ export class LocalServicesService extends ApplicationService {
     if (old) {
       if (old.request_hash !== requestHash)
         localFail('COMMAND_ID_REUSED', '原操作编号不能用于不同内容');
+      await this.ensureFreshSession(c, actor);
+      if (revalidate) await revalidate();
       return old.result;
     }
     const result = await work();
@@ -104,6 +107,8 @@ export class LocalServicesService extends ApplicationService {
       'INSERT INTO local_command_receipts(actor_id,command_id,request_hash,result) VALUES($1,$2,$3,$4)',
       [actor.user.id, commandId, requestHash, result],
     );
+    await this.ensureFreshSession(c, actor);
+    if (revalidate) await revalidate();
     return result;
   }
   private async history(
@@ -163,11 +168,23 @@ export class LocalServicesService extends ApplicationService {
       if (!(error instanceof ApiError) || ![403, 404].includes(error.status)) throw error;
       if (!this.reviewAuthorizer) throw error;
     }
-    await this.reviewAuthorizer(c, actor, {
+    const scope = {
       orgId: row.org_id,
       region: { catalogVersion: row.region_catalog_version, regionId: row.region_id },
       action,
-    });
+    };
+    const authority = await this.reviewAuthorizer(c, actor, scope);
+    return async () => {
+      const current = await this.reviewAuthorizer!(c, actor, {
+        ...scope,
+        grantId: authority.grantId,
+      });
+      if (
+        current.grantId !== authority.grantId ||
+        current.platformOperator !== authority.platformOperator
+      )
+        throw forbidden();
+    };
   }
   private async viewListing(c: PoolClient, actor: Actor, row: Row) {
     let canManage = row.provider_user_id === actor.user.id,
@@ -328,7 +345,13 @@ export class LocalServicesService extends ApplicationService {
     await this.rateLimit(`local-detail:${hashToken(ip)}`, 120, 60);
     return this.transaction(async (c) => {
       const row = await this.listing(c, id);
-      this.validSupply(row);
+      try {
+        this.validSupply(row);
+      } catch (error) {
+        if (error instanceof ApiError && error.code === 'LOCAL_SUPPLY_UNAVAILABLE')
+          throw notFound();
+        throw error;
+      }
       const slots = (
         await c.query(
           `SELECT s.*,NOT EXISTS(SELECT 1 FROM local_resource_reservations r LEFT JOIN local_bookings b ON b.id=r.booking_id LEFT JOIN local_matchups m ON m.id=r.matchup_id WHERE r.active AND r.resource_key=$2 AND tstzrange(r.starts_at,r.ends_at,'[)') && tstzrange(s.starts_at,s.ends_at,'[)') AND NOT COALESCE((b.status IN ('HELD','REQUESTED') AND b.hold_expires_at<=clock_timestamp()),false) AND NOT COALESCE((m.status='OPEN' AND m.expires_at<=clock_timestamp()),false)) AND NOT EXISTS(SELECT 1 FROM court_reservations old WHERE old.court_id=$4 AND tstzrange(old.starts_at,old.ends_at,'[)') && tstzrange(s.starts_at,s.ends_at,'[)')) AND NOT EXISTS(SELECT 1 FROM booking_appearances old WHERE old.player_user_id=$5 AND old.status IN ('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED') AND NOT (old.status='REQUESTED' AND old.expires_at<=clock_timestamp()) AND c06_booking_window(old.report_at,old.end_at) && tstzrange(s.starts_at,s.ends_at+interval '30 minutes','[)')) AS available FROM local_slots s WHERE s.listing_id=$1 AND s.status='OPEN' AND s.starts_at>clock_timestamp() AND s.ends_at<=$3 ORDER BY s.starts_at,s.id LIMIT 100`,
@@ -585,8 +608,9 @@ export class LocalServicesService extends ApplicationService {
     return this.transaction(async (c) => {
       const actor = await this.lockActor(c, cookie),
         ref = await this.listing(c, id);
+      let revalidate: (() => Promise<void>) | undefined;
       if (['APPROVE', 'REJECT', 'SUSPEND'].includes(input.type))
-        await this.reviewAuthorization(
+        revalidate = await this.reviewAuthorization(
           c,
           actor,
           ref,
@@ -597,57 +621,64 @@ export class LocalServicesService extends ApplicationService {
       } else await this.listingAccess(c, actor, ref);
       await this.mutex(c, [ref.org_id]);
       const row = await this.listing(c, id, true);
-      return this.operation(c, actor, input.commandId, { id, input }, async () => {
-        this.checkVersion(row, input.expectedVersion);
-        let status = row.status,
-          published = row.published,
-          confirmed = row.provider_confirmed;
-        let reviewedBy = row.reviewed_by,
-          reviewedAt = row.reviewed_at,
-          until = row.qualified_until;
-        if (input.type === 'CONFIRM_PROVIDER') {
-          if (row.provider_confirmed) localFail('LOCAL_STATE_CONFLICT', '服务方已经确认');
-          confirmed = true;
-        } else if (input.type === 'SUBMIT') {
-          if (!['DRAFT', 'REJECTED'].includes(row.status) || !row.provider_confirmed)
-            localFail('LOCAL_STATE_CONFLICT', '须服务方确认后才能提交待审核供给');
-          status = 'PENDING';
-        } else if (input.type === 'APPROVE' || input.type === 'REJECT') {
-          if (row.status !== 'PENDING' || !row.provider_confirmed)
-            localFail('LOCAL_STATE_CONFLICT', '仅可审核当前待审版本');
-          status = input.type === 'APPROVE' ? 'APPROVED' : 'REJECTED';
-          published = false;
-          reviewedBy = actor.user.id;
-          reviewedAt = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now;
-          until = input.type === 'APPROVE' ? input.qualifiedUntil : null;
-          if (
-            until &&
-            (Date.parse(until) <= new Date(reviewedAt).getTime() ||
-              Date.parse(until) > new Date(reviewedAt).getTime() + 366 * 86400000)
-          )
-            invalid('资格有效期须在未来且不超过366天，按实际材料填写');
-        } else if (input.type === 'PUBLISH') {
-          if (
-            row.status !== 'APPROVED' ||
-            (row.kind === 'COURT' && row.court_status !== 'ACTIVE') ||
-            !row.provider_confirmed ||
-            !until ||
-            new Date(until).getTime() <= new Date(row.db_now).getTime()
-          )
-            localFail('LOCAL_SUPPLY_UNAVAILABLE', '资格未通过或已过期，不能上架');
-          published = true;
-        } else if (input.type === 'UNPUBLISH') published = false;
-        else if (input.type === 'SUSPEND') {
-          status = 'SUSPENDED';
-          published = false;
-        }
-        await c.query(
-          'UPDATE local_listings SET status=$2,published=$3,provider_confirmed=$4,reviewed_by=$5,reviewed_at=$6,qualified_until=$7,review_reason=$8,version=version+1,updated_at=clock_timestamp() WHERE id=$1',
-          [id, status, published, confirmed, reviewedBy, reviewedAt, until, input.reason],
-        );
-        await this.history(c, actor, id, input.type, row.version + 1, input.reason);
-        return { resourceType: 'LISTING', resourceId: id, version: row.version + 1 };
-      });
+      return this.operation(
+        c,
+        actor,
+        input.commandId,
+        { id, input },
+        async () => {
+          this.checkVersion(row, input.expectedVersion);
+          let status = row.status,
+            published = row.published,
+            confirmed = row.provider_confirmed;
+          let reviewedBy = row.reviewed_by,
+            reviewedAt = row.reviewed_at,
+            until = row.qualified_until;
+          if (input.type === 'CONFIRM_PROVIDER') {
+            if (row.provider_confirmed) localFail('LOCAL_STATE_CONFLICT', '服务方已经确认');
+            confirmed = true;
+          } else if (input.type === 'SUBMIT') {
+            if (!['DRAFT', 'REJECTED'].includes(row.status) || !row.provider_confirmed)
+              localFail('LOCAL_STATE_CONFLICT', '须服务方确认后才能提交待审核供给');
+            status = 'PENDING';
+          } else if (input.type === 'APPROVE' || input.type === 'REJECT') {
+            if (row.status !== 'PENDING' || !row.provider_confirmed)
+              localFail('LOCAL_STATE_CONFLICT', '仅可审核当前待审版本');
+            status = input.type === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+            published = false;
+            reviewedBy = actor.user.id;
+            reviewedAt = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now;
+            until = input.type === 'APPROVE' ? input.qualifiedUntil : null;
+            if (
+              until &&
+              (Date.parse(until) <= new Date(reviewedAt).getTime() ||
+                Date.parse(until) > new Date(reviewedAt).getTime() + 366 * 86400000)
+            )
+              invalid('资格有效期须在未来且不超过366天，按实际材料填写');
+          } else if (input.type === 'PUBLISH') {
+            if (
+              row.status !== 'APPROVED' ||
+              (row.kind === 'COURT' && row.court_status !== 'ACTIVE') ||
+              !row.provider_confirmed ||
+              !until ||
+              new Date(until).getTime() <= new Date(row.db_now).getTime()
+            )
+              localFail('LOCAL_SUPPLY_UNAVAILABLE', '资格未通过或已过期，不能上架');
+            published = true;
+          } else if (input.type === 'UNPUBLISH') published = false;
+          else if (input.type === 'SUSPEND') {
+            status = 'SUSPENDED';
+            published = false;
+          }
+          await c.query(
+            'UPDATE local_listings SET status=$2,published=$3,provider_confirmed=$4,reviewed_by=$5,reviewed_at=$6,qualified_until=$7,review_reason=$8,version=version+1,updated_at=clock_timestamp() WHERE id=$1',
+            [id, status, published, confirmed, reviewedBy, reviewedAt, until, input.reason],
+          );
+          await this.history(c, actor, id, input.type, row.version + 1, input.reason);
+          return { resourceType: 'LISTING', resourceId: id, version: row.version + 1 };
+        },
+        revalidate,
+      );
     });
   }
   async createSlot(cookie: string | undefined, id: string, raw: unknown) {
@@ -1113,7 +1144,7 @@ export class LocalServicesService extends ApplicationService {
           [slotId],
         );
         await c.query(
-          "UPDATE local_matchups m SET status='CANCELLED',reason=$2,version=version+1,updated_at=clock_timestamp() FROM local_bookings b WHERE m.court_booking_id=b.id AND b.slot_id=$1 AND m.status IN ('OPEN','CONFIRMED')",
+          "UPDATE local_matchups m SET status='CANCELLED',reason=$2,version=m.version+1,updated_at=clock_timestamp() FROM local_bookings b WHERE m.court_booking_id=b.id AND b.slot_id=$1 AND m.status IN ('OPEN','CONFIRMED')",
           [slotId, reason],
         );
         await c.query(

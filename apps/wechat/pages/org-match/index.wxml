@@ -22,6 +22,7 @@
     </view>
 
     <button class="secondary" bindtap="openExceptions">弃权／取消及独立裁定</button>
+<view wx:if="{{match.adjudication}}" class="notice warning">{{match.statusLabel}}，不生成比赛比分或个人统计。详情请查看独立裁定记录。</view>
 <view class="board">
       <view class="board-meta" bindtap="openEvent">{{match.eventName}} · {{match.round}}</view>
       <view class="board-meta">{{match.time}} · {{match.court}}</view>
@@ -47,6 +48,8 @@
     <view wx:elif="{{match.status === 'SCHEDULED'}}" class="notice small">{{match.rulesLabel}}。比赛由赛事负责人准备后才能记分。</view>
 
     <button wx:if="{{caps.score && (match.status === 'READY' || match.status === 'LIVE' || match.status === 'PENDING_CONFIRMATION')}}" class="accent" bindtap="openScorer" disabled="{{busy}}">进入记分台{{match.leaseHeld ? '（当前有人持有控制）' : ''}}</button>
+
+    <button wx:if="{{board && board.proMode && !board.adjudicated}}" class="secondary" bindtap="openProfessionalReport" disabled="{{busy}}">查看本场专业统计与上场时间报表</button>
 
     <view wx:if="{{caps.confirm}}" class="card">
       <view class="subtitle">独立确认赛果</view>

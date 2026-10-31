@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const publicResults = require('../../utils/public-results');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const scoring = require('../../utils/scoring');
@@ -186,7 +187,8 @@ Page({
         home: m.home.teamName,
         away: m.away.teamName,
         status: m.status,
-        statusLabel: api.matchStatus(m.status),
+        statusLabel: publicResults.status(m),
+        adjudication: m.adjudication || null,
         rulesLabel: wb.rules
           ? wb.rules.regulationPeriods +
             '节 × ' +
@@ -195,7 +197,7 @@ Page({
           : '赛事尚未设置记分规则',
         leaseHeld: !!(wb.lease && wb.lease.held),
       },
-      board: scoring.board(wb.snapshot, receivedAt),
+      board: m.adjudication ? null : scoring.board(wb.snapshot, receivedAt),
       history,
       historyError,
       confirmations,
@@ -445,6 +447,9 @@ Page({
   },
   openExceptions() {
     ui.open('match-exceptions', { orgId: this.orgId, matchId: this.matchId });
+  },
+  openProfessionalReport() {
+    ui.open('scorer', { orgId: this.orgId, matchId: this.matchId, readOnly: '1' });
   },
   openScorer() {
     ui.open('scorer', { orgId: this.orgId, matchId: this.matchId });

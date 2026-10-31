@@ -142,3 +142,60 @@ test('professional history distinguishes missed-shot/technical voids and builds 
     assert.match(preview.html, /专业统计与实际阵容时间/);
   }
 });
+
+test('proven administrative outcome hides preparation zero scores and all scoring controls', () => {
+  const h = loadPage({ root, route: 'pages/scorer/index' }),
+    value = { ...snapshot(), adjudication: { kind: 'CANCELLED' } };
+  h.page.setData({
+    match: {
+      eventName: '行政场',
+      home: '主队',
+      away: '客队',
+      status: 'READY',
+      adjudication: value.adjudication,
+    },
+    canControl: false,
+    held: false,
+  });
+  h.page.show(value, Date.now());
+  assert.equal(h.page.data.board.adjudicated, 'CANCELLED');
+  assert.equal(h.page.data.match.statusLabel, '本场已取消');
+  for (const width of [320, 390, 430]) {
+    const preview = buildPreview({ root, route: 'pages/scorer/index', data: h.page.data, width });
+    assert.match(preview.html, /本场已取消/);
+    assert.match(preview.html, /不计个人样本或出场/);
+    assert.doesNotMatch(preview.html, /board-score[^>]*>0</);
+    assert.doesNotMatch(preview.html, /开始比赛|取得记分控制|确认.*首发/);
+  }
+});
+
+test('final professional report has a private readonly entry and cannot acquire control or write', async () => {
+  const h = loadPage({ root, route: 'pages/org-match/index' });
+  h.page.orgId = id(1);
+  h.page.matchId = id(2);
+  h.page.openProfessionalReport();
+  assert.match(h.wx.calls.find((c) => c.type === 'navigateTo').url, /readOnly=1/);
+  const view = loadPage({ root, route: 'pages/scorer/index' });
+  view.page._reportOnly = true;
+  view.page.setData({
+    match: { home: '主队', away: '客队', status: 'FINAL' },
+    held: false,
+    canControl: false,
+  });
+  view.page.show({ ...snapshot(), status: 'FINAL' }, Date.now());
+  await view.page.acquire();
+  await view.page.command('RECORD_TECHNICAL', {}, '记录');
+  assert.equal(
+    view.wx.calls.some((c) => c.type === 'request'),
+    false,
+  );
+  const preview = buildPreview({
+    root,
+    route: 'pages/scorer/index',
+    data: view.page.data,
+    width: 390,
+  });
+  assert.match(preview.html, /专业统计与实际阵容时间/);
+  assert.match(preview.html, /助攻/);
+  assert.doesNotMatch(preview.html, /取得记分控制|确认换人/);
+});

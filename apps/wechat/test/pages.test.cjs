@@ -12,11 +12,14 @@ function page(name, request, clock = Date) {
       definition = v;
     },
     require(specifier) {
+      if (specifier.endsWith('/city-preference'))
+        return { snapshot: () => ({ mode: 'NATIONWIDE' }) };
+      if (specifier.endsWith('/public-results')) return require('../utils/public-results');
       if (specifier.endsWith('/recent')) return { remember() {}, forget() {}, list: () => [] };
       return {
         ...core,
         getClient() {
-          return { request };
+          return { request, requestPublic: request, hasSession: () => false };
         },
       };
     },
@@ -102,38 +105,42 @@ test('revoked match clears images/video plus snapshot so a stale media path cann
   assert.equal(instance.data.clock, '未准备');
 });
 
-test('slow media never shifts the earlier authoritative snapshot receipt time', async () => {
-  let time = 1000,
-    release,
-    started;
-  const media = new Promise((resolve) => {
-    release = resolve;
-  });
-  const mediaStarted = new Promise((resolve) => {
-    started = resolve;
-  });
-  const instance = page(
-    'match',
-    async (path) => {
-      if (path.endsWith('/media')) {
-        started();
-        return media;
-      }
-      return { data: { score: { home: 6 } } };
-    },
-    { now: () => time },
-  );
-  instance.event = id;
-  instance.matchId = id;
-  const loading = instance.load();
-  await mediaStarted;
-  assert.equal(instance.receivedAt, 1000);
-  assert.equal(instance.data.snapshot.score.home, 6);
-  time = 9000;
-  release({ data: { media: [] } });
-  await loading;
-  assert.equal(instance.receivedAt, 1000);
-});
+test(
+  'slow media never shifts the earlier authoritative snapshot receipt time',
+  { timeout: 5000 },
+  async () => {
+    let time = 1000,
+      release,
+      started;
+    const media = new Promise((resolve) => {
+      release = resolve;
+    });
+    const mediaStarted = new Promise((resolve) => {
+      started = resolve;
+    });
+    const instance = page(
+      'match',
+      async (path) => {
+        if (path.endsWith('/media')) {
+          started();
+          return media;
+        }
+        return { data: { score: { home: 6 } } };
+      },
+      { now: () => time },
+    );
+    instance.event = id;
+    instance.matchId = id;
+    const loading = instance.load();
+    await mediaStarted;
+    assert.equal(instance.receivedAt, 1000);
+    assert.equal(instance.data.snapshot.score.home, 6);
+    time = 9000;
+    release({ data: { media: [] } });
+    await loading;
+    assert.equal(instance.receivedAt, 1000);
+  },
+);
 test('media network failure clears old media while retaining freshly received match data', async () => {
   const instance = page('match', async (path) => {
     if (path.endsWith('/media')) throw { status: 503 };

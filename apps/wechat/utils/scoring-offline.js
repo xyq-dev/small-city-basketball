@@ -117,7 +117,7 @@ async function append(wxApi, scope, type, payload, version) {
 function discard(wxApi, scope) {
   wxApi.removeStorageSync(key(scope));
 }
-async function sync(wxApi, scope, client, base, control, current) {
+async function sync(wxApi, scope, client, base, control, current, onAccepted) {
   let queue = read(wxApi, scope),
     latest = null,
     accepted = 0;
@@ -150,6 +150,7 @@ async function sync(wxApi, scope, client, base, control, current) {
       !result.snapshot
     )
       throw error('OFFLINE_RECEIPT_INVALID', '原操作回执不一致，草稿保留待核对');
+    if (typeof onAccepted === 'function') onAccepted(result);
     queue.items.shift();
     write(wxApi, scope, queue);
     accepted++;

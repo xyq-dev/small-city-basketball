@@ -93,7 +93,7 @@
       <view wx:if="{{validated}}" class="card">
         <view class="subtitle">校验结果</view>
         <view wx:if="{{!conflicts.length}}" class="muted">未发现冲突。</view>
-        <view wx:for="{{conflicts}}" wx:key="key" class="row"><view>{{item.label}}{{item.external ? '（与本机构其他赛事）' : ''}}</view><view class="muted">{{item.fixtures}}</view></view>
+        <view wx:for="{{conflicts}}" wx:key="key" class="row"><view>{{item.label}}{{item.external ? '（已有资源安排）' : ''}}</view><view class="muted">{{item.fixtures}}</view></view>
       </view>
       <view wx:for="{{fixtures}}" wx:key="key" class="org-match">
         <view class="org-match-meta">{{item.round}} · {{item.time}}{{item.court ? ' · ' + item.court : ''}}</view>

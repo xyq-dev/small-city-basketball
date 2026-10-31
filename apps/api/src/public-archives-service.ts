@@ -50,19 +50,111 @@ const PROOF = `SELECT g.id AS source_id,g.team_id,g.member_id,e.name AS event_na
  AND (g.member_id IS NULL OR EXISTS(SELECT 1 FROM entry_roster_players rp WHERE rp.org_id=m.org_id AND rp.team_id=g.team_id AND rp.member_id=g.member_id AND ((rp.entry_id=m.home_entry_id AND rp.revision_id=m.home_roster_revision_id) OR (rp.entry_id=m.away_entry_id AND rp.revision_id=m.away_roster_revision_id))))
  ORDER BY m.starts_at DESC,m.id,g.id LIMIT ${MAX_ARCHIVE_MATCHES + 1}`;
 export class PublicArchivesService extends ApplicationService {
-  private async snapshotRead<T>(work: (c: PoolClient) => Promise<T>) {
-    const c = await this.pool.connect();
-    try {
-      await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
-      const v = await work(c);
-      await c.query('COMMIT');
-      return v;
-    } catch (e) {
-      await c.query('ROLLBACK');
-      throw e;
-    } finally {
-      c.release();
+  private readonly transactionActors = new WeakMap<PoolClient, Actor>();
+  protected override async lockActor(c: PoolClient, cookie: string | undefined): Promise<Actor> {
+    const actor = await super.lockActor(c, cookie);
+    this.transactionActors.set(c, actor);
+    return actor;
+  }
+  protected override async transaction<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
+    return super.transaction(async (c) => {
+      this.transactionActors.delete(c);
+      try {
+        const result = await work(c);
+        const actor = this.transactionActors.get(c);
+        if (actor) await this.ensureFreshSession(c, actor);
+        return result;
+      } finally {
+        this.transactionActors.delete(c);
+      }
+    });
+  }
+
+  private async snapshotRead<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const c = await this.pool.connect();
+      try {
+        // Business reads only, but PostgreSQL row-level permission locks need a read-write
+        // transaction. A changed row in this RR snapshot must restart, never return old consent.
+        await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+        const result = await work(c);
+        await c.query('COMMIT');
+        return result;
+      } catch (error) {
+        try {
+          await c.query('ROLLBACK');
+        } catch {
+          /* Preserve the original failure. */
+        }
+        if (!['40001', '40P01', '55P03'].includes(String((error as { code?: string })?.code)))
+          throw error;
+      } finally {
+        c.release();
+      }
     }
+    throw new ApiError(503, 'PUBLIC_ARCHIVE_BUSY', '公开授权正在更新，请重新读取');
+  }
+  private async lockPublicSources(c: PoolClient, profiles: Row[]) {
+    if (!profiles.length) return;
+    const ids = profiles.map((p) => p.id);
+    const sources = (
+      await c.query<Row>(
+        "SELECT id,org_id,event_id,nominated_by FROM public_archive_sources WHERE profile_id=ANY($1::uuid[]) AND status<>'REVOKED' ORDER BY id LIMIT 5001",
+        [ids],
+      )
+    ).rows;
+    if (sources.length > 5000)
+      throw new ApiError(
+        503,
+        'ARCHIVE_RANKING_CAPACITY',
+        '完整授权集合超过本次核验容量，暂不提供部分结果',
+      );
+    const unique = (values: any[]) =>
+      [...new Set(values.filter((v) => typeof v === 'string'))].sort();
+    const users = unique([
+      ...profiles.filter((p) => p.kind === 'PLAYER').map((p) => p.owner_user_id),
+      ...sources.map((s) => s.nominated_by),
+    ]);
+    const orgs = unique([
+      ...profiles.filter((p) => p.kind === 'TEAM').map((p) => p.org_id),
+      ...sources.map((s) => s.org_id),
+    ]);
+    // Fixed table order, stable row order, NOWAIT: anonymous reads never wait holding a
+    // profile/source lock while an actor-first writer holds its user row in reverse order.
+    if (users.length)
+      await c.query('SELECT id FROM users WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE NOWAIT', [
+        users,
+      ]);
+    if (orgs.length)
+      await c.query(
+        'SELECT id FROM organizations WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE NOWAIT',
+        [orgs],
+      );
+    if (sources.length) {
+      await c.query(
+        `SELECT m.org_id,m.user_id FROM organization_memberships m WHERE EXISTS(SELECT 1 FROM public_archive_sources g WHERE g.profile_id=ANY($1::uuid[]) AND g.status<>'REVOKED' AND g.org_id=m.org_id AND g.nominated_by=m.user_id) ORDER BY m.org_id,m.user_id FOR SHARE OF m NOWAIT`,
+        [ids],
+      );
+      await c.query(
+        `SELECT es.org_id,es.event_id,es.user_id FROM event_staff es WHERE EXISTS(SELECT 1 FROM public_archive_sources g WHERE g.profile_id=ANY($1::uuid[]) AND g.status<>'REVOKED' AND g.org_id=es.org_id AND g.event_id=es.event_id AND g.nominated_by=es.user_id) ORDER BY es.org_id,es.event_id,es.user_id FOR SHARE OF es NOWAIT`,
+        [ids],
+      );
+    }
+    await c.query(
+      'SELECT id FROM public_archive_profiles WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE NOWAIT',
+      [ids],
+    );
+    await c.query(
+      "SELECT public_key FROM public_archive_publications WHERE profile_id=ANY($1::uuid[]) AND status='ACTIVE' ORDER BY profile_id,public_key FOR SHARE NOWAIT",
+      [ids],
+    );
+    if (sources.length)
+      await c.query(
+        'SELECT id FROM public_archive_sources WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE NOWAIT',
+        [sources.map((s) => s.id)],
+      );
+    // Only mutable authorization rows above are locked. Immutable freezes, bindings,
+    // roster revisions and scoring proofs retain their existing SELECT/INSERT-only ACL.
   }
   private async manages(c: PoolClient, actor: Actor, org: string, event?: string) {
     return !!(
@@ -607,6 +699,7 @@ export class PublicArchivesService extends ApplicationService {
         )
       ).rows[0];
       if (!p) throw notFound();
+      await this.lockPublicSources(c, [p]);
       const at = (await c.query<Row>('SELECT statement_timestamp() AS now')).rows[0]!.now;
       return this.projection(c, p, iso(at));
     });
@@ -629,6 +722,7 @@ export class PublicArchivesService extends ApplicationService {
           'ARCHIVE_RANKING_CAPACITY',
           '公开档案数量超过本次完整计算容量，榜单暂不可用',
         );
+      await this.lockPublicSources(c, profiles);
       const asOf = iso((await c.query<Row>('SELECT statement_timestamp() AS now')).rows[0]!.now);
       const data: PublicArchiveData[] = (await this.rankingProjections(c, profiles, asOf)).filter(
         (d) =>

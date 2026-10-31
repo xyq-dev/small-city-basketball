@@ -14,6 +14,7 @@ const privateEvents = {
 };
 Page({
   data: {
+    sponsorVisible: false,
     value: '',
     error: '',
     signedIn: false,
@@ -40,12 +41,13 @@ Page({
   },
   onShow() {
     this._hidden = false;
-    this.setData({ citySelection: cities.snapshot() });
+    this.setData({ citySelection: cities.snapshot(), sponsorVisible: true });
     this.loadPublicEvents();
     this.loadEvents();
   },
   onHide() {
     this._hidden = true;
+    this.setData({ sponsorVisible: false });
     this._publicLoad = (this._publicLoad || 0) + 1;
   },
   onUnload() {
