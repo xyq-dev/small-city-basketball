@@ -16,6 +16,7 @@ export interface InsuranceOrderData {
   memberId: string;
   version: number;
   premiumFen: number;
+  refundedFen: number | null;
   currency: 'CNY';
   coverageStartDate: string;
   coverageEndDate: string;

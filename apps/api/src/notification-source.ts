@@ -15,6 +15,7 @@ export interface ResolvedNotificationSource extends NotificationSourceInput {
   detail: string;
   eventName: string;
   time: string;
+  location: string | null;
   dueAt: Date;
   expiresAt: Date;
   teamIds: string[];
@@ -65,6 +66,7 @@ export async function resolveNotificationSource(
       ...input,
       fingerprint: notificationHash([input.kind, entry.id, entry.review_id, entry.status]),
       title: '报名审核更新',
+      location: null,
       detail,
       eventName: e.name,
       time: new Date(entry.reviewed_at).toISOString(),
@@ -100,6 +102,7 @@ export async function resolveNotificationSource(
   return {
     ...input,
     fingerprint: notificationHash([input.kind, ...plan]),
+    location: typeof m.court_name === 'string' ? m.court_name : '待定',
     title: input.kind === 'MATCH_STARTING' ? '比赛即将开始' : '比赛安排已更新',
     detail:
       input.kind === 'MATCH_STARTING'
@@ -183,7 +186,9 @@ export async function captureNotification(
       )
     ).rows[0]!.id;
   await c.query(
-    'INSERT INTO notification_fanout_state(source_id) VALUES($1) ON CONFLICT DO NOTHING',
+    `INSERT INTO notification_fanout_state(source_id) VALUES($1)
+     ON CONFLICT(source_id) DO UPDATE SET cursor_user_id=NULL,done=false
+     WHERE notification_fanout_state.done=true`,
     [id],
   );
   return id;

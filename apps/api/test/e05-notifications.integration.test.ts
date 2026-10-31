@@ -1,0 +1,510 @@
+import { randomUUID } from 'node:crypto';
+import type { PoolClient } from 'pg';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { NotificationService, revokeNotificationGrants } from '../src/notification-service.js';
+import type { NotificationOptions } from '../src/notification-service.js';
+import type { WechatNotificationResult } from '../src/notification-provider.js';
+import { hashToken } from '../src/security.js';
+import { openNotificationTarget } from '../src/notification-domain.js';
+import { closeHarness, createScoringHarness } from './p05-support.js';
+import type { Harness } from './p05-support.js';
+import { scheduled, rescheduling, reschedule } from './p04-rescheduling-support.js';
+import { command, openRegistration, submittedEntry, grant } from './p03-support.js';
+import { ORIGIN, data } from './support.js';
+import type { User } from './support.js';
+
+// These are deliberately synthetic recipients and transports. No official endpoint is contacted.
+const appId = 'wx1234567890abcdef';
+const encryptionKey = Buffer.alloc(32, 55).toString('base64');
+const openid = 'synthetic-e05-owner';
+const templates = {
+  MATCH_STARTING: { id: 'synthetic-start', fields: { thing1: 'event', time2: 'time' } },
+  MATCH_RESCHEDULED: { id: 'synthetic-change', fields: { thing1: 'event', time2: 'time' } },
+  REGISTRATION_REVIEW: { id: 'synthetic-review', fields: { thing1: 'event', thing2: 'detail' } },
+} satisfies NonNullable<NotificationOptions['templates']>;
+let h: Harness;
+let fixtureIndex = 0;
+const services: NotificationService[] = [];
+function service(
+  send: () => Promise<WechatNotificationResult> = async () => ({ state: 'ACCEPTED' }),
+  exchange?: NotificationOptions['exchange'],
+) {
+  const s = new NotificationService(
+    h.api.pool,
+    { databaseUrl: h.databaseUrl, appOrigin: ORIGIN },
+    {
+      appId,
+      encryptionKey,
+      templates,
+      autoDispatch: false,
+      exchange: exchange ?? { exchange: async () => ({ appId, openid }) },
+      provider: { send },
+    },
+  );
+  services.push(s);
+  return s;
+}
+async function tx<T>(run: (c: PoolClient) => Promise<T>) {
+  const c = await h.api.pool.connect();
+  try {
+    await c.query('BEGIN');
+    const result = await run(c);
+    await c.query('COMMIT');
+    return result;
+  } catch (e) {
+    await c.query('ROLLBACK');
+    throw e;
+  } finally {
+    c.release();
+  }
+}
+async function soon(s: NotificationService) {
+  const now = (await h.api.pool.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!
+    .now;
+  const startsAt = new Date(now.getTime() + 12 * 60000).toISOString();
+  const startDate = new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 10);
+  const endDate = new Date(now.getTime() + 32 * 3600000).toISOString().slice(0, 10);
+  const f = await scheduled(h, {
+    teams: h.teams.slice(fixtureIndex * 2, fixtureIndex++ * 2 + 2),
+    startDate,
+    endDate,
+    startsAt,
+  });
+  const eventId = f.registration.event.id,
+    matchId = f.matches[0]!.id;
+  await tx((c) => s.captureEventMatches(c, h.owner.orgId, eventId));
+  await s.fanout();
+  const source = {
+    kind: 'MATCH_STARTING' as const,
+    orgId: h.owner.orgId,
+    eventId,
+    resourceId: matchId,
+  };
+  const row = (
+    await h.api.pool.query(
+      `SELECT m.id,d.id AS delivery_id,d.state FROM notification_messages m JOIN notification_deliveries d ON d.message_id=m.id JOIN notification_source_events s ON s.id=m.source_id WHERE m.user_id=$1 AND s.resource_id=$2 AND s.kind='MATCH_STARTING'`,
+      [h.owner.id, matchId],
+    )
+  ).rows[0];
+  expect(row).toBeDefined();
+  return { ...f, source, row, eventId, matchId };
+}
+async function allow(s: NotificationService, actor: User = h.owner) {
+  const intent = await s.createIntent(actor.cookie, {
+    clientRequestId: randomUUID(),
+    kind: 'MATCH_STARTING',
+  });
+  const body = {
+    clientRequestId: randomUUID(),
+    intentId: intent.id,
+    result: 'accept',
+    code: randomUUID(),
+  };
+  const confirmed = await s.confirm(actor.cookie, body);
+  expect(confirmed?.state).toBe('ACCEPTED');
+  return { intent, body, confirmed: confirmed! };
+}
+async function delivery(id: string) {
+  return (await h.api.pool.query('SELECT * FROM notification_deliveries WHERE id=$1', [id]))
+    .rows[0];
+}
+
+describe('E05 authoritative notifications in real PostgreSQL', () => {
+  beforeAll(async () => {
+    h = await createScoringHarness(12);
+    await h.api.pool.query(
+      'INSERT INTO wechat_identities(id,user_id,app_id,openid_hash) VALUES($1,$2,$3,$4)',
+      [randomUUID(), h.owner.id, appId, hashToken(appId + '\n' + openid)],
+    );
+  });
+  afterEach(async () => {
+    if (!h) return;
+    await tx(async (c) => {
+      for (const kind of ['MATCH_STARTING', 'MATCH_RESCHEDULED', 'REGISTRATION_REVIEW'] as const)
+        await revokeNotificationGrants(c, h.owner.id, kind);
+    });
+  });
+  afterAll(async () => {
+    for (const s of services) s.onModuleDestroy();
+    if (h) await closeHarness(h);
+  });
+
+  it('works as a private station inbox with defaults off, deduplicates capture, and rolls source writes back', async () => {
+    const s = new NotificationService(
+      h.api.pool,
+      { databaseUrl: h.databaseUrl, appOrigin: ORIGIN },
+      { autoDispatch: false },
+    );
+    services.push(s);
+    const f = await soon(s);
+    expect(s.capabilities().wechatEnabled).toBe(false);
+    await s.drain();
+    expect((await delivery(f.row.delivery_id)).state).toBe('WAITING_PERMISSION');
+    await tx((c) => s.capture(c, f.source));
+    await s.fanout();
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT count(*)::int AS n FROM notification_messages m JOIN notification_source_events s ON s.id=m.source_id WHERE m.user_id=$1 AND s.resource_id=$2',
+          [h.owner.id, f.matchId],
+        )
+      ).rows[0]!.n,
+    ).toBe(1);
+    const inbox = await s.list(h.owner.cookie, {});
+    expect(inbox.items.some((x) => x.id === f.row.id)).toBe(true);
+    expect(inbox.items.find((x) => x.id === f.row.id)).toMatchObject({
+      time: f.matches[0]!.startsAt,
+      location: f.matches[0]!.courtName,
+    });
+    await expect(s.list(undefined, {})).rejects.toMatchObject({ status: 401 });
+    await expect(
+      s.read(h.otherOwner.cookie, f.row.id, { clientRequestId: randomUUID() }),
+    ).rejects.toMatchObject({ status: 404 });
+    const before = (
+      await h.api.pool.query(
+        'SELECT count(*)::int AS n FROM notification_source_events WHERE org_id=$1',
+        [h.owner.orgId],
+      )
+    ).rows[0]!.n;
+    await expect(
+      tx(async (c) => {
+        await c.query(
+          "INSERT INTO notification_source_events(id,org_id,event_id,kind,resource_id,source_fingerprint,due_at,expires_at) VALUES($1,$2,$3,'MATCH_STARTING',$4,$5,clock_timestamp(),clock_timestamp()+interval '1 minute')",
+          [randomUUID(), h.owner.orgId, f.eventId, randomUUID(), 'a'.repeat(64)],
+        );
+        throw Error('synthetic business rollback');
+      }),
+    ).rejects.toThrow('synthetic business rollback');
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT count(*)::int AS n FROM notification_source_events WHERE org_id=$1',
+          [h.owner.orgId],
+        )
+      ).rows[0]!.n,
+    ).toBe(before);
+  });
+
+  it('binds encrypted recipient to current AppID/hash/version, never trusting the client target', async () => {
+    const bad = service(undefined, { exchange: async () => ({ appId, openid: 'somebody-else' }) });
+    const i = await bad.createIntent(h.owner.cookie, {
+      clientRequestId: randomUUID(),
+      kind: 'MATCH_STARTING',
+    });
+    await expect(
+      bad.confirm(h.owner.cookie, {
+        clientRequestId: randomUUID(),
+        intentId: i.id,
+        result: 'accept',
+        code: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: 'NOTIFICATION_IDENTITY_MISMATCH' });
+    const s = service();
+    const a = await allow(s);
+    const g = (
+      await h.api.pool.query('SELECT * FROM notification_subscription_grants WHERE id=$1', [
+        a.confirmed.subscriptionId,
+      ])
+    ).rows[0]!;
+    expect(g.evidence).toBe('CLIENT_REPORTED');
+    expect(g.target_cipher.includes(Buffer.from(openid))).toBe(false);
+    expect(
+      openNotificationTarget(
+        Buffer.from(encryptionKey, 'base64'),
+        [g.id, g.user_id, appId, g.identity_id, g.identity_version].join(':'),
+        g.target_cipher,
+      ),
+    ).toBe(openid);
+    expect(() =>
+      openNotificationTarget(
+        Buffer.from(encryptionKey, 'base64'),
+        [g.id, h.otherOwner.id, appId, g.identity_id, g.identity_version].join(':'),
+        g.target_cipher,
+      ),
+    ).toThrow();
+    const replay = await s.confirm(h.owner.cookie, a.body);
+    expect(replay?.subscriptionId).toBe(a.confirmed.subscriptionId);
+    expect((await s.settings(h.owner.cookie)).subscriptions.some((x) => x.id === g.id)).toBe(true);
+    expect(JSON.stringify(await s.settings(h.owner.cookie))).not.toContain(openid);
+  });
+
+  it('persists SENDING before provider call; UNKNOWN consumes permission and only explicit fresh permission can retry', async () => {
+    let sends = 0;
+    const s = service(async () => {
+      sends++;
+      const committed = (
+        await h.api.pool.query(
+          "SELECT state FROM notification_delivery_attempts a JOIN notification_subscription_grants g ON g.id=a.grant_id WHERE g.user_id=$1 AND a.state='SENDING'",
+          [h.owner.id],
+        )
+      ).rows;
+      expect(committed).toHaveLength(1);
+      return sends === 1 ? { state: 'UNKNOWN' } : { state: 'ACCEPTED' };
+    });
+    const f = await soon(s);
+    const first = await allow(s);
+    await s.drain();
+    expect((await delivery(f.row.delivery_id)).state).toBe('UNKNOWN');
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT status,target_cipher FROM notification_subscription_grants WHERE id=$1',
+          [first.confirmed.subscriptionId],
+        )
+      ).rows[0],
+    ).toMatchObject({ status: 'CONSUMED', target_cipher: null });
+    await s.drain();
+    expect(sends).toBe(1);
+    const request = { clientRequestId: randomUUID(), acknowledgePossibleDuplicate: true };
+    await expect(s.retry(h.owner.cookie, f.row.id, request)).rejects.toMatchObject({
+      code: 'NOTIFICATION_NEW_PERMISSION_REQUIRED',
+    });
+    await allow(s);
+    await s.retry(h.owner.cookie, f.row.id, request);
+    await s.drain();
+    await s.retry(h.owner.cookie, f.row.id, request);
+    await s.drain();
+    expect(sends).toBe(2);
+    expect((await delivery(f.row.delivery_id)).state).toBe('ACCEPTED');
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT state FROM notification_delivery_attempts WHERE delivery_id=$1 ORDER BY created_at',
+          [f.row.delivery_id],
+        )
+      ).rows.map((x) => x.state),
+    ).toEqual(['UNKNOWN', 'ACCEPTED']);
+  });
+
+  it('retries only proven no-send token failures and keeps the same reserved one-use permission', async () => {
+    let sends = 0;
+    const s = service(async () =>
+      ++sends === 1 ? { state: 'RETRYABLE', reason: 'TOKEN_UNAVAILABLE' } : { state: 'ACCEPTED' },
+    );
+    const f = await soon(s);
+    const a = await allow(s);
+    await s.drain();
+    expect((await delivery(f.row.delivery_id)).state).toBe('PENDING');
+    expect(
+      (
+        await h.api.pool.query('SELECT status FROM notification_subscription_grants WHERE id=$1', [
+          a.confirmed.subscriptionId,
+        ])
+      ).rows[0]!.status,
+    ).toBe('RESERVED');
+    await s.drain();
+    expect(sends).toBe(1);
+    await h.api.pool.query(
+      'UPDATE notification_deliveries SET next_attempt_at=clock_timestamp() WHERE id=$1',
+      [f.row.delivery_id],
+    );
+    await s.drain();
+    expect(sends).toBe(2);
+    expect((await delivery(f.row.delivery_id)).state).toBe('ACCEPTED');
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT count(*)::int AS n FROM notification_delivery_attempts WHERE delivery_id=$1',
+          [f.row.delivery_id],
+        )
+      ).rows[0]!.n,
+    ).toBe(1);
+  });
+
+  it('revocation invalidates pending and claimed intents; a late exchange and old revoke cannot revive or erase newer permission', async () => {
+    let release!: (value: { appId: string; openid: string }) => void;
+    let started!: () => void;
+    const ready = new Promise<void>((done) => {
+      started = done;
+    });
+    const s = service(undefined, {
+      exchange: async () => {
+        started();
+        return new Promise((done) => {
+          release = done;
+        });
+      },
+    });
+    const pending = await s.createIntent(h.owner.cookie, {
+      clientRequestId: randomUUID(),
+      kind: 'MATCH_STARTING',
+    });
+    const claimed = await s.createIntent(h.owner.cookie, {
+      clientRequestId: randomUUID(),
+      kind: 'MATCH_STARTING',
+    });
+    const inflight = s.confirm(h.owner.cookie, {
+      clientRequestId: randomUUID(),
+      intentId: claimed.id,
+      result: 'accept',
+      code: randomUUID(),
+    });
+    const rejected = expect(inflight).rejects.toMatchObject({
+      code: 'NOTIFICATION_INTENT_UNAVAILABLE',
+    });
+    await ready;
+    const original = { clientRequestId: randomUUID(), kind: 'MATCH_STARTING' };
+    await s.revoke(h.owner.cookie, original);
+    release({ appId, openid });
+    await rejected;
+    expect((await s.intent(h.owner.cookie, pending.id)).state).toBe('FAILED');
+    expect((await s.intent(h.owner.cookie, claimed.id)).state).toBe('FAILED');
+    const newer = service();
+    const grant = await allow(newer);
+    await s.revoke(h.owner.cookie, original);
+    expect(
+      (
+        await h.api.pool.query('SELECT status FROM notification_subscription_grants WHERE id=$1', [
+          grant.confirmed.subscriptionId,
+        ])
+      ).rows[0]!.status,
+    ).toBe('AVAILABLE');
+  });
+
+  it('rechecks real reschedule and team authorization before displaying or dispatching the old generation', async () => {
+    let sends = 0;
+    const s = service(async () => {
+      sends++;
+      return { state: 'ACCEPTED' };
+    });
+    const f = await soon(s);
+    await allow(s);
+    const before = await s.list(h.leader.cookie, {});
+    expect(before.items.some((x) => x.eventName === f.registration.event.name)).toBe(true);
+    await grant(h.api, h.owner, h.teams[(fixtureIndex - 1) * 2]!, h.leader, 'DISABLED');
+    await grant(h.api, h.owner, h.teams[(fixtureIndex - 1) * 2 + 1]!, h.leader, 'DISABLED');
+    expect(
+      (await s.list(h.leader.cookie, {})).items.some(
+        (x) => x.eventName === f.registration.event.name,
+      ),
+    ).toBe(false);
+    const current = await rescheduling(h, f.matchId);
+    data(
+      await reschedule(h, current, {
+        startsAt: new Date(Date.parse(current.match.startsAt) + 120 * 60000).toISOString(),
+      }),
+    );
+    await s.drain();
+    expect(sends).toBe(0);
+    expect((await delivery(f.row.delivery_id)).state).toBe('CANCELLED');
+    expect((await s.list(h.owner.cookie, {})).items.some((x) => x.id === f.row.id)).toBe(false);
+    await tx((c) => s.capture(c, { ...f.source, kind: 'MATCH_RESCHEDULED' }));
+    await s.fanout();
+    expect(
+      (await s.list(h.owner.cookie, {})).items.some(
+        (x) => x.kind === 'MATCH_RESCHEDULED' && x.eventName === f.registration.event.name,
+      ),
+    ).toBe(true);
+  });
+
+  it('recovers an expired durable lease as UNKNOWN without ever calling the provider', async () => {
+    let sends = 0;
+    const s = service(async () => {
+      sends++;
+      return { state: 'ACCEPTED' };
+    });
+    const f = await soon(s);
+    await allow(s);
+    const claim = await (s as any).claim(f.row.delivery_id);
+    expect(claim).not.toBeNull();
+    await h.api.pool.query(
+      "UPDATE notification_deliveries SET lease_until=clock_timestamp()-interval '1 second' WHERE id=$1",
+      [f.row.delivery_id],
+    );
+    await s.recoverExpiredLeases();
+    await s.drain();
+    expect(sends).toBe(0);
+    expect((await delivery(f.row.delivery_id)).state).toBe('UNKNOWN');
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT state FROM notification_delivery_attempts WHERE delivery_id=$1',
+          [f.row.delivery_id],
+        )
+      ).rows[0]!.state,
+    ).toBe('UNKNOWN');
+  });
+
+  it('revoking a recovered SENDING capability preserves UNKNOWN instead of claiming an external send was recalled', async () => {
+    const target = 'synthetic-e05-leader';
+    await h.api.pool.query(
+      'INSERT INTO wechat_identities(id,user_id,app_id,openid_hash) VALUES($1,$2,$3,$4)',
+      [randomUUID(), h.leader.id, appId, hashToken(appId + '\n' + target)],
+    );
+    let sends = 0;
+    const s = service(
+      async () => {
+        sends++;
+        return { state: 'ACCEPTED' };
+      },
+      { exchange: async () => ({ appId, openid: target }) },
+    );
+    const f = await soon(s);
+    const permission = await allow(s, h.leader);
+    const row = (
+      await h.api.pool.query(
+        `SELECT d.id FROM notification_deliveries d JOIN notification_messages m ON m.id=d.message_id JOIN notification_source_events s ON s.id=m.source_id WHERE m.user_id=$1 AND s.resource_id=$2 AND s.kind='MATCH_STARTING'`,
+        [h.leader.id, f.matchId],
+      )
+    ).rows[0]!;
+    await (s as any).claim(row.id);
+    await tx((c) => revokeNotificationGrants(c, h.leader.id));
+    expect((await delivery(row.id)).state).toBe('UNKNOWN');
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT state FROM notification_delivery_attempts WHERE delivery_id=$1',
+          [row.id],
+        )
+      ).rows[0]!.state,
+    ).toBe('UNKNOWN');
+    expect(
+      (
+        await h.api.pool.query(
+          'SELECT status,target_cipher FROM notification_subscription_grants WHERE id=$1',
+          [permission.confirmed.subscriptionId],
+        )
+      ).rows[0],
+    ).toMatchObject({ status: 'REVOKED', target_cipher: null });
+    await s.drain();
+    expect(sends).toBe(0);
+  });
+
+  it('derives review messages from committed business review history without copying confidential reasons', async () => {
+    const s = service();
+    const current = await openRegistration(h.api, h.owner, 'E05审核通知');
+    const submitted = await submittedEntry(h.api, h.owner, current, h.leader, 'E05审核球队');
+    const reviewed = await command(
+      h.api,
+      h.owner,
+      submitted.entry,
+      h.owner,
+      'REQUEST_CHANGES',
+      '合成证件号码 private-material-123',
+    );
+    await tx((c) =>
+      s.capture(c, {
+        kind: 'REGISTRATION_REVIEW',
+        orgId: h.owner.orgId,
+        eventId: current.event.id,
+        resourceId: reviewed.id,
+      }),
+    );
+    await s.fanout();
+    const owner = await s.list(h.owner.cookie, {}),
+      leader = await s.list(h.leader.cookie, {});
+    expect(
+      owner.items.some((x) => x.kind === 'REGISTRATION_REVIEW' && x.detail === '报名需要补充资料'),
+    ).toBe(true);
+    expect(
+      leader.items.some(
+        (x) => x.kind === 'REGISTRATION_REVIEW' && x.eventName === current.event.name,
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(owner)).not.toContain('private-material-123');
+    await grant(h.api, h.owner, submitted.team, h.leader, 'DISABLED');
+    expect(
+      (await s.list(h.leader.cookie, {})).items.some((x) => x.eventName === current.event.name),
+    ).toBe(false);
+  });
+});

@@ -1,0 +1,2 @@
+.card { font-size: 16px; line-height: 1.6; }
+.card button { min-height: 44px; }

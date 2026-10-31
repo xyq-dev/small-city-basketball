@@ -167,7 +167,7 @@ export class NotificationService extends ApplicationService {
       kind: r.kind,
       templateId: r.template_id,
       expiresAt: iso(r.expires_at),
-      state: r.status === 'PENDING' && r.valid === false ? 'EXPIRED' : r.status,
+      state: ['PENDING', 'CLAIMED'].includes(r.status) && r.valid === false ? 'EXPIRED' : r.status,
       subscriptionId: r.grant_id ?? null,
     };
   }
@@ -447,6 +447,8 @@ export class NotificationService extends ApplicationService {
       title: s.title,
       detail: s.detail,
       eventName: s.eventName,
+      time: s.time,
+      location: s.location,
       createdAt: iso(r.created_at),
       readAt: r.read_at ? iso(r.read_at) : null,
       delivery: r.delivery_state,
@@ -747,6 +749,10 @@ export class NotificationService extends ApplicationService {
             [grant.id],
           );
         await c.query(
+          "UPDATE notification_delivery_attempts SET state='CANCELLED',finished_at=clock_timestamp() WHERE grant_id=$1 AND state='SENDING'",
+          [grant.id],
+        );
+        await c.query(
           "UPDATE notification_deliveries SET state='CANCELLED',last_reason='IDENTITY_UNAVAILABLE',updated_at=clock_timestamp() WHERE id=$1",
           [id],
         );
@@ -941,17 +947,29 @@ export async function revokeNotificationGrants(
 ) {
   resourceId(userId);
   if (kind) notificationKind(kind);
+  const intents = await c.query<Row>(
+    `SELECT id,confirm_request_id FROM notification_subscription_intents
+    WHERE user_id=$1 AND status IN('PENDING','CLAIMED') ${kind ? 'AND kind=$2' : ''} FOR UPDATE`,
+    kind ? [userId, kind] : [userId],
+  );
+  for (const intent of intents.rows)
+    await c.query(
+      "UPDATE notification_subscription_intents SET status='FAILED',confirm_request_id=$2,finished_at=clock_timestamp() WHERE id=$1",
+      [intent.id, intent.confirm_request_id ?? randomUUID()],
+    );
   await c.query(
     `UPDATE notification_subscription_grants SET status='REVOKED',target_cipher=NULL,revoked_at=clock_timestamp()
     WHERE user_id=$1 AND status<>'REVOKED' ${kind ? 'AND kind=$2' : ''}`,
     kind ? [userId, kind] : [userId],
   );
   await c.query(
-    `UPDATE notification_delivery_attempts a SET state='CANCELLED',finished_at=clock_timestamp() FROM notification_subscription_grants g WHERE a.grant_id=g.id AND g.user_id=$1 AND a.state='SENDING' ${kind ? 'AND g.kind=$2' : ''}`,
+    `UPDATE notification_delivery_attempts a SET state=CASE WHEN d.state='SENDING' THEN 'UNKNOWN' ELSE 'CANCELLED' END,finished_at=clock_timestamp()
+    FROM notification_subscription_grants g,notification_deliveries d WHERE a.grant_id=g.id AND d.id=a.delivery_id
+    AND g.user_id=$1 AND a.state='SENDING' ${kind ? 'AND g.kind=$2' : ''}`,
     kind ? [userId, kind] : [userId],
   );
   await c.query(
-    `UPDATE notification_deliveries d SET state='CANCELLED',lease_id=NULL,lease_until=NULL,last_reason='IDENTITY_UNAVAILABLE',updated_at=clock_timestamp()
+    `UPDATE notification_deliveries d SET state=CASE WHEN d.state='SENDING' THEN 'UNKNOWN' ELSE 'CANCELLED' END,lease_id=NULL,lease_until=NULL,last_reason='IDENTITY_UNAVAILABLE',updated_at=clock_timestamp()
     FROM notification_messages m JOIN notification_source_events s ON s.id=m.source_id
     WHERE d.message_id=m.id AND m.user_id=$1 AND d.state IN('WAITING_PERMISSION','PENDING','SENDING') ${kind ? 'AND s.kind=$2' : ''}`,
     kind ? [userId, kind] : [userId],

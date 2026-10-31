@@ -19,6 +19,8 @@ export interface NotificationMessage {
   title: string;
   detail: string;
   eventName: string;
+  time: string;
+  location: string | null;
   createdAt: string;
   readAt: string | null;
   delivery: NotificationDeliveryState;

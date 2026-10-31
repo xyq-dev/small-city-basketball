@@ -111,8 +111,10 @@ describe('trade source and verified payment boundaries', () => {
         chargeConsent: false,
       }),
     ).toBeNull();
-    await service.assertSourceFinancialGate({ query } as any, 'LOCAL_BOOKING', org);
     expect(query).not.toHaveBeenCalled();
+    query.mockResolvedValue({ rows: [], rowCount: 0 });
+    await service.assertSourceFinancialGate({ query } as any, 'LOCAL_BOOKING', org);
+    expect(query).toHaveBeenCalledTimes(1);
   });
   it('requires globally unambiguous merchant identity for callback and reconciliation scope', () => {
     const f = fixture();
@@ -146,5 +148,54 @@ describe('trade source and verified payment boundaries', () => {
       f.service.notification(f.merchant.key, Buffer.from('{}'), {}),
     ).rejects.toMatchObject({ code: 'TRADE_NOTIFICATION_CONFLICT' });
     expect(f.service.applyPayment).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('immutable source pricing across fulfillment transitions', () => {
+  it('keeps player identity hash through REQUESTED, ACCEPTED, ARRIVED and COMPLETED', async () => {
+    const service = new TradeService({} as Pool, options) as any;
+    let status = 'REQUESTED';
+    const row = {
+      id: 'appearance',
+      order_id: 'booking',
+      profile_id: 'profile',
+      profile_version: 3,
+      settings_version: 2,
+      buyer_user_id: 'buyer',
+      player_user_id: 'player',
+      beneficiary_name: '合成球员',
+      label: '合成场次',
+      order_status: 'ACTIVE',
+      status,
+      version: 1,
+      total_fen: 1100,
+      platform_fee_fen: 100,
+      service_fen: 1000,
+      travel_fen: 0,
+      accommodation_fen: 0,
+      report_at: '2026-11-01T00:00:00Z',
+      start_at: '2026-11-01T00:30:00Z',
+      end_at: '2026-11-01T01:30:00Z',
+      venue: '合成场地',
+    };
+    const c = {
+      query: async (sql: string) => {
+        if (sql === 'SELECT status FROM organizations WHERE id=$1')
+          return { rows: [{ status: 'ACTIVE' }] };
+        if (sql.startsWith('SELECT o.org_id')) return { rows: [{ org_id: org }] };
+        if (sql.startsWith('SELECT o.id AS order_id'))
+          return { rows: [{ order_id: 'booking', team_id: 'team' }] };
+        if (sql.startsWith('SELECT a.*')) return { rows: [{ ...row, status }] };
+        return { rows: [], rowCount: 0 };
+      },
+    };
+    const before = await service.source(c, 'PLAYER_APPEARANCE', 'appearance');
+    expect(before.payable).toBe(false);
+    for (const next of ['ACCEPTED', 'ARRIVED', 'COMPLETED']) {
+      status = next;
+      const source = await service.source(c, 'PLAYER_APPEARANCE', 'appearance');
+      expect(source.payable).toBe(true);
+      expect(tradeHash(source.identity)).toBe(tradeHash(before.identity));
+    }
   });
 });

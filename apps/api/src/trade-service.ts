@@ -299,7 +299,7 @@ export class TradeService extends ApplicationService {
     if (kind !== 'PLAYER_APPEARANCE') {
       if (!term) tradeFail('TRADE_TERMS_UNAVAILABLE', '收款条款尚未独立发布', 422);
       totalFen = term!.amount_fen;
-      if (term!.status !== 'ACTIVE') payable = false;
+      if (!pinnedTerms && term!.status !== 'ACTIVE') payable = false;
     }
     if (!Number.isSafeInteger(totalFen) || totalFen < 1)
       tradeFail('TRADE_SOURCE_INVALID', '来源报价无法核验');
@@ -2065,13 +2065,57 @@ export class TradeService extends ApplicationService {
     );
     return id;
   }
+  /** Same account-closure transaction; NOWAIT avoids waiting behind a money mutation. No provider call. */
+  async assertAccountClosureSafe(c: PoolClient, userId: string): Promise<void> {
+    const orders = (
+      await c.query<Row>(
+        'SELECT * FROM trade_orders WHERE payer_user_id=$1 OR beneficiary_user_id=$1 ORDER BY id FOR UPDATE NOWAIT',
+        [tradeId(userId)],
+      )
+    ).rows;
+    for (const o of orders) {
+      const m = await this.money(c, o),
+        b = m.balances;
+      const unresolved =
+        m.attempts.some((x) => ['DISPATCHING', 'UNKNOWN', 'NOTPAY'].includes(x.status)) ||
+        m.refunds.some((x) =>
+          ['PENDING_REVIEW', 'APPROVED', 'SENDING', 'UNKNOWN', 'PROCESSING'].includes(x.status),
+        ) ||
+        m.deductions.some((x) => x.status === 'PENDING_REVIEW') ||
+        m.settlements.some((x) =>
+          [
+            'PENDING_REVIEW',
+            'APPROVED',
+            'SENDING',
+            'UNKNOWN',
+            'PROCESSING',
+            'RETURNING',
+            'RETURN_UNKNOWN',
+          ].includes(x.status),
+        );
+      const pendingReturn = await c.query(
+        "SELECT r.id FROM trade_settlement_returns r JOIN trade_settlements s ON s.id=r.settlement_id WHERE s.order_id=$1 AND r.status IN('SENDING','UNKNOWN','PROCESSING') LIMIT 1",
+        [o.id],
+      );
+      const platformFee = o.kind === 'ENTRY_DEPOSIT' ? 0 : Number(o.quote.platformFeeFen ?? 0);
+      if (
+        unresolved ||
+        pendingReturn.rowCount ||
+        b.paidFen - b.refundedFen - b.settledFen > platformFee
+      )
+        tradeFail(
+          'TRADE_MONEY_UNRESOLVED',
+          '仍有未决付款、退款、保证金或结算，请先完成资金核对',
+          409,
+        );
+    }
+  }
   /** Old free sources have no binding and remain free; a later fee publication cannot retrocharge them. */
   async assertSourceFinancialGate(
     c: PoolClient,
     kind: TradeSourceKind,
     sourceId: string,
   ): Promise<void> {
-    if (!Object.keys(this.runtime.merchants ?? {}).length) return;
     const order = (
       await c.query<Row>('SELECT * FROM trade_orders WHERE kind=$1 AND source_id=$2 FOR SHARE', [
         kind,

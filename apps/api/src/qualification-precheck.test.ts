@@ -93,6 +93,7 @@ function fixture(
   const approval = {
     id: id(),
     status: 'APPROVED',
+    request_id: '00000000-0000-4000-8000-000000000099',
     user_id: userId,
     material_id: row.material_id,
     material_revision_id: revisionId,
@@ -113,6 +114,24 @@ function fixture(
       if (sql.startsWith('SELECT id FROM teams'))
         return { rowCount: 1, rows: [{ id: row.team_id }] };
       if (sql.includes('FROM entries e JOIN events')) return { rows: [row] };
+      if (sql.includes('FROM participant_qualification_requests'))
+        return row.noRequest
+          ? { rows: [] }
+          : {
+              rows: [
+                {
+                  id: '00000000-0000-4000-8000-000000000099',
+                  user_id: userId,
+                  material_revision_id: revisionId,
+                  ruleset_id: rules,
+                  roster_revision_id: roster,
+                  portrait_sha256: 'a'.repeat(64),
+                  accepted_terms_version: 'qualification-precheck-v1',
+                  event_start_date: '2026-11-01',
+                  event_end_date: '2026-11-08',
+                },
+              ],
+            };
       if (sql.includes('FROM participant_qualification_prechecks')) {
         expect(sql).toContain('ORDER BY version DESC LIMIT 1');
         expect(sql).not.toContain("status='APPROVED'");
@@ -144,7 +163,6 @@ describe('insurance-independent qualification evidence', () => {
     });
   });
   it.each([
-    { material_status: 'DRAFT' },
     { material_status: 'CHANGES_REQUESTED' },
     { reservation_active: false },
     { portrait_bytes: 0 },
@@ -153,6 +171,12 @@ describe('insurance-independent qualification evidence', () => {
     { start_date: '2026-11-02' },
   ])('rejects changed, incomplete, withdrawn or unbound evidence: %j', async (change) => {
     expect((await fixture(change).read()).ready).toBe(false);
+  });
+  it('a complete DRAFT is usable only through its explicit immutable qualification request', async () => {
+    expect((await fixture({ material_status: 'DRAFT' }).read()).ready).toBe(true);
+  });
+  it('a complete DRAFT without an explicit current request cannot qualify', async () => {
+    expect((await fixture({ material_status: 'DRAFT', noRequest: true }).read()).ready).toBe(false);
   });
   it('a publicity-only or final-review head version change preserves the same qualification source', async () => {
     expect((await fixture({ material_version: 4, material_status: 'APPROVED' }).read()).ready).toBe(

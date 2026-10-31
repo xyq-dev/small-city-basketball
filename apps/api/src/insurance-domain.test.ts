@@ -34,6 +34,7 @@ const fact: InsurancePolicyFact = {
   paymentStatus: 'PAID',
   policyStatus: 'ISSUED',
   policyNumber: 'synthetic-policy',
+  refundedFen: 0,
   document: null,
   checkoutUrl: null,
 };

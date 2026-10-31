@@ -44,6 +44,7 @@ export interface InsurancePolicyFact extends Omit<InsuranceQuote, 'quoteReferenc
   paymentStatus: InsurancePaymentStatus;
   policyStatus: InsurancePolicyStatus;
   policyNumber: string | null;
+  refundedFen: number;
   document: { contentType: 'application/pdf'; base64: string } | null;
   checkoutUrl: string | null;
 }
@@ -127,6 +128,8 @@ export function checkInsurancePolicy(
   ] as const)
     if (f[key] !== expected[key]) invalid();
   insuranceText(f.providerOrderId, 200);
+  if (!Number.isSafeInteger(f.refundedFen) || f.refundedFen < 0 || f.refundedFen > f.premiumFen)
+    invalid();
   if (
     !['UNPAID', 'PENDING', 'PAID', 'REFUND_PENDING', 'REFUNDED', 'FAILED'].includes(
       f.paymentStatus,

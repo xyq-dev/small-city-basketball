@@ -67,7 +67,7 @@ export function qualificationMaterialCurrent(row: Row, keyId: string): boolean {
   return Boolean(
     row &&
     row.reservation_active &&
-    ['SUBMITTED', 'APPROVED'].includes(row.material_status) &&
+    ['DRAFT', 'SUBMITTED', 'APPROVED'].includes(row.material_status) &&
     !['WITHDRAWN', 'REJECTED'].includes(row.entry_status) &&
     row.key_id === keyId &&
     row.material_key_id === keyId &&
@@ -134,6 +134,24 @@ export function createYouthQualificationReader(
       row.start_date !== input.policyDate
     )
       return base;
+    const request = (
+      await c.query(
+        'SELECT *,event_start_date::text,event_end_date::text FROM participant_qualification_requests WHERE org_id=$1 AND entry_id=$2 AND member_id=$3 ORDER BY created_at DESC,id DESC LIMIT 1',
+        [input.orgId, input.entryId, input.memberId],
+      )
+    ).rows[0];
+    if (
+      !request ||
+      request.user_id !== row.user_id ||
+      request.material_revision_id !== row.material_revision_id ||
+      request.ruleset_id !== row.ruleset_id ||
+      request.roster_revision_id !== row.roster_revision_id ||
+      request.portrait_sha256 !== row.portrait_sha256 ||
+      request.accepted_terms_version !== 'qualification-precheck-v1' ||
+      String(request.event_start_date) !== row.start_date ||
+      String(request.event_end_date) !== row.end_date
+    )
+      return base;
     const q = (
       await c.query(
         'SELECT * FROM participant_qualification_prechecks WHERE org_id=$1 AND entry_id=$2 AND member_id=$3 ORDER BY version DESC LIMIT 1',
@@ -143,6 +161,7 @@ export function createYouthQualificationReader(
     if (
       !q ||
       q.status !== 'APPROVED' ||
+      q.request_id !== request.id ||
       q.user_id !== row.user_id ||
       q.material_id !== row.material_id ||
       q.material_revision_id !== row.material_revision_id ||
@@ -286,10 +305,12 @@ export class QualificationPrecheckService extends ApplicationService {
         await c.query(
           `SELECT m.member_id,m.user_id,m.version AS material_version,m.current_revision_id AS material_revision_id,m.status,
         r.portrait_bytes>0 AS has_portrait,r.has_identity,r.has_real_name,r.has_signature,
-        q.id AS qualification_id,q.status AS qualification_status,q.material_revision_id AS qualified_revision_id,q.reason
-        FROM participant_materials m JOIN participant_material_revisions r ON r.id=m.current_revision_id
+        q.id AS qualification_id,q.status AS qualification_status,q.material_revision_id AS qualified_revision_id,q.reason,qr.id AS request_id,qr.material_revision_id AS requested_revision_id,
+        (qr.material_revision_id=m.current_revision_id AND qr.ruleset_id=e.ruleset_id AND qr.roster_revision_id=e.roster_revision_id AND qr.portrait_sha256=r.portrait_sha256 AND qr.event_start_date=ev.start_date AND qr.event_end_date=ev.end_date) AS request_current,
+        (q.request_id=qr.id AND q.material_revision_id=m.current_revision_id AND q.ruleset_id=e.ruleset_id AND q.roster_revision_id=e.roster_revision_id AND q.portrait_sha256=r.portrait_sha256 AND q.event_start_date=ev.start_date AND q.event_end_date=ev.end_date) AS qualification_current
+        FROM participant_materials m JOIN participant_material_revisions r ON r.id=m.current_revision_id JOIN entries e ON e.org_id=m.org_id AND e.id=m.entry_id JOIN events ev ON ev.org_id=m.org_id AND ev.id=m.event_id
         LEFT JOIN LATERAL(SELECT * FROM participant_qualification_prechecks q WHERE q.org_id=m.org_id AND q.entry_id=m.entry_id AND q.member_id=m.member_id ORDER BY q.version DESC LIMIT 1)q ON true
-        WHERE m.org_id=$1 AND m.entry_id=$2 AND ($3::boolean OR m.user_id=$4) ORDER BY m.member_id`,
+        LEFT JOIN LATERAL(SELECT * FROM participant_qualification_requests qr WHERE qr.org_id=m.org_id AND qr.entry_id=m.entry_id AND qr.member_id=m.member_id ORDER BY qr.created_at DESC,qr.id DESC LIMIT 1)qr ON true WHERE m.org_id=$1 AND m.entry_id=$2 AND ($3::boolean OR m.user_id=$4) ORDER BY m.member_id`,
           [a.orgId, a.entryId, a.reviewer, a.actor.user.id],
         )
       ).rows;
@@ -300,7 +321,10 @@ export class QualificationPrecheckService extends ApplicationService {
         canReview: a.reviewer,
         participants: rows.map((r) => ({
           memberId: r.member_id,
+          canRequest: r.user_id === a.actor.user.id,
           materialVersion: r.material_version,
+          requestId: r.request_id ?? null,
+          requestCurrent: r.request_current === true,
           materialRevisionId: r.material_revision_id,
           hasPortrait: r.has_portrait,
           hasIdentity: r.has_identity,
@@ -310,7 +334,7 @@ export class QualificationPrecheckService extends ApplicationService {
             ? {
                 id: r.qualification_id,
                 status: r.qualification_status,
-                current: r.qualified_revision_id === r.material_revision_id,
+                current: r.qualification_current === true,
                 reason: r.reason,
               }
             : null,
@@ -319,11 +343,147 @@ export class QualificationPrecheckService extends ApplicationService {
       };
     });
   }
+  async request(cookie: string | undefined, org: string, entry: string, raw: unknown) {
+    const b = objectInput(raw, [
+      'clientRequestId',
+      'memberId',
+      'expectedMaterialVersion',
+      'acceptedTermsVersion',
+    ]);
+    const client = insuranceId(b.clientRequestId),
+      member = insuranceId(b.memberId);
+    if (
+      b.acceptedTermsVersion !== 'qualification-precheck-v1' ||
+      !Number.isInteger(b.expectedMaterialVersion)
+    )
+      insuranceFail(
+        'QUALIFICATION_CONSENT_REQUIRED',
+        '请明确同意将当前身份、照片及签署资料提交独立资格预审',
+      );
+    return this.transaction(async (c) => {
+      const a = await this.access(c, cookie, org, entry, true);
+      await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `qualification:${a.actor.user.id}:${client}`,
+      ]);
+      if (
+        !['REGISTRATION_OPEN', 'REGISTRATION_CLOSED'].includes(a.event.status) ||
+        (
+          await c.query('SELECT 1 FROM registration_freezes WHERE org_id=$1 AND event_id=$2', [
+            a.orgId,
+            a.event.id,
+          ])
+        ).rowCount
+      )
+        insuranceFail('REGISTRATION_FROZEN', '当前不能申请资格预审', 409);
+      const row = (await c.query(QUALIFICATION_SUBJECT_SQL, [a.orgId, a.entryId, member])).rows[0];
+      if (!row || row.user_id !== a.actor.user.id) throw notFound();
+      const hash = insuranceHash({ entry: a.entryId, ...b }),
+        old = (
+          await c.query(
+            'SELECT * FROM participant_qualification_receipts WHERE user_id=$1 AND client_request_id=$2',
+            [a.actor.user.id, client],
+          )
+        ).rows[0];
+      if (old) {
+        if (old.request_hash !== hash || old.action !== 'REQUEST')
+          insuranceFail('IDEMPOTENCY_CONFLICT', '原请求编号内容不同', 409);
+        await this.ensureFreshSession(c, a.actor);
+        return { requestId: old.request_id };
+      }
+      if (row.material_version !== b.expectedMaterialVersion)
+        insuranceFail('VERSION_CONFLICT', '本人资料已改变，请重读', 409);
+      const key = participantKey(this.options.participantDataKey);
+      if (!qualificationMaterialCurrent(row, participantKeyId(key)))
+        insuranceFail('QUALIFICATION_MATERIAL_REQUIRED', '请先保存当前身份、照片及签署资料');
+      const p = decryptParticipantPayload(row.payload_ciphertext, key, {
+        orgId: a.orgId,
+        eventId: a.event.id,
+        entryId: a.entryId,
+        memberId: member,
+        userId: row.user_id,
+        revisionId: row.material_revision_id,
+      });
+      const birth = qualificationBirthDate(
+        participantIdentityNumber(p.identityNumber, row.start_date),
+      );
+      if (
+        qualificationUnder14(birth, row.start_date) &&
+        (!this.qualification.dataConsentGuard ||
+          !(
+            await this.qualification.dataConsentGuard(c, {
+              orgId: a.orgId,
+              eventId: a.event.id,
+              userId: row.user_id,
+              forceRequired: true,
+            })
+          ).ready)
+      )
+        insuranceFail('YOUTH_DATA_CONSENT_REQUIRED', '未满14岁资料须先取得有效监护人同意', 409);
+      const id = randomUUID();
+      await c.query(
+        'INSERT INTO participant_qualification_requests(id,org_id,event_id,entry_id,member_id,user_id,material_id,material_revision_id,ruleset_id,roster_revision_id,portrait_sha256,event_start_date,event_end_date,accepted_terms_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+        [
+          id,
+          a.orgId,
+          a.event.id,
+          a.entryId,
+          member,
+          row.user_id,
+          row.material_id,
+          row.material_revision_id,
+          row.ruleset_id,
+          row.roster_revision_id,
+          row.portrait_sha256,
+          row.start_date,
+          row.end_date,
+          b.acceptedTermsVersion,
+        ],
+      );
+      await c.query(
+        "INSERT INTO participant_qualification_receipts(user_id,client_request_id,org_id,entry_id,request_hash,request_id,action) VALUES($1,$2,$3,$4,$5,$6,'REQUEST')",
+        [a.actor.user.id, client, a.orgId, a.entryId, hash, id],
+      );
+      await this.audit(
+        c,
+        a.actor.user.id,
+        a.orgId,
+        'QUALIFICATION_PRECHECK_REQUESTED',
+        'participant',
+        row.material_id,
+        {},
+      );
+      await this.ensureFreshSession(c, a.actor);
+      return { requestId: id };
+    });
+  }
+  async requestReceipt(cookie: string | undefined, org: string, entry: string, id: string) {
+    return this.transaction(async (c) => {
+      const a = await this.access(c, cookie, org, entry);
+      const r = (
+        await c.query(
+          'SELECT * FROM participant_qualification_receipts WHERE user_id=$1 AND client_request_id=$2 AND org_id=$3 AND entry_id=$4',
+          [a.actor.user.id, resourceId(id), a.orgId, a.entryId],
+        )
+      ).rows[0];
+      if (r?.action === 'REVIEW' && !a.reviewer) throw forbidden();
+      await this.ensureFreshSession(c, a.actor);
+      return r
+        ? {
+            found: true,
+            result:
+              r.action === 'REQUEST'
+                ? { requestId: r.request_id }
+                : { qualificationId: r.qualification_id },
+          }
+        : { found: false };
+    });
+  }
   async review(cookie: string | undefined, org: string, entry: string, raw: unknown) {
     const b = objectInput(raw, [
       'clientRequestId',
       'memberId',
       'expectedMaterialVersion',
+      'requestId',
       'decision',
       'reason',
       'identityReviewed',
@@ -332,6 +492,7 @@ export class QualificationPrecheckService extends ApplicationService {
     ]);
     const client = insuranceId(b.clientRequestId),
       member = insuranceId(b.memberId),
+      requestId = insuranceId(b.requestId),
       reason = text(b.reason, 'reason', 4, 500);
     if (
       !['APPROVED', 'REJECTED'].includes(String(b.decision)) ||
@@ -340,6 +501,9 @@ export class QualificationPrecheckService extends ApplicationService {
       insuranceFail('INVALID_QUALIFICATION_REVIEW', '请核对审核决定');
     return this.transaction(async (c) => {
       const a = await this.access(c, cookie, org, entry, true);
+      await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `qualification:${a.actor.user.id}:${client}`,
+      ]);
       if (!a.reviewer) throw forbidden();
       if (
         !['REGISTRATION_OPEN', 'REGISTRATION_CLOSED'].includes(a.event.status) ||
@@ -376,6 +540,28 @@ export class QualificationPrecheckService extends ApplicationService {
         await this.ensureFreshSession(c, a.actor);
         return { qualificationId: receipt.qualification_id };
       }
+      const submitted = (
+        await c.query(
+          'SELECT *,event_start_date::text,event_end_date::text FROM participant_qualification_requests WHERE org_id=$1 AND entry_id=$2 AND member_id=$3 ORDER BY created_at DESC,id DESC LIMIT 1',
+          [a.orgId, a.entryId, member],
+        )
+      ).rows[0];
+      if (
+        !submitted ||
+        submitted.id !== requestId ||
+        submitted.user_id !== row.user_id ||
+        submitted.material_revision_id !== row.material_revision_id ||
+        submitted.ruleset_id !== row.ruleset_id ||
+        submitted.roster_revision_id !== row.roster_revision_id ||
+        submitted.portrait_sha256 !== row.portrait_sha256 ||
+        submitted.event_start_date !== row.start_date ||
+        submitted.event_end_date !== row.end_date
+      )
+        insuranceFail(
+          'QUALIFICATION_REQUEST_REQUIRED',
+          '本人须先明确提交当前版本的独立资格预审',
+          409,
+        );
       if (row.material_version !== b.expectedMaterialVersion)
         insuranceFail('VERSION_CONFLICT', '本人资料已改变，请重读', 409);
       const key = participantKey(this.options.participantDataKey);
@@ -424,7 +610,7 @@ export class QualificationPrecheckService extends ApplicationService {
       );
       const id = randomUUID();
       await c.query(
-        `INSERT INTO participant_qualification_prechecks(id,org_id,event_id,entry_id,member_id,user_id,material_id,material_revision_id,material_version,ruleset_id,roster_revision_id,portrait_sha256,event_start_date,event_end_date,version,status,reviewed_by,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
+        `INSERT INTO participant_qualification_prechecks(id,org_id,event_id,entry_id,member_id,user_id,material_id,material_revision_id,material_version,ruleset_id,roster_revision_id,portrait_sha256,event_start_date,event_end_date,version,status,reviewed_by,reason,request_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
         [
           id,
           a.orgId,
@@ -444,6 +630,7 @@ export class QualificationPrecheckService extends ApplicationService {
           b.decision,
           a.actor.user.id,
           reason,
+          requestId,
         ],
       );
       await c.query(

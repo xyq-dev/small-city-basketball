@@ -63,6 +63,8 @@ CREATE TABLE insurance_orders (
   policy_ciphertext text,
   cancellation_requested_at timestamptz,
   verified_at timestamptz,
+  authorization_valid boolean NOT NULL DEFAULT false,
+  refunded_fen bigint CHECK(refunded_fen BETWEEN 0 AND 100000000),
   terms_version text NOT NULL,
   key_id char(64) NOT NULL,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -71,6 +73,7 @@ CREATE TABLE insurance_orders (
   FOREIGN KEY(org_id,entry_id) REFERENCES entries(org_id,id),
   CHECK(policy_status<>'ISSUED' OR payment_status='PAID')
 );
+CREATE UNIQUE INDEX insurance_one_unresolved_subject ON insurance_orders(org_id,entry_id,member_id) WHERE policy_status IN('PENDING','ISSUED','CANCEL_PENDING') OR payment_status='REFUND_PENDING' OR (policy_status='FAILED' AND payment_status='PAID');
 CREATE TABLE insurance_operations (
   id uuid PRIMARY KEY,
   order_id uuid NOT NULL REFERENCES insurance_orders(id),
@@ -113,8 +116,30 @@ CREATE TRIGGER insurance_quote_immutable BEFORE UPDATE OR DELETE ON insurance_qu
 CREATE TRIGGER insurance_receipt_immutable BEFORE UPDATE OR DELETE ON insurance_receipts FOR EACH ROW EXECUTE FUNCTION e03_immutable();
 CREATE TRIGGER insurance_event_immutable BEFORE UPDATE OR DELETE ON insurance_provider_events FOR EACH ROW EXECUTE FUNCTION e03_immutable();
 -- Independent identity/photo/signature qualification before buying insurance, without insurance dependency.
+CREATE TABLE participant_qualification_requests (
+  id uuid PRIMARY KEY,
+  org_id uuid NOT NULL REFERENCES organizations(id),
+  event_id uuid NOT NULL,
+  entry_id uuid NOT NULL,
+  member_id uuid NOT NULL,
+  user_id uuid NOT NULL REFERENCES users(id),
+  material_id uuid NOT NULL REFERENCES participant_materials(id),
+  material_revision_id uuid NOT NULL REFERENCES participant_material_revisions(id),
+  ruleset_id uuid NOT NULL REFERENCES event_rulesets(id),
+  roster_revision_id uuid NOT NULL REFERENCES entry_roster_revisions(id),
+  portrait_sha256 char(64) NOT NULL,
+  event_start_date date NOT NULL,
+  event_end_date date NOT NULL,
+  accepted_terms_version text NOT NULL CHECK(accepted_terms_version='qualification-precheck-v1'),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  FOREIGN KEY(org_id,event_id) REFERENCES events(org_id,id),
+  FOREIGN KEY(org_id,entry_id) REFERENCES entries(org_id,id),
+  CHECK(event_end_date>=event_start_date)
+);
+CREATE INDEX qualification_request_current ON participant_qualification_requests(org_id,entry_id,member_id,created_at DESC,id DESC);
 CREATE TABLE participant_qualification_prechecks (
   id uuid PRIMARY KEY,
+  request_id uuid NOT NULL REFERENCES participant_qualification_requests(id),
   org_id uuid NOT NULL REFERENCES organizations(id),
   event_id uuid NOT NULL,
   entry_id uuid NOT NULL,
@@ -145,9 +170,13 @@ CREATE TABLE participant_qualification_receipts (
   org_id uuid NOT NULL,
   entry_id uuid NOT NULL,
   request_hash char(64) NOT NULL,
-  qualification_id uuid NOT NULL REFERENCES participant_qualification_prechecks(id),
+  qualification_id uuid REFERENCES participant_qualification_prechecks(id),
+  request_id uuid REFERENCES participant_qualification_requests(id),
+  action text NOT NULL DEFAULT 'REVIEW' CHECK(action IN('REQUEST','REVIEW')),
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  PRIMARY KEY(user_id,client_request_id)
+  PRIMARY KEY(user_id,client_request_id),
+  CHECK((action='REQUEST' AND request_id IS NOT NULL AND qualification_id IS NULL) OR (action='REVIEW' AND qualification_id IS NOT NULL AND request_id IS NULL))
 );
+CREATE TRIGGER qualification_request_immutable BEFORE UPDATE OR DELETE ON participant_qualification_requests FOR EACH ROW EXECUTE FUNCTION e03_immutable();
 CREATE TRIGGER qualification_precheck_immutable BEFORE UPDATE OR DELETE ON participant_qualification_prechecks FOR EACH ROW EXECUTE FUNCTION e03_immutable();
 CREATE TRIGGER qualification_receipt_immutable BEFORE UPDATE OR DELETE ON participant_qualification_receipts FOR EACH ROW EXECUTE FUNCTION e03_immutable();
