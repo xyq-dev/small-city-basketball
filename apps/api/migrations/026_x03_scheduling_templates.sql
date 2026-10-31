@@ -268,7 +268,7 @@ CREATE FUNCTION x03_template_instance_insert_guard() RETURNS trigger LANGUAGE pl
 DECLARE source_version event_template_versions%ROWTYPE;
 BEGIN
   SELECT * INTO source_version FROM event_template_versions WHERE org_id=NEW.org_id
-    AND template_id=NEW.template_id AND id=NEW.template_version_id FOR SHARE;
+    AND template_id=NEW.template_id AND id=NEW.template_version_id;
   IF NOT FOUND OR source_version.configuration IS DISTINCT FROM NEW.configuration OR
     source_version.configuration_hash IS DISTINCT FROM NEW.configuration_hash OR
     (NEW.configuration->>'expectedTeams')::integer IS DISTINCT FROM NEW.expected_team_count THEN

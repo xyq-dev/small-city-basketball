@@ -51,7 +51,10 @@
     "pages/local-matchups/index",
     "pages/governance/index",
     "pages/governance-reviews/index",
-    "pages/city-operations/index"
+    "pages/city-operations/index",
+    "pages/sponsorships/index",
+    "pages/public-archives/index",
+    "pages/public-archive/index"
   ],
   "window": {
     "navigationBarTitleText": "小城市篮球",

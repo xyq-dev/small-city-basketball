@@ -493,3 +493,29 @@ describe('C04 private player coverage over original knockout results', () => {
     });
   });
 });
+
+describe('X08 double round-robin individual samples', () => {
+  const base = () => ({
+    publicationId: id(700),
+    source: { entries: [participant(1), participant(2)] },
+    matches: [final(1, 1, 2), final(2, 2, 1)],
+    asOf: '2026-10-31T00:00:00Z',
+    format: 'DOUBLE_ROUND_ROBIN' as any,
+  });
+  test('home/away return leg yields two samples without inventing appearances', () => {
+    const result = calculateEventPlayerStatistics(base());
+    expect(result.totalMatchCount).toBe(2);
+    expect(result.includedMatchCount).toBe(2);
+    expect(result.coverageComplete).toBe(true);
+    expect(result.rows[0]!.rosterSampleMatchCount).toBe(2);
+    expect(result.rows[0]).not.toHaveProperty('appearances');
+  });
+  test('rejects a missing return leg and two copies of the same home-away orientation', () => {
+    const missing = base();
+    missing.matches.pop();
+    expect(() => calculateEventPlayerStatistics(missing)).toThrow();
+    const duplicate = base();
+    duplicate.matches[1] = final(2, 1, 2);
+    expect(() => calculateEventPlayerStatistics(duplicate)).toThrow();
+  });
+});

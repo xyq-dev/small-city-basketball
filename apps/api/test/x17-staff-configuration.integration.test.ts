@@ -108,7 +108,7 @@ describe('X17 staff configuration real PostgreSQL permissions and receipts', () 
       "UPDATE organization_memberships SET status='DISABLED',updated_at=clock_timestamp() WHERE org_id=$1 AND user_id=$2",
       [h.owner.orgId, admin.id],
     );
-    error(await send(staff, admin.cookie), 403);
+    error(await send(staff, admin.cookie), 404);
     const row = (
       await h.api.pool.query(
         'SELECT role,status FROM event_staff WHERE org_id=$1 AND event_id=$2 AND user_id=$3',

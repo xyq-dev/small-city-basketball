@@ -116,6 +116,7 @@ export function calculateEventPlayerStatistics(input: {
         roundPublications: input.roundPublications,
       })
     : null;
+  const doubleRoundRobin = String(input.format) === 'DOUBLE_ROUND_ROBIN';
   const knockout = input.format === 'SINGLE_ELIMINATION';
   const bracket = knockout
     ? calculateKnockout({
@@ -131,12 +132,14 @@ export function calculateEventPlayerStatistics(input: {
   const totalMatchCount = competition
     ? competition.totalMatchCount
     : knockout
-      ? entrants.length - 1
-      : (entrants.length * (entrants.length - 1)) / 2;
+      ? bracket!.totalMatchCount
+      : (entrants.length * (entrants.length - 1)) / (doubleRoundRobin ? 1 : 2);
   if (!knockout && !group && input.matches.length !== totalMatchCount) resultSourceInvalid();
   if (
     input.format &&
-    !['ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(input.format)
+    !['ROUND_ROBIN', 'DOUBLE_ROUND_ROBIN', 'SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(
+      input.format,
+    )
   )
     resultSourceInvalid();
   const byEntry = new Map(entrants.map((p) => [p.entryId, p]));
@@ -170,7 +173,9 @@ export function calculateEventPlayerStatistics(input: {
     const home = byEntry.get(m.home_entry_id);
     const away = byEntry.get(m.away_entry_id);
     if (!home || !away || home === away) resultSourceInvalid();
-    const pair = [home.entryId, away.entryId].sort().join('|');
+    const pair = doubleRoundRobin
+      ? [home.entryId, away.entryId].join('|')
+      : [home.entryId, away.entryId].sort().join('|');
     if (!group && pairs.has(pair)) resultSourceInvalid();
     pairs.add(pair);
     const stats = confirmedPlayerStatistics(m);
@@ -282,6 +287,7 @@ export function calculateEventPlayerStatistics(input: {
     participants: entrants,
     rosters: [...rosterSources].sort(([a], [b]) => compareId(a, b)),
     matches: sources,
+    ...(doubleRoundRobin ? { format: 'DOUBLE_ROUND_ROBIN', totalMatchCount } : {}),
     ...(competition
       ? {
           format: 'GROUP_KNOCKOUT',

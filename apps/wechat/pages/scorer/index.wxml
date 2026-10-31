@@ -20,14 +20,15 @@
       <button class="secondary" bindtap="resendPending" disabled="{{busy}}">按原编号重发</button>
     </view>
 
-    <view wx:if="{{board && canControl}}" class="card">
+    <view wx:if="{{board && (canControl || offlineItems.length || offlineError)}}" class="card">
       <view class="subtitle">可靠离线草稿</view>
       <view class="muted small">草稿按登录账号与场次保存在本机，未同步不计入比分。离线时钟、阵容、节次与确认不可操作。恢复网络后重新取得控制，明确按原顺序导入；冲突会停止并保留。</view>
       <view wx:if="{{offlineError}}" class="notice warning">{{offlineError}}</view>
       <view wx:if="{{offlineItems.length}}" class="notice warning">{{offlineItems.length}} 条未同步草稿</view>
-      <view wx:for="{{offlineItems}}" wx:key="id" class="muted small">第{{item.ordinal}}条：{{item.label}} · 未同步</view>
-      <button class="secondary" bindtap="toggleOffline" disabled="{{busy || !!pending || !!offlineError}}">{{offlineDraft?'退出离线草稿模式':'进入离线草稿模式'}}</button>
+      <view wx:for="{{offlineItems}}" wx:key="id" class="muted small">第{{item.ordinal}}条：{{item.label}} · {{item.detail}} · 未同步</view>
+      <button class="secondary" bindtap="toggleOffline" disabled="{{busy || !!pending || !!offlineError || !canControl}}">{{offlineDraft?'退出离线草稿模式':'进入离线草稿模式'}}</button>
       <button wx:if="{{offlineItems.length}}" class="primary" bindtap="syncOffline" disabled="{{busy || !held || !!pending || !!offlineError}}">按原顺序同步并核对</button>
+      <button wx:if="{{offlineItems.length}}" class="secondary" bindtap="exportOffline" disabled="{{busy || !!offlineError}}">导出原草稿逐条核对</button>
       <button wx:if="{{offlineItems.length || offlineError}}" class="quiet" bindtap="discardOffline" disabled="{{busy}}">删除本地草稿</button>
     </view>
 

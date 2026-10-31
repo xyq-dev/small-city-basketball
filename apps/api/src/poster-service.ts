@@ -3,6 +3,7 @@ import type { PoolClient } from 'pg';
 import { ApiError, forbidden, notFound } from './errors.js';
 import { StandingsService } from './standings-service.js';
 import type { StandingsAccess } from './standings-service.js';
+import { administrativeResult } from './match-exception-domain.js';
 import { confirmedResult } from './standings-domain.js';
 import { objectInput, resourceId, text } from './validation.js';
 import { requestFingerprint, requestId } from './recruitment-domain.js';
@@ -257,6 +258,8 @@ export class PosterService extends StandingsService {
       const match = b.rows.find((m) => m.id === input.matchId);
       if (!match || ['CANCELLED', 'POSTPONED'].includes(match.status))
         unavailable('当前对阵已取消、延期或不属于有效公开赛程');
+      if (administrativeResult(match))
+        unavailable('本场已有正式弃权或取消裁定，旧对阵预告与普通战报停止导出');
       recipe.teams = [match.home_team_name, match.away_team_name];
       recipe.venueName = match.court_name;
       recipe.dateLabel =

@@ -25,6 +25,7 @@
       <image class="event-court" src="/assets/court.png" mode="widthFix"/>
     </view>
     <view wx:if="{{overview}}" class="event-menu">
+<button class="quiet" bindtap="report">赛事问题与举报</button>
       <button class="primary" data-tab="schedule" bindtap="tab" disabled="{{loading}}">查看赛程</button>
       <button class="secondary" data-tab="ranking" bindtap="tab" disabled="{{loading}}">分组排名与晋级</button>
       <button class="secondary" data-tab="media" bindtap="tab" disabled="{{loading}}">比赛视频与图片</button>

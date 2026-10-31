@@ -25,6 +25,7 @@
       <view wx:if="{{managedOrgs.length}}" class="menu-group">
         <view class="menu-title">机构管理</view>
         <block wx:for="{{managedOrgs}}" wx:key="id">
+<view class="menu-row" data-page="sponsorships" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>广告与赞助投放</view><view class="menu-sub">{{item.name}} · 地区、赛事与时段</view></view></view>
 <view class="menu-row" data-page="staff-configuration" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>成员与工作人员权限</view><view class="menu-sub">{{item.name}}</view></view></view>
 <view class="menu-row" data-page="local-manage" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>球场与同城服务管理</view><view class="menu-sub">{{item.name}} · 供给、档期与审核</view></view></view>
           <view class="menu-row" data-page="team-requests" data-org="{{item.id}}" bindtap="go"><scb-icon name="users" size="20"/><view class="menu-text"><view>建队申请审批</view><view class="menu-sub">{{item.name}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
@@ -33,6 +34,8 @@
       </view>
       <view class="menu-group">
         <view class="menu-title">我的赛季</view>
+<view class="menu-row" data-page="public-archives" bindtap="go"><view class="menu-text"><view>长期公开档案与授权</view><view class="menu-sub">球队／球员公共主页、本人逐项同意</view></view></view>
+<view class="menu-row" data-page="public-archive" bindtap="go"><view class="menu-text"><view>公开跨届榜单</view></view></view>
         <view class="menu-row" data-page="season-grants" bindtap="go"><scb-icon name="chart" size="20"/><view class="menu-text"><view>私有赛季授权与本人数据</view><view class="menu-sub">本人同意后计入，可查看或撤销授权</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
       <view class="menu-group">
@@ -43,6 +46,7 @@
       </view>
       <view class="menu-group">
         <view class="menu-title">账号</view>
+<button class="quiet" bindtap="copyMemberId">复制我的成员编号，供主办方配置授权</button>
 <view class="menu-row" data-page="local-bookings" bindtap="go"><view class="menu-text"><view>我的球场与服务订单</view></view></view>
 <view class="menu-row" data-page="local-matchups" bindtap="go"><view class="menu-text"><view>球队约赛</view></view></view>
 <view class="menu-row" data-page="governance" bindtap="go"><view class="menu-text"><view>客服、举报与申诉</view></view></view>

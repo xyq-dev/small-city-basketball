@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, writeFile, chmod, rm } from 'node:fs/promises';
+import { createHash, randomBytes } from 'node:crypto';
+import { mkdtemp, mkdir, readFile, readdir, writeFile, chmod, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
@@ -11,6 +11,20 @@ import { assertApiSecretMounts } from './check-api-secret-mounts.mjs';
 if (process.env.CI !== 'true' || !process.env.RUNNER_TEMP)
   throw new Error('Production checks require an isolated GitHub Actions runner');
 const root = fileURLToPath(new URL('../', import.meta.url));
+const migrationDirectory = path.join(root, 'apps/api/migrations');
+const expectedMigrations = Object.fromEntries(
+  await Promise.all(
+    (await readdir(migrationDirectory))
+      .filter((name) => /^\d+_[a-z0-9_]+\.sql$/.test(name))
+      .sort()
+      .map(async (name) => [
+        name,
+        createHash('sha256')
+          .update(await readFile(path.join(migrationDirectory, name)))
+          .digest('hex'),
+      ]),
+  ),
+);
 const temporary = await mkdtemp(path.join(process.env.RUNNER_TEMP, 'scb-production-'));
 await chmod(temporary, 0o700);
 const suffix = randomBytes(6).toString('hex');
@@ -614,7 +628,7 @@ secrets:
         `${prefix}/api:local`,
         '--input-type=module',
         '-e',
-        "import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.equal(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).length,24);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}",
+        `import crypto from 'node:crypto';const expected=${JSON.stringify(expectedMigrations)};import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.deepEqual(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).sort(),Object.keys(expected));for(const [name,hash] of Object.entries(expected))assert.equal(crypto.createHash('sha256').update(fs.readFileSync('apps/api/migrations/'+name)).digest('hex'),hash);assert.ok(!fs.existsSync('apps/api/src'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}`,
       ]);
       await run('docker', [
         'run',
@@ -920,7 +934,7 @@ secrets:
     await waitReady();
     await validator(target, targetEnv, 'verify', true);
     console.log(
-      '[production] Full restore matched all 83 exact tables, business snapshots and backup-point fencing.',
+      '[production] Full restore matched all exact manifest tables, business snapshots and backup-point fencing.',
     );
   });
   await stage(

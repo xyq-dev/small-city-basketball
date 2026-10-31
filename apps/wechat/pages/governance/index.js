@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const gov = require('../../utils/governance');
 const materials = require('../../utils/participant-materials');
+const regions = require('../../utils/regions');
 const PATH = '/pages/governance/index';
 const initial = () => ({
   items: [],
@@ -9,6 +10,8 @@ const initial = () => ({
   selected: null,
   organizations: [],
   orgIndex: 0,
+  regions: [],
+  regionIndex: -1,
   mode: 'mine',
   isOperator: false,
   assignees: [],
@@ -70,6 +73,7 @@ Page({
     this.load();
   },
   onHide() {
+    this._catalog = null;
     this._visible = false;
     ui.close(this);
     gov.cleanup(this);
@@ -82,6 +86,7 @@ Page({
     this.onHide();
   },
   onSessionReset() {
+    this._catalog = null;
     this._viewer = null;
     this._file = null;
     gov.cleanup(this);
@@ -113,12 +118,18 @@ Page({
       const base =
         mode === 'platform' ? '/v1/platform/governance/cases' : '/v1/me/governance/cases';
       const query = mode === 'assigned' ? '?assigned=true' : '';
-      const value = gov.page(await gov.request(api.getClient(), base + query));
+      const [raw, catalog] = await Promise.all([
+        gov.request(api.getClient(), base + query),
+        regions.fetchCatalog().catch(() => null),
+      ]);
+      const value = gov.page(raw);
       if (!ui.live(this, token)) return;
+      this._catalog = catalog;
       this.setData({
         items: value.items,
         nextCursor: value.nextCursor || null,
         pending,
+        regions: catalog?.nodes || [],
         loading: false,
       });
       if (this._query.caseId) await this.selectId(this._query.caseId);
@@ -143,6 +154,9 @@ Page({
   },
   org(e) {
     this.setData({ orgIndex: Number(e.detail.value) || 0 });
+  },
+  region(e) {
+    if (!this.data.busy) this.setData({ regionIndex: Number(e.detail.value) });
   },
   kind(e) {
     if (!this.data.busy) this.setData({ kindIndex: Number(e.detail.value) || 0 });
@@ -245,6 +259,14 @@ Page({
       kind,
       title: this.data.title,
       body: this.data.body,
+      ...(this._catalog && this.data.regions[this.data.regionIndex]
+        ? {
+            region: {
+              catalogVersion: this._catalog.version,
+              regionId: this.data.regions[this.data.regionIndex].id,
+            },
+          }
+        : {}),
       ...(orgId ? { orgId } : {}),
       ...(this._query.source ? { source: this._query.source } : {}),
       ...(kind === 'APPEAL' && this._query.parentCaseId
@@ -320,9 +342,14 @@ Page({
   async choose() {
     if (this.data.busy || !this.data.selected?.capabilities?.canReply) return;
     const token = ui.guard(this);
+    const selected = this.data.selected,
+      choice = (this._fileChoice = (this._fileChoice || 0) + 1);
+    this._file = null;
+    this.setData({ chosenFile: '' });
     try {
       const file = await materials.chooseFile(wx, 'insurance');
-      if (!ui.held(this, token)) return;
+      if (!ui.held(this, token) || choice !== this._fileChoice || this.data.selected !== selected)
+        return;
       if (file.size > 4 * 1024 * 1024) throw new Error('附件不能超过4MiB');
       this._file = file;
       this.setData({ chosenFile: file.name });

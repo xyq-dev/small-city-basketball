@@ -21,3 +21,5 @@ X01季军树／025／原生晋级页、X05／X12／X18领域与027／029／030�
 检查点4：root已补X17/X22原生消费者、035、取消墓碑；继续读对应任务。下一步整合各agent后续切片、统一DI/路由/最小权限，然后执行真实PG和全套检查；全部22项范围保留。
 
 检查点5：DI、全局路由、受控下载和入口已接；首轮API855通过、root消费者VM7通过。native全量首轮有实体/glyph失败，根与X01已修，等X18自有页修复再重跑。infra独占在recruitment，X22 PG并发在competition；X17 PG3项已写未跑。未开PR/真实PG未执行。下次读本卡最新+F01—F22，不能结束于C24或任一模块。
+
+检查点6：完整35迁移源码/127表manifest已齐；root dec64c5类型/API882/native883+1skip/admin512通过。I2已cherry但quarantine/非空fixtures仍在infra agent后续。下一步同步并开Draft PR启动真PG，不能生产、不能提前合并失败候选。X21/核销/公共裁定/统计源等仍在后续交片；全部22项保留。

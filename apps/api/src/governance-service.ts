@@ -225,6 +225,10 @@ export class GovernanceService extends StandingsService {
         ? await this.governanceOptions.bookingVerifier(c, govId(id), actorUserId, completed)
         : await this.governanceOptions.completedBookingVerifier!(c, govId(id), actorUserId);
       if (
+        (completed &&
+          this.governanceOptions.bookingVerifier &&
+          'completed' in result &&
+          result.completed !== true) ||
         result.bookingId !== id ||
         ![result.buyerUserId, result.providerUserId].includes(actorUserId) ||
         result.buyerUserId === result.providerUserId
@@ -502,6 +506,7 @@ export class GovernanceService extends StandingsService {
     return this.transaction(async (c) => {
       const actor = await this.lockActor(c, cookie);
       let orgId = input.orgId;
+      let caseRegion = input.region;
       let parent: Row | undefined;
       if (input.parentCaseId) {
         parent = (
@@ -513,26 +518,29 @@ export class GovernanceService extends StandingsService {
         if (!parent) throw notFound();
         if (orgId && orgId !== parent.org_id) throw notFound();
         orgId = parent.org_id;
+        caseRegion = maybeRegion(parent);
       }
       if (input.source) {
-        const sourceOrg =
+        const verified =
           input.source.kind === 'PUBLIC_EVENT'
-            ? (await this.publicAccess(c, input.source.id)).pub.org_id
-            : (
-                await this.verifiedBooking(
-                  c,
-                  input.source.kind,
-                  input.source.id,
-                  actor.user.id,
-                  false,
-                )
-              ).orgId;
+            ? null
+            : await this.verifiedBooking(
+                c,
+                input.source.kind,
+                input.source.id,
+                actor.user.id,
+                false,
+              );
+        const sourceOrg = verified
+          ? verified.orgId
+          : (await this.publicAccess(c, input.source.id)).pub.org_id;
+        if (verified?.region) caseRegion = verified.region;
         if (orgId && orgId !== sourceOrg) throw notFound();
         orgId = sourceOrg;
       }
       if (!orgId) throw notFound();
       await governanceActiveOrg(c, orgId);
-      if (input.region) await governanceRegion(c, input.region);
+      if (caseRegion) await governanceRegion(c, caseRegion);
       const request = { operation: 'CASE_CREATE', ...input },
         old = await governanceReceipt(c, actor, input.commandId, request);
       if (old) return old;
@@ -560,8 +568,8 @@ export class GovernanceService extends StandingsService {
           actor.user.id,
           input.kind,
           input.title,
-          input.region?.catalogVersion ?? null,
-          input.region?.regionId ?? null,
+          caseRegion?.catalogVersion ?? null,
+          caseRegion?.regionId ?? null,
           input.source?.kind ?? null,
           input.source?.id ?? null,
           input.parentCaseId,

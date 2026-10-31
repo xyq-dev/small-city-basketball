@@ -90,6 +90,17 @@ describe('X03 double round robin persistence with real PostgreSQL', () => {
       });
       error(rejected, 422);
       expect(rejected.body.error.code).toBe('UNSUPPORTED_EVENT_FORMAT');
+      const bronze = await call(h.api, 'post', revisionsPath(h.owner.orgId, f.event.id), {
+        cookie: h.owner.cookie,
+        body: {
+          expectedEventVersion: f.event.version,
+          freezeId: f.freeze!.id,
+          algorithmVersion: format === 'ROUND_ROBIN' ? 'RR_CIRCLE_V1' : 'DRR_CIRCLE_V1',
+          policy: { ...policyFor(f, [c]), thirdPlaceMatch: true },
+        },
+      });
+      error(bronze, 422);
+      expect(bronze.body.error.code).toBe('UNSUPPORTED_SCHEDULE_POLICY');
       expect(
         (
           await h.api.pool.query(

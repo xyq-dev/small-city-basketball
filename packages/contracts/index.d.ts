@@ -1196,3 +1196,4 @@ export type * from './local-services.js';
 export type * from './governance.js';
 
 export type * from './knockout-optimization.js';
+export type * from './public-archives.js';

@@ -22,6 +22,11 @@ import type { Response, NextFunction } from 'express';
 import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
+import { PublicArchivesService } from './public-archives-service.js';
+import {
+  PublicArchivesController,
+  SCB_PUBLIC_ARCHIVES_SERVICE,
+} from './public-archives-controller.js';
 import { EventTemplateService } from './event-template-service.js';
 import {
   EventTemplateController,
@@ -48,6 +53,13 @@ import {
 import { TencentLocationProvider } from './location-provider.js';
 import type { LocationProvider } from './location-provider.js';
 import { readRequiredSecret } from './env.js';
+import { SponsorshipService } from './sponsorship-service.js';
+import {
+  SponsorshipController,
+  SponsorshipReviewController,
+  PublicSponsorshipController,
+  SCB_SPONSORSHIP_SERVICE,
+} from './sponsorship-controller.js';
 import { GovernanceService } from './governance-service.js';
 import { CityOperationsService, assertCityOperation } from './city-operations-service.js';
 import {
@@ -342,10 +354,12 @@ export async function createApi(
   try {
     if (options.production) await assertRuntimeReadiness(pool, options.participantDataKey);
     const service = new RegistrationService(pool, options);
+    const publicArchives = new PublicArchivesService(pool, options);
     const eventTemplates = new EventTemplateService(pool, options);
     const matchExceptions = new MatchExceptionService(pool, options);
     const recruitment = new RecruitmentService(pool, options);
     const posters = new PosterService(pool, options);
+    const sponsorships = new SponsorshipService(pool, options);
     const cityOperations = new CityOperationsService(pool, options);
     const governance = new GovernanceService(pool, options, {
       bookingVerifier: verifiedGovernanceBooking,
@@ -395,6 +409,10 @@ export async function createApi(
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
+        SponsorshipController,
+        SponsorshipReviewController,
+        PublicSponsorshipController,
+        PublicArchivesController,
         EventTemplateController,
         MatchExceptionController,
         RecruitmentController,
@@ -446,6 +464,8 @@ export async function createApi(
         SeasonController,
       ],
       providers: [
+        { provide: SCB_SPONSORSHIP_SERVICE, useValue: sponsorships },
+        { provide: SCB_PUBLIC_ARCHIVES_SERVICE, useValue: publicArchives },
         { provide: SCB_EVENT_TEMPLATE_SERVICE, useValue: eventTemplates },
         { provide: SCB_MATCH_EXCEPTION_SERVICE, useValue: matchExceptions },
         { provide: SCB_RECRUITMENT_SERVICE, useValue: recruitment },

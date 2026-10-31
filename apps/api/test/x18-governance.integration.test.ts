@@ -7,7 +7,8 @@ import { hashPassword } from '../src/security.js';
 import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
 import { GovernanceService } from '../src/governance-service.js';
 import { CityOperationsService } from '../src/city-operations-service.js';
-import { testDatabaseUrl, ORIGIN, PASSWORD, RUN_ID, login } from './support.js';
+import { SponsorshipService } from '../src/sponsorship-service.js';
+import { testDatabaseUrl, ORIGIN, PASSWORD, RUN_ID, login, createEvent } from './support.js';
 import type { Api, User } from './support.js';
 // Real PostgreSQL services plus real HTTP session authentication. Controller/body-lane wiring
 // belongs to root integration; this file does not misrepresent service tests as HTTP acceptance.
@@ -16,6 +17,7 @@ describe(
   { concurrent: false },
   () => {
     let api: Api, g: GovernanceService, city: CityOperationsService;
+    let sponsor: SponsorshipService;
     let owner: User, operator: User, handler: User, stranger: User;
     let region: { catalogVersion: string; regionId: string };
     beforeAll(async () => {
@@ -29,6 +31,7 @@ describe(
       api = await createApi({ databaseUrl, appOrigin: ORIGIN });
       g = new GovernanceService(api.pool, { databaseUrl, appOrigin: ORIGIN });
       city = new CityOperationsService(api.pool, { databaseUrl, appOrigin: ORIGIN });
+      sponsor = new SponsorshipService(api.pool, { databaseUrl, appOrigin: ORIGIN });
       const passwordHash = await hashPassword(PASSWORD);
       const actors: User[] = [];
       for (const name of ['owner', 'operator', 'handler', 'stranger']) {
@@ -296,6 +299,140 @@ describe(
         reason: '本人撤回公开评价正文',
       });
       await expect(g.publicReview(row.publicKey as string)).rejects.toMatchObject({ status: 404 });
+    });
+    test('sponsor requires independent review; reports deduplicate by publication and revocation never revives old key', async () => {
+      const input = {
+        commandId: randomUUID(),
+        region,
+        brand: '合成赞助方',
+        title: '合成地区投放',
+        body: '仅隔离合成投放文案',
+        startsAt: new Date(Date.now() - 3600000).toISOString(),
+        endsAt: new Date(Date.now() + 86400000).toISOString(),
+      };
+      const row = await sponsor.save(owner.cookie, owner.orgId, null, input);
+      const id = row.id as string;
+      await sponsor.command(owner.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 1,
+        type: 'SUBMIT',
+        reason: '提交合成投放审核',
+      });
+      await expect(
+        sponsor.command(owner.cookie, owner.orgId, id, {
+          commandId: randomUUID(),
+          expectedVersion: 2,
+          type: 'APPROVE',
+          reason: '本人不能自行审核',
+        }),
+      ).rejects.toMatchObject({ status: 403 });
+      await sponsor.command(operator.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 2,
+        type: 'APPROVE',
+        reason: '独立合成城市审核',
+      });
+      const published = await sponsor.command(owner.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 3,
+        type: 'PUBLISH',
+        reason: '发布合成有效投放',
+      });
+      const key = published.publicKey as string;
+      expect((await sponsor.publicOne(key)).label).toBe('广告／赞助');
+      expect((await sponsor.publicList(region)).items.some((i) => i.publicKey === key)).toBe(true);
+      const commandId = randomUUID();
+      expect(await sponsor.impression(key, { commandId }, 'synthetic-source')).toEqual(
+        await sponsor.impression(key, { commandId }, 'synthetic-source'),
+      );
+      expect((await sponsor.get(owner.cookie, owner.orgId, id)).reportedImpressions).toBe(1);
+      await expect(
+        sponsor.save(owner.cookie, owner.orgId, id, {
+          ...input,
+          commandId: randomUUID(),
+          expectedVersion: 4,
+          body: '不能直接更改审核条款',
+        }),
+      ).rejects.toMatchObject({ code: 'SPONSOR_TERMS_FROZEN' });
+      await sponsor.command(owner.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 4,
+        type: 'REVOKE_PUBLICATION',
+        reason: '永久撤销合成公开地址',
+      });
+      await expect(sponsor.publicOne(key)).rejects.toMatchObject({ status: 404 });
+      const republished = await sponsor.command(owner.cookie, owner.orgId, id, {
+        commandId: randomUUID(),
+        expectedVersion: 5,
+        type: 'PUBLISH',
+        reason: '创建另一合成发布批次',
+      });
+      expect(republished.publicKey).not.toBe(key);
+      await expect(sponsor.publicOne(key)).rejects.toMatchObject({ status: 404 });
+    });
+    test('future sponsor is absent until its window and unpublished event cannot be advertised as public', async () => {
+      const row = await sponsor.save(owner.cookie, owner.orgId, null, {
+        commandId: randomUUID(),
+        region,
+        brand: '合成未来赞助',
+        title: '未来时段',
+        body: '不会提前展示',
+        startsAt: new Date(Date.now() + 3600000).toISOString(),
+        endsAt: new Date(Date.now() + 86400000).toISOString(),
+      });
+      await sponsor.command(owner.cookie, owner.orgId, row.id as string, {
+        commandId: randomUUID(),
+        expectedVersion: 1,
+        type: 'SUBMIT',
+        reason: '提交未来时段投放',
+      });
+      await sponsor.command(operator.cookie, owner.orgId, row.id as string, {
+        commandId: randomUUID(),
+        expectedVersion: 2,
+        type: 'APPROVE',
+        reason: '独立核对未来时段',
+      });
+      const p = await sponsor.command(owner.cookie, owner.orgId, row.id as string, {
+        commandId: randomUUID(),
+        expectedVersion: 3,
+        type: 'PUBLISH',
+        reason: '预定未来投放窗口',
+      });
+      await expect(sponsor.publicOne(p.publicKey as string)).rejects.toMatchObject({ status: 404 });
+      await expect(
+        sponsor.impression(p.publicKey as string, { commandId: randomUUID() }, 'synthetic-source'),
+      ).rejects.toMatchObject({ status: 404 });
+      const event = await createEvent(api, owner, '合成未公开定向赛事');
+      const draft = await sponsor.save(owner.cookie, owner.orgId, null, {
+        commandId: randomUUID(),
+        eventId: event.id,
+        region,
+        brand: '合成赛事赞助',
+        title: '未公开赛事投放',
+        body: '不得绕过赛事公开授权',
+        startsAt: new Date(Date.now() - 3600000).toISOString(),
+        endsAt: new Date(Date.now() + 86400000).toISOString(),
+      });
+      await sponsor.command(owner.cookie, owner.orgId, draft.id as string, {
+        commandId: randomUUID(),
+        expectedVersion: 1,
+        type: 'SUBMIT',
+        reason: '提交合成赛事定向审核',
+      });
+      await sponsor.command(operator.cookie, owner.orgId, draft.id as string, {
+        commandId: randomUUID(),
+        expectedVersion: 2,
+        type: 'APPROVE',
+        reason: '独立审核不替代公开授权',
+      });
+      await expect(
+        sponsor.command(owner.cookie, owner.orgId, draft.id as string, {
+          commandId: randomUUID(),
+          expectedVersion: 3,
+          type: 'PUBLISH',
+          reason: '不允许跳过赛事公开页面',
+        }),
+      ).rejects.toMatchObject({ code: 'SPONSOR_EVENT_NOT_PUBLIC' });
     });
     test('arbitrary UUID, self-reported completion and no local verifier cannot manufacture a public review', async () => {
       await expect(

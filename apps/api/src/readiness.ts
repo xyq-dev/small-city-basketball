@@ -4,12 +4,14 @@ import type { Pool, PoolClient } from 'pg';
 import { ApiError } from './errors.js';
 import { participantKey, participantKeyId } from './participant-materials-domain.js';
 import { readVerifiedRegionCatalog } from './region-catalog-integrity.js';
+import { orderedMigrationNames } from './database/migration-plan.js';
 
 export interface PrivilegeManifest {
   version: 1;
   schema: 'public';
   runtimeRole: 'scb_runtime';
   backupRole: 'scb_backup';
+  functions: Record<string, 'EXECUTE'[]>;
   tables: Record<
     string,
     { privileges: ('SELECT' | 'INSERT' | 'DELETE')[]; updateColumns: string[] }
@@ -30,6 +32,34 @@ export interface TablePrivileges {
     update: boolean;
     references: boolean;
   }[];
+}
+export interface FunctionPrivileges {
+  signature: string;
+  owner: string;
+  definer: boolean;
+  runtimeExecute: boolean;
+  backupExecute: boolean;
+  publicExecute: boolean;
+}
+export function functionPrivilegesMatch(
+  manifest: PrivilegeManifest,
+  rows: FunctionPrivileges[],
+): boolean {
+  const expected = Object.keys(manifest.functions);
+  if (
+    rows.length !== expected.length ||
+    new Set(rows.map((row) => row.signature)).size !== expected.length
+  )
+    return false;
+  return rows.every(
+    (row) =>
+      Object.prototype.hasOwnProperty.call(manifest.functions, row.signature) &&
+      row.owner === 'scb_migrator' &&
+      !row.definer &&
+      !row.backupExecute &&
+      !row.publicExecute &&
+      row.runtimeExecute === manifest.functions[row.signature]!.includes('EXECUTE'),
+  );
 }
 export function migrationSetsMatch(
   expected: Map<string, string>,
@@ -88,7 +118,9 @@ async function expectations() {
     manifest.runtimeRole !== 'scb_runtime' ||
     manifest.backupRole !== 'scb_backup' ||
     !manifest.tables ||
-    Object.keys(manifest.tables).length !== 83
+    Object.keys(manifest.tables).length === 0 ||
+    !manifest.functions ||
+    Object.keys(manifest.functions).length === 0
   )
     throw new Error();
   for (const [name, t] of Object.entries(manifest.tables)) {
@@ -105,11 +137,19 @@ async function expectations() {
     )
       throw new Error();
   }
+  for (const [signature, p] of Object.entries(manifest.functions)) {
+    if (
+      !/^[a-z][a-z0-9_]+\(((?:(?:uuid|integer|text|jsonb|boolean|timestamp with time zone)(?:,(?:uuid|integer|text|jsonb|boolean|timestamp with time zone))*)?)\)$/.test(
+        signature,
+      ) ||
+      !Array.isArray(p) ||
+      p.length > 1 ||
+      p.some((x) => x !== 'EXECUTE')
+    )
+      throw new Error();
+  }
   const directory = new URL('../migrations/', import.meta.url);
-  const names = (await readdir(directory))
-    .filter((name) => /^\d+_[a-z0-9_]+\.sql$/.test(name))
-    .sort();
-  if (names.length === 0) throw new Error();
+  const names = orderedMigrationNames(await readdir(directory));
   const expected = new Map(
     await Promise.all(
       names.map(
@@ -165,6 +205,13 @@ export async function assertRuntimeReadiness(
        FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p') ORDER BY c.relname`,
     );
     if (!privilegesMatch(manifest, tables.rows)) throw new Error();
+    const functions =
+      await client.query<FunctionPrivileges>(`SELECT p.proname||'('||replace(oidvectortypes(p.proargtypes),', ',',')||')' AS signature,r.rolname AS owner,p.prosecdef AS definer,
+      has_function_privilege(current_user,p.oid,'EXECUTE') AS "runtimeExecute",has_function_privilege('scb_backup',p.oid,'EXECUTE') AS "backupExecute",
+      EXISTS(SELECT 1 FROM aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) acl WHERE acl.grantee=0 AND acl.privilege_type='EXECUTE') AS "publicExecute"
+      FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace JOIN pg_roles r ON r.oid=p.proowner WHERE n.nspname='public'
+      AND NOT EXISTS(SELECT 1 FROM pg_depend d WHERE d.classid='pg_proc'::regclass AND d.objid=p.oid AND d.deptype='e')`);
+    if (!functionPrivilegesMatch(manifest, functions.rows)) throw new Error();
     const extra = await client.query<{ present: boolean }>(
       `SELECT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND
        CASE WHEN c.relkind='S' THEN (has_sequence_privilege(current_user,c.oid,'SELECT') OR has_sequence_privilege(current_user,c.oid,'UPDATE') OR has_sequence_privilege(current_user,c.oid,'USAGE'))

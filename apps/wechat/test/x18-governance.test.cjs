@@ -167,3 +167,74 @@ test('oversized attachments are refused before reading any file', async () => {
     /4MiB/,
   );
 });
+test('a late chosen attachment never moves to a different selected case', async () => {
+  const h = fixture();
+  let finish;
+  h.requireLocal('utils/participant-materials.js').chooseFile = () =>
+    new Promise((r) => {
+      finish = r;
+    });
+  h.page.setData({ selected: { id: id(8), version: 1, capabilities: { canReply: true } } });
+  const pending = h.page.choose();
+  h.page.setData({ selected: { id: id(9), version: 1, capabilities: { canReply: true } } });
+  finish({ name: 'private.pdf', size: 20, path: '/secret', contentType: 'application/pdf' });
+  await pending;
+  assert.equal(h.page._file, null);
+  assert.equal(h.page.data.chosenFile, '');
+});
+test('all X18 templates parse with direct binding operators and default/denied states render', () => {
+  const fs = require('node:fs');
+  const { parseWxml } = require('./helpers/wxml.cjs');
+  const { renderWxml } = require('./helpers/native-preview.cjs');
+  for (const route of ['governance', 'governance-reviews', 'city-operations', 'sponsorships']) {
+    const h = fixture({ route });
+    const source = fs.readFileSync(path.join(root, 'pages', route, 'index.wxml'), 'utf8');
+    const mapping = JSON.parse(
+      fs.readFileSync(path.join(root, 'app.json'), 'utf8'),
+    ).usingComponents;
+    const options = {
+      root,
+      pageDirectory: path.join(root, 'pages', route),
+      usingComponents: mapping,
+      globalComponents: mapping,
+    };
+    assert.doesNotThrow(() => parseWxml(source));
+    assert.doesNotThrow(() => renderWxml(source, h.page.data, options));
+    h.page.setData({ loginRequired: true });
+    assert.doesNotThrow(() => renderWxml(source, h.page.data, options));
+  }
+});
+test('sponsor only reports a visible current card and concurrent callbacks share one command', async () => {
+  let calls = 0,
+    callback;
+  const h = fixture({
+    route: 'sponsorships',
+    request: async (p, m, b, anonymous) => {
+      calls++;
+      assert.equal(anonymous, true);
+      return { data: {} };
+    },
+  });
+  h.wx.createIntersectionObserver = () => ({
+    relativeToViewport() {
+      return this;
+    },
+    observe(selector, fn) {
+      callback = fn;
+    },
+    disconnect() {},
+  });
+  h.page.setData({ mode: 'public', publicCard: { publicKey: 'a'.repeat(43) } });
+  h.page.observe();
+  callback({ intersectionRatio: 0.2 });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(calls, 0);
+  callback({ intersectionRatio: 0.7 });
+  callback({ intersectionRatio: 0.8 });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(calls, 1);
+  h.page.onHide();
+  callback({ intersectionRatio: 1 });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(calls, 1);
+});

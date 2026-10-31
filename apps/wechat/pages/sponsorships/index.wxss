@@ -1,0 +1,61 @@
+.page {
+  padding: 24rpx;
+}
+.card {
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  margin: 20rpx 0;
+  overflow-wrap: anywhere;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+}
+.tabs button {
+  flex: 1;
+  min-width: 180rpx;
+}
+.title {
+  font-size: 38rpx;
+  font-weight: 700;
+}
+.subtitle {
+  font-weight: 600;
+}
+.notice {
+  padding: 18rpx;
+  background: #f1f4f8;
+}
+.warning {
+  color: #933;
+}
+.small {
+  font-size: 24rpx;
+}
+.muted {
+  color: #657184;
+}
+.picker,
+input {
+  padding: 18rpx;
+  background: #f5f7fa;
+  margin: 12rpx 0;
+}
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #f5f7fa;
+  padding: 16rpx;
+}
+button {
+  margin-top: 14rpx;
+  white-space: normal;
+}
+.ad-label {
+  display: inline-block;
+  padding: 8rpx 16rpx;
+  background: #edf1f5;
+  color: #566273;
+  border-radius: 10rpx;
+}

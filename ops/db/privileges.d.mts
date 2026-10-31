@@ -4,12 +4,15 @@ export interface PrivilegeManifest {
   schema: 'public';
   runtimeRole: 'scb_runtime';
   backupRole: 'scb_backup';
+  functions: Record<string, 'EXECUTE'[]>;
   tables: Record<
     string,
     { privileges: ('SELECT' | 'INSERT' | 'DELETE')[]; updateColumns: string[] }
   >;
 }
 export function loadManifest(): Promise<PrivilegeManifest>;
+export function functionSql(signature: string): string;
+export const APPLICATION_FUNCTIONS_SQL: string;
 export function assertManifestSchema(
   client: Pick<Pool | PoolClient, 'query'>,
   manifest: PrivilegeManifest,

@@ -6,13 +6,11 @@ import { PosterController } from './poster-controller.js';
 describe('X05 private poster content boundary', () => {
   test('uses current session on every download and emits only private image bytes', async () => {
     const bytes = Buffer.from('synthetic-png'),
-      download = vi
-        .fn()
-        .mockResolvedValue({
-          bytes,
-          contentType: 'image/png',
-          filename: 'basketball-result-fixed.png',
-        });
+      download = vi.fn().mockResolvedValue({
+        bytes,
+        contentType: 'image/png',
+        filename: 'basketball-result-fixed.png',
+      });
     const controller = new PosterController({ download } as unknown as PosterService),
       setHeader = vi.fn(),
       send = vi.fn();

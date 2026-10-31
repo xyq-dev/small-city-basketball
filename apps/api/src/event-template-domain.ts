@@ -292,6 +292,7 @@ export function deriveSetupGuide(f: GuideFacts): EventSetupGuide {
       ...(f.counts.submitted || f.counts.changesRequested
         ? ['仍有待审核或需补正报名，请先处理']
         : []),
+      ...(!f.frozen && f.counts.approved < 2 ? ['至少需要2支已批准球队才能冻结名单'] : []),
       ...(f.status === 'REGISTRATION_OPEN' ? ['请先关闭报名'] : []),
       ...(!f.frozen ? ['请冻结已批准参赛名单；此操作会重验资格'] : []),
     ],
@@ -316,17 +317,28 @@ export function deriveSetupGuide(f: GuideFacts): EventSetupGuide {
     f.published,
   ];
   let active = false;
+  const terminal = ['CANCELLED', 'COMPLETED', 'ARCHIVED'].includes(f.status);
   const steps = definitions.map(([code, title, action], i) => {
     const complete = done[i];
     const state = complete
       ? ('COMPLETE' as const)
-      : active
-        ? ('WAITING' as const)
-        : blockers[i]!.length
-          ? ('BLOCKED' as const)
-          : ('CURRENT' as const);
+      : terminal
+        ? ('BLOCKED' as const)
+        : active
+          ? ('WAITING' as const)
+          : blockers[i]!.length
+            ? ('BLOCKED' as const)
+            : ('CURRENT' as const);
     if (!complete) active = true;
-    return { code, title, action, state, blockers: complete ? [] : blockers[i]! };
+    return {
+      code,
+      title,
+      action,
+      state,
+      blockers: complete
+        ? []
+        : [...blockers[i]!, ...(terminal ? ['赛事已结束或取消，当前仅可查看保留记录'] : [])],
+    };
   });
   return {
     eventVersion: f.eventVersion,
@@ -334,6 +346,6 @@ export function deriveSetupGuide(f: GuideFacts): EventSetupGuide {
     steps,
     counts: f.counts,
     published: f.published,
-    canManage: f.canManage,
+    canManage: f.canManage && !terminal,
   };
 }

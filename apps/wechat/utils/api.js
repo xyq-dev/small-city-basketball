@@ -162,6 +162,44 @@ function pathAllowed(path, method = 'GET') {
   if (['/v1/public/local-search', '/v1/public/local-location'].includes(base))
     return noQuery && method === 'POST';
   if (matches('/v1/public/governance/reviews/' + tokenPattern)) return noQuery && method === 'GET';
+  if (matches(org + '/sponsorships'))
+    return method === 'GET' ? beforePage() : noQuery && method === 'POST';
+  if (matches(org + '/sponsorships/options'))
+    return method === 'GET' && queryAllowed(query, ['query']);
+  if (matches(org + '/sponsorships/' + uuidPattern))
+    return noQuery && ['GET', 'PUT'].includes(method);
+  if (
+    matches(org + '/sponsorships/' + uuidPattern + '/commands') ||
+    matches('/v1/me/sponsorships/' + uuidPattern + '/commands')
+  )
+    return noQuery && method === 'POST';
+  if (base === '/v1/me/sponsorships/review-queue') return beforePage();
+  if (base === '/v1/public/sponsorships')
+    return (
+      method === 'GET' &&
+      queryAllowed(query, ['regionId', 'catalogVersion', 'eventPublicId', 'limit']) &&
+      uuidRegex.test(query.regionId || '') &&
+      !!query.catalogVersion &&
+      (!query.eventPublicId || opaque.test(query.eventPublicId))
+    );
+  if (matches('/v1/public/sponsorships/' + tokenPattern)) return noQuery && method === 'GET';
+  if (matches('/v1/public/sponsorships/' + tokenPattern + '/impressions'))
+    return noQuery && method === 'POST';
+  if (base === '/v1/me/public-archives') return noQuery && ['GET', 'POST'].includes(method);
+  if (matches('/v1/me/public-archives/' + uuidPattern + '/commands'))
+    return noQuery && method === 'POST';
+  if (matches(org + '/events/' + uuidPattern + '/public-archive-sources'))
+    return noQuery && method === 'GET';
+  if (
+    base === '/v1/public-archive-sources' ||
+    matches('/v1/public-archive-sources/' + uuidPattern + '/commands')
+  )
+    return noQuery && method === 'POST';
+  if (base === '/v1/public/archives/rankings')
+    return (
+      method === 'GET' && queryAllowed(query, ['kind']) && ['PLAYER', 'TEAM'].includes(query.kind)
+    );
+  if (matches('/v1/public/archives/' + tokenPattern)) return noQuery && method === 'GET';
   if (matches(org + '/event-templates')) return noQuery && method === 'GET';
   if (matches(org + '/event-template-commands')) return noQuery && method === 'POST';
   if (matches(org + '/event-template-commands/' + uuidPattern)) return noQuery && method === 'GET';
@@ -499,6 +537,12 @@ function createClient(wxApi) {
               /^\/v1\/public\/governance\/reviews\/[A-Za-z0-9_-]{43}$/.test(path))) ||
           (method === 'POST' &&
             ['/v1/public/local-search', '/v1/public/local-location'].includes(path)) ||
+          (method === 'GET' && /^\/v1\/public\/sponsorships(?:\?|\/|$)/.test(path)) ||
+          (method === 'POST' &&
+            /^\/v1\/public\/sponsorships\/[A-Za-z0-9_-]{43}\/impressions$/.test(path)) ||
+          (method === 'GET' && /^\/v1\/public\/events\/[A-Za-z0-9_-]{43}(?:\/|\?|$)/.test(path)) ||
+          (method === 'GET' &&
+            /^\/v1\/public\/archives\/(?:[A-Za-z0-9_-]{43}$|rankings\?)/.test(path)) ||
           (path === '/v1/account-recovery/capabilities' && method === 'GET') ||
           (['reset-requests', 'consume', 'receipts', 'cancel'].some(
             (v) => path === '/v1/account-recovery/' + v,
@@ -748,6 +792,9 @@ async function allSchedule(client, event) {
         publicId(event) +
         '/schedule?limit=50' +
         (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''),
+      'GET',
+      undefined,
+      true,
     );
     if (!Array.isArray(response.data)) throw new Error('赛程资料无效');
     rows = rows.concat(response.data);

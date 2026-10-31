@@ -317,6 +317,10 @@ Page({
       });
     }
   },
+  report() {
+    if (this.id && this.data.event)
+      ui.open('governance', { sourceKind: 'PUBLIC_EVENT', sourceId: this.id });
+  },
   onShareAppMessage() {
     if (!this.id) return { title: '小城市篮球', path: '/pages/home/index' };
     return {

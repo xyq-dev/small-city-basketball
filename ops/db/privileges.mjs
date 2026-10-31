@@ -1,5 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import { quoteIdentifier } from './common.mjs';
+const functionPattern =
+  /^([a-z][a-z0-9_]+)\(((?:(?:uuid|integer|text|jsonb|boolean|timestamp with time zone)(?:,(?:uuid|integer|text|jsonb|boolean|timestamp with time zone))*)?)\)$/;
+export function functionSql(signature) {
+  const match = functionPattern.exec(signature);
+  if (!match) throw new Error('Invalid application function signature');
+  return `public.${quoteIdentifier(match[1])}(${match[2]})`;
+}
+export const APPLICATION_FUNCTIONS_SQL = `SELECT p.proname||'('||replace(oidvectortypes(p.proargtypes),', ',',')||')' AS signature,
+ r.rolname AS owner,p.prosecdef AS definer FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+ JOIN pg_roles r ON r.oid=p.proowner WHERE n.nspname='public' AND NOT EXISTS(SELECT 1 FROM pg_depend d WHERE d.classid='pg_proc'::regclass AND d.objid=p.oid AND d.deptype='e') ORDER BY signature`;
 
 export async function loadManifest() {
   const manifest = JSON.parse(
@@ -13,7 +23,10 @@ export async function loadManifest() {
     manifest.schema !== 'public' ||
     manifest.runtimeRole !== 'scb_runtime' ||
     manifest.backupRole !== 'scb_backup' ||
-    Object.keys(manifest.tables).length !== 83
+    !manifest.tables ||
+    !Object.keys(manifest.tables).length ||
+    !manifest.functions ||
+    !Object.keys(manifest.functions).length
   )
     throw new Error('Invalid privilege manifest');
   for (const [table, rule] of Object.entries(manifest.tables)) {
@@ -29,6 +42,15 @@ export async function loadManifest() {
     )
       throw new Error('Invalid privilege manifest');
     rule.updateColumns.forEach(quoteIdentifier);
+  }
+  for (const [signature, privileges] of Object.entries(manifest.functions)) {
+    functionSql(signature);
+    if (
+      !Array.isArray(privileges) ||
+      privileges.length > 1 ||
+      privileges.some((p) => p !== 'EXECUTE')
+    )
+      throw new Error('Invalid function privilege manifest');
   }
   return manifest;
 }
@@ -51,6 +73,13 @@ export async function assertManifestSchema(client, manifest) {
   );
   if (unexpected.rowCount || definer.rowCount)
     throw new Error('Unexpected database privilege surface');
+  const functions = await client.query(APPLICATION_FUNCTIONS_SQL);
+  if (
+    JSON.stringify(functions.rows.map((row) => row.signature).sort()) !==
+      JSON.stringify(Object.keys(manifest.functions).sort()) ||
+    functions.rows.some((row) => row.owner !== 'scb_migrator' || row.definer)
+  )
+    throw new Error('Database functions do not match the privilege manifest');
 }
 
 /** Reapplication removes old table AND column grants before granting only named objects. */
@@ -90,6 +119,17 @@ export async function applyRuntimePrivileges(pool) {
     }
     await client.query(
       'ALTER DEFAULT PRIVILEGES FOR ROLE scb_migrator IN SCHEMA public REVOKE ALL PRIVILEGES ON TABLES FROM PUBLIC,scb_runtime,scb_backup',
+    );
+    for (const [signature, privileges] of Object.entries(manifest.functions)) {
+      const name = functionSql(signature);
+      await client.query(
+        `REVOKE ALL PRIVILEGES ON FUNCTION ${name} FROM PUBLIC,scb_runtime,scb_backup`,
+      );
+      if (privileges.includes('EXECUTE'))
+        await client.query(`GRANT EXECUTE ON FUNCTION ${name} TO scb_runtime`);
+    }
+    await client.query(
+      'ALTER DEFAULT PRIVILEGES FOR ROLE scb_migrator IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC,scb_runtime,scb_backup',
     );
     await client.query('COMMIT');
     return { status: 'granted', tables: Object.keys(manifest.tables).length };

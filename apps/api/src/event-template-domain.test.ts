@@ -131,6 +131,20 @@ describe('X03 reusable template configuration boundaries', () => {
   });
 });
 describe('X03 fact-derived blocking setup guide', () => {
+  test('insufficient approvals block freeze, and cancelled events never offer writes', () => {
+    const f = {
+      ...facts(),
+      registrationRules: true,
+      scoringRules: true,
+      standingsLocked: true,
+      status: 'REGISTRATION_CLOSED',
+    };
+    expect(deriveSetupGuide(f).steps[2]!.blockers.join(' ')).toContain('至少需要2支已批准球队');
+    const cancelled = deriveSetupGuide({ ...f, status: 'CANCELLED' });
+    expect(cancelled.canManage).toBe(false);
+    expect(cancelled.steps[1]!.state).toBe('BLOCKED');
+    expect(cancelled.steps[1]!.blockers.join(' ')).toContain('仅可查看');
+  });
   test('starts with missing rules and leaves later work waiting', () => {
     const guide = deriveSetupGuide(facts());
     expect(guide.steps[0]).toMatchObject({ state: 'BLOCKED' });

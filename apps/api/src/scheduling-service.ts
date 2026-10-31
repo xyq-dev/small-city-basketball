@@ -661,6 +661,12 @@ export class SchedulingService extends ApplicationService {
         (event.row.format !== 'GROUP_KNOCKOUT' || input.algorithmVersion !== 'GK_BALANCED_V1')
       )
         business('UNSUPPORTED_EVENT_FORMAT', '赛制与排赛算法不匹配');
+      if (
+        'thirdPlaceMatch' in policy &&
+        policy.thirdPlaceMatch === true &&
+        !['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(event.row.format)
+      )
+        business('UNSUPPORTED_SCHEDULE_POLICY', '仅淘汰赛制可以安排季军赛');
       const freeze = await this.freeze(client, ctx.orgId, event.row.id);
       if (!freeze || freeze.id !== freezeId)
         business('REGISTRATION_FREEZE_REQUIRED', '请使用当前赛事已冻结的报名来源');

@@ -76,6 +76,13 @@ function inputUuid(value: unknown, field: string): string {
     invalid('无效控制实例编号', { [field]: '请提供有效UUID' });
   return value.toLowerCase();
 }
+const CONFIGURABLE_EVENTS = [
+  'DRAFT',
+  'REGISTRATION_OPEN',
+  'REGISTRATION_CLOSED',
+  'SCHEDULED',
+  'RUNNING',
+];
 const iso = (v: Date | string) => (v instanceof Date ? v.toISOString() : new Date(v).toISOString());
 export class ScoringService extends ApplicationService {
   private async context(c: PoolClient, cookie: string | undefined, org: string) {
@@ -498,7 +505,9 @@ export class ScoringService extends ApplicationService {
         locked: !!a.event.locked_scoring_ruleset_id,
         capabilities: {
           canManageRules:
-            activeEvent(a.event.status) && a.manager && !a.event.locked_scoring_ruleset_id,
+            CONFIGURABLE_EVENTS.includes(a.event.status) &&
+            a.manager &&
+            !a.event.locked_scoring_ruleset_id,
         },
       };
     });
@@ -523,8 +532,8 @@ export class ScoringService extends ApplicationService {
       await this.now(c, ctx);
       checkVersion(a.event.version, version);
       if (a.event.locked_scoring_ruleset_id) conflict('SCORING_RULES_LOCKED', '赛事记分规则已锁定');
-      if (!['SCHEDULED', 'RUNNING'].includes(a.event.status))
-        conflict('INVALID_EVENT_STATE', '仅已排赛赛事可配置记分规则');
+      if (!CONFIGURABLE_EVENTS.includes(a.event.status))
+        conflict('INVALID_EVENT_STATE', '赛事当前不可配置记分规则');
       if (
         ['SINGLE_ELIMINATION', 'GROUP_KNOCKOUT'].includes(a.event.format) &&
         rules.tiePolicy !== 'OVERTIME'

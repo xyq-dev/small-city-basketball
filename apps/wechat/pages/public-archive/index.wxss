@@ -1,0 +1,2 @@
+.archive-name { font-size: 44rpx; font-weight: 700; overflow-wrap: anywhere; }
+.archive-total { font-size: 40rpx; font-weight: 700; }

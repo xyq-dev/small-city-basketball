@@ -30,7 +30,12 @@ export async function fingerprintDatabase(pool) {
         checksum: digest(await readFile(new URL(name, directory))),
       })),
     );
-    if (canonical(migrations) !== canonical(expected) || expected.length !== 24) throw new Error();
+    if (
+      canonical(migrations) !== canonical(expected) ||
+      !expected.length ||
+      files.some((name, index) => !name.startsWith(String(index + 1).padStart(3, '0') + '_'))
+    )
+      throw new Error();
     const schema = {};
     const queries = {
       tables:

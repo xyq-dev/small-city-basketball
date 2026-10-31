@@ -209,6 +209,7 @@ Page({
             : '',
       });
       this.show(wb.snapshot, receivedAt);
+      this.refreshOffline();
       if (wb.snapshot) this.refreshHistory();
       if (!wb.capabilities.canAcquireControl && !this._control)
         this.setData({ error: '当前身份不是本场有效记分员，只能查看。' });
@@ -363,6 +364,23 @@ Page({
               id: i.intentId,
               ordinal: i.ordinal,
               label: scoring.commandNames[i.command.type] || i.command.type,
+              detail:
+                (i.command.payload.side === 'HOME'
+                  ? '主队'
+                  : i.command.payload.side === 'AWAY'
+                    ? '客队'
+                    : '更正') +
+                ' · ' +
+                (scoring.kinds[i.command.payload.kind] ||
+                  (i.command.payload.shotValue
+                    ? i.command.payload.shotValue +
+                      '分投篮' +
+                      (i.command.payload.made ? '命中' : '未中')
+                    : '撤销记录')) +
+                ' ' +
+                (i.command.payload.value || '') +
+                ' ' +
+                (i.command.payload.reason || ''),
             }))
           : [],
         offlineError: '',
@@ -448,6 +466,26 @@ Page({
         this.setData({ held: false });
       }
     }
+  },
+  async exportOffline() {
+    if (this.data.busy || !this._viewer || this.data.offlineError) return;
+    const actor = this._viewer,
+      scope = this.offlineScope();
+    const op = await ui.confirmOp(
+      this,
+      '导出原草稿',
+      '复制尚未同步的原操作编号、原版本和记录内容，用于逐条人工核对。',
+    );
+    if (!op || !op.valid() || actor !== this._viewer) return;
+    const queue = offline.read(wx, scope);
+    if (!queue) return;
+    wx.setClipboardData({
+      data: JSON.stringify(queue, null, 2),
+      success: () => {
+        if (op.valid() && actor === this._viewer)
+          this.setData({ notice: '原草稿已复制，可逐条核对；原队列保持。' });
+      },
+    });
   },
   async discardOffline() {
     if (this.data.busy || !this._viewer) return;
