@@ -1,6 +1,6 @@
 # COMPLETION22：22项功能实现与测试总任务
 
-2026-10-31 Asia/Shanghai；集成人Codex root；REVIEW（追加复审修复）／BRANCH_ONLY。
+2026-10-31 Asia/Shanghai；集成人Codex root；DONE（源码与隔离验收）／MAIN。
 
 ## 范围与持续执行约束
 
@@ -12,32 +12,34 @@
 
 ## 固定清单与分工
 
-状态只按实际代码和证据推进：TODO／DESIGN／IMPLEMENTING／TESTING／REVIEW／DONE／BLOCKED。当前DESIGN只是已认领和规则设计，不代表代码完成；代码整合、测试和GitHub证据在每项后续检查点补充。
+状态只按实际代码和证据推进：TODO／DESIGN／IMPLEMENTING／TESTING／REVIEW／DONE／BLOCKED。下表为PR33已合并后的当前状态；DONE仅限约定源码与隔离验收，正式接入和生产另列。后续检查点保留当时的DESIGN/TESTING及失败过程，不将历史状态当作当前进度。
 
 | ID | 用户功能 | 当前状态 | 负责人／恢复卡 | 必须交付的验收边界 |
 | --- | --- | --- | --- | --- |
-| F01 | 季军赛 | TESTING | competition／X01 | 半决赛负者、第三名、8队16场、独立确认与更正失效 |
-| F02 | 更多赛制与异常处理 | TESTING | competition＋scheduling／X01、X03 | 双循环、弃权／取消独立裁定、排名与晋级联动，不伪造个人统计 |
-| F03 | 排程优化 | TESTING | scheduling／X03 | 有界全局优化、首末场均衡、淘汰轮次已知对阵自动排时、硬冲突复检 |
-| F04 | 办赛向导与模板 | TESTING | scheduling／X03 | 模板保存／版本／实例化、配置到发布的真实阻塞引导 |
-| F05 | 公开报名招募 | TESTING | recruitment／X05 | 正式赛程前独立招募、申请／独立审核／撤销与公开白名单 |
-| F06 | 批量录入与报名邀请 | TESTING | recruitment／X05 | 导入预览逐行错误、幂等提交、本届邀请、接受不授机构权限 |
-| F07 | 宣传海报 | TESTING | recruitment／X05 | 四类真实来源海报及PNG导出、照片许可版本与每次下载复检 |
-| F08 | 专业技术统计 | TESTING | statistics／X08 | 投篮／命中率、篮板助攻抢断盖帽失误，采集模式和旧赛兼容 |
-| F09 | 阵容与上场时间 | TESTING | statistics／X08 | 首发／换人／权威时钟区间／实际上场时间及报表 |
-| F10 | 可靠离线记分 | TESTING | statistics／X08 | 持久原命令队列、同账号租约fence、顺序同步、冲突拒绝与恢复 |
-| F11 | 公开长期档案 | TESTING | statistics／X08 | 独立发布授权、公共球队球员页、跨届有效榜单、身份关联不按同名 |
-| F12 | 全国版界面 | TESTING | local／X12 | 五导航、全国首页、旧视频／赛事／预约入口保留与移动布局 |
-| F13 | GPS与附近发现 | TESTING | local／X12 | 按需定位、手选回退、受控地图adapter、真实距离与地点导航 |
-| F14 | 球场预约 | TESTING | local／X12 | 经营方审核、时隙／库存原子锁位、过期释放、核销、天气取消 |
-| F15 | 同城人员服务 | TESTING | local／X12 | 资质人工审核、覆盖／档期、接单到场交付、改期及争议 |
-| F16 | 球队约赛 | TESTING | local／X12 | 双方队长确认、真实地点／时段、球队与场地冲突 |
-| F17 | 工作人员配置界面 | TESTING | root／X17 | 机构成员／角色、赛事工作人员、现有授权API的真实消费者 |
-| F18 | 客服与治理 | TESTING | governance／X18 | 工单分派／回复／申诉／举报、真实参与评价与访问隔离 |
-| F19 | 城市运营后台 | TESTING | governance／X18 | 城市＋机构＋操作范围、供给质量与下架，不跨机构越权 |
-| F20 | 广告与赞助 | TESTING | governance／X18 | 城市／赛事／时段审批投放、撤销、真实曝光去重统计 |
-| F21 | 经费公示 | TESTING | governance／X18 | 线下账务追加更正、审批／授权公示，不做钱包或募款 |
-| F22 | 账号自助服务 | TESTING | root／X22 | 邮箱验证与找回、短期单次token、枚举防护、会话撤销、真实投递adapter |
+| F01 | 季军赛 | DONE（源码/隔离） | competition／X01 | 半决赛负者、第三名、8队16场、独立确认与更正失效 |
+| F02 | 更多赛制与异常处理 | DONE（源码/隔离） | competition＋scheduling／X01、X03 | 双循环、弃权／取消独立裁定、排名与晋级联动，不伪造个人统计 |
+| F03 | 排程优化 | DONE（源码/隔离） | scheduling／X03 | 有界全局优化、首末场均衡、淘汰轮次已知对阵自动排时、硬冲突复检 |
+| F04 | 办赛向导与模板 | DONE（源码/隔离） | scheduling／X03 | 模板保存／版本／实例化、配置到发布的真实阻塞引导 |
+| F05 | 公开报名招募 | DONE（源码/隔离） | recruitment／X05 | 正式赛程前独立招募、申请／独立审核／撤销与公开白名单 |
+| F06 | 批量录入与报名邀请 | DONE（源码/隔离） | recruitment／X05 | 导入预览逐行错误、幂等提交、本届邀请、接受不授机构权限 |
+| F07 | 宣传海报 | DONE（源码/隔离） | recruitment／X05 | 四类真实来源海报及PNG导出、照片许可版本与每次下载复检 |
+| F08 | 专业技术统计 | DONE（源码/隔离） | statistics／X08 | 投篮／命中率、篮板助攻抢断盖帽失误，采集模式和旧赛兼容 |
+| F09 | 阵容与上场时间 | DONE（源码/隔离） | statistics／X08 | 首发／换人／权威时钟区间／实际上场时间及报表 |
+| F10 | 可靠离线记分 | DONE（源码/隔离） | statistics／X08 | 持久原命令队列、同账号租约fence、顺序同步、冲突拒绝与恢复 |
+| F11 | 公开长期档案 | DONE（源码/隔离） | statistics／X08 | 独立发布授权、公共球队球员页、跨届有效榜单、身份关联不按同名 |
+| F12 | 全国版界面 | DONE（源码/隔离） | local／X12 | 五导航、全国首页、旧视频／赛事／预约入口保留与移动布局 |
+| F13 | GPS与附近发现 | DONE（源码/隔离） | local／X12 | 按需定位、手选回退、受控地图adapter、真实距离与地点导航 |
+| F14 | 球场预约 | DONE（源码/隔离） | local／X12 | 经营方审核、时隙／库存原子锁位、过期释放、核销、天气取消 |
+| F15 | 同城人员服务 | DONE（源码/隔离） | local／X12 | 资质人工审核、覆盖／档期、接单到场交付、改期及争议 |
+| F16 | 球队约赛 | DONE（源码/隔离） | local／X12 | 双方队长确认、真实地点／时段、球队与场地冲突 |
+| F17 | 工作人员配置界面 | DONE（源码/隔离） | root／X17 | 机构成员／角色、赛事工作人员、现有授权API的真实消费者 |
+| F18 | 客服与治理 | DONE（源码/隔离） | governance／X18 | 工单分派／回复／申诉／举报、真实参与评价与访问隔离 |
+| F19 | 城市运营后台 | DONE（源码/隔离） | governance／X18 | 城市＋机构＋操作范围、供给质量与下架，不跨机构越权 |
+| F20 | 广告与赞助 | DONE（源码/隔离） | governance／X18 | 城市／赛事／时段审批投放、撤销、真实曝光去重统计 |
+| F21 | 经费公示 | DONE（源码/隔离） | governance／X18 | 线下账务追加更正、审批／授权公示，不做钱包或募款 |
+| F22 | 账号自助服务 | DONE（源码/隔离） | root／X22 | 邮箱验证与找回、短期单次token、枚举防护、会话撤销、真实投递adapter |
+
+以上DONE均指本卡实现边界与隔离验收并已合入main；F13正式地图/真机定位和F22真实邮件送达仍待外部验收，其他正式微信、支付/在线投保和生产待办同样保留。
 
 ## 所有权、共享接线与迁移号
 
@@ -184,3 +186,14 @@ root实际执行npm run typecheck、五个改动源/测试的Prettier、git diff
 2026-10-31T14:07:54+08:00；root已亲读R138三套完整归档和最终completed/SUCCESS（attempt1）：55文件520/520 PG、16/16页面HTTP、24真实API浏览器、20最小权限PG、4HTTPS、127表完整恢复/quarantine与自有清理；920API/561admin/925native源码通过、1既有平台跳过、995兼容浏览器/981布局PNG通过。新增READY弃权/取消及账号expired/revoked四PG均成功。
 
 标记PR ready后自动审查在186026d提交提出一条规范P1：API_CONTRACTS与DATA_MODEL仍列旧三值EventFormat。已在对应规范同步第四值DOUBLE_ROUND_ROBIN、独立算法/两回合场数、季军开关及22项契约/025—035真实表清单。只改Markdown，无应用/迁移/测试/依赖/工作流变化；完整应用CI证据继续绑定186026d及源tree8a55d3f，不将新文档SHA冒称已重复测试。文档检查后同步同PR、复核并resolve该finding，然后检查无并发head变化再合并；最终main事实另记。
+
+
+## 接续检查点18：PR33已合入main，源码与隔离交付闭环
+
+2026-10-31 Asia/Shanghai；PR33以merge commit 29179c0f047dde92c50d4dd7cb360d4f36eb77f5合入main，最终PR头58cad85456928b81da367c2fa693bfb0537a036e，合并完整tree51ccf5e8323824eb5b41793def9ad32bddbc2f0d与最终头一致。最终业务候选186026d/tree8a55d3fbadc136877d732a497e995b7f9f1c9775的完整R138已成功；随后仅四份规范/检查点Markdown变化，已核commit文件清单、业务与工作流不变。EventFormat规范P1已实际补齐并resolve，未以resolved替代修复验证。[CI41173913872](https://github.com/xyq-dev/small-city-basketball/actions/runs/41173913872)三job完整SUCCESS（attempt1），root已读取全部原始日志：920 API／561 admin／925小程序源码测试通过、1项既有平台跳过；520真实PG＋20最小权限PG、16页面HTTP、24真实API浏览器、4HTTPS、995兼容浏览器及981布局PNG通过。127表重启、44新增表非空业务capture、第二数据库完整恢复、业务快照/fencing/quarantine和自有清理全部通过。
+
+F01—F22现标DONE仅限本卡有界源码、消费者与隔离验收，集成MAIN；外部与生产待办不转DONE。本轮新业务修复仅READY裁定读取遗漏真实state；账号初判撤回并补新码恢复回归，未改账号授权。新迁移025—035已编写且仅在隔离CI执行，既有001—024及所有成功迁移未在本次补片修改，生产Migration未执行。未生产部署、未配置正式外部凭据或付费资源。
+
+合并后main自动CI41175391742已启动，当前in_progress，不冒称已完成。本次收尾增加当前状态、看板、验收清单和8队16场使用流程，纯Markdown，不再重复运行已成功的同源码检查。此前失败、错误初判、断线及认证故障、作者/集成/远端等价tree均保留历史，不清理旧worktree或强推。
+
+本地集成工作区仍/workspace/scratch/afa947228706/scb-completion22、feat/commercial-completion-22，本地49f7af9与远端最终PR58cad85同tree；远端main已实际合并，勿把本地作者SHA当远端。下一位第一条操作：核远端main/dirty及main CI41175391742实际结果，再按真实微信开发者工具/真机与正式接入条件做发布前验收。若需生产操作，先核目标通道、当前授权与恢复条件；不要重复开发已合并22项，也不要凭本卡宣称生产或DOC005已完成。

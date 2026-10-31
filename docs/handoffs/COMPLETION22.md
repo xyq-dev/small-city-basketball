@@ -1,12 +1,14 @@
 # COMPLETION22恢复入口
 
-2026-10-31 Asia/Shanghai；Codex root；IN_PROGRESS／BRANCH_ONLY。这是用户明确要求的22项实现总任务，不是只做季军赛的单卡。
+2026-10-31 Asia/Shanghai；Codex root；DONE（源码与隔离验收）／MAIN。这是用户明确要求的22项实现总任务，不是只做季军赛的单卡。
 
 第一条操作：核验远端／分支／HEAD／dirty，读取[总任务](../tasks/COMPLETION22.md)全部F01—F22和本文末最新检查点，再恢复已在执行的切片；不要重置旧worktree或在没有新证据时重跑已通过的同源码测试。
 
 基线main dff0a8d，整合目录/workspace/scratch/afa947228706/scb-completion22，分支feat/commercial-completion-22。六域独立worktree为scb-x01、x03、x05、x08、x12、x18；root负责共享接线、X17工作人员UI及X22账号自助、基础设施和主文档。迁移号和所有权以总任务为准。
 
-当前检查点0：设计认领已完成，首轮合同审查中，尚无新增实现或测试可记通过。各agent每切片commit并更新其任务／交接，root负责同步GitHub；15分钟活跃检查点继续有效。后续每完成一个切片，必须回看22项总范围、继续下一项可执行工作；只有全完或不存在可安全推进的独立工作才结束。本任务不会因F01或第一批CI成功自动完成。
+以下检查点0—17保留当时的实现、失败与修复过程；当前恢复点为末尾检查点18，PR33已合入main，源码与隔离验收闭环，外部和生产待验。
+
+历史检查点0：设计认领已完成，首轮合同审查中，尚无新增实现或测试可记通过。各agent每切片commit并更新其任务／交接，root负责同步GitHub；15分钟活跃检查点继续有效。后续每完成一个切片，必须回看22项总范围、继续下一项可执行工作；只有全完或不存在可安全推进的独立工作才结束。本任务不会因F01或第一批CI成功自动完成。
 
 权限为本地开发／测试、普通GitHub同步、隔离Migration及审查后合并；禁止生产、真实凭据、付费资源、强制覆盖。GPS与邮件等外部接入未核验时要如实单列，不伪造定位或邮件投递，也不能因此停止其他内部功能。DOC005仅直播设计，不自动混入本轮22项。
 
@@ -83,3 +85,14 @@ root实际执行npm run typecheck、五个改动源/测试的Prettier、git diff
 2026-10-31T14:07:54+08:00；root已亲读R138三套完整归档和最终completed/SUCCESS（attempt1）：55文件520/520 PG、16/16页面HTTP、24真实API浏览器、20最小权限PG、4HTTPS、127表完整恢复/quarantine与自有清理；920API/561admin/925native源码通过、1既有平台跳过、995兼容浏览器/981布局PNG通过。新增READY弃权/取消及账号expired/revoked四PG均成功。
 
 标记PR ready后自动审查在186026d提交提出一条规范P1：API_CONTRACTS与DATA_MODEL仍列旧三值EventFormat。已在对应规范同步第四值DOUBLE_ROUND_ROBIN、独立算法/两回合场数、季军开关及22项契约/025—035真实表清单。只改Markdown，无应用/迁移/测试/依赖/工作流变化；完整应用CI证据继续绑定186026d及源tree8a55d3f，不将新文档SHA冒称已重复测试。文档检查后同步同PR、复核并resolve该finding，然后检查无并发head变化再合并；最终main事实另记。
+
+
+## 接续检查点18：PR33已合入main，源码与隔离交付闭环
+
+2026-10-31 Asia/Shanghai；PR33以merge commit 29179c0f047dde92c50d4dd7cb360d4f36eb77f5合入main，最终PR头58cad85456928b81da367c2fa693bfb0537a036e，合并完整tree51ccf5e8323824eb5b41793def9ad32bddbc2f0d与最终头一致。最终业务候选186026d/tree8a55d3fbadc136877d732a497e995b7f9f1c9775的完整R138已成功；随后仅四份规范/检查点Markdown变化，已核commit文件清单、业务与工作流不变。EventFormat规范P1已实际补齐并resolve，未以resolved替代修复验证。[CI41173913872](https://github.com/xyq-dev/small-city-basketball/actions/runs/41173913872)三job完整SUCCESS（attempt1），root已读取全部原始日志：920 API／561 admin／925小程序源码测试通过、1项既有平台跳过；520真实PG＋20最小权限PG、16页面HTTP、24真实API浏览器、4HTTPS、995兼容浏览器及981布局PNG通过。127表重启、44新增表非空业务capture、第二数据库完整恢复、业务快照/fencing/quarantine和自有清理全部通过。
+
+F01—F22现标DONE仅限本卡有界源码、消费者与隔离验收，集成MAIN；外部与生产待办不转DONE。本轮新业务修复仅READY裁定读取遗漏真实state；账号初判撤回并补新码恢复回归，未改账号授权。新迁移025—035已编写且仅在隔离CI执行，既有001—024及所有成功迁移未在本次补片修改，生产Migration未执行。未生产部署、未配置正式外部凭据或付费资源。
+
+合并后main自动CI41175391742已启动，当前in_progress，不冒称已完成。本次收尾增加当前状态、看板、验收清单和8队16场使用流程，纯Markdown，不再重复运行已成功的同源码检查。此前失败、错误初判、断线及认证故障、作者/集成/远端等价tree均保留历史，不清理旧worktree或强推。
+
+本地集成工作区仍/workspace/scratch/afa947228706/scb-completion22、feat/commercial-completion-22，本地49f7af9与远端最终PR58cad85同tree；远端main已实际合并，勿把本地作者SHA当远端。下一位第一条操作：核远端main/dirty及main CI41175391742实际结果，再按真实微信开发者工具/真机与正式接入条件做发布前验收。若需生产操作，先核目标通道、当前授权与恢复条件；不要重复开发已合并22项，也不要凭本卡宣称生产或DOC005已完成。

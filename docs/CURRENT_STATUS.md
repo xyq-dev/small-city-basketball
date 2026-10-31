@@ -1,14 +1,16 @@
 # 当前状态
 
-## COMPLETION22（REVIEW / BRANCH_ONLY，补片已整合，待完整复验）
+## COMPLETION22（DONE / MAIN：源码与隔离验收，生产未更新）
 
-2026-10-31 Asia/Shanghai；本会话root集成，分支feat/commercial-completion-22、main基线dff0a8d，[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)尚未合并。全部22项已有源码和消费者，范围见[总任务](tasks/COMPLETION22.md)、[恢复入口](handoffs/COMPLETION22.md)。
+2026-10-31 Asia/Shanghai；本会话root集成。[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)已以merge commit `29179c0f047dde92c50d4dd7cb360d4f36eb77f5` 合入main。全部F01—F22的有界源码与消费者已整合，包括季军/双循环/异常裁定、排程/模板、招募/导入邀请/海报、专业统计/阵容/离线队列/档案、全国界面与同城预约约赛、工作人员及运营治理、赞助/经费公示和账号找回；[逐项验收](tasks/COMPLETION22.md)、[恢复入口](handoffs/COMPLETION22.md)、[使用指南](COMMERCIAL_USAGE.md)。
 
-补片前00b8e44的[CI41165348026](https://github.com/xyq-dev/small-city-basketball/actions/runs/41165348026)三job完整SUCCESS，root已读取原始日志：516真实PG、16页面HTTP、24真实API浏览器、20最小权限PG、4 HTTPS，127表重启/非空完整恢复/隔离及自有清理通过；源码914 API／561 admin／924原生通过及1既有平台跳过，995兼容浏览器／981布局PNG通过。此证据不替代补片后验证。
+[CI41173913872](https://github.com/xyq-dev/small-city-basketball/actions/runs/41173913872)三job完整SUCCESS（attempt1），root已读取全部原始日志：920 API／561 admin／925小程序源码测试通过、1项既有平台跳过；520真实PG＋20最小权限PG、16页面HTTP、24真实API浏览器、4HTTPS、995兼容浏览器及981布局PNG通过。127表重启、44新增表非空业务capture、第二数据库完整恢复、业务快照/fencing/quarantine和自有清理全部通过。
 
-追加复审确认READY裁定读取未传真实scoring state，已整合abfbb1c并保留严格来源校验；6项单测与2项PG覆盖弃权/取消后读取和独立撤回。账号找回初判撤回，既有新码核对/取消旧unknown已支持；9599fcb只补该路径2项PG及1项VM，不改账号业务或授权。root整合后全类型、局部格式、27项裁定单测与8项消费者VM通过；新增4项PG未本地运行，待完整精确候选CI，全部22项保持REVIEW。
+本次追加修复READY裁定读取真实scoring state；新增弃权/取消→读取→独立撤回两项PG及6单测通过。账号新码取消旧unknown已有业务不变，新增过期/撤销两PG及页面VM通过。自动审查的规范finding已修并resolved：API/DATA_MODEL同步第四EventFormat及双循环/季军和新增数据契约。最终跟进58cad85仅4份Markdown，应用/迁移/测试/依赖/工作流与已检186026d完全相同；合并tree51ccf5e8323824eb5b41793def9ad32bddbc2f0d与最终PR头精确一致。规范枚举与运行时一致、70个相对文档目标及空白检查通过。
 
-已保留全部旧checkout/worktree及既有未同步验收记录；没有改成功迁移。DOC005直播仍仅设计；正式地图/邮件、微信开发者工具/真机、真实支付/在线保险、生产部署及生产Migration均未执行。
+当前56条小程序源码路由、35项Migration、127表。新迁移025—035已编写并仅在隔离CI执行，生产未执行；正式微信工具/AppID/域名/隐私与真机、正式地图/邮件、真实支付/在线投保、生产部署仍待验，DOC005多平台直播仍仅设计。完整商业平台不据此称全量上线。
+
+合并后[main自动CI41175391742](https://github.com/xyq-dev/small-city-basketball/actions/runs/41175391742)已启动，读取时in_progress；此为自动重复验收，尚无最终结果，不混作上述候选成功。下方各C/D阶段保留各自历史范围，当前事实以本节为准。
 
 ## DOC005 小程序直接开播与多平台分发（设计文档）
 

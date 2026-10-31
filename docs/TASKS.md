@@ -1,10 +1,10 @@
 # 任务看板
 
-## COMPLETION22：22项功能实现与测试（REVIEW／BRANCH_ONLY）
+## COMPLETION22：22项功能实现与测试（DONE／MAIN：源码与隔离验收）
 
-2026-10-31 Asia/Shanghai；[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)含全部22项源码及消费者，尚未合并。补片前00b8e44的CI41165348026三job成功，516PG／16页面HTTP／24真实API浏览器／4HTTPS／127表完整恢复通过，root已核原始日志。
+2026-10-31 Asia/Shanghai；[PR33](https://github.com/xyq-dev/small-city-basketball/pull/33)已合入main `29179c0f047dde92c50d4dd7cb360d4f36eb77f5`。F01—F22源码与消费者及约定隔离验收完成，56路由／35迁移／127表；[逐项及完整证据](tasks/COMPLETION22.md)、[恢复入口](handoffs/COMPLETION22.md)、[使用指南](COMMERCIAL_USAGE.md)。[CI41173913872](https://github.com/xyq-dev/small-city-basketball/actions/runs/41173913872)三job完整SUCCESS（attempt1），root已读取全部原始日志：920 API／561 admin／925小程序源码测试通过、1项既有平台跳过；520真实PG＋20最小权限PG、16页面HTTP、24真实API浏览器、4HTTPS、995兼容浏览器及981布局PNG通过。127表重启、44新增表非空业务capture、第二数据库完整恢复、业务快照/fencing/quarantine和自有清理全部通过。
 
-已整合READY裁定修复abfbb1c及账号新码恢复回归9599fcb；账号初判撤回，不改token有效期。root全类型、局部格式、27裁定单测／8消费者VM通过；新增4项PG待完整CI。全部范围及下一步见[总任务F01—F22](tasks/COMPLETION22.md)、[交接](handoffs/COMPLETION22.md)。正式地图/邮件、微信真机及生产未验，禁止生产与新付费资源。
+READY裁定读页缺陷及规范矛盾已修复，唯一自动review thread resolved；账号旧码失效的新码恢复路径新增回归通过，未放宽授权。最后4份Markdown不变应用来源；main合并tree已核一致。合并后CI41175391742正在自动重复运行，未记作通过。正式微信/地图/邮件、支付/在线保险及生产仍未验；DOC005直播仅设计，不能把本批DONE当完整商业上线。
 
 ## DOC005 小程序直接开播与多平台分发
 

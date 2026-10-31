@@ -1,6 +1,27 @@
-# 小程序总交付清单（C19 已整合 main）
+# 小程序总交付清单
 
-## C22 分支实施增量（待完整 CI／合并）
+## COMPLETION22 当前交付增量
+
+以[总任务F01—F22](../tasks/COMPLETION22.md)、[当前状态](../CURRENT_STATUS.md)及精确CI记录为准。下方C19/C22段落保留各历史阶段证据，不能将历史的“待实现”或“待CI”作为当前事实。
+
+| 范围 | 已实现的源码与消费者 | 对应验证文件/流程 |
+| --- | --- | --- |
+| F01–F02 | 季军赛、双循环、弃权/取消裁定 | x01-third-place、x02-match-exceptions、x03-double-round-robin |
+| F03–F04 | 排程优化、下一轮排时、办赛向导和版本模板 | x03-scheduling、event-templates、knockout-local-calendar、bronze-quota/reschedule、calendar-session |
+| F05–F07 | 独立招募、导入预览/邀请、四类授权海报PNG | x05-recruitment、x05-posters；原生页面→真实HTTP |
+| F08–F11 | 专业统计、阵容时间、持久离线队列、公开长期档案 | x08-professional、scoring-configuration、offline、public-archives |
+| F12–F16 | 五导航、定位/附近、球场与人员预约、球队约赛 | x12-local；location-provider及原生VM/兼容布局 |
+| F17 | 机构及赛事工作人员配置 | x17-staff-configuration；缺行CAS/锁后到期及消费者VM |
+| F18–F21 | 客服治理、城市运营、广告赞助、经费公示 | x18-governance；真实非空capture/重启/完整恢复 |
+| F22 | 邮箱验证、密码找回和未知请求恢复 | x22-account-recovery；原生账号消费者VM |
+
+全部新增域已纳入真实非空业务capture、权限manifest、重启及127表完整备份恢复和恢复后授权隔离；共56条小程序源码路由、35项迁移。兼容布局是Chromium渲染WXML/WXSS，不能代表微信运行时、真机或视觉签收。
+
+正式微信工具/AppID/合法域名/隐私与真机、真实地图和邮件接入、真实支付/在线保险、生产部署及生产Migration仍待验；DOC005多平台开播分发仍为独立设计，未实现。操作路径见[商业使用指南](../COMMERCIAL_USAGE.md)。
+
+PR33已于2026-10-31合入main `29179c0f047dde92c50d4dd7cb360d4f36eb77f5`；完整候选CI41173913872成功，合并后自动CI41175391742读取时仍在运行。源码与隔离验收DONE，正式环境未更新。
+
+## C22 当时分支实施记录（历史；最终事实见C22及当前状态）
 
 [任务](../tasks/C22.md)、[交接](../handoffs/C22.md)。首页、赛事目录和选城增加标准地区层级；赛事设置增加标准上架与原子更正。公开地区节点与匿名赛事合同分开，赛事仍严格八字段；全国保留未知／歧义旧标签。下方历史 C18／C20 验证不替代 C22；目前新单测通过，真实数据库、页面 API、三宽布局、恢复与最终 CI 待验。官方微信和真机未执行。
 
