@@ -1355,7 +1355,13 @@ describe('R6TRAIN real PostgreSQL service workflows', () => {
       "UPDATE trade_orders SET status='SOURCE_CONFLICT',version=version+1 WHERE id=$1",
       [order.id],
     );
-    for (const anomaly of ['missing-binding', 'partial-refund', 'unknown-refund']) {
+    for (const anomaly of [
+      'missing-binding',
+      'partial-refund',
+      'unknown-refund',
+      'incoming-unknown-settlement',
+      'incoming-unknown-return',
+    ]) {
       const c = await pool.connect();
       try {
         await c.query('BEGIN');
@@ -1364,17 +1370,33 @@ describe('R6TRAIN real PostgreSQL service workflows', () => {
           copyO = randomUUID(),
           copyP = randomUUID(),
           copyR = randomUUID(),
-          copyA = randomUUID();
+          copyA = randomUUID(),
+          copyH = randomUUID(),
+          copyS = randomUUID(),
+          copyT = randomUUID();
         // Explicit rollback-only persisted anomaly, using INSERTs rather than altering frozen intent.
+        // All copies are incoming makeup: their frozen original cohort/session differ from the target.
+        await c.query(
+          `INSERT INTO training_cohorts(id,org_id,course_id,court_id,title,address,capacity,total_fen,terms_id,terms_text,state,enrollment_deadline,created_by)
+          SELECT $2,org_id,course_id,court_id,title,address,capacity,total_fen,$3,terms_text,'COMPLETED',enrollment_deadline,created_by FROM training_cohorts WHERE id=$1`,
+          [h.id, copyH, copyT],
+        );
+        await c.query(
+          `INSERT INTO training_sessions(id,org_id,cohort_id,starts_at,ends_at,buffer_minutes,price_weight,state,delivered_by,delivery_note,delivered_at)
+          SELECT $2,org_id,$3,starts_at,ends_at,buffer_minutes,price_weight,state,delivered_by,delivery_note,delivered_at FROM training_sessions WHERE id=$1`,
+          [n.entitlements[0]!.originalSessionId, copyS, copyH],
+        );
         await c.query(
           `INSERT INTO training_enrollments(id,org_id,cohort_id,applicant_user_id,payer_user_id,learner_user_id,adult_confirmed,terms_id,terms_snapshot,total_fen,state)
-          SELECT $2,org_id,cohort_id,applicant_user_id,payer_user_id,learner_user_id,adult_confirmed,terms_id,terms_snapshot,total_fen,'CANCELLED' FROM training_enrollments WHERE id=$1`,
-          [n.id, copyN],
+          SELECT $2,org_id,$3::uuid,applicant_user_id,payer_user_id,learner_user_id,adult_confirmed,$4::uuid,
+          jsonb_set(jsonb_set(jsonb_set(terms_snapshot,'{cohortId}',to_jsonb($3::uuid)),'{termsId}',to_jsonb($4::uuid)),'{lessons,0,id}',to_jsonb($5::uuid)),total_fen,'CANCELLED'
+          FROM training_enrollments WHERE id=$1`,
+          [n.id, copyN, copyH, copyT, copyS],
         );
         await c.query(
           `INSERT INTO training_lesson_entitlements(id,org_id,enrollment_id,original_session_id,current_session_id,net_fen,state)
-          SELECT $2,org_id,$3,original_session_id,current_session_id,net_fen,'REFUNDED' FROM training_lesson_entitlements WHERE id=$1`,
-          [n.entitlements[0]!.id, copyE, copyN],
+          SELECT $2,org_id,$3,$4,current_session_id,net_fen,'REFUNDED' FROM training_lesson_entitlements WHERE id=$1`,
+          [n.entitlements[0]!.id, copyE, copyN, copyS],
         );
         const identity = trainingTradeIdentity(
           (await c.query('SELECT * FROM training_enrollments WHERE id=$1', [copyN])).rows[0],
@@ -1425,6 +1447,41 @@ describe('R6TRAIN real PostgreSQL service workflows', () => {
             "INSERT INTO r6_trade_refund_bindings(kind,source_id,allocation_id,order_id,refund_id) VALUES('TRAINING_ENROLLMENT',$1,$2,$3,$4)",
             [copyN, copyA, copyO, copyR],
           );
+        if (anomaly.startsWith('incoming-')) {
+          const target = (await c.query('SELECT * FROM training_cohorts WHERE id=$1', [h.id]))
+            .rows[0];
+          expect(await trainingCohortCompletionBlocker(c, target)).toBeNull();
+          const split = randomUUID(),
+            isReturn = anomaly === 'incoming-unknown-return';
+          await c.query(
+            `INSERT INTO trade_settlements(id,order_id,payment_id,out_order_no,amount_fen,receiver_merchant_id,status,proposed_by,reviewed_by,provider_order_id,provider_detail_id,return_amount_fen)
+            VALUES($1,$2,$3,$4,50,'synthetic-receiver',$5,$6,$7,$8,$9,$10)`,
+            [
+              split,
+              copyO,
+              copyP,
+              'S' + split,
+              isReturn ? 'RETURNED' : 'UNKNOWN',
+              reviewer.id,
+              operator.id,
+              isReturn ? 'synthetic-split-' + split : null,
+              isReturn ? 'synthetic-detail-' + split : null,
+              isReturn ? 50 : 0,
+            ],
+          );
+          if (isReturn) {
+            // Historic split is already net-zero; a separate unresolved return must still be checked.
+            const pendingReturn = randomUUID();
+            await c.query(
+              `INSERT INTO trade_settlement_returns(id,settlement_id,out_return_no,amount_fen,status,fence,created_by)
+              VALUES($1,$2,$3,1,'UNKNOWN',$4,$5)`,
+              [pendingReturn, split, 'SR' + pendingReturn, randomUUID(), operator.id],
+            );
+          }
+          expect(await trainingCohortCompletionBlocker(c, target)).toBe(
+            isReturn ? '仍有未决分账回退' : '仍有未决退款、扣减或结算，请在统一交易页核对',
+          );
+        }
         expect(
           await trainingCohortCompletionBlocker(
             c,

@@ -168,21 +168,24 @@ export async function trainingCohortCompletionBlocker(
           return '培训账款金额无法核验';
         throw error;
       }
-      // An incoming makeup is scoped to its own lesson, not unrelated future lessons in the original cohort.
+      // Ordinary incoming makeup is lesson-scoped. The cancelled SOURCE_CONFLICT exception
+      // instead proves a fully refunded source, so every money obligation of that source must be final.
+      const wholeSource =
+        primary || (n.state === 'CANCELLED' && order.status === 'SOURCE_CONFLICT');
       const relevantRefundIds = new Set(
         allocations.filter((r) => r.enrollment_id === n.id).map((r) => r.trade_refund_id),
       );
       if (
         refunds.some(
-          (r) => (primary || relevantRefundIds.has(r.id)) && unsettledRefund.includes(r.status),
+          (r) => (wholeSource || relevantRefundIds.has(r.id)) && unsettledRefund.includes(r.status),
         ) ||
-        (primary &&
+        (wholeSource &&
           (deductions.some((d) => ['PENDING_REVIEW', 'REVERSAL_PENDING'].includes(d.status)) ||
             settlements.some((s) => unsettledSettlement.includes(s.status))))
       )
         return '仍有未决退款、扣减或结算，请在统一交易页核对';
       if (
-        primary &&
+        wholeSource &&
         (
           await c.query(
             `SELECT 1 FROM trade_settlement_returns r JOIN trade_settlements s ON s.id=r.settlement_id

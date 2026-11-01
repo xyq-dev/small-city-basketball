@@ -44,3 +44,9 @@ PR35线程PRRT_kwDOVTBG086yW7tk/tl最小修正：index.js send采用会话持有
 本地验证：完整 `npm run typecheck`（含集成测试类型）通过；training-domain 8/8与原生training 16/16通过，修改源码/测试Prettier及git diff --check通过。独立dispatch只读审查发现并已修正source_hash列名、候补需安全关闭及测试capacity错误；前两次类型检查暴露provider测试接口/nullable回执和capacity字段遗漏，均已修复后通过。新增completion helper仅只读预览，写命令同锁重核；未用本地类型通过代替真实PG。
 
 2026-11-01 结课片最终本地证据：API全量源码单测116文件/1339项通过；最终API typecheck（含本文件PG类型）、全项目typecheck、原生training16项、领域8项及修改文件格式/空白检查通过。培训真实PG从11个it增至16个it，新增收费场景内部含缺binding/部分退款/UNKNOWN的3组rollback-only持久异常，不计作独立已运行测试。最后细化已取消转入报名的全退例外须核其完整原来源权益与分配；普通外班未来课仍不阻断本班。真实PG/运行角色/页面兼容及恢复由root最终候选CI执行，此处没有通过声明。
+
+2026-11-01 结课全退例外 follow-up（本地、待新候选PG）：独立审查发现转入本班的 CANCELLED/SOURCE_CONFLICT 原来源虽全额退款，其 UNKNOWN 分账/回退仍可能因非 primary 被漏检。现仅该完整来源例外和本班原报名采用全来源资金门，逐项拒绝未决退款、扣减、分账与回退；普通转入补课继续只核相关课次，不扩大到外班未来义务。原3组缺binding/部分退/UNKNOWN矩阵均改为真实外班源/本班当前课次，并新增2组完整全退先可结课、随后注入 UNKNOWN 分账/回退必须阻断的 rollback-only PG夹具；冻结原合同/课次不改，用新INSERT构造明确合成异常。培训仍16个it，矩阵5种，不计作已运行的独立测试。
+
+本片API typecheck、training-domain 8/8、格式及空白检查通过；首次从仓库根误用API vitest相对过滤未发现文件，改在apps/api正确执行后8/8通过。本机无PG，新增矩阵尚未执行。GitHub CI158的新增域PG步骤已SUCCESS，但该候选不包含本follow-up，不能用其结果证明本漏项已修；原始job日志未可取，尚无逐文件通过声明。无迁移、shared trade、远端写或生产操作。
+
+本follow-up独立只读复核已完成：确认clone原班/原课次与当前目标班不同，UUID快照/canonical身份/退款binding一致，先positive后UNKNOWN能准确命中全来源资金门；038列约束与未决回退唯一索引匹配，无剩余确定阻断。仍须新候选真实PG执行。
