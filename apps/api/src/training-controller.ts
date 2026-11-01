@@ -46,6 +46,12 @@ export class TrainingController {
   ) {
     return envelope(r, await this.service.requestRefund(r.headers.cookie, id, v));
   }
+  @Get('entitlements/:id/makeup-options') async makeupOptions(
+    @Req() r: ApiRequest,
+    @Param('id') id: string,
+  ) {
+    return envelope(r, await this.service.makeupOptions(r.headers.cookie, id));
+  }
   @Post('entitlements/:id/commands') @HttpCode(200) async entitlementCommand(
     @Req() r: ApiRequest,
     @Param('id') id: string,

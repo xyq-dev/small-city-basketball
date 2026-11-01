@@ -7,6 +7,7 @@ Page({
     mine: [],
     detail: null,
     enrollment: null,
+    isLearner: false,
     loading: false,
     busy: false,
     error: '',
@@ -18,7 +19,8 @@ Page({
     waitlist: false,
     payerUserId: '',
     reason: '',
-    makeupSessionId: '',
+    makeup: null,
+    makeupLoading: false,
     pending: null,
     loginRequired: false,
   },
@@ -40,7 +42,14 @@ Page({
   onHide() {
     this._hidden = true;
     this._generation++;
-    this.setData({ adult: false, accepted: false, chargeConsent: false });
+    this._makeupRequest = (this._makeupRequest || 0) + 1;
+    this.setData({
+      adult: false,
+      accepted: false,
+      chargeConsent: false,
+      makeup: null,
+      makeupLoading: false,
+    });
   },
   onUnload() {
     this._alive = false;
@@ -49,14 +58,17 @@ Page({
   },
   onSessionReset() {
     this._generation++;
+    this._makeupRequest = (this._makeupRequest || 0) + 1;
     this._actor = '';
     this.setData({
       mine: [],
       enrollment: null,
+      isLearner: false,
       pending: null,
       payerUserId: '',
       reason: '',
-      makeupSessionId: '',
+      makeup: null,
+      makeupLoading: false,
       busy: false,
       adult: false,
       accepted: false,
@@ -134,15 +146,19 @@ Page({
       const g = this._generation,
         r = await training.read('/v1/training/enrollments/' + training.id(id));
       if (this.live(g) && this._actor === s.user.id)
-        this.setData({ enrollment: training.enrollment(r) });
+        this.setData({
+          enrollment: training.enrollment(r),
+          isLearner: r.learnerUserId === s.user.id,
+          makeup: null,
+          makeupLoading: false,
+        });
     } catch (e) {
       this.setData({ error: ui.message(e) });
     }
   },
   input(e) {
     const key = e.currentTarget.dataset.field;
-    if (['payerUserId', 'reason', 'makeupSessionId'].includes(key))
-      this.setData({ [key]: e.detail.value });
+    if (['payerUserId', 'reason'].includes(key)) this.setData({ [key]: e.detail.value });
   },
   consent(e) {
     const checked = e.detail.value || [];
@@ -166,7 +182,12 @@ Page({
       if (r.enrollmentId) {
         const n = await training.read('/v1/training/enrollments/' + training.id(r.enrollmentId));
         if (this._actor === actor && !this._hidden)
-          this.setData({ enrollment: training.enrollment(n) });
+          this.setData({
+            enrollment: training.enrollment(n),
+            isLearner: n.learnerUserId === actor,
+            makeup: null,
+            makeupLoading: false,
+          });
       }
     } catch (e) {
       if (this._actor === actor && !this._hidden)
@@ -212,8 +233,69 @@ Page({
     const action = e.currentTarget.dataset.action;
     const body = { action, expectedVersion: x.version };
     if (this.data.reason) body.reason = this.data.reason;
-    if (action === 'MAKEUP') body.sessionId = training.id(this.data.makeupSessionId);
+    if (action !== 'LEAVE') return;
     return this.send('/v1/training/entitlements/' + x.id + '/commands', body);
+  },
+  async chooseMakeup(event) {
+    if (this.data.busy || this.data.pending) return;
+    const n = this.data.enrollment,
+      entitlementId = event.currentTarget.dataset.id;
+    const right =
+      n && n.entitlements.find((x) => x.id === entitlementId && x.state === 'MAKEUP_DUE');
+    if (!right) return;
+    const request = (this._makeupRequest || 0) + 1;
+    this._makeupRequest = request;
+    this.setData({ makeup: null, makeupLoading: true, error: '' });
+    try {
+      const identity = await this.identify();
+      if (!identity) return;
+      const raw = await training.read(
+        '/v1/training/entitlements/' + training.id(right.id) + '/makeup-options',
+      );
+      if (
+        !this._alive ||
+        this._hidden ||
+        this._actor !== identity.user.id ||
+        request !== this._makeupRequest ||
+        this.data.enrollment?.id !== n.id ||
+        !this.data.enrollment.entitlements.some(
+          (x) => x.id === right.id && x.state === 'MAKEUP_DUE',
+        )
+      )
+        return;
+      this.setData({ makeup: training.makeupOptions(raw, right.id) });
+    } catch (error) {
+      if (this._alive && !this._hidden && request === this._makeupRequest)
+        this.setData({ error: ui.message(error) });
+    } finally {
+      if (this._alive && !this._hidden && request === this._makeupRequest)
+        this.setData({ makeupLoading: false });
+    }
+  },
+  selectMakeup(event) {
+    const m = this.data.makeup,
+      index = Number(event.detail.value);
+    if (!m || !Number.isInteger(index) || index < 0 || index >= m.items.length) return;
+    this.setData({ makeup: { ...m, selectedIndex: index, selected: m.items[index] } });
+  },
+  confirmMakeup() {
+    const m = this.data.makeup,
+      selected = m?.items[m.selectedIndex];
+    if (
+      !m ||
+      !selected ||
+      !this.data.enrollment?.entitlements.some(
+        (x) => x.id === m.entitlementId && x.state === 'MAKEUP_DUE',
+      )
+    )
+      return this.setData({ error: '请先读取并选择可补课的课次。' });
+    this._makeupRequest = (this._makeupRequest || 0) + 1;
+    this.setData({ makeup: null });
+    return this.send('/v1/training/entitlements/' + training.id(m.entitlementId) + '/commands', {
+      action: 'MAKEUP',
+      expectedVersion: m.entitlementVersion,
+      sessionId: training.id(selected.sessionId),
+    });
   },
   consumptionAction(e) {
     const n = this.data.enrollment,

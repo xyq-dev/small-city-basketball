@@ -35,3 +35,9 @@ CI150证据：广告真实PG 8场景均在共同fixture合同时间边界失败�
 根接线新增`SponsorCommerceMeController`（同`sponsor-commerce-controller.ts`/同SCB service token），路由GET `/v1/me/sponsor-commerce`；own path helper已放行该GET且拒查询参数/写方法。根账户页须给所有登录用户“我的广告合同”入口，不只管理员。返回`SponsorCommerceInboxData`（新contracts类型）：organizations[{id,name,role:'ADVERTISER'}], contracts仅本人分配记录, truncated。页面无query也可由server获授权机构，具体org页依然二次校验actual payer或manager。普通payer fixture已禁用其无关org membership，确保不是偶然借owner身份通过。
 
 CI151已确认此前广告8测试的7条资金闭环通过；剩余失败是跨租户get应隐藏资源的测试期待，改为404/RESOURCE_NOT_FOUND。生产权限未改变。最新inbox与额外生命周期场景仍须按根实际CI结果判断。
+
+PG验收去stub：现所有商业订单和退款都用真实TradeService配remainingSixTradeSources({sponsorEnabled:true})捕获；唯一人工注入的是明确synthetic PAID渠道事实，未替代source读取/quote/订单/退款/binding。新增真实common review→dispatch→applyRefund成功，provider若未F解冻拒绝；UNKNOWN回退在出网前阻断，spy退款次数不增；并发CLAIM与共同capture重放只有一条binding/refund。原fixture stub方式的7条资金测试通过不等于此更强桥接测试已过，需根当前CI确认。
+
+实际fen渠道限额统一在createContract/proposeSettlement/SEND_SPLIT检查，不仅检查bps比例。不能因最大余数取整在付款后卡住不可发送分账；测试合成35%渠道授权仅用于合法验证30%分成算例，不代表生产账户获批比例。
+
+页面顺序补丁：beneficiary报表有内置tab，普通advertiser不显示管理收益tab；needsUnfreeze从真实batch.finished推导，仅影响按钮顺序，后端仍独立强制检查。切换用户重置旧机构/订单引用，防止界面停留在另一账号选择。

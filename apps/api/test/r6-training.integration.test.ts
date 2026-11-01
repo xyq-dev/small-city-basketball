@@ -1,4 +1,11 @@
+import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
+import { Module } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import request from 'supertest';
+import { ApiExceptionFilter } from '../src/errors.js';
+import { TrainingController, SCB_TRAINING_SERVICE } from '../src/training-controller.js';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { TradeService } from '../src/trade-service.js';
@@ -21,6 +28,9 @@ const auth = new ApplicationService(pool, options),
 type User = { id: string; org: string; cookie: string };
 let owner: User, reviewer: User, coach: User, learner: User, other: User, operator: User;
 let courseId: string, coachId: string, courtId: string;
+let trainingHttp: INestApplication;
+@Module({})
+class TrainingHttpModule {}
 const cmd = (action: string, expectedVersion: number, extra: Record<string, unknown> = {}) => ({
   commandId: randomUUID(),
   action,
@@ -139,8 +149,25 @@ beforeAll(async () => {
       description: '固定短课；没有赛事代理数据',
     })
   ).courseId;
+  trainingHttp = await NestFactory.create(
+    {
+      module: TrainingHttpModule,
+      controllers: [TrainingController],
+      providers: [{ provide: SCB_TRAINING_SERVICE, useValue: service }],
+    },
+    { logger: false },
+  );
+  trainingHttp.use((req: { requestId?: string }, _res: unknown, next: () => void) => {
+    req.requestId = randomUUID();
+    next();
+  });
+  trainingHttp.useGlobalFilters(new ApiExceptionFilter());
+  await trainingHttp.init();
 });
-afterAll(() => pool.end());
+afterAll(async () => {
+  if (trainingHttp) await trainingHttp.close();
+  await pool.end();
+});
 describe('R6TRAIN real PostgreSQL service workflows', () => {
   it('locks the last seat atomically; FIFO waitlist cannot be overtaken', async () => {
     const h = await cohort(1);
@@ -263,6 +290,147 @@ describe('R6TRAIN real PostgreSQL service workflows', () => {
       reviewed_by: reviewer.id,
     });
     expect(end.refunds[0]!.trade_refund_id).toBeNull();
+  });
+  it('ordinary learner chooses authorized makeup options through real HTTP and live capacity is rechecked', async () => {
+    const original = await cohort(),
+      valid = await cohort(1),
+      stopped = await cohort(),
+      full = await cohort(1);
+    const anotherCourse = (
+      await service.createCourse(owner.cookie, owner.org, {
+        commandId: randomUUID(),
+        title: '另一种训练课程',
+        description: '不能挪用不同课程的课次权益',
+      })
+    ).courseId;
+    const wrongCourse = await cohort(2, 0, { courseId: anotherCourse });
+    await service.cohortCommand(
+      owner.cookie,
+      stopped.id,
+      cmd('SUSPEND', stopped.version, { reason: '暂停班期不可继续安排补课' }),
+    );
+    await confirmed(full, other);
+    const made = await service.enroll(learner.cookie, original.id, {
+      commandId: randomUUID(),
+      learnerUserId: learner.id,
+      payerUserId: other.id,
+      adultConfirmed: true,
+      acceptedTermsId: original.termsId,
+    });
+    let n = await service.enrollmentDetail(learner.cookie, made.enrollmentId);
+    await service.enrollmentCommand(learner.cookie, n.id, cmd('CONFIRM', n.version));
+    n = await service.enrollmentDetail(learner.cookie, n.id);
+    const right = n.entitlements[0]!;
+    const path = '/v1/training/entitlements/' + right.id,
+      server = trainingHttp.getHttpServer();
+    let result = await request(server)
+      .get(path + '/makeup-options')
+      .set('Cookie', learner.cookie);
+    expect(result.status).toBe(409);
+    expect(result.body.error.code).toBe('MAKEUP_NOT_DUE');
+    result = await request(server)
+      .post(path + '/commands')
+      .set('Cookie', learner.cookie)
+      .set('Origin', options.appOrigin)
+      .send(cmd('LEAVE', right.version, { reason: '本人请假后改选合适时间' }));
+    expect(result.status).toBe(200);
+    for (const actor of [other, owner]) {
+      const denied = await request(server)
+        .get(path + '/makeup-options')
+        .set('Cookie', actor.cookie);
+      expect(denied.status).toBe(404);
+      expect(denied.body.error.code).toBe('RESOURCE_NOT_FOUND');
+      expect(denied.body.data).toBeUndefined();
+    }
+    const anonymous = await request(server).get(path + '/makeup-options');
+    expect(anonymous.status).toBe(401);
+    result = await request(server)
+      .get(path + '/makeup-options')
+      .set('Cookie', learner.cookie);
+    expect(result.status).toBe(200);
+    const choices = result.body.data;
+    expect(choices.entitlementId).toBe(right.id);
+    expect(choices.entitlementVersion).toBe(right.version + 1);
+    const ids = choices.items.map((x: { sessionId: string }) => x.sessionId);
+    expect(ids).toContain(valid.sessions[0]!.id);
+    expect(ids).not.toContain(stopped.sessions[0]!.id);
+    expect(ids).not.toContain(full.sessions[0]!.id);
+    expect(ids).not.toContain(wrongCourse.sessions[0]!.id);
+    const selected = choices.items.find(
+      (x: { sessionId: string }) => x.sessionId === valid.sessions[0]!.id,
+    );
+    expect(selected).toMatchObject({
+      cohortId: valid.id,
+      cohortTitle: valid.title,
+      address: valid.address,
+      availableSeats: 1,
+      coaches: [{ name: '测试教练' }],
+    });
+    expect(
+      choices.items.every((x: { startsAt: string }) => Date.parse(x.startsAt) > Date.now()),
+    ).toBe(true);
+    expect(selected).not.toHaveProperty('learnerUserId');
+    expect(selected).not.toHaveProperty('evidenceReference');
+    result = await request(server)
+      .post(path + '/commands')
+      .set('Cookie', other.cookie)
+      .set('Origin', options.appOrigin)
+      .send(cmd('MAKEUP', choices.entitlementVersion, { sessionId: selected.sessionId }));
+    expect(result.status).toBe(403);
+    expect(result.body.error.code).toBe('FORBIDDEN');
+    result = await request(server)
+      .post(path + '/commands')
+      .set('Cookie', learner.cookie)
+      .set('Origin', options.appOrigin)
+      .send(cmd('MAKEUP', choices.entitlementVersion, { sessionId: wrongCourse.sessions[0]!.id }));
+    expect(result.status).toBe(409);
+    expect(result.body.error.code).toBe('MAKEUP_INELIGIBLE');
+    // Another real enrollment takes the listed last seat before confirmation; stale lists grant no capacity.
+    await confirmed(valid, other);
+    result = await request(server)
+      .post(path + '/commands')
+      .set('Cookie', learner.cookie)
+      .set('Origin', options.appOrigin)
+      .send(cmd('MAKEUP', choices.entitlementVersion, { sessionId: selected.sessionId }));
+    expect(result.status).toBe(409);
+    expect(result.body.error.code).toBe('MAKEUP_FULL');
+    const next = await cohort(1);
+    result = await request(server)
+      .get(path + '/makeup-options')
+      .set('Cookie', learner.cookie);
+    expect(result.status).toBe(200);
+    expect(
+      result.body.data.items.some((x: { sessionId: string }) => x.sessionId === selected.sessionId),
+    ).toBe(false);
+    const replacement = result.body.data.items.find(
+      (x: { sessionId: string }) => x.sessionId === next.sessions[0]!.id,
+    );
+    expect(replacement).toBeDefined();
+    result = await request(server)
+      .post(path + '/commands')
+      .set('Cookie', learner.cookie)
+      .set('Origin', options.appOrigin)
+      .send(
+        cmd('MAKEUP', result.body.data.entitlementVersion, { sessionId: replacement.sessionId }),
+      );
+    expect(result.status).toBe(200);
+    const after = await service.enrollmentDetail(learner.cookie, n.id);
+    expect(after.entitlements[0]).toMatchObject({
+      id: right.id,
+      sessionId: replacement.sessionId,
+      originalSessionId: right.originalSessionId,
+      netFen: right.netFen,
+      state: 'AVAILABLE',
+    });
+    expect(after.totalFen).toBe(n.totalFen);
+    expect(after.tradeOrderId).toBe(n.tradeOrderId);
+    expect(after.refunds).toHaveLength(0);
+    expect(after.consumptions).toHaveLength(0);
+    const fresh = await request(server)
+      .get(path + '/makeup-options')
+      .set('Cookie', learner.cookie);
+    expect(fresh.status).toBe(409);
+    expect(fresh.body.error.code).toBe('MAKEUP_NOT_DUE');
   });
   it('attendance and teaching do not consume lessons; review and learner acknowledgment are separate', async () => {
     const h = await cohort(),

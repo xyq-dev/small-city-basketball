@@ -14,6 +14,7 @@ import {
   readSponsorTradeSource,
   readSponsorClosureFunds,
 } from '../src/sponsor-commerce-source.js';
+import type { TradePayments } from '../src/trade-provider.js';
 import type { SponsorSettlementProvider } from '../src/trade-wechat-multi-provider.js';
 import {
   ORIGIN,
@@ -32,6 +33,7 @@ describe(
   () => {
     let api: Api,
       service: SponsorCommerceService,
+      trade: any,
       options: SponsorCommerceOptions,
       owner: User,
       payer: User,
@@ -49,6 +51,15 @@ describe(
       queryReturn: vi.fn(),
       finish: vi.fn(),
       queryFinish: vi.fn(),
+    };
+    const payments: TradePayments = {
+      enabled: true,
+      native: vi.fn(),
+      queryOrder: vi.fn(),
+      refund: vi.fn(),
+      queryRefund: vi.fn(),
+      verifyNotification: vi.fn(),
+      downloadBill: vi.fn(),
     };
     beforeAll(async () => {
       databaseUrl = testDatabaseUrl();
@@ -128,7 +139,7 @@ describe(
             merchantId: '1900000101',
             appId: 'syntheticApp',
             displayName: '合成平台商户',
-            maximumSplitBps: 3000,
+            maximumSplitBps: 3500,
             financeActorIds: [finance1.id, finance2.id],
             provider,
             receivers: {
@@ -142,47 +153,32 @@ describe(
             },
           },
         },
-        captureSourceCharge: async (c, _a, i) => {
-          expect(i.chargeConsent).toBe(true);
-          const source = await readSponsorTradeSource(c, i.sourceId);
-          expect(i.acceptedTermsId).toBe(source.consentId);
-          const id = randomUUID();
-          await c.query(
-            "INSERT INTO trade_orders(id,org_id,kind,source_id,source_version,source_snapshot,source_hash,payer_user_id,beneficiary_user_id,merchant_key,merchant_id,merchant_app_id,merchant_name,total_fen,quote) VALUES($1,$2,'SPONSOR_ORDER',$3,1,$4,$5,$6,$7,'synthetic-advertiser','1900000101','syntheticApp','合成商户',10003,'{}')",
-            [id, owner.orgId, i.sourceId, source, 'a'.repeat(64), payer.id, owner.id],
-          );
-          return id;
-        },
-        captureSourceRefund: async (c, a, i) => {
-          const refundId = randomUUID();
-          await claimSponsorRefundAllocation(c, { ...i, refundId });
-          const t = (
-            await c.query(
-              "SELECT * FROM trade_orders WHERE kind='SPONSOR_ORDER' AND source_id=$1 FOR UPDATE",
-              [i.sourceId],
-            )
-          ).rows[0];
-          const p = (
-            await c.query(
-              "SELECT * FROM trade_payment_attempts WHERE order_id=$1 AND status='PAID'",
-              [t.id],
-            )
-          ).rows[0];
-          await c.query(
-            "INSERT INTO trade_refunds(id,order_id,payment_id,out_refund_no,amount_fen,reason,status,proposed_by) VALUES($1,$2,$3,$4,$5,$6,'PENDING_REVIEW',$7)",
-            [
-              refundId,
-              t.id,
-              p.id,
-              'synthetic' + refundId.replaceAll('-', ''),
-              i.amountFen,
-              i.reason,
-              a.user.id,
-            ],
-          );
-          return { refundId, status: 'PENDING' };
-        },
+        captureSourceCharge: (c, a, i) => trade.captureSourceCharge(c, a, i),
+        captureSourceRefund: (c, a, i) => trade.captureSourceRefund(c, a, i),
       };
+      // Root supplies this shared adapter in the integrated checkout; no ledger or source hook is stubbed.
+      const commonTradeModule = '../src/trade-service.js',
+        adapterModule = '../src/remaining-six-trade.js';
+      const { TradeService: IntegratedTradeService } = await import(commonTradeModule);
+      const { remainingSixTradeSources } = await import(adapterModule);
+      trade = new IntegratedTradeService(
+        api.pool,
+        { databaseUrl, appOrigin: ORIGIN },
+        {
+          encryptionKey: Buffer.alloc(32, 7),
+          merchants: {
+            [owner.orgId]: {
+              key: 'synthetic-advertiser',
+              merchantId: '1900000101',
+              appId: 'syntheticApp',
+              displayName: '合成平台商户',
+              payments,
+              receivers: {},
+            },
+          },
+        },
+        remainingSixTradeSources({ sponsorEnabled: true }),
+      );
       service = new SponsorCommerceService(api.pool, { databaseUrl, appOrigin: ORIGIN }, options);
       const proposed = await service.beneficiary(finance1.cookie, owner.orgId, {
         commandId: randomUUID(),
@@ -788,6 +784,165 @@ describe(
       expect((await service.get(payer.cookie, owner.orgId, f.order.id)).tradeOrderId).toBe(
         f.order.tradeOrderId,
       );
+    });
+    test('real common trade capture, allocation binding, independent review and dispatch recheck are atomic', async () => {
+      const f = await approved();
+      vi.mocked(provider.split).mockImplementationOnce(async (i) => ({
+        transactionId: i.transactionId,
+        outOrderNo: i.outOrderNo,
+        orderId: 'real-ledger-synthetic-split',
+        state: 'FINISHED',
+        receivers: i.receivers.map((x) => ({
+          merchantId: x.merchantId,
+          amountFen: x.amountFen,
+          result: 'SUCCESS',
+          detailId: 'real-ledger-synthetic-detail',
+        })),
+      }));
+      await channel(f.order.id, 'SEND_SPLIT', f.batchId);
+      const p = await act(payer, f.order.id, 'PROPOSE_REFUND', {
+        amountFen: 10003,
+        reason: '真实共同账本合成渠道全额退款',
+      });
+      await act(finance1, f.order.id, 'APPROVE_REFUND', { childId: p.refundPlanId });
+      let view = await service.get(owner.cookie, owner.orgId, f.order.id);
+      const external = view.returns.find((x) => x.status === 'PENDING')!;
+      vi.mocked(provider.returnFunds).mockRejectedValueOnce(new Error('synthetic return timeout'));
+      await channel(f.order.id, 'SEND_RETURN', external.id);
+      const recapture = () =>
+        trade.transaction(async (c: PoolClient) => {
+          const a = await trade.lockActor(c, finance1.cookie);
+          return trade.captureSourceRefund(c, a, {
+            kind: 'SPONSOR_ORDER',
+            sourceId: f.order.id,
+            allocationId: p.refundPlanId,
+            amountFen: 10003,
+            reason: '真实共同账本合成渠道全额退款',
+          });
+        });
+      await expect(recapture()).rejects.toMatchObject({
+        code: 'SPONSOR_REFUND_ALLOCATION_REQUIRED',
+      });
+      expect(
+        (
+          await api.pool.query(
+            'SELECT count(*)::integer AS n FROM r6_trade_refund_bindings WHERE allocation_id=$1',
+            [p.refundPlanId],
+          )
+        ).rows[0].n,
+      ).toBe(0);
+      vi.mocked(provider.queryReturn).mockImplementationOnce(async (i) => ({
+        outOrderNo: i.outOrderNo,
+        outReturnNo: i.outReturnNo,
+        merchantId: i.receiverMerchantId,
+        amountFen: i.amountFen,
+        returnId: 'real-ledger-synthetic-return',
+        state: 'SUCCESS',
+      }));
+      await channel(f.order.id, 'QUERY_RETURN', external.id);
+      await expect(recapture()).rejects.toMatchObject({ code: 'SPONSOR_UNFREEZE_REQUIRED' });
+      let channelUnfrozen = false;
+      vi.mocked(provider.finish).mockImplementationOnce(async (i) => {
+        channelUnfrozen = true;
+        return {
+          transactionId: i.transactionId,
+          outOrderNo: i.outOrderNo,
+          orderId: 'real-ledger-synthetic-finish',
+          state: 'FINISHED',
+        };
+      });
+      vi.mocked(payments.refund).mockImplementation(async (i) => {
+        if (!channelUnfrozen)
+          throw Error('synthetic provider requires unfreeze before full refund');
+        const pay = (
+          await api.pool.query('SELECT * FROM trade_payment_attempts WHERE out_trade_no=$1', [
+            i.outTradeNo,
+          ])
+        ).rows[0];
+        return {
+          outTradeNo: i.outTradeNo,
+          outRefundNo: i.outRefundNo,
+          transactionId: pay.provider_transaction_id,
+          refundId: 'SYNTHETIC_REAL_REFUND_' + i.outRefundNo,
+          state: 'SUCCESS',
+          totalFen: i.totalFen,
+          refundFen: i.refundFen,
+          currency: 'CNY',
+          successTime: new Date().toISOString(),
+          createdTime: new Date().toISOString(),
+        };
+      });
+      await channel(f.order.id, 'REFUND_UNFREEZE', p.refundPlanId);
+      view = await service.get(finance1.cookie, owner.orgId, f.order.id);
+      const command = {
+        commandId: randomUUID(),
+        expectedVersion: view.order.version,
+        action: 'CLAIM_REFUND',
+        childId: p.refundPlanId,
+      };
+      const [first, replay] = await Promise.all([
+        service.orderCommand(finance1.cookie, owner.orgId, f.order.id, command),
+        service.orderCommand(finance1.cookie, owner.orgId, f.order.id, command),
+      ]);
+      expect(replay.refundId).toBe(first.refundId);
+      const bindings = (
+        await api.pool.query('SELECT * FROM r6_trade_refund_bindings WHERE allocation_id=$1', [
+          p.refundPlanId,
+        ])
+      ).rows;
+      expect(bindings).toHaveLength(1);
+      expect(bindings[0]).toMatchObject({
+        kind: 'SPONSOR_ORDER',
+        source_id: f.order.id,
+        order_id: f.trade,
+        refund_id: first.refundId,
+      });
+      expect(
+        (
+          await api.pool.query(
+            'SELECT count(*)::integer AS n FROM trade_refunds WHERE order_id=$1',
+            [f.trade],
+          )
+        ).rows[0].n,
+      ).toBe(1);
+      const [again1, again2] = await Promise.all([recapture(), recapture()]);
+      expect(again1.refundId).toBe(first.refundId);
+      expect(again2.refundId).toBe(first.refundId);
+      let dto = await trade.get(finance2.cookie, f.trade);
+      await trade.review(finance2.cookie, f.trade, 'REFUND', first.refundId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: dto.version,
+        decision: 'APPROVE',
+        reason: '独立核对原分配及渠道解冻',
+      });
+      // Inject an unresolved retained-return observation to verify dispatch rechecks current DB facts, not the earlier approval receipt.
+      const retained = view.returns.find((x) => x.status === 'NOT_REQUIRED')!;
+      await api.pool.query("UPDATE sponsor_return_items SET status='UNKNOWN' WHERE id=$1", [
+        retained.id,
+      ]);
+      dto = await trade.get(finance1.cookie, f.trade);
+      const before = vi.mocked(payments.refund).mock.calls.length;
+      await expect(
+        trade.dispatchRefund(finance1.cookie, f.trade, first.refundId, {
+          clientRequestId: randomUUID(),
+          expectedVersion: dto.version,
+        }),
+      ).rejects.toMatchObject({ code: 'SPONSOR_RETURN_PENDING' });
+      expect(vi.mocked(payments.refund).mock.calls.length).toBe(before);
+      await api.pool.query("UPDATE sponsor_return_items SET status='NOT_REQUIRED' WHERE id=$1", [
+        retained.id,
+      ]);
+      dto = await trade.get(finance1.cookie, f.trade);
+      await trade.dispatchRefund(finance1.cookie, f.trade, first.refundId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: dto.version,
+      });
+      expect(vi.mocked(payments.refund).mock.calls.length).toBe(before + 1);
+      expect((await recapture()).status).toBe('SUCCEEDED');
+      expect(
+        (await api.pool.query('SELECT status FROM trade_refunds WHERE id=$1', [first.refundId]))
+          .rows[0].status,
+      ).toBe('SUCCEEDED');
     });
   },
 );

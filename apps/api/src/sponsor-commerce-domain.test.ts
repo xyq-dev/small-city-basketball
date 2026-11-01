@@ -6,6 +6,7 @@ import {
   sponsorInt,
   sponsorShareInput,
   assertSponsorRecipientLimit,
+  assertSponsorChannelAmount,
   validateSponsorAdvanceCoverage,
 } from './sponsor-commerce-domain.js';
 import type { SponsorShare } from '../../../packages/contracts/sponsor-commerce.js';
@@ -106,4 +107,14 @@ test('advance coverage binds reserved money to the exact original order and allo
     { proofHash: 'form-note' },
   ])
     expect(() => validateSponsorAdvanceCoverage({ ...receipt, ...patch }, binding)).toThrow();
+});
+
+test('channel ceiling applies to integer fen including largest-remainder rounding', () => {
+  const a = allocateSponsorPool(10003, shares);
+  expect(a.filter((x) => !x.retained).reduce((n, x) => n + x.amountFen, 0)).toBe(3001);
+  expect(() => assertSponsorChannelAmount(10003, a, 3000)).toThrow();
+  expect(() => assertSponsorChannelAmount(10003, a, 3500)).not.toThrow();
+  expect(() =>
+    assertSponsorChannelAmount(10000, allocateSponsorPool(10000, shares), 3000),
+  ).not.toThrow();
 });

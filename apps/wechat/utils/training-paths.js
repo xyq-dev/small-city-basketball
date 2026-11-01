@@ -9,6 +9,7 @@ function trainingPathAllowed(base, method, query, uuidPattern) {
       [root + '/catalog', root + '/mine'].includes(base) ||
       match(root + '/(cohorts|enrollments|receipts)/' + uuidPattern) ||
       match(root + '/sessions/' + uuidPattern + '/roster') ||
+      match(root + '/entitlements/' + uuidPattern + '/makeup-options') ||
       match(org)
     );
   if (method !== 'POST') return false;

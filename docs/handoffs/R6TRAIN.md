@@ -18,3 +18,9 @@
 CI149最小修复：r6-training.integration.test.ts退款职责夹具改为owner（具有ORG_OWNER权限）提出、owner自审403且精确INDEPENDENT_REVIEW_REQUIRED、learner无权审批404且精确RESOURCE_NOT_FOUND、reviewer作为ORG_ADMIN成功批准并校验原始申请/复核人。仅修正测试职责设置，不改service错误码和安全隐藏行为。API typecheck已过，PG待root复跑。
 
 CI151反馈：共享日历6/7通过，唯一失败是过期派单已被prepareTraining正确提前释放。最小修复将过期历史放到创建培训草稿之后，PUBLISH前仍严格active=true/PUBLISH后false，并继续验证quote/status历史不变。无048生产修改；PG复跑交root。
+
+补课选择器交接：现有TrainingController新增 GET `/v1/training/entitlements/:id/makeup-options`，无需新增controller或共享app接线；contracts/training新增TrainingMakeupOptionsData，training-paths精确放行GET。仅确认报名的学员本人、MAKEUP_DUE权益可读；付款人/机构管理员404隐藏。候选包含同机构同课程未来有效课次、当前公开排课资料/余位，无其他学员资料；服务端读与持锁MAKEUP共享资格/容量/本人跨源档期谓词，仍由048维护最终排时互斥。native从真实报名详情决定学员入口，选择服务端返回课次与权益版本，去掉手工UUID输入；超时恢复仍使用原命令，切号/隐藏丢弃候选响应。
+
+新增PG第10项使用真实Nest controller、已有登录会话、真实TrainingService/迁移库，非模拟DTO；普通学员本人不是owner/reviewer/coach，独立payer/owner读候选明确404，payer写MAKEUP明确403，最后席位被占后旧候选明确MAKEUP_FULL，刷新后新目标成功且原权益金额/原课次不变。local native10/10及typecheck通过，PG待集成人实际CI。此前CI151原培训9项已通过、calendar修正0c4f248另片交付。本片无生产、资金渠道或Migration执行，独立只读审查与最终提交状态另报root。
+
+集成前runtime补丁：training-service的operator/access两处平台权限查询改JOIN users + FOR SHARE OF u，保留platform_operators只读ACL，遵循维护者锁users的现有协议。独立审查未发现新阻断问题，并复跑native10/10；领域8/8与API typecheck通过。root反馈CI152原有新域已全部通过，本片新增候选PG与正式runtime待下一轮CI。此片之后仅处理确定失败或阻断，不继续扩展范围。

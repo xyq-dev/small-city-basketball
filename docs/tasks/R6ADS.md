@@ -1,6 +1,6 @@
 # R6ADS 广告合同与多方结算
 
-状态：IN_PROGRESS；integration：LOCAL_ONLY。2026-11-01 Asia/Shanghai。
+状态：REVIEW；integration：BRANCH_ONLY。2026-11-01 Asia/Shanghai。
 
 负责人：/root/implement_ads；集成人：root。目录 `/workspace/scratch/aad368826b09/scb-six-ads`；分支 `work/r6-ads`；基线 `c61ab3667c9d3f756244a28046b9ee2395ccac00`，开工工作区clean。远端为本项目GitHub，真实快照由root核验导入。
 
@@ -39,3 +39,11 @@
 资金权限修正：历史merchant仅保留原资金路由，finance校验始终取当前owner org配置名单及当前有效owner/admin/fresh session，不能借旧merchant保留已撤销财务权限。
 
 2026-11-01 CI151真实PG反馈：8条广告测试中7条核心资金流程通过，剩1条fixture将跨租户隐藏资源误期待403，实际正确返回404/RESOURCE_NOT_FOUND；已修断言，不放宽生产授权。较新的普通广告主/inflight扩展测试待后续CI。
+
+2026-11-01 真实交易桥验收强化：全部广告PG场景改为真实TradeService + remainingSixTradeSources；captureSourceCharge/captureSourceRefund直接调用共同账本，不再手写trade订单或退款stub。支付/分账/退款transport仍纯合成。新增并发同CLAIM只有1个immutable binding+1个common refund、直接共同bridge并发重放、真实独立review/dispatch、派发前UNKNOWN回退阻断且不调用provider、先F解冻后共同refund成功及重放返回SUCCEEDED。新增测试在根集成checkout执行，当前隔离分支基线未含root adapter，动态导入目标固定为repo内真实文件而非mock；无跳过。
+
+渠道整数上限：合同创建、实收分配提案和发送前均核external整数分总和<=floor(original payment × approved max bps / 10000)。10003分30%最大余数3001分不再越过3000分渠道额度；不修改分配算法。合成merchant授权上限改3500bps，合同分成仍3000bps。新增整数边界单测。真实PG新增至11test，等待根新CI；API tsc通过。
+
+2026-11-01 小程序顺序收尾：退款卡先展示所需原批次解冻，解冻确认后才展示提交统一退款；已结束原批次不重复给出解冻操作。机构管理员可在页面直接切换“本机构收益明细”，无需手写mode；换登录账号清除旧org/order选择。微信6/6及WXML处理器校验通过。
+
+2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。

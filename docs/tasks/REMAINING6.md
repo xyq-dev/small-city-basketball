@@ -1,6 +1,6 @@
 # REMAINING6：六项功能实现
 
-状态：IN_PROGRESS；integration：BRANCH_ONLY（代码整合进行中）；日期：2026-11-01 Asia/Shanghai。集成人：当前Codex root。任务来自用户“先开发这些”，业务依据DOC006六份专项。
+状态：REVIEW；integration：BRANCH_ONLY（隔离验收与最后修复进行中）；日期：2026-11-01 Asia/Shanghai。集成人：当前Codex root。任务来自用户“先开发这些”，业务依据DOC006六份专项。
 
 ## 核验与权限
 
@@ -46,3 +46,5 @@ PR #35 已创建为草稿。源事务、原生页面、注销及恢复清单已�
 首轮隔离 CI149（remote head `68ed65c53e43333a02e5e9cf1bc0e180f4504e62`）：admin job 成功；48 个迁移在 PostgreSQL 成功；API 集成597 passed / 4 failed / 10 skipped，另1个suite setup失败。失败已定位为readiness不接受数字表名、撮合审批fixture缺平台审核员、地图/预约fixture缺版本推进、培训独立审核fixture权限预期。后续片正在修复并扩展共享日历及资金恢复测试。生产包隔离job因同一readiness问题失败，尚未完成当前HEAD备份恢复及整套验收，不能据旧片测试标记当前整套通过。
 
 当前本地已通过新readiness/runtime/source adapter定向25项和API类型检查；广告退款解冻、财务追偿、跨域日历新增证据继续纳入下一轮。真实保险外部驱动仍BLOCKED；不部署、不调用真实保险/资金/消息。
+
+当前CI152的新域PG完整通过；严格运行角色回执行锁问题已修，不扩大append-only权限。普通广告主入口与广告运行配置已接线；补课选择器及学员真实HTTP验收已补，等待当前HEAD隔离验证。主干并发UI001文档已从911564f0逐blob哈希核验保留，不覆盖设计交付。当前独立审查未发现尚未修复确定P1，最终完整CI/恢复仍待执行。

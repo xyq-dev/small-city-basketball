@@ -458,6 +458,7 @@ export async function createApi(
       };
     } else {
       const remainingSix = readRemainingSixOptions();
+      const tradeRuntime = input.trade ?? readTradeRuntime(options.appOrigin);
       input = {
         ...input,
         matching: input.matching ?? remainingSix.matching,
@@ -465,7 +466,8 @@ export async function createApi(
         dispatch: input.dispatch ?? remainingSix.dispatch,
         localSearch: input.localSearch ?? remainingSix.localSearch,
         notifications: input.notifications ?? readNotificationOptions(),
-        trade: input.trade ?? readTradeRuntime(options.appOrigin),
+        trade: tradeRuntime,
+        sponsorCommerce: input.sponsorCommerce ?? tradeRuntime.sponsorCommerce,
       };
     }
     options = resolveApiOptions({

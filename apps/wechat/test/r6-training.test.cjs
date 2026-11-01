@@ -76,6 +76,23 @@ test('training paths are exact and reject arbitrary methods, ids and query param
     trainingPathAllowed('/v1/orgs/' + O + '/training/provider/commands', 'POST', {}, pattern),
     true,
   );
+  assert.equal(
+    trainingPathAllowed('/v1/training/entitlements/' + O + '/makeup-options', 'GET', {}, pattern),
+    true,
+  );
+  assert.equal(
+    trainingPathAllowed('/v1/training/entitlements/' + O + '/makeup-options', 'POST', {}, pattern),
+    false,
+  );
+  assert.equal(
+    trainingPathAllowed(
+      '/v1/training/entitlements/' + O + '/makeup-options',
+      'GET',
+      { learnerUserId: V },
+      pattern,
+    ),
+    false,
+  );
   assert.equal(trainingPathAllowed('/v1/training/../../admin', 'POST', {}, pattern), false);
 });
 test('closed rollout displays no fake available classes', async () => {
@@ -181,4 +198,123 @@ test('native empty and unknown-refund layouts render without leaking hidden part
       assert.doesNotMatch(html, /真实退款成功/);
     }
   }
+});
+
+const option = (sessionId, title) => ({
+  sessionId,
+  cohortId: C,
+  cohortTitle: title,
+  address: '合成训练馆',
+  startsAt: '2099-01-02T00:00:00Z',
+  endsAt: '2099-01-02T01:00:00Z',
+  availableSeats: 2,
+  coaches: [{ name: '合成教练' }],
+});
+test('learner loads makeup choices and submits the selected server-returned session with the current entitlement version', async () => {
+  let submitted = false;
+  const h = harness('training', async (url, method) => {
+    if (url.endsWith('/makeup-options'))
+      return {
+        entitlementId: O,
+        entitlementVersion: 7,
+        items: [option(U, '上午班'), option(V, '下午班')],
+        truncated: false,
+      };
+    if (method === 'POST') {
+      submitted = true;
+      return { enrollmentId: C };
+    }
+    return {
+      id: C,
+      learnerUserId: U,
+      totalFen: 0,
+      state: 'CONFIRMED',
+      termsSnapshot: {},
+      capabilities: {},
+      entitlements: [
+        {
+          id: O,
+          state: submitted ? 'AVAILABLE' : 'MAKEUP_DUE',
+          netFen: 0,
+          sessionId: V,
+          originalSessionId: U,
+          version: submitted ? 8 : 6,
+        },
+      ],
+      consumptions: [],
+      refunds: [],
+    };
+  });
+  await h.page.showEnrollment(C);
+  assert.equal(h.page.data.isLearner, true);
+  const template = fs.readFileSync(path.join(root, 'pages/training/index.wxml'), 'utf8');
+  const html = renderWxml(template, h.page.data, {
+    root,
+    pageDirectory: path.join(root, 'pages/training'),
+  });
+  assert.match(html, /选择补课课次/);
+  await h.page.chooseMakeup({ currentTarget: { dataset: { id: O } } });
+  assert.equal(h.page.data.makeup.items.length, 2);
+  assert.match(h.page.data.makeup.items[1].label, /下午班.*合成教练/);
+  h.page.selectMakeup({ detail: { value: '1' } });
+  await h.page.confirmMakeup();
+  const posted = h.calls.find((x) => x.method === 'POST');
+  assert.equal(posted.url, '/v1/training/entitlements/' + O + '/commands');
+  assert.equal(posted.body.action, 'MAKEUP');
+  assert.equal(posted.body.sessionId, V);
+  assert.equal(posted.body.expectedVersion, 7);
+  assert.equal(h.page.data.makeup, null);
+  assert.doesNotMatch(template, /makeupSessionId|补课课次编号/);
+  assert.match(template, /选择补课课次/);
+});
+test('a late makeup response is discarded after account change and the picker has a useful empty state', async () => {
+  let resolve;
+  const h = harness('training', (url) =>
+    url.endsWith('/makeup-options') ? new Promise((r) => (resolve = r)) : {},
+  );
+  h.page.setData({
+    enrollment: {
+      id: C,
+      learnerUserId: U,
+      entitlements: [{ id: O, state: 'MAKEUP_DUE', version: 2 }],
+    },
+    isLearner: true,
+  });
+  const waiting = h.page.chooseMakeup({ currentTarget: { dataset: { id: O } } });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(typeof resolve, 'function');
+  h.switchUser();
+  resolve({
+    entitlementId: O,
+    entitlementVersion: 2,
+    items: [option(V, '晚间班')],
+    truncated: false,
+  });
+  await waiting;
+  assert.equal(h.page.data.makeup, null);
+  assert.equal(h.page.data.makeupLoading, false);
+  const t = h.requireLocal('utils/training.js');
+  assert.throws(
+    () => t.makeupOptions({ entitlementId: C, entitlementVersion: 2, items: [] }, O),
+    /补课候选/,
+  );
+  h.page.setData({
+    enrollment: {
+      id: C,
+      state: 'CONFIRMED',
+      capabilities: {},
+      termsSnapshot: {},
+      entitlements: [],
+      consumptions: [],
+      refunds: [],
+    },
+    makeup: { entitlementId: O, items: [], selected: null },
+  });
+  const html = renderWxml(
+    fs.readFileSync(path.join(root, 'pages/training/index.wxml'), 'utf8'),
+    h.page.data,
+    { root, pageDirectory: path.join(root, 'pages/training') },
+  );
+  assert.match(html, /暂无符合当前资格/);
+  assert.doesNotMatch(html, /确认这节补课/);
 });

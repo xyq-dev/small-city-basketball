@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import type { SponsorCommerceOptions } from './sponsor-commerce-service.js';
 import type {
   WechatPayOrder,
   WechatPayRefund,
@@ -109,6 +110,8 @@ export interface TradeMerchant {
   settlements?: TradeSettlementProvider;
 }
 export interface TradeRuntime {
+  /** Shares the same pinned merchant identities; rollout gates only new sponsorship work. */
+  sponsorCommerce?: SponsorCommerceOptions;
   merchants?: Record<string, TradeMerchant>;
   /** Immutable historical key: orgId + colon + merchant key, retained for old pending orders. */
   historicalMerchants?: Record<string, TradeMerchant>;

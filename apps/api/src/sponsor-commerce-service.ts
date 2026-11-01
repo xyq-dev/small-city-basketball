@@ -16,6 +16,7 @@ import {
   sponsorVersion,
   validateSponsorAdvanceCoverage,
   assertSponsorRecipientLimit,
+  assertSponsorChannelAmount,
   type SponsorAdvanceCoverage,
 } from './sponsor-commerce-domain.js';
 import type { SponsorShare } from '../../../packages/contracts/sponsor-commerce.js';
@@ -502,6 +503,7 @@ export class SponsorCommerceService extends GovernanceService {
             sponsorInt(m.maximumSplitBps, 0, 10000)
         )
           sponsorFail('SPONSOR_CHANNEL_LIMIT', '接收商户重复或超出商户允许的分账比例');
+        assertSponsorChannelAmount(total, allocateSponsorPool(total, shares), m.maximumSplitBps);
         const id = randomUUID();
         await c.query(
           'INSERT INTO sponsor_contracts(id,org_id,campaign_id,payer_user_id,beneficiary_user_id,title,total_fen,allowed_fee_fen,terms,starts_at,ends_at,merchant_key,merchant_id,merchant_app_id,shares,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$5)',
@@ -889,6 +891,7 @@ export class SponsorCommerceService extends GovernanceService {
           const pool = money.p.total_fen - money.refunded - o.verified_fee_fen;
           if (pool < 0) sponsorFail('SPONSOR_INVALID_POOL', '实收不足以覆盖退款和手续费');
           const allocation = allocateSponsorPool(pool, o.snapshot.shares);
+          assertSponsorChannelAmount(money.p.total_fen, allocation, m.maximumSplitBps);
           await this.validateReceivers(c, org, m, allocation);
           const batch = randomUUID(),
             out = 'SCBADS' + batch.replaceAll('-', '');
@@ -1412,6 +1415,11 @@ export class SponsorCommerceService extends GovernanceService {
               status(batch.status, ['APPROVED']);
               await this.checkSettlement(c, o, t!, batch);
               await this.validateReceivers(c, org, m, o.snapshot.shares);
+              assertSponsorChannelAmount(
+                o.total_fen,
+                allocateSponsorPool(batch.pool_fen, o.snapshot.shares),
+                m.maximumSplitBps,
+              );
             }
             if (action === 'QUERY_SPLIT')
               status(batch.status, ['SENDING', 'UNKNOWN', 'PROCESSING', 'PARTIAL']);

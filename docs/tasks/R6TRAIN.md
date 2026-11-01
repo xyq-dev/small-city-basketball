@@ -1,6 +1,6 @@
 # R6TRAIN 成人培训招生实现
 
-状态：IN_PROGRESS；integration：LOCAL_ONLY。2026-11-01 Asia/Shanghai。
+状态：REVIEW；integration：BRANCH_ONLY。2026-11-01 Asia/Shanghai。
 负责人：/root/implement_training；集成人：/root。
 目录：/workspace/scratch/aad368826b09/scb-six-training；远端：https://github.com/xyq-dev/small-city-basketball.git；分支work/r6-training；基线c61ab3667c9d3f756244a28046b9ee2395ccac00，开工clean。
 
@@ -22,3 +22,11 @@
 2026-11-01 CI149反馈修正：原退款自审测试使用没有机构审批权限的学员，正确触发安全隐藏404，未触达独立复核规则。改为机构经办管理员提出退款；学员审批明确预期RESOURCE_NOT_FOUND/404，经办管理员审批明确预期INDEPENDENT_REVIEW_REQUIRED/403，另一位授权管理员审批成功，并核对持久proposed_by/reviewed_by不同。无放宽允许错误码、无修改生产授权逻辑。API typecheck通过；真实PG复跑交root隔离CI。
 
 CI151日历专项夹具顺序修正：createCohort本身也是正式培训write，会运行x12_release_expired；原测试先造过期派单再创建草稿，在PUBLISH前已正确释放。现先准备培训草稿，再原子INSERT不可变过期派单历史，精确断言发布前active=true、首次后续培训write（PUBLISH）后active=false；保留hash/原offer状态及历史不可复活断言，不放宽预期。
+
+2026-11-01 补课可用性修正：移除学员手填课次UUID，新增已授权学员本人读取 `GET /v1/training/entitlements/:id/makeup-options`。冻结响应为 entitlementId、entitlementVersion、最多50个按开始时间排序的 items（sessionId/cohortId/cohortTitle/address/startsAt/endsAt/availableSeats/公开教练姓名）与 truncated。只返回同机构同课程、有效未来班期/课次，核对机构/教练/场地资格、实时名额及本人培训/X12/球员档期；付款人和机构管理员不因此取得学员选课权限。原有 MAKEUP 写入口持统一日历锁复用候选谓词，再占位；原课净价、合同、退款账本不变。小程序展示班级/日期/教练/地址/余位选择器、空态与刷新，使用服务端权益版本提交，切号/隐藏后丢弃迟到响应。
+
+本片验证：原生VM与实际模板render 10/10、API typecheck通过；新增第10项真实Nest Controller+PostgreSQL集成场景，覆盖普通学员请假→读取→选课，付款人/管理员/匿名越权、不同课程/暂停/已满候选过滤、列表读取后最后席位被占及重新选课，验证原金额/原课次不变。该新增PG场景待root隔离CI；root反馈旧9项PG已在CI151通过，不把旧结果计作本片验收。无Migration变更。
+
+runtime审查修正：operator/access两处原直接FOR SHARE平台权限表要求其UPDATE权限，与正式只读ACL冲突；按既有TradeService模式JOIN users并仅FOR SHARE OF u，仍核对操作员及用户ACTIVE，不扩平台表权限。只读独立审查未发现本片阻断问题，复跑native10/10，领域8/8与API typecheck通过。候选跨源档期SQL已对照048检查；真实PG新候选场景及runtime路径等待完整隔离CI，不宣称本地实测。
+
+2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。

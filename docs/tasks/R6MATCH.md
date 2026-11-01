@@ -43,3 +43,5 @@ CI149跟进（2026-11-01 Asia/Shanghai）：root报告R6MATCH beforeAll的APPROV
 付费恢复证据补齐（2026-11-01 Asia/Shanghai）：root授权修复matching自有恢复脚本，map负责共享createLocalSource的paid:true能力。本脚本请求paid:true并使用返回tradeOrderId/termsId/totalFen；移除事后插收费条款的SQL。源条款先真实创建和独立审核，原预约在同事务捕获canonical trade_order，明确consent；本脚本只合成matching九表关系，不补造资金账本。
 
 capture与verify均核对资金订单与预约的source/org/payer/beneficiary/slot/listing/金额、条款与商户、完整source_snapshot及TradeService原顺序source_hash、冻结quote，要求没有payment_attempt。正常恢复比较资金/条款不变；quarantine仅允许既有SOURCE_CONFLICT与REVOKED及对应version递增，身份金额quote哈希保持。按helper实际费用设置候选/预算/assignment，不再硬写另一金额。node --check、Prettier及diff检查通过；真实付费source创建与PG恢复仍待root隔离CI。依赖map helper提交2e8297e，未改共享helper。
+
+2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。

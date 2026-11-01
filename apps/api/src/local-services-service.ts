@@ -997,10 +997,8 @@ export class LocalServicesService extends ApplicationService {
         listing.id,
       ])
     ).rows[0];
-    await c.query(
-      'SELECT command_id FROM local_command_receipts WHERE actor_id=$1 AND command_id=$2 FOR UPDATE',
-      [actor.user.id, input.commandId],
-    );
+    // Receipts are append-only. The shared calendar serializes creation and operation() rechecks identity.
+    // A row lock would incorrectly require UPDATE permission on this immutable history table.
     return {
       listing,
       slot,
@@ -1636,10 +1634,8 @@ export class LocalServicesService extends ApplicationService {
       'SELECT id FROM teams WHERE ((org_id=$1 AND id=$2) OR (org_id=$3 AND id=$4)) ORDER BY id FOR SHARE',
       [input.homeOrgId, input.homeTeamId, input.awayOrgId, input.awayTeamId],
     );
-    await c.query(
-      'SELECT command_id FROM local_command_receipts WHERE actor_id=$1 AND command_id=$2 FOR UPDATE',
-      [actor.user.id, input.commandId],
-    );
+    // Receipts are append-only. The shared calendar serializes creation and operation() rechecks identity.
+    // A row lock would incorrectly require UPDATE permission on this immutable history table.
     return {
       booking,
       execute: () =>

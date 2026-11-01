@@ -15,3 +15,7 @@ root目录 `/workspace/scratch/aad368826b09/scb-six`、分支 `feat/remaining-si
 普通广告主入口已补：所有登录账号可从账户页进入本人合同；服务端inbox仅按实际payer筛选机构/合同，签署及资金操作继续原权限复核。新的MeController已在app注册，管理入口仍保留org上下文。新增真实Page渲染/导航测试与inbox隔离PG；后者待CI。
 
 CI151新域真实PG已至66通过/3失败，余项为expiry/version与安全404的精确fixture预期；隔离production在构建前发现.dockerignore遗漏R6 helper，已补精确5文件允许清单，并新增从实际恢复入口遍历imports的打包测试，防止再漏transitive helper。正式镜像/恢复仍待下一CI，不因静态通过而标完成。
+
+CI152新域PG步骤完整通过，旧业务还在执行；隔离production定位到旧同城book HTTP500：提取prepare时对append-only local_command_receipts加入FOR UPDATE，而runtime刻意无UPDATE权限。移除两处无必要历史行锁（仍持全局日历/源锁，operation重读+唯一键防重），不扩历史写权限。广告配置已复用原trade商户实现严格默认关闭装配，root补app及Compose普通开关，构造不外发。
+
+全部已知入口/权限修正已集成：培训学员同课程候选选择器、仅锁平台操作员用户行；广告整数渠道上限及真实TradeService退款幂等/出网前复核；广告通过现有商户配置严格装配。当前无未提交业务代码，准备候选CI153。最新54项运行配置/源桥定向通过。等待真实PG、全量旧回归、完整220表恢复和独立审查最后结果，不提前合并。

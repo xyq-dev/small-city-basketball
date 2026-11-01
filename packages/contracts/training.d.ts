@@ -64,3 +64,21 @@ export interface TrainingEnrollmentData {
     canManage: boolean;
   };
 }
+
+/** Authorized learner-only alternatives; choosing one still revalidates live capacity and calendars. */
+export interface TrainingMakeupOptionData {
+  sessionId: string;
+  cohortId: string;
+  cohortTitle: string;
+  address: string;
+  startsAt: string;
+  endsAt: string;
+  availableSeats: number;
+  coaches: { name: string }[];
+}
+export interface TrainingMakeupOptionsData {
+  entitlementId: string;
+  entitlementVersion: number;
+  items: TrainingMakeupOptionData[];
+  truncated: boolean;
+}

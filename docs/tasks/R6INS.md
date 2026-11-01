@@ -1,6 +1,6 @@
 # R6INS：保险接入准入与核对实施
 
-状态：IN_PROGRESS；integration：LOCAL_ONLY。2026-11-01（Asia/Shanghai）。负责人：implement_insurance；集成人：root。
+状态：REVIEW；integration：BRANCH_ONLY。2026-11-01（Asia/Shanghai）。负责人：implement_insurance；集成人：root。
 
 工作目录 `/workspace/scratch/aad368826b09/scb-six-insurance`，分支 `work/r6-insurance`，远端 `https://github.com/xyq-dev/small-city-basketball.git`。开工HEAD `c61ab3667c9d3f756244a28046b9ee2395ccac00`，工作区无已有修改。
 
@@ -22,3 +22,5 @@
 已执行证据：保险3组定向Vitest 29/29；小程序保险node:test 9/9；API typecheck通过；git diff --check通过。补充真实PG集成测试覆盖准入不可改写、产品/组织/赛事拒绝且不调用driver、报价证据、报价后场地变更、未知预算工单及同操作恢复结案；本地无PostgreSQL/Docker，PG尚未运行，交root/CI。
 
 外部剩余项：选定供应商及批准销售模式；真实签名/证书/凭据、沙箱协议、查单/退保/回调原始签名、严格DNS/redirect/响应大小和超时的实际HTTP驱动；正式条款保障证据与业务域名备案；受控小额投保/支付/出单/退保/退款验收。通用域名校验不等于真实出网隔离/供应商认证完成。此切片没有真实保单、真实付款、生产迁移或生产部署。
+
+2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。

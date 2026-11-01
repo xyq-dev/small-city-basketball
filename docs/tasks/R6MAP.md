@@ -1,6 +1,6 @@
 # R6MAP：地图视野搜索实现
 
-状态：IN_PROGRESS；integration：LOCAL_ONLY。负责人：Codex `/root/implement_map`；2026-11-01 Asia/Shanghai。
+状态：REVIEW；integration：BRANCH_ONLY。负责人：Codex `/root/implement_map`；2026-11-01 Asia/Shanghai。
 
 基线 `c61ab3667c9d3f756244a28046b9ee2395ccac00`；目录 `/workspace/scratch/aad368826b09/scb-six-map`；分支 `work/r6-map`；origin `https://github.com/xyq-dev/small-city-basketball.git`；开工工作树干净。
 
@@ -19,3 +19,5 @@
 root追加委派：完成原同城预约/约赛的同事务prepare+execute入口、跨城派单源订单桥以及撮合STAFF/TEAM桥（PLAYER由另一实施者负责）。已实现锁先行、绑定服务器候选与实际地点、报价/商户/差旅冻结复核、源预约/回执/日历同事务写入；派单快照保留dispatchQuote原报价和offerId/quoteHash引用。新增桥边界5项测试通过，与地图领域共16项通过；API typecheck通过。新增4项真实PG源事务测试（回滚重试、竞争锁位、旧回执兼容、真实球队约赛）尚未运行。dispatch端真实报价转换测试由dispatch实施者接固定method执行。此追加实现不改地图查询或旧迁移。
 
 2026-11-01 Asia/Shanghai，root追加有偿派单审查与测试：独立worktree `scb-six-map-review`，分支 `work/r6-paid-dispatch`，从595b61a同步到19cb239（含045暂占约束修复）。仅新增dispatch-source-adapter单测、r6-paid-dispatch真实PG测试及本任务记录，未修改root拥有的适配器。独立只读审查未发现确定缺陷：真实原预约、交易、暂占转换和两类回执沿用同一PoolClient；正价报价缺少匹配的canonical trade_order会抛错并回滚。新增9项边界单测已通过，API typecheck通过。新增2项真实PG测试待隔离CI：完整1300分服务/差旅订单与同命令重放；未接收费桥以及实际收费订单创建后失败时，源预约/交易/历史/回执一并回滚、原暂占完全恢复且同命令可重试。所有支付调用都是遇调用即失败的隔离桩，未执行外部支付。
+
+2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。

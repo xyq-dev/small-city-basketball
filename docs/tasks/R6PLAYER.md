@@ -11,3 +11,5 @@
 验证：PLAYER源桥/原球员domain/service单测24/24，API typecheck与diff check通过。新增真实PG测试验证prepare不建订单、execute建原单、后续撮合失败一起回滚原单与源命令、同command可在外层回滚后安全重试、组织/球队/profile/user/时段/金额绑定。保留全部既有durable rejection PG测试。PG本地未运行，待root/CI。
 
 依赖：matching agent的MatchingConversionInput.candidate.settingsVersion?:number及matching主服务、契约；本地仅复制该agent的接口文件用于typecheck，未纳入本切片提交。root需组合createMatchingPlayerSource(playerBookings).prepare到ADULT_PLAYER分支。财务终态inspectEnded由root统一组合；此桥没有伪造退费/完成/重开判断。
+
+2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。

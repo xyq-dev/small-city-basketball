@@ -1,6 +1,6 @@
 # R6DISPATCH：跨城派单实现
 
-状态：IN_PROGRESS；integration：LOCAL_ONLY。负责人：`/root/implement_dispatch`；2026-11-01 Asia/Shanghai。
+状态：REVIEW；integration：BRANCH_ONLY。负责人：`/root/implement_dispatch`；2026-11-01 Asia/Shanghai。
 
 基线：`c61ab3667c9d3f756244a28046b9ee2395ccac00`；目录 `/workspace/scratch/aad368826b09/scb-six-dispatch`；分支 `work/r6-dispatch`；开工工作区干净，origin 为目标 GitHub 仓库。
 
@@ -48,3 +48,5 @@
 
 - Root reported that the reservation correction passed real PostgreSQL acceptance, including the new negative constraints; eight dispatch cases passed and one fixture still expected `DISPATCH_EXPIRED` while sending its pre-acceptance offer version after cancellation.
 - The cancelled-offer test now verifies two separate gates: the stale original version must produce `VERSION_CONFLICT`; a new command with the freshly read ended-offer version must produce `DISPATCH_EXPIRED`. Application behavior is unchanged, and no broad alternate-error acceptance was added. Local API typecheck, focused formatting and diff checks passed; next combined CI provides PostgreSQL execution evidence.
+
+2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。

@@ -77,6 +77,11 @@ Page({
       const returnPath = PATH + (this._org ? '?orgId=' + model.id(this._org) : '');
       const session = await ui.session(this, returnPath);
       if (!session || !ui.live(this, token)) return;
+      if (this._viewer && this._viewer !== session.user.id) {
+        this._org = null;
+        this._order = null;
+      }
+      this._viewer = session.user.id;
       const managed = (session.organizations || []).filter((o) =>
         ['ORG_OWNER', 'ORG_ADMIN'].includes(o.role),
       );
@@ -158,6 +163,15 @@ Page({
   },
   chooseCampaign(e) {
     this.setData({ campaignIndex: Number(e.detail.value) });
+  },
+  chooseMode(e) {
+    if (this.data.busy || this.data.pending) return;
+    const mode = e.currentTarget.dataset.mode;
+    if (!['manage', 'statements'].includes(mode)) return;
+    if (mode === 'statements' && !this.data.canManage) return;
+    this._order = null;
+    this.setData({ mode, detail: null, statements: [] });
+    this.load();
   },
   chooseOrg(e) {
     if (this.data.pending) return;
@@ -269,7 +283,10 @@ Page({
         deliveries: model.decorate(v.deliveries),
         batches: model.decorate(v.batches),
         items: model.decorate(v.items),
-        refunds: model.decorate(v.refunds),
+        refunds: model.decorate(v.refunds).map((p) => ({
+          ...p,
+          needsUnfreeze: !!p.batch_id && !v.batches.some((b) => b.id === p.batch_id && b.finished),
+        })),
         returns: model.decorate(v.returns),
         recovery: model.decorate(v.recovery),
       },

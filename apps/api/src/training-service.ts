@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 import type {
   TrainingCohortData,
   TrainingEnrollmentData,
+  TrainingMakeupOptionsData,
 } from '../../../packages/contracts/training.js';
 import { ApplicationService, isAdministrator } from './service.js';
 import type { Actor, ApiOptions } from './service.js';
@@ -62,7 +63,7 @@ export class TrainingService extends ApplicationService {
     if (
       !(
         await c.query(
-          "SELECT 1 FROM platform_operators WHERE user_id=$1 AND status='ACTIVE' FOR SHARE",
+          "SELECT p.user_id FROM platform_operators p JOIN users u ON u.id=p.user_id WHERE p.user_id=$1 AND p.status='ACTIVE' AND u.status='ACTIVE' FOR SHARE OF u",
           [a.user.id],
         )
       ).rowCount
@@ -664,7 +665,7 @@ export class TrainingService extends ApplicationService {
       !manage &&
       !(
         await c.query(
-          "SELECT 1 FROM platform_operators WHERE user_id=$1 AND status='ACTIVE' FOR SHARE",
+          "SELECT p.user_id FROM platform_operators p JOIN users u ON u.id=p.user_id WHERE p.user_id=$1 AND p.status='ACTIVE' AND u.status='ACTIVE' FOR SHARE OF u",
           [a.user.id],
         )
       ).rowCount
@@ -1125,6 +1126,86 @@ export class TrainingService extends ApplicationService {
       true,
     );
   }
+  /** Same predicate is used for discovery and the in-lock MAKEUP command. No payer/manager override. */
+  private async eligibleMakeupSessions(
+    c: PoolClient,
+    n: Row,
+    e: Row,
+    target: string | null = null,
+  ) {
+    const original = await this.cohort(c, n.cohort_id);
+    return (
+      await c.query(
+        `SELECT s.id,s.cohort_id,s.org_id,s.starts_at,s.ends_at,s.buffer_minutes,
+      h.title AS cohort_title,h.address,(h.capacity-seats.used)::int AS available_seats,
+      (SELECT jsonb_agg(jsonb_build_object('name',tc.display_name) ORDER BY tc.display_name,tc.id)
+       FROM training_session_coaches sc JOIN training_coaches tc ON tc.id=sc.coach_id WHERE sc.session_id=s.id) AS coaches
+      FROM training_sessions s JOIN training_cohorts h ON h.id=s.cohort_id AND h.org_id=s.org_id
+      JOIN training_providers p ON p.org_id=h.org_id JOIN organizations o ON o.id=h.org_id
+      JOIN courts ct ON ct.id=h.court_id AND ct.org_id=h.org_id
+      CROSS JOIN LATERAL (SELECT count(*)::int AS used FROM training_lesson_entitlements le
+        JOIN training_enrollments en ON en.id=le.enrollment_id
+        WHERE le.current_session_id=s.id AND le.state NOT IN('MAKEUP_DUE','REFUND_PENDING','REFUNDED')
+        AND (en.state='CONFIRMED' OR (en.state='HOLDING' AND en.hold_expires_at>clock_timestamp()))) seats
+      WHERE s.org_id=$1 AND h.course_id=$2 AND ($5::uuid IS NULL OR s.id=$5)
+      AND s.state='SCHEDULED' AND s.starts_at>clock_timestamp() AND h.state IN('ENROLLING','RUNNING')
+      AND o.status='ACTIVE' AND ct.status='ACTIVE' AND p.status='APPROVED'
+      AND p.qualified_until>(SELECT max(ends_at) FROM training_sessions WHERE cohort_id=h.id)
+      AND seats.used<h.capacity
+      AND EXISTS(SELECT 1 FROM training_session_coaches WHERE session_id=s.id)
+      AND NOT EXISTS(SELECT 1 FROM training_session_coaches sc JOIN training_sessions ts ON ts.id=sc.session_id
+        JOIN training_coaches tc ON tc.id=sc.coach_id JOIN users u ON u.id=tc.user_id WHERE ts.cohort_id=h.id
+        AND (tc.status<>'APPROVED' OR NOT tc.consented OR tc.qualified_until<ts.ends_at OR u.status<>'ACTIVE'))
+      AND NOT EXISTS(SELECT 1 FROM training_lesson_entitlements le WHERE le.enrollment_id=$3
+        AND le.current_session_id=s.id AND le.id<>$6 AND le.state NOT IN('REFUNDED','MAKEUP_DUE'))
+      AND NOT EXISTS(SELECT 1 FROM training_resource_reservations r
+        LEFT JOIN training_enrollments en ON en.id=r.enrollment_id
+        WHERE r.active AND r.resource_key='user:'||$4::text
+        AND NOT(coalesce(en.state='HOLDING' AND en.hold_expires_at<=clock_timestamp(),false))
+        AND tstzrange(r.starts_at,r.ends_at,'[)') && tstzrange(s.starts_at-s.buffer_minutes*interval '1 minute',s.ends_at+s.buffer_minutes*interval '1 minute','[)'))
+      AND NOT EXISTS(SELECT 1 FROM local_resource_reservations r WHERE r.active AND r.resource_key='user:'||$4::text
+        AND NOT(EXISTS(SELECT 1 FROM local_bookings b WHERE b.id=r.booking_id AND b.status IN('HELD','REQUESTED') AND b.hold_expires_at<=clock_timestamp())
+          OR EXISTS(SELECT 1 FROM local_matchups m WHERE m.id=r.matchup_id AND m.status='OPEN' AND m.expires_at<=clock_timestamp())
+          OR EXISTS(SELECT 1 FROM dispatch_offers d WHERE d.id=r.dispatch_offer_id AND (d.status<>'ACCEPTED_HELD' OR d.hold_expires_at<=clock_timestamp())))
+        AND tstzrange(r.starts_at,r.ends_at,'[)') && tstzrange(s.starts_at-s.buffer_minutes*interval '1 minute',s.ends_at+s.buffer_minutes*interval '1 minute','[)'))
+      AND NOT EXISTS(SELECT 1 FROM booking_appearances b WHERE b.player_user_id=$4::uuid
+        AND b.status IN('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED')
+        AND NOT(b.status='REQUESTED' AND b.expires_at<=clock_timestamp())
+        AND c06_booking_window(b.report_at,b.end_at) && tstzrange(s.starts_at-s.buffer_minutes*interval '1 minute',s.ends_at+s.buffer_minutes*interval '1 minute','[)'))
+      ORDER BY s.starts_at,s.id LIMIT 51`,
+        [n.org_id, original.course_id, n.id, n.learner_user_id, target, e.id],
+      )
+    ).rows;
+  }
+  async makeupOptions(cookie: string | undefined, id: string): Promise<TrainingMakeupOptionsData> {
+    id = trainingId(id);
+    return this.transaction(async (c) => {
+      const a = await this.lockActor(c, cookie),
+        e = (await c.query('SELECT * FROM training_lesson_entitlements WHERE id=$1', [id])).rows[0];
+      if (!e) throw notFound();
+      const n = await this.enrollment(c, e.enrollment_id);
+      if (n.learner_user_id !== a.user.id) throw notFound();
+      if (n.state !== 'CONFIRMED' || e.state !== 'MAKEUP_DUE')
+        trainingFail('MAKEUP_NOT_DUE', '当前没有可选课的待补课权益');
+      const rows = await this.eligibleMakeupSessions(c, n, e);
+      await this.ensureFreshSession(c, a);
+      return {
+        entitlementId: id,
+        entitlementVersion: e.version,
+        truncated: rows.length > 50,
+        items: rows.slice(0, 50).map((r) => ({
+          sessionId: r.id,
+          cohortId: r.cohort_id,
+          cohortTitle: r.cohort_title,
+          address: r.address,
+          startsAt: iso(r.starts_at)!,
+          endsAt: iso(r.ends_at)!,
+          availableSeats: r.available_seats,
+          coaches: r.coaches ?? [],
+        })),
+      };
+    });
+  }
   async entitlementCommand(cookie: string | undefined, id: string, raw: unknown) {
     id = trainingId(id);
     const base = (
@@ -1226,6 +1307,8 @@ export class TrainingService extends ApplicationService {
             const th = await this.cohort(c, t.cohort_id);
             if (!(await this.eligible(c, th)) || !(await this.sessionRoom(c, target)))
               trainingFail('MAKEUP_FULL', '补课资格或容量不足');
+            if (!(await this.eligibleMakeupSessions(c, n, e, target)).length)
+              trainingFail('MAKEUP_UNAVAILABLE', '所选课次、名额或本人档期已变化，请重新选择');
             await this.reserveLearner(c, n, t);
             await c.query(
               "UPDATE training_lesson_entitlements SET current_session_id=$2,state='AVAILABLE',version=version+1 WHERE id=$1",

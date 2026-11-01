@@ -178,3 +178,18 @@ export function assertSponsorRecipientLimit(rows: Array<{ retained: boolean }>) 
   if (rows.filter((r) => !r.retained).length > 10)
     sponsorFail('SPONSOR_CHANNEL_LIMIT', '最多支持10个外部接收商户，11方须含原商户留存', 422);
 }
+
+/** Channel quota is an integer amount of the original payment, not only a ratio of the allocation pool. */
+export function assertSponsorChannelAmount(
+  paidFen: number,
+  allocation: Array<{ retained: boolean; amountFen: number }>,
+  maximumSplitBps: number,
+) {
+  sponsorInt(paidFen, 1);
+  sponsorInt(maximumSplitBps, 0, 10000);
+  const external = allocation
+    .filter((x) => !x.retained)
+    .reduce((n, x) => n + sponsorInt(x.amountFen), 0);
+  if (external > Math.floor((paidFen * maximumSplitBps) / 10000))
+    sponsorFail('SPONSOR_CHANNEL_LIMIT', '按整数分计算的外部分配超过原支付渠道额度', 422);
+}

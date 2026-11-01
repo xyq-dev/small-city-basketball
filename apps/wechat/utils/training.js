@@ -99,6 +99,48 @@ function enrollment(v) {
     })),
   };
 }
+function makeupOptions(raw, entitlementId) {
+  if (
+    !raw ||
+    raw.entitlementId !== id(entitlementId) ||
+    !Number.isSafeInteger(raw.entitlementVersion) ||
+    raw.entitlementVersion < 1 ||
+    !Array.isArray(raw.items) ||
+    raw.items.length > 50
+  )
+    throw Error('补课候选已失效，请重新读取');
+  const items = raw.items.map((x) => {
+    if (
+      !x ||
+      !Number.isInteger(x.availableSeats) ||
+      x.availableSeats < 1 ||
+      typeof x.cohortTitle !== 'string' ||
+      typeof x.address !== 'string' ||
+      !Array.isArray(x.coaches) ||
+      !x.coaches.every((c) => c && typeof c.name === 'string')
+    )
+      throw Error('补课课次资料无效');
+    const when = time(x.startsAt) + ' — ' + time(x.endsAt),
+      coaches = x.coaches.map((c) => c.name).join('、');
+    return {
+      ...x,
+      sessionId: id(x.sessionId),
+      cohortId: id(x.cohortId),
+      time: when,
+      coachNames: coaches,
+      label: x.cohortTitle + ' · ' + when + ' · ' + coaches + ' · 剩余' + x.availableSeats + '位',
+    };
+  });
+  return {
+    entitlementId,
+    entitlementVersion: raw.entitlementVersion,
+    items,
+    truncated: raw.truncated === true,
+    selectedIndex: 0,
+    selected: items[0] || null,
+  };
+}
+
 async function read(path) {
   return (await api.getClient().request(path)).data;
 }
@@ -198,6 +240,7 @@ module.exports = {
   label,
   cohort,
   enrollment,
+  makeupOptions,
   read,
   pending,
   write,
