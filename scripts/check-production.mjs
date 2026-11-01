@@ -37,6 +37,16 @@ const checkScripts = [
   'x12-local-check',
   'x18-governance-check',
   'x22-account-recovery-check',
+  'expansion-recovery-check',
+  'expansion-e03-recovery',
+  'expansion-e04-recovery',
+  'expansion-e05-recovery',
+  'expansion-e08-recovery',
+  'r6-recovery-check',
+  'r6-recovery-matching',
+  'r6-recovery-dispatch',
+  'r6-recovery-training',
+  'r6-recovery-sponsor',
 ];
 const expectedCheckScripts = Object.fromEntries(
   await Promise.all(
@@ -590,7 +600,11 @@ secrets:
   await stage(
     'Build production api, web and database tools plus an isolated test image',
     async () => {
-      await run(process.execPath, ['--test', 'scripts/check-api-secret-mounts.test.mjs']);
+      await run(process.execPath, [
+        '--test',
+        'scripts/check-api-secret-mounts.test.mjs',
+        'scripts/check-recovery-packaging.test.mjs',
+      ]);
       for (const image of [
         'node:24.22.1-bookworm-slim',
         'nginx:1.30.6-alpine',

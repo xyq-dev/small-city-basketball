@@ -31,6 +31,15 @@ Page({
     radiusIndex: 2,
     mapVisible: false,
     mapCenter: null,
+    mapScale: 13,
+    viewportEnabled: false,
+    viewportDirty: false,
+    viewportBusy: false,
+    viewportMode: false,
+    mapError: '',
+    mapScopeLabel: '',
+    acrossRegions: false,
+    canRestoreArea: false,
     markers: [],
     placeQuery: '',
     places: [],
@@ -49,6 +58,8 @@ Page({
   onLoad(query) {
     this._alive = true;
     this._generation = 0;
+    this._viewEpoch = 0;
+    this._viewportRead = 0;
     try {
       this._detailId = query && query.listing ? ls.id(query.listing) : '';
     } catch (e) {
@@ -70,6 +81,7 @@ Page({
   },
   onHide() {
     this._hidden = true;
+    this.resetViewport();
     this._generation++;
     this._locating = (this._locating || 0) + 1;
     this._places = (this._places || 0) + 1;
@@ -94,6 +106,7 @@ Page({
   },
   onUnload() {
     this._alive = false;
+    this.resetViewport();
     this._point = null;
     this._detectedPoint = null;
     this._generation++;
@@ -104,6 +117,11 @@ Page({
   },
   onSessionReset() {
     this._viewer = '';
+    this.resetViewport();
+    this._point = null;
+    this._detectedPoint = null;
+    this._locating = (this._locating || 0) + 1;
+    this._places = (this._places || 0) + 1;
     this.setData({
       busy: false,
       pending: null,
@@ -115,11 +133,20 @@ Page({
       serviceAddress: '',
       servicePlace: null,
       loginRequired: false,
+      items: [],
+      nextCursor: null,
+      markers: [],
+      mapCenter: null,
+      mapVisible: false,
+      loaded: false,
+      hasOrigin: false,
+      originLabel: '未选择距离起点',
     });
   },
   input(e) {
     const key = e.currentTarget.dataset.field;
     if (['q', 'placeQuery', 'serviceAddress'].includes(key) && !this.data.busy) {
+      if (key === 'q') this.resetViewport();
       this.setData({
         [key]: e.detail.value,
         ...(key === 'serviceAddress' ? { servicePlace: null } : {}),
@@ -136,7 +163,6 @@ Page({
     this.load();
   },
   kind(e) {
-    if (this.data.loading) return;
     const kind = e.currentTarget.dataset.value;
     if (ls.KINDS.some((k) => k.value === kind)) {
       this.setData({ kind });
@@ -147,44 +173,96 @@ Page({
     this.setData({ radiusIndex: Number(e.detail.value) });
     if (this._point) this.load();
   },
-  async load(more = false) {
-    if (this._hidden || this._alive === false || (more && !this.data.nextCursor)) return;
+  async load(more = false, areaQuery = null) {
+    if (
+      this._hidden ||
+      this._alive === false ||
+      (more &&
+        (!this.data.nextCursor ||
+          this.data.viewportDirty ||
+          this.data.viewportBusy ||
+          this.data.loadingMore))
+    )
+      return;
+    const viewportQuery = areaQuery || (more && this._viewportQuery);
+    if (!more && !viewportQuery) this.resetViewport();
     const generation = ++this._generation;
+    const viewEpoch = this._viewEpoch;
     this.setData({
-      loading: !more,
+      loading: !more && !viewportQuery,
       loadingMore: more,
       error: '',
-      ...(more ? {} : { items: [], nextCursor: null, loaded: false }),
+      viewportBusy: !!viewportQuery && !more,
+      mapError: '',
+      ...(more || viewportQuery ? {} : { items: [], nextCursor: null, loaded: false }),
     });
-    let query = { limit: 20 };
-    const s = this.data.selection;
-    if (s.mode === 'REGION')
-      query = { ...query, regionId: s.regionId, catalogVersion: s.catalogVersion };
-    if (this.data.kind) query.kind = this.data.kind;
-    if (this.data.q.trim()) query.q = this.data.q.trim();
-    if (this._point) {
+    let query = viewportQuery ? { ...viewportQuery } : this.searchFilters();
+    if (!viewportQuery && this._point) {
       query.point = this._point;
       query.radiusMeters = this.data.radii[this.data.radiusIndex].value;
     }
     if (more) query.cursor = this.data.nextCursor;
     try {
       const result = await ls.repository().search(query);
-      if (!this.current(generation)) return;
+      if (!this.current(generation) || (viewportQuery && viewEpoch !== this._viewEpoch)) return;
       const existing = more ? this.data.items : [],
         seen = new Set(existing.map((v) => v.id));
       this.setData({
         items: existing.concat(result.items.filter((v) => !seen.has(v.id))),
         nextCursor: result.nextCursor,
         locationEnabled: result.locationEnabled,
+        viewportEnabled: result.viewportEnabled,
+        viewportBusy: false,
         loading: false,
         loadingMore: false,
         loaded: true,
+        ...(viewportQuery
+          ? {
+              viewportMode: true,
+              viewportDirty: false,
+              mapScopeLabel:
+                result.searchArea.scopeLabel === 'SELECTED_REGION'
+                  ? this.data.selection.label + ' · 当前地图范围'
+                  : '临时地图范围 · 未改变所选城市',
+              canRestoreArea: true,
+            }
+          : {}),
       });
-      this.refreshMap();
+      if (viewportQuery) {
+        this._viewportQuery = { ...query };
+        delete this._viewportQuery.cursor;
+        this._committedMap = {
+          center: result.searchArea.center,
+          scale: this._mapScale || this.data.mapScale,
+        };
+      }
+      this.refreshMap(!more && !viewportQuery);
     } catch (e) {
-      if (this.current(generation))
-        this.setData({ loading: false, loadingMore: false, error: ui.message(e) });
+      if (this.current(generation) && (!viewportQuery || viewEpoch === this._viewEpoch))
+        this.setData({
+          loading: false,
+          loadingMore: false,
+          viewportBusy: false,
+          ...(viewportQuery
+            ? {
+                mapError: ui.message(e),
+                viewportDirty: !more,
+                ...(e.code === 'CURSOR_SCOPE_MISMATCH'
+                  ? { nextCursor: null, viewportDirty: true }
+                  : {}),
+              }
+            : { error: ui.message(e) }),
+        });
     }
+  },
+  searchFilters() {
+    const query = { limit: 20 },
+      s = this.data.selection;
+    if (s.mode === 'REGION')
+      Object.assign(query, { regionId: s.regionId, catalogVersion: s.catalogVersion });
+    if (this.data.kind) query.kind = this.data.kind;
+    if (this.data.q.trim()) query.q = this.data.q.trim();
+    return query;
   },
   current(g) {
     return this._alive !== false && !this._hidden && g === this._generation;
@@ -197,6 +275,7 @@ Page({
   },
   async locate() {
     if (this.data.locationBusy) return;
+    this.resetViewport();
     const n = (this._locating = (this._locating || 0) + 1);
     this.setData({ locationBusy: true, locationError: '', locatedRegions: [] });
     try {
@@ -317,14 +396,169 @@ Page({
     this.load();
   },
   toggleMap() {
+    this.invalidateView(false);
     this.setData({ mapVisible: !this.data.mapVisible });
     this.refreshMap();
   },
-  refreshMap() {
+  invalidateView(dirty) {
+    this._viewEpoch = (this._viewEpoch || 0) + 1;
+    this._viewportRead = (this._viewportRead || 0) + 1;
+    this.setData({
+      viewportBusy: false,
+      ...(this._viewportQuery ? { loadingMore: false } : {}),
+      ...(dirty ? { viewportDirty: true } : {}),
+    });
+  },
+  resetViewport() {
+    this.invalidateView(false);
+    this._generation = (this._generation || 0) + 1;
+    this._viewportQuery = null;
+    this._committedMap = null;
+    this._programmaticView = null;
+    this._mapMoving = false;
+    this.setData({
+      loading: false,
+      loadingMore: false,
+      viewportDirty: false,
+      viewportBusy: false,
+      viewportMode: false,
+      canRestoreArea: false,
+      acrossRegions: false,
+      mapScopeLabel: '',
+      mapError: '',
+      nextCursor: null,
+    });
+  },
+  setMapView(center, scale = 13) {
+    this.invalidateView(false);
+    this._programmaticView = { epoch: this._viewEpoch, until: Date.now() + 1500 };
+    this._mapScale = scale;
+    this.setData({ mapCenter: center, mapScale: scale });
+  },
+  regionChanged(e) {
+    const detail = e.detail || {},
+      phase = detail.type || e.type,
+      cause = detail.causedBy || e.causedBy;
+    const gesture = cause === 'drag' || cause === 'scale';
+    const ownUpdate =
+      !gesture &&
+      cause === 'update' &&
+      this._programmaticView &&
+      this._programmaticView.epoch === this._viewEpoch &&
+      Date.now() <= this._programmaticView.until;
+    if (ownUpdate) {
+      if (phase === 'end') this._programmaticView = null;
+      return;
+    }
+    this._programmaticView = null;
+    // Even an unknown/update cause invalidates pending responses. Cause only controls the prompt.
+    if (phase === 'begin') {
+      this._mapMoving = true;
+      this.invalidateView(gesture || !!this._viewportQuery);
+    } else if (phase === 'end') {
+      this._mapMoving = false;
+      this.invalidateView(gesture || !!this._viewportQuery);
+      if (Number.isFinite(detail.scale)) this._mapScale = detail.scale;
+    }
+  },
+  async searchThisArea() {
+    if (
+      !this.data.viewportEnabled ||
+      !this.data.mapVisible ||
+      !this.data.mapCenter ||
+      this.data.viewportBusy ||
+      this._mapMoving ||
+      this._hidden ||
+      !this._alive
+    )
+      return;
+    const epoch = this._viewEpoch,
+      read = ++this._viewportRead,
+      query = this.searchFilters();
+    if (this.data.acrossRegions) {
+      delete query.regionId;
+      delete query.catalogVersion;
+    }
+    this.setData({ viewportBusy: true, mapError: '' });
+    try {
+      const snapshot = await new Promise((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error('地图范围读取超时，请停止拖动后重试。')),
+          5000,
+        );
+        const done = (fn) => (value) => {
+          clearTimeout(timer);
+          fn(value);
+        };
+        try {
+          const context = wx.createMapContext('local-map', this);
+          context.getRegion({
+            success: (bounds) => {
+              if (typeof context.getScale !== 'function')
+                return done(resolve)({ bounds, scale: this._mapScale });
+              context.getScale({
+                success: done((value) => resolve({ bounds, scale: value.scale })),
+                fail: done(() => reject(new Error('无法读取地图缩放，请停止拖动后重试。'))),
+              });
+            },
+            fail: done(() => reject(new Error('无法读取地图范围，请重试或返回城市列表。'))),
+          });
+        } catch (e) {
+          clearTimeout(timer);
+          reject(new Error('地图组件暂不可用，可返回城市列表继续查找。'));
+        }
+      });
+      if (!this._alive || this._hidden || epoch !== this._viewEpoch || read !== this._viewportRead)
+        return;
+      const viewport = ls.viewport({
+        southwest: snapshot.bounds.southwest,
+        northeast: snapshot.bounds.northeast,
+        coordinateSystem: 'GCJ02',
+      });
+      if (Number.isFinite(snapshot.scale)) this._mapScale = snapshot.scale;
+      await this.load(false, { ...query, viewport, searchVersion: 2 });
+    } catch (e) {
+      if (this._alive && !this._hidden && epoch === this._viewEpoch && read === this._viewportRead)
+        this.setData({ viewportBusy: false, viewportDirty: true, mapError: ui.message(e) });
+    }
+  },
+  async expandMapScope() {
+    const epoch = this._viewEpoch;
+    const yes = await ui.confirm(
+      '临时搜索地图范围',
+      '当前默认只查所选地区与地图的交集。确认后本次按地图范围跨城查找，不修改所选城市、机构或预约地址。',
+    );
+    if (!yes || !this._alive || this._hidden || epoch !== this._viewEpoch) return;
+    this.invalidateView(true);
+    this.setData({ acrossRegions: true });
+    await this.searchThisArea();
+  },
+  keepCityScope() {
+    this.invalidateView(true);
+    this.setData({ acrossRegions: false });
+    this.searchThisArea();
+  },
+  restoreArea() {
+    if (!this._committedMap) return;
+    this.setMapView(this._committedMap.center, this._committedMap.scale);
+    this.setData({
+      viewportDirty: false,
+      mapError: '',
+      acrossRegions: !this._viewportQuery.regionId,
+    });
+  },
+  mapFailed() {
+    this.invalidateView(true);
+    this.setData({ mapError: '地图暂不可用，已保留上次结果。可返回城市列表继续查找。' });
+  },
+  cityList() {
+    this.setData({ mapVisible: false });
+    this.load();
+  },
+  refreshMap(reset = false) {
     const located = this.data.items.filter((v) => v.point),
       center = this._point || (located[0] && located[0].point) || null;
     this.setData({
-      mapCenter: center,
       markers: located.map((v, i) => ({
         id: i + 1,
         latitude: v.point.latitude,
@@ -336,6 +570,7 @@ Page({
       })),
     });
     this._mapItems = located;
+    if (reset || !this.data.mapCenter) this.setMapView(center);
   },
   marker(e) {
     const row = (this._mapItems || [])[Number(e.detail.markerId) - 1];
@@ -458,6 +693,10 @@ Page({
   },
   retry() {
     return ls.retry(this);
+  },
+  expansion(e) {
+    const key = e.currentTarget.dataset.page;
+    if (!this.data.busy && ['matching', 'dispatch', 'training'].includes(key)) ui.open(key);
   },
   manage() {
     ls.open('local-manage');

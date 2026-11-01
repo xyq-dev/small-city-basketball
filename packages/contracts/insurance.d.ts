@@ -28,10 +28,14 @@ export interface InsuranceOrderData {
   pendingOperation: string | null;
   canRefresh: boolean;
   canRequestCancellation: boolean;
+  reconciliationRequired: boolean;
   currentMaterial: boolean;
 }
 export interface InsuranceWorkspaceData {
   enabled: boolean;
+  maintenanceEnabled: boolean;
+  externalPolicySupported: true;
+  providerEntryUrl: string | null;
   reason: string | null;
   products: InsuranceProductData[];
   orders: InsuranceOrderData[];

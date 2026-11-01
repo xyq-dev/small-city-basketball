@@ -12,6 +12,12 @@ import { hashPassword } from '../src/security.js';
 import { AccountClosureService } from '../src/account-closure-service.js';
 import type { AccountClosureHooks } from '../src/account-closure-service.js';
 import { ACCOUNT_CLOSURE_DOMAINS } from '../src/account-closure-domain.js';
+import {
+  readRemainingSixClosureOrgs,
+  lockRemainingSixClosure,
+  readRemainingSixClosureBlockers,
+  revokeRemainingSixPrivacy,
+} from '../src/remaining-six-privacy.js';
 import { createAccountClosureHooks } from '../src/account-closure-hooks.js';
 import {
   ORIGIN,
@@ -42,6 +48,12 @@ describe(
       trade: { assertSafe: async () => {} },
       notifications: { revoke: async () => {} },
       guardians: { revoke: async () => {} },
+      remainingSix: {
+        orgScopes: readRemainingSixClosureOrgs,
+        lock: lockRemainingSixClosure,
+        inspect: readRemainingSixClosureBlockers,
+        revoke: revokeRemainingSixPrivacy,
+      },
     })!;
     const make = (override: Partial<AccountClosureHooks> = {}) =>
       new AccountClosureService(

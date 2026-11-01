@@ -19,6 +19,7 @@ import { REGION_CATALOG_VERSION } from './region-catalog-data.js';
 import { TencentLocationProvider } from './location-provider.js';
 import type { LocationProvider } from './location-provider.js';
 import type { SourceTradeHooks } from './trade-source-hooks.js';
+import type { DispatchSourceInput } from './dispatch-service.js';
 import {
   distanceMeters,
   localBookingTransition,
@@ -26,6 +27,7 @@ import {
   localFail,
   localHash,
   localPoint,
+  localViewportCursor,
   localVersion,
   parseLocalBooking,
   parseLocalBookingCommand,
@@ -46,19 +48,43 @@ const iso = (v: Date | string) => new Date(v).toISOString();
 const active = ['HELD', 'REQUESTED', 'CONFIRMED', 'ARRIVED', 'DELIVERED', 'DISPUTED'];
 const baseListing = `SELECT l.*,clock_timestamp() AS db_now,o.name AS organization_name,actual_court.status AS court_status FROM local_listings l JOIN organizations o ON o.id=l.org_id JOIN users provider ON provider.id=l.provider_user_id LEFT JOIN courts actual_court ON actual_court.id=l.court_id AND actual_court.org_id=l.org_id WHERE o.status='ACTIVE' AND provider.status='ACTIVE'`;
 const visible = `l.status='APPROVED' AND l.published AND l.provider_confirmed AND l.qualified_until>clock_timestamp() AND (l.kind<>'COURT' OR actual_court.status='ACTIVE')`;
+const processCursorKey = randomBytes(32);
+export interface LocalSearchOptions {
+  /** Dedicated shared key for stable pagination across workers; never a provider API credential. */
+  cursorKey?: Buffer;
+  enabled?: boolean;
+  maxSpanMeters?: number;
+}
 
 /** No payment is recorded or inferred. All resource mutations follow the calendar mutex. */
 export class LocalServicesService extends ApplicationService {
   readonly locationProvider: LocationProvider;
+  private readonly searchOptions: Required<LocalSearchOptions>;
   constructor(
     pool: Pool,
     options: ApiOptions,
     locationProvider?: LocationProvider,
     private readonly reviewAuthorizer?: LocalReviewAuthorizer,
     private readonly trade?: SourceTradeHooks,
+    searchOptions: LocalSearchOptions = {},
   ) {
     super(pool, options);
     this.locationProvider = locationProvider ?? new TencentLocationProvider();
+    const key = searchOptions.cursorKey ?? processCursorKey;
+    const maxSpanMeters = searchOptions.maxSpanMeters ?? 100000;
+    if (
+      !Buffer.isBuffer(key) ||
+      key.length !== 32 ||
+      !Number.isSafeInteger(maxSpanMeters) ||
+      maxSpanMeters < 1000 ||
+      maxSpanMeters > 100000
+    )
+      throw new Error('Local viewport search configuration invalid');
+    this.searchOptions = {
+      cursorKey: Buffer.from(key),
+      enabled: searchOptions.enabled !== false,
+      maxSpanMeters,
+    };
   }
   private async mutex(c: PoolClient, orgIds: string[]) {
     const sorted = [...new Set(orgIds)].sort();
@@ -279,7 +305,9 @@ export class LocalServicesService extends ApplicationService {
       localFail('LOCAL_SUPPLY_UNAVAILABLE', '供给或实际球场未开放、或资格有效期不足，请重新核对');
   }
   async publicList(raw: unknown, ip: string) {
-    const q = parseLocalQuery(raw);
+    const q = parseLocalQuery(raw, this.searchOptions.cursorKey, this.searchOptions.maxSpanMeters);
+    if (q.viewport && !this.searchOptions.enabled)
+      localFail('VIEWPORT_SEARCH_DISABLED', '地图区域搜索暂未开放，请使用城市列表', 503);
     await this.rateLimit(`local-public:${hashToken(ip)}`, 60, 60);
     return this.transaction(async (c) => {
       if (q.region) await this.region(c, q.region);
@@ -298,6 +326,47 @@ export class LocalServicesService extends ApplicationService {
       if (q.kind) filter += ` AND l.kind=${bind(q.kind)}`;
       if (q.q)
         filter += ` AND position(lower(${bind(q.q)}) in lower(l.title||' '||l.description))>0`;
+      if (q.viewport) {
+        const { southwest: sw, northeast: ne } = q.viewport;
+        filter += ` AND l.latitude BETWEEN ${bind(sw.latitude)} AND ${bind(ne.latitude)} AND l.longitude BETWEEN ${bind(sw.longitude)} AND ${bind(ne.longitude)}`;
+        const latitude = bind(q.origin!.latitude),
+          longitude = bind(q.origin!.longitude);
+        // SQL keyset ordering and returned distances use this exact same integer expression.
+        const distance = `round((6371008.8*2*asin(least(1.0,sqrt(power(sin(radians(l.latitude-${latitude})/2),2)+cos(radians(${latitude}))*cos(radians(l.latitude))*power(sin(radians(l.longitude-${longitude})/2),2)))))::numeric)::integer`;
+        let after = '';
+        if (q.cursor)
+          after = ` WHERE (v.search_distance,v.id)>(${bind(q.cursor.distance)}::integer,${bind(q.cursor.id)}::uuid)`;
+        const sql = `SELECT * FROM (${baseListing.replace('SELECT l.*', `SELECT l.*,${distance} AS search_distance`)}${filter}) v${after} ORDER BY v.search_distance,v.id LIMIT ${bind(q.limit + 1)}`;
+        const rows = (await c.query(sql, values)).rows;
+        const page = rows.slice(0, q.limit).map((row) => {
+          const item = this.listingDto(row);
+          return {
+            ...item,
+            distanceMeters: Number(row.search_distance),
+            distanceLabel: `距本次地图中心约${(Number(row.search_distance) / 1000).toFixed(1)}公里（直线）`,
+          };
+        });
+        const last = page.at(-1);
+        return {
+          items: page,
+          nextCursor:
+            rows.length > q.limit && last
+              ? localViewportCursor(
+                  { scope: q.scope, id: last.id, distance: last.distanceMeters },
+                  this.searchOptions.cursorKey,
+                )
+              : null,
+          locationCapability: this.searchCapability(),
+          queryOrigin: 'VIEWPORT',
+          truncated: false,
+          searchArea: {
+            mode: 'VIEWPORT',
+            bounds: q.viewport,
+            center: q.origin,
+            scopeLabel: q.region ? 'SELECTED_REGION' : 'MAP_AREA',
+          },
+        };
+      }
       // The result cap is explicit. No partial result is presented as an exhaustive nearest list.
       if (q.cursor && !q.point) filter += ` AND l.id>${bind(q.cursor.id)}`;
       const rows = (
@@ -337,11 +406,19 @@ export class LocalServicesService extends ApplicationService {
                 }),
               ).toString('base64url')
             : null,
-        locationCapability: { enabled: this.locationProvider.enabled, coordinateSystem: 'GCJ02' },
+        locationCapability: this.searchCapability(),
         queryOrigin: q.point ? 'EXPLICIT_POINT' : 'REGION',
         truncated: false,
       };
     });
+  }
+  private searchCapability() {
+    return {
+      enabled: this.locationProvider.enabled,
+      coordinateSystem: 'GCJ02',
+      viewportSearch: this.searchOptions.enabled,
+      viewportMaxSpanMeters: this.searchOptions.maxSpanMeters,
+    };
   }
   async publicDetail(id: string, ip: string) {
     await this.rateLimit(`local-detail:${hashToken(ip)}`, 120, 60);
@@ -764,88 +841,253 @@ export class LocalServicesService extends ApplicationService {
   async book(cookie: string | undefined, raw: unknown) {
     const input = parseLocalBooking(raw);
     return this.transaction(async (c) => {
-      const actor = await this.lockActor(c, cookie),
-        ref = await this.listing(c, input.listingId);
-      if (ref.provider_user_id === actor.user.id) throw forbidden();
-      await this.mutex(c, [ref.org_id]);
-      const listing = await this.listing(c, ref.id, true);
-      return this.operation(c, actor, input.commandId, input, async () => {
-        const slot = await this.slot(c, input.slotId, listing.id);
-        this.validSupply(listing, iso(slot.ends_at));
-        await this.coverage(c, listing, input.serviceRegion);
-        if (
-          listing.kind === 'COURT' &&
-          (input.serviceAddress !== null ||
-            input.servicePoint !== null ||
-            input.serviceRegion.regionId !== listing.region_id)
-        )
-          invalid('球场预约必须使用该球场实际地点');
-        if (listing.kind !== 'COURT' && !input.serviceAddress)
-          invalid('人员服务须明确实际服务地址，不能使用设备位置替代');
-        const id = randomUUID(),
-          isCourt = listing.kind === 'COURT';
-        const snapshot = {
-          title: listing.title,
-          kind: listing.kind,
-          address: isCourt ? listing.address : input.serviceAddress,
-          point: isCourt
-            ? listing.latitude === null
-              ? null
-              : {
-                  latitude: listing.latitude,
-                  longitude: listing.longitude,
-                  coordinateSystem: 'GCJ02',
-                }
-            : input.servicePoint,
-          region: input.serviceRegion,
-          coverageRegionIds: listing.coverage_region_ids,
-          listingVersion: listing.version,
-          terms: listing.terms,
-          courtId: listing.court_id,
-          providerUserId: listing.provider_user_id,
-        };
+      const actor = await this.lockActor(c, cookie);
+      return (await this.prepareParsedBooking(c, actor, input)).execute();
+    });
+  }
+  /** Internal source bridge: caller owns the transaction and authenticated actor.
+   * All existing calendar/source/receipt locks are acquired before matching row locks. */
+  async prepareBookingInTransaction(c: PoolClient, actor: Actor, raw: unknown) {
+    return this.prepareParsedBooking(c, actor, parseLocalBooking(raw));
+  }
+  /** Called only by the dispatch transaction after its provisional calendar hold is released.
+   * Browser fields cannot manufacture this quote: identity, amounts and travel window are re-read. */
+  async createDispatchBookingInTransaction(
+    c: PoolClient,
+    actor: Actor,
+    input: DispatchSourceInput,
+  ) {
+    const offerId = resourceId(input.verifiedDispatchQuote.offerId);
+    const ref = (
+      await c.query(
+        'SELECT o.request_id,l.org_id AS listing_org_id,r.org_id AS request_org_id FROM dispatch_offers o JOIN local_listings l ON l.id=o.listing_id JOIN dispatch_requests r ON r.id=o.request_id WHERE o.id=$1',
+        [offerId],
+      )
+    ).rows[0];
+    if (!ref) throw notFound();
+    await this.mutex(c, [ref.listing_org_id, ref.request_org_id]);
+    const request = (
+      await c.query(
+        'SELECT *,clock_timestamp() AS db_now FROM dispatch_requests WHERE id=$1 FOR UPDATE',
+        [ref.request_id],
+      )
+    ).rows[0];
+    const offer = (await c.query('SELECT * FROM dispatch_offers WHERE id=$1 FOR UPDATE', [offerId]))
+      .rows[0];
+    const hold = (
+      await c.query('SELECT * FROM dispatch_holds WHERE offer_id=$1 FOR UPDATE', [offerId])
+    ).rows[0];
+    const q = offer?.quote;
+    if (
+      !q ||
+      request.owner_user_id !== actor.user.id ||
+      request.status !== 'REVIEWING' ||
+      request.winner_offer_id !== offer.id ||
+      request.source_booking_id ||
+      offer.status !== 'ACCEPTED_HELD' ||
+      offer.source_booking_id ||
+      !offer.travel_verified_by ||
+      [actor.user.id, offer.provider_user_id].includes(offer.travel_verified_by) ||
+      !hold ||
+      hold.state !== 'ACTIVE' ||
+      hold.provider_user_id !== offer.provider_user_id ||
+      hold.request_id !== request.id ||
+      hold.source_booking_id ||
+      offer.hold_expires_at <= request.db_now ||
+      hold.expires_at <= request.db_now ||
+      request.expires_at <= request.db_now ||
+      input.listingId !== offer.listing_id ||
+      input.slotId !== q.slotId ||
+      input.serviceRegion.catalogVersion !== request.region_catalog_version ||
+      input.serviceRegion.regionId !== request.service_region_id ||
+      input.serviceAddress !== request.service_address ||
+      localHash(input.servicePoint) !== localHash(request.service_point) ||
+      input.acceptedTerms !== true ||
+      input.chargeConsent !== true ||
+      input.acceptedTermsId !== offer.quote_hash ||
+      input.verifiedDispatchQuote.quoteHash !== offer.quote_hash ||
+      q.hash !== offer.quote_hash
+    )
+      localFail('DISPATCH_QUOTE_CHANGED', '派单对象、档期、报价或同意已变化，请重新核对');
+    const money = ['serviceMinor', 'travelMinor', 'lodgingMinor', 'platformMinor', 'totalMinor'];
+    if (
+      money.some((k) => !Number.isSafeInteger(q[k]) || q[k] < 0 || q[k] > 100000000) ||
+      q.totalMinor !== q.serviceMinor + q.travelMinor + q.lodgingMinor + q.platformMinor ||
+      q.platformMinor !== 0 ||
+      !Number.isFinite(Date.parse(q.protectedStartsAt)) ||
+      !Number.isFinite(Date.parse(q.protectedEndsAt)) ||
+      Date.parse(q.protectedStartsAt) <= request.db_now.getTime() ||
+      Date.parse(q.protectedStartsAt) > request.starts_at.getTime() ||
+      Date.parse(q.protectedEndsAt) < request.ends_at.getTime() ||
+      iso(hold.starts_at) !== iso(q.protectedStartsAt) ||
+      iso(hold.ends_at) !== iso(q.protectedEndsAt)
+    )
+      localFail('DISPATCH_QUOTE_CHANGED', '派单冻结报价或差旅保护时间无效');
+    const parsed = parseLocalBooking({
+      commandId: input.commandId,
+      listingId: input.listingId,
+      slotId: input.slotId,
+      serviceRegion: input.serviceRegion,
+      serviceAddress: input.serviceAddress,
+      servicePoint: input.servicePoint,
+      acceptedTerms: true,
+      chargeConsent: true,
+      ...(q.baseTermsId ? { acceptedTermsId: q.baseTermsId } : {}),
+    });
+    // The canonical trade bridge compares this consent with the persisted dispatch quote hash.
+    parsed.acceptedTermsId = offer.quote_hash;
+    const prepared = await this.prepareParsedBooking(c, actor, parsed, {
+      ...q,
+      offerId,
+      quoteHash: offer.quote_hash,
+    });
+    const l = prepared.listing,
+      slot = prepared.slot;
+    if (
+      l.kind !== request.kind ||
+      l.kind === 'COURT' ||
+      l.provider_user_id !== offer.provider_user_id ||
+      l.version !== offer.listing_version ||
+      !slot ||
+      iso(slot.starts_at) !== iso(request.starts_at) ||
+      iso(slot.ends_at) !== iso(request.ends_at)
+    )
+      localFail('DISPATCH_SUPPLY_CHANGED', '派单供给或服务档期已变化');
+    const terms = (
+      await c.query(
+        "SELECT * FROM trade_terms WHERE org_id=$1 AND kind='LOCAL_BOOKING' AND source_id=$2 AND status='ACTIVE' FOR SHARE",
+        [l.org_id, l.id],
+      )
+    ).rows[0];
+    if (
+      (q.totalMinor === 0 && (terms || q.baseTermsId || q.baseTermsVersion || q.merchantKey)) ||
+      (q.totalMinor > 0 &&
+        (!terms ||
+          terms.id !== q.baseTermsId ||
+          terms.version !== q.baseTermsVersion ||
+          terms.merchant_key !== q.merchantKey ||
+          terms.amount_fen !== q.serviceMinor))
+    )
+      localFail('DISPATCH_FEE_CHANGED', '派单收费条款或收款主体已变化');
+    if (
+      (
         await c.query(
-          `INSERT INTO local_bookings(id,org_id,listing_id,slot_id,buyer_user_id,provider_user_id,status,starts_at,ends_at,hold_expires_at,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,LEAST(clock_timestamp()+interval '10 minutes',$8::timestamptz),$10)`,
-          [
-            id,
-            listing.org_id,
-            listing.id,
-            slot.id,
-            actor.user.id,
-            listing.provider_user_id,
-            isCourt ? 'HELD' : 'REQUESTED',
-            slot.starts_at,
-            slot.ends_at,
-            snapshot,
-          ],
-        );
-        const until = isCourt
-          ? iso(slot.ends_at)
-          : new Date(new Date(slot.ends_at).getTime() + 30 * 60000).toISOString();
-        await this.reserve(
-          c,
-          isCourt ? `court:${listing.court_id}` : `user:${listing.provider_user_id}`,
-          { bookingId: id },
-          iso(slot.starts_at),
-          until,
-        );
-        await this.history(
+          'SELECT 1 FROM local_resource_reservations WHERE dispatch_offer_id=$1 AND active',
+          [offerId],
+        )
+      ).rowCount
+    )
+      localFail('DISPATCH_HOLD_TRANSFER_REQUIRED', '须在同一事务内转移派单暂锁');
+    const result = await prepared.execute();
+    return { resourceId: result.resourceId as string, version: result.version as number };
+  }
+  private async prepareParsedBooking(
+    c: PoolClient,
+    actor: Actor,
+    input: ReturnType<typeof parseLocalBooking>,
+    dispatchQuote?: Row,
+  ) {
+    const ref = await this.listing(c, input.listingId);
+    if (ref.provider_user_id === actor.user.id) throw forbidden();
+    await this.mutex(c, [ref.org_id]);
+    const listing = await this.listing(c, ref.id, true);
+    const slot = (
+      await c.query('SELECT * FROM local_slots WHERE id=$1 AND listing_id=$2 FOR UPDATE', [
+        input.slotId,
+        listing.id,
+      ])
+    ).rows[0];
+    // Receipts are append-only. The shared calendar serializes creation and operation() rechecks identity.
+    // A row lock would incorrectly require UPDATE permission on this immutable history table.
+    return {
+      listing,
+      slot,
+      execute: () =>
+        this.operation(
           c,
           actor,
-          id,
-          isCourt ? 'HOLD_COURT' : 'REQUEST_SERVICE',
-          1,
-          '本人确认当前条款和实际服务地点',
-        );
-        await this.trade?.captureSourceCharge(c, actor, {
-          kind: 'LOCAL_BOOKING',
-          sourceId: id,
-          acceptedTermsId: input.acceptedTermsId,
-          chargeConsent: input.chargeConsent === true,
-        });
-        return { resourceType: 'BOOKING', resourceId: id, version: 1 };
-      });
-    });
+          input.commandId,
+          dispatchQuote ? { input, dispatchQuote } : input,
+          async () => {
+            const slot = await this.slot(c, input.slotId, listing.id);
+            this.validSupply(listing, iso(slot.ends_at));
+            await this.coverage(c, listing, input.serviceRegion);
+            if (
+              listing.kind === 'COURT' &&
+              (input.serviceAddress !== null ||
+                input.servicePoint !== null ||
+                input.serviceRegion.regionId !== listing.region_id)
+            )
+              invalid('球场预约必须使用该球场实际地点');
+            if (listing.kind !== 'COURT' && !input.serviceAddress)
+              invalid('人员服务须明确实际服务地址，不能使用设备位置替代');
+            const id = randomUUID(),
+              isCourt = listing.kind === 'COURT';
+            const snapshot = {
+              title: listing.title,
+              kind: listing.kind,
+              address: isCourt ? listing.address : input.serviceAddress,
+              point: isCourt
+                ? listing.latitude === null
+                  ? null
+                  : {
+                      latitude: listing.latitude,
+                      longitude: listing.longitude,
+                      coordinateSystem: 'GCJ02',
+                    }
+                : input.servicePoint,
+              region: input.serviceRegion,
+              coverageRegionIds: listing.coverage_region_ids,
+              listingVersion: listing.version,
+              terms: listing.terms,
+              courtId: listing.court_id,
+              providerUserId: listing.provider_user_id,
+              ...(dispatchQuote ? { dispatchQuote } : {}),
+            };
+            await c.query(
+              `INSERT INTO local_bookings(id,org_id,listing_id,slot_id,buyer_user_id,provider_user_id,status,starts_at,ends_at,hold_expires_at,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,LEAST(clock_timestamp()+interval '10 minutes',$8::timestamptz,$11::timestamptz),$10)`,
+              [
+                id,
+                listing.org_id,
+                listing.id,
+                slot.id,
+                actor.user.id,
+                listing.provider_user_id,
+                isCourt ? 'HELD' : 'REQUESTED',
+                slot.starts_at,
+                slot.ends_at,
+                snapshot,
+                dispatchQuote?.protectedStartsAt ?? iso(slot.starts_at),
+              ],
+            );
+            const until = isCourt
+              ? iso(slot.ends_at)
+              : new Date(new Date(slot.ends_at).getTime() + 30 * 60000).toISOString();
+            await this.reserve(
+              c,
+              isCourt ? `court:${listing.court_id}` : `user:${listing.provider_user_id}`,
+              { bookingId: id },
+              dispatchQuote ? dispatchQuote.protectedStartsAt : iso(slot.starts_at),
+              dispatchQuote ? dispatchQuote.protectedEndsAt : until,
+            );
+            await this.history(
+              c,
+              actor,
+              id,
+              isCourt ? 'HOLD_COURT' : 'REQUEST_SERVICE',
+              1,
+              '本人确认当前条款和实际服务地点',
+            );
+            await this.trade?.captureSourceCharge(c, actor, {
+              kind: 'LOCAL_BOOKING',
+              sourceId: id,
+              acceptedTermsId: input.acceptedTermsId,
+              chargeConsent: input.chargeConsent === true,
+            });
+            return { resourceType: 'BOOKING', resourceId: id, version: 1 };
+          },
+        ),
+    };
   }
   private bookingDto(row: Row, actor: Actor): LocalBookingData {
     const expired =
@@ -1345,6 +1587,13 @@ export class LocalServicesService extends ApplicationService {
     });
   }
   async createMatchup(cookie: string | undefined, raw: unknown) {
+    return this.transaction(async (c) => {
+      const actor = await this.lockActor(c, cookie);
+      return (await this.prepareMatchupInTransaction(c, actor, raw)).execute();
+    });
+  }
+  /** Same-transaction team source; public input never chooses a different converted source. */
+  async prepareMatchupInTransaction(c: PoolClient, actor: Actor, raw: unknown) {
     const x = objectInput(raw, [
       'commandId',
       'homeOrgId',
@@ -1364,71 +1613,161 @@ export class LocalServicesService extends ApplicationService {
       terms: text(x.terms, 'terms', 4, 1000),
     };
     if (input.homeTeamId === input.awayTeamId) invalid('约赛双方不能为同一球队');
-    return this.transaction(async (c) => {
-      const actor = await this.lockActor(c, cookie);
-      await this.teamManager(c, actor, input.homeOrgId, input.homeTeamId);
-      const ref = (
-        await c.query('SELECT * FROM local_bookings WHERE id=$1 AND buyer_user_id=$2', [
-          input.courtBookingId,
-          actor.user.id,
-        ])
-      ).rows[0];
-      if (!ref) throw notFound();
-      await this.mutex(c, [input.homeOrgId, input.awayOrgId, ref.org_id]);
-      return this.operation(c, actor, input.commandId, input, async () => {
-        const b = (
+    const ref = (
+      await c.query('SELECT * FROM local_bookings WHERE id=$1 AND buyer_user_id=$2', [
+        input.courtBookingId,
+        actor.user.id,
+      ])
+    ).rows[0];
+    if (!ref) throw notFound();
+    await this.mutex(c, [input.homeOrgId, input.awayOrgId, ref.org_id]);
+    await this.teamManager(c, actor, input.homeOrgId, input.homeTeamId);
+    const booking = (
+      await c.query(
+        'SELECT *,clock_timestamp() AS db_now FROM local_bookings WHERE id=$1 FOR UPDATE',
+        [ref.id],
+      )
+    ).rows[0];
+    // Lock historical source without re-running current publication eligibility on a receipt replay.
+    await c.query('SELECT id FROM local_listings WHERE id=$1 FOR UPDATE', [booking.listing_id]);
+    await c.query(
+      'SELECT id FROM teams WHERE ((org_id=$1 AND id=$2) OR (org_id=$3 AND id=$4)) ORDER BY id FOR SHARE',
+      [input.homeOrgId, input.homeTeamId, input.awayOrgId, input.awayTeamId],
+    );
+    // Receipts are append-only. The shared calendar serializes creation and operation() rechecks identity.
+    // A row lock would incorrectly require UPDATE permission on this immutable history table.
+    return {
+      booking,
+      execute: () =>
+        this.operation(c, actor, input.commandId, input, async () => {
+          const b = (
+            await c.query(
+              'SELECT *,clock_timestamp() AS db_now FROM local_bookings WHERE id=$1 FOR UPDATE',
+              [ref.id],
+            )
+          ).rows[0];
+          if (b.status !== 'CONFIRMED' || b.snapshot.kind !== 'COURT' || b.starts_at <= b.db_now)
+            localFail('LOCAL_COURT_BOOKING_REQUIRED', '约赛须使用本人已确认的未来球场预约');
+          const currentSupply = await this.listing(c, b.listing_id);
+          if (currentSupply.court_status !== 'ACTIVE')
+            localFail('LOCAL_COURT_BOOKING_REQUIRED', '本次实际球场已停用，请先核对场地安排');
+          const teams = (
+            await c.query(
+              'SELECT id,name FROM teams WHERE ((org_id=$1 AND id=$2) OR (org_id=$3 AND id=$4)) FOR SHARE',
+              [input.homeOrgId, input.homeTeamId, input.awayOrgId, input.awayTeamId],
+            )
+          ).rows;
+          if (teams.length !== 2) throw notFound();
+          const id = randomUUID(),
+            snap = {
+              homeTeamName: teams.find((t) => t.id === input.homeTeamId)!.name,
+              awayTeamName: teams.find((t) => t.id === input.awayTeamId)!.name,
+              courtId: b.snapshot.courtId,
+              courtOrgId: b.org_id,
+              address: b.snapshot.address,
+              terms: input.terms,
+            };
           await c.query(
-            'SELECT *,clock_timestamp() AS db_now FROM local_bookings WHERE id=$1 FOR UPDATE',
-            [ref.id],
-          )
-        ).rows[0];
-        if (b.status !== 'CONFIRMED' || b.snapshot.kind !== 'COURT' || b.starts_at <= b.db_now)
-          localFail('LOCAL_COURT_BOOKING_REQUIRED', '约赛须使用本人已确认的未来球场预约');
-        const currentSupply = await this.listing(c, b.listing_id);
-        if (currentSupply.court_status !== 'ACTIVE')
-          localFail('LOCAL_COURT_BOOKING_REQUIRED', '本次实际球场已停用，请先核对场地安排');
-        const teams = (
-          await c.query(
-            'SELECT id,name FROM teams WHERE ((org_id=$1 AND id=$2) OR (org_id=$3 AND id=$4)) FOR SHARE',
-            [input.homeOrgId, input.homeTeamId, input.awayOrgId, input.awayTeamId],
-          )
-        ).rows;
-        if (teams.length !== 2) throw notFound();
-        const id = randomUUID(),
-          snap = {
-            homeTeamName: teams.find((t) => t.id === input.homeTeamId)!.name,
-            awayTeamName: teams.find((t) => t.id === input.awayTeamId)!.name,
-            courtId: b.snapshot.courtId,
-            courtOrgId: b.org_id,
-            address: b.snapshot.address,
-            terms: input.terms,
-          };
-        await c.query(
-          "INSERT INTO local_matchups(id,home_org_id,home_team_id,away_org_id,away_team_id,court_booking_id,created_by,home_confirmed_by,starts_at,ends_at,expires_at,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$7,$8,$9,LEAST(clock_timestamp()+interval '30 minutes',$8::timestamptz),$10)",
-          [
+            "INSERT INTO local_matchups(id,home_org_id,home_team_id,away_org_id,away_team_id,court_booking_id,created_by,home_confirmed_by,starts_at,ends_at,expires_at,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$7,$8,$9,LEAST(clock_timestamp()+interval '30 minutes',$8::timestamptz),$10)",
+            [
+              id,
+              input.homeOrgId,
+              input.homeTeamId,
+              input.awayOrgId,
+              input.awayTeamId,
+              b.id,
+              actor.user.id,
+              b.starts_at,
+              b.ends_at,
+              snap,
+            ],
+          );
+          await this.reserve(
+            c,
+            `team:${input.homeTeamId}`,
+            { matchupId: id },
+            iso(b.starts_at),
+            iso(b.ends_at),
+          );
+          await this.history(
+            c,
+            actor,
             id,
-            input.homeOrgId,
-            input.homeTeamId,
-            input.awayOrgId,
-            input.awayTeamId,
-            b.id,
-            actor.user.id,
-            b.starts_at,
-            b.ends_at,
-            snap,
-          ],
-        );
-        await this.reserve(
-          c,
-          `team:${input.homeTeamId}`,
-          { matchupId: id },
-          iso(b.starts_at),
-          iso(b.ends_at),
-        );
-        await this.history(c, actor, id, 'PROPOSE_MATCHUP', 1, '本方队长确认约赛条款，等待另一方');
-        return { resourceType: 'MATCHUP', resourceId: id, version: 1 };
-      });
-    });
+            'PROPOSE_MATCHUP',
+            1,
+            '本方队长确认约赛条款，等待另一方',
+          );
+          return { resourceType: 'MATCHUP', resourceId: id, version: 1 };
+        }),
+    };
+  }
+  /** Source status is locked before matching may reopen a slot. Never infer expiry client-side. */
+  async inspectMatchingSourceInTransaction(
+    c: PoolClient,
+    actor: Actor,
+    sourceKind: string,
+    sourceId: string,
+  ) {
+    resourceId(sourceId);
+    if (sourceKind === 'LOCAL_BOOKING') {
+      const ref = (await c.query('SELECT * FROM local_bookings WHERE id=$1', [sourceId])).rows[0];
+      if (!ref) throw notFound();
+      await this.bookingAccess(c, actor, ref);
+      await this.mutex(c, [ref.org_id]);
+      const row = (
+        await c.query(
+          'SELECT status,hold_expires_at,clock_timestamp() AS db_now FROM local_bookings WHERE id=$1 FOR UPDATE',
+          [sourceId],
+        )
+      ).rows[0];
+      const expired =
+        ['HELD', 'REQUESTED'].includes(row.status) &&
+        row.hold_expires_at &&
+        row.hold_expires_at <= row.db_now;
+      // Expiry is a database-time source fact. Preserve source/payment history while
+      // releasing its stale calendar hold in this same source-first transaction.
+      if (expired) await c.query('SELECT x12_release_expired()');
+      const reserved = (
+        await c.query(
+          'SELECT 1 FROM local_resource_reservations WHERE booking_id=$1 AND active LIMIT 1',
+          [sourceId],
+        )
+      ).rowCount;
+      return {
+        ended:
+          !reserved &&
+          (!!expired || ['CANCELLED', 'DECLINED', 'EXPIRED', 'COMPLETED'].includes(row.status)),
+        completed: row.status === 'COMPLETED',
+      };
+    }
+    if (sourceKind !== 'TEAM_MATCHUP') invalid('不支持的同城撮合来源');
+    const ref = (
+      await c.query(
+        'SELECT m.*,b.org_id AS court_org_id FROM local_matchups m JOIN local_bookings b ON b.id=m.court_booking_id WHERE m.id=$1',
+        [sourceId],
+      )
+    ).rows[0];
+    if (!ref) throw notFound();
+    await this.mutex(c, [ref.home_org_id, ref.away_org_id, ref.court_org_id]);
+    await this.matchupAccess(c, actor, sourceId);
+    const row = (
+      await c.query(
+        'SELECT status,expires_at,clock_timestamp() AS db_now FROM local_matchups WHERE id=$1 FOR UPDATE',
+        [sourceId],
+      )
+    ).rows[0];
+    const expired = row.status === 'OPEN' && row.expires_at <= row.db_now;
+    if (expired) await c.query('SELECT x12_release_expired()');
+    const reserved = (
+      await c.query(
+        'SELECT 1 FROM local_resource_reservations WHERE matchup_id=$1 AND active LIMIT 1',
+        [sourceId],
+      )
+    ).rowCount;
+    return {
+      ended: !reserved && (expired || ['CANCELLED', 'DECLINED', 'COMPLETED'].includes(row.status)),
+      completed: row.status === 'COMPLETED',
+    };
   }
   async matchupCommand(cookie: string | undefined, id: string, raw: unknown) {
     const x = objectInput(raw, ['commandId', 'expectedVersion', 'type', 'reason']),

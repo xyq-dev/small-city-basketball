@@ -8,7 +8,7 @@ import type {
 } from '../../../packages/contracts/trade.js';
 import type { Actor, ApiOptions } from './service.js';
 import { ApplicationService, isAdministrator } from './service.js';
-import { forbidden, notFound } from './errors.js';
+import { ApiError, forbidden, notFound } from './errors.js';
 import { objectInput, text, calendarDate } from './validation.js';
 import {
   tradeFail,
@@ -22,7 +22,10 @@ import {
   tradeSeal,
   tradeOpen,
   tradeSettlementCapacity,
+  TRADE_SOURCE_KINDS,
 } from './trade-domain.js';
+import { isAdditionalTradeSource } from './trade-source-adapter.js';
+import type { AdditionalTradeSourceAdapters, TradeSourceSnapshot } from './trade-source-adapter.js';
 import type { TradeRuntime, TradeMerchant } from './trade-provider.js';
 import type {
   WechatPayOrder,
@@ -33,31 +36,17 @@ import type {
 import { quote as playerQuote } from './player-booking/domain.js';
 import { reconcileWechatPayBill } from './commerce/wechatpay.js';
 type Row = Record<string, any>;
-type Source = {
-  orgId: string;
-  payerId: string | null;
-  beneficiaryId: string;
-  beneficiaryName: string;
-  title: string;
-  version: number;
-  totalFen: number;
-  platformFeeFen: number;
-  termsId: string | null;
-  consentId?: string;
-  terms: string;
-  merchantKey: string | null;
-  payable: boolean;
-  fulfilled: boolean;
-  disputed: boolean;
-  valid: boolean;
-  expiresAt: string | null;
-  identity: Row;
-};
+type Source = TradeSourceSnapshot;
 const iso = (v: Date | string | null) => (v === null ? null : new Date(v).toISOString());
 const no = (prefix: string) => prefix + randomBytes(15).toString('hex');
 export class TradeService extends ApplicationService {
   readonly runtime: TradeRuntime;
-  constructor(pool: Pool, options: ApiOptions, runtime: TradeRuntime = {}) {
+  constructor(
+    pool: Pool,
+    options: ApiOptions,
+    runtime: TradeRuntime = {},
+    private readonly additionalSources: AdditionalTradeSourceAdapters = {},
+  ) {
     super(pool, options);
     this.runtime = runtime;
     const keys = new Map<string, string>(),
@@ -137,6 +126,35 @@ export class TradeService extends ApplicationService {
     id: string,
     pinnedTerms?: string | null,
   ): Promise<Source> {
+    if (isAdditionalTradeSource(kind)) {
+      const adapter = this.additionalSources[kind];
+      if (!adapter) tradeFail('TRADE_SOURCE_UNAVAILABLE', '此业务收款来源尚未接入', 503);
+      const ref = await adapter!.reference(c, id);
+      await this.calendar(c, ref.orgId);
+      const source = await adapter!.read(c, id);
+      if (
+        source.orgId !== ref.orgId ||
+        source.payerId !== ref.payerId ||
+        source.beneficiaryId !== ref.beneficiaryId ||
+        source.payerId === null ||
+        source.termsId !== null ||
+        !source.consentId ||
+        !Number.isSafeInteger(source.totalFen) ||
+        source.totalFen < 1 ||
+        source.totalFen > 100000000 ||
+        !Number.isSafeInteger(source.platformFeeFen) ||
+        source.platformFeeFen < 0 ||
+        source.platformFeeFen > source.totalFen
+      )
+        tradeFail('TRADE_SOURCE_INVALID', '业务来源主体、合同或报价无法核验');
+      const org = (await c.query<Row>('SELECT status FROM organizations WHERE id=$1', [ref.orgId]))
+        .rows[0];
+      return {
+        ...source,
+        payable: source.payable && org?.status === 'ACTIVE',
+        valid: source.valid && org?.status === 'ACTIVE',
+      };
+    }
     let ref: Row | undefined;
     if (kind === 'LOCAL_BOOKING')
       ref = (await c.query<Row>('SELECT org_id FROM local_bookings WHERE id=$1', [id])).rows[0];
@@ -156,6 +174,7 @@ export class TradeService extends ApplicationService {
       .rows[0];
     let row: Row,
       term: Row | undefined,
+      dispatchQuote: Row | undefined,
       totalFen = 0,
       platformFeeFen = 0,
       payer: string | null = null,
@@ -192,6 +211,37 @@ export class TradeService extends ApplicationService {
           [ref.org_id, kind, row.listing_id, pinnedTerms ?? null],
         )
       ).rows[0];
+      if (row.snapshot.dispatchQuote) {
+        const pin = row.snapshot.dispatchQuote;
+        const { offerId: _offerId, quoteHash: _quoteHash, ...frozenQuote } = pin;
+        const offer = (
+          await c.query<Row>(
+            `SELECT o.*,r.owner_user_id FROM dispatch_offers o JOIN dispatch_requests r ON r.id=o.request_id
+           WHERE o.id=$1 FOR SHARE OF o,r`,
+            [tradeId(pin.offerId)],
+          )
+        ).rows[0];
+        if (
+          !offer ||
+          offer.quote_hash !== pin.quoteHash ||
+          offer.listing_id !== row.listing_id ||
+          offer.provider_user_id !== row.provider_user_id ||
+          offer.owner_user_id !== row.buyer_user_id ||
+          !['ACCEPTED_HELD', 'CONVERTED'].includes(offer.status) ||
+          (offer.source_booking_id && offer.source_booking_id !== id) ||
+          tradeHash(offer.quote) !== tradeHash(frozenQuote) ||
+          !term ||
+          offer.quote.baseTermsId !== term.id ||
+          offer.quote.merchantKey !== term.merchant_key ||
+          offer.quote.serviceMinor !== term.amount_fen ||
+          offer.quote.platformMinor !== 0 ||
+          !Number.isSafeInteger(offer.quote.totalMinor) ||
+          offer.quote.totalMinor !==
+            offer.quote.serviceMinor + offer.quote.travelMinor + offer.quote.lodgingMinor
+        )
+          tradeFail('TRADE_DISPATCH_QUOTE_INVALID', '派单费用与已审核原报价不一致');
+        dispatchQuote = pin;
+      }
       identity = {
         orgId: ref.org_id,
         kind,
@@ -299,13 +349,19 @@ export class TradeService extends ApplicationService {
     }
     if (kind !== 'PLAYER_APPEARANCE') {
       if (!term) tradeFail('TRADE_TERMS_UNAVAILABLE', '收款条款尚未独立发布', 422);
-      totalFen = term!.amount_fen;
+      totalFen = dispatchQuote?.totalMinor ?? term!.amount_fen;
       if (!pinnedTerms && term!.status !== 'ACTIVE') payable = false;
     }
     if (!Number.isSafeInteger(totalFen) || totalFen < 1)
       tradeFail('TRADE_SOURCE_INVALID', '来源报价无法核验');
     const m = this.merchant(ref.org_id);
-    identity = { ...identity, totalFen, platformFeeFen, termsId: term?.id ?? null };
+    identity = {
+      ...identity,
+      totalFen,
+      platformFeeFen,
+      termsId: term?.id ?? null,
+      ...(dispatchQuote ? { dispatchQuote } : {}),
+    };
     return {
       orgId: ref.org_id,
       payerId: payer,
@@ -316,6 +372,7 @@ export class TradeService extends ApplicationService {
       totalFen,
       platformFeeFen,
       termsId: term?.id ?? null,
+      ...(dispatchQuote ? { consentId: dispatchQuote.quoteHash } : {}),
       ...(kind === 'PLAYER_APPEARANCE'
         ? {
             consentId: this.playerTermsId(
@@ -360,7 +417,7 @@ export class TradeService extends ApplicationService {
       merchantName: m?.displayName ?? '收款服务未开通',
       beneficiaryName: s.beneficiaryName,
       terms: s.terms,
-      termsId: s.termsId,
+      termsId: s.consentId ?? s.termsId,
       sourceHash: tradeHash(s.identity),
       payable: s.payable && !!m?.payments.enabled && m.key === s.merchantKey,
       fulfilled: s.fulfilled,
@@ -392,6 +449,15 @@ export class TradeService extends ApplicationService {
     const kind = this.kind(b.kind);
     return this.transaction(async (c) => {
       const a = await this.lockActor(c, cookie);
+      if (isAdditionalTradeSource(kind)) {
+        const sourceId = tradeId(b.sourceId),
+          source = await this.source(c, kind, sourceId);
+        if (!(await this.mayPay(c, a, source)) && !(await this.manager(c, a, source.orgId)))
+          throw notFound();
+        await this.ensureFreshSession(c, a);
+        const quote = this.quoteDto(kind, sourceId, source);
+        return { ...quote, enabled: quote.payable };
+      }
       if (kind === 'PLAYER_APPEARANCE') {
         const org = tradeId(b.orgId),
           team = tradeId(b.teamId);
@@ -528,6 +594,18 @@ export class TradeService extends ApplicationService {
       )
         throw notFound();
       if (!row) {
+        if (isAdditionalTradeSource(kind)) {
+          const source = await this.source(c, kind, sourceId);
+          if (
+            source.payerId !== a.user.id &&
+            source.beneficiaryId !== a.user.id &&
+            !(await this.manager(c, a, source.orgId)) &&
+            !(await this.operator(c, a))
+          )
+            throw notFound();
+          await this.ensureFreshSession(c, a);
+          return { orderId: null };
+        }
         const ref = (
           await c.query<Row>(
             kind === 'LOCAL_BOOKING'
@@ -551,7 +629,7 @@ export class TradeService extends ApplicationService {
     });
   }
   private kind(v: unknown): TradeSourceKind {
-    if (!['ENTRY_FEE', 'ENTRY_DEPOSIT', 'LOCAL_BOOKING', 'PLAYER_APPEARANCE'].includes(String(v)))
+    if (!TRADE_SOURCE_KINDS.includes(v as TradeSourceKind))
       tradeFail('INVALID_TRADE_SOURCE', '收费来源无效', 422);
     return v as TradeSourceKind;
   }
@@ -639,7 +717,7 @@ export class TradeService extends ApplicationService {
       .rows[0]!;
     return { a, s, order, manage, operator };
   }
-  private async money(c: PoolClient, order: Row) {
+  private async money(c: PoolClient, order: Row, readOnlySponsorConflict = false) {
     const attempts = (
         await c.query<Row>(
           'SELECT * FROM trade_payment_attempts WHERE order_id=$1 ORDER BY created_at,id',
@@ -664,21 +742,134 @@ export class TradeService extends ApplicationService {
         )
       ).rows;
     const paid = attempts.filter((x) => x.status === 'PAID').reduce((n, x) => n + x.total_fen, 0);
-    return {
-      attempts,
-      refunds,
-      deductions,
-      settlements,
-      balances: tradeBalances(paid, refunds as any, deductions as any, settlements as any),
-    };
+    let balances,
+      balanceConflict = false;
+    try {
+      balances = tradeBalances(paid, refunds as any, deductions as any, settlements as any);
+    } catch (error) {
+      if (
+        !readOnlySponsorConflict ||
+        order.kind !== 'SPONSOR_ORDER' ||
+        !(error instanceof ApiError) ||
+        error.code !== 'TRADE_BALANCE_INVALID'
+      )
+        throw error;
+      const pending = refunds.filter((r) =>
+        ['PENDING_REVIEW', 'APPROVED', 'SENDING', 'UNKNOWN', 'PROCESSING'].includes(r.status),
+      );
+      if (
+        !pending.length ||
+        pending.some((r) => !Number.isSafeInteger(r.amount_fen) || r.amount_fen <= 0)
+      )
+        throw error;
+      // Validate actual settled money and every other obligation with the unchanged strict calculator.
+      // Only display the extra unresolved refund reservation; never discard it or relax a writer.
+      const settled = tradeBalances(
+        paid,
+        refunds.filter((r) => !pending.includes(r)) as any,
+        deductions as any,
+        settlements as any,
+      );
+      const refundReservedFen =
+        settled.refundReservedFen + pending.reduce((n, r) => n + r.amount_fen, 0);
+      if (
+        !Number.isSafeInteger(refundReservedFen) ||
+        refundReservedFen + settled.deductionReservedFen <= paid
+      )
+        throw error;
+      balances = { ...settled, refundReservedFen, refundableFen: 0 };
+      balanceConflict = true;
+    }
+    return { attempts, refunds, deductions, settlements, balances, balanceConflict };
+  }
+  private async refundSourceBinding(c: PoolClient, order: Row, refund: Row) {
+    const binding = (
+      await c.query<Row>(
+        'SELECT * FROM r6_trade_refund_bindings WHERE refund_id=$1 AND order_id=$2',
+        [refund.id, order.id],
+      )
+    ).rows[0];
+    if (!binding || binding.kind !== order.kind || binding.source_id !== order.source_id)
+      tradeFail('TRADE_SOURCE_REFUND_REQUIRED', '原业务退款分配无法复核');
+    return binding!;
+  }
+  private async assertSourceRefundDispatch(c: PoolClient, order: Row, refund: Row) {
+    if (!isAdditionalTradeSource(order.kind)) return;
+    const binding = await this.refundSourceBinding(c, order, refund);
+    const adapter = this.additionalSources[order.kind];
+    if (!adapter?.assertRefundDispatch)
+      tradeFail('TRADE_SOURCE_REFUND_REQUIRED', '原业务退款分配无法复核');
+    await adapter!.assertRefundDispatch!(
+      c,
+      order.source_id,
+      binding.allocation_id,
+      refund.amount_fen,
+    );
+  }
+  private async assertApprovedRefundRevocation(
+    c: PoolClient,
+    ctx: { a: Actor; order: Row; manage: boolean; operator: boolean },
+    refund: Row,
+  ) {
+    const { order } = ctx;
+    if (
+      order.kind !== 'SPONSOR_ORDER' ||
+      refund.status !== 'APPROVED' ||
+      refund.fence !== null ||
+      refund.provider_refund_id !== null ||
+      refund.success_at !== null
+    )
+      tradeFail('TRADE_REVIEW_STATE', '只能核对并撤回尚未发送的广告恢复退款');
+    await this.independent(c, ctx, refund.proposed_by);
+    const binding = await this.refundSourceBinding(c, order, refund);
+    const adapter = this.additionalSources.SPONSOR_ORDER;
+    if (!adapter?.assertRefundRevocation)
+      tradeFail('TRADE_SOURCE_REFUND_REQUIRED', '原业务尚未提供安全撤回证明');
+    await adapter!.assertRefundRevocation!(
+      c,
+      order.source_id,
+      binding.allocation_id,
+      refund.amount_fen,
+    );
+  }
+  private async canRejectApprovedRefund(
+    c: PoolClient,
+    ctx: { a: Actor; order: Row; manage: boolean; operator: boolean },
+    refund: Row,
+  ) {
+    try {
+      await this.assertApprovedRefundRevocation(c, ctx, refund);
+      return true;
+    } catch (error) {
+      // A capability is false for domain/permission denial; database failures stay visible.
+      if (
+        error instanceof ApiError &&
+        ((error.status >= 400 && error.status < 500) ||
+          (error.status === 503 && error.code === 'SPONSOR_RESTORE_QUARANTINED'))
+      )
+        return false;
+      throw error;
+    }
   }
   async get(cookie: string | undefined, id: string): Promise<TradeOrderData> {
     return this.transaction(async (c) => {
-      const { a, s, order: o, manage, operator } = await this.context(c, cookie, id),
-        money = await this.money(c, o),
+      const ctx = await this.context(c, cookie, id),
+        { a, s, order: o, manage, operator } = ctx,
+        money = await this.money(c, o, true),
         m = this.merchant(o.org_id, o);
       const valid = s.valid && tradeHash(s.identity) === o.source_hash;
       const now = (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
+      const refunds = [];
+      for (const x of money.refunds)
+        refunds.push({
+          id: x.id,
+          amountFen: x.amount_fen,
+          status: x.status,
+          reason: x.reason,
+          proposedBy: x.proposed_by,
+          reviewedBy: x.reviewed_by,
+          canRejectApprovedRefund: await this.canRejectApprovedRefund(c, ctx, x),
+        });
       await this.ensureFreshSession(c, a);
       return {
         id: o.id,
@@ -694,6 +885,7 @@ export class TradeService extends ApplicationService {
         merchantName: o.merchant_name,
         terms: o.quote.terms,
         ...money.balances,
+        balanceConflict: money.balanceConflict,
         currentSource: { payable: s.payable, fulfilled: s.fulfilled, disputed: s.disputed, valid },
         attempts: money.attempts.map((x) => ({
           id: x.id,
@@ -710,14 +902,7 @@ export class TradeService extends ApplicationService {
               ? tradeOpen(this.runtime.encryptionKey, x.id, x.checkout)
               : null,
         })),
-        refunds: money.refunds.map((x) => ({
-          id: x.id,
-          amountFen: x.amount_fen,
-          status: x.status,
-          reason: x.reason,
-          proposedBy: x.proposed_by,
-          reviewedBy: x.reviewed_by,
-        })),
+        refunds,
         deductions: money.deductions.map((x) => ({
           id: x.id,
           amountFen: x.amount_fen,
@@ -737,6 +922,7 @@ export class TradeService extends ApplicationService {
         })),
         capabilities: {
           canPay:
+            !money.balanceConflict &&
             a.user.id === o.payer_user_id &&
             o.status === 'OPEN' &&
             valid &&
@@ -745,9 +931,18 @@ export class TradeService extends ApplicationService {
             !!m?.payments.enabled,
           native: !!m?.payments.enabled,
           jsapi: !!m?.payments.enabled && !!m.payments.jsapi && !!this.runtime.resolvePayer,
-          canRequestRefund: a.user.id === o.payer_user_id && money.balances.refundableFen > 0,
+          canRequestRefund:
+            !money.balanceConflict &&
+            !isAdditionalTradeSource(o.kind) &&
+            a.user.id === o.payer_user_id &&
+            money.balances.refundableFen > 0,
           canManage: manage || operator,
-          settlementAvailable: !!m?.settlements?.enabled && m.settlements.returnSupported,
+          settlementAvailable:
+            !money.balanceConflict &&
+            (!isAdditionalTradeSource(o.kind) ||
+              this.additionalSources[o.kind]?.settlementMode === 'SINGLE') &&
+            !!m?.settlements?.enabled &&
+            m.settlements.returnSupported,
         },
       };
     });
@@ -875,9 +1070,11 @@ export class TradeService extends ApplicationService {
           fence: randomUUID(),
           expires_at: expiresAt.toISOString(),
           profit_sharing:
-            !!m.settlements?.enabled &&
-            m.settlements.returnSupported &&
-            !!m.receivers[o.beneficiary_user_id],
+            (isAdditionalTradeSource(o.kind) &&
+              this.additionalSources[o.kind]?.requiresProfitSharing === true) ||
+            (!!m.settlements?.enabled &&
+              m.settlements.returnSupported &&
+              !!m.receivers[o.beneficiary_user_id]),
         };
         await c.query(
           `INSERT INTO trade_payment_attempts(id,order_id,out_trade_no,channel,status,total_fen,fence,expires_at,profit_sharing) VALUES($1,$2,$3,$4,'DISPATCHING',$5,$6,$7,$8)`,
@@ -1084,6 +1281,8 @@ export class TradeService extends ApplicationService {
       const ctx = await this.context(c, cookie, id),
         { a, order: o } = ctx;
       if (a.user.id !== o.payer_user_id && !ctx.manage && !ctx.operator) throw forbidden();
+      if (isAdditionalTradeSource(o.kind))
+        tradeFail('TRADE_SOURCE_REFUND_REQUIRED', '请从原业务逐项申请退款并核对课次或分账回退');
       return this.operation(c, a, command, { op: 'REFUND_REQUEST', id, ...b }, id, async () => {
         assertTradeVersion(o.version, tradeVersion(b.expectedVersion));
         const money = await this.money(c, o);
@@ -1150,9 +1349,19 @@ export class TradeService extends ApplicationService {
             b.decision === 'REVERSE'
               ? !['APPROVED', 'REVERSAL_PENDING'].includes(row.status)
               : row.status !== 'PENDING_REVIEW' &&
-                !(type === 'SETTLEMENT' && b.decision === 'REJECT' && row.status === 'APPROVED')
+                !(type === 'SETTLEMENT' && b.decision === 'REJECT' && row.status === 'APPROVED') &&
+                !(
+                  type === 'REFUND' &&
+                  b.decision === 'REJECT' &&
+                  row.status === 'APPROVED' &&
+                  o.kind === 'SPONSOR_ORDER'
+                )
           )
             tradeFail('TRADE_REVIEW_STATE', '原申请已处理，请核对当前状态');
+          if (type === 'REFUND' && b.decision === 'APPROVE')
+            await this.assertSourceRefundDispatch(c, o, row);
+          if (type === 'REFUND' && b.decision === 'REJECT' && row.status === 'APPROVED')
+            await this.assertApprovedRefundRevocation(c, ctx, row);
           if (type === 'SETTLEMENT' && b.decision === 'APPROVE') {
             const m = await this.settlementAllowed(c, ctx);
             if (
@@ -1277,6 +1486,7 @@ export class TradeService extends ApplicationService {
           assertTradeVersion(o.version, tradeVersion(b.expectedVersion));
           if (r.status !== 'APPROVED')
             tradeFail('TRADE_REFUND_STATE', '只派发已独立批准的原退款；未知请查询原单');
+          await this.assertSourceRefundDispatch(c, o, r);
           const money = await this.money(c, o);
           if (
             money.settlements.some(
@@ -1429,6 +1639,11 @@ export class TradeService extends ApplicationService {
   private async settlementAllowed(c: PoolClient, ctx: { order: Row; s: Source }) {
     const { order: o, s } = ctx,
       money = await this.money(c, o);
+    if (
+      isAdditionalTradeSource(o.kind) &&
+      this.additionalSources[o.kind]?.settlementMode !== 'SINGLE'
+    )
+      tradeFail('TRADE_SOURCE_SETTLEMENT_REQUIRED', '请从原业务的多方结算流程处理');
     if (
       !s.fulfilled ||
       !s.valid ||
@@ -1898,8 +2113,8 @@ export class TradeService extends ApplicationService {
   async createTerms(cookie: string | undefined, org: string, raw: unknown) {
     const b = objectInput(raw, ['clientRequestId', 'kind', 'sourceId', 'amountFen', 'terms']);
     const kind = this.kind(b.kind);
-    if (kind === 'PLAYER_APPEARANCE')
-      tradeFail('INVALID_TRADE_TERMS', '球员费用沿用原服务报价，不能另设覆盖', 422);
+    if (kind === 'PLAYER_APPEARANCE' || isAdditionalTradeSource(kind))
+      tradeFail('INVALID_TRADE_TERMS', '本业务沿用原合同或服务报价，不能另设覆盖', 422);
     const source = tradeId(b.sourceId),
       amount = tradeFen(b.amountFen),
       terms = text(b.terms, 'terms', 4, 2000);
@@ -2140,8 +2355,14 @@ export class TradeService extends ApplicationService {
   ): Promise<string | null> {
     if (!Object.keys(this.runtime.merchants ?? {}).length) return null;
     const sourceId = tradeId(input.sourceId);
-    const ref =
-      input.kind === 'LOCAL_BOOKING'
+    const ref = isAdditionalTradeSource(input.kind)
+      ? await (async () => {
+          const adapter =
+            this.additionalSources[input.kind as 'TRAINING_ENROLLMENT' | 'SPONSOR_ORDER'];
+          if (!adapter) tradeFail('TRADE_SOURCE_UNAVAILABLE', '此业务收款来源尚未接入', 503);
+          return { org_id: (await adapter!.reference(c, sourceId)).orgId, anchor: null };
+        })()
+      : input.kind === 'LOCAL_BOOKING'
         ? (
             await c.query<Row>(
               'SELECT org_id,listing_id AS anchor FROM local_bookings WHERE id=$1',
@@ -2165,6 +2386,7 @@ export class TradeService extends ApplicationService {
       return null;
     if (
       input.kind !== 'PLAYER_APPEARANCE' &&
+      !isAdditionalTradeSource(input.kind) &&
       !(
         await c.query(
           "SELECT id FROM trade_terms WHERE org_id=$1 AND kind=$2 AND source_id=$3 AND status='ACTIVE'",
@@ -2176,11 +2398,7 @@ export class TradeService extends ApplicationService {
     const source = await this.source(c, input.kind, sourceId);
     const m = this.merchant(source.orgId);
     if (!m?.payments.enabled) return null;
-    if (
-      !input.chargeConsent ||
-      input.acceptedTermsId !==
-        (input.kind === 'PLAYER_APPEARANCE' ? source.consentId : source.termsId)
-    )
+    if (!input.chargeConsent || input.acceptedTermsId !== (source.consentId ?? source.termsId))
       tradeFail('TRADE_EXPLICIT_CONSENT_REQUIRED', '请明确核对当前收费条款和实际收款主体', 422);
     if (!(await this.mayPay(c, actor, source))) throw forbidden();
     const existing = (
@@ -2217,6 +2435,175 @@ export class TradeService extends ApplicationService {
     );
     return id;
   }
+  /** Server-only binding captured before a new domain freezes its contract. */
+  async sourceMerchantBinding(c: PoolClient, orgId: string) {
+    const m = this.merchant(orgId);
+    if (!m?.payments.enabled || !this.runtime.encryptionKey) return null;
+    const owner = (
+      await c.query<Row>(
+        `SELECT u.id,u.display_name FROM organization_memberships m JOIN users u ON u.id=m.user_id
+       JOIN organizations o ON o.id=m.org_id WHERE m.org_id=$1 AND m.role='ORG_OWNER'
+       AND m.status='ACTIVE' AND u.status='ACTIVE' AND o.status='ACTIVE' ORDER BY u.id FOR SHARE OF m,u,o`,
+        [tradeId(orgId)],
+      )
+    ).rows;
+    if (owner.length !== 1) return null;
+    return {
+      merchantKey: m.key,
+      beneficiaryId: owner[0]!.id as string,
+      beneficiaryName: owner[0]!.display_name as string,
+    };
+  }
+  /** Reads provider-confirmed ledger facts, including late payments; never calls a provider. */
+  async sourcePayment(c: PoolClient, kind: TradeSourceKind, sourceId: string) {
+    await this.source(c, kind, tradeId(sourceId));
+    const order = (
+      await c.query<Row>('SELECT * FROM trade_orders WHERE kind=$1 AND source_id=$2 FOR UPDATE', [
+        kind,
+        sourceId,
+      ])
+    ).rows[0];
+    if (!order)
+      return {
+        orderId: null,
+        status: 'UNPAID' as const,
+        paidFen: 0,
+        refundedFen: 0,
+        canReleaseUnpaidHold: true,
+      };
+    const money = await this.money(c, order),
+      b = money.balances;
+    const status =
+      b.paidFen > 0
+        ? b.refundedFen >= b.paidFen
+          ? ('REFUNDED' as const)
+          : ('PAID' as const)
+        : money.attempts.some((p) => ['DISPATCHING', 'UNKNOWN'].includes(p.status))
+          ? ('UNKNOWN' as const)
+          : ('UNPAID' as const);
+    return {
+      orderId: order.id as string,
+      status,
+      paidFen: b.paidFen,
+      refundedFen: b.refundedFen,
+      canReleaseUnpaidHold:
+        b.paidFen === 0 &&
+        !money.attempts.some((p) => ['DISPATCHING', 'UNKNOWN', 'NOTPAY'].includes(p.status)),
+    };
+  }
+  /** Binds an exact independently approved domain allocation to one refund proposal. */
+  async sourceRefundStatus(
+    c: PoolClient,
+    refundId: string,
+  ): Promise<'PENDING' | 'SUCCEEDED' | 'FAILED' | 'UNKNOWN'> {
+    const r = (
+      await c.query<Row>('SELECT status FROM trade_refunds WHERE id=$1', [tradeId(refundId)])
+    ).rows[0];
+    if (!r) throw notFound();
+    return r.status === 'SUCCEEDED'
+      ? 'SUCCEEDED'
+      : ['FAILED', 'REJECTED'].includes(r.status)
+        ? 'FAILED'
+        : ['UNKNOWN', 'SENDING', 'PROCESSING'].includes(r.status)
+          ? 'UNKNOWN'
+          : 'PENDING';
+  }
+  /** Binds an exact independently approved domain allocation to one refund proposal. */
+  async captureSourceRefund(
+    c: PoolClient,
+    actor: Actor,
+    input: {
+      kind: 'TRAINING_ENROLLMENT' | 'SPONSOR_ORDER';
+      sourceId: string;
+      allocationId: string;
+      amountFen: number;
+      reason: string;
+    },
+  ) {
+    const sourceId = tradeId(input.sourceId),
+      allocationId = tradeId(input.allocationId),
+      amount = tradeFen(input.amountFen),
+      reason = tradeReason(input.reason),
+      adapter = this.additionalSources[input.kind];
+    if (!adapter) tradeFail('TRADE_SOURCE_UNAVAILABLE', '此业务退款来源尚未接入', 503);
+    const source = await this.source(c, input.kind, sourceId);
+    const order = (
+      await c.query<Row>('SELECT * FROM trade_orders WHERE kind=$1 AND source_id=$2 FOR UPDATE', [
+        input.kind,
+        sourceId,
+      ])
+    ).rows[0];
+    if (!order || order.org_id !== source.orgId) throw notFound();
+    if (
+      actor.user.id !== order.payer_user_id &&
+      !(await this.manager(c, actor, order.org_id)) &&
+      !(await this.operator(c, actor))
+    )
+      throw forbidden();
+    const prior = (
+      await c.query<Row>(
+        `SELECT r.* FROM r6_trade_refund_bindings b JOIN trade_refunds r ON r.id=b.refund_id
+       WHERE b.kind=$1 AND b.source_id=$2 AND b.allocation_id=$3`,
+        [input.kind, sourceId, allocationId],
+      )
+    ).rows[0];
+    const result = (r: Row) => ({
+      refundId: r.id as string,
+      status:
+        r.status === 'SUCCEEDED'
+          ? ('SUCCEEDED' as const)
+          : ['FAILED', 'REJECTED'].includes(r.status)
+            ? ('FAILED' as const)
+            : ['UNKNOWN', 'SENDING', 'PROCESSING'].includes(r.status)
+              ? ('UNKNOWN' as const)
+              : ('PENDING' as const),
+    });
+    if (prior) {
+      if (prior.amount_fen !== amount || prior.order_id !== order.id)
+        tradeFail('TRADE_REFUND_ALLOCATION_CONFLICT', '原退款分配编号的金额不一致');
+      return result(prior);
+    }
+    await adapter!.assertRefundAllocation(c, sourceId, allocationId, amount);
+    const money = await this.money(c, order);
+    if (amount > money.balances.refundableFen)
+      tradeFail('TRADE_REFUND_LIMIT', '退款和未决扣减合计超过可退金额');
+    const payment = money.attempts.find(
+      (p) =>
+        p.status === 'PAID' &&
+        p.total_fen -
+          money.refunds
+            .filter((r) => r.payment_id === p.id && !['REJECTED', 'FAILED'].includes(r.status))
+            .reduce((n, r) => n + r.amount_fen, 0) >=
+          amount,
+    );
+    if (!payment) tradeFail('TRADE_REFUND_PAYMENT_LIMIT', '分配金额超过原单笔付款可退金额');
+    const refundId = randomUUID();
+    await adapter!.claimRefundAllocation?.(c, {
+      sourceId,
+      allocationId,
+      amountFen: amount,
+      refundId,
+    });
+    await c.query(
+      `INSERT INTO trade_refunds(id,order_id,payment_id,out_refund_no,amount_fen,reason,status,proposed_by)
+       VALUES($1,$2,$3,$4,$5,$6,'PENDING_REVIEW',$7)`,
+      [
+        refundId,
+        order.id,
+        payment!.id,
+        'E4R' + refundId.replaceAll('-', ''),
+        amount,
+        reason,
+        actor.user.id,
+      ],
+    );
+    await c.query(
+      'INSERT INTO r6_trade_refund_bindings(kind,source_id,allocation_id,order_id,refund_id) VALUES($1,$2,$3,$4,$5)',
+      [input.kind, sourceId, allocationId, order.id, refundId],
+    );
+    await this.bump(c, order.id);
+    return result({ id: refundId, status: 'PENDING_REVIEW' });
+  }
   /** Same account-closure transaction; NOWAIT avoids waiting behind a money mutation. No provider call. */
   async assertAccountClosureSafe(c: PoolClient, userId: string): Promise<void> {
     const orders = (
@@ -2250,10 +2637,30 @@ export class TradeService extends ApplicationService {
         [o.id],
       );
       const platformFee = o.kind === 'ENTRY_DEPOSIT' ? 0 : Number(o.quote.platformFeeFen ?? 0);
+      let moduleDischarged = 0,
+        moduleUnresolved = false;
+      if (isAdditionalTradeSource(o.kind)) {
+        const adapter = this.additionalSources[o.kind];
+        if (!adapter) moduleUnresolved = true;
+        else if (adapter.settlementMode === 'MODULE') {
+          if (!adapter.closureFunds) moduleUnresolved = true;
+          else {
+            const funds = await adapter.closureFunds(c, o.source_id, o.id);
+            moduleUnresolved =
+              funds.unresolved ||
+              !Number.isSafeInteger(funds.dischargedFen) ||
+              funds.dischargedFen < 0 ||
+              funds.dischargedFen > b.paidFen - b.refundedFen ||
+              b.settledFen !== 0;
+            if (!moduleUnresolved) moduleDischarged = funds.dischargedFen;
+          }
+        }
+      }
       if (
         unresolved ||
+        moduleUnresolved ||
         pendingReturn.rowCount ||
-        b.paidFen - b.refundedFen - b.settledFen > platformFee
+        b.paidFen - b.refundedFen - b.settledFen - moduleDischarged > platformFee
       )
         tradeFail(
           'TRADE_MONEY_UNRESOLVED',

@@ -55,7 +55,7 @@ function clientHarness() {
     setStorageDenied: (v) => (writeDenied = v),
   };
 }
-function page(route, trade = {}, wx = {}) {
+function page(route, trade = {}, wx = {}, uiOverrides = {}) {
   let definition;
   const ui = {
     message: (e) => e.message,
@@ -65,6 +65,7 @@ function page(route, trade = {}, wx = {}) {
     live: () => true,
     session: async () => ({ user: { id: actor } }),
     today: () => '2026-10-31',
+    ...uiOverrides,
   };
   vm.runInNewContext(fs.readFileSync(path.join(root, 'pages', route, 'index.js'), 'utf8'), {
     Page: (v) => (definition = v),
@@ -280,4 +281,246 @@ test('account reset clears private refund evidence and unpublished fee drafts be
   assert.equal(manager.data.orgId, '');
   assert.equal(manager.data.sourceId, '');
   assert.equal(manager.actor, '');
+});
+
+function refundOrder(overrides = {}) {
+  return {
+    id: order,
+    version: 7,
+    kind: 'SPONSOR_ORDER',
+    totalFen: 10000,
+    paidFen: 10000,
+    refundedFen: 0,
+    refundableFen: 0,
+    settledFen: 0,
+    refundReservedFen: 10000,
+    deductionReservedFen: 0,
+    attempts: [],
+    deductions: [],
+    settlements: [],
+    capabilities: {
+      canManage: true,
+      canPay: true,
+      canRequestRefund: true,
+      settlementAvailable: true,
+    },
+    refunds: [{ id: attempt, status: 'APPROVED', amountFen: 10000, canRejectApprovedRefund: true }],
+    ...overrides,
+  };
+}
+const rejection = (id = attempt) => ({
+  currentTarget: { dataset: { type: 'REFUND', id, decision: 'REJECT' } },
+});
+const rejectionCheck = (id = attempt) => ({
+  currentTarget: { dataset: { id } },
+  detail: { value: ['yes'] },
+});
+function refundPage(raw = refundOrder(), uiOverrides = {}) {
+  const h = clientHarness(),
+    calls = [];
+  const p = page(
+    'trade-order',
+    {
+      id: h.client.id,
+      order: h.client.order,
+      pending: () => null,
+      read: async () => raw,
+      execute: async (viewer, path, body) => {
+        calls.push({ viewer, path, body });
+        return { ok: true };
+      },
+    },
+    {},
+    uiOverrides,
+  );
+  p.onLoad({ id: order });
+  p._visible = true;
+  p.actor = actor;
+  p.setData({ order: h.client.order(raw), reason: '已核验原退款成功，撤回未发送后继' });
+  return { p, calls, h };
+}
+test('refund withdrawal capability fails closed and a balance conflict preserves original amounts', () => {
+  const h = clientHarness();
+  for (const flag of [undefined, null, 'true', 1, false]) {
+    const raw = refundOrder({
+      refunds: [
+        { id: attempt, status: 'APPROVED', amountFen: 10000, canRejectApprovedRefund: flag },
+      ],
+    });
+    assert.equal(h.client.order(raw).refunds[0].canRejectApprovedRefund, false);
+  }
+  assert.equal(h.client.order(refundOrder()).refunds[0].canRejectApprovedRefund, true);
+  for (const status of ['UNKNOWN', 'DISPATCHING', 'PROCESSING', 'SUCCEEDED'])
+    assert.equal(
+      h.client.order(
+        refundOrder({
+          refunds: [{ id: attempt, status, amountFen: 10000, canRejectApprovedRefund: true }],
+        }),
+      ).refunds[0].canRejectApprovedRefund,
+      false,
+    );
+  const v = h.client.order(refundOrder({ balanceConflict: true, refundedFen: 10000 }));
+  assert.equal(v.balanceConflict, true);
+  assert.equal(v.paidFen, 10000);
+  assert.equal(v.refundedFen, 10000);
+  assert.equal(v.refundReservedFen, 10000);
+  assert.equal(v.refundableFen, 0);
+  assert.equal(v.canStartPayment, false);
+  assert.equal(v.capabilities.canRequestRefund, false);
+  assert.equal(v.capabilities.settlementAvailable, false);
+  assert.equal(h.client.order(refundOrder()).balanceConflict, false);
+});
+test('approved refund withdrawal cannot send without server capability and its own checkbox', async () => {
+  const blocked = refundPage(
+    refundOrder({
+      refunds: [
+        { id: attempt, status: 'APPROVED', amountFen: 10000, canRejectApprovedRefund: false },
+      ],
+    }),
+  );
+  blocked.p.approvedRefundRejectConsent(rejectionCheck());
+  assert.equal(blocked.p.data.approvedRefundRejectId, '');
+  blocked.p.setData({ approvedRefundRejectId: attempt });
+  await blocked.p.review(rejection());
+  assert.equal(blocked.calls.length, 0);
+  const allowed = refundPage();
+  allowed.p.consent({ detail: { value: ['yes'] } });
+  await allowed.p.review(rejection());
+  assert.equal(allowed.calls.length, 0);
+  assert.match(allowed.p.data.error, /单独勾选/);
+});
+test('explicit withdrawal sends the exact approved successor and reason through refund review', async () => {
+  const { p, calls } = refundPage(refundOrder({ balanceConflict: true, refundedFen: 10000 }));
+  p.approvedRefundRejectConsent(rejectionCheck());
+  await p.review(rejection());
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].viewer, actor);
+  assert.equal(calls[0].path, '/orders/' + order + '/reviews/REFUND/' + attempt);
+  assert.equal(calls[0].body.decision, 'REJECT');
+  assert.equal(calls[0].body.expectedVersion, 7);
+  assert.equal(calls[0].body.clientRequestId, command);
+  assert.equal(calls[0].body.reason, '已核验原退款成功，撤回未发送后继');
+  assert.equal(p.data.approvedRefundRejectId, '');
+});
+test('withdrawal confirmation is refund-specific and clears on refresh, hide and account reset', async () => {
+  const second = '50000000-0000-4000-8000-000000000001';
+  const { p, calls } = refundPage(
+    refundOrder({
+      refunds: [
+        { id: attempt, status: 'APPROVED', amountFen: 5000, canRejectApprovedRefund: true },
+        { id: second, status: 'APPROVED', amountFen: 5000, canRejectApprovedRefund: true },
+      ],
+    }),
+  );
+  p.approvedRefundRejectConsent(rejectionCheck());
+  await p.review(rejection(second));
+  assert.equal(calls.length, 0);
+  await p.load();
+  assert.equal(p.data.approvedRefundRejectId, '');
+  p.approvedRefundRejectConsent(rejectionCheck());
+  p.onHide();
+  assert.equal(p.data.approvedRefundRejectId, '');
+  p._visible = true;
+  await p.load();
+  p.approvedRefundRejectConsent(rejectionCheck());
+  p.onSessionReset();
+  assert.equal(p.data.approvedRefundRejectId, '');
+  assert.equal(p.actor, '');
+});
+test('unknown refunds cannot be withdrawn and ordinary pending reviews still reject without special consent', async () => {
+  const unknown = refundPage(
+    refundOrder({
+      refunds: [
+        { id: attempt, status: 'UNKNOWN', amountFen: 10000, canRejectApprovedRefund: true },
+      ],
+    }),
+  );
+  unknown.p.setData({ approvedRefundRejectId: attempt });
+  await unknown.p.review(rejection());
+  assert.equal(unknown.calls.length, 0);
+  const pending = refundPage(
+    refundOrder({
+      refunds: [
+        { id: attempt, status: 'PENDING_REVIEW', amountFen: 10000, canRejectApprovedRefund: false },
+      ],
+    }),
+  );
+  await pending.p.review(rejection());
+  assert.equal(pending.calls.length, 1);
+  assert.equal(pending.calls[0].body.decision, 'REJECT');
+});
+test('an account change while generating the operation ID invalidates approved-withdrawal consent', async () => {
+  let finish;
+  const { p, calls } = refundPage(refundOrder(), {
+    uuid: () =>
+      new Promise((r) => {
+        finish = r;
+      }),
+  });
+  p.approvedRefundRejectConsent(rejectionCheck());
+  const work = p.review(rejection());
+  p.onSessionReset();
+  p.actor = other;
+  finish(command);
+  await work;
+  assert.equal(calls.length, 0);
+  assert.equal(p.data.approvedRefundRejectId, '');
+});
+
+test('balance-conflict handlers block every new financial execution while original queries remain available', async () => {
+  for (const [handler, event] of [
+    ['refund'],
+    ['deduction'],
+    ['settlement'],
+    [
+      'dispatch',
+      { currentTarget: { dataset: { type: 'refunds', id: attempt, action: 'dispatch' } } },
+    ],
+    [
+      'dispatch',
+      { currentTarget: { dataset: { type: 'settlements', id: attempt, action: 'dispatch' } } },
+    ],
+    [
+      'dispatch',
+      { currentTarget: { dataset: { type: 'settlements', id: attempt, action: 'return' } } },
+    ],
+    [
+      'review',
+      { currentTarget: { dataset: { type: 'REFUND', id: attempt, decision: 'APPROVE' } } },
+    ],
+    [
+      'review',
+      { currentTarget: { dataset: { type: 'SETTLEMENT', id: attempt, decision: 'REJECT' } } },
+    ],
+    [
+      'review',
+      { currentTarget: { dataset: { type: 'DEDUCTION', id: attempt, decision: 'REVERSE' } } },
+    ],
+    ['pay', { currentTarget: { dataset: { channel: 'NATIVE' } } }],
+    ['retry'],
+  ]) {
+    const { p, calls } = refundPage(refundOrder({ balanceConflict: true, refundedFen: 10000 }));
+    p.setData({ amount: '100', evidence: '合成扣减证据', consent: true });
+    await p[handler](event);
+    assert.equal(calls.length, 0, handler + ' must not execute money work');
+  }
+  const queried = [];
+  const raw = refundOrder({ balanceConflict: true, refundedFen: 10000 });
+  const h = clientHarness();
+  const p = page('trade-order', {
+    id: h.client.id,
+    order: h.client.order,
+    pending: () => null,
+    read: async () => raw,
+    post: async (path) => {
+      queried.push(path);
+      return {};
+    },
+  });
+  p.onLoad({ id: order });
+  p._visible = true;
+  p.actor = actor;
+  p.setData({ order: h.client.order(raw) });
+  await p.query({ currentTarget: { dataset: { type: 'refunds', id: attempt } } });
+  assert.deepEqual(queried, ['/orders/' + order + '/refunds/' + attempt + '/query']);
 });

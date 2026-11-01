@@ -1,9 +1,16 @@
 # 任务看板
 
+## 2026-11-01 REMAINING6：六项功能实现（REVIEW / BRANCH_ONLY）
+
+[PR #35](https://github.com/xyq-dev/small-city-basketball/pull/35) 正在验证，尚未合入main。[代码与验收映射](audits/REMAINING6_ACCEPTANCE.md)、[任务](tasks/REMAINING6.md)、[接续](handoffs/REMAINING6.md)、[运行配置](operations/remaining-six-runtime.md)。已实现地图视野搜索、三类撮合及原预约转换、跨城派单与差旅档期、成人培训全链、商业广告合同与多方资金核对；保险准入/接口框架已补，真实供应商协议和凭证仍BLOCKED。
+
+分支现73条原生路由、48项Migration、221表（新增45表）；新增043—048仅在隔离CI执行，旧001—042冻结，生产未更新。2026-11-01 13:33 Asia/Shanghai：CI159验证remoteaaaf1366/treeacebcbdb，新域140项PG步骤、admin及完整HTTPS/归档恢复job通过；API后续仍在运行。原11条审查已resolve，新增培训暂停后无恢复入口的P2已用受控RESUME修复并整合local7f0d5c2。当前本地完整type/format/build、admin561/API1339/原生1076通过（1Windows跳过），新增3项PG待新候选；最终完整CI成功前不合并。
+
+UI001设计交付与本次功能实现分开记录，保留其并发main文档及画板；当前开发页面不等于200张视觉稿全部像素实现。下方设计卡的“待开发”保留为当时事实，最新代码进度以本节及专项验收为准。
+
 ## UI001：全国平台与同城服务UI（DONE / MAIN：设计及文档）
 
 [200张可编辑设计](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=48-7)、[交付/实施顺序](design/WECHAT_UI_V2.md)、[画板与68条路由索引](design/UI001_SCREEN_INDEX.md)、[任务](tasks/UI001.md)、[交接](handoffs/UI001.md)。原核心127＋新增73，涵盖五导航、四条核心流程与DOC006六模块；角色后台单列。设计检查完成，六项业务实现仍TODO，正式外部及真机未验。本次Codex仅集成UI文档，不接管功能开发。
-
 
 ## DOC006：六项补充设计（DONE / MAIN；实现仍为TODO）
 

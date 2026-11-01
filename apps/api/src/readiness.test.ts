@@ -1,3 +1,4 @@
+import { readRuntimeExpectations } from './readiness.js';
 import type { Pool } from 'pg';
 import { readFile, readdir } from 'node:fs/promises';
 import { loadManifest, assertMigrationManifestSurface } from '../../../ops/db/privileges.mjs';
@@ -207,13 +208,13 @@ describe('complete expansion migration and least-privilege surface', () => {
   }
   it('matches every checked-in table, function signature and granted update column across the full contiguous sequence', async () => {
     const v = await checkedIn();
-    expect(v.names).toHaveLength(42);
+    expect(v.names).toHaveLength(48);
     expect(assertMigrationManifestSurface(v.manifest, v.sources)).toEqual({
       tables: Object.keys(v.manifest.tables).length,
       functions: Object.keys(v.manifest.functions).length,
     });
     for (const source of v.sources.filter((s) => Number(s.name.slice(0, 3)) >= 36))
-      for (const m of source.sql.matchAll(/^CREATE TABLE ([a-z_]+)/gm))
+      for (const m of source.sql.matchAll(/^CREATE TABLE ([a-z_0-9]+)/gm))
         expect(v.manifest.tables[m[1]!]!.privileges).not.toContain('DELETE');
   });
   it('keeps expansion history append-only and trigger functions uncallable by the runtime, backup and PUBLIC roles', async () => {
@@ -278,10 +279,19 @@ describe('complete expansion migration and least-privilege surface', () => {
       assertMigrationManifestSurface(v.manifest, [
         ...v.sources,
         {
-          name: '043_bad.sql',
+          name: '049_bad.sql',
           sql: 'CREATE FUNCTION unreviewed(bigint) RETURNS void LANGUAGE SQL AS $$ SELECT 1 $$;',
         },
       ]),
     ).toThrow();
+  });
+});
+
+it('loads the exact runtime manifest including versioned digit-bearing table names before connecting', async () => {
+  const v = await readRuntimeExpectations();
+  expect(v.expected.size).toBe(48);
+  expect(v.manifest.tables.r6_trade_refund_bindings).toEqual({
+    privileges: ['SELECT', 'INSERT'],
+    updateColumns: [],
   });
 });

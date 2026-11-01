@@ -90,7 +90,12 @@ export async function expansionInventory() {
   const first = 36,
     last = 42;
   const files = (await readdir(directory))
-    .filter((name) => /^\d{3}_[a-z0-9_]+\.sql$/.test(name) && Number(name.slice(0, 3)) >= first)
+    .filter(
+      (name) =>
+        /^\d{3}_[a-z0-9_]+\.sql$/.test(name) &&
+        Number(name.slice(0, 3)) >= first &&
+        Number(name.slice(0, 3)) <= last,
+    )
     .sort();
   assert.deepEqual(
     files.map((name) => Number(name.slice(0, 3))),

@@ -11,6 +11,13 @@ export interface AccountClosureDependencies {
   trade: { assertSafe: Revoke };
   notifications: { revoke: Revoke };
   guardians: { revoke: Revoke };
+  /** Runtime-mandatory: absent dependency disables closure during staged composition upgrades. */
+  remainingSix?: {
+    orgScopes(c: PoolClient, userId: string): Promise<readonly string[]>;
+    lock: Revoke;
+    inspect: Inspect;
+    revoke: Revoke;
+  };
 }
 function busy(): never {
   const error = new Error('Closure resource busy') as Error & { code: string };
@@ -24,8 +31,8 @@ async function tryKey(c: PoolClient, key: string) {
   if (!r.rows[0]?.acquired) busy();
 }
 /** User UPDATE is already held. Never wait for another user's legacy event/calendar path. */
-async function lockCoreScopes(c: PoolClient, userId: string) {
-  const orgs = (
+async function lockCoreScopes(c: PoolClient, userId: string, additionalOrgs: readonly string[]) {
+  const coreOrgs = (
     await c.query(
       `SELECT org_id FROM organization_memberships WHERE user_id=$1
     UNION SELECT org_id FROM team_access_grants WHERE user_id=$1
@@ -48,6 +55,7 @@ async function lockCoreScopes(c: PoolClient, userId: string) {
       [userId],
     )
   ).rows.map((r) => r.org_id as string);
+  const orgs = [...new Set([...coreOrgs, ...additionalOrgs])].sort();
   await c.query(
     'SELECT id FROM organizations WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE NOWAIT',
     [orgs],
@@ -97,14 +105,21 @@ export function createAccountClosureHooks(
       dependencies.trade?.assertSafe,
       dependencies.notifications?.revoke,
       dependencies.guardians?.revoke,
+      dependencies.remainingSix?.orgScopes,
+      dependencies.remainingSix?.lock,
+      dependencies.remainingSix?.inspect,
+      dependencies.remainingSix?.revoke,
     ].some((fn) => typeof fn !== 'function')
   )
     return undefined;
   return {
     domains: ACCOUNT_CLOSURE_DOMAINS,
     async lockAndInspect(c, userId) {
-      await lockCoreScopes(c, userId);
+      const orgs = await dependencies.remainingSix!.orgScopes(c, userId);
+      await lockCoreScopes(c, userId, orgs);
+      await dependencies.remainingSix!.lock(c, userId);
       const blockers = [
+        ...(await dependencies.remainingSix!.inspect(c, userId)).map((b) => b.code),
         ...(await dependencies.streaming.inspect(c, userId)).map((b) => b.code),
         ...(await dependencies.insurance.inspect(c, userId)).map((b) => b.code),
       ];
@@ -117,6 +132,7 @@ export function createAccountClosureHooks(
       return closureBlockers([...new Set(blockers)]);
     },
     async revoke(c, userId) {
+      await dependencies.remainingSix!.revoke(c, userId);
       await dependencies.streaming.revoke(c, userId);
       await dependencies.insurance.revoke(c, userId);
       await dependencies.notifications.revoke(c, userId);

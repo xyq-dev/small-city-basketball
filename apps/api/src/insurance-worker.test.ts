@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { InsuranceService } from './insurance-service.js';
-import { sealInsurance } from './insurance-domain.js';
+import { insuranceFail, sealInsurance } from './insurance-domain.js';
 import type {
   InsuranceApplicant,
   InsurancePolicyFact,
@@ -74,6 +74,7 @@ function harness(
       lease_until: null as Date | null,
     },
     valid: true,
+    admitted: true,
     applyCalls: [] as string[],
     cancelCalls: [] as string[],
     queryCalls: [] as string[],
@@ -167,7 +168,9 @@ function harness(
         state.candidateScopes.push(values[0]);
         return {
           rows:
-            state.op.status === 'DONE'
+            state.op.status === 'DONE' ||
+            state.op.status === 'FAILED' ||
+            state.op.attempt_count >= 12
               ? []
               : [{ id: state.op.id, org_id: order.org_id, event_id: order.event_id }],
         };
@@ -227,6 +230,11 @@ function harness(
     },
   );
   // These worker tests isolate transport/fencing; the real qualification reader has its own domain and PG tests.
+  Object.defineProperty(service, 'assertAdmission', {
+    value: async () => {
+      if (!state.admitted) insuranceFail('INSURANCE_ADMISSION_REQUIRED', '合成准入关闭', 409);
+    },
+  });
   Object.defineProperty(service, 'lockScope', { value: async () => ({}) });
   let authorizations = 0;
   Object.defineProperty(service, 'workerAuthorization', {
@@ -239,6 +247,33 @@ function harness(
   return { state, service, fact, order };
 }
 describe('durable insurance worker uncertainty and fencing', () => {
+  it('revalidates new-application admission before any APPLY or query leaves the worker', async () => {
+    const h = harness();
+    h.state.admitted = false;
+    await h.service.drain();
+    expect(h.state.applyCalls).toEqual([]);
+    expect(h.state.queryCalls).toEqual([]);
+    expect(h.state.op.status).toBe('FAILED');
+    expect(h.order.policy_status).toBe('FAILED');
+  });
+  it('preserves UNKNOWN at the automatic-query budget and never resends APPLY', async () => {
+    const h = harness();
+    for (let i = 0; i < 15; i++) await h.service.drain();
+    expect(h.state.op.status).toBe('UNKNOWN');
+    expect(h.state.op.attempt_count).toBe(12);
+    expect(h.state.applyCalls).toEqual([h.order.operation_id]);
+    expect(h.state.queryCalls).toHaveLength(12);
+    expect(h.order.policy_status).toBe('PENDING');
+  });
+  it('keeps original policy maintenance enabled without new purchase admission', async () => {
+    const h = harness('QUERY');
+    expect(h.service.capabilities().enabled).toBe(false);
+    expect(h.service.capabilities().maintenanceEnabled).toBe(true);
+    h.state.fact = h.fact;
+    await h.service.drain();
+    expect(h.state.queryCalls).toEqual([h.order.operation_id]);
+    expect(h.state.op.status).toBe('DONE');
+  });
   it('an unknown apply queries the same original order on every retry without a second apply', async () => {
     const h = harness();
     await h.service.drain();

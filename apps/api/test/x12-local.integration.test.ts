@@ -73,10 +73,11 @@ describe(
     });
     async function supply(kind = 'COURT', hours = ++serial * 4) {
       const actualCourt = kind === 'COURT' ? await court(h.api, h.owner, 'X12实际球场') : null;
+      const title = `合成供给${serial}-${randomUUID()}`;
       const created = await service.createListing(h.owner.cookie, h.owner.orgId, {
         commandId: command(),
         kind,
-        title: `合成供给${serial}-${randomUUID().slice(0, 5)}`,
+        title,
         description: '真实审核流程的隔离合成数据',
         address: '公开经营地点，非住宅',
         region: region(),
@@ -116,6 +117,7 @@ describe(
       });
       return {
         id: created.resourceId as string,
+        title,
         slotId: slot.slotId as string,
         courtId: actualCourt?.id,
         start: at(hours),
@@ -158,10 +160,13 @@ describe(
     }
     test('public reads contain only approved listing fields and no qualifications or internal actor ids', async () => {
       const s = await supply();
+      // Other suites retain public inventory in this county; target this fixture
+      // through the real public filter instead of assuming it sorts into page one.
       const page = await service.publicList(
-        { regionId, catalogVersion: REGION_CATALOG_VERSION },
+        { regionId, catalogVersion: REGION_CATALOG_VERSION, q: s.title },
         'x12-public-fields',
       );
+      expect(page.items).toHaveLength(1);
       const item = page.items.find((v) => v.id === s.id)!;
       expect(item).toBeDefined();
       for (const key of [

@@ -76,6 +76,36 @@ function point(raw) {
     throw new Error('地点坐标无效');
   return { latitude: p.latitude, longitude: p.longitude, coordinateSystem: 'GCJ02' };
 }
+function viewport(raw) {
+  const v = object(raw, ['southwest', 'northeast', 'coordinateSystem']);
+  const sw = object(v.southwest, ['latitude', 'longitude']);
+  const ne = object(v.northeast, ['latitude', 'longitude']);
+  point({ ...sw, coordinateSystem: v.coordinateSystem });
+  point({ ...ne, coordinateSystem: v.coordinateSystem });
+  if (sw.latitude >= ne.latitude || sw.longitude >= ne.longitude)
+    throw new Error('地图视野无效，请停止拖动后重试。');
+  return {
+    southwest: { latitude: sw.latitude, longitude: sw.longitude },
+    northeast: { latitude: ne.latitude, longitude: ne.longitude },
+    coordinateSystem: 'GCJ02',
+  };
+}
+function searchArea(raw) {
+  const a = object(raw, ['mode', 'bounds', 'center', 'scopeLabel']);
+  if (a.mode !== 'VIEWPORT' || !['SELECTED_REGION', 'MAP_AREA'].includes(a.scopeLabel))
+    throw new Error('地图搜索范围无效');
+  const bounds = viewport(a.bounds),
+    center = point(a.center);
+  if (
+    !center ||
+    Math.abs(center.latitude - (bounds.southwest.latitude + bounds.northeast.latitude) / 2) >
+      1e-9 ||
+    Math.abs(center.longitude - (bounds.southwest.longitude + bounds.northeast.longitude) / 2) >
+      1e-9
+  )
+    throw new Error('地图搜索中心无效');
+  return { mode: a.mode, bounds, center, scopeLabel: a.scopeLabel };
+}
 function version(value) {
   if (!Number.isSafeInteger(value) || value < 1) throw new Error('资料版本无效');
   return value;
@@ -370,21 +400,45 @@ function repository(client = api.getClient()) {
     async search(query) {
       const r = object(
         (await client.request('/v1/public/local-search', 'POST', query, true)).data,
-        ['items', 'nextCursor', 'locationCapability', 'queryOrigin', 'truncated'],
+        ['items', 'nextCursor', 'locationCapability', 'queryOrigin', 'truncated', 'searchArea'],
       );
       if (
         !Array.isArray(r.items) ||
         r.items.length > 50 ||
         r.truncated !== false ||
-        !['REGION', 'EXPLICIT_POINT'].includes(r.queryOrigin) ||
+        !['REGION', 'EXPLICIT_POINT', 'VIEWPORT'].includes(r.queryOrigin) ||
+        !!query.viewport !== (r.queryOrigin === 'VIEWPORT') ||
+        (r.queryOrigin !== 'VIEWPORT' && r.searchArea !== undefined) ||
         (r.nextCursor !== null &&
           (typeof r.nextCursor !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(r.nextCursor)))
       )
         throw new Error('同城列表资料无效');
+      const area = r.queryOrigin === 'VIEWPORT' ? searchArea(r.searchArea) : null;
+      if (area) {
+        const requested = viewport(query.viewport);
+        const expected = {
+          southwest: {
+            latitude: Math.floor(requested.southwest.latitude * 1e6) / 1e6,
+            longitude: Math.floor(requested.southwest.longitude * 1e6) / 1e6,
+          },
+          northeast: {
+            latitude: Math.ceil(requested.northeast.latitude * 1e6) / 1e6,
+            longitude: Math.ceil(requested.northeast.longitude * 1e6) / 1e6,
+          },
+          coordinateSystem: 'GCJ02',
+        };
+        if (
+          JSON.stringify(area.bounds) !== JSON.stringify(expected) ||
+          area.scopeLabel !== (query.regionId ? 'SELECTED_REGION' : 'MAP_AREA')
+        )
+          throw new Error('地图搜索返回的范围与本次请求不一致，请重新搜索。');
+      }
       return {
         items: r.items.map((v) => listing(v)),
         nextCursor: r.nextCursor,
         locationEnabled: r.locationCapability && r.locationCapability.enabled === true,
+        viewportEnabled: r.locationCapability && r.locationCapability.viewportSearch === true,
+        searchArea: area,
       };
     },
     async detail(value) {
@@ -742,6 +796,7 @@ module.exports = {
   region,
   selectedRegion,
   point,
+  viewport,
   listing,
   slot,
   booking,

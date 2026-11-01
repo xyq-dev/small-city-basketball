@@ -26,8 +26,19 @@ import { createYouthLiveConsentGuard } from './youth-guardians-publication.js';
 import { AccountClosureService } from './account-closure-service.js';
 import type { AccountClosureOptions } from './account-closure-service.js';
 import { createAccountClosureHooks } from './account-closure-hooks.js';
+import { remainingSixTradeSources } from './remaining-six-trade.js';
+import type { TrainingOptions } from './training-source-hooks.js';
+import type { SponsorCommerceOptions } from './sponsor-commerce-service.js';
+import {
+  readRemainingSixClosureOrgs,
+  lockRemainingSixClosure,
+  readRemainingSixClosureBlockers,
+  revokeRemainingSixPrivacy,
+} from './remaining-six-privacy.js';
 
 export interface ExpansionOptions {
+  training?: TrainingOptions;
+  sponsorCommerce?: SponsorCommerceOptions;
   trade?: TradeRuntime;
   notifications?: NotificationOptions;
   streaming?: StreamingOptions;
@@ -66,15 +77,23 @@ export async function createExpansionServices(
     onlineInsuranceGuard: insurance.readEligibility.bind(insurance),
   };
   const tradeRuntime = input.trade ?? {};
-  const trade = new TradeService(pool, options, {
-    ...tradeRuntime,
-    resolvePayer:
-      tradeRuntime.resolvePayer ??
-      createTradePayerResolver(pool, wechat.configuration, wechat.exchange, {
-        ...tradeRuntime.merchants,
-        ...tradeRuntime.historicalMerchants,
-      }),
-  });
+  const trade = new TradeService(
+    pool,
+    options,
+    {
+      ...tradeRuntime,
+      resolvePayer:
+        tradeRuntime.resolvePayer ??
+        createTradePayerResolver(pool, wechat.configuration, wechat.exchange, {
+          ...tradeRuntime.merchants,
+          ...tradeRuntime.historicalMerchants,
+        }),
+    },
+    remainingSixTradeSources({
+      trainingEnabled: input.training?.enabled === true,
+      sponsorEnabled: input.sponsorCommerce?.enabled === true,
+    }),
+  );
   const notifications = new NotificationService(pool, options, {
     ...input.notifications,
     ...workerOptions,
@@ -93,6 +112,12 @@ export async function createExpansionServices(
     ...input.accountClosure,
     ...workerOptions,
     hooks: createAccountClosureHooks({
+      remainingSix: {
+        orgScopes: readRemainingSixClosureOrgs,
+        lock: lockRemainingSixClosure,
+        inspect: readRemainingSixClosureBlockers,
+        revoke: revokeRemainingSixPrivacy,
+      },
       streaming: { inspect: readStreamingClosureBlockers, revoke: revokeStreamingPrivacy },
       insurance: {
         inspect: insurance.closureBlockers.bind(insurance),

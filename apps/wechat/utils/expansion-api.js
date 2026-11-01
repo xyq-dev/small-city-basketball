@@ -1,5 +1,12 @@
+const { trainingPathAllowed } = require('./training-paths');
+const { sponsorCommercePathAllowed } = require('./sponsor-commerce');
 // Exact native client paths for the eight commercial expansion features.
 function expansionPathAllowed(base, method, query, uuidPattern) {
+  if (
+    trainingPathAllowed(base, method, query, uuidPattern) ||
+    sponsorCommercePathAllowed(base, method, query, uuidPattern)
+  )
+    return true;
   const noQuery = Object.keys(query).length === 0;
   const keys = (...names) => Object.keys(query).every((key) => names.includes(key));
   const match = (path) => new RegExp('^' + path + '$', 'i').test(base);
@@ -7,6 +14,30 @@ function expansionPathAllowed(base, method, query, uuidPattern) {
   const org = '/v1/orgs/' + uuidPattern;
   const event = org + '/events/' + uuidPattern;
   const order = '/v1/trades/orders/' + uuidPattern;
+  if (base.startsWith('/v1/matching')) {
+    if (!noQuery) return false;
+    if (method === 'GET')
+      return base === '/v1/matching' || match('/v1/matching/(receipts|needs)/' + uuidPattern);
+    return (
+      method === 'POST' &&
+      (['/v1/matching/preferences', '/v1/matching/needs'].includes(base) ||
+        match('/v1/matching/needs/' + uuidPattern + '/(runs|intents|commands)') ||
+        match('/v1/matching/intents/' + uuidPattern + '/commands'))
+    );
+  }
+  if (base.startsWith('/v1/dispatch')) {
+    if (!noQuery) return false;
+    if (method === 'GET')
+      return (
+        ['/v1/dispatch', '/v1/dispatch/capabilities'].includes(base) ||
+        match('/v1/dispatch/(requests|offers|receipts)/' + uuidPattern)
+      );
+    return (
+      method === 'POST' &&
+      (['/v1/dispatch/preferences', '/v1/dispatch/requests'].includes(base) ||
+        match('/v1/dispatch/(requests|offers)/' + uuidPattern + '/commands'))
+    );
+  }
   if (['/v1/account-closure/capabilities', '/v1/account-closure/me'].includes(base))
     return method === 'GET' && noQuery;
   if (['/v1/account-closure/requests', '/v1/account-closure/cancel'].includes(base))
@@ -71,7 +102,14 @@ function expansionPathAllowed(base, method, query, uuidPattern) {
     return (
       method === 'GET' &&
       keys('kind', 'sourceId') &&
-      ['ENTRY_FEE', 'ENTRY_DEPOSIT', 'LOCAL_BOOKING', 'PLAYER_APPEARANCE'].includes(query.kind) &&
+      [
+        'ENTRY_FEE',
+        'ENTRY_DEPOSIT',
+        'LOCAL_BOOKING',
+        'PLAYER_APPEARANCE',
+        'TRAINING_ENROLLMENT',
+        'SPONSOR_ORDER',
+      ].includes(query.kind) &&
       uuid(query.sourceId)
     );
   if (base === '/v1/trades/orders')

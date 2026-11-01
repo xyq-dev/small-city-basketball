@@ -5,6 +5,8 @@ import {
   localCommandId,
   localInterval,
   localPoint,
+  localViewport,
+  localViewportCursor,
   parseLocalBooking,
   parseLocalBookingCommand,
   parseLocalListing,
@@ -116,5 +118,84 @@ describe('X12 local supply invariants', () => {
     expect(() => parseLocalQuery({ q: '裁判', cursor })).toThrow();
     expect(() => parseLocalQuery({ q: '球场', point, cursor })).toThrow();
     expect(() => localInterval('2030-02-30T10:00:00Z', '2030-02-30T11:00:00Z')).toThrow();
+  });
+});
+
+describe('R6MAP viewport query and tamper-resistant continuation', () => {
+  const viewport = {
+    southwest: { latitude: 30.2000004, longitude: 120.1000004 },
+    northeast: { latitude: 30.2999996, longitude: 120.1999996 },
+    coordinateSystem: 'GCJ02' as const,
+  };
+  const key = Buffer.alloc(32, 41);
+  const request = { viewport, searchVersion: 2 };
+  test('normalizes edges outward and derives the center without requiring GPS', () => {
+    const q = parseLocalQuery(request, key);
+    expect(q.viewport).toEqual({
+      southwest: { latitude: 30.2, longitude: 120.1 },
+      northeast: { latitude: 30.3, longitude: 120.2 },
+      coordinateSystem: 'GCJ02',
+    });
+    expect(q.origin!.latitude).toBeCloseTo(30.25);
+    expect(q.origin!.longitude).toBeCloseTo(120.15);
+    expect(q.point).toBeNull();
+    expect(q.region).toBeNull();
+  });
+  test('rejects incompatible scopes, malformed coordinates and rectangles exceeding the cap', () => {
+    for (const bad of [
+      { viewport },
+      { ...request, point },
+      { ...request, radiusMeters: 1000 },
+      { ...request, viewport: { ...viewport, northeast: viewport.southwest } },
+      { ...request, viewport: { ...viewport, coordinateSystem: 'WGS84' } },
+      { ...request, viewport: { ...viewport, southwest: { latitude: NaN, longitude: 120.1 } } },
+      {
+        ...request,
+        viewport: {
+          ...viewport,
+          southwest: { latitude: 30.2, longitude: 170 },
+          northeast: { latitude: 30.3, longitude: -170 },
+        },
+      },
+    ])
+      expect(() => parseLocalQuery(bad, key)).toThrow();
+    expect(() =>
+      localViewport({ ...viewport, northeast: { latitude: 32, longitude: 122 } }),
+    ).toThrowError(expect.objectContaining({ code: 'VIEWPORT_TOO_LARGE' }));
+  });
+  test('signs continuation and binds all filter inputs without exposing coordinates in cursor', () => {
+    const q = parseLocalQuery(request, key);
+    const cursor = localViewportCursor({ scope: q.scope, id, distance: 125 }, key);
+    expect(parseLocalQuery({ ...request, cursor }, key).cursor).toEqual({ id, distance: 125 });
+    const decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+    expect(Object.keys(decoded).sort()).toEqual(['distance', 'id', 'scope', 'signature', 'v']);
+    for (const patch of [
+      { q: '球场' },
+      { kind: 'COURT' },
+      { regionId: id, catalogVersion: region.catalogVersion },
+      { viewport: { ...viewport, northeast: { latitude: 30.31, longitude: 120.2 } } },
+    ]) {
+      expect(() => parseLocalQuery({ ...request, ...patch, cursor }, key)).toThrowError(
+        expect.objectContaining({ code: 'CURSOR_SCOPE_MISMATCH' }),
+      );
+    }
+    const forged = Buffer.from(JSON.stringify({ ...decoded, distance: 0 })).toString('base64url');
+    expect(() => parseLocalQuery({ ...request, cursor: forged }, key)).toThrow();
+    expect(() => parseLocalQuery({ ...request, cursor }, Buffer.alloc(32, 42))).toThrow();
+  });
+  test('does not accept legacy continuation in viewport mode or viewport continuation in legacy mode', () => {
+    const q = parseLocalQuery({ point });
+    const old = Buffer.from(JSON.stringify({ v: 1, scope: q.scope, id, distance: 125 })).toString(
+      'base64url',
+    );
+    expect(parseLocalQuery({ point, cursor: old }).cursor).toEqual({ id, distance: 125 });
+    expect(() => parseLocalQuery({ ...request, cursor: old }, key)).toThrow();
+    const area = parseLocalQuery(request, key);
+    expect(() =>
+      parseLocalQuery({
+        point,
+        cursor: localViewportCursor({ scope: area.scope, id, distance: 125 }, key),
+      }),
+    ).toThrow();
   });
 });

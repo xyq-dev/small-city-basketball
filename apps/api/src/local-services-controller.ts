@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Header,
   Inject,
   Param,
   Post,
@@ -24,7 +25,10 @@ export class PublicLocalServicesController {
     const query = objectInput(raw, ['regionId', 'catalogVersion', 'kind', 'q', 'limit', 'cursor']);
     return envelope(r, await this.service.publicList(query, ip(r)));
   }
-  @Post('local-search') @HttpCode(200) async nearby(@Req() r: ApiRequest, @Body() raw: unknown) {
+  @Post('local-search') @HttpCode(200) @Header('Cache-Control', 'no-store') async nearby(
+    @Req() r: ApiRequest,
+    @Body() raw: unknown,
+  ) {
     // Precise query coordinates stay out of URLs, shared caches and permanent records.
     return envelope(r, await this.service.publicList(raw, ip(r)));
   }

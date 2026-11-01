@@ -27,6 +27,8 @@
         <block wx:for="{{managedOrgs}}" wx:key="id">
 <view class="menu-row" data-page="trade-manage" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>收款条款与资金管理</view><view class="menu-sub">{{item.name}} · 报名费、保证金与订单</view></view></view>
 <view class="menu-row" data-page="public-ledgers" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>授权经费记账与公示</view><view class="menu-sub">{{item.name}} · 独立审核、追加更正</view></view></view>
+<view class="menu-row" data-page="training-manage" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>培训课程与招生管理</view><view class="menu-sub">{{item.name}} · 排课、报名与课时</view></view></view>
+<view class="menu-row" data-page="sponsor-commerce" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>广告合同与分账</view><view class="menu-sub">{{item.name}} · 商业合同、多方结算与退款追回</view></view></view>
 <view class="menu-row" data-page="sponsorships" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>广告与赞助投放</view><view class="menu-sub">{{item.name}} · 地区、赛事与时段</view></view></view>
 <view class="menu-row" data-page="staff-configuration" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>成员与工作人员权限</view><view class="menu-sub">{{item.name}}</view></view></view>
 <view class="menu-row" data-page="local-manage" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>球场与同城服务管理</view><view class="menu-sub">{{item.name}} · 供给、档期与审核</view></view></view>
@@ -41,7 +43,10 @@
         <view class="menu-row" data-page="season-grants" bindtap="go"><scb-icon name="chart" size="20"/><view class="menu-text"><view>私有赛季授权与本人数据</view><view class="menu-sub">本人同意后计入，可查看或撤销授权</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
       <view class="menu-group">
-        <view class="menu-title">扩展服务 · 球员预约</view>
+        <view class="menu-title">撮合、派单与培训</view>
+<view class="menu-row" data-page="matching" bindtap="go"><view class="menu-text"><view>全国撮合与合作意向</view><view class="menu-sub">按明确需求筛选，双方确认后转预约</view></view></view>
+<view class="menu-row" data-page="dispatch" bindtap="go"><view class="menu-text"><view>跨城工作人员派单</view><view class="menu-sub">接单、差旅报价与异常补位</view></view></view>
+<view class="menu-row" data-page="training" bindtap="go"><view class="menu-text"><view>培训报名与我的课程</view><view class="menu-sub">报名、签到、补课与退款进度</view></view></view>
         <view class="menu-row" data-page="bookings" bindtap="go"><scb-icon name="calendar" size="20"/><view class="menu-text"><view>我发出的球员预约</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view class="menu-row" data-page="player-center" bindtap="go"><scb-icon name="user" size="20"/><view class="menu-text"><view>本人球员中心与收到的预约</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view class="menu-row" data-page="performance" bindtap="go"><scb-icon name="chart" size="20"/><view class="menu-text"><view>我的比赛数据授权</view><view class="menu-sub">本人同意与主办方数据提名</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
@@ -54,6 +59,7 @@
 <view class="menu-row" data-page="notification-settings" bindtap="go"><view class="menu-text"><view>微信订阅提醒</view><view class="menu-sub">逐次选择、核对记录与撤销许可</view></view></view>
 <view class="menu-row" data-page="insurance" bindtap="go"><view class="menu-text"><view>本人保险订单</view><view class="menu-sub">投保进度、查单与退保</view></view></view>
 <view class="menu-row" data-page="guardian" bindtap="go"><view class="menu-text"><view>青少年与监护确认</view><view class="menu-sub">本人相关邀请与当前名单确认</view></view></view>
+<view class="menu-row" data-page="sponsor-commerce" bindtap="go"><view class="menu-text"><view>我的广告合同</view><view class="menu-sub">本人合同签署、付款与退款进度</view></view></view>
 <view class="menu-row" data-page="trade-order" bindtap="go"><view class="menu-text"><view>我的收付款订单</view><view class="menu-sub">报名费、保证金、服务与退款进度</view></view></view>
 <view class="menu-row" data-page="local-bookings" bindtap="go"><view class="menu-text"><view>我的球场与服务订单</view></view></view>
 <view class="menu-row" data-page="local-matchups" bindtap="go"><view class="menu-text"><view>球队约赛</view></view></view>

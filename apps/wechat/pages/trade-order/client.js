@@ -1,6 +1,22 @@
 const api = require('../../utils/api');
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const ROOT = '/v1/trades';
+const SOURCE_LABELS = {
+  ENTRY_FEE: '赛事报名费',
+  ENTRY_DEPOSIT: '报名保证金',
+  LOCAL_BOOKING: '同城服务预约',
+  PLAYER_APPEARANCE: '成人球员预约',
+  TRAINING_ENROLLMENT: '培训报名订单',
+  SPONSOR_ORDER: '广告合同订单',
+};
+function sourceKind(value) {
+  if (!Object.prototype.hasOwnProperty.call(SOURCE_LABELS, value)) throw Error('资金来源类型无效');
+  return value;
+}
+function kindLabel(value) {
+  return SOURCE_LABELS[sourceKind(value)];
+}
+
 function id(v) {
   if (typeof v !== 'string' || !UUID.test(v)) throw Error('资金记录编号无效');
   return v;
@@ -64,6 +80,7 @@ async function recover(actor) {
   return result.result;
 }
 function order(v) {
+  sourceKind(v && v.kind);
   id(v && v.id);
   if (
     !Number.isInteger(v.version) ||
@@ -84,9 +101,19 @@ function order(v) {
     'deductionReservedFen',
   ])
     money(v[k]);
+  const balanceConflict = v.balanceConflict === true;
   return {
     ...v,
+    balanceConflict,
+    capabilities: {
+      ...v.capabilities,
+      ...(balanceConflict
+        ? { canPay: false, canRequestRefund: false, settlementAvailable: false }
+        : {}),
+    },
+    kindText: kindLabel(v.kind),
     canStartPayment:
+      !balanceConflict &&
       v.capabilities.canPay &&
       !v.attempts.some((x) => ['DISPATCHING', 'UNKNOWN', 'NOTPAY'].includes(x.status)),
     totalText: money(v.totalFen),
@@ -96,7 +123,15 @@ function order(v) {
     settledText: money(v.settledFen),
     refundReservedText: money(v.refundReservedFen),
     deductionReservedText: money(v.deductionReservedFen),
-    refunds: v.refunds.map((x) => ({ ...x, amountText: money(x.amountFen) })),
+    refunds: v.refunds.map((x) => ({
+      ...x,
+      amountText: money(x.amountFen),
+      canRejectApprovedRefund:
+        x.canRejectApprovedRefund === true &&
+        x.status === 'APPROVED' &&
+        v.kind === 'SPONSOR_ORDER' &&
+        v.capabilities.canManage === true,
+    })),
     deductions: v.deductions.map((x) => ({ ...x, amountText: money(x.amountFen) })),
     settlements: v.settlements.map((x) => ({
       ...x,
@@ -105,4 +140,17 @@ function order(v) {
     })),
   };
 }
-module.exports = { id, money, read, post, pending, execute, retry, recover, clear, order };
+module.exports = {
+  sourceKind,
+  kindLabel,
+  id,
+  money,
+  read,
+  post,
+  pending,
+  execute,
+  retry,
+  recover,
+  clear,
+  order,
+};
