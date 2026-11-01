@@ -184,6 +184,23 @@ async function measureLayout(frame: Frame) {
         clientWidth: element.clientWidth,
         scrollWidth: element.scrollWidth,
       }));
+    const localHeadingElement = document.querySelector('.local-heading');
+    const localCopy = localHeadingElement?.firstElementChild;
+    const localTitle = localCopy?.querySelector('.title');
+    let localHeading: { copyWidth: number; titleWidth: number; titleLines: number } | null = null;
+    if (localCopy && localTitle) {
+      const range = document.createRange();
+      range.selectNodeContents(localTitle);
+      localHeading = {
+        copyWidth: localCopy.getBoundingClientRect().width,
+        titleWidth: localTitle.getBoundingClientRect().width,
+        titleLines: new Set(
+          Array.from(range.getClientRects()).map((rect) => Math.round(rect.top * 100) / 100),
+        ).size,
+      };
+    } else if (localHeadingElement) {
+      localHeading = { copyWidth: 0, titleWidth: 0, titleLines: 0 };
+    }
     return {
       innerWidth: window.innerWidth,
       viewport,
@@ -192,6 +209,7 @@ async function measureLayout(frame: Frame) {
       contentHeight: document.documentElement.scrollHeight,
       customHeaderCount: document.querySelectorAll('.scb-header').length,
       nativeHeaderCount: document.querySelectorAll('.mini-native-bar').length,
+      localHeading,
       buttonCount: buttons.length,
       fieldCount: fields.length,
       overflow,
@@ -523,6 +541,22 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
           path: diagnosticPath,
           contentType: 'application/json',
         });
+
+        if (layout.localHeading) {
+          expect(
+            layout.localHeading.copyWidth,
+            'local heading copy must keep a readable column',
+          ).toBeGreaterThanOrEqual(180);
+          expect(
+            layout.localHeading.titleWidth,
+            'local title must not collapse beside the city',
+          ).toBeGreaterThanOrEqual(180);
+          expect(layout.localHeading.titleLines).toBeGreaterThan(0);
+          expect(
+            layout.localHeading.titleLines,
+            'local title must not become a vertical column',
+          ).toBeLessThanOrEqual(2);
+        }
 
         // Measure the iframe's document, never just the outer preview wrapper.
         expect(layout.innerWidth).toBe(width);

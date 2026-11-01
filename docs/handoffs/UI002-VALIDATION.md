@@ -13,3 +13,7 @@
 续片本地验证：`node --test` ui002-root/c11-shared-ui/c10-core-state-consistency合计11/11通过；两份正常首页在320/390/430的6次模板展开均出现active全国、切换城市及合成赛事，所有资源非空。`npx tsc --project tsconfig.tests.json --noEmit`、三份变更测试/fixture的Prettier及git diff --check通过；Playwright `--list`成功注册2628用例（含按配置跳过的mobile原生项目），仅为注册检查，不冒称运行。当前源基线仍未含services后继样式/JSON修复，因此浏览器执行必须交整合后的精确CI。
 
 2026-11-01T07:30:34Z 独立review纠正续片遗漏：通用非home action12px在booking两组16px前执行，形成互斥。仅让这两个设计迁移group跳过旧12px，其他三组及通用height≥48不变，未弱化溢出/触控/字体/照片守卫。后继小提交基于738431b，需与上片一起集成；后继完整CI才是浏览器验收证据。
+
+2026-11-01T07:46:05Z：CI168原始证据已全保存在scratch ui002-ci168-evidence（admin-job.log、manifest、all-cases/all-screens与2279PNG）；其1328浏览器成功、1314布局/73路由/0自动issues不代表视觉无缺陷。人工确见同城320/390长城市将标题/副标题压成单字竖排，已交root最小flex换行修复。本测试续片只记录localHeading copyWidth/titleWidth/titleLines，要求≥180/≥180/1至2行，断言前先写出布局JSON。禁止以旧候选的全绿替代修复后的精确CI169及同城原图复核。
+
+同城测试片本地：以root9d4e55a源模板展开全部365份fixture×3宽=1095次，资源非空且全部展开成功；tsc、Prettier、diff检查通过，Playwright2628项注册成功。该检查不计算真实浏览器几何，新标题尺寸/行数须由后继CI验证。

@@ -2,4 +2,5 @@
 
 .map-card{position:relative}.map-search{display:flex;justify-content:center;margin-bottom:16rpx}.map-search button{min-width:260rpx}.map-card .local-actions{flex-wrap:wrap}.map-card .local-actions button{margin-top:8rpx}.map-card .notice{margin-bottom:12rpx}
 
-.location-settings { border-top:1px solid #e1e7ef; padding-top:12px; } .local-actions { flex-wrap:wrap; } .local-actions button { flex:1 1 82px; } .local-heading > view { min-width:0; }
+.location-settings { border-top:1px solid #e1e7ef; padding-top:12px; } .local-actions { flex-wrap:wrap; } .local-actions button { flex:1 1 82px; }
+.local-heading { flex-wrap:wrap; margin-bottom:12px; } .local-heading > view { flex:1 1 180px; min-width:0; } .local-heading button { flex:0 1 auto; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
