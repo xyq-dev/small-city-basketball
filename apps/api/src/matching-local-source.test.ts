@@ -35,13 +35,40 @@ const input = (): MatchingConversionInput => ({
   },
   sourceInput: { acceptedTerms: true, acceptedTermsId: 'terms', chargeConsent: true },
 });
-function harness(query?: (sql: string) => unknown[]) {
+function harness(query?: (sql: string) => unknown[] | undefined) {
   let body: any,
     writes = 0;
   const raw = input();
+  const actor: Actor = {
+    sessionId: '20000000-0000-4000-8000-000000000001',
+    user: {
+      id: '30000000-0000-4000-8000-000000000001',
+      email: 'matching-unit@example.test',
+      display_name: '合成请求人',
+      password_hash: 'synthetic-unused',
+      status: 'ACTIVE',
+    },
+  };
+  const queries: { sql: string; parameters: unknown[] }[] = [];
+  const defaults = (sql: string) => {
+    if (sql.includes('FROM local_command_receipts')) return [];
+    if (sql.includes('FROM trade_terms')) return [{ id: 'terms', amount_fen: 1000 }];
+    if (sql.includes('FROM trade_orders'))
+      return [
+        {
+          org_id: 'provider-org',
+          payer_user_id: actor.user.id,
+          beneficiary_user_id: 'provider',
+          total_fen: 1000,
+          terms_id: 'terms',
+        },
+      ];
+    return [];
+  };
   const c = {
-    query: async (sql: string) => {
-      const rows = query ? query(sql) : [{ id: 'terms', amount_fen: 1000 }];
+    query: async (sql: string, parameters: unknown[] = []) => {
+      queries.push({ sql, parameters });
+      const rows = query?.(sql) ?? defaults(sql);
       return { rows, rowCount: rows.length };
     },
   } as unknown as PoolClient;
@@ -64,12 +91,30 @@ function harness(query?: (sql: string) => unknown[]) {
         },
       };
     },
+    prepareMatchupInTransaction: async (_c: unknown, _a: unknown, value: unknown) => {
+      body = value;
+      return {
+        booking: {
+          starts_at: raw.need.startsAt,
+          ends_at: raw.need.endsAt,
+          snapshot: {
+            address: raw.need.address,
+            region: { catalogVersion: raw.need.catalogVersion, regionId: raw.need.regionId },
+          },
+        },
+        execute: async () => {
+          writes++;
+          return { resourceId: 'real-matchup' };
+        },
+      };
+    },
     inspectMatchingSourceInTransaction: async () => ({ ended: true, completed: false }),
   } as unknown as LocalServicesService;
   return {
     hooks: createMatchingLocalSourceHooks(local),
     c,
-    actor: {} as Actor,
+    actor,
+    queries,
     listing,
     slot,
     body: () => body,
@@ -133,11 +178,42 @@ describe('R6 matching canonical local source boundary', () => {
       });
       expect(h.writes()).toBe(0);
     }
-    const h = harness(() => [{ id: 'terms', amount_fen: 2000 }]);
+    const h = harness((sql) =>
+      sql.includes('FROM trade_terms') ? [{ id: 'terms', amount_fen: 2000 }] : undefined,
+    );
     await expect(h.hooks.prepare(h.c, h.actor, input())).rejects.toMatchObject({
       code: 'MATCHING_PRICE_CHANGED',
     });
     expect(h.writes()).toBe(0);
+  });
+  test('a prior staff or team source receipt cannot be rebound to another matching conversion', async () => {
+    for (const kind of ['STAFF_SERVICE', 'TEAM_MATCHUP'] as const) {
+      const h = harness((sql) =>
+        sql.includes('FROM local_command_receipts') ? [{ exists: 1 }] : undefined,
+      );
+      const x = input();
+      x.kind = kind;
+      if (kind === 'TEAM_MATCHUP') {
+        x.candidate.totalFen = 0;
+        x.sourceInput = { courtBookingId: 'court-booking', terms: '双方约定的比赛条款' };
+      }
+      await expect(h.hooks.prepare(h.c, h.actor, x)).rejects.toMatchObject({
+        code: 'MATCHING_SOURCE_ALREADY_CREATED',
+      });
+      expect(h.writes()).toBe(0);
+      expect(
+        h.queries.find((q) => q.sql.includes('FROM local_command_receipts'))?.parameters,
+      ).toEqual([h.actor.user.id, x.commandId]);
+    }
+  });
+  test('execute refuses missing or mismatched canonical paid source bindings', async () => {
+    for (const binding of [[], [{ org_id: 'wrong-org', total_fen: 1000 }]]) {
+      const h = harness((sql) => (sql.includes('FROM trade_orders') ? binding : undefined));
+      const prepared = await h.hooks.prepare(h.c, h.actor, input());
+      await expect(prepared.execute()).rejects.toMatchObject({
+        code: binding.length ? 'MATCHING_TRADE_CHANGED' : 'MATCHING_TRADE_REQUIRED',
+      });
+    }
   });
   test('reopening refuses unknown payment or retained money without completed settlement', async () => {
     for (const scenario of ['UNKNOWN', 'PAID']) {

@@ -24,3 +24,5 @@ remainingSix: {
 退款终态补充：training_refund_allocations的旧FAILED/REJECTED不单独永久阻断；其恢复的MAKEUP_DUE权益与canonical trade/新退款结果仍决定是否可关闭。PG覆盖保留旧FAILED历史后，新的成功退款结清权益。
 
 广告回退补充：只有原return FAILED且其recovery case明确RECOVERED/WRITTEN_OFF、双人不同且证据有效，旧FAILED不再单独阻断；UNKNOWN/PROCESSING始终阻断。原provider状态不改写，root的canonical trade/module funds精算继续提供第二层（平台垫付不能因人工核销直接放行）。
+
+CI150夹具修复：六例初始化均因password_hash长度约束失败，现统一在beforeAll使用正式hashPassword为仅回滚的合成用户生成随机密码哈希；不弱化生产约束。同时逐项核对根f7dcb03的044–048 schema，修复dispatch持有报价必须含与quote_hash一致的hash字段。API typecheck及diff check通过；真实PG仍待root/CI重跑，未将静态核对称为PG成功。

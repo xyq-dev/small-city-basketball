@@ -138,7 +138,7 @@ export function createMatchingLocalSourceHooks(local: LocalServicesService): Mat
         ])
       ).rows[0];
       const authority = await c.query(
-        `SELECT 1 FROM users u WHERE u.id=$1 AND u.status='ACTIVE' AND (EXISTS(SELECT 1 FROM team_access_grants g WHERE g.user_id=u.id AND g.org_id=$2 AND g.team_id=$3 AND g.status='ACTIVE') OR EXISTS(SELECT 1 FROM organization_memberships m WHERE m.user_id=u.id AND m.org_id=$2 AND m.status='ACTIVE' AND m.role IN('ORG_OWNER','ORG_ADMIN'))) FOR SHARE OF u`,
+        `SELECT 1 FROM users u WHERE u.id=$1 AND u.status='ACTIVE' AND (EXISTS(SELECT 1 FROM team_access_grants g WHERE g.user_id=u.id AND g.org_id=$2 AND g.team_id=$3 AND g.status='ACTIVE')) FOR SHARE OF u`,
         [candidate.userId, candidate.sourceOrgId, candidate.sourceId],
       );
       if (!team || team.version !== candidate.sourceVersion || !authority.rowCount)

@@ -4,6 +4,7 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { migrate } from '../src/database/migrate.js';
 import { createAccountClosureHooks } from '../src/account-closure-hooks.js';
+import { hashPassword } from '../src/security.js';
 import {
   readRemainingSixClosureOrgs,
   lockRemainingSixClosure,
@@ -19,6 +20,7 @@ let c: PoolClient,
   org: string,
   region: { catalog_version: string; region_id: string };
 const id = () => randomUUID();
+let syntheticPasswordHash: string;
 const hooks = createAccountClosureHooks({
   streaming: { inspect: async () => [], revoke: async () => {} },
   insurance: { inspect: async () => [], revoke: async () => {} },
@@ -32,7 +34,11 @@ const hooks = createAccountClosureHooks({
     revoke: revokeRemainingSixPrivacy,
   },
 })!;
-beforeAll(() => migrate(pool), 120000);
+beforeAll(async () => {
+  await migrate(pool);
+  // Generated solely for these rollback-only synthetic users; no real credential.
+  syntheticPasswordHash = await hashPassword(`r6-closure-synthetic-${randomUUID()}`);
+}, 120000);
 afterAll(() => pool.end());
 beforeEach(async () => {
   c = await pool.connect();
@@ -40,8 +46,8 @@ beforeEach(async () => {
   [user, owner, reviewer, org] = [id(), id(), id(), id()];
   for (const uid of [user, owner, reviewer])
     await c.query(
-      "INSERT INTO users(id,email,display_name,password_hash) VALUES($1,$2,'合成注销主体','synthetic-not-a-login-hash')",
-      [uid, `r6closure-${uid}@example.test`],
+      "INSERT INTO users(id,email,display_name,password_hash) VALUES($1,$2,'合成注销主体',$3)",
+      [uid, `r6closure-${uid}@example.test`, syntheticPasswordHash],
     );
   await c.query("INSERT INTO organizations(id,name) VALUES($1,'合成R6注销机构')", [org]);
   await c.query('INSERT INTO org_schedule_mutex(org_id) VALUES($1)', [org]);
@@ -291,7 +297,7 @@ describe('R6 mandatory closure scopes, obligations and privacy on PostgreSQL', (
       ownOffer,
     ]);
     await c.query(
-      "INSERT INTO dispatch_offers(id,request_id,batch_id,provider_user_id,listing_id,listing_version,status,expires_at,quote,quote_hash,travel_verified_by,travel_verified_at,hold_expires_at) VALUES($1,$2,$3,$4,$5,1,'ACCEPTED_HELD',clock_timestamp()+interval '1 hour','{}',$6,$7,clock_timestamp(),clock_timestamp()+interval '10 minutes')",
+      "INSERT INTO dispatch_offers(id,request_id,batch_id,provider_user_id,listing_id,listing_version,status,expires_at,quote,quote_hash,travel_verified_by,travel_verified_at,hold_expires_at) VALUES($1,$2,$3,$4,$5,1,'ACCEPTED_HELD',clock_timestamp()+interval '1 hour',jsonb_build_object('hash',$6::text),$6,$7,clock_timestamp(),clock_timestamp()+interval '10 minutes')",
       [otherOffer, request, batch, reviewer, otherListing, 'a'.repeat(64), owner],
     );
     await c.query(

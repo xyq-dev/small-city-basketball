@@ -27,3 +27,7 @@ dispatch guard参数修正：SQL `$1`与`[p.id]`一致，现无未接入垫付�
 047新增refund_plans列：funding_mode、advance_proposed_by、advance_reviewed_by、advance_evidence、advance_coverage，需root grant UPDATE该5列。新唯一索引sponsor_advance_reservation_unique；coverage不可变JSON，无新表/函数。`SponsorCommerceOptions.reserveAdvanceCoverage(c,binding)`仅可信服务端同事务锁定原订单自有资金；binding={sourceId,allocationId,tradeOrderId,paymentId,merchantKey,merchantId,currency:'CNY',amountFen}，返回还须reservationId/proofHash及channelSupportsOwnFundsRefund/reservedUntilRefundFinal:true；相同reservation不可跨计划复用。生产没有checker默认不启用；不可用客户端凭据直接声称余额。`SponsorMerchant.ownFundsRefundSupported`还须显式true。自动释放/跨订单余额不受支持。CLAIM时将覆盖用于真实trade退款前置，不创建虚假到账；追偿仍独立OPEN。注销hook对垫付暂保守unresolved。
 
 恢复脚本补丁：CLAIMED/UNKNOWN广告退款样本已有原F批次解冻确认，避免构造当前状态机不可达的退款。另一失败回退+OPEN追偿样本不解冻不claim。注销支持已全额退款的PARTIAL：每个FAILED项必须全额NOT_REQUIRED分摊解除，任何剩余失败应付仍unresolved；不改原PARTIAL状态。
+
+独立审查后进一步保留在途事实：recordChannel可在原机构停用后落库，防实际已分账被组织状态变化丢失；不会扩张用户finance权限。原fence被恢复隔离清空时仍拒迟到写。canonical refund的FAILED/REJECTED保留原义务，模块不自动换新binding重试或二次回退，需共同ledger显式最终失败替代协议；UNKNOWN只查询原号。
+
+CI150证据：广告真实PG 8场景均在共同fixture合同时间边界失败，尚无PG通过声明。已修Date.parse(pg Date)毫秒丢失，用精确epoch毫秒比较，合同/投放边界不变。已知限制：统一退款确定FAILED/REJECTED后仍保留义务，需人工核对，未提供自动新号替代；不得绕开唯一binding重发外部请求。

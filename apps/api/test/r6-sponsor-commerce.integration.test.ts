@@ -732,5 +732,37 @@ describe(
         delete options.reserveAdvanceCoverage;
       }
     });
+    test('trusted in-flight result remains recordable if the organization is disabled after dispatch', async () => {
+      const f = await approved();
+      vi.mocked(provider.split).mockImplementationOnce(async (i) => {
+        await api.pool.query("UPDATE organizations SET status='DISABLED' WHERE id=$1", [
+          owner.orgId,
+        ]);
+        return {
+          transactionId: i.transactionId,
+          outOrderNo: i.outOrderNo,
+          orderId: 'synthetic-disabled-org',
+          state: 'FINISHED',
+          receivers: i.receivers.map((x) => ({
+            merchantId: x.merchantId,
+            amountFen: x.amountFen,
+            result: 'SUCCESS',
+            detailId: 'synthetic-disabled-detail',
+          })),
+        };
+      });
+      try {
+        await channel(f.order.id, 'SEND_SPLIT', f.batchId);
+        expect(
+          (
+            await api.pool.query('SELECT status FROM sponsor_settlement_batches WHERE id=$1', [
+              f.batchId,
+            ])
+          ).rows[0].status,
+        ).toBe('SUCCEEDED');
+      } finally {
+        await api.pool.query("UPDATE organizations SET status='ACTIVE' WHERE id=$1", [owner.orgId]);
+      }
+    });
   },
 );

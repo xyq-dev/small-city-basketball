@@ -168,18 +168,27 @@ export class MatchingService extends ApplicationService {
     );
     return result;
   }
-  private async authority(c: PoolClient, userId: string, orgId: string, teamId: string | null) {
+  private async authority(
+    c: PoolClient,
+    userId: string,
+    orgId: string,
+    teamId: string | null,
+    teamGrantRequired = false,
+  ) {
     const r = await c.query(
       `SELECT 1 FROM organizations o JOIN users au ON au.id=$1 AND au.status='ACTIVE' WHERE o.id=$2 AND o.status='ACTIVE' AND
-   (EXISTS(SELECT 1 FROM organization_memberships m WHERE m.org_id=o.id AND m.user_id=$1 AND m.status='ACTIVE' AND m.role IN('ORG_OWNER','ORG_ADMIN'))
+   ((NOT $4::boolean AND EXISTS(SELECT 1 FROM organization_memberships m WHERE m.org_id=o.id AND m.user_id=$1 AND m.status='ACTIVE' AND m.role IN('ORG_OWNER','ORG_ADMIN')))
     OR ($3::uuid IS NOT NULL AND EXISTS(SELECT 1 FROM team_access_grants g WHERE g.org_id=o.id AND g.team_id=$3 AND g.user_id=$1 AND g.status='ACTIVE')))
    AND ($3::uuid IS NULL OR EXISTS(SELECT 1 FROM teams t WHERE t.org_id=o.id AND t.id=$3))`,
-      [userId, orgId, teamId],
+      [userId, orgId, teamId, teamGrantRequired],
     );
     return !!r.rowCount;
   }
   private async manage(c: PoolClient, a: Actor, n: Need) {
-    if (n.owner_id !== a.user.id || !(await this.authority(c, a.user.id, n.org_id, n.team_id)))
+    if (
+      n.owner_id !== a.user.id ||
+      !(await this.authority(c, a.user.id, n.org_id, n.team_id, n.kind === 'TEAM_MATCHUP'))
+    )
       throw notFound();
   }
   private async need(c: PoolClient, id: string, lock = false) {
@@ -258,7 +267,7 @@ export class MatchingService extends ApplicationService {
         [p.source_id],
       );
       const x = r.rows[0];
-      if (!x || !(await this.authority(c, p.owner_id, x.org_id, x.id))) return null;
+      if (!x || !(await this.authority(c, p.owner_id, x.org_id, x.id, true))) return null;
       return {
         id: x.id,
         ownerId: p.owner_id,
@@ -393,7 +402,10 @@ export class MatchingService extends ApplicationService {
       await this.gate(c);
       const old = await this.command(c, a, x.commandId, x);
       if (old) return old;
-      if (!(await this.authority(c, a.user.id, x.orgId, x.teamId ?? null))) throw notFound();
+      if (
+        !(await this.authority(c, a.user.id, x.orgId, x.teamId ?? null, x.kind === 'TEAM_MATCHUP'))
+      )
+        throw notFound();
       await this.region(c, x.catalogVersion, x.regionId, x.allowedRegionIds);
       const time = await c.query(
         "SELECT $1::timestamptz>clock_timestamp() AND $2::timestamptz<clock_timestamp()+interval '730 days' AS valid",
@@ -1153,7 +1165,7 @@ export class MatchingService extends ApplicationService {
         [a.user.id],
       );
       const sources = await c.query(
-        `SELECT 'ADULT_PLAYER' AS kind,p.id,p.display_name AS name,NULL::uuid AS "orgId",p.position AS role FROM booking_profiles p WHERE p.user_id=$1 AND p.status='APPROVED' UNION ALL SELECT 'STAFF_SERVICE',l.id,l.title,l.org_id,l.kind FROM local_listings l WHERE l.provider_user_id=$1 AND l.status='APPROVED' AND l.published AND l.kind IN('REFEREE','SCORER','RECORDER','STREAMER','PHOTOGRAPHER') UNION ALL SELECT 'TEAM_MATCHUP',t.id,t.name,t.org_id,'TEAM' FROM teams t JOIN organizations o ON o.id=t.org_id AND o.status='ACTIVE' WHERE EXISTS(SELECT 1 FROM team_access_grants g WHERE g.team_id=t.id AND g.org_id=t.org_id AND g.user_id=$1 AND g.status='ACTIVE') OR EXISTS(SELECT 1 FROM organization_memberships m WHERE m.org_id=t.org_id AND m.user_id=$1 AND m.status='ACTIVE' AND m.role IN('ORG_OWNER','ORG_ADMIN'))`,
+        `SELECT 'ADULT_PLAYER' AS kind,p.id,p.display_name AS name,NULL::uuid AS "orgId",p.position AS role FROM booking_profiles p WHERE p.user_id=$1 AND p.status='APPROVED' UNION ALL SELECT 'STAFF_SERVICE',l.id,l.title,l.org_id,l.kind FROM local_listings l WHERE l.provider_user_id=$1 AND l.status='APPROVED' AND l.published AND l.kind IN('REFEREE','SCORER','RECORDER','STREAMER','PHOTOGRAPHER') UNION ALL SELECT 'TEAM_MATCHUP',t.id,t.name,t.org_id,'TEAM' FROM teams t JOIN organizations o ON o.id=t.org_id AND o.status='ACTIVE' WHERE EXISTS(SELECT 1 FROM team_access_grants g WHERE g.team_id=t.id AND g.org_id=t.org_id AND g.user_id=$1 AND g.status='ACTIVE')`,
         [a.user.id],
       );
       return {

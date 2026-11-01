@@ -106,12 +106,13 @@ export class SponsorCommerceService extends GovernanceService {
       return undefined;
     return m;
   }
-  private async calendar(c: PoolClient, org: string) {
+  private async calendar(c: PoolClient, org: string, allowInactive = false) {
     if (
       !(
-        await c.query("SELECT id FROM organizations WHERE id=$1 AND status='ACTIVE' FOR SHARE", [
-          org,
-        ])
+        await c.query(
+          "SELECT id FROM organizations WHERE id=$1 AND ($2 OR status='ACTIVE') FOR SHARE",
+          [org, allowInactive],
+        )
       ).rowCount
     )
       throw notFound();
@@ -407,8 +408,8 @@ export class SponsorCommerceService extends GovernanceService {
         if (
           !campaign ||
           ['REJECTED', 'WITHDRAWN'].includes(campaign.status) ||
-          Date.parse(start) < Date.parse(campaign.starts_at) ||
-          Date.parse(end) > Date.parse(campaign.ends_at)
+          Date.parse(start) < new Date(campaign.starts_at).getTime() ||
+          Date.parse(end) > new Date(campaign.ends_at).getTime()
         )
           sponsorFail('SPONSOR_CAMPAIGN_MISMATCH', '投放记录与合同机构或时段不一致', 422);
         if (
@@ -590,7 +591,7 @@ export class SponsorCommerceService extends GovernanceService {
         status(r.status, ['SIGNED']);
         if (b.acceptedContractHash !== this.contractHash(r))
           sponsorFail('SPONSOR_SIGNATURE_MISMATCH', '请重新核对合同');
-        if (Date.parse(r.ends_at) <= Date.now())
+        if (new Date(r.ends_at).getTime() <= Date.now())
           sponsorFail('SPONSOR_CONTRACT_EXPIRED', '投放合同已到期');
         if ((await c.query('SELECT 1 FROM sponsor_orders WHERE contract_id=$1', [r.id])).rowCount)
           sponsorFail('SPONSOR_ORDER_EXISTS', '合同已经生成订单');
@@ -1075,6 +1076,14 @@ export class SponsorCommerceService extends GovernanceService {
           result = { id, status: 'CLOSED' };
         } else if (b.action === 'ADVANCE_PROPOSE' || b.action === 'ADVANCE_APPROVE') {
           await this.finance(c, a, org, o);
+          if (
+            (
+              await c.query(
+                "SELECT 1 FROM audit_logs WHERE action='RESTORE_QUARANTINE' AND resource_type='restore' LIMIT 1",
+              )
+            ).rowCount
+          )
+            sponsorFail('SPONSOR_RESTORE_QUARANTINED', '恢复环境禁止新增资金锁定', 503);
           const merchant = this.merchant(org, o),
             reserve = this.commerce.reserveAdvanceCoverage;
           if (!merchant?.ownFundsRefundSupported || !reserve)
@@ -1479,7 +1488,7 @@ export class SponsorCommerceService extends GovernanceService {
   }
   private async recordChannel(org: string, id: string, action: string, job: Row, result: any) {
     return this.transaction(async (c) => {
-      await this.calendar(c, org);
+      await this.calendar(c, org, true);
       const { o, t } = await this.lockOrder(c, org, id);
       const batch = await this.batch(c, id, job.batch.id);
       if (action.endsWith('RETURN')) {
@@ -1497,11 +1506,12 @@ export class SponsorCommerceService extends GovernanceService {
           result.merchantId === job.returnItem.receiver_merchant_id &&
           ['SUCCESS', 'PROCESSING', 'FAILED'].includes(result.state) &&
           typeof result.returnId === 'string' &&
-          result.returnId;
+          result.returnId &&
+          (!r.provider_return_id || r.provider_return_id === result.returnId);
         const next = !valid ? 'UNKNOWN' : result.state === 'SUCCESS' ? 'SUCCEEDED' : result.state;
         await c.query(
           'UPDATE sponsor_return_items SET status=$2,provider_return_id=$3,updated_at=clock_timestamp() WHERE id=$1',
-          [r.id, next, valid ? result.returnId : null],
+          [r.id, next, valid ? result.returnId : (r.provider_return_id ?? null)],
         );
         if (next === 'FAILED') {
           await c.query(
@@ -1546,6 +1556,11 @@ export class SponsorCommerceService extends GovernanceService {
             result &&
             result.transactionId === batch.transaction_id &&
             result.outOrderNo === batch.out_order_no &&
+            (!batch.provider_order_id || batch.provider_order_id === result.orderId) &&
+            (!expected.length ||
+              (typeof result.orderId === 'string' &&
+                result.orderId.length > 0 &&
+                result.orderId.length <= 128)) &&
             ['PROCESSING', 'FINISHED'].includes(result.state) &&
             received.length === expected.length &&
             new Set(received.map((x: Row) => x.merchantId)).size === expected.length;

@@ -25,3 +25,7 @@
 待root运行：`r6-local-source.integration.test.ts`、`r6-matching-recovery.integration.test.ts`（新增6例）、`player-booking.integration.test.ts`匹配源用例。恢复覆盖三种source、多个PLAYER场次、UNKNOWN资金阻断且事实不改；STAFF/PLAYER真实TradeService同事务绑定，无外网支付调用。root需先保留自己的matching-player-recovery逻辑过期修复。本地已过20领域/桥单测、9原生匹配、API typecheck及定向格式；真实PG/真机未执行。测试中的合成商户/资料不代表真实服务配置。
 
 仅提交显式owned路径；review worktree保留root三个贸易依赖修改及未跟踪PLAYER恢复副本/node_modules软链不提交。新的权限一致性审查：Matching TEAM认可org owner/admin，但旧X12约赛仅认可team grant；建议新TEAM资格跟随旧源，root待处理。本次复核关注由其他agent/root提供的源桥，不作为本人MatchingService唯一独立审查。
+
+后续小片：修复CI149 APPROVED profile审核员fixture（R6MATCH与新recovery两处），使用maintainPlatformOperator登记合成有效审核员，未放宽DB约束。TEAM权限结论经root确认收窄到X12 team_access_grants：需求管理、供给、候选、workspace、桥对方重验统一；新增PG覆盖无授权机构owner被拒、显式grant后可用、撤销后立即失效。小程序显示球队授权前提。API typecheck、20单测、10native通过；新PG本地未运行。
+
+整合单测修复：matching-local-source.test.ts的Actor与SQL fixture已匹配新生产桥读取，新增旧STAFF/TEAM回执拒绝和canonical账本缺失/不符边界；27项matching领域/源桥单测及API typecheck通过。只改测试和本任务记录，不回退生产校验。

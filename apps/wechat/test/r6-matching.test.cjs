@@ -269,3 +269,9 @@ test('paid matching cannot convert while canonical collection preparation is dis
   assert.match(h.page.data.error, /收费准备尚未完成/);
   assert.equal(h.calls.filter((c) => c.method === 'POST').length, 0);
 });
+
+test('team matching explains that organization membership does not replace a team grant', () => {
+  const wxml = fs.readFileSync(path.join(root, 'pages/matching/index.wxml'), 'utf8');
+  assert.match(wxml, /球队约赛双方均需有效的球队管理授权/);
+  assert.match(wxml, /机构所有者或管理员也需先在球队管理中获得该授权/);
+});

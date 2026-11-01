@@ -35,3 +35,7 @@
 验证：PLAYER源桥单测6项与匹配领域14项通过；原生匹配9项通过；API typecheck和定向Prettier通过。新增6项三型恢复PG测试，并扩充本地源与PLAYER既有PG测试验证真实TradeService绑定、无商户回滚、源回执拒绝重绑、场地不一致拒绝；支付transport为合成spy且要求未调用。本地无PG，所有新PG用例未执行，待root隔离CI。独立fixture复核发现C06 expires_at必须大于updated_at，已使用明确合成历史updated_at修正，无禁用约束。
 
 本地typecheck依赖root未提交的matching-player-recovery、remaining-six-trade、trade-source-adapter、sponsor-commerce-source副本，仅作为集成依赖，不纳入本切片commit。另已向root报告TEAM机构管理员与原X12仅team_access_grants权限不一致，等待统一决定，不默默扩大旧源权限。
+
+CI149跟进（2026-11-01 Asia/Shanghai）：root报告R6MATCH beforeAll的APPROVED booking_profile夹具违反有效平台审核员约束，整组用例未运行。已通过既有离线维护helper明确登记合成审核员，保持真实约束；新增恢复测试相同夹具一并修正。root采纳权限修复：仅TEAM的需求发布/管理、供给许可、候选重验、工作台及源桥对方授权收窄到有效team_access_grants；不扩大X12旧权限，不改变ADULT/STAFF服务端机构权限。页面说明机构所有者/管理员仍需球队管理授权。增加授权缺失、赋权、撤权后候选/接受/管理阻断PG用例；20单测、10原生测试、API typecheck通过，PG等待隔离CI。
+
+整合单测跟进（2026-11-01 Asia/Shanghai）：root全量单测报告matching-local-source旧fixture缺少actor.user且所有SQL都返回收费条款行，与新回执/账本核验不符。已补完整最小合成Actor，按SQL返回空回执/准确条款/canonical binding；新增STAFF与TEAM旧回执拒绝重绑，以及缺失/金额归属不符账本拒绝用例，不改生产要求。3组定向单测27/27、API typecheck通过。

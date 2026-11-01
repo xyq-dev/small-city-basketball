@@ -49,7 +49,9 @@ CREATE TABLE dispatch_holds (
 );
 CREATE UNIQUE INDEX dispatch_one_hold ON dispatch_holds(request_id) WHERE state='ACTIVE';
 ALTER TABLE local_resource_reservations ADD COLUMN dispatch_offer_id uuid REFERENCES dispatch_offers(id);
-ALTER TABLE local_resource_reservations DROP CONSTRAINT local_resource_reservations_check;
+-- 029's cross-column ends_at check is named _check; its owner XOR is _check1.
+-- Preserve finite ordered bounds while replacing only the two-source owner rule.
+ALTER TABLE local_resource_reservations DROP CONSTRAINT local_resource_reservations_check1;
 ALTER TABLE local_resource_reservations ADD CONSTRAINT local_resource_owner CHECK(num_nonnulls(booking_id,matchup_id,dispatch_offer_id)=1);
 CREATE INDEX local_resource_dispatch ON local_resource_reservations(dispatch_offer_id) WHERE active;
 CREATE TABLE dispatch_command_receipts (

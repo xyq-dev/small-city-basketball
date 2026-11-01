@@ -269,7 +269,8 @@ Page({
         region = local.selectedRegion(this.data.formRegion || this.data.selection),
         team = this.data.teams[this.data.teamIndex],
         org = this.data.organizations[this.data.orgIndex];
-      if (kind !== 'STAFF_SERVICE' && !team) throw new Error('需要当前有权管理的球队');
+      if (kind !== 'STAFF_SERVICE' && !team)
+        throw new Error('需要有效的球队管理授权，请先在球队管理中确认授权');
       if (kind === 'STAFF_SERVICE' && !org) throw new Error('需要当前机构管理员身份');
       const windows = matching.windows(this.data.windows);
       const body = {

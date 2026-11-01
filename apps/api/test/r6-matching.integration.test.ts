@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
 import { beforeAll, afterAll, describe, expect, test } from 'vitest';
 import { MatchingService } from '../src/matching-service.js';
 import type { MatchingSourceHooks } from '../src/matching-source-adapter.js';
 import { REGION_CATALOG_VERSION } from '../src/region-catalog-data.js';
 import { createHarness, closeHarness } from './p04-support.js';
+import { grant } from './p03-support.js';
 import type { Harness } from './p04-support.js';
 import { ORIGIN } from './support.js';
 import type { User } from './support.js';
@@ -65,6 +67,11 @@ describe(
     };
     beforeAll(async () => {
       h = await createHarness(2);
+      await maintainPlatformOperator(h.api.pool, {
+        email: h.owner.email,
+        status: 'ACTIVE',
+        reason: '合成撮合隔离测试审核员',
+      });
       base =
         (await h.api.pool.query('SELECT clock_timestamp() AS now')).rows[0].now.getTime() +
         72 * 3600000;
@@ -406,8 +413,53 @@ describe(
       );
       expect((await service.detail(h.owner.cookie, n.id)).candidates).toEqual([]);
     });
+    test('team matching requires the original X12 team grant even for organization owners and rechecks revocation', async () => {
+      const ownTeam = h.teams[1]!,
+        awayTeam = h.otherTeams[1]!;
+      const teamNeed = {
+        kind: 'TEAM_MATCHUP',
+        teamId: ownTeam.id,
+        role: 'TEAM',
+        unitBudgetFen: 0,
+        totalBudgetFen: 0,
+        windows: [{ reportAt: at(4), startAt: at(4), endAt: at(6) }],
+        expiresAt: at(3),
+      };
+      expect(
+        (await service.workspace(h.otherOwner.cookie)).sources.some((x) => x.id === awayTeam.id),
+      ).toBe(false);
+      await expect(opt(h.otherOwner, awayTeam.id, true, 'TEAM_MATCHUP')).rejects.toMatchObject({
+        status: 404,
+      });
+      await expect(need(teamNeed)).rejects.toMatchObject({ status: 404 });
+      await grant(h.api, h.owner, ownTeam, h.owner);
+      await grant(h.api, h.otherOwner, awayTeam, h.otherOwner);
+      expect(
+        (await service.workspace(h.otherOwner.cookie)).sources.some((x) => x.id === awayTeam.id),
+      ).toBe(true);
+      await opt(h.otherOwner, awayTeam.id, true, 'TEAM_MATCHUP');
+      const created = await need(teamNeed),
+        view = await run(created.id);
+      const intent = await send(view, awayTeam.id);
+      await grant(h.api, h.otherOwner, awayTeam, h.otherOwner, 'DISABLED');
+      await expect(accept(intent.resourceId, h.otherOwner)).rejects.toMatchObject({
+        code: 'MATCHING_CANDIDATE_STALE',
+      });
+      expect((await run(created.id)).candidates.some((x) => x.sourceId === awayTeam.id)).toBe(
+        false,
+      );
+      await grant(h.api, h.owner, ownTeam, h.owner, 'DISABLED');
+      await expect(
+        service.run(h.owner.cookie, created.id, {
+          commandId: randomUUID(),
+          expectedVersion: view.version,
+        }),
+      ).rejects.toMatchObject({ status: 404 });
+    });
     test('team matching uses the authorized opposing team and free-price evidence', async () => {
       const team = h.otherTeams[0]!;
+      await grant(h.api, h.owner, h.teams[0]!, h.owner);
+      await grant(h.api, h.otherOwner, team, h.otherOwner);
       await opt(h.otherOwner, team.id, true, 'TEAM_MATCHUP');
       const n = await need({
         kind: 'TEAM_MATCHUP',

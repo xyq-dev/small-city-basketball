@@ -1,9 +1,13 @@
-# REMAINING6 开工接续
+# REMAINING6 整合接续
 
-2026-11-01 Asia/Shanghai；IN_PROGRESS，非完成交付。读[任务](../tasks/REMAINING6.md)与[六项设计](../design/REMAINING_SIX_FEATURES.md)。
+2026-11-01 Asia/Shanghai；IN_PROGRESS / BRANCH_ONLY。读[任务](../tasks/REMAINING6.md)、[六项设计](../design/REMAINING_SIX_FEATURES.md)与[运行配置](../operations/remaining-six-runtime.md)。
 
-root新目录 `/workspace/scratch/aad368826b09/scb-six`、分支 `feat/remaining-six`，精确main基线c61ab3667c9d3f756244a28046b9ee2395ccac00；六个独立子工作树由任务卡列明。通过GitHub连接器读写仓库，当前执行器Git网络登录通道不可用；使用Git对象哈希核验保障本地与远端树一致，不声称CLI push成功。所有源码与文档仍按模块切片提交同步。
+root目录 `/workspace/scratch/aad368826b09/scb-six`、分支 `feat/remaining-six`；基线main c61ab3667c9d3f756244a28046b9ee2395ccac00。GitHub主干并发UI001仅新增任务/交接文档，保留其内容。PR #35 草稿承载六模块实现，通过GitHub连接器按远端parent+expected SHA普通更新，逐次核验local/remote树完全相同。
 
-当前已集成六模块首片与完整地图前端、PLAYER同事务源转换；根交易适配与共享日历048已落代码，trade/readiness定向26项通过，48个迁移静态序列通过。真实PG/迁移/恢复未执行，生产未改。代码当前仅开发分支，不能对外标成六项全部上线。
+已经接线：地图搜索、三类撮合原来源同事务转换、跨城真实源桥、培训与广告统一交易、多方分账/退款解冻/历史核对、注销、44张新表恢复隔离、5个原生页面。保险只完成准入/适配口，缺供应商协议及凭证，外部BLOCKED。新域默认关闭，无生产变更。
 
-待完成：STAFF/TEAM及派单真实源桥、全部小程序入口、广告多方源/渠道接线、注销隐私、R6恢复覆盖、隔离CI与独立review。保险供应商未定，禁止伪造具体协议；真实外部服务不能标线上可用。GitHub已同步6969848cbdfc6f24cc4a40183fa830124690e0df（对应本地b035449，树8d1722e02e938ee799b700fe0775ce9542018626），下一同步应包含PLAYER与共享整合切片。
+最近已同步root 7e3eb28→remote ab73b630dd9d3e846c424cee62f7f04b03c66115，tree4aa2c1745e589a85abea673119bd950adf5b222c。CI150三job失败：API新增R6阶段21failed/28passed/18skipped，主要fixture reviewer/hash、派单045错删owner约束、广告Date精度；admin匹配桥旧mock actor缺字段2失败；隔离生产包readiness及21项runtime PG已通过，随后缺R6恢复脚本打包失败。以上已定位并逐片修正，下一轮尚待执行。不得把失败或未执行项写成验收通过。
+
+本地：完整format与typecheck通过；admin561单测通过；API1256pass/2旧fixture失败（修片549f343），微信1056通过/1Windows限定跳过；恢复离线11项、48迁移/220表/126函数静态清单通过。真实当前HEAD跨域PG、全量旧PG、归档恢复、隔离HTTPS及页面检查仍需CI。
+
+仍在处理：普通广告主本人合同入口、学员补课目标选择器、PARTIAL广告已全退注销精算、派单资金桥测试；各owner仅改自己的路径。root串行app/账户入口/manifest/容器打包。下一步合并这些小片，启动当前HEAD隔离CI并修复失败；通过独立审查、全部必要检查后才mark ready/合入main。未测试不合并。

@@ -295,6 +295,27 @@ describe(
       ).rows[0];
       expect(reservation.starts_at.toISOString()).toBe(at(f.hours - 3));
       expect(reservation.ends_at.toISOString()).toBe(at(f.hours + 4));
+      // Inactive rows bypass overlap guards, so these exercise the actual migrated
+      // table constraints: dispatch is one valid owner, never zero or two owners,
+      // and extending that owner set must not remove finite calendar bounds.
+      for (const invalid of [
+        { offer: f.offer.id, booking: null, end: 'infinity' },
+        { offer: null, booking: null, end: at(f.hours + 4) },
+        { offer: f.offer.id, booking: randomUUID(), end: at(f.hours + 4) },
+      ])
+        await expect(
+          h.api.pool.query(
+            'INSERT INTO local_resource_reservations(id,resource_key,dispatch_offer_id,booking_id,starts_at,ends_at,active) VALUES($1,$2,$3,$4,$5,$6,false)',
+            [
+              randomUUID(),
+              'user:' + h.owner.id,
+              invalid.offer,
+              invalid.booking,
+              at(f.hours - 3),
+              invalid.end,
+            ],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
       await expect(
         dispatch.offerCommand(h.owner.cookie, f.offer.id, {
           ...body,

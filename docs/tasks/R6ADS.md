@@ -29,3 +29,7 @@
 验证：领域/签名transport16/16，微信5/5，API tsc/diffcheck通过；真实PG扩至8项测试（其中含多个资金子场景），新增full refund先回退/解冻、PARTIAL解冻、关新单后历史回退、11外部拒绝、无覆盖/跨单覆盖拒绝与不可变覆盖证明。PG仅代码已准备，等待rootCI。
 
 2026-11-01 一致性小片：047不可变trigger改为按表独立IF分支再读取各表专属record字段；PARTIAL批次全额退款/真实解冻后FAILED分配项只能净零解除，不计失败金额为已付。PG追加该全退注销断言；恢复UNKNOWN退款夹具同步原batch先finished的不变量。API tsc及恢复script语法通过，PG待CI；前文PG数量更正为8条test。
+
+2026-11-01 在途事实收敛：机构在已批准发送后被停用，已验签/已校验渠道回包仍按原fence记录（仅machine result允许inactive，用户操作依旧需有效权限）；原provider分账/回退ID不接受漂移。PG新增停用发生在transport内的实据落库场景，现9条PGtest待CI。垫付预约也明确受restore quarantine拦截。
+
+2026-11-01 CI150真实PG反馈：8个广告场景在合同时间边界setup失败。根因是pg返回Date对象，Date.parse(Date)先转本地字符串会丢毫秒，导致同一endsAt ISO毫秒被误判越界。已改new Date(dbTimestamp).getTime()保留原毫秒；未放宽合同必须在投放时段内的约束。等待下一轮真实PG。

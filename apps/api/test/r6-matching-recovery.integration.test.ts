@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
 import type { PoolClient } from 'pg';
 import { beforeAll, afterAll, describe, test, expect } from 'vitest';
 import { LocalServicesService } from '../src/local-services-service.js';
@@ -30,6 +31,11 @@ describe(
     const at = (hours: number) => new Date(base + hours * 3600000).toISOString();
     beforeAll(async () => {
       h = await createHarness(1);
+      await maintainPlatformOperator(h.api.pool, {
+        email: h.owner.email,
+        status: 'ACTIVE',
+        reason: '合成撮合隔离测试审核员',
+      });
       base =
         (await h.api.pool.query('SELECT clock_timestamp() AS now')).rows[0].now.getTime() +
         10 * 86400000;

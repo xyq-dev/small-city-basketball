@@ -37,3 +37,9 @@
 
 - Added `onModuleDestroy()` to stop dispatch timer during Nest shutdown before pool closure; API typecheck passed.
 - Completed requested read-only ADS review; three concrete P1 findings with suggested tests are recorded in `docs/handoffs/R6DISPATCH_ADS_REVIEW.md` and sent to root/ADS owner. No ADS code modified.
+
+### Isolated CI 150 follow-up — reservation owner constraint
+
+- CI 150 exposed a migration error: PostgreSQL names 029's cross-column finite end-time check `local_resource_reservations_check`, and the booking/matchup owner XOR `local_resource_reservations_check1`. 045 had dropped the former, so dispatch-only holds still failed the old owner XOR.
+- Corrected 045 to replace only `_check1`. The existing finite ordered time bounds and the new exactly-one-of-booking/matchup/dispatch constraint both remain enforced. 001–042 and shared calendar triggers are untouched.
+- Extended the existing real PostgreSQL acceptance case with invalid infinite-end, zero-owner and multiple-owner inserts. Local API typecheck and focused formatting passed; PostgreSQL execution remains delegated to the next isolated CI run.

@@ -37,6 +37,16 @@ const checkScripts = [
   'x12-local-check',
   'x18-governance-check',
   'x22-account-recovery-check',
+  'expansion-recovery-check',
+  'expansion-e03-recovery',
+  'expansion-e04-recovery',
+  'expansion-e05-recovery',
+  'expansion-e08-recovery',
+  'r6-recovery-check',
+  'r6-recovery-matching',
+  'r6-recovery-dispatch',
+  'r6-recovery-training',
+  'r6-recovery-sponsor',
 ];
 const expectedCheckScripts = Object.fromEntries(
   await Promise.all(
