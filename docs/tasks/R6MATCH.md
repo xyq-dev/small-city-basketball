@@ -62,3 +62,13 @@ GET每条退款返回canRejectApprovedRefund；仅广告退款过占且其它已
 覆盖PENDING APPROVE来源复核失败无mutation/无出网；过占GET保留1000实付+1000已退+2000占用并可安全拒绝未发送后继；旧版本拒绝、成功只增一次version且原command重放、原binding不可改删；付款人/收款人/提议人独立审核拒绝；7种状态/已发证据、3种绑定缺失或错配、hook缺失/事实拒绝/隔离关闭；事务末fresh失效全部回滚及真实已撤销session入口拒绝。全项目typecheck、单文件Prettier、git diff检查及Vitest用例收集通过，本机未执行PG。下一步root cherry本片并纳入CI156的R6真实PG早检，生产/外网/真实资金未触及。
 
 PG夹具独立复核：map逐项比对030/038/047/048、source consent/商户/hash、角色与金额、session/version/replay后无确定SQL/API阻塞。本人另对root最新047与18c570a差异确认只新增retry关系及history规则，不改变本夹具旧source约束。该只读结论不替代真实PG执行。
+
+
+2026-11-01（Asia/Shanghai）培训日历补筛 P2 开工：root 按 PR review PRRT_kwDOVTBG086yXXZC 授权，在 `/workspace/scratch/aad368826b09/scb-six-matching-training-calendar`、`work/r6-matching-training-calendar`，基线 `f66306c0bfa144b8c63a23c7403e59454b19da2d`，origin 为 xyq-dev/small-city-basketball，开工 clean。仅修改 matching-service、matching PG 测试及本任务/交接；dispatch 协作只写该 PG 文件、不单独提交。补 active 培训占用的候选/意向共用检查，严格沿 048 的 HOLDING 到期语义和半开区间；不修改 Migration/ACL/DTO，不在读取路径清理资源。TEAM 意向尚未选择球场，不从地址推断 courtId；实际已确认场地仍沿原源预约和 048 锁校验。计划类型/相关单测与真实 PG 用例收集，本机无 PG，运行证据交 root 隔离 CI。
+
+
+培训日历补筛 P2 完成（2026-11-01 Asia/Shanghai）：calendarClear 现在只读检查 active training_resource_reservations，沿 c06_booking_window 的 [报到,结束+30分钟) 与培训已含缓冲的存储区间判断重叠，不重复加培训缓冲。仅关联报名处于 HOLDING 且数据库时钟已到期时忽略；CONFIRMED / PAID_UNALLOCATED 的历史锁位截止时间不释放日历，未关联报名的教练占用照常阻断。候选生成/详情与发送、接受、转单重验共用此逻辑，原转换资源锁及 048 约束仍为并发最终防线。TEAM 筛选明确授权代表人的培训占用，尚未选择球场时不推断 courtId。
+
+新增 5 个展开 PG 场景：PLAYER/STAFF 各含 7 分支矩阵（教练、CONFIRMED 旧截止、有效 HOLDING、PAID_UNALLOCATED 旧截止、已过期 HOLDING、已释放、半开相接）；两类各验证候选生成后新增培训导致 SEND 和 ACCEPT 拒绝，席位/意向/assignment/outbox 完整行不变、无回执，释放后原 commandId 可成功；TEAM 代表占用加入和释放后候选相应变化。夹具明确为 SQL 合成的培训数据，保留真实外键、排他约束与 048 触发器，不禁约束；过期报名插入后才推进截止，证明读取不清理 active 行。
+
+验证：API typecheck、27 项撮合领域/本地源/球员源单测、定向 Prettier、git diff 检查以及 PG 文件 Vitest 收集通过。第一次从仓库根运行 Vitest 时配置相对 include 未找到测试，随后在 apps/api 正确目录重跑通过；这不是业务失败。dispatch 协作编写 PG，ads 独立审查源码及真实迁移夹具无 P1/P2。新增 PG 尚未本机执行，root 需将本片纳入下一次隔离 CI；无 Migration/ACL/DTO 变更、无生产或远端写入。本地 commit 后由 root 集成同步，不能标为 main / 真实 PG 已通过。

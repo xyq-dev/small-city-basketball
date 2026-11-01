@@ -24,6 +24,7 @@ import {
   trainingVersion,
 } from './training-domain.js';
 import type { TrainingOptions } from './training-source-hooks.js';
+import { trainingCohortCompletionBlocker } from './training-cohort-completion.js';
 type Row = Record<string, any>;
 const iso = (x: Date | string | null) => (x === null ? null : new Date(x).toISOString());
 /** Adult short-course workflow. All inventory and monetary source mutations share the calendar lock. */
@@ -454,7 +455,7 @@ export class TrainingService extends ApplicationService {
   }
   async cohortCommand(cookie: string | undefined, id: string, raw: unknown) {
     const org = await this.ref('training_cohorts', id),
-      v = parseTrainingAction(raw, ['PUBLISH', 'SUSPEND', 'CANCEL']);
+      v = parseTrainingAction(raw, ['PUBLISH', 'SUSPEND', 'CANCEL', 'COMPLETE']);
     return this.write(
       cookie,
       org,
@@ -490,6 +491,28 @@ export class TrainingService extends ApplicationService {
             }
             await c.query(
               "UPDATE training_cohorts SET state='ENROLLING',version=version+1 WHERE id=$1",
+              [id],
+            );
+          } else if (v.action === 'COMPLETE') {
+            if (!v.reason) trainingFail('REASON_REQUIRED', '请填写结课依据');
+            const safelyEndedEnrollmentIds: string[] = [];
+            const blocker = await trainingCohortCompletionBlocker(c, h, safelyEndedEnrollmentIds);
+            if (blocker) trainingFail('TRAINING_COMPLETION_BLOCKED', blocker);
+            if (safelyEndedEnrollmentIds.length) {
+              await c.query(
+                "UPDATE training_enrollments SET state='CANCELLED',version=version+1 WHERE id=ANY($1::uuid[])",
+                [safelyEndedEnrollmentIds],
+              );
+              await this.log(c, a, org, id, 'COMPLETE_UNUSED_ENROLLMENTS', {
+                enrollmentIds: safelyEndedEnrollmentIds,
+              });
+            }
+            await c.query(
+              "UPDATE training_cohorts SET state='COMPLETED',version=version+1 WHERE id=$1",
+              [id],
+            );
+            await c.query(
+              'UPDATE training_resource_reservations SET active=false WHERE active AND session_id IN(SELECT id FROM training_sessions WHERE cohort_id=$1)',
               [id],
             );
           } else {
@@ -546,6 +569,7 @@ export class TrainingService extends ApplicationService {
       });
     }
     const eligible = await this.eligible(c, h);
+    const completionBlocker = manage ? await trainingCohortCompletionBlocker(c, h) : null;
     return {
       id: h.id,
       orgId: h.org_id,
@@ -569,6 +593,8 @@ export class TrainingService extends ApplicationService {
           eligible &&
           new Date(h.enrollment_deadline) > new Date(),
         canManage: manage,
+        canComplete: manage && completionBlocker === null,
+        completionBlocker,
         paidEnrollmentEnabled: !!this.training.trade,
       },
     };
@@ -1462,10 +1488,16 @@ export class TrainingService extends ApplicationService {
               "UPDATE training_enrollments SET state='COMPLETED',version=version+1 WHERE id=$1 AND state='CONFIRMED'",
               [n.id],
             );
-          if (es === 'MAKEUP_DUE' && n.state === 'COMPLETED')
+          if (['MAKEUP_DUE', 'CONSUMPTION_PENDING'].includes(es) && n.state === 'COMPLETED')
             await c.query(
               "UPDATE training_enrollments SET state='CONFIRMED',version=version+1 WHERE id=$1",
               [n.id],
+            );
+          if (['MAKEUP_DUE', 'CONSUMPTION_PENDING'].includes(es))
+            await c.query(
+              `UPDATE training_cohorts SET state='SUSPENDED',version=version+1 WHERE state='COMPLETED'
+               AND (id=$1 OR id=(SELECT cohort_id FROM training_sessions WHERE id=$2))`,
+              [n.cohort_id, e.current_session_id],
             );
           await this.log(c, a, org, id, 'CONSUMPTION_' + v.action, {
             reason: v.reason,

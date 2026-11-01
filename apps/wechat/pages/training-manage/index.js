@@ -307,9 +307,16 @@ Page({
   },
   cohortAction(e) {
     const x = this.data.workspace?.cohorts.find((c) => c.id === e.currentTarget.dataset.id);
-    if (!x) return;
+    if (!x || ['COMPLETED', 'CANCELLED'].includes(x.state)) return;
     const action = e.currentTarget.dataset.action,
       body = { action, expectedVersion: x.version };
+    if (action === 'COMPLETE') {
+      if (x.capabilities?.canComplete !== true)
+        return this.setData({
+          error: x.capabilities?.completionBlocker || '当前班期不能结课，请刷新后核对。',
+        });
+      if (!this.data.reason.trim()) return this.setData({ error: '请填写正常结课的事实依据。' });
+    }
     if (action !== 'PUBLISH') body.reason = this.data.reason;
     return this.send('/v1/training/cohorts/' + x.id + '/commands', body);
   },

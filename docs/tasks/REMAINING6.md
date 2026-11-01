@@ -58,3 +58,5 @@ PR #35 已创建为草稿。源事务、原生页面、注销及恢复清单已�
 2026-11-01 12:18 Asia/Shanghai：CI155 remote b1d9d316在页面/隔离运行包作业成功，API已通过90项R6、旧业务PG、原生API与重启，正在浏览器端到端。最新PR自动审查又报5个P2：未付广告闭账、0分分成终态、替代批次明细、确定失败退款恢复、派单漏培训档期。前三及SIGNED未建单关闭已集成，退款恢复采用保留原plan/return/binding的独立审核retry记录（新表尚在实施），privacy与派单并行修复。不因旧候选绿而合并已知问题，继续REVIEW/BRANCH_ONLY。
 
 2026-11-01 12:35 Asia/Shanghai root整合检查点：已接入广告安全撤回source hook；当前全量typecheck/format、admin561、API1339、原生1070通过（1Windows专属跳过），新旧恢复/打包12项通过。CI155旧候选全绿（R6 PG90、旧PG586、原生API21、浏览器24、布局1082、runtime21和TLS4及完整恢复）。新5条审查修复现含退款恢复表、精算注销、派单培训冲突和共享审批/只读冲突视图；核心新增PG追加片在最后核对，完整新候选将进入CI156，未提前resolve或合并。
+
+2026-11-01 13:05 Asia/Shanghai root检查点：CI156新域126/130通过，4个失败为旧关闭样本缺真实canonical identity/hash及签约关闭fixture把隐藏404误期望403；只修测试，未放宽业务保护。CI157（remote5b3dfd05197186ee69a205164d5059e063b4719b/tree1078be9c7d5a8cd41e97c674ebd78f17efd88bfb，run41274334045）新域130及旧业务PG步骤通过，admin561/API1339/原生1070与布局1082通过；production21受限PG、HTTPS4、221表完整归档恢复/隔离成功，API原生联调及后续尚在跑。原9条PR审查已resolve，另2条P2为培训cohort正常COMPLETED路径缺失和matching遗漏training预留；撮合11行修复+5展开PG已整合local6263890，27单测/typecheck及独立审查通过，新PG未执行。培训正常结课、跨班权益/争议重开、安全到期未付候补仍在独立工作树补验，待一起进入新候选CI。main未变，无生产或真实渠道动作。

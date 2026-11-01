@@ -339,6 +339,17 @@ export class MatchingService extends ApplicationService {
         ],
       );
       if (r.rowCount) return false;
+      // Training rows already include their own buffer. Only expired HOLDING
+      // enrollments are logically released, exactly as in x12_release_expired;
+      // a confirmed enrollment's old hold deadline must not free its calendar.
+      const training = await c.query(
+        `SELECT 1 FROM training_resource_reservations r
+    WHERE r.active AND r.resource_key=$1
+    AND tstzrange(r.starts_at,r.ends_at,'[)') && c06_booking_window($2::timestamptz,$3::timestamptz)
+    AND NOT EXISTS(SELECT 1 FROM training_enrollments e WHERE e.id=r.enrollment_id AND e.state='HOLDING' AND e.hold_expires_at<=clock_timestamp()) LIMIT 1`,
+        [`user:${s.ownerId}`, w.reportAt, w.endAt],
+      );
+      if (training.rowCount) return false;
       const booked = await c.query(
         `SELECT 1 FROM booking_appearances WHERE player_user_id=$1 AND status IN('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED') AND (status<>'REQUESTED' OR expires_at>clock_timestamp()) AND c06_booking_window(report_at,end_at)&&c06_booking_window($2::timestamptz,$3::timestamptz) LIMIT 1`,
         [s.ownerId, w.reportAt, w.endAt],

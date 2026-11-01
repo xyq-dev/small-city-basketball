@@ -32,7 +32,13 @@ export interface TrainingCohortData {
   enrollmentDeadline: string;
   version: number;
   sessions: TrainingSessionData[];
-  capabilities: { canEnroll: boolean; canManage: boolean; paidEnrollmentEnabled: boolean };
+  capabilities: {
+    canEnroll: boolean;
+    canManage: boolean;
+    paidEnrollmentEnabled: boolean;
+    canComplete: boolean;
+    completionBlocker: string | null;
+  };
 }
 export interface TrainingEntitlementData {
   id: string;

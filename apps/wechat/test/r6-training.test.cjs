@@ -254,6 +254,111 @@ test('the training workspace also releases a hidden completed command before ret
     assert.equal(!!h.page.data.pending, outcome === 'unknown');
   }
 });
+function completionHarness(capabilities, state = 'RUNNING') {
+  let cohort = {
+    id: C,
+    title: '成人正常结课班',
+    state,
+    version: 7,
+    totalFen: 0,
+    capacity: 2,
+    available: 0,
+    sessions: [],
+    capabilities,
+  };
+  const h = harness('training-manage', (url, method) => {
+    if (method === 'POST') {
+      cohort = {
+        ...cohort,
+        state: 'COMPLETED',
+        version: 8,
+        capabilities: { canComplete: false, completionBlocker: null },
+      };
+      return { cohortId: C };
+    }
+    if (url === '/v1/training/mine') return { teaching: [], coachProfiles: [] };
+    assert.equal(url, '/v1/orgs/' + O + '/training');
+    return {
+      provider: null,
+      coaches: [],
+      courses: [],
+      courts: [],
+      cohorts: [cohort],
+      enrollments: [],
+    };
+  });
+  h.page.setData({ orgId: O });
+  h.render = () =>
+    renderWxml(
+      fs.readFileSync(path.join(root, 'pages/training-manage/index.wxml'), 'utf8'),
+      h.page.data,
+      { root, pageDirectory: path.join(root, 'pages/training-manage') },
+    );
+  h.click = (action = 'COMPLETE') =>
+    h.page.cohortAction({ currentTarget: { dataset: { id: C, action } } });
+  return h;
+}
+test('a manager completes a cohort through the real page command and reloads its terminal state', async () => {
+  const h = completionHarness({ canComplete: true, completionBlocker: null });
+  await h.page.load();
+  const complete = h.render().match(/<button\b[^>]*data-action="COMPLETE"[^>]*>正常结课<\/button>/);
+  assert.ok(complete, 'normal completion has a visible bound button');
+  assert.doesNotMatch(complete[0], /\bdisabled\b/);
+  h.page.input({
+    currentTarget: { dataset: { field: 'reason' } },
+    detail: { value: '全部课次和学员权益已独立核对完成' },
+  });
+  await h.click();
+  const posted = h.calls.filter((x) => x.method === 'POST');
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0].url, '/v1/training/cohorts/' + C + '/commands');
+  assert.equal(posted[0].body.action, 'COMPLETE');
+  assert.equal(posted[0].body.expectedVersion, 7);
+  assert.equal(posted[0].body.reason, '全部课次和学员权益已独立核对完成');
+  assert.match(posted[0].body.commandId, new RegExp('^' + pattern + '$'));
+  assert.equal(h.page.data.workspace.cohorts[0].state, 'COMPLETED');
+  assert.equal(h.page.data.busy, false);
+  assert.equal(h.page.data.pending, null);
+  assert.equal(h.requireLocal('utils/training.js').pending(U), null);
+  assert.doesNotMatch(h.render(), /data-action="(?:COMPLETE|SUSPEND|CANCEL)"/);
+});
+test('completion stays disabled and sends nothing without server permission or settled obligations', async () => {
+  for (const capabilities of [
+    { canComplete: false, completionBlocker: '还有待补课权益，请先完成补课或退款' },
+    {},
+  ]) {
+    const h = completionHarness(capabilities);
+    await h.page.load();
+    h.page.setData({ reason: '申请正常结课' });
+    const html = h.render(),
+      complete = html.match(/<button\b[^>]*data-action="COMPLETE"[^>]*>正常结课<\/button>/);
+    assert.ok(complete);
+    assert.match(complete[0], /\bdisabled\b/);
+    if (capabilities.completionBlocker) assert.ok(html.includes(capabilities.completionBlocker));
+    await h.click();
+    assert.equal(h.calls.filter((x) => x.method === 'POST').length, 0);
+    assert.equal(
+      h.page.data.error,
+      capabilities.completionBlocker || '当前班期不能结课，请刷新后核对。',
+    );
+    assert.equal(h.requireLocal('utils/training.js').pending(U), null);
+  }
+});
+test('completion requires written grounds and terminal cohorts have no lifecycle mutation controls', async () => {
+  const h = completionHarness({ canComplete: true, completionBlocker: null });
+  await h.page.load();
+  h.page.setData({ reason: '   ' });
+  await h.click();
+  assert.equal(h.calls.filter((x) => x.method === 'POST').length, 0);
+  assert.match(h.page.data.error, /填写正常结课的事实依据/);
+  for (const state of ['COMPLETED', 'CANCELLED']) {
+    const terminal = completionHarness({ canComplete: false, completionBlocker: null }, state);
+    await terminal.page.load();
+    assert.doesNotMatch(terminal.render(), /data-action="(?:COMPLETE|SUSPEND|CANCEL)"/);
+    for (const action of ['COMPLETE', 'SUSPEND', 'CANCEL']) await terminal.click(action);
+    assert.equal(terminal.calls.filter((x) => x.method === 'POST').length, 0);
+  }
+});
 test('both native pages have bound handlers, balanced templates, and no simulated success copy', () => {
   for (const name of ['training', 'training-manage']) {
     const h = harness(name);

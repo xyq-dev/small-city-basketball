@@ -37,3 +37,15 @@ runtime审查修正：operator/access两处原直接FOR SHARE平台权限表要�
 2026-11-01 PR35两个P2修正：培训页写命令用ui.hold/held和独立writeToken保护结果；finally释放当前命令busy不再依赖页面可见性，切号/卸载旧响应不回填私有数据、不释放新账号请求锁。新增真实Page lifecycle VM，覆盖hide→成功/未知结果→show能重新加载，以及旧账号写完成不干扰新账号在途命令，native现12/12。班期CANCEL改按权益current_session所属班期恢复AVAILABLE→MAKEUP_DUE，修复A报名到B补课后取消B遗漏；新增第11项真实PG场景A→B→取消B→恢复权益→C，核对资源释放、原A合同/净价/源订单不变及没有虚构消费退款。API typecheck与格式检查通过；新增PG待CI，未放宽退款、消费或机构权限。
 
 P2定向检查确认机构工作台send具有完全相同hidden-finally锁遗留，已同片修复并补实际hide→write完成→show的成功/未知结果回归，native13/13；未知写仍保留原command待核对。独立审查确认跨班取消与学员页token改动无确定问题并复跑12/12，后续机构端同因修复另经本地13/13及格式检查。无修改共享权限、源订单或消费状态规则。
+
+2026-11-01 PR35结课P2（PRRT_kwDOVTBG086yXXZB）开工：独立 worktree `/workspace/scratch/aad368826b09/scb-six-training-completion`、分支 `work/r6-training-completion`，基线 `f66306c0bfa144b8c63a23c7403e59454b19da2d`，初始clean，远端仍为xyq-dev/small-city-basketball。允许路径为training领域/API/DTO/管理页及有效测试、本任务/交接；root负责整合，禁止生产与外部真实资金。拟新增有权限、版本及幂等回执的正常COMPLETE，核验本班及跨班权益、已结束授课及缓冲、未决退款/消费/资金未知。确定已收未结收入保留统一trade注销资金门；迟来异议重开关联已结班及报名，避免结课掩盖新义务。不加迁移或新状态。最终文档草稿已由root转交insurance，本worktree不写该草稿。
+
+2026-11-01 PR35正常结课P2实施检查点（本地，待隔离PG）：新增 `POST /v1/training/cohorts/:id/commands` 的 `COMPLETE`，沿用机构管理员/fresh session、组织+共享日历锁、expectedVersion及commandId回执。必须填写结课依据，本班课次实际授课/取消且结束含buffer；同时检查原班外出补课和转入本班权益、消费最终确认、逐课退款及canonical账款。管理DTO新增 `canComplete/completionBlocker`，原生管理页有正常结课入口和阻断原因，终态不再展示暂停/取消。确定已收待结算收入不伪造结清，仍由统一trade注销资金门阻断；SOURCE_CONFLICT仅在原报名CANCELLED、全权益REFUNDED、全额真实退款及binding精确一致、无未决和净结算0时作为保留历史允许结课，其余冲突拒绝。
+
+全部guard通过后，截止已过且严格无服务/实付/未知/退款/分账事实的候补、过期锁位及过期未确认报名可同事务转CANCELLED，保留AVAILABLE报价快照并记录审计；未知、实付或PAID_UNALLOCATED不自动处理。只释放本班session的占位，不动外班未来资源。已结课后消费DISPUTE或裁决返还权益会把相关已COMPLETED原班/当前补课班重开SUSPENDED，报名重开CONFIRMED，保留学员异议并恢复creator注销阻断。无新状态/迁移、无shared trade权限或生产变更。
+
+新增5组真实PG服务场景：正常履约/权限/同命令并发与creator blocker；结课和新异议并发；双向跨班补课及迟来争议双班重开；转入课完成不误挡原班未来课/占位；未决免费退款及无人返回候补/过期锁位；真实TradeService收费确认后可结课但资金未结仍阻断注销、未知付款/终态异常marker/正常来源冲突阻断、真实退款UNKNOWN→SUCCESS全退例外，另以rollback-only INSERT负例核缺binding/部分退/UNKNOWN，不绕冻结事实。课次使用DB时钟创建4–6秒短课，收费样本45秒保持正式付款有效期门槛，100ms有界轮询等待，未修改冻结时间。PG未在本机执行，须root隔离CI验收。
+
+本地验证：完整 `npm run typecheck`（含集成测试类型）通过；training-domain 8/8与原生training 16/16通过，修改源码/测试Prettier及git diff --check通过。独立dispatch只读审查发现并已修正source_hash列名、候补需安全关闭及测试capacity错误；前两次类型检查暴露provider测试接口/nullable回执和capacity字段遗漏，均已修复后通过。新增completion helper仅只读预览，写命令同锁重核；未用本地类型通过代替真实PG。
+
+2026-11-01 结课片最终本地证据：API全量源码单测116文件/1339项通过；最终API typecheck（含本文件PG类型）、全项目typecheck、原生training16项、领域8项及修改文件格式/空白检查通过。培训真实PG从11个it增至16个it，新增收费场景内部含缺binding/部分退款/UNKNOWN的3组rollback-only持久异常，不计作独立已运行测试。最后细化已取消转入报名的全退例外须核其完整原来源权益与分配；普通外班未来课仍不阻断本班。真实PG/运行角色/页面兼容及恢复由root最终候选CI执行，此处没有通过声明。

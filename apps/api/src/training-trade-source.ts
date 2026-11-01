@@ -1,6 +1,21 @@
 import type { PoolClient } from 'pg';
 import { notFound } from './errors.js';
 import { trainingFail } from './training-domain.js';
+/** One immutable identity shared by payment capture and course completion inspection. */
+export function trainingTradeIdentity(n: Record<string, any>) {
+  return {
+    kind: 'TRAINING_ENROLLMENT',
+    id: n.id,
+    orgId: n.org_id,
+    applicantId: n.applicant_user_id,
+    payerId: n.payer_user_id,
+    learnerId: n.learner_user_id,
+    termsId: n.terms_id,
+    contract: n.terms_snapshot,
+    totalFen: n.total_fen,
+    merchantKey: n.terms_snapshot.merchantKey,
+  };
+}
 /** Read financial history independently of the rollout switch. Frozen identity never follows state. */
 export async function trainingSourceReference(c: PoolClient, id: string) {
   const n = (
@@ -66,18 +81,7 @@ export async function readTrainingTradeSource(c: PoolClient, id: string) {
     disputed,
     valid: !['CANCELLED', 'EXPIRED', 'PAID_UNALLOCATED', 'WAITLISTED'].includes(n.state),
     expiresAt: n.hold_expires_at ? new Date(n.hold_expires_at).toISOString() : null,
-    identity: {
-      kind: 'TRAINING_ENROLLMENT',
-      id,
-      orgId: n.org_id,
-      applicantId: n.applicant_user_id,
-      payerId: n.payer_user_id,
-      learnerId: n.learner_user_id,
-      termsId: n.terms_id,
-      contract: q,
-      totalFen: n.total_fen,
-      merchantKey: q.merchantKey,
-    },
+    identity: trainingTradeIdentity(n),
   };
 }
 export async function assertTrainingRefundAllocation(
