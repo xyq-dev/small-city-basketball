@@ -77,3 +77,9 @@ root 单写全局 token/组件与导航、汇总、API及共享文件。每片�
 最终直接检查：`node --test` 执行 ui002-live、c10-account、e01-streaming、e03-insurance、e04-trade、e05-notifications、account-closure、youth-guardians、x18-governance、native-structure、c15-media-review、c16-delivery、c19-media-requests、live-media-download，201/201通过。新增消息筛选/标已读、财务隐藏迟到返回/通道关闭回归；全部相关格式与diff检查通过。
 
 未执行：浏览器实际几何/PNG、官方微信编译/真机、真实支付/保险/直播/消息及生产。无API、数据库、Migration、依赖或部署变更。root下一步：整合本片，跑整套CI的三宽布局并修复真实问题，再独立审查；不得仅凭本域静态展开宣称整套UI完成。
+
+## CI162 评分选择器最小修复
+
+root已确认第三片同步远端 `c5c0f10d757bc79b0cfabfe8606475f84ea1e0a5`，集成原生测试1128通过/1既有Windows跳过。随后root读取CI162布局JSON：`ui002-live-governance-reviews-workflow` 在320px时，显示“4／5 分”的 `.picker` 实高39.34375px，低于44px；overflow/smallButtons均为空。
+
+本地分支核验仍为 `work/ui002-live-finance@4e64c89`，仅有未跟踪node_modules测试依赖链接。只对该页 `.picker` 增加 `box-sizing:border-box`、`min-height:44px`、`font-size:16px`、`line-height:24px`，保留原padding和所有触控守卫。没有改测试断言或扩展页面范围；浏览器精确几何须由后继CI重验。

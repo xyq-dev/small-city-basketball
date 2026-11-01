@@ -59,3 +59,9 @@ root已将5885747整合并同步到远端`c5c0f10d757bc79b0cfabfe8606475f84ea1e0
 追溯检查通过：17份fixture均有节点；本次16份变更除figmaNode外，其余元数据、合成data及expect字段与HEAD逐项相等；所有新增或纠正的节点链接均存在UI001索引。仅JSON元数据与本任务/交接变更，未重复整套测试，不改变现有应用或验证结论。
 
 补充语义核对：按root/validation的准确追溯将招募未知结果样本对应O04 `6:1124`；记分台静态样本继承的`state: real-api`改为`synthetic-populated`，避免将合成渲染误认为真实API证据。仅这两项元数据更新，static、data、expect及实际API测试完全不变；格式、diff及元数据差异检查通过，不重跑整套测试。
+
+## CI162真实几何失败的最小修复
+
+root/validation提供已取消的旧CI162实际metrics：320px的c10-core-players-ready、c11-player-market-ready、players-collapsed三样本，playerCard.y期望200、实际204。原因是filter-chip虽指定height44，但继承全局button的min-height48，筛选栏实际增高4px。本片仅给players/index.wxss的.filter-chip显式补min-height44，保留原height44、触控44px及y200守卫，不修改测试预期或其他布局。
+
+已做基本原生解析/原有球员UI回归及diff检查；本地没有可用Chromium，未声称浏览器几何复验成功，由root的下一精确候选CI验证。未增加镜像CSS字符串测试，未改业务/API或其他域。

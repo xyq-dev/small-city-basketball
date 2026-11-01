@@ -1,8 +1,8 @@
 # UI002 画板与真实小程序实施映射
 
-状态：IN_PROGRESS / BRANCH_ONLY（实施与验收分项记录，尚未最终合并）。更新时间：2026-11-01T14:42:07+08:00。
+状态：IN_PROGRESS / BRANCH_ONLY（实施与验收分项记录，尚未最终合并）。更新时间：2026-11-01T14:53:06+08:00。
 
-依据[UI001设计交付](WECHAT_UI_V2.md)、[200画板原始索引](UI001_SCREEN_INDEX.md)和实际 `app.json`，将设计归入现有 **73条路由**。映射核对基线为本地整合分支 `803c1398d752df7e7ede56240729de1260c7550e`，不代表main或生产完成；最终代码与验证由[UI002任务](../tasks/UI002.md)和[交接](../handoffs/UI002.md)统一记录。
+依据[UI001设计交付](WECHAT_UI_V2.md)、[200画板原始索引](UI001_SCREEN_INDEX.md)和实际 `app.json`，将设计归入现有 **73条路由**。最终路由文件复核基线为本地整合分支 `9adc72917a129fa0c42e58419008da68ca2eab8a`，相对开工main `c22fde9` 的73条路由均有UI002源码、模板或样式变更；这不代表main或生产完成，最终代码与验证由[UI002任务](../tasks/UI002.md)和[交接](../handoffs/UI002.md)统一记录。
 
 200张由127张核心稿和73张补充稿组成，包含正常/失败/关闭状态、320/430尺寸、844横屏及1440/1024后台稿。**以下200项是去向与差异清单，不是200张已逐像素验收的勾选单。** 路由存在、VM可运行、静态兼容PNG、正式微信真机及实际外部交易是不同证据。
 
@@ -14,7 +14,7 @@
 | 报名审核与办赛记分 | 原路由内分步骤/分区；保存草稿、预审、保险、监护、最终审核与赛果分别呈现 | 当前API、capabilities和原幂等编号保持；独立审核和离线冲突不变 |
 | 撮合、派单与同城订单 | 需求、公开审阅、意向、报价及原预约回路分开 | 选择候选或确认报价不等最终承接、付款或履约 |
 | 培训 | 成人短课T1按课程/合同/锁位/付款/课次呈现 | T2青少年培训、培训专用监护和课包T3继续关闭；TR10/TR15不是已开放业务 |
-| 保险 | 销售关闭、外购保单和原单核对保留；准入/接口框架不替代供应商 | IN02—IN08为条件界面；OP01独立供应商运营后台尚未交付，真实adapter仍BLOCKED_EXTERNAL |
+| 保险 | 销售关闭、外购保单和原单核对保留；准入/接口框架不替代供应商 | 关闭态、原单核对及受准入约束的条件界面已接线；OP01独立1440供应商后台不属于本轮小程序开放范围，真实adapter仍BLOCKED_EXTERNAL |
 | 广告与财务 | AD07/AD08为本人对账/独立审批；AD01—AD06适配既有受权移动管理区 | 默认本人合同/对账；管理配置仅实际canManage/capability可见，权限和金额核算不变 |
 | 直播与媒体 | 准备、批准、采集、停止证据、任务与产物分区 | 未开通保持关闭；正式微信、实际双平台推流、长时采集及横屏/真机另验 |
 | 公开数据 | 首页赛事卡使用当前真实公开来源 | 不填设计示例68:64；E07仍为私有工作人员统计，不公开私有技术表 |
@@ -26,7 +26,8 @@ Figma以真实截图为视觉目标，整体context超时的节点按metadata拆
 | 证据层 | 本文件可确认 | 未包含的结论 |
 | --- | --- | --- |
 | 静态映射 | 原索引200个唯一ID逐项有去向；73条实际路由均在反向表，所列JS/WXML/JSON存在 | 不等于各画板所有控件、业务分支和视觉相符 |
-| 独立WXSS | 68条路由有页级WXSS；event-setup/schedule/bracket/reschedule/match-media复用全局样式 | 不为凑文件数创建空样式或新路由 |
+| 独立WXSS | 69条路由有页级WXSS；event-setup/schedule/bracket/reschedule四页复用全局样式，match-media已有独立WXSS | 不为凑文件数创建空样式或新路由 |
+| UI002源码整合 | 73条路由均已有本轮源码/模板/样式变更；有界关闭态是已实现的能力门槛，不表示整个模块未开发 | 当前[PR36](https://github.com/xyq-dev/small-city-basketball/pull/36)候选CI和独立Review由root收口，不能以源码整合代替验收 |
 | Figma高保真 | root与各域已记录取得的代表截图/小层context及超时 | 未逐张核对的范围不写200画板逐像素通过 |
 | 直接VM/模板 | 各切片已执行命令由各任务记录 | 当前HEAD完整必要测试和独立Review仍由root汇总，本表不预填结果 |
 | 320/390/430兼容布局与PNG | 静态展开和浏览器几何分别记录 | 本地Chrome/字体限制不降低CI布局标准，未执行不计通过 |
@@ -114,7 +115,7 @@ Figma以真实截图为视觉目标，整体context超时的节点按metadata拆
 
 ## 全200画板逐项映射
 
-角色与原型状态沿用原始索引；历史E/X/P只反映设计交付时说明，当前实现和关闭门槛以“实施处理”及UI002/REMAINING6当前任务为准。尺寸稿和后台稿保留自己的ID，未重复认作新小程序页面。
+角色与原型状态沿用原始索引；历史E/X/P只反映设计交付时说明，当前实现和关闭门槛以“实施处理”及UI002/REMAINING6当前任务为准。逐项“既有路由承载”表示相关UI002源码已在整合分支落地；“当前验证待集成人汇总”表示当前候选CI/状态/视觉验收仍待收口，不是待开发标记。尺寸稿和后台稿保留自己的ID，未重复认作新小程序页面。
 
 | 画板 | 角色 | 状态/目标 | 尺寸 | 真实路由 | 实施处理 |
 | --- | --- | --- | --- | --- | --- |
@@ -294,7 +295,7 @@ Figma以真实截图为视觉目标，整体context超时的节点按metadata拆
 | [AD04 · 独立审核结算申请](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=44-1384) | 独立财务审核员（非申请人） | 申请与批准分离／固定版本复核 | 1440×960 | [sponsor-commerce](../../apps/wechat/pages/sponsor-commerce/index.wxml) | 桌面稿适配既有移动管理区；仅实际capability可见，默认不展示配置 |
 | [AD05 · 分账执行与逐方核对](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=44-1421) | 独立执行员／有权财务 | 渠道结果未知／部分成功 | 1440×960 | [sponsor-commerce](../../apps/wechat/pages/sponsor-commerce/index.wxml) | 桌面稿适配既有移动管理区；仅实际capability可见，默认不展示配置 |
 | [AD06 · 退款与分账回退处理](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=44-1465) | 独立审核员／有权财务 | 退款占用／回退未知或不足额 | 1440×960 | [sponsor-commerce](../../apps/wechat/pages/sponsor-commerce/index.wxml) | 桌面稿适配既有移动管理区；仅实际capability可见，默认不展示配置 |
-| [OP01 · 保险供应商与原单核对](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=44-1502) | 授权保险运营／独立核对员 | 供应商未选定关闭／只读查单与差异 | 1440×960 | [insurance](../../apps/wechat/pages/insurance/index.wxml) | 仅相关原单入口；供应商运营后台未独立落地，真实接口仍阻塞 |
+| [OP01 · 保险供应商与原单核对](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=44-1502) | 授权保险运营／独立核对员 | 供应商未选定关闭／只读查单与差异 | 1440×960 | [insurance](../../apps/wechat/pages/insurance/index.wxml) | 关闭态与原单核对已接线；不新增独立1440供应商后台，真实adapter仍阻塞 |
 | [OP02 · 跨城邀约与调度](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=44-1539) | 当前城市／机构范围内授权调度员 | 批次与锁／单赢家／人工换人 | 1440×960 | [dispatch](../../apps/wechat/pages/dispatch/index.wxml) | 桌面调度稿适配当前范围移动调度区；不新增全国权限 |
 | [OP03 · 培训排课与招生管理](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=44-1578) | 当前机构授权教务／财务 | 排课容量／教师与场地冲突／招生 | 1440×960 | [training-manage](../../apps/wechat/pages/training-manage/index.wxml) | 桌面教务稿适配既有有权移动工作区；不新建假后台 |
 | [AD07 · 我的广告收入对账](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=44-1618) | 当前收款方本人／本机构有权财务 | 仅己方金额与原渠道结果 | 390×844 | [sponsor-commerce](../../apps/wechat/pages/sponsor-commerce/index.wxml) | 本人合同/对账或独立审批；真实资金与逐方渠道结果分别核对 |

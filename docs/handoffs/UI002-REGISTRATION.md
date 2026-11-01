@@ -25,3 +25,5 @@ root下一条操作：cherry-pick本片提交，核验仅分配前端/样本及�
 root回报最终代码已同步远端c5c0f10d/PR36，整合原生测试1128通过、1个既有Windows跳过，精确候选CI和独立review进行中。本次原worktree的HEAD5885747、初始clean，仅按UI001索引补15份fixture的figmaNode；额外纠正继承旧C10节点的管理邀请关闭样本为5:787。17份样本全部可追溯，本次16份JSON除figmaNode外与HEAD内容相等；data/expect完全不变。只做追溯元数据和格式/diff检查，没有重复整套测试，也没有新的功能/生产操作。小commit交root串行同步即可。
 
 追溯首片e92ca38已交root。随后按root/validation指示将recruitment-unknown的节点纠正为索引已核实的O04 6:1124，将scorer-console合成静态样本的state从real-api改为synthetic-populated；不更改static、data、expect或真正的API测试。仅元数据/格式/diff检查，独立小commit交root整合，不重复全量验证。
+
+CI162修复检查点：开工本地work/ui002-registration@d3f2577、clean。root/validation已取旧CI162原始metrics，三份320px球员列表的playerCard.y均200→204，定位为.filter-chip的height44被全局min-height48覆盖。本片仅补显式min-height44；不改y200或触控44守卫、不改其他域。只做原有球员UI/基本解析及diff检查，无本地浏览器几何验证；交root精确候选CI复验。旧CI162取消前的失败不记作当前候选成功。

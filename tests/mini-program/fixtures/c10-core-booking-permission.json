@@ -155,7 +155,22 @@
     "noTeams": true,
     "noPlayers": false,
     "quoteInvalid": false,
-    "feePreview": null
+    "feePreview": null,
+    "bookingSteps": [
+      {
+        "key": "arrange",
+        "label": "安排信息"
+      },
+      {
+        "key": "review",
+        "label": "报价与条款"
+      },
+      {
+        "key": "result",
+        "label": "原单结果",
+        "disabled": true
+      }
+    ]
   },
   "expectAbsentText": [
     "合成林越",

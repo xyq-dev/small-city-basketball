@@ -53,3 +53,7 @@
 直接验证：11路由对应R6/入口/X12/booking-create/booking-orders/C11/UI002/icons共165/165通过，定向Prettier与git diff --check通过；26个本域合成样本覆盖全部11路由，320/390/430共78份真实WXML/WXSS兼容HTML生成及预期出现/缺失文案核对通过。浏览器几何/PNG由root当前候选CI验证；官方微信工具、真机、正式支付保险直播未执行。Migration未编写、未执行，生产未操作。
 
 下一条操作：root串行cherry-pick本片并同步远端后，由独立审查核对delta，再用最终整合候选完成项目必要CI；不得以本地165项替代最终CI或微信/生产验收。工作区只剩本地临时依赖软链接（不提交），无其他协作者未提交改动。
+
+最终整合候选一致性修复（root报告CI164）：实际文件名为`c10-core-booking-empty.json`及`c10-core-booking-permission.json`，不是`booking-create-*`。从真实Page初始data读取bookingSteps，给两份既有完整快照补arrange/安排信息、review/报价与条款、result/原单结果（disabled:true）；其他业务字段和expect保持，deepStrictEqual原断言不变，未删除/过滤新属性。
+
+实际验证命令：`node --test apps/wechat/test/c10-core-state-consistency.test.cjs apps/wechat/test/booking-create.test.cjs apps/wechat/test/booking-orders.test.cjs apps/wechat/test/c11-booking-ui.test.cjs`，68/68通过；两JSON定向Prettier与diff检查通过。仅两fixture与本任务/交接文档，源码、API、资金规则、Migration和生产均未变。交root串行同步并按最终候选CI验收。

@@ -5,7 +5,7 @@ page { background:#f4f6fa; }
 .search-submit { width:44px; flex:0 0 44px; min-height:44px; margin:0; padding:10px; background:transparent; }
 .search-submit::after { border:0; }
 .filter-summary { display:flex; gap:8px; margin-bottom:8px; }
-.filter-chip { flex:1; min-width:0; display:flex; gap:6px; justify-content:center; align-items:center; height:44px; margin:0; padding:4px 6px; font-size:12px; line-height:18px; border-radius:10px; background:#f8fafc; color:#123c73; }
+.filter-chip { flex:1; min-width:0; display:flex; gap:6px; justify-content:center; align-items:center; height:44px; min-height:44px; margin:0; padding:4px 6px; font-size:12px; line-height:18px; border-radius:10px; background:#f8fafc; color:#123c73; }
 .filter-chip::after { border:1px solid #e5ebf2; border-radius:10px; }
 .filter-chip.active { font-weight:600; }
 .date-chip { gap:5px; }
