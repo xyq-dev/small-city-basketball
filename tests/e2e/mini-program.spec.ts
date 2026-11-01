@@ -392,13 +392,13 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       expect(metrics.profilePortrait?.y).toBe(width <= 360 ? -40 : -50);
       expect(metrics.profileQuote?.x).toBe(0);
       expect(metrics.profileQuote?.width).toBe(width);
-      expect(metrics.action?.background).toBe('rgb(255, 107, 45)');
+      expect(metrics.action?.background).toBe('rgb(242, 140, 40)');
     } else if (group === 'booking-create') {
       expect(metrics.scopeRail?.height).toBe(44);
       expect(metrics.selectedPlayer?.height).toBeGreaterThanOrEqual(84);
       expect(metrics.arrangement?.x).toBe(12);
       expect(metrics.arrangement?.width).toBe(width - 24);
-      expect(metrics.action?.background).toBe('rgb(255, 107, 45)');
+      expect(metrics.action?.background).toBe('rgb(242, 140, 40)');
     } else if (group === 'bookings') {
       expect(metrics.orderTabs?.height).toBe(44);
       expect(metrics.orderCard?.x).toBe(12);
