@@ -46,6 +46,7 @@ Page({
     this._hidden = false;
     this.load();
     if (this._enrollment) this.showEnrollment(this._enrollment);
+    else if (this.data.viewTab === 'mine' && !this.data.enrollment) this.loadMine();
   },
   onHide() {
     this._hidden = true;
@@ -58,6 +59,7 @@ Page({
       chargeConsent: false,
       makeup: null,
       makeupLoading: false,
+      mineLoading: false,
     });
   },
   onUnload() {
@@ -78,6 +80,7 @@ Page({
       detail: null,
       viewTab: 'catalog',
       signupStep: 'course',
+      loading: false,
       mineLoaded: false,
       mineLoading: false,
       enabled: false,
@@ -128,6 +131,8 @@ Page({
   },
   async loadMine() {
     if (this.data.busy) return;
+    this._cohort = '';
+    this._enrollment = '';
     const read = (this._viewRead || 0) + 1;
     this._viewRead = read;
     this.setData({

@@ -61,3 +61,13 @@
 最终delta P2修复：local-manage在供给新建/修订中刷新、未返回时点“返回供给列表”，ui.begin已取消旧read却曾遗留loading:true。closeSupply现在同步loading:false，保持原pending，不伪造列表或复用已取消响应；返回后刷新可继续使用。真实Page＋deferred workspace VM复现完整路径，确认旧列表响应被丢弃、不复开详情、不清原编号、loading结束、刷新按钮可用且没有业务写入。
 
 定向`node --test apps/wechat/test/ui002-services.test.cjs apps/wechat/test/x12-local-services.test.cjs`47/47通过；格式与diff检查通过。源码仅closeSupply新增一处loading:false；其余是回归和本任务/交接，无API、资金、Migration或生产变更，交root当前候选复验。
+
+
+PR36线程`PRRT_kwDOVTBG086yYDhL`生命周期P2修复：真实Page＋deferred `/v1/training/mine`复现“我的报名读取中→隐藏→返回”，原_viewRead取消读但旧finally不能清mineLoading。training.onHide现在结束mineLoading；onShow在当前为“我的”列表且无详情时重读该列表，保留原详情深链行为。旧响应不能回填旧报名，也不能清新读取的spinner。新增的隐藏换号实证另发现identify重置账号会取消并发catalog读取，故onSessionReset同步结束loading；旧账号资料不回填，新账号回到catalog且两个读取标记均结束。源码共3行新增，不修改业务命令、权限、资金、pending或write hold。
+
+直接回归覆盖原命令UNKNOWN恢复编号保留且不新增写、旧finally不清新spinner、返回后的按钮可用、隐藏期间write hold仍在、换号旧报名丢弃。另对training-manage真实load→hide→show进行了延迟响应测试，旧课表不回填，新读取正常结束loading；独立审查同类扫查未见其他同类finding，未修改其余域。
+
+`node --test apps/wechat/test/ui002-services.test.cjs apps/wechat/test/r6-training.test.cjs`42/42通过；定向Prettier及git diff检查通过。本分支仅己域源码、直接测试和任务/交接；无API、Migration、部署或生产变更。交root串行整合并用最终精确候选CI验收；外部线程由root核验证据后resolve，本分支未发表评论。
+
+
+同线程深链回归补片：显式点击“我的报名”时清旧_cohort与_enrollment深链目标，避免hide/show的目录刷新重开初始详情、取消新的mine读并再次遗留spinner。真实Page＋deferred分别覆盖cohort与enrollment初次深链正确打开，再切我的列表并隐藏返回；目录先回不会新增旧详情读，旧mine响应不结束新spinner，新mine正确落地，首次深链请求各仅1次。源码仅loadMine新增清两个旧导航目标。training19＋UI00224共43/43通过，定向Prettier及diff检查通过；继续保留pending、写锁、权限及资金原规则。交root整合本补片后再冻结最终候选。

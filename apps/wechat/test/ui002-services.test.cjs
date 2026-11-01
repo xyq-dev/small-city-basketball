@@ -344,15 +344,15 @@ test('returning after an account switch while hidden scrubs previous service dra
 const raceId = (n) => '20000000-0000-4000-8000-' + String(n).padStart(12, '0');
 function deferredPage(name, extraModules = {}) {
   const requests = [];
-  const current = '10000000-0000-4000-8000-000000000001';
+  let current = '10000000-0000-4000-8000-000000000001';
   const client = {
     sessionRevision: () => 1,
     onSessionChange: () => () => {},
     viewerId: () => current,
-    request: (url) =>
+    request: (url, method = 'GET', body) =>
       url === '/v1/auth/session'
         ? Promise.resolve({ data: { user: { id: current }, organizations: [], teamContexts: [] } })
-        : new Promise((resolve, reject) => requests.push({ url, resolve, reject })),
+        : new Promise((resolve, reject) => requests.push({ url, method, body, resolve, reject })),
   };
   const api = { getClient: () => client, uuid: (v) => v };
   const h = loadPage({
@@ -365,7 +365,13 @@ function deferredPage(name, extraModules = {}) {
   h.page._visible = true;
   h.page._hidden = false;
   h.page._actor = current;
-  return { ...h, requests };
+  return {
+    ...h,
+    requests,
+    setViewer: (id) => {
+      current = id;
+    },
+  };
 }
 const cohortResult = (id) => ({
   id,
@@ -667,4 +673,132 @@ test('returning from a supply application during refresh ends loading and discar
     calls.some((x) => x.method !== 'GET'),
     false,
   );
+});
+
+test('returning to the training enrollment list rereads it and an old hidden response cannot leave or clear its new spinner', async () => {
+  const h = deferredPage('training');
+  const model = h.requireLocal('utils/training.js');
+  const actor = '10000000-0000-4000-8000-000000000001';
+  const uncertain = model.write(actor, '/v1/training/enrollments/' + raceId(1) + '/commands', {
+    action: 'REFRESH',
+    expectedVersion: 1,
+  });
+  await new Promise((r) => setImmediate(r));
+  h.requests[0].reject(Error('synthetic connection lost'));
+  await assert.rejects(uncertain, /connection lost/);
+  const original = model.pending(actor).body.commandId;
+  const oldMine = h.page.loadMine();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(h.requests[1].url, '/v1/training/mine');
+  assert.equal(h.page.data.mineLoading, true);
+  h.page.onHide();
+  assert.equal(h.page.data.mineLoading, false);
+  assert.equal(h.page.data.pending.body.commandId, original);
+  h.page.onShow();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(h.requests[2].url, '/v1/training/catalog');
+  assert.equal(h.requests[3].url, '/v1/training/mine');
+  assert.equal(h.page.data.mineLoading, true);
+  h.requests[1].resolve({ data: { items: [enrollmentResult(raceId(2))] } });
+  await oldMine;
+  assert.equal(h.page.data.mineLoading, true);
+  assert.equal(h.page.data.mine.length, 0);
+  h.requests[2].resolve({ data: { items: [], capabilities: { enabled: false } } });
+  h.requests[3].resolve({ data: { items: [enrollmentResult(raceId(3))] } });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(h.page.data.viewTab, 'mine');
+  assert.equal(h.page.data.mineLoading, false);
+  assert.equal(h.page.data.mine[0].id, raceId(3));
+  assert.equal(h.page.data.pending.body.commandId, original);
+  assert.equal(h.requests.filter((x) => x.method === 'POST').length, 1);
+  const button = markup('training', h.page.data).match(
+    /<button[^>]*data-mini-bindtap="loadMine"[^>]*>/,
+  );
+  assert.ok(button);
+  assert.doesNotMatch(button[0], /\bdisabled\b/);
+});
+test('training workspace refresh resets its ordinary loading flag on return and hiding does not release an active write hold', async () => {
+  const h = deferredPage('training-manage');
+  h.page.onShow();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(h.page.data.loading, true);
+  h.page.onHide();
+  h.page.onShow();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(h.requests.length, 2);
+  h.requests[0].resolve({ data: { teaching: [], coachProfiles: [] } });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(h.page.data.loading, true);
+  h.requests[1].resolve({ data: { teaching: [], coachProfiles: [] } });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(h.page.data.loading, false);
+  const learner = deferredPage('training');
+  const token = learner.requireLocal('utils/ui.js').hold(learner.page);
+  learner.page._writeToken = token;
+  learner.page.setData({ busy: true, mineLoading: true });
+  learner.page.onHide();
+  assert.equal(learner.page.data.busy, true);
+  assert.equal(learner.page._writeToken, token);
+  assert.equal(learner.page.data.mineLoading, false);
+});
+
+test('returning to my training list under a new account discards the old list without keeping either spinner stuck', async () => {
+  const h = deferredPage('training');
+  const oldMine = h.page.loadMine();
+  await new Promise((r) => setImmediate(r));
+  h.page.onHide();
+  h.setViewer('10000000-0000-4000-8000-000000000002');
+  h.page.onShow();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(h.requests.length, 2);
+  h.requests[0].resolve({ data: { items: [enrollmentResult(raceId(55))] } });
+  h.requests[1].resolve({ data: { items: [], capabilities: { enabled: false } } });
+  await oldMine;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(h.page.data.viewTab, 'catalog');
+  assert.equal(h.page.data.mine.length, 0);
+  assert.equal(h.page.data.mineLoading, false);
+  assert.equal(h.page.data.loading, false);
+  assert.equal(
+    h.requests.some((r) => r.method !== 'GET'),
+    false,
+  );
+});
+
+test('explicitly opening my training list retires cohort and enrollment deep links before returning', async () => {
+  for (const target of ['cohort', 'enrollment']) {
+    const h = deferredPage('training');
+    const id = raceId(target === 'cohort' ? 61 : 62);
+    h.page.onLoad({ [target]: id });
+    h.page.onShow();
+    h.requests[0].resolve({ data: { items: [], capabilities: { enabled: false } } });
+    await new Promise((r) => setImmediate(r));
+    const path = target === 'cohort' ? '/v1/training/cohorts/' : '/v1/training/enrollments/';
+    assert.equal(h.requests[1].url, path + id);
+    h.requests[1].resolve({ data: target === 'cohort' ? cohortResult(id) : enrollmentResult(id) });
+    await new Promise((r) => setImmediate(r));
+    assert.equal((target === 'cohort' ? h.page.data.detail : h.page.data.enrollment).id, id);
+    const oldMine = h.page.loadMine();
+    await new Promise((r) => setImmediate(r));
+    assert.equal(h.requests[2].url, '/v1/training/mine');
+    h.page.onHide();
+    h.page.onShow();
+    await new Promise((r) => setImmediate(r));
+    assert.equal(h.requests[3].url, '/v1/training/catalog');
+    assert.equal(h.requests[4].url, '/v1/training/mine');
+    h.requests[3].resolve({ data: { items: [], capabilities: { enabled: false } } });
+    await new Promise((r) => setImmediate(r));
+    assert.equal(h.requests.length, 5);
+    h.requests[2].resolve({ data: { items: [enrollmentResult(raceId(63))] } });
+    await oldMine;
+    assert.equal(h.page.data.mineLoading, true);
+    h.requests[4].resolve({ data: { items: [enrollmentResult(raceId(64))] } });
+    await new Promise((r) => setImmediate(r));
+    assert.equal(h.page.data.mineLoading, false);
+    assert.equal(h.page.data.viewTab, 'mine');
+    assert.equal(h.page.data.mine[0].id, raceId(64));
+    assert.equal(h.page.data.detail, null);
+    assert.equal(h.page.data.enrollment, null);
+    assert.equal(h.requests.filter((r) => r.url === path + id).length, 1);
+  }
 });
