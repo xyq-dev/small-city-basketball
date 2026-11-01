@@ -5,8 +5,38 @@
   "figmaNode": "4:16",
   "syntheticData": true,
   "static": true,
-  "expectText": ["每一场，都值得被看见", "发现正在进行的赛事", "按位置找球员"],
-  "data": {},
+  "expectText": [
+    "每一场，都值得被看见",
+    "发现正在进行的赛事",
+    "按位置找球员",
+    "合成青锋杯篮球邀请赛"
+  ],
+  "data": {
+    "citySelection": {
+      "mode": "NATIONWIDE",
+      "city": "",
+      "label": "全国",
+      "description": "全国公开赛事",
+      "source": "全国浏览",
+      "guide": true,
+      "recent": [],
+      "recentChoices": [],
+      "warning": ""
+    },
+    "publicLoaded": true,
+    "publicLoading": false,
+    "publicError": "",
+    "publicEvents": [
+      {
+        "publicEventId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "合成青锋杯篮球邀请赛",
+        "dateLabel": "2028-05-01 至 2028-05-03",
+        "venueName": "合成市文化体育中心篮球场",
+        "displayCity": "合成市",
+        "statusLabel": "进行中"
+      }
+    ]
+  },
   "primary": true,
   "designSource": "UI001:H01; supersedes historical C11 home"
 }

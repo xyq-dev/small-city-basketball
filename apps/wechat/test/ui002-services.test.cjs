@@ -551,6 +551,14 @@ test('local booking views separate role filters and fulfillment, and returning c
   assert.equal(h.page.data.pending.body.commandId, 'original-local-order');
   assert.equal(h.wx.calls.filter((x) => x.type === 'request').length, 0);
 });
+test('local fulfillment fixture asserts visible redemption rules and separately retains the checkin input placeholder', () => {
+  const fixture = require('../../../tests/mini-program/fixtures/ui002-services-local-fulfillment.json');
+  const html = markup('local-bookings', fixture.data);
+  const visibleText = html.replace(/<[^>]*>/g, ' ');
+  for (const text of fixture.expectText) assert.ok(visibleText.includes(text), text);
+  assert.match(html, /<input[^>]*placeholder="请粘贴需求方现场出示的本次核销码"/);
+  assert.match(html, /<button[^>]*data-type="REDEEM_CHECKIN"/);
+});
 test('supply draft navigation cancels old private detail and an unprivileged account cannot start an application', async () => {
   let resolve;
   const model = require('../utils/local-services');

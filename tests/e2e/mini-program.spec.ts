@@ -190,6 +190,8 @@ async function measureLayout(frame: Frame) {
       documentWidth: document.documentElement.scrollWidth,
       bodyWidth: document.body.scrollWidth,
       contentHeight: document.documentElement.scrollHeight,
+      customHeaderCount: document.querySelectorAll('.scb-header').length,
+      nativeHeaderCount: document.querySelectorAll('.mini-native-bar').length,
       buttonCount: buttons.length,
       fieldCount: fields.length,
       overflow,
@@ -366,8 +368,10 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     );
     expect(metrics.photographs).toEqual([]);
   } else {
-    expect(metrics.action?.x).toBe(12);
-    expect(metrics.action?.width).toBe(width - 24);
+    if (!['booking-create', 'bookings'].includes(group)) {
+      expect(metrics.action?.x).toBe(12);
+      expect(metrics.action?.width).toBe(width - 24);
+    }
     expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
     if (group === 'players') {
       expect(metrics.search?.x).toBe(12);
@@ -396,14 +400,24 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     } else if (group === 'booking-create') {
       expect(metrics.scopeRail?.height).toBe(44);
       expect(metrics.selectedPlayer?.height).toBeGreaterThanOrEqual(84);
-      expect(metrics.arrangement?.x).toBe(12);
-      expect(metrics.arrangement?.width).toBe(width - 24);
-      expect(metrics.action?.background).toBe('rgb(242, 140, 40)');
+      expect(metrics.arrangement?.x).toBe(16);
+      expect(metrics.arrangement?.width).toBe(width - 32);
+      expect(metrics.arrangement?.radius).toBe(16);
+      expect(metrics.action?.x).toBe(16);
+      expect(metrics.action?.width).toBe(width - 32);
+      expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
+      expect(metrics.action?.radius).toBe(12);
+      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
     } else if (group === 'bookings') {
       expect(metrics.orderTabs?.height).toBe(44);
-      expect(metrics.orderCard?.x).toBe(12);
-      expect(metrics.orderCard?.width).toBe(width - 24);
-      expect(metrics.orderCard?.radius).toBe(12);
+      expect(metrics.orderCard?.x).toBe(16);
+      expect(metrics.orderCard?.width).toBe(width - 32);
+      expect(metrics.orderCard?.radius).toBe(16);
+      expect(metrics.action?.x).toBe(16);
+      expect(metrics.action?.width).toBe(width - 32);
+      expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
+      expect(metrics.action?.radius).toBe(12);
+      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
       expect(metrics.orderMore.length).toBe(2);
       // An icon, not a text glyph, with a 44px target.
       expect(
@@ -455,6 +469,10 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         for (const name of scenario.expectEnabled || [])
           await expect(frame.getByRole('button', { name, exact: true }).first()).toBeEnabled();
         const layout = await measureLayout(frame);
+        expect(
+          layout.customHeaderCount > 0 && layout.nativeHeaderCount > 0,
+          'custom scb-header and native navigation must not coexist',
+        ).toBe(false);
         if (scenario.name === 'c10-team-team-ready') {
           await expect(frame.locator('.member-table-row')).toHaveCount(3);
           const clippedLabels = await frame.locator('.member-table-row').evaluateAll((rows) =>

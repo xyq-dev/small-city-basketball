@@ -63,8 +63,8 @@
 .booking-tools button { flex:1; width:0; margin:0; color:#60758f; font-size:12px; line-height:24px; }
 .time-caption { display:flex; align-items:flex-start; gap:7px; color:#71839c; font-size:11px; line-height:18px; margin:4px 0 0; }
 .time-caption scb-icon { display:block; flex:0 0 16px; margin-top:1px; }
-.bookings-actions { padding:10px 12px calc(12px + env(safe-area-inset-bottom)); border-top:0; background:#f4f6fa; }
-.bookings-actions .primary { min-height:48px; padding:12px; margin:0; border-radius:9px; background:#123c73; color:#fff; font-size:14px; line-height:24px; font-weight:600; }
+.bookings-actions { padding:12px 16px calc(28px + env(safe-area-inset-bottom)); border-top:0; background:#f4f6fa; }
+.bookings-actions .primary { min-height:48px; padding:12px; margin:0; border-radius:12px; background:#123c73; color:#fff; font-size:14px; line-height:24px; font-weight:600; }
 @media (max-width:360px) { .booking-order-card { padding:12px; } .order-player-name text { display:block; } .order-team { max-width:38%; } }
 .booking-view-tabs .booking-view-tab { width:auto; min-width:0; margin:0; }
 

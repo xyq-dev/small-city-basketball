@@ -4,7 +4,7 @@
   "state": "synthetic-local-fulfillment",
   "figmaNode": "8:1169",
   "designSource": "UI001 current protected route and verified shared fields/cards; synthetic data only",
-  "expectText": ["核销球场到场", "实际经营方持当前有效码", "现场出示"],
+  "expectText": ["核销球场到场", "实际经营方持当前有效码", "球场须经营方凭需求方一次性码核销到场"],
   "data": {
     "serviceTab": "actions",
     "selected": {

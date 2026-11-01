@@ -22,6 +22,20 @@ test('native manifest routes are unique, local and include loadable Page/templat
   }
 });
 
+test('pages with a custom header disable the native navigation bar', () => {
+  for (const route of manifest.pages) {
+    const source = fs.readFileSync(path.join(root, route + '.wxml'), 'utf8');
+    if (!/<scb-header(?:\s|>)/.test(source)) continue;
+    const configPath = path.join(root, route + '.json');
+    const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf8')) : {};
+    assert.equal(
+      config.navigationStyle || manifest.window?.navigationStyle,
+      'custom',
+      route + ': native and custom navigation bars must not stack',
+    );
+  }
+});
+
 // The runtime sets these on every Page instance; a same-named method is replaced at runtime
 // (booking-detail once called this.route() and failed before reading the order).
 const builtIns = [

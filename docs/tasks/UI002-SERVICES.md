@@ -71,3 +71,11 @@ PR36线程`PRRT_kwDOVTBG086yYDhL`生命周期P2修复：真实Page＋deferred `/
 
 
 同线程深链回归补片：显式点击“我的报名”时清旧_cohort与_enrollment深链目标，避免hide/show的目录刷新重开初始详情、取消新的mine读并再次遗留spinner。真实Page＋deferred分别覆盖cohort与enrollment初次深链正确打开，再切我的列表并隐藏返回；目录先回不会新增旧详情读，旧mine响应不结束新spinner，新mine正确落地，首次深链请求各仅1次。源码仅loadMine新增清两个旧导航目标。training19＋UI00224共43/43通过，定向Prettier及diff检查通过；继续保留pending、写锁、权限及资金原规则。交root整合本补片后再冻结最终候选。
+
+
+CI167同城履约三宽fixture失败根因确认：error-context的实际body只有经营方当前有效码与需求方一次性码规则，“现场出示”只出现在input placeholder属性，原静态HTML包含属性的核对误认为它是正文。修ui002-services-local-fulfillment第三条expectText为实际正文“球场须经营方凭需求方一次性码核销到场”，保留核销按钮和实际经营方两条原断言。新增直接模板回归先剥标签及属性再验证全部expectText，并独立断言完整现场核销输入placeholder及真实REDEEM_CHECKIN按钮；没有删除或放宽业务核销约束，未改实际页面。UI00225＋X1227共52/52通过，定向格式及diff检查通过。两成熟预约页几何差异另由root核对Figma T09/T17，不能以通用spacing token断言逐页必须16px，未改geometry测试。
+
+
+CI167预约几何按UI001精确迁移（root直接Figma取证后决定）：5:1195／5:1244在390稿的内容x16、w358；T09 FixedActions 5:1238的Action 5:1239为x16／w358／h48，root取得5:1226白卡p16／r16与5:1239深蓝#123C73／r12／h48高保真context和截图。两页premium-page原容器始终保留，不以旧C11的12px断言覆盖新设计。保留16外边距及订单卡r16，T09 arrangement-summary改r16；两页固定footer左右16、上12、底28加env安全区，单主按钮min48／padding12／r12，T09主按钮由旧橙改设计深蓝。各正常、恢复、关闭及未知分支原按钮与disabled条件保持；多按钮状态继续按内容增高，未改报价、命令或资金。
+
+同片仅给booking-detail、training、training-manage、sponsor-commerce四个已有scb-header页面JSON补navigationStyle:custom，保留原navigationBarTitleText，避免真实微信重复原生标题；未修改全app配置。逐页静态核对四JSON与实际scb-header对应通过。直接`node --test apps/wechat/test/c11-booking-ui.test.cjs apps/wechat/test/booking-create.test.cjs apps/wechat/test/booking-orders.test.cjs apps/wechat/test/r6-training.test.cjs apps/wechat/test/r6-sponsor-commerce.test.cjs apps/wechat/test/ui002-services.test.cjs`116/116通过，四JSON定向Prettier及diff检查通过。源码仅两WXSS和四JSON，任务及交接同步；没有API、权限、资金、Migration、部署或生产变更。三宽精确geometry由root按新取得设计更新并在最终候选CI检验，本地未冒称浏览器或微信真机通过。
