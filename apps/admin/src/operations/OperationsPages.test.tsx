@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { ApiError, type ApiClient } from '../api/client';
 import type { RegistrationWorkspace } from '../registration/shared';
@@ -518,6 +518,257 @@ describe('dispatch admin', () => {
       expect(screen.queryByText('正在读取最新资料…')).not.toBeInTheDocument();
       expect(screen.getByLabelText('需求详情')).toHaveTextContent('新馆');
     });
+  });
+
+  test('reopening the same request keeps the version written while that request stayed open', async () => {
+    let version = 4;
+    let requestReads = 0;
+    const posts: unknown[] = [];
+    let releasePost: () => void = () => undefined;
+    const postGate = new Promise<void>((resolve) => {
+      releasePost = resolve;
+    });
+    let releaseStale: () => void = () => undefined;
+    let staleSettled = false;
+    const staleGate = new Promise<void>((resolve) => {
+      releaseStale = resolve;
+    });
+    const request = vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'POST' && path.includes('/commands')) {
+        posts.push(JSON.parse(String(init.body)));
+        if (posts.length === 1) await postGate;
+        version += 1;
+        return envelope({ id: 'req-1', version });
+      }
+      if (path.includes('/requests/req-1')) {
+        requestReads += 1;
+        const snapshot = version;
+        if (requestReads === 2) {
+          await staleGate;
+          staleSettled = true;
+        }
+        return envelope({
+          request: {
+            ...requestRow(snapshot >= 5 ? 'INVITING' : 'DRAFT'),
+            version: snapshot,
+          },
+          offers: [],
+        });
+      }
+      return envelope(dispatchData());
+    });
+    render(<DispatchOperationsPage context={context(request)} />);
+    fireEvent.click(await screen.findByRole('button', { name: /合成馆/ }));
+    expect(await screen.findByLabelText('需求详情')).toHaveTextContent('资料 v4');
+    fireEvent.change(screen.getByLabelText('需求操作说明'), {
+      target: { value: '开始邀请说明' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '开始分批邀请' }));
+    fireEvent.click(screen.getByRole('button', { name: /合成馆/ }));
+    await waitFor(() => expect(requestReads).toBe(2));
+    releasePost();
+    await waitFor(() => {
+      expect(screen.getByLabelText('需求详情')).toHaveTextContent('资料 v5');
+      expect(screen.getByLabelText('需求详情')).toHaveTextContent('正在分批邀请');
+    });
+    releaseStale();
+    await waitFor(() => expect(staleSettled).toBe(true));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByLabelText('需求详情')).toHaveTextContent('资料 v5');
+    expect(screen.getByLabelText('需求详情')).not.toHaveTextContent('资料 v4');
+    await waitFor(() => expect(screen.getByRole('button', { name: '暂停邀请' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: '暂停邀请' }));
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect(posts[1]).toMatchObject({ type: 'PAUSE', expectedVersion: 5 });
+  });
+
+  test('a failed request write does not cover the request opened later', async () => {
+    let releasePost: () => void = () => undefined;
+    let postSettled = false;
+    const postGate = new Promise<void>((resolve) => {
+      releasePost = resolve;
+    });
+    const request = vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        await postGate;
+        postSettled = true;
+        throw new ApiError(409, 'VERSION_CONFLICT', '需求版本已变化');
+      }
+      if (path.includes('/requests/req-2')) {
+        return envelope({
+          request: { ...requestRow(), id: 'req-2', status: 'INVITING', serviceAddress: '新馆' },
+          offers: [],
+        });
+      }
+      if (path.includes('/requests/req-1')) {
+        return envelope({ request: requestRow(), offers: [] });
+      }
+      return envelope({
+        ...dispatchData(),
+        requests: [requestRow(), { ...requestRow(), id: 'req-2', serviceAddress: '客场馆' }],
+      });
+    });
+    render(<DispatchOperationsPage context={context(request)} />);
+    fireEvent.click(await screen.findByRole('button', { name: /合成馆/ }));
+    fireEvent.change(await screen.findByLabelText('需求操作说明'), {
+      target: { value: '开始邀请说明' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '开始分批邀请' }));
+    fireEvent.click(screen.getByRole('button', { name: /客场馆/ }));
+    expect(await screen.findByLabelText('需求详情')).toHaveTextContent('新馆');
+    releasePost();
+    await waitFor(() => expect(postSettled).toBe(true));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByText('需求版本已变化')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('需求详情')).toHaveTextContent('新馆');
+    expect(screen.queryByText('需求操作已提交，请以重新读取的状态为准')).not.toBeInTheDocument();
+  });
+
+  test('saving a page preference survives opening a detail and the next save uses the new version', async () => {
+    let preferenceVersion = 1;
+    let workspaceReads = 0;
+    const posts: unknown[] = [];
+    let releasePost: () => void = () => undefined;
+    const postGate = new Promise<void>((resolve) => {
+      releasePost = resolve;
+    });
+    let releaseReload: () => void = () => undefined;
+    const reloadGate = new Promise<void>((resolve) => {
+      releaseReload = resolve;
+    });
+    const preference = (version: number) => ({
+      enabled: true,
+      regionIds: version === 1 ? ['region-1'] : ['region-1', 'region-2'],
+      version,
+      dailyLimit: 1,
+    });
+    const request = vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'POST' && path.includes('/preferences')) {
+        posts.push(JSON.parse(String(init.body)));
+        await postGate;
+        preferenceVersion = 2;
+        return envelope({ version: preferenceVersion });
+      }
+      if (path.includes('/requests/req-1')) {
+        return envelope({ request: requestRow(), offers: [] });
+      }
+      if (path === '/v1/dispatch') {
+        workspaceReads += 1;
+        if (workspaceReads > 1) await reloadGate;
+        return envelope({ ...dispatchData(), preference: preference(preferenceVersion) });
+      }
+      return envelope(dispatchData());
+    });
+    render(<DispatchOperationsPage context={context(request)} />);
+    const regions = await screen.findByLabelText('接单地区编号');
+    expect(regions).toHaveAttribute('placeholder', 'region-1');
+    fireEvent.change(regions, { target: { value: 'region-1' } });
+    fireEvent.click(screen.getByRole('button', { name: '允许跨城邀请' }));
+    fireEvent.click(await screen.findByRole('button', { name: /合成馆/ }));
+    expect(await screen.findByLabelText('需求详情')).toHaveTextContent('合成馆');
+    releasePost();
+    await waitFor(() => expect(workspaceReads).toBe(2));
+    releaseReload();
+    await waitFor(() =>
+      expect(screen.getByLabelText('接单地区编号')).toHaveAttribute(
+        'placeholder',
+        'region-1,region-2',
+      ),
+    );
+    expect(screen.getByText('接单偏好已提交')).toBeVisible();
+    expect(screen.getByLabelText('需求详情')).toHaveTextContent('合成馆');
+    fireEvent.click(screen.getByRole('button', { name: '允许跨城邀请' }));
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect(posts[0]).toMatchObject({ expectedVersion: 1 });
+    expect(posts[1]).toMatchObject({ expectedVersion: 2 });
+  });
+
+  test('a page preference error stays visible after a detail is opened', async () => {
+    let releasePost: () => void = () => undefined;
+    const postGate = new Promise<void>((resolve) => {
+      releasePost = resolve;
+    });
+    const request = vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'POST' && path.includes('/preferences')) {
+        await postGate;
+        throw new Error('偏好保存失败');
+      }
+      if (path.includes('/requests/req-1')) return envelope({ request: requestRow(), offers: [] });
+      return envelope({
+        ...dispatchData(),
+        preference: { enabled: false, regionIds: ['region-1'], version: 1, dailyLimit: 1 },
+      });
+    });
+    render(<DispatchOperationsPage context={context(request)} />);
+    fireEvent.change(await screen.findByLabelText('接单地区编号'), {
+      target: { value: 'region-1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '允许跨城邀请' }));
+    fireEvent.click(await screen.findByRole('button', { name: /合成馆/ }));
+    expect(await screen.findByLabelText('需求详情')).toHaveTextContent('合成馆');
+    releasePost();
+    expect(await screen.findByText('偏好保存失败')).toBeVisible();
+    expect(screen.getByLabelText('需求详情')).toHaveTextContent('合成馆');
+  });
+
+  test('a late offer refresh does not replace the offer opened later', async () => {
+    let offerReads = 0;
+    let refreshSettled = false;
+    let releaseRefresh: () => void = () => undefined;
+    const refreshGate = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    const offer = (id: string, title: string, version: number) => ({
+      id,
+      listingTitle: title,
+      status: 'PENDING',
+      version,
+      canWithdraw: true,
+      canQuote: false,
+      canReviewTravel: false,
+      canAccept: false,
+      request: requestRow(),
+    });
+    const request = vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return envelope({ id: 'offer-1' });
+      if (path.includes('/offers/offer-1')) {
+        offerReads += 1;
+        if (offerReads > 1) {
+          await refreshGate;
+          refreshSettled = true;
+        }
+        return envelope(
+          offerReads > 1 ? offer('offer-1', '旧邀请回填', 9) : offer('offer-1', '合成裁判', 2),
+        );
+      }
+      if (path.includes('/offers/offer-2')) return envelope(offer('offer-2', '客场裁判', 3));
+      return envelope({
+        ...dispatchData(),
+        offers: [offer('offer-1', '合成裁判', 2), offer('offer-2', '客场裁判', 3)],
+      });
+    });
+    render(<DispatchOperationsPage context={context(request)} />);
+    fireEvent.click(await screen.findByRole('button', { name: /合成裁判/ }));
+    fireEvent.change(await screen.findByLabelText('邀请操作说明'), {
+      target: { value: '撤回本次说明' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '撤回本次接单' }));
+    await waitFor(() => expect(offerReads).toBe(2));
+    fireEvent.click(screen.getByRole('button', { name: /客场裁判/ }));
+    expect(await screen.findByLabelText('邀请详情')).toHaveTextContent('客场裁判');
+    expect(screen.getByLabelText('邀请详情')).toHaveTextContent('资料 v3');
+    releaseRefresh();
+    await waitFor(() => expect(refreshSettled).toBe(true));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByLabelText('邀请详情')).toHaveTextContent('客场裁判');
+    expect(screen.getByLabelText('邀请详情')).toHaveTextContent('资料 v3');
+    expect(screen.getByLabelText('邀请详情')).not.toHaveTextContent('旧邀请回填');
   });
 
   test('travel review shows the itinerary and does not send until that evidence is checked', async () => {

@@ -54,7 +54,8 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
   const action = useAction();
   const reads = useEpoch();
   const detailRef = useRef<{ kind: 'request' | 'offer'; id: string } | null>(null);
-  const viewGen = useRef(0);
+  const sessionRef = useRef({ userId: context.userId, organizationId: context.organizationId });
+  sessionRef.current = { userId: context.userId, organizationId: context.organizationId };
   const quoteAckRef = useRef<QuoteAck | null>(null);
   const [quoteAck, setQuoteAck] = useState<QuoteAck | null>(null);
   const [reason, setReason] = useState('');
@@ -85,74 +86,96 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
     quoteAckRef.current = null;
     setQuoteAck(null);
   }, [context.userId]);
-  function beginView(kind: 'request' | 'offer', id: string) {
-    viewGen.current += 1;
+  function sameDetail(kind: 'request' | 'offer', id: string) {
+    return detailRef.current?.kind === kind && detailRef.current.id === id;
+  }
+  function sessionCurrent(userId: string, organizationId: string | null | undefined) {
+    return (
+      action.isActive() &&
+      sessionRef.current.userId === userId &&
+      sessionRef.current.organizationId === organizationId
+    );
+  }
+  function focusDetail(kind: 'request' | 'offer', id: string) {
     detailRef.current = { kind, id };
     rememberQuote(null);
-    return viewGen.current;
-  }
-  function stillView(gen: number) {
-    return viewGen.current === gen && action.isActive();
   }
   async function openRequest(id: string) {
-    const gen = beginView('request', id);
+    focusDetail('request', id);
     const token = reads.next();
     try {
       const detail = await api.dispatchRequest(id);
-      if (viewGen.current !== gen || !reads.current(token)) return;
+      if (!reads.current(token) || !sameDetail('request', id) || !action.isActive()) return;
       setSelected(detail.request);
       setOffers(detail.offers);
       setOffer(null);
     } catch {
-      if (viewGen.current === gen) resource.reload();
+      if (reads.current(token) && sameDetail('request', id) && action.isActive()) resource.reload();
     }
   }
   async function openOffer(id: string) {
-    const gen = beginView('offer', id);
+    focusDetail('offer', id);
     const token = reads.next();
     try {
       const row = await api.dispatchOffer(id);
-      if (viewGen.current !== gen || !reads.current(token)) return;
+      if (!reads.current(token) || !sameDetail('offer', id) || !action.isActive()) return;
       setOffer(row);
       setSelected(null);
     } catch {
-      if (viewGen.current === gen) resource.reload();
+      if (reads.current(token) && sameDetail('offer', id) && action.isActive()) resource.reload();
     }
   }
-  function sameDetail(kind: 'request' | 'offer', id: string) {
-    return detailRef.current?.kind === kind && detailRef.current.id === id;
-  }
-  async function refreshRequest(id: string, gen: number) {
-    if (viewGen.current !== gen) return;
+  async function refreshRequest(id: string) {
+    if (!sameDetail('request', id) || !action.isActive()) return;
+    const token = reads.next();
     const detail = await api.dispatchRequest(id);
-    if (viewGen.current !== gen || !sameDetail('request', id)) return;
+    if (!reads.current(token) || !sameDetail('request', id) || !action.isActive()) return;
     setSelected(detail.request);
     setOffers(detail.offers);
     setOffer(null);
   }
-  async function refreshOffer(id: string, gen: number) {
-    if (viewGen.current !== gen) return;
+  async function refreshOffer(id: string) {
+    if (!sameDetail('offer', id) || !action.isActive()) return;
+    const token = reads.next();
     const row = await api.dispatchOffer(id);
-    if (viewGen.current !== gen || !sameDetail('offer', id)) return;
+    if (!reads.current(token) || !sameDetail('offer', id) || !action.isActive()) return;
     setOffer(row);
     setSelected(null);
   }
-  function submit(label: string, run: (gen: number) => Promise<void>) {
-    const gen = viewGen.current;
-    const viewed = detailRef.current;
+  function submitDetail(
+    label: string,
+    kind: 'request' | 'offer',
+    id: string,
+    run: () => Promise<void>,
+  ) {
+    const userId = context.userId;
+    const organizationId = context.organizationId;
     void action.run(async () => {
-      const current = () =>
-        viewGen.current === gen &&
-        action.isActive() &&
-        (viewed === null || sameDetail(viewed.kind, viewed.id));
+      const current = () => sessionCurrent(userId, organizationId) && sameDetail(kind, id);
       try {
-        await run(gen);
+        await run();
       } catch (cause) {
         if (current()) throw cause;
         return false;
       }
       if (!current()) return false;
-      if (viewed) resource.reloadPreserving();
+      resource.reloadPreserving();
+      await context.onSessionRefresh();
+    }, label);
+  }
+  function submitPage(label: string, run: () => Promise<void>) {
+    const userId = context.userId;
+    const organizationId = context.organizationId;
+    void action.run(async () => {
+      const current = () => sessionCurrent(userId, organizationId);
+      try {
+        await run();
+      } catch (cause) {
+        if (current()) throw cause;
+        return false;
+      }
+      if (!current()) return false;
+      if (detailRef.current) resource.reloadPreserving();
       else resource.reload();
       await context.onSessionRefresh();
     }, label);
@@ -219,23 +242,34 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
               onCommand={(type, extra) => {
                 const requestId = selected.id;
                 const version = selected.version;
-                submit('需求操作已提交，请以重新读取的状态为准', async (gen) => {
-                  const payload = typeof extra === 'function' ? extra() : (extra ?? {});
-                  if (
-                    type === 'CONFIRM_QUOTE' &&
-                    !quoteStill(quoteAckRef.current, requestId, payload)
-                  )
-                    throw new Error('请重新核对当前报价后再确认');
-                  if (!stillView(gen) || !sameDetail('request', requestId)) return;
-                  await api.post(`/v1/dispatch/requests/${requestId}/commands`, {
-                    commandId: commandId(),
-                    expectedVersion: version,
-                    type,
-                    reason: reasonText(reason),
-                    ...payload,
-                  });
-                  await refreshRequest(requestId, gen);
-                });
+                const userId = context.userId;
+                const organizationId = context.organizationId;
+                submitDetail(
+                  '需求操作已提交，请以重新读取的状态为准',
+                  'request',
+                  requestId,
+                  async () => {
+                    const payload = typeof extra === 'function' ? extra() : (extra ?? {});
+                    if (
+                      type === 'CONFIRM_QUOTE' &&
+                      !quoteStill(quoteAckRef.current, requestId, payload)
+                    )
+                      throw new Error('请重新核对当前报价后再确认');
+                    if (
+                      !sessionCurrent(userId, organizationId) ||
+                      !sameDetail('request', requestId)
+                    )
+                      return;
+                    await api.post(`/v1/dispatch/requests/${requestId}/commands`, {
+                      commandId: commandId(),
+                      expectedVersion: version,
+                      type,
+                      reason: reasonText(reason),
+                      ...payload,
+                    });
+                    await refreshRequest(requestId);
+                  },
+                );
               }}
             />
           )}
@@ -250,18 +284,26 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
               onCommand={(type, extra) => {
                 const offerId = offer.id;
                 const version = offer.version;
-                submit('邀请操作已提交，请以重新读取的状态为准', async (gen) => {
-                  const payload = typeof extra === 'function' ? extra() : extra;
-                  if (!stillView(gen) || !sameDetail('offer', offerId)) return;
-                  await api.post(`/v1/dispatch/offers/${offerId}/commands`, {
-                    commandId: commandId(),
-                    expectedVersion: version,
-                    type,
-                    reason: reasonText(reason),
-                    ...payload,
-                  });
-                  await refreshOffer(offerId, gen);
-                });
+                const userId = context.userId;
+                const organizationId = context.organizationId;
+                submitDetail(
+                  '邀请操作已提交，请以重新读取的状态为准',
+                  'offer',
+                  offerId,
+                  async () => {
+                    const payload = typeof extra === 'function' ? extra() : extra;
+                    if (!sessionCurrent(userId, organizationId) || !sameDetail('offer', offerId))
+                      return;
+                    await api.post(`/v1/dispatch/offers/${offerId}/commands`, {
+                      commandId: commandId(),
+                      expectedVersion: version,
+                      type,
+                      reason: reasonText(reason),
+                      ...payload,
+                    });
+                    await refreshOffer(offerId);
+                  },
+                );
               }}
             />
           )}
@@ -289,7 +331,7 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
               type="button"
               disabled={action.busy || !data.capabilities.enabled}
               onClick={() =>
-                submit('接单偏好已提交', async () => {
+                submitPage('接单偏好已提交', async () => {
                   const ids = preferenceRegions
                     .split(',')
                     .map((id) => id.trim())
@@ -311,7 +353,7 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
               type="button"
               disabled={action.busy || !data.capabilities.enabled}
               onClick={() =>
-                submit('已停止新的跨城邀请', async () => {
+                submitPage('已停止新的跨城邀请', async () => {
                   const ids = (preferenceRegions || data.preference?.regionIds.join(',') || '')
                     .split(',')
                     .map((id) => id.trim())
@@ -444,7 +486,7 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
               type="button"
               disabled={action.busy || !data.capabilities.enabled || !context.organizationId}
               onClick={() =>
-                submit('需求已建立，尚未开始邀请', async () => {
+                submitPage('需求已建立，尚未开始邀请', async () => {
                   if (!context.organizationId) throw new Error('需要当前机构管理权限');
                   if (!allow) throw new Error('请明确勾选跨城邀请及费用上限');
                   if (!regionId || !catalogVersion) throw new Error('请从地区目录选择服务地区');
