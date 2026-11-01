@@ -1,5 +1,9 @@
 # 小城市篮球：项目开发总文档
 
+## 2026-11-01 六项补充功能与UI接续
+
+[DOC006总设计](design/REMAINING_SIX_FEATURES.md)补齐真实保险适配、地图区域搜索、全国撮合、跨城派单、培训招生与广告收入分成；[UI交接及可复制提示词](design/SUPPLEMENTAL_UI_HANDOFF.md)给出角色、页面、状态与原型交付要求。设计已完成，增量代码及外部验收待实施，先读[任务](tasks/DOC006.md)与[交接](handoffs/DOC006.md)。旧分期和源码验收保留，不把新设计计入已开发数量。
+
 最新实现接续：[八项商业扩展任务](tasks/EXPANSION8.md)、[恢复入口](handoffs/EXPANSION8.md)、[使用路径](EXPANSION8_USAGE.md)与[运行边界](EXPANSION8_OPERATIONS.md)。当前合并/隔离验收和正式外部状态以[CURRENT_STATUS](CURRENT_STATUS.md)为准；下方分期为历史入口。
 
 ## 2026-10-29 全国化开发入口

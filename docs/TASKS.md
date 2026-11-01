@@ -1,5 +1,11 @@
 # 任务看板
 
+## DOC006：六项补充设计（DONE / MAIN；实现仍为TODO）
+
+2026-11-01：保险供应商适配、地图视野搜索、全国撮合、跨城派单、培训招生、广告收入分成的设计已整合；[总设计](design/REMAINING_SIX_FEATURES.md)、[UI交接](design/SUPPLEMENTAL_UI_HANDOFF.md)、[任务卡](tasks/DOC006.md)、[接续记录](handoffs/DOC006.md)。
+
+下一步分别建立UI和业务实施卡。地图可先实现；保险选型并行；撮合/派单共享日历；培训/广告补交易来源与资金约束。六项“设计完成”不计为“新增代码已完成”，专项验收清单尚待执行，无生产变更。
+
 ## EXPANSION8（DONE / MAIN：业务源码与隔离验收，正式外部未验）
 
 2026-10-31 Asia/Shanghai；[PR34](https://github.com/xyq-dev/small-city-basketball/pull/34)已以merge commit `9bfc54d12188846fa6a63605606dff89b783d025`合入main，tree `73f20bdfa65192382ce8e03112ac6f08ec9a3661`与最终候选及测试merge-ref精确相同。八项持久服务、控制器、原生入口和旧业务门槛已接线：直播/云媒体、保险编排、收退款/对账/分账、订阅消息、统一搜索、注销、青年监护。[逐项代码与外部待办](audits/EXPANSION8_ACCEPTANCE.md)、[总任务](tasks/EXPANSION8.md)、[恢复入口](handoffs/EXPANSION8.md)、[使用指南](EXPANSION8_USAGE.md)、[运行边界](EXPANSION8_OPERATIONS.md)。当前68条原生路由、42项Migration、176张表（本轮49张）；001—042冻结，后续DDL从043追加，生产未执行。
