@@ -48,3 +48,17 @@ capture与verify均核对资金订单与预约的source/org/payer/beneficiary/sl
 隔离恢复断言修复（2026-11-01 Asia/Shanghai）：root授权修正旧X12 quarantine与matching恢复检查冲突。普通重启/恢复现在严格比较九表完整行摘要、原预约完整行和全部reservation完整行；隔离只允许旧SQL规定的CONFIRMED→CANCELLED、固定原因、version+1、change/checkin清空及resource.active=false。来源其余列完整摘要、资金绑定、金额、席位/意向/assignment预算占用仍严格保留；所有updated_at精确等于RESTORE_QUARANTINE审计时间，不泛化忽略时间列。matching授权/需求/outbox及资金状态按具体变化精算。
 
 验证：node语法、Prettier、git diff检查通过；临时mock SQL验证器接受普通/隔离两个正确状态，拒绝9种来源、资源、预算、资金或时间篡改。该检查只验证JS断言分支，不替代真实PG。真实archive恢复待root CI154；仅修改自有脚本与任务/交接记录，未改旧quarantine语义。
+
+2026-11-01（Asia/Shanghai）共享退款收口追加授权：root委派trade-service/source-adapter/合同及对应测试、原生trade-order页；新worktree `/workspace/scratch/aad368826b09/scb-six-trade-retry`、分支`work/r6-trade-retry`、基线18c570a，开工clean，远端xyq-dev/small-city-basketball。ads持有重试链及四参数只读assertRefundRevocation事实hook，root持有wiring/ACL；dispatch协作者仅改本worktree的4个原生trade页/测试路径，不单独提交。特殊APPROVED退款REJECT沿common独立manager/operator及fresh session权限，限定广告恢复未发送且祖先已成功；APPROVE也在相同锁下复核来源。GET限广告确切退款过占给真实金额冲突视图，不放松任何写路径。进行中，验证待补。
+
+共享退款收口实现完成：optional assertRefundRevocation仅供SPONSOR_ORDER未发APPROVED后继，实际状态fence/provider_refund_id/success_at必须全null，原immutablebinding的kind/source必须一致；沿用common独立manager/operator、排除付款/收款/提议人且提交前fresh session。APPROVE在PENDING阶段也复用source dispatch核验，源事实变化时整笔拒绝。原命令回放仍沿旧operation机制，不删除或重绑历史。root统一接ads只读hook，本片不改wiring。
+
+GET每条退款返回canRejectApprovedRefund；仅广告退款过占且其它已结金额全部经原严格计算通过时，balanceConflict只读保留实付/已退/全部占用、可退0，写路径仍严格。原生页按退款ID独立确认撤回，身份/版本/刷新变化清空；冲突时禁资金执行和重试，仅保留原号查询与受控REJECT。协作者dispatch完成UI，training独立审查指出restore quarantine503会挡历史页，已仅将明确SPONSOR_RESTORE_QUARANTINED映射能力false，mutation仍拒且其它503/SQL不吞。
+
+验证：全项目typecheck、38项定向(33新增+5资金领域)、17原生测试、完整API source 1335/1335及格式/diff检查通过。首次全source仅新unit“负金额”夹具未触发原计算器错误导致1项失败（1333项通过），改为确切非整数过占后最终全source全部通过，未放宽生产计算器。真实PG新增文件由dispatch协作补写中，本机无PG未执行；完整真实ADS retry链由ads模块PG另验。未生产、未远端写、无Migration修改。
+
+共享退款PG追加（2026-11-01 Asia/Shanghai）：协作者dispatch在本worktree补`r6-trade-refund-revocation.integration.test.ts`，8个test声明/16个展开场景，真实migrated PG/auth/会话与原生sponsor source reader、真实captureSourceCharge/captureSourceRefund和immutable binding。签约、付款确认和迟到渠道事实明确为SQL合成fixture，domain资格hook为受控测试替身；真实ADS祖先/后继完整链由ADS专属PG另验，不能混称本文件是完整生产角色旅程。
+
+覆盖PENDING APPROVE来源复核失败无mutation/无出网；过占GET保留1000实付+1000已退+2000占用并可安全拒绝未发送后继；旧版本拒绝、成功只增一次version且原command重放、原binding不可改删；付款人/收款人/提议人独立审核拒绝；7种状态/已发证据、3种绑定缺失或错配、hook缺失/事实拒绝/隔离关闭；事务末fresh失效全部回滚及真实已撤销session入口拒绝。全项目typecheck、单文件Prettier、git diff检查及Vitest用例收集通过，本机未执行PG。下一步root cherry本片并纳入CI156的R6真实PG早检，生产/外网/真实资金未触及。
+
+PG夹具独立复核：map逐项比对030/038/047/048、source consent/商户/hash、角色与金额、session/version/replay后无确定SQL/API阻塞。本人另对root最新047与18c570a差异确认只新增retry关系及history规则，不改变本夹具旧source约束。该只读结论不替代真实PG执行。

@@ -61,10 +61,10 @@ CREATE TABLE sponsor_settlement_items (
  id uuid PRIMARY KEY, org_id uuid NOT NULL REFERENCES organizations(id), batch_id uuid NOT NULL,
  beneficiary_org_id uuid NOT NULL REFERENCES organizations(id), receiver_merchant_id text NOT NULL, display_name text NOT NULL,
  authorization_version text NOT NULL, amount_fen integer NOT NULL CHECK(amount_fen>=0), retained boolean NOT NULL,
- status text NOT NULL CHECK(status IN('RETAINED','PENDING','PROCESSING','SUCCEEDED','FAILED')), provider_detail_id text,
+ status text NOT NULL CHECK(status IN('RETAINED','NOT_REQUIRED','PENDING','PROCESSING','SUCCEEDED','FAILED')), provider_detail_id text,
  created_at timestamptz NOT NULL DEFAULT clock_timestamp(), updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  UNIQUE(batch_id,beneficiary_org_id), UNIQUE(org_id,id), FOREIGN KEY(org_id,batch_id) REFERENCES sponsor_settlement_batches(org_id,id),
- CHECK((status='RETAINED')=retained), CHECK(status<>'SUCCEEDED' OR provider_detail_id IS NOT NULL)
+ CHECK((status='RETAINED')=retained), CHECK((status='NOT_REQUIRED')=(NOT retained AND amount_fen=0)), CHECK(status<>'SUCCEEDED' OR provider_detail_id IS NOT NULL)
 );
 CREATE INDEX sponsor_items_beneficiary ON sponsor_settlement_items(beneficiary_org_id,created_at DESC,id);
 CREATE TABLE sponsor_refund_plans (
@@ -84,6 +84,19 @@ CREATE TABLE sponsor_refund_plans (
 );
 CREATE UNIQUE INDEX sponsor_advance_reservation_unique ON sponsor_refund_plans((advance_coverage->>'reservationId')) WHERE advance_coverage IS NOT NULL;
 CREATE UNIQUE INDEX sponsor_one_pending_refund ON sponsor_refund_plans(order_id) WHERE status IN('IN_REVIEW','APPROVED','RECOVERY_REQUIRED','READY_FOR_REFUND');
+ALTER TABLE sponsor_refund_plans ADD UNIQUE(org_id,order_id,id);
+CREATE TABLE sponsor_refund_retries (
+ id uuid PRIMARY KEY, org_id uuid NOT NULL REFERENCES organizations(id), order_id uuid NOT NULL, plan_id uuid NOT NULL,
+ previous_refund_id uuid NOT NULL REFERENCES trade_refunds(id), status text NOT NULL DEFAULT 'IN_REVIEW' CHECK(status IN('IN_REVIEW','APPROVED','CLAIMED','REJECTED')),
+ evidence text NOT NULL CHECK(char_length(evidence) BETWEEN 4 AND 2000), proposed_by uuid NOT NULL REFERENCES users(id), reviewed_by uuid REFERENCES users(id),
+ trade_refund_id uuid UNIQUE REFERENCES trade_refunds(id) DEFERRABLE INITIALLY DEFERRED,
+ version integer NOT NULL DEFAULT 1 CHECK(version>0),created_at timestamptz NOT NULL DEFAULT clock_timestamp(),updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ FOREIGN KEY(org_id,order_id) REFERENCES sponsor_orders(org_id,id), FOREIGN KEY(org_id,order_id,plan_id) REFERENCES sponsor_refund_plans(org_id,order_id,id), CHECK(reviewed_by IS NULL OR reviewed_by<>proposed_by),
+ CHECK(status NOT IN('APPROVED','CLAIMED','REJECTED') OR reviewed_by IS NOT NULL), CHECK((status='CLAIMED')=(trade_refund_id IS NOT NULL)),
+ CHECK(trade_refund_id IS NULL OR trade_refund_id<>previous_refund_id)
+);
+CREATE UNIQUE INDEX sponsor_retry_successor ON sponsor_refund_retries(previous_refund_id) WHERE status<>'REJECTED';
+CREATE UNIQUE INDEX sponsor_retry_pending ON sponsor_refund_retries(plan_id) WHERE status IN('IN_REVIEW','APPROVED');
 CREATE TABLE sponsor_return_items (
  id uuid PRIMARY KEY, org_id uuid NOT NULL REFERENCES organizations(id), refund_plan_id uuid NOT NULL, settlement_item_id uuid NOT NULL REFERENCES sponsor_settlement_items(id),
  amount_fen integer NOT NULL CHECK(amount_fen>0), out_return_no text NOT NULL UNIQUE,
@@ -117,6 +130,7 @@ BEGIN
  WHEN 'sponsor_settlement_batches' THEN ARRAY['status','approvals','fence','version','provider_order_id','finished','finish_status','updated_at']
  WHEN 'sponsor_settlement_items' THEN ARRAY['status','provider_detail_id','updated_at']
  WHEN 'sponsor_refund_plans' THEN ARRAY['status','reviewed_by','trade_refund_id','version','funding_mode','advance_proposed_by','advance_reviewed_by','advance_evidence','advance_coverage','updated_at']
+ WHEN 'sponsor_refund_retries' THEN ARRAY['status','reviewed_by','trade_refund_id','version','updated_at']
  WHEN 'sponsor_return_items' THEN ARRAY['status','fence','provider_return_id','updated_at']
  WHEN 'sponsor_recovery_cases' THEN ARRAY['status','evidence','proposed_by','reviewed_by'] END;
  IF (to_jsonb(NEW)-fields) IS DISTINCT FROM (to_jsonb(OLD)-fields) THEN RAISE EXCEPTION 'Sponsor frozen intent cannot change' USING ERRCODE='23514'; END IF;
@@ -131,6 +145,9 @@ BEGIN
  ELSIF TG_TABLE_NAME='sponsor_refund_plans' THEN
   IF OLD.advance_coverage IS NOT NULL AND (NEW.advance_coverage IS DISTINCT FROM OLD.advance_coverage OR NEW.funding_mode IS DISTINCT FROM OLD.funding_mode OR NEW.advance_proposed_by IS DISTINCT FROM OLD.advance_proposed_by OR NEW.advance_reviewed_by IS DISTINCT FROM OLD.advance_reviewed_by OR NEW.advance_evidence IS DISTINCT FROM OLD.advance_evidence) THEN RAISE EXCEPTION 'Reserved advance funds cannot be reassigned' USING ERRCODE='23514'; END IF;
   IF OLD.status='CLAIMED' AND (NEW.status<>'CLAIMED' OR NEW.trade_refund_id IS DISTINCT FROM OLD.trade_refund_id) THEN RAISE EXCEPTION 'Claimed refund coverage is frozen' USING ERRCODE='23514'; END IF;
+ ELSIF TG_TABLE_NAME='sponsor_refund_retries' THEN
+  IF OLD.status IN('APPROVED','CLAIMED','REJECTED') AND NEW.reviewed_by IS DISTINCT FROM OLD.reviewed_by THEN RAISE EXCEPTION 'Retry approval is immutable' USING ERRCODE='23514'; END IF;
+  IF OLD.status IN('CLAIMED','REJECTED') AND (NEW.status IS DISTINCT FROM OLD.status OR NEW.trade_refund_id IS DISTINCT FROM OLD.trade_refund_id) THEN RAISE EXCEPTION 'Final retry intent is immutable' USING ERRCODE='23514'; END IF;
  ELSIF TG_TABLE_NAME='sponsor_settlement_items' THEN
   IF OLD.status='SUCCEEDED' AND (NEW.status<>'SUCCEEDED' OR NEW.provider_detail_id IS DISTINCT FROM OLD.provider_detail_id) THEN RAISE EXCEPTION 'Confirmed split cannot regress' USING ERRCODE='23514'; END IF;
  ELSIF TG_TABLE_NAME='sponsor_return_items' THEN
@@ -138,6 +155,6 @@ BEGIN
  END IF;
  RETURN NEW;
 END; $$;
-DO $$ DECLARE name text; BEGIN FOREACH name IN ARRAY ARRAY['sponsor_beneficiaries','sponsor_contracts','sponsor_orders','sponsor_deliveries','sponsor_settlement_batches','sponsor_settlement_items','sponsor_refund_plans','sponsor_return_items','sponsor_recovery_cases','sponsor_commerce_operations'] LOOP
+DO $$ DECLARE name text; BEGIN FOREACH name IN ARRAY ARRAY['sponsor_beneficiaries','sponsor_contracts','sponsor_orders','sponsor_deliveries','sponsor_settlement_batches','sponsor_settlement_items','sponsor_refund_plans','sponsor_refund_retries','sponsor_return_items','sponsor_recovery_cases','sponsor_commerce_operations'] LOOP
  EXECUTE format('CREATE TRIGGER %I BEFORE UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION r6_sponsor_immutable()',name||'_history',name);
 END LOOP; END $$;

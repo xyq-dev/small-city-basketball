@@ -1,10 +1,70 @@
 import type { PoolClient } from 'pg';
 import { notFound } from './errors.js';
+import { tradeHash } from './trade-domain.js';
+import {
+  readSponsorRefundResolution,
+  sponsorRefundFailed,
+  assertSponsorRetryWritesAllowed,
+} from './sponsor-commerce-refund-resolution.js';
 import {
   allocateSponsorRefund,
   sponsorFail,
+  sponsorHash,
   validateSponsorAdvanceCoverage,
 } from './sponsor-commerce-domain.js';
+
+/** A never-paid order may finish only after the canonical ledger and every service obligation are empty. */
+export async function sponsorUnpaidCloseSafe(
+  c: PoolClient,
+  sourceId: string,
+  tradeOrderId: string,
+) {
+  const source = await readSponsorTradeSource(c, sourceId);
+  const o = (await c.query('SELECT * FROM sponsor_orders WHERE id=$1 FOR UPDATE', [sourceId]))
+    .rows[0];
+  const t = (await c.query('SELECT * FROM trade_orders WHERE id=$1 FOR UPDATE', [tradeOrderId]))
+    .rows[0];
+  if (
+    !t ||
+    t.status === 'SOURCE_CONFLICT' ||
+    t.kind !== 'SPONSOR_ORDER' ||
+    t.source_id !== sourceId ||
+    t.org_id !== source.orgId ||
+    t.payer_user_id !== source.payerId ||
+    t.beneficiary_user_id !== source.beneficiaryId ||
+    t.total_fen !== source.totalFen ||
+    t.merchant_key !== source.merchantKey ||
+    t.merchant_id !== source.identity.merchantId ||
+    t.merchant_app_id !== source.identity.merchantAppId ||
+    t.terms_id !== null ||
+    t.source_hash !== tradeHash(source.identity) ||
+    sponsorHash(t.source_snapshot) !== sponsorHash(source.identity) ||
+    !['WAITING_PAYMENT', 'CLOSED'].includes(o.status) ||
+    o.accepted_at ||
+    o.verified_fee_fen !== null
+  )
+    return false;
+  const attempts = (
+    await c.query('SELECT * FROM trade_payment_attempts WHERE order_id=$1 ORDER BY id FOR UPDATE', [
+      t.id,
+    ])
+  ).rows;
+  if (
+    attempts.some(
+      (p) => !['CLOSED', 'FAILED'].includes(p.status) || p.provider_transaction_id || p.paid_at,
+    )
+  )
+    return false;
+  for (const table of ['trade_refunds', 'trade_deductions', 'trade_settlements'])
+    if ((await c.query(`SELECT id FROM ${table} WHERE order_id=$1 FOR UPDATE`, [t.id])).rowCount)
+      return false;
+  for (const table of ['sponsor_deliveries', 'sponsor_settlement_batches', 'sponsor_refund_plans'])
+    if (
+      (await c.query(`SELECT id FROM ${table} WHERE order_id=$1 FOR UPDATE`, [sourceId])).rowCount
+    )
+      return false;
+  return true;
+}
 
 /** Common trade adapter. Call under x12_calendar_lock, before locking this source. */
 export async function sponsorSourceReference(c: PoolClient, id: string) {
@@ -73,10 +133,16 @@ export async function claimSponsorRefundAllocation(
     input.allocationId,
     input.amountFen,
   );
-  await c.query(
-    "UPDATE sponsor_refund_plans SET status='CLAIMED',trade_refund_id=$2,version=version+1,updated_at=clock_timestamp() WHERE id=$1",
-    [r.id, input.refundId],
-  );
+  if (r.retryId)
+    await c.query(
+      "UPDATE sponsor_refund_retries SET status='CLAIMED',trade_refund_id=$2,version=version+1,updated_at=clock_timestamp() WHERE id=$1",
+      [r.retryId, input.refundId],
+    );
+  else
+    await c.query(
+      "UPDATE sponsor_refund_plans SET status='CLAIMED',trade_refund_id=$2,version=version+1,updated_at=clock_timestamp() WHERE id=$1",
+      [r.id, input.refundId],
+    );
 }
 export async function assertSponsorRefundAllocation(
   c: PoolClient,
@@ -91,6 +157,31 @@ export async function assertSponsorRefundAllocation(
       sourceId,
     ])
   ).rows[0];
+  if (!r) {
+    await assertSponsorRetryWritesAllowed(c);
+    const retry = (
+      await c.query('SELECT * FROM sponsor_refund_retries WHERE id=$1 AND order_id=$2 FOR UPDATE', [
+        allocationId,
+        sourceId,
+      ])
+    ).rows[0];
+    if (!retry) sponsorFail('SPONSOR_REFUND_ALLOCATION_REQUIRED', '退款恢复申请不存在');
+    const resolution = await readSponsorRefundResolution(c, retry.plan_id);
+    if (
+      !resolution.valid ||
+      retry.status !== 'APPROVED' ||
+      resolution.pendingRetry?.id !== retry.id ||
+      !sponsorRefundFailed(resolution.currentRefund) ||
+      resolution.currentRefund?.id !== retry.previous_refund_id ||
+      resolution.plan.amount_fen !== amountFen
+    )
+      sponsorFail(
+        'SPONSOR_RETRY_BLOCKED',
+        '须独立审核且原退款全链明确失败，不能重试未知或已成功退款',
+      );
+    await assertSponsorOriginalRefundDispatch(c, sourceId, resolution.plan.id, amountFen);
+    return { ...resolution.plan, retryId: retry.id };
+  }
   if (
     !r ||
     !(
@@ -141,6 +232,67 @@ export async function sponsorClosureBlocked(c: PoolClient, userId: string) {
 }
 
 export async function assertSponsorRefundDispatch(
+  c: PoolClient,
+  sourceId: string,
+  allocationId: string,
+  amountFen: number,
+) {
+  const retry = (
+    await c.query('SELECT * FROM sponsor_refund_retries WHERE id=$1 AND order_id=$2 FOR UPDATE', [
+      allocationId,
+      sourceId,
+    ])
+  ).rows[0];
+  if (retry) {
+    await assertSponsorRetryWritesAllowed(c);
+    const resolution = await readSponsorRefundResolution(c, retry.plan_id);
+    if (
+      !resolution.valid ||
+      resolution.pendingRetry ||
+      retry.status !== 'CLAIMED' ||
+      resolution.currentRefund?.id !== retry.trade_refund_id ||
+      resolution.plan.amount_fen !== amountFen
+    )
+      sponsorFail('SPONSOR_RETRY_BLOCKED', '原退款状态或恢复审批链已变化，禁止发送替代退款');
+    return assertSponsorOriginalRefundDispatch(c, sourceId, resolution.plan.id, amountFen);
+  }
+  return assertSponsorOriginalRefundDispatch(c, sourceId, allocationId, amountFen);
+}
+/** Explicit cancellation of an unsubmitted replacement after an older attempt is confirmed successful. */
+export async function assertSponsorRefundRevocation(
+  c: PoolClient,
+  sourceId: string,
+  allocationId: string,
+  amountFen: number,
+) {
+  await assertSponsorRetryWritesAllowed(c);
+  const retry = (
+    await c.query('SELECT * FROM sponsor_refund_retries WHERE id=$1 AND order_id=$2 FOR UPDATE', [
+      allocationId,
+      sourceId,
+    ])
+  ).rows[0];
+  if (!retry || retry.status !== 'CLAIMED')
+    sponsorFail('SPONSOR_RETRY_REVOCATION_BLOCKED', '只能撤回未发送的替代退款');
+  const r = await readSponsorRefundResolution(c, retry.plan_id),
+    leaf = r.leafRefund;
+  if (
+    !r.structurallyValid ||
+    r.pendingRetry ||
+    r.plan.amount_fen !== amountFen ||
+    r.plan.order_id !== sourceId ||
+    !leaf ||
+    leaf?.id !== retry.trade_refund_id ||
+    !['PENDING_REVIEW', 'APPROVED'].includes(leaf.status) ||
+    leaf.fence ||
+    leaf.provider_refund_id ||
+    leaf.success_at ||
+    !r.chain.slice(0, -1).some((p) => p.status === 'SUCCEEDED') ||
+    r.chain.slice(0, -1).some((p) => p.status !== 'SUCCEEDED' && !sponsorRefundFailed(p))
+  )
+    sponsorFail('SPONSOR_RETRY_REVOCATION_BLOCKED', '须先确认旧退款已成功且替代退款尚未发送');
+}
+async function assertSponsorOriginalRefundDispatch(
   c: PoolClient,
   sourceId: string,
   allocationId: string,
@@ -209,6 +361,18 @@ export async function readSponsorClosureFunds(
     o.status !== 'CLOSED'
   )
     return blocked();
+  const source = await readSponsorTradeSource(c, sourceId);
+  if (
+    t.beneficiary_user_id !== source.beneficiaryId ||
+    t.currency !== o.currency ||
+    t.merchant_key !== source.merchantKey ||
+    t.merchant_id !== source.identity.merchantId ||
+    t.merchant_app_id !== source.identity.merchantAppId ||
+    t.terms_id !== null ||
+    t.source_hash !== tradeHash(source.identity) ||
+    sponsorHash(t.source_snapshot) !== sponsorHash(source.identity)
+  )
+    return blocked();
   const payments = (
     await c.query('SELECT * FROM trade_payment_attempts WHERE order_id=$1 ORDER BY id FOR UPDATE', [
       t.id,
@@ -217,6 +381,10 @@ export async function readSponsorClosureFunds(
   if (payments.some((p) => ['DISPATCHING', 'UNKNOWN', 'NOTPAY'].includes(p.status)))
     return blocked();
   const paid = payments.filter((p) => p.status === 'PAID');
+  if (!paid.length)
+    return (await sponsorUnpaidCloseSafe(c, sourceId, tradeOrderId))
+      ? { dischargedFen: 0, unresolved: false }
+      : blocked();
   if (paid.length !== 1 || !paid[0]!.profit_sharing || paid[0]!.total_fen !== o.total_fen)
     return blocked();
   const refunds = (
@@ -265,22 +433,22 @@ export async function readSponsorClosureFunds(
   )
     return blocked();
   const activePlans = plans.filter((p) => p.status !== 'REJECTED');
+  const resolutions = await Promise.all(
+    activePlans.map((p) => readSponsorRefundResolution(c, p.id)),
+  );
   if (
-    activePlans.some(
-      (p) =>
-        p.status !== 'CLAIMED' ||
-        (p.funding_mode && p.funding_mode !== 'RETURN_FIRST') ||
-        !refunds.some(
-          (r) =>
-            r.id === p.trade_refund_id && r.status === 'SUCCEEDED' && r.amount_fen === p.amount_fen,
-        ),
+    resolutions.some(
+      (r) =>
+        !r.resolved ||
+        r.plan.funding_mode !== 'RETURN_FIRST' ||
+        r.currentRefund?.payment_id !== paid[0]!.id,
     )
   )
     return blocked();
   if (
     refunds
       .filter((r) => r.status === 'SUCCEEDED')
-      .some((r) => !activePlans.some((p) => p.trade_refund_id === r.id))
+      .some((r) => !resolutions.some((p) => p.currentRefund?.id === r.id))
   )
     return blocked();
   const active = batches.filter((b) => b.status !== 'REJECTED');
@@ -313,6 +481,7 @@ export async function readSponsorClosureFunds(
           i.amount_fen > 0 &&
           (!['SUCCEEDED', 'FAILED'].includes(i.status) ||
             (i.status === 'SUCCEEDED' && !i.provider_detail_id))) ||
+        (!i.retained && i.amount_fen === 0 && i.status !== 'NOT_REQUIRED') ||
         (i.retained && i.status !== 'RETAINED'),
     )
   )

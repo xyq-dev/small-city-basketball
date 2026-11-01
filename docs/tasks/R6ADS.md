@@ -51,3 +51,17 @@
 2026-11-01 恢复身份修正开工：按root指派基于1132731047edd8abad47eb3b0450d350f9f4b801新建`/workspace/scratch/aad368826b09/scb-six-ads-recovery`、`work/r6-ads-recovery`，起始clean；远端仍xyq-dev/small-city-basketball。仅`scripts/r6-recovery-sponsor.mjs`及本任务/交接文档，允许本地验证与commit，远端与CI由root执行。修复SQL合成恢复样本错误地把完整source写入共同trade快照、并用排序sponsorHash代替tradeHash的问题；两单现在与真实TradeService一致存source.identity及tradeHash(identity)，每次capture/restore/quarantine快照同时只读核验两份源身份及共同hash。仍明确为SQL合成恢复样本，不声称该脚本通过真实商户支付流程；实际TradeService PG链路验证另有独立测试。
 
 该小片验证：`node --check scripts/r6-recovery-sponsor.mjs`、Prettier单文件检查及`git diff --check`通过。独立只读审查逐一比对18类INSERT目标与`runtime-privileges.json`、047/048及原trade约束，除已修身份问题外未发现确定ACL/外键/状态约束阻断；未在本机执行PG或恢复，完整恢复交root CI154。源身份复核只使用SELECT，兼容备份指纹只读账号，不增加权限。
+
+2026-11-01 新审查开工：root指派PR35的XCaZ/XCab/XCac/XF3m，基于87a8bcb在`/workspace/scratch/aad368826b09/scb-six-ads-review`、`work/r6-ads-review`开工，起始clean，远端不变。允许ADS专属服务/source/047/UI/测试及自身文档；共享privacy由insurance、ACL/trade由root。前三项已实现：未付关闭先money实查，再核canonical身份/零资金/已终止checkout及无交付计划；0fen外部分配用受CHECK约束的NOT_REQUIRED而非渠道成功，全部外部为零时不调用分账但仍要求真实解冻；API明确currentBatchId并逐批返回items，UI明细不再误用被拒旧批次。新增3项真实PG测试含未付/UNKNOWN/NOTPAY/DISPATCHING拒绝、1分钱零外部真实解冻、拒绝后替代批次显示。PG待root隔离CI。
+
+退款恢复设计已获root确认：新增sponsor_refund_retries独立审核与前驱链，原CLAIMED/退款/binding/成功回退全部冻结保留；仅明确FAILED/REJECTED可提议，UNKNOWN阻断，每层重新审核和派发前重核前驱迟到成功，未提供新可信资金预留前禁止垫付计划恢复。此第四项独立后续切片，不以人工债务说明替代可操作流程。
+
+2026-11-01 未建单签署补充：CLOSE_UNSTARTED须现行finance与fresh session、SIGNED状态、原合同锁内查无任何sponsor_order，才改CLOSED；签署人、时间、金额条款及哈希完整保留，已有订单必须走CLOSE_ORDER。UI增加核验关闭按钮；PG覆盖普通payer拒绝、无单成功且不可再建单、已有单拒绝。未付canonical如已SOURCE_CONFLICT仍阻断关闭/注销，不能把冲突当零义务消除。
+
+2026-11-01 退款恢复实现检查点：新增第11表`sponsor_refund_retries`，金额/原支付/计划通过不可变同源链核对；提议、独立finance批准、CLAIM_RETRY均重新确认全部前驱只有明确FAILED或无外发REJECTED，并复用原计划已经完成的return，不复制分配或回退。原CLAIMED及binding始终不改；拒绝恢复草稿或未claim的APPROVED后可再提，common拒绝后可沿新叶继续独立审核。PLATFORM_ADVANCE没有新reservation协议，恢复明确拒绝，不能挪用旧覆盖证明。
+
+`readSponsorRefundResolution`统一判断链，CLOSE_ORDER、分账、后续退款、source分配/派发和closureFunds使用一致事实。任一祖先迟到SUCCESS时新外发被阻断；源APPROVED尚未claim可显式独立拒绝，已经CLAIMED的未发共同退款由共享assertRefundRevocation入口撤回。保留SOURCE_CONFLICT历史标记；仅完整canonical身份/唯一PAID、全链恰好一个实际SUCCESS、其它确定未实退终态和return/金额精算无差额的已付单允许结清；未付冲突仍阻断。未知、第二成功或未决审批不能被忽略。
+
+恢复样本将原UNKNOWN退款改为原FAILED＋明确审核的retry UNKNOWN，原返回证据不变；11表非空、原/替代两binding及同支付同额关系纳入snapshot。quarantine不修改新表历史，所有retry写操作受恢复标记拦截。UI增加恢复凭据、独立批/拒、统一审核入口；已CLOSED历史订单仍可处理原失败义务。
+
+本片已跑API tsc、领域/签名transport17/17、微信6/6、恢复script node语法与diffcheck通过。PG现18条test：新增真实common发送CLOSED→源拒审再提→common拒审再提→并发唯一claim→真实SUCCESS且return hash不变；PROCESSING拒重试；恢复隔离拒new/approve/claim且可读；源APPROVED迟到成功后显式撤回；真实queryRefund迟到成功→共同余额冲突→未发替代撤回→精确闭账。最后一条依赖matching共同退款安全撤回及root adapter接线，本地无PG，实际通过与否待根新CI，不以tsc替代。

@@ -22,7 +22,7 @@ const labels = {
   RECOVERY_REQUIRED: '回退失败，待追偿',
   READY_FOR_REFUND: '回退已核验，可申请统一退款',
   CLAIMED: '已进入统一退款审核',
-  NOT_REQUIRED: '无需渠道回退',
+  NOT_REQUIRED: '无渠道资金义务',
   OPEN: '待追偿',
   RECOVERED: '追偿已确认',
   WRITTEN_OFF: '已批准核销',

@@ -13,6 +13,7 @@ const columns = {
   sponsor_settlement_batches: ['status', 'finish_status', 'fence', 'version', 'updated_at'],
   sponsor_settlement_items: [],
   sponsor_refund_plans: [],
+  sponsor_refund_retries: [],
   sponsor_return_items: ['status', 'fence', 'updated_at'],
   sponsor_recovery_cases: [],
   sponsor_commerce_operations: [],
@@ -89,6 +90,17 @@ async function snapshot(readPool, saved) {
       'Common trade hash matches the current source identity: ' + s.id,
     );
   }
+  const retryProof = (
+    await readPool.query(
+      `SELECT count(*)::integer AS n FROM sponsor_refund_retries x JOIN sponsor_refund_plans p ON p.id=x.plan_id AND p.order_id=x.order_id AND p.org_id=x.org_id JOIN trade_refunds old ON old.id=x.previous_refund_id AND old.id=p.trade_refund_id JOIN trade_refunds current ON current.id=x.trade_refund_id AND current.order_id=old.order_id AND current.payment_id=old.payment_id AND current.amount_fen=old.amount_fen JOIN r6_trade_refund_bindings b ON b.allocation_id=x.id AND b.refund_id=current.id AND b.source_id=x.order_id WHERE x.id=ANY($1::uuid[]) AND x.status='CLAIMED' AND old.status='FAILED' AND old.provider_refund_id IS NOT NULL AND current.status='UNKNOWN'`,
+      [saved.references.sponsor_refund_retries],
+    )
+  ).rows[0].n;
+  assert.equal(
+    retryProof,
+    1,
+    'Explicit retry preserves the failed original, successful return and unknown replacement',
+  );
   return { proof, mutable };
 }
 /** Explicit synthetic database fixtures only. No provider, transport, credential or real payment is invoked. */
@@ -266,7 +278,7 @@ export async function captureR6Sponsor(context) {
       if (!failedReturn) {
         refund = ref('trade_refunds', randomUUID());
         await c.query(
-          "INSERT INTO trade_refunds(id,order_id,payment_id,out_refund_no,amount_fen,reason,status,proposed_by,reviewed_by,fence) VALUES($1,$2,$3,$4,1001,'合成恢复未知退款结果','UNKNOWN',$5,$6,$7)",
+          "INSERT INTO trade_refunds(id,order_id,payment_id,out_refund_no,amount_fen,reason,status,proposed_by,reviewed_by,fence,provider_refund_id) VALUES($1,$2,$3,$4,1001,'合成恢复未知退款结果','FAILED',$5,$6,$7,$8)",
           [
             refund,
             trade,
@@ -275,6 +287,7 @@ export async function captureR6Sponsor(context) {
             f1.id,
             f2.id,
             randomUUID(),
+            'SYNTHETIC_CLOSED_' + refund,
           ],
         );
       }
@@ -322,6 +335,29 @@ export async function captureR6Sponsor(context) {
         await c.query(
           "INSERT INTO r6_trade_refund_bindings(kind,source_id,allocation_id,order_id,refund_id) VALUES('SPONSOR_ORDER',$1,$2,$3,$4)",
           [order, plan, trade, refund],
+        );
+        const retry = ref('sponsor_refund_retries', randomUUID()),
+          replacement = ref('trade_refunds', randomUUID());
+        await c.query(
+          "INSERT INTO trade_refunds(id,order_id,payment_id,out_refund_no,amount_fen,reason,status,proposed_by,reviewed_by,fence) VALUES($1,$2,$3,$4,1001,'合成恢复替代退款未知结果','UNKNOWN',$5,$6,$7)",
+          [
+            replacement,
+            trade,
+            payment,
+            'SCBADSRF' + replacement.replaceAll('-', ''),
+            f1.id,
+            f2.id,
+            randomUUID(),
+          ],
+        );
+        await c.query(
+          "INSERT INTO sponsor_refund_retries(id,org_id,order_id,plan_id,previous_refund_id,status,evidence,proposed_by,reviewed_by,trade_refund_id) VALUES($1,$2,$3,$4,$5,'CLAIMED','合成渠道明确关闭后的独立审核恢复',$6,$7,$8)",
+          [retry, org, order, plan, refund, f1.id, f2.id, replacement],
+        );
+        ref('r6_trade_refund_bindings', retry);
+        await c.query(
+          "INSERT INTO r6_trade_refund_bindings(kind,source_id,allocation_id,order_id,refund_id) VALUES('SPONSOR_ORDER',$1,$2,$3,$4)",
+          [order, retry, trade, replacement],
         );
       }
     }

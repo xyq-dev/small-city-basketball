@@ -4,7 +4,7 @@
 
 负责 `scripts/r6-recovery-check.mjs`、离线测试、`scripts/check-database-restart.mjs`接线、保险旧fixture准入兼容与 `ops/recovery/quarantine.mjs`。root明确授权共享文件唯一ownership，不改root正在维护的privilege manifest/CI入口/迁移；其他实施者分别提供matching/training/sponsor/dispatch新fixture脚本。
 
-当前实现：043–048的44张新表显式inventory及非空数据断言，迁移校验值、列/约束/索引/trigger/function定义hash、全量行hash，隔离只允许明确撤权字段变更。原036–042全部非空业务验收保留；R6新增canonical trade记录后重新冻结其完整基线。接入现有capture/restart/freeze/quarantine，无新增生产命令。
+当前实现：043–048的45张新表显式inventory及非空数据断言，迁移校验值、列/约束/索引/trigger/function定义hash、全量行hash，隔离只允许明确撤权字段变更。原036–042全部非空业务验收保留；R6新增canonical trade记录后重新冻结其完整基线。接入现有capture/restart/freeze/quarantine，无新增生产命令。
 
 保险夹具配置明确合成admission并建立第二个真实quote/order/receipt，故障注入持久UNKNOWN APPLY（12次预算边界）触发reconciliation；不发外部投保，不宣称供应商接受。其他模块用真实源预约和统一财务链，合成供应商响应仅用于恢复验收。恢复隔离撤回许可、暂停任务、释放资源，原报价、来源、UNKNOWN、退款/分成/追回事实不清零或改为成功。
 
@@ -13,3 +13,5 @@
 2026-11-01 Asia/Shanghai追加恢复证据修复：在 `scb-six-map-review` / `work/r6-paid-dispatch` 延续独立工作区。matching只读审查指出原样本先建立免费预约、事后才插入收费条款，未证明有偿来源真实记账。现helper新增 `createLocalSource(label,{paid:true})`，先调用真实TradeService创建条款并由现有独立平台审核员批准，再由买方明确同意收费创建源预约，断言唯一canonical订单的来源/买方/受益方/条款/金额/商户，随后服务方接单。返回termsId/tradeOrderId/totalFen给matching脚本保存与恢复校验；matching脚本由其负责人独立提交。支付transport一旦调用就失败，无支付尝试或实收伪造。默认免费供给/dispatch book:false路径保持不变。主脚本语法、格式与既有新旧恢复离线11项通过；本地没有PG，真实收费source及恢复仍待root隔离CI。
 
 2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。
+
+2026-11-01 12:31 Asia/Shanghai root扩展：047新增sponsor_refund_retries，加入精确inventory及45表非空校验；runtime只允许status/reviewed_by/trade_refund_id/version/updated_at更新。quarantine不允许该表任何字段变化，保留完整退款链。新旧恢复/打包12项离线通过；含新表的当前完整PG恢复待下一CI，不沿用CI155旧220表结果。

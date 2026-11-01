@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as sponsorFunds from './sponsor-commerce-source.js';
 import { AccountClosureService } from './account-closure-service.js';
 import { createAccountClosureHooks } from './account-closure-hooks.js';
 import { ACCOUNT_CLOSURE_DOMAINS } from './account-closure-domain.js';
@@ -20,6 +21,7 @@ const facts = {
   sponsor_money: false,
 };
 const userId = randomUUID();
+afterEach(() => vi.restoreAllMocks());
 function deps() {
   return {
     streaming: { inspect: async () => [], revoke: async () => {} },
@@ -113,6 +115,12 @@ describe('R6 account closure obligations and monotonic privacy withdrawal', () =
     );
     for (const query of calls.filter((q) => q.includes('FOR UPDATE')))
       expect(query).toContain('NOWAIT');
+    expect(
+      calls.some(
+        (q) =>
+          q.includes('SELECT id FROM sponsor_refund_retries') && q.includes('FOR UPDATE NOWAIT'),
+      ),
+    ).toBe(true);
   });
   it('requires canonical sponsor funds for every scoped source and propagates failed reconciliation', async () => {
     const sourceId = randomUUID();
@@ -131,6 +139,49 @@ describe('R6 account closure obligations and monotonic privacy withdrawal', () =
     await expect(readRemainingSixClosureBlockers(client(randomUUID()), userId)).rejects.toThrow(
       'sponsor reconciliation unavailable',
     );
+  });
+  it.each([
+    { dischargedFen: 0, unresolved: true },
+    { dischargedFen: -1, unresolved: false },
+    { dischargedFen: Number.NaN, unresolved: false },
+  ])(
+    'requires complete per-order evidence even when coarse plan statuses are terminal: %j',
+    async (secondFunds) => {
+      const orders = [
+        { id: randomUUID(), trade_order_id: randomUUID() },
+        { id: randomUUID(), trade_order_id: randomUUID() },
+      ];
+      const reconcile = vi
+        .spyOn(sponsorFunds, 'readSponsorClosureFunds')
+        .mockResolvedValueOnce({ dischargedFen: 0, unresolved: false })
+        .mockResolvedValueOnce(secondFunds);
+      const c = {
+        query: async (sql: string) => ({
+          rows: sql.includes('SELECT o.id,t.id AS trade_order_id') ? orders : [{ ...facts }],
+        }),
+      } as unknown as PoolClient;
+      expect(await readRemainingSixClosureBlockers(c, userId)).toEqual([
+        { code: 'SPONSOR_MONEY_UNRESOLVED' },
+      ]);
+      expect(reconcile.mock.calls).toEqual(orders.map((o) => [c, o.id, o.trade_order_id]));
+    },
+  );
+  it('keeps unresolved workflow facts blocking even if a source reconciliation returns zero', async () => {
+    const source = { id: randomUUID(), trade_order_id: randomUUID() };
+    const reconcile = vi
+      .spyOn(sponsorFunds, 'readSponsorClosureFunds')
+      .mockResolvedValue({ dischargedFen: 0, unresolved: false });
+    const c = {
+      query: async (sql: string) => ({
+        rows: sql.includes('SELECT o.id,t.id AS trade_order_id')
+          ? [source]
+          : [{ ...facts, sponsor_money: true }],
+      }),
+    } as unknown as PoolClient;
+    expect(await readRemainingSixClosureBlockers(c, userId)).toEqual([
+      { code: 'SPONSOR_MONEY_UNRESOLVED' },
+    ]);
+    expect(reconcile).toHaveBeenCalledWith(c, source.id, source.trade_order_id);
   });
   it('withdraws future discovery/contact and pending notices without deleting financial or history evidence', async () => {
     const query = vi.fn(async (_sql: string, _values: unknown[]) => ({ rows: [] }));

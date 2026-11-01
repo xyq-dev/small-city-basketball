@@ -90,3 +90,16 @@ export interface SponsorCommerceInboxData {
   }>;
   truncated: boolean;
 }
+
+export interface SponsorRefundRetryData {
+  id: string;
+  orderId: string;
+  planId: string;
+  previousRefundId: string;
+  status: 'IN_REVIEW' | 'APPROVED' | 'CLAIMED' | 'REJECTED';
+  evidence: string;
+  proposedBy: string;
+  reviewedBy: string | null;
+  tradeRefundId: string | null;
+  version: number;
+}

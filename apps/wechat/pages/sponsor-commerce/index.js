@@ -281,12 +281,13 @@ Page({
           amountText: model.money(v.order.total_fen),
         },
         deliveries: model.decorate(v.deliveries),
-        batches: model.decorate(v.batches),
+        batches: model.decorate(v.batches).map((b) => ({ ...b, items: model.decorate(b.items) })),
         items: model.decorate(v.items),
         refunds: model.decorate(v.refunds).map((p) => ({
           ...p,
           needsUnfreeze: !!p.batch_id && !v.batches.some((b) => b.id === p.batch_id && b.finished),
         })),
+        refundRetries: model.decorate(v.refundRetries),
         returns: model.decorate(v.returns),
         recovery: model.decorate(v.recovery),
       },
@@ -299,7 +300,11 @@ Page({
       childId = e.currentTarget.dataset.id;
     const body = { action, expectedVersion: d.order.version };
     if (childId) body.childId = childId;
-    if (['DELIVERY', 'VERIFY_FEE', 'RECOVERY_PROPOSE', 'ADVANCE_PROPOSE'].includes(action))
+    if (
+      ['DELIVERY', 'VERIFY_FEE', 'RECOVERY_PROPOSE', 'PROPOSE_RETRY', 'ADVANCE_PROPOSE'].includes(
+        action,
+      )
+    )
       body.evidence = this.data.evidence;
     if (['DISPUTE', 'PROPOSE_REFUND', 'ACCEPT'].includes(action)) body.reason = this.data.reason;
     try {

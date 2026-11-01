@@ -13,6 +13,7 @@ import {
   assertSponsorRefundAllocation,
   claimSponsorRefundAllocation,
   assertSponsorRefundDispatch,
+  assertSponsorRefundRevocation,
   readSponsorClosureFunds,
 } from './sponsor-commerce-source.js';
 
@@ -45,6 +46,7 @@ export function remainingSixTradeSources(
       },
       claimRefundAllocation: claimSponsorRefundAllocation,
       assertRefundDispatch: assertSponsorRefundDispatch,
+      assertRefundRevocation: assertSponsorRefundRevocation,
     },
   };
 }

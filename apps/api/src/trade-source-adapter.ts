@@ -54,7 +54,15 @@ export interface AdditionalTradeSourceAdapter {
     c: PoolClient,
     input: { sourceId: string; allocationId: string; amountFen: number; refundId: string },
   ): Promise<void>;
-  /** Recheck return/retention facts immediately before dispatch, under the order lock. */
+  /** Read-only proof that an unsent sponsor retry may be rejected after an ancestor succeeded.
+   * Called by both the capability view and the mutation under source/common-order locks. */
+  assertRefundRevocation?(
+    c: PoolClient,
+    sourceId: string,
+    allocationId: string,
+    amountFen: number,
+  ): Promise<void>;
+  /** Recheck return/retention facts before common approval and dispatch, under the order lock. */
   assertRefundDispatch?(
     c: PoolClient,
     sourceId: string,

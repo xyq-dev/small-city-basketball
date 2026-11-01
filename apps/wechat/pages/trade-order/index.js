@@ -11,6 +11,7 @@ Page({
     pending: null,
     pendingAcknowledged: false,
     consent: false,
+    approvedRefundRejectId: '',
     amount: '',
     reason: '',
     evidence: '',
@@ -46,6 +47,7 @@ Page({
     this._visible = false;
     this.setData({
       consent: false,
+      approvedRefundRejectId: '',
       order: null,
       amount: '',
       reason: '',
@@ -58,6 +60,7 @@ Page({
   onUnload() {
     this._alive = false;
     this._visible = false;
+    this.setData({ approvedRefundRejectId: '' });
     ui.close(this);
   },
   onSessionReset() {
@@ -73,6 +76,7 @@ Page({
       pendingAcknowledged: false,
       busy: false,
       consent: false,
+      approvedRefundRejectId: '',
       error: '身份已变化，请重新读取',
     });
   },
@@ -112,10 +116,24 @@ Page({
   consent(e) {
     this.setData({ consent: (e.detail.value || []).includes('yes') });
   },
+  approvedRefundRejectConsent(e) {
+    if (this.data.busy || this.data.loading) return;
+    const o = this.data.order,
+      id = e.currentTarget.dataset.id,
+      refund = o && o.refunds.find((x) => x.id === id);
+    if (
+      !o ||
+      o.capabilities.canManage !== true ||
+      refund?.status !== 'APPROVED' ||
+      refund.canRejectApprovedRefund !== true
+    )
+      return;
+    this.setData({ approvedRefundRejectId: (e.detail.value || []).includes('yes') ? id : '' });
+  },
   async load() {
     if (!this._alive || !this._visible || this.data.busy) return;
     const token = ui.begin(this);
-    this.setData({ loading: true, error: '', order: null });
+    this.setData({ loading: true, error: '', order: null, approvedRefundRejectId: '' });
     try {
       const s = await ui.session(this, '/pages/trade-order/index');
       if (!s || !ui.live(this, token)) return;
@@ -152,11 +170,22 @@ Page({
   open(e) {
     wx.navigateTo({ url: '/pages/trade-order/index?id=' + trade.id(e.currentTarget.dataset.id) });
   },
-  async run(path, body, code) {
+  async run(path, body, code, beforeSend) {
     if (this.data.busy || !this.actor) return;
+    if (
+      this.data.order?.balanceConflict &&
+      !(
+        body.decision === 'REJECT' &&
+        /^\/orders\/[a-f0-9-]{36}\/reviews\/REFUND\/[a-f0-9-]{36}$/i.test(path)
+      )
+    ) {
+      this.setData({ error: '资金占用冲突待核对，当前仅可查询原编号或撤回允许的退款' });
+      return;
+    }
     this.setData({ busy: true, error: '', message: '' });
     try {
       const id = await ui.uuid();
+      if (beforeSend && !beforeSend()) throw Error('退款记录或身份已变化，请重新读取并确认撤回');
       const result = await trade.execute(this.actor, path, { clientRequestId: id, ...body }, code);
       if (!this._alive || !this._visible) return;
       return result;
@@ -169,7 +198,7 @@ Page({
   },
   async pay(e) {
     const o = this.data.order;
-    if (!o || !this.data.consent) return;
+    if (!o || o.balanceConflict || !this.data.consent) return;
     const channel = e.currentTarget.dataset.channel;
     let code;
     if (channel === 'JSAPI') {
@@ -198,7 +227,7 @@ Page({
     const o = this.data.order,
       a = o && o.attempts.find((x) => x.id === e.currentTarget.dataset.id),
       c = a && a.checkout;
-    if (!c || c.mode !== 'JSAPI' || this.data.busy) return;
+    if (!c || c.mode !== 'JSAPI' || this.data.busy || o.balanceConflict) return;
     try {
       await new Promise((resolve, reject) =>
         wx.requestPayment({
@@ -219,6 +248,7 @@ Page({
     }
   },
   copy(e) {
+    if (this.data.order?.balanceConflict) return;
     const a = this.data.order.attempts.find((x) => x.id === e.currentTarget.dataset.id);
     if (a && a.checkout && a.checkout.mode === 'NATIVE')
       wx.setClipboardData({ data: a.checkout.codeUrl });
@@ -285,11 +315,49 @@ Page({
       const o = this.data.order,
         d = e.currentTarget.dataset;
       if (o) {
-        await this.run('/orders/' + o.id + '/reviews/' + d.type + '/' + trade.id(d.id), {
-          expectedVersion: o.version,
-          decision: d.decision,
-          reason: this.reason(),
-        });
+        if (o.balanceConflict && !(d.type === 'REFUND' && d.decision === 'REJECT'))
+          throw Error('资金占用冲突待核对，当前仅可查询或拒绝允许撤回的退款');
+        let beforeSend;
+        if (d.type === 'REFUND') {
+          const refund = o.refunds.find((x) => x.id === d.id);
+          if (o.capabilities.canManage !== true || !refund) throw Error('当前没有退款审核权限');
+          if (refund.status !== 'PENDING_REVIEW') {
+            if (
+              refund.status !== 'APPROVED' ||
+              d.decision !== 'REJECT' ||
+              refund.canRejectApprovedRefund !== true
+            )
+              throw Error('此退款不能撤回，请查询原退款结果');
+            if (this.data.approvedRefundRejectId !== refund.id)
+              throw Error('请单独勾选确认撤回这一笔尚未发送的退款后继');
+            const actor = this.actor;
+            beforeSend = () => {
+              const current = this.data.order,
+                row = current?.refunds.find((x) => x.id === refund.id);
+              return (
+                this._alive &&
+                this._visible &&
+                this.actor === actor &&
+                current?.id === o.id &&
+                current.version === o.version &&
+                current.capabilities.canManage === true &&
+                row?.status === 'APPROVED' &&
+                row.canRejectApprovedRefund === true &&
+                this.data.approvedRefundRejectId === refund.id
+              );
+            };
+          }
+        }
+        await this.run(
+          '/orders/' + o.id + '/reviews/' + d.type + '/' + trade.id(d.id),
+          {
+            expectedVersion: o.version,
+            decision: d.decision,
+            reason: this.reason(),
+          },
+          undefined,
+          beforeSend,
+        );
         await this.load();
       }
     } catch (err) {
@@ -346,6 +414,10 @@ Page({
   },
   async retry() {
     if (this.data.busy) return;
+    if (this.data.order?.balanceConflict) {
+      this.setData({ error: '资金占用冲突时请查询原操作回执，暂不能重试资金执行' });
+      return;
+    }
     const p = this.pendingState();
     if (!p) return;
     let code;

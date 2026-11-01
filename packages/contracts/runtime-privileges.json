@@ -1027,6 +1027,10 @@
         "version"
       ]
     },
+    "sponsor_refund_retries": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["reviewed_by", "status", "trade_refund_id", "updated_at", "version"]
+    },
     "sponsor_return_items": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["fence", "provider_return_id", "status", "updated_at"]

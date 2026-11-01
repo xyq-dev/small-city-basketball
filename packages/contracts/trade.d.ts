@@ -56,6 +56,8 @@ export interface TradeOrderData {
   settlementReservedFen: number;
   settledFen: number;
   refundableFen: number;
+  /** Read-only sponsor refund over-reservation; writers retain strict balance checks. */
+  balanceConflict: boolean;
   currentSource: { payable: boolean; fulfilled: boolean; disputed: boolean; valid: boolean };
   attempts: {
     id: string;
@@ -72,6 +74,8 @@ export interface TradeOrderData {
     reason: string;
     proposedBy: string;
     reviewedBy: string | null;
+    /** Independent finance may explicitly reject this unsent sponsor retry. */
+    canRejectApprovedRefund: boolean;
   }[];
   deductions: {
     id: string;

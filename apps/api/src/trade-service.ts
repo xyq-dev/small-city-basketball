@@ -8,7 +8,7 @@ import type {
 } from '../../../packages/contracts/trade.js';
 import type { Actor, ApiOptions } from './service.js';
 import { ApplicationService, isAdministrator } from './service.js';
-import { forbidden, notFound } from './errors.js';
+import { ApiError, forbidden, notFound } from './errors.js';
 import { objectInput, text, calendarDate } from './validation.js';
 import {
   tradeFail,
@@ -717,7 +717,7 @@ export class TradeService extends ApplicationService {
       .rows[0]!;
     return { a, s, order, manage, operator };
   }
-  private async money(c: PoolClient, order: Row) {
+  private async money(c: PoolClient, order: Row, readOnlySponsorConflict = false) {
     const attempts = (
         await c.query<Row>(
           'SELECT * FROM trade_payment_attempts WHERE order_id=$1 ORDER BY created_at,id',
@@ -742,21 +742,134 @@ export class TradeService extends ApplicationService {
         )
       ).rows;
     const paid = attempts.filter((x) => x.status === 'PAID').reduce((n, x) => n + x.total_fen, 0);
-    return {
-      attempts,
-      refunds,
-      deductions,
-      settlements,
-      balances: tradeBalances(paid, refunds as any, deductions as any, settlements as any),
-    };
+    let balances,
+      balanceConflict = false;
+    try {
+      balances = tradeBalances(paid, refunds as any, deductions as any, settlements as any);
+    } catch (error) {
+      if (
+        !readOnlySponsorConflict ||
+        order.kind !== 'SPONSOR_ORDER' ||
+        !(error instanceof ApiError) ||
+        error.code !== 'TRADE_BALANCE_INVALID'
+      )
+        throw error;
+      const pending = refunds.filter((r) =>
+        ['PENDING_REVIEW', 'APPROVED', 'SENDING', 'UNKNOWN', 'PROCESSING'].includes(r.status),
+      );
+      if (
+        !pending.length ||
+        pending.some((r) => !Number.isSafeInteger(r.amount_fen) || r.amount_fen <= 0)
+      )
+        throw error;
+      // Validate actual settled money and every other obligation with the unchanged strict calculator.
+      // Only display the extra unresolved refund reservation; never discard it or relax a writer.
+      const settled = tradeBalances(
+        paid,
+        refunds.filter((r) => !pending.includes(r)) as any,
+        deductions as any,
+        settlements as any,
+      );
+      const refundReservedFen =
+        settled.refundReservedFen + pending.reduce((n, r) => n + r.amount_fen, 0);
+      if (
+        !Number.isSafeInteger(refundReservedFen) ||
+        refundReservedFen + settled.deductionReservedFen <= paid
+      )
+        throw error;
+      balances = { ...settled, refundReservedFen, refundableFen: 0 };
+      balanceConflict = true;
+    }
+    return { attempts, refunds, deductions, settlements, balances, balanceConflict };
+  }
+  private async refundSourceBinding(c: PoolClient, order: Row, refund: Row) {
+    const binding = (
+      await c.query<Row>(
+        'SELECT * FROM r6_trade_refund_bindings WHERE refund_id=$1 AND order_id=$2',
+        [refund.id, order.id],
+      )
+    ).rows[0];
+    if (!binding || binding.kind !== order.kind || binding.source_id !== order.source_id)
+      tradeFail('TRADE_SOURCE_REFUND_REQUIRED', '原业务退款分配无法复核');
+    return binding!;
+  }
+  private async assertSourceRefundDispatch(c: PoolClient, order: Row, refund: Row) {
+    if (!isAdditionalTradeSource(order.kind)) return;
+    const binding = await this.refundSourceBinding(c, order, refund);
+    const adapter = this.additionalSources[order.kind];
+    if (!adapter?.assertRefundDispatch)
+      tradeFail('TRADE_SOURCE_REFUND_REQUIRED', '原业务退款分配无法复核');
+    await adapter!.assertRefundDispatch!(
+      c,
+      order.source_id,
+      binding.allocation_id,
+      refund.amount_fen,
+    );
+  }
+  private async assertApprovedRefundRevocation(
+    c: PoolClient,
+    ctx: { a: Actor; order: Row; manage: boolean; operator: boolean },
+    refund: Row,
+  ) {
+    const { order } = ctx;
+    if (
+      order.kind !== 'SPONSOR_ORDER' ||
+      refund.status !== 'APPROVED' ||
+      refund.fence !== null ||
+      refund.provider_refund_id !== null ||
+      refund.success_at !== null
+    )
+      tradeFail('TRADE_REVIEW_STATE', '只能核对并撤回尚未发送的广告恢复退款');
+    await this.independent(c, ctx, refund.proposed_by);
+    const binding = await this.refundSourceBinding(c, order, refund);
+    const adapter = this.additionalSources.SPONSOR_ORDER;
+    if (!adapter?.assertRefundRevocation)
+      tradeFail('TRADE_SOURCE_REFUND_REQUIRED', '原业务尚未提供安全撤回证明');
+    await adapter!.assertRefundRevocation!(
+      c,
+      order.source_id,
+      binding.allocation_id,
+      refund.amount_fen,
+    );
+  }
+  private async canRejectApprovedRefund(
+    c: PoolClient,
+    ctx: { a: Actor; order: Row; manage: boolean; operator: boolean },
+    refund: Row,
+  ) {
+    try {
+      await this.assertApprovedRefundRevocation(c, ctx, refund);
+      return true;
+    } catch (error) {
+      // A capability is false for domain/permission denial; database failures stay visible.
+      if (
+        error instanceof ApiError &&
+        ((error.status >= 400 && error.status < 500) ||
+          (error.status === 503 && error.code === 'SPONSOR_RESTORE_QUARANTINED'))
+      )
+        return false;
+      throw error;
+    }
   }
   async get(cookie: string | undefined, id: string): Promise<TradeOrderData> {
     return this.transaction(async (c) => {
-      const { a, s, order: o, manage, operator } = await this.context(c, cookie, id),
-        money = await this.money(c, o),
+      const ctx = await this.context(c, cookie, id),
+        { a, s, order: o, manage, operator } = ctx,
+        money = await this.money(c, o, true),
         m = this.merchant(o.org_id, o);
       const valid = s.valid && tradeHash(s.identity) === o.source_hash;
       const now = (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
+      const refunds = [];
+      for (const x of money.refunds)
+        refunds.push({
+          id: x.id,
+          amountFen: x.amount_fen,
+          status: x.status,
+          reason: x.reason,
+          proposedBy: x.proposed_by,
+          reviewedBy: x.reviewed_by,
+          canRejectApprovedRefund: await this.canRejectApprovedRefund(c, ctx, x),
+        });
       await this.ensureFreshSession(c, a);
       return {
         id: o.id,
@@ -772,6 +885,7 @@ export class TradeService extends ApplicationService {
         merchantName: o.merchant_name,
         terms: o.quote.terms,
         ...money.balances,
+        balanceConflict: money.balanceConflict,
         currentSource: { payable: s.payable, fulfilled: s.fulfilled, disputed: s.disputed, valid },
         attempts: money.attempts.map((x) => ({
           id: x.id,
@@ -788,14 +902,7 @@ export class TradeService extends ApplicationService {
               ? tradeOpen(this.runtime.encryptionKey, x.id, x.checkout)
               : null,
         })),
-        refunds: money.refunds.map((x) => ({
-          id: x.id,
-          amountFen: x.amount_fen,
-          status: x.status,
-          reason: x.reason,
-          proposedBy: x.proposed_by,
-          reviewedBy: x.reviewed_by,
-        })),
+        refunds,
         deductions: money.deductions.map((x) => ({
           id: x.id,
           amountFen: x.amount_fen,
@@ -815,6 +922,7 @@ export class TradeService extends ApplicationService {
         })),
         capabilities: {
           canPay:
+            !money.balanceConflict &&
             a.user.id === o.payer_user_id &&
             o.status === 'OPEN' &&
             valid &&
@@ -824,11 +932,13 @@ export class TradeService extends ApplicationService {
           native: !!m?.payments.enabled,
           jsapi: !!m?.payments.enabled && !!m.payments.jsapi && !!this.runtime.resolvePayer,
           canRequestRefund:
+            !money.balanceConflict &&
             !isAdditionalTradeSource(o.kind) &&
             a.user.id === o.payer_user_id &&
             money.balances.refundableFen > 0,
           canManage: manage || operator,
           settlementAvailable:
+            !money.balanceConflict &&
             (!isAdditionalTradeSource(o.kind) ||
               this.additionalSources[o.kind]?.settlementMode === 'SINGLE') &&
             !!m?.settlements?.enabled &&
@@ -1239,9 +1349,19 @@ export class TradeService extends ApplicationService {
             b.decision === 'REVERSE'
               ? !['APPROVED', 'REVERSAL_PENDING'].includes(row.status)
               : row.status !== 'PENDING_REVIEW' &&
-                !(type === 'SETTLEMENT' && b.decision === 'REJECT' && row.status === 'APPROVED')
+                !(type === 'SETTLEMENT' && b.decision === 'REJECT' && row.status === 'APPROVED') &&
+                !(
+                  type === 'REFUND' &&
+                  b.decision === 'REJECT' &&
+                  row.status === 'APPROVED' &&
+                  o.kind === 'SPONSOR_ORDER'
+                )
           )
             tradeFail('TRADE_REVIEW_STATE', '原申请已处理，请核对当前状态');
+          if (type === 'REFUND' && b.decision === 'APPROVE')
+            await this.assertSourceRefundDispatch(c, o, row);
+          if (type === 'REFUND' && b.decision === 'REJECT' && row.status === 'APPROVED')
+            await this.assertApprovedRefundRevocation(c, ctx, row);
           if (type === 'SETTLEMENT' && b.decision === 'APPROVE') {
             const m = await this.settlementAllowed(c, ctx);
             if (
@@ -1366,23 +1486,7 @@ export class TradeService extends ApplicationService {
           assertTradeVersion(o.version, tradeVersion(b.expectedVersion));
           if (r.status !== 'APPROVED')
             tradeFail('TRADE_REFUND_STATE', '只派发已独立批准的原退款；未知请查询原单');
-          if (isAdditionalTradeSource(o.kind)) {
-            const binding = (
-              await c.query<Row>(
-                'SELECT * FROM r6_trade_refund_bindings WHERE refund_id=$1 AND order_id=$2',
-                [r.id, o.id],
-              )
-            ).rows[0];
-            const adapter = this.additionalSources[o.kind];
-            if (!binding || !adapter?.assertRefundDispatch)
-              tradeFail('TRADE_SOURCE_REFUND_REQUIRED', '原业务退款分配无法复核');
-            await adapter!.assertRefundDispatch!(
-              c,
-              o.source_id,
-              binding!.allocation_id,
-              r.amount_fen,
-            );
-          }
+          await this.assertSourceRefundDispatch(c, o, r);
           const money = await this.money(c, o);
           if (
             money.settlements.some(

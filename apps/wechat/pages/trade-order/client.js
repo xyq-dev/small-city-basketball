@@ -101,10 +101,19 @@ function order(v) {
     'deductionReservedFen',
   ])
     money(v[k]);
+  const balanceConflict = v.balanceConflict === true;
   return {
     ...v,
+    balanceConflict,
+    capabilities: {
+      ...v.capabilities,
+      ...(balanceConflict
+        ? { canPay: false, canRequestRefund: false, settlementAvailable: false }
+        : {}),
+    },
     kindText: kindLabel(v.kind),
     canStartPayment:
+      !balanceConflict &&
       v.capabilities.canPay &&
       !v.attempts.some((x) => ['DISPATCHING', 'UNKNOWN', 'NOTPAY'].includes(x.status)),
     totalText: money(v.totalFen),
@@ -114,7 +123,15 @@ function order(v) {
     settledText: money(v.settledFen),
     refundReservedText: money(v.refundReservedFen),
     deductionReservedText: money(v.deductionReservedFen),
-    refunds: v.refunds.map((x) => ({ ...x, amountText: money(x.amountFen) })),
+    refunds: v.refunds.map((x) => ({
+      ...x,
+      amountText: money(x.amountFen),
+      canRejectApprovedRefund:
+        x.canRejectApprovedRefund === true &&
+        x.status === 'APPROVED' &&
+        v.kind === 'SPONSOR_ORDER' &&
+        v.capabilities.canManage === true,
+    })),
     deductions: v.deductions.map((x) => ({ ...x, amountText: money(x.amountFen) })),
     settlements: v.settlements.map((x) => ({
       ...x,

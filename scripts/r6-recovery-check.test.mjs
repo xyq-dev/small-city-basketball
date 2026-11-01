@@ -9,9 +9,9 @@ import {
   captureR6,
 } from './r6-recovery-check.mjs';
 
-test('043–048 inventory assigns every one of the 44 new tables and exact migration checksums', async () => {
+test('043–048 inventory assigns every one of the 45 new tables and exact migration checksums', async () => {
   const inventory = await r6Inventory();
-  assert.equal(inventory.tables.length, 44);
+  assert.equal(inventory.tables.length, 45);
   assert.equal(inventory.migrations.length, 6);
   for (const migration of inventory.migrations) assert.match(migration.checksum, /^[a-f0-9]{64}$/);
   assert.ok(inventory.tables.includes('sponsor_beneficiaries'));
@@ -22,7 +22,7 @@ test('new or omitted recovery tables fail instead of silently accepting an empty
     .flat()
     .map((t) => `CREATE TABLE ${t} (id uuid);`)
     .join('\n');
-  assert.equal(r6TablesFromSql([sql]).length, 44);
+  assert.equal(r6TablesFromSql([sql]).length, 45);
   assert.throws(() => r6TablesFromSql([sql + '\nCREATE TABLE unreviewed_money (id uuid);']));
   assert.throws(() =>
     r6TablesFromSql([sql.replace('CREATE TABLE training_consumptions (id uuid);', '')]),

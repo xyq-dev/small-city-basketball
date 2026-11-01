@@ -20,7 +20,19 @@ import {
   type SponsorAdvanceCoverage,
 } from './sponsor-commerce-domain.js';
 import type { SponsorShare } from '../../../packages/contracts/sponsor-commerce.js';
-import { assertSponsorRefundReadyForUnfreeze } from './sponsor-commerce-source.js';
+import {
+  assertSponsorRefundReadyForUnfreeze,
+  sponsorUnpaidCloseSafe,
+} from './sponsor-commerce-source.js';
+import {
+  readSponsorRefundResolution,
+  sponsorRefundFailed,
+  assertSponsorRetryWritesAllowed,
+} from './sponsor-commerce-refund-resolution.js';
+import {
+  assertSponsorRefundAllocation,
+  assertSponsorRefundDispatch,
+} from './sponsor-commerce-source.js';
 import type { SponsorSettlementProvider } from './trade-wechat-multi-provider.js';
 
 type Row = Record<string, any>;
@@ -580,6 +592,18 @@ export class SponsorCommerceService extends GovernanceService {
             "UPDATE sponsor_contracts SET status='SIGNED',advertiser_signed_at=clock_timestamp(),version=version+1 WHERE id=$1",
             [id],
           );
+        } else if (b.action === 'CLOSE_UNSTARTED') {
+          await this.finance(c, a, org, r);
+          status(r.status, ['SIGNED']);
+          if (
+            (await c.query('SELECT id FROM sponsor_orders WHERE contract_id=$1 FOR UPDATE', [id]))
+              .rowCount
+          )
+            sponsorFail('SPONSOR_ORDER_EXISTS', '已有业务订单，须从订单核验全部义务后关闭');
+          await c.query(
+            "UPDATE sponsor_contracts SET status='CLOSED',version=version+1 WHERE id=$1",
+            [id],
+          );
         } else sponsorFail('SPONSOR_INVALID_ACTION', '操作无效', 422);
         const out = (await c.query('SELECT * FROM sponsor_contracts WHERE id=$1', [id])).rows[0];
         return { ...out, contractHash: this.contractHash(out) };
@@ -691,19 +715,34 @@ export class SponsorCommerceService extends GovernanceService {
     if (!o) throw notFound();
     return { o, t };
   }
-  private async money(c: PoolClient, t: Row | undefined) {
+  private async money(
+    c: PoolClient,
+    t: Row | undefined,
+  ): Promise<{ p: Row; refunds: Row[]; refunded: number; reserved: number }>;
+  private async money(
+    c: PoolClient,
+    t: Row | undefined,
+    allowUnpaid: true,
+  ): Promise<{ p: Row | undefined; refunds: Row[]; refunded: number; reserved: number }>;
+  private async money(c: PoolClient, t: Row | undefined, allowUnpaid = false) {
     if (!t) sponsorFail('SPONSOR_PAYMENT_REQUIRED', '尚无统一交易订单');
-    const payments = (
+    const attempts = (
       await c.query(
-        "SELECT * FROM trade_payment_attempts WHERE order_id=$1 AND status='PAID' ORDER BY paid_at,id FOR SHARE",
+        'SELECT * FROM trade_payment_attempts WHERE order_id=$1 ORDER BY paid_at,id FOR SHARE',
         [t.id],
       )
     ).rows;
+    const payments = attempts.filter((p) => p.status === 'PAID');
+    const unpaid =
+      allowUnpaid &&
+      !payments.length &&
+      attempts.every((p) => ['CLOSED', 'FAILED'].includes(p.status));
     if (
-      payments.length !== 1 ||
-      payments[0]!.total_fen !== t.total_fen ||
-      !payments[0]!.provider_transaction_id ||
-      !payments[0]!.profit_sharing
+      !unpaid &&
+      (payments.length !== 1 ||
+        payments[0]!.total_fen !== t.total_fen ||
+        !payments[0]!.provider_transaction_id ||
+        !payments[0]!.profit_sharing)
     )
       sponsorFail('SPONSOR_PAYMENT_REQUIRED', '须有已核验且允许分账的唯一实收记录');
     const refunds = (
@@ -735,6 +774,16 @@ export class SponsorCommerceService extends GovernanceService {
         .reduce((s, r) => s + r.amount_fen, 0),
     };
   }
+  private async refundObligationsResolved(c: PoolClient, id: string) {
+    const plans = (
+      await c.query(
+        "SELECT id FROM sponsor_refund_plans WHERE order_id=$1 AND status<>'REJECTED' ORDER BY id FOR UPDATE",
+        [id],
+      )
+    ).rows;
+    for (const p of plans) if (!(await readSponsorRefundResolution(c, p.id)).resolved) return false;
+    return true;
+  }
   async get(cookie: string | undefined, rawOrg: string, rawId: string) {
     const org = sponsorId(rawOrg),
       id = sponsorId(rawId);
@@ -747,8 +796,41 @@ export class SponsorCommerceService extends GovernanceService {
         await c.query('SELECT * FROM sponsor_contracts WHERE id=$1', [o.contract_id])
       ).rows[0];
       const batches = (
-        await c.query('SELECT * FROM sponsor_settlement_batches WHERE order_id=$1', [id])
+        await c.query(
+          "SELECT * FROM sponsor_settlement_batches WHERE order_id=$1 ORDER BY (status='REJECTED'),created_at DESC,id",
+          [id],
+        )
       ).rows;
+      const items = (
+        await c.query(
+          'SELECT i.* FROM sponsor_settlement_items i JOIN sponsor_settlement_batches b ON b.id=i.batch_id WHERE b.order_id=$1 ORDER BY i.beneficiary_org_id,i.id',
+          [id],
+        )
+      ).rows;
+      const currentBatchId = batches.find((b) => b.status !== 'REJECTED')?.id ?? null;
+      const refundPlans = (
+        await c.query(
+          'SELECT * FROM sponsor_refund_plans WHERE order_id=$1 ORDER BY created_at,id',
+          [id],
+        )
+      ).rows;
+      const refunds = [],
+        refundRetries = [];
+      for (const p of refundPlans) {
+        const resolution = await readSponsorRefundResolution(c, p.id);
+        refunds.push({
+          ...p,
+          refund_status: resolution.currentRefund?.status ?? null,
+          effective_refund_id: resolution.currentRefund?.id ?? null,
+          canRetry:
+            resolution.valid &&
+            p.status === 'CLAIMED' &&
+            p.funding_mode === 'RETURN_FIRST' &&
+            !resolution.pendingRetry &&
+            sponsorRefundFailed(resolution.currentRefund),
+        });
+        refundRetries.push(...resolution.retries);
+      }
       return {
         order: o,
         tradeOrderId: t?.id ?? null,
@@ -759,21 +841,11 @@ export class SponsorCommerceService extends GovernanceService {
             [id],
           )
         ).rows,
-        batches,
-        items: batches.length
-          ? (
-              await c.query(
-                'SELECT * FROM sponsor_settlement_items WHERE batch_id=$1 ORDER BY beneficiary_org_id',
-                [batches[0]!.id],
-              )
-            ).rows
-          : [],
-        refunds: (
-          await c.query(
-            'SELECT p.*,r.status AS refund_status FROM sponsor_refund_plans p LEFT JOIN trade_refunds r ON r.id=p.trade_refund_id WHERE p.order_id=$1 ORDER BY p.created_at,p.id',
-            [id],
-          )
-        ).rows,
+        currentBatchId,
+        batches: batches.map((b) => ({ ...b, items: items.filter((i) => i.batch_id === b.id) })),
+        items: items.filter((i) => i.batch_id === currentBatchId),
+        refunds,
+        refundRetries,
         returns: (
           await c.query(
             'SELECT r.* FROM sponsor_return_items r JOIN sponsor_refund_plans p ON p.id=r.refund_plan_id WHERE p.order_id=$1 ORDER BY r.id',
@@ -871,7 +943,11 @@ export class SponsorCommerceService extends GovernanceService {
           const m = await this.live(c, org, o);
           status(o.status, ['ACCEPTED']);
           const money = await this.money(c, t);
-          if (o.verified_fee_fen === null || money.reserved !== money.refunded)
+          if (
+            o.verified_fee_fen === null ||
+            money.reserved !== money.refunded ||
+            !(await this.refundObligationsResolved(c, id))
+          )
             sponsorFail('SPONSOR_SETTLEMENT_BLOCKED', '手续费未核验或仍有退款处理中');
           if (
             (
@@ -927,7 +1003,7 @@ export class SponsorCommerceService extends GovernanceService {
                 x.authorizationVersion,
                 x.amountFen,
                 x.retained,
-                x.retained ? 'RETAINED' : 'PENDING',
+                x.retained ? 'RETAINED' : x.amountFen === 0 ? 'NOT_REQUIRED' : 'PENDING',
               ],
             );
           result = { id, batchId: batch, status: 'IN_REVIEW' };
@@ -989,14 +1065,7 @@ export class SponsorCommerceService extends GovernanceService {
           }
           if (batch && !['SUCCEEDED', 'PARTIAL'].includes(batch.status))
             sponsorFail('SPONSOR_SPLIT_UNKNOWN', '先逐项查询原分账，未知金额不能重新分配');
-          if (
-            (
-              await c.query(
-                "SELECT 1 FROM sponsor_refund_plans p LEFT JOIN trade_refunds r ON r.id=p.trade_refund_id WHERE p.order_id=$1 AND p.status='CLAIMED' AND r.status<>'SUCCEEDED'",
-                [id],
-              )
-            ).rowCount
-          )
+          if (!(await this.refundObligationsResolved(c, id)))
             sponsorFail('SPONSOR_REFUND_PENDING', '原退款义务仍未完成，请查询原退款');
           const plan = randomUUID();
           let reduction = 0;
@@ -1079,34 +1148,41 @@ export class SponsorCommerceService extends GovernanceService {
           result = { id, refundPlanId: p.id, status: next };
         } else if (b.action === 'CLOSE_ORDER') {
           await this.finance(c, a, org, o);
-          const money = await this.money(c, t);
-          if (
-            money.reserved !== money.refunded ||
-            (
-              await c.query(
-                "SELECT 1 FROM sponsor_refund_plans p WHERE p.order_id=$1 AND p.status NOT IN('REJECTED','CLAIMED')",
-                [id],
-              )
-            ).rowCount ||
-            (
-              await c.query(
-                "SELECT 1 FROM sponsor_recovery_cases k JOIN sponsor_refund_plans p ON p.id=k.refund_plan_id WHERE p.order_id=$1 AND k.status='OPEN'",
-                [id],
-              )
-            ).rowCount
-          )
-            sponsorFail('SPONSOR_OBLIGATION_OPEN', '退款或追偿义务尚未完成');
-          if (
-            money.refunded !== money.p.total_fen &&
-            (o.status !== 'ACCEPTED' ||
-              !(
+          const money = await this.money(c, t, true);
+          if (!money.p) {
+            if (!(await sponsorUnpaidCloseSafe(c, id, t!.id)))
+              sponsorFail('SPONSOR_OBLIGATION_OPEN', '未付款订单仍有支付状态或业务义务待核对');
+          } else {
+            if (!(await this.refundObligationsResolved(c, id)))
+              sponsorFail('SPONSOR_OBLIGATION_OPEN', '原退款义务或恢复审批链尚未结清');
+            if (
+              money.reserved !== money.refunded ||
+              (
                 await c.query(
-                  "SELECT 1 FROM sponsor_settlement_batches WHERE order_id=$1 AND status='SUCCEEDED' AND finished",
+                  "SELECT 1 FROM sponsor_refund_plans p WHERE p.order_id=$1 AND p.status NOT IN('REJECTED','CLAIMED')",
                   [id],
                 )
-              ).rowCount)
-          )
-            sponsorFail('SPONSOR_OBLIGATION_OPEN', '需全额退款，或完成验收及最终分账');
+              ).rowCount ||
+              (
+                await c.query(
+                  "SELECT 1 FROM sponsor_recovery_cases k JOIN sponsor_refund_plans p ON p.id=k.refund_plan_id WHERE p.order_id=$1 AND k.status='OPEN'",
+                  [id],
+                )
+              ).rowCount
+            )
+              sponsorFail('SPONSOR_OBLIGATION_OPEN', '退款或追偿义务尚未完成');
+            if (
+              money.refunded !== money.p.total_fen &&
+              (o.status !== 'ACCEPTED' ||
+                !(
+                  await c.query(
+                    "SELECT 1 FROM sponsor_settlement_batches WHERE order_id=$1 AND status='SUCCEEDED' AND finished",
+                    [id],
+                  )
+                ).rowCount)
+            )
+              sponsorFail('SPONSOR_OBLIGATION_OPEN', '需全额退款，或完成验收及最终分账');
+          }
           await c.query("UPDATE sponsor_orders SET status='CLOSED' WHERE id=$1", [id]);
           await c.query(
             "UPDATE sponsor_contracts SET status='CLOSED',version=version+1 WHERE id=$1",
@@ -1175,6 +1251,106 @@ export class SponsorCommerceService extends GovernanceService {
           }
           // Failed provider returns and OPEN recovery remain unchanged. Only a real common-ledger refund can discharge the advertiser obligation.
           result = { id, refundPlanId: p.id, status: 'RECOVERY_REQUIRED' };
+        } else if (
+          b.action === 'PROPOSE_RETRY' ||
+          b.action === 'APPROVE_RETRY' ||
+          b.action === 'REJECT_RETRY'
+        ) {
+          await this.finance(c, a, org, o);
+          await assertSponsorRetryWritesAllowed(c);
+          let retry: Row | undefined;
+          const child = sponsorId(b.childId);
+          if (b.action !== 'PROPOSE_RETRY') {
+            retry = (
+              await c.query(
+                'SELECT * FROM sponsor_refund_retries WHERE id=$1 AND order_id=$2 FOR UPDATE',
+                [child, id],
+              )
+            ).rows[0];
+            if (!retry) throw notFound();
+            status(
+              retry.status,
+              b.action === 'REJECT_RETRY' ? ['IN_REVIEW', 'APPROVED'] : ['IN_REVIEW'],
+            );
+            if ([retry.proposed_by, o.payer_user_id, o.beneficiary_user_id].includes(a.user.id))
+              throw forbidden();
+          }
+          const resolution = await readSponsorRefundResolution(c, retry?.plan_id ?? child),
+            p = resolution.plan;
+          if (p.order_id !== id || p.org_id !== org) throw notFound();
+          if (b.action === 'REJECT_RETRY') {
+            await c.query(
+              "UPDATE sponsor_refund_retries SET status='REJECTED',reviewed_by=COALESCE(reviewed_by,$2),version=version+1,updated_at=clock_timestamp() WHERE id=$1",
+              [retry!.id, a.user.id],
+            );
+            result = { id, retryId: retry!.id, status: 'REJECTED' };
+          } else {
+            if (
+              !resolution.valid ||
+              p.status !== 'CLAIMED' ||
+              p.funding_mode !== 'RETURN_FIRST' ||
+              !sponsorRefundFailed(resolution.currentRefund) ||
+              (retry ? resolution.pendingRetry?.id !== retry.id : !!resolution.pendingRetry)
+            )
+              sponsorFail(
+                'SPONSOR_RETRY_BLOCKED',
+                '只可恢复明确失败且已完成回退的原退款；未知或垫付退款不能重试',
+              );
+            await assertSponsorRefundDispatch(c, id, p.id, p.amount_fen);
+            const money = await this.money(c, t);
+            if (p.amount_fen > money.p.total_fen - money.reserved)
+              sponsorFail('SPONSOR_REFUND_EXCEEDS_PAID', '原支付可退额度已变化');
+            if (b.action === 'PROPOSE_RETRY') {
+              const retryId = randomUUID();
+              await c.query(
+                'INSERT INTO sponsor_refund_retries(id,org_id,order_id,plan_id,previous_refund_id,evidence,proposed_by) VALUES($1,$2,$3,$4,$5,$6,$7)',
+                [
+                  retryId,
+                  org,
+                  id,
+                  p.id,
+                  resolution.currentRefund!.id,
+                  text(b.evidence, 'evidence', 4, 2000),
+                  a.user.id,
+                ],
+              );
+              result = { id, retryId, status: 'IN_REVIEW' };
+            } else {
+              await c.query(
+                "UPDATE sponsor_refund_retries SET status='APPROVED',reviewed_by=$2,version=version+1,updated_at=clock_timestamp() WHERE id=$1",
+                [retry!.id, a.user.id],
+              );
+              result = { id, retryId: retry!.id, status: 'APPROVED' };
+            }
+          }
+        } else if (b.action === 'CLAIM_RETRY') {
+          await this.finance(c, a, org, o);
+          await assertSponsorRetryWritesAllowed(c);
+          const retry = (
+            await c.query(
+              'SELECT * FROM sponsor_refund_retries WHERE id=$1 AND order_id=$2 FOR UPDATE',
+              [sponsorId(b.childId), id],
+            )
+          ).rows[0];
+          if (!retry) throw notFound();
+          const p = await assertSponsorRefundAllocation(
+            c,
+            id,
+            retry.id,
+            (await this.refundPlan(c, id, retry.plan_id)).amount_fen,
+          );
+          if (!this.commerce.captureSourceRefund)
+            sponsorFail('SPONSOR_REFUND_BRIDGE_DISABLED', '统一退款尚未接通', 503);
+          result = {
+            id,
+            ...(await this.commerce.captureSourceRefund(c, a, {
+              kind: 'SPONSOR_ORDER',
+              sourceId: id,
+              allocationId: retry.id,
+              amountFen: p.amount_fen,
+              reason: p.reason,
+            })),
+          };
         } else if (b.action === 'CLAIM_REFUND') {
           await this.finance(c, a, org, o);
           const p = await this.refundPlan(c, id, sponsorId(b.childId));
@@ -1427,14 +1603,7 @@ export class SponsorCommerceService extends GovernanceService {
               status(batch.status, ['SUCCEEDED']);
               status(batch.finish_status, ['PENDING']);
               status(o.status, ['ACCEPTED']);
-              if (
-                (
-                  await c.query(
-                    "SELECT 1 FROM sponsor_refund_plans p LEFT JOIN trade_refunds r ON r.id=p.trade_refund_id WHERE p.order_id=$1 AND p.status<>'REJECTED' AND (p.status<>'CLAIMED' OR r.status<>'SUCCEEDED')",
-                    [id],
-                  )
-                ).rowCount
-              )
+              if (!(await this.refundObligationsResolved(c, id)))
                 sponsorFail('SPONSOR_REFUND_PENDING', '退款或回退义务尚未完成');
             }
             if (action === 'QUERY_FINISH') status(batch.finish_status, ['SENDING', 'UNKNOWN']);

@@ -6,15 +6,20 @@ import { readSponsorClosureFunds } from './sponsor-commerce-source.js';
 const sponsorScope = `WITH managed_orgs AS (
  SELECT org_id FROM organization_memberships WHERE user_id=$1 AND status='ACTIVE' AND role IN('ORG_OWNER','ORG_ADMIN')
 ), contracts AS (
- SELECT r.id,r.org_id FROM sponsor_contracts r WHERE $1 IN(r.payer_user_id,r.beneficiary_user_id,r.created_by,r.owner_signed_by)
+ SELECT r.id,r.org_id FROM sponsor_contracts r WHERE $1 IN(r.payer_user_id,r.beneficiary_user_id,r.created_by,r.reviewed_by,r.owner_signed_by)
  OR r.org_id IN(SELECT org_id FROM managed_orgs)
  OR EXISTS(SELECT 1 FROM jsonb_array_elements(r.shares) AS share(value) JOIN managed_orgs m ON m.org_id::text=(share.value->>'beneficiaryOrgId'))
 ), orders AS (
  SELECT o.id,o.org_id FROM sponsor_orders o WHERE o.contract_id IN(SELECT id FROM contracts)
  OR $1 IN(o.payer_user_id,o.beneficiary_user_id,o.created_by)
- OR EXISTS(SELECT 1 FROM sponsor_settlement_batches b WHERE b.order_id=o.id AND b.status NOT IN('SUCCEEDED','REJECTED') AND ($1=b.proposed_by OR $1=ANY(b.approvals)))
- OR EXISTS(SELECT 1 FROM sponsor_refund_plans p WHERE p.order_id=o.id AND p.status NOT IN('CLAIMED','REJECTED') AND $1 IN(p.proposed_by,p.reviewed_by))
- OR EXISTS(SELECT 1 FROM sponsor_recovery_cases r JOIN sponsor_refund_plans p ON p.id=r.refund_plan_id WHERE p.order_id=o.id AND r.status='OPEN' AND $1 IN(r.proposed_by,r.reviewed_by))
+ OR EXISTS(SELECT 1 FROM sponsor_deliveries d WHERE d.order_id=o.id AND $1 IN(d.created_by,d.reviewed_by))
+ OR EXISTS(SELECT 1 FROM sponsor_settlement_batches b WHERE b.order_id=o.id AND ($1=b.proposed_by OR $1=ANY(b.approvals)))
+ OR EXISTS(SELECT 1 FROM sponsor_refund_plans p WHERE p.order_id=o.id AND $1 IN(p.proposed_by,p.reviewed_by))
+ OR EXISTS(SELECT 1 FROM sponsor_refund_retries r WHERE r.order_id=o.id AND $1 IN(r.proposed_by,r.reviewed_by))
+ OR EXISTS(SELECT 1 FROM sponsor_recovery_cases r JOIN sponsor_refund_plans p ON p.id=r.refund_plan_id WHERE p.order_id=o.id AND $1 IN(r.proposed_by,r.reviewed_by))
+), scoped_contracts AS (
+ SELECT id,org_id FROM contracts
+ UNION SELECT c.id,c.org_id FROM sponsor_contracts c JOIN sponsor_orders o ON o.contract_id=c.id WHERE o.id IN(SELECT id FROM orders)
 )`;
 const matchingNeeds = `SELECT n.id FROM matching_needs n WHERE n.owner_id=$1
  OR EXISTS(SELECT 1 FROM matching_intents i WHERE i.need_id=n.id AND i.receiver_id=$1)
@@ -56,7 +61,7 @@ export async function readRemainingSixClosureOrgs(
  UNION SELECT org_id FROM matching_needs WHERE id IN(${matchingNeeds})
  UNION SELECT org_id FROM matching_supply_preferences WHERE owner_id=$1 AND org_id IS NOT NULL
  UNION SELECT org_id FROM dispatch_requests WHERE id IN(${dispatchRequests})
- UNION SELECT org_id FROM contracts UNION SELECT org_id FROM orders
+ UNION SELECT org_id FROM scoped_contracts UNION SELECT org_id FROM orders
  UNION SELECT beneficiary_org_id FROM sponsor_settlement_items WHERE batch_id IN(SELECT id FROM sponsor_settlement_batches WHERE order_id IN(SELECT id FROM orders))
  ORDER BY org_id`,
     [userId],
@@ -104,14 +109,23 @@ export async function lockRemainingSixClosure(c: PoolClient, userId: string): Pr
     `SELECT id FROM training_lesson_entitlements WHERE enrollment_id IN(${trainingEnrollments}) ORDER BY id FOR UPDATE NOWAIT`,
     `SELECT id FROM training_consumptions WHERE entitlement_id IN(SELECT id FROM training_lesson_entitlements WHERE enrollment_id IN(${trainingEnrollments})) ORDER BY id FOR UPDATE NOWAIT`,
     `SELECT id FROM training_refund_allocations WHERE enrollment_id IN(${trainingEnrollments}) ORDER BY id FOR UPDATE NOWAIT`,
-    `${sponsorScope} SELECT id FROM sponsor_contracts WHERE id IN(SELECT id FROM contracts) ORDER BY id FOR UPDATE NOWAIT`,
+    `${sponsorScope} SELECT id FROM sponsor_contracts WHERE id IN(SELECT id FROM scoped_contracts) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_orders WHERE id IN(SELECT id FROM orders) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM trade_orders WHERE kind='SPONSOR_ORDER' AND source_id IN(SELECT id FROM orders) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT p.id FROM trade_payment_attempts p JOIN trade_orders t ON t.id=p.order_id WHERE t.kind='SPONSOR_ORDER' AND t.source_id IN(SELECT id FROM orders) ORDER BY p.id FOR UPDATE OF p NOWAIT`,
-    `${sponsorScope} SELECT r.id FROM trade_refunds r JOIN trade_orders t ON t.id=r.order_id WHERE t.kind='SPONSOR_ORDER' AND t.source_id IN(SELECT id FROM orders) ORDER BY r.id FOR UPDATE OF r NOWAIT`,
+    ...['trade_refunds', 'trade_deductions', 'trade_settlements'].map(
+      (table) =>
+        `${sponsorScope} SELECT r.id FROM ${table} r JOIN trade_orders t ON t.id=r.order_id WHERE t.kind='SPONSOR_ORDER' AND t.source_id IN(SELECT id FROM orders) ORDER BY r.id FOR UPDATE OF r NOWAIT`,
+    ),
+    `${sponsorScope} SELECT id FROM sponsor_deliveries WHERE order_id IN(SELECT id FROM orders) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_settlement_batches WHERE order_id IN(SELECT id FROM orders) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_settlement_items WHERE batch_id IN(SELECT id FROM sponsor_settlement_batches WHERE order_id IN(SELECT id FROM orders)) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_refund_plans WHERE order_id IN(SELECT id FROM orders) ORDER BY id FOR UPDATE NOWAIT`,
+    `${sponsorScope} SELECT id FROM sponsor_refund_retries WHERE order_id IN(SELECT id FROM orders) ORDER BY id FOR UPDATE NOWAIT`,
+    `${sponsorScope} SELECT id FROM trade_refunds WHERE id IN(
+      SELECT trade_refund_id FROM sponsor_refund_plans WHERE order_id IN(SELECT id FROM orders)
+      UNION SELECT previous_refund_id FROM sponsor_refund_retries WHERE order_id IN(SELECT id FROM orders)
+      UNION SELECT trade_refund_id FROM sponsor_refund_retries WHERE order_id IN(SELECT id FROM orders)) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_return_items WHERE refund_plan_id IN(SELECT id FROM sponsor_refund_plans WHERE order_id IN(SELECT id FROM orders)) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_recovery_cases WHERE refund_plan_id IN(SELECT id FROM sponsor_refund_plans WHERE order_id IN(SELECT id FROM orders)) ORDER BY id FOR UPDATE NOWAIT`,
   ];
@@ -139,11 +153,12 @@ export async function readRemainingSixClosureBlockers(
  OR EXISTS(SELECT 1 FROM dispatch_offers o WHERE o.provider_user_id=$1 AND ((o.status IN('PENDING','TRAVEL_REVIEW','READY') AND o.expires_at>clock_timestamp()) OR (o.status='ACCEPTED_HELD' AND o.hold_expires_at>clock_timestamp())))
  OR EXISTS(SELECT 1 FROM dispatch_holds h WHERE (h.provider_user_id=$1 OR h.request_id IN(SELECT id FROM dispatch_requests WHERE owner_user_id=$1)) AND h.state='ACTIVE' AND h.expires_at>clock_timestamp()) AS dispatch_intent,
  EXISTS(SELECT 1 FROM dispatch_requests r WHERE (r.owner_user_id=$1 OR EXISTS(SELECT 1 FROM dispatch_offers o WHERE o.request_id=r.id AND o.provider_user_id=$1 AND o.source_booking_id=r.source_booking_id)) AND r.source_booking_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM local_bookings b WHERE b.id=r.source_booking_id AND b.status IN('COMPLETED','DECLINED','CANCELLED','EXPIRED'))) AS dispatch_source,
- EXISTS(SELECT 1 FROM sponsor_contracts r WHERE r.id IN(SELECT id FROM contracts) AND r.status NOT IN('REJECTED','CLOSED'))
+ EXISTS(SELECT 1 FROM sponsor_contracts r WHERE r.id IN(SELECT id FROM scoped_contracts) AND r.status NOT IN('REJECTED','CLOSED'))
  OR EXISTS(SELECT 1 FROM sponsor_orders o WHERE o.id IN(SELECT id FROM orders) AND o.status<>'CLOSED') AS sponsor_service,
  EXISTS(SELECT 1 FROM sponsor_settlement_batches b WHERE b.order_id IN(SELECT id FROM orders) AND b.status<>'REJECTED' AND (b.status NOT IN('SUCCEEDED','PARTIAL') OR NOT b.finished OR b.finish_status<>'SUCCEEDED'
-  OR EXISTS(SELECT 1 FROM sponsor_settlement_items i WHERE i.batch_id=b.id AND i.status NOT IN('SUCCEEDED','FAILED','RETAINED'))))
- OR EXISTS(SELECT 1 FROM sponsor_refund_plans p WHERE p.order_id IN(SELECT id FROM orders) AND p.status<>'REJECTED' AND (p.status<>'CLAIMED' OR NOT EXISTS(SELECT 1 FROM trade_refunds r WHERE r.id=p.trade_refund_id AND r.status='SUCCEEDED')))
+  OR EXISTS(SELECT 1 FROM sponsor_settlement_items i WHERE i.batch_id=b.id AND i.status NOT IN('SUCCEEDED','FAILED','RETAINED') AND NOT(i.status='NOT_REQUIRED' AND NOT i.retained AND i.amount_fen=0))))
+ OR EXISTS(SELECT 1 FROM sponsor_refund_plans p WHERE p.order_id IN(SELECT id FROM orders) AND p.status NOT IN('REJECTED','CLAIMED'))
+ OR EXISTS(SELECT 1 FROM sponsor_refund_retries r WHERE r.order_id IN(SELECT id FROM orders) AND r.status NOT IN('REJECTED','CLAIMED'))
  OR EXISTS(SELECT 1 FROM sponsor_return_items r JOIN sponsor_refund_plans p ON p.id=r.refund_plan_id WHERE p.order_id IN(SELECT id FROM orders) AND r.status NOT IN('NOT_REQUIRED','SUCCEEDED') AND NOT(
  r.status='FAILED' AND EXISTS(SELECT 1 FROM sponsor_recovery_cases resolved WHERE resolved.return_item_id=r.id
  AND resolved.status IN('RECOVERED','WRITTEN_OFF') AND resolved.proposed_by IS NOT NULL AND resolved.reviewed_by IS NOT NULL
@@ -170,7 +185,10 @@ export async function readRemainingSixClosureBlockers(
   });
   // The scope includes beneficiary-org administrators and workflow reviewers who
   // need not be the payer/beneficiary of any trade_order. Do not delegate their
-  // module funds to the narrower common account-closure ownership query.
+  // module funds to the narrower common account-closure ownership query. Every
+  // CLAIMED plan, including terminal failed attempts and any retry lineage, must
+  // be discharged by this exact reconciliation. Its status alone is never proof.
+  // The same helper proves CLOSED unpaid sources; a missing canonical order blocks.
   const orders = (
     await c.query(
       `${sponsorScope} SELECT o.id,t.id AS trade_order_id FROM orders o

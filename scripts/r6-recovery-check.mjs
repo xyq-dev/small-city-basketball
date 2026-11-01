@@ -55,6 +55,7 @@ export const R6_DOMAINS = Object.freeze({
     'sponsor_settlement_batches',
     'sponsor_settlement_items',
     'sponsor_refund_plans',
+    'sponsor_refund_retries',
     'sponsor_return_items',
     'sponsor_recovery_cases',
     'sponsor_commerce_operations',

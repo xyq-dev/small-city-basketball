@@ -166,6 +166,7 @@ describe(
         { databaseUrl, appOrigin: ORIGIN },
         {
           encryptionKey: Buffer.alloc(32, 7),
+          sponsorCommerce: options,
           merchants: {
             [owner.orgId]: {
               key: 'synthetic-advertiser',
@@ -205,13 +206,16 @@ describe(
       await api?.app.close();
       await api?.pool.end();
     });
-    async function contract() {
+    async function contract(
+      totalFen = 10003,
+      beforeOrder?: (signed: Record<string, any>) => Promise<void>,
+    ) {
       const b = {
         commandId: randomUUID(),
         campaignId: campaign,
         payerUserId: payer.id,
         title: '合成固定价广告合同',
-        totalFen: 10003,
+        totalFen,
         allowedFeeFen: 0,
         terms: '双方按固定价格和交付证据独立验收，退款依法走原支付通道。',
         startsAt,
@@ -243,6 +247,7 @@ describe(
         action: 'ADVERTISER_SIGN',
         acceptedContractHash: signed.contractHash,
       });
+      if (beforeOrder) await beforeOrder(final);
       const order = await service.createOrder(payer.cookie, owner.orgId, {
         commandId: randomUUID(),
         contractId: created.id,
@@ -252,18 +257,19 @@ describe(
       });
       return { order, contract: created };
     }
-    async function paid() {
-      const f = await contract(),
+    async function paid(totalFen = 10003) {
+      const f = await contract(totalFen),
         trade = f.order.tradeOrderId,
         payment = randomUUID();
       await api.pool.query(
-        "INSERT INTO trade_payment_attempts(id,order_id,out_trade_no,channel,status,total_fen,fence,expires_at,provider_transaction_id,paid_at,profit_sharing) VALUES($1,$2,$3,'NATIVE','PAID',10003,$4,clock_timestamp()+interval '1 hour',$5,clock_timestamp(),true)",
+        "INSERT INTO trade_payment_attempts(id,order_id,out_trade_no,channel,status,total_fen,fence,expires_at,provider_transaction_id,paid_at,profit_sharing) VALUES($1,$2,$3,'NATIVE','PAID',$6,$4,clock_timestamp()+interval '1 hour',$5,clock_timestamp(),true)",
         [
           payment,
           trade,
           payment.replaceAll('-', ''),
           randomUUID(),
           'SYNTHETIC' + payment.replaceAll('-', ''),
+          totalFen,
         ],
       );
       return { ...f, trade, payment };
@@ -282,8 +288,8 @@ describe(
         ...extra,
       });
     }
-    async function fulfilled() {
-      const f = await paid();
+    async function fulfilled(totalFen = 10003) {
+      const f = await paid(totalFen);
       const d = await act(owner, f.order.id, 'DELIVERY', {
         evidence: '合成投放交付证据，不以曝光折算收入',
       });
@@ -294,8 +300,8 @@ describe(
       });
       return f;
     }
-    async function approved() {
-      const f = await fulfilled();
+    async function approved(totalFen = 10003) {
+      const f = await fulfilled(totalFen);
       const p = await act(owner, f.order.id, 'PROPOSE_SETTLEMENT');
       await act(finance1, f.order.id, 'APPROVE_SETTLEMENT', { childId: p.batchId });
       await act(finance2, f.order.id, 'APPROVE_SETTLEMENT', { childId: p.batchId });
@@ -310,6 +316,442 @@ describe(
         childId,
       });
     }
+    async function refundResult(
+      input: { outTradeNo: string; outRefundNo: string; totalFen: number; refundFen: number },
+      state: 'SUCCESS' | 'CLOSED' | 'PROCESSING',
+    ) {
+      const pay = (
+        await api.pool.query('SELECT * FROM trade_payment_attempts WHERE out_trade_no=$1', [
+          input.outTradeNo,
+        ])
+      ).rows[0];
+      return {
+        outTradeNo: input.outTradeNo,
+        outRefundNo: input.outRefundNo,
+        transactionId: pay.provider_transaction_id,
+        refundId: 'SYNTHETIC_RETRY_' + input.outRefundNo,
+        state,
+        totalFen: input.totalFen,
+        refundFen: input.refundFen,
+        currency: 'CNY' as const,
+        successTime: state === 'SUCCESS' ? new Date().toISOString() : null,
+        createdTime: new Date().toISOString(),
+      };
+    }
+    async function refundWithReturn(state: 'CLOSED' | 'PROCESSING' = 'CLOSED') {
+      const f = await approved();
+      vi.mocked(provider.split).mockImplementationOnce(async (i) => ({
+        transactionId: i.transactionId,
+        outOrderNo: i.outOrderNo,
+        orderId: 'retry-split-' + f.batchId,
+        state: 'FINISHED',
+        receivers: i.receivers.map((r) => ({
+          merchantId: r.merchantId,
+          amountFen: r.amountFen,
+          result: 'SUCCESS',
+          detailId: 'retry-detail-' + r.merchantId,
+        })),
+      }));
+      await channel(f.order.id, 'SEND_SPLIT', f.batchId);
+      const p = await act(payer, f.order.id, 'PROPOSE_REFUND', {
+        amountFen: 10003,
+        reason: '合成原退款恢复义务',
+      });
+      await act(finance1, f.order.id, 'APPROVE_REFUND', { childId: p.refundPlanId });
+      const view = await service.get(owner.cookie, owner.orgId, f.order.id),
+        external = view.returns.find((r) => r.status === 'PENDING')!;
+      vi.mocked(provider.returnFunds).mockImplementationOnce(async (i) => ({
+        outOrderNo: i.outOrderNo,
+        outReturnNo: i.outReturnNo,
+        merchantId: i.receiverMerchantId,
+        amountFen: i.amountFen,
+        returnId: 'retry-return-' + external.id,
+        state: 'SUCCESS',
+      }));
+      await channel(f.order.id, 'SEND_RETURN', external.id);
+      vi.mocked(provider.finish).mockImplementationOnce(async (i) => ({
+        transactionId: i.transactionId,
+        outOrderNo: i.outOrderNo,
+        orderId: 'retry-finish-' + f.batchId,
+        state: 'FINISHED',
+      }));
+      await channel(f.order.id, 'REFUND_UNFREEZE', p.refundPlanId);
+      const first = await act(finance1, f.order.id, 'CLAIM_REFUND', { childId: p.refundPlanId });
+      let dto = await trade.get(finance2.cookie, f.trade);
+      await trade.review(finance2.cookie, f.trade, 'REFUND', first.refundId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: dto.version,
+        decision: 'APPROVE',
+        reason: '独立审核原退款',
+      });
+      vi.mocked(payments.refund).mockImplementationOnce((i) => refundResult(i, state));
+      dto = await trade.get(finance1.cookie, f.trade);
+      await trade.dispatchRefund(finance1.cookie, f.trade, first.refundId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: dto.version,
+      });
+      return { ...f, planId: p.refundPlanId, refundId: first.refundId };
+    }
+    test('explicit failed-refund recovery reuses original returns through rejected reviews and one successful replacement', async () => {
+      const f = await refundWithReturn(),
+        before = (
+          await api.pool.query(
+            'SELECT to_jsonb(r) AS row FROM sponsor_return_items r WHERE refund_plan_id=$1 ORDER BY id',
+            [f.planId],
+          )
+        ).rows;
+      await expect(act(finance1, f.order.id, 'CLOSE_ORDER')).rejects.toMatchObject({
+        code: 'SPONSOR_OBLIGATION_OPEN',
+      });
+      const first = await act(finance1, f.order.id, 'PROPOSE_RETRY', {
+        childId: f.planId,
+        evidence: '原退款已由合成渠道确认关闭',
+      });
+      await expect(
+        act(finance1, f.order.id, 'APPROVE_RETRY', { childId: first.retryId }),
+      ).rejects.toMatchObject({ status: 403 });
+      await act(finance2, f.order.id, 'REJECT_RETRY', { childId: first.retryId });
+      const second = await act(finance1, f.order.id, 'PROPOSE_RETRY', {
+        childId: f.planId,
+        evidence: '重新核验原渠道关闭与已回退证据',
+      });
+      await act(finance2, f.order.id, 'APPROVE_RETRY', { childId: second.retryId });
+      const rejected = await act(finance1, f.order.id, 'CLAIM_RETRY', { childId: second.retryId });
+      let dto = await trade.get(finance2.cookie, f.trade);
+      await trade.review(finance2.cookie, f.trade, 'REFUND', rejected.refundId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: dto.version,
+        decision: 'REJECT',
+        reason: '拒绝本次共同退款恢复',
+      });
+      const third = await act(finance1, f.order.id, 'PROPOSE_RETRY', {
+        childId: f.planId,
+        evidence: '保留同一退款义务重新提交独立审核',
+      });
+      await act(finance2, f.order.id, 'APPROVE_RETRY', { childId: third.retryId });
+      const view = await service.get(finance1.cookie, owner.orgId, f.order.id),
+        command = {
+          commandId: randomUUID(),
+          expectedVersion: view.order.version,
+          action: 'CLAIM_RETRY',
+          childId: third.retryId,
+        };
+      const [claimed, replay] = await Promise.all([
+        service.orderCommand(finance1.cookie, owner.orgId, f.order.id, command),
+        service.orderCommand(finance1.cookie, owner.orgId, f.order.id, command),
+      ]);
+      expect(replay.refundId).toBe(claimed.refundId);
+      dto = await trade.get(finance2.cookie, f.trade);
+      await trade.review(finance2.cookie, f.trade, 'REFUND', claimed.refundId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: dto.version,
+        decision: 'APPROVE',
+        reason: '核对确定失败前驱链后批准',
+      });
+      vi.mocked(payments.refund).mockImplementationOnce((i) => refundResult(i, 'SUCCESS'));
+      dto = await trade.get(finance1.cookie, f.trade);
+      await trade.dispatchRefund(finance1.cookie, f.trade, claimed.refundId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: dto.version,
+      });
+      expect(
+        (
+          await api.pool.query(
+            'SELECT to_jsonb(r) AS row FROM sponsor_return_items r WHERE refund_plan_id=$1 ORDER BY id',
+            [f.planId],
+          )
+        ).rows,
+      ).toEqual(before);
+      expect(
+        (
+          await api.pool.query(
+            'SELECT trade_refund_id,status FROM sponsor_refund_plans WHERE id=$1',
+            [f.planId],
+          )
+        ).rows[0],
+      ).toMatchObject({ trade_refund_id: f.refundId, status: 'CLAIMED' });
+      expect(
+        (
+          await api.pool.query('SELECT * FROM r6_trade_refund_bindings WHERE source_id=$1', [
+            f.order.id,
+          ])
+        ).rows,
+      ).toHaveLength(3);
+      await act(finance1, f.order.id, 'CLOSE_ORDER');
+      const c = await api.pool.connect();
+      try {
+        expect(await readSponsorClosureFunds(c, f.order.id, f.trade)).toEqual({
+          dischargedFen: 0,
+          unresolved: false,
+        });
+      } finally {
+        c.release();
+      }
+      const unknown = await refundWithReturn('PROCESSING');
+      await expect(
+        act(finance1, unknown.order.id, 'PROPOSE_RETRY', {
+          childId: unknown.planId,
+          evidence: '未知结果绝不能被当作失败',
+        }),
+      ).rejects.toMatchObject({ code: 'SPONSOR_RETRY_BLOCKED' });
+    });
+    test('restore quarantine stops retry writes and an unused approved source retry can be rejected after late success', async () => {
+      const f = await refundWithReturn(),
+        retry = await act(finance1, f.order.id, 'PROPOSE_RETRY', {
+          childId: f.planId,
+          evidence: '原退款关闭后提交可审核恢复',
+        }),
+        audit = randomUUID();
+      await api.pool.query(
+        "INSERT INTO audit_logs(id,actor_id,org_id,action,resource_type,resource_id) VALUES($1,$2,$3,'RESTORE_QUARANTINE','restore',$4)",
+        [audit, owner.id, owner.orgId, randomUUID()],
+      );
+      try {
+        for (const [actor, action, childId] of [
+          [finance1, 'PROPOSE_RETRY', f.planId],
+          [finance2, 'APPROVE_RETRY', retry.retryId],
+          [finance1, 'CLAIM_RETRY', retry.retryId],
+        ] as const)
+          await expect(
+            act(actor, f.order.id, action, { childId, evidence: '隔离状态不能重启资金请求' }),
+          ).rejects.toMatchObject({ code: 'SPONSOR_RESTORE_QUARANTINED' });
+        expect(
+          (await service.get(finance1.cookie, owner.orgId, f.order.id)).refundRetries,
+        ).toHaveLength(1);
+      } finally {
+        await api.pool.query('DELETE FROM audit_logs WHERE id=$1', [audit]);
+      }
+      await act(finance2, f.order.id, 'APPROVE_RETRY', { childId: retry.retryId });
+      const old = (await api.pool.query('SELECT * FROM trade_refunds WHERE id=$1', [f.refundId]))
+          .rows[0],
+        pay = (
+          await api.pool.query('SELECT * FROM trade_payment_attempts WHERE id=$1', [f.payment])
+        ).rows[0];
+      vi.mocked(payments.queryRefund).mockResolvedValueOnce(
+        await refundResult(
+          {
+            outTradeNo: pay.out_trade_no,
+            outRefundNo: old.out_refund_no,
+            totalFen: pay.total_fen,
+            refundFen: old.amount_fen,
+          },
+          'SUCCESS',
+        ),
+      );
+      await trade.queryRefund(finance1.cookie, f.trade, f.refundId);
+      await expect(
+        act(finance1, f.order.id, 'CLAIM_RETRY', { childId: retry.retryId }),
+      ).rejects.toMatchObject({ code: 'SPONSOR_RETRY_BLOCKED' });
+      await act(finance2, f.order.id, 'REJECT_RETRY', { childId: retry.retryId });
+      expect(
+        (
+          await api.pool.query(
+            'SELECT status,reviewed_by FROM sponsor_refund_retries WHERE id=$1',
+            [retry.retryId],
+          )
+        ).rows[0],
+      ).toMatchObject({ status: 'REJECTED', reviewed_by: finance2.id });
+      await act(finance1, f.order.id, 'CLOSE_ORDER');
+    });
+    test('late original success blocks approved replacement dispatch and permits explicit unused-refund revocation', async () => {
+      const f = await refundWithReturn(),
+        retry = await act(finance1, f.order.id, 'PROPOSE_RETRY', {
+          childId: f.planId,
+          evidence: '渠道先确认关闭的退款恢复',
+        });
+      await act(finance2, f.order.id, 'APPROVE_RETRY', { childId: retry.retryId });
+      const replacement = await act(finance1, f.order.id, 'CLAIM_RETRY', {
+        childId: retry.retryId,
+      });
+      let dto = await trade.get(finance2.cookie, f.trade);
+      await trade.review(finance2.cookie, f.trade, 'REFUND', replacement.refundId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: dto.version,
+        decision: 'APPROVE',
+        reason: '原失败状态下独立复核',
+      });
+      const old = (await api.pool.query('SELECT * FROM trade_refunds WHERE id=$1', [f.refundId]))
+          .rows[0],
+        pay = (
+          await api.pool.query('SELECT * FROM trade_payment_attempts WHERE id=$1', [f.payment])
+        ).rows[0];
+      vi.mocked(payments.queryRefund).mockResolvedValueOnce(
+        await refundResult(
+          {
+            outTradeNo: pay.out_trade_no,
+            outRefundNo: old.out_refund_no,
+            totalFen: pay.total_fen,
+            refundFen: old.amount_fen,
+          },
+          'SUCCESS',
+        ),
+      );
+      await trade.queryRefund(finance1.cookie, f.trade, f.refundId);
+      const raw = (await api.pool.query('SELECT version FROM trade_orders WHERE id=$1', [f.trade]))
+          .rows[0],
+        before = vi.mocked(payments.refund).mock.calls.length;
+      await expect(
+        trade.dispatchRefund(finance1.cookie, f.trade, replacement.refundId, {
+          clientRequestId: randomUUID(),
+          expectedVersion: raw.version,
+        }),
+      ).rejects.toBeDefined();
+      expect(vi.mocked(payments.refund).mock.calls.length).toBe(before);
+      dto = await trade.get(finance2.cookie, f.trade);
+      expect(dto.balanceConflict).toBe(true);
+      await trade.review(finance2.cookie, f.trade, 'REFUND', replacement.refundId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: dto.version,
+        decision: 'REJECT',
+        reason: '旧退款迟到成功，显式撤回未发送后继',
+      });
+      expect(
+        (
+          await api.pool.query(
+            'SELECT status,fence,provider_refund_id FROM trade_refunds WHERE id=$1',
+            [replacement.refundId],
+          )
+        ).rows[0],
+      ).toMatchObject({ status: 'REJECTED', fence: null, provider_refund_id: null });
+      expect((await trade.get(finance2.cookie, f.trade)).balanceConflict).toBe(false);
+      expect(vi.mocked(payments.refund).mock.calls.length).toBe(before);
+      await act(finance1, f.order.id, 'CLOSE_ORDER');
+      const c = await api.pool.connect();
+      try {
+        expect(await readSponsorClosureFunds(c, f.order.id, f.trade)).toEqual({
+          dischargedFen: 0,
+          unresolved: false,
+        });
+      } finally {
+        c.release();
+      }
+    });
+    test('signed contracts can close before charging while keeping both signatures immutable', async () => {
+      await expect(
+        contract(10003, async (signed) => {
+          await expect(
+            service.contractCommand(payer.cookie, owner.orgId, signed.id, {
+              commandId: randomUUID(),
+              expectedVersion: signed.version,
+              action: 'CLOSE_UNSTARTED',
+            }),
+          ).rejects.toMatchObject({ status: 403 });
+          const closed = await service.contractCommand(finance1.cookie, owner.orgId, signed.id, {
+            commandId: randomUUID(),
+            expectedVersion: signed.version,
+            action: 'CLOSE_UNSTARTED',
+          });
+          expect(closed).toMatchObject({
+            status: 'CLOSED',
+            owner_signed_by: signed.owner_signed_by,
+            advertiser_signed_at: signed.advertiser_signed_at,
+            contractHash: signed.contractHash,
+          });
+          expect(
+            (
+              await api.pool.query('SELECT id FROM sponsor_orders WHERE contract_id=$1', [
+                signed.id,
+              ])
+            ).rows,
+          ).toHaveLength(0);
+        }),
+      ).rejects.toMatchObject({ code: 'SPONSOR_VERSION_CONFLICT' });
+      const f = await contract();
+      await expect(
+        service.contractCommand(finance1.cookie, owner.orgId, f.contract.id, {
+          commandId: randomUUID(),
+          expectedVersion: 5,
+          action: 'CLOSE_UNSTARTED',
+        }),
+      ).rejects.toMatchObject({ code: 'SPONSOR_ORDER_EXISTS' });
+    });
+    test('never-paid closure proves an empty canonical ledger and rejects unresolved checkout attempts', async () => {
+      const f = await contract();
+      await act(finance1, f.order.id, 'CLOSE_ORDER');
+      const client = await api.pool.connect();
+      try {
+        expect(await readSponsorClosureFunds(client, f.order.id, f.order.tradeOrderId)).toEqual({
+          dischargedFen: 0,
+          unresolved: false,
+        });
+        expect((await readSponsorTradeSource(client, f.order.id)).payable).toBe(false);
+      } finally {
+        client.release();
+      }
+      for (const status of ['UNKNOWN', 'NOTPAY', 'DISPATCHING', 'CLOSED']) {
+        const pending = await contract(),
+          attempt = randomUUID();
+        await api.pool.query(
+          "INSERT INTO trade_payment_attempts(id,order_id,out_trade_no,channel,status,total_fen,fence,expires_at,profit_sharing) VALUES($1,$2,$3,'NATIVE',$4,10003,$5,clock_timestamp()+interval '1 hour',true)",
+          [attempt, pending.order.tradeOrderId, attempt.replaceAll('-', ''), status, randomUUID()],
+        );
+        if (status === 'CLOSED') await act(finance1, pending.order.id, 'CLOSE_ORDER');
+        else
+          await expect(act(finance1, pending.order.id, 'CLOSE_ORDER')).rejects.toMatchObject({
+            code: 'SPONSOR_PAYMENT_REQUIRED',
+          });
+      }
+      const obligation = await contract();
+      await api.pool.query(
+        "INSERT INTO sponsor_deliveries(id,org_id,order_id,evidence,created_by) VALUES($1,$2,$3,'明确合成未履行义务',$4)",
+        [randomUUID(), owner.orgId, obligation.order.id, owner.id],
+      );
+      await expect(act(finance1, obligation.order.id, 'CLOSE_ORDER')).rejects.toMatchObject({
+        code: 'SPONSOR_OBLIGATION_OPEN',
+      });
+    });
+    test('zero-fen external shares are no-obligation facts and still require real unfreeze confirmation', async () => {
+      const f = await approved(1),
+        before = vi.mocked(provider.split).mock.calls.length;
+      await channel(f.order.id, 'SEND_SPLIT', f.batchId);
+      expect(vi.mocked(provider.split).mock.calls.length).toBe(before);
+      let view = await service.get(owner.cookie, owner.orgId, f.order.id);
+      expect(view.items.find((i) => !i.retained)).toMatchObject({
+        amount_fen: 0,
+        status: 'NOT_REQUIRED',
+        provider_detail_id: null,
+      });
+      expect(view.batches[0]).toMatchObject({
+        status: 'SUCCEEDED',
+        provider_order_id: null,
+        finished: false,
+      });
+      await expect(act(finance1, f.order.id, 'CLOSE_ORDER')).rejects.toMatchObject({
+        code: 'SPONSOR_OBLIGATION_OPEN',
+      });
+      vi.mocked(provider.finish).mockImplementationOnce(async (i) => ({
+        transactionId: i.transactionId,
+        outOrderNo: i.outOrderNo,
+        orderId: 'synthetic-zero-share-unfreeze',
+        state: 'FINISHED',
+      }));
+      await channel(f.order.id, 'FINISH', f.batchId);
+      await act(finance1, f.order.id, 'CLOSE_ORDER');
+      const client = await api.pool.connect();
+      try {
+        expect(await readSponsorClosureFunds(client, f.order.id, f.trade)).toEqual({
+          dischargedFen: 1,
+          unresolved: false,
+        });
+      } finally {
+        client.release();
+      }
+    });
+    test('replacement settlement batches expose their own items and an explicit current batch', async () => {
+      const f = await fulfilled(),
+        first = await act(owner, f.order.id, 'PROPOSE_SETTLEMENT');
+      await act(finance1, f.order.id, 'REJECT_SETTLEMENT', { childId: first.batchId });
+      const second = await act(owner, f.order.id, 'PROPOSE_SETTLEMENT'),
+        view = await service.get(owner.cookie, owner.orgId, f.order.id);
+      expect(view.currentBatchId).toBe(second.batchId);
+      expect(view.items.every((i) => i.batch_id === second.batchId)).toBe(true);
+      expect(view.batches).toHaveLength(2);
+      for (const batch of view.batches) {
+        expect(batch.items).toHaveLength(2);
+        expect(batch.items.every((i: { batch_id: string }) => i.batch_id === batch.id)).toBe(true);
+      }
+      expect(view.batches[1]).toMatchObject({ id: first.batchId, status: 'REJECTED' });
+    });
     test('signed snapshots, source identity and tenant access remain immutable', async () => {
       const f = await contract();
       await expect(service.list(stranger.cookie, owner.orgId)).rejects.toMatchObject({
