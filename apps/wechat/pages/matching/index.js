@@ -144,10 +144,14 @@ Page({
   },
   async load() {
     if (this.data.busy || !this._alive) return;
-    const selectedId = this._openId || this.data.selected?.id;
+    let selectedId = this._openId || this.data.selected?.id;
     this.setData({ loading: true, error: '', selected: null, conversion: null });
     const session = await ui.session(this, '/pages/matching/index');
     if (!this._alive || !this._visible || !session) return;
+    if (this._viewer && this._viewer !== session.user.id) {
+      this.onSessionReset();
+      selectedId = '';
+    }
     this._viewer = session.user.id;
     const token = ui.begin(this);
     try {
@@ -157,6 +161,8 @@ Page({
       const teams = w.sources.filter((x) => x.kind === 'TEAM_MATCHUP');
       this.setData({
         ...w,
+        loginRequired: false,
+        error: '',
         pending,
         pendingError: '',
         teams,

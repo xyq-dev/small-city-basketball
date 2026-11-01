@@ -1,0 +1,47 @@
+{
+  "name": "ui002-services-dispatch-quote",
+  "route": "pages/dispatch/index",
+  "state": "synthetic-dispatch-quote",
+  "figmaNode": "42:1454",
+  "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
+  "expectText": ["当前报价待客户再次确认", "总额 ¥500.00", "确认当前报价并创建真实预约"],
+  "data": {
+    "capabilities": {
+      "enabled": true
+    },
+    "detail": {
+      "request": {
+        "id": "00000000-0000-4000-8000-000000000021",
+        "kindText": "裁判服务",
+        "status": "REVIEWING",
+        "statusText": "报价待确认",
+        "timeText": "2028-01-01 18:30—21:00（北京时间）",
+        "serviceAddress": "合成体育中心东侧二号篮球场与实际报到点长名称",
+        "expiresText": "2028-01-01 18:10",
+        "budget": {
+          "detailText": "服务¥380.00 · 交通¥120.00 · 住宿¥0.00",
+          "totalText": "¥500.00"
+        },
+        "canManage": true,
+        "canConfirm": true
+      },
+      "offers": [
+        {
+          "listingTitle": "合成裁判甲 · 完整差旅档期",
+          "statusText": "已核验报价",
+          "quote": {
+            "detailText": "服务¥380.00 + 交通¥120.00 + 住宿¥0.00",
+            "totalText": "¥500.00",
+            "routeText": "合成邻城站→场馆→合成返回站",
+            "travelMethod": "合成班次与接驳",
+            "travelEvidence": "合成时刻与路线核验说明，不代表真实线路",
+            "terms": "合成服务、取消、改期及交通约定"
+          },
+          "quoteHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "holdText": "2028-01-01 18:10"
+        }
+      ]
+    }
+  },
+  "expectDisabled": ["确认当前报价并创建真实预约"]
+}

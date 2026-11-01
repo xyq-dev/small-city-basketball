@@ -1,3 +1,4 @@
+:host,.scb-state,button { box-sizing:border-box; }
 :host { display:block; margin-bottom:16px; }
 .scb-state { padding:20px 16px; border:1px solid #e1e7ef; border-radius:16px; background:#fff; color:#18283f; overflow-wrap:anywhere; }
 .state-label { display:inline-block; padding:3px 10px; margin-bottom:12px; border-radius:16px; color:#123c73; background:#edf3fa; font-size:12px; line-height:18px; }

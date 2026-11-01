@@ -33,6 +33,8 @@ Page({
     reason: '',
     amount: '',
     mode: 'manage',
+    workspaceView: 'contracts',
+    detailView: 'delivery',
   },
   onLoad(q = {}) {
     this._alive = true;
@@ -66,6 +68,72 @@ Page({
     this._alive = false;
     this.onHide();
   },
+  onSessionReset() {
+    this._viewer = '';
+    this._org = null;
+    this._order = null;
+    this.setData({
+      organizations: [],
+      orgIndex: 0,
+      contracts: [],
+      orders: [],
+      beneficiaries: [],
+      receiverOptions: [],
+      campaignOptions: [],
+      campaignIndex: 0,
+      detail: null,
+      statements: [],
+      shares: [],
+      enabled: false,
+      canManage: false,
+      canFinance: false,
+      canAdvance: false,
+      userId: null,
+      title: '',
+      payerEmail: '',
+      total: '',
+      fee: '0',
+      terms: '',
+      evidence: '',
+      reason: '',
+      amount: '',
+      mode: 'manage',
+      workspaceView: 'contracts',
+      detailView: 'delivery',
+      pending: null,
+      busy: false,
+      loading: false,
+      error: '登录身份已变化，请重新读取本人合同。',
+      notice: '',
+    });
+  },
+  workspace(e) {
+    if (this.data.busy || this.data.pending) return;
+    const key = e.currentTarget.dataset.key;
+    if (!['contracts', 'orders', 'setup'].includes(key)) return;
+    if (key === 'setup' && !this.data.canManage && !this.data.canFinance) return;
+    this._order = null;
+    const reload = this.data.mode === 'statements';
+    this.setData({ workspaceView: key, mode: 'manage', detail: null, statements: [] });
+    if (reload) this.load();
+  },
+  detailTab(e) {
+    if (this.data.busy || !this.data.detail) return;
+    const key = e.currentTarget.dataset.key;
+    if (['delivery', 'settlement', 'refunds'].includes(key)) this.setData({ detailView: key });
+  },
+  closeOrder() {
+    if (this.data.busy) return;
+    this._order = null;
+    this.setData({
+      detail: null,
+      workspaceView: 'orders',
+      detailView: 'delivery',
+      evidence: '',
+      reason: '',
+      amount: '',
+    });
+  },
   base() {
     return '/v1/orgs/' + model.id(this._org) + '/sponsor-commerce';
   },
@@ -78,8 +146,7 @@ Page({
       const session = await ui.session(this, returnPath);
       if (!session || !ui.live(this, token)) return;
       if (this._viewer && this._viewer !== session.user.id) {
-        this._org = null;
-        this._order = null;
+        this.onSessionReset();
       }
       this._viewer = session.user.id;
       const managed = (session.organizations || []).filter((o) =>
@@ -136,6 +203,7 @@ Page({
       if (!ui.live(this, token)) return;
       this.setData({
         ...data,
+        error: '',
         contracts: model.decorate(data.contracts),
         orders: model.decorate(data.orders),
         beneficiaries: model.decorate(data.beneficiaries),
@@ -262,6 +330,7 @@ Page({
   async selectOrder(e) {
     if (this.data.busy || !this._visible) return;
     this._order = model.id(e.currentTarget.dataset.id);
+    this.setData({ detailView: 'delivery', evidence: '', reason: '', amount: '' });
     const token = ui.begin(this);
     try {
       await this.openOrder(this._order, token);

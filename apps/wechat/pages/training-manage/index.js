@@ -69,6 +69,7 @@ Page({
   onSessionReset() {
     this._generation++;
     this._actor = '';
+    this._session = '';
     this._writeToken = null;
     this.setData({
       workspace: null,
@@ -114,18 +115,24 @@ Page({
   },
   async load() {
     if (this.data.busy) return;
-    const g = ++this._generation;
+    let g = ++this._generation;
     this.setData({ loading: true, error: '' });
     try {
       const token = ui.begin(this),
         s = await ui.session(this, '/pages/training-manage/index');
       if (!s || !ui.live(this, token) || !this.live(g)) return;
+      if (this._actor && this._actor !== s.user.id) {
+        this.onSessionReset();
+        g = this._generation;
+      }
       this._actor = s.user.id;
       const org = this.data.orgId || s.organizations[0]?.id || '';
       const mine = await training.read('/v1/training/mine');
       if (!this.live(g)) return;
       this.setData({
         organizations: s.organizations,
+        loginRequired: false,
+        error: '',
         orgId: org,
         isOperator: !!s.platformOperator,
         pending: training.pending(s.user.id),

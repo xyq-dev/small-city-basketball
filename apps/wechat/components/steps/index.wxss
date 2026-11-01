@@ -1,3 +1,4 @@
+:host,.scb-steps,.scb-step,.step-index { box-sizing:border-box; }
 :host { display:block; margin:0 0 16px; }
 .scb-steps { display:flex; flex-wrap:wrap; gap:8px; }
 .scb-step { flex:1 1 80px; min-width:0; min-height:48px; display:flex; align-items:center; justify-content:center; gap:6px; margin:0; padding:10px 8px; border-radius:12px; background:#fff; color:#63758b; font-size:14px; line-height:22px; overflow-wrap:anywhere; }

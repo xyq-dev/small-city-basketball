@@ -200,3 +200,143 @@ test('training workspace separates teaching, scheduling and refund review withou
   assert.equal(h.page.data.orgId, '');
   assert.equal(h.page.data.isOperator, false);
 });
+
+test('dispatch workspaces separate customer and provider actions while pending quotes stay tied to the original operation', () => {
+  const h = page('dispatch');
+  h.page.workspace(tap('create'));
+  assert.equal(h.page.data.dispatchView, 'requests');
+  h.page.setData({
+    organizations: [{ id: 'org', name: '合成有权机构' }],
+    capabilities: { enabled: true },
+    pending: { body: { commandId: 'original-dispatch' } },
+  });
+  h.page.workspace(tap('create'));
+  let html = markup('dispatch', h.page.data);
+  assert.match(html, /建立一项跨城人员需求/);
+  assert.doesNotMatch(html, /本人跨城接单许可/);
+  h.page.workspace(tap('preference'));
+  html = markup('dispatch', h.page.data);
+  assert.match(html, /本人跨城接单许可/);
+  assert.doesNotMatch(html, /建立一项跨城人员需求/);
+  assert.equal(h.page.data.pending.body.commandId, 'original-dispatch');
+  assert.equal(h.wx.calls.filter((x) => x.type === 'request').length, 0);
+  h.page.onSessionReset();
+  assert.equal(h.page.data.capabilities, null);
+  assert.equal(h.page.data.dispatchView, 'requests');
+});
+test('advertiser default view hides management configuration and tab-only navigation never dispatches funds', () => {
+  const h = page('sponsor-commerce');
+  h.page.setData({
+    enabled: true,
+    organizations: [{ id: 'org', name: '合成合作机构' }],
+    canManage: false,
+    canFinance: false,
+  });
+  h.page.workspace(tap('setup'));
+  assert.equal(h.page.data.workspaceView, 'contracts');
+  let html = markup('sponsor-commerce', h.page.data);
+  assert.doesNotMatch(html, /建立固定价合同|受益主体审核/);
+  h.page.setData({ canManage: true });
+  h.page.workspace(tap('setup'));
+  html = markup('sponsor-commerce', h.page.data);
+  assert.match(html, /建立固定价合同/);
+  h.page.setData({ pending: { body: { commandId: 'original-advertising' } } });
+  h.page.workspace(tap('contracts'));
+  assert.equal(h.page.data.workspaceView, 'setup');
+  assert.equal(h.page.data.pending.body.commandId, 'original-advertising');
+  assert.equal(h.wx.calls.filter((x) => x.type === 'request').length, 0);
+  h.page.setData({
+    payerEmail: 'private@example.invalid',
+    terms: 'private terms',
+    amount: '90',
+    evidence: 'private evidence',
+    shares: [{ private: true }],
+    canFinance: true,
+    enabled: true,
+  });
+  h.page.onSessionReset();
+  assert.equal(h.page.data.payerEmail, '');
+  assert.equal(h.page.data.terms, '');
+  assert.equal(h.page.data.amount, '');
+  assert.equal(h.page.data.evidence, '');
+  assert.equal(h.page.data.shares.length, 0);
+  assert.equal(h.page.data.canFinance, false);
+  assert.equal(h.page.data.enabled, false);
+});
+
+test('returning after an account switch while hidden scrubs previous service drafts before loading the new actor', async () => {
+  const previous = '10000000-0000-4000-8000-000000000001';
+  const current = '10000000-0000-4000-8000-000000000002';
+  for (const name of ['matching', 'dispatch', 'training', 'training-manage', 'sponsor-commerce']) {
+    const calls = [];
+    const client = {
+      viewerId: () => current,
+      sessionRevision: () => 1,
+      onSessionChange: () => () => {},
+      async request(url, method = 'GET') {
+        calls.push({ url, method });
+        if (url === '/v1/auth/session')
+          return { data: { user: { id: current }, organizations: [], teamContexts: [] } };
+        if (url === '/v1/matching')
+          return {
+            data: {
+              enabled: false,
+              conversionEnabled: false,
+              needs: [],
+              inbox: [],
+              sources: [],
+              preferences: [],
+            },
+          };
+        if (url === '/v1/dispatch')
+          return {
+            data: {
+              requests: [],
+              offers: [],
+              preference: null,
+              capabilities: { enabled: false, conversionEnabled: false },
+            },
+          };
+        if (url === '/v1/training/mine')
+          return { data: { items: [], teaching: [], coachProfiles: [] } };
+        if (url === '/v1/me/sponsor-commerce') return { data: { organizations: [] } };
+        throw Error('unexpected private request: ' + url);
+      },
+    };
+    const api = { getClient: () => client, uuid: (value) => value };
+    const h = loadPage({
+      root,
+      route: 'pages/' + name + '/index',
+      wx: createWx(),
+      modules: { './api': api, '../../utils/api': api },
+    });
+    h.page.onLoad({});
+    h.page._visible = true;
+    h.page._hidden = false;
+    h.page._viewer = previous;
+    h.page._actor = previous;
+    const drafts = Object.fromEntries(
+      Object.entries({
+        address: 'private old venue',
+        payerUserId: previous,
+        payerEmail: 'private@example.invalid',
+        terms: 'private old terms',
+        termsText: 'private old terms',
+        reason: 'private old reason',
+        evidence: 'private old evidence',
+      }).filter(([key]) => Object.hasOwn(h.page.data, key)),
+    );
+    if (Object.hasOwn(h.page.data, 'form'))
+      drafts.form = {
+        ...h.page.data.form,
+        title: 'private old draft',
+        address: 'private old venue',
+      };
+    h.page.setData(drafts);
+    if (name === 'training') await h.page.identify();
+    else await h.page.load();
+    const serialized = JSON.stringify(h.page.data);
+    assert.doesNotMatch(serialized, /private old|private@example.invalid/, name);
+    assert.equal(calls.filter((x) => x.method !== 'GET').length, 0, name);
+  }
+});

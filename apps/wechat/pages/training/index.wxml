@@ -2,7 +2,7 @@
 <view class="screen training-page {{detail && signupStep==='review'?'has-fixed-actions':''}}">
  <view wx:if="{{!detail && !enrollment}}" class="hero page-intro"><text class="eyebrow">篮球训练</text><text class="title">把每一节课练扎实</text><text>成人固定短班 · 明确课次、教练与退费规则</text></view>
  <view wx:if="{{!detail && !enrollment}}" class="workflow-tabs actions"><button class="{{viewTab==='catalog'?'active':''}}" bindtap="showCatalog" disabled="{{busy}}">发现课程</button><button class="{{viewTab==='mine'?'active':''}}" bindtap="loadMine" disabled="{{busy || mineLoading}}">我的报名</button><button bindtap="manage">教练 / 机构工作台</button><button wx:if="{{loginRequired}}" bindtap="login">登录</button></view>
- <button wx:if="{{detail || enrollment}}" class="back-link" bindtap="backToList" disabled="{{busy}}">‹ 返回{{viewTab==='mine'?'我的报名':'课程列表'}}</button>
+ <button wx:if="{{detail || enrollment}}" class="back-link" bindtap="backToList" disabled="{{busy}}">返回{{viewTab==='mine'?'我的报名':'课程列表'}}</button>
  <view wx:if="{{error}}" class="error">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view>
  <view wx:if="{{pending}}" class="notice">上次操作尚待核对，不要重复报名。<button bindtap="recover" disabled="{{busy}}">核对回执</button><button bindtap="retry" disabled="{{busy}}">使用原编号重试</button></view>
  <scb-state wx:if="{{!enabled && !loading}}" kind="closed" title="培训招生尚未开放" description="已有报名与退款记录仍可查看。首期仅成人固定短课，青少年招生与课包暂未开放。"/>

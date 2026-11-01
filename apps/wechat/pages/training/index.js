@@ -68,6 +68,8 @@ Page({
     this._generation++;
     this._makeupRequest = (this._makeupRequest || 0) + 1;
     this._actor = '';
+    this._cohort = '';
+    this._enrollment = '';
     this._writeToken = null;
     this.setData({
       mine: [],
@@ -117,8 +119,9 @@ Page({
     const token = ui.begin(this),
       s = await ui.session(this, '/pages/training/index');
     if (!s || !ui.live(this, token) || this._hidden) return null;
+    if (this._actor && this._actor !== s.user.id) this.onSessionReset();
     this._actor = s.user.id;
-    this.setData({ pending: training.pending(s.user.id) });
+    this.setData({ pending: training.pending(s.user.id), loginRequired: false });
     return s;
   },
   async loadMine() {

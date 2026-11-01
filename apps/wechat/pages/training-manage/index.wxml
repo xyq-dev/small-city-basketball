@@ -6,7 +6,7 @@
 <view class="workflow-tabs actions"><button class="{{manageTab==='teaching'?'active':''}}" data-key="teaching" bindtap="manageTab" disabled="{{busy}}">课表与签到</button><button wx:if="{{workspace}}" class="{{manageTab==='cohorts'?'active':''}}" data-key="cohorts" bindtap="manageTab" disabled="{{busy}}">班期管理</button><button wx:if="{{workspace}}" class="{{manageTab==='reviews'?'active':''}}" data-key="reviews" bindtap="manageTab" disabled="{{busy}}">退费与异议</button><button wx:if="{{workspace}}" class="{{manageTab==='setup'?'active':''}}" data-key="setup" bindtap="manageTab" disabled="{{busy}}">资质与排课</button></view>
 <scb-state wx:if="{{loading}}" kind="loading" title="正在核对本次工作权限与课表"/>
 <scb-state wx:if="{{workspace && !workspace.capabilities.enabled}}" kind="closed" title="培训新业务暂未开放" description="历史课次、消费与退费仍按原记录核对。青少年培训与课包保持关闭。"/>
-<button wx:if="{{roster || enrollment}}" class="back-link" bindtap="closeDetail" disabled="{{busy}}">‹ 返回本工作区列表</button>
+<button wx:if="{{roster || enrollment}}" class="back-link" bindtap="closeDetail" disabled="{{busy}}">返回本工作区列表</button>
 <block wx:if="{{manageTab==='teaching' && !roster}}"><view wx:for="{{coachProfiles}}" wx:key="id" class="card"><text>{{item.display_name}} · {{item.status}}</text><button wx:if="{{!item.consented}}" data-id="{{item.id}}" data-action="CONSENT" bindtap="coachAction" disabled="{{busy || pending}}">本人确认承担本机构教练职责</button></view>
 <view wx:for="{{teaching}}" wx:key="id" class="card"><text>{{item.title}} · {{item.time}} · {{item.stateLabel}}</text><button data-id="{{item.id}}" bindtap="roster">本课签到与授课</button></view>
 <scb-state wx:if="{{!loading && !teaching.length && !coachProfiles.length}}" kind="empty" title="暂无当前账号可查看的课表" description="仅显示服务端授权给本人的教练资料与课次。"/></block>
