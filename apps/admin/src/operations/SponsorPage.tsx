@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createOperationsApi, type SponsorList } from '../api/operations';
 import {
@@ -40,6 +40,8 @@ function SponsorDesk({ context, orgId }: { context: RegistrationWorkspace; orgId
   const api = useMemo(() => createOperationsApi(context.client), [context.client]);
   const [chosen, setChosen] = useState(orgId);
   const reads = useEpoch();
+  const contractAckRef = useRef<ContractAck | null>(null);
+  const [contractAck, setContractAck] = useState<ContractAck | null>(null);
   const [view, setView] = useState<'contracts' | 'orders' | 'statements'>('contracts');
   const read = useCallback(async () => {
     const inbox = await api.sponsorInbox();
@@ -78,7 +80,14 @@ function SponsorDesk({ context, orgId }: { context: RegistrationWorkspace; orgId
           setChosen={(id) => {
             reads.next();
             setOrder(null);
+            contractAckRef.current = null;
+            setContractAck(null);
             setChosen(id);
+          }}
+          contractAck={contractAck}
+          onContractAck={(next) => {
+            contractAckRef.current = next;
+            setContractAck(next);
           }}
           view={view}
           setView={setView}
@@ -98,6 +107,19 @@ function SponsorDesk({ context, orgId }: { context: RegistrationWorkspace; orgId
           }}
           onContract={(id, command, extra) =>
             submit('合同操作已提交', async () => {
+              const ack = contractAckRef.current;
+              const signed = command === 'OWNER_SIGN' || command === 'ADVERTISER_SIGN';
+              const reviewed = command === 'APPROVE' || signed;
+              if (
+                reviewed &&
+                (!ack ||
+                  ack.id !== id ||
+                  ack.version !== extra.version ||
+                  ack.hash !== extra.hash ||
+                  ack.userId !== extra.userId ||
+                  ack.orgId !== chosen)
+              )
+                throw new Error('请重新核对当前冻结合同后再操作');
               await api.post(
                 `/v1/orgs/${encodeURIComponent(chosen)}/sponsor-commerce/contracts/${id}/commands`,
                 {
@@ -105,6 +127,7 @@ function SponsorDesk({ context, orgId }: { context: RegistrationWorkspace; orgId
                   expectedVersion: extra.version,
                   action: command,
                   ...extra.body,
+                  ...(signed ? { acceptedContractHash: ack?.hash } : {}),
                 },
               );
             })
@@ -152,6 +175,8 @@ function DeskBody({
   order,
   busy,
   notice,
+  contractAck,
+  onContractAck,
   onOpen,
   onContract,
   onOrder,
@@ -173,11 +198,13 @@ function DeskBody({
   order: Record<string, unknown> | null;
   busy: boolean;
   notice: ReactNode;
+  contractAck: ContractAck | null;
+  onContractAck: (next: ContractAck | null) => void;
   onOpen: (id: string) => Promise<void>;
   onContract: (
     id: string,
     action: string,
-    extra: { version: number; body?: Record<string, unknown> },
+    extra: { version: number; hash: string; userId: string; body?: Record<string, unknown> },
   ) => void;
   onOrder: (id: string, version: number, action: string, body: Record<string, unknown>) => void;
   onCreate: (body: Record<string, unknown>) => void;
@@ -242,14 +269,15 @@ function DeskBody({
                 key={String(row.id)}
                 row={row}
                 list={list}
+                chosen={chosen}
                 busy={busy}
+                ack={contractAck}
+                onAck={onContractAck}
                 onCommand={(action) =>
                   onContract(String(row.id), action, {
                     version: Number(row.version),
-                    body:
-                      action === 'ADVERTISER_SIGN'
-                        ? { acceptedContractHash: row.contractHash }
-                        : undefined,
+                    hash: String(row.contractHash ?? ''),
+                    userId: list.userId,
                   })
                 }
               />
@@ -307,24 +335,144 @@ function objectOrder(detail: Record<string, unknown>) {
   return order as Record<string, unknown>;
 }
 
+interface ContractAck {
+  id: string;
+  version: number;
+  hash: string;
+  userId: string;
+  orgId: string;
+}
+
+function frozenContract(row: Record<string, unknown>) {
+  const shares = Array.isArray(row.shares) ? row.shares.flatMap(shareLine) : [];
+  if (
+    typeof row.id !== 'string' ||
+    typeof row.title !== 'string' ||
+    typeof row.org_id !== 'string' ||
+    typeof row.payer_user_id !== 'string' ||
+    typeof row.terms !== 'string' ||
+    row.terms.trim().length < 4 ||
+    typeof row.contractHash !== 'string' ||
+    !/^[0-9a-f]{64}$/.test(row.contractHash) ||
+    !Number.isSafeInteger(row.total_fen) ||
+    !Number.isSafeInteger(row.allowed_fee_fen) ||
+    !Number.isSafeInteger(row.version) ||
+    typeof row.starts_at !== 'string' ||
+    typeof row.ends_at !== 'string' ||
+    shares.length === 0
+  )
+    return null;
+  return {
+    id: row.id,
+    title: row.title,
+    orgId: row.org_id,
+    payerId: row.payer_user_id,
+    terms: row.terms.trim(),
+    hash: row.contractHash,
+    totalFen: Number(row.total_fen),
+    feeFen: Number(row.allowed_fee_fen),
+    version: Number(row.version),
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    shares,
+  };
+}
+
+function shareLine(share: unknown, index: number) {
+  if (!share || typeof share !== 'object' || Array.isArray(share)) return [];
+  const row = share as Record<string, unknown>;
+  const name =
+    typeof row.displayName === 'string'
+      ? row.displayName
+      : typeof row.beneficiaryOrgId === 'string'
+        ? row.beneficiaryOrgId
+        : '';
+  if (!name || !Number.isSafeInteger(row.basisPoints)) return [];
+  return [{ key: `${name}-${index}`, name, points: Number(row.basisPoints) }];
+}
+
 function ContractRow({
   row,
   list,
+  chosen,
   busy,
+  ack,
+  onAck,
   onCommand,
 }: {
   row: Record<string, unknown>;
   list: SponsorList;
+  chosen: string;
   busy: boolean;
+  ack: ContractAck | null;
+  onAck: (next: ContractAck | null) => void;
   onCommand: (action: string) => void;
 }) {
   const status = String(row.status);
+  const frozen = frozenContract(row);
+  const confirmed =
+    !!frozen &&
+    !!ack &&
+    ack.id === frozen.id &&
+    ack.version === frozen.version &&
+    ack.hash === frozen.hash &&
+    ack.userId === list.userId &&
+    ack.orgId === chosen;
+  const decisive = status === 'IN_REVIEW' || status === 'APPROVED';
   return (
     <li>
       <strong>
         {String(row.title ?? row.id)} · {contractLabels[status] ?? status}
       </strong>{' '}
       {fenText(Number(row.total_fen ?? 0))} <Version value={Number(row.version)} />
+      {frozen ? (
+        <article aria-label={`${frozen.title}的冻结合同`}>
+          <p>
+            签署机构 {frozen.orgId} · 付款人 {frozen.payerId}
+          </p>
+          <p>
+            合同金额 {fenText(frozen.totalFen)} · 手续费上限 {fenText(frozen.feeFen)}
+          </p>
+          <p>
+            投放时段 {frozen.startsAt} 至 {frozen.endsAt}
+          </p>
+          <p>完整条款：{frozen.terms}</p>
+          <ul>
+            {frozen.shares.map((share) => (
+              <li key={share.key}>
+                {share.name} {share.points} 基点
+              </li>
+            ))}
+          </ul>
+          <p>合同版本 {frozen.hash}</p>
+          {decisive && (
+            <label>
+              <input
+                type="checkbox"
+                aria-label={`核对${frozen.title}`}
+                checked={confirmed}
+                disabled={busy}
+                onChange={(event) =>
+                  onAck(
+                    event.target.checked
+                      ? {
+                          id: frozen.id,
+                          version: frozen.version,
+                          hash: frozen.hash,
+                          userId: list.userId,
+                          orgId: chosen,
+                        }
+                      : null,
+                  )
+                }
+              />
+              我已核对当前这份冻结合同的条款、时段、费用和分成
+            </label>
+          )}
+        </article>
+      ) : (
+        <p role="alert">合同详情不完整，不能审核或签署。</p>
+      )}
       {list.canManage && status === 'DRAFT' && (
         <button type="button" disabled={busy} onClick={() => onCommand('SUBMIT')}>
           送交独立审核
@@ -334,7 +482,7 @@ function ContractRow({
         status === 'IN_REVIEW' &&
         row.created_by !== list.userId &&
         row.payer_user_id !== list.userId && (
-          <button type="button" disabled={busy} onClick={() => onCommand('APPROVE')}>
+          <button type="button" disabled={busy || !confirmed} onClick={() => onCommand('APPROVE')}>
             审核合同
           </button>
         )}
@@ -347,14 +495,22 @@ function ContractRow({
         status === 'APPROVED' &&
         !row.owner_signed_by &&
         row.reviewed_by !== list.userId && (
-          <button type="button" disabled={busy} onClick={() => onCommand('OWNER_SIGN')}>
+          <button
+            type="button"
+            disabled={busy || !confirmed}
+            onClick={() => onCommand('OWNER_SIGN')}
+          >
             机构确认签署
           </button>
         )}
       {row.payer_user_id === list.userId &&
         status === 'APPROVED' &&
         Boolean(row.owner_signed_by) && (
-          <button type="button" disabled={busy} onClick={() => onCommand('ADVERTISER_SIGN')}>
+          <button
+            type="button"
+            disabled={busy || !confirmed}
+            onClick={() => onCommand('ADVERTISER_SIGN')}
+          >
             同意条款并签署
           </button>
         )}

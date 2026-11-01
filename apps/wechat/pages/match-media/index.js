@@ -1084,10 +1084,21 @@ Page({
         : '撤销后观众不再可见；已被合法查看或保存的副本不受影响。撤销不可恢复为草稿。',
       () => {
         const now = this._data && this._data.media.find((m) => m.id === item.id);
-        return !!now && now.version === item.version && now.status === item.status;
+        const same = !!now && now.version === item.version && now.status === item.status;
+        return publish ? same && this.publishConsentCurrent(item.id) : same;
       },
     );
-    if (!token) return;
+    if (!token || (publish && !this.publishConsentCurrent(item.id))) {
+      if (publish && !this.publishConsentCurrent(item.id)) {
+        this._publishConsent = null;
+        this.setData({
+          publishConsent: false,
+          busy: false,
+          error: '发布同意已失效，没有发送。请重新选择草稿并核对当前版本。',
+        });
+      }
+      return;
+    }
     await this.write(
       this.base() + '/media/' + item.id + '/commands',
       { type, expectedVersion: item.version },

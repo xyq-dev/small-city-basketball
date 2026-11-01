@@ -393,6 +393,64 @@ test('publish sends the original command only after the current draft is selecte
   page.unload();
 });
 
+test('a publish answer that arrives after the page hides does not send', async () => {
+  const d = deviceFor();
+  d.state.ws = workspace({ media: [mediaRow('DRAFT', 1)] });
+  const page = await d.open();
+  const command = 'POST ' + matchBase + '/media/' + mediaId + '/commands';
+  let answer = () => {};
+  const gate = new Promise((resolve) => {
+    answer = resolve;
+  });
+  d.wx.showModal = (options) => {
+    gate.then(() => options.success({ confirm: true, cancel: false }));
+  };
+  page.page.selectPublish(tap({ id: mediaId }));
+  page.page.publishConsentChange({ detail: { value: ['publish'] } });
+  const pending = page.page.publish(tap({ id: mediaId }));
+  await ticks(2);
+  page.page.onHide();
+  answer();
+  await pending;
+  assert.equal(d.sent(command).length, 0);
+  assert.equal(page.page.data.busy, false);
+  assert.match(page.page.data.error, /发布同意已失效/);
+  page.unload();
+});
+
+test('a publish answer after the draft version changes does not send, and revoke still uses its command', async () => {
+  const d = deviceFor();
+  d.state.ws = workspace({ media: [mediaRow('DRAFT', 1)] });
+  const page = await d.open();
+  const command = 'POST ' + matchBase + '/media/' + mediaId + '/commands';
+  let answer = () => {};
+  const gate = new Promise((resolve) => {
+    answer = resolve;
+  });
+  d.wx.showModal = (options) => {
+    gate.then(() => options.success({ confirm: true, cancel: false }));
+  };
+  page.page.selectPublish(tap({ id: mediaId }));
+  page.page.publishConsentChange({ detail: { value: ['publish'] } });
+  const pending = page.page.publish(tap({ id: mediaId }));
+  await ticks(2);
+  page.page._data.media[0].version = 2;
+  answer();
+  await pending;
+  assert.equal(d.sent(command).length, 0);
+  page.page.onShow();
+  d.wx.showModal = (options) => {
+    queueMicrotask(() => options.success({ confirm: true, cancel: false }));
+  };
+  d.state.ws = workspace({ media: [mediaRow('PUBLISHED', 3)] });
+  page.page._data.media[0].status = 'PUBLISHED';
+  page.page._data.media[0].version = 2;
+  await page.page.revoke(tap({ id: mediaId }));
+  await page.flush();
+  assert.deepEqual(d.sent(command)[0].body, { type: 'REVOKE', expectedVersion: 2 });
+  page.unload();
+});
+
 // ---------- the stored record is the protection itself ----------
 const PENDING_KEY = 'scb.mediaPending.v1';
 function breakPending(d, which, storageKey = PENDING_KEY) {

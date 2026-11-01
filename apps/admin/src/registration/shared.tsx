@@ -59,7 +59,7 @@ export function useAction() {
       alive.current = false;
     };
   }, []);
-  async function run(action: () => Promise<void>, notice = '已保存') {
+  async function run(action: () => Promise<void | false>, notice = '已保存') {
     if (lock.current) return;
     lock.current = true;
     setBusy(true);
@@ -67,8 +67,8 @@ export function useAction() {
     setConflict(false);
     setSuccess('');
     try {
-      await action();
-      if (alive.current) setSuccess(notice);
+      const result = await action();
+      if (alive.current && result !== false) setSuccess(notice);
     } catch (cause) {
       if (alive.current) {
         setError(message(cause));

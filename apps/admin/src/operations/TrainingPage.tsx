@@ -46,14 +46,35 @@ function TrainingDesk({ context, orgId }: { context: RegistrationWorkspace; orgI
   const [reason, setReason] = useState('');
   const [roster, setRoster] = useState<TrainingRoster | null>(null);
   const [enrollment, setEnrollment] = useState<Record<string, unknown> | null>(null);
+  const [detailError, setDetailError] = useState('');
   const data = resource.data;
+  async function refreshDetails() {
+    setDetailError('');
+    const token = reads.next();
+    resource.reload();
+    const rosterId = roster ? String(roster.session.id ?? '') : '';
+    const enrollmentId = enrollment ? String(enrollment.id ?? '') : '';
+    try {
+      const nextRoster = rosterId ? await api.trainingRoster(rosterId) : null;
+      const nextEnrollment = enrollmentId ? await api.trainingEnrollment(enrollmentId) : null;
+      if (!reads.current(token)) return;
+      if (rosterId) setRoster(nextRoster);
+      if (enrollmentId) setEnrollment(nextEnrollment);
+    } catch (cause) {
+      if (!reads.current(token)) return;
+      if (rosterId) setRoster(null);
+      if (enrollmentId) setEnrollment(null);
+      const message = cause instanceof Error ? cause.message : '当前详情没有刷新';
+      setDetailError(`${message}。旧版本已隐藏，请重新打开。`);
+      throw cause;
+    }
+  }
   function submit(label: string, run: () => Promise<void>) {
     void action.run(async () => {
       await run();
-      if (action.isActive()) {
-        resource.reload();
-        await context.onSessionRefresh();
-      }
+      if (!action.isActive()) return;
+      await refreshDetails();
+      if (action.isActive()) await context.onSessionRefresh();
     }, label);
   }
   return (
@@ -67,7 +88,15 @@ function TrainingDesk({ context, orgId }: { context: RegistrationWorkspace; orgI
         <ResourceState loading={resource.loading} error={resource.error} reload={resource.reload} />
       ) : (
         <>
-          <ActionNotice action={action} onReload={resource.reload} />
+          <ActionNotice
+            action={action}
+            onReload={() => {
+              void action.run(async () => {
+                await refreshDetails();
+              }, '已重新读取当前资料');
+            }}
+          />
+          {detailError && <p role="alert">{detailError}</p>}
           <p>
             {data.capabilities.enabled ? '成人培训已开放。' : '培训尚未开放，已有记录仍可查看。'}
             {data.capabilities.youthEnrollmentEnabled
@@ -135,6 +164,7 @@ function TrainingDesk({ context, orgId }: { context: RegistrationWorkspace; orgI
             <CohortForm
               courses={data.courses}
               courts={data.courts}
+              coaches={data.coaches}
               busy={action.busy || !data.capabilities.enabled}
               onCreate={(body) =>
                 submit('班期草稿已建立', () =>
@@ -571,24 +601,32 @@ function ProviderForm({
 function CohortForm({
   courses,
   courts,
+  coaches,
   busy,
   onCreate,
 }: {
   courses: Record<string, unknown>[];
   courts: { id: string; name: string }[];
+  coaches: Record<string, unknown>[];
   busy: boolean;
   onCreate: (body: Record<string, unknown>) => void;
 }) {
   const [courseId, setCourseId] = useState('');
   const [courtId, setCourtId] = useState('');
+  const [coachId, setCoachId] = useState('');
   const [title, setTitle] = useState('');
   const [address, setAddress] = useState('');
   const [capacity, setCapacity] = useState('8');
   const [price, setPrice] = useState('');
+  const [weight, setWeight] = useState('');
   const [terms, setTerms] = useState('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [formError, setFormError] = useState('');
+  const sessionEnd = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(end)
+    ? new Date(`${end}:00+08:00`).getTime()
+    : Number.NaN;
+  const available = coaches.filter((coach) => schedulableCoach(coach, sessionEnd));
   return (
     <form
       aria-label="建立班期"
@@ -597,6 +635,11 @@ function CohortForm({
         try {
           const startsAt = chinaIso(start);
           const endsAt = chinaIso(end);
+          const coach = available.find((row) => row.id === coachId);
+          if (!coach || typeof coach.id !== 'string')
+            throw new Error('请选择已确认且资质覆盖本课次的教练');
+          const totalFen = yuanToFen(price);
+          const priceWeight = lessonWeight(weight, totalFen);
           setFormError('');
           onCreate({
             commandId: commandId(),
@@ -605,10 +648,18 @@ function CohortForm({
             title: title.trim(),
             address: address.trim(),
             capacity: Number(capacity),
-            totalFen: yuanToFen(price),
+            totalFen,
             termsText: terms.trim(),
             enrollmentDeadline: new Date(Date.parse(startsAt) - 3600000).toISOString(),
-            sessions: [{ startsAt, endsAt }],
+            sessions: [
+              {
+                startsAt,
+                endsAt,
+                bufferMinutes: 15,
+                priceWeight,
+                coachIds: [coach.id],
+              },
+            ],
           });
         } catch (cause) {
           setFormError(cause instanceof Error ? cause.message : '请修正后再提交');
@@ -657,6 +708,28 @@ function CohortForm({
         placeholder="金额（元）"
       />
       <textarea aria-label="培训条款" value={terms} onChange={(e) => setTerms(e.target.value)} />
+      <label>
+        课次教练
+        <select aria-label="课次教练" value={coachId} onChange={(e) => setCoachId(e.target.value)}>
+          <option value="">选择教练</option>
+          {available.map((coach) => (
+            <option key={String(coach.id)} value={String(coach.id)}>
+              {String(coach.display_name ?? coach.id)}
+            </option>
+          ))}
+        </select>
+      </label>
+      {available.length === 0 && (
+        <p role="alert">
+          没有可排课的教练。请先完成本人确认、独立审核，并保证资质覆盖课次结束时间。
+        </p>
+      )}
+      <input
+        aria-label="课次价格权重"
+        value={weight}
+        onChange={(e) => setWeight(e.target.value)}
+        placeholder="收费为正整数，免费为 0"
+      />
       <input
         aria-label="课次开始"
         type="datetime-local"
@@ -757,6 +830,26 @@ function CohortActions({
       />
     </article>
   );
+}
+
+function schedulableCoach(coach: Record<string, unknown>, sessionEnd: number) {
+  if (typeof coach.id !== 'string' || coach.status !== 'APPROVED' || coach.consented !== true)
+    return false;
+  if (typeof coach.qualified_until !== 'string') return false;
+  const until = Date.parse(coach.qualified_until);
+  if (!Number.isFinite(until)) return false;
+  if (Number.isFinite(sessionEnd)) return until >= sessionEnd;
+  return until > Date.now();
+}
+
+function lessonWeight(raw: string, totalFen: number) {
+  if (!/^\d+$/.test(raw.trim())) throw new Error('课次价格权重须为整数');
+  const weight = Number(raw.trim());
+  if (!Number.isSafeInteger(weight) || weight < 0 || weight > 100000000)
+    throw new Error('课次价格权重须为整数');
+  if (totalFen > 0 && weight <= 0) throw new Error('收费班期的课次权重须为正整数');
+  if (totalFen === 0 && weight !== 0) throw new Error('免费班期的课次权重须为 0');
+  return weight;
 }
 
 function objectRecord(value: unknown): value is Record<string, unknown> {

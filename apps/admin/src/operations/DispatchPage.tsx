@@ -1,5 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
-import type { DispatchOfferData, DispatchRequestData } from '@small-city-basketball/contracts';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type {
+  DispatchOfferData,
+  DispatchQuote,
+  DispatchRequestData,
+} from '@small-city-basketball/contracts';
 import { createOperationsApi } from '../api/operations';
 import {
   ActionNotice,
@@ -49,6 +53,9 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
   const resource = useResource(read);
   const action = useAction();
   const reads = useEpoch();
+  const detailRef = useRef<{ kind: 'request' | 'offer'; id: string } | null>(null);
+  const quoteAckRef = useRef<QuoteAck | null>(null);
+  const [quoteAck, setQuoteAck] = useState<QuoteAck | null>(null);
   const [reason, setReason] = useState('');
   const [selected, setSelected] = useState<DispatchRequestData | null>(null);
   const [offers, setOffers] = useState<DispatchOfferData[]>([]);
@@ -69,28 +76,64 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
   const [preferenceRegions, setPreferenceRegions] = useState('');
   const data = resource.data;
 
+  function rememberQuote(next: QuoteAck | null) {
+    quoteAckRef.current = next;
+    setQuoteAck(next);
+  }
+  useEffect(() => {
+    quoteAckRef.current = null;
+    setQuoteAck(null);
+  }, [context.userId]);
   async function openRequest(id: string) {
+    detailRef.current = { kind: 'request', id };
+    rememberQuote(null);
     const token = reads.next();
     const detail = await api.dispatchRequest(id);
-    if (!reads.current(token)) return;
+    if (!reads.current(token) || !sameDetail('request', id)) return;
     setSelected(detail.request);
     setOffers(detail.offers);
     setOffer(null);
   }
   async function openOffer(id: string) {
+    detailRef.current = { kind: 'offer', id };
+    rememberQuote(null);
     const token = reads.next();
     const row = await api.dispatchOffer(id);
-    if (!reads.current(token)) return;
+    if (!reads.current(token) || !sameDetail('offer', id)) return;
     setOffer(row);
     setSelected(null);
   }
+  function sameDetail(kind: 'request' | 'offer', id: string) {
+    return detailRef.current?.kind === kind && detailRef.current.id === id;
+  }
+  async function refreshRequest(id: string) {
+    if (!sameDetail('request', id)) return;
+    const token = reads.peek();
+    const detail = await api.dispatchRequest(id);
+    if (!sameDetail('request', id) || !reads.current(token)) return;
+    setSelected(detail.request);
+    setOffers(detail.offers);
+  }
+  async function refreshOffer(id: string) {
+    if (!sameDetail('offer', id)) return;
+    const token = reads.peek();
+    const row = await api.dispatchOffer(id);
+    if (!sameDetail('offer', id) || !reads.current(token)) return;
+    setOffer(row);
+  }
   function submit(label: string, run: () => Promise<void>) {
+    const viewed = detailRef.current;
     void action.run(async () => {
-      await run();
-      if (action.isActive()) {
-        resource.reload();
-        await context.onSessionRefresh();
+      const current = () => !!viewed && sameDetail(viewed.kind, viewed.id) && action.isActive();
+      try {
+        await run();
+      } catch (cause) {
+        if (current()) throw cause;
+        return false;
       }
+      if (!current()) return false;
+      resource.reload();
+      await context.onSessionRefresh();
     }, label);
   }
 
@@ -155,18 +198,29 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
               setReason={setReason}
               busy={action.busy}
               enabled={data.capabilities.enabled}
-              onCommand={(type, extra) =>
+              quoteAck={quoteAck}
+              onQuoteAck={rememberQuote}
+              viewerId={context.userId}
+              onCommand={(type, extra) => {
+                const requestId = selected.id;
                 submit('需求操作已提交，请以重新读取的状态为准', async () => {
-                  await api.post(`/v1/dispatch/requests/${selected.id}/commands`, {
+                  const payload = typeof extra === 'function' ? extra() : (extra ?? {});
+                  if (
+                    type === 'CONFIRM_QUOTE' &&
+                    !quoteStill(quoteAckRef.current, requestId, payload)
+                  )
+                    throw new Error('请重新核对当前报价后再确认');
+                  if (!sameDetail('request', requestId)) return;
+                  await api.post(`/v1/dispatch/requests/${requestId}/commands`, {
                     commandId: commandId(),
                     expectedVersion: selected.version,
                     type,
                     reason: reasonText(reason),
-                    ...extra,
+                    ...payload,
                   });
-                  if (action.isActive()) await openRequest(selected.id);
-                })
-              }
+                  if (action.isActive()) await refreshRequest(requestId);
+                });
+              }}
             />
           )}
           {offer && (
@@ -177,19 +231,20 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
               busy={action.busy}
               enabled={data.capabilities.enabled}
               loadSlots={() => api.listingSlots(offer.listingId)}
-              onCommand={(type, extra) =>
+              onCommand={(type, extra) => {
+                const offerId = offer.id;
                 submit('邀请操作已提交，请以重新读取的状态为准', async () => {
                   const payload = typeof extra === 'function' ? extra() : extra;
-                  await api.post(`/v1/dispatch/offers/${offer.id}/commands`, {
+                  await api.post(`/v1/dispatch/offers/${offerId}/commands`, {
                     commandId: commandId(),
                     expectedVersion: offer.version,
                     type,
                     reason: reasonText(reason),
                     ...payload,
                   });
-                  if (action.isActive()) setOffer(await api.dispatchOffer(offer.id));
-                })
-              }
+                  if (action.isActive()) await refreshOffer(offerId);
+                });
+              }}
             />
           )}
           <section className="panel">
@@ -410,6 +465,70 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
   );
 }
 
+interface QuoteAck {
+  viewerId: string;
+  requestId: string;
+  offerId: string;
+  quoteHash: string;
+  offerVersion: number;
+}
+
+function quoteStill(ack: QuoteAck | null, requestId: string, payload: Record<string, unknown>) {
+  return (
+    !!ack &&
+    ack.requestId === requestId &&
+    ack.quoteHash === payload.quoteHash &&
+    payload.chargeConsent === true &&
+    payload.acceptedTermsId === payload.quoteHash
+  );
+}
+
+function textOk(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function quoteReadyFor(row: DispatchOfferData) {
+  const quote = row.quote;
+  return !!(
+    quote &&
+    row.quoteHash &&
+    quote.hash === row.quoteHash &&
+    [
+      quote.serviceMinor,
+      quote.travelMinor,
+      quote.lodgingMinor,
+      quote.platformMinor,
+      quote.totalMinor,
+    ].every((amount) => Number.isSafeInteger(amount) && amount >= 0) &&
+    textOk(quote.terms) &&
+    textOk(quote.travelMethod) &&
+    textOk(quote.travelEvidence) &&
+    textOk(quote.departureAt) &&
+    textOk(quote.arrivalAt) &&
+    textOk(quote.returnAt)
+  );
+}
+
+function QuoteFacts({ quote, quoteHash }: { quote: DispatchQuote; quoteHash: string }) {
+  return (
+    <div>
+      <p>当前实际报价 {fenText(quote.totalMinor)}</p>
+      <p>
+        服务 {fenText(quote.serviceMinor)} · 交通 {fenText(quote.travelMinor)} · 住宿{' '}
+        {fenText(quote.lodgingMinor)} · 平台 {fenText(quote.platformMinor)}
+      </p>
+      <p>
+        出发 {quote.departureAt} · 报到 {quote.arrivalAt} · 返回 {quote.returnAt}
+      </p>
+      <p>
+        交通方式 {quote.travelMethod} · 凭据 {quote.travelEvidence}
+      </p>
+      <p>服务约定：{quote.terms}</p>
+      <p>报价版本 {quoteHash}</p>
+    </div>
+  );
+}
+
 function RequestPanel({
   request,
   offers,
@@ -417,6 +536,9 @@ function RequestPanel({
   setReason,
   busy,
   enabled,
+  viewerId,
+  quoteAck,
+  onQuoteAck,
   onCommand,
 }: {
   request: DispatchRequestData;
@@ -425,9 +547,25 @@ function RequestPanel({
   setReason: (value: string) => void;
   busy: boolean;
   enabled: boolean;
-  onCommand: (type: string, extra?: Record<string, unknown>) => void;
+  viewerId: string;
+  quoteAck: QuoteAck | null;
+  onQuoteAck: (next: QuoteAck | null) => void;
+  onCommand: (
+    type: string,
+    extra?: Record<string, unknown> | (() => Record<string, unknown>),
+  ) => void;
 }) {
   const winner = offers.find((row) => row.id === request.winnerOfferId);
+  const quoteReady = !!winner && quoteReadyFor(winner);
+  const ackReady =
+    !!winner &&
+    quoteReady &&
+    !!quoteAck &&
+    quoteAck.viewerId === viewerId &&
+    quoteAck.requestId === request.id &&
+    quoteAck.offerId === winner.id &&
+    quoteAck.quoteHash === winner.quoteHash &&
+    quoteAck.offerVersion === winner.version;
   return (
     <section className="panel" aria-label="需求详情">
       <h2>
@@ -436,7 +574,27 @@ function RequestPanel({
       <p>
         {request.serviceAddress} · {request.startsAt} 至 {request.endsAt}
       </p>
-      <p>费用上限 {fenText(request.budget.totalMinor)}</p>
+      <p>
+        需求预算 {fenText(request.budget.totalMinor)}。这是邀请时的费用上限，不是服务方的实际报价。
+      </p>
+      <p>
+        预算构成：服务 {fenText(request.budget.serviceMinor)} · 交通{' '}
+        {fenText(request.budget.travelMinor)} · 住宿 {fenText(request.budget.lodgingMinor)} · 平台{' '}
+        {fenText(request.budget.platformMinor)}
+      </p>
+      {offers.map((row) => (
+        <article key={row.id} aria-label={`${row.listingTitle}的报价`}>
+          <h3>
+            {row.listingTitle}
+            {row.id === request.winnerOfferId ? ' · 当前待确认服务方' : ''}
+          </h3>
+          {row.quote && row.quoteHash ? (
+            <QuoteFacts quote={row.quote} quoteHash={row.quoteHash} />
+          ) : (
+            <p>尚未提交可核对的报价。</p>
+          )}
+        </article>
+      ))}
       <label>
         操作说明
         <textarea
@@ -465,19 +623,45 @@ function RequestPanel({
           取消需求
         </button>
       )}
+      {request.canConfirm && (
+        <label>
+          <input
+            type="checkbox"
+            aria-label="同意当前报价"
+            checked={ackReady}
+            disabled={busy || !enabled || !quoteReady}
+            onChange={(event) => {
+              if (!event.target.checked || !winner || !quoteReady || !winner.quoteHash) {
+                onQuoteAck(null);
+                return;
+              }
+              onQuoteAck({
+                viewerId,
+                requestId: request.id,
+                offerId: winner.id,
+                quoteHash: winner.quoteHash,
+                offerVersion: winner.version,
+              });
+            }}
+          />
+          已核对当前服务、交通、住宿、平台费用及完整条款，同意本次报价
+        </label>
+      )}
+      {request.canConfirm && !quoteReady && <p role="alert">当前报价不完整，不能确认预约。</p>}
       {request.canConfirm && winner?.quoteHash && (
         <button
           type="button"
-          disabled={busy || !enabled}
-          onClick={() =>
-            onCommand('CONFIRM_QUOTE', {
+          disabled={busy || !enabled || !ackReady}
+          onClick={() => {
+            if (!ackReady || !winner.quoteHash) return;
+            onCommand('CONFIRM_QUOTE', () => ({
               quoteHash: winner.quoteHash,
               acceptedTermsId: winner.quoteHash,
               chargeConsent: true,
-            })
-          }
+            }));
+          }}
         >
-          确认报价并转预约
+          确认当前报价并创建真实预约
         </button>
       )}
       {request.canConfirm && (
@@ -522,6 +706,10 @@ function OfferPanel({
   const [arrival, setArrival] = useState('');
   const [back, setBack] = useState('');
   const [checked, setChecked] = useState(false);
+  useEffect(() => {
+    setChecked(false);
+  }, [offer.id, offer.quoteHash, offer.version]);
+  const travelReady = quoteReadyFor(offer);
   return (
     <section className="panel" aria-label="邀请详情">
       <h2>
@@ -531,7 +719,12 @@ function OfferPanel({
       <p>
         {offer.request.serviceAddress} · {offer.request.startsAt} 至 {offer.request.endsAt}
       </p>
-      {offer.quote && <p>当前报价 {fenText(offer.quote.totalMinor)}</p>}
+      <p>需求预算 {fenText(offer.request.budget.totalMinor)}，不是本条实际报价。</p>
+      {offer.quote && offer.quoteHash ? (
+        <QuoteFacts quote={offer.quote} quoteHash={offer.quoteHash} />
+      ) : (
+        <p>尚未提交可核对的报价。</p>
+      )}
       <label>
         操作说明
         <textarea
@@ -647,21 +840,31 @@ function OfferPanel({
           </button>
         </>
       )}
+      {offer.canReviewTravel && !travelReady && (
+        <p role="alert">行程或凭据不完整，不能记录核验结论。</p>
+      )}
       {offer.canReviewTravel && (
         <label>
-          <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
-          已独立核验真实路线和凭据
+          <input
+            type="checkbox"
+            aria-label="已核对行程凭据"
+            checked={checked}
+            disabled={!travelReady}
+            onChange={(e) => setChecked(e.target.checked)}
+          />
+          已通过真实凭据核对完整行程可行，报到早于服务开始，返回与休息保护充分
         </label>
       )}
       {offer.canReviewTravel && (
         <button
           type="button"
-          disabled={busy || !enabled || !checked || !offer.quoteHash}
-          onClick={() =>
-            onCommand('VERIFY_TRAVEL', { quoteHash: offer.quoteHash, evidenceChecked: true })
-          }
+          disabled={busy || !enabled || !checked || !travelReady || !offer.quoteHash}
+          onClick={() => {
+            if (!checked || !travelReady || !offer.quoteHash) return;
+            onCommand('VERIFY_TRAVEL', { quoteHash: offer.quoteHash, evidenceChecked: true });
+          }}
         >
-          独立核验交通方案
+          记录独立核验结论
         </button>
       )}
       {offer.canAccept && (

@@ -37,3 +37,9 @@ V06 首屏为实际 job/artifact 紧凑概览，使用现有原始22px图标与1
 2026-11-01，工作树 `D:\Projects\small-city-basketball-ui002-ci`、分支 `fix/ui002-ci`、基线 `813ed61`。比赛媒体页在原上传、草稿、确认框、版本复核和 `PUBLISH`/`REVOKE` 命令之外，增加“选择此草稿”和当前版本勾选。未选择、离开页面、版本变化或当前身份没有 `canPublish` 时不发送。勾选不创造发布权限，命令体仍是 `{ type: 'PUBLISH', expectedVersion }`。撤销不要求这道勾选。
 
 直接测试：`c15-media-review`、`c16-review`、`c15-native-management`、`c19-media-requests`、`c16-delivery` 与 `native-structure` 在 Node 24.22.2 通过。未做三宽浏览器、官方微信工具、真机或远端 CI。
+
+## 检查点3：发布确认返回后再次核对
+
+2026-11-01。原问题是 `publishConsentCurrent` 只在打开确认框前执行；页面隐藏会清掉勾选，迟到的确认仍可能发送 `PUBLISH`。`apps/wechat/pages/match-media/index.js` 在确认返回后、写请求前再次核对页面存活和可见、账号、机构、比赛、草稿、版本和发布权限。失效时不发送，并结束本次操作。`onHide` 清除同意的逻辑保留。撤销仍走原流程。命令体仍是 `{ type: 'PUBLISH', expectedVersion }`。
+
+回归在 `c15-media-review.test.cjs`：勾选后打开确认框、隐藏页面、再确认，零次发布；等待期间版本变化，零次发布；正常确认仍只发送一次原命令；撤销仍发送 `REVOKE`。Node 24.22.2 上 `c15-media-review`、`c16-review`、`c15-native-management`、`c19-media-requests`、`c16-delivery` 共 68 项通过。完整 `test:wechat` 本轮没有重跑。真机和远端 CI 未验。
