@@ -1,12 +1,12 @@
 # 广告与赞助收入分成设计
 
-状态：设计已完成；广告订单、多方结算模型及联调未开发。基线：`main@ebc391e8bd0ec24c3301f64d6ae2f395245701cb`；核验日期：2026-11-01。
+状态：固定价商业合同、订单、多方结算、回退/追回及独立审核的退款恢复链已实现；正式商户分账能力和接收方联调仍待外部验收。原设计基线为 `main@ebc391e8bd0ec24c3301f64d6ae2f395245701cb`；2026-11-01。本轮源码与约定隔离验收已于2026-11-01 14:08 Asia/Shanghai整合至 `main@21dc0e6`；CI160三个作业完整SUCCESS，12条审查全部已解决。执行证据及外部边界见[六项验收](../audits/REMAINING6_ACCEPTANCE.md)。 具体范围见[R6ADS](../tasks/R6ADS.md)；默认关闭的新业务和平台垫付不因源码实现自动启用。
 
 ## 1. 现状与首版决策
 
 `sponsorship-service.ts` 已支持赞助稿件、区域/赛事定向、审核、发布撤销、客户端曝光去重；`governance.d.ts` 已有 `DRAFT/SUBMITTED/APPROVED/REJECTED/WITHDRAWN` 与“广告／赞助”标签。`reportedImpressions` 明确不等于独立人数、真实观看或结算凭证。新设计新增商业合同、实收、履约确认和多方分配，不把投放审核当财务审批。
 
-现有 `trade-provider/runtime/domain/service` 已有组织商户绑定、支付/退款/分账/回退及历史商户路由，但交易来源仅 `ENTRY_FEE/ENTRY_DEPOSIT/LOCAL_BOOKING/PLAYER_APPEARANCE`。`trade-wechat-settlement.ts` 为普通商户、单接收方分账，并固定 `unfreeze_unsplit:true`；不能循环调用它拼出多人分账。新建广告来源须覆盖契约、校验、计价、退款、权限、恢复、测试；新批次适配器独立启用，旧交易行为不隐式改变。
+现有 `trade-provider/runtime/domain/service` 已有组织商户绑定、支付/退款/分账/回退及历史商户路由，这些为原设计基线已具备的能力。本轮新增独立 `SPONSOR_ORDER` 来源、`sponsor-commerce` 持久领域和多接收方 driver。`trade-wechat-settlement.ts` 为普通商户、单接收方分账，并固定 `unfreeze_unsplit:true`；不能循环调用它拼出多人分账。本轮广告来源已接契约、校验、计价、退款、权限、恢复及测试；新批次适配器独立启用，保留旧交易行为。确定失败退款可经新的独立审核恢复记录建立后继，原计划/退回/绑定不改写；UNKNOWN 禁止替代，迟到成功仅允许撤回从未发送的已批准后继，闭账核对整条资金链。
 
 首版采用人民币固定价赞助订单，购买明确赛事/地区的展示档期及约定权益。一个订单对应一个收款服务主体、一份冻结合同、一笔原渠道付款、一次最终分成批次；履约周期必须落在实际渠道可分账时限内。长期合同拆成独立履约与支付周期，不能靠后台延长微信冻结期。支持平台、组织、场馆等经审核商户接收方；个人接收方、国际分账、钱包、储值、自动拍卖暂不做。CPM/CPC 待独立计量、防作弊、账务及争议标准落地后另开版本。
 
@@ -44,12 +44,18 @@
 
 ## 5. 状态、退款与坏账
 
-| 对象 | 状态路径 | 不确定性规则 |
+当前状态取自[共享契约](../../packages/contracts/sponsor-commerce.d.ts)和[Migration047](../../apps/api/migrations/047_r6_sponsor_commerce.sql)，下表为主流程及分支，不能以客户端字段直接推进状态。
+
+| 对象 | 当前状态路径或集合 | 不确定性规则 |
 | --- | --- | --- |
-| 合同 | `DRAFT → IN_REVIEW → SIGNED → CLOSED`；可驳回/终止 | 版本不可覆盖，终止不抹去历史收款 |
-| 订单 | `WAITING_PAYMENT → PAID → DELIVERING → ACCEPTED → CLOSED` | 争议/取消分别记录；支付事实独立保存 |
-| 结算批次 | `DRAFT → IN_REVIEW → APPROVED → PROCESSING → SUCCEEDED/PARTIAL` | `UNKNOWN` 查原批次号；审批后来源变化退回重审 |
-| 明细/回退 | `PENDING/PROCESSING/UNKNOWN/SUCCEEDED/FAILED` | 已成功分账仅凭渠道成功回退减少净额 |
+| 合同 | `DRAFT → IN_REVIEW → APPROVED → SIGNED → CLOSED`；审核可 `REJECTED` | 签署前必须独立批准，关闭不抹去签署或收款历史 |
+| 订单 | `WAITING_PAYMENT → DELIVERING → ACCEPTED → CLOSED`；争议为 `DISPUTED` | `PAID` 是统一交易付款事实，不是广告订单状态；业务推进重新读取真实付款 |
+| 结算批次 | `IN_REVIEW → APPROVED → SENDING → PROCESSING → SUCCEEDED/PARTIAL`；另有 `REJECTED/UNKNOWN` | 不设 `DRAFT`；`UNKNOWN` 查原批次号，派发前重新核验来源及批准范围 |
+| 分账明细 | `RETAINED/NOT_REQUIRED/PENDING/PROCESSING/SUCCEEDED/FAILED` | 自留为 RETAINED，外部零元为 NOT_REQUIRED；不重复发送已成功明细 |
+| 回退明细 | `NOT_REQUIRED/PENDING/SENDING/UNKNOWN/PROCESSING/SUCCEEDED/FAILED` | 只有渠道确认的 SUCCEEDED 才减少净分账，未知结果查原回退号 |
+| 退款计划 | `IN_REVIEW/APPROVED/RECOVERY_REQUIRED/READY_FOR_REFUND/CLAIMED/REJECTED` | CLAIMED 固定原共同退款绑定，退款成功由统一交易账本确认 |
+| 退款恢复记录 | `IN_REVIEW/APPROVED/CLAIMED/REJECTED` | 独立审核后建立后继共同退款；原记录及接收方回退不复用为新事实 |
+
 
 退款先确定合同退款义务，再核算资金：未分账可原路退款；已分账按冻结的退款分摊算法对原成功明细生成回退。分摊先调整合同应付：未成功分账的份额只减少应付/释放原订单保留，不发渠道回退；UNKNOWN 必须先查证。累计回退不得超过原明细，累计退款不得超过实收。不得用未到账回退抵消退款义务，退款与分账回退是独立事实。原渠道允许商户自有可用资金先行退款时，须独立授权并记录垫付与追偿，不能隐式扣其他订单资金或假装已回收。
 
@@ -59,28 +65,29 @@
 
 接收方余额不足、未授权、超过时限或已注销导致回退失败时，建立 `RECOVERY_REQUIRED` 工单，显示对广告主退款进度及对受益方追偿余额；暂停相关未决订单新分账。财务按合同决定追偿、获批垫付或坏账核销，核销须双人审批和凭证，只影响内部应收，不伪造渠道回退成功。不可跨组织抵扣或新增钱包余额。
 
-## 6. 候选实体及拟议 API
+## 6. 已实现实体及 API
 
-复用 campaign/publication/impression 和交易支付/退款事实。候选新增：`sponsor_contract_versions`、`sponsor_orders`、`sponsor_deliveries`、`sponsor_beneficiary_snapshots`、`sponsor_settlement_batches/items`、`sponsor_recovery_cases`。审批复用统一审计能力但建立明确财务动作。交易来源新增候选 `SPONSOR_ORDER`；名称在实施时统一，不冒称现有类型。
+复用 campaign/publication/impression 和统一交易支付/退款事实。Migration047 已新增11表：`sponsor_beneficiaries`、`sponsor_contracts`、`sponsor_orders`、`sponsor_deliveries`、`sponsor_settlement_batches`、`sponsor_settlement_items`、`sponsor_refund_plans`、`sponsor_refund_retries`、`sponsor_return_items`、`sponsor_recovery_cases`、`sponsor_commerce_operations`。合同内冻结受益比例/身份快照；审批使用明确财务动作。`SPONSOR_ORDER` 已纳入[统一交易契约](../../packages/contracts/trade.d.ts)与来源适配，不使用原设计中的候选别名。
 
 归属约束：合同、订单、交付、结算及追偿均以 `contractOwnerOrgId`（数据库沿用归属 `org_id`）作为收款服务主体的权限范围，业务外键校验同一归属组织。受益快照单独记录 `beneficiaryOrgId`、关系授权版本及原接收商户号；可在核验合同、身份、渠道关系与双方授权后跨组织接收，不要求受益机构等于合同归属机构。跨组织关联必须经专用受益关系校验，不能放松所有业务外键或把受益方加入收款组织。
 
 受益方仅只读自身明细、回退/追偿与相关脱敏凭证，不能读取其他受益方账号、广告主身份或审批收款方批次。合同签署快照、交易主体及接收方账户不可变；原渠道交易号/批次号/回退号唯一；原单净分账和保留额不得超容量；明细金额非负且与快照复算一致。凭证记录合同哈希、交付材料、审批人、原交易/分账明细/退款/回退号、账单摘要及差异处理，文件私有并审计读取。财务台账是应收应付及渠道事实记录，不是可充值可转出的账户。
 
-以下均为**拟议平台 API，未实现**，不是新增微信官方路径：
+已实现平台入口以 [SponsorCommerceController](../../apps/api/src/sponsor-commerce-controller.ts) 和[共享类型](../../packages/contracts/sponsor-commerce.d.ts)为准，不是新增微信官方路径。机构前缀 `P = /v1/orgs/:orgId/sponsor-commerce`：
 
 | 方法与路径 | 行为 |
 | --- | --- |
-| `POST /v1/orgs/:orgId/sponsor-contracts` | 创建草稿版本，orgId 为合同归属组织，服务端校验主体/比例 |
-| `POST /v1/sponsor-contracts/:id/actions` | 提审/复核/签署/终止；命令号和版本 |
-| `POST /v1/sponsor-orders` | 从已签合同推导归属组织、原交易来源与计价快照 |
-| `POST /v1/sponsor-orders/:id/deliveries` | 交付证据，独立验收/争议 |
-| `POST /v1/sponsor-orders/:id/settlement-preview` | 返回金额、约束、来源版本/hash；无资金副作用 |
-| `POST /v1/sponsor-settlements` | 保存预览快照并提审，不接受任意接收账号 |
-| `POST /v1/sponsor-settlements/:id/actions` | 审批、原号查单；不允许用户手输成功 |
-| `POST /v1/sponsor-orders/:id/refund-requests` | 计算退款和回退计划，独立审批 |
-| `GET /v1/sponsor-orders/:id/reconciliation` | 收款主体授权读取逐项事实及差异 |
-| `GET /v1/sponsor-beneficiary-statements` | 服务端推导当前受益机构，仅返回己方明细和脱敏凭证 |
+| `GET /v1/me/sponsor-commerce` | 普通广告主本人合同入口，由服务端筛选实际付款人范围 |
+| `GET P`、`GET P/orders/:id` | 授权工作台与订单详情，包含合同、履约及资金记录 |
+| `POST P/beneficiaries` | 登记并核验受益关系 |
+| `POST P/contracts`、`POST P/contracts/:id/commands` | 创建、提审、独立审核、签署与终止合同 |
+| `POST P/orders` | 从已签合同捕获统一资金来源与冻结计价 |
+| `POST P/orders/:id/commands` | 履约、结算及退款计划/恢复记录等受权限控制的业务命令 |
+| `POST P/orders/:id/channel` | 经派发前复核的发送或原号查单，不能手输成功 |
+| `GET P/statements` | 仅返回当前受益机构明细和脱敏凭证 |
+| `GET P/receipts/:commandId`、`POST P/receipts/:commandId/cancel` | 回执查询和满足条件的命令取消 |
+
+退款计划获批后进入统一 trade 的独立退款审批和发送；具体动作、能力与状态以共享契约为准，不再使用原设计中的多组顶层 sponsor-contracts/sponsor-orders 路径。
 
 ## 7. 迁移、运维与实施拆包
 

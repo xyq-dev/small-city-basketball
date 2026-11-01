@@ -1,12 +1,12 @@
 # 全国自动撮合设计
 
-状态：待实施设计，非已开发或已测试功能。基线：`main@ebc391e8bd0ec24c3301f64d6ae2f395245701cb`；设计日期：2026-11-01（Asia/Shanghai）。
+状态：成人球员、工作人员、球队三类候选筛选、排序、双方意向及原预约同事务转换已实现。原设计基线为 `main@ebc391e8bd0ec24c3301f64d6ae2f395245701cb`；2026-11-01。本轮源码与约定隔离验收已于2026-11-01 14:08 Asia/Shanghai整合至 `main@21dc0e6`；CI160三个作业完整SUCCESS，12条审查全部已解决。执行证据及外部边界见[六项验收](../audits/REMAINING6_ACCEPTANCE.md)。 具体实现及逐项测试见[R6MATCH](../tasks/R6MATCH.md)；下文的后续能力不得因本轮交付自动开放。
 
 ## 1. 目标与现有边界
 
 全国范围内根据明确需求生成可解释的候选建议，帮助用户发起有权限的意向联系。全国可浏览不代表全国有可履约供给；无供给时显示真实缺口并允许保存需求。第一版采用模块化单体内的规则引擎和数据库任务，不引入机器学习、新微服务或付费排名。
 
-依据：[全国需求](../NATIONWIDE_LOCAL_REQUIREMENTS.md)、[本地服务](../../apps/api/src/local-services-service.ts)、[C06 球员邀约](../../apps/api/src/player-booking/service.ts)、[球员领域限制](../../apps/api/src/player-booking/domain.ts)、[本地契约](../../packages/contracts/local-services.d.ts)。当前 X12 支持已审核供给、档期、预约和双方约赛，C06 有成人档案、档期与报价校验；尚无本设计的全国撮合任务、评分和意向状态机。E04 已有独立交易链，旧 DTO 的 `NOT_ENABLED/UNAVAILABLE` 字段不能作为交易能力不存在的依据。
+依据：[全国需求](../NATIONWIDE_LOCAL_REQUIREMENTS.md)、[本地服务](../../apps/api/src/local-services-service.ts)、[C06 球员邀约](../../apps/api/src/player-booking/service.ts)、[球员领域限制](../../apps/api/src/player-booking/domain.ts)、[本地契约](../../packages/contracts/local-services.d.ts)。X12 的已审核供给、档期、预约和双方约赛及 C06 的成人档案、档期与报价校验为复用基础；本轮已新增 [MatchingService](../../apps/api/src/matching-service.ts)、Migration044 和原生撮合页，保存真实需求、候选快照、评分、意向及来源关联。E04 已有独立交易链，旧 DTO 的 `NOT_ENABLED/UNAVAILABLE` 字段不能作为交易能力不存在的依据。
 
 三类需求严格分型：
 
@@ -51,11 +51,11 @@
 
 ## 4. 状态、数据与一致性
 
-需求：`DRAFT → ACTIVE → PAUSED / CLOSED / EXPIRED`；暂停可恢复，关闭/到期后须复制为新需求。运行：`QUEUED → RUNNING → READY / FAILED / STALE`。意向：`PENDING → MUTUAL_INTEREST / DECLINED / WITHDRAWN / EXPIRED`；双方确认内容版本一致才进入 MUTUAL_INTEREST，再经显式预约操作进入 `CONVERTED`；一方改条件则原意向 `STALE`，名额已被其他意向转单则 `SUPERSEDED`。源订单仍执行其自己的接受、支付、取消与争议状态机。
+当前状态以[共享契约](../../packages/contracts/matching.d.ts)和[Migration044](../../apps/api/migrations/044_r6_matching.sql)为准。需求创建后为 `ACTIVE`，可转 `PAUSED/CLOSED/EXPIRED`；暂停可恢复，关闭/到期后须新建需求，不设持久 `DRAFT`。当前匹配运行同步生成结果，仅保存 `READY/STALE`；原设计的异步队列 `QUEUED/RUNNING/FAILED` 未开放，不能作为当前运行状态。意向：`PENDING → MUTUAL_INTEREST / DECLINED / WITHDRAWN / EXPIRED`；双方确认内容版本一致才进入 MUTUAL_INTEREST，再经显式预约操作进入 `CONVERTED`；一方改条件则原意向 `STALE`，名额已被其他意向转单则 `SUPERSEDED`。源订单仍执行其自己的接受、支付、取消与争议状态机。
 
 需求发布时生成有限 `demand_slots`：TEAM_MATCHUP 只有一个对手席位；STAFF_SERVICE 按“岗位×数量”生成每人一个席位；ADULT_PLAYER 按“位置×数量×场次组”生成，每席位由一位成人球员覆盖指定整组 appearances，不把一人多场误算成多人。若各场允许不同人，创建不同场次组；同一实际用户不能占同组两个席位。场次/条件变化增加需求版本并重获意向确认，继续遵守 C06 单次最多 64 appearances 等限制。免费球队约赛无需预算；付费席位分别分配上限，合计不得超过需求总预算。
 
-拟议新增表，不表示已有：
+下表保留原设计的概念划分，精确字段及约束以 Migration044 的实际9表为准。命令落 `matching_command_receipts`，供给许可落 `matching_supply_preferences`，事件落 `matching_outbox`；表中概念字段或失败码不表示已有同名 SQL 列。
 
 | 表 | 核心约束 |
 | --- | --- |
@@ -75,9 +75,9 @@
 
 重复 commandId 同载荷回放，异载荷 409；版本冲突返回重新审阅；超时显示“结果确认中”并查回执，不生成新命令重试。过期以数据库时间判定，后台清理只是加速，读写均做失效检查。
 
-## 5. 拟议 API、迁移与安全
+## 5. 已实现 API、迁移与安全
 
-以下均未实现：`POST /v1/matching/needs`；`GET /v1/matching/needs/:id`；`POST /v1/matching/needs/:id/commands`（RUN/PAUSE/RESUME/CLOSE/REOPEN_SLOT）；`GET /v1/matching/runs/:id`；`POST /v1/matching/intents`；`POST /v1/matching/intents/:id/commands`（ACCEPT/DECLINE/WITHDRAW/CONVERT）；`GET /v1/matching/receipts/:commandId`。变更带 commandId、expectedVersion，服务端派生 owner/actor，不能由客户端指定对方确认状态。
+已实现入口以 [MatchingController](../../apps/api/src/matching-controller.ts) 和[共享类型](../../packages/contracts/matching.d.ts)为准：`GET /v1/matching`；`POST /v1/matching/preferences`；`POST /v1/matching/needs`；`GET /v1/matching/needs/:id`；`POST /v1/matching/needs/:id/runs`；`POST /v1/matching/needs/:id/intents`；`POST /v1/matching/needs/:id/commands`；`POST /v1/matching/intents/:id/commands`；`GET /v1/matching/receipts/:commandId`。运行与意向结果从有权访问的需求详情读取，不另建原设计中的独立 runs 读取或顶层 intents 创建路径。命令按契约传 commandId、expectedVersion；服务端派生 owner/actor，客户端不能指定对方确认状态。
 
 迁移在现有 042 之后协调编号，先增表/索引/权限，不改历史订单语义，不回填全量公开许可；新功能默认关闭，机构/类型逐项启用。历史档案必须重新选择可被推荐地区、联系人和通知范围。迁移前验证当前 main 的最新号，不能预占 043。
 

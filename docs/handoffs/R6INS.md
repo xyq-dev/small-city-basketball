@@ -1,5 +1,13 @@
 # R6INS交接
 
+当前摘要（2026-11-01 14:08 Asia/Shanghai）：**DONE / MAIN（准入与接口框架）**。PR #35 已合入代码基线 `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree 与CI160测试候选精确一致；三个CI作业全部SUCCESS、原始日志已核验，12条审查全部已解决。正式外部渠道、微信与真机及生产不在本次验收内。详细证据见 [REMAINING6](../tasks/REMAINING6.md)。
+
+保险准入与接口框架已实现；真实供应商驱动、协议、凭据及真实闭环仍为 **BLOCKED_EXTERNAL**。
+
+## 历史实施与验证记录
+
+以下保留各切片当时的 `LOCAL_ONLY`、`IN_PROGRESS`、测试结果、失败及修复；“当前”“待接线”等字样仅指该记录时点，不代表上方候选状态。
+
 2026-11-01（Asia/Shanghai）；代码切片 `IMPLEMENTED / LOCAL_ONLY`，真实供应商接入 `BLOCKED_EXTERNAL`。
 
 目录 `/workspace/scratch/aad368826b09/scb-six-insurance`，分支 `work/r6-insurance`，基线 `c61ab3667c9d3f756244a28046b9ee2395ccac00`。仅本地提交，root负责同步/集成；无生产操作。

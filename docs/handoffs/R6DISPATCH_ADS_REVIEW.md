@@ -1,5 +1,11 @@
 # R6ADS independent review by dispatch implementer
 
+当前摘要（2026-11-01 14:08 Asia/Shanghai）：**DONE / MAIN（源码与约定隔离验收）**。PR #35 已合入代码基线 `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree 与CI160测试候选精确一致；三个CI作业全部SUCCESS、原始日志已核验，12条审查全部已解决。正式外部渠道、微信与真机及生产不在本次验收内。详细证据见 [REMAINING6](../tasks/REMAINING6.md)。
+
+## 历史独立审查记录
+
+以下保留修复前的独立审查发现及其依据；后续修复见 [R6ADS](R6ADS.md)，当前候选验证尚未完成，不把历史问题删除或改写为已通过。
+
 2026-11-01. Read-only inspection of `scb-six-ads` sponsor service/source, migration 047, multi-recipient driver, tests, design and root's additional-source trade bridge. ADS files were not edited. These findings describe the reviewed worktree before the ADS owner applies follow-up fixes.
 
 ## P1 — 11 external recipients pass contract scope but cannot ever be dispatched

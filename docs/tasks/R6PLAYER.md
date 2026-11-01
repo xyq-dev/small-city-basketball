@@ -1,5 +1,11 @@
 # R6PLAYER：全国撮合转原球员预约
 
+当前摘要（2026-11-01 14:08 Asia/Shanghai）：**DONE / MAIN（源码与约定隔离验收）**。PR #35 已合入代码基线 `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree 与CI160测试候选精确一致；三个CI作业全部SUCCESS、原始日志已核验，12条审查全部已解决。正式外部渠道、微信与真机及生产不在本次验收内。详细证据见 [REMAINING6](REMAINING6.md)。
+
+## 历史实施与验证记录
+
+以下保留各切片当时的 `LOCAL_ONLY`、`IN_PROGRESS`、测试结果、失败及修复；“当前”“待接线”等字样仅指该记录时点，不代表上方候选状态。
+
 2026-11-01（Asia/Shanghai）。root追加委派；实现者implement_insurance。工作目录 `/workspace/scratch/aad368826b09/scb-six-insurance`，分支 `work/r6-insurance`，本切片基线620589d。范围为PlayerBookingService同事务复用、独立PLAYER源桥、对应测试；不改共享trade/app/迁移和matching主服务。
 
 状态 `IMPLEMENTED / LOCAL_ONLY`。`prepareCreateOrder` 使用调用方事务/actor，先取得原组织日历、球队权限、买方配额、booking command、profile与settings锁并核对原可约条件，再返回execute。MatchingService可在prepare之后取得need/slot/intent锁，execute复用原订单/appearance/收费捕获代码并返回原单实际金额；失败由外层整体回滚，不留下订单、源操作收据或席位/预算效果。内部origin哈希区分普通预约命令，防止把任意预建订单认领为撮合结果。

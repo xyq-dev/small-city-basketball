@@ -1,5 +1,11 @@
 # R6CLOSE：六模块注销与隐私闭环
 
+当前摘要（2026-11-01 14:08 Asia/Shanghai）：**DONE / MAIN（源码与约定隔离验收）**。PR #35 已合入代码基线 `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree 与CI160测试候选精确一致；三个CI作业全部SUCCESS、原始日志已核验，12条审查全部已解决。正式外部渠道、微信与真机及生产不在本次验收内。详细证据见 [REMAINING6](REMAINING6.md)。
+
+## 历史实施与验证记录
+
+以下保留各切片当时的 `LOCAL_ONLY`、`IN_PROGRESS`、测试结果、失败及修复；“当前”“待接线”等字样仅指该记录时点，不代表上方候选状态。
+
 2026-11-01（Asia/Shanghai）。root追加委派；implement_insurance负责。工作目录 `/workspace/scratch/aad368826b09/scb-six-insurance`，分支work/r6-insurance；切片基线dd6ebb6。状态 `IMPLEMENTED / LOCAL_ONLY`。
 
 依据各模块最新044–047实际schema（含training guardian cohort/policy范围、dispatch不可变报价/hold、sponsor十表）。新增remaining-six-privacy.ts；AccountClosureDependencies强制检查remainingSix四函数，缺失时关闭注销；ACCOUNT_CLOSURE_DOMAINS增加TRAINING、MATCHING、DISPATCH、SPONSOR_COMMERCE。类型允许旧composition暂不注入，但运行时绝不把缺域解释为无事项。

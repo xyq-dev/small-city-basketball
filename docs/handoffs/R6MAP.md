@@ -1,5 +1,11 @@
 # R6MAP接续
 
+当前摘要（2026-11-01 14:08 Asia/Shanghai）：**DONE / MAIN（源码与约定隔离验收）**。PR #35 已合入代码基线 `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree 与CI160测试候选精确一致；三个CI作业全部SUCCESS、原始日志已核验，12条审查全部已解决。正式外部渠道、微信与真机及生产不在本次验收内。详细证据见 [REMAINING6](../tasks/REMAINING6.md)。
+
+## 历史实施与验证记录
+
+以下保留各切片当时的 `LOCAL_ONLY`、`IN_PROGRESS`、测试结果、失败及修复；“当前”“待接线”等字样仅指该记录时点，不代表上方候选状态。
+
 2026-11-01 Asia/Shanghai。当前IN_PROGRESS/LOCAL_ONLY；上下文、范围与计划见[任务卡](../tasks/R6MAP.md)。
 
 首个切片：后端视野合同、签名分页、真实矩形SQL与no-store完成，API typecheck及领域11项测试通过。新增 `apps/api/test/r6-map.integration.test.ts` 四项真实PG测试，未在本地执行，需root/CI隔离库运行。下一步完成原生地图主动搜索、跨城确认、视野代次隔离与页面测试。
@@ -28,4 +34,4 @@ CI153字体修复交接：`work/r6-training-font`只追加training-manage表单�
 
 CI153旧X12隐私测试小片：x12-local.integration.test.ts的supply返回唯一title，首个公开字段测试用q定位该样本，不再假设全县第一页面必含随机UUID新样本。问题来自R6先运行后保留同县多页库存；closeHarness不删除业务事实。全部原敏感字段/资格公开限制断言保留，额外要求唯一结果。生产代码、分页上限、原排序不变；PG交CI，未本地执行。
 
-CI154 picker修复：training-manage/index.wxss仅把picker的27rpx换16px。实际模板三宽度CSS读取确认picker/内部文字/textarea全16px，已同时核对初始页两控件的行高、padding/高度声明；native10/10通过。此为静态DOM/CSS证据，非浏览器几何测量；请CI复跑原initial-training-manage三宽度门槛。生产完整恢复绿的结果由root记录，本片不更改恢复或权限。
+CI154 picker修复：training-manage/index.wxss仅把picker的27rpx换16px。实际模板三宽度CSS读取确认picker/内部文字/textarea全16px，已同时核对初始页两控件的行高、padding/高度声明；native10/10通过。此为静态DOM/CSS证据，非浏览器几何测量；请CI复跑原initial-training-manage三宽度门槛。隔离CI完整恢复结果由root记录，本片不更改恢复或权限。

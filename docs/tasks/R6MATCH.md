@@ -1,5 +1,11 @@
 # R6MATCH 全国撮合实施
 
+当前摘要（2026-11-01 14:08 Asia/Shanghai）：**DONE / MAIN（源码与约定隔离验收）**。PR #35 已合入代码基线 `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree 与CI160测试候选精确一致；三个CI作业全部SUCCESS、原始日志已核验，12条审查全部已解决。正式外部渠道、微信与真机及生产不在本次验收内。详细证据见 [REMAINING6](REMAINING6.md)。
+
+## 历史实施与验证记录
+
+以下保留各切片当时的 `LOCAL_ONLY`、`IN_PROGRESS`、测试结果、失败及修复；“当前”“待接线”等字样仅指该记录时点，不代表上方候选状态。
+
 2026-11-01（Asia/Shanghai）；状态 IN_PROGRESS；integration LOCAL_ONLY。
 
 负责人 `/root/implement_matching`；目录 `/workspace/scratch/aad368826b09/scb-six-matching`；分支 `work/r6-matching`；基线 `c61ab3667c9d3f756244a28046b9ee2395ccac00`，开工工作区干净。远端由root统一同步。

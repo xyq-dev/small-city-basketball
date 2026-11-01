@@ -1,5 +1,13 @@
 # R6RECOVERY接续
 
+当前摘要（2026-11-01 14:08 Asia/Shanghai）：**DONE / MAIN（源码与约定隔离验收）**。PR #35 已合入代码基线 `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree 与CI160测试候选精确一致；三个CI作业全部SUCCESS、原始日志已核验，12条审查全部已解决。正式外部渠道、微信与真机及生产不在本次验收内。详细证据见 [REMAINING6](../tasks/REMAINING6.md)。
+
+main代码基线为45张新增表、221张总表、48项迁移、126个函数；CI160已完成当前221表精确重启、完整归档恢复/隔离及自有资源清理，CI155旧220表证据仅作历史。
+
+## 历史实施与验证记录
+
+以下保留各切片当时的 `LOCAL_ONLY`、`IN_PROGRESS`、测试结果、失败及修复；“当前”“待接线”等字样仅指该记录时点，不代表上方候选状态。
+
 2026-11-01；IN_PROGRESS/LOCAL_ONLY。范围与证据见[任务卡](../tasks/R6RECOVERY.md)。
 
 root须先整合模块fixture：matching `1c31da9`、training `9bb17b4`、dispatch `15a2622`、sponsor `53639cf`（以root最终SHA为准）。各脚本导出captureR6X(context)/verifyR6X({readPool,saved,quarantined})；主脚本提供registerSynthetic与createLocalSource(label,{book})；后者真实LocalServicesService.book+ACCEPT生成CONFIRMED源，book=false只建明确合成审核供给和slot。buyer独立org，provider新合成用户，源org为state.orgId；所有写入用runtimePool。

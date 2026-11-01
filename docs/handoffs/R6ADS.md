@@ -1,5 +1,11 @@
 # R6ADS 交接
 
+当前摘要（2026-11-01 14:08 Asia/Shanghai）：**DONE / MAIN（源码与约定隔离验收）**。PR #35 已合入代码基线 `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree 与CI160测试候选精确一致；三个CI作业全部SUCCESS、原始日志已核验，12条审查全部已解决。正式外部渠道、微信与真机及生产不在本次验收内。详细证据见 [REMAINING6](../tasks/REMAINING6.md)。
+
+## 历史实施与验证记录
+
+以下保留各切片当时的 `LOCAL_ONLY`、`IN_PROGRESS`、测试结果、失败及修复；“当前”“待接线”等字样仅指该记录时点，不代表上方候选状态。
+
 2026-11-01：IN_PROGRESS / LOCAL_ONLY。基线 `c61ab3667c9d3f756244a28046b9ee2395ccac00`，工作树及权限见任务卡。
 
 root需接线SPONSOR_ORDER source、禁止该来源使用旧单方结算入口、退款必须绑定已核验的广告退款计划；新模块提供源读取和退款关口函数。新047迁移仅编写，不在生产执行。当前没有商户真实验证。
@@ -12,7 +18,7 @@ root需接线SPONSOR_ORDER source、禁止该来源使用旧单方结算入口�
 
 页面：`pages/sponsor-commerce/index`；`?orgId`进入广告主合同，`?mode=statements`仅受益机构记录，默认机构管理。`utils/sponsor-commerce.js`导出`sponsorCommercePathAllowed(path,method,query,uuidPattern)`供root allowlist；contracts只共享新d.ts由root导出。root负责app/providers、菜单、交易来源、恢复和账户注销；本agent不修改共享文件。
 
-047当前表：sponsor_beneficiaries/contracts/orders/deliveries/settlement_batches/settlement_items/refund_plans/return_items/recovery_cases/commerce_operations；唯一函数`r6_sponsor_immutable()`。退款计划/分账项均独立不可变intent；命令证据append-only。API权限/金额并发/UNKNOWN/回退失败/来源稳定PG测试位于`apps/api/test/r6-sponsor-commerce.integration.test.ts`，本地未配置PG，等待集成CI。恢复专项脚本另行交付。
+047表清单（已补齐当前11表）：sponsor_beneficiaries/contracts/orders/deliveries/settlement_batches/settlement_items/refund_plans/return_items/recovery_cases/commerce_operations/refund_retries；唯一函数`r6_sponsor_immutable()`。退款计划/分账项均独立不可变intent；命令证据append-only。API权限/金额并发/UNKNOWN/回退失败/来源稳定PG测试位于`apps/api/test/r6-sponsor-commerce.integration.test.ts`，本地未配置PG，等待集成CI。恢复专项脚本另行交付。
 
 接线修正：createOrder必须chargeConsent===true，capture hook必须存在且返回orderId；acceptedTermsId传冻结contractId。不会留下无统一trade的成功广告订单。captureSourceRefund返回四态类型已修正，未转成固定PENDING。平台垫付仍未启用。
 

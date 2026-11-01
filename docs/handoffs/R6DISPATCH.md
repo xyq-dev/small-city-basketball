@@ -1,5 +1,11 @@
 # R6DISPATCH 接续
 
+当前摘要（2026-11-01 14:08 Asia/Shanghai）：**DONE / MAIN（源码与约定隔离验收）**。PR #35 已合入代码基线 `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree 与CI160测试候选精确一致；三个CI作业全部SUCCESS、原始日志已核验，12条审查全部已解决。正式外部渠道、微信与真机及生产不在本次验收内。详细证据见 [REMAINING6](../tasks/REMAINING6.md)。
+
+## 历史实施与验证记录
+
+以下保留各切片当时的 `LOCAL_ONLY`、`IN_PROGRESS`、测试结果、失败及修复；“当前”“待接线”等字样仅指该记录时点，不代表上方候选状态。
+
 2026-11-01 Asia/Shanghai；IN_PROGRESS / LOCAL_ONLY。独立分支 `work/r6-dispatch`，基线 `c61ab3667c9d3f756244a28046b9ee2395ccac00`。
 
 已读取当前设计、AGENTS、协作规范与X12原源预约、共享日历/资源排斥。root负责源预约事务提取与统一048日历扩展；本卡仅追加045派单模型与独立业务消费者。
@@ -19,6 +25,7 @@ Initial broad `vitest run src dispatch-domain` result: 1176 passed / 3 readiness
 Final local hardening adds no new table/function names. 045 now freezes quote_hash, travel_verified_by/at and hold_expires_at after first assignment; source-linked CONVERTED offer/hold states must remain CONVERTED. Scope+service-calendar+base-fee eligibility occurs before SQL LIMIT. Parent 048 still owns shared expiration/calendar functions.
 
 Recovery module exports `captureR6Dispatch(context)` → `{proof}` and `verifyR6Dispatch({readPool,saved,quarantined})`. Context additionally requires `registerSynthetic(label)` and `createLocalSource(label,{book:false})` returning an approved personnel listing/slot with `{provider:{id,cookie},region,listingId,slotId,startsAt,endsAt,address}`. Actual runtime services—not manual local_bookings inserts—perform both source flows. Helpers need at least three hours before service starts and nonoverlapping source windows. Prefer capturing dispatch late so its real 10-minute hold remains current during remaining capture work. Verify accepts saved wrapper or raw proof. No external I/O or real payment is issued.
+
 # CI 150 reservation constraint correction
 
 2026-11-01 UTC. Root reported five dispatch and two shared-calendar PostgreSQL failures at the dispatch reservation insert. The old owner XOR was still present: 029's cross-column `ends_at` condition gets PostgreSQL name `local_resource_reservations_check`, while the owner XOR gets `_check1`. 045 now drops `_check1` only, preserving finite interval enforcement and replacing owner XOR with exactly one booking/matchup/dispatch owner. Added real-PG negative checks for infinite bounds, no owner and multiple owners alongside successful dispatch acceptance. No old migration or shared trigger changed; API typecheck and focused formatting passed; local PG unavailable and execution remains pending isolated CI.

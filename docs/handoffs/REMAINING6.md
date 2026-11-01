@@ -1,6 +1,20 @@
 # REMAINING6 整合接续
 
-2026-11-01 Asia/Shanghai；IN_PROGRESS / BRANCH_ONLY。读[任务](../tasks/REMAINING6.md)、[六项设计](../design/REMAINING_SIX_FEATURES.md)与[运行配置](../operations/remaining-six-runtime.md)。
+2026-11-01 14:08 Asia/Shanghai；DONE / MAIN（源码与约定隔离验收）。读[任务](../tasks/REMAINING6.md)、[六项设计](../design/REMAINING_SIX_FEATURES.md)与[运行配置](../operations/remaining-six-runtime.md)。
+
+## 最终整合与验收边界
+
+2026-11-01 14:08 Asia/Shanghai（核验时间 `2026-11-01T06:08:12Z`），[PR #35](https://github.com/xyq-dev/small-city-basketball/pull/35) 已合入main，代码合并SHA `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree `e38a40da165a92f1eddc5696dcd41e7dc0e2a55a` 与CI160测试候选 `7a3f958c0440eca67d1d67e372a6e2d4c9d92440` 精确一致；双亲为 `911564f0` 和该测试候选。12条外部审查全部已解决，无新增线程。
+
+[CI160](https://github.com/xyq-dev/small-city-basketball/actions/runs/41277450597) 三个作业完整SUCCESS，root已读取全部原始日志：新域真实PG143（含培训19）、旧业务PG586、原生页面→真实HTTP21、真实API浏览器24（12+12）；admin561、API源码单测1339、原生1076通过，1项既有Windows跳过；布局1082通过，1068项按配置跳过。runtime PG21、HTTPS4、221表精确重启与完整归档恢复、业务快照/fencing、quarantine及旧私有/公开/overlay凭证失效均通过；仅清理自有资源，control卷保留。
+
+当前73条原生路由、48项Migration、221表（新增45表）、126函数。地图视野搜索、三类撮合、跨城派单、成人短课培训及商业广告分成的源码和约定隔离验收为DONE / MAIN；保险准入与接口框架也已整合，真实供应商adapter因协议、产品、证书和凭据未提供仍为 `BLOCKED_EXTERNAL`。001—042冻结，043—048仅在隔离CI执行；未更新生产，未进行真实投保、资金、消息或正式外部渠道操作。 青少年培训T2、课包T3、真实商户分账能力及正式微信/真机仍按专项门槛开放；垫付缺可信资金保留接口时保持禁用。
+
+历史检查点保留每轮失败和修复：CI156的126通过/4失败后只修夹具，未放宽权限或资金核验；培训COMPLETE、全退款转入资金核对、受控RESUME和撮合培训档期过滤均已由最终CI160验证。源码框架完成不等于真实供应商接口接通或生产上线。统一证据见[验收映射](../audits/REMAINING6_ACCEPTANCE.md)。
+
+## 历史实施与交接记录
+
+以下保留各切片及 CI 当时的状态、接线指令和失败。原草稿、LOCAL、44 表/220 表和待实现表述均为历史记录；最新状态以页首为准。
 
 root目录 `/workspace/scratch/aad368826b09/scb-six`、分支 `feat/remaining-six`；基线main c61ab3667c9d3f756244a28046b9ee2395ccac00。GitHub主干并发UI001仅新增任务/交接文档，保留其内容。PR #35 草稿承载六模块实现，通过GitHub连接器按远端parent+expected SHA普通更新，逐次核验local/remote树完全相同。
 
@@ -30,6 +44,30 @@ CI152新域PG步骤完整通过，旧业务还在执行；隔离production定位
 
 2026-11-01 12:35 Asia/Shanghai root整合检查点：已接入广告安全撤回source hook；当前全量typecheck/format、admin561、API1339、原生1070通过（1Windows专属跳过），新旧恢复/打包12项通过。CI155旧候选全绿（R6 PG90、旧PG586、原生API21、浏览器24、布局1082、runtime21和TLS4及完整恢复）。新5条审查修复现含退款恢复表、精算注销、派单培训冲突和共享审批/只读冲突视图；核心新增PG追加片在最后核对，完整新候选将进入CI156，未提前resolve或合并。
 
+2026-11-01 Asia/Shanghai 文档草稿接续：root将 `scb-six-final-docs` / `work/r6-final-docs` 的33份未提交文档写权由training转给implement_insurance。实际基线9308f0de555a453b2bb7e364fbce52d5ee9ba880，原33份dirty全部保留；已核验远端为xyq-dev/small-city-basketball。按root要求暂不提交，先记录旧9审查已解决、新2 P2修复中、CI157仍运行且非最终合并候选；后续收到training/matching业务提交时保留其新增历史，待root最终CI/head/main事实后填写结论。未改任何业务代码。
+
 2026-11-01 13:05 Asia/Shanghai root检查点：CI156新域126/130通过，4个失败为旧关闭样本缺真实canonical identity/hash及签约关闭fixture把隐藏404误期望403；只修测试，未放宽业务保护。CI157（remote5b3dfd05197186ee69a205164d5059e063b4719b/tree1078be9c7d5a8cd41e97c674ebd78f17efd88bfb，run41274334045）新域130及旧业务PG步骤通过，admin561/API1339/原生1070与布局1082通过；production21受限PG、HTTPS4、221表完整归档恢复/隔离成功，API原生联调及后续尚在跑。原9条PR审查已resolve，另2条P2为培训cohort正常COMPLETED路径缺失和matching遗漏training预留；撮合11行修复+5展开PG已整合local6263890，27单测/typecheck及独立审查通过，新PG未执行。培训正常结课、跨班权益/争议重开、安全到期未付候补仍在独立工作树补验，待一起进入新候选CI。main未变，无生产或真实渠道动作。
 
+2026-11-01 Asia/Shanghai 后续独立复核检查点：CI158（run41276038120，remote bd4d0ed8 / local4da3060）新域140项步骤已执行，结果待root核验。又发现培训全退款CANCELLED转入例外漏查其UNKNOWN分账/回退，training补最小fullMoneyScope及负例，普通非取消转入不扩查别班未来范围；CI158因此仅作验证基线，最终候选待新修片及必要复验。PR35仍未合main，不改变已记录的9条已解决/2条待验审查事实。文档33份dirty继续保留，尚未提交。
+
+2026-11-01 Asia/Shanghai CI159候选检查点：root已同步 local681fa2d3 / remoteaaaf13661b5c592ddddd943548d0c231fe15ede0，treeacebcbdba81e1c4bb9da75f75c9c96c580e59ff1；培训follow-up原eb77023的R6TRAIN任务/交接6行历史已保留。CI158新域140项步骤成功，matching审查XXZC已resolve；共11条审查10条已解决，仅cohort XXZB待本候选PG。全退转入fullMoneyScope及2种UNKNOWN资金矩阵已通过APItype/format/domain8/独立审查，真实PG和完整CI159待执行，不提前记MAIN或通过。33份文档仍未提交。
+
 2026-11-01 13:33 Asia/Shanghai root检查点：CI159（aaaf13661b5c592ddddd943548d0c231fe15ede0/treeacebcbdba81e1c4bb9da75f75c9c96c580e59ff1，run41276560195）新增域140项PG步骤通过，含全退转入来源的未知分账/回退负例；admin561/API1339/原生1073与布局1082通过，production受限PG21、HTTPS4及221表完整恢复/隔离通过。撮合与培训结课线程已resolve；最新第12条审查为SUSPEND后缺恢复，现整合local7f0d5c2：RESUME复核当前资格、原/转入未决消费及原资源证明，deadline前ENROLLING/后RUNNING，不重造资金/资源；DRAFT不可暂停绕发布。新增3个PG（training16→19，总新域预计143）未执行；原生19、独立审查及root全量type/format/build/admin561/API1339/原生1076通过（1Windows跳过）。待新候选CI全部成功与最后线程验证后合并，main仍911564f0，无生产或真实渠道操作。
+
+2026-11-01 Asia/Shanghai CI160阶段检查点：候选 localfe91ed044011aacf148b5ee51045d56cdf9cccef / remote7a3f958c0440eca67d1d67e372a6e2d4c9d92440，treee38a40da165a92f1eddc5696dcd41e7dc0e2a55a；run41277450597，API job124762542680 的 step11新增领域PG已completed/SUCCESS，包含受控RESUME新增3项。培训19及总143为计划计数，须待API作业完整原始日志核验后填写actual；此时已进入旧业务PG，admin布局及production恢复仍在运行。PR35共12条外部审查全部resolve；源码稳定，无新增代码计划。最终待核包括所有job结论、各测试实际计数、归档恢复/隔离与清理、最终候选及merge SHA/tree；在root给出证据前不标全CI成功或MAIN，33份文档继续不提交。
+
+2026-11-01 Asia/Shanghai CI160双作业核验检查点：CI160 admin（job124762542860）与production（job124762542902）均已SUCCESS，root已读取完整原始日志：admin561、API源码单测1339、原生1076通过（1项既有Windows跳过），布局1082通过（1068项按配置跳过）；runtime PG21、HTTPS4、221表精确完整归档恢复、业务快照/fencing与quarantine均通过，旧私有/公开/overlay凭证失效；仅清理自有资源且保留control卷。API job124762542680仍在旧业务PG阶段，新增域精确计数、旧业务PG、原生HTTP、真实API浏览器及重启结果尚待该作业原始日志核验。 12条review全部resolved且未出现新线程，最终状态仍REVIEW/BRANCH_ONLY；等待API完整结论及merge SHA，33份文档未提交。
+
+2026-11-01 Asia/Shanghai CI160旧业务PG阶段检查点：API job124762542680的步骤12旧业务PostgreSQL检查已completed/SUCCESS，正在step13 Native mini program pages against real API。此处仅记录步骤成功，不在原始日志归档前推定测试计数；后续原生HTTP、capture/restart、真实API浏览器及cleanup仍待完成。admin/production成功和12条review全部resolved不变，main仍911564f0；未记整套CI成功，33份final-docs保持dirty未提交。
+
+## 2026-11-01 14:08 Asia/Shanghai 最终验收与文档收口
+
+2026-11-01 14:08 Asia/Shanghai（核验时间 `2026-11-01T06:08:12Z`），[PR #35](https://github.com/xyq-dev/small-city-basketball/pull/35) 已合入main，代码合并SHA `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree `e38a40da165a92f1eddc5696dcd41e7dc0e2a55a` 与CI160测试候选 `7a3f958c0440eca67d1d67e372a6e2d4c9d92440` 精确一致；双亲为 `911564f0` 和该测试候选。12条外部审查全部已解决，无新增线程。
+
+[CI160](https://github.com/xyq-dev/small-city-basketball/actions/runs/41277450597) 三个作业完整SUCCESS，root已读取全部原始日志：新域真实PG143（含培训19）、旧业务PG586、原生页面→真实HTTP21、真实API浏览器24（12+12）；admin561、API源码单测1339、原生1076通过，1项既有Windows跳过；布局1082通过，1068项按配置跳过。runtime PG21、HTTPS4、221表精确重启与完整归档恢复、业务快照/fencing、quarantine及旧私有/公开/overlay凭证失效均通过；仅清理自有资源，control卷保留。
+
+当前73条原生路由、48项Migration、221表（新增45表）、126函数。地图视野搜索、三类撮合、跨城派单、成人短课培训及商业广告分成的源码和约定隔离验收为DONE / MAIN；保险准入与接口框架也已整合，真实供应商adapter因协议、产品、证书和凭据未提供仍为 `BLOCKED_EXTERNAL`。001—042冻结，043—048仅在隔离CI执行；未更新生产，未进行真实投保、资金、消息或正式外部渠道操作。
+
+文档owner implement_insurance 在 `scb-six-final-docs` / `work/r6-final-docs` 保留原33份草稿及所有后来追加的 R6MATCH/R6TRAIN/root 检查点，统一当前banner、设计契约和验收矩阵。此次收口只修改这33份Markdown，以以上main代码合并SHA为基线，不自引用后续文档提交SHA；未重跑已通过应用CI，后续纯文档同步由root按最新main执行CAS。旧失败及阶段待验记录保留，UI001200帧不冒充全部像素实现，真实保险adapter仍外部BLOCKED。
+
+本次文档验证：33个变更路径全部为Markdown；14份跨提交追加历史逐字保留，300个相对链接目标均存在，31个表格列数一致且代码围栏闭合，git diff --check通过。项目format:check不包含Markdown；本次只执行与文档变更相符的链接/结构/空白检查，不重写历史段落格式或重跑应用测试。

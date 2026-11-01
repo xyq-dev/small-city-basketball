@@ -1,10 +1,10 @@
 # 地图拖动后“搜索此区域”设计
 
-状态：设计完成，待实现与验收。基线：main `ebc391e8bd0ec24c3301f64d6ae2f395245701cb`；2026-11-01。本文中的新字段、交互和错误码均为提案，不代表当前 API 已支持。总入口：[六项补充设计](REMAINING_SIX_FEATURES.md)。
+状态：地图拖动后主动搜索、服务端矩形查询及原生页面已实现；正式微信地图事件及真机仍待外部验收。原设计基线为 `main@ebc391e8bd0ec24c3301f64d6ae2f395245701cb`；2026-11-01。本轮源码与约定隔离验收已于2026-11-01 14:08 Asia/Shanghai整合至 `main@21dc0e6`；CI160三个作业完整SUCCESS，12条审查全部已解决。执行证据及外部边界见[六项验收](../audits/REMAINING6_ACCEPTANCE.md)。 具体契约以[本地服务类型](../../packages/contracts/local-services.d.ts)和[地图任务](../tasks/R6MAP.md)为准。
 
 ## 1. 现状与目标
 
-现有[同城页](../../apps/wechat/pages/local/index.js)已有 GCJ02 定位、地标选择、1／3／5／10 公里半径、地图标记与列表分页；[页面模板](../../apps/wechat/pages/local/index.wxml)没有视野变化监听与“搜索此区域”。`refreshMap()` 以起点或首条结果重设地图中心，不能直接在每次分页后沿用该行为。[查询校验](../../apps/api/src/local-services-domain.ts)当前只接收 `regionId/catalogVersion/kind/q/point/radiusMeters/limit/cursor`，没有视野边界参数。
+原设计基线的[同城页](../../apps/wechat/pages/local/index.js)已有 GCJ02 定位、地标、距离半径及地图/列表分页。本轮已在[页面模板](../../apps/wechat/pages/local/index.wxml)接入视野变化与“搜索此区域”，并在[查询校验](../../apps/api/src/local-services-domain.ts)及服务端增加 `searchVersion:2`、`viewport`、选城与矩形交集、签名游标和 `searchArea` 回应。原半径查询保留；视野搜索的分页、迟到响应和权限撤销按当前任务测试核验。下文保留交互与验收要求，不将兼容浏览器测试等同于真实微信地图验收。
 
 目标：用户拖动或缩放地图后，主动搜索当前可见范围内**已发布且允许公开的服务**，地图与列表使用同一结果集。浏览城市、定位起点、地图视野、实际预约地点分别保存其语义；浏览地图不改订单地址或机构上下文。地图背景的 POI 只作地理信息，不作为入驻商家或可预约库存。
 
@@ -35,9 +35,9 @@
 4. 成功后原子替换列表、标记、范围标签和游标；失败保留上次已提交范围。`refreshMap` 拆成更新标记与主动设置视野两种动作，分页与选卡不得重置用户视野。
 5. 筛选／城市／账号切换递增上下文代次、清游标、撤销旧请求；退出页面也隔离响应。视野尚未提交时暂停加载更多，先搜索新范围或恢复原范围。
 
-## 4. API 增量合同提案
+## 4. 已实现 API 增量契约
 
-继续使用 `POST /v1/public/local-search`，精确坐标不放入 GET。新客户端仅在服务端显式发布 `viewportSearch` 能力后发送下列新增字段；旧参数与旧游标继续按 v1 解析。能力配置不能由客户端自行宣布支持。
+继续使用 `POST /v1/public/local-search`，精确坐标不放入 GET。以下为当前[服务端校验](../../apps/api/src/local-services-domain.ts)和[共享类型](../../packages/contracts/local-services.d.ts)接受的请求形状：视野查询必须带 `searchVersion:2`，省略或与起点/半径混用会返回422。客户端仅在服务端显式发布 `viewportSearch` 能力后发送；旧参数与旧游标继续按 v1 解析，能力配置不能由客户端自行宣布支持。
 
 ```json
 {
@@ -45,6 +45,7 @@
   "catalogVersion": "<当前目录版本>",
   "kind": "COURT",
   "q": "",
+  "searchVersion": 2,
   "viewport": {
     "southwest": {"latitude": 30.20, "longitude": 120.10},
     "northeast": {"latitude": 30.30, "longitude": 120.20},
@@ -59,7 +60,7 @@
 - 服务端推导矩形中心用于排序，不信任客户端指定另一中心。初版产品上限建议宽、高各 100 km，可配置并经负载验收调整；不是地图厂商限额。超上限返回 `VIEWPORT_TOO_LARGE`，不得静默裁切。`limit` 保持默认20、1–50。
 - 查询按公开点落入矩形且满足原地区／类别／关键词／发布权限过滤；距离按现有距离公式，取整米后按 `(distanceMeters, publicListingId)` 稳定排序与 keyset 分页。距离及 ID 的比较、排序和游标必须使用同一精度。
 - 新模式游标版本 v2，绑定规范边界、地区目录版本、类型、关键词、排序版本和最后排序键，使用服务端签名防篡改；游标不包含原始坐标，位置条件只参与不可逆 scope 摘要。校验失败返回 `CURSOR_SCOPE_MISMATCH` 要求重读第一页。v1 不可混用于视野模式。
-- 返回原 `items/nextCursor/locationCapability/queryOrigin/truncated` 字段，增加可选 `searchArea:{mode:"VIEWPORT",bounds,center,scopeLabel}`；严格 DTO 读取器、共享类型、服务端验证、小程序仓库层同步扩展，不直接让旧客户端接收未知字段。能力协商／版本化响应的最终形式在实施卡冻结。
+- 返回原 `items/nextCursor/locationCapability/queryOrigin/truncated` 字段，增加可选 `searchArea:{mode:"VIEWPORT",bounds,center,scopeLabel}`；严格 DTO 读取器、共享类型、服务端验证、小程序仓库层同步扩展，不直接让旧客户端接收未知字段。该响应仅在 `searchVersion:2` 且提供 `viewport` 时返回；能力由 `locationCapability.viewportSearch` 发布，其他请求保留旧响应形状。
 - 非快照分页下供给可能更新，逐页重验发布状态，前端按公开 ID 去重；不承诺实时全量或固定总数。排序点／范围改变则提示刷新，不能复用旧游标或无限自动补页。预约时仍重新检查资格、覆盖、档期与报价。
 
 错误区分 `VIEWPORT_INVALID`、`VIEWPORT_TOO_LARGE`、`CURSOR_SCOPE_MISMATCH`、地区目录过期、能力关闭、限流和网络失败；内部错误不回传 SQL 或精确私人位置。为 POST 搜索设置合适限流和 `Cache-Control: no-store`，日志只记请求号、粗粒度地区与原因码。

@@ -1,6 +1,6 @@
 # 培训招生功能设计
 
-> 状态：设计完成待实现。基线：`xyq-dev/small-city-basketball@ebc391e8bd0ec24c3301f64d6ae2f395245701cb`。本文中的表、接口、状态、页面与验收均为候选设计，不表示代码或测试已经存在。
+状态：T0/T1 成人短课的课程/审核/排课、报名锁位/候补、签到扣课、补课及逐课退款已实现。青少年 T2 和课包 T3 保持关闭；培训用途授权模型不等于正式招生开放。原设计基线为 `main@ebc391e8bd0ec24c3301f64d6ae2f395245701cb`；2026-11-01。本轮源码与约定隔离验收已于2026-11-01 14:08 Asia/Shanghai整合至 `main@21dc0e6`；CI160三个作业完整SUCCESS，12条审查全部已解决。执行证据及外部边界见[六项验收](../audits/REMAINING6_ACCEPTANCE.md)。 具体范围见[R6TRAIN](../tasks/R6TRAIN.md)，下文未来阶段的模型和页面要求不计为本轮已开放能力。
 
 ## 1. 范围与现有系统边界
 
@@ -8,12 +8,12 @@
 
 首期开放成年人单次课、固定日期短班；产品默认短班不超过 8 周、8 次课。随后开放经审核的青少年固定班；最后开放限定课程、场馆、有效期和次数的课包。上述首期规模是产品选择，不是法定阈值；“已成年”也不自动豁免该产品实际适用的培训监管。无长期储值、余额钱包、自动续费、跨机构通兑和转售课时。未取得真实供给的城市只接受意向登记，不能显示假库存或收款按钮。
 
-已核对主干合同：
+原设计基线与本轮实现边界：
 
-- `local-services.d.ts` 只有球场、裁判等服务，尚无 `COACH`；不能把教练伪装成裁判。新增教练档案并接入共享人员档期，是否扩展服务枚举需同步检查全部消费者。
-- `trade.d.ts` 的来源仅有赛事费用/押金、同城预约和球员邀约。拟新增 `TRAINING_ENROLLMENT`，同步实现来源报价、支付、退款、结算和注销关口；禁止伪造 `LOCAL_BOOKING` 来收培训费。
+- `local-services.d.ts` 未增加 `COACH`。本轮使用独立 `training_coaches` 档案并接入共享人员档期，不把教练伪装成裁判。
+- 已新增 `TRAINING_ENROLLMENT` 来源及冻结合同、真实统一交易捕获、支付事实、逐课退款和注销关口；缺少真实商户能力时收费关闭。未伪造 `LOCAL_BOOKING` 或另造已收款事实。
 - `youth-guardians.d.ts`、成年再同意与 `insurance.d.ts` 均绑定赛事的 `event/entry/member` 范围。培训必须新增真实培训主体范围的适配，不能创建假赛事或继承一次赛事授权。
-- 迁移采用主干现有迁移之后的新编号，实施时统一分配；不改写既有迁移及历史合同。
+- 已采用新增 Migration046；共享跨源日历由048整合，不改写001—042及历史合同。
 
 ## 2. 供给核验与排课
 
@@ -39,10 +39,20 @@
 
 ## 4. 课程与报名状态
 
+当前已实现班期状态为 `DRAFT/ENROLLING/RUNNING/COMPLETED/CANCELLED/SUSPENDED`，管理者通过 `POST /v1/training/cohorts/:id/commands` 的 `COMPLETE` 正常结课，不能用取消冒充履约完成。命令须有结课依据、当前版本和幂等commandId；管理DTO的 `canComplete/completionBlocker` 仅供展示，写入仍在原组织/共享日历事务中重核本班授课及缓冲、双向补课权益、消费/退款和canonical未决资金。下表保留其余原设计的概念状态；当前可用状态以共享契约和Migration046为准。
+
+暂停只允许ENROLLING/RUNNING班期；DRAFT必须走首次PUBLISH审核，不能先暂停再恢复绕过发布。管理者通过同一班期commands入口的 `RESUME` 恢复SUSPENDED班期，使用当前版本、理由及幂等commandId，并重核当前机构/场地和剩余课次教练资格、双向关联权益的PROPOSED/REVIEWED/DISPUTED消费及精确原court/coach占位。未来/进行中课次和未结束缓冲必须仍有ACTIVE原资源；已结束SCHEDULED课次可核精确原占位历史后补交真实授课，不复活已释放行。恢复不重造报名、资源、订单或资金；报名截止前回ENROLLING，截止后回RUNNING只履行已有课程、不重新招生。管理DTO提供 `canResume/resumeBlocker`，服务端仍同事务重核；消费异议必须先由独立裁决流程处理。
+
+对全额退款的CANCELLED/SOURCE_CONFLICT转入报名，须核对完整原来源权益及退款分配，并检查该来源所有未决退款、扣减、分账与回退；不能仅因其为外班来源而忽略UNKNOWN资金。普通转入补课仍只核本班相关权益，不扩大到外班未来课次。
+
+正常结课只结束课程业务，不等于资金清盘：确定已收但尚未结算的收入仍由统一trade注销资金门阻断。只有截止已过、没有服务/实付/UNKNOWN/退款/分账事实的候补或过期未确认报名，才能随COMPLETE同事务转CANCELLED；原AVAILABLE报价快照、审计和历史保留，不自动处理PAID_UNALLOCATED或未知付款。结课仅释放本班课次的占位，不释放外班未来补课资源。
+
+已结课后仍受理学员消费异议。DISPUTE或裁决返还权益使权益回到CONSUMPTION_PENDING/MAKEUP_DUE时，已COMPLETED报名回到CONFIRMED；相关已COMPLETED原班及当前补课班转SUSPENDED，重新形成服务与创建者注销阻断。原消费、资金、结课和异议历史继续保留，不能以结课隐藏新义务。
+
 | 对象 | 候选状态与边界 |
 | --- | --- |
 | 课程 | `DRAFT → REVIEW_PENDING → PUBLISHED → SUSPENDED/ARCHIVED`；修改关键条件产生待审新版本，旧合同保留 |
-| 班期 | `DRAFT → READY → ENROLLING → RUNNING → COMPLETED`；可到 `CANCELLED`，成班人数不足不得默认延期 |
+| 班期（当前） | `DRAFT → ENROLLING/RUNNING → COMPLETED`；另有 `SUSPENDED/CANCELLED`，暂停后经受控RESUME回ENROLLING或RUNNING；正常COMPLETE须通过上述服务与资金核对；迟到异议可重开SUSPENDED |
 | 场次 | `SCHEDULED → IN_PROGRESS → DELIVERED`；另有 `CHANGE_PENDING/CANCELLED`，取消不能产生授课消费 |
 | 报名 | `APPLYING → ELIGIBLE → HOLDING → CONFIRMED → ACTIVE → COMPLETED`；分支 `WAITLISTED/EXPIRED/PAID_UNALLOCATED/CANCEL_REQUESTED/CANCELLED` |
 | 锁位 | `HELD → CONSUMED/EXPIRED/RELEASED`，终态不可复活 |
@@ -98,9 +108,9 @@
 
 共用加载、空态、重试、版本冲突、权限失效、已被他人处理状态。所有金额展示人民币元但以整数分计算；时间展示服务地点时区。UI 原型必须用清楚标注的演示数据，未实现按钮不能宣称已预约、已投保或已到账。
 
-## 8. 候选模型与 API（均未实现）
+## 8. 设计模型与已实现 API
 
-下列路径均相对于项目现有 `/v1` 前缀，例如完整课程列表为 `GET /v1/training/courses`；不另起无版本的API体系。具体写入口采用现有命令/回执风格，在实施卡中冻结与共享类型一致的最终路由。
+下表保留原设计的概念划分，包含 T2/T3 后续范围，不表示每个概念已对应独立数据库表。T0/T1 实际15表及约束见 [Migration046](../../apps/api/migrations/046_r6_training.sql)，接口及命令以 [TrainingController](../../apps/api/src/training-controller.ts) 和[共享类型](../../packages/contracts/training.d.ts)为准，均保留 `/v1` 前缀及命令/回执风格。
 
 | 对象 | 关键字段/约束 |
 | --- | --- |
@@ -114,7 +124,7 @@
 | `training_change_requests/refund_allocations` | 变更前后版本、逐人选择、逐课金额、提案/复核、tradeRefundId及预留状态 |
 | `training_command_receipts/audit/outbox` | commandId、actorId、请求哈希、结果引用、事件版本、投递重试；不记录明文令牌 |
 
-候选读取：`GET /training/courses`、`GET /training/cohorts/:id`、`GET /training/me/enrollments`、`GET /training/enrollments/:id/ledger`。候选写入：`POST /training/providers/:id/reviews`、`POST /training/cohorts/:id/publish`、`POST /training/cohorts/:id/holds`、`POST /training/cohorts/:id/waitlist`、`POST /training/enrollments/:id/{confirm,leave,makeup,reschedule,cancel,refund-proposals}`、`POST /training/sessions/:id/{checkins,checkouts,delivery}`、`POST /training/consumptions/:id/{review,acknowledge,dispute,adjustment-proposals}`、`POST /training/guardian-grants` 与 `/:id/withdraw`、`POST /training/pickup-grants`。支付/退款复用扩展后的统一 trade 服务，不另造资金账本。
+已实现公开课程目录 `GET /v1/training/catalog`，授权读取 `/v1/training/cohorts/:id`、`/mine`、`/enrollments/:id`、`/sessions/:id/roster`、`/receipts/:id`；机构工作台为 `GET /v1/orgs/:orgId/training`。机构在该前缀创建 provider、coaches、courses、cohorts，审核及履约通过对应 `/commands` 接口执行；正常结课与受控恢复分别为 `POST /v1/training/cohorts/:id/commands` 的 `COMPLETE` 和 `RESUME`；管理页展示canComplete/completionBlocker及canResume/resumeBlocker，服务端同事务复核。报名为 `POST /v1/training/cohorts/:id/enrollments`，退款申请为 `POST /v1/training/enrollments/:id/refunds`；学员从 `GET /v1/training/entitlements/:id/makeup-options` 获取有权选择的补课课次，再由权益命令提交并复核资格、余位及档期。消费与退款分别由 `/v1/training/consumptions/:id/commands`、`/v1/training/refunds/:id/commands` 独立审核。支付/退款复用统一 trade 服务，青少年监护/接送和课包的公开写入口尚未开放。
 
 所有命令带 UUID `commandId`、`expectedVersion`、必要的 `acceptedTermsId`；同键同请求返回原结果，同键不同参数拒绝。权限按 actor 与机构/学员关系判断，不信任客户端传入角色。资格校验、席位、来源快照及 outbox 同事务；网络调用在事务外，以事件及补偿接续。客户端关闭页面不撤销已经验证的支付，重复回调不重复确认名额、消费或退款。
 
@@ -126,7 +136,9 @@
 
 注销预检扩展培训依赖：未完成班次、未完成交接、退款未知、争议及未清权益必须给出逐项处置路径；仅结清并达到条件后关闭账号，不能级联删除账款。接入现有恢复隔离规则：恢复副本先隔离培训外发、招生、支付和接送令牌；重放注销/撤权事实、更新 epoch、核对供应商状态、对账并人工验收后按范围恢复。旧授权、旧二维码、旧席位锁不得随备份复活。
 
-## 10. 验收清单（待开发后执行）
+## 10. 验收清单与证据边界
+
+T0/T1已实现范围的约定隔离验收已由CI160完成并整合main；逐项执行记录见本页上方R6TRAIN和六项验收链接。涉及青少年、课包、正式经营条件及真机的项目仍须在对应阶段另验，不能因下列清单存在而视为通过。
 
 1. 未审核、过期机构或教练不能发布、锁位或收款；已售权益进入处置清单。
 2. 同一最后席位并发提交，最多一人成功；失败者没有有效付款入口。

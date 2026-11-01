@@ -1,5 +1,11 @@
 # R6SPONSOR_RUNTIME：广告运行配置入口
 
+当前摘要（2026-11-01 14:08 Asia/Shanghai）：**DONE / MAIN（源码与约定隔离验收）**。PR #35 已合入代码基线 `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree 与CI160测试候选精确一致；三个CI作业全部SUCCESS、原始日志已核验，12条审查全部已解决。正式外部渠道、微信与真机及生产不在本次验收内。详细证据见 [REMAINING6](REMAINING6.md)。
+
+## 历史实施与验证记录
+
+以下保留各切片当时的 `LOCAL_ONLY`、`IN_PROGRESS`、测试结果、失败及修复；“当前”“待接线”等字样仅指该记录时点，不代表上方候选状态。
+
 2026-11-01（Asia/Shanghai），implement_insurance；root追加有界委派。分支work/r6-insurance，目录`/workspace/scratch/aad368826b09/scb-six-insurance`，基线15cb738；对照根118cf1c的最新SponsorCommerceOptions/TradeWechatMultiClient。状态IMPLEMENTED / LOCAL_ONLY。仅拥有trade-runtime.ts、trade-runtime.test.ts、trade-provider.ts及本任务/交接；root负责app装配、运行说明与compose开关。
 
 TradeRuntime增加仅type import的可选sponsorCommerce。SCB_TRADE_MERCHANTS_JSON每个current/historical商户可增加sponsor对象，严格白名单：maximumSplitBps（整数0–10000）、financeActorIds（2–100个不重复规范UUID）、receivers（机构UUID到merchantId/displayName/authorizationVersion/expiresAt/returnsEnabled，最多100条）、可选encryptionSerial。禁止受益机构=本机构、商户=自身、重复机构/收款商户；收款授权时间须有效带时区ISO，过期配置保留历史可读，新业务仍由service校验期限。注册表上限不改变每合同外部收款人最多10个的业务约束。

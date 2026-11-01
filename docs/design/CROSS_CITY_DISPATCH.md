@@ -1,12 +1,12 @@
 # 跨城自动派单设计
 
-状态：待实施设计，非已开发或已测试功能。基线：`main@ebc391e8bd0ec24c3301f64d6ae2f395245701cb`；设计日期：2026-11-01（Asia/Shanghai）。
+状态：分批邀约、差旅报价、唯一接单、全差旅档期及异常补位已实现。原设计基线为 `main@ebc391e8bd0ec24c3301f64d6ae2f395245701cb`；2026-11-01。本轮源码与约定隔离验收已于2026-11-01 14:08 Asia/Shanghai整合至 `main@21dc0e6`；CI160三个作业完整SUCCESS，12条审查全部已解决。执行证据及外部边界见[六项验收](../audits/REMAINING6_ACCEPTANCE.md)。 具体实现及逐项测试见[R6DISPATCH](../tasks/R6DISPATCH.md)；下文的后续能力不得因本轮交付自动开放。
 
 ## 1. 产品边界与复用
 
 自动派单指用户明确启用后，向合格人员发出有限批次的服务邀请；服务方可以拒绝，系统不能替其接受。先开放已核验的裁判、记录、摄影、直播等 X12 人员服务。球场、球队约赛和 C06 成人球员邀约不直接套用此状态机；医疗类须独立资质和服务范围门槛，默认关闭。
 
-复用[本地服务](../../apps/api/src/local-services-service.ts)、[本地领域](../../apps/api/src/local-services-domain.ts)、[控制器](../../apps/api/src/local-services-controller.ts)、[C06 日历](../../apps/api/src/player-booking/service.ts)、[交易日历钩子](../../apps/api/src/trade-source-hooks.ts)和 E04 交易。当前 X12 已有覆盖范围、人员档期、10 分钟预约待确认期、请求/确认/取消与资源排斥；没有本设计的跨城任务、批次、报价接受暂占和差旅审核。不得把旧 DTO 的支付占位值解读为没有 E04 交易代码。
+复用[本地服务](../../apps/api/src/local-services-service.ts)、[本地领域](../../apps/api/src/local-services-domain.ts)、[控制器](../../apps/api/src/local-services-controller.ts)、[C06 日历](../../apps/api/src/player-booking/service.ts)、[交易日历钩子](../../apps/api/src/trade-source-hooks.ts)和 E04 交易。X12 的覆盖范围、人员档期、10 分钟预约待确认期与资源排斥为复用基础；本轮已由 [DispatchService](../../apps/api/src/dispatch-service.ts)、Migration045、原生派单页及共享日历048实现跨城任务、邀约批次、报价暂占和独立差旅审核。不得把旧 DTO 的支付占位值解读为没有 E04 交易代码。
 
 全国可浏览不代表服务方全国履约。只有客户主动选择“允许跨城邀请”，服务方主动启用指定城市/距离/岗位/时间段的跨城接单，且目的地属于已审核覆盖地区，才可进入候选。跨城开关不能自动扩展审核覆盖范围。首版是规则引擎、同一数据库与后台任务，不新增机器学习或微服务。
 
@@ -35,13 +35,13 @@
 
 费用统一整数分/CNY。报价冻结服务、交通、住宿、平台费用、应付总额及各方承担项，分别不得超过客户明确上限；现有 C06/E04 计费公式不在此改变。差旅变动、加班或另加岗位必须提出新报价并获得客户再次确认，禁止默认补扣。支付、退款、结算沿用 E04，不建设钱包或另记一套资金余额。
 
-任务：`DRAFT → SEARCHING → INVITING → REVIEWING → SOURCE_REQUESTED → SOURCE_CONFIRMED`；无候选进入 `NEEDS_MANUAL`，客户可关闭为 `CANCELLED`，到期为 `EXPIRED`。暂停是明确阻止下一批邀请的状态，不能暂停已进入源订单的义务。报价拒绝/过期释放暂占后可回 SEARCHING，仍受剩余批次数与客户许可限制。
+当前状态以[派单契约](../../packages/contracts/dispatch.d.ts)为准。任务主流程为 `DRAFT → INVITING → REVIEWING → SOURCE_REQUESTED → SOURCE_CONFIRMED → SOURCE_ENDED`；另有 `PAUSED/NEEDS_MANUAL/CANCELLED/EXPIRED` 分支，不设 `SEARCHING` 状态。暂停阻止下一批邀请，不暂停已进入源订单的义务；报价拒绝、接受者撤回或暂占到期后，按条件回到 `INVITING`，仍受剩余批次数与客户许可限制。
 
-邀请：`PENDING → ACCEPTED_HELD / DECLINED / EXPIRED / SUPERSEDED`。只有一个当前赢家；选中后其它邀请 SUPERSEDED，不能后来接受旧邀请。客户确认后 `CONVERTED`；拒绝/服务方撤回/到期则 RELEASED。候补只是排序建议，不保留有效接受权和库存；补位必须新批次、新邀请、新报价。任务响应未知属于 UI/回执状态，不能当作业务失败创建替代任务。
+邀请主流程为 `PENDING → TRAVEL_REVIEW → READY → ACCEPTED_HELD → CONVERTED`；另有 `DECLINED/WITHDRAWN/EXPIRED/SUPERSEDED`。只有一个当前赢家；选中后其他邀请 SUPERSEDED，不能后来接受旧邀请。`RELEASED` 是 `dispatch_holds` 暂占记录的释放状态，不是邀请状态；邀请以拒绝、撤回或到期等具体原因终结。候补只是排序建议，不保留有效接受权和库存；补位必须新批次、新邀请、新报价。响应未知属于 UI/回执状态，不能当作业务失败创建替代任务。
 
 ## 4. 表、共享库存与原子边界
 
-拟议新增，不表示已有：
+下表保留原设计的概念划分，字段别名和 outbox 概念不直接作为当前 SQL/API 名称。实际已实现的7表、列名及约束以[Migration045](../../apps/api/migrations/045_r6_dispatch.sql)为准；命令/事件分别落 `dispatch_command_receipts`、`dispatch_events`，接单许可落 `dispatch_preferences`。
 
 | 表 | 字段和约束 |
 | --- | --- |
@@ -65,7 +65,7 @@ PENDING 邀请不锁库存，否则群发就会占满服务方档期。服务方
 
 取消前展示当前源订单阶段、可能退款和差旅处理；确认订单有取消/纠纷责任时只能走源规则。改期先核验并暂占新完整区间，双方批准后事务交换；失败保留旧安排。不得先释放旧单再尝试新单。订单取消、人员失联或交通异常触发人工升级，替换人员需要客户重新确认，不能偷偷改变 source_ref。投诉期间不自动完成结算。
 
-以下 API 均为拟议、未实现：`POST /v1/dispatch/requests`；`GET /v1/dispatch/requests/:id`；`POST /v1/dispatch/requests/:id/commands`（START/PAUSE/RESUME/CANCEL/CONFIRM_QUOTE/REJECT_QUOTE）；`GET /v1/dispatch/offers/mine`；`POST /v1/dispatch/offers/:id/commands`（ACCEPT_WITH_QUOTE/DECLINE/WITHDRAW）；`GET /v1/dispatch/receipts/:commandId`。命令带 expectedVersion、commandId；客户端不得写赢家、接收人权限或已支付标志。
+已实现入口以 [DispatchController](../../apps/api/src/dispatch-controller.ts) 和[共享类型](../../packages/contracts/dispatch.d.ts)为准：`GET /v1/dispatch/capabilities`；`GET /v1/dispatch`；`POST /v1/dispatch/preferences`；`POST /v1/dispatch/requests`；`GET /v1/dispatch/requests/:id`；`POST /v1/dispatch/requests/:id/commands`；`GET /v1/dispatch/offers/:id`；`POST /v1/dispatch/offers/:id/commands`；`GET /v1/dispatch/receipts/:id`。本人邀约通过授权工作台返回，不另设原设计的 offers/mine 路径。命令按当前契约传 expectedVersion、commandId；客户端不得写赢家、接收人权限或已支付标志。
 
 最小迁移在 042 之后与其他设计协调新编号：增任务/批次/报价/暂占/回执表，扩展资源所有者与跨模块冲突检查、订单差旅保护关联，再增加默认关闭的地区/类型开关。历史订单不自动变成跨城订单，历史服务方不默认授权全国派单；不回写旧账单或退改条款。先在测试环境核验排斥约束、过期清理和恢复，再逐城市启用。
 

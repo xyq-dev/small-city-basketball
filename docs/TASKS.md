@@ -1,22 +1,24 @@
 # 任务看板
 
-## 2026-11-01 REMAINING6：六项功能实现（REVIEW / BRANCH_ONLY）
+## 2026-11-01 REMAINING6：六项功能实现（DONE / MAIN：源码与隔离验收）
 
-[PR #35](https://github.com/xyq-dev/small-city-basketball/pull/35) 正在验证，尚未合入main。[代码与验收映射](audits/REMAINING6_ACCEPTANCE.md)、[任务](tasks/REMAINING6.md)、[接续](handoffs/REMAINING6.md)、[运行配置](operations/remaining-six-runtime.md)。已实现地图视野搜索、三类撮合及原预约转换、跨城派单与差旅档期、成人培训全链、商业广告合同与多方资金核对；保险准入/接口框架已补，真实供应商协议和凭证仍BLOCKED。
+2026-11-01 14:08 Asia/Shanghai（核验时间 `2026-11-01T06:08:12Z`），[PR #35](https://github.com/xyq-dev/small-city-basketball/pull/35) 已合入main，代码合并SHA `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree `e38a40da165a92f1eddc5696dcd41e7dc0e2a55a` 与CI160测试候选 `7a3f958c0440eca67d1d67e372a6e2d4c9d92440` 精确一致；双亲为 `911564f0` 和该测试候选。12条外部审查全部已解决，无新增线程。
 
-分支现73条原生路由、48项Migration、221表（新增45表）；新增043—048仅在隔离CI执行，旧001—042冻结，生产未更新。2026-11-01 13:33 Asia/Shanghai：CI159验证remoteaaaf1366/treeacebcbdb，新域140项PG步骤、admin及完整HTTPS/归档恢复job通过；API后续仍在运行。原11条审查已resolve，新增培训暂停后无恢复入口的P2已用受控RESUME修复并整合local7f0d5c2。当前本地完整type/format/build、admin561/API1339/原生1076通过（1Windows跳过），新增3项PG待新候选；最终完整CI成功前不合并。
+当前73条原生路由、48项Migration、221表（新增45表）、126函数。地图视野搜索、三类撮合、跨城派单、成人短课培训及商业广告分成的源码和约定隔离验收为DONE / MAIN；保险准入与接口框架也已整合，真实供应商adapter因协议、产品、证书和凭据未提供仍为 `BLOCKED_EXTERNAL`。001—042冻结，043—048仅在隔离CI执行；未更新生产，未进行真实投保、资金、消息或正式外部渠道操作。 逐项范围见[代码与验收映射](audits/REMAINING6_ACCEPTANCE.md)、[任务](tasks/REMAINING6.md)、[接续](handoffs/REMAINING6.md)及[运行配置](operations/remaining-six-runtime.md)。
 
-UI001设计交付与本次功能实现分开记录，保留其并发main文档及画板；当前开发页面不等于200张视觉稿全部像素实现。下方设计卡的“待开发”保留为当时事实，最新代码进度以本节及专项验收为准。
+[CI160](https://github.com/xyq-dev/small-city-basketball/actions/runs/41277450597) 三个作业完整SUCCESS，root已读取全部原始日志：新域真实PG143（含培训19）、旧业务PG586、原生页面→真实HTTP21、真实API浏览器24（12+12）；admin561、API源码单测1339、原生1076通过，1项既有Windows跳过；布局1082通过，1068项按配置跳过。runtime PG21、HTTPS4、221表精确重启与完整归档恢复、业务快照/fencing、quarantine及旧私有/公开/overlay凭证失效均通过；仅清理自有资源，control卷保留。
 
-## UI001：全国平台与同城服务UI（DONE / MAIN：设计及文档）
+CI149—159各阶段失败、修复与证据保留在任务和交接；旧候选的成功不替代本次最终验收。UI001的200张Figma设计稿与功能代码分别记录，现有页面不代表全部视觉稿已逐像素实现。下方旧设计卡的待开发项是交付时事实，当前进度以上述main代码基线为准；正式保险/商户/微信与真机条件仍须专项验证。文档收口基于该代码基线，不改应用、迁移或生产。
 
-[200张可编辑设计](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=48-7)、[交付/实施顺序](design/WECHAT_UI_V2.md)、[画板与68条路由索引](design/UI001_SCREEN_INDEX.md)、[任务](tasks/UI001.md)、[交接](handoffs/UI001.md)。原核心127＋新增73，涵盖五导航、四条核心流程与DOC006六模块；角色后台单列。设计检查完成，六项业务实现仍TODO，正式外部及真机未验。本次Codex仅集成UI文档，不接管功能开发。
+## UI001：全国平台与同城服务UI（DONE / MAIN：历史设计及文档）
 
-## DOC006：六项补充设计（DONE / MAIN；实现仍为TODO）
+[200张可编辑设计](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=48-7)、[交付/实施顺序](design/WECHAT_UI_V2.md)、[画板与68条路由索引](design/UI001_SCREEN_INDEX.md)、[任务](tasks/UI001.md)、[交接](handoffs/UI001.md)。原核心127＋新增73，涵盖五导航、四条核心流程与DOC006六模块；角色后台单列。当时完成设计检查，六项业务代码尚待开发；该次交付仅包含 UI 文档。后续代码进度见上方 REMAINING6，正式外部及真机未因设计完成。
+
+## DOC006：六项补充设计（DONE / MAIN：历史设计交付，实现另见 REMAINING6）
 
 2026-11-01：保险供应商适配、地图视野搜索、全国撮合、跨城派单、培训招生、广告收入分成的设计已整合；[总设计](design/REMAINING_SIX_FEATURES.md)、[UI交接](design/SUPPLEMENTAL_UI_HANDOFF.md)、[任务卡](tasks/DOC006.md)、[接续记录](handoffs/DOC006.md)。
 
-下一步分别建立UI和业务实施卡。地图可先实现；保险选型并行；撮合/派单共享日历；培训/广告补交易来源与资金约束。六项“设计完成”不计为“新增代码已完成”，专项验收清单尚待执行，无生产变更。
+当时的下一步是建立 UI 和业务实施卡；后续已由 UI001 与 REMAINING6 分别承接。设计交付不代替业务代码、专项验收或正式外部条件；当前实现状态见上方，生产未变更。
 
 ## EXPANSION8（DONE / MAIN：业务源码与隔离验收，正式外部未验）
 
