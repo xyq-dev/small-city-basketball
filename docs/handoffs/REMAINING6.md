@@ -11,3 +11,7 @@ root目录 `/workspace/scratch/aad368826b09/scb-six`、分支 `feat/remaining-si
 本地：完整format与typecheck通过；admin561单测通过；API1256pass/2旧fixture失败（修片549f343），微信1056通过/1Windows限定跳过；恢复离线11项、48迁移/220表/126函数静态清单通过。真实当前HEAD跨域PG、全量旧PG、归档恢复、隔离HTTPS及页面检查仍需CI。
 
 仍在处理：普通广告主本人合同入口、学员补课目标选择器、PARTIAL广告已全退注销精算、派单资金桥测试；各owner仅改自己的路径。root串行app/账户入口/manifest/容器打包。下一步合并这些小片，启动当前HEAD隔离CI并修复失败；通过独立审查、全部必要检查后才mark ready/合入main。未测试不合并。
+
+普通广告主入口已补：所有登录账号可从账户页进入本人合同；服务端inbox仅按实际payer筛选机构/合同，签署及资金操作继续原权限复核。新的MeController已在app注册，管理入口仍保留org上下文。新增真实Page渲染/导航测试与inbox隔离PG；后者待CI。
+
+CI151新域真实PG已至66通过/3失败，余项为expiry/version与安全404的精确fixture预期；隔离production在构建前发现.dockerignore遗漏R6 helper，已补精确5文件允许清单，并新增从实际恢复入口遍历imports的打包测试，防止再漏transitive helper。正式镜像/恢复仍待下一CI，不因静态通过而标完成。

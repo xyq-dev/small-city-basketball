@@ -17,3 +17,5 @@
 验证：领域11项通过；API typecheck通过；同城原生页面27项通过（新增7项覆盖多种并发/故障）；微信全量1015项通过，1项Windows专用测试在Linux按原设置跳过。格式检查通过。真实PG四项尚未运行；10万条性能目标尚未测量；iOS/Android基础库与320/390/430真机验收未执行。上述缺口不是Mock通过或上线结论。
 
 root追加委派：完成原同城预约/约赛的同事务prepare+execute入口、跨城派单源订单桥以及撮合STAFF/TEAM桥（PLAYER由另一实施者负责）。已实现锁先行、绑定服务器候选与实际地点、报价/商户/差旅冻结复核、源预约/回执/日历同事务写入；派单快照保留dispatchQuote原报价和offerId/quoteHash引用。新增桥边界5项测试通过，与地图领域共16项通过；API typecheck通过。新增4项真实PG源事务测试（回滚重试、竞争锁位、旧回执兼容、真实球队约赛）尚未运行。dispatch端真实报价转换测试由dispatch实施者接固定method执行。此追加实现不改地图查询或旧迁移。
+
+2026-11-01 Asia/Shanghai，root追加有偿派单审查与测试：独立worktree `scb-six-map-review`，分支 `work/r6-paid-dispatch`，从595b61a同步到19cb239（含045暂占约束修复）。仅新增dispatch-source-adapter单测、r6-paid-dispatch真实PG测试及本任务记录，未修改root拥有的适配器。独立只读审查未发现确定缺陷：真实原预约、交易、暂占转换和两类回执沿用同一PoolClient；正价报价缺少匹配的canonical trade_order会抛错并回滚。新增9项边界单测已通过，API typecheck通过。新增2项真实PG测试待隔离CI：完整1300分服务/差旅订单与同命令重放；未接收费桥以及实际收费订单创建后失败时，源预约/交易/历史/回执一并回滚、原暂占完全恢复且同命令可重试。所有支付调用都是遇调用即失败的隔离桩，未执行外部支付。

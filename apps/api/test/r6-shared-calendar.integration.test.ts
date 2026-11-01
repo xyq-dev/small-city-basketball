@@ -503,11 +503,13 @@ describe(
       serial += 20;
       const w = window(),
         s = await supply('REFEREE', w.start, w.end),
-        old = await dispatchFixture(s, true),
         t = await trainingDraft(
           new Date(Date.parse(w.start) - 24 * 3600000).toISOString(),
           new Date(Date.parse(w.start) - 23 * 3600000).toISOString(),
         );
+      // Prepare first: every production training write already releases expired calendar holds.
+      // Insert immutable expired history last, so PUBLISH is the first subsequent training write.
+      const old = await dispatchFixture(s, true);
       expect(
         (
           await h.api.pool.query('SELECT active FROM local_resource_reservations WHERE id=$1', [

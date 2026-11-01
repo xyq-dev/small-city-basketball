@@ -136,13 +136,49 @@ export class SponsorCommerceService extends GovernanceService {
       sponsorFail('SPONSOR_RESTORE_QUARANTINED', '恢复环境禁止渠道写入', 503);
     return m;
   }
-  private async finance(c: PoolClient, a: Actor, org: string, pin?: Row) {
+  private async finance(c: PoolClient, a: Actor, org: string, _pin?: Row) {
     await this.govAdmin(c, a, org);
-    if (!this.merchant(org, pin)?.financeActorIds.includes(a.user.id)) throw forbidden();
+    // Historical routing preserves payment identity, never a revoked finance grant.
+    if (!this.commerce.merchants?.[org]?.financeActorIds.includes(a.user.id)) throw forbidden();
     await this.ensureFreshSession(c, a);
   }
   private async access(c: PoolClient, a: Actor, org: string, payer?: string) {
     if (a.user.id !== payer) await this.govAdmin(c, a, org);
+  }
+  async inbox(cookie: string | undefined) {
+    return this.transaction(async (c) => {
+      const a = await this.lockActor(c, cookie);
+      const rows = (
+        await c.query(
+          `SELECT c.id,c.org_id,c.title,c.total_fen,c.currency,c.status,c.version,g.name AS org_name,o.id AS order_id
+        FROM sponsor_contracts c JOIN organizations g ON g.id=c.org_id LEFT JOIN sponsor_orders o ON o.contract_id=c.id
+        WHERE c.payer_user_id=$1 ORDER BY c.created_at DESC,c.id LIMIT 101`,
+          [a.user.id],
+        )
+      ).rows;
+      const visible = rows.slice(0, 100);
+      return {
+        organizations: [
+          ...new Map(
+            visible.map((r) => [
+              r.org_id,
+              { id: r.org_id, name: r.org_name, role: 'ADVERTISER' as const },
+            ]),
+          ).values(),
+        ],
+        contracts: visible.map((r) => ({
+          id: r.id,
+          orgId: r.org_id,
+          title: r.title,
+          totalFen: r.total_fen,
+          currency: r.currency,
+          status: r.status,
+          version: r.version,
+          orderId: r.order_id ?? null,
+        })),
+        truncated: rows.length > 100,
+      };
+    });
   }
   private async command<T extends object>(
     c: PoolClient,

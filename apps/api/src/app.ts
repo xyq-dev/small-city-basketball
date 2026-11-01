@@ -55,6 +55,7 @@ import { readRemainingSixOptions } from './remaining-six-runtime.js';
 import { SponsorCommerceService } from './sponsor-commerce-service.js';
 import {
   SponsorCommerceController,
+  SponsorCommerceMeController,
   SCB_SPONSOR_COMMERCE_SERVICE,
 } from './sponsor-commerce-controller.js';
 import type { LocalSearchOptions } from './local-services-service.js';
@@ -577,6 +578,7 @@ export async function createApi(
     @Module({
       controllers: [
         SponsorCommerceController,
+        SponsorCommerceMeController,
         MatchingController,
         DispatchController,
         TrainingController,

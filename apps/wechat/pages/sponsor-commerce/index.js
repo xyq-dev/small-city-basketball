@@ -74,13 +74,45 @@ Page({
     const token = ui.begin(this);
     this.setData({ loading: true, error: '' });
     try {
-      const session = await ui.session(this, PATH);
+      const returnPath = PATH + (this._org ? '?orgId=' + model.id(this._org) : '');
+      const session = await ui.session(this, returnPath);
       if (!session || !ui.live(this, token)) return;
-      const organizations = (session.organizations || []).filter((o) =>
+      const managed = (session.organizations || []).filter((o) =>
         ['ORG_OWNER', 'ORG_ADMIN'].includes(o.role),
       );
+      const inbox =
+        this.data.mode === 'statements'
+          ? { organizations: [] }
+          : (await api.getClient().request('/v1/me/sponsor-commerce')).data;
+      if (!ui.live(this, token)) return;
+      if (!inbox || !Array.isArray(inbox.organizations)) throw Error('本人合同入口资料无效');
+      const organizations = [
+        ...new Map(
+          [
+            ...managed,
+            ...inbox.organizations.map((o) => ({
+              id: model.id(o.id),
+              name: String(o.name),
+              role: 'ADVERTISER',
+            })),
+          ].map((o) => [o.id, o]),
+        ).values(),
+      ];
+      if (this._org && !organizations.some((o) => o.id === this._org))
+        throw Error('当前账号没有此机构的合同或管理权限');
       if (!this._org) this._org = organizations[this.data.orgIndex]?.id;
-      if (!this._org) throw Error('请从合同所属机构的入口打开此页面');
+      if (!this._org) {
+        this.setData({
+          organizations: [],
+          loading: false,
+          notice: '暂无分配给当前账号的广告合同。合作方建立合同后，可在此签署和付款。',
+          contracts: [],
+          orders: [],
+          canManage: false,
+          canFinance: false,
+        });
+        return;
+      }
       this.setData({
         organizations,
         orgIndex: Math.max(

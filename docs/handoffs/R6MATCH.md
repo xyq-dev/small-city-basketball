@@ -29,3 +29,5 @@
 后续小片：修复CI149 APPROVED profile审核员fixture（R6MATCH与新recovery两处），使用maintainPlatformOperator登记合成有效审核员，未放宽DB约束。TEAM权限结论经root确认收窄到X12 team_access_grants：需求管理、供给、候选、workspace、桥对方重验统一；新增PG覆盖无授权机构owner被拒、显式grant后可用、撤销后立即失效。小程序显示球队授权前提。API typecheck、20单测、10native通过；新PG本地未运行。
 
 整合单测修复：matching-local-source.test.ts的Actor与SQL fixture已匹配新生产桥读取，新增旧STAFF/TEAM回执拒绝和canonical账本缺失/不符边界；27项matching领域/源桥单测及API typecheck通过。只改测试和本任务记录，不回退生产校验。
+
+恢复source升级：与map 2e8297e的createLocalSource(label,{paid:true})接口配套，matching必须取得真实tradeOrderId/termsId/totalFen；没有绑定立即失败。保留明确synthetic matching SQL定位，但来源为真实TradeService条款独立审核→原book+consent同事务资金绑定→provider接单。新增恢复proof核资金来源、双方、金额、商户条款、source_snapshot/source_hash/quote和零支付尝试，按现有E04隔离规则允许仅status/version变化。脚本语法/格式通过；PG恢复未本地执行，根集成时需同时保留map helper提交。

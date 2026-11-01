@@ -62,7 +62,11 @@ describe('R6 account closure obligations and monotonic privacy withdrawal', () =
   });
   it('does not convert absent, malformed, unavailable, or uncertain facts into permission to close', async () => {
     const client = (rows: unknown[]) =>
-      ({ query: async () => ({ rows }) }) as unknown as PoolClient;
+      ({
+        query: async (sql: string) => ({
+          rows: sql.includes('SELECT o.id,t.id AS trade_order_id') ? [] : rows,
+        }),
+      }) as unknown as PoolClient;
     await expect(readRemainingSixClosureBlockers(client([]), userId)).rejects.toThrow();
     await expect(readRemainingSixClosureBlockers(client([{}]), userId)).rejects.toThrow();
     await expect(
@@ -109,6 +113,24 @@ describe('R6 account closure obligations and monotonic privacy withdrawal', () =
     );
     for (const query of calls.filter((q) => q.includes('FOR UPDATE')))
       expect(query).toContain('NOWAIT');
+  });
+  it('requires canonical sponsor funds for every scoped source and propagates failed reconciliation', async () => {
+    const sourceId = randomUUID();
+    const client = (tradeOrderId: string | null) =>
+      ({
+        query: async (sql: string) => {
+          if (sql.includes('SELECT o.id,t.id AS trade_order_id'))
+            return { rows: [{ id: sourceId, trade_order_id: tradeOrderId }] };
+          if (sql.includes('AS sponsor_money')) return { rows: [{ ...facts }] };
+          throw new Error('sponsor reconciliation unavailable');
+        },
+      }) as unknown as PoolClient;
+    expect(await readRemainingSixClosureBlockers(client(null), userId)).toEqual([
+      { code: 'SPONSOR_MONEY_UNRESOLVED' },
+    ]);
+    await expect(readRemainingSixClosureBlockers(client(randomUUID()), userId)).rejects.toThrow(
+      'sponsor reconciliation unavailable',
+    );
   });
   it('withdraws future discovery/contact and pending notices without deleting financial or history evidence', async () => {
     const query = vi.fn(async (_sql: string, _values: unknown[]) => ({ rows: [] }));

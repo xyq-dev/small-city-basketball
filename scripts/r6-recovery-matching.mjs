@@ -28,12 +28,97 @@ function references(proof) {
     'listingId',
     'sourceSlotId',
     'bookingId',
+    'tradeOrderId',
+    'termsId',
     'providerId',
     'buyerId',
     'orgId',
     'supplyOrgId',
   ])
     assert.match(proof?.[key] ?? '', UUID, `R6MATCH recovery requires exact ${key}`);
+  assert.ok(
+    Number.isSafeInteger(proof.totalFen) && proof.totalFen > 0 && proof.totalFen <= 100000000,
+  );
+}
+/** Check actual captured E04 facts, never synthesize a ledger after the source exists. */
+async function canonicalTrade(c, proof) {
+  const rows = await c.query(
+    `SELECT t.id,t.org_id,t.kind,t.source_id,t.source_version,t.payer_user_id,t.beneficiary_user_id,t.terms_id,t.total_fen,t.source_snapshot,t.source_hash,t.quote,
+      t.status,t.version,tt.status AS terms_status,tt.version AS terms_version,tt.merchant_key AS terms_merchant_key,t.merchant_key,
+      tt.org_id AS terms_org_id,tt.kind AS terms_kind,tt.source_id AS terms_source_id,tt.amount_fen,
+      b.listing_id,b.slot_id,b.buyer_user_id,b.provider_user_id,b.org_id AS booking_org_id,b.starts_at,b.ends_at,b.snapshot->>'address' AS address,
+      encode(sha256(convert_to((to_jsonb(t)-ARRAY['status','version','updated_at'])::text,'UTF8')),'hex') AS identity_hash,
+      encode(sha256(convert_to((to_jsonb(tt)-ARRAY['status','version'])::text,'UTF8')),'hex') AS terms_identity_hash,
+      (SELECT count(*)::int FROM trade_payment_attempts WHERE order_id=t.id) AS payment_attempts
+    FROM trade_orders t JOIN trade_terms tt ON tt.id=t.terms_id JOIN local_bookings b ON b.id=t.source_id
+    WHERE t.id=$1 AND t.kind='LOCAL_BOOKING' AND t.source_id=$2 AND t.terms_id=$3`,
+    [proof.tradeOrderId, proof.bookingId, proof.termsId],
+  );
+  assert.equal(rows.rowCount, 1, 'Paid matching must retain exactly its canonical source trade');
+  const t = rows.rows[0];
+  assert.equal(t.org_id, proof.supplyOrgId);
+  assert.equal(t.booking_org_id, proof.supplyOrgId);
+  assert.equal(t.terms_org_id, proof.supplyOrgId);
+  assert.equal(t.terms_kind, 'LOCAL_BOOKING');
+  assert.equal(t.terms_source_id, proof.listingId);
+  assert.equal(t.listing_id, proof.listingId);
+  assert.equal(t.slot_id, proof.sourceSlotId);
+  assert.equal(t.payer_user_id, proof.buyerId);
+  assert.equal(t.buyer_user_id, proof.buyerId);
+  assert.equal(t.beneficiary_user_id, proof.providerId);
+  assert.equal(t.provider_user_id, proof.providerId);
+  assert.equal(t.total_fen, proof.totalFen);
+  assert.equal(t.amount_fen, proof.totalFen);
+  assert.equal(t.source_version, 1, 'The trade is captured when the original request is created');
+  assert.equal(t.merchant_key, t.terms_merchant_key);
+  assert.equal(t.payment_attempts, 0, 'Recovery never invokes a payment transport');
+  // Same key order as TradeService.source's LOCAL_BOOKING immutable identity.
+  const expected = {
+    orgId: proof.supplyOrgId,
+    kind: 'LOCAL_BOOKING',
+    id: proof.bookingId,
+    payer: proof.buyerId,
+    beneficiary: proof.providerId,
+    listingId: proof.listingId,
+    slotId: proof.sourceSlotId,
+    startsAt: iso(t.starts_at),
+    endsAt: iso(t.ends_at),
+    address: t.address,
+    totalFen: proof.totalFen,
+    platformFeeFen: 0,
+    termsId: proof.termsId,
+  };
+  assert.deepEqual(
+    t.source_snapshot,
+    expected,
+    'Frozen trade source must match the actual booking',
+  );
+  assert.equal(t.source_hash, digest(expected), 'Source digest must match the canonical identity');
+  assert.equal(t.quote.kind, 'LOCAL_BOOKING');
+  assert.equal(t.quote.sourceId, proof.bookingId);
+  assert.equal(t.quote.totalFen, proof.totalFen);
+  assert.equal(t.quote.termsId, proof.termsId);
+  assert.equal(t.quote.sourceHash, t.source_hash);
+  return {
+    identity: {
+      id: t.id,
+      sourceId: t.source_id,
+      termsId: t.terms_id,
+      orgId: t.org_id,
+      payerId: t.payer_user_id,
+      beneficiaryId: t.beneficiary_user_id,
+      totalFen: t.total_fen,
+      sourceHash: t.source_hash,
+      hash: t.identity_hash,
+      termsHash: t.terms_identity_hash,
+    },
+    state: {
+      status: t.status,
+      version: t.version,
+      termsStatus: t.terms_status,
+      termsVersion: t.terms_version,
+    },
+  };
 }
 /** Only exact synthetic scope IDs and SQL-generated digests leave the database. */
 async function retained(readPool, proof) {
@@ -99,6 +184,7 @@ async function retained(readPool, proof) {
         [proof.bookingId],
       )
     ).rows[0];
+    const trade = await canonicalTrade(c, proof);
     const reservations = await c.query(
       "SELECT id,active,resource_key,encode(sha256(convert_to(to_jsonb(r)::text,'UTF8')),'hex') AS hash FROM local_resource_reservations r WHERE booking_id=$1 ORDER BY id",
       [proof.bookingId],
@@ -130,6 +216,7 @@ async function retained(readPool, proof) {
       rows,
       binding,
       source,
+      trade,
       reservations: reservations.rows,
       outbox,
       needState,
@@ -149,7 +236,7 @@ async function retained(readPool, proof) {
 export async function captureR6Matching(context) {
   const { runtimePool, readPool } = context;
   assert.equal(typeof context.createLocalSource, 'function');
-  const source = await context.createLocalSource('matching');
+  const source = await context.createLocalSource('matching', { paid: true });
   const proof = {
     needId: randomUUID(),
     slotId: randomUUID(),
@@ -162,6 +249,9 @@ export async function captureR6Matching(context) {
     listingId: source.listingId,
     sourceSlotId: source.slotId,
     bookingId: source.bookingId,
+    tradeOrderId: source.tradeOrderId,
+    termsId: source.termsId,
+    totalFen: source.totalFen,
     providerId: source.provider.userId ?? source.provider.id,
     buyerId: source.buyer.userId ?? source.buyer.id,
     orgId: source.buyer.orgId,
@@ -192,7 +282,7 @@ export async function captureR6Matching(context) {
     name: listing.title,
     role: listing.kind,
     regionId: source.region.regionId,
-    totalFen: 1000,
+    totalFen: proof.totalFen,
     needsQuote: false,
     crossCity: false,
     preferenceVersion: 1,
@@ -210,11 +300,7 @@ export async function captureR6Matching(context) {
   const c = await runtimePool.connect();
   try {
     await c.query('BEGIN');
-    // A currently approved price is a fixture fact, not an external payment or backdated charge.
-    await c.query(
-      "INSERT INTO trade_terms(id,org_id,kind,source_id,amount_fen,terms,merchant_key,status,created_by,reviewed_by,reviewed_at) VALUES($1,$2,'LOCAL_BOOKING',$3,1000,'仅隔离恢复演练的固定服务报价，不执行真实收费','synthetic-r6-recovery','ACTIVE',$4,$5,clock_timestamp())",
-      [randomUUID(), proof.supplyOrgId, proof.listingId, proof.providerId, proof.buyerId],
-    );
+    await canonicalTrade(c, proof);
     await c.query(
       `INSERT INTO matching_supply_preferences(source_kind,source_id,owner_id,org_id,region_catalog_version,region_id,allowed_region_ids,discovery_enabled,contact_enabled,adult_confirmed,availability) VALUES('STAFF_SERVICE',$1,$2,$3,$4,$5,ARRAY[$5::uuid],true,true,true,'[]'::jsonb)`,
       [
@@ -226,7 +312,7 @@ export async function captureR6Matching(context) {
       ],
     );
     await c.query(
-      `INSERT INTO matching_needs(id,owner_id,org_id,kind,title,address,region_catalog_version,region_id,allowed_region_ids,role,quantity,windows,unit_budget_fen,total_budget_fen,max_travel_minutes,expires_at) VALUES($1,$2,$3,'STAFF_SERVICE','R6匹配隔离恢复需求',$4,$5,$6,ARRAY[$6::uuid],$7,1,$8::jsonb,2000,2000,120,$9)`,
+      `INSERT INTO matching_needs(id,owner_id,org_id,kind,title,address,region_catalog_version,region_id,allowed_region_ids,role,quantity,windows,unit_budget_fen,total_budget_fen,max_travel_minutes,expires_at) VALUES($1,$2,$3,'STAFF_SERVICE','R6匹配隔离恢复需求',$4,$5,$6,ARRAY[$6::uuid],$7,1,$8::jsonb,$10,$10,120,$9)`,
       [
         proof.needId,
         proof.buyerId,
@@ -237,6 +323,7 @@ export async function captureR6Matching(context) {
         listing.kind,
         JSON.stringify([window]),
         expiresAt,
+        proof.totalFen,
       ],
     );
     await c.query(
@@ -278,7 +365,7 @@ export async function captureR6Matching(context) {
       ],
     );
     await c.query(
-      `INSERT INTO matching_slot_assignments(id,need_id,slot_id,generation,intent_id,source_user_id,source_kind,source_id,amount_fen) VALUES($1,$2,$3,1,$4,$5,'LOCAL_BOOKING',$6,1000)`,
+      `INSERT INTO matching_slot_assignments(id,need_id,slot_id,generation,intent_id,source_user_id,source_kind,source_id,amount_fen) VALUES($1,$2,$3,1,$4,$5,'LOCAL_BOOKING',$6,$7)`,
       [
         proof.assignmentId,
         proof.needId,
@@ -286,6 +373,7 @@ export async function captureR6Matching(context) {
         proof.intentId,
         proof.providerId,
         proof.bookingId,
+        proof.totalFen,
       ],
     );
     await c.query(
@@ -317,6 +405,8 @@ export async function captureR6Matching(context) {
   }
   proof.before = await retained(readPool, proof);
   assert.equal(proof.before.source.status, 'CONFIRMED');
+  assert.equal(proof.before.trade.state.status, 'OPEN');
+  assert.equal(proof.before.trade.state.termsStatus, 'ACTIVE');
   assert.ok(
     proof.before.reservations.some(
       (r) => r.active && r.resource_key === 'user:' + proof.providerId,
@@ -354,8 +444,23 @@ export async function verifyR6Matching({ readPool, saved, quarantined = false })
   assert.equal(current.binding.intent_status, 'CONVERTED');
   assert.equal(current.binding.source_id, proof.bookingId);
   assert.equal(current.binding.active, true);
-  assert.equal(current.binding.amount_fen, 1000);
+  assert.equal(current.binding.amount_fen, proof.totalFen);
+  assert.deepEqual(
+    current.trade.identity,
+    proof.before.trade.identity,
+    'Source trade, fee terms, parties and frozen quote must survive',
+  );
   if (quarantined) {
+    assert.deepEqual(
+      current.trade.state,
+      {
+        status: 'SOURCE_CONFLICT',
+        version: proof.before.trade.state.version + 1,
+        termsStatus: 'REVOKED',
+        termsVersion: proof.before.trade.state.termsVersion + 1,
+      },
+      'Quarantine closes payment admission without altering the canonical binding',
+    );
     assert.deepEqual(
       current.preferenceState,
       {
@@ -377,6 +482,7 @@ export async function verifyR6Matching({ readPool, saved, quarantined = false })
       'Restore must stop pending matching delivery without deleting history',
     );
   } else {
+    assert.deepEqual(current.trade.state, proof.before.trade.state);
     assert.deepEqual(current.outbox, proof.before.outbox);
     assert.deepEqual(current.needState, proof.before.needState);
     assert.deepEqual(current.preferenceState, proof.before.preferenceState);
@@ -385,6 +491,7 @@ export async function verifyR6Matching({ readPool, saved, quarantined = false })
     tables: MATCHING_RECOVERY_TABLES.length,
     sourcePreserved: true,
     budgetPreserved: true,
+    canonicalTradePreserved: true,
     outboundDisabled: quarantined,
   };
 }

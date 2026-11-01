@@ -31,3 +31,7 @@ dispatch guard参数修正：SQL `$1`与`[p.id]`一致，现无未接入垫付�
 独立审查后进一步保留在途事实：recordChannel可在原机构停用后落库，防实际已分账被组织状态变化丢失；不会扩张用户finance权限。原fence被恢复隔离清空时仍拒迟到写。canonical refund的FAILED/REJECTED保留原义务，模块不自动换新binding重试或二次回退，需共同ledger显式最终失败替代协议；UNKNOWN只查询原号。
 
 CI150证据：广告真实PG 8场景均在共同fixture合同时间边界失败，尚无PG通过声明。已修Date.parse(pg Date)毫秒丢失，用精确epoch毫秒比较，合同/投放边界不变。已知限制：统一退款确定FAILED/REJECTED后仍保留义务，需人工核对，未提供自动新号替代；不得绕开唯一binding重发外部请求。
+
+根接线新增`SponsorCommerceMeController`（同`sponsor-commerce-controller.ts`/同SCB service token），路由GET `/v1/me/sponsor-commerce`；own path helper已放行该GET且拒查询参数/写方法。根账户页须给所有登录用户“我的广告合同”入口，不只管理员。返回`SponsorCommerceInboxData`（新contracts类型）：organizations[{id,name,role:'ADVERTISER'}], contracts仅本人分配记录, truncated。页面无query也可由server获授权机构，具体org页依然二次校验actual payer或manager。普通payer fixture已禁用其无关org membership，确保不是偶然借owner身份通过。
+
+CI151已确认此前广告8测试的7条资金闭环通过；剩余失败是跨租户get应隐藏资源的测试期待，改为404/RESOURCE_NOT_FOUND。生产权限未改变。最新inbox与额外生命周期场景仍须按根实际CI结果判断。

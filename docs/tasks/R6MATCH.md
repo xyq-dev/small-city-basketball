@@ -39,3 +39,7 @@
 CI149跟进（2026-11-01 Asia/Shanghai）：root报告R6MATCH beforeAll的APPROVED booking_profile夹具违反有效平台审核员约束，整组用例未运行。已通过既有离线维护helper明确登记合成审核员，保持真实约束；新增恢复测试相同夹具一并修正。root采纳权限修复：仅TEAM的需求发布/管理、供给许可、候选重验、工作台及源桥对方授权收窄到有效team_access_grants；不扩大X12旧权限，不改变ADULT/STAFF服务端机构权限。页面说明机构所有者/管理员仍需球队管理授权。增加授权缺失、赋权、撤权后候选/接受/管理阻断PG用例；20单测、10原生测试、API typecheck通过，PG等待隔离CI。
 
 整合单测跟进（2026-11-01 Asia/Shanghai）：root全量单测报告matching-local-source旧fixture缺少actor.user且所有SQL都返回收费条款行，与新回执/账本核验不符。已补完整最小合成Actor，按SQL返回空回执/准确条款/canonical binding；新增STAFF与TEAM旧回执拒绝重绑，以及缺失/金额归属不符账本拒绝用例，不改生产要求。3组定向单测27/27、API typecheck通过。
+
+付费恢复证据补齐（2026-11-01 Asia/Shanghai）：root授权修复matching自有恢复脚本，map负责共享createLocalSource的paid:true能力。本脚本请求paid:true并使用返回tradeOrderId/termsId/totalFen；移除事后插收费条款的SQL。源条款先真实创建和独立审核，原预约在同事务捕获canonical trade_order，明确consent；本脚本只合成matching九表关系，不补造资金账本。
+
+capture与verify均核对资金订单与预约的source/org/payer/beneficiary/slot/listing/金额、条款与商户、完整source_snapshot及TradeService原顺序source_hash、冻结quote，要求没有payment_attempt。正常恢复比较资金/条款不变；quarantine仅允许既有SOURCE_CONFLICT与REVOKED及对应version递增，身份金额quote哈希保持。按helper实际费用设置候选/预算/assignment，不再硬写另一金额。node --check、Prettier及diff检查通过；真实付费source创建与PG恢复仍待root隔离CI。依赖map helper提交2e8297e，未改共享helper。

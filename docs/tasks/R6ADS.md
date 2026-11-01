@@ -33,3 +33,9 @@
 2026-11-01 在途事实收敛：机构在已批准发送后被停用，已验签/已校验渠道回包仍按原fence记录（仅machine result允许inactive，用户操作依旧需有效权限）；原provider分账/回退ID不接受漂移。PG新增停用发生在transport内的实据落库场景，现9条PGtest待CI。垫付预约也明确受restore quarantine拦截。
 
 2026-11-01 CI150真实PG反馈：8个广告场景在合同时间边界setup失败。根因是pg返回Date对象，Date.parse(Date)先转本地字符串会丢毫秒，导致同一endsAt ISO毫秒被误判越界。已改new Date(dbTimestamp).getTime()保留原毫秒；未放宽合同必须在投放时段内的约束。等待下一轮真实PG。
+
+2026-11-01 广告主入口切片：新增GET /v1/me/sponsor-commerce，仅按当前actual payer_user_id返回本人合同摘要与所属机构；普通账号不需要任何机构管理角色，也不需要手输orgId。小程序合并本人获授权合同机构与管理机构，收费授权/签署/支付沿同一入口。已加普通payer无有效机构membership的PGhappy-path与陌生/受益账号隔离断言（现10条PGtest待CI），微信VM新增无管理角色完整进入→建立收费订单路径；微信6/6与tsc通过。
+
+资金权限修正：历史merchant仅保留原资金路由，finance校验始终取当前owner org配置名单及当前有效owner/admin/fresh session，不能借旧merchant保留已撤销财务权限。
+
+2026-11-01 CI151真实PG反馈：8条广告测试中7条核心资金流程通过，剩1条fixture将跨租户隐藏资源误期待403，实际正确返回404/RESOURCE_NOT_FOUND；已修断言，不放宽生产授权。较新的普通广告主/inflight扩展测试待后续CI。

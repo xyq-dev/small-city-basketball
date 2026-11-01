@@ -21,3 +21,5 @@ root追加来源桥：`prepareBookingInTransaction(c,actor,raw)`与`prepareMatch
 派单复核补丁：源预约待接单截止同时受冻结报价protectedStartsAt约束，防止出发准备已过后仍利用普通10分钟窗口接单；普通同城预约截止不变。由dispatch实施者只读审查指出并修正。
 
 CI149回归：root报告地图PG撤销发布fixture触发版本保护，因为直接UPDATE未递增version。最小修复仅将该测试撤销语句补 `version=version+1`，保持实际业务触发器约束；不放宽迁移或生产校验。真实PG重跑待root CI。
+
+追加有偿派单验证（2026-11-01 Asia/Shanghai）：`work/r6-paid-dispatch`基线19cb239，新增 `dispatch-source-adapter.test.ts` 9项已通过；API typecheck通过。`r6-paid-dispatch.integration.test.ts`两项使用真实供给审批、收费条款独立审核、DispatchService、LocalServicesService、TradeService和root默认收费桥。缺收费桥时要求503并逐行比较原请求/报价/hold/reservation/历史无变化；补齐后原commandId重试产生唯一完整1300分订单。第二项在同事务真实订单生成后抛错，检验已观察到的订单、原预约、资源占用、历史和回执消失且原hold恢复。没有外部收款调用，本地无PG未运行该两项；需root隔离CI执行，不得以单测代称真实事务已验。独立只读审查结论为未发现确定缺陷，真实默认app接线、错误传播与quote锁链已核对。

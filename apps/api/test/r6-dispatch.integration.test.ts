@@ -362,10 +362,18 @@ describe(
       const ended = await dispatch.offerDetail(h.owner.cookie, f.offer.id);
       expect(ended.locationVisible).toBe(false);
       expect(ended.request.serviceAddress).not.toContain('体育馆');
+      expect(ended.version).toBeGreaterThan(f.acceptBody.expectedVersion);
       await expect(
         dispatch.offerCommand(h.owner.cookie, f.offer.id, {
           ...f.acceptBody,
           commandId: command(),
+        }),
+      ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
+      await expect(
+        dispatch.offerCommand(h.owner.cookie, f.offer.id, {
+          ...f.acceptBody,
+          commandId: command(),
+          expectedVersion: ended.version,
         }),
       ).rejects.toMatchObject({ code: 'DISPATCH_EXPIRED' });
     });

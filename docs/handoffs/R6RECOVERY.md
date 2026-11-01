@@ -9,3 +9,5 @@ capture依次matching→training→sponsor→dispatch（真实10分钟暂占最�
 quarantine新增R6撤权字段与主脚本R6_QUARANTINE_FIELDS一致；matching/dispatch/training/商业fixture分别验证业务状态。现有资金隔离继续处理统一账本，不重复记账；sponsor自己的SENDING/finish SENDING/return SENDING改UNKNOWN并失效fence，其他金额/编号/审批不动。
 
 待root真实CI验证：保险第二次实际quote/purchase和12次故障注入触发器、所有新表runtime ACL、复杂source/付款退款绑定、quarantine约束与完整pg_dump/restore。仅离线11项通过，未宣称PG/完整恢复通过。若schema新增表，inventory必须显式补齐，不得改成宽松扫描。
+
+有偿来源恢复补充：helper现支持 `{book:true,paid:true}`，新增返回 `termsId`、`tradeOrderId`、`totalFen`（当前合成1000分）。收费条款由state.cookie创建、state.commerce.operators[0]独立审核，在book之前已ACTIVE；book显式acceptedTermsId/chargeConsent，真实TradeService同事务创建canonical LOCAL_BOOKING订单。helper逐项核来源/主体/金额/merchant并断言无payment_attempt，所有外部transport禁止调用。matching负责人需消费新返回值并去掉事后INSERT trade_terms，捕获/恢复校验真实订单身份与金额；root一并整合两片。默认free路径及其余036–042证据不放宽。离线11项和node语法已通过；真实capture/restart/restore待隔离CI，未执行生产。

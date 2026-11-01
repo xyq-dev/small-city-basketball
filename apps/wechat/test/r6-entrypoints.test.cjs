@@ -56,6 +56,7 @@ const allowed = [
     'POST',
     '/v1/orgs/' + id + '/training/' + x,
   ]),
+  ['GET', '/v1/me/sponsor-commerce'],
   ['GET', '/v1/orgs/' + id + '/sponsor-commerce'],
   ['GET', '/v1/orgs/' + id + '/sponsor-commerce/statements'],
   ['GET', '/v1/orgs/' + id + '/sponsor-commerce/orders/' + id],
@@ -107,4 +108,33 @@ test('account and local entries point to operational pages and carry organizatio
   }
   for (const name of ['training-manage', 'sponsor-commerce'])
     assert.ok(account.includes('data-page="' + name + '" data-org="{{item.id}}"'));
+});
+
+test('ordinary payer can open own advertising contracts without an organization admin grant', () => {
+  const { loadPage } = require('./helpers/native-page.cjs');
+  const { buildPreview } = require('./helpers/native-preview.cjs');
+  const opened = [];
+  const h = loadPage({
+    root,
+    route: 'pages/account/index',
+    modules: {
+      [path.join(root, 'utils/ui.js')]: {
+        ...ui,
+        open: (...args) => opened.push(JSON.parse(JSON.stringify(args))),
+      },
+    },
+  });
+  h.page.setData({
+    user: { id, displayName: '合成广告主', email: 'payer@example.test' },
+    managedOrgs: [],
+  });
+  const preview = buildPreview({ root, route: 'pages/account/index', data: h.page.data });
+  assert.match(preview.phone, /我的广告合同/);
+  h.page.go({ currentTarget: { dataset: { page: 'sponsor-commerce' } } });
+  assert.deepEqual(opened, [['sponsor-commerce', {}]]);
+  h.page.go({ currentTarget: { dataset: { page: 'sponsor-commerce', org: id } } });
+  assert.deepEqual(opened[1], ['sponsor-commerce', { orgId: id }]);
+  h.page.data.busy = true;
+  h.page.go({ currentTarget: { dataset: { page: 'sponsor-commerce' } } });
+  assert.equal(opened.length, 2);
 });

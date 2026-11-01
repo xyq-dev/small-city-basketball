@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import { readSponsorClosureFunds } from './sponsor-commerce-source.js';
 
 /** These are retained workflow facts. Missing R6 tables are a failed inspection,
  * never evidence that an account has no obligations. Caller holds the user UPDATE. */
@@ -83,6 +84,9 @@ export async function lockRemainingSixClosure(c: PoolClient, userId: string): Pr
     `SELECT id FROM training_refund_allocations WHERE enrollment_id IN(${trainingEnrollments}) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_contracts WHERE id IN(SELECT id FROM contracts) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_orders WHERE id IN(SELECT id FROM orders) ORDER BY id FOR UPDATE NOWAIT`,
+    `${sponsorScope} SELECT id FROM trade_orders WHERE kind='SPONSOR_ORDER' AND source_id IN(SELECT id FROM orders) ORDER BY id FOR UPDATE NOWAIT`,
+    `${sponsorScope} SELECT p.id FROM trade_payment_attempts p JOIN trade_orders t ON t.id=p.order_id WHERE t.kind='SPONSOR_ORDER' AND t.source_id IN(SELECT id FROM orders) ORDER BY p.id FOR UPDATE OF p NOWAIT`,
+    `${sponsorScope} SELECT r.id FROM trade_refunds r JOIN trade_orders t ON t.id=r.order_id WHERE t.kind='SPONSOR_ORDER' AND t.source_id IN(SELECT id FROM orders) ORDER BY r.id FOR UPDATE OF r NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_settlement_batches WHERE order_id IN(SELECT id FROM orders) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_settlement_items WHERE batch_id IN(SELECT id FROM sponsor_settlement_batches WHERE order_id IN(SELECT id FROM orders)) ORDER BY id FOR UPDATE NOWAIT`,
     `${sponsorScope} SELECT id FROM sponsor_refund_plans WHERE order_id IN(SELECT id FROM orders) ORDER BY id FOR UPDATE NOWAIT`,
@@ -115,8 +119,8 @@ export async function readRemainingSixClosureBlockers(
  EXISTS(SELECT 1 FROM dispatch_requests r WHERE (r.owner_user_id=$1 OR EXISTS(SELECT 1 FROM dispatch_offers o WHERE o.request_id=r.id AND o.provider_user_id=$1 AND o.source_booking_id=r.source_booking_id)) AND r.source_booking_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM local_bookings b WHERE b.id=r.source_booking_id AND b.status IN('COMPLETED','DECLINED','CANCELLED','EXPIRED'))) AS dispatch_source,
  EXISTS(SELECT 1 FROM sponsor_contracts r WHERE r.id IN(SELECT id FROM contracts) AND r.status NOT IN('REJECTED','CLOSED'))
  OR EXISTS(SELECT 1 FROM sponsor_orders o WHERE o.id IN(SELECT id FROM orders) AND o.status<>'CLOSED') AS sponsor_service,
- EXISTS(SELECT 1 FROM sponsor_settlement_batches b WHERE b.order_id IN(SELECT id FROM orders) AND b.status<>'REJECTED' AND (b.status<>'SUCCEEDED' OR NOT b.finished OR b.finish_status<>'SUCCEEDED'
-  OR EXISTS(SELECT 1 FROM sponsor_settlement_items i WHERE i.batch_id=b.id AND i.status NOT IN('SUCCEEDED','RETAINED'))))
+ EXISTS(SELECT 1 FROM sponsor_settlement_batches b WHERE b.order_id IN(SELECT id FROM orders) AND b.status<>'REJECTED' AND (b.status NOT IN('SUCCEEDED','PARTIAL') OR NOT b.finished OR b.finish_status<>'SUCCEEDED'
+  OR EXISTS(SELECT 1 FROM sponsor_settlement_items i WHERE i.batch_id=b.id AND i.status NOT IN('SUCCEEDED','FAILED','RETAINED'))))
  OR EXISTS(SELECT 1 FROM sponsor_refund_plans p WHERE p.order_id IN(SELECT id FROM orders) AND p.status<>'REJECTED' AND (p.status<>'CLAIMED' OR NOT EXISTS(SELECT 1 FROM trade_refunds r WHERE r.id=p.trade_refund_id AND r.status='SUCCEEDED')))
  OR EXISTS(SELECT 1 FROM sponsor_return_items r JOIN sponsor_refund_plans p ON p.id=r.refund_plan_id WHERE p.order_id IN(SELECT id FROM orders) AND r.status NOT IN('NOT_REQUIRED','SUCCEEDED') AND NOT(
  r.status='FAILED' AND EXISTS(SELECT 1 FROM sponsor_recovery_cases resolved WHERE resolved.return_item_id=r.id
@@ -137,11 +141,37 @@ export async function readRemainingSixClosureBlockers(
     sponsor_service: 'SPONSOR_SERVICE_UNRESOLVED',
     sponsor_money: 'SPONSOR_MONEY_UNRESOLVED',
   };
-  return Object.entries(codes).flatMap(([key, code]) => {
+  const blockers = Object.entries(codes).flatMap(([key, code]) => {
     if (typeof row[key] !== 'boolean')
       throw new Error('R6 closure inspection returned invalid facts');
     return row[key] ? [{ code }] : [];
   });
+  // The scope includes beneficiary-org administrators and workflow reviewers who
+  // need not be the payer/beneficiary of any trade_order. Do not delegate their
+  // module funds to the narrower common account-closure ownership query.
+  const orders = (
+    await c.query(
+      `${sponsorScope} SELECT o.id,t.id AS trade_order_id FROM orders o
+       LEFT JOIN trade_orders t ON t.kind='SPONSOR_ORDER' AND t.source_id=o.id ORDER BY o.id`,
+      [userId],
+    )
+  ).rows;
+  for (const order of orders) {
+    const funds = order.trade_order_id
+      ? await readSponsorClosureFunds(c, order.id, order.trade_order_id)
+      : null;
+    if (
+      !funds ||
+      funds.unresolved ||
+      !Number.isSafeInteger(funds.dischargedFen) ||
+      funds.dischargedFen < 0
+    ) {
+      if (!blockers.some((b) => b.code === 'SPONSOR_MONEY_UNRESOLVED'))
+        blockers.push({ code: 'SPONSOR_MONEY_UNRESOLVED' });
+      break;
+    }
+  }
+  return blockers;
 }
 /** Only after all inspections are empty, in the final closure transaction.
  * Withdraw contact/publicity permissions, never financial or immutable history. */

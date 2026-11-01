@@ -340,23 +340,25 @@ Page({
       return;
     }
     const kind = e.currentTarget.dataset.kind;
-    const query = [
-      'seasons',
-      'team-requests',
-      'staff-configuration',
-      'local-manage',
-      'sponsorships',
-      'public-ledgers',
-      'trade-manage',
-      'training-manage',
-      'sponsor-commerce',
-    ].includes(key)
-      ? { orgId: api.uuid(e.currentTarget.dataset.org) }
-      : key === 'bookings'
-        ? { view: 'sent' }
-        : key === 'planned' && ['funds', 'messages', 'profile'].includes(kind)
-          ? { kind }
-          : {};
+    const query =
+      [
+        'seasons',
+        'team-requests',
+        'staff-configuration',
+        'local-manage',
+        'sponsorships',
+        'public-ledgers',
+        'trade-manage',
+        'training-manage',
+        'sponsor-commerce',
+      ].includes(key) &&
+      (key !== 'sponsor-commerce' || e.currentTarget.dataset.org)
+        ? { orgId: api.uuid(e.currentTarget.dataset.org) }
+        : key === 'bookings'
+          ? { view: 'sent' }
+          : key === 'planned' && ['funds', 'messages', 'profile'].includes(kind)
+            ? { kind }
+            : {};
     ui.open(key, query);
   },
 });

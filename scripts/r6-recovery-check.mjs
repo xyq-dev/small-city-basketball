@@ -247,6 +247,7 @@ export function assertR6QuarantineCounts(before, after) {
 async function helpers(context) {
   const { RegistrationService } = await import('../apps/api/dist/registration-service.js');
   const { LocalServicesService } = await import('../apps/api/dist/local-services-service.js');
+  const { TradeService } = await import('../apps/api/dist/trade-service.js');
   const { REGION_CATALOG_VERSION } = await import('../apps/api/dist/region-catalog-data.js');
   const options = {
     databaseUrl: context.databaseUrl,
@@ -255,8 +256,34 @@ async function helpers(context) {
     participantRegistrationEnabled: true,
     backgroundWorkersEnabled: false,
   };
+  const externalPayment = () => {
+    assert.fail('R6 local recovery capture must not dispatch external payments');
+  };
+  const merchantKey = 'synthetic-r6-local-' + context.state.orgId;
+  const trade = new TradeService(context.runtimePool, options, {
+    encryptionKey: Buffer.alloc(32, 11),
+    merchants: {
+      [context.state.orgId]: {
+        key: merchantKey,
+        merchantId: '1900000101',
+        appId: 'wx1234567890abcdef',
+        displayName: '合成恢复本地服务商户',
+        receivers: {},
+        payments: {
+          enabled: true,
+          native: externalPayment,
+          queryOrder: externalPayment,
+          refund: externalPayment,
+          queryRefund: externalPayment,
+          verifyNotification: externalPayment,
+          downloadBill: externalPayment,
+        },
+      },
+    },
+  });
   const registration = new RegistrationService(context.runtimePool, options),
-    local = new LocalServicesService(context.runtimePool, options);
+    local = new LocalServicesService(context.runtimePool, options),
+    paidLocal = new LocalServicesService(context.runtimePool, options, undefined, undefined, trade);
   const registerSynthetic = async (name) => {
     const password = randomBytes(24).toString('base64url');
     const r = await registration.registerParticipant(
@@ -272,7 +299,7 @@ async function helpers(context) {
     };
   };
   let sequence = 0;
-  const createLocalSource = async (label, { book = true } = {}) => {
+  const createLocalSource = async (label, { book = true, paid = false } = {}) => {
     const provider = await registerSynthetic('合成R6服务方'),
       buyer = await registerSynthetic('合成R6需求方');
     buyer.orgId = randomUUID();
@@ -322,18 +349,75 @@ async function helpers(context) {
         [slotId, orgId, listingId, startsAt, endsAt],
       );
     });
+    const totalFen = paid ? 1000 : 0;
+    let termsId = null,
+      tradeOrderId = null;
+    if (paid) {
+      const reviewer = context.state.commerce?.operators?.[0];
+      assert.ok(reviewer?.cookie && reviewer.userId, 'Paid recovery needs an independent reviewer');
+      assert.notEqual(reviewer.userId, context.state.userId);
+      assert.notEqual(reviewer.userId, provider.id);
+      const fee = await trade.createTerms(context.state.cookie, orgId, {
+        clientRequestId: randomUUID(),
+        kind: 'LOCAL_BOOKING',
+        sourceId: listingId,
+        amountFen: totalFen,
+        terms: '仅隔离恢复演练的服务报价，经独立审核后真实绑定预约，不执行外部收费',
+      });
+      termsId = fee.termsId;
+      await trade.reviewTerms(reviewer.cookie, orgId, termsId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: 1,
+        decision: 'APPROVE',
+        reason: '独立核对合成服务报价与收款主体，允许恢复夹具绑定原预约',
+      });
+    }
+    const sourceService = paid ? paidLocal : local;
     let bookingId = null;
     if (book) {
-      const receipt = await local.book(buyer.cookie, {
+      const receipt = await sourceService.book(buyer.cookie, {
         commandId: randomUUID(),
         listingId,
         slotId,
         serviceRegion: region,
         serviceAddress: address,
         acceptedTerms: true,
+        ...(paid ? { acceptedTermsId: termsId, chargeConsent: true } : {}),
       });
       bookingId = receipt.resourceId;
-      await local.bookingCommand(provider.cookie, bookingId, {
+      if (paid) {
+        const orders = (
+          await context.readPool.query(
+            "SELECT id,org_id,source_id,terms_id,total_fen,merchant_key,payer_user_id,beneficiary_user_id FROM trade_orders WHERE kind='LOCAL_BOOKING' AND source_id=$1",
+            [bookingId],
+          )
+        ).rows;
+        assert.equal(
+          orders.length,
+          1,
+          'Paid recovery source must create exactly one canonical order',
+        );
+        const order = orders[0];
+        assert.equal(order.org_id, orgId);
+        assert.equal(order.source_id, bookingId);
+        assert.equal(order.terms_id, termsId);
+        assert.equal(order.total_fen, totalFen);
+        assert.equal(order.merchant_key, merchantKey);
+        assert.equal(order.payer_user_id, buyer.id);
+        assert.equal(order.beneficiary_user_id, provider.id);
+        tradeOrderId = order.id;
+        assert.equal(
+          (
+            await context.readPool.query(
+              'SELECT id FROM trade_payment_attempts WHERE order_id=$1',
+              [tradeOrderId],
+            )
+          ).rowCount,
+          0,
+          'Creating the recovery obligation must not pretend that a payment was attempted or paid',
+        );
+      }
+      await sourceService.bookingCommand(provider.cookie, bookingId, {
         commandId: randomUUID(),
         expectedVersion: 1,
         type: 'ACCEPT',
@@ -344,6 +428,9 @@ async function helpers(context) {
       listingId,
       slotId,
       bookingId,
+      termsId,
+      tradeOrderId,
+      totalFen,
       provider,
       buyer,
       orgId,

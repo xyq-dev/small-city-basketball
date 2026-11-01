@@ -59,6 +59,7 @@
 <view class="menu-row" data-page="notification-settings" bindtap="go"><view class="menu-text"><view>微信订阅提醒</view><view class="menu-sub">逐次选择、核对记录与撤销许可</view></view></view>
 <view class="menu-row" data-page="insurance" bindtap="go"><view class="menu-text"><view>本人保险订单</view><view class="menu-sub">投保进度、查单与退保</view></view></view>
 <view class="menu-row" data-page="guardian" bindtap="go"><view class="menu-text"><view>青少年与监护确认</view><view class="menu-sub">本人相关邀请与当前名单确认</view></view></view>
+<view class="menu-row" data-page="sponsor-commerce" bindtap="go"><view class="menu-text"><view>我的广告合同</view><view class="menu-sub">本人合同签署、付款与退款进度</view></view></view>
 <view class="menu-row" data-page="trade-order" bindtap="go"><view class="menu-text"><view>我的收付款订单</view><view class="menu-sub">报名费、保证金、服务与退款进度</view></view></view>
 <view class="menu-row" data-page="local-bookings" bindtap="go"><view class="menu-text"><view>我的球场与服务订单</view></view></view>
 <view class="menu-row" data-page="local-matchups" bindtap="go"><view class="menu-text"><view>球队约赛</view></view></view>

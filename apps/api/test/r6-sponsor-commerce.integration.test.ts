@@ -91,6 +91,10 @@ describe(
         User,
         User,
       ];
+      await api.pool.query(
+        "UPDATE organization_memberships SET status='DISABLED' WHERE org_id=$1 AND user_id=$2",
+        [payer.orgId, payer.id],
+      );
       for (const u of [finance1, finance2])
         await api.pool.query(
           "INSERT INTO organization_memberships(org_id,user_id,role) VALUES($1,$2,'ORG_ADMIN')",
@@ -316,7 +320,8 @@ describe(
         status: 403,
       });
       await expect(service.get(receiver.cookie, owner.orgId, f.order.id)).rejects.toMatchObject({
-        status: 403,
+        status: 404,
+        code: 'RESOURCE_NOT_FOUND',
       });
       await expect(
         api.pool.query('UPDATE sponsor_contracts SET total_fen=10004 WHERE id=$1', [f.contract.id]),
@@ -763,6 +768,26 @@ describe(
       } finally {
         await api.pool.query("UPDATE organizations SET status='ACTIVE' WHERE id=$1", [owner.orgId]);
       }
+    });
+    test('ordinary payer without an organization role discovers only assigned contracts and can sign and pay', async () => {
+      const f = await contract();
+      const inbox = await service.inbox(payer.cookie);
+      expect(inbox.organizations).toContainEqual({
+        id: owner.orgId,
+        name: expect.any(String),
+        role: 'ADVERTISER',
+      });
+      expect(inbox.contracts.find((x) => x.id === f.contract.id)).toMatchObject({
+        orgId: owner.orgId,
+        orderId: f.order.id,
+        totalFen: 10003,
+      });
+      expect((await service.inbox(stranger.cookie)).contracts).toEqual([]);
+      expect((await service.inbox(receiver.cookie)).contracts).toEqual([]);
+      expect((await service.list(payer.cookie, owner.orgId)).canManage).toBe(false);
+      expect((await service.get(payer.cookie, owner.orgId, f.order.id)).tradeOrderId).toBe(
+        f.order.tradeOrderId,
+      );
     });
   },
 );

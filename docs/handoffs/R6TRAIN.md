@@ -16,3 +16,5 @@
 共享日历测试交接：apps/api/test/r6-shared-calendar.integration.test.ts（7个测试、内部包含先后双向/并发矩阵），PG待执行。P04保留真实publish流程，不直接绕过court_reservations源校验；C06旧预约/过期dispatch只显式合成history SQL，仍受所有真实触发器、唯一索引与FK约束。x12_release_expired只需释放local资源，不断言dispatch_holds/offer自动终态。声明圈定source拥有者数量恰好1并排除40P01；所有具时间保护的冲突断言覆盖实际服务窗口外。root复制的dispatch-domain/contract仅本地编译依赖，未提交共享文件。
 
 CI149最小修复：r6-training.integration.test.ts退款职责夹具改为owner（具有ORG_OWNER权限）提出、owner自审403且精确INDEPENDENT_REVIEW_REQUIRED、learner无权审批404且精确RESOURCE_NOT_FOUND、reviewer作为ORG_ADMIN成功批准并校验原始申请/复核人。仅修正测试职责设置，不改service错误码和安全隐藏行为。API typecheck已过，PG待root复跑。
+
+CI151反馈：共享日历6/7通过，唯一失败是过期派单已被prepareTraining正确提前释放。最小修复将过期历史放到创建培训草稿之后，PUBLISH前仍严格active=true/PUBLISH后false，并继续验证quote/status历史不变。无048生产修改；PG复跑交root。

@@ -20,3 +20,5 @@
 2026-11-01 共享日历专项（root追加委派）：新增 r6-shared-calendar.integration.test.ts，复用P04真实报名冻结/排赛发布与正式TrainingService/LocalServicesService，覆盖培训↔X12人员/场地、培训↔C06球员、培训↔正式court_reservations的双向先后及并发唯一占位；跨域新写释放过期培训学员锁/派单锁；正式parseDispatchQuote的97小时交通保护区间在实际服务时间之外仍阻止抢人。派单历史fixture显式SQL构造真实request/batch/offer/hold/资源外键关系，原过期期限仅INSERT不篡改。未改048。API typecheck通过；该7项PG专项待CI。原生页面补空态/未知退款实际模板render回归，现8/8。
 
 2026-11-01 CI149反馈修正：原退款自审测试使用没有机构审批权限的学员，正确触发安全隐藏404，未触达独立复核规则。改为机构经办管理员提出退款；学员审批明确预期RESOURCE_NOT_FOUND/404，经办管理员审批明确预期INDEPENDENT_REVIEW_REQUIRED/403，另一位授权管理员审批成功，并核对持久proposed_by/reviewed_by不同。无放宽允许错误码、无修改生产授权逻辑。API typecheck通过；真实PG复跑交root隔离CI。
+
+CI151日历专项夹具顺序修正：createCohort本身也是正式培训write，会运行x12_release_expired；原测试先造过期派单再创建草稿，在PUBLISH前已正确释放。现先准备培训草稿，再原子INSERT不可变过期派单历史，精确断言发布前active=true、首次后续培训write（PUBLISH）后active=false；保留hash/原offer状态及历史不可复活断言，不放宽预期。

@@ -17,3 +17,5 @@
 广告复核补充：ads agent确认RECOVERED/WRITTEN_OFF是双人独立核对证据的追偿终态，不改原渠道FAILED。helper仅在FAILED且绑定case有不同提议/复核人、有效证据和明确终态时不把旧失败永久计未决；UNKNOWN/PROCESSING不受此例外影响。canonical trade资金余额与平台垫付检查继续必须通过，不能凭人工case跳过资金核验。PG用例用048实际SPONSOR_ORDER kind并覆盖此区分。
 
 CI150夹具修复：六例初始化均因password_hash长度约束失败，现统一在beforeAll使用正式hashPassword为仅回滚的合成用户生成随机密码哈希；不弱化生产约束。同时逐项核对根f7dcb03的044–048 schema，修复dispatch持有报价必须含与quote_hash一致的hash字段。API typecheck及diff check通过；真实PG仍待root/CI重跑，未将静态核对称为PG成功。
+
+PARTIAL结案复核修复：仅放宽历史PARTIAL/FAILED的粗粒度字符串阻断，同时对sponsorScope内每个原单强制调用readSponsorClosureFunds精算；包括没有本人trade_order的受益机构管理员与批次审核人。缺原单、UNKNOWN、留存/失败项未完整分摊、缺费用凭据、精算失败均仍关闭。canonical原单/付款/退款提前NOWAIT锁，原历史不变。补4个PG参数例（两个非本人角色×全额/部分退款），每例先验证UNKNOWN与缺费用凭据阻断，再验证只有全退解锁；另补缺原单/精算错误单测。定向unit21/21、API typecheck与diff check通过；PG本地未运行，CI待验证。仅本地复制ads源依赖用于typecheck，不纳入本提交。

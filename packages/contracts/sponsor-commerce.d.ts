@@ -75,3 +75,18 @@ export interface SponsorSettlementData {
   }>;
   finished: boolean;
 }
+
+export interface SponsorCommerceInboxData {
+  organizations: Array<{ id: string; name: string; role: 'ADVERTISER' }>;
+  contracts: Array<{
+    id: string;
+    orgId: string;
+    title: string;
+    totalFen: number;
+    currency: 'CNY';
+    status: SponsorContractState;
+    version: number;
+    orderId: string | null;
+  }>;
+  truncated: boolean;
+}

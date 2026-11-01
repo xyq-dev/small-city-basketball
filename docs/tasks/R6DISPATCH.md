@@ -43,3 +43,8 @@
 - CI 150 exposed a migration error: PostgreSQL names 029's cross-column finite end-time check `local_resource_reservations_check`, and the booking/matchup owner XOR `local_resource_reservations_check1`. 045 had dropped the former, so dispatch-only holds still failed the old owner XOR.
 - Corrected 045 to replace only `_check1`. The existing finite ordered time bounds and the new exactly-one-of-booking/matchup/dispatch constraint both remain enforced. 001–042 and shared calendar triggers are untouched.
 - Extended the existing real PostgreSQL acceptance case with invalid infinite-end, zero-owner and multiple-owner inserts. Local API typecheck and focused formatting passed; PostgreSQL execution remains delegated to the next isolated CI run.
+
+### Isolated CI 151 follow-up — distinguish stale version from ended invitation
+
+- Root reported that the reservation correction passed real PostgreSQL acceptance, including the new negative constraints; eight dispatch cases passed and one fixture still expected `DISPATCH_EXPIRED` while sending its pre-acceptance offer version after cancellation.
+- The cancelled-offer test now verifies two separate gates: the stale original version must produce `VERSION_CONFLICT`; a new command with the freshly read ended-offer version must produce `DISPATCH_EXPIRED`. Application behavior is unchanged, and no broad alternate-error acceptance was added. Local API typecheck, focused formatting and diff checks passed; next combined CI provides PostgreSQL execution evidence.

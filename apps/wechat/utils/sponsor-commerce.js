@@ -61,6 +61,7 @@ function decorate(rows) {
 }
 function sponsorCommercePathAllowed(path, method, query, uuidPattern) {
   if (!query || Object.keys(query).length) return false;
+  if (path === '/v1/me/sponsor-commerce') return method === 'GET';
   const root = '/v1/orgs/' + uuidPattern + '/sponsor-commerce';
   const match = (p) => new RegExp('^' + root + p + '$', 'i').test(path);
   if (method === 'GET')

@@ -41,5 +41,10 @@ scripts/*
 !scripts/expansion-e04-recovery.mjs
 !scripts/expansion-e05-recovery.mjs
 !scripts/expansion-e08-recovery.mjs
+!scripts/r6-recovery-check.mjs
+!scripts/r6-recovery-matching.mjs
+!scripts/r6-recovery-dispatch.mjs
+!scripts/r6-recovery-training.mjs
+!scripts/r6-recovery-sponsor.mjs
 .github
 .DS_Store

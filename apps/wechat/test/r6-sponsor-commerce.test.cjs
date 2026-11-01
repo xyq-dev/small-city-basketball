@@ -167,3 +167,95 @@ test('commercial page template has handlers for every action and hides private r
   assert.equal(instance.data.contracts.length, 0);
   assert.equal(instance.data.busy, false);
 });
+
+test('ordinary advertiser loads its authorized inbox without manager membership or typed organization id', async () => {
+  let page;
+  const calls = [],
+    sent = [];
+  const user = actor;
+  const transport = {
+    request: async (path) => {
+      calls.push(path);
+      if (path === '/v1/me/sponsor-commerce')
+        return {
+          data: {
+            organizations: [{ id: org, name: '已分配合同机构', role: 'ADVERTISER' }],
+            contracts: [],
+          },
+        };
+      return {
+        data: {
+          enabled: true,
+          canManage: false,
+          canFinance: false,
+          userId: user,
+          contracts: [
+            {
+              id: command,
+              payer_user_id: user,
+              status: 'SIGNED',
+              version: 5,
+              total_fen: 10003,
+              title: '本人广告合同',
+              contractHash: 'a'.repeat(64),
+            },
+          ],
+          orders: [],
+          beneficiaries: [],
+          receiverOptions: [],
+        },
+      };
+    },
+  };
+  const ui = {
+    begin: () => ({}),
+    live: () => true,
+    session: async () => ({ user: { id: user }, organizations: [], teamContexts: [] }),
+    message: (e) => e.message,
+    uuid: async () => other,
+    close: () => {},
+  };
+  const client = {
+    pending: () => null,
+    send: async (_org, path, body) => {
+      sent.push({ org: _org, path, body });
+      return { id: command };
+    },
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'pages/sponsor-commerce/index.js'), 'utf8'), {
+    Page: (p) => (page = p),
+    require: (p) =>
+      p.endsWith('/api')
+        ? { getClient: () => transport }
+        : p.endsWith('/ui')
+          ? ui
+          : p.endsWith('/sponsor-commerce-client')
+            ? client
+            : model,
+  });
+  const instance = {
+    ...page,
+    data: structuredClone(page.data),
+    setData(v) {
+      Object.assign(this.data, v);
+    },
+  };
+  instance.onLoad({});
+  await instance.load();
+  assert.equal(instance._org, org);
+  assert.equal(instance.data.canManage, false);
+  assert.equal(instance.data.contracts[0].title, '本人广告合同');
+  assert.equal(calls[0], '/v1/me/sponsor-commerce');
+  await instance.contractAction({ currentTarget: { dataset: { id: command, action: 'ORDER' } } });
+  assert.equal(sent[0].path, '/v1/orgs/' + org + '/sponsor-commerce/orders');
+  assert.equal(sent[0].body.chargeConsent, true);
+  assert.equal(sent[0].body.acceptedContractHash, 'a'.repeat(64));
+  assert.equal(
+    model.sponsorCommercePathAllowed('/v1/me/sponsor-commerce', 'GET', {}, '[a-f0-9-]{36}'),
+    true,
+  );
+  assert.equal(
+    model.sponsorCommercePathAllowed('/v1/me/sponsor-commerce', 'POST', {}, '[a-f0-9-]{36}'),
+    false,
+  );
+});

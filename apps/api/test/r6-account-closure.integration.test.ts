@@ -328,7 +328,8 @@ describe('R6 mandatory closure scopes, obligations and privacy on PostgreSQL', (
       batch = id(),
       item = id(),
       returned = id(),
-      recovery = id();
+      recovery = id(),
+      transaction = id();
     await c.query(
       "INSERT INTO sponsorship_campaigns(id,org_id,region_catalog_version,region_id,brand,title,body,starts_at,ends_at,created_by) VALUES($1,$2,$3,$4,'合成品牌','合成广告','合成广告内容',clock_timestamp(),clock_timestamp()+interval '1 day',$5)",
       [campaign, org, region.catalog_version, region.region_id, owner],
@@ -345,7 +346,7 @@ describe('R6 mandatory closure scopes, obligations and privacy on PostgreSQL', (
       ],
     );
     await c.query(
-      "INSERT INTO sponsor_orders(id,org_id,contract_id,payer_user_id,beneficiary_user_id,title,total_fen,merchant_key,merchant_id,merchant_app_id,terms,snapshot,status,created_by) VALUES($1,$2,$3,$4,$5,'合成原单',100,'synthetic','synthetic','synthetic','合成交易条款','{}','CLOSED',$4)",
+      "INSERT INTO sponsor_orders(id,org_id,contract_id,payer_user_id,beneficiary_user_id,title,total_fen,merchant_key,merchant_id,merchant_app_id,terms,snapshot,status,created_by,verified_fee_fen,fee_evidence,fee_verified_by) VALUES($1,$2,$3,$4,$5,'合成原单',100,'synthetic','synthetic','synthetic','合成交易条款','{\"allowedFeeFen\":0}','CLOSED',$4,0,'synthetic-fee-evidence',$5)",
       [order, org, contract, user, owner],
     );
     await c.query(
@@ -353,12 +354,12 @@ describe('R6 mandatory closure scopes, obligations and privacy on PostgreSQL', (
       [trade, org, order, 'a'.repeat(64), user, owner],
     );
     await c.query(
-      "INSERT INTO trade_payment_attempts(id,order_id,out_trade_no,channel,status,total_fen,fence,expires_at,provider_transaction_id,paid_at) VALUES($1,$2,$3,'NATIVE','PAID',100,$4,clock_timestamp()+interval '1 hour',$5,clock_timestamp())",
-      [payment, trade, id().replaceAll('-', ''), id(), id()],
+      "INSERT INTO trade_payment_attempts(id,order_id,out_trade_no,channel,status,total_fen,fence,expires_at,provider_transaction_id,paid_at,profit_sharing) VALUES($1,$2,$3,'NATIVE','PAID',100,$4,clock_timestamp()+interval '1 hour',$5,clock_timestamp(),true)",
+      [payment, trade, id().replaceAll('-', ''), id(), transaction],
     );
     await c.query(
-      "INSERT INTO sponsor_settlement_batches(id,org_id,order_id,trade_order_id,payment_id,transaction_id,out_order_no,pool_fen,source_hash,money_version,status,proposed_by,approval_required,approvals,finished,finish_status) VALUES($1,$2,$3,$4,$5,'synthetic',$6,100,$7,1,'SUCCEEDED',$8,1,$9::uuid[],true,'SUCCEEDED')",
-      [batch, org, order, trade, payment, id(), 'a'.repeat(64), owner, [reviewer]],
+      "INSERT INTO sponsor_settlement_batches(id,org_id,order_id,trade_order_id,payment_id,transaction_id,out_order_no,pool_fen,source_hash,money_version,status,proposed_by,approval_required,approvals,finished,finish_status) VALUES($1,$2,$3,$4,$5,$10,$6,100,$7,1,'SUCCEEDED',$8,1,$9::uuid[],true,'SUCCEEDED')",
+      [batch, org, order, trade, payment, id(), 'a'.repeat(64), owner, [reviewer], transaction],
     );
     await c.query(
       "INSERT INTO sponsor_settlement_items(id,org_id,batch_id,beneficiary_org_id,receiver_merchant_id,display_name,authorization_version,amount_fen,retained,status,provider_detail_id) VALUES($1,$2,$3,$2,'synthetic','合成受益方','synthetic',100,false,'SUCCEEDED','synthetic')",
@@ -404,4 +405,135 @@ describe('R6 mandatory closure scopes, obligations and privacy on PostgreSQL', (
         .status,
     ).toBe('FAILED');
   });
+  test.each([
+    ['BENEFICIARY_ADMIN', 100],
+    ['BATCH_REVIEWER', 100],
+    ['BENEFICIARY_ADMIN', 50],
+    ['BATCH_REVIEWER', 50],
+  ] as const)(
+    'PARTIAL settlement uses exact funds for non-owner %s with %i fen refunded',
+    async (role, refundedFen) => {
+      const beneficiaryOrg = id(),
+        campaign = id(),
+        contract = id(),
+        source = id(),
+        trade = id(),
+        payment = id(),
+        transaction = id(),
+        batch = id(),
+        good = id(),
+        failed = id(),
+        refund = id(),
+        plan = id(),
+        returned = id();
+      await c.query("INSERT INTO organizations(id,name) VALUES($1,'合成受益机构')", [
+        beneficiaryOrg,
+      ]);
+      await c.query('INSERT INTO org_schedule_mutex(org_id) VALUES($1)', [beneficiaryOrg]);
+      if (role === 'BENEFICIARY_ADMIN')
+        await c.query(
+          "INSERT INTO organization_memberships(org_id,user_id,role,status) VALUES($1,$2,'ORG_ADMIN','ACTIVE')",
+          [beneficiaryOrg, user],
+        );
+      await c.query(
+        "INSERT INTO sponsorship_campaigns(id,org_id,region_catalog_version,region_id,brand,title,body,starts_at,ends_at,created_by) VALUES($1,$2,$3,$4,'合成品牌','合成广告','合成广告内容',clock_timestamp(),clock_timestamp()+interval '1 day',$5)",
+        [campaign, org, region.catalog_version, region.region_id, owner],
+      );
+      await c.query(
+        "INSERT INTO sponsor_contracts(id,org_id,campaign_id,payer_user_id,beneficiary_user_id,title,total_fen,allowed_fee_fen,terms,starts_at,ends_at,merchant_key,merchant_id,merchant_app_id,shares,status,created_by) VALUES($1,$2,$3,$4,$5,'合成合同',100,0,'合成交易条款',clock_timestamp(),clock_timestamp()+interval '1 day','synthetic','synthetic','synthetic',$6::jsonb,'CLOSED',$5)",
+        [
+          contract,
+          org,
+          campaign,
+          owner,
+          reviewer,
+          JSON.stringify([
+            { beneficiaryOrgId: org, basisPoints: 5000 },
+            { beneficiaryOrgId: beneficiaryOrg, basisPoints: 5000 },
+          ]),
+        ],
+      );
+      await c.query(
+        `INSERT INTO sponsor_orders(id,org_id,contract_id,payer_user_id,beneficiary_user_id,title,total_fen,merchant_key,merchant_id,merchant_app_id,terms,snapshot,status,created_by) VALUES($1,$2,$3,$4,$5,'合成原单',100,'synthetic','synthetic','synthetic','合成交易条款','{"allowedFeeFen":0}','CLOSED',$4)`,
+        [source, org, contract, owner, reviewer],
+      );
+      await c.query(
+        "INSERT INTO trade_orders(id,org_id,kind,source_id,source_version,source_snapshot,source_hash,payer_user_id,beneficiary_user_id,merchant_key,merchant_id,merchant_app_id,merchant_name,total_fen,quote) VALUES($1,$2,'SPONSOR_ORDER',$3,1,'{}',$4,$5,$6,'synthetic','synthetic','synthetic','合成商户',100,'{}')",
+        [trade, org, source, 'a'.repeat(64), owner, reviewer],
+      );
+      await c.query(
+        "INSERT INTO trade_payment_attempts(id,order_id,out_trade_no,channel,status,total_fen,fence,expires_at,provider_transaction_id,paid_at,profit_sharing) VALUES($1,$2,$3,'NATIVE','PAID',100,$4,clock_timestamp()+interval '1 hour',$5,clock_timestamp(),true)",
+        [payment, trade, id().replaceAll('-', ''), id(), transaction],
+      );
+      await c.query(
+        "INSERT INTO sponsor_settlement_batches(id,org_id,order_id,trade_order_id,payment_id,transaction_id,out_order_no,pool_fen,source_hash,money_version,status,proposed_by,approval_required,approvals,finished,finish_status) VALUES($1,$2,$3,$4,$5,$6,$7,100,$8,1,'PARTIAL',$9,1,$10::uuid[],true,'SUCCEEDED')",
+        [
+          batch,
+          org,
+          source,
+          trade,
+          payment,
+          transaction,
+          id(),
+          'a'.repeat(64),
+          owner,
+          [role === 'BATCH_REVIEWER' ? user : reviewer],
+        ],
+      );
+      for (const [item, target, state] of [
+        [good, org, 'SUCCEEDED'],
+        [failed, beneficiaryOrg, 'FAILED'],
+      ])
+        await c.query(
+          "INSERT INTO sponsor_settlement_items(id,org_id,batch_id,beneficiary_org_id,receiver_merchant_id,display_name,authorization_version,amount_fen,retained,status,provider_detail_id) VALUES($1,$2,$3,$4,'synthetic','合成受益方','synthetic',50,false,$5,$6)",
+          [item, org, batch, target, state, state === 'SUCCEEDED' ? 'synthetic-detail' : null],
+        );
+      // All actual refund facts must be complete; the subject owns no trade order.
+      expect(
+        (
+          await c.query(
+            'SELECT id FROM trade_orders WHERE payer_user_id=$1 OR beneficiary_user_id=$1',
+            [user],
+          )
+        ).rowCount,
+      ).toBe(0);
+      expect(await readRemainingSixClosureOrgs(c, user)).toContain(org);
+      await c.query(
+        "INSERT INTO trade_refunds(id,order_id,payment_id,out_refund_no,amount_fen,reason,status,proposed_by,reviewed_by,provider_refund_id,success_at) VALUES($1,$2,$3,$4,$7,'合成退款事实','SUCCEEDED',$5,$6,'synthetic-refund',clock_timestamp())",
+        [refund, trade, payment, id(), owner, reviewer, refundedFen],
+      );
+      await c.query(
+        "INSERT INTO sponsor_refund_plans(id,org_id,order_id,batch_id,amount_fen,pool_reduction_fen,reason,status,proposed_by,reviewed_by,trade_refund_id) VALUES($1,$2,$3,$4,$8,$8,'合成退款事实','CLAIMED',$5,$6,$7)",
+        [plan, org, source, batch, owner, reviewer, refund, refundedFen],
+      );
+      await c.query(
+        "INSERT INTO sponsor_return_items(id,org_id,refund_plan_id,settlement_item_id,amount_fen,out_return_no,status) VALUES($1,$2,$3,$4,$6,$5,'UNKNOWN')",
+        [returned, org, plan, good, id(), refundedFen / 2],
+      );
+      await c.query(
+        "INSERT INTO sponsor_return_items(id,org_id,refund_plan_id,settlement_item_id,amount_fen,out_return_no,status) VALUES($1,$2,$3,$4,$6,$5,'NOT_REQUIRED')",
+        [id(), org, plan, failed, id(), refundedFen / 2],
+      );
+      expect(await inspect()).toEqual(['SPONSOR_MONEY_UNRESOLVED']);
+      await c.query(
+        "UPDATE sponsor_return_items SET status='SUCCEEDED',provider_return_id='synthetic-return' WHERE id=$1",
+        [returned],
+      );
+      // A closed source and fully refunded channel still cannot replace fee proof.
+      expect(await inspect()).toEqual(['SPONSOR_MONEY_UNRESOLVED']);
+      await c.query(
+        "UPDATE sponsor_orders SET verified_fee_fen=0,fee_evidence='synthetic-zero-fee',fee_verified_by=$2 WHERE id=$1",
+        [source, reviewer],
+      );
+      expect(await inspect()).toEqual(refundedFen === 100 ? [] : ['SPONSOR_MONEY_UNRESOLVED']);
+      expect(
+        (await c.query('SELECT status FROM sponsor_settlement_batches WHERE id=$1', [batch]))
+          .rows[0].status,
+      ).toBe('PARTIAL');
+      expect(
+        (await c.query('SELECT status FROM sponsor_settlement_items WHERE id=$1', [failed])).rows[0]
+          .status,
+      ).toBe('FAILED');
+    },
+  );
 });

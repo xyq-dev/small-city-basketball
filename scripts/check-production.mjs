@@ -600,7 +600,11 @@ secrets:
   await stage(
     'Build production api, web and database tools plus an isolated test image',
     async () => {
-      await run(process.execPath, ['--test', 'scripts/check-api-secret-mounts.test.mjs']);
+      await run(process.execPath, [
+        '--test',
+        'scripts/check-api-secret-mounts.test.mjs',
+        'scripts/check-recovery-packaging.test.mjs',
+      ]);
       for (const image of [
         'node:24.22.1-bookworm-slim',
         'nginx:1.30.6-alpine',

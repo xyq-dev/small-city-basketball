@@ -79,3 +79,11 @@ export class SponsorCommerceController {
     return wrap(r, await this.service.channel(r.headers.cookie, org, id, b));
   }
 }
+
+@Controller('v1/me/sponsor-commerce')
+export class SponsorCommerceMeController {
+  constructor(@Inject(SCB_SPONSOR_COMMERCE_SERVICE) private service: SponsorCommerceService) {}
+  @Get() async inbox(@Req() r: ApiRequest) {
+    return wrap(r, await this.service.inbox(r.headers.cookie));
+  }
+}
