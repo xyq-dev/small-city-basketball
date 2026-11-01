@@ -1,1 +1,6 @@
-.page{padding-bottom:32px}.card .small{overflow-wrap:anywhere}button{min-height:44px;font-size:16px}
+.insurance-workspace { padding-bottom:calc(152px + env(safe-area-inset-bottom)); }
+.insurance-workspace .card { margin:12px 0; padding:16px; border-radius:16px; }
+.insurance-workspace .small,.insurance-workspace .muted { overflow-wrap:anywhere; }
+.insurance-workspace button { min-height:48px; font-size:16px; }
+.insurance-workspace .subtitle { font-weight:700; }
+.insurance-workspace .status-banner { margin:8px 0; }

@@ -46,6 +46,7 @@ Page({
     messageTone: 'info',
     hasReturn: false,
     securityOpen: false,
+    workspaceTab: 'personal',
     roles: [],
     managedOrgs: [],
     roleSummary: '',
@@ -66,6 +67,7 @@ Page({
             binding: null,
             connected: false,
             securityOpen: false,
+            workspaceTab: 'personal',
             password: '',
             consent: false,
             roles: [],
@@ -321,6 +323,12 @@ Page({
   closeSecurity() {
     if (this.data.busy || this.commandBusy) return;
     this.setData({ securityOpen: false });
+  },
+  workspace(e) {
+    if (this.data.busy || this.commandBusy) return;
+    const key = e.currentTarget.dataset.key;
+    if (key === 'personal' || (key === 'work' && this.data.roles.length))
+      this.setData({ workspaceTab: key });
   },
   copyMemberId() {
     if (

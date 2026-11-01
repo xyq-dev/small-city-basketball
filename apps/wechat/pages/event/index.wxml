@@ -1,3 +1,4 @@
+<scb-header title="赛事详情" back="{{true}}"/>
 <view class="page event-page">
   <view wx:if="{{loading && !event}}" class="public-panel public-state">
     <view class="state-tag">赛事观赛</view>

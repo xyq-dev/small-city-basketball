@@ -235,7 +235,7 @@ test('exhausted unknown insurance resumes only a REFRESH of the original order a
   const html = renderWxml(
     fs
       .readFileSync(path.join(root, 'pages/insurance/index.wxml'), 'utf8')
-      .replace(/<scb-header[^>]*\/>/, ''),
+      .replace(/<scb-(?:header|steps|state)\b[^>]*\/>/g, ''),
     h.page.data,
   );
   assert.ok(html.includes('自动核对已暂停'));

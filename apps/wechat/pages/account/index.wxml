@@ -1,18 +1,21 @@
+<scb-header title="我的" back="{{false}}"/>
 <view class="page account-page {{!user && !loading ? 'account-login' : ''}}">
   <view wx:if="{{loading}}" class="card account-loading" role="status"><view class="subtitle">正在核对当前账号</view><view class="muted">读取当前登录状态与微信服务能力，请稍候。</view></view>
   <block wx:else>
     <view wx:if="{{message}}" class="notice account-feedback {{messageTone==='error' ? 'danger' : messageTone==='success' ? 'success' : ''}}" role="{{messageTone==='error' ? 'alert' : 'status'}}">{{message}}</view>
     <block wx:if="{{user && !securityOpen}}">
       <view class="hero account-hero"><view class="title">我的球赛主场</view><view class="muted">{{user.displayName}} · 按实际权限进入</view></view>
+      <view class="workflow-tabs"><button class="{{workspaceTab!=='work' ? 'primary' : 'secondary'}}" data-key="personal" bindtap="workspace" disabled="{{busy}}">个人中心</button><button wx:if="{{roles.length}}" class="{{workspaceTab==='work' ? 'primary' : 'secondary'}}" data-key="work" bindtap="workspace" disabled="{{busy}}">角色工作台</button></view>
+      <view wx:if="{{workspaceTab==='work'}}" class="card"><view class="subtitle">当前授权工作台</view><view class="muted">{{roleSummary}}</view><view class="small muted">每个工作入口会重新核对资源权限。</view><button data-page="watch" bindtap="go" disabled="{{busy}}">选择赛事并管理</button><button data-page="scoring-tasks" bindtap="go" disabled="{{busy}}">记分与独立赛果确认</button><button class="quiet" bindtap="showSecurity" disabled="{{busy}}">账号与隐私</button></view>
       <view wx:if="{{hasReturn}}" class="account-continue"><button class="primary" bindtap="continue" disabled="{{busy}}">继续刚才的操作</button></view>
-      <view class="menu-group">
+      <view wx:if="{{workspaceTab!=='work'}}" class="menu-group">
         <view class="menu-title">赛事</view>
         <view class="menu-row" data-page="watch" bindtap="go"><scb-icon name="trophy" size="20"/><view class="menu-text"><view>我的赛事</view><view class="menu-sub">{{roles.length ? roleSummary : '暂无机构赛事身份，可打开主办方分享的观赛链接'}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view wx:if="{{roles.length}}" class="menu-row" data-page="watch" bindtap="go"><scb-icon name="calendar" size="20"/><view class="menu-text"><view>赛事管理</view><view class="menu-sub">选择赛事后进入排赛、晋级发布、改期与比赛媒体</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view wx:if="{{roles.length}}" class="menu-row" data-page="scoring-tasks" bindtap="go"><scb-icon name="clock" size="20"/><view class="menu-text"><view>记分与赛果确认</view><view class="menu-sub">被分配或可管理的比赛</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view class="menu-row" data-page="follows" bindtap="go"><scb-icon name="chat" size="20"/><view class="menu-text"><view>我的关注</view><view class="menu-sub">收藏公开赛事，微信提醒须本人逐次选择订阅</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
-      <view class="menu-group">
+      <view wx:if="{{workspaceTab!=='work'}}" class="menu-group">
         <view class="menu-title">球队</view>
 <view class="menu-row" data-page="recruitment" bindtap="go"><view class="menu-text"><view>本届赛事申请与邀请</view><view class="menu-sub">公开招募报名、我的申请和本届邀请</view></view></view>
         <view class="menu-row" data-page="teams" bindtap="go"><scb-icon name="users" size="20"/><view class="menu-text"><view>我的球队与本届报名</view><view class="menu-sub">{{teamCount ? '可管理 ' + teamCount + ' 支球队' : '接受球队邀请后在此管理'}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
@@ -22,7 +25,7 @@
         <view class="menu-row" data-page="team-join" bindtap="go"><scb-icon name="check" size="20"/><view class="menu-text"><view>加入球队与成员认领</view><view class="menu-sub">使用加入码，或接受发给本人的认领</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view class="menu-row" data-page="team-request" bindtap="go"><scb-icon name="users" size="20"/><view class="menu-text"><view>申请建队</view><view class="menu-sub">使用机构分享的申请入口，查看申请进度</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
-      <view wx:if="{{managedOrgs.length}}" class="menu-group">
+      <view wx:if="{{workspaceTab==='work' && managedOrgs.length}}" class="menu-group">
         <view class="menu-title">机构管理</view>
         <block wx:for="{{managedOrgs}}" wx:key="id">
 <view class="menu-row" data-page="trade-manage" data-org="{{item.id}}" bindtap="go"><view class="menu-text"><view>收款条款与资金管理</view><view class="menu-sub">{{item.name}} · 报名费、保证金与订单</view></view></view>
@@ -36,13 +39,13 @@
           <view class="menu-row" data-page="seasons" data-org="{{item.id}}" bindtap="go"><scb-icon name="chart" size="20"/><view class="menu-text"><view>私有赛季管理</view><view class="menu-sub">{{item.name}} · 仅机构内已授权统计</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         </block>
       </view>
-      <view class="menu-group">
+      <view wx:if="{{workspaceTab!=='work'}}" class="menu-group">
         <view class="menu-title">我的赛季</view>
 <view class="menu-row" data-page="public-archives" bindtap="go"><view class="menu-text"><view>长期公开档案与授权</view><view class="menu-sub">球队／球员公共主页、本人逐项同意</view></view></view>
 <view class="menu-row" data-page="public-archive" bindtap="go"><view class="menu-text"><view>公开跨届榜单</view></view></view>
         <view class="menu-row" data-page="season-grants" bindtap="go"><scb-icon name="chart" size="20"/><view class="menu-text"><view>私有赛季授权与本人数据</view><view class="menu-sub">本人同意后计入，可查看或撤销授权</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
-      <view class="menu-group">
+      <view wx:if="{{workspaceTab!=='work'}}" class="menu-group">
         <view class="menu-title">撮合、派单与培训</view>
 <view class="menu-row" data-page="matching" bindtap="go"><view class="menu-text"><view>全国撮合与合作意向</view><view class="menu-sub">按明确需求筛选，双方确认后转预约</view></view></view>
 <view class="menu-row" data-page="dispatch" bindtap="go"><view class="menu-text"><view>跨城工作人员派单</view><view class="menu-sub">接单、差旅报价与异常补位</view></view></view>
@@ -51,7 +54,7 @@
         <view class="menu-row" data-page="player-center" bindtap="go"><scb-icon name="user" size="20"/><view class="menu-text"><view>本人球员中心与收到的预约</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
         <view class="menu-row" data-page="performance" bindtap="go"><scb-icon name="chart" size="20"/><view class="menu-text"><view>我的比赛数据授权</view><view class="menu-sub">本人同意与主办方数据提名</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
       </view>
-      <view class="menu-group">
+      <view wx:if="{{workspaceTab!=='work'}}" class="menu-group">
         <view class="menu-title">账号</view>
 <view class="small muted">我的账号编号（UUID）</view><view class="account-uuid" selectable="true">{{user.id}}</view>
 <button class="quiet" bindtap="copyMemberId" disabled="{{busy}}">复制本人账号编号，供监护邀请或授权配置</button>

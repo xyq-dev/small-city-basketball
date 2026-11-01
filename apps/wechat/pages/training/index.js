@@ -3,6 +3,14 @@ const ui = require('../../utils/ui');
 const training = require('../../utils/training');
 Page({
   data: {
+    viewTab: 'catalog',
+    signupStep: 'course',
+    mineLoaded: false,
+    mineLoading: false,
+    signupSteps: [
+      { key: 'course', label: '课程班次' },
+      { key: 'review', label: '本人资料与合同' },
+    ],
     items: [],
     mine: [],
     detail: null,
@@ -63,6 +71,13 @@ Page({
     this._writeToken = null;
     this.setData({
       mine: [],
+      detail: null,
+      viewTab: 'catalog',
+      signupStep: 'course',
+      mineLoaded: false,
+      mineLoading: false,
+      enabled: false,
+      waitlist: false,
       enrollment: null,
       isLearner: false,
       pending: null,
@@ -108,15 +123,24 @@ Page({
   },
   async loadMine() {
     if (this.data.busy) return;
+    this.setData({
+      viewTab: 'mine',
+      detail: null,
+      enrollment: null,
+      makeup: null,
+      mineLoading: true,
+    });
     try {
       const s = await this.identify();
       if (!s) return;
       const g = this._generation;
       const r = await training.read('/v1/training/mine');
       if (this.live(g) && this._actor === s.user.id)
-        this.setData({ mine: r.items.map(training.enrollment) });
+        this.setData({ mine: r.items.map(training.enrollment), mineLoaded: true });
     } catch (e) {
       this.setData({ error: ui.message(e) });
+    } finally {
+      if (this._alive && !this._hidden) this.setData({ mineLoading: false });
     }
   },
   select(e) {
@@ -129,6 +153,9 @@ Page({
       if (this.live(g))
         this.setData({
           detail: training.cohort(r),
+          enrollment: null,
+          signupStep: 'course',
+          viewTab: 'catalog',
           adult: false,
           accepted: false,
           chargeConsent: false,
@@ -149,6 +176,8 @@ Page({
       if (this.live(g) && this._actor === s.user.id)
         this.setData({
           enrollment: training.enrollment(r),
+          detail: null,
+          viewTab: 'mine',
           isLearner: r.learnerUserId === s.user.id,
           makeup: null,
           makeupLoading: false,
@@ -156,6 +185,44 @@ Page({
     } catch (e) {
       this.setData({ error: ui.message(e) });
     }
+  },
+  showCatalog() {
+    if (this.data.busy) return;
+    this._cohort = '';
+    this._enrollment = '';
+    this.setData({
+      viewTab: 'catalog',
+      detail: null,
+      enrollment: null,
+      makeup: null,
+      signupStep: 'course',
+      adult: false,
+      accepted: false,
+      chargeConsent: false,
+    });
+  },
+  backToList() {
+    if (this.data.busy) return;
+    this._cohort = '';
+    this._enrollment = '';
+    this.setData({
+      detail: null,
+      enrollment: null,
+      makeup: null,
+      signupStep: 'course',
+      adult: false,
+      accepted: false,
+      chargeConsent: false,
+    });
+  },
+  signupStep(e) {
+    if (this.data.busy || this.data.pending || !this.data.detail) return;
+    const key = e.detail.key;
+    if (['course', 'review'].includes(key)) this.setData({ signupStep: key });
+  },
+  reviewSignup() {
+    if (this.data.busy || this.data.pending || !this.data.detail) return;
+    this.setData({ signupStep: 'review', adult: false, accepted: false, chargeConsent: false });
   },
   input(e) {
     const key = e.currentTarget.dataset.field;
@@ -187,6 +254,8 @@ Page({
         if (this._alive && !this._hidden && ui.held(this, token) && this._actor === actor)
           this.setData({
             enrollment: training.enrollment(n),
+            detail: null,
+            viewTab: 'mine',
             isLearner: n.learnerUserId === actor,
             makeup: null,
             makeupLoading: false,

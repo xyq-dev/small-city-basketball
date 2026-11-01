@@ -118,3 +118,85 @@ test('matching new actor cannot reopen another actor draft, scope, quote or char
     /private previous-actor|private negotiated|private-region|private merchant/,
   );
 });
+
+test('training separates course reading from explicit adult and frozen-charge review without writing', () => {
+  const h = page('training');
+  h.page.setData({
+    enabled: true,
+    detail: {
+      id: 'cohort',
+      title: '合成成人短班',
+      totalFen: 96000,
+      amount: '¥960.00',
+      termsText: '合成冻结合同',
+      sessions: [],
+      capabilities: { canEnroll: true, paidEnrollmentEnabled: true },
+    },
+    adult: true,
+    accepted: true,
+    chargeConsent: true,
+  });
+  assert.doesNotMatch(markup('training', h.page.data), /data-mini-bindtap="enroll"/);
+  h.page.reviewSignup();
+  assert.equal(h.page.data.adult, false);
+  assert.equal(h.page.data.accepted, false);
+  assert.equal(h.page.data.chargeConsent, false);
+  let html = markup('training', h.page.data);
+  let submit = html.match(/<button[^>]*data-mini-bindtap="enroll"[^>]*>/);
+  assert.ok(submit);
+  assert.match(submit[0], /disabled/);
+  assert.match(html, /青少年招生与培训专用监护授权尚未开放/);
+  h.page.consent({ detail: { value: ['adult', 'terms', 'payment'] } });
+  html = markup('training', h.page.data);
+  submit = html.match(/<button[^>]*data-mini-bindtap="enroll"[^>]*>/);
+  assert.doesNotMatch(submit[0], /disabled/);
+  assert.equal(h.wx.calls.filter((x) => x.type === 'request').length, 0);
+  h.page.setData({ pending: { body: { commandId: 'original-training' } } });
+  h.page.backToList();
+  assert.equal(h.page.data.pending.body.commandId, 'original-training');
+  assert.equal(h.page.data.detail, null);
+  assert.equal(h.page.data.chargeConsent, false);
+});
+test('training workspace separates teaching, scheduling and refund review without consuming a class', () => {
+  const h = page('training-manage');
+  h.page.setData({
+    workspace: {
+      capabilities: { enabled: true },
+      provider: { name: '合成机构', status: 'APPROVED' },
+      coaches: [],
+      courses: [],
+      cohorts: [],
+      enrollments: [],
+    },
+    teaching: [
+      { id: 'lesson', title: '合成教练课表', time: '合成日期09:00', stateLabel: '待上课' },
+    ],
+    reason: 'private grounds',
+  });
+  h.page.manageTab(tap('teaching'));
+  let html = markup('training-manage', h.page.data);
+  assert.match(html, /合成教练课表/);
+  assert.doesNotMatch(html, /保存课程/);
+  h.page.manageTab(tap('setup'));
+  html = markup('training-manage', h.page.data);
+  assert.match(html, /保存课程/);
+  assert.doesNotMatch(html, /合成教练课表/);
+  h.page.manageTab(tap('reviews'));
+  assert.match(markup('training-manage', h.page.data), /暂无待核对报名/);
+  assert.equal(h.wx.calls.filter((x) => x.type === 'request').length, 0);
+  h.page.setData({
+    address: 'private address',
+    price: '900',
+    termsText: 'private terms',
+    orgId: 'private org',
+    isOperator: true,
+  });
+  h.page.onSessionReset();
+  assert.equal(h.page.data.workspace, null);
+  assert.equal(h.page.data.reason, '');
+  assert.equal(h.page.data.address, '');
+  assert.equal(h.page.data.price, '0.00');
+  assert.equal(h.page.data.termsText, '');
+  assert.equal(h.page.data.orgId, '');
+  assert.equal(h.page.data.isOperator, false);
+});

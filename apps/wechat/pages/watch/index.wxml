@@ -1,3 +1,4 @@
+<scb-header title="赛事" back="{{false}}"/>
 <view class="page watch-page">
   <view class="watch-intro"><view class="title">小城市，也有大主场</view><view class="watch-copy">查看你参与的赛事、赛程、排名与数据；也可以打开主办方公开的观赛入口。</view></view>
 

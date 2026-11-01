@@ -309,6 +309,7 @@ test('native conditions require explicit braces and actually hide management and
   const denied = renderWxml(controls, h.page.data);
   assert.doesNotMatch(denied, /批准直播与所选录像用途|撤销直播与录像授权/);
   assert.match(denied, /合成未准入/);
+  const mediaControls = media.replace(/<scb-(?:header|steps|state)\b[^>]*\/>/g, '<view/>');
   const data = {
     session: snapshot(),
     jobs: [],
@@ -327,10 +328,13 @@ test('native conditions require explicit braces and actually hide management and
     pending: false,
   };
   assert.doesNotMatch(
-    renderWxml(media, data),
+    renderWxml(mediaControls, data),
     /录像时间校准|独立审核并公开产物|按有效得分生成集锦/,
   );
-  assert.match(renderWxml(media, { ...data, canManage: true }), /录像时间校准|独立审核并公开产物/);
+  assert.match(
+    renderWxml(mediaControls, { ...data, canManage: true }),
+    /录像时间校准|独立审核并公开产物/,
+  );
   h.page.onUnload();
 });
 

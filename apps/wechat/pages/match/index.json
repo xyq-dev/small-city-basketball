@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "比赛详情" }
+{
+  "navigationBarTitleText": "比赛详情",
+  "navigationStyle": "custom"
+}

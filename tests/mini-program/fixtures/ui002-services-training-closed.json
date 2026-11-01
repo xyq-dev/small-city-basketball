@@ -1,0 +1,11 @@
+{
+  "name": "ui002-services-training-closed",
+  "route": "pages/training/index",
+  "state": "synthetic-training-closed",
+  "figmaNode": "43:1212",
+  "designSource": "UI001 high fidelity fields/cards with current adult-only API semantics; no production data",
+  "expectText": ["培训招生尚未开放", "青少年招生与课包暂未开放"],
+  "data": {
+    "enabled": false
+  }
+}

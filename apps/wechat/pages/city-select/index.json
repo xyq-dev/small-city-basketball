@@ -1,3 +1,4 @@
 {
-  "navigationBarTitleText": "选择地区"
+  "navigationBarTitleText": "选择地区",
+  "navigationStyle": "custom"
 }

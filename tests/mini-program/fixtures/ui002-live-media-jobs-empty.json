@@ -1,0 +1,17 @@
+{
+  "name": "ui002-live-media-jobs-empty",
+  "route": "pages/media-jobs/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "designSource": "UI001 design + current native route; synthetic static compatibility only, not real channel acceptance",
+  "expectText": ["录制产物与任务", "暂无当前可用媒体产物", "已核验产物与授权"],
+  "data": {
+    "jobs": [],
+    "artifacts": [],
+    "canManage": false,
+    "loading": false,
+    "busy": false,
+    "pending": false,
+    "notice": "合成空媒体工作台。"
+  }
+}

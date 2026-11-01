@@ -5,10 +5,10 @@
   <scb-state wx:if="{{loading}}" kind="loading" title="正在读取直播工作台" description="以云端当前授权与频道记录为准。"/>
   <view wx:if="{{error}}" class="notice warning">{{error}}</view>
   <view wx:if="{{notice}}" class="notice">{{notice}}</view>
-  <scb-state wx:if="{{pending}}" kind="pending" title="原操作结果待核对" description="已保留原编号。核对完成前不会创建第二次采集或停流请求。" action-text="核对原操作结果" busy="{{busy}}" bindaction="retry"/>
+  <scb-state wx:if="{{pending}}" kind="unknown" title="原操作结果待核对" description="已保留原编号。核对完成前不会创建第二次采集或停流请求。" action-text="核对原操作结果" busy="{{busy}}" bindaction="retry"/>
   <button class="secondary" bindtap="load" disabled="{{loading || busy}}">刷新云端状态</button>
   <view id="live-setup" class="workflow-section">
-    <scb-state wx:if="{{capabilities && !capabilities.providerReady}}" kind="disabled" title="正式能力尚未开放" description="当前不能新建或开始采集；已有直播和原操作可继续核对。"/>
+    <scb-state wx:if="{{capabilities && !capabilities.providerReady}}" kind="closed" title="正式能力尚未开放" description="当前不能新建或开始采集；已有直播和原操作可继续核对。"/>
     <view wx:if="{{capabilities && !capabilities.providerReady}}" class="status-banner"><view wx:for="{{capabilities.blockers}}" wx:key="*this">{{item}}</view></view>
     <view wx:if="{{!session || session.desired === 'STOPPED'}}" class="card">
       <view class="subtitle">创建本场直播</view>

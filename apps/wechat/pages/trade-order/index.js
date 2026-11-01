@@ -16,6 +16,12 @@ Page({
     reason: '',
     evidence: '',
     noCharge: false,
+    activeSection: 'summary',
+    workflowSteps: [
+      { key: 'summary', label: '金额与收款方' },
+      { key: 'payments', label: '原付款核对' },
+      { key: 'resolution', label: '退款与扣减' },
+    ],
   },
   onLoad(q) {
     this._alive = true;
@@ -108,6 +114,16 @@ Page({
     const v = String(this.data.reason || '').trim();
     if (v.length < 4 || v.length > 1000) throw Error('请填写4至1000字的真实说明');
     return v;
+  },
+  changeSection(e) {
+    const key = e.detail.key;
+    if (this.data.busy || !this.data.workflowSteps.some((item) => item.key === key)) return;
+    this.setData({ activeSection: key });
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#funds-' + key, duration: 200 });
+  },
+  fundingProgress() {
+    this.changeSection({ detail: { key: 'resolution' } });
   },
   input(e) {
     if (!this.data.busy && ['amount', 'reason', 'evidence'].includes(e.currentTarget.dataset.field))

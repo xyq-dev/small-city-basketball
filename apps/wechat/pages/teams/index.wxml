@@ -1,3 +1,4 @@
+<scb-header title="球队" back="{{false}}"/>
 <view class="page teams-page">
   <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">暂时无法读取球队</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice warning">{{message}}</view>

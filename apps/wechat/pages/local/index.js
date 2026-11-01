@@ -29,6 +29,7 @@ Page({
       { value: 10000, label: '10公里' },
     ],
     radiusIndex: 2,
+    filtersOpen: false,
     mapVisible: false,
     mapCenter: null,
     mapScale: 13,
@@ -54,6 +55,10 @@ Page({
     pending: null,
     pendingError: '',
     loginRequired: false,
+  },
+  toggleFilters() {
+    if (!this.data.busy && !this.data.pending && !this.data.pendingError)
+      this.setData({ filtersOpen: !this.data.filtersOpen });
   },
   onLoad(query) {
     this._alive = true;

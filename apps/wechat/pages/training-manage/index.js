@@ -3,6 +3,7 @@ const ui = require('../../utils/ui');
 const training = require('../../utils/training');
 Page({
   data: {
+    manageTab: 'cohorts',
     organizations: [],
     orgIndex: 0,
     orgId: '',
@@ -71,6 +72,33 @@ Page({
     this._writeToken = null;
     this.setData({
       workspace: null,
+      manageTab: 'cohorts',
+      reason: '',
+      providerName: '',
+      providerEvidence: '',
+      coachUserId: '',
+      coachName: '',
+      coachEvidence: '',
+      courseTitle: '',
+      courseDescription: '',
+      cohortTitle: '',
+      address: '',
+      termsText: '',
+      sessions: [],
+      orgIndex: 0,
+      courseIndex: 0,
+      courtIndex: 0,
+      coachIndex: 0,
+      capacity: '8',
+      price: '0.00',
+      qualifiedUntil: '',
+      lessonDate: '',
+      startTime: '',
+      endTime: '',
+      cutoffIndex: 0,
+      organizations: [],
+      orgId: '',
+      isOperator: false,
       teaching: [],
       coachProfiles: [],
       roster: null,
@@ -107,6 +135,7 @@ Page({
           stateLabel: training.label(x.state),
         })),
         coachProfiles: mine.coachProfiles,
+        ...(org ? {} : { manageTab: 'teaching' }),
       });
       if (org) {
         const workspace = await training.read('/v1/orgs/' + training.id(org) + '/training');
@@ -124,6 +153,19 @@ Page({
       if (this.live(g)) this.setData({ error: ui.message(e) });
     } finally {
       if (this.live(g)) this.setData({ loading: false });
+    }
+  },
+  manageTab(e) {
+    if (this.data.busy) return;
+    const key = e.currentTarget.dataset.key;
+    if (!['teaching', 'cohorts', 'reviews', 'setup'].includes(key)) return;
+    this._session = '';
+    this.setData({ manageTab: key, roster: null, enrollment: null });
+  },
+  closeDetail() {
+    if (!this.data.busy) {
+      this._session = '';
+      this.setData({ roster: null, enrollment: null });
     }
   },
   input(e) {
@@ -337,6 +379,8 @@ Page({
         r = await training.read('/v1/training/sessions/' + training.id(id) + '/roster');
       if (actor === this._actor && !this._hidden)
         this.setData({
+          manageTab: 'teaching',
+          enrollment: null,
           roster: {
             ...r,
             session: {
@@ -392,7 +436,7 @@ Page({
       const actor = this._actor,
         r = await training.read('/v1/training/enrollments/' + training.id(id));
       if (actor === this._actor && !this._hidden)
-        this.setData({ enrollment: training.enrollment(r) });
+        this.setData({ enrollment: training.enrollment(r), roster: null, manageTab: 'reviews' });
     } catch (e) {
       this.setData({ error: ui.message(e) });
     }

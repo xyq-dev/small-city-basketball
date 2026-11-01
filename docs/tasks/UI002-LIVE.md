@@ -28,3 +28,15 @@ root 单写全局 token/组件与导航、汇总、API及共享文件。每片�
 `node --test apps/wechat/test/e01-streaming.test.cjs apps/wechat/test/ui002-live.test.cjs apps/wechat/test/native-structure.test.cjs`：87/87 通过。新增关闭态不出网/不新建恢复记录、关闭后旧停流命令同编号恢复、步骤跳转无业务请求三项。旧直播控制测试只隔离新增静态组件壳，仍完整解析原 WXML 且保持管理/采集分支检查。
 
 直接 JS 格式与 `git diff --check` 通过。root 共享组件尚待整合，实际三宽浏览器、原生微信及真实渠道未执行。本片本地提交后交 root 同步，再续保险/资金等页。
+
+## 检查点2
+
+首片 `e059d72` 已由 root 同步远端 `feat/ui002-integration@1714a04f1acfb9477c806136f9797ed3fe8af4f6`。本分支 cherry-pick root 基础 `e6c8fda` 为测试依赖（本地 `f1472b2`，不重复交付）。
+
+保险按办理方式、报价、原单进度分段并固定已有保单入口；付款与承保分开用中文展示，明确关闭时新报价和购买不会出网。资金保留所有原操作，新增真实金额摘要、原付款及退款扣减本页导航。媒体页增加任务/产物分段和空态。scb-state kind 已对齐 closed/unknown。
+
+6 枚 Figma 原始 SVG 下载到各页 assets；根尺寸盾/播放/时钟/统计 22×22、箭头16×16，调用点明确相同逻辑尺寸，文件非空，无临时资源 URL 留在运行代码。
+
+新增7个合成夹具涵盖直播关闭/未知、保险关闭/承保未知、资金冲突及媒体空/有产物。真实模板 320/390/430 的21次静态展开和本地资产检查通过；不等于浏览器几何或微信真机。
+
+定向 `ui002-live`、`e01-streaming`、`e03-insurance`、`e04-trade`、`native-structure`：116/116 通过；格式与diff检查通过。正式渠道、浏览器三宽及真机未执行。下一片覆盖其余角色页、规则说明和全部22路由夹具。

@@ -1,3 +1,4 @@
+<scb-header title="选择浏览地区" back="{{true}}"/>
 <view class="page city-page">
   <view class="title">{{organizer ? '选择赛事标准地区' : '选择浏览地区'}}</view>
   <view class="muted">{{organizer ? '只用于本次目录设置，不改变首页浏览地区、赛事场馆或订单地点。' : '当前：' + label + ' · ' + source + '。仅筛选公开赛事，不修改个人资料或订单地点。'}}</view>
