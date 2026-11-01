@@ -3,7 +3,12 @@
   "route": "pages/account/index",
   "state": "synthetic-populated",
   "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
-  "expectText": ["我的成员关系", "加入球队与成员认领", "私有赛季授权与本人数据", "我的关注"],
+  "expectText": [
+    "当前角色工作台",
+    "暂无当前机构或赛事身份",
+    "尚无可进入的授权工作入口",
+    "未获授权的采集与交付保持关闭"
+  ],
   "expectAbsentText": ["机构管理", "私有赛季管理", "建队申请审批"],
   "data": {
     "loading": false,

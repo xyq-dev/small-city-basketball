@@ -97,19 +97,27 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
   async function openRequest(id: string) {
     const gen = beginView('request', id);
     const token = reads.next();
-    const detail = await api.dispatchRequest(id);
-    if (viewGen.current !== gen || !reads.current(token)) return;
-    setSelected(detail.request);
-    setOffers(detail.offers);
-    setOffer(null);
+    try {
+      const detail = await api.dispatchRequest(id);
+      if (viewGen.current !== gen || !reads.current(token)) return;
+      setSelected(detail.request);
+      setOffers(detail.offers);
+      setOffer(null);
+    } catch {
+      if (viewGen.current === gen) resource.reload();
+    }
   }
   async function openOffer(id: string) {
     const gen = beginView('offer', id);
     const token = reads.next();
-    const row = await api.dispatchOffer(id);
-    if (viewGen.current !== gen || !reads.current(token)) return;
-    setOffer(row);
-    setSelected(null);
+    try {
+      const row = await api.dispatchOffer(id);
+      if (viewGen.current !== gen || !reads.current(token)) return;
+      setOffer(row);
+      setSelected(null);
+    } catch {
+      if (viewGen.current === gen) resource.reload();
+    }
   }
   function sameDetail(kind: 'request' | 'offer', id: string) {
     return detailRef.current?.kind === kind && detailRef.current.id === id;
@@ -175,10 +183,7 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
             <ul>
               {data.requests.map((row) => (
                 <li key={row.id}>
-                  <button
-                    type="button"
-                    onClick={() => void openRequest(row.id).catch(() => resource.reload())}
-                  >
+                  <button type="button" onClick={() => void openRequest(row.id)}>
                     {requestLabels[row.status] ?? row.status} · {row.serviceAddress}
                   </button>
                   <Version value={row.version} />
@@ -192,10 +197,7 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
             <ul>
               {data.offers.map((row) => (
                 <li key={row.id}>
-                  <button
-                    type="button"
-                    onClick={() => void openOffer(row.id).catch(() => resource.reload())}
-                  >
+                  <button type="button" onClick={() => void openOffer(row.id)}>
                     {row.listingTitle} · {offerLabels[row.status] ?? row.status}
                   </button>
                   <Version value={row.version} />

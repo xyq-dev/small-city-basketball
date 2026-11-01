@@ -483,6 +483,43 @@ describe('dispatch admin', () => {
     expect(screen.getByLabelText('需求详情')).not.toHaveTextContent('旧馆回填');
   });
 
+  test('a failed open of the first request does not reload over the request opened later', async () => {
+    let rejectFirst: (error: Error) => void = () => undefined;
+    let firstSettled = false;
+    const firstOpen = new Promise<never>((_resolve, reject) => {
+      rejectFirst = reject;
+    }).finally(() => {
+      firstSettled = true;
+    });
+    let firstReads = 0;
+    const request = vi.fn(async (path: string) => {
+      if (path.includes('/requests/req-1')) {
+        firstReads += 1;
+        if (firstReads === 1) return firstOpen;
+      }
+      if (path.includes('/requests/req-2')) {
+        return envelope({
+          request: { ...requestRow(), id: 'req-2', status: 'INVITING', serviceAddress: '新馆' },
+          offers: [],
+        });
+      }
+      return envelope({
+        ...dispatchData(),
+        requests: [requestRow(), { ...requestRow(), id: 'req-2', serviceAddress: '客场馆' }],
+      });
+    });
+    render(<DispatchOperationsPage context={context(request)} />);
+    fireEvent.click(await screen.findByRole('button', { name: /合成馆/ }));
+    fireEvent.click(screen.getByRole('button', { name: /客场馆/ }));
+    expect(await screen.findByLabelText('需求详情')).toHaveTextContent('新馆');
+    rejectFirst(new Error('late open failure'));
+    await waitFor(() => expect(firstSettled).toBe(true));
+    await waitFor(() => {
+      expect(screen.queryByText('正在读取最新资料…')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('需求详情')).toHaveTextContent('新馆');
+    });
+  });
+
   test('travel review shows the itinerary and does not send until that evidence is checked', async () => {
     const quote = {
       serviceMinor: 7000,

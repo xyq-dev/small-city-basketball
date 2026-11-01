@@ -138,11 +138,11 @@
         <view class="booking-form">
           <button class="booking-field" bindtap="openEditor" disabled="{{busy}}">
             <text class="booking-field-label">代表球队</text>
-            <text class="booking-field-value">{{teamName || '请选择授权球队'}}</text>
+            <text class="booking-field-value">{{teamName || '请选择授权球队'}}{{eventName ? ' · ' + eventName : ''}}</text>
           </button>
           <button class="booking-field" bindtap="openEditor" disabled="{{busy}}">
             <text class="booking-field-label">时间与地点</text>
-            <text wx:if="{{slots.length && slots[0].venue}}" class="booking-field-value">{{slots.length > 1 ? '共' + slots.length + '场 · ' : ''}}{{slots[0].conditional ? '条件意向 · 不占档' : slots[0].dayLabel + ' ' + slots[0].scheduleLabel}}｜{{slots[0].venue}}</text>
+            <text wx:if="{{slots.length && slots[0].venue}}" class="booking-field-value">{{slots.length > 1 ? '共' + slots.length + '场 · ' : ''}}{{slots[0].conditional ? '条件意向 · 不占档' : (slots[0].dayLabel ? slots[0].dayLabel + ' ' + slots[0].scheduleLabel : slots[0].startDate + ' ' + slots[0].startTime)}}｜{{slots[0].venue}}</text>
             <text wx:else class="booking-field-value">请补齐本次合作的时间与具体地点</text>
           </button>
         </view>

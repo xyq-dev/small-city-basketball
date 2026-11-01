@@ -4,7 +4,7 @@
   "state": "ready",
   "figmaNode": "5:1195",
   "syntheticData": true,
-  "expectText": ["林越", "青锋杯", "合成", "下一步 · 核对费用", "安排信息", "报价与条款"],
+  "expectText": ["石鼓青锋", "青锋杯", "合成", "下一步 · 核对费用", "确定场次报价"],
   "data": {
     "loading": false,
     "busy": false,

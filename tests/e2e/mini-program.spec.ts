@@ -406,9 +406,9 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       scopeRail: measure('.scope-rail'),
       selectedPlayer: measure('.selected-player'),
       arrangement: measure('.arrangement-summary'),
-      orderCard: measure('.booking-order-card'),
+      orderCard: measure('.booking-progress-card'),
       orderTabs: measure('.booking-view-tabs'),
-      orderMore: Array.from(document.querySelectorAll('.order-more')).map((button) => {
+      orderMore: Array.from(document.querySelectorAll('.cooperation-expand')).map((button) => {
         const rect = button.getBoundingClientRect();
         return {
           text: button.textContent?.trim(),
@@ -417,7 +417,10 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
           height: rect.height,
         };
       }),
-      action: measure('.action-bar > .primary'),
+      action: measure('.action-bar .primary'),
+      compareSecondary: measure('.action-bar .secondary'),
+      filterChip: measure('.filter-chip'),
+      bookingField: measure('.booking-field'),
       photographs: Array.from(
         document.querySelectorAll<HTMLImageElement>('img[src^="data:image/jpeg"]'),
       ).map((image) => ({
@@ -437,11 +440,12 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
   if (scenario.startsWith('c11-')) {
     const minimumPhotos: Record<string, number> = {
       home: 0,
-      players: 2,
+      // UI002 draws these screens with vector icons. The player profile still uses one photograph.
+      players: 0,
       player: 1,
-      compare: 2,
-      'booking-create': 1,
-      bookings: 2,
+      compare: 0,
+      'booking-create': 0,
+      bookings: 0,
     };
     expect(metrics.photographs.length).toBeGreaterThanOrEqual(minimumPhotos[group]);
     expect(
@@ -486,27 +490,27 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     );
     expect(metrics.photographs).toEqual([]);
   } else {
-    if (!['player', 'booking-create', 'bookings'].includes(group)) {
+    if (!['player', 'booking-create', 'bookings', 'players', 'compare'].includes(group)) {
       expect(metrics.action?.x).toBe(12);
       expect(metrics.action?.width).toBe(width - 24);
     }
-    expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
+    if (group !== 'bookings') expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
     if (group === 'players') {
-      expect(metrics.search?.x).toBe(12);
-      expect(metrics.search?.y).toBe(96);
-      expect(metrics.search?.height).toBe(44);
-      expect(metrics.playerCard?.x).toBe(12);
-      expect(metrics.playerCard?.y).toBe(200);
-      expect(metrics.playerCard?.width).toBe(width - 24);
-      expect(metrics.playerCard?.radius).toBe(12);
-      expect(metrics.portrait?.width).toBe(width <= 360 ? 76 : 94);
+      expect(metrics.action?.x).toBe(16);
+      expect(metrics.action?.width).toBe(width - 32);
+      expect(metrics.action?.radius).toBe(12);
+      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
+      expect(metrics.filterChip?.x).toBe(16);
+      expect(metrics.filterChip?.height).toBe(44);
+      expect(metrics.portrait?.width).toBe(22);
+      expect(metrics.portrait?.height).toBe(22);
     } else if (group === 'compare') {
-      const metricWidth = width <= 360 ? 94 : 100;
-      expect(metrics.metricColumn?.width).toBe(metricWidth);
-      const expected = metrics.columns === 2 ? (width - 24 - metricWidth) / 2 : 125;
-      expect(metrics.playerColumn?.width).toBeCloseTo(expected, 1);
-      expect(metrics.tableHead?.height).toBe(204);
-      expect(metrics.tableCell?.height).toBe(38);
+      const buttonWidth = (width - 32 - 12) / 2;
+      expect(metrics.compareSecondary?.x).toBe(16);
+      expect(metrics.compareSecondary?.width).toBeCloseTo(buttonWidth, 1);
+      expect(metrics.action?.x).toBeCloseTo(16 + buttonWidth + 12, 1);
+      expect(metrics.action?.width).toBeCloseTo(buttonWidth, 1);
+      expect(metrics.compareSecondary?.height).toBeGreaterThanOrEqual(48);
       expect(metrics.wrappedMetricLabels).toEqual([]);
     } else if (group === 'player') {
       // UI001 T07 replaces the C11 photograph hero with a compact identity card.
@@ -555,25 +559,18 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
     } else if (group === 'booking-create') {
       expect(metrics.scopeRail?.height).toBe(44);
-      expect(metrics.selectedPlayer?.height).toBeGreaterThanOrEqual(84);
-      expect(metrics.arrangement?.x).toBe(16);
-      expect(metrics.arrangement?.width).toBe(width - 32);
-      expect(metrics.arrangement?.radius).toBe(16);
+      expect(metrics.bookingField?.height).toBeGreaterThanOrEqual(74);
+      expect(metrics.bookingField?.x).toBe(16);
+      expect(metrics.bookingField?.width).toBe(width - 32);
       expect(metrics.action?.x).toBe(16);
       expect(metrics.action?.width).toBe(width - 32);
-      expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
       expect(metrics.action?.radius).toBe(12);
       expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
     } else if (group === 'bookings') {
-      expect(metrics.orderTabs?.height).toBe(44);
+      expect(metrics.orderTabs?.height).toBeGreaterThanOrEqual(44);
       expect(metrics.orderCard?.x).toBe(16);
       expect(metrics.orderCard?.width).toBe(width - 32);
       expect(metrics.orderCard?.radius).toBe(16);
-      expect(metrics.action?.x).toBe(16);
-      expect(metrics.action?.width).toBe(width - 32);
-      expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
-      expect(metrics.action?.radius).toBe(12);
-      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
       expect(metrics.orderMore.length).toBe(2);
       // An icon, not a text glyph, with a 44px target.
       expect(

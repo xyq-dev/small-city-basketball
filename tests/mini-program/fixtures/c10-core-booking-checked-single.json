@@ -4,7 +4,7 @@
   "state": "review",
   "figmaNode": "34:3248",
   "syntheticData": true,
-  "expectText": ["确认本次预约与费用", "请逐项核对"],
+  "expectText": ["确认事项", "我已核对以上事项并明确同意本次预约规则"],
   "data": {
     "loading": false,
     "busy": false,
