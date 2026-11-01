@@ -150,6 +150,10 @@ Page({
           connected: !!(binding && binding.connected),
           platformOperator: current.platformOperator === true,
           ...roleView(current),
+          workspaceTab:
+            roleView(current).roles.length && this.data.workspaceTab === 'work'
+              ? 'work'
+              : 'personal',
           registerMode: false,
           message: '',
         });

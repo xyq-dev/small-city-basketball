@@ -6,7 +6,7 @@
     <block wx:if="{{user && !securityOpen}}">
       <view class="hero account-hero"><view class="title">我的球赛主场</view><view class="muted">{{user.displayName}} · 按实际权限进入</view></view>
       <view class="workflow-tabs"><button class="{{workspaceTab!=='work' ? 'primary' : 'secondary'}}" data-key="personal" bindtap="workspace" disabled="{{busy}}">个人中心</button><button wx:if="{{roles.length}}" class="{{workspaceTab==='work' ? 'primary' : 'secondary'}}" data-key="work" bindtap="workspace" disabled="{{busy}}">角色工作台</button></view>
-      <view wx:if="{{workspaceTab==='work'}}" class="card"><view class="subtitle">当前授权工作台</view><view class="muted">{{roleSummary}}</view><view class="small muted">每个工作入口会重新核对资源权限。</view><button data-page="watch" bindtap="go" disabled="{{busy}}">选择赛事并管理</button><button data-page="scoring-tasks" bindtap="go" disabled="{{busy}}">记分与独立赛果确认</button><button class="quiet" bindtap="showSecurity" disabled="{{busy}}">账号与隐私</button></view>
+      <view wx:if="{{workspaceTab==='work' && roles.length}}" class="card"><view class="subtitle">当前授权工作台</view><view class="muted">{{roleSummary}}</view><view class="small muted">每个工作入口会重新核对资源权限。</view><button data-page="watch" bindtap="go" disabled="{{busy}}">选择赛事并管理</button><button data-page="scoring-tasks" bindtap="go" disabled="{{busy}}">记分与独立赛果确认</button><button class="quiet" bindtap="showSecurity" disabled="{{busy}}">账号与隐私</button></view>
       <view wx:if="{{hasReturn}}" class="account-continue"><button class="primary" bindtap="continue" disabled="{{busy}}">继续刚才的操作</button></view>
       <view wx:if="{{workspaceTab!=='work'}}" class="menu-group">
         <view class="menu-title">赛事</view>
