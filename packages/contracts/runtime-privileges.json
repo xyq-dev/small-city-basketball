@@ -212,6 +212,54 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["name", "status", "version", "updated_at"]
     },
+    "dispatch_batches": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "dispatch_command_receipts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "dispatch_events": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "dispatch_holds": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["source_booking_id", "state"]
+    },
+    "dispatch_offers": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "hold_expires_at",
+        "quote",
+        "quote_hash",
+        "reason",
+        "source_booking_id",
+        "status",
+        "travel_verified_at",
+        "travel_verified_by",
+        "updated_at",
+        "version"
+      ]
+    },
+    "dispatch_preferences": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["daily_limit", "enabled", "region_ids", "updated_at", "version"]
+    },
+    "dispatch_requests": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "batch_count",
+        "next_batch_at",
+        "reason",
+        "source_booking_id",
+        "status",
+        "updated_at",
+        "version",
+        "winner_offer_id"
+      ]
+    },
     "entries": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": [
@@ -383,6 +431,10 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
     },
+    "insurance_provider_releases": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
     "insurance_quotes": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
@@ -390,6 +442,10 @@
     "insurance_receipts": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
+    },
+    "insurance_reconciliation_cases": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["resolved_at"]
     },
     "knockout_round_publications": {
       "privileges": ["SELECT", "INSERT"],
@@ -530,6 +586,60 @@
     "match_staff": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["role", "status", "updated_at"]
+    },
+    "matching_candidates": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "matching_command_receipts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "matching_demand_slots": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["generation", "state"]
+    },
+    "matching_intents": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "accepted_at",
+        "source_id",
+        "source_kind",
+        "status",
+        "updated_at",
+        "version"
+      ]
+    },
+    "matching_needs": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["latest_run_id", "status", "updated_at", "version"]
+    },
+    "matching_outbox": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["state"]
+    },
+    "matching_runs": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status"]
+    },
+    "matching_slot_assignments": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["active", "ended_at", "retained_cost_fen"]
+    },
+    "matching_supply_preferences": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "allowed_region_ids",
+        "availability",
+        "contact_enabled",
+        "discovery_enabled",
+        "org_id",
+        "owner_id",
+        "region_catalog_version",
+        "region_id",
+        "updated_at",
+        "version"
+      ]
     },
     "media_files": {
       "privileges": ["SELECT", "INSERT"],
@@ -714,6 +824,10 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["status", "version", "court_id", "court_name", "starts_at", "ends_at"]
     },
+    "r6_trade_refund_bindings": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
     "recruitment_applications": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": [
@@ -857,6 +971,42 @@
     "sessions": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["revoked_at"]
+    },
+    "sponsor_commerce_operations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "sponsor_contracts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "sponsor_deliveries": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "sponsor_orders": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "sponsor_recovery_cases": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "sponsor_refund_plans": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "sponsor_return_items": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "sponsor_settlement_batches": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "sponsor_settlement_items": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
     },
     "sponsorship_campaigns": {
       "privileges": ["SELECT", "INSERT"],
@@ -1019,6 +1169,73 @@
     "trade_terms": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["review_reason", "reviewed_at", "reviewed_by", "status", "version"]
+    },
+    "training_attendance": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "training_audit_events": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "training_coaches": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["consented", "reviewed_by", "status", "version"]
+    },
+    "training_cohorts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["state", "version"]
+    },
+    "training_command_receipts": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "training_consumptions": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": [
+        "acknowledged_by",
+        "dispute_reason",
+        "finalization_reason",
+        "reviewed_by",
+        "status",
+        "version"
+      ]
+    },
+    "training_courses": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "training_enrollments": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["hold_expires_at", "state", "trade_order_id", "version"]
+    },
+    "training_guardian_grants": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "training_lesson_entitlements": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["current_session_id", "state", "version"]
+    },
+    "training_providers": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["reviewed_by", "status", "version"]
+    },
+    "training_refund_allocations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["reviewed_by", "status", "trade_refund_id", "version"]
+    },
+    "training_resource_reservations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["active"]
+    },
+    "training_session_coaches": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "training_sessions": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["delivered_at", "delivered_by", "delivery_note", "state", "version"]
     },
     "users": {
       "privileges": ["SELECT", "INSERT"],
@@ -1186,6 +1403,15 @@
     "p05b_reject_history_mutation()": [],
     "p06_overlay_grant_guard()": [],
     "p06_reject_overlay_session_mutation()": [],
+    "r6_dispatch_history_guard()": [],
+    "r6_insurance_reconciliation()": [],
+    "r6_refund_binding_immutable()": [],
+    "r6_sponsor_immutable()": [],
+    "r6_training_append_only()": [],
+    "r6_training_calendar_guard()": [],
+    "r6_training_entitlement_guard()": [],
+    "r6_training_quote_guard()": [],
+    "r6_training_refund_guard()": [],
     "x02_assert_administrative_source(uuid,uuid,jsonb,boolean)": ["EXECUTE"],
     "x02_assert_unstarted(uuid,uuid,uuid,integer)": ["EXECUTE"],
     "x02_can_adjudicate(uuid,uuid,uuid,uuid)": ["EXECUTE"],

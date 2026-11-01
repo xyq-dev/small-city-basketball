@@ -612,7 +612,27 @@ export class TrainingService extends ApplicationService {
       const cohorts = [];
       for (const h of hs) cohorts.push(await this.cohortDto(c, h, manager));
       await this.ensureFreshSession(c, a);
-      return { provider, coaches, courses, cohorts, capabilities: this.capabilities() };
+      const courts = (
+        await c.query(
+          "SELECT id,name FROM courts WHERE org_id=$1 AND status='ACTIVE' ORDER BY name",
+          [orgId],
+        )
+      ).rows;
+      const enrollments = (
+        await c.query(
+          'SELECT id,cohort_id,state,learner_user_id,payer_user_id,version FROM training_enrollments WHERE org_id=$1 ORDER BY created_at DESC LIMIT 100',
+          [orgId],
+        )
+      ).rows;
+      return {
+        provider,
+        coaches,
+        courses,
+        courts,
+        cohorts,
+        enrollments,
+        capabilities: this.capabilities(),
+      };
     });
   }
   private async enrollment(c: PoolClient, id: string, lock = false) {
@@ -631,8 +651,17 @@ export class TrainingService extends ApplicationService {
   private async access(c: PoolClient, a: Actor, n: Row) {
     if (this.participant(a, n)) return false;
     const manage = await this.managed(c, a, n.org_id);
-    if (!manage) throw notFound();
-    return manage;
+    if (
+      !manage &&
+      !(
+        await c.query(
+          "SELECT 1 FROM platform_operators WHERE user_id=$1 AND status='ACTIVE' FOR SHARE",
+          [a.user.id],
+        )
+      ).rowCount
+    )
+      throw notFound();
+    return true;
   }
   private async assigned(c: PoolClient, a: Actor, sessionId: string) {
     if (
@@ -646,8 +675,8 @@ export class TrainingService extends ApplicationService {
       throw forbidden();
   }
   private async reserveLearner(c: PoolClient, n: Row, s: Row) {
-    await c.query(
-      "INSERT INTO training_resource_reservations(id,org_id,session_id,resource_key,starts_at,ends_at,enrollment_id) VALUES($1,$2,$3,$4,$5::timestamptz-($7::integer*interval '1 minute'),$6::timestamptz+($7::integer*interval '1 minute'),$8) ON CONFLICT(session_id,resource_key) DO UPDATE SET active=true,enrollment_id=EXCLUDED.enrollment_id",
+    const saved = await c.query(
+      "INSERT INTO training_resource_reservations(id,org_id,session_id,resource_key,starts_at,ends_at,enrollment_id) VALUES($1,$2,$3,$4,$5::timestamptz-($7::integer*interval '1 minute'),$6::timestamptz+($7::integer*interval '1 minute'),$8)",
       [
         randomUUID(),
         n.org_id,
@@ -659,6 +688,7 @@ export class TrainingService extends ApplicationService {
         n.id,
       ],
     );
+    if (!saved.rowCount) trainingFail('LEARNER_COACH_CONFLICT', '本场授课教练不能作为学员占位');
   }
   private async sessionRoom(c: PoolClient, sid: string, exclude?: string) {
     const r = (
@@ -729,7 +759,7 @@ export class TrainingService extends ApplicationService {
         if (
           (
             await c.query(
-              "SELECT 1 FROM training_enrollments WHERE cohort_id=$1 AND learner_user_id=$2 AND state IN('WAITLISTED','HOLDING','CONFIRMED','PAID_UNALLOCATED')",
+              "SELECT 1 FROM training_enrollments WHERE cohort_id=$1 AND learner_user_id=$2 AND state IN('WAITLISTED','HOLDING','CONFIRMED','PAID_UNALLOCATED','COMPLETED')",
               [cohortId, learner],
             )
           ).rowCount
@@ -782,7 +812,7 @@ export class TrainingService extends ApplicationService {
           adultConfirmed: true,
         };
         await c.query(
-          "INSERT INTO training_enrollments(id,org_id,cohort_id,applicant_user_id,payer_user_id,learner_user_id,adult_confirmed,terms_id,terms_snapshot,total_fen,state,hold_expires_at) VALUES($1,$2,$3,$4,$5,$6,true,$7,$8,$9,$10,CASE WHEN $10='HOLDING' THEN clock_timestamp()+interval '10 minutes' ELSE NULL END)",
+          "INSERT INTO training_enrollments(id,org_id,cohort_id,applicant_user_id,payer_user_id,learner_user_id,adult_confirmed,terms_id,terms_snapshot,total_fen,state,hold_expires_at) VALUES($1,$2,$3,$4,$5,$6,true,$7,$8,$9,$10,CASE WHEN $10='HOLDING' THEN LEAST(clock_timestamp()+interval '10 minutes',(SELECT enrollment_deadline FROM training_cohorts WHERE id=$3)) ELSE NULL END)",
           [
             id,
             org,
@@ -947,7 +977,7 @@ export class TrainingService extends ApplicationService {
               await this.reserveLearner(c, n, s);
             }
             await c.query(
-              "UPDATE training_enrollments SET state='HOLDING',hold_expires_at=clock_timestamp()+interval '10 minutes',version=version+1 WHERE id=$1",
+              "UPDATE training_enrollments SET state='HOLDING',hold_expires_at=LEAST(clock_timestamp()+interval '10 minutes',(SELECT enrollment_deadline FROM training_cohorts WHERE id=training_enrollments.cohort_id)),version=version+1 WHERE id=$1",
               [id],
             );
           } else if (v.action === 'AUTHORIZE_PAYMENT') {
@@ -1035,7 +1065,13 @@ export class TrainingService extends ApplicationService {
         ])
       ).rows;
       await this.ensureFreshSession(c, a);
-      return { session: s, learners, attendance, canManage: manager };
+      const consumptions = (
+        await c.query(
+          'SELECT x.* FROM training_consumptions x JOIN training_lesson_entitlements e ON e.id=x.entitlement_id WHERE e.current_session_id=$1 ORDER BY x.created_at',
+          [id],
+        )
+      ).rows;
+      return { session: s, learners, attendance, consumptions, canManage: manager };
     });
   }
   async sessionCommand(cookie: string | undefined, id: string, raw: unknown) {
@@ -1313,6 +1349,23 @@ export class TrainingService extends ApplicationService {
               'UPDATE training_resource_reservations SET active=false WHERE enrollment_id=$1 AND session_id=$2',
               [n.id, e.current_session_id],
             );
+          if (
+            !(
+              await c.query(
+                "SELECT 1 FROM training_lesson_entitlements WHERE enrollment_id=$1 AND state NOT IN('CONSUMED','REFUNDED') LIMIT 1",
+                [n.id],
+              )
+            ).rowCount
+          )
+            await c.query(
+              "UPDATE training_enrollments SET state='COMPLETED',version=version+1 WHERE id=$1 AND state='CONFIRMED'",
+              [n.id],
+            );
+          if (es === 'MAKEUP_DUE' && n.state === 'COMPLETED')
+            await c.query(
+              "UPDATE training_enrollments SET state='CONFIRMED',version=version+1 WHERE id=$1",
+              [n.id],
+            );
           await this.log(c, a, org, id, 'CONSUMPTION_' + v.action, {
             reason: v.reason,
             previousStatus: x.status,
@@ -1484,6 +1537,18 @@ export class TrainingService extends ApplicationService {
                 [n.id],
               );
           }
+          if (
+            !(
+              await c.query(
+                "SELECT 1 FROM training_lesson_entitlements WHERE enrollment_id=$1 AND state NOT IN('CONSUMED','REFUNDED') LIMIT 1",
+                [n.id],
+              )
+            ).rowCount
+          )
+            await c.query(
+              "UPDATE training_enrollments SET state='COMPLETED',version=version+1 WHERE id=$1 AND state='CONFIRMED'",
+              [n.id],
+            );
           await this.log(c, a, org, id, 'REFUND_' + v.action, { status, reason: v.reason });
           return { enrollmentId: n.id, allocationId: id };
         }),

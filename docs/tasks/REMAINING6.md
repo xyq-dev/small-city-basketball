@@ -1,6 +1,6 @@
 # REMAINING6：六项功能实现
 
-状态：IN_PROGRESS；integration：BRANCH_ONLY（仅开工记录）；日期：2026-11-01 Asia/Shanghai。集成人：当前Codex root。任务来自用户“先开发这些”，业务依据DOC006六份专项。
+状态：IN_PROGRESS；integration：BRANCH_ONLY（代码整合进行中）；日期：2026-11-01 Asia/Shanghai。集成人：当前Codex root。任务来自用户“先开发这些”，业务依据DOC006六份专项。
 
 ## 核验与权限
 
@@ -10,15 +10,15 @@
 
 ## 所有权与依赖
 
-| 子任务 | 独立分支/目录后缀 | 独占模块与迁移 | 当前状态 |
-|---|---|---|---|
-| R6INS | work/r6-insurance / scb-six-insurance | insurance代码与页面，043准入；真实供应商协议另为外部阻塞 | IN_PROGRESS |
-| R6MAP | work/r6-map / scb-six-map | local查询/DTO/原生地图页面；暂不新增迁移 | IN_PROGRESS |
-| R6MATCH | work/r6-matching / scb-six-matching | matching新域/API/页面，044 | IN_PROGRESS |
-| R6DISPATCH | work/r6-dispatch / scb-six-dispatch | dispatch新域/API/页面，045 | IN_PROGRESS |
-| R6TRAIN | work/r6-training / scb-six-training | training新域/API/页面，046 | IN_PROGRESS |
-| R6ADS | work/r6-ads / scb-six-ads | sponsor-commerce新域、多方driver/API/页面，047 | IN_PROGRESS |
-| 集成 | feat/remaining-six / scb-six | app装配、shared contracts索引、trade来源、共享日历048、源事务转换、菜单/恢复/注销及汇总 | IN_PROGRESS |
+| 子任务     | 独立分支/目录后缀                     | 独占模块与迁移                                                                          | 当前状态    |
+| ---------- | ------------------------------------- | --------------------------------------------------------------------------------------- | ----------- |
+| R6INS      | work/r6-insurance / scb-six-insurance | insurance代码与页面，043准入；真实供应商协议另为外部阻塞                                | IN_PROGRESS |
+| R6MAP      | work/r6-map / scb-six-map             | local查询/DTO/原生地图页面；暂不新增迁移                                                | IN_PROGRESS |
+| R6MATCH    | work/r6-matching / scb-six-matching   | matching新域/API/页面，044                                                              | IN_PROGRESS |
+| R6DISPATCH | work/r6-dispatch / scb-six-dispatch   | dispatch新域/API/页面，045                                                              | IN_PROGRESS |
+| R6TRAIN    | work/r6-training / scb-six-training   | training新域/API/页面，046                                                              | IN_PROGRESS |
+| R6ADS      | work/r6-ads / scb-six-ads             | sponsor-commerce新域、多方driver/API/页面，047                                          | IN_PROGRESS |
+| 集成       | feat/remaining-six / scb-six          | app装配、shared contracts索引、trade来源、共享日历048、源事务转换、菜单/恢复/注销及汇总 | IN_PROGRESS |
 
 子任务只写自己的任务/交接，不写CURRENT_STATUS/TASKS。旧迁移001—042冻结；新增迁移在合并前统一检查连续性。LocalServicesService查询部分先由地图子任务负责，源事务提取由root串行接续，其他任务通过明确同事务hook集成，不绕过原业务。
 
@@ -29,4 +29,12 @@
 - 计划依次执行每模块有效单测/原生VM、整合typecheck/format/build、真实PG鉴权/并发/资金/日历、页面真实HTTP与布局、迁移重启及恢复隔离。代码审查与当前HEAD证据通过后才整合。
 - 保险真实供应商、正式商户能力、培训属地经营条件及微信真机属于外部验收，不能用合成驱动替代。未接能力保持关闭，保留可执行已有订单核对义务。
 
-下一步：各子任务提交第一可验证切片；root建立共享交易源及原子源转换适配，按切片同步分支与文档。
+## 第一轮整合检查点
+
+六模块首片及地图完整前端已提交；PLAYER原预约已提取同事务prepare/execute。主干尚未改变，真实PG尚未运行。
+
+集成新增TRAINING_ENROLLMENT/SPONSOR_ORDER交易类型及强制来源adapter，训练合同ID与旧trade_terms外键分离；退款必须使用逐项分配、唯一绑定及派发前复核，广告禁止旧单收款方结算；dispatch冻结报价纳入原LOCAL_BOOKING源。048扩展四类档期双向互斥与过期释放，保留原占位历史。新模块默认关闭，恢复隔离强制关闭。
+
+根定向trade-domain / trade-source-adapter / readiness共26项通过，migration静态检查48连续文件/219表/126函数通过；这是源码检查，非PG迁移成功。各模块具体证据见自身任务卡。菜单、所有生产source桥、广告多方接线、注销隐私、R6恢复覆盖和真实PG仍在整合。
+
+下一步：补齐source与UI接线，开启当前分支隔离CI，修复真实PG/恢复/回归发现的问题，再独立审查。

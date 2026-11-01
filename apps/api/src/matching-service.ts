@@ -107,6 +107,7 @@ interface Source {
   price: number | null;
   slotId: string | null;
   fingerprint: string;
+  settingsVersion?: number;
 }
 export interface MatchingRuntime {
   enabled?: boolean;
@@ -168,7 +169,7 @@ export class MatchingService extends ApplicationService {
   }
   private async authority(c: PoolClient, userId: string, orgId: string, teamId: string | null) {
     const r = await c.query(
-      `SELECT 1 FROM organizations o WHERE o.id=$2 AND o.status='ACTIVE' AND
+      `SELECT 1 FROM organizations o JOIN users au ON au.id=$1 AND au.status='ACTIVE' WHERE o.id=$2 AND o.status='ACTIVE' AND
    (EXISTS(SELECT 1 FROM organization_memberships m WHERE m.org_id=o.id AND m.user_id=$1 AND m.status='ACTIVE' AND m.role IN('ORG_OWNER','ORG_ADMIN'))
     OR ($3::uuid IS NOT NULL AND EXISTS(SELECT 1 FROM team_access_grants g WHERE g.org_id=o.id AND g.team_id=$3 AND g.user_id=$1 AND g.status='ACTIVE')))
    AND ($3::uuid IS NULL OR EXISTS(SELECT 1 FROM teams t WHERE t.org_id=o.id AND t.id=$3))`,
@@ -247,6 +248,7 @@ export class MatchingService extends ApplicationService {
         price,
         slotId: null,
         fingerprint: matchingHash([x.version, x.settings_version, x.availability, price]),
+        settingsVersion: x.settings_version,
       };
     }
     if (p.source_kind === 'TEAM_MATCHUP') {
@@ -328,7 +330,7 @@ export class MatchingService extends ApplicationService {
       );
       if (r.rowCount) return false;
       const booked = await c.query(
-        `SELECT 1 FROM booking_appearances WHERE user_id=$1 AND status IN('REQUESTED','ACCEPTED','ARRIVED','DISPUTED') AND (status<>'REQUESTED' OR expires_at>clock_timestamp()) AND c06_booking_window(report_at,end_at)&&c06_booking_window($2::timestamptz,$3::timestamptz) LIMIT 1`,
+        `SELECT 1 FROM booking_appearances WHERE player_user_id=$1 AND status IN('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED') AND (status<>'REQUESTED' OR expires_at>clock_timestamp()) AND c06_booking_window(report_at,end_at)&&c06_booking_window($2::timestamptz,$3::timestamptz) LIMIT 1`,
         [s.ownerId, w.reportAt, w.endAt],
       );
       if (booked.rowCount) return false;
@@ -567,6 +569,8 @@ export class MatchingService extends ApplicationService {
             }),
           });
       }
+      if (candidates.length > 100)
+        await c.query('UPDATE matching_runs SET truncated=true WHERE id=$1', [run]);
       for (const k of rankMatching(candidates, seed).slice(0, 100)) {
         const snapshot = {
           id: k.id,
@@ -582,6 +586,7 @@ export class MatchingService extends ApplicationService {
           needsQuote: k.s.price === null,
           crossCity: k.p.region_id !== n.region_id,
           preferenceVersion: k.p.version,
+          settingsVersion: k.s.settingsVersion ?? null,
           fingerprint: k.s.fingerprint,
         };
         await c.query(
@@ -752,6 +757,9 @@ export class MatchingService extends ApplicationService {
             sourceVersion: can.source_version,
             sourceSlotId: can.source_slot_id,
             totalFen: can.snapshot.totalFen,
+            ...(can.snapshot.settingsVersion
+              ? { settingsVersion: can.snapshot.settingsVersion }
+              : {}),
           },
           sourceInput: x.sourceInput,
         };
@@ -1028,22 +1036,34 @@ export class MatchingService extends ApplicationService {
         );
         for (const k of rows.rows) {
           const p = await this.preference(c, n.kind, k.source_id);
-          if (p && p.version === k.preference_version && (await this.eligible(c, n, p))) {
+          const currentSource =
+            p && p.version === k.preference_version ? await this.eligible(c, n, p) : null;
+          if (currentSource && currentSource.fingerprint === k.snapshot.fingerprint) {
             const { fingerprint: _, ...dto } = k.snapshot;
             candidates.push(dto);
           }
         }
       }
+      const runInfo = n.latest_run_id
+        ? (
+            await c.query<{ truncated: boolean }>(
+              'SELECT truncated FROM matching_runs WHERE id=$1',
+              [n.latest_run_id],
+            )
+          ).rows[0]
+        : null;
       const outputIntents: MatchingIntentData[] = [];
       for (const i of intents.rows) {
         const can = await this.candidate(c, i.candidate_id, n.id);
         const p = await this.preference(c, n.kind, can.source_id);
+        const source = p ? await this.source(c, p, n) : null;
         const valid =
           !!p &&
           p.version === can.preference_version &&
           p.contact_enabled &&
           p.discovery_enabled &&
-          !!(await this.source(c, p, n));
+          !!source &&
+          source.fingerprint === can.snapshot.fingerprint;
         const open =
           activeIntent(i) &&
           i.expires_at > now &&
@@ -1075,6 +1095,7 @@ export class MatchingService extends ApplicationService {
             !can.snapshot.crossCity,
           sourceKind: i.source_kind,
           sourceId: i.source_id,
+          candidate: valid ? (({ fingerprint: _, ...dto }) => dto)(can.snapshot) : null,
         });
       }
       return {
@@ -1104,6 +1125,7 @@ export class MatchingService extends ApplicationService {
         intents: outputIntents,
         canManage: manager,
         latestRunId: n.latest_run_id,
+        truncated: runInfo?.truncated ?? false,
       };
     });
   }

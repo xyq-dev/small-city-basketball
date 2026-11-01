@@ -24,11 +24,17 @@ export function tradeFen(v: unknown): number {
 export function tradeReason(v: unknown): string {
   return text(v, 'reason', 4, 1000);
 }
+export const TRADE_SOURCE_KINDS: readonly TradeSourceKind[] = [
+  'ENTRY_FEE',
+  'ENTRY_DEPOSIT',
+  'LOCAL_BOOKING',
+  'PLAYER_APPEARANCE',
+  'TRAINING_ENROLLMENT',
+  'SPONSOR_ORDER',
+];
 export function parseTradeSource(raw: unknown) {
   const b = objectInput(raw, ['kind', 'sourceId', 'expectedSourceVersion']);
-  if (
-    !['ENTRY_FEE', 'ENTRY_DEPOSIT', 'LOCAL_BOOKING', 'PLAYER_APPEARANCE'].includes(String(b.kind))
-  )
+  if (!TRADE_SOURCE_KINDS.includes(b.kind as TradeSourceKind))
     tradeFail('INVALID_TRADE_SOURCE', '收费来源无效', 422);
   return {
     kind: b.kind as TradeSourceKind,

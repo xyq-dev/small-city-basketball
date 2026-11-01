@@ -26,6 +26,7 @@ import { createYouthLiveConsentGuard } from './youth-guardians-publication.js';
 import { AccountClosureService } from './account-closure-service.js';
 import type { AccountClosureOptions } from './account-closure-service.js';
 import { createAccountClosureHooks } from './account-closure-hooks.js';
+import { remainingSixTradeSources } from './remaining-six-trade.js';
 
 export interface ExpansionOptions {
   trade?: TradeRuntime;
@@ -66,15 +67,20 @@ export async function createExpansionServices(
     onlineInsuranceGuard: insurance.readEligibility.bind(insurance),
   };
   const tradeRuntime = input.trade ?? {};
-  const trade = new TradeService(pool, options, {
-    ...tradeRuntime,
-    resolvePayer:
-      tradeRuntime.resolvePayer ??
-      createTradePayerResolver(pool, wechat.configuration, wechat.exchange, {
-        ...tradeRuntime.merchants,
-        ...tradeRuntime.historicalMerchants,
-      }),
-  });
+  const trade = new TradeService(
+    pool,
+    options,
+    {
+      ...tradeRuntime,
+      resolvePayer:
+        tradeRuntime.resolvePayer ??
+        createTradePayerResolver(pool, wechat.configuration, wechat.exchange, {
+          ...tradeRuntime.merchants,
+          ...tradeRuntime.historicalMerchants,
+        }),
+    },
+    remainingSixTradeSources(),
+  );
   const notifications = new NotificationService(pool, options, {
     ...input.notifications,
     ...workerOptions,

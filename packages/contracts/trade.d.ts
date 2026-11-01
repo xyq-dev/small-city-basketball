@@ -1,4 +1,10 @@
-export type TradeSourceKind = 'ENTRY_FEE' | 'ENTRY_DEPOSIT' | 'LOCAL_BOOKING' | 'PLAYER_APPEARANCE';
+export type TradeSourceKind =
+  | 'ENTRY_FEE'
+  | 'ENTRY_DEPOSIT'
+  | 'LOCAL_BOOKING'
+  | 'PLAYER_APPEARANCE'
+  | 'TRAINING_ENROLLMENT'
+  | 'SPONSOR_ORDER';
 export type TradeChannel = 'NATIVE' | 'JSAPI';
 export interface TradeQuote {
   kind: TradeSourceKind;

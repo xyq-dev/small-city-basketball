@@ -50,8 +50,10 @@ export interface MatchingCandidateData {
   needsQuote: boolean;
   crossCity: boolean;
   preferenceVersion: number;
+  settingsVersion: number | null;
 }
 export interface MatchingIntentData {
+  candidate: MatchingCandidateData | null;
   id: string;
   needId: string;
   slotId: string;
@@ -95,4 +97,5 @@ export interface MatchingNeedData {
   intents: MatchingIntentData[];
   canManage: boolean;
   latestRunId: string | null;
+  truncated: boolean;
 }

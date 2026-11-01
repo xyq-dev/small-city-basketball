@@ -740,42 +740,73 @@ export class PlayerBookingService extends ApplicationService {
       return { feeBps, version: settings.version + 1 };
     });
   }
-  async createOrder(cookie: string | undefined, raw: unknown): Promise<BookingOrderData> {
-    const input = parseCreate(raw);
-    await this.preflight(cookie, 'create', input.commandId);
-    const outcome = await this.transaction<CreateAttempt>(async (c) => {
-      const actor = await this.lockActor(c, cookie);
-      await lockTradeSourceCalendar(c, input.orgId);
-      const access = await this.teamAccess(c, actor, input.orgId, input.teamId);
-      if (!access.allowed) throw notFound();
-      await this.lockBuyerQuota(c, actor.user.id);
-      const replay = await this.start(c, actor, input.commandId, { op: 'create', input });
-      if (replay) {
-        if (replay.outcome === 'REJECTED') return { rejection: replay as CreateRejection };
-        return { order: await this.orderDto(c, await this.context(c, actor, replay.resourceId)) };
-      }
-      // The operation row and buyer/command locks precede this savepoint.
-      // A terminal business rejection must survive rollback of partial effects.
-      await c.query('SAVEPOINT booking_create_effects');
-      try {
-        await this.requirePendingCapacity(
-          c,
-          actor.user.id,
-          input.appearances.filter((a) => !a.conditional).length,
-        );
-        const event = await this.eventAllowed(c, input.orgId, input.teamId, input.eventId);
-        const profiles = new Map<string, Row>();
-        for (const profileId of [...new Set(input.appearances.map((a) => a.profileId))].sort())
-          profiles.set(profileId, await this.profileLock(c, profileId));
-        await this.expire(c, [...profiles.keys()]);
-        const settings = (await c.query<Row>('SELECT * FROM booking_settings WHERE id FOR SHARE'))
-          .rows[0]!;
-        if (
-          settings.version !== input.reviewedSettingsVersion ||
-          [...profiles.values()].some((p) => input.reviewedProfileVersions[p.id] !== p.version)
-        )
-          bookingFail('QUOTE_CHANGED', '球员报价或平台费率已变化，请重新读取并确认后再提交预约');
-        const now = (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
+  private async startCreateOrder(
+    c: PoolClient,
+    actor: Actor,
+    input: ReturnType<typeof parseCreate>,
+    origin?: { kind: 'MATCHING'; needId: string },
+  ) {
+    await lockTradeSourceCalendar(c, input.orgId);
+    const access = await this.teamAccess(c, actor, input.orgId, input.teamId);
+    if (!access.allowed) throw notFound();
+    await this.lockBuyerQuota(c, actor.user.id);
+    const replay = await this.start(c, actor, input.commandId, {
+      op: 'create',
+      input,
+      ...(origin ? { origin } : {}),
+    });
+    return { access, replay };
+  }
+  private async prepareCreateEffects(
+    c: PoolClient,
+    actor: Actor,
+    input: ReturnType<typeof parseCreate>,
+    access: Awaited<ReturnType<PlayerBookingService['teamAccess']>>,
+  ) {
+    await this.requirePendingCapacity(
+      c,
+      actor.user.id,
+      input.appearances.filter((a) => !a.conditional).length,
+    );
+    const event = await this.eventAllowed(c, input.orgId, input.teamId, input.eventId);
+    const profiles = new Map<string, Row>();
+    for (const profileId of [...new Set(input.appearances.map((a) => a.profileId))].sort())
+      profiles.set(profileId, await this.profileLock(c, profileId));
+    await this.expire(c, [...profiles.keys()]);
+    const settings = (await c.query<Row>('SELECT * FROM booking_settings WHERE id FOR SHARE'))
+      .rows[0]!;
+    if (
+      settings.version !== input.reviewedSettingsVersion ||
+      [...profiles.values()].some((p) => input.reviewedProfileVersions[p.id] !== p.version)
+    )
+      bookingFail('QUOTE_CHANGED', '球员报价或平台费率已变化，请重新读取并确认后再提交预约');
+    const now = (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
+    for (const appearance of input.appearances) {
+      const profile = profiles.get(appearance.profileId)!;
+      if (profile.user_id === actor.user.id)
+        bookingFail('SELF_BOOKING_NOT_ALLOWED', '不能预约自己的参赛服务');
+      if (profile.status !== 'APPROVED' || profile.user_status !== 'ACTIVE')
+        bookingFail('PLAYER_UNAVAILABLE', '球员当前未开放预约');
+      await this.representativeAllowed(c, profile, input.teamId, input.eventId);
+      await this.officialMatch(c, appearance, input.orgId, input.teamId, input.eventId);
+      if (!appearance.conditional)
+        await this.scheduleAllowed(c, profile, appearance.reportAt!, appearance.endAt!, now);
+    }
+    let executed = false;
+    return {
+      players: [...profiles.values()].map((p) => ({
+        id: p.id as string,
+        userId: p.user_id as string,
+        version: p.version as number,
+      })),
+      execute: async (): Promise<BookingOrderData> => {
+        if (executed) bookingFail('OPERATION_PENDING', '原预约创建已执行，不能重复创建');
+        executed = true;
+        const executionTime = (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now'))
+          .rows[0]!.now;
+        for (const appearance of input.appearances)
+          if (!appearance.conditional)
+            futureSchedule(appearance.reportAt!, appearance.endAt!, executionTime);
         const orderId = randomUUID();
         await c.query(
           `INSERT INTO booking_orders(id,org_id,team_id,event_id,event_name,team_name,buyer_user_id,scope,fee_bps,settings_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
@@ -795,14 +826,6 @@ export class PlayerBookingService extends ApplicationService {
         for (const appearance of input.appearances) {
           const appearanceId = randomUUID();
           const profile = profiles.get(appearance.profileId)!;
-          if (profile.user_id === actor.user.id)
-            bookingFail('SELF_BOOKING_NOT_ALLOWED', '不能预约自己的参赛服务');
-          if (profile.status !== 'APPROVED' || profile.user_status !== 'ACTIVE')
-            bookingFail('PLAYER_UNAVAILABLE', '球员当前未开放预约');
-          await this.representativeAllowed(c, profile, input.teamId, input.eventId);
-          await this.officialMatch(c, appearance, input.orgId, input.teamId, input.eventId);
-          if (!appearance.conditional)
-            await this.scheduleAllowed(c, profile, appearance.reportAt!, appearance.endAt!, now);
           const price = quote(
             profile.price_fen,
             profile.travel_fen,
@@ -862,6 +885,54 @@ export class PlayerBookingService extends ApplicationService {
         );
         await this.finish(c, actor, input.commandId, orderId);
         const order = await this.orderDto(c, await this.context(c, actor, orderId));
+        return order;
+      },
+    };
+  }
+  /** Trusted composition hook. The caller owns the transaction and actor lock.
+   * Call before matching rows are locked. Failure rolls back the whole conversion;
+   * unlike createOrder(), it must never commit a separate durable rejection receipt. */
+  async prepareCreateOrder(
+    c: PoolClient,
+    actor: Actor,
+    raw: unknown,
+    origin: { kind: 'MATCHING'; needId: string },
+  ) {
+    const input = parseCreate(raw);
+    const { access, replay } = await this.startCreateOrder(c, actor, input, {
+      kind: 'MATCHING',
+      needId: id(origin.needId),
+    });
+    if (replay)
+      bookingFail('MATCHING_SOURCE_ALREADY_CREATED', '原预约命令已使用，请读取原撮合结果');
+    const prepared = await this.prepareCreateEffects(c, actor, input, access);
+    return {
+      ...prepared,
+      execute: async () => {
+        try {
+          return await prepared.execute();
+        } catch (error) {
+          throw reservationConflict(error);
+        }
+      },
+    };
+  }
+  async createOrder(cookie: string | undefined, raw: unknown): Promise<BookingOrderData> {
+    const input = parseCreate(raw);
+    await this.preflight(cookie, 'create', input.commandId);
+    const outcome = await this.transaction<CreateAttempt>(async (c) => {
+      const actor = await this.lockActor(c, cookie);
+      const { access, replay } = await this.startCreateOrder(c, actor, input);
+      if (replay) {
+        if (replay.outcome === 'REJECTED') return { rejection: replay as CreateRejection };
+        return { order: await this.orderDto(c, await this.context(c, actor, replay.resourceId)) };
+      }
+      // The operation row and buyer/command locks precede this savepoint.
+      // A terminal business rejection must survive rollback of partial effects.
+      await c.query('SAVEPOINT booking_create_effects');
+      try {
+        const prepared = await this.prepareCreateEffects(c, actor, input, access);
+        const order = await prepared.execute();
         await c.query('RELEASE SAVEPOINT booking_create_effects');
         return { order };
       } catch (sourceError) {

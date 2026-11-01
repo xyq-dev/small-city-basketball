@@ -11,3 +11,9 @@
 第二切片：原生地图与仓库读取器接线完成。视野/上下文独立代次，getRegion/getScale超时和迟到响应拒绝；显式搜索/临时跨城/恢复/城市列表降级；分页不移镜，已提交范围标签和同一列表标记同步。旧能力响应自动禁用新请求。精确范围只存在页面内存/POST体，离开清除，无URL/持久缓存写入。新增7项实际Page+utils VM测试；定向27/27，微信全量1015通过、1个既有Windows测试跳过。格式通过。
 
 余项：root/CI执行真实PG4项；真实微信基础库regionchange/getRegion/getScale、触控布局和iOS/Android实测；合成10万库存性能评估。未申请或使用地图生产配置，未宣称真机/性能/PG已验收。前端没有更改原预约请求或费用计算。
+
+root追加来源桥：`prepareBookingInTransaction(c,actor,raw)`与`prepareMatchupInTransaction(c,actor,raw)`先锁org/calendar/source/receipt，再返回execute；无HTTP或嵌套transaction。`createDispatchBookingInTransaction`固定方法供dispatch注入，要求caller已在同事务释放dispatch reservation，持久hold仍ACTIVE、offer仍ACCEPTED_HELD；重读冻结报价、需求、持有人、merchant/terms和保护区间，再真实创建源预约。snapshot.dispatchQuote结构为 `{...offer.quote,offerId,quoteHash}`。root trade需识别此快照并与持久offer交叉核验及接收quoteHash收费同意。
+
+`createMatchingLocalSourceHooks(local)`导出STAFF/TEAM prepare与inspectEnded；实际对象/档期/地址来自need/candidate，sourceInput仅允许同意或明确球场预约/条款。终态财务检查保守：任何未决操作，或净实付/批准扣款/已结算净额不一致均禁止重开。新增领域5项通过；新增真实PG4项未执行。需要根合入其他模块类型 `matching-source-adapter.ts`、`contracts/matching.d.ts`及实际 `dispatch-service.ts`；本worktree只放临时类型依赖用于typecheck，未提交这些由其他agent拥有的文件。
+
+来源桥回执兼容复核：约赛prepare只锁原供给行，不在旧回执返回前重新要求发布/人员当前可用；新建execute仍执行原实际球场资格校验。避免资格后来变化导致已成功约赛回执无法重放。

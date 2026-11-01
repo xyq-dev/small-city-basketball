@@ -15,7 +15,7 @@ export interface TrainingTradeHooks {
     c: PoolClient,
     enrollmentId: string,
   ): Promise<{
-    orderId: string;
+    orderId: string | null;
     status: 'PAID' | 'UNPAID' | 'UNKNOWN' | 'REFUNDED';
     paidFen: number;
     refundedFen: number;

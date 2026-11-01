@@ -50,9 +50,10 @@ CREATE TABLE training_resource_reservations (
  id uuid PRIMARY KEY, org_id uuid NOT NULL, session_id uuid NOT NULL,
  resource_key text NOT NULL CHECK(resource_key ~ '^(court|user):[0-9a-f-]{36}$'), starts_at timestamptz NOT NULL, ends_at timestamptz NOT NULL,
  active boolean NOT NULL DEFAULT true, FOREIGN KEY(org_id,session_id) REFERENCES training_sessions(org_id,id),
- UNIQUE(session_id,resource_key), CHECK(ends_at>starts_at),
+ CHECK(ends_at>starts_at),
  EXCLUDE USING gist(resource_key WITH =,tstzrange(starts_at,ends_at,'[)') WITH &&) WHERE(active)
 );
+CREATE UNIQUE INDEX training_active_reservation ON training_resource_reservations(session_id,resource_key) WHERE active;
 CREATE TABLE training_enrollments (
  id uuid PRIMARY KEY, org_id uuid NOT NULL, cohort_id uuid NOT NULL,
  applicant_user_id uuid NOT NULL REFERENCES users(id), payer_user_id uuid NOT NULL REFERENCES users(id), learner_user_id uuid NOT NULL REFERENCES users(id),
@@ -101,7 +102,9 @@ CREATE TABLE training_refund_allocations (
 );
 CREATE TABLE training_guardian_grants (
  id uuid PRIMARY KEY, org_id uuid NOT NULL REFERENCES training_providers(org_id), learner_user_id uuid NOT NULL REFERENCES users(id), guardian_user_id uuid NOT NULL REFERENCES users(id),
+ cohort_id uuid NOT NULL, policy_version text NOT NULL CHECK(char_length(policy_version) BETWEEN 1 AND 80),
  purpose text NOT NULL CHECK(purpose IN('PARTICIPATION','NECESSARY_DATA','PICKUP','PUBLICITY')),
+ FOREIGN KEY(org_id,cohort_id) REFERENCES training_cohorts(org_id,id),
  evidence_reference text NOT NULL, reviewed_by uuid REFERENCES users(id), valid_until timestamptz NOT NULL,
  state text NOT NULL DEFAULT 'PENDING' CHECK(state IN('PENDING','APPROVED','REVOKED','REJECTED')),
  epoch integer NOT NULL DEFAULT 1 CHECK(epoch>0), CHECK(learner_user_id<>guardian_user_id), CHECK(reviewed_by IS NULL OR reviewed_by NOT IN(learner_user_id,guardian_user_id)),
@@ -136,3 +139,12 @@ CREATE FUNCTION r6_training_calendar_guard() RETURNS trigger LANGUAGE plpgsql AS
   RAISE EXCEPTION 'Training conflicts with player' USING ERRCODE='23P01'; END IF;
  RETURN NEW; END $$;
 CREATE TRIGGER training_calendar_guard BEFORE INSERT OR UPDATE OR DELETE ON training_resource_reservations FOR EACH ROW EXECUTE FUNCTION r6_training_calendar_guard();
+
+CREATE FUNCTION r6_training_entitlement_guard() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+ IF (NEW.org_id,NEW.enrollment_id,NEW.original_session_id,NEW.net_fen) IS DISTINCT FROM (OLD.org_id,OLD.enrollment_id,OLD.original_session_id,OLD.net_fen) THEN
+ RAISE EXCEPTION 'Original lesson allocation is immutable' USING ERRCODE='23514'; END IF; RETURN NEW; END $$;
+CREATE TRIGGER training_entitlement_quote_immutable BEFORE UPDATE ON training_lesson_entitlements FOR EACH ROW EXECUTE FUNCTION r6_training_entitlement_guard();
+CREATE FUNCTION r6_training_refund_guard() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+ IF (NEW.org_id,NEW.enrollment_id,NEW.entitlement_ids,NEW.amount_fen,NEW.proposed_by,NEW.reason) IS DISTINCT FROM (OLD.org_id,OLD.enrollment_id,OLD.entitlement_ids,OLD.amount_fen,OLD.proposed_by,OLD.reason)
+ OR (OLD.trade_refund_id IS NOT NULL AND NEW.trade_refund_id IS DISTINCT FROM OLD.trade_refund_id) THEN RAISE EXCEPTION 'Refund allocation intent is immutable' USING ERRCODE='23514'; END IF; RETURN NEW; END $$;
+CREATE TRIGGER training_refund_intent_immutable BEFORE UPDATE ON training_refund_allocations FOR EACH ROW EXECUTE FUNCTION r6_training_refund_guard();

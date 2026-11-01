@@ -33,6 +33,23 @@ import { UnifiedSearchService } from './unified-search-service.js';
 import { UnifiedSearchController, SCB_UNIFIED_SEARCH } from './unified-search-controller.js';
 import { createExpansionServices } from './expansion-services.js';
 import type { ExpansionOptions } from './expansion-services.js';
+import { MatchingService } from './matching-service.js';
+import type { MatchingSourceHooks } from './matching-source-adapter.js';
+import { MatchingController, SCB_MATCHING_SERVICE } from './matching-controller.js';
+import { DispatchService } from './dispatch-service.js';
+import type { DispatchOptions } from './dispatch-service.js';
+import { DispatchController, SCB_DISPATCH_SERVICE } from './dispatch-controller.js';
+import { TrainingService } from './training-service.js';
+import type { TrainingOptions } from './training-source-hooks.js';
+import {
+  TrainingController,
+  OrgTrainingController,
+  SCB_TRAINING_SERVICE,
+} from './training-controller.js';
+import { trainingTradeHooks } from './remaining-six-trade.js';
+import { createMatchingPlayerSource } from './matching-player-source.js';
+import { createMatchingLocalSourceHooks } from './matching-local-source.js';
+import type { LocalSearchOptions } from './local-services-service.js';
 import { readNotificationOptions } from './notification-runtime.js';
 import { readTradeRuntime } from './trade-runtime.js';
 import { NotificationController, SCB_NOTIFICATIONS } from './notification-controller.js';
@@ -381,6 +398,10 @@ export async function createApi(
       commercePayments?: WechatPayClient;
       accountRecovery?: AccountRecoveryOptions;
       locationProvider?: LocationProvider;
+      localSearch?: LocalSearchOptions;
+      matching?: { enabled?: boolean; sourceHooks?: MatchingSourceHooks };
+      dispatch?: DispatchOptions;
+      training?: TrainingOptions;
     },
 ): Promise<{ app: INestApplication; pool: Pool }> {
   let options = resolveApiOptions(input);
@@ -420,6 +441,10 @@ export async function createApi(
         streaming: { autoDispatch: false },
         accountClosure: { enabled: false, autoDispatch: false },
         locationProvider: new TencentLocationProvider(),
+        localSearch: { ...input.localSearch, enabled: false },
+        matching: { enabled: false },
+        dispatch: { enabled: false, autoDispatch: false },
+        training: { enabled: false },
       };
     } else {
       input = {
@@ -468,6 +493,7 @@ export async function createApi(
       locationProvider,
       assertCityOperation,
       expansion.trade,
+      input.localSearch,
     );
     const staffConfiguration = new StaffConfigurationService(pool, options);
     const accountRecovery = new AccountRecoveryService(pool, options, {
@@ -481,6 +507,29 @@ export async function createApi(
       expansion.materialGuards,
     );
     const playerBooking = new PlayerBookingService(pool, options, expansion.trade);
+    const matchingPlayer = createMatchingPlayerSource(playerBooking);
+    const matchingLocal = createMatchingLocalSourceHooks(localServices);
+    const matching = new MatchingService(pool, options, {
+      ...input.matching,
+      sourceHooks: input.matching?.sourceHooks ?? {
+        prepare: (c, a, i) =>
+          i.kind === 'ADULT_PLAYER'
+            ? matchingPlayer.prepare(c, a, i)
+            : matchingLocal.prepare(c, a, i),
+        inspectEnded: matchingLocal.inspectEnded,
+      },
+    });
+    const dispatch = new DispatchService(pool, options, {
+      ...input.dispatch,
+      createLocalBooking:
+        input.dispatch?.createLocalBooking ??
+        localServices.createDispatchBookingInTransaction.bind(localServices),
+      ...(options.backgroundWorkersEnabled === false ? { autoDispatch: false } : {}),
+    });
+    const training = new TrainingService(pool, options, {
+      ...input.training,
+      trade: input.training?.trade ?? trainingTradeHooks(expansion.trade),
+    });
     const playerPerformance = new PlayerPerformanceService(pool, options);
     const scheduling = new SchedulingService(pool, options);
     const knockout = new GroupKnockoutService(pool, options);
@@ -502,6 +551,10 @@ export async function createApi(
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
+        MatchingController,
+        DispatchController,
+        TrainingController,
+        OrgTrainingController,
         NotificationController,
         StreamingController,
         PublicLiveMediaController,
@@ -569,6 +622,9 @@ export async function createApi(
         SeasonController,
       ],
       providers: [
+        { provide: SCB_MATCHING_SERVICE, useValue: matching },
+        { provide: SCB_DISPATCH_SERVICE, useValue: dispatch },
+        { provide: SCB_TRAINING_SERVICE, useValue: training },
         { provide: SCB_NOTIFICATIONS, useValue: expansion.notifications },
         { provide: SCB_STREAMING_SERVICE, useValue: expansion.streaming },
         { provide: SCB_TRADE_SERVICE, useValue: expansion.trade },

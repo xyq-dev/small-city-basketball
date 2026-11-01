@@ -1,0 +1,2 @@
+@import "../training/index.wxss";
+picker{padding:24rpx;background:#edf1f4;border-radius:12rpx;font-size:27rpx}.row input{width:48%}

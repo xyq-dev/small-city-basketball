@@ -23,6 +23,7 @@ export interface MatchingConversionInput {
     sourceVersion: number;
     sourceSlotId: string | null;
     totalFen: number | null;
+    settingsVersion?: number;
   };
   sourceInput: unknown;
 }
