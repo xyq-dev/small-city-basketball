@@ -27,3 +27,5 @@ CI149回归：root报告地图PG撤销发布fixture触发版本保护，因为�
 CI153字体修复交接：`work/r6-training-font`只追加training-manage表单控件16px覆盖，导入的26rpx不再使窄屏理由textarea缩小，管理页其他输入也遵守同一字号。既有r6-training native10/10通过；本地Playwright默认/override Chromium均不存在，320/390/430布局待CI重跑 `mini-program.spec.ts --project=desktop --grep initial-training-manage`。此小片不修改培训负责人JS、service或R6TRAIN记录。
 
 CI153旧X12隐私测试小片：x12-local.integration.test.ts的supply返回唯一title，首个公开字段测试用q定位该样本，不再假设全县第一页面必含随机UUID新样本。问题来自R6先运行后保留同县多页库存；closeHarness不删除业务事实。全部原敏感字段/资格公开限制断言保留，额外要求唯一结果。生产代码、分页上限、原排序不变；PG交CI，未本地执行。
+
+CI154 picker修复：training-manage/index.wxss仅把picker的27rpx换16px。实际模板三宽度CSS读取确认picker/内部文字/textarea全16px，已同时核对初始页两控件的行高、padding/高度声明；native10/10通过。此为静态DOM/CSS证据，非浏览器几何测量；请CI复跑原initial-training-manage三宽度门槛。生产完整恢复绿的结果由root记录，本片不更改恢复或权限。

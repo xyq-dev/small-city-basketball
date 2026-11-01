@@ -25,3 +25,5 @@ root追加委派：完成原同城预约/约赛的同事务prepare+execute入口
 2026-11-01 Asia/Shanghai，root委派CI153培训管理页窄屏字体小修：独立 `scb-six-map-ui` / `work/r6-training-font`，基线d47a579，唯一业务改动为training-manage/index.wxss在导入样式后把input/textarea固定为16px，符合UI_SPEC手机表单16px规范，修复26rpx在320/390/430逻辑宽度低于门槛的问题。未改JS或service。原生培训既有10项通过、diff检查通过；本地无Playwright浏览器可执行文件，三宽度真实兼容布局复跑交root隔离CI，不以源码VM代称浏览器测量。
 
 2026-11-01 Asia/Shanghai，CI153旧X12隐私PG失败修复：独立 `scb-six-map-privacy` / `work/r6-local-test-isolation`，基线7631660。旧测试按全县默认20条随机UUID排序取第一页，R6先行保留约60条公开样本后，新建X12供给可合法落在后页。仅调整测试fixture：保存完整UUID唯一title，并通过正式publicList的q过滤定位此样本，新增结果恰为一条断言；原隐私禁字段、距离、地图能力和公开slot断言全部保留。未改生产搜索排序、分页或资格筛选。格式/diff通过；真实PG本地无环境，待root隔离CI复跑。
+
+2026-11-01 Asia/Shanghai，CI154 picker后续小修：独立 `scb-six-map-ui2` / `work/r6-training-picker`，基线b9cee023。training-manage的picker字号由27rpx改16px，输入/文本域保持已验16px。以实际WXML/WXSS buildPreview生成320/390/430三宽度，通过JSDOM检查初始页全部可见表单（机构picker及理由textarea）及picker子view均为16px；320时picker继承24px行高+两侧10.24px垂直padding，文本域64px高度，未见字号或声明高度低于门槛。JSDOM不是浏览器几何/真机验收；本地无Chromium，实际布局仍由CI复跑。既有培训native10/10与diff检查通过，未改JS/service。

@@ -52,3 +52,5 @@ PR #35 已创建为草稿。源事务、原生页面、注销及恢复清单已�
 2026-11-01 11:35 Asia/Shanghai检查点：remote c0a4cc8以真实双parent整合main 911564f，tree54751ecc与本地d47a579一致，PR35已ready但未合并。CI153新域真实PG通过；admin源码检查全部过，布局1079过/3失败均培训输入字体<16px已修；production受限角色21PG过，恢复培训冻结时间UPDATE失败，改真实DB+60s短课不扩ACL。自动审查4项正以真实PG/原生生命周期补证；当前仍REVIEW/BRANCH_ONLY。无生产或外部真实渠道操作。
 
 2026-11-01 11:40 Asia/Shanghai候选检查点：PR35四条审查修复均已集成（未付取消注销、两培训页隐藏写锁、跨班补课取消、独立有界派单轮询），派单仅增加next_source_check_at列UPDATE。CI153新域78项PG过，旧域585过/1个公共列表分页fixture失败，现用真实唯一标题查询保持全部隐私断言。恢复修正保留真实冻结课次、精确X12隔离取消/资源释放与广告canonical身份hash；完整typecheck、定向28、原生培训13和恢复12过。待CI154验证当前完整候选，尚未合并。
+
+2026-11-01 11:51 Asia/Shanghai：CI154（remote bf92e7139758eadf51fd748319670b881533a48b / tree cdb837c6d92991c4a9f5f3b5b3a606416bb5a683）新域真实PG步骤通过，四条PR审查已验证并resolve；隔离production job完整成功，含21项runtime PG、4项HTTPS浏览器、完整归档恢复及quarantine。admin源码检查过，布局1081通过/仅320px机构picker字体不足1失败；改统一16px，定向原生13过，下一轮CI155只新增该WXSS与文档，尚未合并。
