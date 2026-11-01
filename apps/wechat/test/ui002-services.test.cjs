@@ -609,3 +609,62 @@ test('player funds shortcuts only navigate an appearance currently visible to th
     assert.equal(h.requests.length, 0, name);
   }
 });
+
+test('returning from a supply application during refresh ends loading and discards the canceled result without clearing pending', async () => {
+  const actor = '10000000-0000-4000-8000-000000000001';
+  const org = raceId(70);
+  const calls = [];
+  const client = {
+    sessionRevision: () => 1,
+    onSessionChange: () => () => {},
+    viewerId: () => actor,
+    async request(url, method = 'GET') {
+      calls.push({ url, method });
+      assert.equal(url, '/v1/auth/session');
+      return {
+        data: {
+          user: { id: actor },
+          organizations: [{ id: org, name: '合成机构', role: 'ORG_ADMIN' }],
+          teamContexts: [],
+        },
+      };
+    },
+  };
+  const api = { getClient: () => client, uuid: (v) => v };
+  const h = deferredPage('local-manage', { './api': api, '../../utils/api': api });
+  let complete;
+  const model = h.requireLocal('utils/local-services.js');
+  model.repository = () => ({
+    workspace: () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+    options: async () => ({ providers: [], courts: [] }),
+  });
+  h.page.setData({ orgId: org, creating: true, canCreate: true });
+  const refresh = h.page.load();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(typeof complete, 'function');
+  assert.equal(h.page.data.loading, true);
+  assert.equal(h.page.data.creating, true);
+  h.page.setData({ pending: { body: { commandId: 'original-supply-command' } } });
+  h.page.closeSupply();
+  assert.equal(h.page.data.loading, false);
+  assert.equal(h.page.data.creating, false);
+  assert.equal(h.page.data.pending.body.commandId, 'original-supply-command');
+  complete([{ id: raceId(71), title: 'private canceled refresh result' }]);
+  await refresh;
+  assert.equal(h.page.data.loading, false);
+  assert.equal(h.page.data.listings.length, 0);
+  assert.equal(h.page.data.selected, null);
+  assert.equal(h.page.data.pending.body.commandId, 'original-supply-command');
+  const html = markup('local-manage', h.page.data);
+  assert.doesNotMatch(html, /private canceled refresh result|读取中…/);
+  const button = html.match(/<button[^>]*data-mini-bindtap="load"[^>]*>/);
+  assert.ok(button);
+  assert.doesNotMatch(button[0], /\bdisabled\b/);
+  assert.equal(
+    calls.some((x) => x.method !== 'GET'),
+    false,
+  );
+});

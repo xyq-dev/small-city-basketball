@@ -198,6 +198,7 @@ Page({
     this.setData({
       ...fresh(),
       creating: false,
+      loading: false,
       selected: null,
       reason: '',
       places: [],

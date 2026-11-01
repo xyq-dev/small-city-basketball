@@ -53,3 +53,7 @@
 最终整合候选一致性修复（root报告CI164）：实际文件名为`c10-core-booking-empty.json`及`c10-core-booking-permission.json`，不是`booking-create-*`。从真实Page初始data读取bookingSteps，给两份既有完整快照补arrange/安排信息、review/报价与条款、result/原单结果（disabled:true）；其他业务字段和expect保持，deepStrictEqual原断言不变，未删除/过滤新属性。
 
 实际验证命令：`node --test apps/wechat/test/c10-core-state-consistency.test.cjs apps/wechat/test/booking-create.test.cjs apps/wechat/test/booking-orders.test.cjs apps/wechat/test/c11-booking-ui.test.cjs`，68/68通过；两JSON定向Prettier与diff检查通过。仅两fixture与本任务/交接文档，源码、API、资金规则、Migration和生产均未变。交root串行同步并按最终候选CI验收。
+
+最终delta P2修复：local-manage在供给新建/修订中刷新、未返回时点“返回供给列表”，ui.begin已取消旧read却曾遗留loading:true。closeSupply现在同步loading:false，保持原pending，不伪造列表或复用已取消响应；返回后刷新可继续使用。真实Page＋deferred workspace VM复现完整路径，确认旧列表响应被丢弃、不复开详情、不清原编号、loading结束、刷新按钮可用且没有业务写入。
+
+定向`node --test apps/wechat/test/ui002-services.test.cjs apps/wechat/test/x12-local-services.test.cjs`47/47通过；格式与diff检查通过。源码仅closeSupply新增一处loading:false；其余是回归和本任务/交接，无API、资金、Migration或生产变更，交root当前候选复验。
