@@ -133,6 +133,8 @@ test('trusted external link: illegal links refused by page and server, then crea
   assert.deepEqual(watch.page.data.media, [], 'a draft link is not public');
   watch.unload();
 
+  page.page.selectPublish(tap({ id: draft.id }));
+  page.page.publishConsentChange({ detail: { value: ['publish'] } });
   owner.approve();
   await page.page.publish(tap({ id: draft.id }));
   await owner.settle(page);

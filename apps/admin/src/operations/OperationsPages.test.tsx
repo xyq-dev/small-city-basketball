@@ -441,6 +441,48 @@ describe('dispatch admin', () => {
     expect(screen.queryByLabelText('需求详情')).not.toBeInTheDocument();
   });
 
+  test('a refresh that started on the first request does not paint over the request opened later', async () => {
+    let releaseRefresh: () => void = () => undefined;
+    const refreshGate = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    let requestReads = 0;
+    const request = vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return envelope({ id: 'req-1' });
+      if (path.includes('/requests/req-1')) {
+        requestReads += 1;
+        if (requestReads > 1) await refreshGate;
+        return envelope({
+          request: { ...requestRow(), serviceAddress: '旧馆回填' },
+          offers: [],
+        });
+      }
+      if (path.includes('/requests/req-2')) {
+        return envelope({
+          request: { ...requestRow(), id: 'req-2', status: 'INVITING', serviceAddress: '新馆' },
+          offers: [],
+        });
+      }
+      return envelope({
+        ...dispatchData(),
+        requests: [requestRow(), { ...requestRow(), id: 'req-2', serviceAddress: '客场馆' }],
+      });
+    });
+    render(<DispatchOperationsPage context={context(request)} />);
+    fireEvent.click(await screen.findByRole('button', { name: /合成馆/ }));
+    fireEvent.change(await screen.findByLabelText('需求操作说明'), {
+      target: { value: '开始邀请说明' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '开始分批邀请' }));
+    await waitFor(() => expect(requestReads).toBe(2));
+    fireEvent.click(screen.getByRole('button', { name: /客场馆/ }));
+    expect(await screen.findByLabelText('需求详情')).toHaveTextContent('新馆');
+    releaseRefresh();
+    await waitFor(() => expect(screen.queryByText('正在读取最新资料…')).not.toBeInTheDocument());
+    expect(screen.getByLabelText('需求详情')).toHaveTextContent('新馆');
+    expect(screen.getByLabelText('需求详情')).not.toHaveTextContent('旧馆回填');
+  });
+
   test('travel review shows the itinerary and does not send until that evidence is checked', async () => {
     const quote = {
       serviceMinor: 7000,
@@ -595,9 +637,10 @@ describe('training admin', () => {
     await waitFor(() => {
       expect(screen.queryByText('正在读取最新资料…')).not.toBeInTheDocument();
       expect(screen.getByText('教练审核已提交')).toBeVisible();
-      expect(screen.getByRole('button', { name: /learner-1/ })).toBeEnabled();
+      const learner = screen.getByRole('button', { name: /learner-1/ });
+      expect(learner).toBeEnabled();
+      fireEvent.click(learner);
     });
-    fireEvent.click(screen.getByRole('button', { name: /learner-1/ }));
     expect(await screen.findByText(/还须在统一交易页审核并发送/)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '独立批准逐课退费' }));
     await waitFor(() =>

@@ -54,6 +54,7 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
   const action = useAction();
   const reads = useEpoch();
   const detailRef = useRef<{ kind: 'request' | 'offer'; id: string } | null>(null);
+  const viewGen = useRef(0);
   const quoteAckRef = useRef<QuoteAck | null>(null);
   const [quoteAck, setQuoteAck] = useState<QuoteAck | null>(null);
   const [reason, setReason] = useState('');
@@ -84,55 +85,67 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
     quoteAckRef.current = null;
     setQuoteAck(null);
   }, [context.userId]);
-  async function openRequest(id: string) {
-    detailRef.current = { kind: 'request', id };
+  function beginView(kind: 'request' | 'offer', id: string) {
+    viewGen.current += 1;
+    detailRef.current = { kind, id };
     rememberQuote(null);
+    return viewGen.current;
+  }
+  function stillView(gen: number) {
+    return viewGen.current === gen && action.isActive();
+  }
+  async function openRequest(id: string) {
+    const gen = beginView('request', id);
     const token = reads.next();
     const detail = await api.dispatchRequest(id);
-    if (!reads.current(token) || !sameDetail('request', id)) return;
+    if (viewGen.current !== gen || !reads.current(token)) return;
     setSelected(detail.request);
     setOffers(detail.offers);
     setOffer(null);
   }
   async function openOffer(id: string) {
-    detailRef.current = { kind: 'offer', id };
-    rememberQuote(null);
+    const gen = beginView('offer', id);
     const token = reads.next();
     const row = await api.dispatchOffer(id);
-    if (!reads.current(token) || !sameDetail('offer', id)) return;
+    if (viewGen.current !== gen || !reads.current(token)) return;
     setOffer(row);
     setSelected(null);
   }
   function sameDetail(kind: 'request' | 'offer', id: string) {
     return detailRef.current?.kind === kind && detailRef.current.id === id;
   }
-  async function refreshRequest(id: string) {
-    if (!sameDetail('request', id)) return;
-    const token = reads.peek();
+  async function refreshRequest(id: string, gen: number) {
+    if (viewGen.current !== gen) return;
     const detail = await api.dispatchRequest(id);
-    if (!sameDetail('request', id) || !reads.current(token)) return;
+    if (viewGen.current !== gen || !sameDetail('request', id)) return;
     setSelected(detail.request);
     setOffers(detail.offers);
+    setOffer(null);
   }
-  async function refreshOffer(id: string) {
-    if (!sameDetail('offer', id)) return;
-    const token = reads.peek();
+  async function refreshOffer(id: string, gen: number) {
+    if (viewGen.current !== gen) return;
     const row = await api.dispatchOffer(id);
-    if (!sameDetail('offer', id) || !reads.current(token)) return;
+    if (viewGen.current !== gen || !sameDetail('offer', id)) return;
     setOffer(row);
+    setSelected(null);
   }
-  function submit(label: string, run: () => Promise<void>) {
+  function submit(label: string, run: (gen: number) => Promise<void>) {
+    const gen = viewGen.current;
     const viewed = detailRef.current;
     void action.run(async () => {
-      const current = () => !!viewed && sameDetail(viewed.kind, viewed.id) && action.isActive();
+      const current = () =>
+        viewGen.current === gen &&
+        action.isActive() &&
+        (viewed === null || sameDetail(viewed.kind, viewed.id));
       try {
-        await run();
+        await run(gen);
       } catch (cause) {
         if (current()) throw cause;
         return false;
       }
       if (!current()) return false;
-      resource.reload();
+      if (viewed) resource.reloadPreserving();
+      else resource.reload();
       await context.onSessionRefresh();
     }, label);
   }
@@ -203,22 +216,23 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
               viewerId={context.userId}
               onCommand={(type, extra) => {
                 const requestId = selected.id;
-                submit('需求操作已提交，请以重新读取的状态为准', async () => {
+                const version = selected.version;
+                submit('需求操作已提交，请以重新读取的状态为准', async (gen) => {
                   const payload = typeof extra === 'function' ? extra() : (extra ?? {});
                   if (
                     type === 'CONFIRM_QUOTE' &&
                     !quoteStill(quoteAckRef.current, requestId, payload)
                   )
                     throw new Error('请重新核对当前报价后再确认');
-                  if (!sameDetail('request', requestId)) return;
+                  if (!stillView(gen) || !sameDetail('request', requestId)) return;
                   await api.post(`/v1/dispatch/requests/${requestId}/commands`, {
                     commandId: commandId(),
-                    expectedVersion: selected.version,
+                    expectedVersion: version,
                     type,
                     reason: reasonText(reason),
                     ...payload,
                   });
-                  if (action.isActive()) await refreshRequest(requestId);
+                  await refreshRequest(requestId, gen);
                 });
               }}
             />
@@ -233,16 +247,18 @@ export function DispatchOperationsPage({ context }: { context: RegistrationWorks
               loadSlots={() => api.listingSlots(offer.listingId)}
               onCommand={(type, extra) => {
                 const offerId = offer.id;
-                submit('邀请操作已提交，请以重新读取的状态为准', async () => {
+                const version = offer.version;
+                submit('邀请操作已提交，请以重新读取的状态为准', async (gen) => {
                   const payload = typeof extra === 'function' ? extra() : extra;
+                  if (!stillView(gen) || !sameDetail('offer', offerId)) return;
                   await api.post(`/v1/dispatch/offers/${offerId}/commands`, {
                     commandId: commandId(),
-                    expectedVersion: offer.version,
+                    expectedVersion: version,
                     type,
                     reason: reasonText(reason),
                     ...payload,
                   });
-                  if (action.isActive()) await refreshOffer(offerId);
+                  await refreshOffer(offerId, gen);
                 });
               }}
             />

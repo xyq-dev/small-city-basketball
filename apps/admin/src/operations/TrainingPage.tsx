@@ -51,7 +51,7 @@ function TrainingDesk({ context, orgId }: { context: RegistrationWorkspace; orgI
   async function refreshDetails() {
     setDetailError('');
     const token = reads.next();
-    resource.reload();
+    resource.reloadPreserving();
     const rosterId = roster ? String(roster.session.id ?? '') : '';
     const enrollmentId = enrollment ? String(enrollment.id ?? '') : '';
     try {

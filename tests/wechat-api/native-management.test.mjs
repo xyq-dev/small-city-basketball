@@ -528,6 +528,8 @@ test('groups, tie draw, qualification, knockout rounds, rescheduling and media t
   await owner.settle(mediaPage);
   assert.equal(mediaPage.page.data.items[0]?.status, 'DRAFT', mediaPage.page.data.error);
   assert.deepEqual(await publicMedia(), [], 'a draft is not public');
+  mediaPage.page.selectPublish(tap({ id: mediaPage.page.data.items[0].id }));
+  mediaPage.page.publishConsentChange({ detail: { value: ['publish'] } });
   owner.approve();
   await mediaPage.page.publish(tap({ id: mediaPage.page.data.items[0].id }));
   await owner.settle(mediaPage);
@@ -610,6 +612,8 @@ test('groups, tie draw, qualification, knockout rounds, rescheduling and media t
   await owner.settle(mediaPage);
   const marked = mediaPage.page.data.items.find((m) => m.id === replay.id);
   assert.equal(marked.markerList.length, 1, mediaPage.page.data.error);
+  mediaPage.page.selectPublish(tap({ id: replay.id }));
+  mediaPage.page.publishConsentChange({ detail: { value: ['publish'] } });
   owner.approve();
   await mediaPage.page.publish(tap({ id: replay.id }));
   await owner.settle(mediaPage);

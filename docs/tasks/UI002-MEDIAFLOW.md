@@ -43,3 +43,5 @@ V06 首屏为实际 job/artifact 紧凑概览，使用现有原始22px图标与1
 2026-11-01。原问题是 `publishConsentCurrent` 只在打开确认框前执行；页面隐藏会清掉勾选，迟到的确认仍可能发送 `PUBLISH`。`apps/wechat/pages/match-media/index.js` 在确认返回后、写请求前再次核对页面存活和可见、账号、机构、比赛、草稿、版本和发布权限。失效时不发送，并结束本次操作。`onHide` 清除同意的逻辑保留。撤销仍走原流程。命令体仍是 `{ type: 'PUBLISH', expectedVersion }`。
 
 回归在 `c15-media-review.test.cjs`：勾选后打开确认框、隐藏页面、再确认，零次发布；等待期间版本变化，零次发布；正常确认仍只发送一次原命令；撤销仍发送 `REVOKE`。Node 24.22.2 上 `c15-media-review`、`c16-review`、`c15-native-management`、`c19-media-requests`、`c16-delivery` 共 68 项通过。完整 `test:wechat` 本轮没有重跑。真机和远端 CI 未验。
+
+`03cdf32` 的真实 API 作业里，`c19-verify-media-links` 和 `native-management` 直接调用发布，页面因此停在草稿。这两处测试已改为先选择当前草稿并勾选，再打开发布确认。本机没有 PostgreSQL，这两条真实 API 测试留给后续 CI。

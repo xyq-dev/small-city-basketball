@@ -25,17 +25,25 @@ export function useResource<T>(read: () => Promise<T>) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
+  const preserve = useRef(false);
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError('');
-    setData(undefined);
+    const keep = preserve.current;
+    preserve.current = false;
+    if (!keep) {
+      setLoading(true);
+      setError('');
+      setData(undefined);
+    }
     void read()
       .then((value) => {
-        if (active) setData(value);
+        if (active) {
+          setData(value);
+          if (keep) setError('');
+        }
       })
       .catch((cause) => {
-        if (active) setError(message(cause));
+        if (active && !keep) setError(message(cause));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -44,7 +52,19 @@ export function useResource<T>(read: () => Promise<T>) {
       active = false;
     };
   }, [read, revision]);
-  return { data, loading, error, reload: () => setRevision((n) => n + 1) };
+  return {
+    data,
+    loading,
+    error,
+    reload: () => {
+      preserve.current = false;
+      setRevision((n) => n + 1);
+    },
+    reloadPreserving: () => {
+      preserve.current = true;
+      setRevision((n) => n + 1);
+    },
+  };
 }
 export function useAction() {
   const [busy, setBusy] = useState(false);

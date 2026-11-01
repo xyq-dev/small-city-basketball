@@ -20,7 +20,7 @@
 
 ## 2026-11-01 UI002 本地续作（IN_PROGRESS / Draft 待审）
 
-上表在 `4b83a4d` 的 Draft 之上补了 PR #37 的六项审查修复。Node 24.22.2 下管理端 `npx vitest run` 为 62 个文件、581 项通过，`npx tsc --noEmit` 通过。比赛媒体及相关审核、撤销测试 68 项通过。此前完整 `test:wechat` 为 1181 通过 / 6 失败，失败是 Windows CRLF 哈希和符号链接 EPERM，本轮没有重跑整套。API 全套、数据库、官方微信工具、真机和生产验收未跑。正式支付、投保、分账、推流未启用。远端 CI 要等这个修复提交推送后的新 SHA，不能沿用 `4b83a4d` 或 `813ed61`。
+上表在 `4b83a4d` 的 Draft 之上补了 PR #37 的审查修复。`03cdf32` 的远端 admin、api 失败已在后续提交处理：调度旧响应不再写回新详情，培训刷新不再卸掉当前页，真实媒体发布测试先完成草稿勾选。Node 24.22.2 下管理端 `npx vitest run` 为 62 个文件、582 项通过，`npx tsc --noEmit` 通过。比赛媒体单测 13 项通过。真实 PostgreSQL 的 `test:wechat:api` 本机未跑。此前完整 `test:wechat` 的 6 项 Windows CRLF 哈希和符号链接失败没有重跑。正式支付、投保、分账、推流未启用。远端 CI 以新提交为准，不能沿用 `03cdf32`。
 
 ## 2026-11-01 REMAINING6：六项功能实现（DONE / MAIN：源码与隔离验收）
 
