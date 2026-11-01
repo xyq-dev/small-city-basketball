@@ -13,6 +13,7 @@ Component({
     disabled: { type: Boolean, value: false },
   },
   data: {
+    safeBottom: 24,
     items: [
       { key: 'Home', label: '首页', icon: 'home' },
       { key: 'Events', label: '赛事', icon: 'trophy' },
@@ -20,6 +21,18 @@ Component({
       { key: 'Teams', label: '球队', icon: 'users' },
       { key: 'Account', label: '我的', icon: 'user' },
     ],
+  },
+  lifetimes: {
+    attached() {
+      try {
+        const info =
+          typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : wx.getSystemInfoSync();
+        const height = Number.isFinite(info.screenHeight) ? info.screenHeight : info.windowHeight;
+        const bottom = height - info.safeArea.bottom;
+        if (Number.isFinite(bottom) && bottom >= 0 && bottom <= 80)
+          this.setData({ safeBottom: bottom });
+      } catch {}
+    },
   },
   methods: {
     go(e) {

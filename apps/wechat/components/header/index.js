@@ -8,7 +8,7 @@ Component({
     disabled: { type: Boolean, value: false },
     back: { type: Boolean, value: true },
   },
-  data: { statusBarHeight: 24, capsulePresent: false },
+  data: { statusBarHeight: 28, capsulePresent: false },
   observers: {
     dark(value) {
       this.syncNavigationColor(value);

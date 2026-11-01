@@ -49,3 +49,23 @@ test('state recovery actions are explicit and cannot fire while an operation is 
   assert.deepEqual(emitted, ['action', 'secondary']);
   assert.equal(h.wx.calls.filter((x) => x.type === 'request').length, 0);
 });
+
+test('bottom navigation uses the actual safe area without changing finite route authorization', () => {
+  const h = loadComponent({
+    root,
+    route: 'components/navigation/index',
+    properties: { active: 'Home' },
+  });
+  assert.equal(h.instance.data.safeBottom, 24);
+  h.wx.getWindowInfo = () => ({ screenHeight: 844, safeArea: { bottom: 810 } });
+  h.definition.lifetimes.attached.call(h.instance);
+  assert.equal(h.instance.data.safeBottom, 34);
+  h.wx.getWindowInfo = () => ({ screenHeight: 844, safeArea: { bottom: -1000 } });
+  h.definition.lifetimes.attached.call(h.instance);
+  assert.equal(h.instance.data.safeBottom, 34);
+  h.instance.go({ currentTarget: { dataset: { key: 'Local' } } });
+  assert.equal(h.wx.calls.find((x) => x.type === 'redirectTo').url, '/pages/local/index');
+  h.instance.properties.disabled = true;
+  h.instance.go({ currentTarget: { dataset: { key: 'Account' } } });
+  assert.equal(h.wx.calls.filter((x) => x.type === 'redirectTo').length, 1);
+});
