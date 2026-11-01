@@ -44,7 +44,7 @@ function references(proof) {
 async function canonicalTrade(c, proof) {
   const rows = await c.query(
     `SELECT t.id,t.org_id,t.kind,t.source_id,t.source_version,t.payer_user_id,t.beneficiary_user_id,t.terms_id,t.total_fen,t.source_snapshot,t.source_hash,t.quote,
-      t.status,t.version,tt.status AS terms_status,tt.version AS terms_version,tt.merchant_key AS terms_merchant_key,t.merchant_key,
+      t.status,t.version,to_jsonb(t)->>'updated_at' AS updated_at,tt.status AS terms_status,tt.version AS terms_version,tt.merchant_key AS terms_merchant_key,t.merchant_key,
       tt.org_id AS terms_org_id,tt.kind AS terms_kind,tt.source_id AS terms_source_id,tt.amount_fen,
       b.listing_id,b.slot_id,b.buyer_user_id,b.provider_user_id,b.org_id AS booking_org_id,b.starts_at,b.ends_at,b.snapshot->>'address' AS address,
       encode(sha256(convert_to((to_jsonb(t)-ARRAY['status','version','updated_at'])::text,'UTF8')),'hex') AS identity_hash,
@@ -115,6 +115,7 @@ async function canonicalTrade(c, proof) {
     state: {
       status: t.status,
       version: t.version,
+      updatedAt: t.updated_at,
       termsStatus: t.terms_status,
       termsVersion: t.terms_version,
     },
@@ -127,7 +128,8 @@ async function retained(readPool, proof) {
   try {
     await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     await c.query("SET LOCAL TIME ZONE 'UTC'");
-    const rows = {};
+    const rows = {},
+      fullRows = {};
     const scopes = [
       [
         'matching_supply_preferences',
@@ -163,11 +165,12 @@ async function retained(readPool, proof) {
         ? 'to_jsonb(r)-ARRAY[' + mutable.map((field) => "'" + field + "'").join(',') + ']'
         : 'to_jsonb(r)';
       const r = await c.query(
-        `SELECT encode(sha256(convert_to((${expression})::text,'UTF8')),'hex') AS hash FROM ${table} r WHERE ${where}`,
+        `SELECT encode(sha256(convert_to((${expression})::text,'UTF8')),'hex') AS hash,encode(sha256(convert_to(to_jsonb(r)::text,'UTF8')),'hex') AS full_hash FROM ${table} r WHERE ${where}`,
         params,
       );
       assert.equal(r.rowCount, 1, `${table} representative row must remain nonempty`);
       rows[table] = r.rows[0].hash;
+      fullRows[table] = r.rows[0].full_hash;
     }
     const binding = (
       await c.query(
@@ -179,14 +182,17 @@ async function retained(readPool, proof) {
     ).rows[0];
     const source = (
       await c.query(
-        `SELECT b.id,b.listing_id,b.slot_id,b.buyer_user_id,b.provider_user_id,b.status,encode(sha256(convert_to(to_jsonb(b)::text,'UTF8')),'hex') AS hash
+        `SELECT b.id,b.listing_id,b.slot_id,b.buyer_user_id,b.provider_user_id,b.status,b.version,b.reason,b.change_request,b.checkin_hash,b.checkin_expires_at,
+      to_jsonb(b)->>'updated_at' AS updated_at,
+      encode(sha256(convert_to((to_jsonb(b)-ARRAY['status','version','reason','change_request','checkin_hash','checkin_expires_at','updated_at'])::text,'UTF8')),'hex') AS identity_hash,
+      encode(sha256(convert_to(to_jsonb(b)::text,'UTF8')),'hex') AS hash
       FROM local_bookings b WHERE b.id=$1`,
         [proof.bookingId],
       )
     ).rows[0];
     const trade = await canonicalTrade(c, proof);
     const reservations = await c.query(
-      "SELECT id,active,resource_key,encode(sha256(convert_to(to_jsonb(r)::text,'UTF8')),'hex') AS hash FROM local_resource_reservations r WHERE booking_id=$1 ORDER BY id",
+      "SELECT id,active,resource_key,encode(sha256(convert_to((to_jsonb(r)-'active')::text,'UTF8')),'hex') AS identity_hash,encode(sha256(convert_to(to_jsonb(r)::text,'UTF8')),'hex') AS hash FROM local_resource_reservations r WHERE booking_id=$1 ORDER BY id",
       [proof.bookingId],
     );
     const outbox = (
@@ -196,24 +202,26 @@ async function retained(readPool, proof) {
       )
     ).rows[0];
     const needState = (
-      await c.query('SELECT status,version,latest_run_id FROM matching_needs WHERE id=$1', [
-        proof.needId,
-      ])
+      await c.query(
+        "SELECT status,version,latest_run_id,to_jsonb(n)->>'updated_at' AS updated_at FROM matching_needs n WHERE id=$1",
+        [proof.needId],
+      )
     ).rows[0];
     const preferenceState = (
       await c.query(
-        "SELECT discovery_enabled,contact_enabled,version FROM matching_supply_preferences WHERE source_kind='STAFF_SERVICE' AND source_id=$1",
+        "SELECT discovery_enabled,contact_enabled,version,to_jsonb(p)->>'updated_at' AS updated_at FROM matching_supply_preferences p WHERE source_kind='STAFF_SERVICE' AND source_id=$1",
         [proof.listingId],
       )
     ).rows[0];
-    const quarantined = !!(
+    const quarantine = (
       await c.query(
-        "SELECT 1 FROM audit_logs WHERE action='RESTORE_QUARANTINE' AND resource_type='restore' LIMIT 1",
+        "SELECT to_jsonb(a)->>'created_at' AS at FROM audit_logs a WHERE action='RESTORE_QUARANTINE' AND resource_type='restore' ORDER BY created_at DESC LIMIT 1",
       )
-    ).rowCount;
+    ).rows[0];
     await c.query('COMMIT');
     return {
       rows,
+      fullRows,
       binding,
       source,
       trade,
@@ -221,7 +229,8 @@ async function retained(readPool, proof) {
       outbox,
       needState,
       preferenceState,
-      quarantined,
+      quarantined: !!quarantine,
+      quarantineAt: quarantine?.at ?? null,
     };
   } catch (error) {
     await c.query('ROLLBACK');
@@ -430,16 +439,6 @@ export async function verifyR6Matching({ readPool, saved, quarantined = false })
     proof.before.binding,
     'Seat generation, budget hold and original source must not be reset',
   );
-  assert.deepEqual(
-    current.source,
-    proof.before.source,
-    'The canonical source booking must survive exactly',
-  );
-  assert.deepEqual(
-    current.reservations,
-    proof.before.reservations,
-    'The original resource reservation must not be freed by restore',
-  );
   assert.equal(current.binding.slot_state, 'CONVERTED');
   assert.equal(current.binding.intent_status, 'CONVERTED');
   assert.equal(current.binding.source_id, proof.bookingId);
@@ -451,11 +450,37 @@ export async function verifyR6Matching({ readPool, saved, quarantined = false })
     'Source trade, fee terms, parties and frozen quote must survive',
   );
   if (quarantined) {
+    assert.ok(current.quarantineAt, 'Quarantine must supply its durable database timestamp');
+    // Exact old X12 quarantine transition: preserve every other source column.
+    const { hash: sourceHash, ...sourceIdentityAndState } = current.source;
+    assert.match(sourceHash, /^[a-f0-9]{64}$/);
+    const { hash: beforeSourceHash, ...beforeSourceIdentityAndState } = proof.before.source;
+    assert.match(beforeSourceHash, /^[a-f0-9]{64}$/);
+    assert.deepEqual(
+      sourceIdentityAndState,
+      {
+        ...beforeSourceIdentityAndState,
+        status: 'CANCELLED',
+        reason: '恢复隔离取消未履约预约或转争议',
+        version: proof.before.source.version + 1,
+        change_request: null,
+        checkin_hash: null,
+        checkin_expires_at: null,
+        updated_at: current.quarantineAt,
+      },
+      'Quarantine cancels the original booking without changing its immutable facts',
+    );
+    assert.deepEqual(
+      current.reservations.map(({ hash, ...row }) => row),
+      proof.before.reservations.map(({ hash, ...row }) => ({ ...row, active: false })),
+      'Quarantine only releases source calendar reservations; their identities survive',
+    );
     assert.deepEqual(
       current.trade.state,
       {
         status: 'SOURCE_CONFLICT',
         version: proof.before.trade.state.version + 1,
+        updatedAt: current.quarantineAt,
         termsStatus: 'REVOKED',
         termsVersion: proof.before.trade.state.termsVersion + 1,
       },
@@ -467,21 +492,42 @@ export async function verifyR6Matching({ readPool, saved, quarantined = false })
         discovery_enabled: false,
         contact_enabled: false,
         version: proof.before.preferenceState.version + 1,
+        updated_at: current.quarantineAt,
       },
       'Restored discovery/contact consent must be closed',
     );
     assert.deepEqual(
       current.needState,
-      { status: 'PAUSED', version: proof.before.needState.version + 1, latest_run_id: null },
+      {
+        status: 'PAUSED',
+        version: proof.before.needState.version + 1,
+        latest_run_id: null,
+        updated_at: current.quarantineAt,
+      },
       'Restored active demand must pause and discard the current run pointer',
     );
     assert.equal(current.quarantined, true, 'Restore quarantine marker must be durable');
-    assert.equal(
-      current.outbox.state,
-      'CANCELLED',
+    assert.deepEqual(
+      current.outbox,
+      { ...proof.before.outbox, state: 'CANCELLED' },
       'Restore must stop pending matching delivery without deleting history',
     );
   } else {
+    assert.deepEqual(
+      current.fullRows,
+      proof.before.fullRows,
+      'Ordinary restore preserves all nine complete rows',
+    );
+    assert.deepEqual(
+      current.source,
+      proof.before.source,
+      'Ordinary restore preserves the complete canonical source',
+    );
+    assert.deepEqual(
+      current.reservations,
+      proof.before.reservations,
+      'Ordinary restore preserves all complete reservations',
+    );
     assert.deepEqual(current.trade.state, proof.before.trade.state);
     assert.deepEqual(current.outbox, proof.before.outbox);
     assert.deepEqual(current.needState, proof.before.needState);

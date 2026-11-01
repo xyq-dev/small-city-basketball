@@ -510,7 +510,7 @@ export class TrainingService extends ApplicationService {
                 [id],
               );
               await c.query(
-                "UPDATE training_lesson_entitlements e SET state='MAKEUP_DUE',version=e.version+1 FROM training_enrollments n,training_sessions s WHERE e.enrollment_id=n.id AND e.current_session_id=s.id AND n.cohort_id=$1 AND s.state='CANCELLED' AND e.state='AVAILABLE'",
+                "UPDATE training_lesson_entitlements e SET state='MAKEUP_DUE',version=e.version+1 FROM training_sessions s WHERE e.current_session_id=s.id AND s.cohort_id=$1 AND s.state='CANCELLED' AND e.state='AVAILABLE'",
                 [id],
               );
             }

@@ -60,6 +60,7 @@ Page({
     this._generation++;
     this._makeupRequest = (this._makeupRequest || 0) + 1;
     this._actor = '';
+    this._writeToken = null;
     this.setData({
       mine: [],
       enrollment: null,
@@ -173,15 +174,17 @@ Page({
     if (this.data.busy) return;
     const s = await this.identify();
     if (!s) return;
-    const actor = s.user.id;
+    const actor = s.user.id,
+      token = ui.hold(this);
+    this._writeToken = token;
     this.setData({ busy: true, error: '', message: '' });
     try {
       const r = await training.write(actor, path, body);
-      if (!this._alive || this._hidden || this._actor !== actor) return;
+      if (!this._alive || this._hidden || !ui.held(this, token) || this._actor !== actor) return;
       this.setData({ message: '操作已记录，请核对当前状态。', pending: null });
       if (r.enrollmentId) {
         const n = await training.read('/v1/training/enrollments/' + training.id(r.enrollmentId));
-        if (this._actor === actor && !this._hidden)
+        if (this._alive && !this._hidden && ui.held(this, token) && this._actor === actor)
           this.setData({
             enrollment: training.enrollment(n),
             isLearner: n.learnerUserId === actor,
@@ -190,10 +193,14 @@ Page({
           });
       }
     } catch (e) {
-      if (this._actor === actor && !this._hidden)
+      if (this._alive && !this._hidden && ui.held(this, token) && this._actor === actor)
         this.setData({ error: ui.message(e), pending: training.pending(actor) });
     } finally {
-      if (this._actor === actor && !this._hidden) this.setData({ busy: false });
+      if (this._writeToken === token) {
+        this._writeToken = null;
+        if (this._alive) this.setData({ busy: false });
+        else this.data.busy = false;
+      }
     }
   },
   async enroll() {

@@ -138,6 +138,87 @@ describe('R6 mandatory closure scopes, obligations and privacy on PostgreSQL', (
         .rows[0].status,
     ).toBe('FAILED');
   });
+  test.each([
+    ['WAITLISTED', null, false, true],
+    ['HOLDING', null, false, true],
+    ['HOLDING', 'NO_ATTEMPT', true, true],
+    ['HOLDING', 'FAILED', true, true],
+    ['HOLDING', 'CLOSED', true, true],
+    ['HOLDING', 'DISPATCHING', true, false],
+    ['HOLDING', 'UNKNOWN', true, false],
+    ['HOLDING', 'NOTPAY', true, false],
+    ['HOLDING', 'PAID', true, false],
+    ['HOLDING', 'NO_ATTEMPT', false, false],
+  ] as const)(
+    'cancelled %s with payment %s and canonical back-reference %s has reachable closure only when unpaid=%s',
+    async (initialState, paymentState, bindCanonical, safe) => {
+      const t = await training(),
+        entitlement = id(),
+        trade = id();
+      await c.query(
+        "INSERT INTO training_lesson_entitlements(id,org_id,enrollment_id,original_session_id,current_session_id,net_fen,state) VALUES($1,$2,$3,$4,$4,100,'AVAILABLE')",
+        [entitlement, org, t.enrollment, t.session],
+      );
+      if (initialState === 'HOLDING') {
+        await c.query(
+          "UPDATE training_enrollments SET state='HOLDING',hold_expires_at=clock_timestamp()+interval '10 minutes' WHERE id=$1",
+          [t.enrollment],
+        );
+        await c.query(
+          'INSERT INTO training_resource_reservations(id,org_id,session_id,resource_key,starts_at,ends_at,enrollment_id) SELECT $1,org_id,id,$2,starts_at,ends_at,$3 FROM training_sessions WHERE id=$4',
+          [id(), `user:${user}`, t.enrollment, t.session],
+        );
+      }
+      if (paymentState !== null) {
+        await c.query(
+          "INSERT INTO trade_orders(id,org_id,kind,source_id,source_version,source_snapshot,source_hash,payer_user_id,beneficiary_user_id,merchant_key,merchant_id,merchant_app_id,merchant_name,total_fen,quote) VALUES($1,$2,'TRAINING_ENROLLMENT',$3,1,'{}',$4,$5,$6,'synthetic','synthetic','synthetic','合成商户',100,'{}')",
+          [trade, org, t.enrollment, 'a'.repeat(64), user, owner],
+        );
+        if (bindCanonical)
+          await c.query('UPDATE training_enrollments SET trade_order_id=$2 WHERE id=$1', [
+            t.enrollment,
+            trade,
+          ]);
+        if (paymentState !== 'NO_ATTEMPT')
+          await c.query(
+            "INSERT INTO trade_payment_attempts(id,order_id,out_trade_no,channel,status,total_fen,fence,expires_at,provider_transaction_id,paid_at) VALUES($1,$2,$3,'NATIVE',$4,100,$5,clock_timestamp()+interval '1 hour',$6,CASE WHEN $4='PAID' THEN clock_timestamp() ELSE NULL END)",
+            [
+              id(),
+              trade,
+              id().replaceAll('-', ''),
+              paymentState,
+              id(),
+              paymentState === 'PAID' ? id() : null,
+            ],
+          );
+      }
+      expect(await inspect()).toContain('TRAINING_SERVICE_UNRESOLVED');
+      // The normal pre-confirmation CANCEL writes these facts and retains the
+      // immutable AVAILABLE quote rows. Negative cases model unsafe same-looking
+      // historical cancellation, so the helper must independently inspect money.
+      await c.query(
+        "UPDATE training_enrollments SET state='CANCELLED',version=version+1 WHERE id=$1",
+        [t.enrollment],
+      );
+      await c.query(
+        'UPDATE training_resource_reservations SET active=false WHERE enrollment_id=$1',
+        [t.enrollment],
+      );
+      expect(await inspect()).toEqual(safe ? [] : ['TRAINING_SERVICE_UNRESOLVED']);
+      expect(
+        (await c.query('SELECT state FROM training_lesson_entitlements WHERE id=$1', [entitlement]))
+          .rows[0].state,
+      ).toBe('AVAILABLE');
+      if (safe) {
+        // Even with no paid money, real attendance remains evidence of service.
+        await c.query(
+          "INSERT INTO training_attendance(id,org_id,entitlement_id,session_id,action,actor_id) VALUES($1,$2,$3,$4,'CHECKIN',$5)",
+          [id(), org, entitlement, t.session, user],
+        );
+        expect(await inspect()).toContain('TRAINING_SERVICE_UNRESOLVED');
+      }
+    },
+  );
   test('pending coach delivery blocks closure; completed withdrawal retains coach and guardian evidence', async () => {
     const t = await training(),
       coach = id(),

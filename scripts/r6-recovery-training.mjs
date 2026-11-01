@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { TrainingService } from '../apps/api/dist/training-service.js';
 import { TradeService } from '../apps/api/dist/trade-service.js';
 import {
@@ -37,6 +38,20 @@ const QUARANTINE_FIELDS = {
   training_enrollments: ['state', 'version'],
   training_guardian_grants: ['state', 'epoch'],
 };
+async function waitForLessonEnd(pool, sessionId) {
+  const deadline = performance.now() + 75000;
+  for (;;) {
+    const { ended } = (
+      await pool.query(
+        'SELECT ends_at<=clock_timestamp() AS ended FROM training_sessions WHERE id=$1',
+        [sessionId],
+      )
+    ).rows[0];
+    if (ended) return;
+    assert.ok(performance.now() < deadline, 'synthetic short lesson must end within 75 seconds');
+    await delay(250);
+  }
+}
 async function snapshot(pool, p, quarantined = false) {
   const hashes = {},
     counts = {},
@@ -184,8 +199,7 @@ export async function captureR6Training(context) {
     enabled: true,
     trade: trainingTradeHooks(trade),
   });
-  const start = new Date(Date.now() + 370 * 86400000),
-    until = new Date(start.getTime() + 365 * 86400000).toISOString();
+  const until = new Date(Date.now() + 735 * 86400000).toISOString();
   await training.registerProvider(state.cookie, state.orgId, {
     commandId: randomUUID(),
     name: '合成培训恢复主体',
@@ -216,15 +230,19 @@ export async function captureR6Training(context) {
     await training.createCourse(state.cookie, state.orgId, {
       commandId: randomUUID(),
       title: '合成成人恢复短班',
-      description: '真实服务与账本路径，只有渠道transport为隔离合成实现',
+      description: '隔离合成短课及渠道transport；服务、真实时钟和账本路径使用正式实现',
     })
   ).courseId;
+  // A deliberately short synthetic lesson uses actual database time. Frozen schedule and
+  // contract snapshots remain unchanged; runtime has no permission to rewrite their times.
+  const databaseNow = (await readPool.query('SELECT clock_timestamp() AS now')).rows[0].now;
+  const start = new Date(new Date(databaseNow).getTime() + 60000);
   const sessions = [0, 1].map((i) => ({
     startsAt: new Date(start.getTime() + i * 86400000).toISOString(),
-    endsAt: new Date(start.getTime() + i * 86400000 + 3600000).toISOString(),
+    endsAt: new Date(start.getTime() + i * 86400000 + (i === 0 ? 1000 : 3600000)).toISOString(),
     coachIds: [coachId],
     priceWeight: 1,
-    bufferMinutes: 15,
+    bufferMinutes: 0,
   }));
   const cohortId = (
     await training.createCohort(state.cookie, state.orgId, {
@@ -236,7 +254,7 @@ export async function captureR6Training(context) {
       capacity: 3,
       totalFen: 201,
       termsText: '每课按冻结净额核对；未消费课次可经独立审核原路退回。',
-      enrollmentDeadline: new Date(start.getTime() - 3600000).toISOString(),
+      enrollmentDeadline: new Date(start.getTime() - 2000).toISOString(),
       sessions,
     })
   ).cohortId;
@@ -256,6 +274,16 @@ export async function captureR6Training(context) {
   const orderId = n.tradeOrderId;
   assert.ok(orderId);
   let order = await trade.get(learner.cookie, orderId);
+  assert.equal(
+    (
+      await readPool.query(
+        "SELECT hold_expires_at>clock_timestamp()+interval '30 seconds' AS payable_window FROM training_enrollments WHERE id=$1",
+        [enrollmentId],
+      )
+    ).rows[0].payable_window,
+    true,
+    'synthetic payment preserves the real minimum 30-second payment window',
+  );
   await trade.pay(learner.cookie, orderId, {
     clientRequestId: randomUUID(),
     expectedVersion: order.version,
@@ -272,17 +300,35 @@ export async function captureR6Training(context) {
   assert.ok(first && second);
   assert.equal(first.netFen, 101);
   assert.equal(second.netFen, 100);
-  // Explicit isolated time advancement for a past lesson; this is not a public reschedule operation.
-  await runtimePool.query(
-    "UPDATE training_sessions SET starts_at=clock_timestamp()-interval '2 hours',ends_at=clock_timestamp()-interval '1 hour' WHERE id=$1",
-    [first.sessionId],
+  const frozenSchedule = (
+    await readPool.query(
+      'SELECT starts_at,ends_at,clock_timestamp()<starts_at AS not_started FROM training_sessions WHERE id=$1',
+      [first.sessionId],
+    )
+  ).rows[0];
+  assert.equal(
+    frozenSchedule.not_started,
+    true,
+    'paid enrollment must confirm before lesson starts',
   );
+  assert.equal(frozenSchedule.starts_at.toISOString(), sessions[0].startsAt);
+  assert.equal(frozenSchedule.ends_at.toISOString(), sessions[0].endsAt);
   await training.entitlementCommand(coach.cookie, first.id, command('CHECKIN', first.version));
+  await waitForLessonEnd(readPool, first.sessionId);
   await training.sessionCommand(
     coach.cookie,
     first.sessionId,
-    command('DELIVER', 1, { reason: '隔离验收记录实际授课事实' }),
+    command('DELIVER', 1, { reason: '隔离验收合成短课按真实数据库时钟完成' }),
   );
+  const delivered = (
+    await readPool.query(
+      'SELECT starts_at,ends_at,delivered_at FROM training_sessions WHERE id=$1',
+      [first.sessionId],
+    )
+  ).rows[0];
+  assert.equal(delivered.starts_at.toISOString(), sessions[0].startsAt);
+  assert.equal(delivered.ends_at.toISOString(), sessions[0].endsAt);
+  assert.ok(delivered.delivered_at >= delivered.ends_at, 'delivery follows the actual lesson end');
   n = await training.enrollmentDetail(learner.cookie, enrollmentId);
   const current = n.entitlements.find((e) => e.id === first.id);
   const consumptionId = (
@@ -355,7 +401,7 @@ export async function captureR6Training(context) {
     learnerId: learnerUser,
     guardianId: coachUser,
     youthEnrollmentEnabled: false,
-    fixtureKind: 'ISOLATED_SYNTHETIC_PROVIDER_TRANSPORT',
+    fixtureKind: 'ISOLATED_SYNTHETIC_SHORT_LESSON_AND_PROVIDER_TRANSPORT',
   };
   proof.snapshot = await snapshot(readPool, proof);
   return { proof, courtIds: [courtId] };

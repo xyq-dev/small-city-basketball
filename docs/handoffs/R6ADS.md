@@ -41,3 +41,7 @@ PG验收去stub：现所有商业订单和退款都用真实TradeService配remai
 实际fen渠道限额统一在createContract/proposeSettlement/SEND_SPLIT检查，不仅检查bps比例。不能因最大余数取整在付款后卡住不可发送分账；测试合成35%渠道授权仅用于合法验证30%分成算例，不代表生产账户获批比例。
 
 页面顺序补丁：beneficiary报表有内置tab，普通advertiser不显示管理收益tab；needsUnfreeze从真实batch.finished推导，仅影响按钮顺序，后端仍独立强制检查。切换用户重置旧机构/订单引用，防止界面停留在另一账号选择。
+
+2026-11-01 恢复身份小片：基于root 1132731，新worktree `scb-six-ads-recovery`、分支`work/r6-ads-recovery`，只改恢复脚本和R6ADS记录。共同trade恢复样本应存`source.identity`、`tradeHash(source.identity)`，不使用完整source或广告领域排序hash。快照对两单重新投影冻结身份并断言source_snapshot深等及source_hash一致；readPool仅SELECT，不调用带FOR UPDATE的source helper。SQL合成样本声明保持，真实交易桥PG验证与完整隔离恢复CI继续分别记录。
+
+本片node语法、单文件Prettier、diff检查通过；独立只读ACL/数据库约束审查无新增确定blocker。没有生产/新Migration/运行权限调整，未本地执行PG；请root纳入CI154完整备份恢复验证。两单ASSERT在初次capture、重启、恢复及quarantine复核均执行，能拒绝原先“全source快照＋排序hash”的错误样本。

@@ -30,3 +30,10 @@ CI151日历专项夹具顺序修正：createCohort本身也是正式培训write�
 runtime审查修正：operator/access两处原直接FOR SHARE平台权限表要求其UPDATE权限，与正式只读ACL冲突；按既有TradeService模式JOIN users并仅FOR SHARE OF u，仍核对操作员及用户ACTIVE，不扩平台表权限。只读独立审查未发现本片阻断问题，复跑native10/10，领域8/8与API typecheck通过。候选跨源档期SQL已对照048检查；真实PG新候选场景及runtime路径等待完整隔离CI，不宣称本地实测。
 
 2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。
+2026-11-01 CI153恢复夹具修正：集成人反馈新增补课真实PG已通过，production恢复脚本在runtime账号下修改冻结课次时间被ACL正确拒绝。本片删除该UPDATE，不扩ACL、不使用owner/migrator绕过；在创建班期前读取真实DB clock，首课设为60秒后开始、61秒后结束、58秒后报名截止，第二课保持次日未来。正式支付确认后断言首课尚未开始，正式签到后每250ms只读核对DB课次结束（最多75秒）才DELIVER；核对冻结起止时间不变、授课时间不早于实际结束，之后原独立消费/100分UNKNOWN退款链不变。短课及渠道明确标记隔离合成，未把本地语法检查当runtime验收。
+
+恢复修正独立审查：确认真实TradeService要求至少30秒付款剩余时间，已保留并加显式预检查；读DB时钟放在资格/教练/课程全部准备完成之后。其余15表service UPDATE列、追加历史表SELECT/INSERT、共享trigger及直接membership/court/REVOKED guardian INSERT均静态匹配真实runtime manifest，无第二个确定权限blocker。node --check、格式及diff检查通过，真实受限账号完整恢复待root隔离CI。
+
+2026-11-01 PR35两个P2修正：培训页写命令用ui.hold/held和独立writeToken保护结果；finally释放当前命令busy不再依赖页面可见性，切号/卸载旧响应不回填私有数据、不释放新账号请求锁。新增真实Page lifecycle VM，覆盖hide→成功/未知结果→show能重新加载，以及旧账号写完成不干扰新账号在途命令，native现12/12。班期CANCEL改按权益current_session所属班期恢复AVAILABLE→MAKEUP_DUE，修复A报名到B补课后取消B遗漏；新增第11项真实PG场景A→B→取消B→恢复权益→C，核对资源释放、原A合同/净价/源订单不变及没有虚构消费退款。API typecheck与格式检查通过；新增PG待CI，未放宽退款、消费或机构权限。
+
+P2定向检查确认机构工作台send具有完全相同hidden-finally锁遗留，已同片修复并补实际hide→write完成→show的成功/未知结果回归，native13/13；未知写仍保留原command待核对。独立审查确认跨班取消与学员页token改动无确定问题并复跑12/12，后续机构端同因修复另经本地13/13及格式检查。无修改共享权限、源订单或消费状态规则。

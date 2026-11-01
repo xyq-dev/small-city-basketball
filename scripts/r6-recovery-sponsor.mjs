@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readSponsorTradeSource } from '../apps/api/dist/sponsor-commerce-source.js';
 import { sponsorHash } from '../apps/api/dist/sponsor-commerce-domain.js';
+import { tradeHash } from '../apps/api/dist/trade-domain.js';
 
 const UUID = /^[a-f0-9-]{36}$/i;
 const columns = {
@@ -62,6 +63,32 @@ async function snapshot(readPool, saved) {
     2,
     'Recovery uses genuine owner contracts and canonical trade sources',
   );
+  const sources = (
+    await readPool.query(
+      `SELECT s.id,s.contract_id,s.snapshot,s.merchant_id,s.merchant_app_id,t.source_snapshot,t.source_hash FROM sponsor_orders s JOIN trade_orders t ON t.source_id=s.id AND t.kind='SPONSOR_ORDER' WHERE s.id=ANY($1::uuid[]) ORDER BY s.id`,
+      [saved.references.sponsor_orders],
+    )
+  ).rows;
+  assert.equal(sources.length, 2, 'Both synthetic orders retain a canonical trade identity');
+  for (const s of sources) {
+    // Match readSponsorTradeSource's identity projection without its FOR UPDATE on the read-only fingerprint connection.
+    const identity = {
+      contractId: s.contract_id,
+      snapshot: s.snapshot,
+      merchantId: s.merchant_id,
+      merchantAppId: s.merchant_app_id,
+    };
+    assert.deepEqual(
+      s.source_snapshot,
+      identity,
+      'Common trade stores only the frozen source identity: ' + s.id,
+    );
+    assert.equal(
+      s.source_hash,
+      tradeHash(identity),
+      'Common trade hash matches the current source identity: ' + s.id,
+    );
+  }
   return { proof, mutable };
 }
 /** Explicit synthetic database fixtures only. No provider, transport, credential or real payment is invoked. */
@@ -188,8 +215,8 @@ export async function captureR6Sponsor(context) {
           trade,
           org,
           order,
-          source,
-          sponsorHash(source.identity),
+          source.identity,
+          tradeHash(source.identity),
           payer.id,
           owner,
           merchantKey,

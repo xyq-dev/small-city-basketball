@@ -550,5 +550,158 @@ describe(
       ).toBe(0);
       expect((await dispatch.offerDetail(h.owner.cookie, f.offer.id)).locationVisible).toBe(false);
     }, 15000);
+    test('more than 20 ongoing sources cannot starve later invitations or held-quote expiry', async () => {
+      const listing = (
+        await h.api.pool.query(
+          "SELECT id,version FROM local_listings WHERE provider_user_id=$1 AND status='APPROVED' AND published ORDER BY created_at,id LIMIT 1",
+          [h.owner.id],
+        )
+      ).rows[0];
+      const sourceRequests: string[] = [];
+      const sourceBookings: string[] = [];
+      // Real canonical bookings and calendars; only their already-converted dispatch
+      // scheduling envelopes are synthetic, to isolate a queue larger than its bound.
+      for (let index = 0; index < 21; index++) {
+        const hours = 500 + index * 3;
+        const slot = await source.createSlot(h.owner.cookie, listing.id, {
+          commandId: command(),
+          expectedVersion: listing.version,
+          startsAt: at(hours),
+          endsAt: at(hours + 1),
+        });
+        const booking = await source.book(h.otherOwner.cookie, {
+          commandId: command(),
+          listingId: listing.id,
+          slotId: slot.slotId,
+          serviceRegion: region(),
+          serviceAddress: '后台公平调度合成实际服务地点',
+          acceptedTerms: true,
+        });
+        if (index % 2 === 0)
+          await source.bookingCommand(h.owner.cookie, booking.resourceId, {
+            commandId: command(),
+            expectedVersion: booking.version,
+            type: 'ACCEPT',
+            reason: '本人确认隔离测试的实际服务安排',
+          });
+        const id = command();
+        await h.api.pool.query(
+          `INSERT INTO dispatch_requests(id,org_id,owner_user_id,kind,region_catalog_version,service_region_id,service_address,starts_at,ends_at,expires_at,budget,invite_region_ids,allow_cross_city,status,source_booking_id,created_at)
+           VALUES($1,$2,$3,'REFEREE',$4,$5,'合成已转单调度记录',$6,$7,$8,$9,ARRAY[$5::uuid],true,$10,$11,clock_timestamp()-interval '1 day'+$12*interval '1 second')`,
+          [
+            id,
+            h.otherOwner.orgId,
+            h.otherOwner.id,
+            REGION_CATALOG_VERSION,
+            regionId,
+            at(hours),
+            at(hours + 1),
+            at(hours - 6),
+            zero,
+            index % 2 === 0 ? 'SOURCE_CONFIRMED' : 'SOURCE_REQUESTED',
+            booking.resourceId,
+            index,
+          ],
+        );
+        sourceRequests.push(id);
+        sourceBookings.push(booking.resourceId);
+      }
+      const due = await dispatch.create(h.otherOwner.cookie, {
+        commandId: command(),
+        orgId: h.otherOwner.orgId,
+        kind: 'SCORER',
+        serviceRegion: region(),
+        serviceAddress: '没有合格供给时明确转人工的合成场馆',
+        startsAt: at(600),
+        endsAt: at(601),
+        expiresAt: at(590),
+        budget: zero,
+        inviteRegionIds: [regionId],
+        allowCrossCity: true,
+        people: 1,
+      });
+      await h.api.pool.query(
+        "UPDATE dispatch_requests SET status='INVITING',next_batch_at=clock_timestamp(),version=version+1,updated_at=clock_timestamp() WHERE id=$1",
+        [due.resourceId],
+      );
+      const deadline = Date.now() + 6000;
+      const reviewing = await held(
+        await ready(await quoted(await fixture({ expiresAt: new Date(deadline).toISOString() }))),
+      );
+      await new Promise((resolve) => setTimeout(resolve, Math.max(0, deadline - Date.now()) + 100));
+      await dispatch.dispatchDue();
+      expect((await dispatch.detail(h.otherOwner.cookie, due.resourceId)).request.status).toBe(
+        'NEEDS_MANUAL',
+      );
+      const expired = await dispatch.detail(h.otherOwner.cookie, reviewing.id);
+      expect(expired.request.status).toBe('EXPIRED');
+      expect(expired.offers[0]!.status).toBe('EXPIRED');
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT 1 FROM local_resource_reservations WHERE dispatch_offer_id=$1 AND active',
+            [reviewing.offer.id],
+          )
+        ).rowCount,
+      ).toBe(0);
+      const sourceSchedule = () =>
+        h.api.pool.query(
+          'SELECT id,status,next_source_check_at,version FROM dispatch_requests WHERE id=ANY($1::uuid[]) ORDER BY id',
+          [sourceRequests],
+        );
+      const first = (await sourceSchedule()).rows;
+      expect(first.filter((r) => r.next_source_check_at !== null)).toHaveLength(20);
+      expect(first.every((r) => ['SOURCE_REQUESTED', 'SOURCE_CONFIRMED'].includes(r.status))).toBe(
+        true,
+      );
+      await dispatch.dispatchDue();
+      const second = (await sourceSchedule()).rows;
+      expect(second.filter((r) => r.next_source_check_at !== null)).toHaveLength(21);
+      for (const prior of first.filter((r) => r.next_source_check_at !== null))
+        expect(second.find((r) => r.id === prior.id)?.version).toBe(prior.version);
+      expect(
+        (
+          await h.api.pool.query('SELECT 1 FROM dispatch_offers WHERE request_id=ANY($1::uuid[])', [
+            [...sourceRequests, due.resourceId],
+          ])
+        ).rowCount,
+      ).toBe(0);
+      // Two independent workers may read the same due source, but the second must
+      // recheck its deadline/status after locking and cannot reprocess the terminal row.
+      const finalBooking = sourceBookings[20]!;
+      const currentBooking = (
+        await h.api.pool.query('SELECT version FROM local_bookings WHERE id=$1', [finalBooking])
+      ).rows[0];
+      await source.bookingCommand(h.otherOwner.cookie, finalBooking, {
+        commandId: command(),
+        expectedVersion: currentBooking.version,
+        type: 'CANCEL',
+        reason: '合成已确认预约结束后核对派单终态',
+      });
+      const beforeSync = (
+        await h.api.pool.query(
+          "UPDATE dispatch_requests SET next_source_check_at=clock_timestamp()-interval '1 second',version=version+1,updated_at=clock_timestamp() WHERE id=$1 RETURNING version",
+          [sourceRequests[20]],
+        )
+      ).rows[0];
+      const secondWorker = new DispatchService(
+        h.api.pool,
+        { databaseUrl: h.databaseUrl, appOrigin: ORIGIN, backgroundWorkersEnabled: false },
+        { enabled: true },
+      );
+      try {
+        await Promise.all([dispatch.dispatchDue(), secondWorker.dispatchDue()]);
+        const terminal = (await sourceSchedule()).rows.find((r) => r.id === sourceRequests[20]);
+        expect(terminal).toMatchObject({
+          status: 'SOURCE_ENDED',
+          next_source_check_at: null,
+          version: beforeSync.version + 1,
+        });
+        await secondWorker.dispatchDue();
+        expect((await sourceSchedule()).rows.find((r) => r.id === terminal.id)).toEqual(terminal);
+      } finally {
+        secondWorker.close();
+      }
+    }, 30000);
   },
 );

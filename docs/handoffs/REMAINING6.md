@@ -19,3 +19,7 @@ CI151新域真实PG已至66通过/3失败，余项为expiry/version与安全404�
 CI152新域PG步骤完整通过，旧业务还在执行；隔离production定位到旧同城book HTTP500：提取prepare时对append-only local_command_receipts加入FOR UPDATE，而runtime刻意无UPDATE权限。移除两处无必要历史行锁（仍持全局日历/源锁，operation重读+唯一键防重），不扩历史写权限。广告配置已复用原trade商户实现严格默认关闭装配，root补app及Compose普通开关，构造不外发。
 
 全部已知入口/权限修正已集成：培训学员同课程候选选择器、仅锁平台操作员用户行；广告整数渠道上限及真实TradeService退款幂等/出网前复核；广告通过现有商户配置严格装配。当前无未提交业务代码，准备候选CI153。最新54项运行配置/源桥定向通过。等待真实PG、全量旧回归、完整220表恢复和独立审查最后结果，不提前合并。
+
+2026-11-01 11:35 Asia/Shanghai检查点：remote c0a4cc8以真实双parent整合main 911564f，tree54751ecc与本地d47a579一致，PR35已ready但未合并。CI153新域真实PG通过；admin源码检查全部过，布局1079过/3失败均培训输入字体<16px已修；production受限角色21PG过，恢复培训冻结时间UPDATE失败，改真实DB+60s短课不扩ACL。自动审查4项正以真实PG/原生生命周期补证；当前仍REVIEW/BRANCH_ONLY。无生产或外部真实渠道操作。
+
+2026-11-01 11:40 Asia/Shanghai候选检查点：PR35四条审查修复均已集成（未付取消注销、两培训页隐藏写锁、跨班补课取消、独立有界派单轮询），派单仅增加next_source_check_at列UPDATE。CI153新域78项PG过，旧域585过/1个公共列表分页fixture失败，现用真实唯一标题查询保持全部隐私断言。恢复修正保留真实冻结课次、精确X12隔离取消/资源释放与广告canonical身份hash；完整typecheck、定向28、原生培训13和恢复12过。待CI154验证当前完整候选，尚未合并。

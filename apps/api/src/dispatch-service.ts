@@ -55,6 +55,7 @@ export interface DispatchOptions {
 export class DispatchService extends ApplicationService {
   private timer: ReturnType<typeof setInterval> | undefined;
   private workerRunning = false;
+  private workerClosed = false;
   constructor(
     pool: Pool,
     options: ApiOptions,
@@ -76,6 +77,7 @@ export class DispatchService extends ApplicationService {
     this.close();
   }
   close() {
+    this.workerClosed = true;
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
   }
@@ -1040,49 +1042,80 @@ export class DispatchService extends ApplicationService {
       });
     });
   }
-  /** Bounded DB worker. Only creates station inbox invitations, never calls a provider/network. */
+  /** Separate bounded queues: at most 20 invitation deadlines and 20 source checks per tick. */
   async dispatchDue() {
-    if (this.workerRunning || !this.dispatchOptions.enabled) return 0;
+    if (this.workerClosed || this.workerRunning || !this.dispatchOptions.enabled) return 0;
     this.workerRunning = true;
     try {
       const refs = (
         await this.pool.query(
-          "SELECT id FROM dispatch_requests WHERE status IN ('INVITING','REVIEWING','SOURCE_REQUESTED','SOURCE_CONFIRMED') AND (next_batch_at<=clock_timestamp() OR expires_at<=clock_timestamp() OR source_booking_id IS NOT NULL) ORDER BY created_at,id LIMIT 20",
+          `WITH invitation_candidates AS (
+            SELECT r.id,LEAST(r.expires_at,CASE WHEN r.status='INVITING'
+              THEN COALESCE(r.next_batch_at,r.created_at) ELSE o.hold_expires_at END) AS due_at
+            FROM dispatch_requests r LEFT JOIN dispatch_offers o ON o.id=r.winner_offer_id
+            WHERE r.source_booking_id IS NULL AND r.status IN ('INVITING','REVIEWING')
+          ), invitation_due AS (
+            SELECT id,due_at FROM invitation_candidates WHERE due_at<=clock_timestamp()
+            ORDER BY due_at,id LIMIT 20
+          ), source_due AS (
+            SELECT id,COALESCE(next_source_check_at,created_at) AS due_at
+            FROM dispatch_requests WHERE source_booking_id IS NOT NULL
+              AND status IN ('SOURCE_REQUESTED','SOURCE_CONFIRMED')
+              AND COALESCE(next_source_check_at,created_at)<=clock_timestamp()
+            ORDER BY COALESCE(next_source_check_at,created_at),id LIMIT 20
+          ) SELECT id,false AS source_check,due_at FROM invitation_due
+            UNION ALL SELECT id,true AS source_check,due_at FROM source_due
+            ORDER BY source_check,due_at,id`,
         )
       ).rows;
       let count = 0;
-      for (const ref of refs)
+      for (const ref of refs) {
+        if (this.workerClosed) break;
         try {
           await this.transaction(async (c) => {
+            if (this.workerClosed) return;
             await this.enabled(c);
+            if (this.workerClosed) return;
             const first = await this.req(c, ref.id);
+            if (this.workerClosed) return;
             await this.mutex(c, [first.org_id]);
+            if (this.workerClosed) return;
             let r = await this.req(c, ref.id, true);
+            if (this.workerClosed) return;
             if (r.source_booking_id) {
+              // Another process may already have checked a selected row while this
+              // worker waited for the calendar lock. Recheck its persisted deadline.
+              if (
+                !['SOURCE_REQUESTED', 'SOURCE_CONFIRMED'].includes(r.status) ||
+                (r.next_source_check_at && new Date(r.next_source_check_at) > new Date(r.db_now))
+              )
+                return;
               const b = (
                 await c.query('SELECT status FROM local_bookings WHERE id=$1', [
                   r.source_booking_id,
                 ])
               ).rows[0];
+              if (this.workerClosed) return;
               const state =
                 b && sourceEnded.includes(b.status)
                   ? 'SOURCE_ENDED'
                   : b && ['CONFIRMED', 'ARRIVED', 'DELIVERED', 'DISPUTED'].includes(b.status)
                     ? 'SOURCE_CONFIRMED'
                     : 'SOURCE_REQUESTED';
-              if (state !== r.status)
-                await c.query(
-                  'UPDATE dispatch_requests SET status=$2,version=version+1,updated_at=clock_timestamp() WHERE id=$1',
-                  [r.id, state],
-                );
+              await c.query(
+                "UPDATE dispatch_requests SET status=$2,next_source_check_at=CASE WHEN $2='SOURCE_ENDED' THEN NULL ELSE clock_timestamp()+interval '60 seconds' END,version=version+1,updated_at=clock_timestamp() WHERE id=$1",
+                [r.id, state],
+              );
               return;
             }
+            if (!['INVITING', 'REVIEWING'].includes(r.status)) return;
             const valid = (
               await c.query(
                 "SELECT 1 FROM users u JOIN organization_memberships m ON m.user_id=u.id JOIN organizations g ON g.id=m.org_id WHERE u.id=$1 AND u.status='ACTIVE' AND m.org_id=$2 AND m.status='ACTIVE' AND m.role IN ('ORG_OWNER','ORG_ADMIN') AND g.status='ACTIVE'",
                 [r.owner_user_id, r.org_id],
               )
             ).rowCount;
+            if (this.workerClosed) return;
             if (!valid) {
               if (r.winner_offer_id)
                 await this.release(
@@ -1099,6 +1132,7 @@ export class DispatchService extends ApplicationService {
             }
             r = await this.expire(c, r);
             if (
+              !this.workerClosed &&
               r.status === 'INVITING' &&
               (!r.next_batch_at || new Date(r.next_batch_at) <= new Date(r.db_now))
             )
@@ -1108,6 +1142,7 @@ export class DispatchService extends ApplicationService {
         } catch (e) {
           if (!(e instanceof ApiError)) throw e;
         }
+      }
       return count;
     } finally {
       this.workerRunning = false;

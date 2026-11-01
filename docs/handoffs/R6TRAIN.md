@@ -24,3 +24,11 @@ CI151反馈：共享日历6/7通过，唯一失败是过期派单已被prepareTr
 新增PG第10项使用真实Nest controller、已有登录会话、真实TrainingService/迁移库，非模拟DTO；普通学员本人不是owner/reviewer/coach，独立payer/owner读候选明确404，payer写MAKEUP明确403，最后席位被占后旧候选明确MAKEUP_FULL，刷新后新目标成功且原权益金额/原课次不变。local native10/10及typecheck通过，PG待集成人实际CI。此前CI151原培训9项已通过、calendar修正0c4f248另片交付。本片无生产、资金渠道或Migration执行，独立只读审查与最终提交状态另报root。
 
 集成前runtime补丁：training-service的operator/access两处平台权限查询改JOIN users + FOR SHARE OF u，保留platform_operators只读ACL，遵循维护者锁users的现有协议。独立审查未发现新阻断问题，并复跑native10/10；领域8/8与API typecheck通过。root反馈CI152原有新域已全部通过，本片新增候选PG与正式runtime待下一轮CI。此片之后仅处理确定失败或阻断，不继续扩展范围。
+
+CI153确定失败修复：root反馈补课PG通过；scripts/r6-recovery-training.mjs原手改冻结时间违反runtime列级ACL。改真实DB clock短课（+60秒开始/+61秒结束，deadline+58秒），全部报名/支付/签到/授课仍走正式service；消费前轮询真正结束，单次等待250ms、总轮询最多75秒。若CI过慢未在开始前确认，显式失败而不放宽生产规则；授课后断言原冻结起止未变化与delivered_at≥ends_at。第二课仍在次日，100分UNKNOWN退款与15表恢复hash不变。直接SQL现在只有membership/court/历史REVOKED guardian INSERT及只读查询，未新增ACL/迁移或高权执行。待独立审查剩余权限与root下一轮完整runtime恢复实跑。
+
+该恢复片独立审查已完成：发现并避开真实付款剩余30秒下限，现60秒短课留足付款窗口；15表其余写入及触发器/只增历史读取均静态匹配root实际runtime ACL，无第二个确定blocker。node --check/Prettier/diff通过，PG恢复未在本地执行。接续只需集成脚本和文档，复跑完整受限runtime恢复；不能把语法或静态权限核查当完成恢复。
+
+PR35线程PRRT_kwDOVTBG086yW7tk/tl最小修正：index.js send采用会话持有token，当前writeToken在finally释放busy与可见性分离；旧会话不回填且不清新write锁。native12/12含实际onHide/onShow与切号并发。cohort CANCEL的恢复谓词由原enrollment.cohort_id改当前session.cohort_id，只恢复被取消实际课次的AVAILABLE权益；新增PG第11项跨班补课取消后再次补课，原报名/合同/金额/订单冻结不变。类型/格式/diff通过，PG由root下一轮实跑；root处理评论resolve与远端同步，无新增共享文件/迁移/ACL。
+
+独立审查上述两修复未发现确定问题，独立native12/12。定向检查另确认training-manage页同一hidden-finally错误，同片采用相同令牌/释放策略并补真实生命周期成功/未知回归，最终本地native13/13；未知结果继续原命令核对。该机构端同因修复已向root报告，无可选功能扩展。最终PG11项与真实runtime恢复仍待下一轮CI。

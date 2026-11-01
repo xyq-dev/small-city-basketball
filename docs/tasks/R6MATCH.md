@@ -45,3 +45,6 @@ CI149跟进（2026-11-01 Asia/Shanghai）：root报告R6MATCH beforeAll的APPROV
 capture与verify均核对资金订单与预约的source/org/payer/beneficiary/slot/listing/金额、条款与商户、完整source_snapshot及TradeService原顺序source_hash、冻结quote，要求没有payment_attempt。正常恢复比较资金/条款不变；quarantine仅允许既有SOURCE_CONFLICT与REVOKED及对应version递增，身份金额quote哈希保持。按helper实际费用设置候选/预算/assignment，不再硬写另一金额。node --check、Prettier及diff检查通过；真实付费source创建与PG恢复仍待root隔离CI。依赖map helper提交2e8297e，未改共享helper。
 
 2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。
+隔离恢复断言修复（2026-11-01 Asia/Shanghai）：root授权修正旧X12 quarantine与matching恢复检查冲突。普通重启/恢复现在严格比较九表完整行摘要、原预约完整行和全部reservation完整行；隔离只允许旧SQL规定的CONFIRMED→CANCELLED、固定原因、version+1、change/checkin清空及resource.active=false。来源其余列完整摘要、资金绑定、金额、席位/意向/assignment预算占用仍严格保留；所有updated_at精确等于RESTORE_QUARANTINE审计时间，不泛化忽略时间列。matching授权/需求/outbox及资金状态按具体变化精算。
+
+验证：node语法、Prettier、git diff检查通过；临时mock SQL验证器接受普通/隔离两个正确状态，拒绝9种来源、资源、预算、资金或时间篡改。该检查只验证JS断言分支，不替代真实PG。真实archive恢复待root CI154；仅修改自有脚本与任务/交接记录，未改旧quarantine语义。

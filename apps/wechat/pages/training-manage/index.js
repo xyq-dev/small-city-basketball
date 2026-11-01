@@ -68,6 +68,7 @@ Page({
   onSessionReset() {
     this._generation++;
     this._actor = '';
+    this._writeToken = null;
     this.setData({
       workspace: null,
       teaching: [],
@@ -200,22 +201,29 @@ Page({
   },
   async send(path, body) {
     if (this.data.busy || !this._actor) return;
-    const actor = this._actor;
+    const actor = this._actor,
+      token = ui.hold(this);
+    this._writeToken = token;
     this.setData({ busy: true, error: '', message: '' });
     try {
       const result = await training.write(actor, path, body);
-      if (this._actor === actor && !this._hidden) {
+      if (this._alive && !this._hidden && ui.held(this, token) && this._actor === actor) {
         this.setData({ pending: null, message: '操作已记录。', busy: false });
         await this.load();
+        if (!this._alive || this._hidden || !ui.held(this, token) || this._actor !== actor) return;
         if (result.enrollmentId) await this.showEnrollment(result.enrollmentId);
         if (result.sessionId) await this.showRoster(result.sessionId);
         else if (this.data.roster) await this.showRoster(this.data.roster.session.id);
       }
     } catch (e) {
-      if (this._actor === actor && !this._hidden)
+      if (this._alive && !this._hidden && ui.held(this, token) && this._actor === actor)
         this.setData({ error: ui.message(e), pending: training.pending(actor) });
     } finally {
-      if (this._actor === actor && !this._hidden) this.setData({ busy: false });
+      if (this._writeToken === token) {
+        this._writeToken = null;
+        if (this._alive) this.setData({ busy: false });
+        else this.data.busy = false;
+      }
     }
   },
   createProvider() {

@@ -26,6 +26,23 @@ const trainingEnrollments = `SELECT n.id FROM training_enrollments n WHERE $1 IN
  OR EXISTS(SELECT 1 FROM training_refund_allocations r WHERE r.enrollment_id=n.id AND $1 IN(r.proposed_by,r.reviewed_by))
  OR EXISTS(SELECT 1 FROM training_consumptions x JOIN training_lesson_entitlements e ON e.id=x.entitlement_id WHERE e.enrollment_id=n.id AND $1 IN(x.proposed_by,x.reviewed_by,x.acknowledged_by))`;
 
+/** Pre-confirmation cancellation retains AVAILABLE quote rows. They are not
+ * outstanding lessons only when both service and canonical money evidence are empty.
+ * Read by source identity as well as the optional back-reference: an orphaned or
+ * inconsistent trade row must not disappear from an unpaid cancellation check. */
+const safelyCancelledUnpaidTraining = `SELECT n.id FROM training_enrollments n
+ WHERE $1 IN(n.applicant_user_id,n.payer_user_id,n.learner_user_id) AND n.state='CANCELLED'
+ AND NOT EXISTS(SELECT 1 FROM training_attendance a JOIN training_lesson_entitlements e ON e.id=a.entitlement_id WHERE e.enrollment_id=n.id)
+ AND NOT EXISTS(SELECT 1 FROM training_consumptions x JOIN training_lesson_entitlements e ON e.id=x.entitlement_id WHERE e.enrollment_id=n.id)
+ AND NOT EXISTS(SELECT 1 FROM training_refund_allocations r WHERE r.enrollment_id=n.id)
+ AND (n.trade_order_id IS NULL OR EXISTS(SELECT 1 FROM trade_orders t WHERE t.id=n.trade_order_id AND t.kind='TRAINING_ENROLLMENT' AND t.source_id=n.id AND t.org_id=n.org_id AND t.payer_user_id=n.payer_user_id AND t.total_fen=n.total_fen))
+ AND NOT EXISTS(SELECT 1 FROM trade_orders t WHERE t.kind='TRAINING_ENROLLMENT' AND t.source_id=n.id AND (
+  t.id IS DISTINCT FROM n.trade_order_id OR t.org_id<>n.org_id OR t.payer_user_id<>n.payer_user_id OR t.total_fen<>n.total_fen OR t.status='SOURCE_CONFLICT'
+  OR EXISTS(SELECT 1 FROM trade_payment_attempts p WHERE p.order_id=t.id AND p.status NOT IN('FAILED','CLOSED'))
+  OR EXISTS(SELECT 1 FROM trade_refunds r WHERE r.order_id=t.id)
+  OR EXISTS(SELECT 1 FROM trade_deductions d WHERE d.order_id=t.id)
+  OR EXISTS(SELECT 1 FROM trade_settlements s WHERE s.order_id=t.id)))`;
+
 export async function readRemainingSixClosureOrgs(
   c: PoolClient,
   userId: string,
@@ -79,6 +96,11 @@ export async function lockRemainingSixClosure(c: PoolClient, userId: string): Pr
     'SELECT id FROM training_coaches WHERE user_id=$1 ORDER BY id FOR UPDATE NOWAIT',
     'SELECT id FROM training_guardian_grants WHERE $1 IN(learner_user_id,guardian_user_id) ORDER BY id FOR UPDATE NOWAIT',
     `SELECT id FROM training_enrollments WHERE id IN(${trainingEnrollments}) ORDER BY id FOR UPDATE NOWAIT`,
+    `SELECT id FROM trade_orders WHERE kind='TRAINING_ENROLLMENT' AND source_id IN(${trainingEnrollments}) ORDER BY id FOR UPDATE NOWAIT`,
+    ...['trade_payment_attempts', 'trade_refunds', 'trade_deductions', 'trade_settlements'].map(
+      (table) =>
+        `SELECT x.id FROM ${table} x JOIN trade_orders t ON t.id=x.order_id WHERE t.kind='TRAINING_ENROLLMENT' AND t.source_id IN(${trainingEnrollments}) ORDER BY x.id FOR UPDATE OF x NOWAIT`,
+    ),
     `SELECT id FROM training_lesson_entitlements WHERE enrollment_id IN(${trainingEnrollments}) ORDER BY id FOR UPDATE NOWAIT`,
     `SELECT id FROM training_consumptions WHERE entitlement_id IN(SELECT id FROM training_lesson_entitlements WHERE enrollment_id IN(${trainingEnrollments})) ORDER BY id FOR UPDATE NOWAIT`,
     `SELECT id FROM training_refund_allocations WHERE enrollment_id IN(${trainingEnrollments}) ORDER BY id FOR UPDATE NOWAIT`,
@@ -100,10 +122,10 @@ export async function readRemainingSixClosureBlockers(
   userId: string,
 ): Promise<{ code: string }[]> {
   const result = await c.query(
-    `${sponsorScope}
+    `${sponsorScope}, unpaid_training_cancellations AS (${safelyCancelledUnpaidTraining})
  SELECT
  EXISTS(SELECT 1 FROM training_enrollments n WHERE $1 IN(n.applicant_user_id,n.payer_user_id,n.learner_user_id) AND
-  (n.state IN('WAITLISTED','HOLDING','CONFIRMED','PAID_UNALLOCATED') OR EXISTS(SELECT 1 FROM training_lesson_entitlements e WHERE e.enrollment_id=n.id AND e.state IN('AVAILABLE','MAKEUP_DUE','CONSUMPTION_PENDING','REFUND_PENDING'))))
+  (n.state IN('WAITLISTED','HOLDING','CONFIRMED','PAID_UNALLOCATED') OR EXISTS(SELECT 1 FROM training_lesson_entitlements e WHERE e.enrollment_id=n.id AND e.state IN('AVAILABLE','MAKEUP_DUE','CONSUMPTION_PENDING','REFUND_PENDING') AND NOT(e.state='AVAILABLE' AND n.id IN(SELECT id FROM unpaid_training_cancellations)))))
  OR EXISTS(SELECT 1 FROM training_coaches t JOIN training_session_coaches x ON x.coach_id=t.id JOIN training_sessions s ON s.id=x.session_id JOIN training_cohorts h ON h.id=s.cohort_id WHERE t.user_id=$1 AND s.state='SCHEDULED' AND h.state NOT IN('COMPLETED','CANCELLED'))
  OR EXISTS(SELECT 1 FROM training_cohorts h WHERE h.created_by=$1 AND h.state IN('ENROLLING','RUNNING','SUSPENDED')) AS training_service,
  EXISTS(SELECT 1 FROM training_refund_allocations r WHERE (r.enrollment_id IN(SELECT id FROM training_enrollments WHERE $1 IN(applicant_user_id,payer_user_id,learner_user_id)) OR $1 IN(r.proposed_by,r.reviewed_by)) AND r.status NOT IN('SUCCEEDED','FAILED','REJECTED','COMPLETED_ZERO'))

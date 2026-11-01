@@ -23,3 +23,7 @@ root追加来源桥：`prepareBookingInTransaction(c,actor,raw)`与`prepareMatch
 CI149回归：root报告地图PG撤销发布fixture触发版本保护，因为直接UPDATE未递增version。最小修复仅将该测试撤销语句补 `version=version+1`，保持实际业务触发器约束；不放宽迁移或生产校验。真实PG重跑待root CI。
 
 追加有偿派单验证（2026-11-01 Asia/Shanghai）：`work/r6-paid-dispatch`基线19cb239，新增 `dispatch-source-adapter.test.ts` 9项已通过；API typecheck通过。`r6-paid-dispatch.integration.test.ts`两项使用真实供给审批、收费条款独立审核、DispatchService、LocalServicesService、TradeService和root默认收费桥。缺收费桥时要求503并逐行比较原请求/报价/hold/reservation/历史无变化；补齐后原commandId重试产生唯一完整1300分订单。第二项在同事务真实订单生成后抛错，检验已观察到的订单、原预约、资源占用、历史和回执消失且原hold恢复。没有外部收款调用，本地无PG未运行该两项；需root隔离CI执行，不得以单测代称真实事务已验。独立只读审查结论为未发现确定缺陷，真实默认app接线、错误传播与quote锁链已核对。
+
+CI153字体修复交接：`work/r6-training-font`只追加training-manage表单控件16px覆盖，导入的26rpx不再使窄屏理由textarea缩小，管理页其他输入也遵守同一字号。既有r6-training native10/10通过；本地Playwright默认/override Chromium均不存在，320/390/430布局待CI重跑 `mini-program.spec.ts --project=desktop --grep initial-training-manage`。此小片不修改培训负责人JS、service或R6TRAIN记录。
+
+CI153旧X12隐私测试小片：x12-local.integration.test.ts的supply返回唯一title，首个公开字段测试用q定位该样本，不再假设全县第一页面必含随机UUID新样本。问题来自R6先运行后保留同县多页库存；closeHarness不删除业务事实。全部原敏感字段/资格公开限制断言保留，额外要求唯一结果。生产代码、分页上限、原排序不变；PG交CI，未本地执行。

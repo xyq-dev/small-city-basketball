@@ -252,6 +252,7 @@
       "updateColumns": [
         "batch_count",
         "next_batch_at",
+        "next_source_check_at",
         "reason",
         "source_booking_id",
         "status",

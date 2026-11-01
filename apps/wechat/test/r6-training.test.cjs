@@ -159,6 +159,101 @@ test('switching accounts stops replay and clears private page data', async () =>
   await assert.rejects(t.retry(U), /身份/);
   assert.equal(h.calls.filter((x) => x.method === 'POST').length, 1);
 });
+test('a write completing while hidden releases busy and the next onShow can load again', async () => {
+  for (const outcome of ['success', 'unknown']) {
+    let settle;
+    const h = harness('training', (url, method) => {
+      if (method === 'POST')
+        return new Promise((resolve, reject) => {
+          settle = () =>
+            outcome === 'success'
+              ? resolve({ enrollmentId: C })
+              : reject(Error('synthetic unknown outcome'));
+        });
+      return { items: [], capabilities: { enabled: true } };
+    });
+    const sending = h.page.send('/v1/training/enrollments/' + C + '/commands', {
+      action: 'REFRESH',
+      expectedVersion: 1,
+    });
+    await new Promise((r) => setImmediate(r));
+    assert.equal(h.page.data.busy, true);
+    h.page.onHide();
+    settle();
+    await sending;
+    assert.equal(h.page.data.busy, false);
+    assert.equal(h.page.data.enrollment, null);
+    assert.equal(h.page.data.message, '');
+    const t = h.requireLocal('utils/training.js');
+    assert.equal(!!t.pending(U), outcome === 'unknown');
+    h.page.onShow();
+    await new Promise((r) => setImmediate(r));
+    assert.equal(h.calls.filter((x) => x.url === '/v1/training/catalog').length, 1);
+    assert.equal(h.page.data.loading, false);
+    assert.equal(h.page.data.enabled, true);
+  }
+});
+test('an old account write cannot clear a new account command lock or refill private data', async () => {
+  const responses = [];
+  const h = harness('training', (url, method) => {
+    if (method === 'POST') return new Promise((resolve) => responses.push(resolve));
+    return { items: [], capabilities: { enabled: true } };
+  });
+  const oldWrite = h.page.send('/v1/training/enrollments/' + C + '/commands', {
+    action: 'REFRESH',
+    expectedVersion: 1,
+  });
+  await new Promise((r) => setImmediate(r));
+  h.switchUser();
+  const newWrite = h.page.send('/v1/training/enrollments/' + O + '/commands', {
+    action: 'REFRESH',
+    expectedVersion: 1,
+  });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(responses.length, 2);
+  responses[0]({ enrollmentId: C });
+  await oldWrite;
+  assert.equal(h.page.data.busy, true);
+  assert.equal(h.page.data.enrollment, null);
+  assert.equal(h.page.data.message, '');
+  responses[1]({});
+  await newWrite;
+  assert.equal(h.page.data.busy, false);
+  assert.equal(h.page.data.enrollment, null);
+});
+test('the training workspace also releases a hidden completed command before returning', async () => {
+  for (const outcome of ['success', 'unknown']) {
+    let settle;
+    const h = harness('training-manage', (url, method) => {
+      if (method === 'POST')
+        return new Promise((resolve, reject) => {
+          settle = () =>
+            outcome === 'success'
+              ? resolve({ enrollmentId: C })
+              : reject(Error('synthetic unknown outcome'));
+        });
+      return { teaching: [], coachProfiles: [] };
+    });
+    await h.page.load();
+    const sending = h.page.send('/v1/training/enrollments/' + C + '/commands', {
+      action: 'REFRESH',
+      expectedVersion: 1,
+    });
+    await new Promise((r) => setImmediate(r));
+    assert.equal(h.page.data.busy, true);
+    h.page.onHide();
+    settle();
+    await sending;
+    assert.equal(h.page.data.busy, false);
+    assert.equal(h.page.data.enrollment, null);
+    assert.equal(h.page.data.message, '');
+    h.page.onShow();
+    await new Promise((r) => setImmediate(r));
+    assert.equal(h.calls.filter((x) => x.url === '/v1/training/mine').length, 2);
+    assert.equal(h.page.data.loading, false);
+    assert.equal(!!h.page.data.pending, outcome === 'unknown');
+  }
+});
 test('both native pages have bound handlers, balanced templates, and no simulated success copy', () => {
   for (const name of ['training', 'training-manage']) {
     const h = harness(name);

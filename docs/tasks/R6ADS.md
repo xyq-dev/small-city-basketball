@@ -47,3 +47,7 @@
 2026-11-01 小程序顺序收尾：退款卡先展示所需原批次解冻，解冻确认后才展示提交统一退款；已结束原批次不重复给出解冻操作。机构管理员可在页面直接切换“本机构收益明细”，无需手写mode；换登录账号清除旧org/order选择。微信6/6及WXML处理器校验通过。
 
 2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。
+
+2026-11-01 恢复身份修正开工：按root指派基于1132731047edd8abad47eb3b0450d350f9f4b801新建`/workspace/scratch/aad368826b09/scb-six-ads-recovery`、`work/r6-ads-recovery`，起始clean；远端仍xyq-dev/small-city-basketball。仅`scripts/r6-recovery-sponsor.mjs`及本任务/交接文档，允许本地验证与commit，远端与CI由root执行。修复SQL合成恢复样本错误地把完整source写入共同trade快照、并用排序sponsorHash代替tradeHash的问题；两单现在与真实TradeService一致存source.identity及tradeHash(identity)，每次capture/restore/quarantine快照同时只读核验两份源身份及共同hash。仍明确为SQL合成恢复样本，不声称该脚本通过真实商户支付流程；实际TradeService PG链路验证另有独立测试。
+
+该小片验证：`node --check scripts/r6-recovery-sponsor.mjs`、Prettier单文件检查及`git diff --check`通过。独立只读审查逐一比对18类INSERT目标与`runtime-privileges.json`、047/048及原trade约束，除已修身份问题外未发现确定ACL/外键/状态约束阻断；未在本机执行PG或恢复，完整恢复交root CI154。源身份复核只使用SELECT，兼容备份指纹只读账号，不增加权限。

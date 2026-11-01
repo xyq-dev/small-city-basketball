@@ -31,3 +31,7 @@
 整合单测修复：matching-local-source.test.ts的Actor与SQL fixture已匹配新生产桥读取，新增旧STAFF/TEAM回执拒绝和canonical账本缺失/不符边界；27项matching领域/源桥单测及API typecheck通过。只改测试和本任务记录，不回退生产校验。
 
 恢复source升级：与map 2e8297e的createLocalSource(label,{paid:true})接口配套，matching必须取得真实tradeOrderId/termsId/totalFen；没有绑定立即失败。保留明确synthetic matching SQL定位，但来源为真实TradeService条款独立审核→原book+consent同事务资金绑定→provider接单。新增恢复proof核资金来源、双方、金额、商户条款、source_snapshot/source_hash/quote和零支付尝试，按现有E04隔离规则允许仅status/version变化。脚本语法/格式通过；PG恢复未本地执行，根集成时需同时保留map helper提交。
+
+隔离恢复断言修复（2026-11-01 Asia/Shanghai）：root授权修正旧X12 quarantine与matching恢复检查冲突。普通重启/恢复现在严格比较九表完整行摘要、原预约完整行和全部reservation完整行；隔离只允许旧SQL规定的CONFIRMED→CANCELLED、固定原因、version+1、change/checkin清空及resource.active=false。来源其余列完整摘要、资金绑定、金额、席位/意向/assignment预算占用仍严格保留；所有updated_at精确等于RESTORE_QUARANTINE审计时间，不泛化忽略时间列。matching授权/需求/outbox及资金状态按具体变化精算。
+
+验证：node语法、Prettier、git diff检查通过；临时mock SQL验证器接受普通/隔离两个正确状态，拒绝9种来源、资源、预算、资金或时间篡改。该检查只验证JS断言分支，不替代真实PG。真实archive恢复待root CI154；仅修改自有脚本与任务/交接记录，未改旧quarantine语义。

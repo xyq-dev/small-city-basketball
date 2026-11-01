@@ -21,3 +21,7 @@ root追加委派：完成原同城预约/约赛的同事务prepare+execute入口
 2026-11-01 Asia/Shanghai，root追加有偿派单审查与测试：独立worktree `scb-six-map-review`，分支 `work/r6-paid-dispatch`，从595b61a同步到19cb239（含045暂占约束修复）。仅新增dispatch-source-adapter单测、r6-paid-dispatch真实PG测试及本任务记录，未修改root拥有的适配器。独立只读审查未发现确定缺陷：真实原预约、交易、暂占转换和两类回执沿用同一PoolClient；正价报价缺少匹配的canonical trade_order会抛错并回滚。新增9项边界单测已通过，API typecheck通过。新增2项真实PG测试待隔离CI：完整1300分服务/差旅订单与同命令重放；未接收费桥以及实际收费订单创建后失败时，源预约/交易/历史/回执一并回滚、原暂占完全恢复且同命令可重试。所有支付调用都是遇调用即失败的隔离桩，未执行外部支付。
 
 2026-11-01 root整合检查点：本卡源码已纳入feat/remaining-six及PR #35。CI152已完成该次候选的新域真实PG阶段；后续补课/广告真实退款/runtime等增量纳入下一轮，当前HEAD整套验收仍待完成。子任务上文“LOCAL_ONLY/尚未执行”保留为历史时点，当前统一依据为REMAINING6验收文档。保险真实供应商、真实商户及真机边界不因此变更。
+
+2026-11-01 Asia/Shanghai，root委派CI153培训管理页窄屏字体小修：独立 `scb-six-map-ui` / `work/r6-training-font`，基线d47a579，唯一业务改动为training-manage/index.wxss在导入样式后把input/textarea固定为16px，符合UI_SPEC手机表单16px规范，修复26rpx在320/390/430逻辑宽度低于门槛的问题。未改JS或service。原生培训既有10项通过、diff检查通过；本地无Playwright浏览器可执行文件，三宽度真实兼容布局复跑交root隔离CI，不以源码VM代称浏览器测量。
+
+2026-11-01 Asia/Shanghai，CI153旧X12隐私PG失败修复：独立 `scb-six-map-privacy` / `work/r6-local-test-isolation`，基线7631660。旧测试按全县默认20条随机UUID排序取第一页，R6先行保留约60条公开样本后，新建X12供给可合法落在后页。仅调整测试fixture：保存完整UUID唯一title，并通过正式publicList的q过滤定位此样本，新增结果恰为一条断言；原隐私禁字段、距离、地图能力和公开slot断言全部保留。未改生产搜索排序、分页或资格筛选。格式/diff通过；真实PG本地无环境，待root隔离CI复跑。

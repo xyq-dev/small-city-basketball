@@ -432,6 +432,80 @@ describe('R6TRAIN real PostgreSQL service workflows', () => {
     expect(fresh.status).toBe(409);
     expect(fresh.body.error.code).toBe('MAKEUP_NOT_DUE');
   });
+  it('cancelling a makeup cohort restores incoming rights without changing the original enrollment ledger', async () => {
+    const original = await cohort(),
+      target = await cohort(),
+      replacement = await cohort();
+    const n = await confirmed(original),
+      right = n.entitlements[0]!;
+    const frozen = (
+      await pool.query(
+        'SELECT cohort_id,total_fen,terms_id,terms_snapshot,trade_order_id FROM training_enrollments WHERE id=$1',
+        [n.id],
+      )
+    ).rows[0];
+    await service.entitlementCommand(
+      learner.cookie,
+      right.id,
+      cmd('LEAVE', right.version, { reason: '改到另一班期补课' }),
+    );
+    let current = await service.enrollmentDetail(learner.cookie, n.id);
+    await service.entitlementCommand(
+      learner.cookie,
+      right.id,
+      cmd('MAKEUP', current.entitlements[0]!.version, { sessionId: target.sessions[0]!.id }),
+    );
+    current = await service.enrollmentDetail(learner.cookie, n.id);
+    const inTarget = current.entitlements[0]!;
+    expect(inTarget.state).toBe('AVAILABLE');
+    await service.cohortCommand(
+      owner.cookie,
+      target.id,
+      cmd('CANCEL', target.version, { reason: '机构取消补课班期，恢复原学员补课权益' }),
+    );
+    current = await service.enrollmentDetail(learner.cookie, n.id);
+    expect(current.entitlements[0]).toMatchObject({
+      id: right.id,
+      state: 'MAKEUP_DUE',
+      version: inTarget.version + 1,
+      originalSessionId: right.originalSessionId,
+      netFen: right.netFen,
+    });
+    expect(
+      (
+        await pool.query(
+          'SELECT 1 FROM training_resource_reservations WHERE enrollment_id=$1 AND session_id=$2 AND active',
+          [n.id, target.sessions[0]!.id],
+        )
+      ).rowCount,
+    ).toBe(0);
+    const choices = await service.makeupOptions(learner.cookie, right.id);
+    expect(choices.items.some((x) => x.sessionId === target.sessions[0]!.id)).toBe(false);
+    expect(choices.items.some((x) => x.sessionId === replacement.sessions[0]!.id)).toBe(true);
+    await service.entitlementCommand(
+      learner.cookie,
+      right.id,
+      cmd('MAKEUP', choices.entitlementVersion, { sessionId: replacement.sessions[0]!.id }),
+    );
+    current = await service.enrollmentDetail(learner.cookie, n.id);
+    expect(current.entitlements[0]).toMatchObject({
+      id: right.id,
+      sessionId: replacement.sessions[0]!.id,
+      state: 'AVAILABLE',
+      originalSessionId: right.originalSessionId,
+      netFen: right.netFen,
+    });
+    expect(
+      (
+        await pool.query(
+          'SELECT cohort_id,total_fen,terms_id,terms_snapshot,trade_order_id FROM training_enrollments WHERE id=$1',
+          [n.id],
+        )
+      ).rows[0],
+    ).toEqual(frozen);
+    expect(current.consumptions).toHaveLength(0);
+    expect(current.refunds).toHaveLength(0);
+  });
   it('attendance and teaching do not consume lessons; review and learner acknowledgment are separate', async () => {
     const h = await cohort(),
       n = await confirmed(h),

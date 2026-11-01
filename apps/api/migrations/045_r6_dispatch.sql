@@ -14,12 +14,13 @@ CREATE TABLE dispatch_requests (
  status text NOT NULL DEFAULT 'DRAFT' CHECK(status IN ('DRAFT','INVITING','PAUSED','REVIEWING','NEEDS_MANUAL','SOURCE_REQUESTED','SOURCE_CONFIRMED','SOURCE_ENDED','CANCELLED','EXPIRED')),
  allow_cross_city boolean NOT NULL CHECK(allow_cross_city), people integer NOT NULL DEFAULT 1 CHECK(people=1),
  batch_count integer NOT NULL DEFAULT 0 CHECK(batch_count BETWEEN 0 AND 3), batch_size integer NOT NULL DEFAULT 3 CHECK(batch_size BETWEEN 1 AND 3), max_batches integer NOT NULL DEFAULT 3 CHECK(max_batches BETWEEN 1 AND 3),
- next_batch_at timestamptz, winner_offer_id uuid, source_booking_id uuid UNIQUE REFERENCES local_bookings(id), reason text,
+ next_batch_at timestamptz, next_source_check_at timestamptz CHECK(next_source_check_at IS NULL OR isfinite(next_source_check_at)), winner_offer_id uuid, source_booking_id uuid UNIQUE REFERENCES local_bookings(id), reason text,
  version integer NOT NULL DEFAULT 1 CHECK(version>0), created_at timestamptz NOT NULL DEFAULT clock_timestamp(), updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  UNIQUE(org_id,id), FOREIGN KEY(region_catalog_version,service_region_id) REFERENCES region_catalog_nodes(catalog_version,region_id)
 );
 CREATE INDEX dispatch_requests_owner ON dispatch_requests(owner_user_id,created_at DESC,id);
 CREATE INDEX dispatch_requests_due ON dispatch_requests(next_batch_at,id) WHERE status='INVITING';
+CREATE INDEX dispatch_requests_source_due ON dispatch_requests((COALESCE(next_source_check_at,created_at)),id) WHERE source_booking_id IS NOT NULL AND status IN ('SOURCE_REQUESTED','SOURCE_CONFIRMED');
 CREATE TABLE dispatch_batches (
  id uuid PRIMARY KEY, request_id uuid NOT NULL REFERENCES dispatch_requests(id), batch_no integer NOT NULL CHECK(batch_no BETWEEN 1 AND 3),
  expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT clock_timestamp(), UNIQUE(request_id,batch_no), UNIQUE(request_id,id)
@@ -68,7 +69,7 @@ BEGIN
  IF TG_TABLE_NAME='dispatch_preferences' THEN
   IF NEW.provider_user_id<>OLD.provider_user_id OR NEW.version<>OLD.version+1 THEN RAISE EXCEPTION 'Dispatch preference version conflict' USING ERRCODE='23514'; END IF;
  ELSIF TG_TABLE_NAME='dispatch_requests' THEN
-  IF (to_jsonb(NEW)-ARRAY['status','batch_count','next_batch_at','winner_offer_id','source_booking_id','reason','version','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','batch_count','next_batch_at','winner_offer_id','source_booking_id','reason','version','updated_at']) OR NEW.version<>OLD.version+1 OR (OLD.source_booking_id IS NOT NULL AND NEW.source_booking_id IS DISTINCT FROM OLD.source_booking_id) THEN RAISE EXCEPTION 'Dispatch request identity/terms are immutable' USING ERRCODE='23514'; END IF;
+  IF (to_jsonb(NEW)-ARRAY['status','batch_count','next_batch_at','next_source_check_at','winner_offer_id','source_booking_id','reason','version','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','batch_count','next_batch_at','next_source_check_at','winner_offer_id','source_booking_id','reason','version','updated_at']) OR NEW.version<>OLD.version+1 OR (OLD.source_booking_id IS NOT NULL AND NEW.source_booking_id IS DISTINCT FROM OLD.source_booking_id) THEN RAISE EXCEPTION 'Dispatch request identity/terms are immutable' USING ERRCODE='23514'; END IF;
  ELSIF TG_TABLE_NAME='dispatch_offers' THEN
   IF (to_jsonb(NEW)-ARRAY['status','quote','quote_hash','travel_verified_by','travel_verified_at','hold_expires_at','source_booking_id','reason','version','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','quote','quote_hash','travel_verified_by','travel_verified_at','hold_expires_at','source_booking_id','reason','version','updated_at']) OR NEW.version<>OLD.version+1 OR (OLD.quote IS NOT NULL AND (NEW.quote IS DISTINCT FROM OLD.quote OR NEW.quote_hash IS DISTINCT FROM OLD.quote_hash)) OR (OLD.travel_verified_by IS NOT NULL AND (NEW.travel_verified_by IS DISTINCT FROM OLD.travel_verified_by OR NEW.travel_verified_at IS DISTINCT FROM OLD.travel_verified_at)) OR (OLD.hold_expires_at IS NOT NULL AND NEW.hold_expires_at IS DISTINCT FROM OLD.hold_expires_at) OR (OLD.source_booking_id IS NOT NULL AND NEW.source_booking_id IS DISTINCT FROM OLD.source_booking_id) THEN RAISE EXCEPTION 'Dispatch offer identity/quote is immutable' USING ERRCODE='23514'; END IF;
  ELSIF TG_TABLE_NAME='dispatch_holds' THEN
