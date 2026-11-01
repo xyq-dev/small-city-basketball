@@ -1,8 +1,9 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type {
   LocalPoint,
   LocalServiceKind,
   LocalBookingStatus,
+  LocalViewport,
 } from '../../../packages/contracts/local-services.js';
 import { ApiError } from './errors.js';
 import { invalid, objectInput, resourceId, text } from './validation.js';
@@ -68,6 +69,70 @@ export function distanceMeters(a: LocalPoint, b: LocalPoint): number {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(a.latitude * radians) * Math.cos(b.latitude * radians) * Math.sin(dLng / 2) ** 2;
   return Math.round(6371008.8 * 2 * Math.asin(Math.min(1, Math.sqrt(h))));
+}
+export function localViewport(raw: unknown, maxSpanMeters = 100000): LocalViewport {
+  try {
+    const v = objectInput(raw, ['southwest', 'northeast', 'coordinateSystem']);
+    const sw = objectInput(v.southwest, ['latitude', 'longitude']);
+    const ne = objectInput(v.northeast, ['latitude', 'longitude']);
+    const south = localPoint({ ...sw, coordinateSystem: v.coordinateSystem });
+    const north = localPoint({ ...ne, coordinateSystem: v.coordinateSystem });
+    if (south.latitude >= north.latitude || south.longitude >= north.longitude)
+      invalid('视野边界顺序无效');
+    const result: LocalViewport = {
+      southwest: {
+        latitude: Math.floor(south.latitude * 1e6) / 1e6,
+        longitude: Math.floor(south.longitude * 1e6) / 1e6,
+      },
+      northeast: {
+        latitude: Math.ceil(north.latitude * 1e6) / 1e6,
+        longitude: Math.ceil(north.longitude * 1e6) / 1e6,
+      },
+      coordinateSystem: 'GCJ02',
+    };
+    const center = viewportCenter(result);
+    // Width at the latitude closest to the equator is the rectangle's maximum width.
+    const widthLatitude =
+      result.southwest.latitude <= 0 && result.northeast.latitude >= 0
+        ? 0
+        : Math.abs(result.southwest.latitude) < Math.abs(result.northeast.latitude)
+          ? result.southwest.latitude
+          : result.northeast.latitude;
+    const width = distanceMeters(
+      { ...center, latitude: widthLatitude, longitude: result.southwest.longitude },
+      { ...center, latitude: widthLatitude, longitude: result.northeast.longitude },
+    );
+    const height = distanceMeters(
+      { ...center, latitude: result.southwest.latitude },
+      { ...center, latitude: result.northeast.latitude },
+    );
+    // A longitude span over 180 degrees is not the short great-circle segment.
+    if (
+      result.northeast.longitude - result.southwest.longitude > 180 ||
+      width > maxSpanMeters ||
+      height > maxSpanMeters
+    )
+      localFail('VIEWPORT_TOO_LARGE', '范围过大，请放大地图后搜索', 422);
+    return result;
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 'VIEWPORT_TOO_LARGE') throw error;
+    return localFail('VIEWPORT_INVALID', '地图视野无效，请停止拖动后重试', 422);
+  }
+}
+export function viewportCenter(v: LocalViewport): LocalPoint {
+  return {
+    latitude: (v.southwest.latitude + v.northeast.latitude) / 2,
+    longitude: (v.southwest.longitude + v.northeast.longitude) / 2,
+    coordinateSystem: 'GCJ02',
+  };
+}
+export function localViewportCursor(
+  input: { scope: string; id: string; distance: number },
+  key: Buffer,
+): string {
+  const payload = { v: 2, ...input };
+  const signature = createHmac('sha256', key).update(JSON.stringify(payload)).digest('base64url');
+  return Buffer.from(JSON.stringify({ ...payload, signature })).toString('base64url');
 }
 export function localInterval(start: unknown, end: unknown) {
   const parse = (v: unknown) => {
@@ -278,7 +343,7 @@ export function localBookingTransition(
     return localFail('LOCAL_STATE_CONFLICT', '当前角色或履约状态不允许该操作');
   return rule.to;
 }
-export function parseLocalQuery(raw: unknown) {
+export function parseLocalQuery(raw: unknown, cursorKey?: Buffer, maxSpanMeters = 100000) {
   const q = objectInput(raw, [
     'regionId',
     'catalogVersion',
@@ -286,6 +351,8 @@ export function parseLocalQuery(raw: unknown) {
     'q',
     'point',
     'radiusMeters',
+    'viewport',
+    'searchVersion',
     'limit',
     'cursor',
   ]);
@@ -309,13 +376,23 @@ export function parseLocalQuery(raw: unknown) {
               })()
             : q.point,
         );
+  if (q.searchVersion !== undefined && q.searchVersion !== 2) invalid('不支持的地图搜索版本');
+  if (
+    q.viewport !== undefined &&
+    (q.searchVersion !== 2 || q.point !== undefined || q.radiusMeters !== undefined)
+  )
+    localFail('VIEWPORT_INVALID', '地图视野搜索不能同时指定附近起点或半径', 422);
+  const viewport = q.viewport === undefined ? null : localViewport(q.viewport, maxSpanMeters);
+  const origin = viewport ? viewportCenter(viewport) : point;
   const radius = q.radiusMeters === undefined ? null : Number(q.radiusMeters);
   if (radius !== null && (!point || ![1000, 3000, 5000, 10000].includes(radius)))
     invalid('距离筛选需有效起点和1／3／5／10公里半径');
   const limit = q.limit === undefined ? 20 : Number(q.limit);
   if (!Number.isInteger(limit) || limit < 1 || limit > 50) invalid('分页数量须为1–50');
   const needle = q.q === undefined ? '' : text(q.q, 'q', 0, 80);
-  const scope = localHash({ region, kind: q.kind ?? null, q: needle, point, radius });
+  const scope = viewport
+    ? localHash({ v: 2, region, kind: q.kind ?? null, q: needle, viewport, sort: 'distance-id-v1' })
+    : localHash({ region, kind: q.kind ?? null, q: needle, point, radius });
   let cursor: { id: string; distance: number | null } | null = null;
   if (q.cursor !== undefined) {
     try {
@@ -330,11 +407,25 @@ export function parseLocalQuery(raw: unknown) {
         'scope',
         'id',
         'distance',
+        ...(viewport ? ['signature'] : []),
       ]);
+      if (viewport) {
+        const payload = { v: value.v, scope: value.scope, id: value.id, distance: value.distance };
+        if (
+          !cursorKey ||
+          typeof value.signature !== 'string' ||
+          !/^[A-Za-z0-9_-]{43}$/.test(value.signature)
+        )
+          invalid('地图游标签名无效');
+        const expected = createHmac('sha256', cursorKey).update(JSON.stringify(payload)).digest();
+        const received = Buffer.from(value.signature, 'base64url');
+        if (received.length !== expected.length || !timingSafeEqual(received, expected))
+          invalid('地图游标签名无效');
+      }
       if (
-        value.v !== 1 ||
+        value.v !== (viewport ? 2 : 1) ||
         value.scope !== scope ||
-        (point
+        (origin
           ? typeof value.distance !== 'number' ||
             !Number.isSafeInteger(value.distance) ||
             value.distance < 0
@@ -343,6 +434,8 @@ export function parseLocalQuery(raw: unknown) {
         invalid('分页游标与当前地区或起点不匹配');
       cursor = { id: resourceId(String(value.id)), distance: value.distance as number | null };
     } catch {
+      if (viewport)
+        localFail('CURSOR_SCOPE_MISMATCH', '地图范围或游标已变化，请从第一页重新读取', 409);
       invalid('分页游标与当前地区或起点不匹配，请从第一页重新读取');
     }
   }
@@ -351,6 +444,8 @@ export function parseLocalQuery(raw: unknown) {
     kind: q.kind as LocalServiceKind | undefined,
     q: needle,
     point,
+    origin,
+    viewport,
     radius,
     limit,
     cursor,

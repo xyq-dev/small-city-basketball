@@ -21,6 +21,17 @@ export interface LocalPoint {
   longitude: number;
   coordinateSystem: 'GCJ02';
 }
+export interface LocalViewport {
+  southwest: { latitude: number; longitude: number };
+  northeast: { latitude: number; longitude: number };
+  coordinateSystem: 'GCJ02';
+}
+export interface LocalSearchArea {
+  mode: 'VIEWPORT';
+  bounds: LocalViewport;
+  center: LocalPoint;
+  scopeLabel: 'SELECTED_REGION' | 'MAP_AREA';
+}
 export interface LocalListingData {
   id: string;
   kind: LocalServiceKind;

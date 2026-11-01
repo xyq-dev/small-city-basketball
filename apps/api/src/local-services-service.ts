@@ -26,6 +26,7 @@ import {
   localFail,
   localHash,
   localPoint,
+  localViewportCursor,
   localVersion,
   parseLocalBooking,
   parseLocalBookingCommand,
@@ -46,19 +47,43 @@ const iso = (v: Date | string) => new Date(v).toISOString();
 const active = ['HELD', 'REQUESTED', 'CONFIRMED', 'ARRIVED', 'DELIVERED', 'DISPUTED'];
 const baseListing = `SELECT l.*,clock_timestamp() AS db_now,o.name AS organization_name,actual_court.status AS court_status FROM local_listings l JOIN organizations o ON o.id=l.org_id JOIN users provider ON provider.id=l.provider_user_id LEFT JOIN courts actual_court ON actual_court.id=l.court_id AND actual_court.org_id=l.org_id WHERE o.status='ACTIVE' AND provider.status='ACTIVE'`;
 const visible = `l.status='APPROVED' AND l.published AND l.provider_confirmed AND l.qualified_until>clock_timestamp() AND (l.kind<>'COURT' OR actual_court.status='ACTIVE')`;
+const processCursorKey = randomBytes(32);
+export interface LocalSearchOptions {
+  /** Dedicated shared key for stable pagination across workers; never a provider API credential. */
+  cursorKey?: Buffer;
+  enabled?: boolean;
+  maxSpanMeters?: number;
+}
 
 /** No payment is recorded or inferred. All resource mutations follow the calendar mutex. */
 export class LocalServicesService extends ApplicationService {
   readonly locationProvider: LocationProvider;
+  private readonly searchOptions: Required<LocalSearchOptions>;
   constructor(
     pool: Pool,
     options: ApiOptions,
     locationProvider?: LocationProvider,
     private readonly reviewAuthorizer?: LocalReviewAuthorizer,
     private readonly trade?: SourceTradeHooks,
+    searchOptions: LocalSearchOptions = {},
   ) {
     super(pool, options);
     this.locationProvider = locationProvider ?? new TencentLocationProvider();
+    const key = searchOptions.cursorKey ?? processCursorKey;
+    const maxSpanMeters = searchOptions.maxSpanMeters ?? 100000;
+    if (
+      !Buffer.isBuffer(key) ||
+      key.length !== 32 ||
+      !Number.isSafeInteger(maxSpanMeters) ||
+      maxSpanMeters < 1000 ||
+      maxSpanMeters > 100000
+    )
+      throw new Error('Local viewport search configuration invalid');
+    this.searchOptions = {
+      cursorKey: Buffer.from(key),
+      enabled: searchOptions.enabled !== false,
+      maxSpanMeters,
+    };
   }
   private async mutex(c: PoolClient, orgIds: string[]) {
     const sorted = [...new Set(orgIds)].sort();
@@ -279,7 +304,9 @@ export class LocalServicesService extends ApplicationService {
       localFail('LOCAL_SUPPLY_UNAVAILABLE', '供给或实际球场未开放、或资格有效期不足，请重新核对');
   }
   async publicList(raw: unknown, ip: string) {
-    const q = parseLocalQuery(raw);
+    const q = parseLocalQuery(raw, this.searchOptions.cursorKey, this.searchOptions.maxSpanMeters);
+    if (q.viewport && !this.searchOptions.enabled)
+      localFail('VIEWPORT_SEARCH_DISABLED', '地图区域搜索暂未开放，请使用城市列表', 503);
     await this.rateLimit(`local-public:${hashToken(ip)}`, 60, 60);
     return this.transaction(async (c) => {
       if (q.region) await this.region(c, q.region);
@@ -298,6 +325,47 @@ export class LocalServicesService extends ApplicationService {
       if (q.kind) filter += ` AND l.kind=${bind(q.kind)}`;
       if (q.q)
         filter += ` AND position(lower(${bind(q.q)}) in lower(l.title||' '||l.description))>0`;
+      if (q.viewport) {
+        const { southwest: sw, northeast: ne } = q.viewport;
+        filter += ` AND l.latitude BETWEEN ${bind(sw.latitude)} AND ${bind(ne.latitude)} AND l.longitude BETWEEN ${bind(sw.longitude)} AND ${bind(ne.longitude)}`;
+        const latitude = bind(q.origin!.latitude),
+          longitude = bind(q.origin!.longitude);
+        // SQL keyset ordering and returned distances use this exact same integer expression.
+        const distance = `round((6371008.8*2*asin(least(1.0,sqrt(power(sin(radians(l.latitude-${latitude})/2),2)+cos(radians(${latitude}))*cos(radians(l.latitude))*power(sin(radians(l.longitude-${longitude})/2),2)))))::numeric)::integer`;
+        let after = '';
+        if (q.cursor)
+          after = ` WHERE (v.search_distance,v.id)>(${bind(q.cursor.distance)}::integer,${bind(q.cursor.id)}::uuid)`;
+        const sql = `SELECT * FROM (${baseListing.replace('SELECT l.*', `SELECT l.*,${distance} AS search_distance`)}${filter}) v${after} ORDER BY v.search_distance,v.id LIMIT ${bind(q.limit + 1)}`;
+        const rows = (await c.query(sql, values)).rows;
+        const page = rows.slice(0, q.limit).map((row) => {
+          const item = this.listingDto(row);
+          return {
+            ...item,
+            distanceMeters: Number(row.search_distance),
+            distanceLabel: `距本次地图中心约${(Number(row.search_distance) / 1000).toFixed(1)}公里（直线）`,
+          };
+        });
+        const last = page.at(-1);
+        return {
+          items: page,
+          nextCursor:
+            rows.length > q.limit && last
+              ? localViewportCursor(
+                  { scope: q.scope, id: last.id, distance: last.distanceMeters },
+                  this.searchOptions.cursorKey,
+                )
+              : null,
+          locationCapability: this.searchCapability(),
+          queryOrigin: 'VIEWPORT',
+          truncated: false,
+          searchArea: {
+            mode: 'VIEWPORT',
+            bounds: q.viewport,
+            center: q.origin,
+            scopeLabel: q.region ? 'SELECTED_REGION' : 'MAP_AREA',
+          },
+        };
+      }
       // The result cap is explicit. No partial result is presented as an exhaustive nearest list.
       if (q.cursor && !q.point) filter += ` AND l.id>${bind(q.cursor.id)}`;
       const rows = (
@@ -337,11 +405,19 @@ export class LocalServicesService extends ApplicationService {
                 }),
               ).toString('base64url')
             : null,
-        locationCapability: { enabled: this.locationProvider.enabled, coordinateSystem: 'GCJ02' },
+        locationCapability: this.searchCapability(),
         queryOrigin: q.point ? 'EXPLICIT_POINT' : 'REGION',
         truncated: false,
       };
     });
+  }
+  private searchCapability() {
+    return {
+      enabled: this.locationProvider.enabled,
+      coordinateSystem: 'GCJ02',
+      viewportSearch: this.searchOptions.enabled,
+      viewportMaxSpanMeters: this.searchOptions.maxSpanMeters,
+    };
   }
   async publicDetail(id: string, ip: string) {
     await this.rateLimit(`local-detail:${hashToken(ip)}`, 120, 60);
@@ -502,147 +578,7 @@ export class LocalServicesService extends ApplicationService {
         const count = (
           await c.query(
             'SELECT count(*)::int AS n FROM region_catalog_nodes WHERE catalog_version=$1 AND region_id=ANY($2::uuid[])',
-            [input.region.catalogVersion, input.coverageRegionIds],
-          )
-        ).rows[0].n;
-        if (
-          count !== input.coverageRegionIds.length ||
-          (input.kind === 'COURT' &&
-            (input.coverageRegionIds.length !== 1 ||
-              input.coverageRegionIds[0] !== input.region.regionId))
-        )
-          invalid('覆盖地区无效');
-        await c.query(
-          "UPDATE local_listings SET title=$2,description=$3,address=$4,latitude=$5,longitude=$6,coverage_region_ids=$7,qualification_note=$8,terms=$9,status='DRAFT',published=false,reviewed_by=NULL,reviewed_at=NULL,qualified_until=NULL,review_reason=NULL,provider_confirmed=$10,version=version+1,updated_at=clock_timestamp() WHERE id=$1",
-          [
-            id,
-            input.title,
-            input.description,
-            input.address,
-            input.point?.latitude ?? null,
-            input.point?.longitude ?? null,
-            input.coverageRegionIds,
-            input.qualificationNote,
-            input.terms,
-            actor.user.id === input.providerUserId,
-          ],
-        );
-        await this.history(
-          c,
-          actor,
-          id,
-          'REVISE_SUPPLY',
-          listing.version + 1,
-          '修订资料并重新取得服务方确认与审核',
-        );
-        return { resourceType: 'LISTING', resourceId: id, version: listing.version + 1 };
-      });
-    });
-  }
-  async createListing(cookie: string | undefined, orgId: string, raw: unknown) {
-    const input = parseLocalListing(raw);
-    return this.transaction(async (c) => {
-      const actor = await this.lockActor(c, cookie);
-      await this.manager(c, actor, orgId);
-      await this.mutex(c, [orgId]);
-      return this.operation(c, actor, input.commandId, { orgId, input }, async () => {
-        await this.region(c, input.region);
-        const count = (
-          await c.query(
-            'SELECT count(*)::int AS n FROM region_catalog_nodes WHERE catalog_version=$1 AND region_id=ANY($2::uuid[])',
-            [input.region.catalogVersion, input.coverageRegionIds],
-          )
-        ).rows[0]?.n;
-        if (count !== input.coverageRegionIds.length) invalid('覆盖地区包含无效或不同版本地区');
-        if (
-          input.kind === 'COURT' &&
-          (input.coverageRegionIds.length !== 1 ||
-            input.coverageRegionIds[0] !== input.region.regionId)
-        )
-          invalid('球场覆盖须为其实际经营地区');
-        if (
-          !(
-            await c.query("SELECT id FROM users WHERE id=$1 AND status='ACTIVE' FOR SHARE", [
-              input.providerUserId,
-            ])
-          ).rowCount
-        )
-          invalid('实际服务人员账号不可用');
-        if (
-          input.courtId &&
-          !(
-            await c.query(
-              "SELECT id FROM courts WHERE org_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",
-              [orgId, input.courtId],
-            )
-          ).rowCount
-        )
-          invalid('请选择本机构有效实际球场');
-        const id = randomUUID();
-        await c.query(
-          `INSERT INTO local_listings(id,org_id,provider_user_id,created_by,kind,court_id,title,description,address,region_catalog_version,region_id,coverage_region_ids,latitude,longitude,qualification_note,terms,provider_confirmed) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
-          [
-            id,
-            orgId,
-            input.providerUserId,
-            actor.user.id,
-            input.kind,
-            input.courtId,
-            input.title,
-            input.description,
-            input.address,
-            input.region.catalogVersion,
-            input.region.regionId,
-            input.coverageRegionIds,
-            input.point?.latitude ?? null,
-            input.point?.longitude ?? null,
-            input.qualificationNote,
-            input.terms,
-            actor.user.id === input.providerUserId,
-          ],
-        );
-        await this.history(c, actor, id, 'CREATE_SUPPLY', 1, '创建待审核供给');
-        return { resourceType: 'LISTING', resourceId: id, version: 1 };
-      });
-    });
-  }
-  async listingCommand(cookie: string | undefined, id: string, raw: unknown) {
-    const input = parseLocalListingCommand(raw);
-    return this.transaction(async (c) => {
-      const actor = await this.lockActor(c, cookie),
-        ref = await this.listing(c, id);
-      let revalidate: (() => Promise<void>) | undefined;
-      if (['APPROVE', 'REJECT', 'SUSPEND'].includes(input.type))
-        revalidate = await this.reviewAuthorization(
-          c,
-          actor,
-          ref,
-          input.type === 'SUSPEND' ? 'SUPPLY_SUSPEND' : 'SUPPLY_REVIEW',
-        );
-      else if (input.type === 'CONFIRM_PROVIDER') {
-        if (ref.provider_user_id !== actor.user.id) throw forbidden();
-      } else await this.listingAccess(c, actor, ref);
-      await this.mutex(c, [ref.org_id]);
-      const row = await this.listing(c, id, true);
-      return this.operation(
-        c,
-        actor,
-        input.commandId,
-        { id, input },
-        async () => {
-          this.checkVersion(row, input.expectedVersion);
-          let status = row.status,
-            published = row.published,
-            confirmed = row.provider_confirmed;
-          let reviewedBy = row.reviewed_by,
-            reviewedAt = row.reviewed_at,
-            until = row.qualified_until;
-          if (input.type === 'CONFIRM_PROVIDER') {
-            if (row.provider_confirmed) localFail('LOCAL_STATE_CONFLICT', '服务方已经确认');
-            confirmed = true;
-          } else if (input.type === 'SUBMIT') {
-            if (!['DRAFT', 'REJECTED'].includes(row.status) || !row.provider_confirmed)
-              localFail('LOCAL_STATE_CONFLICT', '须服务方确认后才能提交待审核供给');
+            [input.regio…1558 tokens truncated…认后才能提交待审核供给');
             status = 'PENDING';
           } else if (input.type === 'APPROVE' || input.type === 'REJECT') {
             if (row.status !== 'PENDING' || !row.provider_confirmed)
