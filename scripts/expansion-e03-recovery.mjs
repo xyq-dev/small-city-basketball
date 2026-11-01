@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { InsuranceService } from '../apps/api/dist/insurance-service.js';
 import { QualificationPrecheckService } from '../apps/api/dist/qualification-precheck-service.js';
-import { openInsurance } from '../apps/api/dist/insurance-domain.js';
+import { openInsurance, insuranceHash } from '../apps/api/dist/insurance-domain.js';
+import { checkInsuranceProduct } from '../apps/api/dist/insurance-provider.js';
+import { insuranceEventHash } from '../apps/api/dist/insurance-admission.js';
 import { captureParticipantMaterials } from './c23-participant-material-check.mjs';
 import { syntheticPdf } from './c05-media-fixtures.mjs';
 
@@ -364,8 +366,52 @@ export async function captureExpansionInsurance({
       return 'ACCEPTED';
     },
   };
+  // Synthetic reviewed-release evidence belongs only to this in-process fixture;
+  // it never represents a real supplier's commercial or legal approval.
+  const eventEvidence = (
+    await readPool.query(
+      'SELECT start_date::text,end_date::text,timezone,venue_name FROM events WHERE org_id=$1 AND id=$2',
+      [state.orgId, eventId],
+    )
+  ).rows[0];
+  const admission = {
+    id: randomUUID(),
+    providerId,
+    protocolVersion: 'synthetic-recovery-only-v1',
+    evidenceHash: sha('ISOLATED_SYNTHETIC_RELEASE:' + sourceDatabase + ':' + eventId),
+    validFrom: new Date(Date.now() - 60000).toISOString(),
+    validUntil: new Date(Date.now() + 86400000).toISOString(),
+    salesMode: 'APPROVED_API',
+    allowedOrigins: provider.allowedOrigins,
+    products: [
+      {
+        sourceHash: insuranceHash(
+          checkInsuranceProduct((await provider.catalog())[0], provider.allowedOrigins),
+        ),
+        minAge: 18,
+        maxAge: 100,
+        timezone: eventEvidence.timezone,
+        coverageTimeBasis: 'EVENT_LOCAL_CALENDAR_DAYS',
+        events: [
+          {
+            orgId: state.orgId,
+            eventId,
+            eventHash: insuranceEventHash({
+              orgId: state.orgId,
+              eventId,
+              startDate: eventEvidence.start_date,
+              endDate: eventEvidence.end_date,
+              timezone: eventEvidence.timezone,
+              venueName: eventEvidence.venue_name,
+            }),
+          },
+        ],
+      },
+    ],
+  };
   const insurance = new InsuranceService(runtimePool, config, {
     provider,
+    admission,
     dataKey: dataKey(sourceDatabase).toString('base64'),
     noticeKey: noticeKey.toString('base64'),
     autoDispatch: false,
@@ -458,6 +504,39 @@ export async function captureExpansionInsurance({
       noticeEventId,
       documentSha256: sha(syntheticPdf),
     };
+    // A second real quote/order/receipt is stopped at a synthetic interrupted-APPLY boundary.
+    // No transport is called: this explicit fault fixture tests UNKNOWN retention, not supplier acceptance.
+    const uncertainQuote = await insurance.quote(base.cookie, {
+      clientRequestId: randomUUID(),
+      entryId: base.entryId,
+      memberId: base.memberId,
+      productId: product.id,
+    });
+    const uncertain = await insurance.purchase(base.cookie, {
+      clientRequestId: randomUUID(),
+      quoteId: uncertainQuote.quoteId,
+      acceptedTermsVersion: consentVersion,
+    });
+    const interrupted = await runtimePool.query(
+      `UPDATE insurance_operations SET status='UNKNOWN',reconcile_only=true,attempt_count=12,next_attempt_at='infinity'::timestamptz WHERE order_id=$1 AND kind='APPLY' AND status='PENDING' RETURNING id`,
+      [uncertain.orderId],
+    );
+    assert.equal(interrupted.rowCount, 1);
+    saved.r6Unknown = {
+      orderId: uncertain.orderId,
+      quoteId: uncertainQuote.quoteId,
+      operationId: interrupted.rows[0].id,
+      admissionReleaseId: admission.id,
+    };
+    assert.equal(
+      (
+        await readPool.query(
+          'SELECT 1 FROM insurance_reconciliation_cases WHERE operation_id=$1 AND order_id=$2 AND resolved_at IS NULL',
+          [saved.r6Unknown.operationId, uncertain.orderId],
+        )
+      ).rowCount,
+      1,
+    );
     const retained = await snapshot(readPool, saved);
     saved.tables = retained.tables;
     saved.orderIdentityHash = retained.order.identity_hash;

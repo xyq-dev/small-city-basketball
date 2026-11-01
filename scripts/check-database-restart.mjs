@@ -8,8 +8,9 @@ import {
   captureExpansion,
   verifyExpansion,
   verifyExpansionQuarantine,
-  assertExpansionQuarantineCounts,
+  expansionSnapshot,
 } from './expansion-recovery-check.mjs';
+import { captureR6, verifyR6, assertR6QuarantineCounts } from './r6-recovery-check.mjs';
 import { captureEventTemplates, verifyEventTemplates } from './x03-template-check.mjs';
 import {
   configureX02AdjudicationRules,
@@ -1966,6 +1967,28 @@ try {
         return { ...schedule, highlightMatchId: results.saved[1].id };
       },
     });
+    const r6 = await captureR6({
+      call,
+      state: {
+        cookie,
+        userId: registration.data.user.id,
+        orgId,
+        registration: frozenRegistration,
+        scheduling,
+        scoring,
+        commerce: { operators: commerceSetup.operators },
+      },
+      runtimePool: instance.pool,
+      readPool,
+      databaseUrl,
+      appOrigin: origin,
+      participantDataKey,
+      requireRuntimeRole: !!remoteUrl,
+      expansion,
+    });
+    // R6 uses the same canonical trade ledger; the original 036–042 whole-table baseline
+    // includes these additional actual orders, while its scoped business proofs remain unchanged.
+    expansion.snapshot = await expansionSnapshot(readPool);
     const materialBytesAfterExpansion = (
       await readPool.query(
         'SELECT COALESCE(sum(payload_byte_length),0)::int AS used FROM participant_material_revisions WHERE org_id=$1 AND payload_ciphertext IS NOT NULL',
@@ -2028,6 +2051,7 @@ try {
         x12.courtId,
         x02Scheduling.court.id,
         expansion.streaming.courtId,
+        ...r6.courtIds,
       ].sort(),
       'Capture every original and explicitly added owned court with no extra rows',
     );
@@ -2059,6 +2083,7 @@ try {
       courts,
       participantKeyFixtureDatabase,
       expansion,
+      r6,
       completionTableCounts: await completionTableCounts(),
       fingerprint: await fingerprint(),
     };
@@ -2073,8 +2098,9 @@ try {
     await verifyX05RecruitmentQuarantine({ readPool, saved: state.x05, assertPublicMissing });
     await verifyX18GovernanceQuarantine({ readPool, saved: state.x18, assertPublicMissing });
     await verifyCompletedReview(state.x18Review, true);
-    assertExpansionQuarantineCounts(state.completionTableCounts, await completionTableCounts());
+    assertR6QuarantineCounts(state.completionTableCounts, await completionTableCounts());
     await verifyExpansionQuarantine({ readPool, saved: state.expansion, baseUrl });
+    await verifyR6({ readPool, saved: state.r6, baseUrl, quarantined: true });
     await verifyX22AccountRecoveryQuarantine({ readPool, saved: state.x22 });
     await verifyX02AdjudicationQuarantine({ readPool, saved: state.x02 });
     await verifyX12LocalQuarantine({ readPool, saved: state.x12, assertPublicMissing });
@@ -2089,6 +2115,7 @@ try {
     // The caller has stopped every API writer before this point and keeps them stopped until dump finishes.
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     await verifyExpansion({ readPool, saved: state.expansion });
+    await verifyR6({ readPool, saved: state.r6 });
     state.fingerprint = await fingerprint();
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
     console.log('Captured the quiescent full manifest-table backup baseline.');
@@ -2232,6 +2259,7 @@ try {
     await verifyCommerce({ call, saved: state.commerce, cookie: state.cookie, orgId: state.orgId });
     assert.equal(await fingerprint(), state.fingerprint);
     await verifyExpansion({ readPool, saved: state.expansion });
+    await verifyR6({ readPool, saved: state.r6 });
     await verifyEventTemplates({ call, state });
     await verifyX08Archive({ call, state, readPool, saved: state.x08, assertPublicMissing });
     await verifyX05Recruitment({

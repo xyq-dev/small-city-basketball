@@ -113,8 +113,13 @@ jobs:
       - name: Verify complete isolated migration chain before running dependent suites
         id: schema_preflight
         run: node --import tsx scripts/check-migrations.mjs
+      - name: Verify recovery inventory and immutable boundaries
+        run: node --test scripts/r6-recovery-check.test.mjs scripts/expansion-recovery-check.test.mjs
+      - name: Remaining modules PostgreSQL integration checks
+        working-directory: apps/api
+        run: npx vitest run test/r6-*.integration.test.ts
       - name: Existing PostgreSQL integration checks
-        run: npm run test:integration --workspace @small-city-basketball/api -- --exclude '**/p07-*.integration.test.ts'
+        run: npm run test:integration --workspace @small-city-basketball/api -- --exclude '**/p07-*.integration.test.ts' --exclude '**/r6-*.integration.test.ts'
       # Stop dependent suites on a failed prerequisite so its archived log is available promptly.
       # A successful run still executes build, native pages, restart and browser checks.
       - name: Native mini program pages against the real API

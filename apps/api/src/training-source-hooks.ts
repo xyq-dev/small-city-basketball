@@ -17,6 +17,7 @@ export interface TrainingTradeHooks {
   ): Promise<{
     orderId: string | null;
     status: 'PAID' | 'UNPAID' | 'UNKNOWN' | 'REFUNDED';
+    canReleaseUnpaidHold: boolean;
     paidFen: number;
     refundedFen: number;
   }>;

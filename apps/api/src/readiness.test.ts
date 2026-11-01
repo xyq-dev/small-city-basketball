@@ -1,3 +1,4 @@
+import { readRuntimeExpectations } from './readiness.js';
 import type { Pool } from 'pg';
 import { readFile, readdir } from 'node:fs/promises';
 import { loadManifest, assertMigrationManifestSurface } from '../../../ops/db/privileges.mjs';
@@ -283,5 +284,14 @@ describe('complete expansion migration and least-privilege surface', () => {
         },
       ]),
     ).toThrow();
+  });
+});
+
+it('loads the exact runtime manifest including versioned digit-bearing table names before connecting', async () => {
+  const v = await readRuntimeExpectations();
+  expect(v.expected.size).toBe(48);
+  expect(v.manifest.tables.r6_trade_refund_bindings).toEqual({
+    privileges: ['SELECT', 'INSERT'],
+    updateColumns: [],
   });
 });

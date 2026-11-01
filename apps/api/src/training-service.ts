@@ -113,26 +113,35 @@ export class TrainingService extends ApplicationService {
     fn: (c: PoolClient, a: Actor) => Promise<Row>,
     allowClosed = false,
   ) {
-    return this.transaction(async (c) => {
-      const a = await this.lockActor(c, cookie);
-      await lockTradeSourceCalendar(c, orgId);
-      if (!allowClosed) await this.enabled(c);
-      else if (
-        (
-          await c.query(
-            "SELECT 1 FROM audit_logs WHERE action='RESTORE_QUARANTINE' AND resource_type='restore' LIMIT 1",
-          )
-        ).rowCount
-      )
-        trainingFail('RESTORE_QUARANTINE', '恢复副本尚未解除隔离', 503);
-      await c.query('SELECT x12_release_expired()');
-      await c.query(
-        "UPDATE training_resource_reservations r SET active=false FROM training_enrollments n WHERE r.enrollment_id=n.id AND r.active AND n.state='HOLDING' AND n.hold_expires_at<=clock_timestamp()",
-      );
-      const r = await fn(c, a);
-      await this.ensureFreshSession(c, a);
-      return r;
-    });
+    try {
+      return await this.transaction(async (c) => {
+        const a = await this.lockActor(c, cookie);
+        await lockTradeSourceCalendar(c, orgId);
+        if (!allowClosed) await this.enabled(c);
+        else if (
+          (
+            await c.query(
+              "SELECT 1 FROM audit_logs WHERE action='RESTORE_QUARANTINE' AND resource_type='restore' LIMIT 1",
+            )
+          ).rowCount
+        )
+          trainingFail('RESTORE_QUARANTINE', '恢复副本尚未解除隔离', 503);
+        await c.query('SELECT x12_release_expired()');
+        await c.query(
+          "UPDATE training_resource_reservations r SET active=false FROM training_enrollments n WHERE r.enrollment_id=n.id AND r.active AND n.state='HOLDING' AND n.hold_expires_at<=clock_timestamp()",
+        );
+        const r = await fn(c, a);
+        await this.ensureFreshSession(c, a);
+        return r;
+      });
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === '23P01')
+        trainingFail('TRAINING_SCHEDULE_CONFLICT', '人物或场地已有重叠安排，请选择其他课次');
+      if (code === '23505') trainingFail('TRAINING_DUPLICATE', '已有相同的有效记录，请刷新后核对');
+      if (code === '23503') throw notFound();
+      throw error;
+    }
   }
   private async log(
     c: PoolClient,
@@ -992,11 +1001,20 @@ export class TrainingService extends ApplicationService {
           } else if (v.action === 'CANCEL') {
             if (!this.participant(a, n) || !['WAITLISTED', 'HOLDING', 'EXPIRED'].includes(n.state))
               trainingFail('INVALID_STATE', '已有服务或已付款请申请逐课退款');
-            if (n.trade_order_id)
-              trainingFail(
-                'PAYMENT_MAY_BE_PENDING',
-                '已生成支付单，须核对支付结果；过期实付将进入待退款',
-              );
+            if (n.trade_order_id) {
+              const payment = await this.training.trade?.payment(c, id);
+              if (
+                !payment ||
+                payment.status !== 'UNPAID' ||
+                payment.paidFen !== 0 ||
+                payment.refundedFen !== 0 ||
+                payment.canReleaseUnpaidHold !== true
+              )
+                trainingFail(
+                  'PAYMENT_MAY_BE_PENDING',
+                  '原支付仍待核对，不能假定未付款；逾期实付将进入待退款',
+                );
+            }
             await c.query(
               "UPDATE training_enrollments SET state='CANCELLED',version=version+1 WHERE id=$1",
               [id],
@@ -1381,7 +1399,7 @@ export class TrainingService extends ApplicationService {
       v = objectInput(raw, ['commandId', 'expectedVersion', 'entitlementIds', 'reason']);
     const commandId = trainingCommand(v.commandId),
       version = expectedVersion(v.expectedVersion),
-      reason = text(v.reason, 'reason', 1, 1000);
+      reason = text(v.reason, 'reason', 4, 1000);
     if (
       !Array.isArray(v.entitlementIds) ||
       v.entitlementIds.length < 1 ||

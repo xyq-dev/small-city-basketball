@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { loadPage, createWx } = require('./helpers/native-page.cjs');
 const { parseWxml, eventHandlers } = require('./helpers/wxml.cjs');
+const { renderWxml } = require('./helpers/native-preview.cjs');
 const { trainingPathAllowed } = require('../utils/training-paths');
 const root = path.resolve(__dirname, '..');
 const U = '10000000-0000-4000-8000-000000000001',
@@ -149,5 +150,35 @@ test('both native pages have bound handlers, balanced templates, and no simulate
     for (const handler of eventHandlers(source))
       assert.equal(typeof h.page[handler], 'function', name + ' ' + handler);
     assert.doesNotMatch(source, /模拟支付|点击即到账|默认已审核/);
+  }
+});
+
+test('native empty and unknown-refund layouts render without leaking hidden participant data', () => {
+  for (const name of ['training', 'training-manage']) {
+    const h = harness(name),
+      source = fs.readFileSync(path.join(root, 'pages', name, 'index.wxml'), 'utf8');
+    const options = { root, pageDirectory: path.join(root, 'pages', name) };
+    assert.doesNotThrow(() => renderWxml(source, h.page.data, options));
+    if (name === 'training') {
+      h.page.setData({
+        enrollment: {
+          id: C,
+          state: 'PAID_UNALLOCATED',
+          stateLabel: '已付款但未取得名额',
+          amount: '¥1.01',
+          capabilities: {},
+          termsSnapshot: { termsText: '冻结合同' },
+          entitlements: [],
+          consumptions: [],
+          refunds: [
+            { id: O, status: 'UNKNOWN', stateLabel: '结果未知 · 保留退款额度', amount: '¥1.01' },
+          ],
+        },
+      });
+      const html = renderWxml(source, h.page.data, options);
+      assert.match(html, /结果未知/);
+      assert.match(html, /核对真实退款回执/);
+      assert.doesNotMatch(html, /真实退款成功/);
+    }
   }
 });

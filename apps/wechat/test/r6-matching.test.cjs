@@ -256,3 +256,16 @@ test('network uncertainty retains the same command and blocks a second operation
   assert.equal(h.calls.filter((c) => c.method === 'POST')[1].body.commandId, first);
   assert.equal(h.page.data.pending, null);
 });
+
+test('paid matching cannot convert while canonical collection preparation is disabled', async () => {
+  const h = harness();
+  h.page.setData({
+    selected: m.detail(rawNeed()),
+    conversion: { id: C, version: 1, candidate: rawCandidate() },
+    preview: { enabled: false },
+    eligibility: true,
+  });
+  await h.page.convert();
+  assert.match(h.page.data.error, /收费准备尚未完成/);
+  assert.equal(h.calls.filter((c) => c.method === 'POST').length, 0);
+});

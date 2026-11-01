@@ -9,6 +9,14 @@ const statuses = {
   CLOSED: '账号已注销',
 };
 const reasons = {
+  TRAINING_SERVICE_UNRESOLVED: '培训报名、剩余课次或教练授课尚未结束，请先处理',
+  TRAINING_MONEY_UNRESOLVED: '培训扣课异议或退款结果尚未核实',
+  MATCHING_INTENT_UNRESOLVED: '还有未结束的撮合意向，请先撤回或处理',
+  MATCHING_SOURCE_UNRESOLVED: '撮合生成的原预约尚未结束',
+  DISPATCH_INTENT_UNRESOLVED: '跨城派单的邀约、差旅审核或人员锁位尚未结束',
+  DISPATCH_SOURCE_UNRESOLVED: '跨城派单生成的原服务尚未结束',
+  SPONSOR_SERVICE_UNRESOLVED: '广告商业合同或履约尚未结束',
+  SPONSOR_MONEY_UNRESOLVED: '广告分账、退款回退或追回尚未核实',
   OWNER_TRANSFER_REQUIRED: '请先移交仍在运营的机构负责人权限',
   SOFTWARE_MONEY_UNRESOLVED: '平台套餐付款或退款尚未处理完成',
   PLAYER_SERVICE_UNRESOLVED: '球员预约或履约尚未结束',

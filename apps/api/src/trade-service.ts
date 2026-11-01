@@ -2359,7 +2359,14 @@ export class TradeService extends ApplicationService {
         sourceId,
       ])
     ).rows[0];
-    if (!order) return { orderId: null, status: 'UNPAID' as const, paidFen: 0, refundedFen: 0 };
+    if (!order)
+      return {
+        orderId: null,
+        status: 'UNPAID' as const,
+        paidFen: 0,
+        refundedFen: 0,
+        canReleaseUnpaidHold: true,
+      };
     const money = await this.money(c, order),
       b = money.balances;
     const status =
@@ -2370,7 +2377,15 @@ export class TradeService extends ApplicationService {
         : money.attempts.some((p) => ['DISPATCHING', 'UNKNOWN'].includes(p.status))
           ? ('UNKNOWN' as const)
           : ('UNPAID' as const);
-    return { orderId: order.id as string, status, paidFen: b.paidFen, refundedFen: b.refundedFen };
+    return {
+      orderId: order.id as string,
+      status,
+      paidFen: b.paidFen,
+      refundedFen: b.refundedFen,
+      canReleaseUnpaidHold:
+        b.paidFen === 0 &&
+        !money.attempts.some((p) => ['DISPATCHING', 'UNKNOWN', 'NOTPAY'].includes(p.status)),
+    };
   }
   /** Binds an exact independently approved domain allocation to one refund proposal. */
   async sourceRefundStatus(
@@ -2518,10 +2533,30 @@ export class TradeService extends ApplicationService {
         [o.id],
       );
       const platformFee = o.kind === 'ENTRY_DEPOSIT' ? 0 : Number(o.quote.platformFeeFen ?? 0);
+      let moduleDischarged = 0,
+        moduleUnresolved = false;
+      if (isAdditionalTradeSource(o.kind)) {
+        const adapter = this.additionalSources[o.kind];
+        if (!adapter) moduleUnresolved = true;
+        else if (adapter.settlementMode === 'MODULE') {
+          if (!adapter.closureFunds) moduleUnresolved = true;
+          else {
+            const funds = await adapter.closureFunds(c, o.source_id, o.id);
+            moduleUnresolved =
+              funds.unresolved ||
+              !Number.isSafeInteger(funds.dischargedFen) ||
+              funds.dischargedFen < 0 ||
+              funds.dischargedFen > b.paidFen - b.refundedFen ||
+              b.settledFen !== 0;
+            if (!moduleUnresolved) moduleDischarged = funds.dischargedFen;
+          }
+        }
+      }
       if (
         unresolved ||
+        moduleUnresolved ||
         pendingReturn.rowCount ||
-        b.paidFen - b.refundedFen - b.settledFen > platformFee
+        b.paidFen - b.refundedFen - b.settledFen - moduleDischarged > platformFee
       )
         tradeFail(
           'TRADE_MONEY_UNRESOLVED',

@@ -694,6 +694,10 @@ Page({
   retry() {
     return ls.retry(this);
   },
+  expansion(e) {
+    const key = e.currentTarget.dataset.page;
+    if (!this.data.busy && ['matching', 'dispatch', 'training'].includes(key)) ui.open(key);
+  },
   manage() {
     ls.open('local-manage');
   },

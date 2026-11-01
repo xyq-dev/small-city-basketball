@@ -49,6 +49,14 @@ import {
 import { trainingTradeHooks } from './remaining-six-trade.js';
 import { createMatchingPlayerSource } from './matching-player-source.js';
 import { createMatchingLocalSourceHooks } from './matching-local-source.js';
+import { inspectMatchingPlayerEnded } from './matching-player-recovery.js';
+import { createDispatchSourceHook } from './dispatch-source-adapter.js';
+import { readRemainingSixOptions } from './remaining-six-runtime.js';
+import { SponsorCommerceService } from './sponsor-commerce-service.js';
+import {
+  SponsorCommerceController,
+  SCB_SPONSOR_COMMERCE_SERVICE,
+} from './sponsor-commerce-controller.js';
 import type { LocalSearchOptions } from './local-services-service.js';
 import { readNotificationOptions } from './notification-runtime.js';
 import { readTradeRuntime } from './trade-runtime.js';
@@ -445,10 +453,16 @@ export async function createApi(
         matching: { enabled: false },
         dispatch: { enabled: false, autoDispatch: false },
         training: { enabled: false },
+        sponsorCommerce: { enabled: false },
       };
     } else {
+      const remainingSix = readRemainingSixOptions();
       input = {
         ...input,
+        matching: input.matching ?? remainingSix.matching,
+        training: input.training ?? remainingSix.training,
+        dispatch: input.dispatch ?? remainingSix.dispatch,
+        localSearch: input.localSearch ?? remainingSix.localSearch,
         notifications: input.notifications ?? readNotificationOptions(),
         trade: input.trade ?? readTradeRuntime(options.appOrigin),
       };
@@ -516,19 +530,30 @@ export async function createApi(
           i.kind === 'ADULT_PLAYER'
             ? matchingPlayer.prepare(c, a, i)
             : matchingLocal.prepare(c, a, i),
-        inspectEnded: matchingLocal.inspectEnded,
+        inspectEnded: (c, a, s) =>
+          s.sourceKind === 'PLAYER_ORDER'
+            ? inspectMatchingPlayerEnded(c, a, s.sourceId)
+            : matchingLocal.inspectEnded!(c, a, s),
       },
     });
     const dispatch = new DispatchService(pool, options, {
       ...input.dispatch,
       createLocalBooking:
-        input.dispatch?.createLocalBooking ??
-        localServices.createDispatchBookingInTransaction.bind(localServices),
+        input.dispatch?.createLocalBooking ?? createDispatchSourceHook(localServices),
       ...(options.backgroundWorkersEnabled === false ? { autoDispatch: false } : {}),
     });
     const training = new TrainingService(pool, options, {
       ...input.training,
       trade: input.training?.trade ?? trainingTradeHooks(expansion.trade),
+    });
+    const sponsorCommerce = new SponsorCommerceService(pool, options, {
+      ...input.sponsorCommerce,
+      captureSourceCharge:
+        input.sponsorCommerce?.captureSourceCharge ??
+        expansion.trade.captureSourceCharge.bind(expansion.trade),
+      captureSourceRefund:
+        input.sponsorCommerce?.captureSourceRefund ??
+        expansion.trade.captureSourceRefund.bind(expansion.trade),
     });
     const playerPerformance = new PlayerPerformanceService(pool, options);
     const scheduling = new SchedulingService(pool, options);
@@ -551,6 +576,7 @@ export async function createApi(
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
+        SponsorCommerceController,
         MatchingController,
         DispatchController,
         TrainingController,
@@ -622,6 +648,7 @@ export async function createApi(
         SeasonController,
       ],
       providers: [
+        { provide: SCB_SPONSOR_COMMERCE_SERVICE, useValue: sponsorCommerce },
         { provide: SCB_MATCHING_SERVICE, useValue: matching },
         { provide: SCB_DISPATCH_SERVICE, useValue: dispatch },
         { provide: SCB_TRAINING_SERVICE, useValue: training },

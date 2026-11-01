@@ -329,6 +329,85 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
     const localReservations = await client.query(
       `UPDATE local_resource_reservations SET active=false WHERE active`,
     );
+    // R6: revoke new admission/dispatch authority without erasing source, quote or money facts.
+    // Immutable receipts, assignments, approvals, attendance and financial references remain evidence.
+    const r6Counts = {};
+    for (const [name, sql] of [
+      [
+        'matchingPreferencesRevoked',
+        `UPDATE matching_supply_preferences SET discovery_enabled=false,contact_enabled=false,version=version+1,updated_at=$1::timestamptz WHERE discovery_enabled OR contact_enabled`,
+      ],
+      [
+        'matchingNeedsPaused',
+        `UPDATE matching_needs SET status='PAUSED',version=version+1,latest_run_id=NULL,updated_at=$1::timestamptz WHERE status='ACTIVE'`,
+      ],
+      [
+        'matchingOutboxCancelled',
+        `UPDATE matching_outbox SET state='CANCELLED' WHERE state='PENDING'`,
+      ],
+      [
+        'dispatchPreferencesRevoked',
+        `UPDATE dispatch_preferences SET enabled=false,version=version+1,updated_at=$1::timestamptz WHERE enabled`,
+      ],
+      [
+        'dispatchRequestsPaused',
+        `UPDATE dispatch_requests SET status='PAUSED',winner_offer_id=NULL,next_batch_at=NULL,reason='恢复隔离暂停未转预约派单',version=version+1,updated_at=$1::timestamptz WHERE source_booking_id IS NULL AND status IN('DRAFT','INVITING','REVIEWING','PAUSED','NEEDS_MANUAL')`,
+      ],
+      [
+        'dispatchSourcesEnded',
+        `UPDATE dispatch_requests SET status='SOURCE_ENDED',next_batch_at=NULL,reason='恢复隔离保留原预约并暂停派发',version=version+1,updated_at=$1::timestamptz WHERE source_booking_id IS NOT NULL AND status IN('SOURCE_REQUESTED','SOURCE_CONFIRMED')`,
+      ],
+      [
+        'dispatchOffersWithdrawn',
+        `UPDATE dispatch_offers SET status='WITHDRAWN',reason='恢复隔离撤回未转预约邀请',version=version+1,updated_at=$1::timestamptz WHERE status IN('PENDING','TRAVEL_REVIEW','READY','ACCEPTED_HELD')`,
+      ],
+      ['dispatchHoldsReleased', `UPDATE dispatch_holds SET state='RELEASED' WHERE state='ACTIVE'`],
+      [
+        'trainingProvidersSuspended',
+        `UPDATE training_providers SET status='SUSPENDED',version=version+1 WHERE status IN('PENDING','APPROVED')`,
+      ],
+      [
+        'trainingCoachesSuspended',
+        `UPDATE training_coaches SET status='SUSPENDED',consented=false,version=version+1 WHERE (status IN('PENDING','APPROVED') OR consented)`,
+      ],
+      [
+        'trainingCohortsSuspended',
+        `UPDATE training_cohorts SET state='SUSPENDED',version=version+1 WHERE state IN('DRAFT','ENROLLING','RUNNING')`,
+      ],
+      [
+        'trainingReservationsReleased',
+        `UPDATE training_resource_reservations SET active=false WHERE active`,
+      ],
+      [
+        'trainingPendingAdmissionsClosed',
+        `UPDATE training_enrollments SET state=CASE WHEN state='HOLDING' THEN 'EXPIRED' ELSE 'CANCELLED' END,version=version+1 WHERE state IN('HOLDING','WAITLISTED')`,
+      ],
+      [
+        'trainingGuardianGrantsRevoked',
+        `UPDATE training_guardian_grants SET state='REVOKED',epoch=epoch+1 WHERE state IN('PENDING','APPROVED')`,
+      ],
+      [
+        'sponsorBeneficiariesDisabled',
+        `UPDATE sponsor_beneficiaries SET status='DISABLED',version=version+1 WHERE status='APPROVED'`,
+      ],
+      [
+        'sponsorContractVersionsInvalidated',
+        `UPDATE sponsor_contracts SET version=version+1,updated_at=$1::timestamptz`,
+      ],
+      [
+        'sponsorOrderVersionsInvalidated',
+        `UPDATE sponsor_orders SET version=version+1,updated_at=$1::timestamptz`,
+      ],
+      [
+        'sponsorSettlementsFenced',
+        `UPDATE sponsor_settlement_batches SET status=CASE WHEN status='SENDING' THEN 'UNKNOWN' ELSE status END,finish_status=CASE WHEN finish_status='SENDING' THEN 'UNKNOWN' ELSE finish_status END,fence=NULL,updated_at=$1::timestamptz WHERE status='SENDING' OR finish_status='SENDING'`,
+      ],
+      [
+        'sponsorReturnsFenced',
+        `UPDATE sponsor_return_items SET status='UNKNOWN',fence=NULL,updated_at=$1::timestamptz WHERE status='SENDING'`,
+      ],
+    ])
+      r6Counts[name] = (await client.query(sql, sql.includes('$1') ? [now] : [])).rowCount;
     if (
       (
         await client.query(
@@ -430,6 +509,7 @@ export async function quarantineRestoredDatabase({ pool, ownership }) {
       localBookingsQuarantined: localBookings.rowCount,
       localMatchupsCancelled: localMatchups.rowCount,
       localReservationsReleased: localReservations.rowCount,
+      ...r6Counts,
       publicPublicationsRevoked: publicGrants.rowCount,
       overlayGrantsRevoked: overlayGrants.rowCount,
       activeLeasesExpired: leases.rowCount,

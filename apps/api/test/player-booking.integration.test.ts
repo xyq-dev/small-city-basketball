@@ -5,7 +5,9 @@ import type { Actor } from '../src/service.js';
 import { PlayerBookingService } from '../src/player-booking/service.js';
 import { createMatchingPlayerSource } from '../src/matching-player-source.js';
 import type { MatchingConversionInput } from '../src/matching-source-adapter.js';
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { TradeService } from '../src/trade-service.js';
+import type { TradePayments } from '../src/trade-provider.js';
 import type {
   BookingAppearanceData,
   BookingAppearanceInput,
@@ -297,13 +299,42 @@ describe(
           return this.transaction(async (c) => work(c, await this.lockActor(c, leader.cookie)));
         }
       }
-      const service = new SourceService(api.pool, {
-        databaseUrl: testDatabaseUrl(),
-        appOrigin: ORIGIN,
+      const options = { databaseUrl: testDatabaseUrl(), appOrigin: ORIGIN };
+      const payments: TradePayments = {
+        enabled: true,
+        native: vi.fn(),
+        queryOrder: vi.fn(),
+        refund: vi.fn(),
+        queryRefund: vi.fn(),
+        verifyNotification: vi.fn(),
+        downloadBill: vi.fn(),
+      };
+      const trade = new TradeService(api.pool, options, {
+        encryptionKey: Buffer.alloc(32, 7),
+        merchants: {
+          [owner.orgId]: {
+            key: 'synthetic-matching-player',
+            merchantId: '1900000152',
+            appId: 'wx1234567890abcdef',
+            displayName: '合成球员撮合商户',
+            playerFeesEnabled: true,
+            payments,
+            receivers: {},
+          },
+        },
       });
+      const service = new SourceService(api.pool, options, trade);
       const hook = createMatchingPlayerSource(service);
       const a = appearance(0),
         visible = await workspace();
+      const preview = await trade.preview(leader.cookie, {
+        kind: 'PLAYER_APPEARANCE',
+        orgId: owner.orgId,
+        teamId: firstTeam.id,
+        profileIds: [mainProfile.id],
+      });
+      if (!('quotes' in preview) || !preview.quotes?.[0])
+        throw new Error('missing synthetic quote');
       const input: MatchingConversionInput = {
         commandId: randomUUID(),
         kind: 'ADULT_PLAYER',
@@ -330,8 +361,28 @@ describe(
         sourceInput: {
           eligibilityConfirmed: true,
           reviewedSettingsVersion: visible.settings.version,
+          acceptedTermsId: preview.quotes[0].termsId,
+          chargeConsent: true,
         },
       };
+      const disabled = new SourceService(api.pool, options);
+      await expect(
+        disabled.withActor(async (c, actor) =>
+          (await createMatchingPlayerSource(disabled).prepare(c, actor, input)).execute(),
+        ),
+      ).rejects.toMatchObject({ status: 503, code: 'MATCHING_TRADE_REQUIRED' });
+      expect(
+        (await api.pool.query('SELECT 1 FROM booking_orders WHERE buyer_user_id=$1', [leader.id]))
+          .rowCount,
+      ).toBe(0);
+      expect(
+        (
+          await api.pool.query(
+            'SELECT 1 FROM booking_operations WHERE actor_id=$1 AND command_id=$2',
+            [leader.id, input.commandId],
+          )
+        ).rowCount,
+      ).toBe(0);
       let rolledBackOrder = '';
       await expect(
         service.withActor(async (c, actor) => {
@@ -344,6 +395,14 @@ describe(
           rolledBackOrder = created.sourceId;
           expect(created.totalFen).toBe(33000);
           expect(
+            (
+              await c.query(
+                "SELECT 1 FROM trade_orders t JOIN booking_appearances a ON a.id=t.source_id AND t.kind='PLAYER_APPEARANCE' WHERE a.order_id=$1 AND t.total_fen=a.total_fen AND t.payer_user_id=$2 AND t.beneficiary_user_id=$3",
+                [created.sourceId, leader.id, player.id],
+              )
+            ).rowCount,
+          ).toBe(1);
+          expect(
             (await c.query('SELECT 1 FROM booking_orders WHERE id=$1', [created.sourceId]))
               .rowCount,
           ).toBe(1);
@@ -353,6 +412,14 @@ describe(
       expect(
         (await api.pool.query('SELECT 1 FROM booking_orders WHERE id=$1', [rolledBackOrder]))
           .rowCount,
+      ).toBe(0);
+      expect(
+        (
+          await api.pool.query(
+            "SELECT id FROM trade_orders WHERE kind='PLAYER_APPEARANCE' AND payer_user_id=$1",
+            [leader.id],
+          )
+        ).rowCount,
       ).toBe(0);
       expect(
         (
@@ -382,6 +449,9 @@ describe(
       });
       expect(persisted.report_at.toISOString()).toBe(a.reportAt);
       expect(persisted.end_at.toISOString()).toBe(a.endAt);
+      expect(payments.native).not.toHaveBeenCalled();
+      expect(payments.queryOrder).not.toHaveBeenCalled();
+      expect(payments.refund).not.toHaveBeenCalled();
       await expect(
         service.withActor((c, actor) =>
           hook.prepare(c, actor, {

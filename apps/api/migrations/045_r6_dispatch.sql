@@ -31,20 +31,21 @@ CREATE TABLE dispatch_offers (
  travel_verified_by uuid REFERENCES users(id), travel_verified_at timestamptz, hold_expires_at timestamptz,
  source_booking_id uuid UNIQUE REFERENCES local_bookings(id), reason text,
  version integer NOT NULL DEFAULT 1 CHECK(version>0), created_at timestamptz NOT NULL DEFAULT clock_timestamp(), updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
- FOREIGN KEY(request_id,batch_id) REFERENCES dispatch_batches(request_id,id), UNIQUE(request_id,id), UNIQUE(batch_id,provider_user_id),
- CHECK((quote IS NULL)=(quote_hash IS NULL)), CHECK(quote IS NULL OR jsonb_typeof(quote)='object'),
+ FOREIGN KEY(request_id,batch_id) REFERENCES dispatch_batches(request_id,id), UNIQUE(request_id,id), UNIQUE(batch_id,provider_user_id), UNIQUE(request_id,provider_user_id),
+ CHECK((quote IS NULL)=(quote_hash IS NULL)), CHECK(quote IS NULL OR (jsonb_typeof(quote)='object' AND quote ? 'hash' AND quote->>'hash'=quote_hash)),
  CHECK((travel_verified_by IS NULL)=(travel_verified_at IS NULL)), CHECK(travel_verified_by IS NULL OR travel_verified_by<>provider_user_id),
  CHECK(status NOT IN ('READY','ACCEPTED_HELD','CONVERTED') OR (quote IS NOT NULL AND travel_verified_by IS NOT NULL)),
- CHECK(status<>'ACCEPTED_HELD' OR hold_expires_at IS NOT NULL)
+ CHECK(status<>'ACCEPTED_HELD' OR (hold_expires_at IS NOT NULL AND isfinite(hold_expires_at) AND hold_expires_at<=expires_at)),
+ CHECK((status='CONVERTED')=(source_booking_id IS NOT NULL))
 );
 ALTER TABLE dispatch_requests ADD FOREIGN KEY(id,winner_offer_id) REFERENCES dispatch_offers(request_id,id);
 CREATE INDEX dispatch_offers_provider ON dispatch_offers(provider_user_id,created_at DESC,id);
 CREATE UNIQUE INDEX dispatch_one_winner ON dispatch_offers(request_id) WHERE status='ACCEPTED_HELD';
 CREATE TABLE dispatch_holds (
  id uuid PRIMARY KEY, request_id uuid NOT NULL, offer_id uuid NOT NULL UNIQUE, provider_user_id uuid NOT NULL REFERENCES users(id),
- starts_at timestamptz NOT NULL, ends_at timestamptz NOT NULL CHECK(ends_at>starts_at), expires_at timestamptz NOT NULL,
+ starts_at timestamptz NOT NULL CHECK(isfinite(starts_at)), ends_at timestamptz NOT NULL CHECK(isfinite(ends_at) AND ends_at>starts_at AND ends_at<=starts_at+interval '7 days 30 minutes'), expires_at timestamptz NOT NULL CHECK(isfinite(expires_at) AND expires_at<=starts_at),
  state text NOT NULL CHECK(state IN ('ACTIVE','CONVERTED','RELEASED')), source_booking_id uuid UNIQUE REFERENCES local_bookings(id),
- created_at timestamptz NOT NULL DEFAULT clock_timestamp(), FOREIGN KEY(request_id,offer_id) REFERENCES dispatch_offers(request_id,id)
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(), CHECK((state='CONVERTED')=(source_booking_id IS NOT NULL)), FOREIGN KEY(request_id,offer_id) REFERENCES dispatch_offers(request_id,id)
 );
 CREATE UNIQUE INDEX dispatch_one_hold ON dispatch_holds(request_id) WHERE state='ACTIVE';
 ALTER TABLE local_resource_reservations ADD COLUMN dispatch_offer_id uuid REFERENCES dispatch_offers(id);
@@ -67,7 +68,7 @@ BEGIN
  ELSIF TG_TABLE_NAME='dispatch_requests' THEN
   IF (to_jsonb(NEW)-ARRAY['status','batch_count','next_batch_at','winner_offer_id','source_booking_id','reason','version','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','batch_count','next_batch_at','winner_offer_id','source_booking_id','reason','version','updated_at']) OR NEW.version<>OLD.version+1 OR (OLD.source_booking_id IS NOT NULL AND NEW.source_booking_id IS DISTINCT FROM OLD.source_booking_id) THEN RAISE EXCEPTION 'Dispatch request identity/terms are immutable' USING ERRCODE='23514'; END IF;
  ELSIF TG_TABLE_NAME='dispatch_offers' THEN
-  IF (to_jsonb(NEW)-ARRAY['status','quote','quote_hash','travel_verified_by','travel_verified_at','hold_expires_at','source_booking_id','reason','version','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','quote','quote_hash','travel_verified_by','travel_verified_at','hold_expires_at','source_booking_id','reason','version','updated_at']) OR NEW.version<>OLD.version+1 OR (OLD.quote IS NOT NULL AND NEW.quote IS DISTINCT FROM OLD.quote) OR (OLD.source_booking_id IS NOT NULL AND NEW.source_booking_id IS DISTINCT FROM OLD.source_booking_id) THEN RAISE EXCEPTION 'Dispatch offer identity/quote is immutable' USING ERRCODE='23514'; END IF;
+  IF (to_jsonb(NEW)-ARRAY['status','quote','quote_hash','travel_verified_by','travel_verified_at','hold_expires_at','source_booking_id','reason','version','updated_at']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','quote','quote_hash','travel_verified_by','travel_verified_at','hold_expires_at','source_booking_id','reason','version','updated_at']) OR NEW.version<>OLD.version+1 OR (OLD.quote IS NOT NULL AND (NEW.quote IS DISTINCT FROM OLD.quote OR NEW.quote_hash IS DISTINCT FROM OLD.quote_hash)) OR (OLD.travel_verified_by IS NOT NULL AND (NEW.travel_verified_by IS DISTINCT FROM OLD.travel_verified_by OR NEW.travel_verified_at IS DISTINCT FROM OLD.travel_verified_at)) OR (OLD.hold_expires_at IS NOT NULL AND NEW.hold_expires_at IS DISTINCT FROM OLD.hold_expires_at) OR (OLD.source_booking_id IS NOT NULL AND NEW.source_booking_id IS DISTINCT FROM OLD.source_booking_id) THEN RAISE EXCEPTION 'Dispatch offer identity/quote is immutable' USING ERRCODE='23514'; END IF;
  ELSIF TG_TABLE_NAME='dispatch_holds' THEN
   IF (to_jsonb(NEW)-ARRAY['state','source_booking_id']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['state','source_booking_id']) OR OLD.state<>'ACTIVE' OR NEW.state='ACTIVE' THEN RAISE EXCEPTION 'Dispatch hold release is permanent' USING ERRCODE='23514'; END IF;
  END IF;

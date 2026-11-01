@@ -16,3 +16,24 @@
 - API typecheck passed. Focused `../../node_modules/.bin/vitest run src/dispatch-domain.test.ts` passed **21/21**.
 - PostgreSQL/migration execution not available locally. Source hook remains injected and fail-closed until root wires `LocalServicesService.createDispatchBookingInTransaction`.
 - Next: native workflow/recovery, PostgreSQL lifecycle/concurrency tests, root shared registration/048/least-privilege grants.
+
+### Slice 2 — native workflow and real-PG test specification
+
+- Added `/pages/dispatch/index` and strict client repository: customer scope/budget/request controls; actual provider quote; independent travel evidence review; single-person hold; customer current-hash/fee consent; source reservation/payment links; opt-in preferences.
+- Unknown writes persist the original actor-scoped command; refresh, receipt miss and retry retain the same content/UUID. Session changes scrub route/quote/forms and invalidate late results.
+- Invitation expiry/withdrawal/supply revocation remove exact route details from provider/reviewer views. Confirm capability checks hold deadline; source-conversion-disabled remains fail-closed.
+- Native functional/template tests passed **7/7**, API typecheck passed. Added **9** real-PostgreSQL lifecycle tests (disabled default, independent approval, concurrent replay/single hold, calendar conflicts, source rollback guard, true source conversion, supply revocation, bounded/manual fallback and deadline release). **Not executed locally**: no PostgreSQL service/TEST_DATABASE_URL. Real source test calls the shared canonical transaction method; no fake local-bookings insert or skipped success.
+- Shared page registration, routes and HTTP allowlist delegated to matching agent/root; canonical source method delegated to map agent/root. Tests currently use an explicit structural source-method type while baseline class awaits that shared integration commit.
+
+### Slice 3 — final boundaries and recovery evidence
+
+- Moved all regional eligibility, current availability and base-fee ceilings into SQL before the batch limit; distinct real people are selected after scope checks, preventing the former pre-filter scan cap from falsely reporting no supply.
+- Tightened 045: one invitation per person per request, immutable quote hash/independent travel approval/deadline, finite bounded travel holds, and source-link consistency for converted offers/holds. Shared quarantine must retain converted facts and release only ACTIVE holds.
+- Added `scripts/r6-recovery-dispatch.mjs`: runtime services create real ACCEPTED_HELD and converted+CONFIRMED canonical-source examples; all seven new tables are nonempty; saved output contains references and hashes. Restart checks exact state; quarantine checks permissions off, no new batch/person, immutable quote/receipt/evidence retained, holds/resources released, converted source retained with existing X12 cancellation.
+- Rechecked API typecheck, native **7/7**, and recovery-script syntax successfully. Recovery runtime/PostgreSQL tests remain unexecuted locally; root runs combined isolated CI.
+- Source bridge review sent to map agent: cap canonical pending-acceptance deadline to dispatch departure time as well as the ordinary service deadline.
+
+### Lifecycle follow-up and independent review
+
+- Added `onModuleDestroy()` to stop dispatch timer during Nest shutdown before pool closure; API typecheck passed.
+- Completed requested read-only ADS review; three concrete P1 findings with suggested tests are recorded in `docs/handoffs/R6DISPATCH_ADS_REVIEW.md` and sent to root/ADS owner. No ADS code modified.

@@ -35,6 +35,15 @@ export interface AdditionalTradeSourceAdapter {
   /** Sponsor batches cannot use the legacy single-recipient settlement workflow. */
   settlementMode: 'SINGLE' | 'MODULE';
   requiresProfitSharing: boolean;
+  /** Explicitly reconciled module distributions; never infer this from a closed UI status. */
+  closureFunds?(
+    c: PoolClient,
+    sourceId: string,
+    tradeOrderId: string,
+  ): Promise<{
+    dischargedFen: number;
+    unresolved: boolean;
+  }>;
   assertRefundAllocation(
     c: PoolClient,
     sourceId: string,

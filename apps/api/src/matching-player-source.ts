@@ -101,6 +101,31 @@ export function createMatchingPlayerSource(
             )
           )
             unavailable();
+          for (const appearance of order.appearances) {
+            const binding = (
+              await c.query(
+                "SELECT org_id,payer_user_id,beneficiary_user_id,total_fen FROM trade_orders WHERE kind='PLAYER_APPEARANCE' AND source_id=$1 FOR SHARE",
+                [appearance.id],
+              )
+            ).rows[0];
+            if (!binding)
+              throw new ApiError(
+                503,
+                'MATCHING_TRADE_REQUIRED',
+                '球员收费准备尚未完成，未创建预约，请重新核对',
+              );
+            if (
+              binding.org_id !== input.need.orgId ||
+              binding.payer_user_id !== actor.user.id ||
+              binding.beneficiary_user_id !== input.candidate.userId ||
+              binding.total_fen !== appearance.totalFen
+            )
+              throw new ApiError(
+                409,
+                'MATCHING_TRADE_CHANGED',
+                '球员原预约收费对象或金额与确认内容不一致',
+              );
+          }
           return {
             sourceKind: 'PLAYER_ORDER',
             sourceId: order.id,

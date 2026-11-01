@@ -620,7 +620,7 @@
     },
     "matching_runs": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": ["status"]
+      "updateColumns": ["status", "truncated"]
     },
     "matching_slot_assignments": {
       "privileges": ["SELECT", "INSERT"],
@@ -972,41 +972,80 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["revoked_at"]
     },
+    "sponsor_beneficiaries": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["reviewed_by", "status", "version"]
+    },
     "sponsor_commerce_operations": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
     },
     "sponsor_contracts": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": []
+      "updateColumns": [
+        "advertiser_signed_at",
+        "owner_signed_by",
+        "reviewed_at",
+        "reviewed_by",
+        "status",
+        "version"
+      ]
     },
     "sponsor_deliveries": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": []
+      "updateColumns": ["reason", "reviewed_at", "reviewed_by", "status"]
     },
     "sponsor_orders": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": []
+      "updateColumns": [
+        "accepted_at",
+        "fee_evidence",
+        "fee_verified_by",
+        "status",
+        "updated_at",
+        "verified_fee_fen",
+        "version"
+      ]
     },
     "sponsor_recovery_cases": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": []
+      "updateColumns": ["evidence", "proposed_by", "reviewed_by", "status"]
     },
     "sponsor_refund_plans": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": []
+      "updateColumns": [
+        "advance_coverage",
+        "advance_evidence",
+        "advance_proposed_by",
+        "advance_reviewed_by",
+        "funding_mode",
+        "reviewed_by",
+        "status",
+        "trade_refund_id",
+        "updated_at",
+        "version"
+      ]
     },
     "sponsor_return_items": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": []
+      "updateColumns": ["fence", "provider_return_id", "status", "updated_at"]
     },
     "sponsor_settlement_batches": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": []
+      "updateColumns": [
+        "approvals",
+        "fence",
+        "finish_status",
+        "finished",
+        "provider_order_id",
+        "status",
+        "updated_at",
+        "version"
+      ]
     },
     "sponsor_settlement_items": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": []
+      "updateColumns": ["provider_detail_id", "status", "updated_at"]
     },
     "sponsorship_campaigns": {
       "privileges": ["SELECT", "INSERT"],
@@ -1211,7 +1250,7 @@
     },
     "training_guardian_grants": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": []
+      "updateColumns": ["epoch", "state"]
     },
     "training_lesson_entitlements": {
       "privileges": ["SELECT", "INSERT"],

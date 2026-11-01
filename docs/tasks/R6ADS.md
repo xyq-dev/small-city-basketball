@@ -11,3 +11,21 @@
 验证计划：分配/退款单调性、严格请求和响应、组织/受益权限、独立审批、UNKNOWN原单查询、同源金额上限与PG并发；真实PG测试待隔离CI，商户实款联调未执行。默认新收款和结算关闭。
 
 检查点：已核对既有trade与赞助实现；现有单接收方driver不可循环用于多人分账，新来源必须统一纳入trade。
+
+2026-11-01 第二切片：真实PG service/controller、source/refund hooks、多接收方签名driver、广告管理/广告主验收/受益报表小程序、回执取消防迟到写及5条PG场景已实现。定向领域与transport单测14/14通过；小程序金额/路径/超时保护/隐私生命周期5/5通过；API typecheck通过。PG集成仅编写待root隔离CI，不声称本机通过。共10表；真实商户未配置，默认关闭。平台垫付需要额外可信资金覆盖校验，作为下一切片，当前不能凭审批绕过失败回退。
+
+2026-11-01 接线修正：根审阅指出无chargeConsent可能生成无法支付的孤立订单；现广告主明确同意且capture统一trade返回真实orderId才可提交，否则事务回滚。UI按钮说明收费授权，退款bridge类型保留PENDING/SUCCEEDED/FAILED/UNKNOWN。对应PG夹具改为统一capture hook建源关联订单；真实支付仍仅合成渠道事实。
+
+2026-11-01 独立审查修正：移除垫付草稿时，dispatch guard的参数数组遗留第二值而SQL仅$1；已修正为精确单参数。真实PG场景在CLAIM后调用此guard并补错金额拒绝断言，等待根CI执行；不以本地tsc冒充PG通过。
+
+2026-11-01 恢复切片：新增`scripts/r6-recovery-sponsor.mjs`，runtimePool明确合成fixture填满10张新表，2份真实合同/广告订单绑定canonical SPONSOR_ORDER trade支付，保留UNKNOWN统一退款+原成功回退、失败回退+OPEN追偿；同步048不可变refund binding。无渠道调用、无凭据。node --check通过；真实备份恢复演练由root/map隔离CI执行。
+
+2026-11-01 注销资金核验切片：`readSponsorClosureFunds(c,sourceId,tradeOrderId)`从共同支付/成功退款、原批次、逐项已实付/商户留存、实际成功回退及核验手续费重算dischargedFen。仅已CLOSED且精确等于paid-refunded才允许根通用guard扣减；未知/未结束/差额/缺凭据/追偿未结/垫付不可解释全部unresolved。PG增加完整分账结清、全额退款结清、UNKNOWN三分支，待根真实CI；API typecheck通过。
+
+2026-11-01 分账/退款审查切片：服务与driver统一最多10个外部商户；新单关闭不阻断已批准原回退与原退款解冻。新增REFUND_UNFREEZE，所有项终态、退款独立审核及成功份额回退核验后先原F编号解冻，确认后才可CLAIM统一退款；PARTIAL保留原差额状态，不伪改全成功。解决普通商户大额/全额退款必须先解冻与FINISH等待退款的循环依赖。
+
+可信垫付：默认关闭，必须原商户ownFundsRefundSupported、同事务可信reserveAdvanceCoverage原订单锁额、双人finance审核和冻结coverage receipt；receipt绑定原merchant/payment/order/allocation/full amount/CNY及独占reservationId，直到原refund终态。无checker、错绑定、纯口头证据均拒绝。原FAILED回退/OPEN追偿仍保留，绝不当实际退款。恢复fixture仍默认RETURN_FIRST。
+
+验证：领域/签名transport16/16，微信5/5，API tsc/diffcheck通过；真实PG扩至8项测试（其中含多个资金子场景），新增full refund先回退/解冻、PARTIAL解冻、关新单后历史回退、11外部拒绝、无覆盖/跨单覆盖拒绝与不可变覆盖证明。PG仅代码已准备，等待rootCI。
+
+2026-11-01 一致性小片：047不可变trigger改为按表独立IF分支再读取各表专属record字段；PARTIAL批次全额退款/真实解冻后FAILED分配项只能净零解除，不计失败金额为已付。PG追加该全退注销断言；恢复UNKNOWN退款夹具同步原batch先finished的不变量。API tsc及恢复script语法通过，PG待CI；前文PG数量更正为8条test。

@@ -24,10 +24,14 @@ export function trainingInt(raw: unknown, field: string, min: number, max: numbe
 export function trainingTime(raw: unknown): string {
   if (
     typeof raw !== 'string' ||
-    !/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(raw) ||
+    !/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?(?:Z|[+-](?:0\d|1[0-4]):[0-5]\d)$/.test(
+      raw,
+    ) ||
     !Number.isFinite(Date.parse(raw))
   )
     invalid('时间必须包含明确时区');
+  if (new Date(raw.slice(0, 10) + 'T00:00:00Z').toISOString().slice(0, 10) !== raw.slice(0, 10))
+    invalid('日期不存在');
   return new Date(raw).toISOString();
 }
 export function trainingVersion(actual: number, expected: number) {
@@ -141,7 +145,7 @@ export function trainingCanConfirm(input: {
   paid: boolean;
   free: boolean;
 }) {
-  if (!input.eligible) return input.paid ? 'PAID_UNALLOCATED' : 'REJECT';
   if (input.expired) return input.paid ? 'PAID_UNALLOCATED' : 'EXPIRED';
+  if (!input.eligible) return input.paid ? 'PAID_UNALLOCATED' : 'REJECT';
   return input.free || input.paid ? 'CONFIRMED' : 'PAYMENT_PENDING';
 }

@@ -358,5 +358,79 @@ describe(
       });
       expect((await service.detail(h.owner.cookie, n.id)).latestRunId).toBeNull();
     });
+    test('staff qualification, exact slot and unknown quote remain distinct from confirmed price', async () => {
+      const listing = randomUUID(),
+        slot = randomUUID();
+      await h.api.pool.query(
+        "INSERT INTO local_listings(id,org_id,provider_user_id,created_by,kind,title,description,address,region_catalog_version,region_id,coverage_region_ids,qualification_note,terms,provider_confirmed,status,published,qualified_until,reviewed_by,reviewed_at) VALUES($1,$2,$3,$3,'REFEREE','合成裁判','隔离测试服务资料','公开服务场馆',$4,$5,ARRAY[$5::uuid],'合成有效资质','合成服务约定',true,'APPROVED',true,$6,$7,clock_timestamp())",
+        [
+          listing,
+          h.otherOwner.orgId,
+          h.otherOwner.id,
+          REGION_CATALOG_VERSION,
+          regionId,
+          at(500),
+          h.owner.id,
+        ],
+      );
+      await h.api.pool.query(
+        'INSERT INTO local_slots(id,org_id,listing_id,starts_at,ends_at) VALUES($1,$2,$3,$4,$5)',
+        [slot, h.otherOwner.orgId, listing, at(200), at(202)],
+      );
+      await opt(h.otherOwner, listing, true, 'STAFF_SERVICE');
+      const n = await need({
+        kind: 'STAFF_SERVICE',
+        teamId: undefined,
+        role: 'REFEREE',
+        windows: [{ reportAt: at(200), startAt: at(200), endAt: at(202) }],
+        expiresAt: at(199),
+      });
+      let view = await run(n.id);
+      expect(view.candidates.find((c) => c.sourceId === listing)).toMatchObject({
+        sourceSlotId: slot,
+        totalFen: null,
+        needsQuote: true,
+      });
+      await h.api.pool.query(
+        "INSERT INTO trade_terms(id,org_id,kind,source_id,amount_fen,terms,merchant_key,status,created_by,reviewed_by,reviewed_at) VALUES($1,$2,'LOCAL_BOOKING',$3,1000,'合成服务收费约定','synthetic-only','ACTIVE',$4,$5,clock_timestamp())",
+        [randomUUID(), h.otherOwner.orgId, listing, h.otherOwner.id, h.owner.id],
+      );
+      view = await run(n.id);
+      expect(view.candidates.find((c) => c.sourceId === listing)).toMatchObject({
+        totalFen: 1000,
+        needsQuote: false,
+      });
+      await h.api.pool.query(
+        'UPDATE local_listings SET published=false,version=version+1 WHERE id=$1',
+        [listing],
+      );
+      expect((await service.detail(h.owner.cookie, n.id)).candidates).toEqual([]);
+    });
+    test('team matching uses the authorized opposing team and free-price evidence', async () => {
+      const team = h.otherTeams[0]!;
+      await opt(h.otherOwner, team.id, true, 'TEAM_MATCHUP');
+      const n = await need({
+        kind: 'TEAM_MATCHUP',
+        role: 'TEAM',
+        unitBudgetFen: 0,
+        totalBudgetFen: 0,
+        windows: [{ reportAt: at(4), startAt: at(4), endAt: at(6) }],
+        expiresAt: at(3),
+      });
+      const view = await run(n.id),
+        candidate = view.candidates.find((c) => c.sourceId === team.id);
+      expect(candidate).toMatchObject({
+        totalFen: 0,
+        needsQuote: false,
+        sourceOrgId: h.otherOwner.orgId,
+        settingsVersion: null,
+      });
+      expect(candidate?.score.dimensions.budget).toBeNull();
+      const i = await send(view, team.id);
+      await accept(i.resourceId, h.otherOwner);
+      expect((await service.detail(h.owner.cookie, n.id)).intents[0]?.status).toBe(
+        'MUTUAL_INTEREST',
+      );
+    });
   },
 );

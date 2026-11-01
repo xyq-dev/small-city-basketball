@@ -54,6 +54,9 @@ describe('training fixed-course financial and enrollment rules', () => {
       expect(() => allocateTrainingPrice(...args)).toThrow();
   });
   it('treats a late real payment as unallocated instead of overselling', () => {
+    expect(trainingCanConfirm({ expired: true, eligible: false, paid: false, free: false })).toBe(
+      'EXPIRED',
+    );
     expect(trainingCanConfirm({ expired: true, eligible: true, paid: true, free: false })).toBe(
       'PAID_UNALLOCATED',
     );
@@ -70,6 +73,7 @@ describe('training fixed-course financial and enrollment rules', () => {
   it('accepts explicit timezone and rejects implicit local time', () => {
     expect(trainingTime('2099-01-02T08:00:00+08:00')).toBe('2099-01-02T00:00:00.000Z');
     expect(() => trainingTime('2099-01-02T08:00:00')).toThrow();
+    expect(() => trainingTime('2099-02-30T08:00:00Z')).toThrow();
   });
   it('limits fixed courses to eight weeks and rejects duplicate coaches', () => {
     const v = cohort();

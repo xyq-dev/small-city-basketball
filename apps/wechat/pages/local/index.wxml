@@ -2,6 +2,7 @@
 <view class="page local-page">
  <view class="local-heading"><view><view class="title">找到一起上场的人</view><view class="muted">球场 · 裁判 · 记录 · 直播摄影 · 医务</view></view><button bindtap="chooseCity">{{selection.label}} · 选城</button></view>
  <view class="local-actions"><button bindtap="bookings">我的预约</button><button bindtap="matchups">球队约赛</button><button bindtap="manage">经营与服务方</button></view>
+ <view class="local-actions"><button data-page="matching" bindtap="expansion" disabled="{{busy}}">全国撮合</button><button data-page="dispatch" bindtap="expansion" disabled="{{busy}}">跨城派单</button><button data-page="training" bindtap="expansion" disabled="{{busy}}">培训课程</button></view>
  <view class="notice" wx:if="{{selection.mode==='LEGACY_CITY'}}">当前为历史城市标签。请从地区目录重新选择，供给覆盖和附近筛选需要具体地区。</view>
  <view class="card">
   <view class="chips"><button wx:for="{{kinds}}" wx:key="value" class="chip {{kind===item.value?'picked':''}}" data-value="{{item.value}}" bindtap="kind">{{item.label}}</button></view>

@@ -146,7 +146,10 @@ describe(
         'r6map-region',
       );
       expect([...local.items, ...tail.items].map((i) => i.id)).not.toContain(removed);
-      await h.api.pool.query('UPDATE local_listings SET published=false WHERE id=$1', [removed]);
+      await h.api.pool.query(
+        'UPDATE local_listings SET published=false,version=version+1 WHERE id=$1',
+        [removed],
+      );
       const r = await service.publicList({ ...query(), limit: 50 }, 'r6map-revoke');
       const page = await service.publicList(
         { ...query(), limit: 50, cursor: r.nextCursor },

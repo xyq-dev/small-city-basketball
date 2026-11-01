@@ -10,6 +10,10 @@ export const ACCOUNT_CLOSURE_DOMAINS = Object.freeze([
   'NOTIFICATIONS',
   'GUARDIANS',
   'PARTICIPANT_PUBLICITY',
+  'TRAINING',
+  'MATCHING',
+  'DISPATCH',
+  'SPONSOR_COMMERCE',
 ] as const);
 export function closureFail(code: string, message: string, status = 409): never {
   throw new ApiError(status, code, message);

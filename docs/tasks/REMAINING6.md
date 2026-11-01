@@ -35,6 +35,14 @@
 
 集成新增TRAINING_ENROLLMENT/SPONSOR_ORDER交易类型及强制来源adapter，训练合同ID与旧trade_terms外键分离；退款必须使用逐项分配、唯一绑定及派发前复核，广告禁止旧单收款方结算；dispatch冻结报价纳入原LOCAL_BOOKING源。048扩展四类档期双向互斥与过期释放，保留原占位历史。新模块默认关闭，恢复隔离强制关闭。
 
-根定向trade-domain / trade-source-adapter / readiness共26项通过，migration静态检查48连续文件/219表/126函数通过；这是源码检查，非PG迁移成功。各模块具体证据见自身任务卡。菜单、所有生产source桥、广告多方接线、注销隐私、R6恢复覆盖和真实PG仍在整合。
+根定向trade-domain / trade-source-adapter / readiness共26项通过，migration静态检查48连续文件/220表/126函数通过；这是源码检查，非PG迁移成功。各模块具体证据见自身任务卡。菜单、所有生产source桥、广告多方接线、注销隐私、R6恢复覆盖和真实PG仍在整合。
 
 下一步：补齐source与UI接线，开启当前分支隔离CI，修复真实PG/恢复/回归发现的问题，再独立审查。
+
+## 第二轮整合与 CI149
+
+PR #35 已创建为草稿。源事务、原生页面、注销及恢复清单已接线；培训和广告使用真实统一交易账本，付费撮合/派单不允许只占位而缺资金单。新功能严格开关及地图稳定游标签名配置见 `docs/operations/remaining-six-runtime.md`。
+
+首轮隔离 CI149（remote head `68ed65c53e43333a02e5e9cf1bc0e180f4504e62`）：admin job 成功；48 个迁移在 PostgreSQL 成功；API 集成597 passed / 4 failed / 10 skipped，另1个suite setup失败。失败已定位为readiness不接受数字表名、撮合审批fixture缺平台审核员、地图/预约fixture缺版本推进、培训独立审核fixture权限预期。后续片正在修复并扩展共享日历及资金恢复测试。生产包隔离job因同一readiness问题失败，尚未完成当前HEAD备份恢复及整套验收，不能据旧片测试标记当前整套通过。
+
+当前本地已通过新readiness/runtime/source adapter定向25项和API类型检查；广告退款解冻、财务追偿、跨域日历新增证据继续纳入下一轮。真实保险外部驱动仍BLOCKED；不部署、不调用真实保险/资金/消息。

@@ -5,6 +5,12 @@ import { createApi } from '../src/app.js';
 import { migrate } from '../src/database/migrate.js';
 import { hashPassword, hashToken } from '../src/security.js';
 import { AccountClosureService } from '../src/account-closure-service.js';
+import {
+  readRemainingSixClosureOrgs,
+  lockRemainingSixClosure,
+  readRemainingSixClosureBlockers,
+  revokeRemainingSixPrivacy,
+} from '../src/remaining-six-privacy.js';
 import { createAccountClosureHooks } from '../src/account-closure-hooks.js';
 import { InsuranceService, revokeInsuranceForClosure } from '../src/insurance-service.js';
 import { TradeService } from '../src/trade-service.js';
@@ -53,6 +59,12 @@ describe('E07 real cross-domain closure hooks on PostgreSQL', { concurrent: fals
       trade: { assertSafe: (c, id) => trade.assertAccountClosureSafe(c, id) },
       notifications: { revoke: revokeNotificationGrants },
       guardians: { revoke: revokeYouthForClosure },
+      remainingSix: {
+        orgScopes: readRemainingSixClosureOrgs,
+        lock: lockRemainingSixClosure,
+        inspect: readRemainingSixClosureBlockers,
+        revoke: revokeRemainingSixPrivacy,
+      },
     });
     expect(hooks).toBeDefined();
     closure = new AccountClosureService(api.pool, configuration, {

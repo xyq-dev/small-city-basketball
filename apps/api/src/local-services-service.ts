@@ -1047,7 +1047,7 @@ export class LocalServicesService extends ApplicationService {
               ...(dispatchQuote ? { dispatchQuote } : {}),
             };
             await c.query(
-              `INSERT INTO local_bookings(id,org_id,listing_id,slot_id,buyer_user_id,provider_user_id,status,starts_at,ends_at,hold_expires_at,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,LEAST(clock_timestamp()+interval '10 minutes',$8::timestamptz),$10)`,
+              `INSERT INTO local_bookings(id,org_id,listing_id,slot_id,buyer_user_id,provider_user_id,status,starts_at,ends_at,hold_expires_at,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,LEAST(clock_timestamp()+interval '10 minutes',$8::timestamptz,$11::timestamptz),$10)`,
               [
                 id,
                 listing.org_id,
@@ -1059,6 +1059,7 @@ export class LocalServicesService extends ApplicationService {
                 slot.starts_at,
                 slot.ends_at,
                 snapshot,
+                dispatchQuote?.protectedStartsAt ?? iso(slot.starts_at),
               ],
             );
             const until = isCourt
@@ -1718,10 +1719,28 @@ export class LocalServicesService extends ApplicationService {
       await this.bookingAccess(c, actor, ref);
       await this.mutex(c, [ref.org_id]);
       const row = (
-        await c.query('SELECT status FROM local_bookings WHERE id=$1 FOR UPDATE', [sourceId])
+        await c.query(
+          'SELECT status,hold_expires_at,clock_timestamp() AS db_now FROM local_bookings WHERE id=$1 FOR UPDATE',
+          [sourceId],
+        )
       ).rows[0];
+      const expired =
+        ['HELD', 'REQUESTED'].includes(row.status) &&
+        row.hold_expires_at &&
+        row.hold_expires_at <= row.db_now;
+      // Expiry is a database-time source fact. Preserve source/payment history while
+      // releasing its stale calendar hold in this same source-first transaction.
+      if (expired) await c.query('SELECT x12_release_expired()');
+      const reserved = (
+        await c.query(
+          'SELECT 1 FROM local_resource_reservations WHERE booking_id=$1 AND active LIMIT 1',
+          [sourceId],
+        )
+      ).rowCount;
       return {
-        ended: ['CANCELLED', 'DECLINED', 'EXPIRED', 'COMPLETED'].includes(row.status),
+        ended:
+          !reserved &&
+          (!!expired || ['CANCELLED', 'DECLINED', 'EXPIRED', 'COMPLETED'].includes(row.status)),
         completed: row.status === 'COMPLETED',
       };
     }
@@ -1736,10 +1755,21 @@ export class LocalServicesService extends ApplicationService {
     await this.mutex(c, [ref.home_org_id, ref.away_org_id, ref.court_org_id]);
     await this.matchupAccess(c, actor, sourceId);
     const row = (
-      await c.query('SELECT status FROM local_matchups WHERE id=$1 FOR UPDATE', [sourceId])
+      await c.query(
+        'SELECT status,expires_at,clock_timestamp() AS db_now FROM local_matchups WHERE id=$1 FOR UPDATE',
+        [sourceId],
+      )
     ).rows[0];
+    const expired = row.status === 'OPEN' && row.expires_at <= row.db_now;
+    if (expired) await c.query('SELECT x12_release_expired()');
+    const reserved = (
+      await c.query(
+        'SELECT 1 FROM local_resource_reservations WHERE matchup_id=$1 AND active LIMIT 1',
+        [sourceId],
+      )
+    ).rowCount;
     return {
-      ended: ['CANCELLED', 'DECLINED', 'COMPLETED'].includes(row.status),
+      ended: !reserved && (expired || ['CANCELLED', 'DECLINED', 'COMPLETED'].includes(row.status)),
       completed: row.status === 'COMPLETED',
     };
   }

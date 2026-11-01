@@ -111,7 +111,7 @@ export function participantKeyIdsMatch(keyId: string | null, rows: { key_id: str
   return rows.length === 0 || (keyId !== null && rows.every((row) => row.key_id === keyId));
 }
 
-async function expectations() {
+export async function readRuntimeExpectations() {
   const manifest = JSON.parse(
     await readFile(
       new URL('../../../packages/contracts/runtime-privileges.json', import.meta.url),
@@ -131,17 +131,17 @@ async function expectations() {
     throw new Error();
   for (const [name, t] of Object.entries(manifest.tables)) {
     if (
-      !/^[a-z][a-z_]+$/.test(name) ||
+      !/^[a-z][a-z0-9_]+$/.test(name) ||
       !Array.isArray(t.privileges) ||
       !Array.isArray(t.updateColumns) ||
       !Array.isArray(t.selectColumns ?? []) ||
       (t.privileges.includes('SELECT') && (t.selectColumns ?? []).length > 0) ||
       new Set(t.selectColumns ?? []).size !== (t.selectColumns ?? []).length ||
-      (t.selectColumns ?? []).some((v) => !/^[a-z][a-z_]+$/.test(v)) ||
+      (t.selectColumns ?? []).some((v) => !/^[a-z][a-z0-9_]+$/.test(v)) ||
       t.privileges.some((p) => !['SELECT', 'INSERT', 'DELETE'].includes(p)) ||
       (t.privileges.includes('DELETE') &&
         !['auth_rate_limits', 'wechat_auth_attempts'].includes(name)) ||
-      t.updateColumns.some((v) => !/^[a-z][a-z_]+$/.test(v)) ||
+      t.updateColumns.some((v) => !/^[a-z][a-z0-9_]+$/.test(v)) ||
       new Set(t.privileges).size !== t.privileges.length ||
       new Set(t.updateColumns).size !== t.updateColumns.length
     )
@@ -177,7 +177,7 @@ export async function assertRuntimeReadiness(
 ): Promise<void> {
   let client: PoolClient | undefined;
   try {
-    const { manifest, expected } = await expectations();
+    const { manifest, expected } = await readRuntimeExpectations();
     client = await pool.connect();
     await client.query('BEGIN READ ONLY');
     const role = (

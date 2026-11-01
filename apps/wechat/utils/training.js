@@ -13,8 +13,22 @@ function money(v) {
 function time(v) {
   const d = new Date(v);
   if (!Number.isFinite(d.getTime())) throw Error('课程时间无效');
-  return d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+  const local = new Date(d.getTime() + 8 * 3600000),
+    pad = (n) => String(n).padStart(2, '0');
+  return (
+    local.getUTCFullYear() +
+    '-' +
+    pad(local.getUTCMonth() + 1) +
+    '-' +
+    pad(local.getUTCDate()) +
+    ' ' +
+    pad(local.getUTCHours()) +
+    ':' +
+    pad(local.getUTCMinutes()) +
+    '（北京时间）'
+  );
 }
+
 const names = {
   DRAFT: '待发布',
   ENROLLING: '招生中',

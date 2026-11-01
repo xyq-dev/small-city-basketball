@@ -348,6 +348,8 @@ Page({
       'sponsorships',
       'public-ledgers',
       'trade-manage',
+      'training-manage',
+      'sponsor-commerce',
     ].includes(key)
       ? { orgId: api.uuid(e.currentTarget.dataset.org) }
       : key === 'bookings'

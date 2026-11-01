@@ -441,6 +441,8 @@ Page({
         i = this.data.conversion,
         p = this.data.preview;
       if (!i || !p) throw new Error('请先核对最新预约条款');
+      if (n.kind !== 'TEAM_MATCHUP' && !p.enabled)
+        throw new Error('收费准备尚未完成，暂不可转预约，请稍后重新核对');
       if (!this.data.eligibility) throw new Error('请确认已核对成人资格、场地与时间约定');
       if (p.enabled && !this.data.chargeConsent) throw new Error('请阅读并同意本次收费条款');
       let sourceInput;

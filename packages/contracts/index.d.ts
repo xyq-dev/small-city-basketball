@@ -1213,3 +1213,8 @@ export type * from './insurance.js';
 export type * from './trade.js';
 export type * from './account-closure.js';
 export type * from './youth-guardians.js';
+
+export type * from './matching.js';
+export type * from './dispatch.js';
+export type * from './training.js';
+export type * from './sponsor-commerce.js';

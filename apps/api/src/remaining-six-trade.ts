@@ -7,16 +7,44 @@ import {
   assertTrainingRefundAllocation,
   assertTrainingRefundDispatch,
 } from './training-trade-source.js';
+import {
+  sponsorSourceReference,
+  readSponsorTradeSource,
+  assertSponsorRefundAllocation,
+  claimSponsorRefundAllocation,
+  assertSponsorRefundDispatch,
+  readSponsorClosureFunds,
+} from './sponsor-commerce-source.js';
 
-export function remainingSixTradeSources(): AdditionalTradeSourceAdapters {
+export function remainingSixTradeSources(
+  options: { trainingEnabled?: boolean; sponsorEnabled?: boolean } = {},
+): AdditionalTradeSourceAdapters {
   return {
     TRAINING_ENROLLMENT: {
       reference: trainingSourceReference,
-      read: readTrainingTradeSource,
+      read: async (c, id) => {
+        const source = await readTrainingTradeSource(c, id);
+        return { ...source, payable: options.trainingEnabled === true && source.payable };
+      },
       settlementMode: 'SINGLE',
       requiresProfitSharing: false,
       assertRefundAllocation: assertTrainingRefundAllocation,
       assertRefundDispatch: assertTrainingRefundDispatch,
+    },
+    SPONSOR_ORDER: {
+      reference: sponsorSourceReference,
+      read: async (c, id) => {
+        const source = await readSponsorTradeSource(c, id);
+        return { ...source, payable: options.sponsorEnabled === true && source.payable };
+      },
+      settlementMode: 'MODULE',
+      requiresProfitSharing: true,
+      closureFunds: readSponsorClosureFunds,
+      assertRefundAllocation: async (c, id, allocation, amount) => {
+        await assertSponsorRefundAllocation(c, id, allocation, amount);
+      },
+      claimRefundAllocation: claimSponsorRefundAllocation,
+      assertRefundDispatch: assertSponsorRefundDispatch,
     },
   };
 }

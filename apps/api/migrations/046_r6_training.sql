@@ -58,14 +58,15 @@ CREATE TABLE training_enrollments (
  id uuid PRIMARY KEY, org_id uuid NOT NULL, cohort_id uuid NOT NULL,
  applicant_user_id uuid NOT NULL REFERENCES users(id), payer_user_id uuid NOT NULL REFERENCES users(id), learner_user_id uuid NOT NULL REFERENCES users(id),
  adult_confirmed boolean NOT NULL CHECK(adult_confirmed), terms_id uuid NOT NULL, terms_snapshot jsonb NOT NULL CHECK(jsonb_typeof(terms_snapshot)='object'),
- total_fen integer NOT NULL CHECK(total_fen>=0), trade_order_id uuid,
+ total_fen integer NOT NULL CHECK(total_fen>=0), trade_order_id uuid REFERENCES trade_orders(id),
  state text NOT NULL CHECK(state IN('WAITLISTED','HOLDING','CONFIRMED','EXPIRED','PAID_UNALLOCATED','CANCELLED','COMPLETED')),
  hold_expires_at timestamptz, version integer NOT NULL DEFAULT 1 CHECK(version>0), created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  FOREIGN KEY(org_id,cohort_id) REFERENCES training_cohorts(org_id,id), UNIQUE(org_id,id),
  CHECK(state<>'HOLDING' OR hold_expires_at IS NOT NULL)
 );
 CREATE UNIQUE INDEX training_enrollment_active ON training_enrollments(cohort_id,learner_user_id) WHERE state IN('WAITLISTED','HOLDING','CONFIRMED','PAID_UNALLOCATED');
-ALTER TABLE training_resource_reservations ADD COLUMN enrollment_id uuid REFERENCES training_enrollments(id);
+ALTER TABLE training_resource_reservations ADD COLUMN enrollment_id uuid;
+ALTER TABLE training_resource_reservations ADD FOREIGN KEY(org_id,enrollment_id) REFERENCES training_enrollments(org_id,id);
 CREATE INDEX training_enrollment_seats ON training_enrollments(cohort_id,state,hold_expires_at);
 CREATE TABLE training_lesson_entitlements (
  id uuid PRIMARY KEY, org_id uuid NOT NULL, enrollment_id uuid NOT NULL, original_session_id uuid NOT NULL, current_session_id uuid NOT NULL,
@@ -97,7 +98,7 @@ CREATE TABLE training_refund_allocations (
  amount_fen integer NOT NULL CHECK(amount_fen>=0), proposed_by uuid NOT NULL REFERENCES users(id), reviewed_by uuid REFERENCES users(id),
  reason text NOT NULL CHECK(char_length(reason) BETWEEN 1 AND 1000),
  status text NOT NULL DEFAULT 'PENDING_REVIEW' CHECK(status IN('PENDING_REVIEW','PENDING','SUCCEEDED','FAILED','UNKNOWN','REJECTED','COMPLETED_ZERO')),
- trade_refund_id uuid, version integer NOT NULL DEFAULT 1 CHECK(version>0), created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ trade_refund_id uuid REFERENCES trade_refunds(id), version integer NOT NULL DEFAULT 1 CHECK(version>0), created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  FOREIGN KEY(org_id,enrollment_id) REFERENCES training_enrollments(org_id,id), CHECK(reviewed_by IS NULL OR reviewed_by<>proposed_by)
 );
 CREATE TABLE training_guardian_grants (
@@ -126,7 +127,10 @@ CREATE TRIGGER training_attendance_immutable BEFORE UPDATE OR DELETE ON training
 CREATE FUNCTION r6_training_quote_guard() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
  IF (NEW.org_id,NEW.cohort_id,NEW.applicant_user_id,NEW.payer_user_id,NEW.learner_user_id,NEW.terms_id,NEW.terms_snapshot,NEW.total_fen) IS DISTINCT FROM
  (OLD.org_id,OLD.cohort_id,OLD.applicant_user_id,OLD.payer_user_id,OLD.learner_user_id,OLD.terms_id,OLD.terms_snapshot,OLD.total_fen)
- THEN RAISE EXCEPTION 'Training enrollment quote is immutable' USING ERRCODE='23514'; END IF; RETURN NEW; END $$;
+ THEN RAISE EXCEPTION 'Training enrollment quote is immutable' USING ERRCODE='23514'; END IF;
+ IF OLD.trade_order_id IS NOT NULL AND NEW.trade_order_id IS DISTINCT FROM OLD.trade_order_id THEN RAISE EXCEPTION 'Training financial source is immutable' USING ERRCODE='23514'; END IF;
+ IF NEW.trade_order_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM trade_orders o WHERE o.id=NEW.trade_order_id AND o.kind='TRAINING_ENROLLMENT' AND o.source_id=NEW.id AND o.org_id=NEW.org_id AND o.payer_user_id=NEW.payer_user_id AND o.total_fen=NEW.total_fen) THEN
+ RAISE EXCEPTION 'Training charge must reference its canonical order' USING ERRCODE='23514'; END IF; RETURN NEW; END $$;
 CREATE TRIGGER training_quote_immutable BEFORE UPDATE ON training_enrollments FOR EACH ROW EXECUTE FUNCTION r6_training_quote_guard();
 CREATE FUNCTION r6_training_calendar_guard() RETURNS trigger LANGUAGE plpgsql AS $$ DECLARE rid uuid; BEGIN
  PERFORM x12_calendar_lock(); IF TG_OP='DELETE' THEN RETURN OLD; END IF;
@@ -146,5 +150,7 @@ CREATE FUNCTION r6_training_entitlement_guard() RETURNS trigger LANGUAGE plpgsql
 CREATE TRIGGER training_entitlement_quote_immutable BEFORE UPDATE ON training_lesson_entitlements FOR EACH ROW EXECUTE FUNCTION r6_training_entitlement_guard();
 CREATE FUNCTION r6_training_refund_guard() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
  IF (NEW.org_id,NEW.enrollment_id,NEW.entitlement_ids,NEW.amount_fen,NEW.proposed_by,NEW.reason) IS DISTINCT FROM (OLD.org_id,OLD.enrollment_id,OLD.entitlement_ids,OLD.amount_fen,OLD.proposed_by,OLD.reason)
- OR (OLD.trade_refund_id IS NOT NULL AND NEW.trade_refund_id IS DISTINCT FROM OLD.trade_refund_id) THEN RAISE EXCEPTION 'Refund allocation intent is immutable' USING ERRCODE='23514'; END IF; RETURN NEW; END $$;
+ OR (OLD.trade_refund_id IS NOT NULL AND NEW.trade_refund_id IS DISTINCT FROM OLD.trade_refund_id) THEN RAISE EXCEPTION 'Refund allocation intent is immutable' USING ERRCODE='23514'; END IF;
+ IF NEW.trade_refund_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM trade_refunds r JOIN trade_orders o ON o.id=r.order_id WHERE r.id=NEW.trade_refund_id AND o.kind='TRAINING_ENROLLMENT' AND o.source_id=NEW.enrollment_id AND o.org_id=NEW.org_id AND r.amount_fen=NEW.amount_fen) THEN
+ RAISE EXCEPTION 'Training allocation must reference its canonical refund' USING ERRCODE='23514'; END IF; RETURN NEW; END $$;
 CREATE TRIGGER training_refund_intent_immutable BEFORE UPDATE ON training_refund_allocations FOR EACH ROW EXECUTE FUNCTION r6_training_refund_guard();

@@ -163,14 +163,33 @@ describe('matching player conversion source boundary', () => {
   });
   it('prepares source locks in the supplied transaction, defers effects and returns the original order amount', async () => {
     const i = input(),
-      c = {} as PoolClient,
       actor = { user: { id: randomUUID() } } as Actor;
+    const c = {
+      query: vi.fn(async () => ({
+        rows: [
+          {
+            org_id: i.need.orgId,
+            payer_user_id: actor.user.id,
+            beneficiary_user_id: i.candidate.userId,
+            total_fen: 33000,
+          },
+        ],
+        rowCount: 1,
+      })),
+    } as unknown as PoolClient;
     const order = {
       id: randomUUID(),
       orgId: i.need.orgId,
       teamId: i.need.teamId,
       buyerUserId: actor.user.id,
-      appearances: [{ profileId: i.candidate.sourceId, playerUserId: i.candidate.userId }],
+      appearances: [
+        {
+          id: randomUUID(),
+          profileId: i.candidate.sourceId,
+          playerUserId: i.candidate.userId,
+          totalFen: 33000,
+        },
+      ],
       totals: { confirmedTotalFen: 33000 },
     } as BookingOrderData;
     const execute = vi.fn(async () => order);
@@ -239,5 +258,53 @@ describe('matching player conversion source boundary', () => {
     });
     const prepared = await hook.prepare(c, actor, i);
     await expect(prepared.execute()).rejects.toThrow('original source rejection');
+  });
+  it('requires an exact canonical ledger binding for every matching appearance', async () => {
+    const i = input(),
+      actor = { user: { id: randomUUID() } } as Actor;
+    const order = {
+      id: randomUUID(),
+      orgId: i.need.orgId,
+      teamId: i.need.teamId,
+      buyerUserId: actor.user.id,
+      appearances: [
+        {
+          id: randomUUID(),
+          profileId: i.candidate.sourceId,
+          playerUserId: i.candidate.userId,
+          totalFen: 33000,
+        },
+      ],
+      totals: { confirmedTotalFen: 33000 },
+    } as BookingOrderData;
+    const service = {
+      prepareCreateOrder: async () => ({
+        players: [
+          {
+            id: i.candidate.sourceId,
+            userId: i.candidate.userId,
+            version: i.candidate.sourceVersion,
+          },
+        ],
+        execute: async () => order,
+      }),
+    };
+    for (const rows of [
+      [],
+      [
+        {
+          org_id: i.need.orgId,
+          payer_user_id: actor.user.id,
+          beneficiary_user_id: i.candidate.userId,
+          total_fen: 1,
+        },
+      ],
+    ]) {
+      const c = { query: async () => ({ rows, rowCount: rows.length }) } as unknown as PoolClient;
+      const prepared = await createMatchingPlayerSource(service).prepare(c, actor, i);
+      await expect(prepared.execute()).rejects.toMatchObject({
+        code: rows.length ? 'MATCHING_TRADE_CHANGED' : 'MATCHING_TRADE_REQUIRED',
+      });
+    }
   });
 });

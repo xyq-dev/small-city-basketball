@@ -72,6 +72,9 @@ export class DispatchService extends ApplicationService {
       this.timer.unref();
     }
   }
+  onModuleDestroy() {
+    this.close();
+  }
   close() {
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
@@ -166,7 +169,7 @@ export class DispatchService extends ApplicationService {
   private async req(c: PoolClient, id: string, lock = false): Promise<Row> {
     const row = (
       await c.query(
-        `SELECT r.*,clock_timestamp() AS db_now FROM dispatch_requests r WHERE r.id=$1 ${lock ? 'FOR UPDATE OF r' : ''}`,
+        `SELECT r.*,w.hold_expires_at AS winner_expires_at,clock_timestamp() AS db_now FROM dispatch_requests r LEFT JOIN dispatch_offers w ON w.id=r.winner_offer_id WHERE r.id=$1 ${lock ? 'FOR UPDATE OF r' : ''}`,
         [resourceId(id)],
       )
     ).rows[0];
@@ -226,6 +229,7 @@ export class DispatchService extends ApplicationService {
     ).rowCount;
   }
   private async supply(c: PoolClient, o: Row, r: Row, checkQuote = false) {
+    assertCurrentRegionVersion(r.region_catalog_version);
     const l = (
       await c.query(
         `SELECT l.*,u.status AS user_status,g.status AS org_status FROM local_listings l JOIN users u ON u.id=l.provider_user_id JOIN organizations g ON g.id=l.org_id WHERE l.id=$1 FOR SHARE OF l,u,g`,
@@ -346,6 +350,8 @@ export class DispatchService extends ApplicationService {
       canConfirm:
         actor === r.owner_user_id &&
         status === 'REVIEWING' &&
+        (!r.winner_expires_at ||
+          new Date(r.winner_expires_at) > new Date(r.db_now ?? Date.now())) &&
         !!this.dispatchOptions.createLocalBooking,
     };
   }
@@ -355,10 +361,20 @@ export class DispatchService extends ApplicationService {
       !['CONVERTED', 'WITHDRAWN', 'DECLINED', 'SUPERSEDED'].includes(o.status) &&
       new Date(o.hold_expires_at ?? o.expires_at) <= now;
     const status = expired ? 'EXPIRED' : o.status;
+    let supplyValid = true;
+    if (actor.user.id !== r.owner_user_id && status !== 'CONVERTED') {
+      try {
+        await this.supply(c, o, r);
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 409) throw error;
+        supplyValid = false;
+      }
+    }
     const locationVisible =
       actor.user.id === r.owner_user_id ||
       status === 'CONVERTED' ||
-      (!expired &&
+      (supplyValid &&
+        !expired &&
         ['INVITING', 'REVIEWING'].includes(r.status) &&
         pendingOffers.concat('ACCEPTED_HELD').includes(status));
     const request = this.requestDto(r, actor.user.id);
@@ -368,10 +384,15 @@ export class DispatchService extends ApplicationService {
     }
     const quote =
       !locationVisible && o.quote
-        ? { ...o.quote, travelEvidence: '邀请已结束，具体行程凭据已收回' }
+        ? {
+            ...o.quote,
+            travelMethod: '行程已收回',
+            travelEvidence: '邀请已结束，具体行程凭据已收回',
+            terms: '邀请已结束，完整条款由授权方保留',
+          }
         : o.quote;
     let canReviewTravel = false;
-    if (status === 'TRAVEL_REVIEW')
+    if (supplyValid && status === 'TRAVEL_REVIEW' && r.status === 'INVITING')
       try {
         await this.reviewer(c, actor, o, r);
         canReviewTravel = true;
@@ -393,12 +414,19 @@ export class DispatchService extends ApplicationService {
       holdExpiresAt: o.hold_expires_at ? iso(o.hold_expires_at) : null,
       sourceBookingId: o.source_booking_id,
       canQuote:
-        o.provider_user_id === actor.user.id && status === 'PENDING' && r.status === 'INVITING',
+        supplyValid &&
+        o.provider_user_id === actor.user.id &&
+        status === 'PENDING' &&
+        r.status === 'INVITING',
       canReviewTravel,
       canAccept:
-        o.provider_user_id === actor.user.id && status === 'READY' && r.status === 'INVITING',
+        supplyValid &&
+        o.provider_user_id === actor.user.id &&
+        status === 'READY' &&
+        r.status === 'INVITING',
       canWithdraw:
         o.provider_user_id === actor.user.id &&
+        ['INVITING', 'REVIEWING'].includes(r.status) &&
         ['PENDING', 'TRAVEL_REVIEW', 'READY', 'ACCEPTED_HELD'].includes(status),
       request,
     };
@@ -637,6 +665,7 @@ export class DispatchService extends ApplicationService {
     return this.req(c, r.id, true);
   }
   private async nextBatch(c: PoolClient, r: Row) {
+    assertCurrentRegionVersion(r.region_catalog_version);
     if (
       !['DRAFT', 'INVITING', 'PAUSED'].includes(r.status) ||
       r.winner_offer_id ||
@@ -661,36 +690,48 @@ export class DispatchService extends ApplicationService {
       );
       return;
     }
-    const candidates = (
+    // Apply both regional permissions before the bounded result. A scan limit must not
+    // hide later eligible people and falsely claim that real supply does not exist.
+    const selected = (
       await c.query(
-        `SELECT l.*,p.region_ids AS allowed_regions,p.daily_limit FROM local_listings l JOIN dispatch_preferences p ON p.provider_user_id=l.provider_user_id JOIN users u ON u.id=l.provider_user_id JOIN organizations g ON g.id=l.org_id WHERE l.kind=$1 AND l.status='APPROVED' AND l.published AND l.provider_confirmed AND l.qualified_until>=$2 AND p.enabled AND u.status='ACTIVE' AND g.status='ACTIVE' AND l.provider_user_id<>$3 AND l.region_catalog_version=$4 AND NOT EXISTS(SELECT 1 FROM dispatch_offers old WHERE old.request_id=$5 AND old.provider_user_id=l.provider_user_id) AND EXISTS(SELECT 1 FROM local_slots s WHERE s.listing_id=l.id AND s.status='OPEN' AND s.starts_at=$6 AND s.ends_at=$2) AND (SELECT count(*) FROM dispatch_offers daily WHERE daily.provider_user_id=l.provider_user_id AND daily.created_at>=date_trunc('day',clock_timestamp() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai')<p.daily_limit ORDER BY l.provider_user_id,l.id LIMIT 300`,
-        [r.kind, r.ends_at, r.owner_user_id, r.region_catalog_version, r.id, r.starts_at],
+        `WITH RECURSIVE target AS (
+      SELECT region_id,parent_region_id FROM region_catalog_nodes WHERE catalog_version=$4 AND region_id=$7
+      UNION ALL SELECT n.region_id,n.parent_region_id FROM region_catalog_nodes n JOIN target t ON t.parent_region_id=n.region_id WHERE n.catalog_version=$4
+    ), origins AS (
+      SELECT region_id FROM region_catalog_nodes WHERE catalog_version=$4 AND region_id=ANY($8::uuid[])
+      UNION SELECT n.region_id FROM region_catalog_nodes n JOIN origins o ON n.parent_region_id=o.region_id WHERE n.catalog_version=$4
+    )
+    SELECT DISTINCT ON(l.provider_user_id) l.* FROM local_listings l
+    JOIN dispatch_preferences p ON p.provider_user_id=l.provider_user_id
+    JOIN users u ON u.id=l.provider_user_id JOIN organizations g ON g.id=l.org_id
+    WHERE l.kind=$1 AND l.status='APPROVED' AND l.published AND l.provider_confirmed
+      AND l.qualified_until>=$2 AND p.enabled AND u.status='ACTIVE' AND g.status='ACTIVE'
+      AND l.provider_user_id<>$3 AND l.region_catalog_version=$4
+      AND l.region_id IN (SELECT region_id FROM origins)
+      AND EXISTS(SELECT 1 FROM target WHERE region_id=ANY(l.coverage_region_ids))
+      AND EXISTS(SELECT 1 FROM target WHERE region_id=ANY(p.region_ids))
+      AND NOT EXISTS(SELECT 1 FROM dispatch_offers old WHERE old.request_id=$5 AND old.provider_user_id=l.provider_user_id)
+      AND EXISTS(SELECT 1 FROM local_slots s WHERE s.listing_id=l.id AND s.status='OPEN' AND s.starts_at=$6 AND s.ends_at=$2)
+      AND NOT EXISTS(SELECT 1 FROM local_resource_reservations busy WHERE busy.active AND busy.resource_key='user:'||l.provider_user_id::text AND tstzrange(busy.starts_at,busy.ends_at,'[)') && tstzrange($6::timestamptz,$2::timestamptz+interval '30 minutes','[)'))
+      AND NOT EXISTS(SELECT 1 FROM booking_appearances old WHERE old.player_user_id=l.provider_user_id AND old.status IN ('REQUESTED','ACCEPTED','ARRIVED','COMPLETED','DISPUTED') AND NOT(old.status='REQUESTED' AND old.expires_at<=clock_timestamp()) AND c06_booking_window(old.report_at,old.end_at) && tstzrange($6::timestamptz,$2::timestamptz+interval '30 minutes','[)'))
+      AND NOT EXISTS(SELECT 1 FROM trade_terms fee WHERE fee.org_id=l.org_id AND fee.kind='LOCAL_BOOKING' AND fee.source_id=l.id AND fee.status='ACTIVE' AND (fee.amount_fen>$9 OR fee.amount_fen>$10))
+      AND (SELECT count(*) FROM dispatch_offers daily WHERE daily.provider_user_id=l.provider_user_id AND daily.created_at>=date_trunc('day',clock_timestamp() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai')<p.daily_limit
+    ORDER BY l.provider_user_id,l.id LIMIT $11`,
+        [
+          r.kind,
+          r.ends_at,
+          r.owner_user_id,
+          r.region_catalog_version,
+          r.id,
+          r.starts_at,
+          r.service_region_id,
+          r.invite_region_ids,
+          r.budget.serviceMinor,
+          r.budget.totalMinor,
+          r.batch_size,
+        ],
       )
     ).rows;
-    const selected: Row[] = [];
-    const people = new Set<string>();
-    for (const l of candidates) {
-      if (people.has(l.provider_user_id)) continue;
-      if (
-        !(await this.covered(
-          c,
-          r.region_catalog_version,
-          r.service_region_id,
-          l.coverage_region_ids,
-        )) ||
-        !(await this.covered(
-          c,
-          r.region_catalog_version,
-          r.service_region_id,
-          l.allowed_regions,
-        )) ||
-        !(await this.covered(c, r.region_catalog_version, l.region_id, r.invite_region_ids))
-      )
-        continue;
-      selected.push(l);
-      people.add(l.provider_user_id);
-      if (selected.length >= r.batch_size) break;
-    }
     if (!selected.length) {
       await c.query(
         "UPDATE dispatch_requests SET status='NEEDS_MANUAL',reason='暂无符合许可与时段的真实供给',next_batch_at=NULL,version=version+1,updated_at=clock_timestamp() WHERE id=$1",
@@ -809,7 +850,7 @@ export class DispatchService extends ApplicationService {
             if (!createLocalBooking)
               dispatchFail(
                 'DISPATCH_CONVERSION_DISABLED',
-                '真实预约与收费接线尚未就绪，保留报价不伪造订单',
+                '当前暂不能创建预约，请稍后刷新并重新核对报价',
                 503,
               );
             await c.query(

@@ -73,6 +73,7 @@ interface Candidate {
   source_version: number;
   source_slot_id: string | null;
   preference_version: number;
+  created_at: Date;
   snapshot: MatchingCandidateData & { fingerprint: string };
 }
 interface Intent {
@@ -365,6 +366,12 @@ export class MatchingService extends ApplicationService {
     return s;
   }
   private async revalidate(c: PoolClient, n: Need, can: Candidate) {
+    const age = await c.query(
+      "SELECT $1::timestamptz > clock_timestamp()-interval '24 hours' AS valid",
+      [can.created_at],
+    );
+    if (!age.rows[0]?.valid)
+      matchingFail('MATCHING_CANDIDATE_STALE', '候选快照已超过24小时，请重新匹配');
     const p = await this.preference(c, n.kind, can.source_id);
     const s = p && (await this.eligible(c, n, p));
     if (
@@ -1031,7 +1038,7 @@ export class MatchingService extends ApplicationService {
       const candidates: MatchingCandidateData[] = [];
       if (manager && n.latest_run_id && n.status === 'ACTIVE' && n.expires_at > now) {
         const rows = await c.query<Candidate>(
-          'SELECT * FROM matching_candidates WHERE run_id=$1 ORDER BY created_at,id',
+          "SELECT * FROM matching_candidates WHERE run_id=$1 AND created_at>clock_timestamp()-interval '24 hours' ORDER BY created_at,id",
           [n.latest_run_id],
         );
         for (const k of rows.rows) {
@@ -1063,7 +1070,8 @@ export class MatchingService extends ApplicationService {
           p.contact_enabled &&
           p.discovery_enabled &&
           !!source &&
-          source.fingerprint === can.snapshot.fingerprint;
+          source.fingerprint === can.snapshot.fingerprint &&
+          can.created_at.getTime() > now.getTime() - 86400000;
         const open =
           activeIntent(i) &&
           i.expires_at > now &&

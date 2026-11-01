@@ -21,6 +21,18 @@ Page({
     try {
       this.id = q.id ? trade.id(q.id) : '';
       this.kind = q.kind || '';
+      if (
+        q.sourceId &&
+        ![
+          'ENTRY_FEE',
+          'ENTRY_DEPOSIT',
+          'LOCAL_BOOKING',
+          'PLAYER_APPEARANCE',
+          'TRAINING_ENROLLMENT',
+          'SPONSOR_ORDER',
+        ].includes(this.kind)
+      )
+        throw Error('资金来源类型无效');
       this.sourceId = q.sourceId ? trade.id(q.sourceId) : '';
     } catch (e) {
       this.setData({ error: e.message });

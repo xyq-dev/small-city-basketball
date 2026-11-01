@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { TradeService } from '../src/trade-service.js';
+import type { TradePayments } from '../src/trade-provider.js';
+import { remainingSixTradeSources, trainingTradeHooks } from '../src/remaining-six-trade.js';
+import { readTrainingGuardianAuthorization } from '../src/training-guardian.js';
 import { migrate } from '../src/database/migrate.js';
 import { ApplicationService } from '../src/service.js';
 import { TrainingService } from '../src/training-service.js';
@@ -225,7 +229,7 @@ describe('R6TRAIN real PostgreSQL service workflows', () => {
     current = await service.enrollmentDetail(learner.cookie, n.id);
     expect(current.entitlements[0]!.originalSessionId).toBe(h.sessions[0]!.id);
     expect(current.entitlements[0]!.sessionId).toBe(target.sessions[0]!.id);
-    const r = await service.requestRefund(learner.cookie, n.id, {
+    const r = await service.requestRefund(owner.cookie, n.id, {
       commandId: randomUUID(),
       expectedVersion: current.version,
       entitlementIds: [e.id],
@@ -235,9 +239,17 @@ describe('R6TRAIN real PostgreSQL service workflows', () => {
       service.refundCommand(
         learner.cookie,
         r.allocationId,
-        cmd('APPROVE', 1, { reason: '不能自己批准' }),
+        cmd('APPROVE', 1, { reason: '未授权学员不能执行退款复核' }),
       ),
-    ).rejects.toMatchObject({ status: 403 });
+    ).rejects.toMatchObject({ status: 404, code: 'RESOURCE_NOT_FOUND' });
+    // The maker has the required organization role, so this reaches the independent-review gate.
+    await expect(
+      service.refundCommand(
+        owner.cookie,
+        r.allocationId,
+        cmd('APPROVE', 1, { reason: '经办管理员也不得批准自己提出的退款' }),
+      ),
+    ).rejects.toMatchObject({ status: 403, code: 'INDEPENDENT_REVIEW_REQUIRED' });
     await service.refundCommand(
       reviewer.cookie,
       r.allocationId,
@@ -245,7 +257,11 @@ describe('R6TRAIN real PostgreSQL service workflows', () => {
     );
     const end = await service.enrollmentDetail(learner.cookie, n.id);
     expect(end.state).toBe('CANCELLED');
-    expect(end.refunds[0]!.status).toBe('COMPLETED_ZERO');
+    expect(end.refunds[0]).toMatchObject({
+      status: 'COMPLETED_ZERO',
+      proposed_by: owner.id,
+      reviewed_by: reviewer.id,
+    });
     expect(end.refunds[0]!.trade_refund_id).toBeNull();
   });
   it('attendance and teaching do not consume lessons; review and learner acknowledgment are separate', async () => {
@@ -317,5 +333,250 @@ describe('R6TRAIN real PostgreSQL service workflows', () => {
     } finally {
       await pool.query('DELETE FROM audit_logs WHERE id=$1', [audit]);
     }
+  });
+  it('training guardian grants are bound to exact organization, cohort, purpose, policy and epoch', async () => {
+    const h = await cohort(),
+      otherH = await cohort(),
+      id = randomUUID();
+    await pool.query(
+      "INSERT INTO training_guardian_grants(id,org_id,cohort_id,policy_version,learner_user_id,guardian_user_id,purpose,evidence_reference,reviewed_by,valid_until,state) VALUES($1,$2,$3,'synthetic-policy-v1',$4,$5,'PARTICIPATION','synthetic-evidence',$6,clock_timestamp()+interval '1 day','APPROVED')",
+      [id, owner.org, h.id, learner.id, other.id, operator.id],
+    );
+    const c = await pool.connect(),
+      input = {
+        orgId: owner.org,
+        cohortId: h.id,
+        learnerId: learner.id,
+        guardianId: other.id,
+        purpose: 'PARTICIPATION' as const,
+        policyVersion: 'synthetic-policy-v1',
+        expectedEpoch: 1,
+      };
+    try {
+      expect(await readTrainingGuardianAuthorization(c, input)).toBe(true);
+      expect(await readTrainingGuardianAuthorization(c, { ...input, cohortId: otherH.id })).toBe(
+        false,
+      );
+      expect(await readTrainingGuardianAuthorization(c, { ...input, purpose: 'PUBLICITY' })).toBe(
+        false,
+      );
+      expect(await readTrainingGuardianAuthorization(c, { ...input, expectedEpoch: 2 })).toBe(
+        false,
+      );
+      await c.query(
+        "UPDATE training_guardian_grants SET state='REVOKED',epoch=epoch+1 WHERE id=$1",
+        [id],
+      );
+      expect(await readTrainingGuardianAuthorization(c, input)).toBe(false);
+    } finally {
+      c.release();
+    }
+    expect(service.capabilities().youthEnrollmentEnabled).toBe(false);
+  });
+  it('real TradeService late payment cannot take a replacement seat, and unknown refunds retain the exact allocation', async () => {
+    const payments: TradePayments = {
+      enabled: true,
+      native: vi.fn(async () => ({ codeUrl: 'weixin://wxpay/bizpayurl?pr=synthetic-r6-training' })),
+      queryOrder: vi.fn(),
+      refund: vi.fn(),
+      queryRefund: vi.fn(),
+      verifyNotification: vi.fn(),
+      downloadBill: vi.fn(),
+    };
+    const trade = new TradeService(
+      pool,
+      options,
+      {
+        encryptionKey: Buffer.alloc(32, 6),
+        merchants: {
+          [owner.org]: {
+            key: 'r6-training-' + owner.org,
+            merchantId: '1900000199',
+            appId: 'wx1234567890abcdef',
+            displayName: '合成培训商户',
+            payments,
+            receivers: {},
+          },
+        },
+      },
+      remainingSixTradeSources({ trainingEnabled: true }),
+    );
+    const paid = new TrainingService(pool, options, {
+        enabled: true,
+        trade: trainingTradeHooks(trade),
+      }),
+      h = await cohort(1, 101);
+    const create = async (who: User) => {
+      const r = await paid.enroll(who.cookie, h.id, {
+        commandId: randomUUID(),
+        payerUserId: who.id,
+        learnerUserId: who.id,
+        adultConfirmed: true,
+        acceptedTermsId: h.termsId,
+        chargeConsent: true,
+      });
+      return paid.enrollmentDetail(who.cookie, r.enrollmentId);
+    };
+    const n = await create(learner),
+      orderId = n.tradeOrderId!;
+    expect(orderId).toMatch(/-/);
+    const source = (await pool.query('SELECT * FROM trade_orders WHERE id=$1', [orderId])).rows[0];
+    expect(source.kind).toBe('TRAINING_ENROLLMENT');
+    expect(source.source_id).toBe(n.id);
+    expect(source.terms_id).toBeNull();
+    expect(source.total_fen).toBe(101);
+    let order = await trade.get(learner.cookie, orderId);
+    await trade.pay(learner.cookie, orderId, {
+      clientRequestId: randomUUID(),
+      expectedVersion: order.version,
+      channel: 'NATIVE',
+    });
+    const attempt = (
+      await pool.query('SELECT * FROM trade_payment_attempts WHERE order_id=$1', [orderId])
+    ).rows[0];
+    await expect(
+      paid.enrollmentCommand(learner.cookie, n.id, cmd('CANCEL', n.version)),
+    ).rejects.toMatchObject({ code: 'PAYMENT_MAY_BE_PENDING' });
+    // Only the isolated fixture advances a real hold timestamp, never client-supplied payment truth.
+    await pool.query(
+      "UPDATE training_enrollments SET hold_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+      [n.id],
+    );
+    const replacement = await create(other);
+    // A captured invoice without an attempt is not a payment: expiry frees the canonical hold.
+    await pool.query(
+      "UPDATE training_enrollments SET hold_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+      [replacement.id],
+    );
+    await paid.enrollmentCommand(other.cookie, replacement.id, cmd('REFRESH', replacement.version));
+    expect((await paid.enrollmentDetail(other.cookie, replacement.id)).state).toBe('EXPIRED');
+    const activeReplacement = await create(other);
+
+    vi.mocked(payments.queryOrder).mockResolvedValue({
+      outTradeNo: attempt.out_trade_no,
+      transactionId: 'T' + attempt.id,
+      state: 'SUCCESS',
+      totalFen: 101,
+      currency: 'CNY',
+      successTime: new Date().toISOString(),
+    });
+    await trade.queryPayment(learner.cookie, orderId, attempt.id);
+    await paid.enrollmentCommand(learner.cookie, n.id, cmd('REFRESH', n.version));
+    let current = await paid.enrollmentDetail(learner.cookie, n.id);
+    expect(current.state).toBe('PAID_UNALLOCATED');
+    expect((await paid.enrollmentDetail(other.cookie, activeReplacement.id)).state).toBe('HOLDING');
+    order = await trade.get(learner.cookie, orderId);
+    expect(order.paidFen).toBe(101);
+    await expect(
+      trade.requestRefund(learner.cookie, orderId, {
+        clientRequestId: randomUUID(),
+        expectedVersion: order.version,
+        amountFen: 101,
+        reason: '绕过逐课限额必须拒绝',
+      }),
+    ).rejects.toMatchObject({ code: 'TRADE_SOURCE_REFUND_REQUIRED' });
+    const allocation = await paid.requestRefund(learner.cookie, n.id, {
+      commandId: randomUUID(),
+      expectedVersion: current.version,
+      entitlementIds: [current.entitlements[0]!.id],
+      reason: '逾期实付未获名额原路退款',
+    });
+    await paid.refundCommand(
+      reviewer.cookie,
+      allocation.allocationId,
+      cmd('APPROVE', 1, { reason: '独立核对原单与冻结课次净额' }),
+    );
+    current = await paid.enrollmentDetail(learner.cookie, n.id);
+    const refundId = current.refunds[0]!.trade_refund_id as string;
+    expect(
+      (await pool.query('SELECT status FROM trade_refunds WHERE id=$1', [refundId])).rows[0].status,
+    ).toBe('PENDING_REVIEW');
+    expect(payments.refund).not.toHaveBeenCalled();
+    order = await trade.get(operator.cookie, orderId);
+    await trade.review(operator.cookie, orderId, 'REFUND', refundId, {
+      clientRequestId: randomUUID(),
+      expectedVersion: order.version,
+      decision: 'APPROVE',
+      reason: '独立复核统一交易退款',
+    });
+    vi.mocked(payments.refund).mockRejectedValue(Error('synthetic refund transport lost'));
+    order = await trade.get(owner.cookie, orderId);
+    const dispatch = { clientRequestId: randomUUID(), expectedVersion: order.version };
+    await expect(trade.dispatchRefund(owner.cookie, orderId, refundId, dispatch)).rejects.toThrow(
+      'synthetic',
+    );
+    await trade.dispatchRefund(owner.cookie, orderId, refundId, dispatch);
+    expect(payments.refund).toHaveBeenCalledTimes(1);
+    await paid.refundCommand(learner.cookie, allocation.allocationId, cmd('REFRESH', 2));
+    current = await paid.enrollmentDetail(learner.cookie, n.id);
+    expect(current.refunds[0]!.status).toBe('UNKNOWN');
+    expect(current.entitlements[0]!.state).toBe('REFUND_PENDING');
+    order = await trade.get(learner.cookie, orderId);
+    expect(order.refundableFen).toBe(0);
+    expect(order.refundedFen).toBe(0);
+    const refund = (await pool.query('SELECT * FROM trade_refunds WHERE id=$1', [refundId]))
+      .rows[0];
+    vi.mocked(payments.queryRefund).mockResolvedValue({
+      outTradeNo: attempt.out_trade_no,
+      outRefundNo: refund.out_refund_no,
+      transactionId: 'T' + attempt.id,
+      refundId: 'R' + refund.id,
+      state: 'SUCCESS',
+      totalFen: 101,
+      refundFen: 101,
+      currency: 'CNY',
+      createdTime: new Date().toISOString(),
+      successTime: new Date().toISOString(),
+    });
+    await trade.queryRefund(learner.cookie, orderId, refundId);
+    await paid.refundCommand(learner.cookie, allocation.allocationId, cmd('REFRESH', 3));
+    current = await paid.enrollmentDetail(learner.cookie, n.id);
+    expect(current.refunds[0]!.status).toBe('SUCCEEDED');
+    expect(current.entitlements[0]!.state).toBe('REFUNDED');
+    expect(current.state).toBe('CANCELLED');
+    expect((await trade.get(learner.cookie, orderId)).refundedFen).toBe(101);
+    const closedTrade = new TradeService(
+      pool,
+      options,
+      trade.runtime,
+      remainingSixTradeSources({ trainingEnabled: false }),
+    );
+    const historical = await closedTrade.get(learner.cookie, orderId);
+    expect(historical.paidFen).toBe(101);
+    expect(historical.refundedFen).toBe(101);
+    expect(historical.currentSource.payable).toBe(false);
+    const c = await pool.connect();
+    try {
+      expect(await closedTrade.sourceRefundStatus(c, refundId)).toBe('SUCCEEDED');
+    } finally {
+      c.release();
+    }
+    const paused = await cohort(1, 25);
+    const hold = async () => {
+      const x = await paid.enroll(learner.cookie, paused.id, {
+        commandId: randomUUID(),
+        payerUserId: learner.id,
+        learnerUserId: learner.id,
+        adultConfirmed: true,
+        acceptedTermsId: paused.termsId,
+        chargeConsent: true,
+      });
+      return paid.enrollmentDetail(learner.cookie, x.enrollmentId);
+    };
+    const unused = await hold();
+    await paid.enrollmentCommand(learner.cookie, unused.id, cmd('CANCEL', unused.version));
+    expect((await paid.enrollmentDetail(learner.cookie, unused.id)).state).toBe('CANCELLED');
+    const abandoned = await hold();
+    await service.cohortCommand(
+      owner.cookie,
+      paused.id,
+      cmd('SUSPEND', paused.version, { reason: '合成供给资格变化暂停招生' }),
+    );
+    await pool.query(
+      "UPDATE training_enrollments SET hold_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+      [abandoned.id],
+    );
+    await paid.enrollmentCommand(learner.cookie, abandoned.id, cmd('REFRESH', abandoned.version));
+    expect((await paid.enrollmentDetail(learner.cookie, abandoned.id)).state).toBe('EXPIRED');
   });
 });

@@ -6,9 +6,9 @@ import type {
   SponsorShare,
 } from '../../../packages/contracts/sponsor-commerce.js';
 
-export const sponsorFail = (code: string, message: string, status = 409): never => {
+export function sponsorFail(code: string, message: string, status = 409): never {
   throw new ApiError(status, code, message);
-};
+}
 export const sponsorId = (value: unknown) => resourceId(String(value));
 export function sponsorInt(value: unknown, min = 0, max = 100_000_000) {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max)
@@ -123,4 +123,58 @@ export function allocateSponsorRefund(
 export function sponsorCommand(raw: unknown, extra: string[] = []) {
   const b = objectInput(raw, ['commandId', 'expectedVersion', 'action', ...extra]);
   return { b, commandId: sponsorId(b.commandId), action: text(b.action, 'action', 1, 40) };
+}
+
+/** Receipt from a trusted server-side, order-scoped funds reservation, never client form data. */
+export interface SponsorAdvanceCoverage {
+  reservationId: string;
+  sourceId: string;
+  allocationId: string;
+  tradeOrderId: string;
+  paymentId: string;
+  merchantKey: string;
+  merchantId: string;
+  currency: 'CNY';
+  amountFen: number;
+  proofHash: string;
+  channelSupportsOwnFundsRefund: true;
+  reservedUntilRefundFinal: true;
+}
+export function validateSponsorAdvanceCoverage(
+  raw: unknown,
+  binding: Omit<
+    SponsorAdvanceCoverage,
+    'reservationId' | 'proofHash' | 'channelSupportsOwnFundsRefund' | 'reservedUntilRefundFinal'
+  >,
+): SponsorAdvanceCoverage {
+  const r = objectInput(raw, [
+    'reservationId',
+    'sourceId',
+    'allocationId',
+    'tradeOrderId',
+    'paymentId',
+    'merchantKey',
+    'merchantId',
+    'currency',
+    'amountFen',
+    'proofHash',
+    'channelSupportsOwnFundsRefund',
+    'reservedUntilRefundFinal',
+  ]);
+  if (
+    Object.entries(binding).some(([key, value]) => r[key] !== value) ||
+    r.channelSupportsOwnFundsRefund !== true ||
+    r.reservedUntilRefundFinal !== true ||
+    typeof r.proofHash !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(r.proofHash)
+  )
+    sponsorFail('SPONSOR_COVERAGE_UNVERIFIED', '自有资金凭据未按原商户、原订单和原退款额度锁定');
+  sponsorId(r.reservationId);
+  sponsorInt(r.amountFen, 1);
+  return r as unknown as SponsorAdvanceCoverage;
+}
+
+export function assertSponsorRecipientLimit(rows: Array<{ retained: boolean }>) {
+  if (rows.filter((r) => !r.retained).length > 10)
+    sponsorFail('SPONSOR_CHANNEL_LIMIT', '最多支持10个外部接收商户，11方须含原商户留存', 422);
 }

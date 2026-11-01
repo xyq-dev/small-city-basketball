@@ -5,6 +5,8 @@ import {
   sponsorHash,
   sponsorInt,
   sponsorShareInput,
+  assertSponsorRecipientLimit,
+  validateSponsorAdvanceCoverage,
 } from './sponsor-commerce-domain.js';
 import type { SponsorShare } from '../../../packages/contracts/sponsor-commerce.js';
 const shares: SponsorShare[] = [7000, 1500, 1000, 500].map((basisPoints, i) => ({
@@ -64,4 +66,44 @@ describe('sponsor monetary conservation', () => {
     expect(sponsorHash({ b: 2, a: { d: 3, c: 4 } })).toBe(sponsorHash({ a: { c: 4, d: 3 }, b: 2 }));
     expect(sponsorHash({ amount: 1 })).not.toBe(sponsorHash({ amount: 2 }));
   });
+});
+
+test('at most ten external receivers; eleven shares require merchant retention', () => {
+  expect(() =>
+    assertSponsorRecipientLimit(Array.from({ length: 11 }, () => ({ retained: false }))),
+  ).toThrow();
+  expect(() =>
+    assertSponsorRecipientLimit([
+      { retained: true },
+      ...Array.from({ length: 10 }, () => ({ retained: false })),
+    ]),
+  ).not.toThrow();
+});
+test('advance coverage binds reserved money to the exact original order and allocation', () => {
+  const binding = {
+    sourceId: '10000000-0000-4000-8000-000000000001',
+    allocationId: '20000000-0000-4000-8000-000000000001',
+    tradeOrderId: '30000000-0000-4000-8000-000000000001',
+    paymentId: '40000000-0000-4000-8000-000000000001',
+    merchantKey: 'synthetic',
+    merchantId: '19000001',
+    currency: 'CNY' as const,
+    amountFen: 500,
+  };
+  const receipt = {
+    ...binding,
+    reservationId: '50000000-0000-4000-8000-000000000001',
+    proofHash: 'a'.repeat(64),
+    channelSupportsOwnFundsRefund: true,
+    reservedUntilRefundFinal: true,
+  };
+  expect(validateSponsorAdvanceCoverage(receipt, binding).amountFen).toBe(500);
+  for (const patch of [
+    { tradeOrderId: 'other' },
+    { amountFen: 499 },
+    { reservedUntilRefundFinal: false },
+    { channelSupportsOwnFundsRefund: false },
+    { proofHash: 'form-note' },
+  ])
+    expect(() => validateSponsorAdvanceCoverage({ ...receipt, ...patch }, binding)).toThrow();
 });

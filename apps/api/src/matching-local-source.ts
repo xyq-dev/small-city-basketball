@@ -27,6 +27,18 @@ export function createMatchingLocalSourceHooks(local: LocalServicesService): Mat
           serviceAddress: need.address,
           ...consent,
         });
+        if (
+          (
+            await c.query(
+              'SELECT 1 FROM local_command_receipts WHERE actor_id=$1 AND command_id=$2',
+              [actor.user.id, input.commandId],
+            )
+          ).rowCount
+        )
+          localFail(
+            'MATCHING_SOURCE_ALREADY_CREATED',
+            '该原预约操作编号已被使用，请读取原撮合回执',
+          );
         const { listing: l, slot } = prepared;
         if (
           !['REFEREE', 'SCORER', 'RECORDER', 'STREAMER', 'PHOTOGRAPHER'].includes(l.kind) ||
@@ -53,6 +65,26 @@ export function createMatchingLocalSourceHooks(local: LocalServicesService): Mat
         return {
           execute: async () => {
             const result = await prepared.execute();
+            const binding = (
+              await c.query(
+                "SELECT org_id,payer_user_id,beneficiary_user_id,total_fen,terms_id FROM trade_orders WHERE kind='LOCAL_BOOKING' AND source_id=$1 FOR SHARE",
+                [result.resourceId],
+              )
+            ).rows[0];
+            if (!binding)
+              localFail(
+                'MATCHING_TRADE_REQUIRED',
+                '收费准备尚未完成，未创建预约，请稍后重新核对',
+                503,
+              );
+            if (
+              binding.org_id !== l.org_id ||
+              binding.payer_user_id !== actor.user.id ||
+              binding.beneficiary_user_id !== candidate.userId ||
+              binding.total_fen !== term.amount_fen ||
+              binding.terms_id !== term.id
+            )
+              localFail('MATCHING_TRADE_CHANGED', '原预约收费对象或金额与确认内容不一致');
             return {
               sourceKind: 'LOCAL_BOOKING',
               sourceId: result.resourceId as string,
@@ -75,10 +107,30 @@ export function createMatchingLocalSourceHooks(local: LocalServicesService): Mat
         ...detail,
       });
       if (
+        (
+          await c.query(
+            'SELECT 1 FROM local_command_receipts WHERE actor_id=$1 AND command_id=$2',
+            [actor.user.id, input.commandId],
+          )
+        ).rowCount
+      )
+        localFail('MATCHING_SOURCE_ALREADY_CREATED', '该原约赛操作编号已被使用，请读取原撮合回执');
+      if (
         iso(prepared.booking.starts_at) !== need.startsAt ||
         iso(prepared.booking.ends_at) !== need.endsAt
       )
         localFail('MATCHING_SOURCE_WINDOW', '实际球场预约须与意向的比赛时间完全一致');
+      const courtRegion = prepared.booking.snapshot?.region;
+      if (
+        !courtRegion ||
+        courtRegion.catalogVersion !== need.catalogVersion ||
+        courtRegion.regionId !== need.regionId ||
+        prepared.booking.snapshot.address !== need.address
+      )
+        localFail(
+          'MATCHING_SOURCE_LOCATION',
+          '实际球场地区和地址须与双方确认的意向一致，变更场地请重新发起意向',
+        );
       const team = (
         await c.query('SELECT version FROM teams WHERE id=$1 AND org_id=$2 FOR SHARE', [
           candidate.sourceId,

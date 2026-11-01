@@ -17,3 +17,7 @@ root追加来源桥：`prepareBookingInTransaction(c,actor,raw)`与`prepareMatch
 `createMatchingLocalSourceHooks(local)`导出STAFF/TEAM prepare与inspectEnded；实际对象/档期/地址来自need/candidate，sourceInput仅允许同意或明确球场预约/条款。终态财务检查保守：任何未决操作，或净实付/批准扣款/已结算净额不一致均禁止重开。新增领域5项通过；新增真实PG4项未执行。需要根合入其他模块类型 `matching-source-adapter.ts`、`contracts/matching.d.ts`及实际 `dispatch-service.ts`；本worktree只放临时类型依赖用于typecheck，未提交这些由其他agent拥有的文件。
 
 来源桥回执兼容复核：约赛prepare只锁原供给行，不在旧回执返回前重新要求发布/人员当前可用；新建execute仍执行原实际球场资格校验。避免资格后来变化导致已成功约赛回执无法重放。
+
+派单复核补丁：源预约待接单截止同时受冻结报价protectedStartsAt约束，防止出发准备已过后仍利用普通10分钟窗口接单；普通同城预约截止不变。由dispatch实施者只读审查指出并修正。
+
+CI149回归：root报告地图PG撤销发布fixture触发版本保护，因为直接UPDATE未递增version。最小修复仅将该测试撤销语句补 `version=version+1`，保持实际业务触发器约束；不放宽迁移或生产校验。真实PG重跑待root CI。

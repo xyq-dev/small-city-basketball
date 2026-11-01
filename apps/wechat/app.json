@@ -67,7 +67,12 @@
     "pages/notification-settings/index",
     "pages/account-closure/index",
     "pages/guardian/index",
-    "pages/youth-review/index"
+    "pages/youth-review/index",
+    "pages/matching/index",
+    "pages/dispatch/index",
+    "pages/training/index",
+    "pages/training-manage/index",
+    "pages/sponsor-commerce/index"
   ],
   "window": {
     "navigationBarTitleText": "小城市篮球",
