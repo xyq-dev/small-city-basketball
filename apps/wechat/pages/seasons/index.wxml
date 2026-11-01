@@ -1,3 +1,4 @@
+<scb-header title="私有赛季" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page seasons-page">
   <view class="hero"><view class="title">私有赛季</view><view class="muted">机构内部汇总：只计入经球员本人同意的私有赛季授权，不公开、不生成匿名球员榜。</view></view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>

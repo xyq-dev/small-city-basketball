@@ -59,6 +59,7 @@ Page({
   },
   onHide() {
     this._hidden = true;
+    this._viewRead = (this._viewRead || 0) + 1;
     this._generation++;
   },
   onUnload() {
@@ -67,6 +68,7 @@ Page({
     ui.close(this);
   },
   onSessionReset() {
+    this._viewRead = (this._viewRead || 0) + 1;
     this._generation++;
     this._actor = '';
     this._session = '';
@@ -166,11 +168,13 @@ Page({
     if (this.data.busy) return;
     const key = e.currentTarget.dataset.key;
     if (!['teaching', 'cohorts', 'reviews', 'setup'].includes(key)) return;
+    this._viewRead = (this._viewRead || 0) + 1;
     this._session = '';
     this.setData({ manageTab: key, roster: null, enrollment: null });
   },
   closeDetail() {
     if (!this.data.busy) {
+      this._viewRead = (this._viewRead || 0) + 1;
       this._session = '';
       this.setData({ roster: null, enrollment: null });
     }
@@ -381,10 +385,12 @@ Page({
     this.showRoster(e.currentTarget.dataset.id);
   },
   async showRoster(id) {
+    const read = (this._viewRead || 0) + 1;
+    this._viewRead = read;
     try {
       const actor = this._actor,
         r = await training.read('/v1/training/sessions/' + training.id(id) + '/roster');
-      if (actor === this._actor && !this._hidden)
+      if (this._alive && actor === this._actor && !this._hidden && read === this._viewRead)
         this.setData({
           manageTab: 'teaching',
           enrollment: null,
@@ -403,7 +409,8 @@ Page({
           },
         });
     } catch (e) {
-      this.setData({ error: ui.message(e) });
+      if (this._alive && !this._hidden && read === this._viewRead)
+        this.setData({ error: ui.message(e) });
     }
   },
   sessionAction() {
@@ -439,13 +446,16 @@ Page({
     this.showEnrollment(e.currentTarget.dataset.id);
   },
   async showEnrollment(id) {
+    const read = (this._viewRead || 0) + 1;
+    this._viewRead = read;
     try {
       const actor = this._actor,
         r = await training.read('/v1/training/enrollments/' + training.id(id));
-      if (actor === this._actor && !this._hidden)
+      if (this._alive && actor === this._actor && !this._hidden && read === this._viewRead)
         this.setData({ enrollment: training.enrollment(r), roster: null, manageTab: 'reviews' });
     } catch (e) {
-      this.setData({ error: ui.message(e) });
+      if (this._alive && !this._hidden && read === this._viewRead)
+        this.setData({ error: ui.message(e) });
     }
   },
   refundAction(e) {

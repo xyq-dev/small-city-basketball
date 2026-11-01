@@ -94,6 +94,86 @@ test('UI002 material deep links whitelist the panel and clear the selected priva
   assert.equal(h.page.data.form.realName, '');
 });
 
+test('UI002 roster steps preserve the draft while invalidating prior submit consent', () => {
+  const h = loadPage({ root, route: 'pages/entry/index', wx: createWx() });
+  h.page.setData({
+    dirty: true,
+    consent: true,
+    fileConsent: true,
+    rows: [{ name: '合成未保存球员' }],
+  });
+  h.page.entryStepChange({ detail: { key: 'documents' } });
+  assert.equal(h.page.data.stage, 'documents');
+  assert.equal(h.page.data.rows[0].name, '合成未保存球员');
+  assert.equal(h.page.data.dirty, true);
+  assert.equal(h.page.data.consent, false);
+  h.page.setData({ uncertain: true });
+  h.page.entryStepChange({ detail: { key: 'review' } });
+  assert.equal(h.page.data.stage, 'documents');
+  assert.equal(h.wx.calls.filter((c) => c.type === 'request').length, 0);
+});
+
+test('UI002 organizer tools require a current workspace and preserve the event route', () => {
+  const h = loadPage({ root, route: 'pages/org-event/index', wx: createWx() });
+  h.page.orgId = orgId;
+  h.page.eventId = eventId;
+  h.page.openSchedule();
+  h.page.toggleManagementTools();
+  assert.equal(h.page.data.managementToolsOpen, false);
+  assert.equal(h.wx.calls.filter((c) => c.type === 'navigateTo').length, 0);
+  h.page.setData({ manage: { review: true } });
+  h.page.toggleManagementTools();
+  assert.equal(h.page.data.managementToolsOpen, true);
+  h.page.openSchedule();
+  const calls = h.wx.calls.filter((c) => c.type === 'navigateTo');
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /schedule\/index/);
+  assert.match(calls[0].url, new RegExp(eventId));
+  assert.equal(h.wx.calls.filter((c) => c.type === 'request').length, 0);
+});
+
+test('UI002 scorer quick navigation cannot acquire control or fabricate uncollected lineups', () => {
+  const wx = createWx();
+  const scrolled = [];
+  wx.pageScrollTo = (options) => scrolled.push(options.selector);
+  const h = loadPage({ root, route: 'pages/scorer/index', wx });
+  h.page.setData({ match: { status: 'LIVE' }, board: { proMode: false }, held: false });
+  h.page.openConsoleSection({ currentTarget: { dataset: { section: 'lineup' } } });
+  assert.equal(scrolled.length, 0);
+  assert.match(h.page.data.notice, /不能补造/);
+  h.page.setData({
+    board: { proMode: true },
+    canControl: true,
+    offlineItems: [{ id: 'synthetic-original-command' }],
+  });
+  h.page.openConsoleSection({ currentTarget: { dataset: { section: 'offline' } } });
+  assert.equal(scrolled[0], '#scorer-offline');
+  assert.equal(h.page.data.offlineItems[0].id, 'synthetic-original-command');
+  assert.equal(h.page.data.held, false);
+  h.page.setData({ busy: true });
+  h.page.openConsoleSection({ currentTarget: { dataset: { section: 'history' } } });
+  assert.equal(scrolled.length, 1);
+  assert.equal(h.wx.calls.filter((c) => c.type === 'request').length, 0);
+});
+
+test('UI002 setup navigation keeps unsaved values and cannot bypass unavailable settings', () => {
+  const wx = createWx();
+  const scrolled = [];
+  wx.pageScrollTo = (options) => scrolled.push(options.selector);
+  const h = loadPage({ root, route: 'pages/event-setup/index', wx });
+  h.page.setData({ draft: { name: '合成未保存赛事' }, registration: null });
+  h.page.jumpSetupSection({ currentTarget: { dataset: { section: 'basic' } } });
+  assert.equal(scrolled[0], '#setup-basic');
+  assert.equal(h.page.data.draft.name, '合成未保存赛事');
+  h.page.jumpSetupSection({ currentTarget: { dataset: { section: 'registration' } } });
+  assert.equal(scrolled.length, 1);
+  assert.match(h.page.data.notice, /没有此项设置/);
+  h.page.setData({ templatePending: true });
+  h.page.jumpSetupSection({ currentTarget: { dataset: { section: 'basic' } } });
+  assert.equal(scrolled.length, 1);
+  assert.equal(h.wx.calls.filter((c) => c.type === 'request').length, 0);
+});
+
 for (const file of fs
   .readdirSync(path.resolve(root, '../../tests/mini-program/fixtures'))
   .filter((name) => name.startsWith('ui002-registration-') && name.endsWith('.json'))) {

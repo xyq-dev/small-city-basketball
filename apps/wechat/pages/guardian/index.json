@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "青年报名与监护确认" }
+{
+  "navigationBarTitleText": "青年报名与监护确认",
+  "navigationStyle": "custom"
+}

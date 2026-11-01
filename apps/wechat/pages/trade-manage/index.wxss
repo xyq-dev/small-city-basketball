@@ -17,3 +17,12 @@
 .trade .warning {
   color: #9e4f00;
 }
+
+.ui002-workspace { padding:16px 16px calc(104px + env(safe-area-inset-bottom)); background:#f4f6fa; color:#18283f; }
+.ui002-workspace .card { border-radius:16px; padding:16px; margin:0 0 16px; }
+.ui002-workspace input,.ui002-workspace textarea,.ui002-workspace button { font-size:16px; line-height:24px; min-height:44px; }
+.ui002-workspace .page-intro .title { color:#18283f; font-size:22px; line-height:32px; margin:0 0 8px; }
+.ui002-workspace .page-intro { margin-bottom:16px; }
+.ui002-workspace .tabs button { min-height:44px; }
+
+.ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }

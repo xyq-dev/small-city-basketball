@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "赛事图片与视频" }
+{
+  "navigationBarTitleText": "赛事图片与视频",
+  "navigationStyle": "custom"
+}

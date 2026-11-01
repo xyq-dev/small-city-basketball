@@ -1,6 +1,6 @@
+<scb-header title="保险与保障" disabled="{{busy}}"/>
 <web-view wx:if="{{checkoutUrl}}" src="{{checkoutUrl}}" bindmessage="returnFromCheckout"/>
-<view wx:else class="page has-actions insurance-workspace">
- <scb-header title="保险与保障" disabled="{{busy}}"/>
+<view wx:else class="page has-actions insurance-workspace ui002-workspace">
  <view class="page-intro"><view class="eyebrow">赛事保障</view><view class="title">两种办理方式</view><view class="muted">购买保险与参赛资格分别审核。已持有效保单，无需重复购买。</view></view>
  <scb-steps items="{{workflowSteps}}" current="{{activeSection}}" busy="{{busy}}" bindchange="changeSection"/>
  <scb-state wx:if="{{loading}}" kind="loading" title="正在读取本人保障记录" description="付款、承保与本届资格分别核对。"/>

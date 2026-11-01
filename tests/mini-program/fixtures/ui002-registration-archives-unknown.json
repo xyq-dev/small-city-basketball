@@ -1,0 +1,34 @@
+{
+  "name": "ui002-registration-archives-unknown",
+  "route": "pages/public-archives/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 actual native route and capability states; synthetic data only",
+  "expectText": ["撤销公开结果待核对", "按原编号重试", "撤销公开并使旧链接失效"],
+  "data": {
+    "profiles": [
+      {
+        "id": "00000000-0000-4000-8000-000000000005",
+        "kind": "PLAYER",
+        "displayName": "合成公开昵称",
+        "status": "PUBLISHED",
+        "version": 1,
+        "publicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "sources": []
+      }
+    ],
+    "pendingSources": [],
+    "teams": [],
+    "events": [],
+    "publicConsent": false,
+    "publisherConsent": false,
+    "displayName": "合成公开昵称",
+    "disclosureNotice": "公开档案用途须本人独立同意，不复用赛事报名许可。",
+    "busy": false,
+    "pending": {
+      "label": "撤销公开"
+    },
+    "loading": false,
+    "loginRequired": false
+  },
+  "expectDisabled": ["撤销公开并使旧链接失效", "创建档案草稿"]
+}

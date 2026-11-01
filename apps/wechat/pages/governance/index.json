@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "客服与治理" }
+{
+  "navigationBarTitleText": "客服与治理",
+  "navigationStyle": "custom"
+}

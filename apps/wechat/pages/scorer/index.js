@@ -33,6 +33,7 @@ const privateDefaults = {
   clockReason: '',
   fixOpen: false,
   fix: { kind: 'SCORE', side: 'HOME', value: 2, period: 1, reason: '' },
+  consoleSection: 'score',
 };
 
 function rosterOptions(list) {
@@ -56,6 +57,34 @@ Page({
       { kind: 'TURNOVER', label: '失误' },
     ],
     ...privateDefaults,
+  },
+  openConsoleSection(e) {
+    if (!this.data.match || this.data.busy || this.data.loading) return;
+    const section = e.currentTarget.dataset.section;
+    const selectors = {
+      score: '#scorer-board',
+      lineup: '#scorer-lineup',
+      offline: '#scorer-offline',
+      history: '#scorer-history',
+    };
+    if (!selectors[section]) return;
+    if (section === 'lineup' && !this.data.board?.proMode) {
+      this.setData({ notice: '本场未启用专业阵容采集，不能补造首发或上场时间。' });
+      return;
+    }
+    if (
+      section === 'offline' &&
+      !(
+        this.data.board &&
+        (this.data.canControl || this.data.offlineItems.length || this.data.offlineError)
+      )
+    ) {
+      this.setData({ notice: '当前没有可管理的本场离线草稿，控制资格仍由服务器核验。' });
+      return;
+    }
+    this.setData({ consoleSection: section });
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: selectors[section], duration: 180 });
   },
   onLoad(query) {
     this._alive = true;

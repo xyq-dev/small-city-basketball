@@ -1,5 +1,5 @@
 <scb-header title="本场直播工作台" disabled="{{busy}}"/>
-<view class="page live-workspace">
+<view class="page live-workspace ui002-workspace">
   <view class="page-intro"><view class="eyebrow">赛事直播</view><view class="title">准备、采集与频道分别核对</view><view class="muted">权威比分来自本场记分；直播不控制记分。</view></view>
   <scb-steps items="{{workflowSteps}}" current="{{activeSection}}" busy="{{busy}}" bindchange="changeSection"/>
   <scb-state wx:if="{{loading}}" kind="loading" title="正在读取直播工作台" description="以云端当前授权与频道记录为准。"/>

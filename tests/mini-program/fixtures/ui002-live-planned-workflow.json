@@ -1,0 +1,45 @@
+{
+  "name": "ui002-live-planned-workflow",
+  "route": "pages/planned/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "figmaNode": "9:1431",
+  "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
+  "expectText": ["实际订单与本页说明分别查看", "本页不读取资金", "查看本人真实资金订单"],
+  "data": {
+    "selected": "funds",
+    "optionsOpen": false,
+    "refundProgress": false,
+    "options": [
+      {
+        "key": "funds",
+        "label": "当前费用与资金"
+      },
+      {
+        "key": "payment",
+        "label": "支付确认"
+      },
+      {
+        "key": "unknown",
+        "label": "支付待核验"
+      },
+      {
+        "key": "refund",
+        "label": "取消与退款"
+      },
+      {
+        "key": "settlement",
+        "label": "球员结算"
+      },
+      {
+        "key": "messages",
+        "label": "关注与消息"
+      },
+      {
+        "key": "profile",
+        "label": "长期球员档案"
+      }
+    ]
+  },
+  "expectAbsentText": ["实收 ¥0.00", "退款到账 ¥0.00"]
+}

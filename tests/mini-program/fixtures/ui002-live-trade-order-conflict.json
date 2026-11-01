@@ -91,5 +91,6 @@
     "evidence": "SYNTHETIC-EVIDENCE-ONLY",
     "noCharge": false
   },
-  "expectDisabled": ["申请部分或全部退款"]
+  "expectDisabled": ["申请部分或全部退款"],
+  "figmaNode": "9:686"
 }

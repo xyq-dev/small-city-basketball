@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "接受球队邀请" }
+{
+  "navigationBarTitleText": "接受球队邀请",
+  "navigationStyle": "custom"
+}

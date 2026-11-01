@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "成员与工作人员" }
+{
+  "navigationBarTitleText": "成员与工作人员",
+  "navigationStyle": "custom"
+}

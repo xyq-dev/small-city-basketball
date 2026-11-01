@@ -1,0 +1,14 @@
+{
+  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "static": true,
+  "name": "ui002-root-home-error",
+  "route": "pages/home/index",
+  "state": "error",
+  "figmaNode": "4:16",
+  "data": {
+    "publicError": "合成网络中断，请重新核对",
+    "publicLoading": false,
+    "publicLoaded": false
+  },
+  "expectText": ["公开赛事暂时无法读取", "合成网络中断", "重新读取"]
+}

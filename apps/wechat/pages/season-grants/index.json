@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "私有赛季授权" }
+{
+  "navigationBarTitleText": "私有赛季授权",
+  "navigationStyle": "custom"
+}

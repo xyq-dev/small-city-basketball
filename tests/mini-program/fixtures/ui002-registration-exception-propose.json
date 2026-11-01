@@ -1,0 +1,27 @@
+{
+  "name": "ui002-registration-exception-propose",
+  "route": "pages/match-exceptions/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 actual native route and capability states; synthetic data only",
+  "expectText": ["弃权独立计积分", "不会生成投篮", "提交独立复核", "已锁定规则"],
+  "data": {
+    "event": {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "name": "合成邀请赛"
+    },
+    "rules": {
+      "forfeitWinPoints": 2,
+      "forfeitLossPoints": 0
+    },
+    "canEdit": false,
+    "canPropose": true,
+    "canReview": false,
+    "reason": "合成因天气无法按时开赛，申请独立核对",
+    "rulesOnly": false,
+    "requests": [],
+    "busy": false,
+    "uncertain": false,
+    "kind": "FORFEIT",
+    "side": "HOME"
+  }
+}

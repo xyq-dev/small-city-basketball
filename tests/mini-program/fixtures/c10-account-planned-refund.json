@@ -4,7 +4,7 @@
   "state": "planned",
   "figmaNode": "30:2564",
   "referenceKind": "derived",
-  "expectText": ["逐场选择处理范围", "退款申请暂未开放"],
+  "expectText": ["逐场选择处理范围", "退款请进入原订单"],
   "static": true,
   "primary": false,
   "data": {

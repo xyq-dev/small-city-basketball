@@ -1,3 +1,4 @@
+<scb-header title="正式改期" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page mgmt-page">
   <view wx:if="{{loading && !match}}" class="card state-panel"><text class="state-label">改期</text><view class="subtitle">正在读取正式安排</view><view class="loading-lines"><view></view><view></view></view></view>
   <view wx:elif="{{!match}}" class="card state-panel">

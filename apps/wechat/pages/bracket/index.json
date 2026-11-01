@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "分组与淘汰晋级" }
+{
+  "navigationBarTitleText": "分组与淘汰晋级",
+  "navigationStyle": "custom"
+}

@@ -1,0 +1,47 @@
+{
+  "name": "ui002-registration-staff-readonly",
+  "route": "pages/staff-configuration/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 actual native route and capability states; synthetic data only",
+  "expectText": ["当前仅可读取授权名单", "明确修改一项授权"],
+  "data": {
+    "organizations": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "name": "合成城市篮球工作室"
+      }
+    ],
+    "selectedOrg": 0,
+    "eventId": "00000000-0000-4000-8000-000000000002",
+    "userId": "00000000-0000-4000-8000-000000000003",
+    "type": "STAFF",
+    "roles": ["EVENT_MANAGER", "REVIEWER", "SCORER", "STREAMER"],
+    "roleIndex": 2,
+    "workspace": {
+      "capabilities": {
+        "canManageMembers": false,
+        "canManageStaff": false
+      }
+    },
+    "members": [
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "name": "合成工作人员",
+        "role": "SCORER",
+        "status": "ACTIVE"
+      }
+    ],
+    "staff": [
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "name": "合成记分员",
+        "role": "SCORER",
+        "status": "ACTIVE"
+      }
+    ],
+    "busy": false,
+    "pending": false,
+    "error": "当前仅可读取授权名单，不能修改。"
+  },
+  "expectDisabled": ["确认变更", "机构成员", "本赛事工作人员"]
+}

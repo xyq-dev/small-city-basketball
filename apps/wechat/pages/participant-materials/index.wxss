@@ -1,16 +1,16 @@
 .materials-page { padding-bottom:calc(132px + env(safe-area-inset-bottom)); }
-.material-panel { border:1px solid #e8edf2; border-radius:12px; padding:20px; margin-bottom:16px; overflow-wrap:anywhere; }
+.material-panel { border:1px solid #e1e7ef; border-radius:12px; padding:20px; margin-bottom:16px; overflow-wrap:anywhere; }
 .material-kicker { color:#667a90; font-size:12px; margin-bottom:8px; }
 .material-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .material-head > view { min-width:0; }
 .material-step { color:#123c73; font-size:12px; margin-bottom:8px; }
 .material-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-.material-row { padding:14px 0; border-bottom:1px solid #e8edf2; }
+.material-row { padding:14px 0; border-bottom:1px solid #e1e7ef; }
 .material-row:last-child { border-bottom:0; }
 .material-row .muted { margin:6px 0; }
 .material-actions { display:flex; flex-wrap:wrap; gap:8px; }
 .material-actions button { margin:8px 0 0; flex:1; min-width:120px; }
-.material-terms { font-size:13px; line-height:22px; background:#f5f7fa; padding:14px; border-radius:8px; }
+.material-terms { font-size:13px; line-height:22px; background:#f4f6fa; padding:14px; border-radius:8px; }
 .material-terms view + view { margin-top:8px; }
 .material-private { border:1px solid #edc795; background:#fff8ec; border-radius:8px; padding:14px; margin:12px 0; }
 .material-note { margin:12px 0; }

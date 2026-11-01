@@ -139,7 +139,9 @@ test('all account and planned visual fixtures expand real WXML and retain disabl
       // Only the shared bottom-bar UI icons; no portraits or other imagery on account pages.
       assert.deepEqual(
         result.assets.filter(
-          (asset) => !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path),
+          (asset) =>
+            !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path) &&
+            !/^assets[\\/]ui002[\\/]nav-(?:home-active|local|account)\.svg$/.test(asset.path),
         ),
         [],
       );

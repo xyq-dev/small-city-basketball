@@ -108,10 +108,11 @@ Page({
     });
   },
   workspace(e) {
-    if (this.data.busy || this.data.pending) return;
+    if (this.data.busy || this.data.pending || this.data.loading) return;
     const key = e.currentTarget.dataset.key;
     if (!['contracts', 'orders', 'setup'].includes(key)) return;
     if (key === 'setup' && !this.data.canManage && !this.data.canFinance) return;
+    ui.begin(this);
     this._order = null;
     const reload = this.data.mode === 'statements';
     this.setData({ workspaceView: key, mode: 'manage', detail: null, statements: [] });
@@ -124,11 +125,13 @@ Page({
   },
   closeOrder() {
     if (this.data.busy) return;
+    ui.begin(this);
     this._order = null;
     this.setData({
       detail: null,
       workspaceView: 'orders',
       detailView: 'delivery',
+      loading: false,
       evidence: '',
       reason: '',
       amount: '',

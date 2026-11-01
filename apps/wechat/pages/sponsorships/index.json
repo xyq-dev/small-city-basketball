@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "广告与赞助" }
+{
+  "navigationBarTitleText": "广告与赞助",
+  "navigationStyle": "custom"
+}

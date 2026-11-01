@@ -1,4 +1,5 @@
-<view class="page media-entry">
+<scb-header title="比赛影像" disabled="{{busy}}"/>
+<view class="page media-entry ui002-workspace">
   <view class="media-intro"><view class="title">留住球场上的每一刻</view><view class="media-copy">只查看主办方明确发布的比赛图片与小视频。</view></view>
   <view class="media-head"><view class="subtitle">最近观看的赛事</view></view>
   <view wx:if="{{!recentEvents.length}}" class="media-panel">
@@ -11,6 +12,6 @@
     <view class="media-event-main"><view class="media-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · 查看已发布媒体</view></view>
     <scb-icon name="chevron-right" tone="gray" size="16"/>
   </button>
-  <view class="notice media-note"><view class="media-strong">以当前有效发布为准</view><view class="small">未发布、已撤销或已到期的媒体不显示；没有已发布媒体时不会用示例视频替代。外部链接仅提供复制，不保证微信内播放。直播、云回放与转码尚未开通。</view></view>
+  <view class="notice media-note"><view class="media-strong">以当前有效发布为准</view><view class="small">未发布、已撤销或已到期的媒体不显示；没有已发布媒体时不会用示例视频替代。外部链接仅提供复制，不保证微信内播放。直播、云回放与转码按当前频道、授权和正式接入条件开放；未核验时不显示可用。</view></view>
 </view>
 <scb-nav active="Video"/>

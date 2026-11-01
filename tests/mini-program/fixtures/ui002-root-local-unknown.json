@@ -1,0 +1,40 @@
+{
+  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "static": true,
+  "name": "ui002-root-local-unknown",
+  "route": "pages/local/index",
+  "state": "unknown",
+  "figmaNode": "40:1288",
+  "data": {
+    "selection": {
+      "mode": "REGION",
+      "label": "合成省 / 合成市 / 合成超长县区用于测试地点换行",
+      "regionId": "00000000-0000-4000-8000-000000000003",
+      "catalogVersion": "synthetic-ui002-v1"
+    },
+    "loaded": true,
+    "loading": false,
+    "kind": "COURT",
+    "filtersOpen": true,
+    "locationEnabled": false,
+    "viewportEnabled": false,
+    "items": [
+      {
+        "id": "00000000-0000-4000-8000-000000000004",
+        "kindText": "球场",
+        "title": "合成文化体育中心东区篮球场长名称测试",
+        "address": "合成市合成大道文化体育中心东区二号室外场",
+        "organizationName": "合成场地经营方",
+        "distanceLabel": "未选择距离起点",
+        "qualificationText": "由机构独立审核"
+      }
+    ],
+    "pending": {
+      "commandId": "00000000-0000-4000-8000-000000000005"
+    },
+    "pendingError": "合成原预约结果待核对",
+    "busy": false
+  },
+  "expectText": ["合成原预约结果待核对", "查询原操作回执", "重试原操作"],
+  "expectDisabled": ["收起附近与地点设置"]
+}

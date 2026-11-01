@@ -295,10 +295,12 @@ test('account exposes real destinations and copies only the current visible acco
     '本人保险订单',
     '青少年与监护确认',
     '账号自助注销',
-    '收款条款与资金管理',
     viewer,
   ])
     assert.ok(html.includes(text), text);
+  h.page.workspace({ currentTarget: { dataset: { key: 'work' } } });
+  const work = buildPreview({ root, route: 'pages/account/index', data: h.page.data }).phone;
+  assert.ok(work.includes('收款条款与资金管理'));
   for (const key of [
     'messages',
     'notification-settings',

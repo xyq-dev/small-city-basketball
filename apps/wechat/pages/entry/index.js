@@ -11,6 +11,12 @@ Page({
     files: [],
     fileError: '',
     stage: 'roster',
+    entrySteps: [
+      { key: 'roster', label: '本届名单' },
+      { key: 'documents', label: '资料与保单' },
+      { key: 'review', label: '提交与审核' },
+      { key: 'history', label: '版本记录' },
+    ],
     dirty: false,
     consent: false,
     fileConsent: false,
@@ -161,6 +167,10 @@ Page({
     const stage = e.currentTarget.dataset.stage;
     if (!this.data.busy && ['roster', 'documents', 'review', 'history'].includes(stage))
       this.setData({ stage, consent: false, fileConsent: false });
+  },
+  entryStepChange(e) {
+    if (this.data.uncertain || this.data.loading) return;
+    this.switchStage({ currentTarget: { dataset: { stage: e.detail?.key } } });
   },
   togglePlayer(e) {
     if (this.data.busy || !this._entry?.capabilities.canEditRoster) return;

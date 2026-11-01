@@ -1,23 +1,25 @@
 {
-  "version": 2,
+  "version": 3,
   "figmaFile": "2jAHpYjdIHqal1nXeoVqm6",
   "limitations": [
-    "实际WXML/WXSS离线Chromium兼容截图；6核心页对照用户确认图C11，其余15页保留C10基准。动态资料均为合成数据。",
+    "实际WXML/WXSS离线Chromium兼容截图；首页按UI001:H01，其余5核心页保留历史C11参考；当前UI001整合与全200画板逐像素验收分开。动态资料均为合成数据。",
     "官方微信编译、开发者工具、真机和用户视觉验收待完成。"
   ],
   "pages": [
     {
       "route": "pages/home/index",
-      "title": "预约首页",
+      "title": "全国篮球首页",
       "primaryFixture": "c11-home-ready",
-      "figmaNode": "approved:C11",
-      "referenceImage": "docs/design/C11/home.png",
-      "referenceSha256": "e442b7193961c7cd23ba6afe5abc216cdb1250aa22b3717c06c5c5a055839380",
-      "referenceKind": "user-approved",
-      "notes": "以用户在本会话确认的六屏图为唯一视觉基准；真实内容与动态状态沿用服务端契约，系统胶囊按微信平台保留。真实无头像字段时使用中性占位，示例照片只在合成验收数据中。",
+      "figmaNode": "4:16",
+      "referenceImage": "docs/design/UI002/home-figma.png",
+      "referenceSha256": "06f58f3cae4f9b8737de36907eda94f9d032b7e82e29a2fafb6649b36dec6f51",
+      "referenceKind": "figma-design",
+      "notes": "UI002按用户指定UI001:H01替代历史C11首页。参考图由Figma节点4:16直接取得，不是运行时代码素材；动态赛事不使用设计示例比分。",
       "notApplicableStates": ["静态导航无异步加载、空列表、请求错误或权限读取态"],
       "states": ["ready"],
-      "sourceKind": "approved-image"
+      "sourceKind": "figma-design",
+      "figmaFile": "BSQ64CrDTJ2P4tOIowOSFk",
+      "designSource": "UI001:H01; supersedes historical C11 home"
     },
     {
       "route": "pages/watch/index",

@@ -4,7 +4,7 @@
   "state": "planned",
   "figmaNode": "30:2504",
   "referenceKind": "derived",
-  "expectText": ["支付前核对", "支付暂未开放"],
+  "expectText": ["支付前核对", "本说明不执行支付"],
   "static": true,
   "primary": false,
   "data": {

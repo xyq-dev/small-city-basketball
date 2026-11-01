@@ -1,0 +1,35 @@
+{
+  "name": "ui002-live-account-closure-workflow",
+  "route": "pages/account-closure/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "figmaNode": "9:1099",
+  "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
+  "expectText": ["先处理未结束事项，再确认注销", "申请与执行分开"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "loginRequired": false,
+    "enabled": true,
+    "password": "",
+    "confirmed": false,
+    "coolingOffDays": 1,
+    "dayOptions": ["立即检查", "1天", "2天", "3天", "4天", "5天", "6天", "7天"],
+    "request": {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "version": 2,
+      "status": "BLOCKED",
+      "label": "有事项需要先处理",
+      "coolingOffDays": 1,
+      "requestedAt": "2028-06-01T10:00:00Z",
+      "executeAfter": "2028-06-02T10:00:00Z",
+      "executeText": "2028年06月02日 18:00",
+      "finishedAt": null,
+      "blockers": ["请先移交仍在运营的机构负责人权限", "平台套餐付款或退款尚未处理完成"],
+      "canCancel": true
+    },
+    "pending": false,
+    "error": "",
+    "message": "合成界面数据，仅供布局校验；申请未实际提交。"
+  }
+}

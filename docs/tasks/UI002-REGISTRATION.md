@@ -1,6 +1,6 @@
 # UI002-REGISTRATION：报名、球队与办赛记分前端整合
 
-状态：IN_PROGRESS；integration：LOCAL_ONLY。
+状态：REVIEW；integration：LOCAL_ONLY（待root串行整合及当前候选CI）。
 
 - 负责人：Codex `/root/ui_registration`；集成人：本轮 `/root`。
 - 核验日期：2026-11-01 Asia/Shanghai。
@@ -32,3 +32,22 @@ R03节点`6:492`的实际截图/metadata成功读取；高保真`6:515`表单con
 已执行：`node --test apps/wechat/test/ui002-registration-flow.test.cjs apps/wechat/test/c23-participant-materials.test.cjs apps/wechat/test/e03-insurance.test.cjs apps/wechat/test/native-structure.test.cjs`，123/123通过；新增4个VM主线/门槛用例、4个三宽真实模板样本。Prettier及`git diff --check`通过。仅模板生成及VM，未执行浏览器几何测量、官方微信/真机、真实API或外部通道。本片交root同步后再进入工作台/记分片。
 
 独立审查修复：首片固定保存动作原先未带保险patch，保险分区已改成明确“保存保单资料”。跟踪保险字段dirty，在其他分区保存或上传时一并保留已编辑保险patch；原证件/保单号仍在提交后清空，不把明文写入本机恢复。新增3项VM经过真实Page→repository PUT，核对保险分区及切换后保存的请求body/脱敏响应，并验证422拒绝后保留非敏感编辑与dirty。相同定向回归126/126通过。没有改变后端投保、资格、审核或未知结果规则。
+
+## 第二片：工作台、记分及分域31条路由
+
+- org-event按办赛顺序聚合设置、招募、独立审核、排程、记分复核五入口，其他授权工具可展开；全部复用真实路由/API与当前权限。
+- event-setup增加不丢表单的设置分区定位；entry将既有名单/资料/提交/历史四阶段接入共享步骤。跳转不提交任何业务命令，未知结果及写入中保持保护。
+- scorer先呈现比分，提供阵容/换人、离线原队列、原事件及更正的定位；不获取控制权、不补造统计、不改队列或独立确认规则。未启用专业采集时明确关闭阵容入口。
+- 31条分域路由复用自绘header，配套navigationStyle custom以免双导航头；其余既有完整流程保持，仅统一品牌token、可读原生字段及长文案。已有独立C11布局保留，不重新制造路由或用样例替代动态数据。
+- T02球队身份卡采用5:800高保真context及原盾牌资产。6:964工作台卡、8:580比分台均取得高保真context；其余页面使用共享组件/既有流程，未宣称200画板逐页像素核验。
+- 补staff-configuration、match-exceptions、recruitment、public-archives、public-archive此前缺少的正常、只读、未知结果或撤回样本；新增fixture总数17个（含首片4个），expectDisabled约束授权/独立同意/未知结果。
+
+### 设计差异：T02管理者邀请
+
+后端存在签发API，但现有原生transport没有签发白名单；C23保留Web-only授权管理边界。经root确认，本轮不扩大白名单或后端权限，也不以球员加入码代替管理者邀请。具备canInvite的用户可见明确关闭说明及禁用按钮，由有权网页后台签发；新增关闭态fixture。设计中的样例姓名、人数、地区、号码不覆盖API事实。
+
+### 第二片验证
+
+工作台/记分等定向176/176通过；之后补分区缺少目标时的正确定位、长队名及管理邀请关闭样本，直接53/53通过。最终本地完整`node --test apps/wechat/test/*.test.cjs tests/wechat-tools/devtools-ui.test.mjs`：1106通过、1项既有Windows专属跳过、0失败；Prettier与diff检查通过。新增VM验证草稿/最终同意保持、授权工作台入口、记分导航不取得控制权/补造阵容、设置定位不绕过阶段。
+
+当前安装的Playwright默认Chromium可执行文件缺失；这里只完成真实WXML三宽模板生成，320/390/430浏览器几何、官方微信/真机、当前分支真实API、支付/保险/直播仍待root隔离CI或专项条件。本分域无后端修改、Migration编写/执行、pack、部署或生产操作。

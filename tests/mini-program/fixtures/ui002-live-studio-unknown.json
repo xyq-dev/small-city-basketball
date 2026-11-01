@@ -151,5 +151,6 @@
     "cameraReady": true,
     "phoneState": "合成状态：本机采集中；静态占位，未实际采集或推流"
   },
-  "expectDisabled": ["显式开始／恢复本机采集"]
+  "expectDisabled": ["显式开始／恢复本机采集"],
+  "figmaNode": "8:1524"
 }

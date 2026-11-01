@@ -1,4 +1,6 @@
-<view class="page mgmt-page">
+<scb-header title="比赛媒体与授权" disabled="{{busy}}"/>
+<view class="page mgmt-page ui002-workspace">
+  <view class="page-intro"><view class="eyebrow">本场媒体</view><view class="title">上传、片段、发布与撤回</view></view>
   <view wx:if="{{loading && !match}}" class="card state-panel"><text class="state-label">比赛媒体</text><view class="subtitle">正在读取媒体资料</view><view class="loading-lines"><view></view><view></view></view></view>
   <view wx:elif="{{!match}}" class="card state-panel">
     <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>

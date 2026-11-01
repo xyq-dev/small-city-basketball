@@ -30,5 +30,6 @@
     "error": "",
     "message": "合成关闭态，不发生真实投保。",
     "checkoutUrl": ""
-  }
+  },
+  "figmaNode": "40:1032"
 }

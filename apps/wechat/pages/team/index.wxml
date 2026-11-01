@@ -1,9 +1,12 @@
+<scb-header title="球队管理" disabled="{{busy || pending || uncertain || nameDirty || membersDirty}}"/>
 <view class="page team-page">
   <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">请核对球队资料后继续</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice">{{message}}</view>
   <view wx:if="{{loginRequired}}" class="card team-panel state-panel"><view class="subtitle">登录后继续管理球队</view><view class="muted">当前未读取私有成员资料。</view><button class="primary" bindtap="login">登录并继续</button></view>
   <view wx:if="{{loading}}" class="card team-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取球队资料</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
   <block wx:if="{{team}}">
+    <view class="card team-profile"><view class="team-profile-avatar"><image src="/pages/team/assets/ui002-shield.png" mode="aspectFit" class="team-shield" aria-hidden="true"/></view><view class="team-profile-copy"><view class="team-profile-name">{{team.name}}</view><view class="muted">长期成员 {{team.members.length}} 人 · 当前版本 {{team.version}}</view><view class="small muted">长期档案与本届名单分别管理</view></view></view>
+    <view wx:if="{{team.capabilities.canInvite}}" class="notice small"><view>管理者邀请签发暂未在小程序开放，请由有权机构人员在网页后台办理。</view><button class="secondary" disabled="{{true}}">邀请球队管理者 · 小程序未开放</button></view>
     <view class="team-sections"><view class="team-section selected">长期成员</view><button class="quiet team-section" bindtap="events" disabled="{{busy || !canRegister}}">本届报名</button></view>
     <view class="card team-panel">
       <view class="subtitle">{{team.name}} · 长期成员</view>

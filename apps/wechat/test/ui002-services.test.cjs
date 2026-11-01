@@ -340,3 +340,174 @@ test('returning after an account switch while hidden scrubs previous service dra
     assert.equal(calls.filter((x) => x.method !== 'GET').length, 0, name);
   }
 });
+
+const raceId = (n) => '20000000-0000-4000-8000-' + String(n).padStart(12, '0');
+function deferredPage(name, extraModules = {}) {
+  const requests = [];
+  const current = '10000000-0000-4000-8000-000000000001';
+  const client = {
+    sessionRevision: () => 1,
+    onSessionChange: () => () => {},
+    viewerId: () => current,
+    request: (url) =>
+      url === '/v1/auth/session'
+        ? Promise.resolve({ data: { user: { id: current }, organizations: [], teamContexts: [] } })
+        : new Promise((resolve, reject) => requests.push({ url, resolve, reject })),
+  };
+  const api = { getClient: () => client, uuid: (v) => v };
+  const h = loadPage({
+    root,
+    route: 'pages/' + name + '/index',
+    wx: createWx(),
+    modules: { './api': api, '../../utils/api': api, ...extraModules },
+  });
+  h.page.onLoad({});
+  h.page._visible = true;
+  h.page._hidden = false;
+  h.page._actor = current;
+  return { ...h, requests };
+}
+const cohortResult = (id) => ({
+  id,
+  title: '合成班期 ' + id,
+  totalFen: 0,
+  state: 'ENROLLING',
+  sessions: [],
+});
+const rosterResult = (id) => ({
+  session: { id, state: 'SCHEDULED', starts_at: '2028-01-01T01:00:00Z' },
+  learners: [],
+  consumptions: [],
+});
+const enrollmentResult = (id) => ({
+  id,
+  totalFen: 0,
+  state: 'CONFIRMED',
+  capabilities: {},
+  termsSnapshot: {},
+  entitlements: [],
+  consumptions: [],
+  refunds: [],
+});
+test('training back/list navigation cancels late cohort reads and A/B responses cannot reopen A', async () => {
+  const h = deferredPage('training');
+  const old = h.page.showDetail(raceId(1));
+  h.page.showCatalog();
+  h.requests[0].resolve({ data: cohortResult(raceId(1)) });
+  await old;
+  assert.equal(h.page.data.detail, null);
+  assert.equal(h.page.data.loading, false);
+  const a = h.page.showDetail(raceId(2));
+  const b = h.page.showDetail(raceId(3));
+  h.requests[2].resolve({ data: cohortResult(raceId(3)) });
+  await b;
+  h.requests[1].resolve({ data: cohortResult(raceId(2)) });
+  await a;
+  assert.equal(h.page.data.detail.id, raceId(3));
+  const lateError = h.page.showDetail(raceId(4));
+  h.page.backToList();
+  h.requests[3].reject(Error('private old failure'));
+  await lateError;
+  assert.equal(h.page.data.detail, null);
+  assert.doesNotMatch(h.page.data.error, /private old failure/);
+});
+test('training leaving my list cancels late reads without leaving its loading spinner stuck', async () => {
+  const h = deferredPage('training');
+  const old = h.page.loadMine();
+  await new Promise((r) => setImmediate(r));
+  h.page.showCatalog();
+  h.requests[0].resolve({ data: { items: [enrollmentResult(raceId(1))] } });
+  await old;
+  assert.equal(h.page.data.viewTab, 'catalog');
+  assert.equal(h.page.data.mineLoading, false);
+  assert.equal(h.page.data.mine.length, 0);
+});
+test('training management navigation cancels roster/enrollment reads and newest detail wins across domains', async () => {
+  const h = deferredPage('training-manage');
+  const old = h.page.showRoster(raceId(1));
+  h.page.manageTab(tap('setup'));
+  h.requests[0].resolve({ data: rosterResult(raceId(1)) });
+  await old;
+  assert.equal(h.page.data.manageTab, 'setup');
+  assert.equal(h.page.data.roster, null);
+  const a = h.page.showRoster(raceId(2));
+  const b = h.page.showEnrollment(raceId(3));
+  h.requests[2].resolve({ data: enrollmentResult(raceId(3)) });
+  await b;
+  h.requests[1].resolve({ data: rosterResult(raceId(2)) });
+  await a;
+  assert.equal(h.page.data.enrollment.id, raceId(3));
+  assert.equal(h.page.data.roster, null);
+  assert.equal(h.page.data.manageTab, 'reviews');
+  const gone = h.page.showEnrollment(raceId(4));
+  h.page.closeDetail();
+  h.requests[3].resolve({ data: enrollmentResult(raceId(4)) });
+  await gone;
+  assert.equal(h.page.data.enrollment, null);
+});
+test('matching new form navigation cancels its outstanding selected-need response', async () => {
+  let resolve;
+  const model = require('../utils/matching');
+  const h = deferredPage('matching', {
+    '../../utils/matching': {
+      ...model,
+      repository: () => ({
+        detail: () =>
+          new Promise((r) => {
+            resolve = r;
+          }),
+      }),
+    },
+  });
+  const old = h.page.select({ currentTarget: { dataset: { id: raceId(1) } } });
+  h.page.toggleCreate();
+  resolve({ id: raceId(1), canManage: true });
+  await old;
+  assert.equal(h.page.data.creating, true);
+  assert.equal(h.page.data.selected, null);
+  assert.equal(h.page.data.loading, false);
+});
+test('dispatch preference navigation cancels its outstanding request detail response', async () => {
+  let resolve;
+  const model = require('../utils/dispatch');
+  const h = deferredPage('dispatch', {
+    '../../utils/dispatch': {
+      ...model,
+      repository: () => ({
+        detail: () =>
+          new Promise((r) => {
+            resolve = r;
+          }),
+      }),
+    },
+  });
+  const old = h.page.selectRequest({ currentTarget: { dataset: { id: raceId(1) } } });
+  h.page.workspace(tap('preference'));
+  resolve({ request: { id: raceId(1) }, offers: [] });
+  await old;
+  assert.equal(h.page.data.dispatchView, 'preference');
+  assert.equal(h.page.data.detail, null);
+});
+test('closing an advertising order cancels its late GET without losing the original pending command', async () => {
+  const h = deferredPage('sponsor-commerce');
+  h.page._org = raceId(1);
+  const old = h.page.selectOrder({ currentTarget: { dataset: { id: raceId(2) } } });
+  h.page.setData({ pending: { body: { commandId: 'original-ad-order' } } });
+  h.page.closeOrder();
+  h.requests[0].resolve({
+    data: {
+      order: { id: raceId(2), total_fen: 0, status: 'ACCEPTED' },
+      deliveries: [],
+      batches: [],
+      items: [],
+      refunds: [],
+      refundRetries: [],
+      returns: [],
+      recovery: [],
+    },
+  });
+  await old;
+  assert.equal(h.page.data.detail, null);
+  assert.equal(h.page.data.pending.body.commandId, 'original-ad-order');
+  assert.equal(h.page.data.loading, false);
+});

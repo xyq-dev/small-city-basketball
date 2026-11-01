@@ -215,6 +215,8 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     'initial-home': 'home',
     'c10-core-home-ready': 'home',
     'c11-home-ready': 'home',
+    'ui002-root-home-public': 'home',
+    'ui002-root-home-error': 'home',
     'players-collapsed': 'players',
     'c10-core-players-ready': 'players',
     'c11-player-market-ready': 'players',
@@ -252,6 +254,17 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       statusBars: document.querySelectorAll('.mini-custom-status').length,
       hero: measure('.home-hero'),
       homeAction: measure('.home-primary'),
+      homeFilters: measure('.home-filters'),
+      homeBall: measure('.home-brand-ball'),
+      homeNav: measure('.mobile-nav'),
+      homeSelectedNav: measure('.nav-item.selected'),
+      homeVectors: Array.from(
+        document.querySelectorAll<HTMLImageElement>('.home-brand-ball,.header-brand img'),
+      ).map((image) => ({
+        loaded: image.complete && image.naturalWidth > 0,
+        width: image.width,
+        height: image.height,
+      })),
       search: measure('.market-search'),
       playerCard: measure('.player-card'),
       portrait: measure('.player-portrait'),
@@ -298,12 +311,12 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     };
   });
   expect(metrics.fontFamily).toContain('Noto Sans CJK SC');
-  expect(metrics.header?.height).toBe(80);
+  expect(metrics.header?.height).toBe(84);
   expect(metrics.duplicateNativeHeader).toBe(0);
   expect(metrics.statusBars).toBe(1);
   if (scenario.startsWith('c11-')) {
     const minimumPhotos: Record<string, number> = {
-      home: 1,
+      home: 0,
       players: 2,
       player: 1,
       compare: 2,
@@ -324,22 +337,44 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     ).toBe(true);
   }
   if (group === 'home') {
-    expect(metrics.hero?.width).toBe(width);
-    expect(metrics.hero?.height).toBe(width <= 360 ? 400 : 430);
-    expect(metrics.homeAction?.width).toBe(214);
-    expect(metrics.homeAction?.height).toBe(52);
-    expect(metrics.homeAction?.background).toBe('rgb(255, 107, 45)');
-    expect(metrics.homeAction?.color).toBe('rgb(255, 255, 255)');
+    // UI001 H01 explicitly replaces the historical C11 full-bleed photograph.
+    // At 320px the real title may wrap and grow the card; the 390/430 targets stay 186px.
+    expect(metrics.hero?.x).toBe(16);
+    expect(metrics.hero?.width).toBe(width - 32);
+    expect(metrics.hero?.radius).toBe(16);
+    expect(metrics.hero?.background).toBe('rgb(18, 60, 115)');
+    if (width >= 390) expect(metrics.hero?.height).toBe(186);
+    else {
+      expect(metrics.hero?.height).toBeGreaterThanOrEqual(186);
+      expect(metrics.hero?.height).toBeLessThanOrEqual(224);
+    }
+    expect(metrics.homeFilters?.x).toBe(16);
+    expect(metrics.homeFilters?.height).toBeGreaterThanOrEqual(44);
+    expect(metrics.homeBall?.width).toBe(68);
+    expect(metrics.homeBall?.height).toBe(68);
+    expect(metrics.homeAction?.x).toBe(32);
+    expect(metrics.homeAction?.width).toBe(width - 64);
+    expect(metrics.homeAction?.height).toBe(48);
+    expect(metrics.homeAction?.radius).toBe(12);
+    expect(metrics.homeAction?.background).toBe('rgb(242, 140, 40)');
+    expect(metrics.homeAction?.color).toBe('rgb(18, 60, 115)');
+    expect(metrics.homeNav?.height).toBe(83);
+    expect(metrics.homeSelectedNav?.color).toBe('rgb(18, 60, 115)');
+    expect(metrics.homeVectors).toHaveLength(2);
+    expect(metrics.homeVectors.every((asset) => asset.loaded && asset.width === asset.height)).toBe(
+      true,
+    );
+    expect(metrics.photographs).toEqual([]);
   } else {
     expect(metrics.action?.x).toBe(12);
     expect(metrics.action?.width).toBe(width - 24);
     expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
     if (group === 'players') {
       expect(metrics.search?.x).toBe(12);
-      expect(metrics.search?.y).toBe(92);
+      expect(metrics.search?.y).toBe(96);
       expect(metrics.search?.height).toBe(44);
       expect(metrics.playerCard?.x).toBe(12);
-      expect(metrics.playerCard?.y).toBe(196);
+      expect(metrics.playerCard?.y).toBe(200);
       expect(metrics.playerCard?.width).toBe(width - 24);
       expect(metrics.playerCard?.radius).toBe(12);
       expect(metrics.portrait?.width).toBe(width <= 360 ? 76 : 94);
@@ -379,7 +414,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       ).toBe(true);
     }
   }
-  return { source: 'approved:C11', group, ...metrics };
+  return { source: group === 'home' ? 'UI001:H01' : 'approved:C11', group, ...metrics };
 }
 
 test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机验收）', () => {

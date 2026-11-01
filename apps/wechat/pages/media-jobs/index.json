@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "录像与媒体作业" }
+{
+  "navigationBarTitleText": "录像与媒体作业",
+  "navigationStyle": "custom"
+}

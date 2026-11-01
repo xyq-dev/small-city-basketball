@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "排赛" }
+{
+  "navigationBarTitleText": "排赛",
+  "navigationStyle": "custom"
+}

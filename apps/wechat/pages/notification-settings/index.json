@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "微信订阅提醒" }
+{
+  "navigationBarTitleText": "微信订阅提醒",
+  "navigationStyle": "custom"
+}

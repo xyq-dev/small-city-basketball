@@ -114,8 +114,10 @@ test('insurance record and funds progress navigation preserve request journals a
 });
 test('UI002 live, insurance and funds fixtures expand real templates and local design assets at all three widths', () => {
   const directory = path.resolve(__dirname, '../../../tests/mini-program/fixtures');
+  const covered = new Set();
   for (const file of fs.readdirSync(directory).filter((name) => name.startsWith('ui002-live-'))) {
     const fixture = JSON.parse(fs.readFileSync(path.join(directory, file), 'utf8'));
+    covered.add(fixture.route);
     for (const width of [320, 390, 430]) {
       const preview = buildPreview({
         root,
@@ -126,8 +128,101 @@ test('UI002 live, insurance and funds fixtures expand real templates and local d
       });
       for (const text of fixture.expectText)
         assert.ok(preview.phone.includes(text), file + ': ' + text);
+      for (const text of fixture.expectAbsentText || [])
+        assert.equal(preview.phone.includes(text), false, file + ': hidden ' + text);
       assert.doesNotMatch(preview.phone, /\ssrc="https:/);
       for (const asset of preview.assets) assert.ok(asset.bytes > 0, asset.path);
     }
   }
+  assert.equal(
+    covered.size,
+    22,
+    'all assigned real routes have a populated or gated workflow fixture',
+  );
+});
+test('message tabs filter only loaded notifications and marking read updates the unread subset', async () => {
+  const h = loadPage({ root, route: 'pages/messages/index', wx: createWx() });
+  h.page._closed = false;
+  h.page.setData({
+    items: [
+      { id: id(41), title: '合成未读消息', readAt: null },
+      { id: id(42), title: '合成已读消息', readAt: '2028-06-01' },
+    ],
+    unreadCount: 1,
+  });
+  const calls = [];
+  h.requireLocal('utils/api.js').getClient = () => ({
+    sessionRevision: () => 0,
+    request: async (...args) => {
+      calls.push(args);
+      return { data: {} };
+    },
+  });
+  h.page.filterMessages({ currentTarget: { dataset: { filter: 'unread' } } });
+  assert.equal(h.page.data.messageFilter, 'unread');
+  assert.equal(calls.length, 0);
+  const before = buildPreview({ root, route: 'pages/messages/index', data: h.page.data });
+  assert.match(before.phone, /合成未读消息/);
+  assert.doesNotMatch(before.phone, /合成已读消息/);
+  await h.page.read({ currentTarget: { dataset: { id: id(41) } } });
+  assert.equal(calls.length, 1);
+  assert.match(calls[0][0], /\/notifications\/.+\/read$/);
+  assert.equal(h.page.data.unreadCount, 0);
+  assert.equal(
+    h.page.data.items.length,
+    2,
+    'filtering never discards original loaded notifications',
+  );
+  const after = buildPreview({ root, route: 'pages/messages/index', data: h.page.data });
+  assert.match(after.phone, /已读取范围内暂无未读消息/);
+});
+test('finance workspace uses existing channel capability and discards private results after hide', async () => {
+  let visible = true;
+  const writes = [];
+  const ui = {
+    begin: () => 1,
+    live: () => visible,
+    session: async () => ({ user: { id: id(1) } }),
+    close: () => {
+      visible = false;
+    },
+    message: (e) => e.message,
+  };
+  let resolveRead;
+  const wait = new Promise((resolve) => {
+    resolveRead = resolve;
+  });
+  const trade = {
+    id: (value) => value,
+    money: (value) => '¥' + value,
+    pending: () => null,
+    read: async (p) => (p.includes('/terms') ? { terms: [], providerConfigured: false } : wait),
+    execute: async (...args) => {
+      writes.push(args);
+    },
+  };
+  const h = loadPage({
+    root,
+    route: 'pages/trade-manage/index',
+    wx: createWx(),
+    modules: {
+      [path.join(root, 'utils/ui.js')]: ui,
+      [path.join(root, 'pages/trade-order/client.js')]: trade,
+    },
+  });
+  h.page._alive = true;
+  h.page._visible = true;
+  h.page.setData({ orgId: id(2) });
+  const loading = h.page.load();
+  await new Promise(setImmediate);
+  h.page.onHide();
+  resolveRead({ orders: [{ id: id(3), title: '合成私有订单', totalFen: 100 }] });
+  await loading;
+  assert.equal(h.page.data.workspaceReady, false);
+  assert.equal(h.page.data.orders.length, 0);
+  assert.equal(h.page.data.loading, false);
+  h.page.setData({ date: '2028-06-01', workspaceReady: true, providerConfigured: false });
+  h.page.reconcile();
+  assert.equal(writes.length, 0);
+  assert.match(h.page.data.error, /未配置可用资金渠道/);
 });

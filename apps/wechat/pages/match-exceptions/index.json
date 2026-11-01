@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "比赛异常裁定" }
+{
+  "navigationBarTitleText": "比赛异常裁定",
+  "navigationStyle": "custom"
+}

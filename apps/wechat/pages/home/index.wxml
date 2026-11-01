@@ -1,5 +1,5 @@
 <scb-header home="{{true}}" back="{{false}}" bind:search="openSearch"/>
-<view class="page home-page home-ui002">
+<view class="page home-page home-ui">
  <view class="home-filters"><button class="{{citySelection.mode==='NATIONWIDE' ? 'active' : ''}}" bindtap="nationwide">全国</button><button bindtap="chooseCity">{{citySelection.mode==='NATIONWIDE' ? '切换城市' : citySelection.label}}</button><button bindtap="openSearch">搜索</button><button data-page="messages" bindtap="go">消息</button></view>
  <view class="home-hero"><view class="home-brand-row"><view class="home-brand-copy"><view class="home-eyebrow">SMALL CITY · BIG GAME</view><view class="home-headline">每一场，都值得被看见</view></view><image class="home-brand-ball" src="/assets/ui002/node-4-43-0.svg" mode="aspectFit" aria-hidden="true"/></view><view class="home-tagline">全国找赛事，同城一起上场。</view><button class="home-primary" bindtap="openEvents">发现正在进行的赛事</button></view>
  <view wx:if="{{citySelection.warning}}" class="notice warning">{{citySelection.warning}}</view>

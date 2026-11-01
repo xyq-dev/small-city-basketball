@@ -1,5 +1,6 @@
-<view class="page">
- <scb-header title="微信订阅提醒"/>
+<scb-header title="微信订阅提醒" disabled="{{busy}}"/>
+<view class="page ui002-workspace">
+  <view class="page-intro"><view class="eyebrow">提醒设置</view><view class="title">每次订阅由本人明确选择</view></view>
  <view wx:if="{{loginRequired}}" class="card"><view>登录并绑定当前小程序微信身份后，可逐次选择提醒。</view><button class="primary" bindtap="login">登录并继续</button></view>
  <view class="notice">关注赛事不代表已授权订阅。每次由本人在微信弹窗选择，一次许可只安排一次提醒；微信受理不代表已经送达。</view>
  <view wx:if="{{!enabled}}" class="notice warning">正式微信模板或通道尚未配置。当前可查看站内消息，不会发送微信提醒。</view>

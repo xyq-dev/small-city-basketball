@@ -1,5 +1,6 @@
+<scb-header title="本人报名资料" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page materials-page">
-  <scb-header title="本人报名资料"/>
+
   <view class="material-page-title"><view class="material-kicker">赛事报名 · 私有资料</view><view class="title">{{mode === 'list' ? '我的本人报名' : mode === 'review' ? '本人资料审核与进度' : '填写本人参赛资料'}}</view><view class="muted">本人资料、队伍报名与最终名单分别审核。</view></view>
   <view wx:if="{{error}}" class="notice warning" role="alert">{{error}}</view>
   <view wx:if="{{message}}" class="notice" role="status">{{message}}</view>

@@ -1,4 +1,4 @@
-page { background:#f5f7fa; }
+page { background:#f4f6fa; }
 .profile-hero { position:relative; width:100%; height:260px; overflow:hidden; background:#102d44; color:#fff; }
 .profile-hero-image { position:absolute; right:0; top:-50px; width:72%; height:auto; }
 .profile-hero-shade { position:absolute; inset:0; background:linear-gradient(90deg,#102d44 0%,#102d44 28%,rgba(16,45,68,.72) 32%,rgba(16,45,68,.25) 40%,rgba(16,45,68,0) 54%); }
@@ -19,34 +19,34 @@ page { background:#f5f7fa; }
 .profile-records-toggle { display:flex; align-items:center; justify-content:flex-end; gap:2px; width:auto; max-width:48%; min-height:44px; margin:0; padding:4px 0 4px 4px; color:#8390a3; font-size:11px; line-height:18px; }
 .profile-metrics { display:flex; gap:8px; margin-top:0; }
 .profile-metric { flex:1; min-width:0; min-height:60px; padding:7px 4px; border-radius:10px; background:#f4f7fa; color:#7b899d; text-align:center; font-size:12px; line-height:20px; }
-.metric-value { color:#132c49; font-family:Arial,sans-serif; font-size:26px; line-height:30px; font-weight:700; overflow-wrap:anywhere; }
+.metric-value { color:#123c73; font-family:Arial,sans-serif; font-size:26px; line-height:30px; font-weight:700; overflow-wrap:anywhere; }
 .metric-value text { font-size:16px; }
 .metric-value.textual { font-size:18px; }
 .sample-limit { display:flex; align-items:center; gap:6px; margin-top:10px; color:#8390a3; font-size:12px; line-height:20px; }
-.zero-note { color:#617286; font-size:11px; line-height:18px; margin-top:4px; }
+.zero-note { color:#63758b; font-size:11px; line-height:18px; margin-top:4px; }
 .profile-card { display:flex; flex-direction:column; gap:8px; padding:14px 16px; }
 .profile-card .subtitle { margin:0; font-size:16px; line-height:24px; font-weight:700; }
 .profile-introduction { min-height:96px; }
-.bio { color:#132c49; font-size:15px; line-height:24px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.bio { color:#123c73; font-size:15px; line-height:24px; white-space:pre-wrap; overflow-wrap:anywhere; }
 .availability-card { min-height:88px; }
-.window-row { display:flex; align-items:flex-start; gap:10px; padding:2px 0; color:#132c49; font-size:14px; line-height:22px; }
-.profile-copy { color:#617286; font-size:14px; line-height:24px; }
+.window-row { display:flex; align-items:flex-start; gap:10px; padding:2px 0; color:#123c73; font-size:14px; line-height:22px; }
+.profile-copy { color:#63758b; font-size:14px; line-height:24px; }
 .profile-more-toggle { margin-top:8px; margin-bottom:12px; font-size:12px; }
 .profile-information > .notice { margin-bottom:12px; }
 .compare-actions { display:flex; gap:8px; }
 .compare-actions button { flex:1; min-width:0; margin:0; }
-.profile-action { padding:12px 12px calc(20px + env(safe-area-inset-bottom)); background:#f5f7fa; border-radius:0; }
-.profile-action .primary { min-height:56px; margin:0; border-radius:10px; background:#ff6b2d; color:#fff; font-size:20px; line-height:28px; font-weight:600; }
+.profile-action { padding:12px 12px calc(20px + env(safe-area-inset-bottom)); background:#f4f6fa; border-radius:0; }
+.profile-action .primary { min-height:56px; margin:0; border-radius:10px; background:#f28c28; color:#fff; font-size:20px; line-height:28px; font-weight:600; }
 .profile-action .quiet { margin:4px 0 0; }
 .state-card { margin-top:12px; }
 .state-card .muted { font-size:14px; line-height:24px; }
 .state-card button { margin-top:16px; margin-bottom:0; }
 .records-stats { gap:12px; padding-top:12px; }
 .records-stats .stat { padding:16px; border-radius:12px; }
-.stat-value { color:#132c49; font-family:Arial,sans-serif; font-size:34px; line-height:44px; font-weight:600; margin-bottom:4px; overflow-wrap:anywhere; }
+.stat-value { color:#123c73; font-family:Arial,sans-serif; font-size:34px; line-height:44px; font-weight:600; margin-bottom:4px; overflow-wrap:anywhere; }
 .record-card { display:flex; flex-direction:column; gap:8px; }
-.record-name { color:#132c49; font-size:18px; line-height:28px; font-weight:500; }
-.record-score { margin:0; color:#132c49; font-size:18px; line-height:28px; font-weight:500; }
+.record-name { color:#123c73; font-size:18px; line-height:28px; font-weight:500; }
+.record-score { margin:0; color:#123c73; font-size:18px; line-height:28px; font-weight:500; }
 .records > view { margin-bottom:8px; }
 .records .subtitle { margin-bottom:8px; }
 .notice-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }

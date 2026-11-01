@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "费用与后续功能" }
+{
+  "navigationBarTitleText": "费用与后续功能",
+  "navigationStyle": "custom"
+}

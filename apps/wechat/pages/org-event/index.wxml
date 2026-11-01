@@ -1,3 +1,4 @@
+<scb-header title="赛事详情" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page org-event-page">
   <view wx:if="{{loading && !event}}" class="card state-panel">
     <text class="state-label">机构赛事</text>
@@ -23,17 +24,22 @@
     </view>
     <view wx:if="{{manage}}" class="card manage-card">
       <view class="subtitle">赛事管理</view>
+      <view class="muted small">按办赛顺序进入，所有操作继续核对当前机构及赛事授权。</view>
       <view class="manage-links">
-        <button class="secondary" data-page="recruitment" bindtap="openFeature">公开招募、导入与本届邀请</button>
+        <button class="secondary" bindtap="openSetup">1 · 赛事设置与排赛<text class="manage-sub">保存本届规则与办赛模板</text></button>
+        <button class="secondary" data-page="recruitment" bindtap="openFeature">2 · 公开招募、导入与本届邀请<text class="manage-sub">加入长期球队与本届报名分别办理</text></button>
+        <button wx:if="{{manage.review}}" class="secondary" bindtap="openReview">3 · 报名审核<text class="manage-sub">{{manage.reviewLabel}}</text></button>
+        <button class="secondary" bindtap="openSchedule">4 · 抽签与排程<text class="manage-sub">先冻结名单，再核对场地及队伍冲突</text></button>
+        <button class="secondary" bindtap="openTasks">5 · 记分与赛果确认<text class="manage-sub">记分与独立复核分开</text></button>
+      </view>
+      <button class="quiet" bindtap="toggleManagementTools" disabled="{{loading}}">{{managementToolsOpen ? '收起其他授权工具' : '其他授权工具：工作人员、财务与媒体'}}</button>
+      <view wx:if="{{managementToolsOpen}}" class="manage-links">
         <button class="secondary" data-page="youth-review" bindtap="openFeature">青少年与监护独立审核</button>
         <button class="secondary" data-page="trade-manage" bindtap="openFeature">报名费、保证金与收款条款</button>
-<button class="secondary" data-page="poster" bindtap="openFeature">授权宣传海报</button>
-<button class="secondary" data-page="staff-configuration" bindtap="openFeature">赛事工作人员</button>
-<button class="secondary" data-page="match-exceptions" bindtap="openFeature">弃权与取消规则</button>
-<button class="secondary" bindtap="openSetup">赛事设置与排赛</button>
+        <button class="secondary" data-page="poster" bindtap="openFeature">授权宣传海报</button>
+        <button class="secondary" data-page="staff-configuration" bindtap="openFeature">赛事工作人员</button>
+        <button class="secondary" data-page="match-exceptions" bindtap="openFeature">弃权与取消规则</button>
         <button wx:if="{{event.format !== 'ROUND_ROBIN' && event.format !== 'DOUBLE_ROUND_ROBIN'}}" class="secondary" bindtap="openBracket">{{event.format === 'GROUP_KNOCKOUT' ? '分组积分与晋级发布' : '签位与下一轮发布'}}</button>
-        <button class="secondary" bindtap="openTasks">记分与赛果确认</button>
-        <button wx:if="{{manage.review}}" class="secondary" bindtap="openReview">报名审核<text class="manage-sub">{{manage.reviewLabel}}</text></button>
         <button wx:if="{{manage.seasonGrants}}" class="secondary" bindtap="openSeasonGrants">私有赛季数据提名<text class="manage-sub">提名后仍需球员本人同意</text></button>
       </view>
       <block wx:if="{{manage.progress}}">

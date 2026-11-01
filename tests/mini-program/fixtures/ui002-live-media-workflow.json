@@ -1,0 +1,18 @@
+{
+  "name": "ui002-live-media-workflow",
+  "route": "pages/media/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "figmaNode": "5:744",
+  "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
+  "expectText": ["合成石鼓城市篮球邀请赛", "以当前有效发布为准"],
+  "data": {
+    "recentEvents": [
+      {
+        "publicEventId": "UI002SyntheticPublicEvent",
+        "name": "合成石鼓城市篮球邀请赛·超长名称跨行显示",
+        "dateLabel": "2028年6月1日"
+      }
+    ]
+  }
+}

@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "线下经费记账与公示" }
+{
+  "navigationBarTitleText": "线下经费记账与公示",
+  "navigationStyle": "custom"
+}

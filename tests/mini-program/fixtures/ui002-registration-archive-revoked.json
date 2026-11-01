@@ -1,0 +1,14 @@
+{
+  "name": "ui002-registration-archive-revoked",
+  "route": "pages/public-archive/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 actual native route and capability states; synthetic data only",
+  "expectText": ["公开档案已撤销、停用或不存在。"],
+  "data": {
+    "archive": null,
+    "entries": [],
+    "loading": false,
+    "error": "公开档案已撤销、停用或不存在。"
+  },
+  "expectAbsentText": ["合成球员独立公开档案"]
+}

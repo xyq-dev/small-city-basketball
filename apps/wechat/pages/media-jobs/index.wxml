@@ -1,5 +1,5 @@
 <scb-header title="录像与媒体作业" disabled="{{busy}}"/>
-<view class="page media-workspace">
+<view class="page media-workspace ui002-workspace">
   <view class="page-intro"><view class="eyebrow">本场媒体</view><view class="title">录制产物与任务</view><view class="muted">录像、转码、得分集锦分别核对；录制时长不等于整场完整。</view></view>
   <scb-state wx:if="{{loading}}" kind="loading" title="正在读取媒体任务" description="以当前授权和真实产物为准。"/><view wx:if="{{error}}" class="error">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view>
   <button bindtap="load" disabled="{{busy || loading}}">刷新服务器处理状态</button>

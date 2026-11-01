@@ -1,3 +1,4 @@
+<scb-header title="建队申请审核" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page c19-page">
   <view wx:if="{{error}}" class="notice warning" role="alert"><view class="feedback-title">请核对后继续</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice">{{message}}</view>

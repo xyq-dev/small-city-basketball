@@ -49,6 +49,7 @@ Page({
   },
   onHide() {
     this._hidden = true;
+    this._viewRead = (this._viewRead || 0) + 1;
     this._generation++;
     this._makeupRequest = (this._makeupRequest || 0) + 1;
     this.setData({
@@ -65,6 +66,7 @@ Page({
     ui.close(this);
   },
   onSessionReset() {
+    this._viewRead = (this._viewRead || 0) + 1;
     this._generation++;
     this._makeupRequest = (this._makeupRequest || 0) + 1;
     this._actor = '';
@@ -126,6 +128,8 @@ Page({
   },
   async loadMine() {
     if (this.data.busy) return;
+    const read = (this._viewRead || 0) + 1;
+    this._viewRead = read;
     this.setData({
       viewTab: 'mine',
       detail: null,
@@ -135,25 +139,29 @@ Page({
     });
     try {
       const s = await this.identify();
-      if (!s) return;
+      if (!s || read !== this._viewRead) return;
       const g = this._generation;
       const r = await training.read('/v1/training/mine');
-      if (this.live(g) && this._actor === s.user.id)
+      if (this.live(g) && read === this._viewRead && this._actor === s.user.id)
         this.setData({ mine: r.items.map(training.enrollment), mineLoaded: true });
     } catch (e) {
-      this.setData({ error: ui.message(e) });
+      if (this._alive && !this._hidden && read === this._viewRead)
+        this.setData({ error: ui.message(e) });
     } finally {
-      if (this._alive && !this._hidden) this.setData({ mineLoading: false });
+      if (this._alive && !this._hidden && read === this._viewRead)
+        this.setData({ mineLoading: false });
     }
   },
   select(e) {
     this.showDetail(training.id(e.currentTarget.dataset.id));
   },
   async showDetail(id) {
+    const read = (this._viewRead || 0) + 1;
+    this._viewRead = read;
     try {
       const g = this._generation,
         r = await training.read('/v1/training/cohorts/' + training.id(id));
-      if (this.live(g))
+      if (this.live(g) && read === this._viewRead)
         this.setData({
           detail: training.cohort(r),
           enrollment: null,
@@ -164,19 +172,22 @@ Page({
           chargeConsent: false,
         });
     } catch (e) {
-      this.setData({ error: ui.message(e) });
+      if (this._alive && !this._hidden && read === this._viewRead)
+        this.setData({ error: ui.message(e) });
     }
   },
   selectEnrollment(e) {
     this.showEnrollment(e.currentTarget.dataset.id);
   },
   async showEnrollment(id) {
+    const read = (this._viewRead || 0) + 1;
+    this._viewRead = read;
     try {
       const s = await this.identify();
-      if (!s) return;
+      if (!s || read !== this._viewRead) return;
       const g = this._generation,
         r = await training.read('/v1/training/enrollments/' + training.id(id));
-      if (this.live(g) && this._actor === s.user.id)
+      if (this.live(g) && read === this._viewRead && this._actor === s.user.id)
         this.setData({
           enrollment: training.enrollment(r),
           detail: null,
@@ -186,15 +197,18 @@ Page({
           makeupLoading: false,
         });
     } catch (e) {
-      this.setData({ error: ui.message(e) });
+      if (this._alive && !this._hidden && read === this._viewRead)
+        this.setData({ error: ui.message(e) });
     }
   },
   showCatalog() {
     if (this.data.busy) return;
+    this._viewRead = (this._viewRead || 0) + 1;
     this._cohort = '';
     this._enrollment = '';
     this.setData({
       viewTab: 'catalog',
+      mineLoading: false,
       detail: null,
       enrollment: null,
       makeup: null,
@@ -206,11 +220,13 @@ Page({
   },
   backToList() {
     if (this.data.busy) return;
+    this._viewRead = (this._viewRead || 0) + 1;
     this._cohort = '';
     this._enrollment = '';
     this.setData({
       detail: null,
       enrollment: null,
+      mineLoading: false,
       makeup: null,
       signupStep: 'course',
       adult: false,

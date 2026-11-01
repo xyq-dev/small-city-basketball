@@ -1,3 +1,4 @@
+<scb-header title="报名审核" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page mgmt-page">
   <view wx:if="{{loading && !event}}" class="card state-panel">
     <text class="state-label">报名审核</text>

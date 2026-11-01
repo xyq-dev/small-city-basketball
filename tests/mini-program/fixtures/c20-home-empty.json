@@ -13,9 +13,5 @@
     "publicLoaded": true,
     "publicEvents": []
   },
-  "expectText": [
-    "暂无已列入目录的进行中赛事",
-    "查看其他赛事阶段",
-    "浏览全国"
-  ]
+  "expectText": ["暂无进行中赛事", "查看全部赛事", "切换城市"]
 }

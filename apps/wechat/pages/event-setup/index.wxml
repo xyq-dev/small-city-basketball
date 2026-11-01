@@ -1,11 +1,14 @@
+<scb-header title="赛事设置" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page mgmt-page setup-page">
+  <view class="page-intro"><view class="eyebrow">主办方工作台</view><view class="subtitle">{{creating ? '从模板开始办赛' : '按实际进度完成本届设置'}}</view><view class="muted">设置项仍受赛事阶段和当前权限限制。</view></view>
+  <view class="workflow-tabs"><button wx:for="{{setupSections}}" wx:key="key" class="{{setupSection === item.key ? 'selected' : ''}}" data-section="{{item.key}}" bindtap="jumpSetupSection" disabled="{{busy || loading || templatePending}}">{{item.label}}</button></view>
   <view wx:if="{{error}}" class="notice warning">{{error}}</view>
   <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
   <view wx:if="{{templatePending}}" class="card"><view class="subtitle">有模板请求待核对</view><view class="muted">原编号和内容已保存在当前账号、机构下。核对完成前不能创建另一个模板或赛事。</view><button class="primary" bindtap="resumeTemplate" disabled="{{busy}}">核对并重试原请求</button></view>
 
   <block wx:if="{{creating}}">
     <view class="intro-card"><view class="subtitle">创建赛事草稿</view><view class="muted">草稿只对本机构工作人员可见。之后设置报名规则、开放报名、审核并冻结名单，再排赛发布。</view></view>
-    <view class="card">
+    <view id="setup-template" class="card">
       <view class="subtitle">从模板开始</view>
       <view wx:if="{{templateLoading}}" class="muted">正在读取机构模板</view>
       <view wx:if="{{templateError}}" class="notice small">{{templateError}}</view>
@@ -19,7 +22,7 @@
       <button class="quiet" bindtap="loadTemplates" disabled="{{busy || templateLoading}}">刷新模板</button>
       <block wx:if="{{templateCanArchive}}"><text class="field-label">归档此模板的原因</text><textarea class="field" value="{{templateArchiveReason}}" data-field="templateArchiveReason" bindinput="templateField" maxlength="500"/><button class="danger" bindtap="archiveTemplate" disabled="{{busy || templatePending}}">归档所选模板</button></block>
     </view>
-    <view class="card">
+    <view id="setup-basic" class="card">
       <text class="field-label">赛事名称</text>
       <input class="field" value="{{draft.name}}" data-section="draft" data-field="name" bindinput="field" maxlength="80" placeholder="例如 青锋杯·冬季赛"/>
       <text class="field-label">开始日期</text>
@@ -53,7 +56,7 @@
       <button bindtap="openReview">报名审核</button>
       <button bindtap="openSchedule">排赛</button>
     </view>
-    <view class="card">
+    <view id="setup-guide" class="card">
       <view class="subtitle">办赛向导</view>
       <view wx:if="{{guideError}}" class="notice small">{{guideError}}。请刷新后核对当前步骤。</view>
       <block wx:if="{{setupGuide}}">
@@ -63,7 +66,7 @@
       </block>
     </view>
 
-    <view wx:if="{{draft}}" class="card">
+    <view wx:if="{{draft}}" id="setup-basic" class="card">
       <view class="subtitle">基本信息（草稿可改）</view>
       <text class="field-label">赛事名称</text>
       <input class="field" value="{{draft.name}}" data-section="draft" data-field="name" bindinput="field" maxlength="80"/>
@@ -78,7 +81,7 @@
       <button class="primary" bindtap="saveEvent" disabled="{{busy}}">保存基本信息</button>
     </view>
 
-    <view wx:if="{{registration}}" class="card">
+    <view wx:if="{{registration}}" id="setup-registration" class="card">
       <view class="row-between"><view class="subtitle">报名规则</view><text class="badge">{{registration.saved ? '已设置' : '未设置'}}</text></view>
       <block wx:if="{{registration.editable}}">
         <view class="setup-pair">
@@ -95,7 +98,7 @@
       <view wx:else class="muted">每队 {{registration.minPlayers}}–{{registration.maxPlayers}} 人。报名规则只能在草稿阶段修改。</view>
     </view>
 
-    <view wx:if="{{scoring}}" class="card">
+    <view wx:if="{{scoring}}" id="setup-scoring" class="card">
       <view class="row-between"><view class="subtitle">记分规则</view><text class="badge">{{scoring.locked ? '已锁定' : scoring.saved ? '已设置' : '未设置'}}</text></view>
       <block wx:if="{{scoring.editable}}">
         <view class="setup-trio">
@@ -116,7 +119,7 @@
       <view wx:else class="muted">{{scoring.periods}} 节 × {{scoring.durationLabel}} · {{scoring.overtime ? '平分加时 ' + scoring.otLabel : '允许平局'}}{{scoring.locked ? '。比赛已准备，规则已锁定。' : ''}}</view>
     </view>
 
-    <view wx:if="{{standings}}" class="card">
+    <view wx:if="{{standings}}" id="setup-standings" class="card">
       <view class="row-between"><view class="subtitle">{{event.groups ? '组内积分规则' : '积分规则'}}</view><text class="badge">{{standings.locked ? '已锁定' : standings.saved ? '草稿' : '未设置'}}</text></view>
       <block wx:if="{{standings.editable}}">
         <view class="setup-trio">
@@ -137,7 +140,7 @@
       <view wx:else class="muted">胜 {{standings.win}} · 平 {{standings.draw}} · 负 {{standings.loss}} · 同分依次比较：{{standings.orderLabel}}。规则已锁定，正式积分只计入独立确认的赛果。</view>
     </view>
 
-    <view wx:if="{{viewing}}" class="card">
+    <view wx:if="{{viewing}}" id="setup-viewing" class="card">
       <view class="row-between"><view class="subtitle">公开观赛</view><text class="badge {{viewing.active ? 'success' : ''}}">{{viewing.active ? '已开启' : '未开启'}}</text></view>
       <view class="muted">观众凭链接或分享卡片查看赛程、比分与排名，不含名单、联系方式等私密资料。关闭后旧链接立即失效。</view>
       <button wx:if="{{viewing.active}}" class="secondary" bindtap="openPublic">打开公开观赛页（可分享）</button>
@@ -146,7 +149,7 @@
       <button wx:if="{{viewing.canDisable}}" class="danger" data-type="DISABLE" bindtap="viewing" disabled="{{busy}}">关闭公开观赛</button>
       <view wx:if="{{!viewing.active && !viewing.canEnable}}" class="muted">{{event.knockout ? '需先发布正式赛程。' : '需先锁定积分规则并发布正式赛程。'}}{{event.roundRobin ? '' : '每次发布淘汰轮次都会撤销旧链接，需重新开启。'}}</view>
     </view>
-    <view wx:if="{{directory}}" class="card">
+    <view wx:if="{{directory}}" id="setup-directory" class="card">
       <view class="row-between"><view class="subtitle">公开赛事目录</view><text class="badge {{directory.listed ? 'success' : ''}}">{{directory.listed ? '已列入' : '未列入'}}</text></view>
       <view class="muted">开启公开观赛不会自动列入目录。列入后，所有观众都能在“赛事”页的公开赛事中发现本届赛事。</view>
       <view wx:if="{{directory.listed}}" class="muted">当前分组：{{directory.group || '—'}}{{directory.city ? ' · 城市：' + directory.city : ''}}</view>
@@ -171,7 +174,7 @@
         <button wx:if="{{directory.canUnlist}}" class="danger" bindtap="unlistDirectory" disabled="{{busy}}">撤出目录（保留分享链接）</button>
       </block>
     </view>
-    <view wx:if="{{templateCanManage}}" class="card">
+    <view wx:if="{{templateCanManage}}" id="setup-template" class="card">
       <view class="subtitle">保存为可复用办赛模板</view>
       <view class="muted">复制服务器上已保存的报名、记分和积分规则。队伍、人员、场地编号、日期、权限与公开状态均不复制。</view>
       <text class="field-label">模板名称</text><input class="field" value="{{templateName}}" data-field="templateName" bindinput="templateField" maxlength="80"/>

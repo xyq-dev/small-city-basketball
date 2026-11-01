@@ -30,5 +30,6 @@
     "cameraReady": true,
     "phoneState": "合成状态：本机采集中；静态占位，未实际采集或推流"
   },
-  "expectDisabled": ["创建待批准直播"]
+  "expectDisabled": ["创建待批准直播"],
+  "figmaNode": "8:1332"
 }

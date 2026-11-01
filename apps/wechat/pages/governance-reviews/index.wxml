@@ -1,4 +1,6 @@
-<view class="page"><scb-header title="真实服务评价"/><view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view><view wx:if="{{loading}}">正在核对当前资料…</view>
+<scb-header title="真实服务评价" disabled="{{busy}}"/>
+<view class="page ui002-workspace">
+  <view class="page-intro"><view class="eyebrow">真实服务评价</view><view class="title">评价已完成且本人参与的服务</view></view><view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view><view wx:if="{{loading}}">正在核对当前资料…</view>
 <view wx:if="{{publicReview}}" class="card"><view class="title">{{publicReview.score}}／5 分</view><view>{{publicReview.body}}</view><view class="small muted">{{publicReview.authorLabel}} · {{publicReview.createdAt}}</view><view class="notice">{{publicReview.notice}}</view><button open-type="share">分享当前评价</button></view>
 <view wx:if="{{loginRequired}}" class="card"><button bindtap="login">登录查看本人评价</button></view>
 <view wx:if="{{pending}}" class="card">有原操作待核对。<button bindtap="recover">查询原操作</button><button data-cancel="true" bindtap="recover">明确放弃未确认操作</button></view>

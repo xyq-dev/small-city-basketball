@@ -130,6 +130,16 @@ Page({
     creating: false,
     formats: FORMATS,
     tiebreakers: TIEBREAKERS,
+    setupSection: 'guide',
+    setupSections: [
+      { key: 'guide', label: '办赛进度' },
+      { key: 'basic', label: '基本信息' },
+      { key: 'registration', label: '报名规则' },
+      { key: 'scoring', label: '记分规则' },
+      { key: 'standings', label: '积分规则' },
+      { key: 'directory', label: '观赛与地区' },
+      { key: 'template', label: '办赛模板' },
+    ],
     ...privateDefaults,
   },
   onLoad(query = {}) {
@@ -462,6 +472,30 @@ Page({
     else if (step.action === 'SCHEDULING') this.openSchedule();
     else if (step.action === 'EVENT') this.openEvent();
     else this.setData({ notice: '请在下方保存规则，并按向导处理缺项。' });
+  },
+  jumpSetupSection(e) {
+    if (this.data.busy || this.data.loading || this.data.templatePending) return;
+    const key = e.currentTarget.dataset.section;
+    if (!this.data.setupSections.some((section) => section.key === key)) return;
+    const available = {
+      guide: !!this.data.setupGuide,
+      basic: !!this.data.draft,
+      registration: !!this.data.registration,
+      scoring: !!this.data.scoring,
+      standings: !!this.data.standings,
+      directory: !!this.data.viewing || !!this.data.directory,
+      template: !!this.data.templateCanManage || this.data.creating,
+    };
+    if (!available[key]) {
+      this.setData({ notice: '当前身份或赛事阶段没有此项设置，请先核对办赛向导与权限。' });
+      return;
+    }
+    this.setData({ setupSection: key });
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({
+        selector: key === 'directory' && !this.data.directory ? '#setup-viewing' : '#setup-' + key,
+        duration: 180,
+      });
   },
   async executeTemplate(body, label, op) {
     if (this.data.busy || !op || !op.valid()) return null;

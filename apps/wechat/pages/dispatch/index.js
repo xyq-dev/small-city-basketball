@@ -152,6 +152,7 @@ Page({
     const key = e.currentTarget.dataset.key;
     if (!['requests', 'offers', 'preference', 'create'].includes(key)) return;
     if (key === 'create' && !this.data.organizations.length) return;
+    ui.begin(this);
     this.setData({
       dispatchView: key,
       detail: null,
@@ -161,8 +162,10 @@ Page({
     });
   },
   closeDetail() {
-    if (!this.data.busy && !this.data.loading)
+    if (!this.data.busy && !this.data.loading) {
+      ui.begin(this);
       this.setData({ detail: null, selectedOffer: null, reason: '', ...freshQuote() });
+    }
   },
   input(e) {
     const key = e.currentTarget.dataset.field;

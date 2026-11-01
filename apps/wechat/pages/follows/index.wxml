@@ -1,4 +1,5 @@
-<view class="page follows-page">
+<scb-header title="我的关注" disabled="{{busy}}"/>
+<view class="page follows-page ui002-workspace">
   <view class="notice follows-reminder"><view class="feedback-title">关注与微信提醒分开</view><view class="small">关注成功只表示可在此处查看。{{reminderOff}}</view></view>
   <view wx:if="{{notice}}" class="notice">{{notice}}</view>
   <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">操作未完成</view><view class="small">{{error}}</view></view>

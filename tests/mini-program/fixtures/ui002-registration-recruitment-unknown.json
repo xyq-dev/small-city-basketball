@@ -1,0 +1,38 @@
+{
+  "name": "ui002-registration-recruitment-unknown",
+  "route": "pages/recruitment/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 actual native route and capability states; synthetic data only",
+  "expectText": ["原申请结果未知", "查询原回执", "以原编号和原内容重试"],
+  "data": {
+    "mode": "public",
+    "userId": "00000000-0000-4000-8000-000000000003",
+    "public": {
+      "title": "合成第三届公开招募",
+      "event": {
+        "name": "合成城市邀请赛",
+        "startDate": "2028-05-01",
+        "endDate": "2028-05-03",
+        "venueName": "合成文化体育中心"
+      },
+      "description": "仅合成演示。以本届实际规则和独立审核为准。",
+      "closesAt": "2028-04-29T18:00:00+08:00",
+      "requirements": {
+        "minPlayers": 5,
+        "maxPlayers": 15
+      },
+      "notice": "申请不等于报名通过。"
+    },
+    "teamName": "合成青年篮球队",
+    "note": "合成本届参赛申请",
+    "busy": false,
+    "loading": false,
+    "pending": {
+      "body": {
+        "clientRequestId": "00000000-0000-4000-8000-000000000004"
+      }
+    },
+    "error": "原申请结果未知，不能新建重复申请。"
+  },
+  "expectDisabled": ["提交本届参赛申请"]
+}

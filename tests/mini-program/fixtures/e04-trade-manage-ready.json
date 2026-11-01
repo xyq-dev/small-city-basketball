@@ -55,6 +55,8 @@
     "termsText": "合成静态收费与退款条款：按赛事实际服务执行，改期或取消须向参与者说明并保留证据。",
     "reason": "合成静态：独立核对服务及退款条款",
     "date": "2026-10-31",
-    "pending": null
+    "pending": null,
+    "workspaceReady": true,
+    "providerConfigured": false
   }
 }

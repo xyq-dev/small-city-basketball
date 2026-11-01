@@ -87,10 +87,14 @@ test('C19 account entries expose participant flows and organization-scoped manag
     '申请建队',
     '加入球队与成员认领',
     '私有赛季授权与本人数据',
-    '建队申请审批',
-    '私有赛季管理',
   ])
     assert.ok(html.includes(label), label);
+  assert.equal(html.includes('建队申请审批'), false);
+  h.page.workspace({ currentTarget: { dataset: { key: 'work' } } });
+  const work = buildPreview({ root, route: 'pages/account/index', data: h.page.data }).phone;
+  for (const label of ['当前授权工作台', '建队申请审批', '私有赛季管理'])
+    assert.ok(work.includes(label), label);
+  assert.equal(work.includes('合成工作人员机构 · 商业合同'), false);
   for (const page of ['follows', 'memberships', 'team-request', 'team-join', 'season-grants']) {
     h.page.go({ currentTarget: { dataset: { page } } });
     assert.equal(h.wx.calls.at(-1).url, '/pages/' + page + '/index');

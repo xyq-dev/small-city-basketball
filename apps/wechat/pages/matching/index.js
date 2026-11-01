@@ -213,25 +213,28 @@ Page({
     }
   },
   toggleCreate() {
-    if (!this.data.busy)
-      this.setData({
-        creating: !this.data.creating,
-        supplyOpen: false,
-        selected: null,
-        conversion: null,
-        formStep: 'details',
-      });
+    if (this.data.busy) return;
+    ui.begin(this);
+    this.setData({
+      creating: !this.data.creating,
+      supplyOpen: false,
+      selected: null,
+      conversion: null,
+      formStep: 'details',
+      loading: false,
+    });
   },
   toggleSupply() {
-    if (!this.data.busy) {
-      this.setData({
-        supplyOpen: !this.data.supplyOpen,
-        creating: false,
-        selected: null,
-        conversion: null,
-      });
-      this.chooseSource({ detail: { value: this.data.sourceIndex } });
-    }
+    if (this.data.busy) return;
+    ui.begin(this);
+    this.setData({
+      supplyOpen: !this.data.supplyOpen,
+      creating: false,
+      selected: null,
+      conversion: null,
+      loading: false,
+    });
+    this.chooseSource({ detail: { value: this.data.sourceIndex } });
   },
   workspaceTab(e) {
     if (this.data.busy || this.data.loading) return;

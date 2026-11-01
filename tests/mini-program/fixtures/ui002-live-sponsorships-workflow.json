@@ -1,0 +1,52 @@
+{
+  "name": "ui002-live-sponsorships-workflow",
+  "route": "pages/sponsorships/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "figmaNode": "9:1288",
+  "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
+  "expectText": ["投放、独立审核与公开展示分开", "合成石鼓公益篮球品牌", "分享此投放"],
+  "data": {
+    "mode": "public",
+    "organizations": [],
+    "orgIndex": 0,
+    "regions": [],
+    "regionIndex": 0,
+    "events": [
+      {
+        "id": null,
+        "name": "不限赛事，仅按地区投放"
+      }
+    ],
+    "eventIndex": 0,
+    "eventQuery": "",
+    "items": [],
+    "publicItems": [],
+    "nextCursor": null,
+    "selected": null,
+    "publicCard": {
+      "label": "广告／赞助",
+      "brand": "合成石鼓公益篮球品牌",
+      "title": "合成城市篮球赛事公开赞助",
+      "body": "合成当前时段公开投放文案，仅用于布局，未产生真实曝光。",
+      "startsAt": "2028-06-01 18:00",
+      "endsAt": "2028-06-01 23:00"
+    },
+    "brand": "",
+    "title": "",
+    "body": "",
+    "startDate": "",
+    "startTime": "00:00",
+    "endDate": "",
+    "endTime": "23:59",
+    "reason": "",
+    "pending": null,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "notice": "合成公开投放，未请求外部资源。",
+    "loginRequired": false,
+    "measurementNotice": "展示数仅为客户端按发布批次和操作编号去重的上报数，不代表独立人数、真实观看或结算凭证。"
+  },
+  "expectAbsentText": ["创建投放草稿"]
+}

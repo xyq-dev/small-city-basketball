@@ -1,0 +1,34 @@
+{
+  "name": "ui002-registration-exception-unknown",
+  "route": "pages/match-exceptions/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 actual native route and capability states; synthetic data only",
+  "expectText": ["原裁定请求结果未知", "使用原操作编号重试", "待复核：单场取消"],
+  "data": {
+    "event": {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "name": "合成邀请赛"
+    },
+    "rules": {
+      "forfeitWinPoints": 2,
+      "forfeitLossPoints": 0
+    },
+    "canEdit": false,
+    "canPropose": false,
+    "canReview": true,
+    "reason": "合成因天气无法按时开赛，申请独立核对",
+    "rulesOnly": false,
+    "requests": [],
+    "busy": false,
+    "uncertain": true,
+    "kind": "FORFEIT",
+    "side": "HOME",
+    "pending": {
+      "title": "单场取消",
+      "sideLabel": "全场",
+      "reason": "合成场地封闭待独立核对"
+    },
+    "notice": "原裁定请求结果未知，请核对原编号。"
+  },
+  "expectDisabled": ["批准提案", "驳回提案"]
+}

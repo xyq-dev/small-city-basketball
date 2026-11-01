@@ -1,0 +1,22 @@
+{
+  "name": "ui002-live-account-recovery-workflow",
+  "route": "pages/account-recovery/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "figmaNode": "9:1063",
+  "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
+  "expectText": ["申请与使用操作码分别核对", "邮件通道尚未配置", "用操作码核对原请求结果"],
+  "data": {
+    "email": "synthetic@example.invalid",
+    "token": "",
+    "newPassword": "",
+    "enabled": false,
+    "verified": false,
+    "signedIn": false,
+    "busy": false,
+    "pending": true,
+    "message": "合成邮件通道关闭与原请求核对，未发送邮件。",
+    "error": ""
+  },
+  "expectDisabled": ["申请重置密码邮件"]
+}

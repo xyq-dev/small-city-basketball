@@ -4,7 +4,7 @@
   "state": "planned",
   "figmaNode": "30:2624",
   "referenceKind": "derived",
-  "expectText": ["未来结算应逐项展示", "结算功能筹备中"],
+  "expectText": ["结算应逐项核对", "结算请进入原订单"],
   "static": true,
   "primary": false,
   "data": {

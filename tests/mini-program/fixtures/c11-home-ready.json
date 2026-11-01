@@ -2,10 +2,9 @@
   "name": "c11-home-ready",
   "route": "pages/home/index",
   "state": "ready",
-  "figmaNode": "approved:C11",
-  "designSource": "approved:C11",
-  "referenceImage": "docs/design/C11/home.png",
+  "figmaNode": "4:16",
+  "designSource": "UI001:H01; supersedes historical C11 home",
   "static": true,
-  "expectText": ["每一场，都有合适的人", "找球员", "我的球队"],
+  "expectText": ["每一场，都值得被看见", "发现正在进行的赛事", "按位置找球员"],
   "data": {}
 }
