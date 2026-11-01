@@ -1,1 +1,21 @@
-.page{padding-bottom:32px}.small{overflow-wrap:anywhere}button{min-height:44px;font-size:16px}
+page { background:#f4f6fa; color:#18283f; }
+.precheck-page { padding:16px; padding-bottom:calc(124px + env(safe-area-inset-bottom)); }
+.precheck-page .card { padding:16px; border-radius:16px; margin-bottom:12px; }
+.precheck-page .subtitle { color:#18283f; font-size:18px; line-height:28px; font-weight:700; }
+.precheck-summary { font-size:14px; line-height:22px; }
+.precheck-summary > view + view { margin-top:8px; }
+.precheck-confirm .consent { padding:0; margin:0; color:#18283f; background:transparent; min-height:44px; font-size:14px; line-height:22px; }
+.precheck-confirm checkbox { flex:0 0 44px; min-height:44px; transform:none; }
+.precheck-notice { padding:16px; margin-bottom:12px; font-size:12px; line-height:18px; color:#63758b; background:#eaf0f8; }
+.precheck-member + .precheck-member { margin-top:12px; padding-top:12px; border-top:1px solid #e1e7ef; }
+.precheck-cell { display:flex; align-items:center; gap:12px; min-height:58px; margin:0; padding:8px 0; border-radius:0; background:transparent; text-align:left; font-weight:400; }
+.precheck-cell + .precheck-cell { margin-top:8px; }
+.precheck-cell::after { border:0; }
+.precheck-icon { flex:0 0 22px; width:22px; height:22px; }
+.precheck-chevron { flex:0 0 16px; width:16px; height:16px; }
+.precheck-copy { flex:1; min-width:0; }
+.precheck-cell-title { color:#18283f; font-size:14px; line-height:22px; font-weight:500; }
+.precheck-cell-note { color:#63758b; font-size:12px; line-height:18px; margin-top:2px; overflow-wrap:anywhere; }
+.precheck-fixed { padding:12px 16px calc(28px + env(safe-area-inset-bottom)); border-top:0; }
+.precheck-fixed .primary { min-height:48px; margin:0; padding:12px; border-radius:12px; font-size:14px; line-height:22px; }
+.small { overflow-wrap:anywhere; }

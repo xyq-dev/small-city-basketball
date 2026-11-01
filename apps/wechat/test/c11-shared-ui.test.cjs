@@ -68,7 +68,7 @@ test('header dark-to-light transitions update native status text rather than lea
 });
 
 test('image compatibility keeps declared native aspectFill/widthFix rather than stretching portrait photos', () => {
-  const fixture = require('../../../tests/mini-program/fixtures/c11-player-market-ready.json');
+  const fixture = require('../../../tests/mini-program/fixtures/c11-player-detail-ready.json');
   const preview = buildPreview({ root, route: fixture.route, data: fixture.data });
   assert.match(preview.phone, /data-mini-image-mode="aspectFill"/);
   const event = require('../../../tests/mini-program/fixtures/c10-public-event-ready.json');

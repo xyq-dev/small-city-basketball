@@ -215,7 +215,11 @@ async function measureLayout(frame: Frame) {
       amountRect?: ReturnType<typeof quoteBounds>;
       columnRect?: ReturnType<typeof quoteBounds>;
     }> = [];
-    for (const selector of ['.profile-quote .quote-total-price', '.profile-quote .quote-price']) {
+    for (const selector of [
+      '.profile-quote .quote-total-price',
+      '.profile-quote .quote-price',
+      '.profile-quote .fee-amount',
+    ]) {
       for (const element of Array.from(document.querySelectorAll(selector)).filter(visible)) {
         const range = document.createRange();
         let text = element.textContent?.trim() || '';
@@ -242,7 +246,7 @@ async function measureLayout(frame: Frame) {
         const lines = new Set(amountRects.map((rect) => Math.round(rect.top * 100) / 100)).size;
         if (lines !== 1) wrappedQuoteAmounts.push({ selector, text, lines });
         const column = element.closest(
-          element.classList.contains('quote-price') ? '.quote-service' : '.quote-total',
+          element.classList.contains('quote-total-price') ? '.quote-total' : '.quote-service',
         );
         if (column) {
           const bounds = column.getBoundingClientRect();
@@ -345,6 +349,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
         fontSize: parseFloat(style.fontSize),
         lineHeight: parseFloat(style.lineHeight),
         radius: parseFloat(style.borderTopLeftRadius),
+        padding: parseFloat(style.paddingLeft),
         background: style.backgroundColor,
         color: style.color,
       };
@@ -376,7 +381,20 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       tableCell: measure('.comparison-cell'),
       columns: document.querySelectorAll('.compare-column').length,
       profileHero: measure('.profile-hero'),
-      profilePortrait: measure('.profile-hero-image'),
+      profilePortrait: measure('.profile-portrait'),
+      profileIdentity: measure('.profile-identity'),
+      profileAvatar: measure('.profile-avatar'),
+      profileAvatarIcon: measure('.profile-avatar-icon'),
+      profileName: measure('.profile-name'),
+      profileMeta: measure('.profile-meta'),
+      profileSamples: measure('.profile-samples'),
+      profileMetric: measure('.profile-metrics .metric-value'),
+      profileFactCount: document.querySelectorAll('.profile-metric').length,
+      profileAvailability: measure('.availability-card'),
+      profileQuotePrice: measure('.profile-quote .quote-price'),
+      profileQuoteTotal: measure('.profile-quote .quote-total-price'),
+      profileFooter: measure('.profile-action'),
+      profileSecondary: measure('.profile-action > .secondary'),
       wrappedMetricLabels: Array.from(document.querySelectorAll('.label-cell'))
         .filter((cell) => {
           const range = document.createRange();
@@ -468,7 +486,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     );
     expect(metrics.photographs).toEqual([]);
   } else {
-    if (!['booking-create', 'bookings'].includes(group)) {
+    if (!['player', 'booking-create', 'bookings'].includes(group)) {
       expect(metrics.action?.x).toBe(12);
       expect(metrics.action?.width).toBe(width - 24);
     }
@@ -491,12 +509,50 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       expect(metrics.tableCell?.height).toBe(38);
       expect(metrics.wrappedMetricLabels).toEqual([]);
     } else if (group === 'player') {
-      expect(metrics.profileHero?.height).toBe(width <= 360 ? 240 : 260);
-      expect(metrics.profilePortrait?.width).toBeCloseTo(width * 0.72, 1);
-      expect(metrics.profilePortrait?.y).toBe(width <= 360 ? -40 : -50);
-      expect(metrics.profileQuote?.x).toBe(0);
-      expect(metrics.profileQuote?.width).toBe(width);
-      expect(metrics.action?.background).toBe('rgb(242, 140, 40)');
+      // UI001 T07 replaces the C11 photograph hero with a compact identity card.
+      expect(metrics.profileHero).toBeNull();
+      expect(metrics.header?.background).toBe('rgb(255, 255, 255)');
+      for (const card of [
+        metrics.profileIdentity,
+        metrics.profileSamples,
+        metrics.profileAvailability,
+        metrics.profileQuote,
+      ]) {
+        expect(card?.x).toBe(16);
+        expect(card?.width).toBe(width - 32);
+        expect(card?.radius).toBe(16);
+        expect(card?.padding).toBe(16);
+      }
+      expect(metrics.profileIdentity?.height).toBeGreaterThanOrEqual(126);
+      if (width >= 390) expect(metrics.profileIdentity?.height).toBe(126);
+      expect(metrics.profileAvatar?.width).toBe(64);
+      expect(metrics.profileAvatar?.height).toBe(64);
+      expect(metrics.profilePortrait?.width).toBe(64);
+      expect(metrics.profilePortrait?.height).toBe(64);
+      expect(metrics.profileName?.fontSize).toBe(24);
+      expect(metrics.profileName?.lineHeight).toBe(34);
+      expect(metrics.profileMeta?.fontSize).toBe(12);
+      expect(metrics.profileMeta?.lineHeight).toBe(18);
+      expect(metrics.profileSamples?.height).toBe(86);
+      expect(metrics.profileFactCount).toBe(2);
+      expect(metrics.profileMetric?.fontSize).toBe(24);
+      expect(metrics.profileMetric?.lineHeight).toBe(32);
+      expect(metrics.profileAvailability?.height).toBeGreaterThanOrEqual(112);
+      for (const amount of [metrics.profileQuotePrice, metrics.profileQuoteTotal]) {
+        expect(amount?.fontSize).toBe(14);
+        expect(amount?.lineHeight).toBe(22);
+      }
+      expect(metrics.profileFooter?.height).toBe(88);
+      expect(metrics.profileFooter?.background).toBe('rgb(255, 255, 255)');
+      expect(metrics.profileSecondary?.x).toBe(16);
+      expect(metrics.action?.x).toBe(width / 2 + 6);
+      for (const button of [metrics.profileSecondary, metrics.action]) {
+        expect(button?.width).toBe((width - 44) / 2);
+        expect(button?.height).toBe(48);
+        expect(button?.radius).toBe(12);
+      }
+      expect(metrics.profileSecondary?.background).toBe('rgb(234, 240, 248)');
+      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
     } else if (group === 'booking-create') {
       expect(metrics.scopeRail?.height).toBe(44);
       expect(metrics.selectedPlayer?.height).toBeGreaterThanOrEqual(84);
@@ -528,7 +584,11 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       ).toBe(true);
     }
   }
-  return { source: group === 'home' ? 'UI001:H01' : 'approved:C11', group, ...metrics };
+  return {
+    source: group === 'home' ? 'UI001:H01' : group === 'player' ? 'UI001:T07' : 'approved:C11',
+    group,
+    ...metrics,
+  };
 }
 
 test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机验收）', () => {
@@ -572,7 +632,10 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
           const service = frame.locator('.profile-quote .quote-service');
           const previousStyle = await service.evaluate((element) => {
             const prior = element.getAttribute('style');
-            (element as HTMLElement).style.flexBasis = '140px';
+            // The new T07 uses 14px fee rows. Force an insufficient column,
+            // rather than relying on the superseded C11 140px/big-price layout.
+            (element as HTMLElement).style.flex = '0 0 24px';
+            (element as HTMLElement).style.width = '24px';
             return prior;
           });
           try {
@@ -588,7 +651,7 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
               negative.wrappedQuoteAmounts.some(
                 (amount) => amount.problem === 'outside containing quote column',
               ),
-              'the historical 140px service basis must fail the quote boundary guard',
+              'an insufficient quote column must fail the amount boundary guard',
             ).toBe(true);
           } finally {
             await service.evaluate((element, prior) => {

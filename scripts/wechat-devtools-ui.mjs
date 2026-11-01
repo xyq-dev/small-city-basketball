@@ -307,12 +307,12 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     name: fixtures.get(page.route).fixture.name,
     title: page.title,
     probe: probes[page.route.split('/')[1]],
-    // The player name renders in the hero above .premium-page, not inside it.
+    // UI001 T07 keeps the current player's name in its compact identity card.
     selector:
       page.route === 'pages/home/index'
         ? '.home-ui'
         : page.route === 'pages/player/index'
-          ? '.profile-hero'
+          ? '.player-page'
           : '.premium-page',
     fixtureSha256: fixtures.get(page.route).fixtureSha256,
     reference: 'references/' + page.route.split('/')[1] + '.png',

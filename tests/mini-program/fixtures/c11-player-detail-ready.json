@@ -7,7 +7,16 @@
   "referenceKind": "approved-image",
   "approvedPrimary": true,
   "syntheticData": true,
-  "expectText": ["林越", "合成高州", "已授权赛事记录", "8.4", "1.6", "5", "可约时间"],
+  "expectText": [
+    "林越",
+    "合成高州",
+    "授权统计样本",
+    "5",
+    "完成服务记录",
+    "1",
+    "可约时间",
+    "单场费用"
+  ],
   "data": {
     "profile": {
       "id": "80000000-0000-4000-8000-000000000001",

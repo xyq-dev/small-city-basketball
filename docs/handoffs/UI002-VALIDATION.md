@@ -21,3 +21,7 @@
 2026-11-01T07:52:04Z 追加球员原子金额守卫：总价全内容与服务价直接金额文字节点分别用DOM Range测行，/场子节点不纳入；去重矩形top不是1即记录wrappedQuoteAmounts（含完整金额文本），写JSON后要求空。仅两类quote选择器，不扩大到其他金额/表格，不删旧小数fixture或修改业务源。services对应纯样式修复和两份真实profileView派生样本需一并集成后跑最终候选，169旧结果不冒充170。
 
 金额片实际验证：转换后的服务报价为直接文字¥300.00加独立span单位，总价为完整¥330.00，已确认Range所选节点正确。选择器限定.profile-quote内部；tsc、Prettier、diff和Playwright2628注册均通过。未执行本地浏览器，新金额原子守卫等待整合后的真实CI矩形验证。
+
+2026-11-01T08:27:54Z UI001纠偏：新worktree scb-ui-validation-ui001/work/ui002-validation-ui001基3316083，bcdf68e/50ff0e6仅源依赖。首测试片只T07：真实Figma5:1115+整屏5:1102，白header/64头像/r16卡/14px费用/双48 CTA；原授权数据、真实0、records切换与图像比例不删。原C11 big-hero/全幅quote/单橙CTA断言精确替换；因14px新排版，旧140负对照改仅large390强制24px列并finally原style恢复，金额Range1/列界限/不重叠及fee分项保持。SDK当前只修player selector，六页provider真实图和来源精确迁移下一片。定向41pass1既有skip、tsc/格式/diff通过，浏览器待后继完整候选，不把CI170历史全绿当新结构验收。
+
+T07首片在仅整合bcdf68e+50ff0e6源依赖的验证基线上完整`npm run test:wechat`：1152通过、1既有Windows跳过、0失败。五页后续源码不在该结果中，不将本片当全UI001整合通过。

@@ -47,6 +47,8 @@ Page({
     hasReturn: false,
     securityOpen: false,
     workspaceTab: 'personal',
+    ordersOpen: false,
+    navigationMoreOpen: false,
     roles: [],
     managedOrgs: [],
     roleSummary: '',
@@ -68,6 +70,8 @@ Page({
             connected: false,
             securityOpen: false,
             workspaceTab: 'personal',
+            ordersOpen: false,
+            navigationMoreOpen: false,
             password: '',
             consent: false,
             roles: [],
@@ -333,6 +337,14 @@ Page({
     const key = e.currentTarget.dataset.key;
     if (key === 'personal' || (key === 'work' && this.data.roles.length))
       this.setData({ workspaceTab: key });
+  },
+  toggleOrders() {
+    if (this.data.user && !this.data.busy && !this.commandBusy)
+      this.setData({ ordersOpen: !this.data.ordersOpen });
+  },
+  toggleMore() {
+    if (this.data.user && !this.data.busy && !this.commandBusy)
+      this.setData({ navigationMoreOpen: !this.data.navigationMoreOpen });
   },
   copyMemberId() {
     if (

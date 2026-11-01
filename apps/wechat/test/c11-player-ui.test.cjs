@@ -11,7 +11,7 @@ const fixture = (part) =>
 const preview = (f, width = 390) => buildPreview({ root, ...f, width, height: 844 });
 const names = ['market', 'detail', 'compare'];
 
-test('approved three-screen samples render native cards and isolated example portraits at all widths', () => {
+test('current samples render real native data and local assets at all widths', () => {
   for (const name of names) {
     const f = fixture(name);
     for (const width of [320, 390, 430]) {
@@ -70,8 +70,30 @@ test('current DTO never turns a real player name or untrusted portrait field int
   const f = fixture('detail');
   f.data.profile = view;
   const result = preview(f);
-  assert.ok(result.assets.some((asset) => asset.path.endsWith('player-placeholder.png')));
+  assert.ok(result.assets.some((asset) => asset.path === 'assets/ui002/avatar-user.svg'));
+  assert.match(result.phone, /class="profile-avatar-icon"[^>]*data-mini-image-mode="aspectFit"/);
   assert.ok(result.assets.every((asset) => !/player-sample-/.test(asset.path)));
+});
+
+test('UI001 T07 compact facts keep the full authorized statistics behind the original record action', () => {
+  const f = fixture('detail');
+  const h = loadPage({ root, route: f.route });
+  h.page.setData(f.data);
+  const before = JSON.stringify(h.page.data.profile);
+  const compact = preview({ ...f, data: h.page.data }).phone;
+  assert.match(compact, /授权统计样本/);
+  assert.match(compact, /完成服务记录/);
+  assert.doesNotMatch(compact, /class="profile-hero"|class="profile-hero-image"/);
+  assert.match(compact, /data-mini-bindtap="toggle"/);
+  assert.match(compact, /data-mini-bindtap="book"/);
+  h.page.recordsToggle();
+  const records = preview({ ...f, data: h.page.data }).phone;
+  for (const text of ['每场记录得分', '8.4', '每场记录犯规', '1.6', '得分 0 / 犯规 0'])
+    assert.ok(records.includes(text), text);
+  assert.equal(JSON.stringify(h.page.data.profile), before);
+  h.page.recordsToggle();
+  assert.equal(h.page.data.recordsOpen, false);
+  assert.equal(h.wx.calls.filter((call) => call.type === 'request').length, 0);
 });
 
 test('expanded profile information retains exact costs, uncollected metrics and comparison actions', () => {

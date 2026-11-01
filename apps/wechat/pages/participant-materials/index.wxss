@@ -28,3 +28,31 @@
 .material-profile .field { border-color:#e1e7ef; border-radius:12px; }
 .material-paths button { min-width:0; flex-basis:100%; }
 @media (max-width:360px) { .material-panel { padding:16px; } .material-pair { grid-template-columns:minmax(0,1fr); } }
+
+.materials-page { padding:16px; padding-bottom:calc(124px + env(safe-area-inset-bottom)); }
+.material-profile { margin-bottom:12px; }
+.material-field { min-height:74px; padding:12px; margin-bottom:12px; border:1px solid #e1e7ef; border-radius:12px; background:#fff; }
+.material-field .field-label { margin:0 0 8px; font-size:12px; line-height:18px; }
+.material-field .field { margin:0; border:0; border-radius:0; padding:0; min-height:44px; font-size:16px; line-height:24px; }
+.material-value { font-size:14px; line-height:22px; overflow-wrap:anywhere; }
+.material-context { color:#63758b; font-size:12px; line-height:18px; margin-top:2px; }
+.material-required, .material-confirm { padding:16px; border-radius:16px; margin-bottom:12px; }
+.material-required .subtitle { color:#18283f; margin-bottom:8px; font-weight:700; }
+.material-cell { display:flex; align-items:center; gap:12px; min-height:58px; margin:0; padding:8px 0; border-radius:0; background:transparent; text-align:left; font-weight:400; }
+.material-cell + .material-cell { margin-top:8px; }
+.material-cell::after { border:0; }
+.material-icon { width:22px; height:22px; flex:0 0 22px; }
+.material-chevron { width:16px; height:16px; flex:0 0 16px; }
+.material-copy { flex:1; min-width:0; }
+.material-cell-title { color:#18283f; font-size:14px; line-height:22px; font-weight:500; }
+.material-cell-note { color:#63758b; font-size:12px; line-height:18px; margin-top:2px; overflow-wrap:anywhere; }
+.material-confirm .consent { margin:0; padding:0; background:transparent; color:#18283f; min-height:44px; font-size:14px; line-height:22px; }
+.material-confirm checkbox-group + checkbox-group { display:block; margin-top:8px; }
+.material-confirm checkbox { flex:0 0 44px; min-height:44px; transform:none; }
+.material-secondary-links { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.material-secondary-links button { flex:1; min-width:120px; margin:0; padding:8px; font-size:14px; line-height:22px; }
+.material-back { margin:0 0 12px; }
+.material-fixed-actions { padding:12px 16px calc(28px + env(safe-area-inset-bottom)); border-top:0; }
+.material-fixed-actions button { min-height:48px; padding:12px; border-radius:12px; font-size:14px; line-height:22px; }
+.material-fixed-actions .secondary { color:#123c73; background:#eaf0f8; }
+.material-fixed-actions .secondary::after { border:0; }

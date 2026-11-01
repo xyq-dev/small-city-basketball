@@ -1,13 +1,29 @@
-<scb-header title="我的" back="{{false}}"/>
+<scb-header title="我的" main="{{true}}" back="{{false}}"/>
 <view class="page account-page {{!user && !loading ? 'account-login' : ''}}">
   <view wx:if="{{loading}}" class="card account-loading" role="status"><view class="subtitle">正在核对当前账号</view><view class="muted">读取当前登录状态与微信服务能力，请稍候。</view></view>
   <block wx:else>
     <view wx:if="{{message}}" class="notice account-feedback {{messageTone==='error' ? 'danger' : messageTone==='success' ? 'success' : ''}}" role="{{messageTone==='error' ? 'alert' : 'status'}}">{{message}}</view>
     <block wx:if="{{user && !securityOpen}}">
-      <view class="hero account-hero"><view class="title">我的球赛主场</view><view class="muted">{{user.displayName}} · 按实际权限进入</view></view>
-      <view class="workflow-tabs"><button class="{{workspaceTab!=='work' ? 'primary' : 'secondary'}}" data-key="personal" bindtap="workspace" disabled="{{busy}}">个人中心</button><button wx:if="{{roles.length}}" class="{{workspaceTab==='work' ? 'primary' : 'secondary'}}" data-key="work" bindtap="workspace" disabled="{{busy}}">角色工作台</button></view>
-      <view wx:if="{{workspaceTab==='work' && roles.length}}" class="card"><view class="subtitle">当前授权工作台</view><view class="muted">{{roleSummary}}</view><view class="small muted">每个工作入口会重新核对资源权限。</view><button data-page="watch" bindtap="go" disabled="{{busy}}">选择赛事并管理</button><button data-page="scoring-tasks" bindtap="go" disabled="{{busy}}">记分与独立赛果确认</button><button class="quiet" bindtap="showSecurity" disabled="{{busy}}">账号与隐私</button></view>
+      <view class="card account-profile"><view class="account-person"><view class="account-avatar"><image src="/assets/ui002/avatar-user.svg" mode="aspectFit" aria-hidden="true"/></view><view class="account-person-copy"><view class="account-name">{{user.displayName}}</view><view class="account-person-meta">个人账号 · 当前已登录</view></view></view><view class="account-person-note">个人编号可用于邀请，公开昵称与私有资料分开</view></view>
+      <view class="menu-group account-primary">
+        <view class="menu-title">我的篮球</view>
+        <button class="menu-row" data-page="participant-materials" bindtap="go" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/account-shield.svg" aria-hidden="true"/><view class="menu-text"><view>本人报名与资料</view><view class="menu-sub">资料、保险和资格分别查看</view></view><image class="menu-chevron" src="/assets/ui002/chevron-right.svg" aria-hidden="true"/></button>
+        <button class="menu-row" bindtap="toggleOrders" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/account-calendar.svg" aria-hidden="true"/><view class="menu-text"><view>我的订单与预约</view><view class="menu-sub">服务履约和资金记录分别展示</view></view><image class="menu-chevron" src="/assets/ui002/chevron-right.svg" aria-hidden="true"/></button>
+        <button class="menu-row" data-page="follows" bindtap="go" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/account-bell.svg" aria-hidden="true"/><view class="menu-text"><view>关注赛事与消息</view><view class="menu-sub">关注不等于授权微信提醒</view></view><image class="menu-chevron" src="/assets/ui002/chevron-right.svg" aria-hidden="true"/></button>
+        <button class="menu-row" data-page="public-archives" bindtap="go" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/account-bars.svg" aria-hidden="true"/><view class="menu-text"><view>公开档案与数据授权</view><view class="menu-sub">按用途自主发布与撤回</view></view><image class="menu-chevron" src="/assets/ui002/chevron-right.svg" aria-hidden="true"/></button>
+      </view>
+      <view wx:if="{{ordersOpen}}" class="menu-group account-order-links"><view class="menu-title">选择本人订单与预约</view><button class="menu-row" data-page="trade-order" bindtap="go" disabled="{{busy}}">本人收付款与退款订单</button><button class="menu-row" data-page="local-bookings" bindtap="go" disabled="{{busy}}">球场与同城服务预约</button><button class="menu-row" data-page="bookings" bindtap="go" disabled="{{busy}}">我发出的球员预约</button><button class="menu-row" data-page="player-center" bindtap="go" disabled="{{busy}}">本人球员中心与收到的预约</button></view>
+      <view class="menu-group account-workspace">
+        <view class="menu-title">当前角色工作台</view>
+        <button class="menu-row" data-page="watch" bindtap="go" disabled="{{busy || !roles.length}}"><image class="menu-icon" src="/assets/ui002/account-trophy.svg" aria-hidden="true"/><view class="menu-text"><view>赛事工作台</view><view class="menu-sub">{{roles.length ? roleSummary : '暂无当前机构或赛事身份'}}</view></view><image class="menu-chevron" src="/assets/ui002/chevron-right.svg" aria-hidden="true"/></button>
+        <button class="menu-row" data-page="scoring-tasks" bindtap="go" disabled="{{busy || !roles.length}}"><image class="menu-icon" src="/assets/ui002/account-bars.svg" aria-hidden="true"/><view class="menu-text"><view>记分与赛果复核</view><view class="menu-sub">{{roles.length ? '只显示当前有权或被指派比赛' : '尚无可进入的授权工作入口'}}</view></view><image class="menu-chevron" src="/assets/ui002/chevron-right.svg" aria-hidden="true"/></button>
+        <button class="menu-row" data-page="watch" bindtap="go" disabled="{{busy || !roles.length}}"><image class="menu-icon" src="/assets/ui002/account-camera.svg" aria-hidden="true"/><view class="menu-text"><view>直播与媒体（先选赛事比赛）</view><view class="menu-sub">{{roles.length ? '进入资源后再次核验采集与交付分工' : '未获授权的采集与交付保持关闭'}}</view></view><image class="menu-chevron" src="/assets/ui002/chevron-right.svg" aria-hidden="true"/></button>
+      </view>
+      <button class="secondary account-security-entry" bindtap="showSecurity" disabled="{{busy}}">账号、隐私与客服</button>
       <view wx:if="{{hasReturn}}" class="account-continue"><button class="primary" bindtap="continue" disabled="{{busy}}">继续刚才的操作</button></view>
+      <button class="quiet account-more-entry" bindtap="toggleMore" disabled="{{busy}}">{{navigationMoreOpen ? '收起更多服务与设置' : '更多服务与设置'}}</button>
+      <view wx:if="{{navigationMoreOpen}}" class="account-secondary-navigation">
+      <view class="workflow-tabs"><button class="{{workspaceTab!=='work' ? 'primary' : 'secondary'}}" data-key="personal" bindtap="workspace" disabled="{{busy}}">个人服务</button><button wx:if="{{roles.length}}" class="{{workspaceTab==='work' ? 'primary' : 'secondary'}}" data-key="work" bindtap="workspace" disabled="{{busy}}">角色与机构配置</button></view>
       <view wx:if="{{workspaceTab!=='work'}}" class="menu-group">
         <view class="menu-title">赛事</view>
         <view class="menu-row" data-page="watch" bindtap="go"><scb-icon name="trophy" size="20"/><view class="menu-text"><view>我的赛事</view><view class="menu-sub">{{roles.length ? roleSummary : '暂无机构赛事身份，可打开主办方分享的观赛链接'}}</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
@@ -78,6 +94,7 @@
         <button class="secondary" bindtap="switchAccount" disabled="{{busy}}">切换账号</button>
         <button class="quiet" bindtap="logout" disabled="{{busy}}">退出登录</button>
       </view>
+      </view>
     </block>
     <block wx:elif="{{user}}">
       <view class="notice {{connected ? 'warning' : ''}} account-notice"><view class="account-notice-title">{{connected ? '解绑会退出全部设备会话' : '绑定已有应用账号'}}</view><view class="small">{{connected ? '请重新验证当前密码。解绑后可使用应用账号重新登录。' : '重新验证当前密码并明确同意绑定，不按昵称或同名自动合并身份。'}}</view></view>
@@ -91,7 +108,7 @@
       <button class="secondary" bindtap="closeSecurity" disabled="{{busy}}">保留当前设置并返回</button>
       <button class="quiet" bindtap="load" disabled="{{busy || loading}}">刷新当前账号</button>
       <button class="quiet" data-page="trade-order" bindtap="go" disabled="{{busy}}">查看本人收付款订单</button>
-      <button class="quiet" data-page="account-closure" bindtap="go" disabled="{{busy}}">账号自助注销</button>
+      <button class="quiet" data-page="governance" bindtap="go" disabled="{{busy}}">客服、举报与申诉</button><button class="quiet" data-page="account-closure" bindtap="go" disabled="{{busy}}">账号自助注销</button>
       <button class="quiet" bindtap="logout" disabled="{{busy}}">退出当前登录</button>
     </block>
     <block wx:else>

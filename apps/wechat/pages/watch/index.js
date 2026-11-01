@@ -20,6 +20,8 @@ Page({
   data: {
     value: '',
     error: '',
+    directoryFiltersOpen: false,
+    linkOpen: false,
     loading: false,
     recentEvents: [],
     ...privateDefaults,
@@ -51,6 +53,22 @@ Page({
   },
   chooseCity() {
     ui.open('city-select');
+  },
+  toggleDirectoryFilters() {
+    this.setData({ directoryFiltersOpen: !this.data.directoryFiltersOpen });
+  },
+  toggleLink() {
+    const open = !this.data.linkOpen;
+    this.setData({ linkOpen: open });
+    if (open && typeof wx.pageScrollTo === 'function') {
+      const scroll = () =>
+        wx.pageScrollTo({ selector: '#watch-link-entry', duration: 200, fail() {} });
+      if (typeof wx.nextTick === 'function') wx.nextTick(scroll);
+      else scroll();
+    }
+  },
+  recruitment() {
+    ui.open('recruitment');
   },
   // ---- public directory (anonymous) ----
   // Every reset (filter change, refresh, re-entry) starts a new generation; replies from an

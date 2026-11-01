@@ -1,72 +1,47 @@
-.status-rail { width:100%; margin-bottom:16px; }
+/* UI001 T17: role filters and compact per-appearance cooperation records. */
+.bookings-page { padding:16px 16px calc(24px + env(safe-area-inset-bottom)); color:#18283f; word-break:break-word; }
+.booking-view-tabs { display:flex; align-items:flex-start; gap:8px; margin-bottom:12px; }
+.booking-view-tabs .booking-view-tab { flex:0 0 80px; width:80px; min-height:44px; margin:0; padding:11px 8px; border-radius:12px; background:#fff; color:#63758b; font-size:14px; line-height:22px; font-weight:500; }
+.booking-view-tab::after { border:0; }
+.booking-view-tabs .booking-view-tab.active { color:#fff; background:#123c73; }
+.booking-view-tabs .filter-toggle { width:64px; flex-basis:64px; }
+.booking-view-tabs .filter-active { color:#123c73; background:#eaf0f7; }
+.status-rail { width:100%; margin-bottom:12px; }
 .status-tabs { display:flex; align-items:center; gap:8px; width:312px; min-width:100%; }
-.status-tab,.status-more { display:flex; align-items:center; justify-content:center; flex:0 0 56px; width:56px; min-height:44px; padding:10px 0; margin:0; border-radius:8px; background:transparent; color:#63758b; font-size:14px; line-height:24px; }
+.status-tab,.status-more { display:flex; align-items:center; justify-content:center; flex:0 0 56px; width:56px; min-height:44px; padding:10px 0; margin:0; border-radius:12px; background:#fff; color:#63758b; font-size:14px; line-height:24px; }
 .status-tab::after { border:0; }
-.status-tab.selected { background:#eaf0f7; color:#123c73; }
-.status-more { width:56px; }
-.active-filter { margin:-8px 0 16px; }
-.role-notice { display:flex; flex-direction:column; gap:4px; }
-.notice-title,.state-title { font-size:14px; line-height:24px; font-weight:500; }
-.order-context,.appearance-summary { display:flex; flex-direction:column; gap:8px; }
-.order-context .subtitle,.appearance-summary .subtitle { margin:0; font-size:18px; line-height:28px; font-weight:500; }
-.order-context .muted { font-size:14px; line-height:24px; }
+.status-tab.selected { color:#123c73; background:#eaf0f7; }
+.status-more { gap:4px; }
+.active-filter { margin:0 0 12px; }
+.booking-progress-card { padding:16px; margin-bottom:12px; border-radius:16px; }
+.progress-heading { margin-bottom:8px; color:#18283f; font-size:18px; line-height:28px; font-weight:700; }
+.cooperation-record + .cooperation-record { margin-top:8px; }
+.cooperation-cell { display:flex; align-items:stretch; min-height:58px; }
+.cooperation-main { display:flex; align-items:center; gap:12px; flex:1; min-width:0; width:auto; min-height:58px; padding:8px 0; margin:0; border-radius:0; background:#fff; text-align:left; font-weight:400; }
+.cooperation-main::after,.cooperation-expand::after { border:0; }
+.cooperation-icon { flex:0 0 22px; width:22px; height:22px; }
+.cooperation-copy { flex:1; min-width:0; }
+.cooperation-title { color:#18283f; font-size:14px; line-height:22px; font-weight:500; overflow-wrap:anywhere; }
+.cooperation-subtitle { margin-top:2px; color:#63758b; font-size:12px; line-height:18px; font-weight:400; overflow-wrap:anywhere; }
+.cooperation-expand { display:flex; align-items:center; justify-content:center; flex:0 0 44px; width:44px; min-width:44px; min-height:58px; padding:0; margin:0 -14px 0 0; border-radius:0; background:#fff; }
+.cooperation-chevron { width:16px; height:16px; }
+.cooperation-chevron.expanded { transform:rotate(90deg); }
+.cooperation-details { padding:12px; margin-top:8px; border-radius:12px; background:#f4f6fa; }
+.cooperation-details > view + view { margin-top:8px; }
+.cooperation-details button { margin:12px 0 0; }
+.money-atom { display:inline-block; white-space:nowrap; overflow-wrap:normal; word-break:normal; }
 .appearance-status { color:#123c73; font-size:14px; line-height:24px; font-weight:500; }
 .appearance-status.warning { color:#895500; background:transparent; }
 .appearance-status.danger { color:#b53333; }
 .appearance-status.success { color:#16734b; }
 .appearance-status.neutral { color:#63758b; }
-.appearance-price { color:#123c73; font-size:14px; line-height:24px; font-weight:500; }
-.detail-button { margin:0 0 16px; }
-.order-money { margin:0 0 16px; }
-.switch-view { margin-bottom:16px; }
-.time-caption { margin-bottom:16px; }
+.role-notice { display:flex; flex-direction:column; gap:4px; }
+.notice-title,.state-title { font-size:16px; line-height:24px; font-weight:500; }
 .state-card { display:flex; flex-direction:column; gap:8px; }
 .state-card .subtitle { margin:0; }
 .state-card button { margin:8px 0 0; }
 .skeleton { height:12px; width:88%; background:#eaf0f7; border-radius:6px; margin:6px 0; }
 .skeleton.short { width:56%; }
-
-/* C11: the approved two-role order cards. */
-.bookings-page { padding:8px 12px 100px; color:#123c73; }
-.booking-view-tabs { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:0; height:44px; margin-bottom:12px; background:#eaf0f7; border-radius:10px; overflow:hidden; }
-.booking-view-tab { min-height:44px; height:44px; margin:0; padding:10px 8px; background:transparent; border-radius:10px; color:#4c617e; font-size:14px; line-height:24px; font-weight:600; }
-.booking-view-tab::after { border:0; }
-.booking-view-tab.active { background:#123c73; color:#fff; }
-.booking-order-card { position:relative; margin-bottom:12px; padding:14px; border-radius:12px; background:#fff; box-shadow:0 3px 12px rgba(19,44,73,.03); }
-.appearance-status { display:flex; align-items:flex-start; gap:7px; padding-right:28px; font-size:13px; line-height:22px; font-weight:600; color:#f28c28; }
-.status-dot { flex:0 0 11px; height:11px; border-radius:50%; background:currentColor; margin-top:5px; }
-.appearance-status.accepted,.appearance-status.success { color:#09a267; }
-.appearance-status.warning { color:#a97521; }
-.order-more { position:absolute; top:0; right:0; display:flex; align-items:center; justify-content:center; width:44px; min-height:44px; height:44px; margin:0; padding:0; background:transparent; }
-.booking-order-card .order-more { width:44px; margin:0; }
-.order-more::after { border:0; }
-.order-heading { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-top:5px; }
-.order-event { min-width:0; flex:1; font-size:17px; line-height:26px; font-weight:700; overflow-wrap:anywhere; }
-.order-team { max-width:42%; color:#6a7d96; font-size:11px; line-height:18px; overflow-wrap:anywhere; text-align:right; }
-.order-player { display:flex; align-items:center; gap:12px; margin:9px 0 11px; }
-.order-portrait { display:block; flex:0 0 56px; width:56px; height:62px; border-radius:7px; background:#e8eef5; }
-.order-player-copy { min-width:0; flex:1; }
-.order-player-name { font-size:16px; line-height:24px; font-weight:700; overflow-wrap:anywhere; }
-.order-player-name text { font-size:12px; line-height:20px; font-weight:400; color:#52627c; }
-.order-player-meta { margin-top:3px; color:#6a7d96; font-size:12px; line-height:20px; overflow-wrap:anywhere; }
-.order-schedule,.order-venue { display:flex; align-items:flex-start; gap:10px; color:#123c73; font-size:14px; line-height:22px; }
-.order-schedule scb-icon,.order-venue scb-icon { display:block; flex:0 0 18px; margin-top:2px; }
-.order-schedule text,.order-venue text { flex:1; min-width:0; overflow-wrap:anywhere; }
-.order-venue { margin-top:4px; }
-.order-quote { display:flex; align-items:center; gap:14px; margin-top:12px; padding:6px 10px; border-radius:8px; background:#fff1e3; color:#65758d; font-size:12px; line-height:24px; }
-.order-quote-value { color:#f28c28; font-size:20px; line-height:26px; font-weight:700; }
-.booking-order-card .detail-button { display:flex; align-items:center; justify-content:center; gap:5px; width:100%; min-height:44px; margin:12px 0 0; padding:9px 8px; border:1px solid #c6d2e1; border-radius:9px; background:#fff; color:#123c73; font-size:13px; line-height:24px; font-weight:600; }
-.booking-order-card .detail-button::after { border:0; }
-.order-expanded { padding:12px; margin-top:12px; background:#f4f6fa; border-radius:8px; }
-.order-expanded > view + view { margin-top:4px; }
-.booking-tools { display:flex; gap:8px; margin-top:24px; }
-.booking-tools button { flex:1; width:0; margin:0; color:#60758f; font-size:12px; line-height:24px; }
-.time-caption { display:flex; align-items:flex-start; gap:7px; color:#71839c; font-size:11px; line-height:18px; margin:4px 0 0; }
-.time-caption scb-icon { display:block; flex:0 0 16px; margin-top:1px; }
-.bookings-actions { padding:12px 16px calc(28px + env(safe-area-inset-bottom)); border-top:0; background:#f4f6fa; }
-.bookings-actions .primary { min-height:48px; padding:12px; margin:0; border-radius:12px; background:#123c73; color:#fff; font-size:14px; line-height:24px; font-weight:600; }
-@media (max-width:360px) { .booking-order-card { padding:12px; } .order-player-name text { display:block; } .order-team { max-width:38%; } }
-.booking-view-tabs .booking-view-tab { width:auto; min-width:0; margin:0; }
-
-/* UI001 shell: preserve the mature booking command and recovery layout. */
-.bookings-page{padding-left:16px;padding-right:16px;word-break:break-word}.card,.booking-order-card{border-radius:16px}input,textarea{font-size:16px}.service-progress{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.service-progress text{flex:1;min-width:70px;padding:8px;background:#eaf0f8;color:#63758b;border-radius:12px;text-align:center;font-size:12px;line-height:18px}.service-progress .active{background:#123c73;color:#fff}
+.time-caption { margin:4px 0 12px; color:#63758b; font-size:12px; line-height:20px; }
+.booking-tools { display:flex; gap:8px; margin-top:16px; }
+.booking-tools button { flex:1; width:0; margin:0; min-height:44px; padding:10px 8px; font-size:14px; line-height:24px; }

@@ -117,7 +117,7 @@ test('prepare preserves all source templates/assets and never mutates the runtim
   assert.equal(run.plan.scenarios.find((s) => s.route === 'pages/home/index').selector, '.home-ui');
   assert.equal(
     run.plan.scenarios.find((s) => s.route === 'pages/player/index').selector,
-    '.profile-hero',
+    '.player-page',
   );
   for (const item of run.plan.sourceSnapshots) {
     const original = fs.readFileSync(path.join(ROOT, 'apps/wechat', item.path));

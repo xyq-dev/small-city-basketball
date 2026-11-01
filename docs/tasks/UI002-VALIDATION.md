@@ -37,3 +37,15 @@ root直接Figma确认T09/T17内容x16/w358、T09动作5:1239为x16/w358/h48/r12/
 root接管同城heading最小flex换行修复。本片仅为已有.local-heading记录标题列宽、标题宽及文字行数，并在全矩阵中要求两个宽度均至少180px、原标题1至2行；指标在native-layout.json写出后断言，失败也保留原始诊断。只作用该页面已有局部结构，其他页面的溢出/44px/16px守卫不变。后继候选必须重跑完整CI及重新看实际同城图。
 
 2026-11-01T07:52:04Z root亲核旧球员小数报价在320把¥330.00末位拆行，明确保留旧fixture与真实小数。services所有者负责纯WXSS和真实profileView派生的小数/大额fixture。本片仅增加.quote-total-price与.quote-price原金额原子可读守卫：总价测全部文字，服务价测直接文字节点并排除不同字号的“/ 场”子节点；Range实际矩形去重top必须1。失败记录selector、完整金额text及行数到wrappedQuoteAmounts，布局JSON落盘后断言为空，不删金额小数或调整旧fixture。CI169是后继修复前历史候选，最终证据改用集成后的CI170。
+
+## UI001结构纠偏首片 2026-11-01T08:27:54Z
+
+状态仍IN_PROGRESS / BRANCH_ONLY。新独立目录 `/workspace/scratch/5a4363d2d0b7/scb-ui-validation-ui001`、分支 `work/ui002-validation-ui001`，基线root3316083，远端xyq-dev/small-city-basketball，开工clean；node_modules仅本地依赖链接不提交。root扩大所有权至六页catalog、微信工具对应来源校验及真实Figma参考PNG；不改业务源码或汇总文档。资产bcdf68e及T07源50ff0e6仅cherry-pick作为验证依赖，root不能重复集成。
+
+UI001优先，CI170只作历史：原生1146通过/1跳过，浏览器1334通过/1320配置跳过，1320实际JSON/2290PNG、73路由、440场景、84份UI002×3；自动守卫全过仍不能掩盖旧C11结构与最新UI001不符。五页结构由独立owner重开；本首片只迁已到T07，其余四group暂保旧断言以免未到源先互斥。
+
+已亲读T07高保真5:1115与真实390×844 provider截图：白header84，身份p16/r16/64头像，姓名24/34、meta12/18，身份正常126，概览双facts86，档期112，14/22费用行；底部白88、gap12双48按钮。E2E据此替换240/260大hero、72%照片、全幅quote和单橙CTA；动态头像仍要求已加载及aspectFill，DTO无可信头像时精确允许原Figma28SVG。旧8.4/1.6统计保留数据并新增原recordsToggle可逆入口回归，不删业务用例。
+
+新T07小字号使旧140px反例失效，负对照按设计改为仅large390临时24px service列（禁grow/shrink），finally精确恢复全部inline；完整金额Range单行、列内containment与列不重叠守卫保留，并纳入实际fee-amount分项。SDK仅player选择器从已移除hero迁到实际player-page；六页完整来源/素材迁移留下一片。
+
+定向41通过/1既有Windows跳过，tsc/Prettier/diff通过；未执行本地浏览器。完整三宽几何、反例及正常源截图必须由后继精确CI验证。

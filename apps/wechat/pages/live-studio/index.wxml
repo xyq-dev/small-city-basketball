@@ -1,26 +1,34 @@
-<scb-header title="本场直播工作台" disabled="{{busy}}"/>
-<view class="page live-workspace ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">赛事直播</view><view class="title">准备、采集与频道分别核对</view><view class="muted">权威比分来自本场记分；直播不控制记分。</view></view>
-  <scb-steps items="{{workflowSteps}}" current="{{activeSection}}" busy="{{busy}}" bindchange="changeSection"/>
+<scb-header title="{{!session || session.desired === 'STOPPED' ? '创建本场直播' : '本场直播工作台'}}" disabled="{{busy}}"/>
+<view class="page live-workspace ui002-workspace {{!session || session.desired === 'STOPPED' ? 'has-actions' : ''}}">
   <scb-state wx:if="{{loading}}" kind="loading" title="正在读取直播工作台" description="以云端当前授权与频道记录为准。"/>
   <view wx:if="{{error}}" class="notice warning">{{error}}</view>
   <view wx:if="{{notice}}" class="notice">{{notice}}</view>
   <scb-state wx:if="{{pending}}" kind="unknown" title="原操作结果待核对" description="已保留原编号。核对完成前不会创建第二次采集或停流请求。" action-text="核对原操作结果" busy="{{busy}}" bindaction="retry"/>
-  <button class="secondary" bindtap="load" disabled="{{loading || busy}}">刷新云端状态</button>
-  <view id="live-setup" class="workflow-section">
-    <scb-state wx:if="{{capabilities && !capabilities.providerReady}}" kind="closed" title="正式能力尚未开放" description="当前不能新建或开始采集；已有直播和原操作可继续核对。"/>
-    <view wx:if="{{capabilities && !capabilities.providerReady}}" class="status-banner"><view wx:for="{{capabilities.blockers}}" wx:key="*this">{{item}}</view></view>
-    <view wx:if="{{!session || session.desired === 'STOPPED'}}" class="card">
-      <view class="subtitle">创建本场直播</view>
-      <view class="form-field"><view class="field-label">已核验目标频道</view><checkbox-group bindchange="selectChannels"><label wx:for="{{channels}}" wx:key="id" class="channel-choice"><checkbox value="{{item.id}}" disabled="{{item.revoked || busy || pending || !capabilities.providerReady}}"/>{{item.label}} · {{item.platform}}</label></checkbox-group><view wx:if="{{!channels.length}}" class="muted">暂无当前可用频道，请先完成频道与同播权限核验。</view></view>
-      <label class="form-field"><view class="field-label">最长直播时长（分钟）</view><input type="number" data-field="minutes" value="{{minutes}}" bindinput="input" disabled="{{busy || pending}}"/></label>
-      <label class="form-field"><view class="field-label">费用上限（分，100分=1元）</view><input type="number" data-field="budgetFen" value="{{budgetFen}}" bindinput="input" disabled="{{busy || pending}}"/></label>
-      <label class="record-choice"><switch checked="{{record}}" bindchange="setRecord" disabled="{{busy || pending}}"/><text>独立录制整场录像，另行核对费用与授权</text></label>
-      <button class="primary" bindtap="create" disabled="{{busy || pending || !selected.length || !capabilities.providerReady}}">创建待批准直播</button>
+  <block wx:if="{{capabilities && (!session || session.desired === 'STOPPED')}}">
+    <view id="live-setup" class="card live-match-summary">
+      <view class="subtitle">本场比赛直播准备</view>
+      <view class="small muted">{{matchSummary.status || '状态以当前比赛为准'}} · 比赛编号 {{matchSummary.id}}</view>
+      <view class="small muted">对阵资料未提供；权威比分来自本场记分，直播不控制记分。</view>
     </view>
-  </view>
+    <view class="live-preparation-form">
+      <button class="live-field channel-field" bindtap="toggleChannelPicker" disabled="{{busy || pending}}"><view class="field-label">已核验目标频道</view><view class="live-field-value">{{selected.length ? '已选择' + selected.length + '个真实频道' : '仅选择当前批准的真实频道'}}</view></button>
+      <view wx:if="{{channelsOpen}}" class="card channel-picker"><checkbox-group bindchange="selectChannels"><label wx:for="{{channels}}" wx:key="id" class="channel-choice"><checkbox value="{{item.id}}" checked="{{item.selected}}" disabled="{{item.revoked || busy || pending || !capabilities.providerReady}}"/>{{item.label}} · {{item.platform}}</label></checkbox-group><view wx:if="{{!channels.length}}" class="muted">暂无当前可用频道，请先完成频道与同播权限核验。</view></view>
+      <label class="live-field live-value-field"><view class="field-label">最长直播时长（分钟）</view><input class="live-field-input" type="number" data-field="minutes" value="{{minutes}}" bindinput="input" disabled="{{busy || pending}}"/></label>
+      <label class="live-field live-value-field"><view class="field-label">费用上限（分，100分=1元）</view><input class="live-field-input" type="number" data-field="budgetFen" value="{{budgetFen}}" bindinput="input" disabled="{{busy || pending}}"/></label>
+    </view>
+    <view class="card recording-choice-card">
+      <label class="record-choice"><switch checked="{{record}}" bindchange="setRecord" disabled="{{busy || pending}}"/><text>申请独立录制本场录像</text></label>
+      <checkbox-group wx:if="{{record}}" bindchange="recordConsentChange"><label class="record-consent"><checkbox value="record" checked="{{recordConsent}}" disabled="{{busy || pending}}"/><text>本次申请包含录制，仍需独立批准；已核对费用与用途。</text></label></checkbox-group>
+      <view wx:else class="small muted">本次创建不申请录制，不改变直播与频道的独立授权。</view>
+    </view>
+    <view class="notice warning capability-notice"><view class="notice-title">{{capabilities.providerReady ? '仍须独立批准' : '正式能力未验'}}</view><view class="small">{{capabilities.providerReady ? '创建后由独立有权管理者核对直播与录像用途，再显式开始采集。' : '当前未完成正式准入时不可开始采集；已有代码不代表渠道已开通。'}}</view><view wx:for="{{capabilities.blockers}}" wx:key="*this" class="small">{{item}}</view></view>
+  </block>
+  <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新云端状态</button>
+  <block wx:if="{{session}}">
+  <view class="page-intro"><view class="eyebrow">赛事直播</view><view class="title">准备、采集与频道分别核对</view><view class="muted">权威比分来自本场记分；直播不控制记分。</view></view>
+  <scb-steps items="{{workflowSteps}}" current="{{activeSection}}" busy="{{busy}}" bindchange="changeSection"/>
+  <view id="live-setup" wx:if="{{session.desired !== 'STOPPED'}}" class="workflow-section"><scb-state wx:if="{{capabilities && !capabilities.providerReady}}" kind="closed" title="正式能力尚未开放" description="当前不能开始新的采集；已有直播和原操作仍可继续核对。"/><view wx:if="{{capabilities && !capabilities.providerReady}}" class="status-banner"><view wx:for="{{capabilities.blockers}}" wx:key="*this">{{item}}</view></view></view>
   <view id="live-capture" class="workflow-section">
-    <scb-state wx:if="{{!session && !loading}}" kind="empty" title="尚未创建本场直播" description="先完成直播准备，再由独立有权管理者批准。"/>
     <view wx:if="{{session}}" class="card">
       <view class="subtitle">采集与独立授权</view>
       <view class="summary-grid"><view><text class="muted">云端目标</text><view>{{session.desired}}</view></view><view><text class="muted">当前观测</text><view>{{session.observed}}</view></view></view>
@@ -43,5 +51,8 @@
       <button class="secondary" bindtap="media">查看录像与媒体作业</button>
     </view>
   </view>
-  <view class="notice">切到后台会停止本机采集并申请暂停；网络中断时采集租约到期后云端停止。停流未知时保留频道占用，刷新不会自动恢复。</view>
+  </block>
+  <view class="notice small live-safety-note">切到后台会停止本机采集并申请暂停；网络中断时采集租约到期后云端停止。停流未知时保留频道占用，刷新不会自动恢复。</view>
 </view>
+
+<view wx:if="{{capabilities && (!session || session.desired === 'STOPPED')}}" class="action-bar live-create-actions"><button class="primary" bindtap="create" disabled="{{busy || loading || pending || !selected.length || !capabilities.providerReady || (record && !recordConsent)}}">创建待批准直播</button></view>

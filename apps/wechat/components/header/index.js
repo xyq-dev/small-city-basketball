@@ -5,6 +5,7 @@ Component({
     locationLabel: { type: String, value: '全国' },
     dark: { type: Boolean, value: false },
     home: { type: Boolean, value: false },
+    main: { type: Boolean, value: false },
     disabled: { type: Boolean, value: false },
     back: { type: Boolean, value: true },
   },
