@@ -259,6 +259,14 @@ Page({
       if (ui.held(this, t)) this.setData({ busy: false });
     }
   },
+  externalPolicy() {
+    if (this.data.orgId && this.data.entryId)
+      ui.open('participant-materials', { orgId: this.data.orgId, entryId: this.data.entryId });
+  },
+  providerEntry() {
+    const url = this.data.workspace?.providerEntryUrl;
+    if (url && !this.data.busy && !this.data.pending) this.setData({ checkoutUrl: url });
+  },
   qualification() {
     if (this.data.orgId && this.data.entryId)
       ui.open('qualification-precheck', { orgId: this.data.orgId, entryId: this.data.entryId });

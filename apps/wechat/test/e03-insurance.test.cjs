@@ -250,3 +250,21 @@ test('exhausted unknown insurance resumes only a REFRESH of the original order a
   assert.equal(saved.body.clientRequestId, h.calls[0].b.clientRequestId);
   assert.deepEqual(Object.keys(saved.body).sort(), ['clientRequestId', 'expectedVersion', 'type']);
 });
+
+test('closed online purchase retains external-policy route and only opens server-approved supplier entry', () => {
+  const h = setup();
+  const opened = [];
+  h.requireLocal('utils/ui.js').open = (page, query) => opened.push({ page, query });
+  h.page.setData({ workspace: { enabled: false, providerEntryUrl: null }, quote: null });
+  h.page.externalPolicy();
+  assert.deepEqual(structuredClone(opened), [
+    { page: 'participant-materials', query: { orgId: id(2), entryId: id(3) } },
+  ]);
+  h.page.providerEntry();
+  assert.equal(h.page.data.checkoutUrl, '');
+  h.page.setData({
+    workspace: { enabled: false, providerEntryUrl: 'https://synthetic.invalid/start' },
+  });
+  h.page.providerEntry();
+  assert.equal(h.page.data.checkoutUrl, 'https://synthetic.invalid/start');
+});

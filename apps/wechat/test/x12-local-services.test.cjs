@@ -717,3 +717,226 @@ test('local booking feedback uses only the selected server booking and completio
   h.page.governance(tap({ kind: 'case' }));
   assert.equal(h.wx.calls.length, count);
 });
+
+const mapBounds = {
+  southwest: { latitude: 22.8, longitude: 110.9 },
+  northeast: { latitude: 23, longitude: 111.1 },
+  coordinateSystem: 'GCJ02',
+};
+function mapData(body, items = [listing({ id: V })], nextCursor = null) {
+  return {
+    ...searchData(items),
+    nextCursor,
+    locationCapability: { enabled: false, coordinateSystem: 'GCJ02', viewportSearch: true },
+    queryOrigin: 'VIEWPORT',
+    searchArea: {
+      mode: 'VIEWPORT',
+      bounds: body.viewport,
+      center: {
+        latitude: (body.viewport.southwest.latitude + body.viewport.northeast.latitude) / 2,
+        longitude: (body.viewport.southwest.longitude + body.viewport.northeast.longitude) / 2,
+        coordinateSystem: 'GCJ02',
+      },
+      scopeLabel: body.regionId ? 'SELECTED_REGION' : 'MAP_AREA',
+    },
+  };
+}
+async function mapHarness(request, modalAnswers) {
+  const h = harness('local', {
+    modalAnswers,
+    request: ({ body }) =>
+      body.viewport
+        ? request(body)
+        : envelope({
+            ...searchData([listing()]),
+            locationCapability: { enabled: false, coordinateSystem: 'GCJ02', viewportSearch: true },
+          }),
+  });
+  h.wx.createMapContext = (id, page) => {
+    assert.equal(id, 'local-map');
+    assert.equal(page, h.page);
+    return { getRegion: (o) => o.success(mapBounds) };
+  };
+  h.page.onShow();
+  await h.flush();
+  h.page.setData({ selection });
+  h.page.toggleMap();
+  h.page.regionChanged({ type: 'end', causedBy: 'update' });
+  return h;
+}
+function drag(page, scale = 14) {
+  page.regionChanged({ type: 'begin', causedBy: 'drag' });
+  page.regionChanged({ type: 'end', detail: { causedBy: 'drag', scale } });
+}
+
+test('R6MAP drag only marks dirty; explicit viewport POST requires no location and keeps city/address', async () => {
+  const h = await mapHarness((body) => envelope(mapData(body)));
+  h.page.setData({ serviceAddress: '已确认实际地址', servicePlace: { point } });
+  const calls = h.calls.length;
+  drag(h.page);
+  await ticks();
+  assert.equal(h.calls.length, calls);
+  assert.equal(h.page.data.viewportDirty, true);
+  await h.page.searchThisArea();
+  const sent = h.calls.at(-1);
+  equal(sent.body.viewport, mapBounds);
+  assert.equal(sent.method, 'POST');
+  assert.equal(sent.url, '/v1/public/local-search');
+  assert.equal(sent.body.searchVersion, 2);
+  assert.equal(sent.body.regionId, R);
+  assert.equal(sent.body.point, undefined);
+  assert.equal(sent.body.radiusMeters, undefined);
+  equal(h.page.data.selection, selection);
+  assert.equal(h.page.data.serviceAddress, '已确认实际地址');
+  equal(h.page.data.servicePlace, { point });
+  assert.equal(h.page.data.items[0].id, V);
+  assert.equal(h.page.data.markers.length, 1);
+  assert.equal(h.page.data.viewportDirty, false);
+  assert.match(h.page.data.mapScopeLabel, /合成市/);
+  assert.equal(h.storage.size, 0);
+  assert.doesNotThrow(() => preview(h.page.route, h.page.data));
+});
+
+test('R6MAP late getRegion snapshot cannot search after another gesture or context change', async () => {
+  const h = await mapHarness((body) => envelope(mapData(body)));
+  let read;
+  h.wx.createMapContext = () => ({
+    getRegion: (o) => {
+      read = o;
+    },
+  });
+  const start = h.calls.length;
+  const task = h.page.searchThisArea();
+  drag(h.page);
+  read.success(mapBounds);
+  await task;
+  assert.equal(h.calls.length, start);
+  assert.equal(h.page.data.viewportBusy, false);
+  const second = h.page.searchThisArea();
+  h.page.input(tap({ field: 'q' }, '新关键词'));
+  read.success(mapBounds);
+  await second;
+  assert.equal(h.calls.length, start);
+  assert.equal(h.page.data.nextCursor, null);
+});
+
+test('R6MAP an in-flight search never replaces prior list after drag, program move, or session reset', async () => {
+  for (const change of [
+    (p) => drag(p),
+    (p) => p.setMapView({ latitude: 23.1, longitude: 111.2, coordinateSystem: 'GCJ02' }, 15),
+    (p) => p.onSessionReset(),
+    (p) => p.onHide(),
+  ]) {
+    const response = deferred();
+    let query;
+    const h = await mapHarness((body) => {
+      query = body;
+      return response.promise;
+    });
+    const task = h.page.searchThisArea();
+    await ticks();
+    change(h.page);
+    response.resolve(envelope(mapData(query)));
+    await task;
+    assert.notEqual(h.page.data.items[0]?.id, V);
+    assert.equal(h.page.data.viewportBusy, false);
+  }
+});
+
+test('R6MAP paging deduplicates IDs, preserves map view, and pauses until moved area is restored', async () => {
+  const h = await mapHarness((body) =>
+    envelope(
+      mapData(
+        body,
+        body.cursor ? [listing({ id: V }), listing({ id: B })] : [listing({ id: V })],
+        body.cursor ? null : 'signed_cursor',
+      ),
+    ),
+  );
+  drag(h.page, 16);
+  await h.page.searchThisArea();
+  const original = JSON.stringify(h.page.data.mapCenter);
+  h.page.more();
+  await ticks();
+  assert.equal(JSON.stringify(h.page.data.mapCenter), original);
+  equal(
+    h.page.data.items.map((v) => v.id),
+    [V, B],
+  );
+  await h.page.searchThisArea();
+  drag(h.page);
+  const count = h.calls.length;
+  h.page.more();
+  await ticks();
+  assert.equal(h.calls.length, count);
+  assert.equal(h.page.data.canRestoreArea, true);
+  h.page.restoreArea();
+  assert.equal(h.page.data.viewportDirty, false);
+  h.page.regionChanged({ type: 'begin', causedBy: 'update' });
+  h.page.regionChanged({ type: 'end', causedBy: 'update' });
+  assert.equal(h.calls.length, count);
+  h.page.more();
+  await ticks();
+  assert.equal(h.calls.length, count + 1);
+  assert.equal(h.page.data.mapScale, 16);
+});
+
+test('R6MAP cross-city expansion requires confirmation and never writes global city or actual service place', async () => {
+  const h = await mapHarness((body) => envelope(mapData(body)), [false, true]);
+  const start = h.calls.length;
+  await h.page.expandMapScope();
+  assert.equal(h.calls.length, start);
+  await h.page.expandMapScope();
+  assert.equal(h.calls.at(-1).body.regionId, undefined);
+  assert.equal(h.calls.at(-1).body.catalogVersion, undefined);
+  equal(h.page.data.selection, selection);
+  assert.match(h.page.data.mapScopeLabel, /临时地图范围/);
+  assert.equal(h.storage.size, 0);
+  h.page.keepCityScope();
+  await ticks();
+  assert.equal(h.calls.at(-1).body.regionId, R);
+});
+
+test('R6MAP request and map failures preserve committed area and offer city-list recovery', async () => {
+  let fail = false;
+  const h = await mapHarness((body) => {
+    if (fail) throw new Error('范围过大，请缩小地图');
+    return envelope(mapData(body, [], 'signed_cursor'));
+  });
+  await h.page.searchThisArea();
+  assert.equal(h.page.data.loaded, true);
+  assert.equal(h.page.data.items.length, 0);
+  assert.equal(h.page.data.viewportMode, true);
+  fail = true;
+  drag(h.page);
+  await h.page.searchThisArea();
+  assert.match(h.page.data.mapError, /范围过大/);
+  assert.equal(h.page.data.nextCursor, 'signed_cursor');
+  assert.equal(h.page.data.canRestoreArea, true);
+  h.page.mapFailed();
+  assert.match(h.page.data.mapError, /城市列表/);
+  h.page.cityList();
+  await ticks();
+  assert.equal(h.page.data.mapVisible, false);
+  assert.equal(h.page.data.viewportMode, false);
+  assert.equal(h.calls.at(-1).body.viewport, undefined);
+});
+
+test('R6MAP rejects incoherent scope DTO and disables viewport calls against older capability', async () => {
+  const h = await mapHarness((body) => {
+    const result = mapData(body);
+    result.searchArea.center.latitude += 1;
+    return envelope(result);
+  });
+  await h.page.searchThisArea();
+  assert.match(h.page.data.mapError, /中心无效/);
+  assert.equal(h.page.data.items[0].id, L);
+  const old = harness('local', { request: () => envelope(searchData([listing()])) });
+  old.page.onShow();
+  await old.flush();
+  old.page.toggleMap();
+  drag(old.page);
+  const count = old.calls.length;
+  await old.page.searchThisArea();
+  assert.equal(old.calls.length, count);
+});

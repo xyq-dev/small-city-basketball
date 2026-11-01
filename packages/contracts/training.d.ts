@@ -1,0 +1,66 @@
+export type TrainingCohortState =
+  'DRAFT' | 'ENROLLING' | 'RUNNING' | 'COMPLETED' | 'CANCELLED' | 'SUSPENDED';
+export type TrainingEnrollmentState =
+  | 'WAITLISTED'
+  | 'HOLDING'
+  | 'CONFIRMED'
+  | 'EXPIRED'
+  | 'PAID_UNALLOCATED'
+  | 'CANCELLED'
+  | 'COMPLETED';
+export interface TrainingSessionData {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  state: string;
+  version: number;
+  coaches: { id: string; name: string }[];
+}
+export interface TrainingCohortData {
+  id: string;
+  orgId: string;
+  courseId: string;
+  title: string;
+  description: string;
+  address: string;
+  state: TrainingCohortState;
+  capacity: number;
+  available: number;
+  totalFen: number;
+  termsId: string;
+  termsText: string;
+  enrollmentDeadline: string;
+  version: number;
+  sessions: TrainingSessionData[];
+  capabilities: { canEnroll: boolean; canManage: boolean; paidEnrollmentEnabled: boolean };
+}
+export interface TrainingEntitlementData {
+  id: string;
+  sessionId: string;
+  originalSessionId: string;
+  netFen: number;
+  state: string;
+  version: number;
+}
+export interface TrainingEnrollmentData {
+  id: string;
+  orgId: string;
+  cohortId: string;
+  applicantUserId: string;
+  payerUserId: string;
+  learnerUserId: string;
+  state: TrainingEnrollmentState;
+  totalFen: number;
+  tradeOrderId: string | null;
+  holdExpiresAt: string | null;
+  version: number;
+  entitlements: TrainingEntitlementData[];
+  consumptions: Record<string, unknown>[];
+  refunds: Record<string, unknown>[];
+  capabilities: {
+    canConfirm: boolean;
+    canCancel: boolean;
+    canRequestRefund: boolean;
+    canManage: boolean;
+  };
+}

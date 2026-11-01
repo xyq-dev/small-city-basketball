@@ -4,6 +4,9 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { createApi } from '../src/app.js';
 import { migrate } from '../src/database/migrate.js';
+import { insuranceEventHash } from '../src/insurance-admission.js';
+import type { InsuranceAdmission } from '../src/insurance-admission.js';
+import { insuranceHash } from '../src/insurance-domain.js';
 import { InsuranceService } from '../src/insurance-service.js';
 import {
   QualificationPrecheckService,
@@ -112,6 +115,7 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
   let insurance: InsuranceService,
     qualification: QualificationPrecheckService,
     materials: ParticipantMaterialsService;
+  let admission: InsuranceAdmission;
   const driver = new SyntheticDriver();
   let participationReady = true;
   beforeAll(async () => {
@@ -144,8 +148,43 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       requireInsurance: true,
     });
     qualification = new QualificationPrecheckService(api.pool, config);
+    const event = f.registration.event;
+    admission = {
+      id: randomUUID(),
+      providerId: driver.id,
+      protocolVersion: 'synthetic-only-v1',
+      evidenceHash: 'a'.repeat(64),
+      validFrom: new Date(Date.now() - 60000).toISOString(),
+      validUntil: new Date(Date.now() + 86400000).toISOString(),
+      salesMode: 'APPROVED_API',
+      allowedOrigins: driver.allowedOrigins,
+      products: [
+        {
+          sourceHash: insuranceHash((await driver.catalog())[0]),
+          minAge: 18,
+          maxAge: 100,
+          timezone: event.timezone,
+          coverageTimeBasis: 'EVENT_LOCAL_CALENDAR_DAYS',
+          events: [
+            {
+              orgId: owner.orgId,
+              eventId: event.id,
+              eventHash: insuranceEventHash({
+                orgId: owner.orgId,
+                eventId: event.id,
+                startDate: event.startDate,
+                endDate: event.endDate,
+                timezone: event.timezone,
+                venueName: event.venueName,
+              }),
+            },
+          ],
+        },
+      ],
+    };
     insurance = new InsuranceService(api.pool, config, {
       provider: driver,
+      admission,
       dataKey: insuranceKey,
       noticeKey: noticeKey.toString('base64'),
       autoDispatch: false,
@@ -200,6 +239,67 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       [orderId],
     );
   }
+  test('reviewed release is immutable and unreviewed product/event/organization cannot leave the server', async () => {
+    const make = (review?: InsuranceAdmission, newPurchasesEnabled?: boolean) =>
+      new InsuranceService(
+        api.pool,
+        { databaseUrl, appOrigin: ORIGIN, participantDataKey },
+        {
+          provider: driver,
+          dataKey: insuranceKey,
+          autoDispatch: false,
+          participationGuard: async () => ({ ready: true }),
+          admission: review,
+          newPurchasesEnabled,
+        },
+      );
+    const member = f.members[0]!,
+      subject = subjects[0]!;
+    const product = (await insurance.workspace(subject.cookie)).products[0]!;
+    const request = {
+      clientRequestId: randomUUID(),
+      entryId: f.entry.id,
+      memberId: member.memberId,
+      productId: product.id,
+    };
+    const spy = vi.spyOn(driver, 'quote');
+    try {
+      expect(make().capabilities()).toMatchObject({ enabled: false, maintenanceEnabled: true });
+      await expect(make().quote(subject.cookie, request)).rejects.toMatchObject({
+        code: 'INSURANCE_PROVIDER_DISABLED',
+      });
+      await expect(make(admission, false).quote(subject.cookie, request)).rejects.toMatchObject({
+        code: 'INSURANCE_PROVIDER_DISABLED',
+      });
+      const changed = { ...admission, protocolVersion: 'changed-with-same-release' };
+      await expect(make(changed).assertConfiguration()).rejects.toThrow('immutable');
+      for (const change of [
+        { sourceHash: 'c'.repeat(64) },
+        { events: [{ ...admission.products[0]!.events[0]!, orgId: randomUUID() }] },
+        { events: [{ ...admission.products[0]!.events[0]!, eventHash: 'd'.repeat(64) }] },
+      ]) {
+        const revised = {
+          ...admission,
+          id: randomUUID(),
+          products: [{ ...admission.products[0]!, ...change }],
+        };
+        const service = make(revised);
+        await service.assertConfiguration();
+        await expect(service.quote(subject.cookie, request)).rejects.toMatchObject({
+          code: 'INSURANCE_SCOPE_NOT_APPROVED',
+        });
+      }
+      expect(spy).not.toHaveBeenCalled();
+      await expect(
+        api.pool.query('UPDATE insurance_provider_releases SET evidence_hash=$2 WHERE id=$1', [
+          admission.id,
+          'f'.repeat(64),
+        ]),
+      ).rejects.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
+  });
   test('DRAFT own request → independent precheck → unknown apply → verified issuance → C23 approval → cancellation queries original id', async () => {
     const member = f.members[0]!,
       s = subjects[0]!;
@@ -210,6 +310,35 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
       memberId: member.memberId,
       productId: product.id,
     })) as { quoteId: string };
+    const evidence = (
+      await api.pool.query(
+        'SELECT admission_release_id,admission_source_hash FROM insurance_quotes WHERE id=$1',
+        [quote.quoteId],
+      )
+    ).rows[0];
+    expect(evidence.admission_release_id).toBe(admission.id);
+    expect(evidence.admission_source_hash).toMatch(/^[a-f0-9]{64}$/);
+    const previousVenue = (
+      await api.pool.query('SELECT venue_name FROM events WHERE id=$1', [f.registration.event.id])
+    ).rows[0].venue_name;
+    await api.pool.query('UPDATE events SET venue_name=$2 WHERE id=$1', [
+      f.registration.event.id,
+      '合成变更场地',
+    ]);
+    try {
+      await expect(
+        insurance.purchase(s.cookie, {
+          clientRequestId: randomUUID(),
+          quoteId: quote.quoteId,
+          acceptedTermsVersion: INSURANCE_TERMS_VERSION,
+        }),
+      ).rejects.toMatchObject({ code: 'INSURANCE_SCOPE_NOT_APPROVED' });
+    } finally {
+      await api.pool.query('UPDATE events SET venue_name=$2 WHERE id=$1', [
+        f.registration.event.id,
+        previousVenue,
+      ]);
+    }
     const purchase = {
       clientRequestId: randomUUID(),
       quoteId: quote.quoteId,
@@ -567,6 +696,15 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
     }
     const exhausted = await insurance.get(subject.cookie, created.orderId);
     expect(exhausted.canRefresh).toBe(true);
+    expect(exhausted.reconciliationRequired).toBe(true);
+    expect(
+      (
+        await api.pool.query(
+          'SELECT resolved_at FROM insurance_reconciliation_cases WHERE order_id=$1',
+          [created.orderId],
+        )
+      ).rows,
+    ).toEqual([{ resolved_at: null }]);
     const originalTask = (
       await api.pool.query(
         "SELECT id,kind,fence FROM insurance_operations WHERE order_id=$1 AND status='UNKNOWN'",
@@ -658,7 +796,19 @@ describe('E03 durable insurance on isolated PostgreSQL', { concurrent: false }, 
     }
     await insurance.drain(created.orderId);
     const issued = await insurance.get(subject.cookie, created.orderId);
-    expect(issued).toMatchObject({ paymentStatus: 'PAID', policyStatus: 'ISSUED' });
+    expect(issued).toMatchObject({
+      paymentStatus: 'PAID',
+      policyStatus: 'ISSUED',
+      reconciliationRequired: false,
+    });
+    expect(
+      (
+        await api.pool.query(
+          'SELECT resolved_at FROM insurance_reconciliation_cases WHERE order_id=$1',
+          [created.orderId],
+        )
+      ).rows[0].resolved_at,
+    ).not.toBeNull();
     expect(driver.applies.filter((id) => id === original)).toHaveLength(1);
     await insurance.command(subject.cookie, created.orderId, {
       clientRequestId: randomUUID(),

@@ -1,4 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import {
+  assertInsuranceAdmission,
+  insuranceAdmissionActive,
+  normalizeInsuranceAdmission,
+} from './insurance-admission.js';
+import type { InsuranceAdmission } from './insurance-admission.js';
 import type { Pool, PoolClient } from 'pg';
 import { ApplicationService } from './service.js';
 import type { Actor, ApiOptions } from './service.js';
@@ -54,6 +60,9 @@ import type { InsuranceOrderData } from '../../../packages/contracts/insurance.j
 type Row = Record<string, any>;
 export interface InsuranceOptions extends QualificationOptions {
   provider?: InsuranceProvider;
+  admission?: InsuranceAdmission;
+  /** Stops new quotations and APPLY without stopping old policy obligations. */
+  newPurchasesEnabled?: boolean;
   dataKey?: string;
   noticeKey?: string;
   autoDispatch?: boolean;
@@ -61,11 +70,12 @@ export interface InsuranceOptions extends QualificationOptions {
 }
 const iso = (v: Date | string | null) => (v ? new Date(v).toISOString() : null);
 const ORDER_SQL = `SELECT o.*,q.product_id,q.binding_id,q.material_id,q.material_revision_id AS quote_material_revision_id,
- q.quote_ciphertext,q.applicant_ciphertext,q.applicant_reference,q.premium_fen,q.currency,
+ q.admission_release_id,q.admission_source_hash,p.source_hash AS product_source_hash,q.quote_ciphertext,q.applicant_ciphertext,q.applicant_reference,q.premium_fen,q.currency,
  q.coverage_start_date::text,q.coverage_end_date::text,q.expires_at,p.provider_id AS product_provider_id,p.external_id,p.external_version,p.terms_version AS product_terms_version,p.basketball_covered,p.active AS product_active
  FROM insurance_orders o JOIN insurance_quotes q ON q.id=o.quote_id JOIN insurance_products p ON p.id=q.product_id`;
 /** Durable insurance orchestration. No default insurer, client-selected endpoint, platform premium collection or fake issuance. */
 export class InsuranceService extends ApplicationService {
+  private readonly admission?: Readonly<InsuranceAdmission>;
   private readonly key?: Buffer;
   private readonly participantKey?: Buffer;
   private readonly noticeKey?: Buffer;
@@ -83,23 +93,82 @@ export class InsuranceService extends ApplicationService {
     if (insurance.noticeKey !== undefined) this.noticeKey = insuranceKey(insurance.noticeKey);
     if (insurance.provider && (!this.key || !this.participantKey || !insurance.participationGuard))
       throw Error('Complete insurance privacy and authorization configuration is required');
+    if (insurance.admission) {
+      if (!insurance.provider) throw Error('Insurance admission requires a fixed provider');
+      this.admission = normalizeInsuranceAdmission(insurance.admission, insurance.provider);
+    }
+  }
+  private maintenanceEnabled() {
+    return Boolean(
+      this.insurance.provider &&
+      this.key &&
+      this.participantKey &&
+      this.insurance.participationGuard,
+    );
   }
   capabilities() {
+    const active = insuranceAdmissionActive(this.admission);
+    const enabled =
+      this.maintenanceEnabled() &&
+      this.insurance.newPurchasesEnabled !== false &&
+      active &&
+      this.admission?.salesMode === 'APPROVED_API';
     return {
-      enabled: Boolean(
-        this.insurance.provider &&
-        this.key &&
-        this.participantKey &&
-        this.insurance.participationGuard,
-      ),
-      reason: this.insurance.provider ? null : '保险供应商尚未接入，保留已有外部保单人工审核。',
+      enabled,
+      maintenanceEnabled: this.maintenanceEnabled(),
+      externalPolicySupported: true,
+      reason: enabled
+        ? null
+        : !this.insurance.provider
+          ? '保险供应商尚未接入，保留已有外部保单人工审核。'
+          : this.insurance.newPurchasesEnabled === false
+            ? '新的在线投保暂时关闭，已有保单可继续核对和申请退保。'
+            : this.admission?.salesMode === 'PROVIDER_HOSTED' && active
+              ? '请前往保险服务方办理，取得保单后提交外部保单审核。'
+              : '在线投保准入尚未完成或已到期，请提交已有外部保单审核。',
+      providerEntryUrl:
+        active &&
+        this.insurance.newPurchasesEnabled !== false &&
+        this.admission?.salesMode === 'PROVIDER_HOSTED'
+          ? this.admission.providerEntryUrl
+          : null,
       consentVersion: INSURANCE_TERMS_VERSION,
     };
   }
-  private enabled() {
-    if (!this.capabilities().enabled)
-      insuranceFail('INSURANCE_PROVIDER_DISABLED', '在线投保尚未接入真实供应商', 503);
+  private enabled(newPurchase = true) {
+    if (!(newPurchase ? this.capabilities().enabled : this.maintenanceEnabled()))
+      insuranceFail('INSURANCE_PROVIDER_DISABLED', '在线投保尚未开放；已有外部保单可提交审核', 503);
     return { provider: this.insurance.provider!, key: this.key! };
+  }
+  private async assertAdmission(
+    c: PoolClient,
+    row: Row,
+    product: Row,
+    applicant: InsuranceApplicant,
+    releaseId?: string | null,
+  ) {
+    this.enabled();
+    const now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now;
+    assertInsuranceAdmission(this.admission, {
+      providerId: this.insurance.provider!.id,
+      productHash: product.source_hash,
+      orgId: row.org_id,
+      eventId: row.event_id,
+      startDate: applicant.coverageStartDate,
+      endDate: applicant.coverageEndDate,
+      timezone: row.event.timezone,
+      venueName: row.event.venue_name,
+      birthDate: qualificationBirthDate(applicant.identityNumber),
+      releaseId,
+      now: new Date(now).getTime(),
+    });
+    const stored = (
+      await c.query('SELECT source_hash FROM insurance_provider_releases WHERE id=$1', [
+        this.admission!.id,
+      ])
+    ).rows[0];
+    if (stored?.source_hash !== insuranceHash(this.admission))
+      insuranceFail('INSURANCE_ADMISSION_REQUIRED', '投保准入证据尚未登记或版本不一致', 409);
   }
   async assertConfiguration() {
     if (!this.key || !this.insurance.provider) return;
@@ -116,10 +185,34 @@ export class InsuranceService extends ApplicationService {
     ).rows[0];
     if (stored?.key_id !== id || stored?.provider_id !== provider)
       throw Error('Insurance configuration differs from stored provider or key');
+    if (this.admission) {
+      const a = this.admission,
+        hash = insuranceHash(a);
+      await this.pool.query(
+        'INSERT INTO insurance_provider_releases(id,provider_id,source_hash,evidence_hash,sales_mode,valid_from,valid_until,manifest) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb) ON CONFLICT DO NOTHING',
+        [
+          a.id,
+          a.providerId,
+          hash,
+          a.evidenceHash,
+          a.salesMode,
+          a.validFrom,
+          a.validUntil,
+          JSON.stringify(a),
+        ],
+      );
+      const stored = (
+        await this.pool.query('SELECT source_hash FROM insurance_provider_releases WHERE id=$1', [
+          a.id,
+        ])
+      ).rows[0];
+      if (stored?.source_hash !== hash)
+        throw Error('Insurance admission release is immutable; use a new reviewed release ID');
+    }
   }
   /** Called only by the configured worker/startup; the trusted driver supplies the product catalog. */
   async syncProducts() {
-    const { provider } = this.enabled(),
+    const { provider } = this.enabled(false),
       raw = await provider.catalog();
     if (!Array.isArray(raw) || raw.length > 50)
       insuranceFail('INSURANCE_CATALOG_INVALID', '保险产品资料暂不可用', 502);
@@ -318,14 +411,16 @@ export class InsuranceService extends ApplicationService {
       await this.ensureFreshSession(c, a);
       return {
         ...this.capabilities(),
-        products: products.map((p) => ({
-          id: p.id,
-          insurer: p.insurer,
-          name: p.name,
-          termsVersion: p.terms_version,
-          termsUrl: p.terms_url,
-          basketballCovered: p.basketball_covered,
-        })),
+        products: products
+          .filter((p) => this.admission?.products.some((a) => a.sourceHash === p.source_hash))
+          .map((p) => ({
+            id: p.id,
+            insurer: p.insurer,
+            name: p.name,
+            termsVersion: p.terms_version,
+            termsUrl: p.terms_url,
+            basketballCovered: p.basketball_covered,
+          })),
         orders,
         notice:
           '保费由实际保险服务方收取。支付、出单、保障审核与最终报名分别判断；已有外部有效保单不要求重复购买。',
@@ -353,6 +448,7 @@ export class InsuranceService extends ApplicationService {
       if (!p) throw notFound();
       const applicant = this.applicant(row);
       await this.dataConsent(c, row, applicant);
+      await this.assertAdmission(c, row, p, applicant);
       await this.ensureFreshSession(c, actor);
       return { row, p, applicant };
     });
@@ -391,16 +487,17 @@ export class InsuranceService extends ApplicationService {
       )
         insuranceFail('INSURANCE_SOURCE_CHANGED', '本人资料或赛期已改变，请重新报价', 409);
       const product = (
-        await c.query('SELECT active FROM insurance_products WHERE id=$1 FOR SHARE', [b.productId])
+        await c.query('SELECT * FROM insurance_products WHERE id=$1 FOR SHARE', [b.productId])
       ).rows[0];
       if (
         !product?.active ||
         !['REGISTRATION_OPEN', 'REGISTRATION_CLOSED'].includes(row.event.status)
       )
         insuranceFail('INSURANCE_SOURCE_CHANGED', '保险产品或赛事已改变，请重新读取', 409);
+      await this.assertAdmission(c, row, product, applicant);
       const id = randomUUID();
       const inserted = await c.query(
-        `INSERT INTO insurance_quotes(id,user_id,org_id,event_id,entry_id,member_id,binding_id,material_id,material_revision_id,product_id,quote_ciphertext,applicant_ciphertext,key_id,applicant_reference,premium_fen,currency,coverage_start_date,coverage_end_date,expires_at) SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'CNY',$16,$17,$18 WHERE $18::timestamptz>clock_timestamp()`,
+        `INSERT INTO insurance_quotes(id,user_id,org_id,event_id,entry_id,member_id,binding_id,material_id,material_revision_id,product_id,quote_ciphertext,applicant_ciphertext,key_id,applicant_reference,premium_fen,currency,coverage_start_date,coverage_end_date,expires_at,admission_release_id,admission_source_hash) SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'CNY',$16,$17,$18,$19,$20 WHERE $18::timestamptz>clock_timestamp()`,
         [
           id,
           actor.user.id,
@@ -420,6 +517,8 @@ export class InsuranceService extends ApplicationService {
           quote.coverageStartDate,
           quote.coverageEndDate,
           quote.expiresAt,
+          this.admission!.id,
+          insuranceHash(this.admission),
         ],
       );
       if (!inserted.rowCount)
@@ -476,12 +575,17 @@ export class InsuranceService extends ApplicationService {
       )
         insuranceFail('INSURANCE_QUOTE_EXPIRED', '报价已到期或来源改变，请重新确认', 409);
       const product = (
-        await c.query('SELECT active,provider_id FROM insurance_products WHERE id=$1 FOR SHARE', [
-          q.product_id,
-        ])
+        await c.query('SELECT * FROM insurance_products WHERE id=$1 FOR SHARE', [q.product_id])
       ).rows[0];
       if (!product?.active || product.provider_id !== provider.id)
         insuranceFail('INSURANCE_PRODUCT_WITHDRAWN', '该保险产品或原供应商当前不可用', 409);
+      await this.assertAdmission(
+        c,
+        row,
+        product,
+        this.applicant(row),
+        q.admission_release_id ?? null,
+      );
       await this.authorization(c, row);
       const unresolved = (
         await c.query(
@@ -588,12 +692,13 @@ export class InsuranceService extends ApplicationService {
         ),
       pendingOperation: pending?.id ?? null,
       canRefresh:
-        this.capabilities().enabled &&
+        this.maintenanceEnabled() &&
         (!pending || (pending.status === 'UNKNOWN' && Number(pending.attempt_count) >= 12)),
       canRequestCancellation:
-        this.capabilities().enabled &&
+        this.maintenanceEnabled() &&
         !o.cancellation_requested_at &&
         !['CANCELLED'].includes(o.policy_status),
+      reconciliationRequired: pending?.status === 'UNKNOWN' && Number(pending.attempt_count) >= 12,
       currentMaterial: m?.current_revision_id === o.material_revision_id,
     };
   }
@@ -620,7 +725,7 @@ export class InsuranceService extends ApplicationService {
     });
   }
   async command(cookie: string | undefined, id: string, raw: unknown) {
-    const { key } = this.enabled(),
+    const { key } = this.enabled(false),
       b = parseInsuranceCommand(raw),
       hash = insuranceFingerprint(key, [id, b]);
     // A manual refresh grants a bounded query budget. Authenticate without holding
@@ -722,7 +827,7 @@ export class InsuranceService extends ApplicationService {
   }
   async checkout(cookie: string | undefined, id: string) {
     return this.transaction(async (c) => {
-      this.enabled();
+      this.enabled(false);
       const a = await this.lockActor(c, cookie),
         o = await this.ownOrder(c, a, resourceId(id));
       if (
@@ -745,6 +850,20 @@ export class InsuranceService extends ApplicationService {
         !(await this.workerAuthorization(c, o))
       )
         insuranceFail('INSURANCE_SOURCE_CHANGED', '投保资格或赛期已改变，请先核对原申请', 409);
+      const applicant = openInsurance<InsuranceApplicant>(
+        this.key!,
+        o.quote_id,
+        o.applicant_ciphertext,
+      );
+      await this.assertAdmission(
+        c,
+        { ...o, event: current },
+        { source_hash: o.product_source_hash },
+        applicant,
+        o.admission_release_id ?? null,
+      );
+      if (!o.product_active)
+        insuranceFail('INSURANCE_PRODUCT_WITHDRAWN', '产品已暂停，勿继续付款，请查询原单', 409);
       const f = openInsurance<InsurancePolicyFact>(this.key!, o.id, o.policy_ciphertext);
       if (!f.checkoutUrl)
         insuranceFail('INSURANCE_CHECKOUT_UNAVAILABLE', '保险服务方尚未提供付款入口', 409);
@@ -781,7 +900,7 @@ export class InsuranceService extends ApplicationService {
     });
   }
   async providerNotice(raw: unknown, signature: unknown) {
-    const { provider } = this.enabled();
+    const { provider } = this.enabled(false);
     if (!this.noticeKey) insuranceFail('INSURANCE_NOTICE_DISABLED', '保险通知尚未配置', 503);
     const n = verifyInsuranceNotice(raw, signature, this.noticeKey!, Date.now());
     if (n.providerId !== provider.id)
@@ -873,7 +992,7 @@ export class InsuranceService extends ApplicationService {
   /** One lease-fenced operation. UNKNOWN and recovered leases query the original apply ID, never repeat charge-bearing calls. */
   async drain(orderId?: string) {
     const scope = orderId === undefined ? null : resourceId(orderId);
-    if (this.draining || !this.capabilities().enabled) return;
+    if (this.draining || !this.maintenanceEnabled()) return;
     this.draining = true;
     try {
       await this.pool.query(
@@ -888,7 +1007,7 @@ export class InsuranceService extends ApplicationService {
       ).rows[0];
       if (!candidate) return;
       const work = await this.transaction(async (c) => {
-        await this.lockScope(c, candidate.org_id, candidate.event_id);
+        const event = await this.lockScope(c, candidate.org_id, candidate.event_id);
         const x = (
           await c.query(
             "SELECT * FROM insurance_operations WHERE id=$1 AND status IN('PENDING','UNKNOWN') AND attempt_count<12 AND next_attempt_at<=clock_timestamp() FOR UPDATE SKIP LOCKED",
@@ -917,12 +1036,28 @@ export class InsuranceService extends ApplicationService {
             o.applicant_ciphertext,
           );
         const initialApply = x.kind === 'APPLY' && !x.reconcile_only;
+        let admitted = true;
+        if (initialApply) {
+          try {
+            await this.assertAdmission(
+              c,
+              { ...o, event },
+              { source_hash: o.product_source_hash },
+              applicant,
+              o.admission_release_id ?? null,
+            );
+          } catch (error) {
+            if (!(error instanceof ApiError) || ![409, 422, 503].includes(error.status))
+              throw error;
+            admitted = false;
+          }
+        }
         const valid = (
           await c.query('SELECT $1::timestamptz>clock_timestamp() AS valid', [o.expires_at])
         ).rows[0].valid;
         if (
           initialApply &&
-          (!authorized || !valid || !o.product_active || o.cancellation_requested_at)
+          (!admitted || !authorized || !valid || !o.product_active || o.cancellation_requested_at)
         ) {
           await c.query(
             "UPDATE insurance_operations SET status='FAILED',updated_at=clock_timestamp() WHERE id=$1",
@@ -1035,7 +1170,7 @@ export class InsuranceService extends ApplicationService {
               await this.finishOperation(
                 c,
                 work,
-                "status=CASE WHEN attempt_count>=12 THEN 'FAILED' ELSE 'UNKNOWN' END,reconcile_only=true,next_attempt_at=clock_timestamp()+interval '30 seconds'",
+                "status='UNKNOWN',reconcile_only=true,next_attempt_at=clock_timestamp()+interval '30 seconds'",
               );
             else await this.finishOperation(c, work, "status='DONE'");
             if (
@@ -1068,7 +1203,7 @@ export class InsuranceService extends ApplicationService {
             await this.finishOperation(
               c,
               work,
-              "status=CASE WHEN attempt_count>=12 THEN 'FAILED' ELSE 'UNKNOWN' END,reconcile_only=true,next_attempt_at=clock_timestamp()+interval '30 seconds'",
+              "status='UNKNOWN',reconcile_only=true,next_attempt_at=clock_timestamp()+interval '30 seconds'",
             );
         });
       } catch (error) {
@@ -1089,7 +1224,7 @@ export class InsuranceService extends ApplicationService {
     }
   }
   startWorker() {
-    if (this.capabilities().enabled && this.insurance.autoDispatch !== false && !this.timer) {
+    if (this.maintenanceEnabled() && this.insurance.autoDispatch !== false && !this.timer) {
       this.timer = setInterval(() => {
         void this.drain().catch(() => {});
       }, 5000);
@@ -1104,7 +1239,7 @@ export class InsuranceService extends ApplicationService {
     c: PoolClient,
     input: QualificationInput & { startDate: string; endDate: string },
   ) {
-    if (!this.capabilities().enabled)
+    if (!this.maintenanceEnabled())
       return { ready: false, orderId: null, code: 'INSURANCE_PROVIDER_DISABLED' };
     const proof = await createYouthQualificationReader(
       this.options.participantDataKey!,

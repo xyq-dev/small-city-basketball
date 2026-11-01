@@ -70,7 +70,7 @@ describe(
         [30.2, 120.2],
         [30.3, 120.1],
         [30.3, 120.2],
-    ] as const)
+      ] as const)
         ids.push(await insert(lat, lng));
       removed = await insert(30.25, 120.15, true, otherRegionId);
       ids.push(removed);
