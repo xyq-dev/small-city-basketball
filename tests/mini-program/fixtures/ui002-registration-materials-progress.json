@@ -77,5 +77,6 @@
     "message": "",
     "loginRequired": false
   },
-  "expectDisabled": ["通过当前材料版本"]
+  "expectDisabled": ["通过当前材料版本"],
+  "figmaNode": "6:751"
 }

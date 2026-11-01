@@ -1,0 +1,51 @@
+{
+  "name": "ui002-services-local-fulfillment",
+  "route": "pages/local-bookings/index",
+  "state": "synthetic-local-fulfillment",
+  "figmaNode": "8:1169",
+  "designSource": "UI001 current protected route and verified shared fields/cards; synthetic data only",
+  "expectText": ["核销球场到场", "实际经营方持当前有效码", "现场出示"],
+  "data": {
+    "serviceTab": "actions",
+    "selected": {
+      "id": "00000000-0000-4000-8000-000000000031",
+      "title": "合成文化体育中心东侧篮球场长名称",
+      "statusText": "已确认",
+      "status": "CONFIRMED",
+      "kind": "COURT",
+      "kindText": "球场",
+      "roleText": "需求方",
+      "canActAs": "PROVIDER",
+      "timeText": "2028-01-01 19:00—21:00（北京时间）",
+      "address": "合成市合成地区文化体育中心东侧二号篮球场",
+      "terms": "合成场地与天气取消约定；锁位以服务端记录为准。",
+      "actions": [
+        {
+          "type": "REDEEM_CHECKIN",
+          "label": "核销球场到场"
+        }
+      ]
+    },
+    "items": [
+      {
+        "id": "00000000-0000-4000-8000-000000000031",
+        "title": "合成文化体育中心东侧篮球场长名称",
+        "statusText": "已确认",
+        "status": "CONFIRMED",
+        "kind": "COURT",
+        "kindText": "球场",
+        "roleText": "需求方",
+        "canActAs": "PROVIDER",
+        "timeText": "2028-01-01 19:00—21:00（北京时间）",
+        "address": "合成市合成地区文化体育中心东侧二号篮球场",
+        "terms": "合成场地与天气取消约定；锁位以服务端记录为准。",
+        "actions": [
+          {
+            "type": "REDEEM_CHECKIN",
+            "label": "核销球场到场"
+          }
+        ]
+      }
+    ]
+  }
+}

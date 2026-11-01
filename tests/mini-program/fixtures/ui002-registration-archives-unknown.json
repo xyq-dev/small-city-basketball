@@ -30,5 +30,6 @@
     "loading": false,
     "loginRequired": false
   },
-  "expectDisabled": ["撤销公开并使旧链接失效", "创建档案草稿"]
+  "expectDisabled": ["撤销公开并使旧链接失效", "创建档案草稿"],
+  "figmaNode": "5:1458"
 }

@@ -27,9 +27,10 @@
         <view class="small">{{appearance.scheduleText || appearance.startText + ' — ' + appearance.endText}}</view>
         <view class="small muted">报到 {{appearance.reportText}}</view>
         <view class="small muted">{{order.playerCount}}位球员 · {{order.itemCount}}场安排</view>
-        <view class="small">本项{{appearance.status === 'CONDITIONAL' ? '条件预计' : '报价'}} {{appearance.totalText}} · 支付未开放</view>
+        <view class="small">本项{{appearance.status === 'CONDITIONAL' ? '条件预计' : '报价'}} {{appearance.totalText}} · {{paymentNotice || '付款与退款以本场资金订单为准'}}</view>
         <view class="small muted">总单确定报价 {{order.confirmedText}} · 条件预计 {{order.conditionalText}} · 实收 {{order.paidText}}</view>
         <view wx:if="{{appearance.conditionText}}" class="small muted">条件：{{appearance.conditionText}}</view>
+        <button class="secondary" data-id="{{appearance.id}}" bindtap="trade" disabled="{{loading}}">查看本场资金订单</button>
       </view>
       <button class="secondary detail-button" data-id="{{order.id}}" bindtap="detail">{{appearance.status === 'REQUESTED' ? '查看预约详情' : '查看逐场进度'}}<scb-icon name="chevron-right" size="14"/></button>
     </view>

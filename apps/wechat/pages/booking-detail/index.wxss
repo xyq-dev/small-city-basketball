@@ -2,21 +2,21 @@
 .order-context,.appearance-summary { display:flex; flex-direction:column; gap:8px; }
 .order-context .subtitle,.appearance-summary .subtitle { margin:0; font-size:18px; line-height:28px; font-weight:500; }
 .order-context .muted { font-size:14px; line-height:24px; }
-.appearance-status { color:#132c49; font-size:14px; line-height:24px; font-weight:500; }
+.appearance-status { color:#123c73; font-size:14px; line-height:24px; font-weight:500; }
 .appearance-status.warning { color:#895500; background:transparent; }
 .appearance-status.danger { color:#b53333; }
 .appearance-status.success { color:#16734b; }
-.appearance-status.neutral { color:#617286; }
-.appearance-price { color:#132c49; font-size:14px; line-height:24px; font-weight:500; }
+.appearance-status.neutral { color:#63758b; }
+.appearance-price { color:#123c73; font-size:14px; line-height:24px; font-weight:500; }
 .appearance-toggle { margin-bottom:16px; }
 .appearance-detail > view { margin-bottom:8px; }
 .appearance-detail > view:last-child { margin-bottom:0; }
 .appearance-actions { display:flex; flex-direction:column; gap:8px; margin-top:16px; }
 .appearance-actions button { width:100%; margin:0; }
-.change-panel { padding:12px; border:1px solid #e8edf2; border-radius:8px; margin:12px 0; }
+.change-panel { padding:12px; border:1px solid #e1e7ef; border-radius:8px; margin:12px 0; }
 .change-panel .section-title { font-size:14px; line-height:24px; font-weight:500; }
 .change-panel > view { margin-bottom:4px; }
-.pending-panel { border:1px solid #e8edf2; }
+.pending-panel { border:1px solid #e1e7ef; }
 .pending-panel button { margin-top:12px; }
 .command-id { word-break:break-all; }
 .date-row { display:flex; gap:8px; }
@@ -32,7 +32,7 @@
 .command-context .subtitle { margin:0; font-size:18px; line-height:28px; }
 .order-finances { margin-top:16px; }
 .order-finances .row-between { gap:12px; margin:8px 0; }
-.order-finances .row-between > text:first-child { color:#617286; }
+.order-finances .row-between > text:first-child { color:#63758b; }
 .order-finances .small { margin-top:8px; }
 .notice-title,.state-title { font-size:14px; line-height:24px; font-weight:500; }
 .state-card { display:flex; flex-direction:column; gap:8px; }
@@ -43,3 +43,6 @@
 .expiry-hero .title { margin-bottom:12px; }
 @media (max-width:360px) { .date-row { flex-direction:column; gap:0; } }
 .resolution-picker { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+
+/* UI001 shell: preserve the mature booking command and recovery layout. */
+.booking-detail-page{padding-left:16px;padding-right:16px;word-break:break-word}.card,.booking-order-card{border-radius:16px}input,textarea{font-size:16px}.service-progress{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.service-progress text{flex:1;min-width:70px;padding:8px;background:#eaf0f8;color:#63758b;border-radius:12px;text-align:center;font-size:12px;line-height:18px}.service-progress .active{background:#123c73;color:#fff}

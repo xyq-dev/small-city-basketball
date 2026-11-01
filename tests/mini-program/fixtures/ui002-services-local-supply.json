@@ -1,0 +1,22 @@
+{
+  "name": "ui002-services-local-supply",
+  "route": "pages/local-manage/index",
+  "state": "synthetic-local-supply",
+  "figmaNode": "8:1282",
+  "designSource": "UI001 current protected route and verified shared fields/cards; synthetic data only",
+  "expectText": ["审核与公开分别操作", "合成记录服务人员长名称", "新增供给申请"],
+  "data": {
+    "canCreate": true,
+    "listings": [
+      {
+        "id": "supply",
+        "title": "合成记录服务人员长名称",
+        "kindText": "记录服务",
+        "statusText": "待独立审核",
+        "published": false,
+        "address": "合成体育中心",
+        "providerConfirmed": true
+      }
+    ]
+  }
+}

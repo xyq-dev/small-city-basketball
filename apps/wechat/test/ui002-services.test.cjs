@@ -511,3 +511,101 @@ test('closing an advertising order cancels its late GET without losing the origi
   assert.equal(h.page.data.pending.body.commandId, 'original-ad-order');
   assert.equal(h.page.data.loading, false);
 });
+
+test('local booking views separate role filters and fulfillment, and returning clears a displayed checkin secret', () => {
+  const h = page('local-bookings');
+  h.page.setData({
+    items: [
+      {
+        id: raceId(1),
+        title: '合成球场订单',
+        status: 'CONFIRMED',
+        canActAs: 'PROVIDER',
+        actions: [{ type: 'REDEEM_CHECKIN', label: '核销球场到场' }],
+      },
+      { id: raceId(2), title: '合成我的预约', canActAs: 'BUYER' },
+    ],
+  });
+  h.page.filterOrders(tap('PROVIDER'));
+  const html = markup('local-bookings', h.page.data);
+  assert.match(html, /合成球场订单/);
+  assert.doesNotMatch(html, /合成我的预约/);
+  h.page.select({ currentTarget: { dataset: { id: raceId(1) } } });
+  assert.doesNotMatch(markup('local-bookings', h.page.data), /data-mini-bindtap="command"/);
+  h.page.serviceTab(tap('actions'));
+  assert.match(markup('local-bookings', h.page.data), /核销球场到场/);
+  h.page.setData({
+    checkinDisplay: { code: 'private-checkin-code' },
+    checkinInput: 'private-checkin-code',
+    pending: { body: { commandId: 'original-local-order' } },
+  });
+  h.page.closeBooking();
+  assert.equal(h.page.data.checkinDisplay, null);
+  assert.equal(h.page.data.checkinInput, '');
+  assert.equal(h.page.data.pending.body.commandId, 'original-local-order');
+  assert.equal(h.wx.calls.filter((x) => x.type === 'request').length, 0);
+});
+test('supply draft navigation cancels old private detail and an unprivileged account cannot start an application', async () => {
+  let resolve;
+  const model = require('../utils/local-services');
+  const h = deferredPage('local-manage', {
+    '../../utils/local-services': {
+      ...model,
+      repository: () => ({
+        privateDetail: () =>
+          new Promise((r) => {
+            resolve = r;
+          }),
+      }),
+    },
+  });
+  h.page.openSupply();
+  assert.equal(h.page.data.creating, false);
+  h.page.setData({ canCreate: true });
+  const old = h.page.selectId(raceId(1));
+  h.page.openSupply();
+  resolve({ listing: { title: 'private old listing' }, capabilities: {} });
+  await old;
+  assert.equal(h.page.data.creating, true);
+  assert.equal(h.page.data.selected, null);
+  assert.match(markup('local-manage', h.page.data), /新增供给申请/);
+  h.page.setData({ address: 'private draft address', places: [{ title: 'private place' }] });
+  h.page.closeSupply();
+  assert.equal(h.page.data.address, '');
+  assert.equal(h.page.data.places.length, 0);
+});
+test('team matchup draft and list navigation keeps the original pending identity without creating an invitation', () => {
+  const h = page('local-matchups');
+  h.page.matchupView(tap('create'));
+  assert.equal(h.page.data.matchupView, 'list');
+  h.page.setData({
+    teams: [{ name: '合成有权球队' }],
+    pending: { body: { commandId: 'original-matchup' } },
+  });
+  h.page.matchupView(tap('create'));
+  assert.match(markup('local-matchups', h.page.data), /双方独立确认/);
+  h.page.matchupView(tap('list'));
+  assert.equal(h.page.data.pending.body.commandId, 'original-matchup');
+  assert.equal(h.wx.calls.filter((x) => x.type === 'request').length, 0);
+});
+test('player funds shortcuts only navigate an appearance currently visible to this account and never collect funds', () => {
+  for (const name of ['bookings', 'booking-detail']) {
+    const h = deferredPage(name);
+    const ui = h.requireLocal('utils/ui.js');
+    const appearance = { id: raceId(1) };
+    h.page.setData(
+      name === 'bookings'
+        ? { rows: [{ appearances: [appearance] }] }
+        : { order: { appearances: [appearance] } },
+    );
+    h.page.loadedToken = ui.begin(h.page);
+    h.page.trade({ currentTarget: { dataset: { id: raceId(2) } } });
+    assert.equal(h.wx.calls.filter((x) => x.type === 'navigateTo').length, 0, name);
+    h.page.trade({ currentTarget: { dataset: { id: raceId(1) } } });
+    const nav = h.wx.calls.find((x) => x.type === 'navigateTo');
+    assert.ok(nav, name);
+    assert.match(nav.url, /kind=PLAYER_APPEARANCE/);
+    assert.ok(nav.url.includes(raceId(1)));
+    assert.equal(h.requests.length, 0, name);
+  }
+});

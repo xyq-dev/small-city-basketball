@@ -34,5 +34,6 @@
     },
     "error": "原申请结果未知，不能新建重复申请。"
   },
-  "expectDisabled": ["提交本届参赛申请"]
+  "expectDisabled": ["提交本届参赛申请"],
+  "figmaNode": "6:1124"
 }

@@ -43,5 +43,6 @@
     "pending": false,
     "error": "当前仅可读取授权名单，不能修改。"
   },
-  "expectDisabled": ["确认变更", "机构成员", "本赛事工作人员"]
+  "expectDisabled": ["确认变更", "机构成员", "本赛事工作人员"],
+  "figmaNode": "6:1401"
 }

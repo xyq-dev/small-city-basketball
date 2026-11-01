@@ -51,3 +51,11 @@ R03节点`6:492`的实际截图/metadata成功读取；高保真`6:515`表单con
 工作台/记分等定向176/176通过；之后补分区缺少目标时的正确定位、长队名及管理邀请关闭样本，直接53/53通过。最终本地完整`node --test apps/wechat/test/*.test.cjs tests/wechat-tools/devtools-ui.test.mjs`：1106通过、1项既有Windows专属跳过、0失败；Prettier与diff检查通过。新增VM验证草稿/最终同意保持、授权工作台入口、记分导航不取得控制权/补造阵容、设置定位不绕过阶段。
 
 当前安装的Playwright默认Chromium可执行文件缺失；这里只完成真实WXML三宽模板生成，320/390/430浏览器几何、官方微信/真机、当前分支真实API、支付/保险/直播仍待root隔离CI或专项条件。本分域无后端修改、Migration编写/执行、pack、部署或生产操作。
+
+## 追溯元数据补核
+
+root已将5885747整合并同步到远端`c5c0f10d757bc79b0cfabfe8606475f84ea1e0a5`，PR36当前候选CI待完成。本次在原独立worktree、HEAD5885747、clean开工，只补15份fixture缺失的figmaNode，并把管理者邀请关闭样本从继承的旧C10节点9:863纠正为UI001 T02的5:787。R07=6:669、R10=6:751、R05=6:609及其他页面节点逐项匹配UI001_SCREEN_INDEX；长队名样本保留已实际读取的5:800身份卡子层。
+
+追溯检查通过：17份fixture均有节点；本次16份变更除figmaNode外，其余元数据、合成data及expect字段与HEAD逐项相等；所有新增或纠正的节点链接均存在UI001索引。仅JSON元数据与本任务/交接变更，未重复整套测试，不改变现有应用或验证结论。
+
+补充语义核对：按root/validation的准确追溯将招募未知结果样本对应O04 `6:1124`；记分台静态样本继承的`state: real-api`改为`synthetic-populated`，避免将合成渲染误认为真实API证据。仅这两项元数据更新，static、data、expect及实际API测试完全不变；格式、diff及元数据差异检查通过，不重跑整套测试。

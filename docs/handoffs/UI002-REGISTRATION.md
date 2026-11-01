@@ -21,3 +21,7 @@
 第二片定向176/176通过，最新定位/长文案补片直接53/53通过。完整本地native回归1106通过、1项既有Windows专属跳过、0失败；未把模板生成称为浏览器几何通过。默认Chromium executable不存在，须由root隔离CI测320/390/430几何及PNG。无本地PG/真实API、官方微信/真机、真实保险/资金/直播测试，无Migration、pack、部署或生产修改。
 
 root下一条操作：cherry-pick本片提交，核验仅分配前端/样本及本任务文档，串行同步后启动精确候选完整CI；重点核对固定操作区、长队名头像槽、管理工具展开、工作台/记分路由和17个新样本的业务语义。首片及b2c300e审查修复已同步，不要重复认领为第二片变更。
+
+root回报最终代码已同步远端c5c0f10d/PR36，整合原生测试1128通过、1个既有Windows跳过，精确候选CI和独立review进行中。本次原worktree的HEAD5885747、初始clean，仅按UI001索引补15份fixture的figmaNode；额外纠正继承旧C10节点的管理邀请关闭样本为5:787。17份样本全部可追溯，本次16份JSON除figmaNode外与HEAD内容相等；data/expect完全不变。只做追溯元数据和格式/diff检查，没有重复整套测试，也没有新的功能/生产操作。小commit交root串行同步即可。
+
+追溯首片e92ca38已交root。随后按root/validation指示将recruitment-unknown的节点纠正为索引已核实的O04 6:1124，将scorer-console合成静态样本的state从real-api改为synthetic-populated；不更改static、data、expect或真正的API测试。仅元数据/格式/diff检查，独立小commit交root整合，不重复全量验证。

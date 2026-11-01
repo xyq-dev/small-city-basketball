@@ -28,5 +28,6 @@
     "loading": false,
     "loginRequired": false
   },
-  "expectDisabled": ["明确授权并发布"]
+  "expectDisabled": ["明确授权并发布"],
+  "figmaNode": "5:1458"
 }

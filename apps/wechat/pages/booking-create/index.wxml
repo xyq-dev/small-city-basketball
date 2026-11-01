@@ -19,7 +19,7 @@
 </template>
 
 <scb-header title="创建预约" disabled="{{busy || loading}}"/>
-<view class="page has-actions create-page premium-page">
+<view class="page has-actions create-page premium-page"><scb-steps wx:if="{{ready}}" items="{{bookingSteps}}" current="{{pending || success || invalidRecovery || storageReadBlocked?'result':review?'review':'arrange'}}" busy="{{busy || loading || pending || success || storageReadBlocked || invalidRecovery}}" bindchange="workflowStep"/>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
   <view wx:if="{{notice}}" class="notice">{{notice}}</view>
   <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在读取当前身份、球队与球员资料…</view><view class="muted">完成读取后再核对本次安排，不自动提交请求。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>

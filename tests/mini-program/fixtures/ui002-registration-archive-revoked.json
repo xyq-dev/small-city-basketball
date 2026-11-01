@@ -10,5 +10,6 @@
     "loading": false,
     "error": "公开档案已撤销、停用或不存在。"
   },
-  "expectAbsentText": ["合成球员独立公开档案"]
+  "expectAbsentText": ["合成球员独立公开档案"],
+  "figmaNode": "5:879"
 }

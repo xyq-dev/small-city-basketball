@@ -30,5 +30,6 @@
     },
     "notice": "原裁定请求结果未知，请核对原编号。"
   },
-  "expectDisabled": ["批准提案", "驳回提案"]
+  "expectDisabled": ["批准提案", "驳回提案"],
+  "figmaNode": "6:1454"
 }

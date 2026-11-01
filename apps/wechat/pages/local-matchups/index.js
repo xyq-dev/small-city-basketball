@@ -9,6 +9,7 @@ const parseCard = (value) => {
 };
 Page({
   data: {
+    matchupView: 'list',
     teams: [],
     teamIndex: 0,
     courtBookings: [],
@@ -41,6 +42,9 @@ Page({
     this._viewer = '';
     this.setData({
       teams: [],
+      matchupView: 'list',
+      teamIndex: 0,
+      bookingIndex: 0,
       courtBookings: [],
       opponentCard: '',
       opponent: null,
@@ -72,6 +76,7 @@ Page({
     });
     const session = await ui.session(this, '/pages/local-matchups/index');
     if (!this._alive || !session) return;
+    if (this._viewer && this._viewer !== session.user.id) this.onSessionReset();
     this._viewer = session.user.id;
     ls.loadPending(this);
     const token = ui.begin(this);
@@ -93,11 +98,19 @@ Page({
             .map((b) => ({ ...b, label: b.title + ' · ' + b.timeText })),
           bookingIndex: 0,
           loading: false,
+          loginRequired: false,
         });
       }
     } catch (e) {
       if (ui.live(this, token)) this.setData({ loading: false, error: ui.message(e) });
     }
+  },
+  matchupView(e) {
+    if (this.data.busy || this.data.loading) return;
+    const key = e.currentTarget.dataset.key;
+    if (!['list', 'create'].includes(key) || (key === 'create' && !this.data.teams.length)) return;
+    ui.begin(this);
+    this.setData({ matchupView: key, selected: null, reason: '' });
   },
   input(e) {
     if (this.data.busy) return;
@@ -165,7 +178,7 @@ Page({
   select(e) {
     if (this.data.busy) return;
     const selected = this.data.items.find((v) => v.id === e.currentTarget.dataset.id);
-    if (selected) this.setData({ selected, reason: '' });
+    if (selected) this.setData({ selected, reason: '', matchupView: 'list' });
   },
   async command(e) {
     const r = this.data.selected;

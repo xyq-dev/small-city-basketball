@@ -2,7 +2,7 @@
   "name": "ui002-registration-team-manager-invite-closed",
   "route": "pages/team/index",
   "state": "ready",
-  "figmaNode": "9:863",
+  "figmaNode": "5:787",
   "expectText": ["管理者邀请签发暂未在小程序开放", "由有权机构人员在网页后台办理"],
   "data": {
     "team": {

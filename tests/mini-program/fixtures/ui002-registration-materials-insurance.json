@@ -54,5 +54,6 @@
     "loginRequired": false,
     "materialPanel": "insurance",
     "registrationStep": "insurance"
-  }
+  },
+  "figmaNode": "6:669"
 }

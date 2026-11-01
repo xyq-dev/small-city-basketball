@@ -2,6 +2,9 @@ const ui = require('../../utils/ui');
 const ls = require('../../utils/local-services');
 Page({
   data: {
+    orderFilter: 'ALL',
+    serviceTab: 'overview',
+    filteredCount: 0,
     items: [],
     selected: null,
     changeSlots: [],
@@ -41,6 +44,9 @@ Page({
     this._viewer = '';
     this.setData({
       items: [],
+      orderFilter: 'ALL',
+      serviceTab: 'overview',
+      filteredCount: 0,
       selected: null,
       changeSlots: [],
       newSlotId: '',
@@ -73,15 +79,56 @@ Page({
     });
     const session = await ui.session(this, '/pages/local-bookings/index');
     if (!this._alive || !session) return;
+    if (this._viewer && this._viewer !== session.user.id) this.onSessionReset();
     this._viewer = session.user.id;
     ls.loadPending(this);
     const token = ui.begin(this);
     try {
       const items = await ls.repository().bookings();
-      if (ui.live(this, token)) this.setData({ items, loading: false });
+      if (ui.live(this, token))
+        this.setData({
+          items,
+          loading: false,
+          loginRequired: false,
+          filteredCount: items.filter(
+            (x) => this.data.orderFilter === 'ALL' || x.canActAs === this.data.orderFilter,
+          ).length,
+        });
     } catch (e) {
       if (ui.live(this, token)) this.setData({ loading: false, error: ui.message(e) });
     }
+  },
+  filterOrders(e) {
+    if (this.data.busy || this.data.loading) return;
+    const key = e.currentTarget.dataset.key;
+    if (!['ALL', 'BUYER', 'PROVIDER'].includes(key)) return;
+    this._checkinGeneration = (this._checkinGeneration || 0) + 1;
+    this.setData({
+      orderFilter: key,
+      filteredCount: this.data.items.filter((x) => key === 'ALL' || x.canActAs === key).length,
+      selected: null,
+      checkinDisplay: null,
+      checkinInput: '',
+    });
+  },
+  serviceTab(e) {
+    if (this.data.busy || !this.data.selected) return;
+    const key = e.currentTarget.dataset.key;
+    if (['overview', 'actions'].includes(key)) this.setData({ serviceTab: key });
+  },
+  closeBooking() {
+    if (this.data.busy) return;
+    ui.begin(this);
+    this._checkinGeneration = (this._checkinGeneration || 0) + 1;
+    this.setData({
+      selected: null,
+      changeSlots: [],
+      newSlotId: '',
+      reason: '',
+      checkinDisplay: null,
+      checkinInput: '',
+      serviceTab: 'overview',
+    });
   },
   trade() {
     const row = this.data.selected;
@@ -95,6 +142,7 @@ Page({
     const selected = this.data.items.find((r) => r.id === e.currentTarget.dataset.id);
     if (selected)
       this.setData({
+        serviceTab: 'overview',
         selected: {
           ...selected,
           canRespondChange:
@@ -214,6 +262,7 @@ Page({
         return;
       this.select({ currentTarget: { dataset: { id: row.id } } });
       this.setData({
+        serviceTab: 'actions',
         checkinDisplay: value.checkin
           ? { ...value.checkin, expiresText: ui.localTime(value.checkin.expiresAt, true) }
           : null,
@@ -273,6 +322,7 @@ Page({
       ) {
         this.select({ currentTarget: { dataset: { id: value.resourceId } } });
         this.setData({
+          serviceTab: 'actions',
           checkinDisplay: value.checkin
             ? { ...value.checkin, expiresText: ui.localTime(value.checkin.expiresAt, true) }
             : null,

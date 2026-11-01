@@ -1,3 +1,4 @@
+<scb-header title="球员合作详情" disabled="{{busy || loading}}"/>
 <view class="page has-actions booking-detail-page">
   <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">当前合作需要重新核对</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice small">{{message}}</view>
@@ -25,7 +26,7 @@
     <block wx:for="{{order.appearances}}" wx:key="id">
       <view class="card appearance-summary">
         <view class="appearance-status {{item.tone}}">{{item.statusText}}{{item.status === 'EXPIRED' ? ' · 本项档期已释放' : ''}}</view>
-        <view class="subtitle">{{item.playerName}} · {{item.label}}</view><button data-id="{{item.id}}" bindtap="trade" disabled="{{busy}}">查看本场付款与退款</button>
+        <view class="service-progress"><text class="{{item.status==='REQUESTED' || item.status==='CONDITIONAL'?'active':''}}">预约确认</text><text class="{{item.status==='ACCEPTED' || item.status==='ARRIVED'?'active':''}}">到场与履约</text><text class="{{item.status==='COMPLETED'?'active':''}}">结果核对</text></view><view class="subtitle">{{item.playerName}} · {{item.label}}</view><button data-id="{{item.id}}" bindtap="trade" disabled="{{busy}}">查看本场付款与退款</button>
 <button class="quiet" data-id="{{item.id}}" data-kind="report" bindtap="governance" disabled="{{busy}}">本场服务举报或工单</button>
 <button wx:if="{{item.status === 'COMPLETED'}}" class="quiet" data-id="{{item.id}}" data-kind="review" bindtap="governance" disabled="{{busy}}">评价本场已完成服务</button>
         <view wx:if="{{item.status === 'CONDITIONAL'}}" class="small">条件满足后补齐具体时间</view>
