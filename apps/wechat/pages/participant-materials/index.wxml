@@ -41,6 +41,6 @@
 
 
 <view wx:if="{{mode === 'mine' && workspace}}" class="fixed-actions material-fixed-actions">
-  <button wx:if="{{workspace.capabilities.canSave}}" class="secondary" bindtap="save" disabled="{{busy || loading || pending || storageError}}" loading="{{busy}}">保存草稿</button>
+  <block wx:if="{{workspace.capabilities.canSave}}"><button wx:if="{{materialPanel === 'insurance'}}" class="secondary" bindtap="saveInsurance" disabled="{{busy || loading || pending || storageError}}" loading="{{busy}}">保存保单资料</button><button wx:else class="secondary" bindtap="save" disabled="{{busy || loading || pending || storageError}}" loading="{{busy}}">保存草稿</button></block>
   <button class="primary" bindtap="qualification" disabled="{{busy || loading || pending || dirty}}">去资格预审</button>
 </view>

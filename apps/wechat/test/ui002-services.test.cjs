@@ -80,3 +80,41 @@ test('matching account change drops the privacy review and opt-ins instead of ca
   assert.equal(h.page.data.contact, false);
   assert.equal(h.page.data.loginRequired, true);
 });
+
+test('matching new actor cannot reopen another actor draft, scope, quote or charge consent', () => {
+  const h = page();
+  h.page.setData({
+    enabled: true,
+    conversionEnabled: true,
+    form: { title: 'private previous-actor title', address: 'private previous-actor address' },
+    formRegion: { regionId: 'private-region' },
+    scope: [{ regionId: 'private-region' }],
+    windows: [{ date: 'private-date' }],
+    terms: 'private negotiated terms',
+    preview: { merchantName: 'private merchant' },
+    chargeConsent: true,
+    eligibility: true,
+    courts: [{ id: 'private-booking' }],
+    teamIndex: 4,
+    orgIndex: 3,
+  });
+  h.page.onSessionReset();
+  assert.equal(h.page.data.enabled, false);
+  assert.equal(h.page.data.conversionEnabled, false);
+  assert.equal(h.page.data.form.title, '');
+  assert.equal(h.page.data.form.address, '');
+  assert.equal(h.page.data.formRegion, null);
+  assert.equal(h.page.data.scope.length, 0);
+  assert.notEqual(h.page.data.windows[0].date, 'private-date');
+  assert.equal(h.page.data.terms, '');
+  assert.equal(h.page.data.preview, null);
+  assert.equal(h.page.data.chargeConsent, false);
+  assert.equal(h.page.data.eligibility, false);
+  assert.equal(h.page.data.courts.length, 0);
+  h.page.toggleCreate();
+  const html = markup('matching', h.page.data);
+  assert.doesNotMatch(
+    html,
+    /private previous-actor|private negotiated|private-region|private merchant/,
+  );
+});

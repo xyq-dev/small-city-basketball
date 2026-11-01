@@ -30,3 +30,5 @@ R03节点`6:492`的实际截图/metadata成功读取；高保真`6:515`表单con
 已接入root基础组件`e6c8fda`（本worktree cherry-pick为`e2e01e8`）。本人资料复用同一路由承载资料/照片/外部保单/用途确认/审核进度，三步流程贯通真实预审入口；表单分区切换不保存或修改业务事实，保留草稿及capabilities。脏草稿和原请求未知时不允许离页办理预审、保险或监护；当前账号改变时清空私有数据与所选分区。预审页增加步骤返回及加载/空状态，保留本人明确同意、逐项材料和独立审核门槛。子页不再叠加五主导航，固定操作区保留安全区。
 
 已执行：`node --test apps/wechat/test/ui002-registration-flow.test.cjs apps/wechat/test/c23-participant-materials.test.cjs apps/wechat/test/e03-insurance.test.cjs apps/wechat/test/native-structure.test.cjs`，123/123通过；新增4个VM主线/门槛用例、4个三宽真实模板样本。Prettier及`git diff --check`通过。仅模板生成及VM，未执行浏览器几何测量、官方微信/真机、真实API或外部通道。本片交root同步后再进入工作台/记分片。
+
+独立审查修复：首片固定保存动作原先未带保险patch，保险分区已改成明确“保存保单资料”。跟踪保险字段dirty，在其他分区保存或上传时一并保留已编辑保险patch；原证件/保单号仍在提交后清空，不把明文写入本机恢复。新增3项VM经过真实Page→repository PUT，核对保险分区及切换后保存的请求body/脱敏响应，并验证422拒绝后保留非敏感编辑与dirty。相同定向回归126/126通过。没有改变后端投保、资格、审核或未知结果规则。

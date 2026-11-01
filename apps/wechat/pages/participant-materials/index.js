@@ -42,6 +42,7 @@ Page({
     loading: false,
     busy: false,
     dirty: false,
+    insuranceDirty: false,
     pending: false,
     storageError: '',
     error: '',
@@ -111,6 +112,7 @@ Page({
       portraitChecked: false,
       insuranceChecked: false,
       dirty: false,
+      insuranceDirty: false,
       busy: false,
       loading: false,
       pending: false,
@@ -155,6 +157,7 @@ Page({
         publicityConsent: m?.publicityConsent === true,
       },
       dirty: false,
+      insuranceDirty: false,
       reason: '',
       identityChecked: false,
       portraitChecked: false,
@@ -284,7 +287,14 @@ Page({
       )
     )
       return;
-    this.setData({ ['form.' + key]: e.detail.value, dirty: true, privateDetails: null });
+    this.setData({
+      ['form.' + key]: e.detail.value,
+      dirty: true,
+      insuranceDirty:
+        this.data.insuranceDirty ||
+        ['insurer', 'policyNumber', 'startDate', 'endDate'].includes(key),
+      privateDetails: null,
+    });
   },
   switchMaterialPanel(e) {
     if (
@@ -331,9 +341,8 @@ Page({
   reasonInput(e) {
     if (!this.data.busy) this.setData({ reason: e.detail.value });
   },
-  insuranceInput() {
-    const f = this.data.form,
-      patch = {};
+  insuranceInput(f = this.data.form) {
+    const patch = {};
     for (const key of ['insurer', 'policyNumber', 'startDate', 'endDate']) {
       const value = f[key].trim();
       if (!value) continue;
@@ -399,6 +408,7 @@ Page({
     )
       return;
     const f = { ...this.data.form },
+      insuranceDirty = this.data.insuranceDirty,
       expectedVersion = this._workspace.material?.version || 0,
       token = ui.hold(this),
       viewer = this._viewer;
@@ -411,6 +421,10 @@ Page({
       if (additional === null || !ui.held(this, token) || !this._visible) return;
       const clientRequestId = await ui.uuid();
       if (!ui.held(this, token) || this._viewer !== viewer) return;
+      const insurance = {
+        ...(insuranceDirty ? this.insuranceInput(f) : {}),
+        ...(additional.insurance || {}),
+      };
       const body = {
         clientRequestId,
         expectedVersion,
@@ -421,6 +435,7 @@ Page({
         acceptedTerms: f.acceptedTerms,
         publicityConsent: f.publicityConsent,
         ...additional,
+        ...(Object.keys(insurance).length ? { insurance } : {}),
       };
       record = {
         userId: viewer,
