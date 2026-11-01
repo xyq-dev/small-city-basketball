@@ -1,5 +1,10 @@
 # 任务看板
 
+## UI001：全国平台与同城服务UI（DONE / MAIN：设计及文档）
+
+[200张可编辑设计](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=48-7)、[交付/实施顺序](design/WECHAT_UI_V2.md)、[画板与68条路由索引](design/UI001_SCREEN_INDEX.md)、[任务](tasks/UI001.md)、[交接](handoffs/UI001.md)。原核心127＋新增73，涵盖五导航、四条核心流程与DOC006六模块；角色后台单列。设计检查完成，六项业务实现仍TODO，正式外部及真机未验。本次Codex仅集成UI文档，不接管功能开发。
+
+
 ## DOC006：六项补充设计（DONE / MAIN；实现仍为TODO）
 
 2026-11-01：保险供应商适配、地图视野搜索、全国撮合、跨城派单、培训招生、广告收入分成的设计已整合；[总设计](design/REMAINING_SIX_FEATURES.md)、[UI交接](design/SUPPLEMENTAL_UI_HANDOFF.md)、[任务卡](tasks/DOC006.md)、[接续记录](handoffs/DOC006.md)。

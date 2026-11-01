@@ -1,6 +1,6 @@
 # 六项补充功能：UI交接与Codex执行提示词
 
-状态：UI需求与交互蓝图完成；视觉画板、可点击原型和前端实现待交付。本页不计入现有68条原生路由或历史Figma画板。业务依据：[总设计](REMAINING_SIX_FEATURES.md)及其中六份专项；现有风格依据：[UI_SPEC](../UI_SPEC.md)。
+状态：UI需求与交互蓝图完成；后续UI001已交付[可编辑视觉初稿及预设关键原型](WECHAT_UI_V2.md)，详见[画板/角色/状态清单](UI001_SCREEN_INDEX.md)。前端实现、真实API/外部联调与微信真机仍待交付。本页不计入现有68条原生路由或历史Figma画板。业务依据：[总设计](REMAINING_SIX_FEATURES.md)及其中六份专项；现有风格依据：[UI_SPEC](../UI_SPEC.md)。
 
 ## 1. 导航、视觉与公共组件
 

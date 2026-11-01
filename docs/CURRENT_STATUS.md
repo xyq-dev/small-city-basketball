@@ -1,5 +1,12 @@
 # 当前状态
 
+## 2026-11-01 UI001：200张可编辑UI初稿与原型（设计交付）
+
+[最新版Figma](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=48-7)、[设计交付与代码差异](design/WECHAT_UI_V2.md)、[全部画板/角色/状态/68路由索引](design/UI001_SCREEN_INDEX.md)、[任务](tasks/UI001.md)、[交接](handoffs/UI001.md)。保留原127张核心稿，补充DOC006六项73张（62业务/状态、11适配），共200张；17个原型起点、765个导航，19条关键正常/失败路径逐段连线核对。六项新增实现仍待开发；正式保险/微信/商户/直播及真机未因此完成。
+
+本次只有Figma与Markdown，没有业务代码、合同/API、数据库、权限、Migration或生产变更。代码基线c61ab36；原ebc391e至该基线仅19份Markdown差异。预设原型未在演示浏览器逐条回放，未重跑应用CI；详细检查及未覆盖项见交付记录。
+
+
 ## 2026-11-01 DOC006（DONE / MAIN：六项补充设计，新增实现待开发）
 
 已补齐真实保险适配、地图“搜索此区域”、全国撮合、跨城派单、培训招生、广告收入分成的业务与页面交互、状态、数据/API提案、实施拆包和验收标准。见[六项总设计](design/REMAINING_SIX_FEATURES.md)、[UI交接与Codex提示词](design/SUPPLEMENTAL_UI_HANDOFF.md)、[任务](tasks/DOC006.md)和[交接](handoffs/DOC006.md)。
