@@ -719,9 +719,11 @@ describe('R6 mandatory closure scopes, obligations and privacy on PostgreSQL', (
       "INSERT INTO sponsor_orders(id,org_id,contract_id,payer_user_id,beneficiary_user_id,title,total_fen,merchant_key,merchant_id,merchant_app_id,terms,snapshot,status,created_by,verified_fee_fen,fee_evidence,fee_verified_by) VALUES($1,$2,$3,$4,$5,'合成原单',100,'synthetic','synthetic','synthetic','合成交易条款','{\"allowedFeeFen\":0}','CLOSED',$4,0,'synthetic-fee-evidence',$5)",
       [order, org, contract, user, owner],
     );
+    const canonicalSource = await readSponsorTradeSource(c, order),
+      sourceHash = tradeHash(canonicalSource.identity);
     await c.query(
-      "INSERT INTO trade_orders(id,org_id,kind,source_id,source_version,source_snapshot,source_hash,payer_user_id,beneficiary_user_id,merchant_key,merchant_id,merchant_app_id,merchant_name,total_fen,quote) VALUES($1,$2,'SPONSOR_ORDER',$3,1,'{}',$4,$5,$6,'synthetic','synthetic','synthetic','合成商户',100,'{}')",
-      [trade, org, order, 'a'.repeat(64), user, owner],
+      "INSERT INTO trade_orders(id,org_id,kind,source_id,source_version,source_snapshot,source_hash,payer_user_id,beneficiary_user_id,merchant_key,merchant_id,merchant_app_id,merchant_name,total_fen,quote) VALUES($1,$2,'SPONSOR_ORDER',$3,1,$7::jsonb,$4,$5,$6,'synthetic','synthetic','synthetic','合成商户',100,'{}')",
+      [trade, org, order, sourceHash, user, owner, JSON.stringify(canonicalSource.identity)],
     );
     await c.query(
       "INSERT INTO trade_payment_attempts(id,order_id,out_trade_no,channel,status,total_fen,fence,expires_at,provider_transaction_id,paid_at,profit_sharing) VALUES($1,$2,$3,'NATIVE','PAID',100,$4,clock_timestamp()+interval '1 hour',$5,clock_timestamp(),true)",
@@ -729,7 +731,7 @@ describe('R6 mandatory closure scopes, obligations and privacy on PostgreSQL', (
     );
     await c.query(
       "INSERT INTO sponsor_settlement_batches(id,org_id,order_id,trade_order_id,payment_id,transaction_id,out_order_no,pool_fen,source_hash,money_version,status,proposed_by,approval_required,approvals,finished,finish_status) VALUES($1,$2,$3,$4,$5,$10,$6,100,$7,1,'SUCCEEDED',$8,1,$9::uuid[],true,'SUCCEEDED')",
-      [batch, org, order, trade, payment, id(), 'a'.repeat(64), owner, [reviewer], transaction],
+      [batch, org, order, trade, payment, id(), sourceHash, owner, [reviewer], transaction],
     );
     await c.query(
       "INSERT INTO sponsor_settlement_items(id,org_id,batch_id,beneficiary_org_id,receiver_merchant_id,display_name,authorization_version,amount_fen,retained,status,provider_detail_id) VALUES($1,$2,$3,$2,'synthetic','合成受益方','synthetic',100,false,'SUCCEEDED','synthetic')",
@@ -827,9 +829,11 @@ describe('R6 mandatory closure scopes, obligations and privacy on PostgreSQL', (
         `INSERT INTO sponsor_orders(id,org_id,contract_id,payer_user_id,beneficiary_user_id,title,total_fen,merchant_key,merchant_id,merchant_app_id,terms,snapshot,status,created_by) VALUES($1,$2,$3,$4,$5,'合成原单',100,'synthetic','synthetic','synthetic','合成交易条款','{"allowedFeeFen":0}','CLOSED',$4)`,
         [source, org, contract, owner, reviewer],
       );
+      const canonicalSource = await readSponsorTradeSource(c, source),
+        sourceHash = tradeHash(canonicalSource.identity);
       await c.query(
-        "INSERT INTO trade_orders(id,org_id,kind,source_id,source_version,source_snapshot,source_hash,payer_user_id,beneficiary_user_id,merchant_key,merchant_id,merchant_app_id,merchant_name,total_fen,quote) VALUES($1,$2,'SPONSOR_ORDER',$3,1,'{}',$4,$5,$6,'synthetic','synthetic','synthetic','合成商户',100,'{}')",
-        [trade, org, source, 'a'.repeat(64), owner, reviewer],
+        "INSERT INTO trade_orders(id,org_id,kind,source_id,source_version,source_snapshot,source_hash,payer_user_id,beneficiary_user_id,merchant_key,merchant_id,merchant_app_id,merchant_name,total_fen,quote) VALUES($1,$2,'SPONSOR_ORDER',$3,1,$7::jsonb,$4,$5,$6,'synthetic','synthetic','synthetic','合成商户',100,'{}')",
+        [trade, org, source, sourceHash, owner, reviewer, JSON.stringify(canonicalSource.identity)],
       );
       await c.query(
         "INSERT INTO trade_payment_attempts(id,order_id,out_trade_no,channel,status,total_fen,fence,expires_at,provider_transaction_id,paid_at,profit_sharing) VALUES($1,$2,$3,'NATIVE','PAID',100,$4,clock_timestamp()+interval '1 hour',$5,clock_timestamp(),true)",
@@ -845,7 +849,7 @@ describe('R6 mandatory closure scopes, obligations and privacy on PostgreSQL', (
           payment,
           transaction,
           id(),
-          'a'.repeat(64),
+          sourceHash,
           owner,
           [role === 'BATCH_REVIEWER' ? user : reviewer],
         ],

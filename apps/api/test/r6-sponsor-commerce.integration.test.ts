@@ -206,10 +206,7 @@ describe(
       await api?.app.close();
       await api?.pool.end();
     });
-    async function contract(
-      totalFen = 10003,
-      beforeOrder?: (signed: Record<string, any>) => Promise<void>,
-    ) {
+    async function signedContract(totalFen = 10003) {
       const b = {
         commandId: randomUUID(),
         campaignId: campaign,
@@ -247,7 +244,10 @@ describe(
         action: 'ADVERTISER_SIGN',
         acceptedContractHash: signed.contractHash,
       });
-      if (beforeOrder) await beforeOrder(final);
+      return { created, signed: final };
+    }
+    async function contract(totalFen = 10003) {
+      const { created, signed: final } = await signedContract(totalFen);
       const order = await service.createOrder(payer.cookie, owner.orgId, {
         commandId: randomUUID(),
         contractId: created.id,
@@ -627,35 +627,77 @@ describe(
       }
     });
     test('signed contracts can close before charging while keeping both signatures immutable', async () => {
+      const { signed } = await signedContract(),
+        before = (await api.pool.query('SELECT * FROM sponsor_contracts WHERE id=$1', [signed.id]))
+          .rows[0];
+      const denied = [randomUUID(), randomUUID()];
       await expect(
-        contract(10003, async (signed) => {
-          await expect(
-            service.contractCommand(payer.cookie, owner.orgId, signed.id, {
-              commandId: randomUUID(),
-              expectedVersion: signed.version,
-              action: 'CLOSE_UNSTARTED',
-            }),
-          ).rejects.toMatchObject({ status: 403 });
-          const closed = await service.contractCommand(finance1.cookie, owner.orgId, signed.id, {
-            commandId: randomUUID(),
-            expectedVersion: signed.version,
-            action: 'CLOSE_UNSTARTED',
-          });
-          expect(closed).toMatchObject({
-            status: 'CLOSED',
-            owner_signed_by: signed.owner_signed_by,
-            advertiser_signed_at: signed.advertiser_signed_at,
-            contractHash: signed.contractHash,
-          });
-          expect(
-            (
-              await api.pool.query('SELECT id FROM sponsor_orders WHERE contract_id=$1', [
-                signed.id,
-              ])
-            ).rows,
-          ).toHaveLength(0);
+        service.contractCommand(payer.cookie, owner.orgId, signed.id, {
+          commandId: denied[0],
+          expectedVersion: signed.version,
+          action: 'CLOSE_UNSTARTED',
+        }),
+      ).rejects.toMatchObject({ status: 404, code: 'RESOURCE_NOT_FOUND' });
+      await expect(
+        service.contractCommand(owner.cookie, owner.orgId, signed.id, {
+          commandId: denied[1],
+          expectedVersion: signed.version,
+          action: 'CLOSE_UNSTARTED',
+        }),
+      ).rejects.toMatchObject({ status: 403 });
+      expect(
+        (await api.pool.query('SELECT * FROM sponsor_contracts WHERE id=$1', [signed.id])).rows[0],
+      ).toEqual(before);
+      expect(
+        (
+          await api.pool.query(
+            'SELECT command_id FROM sponsor_commerce_operations WHERE command_id=ANY($1::uuid[])',
+            [denied],
+          )
+        ).rows,
+      ).toHaveLength(0);
+      const closed = await service.contractCommand(finance1.cookie, owner.orgId, signed.id, {
+        commandId: randomUUID(),
+        expectedVersion: signed.version,
+        action: 'CLOSE_UNSTARTED',
+      });
+      expect(closed).toMatchObject({
+        status: 'CLOSED',
+        owner_signed_by: signed.owner_signed_by,
+        advertiser_signed_at: signed.advertiser_signed_at,
+        contractHash: signed.contractHash,
+      });
+      const orderInput = {
+        contractId: signed.id,
+        acceptedContractHash: signed.contractHash,
+        chargeConsent: true,
+      };
+      await expect(
+        service.createOrder(payer.cookie, owner.orgId, {
+          ...orderInput,
+          commandId: randomUUID(),
+          expectedVersion: signed.version,
         }),
       ).rejects.toMatchObject({ code: 'SPONSOR_VERSION_CONFLICT' });
+      await expect(
+        service.createOrder(payer.cookie, owner.orgId, {
+          ...orderInput,
+          commandId: randomUUID(),
+          expectedVersion: closed.version,
+        }),
+      ).rejects.toMatchObject({ code: 'SPONSOR_STATE_CONFLICT' });
+      expect(
+        (await api.pool.query('SELECT id FROM sponsor_orders WHERE contract_id=$1', [signed.id]))
+          .rows,
+      ).toHaveLength(0);
+      expect(
+        (
+          await api.pool.query(
+            "SELECT id FROM trade_orders WHERE kind='SPONSOR_ORDER' AND source_snapshot->>'contractId'=$1",
+            [signed.id],
+          )
+        ).rows,
+      ).toHaveLength(0);
       const f = await contract();
       await expect(
         service.contractCommand(finance1.cookie, owner.orgId, f.contract.id, {

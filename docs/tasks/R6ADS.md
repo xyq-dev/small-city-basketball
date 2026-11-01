@@ -65,3 +65,5 @@
 恢复样本将原UNKNOWN退款改为原FAILED＋明确审核的retry UNKNOWN，原返回证据不变；11表非空、原/替代两binding及同支付同额关系纳入snapshot。quarantine不修改新表历史，所有retry写操作受恢复标记拦截。UI增加恢复凭据、独立批/拒、统一审核入口；已CLOSED历史订单仍可处理原失败义务。
 
 本片已跑API tsc、领域/签名transport17/17、微信6/6、恢复script node语法与diffcheck通过。PG现18条test：新增真实common发送CLOSED→源拒审再提→common拒审再提→并发唯一claim→真实SUCCESS且return hash不变；PROCESSING拒重试；恢复隔离拒new/approve/claim且可读；源APPROVED迟到成功后显式撤回；真实queryRefund迟到成功→共同余额冲突→未发替代撤回→精确闭账。最后一条依赖matching共同退款安全撤回及root adapter接线，本地无PG，实际通过与否待根新CI，不以tsc替代。
+
+2026-11-01 CI156真实PG反馈：本模块18项中17项通过，包括全部新增退款恢复、真实迟到成功撤回及零金额/未付闭账。唯一失败是未建单关闭测试把普通payer无管理membership的隐藏资源404误期待403；不改生产授权。测试已拆成独立signedContract与各断言，覆盖payer404、同机构非finance owner403、拒绝后合同/命令回执不变、finance关闭保留签署、旧version拒绝与最新version已关闭状态拒绝、业务与共同订单均零行。此前嵌套expect不再把内层AssertionError包装成版本失败；API tsc/格式验证后交下一CI。
