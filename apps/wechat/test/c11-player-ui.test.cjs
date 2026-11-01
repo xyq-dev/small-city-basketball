@@ -19,7 +19,19 @@ test('current samples render real native data and local assets at all widths', (
       for (const text of f.expectText) assert.ok(result.phone.includes(text), name + ': ' + text);
       assert.match(result.phone, /mini-custom-status/);
       assert.doesNotMatch(result.phone, /<header class="mini-native-bar"|<script\b|src="https?:/);
-      assert.ok(result.assets.some((asset) => /player-sample-[ab]/.test(asset.path)));
+      if (name === 'detail')
+        assert.ok(result.assets.some((asset) => /player-sample-[ab]/.test(asset.path)));
+      else
+        assert.equal(
+          result.assets.some((asset) => /player-sample-/.test(asset.path)),
+          false,
+          name + ': compact cards do not render a sample portrait',
+        );
+      if (name === 'market')
+        assert.ok(
+          result.assets.some((asset) => /avatar-user\.svg$/.test(asset.path)),
+          name,
+        );
       assert.ok(
         result.assets.every((asset) => !/approved-six-screen|design\/C11/.test(asset.path)),
       );
@@ -239,7 +251,8 @@ test('next-year availability retains its year in both the actual Page view model
   assert.equal(h.page.data.windows[1].display, '2026年12月31日 19:00–22:00');
   html = preview({ route: 'pages/player/index', data: h.page.data }).phone;
   assert.match(html, /2026年12月31日 19:00–22:00/);
-  const marketHtml = preview(fixture('market')).phone;
+  const market = fixture('market');
+  const marketHtml = preview({ ...market, data: { ...market.data, filtersOpen: true } }).phone;
   assert.match(marketHtml, /placeholder="搜索球员姓名"/);
   assert.doesNotMatch(marketHtml, /搜索球员或位置/);
   assert.equal(h.wx.calls.filter((call) => call.type === 'request').length, 0);

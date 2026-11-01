@@ -139,19 +139,22 @@ test('completing an initially missing name does not unmount the original party e
   const p = h.page;
   p.draft.eventName = '';
   p.renderForm();
+  p.openEditor();
   assert.equal(p.data.detailsOpen, true);
-  assert.equal(p.data.editorOpen, false);
+  assert.equal(p.data.editorOpen, true);
   for (const value of ['青', '青锋杯']) {
     p.input({ currentTarget: { dataset: { field: 'eventName' } }, detail: { value } });
     const html = buildPreview({ root, route: 'pages/booking-create/index', data: p.data }).phone;
     assert.ok(html.includes('data-mini-bindchange="teamPick"'));
     assert.ok(html.includes('data-mini-bindinput="input"'));
+    assert.equal(p.data.editorOpen, true);
     assert.equal(p.data.detailsOpen, true);
   }
   p.closeEditor();
+  assert.equal(p.data.editorOpen, false);
   assert.equal(p.data.detailsOpen, false);
   const summary = buildPreview({ root, route: 'pages/booking-create/index', data: p.data }).phone;
-  assert.ok(summary.includes('arrangement-summary'));
+  assert.ok(summary.includes('booking-form'));
   assert.ok(!summary.includes('data-mini-bindchange="teamPick"'));
 });
 
@@ -258,7 +261,13 @@ test('approved booking fixtures render real controls and separate example portra
     for (const width of [320, 390, 430]) {
       const r = buildPreview({ root, route: f.route, data: f.data, width, height: 844 });
       for (const text of f.expectText) assert.ok(r.phone.includes(text), file + ': ' + text);
-      assert.ok(r.assets.every((asset) => asset.path.startsWith('assets/approved-ui/')));
+      assert.ok(
+        r.assets.every((asset) =>
+          /^(assets\/approved-ui\/|pages\/bookings\/assets\/)/.test(
+            asset.path.replaceAll('\\', '/'),
+          ),
+        ),
+      );
       assert.ok(!r.assets.some((asset) => /approved-six-screen|docs\/design/.test(asset.path)));
       assert.ok(r.phone.includes('data-mini-bindtap='));
       assert.doesNotMatch(r.phone, /<script\b|src="https?:/);
@@ -280,5 +289,6 @@ test('approved booking fixtures render real controls and separate example portra
   const expanded = read('c11-booking-orders-expanded');
   const expandedHtml = buildPreview({ root, ...expanded }).phone;
   assert.ok(expandedHtml.includes('总单确定报价'));
-  assert.ok(expandedHtml.includes('实收 ¥0.00'));
+  assert.ok(expandedHtml.includes('实收'));
+  assert.ok(expandedHtml.includes('¥0.00'));
 });

@@ -7,7 +7,7 @@
   "referenceKind": "approved-image",
   "approvedPrimary": true,
   "syntheticData": true,
-  "expectText": ["林越", "陈凯", "合成高州", "同为", "¥300", "样本有限"],
+  "expectText": ["林越", "陈凯", "合成高州", "参赛服务费相同", "¥300", "样本有限"],
   "data": {
     "profiles": [
       {
@@ -243,6 +243,6 @@
     "statisticsError": "",
     "sameServicePrice": true,
     "comparisonPrice": "¥300",
-    "informationOpen": false
+    "informationOpen": true
   }
 }

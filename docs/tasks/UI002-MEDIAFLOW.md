@@ -31,3 +31,9 @@ V06 首屏为实际 job/artifact 紧凑概览，使用现有原始22px图标与1
 原 e01 一个视觉条件检查首次提示运行状态 blockers 被遗漏，现已恢复原运行态 blockers 显示并重跑7/7；未修改该测试。旧 ui002-live 静态 fixture 的准备态/任务区标题期望待 validation 按新版迁移，未修改其共享断言。Prettier 与 git diff --check 通过；未在本地执行浏览器几何或真机。
 
 下一步：本片提交交 root 串行整合/同步，随后 V07 目标选择与发布同意；最终三宽/PNG/CI 仍待验。
+
+## 检查点2：V07 发布选择与同意（本地未提交）
+
+2026-11-01，工作树 `D:\Projects\small-city-basketball-ui002-ci`、分支 `fix/ui002-ci`、基线 `813ed61`。比赛媒体页在原上传、草稿、确认框、版本复核和 `PUBLISH`/`REVOKE` 命令之外，增加“选择此草稿”和当前版本勾选。未选择、离开页面、版本变化或当前身份没有 `canPublish` 时不发送。勾选不创造发布权限，命令体仍是 `{ type: 'PUBLISH', expectedVersion }`。撤销不要求这道勾选。
+
+直接测试：`c15-media-review`、`c16-review`、`c15-native-management`、`c19-media-requests`、`c16-delivery` 与 `native-structure` 在 Node 24.22.2 通过。未做三宽浏览器、官方微信工具、真机或远端 CI。

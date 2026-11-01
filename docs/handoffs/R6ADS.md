@@ -65,3 +65,5 @@ PG验收去stub：现所有商业订单和退款都用真实TradeService配remai
 恢复capture新增非空retry及原FAILED/当前UNKNOWN两common退款、两binding；snapshot严格同源同额同支付且新表完整不可变hash。18条PG场景已准备，17领域driver/6微信/tsc及nodecheck/diffcheck通过；真实PG/完整恢复待根CI。root须同步ACL、新表inventory（总221）及shared revocation wiring后再运行。
 
 2026-11-01 CI156真实PG反馈：本模块18项中17项通过，包括全部新增退款恢复、真实迟到成功撤回及零金额/未付闭账。唯一失败是未建单关闭测试把普通payer无管理membership的隐藏资源404误期待403；不改生产授权。测试已拆成独立signedContract与各断言，覆盖payer404、同机构非finance owner403、拒绝后合同/命令回执不变、finance关闭保留签署、旧version拒绝与最新version已关闭状态拒绝、业务与共同订单均零行。此前嵌套expect不再把内层AssertionError包装成版本失败；API tsc/格式验证后交下一CI。
+
+2026-11-01 管理端续作（未提交）：`/sponsor-commerce` 读取合同、订单和 `statements`。可做合同审核、签署、交付证据、按实收生成分配计划和独立审核。切换机构时清空已打开的订单，迟到的旧订单响应不写回。不新增付款、分账发送或退款出款按钮；这些仍只走原小程序与服务端命令。收款开关关闭时不能建立新合同。没有 Migration。管理端单测覆盖审核、收益分口径、403 和机构切换；真实 PostgreSQL 未因本页重跑。

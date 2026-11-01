@@ -341,6 +341,8 @@ test('the normal path stays usable: upload, draft, publish and revoke', async ()
     d.state.ws = workspace({ files: [fileRow(newFile)], media: [mediaRow('PUBLISHED', 2)] });
     return ok(mediaRow('PUBLISHED', 2));
   });
+  page.page.selectPublish(tap({ id: mediaId }));
+  page.page.publishConsentChange({ detail: { value: ['publish'] } });
   await page.page.publish(tap({ id: mediaId }));
   await page.flush();
   assert.equal(page.page.data.items[0].status, 'PUBLISHED');
@@ -351,6 +353,43 @@ test('the normal path stays usable: upload, draft, publish and revoke', async ()
   await page.page.revoke(tap({ id: mediaId }));
   await page.flush();
   assert.equal(page.page.data.items[0].status, 'REVOKED');
+  page.unload();
+});
+
+test('publish sends the original command only after the current draft is selected and accepted', async () => {
+  const d = deviceFor();
+  d.state.ws = workspace({ files: [], media: [mediaRow('DRAFT', 1)] });
+  const page = await d.open();
+  const command = 'POST ' + matchBase + '/media/' + mediaId + '/commands';
+  d.state.replies.set(command, () => {
+    d.state.ws = workspace({ media: [mediaRow('PUBLISHED', 2)] });
+    return ok(mediaRow('PUBLISHED', 2));
+  });
+  await page.page.publish(tap({ id: mediaId }));
+  assert.equal(d.sent(command).length, 0);
+  assert.match(page.page.data.error, /明确同意/);
+  page.page.selectPublish(tap({ id: mediaId }));
+  page.page.publishConsentChange({ detail: { value: ['publish'] } });
+  page.page.onHide();
+  await page.page.publish(tap({ id: mediaId }));
+  assert.equal(d.sent(command).length, 0);
+  page.page.onShow();
+  page.page.selectPublish(tap({ id: mediaId }));
+  page.page.publishConsentChange({ detail: { value: ['publish'] } });
+  page.page._data.media[0].version = 9;
+  await page.page.publish(tap({ id: mediaId }));
+  assert.equal(d.sent(command).length, 0);
+  page.page._data.media[0].version = 1;
+  page.page.publishConsentChange({ detail: { value: ['publish'] } });
+  page.page._data.capabilities.canPublish = false;
+  await page.page.publish(tap({ id: mediaId }));
+  assert.equal(d.sent(command).length, 0);
+  page.page._data.capabilities.canPublish = true;
+  page.page.selectPublish(tap({ id: mediaId }));
+  page.page.publishConsentChange({ detail: { value: ['publish'] } });
+  await page.page.publish(tap({ id: mediaId }));
+  await page.flush();
+  assert.deepEqual(d.sent(command)[0].body, { type: 'PUBLISH', expectedVersion: 1 });
   page.unload();
 });
 

@@ -88,6 +88,18 @@ const EventGroupKnockoutPage = lazy(() =>
 const OrgCommercePage = lazy(() =>
   import('./commerce/CommercePages').then((m) => ({ default: m.OrgCommercePage })),
 );
+const DispatchOperationsPage = lazy(() =>
+  import('./operations/DispatchPage').then((m) => ({ default: m.DispatchOperationsPage })),
+);
+const TrainingOperationsPage = lazy(() =>
+  import('./operations/TrainingPage').then((m) => ({ default: m.TrainingOperationsPage })),
+);
+const InsuranceOperationsPage = lazy(() =>
+  import('./operations/InsurancePage').then((m) => ({ default: m.InsuranceOperationsPage })),
+);
+const SponsorOperationsPage = lazy(() =>
+  import('./operations/SponsorPage').then((m) => ({ default: m.SponsorOperationsPage })),
+);
 const EventKnockoutPage = lazy(() =>
   import('./knockout/KnockoutPage').then((m) => ({ default: m.EventKnockoutPage })),
 );
@@ -1660,44 +1672,53 @@ function WorkspaceLayout() {
   const currentLabel =
     location.pathname === '/commerce'
       ? '套餐、订单与权益'
-      : location.pathname.endsWith('/groups')
-        ? '分组积分与淘汰晋级'
-        : location.pathname.endsWith('/lifecycle')
-          ? '赛事生命周期'
-          : location.pathname.endsWith('/knockout')
-            ? '淘汰赛签位与晋级'
-            : location.pathname.endsWith('/player-statistics')
-              ? '球员基础数据榜'
-              : location.pathname === '/broadcast' || location.pathname.endsWith('/overlay')
-                ? '直播与 OBS'
-                : location.pathname === '/standings' || location.pathname.endsWith('/standings')
-                  ? '排名与观赛'
-                  : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
-                    ? '记分与赛果'
-                    : location.pathname === '/courts'
-                      ? '机构场地'
-                      : location.pathname === '/scheduling' ||
-                          /\/scheduling(?:\/|$)/.test(location.pathname)
-                        ? '抽签排赛'
-                        : location.pathname.startsWith('/entries/')
-                          ? '报名详情'
-                          : location.pathname === '/my-team' || teamWorkspace
-                            ? '我的球队'
-                            : location.pathname.startsWith('/teams')
-                              ? '球队与球员'
-                              : location.pathname === '/registration' ||
-                                  location.pathname.endsWith('/registration')
-                                ? '报名审核'
-                                : location.pathname === '/'
-                                  ? '工作总览'
-                                  : location.pathname === '/events/new'
-                                    ? '创建赛事'
-                                    : location.pathname.startsWith('/events/')
-                                      ? '赛事详情'
-                                      : location.pathname === '/events'
-                                        ? '赛事管理'
-                                        : (roadmap[location.pathname.split('/')[2] ?? '']?.title ??
-                                          '页面');
+      : location.pathname === '/dispatch'
+        ? '跨城调度'
+        : location.pathname === '/training'
+          ? '培训排课'
+          : location.pathname === '/insurance'
+            ? '保险运营'
+            : location.pathname === '/sponsor-commerce'
+              ? '广告结算'
+              : location.pathname.endsWith('/groups')
+                ? '分组积分与淘汰晋级'
+                : location.pathname.endsWith('/lifecycle')
+                  ? '赛事生命周期'
+                  : location.pathname.endsWith('/knockout')
+                    ? '淘汰赛签位与晋级'
+                    : location.pathname.endsWith('/player-statistics')
+                      ? '球员基础数据榜'
+                      : location.pathname === '/broadcast' || location.pathname.endsWith('/overlay')
+                        ? '直播与 OBS'
+                        : location.pathname === '/standings' ||
+                            location.pathname.endsWith('/standings')
+                          ? '排名与观赛'
+                          : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
+                            ? '记分与赛果'
+                            : location.pathname === '/courts'
+                              ? '机构场地'
+                              : location.pathname === '/scheduling' ||
+                                  /\/scheduling(?:\/|$)/.test(location.pathname)
+                                ? '抽签排赛'
+                                : location.pathname.startsWith('/entries/')
+                                  ? '报名详情'
+                                  : location.pathname === '/my-team' || teamWorkspace
+                                    ? '我的球队'
+                                    : location.pathname.startsWith('/teams')
+                                      ? '球队与球员'
+                                      : location.pathname === '/registration' ||
+                                          location.pathname.endsWith('/registration')
+                                        ? '报名审核'
+                                        : location.pathname === '/'
+                                          ? '工作总览'
+                                          : location.pathname === '/events/new'
+                                            ? '创建赛事'
+                                            : location.pathname.startsWith('/events/')
+                                              ? '赛事详情'
+                                              : location.pathname === '/events'
+                                                ? '赛事管理'
+                                                : (roadmap[location.pathname.split('/')[2] ?? '']
+                                                    ?.title ?? '页面');
   useEffect(() => {
     setMenuOpen(false);
     document.title = `${currentLabel} · 小城市篮球`;
@@ -1865,6 +1886,30 @@ function WorkspaceLayout() {
             <ChartNoAxesCombined size={19} />
             <span>套餐与用量</span>
           </NavLink>
+          {workspace.mode === 'api' && registration && !teamWorkspace && (
+            <>
+              <NavLink className="nav-item" to="/dispatch" onClick={() => setMenuOpen(false)}>
+                <MapPin size={19} />
+                <span>跨城调度</span>
+              </NavLink>
+              <NavLink className="nav-item" to="/training" onClick={() => setMenuOpen(false)}>
+                <CalendarDays size={19} />
+                <span>培训排课</span>
+              </NavLink>
+              <NavLink className="nav-item" to="/insurance" onClick={() => setMenuOpen(false)}>
+                <ShieldCheck size={19} />
+                <span>保险运营</span>
+              </NavLink>
+              <NavLink
+                className="nav-item"
+                to="/sponsor-commerce"
+                onClick={() => setMenuOpen(false)}
+              >
+                <Tag size={19} />
+                <span>广告结算</span>
+              </NavLink>
+            </>
+          )}
           <NavLink className="nav-item" to="/roadmap/settings" onClick={() => setMenuOpen(false)}>
             <Settings2 size={19} />
             <span>机构设置</span>
@@ -1931,6 +1976,54 @@ function WorkspaceLayout() {
                     ) : (
                       <Suspense fallback={standingsFallback}>
                         <OrgCommercePage context={registration} />
+                      </Suspense>
+                    )
+                  }
+                />
+                <Route
+                  path="/dispatch"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={standingsFallback}>
+                        <DispatchOperationsPage context={registration} />
+                      </Suspense>
+                    )
+                  }
+                />
+                <Route
+                  path="/training"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={standingsFallback}>
+                        <TrainingOperationsPage context={registration} />
+                      </Suspense>
+                    )
+                  }
+                />
+                <Route
+                  path="/insurance"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={standingsFallback}>
+                        <InsuranceOperationsPage context={registration} />
+                      </Suspense>
+                    )
+                  }
+                />
+                <Route
+                  path="/sponsor-commerce"
+                  element={
+                    teamWorkspace ? (
+                      <Navigate to="/my-team" replace />
+                    ) : (
+                      <Suspense fallback={standingsFallback}>
+                        <SponsorOperationsPage context={registration} />
                       </Suspense>
                     )
                   }

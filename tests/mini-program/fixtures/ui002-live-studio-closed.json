@@ -4,10 +4,11 @@
   "state": "synthetic-ui002",
   "static": true,
   "designSource": "UI001 design + current native route; synthetic static compatibility only, not real channel acceptance",
-  "expectText": ["正式能力尚未开放", "暂无当前可用频道", "直播准备"],
+  "expectText": ["本场比赛直播准备", "暂无当前可用频道", "创建待批准直播"],
   "data": {
     "sessions": [],
     "channels": [],
+    "channelsOpen": true,
     "session": null,
     "capabilities": {
       "canManage": true,

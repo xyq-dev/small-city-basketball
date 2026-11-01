@@ -25,7 +25,7 @@ test('signed-out login uses its fixed action footer without overlapping the acco
   const signedIn = buildPreview({
     root,
     route: 'pages/account/index',
-    data: { user, loading: false },
+    data: { user, loading: false, navigationMoreOpen: true },
   });
   assert.equal(signedIn.components.find((c) => c.tag === 'scb-nav').properties.active, 'Account');
   assert.doesNotMatch(signedIn.phone, /class="action-bar"/);
@@ -141,7 +141,7 @@ test('all account and planned visual fixtures expand real WXML and retain disabl
         result.assets.filter(
           (asset) =>
             !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path) &&
-            !/^assets[\\/]ui002[\\/]nav-(?:home-active|local|account)\.svg$/.test(asset.path),
+            !/^assets[\\/]ui002[\\/][^\\/]+\.svg$/.test(asset.path),
         ),
         [],
       );

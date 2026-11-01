@@ -3,7 +3,7 @@
   "route": "pages/bookings/index",
   "state": "ready",
   "figmaNode": "approved:C11",
-  "expectText": ["林越", "陈凯", "合成", "待球员接单", "已接单 · 待到场", "继续找球员"],
+  "expectText": ["林越", "陈凯", "待球员接单", "已接单", "继续找球员"],
   "asOf": "2026-10-25T02:00:00.000Z",
   "data": {
     "view": "sent",

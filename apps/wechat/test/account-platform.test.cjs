@@ -80,6 +80,7 @@ test('C19 account entries expose participant flows and organization-scoped manag
     h.page.data.managedOrgs.map((org) => org.id),
     [b],
   );
+  h.page.toggleMore();
   const html = buildPreview({ root, route: 'pages/account/index', data: h.page.data }).phone;
   for (const label of [
     '我的关注',
@@ -92,7 +93,7 @@ test('C19 account entries expose participant flows and organization-scoped manag
   assert.equal(html.includes('建队申请审批'), false);
   h.page.workspace({ currentTarget: { dataset: { key: 'work' } } });
   const work = buildPreview({ root, route: 'pages/account/index', data: h.page.data }).phone;
-  for (const label of ['当前授权工作台', '建队申请审批', '私有赛季管理'])
+  for (const label of ['角色与机构配置', '建队申请审批', '私有赛季管理'])
     assert.ok(work.includes(label), label);
   assert.equal(work.includes('合成工作人员机构 · 商业合同'), false);
   for (const page of ['follows', 'memberships', 'team-request', 'team-join', 'season-grants']) {

@@ -1,5 +1,9 @@
 # 当前状态
 
+## 2026-11-01 UI002 修复分支（Draft 待审，不是 MAIN）
+
+工作树 `D:\Projects\small-city-basketball-ui002-ci`、分支 `fix/ui002-ci`、父提交 `813ed61`。本分支单独准备 Draft PR，目标 `main`；PR #36 仍是 `feat/ui002-integration`，本记录不修改它。内容包括工具合同、旧布局断言、比赛媒体发布勾选，以及机构工作台的跨城调度、成人培训、保险核对和广告结算。调度和保险列表写明是当前登录账号，不是机构全量；广告切换机构后丢弃迟到的旧订单。培训页补了教练、签到、消费复核、取消未授课课次和退费复核，批准不表示到账。统一清单见 `docs/TASKS.md`。提交前管理端 573 项测试和类型检查已通过。远端 CI、真机和生产验收尚未完成。正式支付、投保、分账发送、推流未启用。下方 REMAINING6 仍是 main 上已验收的源码事实。
+
 ## 2026-11-01 REMAINING6：六项功能实现（DONE / MAIN：源码与隔离验收）
 
 2026-11-01 14:08 Asia/Shanghai（核验时间 `2026-11-01T06:08:12Z`），[PR #35](https://github.com/xyq-dev/small-city-basketball/pull/35) 已合入main，代码合并SHA `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree `e38a40da165a92f1eddc5696dcd41e7dc0e2a55a` 与CI160测试候选 `7a3f958c0440eca67d1d67e372a6e2d4c9d92440` 精确一致；双亲为 `911564f0` 和该测试候选。12条外部审查全部已解决，无新增线程。

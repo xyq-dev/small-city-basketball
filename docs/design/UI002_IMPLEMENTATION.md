@@ -203,7 +203,7 @@ Figma以真实截图为视觉目标，整体context超时的节点按metadata拆
 | [V04 · 直播控制](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=8-1473) | 当前授权采集人员 | X 合成运行状态；正式双目标待验 | 390×844 | [live-studio](../../apps/wechat/pages/live-studio/index.wxml) | 既有路由承载；UI002当前验证待集成人汇总 |
 | [V05 · 停流待确认](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=8-1524) | 采集人员／直播管理者 | X 已有停流屏障代码；正式物理证据待验 | 390×844 | [live-studio](../../apps/wechat/pages/live-studio/index.wxml) | 既有路由承载；UI002当前验证待集成人汇总 |
 | [V06 · 录像与媒体作业](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=8-1567) | 有权媒体工作人员 | X 已有执行代码；正式长时媒体与容量待验 | 390×844 | [media-jobs](../../apps/wechat/pages/media-jobs/index.wxml) | 既有路由承载；UI002当前验证待集成人汇总 |
-| [V07 · 比赛媒体与授权](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=8-1619) | 有权赛事媒体管理者 | E 已实现源码 | 390×844 | [match-media](../../apps/wechat/pages/match-media/index.wxml) | 既有路由承载；UI002当前验证待集成人汇总 |
+| [V07 · 比赛媒体与授权](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=8-1619) | 有权赛事媒体管理者 | E 已实现源码 | 390×844 | [match-media](../../apps/wechat/pages/match-media/index.wxml) | 发布前须选择当前草稿并勾选权利声明；勾选不授予权限，命令仍由服务端复核。三宽与真机未验 |
 | [V08 · 授权宣传海报](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=8-1662) | 有权赛事工作人员 | E 已实现源码 | 390×844 | [poster](../../apps/wechat/pages/poster/index.wxml) | 既有路由承载；UI002当前验证待集成人汇总 |
 | [F01 · 本次资金订单](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=9-686) | 来源订单有权参与者 | X 已有交易代码；正式商户联调待验 | 390×844 | [trade-order](../../apps/wechat/pages/trade-order/index.wxml) | 既有路由承载；UI002当前验证待集成人汇总 |
 | [F02 · 付款结果核对](https://www.figma.com/design/BSQ64CrDTJ2P4tOIowOSFk?node-id=9-741) | 付款本人 | X 接入后付款条件状态；无真实资金 | 390×844 | [trade-order](../../apps/wechat/pages/trade-order/index.wxml) | 既有路由承载；UI002当前验证待集成人汇总 |

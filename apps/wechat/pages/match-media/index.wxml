@@ -130,7 +130,12 @@
         </block>
         <view class="mode-choice">
           <button wx:if="{{item.canMark}}" class="secondary" data-id="{{item.id}}" bindtap="openMarker" disabled="{{busy || uncertain}}">{{markerFor === item.id ? '收起标记' : '时间标记'}}</button>
-          <button wx:if="{{item.canPublish}}" class="primary" data-id="{{item.id}}" bindtap="publish" disabled="{{busy || uncertain}}">发布</button>
+          <button wx:if="{{item.canPublish && publishTargetId !== item.id}}" class="secondary" data-id="{{item.id}}" bindtap="selectPublish" disabled="{{busy || uncertain}}">选择此草稿</button>
+          <block wx:if="{{item.canPublish && publishTargetId === item.id}}">
+            <view class="notice small">发布后仅在本届公开观赛开启时，持有观赛链接的观众可见。勾选只确认当前版本，不授予发布权限。</view>
+            <checkbox-group bindchange="publishConsentChange"><label class="consent"><checkbox value="publish" checked="{{publishConsent}}" disabled="{{busy || uncertain}}"/>我已核对本条权利声明，并明确申请发布当前版本</label></checkbox-group>
+            <button class="primary" data-id="{{item.id}}" bindtap="publish" disabled="{{busy || uncertain || !publishConsent}}">发布当前版本</button>
+          </block>
           <button wx:if="{{item.canRevoke}}" class="quiet" data-id="{{item.id}}" bindtap="revoke" disabled="{{busy || uncertain}}">撤销</button>
         </view>
       </view>

@@ -75,9 +75,19 @@ test('compact party summary keeps missing inputs reachable and fee review uses t
   const data = structuredClone(scenario.data);
   const originalQuote = JSON.stringify(data.quote);
   assert.doesNotMatch(render(data), /data-mini-bindchange="teamPick"/);
-  assert.match(render({ ...data, detailsOpen: true }), /data-mini-bindchange="teamPick"/);
-  assert.match(render({ ...data, eventName: '' }), /data-mini-bindchange="teamPick"/);
-  assert.match(render({ ...data, selectedCount: 0 }), /data-mini-bindchange="teamPick"/);
+  assert.match(render(data), /data-mini-bindtap="openEditor"/);
+  assert.match(
+    render({ ...data, editorOpen: true, detailsOpen: true }),
+    /data-mini-bindchange="teamPick"/,
+  );
+  assert.match(
+    render({ ...data, editorOpen: true, eventName: '' }),
+    /data-mini-bindchange="teamPick"/,
+  );
+  assert.match(
+    render({ ...data, editorOpen: true, selectedCount: 0 }),
+    /data-mini-bindchange="teamPick"/,
+  );
   const reviewed = render({ ...data, review: true, consent: false });
   assert.doesNotMatch(reviewed, /data-mini-bindchange="teamPick"/);
   assert.match(reviewed, /data-mini-bindchange="consent"/);

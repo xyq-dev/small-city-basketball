@@ -21,6 +21,19 @@ const probes = {
   'booking-create': '青锋杯',
   bookings: '青锋杯',
 };
+const approvedRootSelectors = {
+  'pages/home/index': '.home-ui',
+  'pages/players/index': '.players-page',
+  'pages/player/index': '.player-page',
+  'pages/compare/index': '.compare-page',
+  'pages/booking-create/index': '.create-page',
+  'pages/bookings/index': '.bookings-page',
+};
+function approvedRootSelector(route) {
+  const selector = approvedRootSelectors[route];
+  if (!selector) throw new Error('缺少当前六页验收根节点：' + route);
+  return selector;
+}
 const escape = (s) =>
   String(s).replace(
     /[&<>"']/g,
@@ -307,13 +320,8 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     name: fixtures.get(page.route).fixture.name,
     title: page.title,
     probe: probes[page.route.split('/')[1]],
-    // UI001 T07 keeps the current player's name in its compact identity card.
-    selector:
-      page.route === 'pages/home/index'
-        ? '.home-ui'
-        : page.route === 'pages/player/index'
-          ? '.player-page'
-          : '.premium-page',
+    // Current UI001 roots. The old shared .premium-page remains only where a page still has it.
+    selector: approvedRootSelector(page.route),
     fixtureSha256: fixtures.get(page.route).fixtureSha256,
     reference: 'references/' + page.route.split('/')[1] + '.png',
     referenceSha256: hash(fs.readFileSync(path.resolve(root, page.referenceImage))),

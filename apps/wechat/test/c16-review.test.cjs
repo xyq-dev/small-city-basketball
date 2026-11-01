@@ -215,7 +215,11 @@ const flows = [
   {
     name: 'publish',
     ws: () => workspace({ files: [fileRow()], media: [mediaRow('DRAFT')] }),
-    start: (p) => p.page.publish(tap({ id: mediaId })),
+    start: (p) => {
+      p.page.selectPublish(tap({ id: mediaId }));
+      p.page.publishConsentChange({ detail: { value: ['publish'] } });
+      return p.page.publish(tap({ id: mediaId }));
+    },
     sent: /\/media\/.*\/commands$/,
   },
   {

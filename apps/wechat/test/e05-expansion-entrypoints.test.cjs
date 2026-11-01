@@ -288,6 +288,7 @@ test('account exposes real destinations and copies only the current visible acco
   h.page.onLoad({});
   h.page.onShow();
   await h.flush();
+  h.page.toggleMore();
   const html = buildPreview({ root, route: 'pages/account/index', data: h.page.data }).phone;
   for (const text of [
     '我的消息',

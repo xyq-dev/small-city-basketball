@@ -162,8 +162,16 @@ test('signed-out events tab issues no private request and keeps the public watch
   assert.equal(h.page.data.signedIn, false);
   const preview = buildPreview({ root, route: 'pages/watch/index', data: h.page.data });
   assert.match(preview.phone, /登录后查看你参与的赛事/);
-  assert.match(preview.phone, /粘贴观赛链接/);
-  assert.match(preview.phone, /关于公开赛事目录/);
+  assert.match(preview.phone, /用观赛链接打开/);
+  assert.match(preview.phone, /地区与目录设置/);
+  const link = buildPreview({
+    root,
+    route: 'pages/watch/index',
+    data: { ...h.page.data, linkOpen: true, directoryFiltersOpen: true },
+  });
+  assert.match(link.phone, /粘贴观赛链接/);
+  assert.match(link.phone, /关于公开赛事目录/);
+  assert.deepEqual(h.requests(), []);
 });
 
 test('a player without an organization role never reads institution events and sees teams entry', async () => {
