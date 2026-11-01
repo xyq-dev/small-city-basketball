@@ -1,0 +1,63 @@
+{
+  "name": "ui002-services-matching-candidates",
+  "route": "pages/matching/index",
+  "state": "synthetic-populated",
+  "figmaNode": "42:1186",
+  "designSource": "UI001 NM03 high fidelity context, adapted to current matching API; synthetic examples only",
+  "expectText": ["2 位候选 · 仅作推荐", "总价未知时不按低总价排序", "合成裁判甲", "交通费待报价"],
+  "data": {
+    "enabled": true,
+    "selected": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "title": "合成周末篮球裁判服务需求长名称",
+      "kind": "STAFF_SERVICE",
+      "kindText": "工作人员",
+      "status": "ACTIVE",
+      "statusText": "进行中",
+      "canManage": true,
+      "quantity": 1,
+      "budgetText": "¥680.00",
+      "address": "合成体育中心东侧二号篮球场",
+      "windows": [
+        {
+          "reportAt": "2028-01-01T10:00:00Z",
+          "label": "合成日期 18:00 报到 · 18:15—20:00"
+        }
+      ],
+      "slots": [
+        {
+          "id": "slot-1",
+          "label": "席位 1 · 待补位",
+          "generation": 1,
+          "status": "OPEN"
+        }
+      ],
+      "candidates": [
+        {
+          "id": "candidate-1",
+          "name": "合成裁判甲 · 本城",
+          "priceText": "¥380.00 · 交通已含",
+          "score": {
+            "bandText": "资料有依据",
+            "coverage": 80,
+            "score": 82,
+            "reasons": ["时段已声明空闲", "相关资质已核验，预约前再次检查"]
+          }
+        },
+        {
+          "id": "candidate-2",
+          "name": "合成裁判乙 · 邻城",
+          "priceText": "交通费待报价 · 总价未知",
+          "crossCity": true,
+          "score": {
+            "bandText": "报价待补",
+            "coverage": 60,
+            "score": 71,
+            "reasons": ["服务费 ¥300.00，交通报价待补齐"]
+          }
+        }
+      ],
+      "intents": []
+    }
+  }
+}

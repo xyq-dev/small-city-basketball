@@ -1,0 +1,10 @@
+:host { display:block; margin:0 0 16px; }
+.scb-steps { display:flex; flex-wrap:wrap; gap:8px; }
+.scb-step { flex:1 1 80px; min-width:0; min-height:48px; display:flex; align-items:center; justify-content:center; gap:6px; margin:0; padding:10px 8px; border-radius:12px; background:#fff; color:#63758b; font-size:14px; line-height:22px; overflow-wrap:anywhere; }
+.scb-step::after { border:1px solid #e1e7ef; border-radius:12px; }
+.step-index { flex:none; width:22px; height:22px; border-radius:11px; background:#edf1f6; color:#63758b; line-height:22px; font-size:12px; text-align:center; }
+.step-label { min-width:0; }
+.scb-step.current { background:#edf3fa; color:#123c73; font-weight:600; }
+.scb-step.current::after { border-color:#123c73; }
+.current .step-index { background:#123c73; color:#fff; }
+.scb-step[disabled] { opacity:.6; }

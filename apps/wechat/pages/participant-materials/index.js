@@ -15,6 +15,20 @@ const emptyForm = () => ({
 Page({
   data: {
     mode: 'list',
+    registrationSteps: [
+      { key: 'profile', label: '本人资料' },
+      { key: 'qualification', label: '资格预审' },
+      { key: 'insurance', label: '保障与审核' },
+    ],
+    registrationStep: 'profile',
+    materialPanel: 'profile',
+    materialPanels: [
+      { key: 'profile', label: '本人资料' },
+      { key: 'portrait', label: '照片' },
+      { key: 'insurance', label: '已有保单' },
+      { key: 'consent', label: '本人确认' },
+      { key: 'progress', label: '审核进度' },
+    ],
     entries: [],
     workspace: null,
     material: null,
@@ -43,6 +57,13 @@ Page({
         this._org = materials.id(query.orgId);
         this._entry = materials.id(query.entryId);
         this.setData({ mode: query.mode === 'review' ? 'review' : 'mine' });
+        if (query.mode !== 'review' && this.data.materialPanels.some((p) => p.key === query.panel))
+          this.setData({
+            materialPanel: query.panel,
+            registrationStep: ['insurance', 'progress'].includes(query.panel)
+              ? 'insurance'
+              : 'profile',
+          });
       } catch (error) {
         this._invalid = true;
         this.setData({ error: ui.message(error) });
@@ -66,7 +87,12 @@ Page({
   },
   onSessionReset() {
     this.clearPrivate();
-    this.setData({ loginRequired: true, error: '登录身份已变化，已清除上一账号的私有资料。' });
+    this.setData({
+      loginRequired: true,
+      materialPanel: 'profile',
+      registrationStep: 'profile',
+      error: '登录身份已变化，已清除上一账号的私有资料。',
+    });
     this.cleanupFiles();
   },
   clearPrivate() {
@@ -97,7 +123,7 @@ Page({
           this._org +
           '&entryId=' +
           this._entry +
-          (this.data.mode === 'review' ? '&mode=review' : '')
+          (this.data.mode === 'review' ? '&mode=review' : '&panel=' + this.data.materialPanel)
       : PATH;
   },
   login() {
@@ -259,6 +285,38 @@ Page({
     )
       return;
     this.setData({ ['form.' + key]: e.detail.value, dirty: true, privateDetails: null });
+  },
+  switchMaterialPanel(e) {
+    if (
+      this.data.mode !== 'mine' ||
+      !this._workspace ||
+      this.data.busy ||
+      this.data.loading ||
+      this.data.pending
+    )
+      return;
+    const key = e.currentTarget?.dataset?.panel || e.detail?.key;
+    if (!this.data.materialPanels.some((panel) => panel.key === key)) return;
+    this.setData({
+      materialPanel: key,
+      registrationStep: ['insurance', 'progress'].includes(key) ? 'insurance' : 'profile',
+      privateDetails: null,
+    });
+    this.cleanupFiles();
+  },
+  registrationStepChange(e) {
+    const key = e.detail?.key;
+    if (!this.data.registrationSteps.some((step) => step.key === key)) return;
+    if (key === 'qualification') this.qualification();
+    else this.switchMaterialPanel({ detail: { key } });
+  },
+  canLeaveMaterials() {
+    if (this.data.busy || this.data.loading || this.data.pending || !this._workspace) return false;
+    if (this.data.mode === 'mine' && this.data.dirty) {
+      this.setData({ error: '请先保存当前草稿，再继续资格预审、保险或监护确认。' });
+      return false;
+    }
+    return true;
   },
   checkbox(e) {
     if (this.data.busy) return;
@@ -564,7 +622,7 @@ Page({
   },
   guardian() {
     const w = this.data.workspace;
-    if (!this.data.busy && w?.eventId && w?.memberId)
+    if (this.canLeaveMaterials() && w?.eventId && w?.memberId)
       ui.open('guardian', {
         orgId: this._org,
         eventId: w.eventId,
@@ -573,12 +631,12 @@ Page({
       });
   },
   qualification() {
-    if (!this.data.busy)
+    if (this.canLeaveMaterials())
       ui.open('qualification-precheck', { orgId: this._org, entryId: this._entry });
   },
   insurance() {
     const w = this.data.workspace;
-    if (!this.data.busy && w?.memberId)
+    if (this.canLeaveMaterials() && w?.memberId)
       ui.open('insurance', { orgId: this._org, entryId: this._entry, memberId: w.memberId });
   },
   async viewFile(e) {

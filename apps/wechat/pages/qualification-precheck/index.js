@@ -13,6 +13,11 @@ Page({
     loading: false,
     error: '',
     message: '',
+    registrationSteps: [
+      { key: 'profile', label: '本人资料' },
+      { key: 'qualification', label: '资格预审' },
+      { key: 'insurance', label: '保障与审核' },
+    ],
   },
   onLoad(q) {
     try {
@@ -44,12 +49,17 @@ Page({
     this.onHide();
     this.setData({ busy: false, loading: false, error: '登录身份已变化，请重新读取。' });
   },
-  materials() {
+  materials(e) {
+    if (this.data.busy || this.data.loading || this.data.pending || this._invalid) return;
     ui.open('participant-materials', {
       orgId: this.data.orgId,
       entryId: this.data.entryId,
       mode: this.data.workspace?.canReview ? 'review' : 'mine',
+      panel: e?.detail?.key === 'insurance' ? 'insurance' : 'profile',
     });
+  },
+  registrationStepChange(e) {
+    if (['profile', 'insurance'].includes(e.detail?.key)) this.materials(e);
   },
   base() {
     return (

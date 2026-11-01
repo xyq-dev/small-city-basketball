@@ -295,10 +295,9 @@ test('native conditions require explicit braces and actually hide management and
   // The compatibility renderer has no live-pusher implementation. Its surrounding real
   // control markup is rendered unchanged; the actual full source was strictly parsed above.
   assert.match(live, /<live-pusher[^>]+url="\{\{pushUrl\}\}"/);
-  const controls = live.replace(
-    /<live-pusher\b[^>]*\/>/g,
-    '<view data-native-camera-placeholder="true"/>',
-  );
+  const controls = live
+    .replace(/<live-pusher\b[^>]*\/>/g, '<view data-native-camera-placeholder="true"/>')
+    .replace(/<scb-(?:header|steps|state)\b[^>]*\/>/g, '<view/>');
   const h = fixture();
   const empty = renderWxml(controls, h.page.data);
   assert.doesNotMatch(empty, /批准直播与所选录像用途|源代次|撤销直播与录像授权/);

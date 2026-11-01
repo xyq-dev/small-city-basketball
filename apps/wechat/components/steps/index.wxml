@@ -1,0 +1,3 @@
+<view class="scb-steps" role="navigation" aria-label="流程步骤">
+ <button wx:for="{{items}}" wx:key="key" class="scb-step {{current===item.key ? 'current' : ''}}" data-index="{{index}}" bindtap="choose" disabled="{{busy || item.disabled}}" aria-current="{{current===item.key ? 'step' : 'false'}}"><text class="step-index">{{index+1}}</text><text class="step-label">{{item.label}}</text></button>
+</view>

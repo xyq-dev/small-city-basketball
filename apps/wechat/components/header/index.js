@@ -36,7 +36,7 @@ Component({
       if (typeof wx.setNavigationBarColor === 'function')
         wx.setNavigationBarColor({
           frontColor: dark ? '#ffffff' : '#000000',
-          backgroundColor: dark ? '#132c49' : '#ffffff',
+          backgroundColor: dark ? '#123c73' : '#ffffff',
           fail() {},
         });
     },

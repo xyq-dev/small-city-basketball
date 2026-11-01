@@ -24,6 +24,12 @@ Page({
     reason: '主办方显式操作',
     cameraReady: false,
     phoneState: '尚未采集',
+    activeSection: 'setup',
+    workflowSteps: [
+      { key: 'setup', label: '直播准备' },
+      { key: 'capture', label: '采集与停流' },
+      { key: 'channels', label: '频道与媒体' },
+    ],
   },
   onLoad(q = {}) {
     this._alive = true;
@@ -129,10 +135,23 @@ Page({
   selectChannels(e) {
     this.setData({ selected: e.detail.value });
   },
+  changeSection(e) {
+    const key = e.detail.key;
+    if (this.data.busy || !this.data.workflowSteps.some((item) => item.key === key)) return;
+    this.setData({ activeSection: key });
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#live-' + key, duration: 200 });
+  },
   setRecord(e) {
     this.setData({ record: e.detail.value === true });
   },
   async create() {
+    if (!this.data.capabilities || !this.data.capabilities.providerReady) {
+      this.setData({
+        error: '正式直播能力尚未就绪，当前不能创建或开始新直播。已有原操作仍可核对。',
+      });
+      return;
+    }
     await this.send({
       type: 'CREATE',
       channelIds: this.data.selected,
@@ -146,6 +165,10 @@ Page({
       s = this.data.session,
       guard = ui.guard(this);
     if (!s) return;
+    if (type === 'START' && !this.data.capabilities?.providerReady) {
+      this.setData({ error: '正式直播能力尚未就绪，当前不能开始采集。请核对频道与授权条件。' });
+      return;
+    }
     if (['START', 'PAUSE', 'STOP', 'REVOKE'].includes(type)) {
       if (
         !(await ui.confirm(

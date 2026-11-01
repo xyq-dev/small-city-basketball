@@ -1,0 +1,15 @@
+:host { display:block; margin-bottom:16px; }
+.scb-state { padding:20px 16px; border:1px solid #e1e7ef; border-radius:16px; background:#fff; color:#18283f; overflow-wrap:anywhere; }
+.state-label { display:inline-block; padding:3px 10px; margin-bottom:12px; border-radius:16px; color:#123c73; background:#edf3fa; font-size:12px; line-height:18px; }
+.state-title { font-size:18px; line-height:28px; font-weight:700; }
+.state-description { color:#63758b; font-size:14px; line-height:22px; margin-top:8px; }
+.error .state-label,.conflict .state-label { color:#a62e36; background:#fcecef; }
+.closed .state-label,.unknown .state-label { color:#805400; background:#fff3dc; }
+.success .state-label { color:#16734b; background:#e7f5ee; }
+button { display:block; width:100%; min-height:48px; margin:16px 0 0; padding:12px; border-radius:12px; font-size:16px; line-height:24px; font-weight:600; color:#fff; background:#123c73; overflow-wrap:anywhere; }
+button::after { border:0; }
+.state-secondary { color:#123c73; background:#edf3fa; margin-top:8px; }
+button[disabled] { color:#63758b; background:#edf1f6; }
+.state-skeleton { display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+.state-skeleton > view { height:12px; border-radius:6px; background:#edf1f6; }
+.state-skeleton > view:last-child { width:70%; }

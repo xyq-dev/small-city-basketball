@@ -1,4 +1,4 @@
-.materials-page { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
+.materials-page { padding-bottom:calc(132px + env(safe-area-inset-bottom)); }
 .material-panel { border:1px solid #e8edf2; border-radius:12px; padding:20px; margin-bottom:16px; overflow-wrap:anywhere; }
 .material-kicker { color:#667a90; font-size:12px; margin-bottom:8px; }
 .material-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
@@ -19,4 +19,11 @@
 .materials-page button { white-space:normal; height:auto; min-height:44px; overflow-wrap:anywhere; }
 .materials-page .consent { display:flex; align-items:flex-start; gap:8px; }
 .materials-page .consent checkbox { flex-shrink:0; }
+.material-section-tabs { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 16px; }
+.material-section-tabs button { flex:1 1 88px; min-width:0; width:auto; margin:0; background:#fff; color:#63758b; border-radius:12px; }
+.material-section-tabs button.selected { background:#eaf0f8; color:#123c73; }
+.material-fixed-actions { display:flex; gap:12px; }
+.material-fixed-actions button { flex:1; min-width:0; margin:0; min-height:48px; }
+.material-profile .field { border-color:#e1e7ef; border-radius:12px; }
+.material-paths button { min-width:0; flex-basis:100%; }
 @media (max-width:360px) { .material-panel { padding:16px; } .material-pair { grid-template-columns:minmax(0,1fr); } }
