@@ -254,7 +254,7 @@ test('the training workspace also releases a hidden completed command before ret
     assert.equal(!!h.page.data.pending, outcome === 'unknown');
   }
 });
-function completionHarness(capabilities, state = 'RUNNING') {
+function cohortCommandHarness(capabilities, state = 'RUNNING', resultState = 'COMPLETED') {
   let cohort = {
     id: C,
     title: '成人正常结课班',
@@ -270,9 +270,14 @@ function completionHarness(capabilities, state = 'RUNNING') {
     if (method === 'POST') {
       cohort = {
         ...cohort,
-        state: 'COMPLETED',
+        state: resultState,
         version: 8,
-        capabilities: { canComplete: false, completionBlocker: null },
+        capabilities: {
+          canComplete: false,
+          completionBlocker: null,
+          canResume: false,
+          resumeBlocker: null,
+        },
       };
       return { cohortId: C };
     }
@@ -299,7 +304,7 @@ function completionHarness(capabilities, state = 'RUNNING') {
   return h;
 }
 test('a manager completes a cohort through the real page command and reloads its terminal state', async () => {
-  const h = completionHarness({ canComplete: true, completionBlocker: null });
+  const h = cohortCommandHarness({ canComplete: true, completionBlocker: null });
   await h.page.load();
   const complete = h.render().match(/<button\b[^>]*data-action="COMPLETE"[^>]*>正常结课<\/button>/);
   assert.ok(complete, 'normal completion has a visible bound button');
@@ -327,7 +332,7 @@ test('completion stays disabled and sends nothing without server permission or s
     { canComplete: false, completionBlocker: '还有待补课权益，请先完成补课或退款' },
     {},
   ]) {
-    const h = completionHarness(capabilities);
+    const h = cohortCommandHarness(capabilities);
     await h.page.load();
     h.page.setData({ reason: '申请正常结课' });
     const html = h.render(),
@@ -345,18 +350,87 @@ test('completion stays disabled and sends nothing without server permission or s
   }
 });
 test('completion requires written grounds and terminal cohorts have no lifecycle mutation controls', async () => {
-  const h = completionHarness({ canComplete: true, completionBlocker: null });
+  const h = cohortCommandHarness({ canComplete: true, completionBlocker: null });
   await h.page.load();
   h.page.setData({ reason: '   ' });
   await h.click();
   assert.equal(h.calls.filter((x) => x.method === 'POST').length, 0);
   assert.match(h.page.data.error, /填写正常结课的事实依据/);
   for (const state of ['COMPLETED', 'CANCELLED']) {
-    const terminal = completionHarness({ canComplete: false, completionBlocker: null }, state);
+    const terminal = cohortCommandHarness({ canComplete: false, completionBlocker: null }, state);
     await terminal.page.load();
     assert.doesNotMatch(terminal.render(), /data-action="(?:COMPLETE|SUSPEND|CANCEL)"/);
     for (const action of ['COMPLETE', 'SUSPEND', 'CANCEL']) await terminal.click(action);
     assert.equal(terminal.calls.filter((x) => x.method === 'POST').length, 0);
+  }
+});
+test('a manager resumes a suspended cohort with its original version and written grounds', async () => {
+  const h = cohortCommandHarness({ canResume: true, resumeBlocker: null }, 'SUSPENDED', 'RUNNING');
+  await h.page.load();
+  const html = h.render(),
+    resume = html.match(/<button\b[^>]*data-action="RESUME"[^>]*>恢复班期<\/button>/);
+  assert.ok(resume, 'a suspended cohort has a visible recovery action');
+  assert.doesNotMatch(resume[0], /\bdisabled\b/);
+  assert.doesNotMatch(html, /data-action="SUSPEND"/);
+  h.page.input({
+    currentTarget: { dataset: { field: 'reason' } },
+    detail: { value: '已复核当前资质和原课次安排，可以恢复授课' },
+  });
+  await h.click('RESUME');
+  const posted = h.calls.filter((x) => x.method === 'POST');
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0].url, '/v1/training/cohorts/' + C + '/commands');
+  assert.equal(posted[0].body.action, 'RESUME');
+  assert.equal(posted[0].body.expectedVersion, 7);
+  assert.equal(posted[0].body.reason, '已复核当前资质和原课次安排，可以恢复授课');
+  assert.match(posted[0].body.commandId, new RegExp('^' + pattern + '$'));
+  assert.equal(h.page.data.workspace.cohorts[0].state, 'RUNNING');
+  assert.equal(h.page.data.busy, false);
+  assert.equal(h.page.data.pending, null);
+  assert.equal(h.requireLocal('utils/training.js').pending(U), null);
+  assert.doesNotMatch(h.render(), /data-action="RESUME"/);
+  assert.match(h.render(), /data-action="SUSPEND"[^>]*>暂停班期<\/button>/);
+});
+test('resume requires server capability and written grounds without creating a command when blocked', async () => {
+  for (const capabilities of [{ canResume: false, resumeBlocker: '教练资格待重新核验' }, {}]) {
+    const h = cohortCommandHarness(capabilities, 'SUSPENDED');
+    await h.page.load();
+    h.page.setData({ reason: '申请恢复班期' });
+    const html = h.render(),
+      resume = html.match(/<button\b[^>]*data-action="RESUME"[^>]*>恢复班期<\/button>/);
+    assert.ok(resume);
+    assert.match(resume[0], /\bdisabled\b/);
+    if (capabilities.resumeBlocker) assert.ok(html.includes(capabilities.resumeBlocker));
+    await h.click('RESUME');
+    assert.equal(h.calls.filter((x) => x.method === 'POST').length, 0);
+    assert.equal(
+      h.page.data.error,
+      capabilities.resumeBlocker || '当前班期不能恢复，请刷新后核对。',
+    );
+    assert.equal(h.requireLocal('utils/training.js').pending(U), null);
+  }
+  const h = cohortCommandHarness({ canResume: true, resumeBlocker: null }, 'SUSPENDED');
+  await h.page.load();
+  h.page.setData({ reason: '   ' });
+  await h.click('RESUME');
+  assert.equal(h.calls.filter((x) => x.method === 'POST').length, 0);
+  assert.match(h.page.data.error, /填写恢复班期的事实依据/);
+});
+test('draft, already suspended and terminal cohorts cannot be suspended and only suspended cohorts can resume', async () => {
+  for (const state of ['DRAFT', 'SUSPENDED', 'COMPLETED', 'CANCELLED']) {
+    const h = cohortCommandHarness({ canResume: false, resumeBlocker: null }, state);
+    await h.page.load();
+    assert.doesNotMatch(h.render(), /data-action="SUSPEND"/);
+    await h.click('SUSPEND');
+    assert.equal(h.calls.filter((x) => x.method === 'POST').length, 0);
+  }
+  for (const state of ['DRAFT', 'ENROLLING', 'RUNNING', 'COMPLETED', 'CANCELLED']) {
+    const h = cohortCommandHarness({ canResume: true, resumeBlocker: null }, state);
+    await h.page.load();
+    h.page.setData({ reason: '只允许暂停班期恢复' });
+    assert.doesNotMatch(h.render(), /data-action="RESUME"/);
+    await h.click('RESUME');
+    assert.equal(h.calls.filter((x) => x.method === 'POST').length, 0);
   }
 });
 test('both native pages have bound handlers, balanced templates, and no simulated success copy', () => {

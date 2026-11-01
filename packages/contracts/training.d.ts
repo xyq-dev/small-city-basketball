@@ -38,6 +38,8 @@ export interface TrainingCohortData {
     paidEnrollmentEnabled: boolean;
     canComplete: boolean;
     completionBlocker: string | null;
+    canResume: boolean;
+    resumeBlocker: string | null;
   };
 }
 export interface TrainingEntitlementData {

@@ -926,6 +926,253 @@ describe('R6TRAIN real PostgreSQL service workflows', () => {
     await paid.enrollmentCommand(learner.cookie, abandoned.id, cmd('REFRESH', abandoned.version));
     expect((await paid.enrollmentDetail(learner.cookie, abandoned.id)).state).toBe('EXPIRED');
   });
+  it('resumes a suspended published cohort idempotently without recreating seats, resources or money', async () => {
+    const h = await shortCohort({ delay: 6000 }),
+      n = await confirmed(h);
+    const before = (
+      await pool.query(
+        'SELECT * FROM training_resource_reservations WHERE session_id=$1 ORDER BY id',
+        [h.sessions[0]!.id],
+      )
+    ).rows;
+    await service.cohortCommand(
+      owner.cookie,
+      h.id,
+      cmd('SUSPEND', h.version, { reason: '临时暂停班期' }),
+    );
+    const resume = cmd('RESUME', h.version + 1, { reason: '核对资质和原有排课后恢复' });
+    expect((await completionCapability(h.id)).canResume).toBe(true);
+    await expect(service.cohortCommand(other.cookie, h.id, resume)).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(
+      service.cohortCommand(owner.cookie, h.id, { ...resume, expectedVersion: h.version }),
+    ).rejects.toMatchObject({ code: 'VERSION_CONFLICT' });
+    const replies = await Promise.all([
+      service.cohortCommand(owner.cookie, h.id, resume),
+      service.cohortCommand(owner.cookie, h.id, resume),
+    ]);
+    expect(replies[0]).toEqual(replies[1]);
+    const resumed = await service.detail(h.id);
+    expect(resumed.state).toBe('ENROLLING');
+    expect(resumed.version).toBe(h.version + 2);
+    expect(resumed.capabilities.canEnroll).toBe(true);
+    expect((await service.enrollmentDetail(learner.cookie, n.id)).version).toBe(n.version);
+    expect(
+      (
+        await pool.query(
+          'SELECT * FROM training_resource_reservations WHERE session_id=$1 ORDER BY id',
+          [h.sessions[0]!.id],
+        )
+      ).rows,
+    ).toEqual(before);
+    expect(
+      (
+        await pool.query(
+          "SELECT count(*)::int AS n FROM training_audit_events WHERE resource_id=$1 AND action='RESUME'",
+          [h.id],
+        )
+      ).rows[0].n,
+    ).toBe(1);
+    expect(
+      (
+        await pool.query(
+          "SELECT 1 FROM trade_orders WHERE kind='TRAINING_ENROLLMENT' AND source_id=$1",
+          [n.id],
+        )
+      ).rowCount,
+    ).toBe(0);
+    await deliver(h.sessions[0]!.id);
+    await consume(n.id, n.entitlements[0]!.id);
+    expect((await service.enrollmentDetail(learner.cookie, n.id)).state).toBe('COMPLETED');
+  }, 15000);
+  it('resumes after the cutoff for delivery only and cannot bypass pending consumption or a late dispute', async () => {
+    const h = await shortCohort(),
+      n = await confirmed(h),
+      sid = h.sessions[0]!.id;
+    await service.cohortCommand(
+      owner.cookie,
+      h.id,
+      cmd('SUSPEND', h.version, { reason: '暂停后待恢复履约' }),
+    );
+    await waitForSessionEnd(sid);
+    await expect(
+      service.sessionCommand(coach.cookie, sid, cmd('DELIVER', 1, { reason: '暂停期间不可提交' })),
+    ).rejects.toMatchObject({ code: 'COHORT_STOPPED' });
+    // Explicit history fixture: an ended protected window may have been released by cleanup.
+    await pool.query('UPDATE training_resource_reservations SET active=false WHERE session_id=$1', [
+      sid,
+    ]);
+    await service.cohortCommand(
+      owner.cookie,
+      h.id,
+      cmd('RESUME', h.version + 1, { reason: '截止后恢复原有学员履约' }),
+    );
+    expect((await service.detail(h.id)).state).toBe('RUNNING');
+    expect((await service.detail(h.id)).capabilities.canEnroll).toBe(false);
+    await expect(enroll(h, other)).rejects.toMatchObject({ code: 'ENROLLMENT_CLOSED' });
+    expect(
+      (
+        await pool.query(
+          'SELECT 1 FROM training_resource_reservations WHERE session_id=$1 AND active',
+          [sid],
+        )
+      ).rowCount,
+    ).toBe(0);
+    await deliver(sid);
+    await service.entitlementCommand(
+      coach.cookie,
+      n.entitlements[0]!.id,
+      cmd('CHECKIN', n.entitlements[0]!.version),
+    );
+    let current = await service.enrollmentDetail(learner.cookie, n.id);
+    const proposed = await service.entitlementCommand(
+      coach.cookie,
+      n.entitlements[0]!.id,
+      cmd('PROPOSE_CONSUMPTION', current.entitlements[0]!.version, {
+        reason: '真实授课消费待复核',
+      }),
+    );
+    await service.cohortCommand(
+      owner.cookie,
+      h.id,
+      cmd('SUSPEND', h.version + 2, { reason: '暂停核对消费事实' }),
+    );
+    const resume = cmd('RESUME', h.version + 3, { reason: '须独立完成消费核对后恢复' });
+    await expect(service.cohortCommand(owner.cookie, h.id, resume)).rejects.toMatchObject({
+      code: 'TRAINING_RESUME_BLOCKED',
+    });
+    await service.consumptionCommand(
+      reviewer.cookie,
+      proposed.consumptionId,
+      cmd('REVIEW', 1, { reason: '独立核对真实授课' }),
+    );
+    expect((await completionCapability(h.id)).canResume).toBe(false);
+    await expect(service.cohortCommand(owner.cookie, h.id, resume)).rejects.toMatchObject({
+      code: 'TRAINING_RESUME_BLOCKED',
+    });
+    await service.consumptionCommand(learner.cookie, proposed.consumptionId, cmd('ACKNOWLEDGE', 2));
+    await service.cohortCommand(owner.cookie, h.id, resume);
+    await service.cohortCommand(
+      owner.cookie,
+      h.id,
+      cmd('COMPLETE', h.version + 4, { reason: '履约完成正常结课' }),
+    );
+    await service.consumptionCommand(
+      learner.cookie,
+      proposed.consumptionId,
+      cmd('DISPUTE', 3, { reason: '结课后收到新的真实异议' }),
+    );
+    const lateResume = cmd('RESUME', h.version + 6, { reason: '管理员不能跳过独立裁决' });
+    await expect(service.cohortCommand(owner.cookie, h.id, lateResume)).rejects.toMatchObject({
+      code: 'TRAINING_RESUME_BLOCKED',
+    });
+    await expect(
+      service.consumptionCommand(
+        owner.cookie,
+        proposed.consumptionId,
+        cmd('RESOLVE_UPHOLD', 4, { reason: '机构自行裁决不可接受' }),
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+    await service.consumptionCommand(
+      operator.cookie,
+      proposed.consumptionId,
+      cmd('RESOLVE_UPHOLD', 4, { reason: '平台独立核查并维持消费' }),
+    );
+    await service.cohortCommand(owner.cookie, h.id, lateResume);
+    expect((await service.detail(h.id)).state).toBe('RUNNING');
+    current = await service.enrollmentDetail(learner.cookie, n.id);
+    expect(current.entitlements[0]!.state).toBe('CONSUMED');
+  }, 15000);
+  it('fails closed on expired supply, disabled service and missing original publication reservations', async () => {
+    const h = await cohort();
+    await service.cohortCommand(
+      owner.cookie,
+      h.id,
+      cmd('SUSPEND', h.version, { reason: '核验恢复前置条件' }),
+    );
+    const resume = cmd('RESUME', h.version + 1, { reason: '保留原排课并核验恢复' });
+    const closed = new TrainingService(pool, options, { enabled: false });
+    await expect(closed.cohortCommand(owner.cookie, h.id, resume)).rejects.toMatchObject({
+      code: 'TRAINING_DISABLED',
+    });
+    const provider = (
+      await pool.query('SELECT * FROM training_providers WHERE org_id=$1', [owner.org])
+    ).rows[0];
+    // Explicit expiry fixture; production profile values are not changed and no frozen contract is edited.
+    await pool.query(
+      "UPDATE training_providers SET qualified_until=clock_timestamp()-interval '1 second',version=version+1 WHERE org_id=$1",
+      [owner.org],
+    );
+    try {
+      expect((await completionCapability(h.id)).canResume).toBe(false);
+      await expect(service.cohortCommand(owner.cookie, h.id, resume)).rejects.toMatchObject({
+        code: 'TRAINING_RESUME_BLOCKED',
+      });
+    } finally {
+      await pool.query(
+        'UPDATE training_providers SET qualified_until=$2,version=version+1 WHERE org_id=$1',
+        [owner.org, provider.qualified_until],
+      );
+    }
+    const coachVersion = (
+      await pool.query('SELECT version FROM training_coaches WHERE id=$1', [coachId])
+    ).rows[0].version;
+    await service.coachCommand(
+      reviewer.cookie,
+      coachId,
+      cmd('SUSPEND', coachVersion, { reason: '暂停教练资格用于真实恢复核验' }),
+    );
+    await expect(service.cohortCommand(owner.cookie, h.id, resume)).rejects.toMatchObject({
+      code: 'TRAINING_RESUME_BLOCKED',
+    });
+    await service.coachCommand(
+      reviewer.cookie,
+      coachId,
+      cmd('APPROVE', coachVersion + 1, { reason: '独立复核恢复有效教练资格' }),
+    );
+    await pool.query("UPDATE courts SET status='DISABLED',version=version+1 WHERE id=$1", [
+      courtId,
+    ]);
+    try {
+      await expect(service.cohortCommand(owner.cookie, h.id, resume)).rejects.toMatchObject({
+        code: 'TRAINING_RESUME_BLOCKED',
+      });
+    } finally {
+      await pool.query("UPDATE courts SET status='ACTIVE',version=version+1 WHERE id=$1", [
+        courtId,
+      ]);
+    }
+    expect((await completionCapability(h.id)).canResume).toBe(true);
+    await pool.query(
+      'UPDATE training_resource_reservations SET active=false WHERE session_id=$1 AND enrollment_id IS NULL',
+      [h.sessions[0]!.id],
+    );
+    expect((await completionCapability(h.id)).resumeBlocker).toBe(
+      '原发布的场地或教练占位证明不完整',
+    );
+    await expect(service.cohortCommand(owner.cookie, h.id, resume)).rejects.toMatchObject({
+      code: 'TRAINING_RESUME_BLOCKED',
+    });
+    const draft = randomUUID();
+    await pool.query(
+      `INSERT INTO training_cohorts(id,org_id,course_id,court_id,title,address,capacity,total_fen,terms_id,terms_text,state,enrollment_deadline,created_by)
+      SELECT $2,org_id,course_id,court_id,title,address,capacity,total_fen,terms_id,terms_text,'DRAFT',enrollment_deadline,created_by FROM training_cohorts WHERE id=$1`,
+      [h.id, draft],
+    );
+    await expect(
+      service.cohortCommand(
+        owner.cookie,
+        draft,
+        cmd('SUSPEND', 1, { reason: '草稿不能跳过首次发布' }),
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_STATE' });
+    await service.cohortCommand(
+      owner.cookie,
+      h.id,
+      cmd('CANCEL', h.version + 1, { reason: '丢失发布证明不强行恢复' }),
+    );
+  });
   it('normally completes delivered cohorts idempotently, unblocks the creator, and reopens on a later dispute', async () => {
     const creator = await user('completion-creator');
     await pool.query(

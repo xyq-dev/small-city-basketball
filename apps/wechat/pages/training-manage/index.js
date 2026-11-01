@@ -310,6 +310,14 @@ Page({
     if (!x || ['COMPLETED', 'CANCELLED'].includes(x.state)) return;
     const action = e.currentTarget.dataset.action,
       body = { action, expectedVersion: x.version };
+    if (action === 'SUSPEND' && !['ENROLLING', 'RUNNING'].includes(x.state)) return;
+    if (action === 'RESUME') {
+      if (x.state !== 'SUSPENDED' || x.capabilities?.canResume !== true)
+        return this.setData({
+          error: x.capabilities?.resumeBlocker || '当前班期不能恢复，请刷新后核对。',
+        });
+      if (!this.data.reason.trim()) return this.setData({ error: '请填写恢复班期的事实依据。' });
+    }
     if (action === 'COMPLETE') {
       if (x.capabilities?.canComplete !== true)
         return this.setData({

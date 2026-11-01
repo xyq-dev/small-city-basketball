@@ -50,3 +50,11 @@ PR35线程PRRT_kwDOVTBG086yW7tk/tl最小修正：index.js send采用会话持有
 本片API typecheck、training-domain 8/8、格式及空白检查通过；首次从仓库根误用API vitest相对过滤未发现文件，改在apps/api正确执行后8/8通过。本机无PG，新增矩阵尚未执行。GitHub CI158的新增域PG步骤已SUCCESS，但该候选不包含本follow-up，不能用其结果证明本漏项已修；原始job日志未可取，尚无逐文件通过声明。无迁移、shared trade、远端写或生产操作。
 
 本follow-up独立只读复核已完成：确认clone原班/原课次与当前目标班不同，UUID快照/canonical身份/退款binding一致，先positive后UNKNOWN能准确命中全来源资金门；038列约束与未决回退唯一索引匹配，无剩余确定阻断。仍须新候选真实PG执行。
+
+2026-11-01 PR35暂停恢复P2（PRRT_kwDOVTBG086yXjjH）续作：独立worktree仍为scb-six-training-completion、分支work/r6-training-completion，基线eb77023且开工clean；仅training服务/DTO/原生页/有效测试及本任务交接。新增受控RESUME（同原cohort命令入口）：只准SUSPENDED，沿用manager/fresh、组织+共享日历锁、expectedVersion和commandId回执。培训总开关/恢复隔离仍有效；重新核当前机构/场地及剩余课次教练资格、双向关联权益的PROPOSED/REVIEWED/DISPUTED消费。管理员不能借恢复跳过独立异议裁决。
+
+RESUME不创建报名、资源、订单或资金事实。未来/进行中课次及尚未结束的缓冲窗口必须保有精确原court/coach ACTIVE占位；已结束SCHEDULED课次可用精确原占位历史补交真实授课，不复活已释放行。截止前恢复ENROLLING，截止后RUNNING且新报名仍拒绝。另堵住DRAFT直接SUSPEND绕首次PUBLISH的入口，暂停仅ENROLLING/RUNNING；SUSPENDED仍可按现条件CANCEL/COMPLETE。管理DTO增加canResume/resumeBlocker，原生提供恢复班期及依据，原暂停文案更正为暂停班期。
+
+新增3个真实PG it（培训16→19）：暂停恢复同命令并发/权限/版本，保留名额资源资金且继续真实授课消费；截止后恢复RUNNING、不重新招生、释放的结束占位仅核历史，PROPOSED/REVIEWED及结课后迟来DISPUTE都拒恢复、平台独立裁决后方可恢复；关闭总开关、机构资质到期、教练停审、场地停用、丢失原发布占位及草稿暂停全部拒绝。短课仍等待真实DB时钟，冻结时间无改写；失效资格和已释放占位用明确合成数据库夹具，不绕版本规则。新增原生真实Page VM3项，总19/19通过；领域8/8、完整npm run typecheck与格式/diff检查通过。真实PG本机无环境，必须后续CI实跑；CI159不含本恢复功能，不能用其绿灯替代本次验证。无迁移、ACL、shared trade、远端写或生产变更。
+
+独立dispatch终审未发现本片确定P1/P2，并独立复跑API typecheck、原生19/19及diff检查通过；核对了多轮暂停/恢复/结课/异议版本链、独立裁决actor、真实incoming范围和原资源历史约束。附带只读检查现有非终态后继：草稿发布/取消；招生及授课暂停/结课/取消；暂停恢复/结课/取消；报名锁位确认/核对/取消、候补领位/取消、逾期与付款未分配走核对或逐课退款；权益经消费复核/请假补课/退款，未决消费经本人确认或独立裁决，未知退款由原统一交易查询后刷新。未发现另一个已确认的同类无后继状态，本轮不增其它业务操作；青少年未开放及外部付款结果未核实保持既定能力边界。

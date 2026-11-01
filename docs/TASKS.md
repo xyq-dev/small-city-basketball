@@ -4,7 +4,7 @@
 
 [PR #35](https://github.com/xyq-dev/small-city-basketball/pull/35) 正在验证，尚未合入main。[代码与验收映射](audits/REMAINING6_ACCEPTANCE.md)、[任务](tasks/REMAINING6.md)、[接续](handoffs/REMAINING6.md)、[运行配置](operations/remaining-six-runtime.md)。已实现地图视野搜索、三类撮合及原预约转换、跨城派单与差旅档期、成人培训全链、商业广告合同与多方资金核对；保险准入/接口框架已补，真实供应商协议和凭证仍BLOCKED。
 
-分支现73条原生路由、48项Migration、221表（新增45表）；新增043—048仅在隔离CI执行，旧001—042冻结，生产未更新。2026-11-01 13:05 Asia/Shanghai：CI157验证remote5b3dfd05/tree1078be9c，130项新域PG及旧业务PG步骤通过，admin与完整HTTPS/归档恢复job成功，API仍在原生页面联调；原9条审查已解决。最新2条培训正常结课与撮合培训档期过滤正在收口，撮合片已集成local6263890但其新增5项PG未执行，最终候选须再验。未把未完成检查或外部通道写成可上线。
+分支现73条原生路由、48项Migration、221表（新增45表）；新增043—048仅在隔离CI执行，旧001—042冻结，生产未更新。2026-11-01 13:33 Asia/Shanghai：CI159验证remoteaaaf1366/treeacebcbdb，新域140项PG步骤、admin及完整HTTPS/归档恢复job通过；API后续仍在运行。原11条审查已resolve，新增培训暂停后无恢复入口的P2已用受控RESUME修复并整合local7f0d5c2。当前本地完整type/format/build、admin561/API1339/原生1076通过（1Windows跳过），新增3项PG待新候选；最终完整CI成功前不合并。
 
 UI001设计交付与本次功能实现分开记录，保留其并发main文档及画板；当前开发页面不等于200张视觉稿全部像素实现。下方设计卡的“待开发”保留为当时事实，最新代码进度以本节及专项验收为准。
 

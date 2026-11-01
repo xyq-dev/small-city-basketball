@@ -204,6 +204,79 @@ export class TrainingService extends ApplicationService {
     ).rowCount;
     return !!p && !!court && !bad;
   }
+  private async resumeBlocker(c: PoolClient, h: Row): Promise<string | null> {
+    if (h.state !== 'SUSPENDED') return '只有暂停班期可以恢复';
+    if (!this.training.enabled) return '培训服务尚未开放';
+    if (
+      !(await c.query('SELECT 1 FROM training_sessions WHERE cohort_id=$1 LIMIT 1', [h.id]))
+        .rowCount
+    )
+      return '缺少原班期课次记录';
+    if (
+      (
+        await c.query(
+          "SELECT 1 FROM audit_logs WHERE action='RESTORE_QUARANTINE' AND resource_type='restore' LIMIT 1",
+        )
+      ).rowCount
+    )
+      return '恢复副本尚未解除隔离';
+    if (
+      !(
+        await c.query(
+          `SELECT 1 FROM training_providers p JOIN organizations o ON o.id=p.org_id
+          JOIN courts court ON court.org_id=p.org_id AND court.id=$3
+          WHERE p.org_id=$1 AND p.status='APPROVED' AND o.status='ACTIVE' AND court.status='ACTIVE'
+          AND p.qualified_until>greatest(clock_timestamp(),(SELECT max(ends_at) FROM training_sessions WHERE cohort_id=$2 AND state='SCHEDULED'))
+          FOR SHARE OF p,o,court`,
+          [h.org_id, h.id, h.court_id],
+        )
+      ).rowCount
+    )
+      return '机构、场地或剩余课次的资质未满足';
+    if (
+      (
+        await c.query(
+          `SELECT 1 FROM training_sessions s WHERE s.cohort_id=$1 AND s.state='SCHEDULED' AND (
+          NOT EXISTS(SELECT 1 FROM training_session_coaches sc WHERE sc.session_id=s.id) OR EXISTS(
+            SELECT 1 FROM training_session_coaches sc JOIN training_coaches t ON t.id=sc.coach_id JOIN users u ON u.id=t.user_id
+            WHERE sc.session_id=s.id AND (t.status<>'APPROVED' OR NOT t.consented OR u.status<>'ACTIVE' OR t.qualified_until<=greatest(clock_timestamp(),s.ends_at)))) LIMIT 1`,
+          [h.id],
+        )
+      ).rowCount
+    )
+      return '剩余课次的教练资格或本人确认未满足';
+    if (
+      (
+        await c.query(
+          `SELECT 1 FROM training_consumptions x JOIN training_lesson_entitlements e ON e.id=x.entitlement_id
+          JOIN training_enrollments n ON n.id=e.enrollment_id JOIN training_sessions s ON s.id=e.current_session_id
+          WHERE (n.cohort_id=$1 OR s.cohort_id=$1) AND x.status IN('PROPOSED','REVIEWED','DISPUTED') LIMIT 1`,
+          [h.id],
+        )
+      ).rowCount
+    )
+      return '仍有待确认消费或未独立裁决的异议';
+    // RESUME never recreates reservations. Live protected windows need their original active
+    // court/coach rows; ended windows may use immutable released history for delayed delivery.
+    if (
+      (
+        await c.query(
+          `SELECT 1 FROM training_sessions s CROSS JOIN LATERAL (
+            SELECT 'court:'||$2::text AS resource_key UNION ALL
+            SELECT 'user:'||t.user_id::text FROM training_session_coaches sc JOIN training_coaches t ON t.id=sc.coach_id WHERE sc.session_id=s.id
+          ) expected WHERE s.cohort_id=$1 AND s.state='SCHEDULED' AND NOT EXISTS(
+            SELECT 1 FROM training_resource_reservations r WHERE r.org_id=s.org_id AND r.session_id=s.id
+            AND r.resource_key=expected.resource_key AND r.enrollment_id IS NULL
+            AND r.starts_at=s.starts_at-s.buffer_minutes*interval '1 minute'
+            AND r.ends_at=s.ends_at+s.buffer_minutes*interval '1 minute'
+            AND (r.active OR r.ends_at<=clock_timestamp())) LIMIT 1`,
+          [h.id, h.court_id],
+        )
+      ).rowCount
+    )
+      return '原发布的场地或教练占位证明不完整';
+    return null;
+  }
   private async expire(c: PoolClient, id: string) {
     await c.query(
       "UPDATE training_enrollments SET state='EXPIRED',version=version+1 WHERE cohort_id=$1 AND state='HOLDING' AND hold_expires_at<=clock_timestamp() AND trade_order_id IS NULL",
@@ -455,7 +528,7 @@ export class TrainingService extends ApplicationService {
   }
   async cohortCommand(cookie: string | undefined, id: string, raw: unknown) {
     const org = await this.ref('training_cohorts', id),
-      v = parseTrainingAction(raw, ['PUBLISH', 'SUSPEND', 'CANCEL', 'COMPLETE']);
+      v = parseTrainingAction(raw, ['PUBLISH', 'SUSPEND', 'RESUME', 'CANCEL', 'COMPLETE']);
     return this.write(
       cookie,
       org,
@@ -493,6 +566,14 @@ export class TrainingService extends ApplicationService {
               "UPDATE training_cohorts SET state='ENROLLING',version=version+1 WHERE id=$1",
               [id],
             );
+          } else if (v.action === 'RESUME') {
+            if (!v.reason) trainingFail('REASON_REQUIRED', '请填写恢复依据');
+            const blocker = await this.resumeBlocker(c, h);
+            if (blocker) trainingFail('TRAINING_RESUME_BLOCKED', blocker);
+            await c.query(
+              "UPDATE training_cohorts SET state=CASE WHEN enrollment_deadline>clock_timestamp() THEN 'ENROLLING' ELSE 'RUNNING' END,version=version+1 WHERE id=$1",
+              [id],
+            );
           } else if (v.action === 'COMPLETE') {
             if (!v.reason) trainingFail('REASON_REQUIRED', '请填写结课依据');
             const safelyEndedEnrollmentIds: string[] = [];
@@ -518,6 +599,8 @@ export class TrainingService extends ApplicationService {
           } else {
             if (['COMPLETED', 'CANCELLED'].includes(h.state))
               trainingFail('INVALID_STATE', '班期已终结');
+            if (v.action === 'SUSPEND' && !['ENROLLING', 'RUNNING'].includes(h.state))
+              trainingFail('INVALID_STATE', '只有招生中或授课中的班期可以暂停');
             if (!v.reason) trainingFail('REASON_REQUIRED', '请填写停课原因');
             await c.query('UPDATE training_cohorts SET state=$2,version=version+1 WHERE id=$1', [
               id,
@@ -542,7 +625,7 @@ export class TrainingService extends ApplicationService {
           return { cohortId: id };
         });
       },
-      v.action !== 'PUBLISH',
+      !['PUBLISH', 'RESUME'].includes(v.action),
     );
   }
   private async cohortDto(c: PoolClient, h: Row, manage = false): Promise<TrainingCohortData> {
@@ -570,6 +653,7 @@ export class TrainingService extends ApplicationService {
     }
     const eligible = await this.eligible(c, h);
     const completionBlocker = manage ? await trainingCohortCompletionBlocker(c, h) : null;
+    const resumeBlocker = manage ? await this.resumeBlocker(c, h) : null;
     return {
       id: h.id,
       orgId: h.org_id,
@@ -595,6 +679,8 @@ export class TrainingService extends ApplicationService {
         canManage: manage,
         canComplete: manage && completionBlocker === null,
         completionBlocker,
+        canResume: manage && resumeBlocker === null,
+        resumeBlocker,
         paidEnrollmentEnabled: !!this.training.trade,
       },
     };
