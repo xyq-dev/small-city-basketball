@@ -71,6 +71,11 @@ Page({
     matchIndex: 0,
     periodStart: '',
     periodEnd: '',
+    bookingSteps: [
+      { key: 'arrange', label: '安排信息' },
+      { key: 'review', label: '报价与条款' },
+      { key: 'result', label: '原单结果', disabled: true },
+    ],
     review: false,
     detailsOpen: false,
     editorOpen: false,
@@ -573,6 +578,19 @@ Page({
       this._busy = false;
       if (!this.closed) this.setData({ busy: false });
     }
+  },
+  workflowStep(e) {
+    if (
+      this.data.busy ||
+      this.data.loading ||
+      this.data.pending ||
+      this.data.success ||
+      this.data.storageReadBlocked ||
+      this.data.invalidRecovery
+    )
+      return;
+    if (e.detail.key === 'arrange') this.edit();
+    else if (e.detail.key === 'review' && !this.data.review) this.review();
   },
   edit() {
     if (!this.editable()) return;

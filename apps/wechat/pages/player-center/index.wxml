@@ -1,3 +1,4 @@
+<scb-header title="我的球员中心" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page has-actions">
   <view wx:if="{{loading}}" class="notice">正在核对当前账号与本人资料…</view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
@@ -46,7 +47,7 @@
     <block wx:if="{{editing}}">
       <block wx:if="{{editorSection === 'PROFILE'}}">
       <view class="profile-fields">
-        <view class="profile-field"><view class="field-label">显示名称 / 位置</view><view class="editor-pair"><input class="field" value="{{form.displayName}}" maxlength="40" data-field="displayName" bindinput="input" disabled="{{busy || pending}}" placeholder="本人显示名称" /><picker range="{{positions}}" value="{{positionIndex}}" bindchange="position" disabled="{{busy || pending}}"><view class="picker-value">{{positions[positionIndex]}}</view></picker></view></view>
+        <view class="profile-field"><view class="field-label">显示名称 / 位置</view><view class="editor-pair"><input class="field" value="{{form.displayName}}" maxlength="40" data-field="displayName" bindinput="input" disabled="{{busy || pending}}" placeholder="本人显示名称" /><picker class="field" range="{{positions}}" value="{{positionIndex}}" bindchange="position" disabled="{{busy || pending}}"><view class="picker-value">{{positions[positionIndex]}}</view></picker></view></view>
         <view class="profile-field"><view class="field-label">身高（厘米）/ 服务地区</view><view class="editor-pair"><input class="field height-field" type="number" value="{{form.heightCm}}" maxlength="3" data-field="heightCm" bindinput="input" disabled="{{busy || pending}}" placeholder="120–250" /><input class="field" value="{{form.city}}" maxlength="60" data-field="city" bindinput="input" disabled="{{busy || pending}}" placeholder="例如：高州 / 石鼓" /></view><view class="small muted field-help">本人填写，不作为实力认证。</view></view>
         <view class="profile-field"><view class="field-label">服务介绍</view><textarea class="field profile-bio" value="{{form.bio}}" maxlength="500" data-field="bio" bindinput="input" disabled="{{busy || pending}}" placeholder="说明打法与服务范围" /><view class="small muted field-help">不要填写身份证、联系方式或保单。</view></view>
       </view>
@@ -68,9 +69,9 @@
       <view class="card"><view class="subtitle">可约时间 · 北京时间</view><view class="muted">填写1至60个不重叠窗口；单段最多31天。</view>
         <view wx:for="{{form.availability}}" wx:key="key" class="availability-row">
           <view class="row-between"><text>可约窗口 {{index + 1}}</text><button class="quiet" size="mini" bindtap="removeWindow" data-index="{{index}}" disabled="{{busy || pending}}">删除</button></view>
-          <view class="window-pair"><picker mode="date" value="{{item.startDate}}" bindchange="windowInput" data-field="startDate" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.startDate}}</view></picker><picker mode="time" value="{{item.startTime}}" bindchange="windowInput" data-field="startTime" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.startTime}}</view></picker></view>
+          <view class="window-pair"><picker class="field" mode="date" value="{{item.startDate}}" bindchange="windowInput" data-field="startDate" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.startDate}}</view></picker><picker class="field" mode="time" value="{{item.startTime}}" bindchange="windowInput" data-field="startTime" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.startTime}}</view></picker></view>
           <view class="muted">至</view>
-          <view class="window-pair"><picker mode="date" value="{{item.endDate}}" bindchange="windowInput" data-field="endDate" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.endDate}}</view></picker><picker mode="time" value="{{item.endTime}}" bindchange="windowInput" data-field="endTime" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.endTime}}</view></picker></view>
+          <view class="window-pair"><picker class="field" mode="date" value="{{item.endDate}}" bindchange="windowInput" data-field="endDate" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.endDate}}</view></picker><picker class="field" mode="time" value="{{item.endTime}}" bindchange="windowInput" data-field="endTime" data-index="{{index}}" disabled="{{busy || pending}}"><view class="picker-value">{{item.endTime}}</view></picker></view>
         </view>
         <button class="secondary" bindtap="addWindow" disabled="{{busy || pending || form.availability.length >= 60}}">添加可约时间段</button>
         <view class="muted profile-subnote">实际接单仍核验已有订单和场后30分钟交通缓冲；不能以修改窗口取消已有合作。</view>

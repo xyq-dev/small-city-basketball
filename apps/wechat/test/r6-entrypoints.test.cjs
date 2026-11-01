@@ -128,6 +128,7 @@ test('ordinary payer can open own advertising contracts without an organization 
     user: { id, displayName: '合成广告主', email: 'payer@example.test' },
     managedOrgs: [],
   });
+  h.page.toggleMore();
   const preview = buildPreview({ root, route: 'pages/account/index', data: h.page.data });
   assert.match(preview.phone, /我的广告合同/);
   h.page.go({ currentTarget: { dataset: { page: 'sponsor-commerce' } } });

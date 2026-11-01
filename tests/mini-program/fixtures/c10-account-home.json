@@ -4,7 +4,7 @@
   "state": "ready",
   "figmaNode": "30:2358",
   "referenceKind": "derived",
-  "expectText": ["我的球赛主场", "合成参与者", "我发出的球员预约"],
+  "expectText": ["合成参与者", "我的篮球", "我的订单与预约"],
   "primary": true,
   "data": {
     "loading": false,

@@ -288,6 +288,7 @@ test('account exposes real destinations and copies only the current visible acco
   h.page.onLoad({});
   h.page.onShow();
   await h.flush();
+  h.page.toggleMore();
   const html = buildPreview({ root, route: 'pages/account/index', data: h.page.data }).phone;
   for (const text of [
     '我的消息',
@@ -295,10 +296,12 @@ test('account exposes real destinations and copies only the current visible acco
     '本人保险订单',
     '青少年与监护确认',
     '账号自助注销',
-    '收款条款与资金管理',
     viewer,
   ])
     assert.ok(html.includes(text), text);
+  h.page.workspace({ currentTarget: { dataset: { key: 'work' } } });
+  const work = buildPreview({ root, route: 'pages/account/index', data: h.page.data }).phone;
+  assert.ok(work.includes('收款条款与资金管理'));
   for (const key of [
     'messages',
     'notification-settings',

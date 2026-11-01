@@ -18,6 +18,7 @@ const fresh = () => ({
 });
 Page({
   data: {
+    creating: false,
     organizations: [],
     orgIndex: 0,
     orgId: '',
@@ -77,8 +78,21 @@ Page({
   onSessionReset() {
     this._viewer = '';
     this._session = null;
+    this._routeOrg = '';
+    this._routeListing = '';
+    this._places = (this._places || 0) + 1;
     this.setData({
       organizations: [],
+      creating: false,
+      orgIndex: 0,
+      placeQuery: '',
+      places: [],
+      placesBusy: false,
+      startDate: '',
+      startTime: '09:00',
+      endDate: '',
+      endTime: '11:00',
+      qualifiedTime: '23:59',
       orgId: '',
       canCreate: false,
       providers: [],
@@ -114,6 +128,7 @@ Page({
     });
     const session = await ui.session(this, '/pages/local-manage/index');
     if (!this._alive || !session) return;
+    if (this._viewer && this._viewer !== session.user.id) this.onSessionReset();
     this._viewer = session.user.id;
     this._session = session;
     const token = ui.begin(this);
@@ -126,7 +141,13 @@ Page({
     this._routeOrg = '';
     const selected = organizations[index],
       canCreate = ['ORG_OWNER', 'ORG_ADMIN'].includes(selected.role);
-    this.setData({ organizations, orgIndex: index, orgId: selected.id, canCreate });
+    this.setData({
+      organizations,
+      orgIndex: index,
+      orgId: selected.id,
+      canCreate,
+      loginRequired: false,
+    });
     ls.loadPending(this);
     try {
       const repo = ls.repository();
@@ -157,6 +178,33 @@ Page({
     if (!org) return;
     this.setData({ orgId: org.id, ...fresh() });
     this.load();
+  },
+  openSupply() {
+    if (this.data.busy || this.data.loading || this.data.pending || !this.data.canCreate) return;
+    ui.begin(this);
+    this.setData({
+      ...fresh(),
+      creating: true,
+      selected: null,
+      reason: '',
+      places: [],
+      placeQuery: '',
+    });
+  },
+  closeSupply() {
+    if (this.data.busy) return;
+    ui.begin(this);
+    this._places = (this._places || 0) + 1;
+    this.setData({
+      ...fresh(),
+      creating: false,
+      loading: false,
+      selected: null,
+      reason: '',
+      places: [],
+      placeQuery: '',
+      placesBusy: false,
+    });
   },
   input(e) {
     if (this.data.busy) return;
@@ -233,6 +281,7 @@ Page({
     const token = ui.begin(this);
     this.setData({
       selected: null,
+      creating: false,
       error: '',
       qualificationChecked: false,
       scopeChecked: false,
@@ -254,6 +303,7 @@ Page({
     const r = d.listing;
     this.setData({
       editing: true,
+      creating: true,
       title: r.title,
       description: r.description,
       address: r.address,

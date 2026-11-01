@@ -4,10 +4,7 @@
   "state": "ready",
   "figmaNode": "30:78",
   "syntheticData": true,
-  "expectText": [
-    "合成林越",
-    "筛选位置、价格与档期"
-  ],
+  "expectText": ["合成林越", "当前可查看的服务档案"],
   "data": {
     "cards": [
       {
@@ -121,20 +118,9 @@
       "sort": "",
       "samePrice": true
     },
-    "positionOptions": [
-      "全部位置",
-      "控球后卫",
-      "得分后卫",
-      "小前锋",
-      "大前锋",
-      "中锋"
-    ],
+    "positionOptions": ["全部位置", "控球后卫", "得分后卫", "小前锋", "大前锋", "中锋"],
     "positionIndex": 1,
-    "sortOptions": [
-      "默认顺序",
-      "服务费从低到高",
-      "服务费从高到低"
-    ],
+    "sortOptions": ["默认顺序", "服务费从低到高", "服务费从高到低"],
     "sortIndex": 0,
     "selectedCount": 2,
     "filteredCount": 2,

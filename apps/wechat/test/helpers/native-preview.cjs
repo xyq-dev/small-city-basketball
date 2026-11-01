@@ -559,7 +559,7 @@ function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
       escape(title) +
       '</span><span class="mini-native-menu">•••</span></div></header>';
   const customStatusCss =
-    '.mini-custom-status{position:absolute;top:0;left:0;right:0;z-index:30;height:24px;padding:0 24px;font-size:11px;line-height:24px;display:flex;justify-content:space-between;pointer-events:none}';
+    '.mini-custom-status{position:absolute;top:0;left:0;right:0;z-index:30;height:28px;padding:0 20px;font-size:11px;line-height:28px;display:flex;justify-content:space-between;pointer-events:none}';
   const phone =
     '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data:; style-src \'unsafe-inline\'; font-src data:"><style>' +
     nativeDefaults +

@@ -162,8 +162,16 @@ test('signed-out events tab issues no private request and keeps the public watch
   assert.equal(h.page.data.signedIn, false);
   const preview = buildPreview({ root, route: 'pages/watch/index', data: h.page.data });
   assert.match(preview.phone, /登录后查看你参与的赛事/);
-  assert.match(preview.phone, /粘贴观赛链接/);
-  assert.match(preview.phone, /关于公开赛事目录/);
+  assert.match(preview.phone, /用观赛链接打开/);
+  assert.match(preview.phone, /地区与目录设置/);
+  const link = buildPreview({
+    root,
+    route: 'pages/watch/index',
+    data: { ...h.page.data, linkOpen: true, directoryFiltersOpen: true },
+  });
+  assert.match(link.phone, /粘贴观赛链接/);
+  assert.match(link.phone, /关于公开赛事目录/);
+  assert.deepEqual(h.requests(), []);
 });
 
 test('a player without an organization role never reads institution events and sees teams entry', async () => {
@@ -294,7 +302,13 @@ test('home puts events first and keeps the booking extension intact', async () =
   const preview = buildPreview({ root, route: 'pages/home/index', data: h.page.data });
   const html = preview.phone;
   assert.ok(html.indexOf('我的赛事') < html.indexOf('按位置找球员'));
-  for (const text of ['合成冬季杯', '赛事数据', '扩展服务', '查看我的预约', '进入本人球员中心'])
+  for (const text of [
+    '合成冬季杯',
+    '球队与球员数据',
+    '扩展服务',
+    '查看我的预约',
+    '进入本人球员中心',
+  ])
     assert.match(html, new RegExp(text));
   const signedOut = buildPreview({ root, route: 'pages/home/index' });
   assert.match(signedOut.phone, /登录后查看你参与的赛事/);

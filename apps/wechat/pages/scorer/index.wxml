@@ -1,3 +1,4 @@
+<scb-header title="记分台" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page mgmt-page">
   <view wx:if="{{loading && !match}}" class="card state-panel">
     <text class="state-label">记分台</text>
@@ -20,7 +21,23 @@
       <button class="secondary" bindtap="resendPending" disabled="{{busy}}">按原编号重发</button>
     </view>
 
-    <view wx:if="{{board && (canControl || offlineItems.length || offlineError)}}" class="card">
+    <view id="scorer-board" class="board">
+      <view class="board-meta">{{match.eventName}}</view>
+      <view class="board-row">
+        <view class="board-team"><view class="board-name">{{match.home}}</view><view class="board-score">{{board && !board.adjudicated ? board.home.score : '–'}}</view></view>
+        <view class="board-mid"><view class="board-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-clock">{{board.clockLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-period">{{board.periodLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-period">{{board.running ? '计时中' : '已暂停'}}</view></view>
+        <view class="board-team"><view class="board-name">{{match.away}}</view><view class="board-score">{{board && !board.adjudicated ? board.away.score : '–'}}</view></view>
+      </view>
+      <view wx:if="{{board && !board.adjudicated}}" class="board-sub">犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>
+    </view>
+
+    <view class="workflow-tabs console-tabs">
+      <button class="{{consoleSection === 'score' ? 'selected' : ''}}" data-section="score" bindtap="openConsoleSection" disabled="{{busy || loading}}">记分台</button>
+      <button class="{{consoleSection === 'lineup' ? 'selected' : ''}}" data-section="lineup" bindtap="openConsoleSection" disabled="{{busy || loading || !board.proMode}}">首发与换人</button>
+      <button class="{{consoleSection === 'offline' ? 'selected' : ''}}" data-section="offline" bindtap="openConsoleSection" disabled="{{busy || loading}}">离线草稿 {{offlineItems.length}}</button>
+      <button class="{{consoleSection === 'history' ? 'selected' : ''}}" data-section="history" bindtap="openConsoleSection" disabled="{{busy || loading}}">记录与更正</button>
+    </view>
+    <view wx:if="{{board && (canControl || offlineItems.length || offlineError)}}" id="scorer-offline" class="card">
       <view class="subtitle">可靠离线草稿</view>
       <view class="muted small">草稿按登录账号与场次保存在本机，未同步不计入比分。离线时钟、阵容、节次与确认不可操作。恢复网络后重新取得控制，明确按原顺序导入；冲突会停止并保留。</view>
       <view wx:if="{{offlineError}}" class="notice warning">{{offlineError}}</view>
@@ -32,17 +49,7 @@
       <button wx:if="{{offlineItems.length || offlineError}}" class="quiet" bindtap="discardOffline" disabled="{{busy}}">删除本地草稿</button>
     </view>
 
-    <view class="board">
-      <view class="board-meta">{{match.eventName}}</view>
-      <view class="board-row">
-        <view class="board-team"><view class="board-name">{{match.home}}</view><view class="board-score">{{board && !board.adjudicated ? board.home.score : '–'}}</view></view>
-        <view class="board-mid"><view class="board-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-clock">{{board.clockLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-period">{{board.periodLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-period">{{board.running ? '计时中' : '已暂停'}}</view></view>
-        <view class="board-team"><view class="board-name">{{match.away}}</view><view class="board-score">{{board && !board.adjudicated ? board.away.score : '–'}}</view></view>
-      </view>
-      <view wx:if="{{board && !board.adjudicated}}" class="board-sub">犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>
-    </view>
-
-    <view wx:if="{{board && board.proMode && !board.adjudicated}}" class="card">
+    <view wx:if="{{board && board.proMode && !board.adjudicated}}" id="scorer-lineup" class="card">
       <view class="subtitle">专业统计与实际阵容时间</view>
       <view class="muted small">上场时间截至最近读取的权威时钟快照。校时不虚增时间，未登场球员不会计为出场。</view>
       <view wx:for="{{proGroups}}" wx:key="key" class="section">
@@ -164,8 +171,8 @@
       <input class="field" value="{{lineupCorrection.reason}}" bindinput="correctionLineupReason" placeholder="请填写更正原因"/>
       <button class="primary" bindtap="submitLineupCorrection" disabled="{{busy || !!pending}}">提交阵容更正</button><button class="secondary" bindtap="cancelLineupCorrection">取消</button>
     </view>
-    <view wx:if="{{history.length}}" class="card">
-      <view class="subtitle">最近记录</view>
+    <view id="scorer-history" class="card">
+      <view class="subtitle">最近记录</view><view wx:if="{{!history.length}}" class="muted">暂无已读取的记分事件，未采集的数据不会补造。</view>
       <view wx:for="{{history}}" wx:key="key" class="row-between row">
         <view class="{{item.voided ? 'voided-text' : ''}}"><view>{{item.text}}{{item.voided ? '（已撤销）' : ''}}</view><view class="muted">{{item.periodLabel}} {{item.time}}</view></view>
         <button wx:if="{{held && board.proMode && item.canCorrectLineup && !board.running && (match.status==='LIVE' || match.status==='PENDING_CONFIRMATION')}}" class="quiet small-button" data-id="{{item.id}}" bindtap="correctLineup">更正阵容</button>

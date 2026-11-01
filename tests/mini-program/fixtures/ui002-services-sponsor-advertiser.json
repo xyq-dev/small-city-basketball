@@ -1,0 +1,29 @@
+{
+  "name": "ui002-services-sponsor-advertiser",
+  "route": "pages/sponsor-commerce/index",
+  "state": "synthetic-sponsor-advertiser",
+  "figmaNode": "44:1277",
+  "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
+  "expectText": ["合成篮球赛事广告合作合同", "同意按此合同收费并建立订单"],
+  "data": {
+    "enabled": true,
+    "userId": "payer",
+    "contracts": [
+      {
+        "id": "contract",
+        "title": "合成篮球赛事广告合作合同",
+        "amountText": "5000.00",
+        "stateLabel": "已签署",
+        "status": "SIGNED",
+        "payer_user_id": "payer",
+        "terms": "合成交付与退款条款，金额和收款方已冻结。",
+        "starts_at": "2028-01-01",
+        "ends_at": "2028-01-10",
+        "shares": []
+      }
+    ],
+    "canManage": false,
+    "canFinance": false
+  },
+  "expectAbsentText": ["管理配置", "建立固定价合同", "受益主体审核"]
+}

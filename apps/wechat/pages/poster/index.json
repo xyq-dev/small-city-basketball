@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "授权赛事海报" }
+{
+  "navigationBarTitleText": "授权赛事海报",
+  "navigationStyle": "custom"
+}

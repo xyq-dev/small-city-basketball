@@ -1,9 +1,36 @@
-<view class="page">
-  <view class="title">录像与媒体作业</view><view wx:if="{{error}}" class="error">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view>
-  <button bindtap="load" disabled="{{busy || loading}}">刷新服务器处理状态</button>
+<scb-header title="录像与媒体作业" disabled="{{busy}}"/>
+<view class="page media-workspace ui002-workspace">
+  <scb-state wx:if="{{loading}}" kind="loading" title="正在读取媒体任务" description="以当前授权和真实产物为准。"/>
+  <view wx:if="{{error}}" class="error">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view>
   <view wx:if="{{pending}}" class="card"><text>上次操作结果待核对。</text><button bindtap="retry" disabled="{{busy}}">核对原操作结果</button></view>
-  <view class="notice">录像独立于各转推频道。显示真实产物时长；中断后可能只有部分片段，不能据此认定整场无缺失。自动集锦使用人工校准的源PTS和有效在线得分事件，补录事件不会推造媒体时间。</view>
-  <view wx:if="{{canManage}}" class="card"><view>录像时间校准</view><input data-field="anchorAt" value="{{anchorAt}}" placeholder="源PTS=0对应时间，如2026-10-31T12:00:00+08:00" bindinput="input"/><input data-field="offsetMs" value="{{offsetMs}}" type="number" placeholder="明确校准的偏移（毫秒）" bindinput="input"/><input data-field="reason" value="{{reason}}" bindinput="input" placeholder="核对依据"/></view>
-  <view wx:for="{{jobs}}" wx:key="id" class="card"><view>{{item.kindText}} · {{item.statusText}}</view><view wx:if="{{item.error}}">{{item.error}}</view><button wx:if="{{canManage && item.kind === 'RECORDING' && item.status === 'READY'}}" data-type="CALIBRATE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">确认此录像的时间锚点</button><button wx:if="{{canManage && (item.status === 'QUEUED' || item.status === 'RUNNING')}}" data-type="CANCEL_JOB" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">取消作业</button></view>
-  <view wx:for="{{artifacts}}" wx:key="id" class="card"><view>真实产物 {{item.durationText}} · {{item.sizeText}}</view><view class="hash">SHA256 {{item.sha256}}</view><button data-id="{{item.id}}" bindtap="download" disabled="{{busy}}">授权下载与预览</button><block wx:if="{{canManage}}"><button data-type="TRANSCODE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">生成转码</button><button data-type="HIGHLIGHTS" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">按有效得分生成集锦</button><button data-type="PUBLISH" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending || item.published}}">独立审核并公开产物</button><button data-type="REVOKE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">撤回产物</button><button wx:if="{{item.published}}" data-key="{{item.publicKey}}" bindtap="copyLink">复制公开观看链接</button></block></view>
+  <scb-state wx:if="{{!loading && !jobs.length && !artifacts.length && !error}}" kind="empty" title="暂无当前可用媒体产物" description="完成有权录制并核验产物后，在这里继续转码、授权发布或下载。"/>
+  <view wx:if="{{jobs.length || artifacts.length}}" class="card media-overview">
+    <view class="overview-heading">录制产物与任务</view>
+    <view wx:for="{{jobs}}" wx:key="id" class="media-record">
+      <button class="media-summary" data-id="{{item.id}}" bindtap="toggleJob" disabled="{{busy}}">
+        <image wx:if="{{item.kind === 'RECORDING'}}" class="overview-icon" src="./assets/play.svg" mode="aspectFit"/>
+        <image wx:elif="{{item.kind === 'TRANSCODE'}}" class="overview-icon" src="./assets/clock.svg" mode="aspectFit"/>
+        <image wx:else class="overview-icon" src="./assets/bars.svg" mode="aspectFit"/>
+        <view class="overview-copy"><view class="overview-label">{{item.kindText}}</view><view class="overview-meta">{{item.statusText}}</view></view>
+        <image class="overview-chevron" src="./assets/chevron.svg" mode="aspectFit"/>
+      </button>
+      <view wx:if="{{expandedJobId === item.id}}" class="media-record-detail">
+        <view wx:if="{{item.error}}" class="notice warning">{{item.error}}</view>
+        <block wx:if="{{canManage && item.kind === 'RECORDING' && item.status === 'READY'}}">
+          <button class="secondary" bindtap="toggleCalibration" disabled="{{busy || pending}}">{{calibrationOpen ? '收起录像时间校准' : '核对本录像时间校准'}}</button>
+          <view wx:if="{{calibrationOpen}}" class="calibration-editor"><view class="subtitle">录像时间校准</view><input class="field" data-field="anchorAt" value="{{anchorAt}}" placeholder="源PTS=0对应时间，如2026-10-31T12:00:00+08:00" bindinput="input" disabled="{{busy || pending}}"/><input class="field" data-field="offsetMs" value="{{offsetMs}}" type="number" placeholder="明确校准的偏移（毫秒）" bindinput="input" disabled="{{busy || pending}}"/><input class="field" data-field="reason" value="{{reason}}" bindinput="input" placeholder="核对依据" disabled="{{busy || pending}}"/><button class="primary" data-type="CALIBRATE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">确认此录像的时间锚点</button></view>
+        </block>
+        <button wx:if="{{canManage && (item.status === 'QUEUED' || item.status === 'RUNNING')}}" class="secondary" data-type="CANCEL_JOB" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">取消作业</button>
+      </view>
+    </view>
+    <view wx:for="{{artifacts}}" wx:key="id" class="media-record"><button class="media-summary" data-id="{{item.id}}" bindtap="toggleArtifact" disabled="{{busy}}"><image class="overview-icon" src="./assets/play.svg" mode="aspectFit"/><view class="overview-copy"><view class="overview-label">已探测的真实产物</view><view class="overview-meta">{{item.durationText}} · {{item.sizeText}}{{item.published ? ' · 已公开' : ' · 尚未公开'}}</view></view><image class="overview-chevron" src="./assets/chevron.svg" mode="aspectFit"/></button></view>
+  </view>
+  <view class="notice media-boundary"><view class="notice-title">录像与频道状态分开</view><view class="small">实际时长不等于整场完整；源授权撤回会阻止产物后续访问。自动集锦须核对源PTS与有效在线得分，补录事件不会推造媒体时间。</view></view>
+  <block wx:for="{{artifacts}}" wx:key="id">
+    <view wx:if="{{expandedArtifactId === item.id || artifacts.length === 1}}" class="artifact-workflow">
+      <view class="card artifact-details"><view class="subtitle">当前产物 {{item.durationText}}</view><view class="small muted">真实大小 {{item.sizeText}}</view><view class="hash">SHA256 {{item.sha256}}</view><button class="artifact-link" data-id="{{item.id}}" bindtap="download" disabled="{{busy}}"><image src="./assets/play.svg" mode="aspectFit" style="width:22px;height:22px"/><text>授权下载与预览</text><image src="./assets/chevron.svg" mode="aspectFit" style="width:16px;height:16px"/></button></view>
+      <view wx:if="{{canManage}}" class="media-generation-actions"><button class="secondary" data-type="TRANSCODE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">申请转码</button><button class="secondary" data-type="HIGHLIGHTS" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">核对有效得分后生成集锦</button><button class="secondary" data-type="PUBLISH" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending || item.published}}">独立审核并公开产物</button><button class="quiet" data-type="REVOKE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">撤回产物</button><button wx:if="{{item.published}}" class="quiet" data-key="{{item.publicKey}}" bindtap="copyLink">复制公开观看链接</button></view>
+    </view>
+  </block>
+  <button class="quiet" bindtap="load" disabled="{{busy || loading}}">刷新服务器处理状态</button>
 </view>

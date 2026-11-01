@@ -1,4 +1,5 @@
-<view class="page youth-page">
+<scb-header title="青年报名与监护确认" disabled="{{busy}}"/>
+<view class="page youth-page ui002-workspace">
   <view class="youth-kicker">青年报名 · 逐项确认</view>
   <view class="title">{{review ? '独立监护关系审核' : '青年报名与监护确认'}}</view>
   <view class="muted">必要资料处理、本人资格、监护关系和每种公开用途分别确认。</view>

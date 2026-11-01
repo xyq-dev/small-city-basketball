@@ -21,6 +21,19 @@ const probes = {
   'booking-create': '青锋杯',
   bookings: '青锋杯',
 };
+const approvedRootSelectors = {
+  'pages/home/index': '.home-ui',
+  'pages/players/index': '.players-page',
+  'pages/player/index': '.player-page',
+  'pages/compare/index': '.compare-page',
+  'pages/booking-create/index': '.create-page',
+  'pages/bookings/index': '.bookings-page',
+};
+function approvedRootSelector(route) {
+  const selector = approvedRootSelectors[route];
+  if (!selector) throw new Error('缺少当前六页验收根节点：' + route);
+  return selector;
+}
 const escape = (s) =>
   String(s).replace(
     /[&<>"']/g,
@@ -161,8 +174,10 @@ export function prepare({ root = ROOT, out, appId } = {}) {
   if (appId && !/^wx[0-9a-f]{16}$/i.test(appId))
     throw new Error('AppID格式无效；不要提供AppSecret');
   const catalog = read(path.join(root, 'tests/mini-program/visual-catalog.json'));
-  const selected = catalog.pages.filter((page) => page.sourceKind === 'approved-image');
-  if (selected.length !== 6) throw new Error('需要C11六页确认稿映射');
+  const selected = catalog.pages.filter(
+    (page) => page.sourceKind === 'approved-image' || page.sourceKind === 'figma-design',
+  );
+  if (selected.length !== 6) throw new Error('需要当前六页明确来源映射');
   const fixtures = new Map(
     selected.map((page) => {
       if (!/^pages\/[a-z-]+\/index$/.test(page.route) || !/^[a-z0-9-]+$/.test(page.primaryFixture))
@@ -175,7 +190,14 @@ export function prepare({ root = ROOT, out, appId } = {}) {
       const fixture = read(filename);
       if (
         fixture.route !== page.route ||
-        (fixture.designSource || fixture.figmaNode) !== 'approved:C11'
+        (page.route === 'pages/home/index'
+          ? page.sourceKind !== 'figma-design' ||
+            page.figmaFile !== 'BSQ64CrDTJ2P4tOIowOSFk' ||
+            page.figmaNode !== '4:16' ||
+            fixture.figmaNode !== '4:16' ||
+            fixture.designSource !== 'UI001:H01; supersedes historical C11 home'
+          : page.sourceKind !== 'approved-image' ||
+            (fixture.designSource || fixture.figmaNode) !== 'approved:C11')
       )
         throw new Error('fixture来源与确认稿不一致');
       return [page.route, { page, fixture, fixtureSha256: hash(fs.readFileSync(filename)) }];
@@ -298,13 +320,8 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     name: fixtures.get(page.route).fixture.name,
     title: page.title,
     probe: probes[page.route.split('/')[1]],
-    // The player name renders in the hero above .premium-page, not inside it.
-    selector:
-      page.route === 'pages/home/index'
-        ? '.premium-home'
-        : page.route === 'pages/player/index'
-          ? '.profile-hero'
-          : '.premium-page',
+    // Current UI001 roots. The old shared .premium-page remains only where a page still has it.
+    selector: approvedRootSelector(page.route),
     fixtureSha256: fixtures.get(page.route).fixtureSha256,
     reference: 'references/' + page.route.split('/')[1] + '.png',
     referenceSha256: hash(fs.readFileSync(path.resolve(root, page.referenceImage))),
@@ -313,8 +330,15 @@ export function prepare({ root = ROOT, out, appId } = {}) {
   fs.mkdirSync(path.join(destination, 'references'));
   for (const page of selected) {
     const reference = path.resolve(root, page.referenceImage);
-    if (!reference.startsWith(path.join(root, 'docs/design/C11') + path.sep))
-      throw new Error('参考图超出C11范围');
+    const expectedReference =
+      page.route === 'pages/home/index'
+        ? path.join(root, 'docs/design/UI002/home-figma.png')
+        : path.join(root, 'docs/design/C11', page.route.split('/')[1] + '.png');
+    if (
+      reference !== expectedReference ||
+      hash(fs.readFileSync(reference)) !== page.referenceSha256
+    )
+      throw new Error('参考图路径或哈希与当前明确来源不一致');
     fs.copyFileSync(
       reference,
       path.join(destination, 'references', page.route.split('/')[1] + '.png'),

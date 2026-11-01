@@ -1,0 +1,50 @@
+{
+  "name": "ui002-live-city-operations-workflow",
+  "route": "pages/city-operations/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "figmaNode": "9:1242",
+  "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
+  "expectText": [
+    "只处理当前授权范围内的事项",
+    "合成石鼓篮球赛事运营机构长名称",
+    "处理明确分派的工单"
+  ],
+  "data": {
+    "items": [
+      {
+        "id": "00000000-0000-4000-8000-000000000041",
+        "actionLabel": "供给资质审核",
+        "effective": true,
+        "organizationName": "合成石鼓篮球赛事运营机构长名称",
+        "regionName": "广东省／茂名市／高州市／石鼓镇",
+        "expiresAt": "2028-07-01 23:59",
+        "reason": "合成有限属地范围，不包含其他机构私人资料。"
+      }
+    ],
+    "nextCursor": null,
+    "organizations": [],
+    "people": [],
+    "regions": [],
+    "orgIndex": 0,
+    "userIndex": 0,
+    "regionIndex": 0,
+    "actionIndex": 0,
+    "actionNames": ["供给资质审核", "供给质量下架", "明确分派工单处理", "城市赞助审核"],
+    "date": "",
+    "time": "23:59",
+    "reason": "",
+    "userQuery": "",
+    "orgQuery": "",
+    "canManage": false,
+    "platform": false,
+    "pending": null,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "notice": "合成当前城市授权。",
+    "loginRequired": false,
+    "directoryTruncated": null
+  },
+  "expectAbsentText": ["授予有限权限", "永久撤销"]
+}

@@ -18,6 +18,32 @@ Page({
     error: '',
     message: '',
     checkoutUrl: '',
+    activeSection: 'options',
+    workflowSteps: [
+      { key: 'options', label: '办理方式' },
+      { key: 'quote', label: '报价与确认' },
+      { key: 'records', label: '原单进度' },
+    ],
+    paymentLabels: {
+      UNPAID: '待付款',
+      PENDING: '付款待核对',
+      PAID: '付款已确认',
+      FAILED: '付款未完成',
+      REFUND_PENDING: '退款待核对',
+      REFUNDED: '退款已确认',
+      UNKNOWN: '付款结果未知',
+    },
+    policyLabels: {
+      NONE: '尚未承保',
+      PENDING: '出单待核对',
+      APPLYING: '投保办理中',
+      ISSUED: '已出单',
+      REJECTED: '本次未承保',
+      CANCEL_PENDING: '退保待核对',
+      CANCELLED: '已退保',
+      EXPIRED: '保障已到期',
+      UNKNOWN: '承保结果未知',
+    },
   },
   onLoad(q) {
     this._temporaryFiles = [];
@@ -72,6 +98,16 @@ Page({
       if (ui.live(this, t)) this.setData({ loading: false });
     }
   },
+  changeSection(e) {
+    const key = e.detail.key;
+    if (this.data.busy || !this.data.workflowSteps.some((item) => item.key === key)) return;
+    this.setData({ activeSection: key });
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#insurance-' + key, duration: 200 });
+  },
+  showRecords() {
+    this.changeSection({ detail: { key: 'records' } });
+  },
   select(e) {
     if (!this.data.busy && !this.data.pending)
       this.setData({
@@ -84,6 +120,8 @@ Page({
     if (!this.data.busy && !this.data.pending) this.setData({ consent: !this.data.consent });
   },
   async quote() {
+    if (this.data.workspace?.enabled === false)
+      return this.setData({ error: '在线投保暂未开放，已有有效保单可提交赛事审核。' });
     if (!this.data.entryId || !this.data.memberId || !this.data.selectedProduct)
       return this.setData({ error: '请从本人赛事资料选择球员及保险产品。' });
     return this.write('QUOTE', '/v1/insurance/quotes', {
@@ -93,6 +131,8 @@ Page({
     });
   },
   async purchase() {
+    if (this.data.workspace?.enabled === false)
+      return this.setData({ error: '在线投保暂未开放，请先核对原单，不要重复购买。' });
     if (!this.data.quote || !this.data.consent) return;
     return this.write('PURCHASE', '/v1/insurance/purchases', {
       quoteId: this.data.quote.quoteId,

@@ -1,0 +1,56 @@
+{
+  "name": "ui002-live-poster-workflow",
+  "route": "pages/poster/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "figmaNode": "8:1662",
+  "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
+  "expectText": ["使用当前授权来源生成海报", "生成当前授权海报", "本届导出记录"],
+  "data": {
+    "orgId": "00000000-0000-4000-8000-000000000001",
+    "eventId": "00000000-0000-4000-8000-000000000002",
+    "userId": "00000000-0000-4000-8000-000000000003",
+    "workspace": {
+      "event": {
+        "name": "合成授权海报赛事·长名称验证"
+      },
+      "notice": "合成数据，仅验证当前授权海报入口。",
+      "participants": [
+        {
+          "entryId": "00000000-0000-4000-8000-000000000004",
+          "teamName": "合成海风青年篮球队"
+        }
+      ],
+      "matches": [],
+      "capabilities": {
+        "canGenerate": true
+      },
+      "exports": [
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "kind": "ROSTER",
+          "width": 1080,
+          "height": 1920,
+          "expiresAt": "2028-06-02T12:00:00+08:00",
+          "revokedAt": null
+        }
+      ],
+      "historyTruncated": false
+    },
+    "kind": "ROSTER",
+    "kinds": ["ROSTER", "MATCHUP", "RESULT", "HONOR"],
+    "labels": ["授权阵容", "比赛对阵", "确认战报", "最终荣誉"],
+    "entryId": "00000000-0000-4000-8000-000000000004",
+    "matchId": "",
+    "entryName": "合成海风青年篮球队",
+    "matchName": "",
+    "includePortraits": true,
+    "pending": null,
+    "reason": "",
+    "busy": false,
+    "loading": false,
+    "loginRequired": false,
+    "error": "",
+    "message": ""
+  }
+}

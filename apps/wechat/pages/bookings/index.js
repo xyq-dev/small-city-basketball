@@ -212,6 +212,12 @@ Page({
     if (!this.data.rows.some((row) => row.id === id)) return;
     ui.open('booking-detail', { id, view: this.data.view });
   },
+  trade(e) {
+    if (this.data.loading || !this.loadedToken || !ui.live(this, this.loadedToken)) return;
+    const id = e.currentTarget.dataset.id;
+    if (!this.data.rows.some((row) => row.appearances.some((a) => a.id === id))) return;
+    ui.open('trade-order', { kind: 'PLAYER_APPEARANCE', sourceId: id });
+  },
   login() {
     ui.login('/pages/bookings/index?view=' + this.data.view);
   },

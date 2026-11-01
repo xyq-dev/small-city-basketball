@@ -1,0 +1,17 @@
+{
+  "name": "ui002-registration-qualification-empty",
+  "route": "pages/qualification-precheck/index",
+  "state": "synthetic-empty",
+  "designSource": "UI001 R05 / X02; actual qualification-precheck Page, synthetic data only",
+  "expectText": ["暂无可核对的本届成员", "打开本人资料"],
+  "data": {
+    "workspace": {
+      "canReview": false,
+      "participants": []
+    },
+    "loading": false,
+    "pending": null,
+    "busy": false
+  },
+  "figmaNode": "6:609"
+}

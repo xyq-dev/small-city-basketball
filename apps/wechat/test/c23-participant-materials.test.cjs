@@ -530,6 +530,74 @@ test('C23 a policy document can be saved separately without re-reading a private
   );
 });
 
+for (const saveFromInsurancePanel of [true, false])
+  test(
+    'UI002 saving edited insurance includes its patch after panel navigation: ' +
+      saveFromInsurancePanel,
+    async () => {
+      const h = setup({
+        request(o, p) {
+          if (p === base + '/mine' && o.method === 'PUT')
+            return ok(
+              mine(
+                row({
+                  version: 2,
+                  insurance: {
+                    insurer: o.data.insurance.insurer,
+                    policyNumberMasked: '***0001',
+                    startDate: o.data.insurance.startDate,
+                    endDate: o.data.insurance.endDate,
+                    document: null,
+                  },
+                }),
+              ),
+            );
+        },
+      });
+      await ticks();
+      h.page.switchMaterialPanel(tap({ panel: 'insurance' }));
+      const patch = {
+        insurer: '合成保障机构',
+        policyNumber: 'SYNTHETIC-POLICY-0001',
+        startDate: '2028-05-01',
+        endDate: '2028-05-03',
+      };
+      for (const [field, value] of Object.entries(patch)) h.page.field(tap({ field }, value));
+      if (saveFromInsurancePanel) await h.page.saveInsurance();
+      else {
+        h.page.switchMaterialPanel(tap({ panel: 'profile' }));
+        await h.page.save();
+      }
+      assert.equal(writes(h).length, 1);
+      assert.deepEqual(JSON.parse(JSON.stringify(writes(h)[0].data.insurance)), patch);
+      assert.equal(h.page.data.form.insurer, patch.insurer);
+      assert.equal(h.page.data.form.startDate, patch.startDate);
+      assert.equal(h.page.data.form.policyNumber, '');
+      assert.equal(h.page.data.dirty, false);
+      assert.equal(h.page.data.insuranceDirty, false);
+      assert.equal(h.page.data.material.insurance.policyNumberMasked, '***0001');
+    },
+  );
+
+test('UI002 a rejected insurance save keeps non-sensitive edits and pending dirty state', async () => {
+  const h = setup({
+    request(o, p) {
+      if (p === base + '/mine' && o.method === 'PUT') return fail(422, 'INVALID_INSURANCE');
+    },
+  });
+  await ticks();
+  h.page.switchMaterialPanel(tap({ panel: 'insurance' }));
+  h.page.field(tap({ field: 'insurer' }, '合成待补机构'));
+  h.page.field(tap({ field: 'startDate' }, '2028-05-01'));
+  await h.page.saveInsurance();
+  assert.equal(writes(h).length, 1);
+  assert.equal(h.page.data.form.insurer, '合成待补机构');
+  assert.equal(h.page.data.form.startDate, '2028-05-01');
+  assert.equal(h.page.data.dirty, true);
+  assert.equal(h.page.data.insuranceDirty, true);
+  assert.equal(h.page.data.pending, false);
+});
+
 test('C23 pending protection rejects private extra fields before any durable write', () => {
   const wx = createWx();
   assert.equal(

@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "记分台" }
+{
+  "navigationBarTitleText": "记分台",
+  "navigationStyle": "custom"
+}

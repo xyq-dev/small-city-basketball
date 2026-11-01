@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "资金订单" }
+{
+  "navigationBarTitleText": "资金订单",
+  "navigationStyle": "custom"
+}

@@ -1,11 +1,12 @@
-<view class="page governance-page">
- <scb-header title="客服与治理"/>
+<scb-header title="客服与治理" disabled="{{busy}}"/>
+<view class="page governance-page ui002-workspace">
+  <view class="page-intro"><view class="eyebrow">支持与争议</view><view class="title">本人事项与分派任务分别处理</view></view>
  <view wx:if="{{loginRequired}}" class="card"><view>登录后仅查看本人或明确分派的工单。</view><button bindtap="login">登录</button></view>
  <view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view>
  <view wx:if="{{pending}}" class="card"><view>有原操作待核对，不能更换编号重发。</view><button bindtap="recover">查询原操作</button><button data-cancel="true" bindtap="recover">明确放弃未确认操作</button></view>
- <view wx:if="{{!loginRequired}}" class="tabs"><button data-mode="mine" bindtap="changeMode">我的工单</button><button data-mode="assigned" bindtap="changeMode">分派给我</button><button wx:if="{{isOperator}}" data-mode="platform" bindtap="changeMode">平台分派</button></view>
+ <view wx:if="{{!loginRequired}}" class="tabs"><button class="{{mode==='mine' ? 'primary' : 'secondary'}}" data-mode="mine" bindtap="changeMode">我的工单</button><button class="{{mode==='assigned' ? 'primary' : 'secondary'}}" data-mode="assigned" bindtap="changeMode">分派给我</button><button wx:if="{{isOperator}}" class="{{mode==='platform' ? 'primary' : 'secondary'}}" data-mode="platform" bindtap="changeMode">平台分派</button></view>
  <view wx:if="{{loading}}" class="notice">正在读取当前权限和资料…</view>
- <view wx:if="{{selected}}" class="card">
+ <view wx:if="{{selected}}" class="card"><button class="secondary" bindtap="load" disabled="{{busy}}">返回工单列表</button>
   <view class="title">{{selected.title}}</view><view>{{selected.statusLabel}} · 第{{selected.version}}版</view>
   <button wx:if="{{selected.messagesBefore}}" bindtap="history" disabled="{{busy}}">读取更早记录</button>
   <view wx:for="{{selected.messages}}" wx:key="id" class="message"><view class="small muted">{{item.createdAt}} · {{item.visibility==='INTERNAL'?'内部记录':'双方可见'}}</view><view>{{item.body}}</view></view>

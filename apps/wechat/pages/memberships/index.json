@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "我的成员关系" }
+{
+  "navigationBarTitleText": "我的成员关系",
+  "navigationStyle": "custom"
+}

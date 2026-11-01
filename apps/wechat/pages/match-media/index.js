@@ -96,6 +96,8 @@ const privateDefaults = {
   request: null,
   storageError: '',
   unavailable: false,
+  publishTargetId: '',
+  publishConsent: false,
 };
 
 Page({
@@ -120,6 +122,8 @@ Page({
   },
   onHide() {
     this._visible = false;
+    this._publishConsent = null;
+    if (this.data.publishConsent) this.setData({ publishConsent: false });
     this.closePreview();
   },
   onUnload() {
@@ -131,6 +135,7 @@ Page({
   },
   onSessionReset() {
     this._load = (this._load || 0) + 1;
+    this._publishConsent = null;
     this._data = null;
     this._retry = null;
     this._viewer = '';
@@ -154,7 +159,8 @@ Page({
       this.setData({ ...privateDefaults, unavailable: true, error: '请先登录后管理比赛媒体。' });
       return;
     }
-    this.setData({ loading: true, error: '' });
+    this._publishConsent = null;
+    this.setData({ loading: true, error: '', publishConsent: false });
     let session;
     try {
       session = await events.session(client);
@@ -228,6 +234,32 @@ Page({
     const draftFiles = files.filter((f) => f.status === 'ACTIVE' && !used.has(f.id));
     const state = this.pendingState();
     const current = this.requestState();
+    const keptTarget = this.data.publishTargetId;
+    const items = w.media.map((m) => ({
+      id: m.id,
+      title: m.title,
+      kind: m.kind === 'IMAGE' ? '图片' : m.kind === 'VIDEO' ? '视频' : '外部链接',
+      status: m.status,
+      statusLabel: media.statusLabels[m.status] || m.status,
+      rights: m.rightsDeclaration,
+      externalUrl: m.kind === 'EXTERNAL_LINK' ? m.externalUrl || '' : '',
+      markers: m.markers.length,
+      markerList: m.markers.map((k) => ({
+        key: k.id,
+        text: k.label + ' · ' + clock(k.startMs) + '–' + clock(k.endMs),
+        stale: k.sourceStatus === 'STALE',
+      })),
+      stale: m.markers.some((k) => k.sourceStatus === 'STALE'),
+      canMark:
+        m.kind === 'VIDEO' &&
+        m.status === 'DRAFT' &&
+        !!w.capabilities.canMark &&
+        !!w.currentConfirmationId,
+      canPublish: m.status === 'DRAFT' && !!w.capabilities.canPublish,
+      canRevoke: m.status !== 'REVOKED' && !!w.capabilities.canManage,
+    }));
+    const selected = items.find((item) => item.id === keptTarget && item.canPublish);
+    this._publishConsent = null;
     this.setData({
       loading: false,
       unavailable: false,
@@ -248,30 +280,7 @@ Page({
           media.size(w.usage.maxFileBytes),
       },
       files,
-      items: w.media.map((m) => ({
-        id: m.id,
-        title: m.title,
-        kind: m.kind === 'IMAGE' ? '图片' : m.kind === 'VIDEO' ? '视频' : '外部链接',
-        status: m.status,
-        statusLabel: media.statusLabels[m.status] || m.status,
-        rights: m.rightsDeclaration,
-        externalUrl: m.kind === 'EXTERNAL_LINK' ? m.externalUrl || '' : '',
-        markers: m.markers.length,
-        markerList: m.markers.map((k) => ({
-          key: k.id,
-          text: k.label + ' · ' + clock(k.startMs) + '–' + clock(k.endMs),
-          stale: k.sourceStatus === 'STALE',
-        })),
-        stale: m.markers.some((k) => k.sourceStatus === 'STALE'),
-        // Manual time markers: private video drafts of an independently confirmed result.
-        canMark:
-          m.kind === 'VIDEO' &&
-          m.status === 'DRAFT' &&
-          !!w.capabilities.canMark &&
-          !!w.currentConfirmationId,
-        canPublish: m.status === 'DRAFT' && !!w.capabilities.canPublish,
-        canRevoke: m.status !== 'REVOKED' && !!w.capabilities.canManage,
-      })),
+      items,
       caps: {
         upload: !!w.capabilities.canUpload,
         manage: !!w.capabilities.canManage,
@@ -295,6 +304,8 @@ Page({
       ),
       pending: this.pendingView(w),
       storageError: state.ok && current.ok ? '' : STORAGE_FAILED,
+      publishTargetId: selected ? selected.id : '',
+      publishConsent: false,
     });
   },
   pendingKey() {
@@ -1073,10 +1084,21 @@ Page({
         : '撤销后观众不再可见；已被合法查看或保存的副本不受影响。撤销不可恢复为草稿。',
       () => {
         const now = this._data && this._data.media.find((m) => m.id === item.id);
-        return !!now && now.version === item.version && now.status === item.status;
+        const same = !!now && now.version === item.version && now.status === item.status;
+        return publish ? same && this.publishConsentCurrent(item.id) : same;
       },
     );
-    if (!token) return;
+    if (!token || (publish && !this.publishConsentCurrent(item.id))) {
+      if (publish && !this.publishConsentCurrent(item.id)) {
+        this._publishConsent = null;
+        this.setData({
+          publishConsent: false,
+          busy: false,
+          error: '发布同意已失效，没有发送。请重新选择草稿并核对当前版本。',
+        });
+      }
+      return;
+    }
     await this.write(
       this.base() + '/media/' + item.id + '/commands',
       { type, expectedVersion: item.version },
@@ -1084,7 +1106,67 @@ Page({
       token,
     );
   },
+  selectPublish(e) {
+    if (!this._alive || !this._visible || this.data.busy || this.data.uncertain) return;
+    const id = String((e.currentTarget && e.currentTarget.dataset.id) || '');
+    const workspace = this._data;
+    const item = workspace && workspace.media.find((mediaItem) => mediaItem.id === id);
+    if (!item || item.status !== 'DRAFT' || !workspace.capabilities.canPublish) return;
+    this._publishConsent = null;
+    this.setData({ publishTargetId: id, publishConsent: false, error: '' });
+  },
+  publishConsentChange(e) {
+    this._publishConsent = null;
+    this.setData({ publishConsent: false });
+    if (!this._alive || !this._visible || this.data.busy || this.data.uncertain) return;
+    if (!Array.isArray(e.detail.value) || !e.detail.value.includes('publish')) return;
+    const workspace = this._data;
+    const item =
+      workspace && workspace.media.find((mediaItem) => mediaItem.id === this.data.publishTargetId);
+    if (!item || item.status !== 'DRAFT' || !workspace.capabilities.canPublish) return;
+    const client = api.getClient();
+    this._publishConsent = {
+      actor: client.viewerId(),
+      revision: client.sessionRevision(),
+      org: this.orgId,
+      match: this.matchId,
+      id: item.id,
+      version: item.version,
+    };
+    this.setData({ publishConsent: true });
+  },
+  publishConsentCurrent(id) {
+    const workspace = this._data;
+    const item = workspace && workspace.media.find((mediaItem) => mediaItem.id === id);
+    const consent = this._publishConsent;
+    const client = api.getClient();
+    return !!(
+      item &&
+      item.status === 'DRAFT' &&
+      workspace.capabilities.canPublish &&
+      this.data.publishConsent &&
+      this.data.publishTargetId === id &&
+      this._alive &&
+      this._visible &&
+      consent &&
+      consent.actor === client.viewerId() &&
+      consent.revision === client.sessionRevision() &&
+      consent.org === this.orgId &&
+      consent.match === this.matchId &&
+      consent.id === item.id &&
+      consent.version === item.version
+    );
+  },
   publish(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    if (!this.publishConsentCurrent(id)) {
+      this._publishConsent = null;
+      this.setData({
+        publishConsent: false,
+        error: '请先选择本条草稿，并明确同意按当前权利声明发布。勾选不授予发布权限。',
+      });
+      return;
+    }
     return this.command(e, 'PUBLISH');
   },
   revoke(e) {

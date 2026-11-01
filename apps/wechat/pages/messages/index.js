@@ -28,6 +28,8 @@ function removeIf(viewer, id) {
 Page({
   data: {
     items: [],
+    unreadCount: 0,
+    messageFilter: 'all',
     nextCursor: null,
     loading: false,
     loadingMore: false,
@@ -39,13 +41,14 @@ Page({
   },
   onShow() {
     this._closed = false;
-    this.setData({ items: [], busy: false });
+    this.setData({ items: [], unreadCount: 0, busy: false });
     this.load();
   },
   onHide() {
     ui.close(this);
     this.setData({
       items: [],
+      unreadCount: 0,
       nextCursor: null,
       error: '',
       message: '',
@@ -61,6 +64,7 @@ Page({
     this._viewer = null;
     this.setData({
       items: [],
+      unreadCount: 0,
       nextCursor: null,
       busy: false,
       pending: false,
@@ -84,6 +88,7 @@ Page({
       if (ui.live(this, t))
         this.setData({
           items: r.items.map(view),
+          unreadCount: r.items.filter((x) => !x.readAt).length,
           nextCursor: r.nextCursor,
           pending: !!wx.getStorageSync(journal(this._viewer)),
         });
@@ -104,6 +109,7 @@ Page({
       if (ui.held(this, t))
         this.setData({
           items: [...this.data.items, ...r.items.map(view)],
+          unreadCount: [...this.data.items, ...r.items].filter((x) => !x.readAt).length,
           nextCursor: r.nextCursor,
         });
     } catch (e) {
@@ -126,6 +132,7 @@ Page({
       if (ui.held(this, t))
         this.setData({
           items: this.data.items.map((x) => (x.id === id ? { ...x, readAt: 'read' } : x)),
+          unreadCount: this.data.items.filter((x) => x.id !== id && !x.readAt).length,
         });
     } catch (err) {
       if (ui.held(this, t)) this.setData({ error: ui.message(err) });
@@ -188,6 +195,14 @@ Page({
         pending: false,
         message: '原编号已核对，本次提醒等待派发。微信受理与实际送达分别记录。',
       });
+  },
+  filterMessages(e) {
+    const value = e.currentTarget.dataset.filter;
+    if (!this.data.busy && ['all', 'unread'].includes(value))
+      this.setData({ messageFilter: value });
+  },
+  follows() {
+    ui.open('follows');
   },
   settings() {
     ui.open('notification-settings');

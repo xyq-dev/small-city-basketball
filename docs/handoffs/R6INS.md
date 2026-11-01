@@ -21,3 +21,5 @@
 测试：`npm exec --workspace @small-city-basketball/api -- vitest run src/insurance-admission.test.ts src/insurance-domain.test.ts src/insurance-worker.test.ts` 29/29；`node --test apps/wechat/test/e03-insurance.test.cjs` 9/9；`npm run typecheck --workspace @small-city-basketball/api`、`git diff --check`通过。真实PG测试 `apps/api/test/e03-insurance.integration.test.ts` 已补准入/证据/范围变化/工单状态，尚未执行；root/CI必须以合成隔离PG跑完整e03及迁移。SQL写入Migration043，没有改001–042或生产库。
 
 真实接入仍缺供应商签约/销售审批/正式协议与凭据、具体HTTP签名/证书/防DNS重绑定/禁止redirect/响应与超时上限、真实回调认证、正式产品排除项与等待期核对、供应商沙箱及小额闭环。当前HTTPS公开域名准入只是配置边界，不能宣称完成上述真实驱动。既有provider-notices仍是内部HMAC唤醒契约，不可直接当成供应商验签回调。现有 `InsuranceProvider` 端口及旧编排保留，没有新造订单体系或假成功adapter。
+
+2026-11-01 管理端续作（未提交）：`/insurance` 只读取 `GET /v1/insurance`，页面写明这是当前登录账号自己的保单，不是本机构全部参保记录。`canRefresh` / `canRequestCancellation` 时提交 `REFRESH` 或 `REQUEST_CANCELLATION`。不调用报价或购买，不把待出单写成已承保。真实供应商资料仍缺。没有 Migration。

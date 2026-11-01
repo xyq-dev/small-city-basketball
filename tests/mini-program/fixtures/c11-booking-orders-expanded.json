@@ -3,7 +3,7 @@
   "route": "pages/bookings/index",
   "state": "review",
   "figmaNode": "approved:C11",
-  "expectText": ["总单确定报价", "报到 2026-10-28 19:00", "实收 ¥0.00"],
+  "expectText": ["总单确定报价", "报到 2026-10-28 19:00", "实收", "¥0.00", "青锋杯 · 合成"],
   "asOf": "2026-10-25T02:00:00.000Z",
   "data": {
     "view": "sent",

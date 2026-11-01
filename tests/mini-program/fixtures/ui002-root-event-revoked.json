@@ -1,0 +1,17 @@
+{
+  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "static": true,
+  "name": "ui002-root-event-revoked",
+  "route": "pages/event/index",
+  "state": "permission",
+  "figmaNode": "5:438",
+  "data": {
+    "event": null,
+    "matches": [],
+    "unavailable": true,
+    "loading": false,
+    "error": "当前公开许可已撤回"
+  },
+  "expectText": ["该内容已停止公开", "当前公开许可已撤回"],
+  "expectAbsentText": ["合成城市联赛2026", "合成青锋"]
+}

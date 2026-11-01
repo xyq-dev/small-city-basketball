@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "我的球赛主场" }
+{
+  "navigationBarTitleText": "我的球赛主场",
+  "navigationStyle": "custom"
+}

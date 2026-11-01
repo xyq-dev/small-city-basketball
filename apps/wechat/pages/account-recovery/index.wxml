@@ -1,5 +1,6 @@
-<view class="page">
-  <scb-header title="账号安全与找回"/>
+<scb-header title="账号安全与找回" disabled="{{busy}}"/>
+<view class="page ui002-workspace">
+  <view class="page-intro"><view class="eyebrow">账号安全</view><view class="title">申请与使用操作码分别核对</view></view>
   <view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view>
   <view wx:if="{{!enabled}}" class="notice warning">邮件通道尚未配置，请联系主办方核对账号；当前不能发送验证或找回邮件。</view>
   <view class="card"><view class="subtitle">申请账号操作码</view>

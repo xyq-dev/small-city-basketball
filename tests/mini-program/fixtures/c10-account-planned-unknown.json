@@ -4,7 +4,7 @@
   "state": "planned",
   "figmaNode": "30:2534",
   "referenceKind": "derived",
-  "expectText": ["先核对交易结果", "渠道查单暂未开放"],
+  "expectText": ["先核对交易结果", "查单请进入原订单"],
   "static": true,
   "primary": false,
   "data": {

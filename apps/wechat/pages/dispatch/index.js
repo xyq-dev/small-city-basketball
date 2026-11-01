@@ -39,6 +39,7 @@ const freshQuote = () => ({
 });
 Page({
   data: {
+    dispatchView: 'requests',
     ...fresh(),
     ...freshQuote(),
     kinds: d.KINDS,
@@ -86,6 +87,10 @@ Page({
       ...fresh(),
       ...freshQuote(),
       organizations: [],
+      orgIndex: 0,
+      dispatchView: 'requests',
+      capabilities: null,
+      dailyLimit: '3',
       requests: [],
       offers: [],
       detail: null,
@@ -118,6 +123,7 @@ Page({
     });
     const session = await ui.session(this, '/pages/dispatch/index');
     if (!session || !this._alive) return;
+    if (this._viewer && this._viewer !== session.user.id) this.onSessionReset();
     this._viewer = session.user.id;
     d.loadPending(this);
     const token = ui.begin(this);
@@ -129,6 +135,8 @@ Page({
         );
         this.setData({
           ...workspace,
+          loginRequired: false,
+          error: '',
           organizations,
           orgIndex: Math.min(this.data.orgIndex, Math.max(0, organizations.length - 1)),
           loading: false,
@@ -137,6 +145,26 @@ Page({
       }
     } catch (e) {
       if (ui.live(this, token)) this.setData({ loading: false, error: ui.message(e) });
+    }
+  },
+  workspace(e) {
+    if (this.data.busy || this.data.loading) return;
+    const key = e.currentTarget.dataset.key;
+    if (!['requests', 'offers', 'preference', 'create'].includes(key)) return;
+    if (key === 'create' && !this.data.organizations.length) return;
+    ui.begin(this);
+    this.setData({
+      dispatchView: key,
+      detail: null,
+      selectedOffer: null,
+      reason: '',
+      ...freshQuote(),
+    });
+  },
+  closeDetail() {
+    if (!this.data.busy && !this.data.loading) {
+      ui.begin(this);
+      this.setData({ detail: null, selectedOffer: null, reason: '', ...freshQuote() });
     }
   },
   input(e) {
@@ -303,7 +331,7 @@ Page({
     this.setData({ detail: null, selectedOffer: null, reason: '', ...freshQuote() });
     try {
       const detail = await d.repository().detail(e.currentTarget.dataset.id);
-      if (ui.live(this, token)) this.setData({ detail });
+      if (ui.live(this, token)) this.setData({ detail, dispatchView: 'requests' });
     } catch (e) {
       if (ui.live(this, token)) this.setData({ error: ui.message(e) });
     }
@@ -320,7 +348,7 @@ Page({
           (s) =>
             s.available && s.startsAt === row.request.startsAt && s.endsAt === row.request.endsAt,
         );
-      if (ui.live(this, token)) this.setData({ selectedOffer: row, slots });
+      if (ui.live(this, token)) this.setData({ selectedOffer: row, slots, dispatchView: 'offers' });
     } catch (e) {
       if (ui.live(this, token)) this.setData({ error: ui.message(e) });
     }

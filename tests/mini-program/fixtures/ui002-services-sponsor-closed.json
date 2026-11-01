@@ -1,0 +1,24 @@
+{
+  "name": "ui002-services-sponsor-closed",
+  "route": "pages/sponsor-commerce/index",
+  "state": "synthetic-sponsor-closed",
+  "figmaNode": "44:1277",
+  "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
+  "expectText": ["商业收款尚未开通", "历史合同与渠道结果仍可查看"],
+  "data": {
+    "enabled": false,
+    "loading": false,
+    "canManage": false,
+    "canFinance": false,
+    "organizations": [],
+    "contracts": [],
+    "orders": [],
+    "beneficiaries": [],
+    "receiverOptions": [],
+    "campaignOptions": [],
+    "statements": [],
+    "mode": "manage",
+    "workspaceView": "contracts"
+  },
+  "expectAbsentText": ["建立固定价合同"]
+}

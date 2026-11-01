@@ -5,10 +5,11 @@ Component({
     locationLabel: { type: String, value: '全国' },
     dark: { type: Boolean, value: false },
     home: { type: Boolean, value: false },
+    main: { type: Boolean, value: false },
     disabled: { type: Boolean, value: false },
     back: { type: Boolean, value: true },
   },
-  data: { statusBarHeight: 24, capsulePresent: false },
+  data: { statusBarHeight: 28, capsulePresent: false },
   observers: {
     dark(value) {
       this.syncNavigationColor(value);
@@ -36,7 +37,7 @@ Component({
       if (typeof wx.setNavigationBarColor === 'function')
         wx.setNavigationBarColor({
           frontColor: dark ? '#ffffff' : '#000000',
-          backgroundColor: dark ? '#132c49' : '#ffffff',
+          backgroundColor: dark ? '#123c73' : '#ffffff',
           fail() {},
         });
     },

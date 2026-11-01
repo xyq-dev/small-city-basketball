@@ -1,5 +1,19 @@
 # 当前状态
 
+## 2026-11-01 UI002 修复分支（Draft 待审，不是 MAIN）
+
+工作树 `D:\Projects\small-city-basketball-ui002-ci`、分支 `fix/ui002-ci`、审查基线 `4b83a4d`。Draft [PR #37](https://github.com/xyq-dev/small-city-basketball/pull/37) 仍指向 `main`，保持 Draft，不合并。PR #36 仍是 `feat/ui002-integration`，本记录不修改它。
+
+2026-11-01 审查修复（本地已验证，远端 CI 尚未覆盖本修复提交）：
+
+- 培训建班期必须由用户选择资质覆盖课次的已审教练，并提交整数课次权重；请求体能通过既有 `parseTrainingCohort`。无教练或权重不合法时不提交。
+- 跨城确认前同时展示需求预算和当前报价、行程、凭据、条款。同意绑定当前账号、需求和报价；未勾选、重新打开或切到其他详情后不能沿用。写请求返回时只刷新用户仍停留的那条需求或邀请。
+- 广告审核和签署前展示冻结合同的主体、金额、手续费上限、条款、时段和分成。未核对或版本变化后不能签署；签署携带当前看到的合同哈希。不展示商户内部配置，不新增出款。
+- 培训签到、消费和退费成功后刷新当前课次或报名。签退使用刷新后的版本；批准后不再保留旧的待审核按钮，批准仍不等于到账。
+- 比赛媒体发布在确认框返回后再次核对同意、页面、身份、版本和权限。页面隐藏或版本变化后的迟到确认不发送。撤销流程未改。
+
+`03cdf32` 的 [Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/41300581091) 里，admin 因培训刷新把整页卸掉而失败，api 因两条真实媒体发布没有先勾选草稿而失败。`0629009` 把调度刷新绑到打开详情时的代次，并让真实媒体测试先勾选草稿。[该次 Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/41323996136) 中 api 与 production 通过，admin 的 `npm test` 通过，但 `test:e2e` 有 96 项原生静态布局失败：页面文案和按钮几何已改，夹具仍要求旧句子、旧照片和 12px 底栏。随后把这些夹具和几何断言改到当前页面，并让失败的旧打开请求不能整页刷新盖住后打开的需求。本机只重跑了先前失败的布局名称和调度回归，没有重跑完整 e2e 或 PostgreSQL。`a2f4592` 的四项远端检查已经通过；该结果只属于该提交。2026-11-02 继续修调度：重新打开同一需求不再取消写后刷新，接单偏好和建立需求不再因切换详情而沿用旧版本。本机调度页测试 27/27，管理端类型检查通过。完整 e2e、真实 PostgreSQL 未因这次重跑。正式支付、投保、分账发送、推流未启用。下方 REMAINING6 仍是 main 上已验收的源码事实。新提交的远端 CI 另记，不沿用 `a2f4592`。
+
 ## 2026-11-01 REMAINING6：六项功能实现（DONE / MAIN：源码与隔离验收）
 
 2026-11-01 14:08 Asia/Shanghai（核验时间 `2026-11-01T06:08:12Z`），[PR #35](https://github.com/xyq-dev/small-city-basketball/pull/35) 已合入main，代码合并SHA `21dc0e6debfaab1358ce2e1eb7abdb754134e1b2`，tree `e38a40da165a92f1eddc5696dcd41e7dc0e2a55a` 与CI160测试候选 `7a3f958c0440eca67d1d67e372a6e2d4c9d92440` 精确一致；双亲为 `911564f0` 和该测试候选。12条外部审查全部已解决，无新增线程。

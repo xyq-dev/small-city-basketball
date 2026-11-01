@@ -15,6 +15,20 @@ const emptyForm = () => ({
 Page({
   data: {
     mode: 'list',
+    registrationSteps: [
+      { key: 'profile', label: '本人资料' },
+      { key: 'qualification', label: '资格预审' },
+      { key: 'insurance', label: '保障与审核' },
+    ],
+    registrationStep: 'profile',
+    materialPanel: 'profile',
+    materialPanels: [
+      { key: 'profile', label: '本人资料' },
+      { key: 'portrait', label: '照片' },
+      { key: 'insurance', label: '已有保单' },
+      { key: 'consent', label: '本人确认' },
+      { key: 'progress', label: '审核进度' },
+    ],
     entries: [],
     workspace: null,
     material: null,
@@ -28,6 +42,7 @@ Page({
     loading: false,
     busy: false,
     dirty: false,
+    insuranceDirty: false,
     pending: false,
     storageError: '',
     error: '',
@@ -43,6 +58,13 @@ Page({
         this._org = materials.id(query.orgId);
         this._entry = materials.id(query.entryId);
         this.setData({ mode: query.mode === 'review' ? 'review' : 'mine' });
+        if (query.mode !== 'review' && this.data.materialPanels.some((p) => p.key === query.panel))
+          this.setData({
+            materialPanel: query.panel,
+            registrationStep: ['insurance', 'progress'].includes(query.panel)
+              ? 'insurance'
+              : 'profile',
+          });
       } catch (error) {
         this._invalid = true;
         this.setData({ error: ui.message(error) });
@@ -66,7 +88,12 @@ Page({
   },
   onSessionReset() {
     this.clearPrivate();
-    this.setData({ loginRequired: true, error: '登录身份已变化，已清除上一账号的私有资料。' });
+    this.setData({
+      loginRequired: true,
+      materialPanel: 'profile',
+      registrationStep: 'profile',
+      error: '登录身份已变化，已清除上一账号的私有资料。',
+    });
     this.cleanupFiles();
   },
   clearPrivate() {
@@ -85,6 +112,7 @@ Page({
       portraitChecked: false,
       insuranceChecked: false,
       dirty: false,
+      insuranceDirty: false,
       busy: false,
       loading: false,
       pending: false,
@@ -97,7 +125,7 @@ Page({
           this._org +
           '&entryId=' +
           this._entry +
-          (this.data.mode === 'review' ? '&mode=review' : '')
+          (this.data.mode === 'review' ? '&mode=review' : '&panel=' + this.data.materialPanel)
       : PATH;
   },
   login() {
@@ -129,6 +157,7 @@ Page({
         publicityConsent: m?.publicityConsent === true,
       },
       dirty: false,
+      insuranceDirty: false,
       reason: '',
       identityChecked: false,
       portraitChecked: false,
@@ -258,7 +287,46 @@ Page({
       )
     )
       return;
-    this.setData({ ['form.' + key]: e.detail.value, dirty: true, privateDetails: null });
+    this.setData({
+      ['form.' + key]: e.detail.value,
+      dirty: true,
+      insuranceDirty:
+        this.data.insuranceDirty ||
+        ['insurer', 'policyNumber', 'startDate', 'endDate'].includes(key),
+      privateDetails: null,
+    });
+  },
+  switchMaterialPanel(e) {
+    if (
+      this.data.mode !== 'mine' ||
+      !this._workspace ||
+      this.data.busy ||
+      this.data.loading ||
+      this.data.pending
+    )
+      return;
+    const key = e.currentTarget?.dataset?.panel || e.detail?.key;
+    if (!this.data.materialPanels.some((panel) => panel.key === key)) return;
+    this.setData({
+      materialPanel: key,
+      registrationStep: ['insurance', 'progress'].includes(key) ? 'insurance' : 'profile',
+      privateDetails: null,
+    });
+    this.cleanupFiles();
+  },
+  registrationStepChange(e) {
+    const key = e.detail?.key;
+    if (!this.data.registrationSteps.some((step) => step.key === key)) return;
+    if (key === 'qualification') this.qualification();
+    else this.switchMaterialPanel({ detail: { key } });
+  },
+  canLeaveMaterials() {
+    if (this.data.busy || this.data.loading || this.data.pending || !this._workspace) return false;
+    if (this.data.mode === 'mine' && this.data.dirty) {
+      this.setData({ error: '请先保存当前草稿，再继续资格预审、保险或监护确认。' });
+      return false;
+    }
+    return true;
   },
   checkbox(e) {
     if (this.data.busy) return;
@@ -273,9 +341,8 @@ Page({
   reasonInput(e) {
     if (!this.data.busy) this.setData({ reason: e.detail.value });
   },
-  insuranceInput() {
-    const f = this.data.form,
-      patch = {};
+  insuranceInput(f = this.data.form) {
+    const patch = {};
     for (const key of ['insurer', 'policyNumber', 'startDate', 'endDate']) {
       const value = f[key].trim();
       if (!value) continue;
@@ -341,6 +408,7 @@ Page({
     )
       return;
     const f = { ...this.data.form },
+      insuranceDirty = this.data.insuranceDirty,
       expectedVersion = this._workspace.material?.version || 0,
       token = ui.hold(this),
       viewer = this._viewer;
@@ -353,6 +421,10 @@ Page({
       if (additional === null || !ui.held(this, token) || !this._visible) return;
       const clientRequestId = await ui.uuid();
       if (!ui.held(this, token) || this._viewer !== viewer) return;
+      const insurance = {
+        ...(insuranceDirty ? this.insuranceInput(f) : {}),
+        ...(additional.insurance || {}),
+      };
       const body = {
         clientRequestId,
         expectedVersion,
@@ -363,6 +435,7 @@ Page({
         acceptedTerms: f.acceptedTerms,
         publicityConsent: f.publicityConsent,
         ...additional,
+        ...(Object.keys(insurance).length ? { insurance } : {}),
       };
       record = {
         userId: viewer,
@@ -564,7 +637,7 @@ Page({
   },
   guardian() {
     const w = this.data.workspace;
-    if (!this.data.busy && w?.eventId && w?.memberId)
+    if (this.canLeaveMaterials() && w?.eventId && w?.memberId)
       ui.open('guardian', {
         orgId: this._org,
         eventId: w.eventId,
@@ -573,12 +646,12 @@ Page({
       });
   },
   qualification() {
-    if (!this.data.busy)
+    if (this.canLeaveMaterials())
       ui.open('qualification-precheck', { orgId: this._org, entryId: this._entry });
   },
   insurance() {
     const w = this.data.workspace;
-    if (!this.data.busy && w?.memberId)
+    if (this.canLeaveMaterials() && w?.memberId)
       ui.open('insurance', { orgId: this._org, entryId: this._entry, memberId: w.memberId });
   },
   async viewFile(e) {

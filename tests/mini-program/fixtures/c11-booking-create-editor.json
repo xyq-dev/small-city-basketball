@@ -4,7 +4,7 @@
   "state": "editing",
   "figmaNode": "approved:C11",
   "syntheticData": true,
-  "expectText": ["比赛安排", "报到日期与时间", "返回预约摘要"],
+  "expectText": ["比赛安排", "报到日期与时间", "收起详细安排", "林越", "青锋杯"],
   "data": {
     "loading": false,
     "busy": false,

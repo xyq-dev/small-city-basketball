@@ -1,3 +1,37 @@
-.local-page { padding-bottom:calc(96px + env(safe-area-inset-bottom)); } .local-heading { display:flex; align-items:flex-start; gap:10px; } .local-heading>view { flex:1; } .local-heading button { width:auto; min-width:95px; } .local-heading .title { font-size:21px; } .local-actions { display:flex; gap:8px; align-items:center; margin-bottom:8px; } .local-actions button { flex:1; min-width:0; margin:0; } .local-actions .subtitle { flex:2; margin:0; } .chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; } .chip { width:auto; margin:0; flex:1 0 20%; padding:6px; } .picked { background:#fff0e7; border:1px solid #ef7c3e; color:#a64618; } .listing-card { text-align:left; } .kind-label { color:#b84c1d; font-size:12px; } .link { color:#b84c1d; margin-top:8px; } .local-map { width:100%; height:280px; } .place-row { border-top:1px solid #e8edf2; padding-top:12px; margin-top:8px; } .detail-card { border:2px solid #f0b591; } .slot { text-align:left; }
+.local-page { padding-bottom:calc(96px + env(safe-area-inset-bottom)); } .local-heading { display:flex; align-items:flex-start; gap:10px; } .local-heading>view { flex:1; } .local-heading button { width:auto; min-width:95px; } .local-heading .title { font-size:21px; } .local-actions { display:flex; gap:8px; align-items:center; margin-bottom:8px; } .local-actions button { flex:1; min-width:0; margin:0; } .local-actions .subtitle { flex:2; margin:0; } .chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; } .chip { width:auto; margin:0; flex:1 0 20%; padding:6px; } .picked { background:#fff0e7; border:1px solid #f28c28; color:#a64618; } .listing-card { text-align:left; } .kind-label { color:#b84c1d; font-size:12px; } .link { color:#b84c1d; margin-top:8px; } .local-map { width:100%; height:280px; } .place-row { border-top:1px solid #e1e7ef; padding-top:12px; margin-top:8px; } .detail-card { border:2px solid #f0b591; } .slot { text-align:left; }
 
 .map-card{position:relative}.map-search{display:flex;justify-content:center;margin-bottom:16rpx}.map-search button{min-width:260rpx}.map-card .local-actions{flex-wrap:wrap}.map-card .local-actions button{margin-top:8rpx}.map-card .notice{margin-bottom:12rpx}
+
+.location-settings { border-top:1px solid #e1e7ef; padding-top:12px; } .local-actions { flex-wrap:wrap; } .local-actions button { flex:1 1 82px; }
+.local-heading { flex-wrap:wrap; margin-bottom:12px; } .local-heading > view { flex:1 1 180px; min-width:0; } .local-heading button { flex:0 1 auto; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+
+/* UI001 L01: discovery tabs precede optional query tools. */
+.local-page { padding:16px 16px calc(100px + env(safe-area-inset-bottom)); }
+.local-top-tabs { display:flex; gap:8px; min-height:44px; margin-bottom:12px; }
+.local-top-tabs button { flex:0 0 auto; width:auto; min-width:66px; min-height:44px; margin:0; padding:8px 12px; border-radius:12px; background:#fff; color:#63758b; font-size:14px; line-height:22px; font-weight:500; }
+.local-top-tabs .local-city-tab { min-width:94px; max-width:calc(100% - 162px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:#123c73; color:#fff; }
+.local-brand { display:flex; flex-direction:column; gap:8px; min-height:130px; margin-bottom:12px; padding:16px; border-radius:16px; background:#123c73; color:#fff; }
+.local-brand-row { display:flex; align-items:flex-start; gap:12px; }
+.local-brand-copy { display:flex; flex:1; min-width:0; flex-direction:column; gap:4px; }
+.local-brand-eyebrow { font-size:12px; line-height:18px; }
+.local-brand-title { font-size:24px; line-height:34px; font-weight:700; overflow-wrap:anywhere; }
+.local-brand-ball { display:block; flex:0 0 68px; width:68px; height:68px; }
+.local-brand-services { font-size:14px; line-height:22px; }
+.local-service-tabs { display:flex; gap:8px; min-height:44px; margin-bottom:12px; }
+.local-service-tabs button { flex:0 0 80px; width:80px; min-width:44px; min-height:44px; margin:0; padding:8px; border-radius:12px; background:#fff; color:#63758b; font-size:14px; line-height:22px; font-weight:500; }
+.local-service-tabs button:first-child { flex-basis:64px; width:64px; }
+.local-service-tabs button.active { background:#123c73; color:#fff; }
+.listing-entry { margin-bottom:12px; }
+.listing-card { display:flex; flex-direction:column; gap:8px; width:100%; margin:0 0 12px; padding:16px; border-radius:16px; background:#eaf0f8; color:#18283f; text-align:left; font-weight:400; }
+.listing-card .subtitle { margin:0; color:#18283f; font-size:18px; line-height:28px; font-weight:700; }
+.court-illustration { display:block; width:100%; height:auto; }
+.listing-meta,.listing-address,.listing-limit { color:#63758b; font-size:14px; line-height:22px; }
+.listing-card .muted { font-size:12px; line-height:18px; }
+.listing-action { min-height:48px; margin:0; padding:12px; border-radius:12px; font-size:14px; line-height:22px; font-weight:500; }
+.local-origin-note { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; padding:12px; border-radius:12px; background:#eaf0f8; color:#123c73; font-size:12px; line-height:18px; }
+.local-origin-note > view:first-child { font-size:14px; line-height:22px; font-weight:500; }
+.local-display-actions { display:flex; gap:8px; margin-bottom:12px; }
+.local-display-actions button { flex:1; width:0; min-width:0; min-height:44px; margin:0; font-size:14px; line-height:22px; }
+.local-query-panel { padding:16px; border-radius:16px; }
+.personnel-kinds { padding:8px 0; }
+@media(max-width:360px) { .local-service-tabs button,.local-service-tabs button:first-child { flex:1; width:0; min-width:44px; padding:8px 4px; font-size:12px; } .local-brand-title { font-size:22px; } .local-brand-copy { flex-basis:0; } }

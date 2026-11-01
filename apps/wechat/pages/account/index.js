@@ -46,6 +46,9 @@ Page({
     messageTone: 'info',
     hasReturn: false,
     securityOpen: false,
+    workspaceTab: 'personal',
+    ordersOpen: false,
+    navigationMoreOpen: false,
     roles: [],
     managedOrgs: [],
     roleSummary: '',
@@ -66,6 +69,9 @@ Page({
             binding: null,
             connected: false,
             securityOpen: false,
+            workspaceTab: 'personal',
+            ordersOpen: false,
+            navigationMoreOpen: false,
             password: '',
             consent: false,
             roles: [],
@@ -148,6 +154,10 @@ Page({
           connected: !!(binding && binding.connected),
           platformOperator: current.platformOperator === true,
           ...roleView(current),
+          workspaceTab:
+            roleView(current).roles.length && this.data.workspaceTab === 'work'
+              ? 'work'
+              : 'personal',
           registerMode: false,
           message: '',
         });
@@ -321,6 +331,20 @@ Page({
   closeSecurity() {
     if (this.data.busy || this.commandBusy) return;
     this.setData({ securityOpen: false });
+  },
+  workspace(e) {
+    if (this.data.busy || this.commandBusy) return;
+    const key = e.currentTarget.dataset.key;
+    if (key === 'personal' || (key === 'work' && this.data.roles.length))
+      this.setData({ workspaceTab: key });
+  },
+  toggleOrders() {
+    if (this.data.user && !this.data.busy && !this.commandBusy)
+      this.setData({ ordersOpen: !this.data.ordersOpen });
+  },
+  toggleMore() {
+    if (this.data.user && !this.data.busy && !this.commandBusy)
+      this.setData({ navigationMoreOpen: !this.data.navigationMoreOpen });
   },
   copyMemberId() {
     if (

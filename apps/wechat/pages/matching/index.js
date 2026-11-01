@@ -9,6 +9,9 @@ const freshWindow = () => {
 };
 Page({
   data: {
+    workspaceTab: 'needs',
+    detailTab: 'candidates',
+    formStep: 'details',
     types: matching.TYPES,
     kindIndex: 0,
     roles: matching.ROLES.ADULT_PLAYER,
@@ -92,6 +95,40 @@ Page({
       preferences: [],
       teams: [],
       organizations: [],
+      enabled: false,
+      conversionEnabled: false,
+      kindIndex: 0,
+      roles: matching.ROLES.ADULT_PLAYER,
+      roleIndex: 0,
+      teamIndex: 0,
+      orgIndex: 0,
+      sourceIndex: 0,
+      formRegion: null,
+      scope: [],
+      windows: [freshWindow()],
+      form: {
+        title: '',
+        address: '',
+        quantity: '1',
+        unitBudget: '300',
+        totalBudget: '300',
+        travelMinutes: '120',
+      },
+      seatIndex: 0,
+      preview: null,
+      chargeConsent: false,
+      eligibility: false,
+      courts: [],
+      courtIndex: 0,
+      terms: '',
+      creating: false,
+      supplyOpen: false,
+      formStep: 'details',
+      workspaceTab: 'needs',
+      detailTab: 'candidates',
+      adult: false,
+      discovery: false,
+      contact: false,
       selected: null,
       conversion: null,
       pending: null,
@@ -107,10 +144,14 @@ Page({
   },
   async load() {
     if (this.data.busy || !this._alive) return;
-    const selectedId = this._openId || this.data.selected?.id;
+    let selectedId = this._openId || this.data.selected?.id;
     this.setData({ loading: true, error: '', selected: null, conversion: null });
     const session = await ui.session(this, '/pages/matching/index');
     if (!this._alive || !this._visible || !session) return;
+    if (this._viewer && this._viewer !== session.user.id) {
+      this.onSessionReset();
+      selectedId = '';
+    }
     this._viewer = session.user.id;
     const token = ui.begin(this);
     try {
@@ -120,6 +161,8 @@ Page({
       const teams = w.sources.filter((x) => x.kind === 'TEAM_MATCHUP');
       this.setData({
         ...w,
+        loginRequired: false,
+        error: '',
         pending,
         pendingError: '',
         teams,
@@ -134,7 +177,11 @@ Page({
         const selected = await matching.repository().detail(selectedId);
         if (ui.live(this, token)) {
           this._openId = '';
-          this.setData({ selected, seatIndex: 0 });
+          this.setData({
+            selected,
+            seatIndex: 0,
+            detailTab: selected.canManage ? 'candidates' : 'intents',
+          });
         }
       }
     } catch (e) {
@@ -155,6 +202,7 @@ Page({
       if (ui.live(this, token))
         this.setData({
           selected,
+          detailTab: selected.canManage ? 'candidates' : 'intents',
           seatIndex: 0,
           loading: false,
           creating: false,
@@ -165,14 +213,65 @@ Page({
     }
   },
   toggleCreate() {
-    if (!this.data.busy)
-      this.setData({ creating: !this.data.creating, supplyOpen: false, conversion: null });
+    if (this.data.busy) return;
+    ui.begin(this);
+    this.setData({
+      creating: !this.data.creating,
+      supplyOpen: false,
+      selected: null,
+      conversion: null,
+      formStep: 'details',
+      loading: false,
+    });
   },
   toggleSupply() {
-    if (!this.data.busy) {
-      this.setData({ supplyOpen: !this.data.supplyOpen, creating: false });
-      this.chooseSource({ detail: { value: this.data.sourceIndex } });
-    }
+    if (this.data.busy) return;
+    ui.begin(this);
+    this.setData({
+      supplyOpen: !this.data.supplyOpen,
+      creating: false,
+      selected: null,
+      conversion: null,
+      loading: false,
+    });
+    this.chooseSource({ detail: { value: this.data.sourceIndex } });
+  },
+  workspaceTab(e) {
+    if (this.data.busy || this.data.loading) return;
+    const key = e.currentTarget.dataset.key;
+    if (['needs', 'inbox'].includes(key)) this.setData({ workspaceTab: key });
+  },
+  detailTab(e) {
+    if (this.data.busy || this.data.loading || this.data.conversion) return;
+    const key = e.currentTarget.dataset.key;
+    if (['candidates', 'intents'].includes(key)) this.setData({ detailTab: key });
+  },
+  overview() {
+    if (this.data.busy || this.data.loading) return;
+    this._openId = '';
+    this.setData({
+      selected: null,
+      conversion: null,
+      preview: null,
+      creating: false,
+      supplyOpen: false,
+      chargeConsent: false,
+      eligibility: false,
+      formStep: 'details',
+    });
+  },
+  reviewNeed() {
+    if (this.data.busy || this.data.pending || this.data.pendingError) return;
+    if (!this.data.form.title.trim() || !this.data.form.address.trim())
+      return this.setData({ error: '请先填写需求名称与明确场馆地址。' });
+    this.setData({ formStep: 'review', error: '' });
+  },
+  editNeed() {
+    if (!this.data.busy) this.setData({ formStep: 'details' });
+  },
+  closeConversion() {
+    if (!this.data.busy && !this.data.loading)
+      this.setData({ conversion: null, preview: null, chargeConsent: false, eligibility: false });
   },
   input(e) {
     if (this.data.busy) return;

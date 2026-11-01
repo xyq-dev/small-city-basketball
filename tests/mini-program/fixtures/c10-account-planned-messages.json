@@ -4,7 +4,7 @@
   "state": "planned",
   "figmaNode": "30:2659",
   "referenceKind": "derived",
-  "expectText": ["未来预约动态", "关注可用，微信提醒尚未启用", "查看我的关注"],
+  "expectText": ["预约与赛事动态", "站内消息可查看，微信提醒按能力开放", "查看我的关注"],
   "expectEnabled": ["查看我的关注"],
   "static": true,
   "primary": false,

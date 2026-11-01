@@ -89,7 +89,9 @@
     "scb-nav": "/components/navigation/index",
     "scb-header": "/components/header/index",
     "scb-icon": "/components/icon/index",
-    "sponsorship-slot": "/components/sponsorship-slot/index"
+    "sponsorship-slot": "/components/sponsorship-slot/index",
+    "scb-state": "/components/state/index",
+    "scb-steps": "/components/steps/index"
   },
   "permission": {
     "scope.userLocation": {

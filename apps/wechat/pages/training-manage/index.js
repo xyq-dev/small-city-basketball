@@ -3,6 +3,7 @@ const ui = require('../../utils/ui');
 const training = require('../../utils/training');
 Page({
   data: {
+    manageTab: 'cohorts',
     organizations: [],
     orgIndex: 0,
     orgId: '',
@@ -58,6 +59,7 @@ Page({
   },
   onHide() {
     this._hidden = true;
+    this._viewRead = (this._viewRead || 0) + 1;
     this._generation++;
   },
   onUnload() {
@@ -66,11 +68,40 @@ Page({
     ui.close(this);
   },
   onSessionReset() {
+    this._viewRead = (this._viewRead || 0) + 1;
     this._generation++;
     this._actor = '';
+    this._session = '';
     this._writeToken = null;
     this.setData({
       workspace: null,
+      manageTab: 'cohorts',
+      reason: '',
+      providerName: '',
+      providerEvidence: '',
+      coachUserId: '',
+      coachName: '',
+      coachEvidence: '',
+      courseTitle: '',
+      courseDescription: '',
+      cohortTitle: '',
+      address: '',
+      termsText: '',
+      sessions: [],
+      orgIndex: 0,
+      courseIndex: 0,
+      courtIndex: 0,
+      coachIndex: 0,
+      capacity: '8',
+      price: '0.00',
+      qualifiedUntil: '',
+      lessonDate: '',
+      startTime: '',
+      endTime: '',
+      cutoffIndex: 0,
+      organizations: [],
+      orgId: '',
+      isOperator: false,
       teaching: [],
       coachProfiles: [],
       roster: null,
@@ -86,18 +117,24 @@ Page({
   },
   async load() {
     if (this.data.busy) return;
-    const g = ++this._generation;
+    let g = ++this._generation;
     this.setData({ loading: true, error: '' });
     try {
       const token = ui.begin(this),
         s = await ui.session(this, '/pages/training-manage/index');
       if (!s || !ui.live(this, token) || !this.live(g)) return;
+      if (this._actor && this._actor !== s.user.id) {
+        this.onSessionReset();
+        g = this._generation;
+      }
       this._actor = s.user.id;
       const org = this.data.orgId || s.organizations[0]?.id || '';
       const mine = await training.read('/v1/training/mine');
       if (!this.live(g)) return;
       this.setData({
         organizations: s.organizations,
+        loginRequired: false,
+        error: '',
         orgId: org,
         isOperator: !!s.platformOperator,
         pending: training.pending(s.user.id),
@@ -107,6 +144,7 @@ Page({
           stateLabel: training.label(x.state),
         })),
         coachProfiles: mine.coachProfiles,
+        ...(org ? {} : { manageTab: 'teaching' }),
       });
       if (org) {
         const workspace = await training.read('/v1/orgs/' + training.id(org) + '/training');
@@ -124,6 +162,21 @@ Page({
       if (this.live(g)) this.setData({ error: ui.message(e) });
     } finally {
       if (this.live(g)) this.setData({ loading: false });
+    }
+  },
+  manageTab(e) {
+    if (this.data.busy) return;
+    const key = e.currentTarget.dataset.key;
+    if (!['teaching', 'cohorts', 'reviews', 'setup'].includes(key)) return;
+    this._viewRead = (this._viewRead || 0) + 1;
+    this._session = '';
+    this.setData({ manageTab: key, roster: null, enrollment: null });
+  },
+  closeDetail() {
+    if (!this.data.busy) {
+      this._viewRead = (this._viewRead || 0) + 1;
+      this._session = '';
+      this.setData({ roster: null, enrollment: null });
     }
   },
   input(e) {
@@ -332,11 +385,15 @@ Page({
     this.showRoster(e.currentTarget.dataset.id);
   },
   async showRoster(id) {
+    const read = (this._viewRead || 0) + 1;
+    this._viewRead = read;
     try {
       const actor = this._actor,
         r = await training.read('/v1/training/sessions/' + training.id(id) + '/roster');
-      if (actor === this._actor && !this._hidden)
+      if (this._alive && actor === this._actor && !this._hidden && read === this._viewRead)
         this.setData({
+          manageTab: 'teaching',
+          enrollment: null,
           roster: {
             ...r,
             session: {
@@ -352,7 +409,8 @@ Page({
           },
         });
     } catch (e) {
-      this.setData({ error: ui.message(e) });
+      if (this._alive && !this._hidden && read === this._viewRead)
+        this.setData({ error: ui.message(e) });
     }
   },
   sessionAction() {
@@ -388,13 +446,16 @@ Page({
     this.showEnrollment(e.currentTarget.dataset.id);
   },
   async showEnrollment(id) {
+    const read = (this._viewRead || 0) + 1;
+    this._viewRead = read;
     try {
       const actor = this._actor,
         r = await training.read('/v1/training/enrollments/' + training.id(id));
-      if (actor === this._actor && !this._hidden)
-        this.setData({ enrollment: training.enrollment(r) });
+      if (this._alive && actor === this._actor && !this._hidden && read === this._viewRead)
+        this.setData({ enrollment: training.enrollment(r), roster: null, manageTab: 'reviews' });
     } catch (e) {
-      this.setData({ error: ui.message(e) });
+      if (this._alive && !this._hidden && read === this._viewRead)
+        this.setData({ error: ui.message(e) });
     }
   },
   refundAction(e) {

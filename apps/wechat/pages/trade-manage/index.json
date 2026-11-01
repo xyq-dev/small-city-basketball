@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "交易与资金管理" }
+{
+  "navigationBarTitleText": "交易与资金管理",
+  "navigationStyle": "custom"
+}

@@ -1,0 +1,59 @@
+{
+  "name": "ui002-registration-materials-insurance",
+  "route": "pages/participant-materials/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 R07 / R03; actual participant-materials Page, synthetic data only",
+  "expectText": ["已有保单人工核验", "保障开始日期", "上传不等于已投保", "提交与授权"],
+  "data": {
+    "mode": "mine",
+    "entries": [],
+    "workspace": {
+      "entryId": "00000000-0000-4000-8000-000000000002",
+      "memberId": "00000000-0000-4000-8000-000000000003",
+      "eventName": "合成本人报名杯",
+      "teamName": "合成青锋",
+      "startDate": "2028-05-01",
+      "endDate": "2028-05-03",
+      "rules": {
+        "requireInsurance": true,
+        "termsVersion": "registration-materials-v1"
+      },
+      "enabled": true,
+      "frozen": false,
+      "material": null,
+      "capabilities": {
+        "canSave": true,
+        "canSubmit": false,
+        "canWithdrawPublicity": false
+      }
+    },
+    "material": null,
+    "members": [],
+    "form": {
+      "realName": "",
+      "identityNumber": "",
+      "insurer": "",
+      "policyNumber": "",
+      "startDate": "",
+      "endDate": "",
+      "acceptedTerms": false,
+      "publicityConsent": false
+    },
+    "privateDetails": null,
+    "reason": "",
+    "identityChecked": false,
+    "portraitChecked": false,
+    "insuranceChecked": false,
+    "loading": false,
+    "busy": false,
+    "dirty": false,
+    "pending": false,
+    "storageError": "",
+    "error": "",
+    "message": "",
+    "loginRequired": false,
+    "materialPanel": "insurance",
+    "registrationStep": "insurance"
+  },
+  "figmaNode": "6:669"
+}

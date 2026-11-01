@@ -1,3 +1,4 @@
+<scb-header title="选择可报名赛事" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page registration-page">
   <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">暂时无法读取可报名赛事</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice warning">{{message}}</view>

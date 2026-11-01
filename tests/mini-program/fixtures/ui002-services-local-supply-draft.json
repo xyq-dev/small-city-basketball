@@ -1,0 +1,33 @@
+{
+  "name": "ui002-services-local-supply-draft",
+  "route": "pages/local-manage/index",
+  "state": "synthetic-local-supply-draft",
+  "figmaNode": "8:1282",
+  "designSource": "UI001 current protected route and verified shared fields/cards; synthetic data only",
+  "expectText": ["新增供给申请", "实际服务人员", "保存待审申请"],
+  "data": {
+    "canCreate": true,
+    "creating": true,
+    "organizations": [
+      {
+        "id": "org",
+        "name": "合成机构"
+      }
+    ],
+    "providers": [
+      {
+        "name": "合成实际服务人员"
+      }
+    ],
+    "courts": [
+      {
+        "name": "合成球场"
+      }
+    ],
+    "title": "合成裁判服务申请长名称",
+    "description": "合成服务内容与适用范围",
+    "address": "合成实际经营地址",
+    "qualificationNote": "合成受限资质核验清单",
+    "terms": "合成到场、交付、改期与天气取消约定"
+  }
+}

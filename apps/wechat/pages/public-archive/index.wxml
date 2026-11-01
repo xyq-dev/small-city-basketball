@@ -1,3 +1,4 @@
+<scb-header title="篮球公开档案" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page mgmt-page">
   <view wx:if="{{loading}}" class="card">正在读取当前有效的公开来源</view><view wx:if="{{error}}" class="notice warning">{{error}}</view>
   <block wx:if="{{archive}}"><view class="card"><view class="archive-name">{{archive.displayName}}</view><view class="muted">{{archive.kind==='PLAYER'?'球员生涯':'球队跨届'}} · 独立公开授权</view><view class="archive-total">{{archive.points===null?'未采集个人得分':archive.points+' 分'}}</view><view>有效确认 {{archive.confirmedMatchCount}} 场 · 统计样本 {{archive.recordedMatchCount}} 场</view><view>样本场均 {{archive.pointsPerRecordedMatch===null?'未知':archive.pointsPerRecordedMatch}} · 犯规 {{archive.fouls===null?'未知':archive.fouls}}</view><view wx:if="{{archive.kind==='TEAM'}}">胜 {{archive.wins}} · 平 {{archive.draws}} · 负 {{archive.losses}}</view></view>

@@ -46,11 +46,17 @@ Page({
     resolutionLabels: model.RESOLUTION_LABELS,
   },
   trade(e) {
-    if (!this.data.busy)
+    const id = e.currentTarget.dataset.id;
+    if (
+      !this.data.busy &&
+      !this.data.loading &&
+      this.data.order &&
+      this.data.order.appearances.some((a) => a.id === id)
+    )
       wx.navigateTo({
         url:
           '/pages/trade-order/index?kind=PLAYER_APPEARANCE&sourceId=' +
-          encodeURIComponent(model.id(e.currentTarget.dataset.id)),
+          encodeURIComponent(model.id(id)),
       });
   },
   onLoad(query) {

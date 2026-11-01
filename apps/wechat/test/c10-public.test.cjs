@@ -97,7 +97,9 @@ test('revoked event clears old content before the new unavailable state is rende
   // Only the shared bottom-bar UI icons may load; no event imagery survives revocation.
   assert.deepEqual(
     preview.assets.filter(
-      (asset) => !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path),
+      (asset) =>
+        !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path) &&
+        !/^assets[\\/]ui002[\\/]nav-(?:home-active|local|account)\.svg$/.test(asset.path),
     ),
     [],
   );

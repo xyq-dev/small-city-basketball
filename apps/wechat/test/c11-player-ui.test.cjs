@@ -11,7 +11,7 @@ const fixture = (part) =>
 const preview = (f, width = 390) => buildPreview({ root, ...f, width, height: 844 });
 const names = ['market', 'detail', 'compare'];
 
-test('approved three-screen samples render native cards and isolated example portraits at all widths', () => {
+test('current samples render real native data and local assets at all widths', () => {
   for (const name of names) {
     const f = fixture(name);
     for (const width of [320, 390, 430]) {
@@ -19,7 +19,19 @@ test('approved three-screen samples render native cards and isolated example por
       for (const text of f.expectText) assert.ok(result.phone.includes(text), name + ': ' + text);
       assert.match(result.phone, /mini-custom-status/);
       assert.doesNotMatch(result.phone, /<header class="mini-native-bar"|<script\b|src="https?:/);
-      assert.ok(result.assets.some((asset) => /player-sample-[ab]/.test(asset.path)));
+      if (name === 'detail')
+        assert.ok(result.assets.some((asset) => /player-sample-[ab]/.test(asset.path)));
+      else
+        assert.equal(
+          result.assets.some((asset) => /player-sample-/.test(asset.path)),
+          false,
+          name + ': compact cards do not render a sample portrait',
+        );
+      if (name === 'market')
+        assert.ok(
+          result.assets.some((asset) => /avatar-user\.svg$/.test(asset.path)),
+          name,
+        );
       assert.ok(
         result.assets.every((asset) => !/approved-six-screen|design\/C11/.test(asset.path)),
       );
@@ -70,8 +82,30 @@ test('current DTO never turns a real player name or untrusted portrait field int
   const f = fixture('detail');
   f.data.profile = view;
   const result = preview(f);
-  assert.ok(result.assets.some((asset) => asset.path.endsWith('player-placeholder.png')));
+  assert.ok(result.assets.some((asset) => asset.path === 'assets/ui002/avatar-user.svg'));
+  assert.match(result.phone, /class="profile-avatar-icon"[^>]*data-mini-image-mode="aspectFit"/);
   assert.ok(result.assets.every((asset) => !/player-sample-/.test(asset.path)));
+});
+
+test('UI001 T07 compact facts keep the full authorized statistics behind the original record action', () => {
+  const f = fixture('detail');
+  const h = loadPage({ root, route: f.route });
+  h.page.setData(f.data);
+  const before = JSON.stringify(h.page.data.profile);
+  const compact = preview({ ...f, data: h.page.data }).phone;
+  assert.match(compact, /授权统计样本/);
+  assert.match(compact, /完成服务记录/);
+  assert.doesNotMatch(compact, /class="profile-hero"|class="profile-hero-image"/);
+  assert.match(compact, /data-mini-bindtap="toggle"/);
+  assert.match(compact, /data-mini-bindtap="book"/);
+  h.page.recordsToggle();
+  const records = preview({ ...f, data: h.page.data }).phone;
+  for (const text of ['每场记录得分', '8.4', '每场记录犯规', '1.6', '得分 0 / 犯规 0'])
+    assert.ok(records.includes(text), text);
+  assert.equal(JSON.stringify(h.page.data.profile), before);
+  h.page.recordsToggle();
+  assert.equal(h.page.data.recordsOpen, false);
+  assert.equal(h.wx.calls.filter((call) => call.type === 'request').length, 0);
 });
 
 test('expanded profile information retains exact costs, uncollected metrics and comparison actions', () => {
@@ -217,7 +251,8 @@ test('next-year availability retains its year in both the actual Page view model
   assert.equal(h.page.data.windows[1].display, '2026年12月31日 19:00–22:00');
   html = preview({ route: 'pages/player/index', data: h.page.data }).phone;
   assert.match(html, /2026年12月31日 19:00–22:00/);
-  const marketHtml = preview(fixture('market')).phone;
+  const market = fixture('market');
+  const marketHtml = preview({ ...market, data: { ...market.data, filtersOpen: true } }).phone;
   assert.match(marketHtml, /placeholder="搜索球员姓名"/);
   assert.doesNotMatch(marketHtml, /搜索球员或位置/);
   assert.equal(h.wx.calls.filter((call) => call.type === 'request').length, 0);

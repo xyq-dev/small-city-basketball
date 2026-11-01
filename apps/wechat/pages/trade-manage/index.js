@@ -6,6 +6,9 @@ Page({
     orders: [],
     terms: [],
     busy: false,
+    loading: false,
+    workspaceReady: false,
+    providerConfigured: false,
     error: '',
     message: '',
     kind: 'LOCAL_BOOKING',
@@ -39,6 +42,9 @@ Page({
     this.setData({
       orders: [],
       terms: [],
+      loading: false,
+      workspaceReady: false,
+      providerConfigured: false,
       pending: null,
       amount: '',
       termsText: '',
@@ -65,6 +71,9 @@ Page({
       message: '',
       pendingAcknowledged: false,
       busy: false,
+      loading: false,
+      workspaceReady: false,
+      providerConfigured: false,
       orders: [],
       terms: [],
       pending: null,
@@ -108,13 +117,14 @@ Page({
       this.setData({ kind: e.currentTarget.dataset.kind });
   },
   async load() {
-    if (this.data.busy || !this._alive || !this._visible) return;
+    if (this.data.busy || this.data.loading || !this._alive || !this._visible) return;
+    const token = ui.begin(this);
+    this.setData({ loading: true, workspaceReady: false, providerConfigured: false, error: '' });
     try {
       this.orgId = trade.id(this.data.orgId);
       const s = await ui.session(this, '/pages/trade-manage/index?orgId=' + this.orgId);
-      if (!s) return;
+      if (!s || !ui.live(this, token) || !this._visible) return;
       this.actor = s.user.id;
-      const token = ui.begin(this);
       const [orders, terms] = await Promise.all([
         trade.read('/orders?orgId=' + this.orgId),
         trade.read('/orgs/' + this.orgId + '/terms'),
@@ -123,15 +133,19 @@ Page({
         this.setData({
           orders: orders.orders.map((x) => ({ ...x, totalText: trade.money(x.totalFen) })),
           terms: terms.terms.map((x) => ({ ...x, amountText: trade.money(x.amount_fen) })),
+          workspaceReady: true,
+          providerConfigured: terms.providerConfigured === true,
           pending: this.pendingState(),
           error: '',
         });
     } catch (e) {
-      this.setData({ error: ui.message(e) });
+      if (ui.live(this, token) && this._visible) this.setData({ error: ui.message(e) });
+    } finally {
+      if (ui.live(this, token) && this._visible) this.setData({ loading: false });
     }
   },
   async command(path, body) {
-    if (this.data.busy || !this.actor) return;
+    if (this.data.busy || !this.actor || !this.data.workspaceReady) return;
     this.setData({ busy: true, error: '', message: '' });
     try {
       const result = await trade.execute(this.actor, path, {
@@ -184,6 +198,8 @@ Page({
     });
   },
   reconcile() {
+    if (!this.data.providerConfigured)
+      return this.setData({ error: '当前机构未配置可用资金渠道，不能发起渠道日账核对。' });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(this.data.date)) {
       this.setData({ error: '账日格式须YYYY-MM-DD' });
       return;

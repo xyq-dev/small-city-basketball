@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "比赛数据授权与提名" }
+{
+  "navigationBarTitleText": "比赛数据授权与提名",
+  "navigationStyle": "custom"
+}

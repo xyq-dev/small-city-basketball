@@ -1,0 +1,8 @@
+<view class="scb-state {{kind}}" role="{{kind==='error' || kind==='conflict' ? 'alert' : 'status'}}" aria-live="polite">
+ <view class="state-label">{{labels[kind] || '状态提示'}}</view>
+ <view class="state-title">{{title}}</view>
+ <view wx:if="{{description}}" class="state-description">{{description}}</view>
+ <view wx:if="{{kind==='loading'}}" class="state-skeleton" aria-hidden="true"><view></view><view></view><view></view></view>
+ <button wx:if="{{actionText}}" class="state-action" bindtap="action" disabled="{{busy}}" loading="{{busy}}">{{actionText}}</button>
+ <button wx:if="{{secondaryText}}" class="state-secondary" bindtap="secondary" disabled="{{busy}}">{{secondaryText}}</button>
+</view>

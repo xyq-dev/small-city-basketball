@@ -1,0 +1,52 @@
+{
+  "name": "ui002-registration-staff-ready",
+  "route": "pages/staff-configuration/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 actual native route and capability states; synthetic data only",
+  "expectText": [
+    "合成城市篮球工作室",
+    "机构成员",
+    "赛事工作人员",
+    "合成记分员",
+    "明确修改一项授权"
+  ],
+  "data": {
+    "organizations": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "name": "合成城市篮球工作室"
+      }
+    ],
+    "selectedOrg": 0,
+    "eventId": "00000000-0000-4000-8000-000000000002",
+    "userId": "00000000-0000-4000-8000-000000000003",
+    "type": "STAFF",
+    "roles": ["EVENT_MANAGER", "REVIEWER", "SCORER", "STREAMER"],
+    "roleIndex": 2,
+    "workspace": {
+      "capabilities": {
+        "canManageMembers": false,
+        "canManageStaff": true
+      }
+    },
+    "members": [
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "name": "合成工作人员",
+        "role": "SCORER",
+        "status": "ACTIVE"
+      }
+    ],
+    "staff": [
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "name": "合成记分员",
+        "role": "SCORER",
+        "status": "ACTIVE"
+      }
+    ],
+    "busy": false,
+    "pending": false
+  },
+  "figmaNode": "6:1401"
+}

@@ -4,7 +4,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { loadPage, createWx } = require('./helpers/native-page.cjs');
 const { parseWxml, eventHandlers } = require('./helpers/wxml.cjs');
-const { renderWxml } = require('./helpers/native-preview.cjs');
+const { renderWxml: nativeRenderWxml } = require('./helpers/native-preview.cjs');
+function renderWxml(source, data, options) {
+  return nativeRenderWxml(source, data, {
+    ...options,
+    usingComponents: JSON.parse(fs.readFileSync(path.join(options.root, 'app.json'), 'utf8'))
+      .usingComponents,
+    globalComponents: JSON.parse(fs.readFileSync(path.join(options.root, 'app.json'), 'utf8'))
+      .usingComponents,
+  });
+}
 const { trainingPathAllowed } = require('../utils/training-paths');
 const root = path.resolve(__dirname, '..');
 const U = '10000000-0000-4000-8000-000000000001',

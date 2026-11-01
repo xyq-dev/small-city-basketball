@@ -4,7 +4,7 @@
   "state": "ready",
   "designSource": "synthetic:platform-alignment",
   "static": true,
-  "expectText": ["我的赛事", "合成青锋杯 · 冬季赛", "赛事数据", "扩展服务", "查看我的预约"],
+  "expectText": ["我的赛事", "合成青锋杯 · 冬季赛", "球队与球员数据", "扩展服务", "查看我的预约"],
   "data": {
     "signedIn": true,
     "eventsLoading": false,

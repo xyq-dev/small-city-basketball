@@ -1,3 +1,4 @@
+<scb-header title="接受球队邀请" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page invitation-page">
   <view wx:if="{{error}}" class="notice warning" role="alert"><view class="feedback-title">当前邀请无法接受</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice">{{message}}</view>

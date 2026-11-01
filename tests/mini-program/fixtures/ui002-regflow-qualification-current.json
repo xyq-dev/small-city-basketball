@@ -1,0 +1,69 @@
+{
+  "name": "ui002-regflow-qualification-current",
+  "route": "pages/qualification-precheck/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 R05 6:609 and actual qualification-precheck Page; explicit current subject consent only, no approval",
+  "figmaNode": "6:609",
+  "expectText": [
+    "当前资料版本 V2",
+    "本人同意提交当前版本资料用于本届预审",
+    "无需先买保险",
+    "已有外部保单",
+    "服务尚未正式开放",
+    "提交预审并看进度"
+  ],
+  "data": {
+    "orgId": "00000000-0000-4000-8000-000000000001",
+    "entryId": "00000000-0000-4000-8000-000000000002",
+    "userId": "00000000-0000-4000-8000-000000000004",
+    "workspace": {
+      "canReview": false,
+      "participants": [
+        {
+          "memberId": "00000000-0000-4000-8000-000000000003",
+          "canRequest": true,
+          "materialVersion": 2,
+          "hasRealName": true,
+          "hasIdentity": true,
+          "hasPortrait": true,
+          "hasSignature": true,
+          "requestCurrent": false,
+          "qualification": null
+        }
+      ]
+    },
+    "selectedMemberId": "00000000-0000-4000-8000-000000000003",
+    "selectedParticipant": {
+      "memberId": "00000000-0000-4000-8000-000000000003",
+      "canRequest": true,
+      "materialVersion": 2,
+      "hasRealName": true,
+      "hasIdentity": true,
+      "hasPortrait": true,
+      "hasSignature": true,
+      "requestCurrent": false,
+      "qualification": null
+    },
+    "pending": null,
+    "consent": false,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "message": "",
+    "registrationSteps": [
+      {
+        "key": "profile",
+        "label": "本人资料"
+      },
+      {
+        "key": "qualification",
+        "label": "资格预审"
+      },
+      {
+        "key": "insurance",
+        "label": "保障与审核"
+      }
+    ]
+  },
+  "expectDisabled": ["提交预审并看进度"]
+}

@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "正式改期" }
+{
+  "navigationBarTitleText": "正式改期",
+  "navigationStyle": "custom"
+}

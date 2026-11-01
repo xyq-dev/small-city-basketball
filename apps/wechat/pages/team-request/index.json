@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "申请建队" }
+{
+  "navigationBarTitleText": "申请建队",
+  "navigationStyle": "custom"
+}

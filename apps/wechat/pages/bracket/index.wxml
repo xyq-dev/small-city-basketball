@@ -1,3 +1,4 @@
+<scb-header title="分组与淘汰晋级" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page mgmt-page">
   <view wx:if="{{loading && !event}}" class="card state-panel"><text class="state-label">晋级</text><view class="subtitle">正在读取分组与淘汰资料</view><view class="loading-lines"><view></view><view></view></view></view>
   <view wx:elif="{{!event}}" class="card state-panel">

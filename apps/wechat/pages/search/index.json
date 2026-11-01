@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "全国统一搜索",
-  "usingComponents": { "scb-header": "/components/header/index" }
+  "usingComponents": {
+    "scb-header": "/components/header/index"
+  },
+  "navigationStyle": "custom"
 }

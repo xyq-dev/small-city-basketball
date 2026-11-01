@@ -7,7 +7,7 @@
   "referenceKind": "approved-image",
   "approvedPrimary": true,
   "syntheticData": true,
-  "expectText": ["林越", "陈凯", "合成高州", "资料已审核", "对比已选2位球员"],
+  "expectText": ["林越", "陈凯", "合成高州", "已通过入驻资料审核", "对比已选2位球员"],
   "data": {
     "cards": [
       {
@@ -144,6 +144,6 @@
       "price": "同价 ¥300",
       "date": "10月28日"
     },
-    "informationOpen": false
+    "informationOpen": true
   }
 }

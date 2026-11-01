@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "我的球员中心" }
+{
+  "navigationBarTitleText": "我的球员中心",
+  "navigationStyle": "custom"
+}

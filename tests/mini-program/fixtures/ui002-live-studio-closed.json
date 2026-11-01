@@ -1,0 +1,36 @@
+{
+  "name": "ui002-live-studio-closed",
+  "route": "pages/live-studio/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "designSource": "UI001 design + current native route; synthetic static compatibility only, not real channel acceptance",
+  "expectText": ["本场比赛直播准备", "暂无当前可用频道", "创建待批准直播"],
+  "data": {
+    "sessions": [],
+    "channels": [],
+    "channelsOpen": true,
+    "session": null,
+    "capabilities": {
+      "canManage": true,
+      "canExecute": false,
+      "providerReady": false,
+      "blockers": ["合成：正式微信推流与已核验目标频道尚未配置"]
+    },
+    "pushUrl": "",
+    "capturing": false,
+    "pending": false,
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "合成关闭状态，仅用于布局验证。",
+    "selected": [],
+    "minutes": "90",
+    "budgetFen": "10000",
+    "record": true,
+    "reason": "合成主办方显式操作",
+    "cameraReady": true,
+    "phoneState": "合成状态：本机采集中；静态占位，未实际采集或推流"
+  },
+  "expectDisabled": ["创建待批准直播"],
+  "figmaNode": "8:1332"
+}

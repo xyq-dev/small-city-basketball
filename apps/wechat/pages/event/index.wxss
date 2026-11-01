@@ -11,7 +11,7 @@
 .public-panel {
   width: 100%;
   padding: 24px;
-  border: 1px solid #e8edf2;
+  border: 1px solid #e1e7ef;
   border-radius: 12px;
   background: #fff;
   overflow-wrap: anywhere;
@@ -27,7 +27,7 @@
   margin: 0;
 }
 .event-progress {
-  color: #617286;
+  color: #63758b;
   font-size: 14px;
   line-height: 24px;
 }
@@ -40,8 +40,8 @@
   max-width: 100%;
   padding: 4px 12px;
   border-radius: 999px;
-  color: #617286;
-  background: #f5f7fa;
+  color: #63758b;
+  background: #f4f6fa;
   font-size: 12px;
   line-height: 20px;
 }
@@ -66,7 +66,7 @@
   font-size: 18px;
   line-height: 28px;
   font-weight: 500;
-  color: #152c43;
+  color: #18283f;
 }
 .event-tabs {
   display: flex;
@@ -78,7 +78,7 @@
   min-height: 44px;
   padding: 10px 4px;
   margin: 0;
-  color: #617286;
+  color: #63758b;
   background: transparent;
   font-size: 14px;
   line-height: 24px;
@@ -88,7 +88,7 @@
 }
 .event-tabs button.selected {
   background: #eaf0f7;
-  color: #132c49;
+  color: #123c73;
 }
 .schedule-note {
   margin: 0;
@@ -105,18 +105,18 @@
   flex-direction: column;
   gap: 8px;
   padding: 16px;
-  border: 1px solid #e8edf2;
+  border: 1px solid #e1e7ef;
   border-radius: 16px;
   background: #fff;
 }
 .match-teams {
-  color: #152c43;
+  color: #18283f;
   font-size: 14px;
   line-height: 24px;
   font-weight: 500;
 }
 .match-score {
-  color: #132c49;
+  color: #123c73;
   font-family: Inter, Arial, sans-serif;
   font-size: 32px;
   line-height: 42px;
@@ -138,7 +138,7 @@
 }
 .standings-table {
   width: 100%;
-  border: 1px solid #e8edf2;
+  border: 1px solid #e1e7ef;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -152,8 +152,8 @@
   line-height: 20px;
 }
 .standings-row.table-head {
-  color: #617286;
-  background: #f5f7fa;
+  color: #63758b;
+  background: #f4f6fa;
   font-size: 12px;
   line-height: 20px;
 }
@@ -186,7 +186,7 @@
   align-items: flex-start;
   gap: 16px;
   padding: 12px 0;
-  border-bottom: 1px solid #e8edf2;
+  border-bottom: 1px solid #e1e7ef;
 }
 .placement-row:last-child {
   border-bottom: 0;
@@ -194,7 +194,7 @@
 .placement-rank {
   width: 32px;
   flex: 0 0 32px;
-  color: #132c49;
+  color: #123c73;
   font-family: Inter, Arial, sans-serif;
   font-size: 22px;
   line-height: 28px;
@@ -216,7 +216,7 @@
   padding: 4px 16px;
   border-radius: 999px;
   background: #eaf0f7;
-  color: #132c49;
+  color: #123c73;
   font-size: 12px;
   line-height: 20px;
 }

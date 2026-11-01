@@ -1,0 +1,60 @@
+{
+  "name": "ui002-live-insurance-unknown",
+  "route": "pages/insurance/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "designSource": "UI001 design + current native route; synthetic static compatibility only, not real channel acceptance",
+  "expectText": ["付款已确认", "承保结果未知", "不会重复投保或退保", "向服务方查询原单"],
+  "data": {
+    "orgId": "00000000-0000-4000-8000-000000000001",
+    "entryId": "00000000-0000-4000-8000-000000000002",
+    "memberId": "00000000-0000-4000-8000-000000000003",
+    "userId": "00000000-0000-4000-8000-000000000004",
+    "workspace": {
+      "enabled": true,
+      "reason": null,
+      "products": [
+        {
+          "id": "00000000-0000-4000-8000-000000000005",
+          "name": "合成篮球活动保障方案",
+          "insurer": "合成测试保险服务方",
+          "termsVersion": "synthetic-terms-v1",
+          "termsUrl": "https://synthetic.invalid/terms",
+          "basketballCovered": true
+        }
+      ],
+      "orders": [
+        {
+          "id": "00000000-0000-4000-8000-000000000007",
+          "entryId": "00000000-0000-4000-8000-000000000002",
+          "memberId": "00000000-0000-4000-8000-000000000003",
+          "version": 2,
+          "premiumFen": 123,
+          "refundedFen": 0,
+          "currency": "CNY",
+          "coverageStartDate": "2028-05-01",
+          "coverageEndDate": "2028-05-03",
+          "paymentStatus": "PAID",
+          "policyStatus": "UNKNOWN",
+          "verifiedAt": "2028-04-01T10:00:00Z",
+          "maskedPolicyNumber": "****0001",
+          "canDownloadDocument": false,
+          "pendingOperation": "00000000-0000-4000-8000-000000000099",
+          "canRefresh": true,
+          "canRequestCancellation": false,
+          "currentMaterial": true
+        }
+      ]
+    },
+    "quote": null,
+    "selectedProduct": "00000000-0000-4000-8000-000000000005",
+    "consent": false,
+    "pending": null,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "message": "合成结果未知，保持原单查询。",
+    "checkoutUrl": ""
+  },
+  "figmaNode": "40:1168"
+}

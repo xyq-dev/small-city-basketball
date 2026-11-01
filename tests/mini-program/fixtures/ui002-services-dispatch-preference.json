@@ -1,0 +1,21 @@
+{
+  "name": "ui002-services-dispatch-preference",
+  "route": "pages/dispatch/index",
+  "state": "synthetic-dispatch-preference",
+  "figmaNode": "42:1378",
+  "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
+  "expectText": ["本人跨城接单许可", "当前已保存范围 0 项", "本人确认并启用跨城邀请"],
+  "data": {
+    "dispatchView": "preference",
+    "capabilities": {
+      "enabled": true
+    },
+    "selection": {
+      "label": "合成地区"
+    },
+    "preference": {
+      "enabled": false,
+      "regionIds": []
+    }
+  }
+}

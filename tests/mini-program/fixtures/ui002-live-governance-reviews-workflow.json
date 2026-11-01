@@ -1,0 +1,39 @@
+{
+  "name": "ui002-live-governance-reviews-workflow",
+  "route": "pages/governance-reviews/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "figmaNode": "9:1203",
+  "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
+  "expectText": ["评价已完成且本人参与的服务", "评价当前订单服务", "待独立审核"],
+  "data": {
+    "items": [
+      {
+        "id": "00000000-0000-4000-8000-000000000031",
+        "score": 4,
+        "status": "PENDING_REVIEW",
+        "statusLabel": "待独立审核",
+        "body": "合成真实参与来源的服务评价，未发生实际服务。",
+        "createdAt": "2028-06-01 20:00"
+      }
+    ],
+    "nextCursor": null,
+    "mode": "mine",
+    "isOperator": false,
+    "sourceReady": true,
+    "isPublic": false,
+    "score": 4,
+    "scores": ["1分", "2分", "3分", "4分", "5分"],
+    "body": "合成服务评价，仅用于布局。",
+    "reason": "",
+    "publicConsent": false,
+    "pending": null,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "notice": "合成评价原单入口。",
+    "loginRequired": false,
+    "publicReview": null
+  },
+  "expectDisabled": ["提交评价"]
+}

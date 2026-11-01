@@ -7,7 +7,7 @@ Page({
   data: {
     selection: { label: '全国' },
     kinds: ls.KINDS,
-    kind: '',
+    kind: 'COURT',
     q: '',
     items: [],
     nextCursor: null,
@@ -29,6 +29,7 @@ Page({
       { value: 10000, label: '10公里' },
     ],
     radiusIndex: 2,
+    filtersOpen: false,
     mapVisible: false,
     mapCenter: null,
     mapScale: 13,
@@ -54,6 +55,10 @@ Page({
     pending: null,
     pendingError: '',
     loginRequired: false,
+  },
+  toggleFilters() {
+    if (!this.data.busy && !this.data.pending && !this.data.pendingError)
+      this.setData({ filtersOpen: !this.data.filtersOpen });
   },
   onLoad(query) {
     this._alive = true;
@@ -697,6 +702,9 @@ Page({
   expansion(e) {
     const key = e.currentTarget.dataset.page;
     if (!this.data.busy && ['matching', 'dispatch', 'training'].includes(key)) ui.open(key);
+  },
+  players() {
+    if (!this.data.busy) ui.open('players');
   },
   manage() {
     ls.open('local-manage');

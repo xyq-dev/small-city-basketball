@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "私有赛季" }
+{
+  "navigationBarTitleText": "私有赛季",
+  "navigationStyle": "custom"
+}

@@ -1,0 +1,27 @@
+{
+  "name": "ui002-services-training-waitlist",
+  "route": "pages/training/index",
+  "state": "synthetic-training-waitlist",
+  "figmaNode": "44:1712",
+  "designSource": "UI001 high fidelity fields/cards with current adult-only API semantics; no production data",
+  "expectText": ["候补登记已受理"],
+  "data": {
+    "enabled": true,
+    "viewTab": "mine",
+    "enrollment": {
+      "id": "00000000-0000-4000-8000-000000000012",
+      "state": "WAITLISTED",
+      "stateLabel": "候补登记已受理",
+      "amount": "¥960.00",
+      "deadline": "2028-01-01 08:50（北京时间）",
+      "totalFen": 96000,
+      "termsSnapshot": {
+        "termsText": "合成课程合同：明确每课安排、逐课请假补课和原渠道退款。正式收款以渠道核对结果为准。"
+      },
+      "capabilities": {},
+      "entitlements": [],
+      "consumptions": [],
+      "refunds": []
+    }
+  }
+}

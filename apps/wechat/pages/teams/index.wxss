@@ -1,13 +1,26 @@
-.teams-page { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
-.team-panel { padding:24px; border:1px solid #e8edf2; border-radius:12px; margin-bottom:20px; }
-.team-overview { display:flex; flex-direction:column; gap:16px; }
-.team-overview .subtitle { margin:0; }
-.team-identity { display:flex; align-items:center; gap:12px; color:#132c49; font-weight:500; }
-.team-avatar { width:40px; height:40px; border-radius:50%; background:#eaf0f7; color:#132c49; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:14px; line-height:24px; }
-.team-access { margin-bottom:20px; }
-.feedback-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
-.team-action { margin-bottom:20px; }
-.state-panel .muted { margin:8px 0 16px; }
+.teams-page { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
+.teams-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.teams-tabs button { width:auto; min-width:80px; min-height:44px; margin:0; padding:11px 12px; font-size:14px; line-height:22px; font-weight:500; background:#fff; }
+.teams-tabs button.selected { color:#fff; background:#123c73; }
+.team-panel,.team-profile,.team-transactions { padding:16px; border-radius:16px; margin-bottom:12px; }
+.team-profile { display:flex; flex-direction:column; gap:8px; min-height:126px; }
+.team-person { display:flex; align-items:flex-start; gap:16px; }
+.team-avatar { display:flex; align-items:flex-start; justify-content:center; flex:0 0 64px; width:64px; height:64px; padding:8px; border-radius:12px; background:#eaf0f8; }
+.team-avatar image { width:28px; height:28px; }
+.team-identity-copy { flex:1; min-width:0; }
+.team-name { color:#18283f; font-size:24px; line-height:34px; font-weight:700; overflow-wrap:anywhere; }
+.team-meta { color:#63758b; font-size:12px; line-height:18px; margin-top:4px; }
+.team-copy { color:#18283f; font-size:14px; line-height:22px; overflow-wrap:anywhere; }
+.team-transactions .subtitle { color:#18283f; font-size:18px; line-height:28px; font-weight:700; margin:0 0 8px; }
+.team-cell { display:flex; align-items:center; gap:12px; min-height:58px; text-align:left; padding:8px 0; margin:0 0 8px; border-radius:0; background:transparent; }
+.team-cell::after { border:0; }
+.team-cell-copy { flex:1; min-width:0; color:#18283f; font-size:14px; line-height:22px; font-weight:500; }
+.team-cell .muted { margin-top:2px; font-size:12px; line-height:18px; font-weight:400; }
+.team-chevron { width:16px; height:16px; flex:0 0 16px; }
+.teams-actions { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.teams-actions button { margin:0; min-height:48px; padding:12px; font-size:14px; line-height:22px; font-weight:500; background:#eaf0f8; }
+.feedback-title { font-size:14px; line-height:22px; font-weight:500; margin-bottom:4px; }
 .skeleton-line { height:12px; border-radius:4px; background:#eaf0f7; margin-top:8px; }
 .skeleton-line.short { width:78%; }
 .create-team .field-label { margin-top:16px; }
+.team-action { margin-bottom:12px; }

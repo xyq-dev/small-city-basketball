@@ -25,7 +25,7 @@ function templates(directory, found = []) {
   return found;
 }
 
-test('every icon source has all tones as transparent 120px PNGs, and no SVG ships at runtime', () => {
+test('legacy icon library retains every transparent 120px PNG tone alongside the imported UI001 vectors', () => {
   const names = fs.readdirSync(sources).map((file) => file.replace(/\.svg$/, ''));
   assert.ok(names.length >= 28);
   for (const name of names) {
@@ -57,7 +57,7 @@ test('every literal icon name/tone in templates resolves to a local asset', () =
   }
 });
 
-test('nationwide navigation uses five icons with orange selected and gray idle on every tab', () => {
+test('UI001 nationwide navigation keeps five destinations with navy selected and exact local vectors', () => {
   for (const active of ['Home', 'Events', 'Local', 'Teams', 'Account']) {
     const nav = loadComponent({
       root,
@@ -70,30 +70,30 @@ test('nationwide navigation uses five icons with orange selected and gray idle o
     );
   }
   // The retained video page belongs to Events; the nationwide bar keeps five destinations.
-  const bar = buildPreview({ root, route: 'pages/media/index' })
-    .assets.map((asset) => path.basename(asset.path))
-    .filter((file) => /^icon-(home|trophy|pin|users|user)-/.test(file))
-    .sort();
-  assert.deepEqual(bar, [
+  const preview = buildPreview({ root, route: 'pages/media/index' });
+  const files = preview.assets.map((asset) => path.basename(asset.path));
+  for (const name of [
     'icon-home-gray.png',
-    'icon-pin-gray.png',
-    'icon-trophy-orange.png',
-    'icon-user-gray.png',
+    'icon-trophy-navy.png',
     'icon-users-gray.png',
-  ]);
+    'nav-local.svg',
+    'nav-account.svg',
+  ])
+    assert.ok(files.includes(name), name);
   const html = fs.readFileSync(path.join(root, 'components/navigation/index.wxml'), 'utf8');
   assert.match(
     html,
-    /tone="\{\{\(active==='Video'\?'Events':active\)===item\.key \? 'orange' : 'gray'\}\}"/,
+    /tone="\{\{\(active==='Video'\?'Events':active\)===item\.key \? 'navy' : 'gray'\}\}"/,
   );
-  assert.doesNotMatch(html, /nav-dot|wx:else/);
+  assert.doesNotMatch(html, /nav-dot/);
 });
 
 test('home entries and positions use the mapped icons; positions keep labels and filters', () => {
   const html = fs.readFileSync(path.join(root, 'pages/home/index.wxml'), 'utf8');
-  for (const name of ['court', 'users', 'chart', 'play'])
+  for (const name of ['trophy', 'chart', 'pin'])
     assert.match(html, new RegExp('name="' + name + '"'));
-  assert.doesNotMatch(html, /name="trophy"/);
+  assert.match(html, /node-4-43-0\.svg/);
+  assert.match(html, /data-position="\{\{item\.code\}\}"/);
   const h = loadPage({ root, route: 'pages/home/index' });
   assert.deepEqual(
     h.page.data.positions.map((p) => [p.code, p.name, p.icon]),

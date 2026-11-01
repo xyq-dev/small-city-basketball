@@ -1,0 +1,35 @@
+{
+  "name": "ui002-live-insurance-closed",
+  "route": "pages/insurance/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "designSource": "UI001 design + current native route; synthetic static compatibility only, not real channel acceptance",
+  "expectText": [
+    "两种办理方式",
+    "在线投保暂未开放",
+    "提交已有外部保单审核",
+    "本届暂无在线投保记录"
+  ],
+  "data": {
+    "orgId": "00000000-0000-4000-8000-000000000001",
+    "entryId": "00000000-0000-4000-8000-000000000002",
+    "memberId": "00000000-0000-4000-8000-000000000003",
+    "userId": "00000000-0000-4000-8000-000000000004",
+    "workspace": {
+      "enabled": false,
+      "reason": "合成：正式供应商协议与产品未核验",
+      "orders": [],
+      "products": []
+    },
+    "quote": null,
+    "selectedProduct": "00000000-0000-4000-8000-000000000005",
+    "consent": false,
+    "pending": null,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "message": "合成关闭态，不发生真实投保。",
+    "checkoutUrl": ""
+  },
+  "figmaNode": "40:1032"
+}

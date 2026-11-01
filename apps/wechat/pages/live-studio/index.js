@@ -6,6 +6,8 @@ const blank = {
   channels: [],
   session: null,
   capabilities: null,
+  matchSummary: null,
+  recordConsent: false,
   pushUrl: '',
   capturing: false,
   pending: false,
@@ -21,13 +23,21 @@ Page({
     minutes: '60',
     budgetFen: '10000',
     record: true,
+    channelsOpen: false,
     reason: '主办方显式操作',
     cameraReady: false,
     phoneState: '尚未采集',
+    activeSection: 'setup',
+    workflowSteps: [
+      { key: 'setup', label: '直播准备' },
+      { key: 'capture', label: '采集与停流' },
+      { key: 'channels', label: '频道与媒体' },
+    ],
   },
   onLoad(q = {}) {
     this._alive = true;
     this._visible = true;
+    this.clearRecordConsent();
     try {
       this.org = api.uuid(q.orgId);
       this.match = api.uuid(q.matchId);
@@ -44,19 +54,23 @@ Page({
   },
   onShow() {
     this._visible = true;
+    this.clearRecordConsent();
     if (this.org && !this.data.loading) this.load();
   },
   onHide() {
     this._visible = false;
+    this.clearRecordConsent();
     this.backgroundPause();
   },
   onUnload() {
     this._visible = false;
+    this.clearRecordConsent();
     this.backgroundPause();
     this._alive = false;
     ui.close(this);
   },
   onSessionReset() {
+    this.clearRecordConsent();
     this.stopPhone();
     this._lease = null;
     this._pending = null;
@@ -82,13 +96,25 @@ Page({
     this.setData({ pushUrl: '', capturing: false, phoneState: '本机采集已停止' });
   },
   apply(v) {
+    this.clearRecordConsent();
     this._workspace = v;
     const sessions = v.sessions.map(stream.session),
       selected = sessions.find((s) => s.desired !== 'STOPPED') || sessions[0] || null;
     this.setData({
       sessions,
-      channels: v.channels,
+      channels: v.channels.map((channel) => ({
+        ...channel,
+        selected: this.data.selected.includes(channel.id),
+      })),
       capabilities: v.capabilities,
+      matchSummary: {
+        id: (v.match && v.match.id) || this.match,
+        status: v.match
+          ? typeof api.matchStatus === 'function'
+            ? api.matchStatus(v.match.status)
+            : v.match.status
+          : '状态未提供',
+      },
       session: selected,
     });
     if (
@@ -124,15 +150,78 @@ Page({
   },
   input(e) {
     const f = e.currentTarget.dataset.field;
+    if (['minutes', 'budgetFen'].includes(f)) this.clearRecordConsent();
     if (['minutes', 'budgetFen', 'reason'].includes(f)) this.setData({ [f]: e.detail.value });
   },
   selectChannels(e) {
-    this.setData({ selected: e.detail.value });
+    this.clearRecordConsent();
+    this.setData({
+      selected: e.detail.value,
+      channels: this.data.channels.map((channel) => ({
+        ...channel,
+        selected: e.detail.value.includes(channel.id),
+      })),
+    });
+  },
+  toggleChannelPicker() {
+    if (this.data.busy || this.data.pending) return;
+    this.setData({ channelsOpen: !this.data.channelsOpen });
+  },
+  clearRecordConsent() {
+    this._recordConsent = null;
+    if (this.data.recordConsent) this.setData({ recordConsent: false });
+  },
+  recordConsentChange(e) {
+    this.clearRecordConsent();
+    if (!this._alive || !this._visible || this.data.busy || this.data.pending || !this.data.record)
+      return;
+    if (!Array.isArray(e.detail.value) || !e.detail.value.includes('record')) return;
+    const c = api.getClient();
+    this._recordConsent = {
+      actor: c.viewerId(),
+      revision: c.sessionRevision(),
+      org: this.org,
+      match: this.match,
+    };
+    this.setData({ recordConsent: true });
+  },
+  recordConsentCurrent() {
+    const consent = this._recordConsent,
+      c = api.getClient();
+    return !!(
+      this.data.recordConsent &&
+      this._alive &&
+      this._visible &&
+      consent &&
+      consent.actor === c.viewerId() &&
+      consent.revision === c.sessionRevision() &&
+      consent.org === this.org &&
+      consent.match === this.match
+    );
+  },
+  changeSection(e) {
+    const key = e.detail.key;
+    if (this.data.busy || !this.data.workflowSteps.some((item) => item.key === key)) return;
+    this.setData({ activeSection: key });
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#live-' + key, duration: 200 });
   },
   setRecord(e) {
+    this.clearRecordConsent();
     this.setData({ record: e.detail.value === true });
   },
   async create() {
+    if (!this.data.capabilities || !this.data.capabilities.providerReady) {
+      this.setData({
+        error: '正式直播能力尚未就绪，当前不能创建或开始新直播。已有原操作仍可核对。',
+      });
+      return;
+    }
+    if (this.data.record && !this.recordConsentCurrent()) {
+      this.clearRecordConsent();
+      this.setData({ error: '请明确确认本次申请包含录制；该申请仍须由独立有权管理者批准。' });
+      return;
+    }
     await this.send({
       type: 'CREATE',
       channelIds: this.data.selected,
@@ -146,6 +235,10 @@ Page({
       s = this.data.session,
       guard = ui.guard(this);
     if (!s) return;
+    if (type === 'START' && !this.data.capabilities?.providerReady) {
+      this.setData({ error: '正式直播能力尚未就绪，当前不能开始采集。请核对频道与授权条件。' });
+      return;
+    }
     if (['START', 'PAUSE', 'STOP', 'REVOKE'].includes(type)) {
       if (
         !(await ui.confirm(

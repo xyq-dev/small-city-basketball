@@ -295,10 +295,9 @@ test('native conditions require explicit braces and actually hide management and
   // The compatibility renderer has no live-pusher implementation. Its surrounding real
   // control markup is rendered unchanged; the actual full source was strictly parsed above.
   assert.match(live, /<live-pusher[^>]+url="\{\{pushUrl\}\}"/);
-  const controls = live.replace(
-    /<live-pusher\b[^>]*\/>/g,
-    '<view data-native-camera-placeholder="true"/>',
-  );
+  const controls = live
+    .replace(/<live-pusher\b[^>]*\/>/g, '<view data-native-camera-placeholder="true"/>')
+    .replace(/<scb-(?:header|steps|state)\b[^>]*\/>/g, '<view/>');
   const h = fixture();
   const empty = renderWxml(controls, h.page.data);
   assert.doesNotMatch(empty, /批准直播与所选录像用途|源代次|撤销直播与录像授权/);
@@ -310,6 +309,7 @@ test('native conditions require explicit braces and actually hide management and
   const denied = renderWxml(controls, h.page.data);
   assert.doesNotMatch(denied, /批准直播与所选录像用途|撤销直播与录像授权/);
   assert.match(denied, /合成未准入/);
+  const mediaControls = media.replace(/<scb-(?:header|steps|state)\b[^>]*\/>/g, '<view/>');
   const data = {
     session: snapshot(),
     jobs: [],
@@ -328,10 +328,13 @@ test('native conditions require explicit braces and actually hide management and
     pending: false,
   };
   assert.doesNotMatch(
-    renderWxml(media, data),
+    renderWxml(mediaControls, data),
     /录像时间校准|独立审核并公开产物|按有效得分生成集锦/,
   );
-  assert.match(renderWxml(media, { ...data, canManage: true }), /录像时间校准|独立审核并公开产物/);
+  assert.match(
+    renderWxml(mediaControls, { ...data, canManage: true }),
+    /录像时间校准|独立审核并公开产物/,
+  );
   h.page.onUnload();
 });
 

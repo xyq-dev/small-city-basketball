@@ -1,3 +1,4 @@
+<scb-header title="私有赛季授权" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page grants-page">
   <view class="hero"><view class="title">{{mode === 'organizer' ? '私有赛季提名' : '我的私有赛季授权'}}</view><view class="muted">用途仅为本机构私有赛季统计（PRIVATE_SEASON）；与“公开到预约档案”的授权互相独立，账号绑定本身不产生授权。</view></view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>

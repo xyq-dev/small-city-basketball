@@ -5,17 +5,22 @@ const { loadPage, loadComponent } = require('./helpers/native-page.cjs');
 const { buildPreview } = require('./helpers/native-preview.cjs');
 const root = path.resolve(__dirname, '..');
 
-test('custom-header previews keep the actual header and image assets without a second native title bar', () => {
+test('UI001 home keeps its real header and exact vector assets without a second native title bar', () => {
   const preview = buildPreview({ root, route: 'pages/home/index', width: 390, height: 844 });
   assert.match(preview.phone, /<header class="mini-custom-status"/);
   assert.doesNotMatch(preview.phone, /<header class="mini-native-bar"/);
   assert.match(preview.phone, /按位置找球员/);
-  assert.ok(preview.assets.some((asset) => asset.path.endsWith('court-night.jpg')));
-  assert.ok(preview.assets.some((asset) => asset.path.endsWith('home-slogan.png')));
+  assert.ok(preview.assets.some((asset) => asset.path === 'assets/ui002/node-4-20-0.svg'));
+  assert.ok(preview.assets.some((asset) => asset.path === 'assets/ui002/node-4-43-0.svg'));
+  assert.equal(
+    preview.assets.some((asset) => /court-night|home-slogan/.test(asset.path)),
+    false,
+  );
+  assert.match(preview.phone, /每一场，都值得被看见/);
   assert.ok(preview.assets.every((asset) => !/approved-six-screen|design\/C11/.test(asset.path)));
   const classic = buildPreview({ root, route: 'pages/watch/index' });
-  assert.match(classic.phone, /<header class="mini-native-bar"/);
-  assert.doesNotMatch(classic.phone, /<header class="mini-custom-status"/);
+  assert.match(classic.phone, /<header class="mini-custom-status"/);
+  assert.doesNotMatch(classic.phone, /<header class="mini-native-bar"/);
 });
 
 test('custom-header respects pending-operation locks and actual status/capsule geometry', () => {
@@ -63,9 +68,12 @@ test('header dark-to-light transitions update native status text rather than lea
 });
 
 test('image compatibility keeps declared native aspectFill/widthFix rather than stretching portrait photos', () => {
-  const preview = buildPreview({ root, route: 'pages/home/index' });
+  const fixture = require('../../../tests/mini-program/fixtures/c11-player-detail-ready.json');
+  const preview = buildPreview({ root, route: fixture.route, data: fixture.data });
   assert.match(preview.phone, /data-mini-image-mode="aspectFill"/);
-  assert.match(preview.phone, /data-mini-image-mode="widthFix"/);
+  const event = require('../../../tests/mini-program/fixtures/c10-public-event-ready.json');
+  const eventPreview = buildPreview({ root, route: event.route, data: event.data });
+  assert.match(eventPreview.phone, /data-mini-image-mode="widthFix"/);
   assert.match(preview.phone, /\[data-mini-image-mode=aspectFill\]\{object-fit:cover\}/);
   assert.match(preview.phone, /\[data-mini-image-mode=widthFix\]\{height:auto\}/);
 });

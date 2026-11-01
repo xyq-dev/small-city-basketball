@@ -87,6 +87,7 @@ const privateDefaults = {
   lifecycleAction: '',
   lifecycleReason: '',
   notice: '',
+  managementToolsOpen: false,
 };
 const lifecycleCommands = {
   COMPLETE: { label: '确认本届完赛', note: '完赛后不再接受记分，当前公开观赛链接失效。' },
@@ -275,6 +276,14 @@ Page({
   },
   openSetup() {
     ui.open('event-setup', { orgId: this.orgId, eventId: this.eventId });
+  },
+  openSchedule() {
+    if (!this.data.loading && this.data.manage)
+      ui.open('schedule', { orgId: this.orgId, eventId: this.eventId });
+  },
+  toggleManagementTools() {
+    if (!this.data.loading && this.data.manage)
+      this.setData({ managementToolsOpen: !this.data.managementToolsOpen });
   },
   openBracket() {
     ui.open('bracket', { orgId: this.orgId, eventId: this.eventId });

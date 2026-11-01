@@ -145,6 +145,19 @@ Page({
   invitation() {
     ui.open('invitation');
   },
+  openTeamEntry(e) {
+    if (
+      this._alive === false ||
+      this.data.busy ||
+      this.data.loading ||
+      this.data.uncertain ||
+      this.data.newName !== ''
+    )
+      return;
+    const page = e.currentTarget.dataset.page;
+    if (page === 'public-archive') ui.open(page, { kind: 'TEAM' });
+    else if (page === 'team-request' || page === 'team-join') ui.open(page);
+  },
   async create() {
     if (this.data.busy || !this.data.canCreateTeam || this.data.uncertain) return;
     let intent;

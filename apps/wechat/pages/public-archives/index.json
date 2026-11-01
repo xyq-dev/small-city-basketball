@@ -1,1 +1,5 @@
-{ "navigationBarTitleText": "公开长期档案", "enablePullDownRefresh": false }
+{
+  "navigationBarTitleText": "公开长期档案",
+  "enablePullDownRefresh": false,
+  "navigationStyle": "custom"
+}

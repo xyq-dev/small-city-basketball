@@ -1,0 +1,67 @@
+{
+  "name": "ui002-live-public-ledgers-workflow",
+  "route": "pages/public-ledgers/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "figmaNode": "9:1328",
+  "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
+  "expectText": ["线下账目与实际支付余额分开", "合成赛事经费公示快照", "分享当前公示快照"],
+  "data": {
+    "organizations": [],
+    "orgIndex": 0,
+    "teams": [
+      {
+        "id": null,
+        "name": "机构／公益线下账目"
+      }
+    ],
+    "teamIndex": 0,
+    "teamQuery": "",
+    "items": [],
+    "nextCursor": null,
+    "selected": null,
+    "publicSnapshot": {
+      "title": "合成赛事经费公示快照",
+      "description": "已审批公开快照的合成示例；不代表真实收付款。",
+      "netLabel": "1,200.00",
+      "asOf": "2028-06-01 18:00",
+      "publishedAt": "2028-06-01 19:00",
+      "entryCount": 2,
+      "entries": [
+        {
+          "seq": 1,
+          "occurredOn": "2028-06-01",
+          "kindLabel": "收入记录",
+          "label": "合成赞助线下到账记录",
+          "amountLabel": "2,000.00"
+        },
+        {
+          "seq": 2,
+          "occurredOn": "2028-06-01",
+          "kindLabel": "支出记录",
+          "label": "合成裁判与记录费用",
+          "amountLabel": "800.00"
+        }
+      ]
+    },
+    "isPublic": true,
+    "title": "",
+    "description": "",
+    "authorizationConfirmed": false,
+    "entryKinds": ["收入记录", "支出记录", "冲销已审批记录"],
+    "kindIndex": 0,
+    "occurredOn": "",
+    "label": "",
+    "amount": "",
+    "reversalIndex": 0,
+    "reason": "",
+    "publicConsent": false,
+    "pending": null,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "notice": "合成已审批公示，不含真实账号。",
+    "loginRequired": false
+  },
+  "expectAbsentText": ["创建线下账本"]
+}

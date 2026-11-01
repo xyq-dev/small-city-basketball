@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "加入球队" }
+{
+  "navigationBarTitleText": "加入球队",
+  "navigationStyle": "custom"
+}

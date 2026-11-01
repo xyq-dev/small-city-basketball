@@ -19,5 +19,5 @@
     "publicLoaded": true,
     "publicLoading": false
   },
-  "expectText": ["广东省 / 茂名市 / 高州市", "本地区及下辖地区", "浏览全国"]
+  "expectText": ["广东省 / 茂名市 / 高州市", "暂无进行中赛事", "查看全部赛事"]
 }

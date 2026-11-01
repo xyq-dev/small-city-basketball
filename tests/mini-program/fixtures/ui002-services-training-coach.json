@@ -1,0 +1,19 @@
+{
+  "name": "ui002-services-training-coach",
+  "route": "pages/training-manage/index",
+  "state": "synthetic-training-coach",
+  "figmaNode": "44:1680",
+  "designSource": "UI001 high fidelity fields/cards with current adult-only API semantics; no production data",
+  "expectText": ["合成教练本人周末篮球课", "本课签到与授课"],
+  "data": {
+    "manageTab": "teaching",
+    "teaching": [
+      {
+        "id": "s1",
+        "title": "合成教练本人周末篮球课",
+        "time": "2028-01-01 09:00（北京时间）",
+        "stateLabel": "待上课"
+      }
+    ]
+  }
+}

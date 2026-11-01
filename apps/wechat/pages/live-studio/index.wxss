@@ -1,1 +1,36 @@
-.page{padding:28rpx}.title{font-size:36rpx;font-weight:600;margin-bottom:24rpx}.card{padding:24rpx;background:#fff;border:1rpx solid #ddd;border-radius:16rpx;margin:24rpx 0}.error{color:#b91c1c}.notice{color:#555;font-size:26rpx;padding:16rpx 0}.target{border-top:1rpx solid #ddd;padding-top:20rpx;margin-top:20rpx}label{display:block;padding:14rpx 0}input{box-sizing:border-box;width:100%;min-height:44px;font-size:16px;line-height:22px;border:1rpx solid #bbb;padding:10px 12px;margin:10rpx 0}live-pusher{width:100%;height:400rpx;margin:20rpx 0}button{margin-top:14rpx}
+.live-workspace { padding:16px 16px calc(24px + env(safe-area-inset-bottom)); }
+.live-workspace .card { padding:16px; border:0; border-radius:16px; margin:12px 0; }
+.live-workspace .subtitle { font-size:18px; line-height:28px; font-weight:700; }
+.live-workspace .form-field { display:block; padding:12px; border:1px solid #e1e7ef; border-radius:12px; margin-top:12px; background:#fff; }
+.live-workspace input { width:100%; min-height:44px; margin:4px 0 0; padding:4px 0; border:0; box-sizing:border-box; font-size:16px; line-height:24px; }
+.live-workspace .channel-choice { display:flex; align-items:center; min-height:44px; padding:8px 0; overflow-wrap:anywhere; }
+.live-workspace .record-choice { display:flex; gap:12px; align-items:flex-start; padding:16px 0; }
+.live-workspace .record-choice text { flex:1; min-width:0; }
+.live-workspace live-pusher { display:block; width:100%; height:200px; background:#18283f; border-radius:12px; margin:16px 0; }
+.live-workspace .target { border-top:1px solid #e1e7ef; padding-top:16px; margin-top:16px; }
+.live-workspace button { margin-top:12px; min-height:48px; font-size:16px; white-space:normal; overflow-wrap:anywhere; }
+
+/* UI001 V01 preparation; existing active-session controls remain in their workspace. */
+.live-workspace { padding:16px 16px calc(24px + env(safe-area-inset-bottom)); }
+.live-workspace.has-actions { padding-bottom:calc(112px + env(safe-area-inset-bottom)); }
+.live-match-summary { margin-bottom:12px; }
+.live-match-summary .subtitle { color:#18283f; font-weight:700; }
+.live-preparation-form { display:flex; flex-direction:column; gap:12px; margin-bottom:12px; }
+.live-field { position:relative; display:block; width:100%; min-height:74px; padding:12px; margin:0; border:1px solid #e1e7ef; border-radius:12px; background:#fff; color:#18283f; text-align:left; font-weight:400; }
+.live-field::after { border:0; }
+.live-field[disabled] { background:#fff; color:#18283f; }
+.live-field .field-label { font-size:12px; line-height:18px; margin:0 0 8px; }
+.live-field-value { font-size:14px; line-height:22px; }
+.live-value-field { height:74px; }
+.live-field .live-field-input { position:absolute; left:12px; top:24px; width:calc(100% - 24px); height:44px; min-height:44px; margin:0; padding:10px 0; border:0; background:transparent; color:#18283f; font-size:16px; line-height:24px; }
+.channel-picker { margin:0; }
+.recording-choice-card { margin-bottom:12px; }
+.record-choice,.record-consent { display:flex; align-items:flex-start; gap:8px; min-height:44px; font-size:14px; line-height:22px; }
+.record-choice text,.record-consent text { flex:1; min-width:0; }
+.record-consent { margin-top:8px; }
+.recording-choice-card .small { margin-top:8px; }
+.capability-notice { margin-bottom:12px; }
+.notice-title { margin-bottom:8px; font-size:14px; line-height:22px; font-weight:500; }
+.live-safety-note { margin-bottom:0; }
+.live-create-actions { padding:12px 16px calc(28px + env(safe-area-inset-bottom)); border-radius:0; background:#fff; }
+.live-create-actions .primary { min-height:48px; margin:0 auto; padding:12px; border-radius:12px; font-size:16px; line-height:24px; }

@@ -1,0 +1,53 @@
+{
+  "name": "ui002-services-sponsor-split-unknown",
+  "route": "pages/sponsor-commerce/index",
+  "state": "synthetic-sponsor-split-unknown",
+  "figmaNode": "44:1421",
+  "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
+  "expectText": ["结果未知 · 只核对原编号", "逐项查询原分账", "合成受益机构"],
+  "data": {
+    "enabled": true,
+    "canFinance": true,
+    "detailView": "settlement",
+    "detail": {
+      "order": {
+        "id": "order",
+        "title": "合成赛事广告长名称合同",
+        "amountText": "5000.00",
+        "stateLabel": "交付已验收",
+        "status": "ACCEPTED",
+        "payer_user_id": "payer",
+        "verified_fee_fen": 0
+      },
+      "deliveries": [],
+      "batches": [
+        {
+          "id": "batch",
+          "stateLabel": "结果未知 · 只核对原编号",
+          "status": "UNKNOWN",
+          "pool_fen": 500000,
+          "approvals": [
+            {
+              "id": "approval"
+            }
+          ],
+          "approval_required": 2,
+          "items": [
+            {
+              "id": "recipient",
+              "display_name": "合成受益机构",
+              "stateLabel": "结果待核对",
+              "amountText": "4500.00"
+            }
+          ]
+        }
+      ],
+      "items": [],
+      "refunds": [],
+      "refundRetries": [],
+      "returns": [],
+      "recovery": []
+    }
+  },
+  "expectAbsentText": ["发送已批准分账"]
+}

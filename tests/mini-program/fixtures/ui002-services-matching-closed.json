@@ -1,0 +1,13 @@
+{
+  "name": "ui002-services-matching-closed",
+  "route": "pages/matching/index",
+  "state": "closed-rollout",
+  "figmaNode": "42:1312",
+  "designSource": "Current server capability stays closed; UI001 shared closed/empty states",
+  "expectText": ["撮合暂未开放", "暂无需求"],
+  "expectDisabled": ["发布需求", "管理发现与联系授权"],
+  "data": {
+    "enabled": false,
+    "loading": false
+  }
+}

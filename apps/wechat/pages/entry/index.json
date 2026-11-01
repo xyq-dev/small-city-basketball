@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "本届报名与资料" }
+{
+  "navigationBarTitleText": "本届报名与资料",
+  "navigationStyle": "custom"
+}

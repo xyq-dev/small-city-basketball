@@ -1,0 +1,103 @@
+{
+  "name": "ui002-regflow-material-profile",
+  "route": "pages/participant-materials/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 R03 6:492 and actual participant-materials Page; synthetic form data, not identity or insurance acceptance",
+  "figmaNode": "6:492",
+  "expectText": [
+    "本人真实姓名（私有）",
+    "必要资料",
+    "本人照片 · 必传",
+    "本届规程签署",
+    "已生效在线保单将另行核验",
+    "去资格预审"
+  ],
+  "data": {
+    "mode": "mine",
+    "registrationSteps": [
+      {
+        "key": "profile",
+        "label": "本人资料"
+      },
+      {
+        "key": "qualification",
+        "label": "资格预审"
+      },
+      {
+        "key": "insurance",
+        "label": "保障与审核"
+      }
+    ],
+    "registrationStep": "profile",
+    "materialPanel": "profile",
+    "materialPanels": [
+      {
+        "key": "profile",
+        "label": "本人资料"
+      },
+      {
+        "key": "portrait",
+        "label": "照片"
+      },
+      {
+        "key": "insurance",
+        "label": "已有保单"
+      },
+      {
+        "key": "consent",
+        "label": "本人确认"
+      },
+      {
+        "key": "progress",
+        "label": "审核进度"
+      }
+    ],
+    "entries": [],
+    "workspace": {
+      "entryId": "00000000-0000-4000-8000-000000000002",
+      "memberId": "00000000-0000-4000-8000-000000000003",
+      "eventName": "合成本人报名杯",
+      "teamName": "合成青锋",
+      "startDate": "2028-05-01",
+      "endDate": "2028-05-03",
+      "rules": {
+        "requireInsurance": true,
+        "termsVersion": "registration-materials-v1"
+      },
+      "enabled": true,
+      "frozen": false,
+      "material": null,
+      "capabilities": {
+        "canSave": true,
+        "canSubmit": false,
+        "canWithdrawPublicity": false
+      }
+    },
+    "material": null,
+    "members": [],
+    "form": {
+      "realName": "",
+      "identityNumber": "",
+      "insurer": "",
+      "policyNumber": "",
+      "startDate": "",
+      "endDate": "",
+      "acceptedTerms": false,
+      "publicityConsent": false
+    },
+    "privateDetails": null,
+    "reason": "",
+    "identityChecked": false,
+    "portraitChecked": false,
+    "insuranceChecked": false,
+    "loading": false,
+    "busy": false,
+    "dirty": false,
+    "insuranceDirty": false,
+    "pending": false,
+    "storageError": "",
+    "error": "",
+    "message": "",
+    "loginRequired": false
+  }
+}

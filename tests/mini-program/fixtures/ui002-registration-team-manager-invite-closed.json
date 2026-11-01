@@ -1,0 +1,56 @@
+{
+  "name": "ui002-registration-team-manager-invite-closed",
+  "route": "pages/team/index",
+  "state": "ready",
+  "figmaNode": "5:787",
+  "expectText": ["管理者邀请签发暂未在小程序开放", "由有权机构人员在网页后台办理"],
+  "data": {
+    "team": {
+      "id": "c1000000-0000-4000-8000-000000000001",
+      "orgId": "c1000000-0000-4000-8000-000000000002",
+      "name": "合成石鼓青锋",
+      "version": 3,
+      "members": [
+        {
+          "id": "c1000000-0000-4000-8000-000000000010",
+          "name": "合成林越"
+        },
+        {
+          "id": "c1000000-0000-4000-8000-000000000011",
+          "name": "合成陈凯"
+        },
+        {
+          "id": "c1000000-0000-4000-8000-000000000012",
+          "name": "合成周宁"
+        }
+      ],
+      "grants": [],
+      "capabilities": {
+        "canManage": true,
+        "canInvite": true
+      }
+    },
+    "name": "合成石鼓青锋",
+    "members": [
+      {
+        "id": "c1000000-0000-4000-8000-000000000010",
+        "name": "合成林越",
+        "key": "c1000000-0000-4000-8000-000000000010"
+      },
+      {
+        "id": "c1000000-0000-4000-8000-000000000011",
+        "name": "合成陈凯",
+        "key": "c1000000-0000-4000-8000-000000000011"
+      },
+      {
+        "id": "c1000000-0000-4000-8000-000000000012",
+        "name": "合成周宁",
+        "key": "c1000000-0000-4000-8000-000000000012"
+      }
+    ],
+    "canRegister": true
+  },
+  "primary": true,
+  "designSource": "UI001 T02; manager invitation issuing remains Web-only by the existing transport contract",
+  "expectDisabled": ["邀请球队管理者 · 小程序未开放"]
+}

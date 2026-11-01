@@ -8,12 +8,12 @@
 .account-identity,.account-copy-card { display:flex; flex-direction:column; gap:8px; }
 .account-identity .subtitle,.account-copy-card .subtitle { margin:0; }
 .account-identity button { margin:0; }
-.account-copy-card > view:not(.subtitle) { font-size:14px; line-height:24px; color:#617286; }
+.account-copy-card > view:not(.subtitle) { font-size:14px; line-height:24px; color:#63758b; }
 .account-user { font-size:14px; line-height:24px; font-weight:500; }
 .account-field { margin-bottom:16px; }
-.account-field .field-label { color:#152c43; margin:0; }
+.account-field .field-label { color:#18283f; margin:0; }
 .account-field .field { min-height:44px; margin:4px 0; }
-.account-hint { color:#617286; font-size:11px; line-height:18px; }
+.account-hint { color:#63758b; font-size:11px; line-height:18px; }
 .account-notice { display:flex; flex-direction:column; gap:4px; padding:16px; }
 .account-notice-title { font-size:14px; line-height:24px; font-weight:500; }
 .account-consent { padding:0; margin:0 0 16px; background:transparent; border-radius:0; font-size:12px; line-height:20px; }
@@ -25,11 +25,33 @@
 .account-feedback.success { color:#16734b; background:#e7f5ee; }
 .account-continue { margin-bottom:12px; }
 .menu-group { background:#fff; border-radius:16px; padding:4px 16px; margin-bottom:12px; }
-.menu-title { padding:12px 0 4px; color:#617286; font-size:12px; line-height:20px; font-weight:600; }
-.menu-row { display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 0; border-bottom:1px solid #e8edf2; color:#132c49; font-size:15px; line-height:22px; }
+.menu-title { padding:12px 0 4px; color:#63758b; font-size:12px; line-height:20px; font-weight:600; }
+.menu-row { display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 0; border-bottom:1px solid #e1e7ef; color:#123c73; font-size:15px; line-height:22px; }
 .menu-row:last-child { border-bottom:0; }
 .menu-text { flex:1; min-width:0; overflow-wrap:anywhere; }
-.menu-sub { color:#617286; font-size:12px; line-height:18px; }
+.menu-sub { color:#63758b; font-size:12px; line-height:18px; }
 .account-actions { display:flex; gap:8px; margin-top:4px; }
 .page.account-page .account-actions button { flex:1; min-width:0; width:auto; margin:0; }
 .account-uuid { overflow-wrap:anywhere; font-size:16px; line-height:1.6; padding:8px 0; }
+
+/* UI001 A01: personal facts first; extended consumers remain explicit. */
+.account-profile { display:flex; flex-direction:column; gap:8px; padding:16px; margin-bottom:12px; border-radius:16px; }
+.account-person { display:flex; align-items:flex-start; gap:16px; min-width:0; }
+.account-avatar { display:flex; flex:0 0 64px; width:64px; height:64px; padding:8px; align-items:flex-start; justify-content:center; border-radius:12px; background:#eaf0f8; }
+.account-avatar image { display:block; width:28px; height:28px; }
+.account-person-copy { display:flex; flex:1; min-width:0; flex-direction:column; gap:4px; }
+.account-name { color:#18283f; font-size:24px; line-height:34px; font-weight:700; overflow-wrap:anywhere; }
+.account-person-meta { color:#63758b; font-size:12px; line-height:18px; }
+.account-person-note { color:#18283f; font-size:14px; line-height:22px; }
+.account-primary,.account-workspace { display:flex; flex-direction:column; gap:8px; padding:16px; }
+.account-primary .menu-title,.account-workspace .menu-title { margin:0; padding:0; color:#18283f; font-size:18px; line-height:28px; font-weight:700; }
+.account-primary .menu-row,.account-workspace .menu-row { display:flex; align-items:center; width:100%; min-height:58px; margin:0; padding:8px 0; border:0; border-radius:0; background:transparent; color:#18283f; font-size:14px; line-height:22px; font-weight:500; text-align:left; }
+.account-primary .menu-row::after,.account-workspace .menu-row::after { border:0; }
+.account-primary .menu-row[disabled],.account-workspace .menu-row[disabled] { background:transparent; color:#63758b; }
+.account-primary .menu-text,.account-workspace .menu-text { display:flex; flex-direction:column; gap:2px; }
+.account-primary .menu-sub,.account-workspace .menu-sub { font-size:12px; line-height:18px; font-weight:400; }
+.menu-icon { display:block; flex:0 0 22px; width:22px; height:22px; }
+.menu-chevron { display:block; flex:0 0 16px; width:16px; height:16px; }
+.account-security-entry { min-height:48px; margin:0 0 12px; padding:12px; background:#eaf0f8; color:#123c73; border-radius:12px; font-size:14px; line-height:22px; font-weight:500; }
+.account-more-entry { min-height:44px; margin:0 0 12px; font-size:14px; line-height:22px; }
+.account-order-links .menu-row { margin:0; width:100%; border-radius:0; text-align:left; font-size:14px; font-weight:500; }

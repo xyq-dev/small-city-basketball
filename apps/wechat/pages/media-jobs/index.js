@@ -1,7 +1,16 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const stream = require('../../utils/streaming');
-const blank = { session: null, jobs: [], artifacts: [], canManage: false, pending: false };
+const blank = {
+  session: null,
+  jobs: [],
+  artifacts: [],
+  canManage: false,
+  pending: false,
+  expandedJobId: '',
+  expandedArtifactId: '',
+  calibrationOpen: false,
+};
 const status = {
   QUEUED: '排队中',
   RUNNING: '处理中',
@@ -60,6 +69,25 @@ Page({
   input(e) {
     const f = e.currentTarget.dataset.field;
     if (['anchorAt', 'offsetMs', 'reason'].includes(f)) this.setData({ [f]: e.detail.value });
+  },
+  toggleJob(e) {
+    if (this.data.busy) return;
+    const id = e.currentTarget.dataset.id;
+    if (!this.data.jobs.some((job) => job.id === id)) return;
+    this.setData({
+      expandedJobId: this.data.expandedJobId === id ? '' : id,
+      calibrationOpen: false,
+    });
+  },
+  toggleArtifact(e) {
+    if (this.data.busy) return;
+    const id = e.currentTarget.dataset.id;
+    if (!this.data.artifacts.some((artifact) => artifact.id === id)) return;
+    this.setData({ expandedArtifactId: this.data.expandedArtifactId === id ? '' : id });
+  },
+  toggleCalibration() {
+    if (this.data.busy || this.data.pending || !this.data.canManage) return;
+    this.setData({ calibrationOpen: !this.data.calibrationOpen });
   },
   async load() {
     if (!this._alive || !this.org || this.data.busy || this.data.loading) return;

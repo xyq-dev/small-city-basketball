@@ -1,0 +1,28 @@
+{
+  "name": "ui002-registration-archive-unknown-statistics",
+  "route": "pages/public-archive/index",
+  "state": "synthetic-populated",
+  "designSource": "UI001 actual native route and capability states; synthetic data only",
+  "expectText": [
+    "合成球员独立公开档案",
+    "未采集个人得分",
+    "专业数据保持未知",
+    "暂无当前有效的授权确认样本"
+  ],
+  "data": {
+    "archive": {
+      "displayName": "合成球员独立公开档案",
+      "kind": "PLAYER",
+      "points": null,
+      "confirmedMatchCount": 1,
+      "recordedMatchCount": 0,
+      "pointsPerRecordedMatch": null,
+      "fouls": null,
+      "technical": null,
+      "recentRecords": []
+    },
+    "notice": "只展示当前有效的独立授权来源。",
+    "loading": false
+  },
+  "figmaNode": "5:879"
+}

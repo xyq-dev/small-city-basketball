@@ -1,3 +1,4 @@
+<scb-header title="记分任务" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page mgmt-page">
   <view class="intro-card">
     <view class="subtitle">记分与赛果确认</view>

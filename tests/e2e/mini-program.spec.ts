@@ -184,12 +184,118 @@ async function measureLayout(frame: Frame) {
         clientWidth: element.clientWidth,
         scrollWidth: element.scrollWidth,
       }));
+    const localHeadingElement = document.querySelector('.local-heading');
+    const localCopy = localHeadingElement?.firstElementChild;
+    const localTitle = localCopy?.querySelector('.title');
+    let localHeading: { copyWidth: number; titleWidth: number; titleLines: number } | null = null;
+    if (localCopy && localTitle) {
+      const range = document.createRange();
+      range.selectNodeContents(localTitle);
+      localHeading = {
+        copyWidth: localCopy.getBoundingClientRect().width,
+        titleWidth: localTitle.getBoundingClientRect().width,
+        titleLines: new Set(
+          Array.from(range.getClientRects()).map((rect) => Math.round(rect.top * 100) / 100),
+        ).size,
+      };
+    } else if (localHeadingElement) {
+      localHeading = { copyWidth: 0, titleWidth: 0, titleLines: 0 };
+    }
+    const quoteBounds = (rect: DOMRect) => ({
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom,
+    });
+    const wrappedQuoteAmounts: Array<{
+      selector: string;
+      text: string;
+      lines: number;
+      problem?: string;
+      amountRect?: ReturnType<typeof quoteBounds>;
+      columnRect?: ReturnType<typeof quoteBounds>;
+    }> = [];
+    for (const selector of [
+      '.profile-quote .quote-total-price',
+      '.profile-quote .quote-price',
+      '.profile-quote .fee-amount',
+    ]) {
+      for (const element of Array.from(document.querySelectorAll(selector)).filter(visible)) {
+        const range = document.createRange();
+        let text = element.textContent?.trim() || '';
+        if (element.classList.contains('quote-price')) {
+          // The service amount is the direct text node; the smaller / 场 unit
+          // belongs to its own native text element and has a different baseline.
+          const amount = Array.from(element.childNodes).find(
+            (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+          );
+          if (!amount) {
+            wrappedQuoteAmounts.push({ selector, text, lines: 0 });
+            continue;
+          }
+          const value = amount.textContent || '';
+          text = value.trim();
+          range.setStart(amount, value.length - value.trimStart().length);
+          range.setEnd(amount, value.trimEnd().length);
+        } else {
+          range.selectNodeContents(element);
+        }
+        const amountRects = Array.from(range.getClientRects()).filter(
+          (rect) => rect.width > 0 && rect.height > 0,
+        );
+        const lines = new Set(amountRects.map((rect) => Math.round(rect.top * 100) / 100)).size;
+        if (lines !== 1) wrappedQuoteAmounts.push({ selector, text, lines });
+        const column = element.closest(
+          element.classList.contains('quote-total-price') ? '.quote-total' : '.quote-service',
+        );
+        if (column) {
+          const bounds = column.getBoundingClientRect();
+          for (const rect of amountRects) {
+            if (
+              rect.left < bounds.left - 1 ||
+              rect.right > bounds.right + 1 ||
+              rect.top < bounds.top - 1 ||
+              rect.bottom > bounds.bottom + 1
+            )
+              wrappedQuoteAmounts.push({
+                selector,
+                text,
+                lines,
+                problem: 'outside containing quote column',
+                amountRect: quoteBounds(rect),
+                columnRect: quoteBounds(bounds),
+              });
+          }
+        }
+      }
+    }
+    const overlappingQuotes: Array<{
+      service: ReturnType<typeof quoteBounds>;
+      total: ReturnType<typeof quoteBounds>;
+    }> = [];
+    for (const quote of Array.from(document.querySelectorAll('.profile-quote')).filter(visible)) {
+      const service = quote.querySelector('.quote-service');
+      const total = quote.querySelector('.quote-total');
+      if (!service || !total) continue;
+      const left = service.getBoundingClientRect();
+      const right = total.getBoundingClientRect();
+      if (
+        Math.min(left.right, right.right) > Math.max(left.left, right.left) &&
+        Math.min(left.bottom, right.bottom) > Math.max(left.top, right.top)
+      )
+        overlappingQuotes.push({ service: quoteBounds(left), total: quoteBounds(right) });
+    }
     return {
       innerWidth: window.innerWidth,
       viewport,
       documentWidth: document.documentElement.scrollWidth,
       bodyWidth: document.body.scrollWidth,
       contentHeight: document.documentElement.scrollHeight,
+      customHeaderCount: document.querySelectorAll('.scb-header').length,
+      nativeHeaderCount: document.querySelectorAll('.mini-native-bar').length,
+      localHeading,
+      wrappedQuoteAmounts,
+      overlappingQuotes,
       buttonCount: buttons.length,
       fieldCount: fields.length,
       overflow,
@@ -215,6 +321,8 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     'initial-home': 'home',
     'c10-core-home-ready': 'home',
     'c11-home-ready': 'home',
+    'ui002-root-home-public': 'home',
+    'ui002-root-home-error': 'home',
     'players-collapsed': 'players',
     'c10-core-players-ready': 'players',
     'c11-player-market-ready': 'players',
@@ -241,6 +349,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
         fontSize: parseFloat(style.fontSize),
         lineHeight: parseFloat(style.lineHeight),
         radius: parseFloat(style.borderTopLeftRadius),
+        padding: parseFloat(style.paddingLeft),
         background: style.backgroundColor,
         color: style.color,
       };
@@ -252,6 +361,17 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       statusBars: document.querySelectorAll('.mini-custom-status').length,
       hero: measure('.home-hero'),
       homeAction: measure('.home-primary'),
+      homeFilters: measure('.home-filters'),
+      homeBall: measure('.home-brand-ball'),
+      homeNav: measure('.mobile-nav'),
+      homeSelectedNav: measure('.nav-item.selected'),
+      homeVectors: Array.from(
+        document.querySelectorAll<HTMLImageElement>('.home-brand-ball,.header-brand img'),
+      ).map((image) => ({
+        loaded: image.complete && image.naturalWidth > 0,
+        width: image.width,
+        height: image.height,
+      })),
       search: measure('.market-search'),
       playerCard: measure('.player-card'),
       portrait: measure('.player-portrait'),
@@ -261,7 +381,20 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       tableCell: measure('.comparison-cell'),
       columns: document.querySelectorAll('.compare-column').length,
       profileHero: measure('.profile-hero'),
-      profilePortrait: measure('.profile-hero-image'),
+      profilePortrait: measure('.profile-portrait'),
+      profileIdentity: measure('.profile-identity'),
+      profileAvatar: measure('.profile-avatar'),
+      profileAvatarIcon: measure('.profile-avatar-icon'),
+      profileName: measure('.profile-name'),
+      profileMeta: measure('.profile-meta'),
+      profileSamples: measure('.profile-samples'),
+      profileMetric: measure('.profile-metrics .metric-value'),
+      profileFactCount: document.querySelectorAll('.profile-metric').length,
+      profileAvailability: measure('.availability-card'),
+      profileQuotePrice: measure('.profile-quote .quote-price'),
+      profileQuoteTotal: measure('.profile-quote .quote-total-price'),
+      profileFooter: measure('.profile-action'),
+      profileSecondary: measure('.profile-action > .secondary'),
       wrappedMetricLabels: Array.from(document.querySelectorAll('.label-cell'))
         .filter((cell) => {
           const range = document.createRange();
@@ -273,9 +406,9 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       scopeRail: measure('.scope-rail'),
       selectedPlayer: measure('.selected-player'),
       arrangement: measure('.arrangement-summary'),
-      orderCard: measure('.booking-order-card'),
+      orderCard: measure('.booking-progress-card'),
       orderTabs: measure('.booking-view-tabs'),
-      orderMore: Array.from(document.querySelectorAll('.order-more')).map((button) => {
+      orderMore: Array.from(document.querySelectorAll('.cooperation-expand')).map((button) => {
         const rect = button.getBoundingClientRect();
         return {
           text: button.textContent?.trim(),
@@ -284,7 +417,10 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
           height: rect.height,
         };
       }),
-      action: measure('.action-bar > .primary'),
+      action: measure('.action-bar .primary'),
+      compareSecondary: measure('.action-bar .secondary'),
+      filterChip: measure('.filter-chip'),
+      bookingField: measure('.booking-field'),
       photographs: Array.from(
         document.querySelectorAll<HTMLImageElement>('img[src^="data:image/jpeg"]'),
       ).map((image) => ({
@@ -298,17 +434,18 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     };
   });
   expect(metrics.fontFamily).toContain('Noto Sans CJK SC');
-  expect(metrics.header?.height).toBe(80);
+  expect(metrics.header?.height).toBe(84);
   expect(metrics.duplicateNativeHeader).toBe(0);
   expect(metrics.statusBars).toBe(1);
   if (scenario.startsWith('c11-')) {
     const minimumPhotos: Record<string, number> = {
-      home: 1,
-      players: 2,
+      home: 0,
+      // UI002 draws these screens with vector icons. The player profile still uses one photograph.
+      players: 0,
       player: 1,
-      compare: 2,
-      'booking-create': 1,
-      bookings: 2,
+      compare: 0,
+      'booking-create': 0,
+      bookings: 0,
     };
     expect(metrics.photographs.length).toBeGreaterThanOrEqual(minimumPhotos[group]);
     expect(
@@ -324,51 +461,116 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     ).toBe(true);
   }
   if (group === 'home') {
-    expect(metrics.hero?.width).toBe(width);
-    expect(metrics.hero?.height).toBe(width <= 360 ? 400 : 430);
-    expect(metrics.homeAction?.width).toBe(214);
-    expect(metrics.homeAction?.height).toBe(52);
-    expect(metrics.homeAction?.background).toBe('rgb(255, 107, 45)');
-    expect(metrics.homeAction?.color).toBe('rgb(255, 255, 255)');
+    // UI001 H01 explicitly replaces the historical C11 full-bleed photograph.
+    // At 320px the real title may wrap and grow the card; the 390/430 targets stay 186px.
+    expect(metrics.hero?.x).toBe(16);
+    expect(metrics.hero?.width).toBe(width - 32);
+    expect(metrics.hero?.radius).toBe(16);
+    expect(metrics.hero?.background).toBe('rgb(18, 60, 115)');
+    if (width >= 390) expect(metrics.hero?.height).toBe(186);
+    else {
+      expect(metrics.hero?.height).toBeGreaterThanOrEqual(186);
+      expect(metrics.hero?.height).toBeLessThanOrEqual(224);
+    }
+    expect(metrics.homeFilters?.x).toBe(16);
+    expect(metrics.homeFilters?.height).toBeGreaterThanOrEqual(44);
+    expect(metrics.homeBall?.width).toBe(68);
+    expect(metrics.homeBall?.height).toBe(68);
+    expect(metrics.homeAction?.x).toBe(32);
+    expect(metrics.homeAction?.width).toBe(width - 64);
+    expect(metrics.homeAction?.height).toBe(48);
+    expect(metrics.homeAction?.radius).toBe(12);
+    expect(metrics.homeAction?.background).toBe('rgb(242, 140, 40)');
+    expect(metrics.homeAction?.color).toBe('rgb(18, 60, 115)');
+    expect(metrics.homeNav?.height).toBe(83);
+    expect(metrics.homeSelectedNav?.color).toBe('rgb(18, 60, 115)');
+    expect(metrics.homeVectors).toHaveLength(2);
+    expect(metrics.homeVectors.every((asset) => asset.loaded && asset.width === asset.height)).toBe(
+      true,
+    );
+    expect(metrics.photographs).toEqual([]);
   } else {
-    expect(metrics.action?.x).toBe(12);
-    expect(metrics.action?.width).toBe(width - 24);
-    expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
+    if (!['player', 'booking-create', 'bookings', 'players', 'compare'].includes(group)) {
+      expect(metrics.action?.x).toBe(12);
+      expect(metrics.action?.width).toBe(width - 24);
+    }
+    if (group !== 'bookings') expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
     if (group === 'players') {
-      expect(metrics.search?.x).toBe(12);
-      expect(metrics.search?.y).toBe(92);
-      expect(metrics.search?.height).toBe(44);
-      expect(metrics.playerCard?.x).toBe(12);
-      expect(metrics.playerCard?.y).toBe(196);
-      expect(metrics.playerCard?.width).toBe(width - 24);
-      expect(metrics.playerCard?.radius).toBe(12);
-      expect(metrics.portrait?.width).toBe(width <= 360 ? 76 : 94);
+      expect(metrics.action?.x).toBe(16);
+      expect(metrics.action?.width).toBe(width - 32);
+      expect(metrics.action?.radius).toBe(12);
+      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
+      expect(metrics.filterChip?.x).toBe(16);
+      expect(metrics.filterChip?.height).toBe(44);
+      expect(metrics.portrait?.width).toBe(22);
+      expect(metrics.portrait?.height).toBe(22);
     } else if (group === 'compare') {
-      const metricWidth = width <= 360 ? 94 : 100;
-      expect(metrics.metricColumn?.width).toBe(metricWidth);
-      const expected = metrics.columns === 2 ? (width - 24 - metricWidth) / 2 : 125;
-      expect(metrics.playerColumn?.width).toBeCloseTo(expected, 1);
-      expect(metrics.tableHead?.height).toBe(204);
-      expect(metrics.tableCell?.height).toBe(38);
+      const buttonWidth = (width - 32 - 12) / 2;
+      expect(metrics.compareSecondary?.x).toBe(16);
+      expect(metrics.compareSecondary?.width).toBeCloseTo(buttonWidth, 1);
+      expect(metrics.action?.x).toBeCloseTo(16 + buttonWidth + 12, 1);
+      expect(metrics.action?.width).toBeCloseTo(buttonWidth, 1);
+      expect(metrics.compareSecondary?.height).toBeGreaterThanOrEqual(48);
       expect(metrics.wrappedMetricLabels).toEqual([]);
     } else if (group === 'player') {
-      expect(metrics.profileHero?.height).toBe(width <= 360 ? 240 : 260);
-      expect(metrics.profilePortrait?.width).toBeCloseTo(width * 0.72, 1);
-      expect(metrics.profilePortrait?.y).toBe(width <= 360 ? -40 : -50);
-      expect(metrics.profileQuote?.x).toBe(0);
-      expect(metrics.profileQuote?.width).toBe(width);
-      expect(metrics.action?.background).toBe('rgb(255, 107, 45)');
+      // UI001 T07 replaces the C11 photograph hero with a compact identity card.
+      expect(metrics.profileHero).toBeNull();
+      expect(metrics.header?.background).toBe('rgb(255, 255, 255)');
+      for (const card of [
+        metrics.profileIdentity,
+        metrics.profileSamples,
+        metrics.profileAvailability,
+        metrics.profileQuote,
+      ]) {
+        expect(card?.x).toBe(16);
+        expect(card?.width).toBe(width - 32);
+        expect(card?.radius).toBe(16);
+        expect(card?.padding).toBe(16);
+      }
+      expect(metrics.profileIdentity?.height).toBeGreaterThanOrEqual(126);
+      if (width >= 390) expect(metrics.profileIdentity?.height).toBe(126);
+      expect(metrics.profileAvatar?.width).toBe(64);
+      expect(metrics.profileAvatar?.height).toBe(64);
+      expect(metrics.profilePortrait?.width).toBe(64);
+      expect(metrics.profilePortrait?.height).toBe(64);
+      expect(metrics.profileName?.fontSize).toBe(24);
+      expect(metrics.profileName?.lineHeight).toBe(34);
+      expect(metrics.profileMeta?.fontSize).toBe(12);
+      expect(metrics.profileMeta?.lineHeight).toBe(18);
+      expect(metrics.profileSamples?.height).toBe(86);
+      expect(metrics.profileFactCount).toBe(2);
+      expect(metrics.profileMetric?.fontSize).toBe(24);
+      expect(metrics.profileMetric?.lineHeight).toBe(32);
+      expect(metrics.profileAvailability?.height).toBeGreaterThanOrEqual(112);
+      for (const amount of [metrics.profileQuotePrice, metrics.profileQuoteTotal]) {
+        expect(amount?.fontSize).toBe(14);
+        expect(amount?.lineHeight).toBe(22);
+      }
+      expect(metrics.profileFooter?.height).toBe(88);
+      expect(metrics.profileFooter?.background).toBe('rgb(255, 255, 255)');
+      expect(metrics.profileSecondary?.x).toBe(16);
+      expect(metrics.action?.x).toBe(width / 2 + 6);
+      for (const button of [metrics.profileSecondary, metrics.action]) {
+        expect(button?.width).toBe((width - 44) / 2);
+        expect(button?.height).toBe(48);
+        expect(button?.radius).toBe(12);
+      }
+      expect(metrics.profileSecondary?.background).toBe('rgb(234, 240, 248)');
+      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
     } else if (group === 'booking-create') {
       expect(metrics.scopeRail?.height).toBe(44);
-      expect(metrics.selectedPlayer?.height).toBeGreaterThanOrEqual(84);
-      expect(metrics.arrangement?.x).toBe(12);
-      expect(metrics.arrangement?.width).toBe(width - 24);
-      expect(metrics.action?.background).toBe('rgb(255, 107, 45)');
+      expect(metrics.bookingField?.height).toBeGreaterThanOrEqual(74);
+      expect(metrics.bookingField?.x).toBe(16);
+      expect(metrics.bookingField?.width).toBe(width - 32);
+      expect(metrics.action?.x).toBe(16);
+      expect(metrics.action?.width).toBe(width - 32);
+      expect(metrics.action?.radius).toBe(12);
+      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
     } else if (group === 'bookings') {
-      expect(metrics.orderTabs?.height).toBe(44);
-      expect(metrics.orderCard?.x).toBe(12);
-      expect(metrics.orderCard?.width).toBe(width - 24);
-      expect(metrics.orderCard?.radius).toBe(12);
+      expect(metrics.orderTabs?.height).toBeGreaterThanOrEqual(44);
+      expect(metrics.orderCard?.x).toBe(16);
+      expect(metrics.orderCard?.width).toBe(width - 32);
+      expect(metrics.orderCard?.radius).toBe(16);
       expect(metrics.orderMore.length).toBe(2);
       // An icon, not a text glyph, with a 44px target.
       expect(
@@ -379,7 +581,11 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       ).toBe(true);
     }
   }
-  return { source: 'approved:C11', group, ...metrics };
+  return {
+    source: group === 'home' ? 'UI001:H01' : group === 'player' ? 'UI001:T07' : 'approved:C11',
+    group,
+    ...metrics,
+  };
 }
 
 test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机验收）', () => {
@@ -419,7 +625,43 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
           await expect(frame.getByRole('button', { name, exact: true }).first()).toBeDisabled();
         for (const name of scenario.expectEnabled || [])
           await expect(frame.getByRole('button', { name, exact: true }).first()).toBeEnabled();
+        if (scenario.name === 'ui002-services-player-large' && width === 390) {
+          const service = frame.locator('.profile-quote .quote-service');
+          const previousStyle = await service.evaluate((element) => {
+            const prior = element.getAttribute('style');
+            // The new T07 uses 14px fee rows. Force an insufficient column,
+            // rather than relying on the superseded C11 140px/big-price layout.
+            (element as HTMLElement).style.flex = '0 0 24px';
+            (element as HTMLElement).style.width = '24px';
+            return prior;
+          });
+          try {
+            const negative = await measureLayout(frame);
+            const negativePath = testInfo.outputPath('native-quote-negative-control.json');
+            fs.mkdirSync(path.dirname(negativePath), { recursive: true });
+            fs.writeFileSync(negativePath, JSON.stringify(negative, null, 2));
+            await testInfo.attach('native-quote-negative-control.json', {
+              path: negativePath,
+              contentType: 'application/json',
+            });
+            expect(
+              negative.wrappedQuoteAmounts.some(
+                (amount) => amount.problem === 'outside containing quote column',
+              ),
+              'an insufficient quote column must fail the amount boundary guard',
+            ).toBe(true);
+          } finally {
+            await service.evaluate((element, prior) => {
+              if (prior === null) element.removeAttribute('style');
+              else element.setAttribute('style', prior);
+            }, previousStyle);
+          }
+        }
         const layout = await measureLayout(frame);
+        expect(
+          layout.customHeaderCount > 0 && layout.nativeHeaderCount > 0,
+          'custom scb-header and native navigation must not coexist',
+        ).toBe(false);
         if (scenario.name === 'c10-team-team-ready') {
           await expect(frame.locator('.member-table-row')).toHaveCount(3);
           const clippedLabels = await frame.locator('.member-table-row').evaluateAll((rows) =>
@@ -470,6 +712,27 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
           path: diagnosticPath,
           contentType: 'application/json',
         });
+
+        if (layout.localHeading) {
+          expect(
+            layout.localHeading.copyWidth,
+            'local heading copy must keep a readable column',
+          ).toBeGreaterThanOrEqual(180);
+          expect(
+            layout.localHeading.titleWidth,
+            'local title must not collapse beside the city',
+          ).toBeGreaterThanOrEqual(180);
+          expect(layout.localHeading.titleLines).toBeGreaterThan(0);
+          expect(
+            layout.localHeading.titleLines,
+            'local title must not become a vertical column',
+          ).toBeLessThanOrEqual(2);
+        }
+        expect(
+          layout.wrappedQuoteAmounts,
+          'player service and total quote amounts must each remain on one line',
+        ).toEqual([]);
+        expect(layout.overlappingQuotes, 'player quote columns must not overlap').toEqual([]);
 
         // Measure the iframe's document, never just the outer preview wrapper.
         expect(layout.innerWidth).toBe(width);

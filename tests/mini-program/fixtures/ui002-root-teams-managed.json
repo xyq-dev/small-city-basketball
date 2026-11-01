@@ -1,0 +1,48 @@
+{
+  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "static": true,
+  "name": "ui002-root-teams-managed",
+  "route": "pages/teams/index",
+  "state": "populated",
+  "figmaNode": "4:286",
+  "data": {
+    "teams": [
+      {
+        "id": "c1000000-0000-4000-8000-000000000001",
+        "orgId": "c1000000-0000-4000-8000-000000000002",
+        "name": "合成超长名称球队用于验证领队管理与报名入口换行",
+        "version": 3,
+        "members": [
+          {
+            "id": "c1000000-0000-4000-8000-000000000010",
+            "name": "合成林越"
+          },
+          {
+            "id": "c1000000-0000-4000-8000-000000000011",
+            "name": "合成陈凯"
+          },
+          {
+            "id": "c1000000-0000-4000-8000-000000000012",
+            "name": "合成周宁"
+          }
+        ],
+        "grants": [],
+        "capabilities": {
+          "canManage": true,
+          "canInvite": false
+        },
+        "canRegister": true
+      }
+    ],
+    "organizations": [
+      {
+        "id": "c1000000-0000-4000-8000-000000000002",
+        "name": "合成篮协",
+        "role": "ORG_ADMIN"
+      }
+    ],
+    "selectedOrg": "c1000000-0000-4000-8000-000000000002",
+    "loading": false
+  },
+  "expectText": ["合成超长名称球队", "进入球队", "选择可报名赛事"]
+}

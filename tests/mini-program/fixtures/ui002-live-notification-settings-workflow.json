@@ -1,0 +1,55 @@
+{
+  "name": "ui002-live-notification-settings-workflow",
+  "route": "pages/notification-settings/index",
+  "state": "synthetic-ui002",
+  "static": true,
+  "figmaNode": "5:360",
+  "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
+  "expectText": ["每次订阅由本人明确选择", "正式微信模板或通道尚未配置"],
+  "data": {
+    "enabled": false,
+    "kinds": [
+      {
+        "kind": "REGISTRATION_REVIEW",
+        "templateId": "synthetic-template-0",
+        "label": "报名审核更新"
+      },
+      {
+        "kind": "MATCH_RESCHEDULED",
+        "templateId": "synthetic-template-1",
+        "label": "比赛改期通知"
+      },
+      {
+        "kind": "MATCH_STARTING",
+        "templateId": "synthetic-template-2",
+        "label": "开赛前提醒"
+      }
+    ],
+    "selected": "MATCH_STARTING",
+    "intent": null,
+    "pending": false,
+    "busy": false,
+    "error": "",
+    "message": "合成界面数据，仅供布局校验；未发生真实授权或发送。",
+    "subscriptions": [
+      {
+        "id": "00000000-0000-4000-8000-000000000004",
+        "kind": "MATCH_STARTING",
+        "state": "AVAILABLE",
+        "label": "开赛前提醒",
+        "stateLabel": "本次许可待使用",
+        "createdAt": "2028-06-01T10:00:00Z"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000005",
+        "kind": "REGISTRATION_REVIEW",
+        "state": "REVOKED",
+        "label": "报名审核更新",
+        "stateLabel": "已撤销",
+        "createdAt": "2028-05-31T10:00:00Z"
+      }
+    ],
+    "loginRequired": false
+  },
+  "expectDisabled": ["准备本次订阅"]
+}

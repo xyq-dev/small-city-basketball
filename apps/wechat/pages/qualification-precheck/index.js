@@ -7,12 +7,19 @@ Page({
     entryId: '',
     userId: '',
     workspace: null,
+    selectedMemberId: '',
+    selectedParticipant: null,
     pending: null,
     consent: false,
     busy: false,
     loading: false,
     error: '',
     message: '',
+    registrationSteps: [
+      { key: 'profile', label: '本人资料' },
+      { key: 'qualification', label: '资格预审' },
+      { key: 'insurance', label: '保障与审核' },
+    ],
   },
   onLoad(q) {
     try {
@@ -31,6 +38,8 @@ Page({
     this.setData({
       userId: '',
       workspace: null,
+      selectedMemberId: '',
+      selectedParticipant: null,
       pending: null,
       consent: false,
       busy: false,
@@ -44,11 +53,31 @@ Page({
     this.onHide();
     this.setData({ busy: false, loading: false, error: '登录身份已变化，请重新读取。' });
   },
-  materials() {
+  materials(e) {
+    if (this.data.busy || this.data.loading || this.data.pending || this._invalid) return;
     ui.open('participant-materials', {
       orgId: this.data.orgId,
       entryId: this.data.entryId,
       mode: this.data.workspace?.canReview ? 'review' : 'mine',
+      panel: e?.detail?.key === 'insurance' ? 'insurance' : 'profile',
+    });
+  },
+  registrationStepChange(e) {
+    if (['profile', 'insurance'].includes(e.detail?.key)) this.materials(e);
+  },
+  externalPolicy() {
+    this.materials({ detail: { key: 'insurance' } });
+  },
+  selectParticipant(e) {
+    if (this.data.busy || this.data.loading || this.data.pending) return;
+    const participant = this.data.workspace?.participants.find(
+      (p) => p.memberId === e.currentTarget.dataset.id,
+    );
+    if (!participant) return;
+    this.setData({
+      selectedMemberId: participant.memberId,
+      selectedParticipant: participant,
+      consent: false,
     });
   },
   base() {
@@ -59,7 +88,15 @@ Page({
   async load() {
     if (this._invalid || this.data.busy) return;
     const t = ui.begin(this);
-    this.setData({ loading: true, error: '' });
+    this.setData({
+      loading: true,
+      error: '',
+      workspace: null,
+      userId: '',
+      selectedMemberId: '',
+      selectedParticipant: null,
+      consent: false,
+    });
     try {
       const s = await ui.session(
         this,
@@ -70,16 +107,30 @@ Page({
       );
       if (!s || !ui.live(this, t)) return;
       const w = (await api.getClient().request(this.base())).data;
-      if (ui.live(this, t))
-        this.setData({ userId: s.user.id, workspace: w, pending: recovery.read(s.user.id) });
+      if (ui.live(this, t)) {
+        const requestable = w.participants.filter((p) => p.canRequest);
+        const selected = requestable.length === 1 ? requestable[0] : null;
+        this.setData({
+          userId: s.user.id,
+          workspace: w,
+          selectedMemberId: selected?.memberId || '',
+          selectedParticipant: selected,
+          pending: recovery.read(s.user.id),
+        });
+      }
     } catch (e) {
       if (ui.live(this, t)) this.setData({ error: ui.message(e) });
     } finally {
       if (ui.live(this, t)) this.setData({ loading: false });
     }
   },
-  consent() {
-    if (!this.data.busy && !this.data.pending) this.setData({ consent: !this.data.consent });
+  consent(e) {
+    if (!this.data.busy && !this.data.loading && !this.data.pending)
+      this.setData({
+        consent: Array.isArray(e?.detail?.value)
+          ? e.detail.value.includes('yes')
+          : !this.data.consent,
+      });
   },
   async request(e) {
     if (!this.data.consent) return;

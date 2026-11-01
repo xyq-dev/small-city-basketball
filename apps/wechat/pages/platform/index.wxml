@@ -1,4 +1,6 @@
-<view class="page platform-page">
+<scb-header title="平台处理工作台" disabled="{{busy}}"/>
+<view class="page platform-page ui002-workspace">
+  <view class="page-intro"><view class="eyebrow">平台工作台</view><view class="title">核对当前可处理的预约与争议</view></view>
   <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">平台资料需要重新核对</view><view class="small">{{error}}</view></view>
   <button wx:if="{{error && !loading && !allowed && !loginRequired}}" class="secondary" bindtap="load" disabled="{{busy || reviewOpen || feeDirty}}">重新核对平台权限</button>
   <view wx:if="{{loading}}" class="card state-card loading-card"><view class="state-title">正在核对平台权限</view><view class="skeleton"></view><view class="skeleton short"></view><view class="small muted">核对完成后显示当前可处理的资料…</view></view>

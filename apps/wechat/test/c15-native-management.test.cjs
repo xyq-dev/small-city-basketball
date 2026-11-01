@@ -816,6 +816,8 @@ test('media: upload is private; only an explicit publish makes it public, and re
     s.set(workspace({ files: [fileRow()], media: [mediaRow('PUBLISHED', 2)] }));
     return ok(mediaRow('PUBLISHED', 2));
   });
+  s.page.selectPublish(tap({ id: mediaId }));
+  s.page.publishConsentChange({ detail: { value: ['publish'] } });
   await s.page.publish(tap({ id: mediaId }));
   await s.flush();
   assert.deepEqual(s.sent(command)[0].body, { type: 'PUBLISH', expectedVersion: 1 });

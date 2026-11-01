@@ -4,7 +4,7 @@
   "state": "planned",
   "figmaNode": "30:2471",
   "referenceKind": "derived",
-  "expectText": ["规划说明目录", "仅查看说明"],
+  "expectText": ["规则说明目录", "仅查看说明"],
   "static": true,
   "data": {
     "selected": "funds",

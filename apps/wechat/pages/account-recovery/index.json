@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "账号安全与找回" }
+{
+  "navigationBarTitleText": "账号安全与找回",
+  "navigationStyle": "custom"
+}

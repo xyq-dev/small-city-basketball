@@ -1,0 +1,40 @@
+{
+  "name": "ui002-services-sponsor-refund-unknown",
+  "route": "pages/sponsor-commerce/index",
+  "state": "synthetic-sponsor-refund-unknown",
+  "figmaNode": "44:1465",
+  "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
+  "expectText": ["UNKNOWN只查询原编号", "结果未知", "实际到账以支付渠道确认结果为准"],
+  "data": {
+    "enabled": true,
+    "detailView": "refunds",
+    "detail": {
+      "order": {
+        "id": "order",
+        "title": "合成赛事广告长名称合同",
+        "amountText": "5000.00",
+        "stateLabel": "交付已验收",
+        "status": "ACCEPTED",
+        "payer_user_id": "payer",
+        "verified_fee_fen": 0
+      },
+      "deliveries": [],
+      "batches": [],
+      "items": [],
+      "refunds": [
+        {
+          "id": "refund",
+          "amountText": "500.00",
+          "stateLabel": "结果未知",
+          "status": "UNKNOWN",
+          "reason": "合成原渠道回执待核对",
+          "trade_refund_id": "trade-refund"
+        }
+      ],
+      "refundRetries": [],
+      "returns": [],
+      "recovery": []
+    }
+  },
+  "expectAbsentText": ["提交明确失败退款的恢复凭据"]
+}

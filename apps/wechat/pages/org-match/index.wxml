@@ -1,3 +1,4 @@
+<scb-header title="比赛详情" disabled="{{busy || pending || uncertain || dirty}}"/>
 <view class="page mgmt-page">
   <view wx:if="{{loading && !match}}" class="card state-panel">
     <text class="state-label">机构比赛</text>
