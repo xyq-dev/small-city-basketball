@@ -75,3 +75,13 @@ CI167同城履约三宽fixture失败根因确认：error-context的实际body只
 CI167预约几何按UI001精确迁移（root直接Figma取证后决定）：5:1195／5:1244在390稿的内容x16、w358；T09 FixedActions 5:1238的Action 5:1239为x16／w358／h48，root取得5:1226白卡p16／r16与5:1239深蓝#123C73／r12／h48高保真context和截图。两页premium-page原容器始终保留，不以旧C11的12px断言覆盖新设计。保留16外边距及订单卡r16，T09 arrangement-summary改r16；两页固定footer左右16、上12、底28加env安全区，单主按钮min48／padding12／r12，T09主按钮由旧橙改设计深蓝。各正常、恢复、关闭及未知分支原按钮与disabled条件保持；多按钮状态继续按内容增高，未改报价、命令或资金。
 
 同片仅给booking-detail、training、training-manage、sponsor-commerce四个已有scb-header页面JSON补navigationStyle:custom，保留原navigationBarTitleText，避免真实微信重复原生标题；未修改全app配置。逐页静态核对四JSON与实际scb-header对应通过。直接`node --test apps/wechat/test/c11-booking-ui.test.cjs apps/wechat/test/booking-create.test.cjs apps/wechat/test/booking-orders.test.cjs apps/wechat/test/r6-training.test.cjs apps/wechat/test/r6-sponsor-commerce.test.cjs apps/wechat/test/ui002-services.test.cjs`116/116通过，四JSON定向Prettier及diff检查通过。源码仅两WXSS和四JSON，任务及交接同步；没有API、权限、资金、Migration、部署或生产变更。三宽精确geometry由root按新取得设计更新并在最终候选CI检验，本地未冒称浏览器或微信真机通过。
+
+
+CI168人工截图确定金额断行修复（root追加授权的player样式切片）：c10-profile-player-ready-320中含费预计¥330.00末位0曾换行。仅改player/index.wxss价格区：profile-quote允许整项换行，quote-service使用140px弹性基准，quote-total由固定126/106px基准改内在宽度auto、最小126（<=360为106）、最大100%，合计金额nowrap且overflow-wrap:normal，服务金额取消任意数字断字（单位仍可换行）。原卡横向范围、照片、hero、CTA样式及全部JS/WXML未改；父分支既有token更新保持，由root串行cherry-pick本差异。
+
+真实上限依据：apps/api/src/player-booking/domain.ts parseProfile的服务费、交通、食宿各<=10,000,000分，报价feeBps<=10,000；含费理论最大40,000,000分（¥400000.00）。新增ui002-services-player-decimal、ui002-services-player-large两份合成fixture，分别输入30001分/1000bps、9999999分服务费＋两项10000000分差旅/10000bps，由实际Page调用utils/player-market.profileView及原label规则派生¥300.01／¥330.01与¥99999.99／¥399999.98。fixture保留syntheticInput供直接回归重新调用真实Page与utils对照，不手填或截断金额。按当前Arial匹配Nimbus Sans Bold做字体宽度辅助核对：最大服务金额在320稿36px字号约190.16px、最大总额在26px字号约137.31px，含总额左右16px仍小于约278px净卡宽；此静态字体估算不替代真实浏览器Range与微信验证。
+
+直接UI00226＋player-market／C10 profiles／C11 player合计66/66通过；两个新样本的320/390/430真实模板输出核对通过，新增回归同时比较真实profileView各金额字段与实际Page小数label。直接测试文件与两JSON定向Prettier、diff检查通过，git差异确认没有业务JS/WXML。root协调validation为金额文本增加真实浏览器Range单行守卫；共享E2E TS、本片未修改。未改变权限、资金、API、Migration、部署或生产。交root整合并用最终候选CI确认三宽。
+
+
+金额内在宽补片：root独立推演确认固定140px flex-basis在390大额时可能让真实约220px的左金额与约180px的右合计错误留在同一行；quote-service改为flex:1 1 auto，保留min-width:0，使父级flex-wrap按真实内容内在宽排线，空间不足时整项换行。源码仅该CSS一项，未改其余布局、业务JS或WXML。已向validation移交实际DOM矩形不重叠和金额文本在自身列内的浏览器守卫（含ui002-services-player-large390），与既有金额Range单行守卫合用；本分支不编辑共享E2E TS。直接真实Page金额fixture回归1/1通过，diff检查通过，交root整合后由最终候选CI170确认真实三宽。

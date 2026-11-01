@@ -6,13 +6,13 @@ page { background:#f4f6fa; }
 .profile-name { margin-bottom:6px; font-size:32px; line-height:42px; font-weight:700; color:#fff; }
 .player-page { padding:0 12px calc(108px + env(safe-area-inset-bottom)); max-width:600px; }
 .player-page .card { border-radius:12px; margin-bottom:12px; border:1px solid #edf1f5; box-shadow:0 3px 10px rgba(19,44,73,.025); }
-.profile-quote { position:relative; display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:108px; padding:14px 16px; margin-top:-2px; }
-.quote-service { flex:1; min-width:0; }
-.quote-price { color:#ff641e; font-family:Arial,sans-serif; font-size:44px; line-height:50px; font-weight:700; overflow-wrap:anywhere; }
+.profile-quote { position:relative; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; min-height:108px; padding:14px 16px; margin-top:-2px; }
+.quote-service { flex:1 1 auto; min-width:0; }
+.quote-price { color:#ff641e; font-family:Arial,sans-serif; font-size:44px; line-height:50px; font-weight:700; overflow-wrap:normal; }
 .quote-price text { font-size:18px; font-family:inherit; font-weight:500; }
 .quote-platform { color:#748299; font-size:14px; line-height:22px; }
-.quote-total { flex:0 0 126px; padding:10px 8px; border-radius:12px; background:#fff3e8; text-align:center; color:#51617c; font-size:14px; line-height:22px; }
-.quote-total-price { color:#ff641e; font-family:Arial,sans-serif; font-size:30px; line-height:36px; font-weight:700; overflow-wrap:anywhere; }
+.quote-total { flex:0 0 auto; width:auto; min-width:126px; max-width:100%; padding:10px 8px; border-radius:12px; background:#fff3e8; text-align:center; color:#51617c; font-size:14px; line-height:22px; }
+.quote-total-price { color:#ff641e; font-family:Arial,sans-serif; font-size:30px; line-height:36px; font-weight:700; white-space:nowrap; overflow-wrap:normal; }
 .profile-samples { min-height:164px; padding:8px 12px 12px; }
 .sample-heading { display:flex; align-items:center; justify-content:space-between; gap:6px; min-height:44px; }
 .sample-heading .subtitle { margin:0; font-size:16px; line-height:24px; font-weight:700; }
@@ -50,7 +50,7 @@ page { background:#f4f6fa; }
 .records > view { margin-bottom:8px; }
 .records .subtitle { margin-bottom:8px; }
 .notice-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
-@media(max-width:360px) { .profile-hero { height:240px; } .profile-name { font-size:28px; } .profile-hero-copy { bottom:38px; } .quote-price { font-size:36px; line-height:44px; } .quote-price text { font-size:16px; } .quote-total { flex-basis:106px; } .quote-total-price { font-size:26px; } .sample-heading .subtitle { font-size:15px; } .profile-records-toggle { font-size:10px; } .metric-value { font-size:24px; } .metric-value.textual { font-size:16px; } }
+@media(max-width:360px) { .profile-hero { height:240px; } .profile-name { font-size:28px; } .profile-hero-copy { bottom:38px; } .quote-price { font-size:36px; line-height:44px; } .quote-price text { font-size:16px; } .quote-total { min-width:106px; } .quote-total-price { font-size:26px; } .sample-heading .subtitle { font-size:15px; } .profile-records-toggle { font-size:10px; } .metric-value { font-size:24px; } .metric-value.textual { font-size:16px; } }
 
 .player-page .profile-quote { width:calc(100% + 24px); margin-left:-12px; margin-right:-12px; padding-left:24px; padding-right:16px; box-sizing:border-box; }
 @media(max-width:360px) { .profile-hero-image { top:-40px; } }

@@ -17,3 +17,7 @@
 2026-11-01T07:46:05Z：CI168原始证据已全保存在scratch ui002-ci168-evidence（admin-job.log、manifest、all-cases/all-screens与2279PNG）；其1328浏览器成功、1314布局/73路由/0自动issues不代表视觉无缺陷。人工确见同城320/390长城市将标题/副标题压成单字竖排，已交root最小flex换行修复。本测试续片只记录localHeading copyWidth/titleWidth/titleLines，要求≥180/≥180/1至2行，断言前先写出布局JSON。禁止以旧候选的全绿替代修复后的精确CI169及同城原图复核。
 
 同城测试片本地：以root9d4e55a源模板展开全部365份fixture×3宽=1095次，资源非空且全部展开成功；tsc、Prettier、diff检查通过，Playwright2628项注册成功。该检查不计算真实浏览器几何，新标题尺寸/行数须由后继CI验证。
+
+2026-11-01T07:52:04Z 追加球员原子金额守卫：总价全内容与服务价直接金额文字节点分别用DOM Range测行，/场子节点不纳入；去重矩形top不是1即记录wrappedQuoteAmounts（含完整金额文本），写JSON后要求空。仅两类quote选择器，不扩大到其他金额/表格，不删旧小数fixture或修改业务源。services对应纯样式修复和两份真实profileView派生样本需一并集成后跑最终候选，169旧结果不冒充170。
+
+金额片实际验证：转换后的服务报价为直接文字¥300.00加独立span单位，总价为完整¥330.00，已确认Range所选节点正确。选择器限定.profile-quote内部；tsc、Prettier、diff和Playwright2628注册均通过。未执行本地浏览器，新金额原子守卫等待整合后的真实CI矩形验证。

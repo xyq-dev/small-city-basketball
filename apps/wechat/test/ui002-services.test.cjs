@@ -810,3 +810,60 @@ test('explicitly opening my training list retires cohort and enrollment deep lin
     assert.equal(h.requests.filter((r) => r.url === path + id).length, 1);
   }
 });
+
+test('player decimal and upper-range amount fixtures come from the real profile view and unchanged Page labels', async () => {
+  const actor = '10000000-0000-4000-8000-000000000001';
+  for (const [name, expectedTotal] of [
+    ['decimal', '¥330.01'],
+    ['large', '¥399999.98'],
+  ]) {
+    const fixture = require(
+      '../../../tests/mini-program/fixtures/ui002-services-player-' + name + '.json',
+    );
+    const input = fixture.syntheticInput;
+    const client = {
+      sessionRevision: () => 1,
+      onSessionChange: () => () => {},
+      request: async (url) => {
+        assert.equal(url, '/v1/auth/session');
+        return { data: { user: { id: actor }, organizations: [], teamContexts: [] } };
+      },
+    };
+    const api = { getClient: () => client, uuid: (value) => value };
+    const sdk = {
+      workspace: async () => ({
+        viewerUserId: actor,
+        settings: { feeBps: input.bps },
+        players: [input.profile],
+      }),
+      performance: async () => null,
+    };
+    const h = loadPage({
+      root,
+      route: fixture.route,
+      wx: createWx(),
+      modules: { '../../utils/api': api, './api': api, '../../utils/booking': sdk },
+    });
+    h.page.onLoad({ id: input.profile.id });
+    await h.page.onShow();
+    assert.deepEqual(h.page.data.profile, fixture.data.profile);
+    const derived = h
+      .requireLocal('utils/player-market.js')
+      .profileView(input.profile, input.bps, null, false);
+    for (const field of ['priceFen', 'price', 'platformFee', 'travel', 'accommodation', 'total'])
+      assert.equal(fixture.data.profile[field], derived[field], name + ': ' + field);
+    assert.equal(h.page.data.profile.totalLabel, expectedTotal);
+    assert.equal(h.page.data.profile.priceLabel, name === 'decimal' ? '¥300.01' : '¥99999.99');
+    for (const width of [320, 390, 430]) {
+      const html = buildPreview({
+        root,
+        route: fixture.route,
+        data: h.page.data,
+        width,
+        height: 844,
+      }).phone;
+      for (const text of fixture.expectText) assert.ok(html.includes(text), name + ': ' + text);
+    }
+    assert.equal(h.wx.calls.filter((call) => call.type === 'request').length, 0);
+  }
+});

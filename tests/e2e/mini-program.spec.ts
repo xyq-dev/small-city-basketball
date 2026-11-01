@@ -201,6 +201,86 @@ async function measureLayout(frame: Frame) {
     } else if (localHeadingElement) {
       localHeading = { copyWidth: 0, titleWidth: 0, titleLines: 0 };
     }
+    const quoteBounds = (rect: DOMRect) => ({
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom,
+    });
+    const wrappedQuoteAmounts: Array<{
+      selector: string;
+      text: string;
+      lines: number;
+      problem?: string;
+      amountRect?: ReturnType<typeof quoteBounds>;
+      columnRect?: ReturnType<typeof quoteBounds>;
+    }> = [];
+    for (const selector of ['.profile-quote .quote-total-price', '.profile-quote .quote-price']) {
+      for (const element of Array.from(document.querySelectorAll(selector)).filter(visible)) {
+        const range = document.createRange();
+        let text = element.textContent?.trim() || '';
+        if (element.classList.contains('quote-price')) {
+          // The service amount is the direct text node; the smaller / 场 unit
+          // belongs to its own native text element and has a different baseline.
+          const amount = Array.from(element.childNodes).find(
+            (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+          );
+          if (!amount) {
+            wrappedQuoteAmounts.push({ selector, text, lines: 0 });
+            continue;
+          }
+          const value = amount.textContent || '';
+          text = value.trim();
+          range.setStart(amount, value.length - value.trimStart().length);
+          range.setEnd(amount, value.trimEnd().length);
+        } else {
+          range.selectNodeContents(element);
+        }
+        const amountRects = Array.from(range.getClientRects()).filter(
+          (rect) => rect.width > 0 && rect.height > 0,
+        );
+        const lines = new Set(amountRects.map((rect) => Math.round(rect.top * 100) / 100)).size;
+        if (lines !== 1) wrappedQuoteAmounts.push({ selector, text, lines });
+        const column = element.closest(
+          element.classList.contains('quote-price') ? '.quote-service' : '.quote-total',
+        );
+        if (column) {
+          const bounds = column.getBoundingClientRect();
+          for (const rect of amountRects) {
+            if (
+              rect.left < bounds.left - 1 ||
+              rect.right > bounds.right + 1 ||
+              rect.top < bounds.top - 1 ||
+              rect.bottom > bounds.bottom + 1
+            )
+              wrappedQuoteAmounts.push({
+                selector,
+                text,
+                lines,
+                problem: 'outside containing quote column',
+                amountRect: quoteBounds(rect),
+                columnRect: quoteBounds(bounds),
+              });
+          }
+        }
+      }
+    }
+    const overlappingQuotes: Array<{
+      service: ReturnType<typeof quoteBounds>;
+      total: ReturnType<typeof quoteBounds>;
+    }> = [];
+    for (const quote of Array.from(document.querySelectorAll('.profile-quote')).filter(visible)) {
+      const service = quote.querySelector('.quote-service');
+      const total = quote.querySelector('.quote-total');
+      if (!service || !total) continue;
+      const left = service.getBoundingClientRect();
+      const right = total.getBoundingClientRect();
+      if (
+        Math.min(left.right, right.right) > Math.max(left.left, right.left) &&
+        Math.min(left.bottom, right.bottom) > Math.max(left.top, right.top)
+      )
+        overlappingQuotes.push({ service: quoteBounds(left), total: quoteBounds(right) });
+    }
     return {
       innerWidth: window.innerWidth,
       viewport,
@@ -210,6 +290,8 @@ async function measureLayout(frame: Frame) {
       customHeaderCount: document.querySelectorAll('.scb-header').length,
       nativeHeaderCount: document.querySelectorAll('.mini-native-bar').length,
       localHeading,
+      wrappedQuoteAmounts,
+      overlappingQuotes,
       buttonCount: buttons.length,
       fieldCount: fields.length,
       overflow,
@@ -486,6 +568,35 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
           await expect(frame.getByRole('button', { name, exact: true }).first()).toBeDisabled();
         for (const name of scenario.expectEnabled || [])
           await expect(frame.getByRole('button', { name, exact: true }).first()).toBeEnabled();
+        if (scenario.name === 'ui002-services-player-large' && width === 390) {
+          const service = frame.locator('.profile-quote .quote-service');
+          const previousStyle = await service.evaluate((element) => {
+            const prior = element.getAttribute('style');
+            (element as HTMLElement).style.flexBasis = '140px';
+            return prior;
+          });
+          try {
+            const negative = await measureLayout(frame);
+            const negativePath = testInfo.outputPath('native-quote-negative-control.json');
+            fs.mkdirSync(path.dirname(negativePath), { recursive: true });
+            fs.writeFileSync(negativePath, JSON.stringify(negative, null, 2));
+            await testInfo.attach('native-quote-negative-control.json', {
+              path: negativePath,
+              contentType: 'application/json',
+            });
+            expect(
+              negative.wrappedQuoteAmounts.some(
+                (amount) => amount.problem === 'outside containing quote column',
+              ),
+              'the historical 140px service basis must fail the quote boundary guard',
+            ).toBe(true);
+          } finally {
+            await service.evaluate((element, prior) => {
+              if (prior === null) element.removeAttribute('style');
+              else element.setAttribute('style', prior);
+            }, previousStyle);
+          }
+        }
         const layout = await measureLayout(frame);
         expect(
           layout.customHeaderCount > 0 && layout.nativeHeaderCount > 0,
@@ -557,6 +668,11 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
             'local title must not become a vertical column',
           ).toBeLessThanOrEqual(2);
         }
+        expect(
+          layout.wrappedQuoteAmounts,
+          'player service and total quote amounts must each remain on one line',
+        ).toEqual([]);
+        expect(layout.overlappingQuotes, 'player quote columns must not overlap').toEqual([]);
 
         // Measure the iframe's document, never just the outer preview wrapper.
         expect(layout.innerWidth).toBe(width);

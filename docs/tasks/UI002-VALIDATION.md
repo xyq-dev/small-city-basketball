@@ -35,3 +35,5 @@ root直接Figma确认T09/T17内容x16/w358、T09动作5:1239为x16/w358/h48/r12/
 2026-11-01T07:46:05Z CI168精确候选c54cbf1的admin实际1328通过/1314按配置跳过，1314布局JSON与2279原始PNG、73路由、438场景均完整，所有既有overflow/触控/表单及双header守卫通过。原始ZIP摘要与GitHub artifact13074897409一致，实际PNG宽度320/390/430、高844，无失败context。人工检查发现320和390的同城长城市按钮将标题挤成单字竖排，原有横向溢出守卫未能捕获，故不能以CI168作为最终视觉验收。
 
 root接管同城heading最小flex换行修复。本片仅为已有.local-heading记录标题列宽、标题宽及文字行数，并在全矩阵中要求两个宽度均至少180px、原标题1至2行；指标在native-layout.json写出后断言，失败也保留原始诊断。只作用该页面已有局部结构，其他页面的溢出/44px/16px守卫不变。后继候选必须重跑完整CI及重新看实际同城图。
+
+2026-11-01T07:52:04Z root亲核旧球员小数报价在320把¥330.00末位拆行，明确保留旧fixture与真实小数。services所有者负责纯WXSS和真实profileView派生的小数/大额fixture。本片仅增加.quote-total-price与.quote-price原金额原子可读守卫：总价测全部文字，服务价测直接文字节点并排除不同字号的“/ 场”子节点；Range实际矩形去重top必须1。失败记录selector、完整金额text及行数到wrappedQuoteAmounts，布局JSON落盘后断言为空，不删金额小数或调整旧fixture。CI169是后继修复前历史候选，最终证据改用集成后的CI170。
