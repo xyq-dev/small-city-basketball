@@ -44,6 +44,7 @@
   <button class="home-local-court" bindtap="openCourt"><view class="home-local-copy"><view>找球场</view><view>查看本地场馆</view></view><image src="/assets/home/service-court.png" mode="aspectFit"/></button>
   <button class="home-local-referee" bindtap="openReferee"><view class="home-local-copy"><view>约裁判</view><view>查看人员与档期</view></view><image src="/assets/home/service-referee.png" mode="aspectFit"/></button>
  </view>
+ <view class="home-local-note">效果示意 · 赛事内容为合成示例</view>
  <sponsorship-slot region-id="{{citySelection.regionId || ''}}" catalog-version="{{citySelection.catalogVersion || ''}}" visible="{{sponsorVisible}}"/>
  <view class="home-private">
   <view class="home-section-head"><view class="home-section-title">我的赛事</view><button bindtap="openEvents">全部赛事</button></view>
