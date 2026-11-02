@@ -8,6 +8,7 @@ const {
   decodeEntities: entities,
 } = require('./wxml.cjs');
 const { loadPage, loadComponent } = require('./native-page.cjs');
+const { registeredRoutes } = require('./registered-routes.cjs');
 
 function localFile(filename, root, kind) {
   const file = path.resolve(filename);
@@ -404,9 +405,12 @@ function readWxss(filename, root, seen = new Set()) {
   const next = new Set(seen).add(resolved);
   return fs
     .readFileSync(resolved, 'utf8')
-    .replace(/@import\s+["']([^"']+)["']\s*;/g, (_, target) =>
-      readWxss(path.resolve(path.dirname(resolved), target), root, next),
-    );
+    .replace(/@import\s+["']([^"']+)["']\s*;/g, (_, target) => {
+      const imported = target.startsWith('/')
+        ? path.resolve(root, '.' + target)
+        : path.resolve(path.dirname(resolved), target);
+      return readWxss(imported, root, next);
+    });
 }
 
 function convertWxss(css, width) {
@@ -478,15 +482,6 @@ function scopedCss(css, selector) {
     cursor = end;
   }
   return result;
-}
-
-function registeredRoutes(manifest) {
-  const routes = [...(manifest.pages || [])];
-  for (const pack of manifest.subpackages || []) {
-    const base = String(pack.root || '').replace(/\/$/, '');
-    for (const page of pack.pages || []) routes.push(base + '/' + page);
-  }
-  return routes;
 }
 
 function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {

@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 export const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
 const { loadPage } = require('../apps/wechat/test/helpers/native-page.cjs');
+const { registeredRoutes } = require('../apps/wechat/test/helpers/registered-routes.cjs');
 const SDK_VERSION = '0.13.0';
 const read = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -128,15 +129,6 @@ function git(root, ...args) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   }).trim();
-}
-
-function registeredRoutes(app) {
-  return [
-    ...app.pages,
-    ...(app.subpackages || []).flatMap((pack) =>
-      pack.pages.map((page) => String(pack.root).replace(/\/$/, '') + '/' + page),
-    ),
-  ];
 }
 
 function runtimeFiles(root, relative = '') {
@@ -371,7 +363,7 @@ export function prepare({ root = ROOT, out, appId } = {}) {
       'app.json',
       'project.config.json',
       'utils/api.js',
-      ...app.pages.map((route) => route + '.js'),
+      ...sourceRoutes.map((route) => route + '.js'),
     ],
     aliasPages: platform.map((s) => ({ route: s.route, baseRoute: s.baseRoute })),
     runnerSha256: hash(fs.readFileSync(fileURLToPath(import.meta.url))),

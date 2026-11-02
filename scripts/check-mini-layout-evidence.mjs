@@ -1,18 +1,23 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 
 // Check files produced by the actual Chromium run, not in-memory attachments.
 // These are compatibility layouts with synthetic data, never WeChat acceptance.
+const require = createRequire(import.meta.url);
+const { registeredRoutes } = require('../apps/wechat/test/helpers/registered-routes.cjs');
 const root = process.cwd();
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apps/wechat/app.json'), 'utf8'));
-const scenarios = new Map(manifest.pages.map((route) => ['initial-' + route.split('/')[1], route]));
+const routes = registeredRoutes(manifest);
+const scenarios = new Map(routes.map((route) => ['initial-' + route.split('/')[1], route]));
+assert.equal(scenarios.size, routes.length, 'Duplicate initial native scenario');
 const filledScenarios = new Set();
 const fixtures = path.join(root, 'tests/mini-program/fixtures');
 for (const file of fs.readdirSync(fixtures).filter((file) => file.endsWith('.json'))) {
   const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, file), 'utf8'));
   assert.ok(!scenarios.has(fixture.name), 'Duplicate native layout scenario');
-  assert.ok(manifest.pages.includes(fixture.route), 'Unregistered native fixture route');
+  assert.ok(routes.includes(fixture.route), 'Unregistered native fixture route');
   scenarios.set(fixture.name, fixture.route);
   filledScenarios.add(fixture.name);
 }

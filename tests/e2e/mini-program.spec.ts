@@ -28,12 +28,20 @@ const { buildPreview } = require('../../apps/wechat/test/helpers/native-preview.
     height: number;
   }): Preview;
 };
+const { registeredRoutes } = require('../../apps/wechat/test/helpers/registered-routes.cjs') as {
+  registeredRoutes(manifest: {
+    pages?: string[];
+    subpackages?: { root?: string; pages?: string[] }[];
+  }): string[];
+};
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')) as {
   pages: string[];
+  subpackages?: { root?: string; pages?: string[] }[];
 };
+const routes = registeredRoutes(manifest);
 const fixtureDirectory = path.resolve(__dirname, '../mini-program/fixtures');
 const scenarios: Scenario[] = [
-  ...manifest.pages.map((route) => ({
+  ...routes.map((route) => ({
     name: 'initial-' + route.split('/')[1],
     route,
     data: {},
@@ -597,7 +605,7 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
   for (const width of [320, 390, 430]) {
     for (const scenario of scenarios) {
       test(`${width}px · ${scenario.name}`, async ({ page, context }, testInfo) => {
-        expect(manifest.pages).toContain(scenario.route);
+        expect(routes).toContain(scenario.route);
         const attemptedNetwork: string[] = [];
         page.on('request', (request) => {
           if (/^https?:/i.test(request.url())) attemptedNetwork.push(request.url());

@@ -5,17 +5,10 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { parseWxml, eventHandlers, validateExpression } = require('./helpers/wxml.cjs');
 const { loadPage } = require('./helpers/native-page.cjs');
+const { registeredRoutes } = require('./helpers/registered-routes.cjs');
 
 const root = path.resolve(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
-function registeredRoutes(manifest) {
-  const routes = [...manifest.pages];
-  for (const pack of manifest.subpackages || []) {
-    const base = String(pack.root).replace(/\/$/, '');
-    for (const page of pack.pages) routes.push(base + '/' + page);
-  }
-  return routes;
-}
 const routes = registeredRoutes(manifest);
 const mainTabs = [
   'pages/home/index',
@@ -28,6 +21,9 @@ const mainTabs = [
 test('native manifest routes are unique, local and include loadable Page/templates', () => {
   assert.deepEqual(manifest.pages.slice(0, mainTabs.length), mainTabs);
   assert.ok(manifest.pages.includes('pages/trade-order/index'));
+  assert.equal(manifest.pages.length, 6);
+  assert.equal(manifest.subpackages.length, 67);
+  assert.equal(routes.length, 73);
   assert.equal(new Set(routes).size, routes.length);
   assert.ok(Array.isArray(manifest.subpackages) && manifest.subpackages.length > 0);
   for (const pack of manifest.subpackages) {
@@ -63,6 +59,42 @@ test('native manifest routes are unique, local and include loadable Page/templat
       );
     }
   }
+  for (const route of routes) {
+    const wxss = route + '.wxss';
+    const file = path.join(root, wxss);
+    if (!fs.existsSync(file)) continue;
+    const owner = packageOf(wxss);
+    const source = fs.readFileSync(file, 'utf8');
+    for (const match of source.matchAll(/@import\s+(['"])([^'"]+)\1/g)) {
+      const spec = match[2];
+      const target = spec.startsWith('/')
+        ? spec.slice(1)
+        : path.posix.normalize(path.posix.join(path.posix.dirname(wxss), spec));
+      assert.equal(fs.existsSync(path.join(root, target)), true, wxss + ' -> ' + target);
+      const targetPackage = packageOf(target);
+      assert.ok(
+        targetPackage === 'main' || targetPackage === owner,
+        wxss + ' cannot import ' + target + ' from another package',
+      );
+    }
+  }
+  for (const route of [
+    'pages/local-bookings/index',
+    'pages/local-matchups/index',
+    'pages/local-manage/index',
+  ]) {
+    const css = fs.readFileSync(path.join(root, route + '.wxss'), 'utf8');
+    assert.match(css, /\.local-private \.status-banner\{[^}]*background:#eaf0f8/);
+    assert.doesNotMatch(css, /@import/);
+  }
+  for (const route of ['pages/training/index', 'pages/training-manage/index']) {
+    const css = fs.readFileSync(path.join(root, route + '.wxss'), 'utf8');
+    assert.match(css, /\.title\{[^}]*font-size:24px/);
+  }
+  assert.match(
+    fs.readFileSync(path.join(root, 'pages/training-manage/index.wxss'), 'utf8'),
+    /\.training-manage \.workflow-tabs\{align-items:stretch\}/,
+  );
 });
 
 test('pages with a custom header disable the native navigation bar', () => {
