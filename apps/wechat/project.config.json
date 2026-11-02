@@ -8,5 +8,16 @@
     "es6": true,
     "minified": true,
     "urlCheck": true
+  },
+  "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "test" },
+      { "type": "suffix", "value": ".md" },
+      { "type": "file", "value": "assets/approved-ui/court-night.jpg" },
+      { "type": "file", "value": "assets/approved-ui/player-sample-a.jpg" },
+      { "type": "file", "value": "assets/approved-ui/player-sample-b.jpg" },
+      { "type": "file", "value": "assets/approved-ui/player-sample-a-hero.jpg" },
+      { "type": "file", "value": "assets/approved-ui/player-sample-b-hero.jpg" }
+    ]
   }
 }

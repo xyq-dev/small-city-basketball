@@ -130,6 +130,15 @@ function git(root, ...args) {
   }).trim();
 }
 
+function registeredRoutes(app) {
+  return [
+    ...app.pages,
+    ...(app.subpackages || []).flatMap((pack) =>
+      pack.pages.map((page) => String(pack.root).replace(/\/$/, '') + '/' + page),
+    ),
+  ];
+}
+
 function runtimeFiles(root, relative = '') {
   return fs.readdirSync(path.join(root, relative), { withFileTypes: true }).flatMap((item) => {
     const name = path.join(relative, item.name);
@@ -233,7 +242,8 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     apiSource.replace(originDeclaration, "const API_ORIGIN = 'https://scb-ui-fixture.invalid';"),
   );
   const app = read(path.join(source, 'app.json'));
-  for (const route of app.pages) {
+  const sourceRoutes = registeredRoutes(app);
+  for (const route of sourceRoutes) {
     if (!/^pages\/[a-z-]+\/index$/.test(route)) throw new Error('无效页面路径');
     const original = loadPage({ root: source, route });
     const selectedFixture = fixtures.get(route);
@@ -258,7 +268,7 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     const alias = 'pages/' + item.name + '/index';
     if (
       !/^platform-[a-z-]+$/.test(item.name) ||
-      !app.pages.includes(item.baseRoute) ||
+      !sourceRoutes.includes(item.baseRoute) ||
       !/^\.[a-z-]+$/.test(item.selector) ||
       typeof item.probe !== 'string' ||
       !item.probe ||
@@ -306,9 +316,11 @@ export function prepare({ root = ROOT, out, appId } = {}) {
       referenceSha256: null,
     };
   });
+  const fixtureApp = { ...app };
+  delete fixtureApp.subpackages;
   write(path.join(project, 'app.json'), {
-    ...app,
-    pages: [...app.pages, ...platform.map((s) => s.route)],
+    ...fixtureApp,
+    pages: [...sourceRoutes, ...platform.map((s) => s.route)],
   });
   const config = read(path.join(project, 'project.config.json'));
   config.projectname = 'SCB-C12-UI-FIXTURES-ONLY';

@@ -480,6 +480,15 @@ function scopedCss(css, selector) {
   return result;
 }
 
+function registeredRoutes(manifest) {
+  const routes = [...(manifest.pages || [])];
+  for (const pack of manifest.subpackages || []) {
+    const base = String(pack.root || '').replace(/\/$/, '');
+    for (const page of pack.pages || []) routes.push(base + '/' + page);
+  }
+  return routes;
+}
+
 function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
   root = path.resolve(root);
   if (!/^pages\/[a-z0-9-]+\/index$/.test(route)) throw new Error('Invalid preview route');
@@ -495,7 +504,8 @@ function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
   const manifest = JSON.parse(
     fs.readFileSync(localFile(path.join(root, 'app.json'), root, 'Manifest'), 'utf8'),
   );
-  if (!manifest.pages.includes(route)) throw new Error('Page is not registered: ' + route);
+  if (!registeredRoutes(manifest).includes(route))
+    throw new Error('Page is not registered: ' + route);
   const pageFile = path.join(root, route + '.js');
   const harness = loadPage({ root, route });
   harness.page.setData(data);
@@ -596,4 +606,12 @@ function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
   };
 }
 
-module.exports = { renderWxml, readWxss, convertWxss, buildPreview, attribute, scopedCss };
+module.exports = {
+  renderWxml,
+  readWxss,
+  convertWxss,
+  buildPreview,
+  attribute,
+  scopedCss,
+  registeredRoutes,
+};

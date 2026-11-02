@@ -8,11 +8,33 @@ const { loadPage } = require('./helpers/native-page.cjs');
 
 const root = path.resolve(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
+function registeredRoutes(manifest) {
+  const routes = [...manifest.pages];
+  for (const pack of manifest.subpackages || []) {
+    const base = String(pack.root).replace(/\/$/, '');
+    for (const page of pack.pages) routes.push(base + '/' + page);
+  }
+  return routes;
+}
+const routes = registeredRoutes(manifest);
+const mainTabs = [
+  'pages/home/index',
+  'pages/watch/index',
+  'pages/account/index',
+  'pages/teams/index',
+  'pages/local/index',
+];
 
 test('native manifest routes are unique, local and include loadable Page/templates', () => {
-  assert.ok(Array.isArray(manifest.pages) && manifest.pages.length > 0);
-  assert.equal(new Set(manifest.pages).size, manifest.pages.length);
-  for (const route of manifest.pages) {
+  assert.deepEqual(manifest.pages.slice(0, mainTabs.length), mainTabs);
+  assert.ok(manifest.pages.includes('pages/trade-order/index'));
+  assert.equal(new Set(routes).size, routes.length);
+  assert.ok(Array.isArray(manifest.subpackages) && manifest.subpackages.length > 0);
+  for (const pack of manifest.subpackages) {
+    assert.match(pack.root, /^pages\/[a-z0-9-]+$/);
+    assert.deepEqual(pack.pages, ['index']);
+  }
+  for (const route of routes) {
     assert.match(route, /^pages\/[a-z0-9-]+\/index$/);
     assert.equal(fs.existsSync(path.join(root, route + '.js')), true, route);
     assert.equal(fs.existsSync(path.join(root, route + '.wxml')), true, route);
@@ -20,10 +42,31 @@ test('native manifest routes are unique, local and include loadable Page/templat
     if (fs.existsSync(config))
       assert.doesNotThrow(() => JSON.parse(fs.readFileSync(config, 'utf8')));
   }
+  const subRoots = new Set((manifest.subpackages || []).map((pack) => pack.root));
+  const packageOf = (file) => {
+    const match = /^pages\/([a-z0-9-]+)\//.exec(file);
+    if (!match) return 'main';
+    const root = 'pages/' + match[1];
+    return subRoots.has(root) ? root : 'main';
+  };
+  for (const route of routes) {
+    const owner = packageOf(route + '.js');
+    const source = fs.readFileSync(path.join(root, route + '.js'), 'utf8');
+    for (const match of source.matchAll(/require\((['"])(\.\.?\/[^'"]+)\1\)/g)) {
+      const target = path.posix.normalize(
+        path.posix.join(path.posix.dirname(route + '.js'), match[2]),
+      );
+      const targetPackage = packageOf(target);
+      assert.ok(
+        targetPackage === 'main' || targetPackage === owner,
+        route + ' cannot require ' + target + ' from another package',
+      );
+    }
+  }
 });
 
 test('pages with a custom header disable the native navigation bar', () => {
-  for (const route of manifest.pages) {
+  for (const route of routes) {
     const source = fs.readFileSync(path.join(root, route + '.wxml'), 'utf8');
     if (!/<scb-header(?:\s|>)/.test(source)) continue;
     const configPath = path.join(root, route + '.json');
@@ -48,7 +91,7 @@ const builtIns = [
   '__wxExparserNodeId__',
 ];
 test('page definitions never shadow built-in page instance properties', () => {
-  for (const route of manifest.pages) {
+  for (const route of routes) {
     let definition;
     new vm.Script(fs.readFileSync(path.join(root, route + '.js'), 'utf8')).runInNewContext({
       Page(value) {
@@ -68,7 +111,7 @@ test('page definitions never shadow built-in page instance properties', () => {
   }
 });
 
-for (const route of manifest.pages) {
+for (const route of routes) {
   test('native template and static event targets: ' + route, () => {
     const source = fs.readFileSync(path.join(root, route + '.wxml'), 'utf8');
     const tree = parseWxml(source);
@@ -82,7 +125,7 @@ for (const route of manifest.pages) {
       /["'](\/pages\/[a-z0-9-]+\/index)(?:\?[^"']*)?["']/g,
     )) {
       assert.equal(
-        manifest.pages.includes(match[1].slice(1)),
+        routes.includes(match[1].slice(1)),
         true,
         'Unregistered literal route: ' + match[1],
       );
