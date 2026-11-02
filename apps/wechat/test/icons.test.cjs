@@ -72,29 +72,38 @@ test('UI001 nationwide navigation keeps five destinations with navy selected and
   // The retained video page belongs to Events; the nationwide bar keeps five destinations.
   const preview = buildPreview({ root, route: 'pages/media/index' });
   const files = preview.assets.map((asset) => path.basename(asset.path));
-  for (const name of [
-    'icon-home-gray.png',
-    'icon-trophy-navy.png',
-    'icon-users-gray.png',
-    'nav-local.svg',
-    'nav-account.svg',
-  ])
+  for (const name of ['home.svg', 'trophy-active.svg', 'pin.svg', 'team.svg', 'profile.svg'])
     assert.ok(files.includes(name), name);
   const html = fs.readFileSync(path.join(root, 'components/navigation/index.wxml'), 'utf8');
-  assert.match(
-    html,
-    /tone="\{\{\(active==='Video'\?'Events':active\)===item\.key \? 'navy' : 'gray'\}\}"/,
-  );
+  assert.match(html, /\/assets\/home\/home-active\.svg/);
+  assert.match(html, /\/assets\/home\/profile\.svg/);
   assert.doesNotMatch(html, /nav-dot/);
 });
 
 test('home entries and positions use the mapped icons; positions keep labels and filters', () => {
   const html = fs.readFileSync(path.join(root, 'pages/home/index.wxml'), 'utf8');
-  for (const name of ['trophy', 'chart', 'pin'])
-    assert.match(html, new RegExp('name="' + name + '"'));
-  assert.match(html, /node-4-43-0\.svg/);
+  for (const name of [
+    'icon-trophy.png',
+    'icon-player.png',
+    'icon-team.png',
+    'icon-video.png',
+    'brandmark.svg',
+    'hero.jpg',
+  ])
+    assert.match(html, new RegExp(name.replace('.', '\\.')));
   assert.match(html, /data-position="\{\{item\.code\}\}"/);
   const h = loadPage({ root, route: 'pages/home/index' });
+  h.page.openCourt();
+  h.page.openReferee();
+  h.page.openTeamData();
+  assert.deepEqual(
+    h.wx.calls.filter((call) => call.type === 'navigateTo').map((call) => call.url),
+    [
+      '/pages/local/index?kind=COURT',
+      '/pages/local/index?kind=REFEREE',
+      '/pages/public-archive/index?kind=TEAM',
+    ],
+  );
   assert.deepEqual(
     h.page.data.positions.map((p) => [p.code, p.name, p.icon]),
     [

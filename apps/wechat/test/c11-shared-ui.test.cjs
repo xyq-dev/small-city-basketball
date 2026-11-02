@@ -10,13 +10,14 @@ test('UI001 home keeps its real header and exact vector assets without a second 
   assert.match(preview.phone, /<header class="mini-custom-status"/);
   assert.doesNotMatch(preview.phone, /<header class="mini-native-bar"/);
   assert.match(preview.phone, /按位置找球员/);
-  assert.ok(preview.assets.some((asset) => asset.path === 'assets/ui002/node-4-20-0.svg'));
-  assert.ok(preview.assets.some((asset) => asset.path === 'assets/ui002/node-4-43-0.svg'));
+  assert.ok(preview.assets.some((asset) => asset.path === 'assets/home/brandmark.svg'));
+  assert.ok(preview.assets.some((asset) => asset.path === 'assets/home/hero.jpg'));
   assert.equal(
-    preview.assets.some((asset) => /court-night|home-slogan/.test(asset.path)),
+    preview.assets.some((asset) => /court-night|home-slogan|homepage-reference/.test(asset.path)),
     false,
   );
-  assert.match(preview.phone, /每一场，都值得被看见/);
+  assert.match(preview.phone, /每一场/);
+  assert.match(preview.phone, /都值得被看见/);
   assert.ok(preview.assets.every((asset) => !/approved-six-screen|design\/C11/.test(asset.path)));
   const classic = buildPreview({ root, route: 'pages/watch/index' });
   assert.match(classic.phone, /<header class="mini-custom-status"/);

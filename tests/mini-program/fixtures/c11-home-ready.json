@@ -5,12 +5,7 @@
   "figmaNode": "4:16",
   "designSource": "UI001:H01; supersedes historical C11 home",
   "static": true,
-  "expectText": [
-    "每一场，都值得被看见",
-    "发现正在进行的赛事",
-    "按位置找球员",
-    "合成青锋杯篮球邀请赛"
-  ],
+  "expectText": ["每一场", "都值得被看见", "发现赛事", "按位置找球员", "合成青锋杯篮球邀请赛"],
   "data": {
     "citySelection": {
       "mode": "NATIONWIDE",

@@ -13,6 +13,10 @@
 
 正式支付、投保、分账、推流和真机仍未由这次文档更正改为已验收。#39 仍未合并。
 
+## 2026-11-02 微信首页视觉还原（BRANCH_ONLY，未合并）
+
+分支 `fix/wechat-homepage` 从包体提交 `148be73` 分出，不进入 Draft PR #38。首页按 `scb-homepage-assets-v1` 的参考图重排，公开赛事、招募、球员、档案、视频和同城筛选仍走现有入口。高清母版未打进小程序。本地直接测试 84 通过。真机、完整回归、远端 CI 和开发者工具上传测量未执行。详情见[交接](handoffs/HOME-VISUAL.md)。`CURRENT_STATUS.md` 仍只记录已合并事实。
+
 ## 2026-11-01 UI002 本地续作统一清单（当时记录：Draft 待审）
 
 工作树 `fix/ui002-ci` 在基线 `813ed61` 之上准备单独 Draft PR，目标是 `main`。不改 PR #36，不向 `feat/ui002-integration` 或 `main` 推送。下方 REMAINING6 仍是 main 已验收事实。本地管理端结果不能写成远端 CI、真机或生产验收。
