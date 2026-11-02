@@ -5,7 +5,7 @@
 - 更新时刻（含时区）：2026-11-02 09:20 Asia/Shanghai
 - 负责人 / 会话标识 / 接收人：当前首页分支负责人
 - 实际绝对目录、仓库远端：`D:\Projects\small-city-basketball`，`https://github.com/xyq-dev/small-city-basketball.git`
-- 实际分支 / 基线 HEAD / 当前 HEAD：`fix/wechat-homepage`，从 `fix/wechat-preview-size` 的 `148be7343495ee15c7f28ea25290030f150d0b48` 分出。首页提交 `2fec46a4838aeda55c8a1d5a126a5e392d68eae7`
+- 实际分支 / 基线 HEAD / 当前 HEAD：`fix/wechat-homepage`，从 `fix/wechat-preview-size` 的 `148be7343495ee15c7f28ea25290030f150d0b48` 分出。首页实现提交 `2fec46a4838aeda55c8a1d5a126a5e392d68eae7`。记录该 SHA 的文档提交会让分支 HEAD 再前进一次，以 `origin/fix/wechat-homepage` 为准
 - dirty 与已有他人修改：包体分支 `fix/wechat-preview-size` 和 Draft PR #38 未混入。高清母版目录 `scb-homepage-assets-v1/` 仍未跟踪。`apps/wechat/project.private.config.json` 继续由 `.git/info/exclude` 排除
 - 任务状态 / 整合状态（LOCAL_ONLY、BRANCH_ONLY、MAIN）：实现完成后为 BRANCH_ONLY。未合并，`docs/CURRENT_STATUS.md` 未改写成 main 事实
 - commit / push / pack / 部署 / Migration / 生产数据权限分别为：沿用既有开发提交、普通 push 和 Draft PR 授权。本轮没有预览上传、发布、部署、Migration 或生产数据操作
