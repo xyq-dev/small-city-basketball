@@ -44,6 +44,8 @@
 
 Application checks `41379255659` 的 api 作业在 `test:api:e2e` 失败：重开后匿名接口已是 `confirmedMatchCount = 0` 且 `REQUIRES_RECONFIRMATION`，观众页在 5 秒内仍没有「尚无已确认赛果」。同一分支上一提交的 api 作业曾在约 4.9 秒擦过该断言。公开页先读赛事再读排名，轮询要等这一轮读完才开始下一次；5 秒才发起的下一次读无法在观众验收窗口内结束。进行中的慢请求仍不中止。轮询改为 2 秒，并增加一条在 5 秒窗口内必须看到「尚无已确认赛果」的检查；改之前该检查失败，改之后 `src/viewing` 76 项通过。本记录不把这次本地结果写成远端 CI。PR 保持 Draft，不合并、不部署。
 
+`3696ca0` 的 Application checks 里 api 已通过。admin 类型检查拒绝 `getByRole` 的 `exact`，该选项已去掉。production 的隔离恢复指纹在通知后台轮询写入 `notification_start_scan`、`notification_fanout_state`、`notification_messages` 和 `notification_deliveries` 时失败。该夹具关闭后台 worker，与其他会比对指纹的集成测试相同。这次本地结果仍不是远端 CI。
+
 ## 遗留与恢复
 
 - 未完成项 / 阻断原因 / 解除条件：预览二维码不是真机验收。`https://basketball.playhubs.cn` 不在当前 AppID 的 request 合法域名列表；公开赛事路径从本机访问返回 404。这两项与分包和样式分开。没有部署匹配版本的测试 API，也没有关闭域名校验。`pages/account-closure/index.wxss` 对 `../../app.wxss` 的引用不在本轮三页范围内，未单独冷启动。

@@ -264,7 +264,7 @@ describe('public polling lifecycle', () => {
     });
     expect(screen.getByRole('heading', { level: 1, name: publicEvent.name })).toBeVisible();
     act(() => {
-      screen.getByRole('tab', { name: '赛事排名', exact: true }).click();
+      screen.getByRole('tab', { name: '赛事排名' }).click();
     });
     expect(screen.queryByText('尚无已确认赛果', { exact: true })).not.toBeInTheDocument();
     reopened = true;
