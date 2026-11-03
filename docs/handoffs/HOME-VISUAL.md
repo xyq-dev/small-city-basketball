@@ -67,6 +67,6 @@
 
 ## Git 与同步结果
 
-- 新提交、目标分支、推送或 API 更新结果：rebase 后的 `fix/wechat-homepage` 需要 force-with-lease 推到 `origin/fix/wechat-homepage`，因为提交已改写。只推这一条分支。目标仍是更新 [PR #39](https://github.com/xyq-dev/small-city-basketball/pull/39)，不新开 PR。
+- 新提交、目标分支、推送或 API 更新结果：已用 `--force-with-lease` 把 rebase 后的 `fix/wechat-homepage` 推到 `origin`，替换 `c17dec3`。只推了这一条分支。记录提交之前的 rebase 头是 `cc9eeff2dc189eeee0f101bced1fdecf31b2435a`。目标仍是更新 [PR #39](https://github.com/xyq-dev/small-city-basketball/pull/39)，不新开 PR。推送后 GitHub 报 `mergeable: MERGEABLE`，Application checks 当时仍是进行中，不记为通过。
 - PR / 审查 / main 整合依据：PR #39 目标 `main`。未合并进 main。
 - 若未同步，写明原因及成果位置：高清母版目录仍只在本地，未提交。空列表「同城篮球服务」碰底栏未改。
