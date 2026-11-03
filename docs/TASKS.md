@@ -1,6 +1,6 @@
 # 任务看板
 
-## 2026-11-03 文档更正：#37/#36 已合并，#38/#39 仍为 Draft
+## 2026-11-03 文档更正：#37/#36/#38 已合并，#39 仍为 Draft
 
 核验时间 `2026-11-03T03:51:16Z`。SHA、双亲提交和日志范围见 [当前状态](CURRENT_STATUS.md) 同日一节。下方 2026-11-01 两节的「Draft 待审」是合并前清单，原文保留。
 
@@ -9,9 +9,9 @@
 | PR #37 `fix/ui002-ci` | 已合并进 main | `merged_at` `2026-11-01T23:39:25Z`，合并提交 `717a3a7a9fbb91aa93370d6dc594c10b58bdf4c9` |
 | PR #36 `feat/ui002-integration` | GitHub 标为已合并；头提交随 #37 进入 main | `merged_at` `2026-11-01T23:39:27Z`。`merge_commit_sha` 就是头提交 `813ed61f49cdf461afa9a659a365934c2308ec81`，没有另一条合并提交 |
 | PR #39 `fix/wechat-homepage` | 仍是开放 Draft | 头 `205ea41e761e89457d11d3930124a27a577fd1ff`。[Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/41570969693) 三作业 SUCCESS：admin `npm test` 通过（`test:wechat` 1193 通过、0 失败，1 项 Windows 批处理桥测试跳过），`npm run test:e2e` 1142 通过、1128 跳过。同作业的原生兼容证据为 1128 份布局和 PNG，并写明不是微信运行时；[工具合同](https://github.com/xyq-dev/small-city-basketball/actions/runs/41570970063) SUCCESS。空列表「同城篮球服务」碰底栏不记为已修复 |
-| PR #38 `fix/wechat-preview-size` | 仍是开放 Draft | 头 `59c017cb7d417ad03fb2e4f6acdfef27ff1a1e33`。[Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/41379255659) 的 admin、production 通过，api 在公开观赛重开步骤失败；[工具合同](https://github.com/xyq-dev/small-city-basketball/actions/runs/41379255669) SUCCESS |
+| PR #38 `fix/wechat-preview-size` | 已合并进 main | `merged_at` `2026-11-03T05:26:16Z`（2026-11-03 13:26:16 Asia/Shanghai），合并提交 `e770803b1197852f4da3a66b7382a3352f49b5c1`，合并时头 `69d19ffd4f288ab8f0a69e37ad82a74cfc203cc1`。合并前草稿头 `59c017cb7d417ad03fb2e4f6acdfef27ff1a1e33` 的 [Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/41379255659) 记录 admin、production 通过，api 在公开观赛重开步骤失败；[工具合同](https://github.com/xyq-dev/small-city-basketball/actions/runs/41379255669) SUCCESS。该检查属于该草稿提交 |
 
-正式支付、投保、分账、推流和真机仍未由这次文档更正改为已验收。#38 与 #39 都未合并。
+正式支付、投保、分账、推流和真机仍未由这次文档更正改为已验收。#39 仍未合并。
 
 ## 2026-11-01 UI002 本地续作统一清单（当时记录：Draft 待审）
 
