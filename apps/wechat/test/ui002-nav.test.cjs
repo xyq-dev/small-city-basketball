@@ -131,7 +131,15 @@ test('A01 exposes identity, four personal priorities and three resource work ent
   for (const width of [320, 390, 430]) {
     const output = render('account', h.page.data, width),
       html = output.body;
-    for (const text of ['合成本人', '查看本人资料', '我的报名', '我的球队', '我的预约', '我的关注', '更多服务与设置'])
+    for (const text of [
+      '合成本人',
+      '查看本人资料',
+      '我的报名',
+      '我的球队',
+      '我的预约',
+      '我的关注',
+      '更多服务与设置',
+    ])
       assert.ok(html.includes(text), text);
     assert.ok(html.indexOf('account-profile') < html.indexOf('account-primary'));
     assert.doesNotMatch(

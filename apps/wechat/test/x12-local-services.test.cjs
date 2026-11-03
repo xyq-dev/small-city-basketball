@@ -9,8 +9,9 @@ const root = path.resolve(__dirname, '..');
 const equal = (a, b) =>
   assert.deepEqual(JSON.parse(JSON.stringify(a)), JSON.parse(JSON.stringify(b)));
 const preview = (route, data) => {
-  const globalComponents = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
-    .usingComponents;
+  const globalComponents = JSON.parse(
+    fs.readFileSync(path.join(root, 'app.json'), 'utf8'),
+  ).usingComponents;
   const pageConfig = path.join(root, route + '.json');
   const pageComponents = fs.existsSync(pageConfig)
     ? JSON.parse(fs.readFileSync(pageConfig, 'utf8')).usingComponents || {}

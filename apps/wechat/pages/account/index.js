@@ -229,7 +229,12 @@ Page({
   login() {
     const email = this.data.email,
       password = this.data.password;
-    if (typeof email !== 'string' || email.length === 0 || typeof password !== 'string' || password.length === 0) {
+    if (
+      typeof email !== 'string' ||
+      email.length === 0 ||
+      typeof password !== 'string' ||
+      password.length === 0
+    ) {
       this.setData({
         message:
           email.length === 0 && password.length === 0
@@ -324,7 +329,11 @@ Page({
     this.setData({ termsRead: e.detail.value.includes('yes') });
   },
   wechatLogin() {
-    if (this.data.loading || this.data.wechatState === 'loading' || this.data.wechatState !== 'open')
+    if (
+      this.data.loading ||
+      this.data.wechatState === 'loading' ||
+      this.data.wechatState !== 'open'
+    )
       return;
     if (!this.data.consent) {
       this.setData({

@@ -52,8 +52,8 @@ page { background:#f4f6fa; }
 .account-name { color:#123c73; font-size:18px; line-height:26px; font-weight:700; overflow-wrap:anywhere; }
 .account-profile-edit { min-height:44px; margin:0; padding:0; background:transparent; color:#123c73; font-size:12px; line-height:18px; font-weight:400; text-align:left; }
 .account-profile-edit::after { border:0; }
-.account-shortcuts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:0 0 16px; padding:12px; border-radius:16px; background:#fff; }
-.account-quick { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:4px; width:auto; min-width:0; min-height:88px; margin:0; padding:8px 2px; border-radius:12px; background:#fff; color:#123c73; font-size:12px; line-height:18px; font-weight:500; text-align:center; white-space:normal; }
+.account-shortcuts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; width:100%; box-sizing:border-box; margin:0 0 16px; padding:12px; border-radius:16px; background:#fff; }
+.page.account-page button.account-quick { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:4px; width:100%; max-width:100%; min-width:0; box-sizing:border-box; min-height:88px; margin:0; padding:8px 0; border-radius:12px; background:#fff; color:#123c73; font-size:12px; line-height:18px; font-weight:500; text-align:center; white-space:normal; overflow-wrap:anywhere; }
 .account-quick::after { border:0; }
 .account-quick .menu-icon { width:40px; height:40px; flex-basis:40px; }
 .account-workspace { margin:0 0 16px; padding:0; background:transparent; }

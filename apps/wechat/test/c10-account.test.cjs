@@ -182,7 +182,11 @@ test('wechat login keeps an unbound identity and a failed attempt signed out', a
   assert.equal(unbound.h.page.data.loginPhase, '');
   assert.equal(unbound.calls.includes('/v1/auth/wechat/login'), true);
   assert.equal(unbound.calls.includes('/v1/auth/register-participant'), false);
-  const unboundView = buildPreview({ root, route: 'pages/account/index', data: unbound.h.page.data });
+  const unboundView = buildPreview({
+    root,
+    route: 'pages/account/index',
+    data: unbound.h.page.data,
+  });
   assert.match(unboundView.phone, /当前微信尚未绑定应用账号/);
   assert.match(unboundView.phone, /请先登录已有账号，再从隐私与账号中明确绑定/);
   assert.doesNotMatch(unboundView.phone, /微信登录暂未开放|已退出登录/);

@@ -288,7 +288,12 @@ test('WeChat login locks the exact account draft and agreement during native cod
   h.wx.login = (input) => {
     finishCode = input.success;
   };
-  h.page.setData({ enabled: true, wechatState: 'open', consent: true, email: 'original@example.test' });
+  h.page.setData({
+    enabled: true,
+    wechatState: 'open',
+    consent: true,
+    email: 'original@example.test',
+  });
   h.page.wechatLogin();
   await h.flush();
   assert.equal(h.page.data.busy, true);
