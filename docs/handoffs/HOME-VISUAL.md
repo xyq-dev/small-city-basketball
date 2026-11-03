@@ -42,9 +42,10 @@
 - 负责人：当前首页分支会话。目录 `/workspace`，远端 `https://github.com/xyq-dev/small-city-basketball.git`，分支 `fix/wechat-homepage`。开工 HEAD `b1e6c9f2c27cd60563fde24fbf62d239bb003c9e`，工作区当时干净。
 - 原因：Draft PR #39 的 [Application checks 41380353519](https://github.com/xyq-dev/small-city-basketball/actions/runs/41380353519) 里 admin `npm test` 为 1190 通过 / 1 失败。`apps/wechat/test/c10-account.test.cjs` 只放行 `approved-ui` 图标和 `ui002` SVG，已登录账号夹具的共享底栏实际加载 `assets/home/home.svg`、`trophy.svg`、`pin.svg`、`team.svg`、`profile-active.svg`。这五个文件是首页还原时换上的底栏图标，不是账号页肖像或其他首页素材。同一提交已经在 `c10-public.test.cjs` 用同一条导航正则放行。22 个账号夹具里，7 个已登录账号页只有这五个文件，其余 15 个没有额外首页素材。
 - 变更：只改账号夹具断言。底栏五个图标及其选中态仍可出现；`assets/home/` 下的其他文件（主视觉、品牌标、球场图、服务插画等）仍会使该断言失败。导航组件和首页页面没有改回旧图标。
-- 本地验证：Node v22.23.4，`npm test` 退出码 0。admin 588、api 1339、微信源码 1191 通过，1 项既有 Windows 跳过，0 失败。未跑 `test:e2e`、真实 PostgreSQL、开发者工具或真机。远端 Application checks 以本段提交的推送结果为准，不能把上面的本地数字写成已通过的 CI。
-- 状态：BRANCH_ONLY。未合并，未部署，未执行 Migration，未改生产数据。`CURRENT_STATUS.md` 仍只记录已合并事实。
-- 下一位 AI 的第一条具体操作：先读本提交对应的 Application checks，只把 admin `npm test` 的远端日志记为 CI 结果。不要把本分支并入 PR #38，不要合并 #39。
+- 本地验证：Node v22.23.4，`npm test` 退出码 0。admin 588、api 1339、微信源码 1191 通过，1 项既有 Windows 跳过，0 失败。当时未跑 `test:e2e`。
+- 远端 CI：`a9d1a0d` 的 [Application checks 41557841240](https://github.com/xyq-dev/small-city-basketball/actions/runs/41557841240) 中，api 与 production 成功。admin 的 `npm test` 成功：admin 62 个文件、api 116 个文件、微信 1191 通过 / 1 项既有 Windows 跳过 / 0 失败。同一 admin 作业随后在 `npm run test:e2e` 失败，149 通过 / 993 失败 / 1128 跳过。首个失败是首页静态布局把顶栏高度期望写成 84，实际没有该度量；其余大量失败是夹具路由不在 `app.json` 主包 `pages` 的 6 条里，而在分包。这次没有改 e2e 或分包。未部署，未执行 Migration。
+- 状态：BRANCH_ONLY。未合并。`CURRENT_STATUS.md` 仍只记录已合并事实。
+- 下一位 AI 的第一条具体操作：admin `npm test` 已由上述运行证明通过。不要把 e2e 的 993 项失败并进本轮账号白名单，也不要并入 PR #38 或合并 #39。
 
 ## Git 与同步结果
 
