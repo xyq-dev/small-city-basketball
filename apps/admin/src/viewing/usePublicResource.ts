@@ -70,9 +70,13 @@ export function usePublicResource<T>(read: (signal: AbortSignal) => Promise<T>) 
   useEffect(() => {
     active.current = true;
     void reload();
+    // The open spectator page has to show a reopened result before its 5s
+    // acceptance window closes. The event read and the standings read run in
+    // sequence, so the next poll has to start early enough for both to finish.
+    // A tick still waits out an in-flight read instead of aborting it.
     const timer = setInterval(() => {
       if (!inFlight.current) void reload();
-    }, 5000);
+    }, 2000);
     const offline = () => {
       onlineRef.current = false;
       setOnline(false);
