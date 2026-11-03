@@ -99,7 +99,8 @@ test('revoked event clears old content before the new unavailable state is rende
     preview.assets.filter(
       (asset) =>
         !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path) &&
-        !/^assets[\\/]ui002[\\/]nav-(?:home-active|local|account)\.svg$/.test(asset.path),
+        !/^assets[\\/]ui002[\\/]nav-(?:home-active|local|account)\.svg$/.test(asset.path) &&
+        !/^assets[\\/]home[\\/](?:home|trophy|pin|team|profile)(?:-active)?\.svg$/.test(asset.path),
     ),
     [],
   );

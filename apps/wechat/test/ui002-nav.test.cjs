@@ -247,6 +247,18 @@ test('L01 prioritizes real court results and routes optional personnel filtering
   );
 });
 
+test('home court and referee links select the existing local kind before the first search', () => {
+  const court = loadPage({ root, route: 'pages/local/index' });
+  court.page.onLoad({ kind: 'COURT' });
+  assert.equal(court.page.data.kind, 'COURT');
+  const referee = loadPage({ root, route: 'pages/local/index' });
+  referee.page.onLoad({ kind: 'REFEREE' });
+  assert.equal(referee.page.data.kind, 'REFEREE');
+  const ignored = loadPage({ root, route: 'pages/local/index' });
+  ignored.page.onLoad({ kind: 'NOT_A_KIND' });
+  assert.equal(ignored.page.data.kind, 'COURT');
+});
+
 test('L01 navigation and optional tools keep unresolved operations and all original map and charge gates', () => {
   const h = local();
   const pending = { body: { commandId: id(7) } };

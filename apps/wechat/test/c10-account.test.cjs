@@ -137,13 +137,27 @@ test('all account and planned visual fixtures expand real WXML and retain disabl
       for (const text of fixture.expectText)
         assert.ok(result.phone.includes(text), name + ': ' + text);
       // Only the shared bottom-bar UI icons; no portraits or other imagery on account pages.
+      // This guard fails while signed-in account fixtures still load homepage-pack files
+      // outside the five nav icons (home, trophy, pin, team, profile, plus active twins).
+      const homepageContent = result.assets.filter(
+        (asset) =>
+          /^assets[\\/]home[\\/]/.test(asset.path) &&
+          !/^assets[\\/]home[\\/](?:home|trophy|pin|team|profile)(?:-active)?\.svg$/.test(
+            asset.path,
+          ),
+      );
+      assert.deepEqual(homepageContent, [], name + ': homepage pack content');
       assert.deepEqual(
         result.assets.filter(
           (asset) =>
             !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path) &&
-            !/^assets[\\/]ui002[\\/][^\\/]+\.svg$/.test(asset.path),
+            !/^assets[\\/]ui002[\\/][^\\/]+\.svg$/.test(asset.path) &&
+            !/^assets[\\/]home[\\/](?:home|trophy|pin|team|profile)(?:-active)?\.svg$/.test(
+              asset.path,
+            ),
         ),
         [],
+        name,
       );
       if (
         fixture.route === 'pages/planned/index' &&

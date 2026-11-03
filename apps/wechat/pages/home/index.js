@@ -34,6 +34,8 @@ Page({
     publicLoading: false,
     publicLoaded: false,
     publicError: '',
+    statusBarHeight: 47,
+    capsuleGap: 96,
     positions: [
       { code: 'PG', name: '控卫', icon: 'pos-pg' },
       { code: 'SG', name: '分卫', icon: 'pos-sg' },
@@ -47,6 +49,7 @@ Page({
   },
   onShow() {
     this._hidden = false;
+    this.syncChrome();
     this.setData({ citySelection: cities.snapshot(), sponsorVisible: true });
     this.loadPublicEvents();
     this.loadEvents();
@@ -61,6 +64,37 @@ Page({
     this._eventsLoad = (this._eventsLoad || 0) + 1;
     this._publicLoad = (this._publicLoad || 0) + 1;
     ui.close(this);
+  },
+  syncChrome() {
+    let statusBarHeight = this.data.statusBarHeight;
+    let capsuleGap = this.data.capsuleGap;
+    try {
+      const info =
+        typeof wx.getWindowInfo === 'function'
+          ? wx.getWindowInfo()
+          : typeof wx.getSystemInfoSync === 'function'
+            ? wx.getSystemInfoSync()
+            : null;
+      if (
+        info &&
+        Number.isFinite(info.statusBarHeight) &&
+        info.statusBarHeight >= 0 &&
+        info.statusBarHeight <= 80
+      )
+        statusBarHeight = info.statusBarHeight;
+      if (
+        info &&
+        Number.isFinite(info.windowWidth) &&
+        typeof wx.getMenuButtonBoundingClientRect === 'function'
+      ) {
+        const menu = wx.getMenuButtonBoundingClientRect();
+        if (menu && Number.isFinite(menu.left) && menu.left > 0 && menu.left < info.windowWidth)
+          capsuleGap = Math.min(160, Math.max(72, info.windowWidth - menu.left + 8));
+      }
+    } catch {
+      /* The platform draws the real status bar and capsule. */
+    }
+    this.setData({ statusBarHeight, capsuleGap });
   },
   chooseCity() {
     ui.open('city-select');
@@ -156,6 +190,15 @@ Page({
   },
   openLocal() {
     localServices.open('local');
+  },
+  openCourt() {
+    localServices.open('local', { kind: 'COURT' });
+  },
+  openReferee() {
+    localServices.open('local', { kind: 'REFEREE' });
+  },
+  openTeamData() {
+    ui.open('public-archive', { kind: 'TEAM' });
   },
   openSearch() {
     ui.open('search');

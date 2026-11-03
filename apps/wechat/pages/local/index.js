@@ -71,6 +71,9 @@ Page({
       this.setData({ error: ui.message(e) });
       this._detailId = '';
     }
+    const kind = query && query.kind;
+    if (typeof kind === 'string' && kind && ls.KINDS.some((item) => item.value === kind))
+      this.setData({ kind });
   },
   onShow() {
     this._hidden = false;
