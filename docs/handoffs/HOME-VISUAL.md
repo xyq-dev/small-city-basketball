@@ -55,15 +55,18 @@
 - 本地：Node v22.23.4。`npm test` 退出码 0，微信 1193 通过 / 1 项既有 Windows 跳过 / 0 失败。桌面 `mini-program.spec.ts` 1128 通过，证据脚本 1128 组通过。主办方与球员 e2e 14 通过。移动端小程序矩阵按原配置跳过。这些不是远端 CI。
 - 状态：BRANCH_ONLY。未合并，未部署，未执行 Migration。
 
-## 2026-11-03 与 main 的布局矩阵冲突（进行中）
+## 2026-11-03 rebase 到含 #40 的 main（BRANCH_ONLY，远端 CI 未记）
 
-- 更新时刻：2026-11-03。目录 `/agent/repos/small-city-basketball`，分支 `fix/wechat-homepage`，远端 `origin`。开工 HEAD `205ea41e761e89457d11d3930124a27a577fd1ff`。工作区当时干净。`origin/main` 为 `e770803`（PR #38 合并）。
-- 原因：PR #39 与 main 冲突。预览包把初始布局场景扩到全部分包路由，并共用一条路由拼接；首页分支仍只用六个主包页做初始场景，证据脚本里另有一份拼接，缺省分包根会变成字面量 `undefined`。首页几何（无共享顶栏、180/188 英雄区）必须留下。空列表「同城篮球服务」碰底栏不在本轮。
-- 检查：布局守卫在合并前会失败，因为初始场景仍从主包页生成。本段提交只加入该失败检查，尚未改页面。Fable 子代理因额度不可用，未另做架构评审。
-- 权限：沿用本分支的提交、普通 push 和 Draft PR。不合并进 main，不部署，不执行 Migration。
+- 更新时刻：2026-11-03。目录 `/agent/repos/small-city-basketball`，分支 `fix/wechat-homepage`，远端 `origin`。rebase 前 HEAD `c17dec37262d637233d1673fe451fc1436c010c5`。`origin/main` 为 `73db92c8f0dfc3d5ca8086a5fd4044e442502e07`（PR #38 的合并提交 `e770803` 之上，另有 squash 合入的文档 PR #40）。工作区当时干净。
+- 原因：GitHub 把本分支更新到 main 时，与 #40 的文档更正冲突。#38 已合并，#39 在该次文档核验时仍是开放 Draft。首页几何必须留下。空列表「同城篮球服务」碰底栏不在本轮。
+- 冲突文件：`docs/TASKS.md`（首页任务段与 main 的合并状态表叠在一起）；`scripts/check-mini-layout-evidence.mjs` 和 `tests/e2e/mini-program.spec.ts`（首页分支自带的路由拼接，与 main 已抽出的 `registered-routes.cjs` 叠在一起）。
+- 做法：rebase 到 `origin/main`，不新开 PR，不合并，不部署。文档保留 main 上 #37/#36/#38 已合并、#39 仍为 Draft 的事实；上表里 #39 的 Application checks 仍只属于 `205ea41`。布局脚本用 main 的共享路由表，初始场景覆盖分包。首页断言保留无共享顶栏、英雄区 320 宽 180px / 更宽 188px，以及带路由说明的 `routes` 包含检查。产品文件与 `c17dec3` 一致。没有改首页标记、样式或素材，也没有改空列表底栏重叠。
+- 检查：既有 `home-layout-guard` 会在初始场景退回六个主包页、或首页几何被写成共享 84px 顶栏时失败。rebase 解决后该守卫通过，没有另写一条当前会失败的产品检查。Node v22.23.4，`node --test apps/wechat/test/*.test.cjs tests/wechat-tools/devtools-ui.test.mjs` 为 1194 通过 / 1 项既有 Windows 跳过 / 0 失败。没有安装依赖，没有重跑 e2e。这不是远端 Application checks，也不是真机。
+- 状态：BRANCH_ONLY。#39 仍未合并。未部署，未执行 Migration。
+- 下一位 AI 的第一条具体操作：读 rebase 之后新 HEAD 的 Application checks。那次远端检查未绿之前，不要把本 PR 写成已通过，不要合并。
 
 ## Git 与同步结果
 
-- 新提交、目标分支、推送或 API 更新结果：本轮提交推送到 `origin/fix/wechat-homepage`。包体分支远端是 `59c017cb7d417ad03fb2e4f6acdfef27ff1a1e33`，没有混入本轮首页文件。
-- PR / 审查 / main 整合依据：[Draft PR #39](https://github.com/xyq-dev/small-city-basketball/pull/39)，目标 `main`。未合并。
-- 若未同步，写明原因及成果位置：高清母版目录仍只在本地，未提交。
+- 新提交、目标分支、推送或 API 更新结果：rebase 后的 `fix/wechat-homepage` 需要 force-with-lease 推到 `origin/fix/wechat-homepage`，因为提交已改写。只推这一条分支。目标仍是更新 [PR #39](https://github.com/xyq-dev/small-city-basketball/pull/39)，不新开 PR。
+- PR / 审查 / main 整合依据：PR #39 目标 `main`。未合并进 main。
+- 若未同步，写明原因及成果位置：高清母版目录仍只在本地，未提交。空列表「同城篮球服务」碰底栏未改。
