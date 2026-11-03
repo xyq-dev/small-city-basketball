@@ -36,6 +36,16 @@
 - Migration：不涉及。
 - 真实付费服务或生产影响：无。
 
+## 2026-11-03 账号夹具底栏图标（BRANCH_ONLY）
+
+- 更新时刻（含时区）：2026-11-03 09:08 Asia/Shanghai
+- 负责人：当前首页分支会话。目录 `/workspace`，远端 `https://github.com/xyq-dev/small-city-basketball.git`，分支 `fix/wechat-homepage`。开工 HEAD `b1e6c9f2c27cd60563fde24fbf62d239bb003c9e`，工作区当时干净。
+- 原因：Draft PR #39 的 [Application checks 41380353519](https://github.com/xyq-dev/small-city-basketball/actions/runs/41380353519) 里 admin `npm test` 为 1190 通过 / 1 失败。`apps/wechat/test/c10-account.test.cjs` 只放行 `approved-ui` 图标和 `ui002` SVG，已登录账号夹具的共享底栏实际加载 `assets/home/home.svg`、`trophy.svg`、`pin.svg`、`team.svg`、`profile-active.svg`。这五个文件是首页还原时换上的底栏图标，不是账号页肖像或其他首页素材。同一提交已经在 `c10-public.test.cjs` 用同一条导航正则放行。22 个账号夹具里，7 个已登录账号页只有这五个文件，其余 15 个没有额外首页素材。
+- 变更：只改账号夹具断言。底栏五个图标及其选中态仍可出现；`assets/home/` 下的其他文件（主视觉、品牌标、球场图、服务插画等）仍会使该断言失败。导航组件和首页页面没有改回旧图标。
+- 本地验证：Node v22.23.4，`npm test` 退出码 0。admin 588、api 1339、微信源码 1191 通过，1 项既有 Windows 跳过，0 失败。未跑 `test:e2e`、真实 PostgreSQL、开发者工具或真机。远端 Application checks 以本段提交的推送结果为准，不能把上面的本地数字写成已通过的 CI。
+- 状态：BRANCH_ONLY。未合并，未部署，未执行 Migration，未改生产数据。`CURRENT_STATUS.md` 仍只记录已合并事实。
+- 下一位 AI 的第一条具体操作：先读本提交对应的 Application checks，只把 admin `npm test` 的远端日志记为 CI 结果。不要把本分支并入 PR #38，不要合并 #39。
+
 ## Git 与同步结果
 
 - 新提交、目标分支、推送或 API 更新结果：本轮提交推送到 `origin/fix/wechat-homepage`。包体分支远端是 `59c017cb7d417ad03fb2e4f6acdfef27ff1a1e33`，没有混入本轮首页文件。
