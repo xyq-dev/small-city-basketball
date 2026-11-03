@@ -233,7 +233,13 @@ async function fingerprints(pool: Pool, selected?: readonly string[]) {
 }
 
 async function fixture(target: Target) {
-  const api = await createApi({ databaseUrl: target.databaseUrl, appOrigin: ORIGIN });
+  const api = await createApi({
+    databaseUrl: target.databaseUrl,
+    appOrigin: ORIGIN,
+    // The protected fingerprint is taken while this API is still open. A notification
+    // drain rewrites scan, fanout, message and delivery rows, so leave workers off.
+    backgroundWorkersEnabled: false,
+  });
   try {
     const actors: User[] = [];
     for (const label of ['owner', 'scorer', 'leader']) {

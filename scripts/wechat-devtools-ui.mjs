@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 export const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
 const { loadPage } = require('../apps/wechat/test/helpers/native-page.cjs');
+const { registeredRoutes } = require('../apps/wechat/test/helpers/registered-routes.cjs');
 const SDK_VERSION = '0.13.0';
 const read = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -233,7 +234,8 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     apiSource.replace(originDeclaration, "const API_ORIGIN = 'https://scb-ui-fixture.invalid';"),
   );
   const app = read(path.join(source, 'app.json'));
-  for (const route of app.pages) {
+  const sourceRoutes = registeredRoutes(app);
+  for (const route of sourceRoutes) {
     if (!/^pages\/[a-z-]+\/index$/.test(route)) throw new Error('无效页面路径');
     const original = loadPage({ root: source, route });
     const selectedFixture = fixtures.get(route);
@@ -258,7 +260,7 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     const alias = 'pages/' + item.name + '/index';
     if (
       !/^platform-[a-z-]+$/.test(item.name) ||
-      !app.pages.includes(item.baseRoute) ||
+      !sourceRoutes.includes(item.baseRoute) ||
       !/^\.[a-z-]+$/.test(item.selector) ||
       typeof item.probe !== 'string' ||
       !item.probe ||
@@ -306,9 +308,11 @@ export function prepare({ root = ROOT, out, appId } = {}) {
       referenceSha256: null,
     };
   });
+  const fixtureApp = { ...app };
+  delete fixtureApp.subpackages;
   write(path.join(project, 'app.json'), {
-    ...app,
-    pages: [...app.pages, ...platform.map((s) => s.route)],
+    ...fixtureApp,
+    pages: [...sourceRoutes, ...platform.map((s) => s.route)],
   });
   const config = read(path.join(project, 'project.config.json'));
   config.projectname = 'SCB-C12-UI-FIXTURES-ONLY';
@@ -359,7 +363,7 @@ export function prepare({ root = ROOT, out, appId } = {}) {
       'app.json',
       'project.config.json',
       'utils/api.js',
-      ...app.pages.map((route) => route + '.js'),
+      ...sourceRoutes.map((route) => route + '.js'),
     ],
     aliasPages: platform.map((s) => ({ route: s.route, baseRoute: s.baseRoute })),
     runnerSha256: hash(fs.readFileSync(fileURLToPath(import.meta.url))),

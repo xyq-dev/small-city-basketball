@@ -4,7 +4,7 @@ import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-libr
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RuntimeApp from '../RuntimeApp';
 import { createApiClient, ApiError } from '../api/client';
-import { PublicScoreboard } from './PublicPages';
+import { PublicScoreboard, PublicViewingApp } from './PublicPages';
 import { StandingsTable } from './StandingsTable';
 import { usePublicResource } from './usePublicResource';
 import {
@@ -246,6 +246,32 @@ describe('public polling lifecycle', () => {
     act(() => window.dispatchEvent(new Event('online')));
     await waitFor(() => expect(result.current.stale).toBe(false));
     expect(result.current.online).toBe(true);
+  });
+  it('shows 尚无已确认赛果 inside the 5s spectator window after a result is reopened', async () => {
+    vi.useFakeTimers();
+    let reopened = false;
+    const confirmed = { ...publicStandings, confirmedMatchCount: 1 };
+    const fetcher = vi.fn<typeof fetch>(async (path) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const standings = reopened ? publicStandings : confirmed;
+      if (String(path).includes('/schedule')) return response([publicMatch]);
+      if (String(path).endsWith('/standings')) return response(standings);
+      return response({ ...publicEvent, confirmedMatchCount: standings.confirmedMatchCount });
+    });
+    render(<PublicViewingApp fetcher={fetcher} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(screen.getByRole('heading', { level: 1, name: publicEvent.name })).toBeVisible();
+    act(() => {
+      screen.getByRole('tab', { name: '赛事排名' }).click();
+    });
+    expect(screen.queryByText('尚无已确认赛果', { exact: true })).not.toBeInTheDocument();
+    reopened = true;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4999);
+    });
+    expect(screen.getByText('尚无已确认赛果', { exact: true })).toBeVisible();
   });
   it('a slower-than-poll request is not starved, and late responses after unmount are ignored', async () => {
     vi.useFakeTimers();

@@ -16,6 +16,7 @@ import {
 
 const require = createRequire(import.meta.url);
 const { loadPage } = require('../../apps/wechat/test/helpers/native-page.cjs');
+const { registeredRoutes } = require('../../apps/wechat/test/helpers/registered-routes.cjs');
 const { parseWxml } = require('../../apps/wechat/test/helpers/wxml.cjs');
 
 function hasClassSelector(route, selector) {
@@ -151,6 +152,55 @@ test('prepare preserves all source templates/assets and never mutates the runtim
     fs.readFileSync(path.join(run.project, 'utils/api.js'), 'utf8'),
     /const API_ORIGIN = 'https:\/\/scb-ui-fixture.invalid'/,
   );
+});
+
+test('overridden file list includes rewritten subpackage pages and leaves the source project untouched', () => {
+  const sourceRoot = path.join(ROOT, 'apps/wechat');
+  const manifest = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'app.json'), 'utf8'));
+  const routes = registeredRoutes(manifest);
+  assert.equal(manifest.pages.length, 6);
+  assert.equal(manifest.subpackages.length, 67);
+  assert.equal(routes.length, 73);
+  assert.equal(new Set(routes).size, 73);
+  const before = new Map(
+    routes.map((route) => [route, fs.readFileSync(path.join(sourceRoot, route + '.js'))]),
+  );
+  const appBefore = fs.readFileSync(path.join(sourceRoot, 'app.json'));
+  const run = prepared();
+  assert.deepEqual(run.plan.overriddenFiles, [
+    'app.js',
+    'app.json',
+    'project.config.json',
+    'utils/api.js',
+    ...routes.map((route) => route + '.js'),
+  ]);
+  for (const route of [
+    'pages/local/index',
+    'pages/trade-order/index',
+    'pages/local-matchups/index',
+    'pages/local-manage/index',
+    'pages/training-manage/index',
+  ])
+    assert.ok(run.plan.overriddenFiles.includes(route + '.js'), route);
+  const changed = [];
+  function walk(directory, relative = '') {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const name = path.join(relative, entry.name);
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(full, name);
+      else {
+        const source = path.join(sourceRoot, name);
+        if (fs.existsSync(source) && !fs.readFileSync(full).equals(fs.readFileSync(source)))
+          changed.push(name.split(path.sep).join('/'));
+      }
+    }
+  }
+  walk(run.project);
+  assert.deepEqual(changed.sort(), [...run.plan.overriddenFiles].sort());
+  for (const route of routes)
+    assert.deepEqual(fs.readFileSync(path.join(sourceRoot, route + '.js')), before.get(route));
+  assert.deepEqual(fs.readFileSync(path.join(sourceRoot, 'app.json')), appBefore);
+  assert.throws(() => prepare({ out: path.join(ROOT, 'apps/wechat/new-copy') }), /输出必须/);
 });
 
 test('all disposable page lifecycles and handlers are inert, including auth and writes', async () => {

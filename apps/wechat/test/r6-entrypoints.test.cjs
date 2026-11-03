@@ -12,7 +12,13 @@ test('all five R6 pages are registered with safe login return paths while naviga
   const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
   for (const name of pageNames) {
     const route = 'pages/' + name + '/index';
-    assert.ok(app.pages.includes(route), route);
+    const registered = [
+      ...app.pages,
+      ...(app.subpackages || []).flatMap((pack) =>
+        pack.pages.map((page) => pack.root.replace(/\/$/, '') + '/' + page),
+      ),
+    ];
+    assert.ok(registered.includes(route), route);
     for (const ext of ['js', 'json', 'wxml', 'wxss'])
       assert.ok(fs.existsSync(path.join(root, route + '.' + ext)), route + '.' + ext);
     assert.equal(ui.safeReturn('/' + route), '/' + route);

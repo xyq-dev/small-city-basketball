@@ -8,6 +8,7 @@ const {
   decodeEntities: entities,
 } = require('./wxml.cjs');
 const { loadPage, loadComponent } = require('./native-page.cjs');
+const { registeredRoutes } = require('./registered-routes.cjs');
 
 function localFile(filename, root, kind) {
   const file = path.resolve(filename);
@@ -404,9 +405,12 @@ function readWxss(filename, root, seen = new Set()) {
   const next = new Set(seen).add(resolved);
   return fs
     .readFileSync(resolved, 'utf8')
-    .replace(/@import\s+["']([^"']+)["']\s*;/g, (_, target) =>
-      readWxss(path.resolve(path.dirname(resolved), target), root, next),
-    );
+    .replace(/@import\s+["']([^"']+)["']\s*;/g, (_, target) => {
+      const imported = target.startsWith('/')
+        ? path.resolve(root, '.' + target)
+        : path.resolve(path.dirname(resolved), target);
+      return readWxss(imported, root, next);
+    });
 }
 
 function convertWxss(css, width) {
@@ -495,7 +499,8 @@ function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
   const manifest = JSON.parse(
     fs.readFileSync(localFile(path.join(root, 'app.json'), root, 'Manifest'), 'utf8'),
   );
-  if (!manifest.pages.includes(route)) throw new Error('Page is not registered: ' + route);
+  if (!registeredRoutes(manifest).includes(route))
+    throw new Error('Page is not registered: ' + route);
   const pageFile = path.join(root, route + '.js');
   const harness = loadPage({ root, route });
   harness.page.setData(data);
@@ -596,4 +601,12 @@ function buildPreview({ root, route, data = {}, width = 390, height = 844 }) {
   };
 }
 
-module.exports = { renderWxml, readWxss, convertWxss, buildPreview, attribute, scopedCss };
+module.exports = {
+  renderWxml,
+  readWxss,
+  convertWxss,
+  buildPreview,
+  attribute,
+  scopedCss,
+  registeredRoutes,
+};

@@ -1,78 +1,11 @@
 {
   "pages": [
     "pages/home/index",
-    "pages/city-select/index",
-    "pages/search/index",
     "pages/watch/index",
-    "pages/media/index",
     "pages/account/index",
-    "pages/account-recovery/index",
-    "pages/staff-configuration/index",
-    "pages/event/index",
-    "pages/org-event/index",
-    "pages/org-match/index",
-    "pages/scorer/index",
-    "pages/scoring-tasks/index",
-    "pages/entry-review/index",
-    "pages/event-setup/index",
-    "pages/schedule/index",
-    "pages/bracket/index",
-    "pages/reschedule/index",
-    "pages/match-media/index",
-    "pages/match/index",
-    "pages/players/index",
-    "pages/player/index",
-    "pages/compare/index",
-    "pages/booking-create/index",
-    "pages/bookings/index",
-    "pages/booking-detail/index",
-    "pages/player-center/index",
-    "pages/performance/index",
     "pages/teams/index",
-    "pages/team/index",
-    "pages/registration-events/index",
-    "pages/entry/index",
-    "pages/invitation/index",
-    "pages/planned/index",
-    "pages/platform/index",
-    "pages/follows/index",
-    "pages/team-request/index",
-    "pages/team-requests/index",
-    "pages/team-join/index",
-    "pages/memberships/index",
-    "pages/seasons/index",
-    "pages/season-grants/index",
-    "pages/participant-materials/index",
-    "pages/match-exceptions/index",
-    "pages/recruitment/index",
-    "pages/poster/index",
     "pages/local/index",
-    "pages/local-manage/index",
-    "pages/local-bookings/index",
-    "pages/local-matchups/index",
-    "pages/governance/index",
-    "pages/governance-reviews/index",
-    "pages/city-operations/index",
-    "pages/sponsorships/index",
-    "pages/public-archives/index",
-    "pages/public-archive/index",
-    "pages/public-ledgers/index",
-    "pages/live-studio/index",
-    "pages/media-jobs/index",
-    "pages/insurance/index",
-    "pages/qualification-precheck/index",
-    "pages/trade-order/index",
-    "pages/trade-manage/index",
-    "pages/messages/index",
-    "pages/notification-settings/index",
-    "pages/account-closure/index",
-    "pages/guardian/index",
-    "pages/youth-review/index",
-    "pages/matching/index",
-    "pages/dispatch/index",
-    "pages/training/index",
-    "pages/training-manage/index",
-    "pages/sponsor-commerce/index"
+    "pages/trade-order/index"
   ],
   "window": {
     "navigationBarTitleText": "小城市篮球",
@@ -98,5 +31,275 @@
       "desc": "用于你主动查询附近球场与同城服务的距离"
     }
   },
-  "requiredPrivateInfos": ["getLocation"]
+  "requiredPrivateInfos": ["getLocation"],
+  "subpackages": [
+    {
+      "root": "pages/city-select",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/search",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/media",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/account-recovery",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/staff-configuration",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/event",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/org-event",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/org-match",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/scorer",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/scoring-tasks",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/entry-review",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/event-setup",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/schedule",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/bracket",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/reschedule",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/match-media",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/match",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/players",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/player",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/compare",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/booking-create",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/bookings",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/booking-detail",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/player-center",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/performance",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/team",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/registration-events",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/entry",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/invitation",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/planned",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/platform",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/follows",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/team-request",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/team-requests",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/team-join",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/memberships",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/seasons",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/season-grants",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/participant-materials",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/match-exceptions",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/recruitment",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/poster",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/local-manage",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/local-bookings",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/local-matchups",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/governance",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/governance-reviews",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/city-operations",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/sponsorships",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/public-archives",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/public-archive",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/public-ledgers",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/live-studio",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/media-jobs",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/insurance",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/qualification-precheck",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/trade-manage",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/messages",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/notification-settings",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/account-closure",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/guardian",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/youth-review",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/matching",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/dispatch",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/training",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/training-manage",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/sponsor-commerce",
+      "pages": ["index"]
+    }
+  ]
 }
