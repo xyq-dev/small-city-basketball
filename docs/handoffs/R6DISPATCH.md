@@ -49,3 +49,5 @@ PR35 thread `PRRT_kwDOVTBG086yXCae`, baseline root `87a8bcb`: new branch `work/r
 接单偏好和建立需求改为页面级操作，只受当前账号、必要机构和页面存活约束。等待保存时打开或切换详情不再取消成功反馈和列表刷新，下一次提交使用服务端递增后的偏好版本。失败仍显示校验或服务端错误。刷新页面数据时保留当前详情。`registration/shared.tsx` 未改，后端契约未改。
 
 回归在 `OperationsPages.test.tsx`，使用可控 Promise 和写成功后递增的版本：重开 A 后页面保持 v5 且下一次命令使用 v5；A 的失败不覆盖后打开的 B；偏好从 v1 保存期间打开详情，下一次提交使用 v2，错误反馈仍在且详情保留；邀请刷新的迟到响应不覆盖后打开的邀请。Node 24.22.2 下该文件 27/27，管理端 `tsc --noEmit` 通过，两个改动文件 Prettier 通过，`git diff --check` 只有工作区 CRLF 提示。完整 e2e、真实 PostgreSQL 和 `test:wechat` 未跑。远端 CI 以本提交为准，不沿用 `a2f4592`。保持 Draft，不标 DONE。
+
+2026-11-03 文档更正：上一段「保持 Draft，不标 DONE」是 `fc8c2eb` 合入前的记录。[PR #37](https://github.com/xyq-dev/small-city-basketball/pull/37) 已于 `2026-11-01T23:39:25Z` 合入 main，合并提交 `717a3a7a9fbb91aa93370d6dc594c10b58bdf4c9`。当时未跑的完整 e2e、真实 PostgreSQL 和 `test:wechat` 不因合并改记为本交接已重跑。本页仍不标 DONE。见 [当前状态](../CURRENT_STATUS.md)。
