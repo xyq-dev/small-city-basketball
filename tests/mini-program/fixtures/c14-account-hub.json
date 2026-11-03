@@ -31,6 +31,7 @@
     "messageTone": "info",
     "hasReturn": false,
     "securityOpen": false,
+    "workspaceOpen": true,
     "roles": [
       {
         "key": "28632d75-e480-46e8-b599-1180ddafa034",

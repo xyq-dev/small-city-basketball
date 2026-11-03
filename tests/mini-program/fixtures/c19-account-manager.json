@@ -19,6 +19,7 @@
     "registerMode": false,
     "consent": false,
     "securityOpen": false,
+    "workspaceOpen": true,
     "message": "",
     "messageTone": "info",
     "email": "",

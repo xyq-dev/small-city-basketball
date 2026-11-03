@@ -1,0 +1,3621 @@
+{
+  "runId": "scb-figma-v4-20261102",
+  "scope": "73-route-editable-ui-and-key-prototypes",
+  "fileKey": "QpKOskViUwHFVqSG3uYR9X",
+  "fileUrl": "https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X",
+  "sessionId": "ceae2350-38f3-4985-a696-9c2c84480f99",
+  "step": "completed",
+  "entities": {
+    "pages": {
+      "00 · 定稿说明与交接": "0:1",
+      "01 · 设计系统与组件": "2:2",
+      "02 · 独立图片与图标": "2:3",
+      "03 · 五主导航与城市搜索": "2:4",
+      "04 · 赛事与公开观赛": "2:5",
+      "05 · 球队成员与公开档案": "2:6",
+      "06 · 球员服务与履约": "2:7",
+      "07 · 本人档案与私有赛季": "2:8",
+      "08 · 招募报名与资格审核": "2:9",
+      "09 · 办赛排赛与工作人员": "2:10",
+      "10 · 记分裁定与直播媒体": "2:11",
+      "11 · 同城供给撮合与派单": "2:12",
+      "12 · 交易保险与青年确认": "2:13",
+      "13 · 消息账号与客服": "2:14",
+      "14 · 城市运营赞助与海报": "2:15",
+      "15 · 通用状态与恢复": "2:16",
+      "16 · 320与430适配": "2:17"
+    },
+    "collections": {
+      "primitives": "VariableCollectionId:2:18",
+      "design": "VariableCollectionId:2:19"
+    },
+    "variables": {
+      "color/navy": "VariableID:2:34",
+      "color/orange": "VariableID:2:35",
+      "color/background": "VariableID:2:36",
+      "color/surface": "VariableID:2:37",
+      "color/text": "VariableID:2:38",
+      "color/muted": "VariableID:2:39",
+      "color/line": "VariableID:2:40",
+      "color/blueTint": "VariableID:2:41",
+      "color/orangeTint": "VariableID:2:42",
+      "color/green": "VariableID:2:43",
+      "color/greenTint": "VariableID:2:44",
+      "color/red": "VariableID:2:45",
+      "color/redTint": "VariableID:2:46",
+      "color/disabled": "VariableID:2:47",
+      "space/4": "VariableID:2:48",
+      "space/8": "VariableID:2:49",
+      "space/12": "VariableID:2:50",
+      "space/16": "VariableID:2:51",
+      "space/20": "VariableID:2:52",
+      "space/24": "VariableID:2:53",
+      "space/32": "VariableID:2:54",
+      "radius/8": "VariableID:2:55",
+      "radius/12": "VariableID:2:56",
+      "radius/16": "VariableID:2:57",
+      "radius/24": "VariableID:2:58",
+      "radius/999": "VariableID:2:59"
+    },
+    "styles": {
+      "Display": "S:0c3ca7858774ff0d5ebf2c0a9894295ca1568f15,",
+      "Title": "S:50523af718254ca9ba1ee47812ae14fb2def3a7d,",
+      "Section": "S:a6abea05790a94cb7cc8e7f4be06d8f27d075fec,",
+      "Card": "S:8528db963499c4667156703f4067032386f3e506,",
+      "Body": "S:a334a179142bdc0aaba277c52db33e72299ead5b,",
+      "Caption": "S:229f1096112ce01a08947b10d1e1b0fcb057cf65,",
+      "Label": "S:716d5173de4f93344dbd68f14e4dd438de9f74d9,"
+    },
+    "components": {
+      "createdNodeIds": [
+        "5:14",
+        "5:2",
+        "5:3",
+        "5:4",
+        "5:5",
+        "5:6",
+        "5:7",
+        "5:8",
+        "5:9",
+        "5:10",
+        "5:11",
+        "5:12",
+        "5:13",
+        "5:15",
+        "5:18",
+        "5:19",
+        "5:22",
+        "5:23",
+        "5:26",
+        "5:27",
+        "5:30",
+        "5:31",
+        "5:34",
+        "5:35",
+        "5:38",
+        "5:39",
+        "5:42",
+        "5:43",
+        "5:46",
+        "5:47",
+        "5:50",
+        "5:51",
+        "5:54",
+        "5:55",
+        "5:58",
+        "5:59",
+        "5:62",
+        "5:63",
+        "5:64",
+        "5:67",
+        "5:68",
+        "5:69",
+        "5:70",
+        "5:72",
+        "5:73",
+        "5:74",
+        "5:75",
+        "5:76",
+        "5:77",
+        "5:78",
+        "5:79",
+        "5:80",
+        "5:81",
+        "5:82",
+        "5:83",
+        "5:86",
+        "5:87",
+        "5:88",
+        "5:89",
+        "5:90",
+        "5:91",
+        "5:92",
+        "5:93",
+        "5:102",
+        "5:103",
+        "5:104",
+        "5:105",
+        "5:106",
+        "5:107",
+        "5:108",
+        "5:109",
+        "5:110",
+        "5:112",
+        "5:113",
+        "5:114",
+        "5:115",
+        "5:116",
+        "5:117",
+        "5:118",
+        "5:119",
+        "5:121",
+        "5:122",
+        "5:123",
+        "5:126",
+        "5:127",
+        "5:128",
+        "5:131",
+        "5:132",
+        "5:133",
+        "5:136",
+        "5:137",
+        "5:138",
+        "5:141",
+        "5:142",
+        "5:143",
+        "5:144",
+        "5:145",
+        "5:146",
+        "5:148",
+        "5:149",
+        "5:150",
+        "5:153",
+        "5:154",
+        "5:155",
+        "5:158",
+        "5:159",
+        "5:160",
+        "5:163",
+        "5:164",
+        "5:165",
+        "5:168",
+        "5:169",
+        "5:170",
+        "5:171",
+        "5:172",
+        "5:173",
+        "5:175",
+        "5:176",
+        "5:177",
+        "5:180",
+        "5:181",
+        "5:182",
+        "5:185",
+        "5:186",
+        "5:187",
+        "5:190",
+        "5:191",
+        "5:192",
+        "5:195",
+        "5:196",
+        "5:197",
+        "5:198",
+        "5:199",
+        "5:200",
+        "5:202",
+        "5:203",
+        "5:204",
+        "5:207",
+        "5:208",
+        "5:209",
+        "5:212",
+        "5:213",
+        "5:214",
+        "5:217",
+        "5:218",
+        "5:219",
+        "5:222",
+        "5:223",
+        "5:224",
+        "5:225",
+        "5:226",
+        "5:227",
+        "5:229",
+        "5:230",
+        "5:231",
+        "5:234",
+        "5:235",
+        "5:236",
+        "5:239",
+        "5:240",
+        "5:241",
+        "5:244",
+        "5:245",
+        "5:246",
+        "5:249",
+        "5:250",
+        "5:251",
+        "5:252",
+        "5:253",
+        "5:254",
+        "5:255",
+        "5:256",
+        "5:257",
+        "5:259",
+        "5:260",
+        "5:261",
+        "5:262",
+        "5:263",
+        "5:264",
+        "5:265",
+        "I5:39;3:123",
+        "I5:39;3:124",
+        "I5:43;3:123",
+        "I5:43;3:124",
+        "I5:47;3:123",
+        "I5:47;3:124",
+        "I5:64;3:113",
+        "I5:64;3:114",
+        "I5:70;3:48",
+        "I5:83;3:113",
+        "I5:83;3:114",
+        "I5:93;3:38",
+        "I5:93;3:36",
+        "I5:93;3:37",
+        "I5:93;3:31",
+        "I5:93;3:32",
+        "I5:93;3:33",
+        "I5:93;3:34",
+        "I5:93;3:35",
+        "I5:110;3:120",
+        "I5:119;3:51",
+        "I5:123;3:89",
+        "I5:123;3:90",
+        "I5:128;3:61",
+        "I5:128;3:62",
+        "I5:133;3:81",
+        "I5:133;3:82",
+        "I5:138;3:69",
+        "I5:138;3:70",
+        "I5:146;3:54",
+        "I5:150;3:85",
+        "I5:150;3:86",
+        "I5:155;3:61",
+        "I5:155;3:62",
+        "I5:160;3:81",
+        "I5:160;3:82",
+        "I5:165;3:69",
+        "I5:165;3:70",
+        "I5:173;3:54",
+        "I5:177;3:89",
+        "I5:177;3:90",
+        "I5:182;3:57",
+        "I5:182;3:58",
+        "I5:187;3:81",
+        "I5:187;3:82",
+        "I5:192;3:69",
+        "I5:192;3:70",
+        "I5:200;3:54",
+        "I5:204;3:89",
+        "I5:204;3:90",
+        "I5:209;3:61",
+        "I5:209;3:62",
+        "I5:214;3:77",
+        "I5:214;3:78",
+        "I5:219;3:69",
+        "I5:219;3:70",
+        "I5:227;3:54",
+        "I5:231;3:89",
+        "I5:231;3:90",
+        "I5:236;3:61",
+        "I5:236;3:62",
+        "I5:241;3:81",
+        "I5:241;3:82",
+        "I5:246;3:65",
+        "I5:246;3:66",
+        "I5:257;3:117"
+      ],
+      "sets": {
+        "Button": "5:14",
+        "Header": "5:115",
+        "BottomNavigation": "5:251",
+        "Checkbox": "5:260",
+        "Tab": "5:265"
+      },
+      "components": {
+        "Row": "5:63",
+        "Field": "5:72",
+        "Notice": "5:76",
+        "Stat": "5:79",
+        "Upload": "5:82"
+      },
+      "counts": {
+        "componentSets": 5,
+        "standaloneComponents": 5,
+        "variants": 23
+      },
+      "buttonVariants": [
+        {
+          "id": "5:2",
+          "name": "Tone=Orange, State=Default"
+        },
+        {
+          "id": "5:3",
+          "name": "Tone=Orange, State=Disabled"
+        },
+        {
+          "id": "5:4",
+          "name": "Tone=Orange, State=Loading"
+        },
+        {
+          "id": "5:5",
+          "name": "Tone=Navy, State=Default"
+        },
+        {
+          "id": "5:6",
+          "name": "Tone=Navy, State=Disabled"
+        },
+        {
+          "id": "5:7",
+          "name": "Tone=Navy, State=Loading"
+        },
+        {
+          "id": "5:8",
+          "name": "Tone=Wechat, State=Default"
+        },
+        {
+          "id": "5:9",
+          "name": "Tone=Wechat, State=Disabled"
+        },
+        {
+          "id": "5:10",
+          "name": "Tone=Wechat, State=Loading"
+        },
+        {
+          "id": "5:11",
+          "name": "Tone=Ghost, State=Default"
+        },
+        {
+          "id": "5:12",
+          "name": "Tone=Ghost, State=Disabled"
+        },
+        {
+          "id": "5:13",
+          "name": "Tone=Ghost, State=Loading"
+        }
+      ],
+      "navVariants": [
+        {
+          "id": "5:116",
+          "name": "Active=首页"
+        },
+        {
+          "id": "5:143",
+          "name": "Active=赛事"
+        },
+        {
+          "id": "5:170",
+          "name": "Active=同城"
+        },
+        {
+          "id": "5:197",
+          "name": "Active=球队"
+        },
+        {
+          "id": "5:224",
+          "name": "Active=我的"
+        }
+      ],
+      "headerVariants": [
+        {
+          "id": "5:88",
+          "name": "Mode=Brand"
+        },
+        {
+          "id": "5:105",
+          "name": "Mode=Back"
+        }
+      ],
+      "checkboxVariants": [
+        {
+          "id": "5:252",
+          "name": "Checked=false"
+        },
+        {
+          "id": "5:255",
+          "name": "Checked=true"
+        }
+      ],
+      "tabVariants": [
+        {
+          "id": "5:261",
+          "name": "Active=false"
+        },
+        {
+          "id": "5:263",
+          "name": "Active=true"
+        }
+      ]
+    },
+    "assets": {
+      "icons": {
+        "bell": "3:29",
+        "brandmark": "3:39",
+        "calendar": "3:43",
+        "chevron-down": "3:46",
+        "chevron-right": "3:49",
+        "home-active": "3:52",
+        "home": "3:55",
+        "pin-active": "3:59",
+        "pin": "3:63",
+        "profile-active": "3:67",
+        "profile": "3:71",
+        "search": "3:75",
+        "team-active": "3:79",
+        "team": "3:83",
+        "trophy-active": "3:87",
+        "trophy": "3:91",
+        "settings": "3:95",
+        "heart": "3:98",
+        "shield": "3:102",
+        "chat": "3:105",
+        "headphones": "3:111",
+        "document": "3:115",
+        "check": "3:118",
+        "chevronLeft": "3:121",
+        "wechat": "3:125"
+      },
+      "images": {
+        "event-court-photo": {
+          "imageHash": "be42ed5bf56d1e012634929007c9d201b3769320",
+          "nodeId": "3:3"
+        },
+        "hero-basketball-background": {
+          "imageHash": "fbe0314b12268bfab0518cbdcb35fae55174dabf",
+          "nodeId": "3:6"
+        },
+        "icon-match-video": {
+          "imageHash": "cc6a30a9af492057d24da92f6785feb46a2d372c",
+          "nodeId": "3:9"
+        },
+        "icon-player-jersey": {
+          "imageHash": "867c5cabc2bc5fde1742d4321b3bfcf901e85449",
+          "nodeId": "3:12"
+        },
+        "icon-team-data": {
+          "imageHash": "41dc6efb2661f21c66f5703922cdd125b418ad41",
+          "nodeId": "3:15"
+        },
+        "icon-trophy": {
+          "imageHash": "b3d90899efc227c3cc8b61ad6862a37ebf51b77f",
+          "nodeId": "3:18"
+        },
+        "service-court": {
+          "imageHash": "9d09a93b5c25c483743c4b2dcc56a6dbadeee05c",
+          "nodeId": "3:21"
+        },
+        "service-referee": {
+          "imageHash": "4cfa6574befc695e5cba4850368fbc266fe68f85",
+          "nodeId": "3:24"
+        },
+        "icon-account-calendar-v4": {
+          "imageHash": "939c708f58bc74dc99bfe2361caf082e09687a72",
+          "nodeId": "7:2"
+        },
+        "icon-account-heart-v4": {
+          "imageHash": "12e30c81d023c023f69de44b4813b4327e8e286d",
+          "nodeId": "7:3"
+        }
+      }
+    },
+    "screens": {
+      "home": {
+        "id": "10:9",
+        "key": "home",
+        "route": "home",
+        "title": "首页",
+        "width": 390,
+        "height": 844,
+        "viewportId": "10:35",
+        "contentId": "10:36",
+        "contentHeight": 1064,
+        "role": "公开访客 · 全国浏览",
+        "navId": "10:91",
+        "headerId": "10:10"
+      },
+      "watch": {
+        "id": "10:130",
+        "key": "watch",
+        "route": "watch",
+        "title": "赛事",
+        "width": 390,
+        "height": 844,
+        "viewportId": "10:148",
+        "contentId": "10:149",
+        "contentHeight": 678,
+        "role": "公开观众",
+        "navId": "10:200",
+        "headerId": "10:131"
+      },
+      "local": {
+        "id": "10:239",
+        "key": "local",
+        "route": "local",
+        "title": "同城",
+        "width": 390,
+        "height": 844,
+        "viewportId": "10:257",
+        "contentId": "10:258",
+        "contentHeight": 710,
+        "role": "公开访客",
+        "navId": "10:304",
+        "headerId": "10:240"
+      },
+      "teams": {
+        "id": "10:344",
+        "key": "teams",
+        "route": "teams",
+        "title": "球队",
+        "width": 390,
+        "height": 844,
+        "viewportId": "10:362",
+        "contentId": "10:363",
+        "contentHeight": 788,
+        "role": "已登录本人",
+        "navId": "10:414",
+        "headerId": "10:345"
+      },
+      "account": {
+        "id": "10:453",
+        "key": "account",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "10:471",
+        "contentId": "10:472",
+        "contentHeight": 1008,
+        "role": "已登录本人 · 有主办方授权示例",
+        "navId": "10:573",
+        "headerId": "10:454"
+      },
+      "event": {
+        "id": "14:9",
+        "key": "event",
+        "route": "event",
+        "title": "赛事详情",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:21",
+        "contentId": "14:22",
+        "contentHeight": 962,
+        "role": "公开观众",
+        "navId": "14:78",
+        "headerId": "14:10"
+      },
+      "match": {
+        "id": "14:117",
+        "key": "match",
+        "route": "match",
+        "title": "比赛实况",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:128",
+        "contentId": "14:129",
+        "contentHeight": 886,
+        "role": "公开观众",
+        "navId": "14:177",
+        "headerId": "14:118"
+      },
+      "bracket": {
+        "id": "14:207",
+        "key": "bracket",
+        "route": "bracket",
+        "title": "分组与晋级",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:218",
+        "contentId": "14:219",
+        "contentHeight": 940,
+        "role": "有权赛事工作人员",
+        "navId": "14:285",
+        "headerId": "14:208"
+      },
+      "media": {
+        "id": "14:316",
+        "key": "media",
+        "route": "media",
+        "title": "比赛视频",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:327",
+        "contentId": "14:328",
+        "contentHeight": 746,
+        "role": "公开观众",
+        "navId": "14:361",
+        "headerId": "14:317"
+      },
+      "follows": {
+        "id": "14:391",
+        "key": "follows",
+        "route": "follows",
+        "title": "我的关注",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:402",
+        "contentId": "14:403",
+        "contentHeight": 596,
+        "role": "本人",
+        "navId": "14:445",
+        "headerId": "14:392"
+      },
+      "public-ledgers": {
+        "id": "14:484",
+        "key": "public-ledgers",
+        "route": "public-ledgers",
+        "title": "经费公示",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:495",
+        "contentId": "14:496",
+        "contentHeight": 702,
+        "role": "公开观众",
+        "navId": "14:532",
+        "headerId": "14:485"
+      },
+      "team": {
+        "id": "14:566",
+        "key": "team",
+        "route": "team",
+        "title": "球队主页与成员",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:577",
+        "contentId": "14:578",
+        "contentHeight": 914,
+        "role": "有权球队领队",
+        "navId": "14:644",
+        "headerId": "14:567"
+      },
+      "memberships": {
+        "id": "14:683",
+        "key": "memberships",
+        "route": "memberships",
+        "title": "我的成员关系",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:694",
+        "contentId": "14:695",
+        "contentHeight": 664,
+        "role": "本人",
+        "navId": "14:741",
+        "headerId": "14:684"
+      },
+      "invitation": {
+        "id": "14:771",
+        "key": "invitation",
+        "route": "invitation",
+        "title": "接受球队邀请",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:782",
+        "contentId": "14:783",
+        "contentHeight": 782,
+        "role": "邀请指定账号",
+        "navId": "14:815",
+        "headerId": "14:772"
+      },
+      "team-join": {
+        "id": "14:846",
+        "key": "team-join",
+        "route": "team-join",
+        "title": "加入球队",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:857",
+        "contentId": "14:858",
+        "contentHeight": 824,
+        "role": "本人",
+        "navId": "14:903",
+        "headerId": "14:847"
+      },
+      "public-archives": {
+        "id": "14:933",
+        "key": "public-archives",
+        "route": "public-archives",
+        "title": "公开档案授权",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:944",
+        "contentId": "14:945",
+        "contentHeight": 834,
+        "role": "本人／有权主办方",
+        "navId": "14:1003",
+        "headerId": "14:934"
+      },
+      "public-archive": {
+        "id": "14:1033",
+        "key": "public-archive",
+        "route": "public-archive",
+        "title": "公开球员档案",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:1044",
+        "contentId": "14:1045",
+        "contentHeight": 1040,
+        "role": "公开观众",
+        "navId": "14:1112",
+        "headerId": "14:1034"
+      },
+      "players": {
+        "id": "14:1146",
+        "key": "players",
+        "route": "players",
+        "title": "找球员",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:1157",
+        "contentId": "14:1158",
+        "contentHeight": 860,
+        "role": "公开观众／需求方",
+        "navId": "14:1218",
+        "headerId": "14:1147"
+      },
+      "player": {
+        "id": "14:1257",
+        "key": "player",
+        "route": "player",
+        "title": "球员服务详情",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:1268",
+        "contentId": "14:1269",
+        "contentHeight": 938,
+        "role": "需求方",
+        "navId": "14:1323",
+        "headerId": "14:1258"
+      },
+      "compare": {
+        "id": "14:1353",
+        "key": "compare",
+        "route": "compare",
+        "title": "球员对比",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:1364",
+        "contentId": "14:1365",
+        "contentHeight": 806,
+        "role": "需求方",
+        "navId": "14:1408",
+        "headerId": "14:1354"
+      },
+      "booking-create": {
+        "id": "14:1439",
+        "key": "booking-create",
+        "route": "booking-create",
+        "title": "发起球员邀约",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:1450",
+        "contentId": "14:1451",
+        "contentHeight": 1234,
+        "role": "有权需求方",
+        "navId": "14:1510",
+        "headerId": "14:1440"
+      },
+      "bookings": {
+        "id": "14:1540",
+        "key": "bookings",
+        "route": "bookings",
+        "title": "我的球员预约",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:1551",
+        "contentId": "14:1552",
+        "contentHeight": 564,
+        "role": "本人需求方",
+        "navId": "14:1599",
+        "headerId": "14:1541"
+      },
+      "booking-detail": {
+        "id": "14:1629",
+        "key": "booking-detail",
+        "route": "booking-detail",
+        "title": "逐场邀约与履约",
+        "width": 390,
+        "height": 844,
+        "viewportId": "14:1640",
+        "contentId": "14:1641",
+        "contentHeight": 1046,
+        "role": "预约双方／授权处理人",
+        "navId": "14:1692",
+        "headerId": "14:1630"
+      },
+      "city-select": {
+        "id": "15:432",
+        "key": "city-select",
+        "route": "city-select",
+        "title": "选择城市",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:444",
+        "contentId": "15:445",
+        "contentHeight": 870,
+        "role": "公开访客",
+        "navId": "15:503",
+        "headerId": "15:433"
+      },
+      "search": {
+        "id": "15:533",
+        "key": "search",
+        "route": "search",
+        "title": "搜索",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:544",
+        "contentId": "15:545",
+        "contentHeight": 618,
+        "role": "公开访客",
+        "navId": "15:591",
+        "headerId": "15:534"
+      },
+      "account-guest": {
+        "id": "15:625",
+        "key": "account-guest",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:643",
+        "contentId": "15:644",
+        "contentHeight": 898,
+        "role": "游客 · 微信明确未开放",
+        "navId": "15:708",
+        "headerId": "15:626"
+      },
+      "account-ready": {
+        "id": "15:738",
+        "key": "account-ready",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:756",
+        "contentId": "15:757",
+        "contentHeight": 898,
+        "role": "游客 · 已开放且已有绑定的设计分支",
+        "navId": "15:824",
+        "headerId": "15:739"
+      },
+      "account-email": {
+        "id": "15:854",
+        "key": "account-email",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:872",
+        "contentId": "15:873",
+        "contentHeight": 946,
+        "role": "游客 · 已有账号或邮箱登录",
+        "navId": "15:936",
+        "headerId": "15:855"
+      },
+      "account-email-error": {
+        "id": "15:967",
+        "key": "account-email-error",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:985",
+        "contentId": "15:986",
+        "contentHeight": 1038,
+        "role": "游客 · 空表单本地提示",
+        "navId": "15:1052",
+        "headerId": "15:968"
+      },
+      "account-consent": {
+        "id": "15:1082",
+        "key": "account-consent",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:1100",
+        "contentId": "15:1101",
+        "contentHeight": 412,
+        "role": "游客 · 明确同意本次微信身份认证",
+        "navId": "15:1125",
+        "headerId": "15:1083"
+      },
+      "account-loading": {
+        "id": "15:1155",
+        "key": "account-loading",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:1173",
+        "contentId": "15:1174",
+        "contentHeight": 270,
+        "role": "游客 · 核对服务端会话中",
+        "navId": "15:1192",
+        "headerId": "15:1156"
+      },
+      "account-capability-unknown": {
+        "id": "15:1226",
+        "key": "account-capability-unknown",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:1244",
+        "contentId": "15:1245",
+        "contentHeight": 1020,
+        "role": "游客 · 能力读取失败",
+        "navId": "15:1312",
+        "headerId": "15:1227"
+      },
+      "account-unbound": {
+        "id": "15:1342",
+        "key": "account-unbound",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:1360",
+        "contentId": "15:1361",
+        "contentHeight": 960,
+        "role": "游客 · 当前微信未绑定",
+        "navId": "15:1425",
+        "headerId": "15:1343"
+      },
+      "account-error": {
+        "id": "15:1455",
+        "key": "account-error",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:1473",
+        "contentId": "15:1474",
+        "contentHeight": 1020,
+        "role": "游客 · 本次登录未完成",
+        "navId": "15:1541",
+        "headerId": "15:1456"
+      },
+      "account-security": {
+        "id": "15:1572",
+        "key": "account-security",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:1590",
+        "contentId": "15:1591",
+        "contentHeight": 1014,
+        "role": "本人 · 绑定与解绑各自确认",
+        "navId": "15:1675",
+        "headerId": "15:1573"
+      },
+      "account-privacy": {
+        "id": "15:1705",
+        "key": "account-privacy",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:1723",
+        "contentId": "15:1724",
+        "contentHeight": 582,
+        "role": "游客 · 公共说明入口",
+        "navId": "15:1779",
+        "headerId": "15:1706"
+      },
+      "account-orders": {
+        "id": "15:1809",
+        "key": "account-orders",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:1827",
+        "contentId": "15:1828",
+        "contentHeight": 528,
+        "role": "本人 · 按订单类型选择",
+        "navId": "15:1881",
+        "headerId": "15:1810"
+      },
+      "account-workspace": {
+        "id": "15:1915",
+        "key": "account-workspace",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:1933",
+        "contentId": "15:1934",
+        "contentHeight": 528,
+        "role": "有权工作人员 · 当前资源再次核验",
+        "navId": "15:1987",
+        "headerId": "15:1916"
+      },
+      "account-more": {
+        "id": "15:2017",
+        "key": "account-more",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:2035",
+        "contentId": "15:2036",
+        "contentHeight": 716,
+        "role": "本人 · 保留原有更多服务",
+        "navId": "15:2111",
+        "headerId": "15:2018"
+      },
+      "account-no-role": {
+        "id": "15:2141",
+        "key": "account-no-role",
+        "route": "account",
+        "title": "我的",
+        "width": 390,
+        "height": 844,
+        "viewportId": "15:2159",
+        "contentId": "15:2160",
+        "contentHeight": 914,
+        "role": "已登录本人 · 无管理角色",
+        "navId": "15:2250",
+        "headerId": "15:2142"
+      },
+      "player-center": {
+        "id": "17:9",
+        "key": "player-center",
+        "route": "player-center",
+        "title": "本人球员中心",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:21",
+        "contentId": "17:22",
+        "contentHeight": 998,
+        "role": "本人",
+        "navId": "17:89",
+        "headerId": "17:10"
+      },
+      "performance": {
+        "id": "17:128",
+        "key": "performance",
+        "route": "performance",
+        "title": "比赛数据授权",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:139",
+        "contentId": "17:140",
+        "contentHeight": 1058,
+        "role": "本人／有权主办方",
+        "navId": "17:212",
+        "headerId": "17:129"
+      },
+      "seasons": {
+        "id": "17:242",
+        "key": "seasons",
+        "route": "seasons",
+        "title": "私有赛季管理",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:253",
+        "contentId": "17:254",
+        "contentHeight": 848,
+        "role": "机构负责人／管理员",
+        "navId": "17:315",
+        "headerId": "17:243"
+      },
+      "season-grants": {
+        "id": "17:355",
+        "key": "season-grants",
+        "route": "season-grants",
+        "title": "私有赛季授权",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:366",
+        "contentId": "17:367",
+        "contentHeight": 1058,
+        "role": "本人",
+        "navId": "17:439",
+        "headerId": "17:356"
+      },
+      "team-request": {
+        "id": "17:469",
+        "key": "team-request",
+        "route": "team-request",
+        "title": "申请建队",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:480",
+        "contentId": "17:481",
+        "contentHeight": 842,
+        "role": "已登录申请人",
+        "navId": "17:523",
+        "headerId": "17:470"
+      },
+      "team-requests": {
+        "id": "17:553",
+        "key": "team-requests",
+        "route": "team-requests",
+        "title": "建队申请审核",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:564",
+        "contentId": "17:565",
+        "contentHeight": 716,
+        "role": "机构有权独立管理员",
+        "navId": "17:608",
+        "headerId": "17:554"
+      },
+      "recruitment": {
+        "id": "17:642",
+        "key": "recruitment",
+        "route": "recruitment",
+        "title": "赛事公开招募",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:653",
+        "contentId": "17:654",
+        "contentHeight": 952,
+        "role": "公开访客／领队",
+        "navId": "17:715",
+        "headerId": "17:643"
+      },
+      "registration-events": {
+        "id": "17:754",
+        "key": "registration-events",
+        "route": "registration-events",
+        "title": "选择报名赛事",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:765",
+        "contentId": "17:766",
+        "contentHeight": 920,
+        "role": "有权球队领队",
+        "navId": "17:819",
+        "headerId": "17:755"
+      },
+      "entry": {
+        "id": "17:849",
+        "key": "entry",
+        "route": "entry",
+        "title": "本届球队名单",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:860",
+        "contentId": "17:861",
+        "contentHeight": 854,
+        "role": "有权领队",
+        "navId": "17:905",
+        "headerId": "17:850"
+      },
+      "participant-materials": {
+        "id": "17:936",
+        "key": "participant-materials",
+        "route": "participant-materials",
+        "title": "本人报名资料",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:947",
+        "contentId": "17:948",
+        "contentHeight": 1156,
+        "role": "本人",
+        "navId": "17:1006",
+        "headerId": "17:937"
+      },
+      "qualification-precheck": {
+        "id": "17:1036",
+        "key": "qualification-precheck",
+        "route": "qualification-precheck",
+        "title": "独立资格预审",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:1047",
+        "contentId": "17:1048",
+        "contentHeight": 774,
+        "role": "本人／独立审核员",
+        "navId": "17:1101",
+        "headerId": "17:1037"
+      },
+      "entry-review": {
+        "id": "17:1131",
+        "key": "entry-review",
+        "route": "entry-review",
+        "title": "报名独立审核",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:1142",
+        "contentId": "17:1143",
+        "contentHeight": 802,
+        "role": "无关联独立审核员",
+        "navId": "17:1207",
+        "headerId": "17:1132"
+      },
+      "org-event": {
+        "id": "17:1241",
+        "key": "org-event",
+        "route": "org-event",
+        "title": "主办方赛事工作台",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:1252",
+        "contentId": "17:1253",
+        "contentHeight": 1262,
+        "role": "有权主办方",
+        "navId": "17:1349",
+        "headerId": "17:1242"
+      },
+      "event-setup": {
+        "id": "17:1379",
+        "key": "event-setup",
+        "route": "event-setup",
+        "title": "办赛向导",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:1390",
+        "contentId": "17:1391",
+        "contentHeight": 1172,
+        "role": "有权主办方",
+        "navId": "17:1454",
+        "headerId": "17:1380"
+      },
+      "schedule": {
+        "id": "17:1484",
+        "key": "schedule",
+        "route": "schedule",
+        "title": "抽签与排程",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:1495",
+        "contentId": "17:1496",
+        "contentHeight": 1140,
+        "role": "有权主办方",
+        "navId": "17:1555",
+        "headerId": "17:1485"
+      },
+      "reschedule": {
+        "id": "17:1586",
+        "key": "reschedule",
+        "route": "reschedule",
+        "title": "比赛改期",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:1597",
+        "contentId": "17:1598",
+        "contentHeight": 1080,
+        "role": "有权主办方",
+        "navId": "17:1650",
+        "headerId": "17:1587"
+      },
+      "org-match": {
+        "id": "17:1680",
+        "key": "org-match",
+        "route": "org-match",
+        "title": "本场比赛管理",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:1691",
+        "contentId": "17:1692",
+        "contentHeight": 814,
+        "role": "实际工作人员／独立复核人",
+        "navId": "17:1752",
+        "headerId": "17:1681"
+      },
+      "staff-configuration": {
+        "id": "17:1782",
+        "key": "staff-configuration",
+        "route": "staff-configuration",
+        "title": "赛事工作人员",
+        "width": 390,
+        "height": 844,
+        "viewportId": "17:1793",
+        "contentId": "17:1794",
+        "contentHeight": 834,
+        "role": "有权管理员",
+        "navId": "17:1856",
+        "headerId": "17:1783"
+      },
+      "scoring-tasks": {
+        "id": "20:4454",
+        "key": "scoring-tasks",
+        "route": "scoring-tasks",
+        "title": "记分与复核任务",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:4465",
+        "contentId": "20:4466",
+        "contentHeight": 660,
+        "role": "实际被分配工作人员",
+        "navId": "20:4511",
+        "headerId": "20:4455"
+      },
+      "scorer": {
+        "id": "20:4541",
+        "key": "scorer",
+        "route": "scorer",
+        "title": "现场记分",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:4552",
+        "contentId": "20:4553",
+        "contentHeight": 888,
+        "role": "当前主记分员",
+        "navId": "20:4614",
+        "headerId": "20:4542"
+      },
+      "match-exceptions": {
+        "id": "20:4644",
+        "key": "match-exceptions",
+        "route": "match-exceptions",
+        "title": "弃权与取消裁定",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:4655",
+        "contentId": "20:4656",
+        "contentHeight": 936,
+        "role": "有权提议人／独立复核人",
+        "navId": "20:4702",
+        "headerId": "20:4645"
+      },
+      "live-studio": {
+        "id": "20:4733",
+        "key": "live-studio",
+        "route": "live-studio",
+        "title": "直播准备与控制",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:4744",
+        "contentId": "20:4745",
+        "contentHeight": 996,
+        "role": "有权主播／独立批准人",
+        "navId": "20:4815",
+        "headerId": "20:4734"
+      },
+      "media-jobs": {
+        "id": "20:4845",
+        "key": "media-jobs",
+        "route": "media-jobs",
+        "title": "录像与媒体作业",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:4856",
+        "contentId": "20:4857",
+        "contentHeight": 774,
+        "role": "有权媒体工作人员",
+        "navId": "20:4918",
+        "headerId": "20:4846"
+      },
+      "match-media": {
+        "id": "20:4948",
+        "key": "match-media",
+        "route": "match-media",
+        "title": "比赛媒体管理",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:4959",
+        "contentId": "20:4960",
+        "contentHeight": 972,
+        "role": "有权赛事工作人员",
+        "navId": "20:5007",
+        "headerId": "20:4949"
+      },
+      "local-manage": {
+        "id": "20:3858",
+        "key": "local-manage",
+        "route": "local-manage",
+        "title": "供给与档期管理",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:3869",
+        "contentId": "20:3870",
+        "contentHeight": 890,
+        "role": "经营方／实际服务者／独立审核者",
+        "navId": "20:3924",
+        "headerId": "20:3859"
+      },
+      "local-bookings": {
+        "id": "20:3954",
+        "key": "local-bookings",
+        "route": "local-bookings",
+        "title": "同城预约订单",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:3965",
+        "contentId": "20:3966",
+        "contentHeight": 1176,
+        "role": "本人／对应服务方",
+        "navId": "20:4025",
+        "headerId": "20:3955"
+      },
+      "local-matchups": {
+        "id": "20:4055",
+        "key": "local-matchups",
+        "route": "local-matchups",
+        "title": "球队约赛",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:4066",
+        "contentId": "20:4067",
+        "contentHeight": 932,
+        "role": "双方球队有权管理人",
+        "navId": "20:4106",
+        "headerId": "20:4056"
+      },
+      "matching": {
+        "id": "20:4137",
+        "key": "matching",
+        "route": "matching",
+        "title": "全国篮球撮合",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:4148",
+        "contentId": "20:4149",
+        "contentHeight": 980,
+        "role": "有权需求人／合格供给方",
+        "navId": "20:4210",
+        "headerId": "20:4138"
+      },
+      "dispatch": {
+        "id": "20:4240",
+        "key": "dispatch",
+        "route": "dispatch",
+        "title": "跨城服务派单",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:4251",
+        "contentId": "20:4252",
+        "contentHeight": 1296,
+        "role": "需求方／受邀本人／独立交通复核",
+        "navId": "20:4318",
+        "headerId": "20:4241"
+      },
+      "training": {
+        "id": "20:4348",
+        "key": "training",
+        "route": "training",
+        "title": "成人篮球训练",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:4359",
+        "contentId": "20:4360",
+        "contentHeight": 882,
+        "role": "成年学员本人",
+        "navId": "20:4420",
+        "headerId": "20:4349"
+      },
+      "training-manage": {
+        "id": "20:6132",
+        "key": "training-manage",
+        "route": "training-manage",
+        "title": "培训教务工作台",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6143",
+        "contentId": "20:6144",
+        "contentHeight": 790,
+        "role": "有权教务／已确认教练",
+        "navId": "20:6199",
+        "headerId": "20:6133"
+      },
+      "trade-order": {
+        "id": "20:6229",
+        "key": "trade-order",
+        "route": "trade-order",
+        "title": "本人资金订单",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6240",
+        "contentId": "20:6241",
+        "contentHeight": 1104,
+        "role": "本人原订单",
+        "navId": "20:6293",
+        "headerId": "20:6230"
+      },
+      "trade-manage": {
+        "id": "20:6323",
+        "key": "trade-manage",
+        "route": "trade-manage",
+        "title": "机构财务与条款",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6334",
+        "contentId": "20:6335",
+        "contentHeight": 820,
+        "role": "本机构授权独立财务",
+        "navId": "20:6397",
+        "headerId": "20:6324"
+      },
+      "insurance": {
+        "id": "20:6428",
+        "key": "insurance",
+        "route": "insurance",
+        "title": "本人赛事保障",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6439",
+        "contentId": "20:6440",
+        "contentHeight": 1058,
+        "role": "本人／有权审核人",
+        "navId": "20:6503",
+        "headerId": "20:6429"
+      },
+      "guardian": {
+        "id": "20:6533",
+        "key": "guardian",
+        "route": "guardian",
+        "title": "青年参赛确认",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6544",
+        "contentId": "20:6545",
+        "contentHeight": 908,
+        "role": "本人及独立监护账号",
+        "navId": "20:6582",
+        "headerId": "20:6534"
+      },
+      "youth-review": {
+        "id": "20:6612",
+        "key": "youth-review",
+        "route": "youth-review",
+        "title": "青年关系独立审核",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6623",
+        "contentId": "20:6624",
+        "contentHeight": 940,
+        "role": "有权独立审核员",
+        "navId": "20:6700",
+        "headerId": "20:6613"
+      },
+      "messages": {
+        "id": "20:5041",
+        "key": "messages",
+        "route": "messages",
+        "title": "我的消息",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5052",
+        "contentId": "20:5053",
+        "contentHeight": 578,
+        "role": "本人",
+        "navId": "20:5107",
+        "headerId": "20:5042"
+      },
+      "notification-settings": {
+        "id": "20:5137",
+        "key": "notification-settings",
+        "route": "notification-settings",
+        "title": "提醒设置",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5148",
+        "contentId": "20:5149",
+        "contentHeight": 734,
+        "role": "本人",
+        "navId": "20:5180",
+        "headerId": "20:5138"
+      },
+      "account-recovery": {
+        "id": "20:5210",
+        "key": "account-recovery",
+        "route": "account-recovery",
+        "title": "账号找回",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5221",
+        "contentId": "20:5222",
+        "contentHeight": 810,
+        "role": "本人",
+        "navId": "20:5257",
+        "headerId": "20:5211"
+      },
+      "account-closure": {
+        "id": "20:5288",
+        "key": "account-closure",
+        "route": "account-closure",
+        "title": "账号注销",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5299",
+        "contentId": "20:5300",
+        "contentHeight": 856,
+        "role": "本人",
+        "navId": "20:5357",
+        "headerId": "20:5289"
+      },
+      "governance": {
+        "id": "20:5387",
+        "key": "governance",
+        "route": "governance",
+        "title": "客服与争议",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5398",
+        "contentId": "20:5399",
+        "contentHeight": 892,
+        "role": "本人／明确分派处理人",
+        "navId": "20:5444",
+        "headerId": "20:5388"
+      },
+      "governance-reviews": {
+        "id": "20:5474",
+        "key": "governance-reviews",
+        "route": "governance-reviews",
+        "title": "服务评价",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5485",
+        "contentId": "20:5486",
+        "contentHeight": 718,
+        "role": "真实完成订单参与人",
+        "navId": "20:5514",
+        "headerId": "20:5475"
+      },
+      "city-operations": {
+        "id": "20:5548",
+        "key": "city-operations",
+        "route": "city-operations",
+        "title": "城市运营工作台",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5559",
+        "contentId": "20:5560",
+        "contentHeight": 920,
+        "role": "有限范围授权运营者",
+        "navId": "20:5613",
+        "headerId": "20:5549"
+      },
+      "sponsorships": {
+        "id": "20:5643",
+        "key": "sponsorships",
+        "route": "sponsorships",
+        "title": "赞助与广告投放",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5654",
+        "contentId": "20:5655",
+        "contentHeight": 936,
+        "role": "本机构商务／独立审核人",
+        "navId": "20:5698",
+        "headerId": "20:5644"
+      },
+      "sponsor-commerce": {
+        "id": "20:5728",
+        "key": "sponsor-commerce",
+        "route": "sponsor-commerce",
+        "title": "广告合同与收益",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5739",
+        "contentId": "20:5740",
+        "contentHeight": 1142,
+        "role": "普通广告主本人／受限商务财务",
+        "navId": "20:5787",
+        "headerId": "20:5729"
+      },
+      "poster": {
+        "id": "20:5818",
+        "key": "poster",
+        "route": "poster",
+        "title": "授权赛事海报",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5829",
+        "contentId": "20:5830",
+        "contentHeight": 838,
+        "role": "当前有权赛事人员",
+        "navId": "20:5874",
+        "headerId": "20:5819"
+      },
+      "platform": {
+        "id": "20:5904",
+        "key": "platform",
+        "route": "platform",
+        "title": "平台处理工作台",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:5915",
+        "contentId": "20:5916",
+        "contentHeight": 1076,
+        "role": "当前有权独立平台处理人",
+        "navId": "20:5991",
+        "headerId": "20:5905"
+      },
+      "planned": {
+        "id": "20:6021",
+        "key": "planned",
+        "route": "planned",
+        "title": "服务费用规则",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6032",
+        "contentId": "20:6033",
+        "contentHeight": 820,
+        "role": "普通用户说明",
+        "navId": "20:6098",
+        "headerId": "20:6022"
+      },
+      "local-detail": {
+        "id": "20:6734",
+        "key": "local-detail",
+        "route": "local",
+        "title": "供给详情与档期",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6752",
+        "contentId": "20:6753",
+        "contentHeight": 852,
+        "role": "公开供给详情 · 提交需本人登录",
+        "navId": "20:6789",
+        "headerId": "20:6735"
+      },
+      "bookings-received": {
+        "id": "20:6823",
+        "key": "bookings-received",
+        "route": "bookings",
+        "title": "收到的球员预约",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6834",
+        "contentId": "20:6835",
+        "contentHeight": 376,
+        "role": "本人服务方 · view=received",
+        "navId": "20:6860",
+        "headerId": "20:6824"
+      },
+      "booking-detail-received": {
+        "id": "20:6890",
+        "key": "booking-detail-received",
+        "route": "booking-detail",
+        "title": "处理收到的邀约",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6901",
+        "contentId": "20:6902",
+        "contentHeight": 770,
+        "role": "本人服务方 · view=received",
+        "navId": "20:6937",
+        "headerId": "20:6891"
+      },
+      "city-operations-platform": {
+        "id": "21:425",
+        "key": "city-operations-platform",
+        "route": "city-operations",
+        "title": "平台城市授权维护",
+        "width": 390,
+        "height": 844,
+        "viewportId": "21:436",
+        "contentId": "21:437",
+        "contentHeight": 810,
+        "role": "平台处理人 · mode=platform",
+        "navId": "21:477",
+        "headerId": "21:426"
+      },
+      "governance-reviews-platform": {
+        "id": "21:507",
+        "key": "governance-reviews-platform",
+        "route": "governance-reviews",
+        "title": "评价独立审核",
+        "width": 390,
+        "height": 844,
+        "viewportId": "21:518",
+        "contentId": "21:519",
+        "contentHeight": 772,
+        "role": "平台独立审核人 · mode=platform",
+        "navId": "21:562",
+        "headerId": "21:508"
+      },
+      "platform-review": {
+        "id": "21:592",
+        "key": "platform-review",
+        "route": "platform",
+        "title": "服务资料审核面板",
+        "width": 390,
+        "height": 844,
+        "viewportId": "21:603",
+        "contentId": "21:604",
+        "contentHeight": 746,
+        "role": "有权且无利益关联的平台审核人",
+        "navId": "21:636",
+        "headerId": "21:593"
+      },
+      "state-loading": {
+        "id": "20:6971",
+        "key": "state-loading",
+        "route": "state",
+        "title": "正在加载",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:6982",
+        "contentId": "20:6983",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:6992",
+        "headerId": "20:6972"
+      },
+      "state-empty": {
+        "id": "20:7022",
+        "key": "state-empty",
+        "route": "state",
+        "title": "暂无内容",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7033",
+        "contentId": "20:7034",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7043",
+        "headerId": "20:7023"
+      },
+      "state-error": {
+        "id": "20:7073",
+        "key": "state-error",
+        "route": "state",
+        "title": "加载失败",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7084",
+        "contentId": "20:7085",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7094",
+        "headerId": "20:7074"
+      },
+      "state-offline": {
+        "id": "20:7125",
+        "key": "state-offline",
+        "route": "state",
+        "title": "当前离线",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7136",
+        "contentId": "20:7137",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7146",
+        "headerId": "20:7126"
+      },
+      "state-forbidden": {
+        "id": "20:7176",
+        "key": "state-forbidden",
+        "route": "state",
+        "title": "当前无权访问",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7187",
+        "contentId": "20:7188",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7197",
+        "headerId": "20:7177"
+      },
+      "state-disabled": {
+        "id": "20:7227",
+        "key": "state-disabled",
+        "route": "state",
+        "title": "功能暂未开放",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7238",
+        "contentId": "20:7239",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7248",
+        "headerId": "20:7228"
+      },
+      "state-unknown": {
+        "id": "20:7279",
+        "key": "state-unknown",
+        "route": "state",
+        "title": "服务状态待核对",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7290",
+        "contentId": "20:7291",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7300",
+        "headerId": "20:7280"
+      },
+      "state-submitting": {
+        "id": "20:7330",
+        "key": "state-submitting",
+        "route": "state",
+        "title": "正在提交",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7341",
+        "contentId": "20:7342",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7351",
+        "headerId": "20:7331"
+      },
+      "state-result-unknown": {
+        "id": "20:7381",
+        "key": "state-result-unknown",
+        "route": "state",
+        "title": "提交结果待确认",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7392",
+        "contentId": "20:7393",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7402",
+        "headerId": "20:7382"
+      },
+      "state-conflict": {
+        "id": "20:7433",
+        "key": "state-conflict",
+        "route": "state",
+        "title": "内容已更新",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7444",
+        "contentId": "20:7445",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7454",
+        "headerId": "20:7434"
+      },
+      "state-expired": {
+        "id": "20:7484",
+        "key": "state-expired",
+        "route": "state",
+        "title": "登录已失效",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7495",
+        "contentId": "20:7496",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7505",
+        "headerId": "20:7485"
+      },
+      "state-withdrawn": {
+        "id": "20:7535",
+        "key": "state-withdrawn",
+        "route": "state",
+        "title": "公开内容已停止",
+        "width": 390,
+        "height": 844,
+        "viewportId": "20:7546",
+        "contentId": "20:7547",
+        "contentHeight": 210,
+        "role": "通用状态规范 · 按实际能力和权限显示",
+        "navId": "20:7556",
+        "headerId": "20:7536"
+      },
+      "account-guest-320": {
+        "id": "21:670",
+        "key": "account-guest-320",
+        "route": "account",
+        "title": "我的 · 未登录",
+        "width": 320,
+        "height": 844,
+        "viewportId": "21:696",
+        "contentId": "21:697",
+        "contentHeight": 888,
+        "role": "游客 · 320px",
+        "navId": "21:756",
+        "headerId": "21:671"
+      },
+      "account-320": {
+        "id": "21:786",
+        "key": "account-320",
+        "route": "account",
+        "title": "我的 · 已登录",
+        "width": 320,
+        "height": 844,
+        "viewportId": "21:804",
+        "contentId": "21:805",
+        "contentHeight": 998,
+        "role": "已登录本人 · 320px",
+        "navId": "21:901",
+        "headerId": "21:787"
+      },
+      "booking-create-320": {
+        "id": "21:931",
+        "key": "booking-create-320",
+        "route": "booking-create",
+        "title": "发起球员邀约",
+        "width": 320,
+        "height": 844,
+        "viewportId": "21:942",
+        "contentId": "21:943",
+        "contentHeight": 1252,
+        "role": "有权需求方 · 320px",
+        "navId": "21:1002",
+        "headerId": "21:932"
+      },
+      "schedule-320": {
+        "id": "21:1033",
+        "key": "schedule-320",
+        "route": "schedule",
+        "title": "抽签与排程",
+        "width": 320,
+        "height": 844,
+        "viewportId": "21:1044",
+        "contentId": "21:1045",
+        "contentHeight": 1140,
+        "role": "有权主办方 · 320px",
+        "navId": "21:1104",
+        "headerId": "21:1034"
+      },
+      "scorer-320": {
+        "id": "21:1134",
+        "key": "scorer-320",
+        "route": "scorer",
+        "title": "现场记分",
+        "width": 320,
+        "height": 844,
+        "viewportId": "21:1145",
+        "contentId": "21:1146",
+        "contentHeight": 1056,
+        "role": "当前主记分员 · 320px",
+        "navId": "21:1205",
+        "headerId": "21:1135"
+      },
+      "account-guest-430": {
+        "id": "21:1583",
+        "key": "account-guest-430",
+        "route": "account",
+        "title": "我的 · 未登录",
+        "width": 430,
+        "height": 844,
+        "viewportId": "21:1601",
+        "contentId": "21:1602",
+        "contentHeight": 888,
+        "role": "游客 · 430px",
+        "navId": "21:1659",
+        "headerId": "21:1584"
+      },
+      "account-430": {
+        "id": "21:1689",
+        "key": "account-430",
+        "route": "account",
+        "title": "我的 · 已登录",
+        "width": 430,
+        "height": 844,
+        "viewportId": "21:1707",
+        "contentId": "21:1708",
+        "contentHeight": 998,
+        "role": "已登录本人 · 430px",
+        "navId": "21:1804",
+        "headerId": "21:1690"
+      },
+      "booking-create-430": {
+        "id": "21:1834",
+        "key": "booking-create-430",
+        "route": "booking-create",
+        "title": "发起球员邀约",
+        "width": 430,
+        "height": 844,
+        "viewportId": "21:1845",
+        "contentId": "21:1846",
+        "contentHeight": 1234,
+        "role": "有权需求方 · 430px",
+        "navId": "21:1905",
+        "headerId": "21:1835"
+      },
+      "schedule-430": {
+        "id": "21:1936",
+        "key": "schedule-430",
+        "route": "schedule",
+        "title": "抽签与排程",
+        "width": 430,
+        "height": 844,
+        "viewportId": "21:1947",
+        "contentId": "21:1948",
+        "contentHeight": 1122,
+        "role": "有权主办方 · 430px",
+        "navId": "21:2007",
+        "headerId": "21:1937"
+      },
+      "scorer-430": {
+        "id": "21:2037",
+        "key": "scorer-430",
+        "route": "scorer",
+        "title": "现场记分",
+        "width": 430,
+        "height": 844,
+        "viewportId": "21:2048",
+        "contentId": "21:2049",
+        "contentHeight": 1056,
+        "role": "当前主记分员 · 430px",
+        "navId": "21:2108",
+        "headerId": "21:2038"
+      }
+    }
+  },
+  "completed": [
+    "editable-designs",
+    "visual-review",
+    "responsive-review",
+    "prototype-links-audit",
+    "cursor-handoff"
+  ],
+  "pending": [],
+  "boards": [
+    {
+      "id": "10:2",
+      "width": 1282,
+      "height": 1976,
+      "key": "03-main",
+      "pageId": "2:4"
+    },
+    {
+      "id": "14:2",
+      "width": 1282,
+      "height": 1976,
+      "key": "04",
+      "pageId": "2:5"
+    },
+    {
+      "id": "14:559",
+      "width": 1282,
+      "height": 1976,
+      "key": "05",
+      "pageId": "2:6"
+    },
+    {
+      "id": "14:1139",
+      "width": 1282,
+      "height": 1976,
+      "key": "06",
+      "pageId": "2:7"
+    },
+    {
+      "id": "15:425",
+      "width": 860,
+      "height": 1050,
+      "key": "03-city-search",
+      "pageId": "2:4"
+    },
+    {
+      "id": "15:618",
+      "width": 1282,
+      "height": 1976,
+      "key": "03-account-entry",
+      "pageId": "2:4"
+    },
+    {
+      "id": "15:1219",
+      "width": 1282,
+      "height": 1976,
+      "key": "03-account-recovery",
+      "pageId": "2:4"
+    },
+    {
+      "id": "15:1908",
+      "width": 1282,
+      "height": 1050,
+      "key": "03-account-workspace",
+      "pageId": "2:4"
+    },
+    {
+      "id": "17:2",
+      "width": 1282,
+      "height": 1976,
+      "key": "07",
+      "pageId": "2:8"
+    },
+    {
+      "id": "17:635",
+      "width": 1282,
+      "height": 1976,
+      "key": "08",
+      "pageId": "2:9"
+    },
+    {
+      "id": "17:1234",
+      "width": 1282,
+      "height": 1976,
+      "key": "09",
+      "pageId": "2:10"
+    },
+    {
+      "name": "build-10-final",
+      "id": "20:4447",
+      "width": 1282,
+      "height": 1976,
+      "pageId": "2:11"
+    },
+    {
+      "name": "build-11-final",
+      "id": "20:3851",
+      "width": 1282,
+      "height": 1976,
+      "pageId": "2:12"
+    },
+    {
+      "name": "build-12-final",
+      "id": "20:6125",
+      "width": 1282,
+      "height": 1976,
+      "pageId": "2:13"
+    },
+    {
+      "name": "build-13-final",
+      "id": "20:5034",
+      "width": 1282,
+      "height": 1976,
+      "pageId": "2:14"
+    },
+    {
+      "name": "build-14-final",
+      "id": "20:5541",
+      "width": 1282,
+      "height": 1976,
+      "pageId": "2:15"
+    },
+    {
+      "name": "build-extra-03",
+      "id": "20:6727",
+      "width": 1282,
+      "height": 149
+    },
+    {
+      "name": "build-extra-06",
+      "id": "20:6816",
+      "width": 1282,
+      "height": 149
+    },
+    {
+      "name": "build-extra-14",
+      "id": "21:418",
+      "width": 1282,
+      "height": 1050
+    },
+    {
+      "name": "build-generic-15",
+      "id": "20:6964",
+      "width": 1282,
+      "height": 224
+    },
+    {
+      "name": "build-adapt-320",
+      "id": "21:663",
+      "width": 1072,
+      "height": 1976
+    },
+    {
+      "name": "build-adapt-430",
+      "id": "21:1576",
+      "width": 1402,
+      "height": 1976
+    }
+  ],
+  "links": [
+    {
+      "nodeId": "10:38",
+      "source": "home",
+      "target": "city-select"
+    },
+    {
+      "nodeId": "10:42",
+      "source": "home",
+      "target": "search"
+    },
+    {
+      "nodeId": "10:47",
+      "source": "home",
+      "target": "messages"
+    },
+    {
+      "nodeId": "10:55",
+      "source": "home",
+      "target": "watch"
+    },
+    {
+      "nodeId": "10:59",
+      "source": "home",
+      "target": "recruitment"
+    },
+    {
+      "nodeId": "10:62",
+      "source": "home",
+      "target": "players"
+    },
+    {
+      "nodeId": "10:65",
+      "source": "home",
+      "target": "public-archive"
+    },
+    {
+      "nodeId": "10:68",
+      "source": "home",
+      "target": "media"
+    },
+    {
+      "nodeId": "10:77",
+      "source": "home",
+      "target": "event"
+    },
+    {
+      "nodeId": "10:82",
+      "source": "home",
+      "target": "local"
+    },
+    {
+      "nodeId": "10:86",
+      "source": "home",
+      "target": "local"
+    },
+    {
+      "nodeId": "10:168",
+      "source": "watch",
+      "target": "event"
+    },
+    {
+      "nodeId": "10:180",
+      "source": "watch",
+      "target": "event"
+    },
+    {
+      "nodeId": "10:190",
+      "source": "watch",
+      "target": "recruitment"
+    },
+    {
+      "nodeId": "10:193",
+      "source": "watch",
+      "target": "follows"
+    },
+    {
+      "nodeId": "10:196",
+      "source": "watch",
+      "target": "event"
+    },
+    {
+      "nodeId": "10:279",
+      "source": "local",
+      "target": "local-detail"
+    },
+    {
+      "nodeId": "10:288",
+      "source": "local",
+      "target": "matching"
+    },
+    {
+      "nodeId": "10:300",
+      "source": "local",
+      "target": "local-bookings"
+    },
+    {
+      "nodeId": "10:380",
+      "source": "teams",
+      "target": "team"
+    },
+    {
+      "nodeId": "10:389",
+      "source": "teams",
+      "target": "registration-events"
+    },
+    {
+      "nodeId": "10:398",
+      "source": "teams",
+      "target": "team-join"
+    },
+    {
+      "nodeId": "10:410",
+      "source": "teams",
+      "target": "team"
+    },
+    {
+      "nodeId": "10:475",
+      "source": "account",
+      "target": "account-security"
+    },
+    {
+      "nodeId": "10:479",
+      "source": "account",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "10:485",
+      "source": "account",
+      "target": "recruitment"
+    },
+    {
+      "nodeId": "10:488",
+      "source": "account",
+      "target": "teams"
+    },
+    {
+      "nodeId": "10:491",
+      "source": "account",
+      "target": "account-orders"
+    },
+    {
+      "nodeId": "10:494",
+      "source": "account",
+      "target": "follows"
+    },
+    {
+      "nodeId": "10:497",
+      "source": "account",
+      "target": "account-workspace"
+    },
+    {
+      "nodeId": "10:509",
+      "source": "account",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "10:520",
+      "source": "account",
+      "target": "trade-order"
+    },
+    {
+      "nodeId": "10:531",
+      "source": "account",
+      "target": "messages"
+    },
+    {
+      "nodeId": "10:542",
+      "source": "account",
+      "target": "governance"
+    },
+    {
+      "nodeId": "10:555",
+      "source": "account",
+      "target": "account-security"
+    },
+    {
+      "nodeId": "10:566",
+      "source": "account",
+      "target": "account-more"
+    },
+    {
+      "nodeId": "13:411",
+      "source": "watch",
+      "target": "city-select"
+    },
+    {
+      "nodeId": "13:415",
+      "source": "watch",
+      "target": "search"
+    },
+    {
+      "nodeId": "13:420",
+      "source": "watch",
+      "target": "messages"
+    },
+    {
+      "nodeId": "13:425",
+      "source": "local",
+      "target": "city-select"
+    },
+    {
+      "nodeId": "13:429",
+      "source": "local",
+      "target": "search"
+    },
+    {
+      "nodeId": "13:434",
+      "source": "local",
+      "target": "messages"
+    },
+    {
+      "nodeId": "13:439",
+      "source": "teams",
+      "target": "city-select"
+    },
+    {
+      "nodeId": "13:443",
+      "source": "teams",
+      "target": "search"
+    },
+    {
+      "nodeId": "13:448",
+      "source": "teams",
+      "target": "messages"
+    },
+    {
+      "nodeId": "14:39",
+      "source": "event",
+      "target": "match"
+    },
+    {
+      "nodeId": "14:74",
+      "source": "event",
+      "target": "match"
+    },
+    {
+      "nodeId": "14:173",
+      "source": "match",
+      "target": "media"
+    },
+    {
+      "nodeId": "14:256",
+      "source": "bracket",
+      "target": "org-match"
+    },
+    {
+      "nodeId": "14:267",
+      "source": "bracket",
+      "target": "org-match"
+    },
+    {
+      "nodeId": "14:281",
+      "source": "bracket",
+      "target": "schedule"
+    },
+    {
+      "nodeId": "14:338",
+      "source": "media",
+      "target": "event"
+    },
+    {
+      "nodeId": "14:357",
+      "source": "media",
+      "target": "watch"
+    },
+    {
+      "nodeId": "14:413",
+      "source": "follows",
+      "target": "event"
+    },
+    {
+      "nodeId": "14:424",
+      "source": "follows",
+      "target": "event"
+    },
+    {
+      "nodeId": "14:441",
+      "source": "follows",
+      "target": "notification-settings"
+    },
+    {
+      "nodeId": "14:528",
+      "source": "public-ledgers",
+      "target": "event"
+    },
+    {
+      "nodeId": "14:628",
+      "source": "team",
+      "target": "registration-events"
+    },
+    {
+      "nodeId": "14:631",
+      "source": "team",
+      "target": "team-join"
+    },
+    {
+      "nodeId": "14:640",
+      "source": "team",
+      "target": "registration-events"
+    },
+    {
+      "nodeId": "14:705",
+      "source": "memberships",
+      "target": "team"
+    },
+    {
+      "nodeId": "14:716",
+      "source": "memberships",
+      "target": "team"
+    },
+    {
+      "nodeId": "14:731",
+      "source": "memberships",
+      "target": "team"
+    },
+    {
+      "nodeId": "14:737",
+      "source": "memberships",
+      "target": "team"
+    },
+    {
+      "nodeId": "14:1083",
+      "source": "public-archive",
+      "target": "match"
+    },
+    {
+      "nodeId": "14:1094",
+      "source": "public-archive",
+      "target": "match"
+    },
+    {
+      "nodeId": "14:1108",
+      "source": "public-archive",
+      "target": "watch"
+    },
+    {
+      "nodeId": "14:1189",
+      "source": "players",
+      "target": "player"
+    },
+    {
+      "nodeId": "14:1200",
+      "source": "players",
+      "target": "player"
+    },
+    {
+      "nodeId": "14:1214",
+      "source": "players",
+      "target": "player"
+    },
+    {
+      "nodeId": "14:1316",
+      "source": "player",
+      "target": "compare"
+    },
+    {
+      "nodeId": "14:1319",
+      "source": "player",
+      "target": "booking-create"
+    },
+    {
+      "nodeId": "14:1404",
+      "source": "compare",
+      "target": "booking-create"
+    },
+    {
+      "nodeId": "14:1566",
+      "source": "bookings",
+      "target": "booking-detail"
+    },
+    {
+      "nodeId": "14:1577",
+      "source": "bookings",
+      "target": "booking-detail"
+    },
+    {
+      "nodeId": "14:1592",
+      "source": "bookings",
+      "target": "player-center"
+    },
+    {
+      "nodeId": "14:1595",
+      "source": "bookings",
+      "target": "booking-detail"
+    },
+    {
+      "nodeId": "14:1688",
+      "source": "booking-detail",
+      "target": "bookings"
+    },
+    {
+      "nodeId": "15:499",
+      "source": "city-select",
+      "target": "local"
+    },
+    {
+      "nodeId": "15:562",
+      "source": "search",
+      "target": "event"
+    },
+    {
+      "nodeId": "15:573",
+      "source": "search",
+      "target": "public-archive"
+    },
+    {
+      "nodeId": "15:587",
+      "source": "search",
+      "target": "event"
+    },
+    {
+      "nodeId": "15:647",
+      "source": "account-guest",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:676",
+      "source": "account-guest",
+      "target": "account-email"
+    },
+    {
+      "nodeId": "15:679",
+      "source": "account-guest",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "15:683",
+      "source": "account-guest",
+      "target": "governance"
+    },
+    {
+      "nodeId": "15:696",
+      "source": "account-guest",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:760",
+      "source": "account-ready",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:777",
+      "source": "account-ready",
+      "target": "account-consent"
+    },
+    {
+      "nodeId": "15:792",
+      "source": "account-ready",
+      "target": "account-email"
+    },
+    {
+      "nodeId": "15:795",
+      "source": "account-ready",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "15:799",
+      "source": "account-ready",
+      "target": "governance"
+    },
+    {
+      "nodeId": "15:812",
+      "source": "account-ready",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:876",
+      "source": "account-email",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:901",
+      "source": "account-email",
+      "target": "account-email-error"
+    },
+    {
+      "nodeId": "15:904",
+      "source": "account-email",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "15:907",
+      "source": "account-email",
+      "target": "account-guest"
+    },
+    {
+      "nodeId": "15:911",
+      "source": "account-email",
+      "target": "governance"
+    },
+    {
+      "nodeId": "15:924",
+      "source": "account-email",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:989",
+      "source": "account-email-error",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1017",
+      "source": "account-email-error",
+      "target": "account-email-error"
+    },
+    {
+      "nodeId": "15:1020",
+      "source": "account-email-error",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "15:1023",
+      "source": "account-email-error",
+      "target": "account-guest"
+    },
+    {
+      "nodeId": "15:1027",
+      "source": "account-email-error",
+      "target": "governance"
+    },
+    {
+      "nodeId": "15:1040",
+      "source": "account-email-error",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1104",
+      "source": "account-consent",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1116",
+      "source": "account-consent",
+      "target": "account-loading"
+    },
+    {
+      "nodeId": "15:1121",
+      "source": "account-consent",
+      "target": "account-ready"
+    },
+    {
+      "nodeId": "15:1177",
+      "source": "account-loading",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1248",
+      "source": "account-capability-unknown",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1277",
+      "source": "account-capability-unknown",
+      "target": "account-email"
+    },
+    {
+      "nodeId": "15:1280",
+      "source": "account-capability-unknown",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "15:1283",
+      "source": "account-capability-unknown",
+      "target": "account-ready"
+    },
+    {
+      "nodeId": "15:1287",
+      "source": "account-capability-unknown",
+      "target": "governance"
+    },
+    {
+      "nodeId": "15:1300",
+      "source": "account-capability-unknown",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1364",
+      "source": "account-unbound",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1393",
+      "source": "account-unbound",
+      "target": "account-email"
+    },
+    {
+      "nodeId": "15:1396",
+      "source": "account-unbound",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "15:1400",
+      "source": "account-unbound",
+      "target": "governance"
+    },
+    {
+      "nodeId": "15:1413",
+      "source": "account-unbound",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1477",
+      "source": "account-error",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1506",
+      "source": "account-error",
+      "target": "account-email"
+    },
+    {
+      "nodeId": "15:1509",
+      "source": "account-error",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "15:1512",
+      "source": "account-error",
+      "target": "account-ready"
+    },
+    {
+      "nodeId": "15:1516",
+      "source": "account-error",
+      "target": "governance"
+    },
+    {
+      "nodeId": "15:1529",
+      "source": "account-error",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1594",
+      "source": "account-security",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1624",
+      "source": "account-security",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "15:1635",
+      "source": "account-security",
+      "target": "public-archives"
+    },
+    {
+      "nodeId": "15:1646",
+      "source": "account-security",
+      "target": "governance"
+    },
+    {
+      "nodeId": "15:1657",
+      "source": "account-security",
+      "target": "account-closure"
+    },
+    {
+      "nodeId": "15:1668",
+      "source": "account-security",
+      "target": "account-guest"
+    },
+    {
+      "nodeId": "15:1671",
+      "source": "account-security",
+      "target": "account-guest"
+    },
+    {
+      "nodeId": "15:1727",
+      "source": "account-privacy",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1734",
+      "source": "account-privacy",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "15:1745",
+      "source": "account-privacy",
+      "target": "public-archives"
+    },
+    {
+      "nodeId": "15:1756",
+      "source": "account-privacy",
+      "target": "governance"
+    },
+    {
+      "nodeId": "15:1767",
+      "source": "account-privacy",
+      "target": "account-closure"
+    },
+    {
+      "nodeId": "15:1831",
+      "source": "account-orders",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1836",
+      "source": "account-orders",
+      "target": "trade-order"
+    },
+    {
+      "nodeId": "15:1847",
+      "source": "account-orders",
+      "target": "local-bookings"
+    },
+    {
+      "nodeId": "15:1858",
+      "source": "account-orders",
+      "target": "bookings"
+    },
+    {
+      "nodeId": "15:1869",
+      "source": "account-orders",
+      "target": "player-center"
+    },
+    {
+      "nodeId": "15:1937",
+      "source": "account-workspace",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:1942",
+      "source": "account-workspace",
+      "target": "org-event"
+    },
+    {
+      "nodeId": "15:1953",
+      "source": "account-workspace",
+      "target": "scoring-tasks"
+    },
+    {
+      "nodeId": "15:1964",
+      "source": "account-workspace",
+      "target": "live-studio"
+    },
+    {
+      "nodeId": "15:1975",
+      "source": "account-workspace",
+      "target": "staff-configuration"
+    },
+    {
+      "nodeId": "15:2039",
+      "source": "account-more",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "15:2044",
+      "source": "account-more",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "15:2055",
+      "source": "account-more",
+      "target": "memberships"
+    },
+    {
+      "nodeId": "15:2066",
+      "source": "account-more",
+      "target": "public-archives"
+    },
+    {
+      "nodeId": "15:2077",
+      "source": "account-more",
+      "target": "season-grants"
+    },
+    {
+      "nodeId": "15:2088",
+      "source": "account-more",
+      "target": "matching"
+    },
+    {
+      "nodeId": "15:2099",
+      "source": "account-more",
+      "target": "training"
+    },
+    {
+      "nodeId": "15:2163",
+      "source": "account-no-role",
+      "target": "account-security"
+    },
+    {
+      "nodeId": "15:2167",
+      "source": "account-no-role",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "15:2173",
+      "source": "account-no-role",
+      "target": "recruitment"
+    },
+    {
+      "nodeId": "15:2176",
+      "source": "account-no-role",
+      "target": "teams"
+    },
+    {
+      "nodeId": "15:2179",
+      "source": "account-no-role",
+      "target": "account-orders"
+    },
+    {
+      "nodeId": "15:2182",
+      "source": "account-no-role",
+      "target": "follows"
+    },
+    {
+      "nodeId": "15:2186",
+      "source": "account-no-role",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "15:2197",
+      "source": "account-no-role",
+      "target": "trade-order"
+    },
+    {
+      "nodeId": "15:2208",
+      "source": "account-no-role",
+      "target": "messages"
+    },
+    {
+      "nodeId": "15:2219",
+      "source": "account-no-role",
+      "target": "governance"
+    },
+    {
+      "nodeId": "15:2232",
+      "source": "account-no-role",
+      "target": "account-security"
+    },
+    {
+      "nodeId": "15:2243",
+      "source": "account-no-role",
+      "target": "account-more"
+    },
+    {
+      "nodeId": "17:63",
+      "source": "player-center",
+      "target": "bookings-received"
+    },
+    {
+      "nodeId": "17:74",
+      "source": "player-center",
+      "target": "performance"
+    },
+    {
+      "nodeId": "17:85",
+      "source": "player-center",
+      "target": "performance"
+    },
+    {
+      "nodeId": "17:272",
+      "source": "seasons",
+      "target": "event"
+    },
+    {
+      "nodeId": "17:283",
+      "source": "seasons",
+      "target": "event"
+    },
+    {
+      "nodeId": "17:297",
+      "source": "seasons",
+      "target": "event"
+    },
+    {
+      "nodeId": "17:711",
+      "source": "recruitment",
+      "target": "registration-events"
+    },
+    {
+      "nodeId": "17:815",
+      "source": "registration-events",
+      "target": "entry"
+    },
+    {
+      "nodeId": "17:1002",
+      "source": "participant-materials",
+      "target": "qualification-precheck"
+    },
+    {
+      "nodeId": "17:1097",
+      "source": "qualification-precheck",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "17:1277",
+      "source": "org-event",
+      "target": "event-setup"
+    },
+    {
+      "nodeId": "17:1288",
+      "source": "org-event",
+      "target": "entry-review"
+    },
+    {
+      "nodeId": "17:1299",
+      "source": "org-event",
+      "target": "staff-configuration"
+    },
+    {
+      "nodeId": "17:1313",
+      "source": "org-event",
+      "target": "org-match"
+    },
+    {
+      "nodeId": "17:1324",
+      "source": "org-event",
+      "target": "org-match"
+    },
+    {
+      "nodeId": "17:1336",
+      "source": "org-event",
+      "target": "schedule"
+    },
+    {
+      "nodeId": "17:1339",
+      "source": "org-event",
+      "target": "event"
+    },
+    {
+      "nodeId": "17:1342",
+      "source": "org-event",
+      "target": "match-media"
+    },
+    {
+      "nodeId": "17:1345",
+      "source": "org-event",
+      "target": "schedule"
+    },
+    {
+      "nodeId": "20:4482",
+      "source": "scoring-tasks",
+      "target": "scorer"
+    },
+    {
+      "nodeId": "20:4493",
+      "source": "scoring-tasks",
+      "target": "org-match"
+    },
+    {
+      "nodeId": "20:4507",
+      "source": "scoring-tasks",
+      "target": "scorer"
+    },
+    {
+      "nodeId": "20:4808",
+      "source": "live-studio",
+      "target": "match"
+    },
+    {
+      "nodeId": "20:4021",
+      "source": "local-bookings",
+      "target": "trade-order"
+    },
+    {
+      "nodeId": "20:6195",
+      "source": "training-manage",
+      "target": "trade-order"
+    },
+    {
+      "nodeId": "20:6453",
+      "source": "insurance",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "20:6464",
+      "source": "insurance",
+      "target": "qualification-precheck"
+    },
+    {
+      "nodeId": "20:6499",
+      "source": "insurance",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "20:5063",
+      "source": "messages",
+      "target": "event"
+    },
+    {
+      "nodeId": "20:5074",
+      "source": "messages",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "20:5085",
+      "source": "messages",
+      "target": "bookings"
+    },
+    {
+      "nodeId": "20:5103",
+      "source": "messages",
+      "target": "notification-settings"
+    },
+    {
+      "nodeId": "20:5176",
+      "source": "notification-settings",
+      "target": "messages"
+    },
+    {
+      "nodeId": "20:5250",
+      "source": "account-recovery",
+      "target": "governance"
+    },
+    {
+      "nodeId": "20:5253",
+      "source": "account-recovery",
+      "target": "account-guest"
+    },
+    {
+      "nodeId": "20:5310",
+      "source": "account-closure",
+      "target": "trade-order"
+    },
+    {
+      "nodeId": "20:5321",
+      "source": "account-closure",
+      "target": "bookings"
+    },
+    {
+      "nodeId": "20:5353",
+      "source": "account-closure",
+      "target": "trade-order"
+    },
+    {
+      "nodeId": "20:5584",
+      "source": "city-operations",
+      "target": "local-manage"
+    },
+    {
+      "nodeId": "20:5595",
+      "source": "city-operations",
+      "target": "governance"
+    },
+    {
+      "nodeId": "20:5940",
+      "source": "platform",
+      "target": "platform-review"
+    },
+    {
+      "nodeId": "20:5951",
+      "source": "platform",
+      "target": "governance"
+    },
+    {
+      "nodeId": "20:5962",
+      "source": "platform",
+      "target": "city-operations-platform"
+    },
+    {
+      "nodeId": "20:5973",
+      "source": "platform",
+      "target": "governance-reviews-platform"
+    },
+    {
+      "nodeId": "20:5987",
+      "source": "platform",
+      "target": "governance"
+    },
+    {
+      "nodeId": "20:6091",
+      "source": "planned",
+      "target": "governance"
+    },
+    {
+      "nodeId": "20:6094",
+      "source": "planned",
+      "target": "trade-order"
+    },
+    {
+      "nodeId": "20:6782",
+      "source": "local-detail",
+      "target": "local"
+    },
+    {
+      "nodeId": "20:6785",
+      "source": "local-detail",
+      "target": "local-bookings"
+    },
+    {
+      "nodeId": "20:6850",
+      "source": "bookings-received",
+      "target": "booking-detail-received"
+    },
+    {
+      "nodeId": "20:6933",
+      "source": "booking-detail-received",
+      "target": "bookings-received"
+    },
+    {
+      "nodeId": "21:473",
+      "source": "city-operations-platform",
+      "target": "platform"
+    },
+    {
+      "nodeId": "21:558",
+      "source": "governance-reviews-platform",
+      "target": "platform"
+    },
+    {
+      "nodeId": "21:632",
+      "source": "platform-review",
+      "target": "platform"
+    },
+    {
+      "nodeId": "20:7039",
+      "source": "state-empty",
+      "target": "home"
+    },
+    {
+      "nodeId": "20:7090",
+      "source": "state-error",
+      "target": "home"
+    },
+    {
+      "nodeId": "20:7193",
+      "source": "state-forbidden",
+      "target": "account"
+    },
+    {
+      "nodeId": "20:7244",
+      "source": "state-disabled",
+      "target": "account"
+    },
+    {
+      "nodeId": "20:7296",
+      "source": "state-unknown",
+      "target": "account"
+    },
+    {
+      "nodeId": "20:7398",
+      "source": "state-result-unknown",
+      "target": "account-orders"
+    },
+    {
+      "nodeId": "20:7450",
+      "source": "state-conflict",
+      "target": "home"
+    },
+    {
+      "nodeId": "20:7501",
+      "source": "state-expired",
+      "target": "account-guest"
+    },
+    {
+      "nodeId": "20:7552",
+      "source": "state-withdrawn",
+      "target": "watch"
+    },
+    {
+      "nodeId": "21:724",
+      "source": "account-guest-320",
+      "target": "account-email"
+    },
+    {
+      "nodeId": "21:727",
+      "source": "account-guest-320",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "21:731",
+      "source": "account-guest-320",
+      "target": "governance"
+    },
+    {
+      "nodeId": "21:744",
+      "source": "account-guest-320",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "21:807",
+      "source": "account-320",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "21:813",
+      "source": "account-320",
+      "target": "recruitment"
+    },
+    {
+      "nodeId": "21:816",
+      "source": "account-320",
+      "target": "teams"
+    },
+    {
+      "nodeId": "21:819",
+      "source": "account-320",
+      "target": "account-orders"
+    },
+    {
+      "nodeId": "21:822",
+      "source": "account-320",
+      "target": "follows"
+    },
+    {
+      "nodeId": "21:825",
+      "source": "account-320",
+      "target": "account-workspace"
+    },
+    {
+      "nodeId": "21:837",
+      "source": "account-320",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "21:848",
+      "source": "account-320",
+      "target": "trade-order"
+    },
+    {
+      "nodeId": "21:859",
+      "source": "account-320",
+      "target": "messages"
+    },
+    {
+      "nodeId": "21:870",
+      "source": "account-320",
+      "target": "governance"
+    },
+    {
+      "nodeId": "21:883",
+      "source": "account-320",
+      "target": "account-security"
+    },
+    {
+      "nodeId": "21:894",
+      "source": "account-320",
+      "target": "account-more"
+    },
+    {
+      "nodeId": "21:1627",
+      "source": "account-guest-430",
+      "target": "account-email"
+    },
+    {
+      "nodeId": "21:1630",
+      "source": "account-guest-430",
+      "target": "account-recovery"
+    },
+    {
+      "nodeId": "21:1634",
+      "source": "account-guest-430",
+      "target": "governance"
+    },
+    {
+      "nodeId": "21:1647",
+      "source": "account-guest-430",
+      "target": "account-privacy"
+    },
+    {
+      "nodeId": "21:1710",
+      "source": "account-430",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "21:1716",
+      "source": "account-430",
+      "target": "recruitment"
+    },
+    {
+      "nodeId": "21:1719",
+      "source": "account-430",
+      "target": "teams"
+    },
+    {
+      "nodeId": "21:1722",
+      "source": "account-430",
+      "target": "account-orders"
+    },
+    {
+      "nodeId": "21:1725",
+      "source": "account-430",
+      "target": "follows"
+    },
+    {
+      "nodeId": "21:1728",
+      "source": "account-430",
+      "target": "account-workspace"
+    },
+    {
+      "nodeId": "21:1740",
+      "source": "account-430",
+      "target": "participant-materials"
+    },
+    {
+      "nodeId": "21:1751",
+      "source": "account-430",
+      "target": "trade-order"
+    },
+    {
+      "nodeId": "21:1762",
+      "source": "account-430",
+      "target": "messages"
+    },
+    {
+      "nodeId": "21:1773",
+      "source": "account-430",
+      "target": "governance"
+    },
+    {
+      "nodeId": "21:1786",
+      "source": "account-430",
+      "target": "account-security"
+    },
+    {
+      "nodeId": "21:1797",
+      "source": "account-430",
+      "target": "account-more"
+    }
+  ],
+  "summary": {
+    "nativeRoutes": 73,
+    "designScreens": 116,
+    "prototypeScreens": 106,
+    "prototypeLinks": 943,
+    "prototypeStarts": 16,
+    "prototypePage": "23:2",
+    "prototypeHub": "27:6421",
+    "cover": "28:2",
+    "appCodeChanged": false,
+    "appTestsRun": false,
+    "gitWrites": false
+  }
+}

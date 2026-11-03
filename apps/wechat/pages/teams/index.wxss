@@ -1,3 +1,4 @@
+@import "../../components/v3-chrome/visual.wxss";
 .teams-page { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
 .teams-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
 .teams-tabs button { width:auto; min-width:80px; min-height:44px; margin:0; padding:11px 12px; font-size:14px; line-height:22px; font-weight:500; background:#fff; }

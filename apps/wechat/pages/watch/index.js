@@ -54,6 +54,16 @@ Page({
   chooseCity() {
     ui.open('city-select');
   },
+  openSearch() {
+    ui.open('search');
+  },
+  openMessages() {
+    ui.open('messages');
+  },
+  scrollDirectory() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#watch-directory', duration: 200, fail() {} });
+  },
   toggleDirectoryFilters() {
     this.setData({ directoryFiltersOpen: !this.data.directoryFiltersOpen });
   },

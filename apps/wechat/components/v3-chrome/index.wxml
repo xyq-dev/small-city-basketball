@@ -1,0 +1,11 @@
+<view class="v3-chrome" style="padding-top:{{statusBarHeight}}px">
+  <view class="v3-brand" style="padding-right:{{capsuleGap}}px">
+    <image class="v3-mark" src="/assets/home/brandmark.svg" mode="aspectFit"/>
+    <view class="v3-name">小城市篮球</view>
+  </view>
+  <view wx:if="{{tools}}" class="v3-tools">
+    <button class="v3-city" bindtap="onCity" aria-label="选择城市"><view>{{city || '全国'}}</view><image src="/assets/home/chevron-down.svg" mode="aspectFit"/></button>
+    <button class="v3-search" bindtap="onSearch" aria-label="搜索"><image src="/assets/home/search.svg" mode="aspectFit"/><view>{{placeholder}}</view></button>
+    <button class="v3-bell" bindtap="onBell" aria-label="消息"><image src="/assets/home/bell.svg" mode="aspectFit"/></button>
+  </view>
+</view>

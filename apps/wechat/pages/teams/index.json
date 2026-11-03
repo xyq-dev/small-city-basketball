@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "我的球队",
-  "navigationStyle": "custom"
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "v3-chrome": "/components/v3-chrome/index"
+  }
 }

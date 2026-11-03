@@ -1,0 +1,31 @@
+{
+  "name": "c10-account-wechat-failed",
+  "route": "pages/account/index",
+  "state": "error",
+  "figmaNode": "15:1455",
+  "referenceKind": "derived",
+  "expectText": ["本次登录尚未完成", "重新核对登录状态", "邮箱登录"],
+  "primary": false,
+  "data": {
+    "loading": false,
+    "busy": false,
+    "user": null,
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": false,
+    "registerMode": false,
+    "consent": false,
+    "securityOpen": false,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "",
+    "hasReturn": false,
+    "emailOpen": false,
+    "wechatState": "open",
+    "loginNotice": "failed",
+    "loginPhase": "",
+    "platformOperator": false
+  }
+}

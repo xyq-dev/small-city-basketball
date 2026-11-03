@@ -1,5 +1,18 @@
 # 任务看板
 
+## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
+
+| 项 | 事实 |
+| --- | --- |
+| 日常目录 | `D:\Projects\small-city-basketball` |
+| 候选分支 | `integrate/ui-v4-consolidate` |
+| 基线 | `origin/main` `ef25846857bb0431a4f71ad8dbe6fac87f945ae0` |
+| 来源 | `D:\Projects\small-city-basketball-v3-nav` 未提交的账号、赛事、同城、球队和 `v3-chrome` |
+| 不纳入 | `ui002-ci` 已在 main；`docs/design/ui-v4/REFERENCE_V3`、`scb-homepage-assets-v1`、`scb_remaining_ui_v3` 只归档 |
+| 状态 | 本地验证后创建 PR。远端 CI 通过前不是 MAIN |
+
+详情见 [交接](handoffs/UI-V4-INTEGRATE.md)。下方 2026-11-03 文档节里“#39 仍为 Draft”是当时记录；当前 main 头已经是首页还原 #39。
+
 ## 2026-11-03 文档更正：#37/#36/#38 已合并，#39 仍为 Draft
 
 核验时间 `2026-11-03T03:51:16Z`。SHA、双亲提交和日志范围见 [当前状态](CURRENT_STATUS.md) 同日一节。下方 2026-11-01 两节的「Draft 待审」是合并前清单，原文保留。

@@ -141,7 +141,7 @@ test('late native wx.login code cannot overwrite a newer application identity', 
   h.wx.login = (input) => {
     finishCode = input.success;
   };
-  h.page.setData({ enabled: true, consent: true });
+  h.page.setData({ enabled: true, wechatState: 'open', consent: true });
   h.page.wechatLogin();
   await h.flush();
   assert.equal(typeof finishCode, 'function');
@@ -288,7 +288,12 @@ test('WeChat login locks the exact account draft and agreement during native cod
   h.wx.login = (input) => {
     finishCode = input.success;
   };
-  h.page.setData({ enabled: true, consent: true, email: 'original@example.test' });
+  h.page.setData({
+    enabled: true,
+    wechatState: 'open',
+    consent: true,
+    email: 'original@example.test',
+  });
   h.page.wechatLogin();
   await h.flush();
   assert.equal(h.page.data.busy, true);
