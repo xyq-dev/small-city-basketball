@@ -49,6 +49,15 @@ Page({
     workspaceTab: 'personal',
     ordersOpen: false,
     navigationMoreOpen: false,
+    emailOpen: false,
+    settingsOpen: false,
+    agreement: '',
+    wechatState: 'loading',
+    workspaceOpen: false,
+    consentOpen: false,
+    termsRead: false,
+    loginPhase: '',
+    loginNotice: '',
     roles: [],
     managedOrgs: [],
     roleSummary: '',
@@ -72,6 +81,10 @@ Page({
             workspaceTab: 'personal',
             ordersOpen: false,
             navigationMoreOpen: false,
+            workspaceOpen: false,
+            consentOpen: false,
+            loginPhase: '',
+            loginNotice: '',
             password: '',
             consent: false,
             roles: [],
@@ -110,6 +123,8 @@ Page({
     this.seq = seq;
     this.setData({
       loading: true,
+      loginPhase: '',
+      loginNotice: '',
       user: null,
       binding: null,
       connected: false,
@@ -124,13 +139,24 @@ Page({
         client.request('/v1/auth/capabilities'),
       ]);
       if (this.closed || seq !== this.seq) return;
+      const wechat = results[0];
+      const wechatState =
+        wechat.status !== 'fulfilled'
+          ? 'unknown'
+          : wechat.value.data.enabled === true
+            ? 'open'
+            : 'closed';
       this.setData({
-        enabled: results[0].status === 'fulfilled' && results[0].value.data.enabled === true,
+        enabled: wechatState === 'open',
+        wechatState,
         canRegister:
           results[1].status === 'fulfilled' &&
           results[1].value.data.canRegisterParticipant === true,
       });
-      if (!client.hasSession()) return;
+      if (!client.hasSession()) {
+        if (wechatState === 'unknown') this.setData({ message: '', messageTone: 'info' });
+        return;
+      }
       const current = (await client.request('/v1/auth/session')).data;
       if (
         !current ||
@@ -181,15 +207,40 @@ Page({
     try {
       await action();
     } catch (error) {
-      if (!this.closed) this.setData({ message: ui.message(error), messageTone: 'error' });
+      if (!this.closed) {
+        const code = error && error.code;
+        const loginNotice = this.wechatAttempt
+          ? code === 'WECHAT_BINDING_REQUIRED'
+            ? 'unbound'
+            : 'failed'
+          : '';
+        this.setData({
+          message: loginNotice ? '' : ui.message(error),
+          messageTone: loginNotice ? 'info' : 'error',
+          loginNotice,
+        });
+      }
     } finally {
       this.commandBusy = false;
-      if (!this.closed) this.setData({ busy: false, password: '', consent: false });
+      this.wechatAttempt = false;
+      if (!this.closed) this.setData({ busy: false, password: '', consent: false, loginPhase: '' });
     }
   },
   login() {
     const email = this.data.email,
       password = this.data.password;
+    if (typeof email !== 'string' || email.length === 0 || typeof password !== 'string' || password.length === 0) {
+      this.setData({
+        message:
+          email.length === 0 && password.length === 0
+            ? '请填写账号和密码'
+            : email.length === 0
+              ? '请填写账号或邮箱'
+              : '请填写密码',
+        messageTone: 'error',
+      });
+      return;
+    }
     this.setData({ password: '' });
     this.task(async () => {
       await api.getClient().request('/v1/auth/login', 'POST', { email, password });
@@ -202,6 +253,17 @@ Page({
     const email = this.data.email,
       password = this.data.password,
       displayName = this.data.displayName;
+    if (
+      typeof email !== 'string' ||
+      email.length === 0 ||
+      typeof password !== 'string' ||
+      password.length === 0 ||
+      typeof displayName !== 'string' ||
+      displayName.length === 0
+    ) {
+      this.setData({ message: '请填写注册邮箱、显示名称和密码', messageTone: 'error' });
+      return;
+    }
     this.setData({ password: '' });
     this.task(async () => {
       await api
@@ -211,9 +273,70 @@ Page({
       if (!this.closed && this.data.user && this.returnTo) wx.redirectTo({ url: this.returnTo });
     });
   },
+  openEmail() {
+    if (this.data.busy) return;
+    this.setData({ emailOpen: true, registerMode: false, message: '', consentOpen: false });
+  },
+  closeEmail() {
+    if (this.data.busy) return;
+    this.setData({ emailOpen: false, registerMode: false, password: '', message: '' });
+  },
+  toggleSettings() {
+    if (this.data.busy) return;
+    this.setData({ settingsOpen: !this.data.settingsOpen });
+  },
+  openAgreement(e) {
+    const doc = e.currentTarget.dataset.doc;
+    if (doc === 'terms' || doc === 'privacy') this.setData({ agreement: doc });
+  },
+  closeAgreement() {
+    this.setData({ agreement: '' });
+  },
+  retryWechat() {
+    if (this.data.busy || this.data.loading) return;
+    if (this.data.loginNotice === 'failed' && this.data.wechatState === 'open') {
+      this.setData({ loginNotice: '', message: '', consent: false, consentOpen: true });
+      return;
+    }
+    this.load();
+  },
+  startWechat() {
+    if (
+      this.data.busy ||
+      this.data.loading ||
+      this.data.wechatState !== 'open' ||
+      this.data.loginNotice === 'unbound' ||
+      this.data.loginNotice === 'failed'
+    )
+      return;
+    this.setData({
+      consentOpen: true,
+      consent: false,
+      message: '',
+    });
+  },
+  closeConsent() {
+    if (this.data.busy || this.commandBusy) return;
+    this.setData({ consentOpen: false, consent: false });
+  },
+  markTerms(e) {
+    if (this.data.busy || this.commandBusy) return;
+    this.setData({ termsRead: e.detail.value.includes('yes') });
+  },
   wechatLogin() {
-    if (!this.data.enabled || !this.data.consent) return;
+    if (this.data.loading || this.data.wechatState === 'loading' || this.data.wechatState !== 'open')
+      return;
+    if (!this.data.consent) {
+      this.setData({
+        consentOpen: true,
+        message: '请先明确同意本次微信身份认证',
+        messageTone: 'error',
+      });
+      return;
+    }
     this.task(async () => {
+      this.wechatAttempt = true;
+      if (!this.closed) this.setData({ loginPhase: 'wechat', loginNotice: '', consentOpen: false });
       const client = api.getClient();
       const revision = client.sessionRevision();
       const attempt = (
@@ -345,6 +468,10 @@ Page({
   toggleMore() {
     if (this.data.user && !this.data.busy && !this.commandBusy)
       this.setData({ navigationMoreOpen: !this.data.navigationMoreOpen });
+  },
+  toggleWorkspace() {
+    if (this.data.user && this.data.roles.length && !this.data.busy && !this.commandBusy)
+      this.setData({ workspaceOpen: !this.data.workspaceOpen });
   },
   copyMemberId() {
     if (

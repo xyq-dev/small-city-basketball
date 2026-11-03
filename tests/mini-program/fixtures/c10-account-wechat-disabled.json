@@ -4,7 +4,7 @@
   "state": "permission",
   "figmaNode": "9:476",
   "referenceKind": "derived",
-  "expectText": ["微信登录尚未配置，继续使用应用账号", "微信登录暂未开放"],
+  "expectText": ["微信登录待接入，可先使用已有账号", "微信登录暂未开放"],
   "primary": false,
   "data": {
     "loading": false,
@@ -22,6 +22,8 @@
     "email": "",
     "password": "",
     "hasReturn": false,
+    "emailOpen": false,
+    "wechatState": "closed",
     "platformOperator": false
   }
 }

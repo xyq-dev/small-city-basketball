@@ -8,16 +8,22 @@ const { renderWxml } = require('./helpers/native-preview.cjs');
 const root = path.resolve(__dirname, '..');
 const equal = (a, b) =>
   assert.deepEqual(JSON.parse(JSON.stringify(a)), JSON.parse(JSON.stringify(b)));
-const preview = (route, data) => ({
-  phone: renderWxml(fs.readFileSync(path.join(root, route + '.wxml'), 'utf8'), data, {
-    root,
-    pageDirectory: path.dirname(path.join(root, route)),
-    usingComponents: JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
-      .usingComponents,
-    globalComponents: JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
-      .usingComponents,
-  }),
-});
+const preview = (route, data) => {
+  const globalComponents = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'))
+    .usingComponents;
+  const pageConfig = path.join(root, route + '.json');
+  const pageComponents = fs.existsSync(pageConfig)
+    ? JSON.parse(fs.readFileSync(pageConfig, 'utf8')).usingComponents || {}
+    : {};
+  return {
+    phone: renderWxml(fs.readFileSync(path.join(root, route + '.wxml'), 'utf8'), data, {
+      root,
+      pageDirectory: path.dirname(path.join(root, route)),
+      usingComponents: { ...globalComponents, ...pageComponents },
+      globalComponents,
+    }),
+  };
+};
 const U = '10000000-0000-4000-8000-000000000001',
   V = '10000000-0000-4000-8000-000000000002',
   L = '20000000-0000-4000-8000-000000000001',

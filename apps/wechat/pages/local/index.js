@@ -164,6 +164,12 @@ Page({
   chooseCity() {
     ui.open('city-select');
   },
+  openSearch() {
+    ui.open('search');
+  },
+  openMessages() {
+    ui.open('messages');
+  },
   nationwide() {
     cities.choose('');
     this._point = null;

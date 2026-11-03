@@ -22,6 +22,8 @@
     "email": "",
     "password": "",
     "hasReturn": false,
+    "emailOpen": true,
+    "wechatState": "open",
     "platformOperator": false
   }
 }

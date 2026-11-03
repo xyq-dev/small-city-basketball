@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "赛事",
-  "navigationStyle": "custom"
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "v3-chrome": "/components/v3-chrome/index"
+  }
 }

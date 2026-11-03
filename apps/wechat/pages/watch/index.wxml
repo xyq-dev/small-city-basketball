@@ -1,12 +1,23 @@
-<scb-header title="赛事" main="{{true}}" back="{{false}}"/>
-<view class="page watch-page">
+<view class="page watch-page" style="padding-top:0">
+ <v3-chrome city="{{citySelection.label}}" placeholder="搜赛事、球队、球员" bind:city="chooseCity" bind:search="openSearch" bind:bell="openMessages"/>
+ <view class="v3-hero">
+  <image class="v3-hero-photo" src="/assets/home/event-court.jpg" mode="aspectFill"/>
+  <view class="v3-hero-shade"></view>
+  <view class="v3-hero-copy">
+   <view class="v3-eyebrow">SMALL CITY · BIG GAME</view>
+   <view class="v3-headline">全国篮球赛事</view>
+   <view class="v3-headline">在这里相遇</view>
+   <view class="v3-tagline">只展示主办方公开列入目录的赛事。</view>
+   <button class="v3-hero-btn" bindtap="scrollDirectory">查看赛事</button>
+  </view>
+ </view>
  <view class="mode-choice"><button wx:for="{{dirGroups}}" wx:key="value" class="{{dir.group === item.value ? 'selected' : ''}}" data-group="{{item.value}}" bindtap="pickDirGroup" disabled="{{dir.loading}}">{{item.label}}</button></view>
- <view class="card watch-public-card">
+ <view id="watch-directory" class="card watch-public-card">
   <view class="subtitle">{{citySelection.label}}公开赛事</view>
   <view wx:if="{{dir.loading}}" class="watch-panel"><view class="muted">正在读取公开赛事…</view><view class="loading-lines"><view></view><view></view></view></view>
   <view wx:elif="{{dir.error}}" class="notice warning watch-error"><view class="watch-strong">公开赛事暂时无法读取</view><view class="small">{{dir.error}}</view><button class="secondary" bindtap="chooseCity">重新选择城市</button><button class="secondary" bindtap="loadDirectory">重新读取</button></view>
   <view wx:elif="{{dir.loaded && !dir.items.length}}" class="watch-panel"><view class="muted">{{citySelection.label}}暂无主办方公开的{{dir.group === 'LIVE' ? '进行中' : dir.group === 'UPCOMING' ? '即将开始' : '历史'}}赛事。</view><view wx:if="{{citySelection.mode !== 'NATIONWIDE'}}" class="small muted">可切换阶段、重新选择地区或浏览全国。</view><button wx:if="{{citySelection.mode !== 'NATIONWIDE'}}" class="secondary" bindtap="clearDirCity">浏览全国赛事</button></view>
-  <button wx:for="{{dir.items}}" wx:key="publicEventId" class="watch-event public-event-cell" data-id="{{item.publicEventId}}" bindtap="openDirectory"><image class="watch-cell-icon" src="/assets/ui002/account-trophy.svg" mode="aspectFit" aria-hidden="true"/><view class="watch-event-main"><view class="watch-event-name">{{item.name}}</view><view class="muted">{{item.displayCity}} · {{item.dateLabel}} · {{item.venueName}}</view><view class="muted">{{item.statusLabel}}</view></view><image class="watch-chevron" src="/assets/ui002/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button>
+  <view wx:for="{{dir.items}}" wx:key="publicEventId" class="v3-event-card"><button class="watch-event public-event-cell" data-id="{{item.publicEventId}}" bindtap="openDirectory"><view class="v3-event-photo-wrap"><image class="v3-event-photo" src="/assets/home/event-court.jpg" mode="aspectFill"/><view class="v3-event-caption">示意图</view></view><view class="watch-event-main"><view class="v3-event-status">{{item.statusLabel}}</view><view class="watch-event-name">{{item.name}}</view><view class="muted">{{item.displayCity}} · {{item.dateLabel}}</view><view class="muted">{{item.venueName}}</view></view></button><view class="v3-event-actions"><button class="secondary" data-id="{{item.publicEventId}}" bindtap="openDirectory">查看赛事</button><button class="secondary" bindtap="recruitment">公开招募</button></view></view>
   <view wx:if="{{dir.moreError}}" class="notice warning small">{{dir.moreError}}<button class="secondary" bindtap="loadDirectory">从第一页重新读取</button><button class="quiet" bindtap="chooseCity">重新选择城市</button></view>
   <button wx:if="{{dir.loaded && !dir.done && !dir.loading}}" class="quiet" bindtap="loadMoreDirectory" disabled="{{dir.loadingMore}}" loading="{{dir.loadingMore}}">{{dir.moreError ? '重试加载更多' : '加载更多'}}</button>
  </view>

@@ -1,0 +1,454 @@
+{
+  "fileKey": "QpKOskViUwHFVqSG3uYR9X",
+  "sessionId": "ceae2350-38f3-4985-a696-9c2c84480f99",
+  "scope": "03–09 targeted visual fixes",
+  "validation": "Post-fix screenshots inspected; title line breaks, aligned score separators, equal-height registration stats passed.",
+  "changes": [
+    {
+      "index": 0,
+      "status": "passed",
+      "results": [
+        {
+          "pageId": "2:4",
+          "mutatedNodeIds": [
+            "15:654",
+            "15:767",
+            "15:883",
+            "15:996",
+            "15:1255",
+            "15:1371",
+            "15:1484"
+          ],
+          "fixes": [
+            {
+              "id": "15:654",
+              "text": "上场之前，\n先认识你",
+              "width": 210,
+              "height": 68
+            },
+            {
+              "id": "15:767",
+              "text": "上场之前，\n先认识你",
+              "width": 210,
+              "height": 68
+            },
+            {
+              "id": "15:883",
+              "text": "上场之前，\n先认识你",
+              "width": 210,
+              "height": 68
+            },
+            {
+              "id": "15:996",
+              "text": "上场之前，\n先认识你",
+              "width": 210,
+              "height": 68
+            },
+            {
+              "id": "15:1255",
+              "text": "上场之前，\n先认识你",
+              "width": 210,
+              "height": 68
+            },
+            {
+              "id": "15:1371",
+              "text": "上场之前，\n先认识你",
+              "width": 210,
+              "height": 68
+            },
+            {
+              "id": "15:1484",
+              "text": "上场之前，\n先认识你",
+              "width": 210,
+              "height": 68
+            }
+          ],
+          "screenshotIds": [
+            "15:625"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "status": "passed",
+      "results": [
+        {
+          "pageId": "2:5",
+          "mutatedNodeIds": [
+            "14:332",
+            "14:132",
+            "14:136"
+          ],
+          "scoreAlignment": {
+            "colonY": 0,
+            "scoreY": 0,
+            "colonHeight": 40,
+            "scoreHeight": 40
+          },
+          "title": {
+            "id": "14:332",
+            "text": "留住球场上的\n每一刻"
+          },
+          "screenshotIds": [
+            "14:130",
+            "14:330"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "status": "passed",
+      "results": [
+        {
+          "pageId": "2:6",
+          "mutatedNodeIds": [
+            "14:787"
+          ],
+          "title": {
+            "id": "14:787",
+            "text": "你收到一份\n球队邀请"
+          },
+          "screenshotIds": [
+            "14:785"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "status": "passed",
+      "results": [
+        {
+          "pageId": "2:7",
+          "mutatedNodeIds": [
+            "14:1162"
+          ],
+          "title": {
+            "id": "14:1162",
+            "text": "合适的人，\n一起上场"
+          },
+          "screenshotIds": [
+            "14:1160"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "status": "passed",
+      "results": [
+        {
+          "pageId": "2:8",
+          "mutatedNodeIds": [
+            "17:144"
+          ],
+          "title": {
+            "id": "17:144",
+            "text": "授权有限的\n比赛数据"
+          },
+          "screenshotIds": [
+            "17:142"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "status": "passed",
+      "results": [
+        {
+          "pageId": "2:9",
+          "mutatedNodeIds": [
+            "I17:891;5:80",
+            "I17:891;5:81"
+          ],
+          "stat": {
+            "id": "17:891",
+            "width": 175,
+            "height": 80,
+            "value": "4 / 8",
+            "label": "照片已上传",
+            "leftHeight": 80
+          },
+          "screenshotIds": [
+            "17:849"
+          ]
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "status": "passed",
+      "results": [
+        {
+          "pageId": "2:10",
+          "mutatedNodeIds": [
+            "17:1695",
+            "17:1699"
+          ],
+          "scoreAlignment": {
+            "colonY": 0,
+            "scoreY": 0,
+            "colonHeight": 40,
+            "scoreHeight": 40
+          },
+          "screenshotIds": [
+            "17:1693"
+          ]
+        }
+      ]
+    }
+  ],
+  "mutatedNodeIds": [
+    "15:654",
+    "15:767",
+    "15:883",
+    "15:996",
+    "15:1255",
+    "15:1371",
+    "15:1484",
+    "14:332",
+    "14:132",
+    "14:136",
+    "14:787",
+    "14:1162",
+    "17:144",
+    "I17:891;5:80",
+    "I17:891;5:81",
+    "17:1695",
+    "17:1699",
+    "20:6836"
+  ],
+  "noticeFollowup": {
+    "audit": [
+      {
+        "pageId": "2:4",
+        "count": 13,
+        "blackFallback": [],
+        "first": {
+          "id": "10:297",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.9176470637321472,
+                "g": 0.9490196108818054,
+                "b": 0.9882352948188782
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:41"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "pageId": "2:5",
+        "count": 8,
+        "blackFallback": [],
+        "first": {
+          "id": "14:71",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.9176470637321472,
+                "g": 0.9490196108818054,
+                "b": 0.9882352948188782
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:41"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "pageId": "2:6",
+        "count": 6,
+        "blackFallback": [],
+        "first": {
+          "id": "14:637",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.9176470637321472,
+                "g": 0.9490196108818054,
+                "b": 0.9882352948188782
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:41"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "pageId": "2:7",
+        "count": 8,
+        "blackFallback": [
+          {
+            "id": "20:6836",
+            "parentId": "20:6835"
+          }
+        ],
+        "first": {
+          "id": "14:1211",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.9176470637321472,
+                "g": 0.9490196108818054,
+                "b": 0.9882352948188782
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:41"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "pageId": "2:8",
+        "count": 4,
+        "blackFallback": [],
+        "first": {
+          "id": "17:43",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 1,
+                "g": 0.9450980424880981,
+                "b": 0.886274516582489
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:42"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "pageId": "2:9",
+        "count": 6,
+        "blackFallback": [],
+        "first": {
+          "id": "17:708",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.9176470637321472,
+                "g": 0.9490196108818054,
+                "b": 0.9882352948188782
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:41"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "pageId": "2:10",
+        "count": 5,
+        "blackFallback": [],
+        "first": {
+          "id": "17:1447",
+          "fills": [
+            {
+              "type": "SOLID",
+              "visible": true,
+              "opacity": 1,
+              "blendMode": "NORMAL",
+              "color": {
+                "r": 0.9176470637321472,
+                "g": 0.9490196108818054,
+                "b": 0.9882352948188782
+              },
+              "boundVariables": {
+                "color": {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:2:41"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "fix": [
+      {
+        "pageId": "2:7",
+        "mutatedNodeIds": [
+          "20:6836"
+        ],
+        "fills": [
+          {
+            "type": "SOLID",
+            "visible": true,
+            "opacity": 1,
+            "blendMode": "NORMAL",
+            "color": {
+              "r": 0.9176470637321472,
+              "g": 0.9490196108818054,
+              "b": 0.9882352948188782
+            },
+            "boundVariables": {
+              "color": {
+                "type": "VARIABLE_ALIAS",
+                "id": "VariableID:2:41"
+              }
+            }
+          }
+        ],
+        "screenshotIds": [
+          "20:6836"
+        ],
+        "result": "blue notice fallback corrected"
+      }
+    ],
+    "validation": "Screenshot passed: blue #EAF2FC background with readable navy text."
+  }
+}
