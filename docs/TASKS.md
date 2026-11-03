@@ -15,7 +15,7 @@
 
 ## 2026-11-02 微信首页视觉还原（BRANCH_ONLY，未合并）
 
-分支 `fix/wechat-homepage` 从包体提交 `148be73` 分出，不进入 Draft PR #38。首页按 `scb-homepage-assets-v1` 的参考图重排，公开赛事、招募、球员、档案、视频和同城筛选仍走现有入口。高清母版未打进小程序。间距调整当时的直接测试 84 通过。2026-11-03 账号页夹具把首页素材包的五个底栏图标视作共享底栏，不再把 `assets/home/home.svg` 等导航文件当成账号页图片；本地根目录 `npm test` 为 admin 588、api 1339、微信 1191 通过，1 项既有 Windows 跳过，0 失败。`a9d1a0d` 的 [Application checks 41557841240](https://github.com/xyq-dev/small-city-basketball/actions/runs/41557841240) 里，admin `npm test` 通过（微信 1191 / 1 项既有 Windows 跳过 / 0 失败），api 与 production 成功。同一 admin 作业的 `test:e2e` 仍失败：149 通过 / 993 失败 / 1128 跳过，不记入这次白名单修复。真机和开发者工具上传测量未执行。详情见[交接](handoffs/HOME-VISUAL.md)。`CURRENT_STATUS.md` 仍只记录已合并事实。
+分支 `fix/wechat-homepage` 从包体提交 `148be73` 分出，不进入 Draft PR #38。首页按 `scb-homepage-assets-v1` 的参考图重排，公开赛事、招募、球员、档案、视频和同城筛选仍走现有入口。高清母版未打进小程序。间距调整当时的直接测试 84 通过。2026-11-03 账号页夹具把首页素材包的五个底栏图标视作共享底栏，不再把 `assets/home/home.svg` 等导航文件当成账号页图片；本地根目录 `npm test` 为 admin 588、api 1339、微信 1191 通过，1 项既有 Windows 跳过，0 失败。`a9d1a0d` 与 `383dcd2` 的远端 admin `npm test` 通过，当时 `test:e2e` 为 149 通过 / 993 失败 / 1128 跳过。后续提交让布局检查承认分包路由，并把首页几何改到当前首屏；本地桌面布局 1128 通过，本地 `npm test` 微信 1193 通过 / 1 项既有 Windows 跳过。该本地结果不代替下一轮远端 Application checks。真机和开发者工具上传测量未执行。详情见[交接](handoffs/HOME-VISUAL.md)。`CURRENT_STATUS.md` 仍只记录已合并事实。
 
 ## 2026-11-01 UI002 本地续作统一清单（当时记录：Draft 待审）
 

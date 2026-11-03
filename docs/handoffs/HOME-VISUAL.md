@@ -45,7 +45,15 @@
 - 本地验证：Node v22.23.4，`npm test` 退出码 0。admin 588、api 1339、微信源码 1191 通过，1 项既有 Windows 跳过，0 失败。当时未跑 `test:e2e`。
 - 远端 CI：`a9d1a0d` 的 [Application checks 41557841240](https://github.com/xyq-dev/small-city-basketball/actions/runs/41557841240) 中，api 与 production 成功。admin 的 `npm test` 成功：admin 62 个文件、api 116 个文件、微信 1191 通过 / 1 项既有 Windows 跳过 / 0 失败。同一 admin 作业随后在 `npm run test:e2e` 失败，149 通过 / 993 失败 / 1128 跳过。首个失败是首页静态布局把顶栏高度期望写成 84，实际没有该度量；其余大量失败是夹具路由不在 `app.json` 主包 `pages` 的 6 条里，而在分包。这次没有改 e2e 或分包。未部署，未执行 Migration。
 - 状态：BRANCH_ONLY。未合并。`CURRENT_STATUS.md` 仍只记录已合并事实。
-- 下一位 AI 的第一条具体操作：admin `npm test` 已由上述运行证明通过。不要把 e2e 的 993 项失败并进本轮账号白名单，也不要并入 PR #38 或合并 #39。
+- 下一位 AI 的第一条具体操作：先读本提交的 Application checks。admin `npm test` 在 `a9d1a0d` 已通过；`test:e2e` 的 993 项失败由后续提交处理，不要并入 PR #38，不要合并 #39。
+
+## 2026-11-03 布局 e2e（BRANCH_ONLY，远端未记）
+
+- 更新时刻：2026-11-03 11:20 Asia/Shanghai 左右。目录 `/workspace`，分支 `fix/wechat-homepage`。
+- 原因：`383dcd2` 的 Application checks 41561602746 里 admin `npm test` 通过后，`npm run test:e2e` 为 149 通过 / 993 失败 / 1128 跳过。失败集中在两类：首页没有 84px 的 `scb-header`；夹具路由在分包，而断言只查主包 6 页。
+- 变更：主包加分包才算已注册路由，与 `native-structure` 和预览一致。首页几何改到素材包首屏（无共享顶栏，320 宽英雄区 180px，更宽为 188px，底栏高 80px）。消息按钮用更具体的 44px 宽度，分段标题按钮最小高度改为 44px。没有把页面移回主包，没有恢复旧顶栏。
+- 本地：Node v22.23.4。`npm test` 退出码 0，微信 1193 通过 / 1 项既有 Windows 跳过 / 0 失败。桌面 `mini-program.spec.ts` 1128 通过，证据脚本 1128 组通过。主办方与球员 e2e 14 通过。移动端小程序矩阵按原配置跳过。这些不是远端 CI。
+- 状态：BRANCH_ONLY。未合并，未部署，未执行 Migration。
 
 ## Git 与同步结果
 

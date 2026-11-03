@@ -19,7 +19,7 @@ page { background:#f7f8fb; }
 .home-city image,.home-search image { width:18px; height:18px; flex:none; }
 .home-search { flex:1; min-width:0; gap:8px; padding:0 14px; border-radius:999px; background:#f7f8fc; color:#63758b; font-size:14px; line-height:22px; font-weight:400; text-align:left; box-shadow:inset 0 0 0 1px #e6ebf2; }
 .home-search view { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.home-bell { flex:none; width:44px; justify-content:center; }
+.home-ui .home-bell { flex:none; width:44px; min-width:44px; justify-content:center; }
 .home-bell image { width:24px; height:24px; }
 .home-hero { position:relative; height:188px; margin:0 0 12px; border-radius:16px; overflow:hidden; box-shadow:0 10px 24px rgba(18,60,115,.16); }
 .home-hero-photo,.home-hero-shade,.home-hero-copy { position:absolute; inset:0; }
@@ -35,7 +35,7 @@ page { background:#f7f8fb; }
 .home-quick image { width:52px; height:52px; }
 .home-section-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 4px; }
 .home-section-title { color:#123c73; font-size:20px; line-height:28px; font-weight:700; }
-.home-section-head button { min-height:32px; display:flex; align-items:center; gap:2px; padding:6px 2px; color:#63758b; font-size:14px; line-height:22px; background:transparent; }
+.home-section-head button { min-height:44px; display:flex; align-items:center; gap:2px; padding:6px 2px; color:#63758b; font-size:14px; line-height:22px; background:transparent; }
 .home-section-head button image { width:16px; height:16px; }
 .home-hot { width:100%; min-height:112px; display:flex; gap:12px; align-items:stretch; margin:0 0 4px; padding:10px; border-radius:16px; background:#fff; text-align:left; box-shadow:0 8px 24px rgba(18,60,115,.08); }
 .home-hot-photo { position:relative; width:42%; min-width:96px; height:96px; flex:none; border-radius:12px; overflow:hidden; }

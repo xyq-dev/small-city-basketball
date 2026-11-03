@@ -373,6 +373,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       homeBall: measure('.home-brand-ball'),
       homeNav: measure('.mobile-nav'),
       homeSelectedNav: measure('.nav-item.selected'),
+      homeMark: measure('.home-brand-mark'),
       homeVectors: Array.from(
         document.querySelectorAll<HTMLImageElement>('.home-brand-ball,.header-brand img'),
       ).map((image) => ({
@@ -442,7 +443,8 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     };
   });
   expect(metrics.fontFamily).toContain('Noto Sans CJK SC');
-  expect(metrics.header?.height).toBe(84);
+  // The restored homepage draws its own brand row. Other measured screens keep the shared header.
+  if (group !== 'home') expect(metrics.header?.height).toBe(84);
   expect(metrics.duplicateNativeHeader).toBe(0);
   expect(metrics.statusBars).toBe(1);
   if (scenario.startsWith('c11-')) {
@@ -469,34 +471,21 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     ).toBe(true);
   }
   if (group === 'home') {
-    // UI001 H01 explicitly replaces the historical C11 full-bleed photograph.
-    // At 320px the real title may wrap and grow the card; the 390/430 targets stay 186px.
+    // The material-pack homepage has no shared scb-header. The hero is 180px at 320 and 188px wider.
+    expect(metrics.header).toBeNull();
     expect(metrics.hero?.x).toBe(16);
     expect(metrics.hero?.width).toBe(width - 32);
     expect(metrics.hero?.radius).toBe(16);
-    expect(metrics.hero?.background).toBe('rgb(18, 60, 115)');
-    if (width >= 390) expect(metrics.hero?.height).toBe(186);
-    else {
-      expect(metrics.hero?.height).toBeGreaterThanOrEqual(186);
-      expect(metrics.hero?.height).toBeLessThanOrEqual(224);
-    }
-    expect(metrics.homeFilters?.x).toBe(16);
-    expect(metrics.homeFilters?.height).toBeGreaterThanOrEqual(44);
-    expect(metrics.homeBall?.width).toBe(68);
-    expect(metrics.homeBall?.height).toBe(68);
+    expect(metrics.hero?.height).toBe(width <= 360 ? 180 : 188);
+    expect(metrics.homeMark?.width).toBe(36);
+    expect(metrics.homeMark?.height).toBe(36);
     expect(metrics.homeAction?.x).toBe(32);
-    expect(metrics.homeAction?.width).toBe(width - 64);
-    expect(metrics.homeAction?.height).toBe(48);
-    expect(metrics.homeAction?.radius).toBe(12);
+    expect(metrics.homeAction?.height).toBe(44);
+    expect(metrics.homeAction?.radius).toBe(999);
     expect(metrics.homeAction?.background).toBe('rgb(242, 140, 40)');
-    expect(metrics.homeAction?.color).toBe('rgb(18, 60, 115)');
-    expect(metrics.homeNav?.height).toBe(83);
-    expect(metrics.homeSelectedNav?.color).toBe('rgb(18, 60, 115)');
-    expect(metrics.homeVectors).toHaveLength(2);
-    expect(metrics.homeVectors.every((asset) => asset.loaded && asset.width === asset.height)).toBe(
-      true,
-    );
-    expect(metrics.photographs).toEqual([]);
+    expect(metrics.homeAction?.color).toBe('rgb(255, 255, 255)');
+    expect(metrics.homeNav?.height).toBe(80);
+    expect(metrics.homeSelectedNav?.color).toBe('rgb(242, 140, 40)');
   } else {
     if (!['player', 'booking-create', 'bookings', 'players', 'compare'].includes(group)) {
       expect(metrics.action?.x).toBe(12);
@@ -590,7 +579,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     }
   }
   return {
-    source: group === 'home' ? 'UI001:H01' : group === 'player' ? 'UI001:T07' : 'approved:C11',
+    source: group === 'home' ? 'homepage-pack' : group === 'player' ? 'UI001:T07' : 'approved:C11',
     group,
     ...metrics,
   };
@@ -605,7 +594,7 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
   for (const width of [320, 390, 430]) {
     for (const scenario of scenarios) {
       test(`${width}px · ${scenario.name}`, async ({ page, context }, testInfo) => {
-        expect(routes).toContain(scenario.route);
+        expect(routes, scenario.route).toContain(scenario.route);
         const attemptedNetwork: string[] = [];
         page.on('request', (request) => {
           if (/^https?:/i.test(request.url())) attemptedNetwork.push(request.url());
