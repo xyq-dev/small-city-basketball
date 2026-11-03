@@ -84,4 +84,3 @@ ui.open(key, { mode: 'platform' });
 | platform服务资料审核 | platform／reviewOpen | 本页审核面板 |
 
 以上状态不新增原生路由，也不意味着新增后端能力或给普通用户开放平台角色。Figma画板／链接应说明角色、同页状态和query；Cursor实现仍复用原事件、真实id及服务端权限。
-
