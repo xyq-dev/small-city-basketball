@@ -2,8 +2,8 @@
   "name": "c10-account-wechat-unbound",
   "route": "pages/account/index",
   "state": "permission",
-  "figmaNode": "15:1342",
-  "referenceKind": "derived",
+  "figmaNode": "36:134",
+  "referenceKind": "latest-state-spec",
   "expectText": ["当前微信尚未绑定应用账号", "邮箱登录", "找回账号"],
   "primary": false,
   "data": {

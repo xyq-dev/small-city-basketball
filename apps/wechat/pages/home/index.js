@@ -95,13 +95,13 @@ Page({
           // remaining distance to the native capsule plus an 8px gap.
           const inset = 16;
           const reserve = info.windowWidth - menu.left + 8 - inset;
-          const needed = 31 + 104 + 24 + 44 + 44;
+          const needed = 28 + 104 + 70 + 44 + 24;
           const beside = info.windowWidth - inset * 2 - reserve;
           if (beside >= needed) {
             capsuleGap = Math.min(160, Math.max(48, Math.round(reserve)));
           } else if (Number.isFinite(menu.bottom)) {
             capsuleGap = 0;
-            brandOffset = Math.max(0, Math.round(menu.bottom + 4 - (statusBarHeight + 20)));
+            brandOffset = Math.max(0, Math.round(menu.bottom + 8 - statusBarHeight));
           } else {
             capsuleGap = Math.min(160, Math.max(48, Math.round(reserve)));
           }

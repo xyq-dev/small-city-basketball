@@ -2,6 +2,8 @@
 
 本目录是 UI005 当前功能分支的精简评审证据。页面仍使用原生 WXML/WXSS、真实数据绑定、权限判断和既有 handler；这里的合成数据只用于隔离视觉检查，不会进入运行默认值或生产服务。
 
+> 2026-11-05 的运行差异复核发现：首页和“我的”虽通过原三宽矩阵，仍存在页头重复避让、主视觉重复暗化、账号原生按钮缩窄和互斥状态堆叠等高保真偏差。两页已定向修复并重新取得微信证据，见[首页与“我的”修复前后](home-account-fix/README.md)。原 1386/1386 只证明模板渲染、布局约束和夹具检查通过，不应外推为 73 页都通过本轮高保真复审。
+
 ## 设计入口
 
 - [最新交接 63:237](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=63-237)
@@ -13,7 +15,7 @@
 ## 覆盖与方法
 
 - [73 页与 17 状态逐项清单](COVERAGE.md)：列出 Figma 节点、实现目录、隔离场景、微信运行证据及剩余边界。
-- 隔离矩阵使用当前原生模板和样式、API 形状一致的合成夹具，在 320/390/430 三宽检查首屏、中段、底部、横向溢出、小点击目标及字段可读性。结果为 1386/1386；它不是微信运行、真实身份、真实付款、真实记分或生产成功证据。
+- 原全量隔离矩阵使用原生模板和样式、API 形状一致的合成夹具，在 320/390/430 三宽检查首屏、中段、底部、横向溢出、小点击目标及字段可读性，结果为 1386/1386。该结果是结构与约束证据，不是逐像素相似度或高保真结论，也不是微信运行、真实身份、真实付款、真实记分或生产成功证据。
 - 微信开发者工具只读采集覆盖 18/73 路由。报告中的逻辑窗口为 390×844；SDK 导出的 PNG 实际为 355×768。只验证当前工程的路由打开和滚动，不触发写操作，详见 [运行报告](runtime/report.json)。
 - [测试摘要](TESTS.md)记录完整命令、通过数、Windows 符号链接失败和未执行项。
 
@@ -23,11 +25,11 @@
 
 | 范围 | 对照图 |
 |---|---|
-| 首页 | [home](comparisons/home.png) |
+| 首页 | [本轮修复前后](home-account-fix/home-before-after.png)；[原三栏](comparisons/home.png) |
 | 赛事 | [watch](comparisons/watch.png) |
 | 同城 | [local](comparisons/local.png) |
 | 球队 | [teams](comparisons/teams.png) |
-| 我的 | [account](comparisons/account.png) |
+| 我的 | [本轮修复前后](home-account-fix/account-before-after.png)；[原三栏](comparisons/account.png) |
 | 赛事详情 | [event-detail](comparisons/event-detail.png) |
 | 报名表单 | [entry-form](comparisons/entry-form.png) |
 | 创建预约 | [booking-create](comparisons/booking-create.png) |
@@ -36,7 +38,7 @@
 | 资格预审 | [qualification](comparisons/qualification.png) |
 | 记分台 | [scorer](comparisons/scorer.png) |
 
-微信首屏和滚动到底的原始截图保存在 [runtime](runtime/)；对照图不是旧版本截图，本轮在最终修复后的代码上重新生成。
+原 18 路由微信首屏和滚动到底截图保存在 [runtime](runtime/)；它们属于 Draft PR 整合时的运行证据。首页和“我的”的最新修复证据以 [home-account-fix](home-account-fix/) 为准，未重新审查的页面不能因两页修复自动标记为本轮高保真通过。
 
 ## 尚未完成的运行验收
 

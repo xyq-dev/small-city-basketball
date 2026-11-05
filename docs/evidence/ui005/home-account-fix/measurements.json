@@ -1,0 +1,52 @@
+{
+  "capturedAt": "2026-11-05T11:44:10.747Z",
+  "environment": {
+    "project": "D:/Projects/small-city-basketball/apps/wechat",
+    "logicalViewport": { "width": 390, "height": 844 },
+    "png": { "width": 355, "height": 768 },
+    "statusBarHeight": 47,
+    "safeAreaBottom": 34,
+    "devtoolsVersion": "2.02.2611052",
+    "sdkVersion": "3.17.4"
+  },
+  "home": {
+    "figmaNode": "35:38",
+    "before": {
+      "topHeight": 127.97003173828125,
+      "heroY": 174.9612579345703,
+      "heroHeight": 203.99017333984375,
+      "pagePaddingBottom": 166,
+      "extraScopeRowHeight": 43.9953498840332
+    },
+    "after": {
+      "topHeight": 107.9803695678711,
+      "heroY": 154.97158813476562,
+      "heroHeight": 203.99017333984375,
+      "pagePaddingBottom": 84,
+      "extraScopeRowPresent": false
+    }
+  },
+  "account": {
+    "figmaNodes": ["36:116", "36:134"],
+    "before": {
+      "heroY": 106.98604583740234,
+      "loginCardY": 223.96693420410156,
+      "loginCardHeight": 418.41424560546875,
+      "loginButtonWidth": 183.9875946044922,
+      "loginButtonHeight": 91.9937973022461,
+      "agreementY": 662.370849609375,
+      "agreementHeight": 218.42715454101562,
+      "pagePaddingBottom": 182
+    },
+    "after": {
+      "heroY": 102.99586486816406,
+      "loginCardY": 211.97055053710938,
+      "loginCardHeight": 240.97364807128906,
+      "loginButtonWidth": 330.0877990722656,
+      "loginButtonHeight": 54.997413635253906,
+      "agreementY": 464.9405822753906,
+      "agreementHeight": 186.80267333984375,
+      "pagePaddingBottom": 84
+    }
+  }
+}

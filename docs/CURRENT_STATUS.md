@@ -2,9 +2,9 @@
 
 ## 2026-11-05 UI005 最终整合审查（DRAFT PR 候选，未合入 main）
 
-UI005 候选分支为 `feat/ui005-figma-complete`，基线 `origin/main` / `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`，评审入口为 [Draft PR #42](https://github.com/xyq-dev/small-city-basketball/pull/42)。73/73 注册路由与 17/17 条件状态完成当前原生模板的 320/390/430 隔离视觉矩阵，1386/1386 通过；微信开发者工具只读覆盖 18/73 路由、36 张首屏/底部图，逻辑窗口 390×844，PNG 实际 355×768。逐项范围和证据见 [UI005 任务](tasks/UI005-REDESIGN.md)、[交接](handoffs/UI005-REDESIGN.md)及[可共享证据](evidence/ui005/README.md)。
+UI005 候选分支为 `feat/ui005-figma-complete`，基线 `origin/main` / `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`，评审入口为 [Draft PR #42](https://github.com/xyq-dev/small-city-basketball/pull/42)。73/73 注册路由与 17/17 条件状态完成原生模板的 320/390/430 隔离矩阵，1386/1386 通过；该数字现明确只作模板、布局约束与夹具状态证据，不表示 73 页全部通过逐像素或本轮高保真复审。2026-11-05 的运行差异复核已定向修复首页与“我的”，两页重新取得 390 微信首屏/底部证据和 21/21 三宽隔离结果；未重审的 71 页不外推新增视觉结论。逐项范围和证据见 [UI005 任务](tasks/UI005-REDESIGN.md)、[交接](handoffs/UI005-REDESIGN.md)、[可共享证据](evidence/ui005/README.md)及[两页修复前后](evidence/ui005/home-account-fix/README.md)。
 
-Windows `npm run test:wechat` 为 1207/1208，唯一失败是测试搭建临时项目外 symlink 时的 `EPERM`；该 symlink 用例在实现 head `aa05715f41d148a872f2c82b48b8f2a79b9842a9` 的 Linux CI 通过，Linux 微信测试为 1207 通过、1 个 Windows 批处理桥按平台跳过、0 失败。[Application checks 42001388020](https://github.com/xyq-dev/small-city-basketball/actions/runs/42001388020) 的 admin、api、production 全部成功。生产地区目录与公开赛事目录 404、真实身份/业务记录、原生键盘画面继续阻塞相应运行成功态。此节只描述待评审候选，不表示已合入、可部署或生产验收；没有 pack、上传、部署、Migration 或生产写入。
+定向修复后 Windows `npm run test:wechat` 为 1207/1208，唯一失败仍是测试搭建临时项目外 symlink 时的 `EPERM`；直接回归 141/141。旧实现 head `aa05715f41d148a872f2c82b48b8f2a79b9842a9` 的 [Application checks 42001388020](https://github.com/xyq-dev/small-city-basketball/actions/runs/42001388020) 曾三作业成功，但不能替代本次定向修复 head 的 CI；实际结果只以 PR 最新检查为准。生产地区目录与公开赛事目录 404、真实身份/业务记录、原生键盘画面继续阻塞相应运行成功态。此节只描述待评审候选，不表示已合入、可部署或生产验收；没有 pack、上传、部署、Migration 或生产写入。
 
 ## 2026-11-03 四页导航与账号双态整合（待合入 main）
 

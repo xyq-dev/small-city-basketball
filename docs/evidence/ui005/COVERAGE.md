@@ -1,8 +1,9 @@
 # UI005 73 页与 17 状态覆盖清单
 
 - 基线：当前功能分支中的原生 WXML/WXSS、真实数据绑定与原 handler。
-- 隔离矩阵：1386/1386；73/73 注册路由、17/17 条件状态，320/390/430 三宽。
+- 原隔离矩阵：1386/1386；73/73 注册路由、17/17 条件状态，320/390/430 三宽。它证明模板可渲染及布局约束通过，不等于逐页高保真复审。
 - 微信开发者工具：18/73 路由，均采集首屏和底部；逻辑窗口 390×844，PNG 355×768。
+- 2026-11-05 最新高保真复核只重审并修复首页与“我的”，详见[定向证据](home-account-fix/README.md)；未重审的 71 页继续沿用原证据边界。
 - “微信运行”仅证明当前工程可打开目标路由并滚动；未执行报名、预约、审核、支付、记分等写操作，也未用合成 setData 伪造真实成功态。
 - 补充状态是宿主页条件分支，不额外注册为页面。
 
@@ -10,9 +11,9 @@
 
 | 路由 | Figma | 实现 | 隔离视觉 | 微信运行 | 边界 / 剩余验证 |
 |---|---:|---|---|---|---|
-| `pages/home/index` | [35:38](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=35-38) | [home](../../../apps/wechat/pages/home/) | `c10-core-home-ready` · 320/390/430 通过 | [首屏](runtime/home-top.png) / [底部](runtime/home-bottom.png) | 只读路由与滚动；真实成功写流程及原生键盘未覆盖 |
+| `pages/home/index` | [35:38](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=35-38) | [home](../../../apps/wechat/pages/home/) | `ui002-root-home-public/error` · 本轮 320/390/430 通过 | [最新首屏](home-account-fix/wechat-home-after.png) / [最新底部](home-account-fix/wechat-home-after-bottom.png) | 本轮高保真复核；微信真实态为公开目录 404，隔离成功态不冒充微信成功 |
 | `pages/watch/index` | [36:53](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-53) | [watch](../../../apps/wechat/pages/watch/) | `c18-watch-directory` · 320/390/430 通过 | [首屏](runtime/watch-top.png) / [底部](runtime/watch-bottom.png) | 只读路由与滚动；真实成功写流程及原生键盘未覆盖 |
-| `pages/account/index` | [36:56](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-56) | [account](../../../apps/wechat/pages/account/) | `c10-account-home` · 320/390/430 通过 | [首屏](runtime/account-top.png) / [底部](runtime/account-bottom.png) | 只读路由与滚动；真实成功写流程及原生键盘未覆盖 |
+| `pages/account/index` | [36:56 已登录](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-56) / [36:116 游客](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-116) | [account](../../../apps/wechat/pages/account/) | 游客及登录状态 · 本轮 320/390/430 通过 | [最新首屏](home-account-fix/wechat-account-after.png) / [最新底部](home-account-fix/wechat-account-after-bottom.png) | 本轮高保真复核；微信真实态为游客 + `unknown`，未开放/未绑定/失败/登录中为隔离互斥状态 |
 | `pages/teams/index` | [36:55](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-55) | [teams](../../../apps/wechat/pages/teams/) | `c10-team-teams-ready` · 320/390/430 通过 | [首屏](runtime/teams-top.png) / [底部](runtime/teams-bottom.png) | 只读路由与滚动；真实成功写流程及原生键盘未覆盖 |
 | `pages/local/index` | [36:54](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-54) | [local](../../../apps/wechat/pages/local/) | `ui002-root-local-listed` · 320/390/430 通过 | [首屏](runtime/local-top.png) / [底部](runtime/local-bottom.png) | 只读路由与滚动；真实成功写流程及原生键盘未覆盖 |
 | `pages/trade-order/index` | [36:127](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-127) | [trade-order](../../../apps/wechat/pages/trade-order/) | `e04-trade-order-ready` · 320/390/430 通过 | — | 隔离视觉通过；微信运行待参数、身份、业务数据或扩展抽样 |
@@ -97,7 +98,7 @@
 | 分账核对（`ui005-settlement-check`） | `pages/sponsor-commerce/index` · [sponsor-commerce](../../../apps/wechat/pages/sponsor-commerce/) | [36:131](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-131) | 320/390/430 通过 | 未单独运行；条件分支以合成数据核对 |
 | 观赛空态（`ui005-watch-empty`） | `pages/watch/index` · [watch](../../../apps/wechat/pages/watch/) | [36:132](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-132) | 320/390/430 通过 | 未单独运行；条件分支以合成数据核对 |
 | 选城与距离起点（`ui005-local-location`） | `pages/local/index` · [local](../../../apps/wechat/pages/local/) | [36:133](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-133) | 320/390/430 通过 | 未单独运行；条件分支以合成数据核对 |
-| 微信登录状态（`ui005-account-wechat-progress`） | `pages/account/index` · [account](../../../apps/wechat/pages/account/) | [36:134](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-134) | 320/390/430 通过 | 未单独运行；条件分支以合成数据核对 |
+| 微信登录状态（`ui005-account-wechat-progress`） | `pages/account/index` · [account](../../../apps/wechat/pages/account/) | [36:134](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-134) | 本轮 320/390/430 通过；只显示当前登录中状态 | 微信真实 `unknown` 分支已运行；登录中、未开放、未绑定、失败以隔离合成状态核对，不同时堆叠 |
 | 访问受限（`ui005-event-access-limited`） | `pages/event/index` · [event](../../../apps/wechat/pages/event/) | [36:135](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-135) | 320/390/430 通过 | 未单独运行；条件分支以合成数据核对 |
 | 提交结果待核对（`ui005-profile-result-unknown`） | `pages/player-center/index` · [player-center](../../../apps/wechat/pages/player-center/) | [36:136](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-136) | 320/390/430 通过 | 未单独运行；条件分支以合成数据核对 |
 | 记分台暂不可写（`ui005-scorer-readonly`） | `pages/scorer/index` · [scorer](../../../apps/wechat/pages/scorer/) | [36:137](https://www.figma.com/design/QpKOskViUwHFVqSG3uYR9X?node-id=36-137) | 320/390/430 通过 | 未单独运行；条件分支以合成数据核对 |

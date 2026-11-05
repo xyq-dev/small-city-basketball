@@ -9,15 +9,13 @@
  <button class="home-search" bindtap="openSearch" aria-label="搜索"><image src="/assets/home/search.svg" mode="aspectFit"/><view>搜赛事、球队、球员</view></button>
  </view>
  <view wx:if="{{citySelection.warning}}" class="notice warning">{{citySelection.warning}}</view>
- <view class="home-hero">
-  <image class="home-hero-photo" src="/assets/home/hero.jpg" mode="aspectFill" aria-label="篮球品牌主题示意图"/>
-  <view class="home-hero-shade"></view>
-  <view class="home-hero-copy">
-   <view class="home-headline">让热爱，有主场。</view>
-   <view class="home-tagline">小城市篮球赛事与同城服务</view>
+  <view class="home-hero">
+   <image class="home-hero-photo" src="/assets/home/hero.jpg" mode="aspectFill" aria-label="篮球品牌主题示意图"/>
+   <view class="home-hero-copy">
+    <view class="home-headline">让热爱，有主场。</view>
+    <view class="home-tagline">小城市篮球赛事与同城服务</view>
+   </view>
   </view>
-  <view class="home-hero-caption">品牌主题 · 示意图</view>
- </view>
  <view class="home-quick">
   <button bindtap="openEvents"><view class="home-quick-icon orange"><image src="/assets/figma/event.svg" mode="aspectFit"/></view><view>看赛事</view></button>
   <button data-page="recruitment" bindtap="go"><view class="home-quick-icon"><image src="/assets/figma/recruitment.svg" mode="aspectFit"/></view><view>赛事招募</view></button>
@@ -29,7 +27,6 @@
   <button bindtap="openLocal"><view class="home-quick-icon"><image src="/assets/figma/local.svg" mode="aspectFit"/></view><view>同城服务</view></button>
  </view>
  <view class="home-section-head"><view class="home-section-title">精选赛事</view><button bindtap="openEvents">更多赛事<image src="/assets/home/chevron-right.svg" mode="aspectFit"/></button></view>
- <view class="home-public-scope"><view class="home-scope-dot"></view><view>{{citySelection.mode==='NATIONWIDE' ? '全国公开赛事' : citySelection.label + ' · 进行中'}}</view><button bindtap="chooseCity">选择城市</button></view>
  <scb-state wx:if="{{publicLoading}}" kind="loading" title="正在读取公开赛事" description="精彩即将上场，请稍候。"/>
  <scb-state wx:elif="{{publicError}}" kind="error" title="公开赛事暂时无法读取" description="{{publicError}}" action-text="重新读取" bind:action="loadPublicEvents"/>
  <scb-state wx:elif="{{publicLoaded && !publicEvents.length}}" kind="empty" title="{{citySelection.label}}暂无进行中赛事" description="看看即将开始的比赛，或发现其他城市的热爱。" action-text="查看全部赛事" secondary-text="切换城市" bind:action="openEvents" bind:secondary="chooseCity"/>

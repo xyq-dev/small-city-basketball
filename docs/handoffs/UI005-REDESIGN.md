@@ -108,3 +108,13 @@
 - 修复 head `aa05715f41d148a872f2c82b48b8f2a79b9842a9` 对应 [CI 42001388020](https://github.com/xyq-dev/small-city-basketball/actions/runs/42001388020)：admin、api、production 全部 SUCCESS。证据守卫已在 Linux 对 1386 项通过。
 - Linux 微信测试 1207 通过、1 个 Windows 批处理桥按平台跳过、0 失败；Windows 本地 EPERM 的 symlink 安全用例在 Linux 通过。admin e2e 1400 通过、1386 个移动项目按配置跳过。
 - 当前只需提交并推送本节及汇总状态的纯文档收口，随后核对 PR 最新 head 的 CI。保持 Draft，不合并、不 pack、不部署、不执行 Migration 或生产操作。
+
+## 2026-11-05 首页与“我的”定向修复交接
+
+- 起始现场为 `D:\Projects\small-city-basketball` / `feat/ui005-figma-complete` / `669e43bbd70db9bf2d8fe3400ec79f13de0214f9`；47 个本地归档未跟踪文件未移动、未删除。备份：`D:\Projects\scb-backups\ui005-home-account-fix-20261105-191854`。
+- 首页已消除重复状态栏避让、额外暗化/角标和重复城市范围行，页头城市入口及请求语义保留。390 微信主视觉起点为 154.97；按实测状态栏比设计多 3px 归一后为 151.97，对应 Figma 152。底部预留从 166 改为实际 84。
+- 账号页已将 `unknown`、`closed`、`unbound`、`failed`、登录中状态互斥渲染；真实 `unknown` 不再显示服务关闭。登录卡为 240.97px，原生登录行 330.09×55px，游客入口两列加第二行，底部预留 84px；320 登录中操作改为纵向完整文案。认证、同意、防重、权限与 API 未改。
+- 微信当前代码 390 只读采集：首页真实公开目录 404；账号真实游客 + `wechatState=unknown`。城市、消息、邮箱展开、找回、重试 5/5；未执行任何写操作。微信 320/430 和原生键盘画面仍未取得。
+- 当前本地验证：直接回归 141/141；定向隔离 21/21；全量微信 1207/1208，唯一失败为 Windows `native-components.test.cjs:165` 的 `symlinkSync EPERM`。最新证据入口：[home-account-fix](../evidence/ui005/home-account-fix/README.md)，仓库外完整原图：`D:\Projects\scb-ui-review\ui005\home-account-fix\20261105-191911`。
+- 口径已更正：1386/1386 是模板/三宽约束/夹具证据，不等于 73 页本轮高保真复审。首页和“我的”以新证据为准，其余 71 页不作本轮新增视觉结论。
+- 本节记录提交前交接；实际提交、推送和 Linux CI 只以 Draft PR #42 最新 head 与最终报告为准。不得合并、部署、pack、上传、Migration 或生产写入。

@@ -11,7 +11,7 @@
     "user": null,
     "binding": null,
     "connected": false,
-    "enabled": true,
+    "enabled": false,
     "canRegister": true,
     "registerMode": false,
     "consent": false,
@@ -22,11 +22,11 @@
     "password": "",
     "hasReturn": false,
     "emailOpen": false,
-    "wechatState": "open",
+    "wechatState": "closed",
     "loginNotice": "",
     "loginPhase": "",
     "platformOperator": false
   },
-  "expectText": ["微信快捷登录", "邮箱登录", "找回账号", "游客可浏览"],
+  "expectText": ["微信登录暂未开放", "邮箱登录", "找回账号", "游客可浏览"],
   "expectAbsentText": ["退出登录"]
 }

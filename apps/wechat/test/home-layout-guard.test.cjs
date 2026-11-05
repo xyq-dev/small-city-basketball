@@ -86,7 +86,7 @@ test('a long city name stays in the city slot and a 320-wide capsule moves the b
   });
   home.page.syncChrome();
   assert.equal(home.page.data.capsuleGap, 0);
-  assert.equal(home.page.data.brandOffset, 20);
+  assert.equal(home.page.data.brandOffset, 44);
   wx.getWindowInfo = () => ({ windowWidth: 390, windowHeight: 844, statusBarHeight: 47 });
   wx.getMenuButtonBoundingClientRect = () => ({
     left: 296,

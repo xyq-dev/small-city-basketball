@@ -225,7 +225,11 @@ test('UI005 touch targets, long actions and event read failures retain their dis
     ],
     [
       'pages/account/index.wxss',
-      /\.account-shortcuts\.account-guest-shortcuts\s*\{[^}]*repeat\(3,/,
+      /\.account-page \.account-shortcuts\.account-guest-shortcuts\s*\{[^}]*repeat\(2,/,
+    ],
+    [
+      'pages/account/index.wxss',
+      /\.account-page \.account-guest-shortcuts \.account-quick:nth-child\(3\)\s*\{[^}]*grid-column:1 \/ 2/,
     ],
     ['pages/org-match/index.wxss', /\.score-meta > text:first-child\s*\{[^}]*min-height:44px/],
     ['pages/reschedule/index.wxss', /\.reschedule-tabs view\s*\{[^}]*min-height:44px/],

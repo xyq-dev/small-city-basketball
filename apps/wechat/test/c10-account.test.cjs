@@ -79,6 +79,13 @@ test('wechat progress can switch to email only after the in-flight command relea
     consent: true,
     emailOpen: false,
   });
+  const progress = buildPreview({ root, route: 'pages/account/index', data: h.page.data });
+  assert.match(progress.phone, /正在核对微信登录/);
+  assert.match(progress.phone, /正在登录…/);
+  assert.doesNotMatch(
+    progress.phone,
+    /微信登录暂未开放|暂时无法核对微信登录状态|当前微信尚未绑定应用账号|微信登录失败/,
+  );
   h.page.useEmailAfterWechat();
   assert.equal(h.page.data.loginPhase, 'wechat');
   assert.equal(h.page.data.emailOpen, false);
@@ -217,13 +224,13 @@ test('wechat login keeps an unbound identity and a failed attempt signed out', a
     data: unbound.h.page.data,
   });
   assert.match(unboundView.phone, /当前微信尚未绑定应用账号/);
-  assert.match(unboundView.phone, /请先登录已有账号，再从隐私与账号中明确绑定/);
+  assert.match(unboundView.phone, /先登录已有账号再明确绑定/);
   assert.doesNotMatch(unboundView.phone, /微信登录暂未开放|已退出登录/);
   const failed = await attempt('WECHAT_UNAVAILABLE');
   assert.equal(failed.h.page.data.user, null);
   assert.equal(failed.h.page.data.loginNotice, 'failed');
   const failedView = buildPreview({ root, route: 'pages/account/index', data: failed.h.page.data });
-  assert.match(failedView.phone, /本次登录尚未完成/);
+  assert.match(failedView.phone, /微信登录失败/);
   assert.match(failedView.phone, /重新核对登录状态/);
   assert.doesNotMatch(failedView.phone, /当前微信尚未绑定应用账号/);
   const quiet = loadPage({ root, route: 'pages/account/index' });

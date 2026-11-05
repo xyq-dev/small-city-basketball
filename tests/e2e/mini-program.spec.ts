@@ -525,8 +525,8 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     expect(metrics.hero?.width).toBe(width);
     expect(metrics.hero?.radius).toBe(0);
     expect(metrics.hero?.height).toBe(204);
-    expect(metrics.homeMark?.width).toBe(width <= 360 ? 28 : 31);
-    expect(metrics.homeMark?.height).toBe(width <= 360 ? 28 : 31);
+    expect(metrics.homeMark?.width).toBe(28);
+    expect(metrics.homeMark?.height).toBe(28);
     expect(metrics.homeAction).toBeNull();
     // The static preview fixture exposes a 24px safe-area inset. UI005 keeps
     // the visual nav at 50px and adds that real inset exactly once.
