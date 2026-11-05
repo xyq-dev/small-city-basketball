@@ -72,7 +72,7 @@ test('first visit: anonymous events and dismissible city guide', async () => {
   const html = buildPreview({ root, route: h.page.route, data: h.page.data }).phone;
   assert.match(html, /合成公开赛事a/);
   assert.match(html, /选择城市/);
-  assert.match(html, /全国找赛事，同城一起上场/);
+  assert.match(html, /小城市篮球赛事与同城服务/);
   assert.equal(
     d.wx.calls.some((call) => /getLocation|getFuzzyLocation/.test(call.type)),
     false,

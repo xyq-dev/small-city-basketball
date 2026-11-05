@@ -1,5 +1,10 @@
-<scb-header title="记分台" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page">
+<scb-header title="{{pending || (!loading && match && !canControl) ? '记分台暂不可写' : '记分台'}}" disabled="{{busy || pending || uncertain || dirty}}"/>
+<view class="page fig-page mgmt-page scorer-page">
+  <view wx:if="{{pending || (!loading && match && !canControl)}}" class="scorer-feedback">
+    <view class="scorer-feedback-title">记分台暂不可写</view>
+    <view class="scorer-feedback-detail">请核对权限、比赛阶段和最新版本；当前内容保留。</view>
+  </view>
+  <view wx:else class="fig-summary light scorer-summary"><view class="fig-summary-icon"><image src="/assets/figma/scoreboard.svg" mode="aspectFit"/></view><view class="fig-summary-copy"><view class="fig-kicker">本场记分员</view><view class="fig-summary-title">现场记分</view><view class="fig-summary-sub">现场写入以有效控制权与服务端回执为准。</view></view></view>
   <view wx:if="{{loading && !match}}" class="card state-panel">
     <text class="state-label">记分台</text>
     <view class="subtitle">正在读取比赛</view>
@@ -14,28 +19,24 @@
   <block wx:else>
     <view wx:if="{{error}}" class="notice warning">{{error}}</view>
     <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
-    <view wx:if="{{pending}}" class="card">
-      <view class="subtitle">“{{pending.label}}”结果待核对</view>
-      <view class="muted">已暂停新的记分。先核对；服务端未收到时按原编号重发，不会重复加分。</view>
-      <button class="primary" bindtap="checkPending" disabled="{{busy}}">核对结果</button>
-      <button class="secondary" bindtap="resendPending" disabled="{{busy}}">按原编号重发</button>
+    <view id="scorer-board" class="card scorer-score-card">
+      <view class="fig-card-title">{{pending || !canControl ? '本场比分' : (board && !board.adjudicated ? board.periodLabel + ' ' + board.clockLabel : '本场比分')}}</view>
+      <view wx:if="{{!pending && canControl}}" class="score-meta"><text>{{match.eventName}}</text><text class="score-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}{{board && !board.adjudicated ? ' · ' + (board.running ? '计时中' : '已暂停') : ''}}</text></view>
+      <view class="score-pair"><view class="score-team home"><view class="score-name">{{match.home}}</view><view class="score-value">{{board && !board.adjudicated ? board.home.score : '–'}}</view><view wx:if="{{board && !board.adjudicated}}" class="muted small">{{pending || !canControl ? board.periodLabel + ' · ' + board.clockLabel : '犯规 ' + board.home.fouls + ' · 暂停 ' + board.home.timeouts}}</view></view><view class="score-team away"><view class="score-name">{{match.away}}</view><view class="score-value">{{board && !board.adjudicated ? board.away.score : '–'}}</view><view wx:if="{{board && !board.adjudicated}}" class="muted small">{{pending || !canControl ? '最近一次服务端快照' : '犯规 ' + board.away.fouls + ' · 暂停 ' + board.away.timeouts}}</view></view></view>
     </view>
 
-    <view id="scorer-board" class="board">
-      <view class="board-meta">{{match.eventName}}</view>
-      <view class="board-row">
-        <view class="board-team"><view class="board-name">{{match.home}}</view><view class="board-score">{{board && !board.adjudicated ? board.home.score : '–'}}</view></view>
-        <view class="board-mid"><view class="board-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-clock">{{board.clockLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-period">{{board.periodLabel}}</view><view wx:if="{{board && !board.adjudicated}}" class="board-period">{{board.running ? '计时中' : '已暂停'}}</view></view>
-        <view class="board-team"><view class="board-name">{{match.away}}</view><view class="board-score">{{board && !board.adjudicated ? board.away.score : '–'}}</view></view>
-      </view>
-      <view wx:if="{{board && !board.adjudicated}}" class="board-sub">犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>
+    <view wx:if="{{pending || !canControl}}" class="card scorer-readonly-state">
+      <view class="fig-card-title">操作恢复</view>
+      <view wx:if="{{!canControl}}" class="state-notice"><text class="state-dot">•</text><view><view class="state-title">记分台占用</view><view class="muted small">等待授权记录员交接。</view></view><text class="state-chip readonly">只读</text></view>
+      <view wx:if="{{pending}}" class="state-notice"><text class="state-dot">•</text><view><view class="state-title">上次{{pending.label}}结果待核对</view><view class="muted small">先核对原命令回执与比分。</view></view><text class="state-chip">待核对</text></view>
+      <button wx:if="{{pending}}" class="secondary pending-resend" bindtap="resendPending" disabled="{{busy}}">按原编号重发，不重复写入</button>
     </view>
 
     <view class="workflow-tabs console-tabs">
-      <button class="{{consoleSection === 'score' ? 'selected' : ''}}" data-section="score" bindtap="openConsoleSection" disabled="{{busy || loading}}">记分台</button>
-      <button class="{{consoleSection === 'lineup' ? 'selected' : ''}}" data-section="lineup" bindtap="openConsoleSection" disabled="{{busy || loading || !board.proMode}}">首发与换人</button>
-      <button class="{{consoleSection === 'offline' ? 'selected' : ''}}" data-section="offline" bindtap="openConsoleSection" disabled="{{busy || loading}}">离线草稿 {{offlineItems.length}}</button>
-      <button class="{{consoleSection === 'history' ? 'selected' : ''}}" data-section="history" bindtap="openConsoleSection" disabled="{{busy || loading}}">记录与更正</button>
+      <button class="{{consoleSection === 'score' ? 'selected' : ''}}" data-section="score" bindtap="openConsoleSection" disabled="{{busy || loading}}">记分</button>
+      <button class="{{consoleSection === 'lineup' ? 'selected' : ''}}" aria-label="首发与换人" data-section="lineup" bindtap="openConsoleSection" disabled="{{busy || loading || !board.proMode}}"><text class="tab-a11y">首发与换人</text>阵容</button>
+      <button class="{{consoleSection === 'offline' ? 'selected' : ''}}" data-section="offline" bindtap="openConsoleSection" disabled="{{busy || loading}}">离线 {{offlineItems.length}}</button>
+      <button class="{{consoleSection === 'history' ? 'selected' : ''}}" aria-label="记录与更正" data-section="history" bindtap="openConsoleSection" disabled="{{busy || loading}}"><text class="tab-a11y">记录与更正</text>更正</button>
     </view>
     <view wx:if="{{board && (canControl || offlineItems.length || offlineError)}}" id="scorer-offline" class="card">
       <view class="subtitle">可靠离线草稿</view>
@@ -182,3 +183,5 @@
     <button class="quiet" bindtap="load" disabled="{{loading || busy}}">重新读取比分</button>
   </block>
 </view>
+<view wx:if="{{pending || (!loading && match && !canControl)}}" class="fig-actions dock scorer-readonly-actions"><button class="fig-ghost" bindtap="openBoard" disabled="{{busy}}">查看只读赛况</button><button wx:if="{{pending}}" class="fig-confirm" bindtap="checkPending" disabled="{{busy}}">核对结果</button><button wx:else class="fig-confirm" bindtap="load" disabled="{{busy || loading}}">核对结果</button></view>
+<view wx:else class="fig-actions dock"><button class="fig-ghost" bindtap="toggleFix" disabled="{{busy || !board || (match.status !== 'LIVE' && match.status !== 'PENDING_CONFIRMATION')}}">补录更正</button><button class="fig-confirm" bindtap="clock" disabled="{{busy || !!pending || !board || !held || match.status !== 'LIVE' || offlineDraft}}">{{board && board.running ? '暂停时钟' : '启动时钟'}}</button></view>

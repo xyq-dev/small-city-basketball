@@ -1,1 +1,24 @@
+.org-match-page { padding:12px 16px calc(112px + env(safe-area-inset-bottom)); }
+.match-summary { min-height:110px; padding:16px 14px; }
+.fig-summary-icon { display:flex; flex:0 0 44px; width:44px; height:44px; align-items:center; justify-content:center; border-radius:12px; background:#eaf2fc; }
+.fig-summary-icon image { width:24px; height:24px; }
+.match-tabs { display:flex; gap:0; padding:3px; margin-bottom:12px; border-radius:12px; background:#fff; }
+.match-tabs view { flex:1; min-width:0; padding:11px 4px; border-radius:10px; color:#63758b; font-size:14px; line-height:20px; text-align:center; }
+.match-tabs .selected { color:#fff; background:#164b88; }
+.org-match-page .card { padding:14px; border:0; border-radius:16px; }
+.match-score-card { color:#18283f; }
+.score-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#63758b; font-size:12px; line-height:20px; }
+.score-meta > text:first-child { display:flex; flex:1; min-width:0; min-height:44px; align-items:center; }
+.score-status { flex:none; padding:2px 8px; border-radius:7px; color:#895500; background:#fff3e6; }
+.score-status.live { color:#fff; background:#f28c28; }
+.score-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:12px; }
+.score-team { min-height:116px; padding:12px; border-radius:10px; background:#eaf2fc; }
+.score-team.away { background:#fff0e1; }
+.score-name { font-size:14px; line-height:22px; font-weight:600; overflow-wrap:anywhere; }
+.score-value { margin-top:8px; color:#164b88; font-family:Inter,Arial,sans-serif; font-size:38px; line-height:44px; font-weight:700; }
+.score-foot,.score-result { margin-top:8px; color:#63758b; font-size:12px; line-height:20px; text-align:center; }
+.score-result.final { color:#16734b; }
+.org-match-page .mode-choice { flex-wrap:wrap; }
+.org-match-page .mode-choice button { flex:1 1 140px; }
 .history-row.voided { color:#7c91a9; text-decoration:line-through; }
+@media (max-width:340px) { .org-match-page { padding-left:12px; padding-right:12px; } .match-tabs view { font-size:13px; } }

@@ -7,6 +7,7 @@ const follows = require('../../utils/follows');
 // late confirmation). INVALID rows show no withdrawn event details and cannot be opened.
 const EMPTY = Object.freeze({
   items: [],
+  activeFollowCount: 0,
   nextCursor: null,
   loading: false,
   loadingMore: false,
@@ -73,12 +74,16 @@ Page({
     this._viewer = session.user.id;
     try {
       const result = await follows.page(client, null);
-      if (ui.live(this, token) && gen === this._listGen)
+      if (ui.live(this, token) && gen === this._listGen) {
+        const items = result.items.map(follows.view);
         this.setData({
-          items: result.items.map(follows.view),
+          items,
+          activeFollowCount: items.filter((item) => item.status === 'ACTIVE' && item.publicEventId)
+            .length,
           nextCursor: result.nextCursor,
           loading: false,
         });
+      }
     } catch (error) {
       if (ui.live(this, token) && gen === this._listGen)
         this.setData({ items: [], nextCursor: null, loading: false, error: ui.message(error) });
@@ -93,8 +98,11 @@ Page({
     try {
       const result = await follows.page(api.getClient(), cursor);
       if (gen !== this._listGen || !ui.held(this, token)) return;
+      const items = follows.merge(this.data.items, result.items.map(follows.view));
       this.setData({
-        items: follows.merge(this.data.items, result.items.map(follows.view)),
+        items,
+        activeFollowCount: items.filter((item) => item.status === 'ACTIVE' && item.publicEventId)
+          .length,
         nextCursor: result.nextCursor,
         loadingMore: false,
       });
@@ -110,6 +118,13 @@ Page({
           (error && error.message ? '（' + error.message + '）' : ''),
       });
     }
+  },
+  openFirst() {
+    const item = (this.data.items || []).find(
+      (row) => row.status === 'ACTIVE' && row.publicEventId,
+    );
+    if (!item) return;
+    this.openEvent({ currentTarget: { dataset: { id: item.publicEventId } } });
   },
   openEvent(e) {
     const id = e.currentTarget.dataset.id;
@@ -142,10 +157,13 @@ Page({
     try {
       await follows.cancel(api.getClient(), followId);
       if (!still()) return this.abandon(gen);
+      const items = this.data.items.filter((v) => v.followId !== followId);
       this.setData({
         busy: false,
         cancelling: '',
-        items: this.data.items.filter((v) => v.followId !== followId),
+        items,
+        activeFollowCount: items.filter((row) => row.status === 'ACTIVE' && row.publicEventId)
+          .length,
         notice: '已取消关注。',
       });
     } catch (error) {

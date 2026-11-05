@@ -1,0 +1,183 @@
+[
+  {
+    "name": "ui005-event-standings",
+    "sourceFixture": "c10-public-event-groups.json",
+    "route": "pages/event/index",
+    "state": "event-standings",
+    "figmaNode": "36:62",
+    "expectText": ["赛程与积分", "小组积分", "A组 · 本组排名"]
+  },
+  {
+    "name": "ui005-materials-returned",
+    "sourceFixture": "c23-materials-draft.json",
+    "route": "pages/participant-materials/index",
+    "state": "materials-returned",
+    "figmaNode": "36:114",
+    "data": {
+      "material": {
+        "memberId": "00000000-0000-4000-8000-000000000003",
+        "memberName": "合成队员长名称",
+        "version": 3,
+        "status": "CHANGES_REQUESTED",
+        "statusLabel": "待本人补充",
+        "reviewReason": "本人照片需要更清晰，并重新核对本届签署版本。",
+        "blockerText": "补充本人照片与签署",
+        "identityMasked": "**************0000",
+        "portrait": { "fileName": "synthetic-returned.jpg" },
+        "portraitLabel": "synthetic-returned.jpg · 已私有保存",
+        "insurance": null,
+        "publicityConsent": false,
+        "capabilities": { "canReadPrivate": true, "canReview": false }
+      },
+      "workspace": {
+        "capabilities": {
+          "canSave": true,
+          "canSubmit": true,
+          "canWithdrawPublicity": false
+        }
+      }
+    },
+    "expectText": ["待本人补充", "审核意见", "补交项目", "重新提交本人资料"]
+  },
+  {
+    "name": "ui005-materials-list",
+    "sourceFixture": "c23-materials-draft.json",
+    "route": "pages/participant-materials/index",
+    "state": "materials-list",
+    "figmaNode": "39:53",
+    "data": {
+      "mode": "list",
+      "entries": [
+        {
+          "entryId": "00000000-0000-4000-8000-000000000002",
+          "orgId": "00000000-0000-4000-8000-000000000001",
+          "eventName": "合成小城市篮球公开赛长名称",
+          "teamName": "合成青锋",
+          "startDate": "2028-05-01",
+          "endDate": "2028-05-03"
+        }
+      ],
+      "workspace": null,
+      "material": null
+    },
+    "expectText": ["我的本人报名", "合成小城市篮球公开赛长名称", "查看本人资料与授权"]
+  },
+  {
+    "name": "ui005-materials-review",
+    "sourceFixture": "ui002-registration-materials-progress.json",
+    "route": "pages/participant-materials/index",
+    "state": "materials-review",
+    "figmaNode": "39:54",
+    "expectText": ["本人资料审核与进度", "逐人填写与审核进度", "独立人工审核当前版本"]
+  },
+  {
+    "name": "ui005-qualification-progress",
+    "sourceFixture": "ui002-regflow-qualification-current.json",
+    "route": "pages/qualification-precheck/index",
+    "state": "qualification-progress",
+    "figmaNode": "36:115",
+    "data": {
+      "selectedParticipant": {
+        "requestCurrent": true,
+        "qualification": {
+          "status": "待独立核验",
+          "current": true,
+          "reason": "当前版本已受理，等待独立审核人逐项核验。"
+        }
+      },
+      "workspace": {
+        "participants": [
+          {
+            "memberId": "00000000-0000-4000-8000-000000000003",
+            "canRequest": false,
+            "materialVersion": 2,
+            "hasRealName": true,
+            "hasIdentity": true,
+            "hasPortrait": true,
+            "hasSignature": true,
+            "requestCurrent": true,
+            "qualification": {
+              "status": "待独立核验",
+              "current": true,
+              "reason": "当前版本已受理，等待独立审核人逐项核验。"
+            }
+          }
+        ]
+      }
+    },
+    "expectText": ["已受理当前版本申请", "待独立核验", "查看本人资料"]
+  },
+  {
+    "name": "ui005-refund-progress",
+    "sourceFixture": "ui002-live-trade-order-conflict.json",
+    "route": "pages/trade-order/index",
+    "state": "refund-progress",
+    "figmaNode": "36:130",
+    "expectText": ["退款与保证金扣减", "原退款记录", "查询原退款"]
+  },
+  {
+    "name": "ui005-settlement-check",
+    "sourceFixture": "ui002-services-sponsor-split-unknown.json",
+    "route": "pages/sponsor-commerce/index",
+    "state": "settlement-check",
+    "figmaNode": "36:131",
+    "expectText": ["分账核对", "结果未知 · 只核对原编号", "逐项查询原分账"]
+  },
+  {
+    "name": "ui005-event-access-limited",
+    "sourceFixture": "ui002-root-event-revoked.json",
+    "route": "pages/event/index",
+    "state": "access-limited",
+    "figmaNode": "36:135",
+    "expectText": ["访问受限", "该内容已停止公开", "返回公开赛事"]
+  },
+  {
+    "name": "ui005-profile-result-unknown",
+    "sourceFixture": "c10-profile-center-pending.json",
+    "route": "pages/player-center/index",
+    "state": "submission-result-unknown",
+    "figmaNode": "36:136",
+    "data": {
+      "editing": true,
+      "editorSection": "PROFILE",
+      "pending": {
+        "body": { "clientRequestId": "synthetic-ui005-profile-command" },
+        "invalid": false
+      },
+      "pendingInFlight": false
+    },
+    "expectText": ["原资料提交结果待核对", "核对原资料提交", "重新读取本人资料"]
+  },
+  {
+    "name": "ui005-scorer-readonly",
+    "sourceFixture": "c14-scorer-live.json",
+    "route": "pages/scorer/index",
+    "state": "scorer-readonly",
+    "figmaNode": "36:137",
+    "data": { "canControl": false, "held": false, "pending": null },
+    "expectText": ["记分台暂不可写", "查看只读赛况", "核对结果"]
+  },
+  {
+    "name": "ui005-funds-result-unknown",
+    "sourceFixture": "e04-trade-order-ready.json",
+    "route": "pages/trade-order/index",
+    "state": "funds-result-unknown",
+    "figmaNode": "36:138",
+    "data": {
+      "pending": {
+        "body": { "clientRequestId": "synthetic-ui005-funds-command" },
+        "invalid": true
+      },
+      "pendingAcknowledged": false
+    },
+    "expectText": ["资金结果待核对", "支付结果待核对", "查询原交易"]
+  },
+  {
+    "name": "ui005-reschedule-changed",
+    "sourceFixture": "c15-reschedule-history.json",
+    "route": "pages/reschedule/index",
+    "state": "service-schedule-changed",
+    "figmaNode": "36:139",
+    "expectText": ["服务与赛程变更", "查看改期记录", "查看最新赛程"]
+  }
+]

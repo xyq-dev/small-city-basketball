@@ -1,16 +1,26 @@
 <scb-header title="我的成员关系" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page c19-page">
+<view class="page fig-page c19-page">
+  <view class="fig-summary identity-summary membership-identity">
+    <view class="fig-summary-copy">
+      <view class="fig-kicker">成员关系</view>
+      <view class="fig-summary-title">{{team ? team.teamName : '我的成员关系'}}</view>
+      <view class="fig-summary-sub">只列出本人账号绑定的球队成员身份。</view>
+    </view>
+    <view class="fig-summary-mark"><image src="/assets/figma/shield.svg" mode="aspectFit"/></view>
+  </view>
   <view wx:if="{{error}}" class="notice warning" role="alert"><view class="feedback-title">请核对后继续</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice">{{message}}</view>
   <view wx:if="{{loginRequired}}" class="card c19-panel state-panel"><view class="subtitle">登录后查看成员关系</view><button class="primary" bindtap="login">登录</button></view>
   <view wx:if="{{loading}}" class="card c19-panel state-panel"><view class="subtitle">正在读取</view><view class="skeleton-line"></view></view>
   <view wx:if="{{team}}" class="card c19-panel">
+    <view class="fig-card-title">球队详情</view>
     <view class="subtitle">{{team.teamName}}</view>
     <view class="small muted">{{team.organizationName}} · 只读：长期成员名称</view>
     <view wx:for="{{team.members}}" wx:key="memberId" class="item-row"><text>{{item.name}}</text><text wx:if="{{item.isSelf}}" class="small muted"> · 我</text></view>
     <button class="quiet" bindtap="closeTeam">收起</button>
   </view>
   <view wx:if="{{!loginRequired && !loading}}" class="card c19-panel">
+    <view class="fig-card-title">本人绑定</view>
     <view class="subtitle">我的成员关系</view>
     <view class="small muted">这里只列出你本人账号绑定的球队成员身份；球员身份不等于球队管理权限。</view>
     <view wx:if="{{!items.length}}" class="muted">暂无成员关系。</view>
@@ -20,7 +30,12 @@
       <view wx:if="{{item.status === 'ACTIVE'}}" class="row-actions"><button class="secondary" data-id="{{item.bindingId}}" bindtap="open" disabled="{{busy}}">查看球队</button><button class="quiet" data-id="{{item.bindingId}}" bindtap="leave" disabled="{{busy}}">退出球队</button></view>
     </view>
   </view>
+  <view class="fig-card-title">更多操作</view>
   <button class="secondary" bindtap="openJoin" disabled="{{busy}}">用加入码加入 / 处理认领</button>
   <button class="quiet" bindtap="refresh" disabled="{{busy || loading}}">重新读取</button>
+</view>
+<view class="fig-actions">
+  <button class="fig-ghost" bindtap="openJoin" disabled="{{busy}}">加入或认领成员</button>
+  <button class="fig-confirm" bindtap="openCurrentTeam" disabled="{{busy || !activeMembershipCount}}">查看球队</button>
 </view>
 <scb-nav active="Account" disabled="{{busy || loading}}"/>

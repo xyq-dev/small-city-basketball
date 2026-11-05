@@ -82,15 +82,18 @@ test('UI001 nationwide navigation keeps five destinations with navy selected and
 
 test('home entries and positions use the mapped icons; positions keep labels and filters', () => {
   const html = fs.readFileSync(path.join(root, 'pages/home/index.wxml'), 'utf8');
+  for (const name of ['brandmark.svg', 'hero.jpg']) assert.ok(html.includes(name), name);
   for (const name of [
-    'icon-trophy.png',
-    'icon-player.png',
-    'icon-team.png',
-    'icon-video.png',
-    'brandmark.svg',
-    'hero.jpg',
+    'event.svg',
+    'recruitment.svg',
+    'team-archive.svg',
+    'media.svg',
+    'player.svg',
+    'jersey.svg',
+    'court.svg',
+    'local.svg',
   ])
-    assert.match(html, new RegExp(name.replace('.', '\\.')));
+    assert.ok(html.includes('/assets/figma/' + name), name);
   assert.match(html, /data-position="\{\{item\.code\}\}"/);
   const h = loadPage({ root, route: 'pages/home/index' });
   h.page.openCourt();

@@ -1,5 +1,5 @@
 page { background:#f4f6fa; }
-.player-page { padding:16px 16px calc(112px + env(safe-area-inset-bottom)); max-width:600px; color:#18283f; }
+.player-page { padding:12px 16px calc(124px + env(safe-area-inset-bottom)); max-width:600px; color:#18283f; }
 .player-page .card { padding:16px; margin-bottom:12px; border-radius:16px; background:#fff; }
 .profile-identity { display:flex; flex-direction:column; gap:8px; }
 .profile-person { display:flex; align-items:flex-start; gap:16px; min-width:0; }
@@ -21,6 +21,15 @@ page { background:#f4f6fa; }
 .profile-copy,.window-row,.bio { color:#18283f; font-size:14px; line-height:22px; overflow-wrap:anywhere; }
 .bio { white-space:pre-wrap; }
 .availability-card { min-height:112px; }
+.profile-tabs { display:flex; gap:1px; margin-bottom:12px; padding:2px 3px; border-radius:12px; background:#fff; }
+.profile-tabs button { flex:1; width:auto; min-width:0; min-height:44px; margin:0; padding:8px; border-radius:10px; background:transparent; color:#63758b; font-size:13px; line-height:20px; font-weight:400; }
+.profile-tabs button::after { border:0; }
+.profile-tabs .active { background:#123c73; color:#fff; font-weight:700; }
+.window-row { display:flex; align-items:center; gap:8px; min-height:55px; padding:8px 0; border-top:1px solid #e6ebf2; }
+.window-row:first-child { border-top:0; }
+.window-marker { flex:none; width:20px; height:20px; display:flex; align-items:center; justify-content:center; }
+.window-copy { flex:1; min-width:0; }
+.window-state { flex:none; padding:4px 7px; border-radius:7px; background:#fff1e2; color:#18283f; font-size:11px; line-height:16px; }
 .profile-quote { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:8px 12px; }
 .fee-heading,.fee-note { flex:0 0 100%; min-width:0; }
 .quote-service { flex:1 1 auto; min-width:0; }
@@ -30,14 +39,21 @@ page { background:#f4f6fa; }
 .quote-total-price { color:#123c73; font-family:Inter,Arial,sans-serif; font-size:14px; line-height:22px; font-weight:700; white-space:nowrap; overflow-wrap:normal; }
 .fee-note { color:#63758b; }
 .profile-records-toggle { display:flex; align-items:center; justify-content:center; gap:4px; min-height:44px; margin:0 0 12px; padding:10px 12px; color:#123c73; font-size:14px; line-height:22px; }
+.profile-data-card { gap:0; }
+.profile-data-row { display:flex; align-items:center; gap:8px; min-height:55px; padding:8px 0; border-top:1px solid #e6ebf2; }
+.profile-data-row:nth-child(2) { border-top:0; }
+.profile-data-row > view:first-child { flex:1; min-width:0; }
+.player-data-title { font-size:14px; line-height:20px; font-weight:700; }
+.profile-data-actions { display:flex; gap:8px; padding-top:8px; }
+.profile-data-actions button { flex:1; width:auto; min-width:0; margin:0; }
 .profile-more-toggle { min-height:44px; margin:0 0 12px; font-size:14px; line-height:22px; }
 .profile-information > .notice { margin-bottom:12px; }
 .compare-actions { display:flex; gap:12px; }
 .compare-actions button { flex:1; min-width:0; margin:0; }
 .profile-action { display:flex; gap:12px; padding:12px 16px calc(28px + env(safe-area-inset-bottom)); border-radius:0; background:#fff; }
-.profile-action button { display:flex; align-items:center; justify-content:center; flex:1; width:0; min-width:0; min-height:48px; max-width:none; padding:12px; margin:0; border-radius:12px; font-size:14px; line-height:22px; font-weight:500; }
-.profile-action .secondary { background:#eaf0f8; color:#123c73; }
-.profile-action .primary { background:#123c73; color:#fff; }
+.profile-action button { display:flex; align-items:center; justify-content:center; flex:1; width:0; min-width:0; min-height:48px; max-width:none; padding:8px 12px; margin:0; border-radius:24px; font-size:16px; line-height:24px; font-weight:500; }
+.profile-action .secondary { background:#fff; color:#123c73; }
+.profile-action .primary { background:#f28c28; color:#18283f; }
 .profile-action button[disabled] { background:#eaf0f7; color:#63758b; }
 .state-card { display:flex; flex-direction:column; gap:8px; }
 .state-card button { margin:8px 0 0; }

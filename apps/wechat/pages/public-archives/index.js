@@ -3,6 +3,7 @@ const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const reset = {
   profiles: [],
+  publishableCount: 0,
   pendingSources: [],
   teams: [],
   events: [],
@@ -58,12 +59,14 @@ Page({
       this._viewer = session.user.id;
       const result = (await client.request('/v1/me/public-archives')).data;
       if (!ui.live(this, token)) return;
+      const profiles = result.profiles;
       this.setData({
         loading: false,
         loginRequired: false,
-        profiles: result.profiles,
+        profiles,
+        publishableCount: profiles.filter((item) => item.status !== 'PUBLISHED').length,
         pendingSources: result.pendingSources.filter(
-          (s) => !result.profiles.some((p) => p.sources.some((source) => source.id === s.id)),
+          (s) => !profiles.some((p) => p.sources.some((source) => source.id === s.id)),
         ),
         teams: result.manageableTeams,
         events: result.manageableEvents,
@@ -195,6 +198,16 @@ Page({
       },
       '创建档案',
     );
+  },
+  editFirstProfile() {
+    const profile = (this.data.profiles || [])[0];
+    if (!profile) return;
+    this.editProfile({ currentTarget: { dataset: { id: profile.id } } });
+  },
+  publishFirst() {
+    const profile = (this.data.profiles || []).find((item) => item.status !== 'PUBLISHED');
+    if (!profile) return;
+    this.profileCommand({ currentTarget: { dataset: { id: profile.id, type: 'PUBLISH' } } });
   },
   editProfile(e) {
     const p = this.data.profiles.find((p) => p.id === e.currentTarget.dataset.id);

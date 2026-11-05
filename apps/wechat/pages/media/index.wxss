@@ -1,5 +1,13 @@
-.media-entry { display:flex; flex-direction:column; gap:20px; padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+.media-entry { display:flex; flex-direction:column; gap:12px; padding-bottom:calc(164px + env(safe-area-inset-bottom)); }
 .media-entry > button,.media-entry > .notice { margin:0; }
+.media-entry .fig-summary,.media-entry .fig-card { margin:0; }
+.media-summary-image { overflow:hidden; background:#eaf2fc; }
+.media-summary-image image { width:100%; height:100%; border-radius:10px; }
+.media-choice::before { content:''; flex:0 0 18px; width:18px; height:18px; border:1px solid #63758b; border-radius:50%; }
+.media-notice { display:flex; align-items:center; gap:8px; min-height:55px; margin-top:0; padding:10px; }
+.media-notice::before { content:''; flex:0 0 7px; width:7px; height:7px; border-radius:4px; background:#123c73; }
+.media-notice > view { min-width:0; }
+.media-entry .fig-row + .fig-row,.media-entry .media-event + .media-event { border-top:1px solid #e6ebf2; }
 .media-intro { padding:24px; border-radius:16px; background:#132c49; color:#fff; }
 .media-intro .title { color:#fff; margin:0 0 12px; }
 .media-copy { font-size:14px; line-height:24px; }

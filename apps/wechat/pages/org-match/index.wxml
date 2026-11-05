@@ -1,5 +1,7 @@
-<scb-header title="比赛详情" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page">
+<scb-header title="比赛管理" disabled="{{busy || pending || uncertain || dirty}}"/>
+<view class="page fig-page mgmt-page org-match-page">
+  <view class="fig-summary light match-summary"><view class="fig-summary-icon"><image src="/assets/figma/scoreboard.svg" mode="aspectFit"/></view><view class="fig-summary-copy"><view class="fig-kicker">赛事工作台</view><view class="fig-summary-title">比赛管理</view><view class="fig-summary-sub">本场授权人员核对比分、人员与赛果。</view></view></view>
+  <view class="match-tabs"><view class="selected">比分</view><view>工作人员</view><view>确认记录</view></view>
   <view wx:if="{{loading && !match}}" class="card state-panel">
     <text class="state-label">机构比赛</text>
     <view class="subtitle">正在读取比赛资料</view>
@@ -22,18 +24,14 @@
       <button class="secondary" bindtap="resendPending" disabled="{{busy}}">按原编号重发</button>
     </view>
 
-    <button class="secondary" bindtap="openExceptions">弃权／取消及独立裁定</button>
 <view wx:if="{{match.adjudication}}" class="notice warning">{{match.statusLabel}}，不生成比赛比分或个人统计。详情请查看独立裁定记录。</view>
-<view class="board">
-      <view class="board-meta" bindtap="openEvent">{{match.eventName}} · {{match.round}}</view>
-      <view class="board-meta">{{match.time}} · {{match.court}}</view>
-      <view class="board-row">
-        <view class="board-team"><view class="board-name">{{match.home}}</view><view class="board-score">{{board ? board.home.score : '–'}}</view></view>
-        <view class="board-mid"><view class="board-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</view><view wx:if="{{board}}" class="board-clock">{{board.clockLabel}}</view><view wx:if="{{board}}" class="board-period">{{board.periodLabel}}</view></view>
-        <view class="board-team"><view class="board-name">{{match.away}}</view><view class="board-score">{{board ? board.away.score : '–'}}</view></view>
-      </view>
-      <view wx:if="{{board}}" class="board-sub">犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>
-      <view class="board-result {{board && board.final ? 'final' : ''}}">{{board ? board.resultLabel : '比赛尚未准备，暂无比分'}}</view>
+    <view class="card match-score-card">
+      <view class="fig-card-title">分节得分</view>
+      <view class="score-meta"><text bindtap="openEvent">{{match.eventName}} · {{match.round}}</text><text class="score-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</text></view>
+      <view class="muted small">{{match.time}} · {{match.court}}{{board ? ' · ' + board.periodLabel + ' ' + board.clockLabel : ''}}</view>
+      <view class="score-pair"><view class="score-team home"><view class="score-name">{{match.home}}</view><view class="score-value">{{board ? board.home.score : '–'}}</view></view><view class="score-team away"><view class="score-name">{{match.away}}</view><view class="score-value">{{board ? board.away.score : '–'}}</view></view></view>
+      <view wx:if="{{board}}" class="score-foot">犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>
+      <view class="score-result {{board && board.final ? 'final' : ''}}">{{board ? board.resultLabel : '比赛尚未准备，暂无比分'}}</view>
     </view>
 
     <view wx:if="{{caps.prepare}}" class="card">
@@ -93,6 +91,7 @@
       <view class="muted">改期与媒体的权限、状态由服务端判定；进入后显示能否操作及原因。</view>
       <view class="mode-choice">
         <button wx:if="{{(caps.staff || caps.prepare || caps.confirm || caps.reopen) && (match.status === 'SCHEDULED' || match.status === 'READY')}}" class="secondary" bindtap="openReschedule" disabled="{{busy}}">正式改期</button>
+        <button wx:if="{{caps.staff || caps.prepare || caps.confirm || caps.reopen}}" class="secondary" bindtap="openExceptions" disabled="{{busy}}">比赛异常裁定</button>
         <button wx:if="{{caps.staff || caps.prepare || caps.confirm || caps.reopen}}" class="secondary" bindtap="openMedia" disabled="{{busy}}">比赛媒体</button>
         <button wx:if="{{caps.live}}" class="secondary" bindtap="openLive" disabled="{{busy}}">开播、分发与录像</button>
       </view>
@@ -115,3 +114,4 @@
     <button class="quiet" bindtap="refresh" disabled="{{loading || busy}}" loading="{{loading}}">刷新比赛</button>
   </block>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" bindtap="openMedia" disabled="{{busy}}">查看比赛媒体</button><button class="fig-confirm" bindtap="confirmResult" disabled="{{busy || !!pending}}">独立确认赛果</button></view>

@@ -36,5 +36,5 @@
     "busy": false
   },
   "expectText": ["合成原预约结果待核对", "查询原操作回执", "重试原操作"],
-  "expectDisabled": ["收起查询与扩展服务"]
+  "expectEnabled": ["查询原操作回执", "重试原操作"]
 }

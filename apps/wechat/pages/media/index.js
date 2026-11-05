@@ -19,4 +19,9 @@ Page({
   open() {
     wx.redirectTo({ url: '/pages/watch/index' });
   },
+  openLatest() {
+    const first = (this.data.recentEvents || [])[0];
+    if (!first) return;
+    this.openRecent({ currentTarget: { dataset: { id: first.publicEventId } } });
+  },
 });

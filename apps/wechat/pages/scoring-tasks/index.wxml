@@ -1,10 +1,7 @@
-<scb-header title="记分任务" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page">
-  <view class="intro-card">
-    <view class="subtitle">记分与赛果确认</view>
-    <view class="muted">只列出你被分配或有权管理的比赛。记分、确认的权限每次由服务端核验。</view>
-    <view wx:if="{{scopeLabel}}" class="badge">{{scopeLabel}}</view>
-  </view>
+<scb-header title="记分与复核任务" disabled="{{busy || pending || uncertain || dirty}}"/>
+<view class="page fig-page mgmt-page scoring-tasks-page">
+  <view class="fig-summary light tasks-summary"><view class="fig-summary-icon"><image src="/assets/figma/workbench.svg" mode="aspectFit"/></view><view class="fig-summary-copy"><view class="fig-kicker">记分与赛果确认</view><view class="fig-summary-title">今天的比赛</view><view class="fig-summary-sub">只展示本人被分配或有权管理的场次{{scopeLabel ? ' · ' + scopeLabel : ''}}</view></view></view>
+  <view class="task-tabs"><view class="selected">记分任务</view><view>待复核</view></view>
   <view wx:if="{{loginRequired}}" class="card state-panel">
     <text class="state-label">未登录</text>
     <view class="subtitle">登录后查看记分任务</view>
@@ -16,14 +13,16 @@
     <view wx:for="{{orgErrors}}" wx:key="key" class="notice warning small">{{item.text}}</view>
     <view wx:if="{{empty}}" class="card empty"><view class="subtitle">暂无记分任务</view><view class="muted">赛事负责人分配你为记分员或复核人后，比赛会出现在这里。</view></view>
     <block wx:for="{{sections}}" wx:key="key" wx:for-item="section">
-      <view class="section-label">{{section.label}} · {{section.items.length}}</view>
+      <view class="fig-card-title task-section-title">{{section.label}} · {{section.items.length}}</view>
       <view wx:for="{{section.items}}" wx:key="key" class="org-match task-row" data-org="{{item.orgId}}" data-match="{{item.matchId}}" bindtap="open">
         <view class="org-match-meta">{{item.meta}}</view>
         <view class="row-between"><view class="task-title">{{item.title}}</view><text wx:if="{{item.score}}" class="task-score">{{item.score}}</text></view>
         <view class="org-match-status {{item.live ? 'live' : ''}}">{{item.statusLabel}}</view>
       </view>
     </block>
+    <view class="card task-scope"><view class="fig-card-title">任务范围</view><view class="scope-row"><text class="scope-dot">•</text><view><view class="scope-title">本场记分员</view><view class="muted small">在有效控制权下登记比赛，写入以服务端回执为准。</view></view></view><view class="scope-row"><text class="scope-dot">•</text><view><view class="scope-title">本场复核人</view><view class="muted small">独立核对赛果及更正记录，不能与记分角色混同。</view></view></view></view>
     <view wx:if="{{truncated}}" class="muted">比赛较多，仅显示前1000场。</view>
     <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">刷新</button>
   </block>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" bindtap="load" disabled="{{loading}}">刷新任务</button><button class="fig-confirm" bindtap="openCurrent" disabled="{{loading || empty}}">查看授权比赛</button></view>

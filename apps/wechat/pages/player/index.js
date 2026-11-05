@@ -139,6 +139,12 @@ Page({
   informationToggle() {
     this.setData({ informationOpen: !this.data.informationOpen });
   },
+  scrollSection(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!['profile-service', 'profile-availability', 'profile-data'].includes(id)) return;
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#' + id, duration: 200 });
+  },
   recordsToggle() {
     this.setData({ recordsOpen: !this.data.recordsOpen });
   },

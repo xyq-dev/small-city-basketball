@@ -1,12 +1,15 @@
-.org-event-page { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+.org-event-page { padding:12px 16px calc(112px + env(safe-area-inset-bottom)); }
+.workbench-summary { align-items:center; min-height:114px; padding:16px 14px; background:#eaf2fc; }
+.fig-summary-icon { display:flex; flex:0 0 44px; width:44px; height:44px; align-items:center; justify-content:center; border-radius:12px; background:#fff; }
+.fig-summary-icon image { width:24px; height:24px; }
 .org-event-hero { padding:16px; border-radius:16px; background:#fff; color:#18283f; margin-bottom:12px; }
 .org-event-status { display:inline-block; padding:2px 10px; border-radius:24px; background:#eaf0f8; color:#123c73; font-size:12px; line-height:20px; }
 .org-event-status.live { background:#f28c28; }
 .org-event-name { margin:8px 0 4px; font-size:18px; line-height:28px; font-weight:700; overflow-wrap:anywhere; }
 .org-event-meta { font-size:14px; line-height:22px; color:#63758b; }
 .page.org-event-page button { width:100%; margin-left:0; margin-right:0; }
-.org-event-tabs { display:flex; gap:8px; margin-bottom:12px; }
-.org-event-tabs button { flex:1; min-width:0; margin:0; padding:10px 4px; font-size:14px; color:#63758b; background:#fff; }
+.org-event-tabs { display:flex; gap:0; margin-bottom:12px; padding:3px; border-radius:12px; background:#fff; }
+.org-event-tabs button { flex:1; min-width:0; min-height:44px; margin:0; padding:8px 2px; border-radius:10px; font-size:13px; line-height:20px; color:#63758b; background:#fff; }
 .org-event-tabs button.selected { color:#fff; background:#123c73; }
 .org-event-tabs button.selected::after { border:none; }
 .org-bracket-head { margin:8px 0; }
@@ -18,3 +21,16 @@
 .page.org-event-page .manage-links button { text-align:left; border-radius:12px; padding:12px; }
 .manage-sub { display:block; color:#63758b; font-size:12px; line-height:18px; font-weight:400; }
 .page.org-event-page .mode-choice button { margin:0; }
+.manage-card { padding:14px; border:0; border-radius:16px; }
+.workbench-progress { margin-top:2px; }
+.progress-row { display:flex; align-items:center; gap:10px; min-height:66px; padding:8px 0; }
+.progress-row + .progress-row { border-top:1px solid #e1e7ef; }
+.progress-row > view { flex:1; min-width:0; }
+.progress-no { display:flex; flex:0 0 22px; width:22px; height:22px; align-items:center; justify-content:center; border-radius:50%; color:#164b88; background:#eaf2fc; font-size:12px; }
+.progress-title { color:#18283f; font-size:14px; line-height:22px; font-weight:600; }
+.progress-state { flex:none; max-width:92px; padding:2px 8px; border-radius:7px; color:#895500; background:#fff3e6; font-size:12px; line-height:20px; text-align:center; overflow-wrap:anywhere; }
+.progress-state.success { color:#16734b; background:#e7f5ee; }
+.workbench-section-title { margin-top:14px; }
+.manage-links .secondary { min-height:58px; color:#18283f; background:#fff; box-shadow:none; border-top:1px solid #e1e7ef; border-radius:0; }
+.manage-links .secondary:first-child { border-top:0; }
+@media (max-width:340px) { .org-event-page { padding-left:12px; padding-right:12px; } .org-event-tabs button { font-size:12px; } .progress-state { max-width:76px; } }

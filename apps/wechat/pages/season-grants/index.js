@@ -7,6 +7,8 @@ const basePath = '/pages/season-grants/index';
 // Private, account-bound state; cleared on every identity change, sign-out or unload.
 const privateDefaults = () => ({
   grants: [],
+  declinableGrantCount: 0,
+  viewableGrantCount: 0,
   truncated: false,
   nextCursor: null,
   loadingMore: false,
@@ -109,6 +111,7 @@ Page({
         const result = (await api.getClient().request(this.eventPath())).data;
         if (!ui.live(this, token)) return;
         const sources = result.sources;
+        const grants = result.grants.map(model.grantView);
         this.setData({
           event: result.event,
           season: result.season,
@@ -116,7 +119,11 @@ Page({
           sources,
           disclosure: result.disclosure,
           teamLabels: sources.map((t) => t.teamName),
-          grants: result.grants.map(model.grantView),
+          grants,
+          declinableGrantCount: grants.filter(
+            (item) => item.capabilities && item.capabilities.canDecline,
+          ).length,
+          viewableGrantCount: grants.filter((item) => item.season).length,
           nextCursor: result.nextCursor || null,
           truncated: !!result.nextCursor,
         });
@@ -138,6 +145,10 @@ Page({
         const grants = result.grants.map(model.grantView);
         this.setData({
           grants,
+          declinableGrantCount: grants.filter(
+            (item) => item.capabilities && item.capabilities.canDecline,
+          ).length,
+          viewableGrantCount: grants.filter((item) => item.season).length,
           truncated: result.truncated,
           nextCursor: result.nextCursor || null,
           disclosure: result.disclosure,
@@ -151,6 +162,8 @@ Page({
       if (ui.live(this, token))
         this.setData({
           grants: [],
+          declinableGrantCount: 0,
+          viewableGrantCount: 0,
           sources: [],
           event: null,
           season: null,
@@ -185,10 +198,15 @@ Page({
         .data;
       if (!valid()) return;
       const existing = new Set(this.data.grants.map((g) => g.id));
+      const grants = this.data.grants.concat(
+        result.grants.filter((g) => !existing.has(g.id)).map(model.grantView),
+      );
       this.setData({
-        grants: this.data.grants.concat(
-          result.grants.filter((g) => !existing.has(g.id)).map(model.grantView),
-        ),
+        grants,
+        declinableGrantCount: grants.filter(
+          (item) => item.capabilities && item.capabilities.canDecline,
+        ).length,
+        viewableGrantCount: grants.filter((item) => item.season).length,
         nextCursor: result.nextCursor || null,
         truncated: !!result.nextCursor,
       });
@@ -372,6 +390,18 @@ Page({
     const id = event.currentTarget.dataset.id;
     const values = (event.detail && event.detail.value) || [];
     this.setData({ acknowledged: values.length ? id : '' });
+  },
+  declineCurrent() {
+    const grant = (this.data.grants || []).find(
+      (item) => item.capabilities && item.capabilities.canDecline,
+    );
+    if (!grant || this.data.busy || this.data.loading) return;
+    this.answer({ currentTarget: { dataset: { id: grant.id, type: 'DECLINE' } } });
+  },
+  showCurrentGrant() {
+    const grant = (this.data.grants || []).find((item) => item.season);
+    if (!grant || this.data.busy || this.data.loading) return;
+    this.showStats({ currentTarget: { dataset: { org: grant.orgId, season: grant.season.id } } });
   },
   async answer(event) {
     const { id, type } = event.currentTarget.dataset;

@@ -1,13 +1,14 @@
-<scb-header title="平台处理工作台" disabled="{{busy}}"/>
-<view class="page platform-page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">平台工作台</view><view class="title">核对当前可处理的预约与争议</view></view>
+<scb-header title="平台工作台" disabled="{{busy}}"/>
+<view class="page fig-page platform-page ui002-workspace">
+  <view class="fig-summary soft platform-summary"><view class="platform-summary-icon"><image src="/assets/figma/workbench.svg" mode="aspectFit" aria-hidden="true"/></view><view class="fig-summary-copy"><view class="fig-kicker">平台运营</view><view class="fig-summary-title">平台运营工作台</view><view class="fig-summary-sub">平台处理工作台 · 核对当前可处理的预约与争议。</view></view></view>
+  <view class="platform-tabs"><view class="selected">待处理</view><view>治理</view><view>费率</view></view>
   <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">平台资料需要重新核对</view><view class="small">{{error}}</view></view>
   <button wx:if="{{error && !loading && !allowed && !loginRequired}}" class="secondary" bindtap="load" disabled="{{busy || reviewOpen || feeDirty}}">重新核对平台权限</button>
   <view wx:if="{{loading}}" class="card state-card loading-card"><view class="state-title">正在核对平台权限</view><view class="skeleton"></view><view class="skeleton short"></view><view class="small muted">核对完成后显示当前可处理的资料…</view></view>
   <view wx:elif="{{loginRequired}}" class="card state-card empty"><view class="subtitle">登录后继续平台处理</view><view class="muted">平台身份与独立处理权限由当前账号核对。</view><button class="primary" bindtap="login">登录后继续</button></view>
   <view wx:elif="{{!allowed && !error}}" class="card state-card empty"><view class="subtitle">平台权限尚未就绪</view><view class="muted">核对当前账号后，才显示有权处理的资料与预约。</view><button class="secondary" bindtap="load">核对当前权限</button></view>
   <block wx:if="{{allowed}}">
-<view class="card"><view class="subtitle">城市与服务治理</view><button class="secondary" data-page="city-operations" bindtap="operations">城市运营权限</button><button class="secondary" data-page="governance" bindtap="operations">平台工单与举报</button><button class="secondary" data-page="governance-reviews" bindtap="operations">平台评价处理</button></view>
+<view class="card platform-tools"><view class="fig-card-title">服务治理</view><button class="secondary" data-page="city-operations" bindtap="operations">城市运营<text>维护有限授权</text></button><button class="secondary" data-page="governance" bindtap="operations">工单与举报<text>按分派处理</text></button><button class="secondary" data-page="governance-reviews" bindtap="operations">服务评价<text>独立审核</text></button></view>
     <view class="notice warning platform-notice"><view class="notice-title">仅独立平台人员可操作</view><view class="small">拥有平台身份不代表可处理与本人或关联球队有关的订单。资料审核不等于实名、保险、参赛资格或实力认证。</view></view>
     <view wx:if="{{!reviewOpen}}" class="card platform-orders">
       <view class="subtitle">预约与争议</view>
@@ -45,3 +46,4 @@
     <button class="secondary" bindtap="load" disabled="{{busy || loading || reviewOpen || feeDirty}}">刷新平台资料</button>
   </block>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" bindtap="load" disabled="{{busy || loading || reviewOpen || feeDirty}}">刷新平台资料</button><button class="fig-confirm" bindtap="load" disabled="{{busy || loading}}">核对当前权限</button></view>

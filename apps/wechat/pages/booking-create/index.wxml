@@ -1,5 +1,6 @@
 <template name="fees">
   <view class="card">
+    <view class="fig-card-title">确定报价</view>
     <view class="subtitle">逐项费用快照</view>
     <view class="quote-row"><text>确定参赛服务费</text><text>{{quote.service}}</text></view>
     <view class="quote-row"><text>确定平台服务费</text><text>{{quote.platform}}</text></view>
@@ -18,8 +19,16 @@
   </view>
 </template>
 
-<scb-header title="发起球员邀约" disabled="{{busy || loading}}"/>
-<view class="page has-actions create-page">
+<scb-header title="创建预约" disabled="{{busy || loading}}"/>
+<view class="page fig-page has-actions create-page">
+  <view class="fig-summary light">
+    <view class="fig-summary-copy">
+      <view class="fig-kicker">创建预约</view>
+      <view class="fig-summary-title">发起球员邀约</view>
+      <view class="fig-summary-sub">先核对时间、参与球员和确定报价，再提交。</view>
+    </view>
+    <view class="fig-summary-mark"><scb-icon name="calendar" tone="navy" size="36"/></view>
+  </view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
   <view wx:if="{{notice}}" class="notice">{{notice}}</view>
   <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在读取当前身份、球队与球员资料…</view><view class="muted">完成读取后再核对本次安排，不自动提交请求。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
@@ -148,6 +157,7 @@
         </view>
         <block wx:if="{{editorOpen}}">
         <view class="card booking-context">
+          <view class="fig-card-title">本场参与球员</view>
           <view class="subtitle">赛事与球员</view>
           <view wx:if="{{selectedCount && eventName && teamId}}" class="context-summary">
             <view class="context-event">{{eventName}}</view>
@@ -234,6 +244,7 @@
           >
         </view>
         <view class="card arrangement-card">
+          <view class="fig-card-title">时间与地点</view>
           <view class="subtitle">{{scope === 'SINGLE' ? '比赛安排' : scope === 'TIME_BLOCK' ? '服务安排' : '逐场安排'}}</view>
           <view class="small muted"
             >全部为北京时间。报到≤开始&lt;结束；单项服务最多12小时，场后留30分钟交通缓冲。</view
@@ -520,20 +531,20 @@
     ><button class="primary" bindtap="players">返回球员广场</button></block
   >
   <block wx:elif="{{review}}"
+    ><button class="quiet" bindtap="edit" disabled="{{busy}}">返回修改安排</button
     ><button
       class="primary"
       bindtap="submit"
       disabled="{{busy || !consent || quoteInvalid}}"
       loading="{{busy}}"
     >
-      {{consent ? '提交 · ' + quote.confirmed + '确定报价' : '请先核对并勾选声明'}}</button
-    ><button class="quiet" bindtap="edit" disabled="{{busy}}">返回修改安排</button></block
+      {{consent ? '提交 · ' + quote.confirmed + '确定报价' : '请先核对并勾选声明'}}</button></block
   >
   <block wx:else
+    ><button class="quiet" bindtap="players" disabled="{{busy}}">返回选人</button
     ><button wx:if="{{canRequote}}" class="primary" bindtap="requote" disabled="{{busy}}">
       读取最新报价并重新核对</button
     ><button wx:else class="primary" bindtap="review" disabled="{{busy || quoteInvalid}}">
-      下一步 · 核对费用</button
-    ><button wx:if="{{editorOpen}}" class="quiet" bindtap="players" disabled="{{busy}}">继续找球员</button></block
+      下一步 · 核对费用</button></block
   >
 </view>

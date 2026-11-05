@@ -180,6 +180,42 @@ test('catalog read is anonymous and hostile Set-Cookie cannot alter a signed-in 
   assert.equal(client.sessionRevision(), rev);
 });
 
+test('a missing region route stays empty and an empty catalog is a different failure', async () => {
+  assert.equal(pathAllowed('/v1/public/regions', 'GET'), true);
+  const missing = device({
+    request: (_options, url) =>
+      url.pathname === '/v1/public/regions' ? fail(404, 'RESOURCE_NOT_FOUND') : undefined,
+  });
+  const page = missing.open('city-select');
+  await page.flush();
+  assert.equal(page.page.data.catalogLoading, false);
+  assert.equal(page.page.data.rows.length, 0);
+  assert.equal(
+    page.page.data.catalogError,
+    '地区服务尚未升级，请稍后重试；仍可浏览全国或按历史城市文字筛选。',
+  );
+  const html = buildPreview({ root, route: page.page.route, data: page.page.data }).phone;
+  assert.match(html, /重试读取地区目录/);
+  assert.match(html, /浏览全国/);
+  assert.doesNotMatch(html, /广东省/);
+  const empty = device({
+    request: (_options, url) =>
+      url.pathname === '/v1/public/regions'
+        ? ok({
+            catalogVersion: version,
+            dataDate: '2025-12-31',
+            partialRootIds: [],
+            regions: [],
+          })
+        : undefined,
+  });
+  const blank = empty.open('city-select');
+  await blank.flush();
+  assert.match(blank.page.data.catalogError, /地区目录资料无效/);
+  assert.notEqual(blank.page.data.catalogError, page.page.data.catalogError);
+  assert.equal(blank.page.data.rows.length, 0);
+});
+
 test('picker searches ambiguous names with complete paths and traverses real children', async () => {
   const d = device();
   const p = d.open('city-select');

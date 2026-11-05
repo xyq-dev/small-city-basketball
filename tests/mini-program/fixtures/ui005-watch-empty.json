@@ -1,0 +1,44 @@
+{
+  "designSource": "Figma UI005 node 36:132; synthetic empty public directory state",
+  "static": true,
+  "name": "ui005-watch-empty",
+  "route": "pages/watch/index",
+  "state": "empty",
+  "figmaNode": "36:132",
+  "data": {
+    "signedIn": false,
+    "citySelection": {
+      "label": "合成省 / 合成市 / 合成超长区县名称用于换行验收",
+      "city": "合成市",
+      "source": "上次选择",
+      "guide": false,
+      "warning": "",
+      "mode": "REGION",
+      "description": "按地区目录浏览"
+    },
+    "dir": {
+      "group": "LIVE",
+      "city": "合成市",
+      "cityInput": "",
+      "cityError": "",
+      "items": [],
+      "loading": false,
+      "loadingMore": false,
+      "loaded": true,
+      "done": true,
+      "error": "",
+      "moreError": ""
+    },
+    "loading": false,
+    "sections": [],
+    "organizations": [],
+    "failures": [],
+    "recentEvents": [],
+    "directoryFiltersOpen": false,
+    "linkOpen": false,
+    "value": "",
+    "error": ""
+  },
+  "expectText": ["暂无公开赛事", "当前条件", "查看全国赛事", "切换浏览城市"],
+  "expectAbsentText": ["正在读取公开赛事"]
+}

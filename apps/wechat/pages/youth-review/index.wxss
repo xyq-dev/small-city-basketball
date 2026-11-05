@@ -8,3 +8,11 @@
 .ui002-workspace .tabs button { min-height:44px; }
 
 .ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+.youth-summary { color:#18283f; }
+.youth-summary-icon { display:flex; align-items:center; justify-content:center; flex:0 0 44px; width:44px; height:44px; border-radius:12px; background:#eaf2fc; }
+.youth-summary-icon image { width:25px; height:25px; }
+.youth-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; min-height:44px; margin-bottom:12px; padding:2px 3px; border-radius:12px; background:#fff; color:#63758b; font-size:14px; line-height:40px; text-align:center; }
+.youth-tabs > view { min-width:0; height:40px; border-radius:10px; }
+.youth-tabs .selected { color:#fff; background:#123c73; font-weight:700; }
+.youth-page .youth-panel { padding:14px; border:0; border-radius:16px; background:#fff; }
+@media (max-width:360px) { .fig-actions button { padding-left:6px; padding-right:6px; font-size:13px; } }

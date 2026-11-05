@@ -381,6 +381,11 @@ Page({
     if (action !== 'PUBLISH') body.reason = this.data.reason;
     return this.send('/v1/training/cohorts/' + x.id + '/commands', body);
   },
+  openCheckin() {
+    const lesson = (this.data.teaching || [])[0];
+    if (!lesson || this.data.busy) return;
+    this.roster({ currentTarget: { dataset: { id: lesson.id } } });
+  },
   roster(e) {
     this.showRoster(e.currentTarget.dataset.id);
   },

@@ -11,6 +11,7 @@ const view = (m) => ({
 Page({
   data: {
     items: [],
+    activeMembershipCount: 0,
     team: null,
     loading: false,
     busy: false,
@@ -34,7 +35,7 @@ Page({
   },
   async load() {
     if (this.data.busy) return;
-    this.setData({ loading: true, error: '', items: [], team: null });
+    this.setData({ loading: true, error: '', items: [], activeMembershipCount: 0, team: null });
     ui.begin(this);
     const session = await ui.session(this, PATH);
     if (!this._alive) return;
@@ -46,10 +47,22 @@ Page({
     const token = ui.begin(this);
     try {
       const items = await tm.createRepository().memberships();
-      if (ui.live(this, token)) this.setData({ loading: false, items: items.map(view) });
+      if (ui.live(this, token)) {
+        const listed = items.map(view);
+        this.setData({
+          loading: false,
+          items: listed,
+          activeMembershipCount: listed.filter((item) => item.status === 'ACTIVE').length,
+        });
+      }
     } catch (error) {
       if (ui.live(this, token)) this.setData({ loading: false, error: ui.message(error) });
     }
+  },
+  openCurrentTeam() {
+    const item = (this.data.items || []).find((row) => row.status === 'ACTIVE');
+    if (!item) return;
+    return this.open({ currentTarget: { dataset: { id: item.bindingId } } });
   },
   async open(e) {
     const item = this.data.items.find((m) => m.bindingId === e.currentTarget.dataset.id);
@@ -87,15 +100,18 @@ Page({
             m.teamName === item.teamName,
         ),
       send: () => tm.createRepository().leave(item.bindingId),
-      done: async (updated) =>
+      done: async (updated) => {
+        const items = this.data.items.map((m) =>
+          m.bindingId === updated.bindingId ? view(updated) : m,
+        );
         this.setData({
-          items: this.data.items.map((m) =>
-            m.bindingId === updated.bindingId ? view(updated) : m,
-          ),
+          items,
+          activeMembershipCount: items.filter((item) => item.status === 'ACTIVE').length,
           team: null,
           uncertain: false,
           message: '已退出球队。',
-        }),
+        });
+      },
     });
   },
   openJoin() {

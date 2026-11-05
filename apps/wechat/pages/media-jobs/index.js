@@ -89,6 +89,13 @@ Page({
     if (this.data.busy || this.data.pending || !this.data.canManage) return;
     this.setData({ calibrationOpen: !this.data.calibrationOpen });
   },
+  scrollPanel(e) {
+    if (this.data.busy) return;
+    const id = e.currentTarget && e.currentTarget.dataset.id;
+    if (!['media-calibration', 'media-processing', 'media-artifacts'].includes(id)) return;
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#' + id, duration: 200 });
+  },
   async load() {
     if (!this._alive || !this.org || this.data.busy || this.data.loading) return;
     const c = api.getClient(),

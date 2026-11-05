@@ -1,7 +1,6 @@
 .selected-choice {
-  border: 2rpx solid #1c7467;
-  color: #155b51;
-  background: #e5f4ef;
+  color:#164b88;
+  background:#eaf2fc;
   font-weight: 600;
 }
 
@@ -13,3 +12,22 @@ textarea {
   font-size: 16px;
   line-height: 24px;
 }
+.exception-page { padding:12px 16px calc(112px + env(safe-area-inset-bottom)); }
+.exception-summary { min-height:110px; padding:16px 14px; }
+.fig-summary-icon { display:flex; flex:0 0 44px; width:44px; height:44px; align-items:center; justify-content:center; border-radius:12px; background:#eaf2fc; }
+.fig-summary-icon image { width:24px; height:24px; }
+.exception-tabs { display:flex; gap:0; padding:3px; margin-bottom:12px; border-radius:12px; background:#fff; }
+.exception-tabs view { flex:1; min-width:0; padding:11px 4px; border-radius:10px; color:#63758b; font-size:14px; line-height:20px; text-align:center; }
+.exception-tabs .selected { color:#fff; background:#164b88; }
+.exception-page .card { padding:14px; border:0; border-radius:16px; }
+.exception-boundary .muted { display:block; margin-top:6px; }
+.exception-choices button { position:relative; width:100%; min-height:68px; margin:0; padding:12px 12px 12px 42px; border-radius:0; color:#18283f; background:#fff; text-align:left; }
+.exception-choices button + button { border-top:1px solid #e1e7ef; }
+.exception-choices button::before { content:''; position:absolute; left:2px; top:21px; width:16px; height:16px; border:1px solid #7c91a9; border-radius:50%; }
+.exception-choices button.selected-choice::before { border:5px solid #164b88; box-sizing:border-box; }
+.exception-choices button text { display:block; color:#63758b; font-size:12px; line-height:18px; font-weight:400; }
+.side-choices { display:flex; gap:8px; margin:8px 0 12px; }
+.side-choices button { flex:1; min-width:0; }
+.facts-title { margin-top:14px; }
+.exception-proposal .field { border:0; background:#f4f6fa; }
+@media (max-width:340px) { .exception-page { padding-left:12px; padding-right:12px; } .exception-tabs view { font-size:13px; } }

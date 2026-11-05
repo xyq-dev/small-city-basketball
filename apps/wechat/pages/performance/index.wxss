@@ -1,8 +1,9 @@
-.authorization-tab-scroll { width:100%; margin-bottom:16px; }
+.performance-page { padding:12px 16px calc(124px + env(safe-area-inset-bottom)); }
+.authorization-tab-scroll { width:100%; margin-bottom:12px; padding:2px 3px; border-radius:12px; background:#fff; }
 .authorization-tabs { display:flex; flex-wrap:nowrap; gap:8px; width:408px; }
-.authorization-tabs button { flex:0 0 auto; width:auto; min-width:64px; white-space:nowrap; padding:10px 12px; margin:0; border:0; border-radius:8px; background:transparent; color:#63758b; font-size:14px; line-height:24px; }
+.authorization-tabs button { flex:0 0 auto; width:auto; min-width:86px; min-height:44px; white-space:nowrap; padding:8px 12px; margin:0; border:0; border-radius:10px; background:transparent; color:#63758b; font-size:13px; line-height:24px; }
 .authorization-tabs button::after { border:0; }
-.authorization-tabs .active { background:#eaf0f8; color:#123c73; font-weight:500; }
+.authorization-tabs .active { background:#123c73; color:#fff; font-weight:700; }
 .authorization-item { margin-bottom:16px; }
 .authorization-card,.dialog-card { display:flex; flex-direction:column; gap:8px; }
 .authorization-card .subtitle,.dialog-card .subtitle { margin:0; }
@@ -22,5 +23,7 @@
 .dialog-field { margin-bottom:16px; }
 .dialog-field .field-label { color:#18283f; }
 .hint-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
+.authorization-tools { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.authorization-tools button { flex:1 1 140px; width:auto; min-width:0; margin:0; }
 
 .authorization-created { margin:-8px 0 8px; }

@@ -17,14 +17,18 @@ Page({
     searched: false,
     error: '',
     notice: '',
+    statusBarHeight: 47,
+    capsuleGap: 96,
   },
   onLoad(q) {
     this._alive = true;
     this._gen = 0;
     this.setData({ query: typeof q.q === 'string' ? q.q.slice(0, 80) : '' });
+    this.syncChrome();
   },
   onShow() {
     this._alive = true;
+    this.syncChrome();
   },
   onHide() {
     this._alive = false;
@@ -111,5 +115,41 @@ Page({
       wx.navigateTo({
         url: '/pages/public-archive/index?key=' + encodeURIComponent(row.publicKey),
       });
+  },
+  syncChrome() {
+    let statusBarHeight = this.data.statusBarHeight;
+    let capsuleGap = this.data.capsuleGap;
+    try {
+      const info =
+        typeof wx.getWindowInfo === 'function'
+          ? wx.getWindowInfo()
+          : typeof wx.getSystemInfoSync === 'function'
+            ? wx.getSystemInfoSync()
+            : null;
+      if (
+        info &&
+        Number.isFinite(info.statusBarHeight) &&
+        info.statusBarHeight >= 0 &&
+        info.statusBarHeight <= 80
+      )
+        statusBarHeight = info.statusBarHeight;
+      if (
+        info &&
+        Number.isFinite(info.windowWidth) &&
+        typeof wx.getMenuButtonBoundingClientRect === 'function'
+      ) {
+        const menu = wx.getMenuButtonBoundingClientRect();
+        if (menu && Number.isFinite(menu.left) && menu.left > 0 && menu.left < info.windowWidth)
+          capsuleGap = Math.min(160, Math.max(72, Math.round(info.windowWidth - menu.left + 8)));
+      }
+    } catch {
+      /* The platform draws the real status bar and capsule. */
+    }
+    this.setData({ statusBarHeight, capsuleGap });
+  },
+  goBack() {
+    if (typeof wx.navigateBack === 'function')
+      wx.navigateBack({ delta: 1, fail: () => ui.open('home') });
+    else ui.open('home');
   },
 });

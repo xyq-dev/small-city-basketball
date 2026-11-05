@@ -1,4 +1,4 @@
-<scb-header title="赛事详情" back="{{true}}"/>
+<scb-header title="{{!event && !loading ? '访问受限' : event && !overview && tab!=='media' ? '赛程与积分' : '赛事详情'}}" back="{{true}}"/>
 <view class="page event-page">
   <view wx:if="{{loading && !event}}" class="public-panel public-state">
     <view class="state-tag">赛事观赛</view>
@@ -7,33 +7,49 @@
     <view class="public-skeleton"></view><view class="public-skeleton short"></view>
     <button class="primary" disabled>正在读取…</button>
   </view>
-  <view wx:elif="{{!event}}" class="public-panel public-state">
-    <view class="state-tag warning">{{unavailable ? '请核对' : error ? '读取未完成' : '赛事观赛'}}</view>
-    <view class="title">{{unavailable ? '该内容已停止公开' : error ? '暂时无法读取赛事' : '打开主办方公开赛事'}}</view>
-    <view class="notice {{error ? 'warning' : ''}}"><view>{{error || '从主办方提供的有效观赛入口进入，查看已发布的赛程、比分与媒体。'}}</view><view wx:if="{{unavailable}}" class="small">旧画面已清空，不回显已撤销或不可访问的赛事资料。</view></view>
-    <button wx:if="{{error && !unavailable}}" class="primary" bindtap="load">重新读取</button>
-    <button class="{{error && !unavailable ? 'secondary' : 'primary'}}" bindtap="watch">返回观赛入口</button>
+  <block wx:elif="{{!event}}">
+    <view class="fig-summary light access-summary">
+      <view class="fig-summary-mark"><image wx:if="{{!unavailable}}" src="/assets/figma/shield.svg" mode="aspectFit"/></view>
+      <view class="fig-summary-copy"><view class="fig-kicker">公开赛事与角色入口</view><view class="fig-summary-title">访问受限</view><view class="fig-summary-sub">根据当前身份和链接状态返回可访问入口。</view></view>
+    </view>
+    <view wx:if="{{error}}" class="notice {{unavailable ? '' : 'warning'}} access-error"><view class="state-strong">{{unavailable ? '该内容已停止公开' : '暂时无法读取赛事'}}</view><view class="small">{{error}}</view></view>
+    <view class="fig-card access-card">
+      <view class="fig-card-title">公开分享</view>
+      <view class="fig-note access-row"><view class="fig-row-copy"><view class="fig-row-title">{{unavailable ? '该内容已停止公开' : error ? '暂时无法读取赛事' : '当前分享不可查看'}}</view><view class="muted">{{unavailable ? '旧画面已清空，主办方可能已撤回公开内容。' : '请重新核对链接或选择可访问赛事。'}}</view></view><view class="fig-pill">不可查看</view></view>
+      <view class="fig-note access-row"><view class="fig-row-copy"><view class="fig-row-title">公开赛事目录</view><view class="muted">重新选择可访问的赛事。</view></view><view class="fig-pill">可进入</view></view>
+    </view>
+    <view class="fig-card access-card">
+      <view class="fig-card-title">{{error && !unavailable ? '授权状态' : '私有工作台'}}</view>
+      <view class="fig-note access-row"><view class="fig-row-copy"><view class="fig-row-title">{{error && !unavailable ? '授权状态尚未读取' : '暂无操作权限'}}</view><view class="muted">{{error && !unavailable ? '恢复连接后再核对当前账号的实际赛事与比赛授权。' : '须有该赛事、比赛的实际授权。'}}</view></view><view class="fig-pill">{{error && !unavailable ? '待核对' : '无权限'}}</view></view>
+      <view class="fig-note access-row"><view class="fig-row-copy"><view class="fig-row-title">我的任务</view><view class="muted">查看当前账号获授权的任务。</view></view><view class="fig-pill">可返回</view></view>
+    </view>
+    <button wx:if="{{error && !unavailable}}" class="quiet" bindtap="load">重新读取</button>
     <button wx:if="{{unavailable && follow.state!=='signedOut'}}" class="quiet" bindtap="openFollows">查看我的关注</button>
-  </view>
+  </block>
   <block wx:else>
 <sponsorship-slot region-id="{{sponsorRegionId}}" catalog-version="{{sponsorCatalogVersion}}" event-public-id="{{sponsorEventPublicId}}" visible="{{sponsorVisible && !!event}}"/>
     <view wx:if="{{error}}" class="notice warning">{{error}}<view wx:if="{{stale}}" class="small">现有资料已陈旧，请恢复连接后刷新。</view></view>
-    <view wx:if="{{overview}}" class="public-panel event-summary">
-      <view class="subtitle">{{event.name}}</view>
-      <view class="muted">{{event.dateLabel || event.startDate + '—' + event.endDate}} · {{event.venueName || '场地待说明'}}</view>
-      <view class="event-status {{event.status==='RUNNING' ? 'running' : ''}}">{{event.statusLabel}}</view>
-      <view class="title">{{event.formatLabel}}</view>
-      <view class="event-progress">{{event.progressLabel}}</view>
-      <image class="event-court" src="/assets/court.png" mode="widthFix"/>
+    <view wx:if="{{overview}}" class="event-summary fig-summary">
+      <view class="fig-summary-copy">
+        <view class="fig-kicker">公开观赛</view>
+        <view class="fig-summary-title">{{event.name}}</view>
+        <view class="fig-summary-sub">{{event.venueName || '场地待说明'}} · {{event.dateLabel || event.startDate + '—' + event.endDate}}</view>
+        <view class="event-summary-meta">{{event.statusLabel}} · {{event.formatLabel}} · {{event.progressLabel}}</view>
+      </view>
+      <view class="fig-summary-mark event-court"><image src="/assets/home/hero.jpg" mode="aspectFill"/></view>
     </view>
-    <view wx:if="{{overview}}" class="event-menu">
-<button class="quiet" bindtap="report">赛事问题与举报</button>
-      <button class="primary" data-tab="schedule" bindtap="tab" disabled="{{loading}}">查看赛程</button>
-      <button class="secondary" data-tab="ranking" bindtap="tab" disabled="{{loading}}">分组排名与晋级</button>
-      <button class="secondary" data-tab="media" bindtap="tab" disabled="{{loading}}">比赛视频与图片</button>
+    <view wx:if="{{overview}}" class="event-tabs overview-tabs">
+      <button class="selected" bindtap="backToOverview" disabled="{{loading}}">概览</button>
+      <button data-tab="schedule" bindtap="tab" disabled="{{loading}}">赛程</button>
+      <button data-tab="ranking" bindtap="tab" disabled="{{loading}}">排名与晋级</button>
+      <button data-tab="media" bindtap="tab" disabled="{{loading}}">视频与图片</button>
     </view>
     <block wx:else>
-      <view class="public-section-title">{{tab==='ranking' ? '排名与晋级' : tab==='media' ? '比赛视频与图片' : '赛事赛程'}}</view>
+      <view class="fig-summary light event-context-summary">
+        <view class="fig-summary-mark"><image src="/assets/figma/standings.svg" mode="aspectFit"/></view>
+        <view class="fig-summary-copy"><view class="fig-kicker">{{event.name}}</view><view class="fig-summary-title">赛程与积分</view><view class="fig-summary-sub">按已发布赛程观赛，积分仅汇总已确认赛果。</view></view>
+      </view>
+      <view class="public-section-title">{{tab==='ranking' ? '小组积分' : tab==='media' ? '比赛视频与图片' : '本周赛程'}}</view>
       <view class="event-tabs">
         <button class="{{tab==='schedule' ? 'selected' : ''}}" data-tab="schedule" bindtap="tab" disabled="{{loading}}">赛程</button>
         <button class="{{tab==='ranking' ? 'selected' : ''}}" data-tab="ranking" bindtap="tab" disabled="{{loading}}">排名与晋级</button>
@@ -55,7 +71,16 @@
         <button class="{{tab==='media' ? 'secondary' : 'primary'}}" data-id="{{item.publicMatchId}}" bindtap="match">{{tab==='media' ? '查看本场图片与视频' : '查看比赛详情'}}</button>
       </block>
     </block>
+    <view wx:if="{{overview && groups && groups.groups.length}}" class="fig-card overview-standings">
+      <view class="fig-card-title">小组积分</view>
+      <view class="overview-metrics"><view wx:for="{{groups.groups[0].rows}}" wx:key="teamKey"><view class="overview-team">{{item.teamName}}</view><view class="muted">{{item.wins}} 胜 {{item.losses}} 负 · {{item.leaguePoints}} 分</view></view></view>
+    </view>
+    <view wx:elif="{{overview && standings && standings.rows.length}}" class="fig-card overview-standings">
+      <view class="fig-card-title">小组积分</view>
+      <view class="overview-metrics"><view wx:for="{{standings.rows}}" wx:key="teamKey"><view class="overview-team">{{item.teamName}}</view><view class="muted">{{item.wins}} 胜 {{item.losses}} 负 · {{item.leaguePoints}} 分</view></view></view>
+    </view>
     <block wx:if="{{tab==='ranking'}}">
+      <view id="ranking-rules" class="fig-card-title">小组积分</view>
       <view wx:if="{{groups}}" class="notice schedule-note"><view class="state-strong">分组循环与晋级</view><view class="small">{{qualificationLabel || '以主办方发布的当前有效资格为准'}}。组内截线同分需明确抽签，不生成跨组总排名。</view></view>
       <block wx:if="{{groups}}" wx:for="{{groups.groups}}" wx:key="groupKey" wx:for-item="group">
         <view class="public-panel standings-panel">
@@ -75,6 +100,12 @@
       <view wx:if="{{!groups && !standings && !bracket}}" class="public-panel public-state compact-state"><view class="subtitle">排名资料待发布</view><view class="muted">当前没有可公开展示的积分或晋级资料。</view></view>
     </block>
     <button wx:if="{{!overview}}" class="secondary" bindtap="backToOverview" disabled="{{loading}}">返回赛事概览</button>
+    <view class="fig-card-title">赛事服务</view>
+    <view class="event-service-grid">
+      <button class="service-tile" bindtap="followFromBar" disabled="{{follow.busy || follow.state==='checking'}}"><image src="/assets/figma/event.svg" mode="aspectFit"/><view>关注赛事</view><text>接收站内更新</text></button>
+      <button class="service-tile" data-tab="media" bindtap="tab" disabled="{{loading}}"><image src="/assets/figma/media.svg" mode="aspectFit"/><view>比赛媒体</view><text>已发布影像</text></button>
+      <button class="service-tile" bindtap="report"><image src="/assets/figma/governance.svg" mode="aspectFit"/><view>赛事问题与举报</view><text>反馈公开内容</text></button>
+    </view>
     <view class="public-panel follow-panel">
       <view class="follow-head"><view class="subtitle">关注赛事</view><view wx:if="{{follow.state==='active'}}" class="follow-tag">已关注</view></view>
       <view wx:if="{{follow.state==='signedOut'}}" class="muted">登录后可关注此公开赛事，并在「我的关注」查看。未登录也可以继续观赛。</view>
@@ -97,5 +128,15 @@
     <button class="secondary" open-type="share">分享此公开赛事</button>
     <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">{{loading ? '正在核对最新赛事资料' : '刷新赛事资料'}}</button>
   </block>
+</view>
+<view wx:if="{{!event && !loading}}" class="fig-actions">
+  <button class="fig-ghost" bindtap="tasks">返回我的任务</button>
+  <button class="fig-confirm" bindtap="watch">返回公开赛事</button>
+</view>
+<view wx:if="{{event}}" class="fig-actions">
+  <button wx:if="{{tab==='ranking'}}" class="fig-ghost" bindtap="showRankingRules">查看排名规则</button>
+  <button wx:else class="fig-ghost" bindtap="followFromBar" disabled="{{follow.busy || follow.state==='checking'}}">关注赛事</button>
+  <button wx:if="{{tab==='ranking'}}" class="fig-confirm" data-tab="schedule" bindtap="tab" disabled="{{loading}}">查看比赛</button>
+  <button wx:else class="fig-confirm" data-tab="schedule" bindtap="tab" disabled="{{loading}}">查看赛程</button>
 </view>
 <scb-nav active="Events"/>

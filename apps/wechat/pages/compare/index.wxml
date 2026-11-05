@@ -1,11 +1,25 @@
 <scb-header title="同价球员对比" disabled="{{loading}}"/>
-<view class="page has-actions compare-page">
+<view class="page fig-page has-actions compare-page">
+  <view class="fig-summary light">
+    <view class="fig-summary-copy">
+      <view class="fig-kicker">同价对比</view>
+      <view class="fig-summary-title">{{selectedCount ? '已选' + selectedCount + '位球员' : '同价球员对比'}}</view>
+      <view class="fig-summary-sub">只比较当前可见的报价、样本和可约时间。</view>
+    </view>
+    <view class="fig-summary-mark"><image src="/assets/figma/stats.svg" mode="aspectFit"/></view>
+  </view>
   <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在核对球员资料与授权统计…</view><view class="muted">完成读取后再比较当前可见的报价和记录。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
   <view wx:if="{{loginRequired}}" class="card empty"><view class="subtitle">登录后继续比较</view><button class="primary" bindtap="login">登录并返回对比</button></view>
   <view wx:if="{{error}}" class="card state-panel" role="alert"><view class="state-label">读取失败</view><view class="subtitle">暂时无法读取比较资料</view><view class="notice danger">{{error}}</view><button class="primary" bindtap="load" disabled="{{loading}}">重新读取比较资料</button><button class="quiet" bindtap="market">返回球员广场</button></view>
   <view wx:if="{{notice}}" class="notice warning">{{notice}}</view><view wx:if="{{statisticsError}}" class="notice warning">统计读取失败：{{statisticsError}}。已停止展示旧统计，可刷新重试；不会用0或演示数据填补。</view>
   <block wx:if="{{columns.length >= 2}}">
+    <view class="comparison-tabs"><view class="active">费用</view><view>档期</view><view>样本</view></view>
+    <view class="card comparison-players">
+      <view class="fig-card-title">对比球员</view>
+      <view class="comparison-player-grid"><view wx:for="{{profiles}}" wx:key="id" class="comparison-player"><view class="compare-player-name">{{item.name}}</view><view class="compare-meta">{{item.position}} · {{item.city}}</view><view class="compare-price">{{item.price}}/场</view></view></view>
+    </view>
     <view class="card comparison-card">
+      <view class="fig-card-title">含费预计</view>
       <view class="comparison-intro"><block wx:if="{{sameServicePrice}}">参赛服务费相同 · <text class="money">{{comparisonPrice}}</text> / 场</block><block wx:else>参赛服务费与含费比较</block></view>
       <scroll-view scroll-x="true" class="comparison-scroll"><view class="comparison-table {{selectedCount === 3 ? 'three-columns' : ''}}">
         <view class="comparison-row comparison-header"><view class="label-cell">项目</view><view wx:for="{{columns}}" wx:for-item="column" wx:key="id" class="comparison-value compare-name">{{column.name}}</view></view>
@@ -16,6 +30,7 @@
       </view></scroll-view>
       <view class="comparison-footnote">仅展示真实业务字段与有限记录，不生成战力分或虚构命中率。完整费用与来源可展开核对。</view>
     </view>
+    <view class="card comparison-samples"><view class="fig-card-title">样本与可约时间</view><view wx:for="{{profiles}}" wx:key="id" class="sample-row"><view><view class="compare-player-name">{{item.name}}</view><view class="compare-meta">{{item.performance.sample}} 场样本 · {{item.performance.status}}</view></view><view class="compare-price">档期待核对</view></view></view>
     <view class="notice comparison-hint">{{selectedCount === 3 ? '左右滑动查看第3人；最多选择3人。' : '最多选择3人，继续选人可调整比较对象。'}}样本有限，含费报价仍需逐场核对。</view>
     <button class="quiet comparison-more" bindtap="informationToggle">{{informationOpen ? '收起完整费用与来源' : '完整费用、来源与选择管理'}}</button>
     <block wx:if="{{informationOpen}}">

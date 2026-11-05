@@ -285,6 +285,18 @@ Page({
       reason: d.reason,
     });
   },
+  showInvites() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#recruit-invites', duration: 200 });
+  },
+  showDetails() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#recruit-details', duration: 200 });
+  },
+  showApplications() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#recruit-self', duration: 200 });
+  },
   apply() {
     const d = this.data;
     return this.command('APPLY', repo.publicPath(d.publicId) + '/applications', {

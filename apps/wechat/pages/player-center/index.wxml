@@ -1,5 +1,14 @@
 <scb-header title="我的球员中心" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page has-actions">
+<view class="page fig-page has-actions">
+  <view class="fig-summary">
+    <view class="fig-summary-copy">
+      <view class="fig-kicker">球员中心</view>
+      <view class="fig-summary-title">{{profile.displayName || '我的球员中心'}}</view>
+      <view class="fig-summary-sub">本人服务资料、报价和可约窗口分开维护。</view>
+    </view>
+    <view class="fig-summary-mark"><image src="/assets/figma/player.svg" mode="aspectFit"/></view>
+  </view>
+  <view wx:if="{{profile && !editing}}" class="center-tabs"><button class="active" data-id="center-profile" bindtap="scrollSection">资料</button><button data-id="center-quote" bindtap="scrollSection">报价</button><button data-id="center-availability" bindtap="scrollSection">可约时间</button></view>
   <view wx:if="{{loading}}" class="notice">正在核对当前账号与本人资料…</view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
   <view wx:if="{{message}}" class="notice">{{message}}</view>
@@ -11,6 +20,7 @@
     <block wx:if="{{profile && !editing}}">
       <block wx:if="{{profile.status === 'PENDING'}}">
         <view class="hero center-hero"><view class="title">资料已提交</view><view>等待平台审核服务资料</view></view>
+        <view class="fig-card-title">本人服务资料</view>
         <view class="card center-card"><view class="subtitle">当前状态</view><view class="center-copy">{{profile.displayName}} · {{profile.statusText}}</view><view class="center-copy">待审核期间不进入可约公开广场</view><view class="center-copy">提交成功不代表实名、保险或参赛资格已核验</view></view>
         <view class="card center-card"><view class="subtitle">可继续操作</view><view class="center-copy">按当前权限核对本人资料与已有预约</view><view class="center-copy">审核结果以刷新后状态为准</view></view>
         <button class="secondary" bindtap="edit">编辑本人资料与报价</button>
@@ -27,17 +37,15 @@
         <button class="secondary" bindtap="edit">查看并编辑本人服务资料</button>
       </block>
       <block wx:else>
-        <view class="hero center-hero"><view class="title">{{profile.displayName}} · {{profile.positionText}}</view><view>{{profile.statusText}} · 当前可预约</view></view>
-        <view class="card center-card"><view class="subtitle">本人的服务资料</view><view class="center-copy">参赛费 {{profile.priceText}} / 场 · {{profile.city}}</view><view class="center-copy">本人填写，审核不代表实名、实力、保险或参赛资格认证。</view></view>
-        <button class="secondary center-link" bindtap="edit" data-section="PROFILE">编辑资料与报价</button>
-        <button class="secondary center-link" bindtap="edit" data-section="AVAILABILITY">管理可约时间 · {{profile.windowCount}}个窗口</button>
-        <button class="secondary center-link" bindtap="received">查看收到的预约</button>
-        <button class="secondary center-link" bindtap="performance">我的比赛数据授权</button>
+        <view id="center-profile" class="card center-card center-design-card"><view class="fig-card-title">本人服务资料</view><view class="center-field"><view class="field-label">显示名称与位置</view><view class="center-field-value">{{profile.displayName}} · {{profile.positionText}}</view><view class="center-state">可编辑</view></view><view class="center-field"><view class="field-label">服务地区</view><view class="center-field-value">{{profile.city}}</view><view class="center-state">可编辑</view></view><view class="center-field"><view class="field-label">服务介绍</view><view class="center-field-value">{{profile.bio || '暂未填写服务介绍'}}</view><view class="center-state">可编辑</view></view></view>
+        <view id="center-quote" class="card center-card center-design-card"><view class="fig-card-title">当前报价</view><view class="center-bill"><view><view class="center-field-value">参赛服务费</view><view class="center-copy">每场</view></view><view class="center-amount">{{quote.service || profile.priceText}}</view></view><view class="center-bill"><view><view class="center-field-value">交通与食宿</view><view class="center-copy">按当前本人报价</view></view><view class="center-amount">{{quote ? quote.travel + ' + ' + quote.accommodation : '待核对'}}</view></view></view>
+        <view id="center-availability" class="card center-card center-design-card"><view class="fig-card-title">可约窗口</view><view class="center-availability-status">当前可预约 · {{profile.windowCount}} 个窗口</view><view wx:if="{{!profile.availabilityLabels.length}}" class="center-copy">暂无开放窗口，进入编辑后添加。</view><view wx:for="{{profile.availabilityLabels}}" wx:key="*this" class="center-window"><scb-icon name="calendar" tone="navy" size="18"/><view>{{item}}</view><view class="center-state">北京时间</view></view><button class="quiet center-card-action" bindtap="edit" data-section="AVAILABILITY">管理 {{profile.windowCount}} 个可约窗口</button></view>
+        <view class="center-secondary-links"><button class="secondary" bindtap="received">查看收到的预约</button><button class="secondary" bindtap="performance">我的比赛数据授权</button></view>
         <view class="card center-card"><view class="subtitle">资金状态</view><view class="center-copy">实收 ¥0 / 已结算 ¥0</view><view class="center-copy">在线支付与个人分账暂未开放</view></view>
         <view class="notice small">可约不等于保证到场；删除窗口不会取消已经接受的预约。</view>
         <button class="quiet" bindtap="refresh" disabled="{{busy || pending}}">刷新本人资料</button>
       </block>
-      <view class="action-bar">
+      <view class="center-status-tools">
         <button wx:if="{{profile.status === 'PENDING'}}" class="primary" bindtap="refresh" disabled="{{busy || pending}}">刷新审核状态</button>
         <button wx:elif="{{profile.status === 'REJECTED'}}" class="primary" bindtap="edit" disabled="{{busy || pending}}">修改并重新提交</button>
         <button wx:else class="primary" bindtap="received">{{profile.status === 'DISABLED' ? '查看已有合作' : '处理收到的预约'}}</button>
@@ -84,4 +92,8 @@
     </block>
   </block>
   <view wx:if="{{!loading && !authorized && !loginRequired}}" class="card center-card"><view class="subtitle">当前无法管理本人资料</view><view class="center-copy">请核对当前账号与访问权限后重新读取，不展示其他账号的服务档案。</view><button class="secondary" bindtap="refresh">重新读取本人资料</button></view>
+</view>
+<view wx:if="{{!editing && profile}}" class="fig-actions dock">
+  <button class="fig-ghost" bindtap="received" disabled="{{busy}}">查看收到的预约</button>
+  <button class="fig-confirm" bindtap="edit" disabled="{{busy || pending}}">编辑资料与报价</button>
 </view>

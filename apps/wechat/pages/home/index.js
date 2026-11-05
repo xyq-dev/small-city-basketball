@@ -36,6 +36,7 @@ Page({
     publicError: '',
     statusBarHeight: 47,
     capsuleGap: 96,
+    brandOffset: 0,
     positions: [
       { code: 'PG', name: '控卫', icon: 'pos-pg' },
       { code: 'SG', name: '分卫', icon: 'pos-sg' },
@@ -68,6 +69,7 @@ Page({
   syncChrome() {
     let statusBarHeight = this.data.statusBarHeight;
     let capsuleGap = this.data.capsuleGap;
+    let brandOffset = 0;
     try {
       const info =
         typeof wx.getWindowInfo === 'function'
@@ -88,13 +90,27 @@ Page({
         typeof wx.getMenuButtonBoundingClientRect === 'function'
       ) {
         const menu = wx.getMenuButtonBoundingClientRect();
-        if (menu && Number.isFinite(menu.left) && menu.left > 0 && menu.left < info.windowWidth)
-          capsuleGap = Math.min(160, Math.max(72, info.windowWidth - menu.left + 8));
+        if (menu && Number.isFinite(menu.left) && menu.left > 0 && menu.left < info.windowWidth) {
+          // .home-top already insets 16px, so the brand row only reserves the
+          // remaining distance to the native capsule plus an 8px gap.
+          const inset = 16;
+          const reserve = info.windowWidth - menu.left + 8 - inset;
+          const needed = 31 + 104 + 24 + 44 + 44;
+          const beside = info.windowWidth - inset * 2 - reserve;
+          if (beside >= needed) {
+            capsuleGap = Math.min(160, Math.max(48, Math.round(reserve)));
+          } else if (Number.isFinite(menu.bottom)) {
+            capsuleGap = 0;
+            brandOffset = Math.max(0, Math.round(menu.bottom + 4 - (statusBarHeight + 20)));
+          } else {
+            capsuleGap = Math.min(160, Math.max(48, Math.round(reserve)));
+          }
+        }
       }
     } catch {
       /* The platform draws the real status bar and capsule. */
     }
-    this.setData({ statusBarHeight, capsuleGap });
+    this.setData({ statusBarHeight, capsuleGap, brandOffset });
   },
   chooseCity() {
     ui.open('city-select');

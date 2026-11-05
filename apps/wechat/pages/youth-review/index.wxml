@@ -1,8 +1,7 @@
 <scb-header title="独立监护关系审核" disabled="{{busy}}"/>
-<view class="page youth-page ui002-workspace">
-  <view class="youth-kicker">青年报名 · 逐项确认</view>
-  <view class="title">{{review ? '独立监护关系审核' : '青年报名与监护确认'}}</view>
-  <view class="muted">必要资料处理、本人资格、监护关系和每种公开用途分别确认。</view>
+<view class="page fig-page youth-page ui002-workspace">
+  <view class="fig-summary light youth-summary"><view class="youth-summary-icon"><image src="/assets/figma/shield.svg" mode="aspectFit" aria-hidden="true"/></view><view class="fig-summary-copy"><view class="fig-kicker">独立审核人员</view><view class="fig-summary-title">{{policy && policy.eventName ? policy.eventName + ' · 青年报名' : '监护关系审核'}}</view><view class="fig-summary-sub">只核验本届指定人员和当前证明版本。</view></view></view>
+  <view class="youth-tabs review-tabs"><view class="selected">待核验</view><view>历史记录</view></view>
   <view wx:if="{{error}}" class="notice warning" role="alert">{{error}}</view>
   <view wx:if="{{message}}" class="notice" role="status">{{message}}</view>
   <view wx:if="{{pending}}" class="notice warning">原请求结果待核对，已仅保留操作编号。重新读取回执前暂停新的提交。</view>
@@ -29,4 +28,5 @@
   </view>
   <button class="quiet" bindtap="load" disabled="{{busy || loading}}">{{pending ? '重新核对原请求回执' : '重新读取当前状态'}}</button>
 </view>
+<view class="fig-actions"><button class="fig-ghost" bindtap="load" disabled="{{busy || loading}}">核对当前状态</button><button class="fig-confirm" bindtap="reveal" disabled="{{busy || pending || !selected || !selected.capabilities || !selected.capabilities.canReadProof}}">查看私有关系证明</button></view>
 <scb-nav active="Account" disabled="{{busy}}"/>

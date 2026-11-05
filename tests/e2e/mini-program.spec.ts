@@ -18,6 +18,14 @@ type Scenario = {
   expectEnabled?: string[];
 };
 type Preview = { html: string; route: string; width: number; height: number };
+type StateAlias = Partial<Scenario> & {
+  name: string;
+  sourceFixture: string;
+  route: string;
+  state: string;
+  figmaNode: string;
+  data?: Record<string, unknown>;
+};
 const root = path.resolve(__dirname, '../../apps/wechat');
 const { buildPreview } = require('../../apps/wechat/test/helpers/native-preview.cjs') as {
   buildPreview(options: {
@@ -40,6 +48,25 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')
 };
 const routes = registeredRoutes(manifest);
 const fixtureDirectory = path.resolve(__dirname, '../mini-program/fixtures');
+const deepMerge = (
+  base: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, unknown> => {
+  const result = structuredClone(base);
+  for (const [key, value] of Object.entries(patch)) {
+    const prior = result[key];
+    result[key] =
+      value &&
+      prior &&
+      typeof value === 'object' &&
+      typeof prior === 'object' &&
+      !Array.isArray(value) &&
+      !Array.isArray(prior)
+        ? deepMerge(prior as Record<string, unknown>, value as Record<string, unknown>)
+        : structuredClone(value);
+  }
+  return result;
+};
 const scenarios: Scenario[] = [
   ...routes.map((route) => ({
     name: 'initial-' + route.split('/')[1],
@@ -81,6 +108,26 @@ const scenarios: Scenario[] = [
       return { ...fixture, filled: true };
     }),
 ];
+const stateAliases = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../mini-program/ui005-state-aliases.json'), 'utf8'),
+) as StateAlias[];
+for (const alias of stateAliases) {
+  const sourcePath = path.join(fixtureDirectory, alias.sourceFixture);
+  if (!/^[a-z0-9-]+$/.test(alias.name) || !fs.existsSync(sourcePath))
+    throw new Error('Invalid UI005 state alias: ' + alias.name);
+  const source = JSON.parse(fs.readFileSync(sourcePath, 'utf8')) as Scenario;
+  if (source.route !== alias.route)
+    throw new Error(`UI005 state alias route mismatch: ${alias.name} -> ${source.route}`);
+  scenarios.push({
+    ...source,
+    ...alias,
+    data: deepMerge(source.data, alias.data || {}),
+    designSource:
+      alias.designSource || `Figma UI005 node ${alias.figmaNode}; synthetic isolated state`,
+    static: true,
+    filled: true,
+  });
+}
 
 async function nativeFrame(page: Page): Promise<Frame> {
   const iframe = page.locator('iframe.preview-frame');
@@ -428,6 +475,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       }),
       action: measure('.action-bar .primary'),
       compareSecondary: measure('.action-bar .secondary'),
+      bookingSecondary: measure('.create-actions .quiet, .create-actions .secondary'),
       filterChip: measure('.filter-chip'),
       bookingField: measure('.booking-field'),
       photographs: Array.from(
@@ -471,21 +519,19 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     ).toBe(true);
   }
   if (group === 'home') {
-    // The material-pack homepage has no shared scb-header. The hero is 180px at 320 and 188px wider.
+    // UI005 uses the actual redesigned homepage with a compact brand row and eight entries.
     expect(metrics.header).toBeNull();
-    expect(metrics.hero?.x).toBe(16);
-    expect(metrics.hero?.width).toBe(width - 32);
-    expect(metrics.hero?.radius).toBe(16);
-    expect(metrics.hero?.height).toBe(width <= 360 ? 180 : 188);
-    expect(metrics.homeMark?.width).toBe(36);
-    expect(metrics.homeMark?.height).toBe(36);
-    expect(metrics.homeAction?.x).toBe(32);
-    expect(metrics.homeAction?.height).toBe(44);
-    expect(metrics.homeAction?.radius).toBe(999);
-    expect(metrics.homeAction?.background).toBe('rgb(242, 140, 40)');
-    expect(metrics.homeAction?.color).toBe('rgb(255, 255, 255)');
-    expect(metrics.homeNav?.height).toBe(80);
-    expect(metrics.homeSelectedNav?.color).toBe('rgb(242, 140, 40)');
+    expect(metrics.hero?.x).toBe(0);
+    expect(metrics.hero?.width).toBe(width);
+    expect(metrics.hero?.radius).toBe(0);
+    expect(metrics.hero?.height).toBe(204);
+    expect(metrics.homeMark?.width).toBe(width <= 360 ? 28 : 31);
+    expect(metrics.homeMark?.height).toBe(width <= 360 ? 28 : 31);
+    expect(metrics.homeAction).toBeNull();
+    // The static preview fixture exposes a 24px safe-area inset. UI005 keeps
+    // the visual nav at 50px and adds that real inset exactly once.
+    expect(metrics.homeNav?.height).toBe(74);
+    expect(metrics.homeSelectedNav?.color).toBe('rgb(18, 60, 115)');
   } else {
     if (!['player', 'booking-create', 'bookings', 'players', 'compare'].includes(group)) {
       expect(metrics.action?.x).toBe(12);
@@ -493,11 +539,20 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     }
     if (group !== 'bookings') expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
     if (group === 'players') {
-      expect(metrics.action?.x).toBe(16);
-      expect(metrics.action?.width).toBe(width - 32);
-      expect(metrics.action?.radius).toBe(12);
-      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
-      expect(metrics.filterChip?.x).toBe(16);
+      const secondaryWidth = width <= 360 ? 116 : 140;
+      expect(metrics.compareSecondary?.x).toBe(16);
+      expect(metrics.compareSecondary?.width).toBe(secondaryWidth);
+      expect(metrics.compareSecondary?.height).toBe(48);
+      expect(metrics.compareSecondary?.radius).toBe(24);
+      expect(metrics.compareSecondary?.background).toBe('rgb(255, 255, 255)');
+      expect(metrics.action?.x).toBe(16 + secondaryWidth + 8);
+      expect(metrics.action?.width).toBe(width - 32 - secondaryWidth - 8);
+      expect(metrics.action?.height).toBe(48);
+      expect(metrics.action?.radius).toBe(24);
+      expect(metrics.action?.background).toBe('rgb(242, 140, 40)');
+      // The segmented control starts at the 16px page inset and keeps a 3px
+      // inner highlight gutter, so the first tappable chip begins at 19px.
+      expect(metrics.filterChip?.x).toBe(19);
       expect(metrics.filterChip?.height).toBe(44);
       expect(metrics.portrait?.width).toBe(22);
       expect(metrics.portrait?.height).toBe(22);
@@ -550,19 +605,27 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
       for (const button of [metrics.profileSecondary, metrics.action]) {
         expect(button?.width).toBe((width - 44) / 2);
         expect(button?.height).toBe(48);
-        expect(button?.radius).toBe(12);
+        expect(button?.radius).toBe(24);
       }
-      expect(metrics.profileSecondary?.background).toBe('rgb(234, 240, 248)');
-      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
+      expect(metrics.profileSecondary?.background).toBe('rgb(255, 255, 255)');
+      expect(metrics.action?.background).toBe('rgb(242, 140, 40)');
     } else if (group === 'booking-create') {
+      const buttonWidth = (width - 40) / 2;
       expect(metrics.scopeRail?.height).toBe(44);
       expect(metrics.bookingField?.height).toBeGreaterThanOrEqual(74);
       expect(metrics.bookingField?.x).toBe(16);
       expect(metrics.bookingField?.width).toBe(width - 32);
-      expect(metrics.action?.x).toBe(16);
-      expect(metrics.action?.width).toBe(width - 32);
-      expect(metrics.action?.radius).toBe(12);
-      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
+      expect(metrics.bookingSecondary?.x).toBe(16);
+      expect(metrics.bookingSecondary?.width).toBeCloseTo(buttonWidth, 1);
+      // At 320px the longer quote-review copy may wrap to a 64px control; the
+      // two actions remain equal-height and above the 44px touch target.
+      expect(metrics.bookingSecondary?.height).toBeGreaterThanOrEqual(48);
+      expect(metrics.bookingSecondary?.radius).toBe(24);
+      expect(metrics.bookingSecondary?.background).toBe('rgb(255, 255, 255)');
+      expect(metrics.action?.x).toBeCloseTo(16 + buttonWidth + 8, 1);
+      expect(metrics.action?.width).toBeCloseTo(buttonWidth, 1);
+      expect(metrics.action?.radius).toBe(24);
+      expect(metrics.action?.background).toBe('rgb(242, 140, 40)');
     } else if (group === 'bookings') {
       expect(metrics.orderTabs?.height).toBeGreaterThanOrEqual(44);
       expect(metrics.orderCard?.x).toBe(16);

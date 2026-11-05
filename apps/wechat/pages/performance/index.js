@@ -20,6 +20,8 @@ Page({
     ownProfileId: null,
     filter: 'ALL',
     links: [],
+    canConsentCurrent: false,
+    canDeclineCurrent: false,
     linksHasMore: false,
     nextCursor: null,
     disclosureNotice: '',
@@ -86,6 +88,8 @@ Page({
       authorized: false,
       ownProfileId: null,
       links: [],
+      canConsentCurrent: false,
+      canDeclineCurrent: false,
       linksHasMore: false,
       nextCursor: null,
       manageableEvents: [],
@@ -186,6 +190,8 @@ Page({
     this._links = [];
     this.setData({
       links: [],
+      canConsentCurrent: false,
+      canDeclineCurrent: false,
       pending: null,
       ownProfileId: null,
       nextCursor: null,
@@ -257,7 +263,11 @@ Page({
         sourceText: l.sourceCurrentlyAvailable ? '来源当前有效' : '来源已失效或暂不可用',
         revokeText: l.status === 'PENDING' ? '拒绝本次公开' : '撤销公开授权',
       }));
-    this.setData({ links });
+    this.setData({
+      links,
+      canConsentCurrent: links.some((row) => row.capabilities && row.capabilities.canConsent),
+      canDeclineCurrent: links.some((row) => row.capabilities && row.capabilities.canRevoke),
+    });
   },
   filter(e) {
     if (this.blocked()) return;
@@ -504,6 +514,21 @@ Page({
         this.setData({ busy: false });
       if (this.active(token) && actor === this._actor) this.setData({ busy: false });
     }
+  },
+  declineCurrent() {
+    this.openListedConsent('REVOKE');
+  },
+  consentCurrent() {
+    this.openListedConsent('CONSENT');
+  },
+  openListedConsent(type) {
+    const link = (this.data.links || []).find(
+      (row) =>
+        row.capabilities &&
+        (type === 'CONSENT' ? row.capabilities.canConsent : row.capabilities.canRevoke),
+    );
+    if (!link || this.data.busy) return;
+    this.checkLink({ currentTarget: { dataset: { id: link.id, type } } });
   },
   async checkLink(e) {
     if (!this.data.authorized || this.blocked()) return;

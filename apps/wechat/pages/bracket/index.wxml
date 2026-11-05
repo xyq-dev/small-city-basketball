@@ -1,5 +1,7 @@
 <scb-header title="分组与淘汰晋级" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page">
+<view class="page fig-page mgmt-page bracket-page">
+  <view class="fig-summary light bracket-summary"><view class="fig-summary-icon"><image src="/assets/figma/bracket.svg" mode="aspectFit"/></view><view class="fig-summary-copy"><view class="fig-kicker">赛程管理</view><view class="fig-summary-title">分组与淘汰晋级</view><view class="fig-summary-sub">按组内已确认结果确定名次，逐轮发布淘汰赛。</view></view></view>
+  <view class="bracket-tabs"><view class="selected">小组排名</view><view>淘汰签位</view><view>最终名次</view></view>
   <view wx:if="{{loading && !event}}" class="card state-panel"><text class="state-label">晋级</text><view class="subtitle">正在读取分组与淘汰资料</view><view class="loading-lines"><view></view><view></view></view></view>
   <view wx:elif="{{!event}}" class="card state-panel">
     <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
@@ -15,7 +17,7 @@
       <view class="muted">网络中断时服务端可能已经执行。请先重新读取核对；不会自动重发。</view>
       <button class="primary" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button>
     </view>
-    <view class="board">
+    <view class="board bracket-event-card">
       <view class="board-meta">{{event.statusLabel}} · {{event.formatLabel}}</view>
       <view class="setup-name">{{event.name}}</view>
       <view wx:if="{{progress}}" class="board-meta">{{progress}}</view>
@@ -25,7 +27,7 @@
     <view wx:if="{{blocker}}" class="notice small">{{blocker}}</view>
     <view class="notice small">已被后续轮次引用的赛果不能直接重开更正；请先核对来源与已发布比赛，当前不提供撤销已发布子轮。</view>
 
-    <view wx:for="{{groups}}" wx:key="key" class="card">
+    <view wx:for="{{groups}}" wx:key="key" class="card bracket-group-card">
       <view class="row-between"><view class="subtitle">{{item.label}} · 组内积分</view><text wx:if="{{item.qualified}}" class="badge success">已定出线</text></view>
       <view class="org-table">
         <view class="org-table-row head"><text class="rank-cell">名次</text><text class="team-cell">球队</text><text class="num-cell record">胜-负</text><text class="num-cell">积分</text><text class="num-cell">净胜</text></view>
@@ -42,7 +44,7 @@
       </block>
     </view>
 
-    <view wx:for="{{rounds}}" wx:key="key" class="card">
+    <view wx:for="{{rounds}}" wx:key="key" class="card bracket-round-card">
       <view class="row-between"><view class="subtitle">{{item.label}}</view><text class="badge {{item.published ? 'success' : ''}}">{{item.published ? '已发布' : '未发布'}}</text></view>
       <view wx:for="{{item.slots}}" wx:for-item="slot" wx:key="key" class="org-match" data-id="{{slot.matchId}}" bindtap="openMatch">
         <view wx:if="{{slot.label}}" class="small muted">{{slot.label}}</view>
@@ -56,8 +58,8 @@
       <view wx:for="{{placements}}" wx:key="key" class="row-between row"><text>{{item.rank}}</text><text>{{item.team}}</text></view>
     </view>
 
-    <view wx:if="{{next}}" class="card">
-      <view class="subtitle">发布{{next.title}}</view>
+    <view wx:if="{{next}}" class="card bracket-next-card">
+      <view class="fig-card-title">本轮发布条件</view><view class="subtitle">发布{{next.title}}</view>
       <view class="muted">{{next.note}}时间为北京时间；场地、球队占用与休息间隔由服务端复检。</view>
       <view wx:if="{{!courts.length}}" class="notice warning small">机构没有可用场地，请先在排赛中添加场地。</view>
       <button class="secondary" bindtap="optimizeNext" disabled="{{busy || uncertain || !courts.length}}">自动建议本轮时间与场地</button>
@@ -82,3 +84,4 @@
     <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新晋级资料</button>
   </block>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" bindtap="openSchedule" disabled="{{busy}}">排赛与场地</button><button class="fig-confirm" bindtap="load" disabled="{{loading || busy}}">刷新晋级资料</button></view>

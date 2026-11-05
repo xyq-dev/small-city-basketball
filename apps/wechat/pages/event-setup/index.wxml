@@ -1,7 +1,7 @@
 <scb-header title="赛事设置" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page setup-page">
-  <view class="page-intro"><view class="eyebrow">主办方工作台</view><view class="subtitle">{{creating ? '从模板开始办赛' : '按实际进度完成本届设置'}}</view><view class="muted">设置项仍受赛事阶段和当前权限限制。</view></view>
-  <view class="workflow-tabs"><button wx:for="{{setupSections}}" wx:key="key" class="{{setupSection === item.key ? 'selected' : ''}}" data-section="{{item.key}}" bindtap="jumpSetupSection" disabled="{{busy || loading || templatePending}}">{{item.label}}</button></view>
+<view class="page fig-page mgmt-page setup-page">
+  <view class="fig-summary soft setup-summary"><view class="fig-summary-icon"><image src="/assets/figma/event.svg" mode="aspectFit"/></view><view class="fig-summary-copy"><view class="fig-kicker">机构办赛</view><view class="fig-summary-title">赛事设置</view><view class="fig-summary-sub">在本届草稿内保存基本资料，规则按赛事阶段锁定。</view></view></view>
+  <scroll-view scroll-x="true" enable-flex="true" class="workflow-tabs"><button wx:for="{{setupSections}}" wx:key="key" class="{{setupSection === item.key ? 'selected' : ''}}" data-section="{{item.key}}" bindtap="jumpSetupSection" disabled="{{busy || loading || templatePending}}">{{item.label}}</button></scroll-view>
   <view wx:if="{{error}}" class="notice warning">{{error}}</view>
   <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
   <view wx:if="{{templatePending}}" class="card"><view class="subtitle">有模板请求待核对</view><view class="muted">原编号和内容已保存在当前账号、机构下。核对完成前不能创建另一个模板或赛事。</view><button class="primary" bindtap="resumeTemplate" disabled="{{busy}}">核对并重试原请求</button></view>
@@ -46,7 +46,7 @@
   </view>
 
   <block wx:else>
-    <view class="board">
+    <view class="board setup-event-card">
       <view class="board-meta">{{event.statusLabel}} · {{event.formatLabel}}</view>
       <view class="setup-name">{{event.name}}</view>
       <view class="board-meta">{{event.dateLabel}} · {{event.venueName}}</view>
@@ -66,7 +66,7 @@
       </block>
     </view>
 
-    <view wx:if="{{draft}}" id="setup-basic" class="card">
+    <view wx:if="{{draft}}" id="setup-basic" class="card setup-section-card">
       <view class="subtitle">基本信息（草稿可改）</view>
       <text class="field-label">赛事名称</text>
       <input class="field" value="{{draft.name}}" data-section="draft" data-field="name" bindinput="field" maxlength="80"/>
@@ -81,7 +81,7 @@
       <button class="primary" bindtap="saveEvent" disabled="{{busy}}">保存基本信息</button>
     </view>
 
-    <view wx:if="{{registration}}" id="setup-registration" class="card">
+    <view wx:if="{{registration}}" id="setup-registration" class="card setup-section-card">
       <view class="row-between"><view class="subtitle">报名规则</view><text class="badge">{{registration.saved ? '已设置' : '未设置'}}</text></view>
       <block wx:if="{{registration.editable}}">
         <view class="setup-pair">
@@ -98,7 +98,7 @@
       <view wx:else class="muted">每队 {{registration.minPlayers}}–{{registration.maxPlayers}} 人。报名规则只能在草稿阶段修改。</view>
     </view>
 
-    <view wx:if="{{scoring}}" id="setup-scoring" class="card">
+    <view wx:if="{{scoring}}" id="setup-scoring" class="card setup-section-card">
       <view class="row-between"><view class="subtitle">记分规则</view><text class="badge">{{scoring.locked ? '已锁定' : scoring.saved ? '已设置' : '未设置'}}</text></view>
       <block wx:if="{{scoring.editable}}">
         <view class="setup-trio">
@@ -119,7 +119,7 @@
       <view wx:else class="muted">{{scoring.periods}} 节 × {{scoring.durationLabel}} · {{scoring.overtime ? '平分加时 ' + scoring.otLabel : '允许平局'}}{{scoring.locked ? '。比赛已准备，规则已锁定。' : ''}}</view>
     </view>
 
-    <view wx:if="{{standings}}" id="setup-standings" class="card">
+    <view wx:if="{{standings}}" id="setup-standings" class="card setup-section-card">
       <view class="row-between"><view class="subtitle">{{event.groups ? '组内积分规则' : '积分规则'}}</view><text class="badge">{{standings.locked ? '已锁定' : standings.saved ? '草稿' : '未设置'}}</text></view>
       <block wx:if="{{standings.editable}}">
         <view class="setup-trio">
@@ -140,7 +140,7 @@
       <view wx:else class="muted">胜 {{standings.win}} · 平 {{standings.draw}} · 负 {{standings.loss}} · 同分依次比较：{{standings.orderLabel}}。规则已锁定，正式积分只计入独立确认的赛果。</view>
     </view>
 
-    <view wx:if="{{viewing}}" id="setup-viewing" class="card">
+    <view wx:if="{{viewing}}" id="setup-viewing" class="card setup-section-card">
       <view class="row-between"><view class="subtitle">公开观赛</view><text class="badge {{viewing.active ? 'success' : ''}}">{{viewing.active ? '已开启' : '未开启'}}</text></view>
       <view class="muted">观众凭链接或分享卡片查看赛程、比分与排名，不含名单、联系方式等私密资料。关闭后旧链接立即失效。</view>
       <button wx:if="{{viewing.active}}" class="secondary" bindtap="openPublic">打开公开观赛页（可分享）</button>
@@ -149,7 +149,7 @@
       <button wx:if="{{viewing.canDisable}}" class="danger" data-type="DISABLE" bindtap="viewing" disabled="{{busy}}">关闭公开观赛</button>
       <view wx:if="{{!viewing.active && !viewing.canEnable}}" class="muted">{{event.knockout ? '需先发布正式赛程。' : '需先锁定积分规则并发布正式赛程。'}}{{event.roundRobin ? '' : '每次发布淘汰轮次都会撤销旧链接，需重新开启。'}}</view>
     </view>
-    <view wx:if="{{directory}}" id="setup-directory" class="card">
+    <view wx:if="{{directory}}" id="setup-directory" class="card setup-section-card">
       <view class="row-between"><view class="subtitle">公开赛事目录</view><text class="badge {{directory.listed ? 'success' : ''}}">{{directory.listed ? '已列入' : '未列入'}}</text></view>
       <view class="muted">开启公开观赛不会自动列入目录。列入后，所有观众都能在“赛事”页的公开赛事中发现本届赛事。</view>
       <view wx:if="{{directory.listed}}" class="muted">当前分组：{{directory.group || '—'}}{{directory.city ? ' · 城市：' + directory.city : ''}}</view>
@@ -189,3 +189,4 @@
     <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
   </block>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" bindtap="openReview" disabled="{{busy || loading}}">查看报名审核</button><button class="fig-confirm" bindtap="saveEvent" disabled="{{busy || creating || !event}}">保存基本信息</button></view>

@@ -1,17 +1,56 @@
-<scb-header title="比赛影像" disabled="{{busy}}"/>
-<view class="page media-entry ui002-workspace">
-  <view class="media-intro"><view class="title">留住球场上的每一刻</view><view class="media-copy">只查看主办方明确发布的比赛图片与小视频。</view></view>
-  <view class="media-head"><view class="subtitle">最近观看的赛事</view></view>
-  <view wx:if="{{!recentEvents.length}}" class="media-panel">
-    <view class="media-strong">还没有可查看的赛事</view>
-    <view class="muted">打开主办方分享的赛事卡片后，可在这里直接进入该届的比赛视频与图片。</view>
-    <button class="primary" bindtap="open">去赛事页</button>
+<scb-header title="赛事图片与视频"/>
+<view class="page fig-page media-entry">
+  <view class="fig-summary">
+    <view class="fig-summary-copy">
+      <view class="fig-kicker">比赛影像</view>
+      <view class="fig-summary-title">{{recentEvents.length ? recentEvents[0].name : '已公开赛事的图片与视频'}}</view>
+      <view class="fig-summary-sub">从已公开赛事进入媒体内容</view>
+    </view>
+    <view class="fig-summary-mark media-summary-image"><image src="/assets/home/event-court.jpg" mode="aspectFill"/></view>
   </view>
-  <button wx:for="{{recentEvents}}" wx:key="publicEventId" class="media-event" data-id="{{item.publicEventId}}" bindtap="openRecent">
-    <scb-icon name="play" size="20"/>
-    <view class="media-event-main"><view class="media-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · 查看已发布媒体</view></view>
-    <scb-icon name="chevron-right" tone="gray" size="16"/>
-  </button>
-  <view class="notice media-note"><view class="media-strong">以当前有效发布为准</view><view class="small">未发布、已撤销或已到期的媒体不显示；没有已发布媒体时不会用示例视频替代。外部链接仅提供复制，不保证微信内播放。直播、云回放与转码按当前频道、授权和正式接入条件开放；未核验时不显示可用。</view></view>
+  <view class="fig-card">
+    <view class="fig-card-title">最近观看的赛事</view>
+    <view wx:if="{{!recentEvents.length}}" class="fig-note">
+      <view class="fig-row-title">还没有可查看的赛事</view>
+      <view class="muted">打开主办方分享的赛事卡片后，可在这里直接进入该届的比赛视频与图片。</view>
+    </view>
+    <view wx:for="{{recentEvents}}" wx:key="publicEventId" class="fig-row media-event" data-id="{{item.publicEventId}}" bindtap="openRecent">
+      <view class="fig-row-copy">
+        <view class="fig-row-title media-event-name">{{item.name}}</view>
+        <view class="muted">{{item.dateLabel || '已公开赛事'}} · 查看已发布媒体</view>
+      </view>
+      <view class="fig-pill">查看影像</view>
+    </view>
+  </view>
+  <view class="fig-card">
+    <view class="fig-card-title">赛事媒体</view>
+    <view class="fig-row media-choice">
+      <view class="fig-row-copy">
+        <view class="fig-row-title">已发布回放</view>
+        <view class="muted">以主办方实际发布为准</view>
+      </view>
+    </view>
+    <view class="fig-row media-choice">
+      <view class="fig-row-copy">
+        <view class="fig-row-title">图片与视频</view>
+        <view class="muted">按公开赛事查看</view>
+      </view>
+    </view>
+  </view>
+  <view class="fig-card">
+    <view class="fig-card-title">播放与分享</view>
+    <view class="fig-note media-notice">
+      <view class="fig-row-title">媒体来源</view>
+      <view class="muted">仅呈现当前有效发布。未发布、已撤销或已到期的媒体不显示，也不会用示例视频替代。</view>
+    </view>
+    <view class="fig-note media-notice">
+      <view class="fig-row-title">外部播放地址</view>
+      <view class="muted">以当前有效发布为准。外部链接仅提供复制，不保证微信内播放。直播、云回放与转码按当前频道、授权和正式接入条件开放；未核验时不显示可用。</view>
+    </view>
+  </view>
 </view>
-<scb-nav active="Video"/>
+<view class="fig-actions">
+  <button class="fig-ghost" bindtap="open">去赛事页</button>
+  <button class="fig-confirm" bindtap="openLatest" disabled="{{!recentEvents.length}}">查看赛事影像</button>
+</view>
+<scb-nav active="Events"/>

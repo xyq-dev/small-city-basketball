@@ -197,7 +197,7 @@ test('nationwide navigation has five finite destinations and preserves video thr
   assert.equal(h.wx.calls.at(-1).url, '/pages/local/index');
   h.instance.go(tap({ key: 'Teams' }));
   assert.equal(h.wx.calls.at(-1).url, '/pages/teams/index');
-  assert.match(fs.readFileSync(path.join(root, 'pages/home/index.wxml'), 'utf8'), /比赛视频/);
+  assert.match(fs.readFileSync(path.join(root, 'pages/home/index.wxml'), 'utf8'), /图片视频/);
 });
 
 test('all four actual templates compile in the native harness and event handlers exist', () => {

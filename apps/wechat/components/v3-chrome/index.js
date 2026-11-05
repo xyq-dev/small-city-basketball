@@ -3,6 +3,7 @@ Component({
     city: { type: String, value: '全国' },
     placeholder: { type: String, value: '搜赛事、球队、球员' },
     tools: { type: Boolean, value: true },
+    title: { type: String, value: '' },
   },
   data: {
     statusBarHeight: 47,

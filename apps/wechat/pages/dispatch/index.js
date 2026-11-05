@@ -404,6 +404,15 @@ Page({
       this.setData({ error: ui.message(e) });
     }
   },
+  submitOwnQuote() {
+    if (this.data.busy || this.data.pending || this.data.pendingError) return;
+    if (this.data.selectedOffer && this.data.selectedOffer.canQuote) {
+      return this.offerCommand({ currentTarget: { dataset: { type: 'SUBMIT_QUOTE' } } });
+    }
+    const offer = (this.data.offers || [])[0];
+    if (!offer) return;
+    this.selectOffer({ currentTarget: { dataset: { id: offer.id } } });
+  },
   async offerCommand(e) {
     const row = this.data.selectedOffer;
     if (!row) return;

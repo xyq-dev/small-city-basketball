@@ -1,1 +1,18 @@
-.field { box-sizing: border-box; width: 100%; margin: 16rpx 0; } .row { display: flex; flex-wrap: wrap; gap: 12rpx; padding: 12rpx 0; } .row button { flex: 1; min-width: 180rpx; } .card button { margin-top: 16rpx; }
+.staff-page { padding:12px 16px calc(112px + env(safe-area-inset-bottom)); }
+.staff-summary { min-height:110px; padding:16px 14px; background:#eaf2fc; }
+.fig-summary-icon { display:flex; flex:0 0 44px; width:44px; height:44px; align-items:center; justify-content:center; border-radius:12px; background:#fff; }
+.fig-summary-icon image { width:24px; height:24px; }
+.staff-tabs { display:flex; gap:0; padding:3px; margin-bottom:12px; border-radius:12px; background:#fff; }
+.staff-tabs button { flex:1; min-width:0; min-height:44px; margin:0; border-radius:10px; color:#63758b; background:#fff; font-size:14px; }
+.staff-tabs button.selected { color:#fff; background:#164b88; }
+.staff-page .card { padding:14px; border:0; border-radius:16px; }
+.staff-field { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; padding:10px 12px; margin:4px 0 12px; border-radius:10px; background:#f4f6fa; color:#18283f; }
+.staff-field .badge { flex:none; margin:0; font-size:14px; }
+.staff-row { display:flex; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:12px; min-height:64px; padding:10px 0; }
+.staff-row > view { flex:1; min-width:0; }
+.staff-name { color:#18283f; font-size:14px; line-height:22px; font-weight:600; }
+.staff-status { flex:none; padding:2px 8px; border-radius:7px; color:#895500; background:#fff3e6; font-size:12px; line-height:20px; }
+.staff-list > button { margin-top:12px; }
+.staff-confirm .row { display:flex; flex-wrap:nowrap; gap:8px; }
+.staff-confirm .row button { flex:1; min-width:0; }
+@media (max-width:340px) { .staff-page { padding-left:12px; padding-right:12px; } }

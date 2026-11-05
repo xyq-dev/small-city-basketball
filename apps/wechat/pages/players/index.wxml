@@ -1,14 +1,26 @@
 <scb-header title="找球员" disabled="{{loading}}"/>
-<view class="page has-actions players-page">
+<view class="page fig-page has-actions players-page">
+  <view class="fig-summary">
+    <view class="fig-summary-copy">
+      <view class="fig-kicker">球员服务</view>
+      <view class="fig-summary-title">选择适合本场的球员</view>
+      <view class="fig-summary-sub">按位置、地区和档期选人，查看每场服务报价。</view>
+    </view>
+    <view class="fig-summary-mark"><image src="/assets/figma/player.svg" mode="aspectFit"/></view>
+  </view>
   <view wx:if="{{loginRequired}}" class="card empty"><view class="subtitle">登录后查看球员服务资料</view><view class="muted">球员目录使用当前应用账号读取，不会用演示资料替代。</view><button class="primary" bindtap="login">登录并返回找球员</button></view>
   <view wx:if="{{error}}" class="card state-panel" role="alert"><view class="state-label">读取失败</view><view class="subtitle">暂时无法读取球员资料</view><view class="notice danger">{{error}}</view><button class="primary" bindtap="load" disabled="{{loading}}">重新读取球员资料</button></view>
   <block wx:if="{{!loginRequired}}">
     <view class="filter-summary" aria-label="当前已应用的筛选条件">
-      <button class="filter-chip active" bindtap="filtersToggle" disabled="{{loading}}" aria-label="位置：{{filterSummary.position}}">位置</button><button class="filter-chip" bindtap="filtersToggle" disabled="{{loading}}" aria-label="报价：{{filterSummary.price}}">报价</button><button class="filter-chip" bindtap="filtersToggle" disabled="{{loading}}" aria-label="日期：{{filterSummary.date}}">日期</button>
+      <button class="filter-chip active" bindtap="filtersToggle" disabled="{{loading}}" aria-label="位置：{{filterSummary.position}}">综合</button><button class="filter-chip" bindtap="filtersToggle" disabled="{{loading}}" aria-label="报价：{{filterSummary.price}}">同价</button><button class="filter-chip" bindtap="filtersToggle" disabled="{{loading}}" aria-label="日期：{{filterSummary.date}}">档期</button>
     </view>
-    <view class="market-form">
-      <button class="market-field" bindtap="filtersToggle" disabled="{{loading}}"><view class="market-field-label">服务地区</view><view class="market-field-value">{{filters.city || '不限地区，点按设置'}}</view></button>
-      <button class="market-field" bindtap="filtersToggle" disabled="{{loading}}"><view class="market-field-label">球员位置</view><view class="market-field-value">{{positionOptions[positionIndex]}}</view></button>
+    <view class="card market-filter-card">
+      <view class="fig-card-title">筛选球员</view>
+      <view class="market-form">
+        <button class="market-field" bindtap="filtersToggle" disabled="{{loading}}"><view class="market-choice"><view class="market-choice-dot active"></view><view class="market-choice-copy"><view class="market-field-label">球员位置</view><view class="market-field-value">{{positionOptions[positionIndex]}}</view></view><view class="market-choice-state">已选</view></view></button>
+        <button class="market-field" bindtap="filtersToggle" disabled="{{loading}}"><view class="market-choice"><view class="market-choice-dot active"></view><view class="market-choice-copy"><view class="market-field-label">服务地区</view><view class="market-field-value">{{filters.city || '不限地区，点按设置'}}</view></view><view class="market-choice-state">{{filters.city ? '已选' : '可修改'}}</view></view></button>
+        <button class="market-field" bindtap="filtersToggle" disabled="{{loading}}"><view class="market-choice"><view class="market-choice-dot"></view><view class="market-choice-copy"><view class="market-field-label">比赛日期</view><view class="market-field-value">{{filterSummary.date}}</view></view><view class="market-choice-state">可修改</view></view></button>
+      </view>
     </view>
     <view wx:if="{{filtersOpen}}" class="card filters">
       <view class="filter-title"><view class="subtitle">筛选位置、价格与档期</view><button class="quiet filter-collapse" bindtap="filtersToggle" aria-label="收起筛选">收起</button></view>
@@ -25,9 +37,9 @@
     <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在读取球员与授权统计…</view><view class="muted">读取完成前不展示旧资料或旧统计。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
     <view wx:if="{{!loading && !cards.length && !error}}" class="card empty"><view class="subtitle">暂无匹配球员</view><view class="muted">可以放宽日期、位置或价格，再找一找。</view><button class="secondary" bindtap="filtersToggle">调整筛选条件</button></view>
     <view wx:if="{{cards.length}}" class="card service-profiles">
-      <view class="profiles-title">当前可查看的服务档案</view>
+      <view class="fig-card-title">可约球员</view>
       <view wx:for="{{cards}}" wx:key="id" class="player-result"><view class="player-card">
-        <button class="player-detail" data-id="{{item.id}}" bindtap="detail" aria-label="{{item.name}}，查看资料"><image class="player-portrait" src="/assets/ui002/avatar-user.svg" mode="aspectFit" aria-hidden="true"/><view class="player-identity"><view class="player-name">{{item.name}} · {{item.position}}</view><view class="player-meta">服务费 <text class="money">{{item.priceLabel || item.price}}</text> / 场</view></view><image class="player-chevron" src="/assets/ui002/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button>
+        <button class="player-detail" data-id="{{item.id}}" bindtap="detail" aria-label="{{item.name}}，查看资料"><image class="player-portrait" src="/assets/ui002/avatar-user.svg" mode="aspectFit" aria-hidden="true"/><view class="player-identity"><view class="player-name">{{item.name}} · {{item.position}}</view><view class="player-meta">{{item.city}} · {{item.availabilityCount ? '有可约窗口' : '需核对时段'}}</view></view><view class="player-price-tag">{{item.priceLabel || item.price}}/场</view></button>
         <button class="player-select {{item.selected ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="toggle" disabled="{{loading}}" aria-label="{{item.name}}，{{item.selected ? '移出对比' : '加入对比'}}"><view class="selection-box"><scb-icon wx:if="{{item.selected}}" name="check" tone="white" size="18"/><scb-icon wx:else name="plus" tone="gray" size="16"/></view></button>
       </view></view>
     </view>
@@ -41,6 +53,11 @@
       </view>
     </view>
     <view wx:if="{{catalogLimited}}" class="notice warning">目录达到200位上限，不代表全部球员。可联系平台核对其他档案。</view>
+    <view wx:if="{{selectedCount}}" class="card comparison-selection">
+      <view class="fig-card-title">对比名单</view>
+      <view class="comparison-selection-grid"><view wx:for="{{cards}}" wx:key="id"><view wx:if="{{item.selected}}" class="comparison-selection-item"><view class="player-name">{{item.name}}</view><view class="player-meta">参赛服务费 {{item.priceLabel || item.price}}</view><view class="market-choice-state">已选</view></view></view></view>
+      <view class="muted small">已选 {{selectedCount}} 位，同价对比至少需要 2 位。</view>
+    </view>
   </block>
 </view>
-<view class="action-bar market-action"><button class="primary" bindtap="compare" disabled="{{loading || selectedCount < 2}}">{{selectedCount >= 2 ? '对比已选' + selectedCount + '位球员' : '请选择至少2位球员对比'}}</button></view>
+<view class="action-bar market-action"><button class="secondary" bindtap="bookings" disabled="{{loading}}">我的预约</button><button class="primary" bindtap="compare" disabled="{{loading || selectedCount < 2}}">{{selectedCount >= 2 ? '对比已选' + selectedCount + '位球员' : '请选择至少2位球员对比'}}</button></view>

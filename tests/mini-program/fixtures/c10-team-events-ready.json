@@ -3,8 +3,10 @@
   "route": "pages/registration-events/index",
   "state": "ready",
   "figmaNode": "9:982",
-  "expectText": ["合成城市联赛2026", "为本队报名", "报名要求"],
+  "expectText": ["合成城市联赛2026", "为本队报名", "查看要求并创建报名草稿"],
   "data": {
+    "hasDraft": false,
+    "hasCreatableEvent": true,
     "team": {
       "id": "c1000000-0000-4000-8000-000000000001",
       "orgId": "c1000000-0000-4000-8000-000000000002",

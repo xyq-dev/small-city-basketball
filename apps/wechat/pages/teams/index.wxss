@@ -1,27 +1,63 @@
 @import "../../components/v3-chrome/visual.wxss";
-.teams-page { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
-.teams-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
-.teams-tabs button { width:auto; min-width:80px; min-height:44px; margin:0; padding:11px 12px; font-size:14px; line-height:22px; font-weight:500; background:#fff; }
-.teams-tabs button.selected { color:#fff; background:#123c73; }
-.team-panel,.team-profile,.team-transactions { padding:16px; border-radius:16px; margin-bottom:12px; }
-.team-profile { display:flex; flex-direction:column; gap:8px; min-height:126px; }
-.team-person { display:flex; align-items:flex-start; gap:16px; }
-.team-avatar { display:flex; align-items:flex-start; justify-content:center; flex:0 0 64px; width:64px; height:64px; padding:8px; border-radius:12px; background:#eaf0f8; }
-.team-avatar image { width:28px; height:28px; }
+.teams-page { padding-bottom:calc(148px + env(safe-area-inset-bottom)); }
+.fig-summary { display:flex; align-items:center; gap:12px; margin-bottom:12px; padding:14px; border-radius:16px; }
+.fig-summary.soft { background:#eaf2fc; }
+.fig-summary-icon { width:44px; height:44px; flex:none; padding:9px; border-radius:12px; background:#eaf2fc; }
+.fig-summary-copy { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.fig-kicker { color:#63758b; font-size:11px; line-height:16px; }
+.fig-summary-title { color:#18283f; font-size:18px; line-height:26px; font-weight:700; overflow-wrap:anywhere; }
+.fig-summary-sub { color:#63758b; font-size:12px; line-height:17px; overflow-wrap:anywhere; }
+.teams-intro { margin:8px 0 20px; }
+.teams-eyebrow { color:#b76a19; font-size:11px; line-height:18px; letter-spacing:1.5px; font-weight:700; }
+.teams-title { margin:4px 0 6px; color:#123c73; font-size:26px; line-height:36px; font-weight:700; }
+.teams-subtitle { color:#63758b; font-size:13px; line-height:22px; }
+.teams-tabs { display:flex; align-items:center; gap:4px; padding:4px; margin-bottom:20px; border:1px solid #e1e7ef; border-radius:14px; background:#fff; }
+.teams-tabs button { flex:1; width:auto; min-width:0; min-height:44px; margin:0; padding:10px 8px; font-size:14px; line-height:24px; font-weight:500; background:transparent; color:#63758b; }
+.teams-tabs button::after { border:0; }
+.teams-tabs button.selected { color:#123c73; background:#edf2f8; font-weight:700; border-radius:10px; }
+.teams-tabs button.teams-add { flex:0 0 44px; width:44px; min-width:44px; padding:0; display:flex; align-items:center; justify-content:center; border-left:1px solid #e1e7ef; border-radius:0; }
+.team-panel,.team-profile,.team-transactions { padding:18px; border:1px solid #e1e7ef; border-radius:18px; margin-bottom:16px; }
+.team-profile { display:flex; flex-direction:column; gap:20px; background:#123c73; color:#fff; border:0; }
+.team-profile-top { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+.team-profile-label { color:#c2d0e5; font-size:10px; line-height:18px; letter-spacing:1px; }
+.team-profile-badge { max-width:100%; padding:3px 9px; border-radius:6px; color:#ffd3a5; background:rgba(255,255,255,.1); font-size:11px; line-height:18px; }
+.team-person { display:flex; align-items:flex-start; gap:14px; }
+.team-avatar { display:flex; align-items:center; justify-content:center; flex:0 0 56px; width:56px; height:56px; border:1px solid rgba(255,255,255,.24); border-radius:14px; background:rgba(255,255,255,.08); }
 .team-identity-copy { flex:1; min-width:0; }
-.team-name { color:#18283f; font-size:24px; line-height:34px; font-weight:700; overflow-wrap:anywhere; }
-.team-meta { color:#63758b; font-size:12px; line-height:18px; margin-top:4px; }
-.team-copy { color:#18283f; font-size:14px; line-height:22px; overflow-wrap:anywhere; }
+.team-name { color:#fff; font-size:24px; line-height:34px; font-weight:700; overflow-wrap:anywhere; }
+.team-meta { color:#d8e3f1; font-size:12px; line-height:20px; margin-top:4px; }
+.team-profile-foot { display:flex; align-items:flex-start; gap:8px; padding-top:14px; border-top:1px solid rgba(255,255,255,.16); color:#d8e3f1; font-size:11px; line-height:18px; }
+.team-profile-foot scb-icon { flex:none; }
+.team-copy { color:#63758b; font-size:12px; line-height:20px; overflow-wrap:anywhere; }
 .team-transactions .subtitle { color:#18283f; font-size:18px; line-height:28px; font-weight:700; margin:0 0 8px; }
-.team-cell { display:flex; align-items:center; gap:12px; min-height:58px; text-align:left; padding:8px 0; margin:0 0 8px; border-radius:0; background:transparent; }
+.team-cell { display:flex; align-items:center; gap:12px; min-height:68px; text-align:left; padding:12px 0; margin:0; border-radius:0; background:transparent; border-bottom:1px solid #eef1f5; }
+.team-cell:last-child { border-bottom:0; padding-bottom:0; }
 .team-cell::after { border:0; }
-.team-cell-copy { flex:1; min-width:0; color:#18283f; font-size:14px; line-height:22px; font-weight:500; }
-.team-cell .muted { margin-top:2px; font-size:12px; line-height:18px; font-weight:400; }
+.team-cell-copy { flex:1; min-width:0; color:#18283f; font-size:14px; line-height:22px; font-weight:600; }
+.team-cell .muted { margin-top:3px; font-size:12px; line-height:18px; font-weight:400; }
 .team-chevron { width:16px; height:16px; flex:0 0 16px; }
-.teams-actions { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
-.teams-actions button { margin:0; min-height:48px; padding:12px; font-size:14px; line-height:22px; font-weight:500; background:#eaf0f8; }
-.feedback-title { font-size:14px; line-height:22px; font-weight:500; margin-bottom:4px; }
-.skeleton-line { height:12px; border-radius:4px; background:#eaf0f7; margin-top:8px; }
-.skeleton-line.short { width:78%; }
+.teams-section-heading { margin:24px 0 12px; font-size:18px; line-height:28px; font-weight:700; color:#18283f; }
+.teams-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
+.teams-actions button { min-width:0; margin:0; min-height:54px; padding:12px 8px; font-size:13px; line-height:22px; font-weight:600; background:#fff; color:#123c73; }
+.teams-actions button::after { border:1px solid #dce4ee; border-radius:12px; }
+.feedback-title { font-size:14px; line-height:22px; font-weight:600; margin-bottom:4px; }
+.skeleton-line { height:12px; border-radius:6px; background:#eaf0f7; margin-top:12px; }
+.skeleton-line.short { width:68%; }
 .create-team .field-label { margin-top:16px; }
-.team-action { margin-bottom:12px; }
+.team-action { margin-bottom:16px; }
+.team-welcome { padding:24px; background:#123c73; color:#fff; border:0; }
+.team-welcome-icon { display:flex; justify-content:center; align-items:center; width:56px; height:56px; margin-bottom:16px; border-radius:16px; background:rgba(255,255,255,.1); }
+.team-welcome-kicker { color:#f9b56d; font-size:12px; line-height:20px; margin-bottom:6px; }
+.team-welcome .subtitle { color:#fff; font-size:22px; line-height:32px; font-weight:700; }
+.team-welcome .muted { color:#d5dfed; font-size:13px; line-height:22px; }
+.team-welcome button.primary { margin-top:20px; background:#f28c28; color:#18283f; border-radius:12px; }
+.team-welcome-note { color:#d5dfed; font-size:11px; line-height:18px; margin-top:12px; }
+.team-discover { display:flex; align-items:center; gap:12px; padding:20px; margin:24px 0 16px; border-radius:18px; border:1px solid #e5ded4; background:#fff7eb; }
+.team-discover-copy { flex:1; min-width:0; }
+.team-discover-label { color:#9d661f; font-size:11px; line-height:18px; }
+.team-discover-title { color:#123c73; font-size:18px; line-height:28px; font-weight:700; margin:4px 0; }
+.team-discover-action { display:flex; align-items:center; justify-content:center; flex:0 0 44px; width:44px; min-height:44px; margin:0; padding:0; border-radius:50%; background:#fff; }
+.team-discover-action::after { border:0; }
+.team-access { margin-bottom:12px; padding:14px 16px; background:#edf2f8; }
+.teams-page .fig-card-title { margin-top:4px; }
+@media(max-width:360px) { .teams-title { font-size:23px; line-height:32px; } .team-profile,.team-transactions { padding:16px; } .team-name { font-size:21px; line-height:30px; } .team-welcome { padding:20px; } }

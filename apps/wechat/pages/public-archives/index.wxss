@@ -1,1 +1,22 @@
 .archive-action { margin-top: 16rpx; }
+.mgmt-page { padding-bottom:calc(164px + env(safe-area-inset-bottom)); }
+.mgmt-page > .fig-summary,.mgmt-page > .card { margin-bottom:12px; }
+.mgmt-page > .card { padding:14px; border-radius:16px; box-shadow:none; }
+.identity-summary { align-items:center; }
+.identity-summary .fig-summary-mark { order:-1; width:44px; height:44px; border-radius:12px; background:#fff; }
+.identity-summary .fig-summary-mark image { width:25px; height:25px; }
+.identity-summary .fig-summary-title { color:#18283f; font-size:18px; line-height:26px; }
+.identity-summary .fig-kicker,.identity-summary .fig-summary-sub { color:#63758b; }
+.mgmt-page .fig-card-title { margin-bottom:8px; }
+.archive-field { min-height:44px; margin:4px 0 12px; padding:10px 12px; border-radius:8px; background:#f4f6fa; font-size:14px; line-height:24px; overflow-wrap:anywhere; }
+.archive-consent { display:flex; align-items:flex-start; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid #e6ebf2; }
+.archive-consent switch { flex:none; transform:scale(.78); transform-origin:left top; }
+.archive-source-card { position:relative; }
+.archive-source-card > .fig-pill { position:absolute; top:14px; right:14px; }
+.archive-source-card > .subtitle,.archive-source-card > .fig-row-title { padding-right:76px; }
+.mgmt-page .section { padding:12px 0; border-top:1px solid #e6ebf2; }
+.mgmt-page .section:first-of-type { border-top:0; }
+.mgmt-page .mode-choice { padding:2px; border-radius:12px; background:#f4f6fa; }
+.mgmt-page .mode-choice button { min-height:44px; border-radius:10px; }
+.mgmt-page .mode-choice button.selected { color:#fff; background:#123c73; }
+@media(max-width:360px) { .identity-summary .fig-summary-title { font-size:17px; } }

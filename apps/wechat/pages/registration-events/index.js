@@ -9,6 +9,14 @@ function view(rows) {
     entryStatus: r.entry ? registration.stateLabel(r.entry.status) : '',
   }));
 }
+function actions(rows) {
+  return {
+    hasDraft: rows.some((row) => !!row.entry),
+    hasCreatableEvent: rows.some(
+      (row) => row.capabilities && row.capabilities.canCreateEntry && !row.entry,
+    ),
+  };
+}
 Page({
   data: {
     team: null,
@@ -21,6 +29,8 @@ Page({
     loginRequired: false,
     chargeDraft: null,
     chargeAccepted: false,
+    hasDraft: false,
+    hasCreatableEvent: false,
   },
   onLoad(query) {
     this._alive = true;
@@ -54,6 +64,8 @@ Page({
       nextCursor: null,
       chargeDraft: null,
       chargeAccepted: false,
+      hasDraft: false,
+      hasCreatableEvent: false,
       busy: false,
       loading: false,
       loginRequired: true,
@@ -76,6 +88,8 @@ Page({
       loginRequired: false,
       chargeDraft: null,
       chargeAccepted: false,
+      hasDraft: false,
+      hasCreatableEvent: false,
     });
     ui.begin(this);
     const session = await ui.session(this, this.path());
@@ -90,11 +104,13 @@ Page({
       repo = registration.createRepository(this._org);
     try {
       const team = await repo.team(this._team),
-        result = await repo.events(this._team);
+        result = await repo.events(this._team),
+        listed = view(result.items);
       if (ui.live(this, token))
         this.setData({
           team,
-          events: view(result.items),
+          events: listed,
+          ...actions(listed),
           nextCursor: result.nextCursor,
           loading: false,
         });
@@ -115,15 +131,34 @@ Page({
     this.setData({ loading: true, error: '' });
     try {
       const result = await registration.createRepository(this._org).events(this._team, cursor);
-      if (ui.live(this, token))
+      if (ui.live(this, token)) {
+        const listed = registration.mergePage(this.data.events, view(result.items), 'eventId');
         this.setData({
-          events: registration.mergePage(this.data.events, view(result.items), 'eventId'),
+          events: listed,
+          ...actions(listed),
           nextCursor: result.nextCursor,
           loading: false,
         });
+      }
     } catch (error) {
       if (ui.live(this, token)) this.setData({ loading: false, error: ui.message(error) });
     }
+  },
+  openDraft() {
+    this.openListed('draft');
+  },
+  openRequirements() {
+    this.openListed('requirements');
+  },
+  openListed(kind) {
+    const events = this.data.events || [];
+    const item =
+      kind === 'draft'
+        ? events.find((row) => row.entry)
+        : events.find((row) => row.capabilities && row.capabilities.canCreateEntry) ||
+          events.find((row) => row.entry);
+    if (!item) return;
+    this.enter({ currentTarget: { dataset: { id: item.event.id } } });
   },
   async enter(e) {
     if (this.data.busy || this.data.chargeDraft) return;

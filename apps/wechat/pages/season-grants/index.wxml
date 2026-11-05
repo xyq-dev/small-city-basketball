@@ -1,13 +1,14 @@
 <scb-header title="私有赛季授权" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page grants-page">
-  <view class="hero"><view class="title">{{mode === 'organizer' ? '私有赛季提名' : '我的私有赛季授权'}}</view><view class="muted">用途仅为本机构私有赛季统计（PRIVATE_SEASON）；与“公开到预约档案”的授权互相独立，账号绑定本身不产生授权。</view></view>
+<view class="page fig-page grants-page">
+  <view class="fig-summary grants-summary"><view class="fig-summary-icon"><image src="/assets/figma/stats.svg" mode="aspectFit"/></view><view class="fig-summary-copy"><view class="fig-kicker">本人数据授权</view><view class="fig-summary-title">{{stats.seasonName || season.name || grants[0].seasonText || '私有赛季授权'}}</view><view class="fig-summary-sub">按具体机构、赛季和赛事逐项确认。</view></view></view>
+  <view class="grant-tabs"><view class="selected">待确认</view><view>我的授权</view><view>本人统计</view></view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
   <view wx:if="{{message}}" class="notice">{{message}}</view>
   <view wx:if="{{loginRequired}}" class="card state-panel"><view class="subtitle">登录后继续</view><view class="muted">授权只属于本人账号；换账号后需重新读取。</view><button class="primary" bindtap="login">登录并继续</button></view>
   <view wx:if="{{loading}}" class="card state-panel"><view class="subtitle">正在读取</view><view class="loading-lines"><view></view><view></view></view></view>
 
   <view wx:if="{{disclosure}}" class="card disclosure">
-    <view class="subtitle">授权说明</view>
+    <view class="fig-card-title">申请范围</view><view class="subtitle">授权说明</view>
     <view class="small">{{disclosure.purpose}}</view>
     <view class="small">{{disclosure.scope}}</view>
     <view class="small">{{disclosure.readers}}</view>
@@ -17,8 +18,8 @@
   </view>
 
   <block wx:if="{{mode === 'organizer' && event}}">
-    <view class="card">
-      <view class="subtitle">{{event.name}}</view>
+    <view class="card grant-source-card">
+      <view class="fig-card-title">私有赛季提名</view><view class="subtitle">授权来源 · {{event.name}}</view>
       <view class="muted">{{event.startDate}} 至 {{event.endDate}} · {{season ? '已归入赛季：' + season.name : '尚未归入赛季（同意后也不会进入任何赛季统计）'}}</view>
       <view wx:if="{{!frozen}}" class="notice warning">报名名单尚未冻结，暂不能提名。</view>
       <block wx:if="{{frozen}}">
@@ -33,8 +34,8 @@
     </view>
   </block>
 
-  <view wx:if="{{!loginRequired && !invalid}}" class="card">
-    <view class="subtitle">{{mode === 'organizer' ? '本届授权记录' : '收到的提名与授权'}}</view>
+  <view wx:if="{{!loginRequired && !invalid}}" class="card grant-records">
+    <view class="fig-card-title">本人选择</view><view class="subtitle">{{mode === 'organizer' ? '本届授权记录' : '收到的提名与授权'}}</view>
     <view wx:if="{{!grants.length && !loading}}" class="empty">暂无授权记录</view>
     <view wx:if="{{truncated}}" class="notice warning">还有更早的授权记录，可继续读取并处理。</view>
     <view wx:for="{{grants}}" wx:key="id" class="row">
@@ -69,7 +70,7 @@
   <button wx:if="{{nextCursor}}" class="secondary" bindtap="loadMore" disabled="{{busy || loading || loadingMore}}" loading="{{loadingMore}}">读取更早的授权记录</button>
 
   <view wx:if="{{statsError}}" class="notice danger">{{statsError}}</view>
-  <view wx:if="{{stats}}" class="card">
+  <view wx:if="{{stats}}" class="card grant-stats">
     <view class="subtitle">本人统计 · {{stats.seasonName}}</view>
     <view class="muted">{{stats.orgName}} · {{stats.statusText}} · 只显示您本人的数据</view>
     <view wx:if="{{!stats.row}}" class="empty">当前没有生效的授权数据。</view>
@@ -88,3 +89,4 @@
   </view>
   <button class="quiet" bindtap="load" disabled="{{busy || loading || invalid}}">刷新</button>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" bindtap="declineCurrent" disabled="{{busy || loading || !declinableGrantCount}}">拒绝本次授权</button><button class="fig-confirm" bindtap="showCurrentGrant" disabled="{{busy || loading || !viewableGrantCount}}">查看本人授权</button></view>

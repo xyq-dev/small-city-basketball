@@ -1,8 +1,18 @@
-<scb-header title="选择可报名赛事" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page registration-page">
+<scb-header title="可报名赛事" disabled="{{busy || pending || uncertain || dirty}}"/>
+<view class="page fig-page registration-page">
+  <view class="fig-summary registration-summary">
+    <view class="fig-summary-copy">
+      <view class="fig-kicker">报名</view>
+      <view class="fig-summary-title">{{team ? team.name : '可报名赛事'}}</view>
+      <view class="fig-summary-sub">先核对本届要求，再为本队创建报名草稿。</view>
+    </view>
+    <view class="fig-summary-mark registration-summary-image"><image src="/assets/home/event-court.jpg" mode="aspectFill"/></view>
+  </view>
+  <view class="registration-tabs"><view class="selected">可报名</view><view>已有报名</view></view>
   <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">暂时无法读取可报名赛事</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice warning">{{message}}</view>
   <view wx:if="{{chargeDraft}}" class="card event-panel charge-panel">
+    <view class="fig-card-title">报名前核对</view>
     <view class="subtitle">先核对本届收费条款</view><view>{{chargeDraft.eventName}}</view><view>为{{team.name}}创建本届报名草稿</view>
     <view wx:for="{{chargeDraft.items}}" wx:key="kind" class="charge-item"><view class="subtitle">{{item.kindLabel}} · {{item.amountLabel}}（人民币）</view><view>收费主体：{{item.merchantName}}</view><view>{{item.title}}</view><text class="charge-terms" selectable="true">{{item.terms}}</text></view>
     <view class="muted">创建草稿会绑定以上收费条款。支付和报名审核分别办理，创建不代表付款成功或审核通过。</view>
@@ -12,8 +22,9 @@
   </view>
   <view wx:if="{{loginRequired}}" class="card event-panel state-panel"><view class="subtitle">登录后继续本队报名</view><view class="muted">仅展示当前账号可管理的报名范围。</view><button class="primary" bindtap="login">登录并继续</button></view>
   <view wx:if="{{loading}}" class="card event-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取可报名赛事</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
+  <view wx:if="{{events.length}}" class="fig-card-title">近期开放</view>
   <view wx:for="{{events}}" wx:key="id" class="card event-panel event-card">
-    <view class="subtitle">可报名赛事</view><view class="event-name">{{item.event.name}}</view>
+    <view class="event-name">{{item.event.name}}</view>
     <view class="muted">{{item.event.startDate}} — {{item.event.endDate}}</view>
     <view class="badge {{item.capabilities.canCreateEntry ? 'success' : ''}}">{{item.statusLabel}}</view>
     <view wx:if="{{team}}" class="muted">为{{team.name}}管理本届独立报名。</view>
@@ -22,9 +33,14 @@
     <button wx:elif="{{item.capabilities.canCreateEntry}}" class="primary" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy || chargeDraft}}" loading="{{busy}}">查看本次要求并为本队报名</button>
     <view wx:else class="small muted">当前不能新建本队报名。</view>
   </view>
+  <view class="fig-card-title">已有报名</view>
   <view wx:if="{{!loading && !events.length && !loginRequired && !error}}" class="card event-panel state-panel"><view class="subtitle">暂无可报名赛事</view><view class="muted">请等待主办方开放报名，或刷新本队已有报名。</view></view>
-  <view class="card event-panel registration-guide"><view class="guide-row"><text class="guide-dot">•</text><view><view>报名要求</view><view class="muted">按赛事规则提交本届名单及私有资料。</view></view></view><view class="guide-row"><text class="guide-dot">•</text><view><view>审核</view><view class="muted">由独立人员复核，提交不等于获批。</view></view></view></view>
+  <view class="card event-panel registration-guide"><view class="fig-card-title">报名前核对</view><view class="guide-row"><text class="guide-step">1</text><view><view>查看本届规程</view><view class="muted">按赛事规则核对人数及资格。</view></view></view><view class="guide-row"><text class="guide-step">2</text><view><view>核对收费条款</view><view class="muted">以本届实际公布条款为准。</view></view></view><view class="guide-row"><text class="guide-step">3</text><view><view>创建本队草稿</view><view class="muted">由领队保存本届名单，提交不等于获批。</view></view></view></view>
   <button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loading || busy}}">加载更多赛事</button>
   <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新本队报名状态</button>
+</view>
+<view class="fig-actions">
+  <button class="fig-ghost" bindtap="openDraft" disabled="{{busy || !hasDraft}}">查看本队草稿</button>
+  <button class="fig-confirm" bindtap="openRequirements" disabled="{{busy || (!hasCreatableEvent && !hasDraft)}}">{{hasCreatableEvent ? '查看要求并创建报名草稿' : '查看本届报名'}}</button>
 </view>
 <scb-nav active="Account" disabled="{{busy || loading}}"/>

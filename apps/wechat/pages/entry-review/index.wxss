@@ -2,3 +2,20 @@
 .count-chip { padding:2px 8px; border-radius:24px; background:#eaf0f8; color:#123c73; font-size:12px; line-height:20px; }
 .freeze-note { margin:12px 0 0; }
 .task-title { color:#123c73; font-size:16px; line-height:24px; font-weight:600; }
+.entry-review-page { padding:12px 16px calc(112px + env(safe-area-inset-bottom)); }
+.review-summary { min-height:110px; padding:16px 14px; }
+.fig-summary-icon { display:flex; flex:0 0 44px; width:44px; height:44px; align-items:center; justify-content:center; border-radius:12px; background:#eaf2fc; }
+.fig-summary-icon image { width:24px; height:24px; }
+.review-tabs { display:flex; gap:0; padding:3px; margin-bottom:12px; border-radius:12px; background:#fff; }
+.review-tabs button { flex:1; min-width:0; min-height:44px; margin:0; border-radius:10px; color:#63758b; background:#fff; font-size:14px; }
+.review-tabs button.selected { color:#fff; background:#164b88; }
+.review-overview,.review-detail,.stage-card { padding:14px; border:0; border-radius:16px; }
+.entry-row { min-height:74px; padding:14px; border-radius:16px; }
+.entry-row .org-match-status { flex:none; padding:2px 8px; border-radius:7px; background:#fff3e6; color:#895500; }
+.entry-row .org-match-status.live { color:#895500; }
+.review-detail .fig-card-title { margin-top:14px; }
+.review-action-title { padding-top:12px; border-top:1px solid #e1e7ef; }
+.review-detail .field { border:0; background:#f4f6fa; }
+.stage-card .row-between > view { flex:1; }
+.stage-card .small-button { flex:0 0 96px; margin:0; }
+@media (max-width:340px) { .entry-review-page { padding-left:12px; padding-right:12px; } .review-tabs button { font-size:13px; } }

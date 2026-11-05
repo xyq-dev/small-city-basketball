@@ -1,23 +1,31 @@
-<scb-header title="比赛实况" back="{{true}}"/>
-<view class="page match-page">
+<scb-header title="比赛详情" back="{{true}}"/>
+<view class="page fig-page match-page">
   <view wx:if="{{loading && !snapshot}}" class="match-panel public-state"><view class="state-tag">比赛资料</view><view class="title">正在读取最新赛况</view><view class="notice"><view class="state-strong">正在核对比分与服务器时钟</view><view class="small">读取完成前不使用示例比分，也不将旧资料标为最新。</view></view><view class="public-skeleton"></view><view class="public-skeleton short"></view><button class="primary" disabled>正在读取…</button></view>
   <view wx:elif="{{!snapshot}}" class="match-panel public-state"><view class="state-tag warning">{{unavailable ? '请核对' : error ? '读取未完成' : '比赛资料'}}</view><view class="title">{{unavailable ? '该内容已停止公开' : error ? '暂时无法读取比赛' : '比赛资料尚未读取'}}</view><view class="notice {{error ? 'warning' : ''}}"><view>{{error || '请从当前有效的公开赛事选择一场比赛。'}}</view><view wx:if="{{unavailable}}" class="small">旧画面与媒体已清空，不回显已撤销的比赛资料。</view></view><button wx:if="{{error && !unavailable}}" class="primary" bindtap="load">重新读取</button><button class="{{error && !unavailable ? 'secondary' : 'primary'}}" bindtap="watch">返回观赛入口</button></view>
   <block wx:else>
     <view wx:if="{{error}}" class="notice warning">{{error}}<view wx:if="{{stale}}" class="small">比分和计时资料已陈旧，请恢复连接后刷新。</view></view>
+    <view class="fig-summary light match-context-summary">
+      <view class="fig-summary-mark"><image src="/assets/figma/scoreboard.svg" mode="aspectFit"/></view>
+      <view class="fig-summary-copy"><view class="fig-kicker">现场比分</view><view class="fig-summary-title">比赛详情</view><view class="fig-summary-sub">{{snapshot.home.teamName}} vs {{snapshot.away.teamName}} · 第{{snapshot.roundNo}}轮</view></view>
+    </view>
+    <view class="match-tabs"><button class="{{tab==='info' ? 'selected' : ''}}" data-tab="info" bindtap="tab" disabled="{{loading}}">赛况</button><button bindtap="ranking" disabled="{{loading}}">排名</button><button class="{{tab==='media' ? 'selected' : ''}}" data-tab="media" bindtap="tab" disabled="{{loading}}">视频</button></view>
     <view wx:if="{{snapshot.adjudication}}" class="match-panel confirmed-result"><view class="subtitle">行政裁定</view><view class="match-badge">{{snapshot.statusLabel}}</view><view class="match-teams">{{snapshot.home.teamName}} / {{snapshot.away.teamName}}</view><view class="subtitle">{{snapshot.resultLabel}}</view><view class="muted">{{snapshot.resultNote}}</view></view>
     <view wx:elif="{{snapshot.resultStatus==='CONFIRMED'}}" class="match-panel confirmed-result">
       <view class="subtitle">正式赛果</view><view class="match-badge">已独立确认</view>
       <view class="result-score">{{snapshot.home.teamName}} {{snapshot.score ? snapshot.score.home + ' : ' + snapshot.score.away : '比分待核对'}}</view><view class="subtitle">{{snapshot.away.teamName}}</view><view class="muted">来源为当前有效确认，完整分节记录见下方。</view>
     </view>
-    <view wx:else class="match-hero">
-      <view class="match-badge">{{snapshot.statusLabel}}</view>
-      <view class="match-teams">{{snapshot.home.teamName}} vs {{snapshot.away.teamName}}</view>
-      <view class="score">{{snapshot.score ? snapshot.score.home + ' : ' + snapshot.score.away : '尚未准备'}}</view>
-      <view class="clock">{{snapshot.clock ? '第' + snapshot.clock.period + '节 ' : ''}}{{clock}}</view>
-      <view class="scoreboard-caption">{{stale ? '现有资料已陈旧，请刷新' : '比分与计时已同步'}}</view>
+    <view wx:else class="match-panel live-score-panel">
+      <view class="fig-card-title">实时比分</view>
+      <view class="score-pair">
+        <view class="score-team home"><view class="score-team-name">{{snapshot.home.teamName}}</view><view class="score-number">{{snapshot.score ? snapshot.score.home : '—'}}</view><view class="muted">主队</view></view>
+        <view class="score-team away"><view class="score-team-name">{{snapshot.away.teamName}}</view><view class="score-number">{{snapshot.score ? snapshot.score.away : '—'}}</view><view class="muted">客队</view></view>
+      </view>
+      <view wx:if="{{snapshot.score}}" class="score-readable">{{snapshot.score.home}} : {{snapshot.score.away}}</view>
+      <view class="score-status"><view class="match-badge">{{snapshot.statusLabel}}</view><view class="clock">{{snapshot.clock ? '第' + snapshot.clock.period + '节 ' : ''}}{{clock}}</view></view>
+      <view class="small muted">{{stale ? '现有资料已陈旧，请刷新' : '比分与计时已同步'}}</view>
     </view>
-    <view class="match-tabs"><button class="{{tab==='info' ? 'selected' : ''}}" data-tab="info" bindtap="tab" disabled="{{loading}}">赛况</button><button bindtap="ranking" disabled="{{loading}}">排名</button><button class="{{tab==='media' ? 'selected' : ''}}" data-tab="media" bindtap="tab" disabled="{{loading}}">视频</button></view>
     <block wx:if="{{tab==='info'}}">
+      <view class="fig-card-title">数据公开范围</view>
       <view class="match-panel detail-panel">
         <view class="detail-item"><text class="detail-bullet">•</text><view class="detail-content"><view class="detail-title">{{snapshot.courtName || '场地待确认'}} · 第{{snapshot.roundNo}}轮</view><view class="muted">{{snapshot.startLabel}}</view></view></view>
         <view class="detail-item"><text class="detail-bullet">•</text><view class="detail-content"><view class="detail-title">{{snapshot.resultLabel}}</view><view class="muted">{{snapshot.resultNote}}</view></view></view>
@@ -42,5 +50,9 @@
     <button class="secondary" open-type="share">分享此场公开比赛</button>
     <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">{{loading ? '正在核对最新比赛资料' : '刷新比赛资料'}}</button>
   </block>
+</view>
+<view wx:if="{{snapshot && tab==='info'}}" class="fig-actions">
+  <button class="fig-ghost" data-tab="media" bindtap="tab" disabled="{{loading}}">查看比赛视频与图片</button>
+  <button class="fig-confirm" bindtap="ranking" disabled="{{loading}}">查看分组排名与晋级</button>
 </view>
 <scb-nav active="{{tab==='media' ? 'Video' : 'Events'}}"/>

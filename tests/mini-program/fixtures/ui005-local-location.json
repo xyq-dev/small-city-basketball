@@ -1,0 +1,30 @@
+{
+  "designSource": "Figma UI005 node 36:133; synthetic isolated city-location state",
+  "static": true,
+  "name": "ui005-local-location",
+  "route": "pages/local/index",
+  "state": "location",
+  "figmaNode": "36:133",
+  "data": {
+    "selection": {
+      "mode": "REGION",
+      "label": "合成省 / 合成市 / 合成区",
+      "regionId": "00000000-0000-4000-8000-000000000003",
+      "catalogVersion": "synthetic-ui005-v1"
+    },
+    "loaded": true,
+    "loading": false,
+    "kind": "COURT",
+    "filtersOpen": true,
+    "locationEnabled": true,
+    "viewportEnabled": true,
+    "mapVisible": false,
+    "items": [],
+    "query": "",
+    "error": "",
+    "moreError": "",
+    "pending": false
+  },
+  "expectText": ["当前位置", "城市供给", "调整距离起点", "手动选择城市"],
+  "expectAbsentText": ["地图找球"]
+}

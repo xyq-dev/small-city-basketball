@@ -269,6 +269,11 @@ Page({
     if (a && a.checkout && a.checkout.mode === 'NATIVE')
       wx.setClipboardData({ data: a.checkout.codeUrl });
   },
+  queryCurrent() {
+    const attempt = this.data.order && (this.data.order.attempts || [])[0];
+    if (!attempt || this.data.busy) return;
+    return this.query({ currentTarget: { dataset: { type: 'payments', id: attempt.id } } });
+  },
   async query(e) {
     const o = this.data.order;
     if (!o || this.data.busy) return;

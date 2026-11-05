@@ -26,3 +26,12 @@
 .funds-workspace .progress-link > view { flex:1; min-width:0; }
 .funds-workspace .progress-link image { flex:none; }
 .funds-workspace .field { font-size:16px; line-height:24px; min-height:44px; }
+.funds-workspace { padding-bottom:calc(104px + env(safe-area-inset-bottom)); }
+.funds-summary { color:#18283f; }
+.funds-summary-icon { display:flex; align-items:center; justify-content:center; flex:0 0 44px; width:44px; height:44px; border-radius:12px; background:#eaf2fc; }
+.funds-summary-icon image { width:25px; height:25px; }
+.funds-pending-card { padding:14px !important; }
+.funds-pending-card .fig-note { margin-bottom:10px; }
+.refund-record { padding:14px !important; }
+.refund-record-head { display:flex; align-items:flex-start; gap:10px; }
+.refund-record-head > view:first-child { flex:1; min-width:0; }

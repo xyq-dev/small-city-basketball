@@ -39,14 +39,14 @@
 @media (max-width:360px) { .datetime-grid { grid-template-columns:1fr; } }
 
 /* UI001 T09: fields, current quote, explicit review and original request recovery. */
-.create-page { padding:16px 16px calc(160px + env(safe-area-inset-bottom)); color:#18283f; word-break:break-word; }
+.create-page { padding:12px 16px calc(124px + env(safe-area-inset-bottom)); color:#18283f; word-break:break-word; }
 .create-page .card { border-radius:16px; }
 .scope-grid { width:370px; min-width:100%; }
 .scope-option { flex:0 0 64px; width:64px; min-width:64px; border:0; border-radius:12px; background:#fff; font-size:14px; line-height:24px; padding:10px 8px; }
 .scope-option.active { color:#fff; background:#123c73; }
 .scope-caption { margin-top:8px; }
 .booking-form { display:flex; flex-direction:column; gap:12px; margin-bottom:12px; }
-.booking-field { display:flex; flex-direction:column; align-items:stretch; gap:8px; width:100%; min-height:74px; margin:0; padding:12px; border:1px solid #e1e7ef; border-radius:12px; color:#18283f; background:#fff; text-align:left; font-size:16px; line-height:24px; font-weight:400; }
+.booking-field { display:flex; flex-direction:column; align-items:stretch; gap:8px; width:100%; min-height:74px; margin:0; padding:12px; border:0; border-radius:10px; color:#18283f; background:#f4f6fa; text-align:left; font-size:16px; line-height:24px; font-weight:400; }
 .booking-field::after { border:0; }
 .booking-field[disabled] { color:#18283f; background:#fff; }
 .booking-field-label { font-size:12px; line-height:18px; color:#63758b; }
@@ -61,13 +61,14 @@
 .review-consent { padding:16px; border-radius:16px; margin:0 0 12px; font-size:16px; line-height:24px; font-weight:400; }
 .review-consent checkbox { min-width:44px; min-height:44px; }
 .confirmation-items .muted { font-size:16px; line-height:24px; margin-top:8px; }
-.create-actions { padding:12px 16px calc(28px + env(safe-area-inset-bottom)); border-top:0; border-radius:0; background:#fff; }
+.create-actions { display:flex; flex-wrap:wrap; gap:8px; padding:6px 16px calc(16px + env(safe-area-inset-bottom)); border-top:0; border-radius:0; background:#fff; }
 .create-actions > block { display:block; }
-.create-actions .primary { min-height:48px; padding:12px; color:#fff; background:#123c73; border-radius:12px; font-size:16px; line-height:24px; font-weight:600; }
+.create-actions button { flex:1 1 140px; width:auto; max-width:none; min-width:0; min-height:48px; margin:0; padding:8px 12px; border-radius:24px; font-size:16px; line-height:24px; font-weight:500; }
+.create-actions .primary { color:#18283f; background:#f28c28; }
 .create-actions .primary::after { border:0; }
 .create-actions .primary[disabled] { background:#e8edf3; color:#63758b; }
 .create-actions.draft-actions .primary { margin-bottom:0; }
-.create-actions .quiet { margin-top:6px; margin-bottom:0; }
+.create-actions .quiet,.create-actions .secondary { color:#123c73; background:#fff; box-shadow:inset 0 0 0 1px #e6ebf2; }
 
 .scope-option.scope-MULTI { width:80px; flex-basis:80px; }
 .scope-option.scope-TIME_BLOCK { width:66px; flex-basis:66px; }

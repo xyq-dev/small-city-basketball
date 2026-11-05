@@ -1,0 +1,32 @@
+{
+  "designSource": "Figma UI005 node 36:116; synthetic signed-out state",
+  "static": true,
+  "name": "ui005-account-guest",
+  "route": "pages/account/index",
+  "state": "guest",
+  "figmaNode": "36:116",
+  "data": {
+    "loading": false,
+    "busy": false,
+    "user": null,
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": true,
+    "registerMode": false,
+    "consent": false,
+    "securityOpen": false,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "",
+    "hasReturn": false,
+    "emailOpen": false,
+    "wechatState": "open",
+    "loginNotice": "",
+    "loginPhase": "",
+    "platformOperator": false
+  },
+  "expectText": ["微信快捷登录", "邮箱登录", "找回账号", "游客可浏览"],
+  "expectAbsentText": ["退出登录"]
+}

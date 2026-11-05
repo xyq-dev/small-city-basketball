@@ -1,5 +1,14 @@
 <scb-header title="球员合作详情" disabled="{{busy || loading}}"/>
-<view class="page has-actions booking-detail-page">
+<view class="page fig-page has-actions booking-detail-page">
+  <view class="fig-summary light">
+    <view class="fig-summary-copy">
+      <view class="fig-kicker">球员合作</view>
+      <view class="fig-summary-title">球员合作详情</view>
+      <view class="fig-summary-sub">核对本场安排、进度和费用。</view>
+    </view>
+    <view class="fig-summary-mark"><scb-icon name="calendar" tone="navy" size="36"/></view>
+  </view>
+  <view class="detail-tabs"><button class="active" data-id="booking-arrangement" bindtap="scrollSection">安排</button><button data-id="booking-progress" bindtap="scrollSection">履约</button><button data-id="booking-finances" bindtap="scrollSection">费用</button></view>
   <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">当前合作需要重新核对</view><view class="small">{{error}}</view></view>
   <view wx:if="{{message}}" class="notice small">{{message}}</view>
   <view wx:if="{{loginRequired}}" class="card empty state-card"><view class="subtitle">登录后查看这份合作</view><view class="muted">仅当前有权身份可读取本单记录。</view><button class="primary" bindtap="login">登录并返回</button></view>
@@ -7,6 +16,7 @@
   <view wx:if="{{!order && !loading && !loginRequired && !error}}" class="card empty state-card"><view class="subtitle">暂未读取到合作记录</view><view class="muted">请从本人预约选择当前有权查看的合作。</view></view>
   <block wx:if="{{order}}">
     <view class="order-identity muted">{{order.teamName}} · {{order.eventName}}</view>
+    <view id="booking-arrangement" class="fig-card-title">本场安排</view>
     <view wx:if="{{!form && order.stateTitle}}" class="hero expiry-hero"><view class="title">{{order.stateTitle}}</view><view>{{order.stateHint}}</view></view>
     <view wx:elif="{{!form}}" class="card order-context"><view class="subtitle">逐人逐场独立处理</view><view class="muted">{{order.playerCount}}位球员 · 已确定{{order.confirmedCount}}项 / 意向{{order.conditionalCount}}项</view></view>
     <view wx:if="{{pending}}" class="card pending-panel">
@@ -23,6 +33,7 @@
       <button class="secondary" disabled="{{busy || !pendingAcknowledged || pending.inFlight}}" bindtap="clearPending">重新核对记录后移除本机标记</button>
     </view>
     <block wx:if="{{!form}}">
+    <view id="booking-progress" class="fig-card-title">逐场合作进度</view>
     <block wx:for="{{order.appearances}}" wx:key="id">
       <view class="card appearance-summary">
         <view class="appearance-status {{item.tone}}">{{item.statusText}}{{item.status === 'EXPIRED' ? ' · 本项档期已释放' : ''}}</view>
@@ -109,13 +120,15 @@
       <button class="primary" loading="{{busy}}" disabled="{{busy || !canSubmit}}" bindtap="submit">{{form.title}}</button>
       <button class="quiet" disabled="{{busy}}" bindtap="closeForm">暂不执行，保留原记录</button>
     </view>
-    <view class="card order-finances">
+    <view id="booking-finances" class="card order-finances">
+      <view class="fig-card-title">本场费用</view>
       <view class="subtitle">费用与资金分开看</view>
       <view class="row-between"><text>确定报价</text><text class="money">{{order.confirmedText}}</text></view>
       <view class="row-between"><text>条件意向预计</text><text>{{order.conditionalText}}</text></view>
       <view class="row-between"><text>实收 / 退款到账 / 已结算</text><text>{{order.paidText}} / {{order.refundedText}} / {{order.settledText}}</text></view>
       <view class="small muted">{{order.statusText}} · {{order.scopeText}} · {{order.createdText}}</view><view class="small muted">总单状态由全部子项汇总；单人单场的拒绝或取消不自动终止其他合法安排。</view><view class="small muted">在线支付和个人分账未开放；服务完成不会自动产生付款、退款或到账。</view>
     </view>
+    <view class="detail-tools"><button class="secondary" loading="{{loading}}" disabled="{{loading || busy || !orderId}}" bindtap="load">刷新本单状态</button><button class="quiet" disabled="{{busy}}" bindtap="list">返回我的预约</button></view>
   </block>
-  <view class="action-bar"><button class="primary" loading="{{loading}}" disabled="{{loading || busy || !orderId}}" bindtap="load">刷新本单状态</button><button class="quiet" disabled="{{busy}}" bindtap="list">返回我的预约</button></view>
+  <view class="action-bar booking-detail-actions"><button class="secondary" disabled="{{busy || !order || !order.canProposeChange}}" bindtap="proposeChange">提出改期</button><button class="primary" disabled="{{busy || !order || !order.canOpenTrade}}" bindtap="openTrade">查看本场资金订单</button></view>
 </view>

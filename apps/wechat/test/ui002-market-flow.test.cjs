@@ -127,7 +127,7 @@ test('UI001 T06 compact native list uses source icons and keeps real fees and un
   await h.page.onShow();
   for (const width of [320, 390, 430]) {
     const result = preview(h, 'players', width);
-    assert.match(result.phone, /当前可查看的服务档案/);
+    assert.match(result.phone, /选择适合本场的球员/);
     assert.match(result.phone, /market-form/);
     assert.match(result.phone, /data-mini-bindtap="detail"/);
     assert.match(result.phone, /data-mini-bindtap="toggle"/);

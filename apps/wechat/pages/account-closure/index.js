@@ -83,6 +83,9 @@ Page({
   confirmTerms(e) {
     if (!this.data.busy) this.setData({ confirmed: e.detail.value.includes('close') });
   },
+  showImpact() {
+    wx.pageScrollTo({ selector: '#closure-impact', duration: 200 });
+  },
   async load() {
     if (this.data.busy) return;
     const t = ui.begin(this);

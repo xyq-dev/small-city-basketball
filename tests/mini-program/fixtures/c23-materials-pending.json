@@ -53,5 +53,5 @@
     "message": "",
     "loginRequired": false
   },
-  "expectDisabled": ["保存草稿", "去资格预审"]
+  "expectDisabled": ["保存本人资料", "去资格预审"]
 }

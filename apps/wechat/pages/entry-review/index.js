@@ -61,7 +61,14 @@ const privateDefaults = {
 };
 
 Page({
-  data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
+  data: {
+    loading: false,
+    busy: false,
+    error: '',
+    notice: '',
+    reviewFilter: 'pending',
+    ...privateDefaults,
+  },
   onLoad(query) {
     this._alive = true;
     try {
@@ -94,6 +101,12 @@ Page({
         entryId: this.data.detail.id,
         mode: 'review',
       });
+  },
+  filterEntries(event) {
+    if (this.data.busy || this.data.loading) return;
+    const filter = event.currentTarget.dataset.filter;
+    if (!['pending', 'changes', 'processed'].includes(filter)) return;
+    this.setData({ reviewFilter: filter, detail: null, reason: '' });
   },
   base() {
     return '/v1/orgs/' + this.orgId;

@@ -66,3 +66,10 @@ button {
 .ui002-workspace .tabs button { min-height:44px; }
 
 .ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+.ledger-summary { color:#18283f; }
+.ledger-summary-icon { display:flex; align-items:center; justify-content:center; flex:0 0 44px; width:44px; height:44px; border-radius:12px; background:#fff; }
+.ledger-summary-icon image { width:25px; height:25px; }
+.ledger-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; min-height:44px; margin-bottom:12px; padding:2px 3px; border-radius:12px; background:#fff; color:#63758b; font-size:13px; line-height:40px; text-align:center; }
+.ledger-tabs > view { min-width:0; height:40px; border-radius:10px; }
+.ledger-tabs .selected { color:#fff; background:#123c73; font-weight:700; }
+.ui002-workspace .entry { padding:12px 0; border-bottom:1px solid #e6ebf2; font-size:14px; line-height:22px; }

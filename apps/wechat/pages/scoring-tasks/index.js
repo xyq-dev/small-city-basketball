@@ -139,6 +139,12 @@ Page({
       empty: !sections.length && !orgErrors.length,
     });
   },
+  openCurrent() {
+    const section = (this.data.sections || [])[0];
+    const item = section && section.items && section.items[0];
+    if (!item || this.data.loading) return;
+    this.open({ currentTarget: { dataset: { org: item.orgId, match: item.matchId } } });
+  },
   open(e) {
     const { org, match } = e.currentTarget.dataset;
     ui.open('org-match', { orgId: org, matchId: match });

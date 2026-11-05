@@ -166,6 +166,10 @@ Page({
         });
     }
   },
+  showExports() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#poster-exports', duration: 200 });
+  },
   generate() {
     const d = this.data;
     if (!d.workspace?.capabilities.canGenerate) return;

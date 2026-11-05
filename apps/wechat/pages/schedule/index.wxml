@@ -1,5 +1,7 @@
-<scb-header title="排赛" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page">
+<scb-header title="排赛与发布" disabled="{{busy || pending || uncertain || dirty}}"/>
+<view class="page fig-page mgmt-page schedule-page">
+  <view class="fig-summary soft schedule-summary"><view class="fig-summary-icon"><image src="/assets/figma/schedule.svg" mode="aspectFit"/></view><view class="fig-summary-copy"><view class="fig-kicker">机构赛事工作台</view><view class="fig-summary-title">排赛与发布</view><view class="fig-summary-sub">从已冻结名单生成对阵，检查冲突后发布。</view></view></view>
+  <view class="schedule-tabs"><view class="{{state === 'generate' ? 'selected' : ''}}">分组与种子</view><view class="{{state === 'generate' ? 'selected-secondary' : ''}}">场地与时段</view><view class="{{state === 'draft' || state === 'published' ? 'selected' : ''}}">排程草稿</view></view>
   <view wx:if="{{loading && !event}}" class="card state-panel"><text class="state-label">排赛</text><view class="subtitle">正在读取</view><view class="loading-lines"><view></view><view></view></view></view>
   <view wx:elif="{{!event}}" class="card state-panel">
     <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
@@ -10,7 +12,7 @@
   <block wx:else>
     <view wx:if="{{error}}" class="notice warning">{{error}}</view>
     <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
-    <view class="board">
+    <view class="board schedule-event-card">
       <view class="board-meta">{{event.statusLabel}} · {{event.dates}}</view>
       <view class="setup-name">{{event.name}}</view>
       <view class="board-meta">冻结球队 {{event.teams}} 支</view>
@@ -31,7 +33,7 @@
     <view wx:elif="{{state === 'readonly'}}" class="notice small">当前身份可查看但不能排赛。</view>
 
     <block wx:if="{{state === 'generate'}}">
-      <view wx:if="{{format === 'GROUP_KNOCKOUT'}}" class="card">
+      <view wx:if="{{format === 'GROUP_KNOCKOUT'}}" class="card schedule-section-card">
         <view class="subtitle">分组与种子</view>
         <view wx:if="{{!groupCounts.length}}" class="notice warning small">冻结球队不足，分组赛每组至少2队。</view>
         <block wx:else>
@@ -45,7 +47,7 @@
       <view wx:elif="{{format === 'SINGLE_ELIMINATION'}}" class="notice small">服务端从冻结名单随机生成固定签位；首轮轮空不生成比赛，下一轮须待来源比赛全部有效独立确认后再发布。</view>
       <view wx:elif="{{format === 'DOUBLE_ROUND_ROBIN'}}" class="notice small">每两队安排两个回合，第二回合交换主客队；两回合均纳入同一积分榜。全部场次通过冲突校验后一起发布。</view>
       <view wx:if="{{(format === 'SINGLE_ELIMINATION' || format === 'GROUP_KNOCKOUT') && event.teams >= 4}}" class="card"><view class="setup-switch" bindtap="toggleThirdPlace"><text>安排季军赛</text><text class="setup-flag {{form.thirdPlace ? 'on' : ''}}">{{form.thirdPlace ? '启用' : '不安排'}}</text></view><view class="muted">启用后半决赛负者进入季军赛；决赛和季军赛均须独立确认才能完赛。配置随本次抽签锁定。</view></view>
-      <view class="card">
+      <view class="card schedule-section-card">
         <view class="subtitle">选择场地</view>
         <view wx:if="{{!courts.length}}" class="muted">机构还没有可用场地。</view>
         <view wx:for="{{courts}}" wx:key="id" class="setup-switch" data-index="{{index}}" bindtap="toggleCourt"><text>{{item.name}}</text><text class="setup-flag {{item.on ? 'on' : ''}}">{{item.on ? '使用' : '不用'}}</text></view>
@@ -55,7 +57,7 @@
           <button class="secondary" bindtap="addCourt" disabled="{{busy || !newCourt}}">添加场地</button>
         </block>
       </view>
-      <view class="card">
+      <view class="card schedule-section-card">
         <view class="subtitle">时段与间隔</view>
         <view class="setup-pair">
           <view><text class="field-label">每日开始</text><picker mode="time" class="field" value="{{form.dayStart}}" data-field="dayStart" bindchange="formInput">{{form.dayStart}}</picker></view>
@@ -96,7 +98,8 @@
         <view wx:if="{{!conflicts.length}}" class="muted">未发现冲突。</view>
         <view wx:for="{{conflicts}}" wx:key="key" class="row"><view>{{item.label}}{{item.external ? '（已有资源安排）' : ''}}</view><view class="muted">{{item.fixtures}}</view></view>
       </view>
-      <view wx:for="{{fixtures}}" wx:key="key" class="org-match">
+      <view wx:if="{{fixtures.length}}" class="fig-card-title">首日安排</view>
+      <view wx:for="{{fixtures}}" wx:key="key" class="org-match schedule-fixture">
         <view class="org-match-meta">{{item.round}} · {{item.time}}{{item.court ? ' · ' + item.court : ''}}</view>
         <view class="org-match-teams"><text>{{item.home}}</text><text class="org-match-vs">VS</text><text>{{item.away}}</text></view>
         <view wx:if="{{!item.assigned}}" class="org-match-status live">未安排</view>
@@ -124,3 +127,4 @@
     <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
   </block>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" data-mode="preserve" bindtap="autoAssign" disabled="{{busy || !revision.canEdit}}">自动补充缺项</button><button class="fig-confirm" bindtap="validate" disabled="{{busy || !revision.canValidate}}">校验冲突</button></view>

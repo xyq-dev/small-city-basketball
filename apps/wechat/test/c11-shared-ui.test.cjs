@@ -46,6 +46,22 @@ test('custom-header respects pending-operation locks and actual status/capsule g
   assert.equal(h.instance.data.statusBarHeight, 38);
 });
 
+test('custom-header can hand state-specific back handling to its page without navigating twice', () => {
+  const h = loadComponent({
+    root,
+    route: 'components/header/index',
+    properties: { emitBack: true },
+  });
+  const events = [];
+  h.instance.triggerEvent = (name) => events.push(name);
+  h.instance.goBack();
+  assert.deepEqual(events, ['back']);
+  assert.equal(
+    h.wx.calls.some((call) => call.type === 'navigateBack' || call.type === 'reLaunch'),
+    false,
+  );
+});
+
 test('home position shortcuts pass only finite positions, while the booking extension retains original entries', () => {
   const h = loadPage({ root, route: 'pages/home/index' });
   h.page.position({ currentTarget: { dataset: { position: '__proto__' } } });
@@ -68,13 +84,14 @@ test('header dark-to-light transitions update native status text rather than lea
   assert.deepEqual(colors, ['#ffffff', '#000000']);
 });
 
-test('image compatibility keeps declared native aspectFill/widthFix rather than stretching portrait photos', () => {
+test('image compatibility keeps declared native crop and contain modes rather than stretching artwork', () => {
   const fixture = require('../../../tests/mini-program/fixtures/c11-player-detail-ready.json');
   const preview = buildPreview({ root, route: fixture.route, data: fixture.data });
   assert.match(preview.phone, /data-mini-image-mode="aspectFill"/);
   const event = require('../../../tests/mini-program/fixtures/c10-public-event-ready.json');
   const eventPreview = buildPreview({ root, route: event.route, data: event.data });
-  assert.match(eventPreview.phone, /data-mini-image-mode="widthFix"/);
+  assert.match(eventPreview.phone, /data-mini-image-mode="aspectFill"/);
+  assert.match(eventPreview.phone, /data-mini-image-mode="aspectFit"/);
   assert.match(preview.phone, /\[data-mini-image-mode=aspectFill\]\{object-fit:cover\}/);
-  assert.match(preview.phone, /\[data-mini-image-mode=widthFix\]\{height:auto\}/);
+  assert.match(preview.phone, /\[data-mini-image-mode=aspectFit\]\{object-fit:contain\}/);
 });

@@ -1,21 +1,34 @@
+<scb-header wx:if="{{loginPhase==='wechat'}}" title="微信登录状态" emit-back="{{true}}" disabled="{{busy}}" bind:back="useEmailAfterWechat"/>
 <view class="page account-page {{!user && !loading ? 'account-login' : ''}}" style="padding-top:0">
-  <v3-chrome tools="{{false}}"/>
+  <v3-chrome wx:if="{{loginPhase!=='wechat'}}" title="我的" tools="{{false}}"/>
   <view wx:if="{{loading && loginPhase!=='wechat'}}" class="card account-loading" role="status"><view class="subtitle">正在核对当前账号</view><view class="muted">读取当前登录状态与微信服务能力，请稍候。</view></view>
   <view wx:elif="{{loginPhase==='wechat'}}" class="account-login-pending" role="status">
-    <view class="account-titlebar"><view class="account-title">我的</view></view>
-    <view class="account-state-notice is-pending"><view class="account-notice-title">正在核对登录结果</view><view class="small">完成微信步骤后，仍需核对应用账号会话；请勿重复提交。</view></view>
-    <button class="account-wechat-go is-pending" disabled="{{true}}">正在登录…</button>
+    <view class="account-state-summary"><view class="account-state-summary-icon"><scb-icon name="user" size="25" tone="navy"/></view><view><view>我的 · 账号入口</view><view>微信登录状态</view><view>根据当前能力和登录结果显示对应反馈。</view></view></view>
+    <view class="account-state-card">
+      <view class="account-state-title">登录能力</view>
+      <view class="account-state-info"><view class="account-state-dot"></view><view class="account-state-copy"><view>微信登录暂未开放</view><view>可以使用已有应用账号登录。</view></view><view class="account-state-pill muted-pill">{{wechatState==='closed' ? '未开放' : '备用入口'}}</view></view>
+      <view class="account-state-info"><view class="account-state-dot"></view><view class="account-state-copy"><view>暂时无法核对微信登录状态</view><view>恢复连接后可重试。</view></view><view class="account-state-pill error-pill">{{wechatState==='unknown' ? '读取失败' : '待核对'}}</view></view>
+    </view>
+    <view class="account-state-card">
+      <view class="account-state-title">登录过程</view>
+      <view class="account-state-step"><view class="account-state-number">1</view><view class="account-state-copy"><view>正在登录…</view><view>保留当前操作，等待核验。</view></view><view class="account-state-pill">按钮禁用</view></view>
+      <view class="account-state-step"><view class="account-state-number">2</view><view class="account-state-copy"><view>当前微信尚未绑定应用账号</view><view>先登录已有账号再明确绑定。</view></view><view class="account-state-pill">未绑定</view></view>
+      <view class="account-state-step"><view class="account-state-number">3</view><view class="account-state-copy"><view>微信登录失败</view><view>重新核对登录状态后再操作。</view></view><view class="account-state-pill">可重试</view></view>
+    </view>
+    <view class="account-state-pending-note">完成微信步骤后，仍需核对应用账号会话；提交期间不会重复发起认证。</view>
+    <view class="account-state-actions"><button class="account-state-ghost" bindtap="retryWechat" disabled="{{busy || loading}}">重新核对登录状态</button><button class="account-state-primary" bindtap="useEmailAfterWechat" disabled="{{busy}}">使用邮箱登录</button></view>
   </view>
   <block wx:else>
     <view wx:if="{{message}}" class="notice account-feedback {{messageTone==='error' ? 'danger' : messageTone==='success' ? 'success' : ''}}" role="{{messageTone==='error' ? 'alert' : 'status'}}">{{message}}</view>
     <block wx:if="{{user && !securityOpen}}">
-      <view class="account-titlebar"><view class="account-title">我的</view><button class="account-settings" bindtap="showSecurity" disabled="{{busy}}" aria-label="设置">设置</button></view>
-      <view class="card account-profile"><view class="account-person"><view class="account-avatar"><image src="/assets/ui002/avatar-user.svg" mode="aspectFit" aria-hidden="true"/></view><view class="account-person-copy"><view class="account-name">{{user.displayName || '未填写显示名称'}}</view><button class="quiet account-profile-edit" data-page="participant-materials" bindtap="go" disabled="{{busy}}">查看本人资料</button></view></view></view>
+      <view class="account-titlebar"><button class="account-settings" bindtap="showSecurity" disabled="{{busy}}" aria-label="设置">设置</button></view>
+      <view class="card account-profile"><view class="account-person"><view class="account-avatar"><image src="/assets/ui002/avatar-user.svg" mode="aspectFit" aria-hidden="true"/></view><view class="account-person-copy"><view class="account-profile-kicker">本人账号</view><view class="account-name">{{user.displayName || '未填写显示名称'}}</view><view class="account-profile-foot">本人信息与服务入口</view></view></view><button class="fig-orange account-profile-go" data-page="participant-materials" bindtap="go" disabled="{{busy}}">查看本人资料</button></view>
+      <view class="fig-card-title">我的服务</view>
       <view class="account-shortcuts account-primary">
-        <button class="account-quick" data-page="participant-materials" bindtap="go" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/account-trophy.svg" aria-hidden="true"/><view>我的报名</view></button>
-        <button class="account-quick" data-page="teams" bindtap="go" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/avatar-user.svg" aria-hidden="true"/><view>我的球队</view></button>
-        <button class="account-quick" bindtap="toggleOrders" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/account-calendar.svg" aria-hidden="true"/><view>我的预约</view></button>
-        <button class="account-quick" data-page="follows" bindtap="go" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/account-bell.svg" aria-hidden="true"/><view>我的关注</view></button>
+        <button class="account-quick" data-page="participant-materials" bindtap="go" disabled="{{busy}}"><view class="account-quick-symbol"><scb-icon name="trophy" size="24" tone="orange"/></view><view>我的报名</view></button>
+        <button class="account-quick" data-page="teams" bindtap="go" disabled="{{busy}}"><view class="account-quick-symbol"><scb-icon name="users" size="24" tone="navy"/></view><view>我的球队</view></button>
+        <button class="account-quick" bindtap="toggleOrders" disabled="{{busy}}"><view class="account-quick-symbol"><scb-icon name="calendar" size="24" tone="navy"/></view><view>我的预约</view></button>
+        <button class="account-quick" data-page="follows" bindtap="go" disabled="{{busy}}"><view class="account-quick-symbol"><scb-icon name="chat" size="24" tone="navy"/></view><view>我的关注</view></button>
       </view>
       <view wx:if="{{ordersOpen}}" class="menu-group account-order-links"><view class="menu-title">选择本人订单与预约</view><view class="menu-sub">我的订单与预约</view><button class="menu-row" data-page="trade-order" bindtap="go" disabled="{{busy}}">本人收付款与退款订单</button><button class="menu-row" data-page="local-bookings" bindtap="go" disabled="{{busy}}">球场与同城服务预约</button><button class="menu-row" data-page="bookings" bindtap="go" disabled="{{busy}}">我发出的球员预约</button><button class="menu-row" data-page="player-center" bindtap="go" disabled="{{busy}}">本人球员中心与收到的预约</button></view>
       <view wx:if="{{roles.length}}" class="menu-group account-workspace">
@@ -27,6 +40,7 @@
           <button class="menu-row" data-page="watch" bindtap="go" disabled="{{busy}}"><view class="menu-text"><view>直播与媒体（先选赛事比赛）</view><view class="menu-sub">进入资源后再次核验采集与交付分工</view></view></button>
         </block>
       </view>
+      <view class="account-section-heading">常用服务</view>
       <view class="account-service-list">
         <button class="account-service-row" data-page="participant-materials" bindtap="go" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/account-shield.svg" aria-hidden="true"/><view class="menu-text"><view>本人资料与授权</view><view class="menu-sub">本人报名与资料，按用途分别授权</view></view><image class="menu-chevron" src="/assets/ui002/chevron-right.svg" aria-hidden="true"/></button>
         <button class="account-service-row" bindtap="toggleOrders" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/account-calendar.svg" aria-hidden="true"/><view class="menu-text"><view>订单与退款</view><view class="menu-sub">履约与资金结果分别核对</view></view><image class="menu-chevron" src="/assets/ui002/chevron-right.svg" aria-hidden="true"/></button>
@@ -46,6 +60,7 @@
       </view>
       <view class="menu-group">
         <view class="menu-title">订单与退款</view>
+        <view class="menu-row" data-page="planned" data-kind="funds" bindtap="go"><view class="menu-text"><view>服务费用规则</view><view class="menu-sub">说明收费与退款规则，不在本页发起付款</view></view></view>
         <view class="menu-row" data-page="trade-order" bindtap="go"><view class="menu-text"><view>我的收付款订单</view><view class="menu-sub">我的订单与预约</view></view></view>
         <view class="menu-row" data-page="local-bookings" bindtap="go"><view class="menu-text"><view>我的球场与服务订单</view></view></view>
         <view class="menu-row" data-page="insurance" bindtap="go"><view class="menu-text"><view>本人保险订单</view></view></view>
@@ -122,6 +137,7 @@
         <view class="menu-row" data-page="local-matchups" bindtap="go"><view class="menu-text"><view>球队约赛</view></view></view>
         <view class="menu-row" data-page="governance" bindtap="go"><view class="menu-text"><view>客服、举报与申诉</view></view></view>
         <view class="menu-row" data-page="governance-reviews" bindtap="go"><view class="menu-text"><view>我的服务评价</view></view></view>
+        <view class="fig-card-title">平台与城市</view>
         <view class="menu-row" data-page="city-operations" bindtap="go"><view class="menu-text"><view>城市运营授权</view><view class="menu-sub">按当前账号被委派的范围管理</view></view></view>
         <view class="menu-row" data-page="account-recovery" bindtap="go"><view class="menu-text">邮箱验证与账号找回</view></view>
         <view class="menu-row" bindtap="showSecurity"><scb-icon name="shield" size="20"/><view class="menu-text"><view>账号与微信绑定</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></view>
@@ -133,7 +149,7 @@
         <button class="quiet" bindtap="logout" disabled="{{busy}}">退出登录</button>
       </view>
       </view>
-      <view class="account-brand-card"><view class="account-brand-title">每一场，都值得被看见</view><view class="account-brand-sub">记录热爱，连接同城。</view></view>
+      <view class="account-brand-card"><view class="account-brand-title">让热爱，有主场。</view><view class="account-brand-sub">小城市篮球 · 记录热爱，连接同城</view></view>
     </block>
     <block wx:elif="{{user}}">
       <view class="notice {{connected ? 'warning' : ''}} account-notice"><view class="account-notice-title">{{connected ? '解绑会退出全部设备会话' : '绑定已有应用账号'}}</view><view class="small">{{connected ? '请重新验证当前密码。解绑后可使用应用账号重新登录。' : '重新验证当前密码并明确同意绑定，不按昵称或同名自动合并身份。'}}</view></view>
@@ -152,33 +168,28 @@
       <button class="quiet" bindtap="logout" disabled="{{busy}}">退出当前登录</button>
     </block>
     <block wx:else>
-      <view class="account-titlebar"><view class="account-title">我的</view><button class="account-settings" bindtap="toggleSettings" disabled="{{busy}}" aria-label="设置">设置</button></view>
-      <view wx:if="{{settingsOpen}}" class="card account-settings-panel">
-        <button class="secondary" data-page="governance" bindtap="go" disabled="{{busy}}">帮助与客服</button>
-        <button class="secondary" data-doc="privacy" bindtap="openAgreement" disabled="{{busy}}">隐私与账号</button>
-      </view>
       <view class="account-hero-card">
-        <view class="account-hero-copy"><view class="account-hero-title">上场之前，</view><view class="account-hero-title">先认识你</view><view class="account-hero-sub">记录比赛，找到同城球友</view></view>
-        <image class="account-hero-mark" src="/assets/home/profile-active.svg" mode="aspectFit" aria-hidden="true"/>
+        <view class="account-hero-mark"><scb-icon name="user" size="25" tone="navy"/></view>
+        <view class="account-hero-copy"><view class="account-profile-kicker">游客访问</view><view class="account-hero-title">小城市篮球</view><view class="account-hero-sub">登录后管理报名、球队与预约</view></view>
       </view>
       <view class="account-login-card">
-        <image class="account-login-mark" src="/assets/ui002/avatar-user.svg" mode="aspectFit" aria-hidden="true"/>
-        <view class="account-login-heading">登录个人账号</view>
-        <view class="account-login-sub">报名、球队与订单，在这里管理</view>
-        <button wx:if="{{wechatState==='unknown' || loginNotice==='unbound' || loginNotice==='failed'}}" class="account-wechat-go" disabled="{{true}}">微信快捷登录</button>
-        <button wx:elif="{{wechatState==='open' || enabled}}" class="account-wechat-go is-open" bindtap="startWechat" disabled="{{busy || loading}}" loading="{{busy}}">微信快捷登录</button>
-        <button wx:else class="account-wechat-go" disabled="{{true}}">微信登录暂未开放</button>
+        <view class="account-login-heading">登录账户</view>
+        <button wx:if="{{wechatState==='unknown' || loginNotice==='unbound' || loginNotice==='failed'}}" class="account-login-option" disabled="{{true}}"><view class="account-login-dot"></view><view class="account-login-option-copy"><view>微信登录状态待核对</view><view>恢复连接后重新读取当前能力</view></view><view class="account-login-pill">待核对</view></button>
+        <button wx:elif="{{wechatState==='open' || enabled}}" class="account-login-option" bindtap="startWechat" disabled="{{busy || loading}}" loading="{{busy}}"><view class="account-login-dot"></view><view class="account-login-option-copy"><view>微信快捷登录</view><view>使用已绑定的微信账号</view></view><view class="account-login-pill available">可用</view></button>
+        <button wx:else class="account-login-option" disabled="{{true}}"><view class="account-login-dot"></view><view class="account-login-option-copy"><view>微信登录暂未开放</view><view>当前能力状态</view></view><view class="account-login-pill">未开放</view></button>
+        <button class="account-login-option" bindtap="openEmail" disabled="{{busy}}"><view class="account-login-dot"></view><view class="account-login-option-copy"><view>邮箱登录</view><view>使用已绑定的应用账号</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></button>
+        <button class="account-login-option" data-page="account-recovery" bindtap="go" disabled="{{busy}}"><view class="account-login-dot"></view><view class="account-login-option-copy"><view>找回账号</view><view>通过账号恢复流程核验身份</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></button>
         <view wx:if="{{wechatState==='closed' || (!enabled && wechatState!=='open' && wechatState!=='unknown')}}" class="account-wechat-caption">微信登录待接入，可先使用已有账号</view>
-        <view wx:elif="{{(wechatState==='open' || enabled) && loginNotice!=='unbound' && loginNotice!=='failed'}}" class="account-wechat-caption">使用已绑定的微信登录，不自动创建账号。</view>
         <view wx:if="{{loginNotice==='unbound'}}" class="account-state-notice"><view class="account-notice-title">当前微信尚未绑定应用账号</view><view class="small">请先登录已有账号，再从隐私与账号中明确绑定。</view></view>
         <view wx:elif="{{loginNotice==='failed'}}" class="account-state-notice"><view class="account-notice-title">本次登录尚未完成</view><view class="small">未建立应用会话，可以重新发起或选择邮箱登录。</view></view>
         <view wx:elif="{{wechatState==='unknown'}}" class="account-state-notice"><view class="account-notice-title">暂时无法核对微信登录状态</view><view class="small">请恢复连接后重试，不代表服务已关闭。</view></view>
         <view wx:if="{{hasReturn && !emailOpen}}" class="account-login-note"><view>成功后返回本次选择和原请求核对入口</view></view>
-        <checkbox-group bindchange="markTerms"><label class="consent account-consent"><checkbox disabled="{{busy}}" value="yes" checked="{{termsRead}}"/><text>我已阅读用户协议与隐私说明</text></label></checkbox-group>
-        <view class="account-wechat-caption">选择微信登录后，另行确认本次身份认证。</view>
+      </view>
+      <view class="account-login-card account-agreement-card">
+        <view class="fig-card-title">阅读并确认</view>
+        <checkbox-group bindchange="markTerms"><label class="consent account-consent account-agreement-row"><checkbox disabled="{{busy}}" value="yes" checked="{{termsRead}}"/><view class="account-login-option-copy"><view>同意用户协议与隐私说明</view><view>本人主动勾选</view></view><view class="account-login-pill">{{termsRead ? '已勾选' : '未勾选'}}</view></label></checkbox-group>
         <view class="account-legal-links">
-          <button class="quiet" data-doc="terms" bindtap="openAgreement">用户协议</button>
-          <button class="quiet" data-doc="privacy" bindtap="openAgreement">隐私说明</button>
+          <button class="account-login-option" data-doc="terms" bindtap="openAgreement"><view class="account-login-check"></view><view class="account-login-option-copy"><view>用户协议与隐私说明</view><view>阅读条款不会自动勾选</view></view><scb-icon name="chevron-right" tone="gray" size="16"/></button>
         </view>
         <view wx:if="{{agreement}}" class="account-login-note">
           <view>{{agreement === 'privacy' ? '隐私说明' : '用户协议'}}</view>
@@ -192,12 +203,9 @@
           <button class="primary" bindtap="wechatLogin" disabled="{{busy || loading || !consent}}" loading="{{busy}}">确认并继续</button>
           <button class="quiet" bindtap="closeConsent" disabled="{{busy}}">返回</button>
         </view>
-        <view class="account-guest-links">
-          <button class="account-ghost" bindtap="openEmail" disabled="{{busy}}">邮箱登录</button>
-          <button class="account-ghost" data-page="account-recovery" bindtap="go" disabled="{{busy}}">找回账号</button>
-          <button wx:if="{{wechatState==='unknown' || loginNotice==='failed'}}" class="account-ghost" bindtap="retryWechat" disabled="{{busy || loading}}">重新核对登录状态</button>
-        </view>
-        <view wx:if="{{emailOpen || registerMode}}" class="account-email-panel">
+        <button wx:if="{{wechatState==='unknown' || loginNotice==='failed'}}" class="quiet account-refresh" bindtap="retryWechat" disabled="{{busy || loading}}">重新核对登录状态</button>
+      </view>
+      <view wx:if="{{emailOpen || registerMode}}" class="account-login-card account-email-panel">
           <button class="quiet" bindtap="closeEmail" disabled="{{busy}}">返回微信登录</button>
           <view class="account-login-title">{{registerMode ? '创建个人账号' : '登录你的已有账号'}}</view>
           <view class="account-login-sub">{{hasReturn ? '成功后返回本次选择和原请求核对入口' : '登录后进入本人有权的球队与球员服务'}}</view>
@@ -208,8 +216,13 @@
           <button wx:else class="primary" bindtap="register" disabled="{{busy || loading || !canRegister}}" loading="{{busy}}">创建个人账号并登录</button>
           <button wx:if="{{canRegister || registerMode}}" class="quiet" bindtap="toggleRegister" disabled="{{busy}}">{{registerMode ? '返回已有账号登录' : '创建个人账号'}}</button>
           <button class="quiet" data-page="account-recovery" bindtap="go" disabled="{{busy}}">忘记密码／验证邮箱</button>
-        </view>
-        <button class="quiet account-refresh" bindtap="load" disabled="{{busy || loading}}">刷新当前账号</button>
+      </view>
+      <button class="quiet account-refresh" bindtap="load" disabled="{{busy || loading}}">刷新当前账号</button>
+      <view class="fig-card-title">游客可浏览</view>
+      <view class="account-shortcuts account-guest-shortcuts">
+        <button class="account-quick" data-page="watch" bindtap="go" disabled="{{busy}}"><view>公开赛事</view><view class="menu-sub">赛程、比分与结果</view></button>
+        <button class="account-quick" data-page="local" bindtap="go" disabled="{{busy}}"><view>同城服务</view><view class="menu-sub">按浏览城市查看供给</view></button>
+        <button class="account-quick" data-page="public-archive" bindtap="go" disabled="{{busy}}"><view>球队广场</view><view class="menu-sub">获授权的公开档案</view></button>
       </view>
       <view class="account-service-list">
         <button class="account-service-row" data-page="governance" bindtap="go" disabled="{{busy}}"><image class="menu-icon" src="/assets/ui002/account-bell.svg" aria-hidden="true"/><view class="menu-text"><view>帮助与客服</view></view><image class="menu-chevron" src="/assets/ui002/chevron-right.svg" aria-hidden="true"/></button>
@@ -218,4 +231,4 @@
     </block>
   </block>
 </view>
-<scb-nav active="Account" disabled="{{busy}}"/>
+<scb-nav wx:if="{{loginPhase!=='wechat'}}" active="Account" disabled="{{busy}}"/>

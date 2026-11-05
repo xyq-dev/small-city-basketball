@@ -1,13 +1,14 @@
 <scb-header title="私有赛季" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page seasons-page">
-  <view class="hero"><view class="title">私有赛季</view><view class="muted">机构内部汇总：只计入经球员本人同意的私有赛季授权，不公开、不生成匿名球员榜。</view></view>
+<view class="page fig-page seasons-page">
+  <view class="fig-summary soft season-summary"><view class="fig-summary-icon"><image src="/assets/figma/standings.svg" mode="aspectFit"/></view><view class="fig-summary-copy"><view class="fig-kicker">机构内部</view><view class="fig-summary-title">{{season.name || '私有赛季'}}</view><view class="fig-summary-sub">只汇总本人已授权、来源仍有效的比赛记录。</view></view></view>
+  <view class="season-tabs"><view class="selected">赛季资料</view><view bindtap="showSeasonEvents">归属赛事</view><view>私有榜单</view></view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
   <view wx:if="{{message}}" class="notice">{{message}}</view>
   <view wx:if="{{loginRequired}}" class="card state-panel"><view class="subtitle">登录后管理私有赛季</view><view class="muted">仅机构负责人/管理员可创建、编辑、激活和关闭赛季。</view><button class="primary" bindtap="login">登录并继续</button></view>
   <view wx:if="{{loading}}" class="card state-panel"><view class="subtitle">正在读取</view><view class="loading-lines"><view></view><view></view></view></view>
 
   <block wx:if="{{!seasonId && !loginRequired && !invalid}}">
-    <view class="card">
+    <view id="season-profile" class="card season-profile-card">
       <view class="subtitle">赛季列表</view>
       <view wx:if="{{!seasons.length && !loading}}" class="empty">暂无赛季</view>
       <view wx:for="{{seasons}}" wx:key="id" class="row row-between">
@@ -48,8 +49,8 @@
       <button wx:if="{{season.capabilities.canActivate}}" class="primary" data-type="ACTIVATE" bindtap="command" disabled="{{busy || loading}}">激活赛季</button>
       <button wx:if="{{season.capabilities.canClose}}" class="danger" data-type="CLOSE" bindtap="command" disabled="{{busy || loading}}">关闭赛季</button>
     </view>
-    <view class="card">
-      <view class="subtitle">已归入的赛事</view>
+    <view id="season-events" class="card season-events-card">
+      <view class="fig-card-title">已归入赛事</view>
       <view wx:if="{{!season.events.length}}" class="empty">尚未归入赛事</view>
       <view wx:for="{{season.events}}" wx:key="eventId" class="row">
         <view>{{item.name}}</view><view class="muted">{{item.startDate}} 至 {{item.endDate}}</view>
@@ -70,8 +71,8 @@
       <view wx:if="{{candidateMoreError}}" class="notice danger">{{candidateMoreError}}</view>
       <button wx:if="{{season.candidateNextCursor}}" class="secondary" bindtap="loadMoreCandidates" disabled="{{busy || loading || candidateLoadingMore}}" loading="{{candidateLoadingMore}}">读取更多可归入赛事</button>
     </view>
-    <view class="card">
-      <view class="subtitle">机构私有榜单</view>
+    <view id="season-board" class="card season-board-card">
+      <view class="fig-card-title">私有统计口径</view><view class="subtitle">机构私有榜单</view>
       <view class="muted">读者仅限本机构负责人/管理员。只计入当前有效、经本人同意的授权和当前有效的逐人确认数据；“名单场次”不代表实际出场。</view>
       <view wx:if="{{boardError}}" class="notice danger">{{boardError}}</view>
       <block wx:if="{{board}}">
@@ -89,3 +90,4 @@
   </block>
   <button class="quiet" bindtap="load" disabled="{{busy || loading || invalid}}">刷新</button>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" bindtap="openCurrentGrants" disabled="{{busy || !season.events.length}}">提名与授权</button><button class="fig-confirm" bindtap="showSeasonEvents" disabled="{{busy}}">查看归属赛事</button></view>

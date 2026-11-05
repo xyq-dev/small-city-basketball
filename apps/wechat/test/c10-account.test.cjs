@@ -20,7 +20,7 @@ test('signed-out account shows the five-tab navigation and keeps email login in 
   });
   assert.equal(result.components.find((c) => c.tag === 'scb-nav').properties.active, 'Account');
   assert.doesNotMatch(result.phone, /class="action-bar"/);
-  assert.match(result.phone, />邮箱登录<\/button>/);
+  assert.match(result.phone, />邮箱登录</);
   assert.match(result.phone, /微信登录暂未开放/);
   assert.doesNotMatch(result.phone, /data-mini-bindtap="login"/);
   const email = buildPreview({
@@ -65,6 +65,35 @@ test('security view switching preserves the reviewed draft and cannot bypass an 
   assert.equal(h.page.data.message, '合成待核对信息');
   assert.equal(
     h.wx.calls.some((c) => c.type === 'request'),
+    false,
+  );
+});
+
+test('wechat progress can switch to email only after the in-flight command releases its lock', () => {
+  const h = loadPage({ root, route: 'pages/account/index' });
+  h.page.setData({
+    user: null,
+    busy: true,
+    loginPhase: 'wechat',
+    loginNotice: 'failed',
+    consent: true,
+    emailOpen: false,
+  });
+  h.page.useEmailAfterWechat();
+  assert.equal(h.page.data.loginPhase, 'wechat');
+  assert.equal(h.page.data.emailOpen, false);
+  h.page.setData({ busy: false });
+  h.page.commandBusy = true;
+  h.page.useEmailAfterWechat();
+  assert.equal(h.page.data.loginPhase, 'wechat');
+  h.page.commandBusy = false;
+  h.page.useEmailAfterWechat();
+  assert.equal(h.page.data.loginPhase, '');
+  assert.equal(h.page.data.loginNotice, '');
+  assert.equal(h.page.data.emailOpen, true);
+  assert.equal(h.page.data.consent, false);
+  assert.equal(
+    h.wx.calls.some((call) => call.type === 'request'),
     false,
   );
 });

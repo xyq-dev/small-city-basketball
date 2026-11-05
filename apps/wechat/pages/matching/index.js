@@ -460,6 +460,11 @@ Page({
         '按当前角色、确定时段、报价和双方地区许可重新筛选。未核验交通耗时不会作为承诺。',
       );
   },
+  sendCurrent() {
+    const item = this.data.selected && (this.data.selected.candidates || [])[0];
+    if (!item || this.data.busy) return;
+    this.send({ currentTarget: { dataset: { id: item.id } } });
+  },
   send(e) {
     const n = this.data.selected,
       slot = n?.slots[this.data.seatIndex],

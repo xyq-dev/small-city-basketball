@@ -229,8 +229,8 @@ test('L01 prioritizes real court results and routes optional personnel filtering
   for (const width of [320, 390, 430]) {
     const output = render('local', h.page.data, width),
       html = output.body;
-    assert.ok(html.indexOf('local-top-tabs') < html.indexOf('local-brand'));
-    assert.ok(html.indexOf('local-brand') < html.indexOf('local-service-tabs'));
+    assert.ok(html.indexOf('fig-summary') < html.indexOf('local-top-tabs'));
+    assert.ok(html.indexOf('local-top-tabs') < html.indexOf('local-service-tabs'));
     assert.ok(html.indexOf('local-service-tabs') < html.indexOf('listing-entry'));
     assert.match(html, /合成已审核供给/);
     assert.match(html, /查看场馆与可约时间/);
@@ -238,8 +238,8 @@ test('L01 prioritizes real court results and routes optional personnel filtering
       html,
       /data-mini-bindtap="locate"|data-mini-bindtap="searchPlaces"|data-mini-bindtap="expansion"/,
     );
-    assert.ok(output.assets.some((asset) => asset.path.endsWith('/court-illustration.svg')));
-    assert.ok(output.assets.some((asset) => asset.path.endsWith('/node-4-43-0.svg')));
+    assert.ok(output.assets.some((asset) => asset.path.endsWith('/icon-court-navy.png')));
+    assert.ok(output.assets.some((asset) => asset.path.endsWith('/icon-users-navy.png')));
   }
   const reads = h.calls.length;
   h.page.toggleFilters();
@@ -314,7 +314,8 @@ test('A01 and L01 templates retain real handler implementations and account secu
     wechatState: 'closed',
   }).body;
   assert.match(login, /微信登录暂未开放/);
-  assert.match(login, /account-guest-links/);
+  assert.match(login, /account-login-card/);
+  assert.match(login, /account-login-option/);
   assert.match(login, /邮箱登录/);
   assert.match(login, /找回账号/);
   assert.doesNotMatch(login, /data-mini-bindtap="login"/);

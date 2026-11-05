@@ -1,10 +1,15 @@
-.entry-page { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
-.team-panel { padding:24px; border:1px solid #e1e7ef; border-radius:12px; margin-bottom:20px; }
+.entry-page { padding-bottom:calc(164px + env(safe-area-inset-bottom)); }
+.entry-page > .fig-summary { margin-bottom:12px; }
+.identity-summary .fig-summary-mark { order:-1; width:44px; height:44px; border-radius:12px; background:#eaf2fc; }
+.identity-summary .fig-summary-mark image { width:25px; height:25px; }
+.identity-summary .fig-summary-title { color:#18283f; font-size:18px; line-height:26px; }
+.identity-summary .fig-kicker,.identity-summary .fig-summary-sub { color:#63758b; }
+.team-panel { padding:14px; border:0; border-radius:16px; margin-bottom:0; background:#fff; }
 .feedback-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
-.entry-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; margin:20px 0; }
+.entry-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; margin:0 0 12px; padding:2px 3px; border-radius:12px; background:#fff; }
 .entry-tabs .stage-tab { min-width:0; padding:10px 4px; margin:0; border:0; color:#63758b; background:transparent; font-size:12px; line-height:24px; }
 .entry-tabs .stage-tab::after { border:0; }
-.entry-tabs .stage-tab.active { background:#eaf0f8; color:#123c73; }
+.entry-tabs .stage-tab.active { background:#123c73; color:#fff; border-radius:10px; }
 .roster-header,.saved-roster-header { display:grid; grid-template-columns:minmax(0,1fr) 64px; align-items:center; min-height:52px; padding:12px; background:#f4f6fa; border-radius:8px 8px 0 0; font-size:12px; line-height:20px; color:#63758b; margin-top:16px; }
 .roster-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; border-bottom:1px solid #e1e7ef; padding:8px 0; }
 .roster-select { flex:1; min-width:0; text-align:left; margin:0; padding:10px 8px; }
@@ -20,4 +25,4 @@
 .state-panel .muted { margin:8px 0 16px; }
 .skeleton-line { height:12px; border-radius:4px; background:#eaf0f8; margin-top:8px; }
 .skeleton-line.short { width:78%; }
-@media (max-width:360px) { .team-panel { padding:20px; } }
+@media (max-width:360px) { .team-panel { padding:12px; } .entry-tabs .stage-tab { font-size:11px; } }

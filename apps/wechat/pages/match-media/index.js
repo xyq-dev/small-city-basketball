@@ -416,6 +416,24 @@ Page({
   uploadVideo() {
     this.upload('video');
   },
+  chooseMediaFile() {
+    if (
+      this.data.busy ||
+      this.data.uncertain ||
+      this.data.pending ||
+      this.data.request ||
+      this.data.storageError ||
+      !this.data.caps?.upload
+    )
+      return;
+    wx.showActionSheet({
+      itemList: ['选择图片', '选择视频'],
+      success: ({ tapIndex }) => {
+        if (tapIndex === 0) this.uploadImage();
+        if (tapIndex === 1) this.uploadVideo();
+      },
+    });
+  },
   // A known rejection keeps its record: retrying resends the same request ID and content.
   retryUpload() {
     return this.resendRequest();

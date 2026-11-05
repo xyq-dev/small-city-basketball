@@ -238,6 +238,15 @@ Page({
     if (this.data.busy) return;
     wx.navigateTo({ url: basePath + model.seasonsPath({ orgId: this.data.orgId, seasonId: id }) });
   },
+  openCurrentGrants() {
+    const season = this.data.season;
+    const event = season && season.events && season.events[0];
+    if (!event || this.data.busy) return;
+    this.openGrants({ currentTarget: { dataset: { id: event.eventId } } });
+  },
+  showSeasonEvents() {
+    wx.pageScrollTo({ selector: '#season-events', duration: 200 });
+  },
   openGrants(event) {
     const eventId = event.currentTarget.dataset.id;
     if (this.data.busy) return;

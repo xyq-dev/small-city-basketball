@@ -99,7 +99,7 @@ Page({
     }
   },
   changeSection(e) {
-    const key = e.detail.key;
+    const key = e.detail?.key || e.currentTarget?.dataset?.key;
     if (this.data.busy || !this.data.workflowSteps.some((item) => item.key === key)) return;
     this.setData({ activeSection: key });
     if (typeof wx.pageScrollTo === 'function')

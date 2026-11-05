@@ -1,5 +1,13 @@
 <scb-header title="{{recordsOpen ? '近期记录与来源' : '球员详情'}}" disabled="{{loading}}"/>
-<view class="page has-actions player-page premium-page">
+<view class="page fig-page has-actions player-page premium-page">
+  <view class="fig-summary">
+    <view class="fig-summary-copy">
+      <view class="fig-kicker">服务档案</view>
+      <view class="fig-summary-title">{{profile.name || '球员服务档案'}}</view>
+      <view class="fig-summary-sub">{{profile ? profile.position + ' · ' + profile.city + '，档期与报价以提交预约时的记录为准。' : '读取当前可预约的服务资料。'}}</view>
+    </view>
+    <view class="fig-summary-mark"><image src="/assets/figma/jersey.svg" mode="aspectFit"/></view>
+  </view>
   <view wx:if="{{loading}}" class="card state-card"><view class="subtitle">正在读取球员资料</view><view class="muted">正在核对球员与授权记录，请稍候…</view></view>
   <view wx:if="{{loginRequired}}" class="card state-card"><view class="subtitle">请登录后继续</view><view class="muted">登录后查看当前可预约的服务资料与有限授权记录。</view><button class="primary" bindtap="login">登录并返回球员详情</button></view>
   <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
@@ -7,7 +15,12 @@
   <block wx:if="{{profile}}">
     <view wx:if="{{statisticsError}}" class="notice warning">统计暂时无法读取：{{statisticsError}}。已清除旧统计，可重新读取。</view>
     <block wx:if="{{!recordsOpen}}">
-      <view class="card profile-identity">
+      <view class="profile-tabs">
+        <button class="active" data-id="profile-service" bindtap="scrollSection">服务</button>
+        <button data-id="profile-availability" bindtap="scrollSection">档期</button>
+        <button bindtap="recordsToggle">有限记录</button>
+      </view>
+      <view id="profile-service" class="card profile-identity">
         <view class="profile-person">
           <view class="profile-avatar {{profile.portrait ? 'has-portrait' : ''}}">
             <image wx:if="{{profile.portrait}}" class="profile-portrait" src="{{profile.portrait}}" mode="aspectFill" aria-label="球员公开头像"/>
@@ -22,8 +35,9 @@
       </view>
       <view wx:if="{{profile.performance.sample === '0' && profile.performance.points === '未统计'}}" class="profile-data-note">个人比赛数据：未统计，不以0分替代缺失。</view>
       <view wx:if="{{profile.performance.points === '0' && profile.performance.fouls === '0'}}" class="zero-note profile-data-note">每场记录 0 分 / 0 犯规 · 真实0与未统计分开</view>
-      <view class="card profile-card availability-card"><view class="subtitle">可约时间</view><view class="availability-body"><view wx:if="{{!windows.length}}" class="profile-copy">暂无公开可约窗口，请先核对档期。</view><view wx:for="{{windows}}" wx:key="id" class="window-row"><view>{{item.display || item.start}}<text wx:if="{{!item.display}}"> 至 {{item.end}}</text></view></view><view class="profile-copy">接受时仍须核对安排及交通缓冲。</view></view></view>
+      <view id="profile-availability" class="card profile-card availability-card"><view class="fig-card-title">可约时间</view><view class="availability-body"><view wx:if="{{!windows.length}}" class="profile-copy">暂无公开可约窗口，请先核对档期。</view><view wx:for="{{windows}}" wx:key="id" class="window-row"><view class="window-marker"><scb-icon name="calendar" tone="navy" size="18"/></view><view class="window-copy">{{item.display || item.start}}<text wx:if="{{!item.display}}"> 至 {{item.end}}</text></view><view class="window-state">可查询</view></view><view class="profile-copy">接受时仍须核对安排及交通缓冲。</view></view></view>
       <view class="card profile-quote">
+        <view class="fig-card-title">单场报价</view>
         <view class="subtitle fee-heading">单场费用</view>
         <view class="quote-service">
           <view class="fee-row"><text>参赛服务费</text><text class="quote-price">{{profile.priceLabel || profile.price}}</text></view>
@@ -34,7 +48,12 @@
         <view class="quote-total"><view>含费预计</view><view class="quote-total-price">{{profile.totalLabel || profile.total}}</view></view>
         <view class="profile-copy fee-note">报价与实收分别展示，最终按预约报价快照核对。</view>
       </view>
-      <button class="quiet profile-records-toggle" bindtap="recordsToggle">查看近期记录与来源<scb-icon name="chevron-right" size="16"/></button>
+      <view id="profile-data" class="card profile-card profile-data-card">
+        <view class="fig-card-title">授权比赛数据</view>
+        <view class="profile-data-row"><view><view class="player-data-title">当前授权样本</view><view class="profile-copy">{{profile.performance.sample}} 场 · {{profile.performance.status}}</view></view><view class="window-state">{{profile.performance.sample === '0' ? '未采集' : '已授权'}}</view></view>
+        <view class="profile-data-row"><view><view class="player-data-title">记录完整度</view><view class="profile-copy">{{profile.performance.completeness}}</view></view><view class="window-state">查看</view></view>
+        <view class="profile-data-actions"><button class="quiet" bindtap="load" disabled="{{loading || !profile}}">刷新服务档案</button><button class="quiet profile-records-toggle" bindtap="recordsToggle">查看近期记录与来源<scb-icon name="chevron-right" size="16"/></button></view>
+      </view>
       <view class="card profile-card profile-introduction"><view class="subtitle">球员自述</view><view class="bio">{{profile.bio || '暂无服务介绍'}}</view></view>
       <button class="quiet profile-more-toggle" bindtap="informationToggle">{{informationOpen ? '收起费用与数据口径' : '更多费用、数据口径与对比'}}</button>
       <view wx:if="{{informationOpen}}" class="profile-information">

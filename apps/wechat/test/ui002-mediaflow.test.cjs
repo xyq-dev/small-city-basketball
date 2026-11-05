@@ -61,8 +61,7 @@ test('V01 recording starts with no current application consent and unchecked cre
   assert.equal(h.page.data.recordConsent, false);
   const html = body('live-studio', h.page.data);
   assert.ok(html.indexOf('live-match-summary') < html.indexOf('live-preparation-form'));
-  assert.ok(html.indexOf('live-preparation-form') < html.indexOf('recording-choice-card'));
-  assert.ok(html.indexOf('recording-choice-card') < html.indexOf('capability-notice'));
+  assert.ok(html.indexOf('live-recording-row') < html.indexOf('capability-notice'));
   assert.match(html, /data-mini-bindchange="recordConsentChange"/);
   assert.match(html, /live-create-actions/);
   assert.doesNotMatch(html, /page-intro|尚未创建本场直播/);

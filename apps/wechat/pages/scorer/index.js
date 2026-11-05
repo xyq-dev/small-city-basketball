@@ -218,6 +218,10 @@ Page({
       this._tick = null;
     }
   },
+  openBoard() {
+    if (!this.orgId || !this.matchId || this.data.busy) return;
+    ui.open('org-match', { orgId: this.orgId, matchId: this.matchId });
+  },
   async load() {
     if (this._visible === false || !this.orgId || this.data.loading || this.data.busy) return;
     const client = api.getClient();

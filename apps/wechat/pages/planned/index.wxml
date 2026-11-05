@@ -1,6 +1,7 @@
 <scb-header title="服务与资金说明" disabled="{{busy}}"/>
-<view class="page has-actions planned-page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">服务规则说明</view><view class="title">实际订单与本页说明分别查看</view></view>
+<view class="page fig-page has-actions planned-page ui002-workspace">
+  <view class="fig-summary light planned-summary"><view class="planned-summary-icon"><image src="/assets/approved-ui/icon-chart-navy.png" mode="aspectFit" aria-hidden="true"/></view><view class="fig-summary-copy"><view class="fig-kicker">费用与履约</view><view class="fig-summary-title">预约费用怎样计算</view><view class="fig-summary-sub">实际订单与本页说明分别查看；逐项解释确定报价与处理进度。</view></view></view>
+  <view class="planned-tabs" role="tablist"><button class="{{selected === 'funds' ? 'selected' : ''}}" data-key="funds" bindtap="select">费用规则</button><button class="{{selected === 'payment' || selected === 'unknown' ? 'selected' : ''}}" data-key="payment" bindtap="select">支付核对</button><button class="{{selected === 'refund' ? 'selected' : ''}}" data-key="refund" bindtap="select">取消退款</button><button class="{{selected === 'settlement' ? 'selected' : ''}}" data-key="settlement" bindtap="select">结算</button></view>
   <block wx:if="{{selected==='funds'}}">
     <view class="card plan-card"><view class="subtitle">确定场次报价</view><view>参赛服务费、平台费、交通和食宿逐项展示</view><view>条件意向另列，不计入确定合计、不占档</view></view>
     <view class="notice warning plan-notice"><view class="plan-notice-title">本说明不发起在线支付</view><view class="small">本页仅说明规则，不发起付款；真实订单按当前收款渠道能力处理。</view></view>
@@ -55,9 +56,10 @@
   <button class="secondary plan-menu-toggle" bindtap="toggleOptions">{{optionsOpen ? '收起规则说明目录' : selected==='funds' ? '查看其他服务规则说明' : '切换其他规则说明'}}</button>
   <view wx:if="{{optionsOpen}}" class="card plan-menu"><view class="subtitle">规则说明目录</view><view class="small muted">仅查看说明，不会触发资金或消息操作。</view><view class="plan-options"><button wx:for="{{options}}" wx:key="key" class="secondary {{selected===item.key ? 'option-selected' : ''}}" data-key="{{item.key}}" bindtap="select">{{item.label}}</button></view></view>
 </view>
-<view class="action-bar">
+<view class="planned-secondary-actions">
   <button wx:if="{{selected==='funds' || selected==='messages'}}" class="primary" data-page="bookings" bindtap="go">查看我的预约</button>
   <button wx:elif="{{selected==='profile'}}" class="primary" data-page="performance" bindtap="go">查看本人授权记录</button>
   <button wx:else disabled>{{selected==='payment' ? '本说明不执行支付' : selected==='unknown' ? '查单请进入原订单' : selected==='refund' ? '退款请进入原订单' : '结算请进入原订单'}}</button>
   <button class="quiet" data-page="account" bindtap="go">返回我的</button>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" data-key="refund" bindtap="select">查看退款规则</button><button class="fig-confirm" data-page="trade-order" bindtap="go">查看本人实际订单</button></view>

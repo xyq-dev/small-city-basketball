@@ -1,5 +1,6 @@
-<scb-header title="赛事详情" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page org-event-page">
+<scb-header title="赛事工作台" disabled="{{busy || pending || uncertain || dirty}}"/>
+<view class="page fig-page org-event-page">
+  <view class="fig-summary soft workbench-summary"><view class="fig-summary-icon"><image src="/assets/figma/workbench.svg" mode="aspectFit"/></view><view class="fig-summary-copy"><view class="fig-kicker">赛事管理</view><view class="fig-summary-title">{{event.name || '赛事工作台'}}</view><view class="fig-summary-sub">办赛进度、赛事待办和办赛工具分开进入。</view></view></view>
   <view wx:if="{{loading && !event}}" class="card state-panel">
     <text class="state-label">机构赛事</text>
     <view class="subtitle">正在读取赛事资料</view>
@@ -22,9 +23,22 @@
       <view class="org-event-meta">{{event.dateLabel}} · {{event.venueName}}</view>
       <view class="org-event-meta">{{event.formatLabel}} · 机构内部视图</view>
     </view>
-    <view wx:if="{{manage}}" class="card manage-card">
-      <view class="subtitle">赛事管理</view>
-      <view class="muted small">按办赛顺序进入，所有操作继续核对当前机构及赛事授权。</view>
+    <view class="org-event-tabs workbench-tabs">
+      <button class="{{tab === 'manage' ? 'selected' : ''}}" data-tab="manage" bindtap="tab">办赛</button>
+      <button class="{{tab === 'schedule' ? 'selected' : ''}}" data-tab="schedule" bindtap="tab">赛程</button>
+      <button class="{{tab === 'ranking' ? 'selected' : ''}}" data-tab="ranking" bindtap="tab">{{event.format === 'ROUND_ROBIN' || event.format === 'DOUBLE_ROUND_ROBIN' ? '积分排名' : '分组与淘汰'}}</button>
+      <button class="{{tab === 'stats' ? 'selected' : ''}}" data-tab="stats" bindtap="tab">数据</button>
+    </view>
+    <view wx:if="{{tab !== 'manage' && manage}}" class="card manage-shortcut"><view class="subtitle">赛事设置与排赛</view><view wx:if="{{manage.actions.length}}" class="muted">下一项：{{manage.actions[0].label}}</view><button class="secondary" data-tab="manage" bindtap="tab">进入赛事管理</button></view>
+
+    <view wx:if="{{tab === 'manage' && manage}}" class="card manage-card">
+      <view class="fig-card-title">办赛进度</view>
+      <view class="workbench-progress">
+        <view class="progress-row"><text class="progress-no">1</text><view><view class="progress-title">赛事规则</view><view class="muted small">设置本届规则与公开范围</view></view><text class="progress-state success">{{event.statusLabel}}</text></view>
+        <view class="progress-row"><text class="progress-no">2</text><view><view class="progress-title">球队报名</view><view class="muted small">核对本届报名和本人资料</view></view><text class="progress-state">{{manage.reviewLabel || '按进度核对'}}</text></view>
+        <view class="progress-row"><text class="progress-no">3</text><view><view class="progress-title">冻结与排程</view><view class="muted small">名单冻结后生成正式赛程</view></view><text class="progress-state">{{manage.ready ? '已具备条件' : '待办理'}}</text></view>
+      </view>
+      <view class="fig-card-title workbench-section-title">赛事待办</view>
       <view class="manage-links">
         <button class="secondary" bindtap="openSetup">1 · 赛事设置与排赛<text class="manage-sub">保存本届规则与办赛模板</text></button>
         <button class="secondary" data-page="recruitment" bindtap="openFeature">2 · 公开招募、导入与本届邀请<text class="manage-sub">加入长期球队与本届报名分别办理</text></button>
@@ -32,6 +46,7 @@
         <button class="secondary" bindtap="openSchedule">4 · 抽签与排程<text class="manage-sub">先冻结名单，再核对场地及队伍冲突</text></button>
         <button class="secondary" bindtap="openTasks">5 · 记分与赛果确认<text class="manage-sub">记分与独立复核分开</text></button>
       </view>
+      <view class="fig-card-title workbench-section-title">办赛工具</view>
       <button class="quiet" bindtap="toggleManagementTools" disabled="{{loading}}">{{managementToolsOpen ? '收起其他授权工具' : '其他授权工具：工作人员、财务与媒体'}}</button>
       <view wx:if="{{managementToolsOpen}}" class="manage-links">
         <button class="secondary" data-page="youth-review" bindtap="openFeature">青少年与监护独立审核</button>
@@ -56,11 +71,7 @@
       </block>
       <view class="muted">改期与比赛媒体：在赛程中点开比赛，从比赛详情进入。</view>
     </view>
-    <view class="org-event-tabs">
-      <button class="{{tab === 'schedule' ? 'selected' : ''}}" data-tab="schedule" bindtap="tab">赛程</button>
-      <button class="{{tab === 'ranking' ? 'selected' : ''}}" data-tab="ranking" bindtap="tab">{{event.format === 'ROUND_ROBIN' || event.format === 'DOUBLE_ROUND_ROBIN' ? '积分排名' : '分组与淘汰'}}</button>
-      <button class="{{tab === 'stats' ? 'selected' : ''}}" data-tab="stats" bindtap="tab">球员数据</button>
-    </view>
+    <view wx:if="{{tab === 'manage' && !manage}}" class="card empty"><view class="subtitle">当前身份可查看赛事</view><view class="muted">办赛工具按机构和本届授权显示；可继续查看赛程、排名和球员数据。</view></view>
 
     <block wx:if="{{tab === 'schedule'}}">
       <view wx:if="{{scheduleError}}" class="notice warning">{{scheduleError}}</view>
@@ -143,4 +154,5 @@
     <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">{{loading ? '正在刷新赛事资料' : '刷新赛事资料'}}</button>
   </block>
 </view>
+<view class="fig-actions"><button class="fig-ghost" bindtap="openSetup" disabled="{{busy || loading}}">查看赛事设置</button><button class="fig-confirm" bindtap="openReview" disabled="{{busy || loading}}">进入报名审核</button></view>
 <scb-nav active="Events"/>

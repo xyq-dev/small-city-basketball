@@ -27,5 +27,5 @@
     "markers": []
   },
   "expectText": ["地图区域搜索暂未开放", "暂无符合条件的已审核供给"],
-  "expectAbsentText": ["搜索此区域"]
+  "expectDisabled": ["搜索此区域"]
 }

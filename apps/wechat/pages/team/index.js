@@ -166,7 +166,11 @@ Page({
     this.setData({
       members: this.data.members.concat({ key: 'draft-' + ++this._nextDraft, name: '' }),
       membersDirty: true,
+      editMode: true,
     });
+  },
+  addMemberFromBar() {
+    this.addMember();
   },
   removeMember(e) {
     if (this.data.busy || !this.data.team?.capabilities.canManage) return;

@@ -167,6 +167,7 @@ Page({
           ...row,
           priceLabel: row.price.replace(/\.00$/, ''),
           totalLabel: row.total.replace(/\.00$/, ''),
+          availabilityCount: Array.isArray(p.availability) ? p.availability.length : 0,
         };
       }),
       loading: false,

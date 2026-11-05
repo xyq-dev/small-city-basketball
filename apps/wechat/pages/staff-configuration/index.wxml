@@ -1,12 +1,14 @@
 <scb-header title="成员与工作人员" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page">
+<view class="page fig-page staff-page">
+  <view class="fig-summary soft staff-summary"><view class="fig-summary-icon"><image src="/assets/figma/workbench.svg" mode="aspectFit"/></view><view class="fig-summary-copy"><view class="fig-kicker">授权管理</view><view class="fig-summary-title">成员与工作人员</view><view class="fig-summary-sub">在指定机构或赛事范围内一次调整一项授权。</view></view></view>
+  <view class="staff-tabs"><button class="{{type === 'MEMBER' ? 'selected' : ''}}" data-type="MEMBER" bindtap="type" disabled="{{busy || pending}}">机构成员</button><button class="{{type === 'STAFF' ? 'selected' : ''}}" data-type="STAFF" bindtap="type" disabled="{{busy || pending}}">赛事工作人员</button></view>
 
   <view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view>
   <button wx:if="{{loginRequired}}" class="primary" bindtap="login">登录后查看权限</button>
-  <picker range="{{organizations}}" range-key="name" value="{{selectedOrg}}" bindchange="organization" disabled="{{busy || pending}}"><view class="card">机构：{{organizations[selectedOrg].name || '请选择有权机构'}}</view></picker>
-  <view class="card"><view class="subtitle">机构成员</view><view wx:for="{{members}}" wx:key="id" class="row" data-id="{{item.id}}" bindtap="select"><view>{{item.name}}</view><view class="small">{{item.role}} · {{item.status}}</view></view></view>
-  <view class="card"><view class="subtitle">赛事工作人员</view><input class="field" data-field="eventId" value="{{eventId}}" bindinput="input" disabled="{{busy || pending}}" placeholder="从赛事工作台进入，或填写本机构赛事编号"/><button class="secondary" bindtap="load" disabled="{{busy}}">读取当前赛事配置</button><view wx:for="{{staff}}" wx:key="id" data-id="{{item.id}}" bindtap="select">{{item.name}} · {{item.role}} · {{item.status}}</view></view>
-  <view wx:if="{{workspace}}" class="card"><view class="subtitle">明确修改一项授权</view>
+  <view class="card staff-scope"><view class="fig-card-title">授权范围</view><text class="field-label">当前机构</text><picker range="{{organizations}}" range-key="name" value="{{selectedOrg}}" bindchange="organization" disabled="{{busy || pending}}"><view class="staff-field">{{organizations[selectedOrg].name || '请选择有权机构'}}<text class="badge success">已选择</text></view></picker><block wx:if="{{type === 'STAFF'}}"><text class="field-label">当前赛事</text><input class="field" data-field="eventId" value="{{eventId}}" bindinput="input" disabled="{{busy || pending}}" placeholder="从赛事工作台进入，或填写本机构赛事编号"/></block></view>
+  <view wx:if="{{type === 'MEMBER'}}" class="card staff-list"><view class="fig-card-title">机构成员</view><view wx:if="{{!members.length}}" class="muted">暂无可显示的机构成员。</view><view wx:for="{{members}}" wx:key="id" class="row staff-row" data-id="{{item.id}}" bindtap="select"><view><view class="staff-name">{{item.name}}</view><view class="small muted">{{item.role}}</view></view><text class="staff-status">{{item.status}}</text></view></view>
+  <view wx:else class="card staff-list"><view class="fig-card-title">本赛事工作人员</view><view wx:if="{{!staff.length}}" class="muted">读取赛事配置后显示本届工作人员。</view><view wx:for="{{staff}}" wx:key="id" class="row staff-row" data-id="{{item.id}}" bindtap="select"><view><view class="staff-name">{{item.name}}</view><view class="small muted">{{item.role}} · 本届赛事</view></view><text class="staff-status">{{item.status}}</text></view><button class="secondary" bindtap="load" disabled="{{busy}}">读取当前赛事配置</button></view>
+  <view wx:if="{{workspace}}" class="card staff-confirm"><view class="fig-card-title">变更确认</view><view class="subtitle">明确修改一项授权</view>
     <view class="row"><button class="secondary" data-type="MEMBER" bindtap="type" disabled="{{busy || pending || !workspace.capabilities.canManageMembers}}">机构成员</button><button class="secondary" data-type="STAFF" bindtap="type" disabled="{{busy || pending || !workspace.capabilities.canManageStaff}}">本赛事工作人员</button></view>
     <view class="small">当前：{{type==='STAFF' ? '赛事授权' : '机构成员'}}；点击上方成员选择，新增成员需本人分享其用户编号。</view>
     <input class="field" data-field="userId" value="{{userId}}" bindinput="input" disabled="{{busy || pending}}" placeholder="目标用户编号"/>
@@ -15,3 +17,4 @@
     <button wx:if="{{!pending}}" class="primary" bindtap="save" disabled="{{busy || (type === 'STAFF' ? !workspace.capabilities.canManageStaff : !workspace.capabilities.canManageMembers)}}">确认变更</button><button wx:else class="primary" bindtap="retry" disabled="{{busy}}">使用原编号核对权限操作</button>
   </view>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" bindtap="retry" disabled="{{busy || !pending}}">核对权限操作</button><button class="fig-confirm" bindtap="load" disabled="{{busy}}">读取当前赛事配置</button></view>

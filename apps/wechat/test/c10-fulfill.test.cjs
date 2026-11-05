@@ -216,7 +216,7 @@ test('all fulfillment visual fixtures use supported fields and meaningful, trace
       for (const asset of output.assets) {
         assert.match(
           asset.path,
-          /^(?:assets\/approved-ui\/(?:icon-[a-z-]+-(?:navy|orange|white|green)\.(?:svg|png)|player-placeholder\.png)|assets\/ui002\/[^/]+\.svg|pages\/bookings\/assets\/[^/]+\.svg)$/,
+          /^(?:assets\/approved-ui\/(?:icon-[a-z-]+-(?:navy|orange|white|green)\.(?:svg|png)|player-placeholder\.png)|assets\/ui002\/[^/]+\.svg|assets\/figma\/[a-z0-9-]+\.svg|pages\/bookings\/assets\/[^/]+\.svg)$/,
           'only UI icons and neutral placeholders; no sample identities or entire UI screenshot',
         );
       }

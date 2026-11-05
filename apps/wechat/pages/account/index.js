@@ -282,6 +282,18 @@ Page({
     if (this.data.busy) return;
     this.setData({ emailOpen: true, registerMode: false, message: '', consentOpen: false });
   },
+  useEmailAfterWechat() {
+    if (this.data.busy || this.commandBusy) return;
+    this.setData({
+      loginPhase: '',
+      loginNotice: '',
+      emailOpen: true,
+      registerMode: false,
+      message: '',
+      consentOpen: false,
+      consent: false,
+    });
+  },
   closeEmail() {
     if (this.data.busy) return;
     this.setData({ emailOpen: false, registerMode: false, password: '', message: '' });

@@ -1,0 +1,32 @@
+{
+  "designSource": "Figma UI005 node 36:134; synthetic isolated state, not a real authentication attempt",
+  "static": true,
+  "name": "ui005-account-wechat-progress",
+  "route": "pages/account/index",
+  "state": "wechat-progress",
+  "figmaNode": "36:134",
+  "data": {
+    "loading": false,
+    "busy": false,
+    "user": null,
+    "binding": null,
+    "connected": false,
+    "enabled": true,
+    "canRegister": false,
+    "registerMode": false,
+    "consent": true,
+    "securityOpen": false,
+    "message": "",
+    "messageTone": "info",
+    "email": "",
+    "password": "",
+    "hasReturn": false,
+    "emailOpen": false,
+    "wechatState": "open",
+    "loginNotice": "",
+    "loginPhase": "wechat",
+    "platformOperator": false
+  },
+  "expectText": ["微信登录状态", "登录能力", "登录过程", "使用邮箱登录"],
+  "expectAbsentText": ["我的球队与本届报名"]
+}

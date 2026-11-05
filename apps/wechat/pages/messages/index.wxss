@@ -12,3 +12,20 @@
 .message-tabs button { flex:none; width:auto; min-width:64px; padding:10px 16px; }
 
 .ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+.message-summary { color:#18283f; }
+.message-summary-icon { display:flex; align-items:center; justify-content:center; flex:0 0 44px; width:44px; height:44px; border-radius:12px; background:#eaf2fc; }
+.message-summary-icon image { width:25px; height:25px; }
+.message-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; width:100%; min-height:44px; margin-bottom:12px; padding:0 3px; border-radius:12px; background:#fff; }
+.message-tabs button { width:auto; min-width:0; height:44px; min-height:44px; margin:0; padding:0 8px; border-radius:10px; box-shadow:none; }
+.message-tabs button::after { border:0; }
+.message-card { padding:14px !important; }
+.message-card-head { display:flex; align-items:flex-start; gap:10px; padding-bottom:8px; border-bottom:1px solid #e6ebf2; }
+.message-card-copy { flex:1; min-width:0; }
+.message-card .fig-pill.read { color:#16734b; background:#e7f7ef; }
+.message-card > view + view { margin-top:8px; }
+.message-tools { padding:14px !important; }
+.message-tool { display:flex; align-items:center; gap:10px; width:100%; min-height:55px !important; margin:0; padding:8px 0; border-radius:0; background:#fff; text-align:left; }
+.message-tool + .message-tool { border-top:1px solid #e6ebf2; }
+.message-tool::after { border:0; }
+.message-tool > view { flex:1; min-width:0; }
+@media (max-width:360px) { .fig-actions button { padding-left:6px; padding-right:6px; font-size:13px; } }

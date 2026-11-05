@@ -9,3 +9,22 @@
 .ui002-workspace .tabs button { min-height:44px; }
 
 .ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+.notification-summary { color:#18283f; }
+.notification-summary-icon { display:flex; align-items:center; justify-content:center; flex:0 0 44px; width:44px; height:44px; border-radius:12px; background:#eaf2fc; }
+.notification-summary-icon image { width:25px; height:25px; }
+.notification-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; min-height:44px; margin-bottom:12px; padding:2px 3px; border-radius:12px; background:#fff; color:#63758b; font-size:14px; line-height:40px; text-align:center; }
+.notification-tabs > view { height:40px; border-radius:10px; }
+.notification-tabs .selected { color:#fff; background:#123c73; font-weight:700; }
+.notification-choices,.notification-flow,.notification-records { padding:14px !important; }
+.notification-choice { display:flex; align-items:center; gap:10px; width:100%; min-height:66px !important; margin:0; padding:8px 0; border-radius:0; background:#fff; text-align:left; font-weight:400; }
+.notification-choice + .notification-choice { border-top:1px solid #e6ebf2; }
+.notification-choice::after { border:0; }
+.choice-mark { display:flex; align-items:center; justify-content:center; flex:0 0 18px; width:18px; height:18px; border:1px solid #8aa0b8; border-radius:4px; color:#fff; font-size:12px; }
+.notification-choice.selected .choice-mark { border-color:#123c73; background:#123c73; }
+.choice-copy { flex:1; min-width:0; }
+.notification-step { display:flex; align-items:flex-start; gap:10px; min-height:58px; padding:8px 0; }
+.notification-step > text { display:flex; align-items:center; justify-content:center; flex:0 0 20px; width:20px; height:20px; border-radius:50%; color:#123c73; background:#eaf2fc; font-size:11px; }
+.notification-step > view { flex:1; min-width:0; }
+.notification-record { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:55px; padding:8px 0; border-top:1px solid #e6ebf2; }
+.notification-record > view:first-child { flex:1; min-width:0; }
+.notification-record .available { color:#16734b; background:#e7f7ef; }

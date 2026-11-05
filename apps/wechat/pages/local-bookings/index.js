@@ -1,5 +1,10 @@
 const ui = require('../../utils/ui');
 const ls = require('../../utils/local-services');
+const bookingView = (selected, viewer) => ({
+  ...selected,
+  canRespondChange:
+    !!selected.change && selected.change.proposedBy !== viewer && selected.canActAs !== 'ADMIN',
+});
 Page({
   data: {
     orderFilter: 'ALL',
@@ -20,8 +25,14 @@ Page({
     pendingError: '',
     loginRequired: false,
   },
-  onLoad() {
+  onLoad(query = {}) {
     this._alive = true;
+    try {
+      if (query.sourceId) this._targetBookingId = ls.id(query.sourceId);
+    } catch (error) {
+      this._routeError = true;
+      this.setData({ error: ui.message(error) });
+    }
   },
   onShow() {
     this._visible = true;
@@ -65,7 +76,7 @@ Page({
     ui.login('/pages/local-bookings/index');
   },
   async load() {
-    if (this.data.busy) return;
+    if (this._routeError || this.data.busy) return;
     ui.begin(this);
     this.setData({
       loading: true,
@@ -85,15 +96,25 @@ Page({
     const token = ui.begin(this);
     try {
       const items = await ls.repository().bookings();
-      if (ui.live(this, token))
+      if (ui.live(this, token)) {
+        const target = this._targetBookingId
+          ? items.find((item) => item.id === this._targetBookingId)
+          : null;
         this.setData({
           items,
+          selected: target ? bookingView(target, this._viewer) : null,
+          serviceTab: 'overview',
           loading: false,
           loginRequired: false,
+          error:
+            this._targetBookingId && !target
+              ? '当前账号无法查看对应订单，请从订单列表重新核对。'
+              : '',
           filteredCount: items.filter(
             (x) => this.data.orderFilter === 'ALL' || x.canActAs === this.data.orderFilter,
           ).length,
         });
+      }
     } catch (e) {
       if (ui.live(this, token)) this.setData({ loading: false, error: ui.message(e) });
     }
@@ -143,13 +164,7 @@ Page({
     if (selected)
       this.setData({
         serviceTab: 'overview',
-        selected: {
-          ...selected,
-          canRespondChange:
-            !!selected.change &&
-            selected.change.proposedBy !== this._viewer &&
-            selected.canActAs !== 'ADMIN',
-        },
+        selected: bookingView(selected, this._viewer),
         changeSlots: [],
         newSlotId: '',
         reason: '',
@@ -297,6 +312,14 @@ Page({
   navigate() {
     const r = this.data.selected;
     if (r) ls.navigate(r.location, r.address, r.title);
+  },
+  openCurrent() {
+    if (this.data.selected || this.data.busy) return;
+    const row = (this.data.items || []).find(
+      (item) => this.data.orderFilter === 'ALL' || item.canActAs === this.data.orderFilter,
+    );
+    if (!row) return;
+    this.select({ currentTarget: { dataset: { id: row.id } } });
   },
   find() {
     ls.open('local');

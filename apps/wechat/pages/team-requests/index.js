@@ -20,6 +20,7 @@ Page({
     allowed: false,
     links: [],
     requests: [],
+    reviewableCount: 0,
     filter: 'PENDING',
     hours: '72',
     maxUses: '20',
@@ -60,7 +61,7 @@ Page({
   },
   async load() {
     if (this.data.busy) return;
-    this.setData({ loading: true, error: '', links: [], requests: [] });
+    this.setData({ loading: true, error: '', links: [], requests: [], reviewableCount: 0 });
     ui.begin(this);
     const session = await ui.session(this, PATH);
     if (!this._alive) return;
@@ -83,12 +84,16 @@ Page({
         repo.links(this.data.orgId),
         repo.orgRequests(this.data.orgId, this.data.filter),
       ]);
-      if (ui.live(this, token))
+      if (ui.live(this, token)) {
+        const listed = requests.map(requestView);
         this.setData({
           loading: false,
           links: links.map(linkView),
-          requests: requests.map(requestView),
+          requests: listed,
+          reviewableCount: listed.filter((item) => item.capabilities && item.capabilities.canReview)
+            .length,
         });
+      }
     } catch (error) {
       if (ui.live(this, token)) this.setData({ loading: false, error: ui.message(error) });
     }
@@ -192,6 +197,18 @@ Page({
   select(e) {
     if (!this.data.busy) this.setData({ selectedId: e.currentTarget.dataset.id, reviewReason: '' });
   },
+  reviewCurrent() {
+    const rows = this.data.requests || [];
+    const current = rows.find(
+      (row) => row.id === this.data.selectedId && row.capabilities && row.capabilities.canReview,
+    );
+    const next = current || rows.find((row) => row.capabilities && row.capabilities.canReview);
+    if (!next || this.data.busy) return;
+    if (next.id !== this.data.selectedId)
+      this.select({ currentTarget: { dataset: { id: next.id } } });
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#request-review', duration: 200 });
+  },
   async review(e) {
     const decision = e.currentTarget.dataset.decision;
     const item = this.data.requests.find((r) => r.id === this.data.selectedId);
@@ -227,13 +244,20 @@ Page({
             !r.capabilities.isOwnRequest,
         ),
       send: () => tm.createRepository().review(orgId, item.id, decision, why, item.version),
-      done: async (updated) =>
+      done: async (updated) => {
+        const requests = this.data.requests.map((r) =>
+          r.id === updated.id ? requestView(updated) : r,
+        );
         this.setData({
-          requests: this.data.requests.map((r) => (r.id === updated.id ? requestView(updated) : r)),
+          requests,
+          reviewableCount: requests.filter(
+            (item) => item.capabilities && item.capabilities.canReview,
+          ).length,
           selectedId: '',
           reviewReason: '',
           message: decision === 'APPROVE' ? '已批准，球队已创建。' : '已拒绝。',
-        }),
+        });
+      },
     });
     if (/已更新|已处理/.test(this.data.error))
       this.setData({ message: '记录已变化，请重新读取后再审核。' });

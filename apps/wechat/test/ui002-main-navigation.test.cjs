@@ -73,7 +73,7 @@ test('E01 public rows precede tools and T01 renders real team identity, transact
     ]) {
       const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, name + '.json'), 'utf8'));
       const html = buildPreview({ root, route, data: fixture.data, width, height: 844 }).phone;
-      assert.ok(html.includes('小城市篮球'), title);
+      assert.ok(html.includes(title), title);
       if (route.includes('watch')) {
         assert.ok(html.indexOf('watch-public-card') < html.indexOf('watch-main-actions'));
         assert.ok(html.indexOf('watch-public-card') < html.indexOf('watch-discovery-settings'));

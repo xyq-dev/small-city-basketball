@@ -1,6 +1,7 @@
 <scb-header title="比赛媒体与授权" disabled="{{busy}}"/>
-<view class="page mgmt-page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">本场媒体</view><view class="title">上传、片段、发布与撤回</view></view>
+<view class="page fig-page mgmt-page ui002-workspace match-media-page">
+  <view class="fig-summary soft match-media-summary" bindtap="openMatch"><view class="fig-summary-copy"><view class="fig-kicker">比赛媒体管理</view><view class="fig-summary-title">{{match.title || '本场媒体'}}</view><view class="fig-summary-sub">上传、片段、发布与撤回{{match.meta ? ' · ' + match.meta : ''}}</view></view><view class="fig-summary-mark"><image src="/assets/court.png" mode="aspectFill"/></view></view>
+  <view class="media-tabs"><view class="selected">已上传</view><view>媒体草稿</view><view>已发布</view></view>
   <view wx:if="{{loading && !match}}" class="card state-panel"><text class="state-label">比赛媒体</text><view class="subtitle">正在读取媒体资料</view><view class="loading-lines"><view></view><view></view></view></view>
   <view wx:elif="{{!match}}" class="card state-panel">
     <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
@@ -45,14 +46,9 @@
       <video class="media-preview" src="{{previewVideo}}" controls show-fullscreen-btn/>
       <view class="muted">仅本机临时文件，关闭或离开页面后删除；删除失败会自动重试，并在下次进入时再次清理。预览不代表已发布。</view>
     </view>
-    <view class="board">
-      <view class="board-meta" bindtap="openMatch">{{match.meta}}</view>
-      <view class="setup-name">{{match.title}}</view>
-      <view class="board-meta">{{usage.label}}</view>
-    </view>
     <view class="notice small">上传只保存为本机构私有文件；须创建媒体并明确发布后，才会在本届公开观赛开启时对持有链接的观众显示。</view>
 
-    <view class="card">
+    <view class="card media-upload-card">
       <view class="subtitle">上传图片或视频</view>
       <block wx:if="{{caps.upload}}">
         <view class="muted">图片支持PNG、JPEG，视频支持MP4；单个文件不超过8MB，服务端复核格式与额度。超过512KB的文件分片上传，进度只显示服务端已确认的字节。</view>
@@ -66,8 +62,8 @@
       <view wx:else class="muted">当前身份不能上传本场媒体，或赛事已归档、取消（由服务端判定）。</view>
     </view>
 
-    <view class="card">
-      <view class="subtitle">已上传文件</view>
+    <view class="card media-files-card">
+      <view class="fig-card-title">素材文件</view><view class="subtitle">已上传文件</view>
       <view wx:if="{{!files.length}}" class="muted">尚无文件。</view>
       <view wx:for="{{files}}" wx:key="id" class="row">
         <view class="row-between"><view>{{item.name}}</view><view class="file-actions"><button wx:if="{{item.canPreview}}" class="quiet small-button" data-id="{{item.id}}" bindtap="preview" disabled="{{busy}}">预览</button><button wx:if="{{item.canRevoke}}" class="quiet small-button" data-id="{{item.id}}" bindtap="askRevokeFile" disabled="{{busy || uncertain}}">撤销</button><button wx:if="{{item.canPurge}}" class="quiet small-button" data-id="{{item.id}}" bindtap="askPurgeFile" disabled="{{busy || uncertain}}">清除内容</button></view></view>
@@ -86,8 +82,8 @@
       </view>
     </view>
 
-    <view wx:if="{{caps.manage && (draftFiles.length || trustedHosts.length)}}" class="card">
-      <view class="subtitle">创建媒体草稿</view>
+    <view wx:if="{{caps.manage && (draftFiles.length || trustedHosts.length)}}" class="card media-draft-card">
+      <view class="fig-card-title">媒体草稿</view><view class="subtitle">创建媒体草稿</view>
       <view wx:if="{{trustedHosts.length}}" class="mode-choice">
         <button class="{{draftMode === 'FILE' ? 'selected' : ''}}" data-mode="FILE" bindtap="setDraftMode">已上传文件</button>
         <button class="{{draftMode === 'LINK' ? 'selected' : ''}}" data-mode="LINK" bindtap="setDraftMode">外部链接</button>
@@ -108,8 +104,8 @@
       <button class="primary" bindtap="createDraft" disabled="{{busy || uncertain || !!pending || !!request || !!storageError}}">创建草稿（不公开）</button>
     </view>
 
-    <view class="card">
-      <view class="subtitle">本场媒体</view>
+    <view class="card media-publish-card">
+      <view class="fig-card-title">发布范围</view><view class="subtitle">本场媒体</view>
       <view wx:if="{{!items.length}}" class="muted">尚无媒体记录。</view>
       <view wx:for="{{items}}" wx:key="id" class="row">
         <view class="row-between"><view>{{item.title}}</view><text class="badge {{item.status === 'PUBLISHED' ? 'success' : item.status === 'REVOKED' ? 'danger' : ''}}">{{item.status === 'PUBLISHED' ? '已发布' : item.status === 'REVOKED' ? '已撤销' : '草稿'}}</text></view>
@@ -144,3 +140,4 @@
     <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
   </block>
 </view>
+<view class="fig-actions dock"><button class="fig-ghost" bindtap="chooseMediaFile" disabled="{{busy || uncertain || !!pending || !!request || !!storageError || !caps.upload}}">选择文件</button><button class="fig-confirm" bindtap="createDraft" disabled="{{busy || uncertain || !!pending || !!request || !!storageError || !caps.manage || (!draftFiles.length && !trustedHosts.length)}}">创建媒体草稿</button></view>

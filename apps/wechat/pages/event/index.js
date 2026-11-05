@@ -178,6 +178,18 @@ Page({
   backToOverview() {
     if (!this.data.loading) this.setData({ overview: true, tab: 'schedule' });
   },
+  followFromBar() {
+    const state = this.data.follow && this.data.follow.state;
+    if (state === 'active' || state === 'invalid') this.openFollows();
+    else this.followEvent();
+  },
+  showRankingRules() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#ranking-rules', duration: 200 });
+  },
+  tasks() {
+    ui.open('scoring-tasks');
+  },
   watch() {
     wx.navigateTo({ url: '/pages/watch/index' });
   },

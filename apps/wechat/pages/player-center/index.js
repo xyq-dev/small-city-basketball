@@ -146,12 +146,18 @@ Page({
   },
   decorateProfile(profile) {
     if (!profile) return null;
+    const availability = Array.isArray(profile.availability) ? profile.availability : [];
     return {
       ...profile,
       statusText: model.statusLabels[profile.status],
       positionText: ui.position(profile.position),
       priceText: ui.money(profile.priceFen),
-      windowCount: profile.availability.length,
+      windowCount: availability.length,
+      availabilityLabels: availability.slice(0, 3).map((window) => {
+        const start = model.chinaParts(window.startAt),
+          end = model.chinaParts(window.endAt);
+        return start.date + ' ' + start.time + ' — ' + end.date + ' ' + end.time;
+      }),
     };
   },
   login() {
@@ -186,6 +192,12 @@ Page({
       message: '',
     });
     this.updateQuote(form);
+  },
+  scrollSection(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!['center-profile', 'center-quote', 'center-availability'].includes(id)) return;
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#' + id, duration: 200 });
   },
   editSection(e) {
     if (!this.data.authorized || !this.data.editing || this.data.busy || this._pending) return;

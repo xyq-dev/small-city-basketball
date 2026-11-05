@@ -1,5 +1,13 @@
 <scb-header title="我的球员预约" disabled="{{loading}}"/>
-<view class="page bookings-page">
+<view class="page fig-page bookings-page">
+  <view class="fig-summary light">
+    <view class="fig-summary-copy">
+      <view class="fig-kicker">本人合作</view>
+      <view class="fig-summary-title">我的预约</view>
+      <view class="fig-summary-sub">每位球员、每场安排分别确认并跟进。</view>
+    </view>
+    <view class="fig-summary-mark"><scb-icon name="calendar" tone="navy" size="36"/></view>
+  </view>
   <view class="booking-view-tabs">
     <button class="booking-view-tab {{view === 'sent' ? 'active' : ''}}" data-view="sent" bindtap="changeView" disabled="{{loading}}">我发出的</button>
     <button class="booking-view-tab {{view === 'received' ? 'active' : ''}}" data-view="received" bindtap="changeView" disabled="{{loading}}">我收到的</button>
@@ -14,7 +22,7 @@
   <view wx:elif="{{loading}}" class="card state-card loading-card"><view class="state-title">正在读取最新预约</view><view class="skeleton"></view><view class="skeleton short"></view><view class="small muted">正在核对当前身份与逐场状态…</view></view>
   <view wx:elif="{{!rows.length && !error}}" class="card empty state-card"><view class="subtitle">暂无符合条件的合作记录</view><view class="muted">可切换发出/收到或调整状态筛选。</view></view>
   <view wx:if="{{rows.length}}" class="card booking-progress-card">
-    <view class="progress-heading">逐场合作进度</view>
+    <view class="fig-card-title">当前合作</view>
     <block wx:for="{{rows}}" wx:for-item="order" wx:key="id">
       <view wx:for="{{order.appearances}}" wx:for-item="appearance" wx:key="id" class="cooperation-record">
         <view class="cooperation-cell">
@@ -45,9 +53,21 @@
       </view>
     </block>
   </view>
+  <view wx:if="{{rows.length}}" class="card booking-finance-card">
+    <view class="fig-card-title">报价与资金</view>
+    <view wx:for="{{rows}}" wx:key="id" class="finance-row"><view><view class="finance-title">{{item.eventName}} · {{item.teamName}}</view><view class="finance-copy">确定报价 {{item.confirmedText}} · 条件意向 {{item.conditionalText}}</view></view><view class="finance-value">实收 {{item.paidText}}</view></view>
+  </view>
+  <view wx:if="{{rows.length}}" class="card booking-stage-card">
+    <view class="fig-card-title">合作进度</view>
+    <block wx:for="{{rows}}" wx:for-item="order" wx:key="id"><view wx:for="{{order.appearances}}" wx:for-item="appearance" wx:key="id" class="stage-row"><view class="stage-index">{{index + 1}}</view><view class="stage-copy"><view class="finance-title">{{appearance.playerName}} · {{appearance.statusText}}</view><view class="finance-copy">{{appearance.summaryStartText || appearance.startText}} · {{appearance.venue}}</view></view><view class="stage-state">{{appearance.statusText}}</view></view></block>
+  </view>
   <view wx:if="{{view === 'received'}}" class="notice role-notice"><view class="notice-title">以本人球员身份处理</view><view class="small">只能接受或拒绝自己的逐场安排，不代其他球员确认。</view></view>
   <view wx:if="{{hasMore}}" class="notice warning">这里只显示最新100份可见预约，更早记录未计入当前列表；可用已知订单入口读取具体合作。</view>
   <view wx:if="{{paymentNotice}}" class="notice small">{{paymentNotice}}</view>
   <view class="time-caption">按场确认时间、地点与履约状态 · 北京时间</view>
   <view class="booking-tools"><button class="quiet" bindtap="load" loading="{{loading}}" disabled="{{loading}}">刷新预约状态</button><button class="secondary" bindtap="players" disabled="{{loading}}">继续找球员</button></view>
+</view>
+<view class="fig-actions dock">
+  <button class="fig-ghost" bindtap="players" disabled="{{loading}}">继续找球员</button>
+  <button class="fig-confirm" bindtap="openCurrent" disabled="{{loading || !rows.length}}">查看本场合作</button>
 </view>

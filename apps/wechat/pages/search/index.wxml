@@ -1,2 +1,45 @@
-<scb-header title="全国搜索" back="{{true}}"/>
-<view class="page"><view class="card"><view class="field-label">搜索词</view><input class="field" data-field="query" value="{{query}}" bindinput="input" bindconfirm="search" maxlength="80" placeholder="赛事、球队或球员名称"/><view class="field-label">举办城市（选填）</view><input class="field" data-field="city" value="{{city}}" bindinput="input" maxlength="40" placeholder="留空搜索全国"/><button class="primary" bindtap="search" disabled="{{busy || !query}}">搜索</button></view><view class="filters"><button wx:for="{{kinds}}" wx:key="key" class="{{kind===item.key?'primary':'secondary'}}" data-kind="{{item.key}}" bindtap="filter">{{item.label}}</button></view><view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{notice}}" class="notice small">{{notice}}</view><view wx:for="{{items}}" wx:key="key" class="card result" data-key="{{item.key}}" bindtap="open"><view class="small muted">{{item.kindLabel}}{{item.city?' · '+item.city:''}}</view><view class="subtitle">{{item.displayName}}</view><view wx:if="{{item.startsOn}}">{{item.startsOn}} 至 {{item.endsOn}}</view><button class="secondary" data-key="{{item.key}}" catchtap="open">查看详情</button></view><view wx:if="{{searched && !items.length && !busy}}" class="card muted">没有符合条件的公开结果，可调整搜索词或城市。</view><button wx:if="{{cursor}}" class="secondary" bindtap="more" disabled="{{busy}}">继续加载</button><view wx:if="{{busy}}" class="notice">正在搜索</view></view>
+<view class="search-nav" style="padding-top:{{statusBarHeight}}px">
+  <view class="search-nav-row" style="padding-right:{{capsuleGap}}px">
+    <button class="search-back" bindtap="goBack" aria-label="返回"><scb-icon name="chevron-left" tone="navy" size="22"/></button>
+    <view class="search-nav-title">全国搜索</view>
+  </view>
+</view>
+<view class="page search-page">
+  <view class="search-summary">
+    <view class="search-mark"><image src="/assets/figma/search.svg" mode="aspectFit"/></view>
+    <view class="search-summary-copy">
+      <view class="search-kicker">公开内容</view>
+      <view class="search-summary-title">搜索赛事、球队、球员</view>
+      <view class="search-summary-sub">查找赛事及获授权的球队、球员档案</view>
+    </view>
+  </view>
+  <view class="search-tabs filters">
+    <button wx:for="{{kinds}}" wx:key="key" class="{{kind===item.key?'on':''}}" data-kind="{{item.key}}" bindtap="filter">{{item.label}}</button>
+  </view>
+  <view class="search-card">
+    <view class="search-card-title">搜索条件</view>
+    <view class="field-label">搜索词</view>
+    <input class="field" data-field="query" value="{{query}}" bindinput="input" bindconfirm="search" maxlength="80" placeholder="赛事、球队或球员名称"/>
+    <view class="field-label">举办城市（选填）</view>
+    <input class="field" data-field="city" value="{{city}}" bindinput="input" maxlength="40" placeholder="留空搜索全国"/>
+  </view>
+  <view wx:if="{{error}}" class="notice warning">{{error}}</view>
+  <view wx:if="{{notice}}" class="notice small">{{notice}}</view>
+  <view wx:if="{{busy}}" class="notice">正在搜索</view>
+  <view wx:if="{{items.length}}" class="search-card">
+    <view class="search-card-title">搜索结果</view>
+    <view wx:for="{{items}}" wx:key="key" class="search-row result" data-key="{{item.key}}" bindtap="open">
+      <view class="search-row-copy">
+        <view class="subtitle">{{item.displayName}}</view>
+        <view class="small muted">{{item.kindLabel}}{{item.city?' · '+item.city:''}}{{item.startsOn?' · '+item.startsOn+' 至 '+item.endsOn:''}}</view>
+      </view>
+      <view class="search-badge">{{item.kindLabel}}</view>
+      <button class="secondary" data-key="{{item.key}}" catchtap="open">查看详情</button>
+    </view>
+  </view>
+  <view wx:if="{{searched && !items.length && !busy}}" class="search-card muted">没有符合条件的公开结果，可调整搜索词或城市。</view>
+</view>
+<view class="search-actions">
+  <button class="search-ghost" bindtap="more" disabled="{{busy || !cursor}}">继续加载</button>
+  <button class="search-confirm" bindtap="search" disabled="{{busy || !query}}">搜索</button>
+</view>

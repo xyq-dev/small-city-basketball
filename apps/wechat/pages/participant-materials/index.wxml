@@ -1,5 +1,9 @@
 <scb-header title="本人报名资料" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page materials-page">
+<view class="page fig-page materials-page">
+  <view class="fig-summary light materials-summary">
+    <view class="materials-summary-icon"><image src="/assets/figma/registration.svg" mode="aspectFit" aria-hidden="true"/></view>
+    <view class="fig-summary-copy"><view class="fig-kicker">{{mode === 'review' ? '领队查看逐人进度' : mode === 'list' ? '本人报名' : '仅本人和授权审核人'}}</view><view class="fig-summary-title">{{mode === 'review' ? '本人资料审核与进度' : mode === 'list' ? '我的本人报名' : (workspace && workspace.eventName ? workspace.eventName : '本人报名资料')}}</view><view class="fig-summary-sub">{{mode === 'list' ? '选择本届赛事和本队报名，再查看资料与用途授权。' : '本届身份、本人照片和用途授权分开核对。'}}</view></view>
+  </view>
 
   <view wx:if="{{mode !== 'mine'}}" class="material-page-title"><view class="material-kicker">赛事报名 · 私有资料</view><view class="title">{{mode === 'list' ? '我的本人报名' : mode === 'review' ? '本人资料审核与进度' : '填写本人参赛资料'}}</view><view class="muted">本人资料、队伍报名与最终名单分别审核。</view></view>
   <view wx:if="{{error}}" class="notice warning" role="alert">{{error}}</view>
@@ -9,11 +13,30 @@
   <view wx:if="{{loginRequired}}" class="card material-panel"><view class="subtitle">登录后继续本人报名</view><view class="muted">仅本人和有权的独立审核人员可查看受保护资料。</view><button class="primary" bindtap="login">登录并继续</button></view>
   <view wx:if="{{loading}}" class="card material-panel"><view class="subtitle">正在读取当前资料与权限</view><view class="skeleton-line"></view></view>
   <block wx:if="{{mode === 'list' && !loginRequired && !loading}}">
+    <view class="fig-card-title">本人报名</view>
     <view wx:if="{{!entries.length}}" class="card material-panel"><view class="subtitle">暂无待填写的本人报名</view><view class="muted">先加入或认领本人球队成员，再由领队将你加入本届名单。加入球队本身不代表已报名。</view></view>
     <view wx:for="{{entries}}" wx:key="entryId" class="card material-panel"><view class="subtitle">{{item.eventName}}</view><view class="muted">{{item.teamName}} · {{item.startDate}} 至 {{item.endDate}}</view><button class="primary" data-id="{{item.entryId}}" data-org="{{item.orgId}}" bindtap="openEntry">查看本人资料与授权</button></view>
   </block>
   <block wx:if="{{workspace}}">
-    <block wx:if="{{mode === 'mine'}}"><scb-steps items="{{registrationSteps}}" current="{{registrationStep}}" busy="{{busy || loading || pending}}" bind:change="registrationStepChange"/><view wx:if="{{dirty}}" class="notice small">当前草稿尚未保存。可在本页切换资料分区，离开本页办理预审或保险前请先保存。</view><button wx:if="{{materialPanel !== 'profile'}}" class="quiet material-back" data-panel="profile" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">返回本人资料</button></block>
+    <block wx:if="{{mode === 'mine'}}">
+      <view class="materials-tabs" role="tablist">
+        <button class="{{materialPanel === 'profile' ? 'selected' : ''}}" data-panel="profile" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">身份</button>
+        <button class="{{materialPanel === 'portrait' ? 'selected' : ''}}" data-panel="portrait" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">照片</button>
+        <button class="{{materialPanel === 'consent' ? 'selected' : ''}}" data-panel="consent" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">签署</button>
+        <button class="{{materialPanel === 'progress' || materialPanel === 'insurance' ? 'selected' : ''}}" data-panel="progress" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">进度</button>
+      </view>
+      <scb-steps items="{{registrationSteps}}" current="{{registrationStep}}" busy="{{busy || loading || pending}}" bind:change="registrationStepChange"/>
+      <view wx:if="{{dirty}}" class="notice small">当前草稿尚未保存。可在本页切换资料分区，离开本页办理预审或保险前请先保存。</view>
+      <button wx:if="{{materialPanel !== 'profile'}}" class="quiet material-back" data-panel="profile" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">返回本人资料</button>
+    </block>
+    <view wx:if="{{material && material.status==='CHANGES_REQUESTED'}}" class="card material-panel material-changes-card">
+      <view class="material-changes-head"><view><view class="fig-kicker">材料审核</view><view class="fig-card-title">报名资料待补充</view></view><view class="material-changes-status">{{material.statusLabel || '待本人补充'}}</view></view>
+      <view class="material-changes-section"><view class="fig-row-title">审核意见</view><view class="muted">{{material.reviewReason || '审核人已退回当前资料，请按待补项目核对后重新提交。'}}</view></view>
+      <view class="material-changes-section"><view class="fig-row-title">补交项目</view><view class="muted">{{material.blockerText || '请补齐身份、本人照片或本届签署中的待处理项目。'}}</view></view>
+      <view class="material-changes-section"><view class="fig-row-title">宣传使用</view><view class="muted">{{material.publicityConsent ? '已授权本届宣传使用；可在本人确认中调整。' : '未授权照片宣传，不影响按其他条件核对参赛资格。'}}</view></view>
+      <view class="material-changes-actions"><button class="secondary" bindtap="save" disabled="{{busy || loading || pending || storageError || !workspace.capabilities.canSave}}">保存草稿</button><button class="primary" data-action="submit" bindtap="command" disabled="{{busy || pending || dirty || !workspace.capabilities.canSubmit}}">重新提交本人资料</button></view>
+    </view>
+    <view wx:if="{{mode === 'review'}}" class="fig-card-title">材料访问</view>
     <view wx:if="{{mode === 'review' || materialPanel === 'progress'}}" class="card material-panel"><view class="material-head"><view><view class="subtitle">{{workspace.eventName}}</view><view class="muted">{{workspace.teamName}}</view></view><text class="badge">{{workspace.frozen ? '名单已冻结' : '资料核验'}}</text></view><view wx:if="{{workspace.startDate}}" class="small muted">赛事期间 {{workspace.startDate}} 至 {{workspace.endDate}}</view></view>
     <view wx:if="{{!workspace.enabled}}" class="notice warning">本届尚未开放本人资料流程，不能据此放宽身份或保险要求。</view>
     <view wx:if="{{workspace.frozen}}" class="notice small">本届名单已冻结，当前资料保持冻结版本。</view>
@@ -45,11 +68,9 @@
     <view wx:if="{{mode === 'review' && material.capabilities.canReview}}" class="card material-panel"><view class="subtitle">独立人工审核当前版本</view><view class="small muted">审核人不得为本人、本队领队、本队活跃成员或队伍最近提交人，服务端将再次核验。</view><checkbox-group data-field="identityChecked" bindchange="checkbox"><label class="consent"><checkbox value="yes" checked="{{identityChecked}}" disabled="{{busy}}"/><text>已人工核对身份文字资料</text></label></checkbox-group><checkbox-group data-field="portraitChecked" bindchange="checkbox"><label class="consent"><checkbox value="yes" checked="{{portraitChecked}}" disabled="{{busy}}"/><text>已核对清晰本人照片与参赛者相貌</text></label></checkbox-group><checkbox-group data-field="insuranceChecked" bindchange="checkbox"><label class="consent"><checkbox value="yes" checked="{{insuranceChecked}}" disabled="{{busy}}"/><text>要求保险时，已核对被保险人、篮球活动与完整赛事期间</text></label></checkbox-group><text class="field-label">审核说明（4–500字）</text><textarea class="field" bindinput="reasonInput" value="{{reason}}" maxlength="500" disabled="{{busy}}" placeholder="说明核对结果或需要补齐的材料"/><button class="primary" data-decision="APPROVE" bindtap="review" disabled="{{busy || !identityChecked || !portraitChecked}}">通过当前材料版本</button><button class="secondary" data-decision="REQUEST_CHANGES" bindtap="review" disabled="{{busy}}">退回本人补齐</button></view>
   </block>
   <view wx:if="{{mode === 'mine' && workspace && materialPanel !== 'profile'}}" class="material-secondary-links"><button class="quiet" bindtap="insurance" disabled="{{busy || pending}}">保险购买、查单与退保进度</button><button wx:if="{{workspace.dataProcessingConsent.required}}" class="quiet" bindtap="guardian" disabled="{{busy || pending}}">监护人确认与进度</button></view>
+  <button wx:if="{{mode === 'mine' && workspace}}" class="quiet material-qualification-link" bindtap="qualification" disabled="{{busy || pending || dirty}}">去资格预审</button>
   <button class="quiet" bindtap="load" disabled="{{busy || loading}}">{{pending ? '重新核对原请求回执' : '重新读取当前状态'}}</button>
 </view>
 
 
-<view wx:if="{{mode === 'mine' && workspace}}" class="fixed-actions material-fixed-actions">
-  <block wx:if="{{workspace.capabilities.canSave}}"><button wx:if="{{materialPanel === 'insurance'}}" class="secondary" bindtap="saveInsurance" disabled="{{busy || loading || pending || storageError}}" loading="{{busy}}">保存保单资料</button><button wx:else class="secondary" bindtap="save" disabled="{{busy || loading || pending || storageError}}" loading="{{busy}}">保存草稿</button></block>
-  <button class="primary" bindtap="qualification" disabled="{{busy || loading || pending || dirty}}">去资格预审</button>
-</view>
+<view wx:if="{{mode === 'mine' && workspace}}" class="fig-actions dock"><button class="fig-ghost" data-panel="progress" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">查看审核进度</button><button wx:if="{{materialPanel === 'insurance'}}" class="fig-confirm" bindtap="saveInsurance" disabled="{{busy || loading || pending || storageError || !workspace.capabilities.canSave}}">保存保单资料</button><button wx:else class="fig-confirm" bindtap="save" disabled="{{busy || loading || pending || storageError || !workspace.capabilities.canSave}}">保存本人资料</button></view>

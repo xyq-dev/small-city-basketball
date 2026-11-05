@@ -26,3 +26,15 @@
 .ui002-workspace .tabs button { min-height:44px; }
 
 .ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+.planned-summary { color:#18283f; }
+.planned-summary-icon { display:flex; align-items:center; justify-content:center; flex:0 0 44px; width:44px; height:44px; border-radius:12px; background:#eaf2fc; }
+.planned-summary-icon image { width:25px; height:25px; }
+.planned-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; min-height:44px; margin-bottom:12px; padding:0 3px; border-radius:12px; background:#fff; }
+.planned-tabs button { min-width:0; height:44px; min-height:44px; margin:0; padding:0 2px; border-radius:10px; background:#fff; color:#63758b; font-size:11px; line-height:16px; font-weight:400; }
+.planned-tabs button::after { border:0; }
+.planned-tabs button.selected { color:#fff; background:#123c73; font-weight:700; }
+.planned-page { padding-bottom:calc(104px + env(safe-area-inset-bottom)); }
+.planned-secondary-actions { margin:0 16px 96px; padding:14px; border-radius:16px; background:#fff; }
+.planned-secondary-actions button { width:100%; min-height:44px; margin:0 0 8px; }
+.planned-secondary-actions button:last-child { margin-bottom:0; }
+@media (max-width:360px) { .fig-actions button { padding-left:6px; padding-right:6px; font-size:13px; } }

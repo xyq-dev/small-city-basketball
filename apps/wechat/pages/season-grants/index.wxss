@@ -1,3 +1,18 @@
-.grants-page { padding-bottom:calc(40px + env(safe-area-inset-bottom)); }
+.grants-page { padding:12px 16px calc(112px + env(safe-area-inset-bottom)); }
 .grants-page .disclosure .small { margin-bottom:8px; }
 .grants-page .row .inline { margin-top:8px; }
+.grants-summary { min-height:110px; padding:16px 14px; background:#164b88; }
+.fig-summary-icon { display:flex; flex:0 0 44px; width:44px; height:44px; align-items:center; justify-content:center; border-radius:12px; background:#fff; }
+.fig-summary-icon image { width:24px; height:24px; }
+.grant-tabs { display:flex; gap:0; padding:3px; margin-bottom:12px; border-radius:12px; background:#fff; }
+.grant-tabs view { flex:1; min-width:0; padding:11px 4px; border-radius:10px; color:#63758b; font-size:14px; line-height:20px; text-align:center; }
+.grant-tabs .selected { color:#fff; background:#164b88; }
+.grants-page .card { padding:14px; border:0; border-radius:16px; }
+.grant-source-card .field,.grant-records .field { border:0; background:#f4f6fa; }
+.grant-records > .row { min-height:72px; }
+.grant-records .inline { display:flex; flex-wrap:wrap; gap:8px; }
+.grant-records .inline button { flex:1 1 110px; min-width:0; margin:0; }
+.grant-stats .stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.grant-stats .stat { padding:12px; border-radius:10px; background:#eaf2fc; }
+.grant-stats .numeric { margin-top:4px; color:#164b88; font-size:24px; line-height:32px; font-weight:700; }
+@media (max-width:340px) { .grants-page { padding-left:12px; padding-right:12px; } .grant-tabs view { font-size:13px; } }

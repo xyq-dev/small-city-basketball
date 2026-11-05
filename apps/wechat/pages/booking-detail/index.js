@@ -45,6 +45,26 @@ Page({
     pendingAcknowledged: false,
     resolutionLabels: model.RESOLUTION_LABELS,
   },
+  proposeChange() {
+    const rows = (this.data.order && this.data.order.appearances) || [];
+    const item = rows.find((row) =>
+      (row.actions || []).some((action) => action.type === 'PROPOSE_CHANGE'),
+    );
+    if (!item || this.data.busy) return;
+    this.chooseAction({ currentTarget: { dataset: { id: item.id, type: 'PROPOSE_CHANGE' } } });
+  },
+  openTrade() {
+    const rows = (this.data.order && this.data.order.appearances) || [];
+    const item = rows[0];
+    if (!item || this.data.busy) return;
+    this.trade({ currentTarget: { dataset: { id: item.id } } });
+  },
+  scrollSection(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!['booking-arrangement', 'booking-progress', 'booking-finances'].includes(id)) return;
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#' + id, duration: 200 });
+  },
   trade(e) {
     const id = e.currentTarget.dataset.id;
     if (
@@ -187,6 +207,10 @@ Page({
           order.appearances.length === 1 ? SINGLE_STATE_BANNERS[order.appearances[0].status] : null;
         return {
           ...order,
+          canProposeChange: order.appearances.some((item) =>
+            (item.actions || []).some((action) => action.type === 'PROPOSE_CHANGE'),
+          ),
+          canOpenTrade: order.appearances.length > 0,
           stateTitle: banner ? banner[0] : '',
           stateHint: banner ? banner[1] : '',
           appearances: order.appearances.map((item) => ({

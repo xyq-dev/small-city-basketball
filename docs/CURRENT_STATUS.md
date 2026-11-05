@@ -1,5 +1,11 @@
 # 当前状态
 
+## 2026-11-05 UI005 最终整合审查（DRAFT PR 候选，未合入 main）
+
+UI005 候选分支为 `feat/ui005-figma-complete`，基线 `origin/main` / `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`。73/73 注册路由与 17/17 条件状态完成当前原生模板的 320/390/430 隔离视觉矩阵，1386/1386 通过；微信开发者工具只读覆盖 18/73 路由、36 张首屏/底部图，逻辑窗口 390×844，PNG 实际 355×768。逐项范围和证据见 [UI005 任务](tasks/UI005-REDESIGN.md)、[交接](handoffs/UI005-REDESIGN.md)及[可共享证据](evidence/ui005/README.md)。
+
+Windows `npm run test:wechat` 为 1207/1208，唯一失败是测试搭建临时项目外 symlink 时的 `EPERM`；该测试未删除或跳过，须由候选提交的 Linux CI 判定。生产地区目录与公开赛事目录 404、真实身份/业务记录、原生键盘画面继续阻塞相应运行成功态。此节只描述待评审候选，不表示已合入、可部署或生产验收；没有 pack、上传、部署、Migration 或生产写入。
+
 ## 2026-11-03 四页导航与账号双态整合（待合入 main）
 
 本地 `ui/v3-main-nav` 的未提交界面已放到 `integrate/ui-v4-consolidate`，基线是当时的 `origin/main` `ef25846857bb0431a4f71ad8dbe6fac87f945ae0`（该提交已包含首页还原 #39 和包体 #38）。合入的是账号未登录/已登录、赛事、同城、球队，以及 `components/v3-chrome`。首页产品文件没有用旧分支覆盖。`fix/ui002-ci` 的 `fc8c2eb` 已在 main 历史上，没有重复应用。设计说明在 `docs/design/ui-v4/`；参考截图包和未引用素材包不进入仓库。正式支付、投保、分账、推流和真机仍未验收。合并提交以 GitHub 上的最终 SHA 为准，本节在合并前只记录候选。

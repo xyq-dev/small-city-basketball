@@ -189,6 +189,9 @@ Page({
     this._edited = true;
     this.setData({ reason: String(e.detail.value || '').slice(0, 500) });
   },
+  showHistory() {
+    wx.pageScrollTo({ selector: '#reschedule-log', duration: 200 });
+  },
   async submit() {
     const data = this._data;
     if (!data || !this.data.canReschedule || this.data.busy || this.data.uncertain) return;

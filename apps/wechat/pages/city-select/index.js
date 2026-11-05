@@ -25,6 +25,9 @@ Page({
     parentLabel: '',
     versionNote: '',
     partial: false,
+    panel: 'catalog',
+    statusBarHeight: 47,
+    capsuleGap: 96,
   },
   onLoad(query = {}) {
     this._alive = true;
@@ -33,10 +36,12 @@ Page({
     this._organizer = query.context === 'directory';
     const selection = cities.snapshot();
     this.setData({ ...selection, input: selection.city, organizer: this._organizer });
+    this.syncChrome();
     this.loadCatalog();
   },
   onShow() {
     this._hidden = false;
+    this.syncChrome();
     if (this._needsCatalog) this.loadCatalog();
   },
   onHide() {
@@ -48,6 +53,46 @@ Page({
   onUnload() {
     this._alive = false;
     this._catalogGeneration = (this._catalogGeneration || 0) + 1;
+  },
+  syncChrome() {
+    let statusBarHeight = this.data.statusBarHeight;
+    let capsuleGap = this.data.capsuleGap;
+    try {
+      const info =
+        typeof wx.getWindowInfo === 'function'
+          ? wx.getWindowInfo()
+          : typeof wx.getSystemInfoSync === 'function'
+            ? wx.getSystemInfoSync()
+            : null;
+      if (
+        info &&
+        Number.isFinite(info.statusBarHeight) &&
+        info.statusBarHeight >= 0 &&
+        info.statusBarHeight <= 80
+      )
+        statusBarHeight = info.statusBarHeight;
+      if (
+        info &&
+        Number.isFinite(info.windowWidth) &&
+        typeof wx.getMenuButtonBoundingClientRect === 'function'
+      ) {
+        const menu = wx.getMenuButtonBoundingClientRect();
+        if (menu && Number.isFinite(menu.left) && menu.left > 0 && menu.left < info.windowWidth)
+          capsuleGap = Math.min(160, Math.max(72, Math.round(info.windowWidth - menu.left + 8)));
+      }
+    } catch {
+      /* The platform draws the real status bar and capsule. */
+    }
+    this.setData({ statusBarHeight, capsuleGap });
+  },
+  switchPanel(e) {
+    const panel = e.currentTarget.dataset.panel === 'recent' ? 'recent' : 'catalog';
+    if (this.active()) this.setData({ panel });
+  },
+  goBack() {
+    if (typeof wx.navigateBack === 'function')
+      wx.navigateBack({ delta: 1, fail: () => ui.open('home') });
+    else ui.open('home');
   },
   active() {
     return (
