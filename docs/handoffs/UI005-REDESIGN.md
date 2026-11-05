@@ -102,3 +102,9 @@
 - 首个 head `ca8cf8e5ba8ac0c74eccd7fc579995da399b6efa` 的 Linux admin 在 format、typecheck、`npm test`、build、e2e 均成功后，只在证据守卫失败；production 成功。失败键为 `320:ui005-event-access-limited`。
 - 原因是 Playwright 读取 `tests/mini-program/ui005-state-aliases.json`，证据守卫只读取 `tests/mini-program/fixtures/*.json`。现已让守卫验证并纳入全部别名，并支持显式结果目录；本地最终矩阵 1386/1386 通过守卫。
 - 下一步：提交并推送该最小修复，确认 PR 最新 head 的 admin/api/production 全部终态；旧 head 的成功步骤不能替代新 head。Draft 保持未合并。
+
+## 2026-11-05 Draft PR #42 实现 head CI 通过
+
+- 修复 head `aa05715f41d148a872f2c82b48b8f2a79b9842a9` 对应 [CI 42001388020](https://github.com/xyq-dev/small-city-basketball/actions/runs/42001388020)：admin、api、production 全部 SUCCESS。证据守卫已在 Linux 对 1386 项通过。
+- Linux 微信测试 1207 通过、1 个 Windows 批处理桥按平台跳过、0 失败；Windows 本地 EPERM 的 symlink 安全用例在 Linux 通过。admin e2e 1400 通过、1386 个移动项目按配置跳过。
+- 当前只需提交并推送本节及汇总状态的纯文档收口，随后核对 PR 最新 head 的 CI。保持 Draft，不合并、不 pack、不部署、不执行 Migration 或生产操作。

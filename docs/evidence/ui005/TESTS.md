@@ -19,13 +19,15 @@
 EPERM: operation not permitted, symlink '<temp>/external.wxml' -> '<temp>/components/menu/index.wxml'
 ```
 
-失败发生在创建临时符号链接时，尚未进入“组件不得跟随项目外符号链接”的产品断言。测试保持原样，交由 Draft PR 的 Linux CI 验证实际结果。
+失败发生在创建临时符号链接时，尚未进入“组件不得跟随项目外符号链接”的产品断言。测试保持原样；Draft PR 的 Linux CI 已实际通过该 symlink 用例。Linux 微信测试为 1207 通过、1 个仅 Windows 批处理桥按平台跳过、0 失败。
 
 ## Draft PR 首轮 Linux CI 发现与修复
 
 PR #42 首个 head `ca8cf8e5ba8ac0c74eccd7fc579995da399b6efa` 的 admin 作业中，`format:check`、typecheck、`npm test`、build 和 e2e 均成功；e2e 为 1400 通过、1386 个移动项目按配置跳过。后续证据守卫误把 `ui005-event-access-limited` 判为额外输出，因为守卫只枚举独立 fixture，没有枚举 Playwright 已使用的状态别名。
 
-修复后守卫与 Playwright 使用同一份 `ui005-state-aliases.json`，并可显式接收证据目录。本地对本轮 1386 项结果复验通过；最终 Linux 结论以修复提交的新一轮 CI 为准。
+修复后守卫与 Playwright 使用同一份 `ui005-state-aliases.json`，并可显式接收证据目录。本地对本轮 1386 项结果复验通过。
+
+修复 head `aa05715f41d148a872f2c82b48b8f2a79b9842a9` 的 [Application checks 42001388020](https://github.com/xyq-dev/small-city-basketball/actions/runs/42001388020) 全部成功：admin 8m32s（format、typecheck、`npm test`、build、e2e 1400 通过 / 1386 按配置跳过、证据 1386/1386），production 7m，api 25m28s。该结果属于该实现 head；后续纯文档收口提交仍应以 PR 最新检查为准。
 
 ## 格式检查边界
 

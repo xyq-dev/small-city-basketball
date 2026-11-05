@@ -171,3 +171,10 @@
 - 首个候选提交 `ca8cf8e5ba8ac0c74eccd7fc579995da399b6efa` 已推送并创建 Draft PR #42。首轮 Linux `admin` 的 format、typecheck、`npm test`、build、e2e 全部通过；e2e 为 1400 通过、1386 个移动项目按既有项目配置跳过。`production` 成功，`api` 在记录本检查点时仍运行。
 - `admin` 唯一失败发生在后置 `check-mini-layout-evidence.mjs`：Playwright 已按 `ui005-state-aliases.json` 生成 12 个补充状态，但证据守卫只枚举独立 fixture，把 `320:ui005-event-access-limited` 误判为 Unexpected。该问题属于本轮证据接线遗漏，不是页面或业务测试失败。
 - 最小修复：守卫现在验证并纳入状态别名的名称、宿主路由和源 fixture，长页分段也按别名场景核对；同时支持传入显式证据目录。本地复用最终矩阵运行 `node scripts/check-mini-layout-evidence.mjs C:\Temp\scb-ui005-pr-review-results4`，1386/1386 证据通过。等待修复 head 的新一轮 Linux CI。
+
+## 2026-11-05 Draft PR #42 实现 head CI 通过
+
+- 修复 head `aa05715f41d148a872f2c82b48b8f2a79b9842a9` 的 [Application checks 42001388020](https://github.com/xyq-dev/small-city-basketball/actions/runs/42001388020) 三作业全部成功：admin 8m32s、production 7m、api 25m28s。
+- admin 完成 Linux format、typecheck、`npm test`、build、e2e 和证据守卫。微信测试为 1207 通过、1 个 Windows 批处理桥按平台跳过、0 失败；Windows 本地失败的项目外 symlink 用例在 Linux 通过。e2e 为 1400 通过、1386 个移动项目按既有配置跳过；原生兼容证据 1386/1386。
+- production 完成隔离 HTTPS 包与完整恢复；api 完成迁移链、PostgreSQL 集成、原生页面→真实 API、重启后核对、API e2e 与测试资源清理。仅有 runner/action 版本迁移提示，无失败。
+- PR 保持 Draft，未合并。此后仅提交当前任务/交接的 CI 收口文档；该纯文档 head 仍须在 GitHub 读取最新检查后再结束，不用旧 head 绿色替代。

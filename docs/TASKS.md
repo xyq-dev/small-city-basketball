@@ -4,10 +4,10 @@
 
 | 项 | 当前事实 |
 | --- | --- |
-| 候选分支 | `feat/ui005-figma-complete`，基线 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` |
+| 候选分支 | `feat/ui005-figma-complete`，[Draft PR #42](https://github.com/xyq-dev/small-city-basketball/pull/42)，基线 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` |
 | 实现与隔离核对 | 73/73 注册路由、17/17 条件状态；320/390/430 矩阵 1386/1386 |
 | 微信运行 | 18/73 路由只读打开与滚动，36 张图；不是实际报名、预约、审核、支付或记分成功流程 |
-| 本地测试 | `test:wechat` 1207/1208；唯一失败为 Windows `symlinkSync` EPERM，待 Linux CI 核对 |
+| 验证 | 本地 `test:wechat` 1207/1208，唯一失败为 Windows `symlinkSync` EPERM；该用例在 Linux 通过。实现 head `aa05715f` 的 [CI 42001388020](https://github.com/xyq-dev/small-city-basketball/actions/runs/42001388020) 三作业成功 |
 | 证据 | [任务](tasks/UI005-REDESIGN.md)／[交接](handoffs/UI005-REDESIGN.md)／[73+17 清单与对照图](evidence/ui005/README.md) |
 | 边界 | Draft 未合入；地区/赛事目录 404、身份与业务数据、原生键盘仍是外部运行条件；未 pack、上传、部署、Migration 或修改生产 |
 
