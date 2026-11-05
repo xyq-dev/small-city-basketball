@@ -5,6 +5,7 @@
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | `npx playwright test tests/e2e/mini-program.spec.ts --project=desktop --workers=4` | 1386/1386 通过 | 当前原生模板、合成夹具；73 路由、17 状态，320/390/430 三宽 |
+| `node scripts/check-mini-layout-evidence.mjs <matrix-results>` | 1386/1386 证据通过 | 守卫同时读取独立 fixture 与 `ui005-state-aliases.json`，核对 PNG、布局 JSON 和长页分段 |
 | UI005 与本轮行为直接测试 | 139/139 通过 | 覆盖 73+17 映射、按钮色与尺寸、无合法目标禁用、预约来源透传、公开页、资料/球员、媒体、赛季、球队与报名回归 |
 | `npm run test:wechat` | 1207/1208 通过 | 唯一失败见下；未删测试、未跳过、未降低断言 |
 | 微信开发者工具只读采集 | 18/18 路由匹配，36 张图，0 异常 | 逻辑 390×844；PNG 355×768；不执行生产写操作 |
@@ -19,6 +20,12 @@ EPERM: operation not permitted, symlink '<temp>/external.wxml' -> '<temp>/compon
 ```
 
 失败发生在创建临时符号链接时，尚未进入“组件不得跟随项目外符号链接”的产品断言。测试保持原样，交由 Draft PR 的 Linux CI 验证实际结果。
+
+## Draft PR 首轮 Linux CI 发现与修复
+
+PR #42 首个 head `ca8cf8e5ba8ac0c74eccd7fc579995da399b6efa` 的 admin 作业中，`format:check`、typecheck、`npm test`、build 和 e2e 均成功；e2e 为 1400 通过、1386 个移动项目按配置跳过。后续证据守卫误把 `ui005-event-access-limited` 判为额外输出，因为守卫只枚举独立 fixture，没有枚举 Playwright 已使用的状态别名。
+
+修复后守卫与 Playwright 使用同一份 `ui005-state-aliases.json`，并可显式接收证据目录。本地对本轮 1386 项结果复验通过；最终 Linux 结论以修复提交的新一轮 CI 为准。
 
 ## 格式检查边界
 

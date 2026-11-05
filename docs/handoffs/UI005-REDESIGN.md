@@ -96,3 +96,9 @@
 - 最终修复后的证据入口为仓库内 [README](../evidence/ui005/README.md) 和 [73+17 清单](../evidence/ui005/COVERAGE.md)。外部原始结果保留在 `D:\Projects\scb-ui-review\ui005\20261105-pr-review`，隔离 1386/1386；微信当前代码 18/18 路由、36 图、0 异常。
 - 本地最终测试口径：格式化后直接回归 139/139；`test:wechat` 1207/1208，唯一 Windows symlink `EPERM`；staged Git 内容 85 个可格式化文件通过 Prettier，`git diff --check` 通过。原生键盘图、生产目录成功态、真实角色及写流程仍不可标记通过。
 - 下一步只允许：逐组暂存 UI005 文件、核对 cached diff 与敏感信息、提交并推送候选分支、创建 Draft PR、跟踪该 head 的 Linux CI。保持 Draft 未合并；不得 pack、上传、部署、Migration 或生产写入。
+
+## 2026-11-05 Draft PR #42 CI 修复交接
+
+- 首个 head `ca8cf8e5ba8ac0c74eccd7fc579995da399b6efa` 的 Linux admin 在 format、typecheck、`npm test`、build、e2e 均成功后，只在证据守卫失败；production 成功。失败键为 `320:ui005-event-access-limited`。
+- 原因是 Playwright 读取 `tests/mini-program/ui005-state-aliases.json`，证据守卫只读取 `tests/mini-program/fixtures/*.json`。现已让守卫验证并纳入全部别名，并支持显式结果目录；本地最终矩阵 1386/1386 通过守卫。
+- 下一步：提交并推送该最小修复，确认 PR 最新 head 的 admin/api/production 全部终态；旧 head 的成功步骤不能替代新 head。Draft 保持未合并。

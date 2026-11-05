@@ -165,3 +165,9 @@
 - 可共享证据已移入仓库相对路径 `docs/evidence/ui005/`：`COVERAGE.md` 逐项映射 73+17，`runtime/` 保存当前微信报告及 36 张图，`comparisons/` 保存 12 张当前三栏对照，`design/` 保存最新交接和首页三宽截图。合成数据与微信只读运行边界均在 README 标明。
 - 验证：格式化后的直接回归 139/139，`git diff --check` 通过；`npm run test:wechat` 1208 项中 1207 通过，唯一失败仍是 `native-components.test.cjs:165` 在 Windows 创建临时 symlink 时 `EPERM`。全量 `format:check` 因当前 Windows checkout 中 1043 个跨 admin/api/私有配置的既有换行/格式项失败；未越界批量重写，staged Git 内容中的 85 个 JS/CJS/MJS/TS/JSON 已逐一 Prettier 通过，完整提交由 Linux CI 判定。
 - 外部边界不变：生产地区与公开赛事目录 404、缺真实身份/业务记录、SDK 未捕获原生键盘画面。未触发报名、预约、审核、退款、付款或记分写入；未 pack、上传、部署、执行 Migration、修改后端/API/权限或生产数据。
+
+## 2026-11-05 Draft PR #42 首轮 CI 修复
+
+- 首个候选提交 `ca8cf8e5ba8ac0c74eccd7fc579995da399b6efa` 已推送并创建 Draft PR #42。首轮 Linux `admin` 的 format、typecheck、`npm test`、build、e2e 全部通过；e2e 为 1400 通过、1386 个移动项目按既有项目配置跳过。`production` 成功，`api` 在记录本检查点时仍运行。
+- `admin` 唯一失败发生在后置 `check-mini-layout-evidence.mjs`：Playwright 已按 `ui005-state-aliases.json` 生成 12 个补充状态，但证据守卫只枚举独立 fixture，把 `320:ui005-event-access-limited` 误判为 Unexpected。该问题属于本轮证据接线遗漏，不是页面或业务测试失败。
+- 最小修复：守卫现在验证并纳入状态别名的名称、宿主路由和源 fixture，长页分段也按别名场景核对；同时支持传入显式证据目录。本地复用最终矩阵运行 `node scripts/check-mini-layout-evidence.mjs C:\Temp\scb-ui005-pr-review-results4`，1386/1386 证据通过。等待修复 head 的新一轮 Linux CI。
