@@ -1,0 +1,57 @@
+{
+  "name": "int01-sponsor-delivery-reason",
+  "route": "pages/sponsor-commerce/index",
+  "state": "synthetic-advertiser-delivery-dispute",
+  "figmaNode": "44:1277",
+  "designSource": "Current UI006 advertiser workspace; restore the existing delivery dispute reason alongside its original commands",
+  "syntheticData": true,
+  "expectText": ["合成广告交付核对", "提出争议", "验收通过"],
+  "expectVisible": [
+    "textarea[data-field=\"reason\"][data-mini-bindinput=\"input\"]",
+    "button[data-action=\"DISPUTE\"][data-id=\"30000000-0000-4000-8000-000000000001\"]"
+  ],
+  "expectEnabled": ["提出争议", "验收通过"],
+  "expectAbsentSelectors": [
+    "button[data-action=\"DELIVERY\"]",
+    "button[data-action=\"VERIFY_FEE\"]"
+  ],
+  "data": {
+    "figmaCommercePreview": false,
+    "loading": false,
+    "busy": false,
+    "pending": null,
+    "enabled": true,
+    "userId": "10000000-0000-4000-8000-000000000001",
+    "canManage": false,
+    "canFinance": false,
+    "detailView": "delivery",
+    "reason": "",
+    "detail": {
+      "order": {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "version": 3,
+        "title": "合成广告交付核对",
+        "payer_user_id": "10000000-0000-4000-8000-000000000001",
+        "status": "DELIVERING",
+        "stateLabel": "交付中",
+        "amountText": "2000.00",
+        "verified_fee_fen": null
+      },
+      "deliveries": [
+        {
+          "id": "30000000-0000-4000-8000-000000000001",
+          "version": 1,
+          "status": "PROPOSED",
+          "stateLabel": "待本人核对",
+          "evidence": "合成场边广告展示记录"
+        }
+      ],
+      "batches": [],
+      "items": [],
+      "refunds": [],
+      "refundRetries": [],
+      "returns": [],
+      "recovery": []
+    }
+  }
+}

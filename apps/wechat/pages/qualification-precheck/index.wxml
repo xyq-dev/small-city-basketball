@@ -1,4 +1,4 @@
-<scb-header title="{{figmaState==='qualification-progress' || selectedParticipant && selectedParticipant.requestCurrent ? '资格核验进度' : '独立资格预审'}}" disabled="{{busy || pending}}"/>
+<scb-header title="{{figmaState==='qualification-progress' || workspace && !workspace.canReview && selectedParticipant && selectedParticipant.requestCurrent ? '资格核验进度' : '独立资格预审'}}" disabled="{{busy || pending}}"/>
 <view class="figma-page precheck-rebuild">
   <view class="figma-page__content figma-page__content--actions">
     <block wx:if="{{figmaState==='qualification-progress'}}">
@@ -8,7 +8,7 @@
     </block>
 
     <block wx:else>
-    <view wx:if="{{workspace && selectedParticipant && selectedParticipant.requestCurrent}}" class="figma-summary">
+    <view wx:if="{{workspace && !workspace.canReview && selectedParticipant && selectedParticipant.requestCurrent}}" class="figma-summary">
       <view class="figma-summary__icon"><figma-icon name="shield" size="28"/></view>
       <view class="figma-summary__copy">
         <view class="figma-eyebrow">{{workspace.eventName || '本届赛事'}} · 本人</view>
@@ -16,7 +16,7 @@
         <view class="figma-subtitle">本人先确认材料版本，再由有权人员独立预审。</view>
       </view>
     </view>
-    <view wx:if="{{workspace && !(selectedParticipant && selectedParticipant.requestCurrent)}}" class="figma-summary">
+    <view wx:if="{{workspace && (workspace.canReview || !(selectedParticipant && selectedParticipant.requestCurrent))}}" class="figma-summary">
       <view class="figma-summary__icon"><figma-icon name="shield" size="28"/></view>
       <view class="figma-summary__copy">
         <view class="figma-eyebrow">本人及独立审核人</view>
@@ -25,14 +25,14 @@
       </view>
     </view>
 
-    <figma-tabs wx:if="{{workspace && !(selectedParticipant && selectedParticipant.requestCurrent)}}" key1="current" label1="当前资料" key2="history" label2="预审记录" active="{{activeView}}" disabled="{{busy || loading}}" bind:change="changeView"/>
+    <figma-tabs wx:if="{{workspace && (workspace.canReview || !(selectedParticipant && selectedParticipant.requestCurrent))}}" key1="current" label1="当前资料" key2="history" label2="预审记录" active="{{activeView}}" disabled="{{busy || loading}}" bind:change="changeView"/>
     <figma-skeleton wx:if="{{loading && !workspace}}" rows="4"/>
     <figma-feedback wx:if="{{error}}" type="error" title="资格资料读取失败" body="{{error}}" action-label="重新读取" disabled="{{busy || loading}}" bind:action="load"/>
     <figma-feedback wx:if="{{message}}" type="success" title="预审操作已记录" body="{{message}}"/>
     <figma-feedback wx:if="{{pending}}" type="warning" title="原请求结果待核对" body="暂停新的申请和审核，先核对当前账号保留的原请求。" action-label="核对原请求" disabled="{{busy || loading}}" bind:action="recover"/>
     <figma-feedback wx:if="{{!figmaHideEmptyParticipants && !loading && workspace && !workspace.participants.length}}" type="empty" title="暂无可核对的本届成员" body="请先保存本人资料并由领队确认本届名单。" action-label="打开本人资料" bind:action="materials"/>
 
-    <block wx:if="{{workspace && selectedParticipant && selectedParticipant.requestCurrent}}">
+    <block wx:if="{{workspace && !workspace.canReview && selectedParticipant && selectedParticipant.requestCurrent}}">
       <view class="figma-section">
         <view class="figma-section__title">本人材料</view>
         <view class="precheck-progress-row"><view class="precheck-progress-mark">1</view><view class="figma-row__copy"><view class="figma-row__title">身份、照片与签署</view><view class="figma-row__subtitle">本人已提交当前版本。</view></view><view class="figma-status figma-status--orange">已提交</view></view>
@@ -45,28 +45,28 @@
       </view>
     </block>
 
-    <block wx:if="{{workspace && activeView === 'current' && !(selectedParticipant && selectedParticipant.requestCurrent)}}">
-      <view wx:if="{{selectedParticipant}}" class="figma-section">
+    <block wx:if="{{workspace && activeView === 'current'}}">
+      <view wx:if="{{selectedParticipant && (workspace.canReview || !selectedParticipant.requestCurrent)}}" class="figma-section">
         <view class="figma-section__title">本次预审</view>
         <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">姓名与身份</view><view class="figma-row__subtitle">当前资料版本 V{{selectedParticipant.materialVersion}} · 按私有资料核对</view></view><view class="figma-status figma-status--orange">{{selectedParticipant.hasRealName && selectedParticipant.hasIdentity ? '待核验' : '待补充'}}</view></view>
         <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">清晰本人照片</view><view class="figma-row__subtitle">授权审核人查看</view></view><view class="figma-status figma-status--orange">{{selectedParticipant.hasPortrait ? '待核验' : '待补充'}}</view></view>
         <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">本届规程</view><view class="figma-row__subtitle">由本人明确签署</view></view><view class="figma-status {{selectedParticipant.hasSignature ? 'figma-status--green' : 'figma-status--orange'}}">{{selectedParticipant.hasSignature ? '已签署' : '待签署'}}</view></view>
       </view>
 
-      <view wx:if="{{selectedParticipant}}" class="figma-section">
+      <view wx:if="{{selectedParticipant && (workspace.canReview || !selectedParticipant.requestCurrent)}}" class="figma-section">
         <view class="figma-section__title">独立核验</view>
         <view class="precheck-step"><view class="precheck-step__mark">1</view><view><view class="figma-row__title">提交当前版本</view><view class="figma-row__subtitle">本人同意用于本届预审</view></view></view>
         <view class="precheck-step"><view class="precheck-step__mark">2</view><view class="figma-row__copy"><view class="figma-row__title">人工核对</view><view class="figma-row__subtitle">逐项检查资料和签署</view></view><view class="figma-status figma-status--orange">{{selectedParticipant.requestCurrent ? '待处理' : '待申请'}}</view></view>
         <view class="precheck-step"><view class="precheck-step__mark">3</view><view class="figma-row__copy"><view class="figma-row__title">审核结论</view><view class="figma-row__subtitle">通过或说明补交原因</view></view><view wx:if="{{selectedParticipant.qualification}}" class="figma-status {{selectedParticipant.qualification.status === 'APPROVED' ? 'figma-status--green' : 'figma-status--orange'}}">{{selectedParticipant.qualification.status === 'APPROVED' ? '已通过' : selectedParticipant.qualification.status === 'REJECTED' ? '需补充' : selectedParticipant.qualification.status === 'PENDING' ? '待处理' : selectedParticipant.qualification.status}}</view></view>
       </view>
 
-      <view wx:if="{{selectedParticipant}}" class="figma-section">
+      <view wx:if="{{selectedParticipant && (workspace.canReview || !selectedParticipant.requestCurrent)}}" class="figma-section">
         <view class="figma-section__title">后续办理</view>
         <button class="precheck-choice" bindtap="externalPolicy" disabled="{{busy || loading || pending}}"><view class="figma-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">已有外部保单</view><view class="figma-row__subtitle">提交保障凭证后由授权人员独立核对</view></view></button>
         <view class="precheck-choice"><view class="figma-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">在线保险</view><view class="figma-row__subtitle">不影响当前资料与资格预审</view></view><view class="figma-status">未开放</view></view>
       </view>
 
-      <view wx:if="{{selectedParticipant && !workspace.canReview && !figmaHidePrecheckOperations}}" class="figma-section">
+      <view wx:if="{{selectedParticipant && !selectedParticipant.requestCurrent && !workspace.canReview && !figmaHidePrecheckOperations}}" class="figma-section">
         <view class="figma-section__title">本人申请</view>
         <checkbox-group bindchange="consent"><label class="figma-check"><checkbox value="yes" checked="{{consent}}" disabled="{{busy || loading || pending}}"/><text>本人同意提交当前版本资料用于本届预审</text></label></checkbox-group>
         <button class="figma-action figma-action--orange" data-id="{{selectedMemberId}}" bindtap="request" disabled="{{busy || loading || pending || !consent || !selectedParticipant.canRequest || !selectedParticipant.hasIdentity || !selectedParticipant.hasPortrait || !selectedParticipant.hasSignature}}">提交当前版本资格预审</button>
@@ -90,7 +90,7 @@
       </view>
     </block>
 
-    <block wx:if="{{workspace && activeView === 'history' && !(selectedParticipant && selectedParticipant.requestCurrent)}}">
+    <block wx:if="{{workspace && activeView === 'history' && (workspace.canReview || !(selectedParticipant && selectedParticipant.requestCurrent))}}">
       <view class="figma-section">
         <view class="figma-section__title">预审记录</view>
         <view wx:for="{{workspace.participants}}" wx:key="memberId" class="figma-row">
@@ -103,7 +103,7 @@
   </view>
 
   <view wx:if="{{figmaState==='qualification-progress'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">查看保障凭证</button><button class="figma-action figma-action--orange">查看本人资料</button></view>
-  <view wx:elif="{{selectedParticipant && selectedParticipant.requestCurrent}}" class="figma-fixed-actions">
+  <view wx:elif="{{workspace && !workspace.canReview && selectedParticipant && selectedParticipant.requestCurrent}}" class="figma-fixed-actions">
     <button class="figma-action figma-action--ghost" bindtap="externalPolicy" disabled="{{busy || loading || pending}}">查看保障凭证</button>
     <button class="figma-action figma-action--orange" bindtap="materials" disabled="{{busy || loading || pending}}">查看本人资料</button>
   </view>

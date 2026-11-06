@@ -1,0 +1,182 @@
+{
+  "name": "int01-public-archive-multiple",
+  "route": "pages/public-archives/index",
+  "state": "synthetic-multiple-real-dto-profiles",
+  "figmaNode": "5:1458",
+  "syntheticData": true,
+  "designSource": "Current UI006 public archive management; restore capability-correct actions for every authorized real-DTO profile",
+  "expectText": [
+    "合成本人球员档案",
+    "合成第二支公开球队",
+    "合成第三支草稿球队",
+    "本人明确同意公开此档案"
+  ],
+  "expectVisible": [
+    "button[data-mini-bindtap=\"profileCommand\"][data-id=\"10000000-0000-4000-8000-000000000001\"][data-type=\"REVOKE\"]",
+    "button[data-mini-bindtap=\"profileCommand\"][data-id=\"10000000-0000-4000-8000-000000000002\"][data-type=\"REVOKE\"]",
+    "button[data-mini-bindtap=\"profileCommand\"][data-id=\"10000000-0000-4000-8000-000000000003\"][data-type=\"PUBLISH\"]",
+    "button[data-mini-bindtap=\"editProfile\"][data-id=\"10000000-0000-4000-8000-000000000002\"]",
+    "button[data-mini-bindtap=\"sourceCommand\"][data-id=\"10000000-0000-4000-8000-000000000012\"][data-type=\"REVOKE\"]",
+    "button[data-mini-bindtap=\"profileCommand\"][data-id=\"10000000-0000-4000-8000-000000000004\"][data-type=\"PUBLISH\"]"
+  ],
+  "expectAbsentSelectors": [
+    "button[data-mini-bindtap=\"sourceCommand\"][data-id=\"10000000-0000-4000-8000-000000000012\"][data-type=\"CONSENT\"]"
+  ],
+  "data": {
+    "profiles": [
+      {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "kind": "PLAYER",
+        "displayName": "合成本人球员档案",
+        "version": 4,
+        "orgId": null,
+        "teamId": null,
+        "status": "PUBLISHED",
+        "publicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "sources": [
+          {
+            "id": "10000000-0000-4000-8000-000000000011",
+            "profileId": "10000000-0000-4000-8000-000000000001",
+            "eventName": "合成本届来源",
+            "teamName": "合成青锋",
+            "memberName": "合成球员",
+            "status": "PENDING",
+            "version": 6,
+            "canConsent": true,
+            "canRevoke": true,
+            "currentlyEffective": false
+          }
+        ]
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000002",
+        "kind": "TEAM",
+        "displayName": "合成第二支公开球队",
+        "version": 7,
+        "orgId": "10000000-0000-4000-8000-000000000022",
+        "teamId": "10000000-0000-4000-8000-000000000023",
+        "status": "PUBLISHED",
+        "publicKey": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "sources": [
+          {
+            "id": "10000000-0000-4000-8000-000000000012",
+            "profileId": "10000000-0000-4000-8000-000000000002",
+            "eventName": "合成球队来源",
+            "teamName": "合成第二队",
+            "memberName": null,
+            "status": "CONSENTED",
+            "version": 8,
+            "canConsent": false,
+            "canRevoke": true,
+            "currentlyEffective": true
+          }
+        ]
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "kind": "TEAM",
+        "displayName": "合成第三支草稿球队",
+        "version": 9,
+        "orgId": "10000000-0000-4000-8000-000000000022",
+        "teamId": "10000000-0000-4000-8000-000000000024",
+        "status": "DRAFT",
+        "publicKey": null,
+        "sources": []
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000004",
+        "kind": "TEAM",
+        "displayName": "合成第四支未授权草稿",
+        "version": 11,
+        "orgId": "10000000-0000-4000-8000-000000000022",
+        "teamId": "10000000-0000-4000-8000-000000000025",
+        "status": "DRAFT",
+        "publicKey": null,
+        "sources": []
+      }
+    ],
+    "primaryProfile": {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "kind": "PLAYER",
+      "displayName": "合成本人球员档案",
+      "version": 4,
+      "orgId": null,
+      "teamId": null,
+      "status": "PUBLISHED",
+      "publicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "sources": [
+        {
+          "id": "10000000-0000-4000-8000-000000000011",
+          "profileId": "10000000-0000-4000-8000-000000000001",
+          "eventName": "合成本届来源",
+          "teamName": "合成青锋",
+          "memberName": "合成球员",
+          "status": "PENDING",
+          "version": 6,
+          "canConsent": true,
+          "canRevoke": true,
+          "currentlyEffective": false
+        }
+      ]
+    },
+    "secondaryProfiles": [
+      {
+        "id": "10000000-0000-4000-8000-000000000002",
+        "kind": "TEAM",
+        "displayName": "合成第二支公开球队",
+        "version": 7,
+        "orgId": "10000000-0000-4000-8000-000000000022",
+        "teamId": "10000000-0000-4000-8000-000000000023",
+        "status": "PUBLISHED",
+        "publicKey": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "sources": [
+          {
+            "id": "10000000-0000-4000-8000-000000000012",
+            "profileId": "10000000-0000-4000-8000-000000000002",
+            "eventName": "合成球队来源",
+            "teamName": "合成第二队",
+            "memberName": null,
+            "status": "CONSENTED",
+            "version": 8,
+            "canConsent": false,
+            "canRevoke": true,
+            "currentlyEffective": true
+          }
+        ]
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "kind": "TEAM",
+        "displayName": "合成第三支草稿球队",
+        "version": 9,
+        "orgId": "10000000-0000-4000-8000-000000000022",
+        "teamId": "10000000-0000-4000-8000-000000000024",
+        "status": "DRAFT",
+        "publicKey": null,
+        "sources": []
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000004",
+        "kind": "TEAM",
+        "displayName": "合成第四支未授权草稿",
+        "version": 11,
+        "orgId": "10000000-0000-4000-8000-000000000022",
+        "teamId": "10000000-0000-4000-8000-000000000025",
+        "status": "DRAFT",
+        "publicKey": null,
+        "sources": []
+      }
+    ],
+    "pendingSources": [],
+    "teams": [],
+    "events": [],
+    "loading": false,
+    "busy": false,
+    "loginRequired": false,
+    "publicConsent": true,
+    "publisherConsent": false,
+    "disclosureNotice": "合成独立公开档案授权说明",
+    "publicConsentProfileId": "10000000-0000-4000-8000-000000000003",
+    "publicConsentProfileVersion": 9
+  }
+}

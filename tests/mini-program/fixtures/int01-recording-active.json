@@ -1,0 +1,63 @@
+{
+  "name": "int01-recording-active",
+  "route": "pages/media-jobs/index",
+  "state": "recording-running-with-queued-peer",
+  "designSource": "isolated-synthetic:INT01-recording-cancel-review",
+  "static": true,
+  "expectText": ["合成直播赛事", "合成排队录像", "合成正在录制", "取消录像作业"],
+  "expectVisible": [
+    "button[data-type=\"CANCEL_JOB\"][data-id=\"44444444-4444-4444-8444-444444444444\"]"
+  ],
+  "expectEnabled": ["取消录像作业"],
+  "expectAbsentSelectors": [
+    "button[data-type=\"STOP\"]",
+    "button[data-id=\"55555555-5555-4555-8555-555555555555\"]"
+  ],
+  "data": {
+    "mediaTab": "recording",
+    "session": {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "eventName": "合成直播赛事",
+      "desired": "LIVE",
+      "observed": "LIVE",
+      "targets": []
+    },
+    "jobs": [
+      {
+        "id": "66666666-6666-4666-8666-666666666666",
+        "kind": "RECORDING",
+        "kindText": "合成排队录像",
+        "status": "QUEUED",
+        "statusText": "排队中",
+        "version": 1,
+        "error": null
+      },
+      {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "kind": "RECORDING",
+        "kindText": "合成正在录制",
+        "status": "RUNNING",
+        "statusText": "处理中",
+        "version": 3,
+        "error": null
+      },
+      {
+        "id": "55555555-5555-4555-8555-555555555555",
+        "kind": "TRANSCODE",
+        "kindText": "合成转码任务",
+        "status": "RUNNING",
+        "statusText": "处理中",
+        "version": 4,
+        "error": null
+      }
+    ],
+    "artifacts": [],
+    "canManage": true,
+    "pending": false,
+    "loading": false,
+    "busy": false,
+    "expandedJobId": "44444444-4444-4444-8444-444444444444",
+    "recordingCount": 2,
+    "processingCount": 1
+  }
+}

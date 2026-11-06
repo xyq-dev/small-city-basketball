@@ -53,6 +53,13 @@
     "activeView": "pending"
   },
   "static": true,
-  "expectEnabled": ["[data-mini-bindtap=\"configure\"]", "input[data-field=\"threshold\"]"],
-  "expectAbsentSelectors": ["[data-mini-bindtap=\"review\"]", "[data-mini-bindtap=\"viewProof\"]"]
+  "expectEnabled": ["保存本届青年规则"],
+  "expectAbsentSelectors": ["[data-mini-bindtap=\"review\"]", "[data-mini-bindtap=\"viewProof\"]"],
+  "expectVisible": ["button[data-mini-bindtap=\"configure\"]", "input[data-field=\"threshold\"]"],
+  "expectValues": [
+    {
+      "selector": "input[data-field=\"threshold\"]",
+      "value": "18"
+    }
+  ]
 }

@@ -1,0 +1,49 @@
+{
+  "name": "int01-region-search-directory",
+  "route": "pages/city-select/index",
+  "state": "synthetic-directory-organizer-search-standard-regions",
+  "figmaNode": "36:57",
+  "syntheticData": true,
+  "designSource": "Current city-select standard region tab with independent organizer event-directory selection; synthetic catalog and no device location",
+  "expectText": [
+    "选择赛事地区",
+    "搜索标准地区",
+    "合成高州市",
+    "合成广东省 / 合成茂名市 / 合成高州市"
+  ],
+  "expectDisabled": ["最近选择", "浏览全国", "选择本地区及下辖地区"],
+  "expectVisible": [
+    "input[data-mini-bindinput=\"searchRegion\"]",
+    "button[data-mini-bindtap=\"openRegion\"][data-id=\"00000000-0000-4000-8000-000000000003\"]"
+  ],
+  "expectAbsentSelectors": [
+    "button[data-mini-bindtap=\"pickRecent\"]",
+    "input[data-mini-bindinput=\"inputCity\"]"
+  ],
+  "expectValues": [{ "selector": "input[data-mini-bindinput=\"searchRegion\"]", "value": "高州" }],
+  "data": {
+    "organizer": true,
+    "activeView": "standard",
+    "mode": "NATIONWIDE",
+    "label": "合成赛事地区",
+    "catalogLoading": false,
+    "catalogError": "",
+    "catalogVersion": "synthetic-int01-region-v1",
+    "dataDate": "2026-11-01",
+    "search": "高州",
+    "parentId": "",
+    "hasMore": false,
+    "rows": [
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "parentId": "00000000-0000-4000-8000-000000000002",
+        "name": "合成高州市",
+        "level": "COUNTY",
+        "path": "合成广东省 / 合成茂名市 / 合成高州市",
+        "partial": false,
+        "hasChildren": false
+      }
+    ],
+    "recentChoices": []
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "name": "int01-qualification-review",
+  "route": "pages/qualification-precheck/index",
+  "state": "synthetic-current-independent-review",
+  "designSource": "INT01: capability-authorized independent reviewer with a current request selected; synthetic, no real approval or identity data",
+  "expectText": [
+    "独立资格预审",
+    "独立审核当前成员",
+    "选择本次核对的成员",
+    "已逐项人工核对，通过预审",
+    "退回补充"
+  ],
+  "data": {
+    "orgId": "00000000-0000-4000-8000-000000000001",
+    "entryId": "00000000-0000-4000-8000-000000000002",
+    "userId": "00000000-0000-4000-8000-000000000010",
+    "workspace": {
+      "entryId": "00000000-0000-4000-8000-000000000002",
+      "canReview": true,
+      "participants": [
+        {
+          "memberId": "00000000-0000-4000-8000-000000000003",
+          "canRequest": false,
+          "materialVersion": 1,
+          "requestId": "00000000-0000-4000-8000-000000000011",
+          "requestCurrent": true,
+          "materialRevisionId": "00000000-0000-4000-8000-000000000012",
+          "hasPortrait": true,
+          "hasIdentity": true,
+          "hasRealName": true,
+          "hasSignature": true,
+          "qualification": null
+        },
+        {
+          "memberId": "00000000-0000-4000-8000-000000000014",
+          "canRequest": false,
+          "materialVersion": 2,
+          "requestId": "00000000-0000-4000-8000-000000000015",
+          "requestCurrent": false,
+          "materialRevisionId": "00000000-0000-4000-8000-000000000016",
+          "hasPortrait": true,
+          "hasIdentity": true,
+          "hasRealName": true,
+          "hasSignature": true,
+          "qualification": {
+            "id": "00000000-0000-4000-8000-000000000017",
+            "status": "REJECTED",
+            "current": false,
+            "reason": "合成资料需补充当前清晰本人照片并重新明确提交"
+          }
+        }
+      ],
+      "eventName": "合成资格独立审核杯"
+    },
+    "pending": null,
+    "consent": false,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "message": "合成当前版本申请；独立审核人与申请人不同，未执行真实审核。",
+    "selectedParticipant": {
+      "memberId": "00000000-0000-4000-8000-000000000003",
+      "canRequest": false,
+      "materialVersion": 1,
+      "requestId": "00000000-0000-4000-8000-000000000011",
+      "requestCurrent": true,
+      "materialRevisionId": "00000000-0000-4000-8000-000000000012",
+      "hasPortrait": true,
+      "hasIdentity": true,
+      "hasRealName": true,
+      "hasSignature": true,
+      "qualification": null
+    },
+    "selectedMemberId": "00000000-0000-4000-8000-000000000003",
+    "activeView": "current"
+  },
+  "static": true,
+  "expectEnabled": ["已逐项人工核对，通过预审", "退回补充"],
+  "expectAbsentSelectors": ["[data-mini-bindtap=\"request\"]"],
+  "expectVisible": [
+    "button[data-mini-bindtap=\"review\"][data-decision=\"APPROVED\"]",
+    "button[data-mini-bindtap=\"review\"][data-decision=\"REJECTED\"]",
+    "button[data-mini-bindtap=\"selectParticipant\"][data-id=\"00000000-0000-4000-8000-000000000003\"]"
+  ]
+}

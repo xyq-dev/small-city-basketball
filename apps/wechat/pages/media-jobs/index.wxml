@@ -27,6 +27,7 @@
           <button class="figma-row" data-id="{{item.id}}" bindtap="toggleJob" disabled="{{busy}}"><image class="media-icon" src="./assets/clock.svg" mode="aspectFit"/><view class="figma-row__copy"><view class="figma-row__title">{{item.kindText}}</view><view class="figma-row__subtitle">{{item.statusText}}</view></view><image class="media-chevron" src="./assets/chevron.svg" mode="aspectFit"/></button>
           <view wx:if="{{expandedJobId === item.id}}" class="media-expanded">
             <figma-feedback wx:if="{{item.error}}" type="error" title="录像处理失败" body="{{item.error}}"/>
+            <button wx:if="{{canManage && (item.status === 'QUEUED' || item.status === 'RUNNING')}}" class="figma-action figma-action--ghost" data-type="CANCEL_JOB" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">取消录像作业</button>
             <block wx:if="{{canManage && item.status === 'READY'}}">
               <button class="media-link" bindtap="toggleCalibration" disabled="{{busy || pending}}">{{calibrationOpen ? '收起录像时间校准' : '核对本录像时间校准'}}</button>
               <view wx:if="{{calibrationOpen}}" class="media-calibration">

@@ -1,5 +1,23 @@
 # INT01 全部分支测试与整合
 
+## 2026-11-06 19:14 Asia/Shanghai 最终冻结与发布准备
+
+已收齐本轮条件门禁修复：有效资格审核/成员与历史切换、后续约赛逐条选择、录制CANCEL_JOB、无机构身份授课理由、本人评价撤回理由、广告交付/争议理由、撤销招募后历史拒绝理由、标准地区搜索、所有公开档案及其来源管理。十三页WXML仅恢复既有业务，JS仅共享证明取消代次与公开档案同意适配/目标保护，后端与API契约不变。
+
+公开档案追加两轮独立复核解除交叉授权与真实撤选被busy忽略：同意绑定profile id/version/revision，确认前后、UUID后及登记前校验；false/空数组撤选先于busy拒绝新增授权执行。load/session/reset/成功清除绑定，正常首/次档案仍可发布；确认只显示实际名称/主体类型与原披露。重试原_pending/body不改变。唯一旧x08首例由裸setData(bool)迁为携原id/version的真实consent事件，原CAS/版本4/请求同意断言保留，没有单档案fallback。
+
+实际独立证据：四页29/29、资格/招募28/28、广告110/110；公开档案最终新25与相关组合39/39，旧不绑定实现跑同25为13失败/12通过（初始DTO修复13项对0a为12失败/1通过，分别记录，不混合）；另一复核者真实事件确认勾甲发乙被拒、UUID中撤选0次POST、勾乙正常POST。辅助13页检查未发现新增阻塞，实际渲染/事件32断言、既有74项和地区新5项通过。
+
+root最终整合完整微信1436项：1435通过、0失败、1既有Windows桥平台skip；format/typecheck/diff --check通过。累计15份新CJS共139项、16份新布局fixture，16×三宽48次JSDOM契约预检成功，不等于浏览器几何。CI216 admin实际六项失败均为guardian/youth新fixture将CSS误填expectEnabled；现按钮文案与CSS可见性分开，输入阈值增expectValues，未改spec、未降低断言。下一步普通推进原PR46同一冻结候选，完整CI及全部审查线程核验通过后merge；新SHA/CI/布局附件/主线事实仅在实际完成后补入。001—050与生产配置保持原文，无新增或执行生产Migration。
+
+## 2026-11-06 19:05 Asia/Shanghai 条件门禁复审检查点
+
+0a43f4e仍为共享候选，main未更新。后续四条自动审查已核实并在独立worktree修复：current资格预审反被隐藏、约赛仅第一条可选、无机构身份授课者无reason、录制任务无取消。扩大条件组合审查又恢复本人评价撤回原因、广告交付/争议原因、撤销招募后的历史拒绝原因，以及所有公开档案的管理/来源入口；修正不存在的profile.canRevoke条件和checkbox数组撤选语义。普通静态事件名对比不足，已按真实DTO、角色、状态和必填输入联立审查。
+
+root已整合八页WXML、一处公开档案JS、八份新测试和八份新场景；本地完整微信1419项：1418通过、0失败、1平台skip，类型/格式通过，15份int01夹具×三宽45次DOM契约预检成功（不是浏览器几何）。四页独立复核29/29、资格/招募28/28与广告相关110/110通过。CI216 admin实际失败仅新guardian/youth两场景×三宽共6项：expectEnabled误用CSS selector；现改成真实按钮文案，选择器移expectVisible，阈值用expectValues，不改spec、不放宽断言。
+
+追加公开档案复核又复现两DRAFT交叉同意：勾甲会启乙发布，旧通用确认框没有目标信息。当前继续阻塞，唯一实施者在scb-public-archive-controls worktree做id+version绑定、确认及uuid之后重查、撤选/load/session清除；独立复核者event_template_fix。允许本页write新增可选目标校验但不影响其他write；仅迁移旧x08首例为真实consent(id/version)事件，保留原ID/expectedVersion=4/请求同意断言，禁止裸bool或单档案fallback迎合测试。其余页面源已冻结；新候选待此最后隐私门槛完成后统一验证/普通推进同PR。未部署生产或执行生产Migration。
+
 ## 2026-11-06 18:46 Asia/Shanghai 私有证明竞态修复
 
 77cd8a8已普通同步到原PR46并触发CI215，Windows工具48成功；独立复审在该精确源码复现conceal后迟到download仍writeFile并previewImage。旧新增证明测试仅覆盖/private元数据读取和完成后隐藏，未覆盖viewProof链，不能据其绿色放行。

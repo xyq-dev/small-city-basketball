@@ -1,0 +1,61 @@
+{
+  "name": "int01-training-assigned-coach",
+  "route": "pages/training-manage/index",
+  "state": "synthetic-assigned-coach-without-institution-membership",
+  "figmaNode": "36:90",
+  "syntheticData": true,
+  "designSource": "Current UI006 teaching workspace; server-authorized lesson roster with independent teaching facts and no institution selector",
+  "expectText": ["合成授权教练课次", "本次事实依据", "合成课次学员", "教练提交实际授课记录"],
+  "expectEnabled": ["教练提交实际授课记录"],
+  "expectVisible": [
+    "textarea[data-field=\"reason\"][data-mini-bindinput=\"input\"]",
+    "button[data-mini-bindtap=\"sessionAction\"]"
+  ],
+  "expectAbsentSelectors": [
+    "[data-mini-bindchange=\"pickOrg\"]",
+    "input[data-field=\"orgId\"]",
+    "button[data-mini-bindtap=\"addCoach\"]"
+  ],
+  "expectValues": [{ "selector": "textarea[data-field=\"reason\"]", "value": "" }],
+  "data": {
+    "manageTab": "teaching",
+    "workspace": null,
+    "organizations": [],
+    "isOperator": false,
+    "loading": false,
+    "busy": false,
+    "pending": null,
+    "loginRequired": false,
+    "reason": "",
+    "teaching": [
+      {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "title": "合成授权教练课次",
+        "time": "2026-11-01 09:00（北京时间）",
+        "stateLabel": "待上课"
+      }
+    ],
+    "coachProfiles": [],
+    "roster": {
+      "session": {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "time": "2026-11-01 09:00（北京时间）",
+        "state": "SCHEDULED",
+        "stateLabel": "待上课",
+        "version": 4
+      },
+      "learners": [
+        {
+          "id": "30000000-0000-4000-8000-000000000001",
+          "display_name": "合成课次学员",
+          "state": "AVAILABLE",
+          "stateLabel": "未消费",
+          "version": 2
+        }
+      ],
+      "consumptions": [],
+      "attendance": [],
+      "canManage": false
+    }
+  }
+}

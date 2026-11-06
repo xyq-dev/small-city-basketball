@@ -162,10 +162,11 @@
     "合成监护人私密姓名"
   ],
   "static": true,
-  "expectEnabled": [
-    "[data-mini-bindtap=\"reveal\"]",
-    "[data-mini-bindtap=\"viewProof\"]",
-    "[data-mini-bindtap=\"conceal\"]"
-  ],
-  "expectAbsentSelectors": ["[data-mini-bindtap=\"review\"]"]
+  "expectEnabled": ["明确查看本人监护证明", "私有查看关系证明文件", "立即隐藏并清理预览"],
+  "expectAbsentSelectors": ["[data-mini-bindtap=\"review\"]"],
+  "expectVisible": [
+    "button[data-mini-bindtap=\"reveal\"]",
+    "button[data-mini-bindtap=\"viewProof\"]",
+    "button[data-mini-bindtap=\"conceal\"]"
+  ]
 }

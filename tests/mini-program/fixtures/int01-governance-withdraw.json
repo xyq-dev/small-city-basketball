@@ -1,0 +1,33 @@
+{
+  "name": "int01-governance-withdraw",
+  "route": "pages/governance-reviews/index",
+  "state": "synthetic-author-withdrawal-reason",
+  "syntheticData": true,
+  "expectText": ["合成本人已发布的服务评价", "永久撤回公开评价", "撤回原因"],
+  "expectVisible": ["textarea[data-field=\"reason\"]", "button[data-type=\"WITHDRAW\"]"],
+  "expectEnabled": ["永久撤回公开评价"],
+  "expectAbsentSelectors": ["button[data-type=\"PUBLISH\"]", "button[data-type=\"REJECT\"]"],
+  "data": {
+    "items": [
+      {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "version": 7,
+        "status": "PUBLISHED",
+        "statusLabel": "已发布",
+        "score": 5,
+        "body": "合成本人已发布的服务评价",
+        "createdAt": "2026-11-06 18:00"
+      }
+    ],
+    "mode": "mine",
+    "isOperator": false,
+    "isPublic": false,
+    "loginRequired": false,
+    "sourceReady": false,
+    "reason": "",
+    "busy": false,
+    "pending": null,
+    "loading": false,
+    "figmaReviewPreview": false
+  }
+}

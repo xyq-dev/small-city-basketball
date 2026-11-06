@@ -191,7 +191,7 @@
         <view class="figma-section commerce-evidence">
           <view class="figma-section__title">处理依据</view>
           <textarea class="figma-field-control" placeholder="交付证据、手续费核验依据或追偿凭据" value="{{evidence}}" data-field="evidence" bindinput="input" maxlength="2000"/>
-          <textarea wx:if="{{detailView==='refunds'}}" class="figma-field-control" placeholder="退款或争议原因（至少4字）" value="{{reason}}" data-field="reason" bindinput="input" maxlength="1000"/>
+          <textarea wx:if="{{detailView==='delivery' || detailView==='refunds'}}" class="figma-field-control" placeholder="交付核对、争议或退款原因（至少4字）" value="{{reason}}" data-field="reason" bindinput="input" maxlength="1000" disabled="{{busy || pending}}"/>
           <input wx:if="{{detailView==='delivery' || detailView==='refunds'}}" class="figma-field-control" type="digit" placeholder="手续费或退款金额（元）" value="{{amount}}" data-field="amount" bindinput="input"/>
         </view>
 
