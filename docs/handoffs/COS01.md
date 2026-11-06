@@ -1,23 +1,50 @@
 # COS01 接续记录
 
-最新修复检查点：自动Code Review对8237f49指出清理队列饥饿P2（PRRT_kwDOVTBG0860ZrAf），已在本地补持久化失败尝试轮转、单调时间/资格保护、最小列权限与第9项跨机构原生PG回归。API1374项、全仓类型、PGlite完整001—050和34项SQL约束、独立复审通过；新候选待同步并重新四job CI。旧CI210结果仅表示旧候选，不可据其合并新代码。审查线程在新补丁与验收通过后解决。
+2026-11-06（Asia/Shanghai），负责人及集成人Codex root。状态DONE / MAIN（源码与隔离验收）；真实COS接入尚未配置，本轮功能未部署到生产。
 
-当前执行检查点（2026-11-06）：PR45已转正式评审，最终代码候选8237f4961f6b80ea17edc97e42146d8b3be785d6，tree dc65ddeb0014d2b12ebd4298ccb0ee65ece08d72。[CI210](https://github.com/xyq-dev/small-city-basketball/actions/runs/42173048311)四job中admin/account-security/production已SUCCESS，已读取三个完成日志：管理端598、API源码1373、兼容浏览器1349通过/1335配置跳过；账号安全桌面/手机各1、owned DB清理通过；生产隔离最小权限21、HTTPS4、完整备份恢复/凭据隔离/owned清理通过。api job ID127745575220仍在Existing PostgreSQL integration checks；Remaining modules已通过。合并必须等这一精确候选api余下PG/重启/浏览器和最终四job全绿，不能把当前三项成功当成完成。最终复审无代码阻断；未部署、未真实COS。本文检查点暂留本地，避免仅写状态触发正在运行的CI重跑，结束后随文档收口同步。
+## 代码定位
 
-2026-11-06 Asia/Shanghai，负责人 Codex root。状态 REVIEW / BRANCH_ONLY，基线与授权见[任务卡](../tasks/COS01.md)。
+| 项目 | 核验依据 |
+| --- | --- |
+| 实施目录 | `/workspace/scratch/1385f4a4fde1/small-city-basketball` |
+| 来源分支/仓库 | `feat/tencent-cos-media` / `xyq-dev/small-city-basketball` |
+| PR | [#45](https://github.com/xyq-dev/small-city-basketball/pull/45) |
+| 最终代码候选 | `a4dff06eedb5815e1cfedc48fe57361b1a527a1a` |
+| 候选 tree | `1d8e93fbf6cfac64dd88c3a93828f973ccca5eec` |
+| 合并提交 | `98f171f6135b88f7a26ec49f8d63de9fe8dcba10` |
+| 合并时间 | `2026-11-06T07:15:29Z`（Asia/Shanghai 15:15:29） |
+| 精确CI | [CI211 / run42175621742](https://github.com/xyq-dev/small-city-basketball/actions/runs/42175621742) |
 
-最新检查点：初始提交4170765已推送[PR45](https://github.com/xyq-dev/small-city-basketball/pull/45)。main发布期间更新至f7382c3，已普通merge并保留PR43账号安全；049_first_run_setup保持原文，COS改为050_cos_media_storage.sql、guard c50，清单50迁移/223表/128函数。新基线PGlite完整001—050及21项约束通过，原生CI等待后续整合候选。下方旧049/LOCAL_ONLY记录仅表示初始本地检查点。
+最终 CI 与审查线程处理记录：
 
-7394730的CI209开始运行，account-security已成功；之后增加纯存储`forRuntime`工厂，API与隔离工具复用同一恢复门禁，工具不再加载整个App/sharp。定向15项、类型/构建/格式/打包与实际编译模块加载验证通过。后续以新提交的完整四job CI验收，不混用7394730旧结果。
+CI211 head为上述a4dff06，admin、api、production、account-security四个作业均SUCCESS，attempt1。集成人及独立复核者均核验完整api日志：PG143及620（含COS9）、原生HTTP21、完整manifest及元数据样本的实际PG重启、真实API浏览器桌面12/手机12、自有资源失败清理均通过，无retry/flaky摘要。管理端598、API源码1374、微信源码1196通过及1项既有平台跳过；CLI12、e2e1349通过/1335配置跳过及1335布局证据。production最小权限21、HTTPS4、完整数据库归档恢复/隔离/自有清理通过；account-security桌面/手机各1及失败清理通过。
 
-接续授权更新：用户已同意独立分支提交/推送、PR、GitHub CI及验证审查通过后合并main。当前正在补并发验收并准备共享；下方“未提交/原生PG未验”为此前检查点，实际Git与CI完成后再更新。真实COS配置、付费资源和生产迁移/部署未由本轮启用。
+root已解决唯一P2线程`PRRT_kwDOVTBG0860ZrAf`，无其它审查线程，独立复审通过。PR45已合并，候选、CI测试merge-ref与合并提交的tree均为`1d8e93fbf6cfac64dd88c3a93828f973ccca5eec`。合并后main自动重复CI不计作已通过的CI211。
 
-提交候选补充：COS原生PG集成现有8项（新增4项并发/SQL回滚），以及新表非空metadata-only恢复fixture。新的helper进入Docker构建白名单/COPY与production脚本摘要清单，不访问真实COS；恢复打包12项、本地格式/类型及49迁移静态门禁通过。原生PG并发与完整隔离HTTPS/恢复验收交由本次PR的精确候选CI执行。
+CI209、CI210 已取消，不能作为最终验收。初始开发基线为 ef62cb1；期间普通合并 main f7382c3，保留 PR43 账号安全及049原文，COS迁移顺延050。没有 force push 或用旧 COS 迁移覆盖账号安全。
 
-已完成：实际clone并核验 main ef62cb1，建立本地 `feat/tencent-cos-media`；读取媒体整体/幂等/分片、发布、私有读取、本人资料共享配额和恢复隔离路径，确定私有COS和持久化清理登记方案。npm ci已完成。
+## 已交付的实现
 
-完成：COS adapter/runtime、3条上传路径、兼容旧文件的私有/公开读取、SHA256/Range、持久化清理登记/独立小连接池、后台/CLI清理、恢复隔离、049/权限、配置模板和手册。独立复审通过；最终API单测1366/1366、类型/构建/格式通过，PGlite完整001—049、旧字节兼容与21项SQL约束通过。详见[证据](../evidence/COS01/README.md)。
+官方 COS SDK 3.0.0 adapter/runtime、三条上传路径、兼容旧DB文件的私有/公开读取、SHA256及Range、持久化对象登记和独立小连接池、后台/CLI清理、恢复隔离、050和权限清单、Docker可选出站模板及配置手册均已纳入候选。恢复工具与API共用纯存储恢复门禁；隔离工具不再为此加载整个Nest App及无关native图像依赖。
 
-仍未验证：原生PG多连接并发与新HTTP集成（测试已编写），真实COS/CAM、真机和生产。未执行commit/push/pack/部署/生产Migration，未创建付费资源或配置正式凭据。现有单文件8MiB/机构128MiB限制保留；直播大文件和本人加密材料没有迁往COS。
+文件权限、显式公开发布和撤销行为保持原服务端规则。单文件8MiB、机构128MiB、512KiB分片保留；分片只在完成时写入COS。直播录制/转码大文件、本人加密材料和治理附件未迁往COS。客户端不接触云密钥或绕过撤销的云直链。
 
-下一位执行者第一步：核验此checkout分支和未提交diff，保留全部本轮改动；在原生隔离scb_test_*库运行 `npx vitest run test/cos-media.integration.test.ts test/c05-media.integration.test.ts test/c19-media-requests.integration.test.ts`（工作目录apps/api，TEST_DATABASE_URL只通过私有环境配置），并检查跨连接事务/最小运行权限。随后按[配置手册](../operations/tencent-cos.md)准备独立测试桶及受限凭据做真实联调。
+清理以云成功回执登记物理删除；暂时失败保留重试。独立审查修复规范机构ID、32/8192登记上限、DB异常整批回滚。自动Review P2指出最旧失败项占满清理批次，现以持久化`cleanup_attempted_at`轮转修复，保留活跃文件/24小时宽限/不可变身份/单调时间和最小列更新权限。该补丁已通过精确CI211与独立复审，线程已解决。
+
+## 验收口径
+
+- PGlite PostgreSQL WASM：完整001—050、旧媒体内容兼容及34项SQL断言通过，见[SQL记录](../evidence/COS01/sql-check.txt)。这不等同原生连接并发。
+- 原生PostgreSQL：COS9项HTTP/事务集成已在CI211通过，包含并发幂等、上传与清理互斥、并发清理、PUT后事务回滚，以及20失败对象不能阻塞另一机构第21对象。
+- CI211还通过相应旧业务PG、原生页面/API、最小运行权限、PG重启、隔离镜像/HTTPS、全库归档恢复及凭据隔离。精确通过数字和作业状态见[验收记录](../evidence/COS01/README.md)，不复用旧候选结果。
+
+## 尚待外部验证
+
+未创建付费资源，未配置正式COS/CAM凭据，未向正式环境发布应用或执行Migration。050仅在隔离环境执行；真实COS读写/删除、CAM最小权限、桶版本控制门禁、云对象独立备份恢复、微信真机及生产环境尚未验收。隔离production作业的镜像和HTTPS验证不代表正式主机部署。
+
+正式有COS文件后不能直接切回数据库配置或旧程序，否则云文件会不可读。数据库dump不含COS字节，不得将只恢复数据库记为完成媒体恢复。专用桶必须私有且从未启用版本控制；配置、出站网络、最小权限和恢复边界以[运行手册](../operations/tencent-cos.md)为准。
+
+## 下一位执行者的第一条操作
+
+先读取本页、[任务卡](../tasks/COS01.md)、[验收记录](../evidence/COS01/README.md)，核验当前远端main包含上述合并提交，检查并保留后续工作区修改；以记录的精确CI211为源码验收依据，不把合并后自动重复CI当成已通过的新证据。
+
+源码已合入main；下一步使用独立测试桶和隔离数据库按运行手册验证实际上传、完整性、下载/Range、权限、撤销、失败清理及云对象恢复，再据明确的正式部署范围安排050和应用上线。真实云条件未提供时，报告具体缺口，不重复运行已通过的无关源码测试，不把外部待验伪装成源码缺失。

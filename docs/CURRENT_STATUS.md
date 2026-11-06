@@ -1,5 +1,13 @@
 # 当前状态
 
+## 2026-11-06 COS01 腾讯云对象存储（DONE / MAIN：源码与隔离验收）
+
+[PR #45](https://github.com/xyq-dev/small-city-basketball/pull/45)已于`2026-11-06T07:15:29Z`合入main，代码合并SHA`98f171f6135b88f7a26ec49f8d63de9fe8dcba10`，tree `1d8e93fbf6cfac64dd88c3a93828f973ccca5eec`与最终候选`a4dff06eedb5815e1cfedc48fe57361b1a527a1a`及CI测试merge-ref精确一致。私有COS可选配置、普通/幂等/分片上传、旧DB文件兼容读取、权限与Range、持久化登记和后台/CLI清理已完成。失败清理记录尝试时间并轮转，防止持续失败对象阻塞其他机构；唯一自动审查P2已修复并解决，独立复审通过。
+
+[CI211](https://github.com/xyq-dev/small-city-basketball/actions/runs/42175621742)的admin/api/production/account-security四作业全部SUCCESS，attempt 1，已核验四份完成日志。原生PG新域143/既有620（含COS9）、原生页面→真实API21、真实API浏览器24、最小权限21、HTTPS4、实际PG重启及完整备份恢复/隔离/自有资源清理通过。API源码1374、管理端598、微信源码1196通过/1既有平台跳过、初始化CLI12通过；兼容浏览器1349通过/1335配置跳过，1335份布局/PNG已核验，不代表微信真机。合并后自动重复CI另计，不替代也不冒充上述候选验收。
+
+当前50项Migration、223表、128函数；001—049保持main既有原文，050已编写并仅在隔离环境执行。真实COS/CAM未配置联调，生产未迁移或部署。现有8MiB/文件、128MiB/机构限额保留，直播大文件和加密本人材料不在本轮迁移范围；COS测试使用受控字节传输与合成恢复元数据，不等于云对象真实恢复。下一步按[运行手册](operations/tencent-cos.md)准备私有测试桶与受限凭据做真实联调，详见[任务](tasks/COS01.md)、[交接](handoffs/COS01.md)、[证据](evidence/COS01/README.md)。下方旧阶段数量与状态保留为历史记录。
+
 ## 2026-11-06 账号安全（DONE / MAIN：源码与隔离验收，生产未部署）
 
 [PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)已合入main，合并SHA`becf8d38e3bc8e2c12059780ed57f52aa35f0bf0`，tree `505aaac19cf734e7c2623a4223242d726c503d60`与候选`89241947fb180ce8e857d1aee5cb94ca303a79c3`及CI测试merge-ref精确一致。首次部署自行设置OWNER密码、Web登录后本人改密及全部旧会话撤销已完成源码、独立安全复核与隔离验收。

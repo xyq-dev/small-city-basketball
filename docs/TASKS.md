@@ -8,9 +8,11 @@
 
 生产未由本轮部署，Migration049仅临时/CI执行。当前会话无直接Hermes/SSH执行通道；公开health/ready返回200只证明既有服务正常。服务器侧固定版本、备份恢复、升级和账号保留步骤已写入[交接](handoffs/ACCOUNT-SECURITY.md)。详见[任务](tasks/ACCOUNT-SECURITY.md)和[操作说明](operations/account-security.md)。
 
-## 2026-11-06 COS01 腾讯云对象存储（REVIEW / BRANCH_ONLY）
+## 2026-11-06 COS01 腾讯云对象存储（DONE / MAIN：源码与隔离验收）
 
-`feat/tencent-cos-media` 初始提交4170765已创建[PR45](https://github.com/xyq-dev/small-city-basketball/pull/45)。发布期间main前进至f7382c3，已普通merge保留账号安全，COS迁移顺延050；静态50迁移/223表/128函数、PGlite完整升级和21项SQL约束通过，原生CI待整合候选。初始API1366项、类型/构建/格式通过，不代表新基线或真实COS已验。尚未合入main、未上线。详见[任务](tasks/COS01.md)、[接续](handoffs/COS01.md)、[证据](evidence/COS01/README.md)、[配置](operations/tencent-cos.md)。
+[PR45](https://github.com/xyq-dev/small-city-basketball/pull/45)已合入main `98f171f6135b88f7a26ec49f8d63de9fe8dcba10`，tree `1d8e93fbf6cfac64dd88c3a93828f973ccca5eec`与最终候选a4dff06及测试merge-ref一致。[CI211](https://github.com/xyq-dev/small-city-basketball/actions/runs/42175621742)四作业全部SUCCESS，完整日志核验通过：API源码1374、原生PG143+620（含COS9）、页面→真实API21、真实API浏览器24，最小权限21、HTTPS4、实际PG重启/完整归档恢复及恢复隔离通过。清理队列饥饿P2已修复并解决，独立复审通过。
+
+50项Migration/223表/128函数；050仅隔离执行，001—049保留main原文。真实COS/CAM及生产未启用，8MiB/文件、128MiB/机构限额保留，云对象真实读写/删除/备份恢复与微信真机仍待专项验收。下一步准备私有测试桶和受限凭据联调。详见[任务](tasks/COS01.md)、[接续](handoffs/COS01.md)、[证据](evidence/COS01/README.md)、[配置](operations/tencent-cos.md)。
 
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 
