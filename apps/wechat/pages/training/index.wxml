@@ -6,6 +6,7 @@
       <view class="training-hero__shade"></view>
       <view class="training-hero__copy"><view class="figma-eyebrow">篮球训练</view><view class="training-hero__title title">把每一节课练扎实</view><view class="training-hero__body">成人固定短班 · 明确课次、教练与退费规则</view></view>
     </view>
+    <figma-feedback wx:if="{{loginRequired}}" type="locked" title="登录后查看我的报名" body="查看本人报名与课次需要登录；公开课程仍可浏览。" action-label="登录并继续" disabled="{{busy || loading || mineLoading || pending}}" bind:action="login"/>
     <figma-feedback wx:if="{{error}}" type="error" title="培训读取失败" body="{{error}}" action-label="重新读取" bind:action="load"/>
     <figma-feedback wx:if="{{message}}" type="success" title="最新结果" body="{{message}}"/>
     <figma-feedback wx:if="{{pending}}" type="warning" title="原操作结果待核对" body="上次操作尚待服务器确认，请勿重复报名。" action-label="核对回执" bind:action="recover"/>

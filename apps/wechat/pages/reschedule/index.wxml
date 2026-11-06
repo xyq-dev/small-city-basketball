@@ -43,6 +43,24 @@
       </view>
     </block>
 
+    <block wx:if="{{match && !uncertain}}">
+      <block wx:if="{{rescheduleTab !== 'history'}}">
+      <figma-feedback wx:if="{{error}}" type="error" title="改期未完成" body="{{error}}" action-label="重新读取核对" bind:action="load" disabled="{{busy}}"/>
+      <figma-feedback wx:if="{{notice}}" type="success" title="改期已确认" body="{{notice}}"/>
+
+      <view class="figma-summary">
+        <view class="figma-summary__icon"><figma-icon name="schedule" size="24"/></view>
+        <view class="figma-summary__copy"><view class="figma-eyebrow">单场管理</view><view class="figma-title">正式改期</view><view class="figma-subtitle">保留原公布安排，记录本次变更与原因。</view></view>
+      </view>
+      </block>
+
+      <view class="reschedule-tabs" role="tablist">
+        <button class="reschedule-tab {{rescheduleTab === 'original' ? 'is-active' : ''}}" data-tab="original" bindtap="changeRescheduleTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{rescheduleTab === 'original'}}">原安排</button>
+        <button class="reschedule-tab {{rescheduleTab === 'new' ? 'is-active' : ''}}" data-tab="new" bindtap="changeRescheduleTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{rescheduleTab === 'new'}}">新安排</button>
+        <button class="reschedule-tab {{rescheduleTab === 'history' ? 'is-active' : ''}}" data-tab="history" bindtap="changeRescheduleTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{rescheduleTab === 'history'}}">改期记录</button>
+      </view>
+    </block>
+
     <block wx:if="{{match && !uncertain && rescheduleTab === 'history' && history.length}}">
       <view class="reschedule-change-hero"><view class="figma-section__title">服务与赛程已更新</view><view class="figma-section__hint">请先查看最新时间、场地与处理进度，再继续操作。</view></view>
 
@@ -60,21 +78,7 @@
       </view>
     </block>
 
-    <block wx:if="{{match && !uncertain && !(rescheduleTab === 'history' && history.length)}}">
-      <figma-feedback wx:if="{{error}}" type="error" title="改期未完成" body="{{error}}" action-label="重新读取核对" bind:action="load" disabled="{{busy}}"/>
-      <figma-feedback wx:if="{{notice}}" type="success" title="改期已确认" body="{{notice}}"/>
-
-      <view class="figma-summary">
-        <view class="figma-summary__icon"><figma-icon name="schedule" size="24"/></view>
-        <view class="figma-summary__copy"><view class="figma-eyebrow">单场管理</view><view class="figma-title">正式改期</view><view class="figma-subtitle">保留原公布安排，记录本次变更与原因。</view></view>
-      </view>
-
-      <view class="reschedule-tabs" role="tablist">
-        <button class="reschedule-tab {{rescheduleTab === 'original' ? 'is-active' : ''}}" data-tab="original" bindtap="changeRescheduleTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{rescheduleTab === 'original'}}">原安排</button>
-        <button class="reschedule-tab {{rescheduleTab === 'new' ? 'is-active' : ''}}" data-tab="new" bindtap="changeRescheduleTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{rescheduleTab === 'new'}}">新安排</button>
-        <button class="reschedule-tab {{rescheduleTab === 'history' ? 'is-active' : ''}}" data-tab="history" bindtap="changeRescheduleTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{rescheduleTab === 'history'}}">改期记录</button>
-      </view>
-
+    <block wx:if="{{match && !uncertain && rescheduleTab !== 'history'}}">
       <view id="reschedule-original" class="figma-section">
         <view class="figma-section__title">原公布安排</view>
         <button class="figma-row" bindtap="openMatch"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">{{match.home}} vs {{match.away}}</view><view class="figma-row__subtitle">{{match.originalTime || match.plan}}</view></view><view class="figma-status figma-status--orange">已发布</view></button><view class="figma-row"><figma-icon name="court" size="20"/><view class="figma-row__copy"><view class="figma-row__title">{{match.venueLabel || '赛事与轮次'}}</view><view class="figma-row__subtitle">{{match.venueName || (match.eventName + ' · ' + match.round)}}</view></view><view class="figma-status">{{match.venueStatusText || match.statusLabel}}</view></view>
@@ -118,7 +122,7 @@
   <view wx:if="{{match && !uncertain && rescheduleTab === 'history' && history.length}}" class="figma-fixed-actions figma-fixed-actions--single">
     <button class="figma-action figma-action--orange" bindtap="openMatch" disabled="{{busy}}">查看最新赛程</button>
   </view>
-  <view wx:if="{{match && !uncertain && !(rescheduleTab === 'history' && history.length)}}" class="figma-fixed-actions">
+  <view wx:if="{{match && !uncertain && rescheduleTab !== 'history'}}" class="figma-fixed-actions">
     <button class="figma-action figma-action--ghost" data-tab="history" bindtap="changeRescheduleTab" disabled="{{busy}}">查看改期记录</button>
     <button class="figma-action figma-action--orange" bindtap="submit" disabled="{{busy || uncertain || !canReschedule || !courts.length}}">检查并保存改期</button>
   </view>

@@ -33,7 +33,7 @@
         <image src="/assets/home/hero.jpg" mode="aspectFill"/>
       </view>
 
-      <view wx:if="{{overview || tab!=='ranking'}}" class="event-tabs" role="tablist">
+      <view class="event-tabs" role="tablist">
         <button class="event-tab {{overview ? 'is-active' : ''}}" bindtap="backToOverview" disabled="{{loading}}">概览</button>
         <button class="event-tab {{!overview && tab==='schedule' ? 'is-active' : ''}}" data-tab="schedule" bindtap="tab" disabled="{{loading}}">赛程</button>
         <button class="event-tab {{!overview && tab==='ranking' ? 'is-active' : ''}}" data-tab="ranking" bindtap="tab" disabled="{{loading}}">排名与晋级</button>

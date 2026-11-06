@@ -1,0 +1,58 @@
+{
+  "name": "int01-reschedule-history-nav",
+  "route": "pages/reschedule/index",
+  "state": "synthetic-history-with-return-tabs",
+  "designSource": "isolated-synthetic:INT01-form-history-return-navigation",
+  "static": true,
+  "expectText": ["原安排", "新安排", "改期记录", "合成历史维护改期", "查看最新赛程"],
+  "expectEnabled": ["原安排", "新安排", "改期记录", "查看最新赛程"],
+  "expectVisible": [
+    "button[role=\"tab\"][data-tab=\"original\"]",
+    "button[role=\"tab\"][data-tab=\"new\"]",
+    "button[role=\"tab\"][data-tab=\"history\"]",
+    "#reschedule-history"
+  ],
+  "expectAbsentSelectors": [
+    "#reschedule-original",
+    "#reschedule-new",
+    "[data-mini-bindinput=\"reasonInput\"]",
+    "[data-mini-bindtap=\"submit\"]"
+  ],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "",
+    "match": {
+      "eventName": "合成改期杯赛",
+      "round": "第2轮",
+      "home": "合成主队",
+      "away": "合成客队",
+      "status": "SCHEDULED",
+      "statusLabel": "待开始",
+      "plan": "合成原比赛场地 · 2028-06-01 19:00–20:00",
+      "duration": 60
+    },
+    "history": [
+      {
+        "key": "10000000-0000-4000-8000-000000000006",
+        "from": "合成原比赛场地 · 2028-06-01 17:00–18:00",
+        "to": "合成原比赛场地 · 2028-06-01 19:00–20:00",
+        "reason": "合成历史维护改期",
+        "time": "2028-05-01 18:00"
+      }
+    ],
+    "truncated": false,
+    "canReschedule": true,
+    "blocker": "",
+    "courts": [{ "id": "10000000-0000-4000-8000-000000000003", "name": "合成原比赛场地" }],
+    "courtIndex": 0,
+    "date": "2028-06-05",
+    "time": "21:30",
+    "reason": "合成未提交且在历史往返后保留的改期原因",
+    "conflicts": [],
+    "uncertain": false,
+    "unavailable": false,
+    "rescheduleTab": "history"
+  }
+}

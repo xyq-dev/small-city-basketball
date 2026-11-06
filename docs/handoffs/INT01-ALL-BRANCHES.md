@@ -1,5 +1,15 @@
 # INT01 全分支整合接续
 
+## 2026-11-06 20:06 Asia/Shanghai 三导航冻结
+
+原0513211已取得CI218四作业/Windows工具成功、1542浏览器/1527证据与真实PG/API/恢复完成日志，main仍未合并。最后三页training/reschedule/event的9源/测试/fixture文件已root收齐并独立复核：游客原登录回training，历史/空历史可回改期编辑并保留输入，排名各子视图保留外层导航与显式public GET。只WXML，无新JS/后端；相关组合32/56及不同作者5＋24、15＋38成功。
+
+最新工作树完整微信1502通过/1平台skip、格式/类型/差异成功，累计206新测/22CJS/26新fixture；81新/迁移场景与144受影响页DOM契约均通过，实际浏览器几何交新headCI。接着精确暂存3WXML/3新CJS/3新JSON和五任务文档，普通推进同PR，不混旧218绿色。核验新完整CI/全部线程/来源/main并发后merge，按实际PR状态和tree收口。无生产或Migration操作，独立旧worktree/日志保留。
+
+## 2026-11-06 19:57 Asia/Shanghai 导航检查点
+
+root共享head0513211，CI218前三作业成功（admin1542浏览器、1527PNG/JSON守卫），API原生真实HTTP仍运行；未合并。新增已核实导航回归为training游客登录、reschedule历史返回和event排名返回。training3文件已整合、独立5＋24通过；event_template_fix独占另一新worktree串行整合reschedule/event共6文件，root待冻结后复制，不同写。先收齐后统一源码/格式/类型/DOM验证与新headCI，不把218旧绿色冒充新源码。此处为实际检查点，无生产操作。
+
 ## 2026-11-06 19:35 Asia/Shanghai 枚举最终冻结
 
 root共享head5db9，新工作树最后补齐5页WXML（外保单、约赛真实摘要、两治理取消、赛程all）与4份新测试/7份新fixture；另迁移1旧资格场景的审核人显示断言，原data完整不变，新加申请人进度覆盖。186累计新增回归、23新夹具，完整微信1482通过/1平台skip、格式/类型/差异成功；23新＋1迁移场景三宽72次DOM契约通过。四组修复已不同审查者复核，静态enum全量43项差分已收口，原请求/明确同意/ID/版本和权限不变。

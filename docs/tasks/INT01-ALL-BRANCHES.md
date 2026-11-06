@@ -1,5 +1,19 @@
 # INT01 全部分支测试与整合
 
+## 2026-11-06 20:06 Asia/Shanghai 导航冻结与新候选
+
+0513211/CI218最终四作业SUCCESS，Windows工具51亦成功：admin598/API源码1374/微信1482通过1skip/CLI12，浏览器1542通过与1527份证据守卫；PG143＋620、原生HTTP21、真实API浏览器24、重启/最小权限/HTTPS/恢复全通过。已读取admin与api完成日志，另安全/production完成日志已在该候选监控时读取。该绿色不覆盖后续三导航修复，未混用不同head结果合并。
+
+training仅恢复loginRequired登录反馈，真实loadMine→ui.session→组件action→原login返回training，无报名写；新5＋相关32、独立5＋24通过，41个login/session页只有本处缺绑定。reschedule将共用三tabs置于表单条件外，history/空历史与编辑互斥且可返回，保留日期/时间/场地/原因；新7原6红1绿→7绿。event仅移除排名时隐藏外层导航的条件，public身份显式true、三个public GET上下文保持，排名各子页可回概览/赛程/媒体；新8原7红1绿→8绿。两页组合56、不同复核者新15＋旧38通过，均无新HTTP/写/弹窗副作用。
+
+root最新完整微信1503项：1502通过、0失败、1平台skip；format/typecheck/diff通过。累计206新增（22新CJS）、26新fixture，26新＋1审核投影迁移场景三宽81次DOM成功；再扩查training/reschedule/event既有场景共48×3=144文案/按钮/字段契约成功，不宣称几何。新event场景两个层级同名“赛程”不使用全局单一名称断言，而由精确CSS可见性和新CJS逐按钮enabled/实际handler覆盖，未改spec或业务数据。后端/API/权限/001—050与生产配置不变，下一步普通推进原PR46冻结新head、精确完整CI及13原自动线程/任何新反馈核验后merge。
+
+## 2026-11-06 19:57 Asia/Shanghai 导航补充检查点
+
+当前共享0513211的CI218已通过account-security、production、admin；admin完整浏览器1542通过，1527布局/PNG守卫成功，API已进入原生页面→真实HTTP阶段，尚未全完成。未据前三作业合并，因为后续自动意见指出培训游客无登录入口、改期历史无返回编辑；独立同类检查另确认event排名隐藏外层导航。三处仅恢复既有导航，不改JS/API。
+
+培训3文件已root整合：真实loadMine→loginRequired→组件action→原login返回training，相关32/32和独立新5＋旧24通过；41页login+ui.session绑定检查未见第二处。reschedule在独立worktree已完成共享tabs/空历史/保留未保存字段，新7/旧相关30通过；event同类由发现者独立修复，待两页共6文件冻结后统一复制/独立复核。此时root工作树新增training及任务记录，其他代码保持0513211，main未更新，原生产/迁移边界不变。下一步收齐这组导航修复、完整源码与DOM验证后普通推进同PR，旧218不替代新候选。
+
 ## 2026-11-06 19:35 Asia/Shanghai 枚举收口与最后验收准备
 
 完整静态data-*键值差分43个消失项逐一联立JS分支与替代入口，最后补齐participant-materials既有外部保单、governance两路由原请求cancel=true、schedule全稿all模式；其余是替代/既有修复，无继续扩展。约赛摘要按实际OPEN/CONFIRMED/COMPLETED/DECLINED/CANCELLED与awayConfirmed，场地快照仅称预约来源，不冒充实时场地状态。外部保单入口复用原44px按钮且四tab保留，insurance编辑/上传按既有canSave禁用，无购买接口；默认入口及真实编辑态均纳入布局。治理取消仅原ID/actor明确确认，未生效操作建迟到墓碑，已完成仅解保护不回滚业务。schedule all/preserve使用原preview/确认/PUT的false/true与版本/locked保护，不编造pending操作号机制。
