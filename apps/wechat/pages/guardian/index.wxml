@@ -84,6 +84,14 @@
         <view class="figma-section__title">{{selected.subjectName}} · {{selected.statusLabel}}</view>
         <view class="figma-section__hint">本人用途：{{selected.subjectPurposeText}}；监护人用途：{{selected.guardianPurposeText}}</view>
         <figma-feedback wx:if="{{selected.blockerText}}" type="warning" title="当前阻塞" body="{{selected.blockerText}}"/>
+        <block wx:if="{{selected.capabilities.canReadProof}}">
+          <button class="figma-action figma-action--ghost" bindtap="reveal" disabled="{{busy || pending || loading}}">明确查看本人监护证明</button>
+          <view wx:if="{{privateDetails}}" class="guardian-terms">
+            <view>监护姓名：{{privateDetails.realName}}</view><view>监护身份证：{{privateDetails.identityNumber}}</view><view>关系声明：{{privateDetails.relationship}} · {{privateDetails.relationshipExplanation}}</view>
+            <button class="figma-action figma-action--ghost" bindtap="viewProof" disabled="{{busy || pending || loading}}">私有查看关系证明文件</button>
+            <button class="guardian-text-action" bindtap="conceal">立即隐藏并清理预览</button>
+          </view>
+        </block>
         <block wx:if="{{selected.capabilities.canConfirm}}">
           <view class="figma-field-group"><view class="figma-field-label">监护人真实姓名</view><input class="figma-field-control" value="{{form.realName}}" data-field="realName" bindinput="field" maxlength="80" disabled="{{busy || pending}}"/></view>
           <view class="figma-field-group"><view class="figma-field-label">监护人自己的身份证号</view><input class="figma-field-control" value="{{form.identityNumber}}" data-field="identityNumber" bindinput="field" maxlength="18" disabled="{{busy || pending}}"/></view>

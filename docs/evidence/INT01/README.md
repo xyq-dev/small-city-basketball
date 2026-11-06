@@ -1,5 +1,11 @@
 # INT01 全分支整合验收
 
+## 2026-11-06 18:35 Asia/Shanghai 新候选边界
+
+旧候选 cc3c944 的 [CI214](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398486) 四作业全部 SUCCESS，root 已读取四份完成日志：管理端598、API源码1374、微信1296通过/1平台skip、初始化CLI12、兼容浏览器1473通过/1459配置重复skip、1458份布局/PNG；PG143+620、原生页面→真实HTTP21、真实API浏览器24、最小权限21、HTTPS4、PG重启/完整恢复和恢复隔离成功。[Windows工具47](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398495)17/17通过，包含Linux平台跳过的批处理桥。旧兼容附件为 [mini-program-layouts](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398486/artifacts/13494520692)。这些绿色结果没有覆盖四条已核实的入口遗漏，故未合并。
+
+现已修复五页业务入口，新增36项模板→原handler回归与七个可见控件布局夹具。root 新工作树完整微信1333项：1332通过、0失败、1平台skip；格式/类型/差异检查通过。实际浏览器几何尚待新候选CI，本地浏览器下载归档损坏，不将旧1459矩阵或旧668文件指纹当作新源码证据。下方原始本地验证、指纹和诊断均为修复前历史；新head、最终CI/附件与合并将在实际完成后补入。私密数据全部为合成，证明默认隐藏及本人显式查看/清理另有回归；没有真实身份/云凭据/生产写入。
+
 2026-11-06（Asia/Shanghai），集成人Codex root；当前为REVIEW / BRANCH_ONLY。源码和本地兼容测试通过，最终GitHub完整CI及main整合尚待核验。
 
 ## 来源与权限

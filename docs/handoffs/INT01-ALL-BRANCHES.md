@@ -1,5 +1,19 @@
 # INT01 全分支整合接续
 
+## 2026-11-06 18:35 Asia/Shanghai 新候选交付检查点
+
+独立修复已由 root 整合为五页 WXML + 五份新 CJS（36项）+ 七份新布局夹具，旧 JS/后端/API/权限/迁移/生产配置保持不变。跨页旧新入口审查已补完；原 cc3c944 的四条自动审查问题均有模板/事件回归覆盖，另恢复监护证明和青年规则工作台入口。root 当前路径 `/workspace/scratch/7a5167ea2881/small-city-basketball`、分支 `integrate/all-branches-20261106`，基线 cc3c944；完整微信1332通过/1平台skip、格式和类型均通过。浏览器归档下载损坏，本地几何未执行，不冒称已有结果。
+
+下一步：以读取到的原 PR46 head 做普通推进，同一新 head 运行完整 CI（包含七份新场景的三宽布局）；处理/核验原审查线程及任何新反馈，检查所有来源与 main 并发，再按预期 head 合并。旧 #214 虽全绿却有真实入口缺陷，不能用于修复后放行。当前未合并、未部署生产、未执行生产 Migration 或真实外部联调。原 worktree 和日志保留，不清除别人的成果。
+
+## 2026-11-06 18:28 Asia/Shanghai 阻塞更新
+
+尚未合并。远端自动审查四条问题已核实：matching 接收方回复/转预约、training-manage 本人教练同意、event-setup 模板分组数均缺模板入口；matching 同页原预约查看/重开席位/返回也在修复。三名实施者分别使用独立 worktree，只改各自 WXML 和新增独立测试，第四名只读审查其余页面能力入口。root 独占整合、文档、Git 与最终合并。下一步纳入全部最小补丁和回归，先验证本地源码/定向布局，再以同一 PR 新 head 运行完整 CI；旧 #214 不代表新候选通过。
+
+## 2026-11-06 18:10 Asia/Shanghai 接管检查点
+
+Codex root 已在独立新 checkout `/workspace/scratch/7a5167ea2881/small-city-basketball` 接管最终审查与合并；本地记录分支 `docs/int01-finalize-20261106` 基于精确候选 `cc3c9441e0968fab8bd792dfe1ca5f7d529c35be`，接管时无已有未提交改动。当前仅写本任务及交接，业务候选不变；原目录和其产物未操作。已确认所有原始来源 head 均被包含，后端与迁移无差异。下一步取得独立审查结论及 #214 四作业完成日志，核对测试 merge-ref、候选和 main，再以预期 head 合并 #46；之后记录来源 PR 的实际状态并同步汇总。CI 仍运行，不得把已通过的账号安全/Windows 工具检查写成完整验收。
+
 2026-11-06（Asia/Shanghai）；负责人/集成人Codex root。状态REVIEW / BRANCH_ONLY。
 
 实际现场为`/workspace/scratch/1385f4a4fde1/all-branches-integrate`、`integrate/all-branches-20261106`，从main b19c19a建立。用户明确授权全部分支测试后合并；允许必要Git/隔离CI及修复，不含生产或新外部凭据。根AGENTS及本轮[任务卡](../tasks/INT01-ALL-BRANCHES.md)约束继续有效。

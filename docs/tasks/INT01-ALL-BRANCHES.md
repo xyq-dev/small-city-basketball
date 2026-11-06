@@ -1,5 +1,27 @@
 # INT01 全部分支测试与整合
 
+## 2026-11-06 18:35 Asia/Shanghai 修复候选准备
+
+root 已将独立 worktree 最小修复整合到 `/workspace/scratch/7a5167ea2881/small-city-basketball`，本地分支改名 `integrate/all-branches-20261106`，基线仍为 `cc3c944`，尚未更新 main。五页 WXML 恢复撮合收方回复、转换核对、源预约查看、席位重开和返回、教练本人独立确认、分组模板组数、监护人显式证明查看和隐藏、青年审核工作台规则配置。接单授权卡标题同步校正为其实际操作；既有 JS/服务端能力与确认门槛不变。
+
+新增五份独立 CJS 共36项测试、七份独立 `int01-*` 布局夹具，既有样本与矩阵 spec 未改。测试从真实模板可见控件接到原 handler 与请求体，覆盖无权、忙碌、未知结果、取消确认、本人身份与隐私清理，不仅检查方法存在。三组独立实施者/复核者完成定向验证；另对其余页面旧新事件、操作常量和输入字段逐一比对，未发现其他高置信度入口遗漏。root 已实际重跑完整 `npm run test:wechat`：1333项、1332通过、0失败、1既有 Windows 桥平台跳过；`npm run format:check`、`npm run typecheck`、`git diff --check` 通过。新增 CJS/JSON 已统一格式化。
+
+本地 `playwright install chromium` 返回损坏归档，浏览器几何未执行；七份新场景的真实三宽布局交由同一新 head 的完整 GitHub CI，不降低或跳过既有门禁。旧 #214 四作业、24真实API浏览器、21原生HTTP、143+620 PG 与隔离恢复全部成功，仅作为旧候选记录。新候选 SHA、CI 及最终合并结果在实际发生后补记。本轮新增/执行生产 Migration 均为无，后端与生产配置未变。
+
+## 2026-11-06 18:28 Asia/Shanghai 阻塞审查与最小修复
+
+补查 #46 远端自动审查，发现精确候选 `cc3c944` 的四条未解决问题，均已由代码与既有服务端契约核实：撮合详情把接收方意向回复藏在需求管理权限内（P1）、撮合缺少转预约核对入口（P1）、教练本人资料确认入口遗漏（P1）、分组赛模板组数输入遗漏（P2）。此前独立复审只覆盖选定的权限/生命周期回归，未发现这些模板能力入口缺失，原“未发现阻塞”不能作为本候选最终放行结论。
+
+暂停合并。独立 worktree 分别修复 matching、training-manage、event-setup，仅恢复原有 WXML 入口并新增针对性测试，不改后端、API、权限或 Migration；另行只读审查其他页面的原业务入口是否遗漏。matching 同页还核实原预约查看、重开席位及返回列表入口遗漏，允许一并恢复，保持既有能力与忙碌/未知结果门禁。修复统一整合到原 PR 后重新验证新精确候选；#214 的结果仅属于旧 `cc3c944`，不得冒充修复后的 CI。
+
+## 2026-11-06 18:10 Asia/Shanghai 最终整合接管
+
+本会话由 Codex root 接管最后检查与合并，唯一写入人负责本卡、交接及汇总；独立审查者只读业务与测试。现场为 `/workspace/scratch/7a5167ea2881/small-city-basketball`，远端 `https://github.com/xyq-dev/small-city-basketball.git`，本地记录分支 `docs/int01-finalize-20261106`，起点与待合并候选均为 `cc3c9441e0968fab8bd792dfe1ca5f7d529c35be`，接管时工作区干净。允许检查、必要修复、文档同步、普通 Git/PR 及审查后合并；本轮不扩大生产或外部服务配置范围。
+
+已重新列举远端分支并验证五个原始来源 head 全是候选祖先；相对当前 main `b19c19a118e63771c6451d93ed3e16de5416ce63`，后端、契约、Migration、CI 工作流与生产配置无差异。PR #46 为非草稿且可合并，PR #42/#44 是已包含的来源。精确候选 [Application checks #214](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398486) 仍运行，账号安全作业及 [Windows 工具 #47](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398495) 已成功；不提前记录完整 CI 或合并成功。
+
+最终独立只读复审未发现阻塞：10 份定向回归 103/103 通过，0 失败、0 跳过，覆盖预览门禁、异步身份和页面生命周期、预约筛选、只读人员名单及独立写权限。249 份变更夹具的既有数据键逐一比对，未发现修改金额、ID、权限、同意或未知结果来规避断言。测试由独立审查者在上述精确候选执行，root 复核两份日志结尾；日志位于 `/tmp/scb-integration-review-tests.log` 和 `/tmp/scb-integration-review-extra.log`，不是 GitHub 附件。CI 测试 merge-ref `f0f0147e1a83dba9c7d420ff3946787c301aaffa` 的 tree `eb6baf47e4b2e0cd896b5d940af8f843ac4b4550` 与候选精确一致。admin 已完成且成功，API 与隔离 HTTPS/恢复仍待完成。
+
 - 状态：REVIEW（精确候选完整CI与最终矩阵待验）；integration：BRANCH_ONLY；日期：2026-11-06（Asia/Shanghai）。
 - 唯一集成人：Codex root；UI005、UI006分别由独立Agent审查，隔离worktree执行测试。
 - 工作目录：`/workspace/scratch/1385f4a4fde1/all-branches-integrate`；分支：`integrate/all-branches-20261106`。

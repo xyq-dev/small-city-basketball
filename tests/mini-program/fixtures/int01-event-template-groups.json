@@ -1,0 +1,53 @@
+{
+  "name": "int01-event-template-groups",
+  "route": "pages/event-setup/index",
+  "state": "grouped-template-eight-groups",
+  "designSource": "isolated-synthetic:INT01-template-group-count-review",
+  "static": true,
+  "expectText": ["保存为可复用办赛模板", "分组数（2、4或8组，每组至少2队）", "保存可复用模板"],
+  "expectVisible": ["input[data-field=\"groupCount\"]"],
+  "expectEnabled": ["保存可复用模板"],
+  "expectValues": [
+    { "selector": "input[data-field=\"groupCount\"]", "value": "8" },
+    { "selector": "input[data-field=\"templateExpectedTeams\"]", "value": "32" }
+  ],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "notice": "",
+    "creating": false,
+    "unavailable": false,
+    "event": {
+      "name": "合成三十二队分组杯赛",
+      "status": "DRAFT",
+      "statusLabel": "草稿",
+      "formatLabel": "分组循环接淘汰",
+      "dateLabel": "2028-03-01 至 2028-03-31",
+      "venueName": "合成体育馆",
+      "groups": true,
+      "roundRobin": false,
+      "knockout": false
+    },
+    "draft": null,
+    "registration": null,
+    "scoring": null,
+    "standings": null,
+    "viewing": null,
+    "directory": null,
+    "setupGuide": null,
+    "templateCanManage": true,
+    "templatePending": false,
+    "templateName": "合成八组可复用办赛模板",
+    "templateExpectedTeams": "32",
+    "templateScheduling": {
+      "dailyStart": "09:00",
+      "dailyEnd": "21:00",
+      "slotDurationMinutes": 60,
+      "minRestMinutes": 60,
+      "minLocalDayGap": 1,
+      "groupCount": "8",
+      "thirdPlaceMatch": true
+    }
+  }
+}

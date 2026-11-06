@@ -1,5 +1,11 @@
 # 当前状态
 
+## 2026-11-06 INT01 最终入口复核（REVIEW / BRANCH_ONLY，尚未合并）
+
+本节是当前最新整合状态；下方 UI005/UI006 的旧本地或草稿记录保留为历史。[PR #46](https://github.com/xyq-dev/small-city-basketball/pull/46) 保留所有来源提交，账号安全与 COS 已在 main；UI 两分支当前仍待本 PR 合并。旧候选 `cc3c944` 的 [Application checks #214](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398486) 四作业及 Windows 工具均成功，但自动审查发现撮合回复/转预约、教练本人确认、模板分组数四条真实遗漏，因此没有据此合并。
+
+后续跨页入口复核补充恢复撮合原预约查看/重开席位/返回、监护人本人显式查看证明及青年审核工作台规则配置。修复仅涉及五页 WXML、36 项新增回归和七份新增合成布局夹具；原 JS、后端、API、权限、Migration 与生产配置不变。root 已执行完整微信源码 1333 项：1332 通过、0 失败、1 既有平台跳过，全仓格式与类型通过；新增布局控件将由新 head 完整 CI 验证。本地 Chromium 下载返回损坏归档，未执行本轮浏览器几何；不能把旧 #214 或旧本地矩阵冒充修复后的结果。详见 [任务](tasks/INT01-ALL-BRANCHES.md)、[交接](handoffs/INT01-ALL-BRANCHES.md)及[证据](evidence/INT01/README.md)。本轮无生产部署、生产 Migration、真实 COS/微信真机联调。
+
 ## 2026-11-06 COS01 腾讯云对象存储（DONE / MAIN：源码与隔离验收）
 
 [PR #45](https://github.com/xyq-dev/small-city-basketball/pull/45)已于`2026-11-06T07:15:29Z`合入main，代码合并SHA`98f171f6135b88f7a26ec49f8d63de9fe8dcba10`，tree `1d8e93fbf6cfac64dd88c3a93828f973ccca5eec`与最终候选`a4dff06eedb5815e1cfedc48fe57361b1a527a1a`及CI测试merge-ref精确一致。私有COS可选配置、普通/幂等/分片上传、旧DB文件兼容读取、权限与Range、持久化登记和后台/CLI清理已完成。失败清理记录尝试时间并轮转，防止持续失败对象阻塞其他机构；唯一自动审查P2已修复并解决，独立复审通过。

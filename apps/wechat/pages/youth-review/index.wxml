@@ -11,6 +11,14 @@
     <figma-feedback wx:if="{{message}}" type="success" title="审核状态已更新" body="{{message}}"/>
     <figma-feedback wx:if="{{pending}}" type="warning" title="原请求结果待核对" body="核对回执前暂停新的关系审核，避免重复处理。" action-label="重新核对" disabled="{{busy || loading}}" bind:action="load"/>
 
+    <view wx:if="{{review && policy && policy.canConfigure}}" class="figma-section">
+      <view class="figma-section__title">本届青年报名设置</view>
+      <view class="figma-section__hint">仅在开放报名前配置；必要资料处理、本人确认和监护关系审核仍分别进行。</view>
+      <checkbox-group data-field="policyEnabled" bindchange="checkbox"><label class="figma-check"><checkbox value="yes" checked="{{policyEnabled}}" disabled="{{busy || pending || loading}}"/><text>开放本届青年报名流程</text></label></checkbox-group>
+      <view class="figma-field-group"><view class="figma-field-label">监护年龄阈值（18至21）</view><input class="figma-field-control" data-field="threshold" value="{{threshold}}" bindinput="field" type="number" maxlength="2" disabled="{{busy || pending || loading}}"/></view>
+      <button class="figma-action figma-action--navy" bindtap="configure" disabled="{{busy || pending || loading}}">保存本届青年规则</button>
+    </view>
+
     <block wx:if="{{activeView === 'pending'}}">
       <view class="figma-section">
         <view class="figma-section__title">本届申请</view>

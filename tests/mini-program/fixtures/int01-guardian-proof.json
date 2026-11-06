@@ -1,0 +1,171 @@
+{
+  "name": "int01-guardian-proof",
+  "route": "pages/guardian/index",
+  "state": "synthetic-explicit-proof-preview",
+  "designSource": "INT01: existing guardian fixture in an explicitly confirmed synthetic private-preview state; default runtime keeps privateDetails null; not real identity or a relationship review",
+  "data": {
+    "review": false,
+    "hasMaterialScope": false,
+    "requests": [
+      {
+        "id": "00000000-0000-4000-8000-000000000006",
+        "orgId": "00000000-0000-4000-8000-000000000001",
+        "eventId": "00000000-0000-4000-8000-000000000002",
+        "entryId": "00000000-0000-4000-8000-000000000003",
+        "memberId": "00000000-0000-4000-8000-000000000004",
+        "eventName": "合成青年静态示例杯",
+        "subjectName": "合成青年甲",
+        "guardianName": "合成监护账号",
+        "status": "AWAITING_REVIEW",
+        "statusLabel": "待独立关系审核",
+        "version": 2,
+        "role": "GUARDIAN",
+        "current": true,
+        "reviewReason": "",
+        "blockerText": "",
+        "subjectPurposes": ["PARTICIPATION", "PUBLIC_ARCHIVE"],
+        "guardianPurposes": [],
+        "capabilities": {
+          "canConfirm": false,
+          "canReview": false,
+          "canWithdraw": true,
+          "canReadProof": true
+        },
+        "subjectPurposeText": "本届参赛、公开档案",
+        "guardianPurposeText": "尚未确认"
+      }
+    ],
+    "preconsents": [
+      {
+        "id": "00000000-0000-4000-8000-000000000009",
+        "orgId": "00000000-0000-4000-8000-000000000001",
+        "eventId": "00000000-0000-4000-8000-000000000002",
+        "eventName": "另一份合成青年静态示例",
+        "subjectAlias": "合成青年乙别名",
+        "guardianName": "合成监护账号",
+        "status": "INVITED",
+        "statusLabel": "待监护人确认必要资料处理",
+        "version": 1,
+        "role": "GUARDIAN",
+        "dataTermsVersion": "youth-data-processing-v1"
+      }
+    ],
+    "selected": {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "orgId": "00000000-0000-4000-8000-000000000001",
+      "eventId": "00000000-0000-4000-8000-000000000002",
+      "entryId": "00000000-0000-4000-8000-000000000003",
+      "memberId": "00000000-0000-4000-8000-000000000004",
+      "eventName": "合成青年静态示例杯",
+      "subjectName": "合成青年甲",
+      "guardianName": "合成监护账号",
+      "status": "AWAITING_REVIEW",
+      "statusLabel": "待独立关系审核",
+      "version": 2,
+      "role": "GUARDIAN",
+      "current": true,
+      "reviewReason": "",
+      "blockerText": "",
+      "subjectPurposes": ["PARTICIPATION", "PUBLIC_ARCHIVE"],
+      "guardianPurposes": [],
+      "capabilities": {
+        "canConfirm": false,
+        "canReview": false,
+        "canWithdraw": true,
+        "canReadProof": true
+      },
+      "subjectPurposeText": "本届参赛、公开档案",
+      "guardianPurposeText": "尚未确认"
+    },
+    "policy": null,
+    "form": {
+      "subjectAlias": "",
+      "guardianUserId": "",
+      "declaredYouth": false,
+      "acceptedDataProcessing": false,
+      "acceptedTerms": false,
+      "publicityConsent": false,
+      "archiveConsent": false,
+      "liveConsent": false,
+      "realName": "",
+      "identityNumber": "",
+      "relationship": "PARENT",
+      "relationshipExplanation": "",
+      "adultAcceptedDataProcessing": false
+    },
+    "proofName": "",
+    "privateDetails": {
+      "realName": "合成监护人私密姓名",
+      "identityNumber": "SYNTHETIC_PRIVATE_ID",
+      "relationship": "PARENT",
+      "relationshipExplanation": "合成静态关系证明说明",
+      "proof": {
+        "fileName": "synthetic-relationship.png",
+        "contentType": "image/png",
+        "byteLength": 8
+      }
+    },
+    "reason": "",
+    "identityChecked": false,
+    "relationshipChecked": false,
+    "policyEnabled": false,
+    "threshold": "18",
+    "loading": false,
+    "busy": false,
+    "pending": false,
+    "nextCursor": null,
+    "error": "",
+    "message": "合成已明确同意的本人私有预览；未执行真实身份查询、下载或审核。",
+    "loginRequired": false,
+    "adultDataScopes": [
+      {
+        "orgId": "00000000-0000-4000-8000-000000000030",
+        "eventId": "00000000-0000-4000-8000-000000000031",
+        "eventName": "合成成年资料再确认示例",
+        "entryId": "00000000-0000-4000-8000-000000000032",
+        "memberId": "00000000-0000-4000-8000-000000000033",
+        "expectedMaterialVersion": 4,
+        "expectedAdultVersion": 1,
+        "policyVersion": 1,
+        "evidenceQualificationId": "00000000-0000-4000-8000-000000000034",
+        "termsVersion": "youth-adult-data-processing-v1",
+        "canConsent": true,
+        "canWithdraw": true,
+        "lastDecision": "CONSENT",
+        "blocker": "",
+        "key": "00000000-0000-4000-8000-000000000030:00000000-0000-4000-8000-000000000031:00000000-0000-4000-8000-000000000032:00000000-0000-4000-8000-000000000033"
+      }
+    ],
+    "adultSelected": {
+      "orgId": "00000000-0000-4000-8000-000000000030",
+      "eventId": "00000000-0000-4000-8000-000000000031",
+      "eventName": "合成成年资料再确认示例",
+      "entryId": "00000000-0000-4000-8000-000000000032",
+      "memberId": "00000000-0000-4000-8000-000000000033",
+      "expectedMaterialVersion": 4,
+      "expectedAdultVersion": 1,
+      "policyVersion": 1,
+      "evidenceQualificationId": "00000000-0000-4000-8000-000000000034",
+      "termsVersion": "youth-adult-data-processing-v1",
+      "canConsent": true,
+      "canWithdraw": true,
+      "lastDecision": "CONSENT",
+      "blocker": "",
+      "key": "00000000-0000-4000-8000-000000000030:00000000-0000-4000-8000-000000000031:00000000-0000-4000-8000-000000000032:00000000-0000-4000-8000-000000000033"
+    },
+    "activeView": "guardian"
+  },
+  "expectText": [
+    "明确查看本人监护证明",
+    "私有查看关系证明文件",
+    "立即隐藏并清理预览",
+    "合成监护人私密姓名"
+  ],
+  "static": true,
+  "expectEnabled": [
+    "[data-mini-bindtap=\"reveal\"]",
+    "[data-mini-bindtap=\"viewProof\"]",
+    "[data-mini-bindtap=\"conceal\"]"
+  ],
+  "expectAbsentSelectors": ["[data-mini-bindtap=\"review\"]"]
+}

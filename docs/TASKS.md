@@ -2,7 +2,7 @@
 
 ## 2026-11-06 INT01 全分支整合（REVIEW / BRANCH_ONLY）
 
-已完整核验5个原始远端分支：账号安全/COS在main，UI005与UI006统一整合于`integrate/all-branches-20261106`；保留后续UI006同步head3cc97e5的历史，来源分支不强推。代码与业务展示回归已修复，Linux微信1296通过/1平台skip、本地三宽1459/1459及1458份证据守卫通过；精确最终GitHub四job CI与main合并仍待执行，生产未更新。详见[任务](tasks/INT01-ALL-BRANCHES.md)、[接续](handoffs/INT01-ALL-BRANCHES.md)、[证据](evidence/INT01/README.md)。
+已核验五个原始分支及整合分支，来源提交全部保留。旧候选 cc3c944 的 CI214 四作业均成功，但四条自动审查发现真实 UI 入口遗漏，尚未合并。现已完成五页最小 WXML 修复、36 项新增回归及七份新布局夹具；独立跨页入口复核通过，root 全量微信 1332 通过/1 既有平台跳过、格式与类型通过。修复后新 head 的完整 CI 与合并仍待执行；旧 CI/本地矩阵不能替代新候选。后端、Migration 和生产不变。详见[任务](tasks/INT01-ALL-BRANCHES.md)、[接续](handoffs/INT01-ALL-BRANCHES.md)、[证据](evidence/INT01/README.md)。下方 UI005/UI006 旧状态保留为历史，最新整合状态以本节为准。
 
 ## 2026-11-06 账号安全（DONE / MAIN：源码与隔离验收，生产未部署）
 
