@@ -8,7 +8,7 @@ import type {
   UploadSessionData,
 } from '@small-city-basketball/contracts';
 import { MediaService } from './media-service.js';
-import type { MediaAccess } from './media-service.js';
+import type { MediaAccess, MediaServiceOptions } from './media-service.js';
 import type { ApiOptions } from './service.js';
 import { ApiError, forbidden, notFound } from './errors.js';
 import { invalid, resourceId } from './validation.js';
@@ -87,11 +87,7 @@ export async function expireMediaUploadSessions(
  * transaction; a lost receipt race rolls back and replays in a new transaction.
  */
 export class MediaRequestService extends MediaService {
-  constructor(
-    pool: Pool,
-    options: ApiOptions,
-    mediaOptions: { trustedExternalHosts?: string[] } = {},
-  ) {
+  constructor(pool: Pool, options: ApiOptions, mediaOptions: MediaServiceOptions = {}) {
     super(pool, options, mediaOptions);
   }
 
@@ -323,9 +319,17 @@ export class MediaRequestService extends MediaService {
       await this.ensureCapacity(c, orgId, a.row.id, input.byteLength);
       await this.ensureFreshSession(c, a.ctx);
       const fileId = randomUUID();
+      const stored = await this.objectStorage.save(
+        c,
+        orgId,
+        fileId,
+        input.payload,
+        input.contentType,
+      );
+      await this.ensureFreshSession(c, a.ctx);
       const row = (
         await c.query(
-          `INSERT INTO media_files(id,org_id,event_id,match_id,purpose,file_name,content_type,byte_length,sha256,payload,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING ${FILE_COLUMNS}`,
+          `INSERT INTO media_files(id,org_id,event_id,match_id,purpose,file_name,content_type,byte_length,sha256,payload,created_by,cos_object_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING ${FILE_COLUMNS}`,
           [
             fileId,
             orgId,
@@ -336,8 +340,9 @@ export class MediaRequestService extends MediaService {
             input.contentType,
             input.byteLength,
             input.contentSha256,
-            input.payload,
+            stored.payload,
             a.ctx.user.id,
+            stored.cosObjectId,
           ],
         )
       ).rows[0];
@@ -678,6 +683,8 @@ export class MediaRequestService extends MediaService {
       );
       await this.ensureFreshSession(c, a.ctx);
       const fileId = randomUUID();
+      const stored = await this.objectStorage.save(c, s.org_id, fileId, payload, s.content_type);
+      await this.ensureFreshSession(c, a.ctx);
       // Close first (deferred FK) so the file insert's quota no longer counts the reservation.
       const closing = await c.query(
         "UPDATE media_upload_sessions SET status='COMPLETED',file_id=$3,closed_at=clock_timestamp(),closed_by=$4,version=version+1 WHERE org_id=$1 AND id=$2 AND status='OPEN' AND expires_at>now() RETURNING id",
@@ -686,7 +693,7 @@ export class MediaRequestService extends MediaService {
       if (!closing.rowCount) throw closed();
       const row = (
         await c.query(
-          `INSERT INTO media_files(id,org_id,event_id,match_id,purpose,file_name,content_type,byte_length,sha256,payload,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING ${FILE_COLUMNS}`,
+          `INSERT INTO media_files(id,org_id,event_id,match_id,purpose,file_name,content_type,byte_length,sha256,payload,created_by,cos_object_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING ${FILE_COLUMNS}`,
           [
             fileId,
             s.org_id,
@@ -697,8 +704,9 @@ export class MediaRequestService extends MediaService {
             s.content_type,
             s.byte_length,
             s.sha256,
-            payload,
+            stored.payload,
             a.ctx.user.id,
+            stored.cosObjectId,
           ],
         )
       ).rows[0];

@@ -8,6 +8,10 @@
 
 生产未由本轮部署，Migration049仅临时/CI执行。当前会话无直接Hermes/SSH执行通道；公开health/ready返回200只证明既有服务正常。服务器侧固定版本、备份恢复、升级和账号保留步骤已写入[交接](handoffs/ACCOUNT-SECURITY.md)。详见[任务](tasks/ACCOUNT-SECURITY.md)和[操作说明](operations/account-security.md)。
 
+## 2026-11-06 COS01 腾讯云对象存储（REVIEW / BRANCH_ONLY）
+
+`feat/tencent-cos-media` 初始提交4170765已创建[PR45](https://github.com/xyq-dev/small-city-basketball/pull/45)。发布期间main前进至f7382c3，已普通merge保留账号安全，COS迁移顺延050；静态50迁移/223表/128函数、PGlite完整升级和21项SQL约束通过，原生CI待整合候选。初始API1366项、类型/构建/格式通过，不代表新基线或真实COS已验。尚未合入main、未上线。详见[任务](tasks/COS01.md)、[接续](handoffs/COS01.md)、[证据](evidence/COS01/README.md)、[配置](operations/tencent-cos.md)。
+
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 
 | 项 | 事实 |

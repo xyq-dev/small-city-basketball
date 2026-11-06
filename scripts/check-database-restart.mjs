@@ -46,6 +46,11 @@ import {
 } from './x08-archive-check.mjs';
 import { syntheticPdf, syntheticPng, syntheticMp4 } from './c05-media-fixtures.mjs';
 import {
+  captureCosRecovery,
+  verifyCosRecovery,
+  verifyCosRecoveryQuarantine,
+} from './cos-recovery-check.mjs';
+import {
   captureParticipantMaterials,
   verifyParticipantMaterials,
   verifyParticipantQuarantine,
@@ -58,7 +63,8 @@ import {
 } from './c05-commerce-check.mjs';
 
 // The production package runs this same synthetic business chain against its real TLS API.
-// SQL remains read-only here; use the separately scoped backup role for the complete manifest-table digest.
+// SQL fixture writes are confined to guarded synthetic recovery helpers; the separately scoped
+// backup role remains read-only for the complete manifest-table digest.
 async function privateValue(name) {
   const inline = process.env[name];
   const file = process.env[name + '_FILE'];
@@ -1607,6 +1613,15 @@ async function captureMedia(orgId, cookie, registration, scheduling, scoring, vi
     assert.equal(Object.hasOwn(item, 'fileId'), false);
   }
   assert.equal(published.media.find((m) => m.kind === 'VIDEO').markers.length, 1);
+  const cosRecovery = await captureCosRecovery({
+    runtimePool: instance.pool,
+    readPool,
+    databaseUrl,
+    appOrigin: origin,
+    requireRuntimeRole: !!remoteUrl,
+    orgId,
+    matchId,
+  });
   return {
     entryRoot,
     privatePath,
@@ -1614,12 +1629,14 @@ async function captureMedia(orgId, cookie, registration, scheduling, scoring, vi
     files,
     publicPath,
     published,
+    cosRecovery,
     entryWorkspace: (await call(entryRoot, { cookie: registration.leaderCookie })).data,
     matchWorkspace: (await call(`${matchRoot}/media`, { cookie })).data,
     matchRoot,
   };
 }
 async function verifyMedia(saved, cookie, leaderCookie) {
+  await verifyCosRecovery({ readPool, saved: saved.cosRecovery });
   assert.equal(
     createHash('sha256')
       .update(await fileBytes(saved.privatePath, leaderCookie))
@@ -2093,6 +2110,13 @@ try {
     );
   } else if (mode === 'quarantine') {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
+    await verifyCosRecoveryQuarantine({
+      readPool,
+      saved: state.media.cosRecovery,
+      databaseUrl,
+      appOrigin: origin,
+      participantDataKey,
+    });
     await verifyParticipantQuarantine({ readPool, saved: state.participantMaterials });
     await verifyX08ArchiveQuarantine({ readPool, saved: state.x08, assertPublicMissing });
     await verifyX05RecruitmentQuarantine({ readPool, saved: state.x05, assertPublicMissing });
@@ -2114,6 +2138,7 @@ try {
   } else if (mode === 'freeze') {
     // The caller has stopped every API writer before this point and keeps them stopped until dump finishes.
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
+    await verifyCosRecovery({ readPool, saved: state.media.cosRecovery });
     await verifyExpansion({ readPool, saved: state.expansion });
     await verifyR6({ readPool, saved: state.r6 });
     state.fingerprint = await fingerprint();

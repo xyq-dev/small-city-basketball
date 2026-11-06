@@ -172,6 +172,9 @@ import {
   SCB_GROUP_KNOCKOUT_SERVICE,
 } from './group-knockout-controller.js';
 import { MediaService } from './media-service.js';
+import { MediaObjectStorage } from './media-object-storage.js';
+import { readCosObjectStore } from './cos-runtime.js';
+import type { CosObjectStore } from './cos-storage.js';
 import { MediaController, PublicMediaController, SCB_MEDIA_SERVICE } from './media-controller.js';
 import { CommerceService } from './commerce/service.js';
 import { WechatPayClient } from './commerce/wechatpay.js';
@@ -407,7 +410,7 @@ export async function createApi(
   input: ApiOptions &
     ExpansionOptions & {
       wechat?: WechatServiceOptions;
-      media?: { trustedExternalHosts?: string[] };
+      media?: { trustedExternalHosts?: string[]; objectStore?: CosObjectStore };
       commercePayments?: WechatPayClient;
       accountRecovery?: AccountRecoveryOptions;
       locationProvider?: LocationProvider;
@@ -424,6 +427,7 @@ export async function createApi(
     connectionTimeoutMillis: 5000,
   });
   pool.on('error', () => console.error('Database idle connection error'));
+  let mediaStorage: MediaObjectStorage | undefined;
   try {
     if (options.production) await assertRuntimeReadiness(pool, options.participantDataKey);
     let restored: boolean;
@@ -567,8 +571,17 @@ export async function createApi(
     const playerPerformance = new PlayerPerformanceService(pool, options);
     const scheduling = new SchedulingService(pool, options);
     const knockout = new GroupKnockoutService(pool, options);
-    const mediaOptions = input.media ?? {
-      trustedExternalHosts: (process.env.SCB_MEDIA_TRUSTED_HOSTS ?? '').split(',').filter(Boolean),
+    mediaStorage = MediaObjectStorage.forRuntime(
+      pool,
+      options.databaseUrl,
+      restored,
+      () => input.media?.objectStore ?? readCosObjectStore(),
+    );
+    const mediaOptions = {
+      trustedExternalHosts:
+        input.media?.trustedExternalHosts ??
+        (process.env.SCB_MEDIA_TRUSTED_HOSTS ?? '').split(',').filter(Boolean),
+      storage: mediaStorage,
     };
     const media = new MediaService(pool, options, mediaOptions);
     const mediaRequests = new MediaRequestService(pool, options, mediaOptions);
@@ -693,6 +706,7 @@ export async function createApi(
         { provide: SCB_WECHAT_SERVICE, useValue: wechat },
         { provide: SCB_GROUP_KNOCKOUT_SERVICE, useValue: knockout },
         { provide: SCB_MEDIA_SERVICE, useValue: media },
+        { provide: 'SCB_MEDIA_OBJECT_STORAGE', useValue: mediaStorage },
         { provide: SCB_COMMERCE_SERVICE, useValue: commerce },
         { provide: SCHEDULING_SERVICE, useValue: scheduling },
         { provide: SCB_KNOCKOUT_SERVICE, useValue: knockout },
@@ -743,6 +757,7 @@ export async function createApi(
     });
     app.useGlobalFilters(new ApiExceptionFilter());
     await app.init();
+    mediaStorage.startWorker(!restored && options.backgroundWorkersEnabled !== false);
     accountRecovery.startWorker();
     expansion.notifications.startWorker();
     expansion.streaming.startWorker();
@@ -750,6 +765,7 @@ export async function createApi(
     expansion.closure.startWorker();
     return { app, pool };
   } catch (error) {
+    await mediaStorage?.onModuleDestroy();
     await pool.end();
     throw error;
   }
