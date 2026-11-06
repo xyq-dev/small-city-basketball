@@ -30,6 +30,8 @@ Page({
     ],
     radiusIndex: 2,
     filtersOpen: false,
+    figmaState: '',
+    stateBackTop: 44,
     mapVisible: false,
     mapCenter: null,
     mapScale: 13,
@@ -57,14 +59,22 @@ Page({
     loginRequired: false,
   },
   toggleFilters() {
-    if (!this.data.busy && !this.data.pending && !this.data.pendingError)
-      this.setData({ filtersOpen: !this.data.filtersOpen });
+    if (!this.data.busy && !this.data.pending && !this.data.pendingError) {
+      const filtersOpen = !this.data.filtersOpen;
+      this.setData({ filtersOpen, ...(filtersOpen ? { mapVisible: false } : {}) });
+    }
   },
   onLoad(query) {
     this._alive = true;
     this._generation = 0;
     this._viewEpoch = 0;
     this._viewportRead = 0;
+    try {
+      const info =
+        typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      if (Number.isFinite(info.statusBarHeight) && info.statusBarHeight >= 0)
+        this.setData({ stateBackTop: info.statusBarHeight });
+    } catch {}
     try {
       this._detailId = query && query.listing ? ls.id(query.listing) : '';
     } catch (e) {
@@ -411,8 +421,16 @@ Page({
   },
   toggleMap() {
     this.invalidateView(false);
-    this.setData({ mapVisible: !this.data.mapVisible });
+    const mapVisible = !this.data.mapVisible;
+    this.setData({ mapVisible, ...(mapVisible ? { filtersOpen: false } : {}) });
     this.refreshMap();
+  },
+  closeLocalState() {
+    if (this.data.mapVisible) {
+      this.cityList();
+      return;
+    }
+    if (this.data.filtersOpen) this.setData({ filtersOpen: false });
   },
   invalidateView(dirty) {
     this._viewEpoch = (this._viewEpoch || 0) + 1;

@@ -2,8 +2,8 @@
   "name": "c10-account-loading",
   "route": "pages/account/index",
   "state": "loading",
-  "figmaNode": "30:2358",
-  "referenceKind": "derived",
+  "figmaNode": "36:134",
+  "referenceKind": "latest-ui006",
   "expectText": ["正在核对当前账号"],
   "primary": false,
   "data": {

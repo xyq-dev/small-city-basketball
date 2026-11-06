@@ -3,7 +3,7 @@
   "route": "pages/player/index",
   "state": "loading",
   "figmaNode": "30:168",
-  "expectText": ["正在读取球员资料"],
+  "expectText": ["球员详情", "正在读取…"],
   "syntheticData": true,
   "data": {
     "loading": true,

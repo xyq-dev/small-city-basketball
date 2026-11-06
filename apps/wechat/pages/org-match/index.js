@@ -42,7 +42,18 @@ function staffView(list) {
 }
 
 Page({
-  data: { loading: false, busy: false, error: '', notice: '', roles: ROLES, ...privateDefaults },
+  data: {
+    loading: false,
+    busy: false,
+    error: '',
+    notice: '',
+    matchTab: 'score',
+    hideScoreStatus: false,
+    hideBoardHint: false,
+    hideEmptyStaffHint: false,
+    roles: ROLES,
+    ...privateDefaults,
+  },
   onLoad(query) {
     this._alive = true;
     try {
@@ -79,6 +90,16 @@ Page({
   },
   base() {
     return '/v1/orgs/' + this.orgId + '/matches/' + this.matchId;
+  },
+  changeMatchTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (!['score', 'staff', 'confirmations'].includes(tab)) return;
+    this.setData({ matchTab: tab });
+    if (typeof wx !== 'undefined' && typeof wx.pageScrollTo === 'function') {
+      const selector =
+        tab === 'score' ? '#match-score' : tab === 'staff' ? '#match-staff' : '#match-confirmations';
+      wx.pageScrollTo({ selector, duration: 180 });
+    }
   },
   stopPolling() {
     if (this._poll) clearInterval(this._poll);

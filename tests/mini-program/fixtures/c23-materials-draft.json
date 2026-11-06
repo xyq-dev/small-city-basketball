@@ -4,10 +4,10 @@
   "state": "synthetic-populated",
   "designSource": "C23 contract and implemented native Page; synthetic data only",
   "expectText": [
-    "本人真实姓名（私有）",
-    "本人照片 · 必传",
-    "已生效在线保单将另行核验",
-    "自愿允许上述本届照片宣传用途"
+    "本人姓名 *",
+    "证件号码 *",
+    "清晰本人照片",
+    "查看审核进度"
   ],
   "data": {
     "mode": "mine",

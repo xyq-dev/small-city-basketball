@@ -1,58 +1,110 @@
-<scb-header title="{{!session || session.desired === 'STOPPED' ? '创建本场直播' : '本场直播工作台'}}" disabled="{{busy}}"/>
-<view class="page live-workspace ui002-workspace {{!session || session.desired === 'STOPPED' ? 'has-actions' : ''}}">
-  <scb-state wx:if="{{loading}}" kind="loading" title="正在读取直播工作台" description="以云端当前授权与频道记录为准。"/>
-  <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-  <view wx:if="{{notice}}" class="notice">{{notice}}</view>
-  <scb-state wx:if="{{pending}}" kind="unknown" title="原操作结果待核对" description="已保留原编号。核对完成前不会创建第二次采集或停流请求。" action-text="核对原操作结果" busy="{{busy}}" bindaction="retry"/>
-  <block wx:if="{{capabilities && (!session || session.desired === 'STOPPED')}}">
-    <view id="live-setup" class="card live-match-summary">
-      <view class="subtitle">本场比赛直播准备</view>
-      <view class="small muted">{{matchSummary.status || '状态以当前比赛为准'}} · 比赛编号 {{matchSummary.id}}</view>
-      <view class="small muted">对阵资料未提供；权威比分来自本场记分，直播不控制记分。</view>
-    </view>
-    <view class="live-preparation-form">
-      <button class="live-field channel-field" bindtap="toggleChannelPicker" disabled="{{busy || pending}}"><view class="field-label">已核验目标频道</view><view class="live-field-value">{{selected.length ? '已选择' + selected.length + '个真实频道' : '仅选择当前批准的真实频道'}}</view></button>
-      <view wx:if="{{channelsOpen}}" class="card channel-picker"><checkbox-group bindchange="selectChannels"><label wx:for="{{channels}}" wx:key="id" class="channel-choice"><checkbox value="{{item.id}}" checked="{{item.selected}}" disabled="{{item.revoked || busy || pending || !capabilities.providerReady}}"/>{{item.label}} · {{item.platform}}</label></checkbox-group><view wx:if="{{!channels.length}}" class="muted">暂无当前可用频道，请先完成频道与同播权限核验。</view></view>
-      <label class="live-field live-value-field"><view class="field-label">最长直播时长（分钟）</view><input class="live-field-input" type="number" data-field="minutes" value="{{minutes}}" bindinput="input" disabled="{{busy || pending}}"/></label>
-      <label class="live-field live-value-field"><view class="field-label">费用上限（分，100分=1元）</view><input class="live-field-input" type="number" data-field="budgetFen" value="{{budgetFen}}" bindinput="input" disabled="{{busy || pending}}"/></label>
-    </view>
-    <view class="card recording-choice-card">
-      <label class="record-choice"><switch checked="{{record}}" bindchange="setRecord" disabled="{{busy || pending}}"/><text>申请独立录制本场录像</text></label>
-      <checkbox-group wx:if="{{record}}" bindchange="recordConsentChange"><label class="record-consent"><checkbox value="record" checked="{{recordConsent}}" disabled="{{busy || pending}}"/><text>本次申请包含录制，仍需独立批准；已核对费用与用途。</text></label></checkbox-group>
-      <view wx:else class="small muted">本次创建不申请录制，不改变直播与频道的独立授权。</view>
-    </view>
-    <view class="notice warning capability-notice"><view class="notice-title">{{capabilities.providerReady ? '仍须独立批准' : '正式能力未验'}}</view><view class="small">{{capabilities.providerReady ? '创建后由独立有权管理者核对直播与录像用途，再显式开始采集。' : '当前未完成正式准入时不可开始采集；已有代码不代表渠道已开通。'}}</view><view wx:for="{{capabilities.blockers}}" wx:key="*this" class="small">{{item}}</view></view>
-  </block>
-  <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新云端状态</button>
-  <block wx:if="{{session}}">
-  <view class="page-intro"><view class="eyebrow">赛事直播</view><view class="title">准备、采集与频道分别核对</view><view class="muted">权威比分来自本场记分；直播不控制记分。</view></view>
-  <scb-steps items="{{workflowSteps}}" current="{{activeSection}}" busy="{{busy}}" bindchange="changeSection"/>
-  <view id="live-setup" wx:if="{{session.desired !== 'STOPPED'}}" class="workflow-section"><scb-state wx:if="{{capabilities && !capabilities.providerReady}}" kind="closed" title="正式能力尚未开放" description="当前不能开始新的采集；已有直播和原操作仍可继续核对。"/><view wx:if="{{capabilities && !capabilities.providerReady}}" class="status-banner"><view wx:for="{{capabilities.blockers}}" wx:key="*this">{{item}}</view></view></view>
-  <view id="live-capture" class="workflow-section">
-    <view wx:if="{{session}}" class="card">
-      <view class="subtitle">采集与独立授权</view>
-      <view class="summary-grid"><view><text class="muted">云端目标</text><view>{{session.desired}}</view></view><view><text class="muted">当前观测</text><view>{{session.observed}}</view></view></view>
-      <view class="small muted">源代次 {{session.sourceEpoch}} · {{session.maximumSeconds}}秒上限</view>
-      <view class="status-banner">直播批准：{{session.approved ? '已批准' : '待批准'}} · 录制：{{session.recordingApproved ? '已批准' : '未批准'}}</view>
-      <button wx:if="{{capabilities.canManage}}" class="secondary" data-type="APPROVE" bindtap="action" disabled="{{busy || pending || session.desired === 'STOPPED'}}">批准直播与所选录像用途</button>
-      <live-pusher id="basketball-source" url="{{pushUrl}}" mode="RTC" autopush="{{false}}" muted="{{false}}" enable-camera="{{true}}" auto-focus="{{true}}" bindstatechange="pusherState" binderror="pusherError"/>
-      <view class="status-banner">{{phoneState}}</view>
-      <view class="small muted">画面由云端读取本场权威比分合成；转推连接建立后仍需核对外站实际画面。</view>
-      <button class="primary" data-type="START" bindtap="action" disabled="{{busy || pending || !cameraReady || !capabilities.providerReady || (session.desired !== 'DRAFT' && session.desired !== 'PAUSED')}}">显式开始／恢复本机采集</button>
-      <label class="form-field"><view class="field-label">暂停、停止或撤权说明</view><input data-field="reason" value="{{reason}}" bindinput="input" placeholder="填写本次操作的真实原因" disabled="{{busy || pending}}"/></label>
-      <button class="secondary" data-type="PAUSE" bindtap="action" disabled="{{busy || pending || session.desired !== 'RUNNING'}}">暂停并确认停流</button>
-      <button class="danger" data-type="STOP" bindtap="action" disabled="{{busy || pending || session.desired === 'STOPPED'}}">结束整场直播</button>
-      <button wx:if="{{capabilities.canManage}}" class="danger" data-type="REVOKE" bindtap="action" disabled="{{busy || pending || session.desired === 'STOPPED'}}">撤销直播与录像授权</button>
-    </view>
-  </view>
-  <view id="live-channels" class="workflow-section">
-    <view wx:if="{{session}}" class="card"><view class="subtitle">各频道与媒体</view>
-      <view wx:for="{{session.targets}}" wx:key="channelId" class="target"><view class="subtitle">{{item.label}}</view><view class="status-banner">{{item.stateText}}</view><view class="small muted">外站平台状态：未核验</view><button class="secondary" data-type="STOP_TARGET" data-id="{{item.channelId}}" bindtap="target" disabled="{{busy || pending}}">停止该频道</button><button class="secondary" data-type="RECONNECT_TARGET" data-id="{{item.channelId}}" bindtap="target" disabled="{{busy || pending || session.desired !== 'RUNNING' || item.state !== 'STOPPED'}}">显式重连</button></view>
-      <button class="secondary" bindtap="media">查看录像与媒体作业</button>
-    </view>
-  </view>
-  </block>
-  <view class="notice small live-safety-note">切到后台会停止本机采集并申请暂停；网络中断时采集租约到期后云端停止。停流未知时保留频道占用，刷新不会自动恢复。</view>
-</view>
+<scb-header title="直播工作台" disabled="{{busy}}"/>
+<view class="figma-page live-studio">
+  <view class="figma-page__content figma-page__content--actions">
+    <figma-skeleton wx:if="{{loading}}" rows="4"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="直播工作台读取或操作失败" body="{{error}}" action-label="重新读取" disabled="{{loading || busy}}" bind:action="load"/>
+    <figma-feedback wx:if="{{notice}}" type="success" title="操作已确认" body="{{notice}}"/>
+    <figma-feedback wx:if="{{pending}}" type="pending" title="原操作结果待核对" body="已保留原操作编号。核对完成前不会创建第二次采集或停流请求。" action-label="核对原操作结果" disabled="{{busy}}" bind:action="retry"/>
 
-<view wx:if="{{capabilities && (!session || session.desired === 'STOPPED')}}" class="action-bar live-create-actions"><button class="primary" bindtap="create" disabled="{{busy || loading || pending || !selected.length || !capabilities.providerReady || (record && !recordConsent)}}">创建待批准直播</button></view>
+    <block wx:if="{{capabilities}}">
+      <view class="live-hero">
+        <image class="live-hero__image" src="/assets/home/hero.jpg" mode="aspectFill"/>
+        <view class="live-hero__title">{{heroTitle || (matchSummary ? '本场直播 · ' + matchSummary.status : '本场直播')}}</view>
+      </view>
+
+      <view class="live-tabs" role="tablist">
+        <button wx:for="{{workflowSteps}}" wx:key="key" class="live-tab {{activeSection === item.key ? 'is-active' : ''}}" data-key="{{item.key}}" disabled="{{busy}}" bindtap="changeSection">{{item.label}}</button>
+      </view>
+
+      <view wx:if="{{!capabilities.providerReady}}" class="figma-section live-provider-blocked">
+        <view class="figma-section__title">正式能力尚未开放</view>
+        <view class="figma-section__hint">当前不能开始新的采集；已有直播和原操作仍可继续核对。</view>
+        <view wx:for="{{capabilities.blockers}}" wx:key="*this" class="live-blocker">{{item}}</view>
+      </view>
+
+      <view id="live-setup" class="figma-section live-match-summary">
+        <view class="figma-section__title">本场准备</view>
+        <view class="figma-row">
+          <view class="figma-row__copy"><view class="figma-row__title">比赛来源</view><view class="figma-row__subtitle">{{eventSourceText || (matchSummary && matchSummary.eventId ? '赛事 ' + matchSummary.eventId : '当前赛事与场地以云端资料为准')}}</view></view>
+        </view>
+        <view class="figma-row">
+          <view class="figma-row__copy"><view class="figma-row__title">权威比分</view><view class="figma-row__subtitle">来自本场记分台，直播端只读</view></view><view class="figma-status">只读</view>
+        </view>
+        <view class="figma-row">
+          <view class="figma-row__copy"><view class="figma-row__title">独立录制</view><view class="figma-row__subtitle">录制用途须由独立有权管理者批准</view></view><view class="figma-status {{session && session.recordingApproved ? 'figma-status--green' : 'figma-status--orange'}}">{{session && session.recordingApproved ? '已批准' : '待批准'}}</view>
+        </view>
+      </view>
+
+      <view id="live-channels" class="figma-section">
+        <view class="figma-section__title">目标频道</view>
+        <block wx:if="{{channels.length}}">
+          <view wx:for="{{channels}}" wx:key="id" class="figma-row">
+            <view class="figma-row__copy"><view class="figma-row__title">{{item.label}}</view><view class="figma-row__subtitle">{{item.subtitle || (item.platform + ' · ' + (item.revoked ? '授权已撤销' : '正式同播权限以云端为准'))}}</view></view><view class="figma-status {{item.selected && !item.revoked ? 'figma-status--green' : ''}}">{{item.statusText || (item.revoked ? '不可用' : item.selected ? '已选择' : '未选择')}}</view>
+          </view>
+        </block>
+        <view wx:else class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">暂无可用频道</view><view class="figma-row__subtitle">请先完成正式目标账号与同播权限核验</view></view><view class="figma-status">未开放</view></view>
+      </view>
+
+      <view id="live-capture" class="figma-section live-distribution">
+        <view class="figma-section__title">采集与分发</view>
+        <view class="live-step"><view class="live-step__mark">1</view><view><view class="figma-row__title">核对设备</view><view class="figma-row__subtitle">摄像头和麦克风按需授权</view></view></view>
+        <view class="live-step"><view class="live-step__mark">2</view><view><view class="figma-row__title">批准直播用途</view><view class="figma-row__subtitle">核对时长、费用上限与频道</view></view></view>
+        <view class="live-step"><view class="live-step__mark">3</view><view class="live-step__copy"><view class="figma-row__title">核验外站开播</view><view class="figma-row__subtitle">逐渠道核对真实分发结果</view></view><view class="figma-status figma-status--orange">待核验</view></view>
+      </view>
+
+      <block wx:if="{{!session || session.desired === 'STOPPED'}}">
+        <view class="figma-section live-preparation-form">
+          <view class="figma-section__title">直播申请</view>
+          <button class="live-channel-field" bindtap="toggleChannelPicker" disabled="{{busy || pending}}"><view class="figma-field-label">目标频道</view><view class="live-channel-field__value">{{selected.length ? '已选择 ' + selected.length + ' 个真实频道' : '选择当前已批准的真实频道'}}</view></button>
+          <checkbox-group wx:if="{{channelsOpen}}" class="live-channel-picker" bindchange="selectChannels">
+            <label wx:for="{{channels}}" wx:key="id" class="figma-check"><checkbox value="{{item.id}}" checked="{{item.selected}}" disabled="{{item.revoked || busy || pending || !capabilities.providerReady}}"/><text>{{item.label}} · {{item.platform}}</text></label>
+            <view wx:if="{{!channels.length}}" class="figma-section__hint">暂无当前可用频道。</view>
+          </checkbox-group>
+          <label class="figma-field-group"><view class="figma-field-label">最长直播时长（分钟）</view><input class="figma-field-control" type="number" data-field="minutes" value="{{minutes}}" bindinput="input" disabled="{{busy || pending}}"/></label>
+          <label class="figma-field-group"><view class="figma-field-label">费用上限（分，100 分 = 1 元）</view><input class="figma-field-control" type="number" data-field="budgetFen" value="{{budgetFen}}" bindinput="input" disabled="{{busy || pending}}"/></label>
+        </view>
+
+        <view class="figma-section recording-choice-card">
+          <view class="figma-section__title">录像用途</view>
+          <label class="live-record-choice"><switch checked="{{record}}" bindchange="setRecord" disabled="{{busy || pending}}"/><text>申请独立录制本场录像</text></label>
+          <checkbox-group wx:if="{{record}}" bindchange="recordConsentChange"><label class="figma-check"><checkbox value="record" checked="{{recordConsent}}" disabled="{{busy || pending}}"/><text>本次申请包含录制；已核对费用与用途，并知晓仍需独立批准。</text></label></checkbox-group>
+          <view wx:else class="figma-section__hint">本次创建不申请录制，不改变直播与频道的独立授权。</view>
+        </view>
+
+        <view class="figma-section capability-notice">
+          <view class="figma-section__title">{{capabilities.providerReady ? '仍须独立批准' : '正式能力未开放'}}</view>
+          <view class="figma-section__hint">{{capabilities.providerReady ? '创建后由独立有权管理者核对直播与录像用途，再显式开始采集。' : '当前不能开始新的采集；已有原操作仍可继续核对。'}}</view>
+          <view wx:for="{{capabilities.blockers}}" wx:key="*this" class="live-blocker">{{item}}</view>
+          <view class="live-create-actions"><button class="figma-action figma-action--navy" bindtap="create" disabled="{{busy || loading || pending || !selected.length || !capabilities.providerReady || (record && !recordConsent)}}">{{busy ? '正在提交…' : '创建待批准直播'}}</button></view>
+        </view>
+      </block>
+
+      <view wx:if="{{session && session.desired !== 'STOPPED'}}" class="figma-section live-session-controls">
+        <view class="figma-section__title">采集控制</view>
+        <view class="figma-grid">
+          <view class="figma-grid__item"><view class="figma-eyebrow">云端目标</view><view class="figma-row__title">{{session.desired}}</view></view>
+          <view class="figma-grid__item"><view class="figma-eyebrow">当前观测</view><view class="figma-row__title">{{session.observed}}</view></view>
+        </view>
+        <view class="figma-section__hint">源代次 {{session.sourceEpoch}} · 最长 {{session.maximumSeconds}} 秒</view>
+        <button wx:if="{{capabilities.canManage}}" class="figma-action figma-action--ghost" data-type="APPROVE" bindtap="action" disabled="{{busy || pending}}">批准直播与所选录像用途</button>
+        <live-pusher id="basketball-source" url="{{pushUrl}}" mode="RTC" autopush="{{false}}" muted="{{false}}" enable-camera="{{true}}" auto-focus="{{true}}" bindstatechange="pusherState" binderror="pusherError"/>
+        <view class="live-phone-state">{{phoneState}}</view>
+        <button class="figma-action figma-action--orange" data-type="START" bindtap="action" disabled="{{busy || pending || !cameraReady || !capabilities.providerReady || (session.desired !== 'DRAFT' && session.desired !== 'PAUSED')}}">显式开始／恢复本机采集</button>
+        <label class="figma-field-group"><view class="figma-field-label">暂停、停止或撤权说明</view><input class="figma-field-control" data-field="reason" value="{{reason}}" bindinput="input" placeholder="填写本次操作的真实原因" disabled="{{busy || pending}}"/></label>
+        <view class="live-control-grid"><button class="figma-action figma-action--ghost" data-type="PAUSE" bindtap="action" disabled="{{busy || pending || session.desired !== 'RUNNING'}}">暂停并确认停流</button><button class="figma-action live-danger" data-type="STOP" bindtap="action" disabled="{{busy || pending}}">结束整场直播</button></view>
+        <button wx:if="{{capabilities.canManage}}" class="figma-action live-danger" data-type="REVOKE" bindtap="action" disabled="{{busy || pending}}">撤销直播与录像授权</button>
+        <view wx:for="{{session.targets}}" wx:key="channelId" class="live-target">
+          <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.label}}</view><view class="figma-row__subtitle">外站平台状态须单独核验</view></view><view class="figma-status">{{item.stateText}}</view></view>
+          <view class="live-control-grid"><button class="figma-action figma-action--ghost" data-type="STOP_TARGET" data-id="{{item.channelId}}" bindtap="target" disabled="{{busy || pending}}">停止该频道</button><button class="figma-action figma-action--ghost" data-type="RECONNECT_TARGET" data-id="{{item.channelId}}" bindtap="target" disabled="{{busy || pending || session.desired !== 'RUNNING' || item.state !== 'STOPPED'}}">显式重连</button></view>
+        </view>
+      </view>
+    </block>
+
+    <view class="figma-section live-safety-note"><view class="figma-section__hint">切到后台会停止本机采集并申请暂停。网络中断时由采集租约保护停流；结果未知时保留原频道占用，刷新不会自动恢复。</view></view>
+  </view>
+
+  <view class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="media" disabled="{{busy || (!session && !figmaEnableMediaAction)}}">查看媒体作业</button>
+    <button class="figma-action figma-action--orange" bindtap="load" disabled="{{loading || busy}}">{{loading ? '正在刷新…' : '刷新云端状态'}}</button>
+  </view>
+</view>

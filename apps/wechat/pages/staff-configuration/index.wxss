@@ -1,1 +1,18 @@
-.field { box-sizing: border-box; width: 100%; margin: 16rpx 0; } .row { display: flex; flex-wrap: wrap; gap: 12rpx; padding: 12rpx 0; } .row button { flex: 1; min-width: 180rpx; } .card button { margin-top: 16rpx; }
+@import "../../styles/figma-pages.wxss";
+
+.staff-summary { background: #eaf2fc; }
+.staff-tabs { display: flex; width: 100%; min-height: 48px; padding: 2px 3px; border-radius: 12px; background: #fff; }
+.staff-tab { display: flex; min-width: 0; min-height: 44px; flex: 1; align-items: center; justify-content: center; margin: 0; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: #51657d; font-size: 13px; font-weight: 400; line-height: 19px; }
+.staff-tab::after { border: 0; }
+.staff-tab.is-active { background: #123c73; color: #fff; font-weight: 700; }
+.staff-tab[disabled] { opacity: .55; }
+.staff-picker { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px; border: 1px solid #7c8ea5; border-radius: 12px; background: #fff; color: #18283f; font-size: 16px; line-height: 24px; }
+.staff-step { display: flex; width: 100%; min-height: 55px; align-items: center; gap: 8px; }
+.staff-step__number { display: flex; width: 20px; height: 20px; flex: none; align-items: center; justify-content: center; border-radius: 10px; background: #eaf2fc; color: #123c73; font-size: 11px; font-weight: 700; line-height: 16px; }
+.staff-toggle { display: flex; width: 100%; min-height: 55px; align-items: center; justify-content: space-between; gap: 12px; }
+.staff-toggle switch { flex: none; transform: scale(.86); transform-origin: right center; }
+
+@media (max-width: 360px) {
+  .staff-tab { padding-right: 6px; padding-left: 6px; font-size: 12px; }
+  .staff-picker { font-size: 14px; }
+}

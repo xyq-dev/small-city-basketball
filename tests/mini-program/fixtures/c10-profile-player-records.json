@@ -3,7 +3,7 @@
   "route": "pages/player/index",
   "state": "review",
   "figmaNode": "30:206",
-  "expectText": ["先看数据口径", "得分 0 / 犯规 0"],
+  "expectText": ["近期记录与来源", "得分 0 / 犯规 0"],
   "syntheticData": true,
   "data": {
     "profile": {
@@ -66,6 +66,7 @@
       }
     ],
     "recordsOpen": true,
+    "activeTab": "RECORDS",
     "loading": false,
     "loginRequired": false,
     "error": "",

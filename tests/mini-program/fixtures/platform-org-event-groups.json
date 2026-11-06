@@ -4,7 +4,7 @@
   "state": "ready",
   "designSource": "synthetic:platform-alignment",
   "static": true,
-  "expectText": ["分组与淘汰", "A组", "B组", "同分待抽签", "淘汰签位", "半决赛"],
+  "expectText": ["积分排名", "A组", "B组", "同分待抽签", "淘汰签位", "半决赛"],
   "data": {
     "tab": "ranking",
     "event": {

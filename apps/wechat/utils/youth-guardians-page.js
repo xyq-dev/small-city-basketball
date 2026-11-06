@@ -44,6 +44,19 @@ function createPage(review = false) {
       error: '',
       message: '',
       loginRequired: false,
+      activeView: review ? 'pending' : 'required',
+      figmaHideSubjectStatus: false,
+      figmaCompactReview: false,
+      viewTabs: review
+        ? [
+            { key: 'pending', label: '待核验' },
+            { key: 'history', label: '历史记录' },
+          ]
+        : [
+            { key: 'required', label: '必要资料' },
+            { key: 'subject', label: '本人确认' },
+            { key: 'guardian', label: '监护确认' },
+          ],
     },
     onLoad(q = {}) {
       this._alive = true;
@@ -128,6 +141,14 @@ function createPage(review = false) {
     },
     login() {
       ui.login(this.returnPath());
+    },
+    changeView(e) {
+      const key = e.detail?.key;
+      if (!this.data.busy && this.data.viewTabs.some((item) => item.key === key))
+        this.setData({ activeView: key });
+    },
+    openAuthorizations() {
+      if (!review && !this.data.busy) this.setData({ activeView: 'guardian' });
     },
     repo() {
       return youth.repository(this._org, this._event);

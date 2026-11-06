@@ -3,7 +3,7 @@
   "route": "pages/participant-materials/index",
   "state": "synthetic-populated",
   "designSource": "UI001 R07 / R03; actual participant-materials Page, synthetic data only",
-  "expectText": ["已有保单人工核验", "保障开始日期", "上传不等于已投保", "提交与授权"],
+  "expectText": ["已有保单人工核验", "保障开始日期", "上传不等于已投保", "购买、查单与退保进度"],
   "data": {
     "mode": "mine",
     "entries": [],

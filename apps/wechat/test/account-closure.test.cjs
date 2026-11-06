@@ -3,8 +3,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const api = require('../utils/api');
 const { createWx, loadPage } = require('./helpers/native-page.cjs');
-const fs = require('node:fs');
-const { renderWxml } = require('./helpers/native-preview.cjs');
+const { buildPreview } = require('./helpers/native-preview.cjs');
 const root = path.resolve(__dirname, '..');
 const actor = '11111111-1111-4111-8111-111111111111';
 const other = '22222222-2222-4222-8222-222222222222';
@@ -70,13 +69,14 @@ test('E07 loads private status and defaults to zero days with clear retained-his
   await ready(h);
   assert.equal(h.page.data.loading, false);
   assert.equal(h.page.data.coolingOffDays, 0);
-  const html = renderWxml(
-    // The shared header is covered by its own component tests; render this new page body before root registers its route.
-    fs
-      .readFileSync(path.join(root, 'pages/account-closure/index.wxml'), 'utf8')
-      .replace(/<scb-header[^>]*\/>/, ''),
-    h.page.data,
-  );
+  h.page.setData({ activeView: 'request' });
+  const html = buildPreview({
+    root,
+    route: 'pages/account-closure/index',
+    data: h.page.data,
+    width: 390,
+    height: 844,
+  }).phone;
   assert.ok(html.includes('立即检查'));
   assert.ok(html.includes('注销不等于立即删除所有记录'));
   assert.ok(html.includes('申请注销并开始安全检查'));

@@ -34,6 +34,8 @@ const privateDefaults = {
   fixOpen: false,
   fix: { kind: 'SCORE', side: 'HOME', value: 2, period: 1, reason: '' },
   consoleSection: 'score',
+  playerAssignOpen: false,
+  moreControlsOpen: false,
 };
 
 function rosterOptions(list) {
@@ -49,6 +51,10 @@ Page({
     busy: false,
     error: '',
     notice: '',
+    hideScoreStatus: false,
+    hideBoardHint: false,
+    figmaState: '',
+    figmaStateModel: {},
     technicalKinds: [
       { kind: 'REBOUND', label: '篮板' },
       { kind: 'ASSIST', label: '助攻' },
@@ -173,6 +179,11 @@ Page({
     this._receivedAt = receivedAt;
     this._matchVersion = snapshot ? snapshot.version : this._matchVersion;
     const board = scoring.board(snapshot, receivedAt);
+    if (board) {
+      const currentPeriod = board.periods.length ? board.periods[board.periods.length - 1] : null;
+      board.home.periodScore = currentPeriod ? currentPeriod.home : 0;
+      board.away.periodScore = currentPeriod ? currentPeriod.away : 0;
+    }
     if (snapshot)
       this.setData({
         'match.status': snapshot.status,
@@ -683,6 +694,31 @@ Page({
     const side = e.currentTarget.dataset.side;
     if (side === 'home' || side === 'away')
       this.setData({ ['pick.' + side]: Number(e.detail.value) || 0 });
+  },
+  togglePlayerAssign() {
+    if (!this.data.busy && !this.data.pending)
+      this.setData({ playerAssignOpen: !this.data.playerAssignOpen });
+  },
+  toggleMoreControls() {
+    if (!this.data.busy && !this.data.pending)
+      this.setData({ moreControlsOpen: !this.data.moreControlsOpen });
+  },
+  teamStat(e) {
+    if (this.data.busy || this.data.pending || !this.data.match) return;
+    const kind = e.currentTarget.dataset.kind;
+    if (!['FOUL', 'TIMEOUT'].includes(kind)) return;
+    const match = this.data.match;
+    wx.showActionSheet({
+      itemList: [match.home, match.away],
+      success: ({ tapIndex }) => {
+        if (this._visible === false || this.data.busy || this.data.pending) return;
+        this.stat({
+          currentTarget: {
+            dataset: { kind, side: tapIndex === 1 ? 'AWAY' : 'HOME', value: 1 },
+          },
+        });
+      },
+    });
   },
   stat(e) {
     const { side, kind } = e.currentTarget.dataset;

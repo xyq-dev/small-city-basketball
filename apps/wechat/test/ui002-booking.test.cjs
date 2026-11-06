@@ -97,8 +97,9 @@ test('T09 field entries open the original complete editor; review remains a real
   const h = createBooking();
   const p = h.page;
   const initial = html(p);
-  assert.ok(initial.indexOf('booking-form') < initial.indexOf('booking-quote'));
-  assert.ok(initial.indexOf('booking-quote') < initial.indexOf('confirmation-preview'));
+  assert.ok(initial.indexOf('时间与地点') < initial.indexOf('确定报价'));
+  assert.ok(initial.indexOf('确定报价') < initial.indexOf('返回选人'));
+  assert.doesNotMatch(initial, /每位球员、每一场分别接单/);
   assert.match(initial, /data-mini-bindtap="openEditor"/);
   assert.doesNotMatch(initial, /selected-portrait|arrangement-summary|data-mini-bindtap="submit"/);
   assert.match(initial, /¥330.01/);
@@ -106,6 +107,7 @@ test('T09 field entries open the original complete editor; review remains a real
   for (const value of ['合', '合成具体场地']) {
     p.slotInput({ currentTarget: { dataset: { index: 0, field: 'venue' } }, detail: { value } });
     const editing = html(p);
+    assert.match(editing, /每位球员、每一场分别接单/);
     for (const handler of ['teamPick', 'eventPick', 'playerPick', 'slotPlayers', 'slotInput'])
       assert.match(editing, new RegExp('data-mini-bind(?:change|input)="' + handler + '"'));
     assert.equal(p.data.editorOpen, true);
@@ -129,7 +131,7 @@ test('T09 field entries open the original complete editor; review remains a real
   assert.match(pending, /data-mini-bindtap="recover"/);
   assert.doesNotMatch(
     pending,
-    /booking-form|data-mini-bindtap="review"|data-mini-bindtap="submit"/,
+    /booking-display-field|data-mini-bindtap="review"|data-mini-bindtap="submit"/,
   );
   await p.recover();
   assert.equal(h.sends.length, 2);
@@ -159,7 +161,7 @@ test('T09 recovery priority and revoked-team private hiding survive the new form
   const h = createBooking();
   h.page.setData({ storageReadBlocked: true, invalidRecovery: true, pending: true });
   assert.match(html(h.page), /暂时无法读取原预约记录/);
-  assert.doesNotMatch(html(h.page), /恢复记录损坏|booking-form/);
+  assert.doesNotMatch(html(h.page), /恢复记录损坏|booking-display-field/);
   h.page.setData({ storageReadBlocked: false, invalidRecovery: false, pending: false });
   await h.page.review();
   h.page.consent({ detail: { value: ['agree'] } });
@@ -192,13 +194,15 @@ function cooperationList() {
   p.render();
   return { ...h, ui };
 }
-test('T17 compact records preserve current detail, disclosure and funds handlers without a fixed CTA', () => {
+test('T17 compact records preserve current detail, disclosure, funds and fixed navigation handlers', () => {
   const h = cooperationList();
   const p = h.page;
   const appearance = p.data.rows[0].appearances[0];
   const initial = html(p, 'pages/bookings/index');
-  assert.match(initial, /逐场合作进度|cooperation-main/);
+  assert.match(initial, /合作进度/);
   assert.match(initial, /data-mini-bindtap="detail"/);
+  assert.match(initial, /figma-fixed-actions/);
+  assert.match(initial, /data-mini-bindtap="players"/);
   assert.doesNotMatch(
     initial,
     /order-portrait|booking-order-card|action-bar|data-mini-bindtap="trade"/,
@@ -219,7 +223,7 @@ test('T17 compact records preserve current detail, disclosure and funds handlers
   assert.equal(h.wx.calls.length, count);
 });
 
-test('T09/T17 real templates expand at three widths with both exact local icon slots and no design placeholder photos', () => {
+test('T09/T17 real templates expand at three widths with local Figma icons and no design placeholder photos', () => {
   const c = createBooking();
   const h = cooperationList();
   h.page.raw.orders[0].scope = 'TOURNAMENT';
@@ -227,9 +231,14 @@ test('T09/T17 real templates expand at three widths with both exact local icon s
   for (const width of [320, 390, 430]) {
     assert.match(html(c.page, 'pages/booking-create/index', width), /¥330.01/);
     const preview = buildPreview({ root, route: 'pages/bookings/index', data: h.page.data, width });
-    assert.ok(preview.assets.some((a) => a.path.endsWith('/calendar.svg') && a.bytes > 0));
-    assert.ok(preview.assets.some((a) => a.path.endsWith('/user.svg') && a.bytes > 0));
-    assert.ok(preview.assets.some((a) => a.path.endsWith('/chevron.svg') && a.bytes > 0));
+    assert.ok(preview.assets.some((a) => a.path.endsWith('/booking.svg') && a.bytes > 0));
+    assert.ok(
+      preview.assets.every(
+        (a) =>
+          a.bytes > 0 &&
+          /^(assets\/approved-ui\/|assets\/figma\/)/.test(a.path.replaceAll('\\', '/')),
+      ),
+    );
     assert.doesNotMatch(preview.phone, /src="https?:|player-placeholder|order-portrait/);
   }
 });

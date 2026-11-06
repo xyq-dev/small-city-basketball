@@ -18,7 +18,7 @@ Page({
     message: '',
     ownOnly: false,
     ownProfileId: null,
-    filter: 'ALL',
+    filter: 'PENDING',
     links: [],
     linksHasMore: false,
     nextCursor: null,

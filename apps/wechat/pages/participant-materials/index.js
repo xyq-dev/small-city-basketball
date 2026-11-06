@@ -29,6 +29,12 @@ Page({
       { key: 'consent', label: '本人确认' },
       { key: 'progress', label: '审核进度' },
     ],
+    materialTabs: [
+      { key: 'profile', label: '身份' },
+      { key: 'portrait', label: '照片' },
+      { key: 'consent', label: '签署' },
+      { key: 'progress', label: '进度' },
+    ],
     entries: [],
     workspace: null,
     material: null,
@@ -48,6 +54,9 @@ Page({
     error: '',
     message: '',
     loginRequired: false,
+    figmaState: '',
+    figmaSummaryTitle: '',
+    figmaJerseyNumber: '',
   },
   onLoad(query = {}) {
     this._alive = true;

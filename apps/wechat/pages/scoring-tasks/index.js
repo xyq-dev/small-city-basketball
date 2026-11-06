@@ -15,7 +15,14 @@ const MAX_PAGES = 10;
 const privateDefaults = { sections: [], orgErrors: [], empty: false, truncated: false };
 
 Page({
-  data: { loading: false, loginRequired: false, error: '', scopeLabel: '', ...privateDefaults },
+  data: {
+    loading: false,
+    loginRequired: false,
+    error: '',
+    scopeLabel: '',
+    taskTab: 'tasks',
+    ...privateDefaults,
+  },
   onLoad(query = {}) {
     try {
       if (query.orgId && query.eventId) {
@@ -142,6 +149,18 @@ Page({
   open(e) {
     const { org, match } = e.currentTarget.dataset;
     ui.open('org-match', { orgId: org, matchId: match });
+  },
+  changeTaskTab(e) {
+    const taskTab = e.currentTarget.dataset.tab;
+    if (!this.data.loading && ['tasks', 'review'].includes(taskTab)) this.setData({ taskTab });
+  },
+  openFirstTask() {
+    const keys = this.data.taskTab === 'review'
+      ? ['pending', 'final', 'adjudicated']
+      : ['live', 'ready', 'scheduled'];
+    const section = this.data.sections.find((item) => keys.includes(item.key) && item.items.length);
+    const item = section && section.items[0];
+    if (item) ui.open('org-match', { orgId: item.orgId, matchId: item.matchId });
   },
   login() {
     ui.login('/pages/scoring-tasks/index');

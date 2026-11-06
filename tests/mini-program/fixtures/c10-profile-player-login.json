@@ -3,7 +3,7 @@
   "route": "pages/player/index",
   "state": "permission",
   "figmaNode": "30:2288",
-  "expectText": ["请登录后继续", "登录并返回球员详情"],
+  "expectText": ["请登录后继续", "登录并返回"],
   "syntheticData": true,
   "data": {
     "loading": false,

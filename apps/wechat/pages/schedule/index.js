@@ -58,7 +58,15 @@ function failure(error) {
 }
 
 Page({
-  data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
+  data: {
+    loading: false,
+    busy: false,
+    error: '',
+    notice: '',
+    scheduleTab: 'groups',
+    hideSlotsSummary: false,
+    ...privateDefaults,
+  },
   onLoad(query = {}) {
     this._alive = true;
     try {
@@ -274,6 +282,13 @@ Page({
     const field = e.currentTarget.dataset.field;
     if (['dayStart', 'dayEnd', 'slot', 'rest', 'gap'].includes(field))
       this.setData({ ['form.' + field]: String(e.detail.value).slice(0, 5) });
+  },
+  changeScheduleTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (this.data.busy || !['groups', 'slots', 'draft'].includes(tab)) return;
+    this.setData({ scheduleTab: tab });
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#schedule-' + tab, duration: 200 });
   },
   toggleCourt(e) {
     const i = Number(e.currentTarget.dataset.index);

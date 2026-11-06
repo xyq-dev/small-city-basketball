@@ -1,47 +1,113 @@
-<view class="page local-page" style="padding-top:0">
- <v3-chrome city="{{selection.label}}" placeholder="搜球场、服务或球友" bind:city="chooseCity" bind:search="openSearch" bind:bell="openMessages"/>
- <view class="local-top-tabs"><button class="local-city-tab" bindtap="chooseCity">{{selection.label}} · 切城</button><button bindtap="toggleFilters" disabled="{{busy || pending || pendingError}}">找附近</button><button bindtap="bookings" disabled="{{busy}}">我的预约</button></view>
- <view class="local-brand v3-hero"><image class="v3-hero-photo" src="/assets/home/hero.jpg" mode="aspectFill"/><view class="v3-hero-shade"></view><view class="local-brand-row"><view class="local-brand-copy"><view class="local-brand-eyebrow">PLAY YOUR CITY</view><view class="local-brand-title">找到一起上场的人</view><view class="local-brand-services">球场 · 裁判 · 记录 · 直播摄影 · 医务</view><button class="v3-hero-btn" bindtap="toggleMap" disabled="{{busy || pending || pendingError}}">地图找服务</button></view><image src="/assets/ui002/node-4-43-0.svg" class="local-brand-ball" mode="aspectFit" aria-hidden="true"/></view></view>
- <view class="local-service-tabs"><button class="{{kind==='COURT' ? 'active' : ''}}" data-value="COURT" bindtap="kind"><image src="/assets/home/service-court.png" mode="aspectFit"/>球场</button><button class="{{kind && kind!=='COURT' ? 'active' : ''}}" data-value="REFEREE" bindtap="kind"><image src="/assets/home/service-referee.png" mode="aspectFit"/>人员服务</button><button bindtap="players" disabled="{{busy}}"><image src="/assets/home/icon-player.png" mode="aspectFit"/>球员邀约</button><button bindtap="matchups" disabled="{{busy}}"><image src="/assets/home/icon-team.png" mode="aspectFit"/>球队约赛</button></view>
- <view wx:if="{{kind && kind!=='COURT'}}" class="chips personnel-kinds"><block wx:for="{{kinds}}" wx:key="value"><button wx:if="{{item.value && item.value!=='COURT'}}" class="chip {{kind===item.value?'picked':''}}" data-value="{{item.value}}" bindtap="kind">{{item.label}}</button></block></view>
- <view class="notice" wx:if="{{selection.mode==='LEGACY_CITY'}}">当前为历史城市标签。请从地区目录重新选择，供给覆盖和附近筛选需要具体地区。</view>
- <view wx:if="{{pending || pendingError}}" class="notice warning"><view>{{pendingError || '上次操作尚未核对，请先处理。'}}</view><button bindtap="recover" disabled="{{busy}}">查询原操作回执</button><button wx:if="{{pending}}" bindtap="retry" disabled="{{busy}}">重试原操作</button></view>
- <view wx:if="{{error}}" class="error">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view>
- <scb-state wx:if="{{loading}}" kind="loading" title="正在读取已审核供给"/>
- <view wx:for="{{items}}" wx:key="id" class="listing-entry"><button class="card listing-card" data-id="{{item.id}}" bindtap="detail"><image wx:if="{{item.kind==='COURT'}}" class="v3-listing-photo" src="/assets/home/event-court.jpg" mode="aspectFill" aria-label="球场示意图，非场馆实拍"/><image wx:if="{{item.kind==='COURT'}}" class="court-illustration" src="/assets/ui002/court-illustration.svg" mode="aspectFit" aria-hidden="true"/><image wx:else class="v3-listing-photo" src="/assets/home/service-referee.png" mode="aspectFill" aria-label="服务示意图，非人员实拍"/><view class="subtitle">{{item.title}}</view><view class="listing-details"><view class="listing-meta">{{selection.label}} · {{item.kindText}} · 已审核供给</view><view class="listing-address">{{item.address}}</view><view class="muted">{{item.organizationName}} · {{item.distanceLabel}}</view><view class="muted">{{item.qualificationText}}</view><view class="listing-limit">选择档期后再次核对，提交不等于订到。</view></view></button><button class="primary listing-action" data-id="{{item.id}}" bindtap="detail">{{item.kind==='COURT' ? '查看场馆与可约时间' : '查看人员与可约时间'}}</button></view>
- <scb-state wx:if="{{loaded && !items.length}}" kind="empty" title="暂无符合条件的已审核供给" description="{{viewportMode ? '可调整地图范围，或返回城市列表。' : '可以调整地区、类型或距离起点。'}}" action-text="重新选择城市" bind:action="chooseCity"/>
- <button wx:if="{{nextCursor}}" bindtap="more" disabled="{{loadingMore || viewportDirty || viewportBusy}}" loading="{{loadingMore}}">加载更多</button>
- <view class="local-origin-note"><view>{{hasOrigin ? originLabel : '尚未设置距离起点'}}</view><view>选择当前位置或手动地点后显示约距；仅选城市时不显示虚假米数。</view></view>
- <view class="local-display-actions"><button class="secondary" bindtap="toggleMap">{{mapVisible?'收起地图':'查看地图'}}</button><button class="secondary" bindtap="toggleFilters" disabled="{{busy || pending || pendingError}}">{{filtersOpen ? '收起查询与扩展服务' : '搜索、附近与更多服务'}}</button></view>
- <view wx:if="{{mapVisible}}" class="card map-card">
-  <view wx:if="{{viewportMode}}" class="notice">{{mapScopeLabel}}{{viewportDirty?' · 上次搜索范围':''}}</view>
-  <view wx:if="{{viewportDirty && !viewportMode}}" class="muted">地图范围已改变，下方保留上次列表。</view>
-  <view wx:if="{{viewportEnabled && mapCenter}}" class="map-search"><button class="primary" bindtap="searchThisArea" disabled="{{viewportBusy}}" loading="{{viewportBusy}}">{{viewportBusy?'搜索中…':'搜索此区域'}}</button></view>
-  <map wx:if="{{mapCenter}}" id="local-map" class="local-map" latitude="{{mapCenter.latitude}}" longitude="{{mapCenter.longitude}}" markers="{{markers}}" bindmarkertap="marker" bindregionchange="regionChanged" binderror="mapFailed" scale="{{mapScale}}" enable-rotate="{{false}}" enable-overlooking="{{false}}" show-location="{{false}}"/>
-  <view wx:else class="muted">当前列表没有已确认坐标。可选距离起点，或查看文字地址。</view>
-  <view wx:if="{{!viewportEnabled}}" class="muted">地图区域搜索暂未开放，可继续按城市或距离起点查找。</view>
-  <view wx:if="{{mapError}}" class="error">{{mapError}}</view>
-  <view wx:if="{{viewportEnabled}}" class="muted">{{acrossRegions?'临时地图范围，不改变所选城市。':'默认搜索所选地区与地图范围的交集。'}}停止拖动后点击搜索，无需授权定位。</view>
-  <view class="local-actions"><button wx:if="{{canRestoreArea}}" bindtap="restoreArea">恢复上次范围</button><button wx:if="{{viewportEnabled && selection.mode==='REGION' && !acrossRegions}}" bindtap="expandMapScope" disabled="{{viewportBusy}}">临时跨城搜索</button><button wx:if="{{acrossRegions}}" bindtap="keepCityScope" disabled="{{viewportBusy}}">仅查所选地区</button><button bindtap="cityList">返回城市列表</button></view>
-  <view class="muted">标记仅来自当前已发布供给；地图背景地点不代表可预约。分页不会移动地图。供给可能更新，可重新搜索刷新。</view>
- </view>
- <view wx:if="{{filtersOpen}}" class="card local-query-panel">
-  <view class="chips"><button wx:for="{{kinds}}" wx:key="value" class="chip {{kind===item.value?'picked':''}}" data-value="{{item.value}}" bindtap="kind">{{item.label}}</button></view>
-  <input class="field" value="{{q}}" data-field="q" bindinput="input" placeholder="搜索已审核供给名称" maxlength="100"/>
-  <button class="primary" bindtap="search" disabled="{{loading}}">查找供给</button>
-  <view wx:if="{{filtersOpen}}" class="location-settings">
-  <view class="local-actions"><button bindtap="locate" loading="{{locationBusy}}" disabled="{{locationBusy}}">按需定位找附近</button><button bindtap="nationwide">浏览全国</button></view>
-  <view class="muted">{{originLabel}}。位置只在本页内存使用，离开后清除；拒绝定位也可手动选城。</view>
-  <view wx:if="{{hasOrigin}}"><picker class="field" range="{{radii}}" range-key="label" value="{{radiusIndex}}" bindchange="radius">搜索半径：{{radii[radiusIndex].label}}</picker><button class="quiet" bindtap="clearOrigin">清除距离起点</button></view>
-  <input class="field" data-field="placeQuery" value="{{placeQuery}}" bindinput="input" placeholder="输入场馆、街道等地图地点" maxlength="100"/>
-  <button bindtap="searchPlaces" loading="{{placesBusy}}" disabled="{{placesBusy}}">在所选地区查地图地点</button>
-  <view class="muted">地图地点仅帮助选地址和搜索起点，可预约档期由经营方实际发布。</view>
-  <view wx:if="{{!locationEnabled}}" class="muted">地图地点解析暂未开放，仍可手动选城、输入实际服务地址。</view>
-  <view wx:if="{{locationError}}" class="error">{{locationError}}</view><view wx:for="{{locatedRegions}}" wx:key="index" class="place-row"><view>定位建议：{{item.regionLabel}}</view><view class="muted">{{item.address}}，确认前不会切换城市。</view><button data-index="{{index}}" bindtap="confirmLocatedRegion">确认此地区并查询附近</button></view>
-  <view wx:for="{{places}}" wx:key="index" class="place-row"><view>{{item.title}}</view><view class="muted">{{item.address}} · 地图候选</view><button data-index="{{index}}" data-purpose="origin" bindtap="usePlace">作为搜索起点</button><button wx:if="{{detail && detail.listing.kind!=='COURT'}}" data-index="{{index}}" data-purpose="service" bindtap="usePlace">明确选为本次服务地址</button></view>
+<scb-header mode="{{figmaState || mapVisible || filtersOpen ? '' : 'account'}}" title="{{figmaState==='local-map' || mapVisible ? '地图找服务' : figmaState==='local-location' || filtersOpen ? '选城与距离起点' : '同城'}}" back="{{!!figmaState || mapVisible || filtersOpen}}" disabled="{{busy}}"/>
+<button wx:if="{{!figmaState && (mapVisible || filtersOpen)}}" class="local-state-back" style="top:{{stateBackTop}}px" catchtap="closeLocalState" aria-label="返回同城列表"/>
+<view class="scb-ui-page figma-page local-rebuild">
+  <view class="figma-page__content {{figmaState || mapVisible || filtersOpen ? 'figma-page__content--actions' : 'figma-page__content--nav'}}">
+    <block wx:if="{{figmaState==='local-map'}}">
+      <view class="map-frame"><image class="local-map-preview" src="/assets/figma/local-map-preview.svg" mode="scaleToFill" aria-label="示意地图底图及两个服务点"/></view>
+      <view class="map-tabs" role="tablist"><button>列表</button><button class="is-active">地图</button></view>
+      <view class="figma-section"><view class="figma-section__title">范围与起点</view><view class="figma-row"><view class="figma-row__mark is-active"/><view class="figma-row__copy"><view class="figma-row__title">浏览范围</view><view class="figma-row__subtitle">广东 · 高州</view></view><view class="figma-status figma-status--orange">已选</view></view><view class="figma-row"><view class="figma-row__mark is-active"/><view class="figma-row__copy"><view class="figma-row__title">距离起点</view><view class="figma-row__subtitle">体育中心 · 手动选择</view></view><view class="figma-status figma-status--orange">已选</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">区域内已发布供给</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">示例篮球馆</view><view class="figma-row__subtitle">室内场 · 体育中心路</view></view><view class="figma-status figma-status--orange">查看档期</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">滨江球场</view><view class="figma-row__subtitle">室外场 · 江南街道</view></view><view class="figma-status figma-status--orange">查看档期</view></view></view>
+    </block>
+
+    <block wx:elif="{{figmaState==='local-location'}}">
+      <view class="local-state-hero"><view class="figma-section__title">浏览城市与距离起点不同</view><view class="figma-section__hint">选择城市用于筛选；距离按授权定位或手动起点计算。</view></view>
+      <view class="figma-section"><view class="figma-section__title">当前位置</view><view class="local-notice-row"><view class="local-notice-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">定位未授权</view><view class="figma-row__subtitle">仅主动查询附近时请求位置。</view></view><view class="figma-status figma-status--orange">可跳过</view></view><view class="local-notice-row"><view class="local-notice-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">手动起点</view><view class="figma-row__subtitle">搜索场馆或街道并确认地点。</view></view><view class="figma-status figma-status--orange">可选择</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">城市供给</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">暂无已审核供给</view><view class="figma-row__subtitle">所选范围内没有可预约项目。</view></view><view class="figma-status figma-status--orange">暂无服务</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">其他城市</view><view class="figma-row__subtitle">切换浏览城市保留常驻地。</view></view><view class="figma-status figma-status--orange">可浏览</view></view></view>
+    </block>
+
+    <block wx:else>
+    <figma-feedback wx:if="{{pending || pendingError}}" type="error" title="上次操作尚未核对" body="{{pendingError || '请先查询原操作回执，不换号重复提交。'}}" action-label="查询原操作回执" disabled="{{busy}}" bind:action="recover"/>
+    <button wx:if="{{pending}}" class="figma-action figma-action--ghost" bindtap="retry" disabled="{{busy}}">使用原编号重试</button>
+    <figma-feedback wx:if="{{error}}" type="error" title="同城服务读取失败" body="{{error}}" action-label="重新读取" bind:action="load"/>
+    <figma-feedback wx:if="{{message}}" type="info" title="操作提示" body="{{message}}"/>
+    <figma-skeleton wx:if="{{loading}}" rows="4"/>
+
+    <block wx:if="{{!mapVisible && !filtersOpen}}">
+      <view class="figma-summary figma-summary--navy local-summary"><view class="figma-summary__copy"><view class="figma-eyebrow">同城篮球</view><view class="figma-title">{{selection.label}}篮球服务</view><view class="figma-subtitle">{{selection.label}} · 已审核供给</view></view><image class="local-summary__image" src="/assets/home/event-court.jpg" mode="aspectFill" aria-label="城市篮球场视觉图"/></view>
+
+      <view class="local-tabs" role="tablist"><button class="local-tab {{kind === 'COURT' ? 'is-active' : ''}}" data-value="COURT" bindtap="kind">球场</button><button class="local-tab {{kind && kind !== 'COURT' ? 'is-active' : ''}}" data-value="REFEREE" bindtap="kind">人员服务</button><button class="local-tab" bindtap="players" disabled="{{busy}}">球员邀约</button><button class="local-tab" bindtap="matchups" disabled="{{busy}}">球队约赛</button></view>
+
+      <figma-feedback wx:if="{{selection.mode === 'LEGACY_CITY'}}" type="info" title="需要重新选择具体地区" body="当前是历史城市标签；供给覆盖和附近筛选需要地区目录。" action-label="选择城市" bind:action="chooseCity"/>
+
+      <view class="figma-section">
+        <view class="figma-section__title">按需发现</view>
+        <view class="figma-grid">
+          <button class="figma-grid__item" data-value="COURT" bindtap="kind"><figma-icon name="court" size="20"/><view class="figma-row__title">找球场</view><view class="figma-row__subtitle">室内外场馆</view></button>
+          <button class="figma-grid__item" data-value="REFEREE" bindtap="kind"><figma-icon name="workbench" size="20"/><view class="figma-row__title">约裁判</view><view class="figma-row__subtitle">人员服务</view></button>
+          <button class="figma-grid__item" data-value="SCORER" bindtap="kind"><figma-icon name="workbench" size="20"/><view class="figma-row__title">记录员</view><view class="figma-row__subtitle">比赛现场</view></button>
+          <button class="figma-grid__item" data-value="STREAMER" bindtap="kind"><figma-icon name="live" size="20"/><view class="figma-row__title">直播摄影</view><view class="figma-row__subtitle">比赛影像</view></button>
+        </view>
+        <view wx:if="{{kind && kind !== 'COURT'}}" class="personnel-kinds"><block wx:for="{{kinds}}" wx:key="value"><button wx:if="{{item.value && item.value !== 'COURT'}}" class="personnel-chip {{kind === item.value ? 'is-active' : ''}}" data-value="{{item.value}}" bindtap="kind">{{item.label}}</button></block></view>
+      </view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">球场与档期</view>
+        <figma-feedback wx:if="{{loaded && !items.length && !loading}}" type="empty" title="暂无符合条件的已审核供给" body="可以调整地区、类型或距离起点。" action-label="重新选择城市" bind:action="chooseCity"/>
+        <button wx:for="{{items}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="detail"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.address}} · {{item.distanceLabel}}</view></view><view class="figma-status figma-status--orange">查看档期</view></button>
+        <button wx:if="{{nextCursor}}" class="figma-action figma-action--ghost" bindtap="more" disabled="{{loadingMore || viewportDirty || viewportBusy}}">{{loadingMore ? '正在加载…' : '加载更多'}}</button>
+      </view>
+
+      <view class="figma-section"><view class="figma-section__title">定位与范围</view><button class="figma-row" bindtap="toggleFilters"><view class="figma-row__mark {{hasOrigin ? 'is-active' : ''}}"/><view class="figma-row__copy"><view class="figma-row__title">手动选择起点</view><view class="figma-row__subtitle">{{hasOrigin ? originLabel : '可按指定地址查看距离'}}</view></view></button><button class="figma-row" bindtap="toggleMap"><view class="figma-row__mark {{mapVisible ? 'is-active' : ''}}"/><view class="figma-row__copy"><view class="figma-row__title">搜索此区域</view><view class="figma-row__subtitle">移动地图后重新查找供给</view></view></button><button class="figma-row" data-page="training" bindtap="expansion" disabled="{{busy}}"><view class="figma-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">培训课程</view><view class="figma-row__subtitle">成年本人固定短课</view></view></button></view>
+
+      <view class="figma-section"><view class="figma-section__title">相关服务</view><button class="figma-row" data-page="matching" bindtap="expansion" disabled="{{busy}}"><figma-icon name="matching" size="20"/><view class="figma-row__copy"><view class="figma-row__title action-title">全国撮合</view></view></button><button class="figma-row" data-page="dispatch" bindtap="expansion" disabled="{{busy}}"><figma-icon name="dispatch" size="20"/><view class="figma-row__copy"><view class="figma-row__title action-title">跨城派单</view></view></button></view>
+      <view class="figma-section"><view class="figma-section__title">同城经营</view><button class="figma-row" bindtap="manage" disabled="{{busy}}"><figma-icon name="court" size="20"/><view class="figma-row__copy"><view class="figma-row__title action-title">经营与服务方</view></view></button></view>
+    </block>
+
+    <block wx:elif="{{mapVisible}}">
+      <view class="map-frame"><image wx:if="{{mapPreviewImage}}" class="local-map-preview" src="{{mapPreviewImage}}" mode="scaleToFill" aria-label="示意地图底图及两个服务点"/><map wx:elif="{{mapCenter}}" id="local-map" class="local-map" latitude="{{mapCenter.latitude}}" longitude="{{mapCenter.longitude}}" markers="{{markers}}" bindmarkertap="marker" bindregionchange="regionChanged" binderror="mapFailed" scale="{{mapScale}}" enable-rotate="{{false}}" enable-overlooking="{{false}}" show-location="{{false}}"/><view wx:else class="map-placeholder"><figma-icon name="court-location" size="32"/><view>当前列表没有已确认坐标</view></view></view>
+      <view class="map-tabs" role="tablist"><button bindtap="toggleMap">列表</button><button class="is-active">地图</button></view>
+      <view class="figma-section"><view class="figma-section__title">范围与起点</view><button class="figma-row" bindtap="chooseCity"><view class="figma-row__mark is-active"/><view class="figma-row__copy"><view class="figma-row__title">浏览范围</view><view class="figma-row__subtitle">{{selection.label}}</view></view><view class="figma-status figma-status--orange">已选</view></button><button class="figma-row" bindtap="toggleFilters"><view class="figma-row__mark {{hasOrigin ? 'is-active' : ''}}"/><view class="figma-row__copy"><view class="figma-row__title">距离起点</view><view class="figma-row__subtitle">{{originLabel}}</view></view><view class="figma-status figma-status--orange">{{hasOrigin ? '已选' : '可选择'}}</view></button></view>
+      <figma-feedback wx:if="{{mapError}}" type="error" title="地图读取失败" body="{{mapError}}"/>
+      <view class="figma-section">
+        <view class="figma-section__title">区域内已发布供给</view>
+        <figma-feedback wx:if="{{loaded && !items.length && !loading}}" type="empty" title="当前区域暂无已审核供给" body="可调整地图范围，或返回城市列表。"/>
+        <button wx:for="{{items}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="detail"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.address}} · {{item.distanceLabel}}</view></view><view class="figma-status figma-status--orange">查看档期</view></button>
+        <button wx:if="{{nextCursor}}" class="figma-action figma-action--ghost" bindtap="more" disabled="{{loadingMore || viewportDirty || viewportBusy}}">{{loadingMore ? '正在加载…' : '加载更多'}}</button>
+      </view>
+      <view wx:if="{{viewportEnabled}}" class="figma-section"><view class="figma-section__title">地图范围</view><view class="figma-caption">{{mapScopeLabel || '移动地图后重新查找供给'}}{{viewportDirty ? ' · 范围已改变' : ''}}</view><view class="map-actions"><button wx:if="{{canRestoreArea}}" bindtap="restoreArea">恢复上次范围</button><button wx:if="{{selection.mode === 'REGION' && !acrossRegions}}" bindtap="expandMapScope" disabled="{{viewportBusy}}">临时跨城搜索</button><button wx:if="{{acrossRegions}}" bindtap="keepCityScope" disabled="{{viewportBusy}}">仅查所选地区</button></view></view>
+    </block>
+
+    <block wx:else>
+      <figma-feedback type="info" title="浏览城市与距离起点不同" body="选择城市用于筛选；距离按授权定位或手动起点计算。"/>
+      <view class="figma-section">
+        <view class="figma-section__title">当前位置</view>
+        <view class="local-notice-row"><view class="local-notice-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">{{hasOrigin ? '距离起点已选择' : locationError ? '定位读取失败' : locationEnabled ? '可按需定位' : '定位未授权'}}</view><view class="figma-row__subtitle">{{hasOrigin ? originLabel : locationError || '仅主动查询附近时请求位置。'}}</view></view><view class="figma-status figma-status--orange">{{hasOrigin ? '已选择' : '可跳过'}}</view></view>
+        <view class="local-notice-row"><view class="local-notice-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">手动起点</view><view class="figma-row__subtitle">搜索场馆或街道并确认地点。</view></view><view class="figma-status figma-status--orange">可选择</view></view>
+      </view>
+      <view class="figma-section">
+        <view class="figma-section__title">城市供给</view>
+        <view wx:if="{{loaded && !items.length && !loading}}" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">暂无已审核供给</view><view class="figma-row__subtitle">所选范围内没有可预约项目。</view></view><view class="figma-status figma-status--orange">暂无服务</view></view>
+        <button wx:for="{{items}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="detail"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.address}} · {{item.distanceLabel}}</view></view><view class="figma-status figma-status--orange">查看档期</view></button>
+        <button class="figma-row" bindtap="chooseCity"><view class="figma-row__copy"><view class="figma-row__title">其他城市</view><view class="figma-row__subtitle">切换浏览城市保留常驻地。</view></view><view class="figma-status figma-status--orange">可浏览</view></button>
+      </view>
+      <view class="figma-section local-query-panel">
+        <view class="figma-section__title">搜索与手动起点</view>
+        <view class="figma-field-group"><view class="figma-field-label">搜索已审核供给</view><input class="figma-field-control" value="{{q}}" data-field="q" bindinput="input" placeholder="输入供给名称" maxlength="100"/></view><button class="figma-action figma-action--navy" bindtap="search" disabled="{{loading}}">查找供给</button>
+        <view wx:if="{{hasOrigin}}" class="figma-field-group"><view class="figma-field-label">搜索半径</view><picker range="{{radii}}" range-key="label" value="{{radiusIndex}}" bindchange="radius"><view class="figma-field-control picker-control">{{radii[radiusIndex].label}}</view></picker><button class="inline-link" bindtap="clearOrigin">清除距离起点</button></view>
+        <view class="figma-field-group"><view class="figma-field-label">地图地点</view><input class="figma-field-control" data-field="placeQuery" value="{{placeQuery}}" bindinput="input" placeholder="输入场馆、街道等地点" maxlength="100"/></view><button class="figma-action figma-action--ghost" bindtap="searchPlaces" disabled="{{placesBusy}}">{{placesBusy ? '正在搜索…' : '在所选地区查地点'}}</button>
+        <view wx:for="{{locatedRegions}}" wx:key="index" class="place-card"><view class="figma-row__title">定位建议：{{item.regionLabel}}</view><view class="figma-caption">{{item.address}}，确认前不会切换城市。</view><button data-index="{{index}}" bindtap="confirmLocatedRegion">确认此地区并查询附近</button></view>
+        <view wx:for="{{places}}" wx:key="index" class="place-card"><view class="figma-row__title">{{item.title}}</view><view class="figma-caption">{{item.address}} · 地图候选</view><view class="place-actions"><button data-index="{{index}}" data-purpose="origin" bindtap="usePlace">设为搜索起点</button><button wx:if="{{detail && detail.listing.kind !== 'COURT'}}" data-index="{{index}}" data-purpose="service" bindtap="usePlace">设为服务地址</button></view></view>
+      </view>
+    </block>
+
+    <figma-skeleton wx:if="{{detailLoading && !filtersOpen}}" rows="3"/>
+    <view wx:if="{{detail && !filtersOpen}}" class="figma-section detail-panel">
+      <view class="section-heading"><view class="figma-section__title">{{detail.listing.title}}</view><button class="section-link" bindtap="closeDetail" disabled="{{busy}}">关闭</button></view><view class="figma-caption">{{detail.listing.description}}</view><view class="figma-caption">{{detail.listing.address}} · {{detail.listing.qualificationText}}</view><button wx:if="{{detail.listing.point}}" class="figma-action figma-action--ghost" bindtap="navigate">导航到已发布地址</button>
+      <view class="figma-field-label">可预约档期（北京时间）</view><button wx:for="{{detail.slots}}" wx:key="id" class="slot-row {{selectedSlot === item.id ? 'is-selected' : ''}}" data-id="{{item.id}}" bindtap="slot" disabled="{{!item.available || busy}}"><view>{{item.timeText}}</view><view class="figma-status {{item.available ? 'figma-status--orange' : ''}}">{{item.available ? '可预约' : '已占用'}}</view></button><view wx:if="{{!detail.slots.length}}" class="figma-caption">暂无有效开放档期。</view>
+      <view wx:if="{{detail.listing.kind !== 'COURT'}}" class="figma-field-group"><view class="figma-field-label">本次服务地址</view><input class="figma-field-control" data-field="serviceAddress" value="{{serviceAddress}}" bindinput="input" placeholder="请明确填写实际服务地址" maxlength="200"/></view>
+      <view class="figma-row__title">合作约定</view><view class="figma-caption">{{detail.terms}}</view><checkbox-group bindchange="accept"><label class="figma-check"><checkbox value="yes" checked="{{accepted}}" disabled="{{busy}}"/>我已阅读并接受约定与实际服务地点</label></checkbox-group>
+      <button class="figma-action figma-action--ghost" bindtap="previewCharge" disabled="{{busy || pending}}">读取服务器收费条款</button>
+      <view wx:if="{{feeRead}}" class="fee-preview"><block wx:if="{{feePreview.enabled}}"><view class="figma-row__title">实际收款方：{{feePreview.merchantName}}</view><view class="figma-caption">本次固定费用 {{feePreview.totalText}} · {{feePreview.terms}}</view><checkbox-group bindchange="chargeConsent"><label class="figma-check"><checkbox value="yes" checked="{{chargeConsent}}" disabled="{{busy}}"/>我已明确核对并接受收费条款</label></checkbox-group></block><view wx:else class="figma-caption">当前来源未启用在线收费，此次创建不绑定收费。</view></view>
+      <button class="figma-action figma-action--orange" bindtap="book" disabled="{{busy || pending || pendingError || !accepted || !selectedSlot || !feeRead || (feePreview.enabled && !chargeConsent)}}">{{busy ? '正在提交…' : '提交预约'}}</button>
+    </view>
+
+    <view wx:if="{{!mapVisible && !filtersOpen}}" class="local-actions-row"><button class="figma-action figma-action--ghost" bindtap="bookings" disabled="{{busy}}">我的预约</button><button class="figma-action figma-action--orange" bindtap="toggleMap" disabled="{{busy || pending || pendingError}}">地图找服务</button></view>
+    </block>
   </view>
- <view class="section-title">扩展服务与经营入口</view><view class="local-actions"><button bindtap="manage" disabled="{{busy}}">经营与服务方</button><button data-page="matching" bindtap="expansion" disabled="{{busy}}">全国撮合</button><button data-page="dispatch" bindtap="expansion" disabled="{{busy}}">跨城派单</button><button data-page="training" bindtap="expansion" disabled="{{busy}}">培训课程</button></view>
- </view>
- <view wx:if="{{detailLoading}}" class="notice">读取供给详情…</view>
- <view wx:if="{{detail}}" class="card detail-card"><view class="local-actions"><view class="subtitle">{{detail.listing.title}}</view><button bindtap="closeDetail" disabled="{{busy}}">关闭详情</button></view><view>{{detail.listing.description}}</view><view>{{detail.listing.address}}</view><button wx:if="{{detail.listing.point}}" bindtap="navigate">导航到已发布地址</button><view class="muted">{{detail.listing.qualificationText}}。资质由独立审核人核对，医务标签本身不代表已获执业认证。</view><view class="section-title">可预约档期（北京时间）</view><button wx:for="{{detail.slots}}" wx:key="id" class="slot {{selectedSlot===item.id?'picked':''}}" data-id="{{item.id}}" bindtap="slot" disabled="{{!item.available || busy}}">{{item.timeText}} · {{item.available?'可预约':'已被占用'}}</button><view wx:if="{{!detail.slots.length}}" class="muted">暂无有效开放档期。</view><view wx:if="{{detail.listing.kind!=='COURT'}}"><view class="field-label">本次服务地区：{{selection.label}}，如有变化请先选城</view><input class="field" data-field="serviceAddress" value="{{serviceAddress}}" bindinput="input" placeholder="请明确填写实际服务地址" maxlength="200"/><view class="muted">设备定位不会自动当作服务地址；也可在上方查地图地点后明确选择。</view></view><view class="section-title">合作约定</view><view>{{detail.terms}}</view><checkbox-group bindchange="accept"><label><checkbox value="yes" checked="{{accepted}}" disabled="{{busy}}"/>我已阅读并接受以上约定与实际服务地点</label></checkbox-group><button bindtap="previewCharge" disabled="{{busy || pending}}">读取服务器收费条款</button><view wx:if="{{feeRead}}" class="notice"><block wx:if="{{feePreview.enabled}}"><view>实际收款方：{{feePreview.merchantName}}</view><view>本次固定费用 {{feePreview.totalText}}</view><view>{{feePreview.terms}}</view><checkbox-group bindchange="chargeConsent"><label><checkbox value="yes" checked="{{chargeConsent}}" disabled="{{busy}}"/>我已明确核对并接受此收费条款</label></checkbox-group></block><view wx:else>当前来源未启用在线收费。此次创建不绑定收费，后续不会追溯收取。</view></view><view class="muted">最终可用性以服务器原子锁位为准。球场须锁位期限内付款，人员接单后付款；提交不表示付款成功。</view><button class="primary" bindtap="book" disabled="{{busy || pending || pendingError || !accepted || !selectedSlot || !feeRead || (feePreview.enabled && !chargeConsent)}}" loading="{{busy}}">提交预约</button><button wx:if="{{loginRequired}}" bindtap="book">登录后继续预约</button></view>
-</view><scb-nav active="Local" disabled="{{busy}}"/>
+
+  <view wx:if="{{figmaState==='local-map'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">返回城市列表</button><button class="figma-action figma-action--orange">搜索此区域</button></view>
+  <view wx:elif="{{figmaState==='local-location'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">调整距离起点</button><button class="figma-action figma-action--orange">手动选择城市</button></view>
+  <view wx:elif="{{mapVisible}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="cityList" disabled="{{busy}}">返回城市列表</button><button class="figma-action figma-action--orange" bindtap="searchThisArea" disabled="{{busy || viewportBusy}}">{{viewportBusy ? '搜索中…' : '搜索此区域'}}</button></view>
+  <view wx:elif="{{filtersOpen}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="locate" disabled="{{locationBusy}}">{{locationBusy ? '定位中…' : '调整距离起点'}}</button><button class="figma-action figma-action--orange" bindtap="chooseCity" disabled="{{busy}}">手动选择城市</button></view>
+  <scb-nav wx:if="{{!figmaState && !mapVisible && !filtersOpen}}" active="Local" disabled="{{busy}}"/>
+</view>

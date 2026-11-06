@@ -6,6 +6,7 @@
   "designSource": "UI001 design + current native route; synthetic static compatibility only, not real channel acceptance",
   "expectText": ["付款已确认", "承保结果未知", "不会重复投保或退保", "向服务方查询原单"],
   "data": {
+    "activeSection": "records",
     "orgId": "00000000-0000-4000-8000-000000000001",
     "entryId": "00000000-0000-4000-8000-000000000002",
     "memberId": "00000000-0000-4000-8000-000000000003",

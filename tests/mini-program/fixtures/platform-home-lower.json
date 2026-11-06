@@ -5,11 +5,11 @@
   "designSource": "synthetic:platform-alignment",
   "static": true,
   "expectText": [
-    "扩展服务",
+    "同城服务",
     "按位置找球员",
     "查看我的预约",
     "进入本人球员中心",
-    "不自动加入赛事报名名单"
+    "合作预约不会自动加入赛事报名名单"
   ],
   "data": {
     "signedIn": true,

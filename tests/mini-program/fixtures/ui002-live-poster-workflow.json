@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "8:1662",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["使用当前授权来源生成海报", "生成当前授权海报", "本届导出记录"],
+  "expectText": ["每次生成都重新核权", "只使用当前有效的公开来源", "生成当前授权海报", "本届导出记录"],
   "data": {
     "orgId": "00000000-0000-4000-8000-000000000001",
     "eventId": "00000000-0000-4000-8000-000000000002",

@@ -92,7 +92,7 @@ test('revoked event clears old content before the new unavailable state is rende
   assert.equal(h.page.data.unavailable, true);
   assert.equal(h.page.data.event, null);
   assert.deepEqual(h.page.data.matches, []);
-  assert.match(preview.phone, /该内容已停止公开/);
+  assert.match(preview.phone, /该赛事已停止公开/);
   assert.doesNotMatch(preview.phone, /old-hidden-title/);
   // Only the shared bottom-bar UI icons may load; no event imagery survives revocation.
   assert.deepEqual(
@@ -100,7 +100,8 @@ test('revoked event clears old content before the new unavailable state is rende
       (asset) =>
         !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path) &&
         !/^assets[\\/]ui002[\\/]nav-(?:home-active|local|account)\.svg$/.test(asset.path) &&
-        !/^assets[\\/]home[\\/](?:home|trophy|pin|team|profile)(?:-active)?\.svg$/.test(asset.path),
+        !/^assets[\\/]home[\\/](?:home|trophy|pin|team|profile)(?:-active)?\.svg$/.test(asset.path) &&
+        !/^assets[\\/]figma[\\/](?:share|workbench)\.svg$/.test(asset.path),
     ),
     [],
   );
@@ -125,7 +126,7 @@ test('public media keeps current data driven image/video types and default empty
   const media = fixture('match-media');
   const preview = buildPreview({ root, route: media.route, data: media.data });
   assert.match(preview.phone, /data-mini-tag="video"/);
-  assert.match(preview.phone, /定位本场片段/);
+  assert.match(preview.phone, /定位已发布片段/);
   assert.match(preview.phone, /复制外部媒体链接/);
   assert.ok(preview.assets.some((asset) => asset.path === 'assets/court.png'));
   const empty = fixture('match-media-empty');

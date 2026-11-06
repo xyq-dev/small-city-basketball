@@ -1,8 +1,165 @@
-<scb-header title="广告与赞助" disabled="{{busy}}"/>
-<view class="page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">广告与赞助</view><view class="title">投放、独立审核与公开展示分开</view></view><view class="tabs"><button data-mode="manage" bindtap="mode">机构投放</button><button data-mode="review" bindtap="mode">独立审核</button><button data-mode="public" bindtap="mode">同城赞助</button></view><view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view><view wx:if="{{loading}}">正在核对当前投放…</view><view wx:if="{{loginRequired}}"><button bindtap="login">登录</button></view><view class="notice">{{measurementNotice}}</view>
-<block wx:if="{{mode==='public'}}"><view wx:if="{{!publicCard}}" class="card"><picker range="{{regions}}" range-key="path" value="{{regionIndex}}" data-field="regionIndex" bindchange="picker"><view class="picker">地区：{{regions[regionIndex].path || '请选择地区'}}</view></picker><button disabled="{{busy || loading}}" bindtap="discover">读取当前地区与时段赞助</button></view><view wx:for="{{publicItems}}" wx:key="publicKey" class="card"><view>广告／赞助 · {{item.brand}}</view><view>{{item.title}}</view><button data-key="{{item.publicKey}}" bindtap="openPublic">打开当前投放</button></view><view wx:if="{{publicCard}}" id="sponsor-public-card" class="card"><view class="ad-label">{{publicCard.label}}</view><view class="title">{{publicCard.brand}}</view><view class="subtitle">{{publicCard.title}}</view><view>{{publicCard.body}}</view><view class="small muted">投放时段 {{publicCard.startsAt}} 至 {{publicCard.endsAt}}</view><button open-type="share">分享此投放</button></view></block>
-<block wx:else><view wx:if="{{pending}}" class="card">有原操作待核对。<button bindtap="recover">查询原操作</button><button data-cancel="true" bindtap="recover">明确放弃未确认操作</button></view><picker wx:if="{{mode==='manage' && organizations.length}}" range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="org"><view class="picker">机构：{{organizations[orgIndex].name}}</view></picker>
-<view wx:if="{{mode==='manage' && organizations.length}}" class="card"><view class="subtitle">{{selected?'编辑当前投放':'创建投放草稿'}}</view><input data-field="brand" value="{{brand}}" bindinput="field" maxlength="80" placeholder="广告／赞助方名称"/><input data-field="title" value="{{title}}" bindinput="field" maxlength="120" placeholder="投放标题"/><textarea data-field="body" value="{{body}}" bindinput="field" maxlength="1000" placeholder="公开投放文案，请勿填写私人联系资料"/><picker range="{{regions}}" range-key="path" value="{{regionIndex}}" data-field="regionIndex" bindchange="picker"><view class="picker">投放地区：{{regions[regionIndex].path}}</view></picker><input data-field="eventQuery" value="{{eventQuery}}" bindinput="field" maxlength="80" placeholder="按赛事名称查找其他投放目标"/><button disabled="{{busy}}" bindtap="searchEvents">查询赛事候选</button><picker range="{{events}}" range-key="name" value="{{eventIndex}}" data-field="eventIndex" bindchange="picker"><view class="picker">定向赛事：{{events[eventIndex].name}}</view></picker><view class="small muted">时间按本机当地日期与时间填写，服务端存储绝对时刻。</view><picker mode="date" data-field="startDate" bindchange="field" value="{{startDate}}"><view class="picker">开始日期：{{startDate || '请选择'}}</view></picker><picker mode="time" data-field="startTime" bindchange="field" value="{{startTime}}"><view class="picker">开始时间：{{startTime}}</view></picker><picker mode="date" data-field="endDate" bindchange="field" value="{{endDate}}"><view class="picker">结束日期：{{endDate || '请选择'}}</view></picker><picker mode="time" data-field="endTime" bindchange="field" value="{{endTime}}"><view class="picker">结束时间：{{endTime}}</view></picker><button wx:if="{{!selected || selected.status==='DRAFT' || selected.status==='REJECTED'}}" disabled="{{busy || !!pending}}" bindtap="save">保存草稿</button><button disabled="{{busy}}" bindtap="fresh">新建另一条投放</button></view>
-<view wx:for="{{items}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="edit"><view class="subtitle">{{item.brand}} · {{item.title}}</view><view>{{item.statusLabel}} · 第{{item.version}}版</view><view>去重上报展示数 {{item.reportedImpressions}}</view></view><button wx:if="{{nextCursor}}" disabled="{{busy}}" bindtap="more">读取更多</button><view wx:if="{{!loading && !items.length}}" class="notice">当前没有可查看的投放。</view>
-<view wx:if="{{selected}}" class="card"><view class="subtitle">{{selected.title}} · {{selected.statusLabel}}</view><view>{{selected.body}}</view><view>{{selected.reviewReason}}</view><textarea data-field="reason" value="{{reason}}" bindinput="field" maxlength="500" placeholder="提交、审核或撤销原因，至少4字"/><block wx:if="{{mode==='manage'}}"><button wx:if="{{selected.status==='DRAFT' || selected.status==='REJECTED'}}" data-type="SUBMIT" disabled="{{busy || !!pending}}" bindtap="command">提交独立审核</button><button wx:if="{{selected.status==='APPROVED' && !selected.publicKey}}" data-type="PUBLISH" disabled="{{busy || !!pending}}" bindtap="command">发布新批次</button><button wx:if="{{selected.publicKey}}" bindtap="openPublic">查看当前公开投放</button><button wx:if="{{selected.publicKey}}" data-type="REVOKE_PUBLICATION" disabled="{{busy || !!pending}}" bindtap="command">永久撤销当前公开地址</button><button wx:if="{{selected.status!=='WITHDRAWN'}}" data-type="WITHDRAW" disabled="{{busy || !!pending}}" bindtap="command">永久撤回此投放</button></block><block wx:if="{{mode==='review' && selected.status==='SUBMITTED'}}"><button data-type="APPROVE" disabled="{{busy || !!pending}}" bindtap="command">独立审核通过</button><button data-type="REJECT" disabled="{{busy || !!pending}}" bindtap="command">退回草稿修改</button></block></view></block><button disabled="{{busy || loading}}" bindtap="load">刷新当前状态</button></view>
+<scb-header title="广告与赞助" disabled="{{busy || loading}}"/>
+<view class="figma-page sponsorship-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary {{figmaCompactSponsorship ? 'sponsor-summary--preview' : ''}}">
+      <view class="figma-summary__icon"><figma-icon name="sponsor" size="25"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">{{mode==='public' ? '同城展示' : mode==='review' ? '独立审核' : '机构投放'}}</view>
+        <view class="figma-title">{{figmaSummaryTitle || (publicCard ? publicCard.brand : selected ? selected.brand + ' · ' + selected.title : '广告与赞助')}}</view>
+        <view class="figma-subtitle">投放内容、独立审核与发布批次分别保存</view>
+      </view>
+    </view>
+
+    <view class="sponsor-tabs" role="tablist">
+      <button class="sponsor-tab {{mode==='manage' ? 'is-active' : ''}}" data-mode="manage" bindtap="mode" disabled="{{busy}}" role="tab" aria-selected="{{mode==='manage'}}">机构投放</button>
+      <button class="sponsor-tab {{mode==='review' ? 'is-active' : ''}}" data-mode="review" bindtap="mode" disabled="{{busy}}" role="tab" aria-selected="{{mode==='review'}}">独立审核</button>
+      <button class="sponsor-tab {{mode==='public' ? 'is-active' : ''}}" data-mode="public" bindtap="mode" disabled="{{busy}}" role="tab" aria-selected="{{mode==='public'}}">同城赞助</button>
+    </view>
+
+    <figma-feedback wx:if="{{!figmaCompactSponsorship && error}}" type="error" title="当前投放读取失败" body="{{error}}" action-label="重试" disabled="{{busy || loading}}" bindaction="load"/>
+    <figma-feedback wx:if="{{!figmaCompactSponsorship && notice}}" type="info" title="状态说明" body="{{notice}}"/>
+    <view wx:if="{{!figmaCompactSponsorship && loading}}" class="figma-section"><figma-skeleton rows="{{4}}"/></view>
+    <figma-feedback wx:if="{{!figmaCompactSponsorship && loginRequired}}" type="info" title="登录后继续" body="登录后按当前账号读取可维护或可审核的投放。" action-label="登录" disabled="{{busy}}" bindaction="login"/>
+    <figma-feedback wx:if="{{!figmaCompactSponsorship}}" type="info" title="展示数口径" body="{{measurementNotice}}"/>
+
+    <block wx:if="{{figmaCompactSponsorship}}">
+      <view class="figma-section">
+        <view class="figma-section__title">投放内容</view>
+        <view class="figma-field-group"><view class="figma-field-label">投放标题</view><view class="figma-field-control sponsor-preview-control">邀请赛场边支持计划</view></view>
+        <view class="figma-field-group"><view class="figma-field-label">投放范围</view><view class="figma-field-control sponsor-preview-control">高州 · 城市邀请赛</view></view>
+        <view class="figma-field-group"><view class="figma-field-label">有效期</view><view class="figma-field-control sponsor-preview-control">11月08日 至 11月22日</view></view>
+      </view>
+      <view class="figma-section">
+        <view class="figma-section__title">发布流程</view>
+        <view class="sponsor-step"><view class="sponsor-step__mark">1</view><view class="figma-row__copy"><view class="figma-row__title">保存投放草稿</view><view class="figma-row__subtitle">保留本次版本</view></view><view class="figma-status">已保存</view></view>
+        <view class="sponsor-step"><view class="sponsor-step__mark">2</view><view class="figma-row__copy"><view class="figma-row__title">独立审核</view><view class="figma-row__subtitle">核对来源与展示时段</view></view><view class="figma-status figma-status--orange">待审核</view></view>
+        <view class="sponsor-step"><view class="sponsor-step__mark">3</view><view class="figma-row__copy"><view class="figma-row__title">发布新批次</view><view class="figma-row__subtitle">生成已批准版本的公开地址</view></view><view class="figma-status figma-status--orange">待发布</view></view>
+      </view>
+      <view class="figma-section">
+        <view class="figma-section__title">当前投放</view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">主场广告位</view><view class="figma-row__subtitle">场馆内内容展示</view></view><view class="figma-status">草稿</view></view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">同城赞助</view><view class="figma-row__subtitle">按地区和有效期读取</view></view><view class="figma-status">查看</view></view>
+      </view>
+    </block>
+
+    <block wx:elif="{{mode==='public'}}">
+      <view wx:if="{{!publicCard}}" class="figma-section">
+        <view class="figma-section__title">读取当前投放</view>
+        <view class="figma-field-group">
+          <view class="figma-field-label">地区</view>
+          <picker range="{{regions}}" range-key="path" value="{{regionIndex}}" data-field="regionIndex" bindchange="picker" disabled="{{busy || loading}}"><view class="figma-field-control sponsor-picker">{{regions[regionIndex].path || '请选择地区'}}</view></picker>
+        </view>
+        <button class="sponsor-primary" bindtap="discover" disabled="{{busy || loading}}">{{busy ? '读取中…' : '读取当前地区与时段赞助'}}</button>
+      </view>
+
+      <view wx:if="{{publicItems.length}}" class="figma-section">
+        <view class="figma-section__title">当前可展示投放</view>
+        <button wx:for="{{publicItems}}" wx:key="publicKey" class="figma-row" data-key="{{item.publicKey}}" bindtap="openPublic">
+          <view class="figma-row__copy">
+            <view class="figma-row__title">{{item.brand}} · {{item.title}}</view>
+            <view class="figma-row__subtitle">广告／赞助 · 当前有效批次</view>
+          </view>
+          <view class="figma-status figma-status--orange">查看</view>
+        </button>
+      </view>
+
+      <view wx:if="{{publicCard}}" id="sponsor-public-card" class="figma-section sponsor-public-card">
+        <view class="sponsor-public-label">{{publicCard.label}}</view>
+        <view class="figma-section__title">{{publicCard.brand}}</view>
+        <view class="figma-row__title">{{publicCard.title}}</view>
+        <view class="sponsor-body">{{publicCard.body}}</view>
+        <view class="figma-caption">投放时段 {{publicCard.startsAt}} 至 {{publicCard.endsAt}}</view>
+        <button class="sponsor-secondary" open-type="share">分享此投放</button>
+      </view>
+      <figma-feedback wx:if="{{!loading && !publicCard && !publicItems.length && !error}}" type="empty" title="暂无已读取投放" body="先选择地区并读取当前有效时段。"/>
+    </block>
+
+    <block wx:else>
+      <view wx:if="{{pending}}" class="figma-section sponsor-pending">
+        <figma-feedback type="pending" title="原操作结果待核对" body="保留原操作编号，确认服务端结果前不要重复提交。"/>
+        <view class="sponsor-inline-actions">
+          <button class="sponsor-secondary" bindtap="recover" disabled="{{busy}}">查询原操作</button>
+          <button class="sponsor-secondary sponsor-danger" data-cancel="true" bindtap="recover" disabled="{{busy}}">明确放弃未确认操作</button>
+        </view>
+      </view>
+
+      <view wx:if="{{mode==='manage' && organizations.length}}" class="figma-section sponsor-org">
+        <view class="figma-field-group">
+          <view class="figma-field-label">当前机构</view>
+          <picker range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="org" disabled="{{busy}}"><view class="figma-field-control sponsor-picker">{{organizations[orgIndex].name}}</view></picker>
+        </view>
+      </view>
+
+      <view wx:if="{{mode==='manage' && organizations.length}}" class="figma-section">
+        <view class="figma-section__title">{{selected ? '编辑当前投放' : '投放内容'}}</view>
+        <view class="figma-field-group"><view class="figma-field-label">赞助方名称</view><input class="figma-field-control" data-field="brand" value="{{brand}}" bindinput="field" maxlength="80" disabled="{{busy || !!pending}}" placeholder="广告／赞助方名称"/></view>
+        <view class="figma-field-group"><view class="figma-field-label">投放标题</view><input class="figma-field-control" data-field="title" value="{{title}}" bindinput="field" maxlength="120" disabled="{{busy || !!pending}}" placeholder="投放标题"/></view>
+        <view class="figma-field-group"><view class="figma-field-label">公开投放文案</view><textarea class="figma-field-control" data-field="body" value="{{body}}" bindinput="field" maxlength="1000" disabled="{{busy || !!pending}}" placeholder="请勿填写私人联系资料"/></view>
+        <view class="figma-field-group"><view class="figma-field-label">投放范围</view><picker range="{{regions}}" range-key="path" value="{{regionIndex}}" data-field="regionIndex" bindchange="picker" disabled="{{busy || !!pending}}"><view class="figma-field-control sponsor-picker">{{regions[regionIndex].path || '请选择地区'}}</view></picker></view>
+        <view class="figma-field-group"><view class="figma-field-label">定向赛事</view><input class="figma-field-control" data-field="eventQuery" value="{{eventQuery}}" bindinput="field" maxlength="80" disabled="{{busy || !!pending}}" placeholder="按赛事名称查找其他投放目标"/><button class="sponsor-secondary" bindtap="searchEvents" disabled="{{busy || !!pending}}">查询赛事候选</button><picker range="{{events}}" range-key="name" value="{{eventIndex}}" data-field="eventIndex" bindchange="picker" disabled="{{busy || !!pending}}"><view class="figma-field-control sponsor-picker">{{events[eventIndex].name || '请选择赛事'}}</view></picker></view>
+        <view class="figma-caption">时间按本机当地日期与时间填写，服务端存储绝对时刻。</view>
+        <view class="sponsor-date-grid">
+          <view class="figma-field-group"><view class="figma-field-label">开始日期</view><picker mode="date" data-field="startDate" bindchange="field" value="{{startDate}}" disabled="{{busy || !!pending}}"><view class="figma-field-control sponsor-picker">{{startDate || '请选择'}}</view></picker></view>
+          <view class="figma-field-group"><view class="figma-field-label">开始时间</view><picker mode="time" data-field="startTime" bindchange="field" value="{{startTime}}" disabled="{{busy || !!pending}}"><view class="figma-field-control sponsor-picker">{{startTime}}</view></picker></view>
+          <view class="figma-field-group"><view class="figma-field-label">结束日期</view><picker mode="date" data-field="endDate" bindchange="field" value="{{endDate}}" disabled="{{busy || !!pending}}"><view class="figma-field-control sponsor-picker">{{endDate || '请选择'}}</view></picker></view>
+          <view class="figma-field-group"><view class="figma-field-label">结束时间</view><picker mode="time" data-field="endTime" bindchange="field" value="{{endTime}}" disabled="{{busy || !!pending}}"><view class="figma-field-control sponsor-picker">{{endTime}}</view></picker></view>
+        </view>
+        <button class="sponsor-secondary" bindtap="fresh" disabled="{{busy}}">新建另一条投放</button>
+      </view>
+
+      <view wx:if="{{mode==='manage' && organizations.length}}" class="figma-section">
+        <view class="figma-section__title">发布流程</view>
+        <view class="sponsor-step"><view class="sponsor-step__mark">1</view><view class="figma-row__copy"><view class="figma-row__title">保存投放草稿</view><view class="figma-row__subtitle">保留本次版本</view></view><view class="figma-status {{selected ? 'figma-status--green' : 'figma-status--orange'}}">{{selected ? '已保存' : '待保存'}}</view></view>
+        <view class="sponsor-step"><view class="sponsor-step__mark">2</view><view class="figma-row__copy"><view class="figma-row__title">独立审核</view><view class="figma-row__subtitle">核对来源与展示时段</view></view><view class="figma-status {{selected && (selected.status === 'APPROVED' || selected.status === 'PUBLISHED' || selected.publicKey) ? 'figma-status--green' : 'figma-status--orange'}}">{{selected && (selected.status === 'APPROVED' || selected.status === 'PUBLISHED' || selected.publicKey) ? '已审核' : '待审核'}}</view></view>
+        <view class="sponsor-step"><view class="sponsor-step__mark">3</view><view class="figma-row__copy"><view class="figma-row__title">发布新批次</view><view class="figma-row__subtitle">生成已批准版本的公开地址</view></view><view class="figma-status figma-status--orange">{{selected && selected.publicKey ? '已发布' : '待发布'}}</view></view>
+      </view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">{{mode==='review' ? '待独立审核' : '当前投放'}}</view>
+        <figma-feedback wx:if="{{!loading && !items.length}}" type="empty" title="当前没有可查看的投放" body="新建草稿或切换其他工作区后再查看。"/>
+        <button wx:for="{{items}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="edit" disabled="{{busy}}">
+          <view class="figma-row__copy">
+            <view class="figma-row__title">{{item.brand}} · {{item.title}}</view>
+            <view class="figma-row__subtitle">第{{item.version}}版 · 去重上报展示数 {{item.reportedImpressions}}</view>
+          </view>
+          <view class="figma-status figma-status--orange">{{item.statusLabel}}</view>
+        </button>
+        <button wx:if="{{nextCursor}}" class="sponsor-secondary" bindtap="more" disabled="{{busy}}">读取更多</button>
+      </view>
+
+      <view wx:if="{{selected}}" class="figma-section">
+        <view class="figma-section__title">{{selected.title}}</view>
+        <view class="figma-status figma-status--orange">{{selected.statusLabel}}</view>
+        <view class="sponsor-body">{{selected.body}}</view>
+        <view wx:if="{{selected.reviewReason}}" class="figma-caption">审核说明：{{selected.reviewReason}}</view>
+        <view class="figma-field-group"><view class="figma-field-label">操作原因</view><textarea class="figma-field-control" data-field="reason" value="{{reason}}" bindinput="field" maxlength="500" disabled="{{busy || !!pending}}" placeholder="提交、审核或撤销原因，至少4字"/></view>
+        <block wx:if="{{mode==='manage'}}">
+          <button wx:if="{{selected.status==='APPROVED' && !selected.publicKey}}" class="sponsor-primary" data-type="PUBLISH" bindtap="command" disabled="{{busy || !!pending}}">发布新批次</button>
+          <button wx:if="{{selected.publicKey}}" class="sponsor-secondary" bindtap="openPublic">查看当前公开投放</button>
+          <button wx:if="{{selected.publicKey}}" class="sponsor-danger-button" data-type="REVOKE_PUBLICATION" bindtap="command" disabled="{{busy || !!pending}}">永久撤销当前公开地址</button>
+          <button wx:if="{{selected.status!=='WITHDRAWN'}}" class="sponsor-danger-button" data-type="WITHDRAW" bindtap="command" disabled="{{busy || !!pending}}">永久撤回此投放</button>
+        </block>
+      </view>
+    </block>
+  </view>
+
+  <view class="figma-fixed-actions">
+    <block wx:if="{{figmaCompactSponsorship}}"><button class="figma-action figma-action--ghost">提交独立审核</button><button class="figma-action figma-action--orange">保存投放草稿</button></block>
+    <block wx:elif="{{mode==='review' && selected && selected.status==='SUBMITTED'}}">
+      <button class="figma-action figma-action--ghost" data-type="REJECT" bindtap="command" disabled="{{busy || !!pending}}">退回草稿修改</button>
+      <button class="figma-action figma-action--orange" data-type="APPROVE" bindtap="command" disabled="{{busy || !!pending}}">独立审核通过</button>
+    </block>
+    <block wx:elif="{{mode==='manage' && organizations.length}}">
+      <button class="figma-action figma-action--ghost" data-type="SUBMIT" bindtap="command" disabled="{{busy || !!pending || !selected || (selected.status!=='DRAFT' && selected.status!=='REJECTED')}}">提交独立审核</button>
+      <button class="figma-action figma-action--orange" bindtap="save" disabled="{{busy || !!pending || (selected && selected.status!=='DRAFT' && selected.status!=='REJECTED')}}">{{busy ? '保存中…' : '保存投放草稿'}}</button>
+    </block>
+    <block wx:elif="{{mode==='public' && !publicCard}}">
+      <button class="figma-action figma-action--ghost" bindtap="load" disabled="{{busy || loading}}">刷新目录</button>
+      <button class="figma-action figma-action--orange" bindtap="discover" disabled="{{busy || loading || !regions.length}}">读取当前投放</button>
+    </block>
+    <block wx:else>
+      <button class="figma-action figma-action--ghost" bindtap="load" disabled="{{busy || loading}}">刷新当前状态</button>
+      <button class="figma-action figma-action--orange" bindtap="load" disabled="{{busy || loading}}">重新核对</button>
+    </block>
+  </view>
+</view>

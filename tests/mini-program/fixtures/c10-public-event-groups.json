@@ -2,8 +2,8 @@
   "name": "c10-public-event-groups",
   "route": "pages/event/index",
   "state": "ready",
-  "figmaNode": "9:215",
-  "expectText": ["A组 · 本组排名", "合成青锋", "胜/负"],
+  "figmaNode": "36:62",
+  "expectText": ["A组 · 本组排名", "合成青锋", "3/0"],
   "data": {
     "event": {
       "name": "合成城市联赛2026",
@@ -169,6 +169,7 @@
     "stale": false,
     "loading": false,
     "tab": "ranking",
+    "standingsView": "groups",
     "overview": false,
     "unavailable": false,
     "qualificationLabel": "当前资格已正式发布"

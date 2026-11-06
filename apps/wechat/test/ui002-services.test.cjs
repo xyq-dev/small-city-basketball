@@ -145,7 +145,9 @@ test('training separates course reading from explicit adult and frozen-charge re
   let submit = html.match(/<button[^>]*data-mini-bindtap="enroll"[^>]*>/);
   assert.ok(submit);
   assert.match(submit[0], /disabled/);
-  assert.match(html, /青少年招生与培训专用监护授权尚未开放/);
+  assert.match(html, /首期仅支持成年学员本人报名/);
+  assert.match(html, /青少年培训与专用监护授权尚未开放/);
+  assert.match(html, /明确同意上述冻结金额及付款条款/);
   h.page.consent({ detail: { value: ['adult', 'terms', 'payment'] } });
   html = markup('training', h.page.data);
   submit = html.match(/<button[^>]*data-mini-bindtap="enroll"[^>]*>/);
@@ -216,7 +218,8 @@ test('dispatch workspaces separate customer and provider actions while pending q
   assert.doesNotMatch(html, /本人跨城接单许可/);
   h.page.workspace(tap('preference'));
   html = markup('dispatch', h.page.data);
-  assert.match(html, /本人跨城接单许可/);
+  assert.match(html, /本人授权/);
+  assert.match(html, /跨城接单许可/);
   assert.doesNotMatch(html, /建立一项跨城人员需求/);
   assert.equal(h.page.data.pending.body.commandId, 'original-dispatch');
   assert.equal(h.wx.calls.filter((x) => x.type === 'request').length, 0);
@@ -556,7 +559,7 @@ test('local fulfillment fixture asserts visible redemption rules and separately 
   const html = markup('local-bookings', fixture.data);
   const visibleText = html.replace(/<[^>]*>/g, ' ');
   for (const text of fixture.expectText) assert.ok(visibleText.includes(text), text);
-  assert.match(html, /<input[^>]*placeholder="请粘贴需求方现场出示的本次核销码"/);
+  assert.match(html, /<input[^>]*placeholder="粘贴需求方本次出示的有效码"/);
   assert.match(html, /<button[^>]*data-type="REDEEM_CHECKIN"/);
 });
 test('supply draft navigation cancels old private detail and an unprivileged account cannot start an application', async () => {
@@ -597,7 +600,9 @@ test('team matchup draft and list navigation keeps the original pending identity
     pending: { body: { commandId: 'original-matchup' } },
   });
   h.page.matchupView(tap('create'));
-  assert.match(markup('local-matchups', h.page.data), /双方独立确认/);
+  const createView = markup('local-matchups', h.page.data);
+  assert.match(createView, /受邀球队须由独立管理人员确认/);
+  assert.match(createView, /发起等待对方确认的约赛/);
   h.page.matchupView(tap('list'));
   assert.equal(h.page.data.pending.body.commandId, 'original-matchup');
   assert.equal(h.wx.calls.filter((x) => x.type === 'request').length, 0);
@@ -624,7 +629,7 @@ test('player funds shortcuts only navigate an appearance currently visible to th
   }
 });
 
-test('returning from a supply application during refresh ends loading and discards the canceled result without clearing pending', async () => {
+test('returning from a supply application during refresh ends loading and keeps the pending write gate', async () => {
   const actor = '10000000-0000-4000-8000-000000000001';
   const org = raceId(70);
   const calls = [];
@@ -674,9 +679,9 @@ test('returning from a supply application during refresh ends loading and discar
   assert.equal(h.page.data.pending.body.commandId, 'original-supply-command');
   const html = markup('local-manage', h.page.data);
   assert.doesNotMatch(html, /private canceled refresh result|读取中…/);
-  const button = html.match(/<button[^>]*data-mini-bindtap="load"[^>]*>/);
+  const button = html.match(/<button[^>]*data-mini-bindtap="openSupply"[^>]*>/);
   assert.ok(button);
-  assert.doesNotMatch(button[0], /\bdisabled\b/);
+  assert.match(button[0], /\bdisabled\b/);
   assert.equal(
     calls.some((x) => x.method !== 'GET'),
     false,

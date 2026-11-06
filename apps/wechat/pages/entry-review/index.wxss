@@ -1,4 +1,20 @@
-.count-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.count-chip { padding:2px 8px; border-radius:24px; background:#eaf0f8; color:#123c73; font-size:12px; line-height:20px; }
-.freeze-note { margin:12px 0 0; }
-.task-title { color:#123c73; font-size:16px; line-height:24px; font-weight:600; }
+@import "../../styles/figma-pages.wxss";
+
+.review-tabs { display: flex; width: 100%; min-height: 48px; padding: 2px 3px; border-radius: 12px; background: #fff; }
+.review-tab { display: flex; min-width: 0; min-height: 44px; flex: 1; align-items: center; justify-content: center; margin: 0; padding: 0 8px; border: 0; border-radius: 10px; background: transparent; color: #51657d; font-size: 13px; line-height: 19px; }
+.review-tab::after, .review-close::after { border: 0; }
+.review-tab.is-active { background: #123c73; color: #fff; font-weight: 700; }
+.review-rules { color: #18283f; font-size: 14px; font-weight: 700; line-height: 20px; }
+.review-counts { display: flex; flex-wrap: wrap; gap: 6px; }
+.review-freeze { padding: 10px 12px; border-radius: 10px; background: #eaf2fc; color: #51657d; font-size: 12px; line-height: 18px; }
+.review-section-head, .review-independence { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; }
+.review-close { min-width: 44px; min-height: 44px; margin: 0; padding: 0 8px; background: transparent; color: #123c73; font-size: 13px; }
+.review-subhead { margin-top: 4px; color: #18283f; font-size: 14px; font-weight: 700; line-height: 20px; }
+.review-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.review-actions .figma-action { padding-right: 10px; padding-left: 10px; }
+.review-danger { border: 1px solid #c83f42; background: #fff; color: #c83f42; }
+
+@media (max-width: 360px) {
+  .review-tab { font-size: 12px; }
+  .review-actions { grid-template-columns: 1fr; }
+}

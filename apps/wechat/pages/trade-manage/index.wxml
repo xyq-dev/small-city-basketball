@@ -1,7 +1,90 @@
-<scb-header title="交易与资金管理" disabled="{{busy}}"/>
-<view class="page trade ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">机构财务</view><view class="title">条款、原单与渠道日账分别处理</view></view><view wx:if="{{error}}" class="notice danger">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view><input class="field" data-field="orgId" value="{{orgId}}" bindinput="input" placeholder="机构编号（服务端验证权限）"/><button bindtap="load" disabled="{{busy}}">读取本机构交易</button><view wx:if="{{pending}}" class="card warning">原操作 {{pending.body.clientRequestId}} 待核对<button bindtap="recover" disabled="{{busy}}">查原回执</button><button wx:if="{{!pending.invalid}}" bindtap="retry" disabled="{{busy}}">使用原编号重试</button><checkbox-group bindchange="pendingConsent"><label><checkbox value="yes" checked="{{pendingAcknowledged}}" disabled="{{busy}}"/>我已核对最新记录，移除标记不取消服务端原操作</label></checkbox-group><button bindtap="clearPending" disabled="{{busy || !pendingAcknowledged}}">核对后移除本机标记</button></view>
-<scb-state wx:if="{{loading}}" kind="loading" title="正在核对机构财务工作台" description="只展示当前机构与当前账号有权读取的记录。"/><scb-state wx:elif="{{!workspaceReady}}" kind="permission" title="请先读取当前机构交易" description="核对通过后显示收费条款与渠道日账。输入机构编号不会授予权限。"/>
-<block wx:if="{{workspaceReady}}"><scb-state wx:if="{{!providerConfigured}}" kind="closed" title="当前机构资金渠道未配置" description="可核对现有条款与原订单；不发起渠道日账核对。"/><view class="card"><view class="subtitle">新增后续来源收费条款</view><view class="muted">需独立审核。只影响此后明确同意的新订单，既有免费来源不会追溯收费。实际收款主体与分账接收方由服务端配置。</view><button data-kind="LOCAL_BOOKING" bindtap="kind">同城供给费</button><button data-kind="ENTRY_FEE" bindtap="kind">报名费</button><button data-kind="ENTRY_DEPOSIT" bindtap="kind">保证金</button><view>当前 {{kind}}</view><input class="field" data-field="sourceId" value="{{sourceId}}" bindinput="input" placeholder="供给或赛事编号"/><input class="field" data-field="amount" value="{{amount}}" bindinput="input" type="number" placeholder="费用（整数分，100分=1元）"/><textarea class="field" data-field="termsText" value="{{termsText}}" bindinput="input" maxlength="2000" placeholder="收费、履约、取消、退款与保证金扣减条款"/><button bindtap="create" disabled="{{busy || pending}}">提交待审条款</button><textarea class="field" data-field="reason" value="{{reason}}" bindinput="input" placeholder="独立审核理由（至少4字）"/></view>
-<view wx:for="{{terms}}" wx:key="id" class="card"><view>{{item.kind}} · {{item.amountText}} · {{item.status}}</view><view>{{item.terms}}</view><button data-id="{{item.id}}" data-version="{{item.version}}" data-decision="APPROVE" bindtap="review" disabled="{{busy || pending}}">独立发布</button><button data-id="{{item.id}}" data-version="{{item.version}}" data-decision="REJECT" bindtap="review" disabled="{{busy || pending}}">独立退回</button><button data-id="{{item.id}}" data-version="{{item.version}}" data-decision="REVOKE" bindtap="review" disabled="{{busy || pending}}">撤销后续收费</button></view>
-<view class="card"><view class="subtitle">渠道日账核对</view><input class="field" data-field="date" value="{{date}}" bindinput="input" placeholder="YYYY-MM-DD（北京时间账日）"/><button bindtap="reconcile" disabled="{{busy || pending || !providerConfigured}}">下载并核对真实渠道账单</button><view class="muted">通道未配置时关闭执行；差异未消除不能分账。</view></view><button wx:for="{{orders}}" wx:key="id" data-id="{{item.id}}" bindtap="open">{{item.title}} · {{item.totalText}} · {{item.status}}</button></block></view>
+<scb-header title="交易与资金管理" disabled="{{busy || loading}}"/>
+<view class="figma-page trade-manage-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary {{figmaTradeManagePreview ? 'manage-summary--preview' : ''}}">
+      <view class="figma-summary__icon"><figma-icon name="transaction" size="25"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">机构财务</view>
+        <view class="figma-title">{{figmaSummaryTitle || '交易与资金管理'}}</view>
+        <view class="figma-subtitle">按原条款、来源订单和渠道日账核对</view>
+      </view>
+    </view>
+
+    <block wx:if="{{figmaTradeManagePreview}}">
+      <figma-tabs key1="terms" label1="收费条款" key2="orders" label2="原订单" key3="reconcile" label3="渠道对账" active="terms"/>
+      <view class="figma-section"><view class="figma-section__title">后续收费条款</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">报名费</view><view class="figma-row__subtitle">适用于本机构指定来源</view></view><view class="figma-status figma-status--orange">待独立审核</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">保证金</view><view class="figma-row__subtitle">用途与扣减条款单列</view></view><view class="figma-status figma-status--orange">草稿</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">同城供给费</view><view class="figma-row__subtitle">按原订单快照核算</view></view><view class="figma-status">查看</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">原订单核对</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">示例预约订单</view><view class="figma-row__subtitle">应付费用</view></view><view class="manage-money">¥220</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">渠道实付</view><view class="figma-row__subtitle">等待权威回执</view></view><view class="figma-status figma-status--orange">待核对</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">退款记录</view><view class="figma-row__subtitle">按退款原编号核验</view></view><view class="figma-status">无新回执</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">渠道日账</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">读取渠道账单</view><view class="figma-row__subtitle">正式商户通道待接入</view></view><view class="figma-status">未开放</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">逐单比对</view><view class="figma-row__subtitle">列出差异并人工处理</view></view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">独立分账</view><view class="figma-row__subtitle">差异未消除时暂停执行</view></view></view></view>
+    </block>
+
+    <figma-feedback wx:if="{{!figmaTradeManagePreview && error}}" type="error" title="机构交易处理失败" body="{{error}}"/>
+    <figma-feedback wx:if="{{!figmaTradeManagePreview && message}}" type="info" title="处理结果" body="{{message}}"/>
+
+    <view wx:if="{{!figmaTradeManagePreview}}" class="figma-section">
+      <view class="figma-section__title">读取机构工作台</view>
+      <view class="figma-field-group"><view class="figma-field-label">机构编号</view><input class="figma-field-control" data-field="orgId" value="{{orgId}}" bindinput="input" placeholder="由服务端核验当前账号权限"/></view>
+      <button class="manage-primary" bindtap="load" disabled="{{busy || loading}}">{{loading ? '读取中…' : '读取本机构交易'}}</button>
+      <view class="figma-caption">填写机构编号不会授予权限；所有资料仍由服务端按当前账号核对。</view>
+    </view>
+
+    <view wx:if="{{!figmaTradeManagePreview && pending}}" class="figma-section manage-pending">
+      <view class="manage-state-icon"><figma-icon name="transaction" size="27"/></view>
+      <view class="figma-section__title">原操作等待核对</view>
+      <view class="manage-request-id">{{pending.body.clientRequestId}}</view>
+      <view class="figma-section__hint">先查询原回执；不要使用新编号重复提交。</view>
+      <view class="manage-inline-actions"><button class="manage-secondary" bindtap="recover" disabled="{{busy}}">查询原回执</button><button wx:if="{{!pending.invalid}}" class="manage-secondary" bindtap="retry" disabled="{{busy}}">使用原编号重试</button></view>
+      <checkbox-group bindchange="pendingConsent"><label class="figma-check"><checkbox value="yes" checked="{{pendingAcknowledged}}" disabled="{{busy}}"/><text>我已核对最新记录，移除本机标记不会取消服务端原操作</text></label></checkbox-group>
+      <button class="manage-text-action" bindtap="clearPending" disabled="{{busy || !pendingAcknowledged}}">核对后移除本机标记</button>
+    </view>
+
+    <view wx:if="{{!figmaTradeManagePreview && loading}}" class="figma-section"><figma-skeleton rows="{{5}}"/></view>
+    <figma-feedback wx:elif="{{!figmaTradeManagePreview && !workspaceReady && !pending}}" type="permission" title="请先读取当前机构交易" body="核对通过后显示收费条款、原始订单与渠道日账。"/>
+
+    <block wx:if="{{!figmaTradeManagePreview && workspaceReady && !loading && !pending}}">
+      <figma-feedback wx:if="{{!providerConfigured}}" type="info" title="当前机构资金渠道未配置" body="可核对现有条款与原订单；渠道日账执行保持关闭。"/>
+      <figma-tabs key1="terms" label1="收费条款" key2="orders" label2="原订单" key3="reconcile" label3="渠道对账" active="{{activeView}}" disabled="{{busy}}" bindchange="changeView"/>
+
+        <view id="trade-terms" class="figma-section">
+          <view class="figma-section__title">后续收费条款</view>
+          <view class="figma-section__hint">条款须独立审核，只影响明确同意后的新订单；既有免费来源不会追溯收费。</view>
+          <view class="manage-kind-tabs">
+            <button class="{{kind==='LOCAL_BOOKING'?'is-active':''}}" data-kind="LOCAL_BOOKING" bindtap="kind" disabled="{{busy}}">同城供给费</button>
+            <button class="{{kind==='ENTRY_FEE'?'is-active':''}}" data-kind="ENTRY_FEE" bindtap="kind" disabled="{{busy}}">报名费</button>
+            <button class="{{kind==='ENTRY_DEPOSIT'?'is-active':''}}" data-kind="ENTRY_DEPOSIT" bindtap="kind" disabled="{{busy}}">保证金</button>
+          </view>
+          <view class="figma-field-group"><view class="figma-field-label">供给或赛事编号</view><input class="figma-field-control" data-field="sourceId" value="{{sourceId}}" bindinput="input" placeholder="填写真实来源编号"/></view>
+          <view class="figma-field-group"><view class="figma-field-label">费用（分）</view><input class="figma-field-control" data-field="amount" value="{{amount}}" bindinput="input" type="number" placeholder="整数分，100分=1元"/></view>
+          <view class="figma-field-group"><view class="figma-field-label">收费条款</view><textarea class="figma-field-control" data-field="termsText" value="{{termsText}}" bindinput="input" maxlength="2000" placeholder="收费、履约、取消、退款与保证金扣减条款"/></view>
+          <button class="manage-primary" bindtap="create" disabled="{{busy}}">{{busy ? '提交中…' : '提交待审条款'}}</button>
+        </view>
+
+        <view class="figma-section">
+          <view class="figma-section__title">条款审核</view>
+          <view class="figma-field-group"><view class="figma-field-label">独立审核理由</view><textarea class="figma-field-control" data-field="reason" value="{{reason}}" bindinput="input" maxlength="1000" placeholder="至少4字"/></view>
+          <figma-feedback wx:if="{{!terms.length}}" type="empty" title="暂无收费条款" body="新条款提交后会显示在这里。"/>
+          <view wx:for="{{terms}}" wx:key="id" class="manage-record">
+            <view class="manage-record__head"><view><view class="figma-row__title">{{item.kind}} · {{item.amountText}}</view><view class="figma-row__subtitle">{{item.terms}}</view></view><view class="figma-status">{{item.status}}</view></view>
+            <view class="manage-action-stack"><button data-id="{{item.id}}" data-version="{{item.version}}" data-decision="APPROVE" bindtap="review" disabled="{{busy}}">独立发布</button><button data-id="{{item.id}}" data-version="{{item.version}}" data-decision="REJECT" bindtap="review" disabled="{{busy}}">独立退回</button><button data-id="{{item.id}}" data-version="{{item.version}}" data-decision="REVOKE" bindtap="review" disabled="{{busy}}">撤销后续收费</button></view>
+          </view>
+        </view>
+
+      <view id="trade-orders" class="figma-section">
+        <view class="figma-section__title">原单查询</view>
+        <figma-feedback wx:if="{{!orders.length}}" type="empty" title="暂无可读订单" body="当前机构有权读取的订单会显示在这里。"/>
+        <button wx:for="{{orders}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="open" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.status}}</view></view><view class="manage-money">{{item.totalText}}</view><view class="manage-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button>
+      </view>
+
+      <view id="trade-reconcile" class="figma-section manage-reconcile">
+        <view class="manage-state-icon"><figma-icon name="receipt" size="27"/></view>
+        <view class="figma-section__title">渠道日账核对</view>
+        <view class="figma-section__hint">下载并核对真实渠道账单。差异未消除前不能分账。</view>
+        <view class="figma-field-group"><view class="figma-field-label">北京时间账日</view><input class="figma-field-control" data-field="date" value="{{date}}" bindinput="input" placeholder="YYYY-MM-DD"/></view>
+        <button class="manage-primary" bindtap="reconcile" disabled="{{busy || !providerConfigured}}">{{busy ? '核对中…' : '下载并核对渠道账单'}}</button>
+        <figma-feedback wx:if="{{!providerConfigured}}" type="info" title="渠道执行已关闭" body="完成真实资金渠道配置后，才能发起日账核对。"/>
+      </view>
+    </block>
+  </view>
+
+  <view wx:if="{{figmaTradeManagePreview}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">查询原回执</button><button class="figma-action figma-action--orange">读取本机构交易</button></view>
+  <view wx:else class="figma-fixed-actions figma-fixed-actions--single"><button class="figma-action figma-action--navy" bindtap="load" disabled="{{busy || loading || !orgId}}">{{loading ? '读取中…' : '刷新机构工作台'}}</button></view>
+</view>

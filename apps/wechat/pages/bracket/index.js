@@ -30,7 +30,15 @@ const privateDefaults = {
 };
 
 Page({
-  data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
+  data: {
+    loading: false,
+    busy: false,
+    error: '',
+    notice: '',
+    bracketTab: 'groups',
+    figmaPreviewCompact: false,
+    ...privateDefaults,
+  },
   onLoad(query = {}) {
     this._alive = true;
     try {
@@ -60,6 +68,16 @@ Page({
   },
   base() {
     return '/v1/orgs/' + this.orgId + '/events/' + this.eventId;
+  },
+  changeBracketTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (!['groups', 'bracket', 'placements'].includes(tab)) return;
+    this.setData({ bracketTab: tab });
+    if (typeof wx !== 'undefined' && typeof wx.pageScrollTo === 'function') {
+      const selector =
+        tab === 'groups' ? '#bracket-groups' : tab === 'bracket' ? '#bracket-rounds' : '#bracket-placements';
+      wx.pageScrollTo({ selector, duration: 180 });
+    }
   },
   async load() {
     if (!this.orgId || this.data.loading || this.data.busy) return;

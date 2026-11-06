@@ -1,6 +1,107 @@
-.insurance-workspace { padding-bottom:calc(152px + env(safe-area-inset-bottom)); }
-.insurance-workspace .card { margin:12px 0; padding:16px; border-radius:16px; }
-.insurance-workspace .small,.insurance-workspace .muted { overflow-wrap:anywhere; }
-.insurance-workspace button { min-height:48px; font-size:16px; }
-.insurance-workspace .subtitle { font-weight:700; }
-.insurance-workspace .status-banner { margin:8px 0; }
+@import "../../styles/figma-pages.wxss";
+
+.insurance-rebuild .insurance-choice {
+  min-height: 63px;
+}
+
+.insurance-readonly,
+.insurance-rebuild .insurance-field-button {
+  display: flex;
+  align-items: center;
+}
+
+.insurance-rebuild .insurance-field-button {
+  align-self: stretch;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  text-align: left;
+}
+
+.insurance-field-button > text {
+  min-width: 0;
+  flex: 1;
+}
+
+.insurance-product + .insurance-product {
+  border-top: 1px solid #e6ebf2;
+}
+
+.insurance-rebuild .insurance-terms,
+.insurance-rebuild .insurance-danger {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #123c73;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: left;
+}
+
+.insurance-rebuild .insurance-danger {
+  color: #c83f42;
+}
+
+.insurance-price {
+  color: #123c73;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 34px;
+}
+
+.insurance-price text {
+  color: #51657d;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.insurance-disclaimer {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #eaf2fc;
+  color: #51657d;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.insurance-warning {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff1e2;
+}
+
+.insurance-order__head {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.insurance-step {
+  display: flex;
+  min-height: 55px;
+  align-items: center;
+  gap: 8px;
+}
+
+.insurance-step__mark {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eaf2fc;
+  color: #123c73;
+  font-size: 11px;
+  font-weight: 700;
+}

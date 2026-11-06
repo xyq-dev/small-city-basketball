@@ -1,19 +1,27 @@
 <scb-header title="账号自助注销" disabled="{{busy}}"/>
-<view class="page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">账号与隐私</view><view class="title">先处理未结束事项，再确认注销</view></view>
-  <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-  <view wx:if="{{message}}" class="notice">{{message}}</view>
-  <view wx:if="{{loginRequired}}" class="card"><view>请先登录核对本人账号。</view><button class="primary" bindtap="login">前往登录</button></view>
-  <block wx:else>
-    <view class="card"><view class="subtitle">注销影响</view><view class="small">检查通过后账号会停用并撤销登录、关联与公开授权，无法恢复。已确认比赛、财务及争议历史会按必要保留规则保存，注销不等于立即删除所有记录。</view><view class="small">待处理交易、退款、保险、直播及履约争议须先处理；机构负责人须先移交。未完成检查不会显示“已注销”。</view></view>
-    <view wx:if="{{!enabled}}" class="notice warning">安全检查尚未完整配置，当前不能发起新申请。已有申请仍可核对或取消。</view>
-    <view wx:if="{{request}}" class="card"><view class="subtitle">{{request.label}}</view><view>最早检查时间：{{request.executeText}}</view><view wx:for="{{request.blockers}}" wx:key="*this" class="notice warning">{{item}}</view><button class="secondary" bindtap="load" disabled="{{busy || loading}}">刷新核对结果</button></view>
-    <view class="card"><view class="subtitle">申请与执行分开</view><view>检查未通过不会显示已注销；等待期内可以明确撤销本次申请。</view></view>
-    <view class="card"><text class="field-label">当前密码</text><input class="field" password value="{{password}}" data-field="password" bindinput="input" disabled="{{busy}}" maxlength="128"/>
-      <block wx:if="{{!pending && (!request || !request.canCancel)}}"><text class="field-label">自选等待期（每日按24小时计算）</text><picker range="{{dayOptions}}" value="{{coolingOffDays}}" bindchange="chooseDays" disabled="{{busy}}"><view class="field">{{dayOptions[coolingOffDays]}}</view></picker><checkbox-group bindchange="confirmTerms"><label class="confirmation"><checkbox value="close" checked="{{confirmed}}" disabled="{{busy}}"/>我已理解账号停用不可恢复，必要历史按规则保留。</label></checkbox-group><button class="danger" bindtap="requestClosure" disabled="{{busy || loading || !enabled || !confirmed}}">申请注销并开始安全检查</button></block>
-      <button wx:if="{{!pending && request && request.canCancel}}" class="secondary" bindtap="cancelClosure" disabled="{{busy || loading}}">取消本次注销申请</button>
-      <block wx:if="{{pending}}"><view class="notice warning">原请求结果尚未确认，保留了原编号。请重新填写当前密码核对原操作，不要创建新请求。</view><button class="primary" bindtap="retry" disabled="{{busy || loading}}">按原编号核对并重试</button></block>
-      <view class="small muted">密码不会写入本机恢复记录；离开页面会清除输入。账号安全信息变化后，旧注销授权失效，需重新确认。</view>
-    </view>
-  </block>
+<view class="figma-page closure-rebuild">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="shield" size="28"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">账号与隐私</view><view class="figma-title">注销前安全检查</view><view class="figma-subtitle">先核对未结束事项，再选择等待期</view></view></view>
+    <figma-tabs key1="check" label1="检查结果" key2="request" label2="注销申请" active="{{activeView}}" disabled="{{busy || loading}}" bind:change="changeView"/>
+    <figma-skeleton wx:if="{{loading && !request}}" rows="4"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="注销检查未完成" body="{{error}}" action-label="刷新核对结果" disabled="{{busy || loading}}" bind:action="load"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="账号操作已记录" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="warning" title="请先登录核对本人账号" action-label="前往登录" bind:action="login"/>
+    <figma-feedback wx:if="{{!enabled && !loginRequired}}" type="closed" title="安全检查尚未完整配置" body="当前不能发起新申请；已有申请仍可核对或取消。"/>
+    <figma-feedback wx:if="{{pending}}" type="warning" title="原请求结果尚未确认" body="请重新填写当前密码核对原操作，不要创建新请求。" action-label="按原编号核对并重试" disabled="{{busy || loading}}" bind:action="retry"/>
+
+    <block wx:if="{{!loginRequired && activeView === 'check'}}">
+      <view class="figma-section"><view class="figma-section__title">当前待办</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">未结束的服务订单</view><view class="figma-row__subtitle">先核对原订单履约情况</view></view><view class="figma-status figma-status--orange">{{figmaOrderStatus || (request && request.blockers.length ? '待处理' : '待核对')}}</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">未结争议</view><view class="figma-row__subtitle">先查看工单处理结论</view></view><view class="figma-status figma-status--orange">待核对</view></view></view>
+      <view wx:if="{{request}}" class="figma-section"><view class="figma-section__title">{{request.label}}</view><view class="figma-section__hint">最早检查时间：{{request.executeText}}</view><figma-feedback wx:for="{{request.blockers}}" wx:key="*this" type="warning" title="仍需处理" body="{{item}}"/><button wx:if="{{request.canCancel}}" class="figma-action figma-action--ghost" bindtap="cancelClosure" disabled="{{busy || loading}}">取消本次注销申请</button></view>
+      <view class="figma-section"><view class="figma-section__title">本人确认</view><view class="figma-field-group"><view class="figma-field-label">当前密码</view><view class="closure-password"><input class="figma-field-control" password value="{{password}}" data-field="password" bindinput="input" disabled="{{busy}}" maxlength="128" placeholder="用于核对本次申请"/><view class="figma-status">隐藏输入</view></view></view><view class="figma-field-group"><view class="figma-field-label">等待期</view><picker range="{{dayOptions}}" value="{{coolingOffDays}}" bindchange="chooseDays" disabled="{{busy || pending}}"><view class="figma-field-control closure-picker"><text>{{dayOptions[coolingOffDays]}}</text><view class="figma-status figma-status--orange">待选择</view></view></picker></view><view wx:if="{{figmaClosurePreview}}" class="figma-field-group"><view class="figma-field-label">注销影响</view><view class="figma-field-control closure-picker"><text>必要业务记录按规则保留</text><view class="figma-status">未勾选</view></view></view><checkbox-group wx:else bindchange="confirmTerms"><label class="figma-check"><checkbox value="close" checked="{{confirmed}}" disabled="{{busy}}"/><text>必要业务记录按规则保留</text></label></checkbox-group></view>
+      <view wx:if="{{!figmaClosurePreview}}" class="figma-section"><view class="figma-section__title">注销影响</view><view class="figma-section__hint">注销申请与最终执行分开；等待期届满后仍会重新核对未结束事项。检查通过后账号会停用并撤销登录、关联与公开授权，无法恢复。已确认比赛、财务及争议历史按必要规则保留，注销不等于立即删除全部记录。</view></view>
+    </block>
+
+    <block wx:if="{{!loginRequired && activeView === 'request'}}">
+      <view class="figma-section__hint closure-retention">注销不等于立即删除所有记录；已确认比赛、财务及争议历史按必要规则保留。</view>
+      <view class="figma-section"><view class="figma-section__title">本人确认</view><view class="figma-field-group"><view class="figma-field-label">当前密码</view><view class="closure-password"><input class="figma-field-control" password value="{{password}}" data-field="password" bindinput="input" disabled="{{busy}}" maxlength="128" placeholder="用于核对本次申请"/><view class="figma-status">隐藏输入</view></view></view><view class="figma-field-group"><view class="figma-field-label">等待期</view><picker range="{{dayOptions}}" value="{{coolingOffDays}}" bindchange="chooseDays" disabled="{{busy || pending}}"><view class="figma-field-control closure-picker"><text>{{dayOptions[coolingOffDays]}}</text><view class="figma-status figma-status--orange">待选择</view></view></picker></view><checkbox-group bindchange="confirmTerms"><label class="figma-check"><checkbox value="close" checked="{{confirmed}}" disabled="{{busy}}"/><text>我已理解账号停用不可恢复，必要业务记录按规则保留</text></label></checkbox-group><button wx:if="{{!request || !request.canCancel}}" class="figma-action figma-action--orange" bindtap="requestClosure" disabled="{{busy || loading || !enabled || !confirmed || pending}}">申请注销并开始安全检查</button><button wx:else class="figma-action figma-action--ghost" bindtap="cancelClosure" disabled="{{busy || loading || pending}}">取消本次注销申请</button></view>
+    </block>
+    <view wx:if="{{!loginRequired}}" class="figma-section"><view class="figma-section__title">处理阶段</view><view class="closure-step"><view class="closure-step__mark">1</view><view><view class="figma-row__title">安全检查</view><view class="figma-row__subtitle">重新读取本人账号状态</view></view></view><view class="closure-step"><view class="closure-step__mark">2</view><view><view class="figma-row__title">申请等待</view><view class="figma-row__subtitle">等待期内可主动撤销</view></view></view><view class="closure-step"><view class="closure-step__mark">3</view><view><view class="figma-row__title">执行结果</view><view class="figma-row__subtitle">以服务端完成记录为准</view></view></view></view>
+  </view>
+  <view class="figma-fixed-actions"><button class="figma-action figma-action--ghost" data-key="check" bindtap="changeView">查看注销影响</button><button class="figma-action figma-action--orange" bindtap="load" disabled="{{busy || loading}}">刷新核对结果</button></view>
 </view>

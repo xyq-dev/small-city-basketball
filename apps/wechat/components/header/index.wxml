@@ -1,8 +1,20 @@
-<view class="scb-header {{dark ? 'dark' : ''}} {{home || main ? 'home-header' : ''}}" style="padding-top:{{statusBarHeight}}px">
- <view class="header-row">
-  <view wx:if="{{home || main}}" class="header-brand"><image src="/assets/ui002/node-4-20-0.svg" mode="aspectFit" aria-hidden="true"/></view>
-  <button wx:elif="{{back}}" class="header-back" bindtap="goBack" disabled="{{disabled}}" aria-label="返回"><scb-icon name="chevron-left" tone="{{dark ? 'white' : 'navy'}}" size="22"/></button>
-  <view class="header-title">{{home ? '小城市篮球' : title}}</view>
-  <button wx:if="{{home && !capsulePresent}}" class="header-search" bindtap="search" disabled="{{disabled}}" aria-label="搜索球员"><scb-icon name="search" tone="{{dark ? 'white' : 'navy'}}" size="22"/></button>
- </view>
+<view wx:if="{{mode==='home' || home}}" class="figma-header figma-header--home {{narrow ? 'is-narrow' : ''}}" style="padding-top:{{statusBarHeight}}px;padding-bottom:{{homeBottomSpace}}px">
+  <view class="figma-header__capsule-row" style="height:{{capsuleRowHeight}}px"/>
+  <view class="figma-header__home-row" style="padding-right:{{narrow ? 16 : capsuleReserve}}px">
+    <view class="figma-header__brand"><image src="/assets/home/brandmark.svg" mode="aspectFit" aria-hidden="true"/><view>小城市篮球</view></view>
+    <button class="figma-header__city" bindtap="city" disabled="{{disabled}}" aria-label="选择城市：{{cityLabel}}"><view>{{cityLabel}}</view><image src="/assets/figma/chevron-down-white.svg" mode="aspectFit" aria-hidden="true"/></button>
+    <button wx:if="{{message}}" class="figma-header__message" bindtap="openMessages" disabled="{{disabled}}" aria-label="消息"><image src="/assets/figma/bell-on-navy.svg" mode="aspectFit" aria-hidden="true"/></button>
+  </view>
+  <button class="figma-header__search" bindtap="search" disabled="{{disabled}}" aria-label="搜索赛事、球队、球员"><image src="/assets/figma/search.svg" mode="aspectFit" aria-hidden="true"/><view>搜赛事、球队、球员</view></button>
+</view>
+
+<view wx:elif="{{mode==='account'}}" class="figma-header figma-header--account" style="padding-top:{{statusBarHeight}}px">
+  <view class="figma-header__account-row" style="padding-right:{{capsuleReserve}}px"><view class="figma-header__account-mark"><image src="/assets/home/brandmark.svg" mode="aspectFit" aria-hidden="true"/></view><view class="figma-header__account-title">{{title || '我的'}}</view></view>
+</view>
+
+<view wx:else class="figma-header {{dark ? 'figma-header--dark' : ''}}" style="padding-top:{{statusBarHeight}}px">
+  <view class="figma-header__detail-row" style="padding-right:{{capsuleReserve}}px">
+    <button wx:if="{{back}}" class="figma-header__back" bindtap="goBack" disabled="{{disabled}}" aria-label="返回"><image src="/assets/approved-ui/icon-chevron-left-{{dark ? 'white' : 'navy'}}.png" mode="aspectFit" aria-hidden="true"/></button>
+    <view class="figma-header__title">{{title}}</view>
+  </view>
 </view>

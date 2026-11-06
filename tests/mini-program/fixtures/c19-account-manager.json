@@ -3,7 +3,7 @@
   "route": "pages/account/index",
   "state": "synthetic-populated",
   "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
-  "expectText": ["当前角色工作台", "赛事工作台", "合成机构 · 负责人", "记分与赛果复核"],
+  "expectText": ["角色工作台", "赛事工作台", "仅限当前机构授权", "记分与赛果复核", "直播与媒体"],
   "data": {
     "loading": false,
     "busy": false,

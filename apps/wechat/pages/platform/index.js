@@ -22,6 +22,7 @@ Page({
     statusIndex: 0,
     consent: false,
     paymentNotice: '',
+    figmaPlatformPreview: false,
   },
   onShow() {
     if (!this.data.reviewOpen && !this.data.feeDirty) this.load();

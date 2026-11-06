@@ -40,6 +40,7 @@ Page({
     sponsorVisible: false,
     event: null,
     matches: [],
+    overviewPoints: [],
     standings: null,
     groups: null,
     bracket: null,
@@ -48,6 +49,8 @@ Page({
     loading: false,
     tab: 'schedule',
     overview: true,
+    standingsView: 'schedule',
+    figmaState: '',
     unavailable: false,
     qualificationLabel: '',
     follow: { ...FOLLOW_START },
@@ -127,10 +130,18 @@ Page({
       }
       if (!this.closed) recent.remember({ ...event, publicEventId: this.id });
       const firstView = !this.data.event;
+      const overviewPoints = (
+        groups && groups.groups && groups.groups.length
+          ? groups.groups[0].rows || []
+          : standings && standings.rows
+            ? standings.rows
+            : []
+      ).slice(0, 2);
       if (!this.closed)
         this.setData({
           event,
           matches,
+          overviewPoints,
           standings,
           groups,
           bracket: bracketView(bracket),
@@ -155,6 +166,7 @@ Page({
             follow: { ...FOLLOW_START, state: this.followFallback() },
             event: null,
             matches: [],
+            overviewPoints: [],
             standings: null,
             groups: null,
             bracket: null,
@@ -173,10 +185,46 @@ Page({
   tab(e) {
     if (this.data.loading) return;
     const tab = e.currentTarget.dataset.tab;
-    if (['schedule', 'ranking', 'media'].includes(tab)) this.setData({ tab, overview: false });
+    if (['schedule', 'ranking', 'media'].includes(tab))
+      this.setData({ tab, overview: false, standingsView: tab === 'ranking' ? 'schedule' : this.data.standingsView });
   },
   backToOverview() {
     if (!this.data.loading) this.setData({ overview: true, tab: 'schedule' });
+  },
+  openSchedule() {
+    if (!this.data.loading) this.setData({ overview: false, tab: 'schedule' });
+  },
+  openMedia() {
+    if (!this.data.loading) this.setData({ overview: false, tab: 'media' });
+  },
+  standingsTab(e) {
+    if (this.data.loading) return;
+    const view = e.currentTarget.dataset.view;
+    if (!['schedule', 'points', 'groups'].includes(view)) return;
+    this.setData({ standingsView: view }, () => {
+      if (typeof wx.pageScrollTo === 'function')
+        wx.pageScrollTo({ selector: '#standings-' + view, duration: 180 });
+    });
+  },
+  rankingRules() {
+    if (this.data.loading) return;
+    this.setData({ standingsView: this.data.groups || this.data.standings || this.data.bracket ? 'groups' : 'points' }, () => {
+      if (typeof wx.pageScrollTo === 'function')
+        wx.pageScrollTo({ selector: this.data.standingsView === 'groups' ? '#standings-groups' : '#standings-points', duration: 180 });
+    });
+  },
+  openFirstMatch() {
+    const first = this.data.matches[0];
+    if (!this.data.loading && first && this.id)
+      wx.navigateTo({ url: '/pages/match/index?event=' + this.id + '&match=' + api.publicId(first.publicMatchId) });
+  },
+  followPrimary() {
+    if (this.data.follow.busy || this.data.follow.state === 'checking') return;
+    if (this.data.follow.state === 'signedOut') return this.followLogin();
+    if (this.data.follow.state === 'none') return this.followEvent();
+    if (this.data.follow.state === 'unknown') return this.checkFollow();
+    if (['active', 'invalid', 'unavailable'].includes(this.data.follow.state))
+      return this.openFollows();
   },
   watch() {
     wx.navigateTo({ url: '/pages/watch/index' });

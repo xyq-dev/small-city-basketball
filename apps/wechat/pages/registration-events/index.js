@@ -13,6 +13,7 @@ Page({
   data: {
     team: null,
     events: [],
+    hasDraft: false,
     nextCursor: null,
     loading: false,
     busy: false,
@@ -51,6 +52,7 @@ Page({
     this.setData({
       team: null,
       events: [],
+      hasDraft: false,
       nextCursor: null,
       chargeDraft: null,
       chargeAccepted: false,
@@ -91,13 +93,16 @@ Page({
     try {
       const team = await repo.team(this._team),
         result = await repo.events(this._team);
-      if (ui.live(this, token))
+      if (ui.live(this, token)) {
+        const events = view(result.items);
         this.setData({
           team,
-          events: view(result.items),
+          events,
+          hasDraft: events.some((item) => !!item.entry),
           nextCursor: result.nextCursor,
           loading: false,
         });
+      }
     } catch (error) {
       if (ui.live(this, token))
         this.setData({ team: null, events: [], loading: false, error: ui.message(error) });
@@ -115,12 +120,15 @@ Page({
     this.setData({ loading: true, error: '' });
     try {
       const result = await registration.createRepository(this._org).events(this._team, cursor);
-      if (ui.live(this, token))
+      if (ui.live(this, token)) {
+        const events = registration.mergePage(this.data.events, view(result.items), 'eventId');
         this.setData({
-          events: registration.mergePage(this.data.events, view(result.items), 'eventId'),
+          events,
+          hasDraft: events.some((item) => !!item.entry),
           nextCursor: result.nextCursor,
           loading: false,
         });
+      }
     } catch (error) {
       if (ui.live(this, token)) this.setData({ loading: false, error: ui.message(error) });
     }
@@ -196,6 +204,14 @@ Page({
     } finally {
       if (ui.held(this, token)) this.setData({ busy: false });
     }
+  },
+  openDraft() {
+    const item = this.data.events.find((value) => !!value.entry);
+    if (item) this.enter({ currentTarget: { dataset: { id: item.event.id } } });
+  },
+  showRequirements() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#registration-check', duration: 200 });
   },
   chargeAgree(e) {
     if (this.data.busy || !this.data.chargeDraft) return;

@@ -1,36 +1,90 @@
-<scb-header title="录像与媒体作业" disabled="{{busy}}"/>
-<view class="page media-workspace ui002-workspace">
-  <scb-state wx:if="{{loading}}" kind="loading" title="正在读取媒体任务" description="以当前授权和真实产物为准。"/>
-  <view wx:if="{{error}}" class="error">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view>
-  <view wx:if="{{pending}}" class="card"><text>上次操作结果待核对。</text><button bindtap="retry" disabled="{{busy}}">核对原操作结果</button></view>
-  <scb-state wx:if="{{!loading && !jobs.length && !artifacts.length && !error}}" kind="empty" title="暂无当前可用媒体产物" description="完成有权录制并核验产物后，在这里继续转码、授权发布或下载。"/>
-  <view wx:if="{{jobs.length || artifacts.length}}" class="card media-overview">
-    <view class="overview-heading">录制产物与任务</view>
-    <view wx:for="{{jobs}}" wx:key="id" class="media-record">
-      <button class="media-summary" data-id="{{item.id}}" bindtap="toggleJob" disabled="{{busy}}">
-        <image wx:if="{{item.kind === 'RECORDING'}}" class="overview-icon" src="./assets/play.svg" mode="aspectFit"/>
-        <image wx:elif="{{item.kind === 'TRANSCODE'}}" class="overview-icon" src="./assets/clock.svg" mode="aspectFit"/>
-        <image wx:else class="overview-icon" src="./assets/bars.svg" mode="aspectFit"/>
-        <view class="overview-copy"><view class="overview-label">{{item.kindText}}</view><view class="overview-meta">{{item.statusText}}</view></view>
-        <image class="overview-chevron" src="./assets/chevron.svg" mode="aspectFit"/>
-      </button>
-      <view wx:if="{{expandedJobId === item.id}}" class="media-record-detail">
-        <view wx:if="{{item.error}}" class="notice warning">{{item.error}}</view>
-        <block wx:if="{{canManage && item.kind === 'RECORDING' && item.status === 'READY'}}">
-          <button class="secondary" bindtap="toggleCalibration" disabled="{{busy || pending}}">{{calibrationOpen ? '收起录像时间校准' : '核对本录像时间校准'}}</button>
-          <view wx:if="{{calibrationOpen}}" class="calibration-editor"><view class="subtitle">录像时间校准</view><input class="field" data-field="anchorAt" value="{{anchorAt}}" placeholder="源PTS=0对应时间，如2026-10-31T12:00:00+08:00" bindinput="input" disabled="{{busy || pending}}"/><input class="field" data-field="offsetMs" value="{{offsetMs}}" type="number" placeholder="明确校准的偏移（毫秒）" bindinput="input" disabled="{{busy || pending}}"/><input class="field" data-field="reason" value="{{reason}}" bindinput="input" placeholder="核对依据" disabled="{{busy || pending}}"/><button class="primary" data-type="CALIBRATE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">确认此录像的时间锚点</button></view>
-        </block>
-        <button wx:if="{{canManage && (item.status === 'QUEUED' || item.status === 'RUNNING')}}" class="secondary" data-type="CANCEL_JOB" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">取消作业</button>
+<view class="figma-page">
+  <scb-header title="录像与媒体作业" disabled="{{busy}}"/>
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary media-overview">
+      <view class="figma-summary__icon"><image class="media-summary-icon" src="/assets/figma/media.svg" mode="aspectFit"/></view>
+      <view class="figma-summary__copy"><view class="figma-eyebrow">比赛媒体人员</view><view class="figma-title">{{session && session.eventName ? session.eventName + ' · ' : ''}}录像工作单</view><view class="figma-subtitle">按已探测的产物与真实处理状态交付。</view></view>
+    </view>
+
+    <view class="media-tabs" role="tablist">
+      <button class="media-tab {{mediaTab === 'recording' ? 'is-active' : ''}}" data-tab="recording" bindtap="changeMediaTab" disabled="{{busy}}" role="tab" aria-selected="{{mediaTab === 'recording'}}">录像</button>
+      <button class="media-tab {{mediaTab === 'jobs' ? 'is-active' : ''}}" data-tab="jobs" bindtap="changeMediaTab" disabled="{{busy}}" role="tab" aria-selected="{{mediaTab === 'jobs'}}">媒体作业</button>
+      <button class="media-tab {{mediaTab === 'artifacts' ? 'is-active' : ''}}" data-tab="artifacts" bindtap="changeMediaTab" disabled="{{busy}}" role="tab" aria-selected="{{mediaTab === 'artifacts'}}">可预览产物</button>
+    </view>
+
+    <figma-skeleton wx:if="{{loading}}" rows="3"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="媒体作业未完成" body="{{error}}" action-label="重新读取" bind:action="load" disabled="{{busy}}"/>
+    <figma-feedback wx:if="{{notice && !hidePreviewNotice}}" type="success" title="服务器已确认" body="{{notice}}"/>
+    <figma-feedback wx:if="{{pending}}" type="pending" title="上次操作结果待核对" body="请沿用原操作编号，不要创建重复作业。" action-label="核对原操作结果" bind:action="retry" disabled="{{busy}}"/>
+    <figma-feedback wx:if="{{!loading && !jobs.length && !artifacts.length && !error && !hideEmptyMediaState}}" type="empty" title="暂无当前可用媒体产物" body="完成有权录制并核验产物后，可继续转码、授权发布或下载。"/>
+
+    <view wx:if="{{(!mediaTab || mediaTab === 'recording') && canManage}}" class="figma-section">
+      <view class="figma-section__title">录像校准</view>
+      <view class="figma-field-group"><view class="figma-field-label">本场录像</view><view class="media-readonly">{{figmaHasRecordingSource ? '选择真实录制的媒体源' : (jobs.length ? '选择真实录制的媒体源' : '暂无已探测录像')}}</view></view>
+      <view class="figma-field-group"><view class="figma-field-label">时间锚点</view><view class="media-readonly"><text>{{anchorAt || '对齐场上记分与录像时间'}}</text><text class="figma-status figma-status--orange">{{anchorAt ? '已填写' : '待确认'}}</text></view></view>
+      <block wx:for="{{jobs}}" wx:key="id">
+        <view wx:if="{{item.kind === 'RECORDING'}}" class="media-record">
+          <button class="figma-row" data-id="{{item.id}}" bindtap="toggleJob" disabled="{{busy}}"><image class="media-icon" src="./assets/clock.svg" mode="aspectFit"/><view class="figma-row__copy"><view class="figma-row__title">{{item.kindText}}</view><view class="figma-row__subtitle">{{item.statusText}}</view></view><image class="media-chevron" src="./assets/chevron.svg" mode="aspectFit"/></button>
+          <view wx:if="{{expandedJobId === item.id}}" class="media-expanded">
+            <figma-feedback wx:if="{{item.error}}" type="error" title="录像处理失败" body="{{item.error}}"/>
+            <block wx:if="{{canManage && item.status === 'READY'}}">
+              <button class="media-link" bindtap="toggleCalibration" disabled="{{busy || pending}}">{{calibrationOpen ? '收起录像时间校准' : '核对本录像时间校准'}}</button>
+              <view wx:if="{{calibrationOpen}}" class="media-calibration">
+                <view class="figma-field-group"><view class="figma-field-label">源 PTS=0 对应时间</view><input class="figma-field-control" data-field="anchorAt" value="{{anchorAt}}" placeholder="例如 2026-10-31T12:00:00+08:00" bindinput="input" disabled="{{busy || pending}}"/></view>
+                <view class="figma-field-group"><view class="figma-field-label">校准偏移（毫秒）</view><input class="figma-field-control" data-field="offsetMs" value="{{offsetMs}}" type="number" bindinput="input" disabled="{{busy || pending}}"/></view>
+                <view class="figma-field-group"><view class="figma-field-label">核对依据</view><input class="figma-field-control" data-field="reason" value="{{reason}}" bindinput="input" disabled="{{busy || pending}}"/></view>
+                <button class="figma-action figma-action--navy" data-type="CALIBRATE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">确认此录像的时间锚点</button>
+              </view>
+            </block>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view wx:if="{{mediaTab === 'jobs' || figmaShowProcessing}}" class="figma-section">
+      <view class="figma-section__title">处理任务</view>
+      <view wx:if="{{!processingCount}}" class="media-empty"><view class="figma-row__title">暂无处理任务</view><view class="figma-row__subtitle">录制产物确认后可按权限申请转码或集锦。</view></view>
+      <block wx:for="{{jobs}}" wx:key="id">
+        <view wx:if="{{item.kind !== 'RECORDING'}}" class="media-record">
+          <button class="figma-row" data-id="{{item.id}}" bindtap="toggleJob" disabled="{{busy}}"><image wx:if="{{!hideProcessingIcons}}" class="media-icon" src="./assets/bars.svg" mode="aspectFit"/><view class="figma-row__copy"><view class="figma-row__title">{{item.kindText}}</view><view class="figma-row__subtitle">{{item.subtitle || '真实服务器作业'}}</view></view><view class="figma-status {{item.status === 'READY' ? 'figma-status--green' : item.status === 'FAILED' ? 'figma-status--error' : 'figma-status--orange'}}">{{item.statusText}}</view></button>
+          <view wx:if="{{expandedJobId === item.id}}" class="media-expanded"><figma-feedback wx:if="{{item.error}}" type="error" title="作业处理失败" body="{{item.error}}"/><button wx:if="{{canManage && (item.status === 'QUEUED' || item.status === 'RUNNING')}}" class="figma-action figma-action--ghost" data-type="CANCEL_JOB" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">取消作业</button></view>
+        </view>
+      </block>
+    </view>
+
+    <view wx:if="{{mediaTab === 'artifacts'}}" class="figma-section">
+      <view class="figma-section__title">授权交付</view>
+      <view wx:if="{{!artifacts.length}}" class="media-empty"><view class="figma-row__title">暂无可预览产物</view><view class="figma-row__subtitle">只展示真实探测并仍有授权的产物。</view></view>
+      <view wx:for="{{artifacts}}" wx:key="id" class="media-record">
+        <button class="figma-row" data-id="{{item.id}}" bindtap="toggleArtifact" disabled="{{busy}}"><image class="media-icon" src="./assets/play.svg" mode="aspectFit"/><view class="figma-row__copy"><view class="figma-row__title">已探测的真实产物</view><view class="figma-row__subtitle">{{item.durationText}} · {{item.sizeText}}</view></view><view class="figma-status {{item.published ? 'figma-status--green' : 'figma-status--orange'}}">{{item.published ? '已公开' : '尚未公开'}}</view></button>
+        <view wx:if="{{expandedArtifactId === item.id || artifacts.length === 1}}" class="media-expanded">
+          <view class="media-hash">SHA256 {{item.sha256}}</view>
+          <button class="media-link" data-id="{{item.id}}" bindtap="download" disabled="{{busy}}">授权下载与预览</button>
+          <view wx:if="{{canManage}}" class="media-command-grid"><button class="figma-action figma-action--ghost" data-type="TRANSCODE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">申请转码</button><button class="figma-action figma-action--ghost" data-type="HIGHLIGHTS" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">生成集锦</button><button class="figma-action figma-action--navy" data-type="PUBLISH" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending || item.published}}">独立审核发布</button><button class="figma-action media-danger" data-type="REVOKE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">撤回产物</button></view>
+          <button wx:if="{{item.published}}" class="media-link" data-key="{{item.publicKey}}" bindtap="copyLink">复制公开观看链接</button>
+        </view>
       </view>
     </view>
-    <view wx:for="{{artifacts}}" wx:key="id" class="media-record"><button class="media-summary" data-id="{{item.id}}" bindtap="toggleArtifact" disabled="{{busy}}"><image class="overview-icon" src="./assets/play.svg" mode="aspectFit"/><view class="overview-copy"><view class="overview-label">已探测的真实产物</view><view class="overview-meta">{{item.durationText}} · {{item.sizeText}}{{item.published ? ' · 已公开' : ' · 尚未公开'}}</view></view><image class="overview-chevron" src="./assets/chevron.svg" mode="aspectFit"/></button></view>
-  </view>
-  <view class="notice media-boundary"><view class="notice-title">录像与频道状态分开</view><view class="small">实际时长不等于整场完整；源授权撤回会阻止产物后续访问。自动集锦须核对源PTS与有效在线得分，补录事件不会推造媒体时间。</view></view>
-  <block wx:for="{{artifacts}}" wx:key="id">
-    <view wx:if="{{expandedArtifactId === item.id || artifacts.length === 1}}" class="artifact-workflow">
-      <view class="card artifact-details"><view class="subtitle">当前产物 {{item.durationText}}</view><view class="small muted">真实大小 {{item.sizeText}}</view><view class="hash">SHA256 {{item.sha256}}</view><button class="artifact-link" data-id="{{item.id}}" bindtap="download" disabled="{{busy}}"><image src="./assets/play.svg" mode="aspectFit" style="width:22px;height:22px"/><text>授权下载与预览</text><image src="./assets/chevron.svg" mode="aspectFit" style="width:16px;height:16px"/></button></view>
-      <view wx:if="{{canManage}}" class="media-generation-actions"><button class="secondary" data-type="TRANSCODE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">申请转码</button><button class="secondary" data-type="HIGHLIGHTS" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">核对有效得分后生成集锦</button><button class="secondary" data-type="PUBLISH" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending || item.published}}">独立审核并公开产物</button><button class="quiet" data-type="REVOKE" data-id="{{item.id}}" data-version="{{item.version}}" bindtap="command" disabled="{{busy || pending}}">撤回产物</button><button wx:if="{{item.published}}" class="quiet" data-key="{{item.publicKey}}" bindtap="copyLink">复制公开观看链接</button></view>
+
+    <view class="figma-section media-boundary">
+      <block wx:if="{{figmaDeliverySteps}}">
+        <view class="figma-section__title">授权交付</view>
+        <view class="media-step"><view class="media-step__number">1</view><view><view class="figma-row__title">确认产物</view><view class="figma-row__subtitle">读取实际媒体长度与格式</view></view></view>
+        <view class="media-step"><view class="media-step__number">2</view><view><view class="figma-row__title">授权预览</view><view class="figma-row__subtitle">仅在有权范围内预览</view></view></view>
+        <view class="media-step"><view class="media-step__number">3</view><view class="media-step__copy"><view class="figma-row__title">独立审核发布</view><view class="figma-row__subtitle">按当前授权和版本公开</view></view></view>
+      </block>
+      <block wx:else>
+        <view class="figma-section__title">处理边界</view>
+        <view class="media-step"><image class="media-icon" src="./assets/play.svg" mode="aspectFit"/><view><view class="figma-row__title">确认产物</view><view class="figma-row__subtitle">读取实际媒体长度与格式</view></view></view>
+        <view class="media-step"><image class="media-icon" src="./assets/clock.svg" mode="aspectFit"/><view><view class="figma-row__title">授权预览</view><view class="figma-row__subtitle">仅在有权范围内预览</view></view></view>
+        <view class="media-step"><image class="media-icon" src="./assets/bars.svg" mode="aspectFit"/><view class="media-step__copy"><view class="figma-row__title">独立审核发布</view><view class="figma-row__subtitle">按当前授权和版本公开；源授权撤回后停止访问</view></view><image class="media-chevron" src="./assets/chevron.svg" mode="aspectFit"/></view>
+      </block>
     </view>
-  </block>
-  <button class="quiet" bindtap="load" disabled="{{busy || loading}}">刷新服务器处理状态</button>
+  </view>
+
+  <view class="figma-fixed-actions">
+    <button wx:if="{{pending}}" class="figma-action figma-action--ghost" bindtap="retry" disabled="{{busy}}">核对原操作</button>
+    <button wx:else class="figma-action figma-action--ghost" bindtap="load" disabled="{{busy || loading}}">核对原操作</button>
+    <button class="figma-action figma-action--orange" bindtap="load" disabled="{{busy || loading}}">刷新处理状态</button>
+  </view>
 </view>

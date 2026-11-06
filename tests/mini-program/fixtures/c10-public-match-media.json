@@ -3,7 +3,7 @@
   "route": "pages/match/index",
   "state": "ready",
   "figmaNode": "9:421",
-  "expectText": ["合成比赛图片", "已发布的片段定位", "复制外部媒体链接"],
+  "expectText": ["合成比赛图片", "定位已发布片段", "复制外部媒体链接"],
   "data": {
     "snapshot": {
       "publicMatchId": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",

@@ -56,13 +56,16 @@ test('bottom navigation uses the actual safe area without changing finite route 
     route: 'components/navigation/index',
     properties: { active: 'Home' },
   });
-  assert.equal(h.instance.data.safeBottom, 24);
+  assert.equal(h.instance.data.safeBottom, 0);
   h.wx.getWindowInfo = () => ({ screenHeight: 844, safeArea: { bottom: 810 } });
   h.definition.lifetimes.attached.call(h.instance);
   assert.equal(h.instance.data.safeBottom, 34);
   h.wx.getWindowInfo = () => ({ screenHeight: 844, safeArea: { bottom: -1000 } });
   h.definition.lifetimes.attached.call(h.instance);
   assert.equal(h.instance.data.safeBottom, 34);
+  h.wx.getWindowInfo = () => ({ screenHeight: 844, safeArea: { bottom: 824 } });
+  h.definition.pageLifetimes.resize.call(h.instance);
+  assert.equal(h.instance.data.safeBottom, 20);
   h.instance.go({ currentTarget: { dataset: { key: 'Local' } } });
   assert.equal(h.wx.calls.find((x) => x.type === 'redirectTo').url, '/pages/local/index');
   h.instance.properties.disabled = true;

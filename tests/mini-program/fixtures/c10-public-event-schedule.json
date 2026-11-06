@@ -3,7 +3,7 @@
   "route": "pages/event/index",
   "state": "ready",
   "figmaNode": "9:109",
-  "expectText": ["比赛时间以当前正式安排为准", "68 : 62"],
+  "expectText": ["以当前正式安排为准", "68 : 62"],
   "data": {
     "event": {
       "name": "合成城市联赛2026",

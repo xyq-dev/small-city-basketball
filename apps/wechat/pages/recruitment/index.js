@@ -119,6 +119,14 @@ Page({
     )
       this.setData({ [k]: e.detail.value, ...(k === 'bulk' ? { preview: null } : {}) });
   },
+  scrollApplications() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#recruitment-applications', duration: 200 });
+  },
+  scrollInvitations() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#recruitment-invitations', duration: 200 });
+  },
   base() {
     return repo.base(this.data.orgId, this.data.eventId);
   },

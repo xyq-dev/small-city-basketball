@@ -3,7 +3,7 @@
   "route": "pages/match/index",
   "state": "loading",
   "figmaNode": "11:36",
-  "expectText": ["正在读取最新赛况"],
+  "expectText": ["比赛实况"],
   "data": {
     "loading": true
   }

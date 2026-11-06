@@ -1,5 +1,17 @@
 # 任务看板
 
+## 2026-11-05 UI006 微信原生前端 Figma 重建（REVIEW / LOCAL_ONLY）
+
+| 项 | 当前事实 |
+| --- | --- |
+| 负责人 | Codex 主 Agent；共享组件、导航、整合、微信工具和汇总文档单写 |
+| 分支与基线 | `feat/wechat-figma-rebuild`，基于 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` |
+| 目标 | Figma 定稿 → 全新原生 WXML/WXSS UI → 依据现有契约接通功能 → 分离视觉与功能验收 |
+| 计数 | 从零建立 73 路由＋17 条件状态清单；旧 UI005 数量不沿用 |
+| 当前切片 | 73 路由＋17 状态已完成新模板、功能接线与最终三宽隔离渲染；首页/我的有当前微信 390 逻辑宽真实状态证据；直接回归 242/242，全量 1237/1238，唯一失败为 Windows `symlinkSync EPERM` |
+| 权限 | 允许本地分支、前端重写、测试和截图；禁止 commit、push、merge、pack、上传、部署、Migration、后端/生产修改 |
+| 记录 | [任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)／[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)／[证据说明](evidence/ui006/README.md)／[73＋17 覆盖矩阵](evidence/ui006/COVERAGE.md) |
+
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 
 | 项 | 事实 |

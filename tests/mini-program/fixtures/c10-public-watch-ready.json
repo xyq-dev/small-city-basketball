@@ -3,10 +3,11 @@
   "route": "pages/watch/index",
   "state": "ready",
   "figmaNode": "9:58",
-  "expectText": ["粘贴观赛链接", "主办方观赛链接"],
+  "expectText": ["使用观赛入口", "观赛链接或公开编号"],
   "data": {
     "value": "https://basketball.playhubs.cn/watch/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-    "error": ""
+    "error": "",
+    "linkOpen": true
   },
   "static": true,
   "referenceKind": "derived",

@@ -1,19 +1,5 @@
-.invitation-page { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
-.invitation-panel { padding:24px; border:1px solid #e1e7ef; border-radius:12px; margin-bottom:20px; }
-.invitation-summary { display:flex; flex-direction:column; gap:16px; }
-.invitation-summary .subtitle { margin:0; }
-.account-identity { display:flex; align-items:center; gap:12px; font-weight:500; }
-.account-identity > view:last-child { min-width:0; overflow-wrap:anywhere; }
-.account-avatar { width:40px; height:40px; border-radius:50%; background:#eaf0f8; display:flex; align-items:center; justify-content:center; color:#123c73; flex-shrink:0; }
-.invite-details { display:flex; flex-direction:column; gap:20px; }
-.detail-row { display:flex; gap:12px; font-weight:500; }
-.detail-row > view { min-width:0; }
-.detail-row .muted { margin-top:4px; font-weight:400; }
-.detail-dot { color:#f28c28; flex:0 0 14px; }
-.feedback-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
-.invite-form .field-label { margin-top:20px; color:#18283f; }
-.secret-note { margin:8px 0 20px; }
-.invite-action { margin:20px 0; }
-.state-panel .muted { margin:8px 0 16px; }
-.skeleton-line { height:12px; border-radius:4px; background:#eaf0f8; margin-top:8px; }
-.skeleton-line.short { width:78%; }
+@import "../../styles/figma-pages.wxss";
+
+.account-row{display:flex;min-height:56px;align-items:center;gap:10px}.account-avatar{display:flex;width:44px;height:44px;flex:none;align-items:center;justify-content:center;border-radius:50%;background:#123c73;color:#fff;font-size:16px;font-weight:700}.section-primary{display:flex;width:100%;min-height:48px;align-items:center;justify-content:center;margin:0;padding:0 12px;border:0;border-radius:24px;background:#123c73;color:#fff;font-size:16px}.section-primary::after{border:0}
+.invitation-tabs{display:grid;height:48px;padding:2px 3px;grid-template-columns:repeat(2,minmax(0,1fr));border-radius:12px;background:#fff}.invitation-tab{display:flex;min-height:44px;align-items:center;justify-content:center;margin:0;padding:0 8px;border:0;border-radius:10px;background:transparent;color:#51657d;font-size:13px}.invitation-tab.is-active{background:#123c73;color:#fff;font-weight:700}.invitation-tab::after{border:0}.invitation-row{display:flex;width:100%;min-height:55px;align-items:center;gap:8px}.invitation-row+.invitation-row{border-top:1px solid #e6ebf2}.invitation-notice{display:flex;width:100%;min-height:55px;align-items:center;gap:8px;padding:0 10px;border-radius:8px;background:#eaf2fc}.invitation-notice__mark{width:7px;height:7px;flex:none;border-radius:4px;background:#123c73}
+.invitation-page .invitation-tabs>.invitation-tab{width:100%;min-width:0;max-width:none;justify-self:stretch;box-sizing:border-box}

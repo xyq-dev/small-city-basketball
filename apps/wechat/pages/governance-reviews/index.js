@@ -21,6 +21,10 @@ const initial = () => ({
   notice: '',
   loginRequired: false,
   publicReview: null,
+  figmaReviewPreview: false,
+  figmaSummaryTitle: '',
+  figmaSourceOrderText: '',
+  figmaSourceProviderText: '',
 });
 Page({
   data: initial(),

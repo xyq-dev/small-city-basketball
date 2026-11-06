@@ -9,6 +9,7 @@ Page({
     userId: '',
     workspace: null,
     kind: 'ROSTER',
+    kindLabel: '授权阵容',
     kinds: ['ROSTER', 'MATCHUP', 'RESULT', 'HONOR'],
     labels: ['授权阵容', '比赛对阵', '确认战报', '最终荣誉'],
     entryId: '',
@@ -96,14 +97,17 @@ Page({
     }
   },
   kind(e) {
-    if (!this.data.busy && !this.data.pending)
+    if (!this.data.busy && !this.data.pending) {
+      const index = Number(e.detail.value);
       this.setData({
-        kind: this.data.kinds[Number(e.detail.value)],
+        kind: this.data.kinds[index],
+        kindLabel: this.data.labels[index],
         entryId: '',
         matchId: '',
         entryName: '',
         matchName: '',
       });
+    }
   },
   entry(e) {
     if (!this.data.busy && !this.data.pending)
@@ -125,6 +129,10 @@ Page({
   },
   reason(e) {
     if (!this.data.busy && !this.data.pending) this.setData({ reason: e.detail.value });
+  },
+  scrollExports() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#poster-exports', duration: 200 });
   },
   async command(kind, path, body) {
     if (this.data.busy || this.data.pending || !this.data.userId) return;

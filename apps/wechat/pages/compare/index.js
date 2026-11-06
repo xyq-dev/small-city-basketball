@@ -28,6 +28,24 @@ function primaryComparison(table) {
   };
 }
 
+function availabilityText(profile) {
+  if (!profile.availability || !profile.availability.length) return '暂无公开可约时间';
+  const first = profile.availability[0];
+  const start = ui.localTime(first.startAt, true);
+  const end = ui.localTime(first.endAt, true);
+  if (start.slice(0, 10) === end.slice(0, 10))
+    return (
+      Number(start.slice(5, 7)) +
+      '月' +
+      Number(start.slice(8, 10)) +
+      '日 ' +
+      start.slice(11) +
+      '–' +
+      end.slice(11)
+    );
+  return start + '–' + end;
+}
+
 Page({
   data: {
     profiles: [],
@@ -134,14 +152,18 @@ Page({
         return;
       }
       const stats = new Map(batch ? batch.players.map((p) => [p.profileId, p]) : []);
-      const profiles = ids.map((id) =>
-        market.profileView(
-          byId.get(id),
-          workspace.settings.feeBps,
-          stats.get(id),
-          !!statisticsError,
-        ),
-      );
+      const profiles = ids.map((id) => {
+        const profile = byId.get(id);
+        return {
+          ...market.profileView(
+            profile,
+            workspace.settings.feeBps,
+            stats.get(id),
+            !!statisticsError,
+          ),
+          availabilityText: availabilityText(profile),
+        };
+      });
       const table = primaryComparison(market.comparisonRows(profiles));
       this._displayToken = token;
       this.setData({

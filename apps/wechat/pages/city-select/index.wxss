@@ -1,13 +1,17 @@
-.city-page .card { margin-top:16px; }
-.city-page .muted,.city-history button { overflow-wrap:anywhere; }
-.city-recent-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:20px; }
-.city-clear { width:auto; margin:0; font-size:13px; }
-.city-history { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
-.city-history button { width:auto; max-width:100%; margin:0; padding:8px 14px; }
-.city-location { background:#f4f6fa; }
-.region-row { padding:14px 0; border-bottom:1px solid #e4e8ef; }
-.region-name { font-weight:600; }
-.region-row .small,.region-parent { overflow-wrap:anywhere; }
-.region-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
-.region-actions button { width:auto; max-width:100%; margin:0; font-size:13px; padding:7px 12px; }
-.region-parent { padding:12px; background:#f4f6fa; border-radius:10px; }
+@import "../../styles/figma-pages.wxss";
+
+.city-tabs { display:flex; width:100%; height:48px; padding:2px 3px; border-radius:12px; background:#ffffff; overflow:hidden; }
+.city-rebuild .city-tab { display:flex; min-width:0; min-height:44px; flex:1; align-items:center; justify-content:center; border-radius:10px; background:#ffffff; color:#51657d; font-size:13px; line-height:19px; }
+.city-rebuild .city-tab.is-active { background:#123c73; color:#ffffff; font-weight:700; }
+.city-rebuild .city-tab[disabled] { background:transparent; color:#7c8ea5; }
+.city-inline-actions { display:flex; width:100%; flex-wrap:wrap; gap:8px; }
+.city-rebuild .city-inline-action, .city-rebuild .city-more, .city-rebuild .city-region-next { display:flex; min-width:44px; min-height:44px; align-items:center; justify-content:center; padding:0 12px; border:1px solid #7c8ea5; border-radius:22px; background:#ffffff; color:#123c73; font-size:13px; line-height:20px; text-align:center; }
+.city-rebuild .city-inline-action.is-primary { border-color:#123c73; background:#123c73; color:#ffffff; }
+.city-region-row { display:flex; width:100%; min-width:100%; max-width:100%; height:55px; flex:none; align-self:stretch; align-items:center; margin:0; padding:0; border:0; border-top:1px solid #e6ebf2; border-radius:0; background:transparent; text-align:left; }
+.city-region-row::after { border:0; }
+.city-region-row:first-of-type { border-top:0; }
+.city-rebuild .city-more { align-self:flex-start; border:0; padding-right:8px; padding-left:8px; }
+.city-readonly-field { display:flex; width:100%; min-height:48px; align-items:center; padding:0 12px; border:1px solid #7c8ea5; border-radius:12px; color:#51657d; font-size:14px; line-height:20px; }
+.city-readonly-field--action { justify-content:flex-start; margin:0; background:#ffffff; text-align:left; }
+.city-readonly-field--action::after { border:0; }
+@media (max-width:360px) { .city-rebuild .figma-fixed-actions { grid-template-columns:minmax(104px,2fr) minmax(0,3fr); } .city-rebuild .figma-action { padding-right:10px; padding-left:10px; font-size:14px; } }

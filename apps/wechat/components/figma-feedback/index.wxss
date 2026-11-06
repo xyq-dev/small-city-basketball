@@ -1,0 +1,12 @@
+.figma-feedback { box-sizing:border-box; display:grid; width:100%; grid-template-columns:20px minmax(0,1fr); gap:8px 12px; padding:16px; border-radius:16px; background:#ffffff; color:#18283f; }
+.figma-feedback__mark { width:18px; height:18px; margin-top:2px; border:2px solid #7c8ea5; border-radius:50%; }
+.figma-feedback__title { font-size:16px; font-weight:500; line-height:24px; }
+.figma-feedback__body { margin-top:4px; color:#51657d; font-size:12px; line-height:18px; }
+.figma-feedback__action { grid-column:2; justify-self:start; min-height:44px; margin:0; padding:0 8px; background:transparent; color:#123c73; font-size:14px; font-weight:500; line-height:22px; }
+.figma-feedback__action::after { border:0; }
+.figma-feedback--error { background:#fdecef; }
+.figma-feedback--error .figma-feedback__mark { border-color:#c83f42; }
+.figma-feedback--pending { background:#fff1e2; }
+.figma-feedback--pending .figma-feedback__mark { border-color:#f28c28; }
+.figma-feedback--success { background:#e5f7ee; }
+.figma-feedback--success .figma-feedback__mark { border-color:#07c160; }

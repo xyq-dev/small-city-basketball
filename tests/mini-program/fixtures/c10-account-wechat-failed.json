@@ -2,9 +2,9 @@
   "name": "c10-account-wechat-failed",
   "route": "pages/account/index",
   "state": "error",
-  "figmaNode": "15:1455",
-  "referenceKind": "derived",
-  "expectText": ["本次登录尚未完成", "重新核对登录状态", "邮箱登录"],
+  "figmaNode": "36:134",
+  "referenceKind": "latest-ui006",
+  "expectText": ["本次登录尚未完成", "重新发起", "邮箱登录"],
   "primary": false,
   "data": {
     "loading": false,

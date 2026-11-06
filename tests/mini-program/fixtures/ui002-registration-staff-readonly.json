@@ -3,7 +3,7 @@
   "route": "pages/staff-configuration/index",
   "state": "synthetic-populated",
   "designSource": "UI001 actual native route and capability states; synthetic data only",
-  "expectText": ["当前仅可读取授权名单", "明确修改一项授权"],
+  "expectText": ["当前仅可读取授权名单", "一次调整一项授权"],
   "data": {
     "organizations": [
       {

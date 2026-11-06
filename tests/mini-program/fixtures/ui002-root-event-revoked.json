@@ -1,10 +1,10 @@
 {
-  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "designSource": "UI006 36:135 event access state with synthetic API-shaped data, not real public-access acceptance",
   "static": true,
   "name": "ui002-root-event-revoked",
   "route": "pages/event/index",
   "state": "permission",
-  "figmaNode": "5:438",
+  "figmaNode": "36:135",
   "data": {
     "event": null,
     "matches": [],
@@ -12,6 +12,6 @@
     "loading": false,
     "error": "当前公开许可已撤回"
   },
-  "expectText": ["该内容已停止公开", "当前公开许可已撤回"],
+  "expectText": ["该赛事已停止公开", "公开分享入口已失效", "返回观赛入口"],
   "expectAbsentText": ["合成城市联赛2026", "合成青锋"]
 }

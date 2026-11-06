@@ -28,10 +28,13 @@ Page({
     cameraReady: false,
     phoneState: '尚未采集',
     activeSection: 'setup',
+    heroTitle: '',
+    eventSourceText: '',
+    figmaEnableMediaAction: false,
     workflowSteps: [
-      { key: 'setup', label: '直播准备' },
-      { key: 'capture', label: '采集与停流' },
-      { key: 'channels', label: '频道与媒体' },
+      { key: 'setup', label: '本机采集' },
+      { key: 'channels', label: '目标频道' },
+      { key: 'capture', label: '录像' },
     ],
   },
   onLoad(q = {}) {
@@ -109,6 +112,7 @@ Page({
       capabilities: v.capabilities,
       matchSummary: {
         id: (v.match && v.match.id) || this.match,
+        eventId: v.match && v.match.eventId,
         status: v.match
           ? typeof api.matchStatus === 'function'
             ? api.matchStatus(v.match.status)
@@ -200,7 +204,7 @@ Page({
     );
   },
   changeSection(e) {
-    const key = e.detail.key;
+    const key = (e.detail && e.detail.key) || (e.currentTarget && e.currentTarget.dataset.key);
     if (this.data.busy || !this.data.workflowSteps.some((item) => item.key === key)) return;
     this.setData({ activeSection: key });
     if (typeof wx.pageScrollTo === 'function')

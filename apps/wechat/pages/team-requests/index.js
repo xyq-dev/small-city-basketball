@@ -190,7 +190,18 @@ Page({
     });
   },
   select(e) {
-    if (!this.data.busy) this.setData({ selectedId: e.currentTarget.dataset.id, reviewReason: '' });
+    if (!this.data.busy) {
+      this.setData({ selectedId: e.currentTarget.dataset.id, reviewReason: '' });
+      if (typeof wx.nextTick === 'function') wx.nextTick(() => this.scrollReview());
+    }
+  },
+  scrollReview() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#team-review', duration: 200 });
+  },
+  scrollLink() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#team-link', duration: 200 });
   },
   async review(e) {
     const decision = e.currentTarget.dataset.decision;

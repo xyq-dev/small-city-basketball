@@ -1,0 +1,246 @@
+{
+  "capturedAt": "2026-11-05T14:41:14.370Z",
+  "project": "D:\\Projects\\small-city-basketball\\apps\\wechat",
+  "branch": "feat/wechat-figma-rebuild",
+  "head": "ef62cb1d47b3b63d9c854043f07cb5f8d6503b52",
+  "worktree": "uncommitted UI006 rebuild including scoped home native-button reset",
+  "automationPort": 19420,
+  "environment": "WeChat DevTools current source, real API/session state, read-only navigation; no synthetic data injection",
+  "pagesRegistered": 73,
+  "pages": {
+    "home": {
+      "route": "pages/home/index",
+      "pageSize": {
+        "width": 390,
+        "height": 845
+      },
+      "state": {
+        "cityLabel": "全国",
+        "cityMode": "NATIONWIDE",
+        "publicLoading": false,
+        "publicLoaded": false,
+        "publicError": "未找到可访问的资源",
+        "publicEventCount": 0,
+        "signedIn": false
+      },
+      "metrics": {
+        "root": {
+          "selector": ".home-rebuild",
+          "index": 0,
+          "text": "小城市篮球全国搜赛事、球队、球员让热爱，有主场。小城市篮球赛事与同城服务看赛事赛事招募球队档案图片视频找球员我的球队找球场同城服务精选赛事更多赛事公开赛事暂时无法读取未找到可访问的资源重新读取同城服务查看全部找球场查看本地场馆约裁判查看人员与档期我的赛事全部赛事登录后查看你参与的赛事浏览全国公开赛事无需登录。登录并继续按位置找球员合作预约不会自动加入赛事报名名单。控卫分卫小前大前中锋查看我的预约进入本人球员中心首页赛事同城球队我的",
+          "size": {
+            "width": 390.0826110839844,
+            "height": 1425.8521728515625
+          },
+          "offset": {
+            "left": 0,
+            "top": 0
+          },
+          "styles": {}
+        },
+        "hero": {
+          "selector": ".home-hero",
+          "index": 0,
+          "text": "让热爱，有主场。小城市篮球赛事与同城服务",
+          "size": {
+            "width": 390.0826110839844,
+            "height": 203.99017333984375
+          },
+          "offset": {
+            "left": 0,
+            "top": 154.97158813476562
+          },
+          "styles": {}
+        },
+        "content": {
+          "selector": ".home-content",
+          "index": 0,
+          "text": "精选赛事更多赛事公开赛事暂时无法读取未找到可访问的资源重新读取同城服务查看全部找球场查看本地场馆约裁判查看人员与档期我的赛事全部赛事登录后查看你参与的赛事浏览全国公开赛事无需登录。登录并继续按位置找球员合作预约不会自动加入赛事报名名单。控卫分卫小前大前中锋查看我的预约进入本人球员中心",
+          "size": {
+            "width": 390.0826110839844,
+            "height": 914.9017944335938
+          },
+          "offset": {
+            "left": 0,
+            "top": 510.95037841796875
+          },
+          "styles": {}
+        },
+        "sectionMore": {
+          "selector": ".home-section__more",
+          "index": 0,
+          "text": "更多赛事",
+          "size": {
+            "width": 71.99121856689453,
+            "height": 43.9953498840332
+          },
+          "offset": {
+            "left": 302.0919189453125,
+            "top": 522.94677734375
+          },
+          "styles": {
+            "width": "71.9912px",
+            "margin-left": "0px",
+            "margin-right": "0px",
+            "background-color": "rgba(0, 0, 0, 0)",
+            "color": "rgb(81, 101, 125)"
+          }
+        },
+        "positionButton": {
+          "selector": ".home-position-grid button",
+          "index": 0,
+          "text": "控卫",
+          "size": {
+            "width": 60.42096710205078,
+            "height": 43.9953498840332
+          },
+          "offset": {
+            "left": 31.998964309692383,
+            "top": 1209.8656005859375
+          },
+          "styles": {
+            "width": "60.421px",
+            "background-color": "rgb(237, 244, 252)",
+            "color": "rgb(18, 60, 115)"
+          }
+        },
+        "extraLink": {
+          "selector": ".home-extra__links button",
+          "index": 0,
+          "text": "查看我的预约",
+          "size": {
+            "width": 159.03924560546875,
+            "height": 43.9953498840332
+          },
+          "offset": {
+            "left": 31.998964309692383,
+            "top": 1265.857421875
+          },
+          "styles": {
+            "width": "159.039px",
+            "background-color": "rgb(255, 255, 255)",
+            "color": "rgb(18, 60, 115)"
+          }
+        }
+      },
+      "bottomScrollTop": 580.99169921875
+    },
+    "account": {
+      "route": "pages/account/index",
+      "pageSize": {
+        "width": 390,
+        "height": 845
+      },
+      "state": {
+        "loading": false,
+        "signedIn": false,
+        "loginPhase": "",
+        "wechatState": "unknown",
+        "emailOpen": false
+      },
+      "metrics": {
+        "root": {
+          "selector": ".account-rebuild",
+          "index": 0,
+          "text": "我的游客访问小城市篮球登录后管理报名、球队与预约登录账户暂时无法核对微信登录状态请恢复连接后重试读取失败邮箱登录使用已绑定的应用账号找回账号通过账号恢复流程核验身份阅读并确认同意用户协议与隐私说明本人主动勾选未勾选用户协议与隐私说明阅读条款不会自动勾选游客可浏览公开赛事赛程、比分与结果同城服务按浏览城市查看供给球队广场获授权的公开档案找回账号邮箱登录首页赛事同城球队我的",
+          "size": {
+            "width": 390.0826110839844,
+            "height": 1170.622314453125
+          },
+          "offset": {
+            "left": 0,
+            "top": 0
+          },
+          "styles": {}
+        },
+        "emailButton": {
+          "selector": ".account-page-actions .is-orange",
+          "index": 0,
+          "text": "邮箱登录",
+          "size": {
+            "width": 210.05938720703125,
+            "height": 47.99844741821289
+          },
+          "offset": {
+            "left": 164.0237579345703,
+            "top": 1022.6239013671875
+          },
+          "styles": {
+            "width": "210.059px",
+            "margin-left": "0px",
+            "margin-right": "0px",
+            "background-color": "rgb(242, 140, 40)",
+            "color": "rgb(24, 40, 63)"
+          }
+        },
+        "guestGridItem": {
+          "selector": ".account-guest-section .account-grid__item",
+          "index": 0,
+          "text": "公开赛事赛程、比分与结果",
+          "size": {
+            "width": 161.04080200195312,
+            "height": 84.95609283447266
+          },
+          "offset": {
+            "left": 29.99741554260254,
+            "top": 786.7251586914062
+          },
+          "styles": {
+            "width": "161.041px",
+            "background-color": "rgb(244, 246, 250)",
+            "color": "rgb(24, 40, 63)"
+          }
+        }
+      },
+      "bottomScrollTop": 325.61981201171875,
+      "emailExpanded": {
+        "triggeredBy": "real orange account action tap",
+        "emailOpen": true,
+        "registerMode": false,
+        "metrics": {
+          "section": {
+            "selector": ".account-email-section",
+            "index": 0,
+            "text": "邮箱登录登录后进入本人有权的球队与球员服务账号或邮箱应用密码登录已有账号创建个人账号返回",
+            "size": {
+              "width": 358.0836486816406,
+              "height": 404.9586486816406
+            },
+            "offset": {
+              "left": 15.999482154846191,
+              "top": 399.1089782714844
+            },
+            "styles": {}
+          },
+          "submit": {
+            "selector": ".account-email-section .is-orange",
+            "index": 0,
+            "text": "登录已有账号",
+            "size": {
+              "width": 330.0877990722656,
+              "height": 47.99844741821289
+            },
+            "offset": {
+              "left": 29.99741554260254,
+              "top": 670.0800170898438
+            },
+            "styles": {
+              "width": "330.088px",
+              "background-color": "rgb(242, 140, 40)",
+              "color": "rgb(24, 40, 63)"
+            }
+          }
+        },
+        "scrollTop": 279.3388366699219
+      }
+    }
+  },
+  "exceptions": [],
+  "system": {
+    "windowWidth": 390,
+    "windowHeight": 844,
+    "SDKVersion": "3.17.4",
+    "platform": "devtools"
+  },
+  "success": true
+}

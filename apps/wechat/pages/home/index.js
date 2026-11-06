@@ -4,6 +4,7 @@ const events = require('../../utils/events');
 const directory = require('../../utils/directory');
 const cities = require('../../utils/city-preference');
 const localServices = require('../../utils/local-services');
+const figmaPreview = require('../../utils/figma-preview');
 
 const privateEvents = {
   signedIn: false,
@@ -14,6 +15,8 @@ const privateEvents = {
 };
 Page({
   data: {
+    uiPreview: false,
+    contentHeight: 608,
     sponsorVisible: false,
     value: '',
     error: '',
@@ -44,15 +47,49 @@ Page({
       { code: 'C', name: '中锋', icon: 'pos-c' },
     ],
   },
-  onLoad() {
+  onLoad(query = {}) {
     this._alive = true;
+    this.uiPreview = figmaPreview.enabled(query, wx);
+    this.setData({ uiPreview: this.uiPreview });
   },
   onShow() {
     this._hidden = false;
     this.syncChrome();
+    if (this.uiPreview) {
+      this.setData({
+        sponsorVisible: false,
+        citySelection: {
+          mode: 'CITY',
+          label: '高州',
+          source: 'Figma UI 预览',
+          guide: false,
+          warning: '',
+        },
+        publicEvents: [
+          {
+            publicEventId: 'figma-ui-preview',
+            name: '城市篮球邀请赛',
+            displayCity: '广东 · 高州',
+            venueName: '高州',
+            dateLabel: '11.08—11.22',
+            statusLabel: '报名中',
+          },
+        ],
+        publicLoading: false,
+        publicLoaded: true,
+        publicError: '',
+        eventsLoading: false,
+        ...privateEvents,
+      });
+      return;
+    }
     this.setData({ citySelection: cities.snapshot(), sponsorVisible: true });
     this.loadPublicEvents();
     this.loadEvents();
+  },
+  onResize() {
+    this._headerHeight = 0;
+    this.syncChrome();
   },
   onHide() {
     this._hidden = true;
@@ -68,6 +105,7 @@ Page({
   syncChrome() {
     let statusBarHeight = this.data.statusBarHeight;
     let capsuleGap = this.data.capsuleGap;
+    let contentHeight = this.data.contentHeight;
     try {
       const info =
         typeof wx.getWindowInfo === 'function'
@@ -82,19 +120,47 @@ Page({
         info.statusBarHeight <= 80
       )
         statusBarHeight = info.statusBarHeight;
+      let menu = null;
       if (
         info &&
         Number.isFinite(info.windowWidth) &&
         typeof wx.getMenuButtonBoundingClientRect === 'function'
       ) {
-        const menu = wx.getMenuButtonBoundingClientRect();
+        menu = wx.getMenuButtonBoundingClientRect();
         if (menu && Number.isFinite(menu.left) && menu.left > 0 && menu.left < info.windowWidth)
           capsuleGap = Math.min(160, Math.max(72, info.windowWidth - menu.left + 8));
+      }
+      if (info && Number.isFinite(info.windowHeight) && Number.isFinite(info.windowWidth)) {
+        const screenHeight = Number.isFinite(info.screenHeight)
+          ? info.screenHeight
+          : info.windowHeight;
+        const safeBottom =
+          info.safeArea && Number.isFinite(info.safeArea.bottom)
+            ? Math.max(0, screenHeight - info.safeArea.bottom)
+            : 0;
+        const bottomSpace = Math.max(8, 12 - Math.max(0, statusBarHeight - 44));
+        const capsuleRow =
+          info.windowWidth <= 360
+            ? menu && Number.isFinite(menu.bottom)
+              ? Math.max(44, Math.ceil(menu.bottom - statusBarHeight + 5))
+              : 44
+            : 0;
+        const headerHeight =
+          Number.isFinite(this._headerHeight) && this._headerHeight > 0
+            ? this._headerHeight
+            : statusBarHeight + capsuleRow + 44 + 8 + 44 + bottomSpace;
+        contentHeight = Math.max(320, info.windowHeight - headerHeight - 50 - safeBottom);
       }
     } catch {
       /* The platform draws the real status bar and capsule. */
     }
-    this.setData({ statusBarHeight, capsuleGap });
+    this.setData({ statusBarHeight, capsuleGap, contentHeight });
+  },
+  headerLayout(e) {
+    const height = Number(e && e.detail && e.detail.height);
+    if (!Number.isFinite(height) || height <= 0 || height === this._headerHeight) return;
+    this._headerHeight = height;
+    this.syncChrome();
   },
   chooseCity() {
     ui.open('city-select');
@@ -131,6 +197,10 @@ Page({
     }
   },
   openPublicEvent(e) {
+    if (this.uiPreview) {
+      wx.showToast({ title: 'Figma UI 预览不发起业务请求', icon: 'none' });
+      return;
+    }
     try {
       ui.open('event', { event: api.publicId(e.currentTarget.dataset.id) });
     } catch {
@@ -202,6 +272,9 @@ Page({
   },
   openSearch() {
     ui.open('search');
+  },
+  openMessages() {
+    ui.open('messages');
   },
   openEvents() {
     ui.open('watch');

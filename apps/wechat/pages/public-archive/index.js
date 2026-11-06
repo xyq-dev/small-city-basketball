@@ -56,6 +56,16 @@ Page({
     this.setData({ kind: e.currentTarget.dataset.kind, archive: null, entries: [] });
     this.load();
   },
+  secondaryTab() {
+    const archive = this.data.archive;
+    this.key = null;
+    this.setData({
+      kind: archive ? archive.kind : 'TEAM',
+      archive: null,
+      entries: [],
+    });
+    this.load();
+  },
   open(e) {
     wx.navigateTo({
       url: '/pages/public-archive/index?key=' + api.publicId(e.currentTarget.dataset.key),

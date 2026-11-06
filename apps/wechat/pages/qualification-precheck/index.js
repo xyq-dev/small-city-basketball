@@ -15,6 +15,14 @@ Page({
     loading: false,
     error: '',
     message: '',
+    activeView: 'current',
+    figmaHidePrecheckOperations: false,
+    figmaHideEmptyParticipants: false,
+    figmaState: '',
+    precheckTabs: [
+      { key: 'current', label: '当前资料' },
+      { key: 'history', label: '预审记录' },
+    ],
     registrationSteps: [
       { key: 'profile', label: '本人资料' },
       { key: 'qualification', label: '资格预审' },
@@ -64,6 +72,10 @@ Page({
   },
   registrationStepChange(e) {
     if (['profile', 'insurance'].includes(e.detail?.key)) this.materials(e);
+  },
+  changeView(e) {
+    const key = e.detail?.key;
+    if (!this.data.busy && ['current', 'history'].includes(key)) this.setData({ activeView: key });
   },
   externalPolicy() {
     this.materials({ detail: { key: 'insurance' } });

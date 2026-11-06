@@ -24,7 +24,8 @@
         "delivery": "WAITING_PERMISSION",
         "deliveryLabel": "待本人订阅",
         "readAt": null,
-        "canRetry": false
+        "canRetry": false,
+        "isToday": true
       },
       {
         "id": "00000000-0000-4000-8000-000000000002",
@@ -38,9 +39,13 @@
         "delivery": "UNKNOWN",
         "deliveryLabel": "发送结果未知，不会自动重发",
         "readAt": "2028-06-01T10:40:00Z",
-        "canRetry": true
+        "canRetry": true,
+        "isToday": false
       }
     ],
+    "todayCount": 1,
+    "earlierCount": 1,
+    "unreadCount": 1,
     "nextCursor": "synthetic-layout-cursor",
     "loading": false,
     "loadingMore": false,

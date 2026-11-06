@@ -3,6 +3,8 @@ const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const reset = {
   profiles: [],
+  primaryProfile: null,
+  secondaryProfiles: [],
   pendingSources: [],
   teams: [],
   events: [],
@@ -58,12 +60,15 @@ Page({
       this._viewer = session.user.id;
       const result = (await client.request('/v1/me/public-archives')).data;
       if (!ui.live(this, token)) return;
+      const profiles = result.profiles || [];
       this.setData({
         loading: false,
         loginRequired: false,
-        profiles: result.profiles,
+        profiles,
+        primaryProfile: profiles[0] || null,
+        secondaryProfiles: profiles.slice(1),
         pendingSources: result.pendingSources.filter(
-          (s) => !result.profiles.some((p) => p.sources.some((source) => source.id === s.id)),
+          (s) => !profiles.some((p) => p.sources.some((source) => source.id === s.id)),
         ),
         teams: result.manageableTeams,
         events: result.manageableEvents,

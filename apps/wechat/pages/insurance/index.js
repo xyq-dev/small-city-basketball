@@ -19,6 +19,11 @@ Page({
     message: '',
     checkoutUrl: '',
     activeSection: 'options',
+    figmaHideClosedFeedback: false,
+    visualSections: [
+      { key: 'options', label: '办理方式' },
+      { key: 'records', label: '原单进度' },
+    ],
     workflowSteps: [
       { key: 'options', label: '办理方式' },
       { key: 'quote', label: '报价与确认' },

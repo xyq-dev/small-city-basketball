@@ -7,7 +7,7 @@
   "referenceKind": "approved-image",
   "approvedPrimary": true,
   "syntheticData": true,
-  "expectText": ["林越", "陈凯", "合成高州", "已通过入驻资料审核", "对比已选2位球员"],
+  "expectText": ["林越", "陈凯", "合成高州", "可约球员", "查看同价对比"],
   "data": {
     "cards": [
       {

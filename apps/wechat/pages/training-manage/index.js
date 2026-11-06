@@ -3,12 +3,13 @@ const ui = require('../../utils/ui');
 const training = require('../../utils/training');
 Page({
   data: {
-    manageTab: 'cohorts',
+    manageTab: 'teaching',
     organizations: [],
     orgIndex: 0,
     orgId: '',
     workspace: null,
     teaching: [],
+    attendancePreview: [],
     coachProfiles: [],
     roster: null,
     enrollment: null,
@@ -75,7 +76,7 @@ Page({
     this._writeToken = null;
     this.setData({
       workspace: null,
-      manageTab: 'cohorts',
+      manageTab: 'teaching',
       reason: '',
       providerName: '',
       providerEvidence: '',
@@ -103,6 +104,7 @@ Page({
       orgId: '',
       isOperator: false,
       teaching: [],
+      attendancePreview: [],
       coachProfiles: [],
       roster: null,
       enrollment: null,

@@ -32,6 +32,7 @@ Page({
     busy: false,
     error: '',
     draft: emptyDraft(),
+    seasonTab: 'profile',
     ...privateDefaults(),
   },
   onLoad(query) {
@@ -242,6 +243,21 @@ Page({
     const eventId = event.currentTarget.dataset.id;
     if (this.data.busy) return;
     wx.navigateTo({ url: grantsPath + model.seasonsPath({ orgId: this.data.orgId, eventId }) });
+  },
+  changeSeasonTab(event) {
+    if (this.data.busy) return;
+    const seasonTab = event.currentTarget.dataset.tab;
+    if (!['profile', 'events', 'board'].includes(seasonTab)) return;
+    this.setData({ seasonTab });
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#season-' + seasonTab, duration: 180 });
+  },
+  openFirstGrant() {
+    const event = this.data.season && this.data.season.events[0];
+    if (!event || this.data.busy) return;
+    wx.navigateTo({
+      url: grantsPath + model.seasonsPath({ orgId: this.data.orgId, eventId: event.eventId }),
+    });
   },
   /** Keep the original confirmation alive through preparation and the actual send. */
   async write(title, content, send, unchanged = () => true) {

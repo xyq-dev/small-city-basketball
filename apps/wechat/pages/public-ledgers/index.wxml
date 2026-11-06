@@ -1,8 +1,138 @@
-<scb-header title="线下经费记账与公示" disabled="{{busy}}"/>
-<view class="page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">经费公示</view><view class="title">线下账目与实际支付余额分开</view></view><view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view><view wx:if="{{loading}}">正在核对当前账目…</view><view class="notice">仅记录经授权的线下账目；账面收支差额不是支付余额，不提供募款、钱包或提现。</view>
-<block wx:if="{{isPublic}}"><view wx:if="{{publicSnapshot}}" class="card"><view class="title">{{publicSnapshot.title}}</view><view>{{publicSnapshot.description}}</view><view class="subtitle">已审批账面收支差额 {{publicSnapshot.netLabel}}元</view><view class="small muted">快照截至 {{publicSnapshot.asOf}} ／ 发布于 {{publicSnapshot.publishedAt}}，共{{publicSnapshot.entryCount}}条已审批记录。后续记录需重新审批、公示。</view><view wx:for="{{publicSnapshot.entries}}" wx:key="seq" class="entry"><view>第{{item.seq}}条 · {{item.occurredOn}} · {{item.kindLabel}}</view><view>{{item.label}}</view><view>{{item.amountLabel}}元 <text wx:if="{{item.reversesSeq}}">（冲销第{{item.reversesSeq}}条）</text></view></view><button open-type="share">分享当前公示快照</button></view></block>
-<block wx:else><view wx:if="{{loginRequired}}"><button bindtap="login">登录查看授权账目</button></view><view wx:if="{{pending}}" class="card">有原操作待核对。<button bindtap="recover">查询原操作</button><button data-cancel="true" bindtap="recover">明确放弃未确认操作</button></view><picker wx:if="{{organizations.length}}" range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="org"><view class="picker">授权机构：{{organizations[orgIndex].name}}</view></picker>
-<view wx:if="{{selected}}" class="card"><view class="title">{{selected.title}}</view><view>{{selected.description}}</view><view>{{selected.statusLabel}} · 第{{selected.version}}版</view><view class="subtitle">已审批账面收支差额 {{selected.netLabel}}元</view><view wx:if="{{selected.publicKey}}" class="small muted">当前公示于{{selected.publishedAt}}，包含{{selected.publishedEntryCount}}条审批记录。</view><view wx:for="{{selected.entries}}" wx:key="id" class="entry"><view>{{item.occurredOn}} · {{item.kindLabel}} · {{item.statusLabel}}</view><view>{{item.label}} ／ {{item.amountLabel}}元</view><view wx:if="{{item.reviewReason}}" class="small muted">审批说明：{{item.reviewReason}}</view><block wx:if="{{item.canReview && selected.status==='ACTIVE'}}"><button data-type="APPROVE_ENTRY" data-id="{{item.id}}" bindtap="command" disabled="{{busy || !!pending}}">独立审批通过本条</button><button data-type="REJECT_ENTRY" data-id="{{item.id}}" bindtap="command" disabled="{{busy || !!pending}}">退回本条记录</button></block></view>
-<block wx:if="{{selected.status==='ACTIVE'}}"><view class="subtitle">追加记录（原账目不可直接改写）</view><picker range="{{entryKinds}}" value="{{kindIndex}}" data-field="kindIndex" bindchange="picker"><view class="picker">{{entryKinds[kindIndex]}}</view></picker><picker mode="date" value="{{occurredOn}}" data-field="occurredOn" bindchange="field"><view class="picker">实际记账日期：{{occurredOn || '请选择'}}</view></picker><input data-field="label" value="{{label}}" bindinput="field" maxlength="200" placeholder="公开摘要；勿填写银行账号或无关个人资料"/><input wx:if="{{kindIndex!==2}}" data-field="amount" value="{{amount}}" bindinput="field" type="digit" maxlength="12" placeholder="金额（元，最多两位小数，不带正负号）"/><picker wx:if="{{kindIndex===2}}" range="{{selected.reversible}}" range-key="pickerLabel" value="{{reversalIndex}}" data-field="reversalIndex" bindchange="picker"><view class="picker">原审批记录：{{selected.reversible[reversalIndex].pickerLabel || '没有可冲销的原记录'}}</view></picker><view wx:if="{{kindIndex===2}}" class="small muted">系统追加原记录的精确反向金额。审批后如需补记正确事实，再追加新记录。</view><button disabled="{{busy || !!pending}}" bindtap="add">追加待独立审批记录</button><textarea data-field="reason" value="{{reason}}" bindinput="field" maxlength="500" placeholder="审批、公示、撤销或关闭原因，至少4字"/><switch data-field="publicConsent" checked="{{publicConsent}}" bindchange="consent"/>已核对本次公开内容，明确同意公示审批后的快照<button wx:if="{{selected.canPublish}}" data-type="PUBLISH" bindtap="command" disabled="{{busy || !!pending || !publicConsent}}">作为第二人核对并公示新快照</button><view wx:else class="notice">须由另一名当前授权的机构管理员独立核对后公示；本页不授予他人权限。</view><button wx:if="{{selected.publicKey}}" bindtap="openPublic">查看当前公示</button><button wx:if="{{selected.publicKey}}" data-type="REVOKE_PUBLICATION" bindtap="command" disabled="{{busy || !!pending}}">永久撤销当前公开地址</button><button data-type="CLOSE" bindtap="command" disabled="{{busy || !!pending}}">永久关闭账本并撤销公示</button></block><button bindtap="fresh" disabled="{{busy}}">新建另一授权账本</button></view>
-<view wx:else><view wx:for="{{items}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="select"><view class="subtitle">{{item.title}} · {{item.statusLabel}}</view><view>已审批账面差额 {{item.netLabel}}元</view></view><button wx:if="{{nextCursor}}" disabled="{{busy}}" bindtap="more">读取更多</button><view wx:if="{{!loading && !items.length && !loginRequired}}" class="notice">当前授权机构没有账本。</view><view wx:if="{{organizations.length}}" class="card"><view class="subtitle">创建经授权的线下账本</view><input data-field="teamQuery" value="{{teamQuery}}" bindinput="field" maxlength="80" placeholder="可按本机构球队名称查询范围"/><button disabled="{{busy}}" bindtap="searchTeams">查询本机构球队</button><picker range="{{teams}}" range-key="name" value="{{teamIndex}}" data-field="teamIndex" bindchange="picker"><view class="picker">范围：{{teams[teamIndex].name}}</view></picker><input data-field="title" value="{{title}}" bindinput="field" maxlength="120" placeholder="账本名称"/><textarea data-field="description" value="{{description}}" bindinput="field" maxlength="1000" placeholder="公开用途说明，勿填写私人银行或证件资料"/><switch data-field="authorizationConfirmed" checked="{{authorizationConfirmed}}" bindchange="consent"/>确认仅记录已经获得授权的线下账目<button disabled="{{busy || !!pending || !authorizationConfirmed}}" bindtap="create">创建线下账本</button></view></view></block><button bindtap="load" disabled="{{busy || loading}}">刷新当前状态</button></view>
+<scb-header title="{{figmaLedgerPreview ? '线下经费公示' : isPublic ? '经费公示' : selected ? '账本详情' : '经费账本'}}" disabled="{{busy || loading}}"/>
+<view class="figma-page ledger-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary {{figmaLedgerPreview ? 'ledger-summary--preview' : ''}}">
+      <view class="figma-summary__icon"><figma-icon name="receipt" size="25"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">{{figmaLedgerPreview ? '机构授权账本' : '经费公示'}}</view>
+        <view class="figma-title">{{figmaSummaryTitle || (isPublic ? '公开账目快照' : selected ? selected.title : '线下经费账本')}}</view>
+        <view class="figma-subtitle">{{figmaLedgerPreview ? '账面收支依据获准的线下记录' : '账面收支与实际支付余额分开核对'}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{selected && !pending && !isPublic}}" class="ledger-tabs" role="tablist">
+      <button class="{{ledgerSection === 'overview' ? 'is-active' : ''}}" data-selector="#ledger-overview" bindtap="jump">线下账本</button>
+      <button class="{{ledgerSection === 'entries' ? 'is-active' : ''}}" data-selector="#ledger-entries" bindtap="jump">待审批</button>
+      <button bindtap="openPublic" disabled="{{!selected.publicKey}}">公示快照</button>
+    </view>
+
+    <figma-feedback wx:if="{{!figmaLedgerPreview}}" type="info" title="仅记录授权线下账目" body="账面收支差额不是支付余额；本功能不提供募款、钱包或提现。"/>
+    <figma-feedback wx:if="{{!figmaLedgerPreview && error}}" type="error" title="账目资料读取失败" body="{{error}}" action-label="重新读取" disabled="{{busy || loading}}" bindaction="load"/>
+    <figma-feedback wx:if="{{!figmaLedgerPreview && notice}}" type="info" title="当前提示" body="{{notice}}"/>
+    <view wx:if="{{!figmaLedgerPreview && loading}}" class="figma-section"><figma-skeleton rows="{{5}}"/></view>
+
+    <block wx:if="{{figmaLedgerPreview}}">
+      <view class="figma-section"><view class="figma-section__title">已审批线下账目</view><view class="ledger-metrics"><view><view class="ledger-preview-metric__title">收入</view><view class="figma-caption">线下已记账</view><view class="ledger-preview-amount">¥3,000</view></view><view><view class="ledger-preview-metric__title">支出</view><view class="figma-caption">已审批条目</view><view class="ledger-preview-amount">¥800</view></view><view><view class="ledger-preview-metric__title">账面差额</view><view class="figma-caption">无支付余额含义</view><view class="ledger-preview-amount">¥2,200</view></view></view></view>
+      <view class="figma-section"><view class="figma-section__title">账本条目</view><view class="ledger-entry"><view class="ledger-entry__head"><view><view class="figma-row__title">场馆使用支出</view><view class="figma-row__subtitle">11.08 · 线下凭证</view></view><view class="ledger-entry__amount">−¥800</view></view></view><view class="ledger-entry"><view class="ledger-entry__head"><view><view class="figma-row__title">赛事支持款</view><view class="figma-row__subtitle">11.06 · 已审批</view></view><view class="ledger-entry__amount">+¥3,000</view></view></view></view>
+      <view class="figma-section"><view class="figma-section__title">公示审核</view><view class="commerce-process-row"><view class="commerce-process-mark">1</view><view class="figma-row__copy"><view class="figma-row__title">追加条目</view><view class="figma-row__subtitle">录入金额和凭证</view></view></view><view class="commerce-process-row"><view class="commerce-process-mark">2</view><view class="figma-row__copy"><view class="figma-row__title">独立审批</view><view class="figma-row__subtitle">待处理事项与既有账目分开</view></view></view><view class="commerce-process-row"><view class="commerce-process-mark">3</view><view class="figma-row__copy"><view class="figma-row__title">发布公示快照</view><view class="figma-row__subtitle">由另一授权管理员核对</view></view></view></view>
+    </block>
+
+    <block wx:elif="{{!loading && isPublic}}">
+      <view wx:if="{{publicSnapshot}}" class="figma-section ledger-public-card">
+        <view class="ledger-public-mark"><figma-icon name="receipt" size="28"/></view>
+        <view class="figma-section__title">{{publicSnapshot.title}}</view>
+        <view class="figma-section__hint">{{publicSnapshot.description}}</view>
+        <view class="ledger-balance"><view class="figma-eyebrow">已审批账面收支差额</view><view class="ledger-balance__value">{{publicSnapshot.netLabel}}<text> 元</text></view></view>
+        <view class="figma-caption">快照截至 {{publicSnapshot.asOf}} · 发布于 {{publicSnapshot.publishedAt}} · 共 {{publicSnapshot.entryCount}} 条已审批记录</view>
+      </view>
+      <view wx:if="{{publicSnapshot}}" class="figma-section">
+        <view class="figma-section__title">公示明细</view>
+        <figma-feedback wx:if="{{!publicSnapshot.entries.length}}" type="empty" title="暂无审批记录" body="后续记录需重新审批、公示。"/>
+        <view wx:for="{{publicSnapshot.entries}}" wx:key="seq" class="ledger-entry">
+          <view class="ledger-entry__head"><view class="figma-row__title">第 {{item.seq}} 条 · {{item.kindLabel}}</view><view class="ledger-entry__amount">{{item.amountLabel}} 元</view></view>
+          <view class="figma-row__subtitle">{{item.occurredOn}} · {{item.label}}</view>
+          <view wx:if="{{item.reversesSeq}}" class="figma-caption">冲销第 {{item.reversesSeq}} 条记录</view>
+        </view>
+        <button class="ledger-primary" open-type="share">分享当前公示快照</button>
+      </view>
+      <figma-feedback wx:if="{{!publicSnapshot && !error}}" type="empty" title="公示快照不可用" body="请稍后重新读取公开地址。" action-label="重新读取" bindaction="load"/>
+    </block>
+
+    <block wx:elif="{{!loading}}">
+      <figma-feedback wx:if="{{loginRequired}}" type="info" title="登录后查看授权账目" body="账本与操作范围按当前账号的机构授权读取。" action-label="登录后继续" disabled="{{busy}}" bindaction="login"/>
+
+      <view wx:if="{{pending}}" class="figma-section ledger-pending">
+        <view class="ledger-public-mark"><figma-icon name="transaction" size="26"/></view>
+        <view class="figma-section__title">原操作等待核对</view>
+        <view class="figma-section__hint">请先查询原操作结果，避免重复创建、审批或公示。</view>
+        <view class="ledger-inline-actions"><button class="ledger-secondary" bindtap="recover" disabled="{{busy}}">查询原操作</button><button class="ledger-secondary ledger-danger" data-cancel="true" bindtap="recover" disabled="{{busy}}">放弃未确认操作</button></view>
+      </view>
+
+      <picker wx:if="{{organizations.length && !pending}}" range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="org" disabled="{{busy}}">
+        <view class="ledger-org-picker"><view class="figma-row__copy"><view class="figma-row__subtitle">授权机构</view><view class="figma-row__title">{{organizations[orgIndex].name}}</view></view><view class="ledger-chevron"><figma-icon name="chevron-down-white" size="12"/></view></view>
+      </picker>
+
+      <block wx:if="{{selected && !pending}}">
+        <view id="ledger-overview" class="figma-section">
+          <view class="ledger-entry__head"><view class="figma-row__copy"><view class="figma-section__title">{{selected.title}}</view><view class="figma-section__hint">{{selected.description}}</view></view><view class="figma-status">{{selected.statusLabel}}</view></view>
+          <view class="ledger-balance"><view class="figma-eyebrow">已审批账面收支差额</view><view class="ledger-balance__value">{{selected.netLabel}}<text> 元</text></view></view>
+          <view class="figma-caption">第 {{selected.version}} 版<text wx:if="{{selected.publicKey}}"> · 已公示 {{selected.publishedEntryCount}} 条，发布于 {{selected.publishedAt}}</text></view>
+        </view>
+
+        <view class="figma-section">
+          <view class="figma-section__title">已审批线下账目</view>
+          <view class="ledger-metrics"><view><view class="ledger-metric__value">{{selected.incomeLabel || '0.00'}}</view><view class="figma-row__title">收入</view><view class="figma-caption">线下已记账</view></view><view><view class="ledger-metric__value">{{selected.expenseLabel || '0.00'}}</view><view class="figma-row__title">支出</view><view class="figma-caption">已审批条目</view></view><view><view class="ledger-metric__value">{{selected.netLabel}}</view><view class="figma-row__title">账面差额</view><view class="figma-caption">无支付余额含义</view></view></view>
+        </view>
+
+        <view id="ledger-entries" class="figma-section">
+          <view class="figma-section__title">账本条目</view>
+          <figma-feedback wx:if="{{!selected.entries.length}}" type="empty" title="暂无账目记录" body="新增记录须由另一位授权管理员独立审批。"/>
+          <view wx:for="{{selected.entries}}" wx:key="id" class="ledger-entry">
+            <view class="ledger-entry__head"><view><view class="figma-row__title">{{item.kindLabel}} · {{item.statusLabel}}</view><view class="figma-row__subtitle">{{item.occurredOn}} · {{item.label}}</view></view><view class="ledger-entry__amount">{{item.amountLabel}} 元</view></view>
+            <view wx:if="{{item.reviewReason}}" class="figma-caption">审批说明：{{item.reviewReason}}</view>
+            <view wx:if="{{item.canReview && selected.status==='ACTIVE'}}" class="ledger-inline-actions"><button class="ledger-secondary" data-type="APPROVE_ENTRY" data-id="{{item.id}}" bindtap="command" disabled="{{busy}}">独立审批通过</button><button class="ledger-secondary" data-type="REJECT_ENTRY" data-id="{{item.id}}" bindtap="command" disabled="{{busy}}">退回记录</button></view>
+          </view>
+        </view>
+
+        <block wx:if="{{selected.status==='ACTIVE'}}">
+          <view class="figma-section">
+            <view class="figma-section__title">追加账目记录</view>
+            <view class="figma-section__hint">原记录不可直接改写；冲销会追加原记录的精确反向金额。</view>
+            <view class="figma-field-group"><view class="figma-field-label">记录类型</view><picker range="{{entryKinds}}" value="{{kindIndex}}" data-field="kindIndex" bindchange="picker" disabled="{{busy}}"><view class="figma-field-control ledger-picker">{{entryKinds[kindIndex]}}</view></picker></view>
+            <view class="figma-field-group"><view class="figma-field-label">实际记账日期</view><picker mode="date" value="{{occurredOn}}" data-field="occurredOn" bindchange="field" disabled="{{busy}}"><view class="figma-field-control ledger-picker">{{occurredOn || '请选择日期'}}</view></picker></view>
+            <view class="figma-field-group"><view class="figma-field-label">公开摘要</view><input class="figma-field-control" data-field="label" value="{{label}}" bindinput="field" maxlength="200" placeholder="勿填写银行账号或无关个人资料"/></view>
+            <view wx:if="{{kindIndex!==2}}" class="figma-field-group"><view class="figma-field-label">金额（元）</view><input class="figma-field-control" data-field="amount" value="{{amount}}" bindinput="field" type="digit" maxlength="12" placeholder="最多两位小数，不带正负号"/></view>
+            <view wx:else class="figma-field-group"><view class="figma-field-label">原审批记录</view><picker range="{{selected.reversible}}" range-key="pickerLabel" value="{{reversalIndex}}" data-field="reversalIndex" bindchange="picker" disabled="{{busy}}"><view class="figma-field-control ledger-picker">{{selected.reversible[reversalIndex].pickerLabel || '没有可冲销的原记录'}}</view></picker><view class="figma-caption">系统追加精确反向金额；如需补记正确事实，再追加新记录。</view></view>
+            <button class="ledger-primary" bindtap="add" disabled="{{busy}}">{{busy ? '提交中…' : '追加待独立审批记录'}}</button>
+          </view>
+
+          <view class="figma-section">
+            <view class="figma-section__title">审批与公示</view>
+            <view class="figma-field-group"><view class="figma-field-label">操作原因</view><textarea class="figma-field-control" data-field="reason" value="{{reason}}" bindinput="field" maxlength="500" placeholder="审批、公示、撤销或关闭原因，至少4字"/></view>
+            <checkbox-group data-field="publicConsent" bindchange="consent"><label class="figma-check"><checkbox value="yes" checked="{{publicConsent}}" disabled="{{busy}}"/><text>已核对本次公开内容，明确同意公示审批后的快照</text></label></checkbox-group>
+            <button wx:if="{{selected.canPublish}}" class="ledger-primary" data-type="PUBLISH" bindtap="command" disabled="{{busy || !publicConsent}}">作为第二人核对并公示</button>
+            <figma-feedback wx:else type="info" title="等待独立核对" body="须由另一名当前授权的机构管理员核对后公示；本页不会授予他人权限。"/>
+            <view class="ledger-action-stack"><button wx:if="{{selected.publicKey}}" bindtap="openPublic" disabled="{{busy}}">查看当前公示</button><button wx:if="{{selected.publicKey}}" data-type="REVOKE_PUBLICATION" bindtap="command" disabled="{{busy}}">永久撤销公开地址</button><button data-type="CLOSE" bindtap="command" disabled="{{busy}}">永久关闭账本</button></view>
+          </view>
+        </block>
+      </block>
+
+      <block wx:elif="{{!pending && !loginRequired}}">
+        <view class="figma-section">
+          <view class="figma-section__title">授权账本</view>
+          <figma-feedback wx:if="{{!items.length}}" type="empty" title="当前机构暂无账本" body="确认已有线下记账授权后，可创建账本。"/>
+          <button wx:for="{{items}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="select" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">已审批账面差额 {{item.netLabel}} 元</view></view><view class="figma-status">{{item.statusLabel}}</view><view class="ledger-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button>
+          <button wx:if="{{nextCursor}}" class="ledger-secondary ledger-full" disabled="{{busy}}" bindtap="more">读取更多账本</button>
+        </view>
+
+        <view wx:if="{{organizations.length}}" class="figma-section">
+          <view class="figma-section__title">创建线下账本</view>
+          <view class="figma-field-group"><view class="figma-field-label">球队范围（可选）</view><view class="ledger-search"><input class="figma-field-control" data-field="teamQuery" value="{{teamQuery}}" bindinput="field" maxlength="80" placeholder="按本机构球队名称查询"/><button bindtap="searchTeams" disabled="{{busy}}">查询</button></view><picker range="{{teams}}" range-key="name" value="{{teamIndex}}" data-field="teamIndex" bindchange="picker" disabled="{{busy}}"><view class="figma-field-control ledger-picker">{{teams[teamIndex].name}}</view></picker></view>
+          <view class="figma-field-group"><view class="figma-field-label">账本名称</view><input class="figma-field-control" data-field="title" value="{{title}}" bindinput="field" maxlength="120" placeholder="填写账本名称"/></view>
+          <view class="figma-field-group"><view class="figma-field-label">公开用途说明</view><textarea class="figma-field-control" data-field="description" value="{{description}}" bindinput="field" maxlength="1000" placeholder="勿填写私人银行或证件资料"/></view>
+          <checkbox-group data-field="authorizationConfirmed" bindchange="consent"><label class="figma-check"><checkbox value="yes" checked="{{authorizationConfirmed}}" disabled="{{busy}}"/><text>确认仅记录已经获得授权的线下账目</text></label></checkbox-group>
+          <button class="ledger-primary" disabled="{{busy || !authorizationConfirmed}}" bindtap="create">{{busy ? '创建中…' : '创建线下账本'}}</button>
+        </view>
+      </block>
+    </block>
+  </view>
+
+  <view wx:if="{{figmaLedgerPreview}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">追加待审记录</button><button class="figma-action figma-action--orange">查看当前公示</button></view>
+  <view wx:elif="{{!isPublic && selected && !pending}}" class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="fresh" disabled="{{busy}}">返回账本列表</button>
+    <button class="figma-action figma-action--navy" bindtap="load" disabled="{{busy || loading}}">刷新当前状态</button>
+  </view>
+  <view wx:else class="figma-fixed-actions figma-fixed-actions--single">
+    <button class="figma-action figma-action--navy" bindtap="load" disabled="{{busy || loading}}">{{loading ? '读取中…' : '刷新当前状态'}}</button>
+  </view>
+</view>

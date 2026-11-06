@@ -92,6 +92,10 @@ Page({
     const field = e.currentTarget.dataset.field;
     if (field === 'teamName' || field === 'note') this.setData({ [field]: e.detail.value });
   },
+  scrollRequests() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ scrollTop: 99999, duration: 200 });
+  },
   async submit() {
     if (this.data.busy || this._preparing || !this.data.link || this.data.pending) return;
     const guard = ui.guard(this);

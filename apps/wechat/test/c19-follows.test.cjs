@@ -228,7 +228,7 @@ test('signed out: the public page sends no cookie, asks nothing private and offe
     );
   const phone = preview('pages/event/index', p.page.data);
   assert.match(phone, /登录后关注/);
-  assert.match(phone, /微信提醒未启用/);
+  assert.match(phone, /登录后接收站内更新/);
   await p.page.followEvent();
   assert.deepEqual(d.state.writes, []);
   const nav = d.wx.calls.filter((c) => c.type === 'navigateTo').at(-1);
@@ -248,7 +248,7 @@ test('follow: confirm, re-check, one POST; success and reminder are stated separ
   const p = await d.open('pages/event/index', { event: key });
   assert.equal(p.page.data.follow.state, 'none');
   let phone = preview('pages/event/index', p.page.data);
-  assert.match(phone, /关注此赛事/);
+  assert.match(phone, /关注赛事/);
   const pending = p.page.followEvent();
   await ticks();
   assert.match(d.state.modal.content, /微信提醒未启用/);
@@ -263,7 +263,7 @@ test('follow: confirm, re-check, one POST; success and reminder are stated separ
   assert.equal(p.page.data.follow.followId, fid(1));
   phone = preview('pages/event/index', p.page.data);
   assert.match(phone, /关注成功/);
-  assert.match(phone, /微信提醒未启用/);
+  assert.match(phone, /已关注，查看站内更新/);
   assert.doesNotMatch(phone, /提醒已启用|已订阅|已送达/);
   // Declining sends nothing.
   const cancelling = p.page.cancelFollow();
@@ -443,7 +443,7 @@ test('my follows: signed out asks nothing; lists ACTIVE and INVALID without with
   const phone = preview('pages/follows/index', p.page.data);
   assert.match(phone, /关注中/);
   assert.match(phone, /已失效/);
-  assert.match(phone, /公开赛事已停止公开/);
+  assert.match(phone, /原赛事已停止公开/);
   assert.match(phone, /微信提醒未启用/);
   p.page.openEvent(tap({ id: otherKey }));
   assert.equal(d.wx.calls.filter((c) => c.type === 'navigateTo').length, 0, 'INVALID never opens');

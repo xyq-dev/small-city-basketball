@@ -1,26 +1,15 @@
-.authorization-tab-scroll { width:100%; margin-bottom:16px; }
-.authorization-tabs { display:flex; flex-wrap:nowrap; gap:8px; width:408px; }
-.authorization-tabs button { flex:0 0 auto; width:auto; min-width:64px; white-space:nowrap; padding:10px 12px; margin:0; border:0; border-radius:8px; background:transparent; color:#63758b; font-size:14px; line-height:24px; }
-.authorization-tabs button::after { border:0; }
-.authorization-tabs .active { background:#eaf0f8; color:#123c73; font-weight:500; }
-.authorization-item { margin-bottom:16px; }
-.authorization-card,.dialog-card { display:flex; flex-direction:column; gap:8px; }
-.authorization-card .subtitle,.dialog-card .subtitle { margin:0; }
-.authorization-copy,.dialog-copy { color:#63758b; font-size:14px; line-height:24px; }
-.authorization-card .notice { margin:0; }
-.authorization-actions { display:flex; flex-direction:column; gap:8px; }
-.authorization-actions button { width:100%; margin:0; }
-.nomination-field { margin-top:16px; }
-.nomination-picker { min-height:44px; box-sizing:border-box; padding:9px 12px; background:white; border:1px solid #e1e7ef; border-radius:8px; font-size:14px; line-height:24px; }
-.authorization-reason { width:100%; box-sizing:border-box; min-height:88px; }
-.authorization-section { margin-top:16px; }
-.authorization-footer { margin:16px 0; }
-.authorization-consent { border-radius:0; margin:0 0 16px; font-weight:500; }
-.authorization-state .muted { font-size:14px; line-height:24px; }
-.authorization-state button { margin-top:16px; margin-bottom:0; }
+@import "../../styles/figma-pages.wxss";
 
-.dialog-field { margin-bottom:16px; }
-.dialog-field .field-label { color:#18283f; }
-.hint-title { font-size:14px; line-height:24px; font-weight:500; margin-bottom:4px; }
-
-.authorization-created { margin:-8px 0 8px; }
+.performance-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; height:48px; padding:2px 3px; border-radius:12px; background:#fff; }
+.performance-tab { display:flex; height:44px; align-items:center; justify-content:center; border-radius:10px; color:#51657d; font-size:12px; }
+.performance-tab.is-active { background:#123c73; color:#fff; font-weight:700; }
+.performance-rebuild .performance-tabs>button.performance-tab { width:100%; min-width:0; max-width:none; height:44px; min-height:44px; margin:0; padding:0 4px; border:0; justify-self:stretch; box-sizing:border-box; background:transparent; }
+.performance-rebuild .performance-tabs>button.performance-tab.is-active { background:#123c73; color:#fff; }
+.performance-rebuild .declaration-mark { border-radius:4px; }
+.section-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.authorization-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.authorization-actions button,.history-filter { display:flex; min-height:44px; align-items:center; justify-content:center; padding:0 10px; border-radius:12px; background:#f4f6fa; color:#123c73; font-size:12px; text-align:center; }
+.history-filter { width:100%; }
+.nomination-section { gap:12px; }
+.picker-control { display:flex; align-items:center; }
+@media (max-width:360px) { .authorization-actions { grid-template-columns:1fr; } }

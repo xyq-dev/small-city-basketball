@@ -1,68 +1,14 @@
-.page {
-  padding: 24rpx;
-}
-.card {
-  margin: 20rpx 0;
-  padding: 24rpx;
-  border-radius: 20rpx;
-  background: #fff;
-}
-.title {
-  font-size: 38rpx;
-  font-weight: 700;
-}
-.subtitle {
-  font-weight: 600;
-}
-.small {
-  font-size: 24rpx;
-}
-.muted {
-  color: #6d7684;
-}
-.notice {
-  padding: 16rpx;
-  background: #f1f4f8;
-  overflow-wrap: anywhere;
-}
-.warning {
-  color: #933;
-}
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-}
-.tabs button {
-  min-width: 220rpx;
-  flex: 1;
-}
-textarea {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 16rpx;
-  background: #f5f7fa;
-  font-size: 16px;
-  line-height: 24px;
-  min-height: 96px;
-}
-.picker {
-  box-sizing: border-box;
-  min-height: 44px;
-  font-size: 16px;
-  line-height: 24px;
-  padding: 18rpx;
-  background: #f5f7fa;
-}
-button {
-  margin-top: 14rpx;
-  white-space: normal;
-}
+@import "../../styles/figma-pages.wxss";
 
-.ui002-workspace { padding:16px 16px calc(104px + env(safe-area-inset-bottom)); background:#f4f6fa; color:#18283f; }
-.ui002-workspace .card { border-radius:16px; padding:16px; margin:0 0 16px; }
-.ui002-workspace input,.ui002-workspace textarea,.ui002-workspace button { font-size:16px; line-height:24px; min-height:44px; }
-.ui002-workspace .page-intro .title { color:#18283f; font-size:22px; line-height:32px; margin:0 0 8px; }
-.ui002-workspace .page-intro { margin-bottom:16px; }
-.ui002-workspace .tabs button { min-height:44px; }
-
-.ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+.reviews-tabs { display:flex; width:100%; min-height:48px; padding:2px; border-radius:12px; background:#fff; }
+.reviews-tabs button { display:flex; min-height:44px; flex:1; align-items:center; justify-content:center; border:0; border-radius:10px; background:transparent; color:#51657d; font-size:14px; }
+.reviews-tabs button.is-active { background:#123c73; color:#fff; }
+.review-score { color:#123c73; font-size:34px; font-weight:700; line-height:42px; }
+.review-score text { font-size:16px; }
+.review-body { color:#18283f; font-size:14px; line-height:22px; overflow-wrap:anywhere; }
+.review-picker { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.review-switch { display:flex; min-height:44px; align-items:center; gap:8px; color:#18283f; font-size:13px; }
+.review-item { padding:10px 0; }
+.review-item + .review-item { border-top:1px solid #e6ebf2; }
+.review-item__head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.reviews-rebuild .review-text-action { display:flex; width:auto; min-height:44px; align-items:center; padding:0; border:0; background:transparent; color:#123c73; font-size:13px; }

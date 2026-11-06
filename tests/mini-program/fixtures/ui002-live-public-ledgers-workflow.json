@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "9:1328",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["线下账目与实际支付余额分开", "合成赛事经费公示快照", "分享当前公示快照"],
+  "expectText": ["账面收支与实际支付余额分开核对", "合成赛事经费公示快照", "分享当前公示快照"],
   "data": {
     "organizations": [],
     "orgIndex": 0,

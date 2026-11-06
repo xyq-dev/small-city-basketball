@@ -16,11 +16,13 @@ Page({
     reason: '',
     evidence: '',
     noCharge: false,
+    loginRequired: false,
+    figmaState: '',
     activeSection: 'summary',
     workflowSteps: [
-      { key: 'summary', label: '金额与收款方' },
-      { key: 'payments', label: '原付款核对' },
-      { key: 'resolution', label: '退款与扣减' },
+      { key: 'summary', label: '费用' },
+      { key: 'payments', label: '支付' },
+      { key: 'resolution', label: '退款' },
     ],
   },
   onLoad(q) {
@@ -124,6 +126,18 @@ Page({
   },
   fundingProgress() {
     this.changeSection({ detail: { key: 'resolution' } });
+  },
+  queryLatestPayment() {
+    if (this.data.busy || this.data.loading) return;
+    const attempts = this.data.order?.attempts || [];
+    const attempt = attempts[0];
+    if (!attempt) {
+      this.changeSection({ detail: { key: 'payments' } });
+      return;
+    }
+    return this.query({
+      currentTarget: { dataset: { type: 'payments', id: attempt.id } },
+    });
   },
   input(e) {
     if (!this.data.busy && ['amount', 'reason', 'evidence'].includes(e.currentTarget.dataset.field))

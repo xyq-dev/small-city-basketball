@@ -16,6 +16,40 @@ function scheduleText(item) {
     : item.reportText;
   return day + ' ' + date[4] + '–' + end + ' · 报到' + report;
 }
+function compactDateTime(value) {
+  const date = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})$/.exec(value || '');
+  if (!date) return value || '时间待确认';
+  return (
+    (date[1] === ui.today().slice(0, 4) ? '' : date[1] + '年') +
+    Number(date[2]) +
+    '月' +
+    Number(date[3]) +
+    '日 ' +
+    date[4]
+  );
+}
+function serviceDisplay(item) {
+  if (item.status === 'CONDITIONAL') return '满足条件后补齐';
+  const start = compactDateTime(item.startText);
+  const end = item.endText && item.startText && item.endText.slice(0, 10) === item.startText.slice(0, 10)
+    ? item.endText.slice(11)
+    : compactDateTime(item.endText);
+  return start + '—' + end;
+}
+function progressView(item) {
+  const terminal = ['DECLINED', 'CANCELLED', 'EXPIRED'].includes(item.status);
+  const accepted = ['ACCEPTED', 'ARRIVED', 'COMPLETED', 'DISPUTED'].includes(item.status);
+  const arrived = !!item.arrivedText || !!item.completedText || item.status === 'ARRIVED' || item.status === 'COMPLETED';
+  const completed = !!item.completedText || item.status === 'COMPLETED';
+  return {
+    acceptDone: accepted || arrived || completed,
+    acceptLabel: accepted || arrived || completed ? '已接单' : item.status === 'CONDITIONAL' ? '待激活' : terminal ? item.statusText : item.statusText || '待接单',
+    arriveDone: arrived || completed,
+    arriveLabel: arrived || completed ? '已到场' : terminal ? '未办理' : '待到场',
+    completeDone: completed,
+    completeLabel: completed ? '已完成' : terminal ? '未办理' : '待办理',
+  };
+}
 const SINGLE_STATE_BANNERS = {
   ACCEPTED: ['双方约定已确认', '时间地点以当前约定为准'],
   EXPIRED: ['本场请求已到期', '原20分钟待接单保留已释放'],
@@ -43,6 +77,7 @@ Page({
     selected: null,
     pending: null,
     pendingAcknowledged: false,
+    activeTab: 'arrangement',
     resolutionLabels: model.RESOLUTION_LABELS,
   },
   trade(e) {
@@ -100,6 +135,7 @@ Page({
       selected: null,
       pending: null,
       pendingAcknowledged: false,
+      activeTab: 'arrangement',
       busy: false,
       loading: false,
       message: '',
@@ -144,6 +180,7 @@ Page({
       selected: null,
       pending: null,
       pendingAcknowledged: false,
+      activeTab: 'arrangement',
       loading: true,
       error: '',
       message: '',
@@ -183,16 +220,27 @@ Page({
     this.setData({
       order: (() => {
         const order = model.decorateOrder(this.raw, this.viewer, this.view, ui);
-        const banner =
-          order.appearances.length === 1 ? SINGLE_STATE_BANNERS[order.appearances[0].status] : null;
+        const appearances = order.appearances.map((item) => ({
+          ...item,
+          scheduleText: scheduleText(item),
+          reportDisplay: item.status === 'CONDITIONAL' ? '条件满足后补齐' : compactDateTime(item.reportText),
+          serviceDisplay: serviceDisplay(item),
+          progress: progressView(item),
+        }));
+        const banner = appearances.length === 1 ? SINGLE_STATE_BANNERS[appearances[0].status] : null;
+        const changeAppearance = appearances.find((item) =>
+          (item.actions || []).some((action) => action.type === 'PROPOSE_CHANGE'),
+        );
+        const primaryAppearance = changeAppearance || appearances[0] || null;
+        const playerNames = Array.from(new Set(appearances.map((item) => item.playerName).filter(Boolean)));
         return {
           ...order,
           stateTitle: banner ? banner[0] : '',
           stateHint: banner ? banner[1] : '',
-          appearances: order.appearances.map((item) => ({
-            ...item,
-            scheduleText: scheduleText(item),
-          })),
+          appearances,
+          playerSummary: playerNames.length === 1 ? playerNames[0] : playerNames.length + ' 位球员',
+          primaryAppearanceId: primaryAppearance ? primaryAppearance.id : '',
+          changeAppearanceId: changeAppearance ? changeAppearance.id : '',
         };
       })(),
       pending: model.getJournal().read(this.viewer, this.orderId),
@@ -212,6 +260,26 @@ Page({
     const id = event.currentTarget.dataset.id;
     if (!this.data.order || !this.data.order.appearances.some((item) => item.id === id)) return;
     this.setData({ expandedId: this.data.expandedId === id ? '' : id });
+  },
+  changeTab(event) {
+    if (this.data.busy || this.data.form || !this.data.order) return;
+    const tab = event.currentTarget.dataset.tab;
+    if (!['arrangement', 'fulfillment', 'fees'].includes(tab)) return;
+    this.setData({ activeTab: tab }, () => {
+      if (typeof wx !== 'undefined' && typeof wx.pageScrollTo === 'function')
+        wx.pageScrollTo({ selector: '#detail-' + tab, duration: 160 });
+    });
+  },
+  requestChange() {
+    const id = this.data.order && this.data.order.changeAppearanceId;
+    if (!id || this.data.busy || this.data.pending) return;
+    this.setData({ activeTab: 'fulfillment' });
+    return this.chooseAction({ currentTarget: { dataset: { id, type: 'PROPOSE_CHANGE' } } });
+  },
+  primaryTrade() {
+    const id = this.data.order && this.data.order.primaryAppearanceId;
+    if (!id || this.data.busy) return;
+    return this.trade({ currentTarget: { dataset: { id } } });
   },
   async chooseAction(event) {
     if (
@@ -504,7 +572,7 @@ Page({
       return;
     ui.open(e.currentTarget.dataset.kind === 'review' ? 'governance-reviews' : 'governance', {
       sourceKind: 'PLAYER_BOOKING',
-      sourceId: api.uuid(id),
+      sourceId: model.id(id),
     });
   },
   login() {

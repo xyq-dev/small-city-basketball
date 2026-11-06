@@ -43,7 +43,16 @@ function plain(p) {
 }
 
 Page({
-  data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
+  data: {
+    loading: false,
+    busy: false,
+    error: '',
+    notice: '',
+    rescheduleTab: 'original',
+    hideBoundaryNote: false,
+    figmaState: '',
+    ...privateDefaults,
+  },
   onLoad(query = {}) {
     this._alive = true;
     try {
@@ -188,6 +197,16 @@ Page({
   reasonInput(e) {
     this._edited = true;
     this.setData({ reason: String(e.detail.value || '').slice(0, 500) });
+  },
+  changeRescheduleTab(e) {
+    if (this.data.busy || this.data.uncertain) return;
+    const rescheduleTab = e.currentTarget.dataset.tab;
+    if (!['original', 'new', 'history'].includes(rescheduleTab)) return;
+    this.setData({ rescheduleTab }, () => {
+      if (rescheduleTab === 'history' && this.data.history.length) return;
+      if (typeof wx.pageScrollTo === 'function')
+        wx.pageScrollTo({ selector: '#reschedule-' + rescheduleTab, duration: 180 });
+    });
   },
   async submit() {
     const data = this._data;

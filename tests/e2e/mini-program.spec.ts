@@ -299,7 +299,7 @@ async function measureLayout(frame: Frame) {
       documentWidth: document.documentElement.scrollWidth,
       bodyWidth: document.body.scrollWidth,
       contentHeight: document.documentElement.scrollHeight,
-      customHeaderCount: document.querySelectorAll('.scb-header').length,
+      customHeaderCount: document.querySelectorAll('.scb-header,.figma-header').length,
       nativeHeaderCount: document.querySelectorAll('.mini-native-bar').length,
       localHeading,
       wrappedQuoteAmounts,
@@ -321,9 +321,9 @@ async function attachScreen(page: Page, testInfo: TestInfo, name: string) {
   await testInfo.attach(name, { path: target, contentType: 'image/png' });
 }
 
-// C11 replaces the earlier four-screen C09 targets with the user's explicitly
-// approved six-screen image. Geometry and real asset loading are checked in
-// addition to the unchanged overflow/touch/readability matrix.
+// Keep exact geometry assertions beside the generic overflow/touch/readability
+// matrix. Home now follows the latest UI006 Figma frames; the other groups keep
+// their established page-specific references until they are rebuilt.
 async function checkDesignGeometry(frame: Frame, scenario: string, width: number) {
   const groups: Record<string, string> = {
     'initial-home': 'home',
@@ -364,16 +364,18 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     };
     return {
       fontFamily: getComputedStyle(document.body).fontFamily,
-      header: measure('.scb-header'),
+      header: measure('.figma-header--home,.scb-header'),
       duplicateNativeHeader: document.querySelectorAll('.mini-native-bar').length,
       statusBars: document.querySelectorAll('.mini-custom-status').length,
       hero: measure('.home-hero'),
+      homeSearch: measure('.figma-header__search'),
+      homeQuick: measure('.home-quick'),
       homeAction: measure('.home-primary'),
       homeFilters: measure('.home-filters'),
       homeBall: measure('.home-brand-ball'),
-      homeNav: measure('.mobile-nav'),
-      homeSelectedNav: measure('.nav-item.selected'),
-      homeMark: measure('.home-brand-mark'),
+      homeNav: measure('.figma-nav'),
+      homeSelectedNav: measure('.figma-nav__item.is-active'),
+      homeMark: measure('.figma-header__brand img,.figma-header__brand image'),
       homeVectors: Array.from(
         document.querySelectorAll<HTMLImageElement>('.home-brand-ball,.header-brand img'),
       ).map((image) => ({
@@ -443,7 +445,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     };
   });
   expect(metrics.fontFamily).toContain('Noto Sans CJK SC');
-  // The restored homepage draws its own brand row. Other measured screens keep the shared header.
+  // Other measured screens keep the previous shared header until their own rebuild slice lands.
   if (group !== 'home') expect(metrics.header?.height).toBe(84);
   expect(metrics.duplicateNativeHeader).toBe(0);
   expect(metrics.statusBars).toBe(1);
@@ -471,21 +473,21 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     ).toBe(true);
   }
   if (group === 'home') {
-    // The material-pack homepage has no shared scb-header. The hero is 180px at 320 and 188px wider.
-    expect(metrics.header).toBeNull();
-    expect(metrics.hero?.x).toBe(16);
-    expect(metrics.hero?.width).toBe(width - 32);
-    expect(metrics.hero?.radius).toBe(16);
-    expect(metrics.hero?.height).toBe(width <= 360 ? 180 : 188);
-    expect(metrics.homeMark?.width).toBe(36);
-    expect(metrics.homeMark?.height).toBe(36);
-    expect(metrics.homeAction?.x).toBe(32);
-    expect(metrics.homeAction?.height).toBe(44);
-    expect(metrics.homeAction?.radius).toBe(999);
-    expect(metrics.homeAction?.background).toBe('rgb(242, 140, 40)');
-    expect(metrics.homeAction?.color).toBe('rgb(255, 255, 255)');
-    expect(metrics.homeNav?.height).toBe(80);
-    expect(metrics.homeSelectedNav?.color).toBe('rgb(242, 140, 40)');
+    expect(metrics.header?.height).toBe(width <= 360 ? 196 : 152);
+    expect(metrics.homeSearch?.x).toBe(16);
+    expect(metrics.homeSearch?.width).toBe(width - 32);
+    expect(metrics.homeSearch?.height).toBe(44);
+    expect(metrics.homeSearch?.radius).toBe(22);
+    expect(metrics.homeSearch?.background).toBe('rgb(255, 255, 255)');
+    expect(metrics.hero?.x).toBe(0);
+    expect(metrics.hero?.width).toBe(width);
+    expect(metrics.hero?.radius).toBe(0);
+    expect(metrics.hero?.height).toBe(204);
+    expect(metrics.homeQuick?.height).toBe(152);
+    expect(metrics.homeMark?.width).toBe(28);
+    expect(metrics.homeMark?.height).toBe(28);
+    expect(metrics.homeNav?.height).toBe(50);
+    expect(metrics.homeSelectedNav?.color).toBe('rgb(18, 60, 115)');
   } else {
     if (!['player', 'booking-create', 'bookings', 'players', 'compare'].includes(group)) {
       expect(metrics.action?.x).toBe(12);
@@ -579,7 +581,8 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     }
   }
   return {
-    source: group === 'home' ? 'homepage-pack' : group === 'player' ? 'UI001:T07' : 'approved:C11',
+    source:
+      group === 'home' ? 'latest:UI006:35:38/59:54' : group === 'player' ? 'UI001:T07' : 'approved:C11',
     group,
     ...metrics,
   };

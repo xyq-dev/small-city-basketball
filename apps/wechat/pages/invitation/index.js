@@ -8,6 +8,7 @@ Page({
     consent: false,
     user: null,
     accepted: null,
+    invitationPreview: {},
     busy: false,
     error: '',
     message: '',
@@ -80,6 +81,10 @@ Page({
   },
   consent(e) {
     this.setData({ consent: Array.isArray(e.detail.value) && e.detail.value.includes('yes') });
+  },
+  checkAccount() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#invitation-consent', duration: 200 });
   },
   async accept() {
     if (this.data.busy || !this.data.consent || !this.data.user) return;

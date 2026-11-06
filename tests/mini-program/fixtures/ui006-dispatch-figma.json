@@ -1,0 +1,38 @@
+{
+  "name": "ui006-dispatch-figma",
+  "route": "pages/dispatch/index",
+  "state": "synthetic-figma-offer",
+  "figmaNode": "36:88",
+  "syntheticData": true,
+  "expectText": ["服务邀请", "完整报价", "行程与接单", "合成裁判服务"],
+  "data": {
+    "capabilities": { "enabled": true },
+    "detail": null,
+    "selectedOffer": {
+      "id": "offer-fixture",
+      "listingTitle": "合成裁判服务",
+      "statusText": "报价待确认",
+      "canAccept": true,
+      "request": {
+        "timeText": "周六 18:30—21:00（北京时间）",
+        "serviceAddress": "合成体育中心东侧二号篮球场",
+        "budget": {
+          "detailText": "服务 ¥380.00 · 交通 ¥120.00 · 住宿 ¥0.00",
+          "totalText": "¥500.00"
+        }
+      },
+      "quote": {
+        "serviceText": "¥380.00",
+        "travelText": "¥120.00",
+        "lodgingText": "¥0.00",
+        "platformText": "¥0.00",
+        "totalText": "¥500.00",
+        "detailText": "服务 ¥380.00 + 交通 ¥120.00 + 住宿 ¥0.00",
+        "routeText": "合成邻城站 → 场馆 → 合成返回站",
+        "travelMethod": "合成班次与接驳",
+        "travelEvidence": "合成时刻与路线核验说明",
+        "terms": "合成服务、取消、改期及交通约定"
+      }
+    }
+  }
+}

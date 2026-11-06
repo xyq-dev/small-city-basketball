@@ -161,9 +161,10 @@ test('V06 records render before controls; explicit calibration disclosure retain
   const h = jobs();
   const job = h.page.data.jobs.find((j) => j.kind === 'RECORDING' && j.status === 'READY');
   const initial = body('media-jobs', h.page.data);
-  assert.match(initial, /录制产物与任务/);
+  assert.match(initial, /录像工作单/);
   assert.doesNotMatch(initial, /data-mini-bindinput="input"/);
   assert.ok(initial.indexOf('media-overview') < initial.indexOf('media-boundary'));
+  h.page.changeMediaTab({ currentTarget: { dataset: { tab: 'recording' } } });
   h.page.toggleJob(tap(job.id));
   h.page.toggleCalibration();
   assert.match(body('media-jobs', h.page.data), /data-mini-bindinput="input"/);

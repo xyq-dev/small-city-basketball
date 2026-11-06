@@ -19,6 +19,14 @@ Page({
     date: '',
     pending: null,
     pendingAcknowledged: false,
+    activeView: 'terms',
+    figmaTradeManagePreview: false,
+    figmaSummaryTitle: '',
+    workspaceTabs: [
+      { key: 'terms', label: '收费条款' },
+      { key: 'orders', label: '原始订单' },
+      { key: 'reconcile', label: '渠道日账' },
+    ],
   },
   onLoad(q) {
     this._alive = true;
@@ -51,6 +59,7 @@ Page({
       reason: '',
       message: '',
       pendingAcknowledged: false,
+      activeView: 'terms',
     });
     ui.close(this);
   },
@@ -78,6 +87,14 @@ Page({
       terms: [],
       pending: null,
       error: '身份已变化，请重新读取',
+    });
+  },
+  changeView(e) {
+    const key = e.detail.key;
+    if (this.data.busy || !['terms', 'orders', 'reconcile'].includes(key)) return;
+    this.setData({ activeView: key }, () => {
+      if (typeof wx.pageScrollTo === 'function')
+        wx.pageScrollTo({ selector: '#trade-' + key, duration: 180 });
     });
   },
   pendingState() {

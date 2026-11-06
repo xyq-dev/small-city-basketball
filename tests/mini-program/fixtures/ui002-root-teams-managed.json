@@ -1,10 +1,10 @@
 {
-  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "designSource": "UI006 36:55 teams implementation with synthetic API-shaped data, not real team authorization acceptance",
   "static": true,
   "name": "ui002-root-teams-managed",
   "route": "pages/teams/index",
   "state": "populated",
-  "figmaNode": "4:286",
+  "figmaNode": "36:55",
   "data": {
     "teams": [
       {
@@ -44,5 +44,5 @@
     "selectedOrg": "c1000000-0000-4000-8000-000000000002",
     "loading": false
   },
-  "expectText": ["合成超长名称球队", "进入球队", "选择可报名赛事"]
+  "expectText": ["合成超长名称球队", "球队主页与成员", "本届赛事报名"]
 }

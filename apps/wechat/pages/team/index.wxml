@@ -1,58 +1,27 @@
-<scb-header title="球队管理" disabled="{{busy || pending || uncertain || nameDirty || membersDirty}}"/>
-<view class="page team-page">
-  <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">请核对球队资料后继续</view><view class="small">{{error}}</view></view>
-  <view wx:if="{{message}}" class="notice">{{message}}</view>
-  <view wx:if="{{loginRequired}}" class="card team-panel state-panel"><view class="subtitle">登录后继续管理球队</view><view class="muted">当前未读取私有成员资料。</view><button class="primary" bindtap="login">登录并继续</button></view>
-  <view wx:if="{{loading}}" class="card team-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取球队资料</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
-  <block wx:if="{{team}}">
-    <view class="card team-profile"><view class="team-profile-avatar"><image src="/pages/team/assets/ui002-shield.png" mode="aspectFit" class="team-shield" aria-hidden="true"/></view><view class="team-profile-copy"><view class="team-profile-name">{{team.name}}</view><view class="muted">长期成员 {{team.members.length}} 人 · 当前版本 {{team.version}}</view><view class="small muted">长期档案与本届名单分别管理</view></view></view>
-    <view wx:if="{{team.capabilities.canInvite}}" class="notice small"><view>管理者邀请签发暂未在小程序开放，请由有权机构人员在网页后台办理。</view><button class="secondary" disabled="{{true}}">邀请球队管理者 · 小程序未开放</button></view>
-    <view class="team-sections"><view class="team-section selected">长期成员</view><button class="quiet team-section" bindtap="events" disabled="{{busy || !canRegister}}">本届报名</button></view>
-    <view class="card team-panel">
-      <view class="subtitle">{{team.name}} · 长期成员</view>
-      <view class="member-table">
-        <view class="member-table-head"><text>成员</text><text>号码</text><text>状态</text></view>
-        <view wx:for="{{team.members}}" wx:key="id" class="member-table-row"><text>{{item.name}}</text><text class="muted">本届设置</text><text>已保存</text></view>
-        <view wx:if="{{!team.members.length}}" class="member-empty muted">暂无长期成员，请先添加。</view>
+<scb-header title="球队与长期成员" disabled="{{busy || uncertain || nameDirty || membersDirty}}"/>
+<view class="figma-page team-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <figma-feedback wx:if="{{error}}" type="error" title="请核对球队资料" body="{{error}}" action-label="重新读取" bind:action="refresh"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="球队状态已更新" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="empty" title="登录后继续管理球队" body="当前未读取私有成员资料。" action-label="登录并继续" bind:action="login"/>
+    <view wx:if="{{loading}}" class="figma-section"><figma-skeleton rows="{{5}}"/></view>
+    <block wx:if="{{team}}">
+      <view class="figma-summary figma-summary--navy"><view class="figma-summary__icon"><figma-icon name="jersey" size="{{28}}"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">球队管理</view><view class="figma-title">{{team.name}}</view><view class="figma-subtitle">{{team.organizationName || '当前授权机构'}} · {{canRegister ? '领队身份' : '球队成员资料'}}</view></view></view>
+      <view class="team-tabs"><button class="team-tab is-active">长期成员</button><button class="team-tab" bindtap="events" disabled="{{busy || !canRegister}}">本届报名</button></view>
+      <view class="figma-section"><view class="profile-head"><view><view class="figma-section__title">球队名册</view><view class="figma-section__hint">长期档案与每届报名快照分别保存</view></view><view class="figma-status">{{team.members.length}} 人</view></view><figma-feedback wx:if="{{!team.members.length}}" type="empty" title="暂无长期成员" body="有权管理者可在下方添加。"/><view wx:for="{{team.members}}" wx:key="id" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.jerseyNo ? item.jerseyNo + '  ' : ''}}{{item.name}}</view><view class="figma-row__subtitle">{{item.memberLabel || '长期成员 · 球衣号码在本届报名中设置'}}</view></view><view class="figma-status figma-status--green">{{item.statusLabel || '有效'}}</view></view></view>
+      <view wx:if="{{team.capabilities.canManage}}" class="figma-section"><view class="figma-section__title">成员管理</view><button class="team-choice" bindtap="startAddMember" disabled="{{busy || uncertain}}"><view class="figma-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">添加长期成员</view><view class="figma-row__subtitle">维护队内显示名与号码</view></view></button><button class="team-choice" bindtap="issueJoinCode" disabled="{{busy}}"><view class="figma-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">签发加入码</view><view class="figma-row__subtitle">由球员本人输入</view></view></button><button class="team-choice" bindtap="scrollClaims" disabled="{{busy}}"><view class="figma-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">历史成员认领</view><view class="figma-row__subtitle">定向邀请本人核对</view></view></button></view>
+      <view class="figma-section"><view class="figma-section__title">本届报名</view><view class="team-notice"><view class="team-notice__mark"/><view class="figma-row__copy"><view class="figma-row__title">本届名单</view><view class="figma-row__subtitle">按届保存报名版本</view></view></view><view class="team-notice"><view class="team-notice__mark"/><view class="figma-row__copy"><view class="figma-row__title">长期成员变动</view><view class="figma-row__subtitle">不重写已存报名快照</view></view></view></view>
+      <figma-feedback wx:if="{{!canRegister}}" type="pending" title="本届报名需球队领队授权" body="机构管理身份不会自动代替领队。"/>
+      <view wx:if="{{team.capabilities.canInvite}}" class="figma-section"><view class="figma-row"><figma-icon name="message" size="{{22}}"/><view class="figma-row__copy"><view class="figma-row__title">管理者邀请</view><view class="figma-row__subtitle">小程序暂未开放，请由有权机构人员在网页后台办理。</view></view><view class="figma-status">未开放</view></view></view>
+
+      <view wx:if="{{team.capabilities.canManage}}" class="figma-section"><view class="profile-head"><view><view class="figma-section__title">球队资料管理</view><view class="figma-section__hint">收起编辑不会自动保存草稿</view></view><button class="row-action" bindtap="toggleEdit" disabled="{{busy || uncertain}}">{{editMode ? '收起' : '编辑'}}</button></view><block wx:if="{{editMode}}"><view class="figma-field-group"><view class="figma-field-label">球队名称</view><input class="figma-field-control" maxlength="80" value="{{name}}" bindinput="inputName" disabled="{{busy || uncertain}}"/></view><button class="section-primary" data-mode="name" bindtap="save" disabled="{{busy || uncertain || !nameDirty}}" loading="{{busy}}">保存球队名称</button><view class="figma-section__title">编辑长期成员 · {{members.length}} / 60</view><view wx:for="{{members}}" wx:key="key" class="member-edit"><input class="figma-field-control" value="{{item.name}}" maxlength="80" placeholder="成员姓名" bindinput="memberName" data-index="{{index}}" disabled="{{busy || uncertain}}"/><button class="row-action row-action--danger" data-index="{{index}}" bindtap="removeMember" disabled="{{busy || uncertain}}">移出</button></view><button class="section-ghost" bindtap="addMember" disabled="{{busy || uncertain || members.length>=60}}">添加成员</button><button class="section-primary" data-mode="members" bindtap="save" disabled="{{busy || uncertain || !membersDirty}}" loading="{{busy}}">保存长期成员</button></block></view>
+
+      <view wx:if="{{team.capabilities.canManage}}" class="figma-section"><view class="figma-section__title">球员账号与认领</view><view class="figma-section__hint">绑定只代表球队成员身份，不授予球队管理权限。</view><figma-feedback wx:if="{{playersError}}" type="error" title="球员账号资料读取失败" body="{{playersError}}"/><button class="section-primary" bindtap="issueJoinCode" disabled="{{busy}}">签发加入码</button><figma-feedback wx:if="{{issuedCode}}" type="success" title="本次加入码（只显示一次）" body="{{issuedCode}}"/><view wx:for="{{codes}}" wx:key="id" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.stateText}} · {{item.useCount}}/{{item.maxUses}}</view><view class="figma-row__subtitle">{{item.expires}}</view></view><button wx:if="{{item.status!=='REVOKED'}}" class="row-action" data-id="{{item.id}}" bindtap="revokeJoinCode" disabled="{{busy}}">撤销</button></view>
+        <block wx:if="{{roster}}"><view class="figma-section__title">已绑定账号</view><figma-feedback wx:if="{{!roster.bindings.length}}" type="empty" title="暂无球员账号"/><view wx:for="{{roster.bindings}}" wx:key="bindingId" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.memberName}}</view><view class="figma-row__subtitle">{{item.accountDisplayName}} · {{item.stateText}}</view></view><button wx:if="{{item.status==='ACTIVE'}}" class="row-action row-action--danger" data-id="{{item.bindingId}}" bindtap="removeBinding" disabled="{{busy || !removeReason}}">移除</button></view><view class="figma-field-group"><view class="figma-field-label">移除原因（4–500字）</view><input class="figma-field-control" maxlength="500" value="{{removeReason}}" data-field="removeReason" bindinput="playerField" disabled="{{busy}}"/></view><view class="figma-section__title">历史成员认领</view><view class="claim-grid"><button wx:for="{{roster.claimableMembers}}" wx:key="memberId" class="claim-item {{claimMember===item.memberId ? 'is-active' : ''}}" data-id="{{item.memberId}}" bindtap="pickClaimMember" disabled="{{busy}}">{{item.name}}</button></view><view class="figma-field-group"><view class="figma-field-label">对方账号编号</view><input class="figma-field-control" maxlength="36" value="{{claimTarget}}" data-field="claimTarget" bindinput="playerField" disabled="{{busy}}"/></view><button class="section-primary" bindtap="createClaim" disabled="{{busy || !claimMember || !claimTarget}}">发起认领</button><view wx:for="{{roster.claims}}" wx:key="claimId" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.memberName}} → {{item.targetDisplayName}}</view><view class="figma-row__subtitle">{{item.stateText}}</view></view><button wx:if="{{item.status==='PENDING'}}" class="row-action" data-id="{{item.claimId}}" bindtap="revokeClaim" disabled="{{busy}}">撤销</button></view></block>
       </view>
-      <view class="small muted member-note">球衣号码在本届报名中设置。长期成员变更不会改写历史冻结名单。</view>
-    </view>
-    <button wx:if="{{canRegister}}" class="primary team-action" bindtap="events" disabled="{{busy}}">管理本届报名</button>
-    <view wx:else class="notice"><view class="feedback-title">本届报名需球队领队授权</view><view class="small">机构管理身份不会自动代替领队。</view></view>
-    <button wx:if="{{team.capabilities.canManage}}" class="secondary team-action" bindtap="toggleEdit" disabled="{{busy || uncertain}}">{{editMode ? '收起长期资料编辑' : '编辑长期成员与球队名称'}}</button>
-    <block wx:if="{{editMode && team.capabilities.canManage}}">
-      <view class="notice"><view class="feedback-title">长期档案与本届快照分开</view><view class="small">当前版本{{team.version}}；收起编辑不会丢弃未保存草稿。</view></view>
-      <view class="field-label">球队名称</view><input class="field" maxlength="80" value="{{name}}" bindinput="inputName" disabled="{{busy || uncertain || !team.capabilities.canManage}}"/>
-      <button class="primary team-action" data-mode="name" bindtap="save" disabled="{{busy || uncertain || !nameDirty}}" loading="{{busy}}">保存球队名称</button>
-      <view class="card team-panel"><view class="subtitle">编辑长期成员 · {{members.length}} / 60</view>
-        <view wx:for="{{members}}" wx:key="key" class="member-row"><input class="field member-input" value="{{item.name}}" maxlength="80" placeholder="成员姓名" bindinput="memberName" data-index="{{index}}" disabled="{{busy || uncertain || !team.capabilities.canManage}}"/><button class="quiet member-remove" data-index="{{index}}" bindtap="removeMember" disabled="{{busy || uncertain}}">移出</button></view>
-        <button class="secondary" bindtap="addMember" disabled="{{busy || uncertain || members.length >= 60}}">添加成员</button>
-        <button class="primary" data-mode="members" bindtap="save" disabled="{{busy || uncertain || !membersDirty}}" loading="{{busy}}">保存长期成员</button>
-      </view>
+      <button wx:if="{{nameDirty || membersDirty}}" class="section-ghost" bindtap="refresh" disabled="{{busy || uncertain}}">取消未保存修改</button>
     </block>
-    <view wx:if="{{team.capabilities.canManage}}" class="card team-panel">
-      <view class="subtitle">球员账号 · 加入码与认领</view>
-      <view class="small muted">球员账号绑定只代表球队成员身份，不授予管理权限。你只能看到成员名、对方显示名与绑定状态。</view>
-      <view wx:if="{{playersError}}" class="notice warning">{{playersError}}</view>
-      <button class="primary team-action" bindtap="issueJoinCode" disabled="{{busy}}">签发加入码</button>
-      <view wx:if="{{issuedCode}}" class="notice"><view class="feedback-title">本次加入码（只显示一次）</view><view class="join-code">{{issuedCode}}</view></view>
-      <view wx:for="{{codes}}" wx:key="id" class="member-table-row player-row"><text>{{item.stateText}} · {{item.useCount}}/{{item.maxUses}}</text><text class="muted">{{item.expires}}</text><button wx:if="{{item.status !== 'REVOKED'}}" class="quiet member-remove" data-id="{{item.id}}" bindtap="revokeJoinCode" disabled="{{busy}}">撤销</button></view>
-      <block wx:if="{{roster}}">
-        <view class="field-label">已绑定账号</view>
-        <view wx:if="{{!roster.bindings.length}}" class="muted">暂无球员账号。</view>
-        <view wx:for="{{roster.bindings}}" wx:key="bindingId" class="member-table-row player-row"><text>{{item.memberName}}</text><text class="muted">{{item.accountDisplayName}} · {{item.stateText}}</text><button wx:if="{{item.status === 'ACTIVE'}}" class="quiet member-remove" data-id="{{item.bindingId}}" bindtap="removeBinding" disabled="{{busy || !removeReason}}">移除</button></view>
-        <view class="field-label">移除原因（4–500字）</view><input class="field" maxlength="500" value="{{removeReason}}" data-field="removeReason" bindinput="playerField" disabled="{{busy}}"/>
-        <view class="field-label">历史成员认领</view>
-        <view class="small muted">选择长期名单中尚未绑定的成员，填写对方本人提供的账号编号；对方接受后才绑定。</view>
-        <view wx:for="{{roster.claimableMembers}}" wx:key="memberId" class="member-row"><button class="{{claimMember === item.memberId ? 'primary' : 'quiet'}}" data-id="{{item.memberId}}" bindtap="pickClaimMember" disabled="{{busy}}">{{item.name}}</button></view>
-        <input class="field" maxlength="36" value="{{claimTarget}}" data-field="claimTarget" bindinput="playerField" disabled="{{busy}}" placeholder="对方账号编号"/>
-        <button class="secondary team-action" bindtap="createClaim" disabled="{{busy || !claimMember || !claimTarget}}">发起认领</button>
-        <view wx:for="{{roster.claims}}" wx:key="claimId" class="member-table-row player-row"><text>{{item.memberName}} → {{item.targetDisplayName}}</text><text class="muted">{{item.stateText}}</text><button wx:if="{{item.status === 'PENDING'}}" class="quiet member-remove" data-id="{{item.claimId}}" bindtap="revokeClaim" disabled="{{busy}}">撤销</button></view>
-      </block>
-    </view>
-  </block>
-  <button wx:if="{{nameDirty || membersDirty}}" class="quiet" bindtap="refresh" disabled="{{busy || uncertain}}">取消未保存修改</button>
-  <view wx:if="{{!team && !loading && !error && !loginRequired}}" class="card team-panel state-panel"><view class="subtitle">暂无可查看的球队资料</view><view class="muted">请从我的球队重新进入，或联系有权人员核对授权。</view></view>
-  <button class="quiet" bindtap="refresh" disabled="{{busy || loading}}">重新读取球队资料</button>
+    <figma-feedback wx:if="{{!team && !loading && !error && !loginRequired}}" type="empty" title="暂无可查看的球队资料" body="请从我的球队重新进入，或核对当前账号授权。"/>
+  </view>
+  <view wx:if="{{team}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="startAddMember" disabled="{{busy || loading || uncertain || !team.capabilities.canManage}}">添加成员</button><button class="figma-action figma-action--orange" bindtap="events" disabled="{{busy || !canRegister}}">管理本届报名</button></view>
 </view>
-<scb-nav active="Account" disabled="{{busy || loading || uncertain || nameDirty || membersDirty}}"/>

@@ -1,66 +1,100 @@
-<view class="page watch-page" style="padding-top:0">
- <v3-chrome city="{{citySelection.label}}" placeholder="搜赛事、球队、球员" bind:city="chooseCity" bind:search="openSearch" bind:bell="openMessages"/>
- <view class="v3-hero">
-  <image class="v3-hero-photo" src="/assets/home/event-court.jpg" mode="aspectFill"/>
-  <view class="v3-hero-shade"></view>
-  <view class="v3-hero-copy">
-   <view class="v3-eyebrow">SMALL CITY · BIG GAME</view>
-   <view class="v3-headline">全国篮球赛事</view>
-   <view class="v3-headline">在这里相遇</view>
-   <view class="v3-tagline">只展示主办方公开列入目录的赛事。</view>
-   <button class="v3-hero-btn" bindtap="scrollDirectory">查看赛事</button>
-  </view>
- </view>
- <view class="mode-choice"><button wx:for="{{dirGroups}}" wx:key="value" class="{{dir.group === item.value ? 'selected' : ''}}" data-group="{{item.value}}" bindtap="pickDirGroup" disabled="{{dir.loading}}">{{item.label}}</button></view>
- <view id="watch-directory" class="card watch-public-card">
-  <view class="subtitle">{{citySelection.label}}公开赛事</view>
-  <view wx:if="{{dir.loading}}" class="watch-panel"><view class="muted">正在读取公开赛事…</view><view class="loading-lines"><view></view><view></view></view></view>
-  <view wx:elif="{{dir.error}}" class="notice warning watch-error"><view class="watch-strong">公开赛事暂时无法读取</view><view class="small">{{dir.error}}</view><button class="secondary" bindtap="chooseCity">重新选择城市</button><button class="secondary" bindtap="loadDirectory">重新读取</button></view>
-  <view wx:elif="{{dir.loaded && !dir.items.length}}" class="watch-panel"><view class="muted">{{citySelection.label}}暂无主办方公开的{{dir.group === 'LIVE' ? '进行中' : dir.group === 'UPCOMING' ? '即将开始' : '历史'}}赛事。</view><view wx:if="{{citySelection.mode !== 'NATIONWIDE'}}" class="small muted">可切换阶段、重新选择地区或浏览全国。</view><button wx:if="{{citySelection.mode !== 'NATIONWIDE'}}" class="secondary" bindtap="clearDirCity">浏览全国赛事</button></view>
-  <view wx:for="{{dir.items}}" wx:key="publicEventId" class="v3-event-card"><button class="watch-event public-event-cell" data-id="{{item.publicEventId}}" bindtap="openDirectory"><view class="v3-event-photo-wrap"><image class="v3-event-photo" src="/assets/home/event-court.jpg" mode="aspectFill"/><view class="v3-event-caption">示意图</view></view><view class="watch-event-main"><view class="v3-event-status">{{item.statusLabel}}</view><view class="watch-event-name">{{item.name}}</view><view class="muted">{{item.displayCity}} · {{item.dateLabel}}</view><view class="muted">{{item.venueName}}</view></view></button><view class="v3-event-actions"><button class="secondary" data-id="{{item.publicEventId}}" bindtap="openDirectory">查看赛事</button><button class="secondary" bindtap="recruitment">公开招募</button></view></view>
-  <view wx:if="{{dir.moreError}}" class="notice warning small">{{dir.moreError}}<button class="secondary" bindtap="loadDirectory">从第一页重新读取</button><button class="quiet" bindtap="chooseCity">重新选择城市</button></view>
-  <button wx:if="{{dir.loaded && !dir.done && !dir.loading}}" class="quiet" bindtap="loadMoreDirectory" disabled="{{dir.loadingMore}}" loading="{{dir.loadingMore}}">{{dir.moreError ? '重试加载更多' : '加载更多'}}</button>
- </view>
- <view class="watch-main-actions"><button class="secondary" bindtap="recruitment">查看公开报名招募</button><button class="secondary" bindtap="toggleLink">{{linkOpen ? '收起观赛链接输入' : '用观赛链接打开'}}</button></view>
- <view class="watch-discovery-settings"><button class="quiet" bindtap="toggleDirectoryFilters">{{directoryFiltersOpen ? '收起地区与目录设置' : '地区与目录设置'}} · {{citySelection.label}}</button><view wx:if="{{citySelection.warning}}" class="notice warning small">{{citySelection.warning}}</view><view wx:if="{{dir.cityError}}" class="notice warning small">{{dir.cityError}}</view><view wx:if="{{directoryFiltersOpen}}"><view class="watch-city-summary"><view><view class="watch-strong">{{citySelection.label}} · {{citySelection.source}}</view><view class="muted small">{{citySelection.description}}</view></view><button class="secondary small-button" bindtap="chooseCity">选择城市</button></view><view class="muted">未登录也能浏览全国赛事。本页不读取当前位置；附近定位请进入同城。</view><view wx:if="{{citySelection.mode === 'REGION'}}" class="muted small">包含按历史城市标签匹配的赛事；以赛事地点说明为准。</view><view class="watch-city-row"><input class="field" value="{{dir.cityInput}}" bindinput="dirCityInput" bindconfirm="applyDirCity" placeholder="历史城市文字精确筛选" maxlength="40"/><button class="secondary small-button" bindtap="applyDirCity" disabled="{{dir.loading}}">筛选</button><button class="quiet small-button" bindtap="clearDirCity">全国</button></view><view class="notice watch-note"><view class="watch-strong">关于公开赛事目录</view><view class="small">只列出主办方明确列入目录的赛事，不列私有赛事，不猜测观赛编号。撤出目录不等于撤销已分享链接；关闭公开观赛后链接失效。</view></view></view></view>
-  <view class="watch-section-head"><view class="subtitle">我的赛事</view><text wx:if="{{signedIn && total}}" class="muted">共 {{total}} 届</text></view>
-  <view wx:if="{{loading && !sections.length}}" class="watch-panel"><view class="muted">正在读取你可访问的赛事…</view><view class="loading-lines"><view></view><view></view></view></view>
-  <view wx:elif="{{!signedIn}}" class="watch-panel">
-    <view class="watch-strong">登录后查看你参与的赛事</view>
-    <view class="muted">主办方、赛事负责人与工作人员可查看所属机构的赛程、排名和球员数据。未登录也可用下方公开观赛链接查看比分。</view>
-    <button class="primary" bindtap="login">登录 / 绑定微信</button>
-  </view>
-  <block wx:else>
-    <view wx:if="{{eventsError}}" class="notice warning watch-error"><view class="watch-strong">赛事暂时无法读取</view><view class="small">{{eventsError}}</view></view>
-    <view wx:elif="{{!organizations.length}}" class="watch-panel">
-      <view class="watch-strong">当前账号没有机构赛事身份</view>
-      <view class="muted">机构赛事只对主办方和获分配的工作人员开放，不会自动公开。球队负责人可从“我的球队”查看可报名赛事和本届报名。</view>
-      <button class="primary" bindtap="teams">进入我的球队{{teamCount ? '（' + teamCount + '支）' : ''}}</button>
-    </view>
-    <view wx:elif="{{!sections.length && !failures.length}}" class="watch-panel">
-      <view class="watch-strong">暂无你可访问的赛事</view>
-      <view class="muted">机构管理员可查看本机构全部赛事；其他工作人员仅显示被分配的赛事。</view>
-    </view>
-    <block wx:for="{{sections}}" wx:key="key" wx:for-item="section">
-      <view class="watch-group-label">{{section.label}} · {{section.events.length}}</view>
-      <button wx:for="{{section.events}}" wx:key="key" class="watch-event" data-org="{{item.orgId}}" data-id="{{item.id}}" bindtap="openEvent">
-        <view class="watch-event-main"><view class="watch-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · {{item.venueName}}</view><view class="muted">{{item.orgName}} · {{item.roleLabel}} · {{item.formatLabel}}</view></view>
-        <view class="watch-event-status {{item.group}}">{{item.statusLabel}}</view>
-      </button>
+<scb-header mode="{{figmaState==='watch-empty' ? '' : 'account'}}" title="{{figmaState==='watch-empty' ? '暂无公开赛事' : '赛事'}}" back="{{figmaState==='watch-empty'}}" disabled="{{loading}}"/>
+<view class="figma-page watch-page">
+  <view class="figma-page__content {{figmaState==='watch-empty' ? 'figma-page__content--actions' : 'figma-page__content--nav'}}">
+    <block wx:if="{{figmaState==='watch-empty'}}">
+      <view class="watch-state-intro"><view class="figma-section__title">暂无公开赛事</view><view class="watch-state-intro__body">目前所选条件下没有已发布赛事，可切换地区或清除筛选。</view></view>
+      <view class="figma-section"><view class="figma-section__title">当前条件</view><view class="watch-state-row"><view class="watch-state-dot"/><view class="figma-row__copy"><view class="figma-row__title">浏览地区</view><view class="figma-row__subtitle">广东 · 高州</view></view><view class="figma-status figma-status--orange">已选</view></view><view class="watch-state-row"><view class="watch-state-dot"/><view class="figma-row__copy"><view class="figma-row__title">赛事阶段</view><view class="figma-row__subtitle">进行中</view></view><view class="figma-status figma-status--orange">已选</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">调整范围</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">清除阶段筛选</view><view class="figma-row__subtitle">查看所选地区全部公开赛事。</view></view><view class="figma-status figma-status--orange">可操作</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">查看全国</view><view class="figma-row__subtitle">保留手动选择城市的入口。</view></view><view class="figma-status figma-status--orange">可操作</view></view></view>
     </block>
-    <view wx:for="{{failures}}" wx:key="orgId" class="notice warning small">{{item.orgName}}：{{item.message}}</view>
-    <button wx:for="{{creatable}}" wx:key="id" class="secondary" data-org="{{item.id}}" bindtap="createEvent">在 {{item.name}} 创建赛事</button>
-    <view wx:if="{{truncated.length}}" class="muted">部分机构的赛事超过500届，这里只列出每个机构的前500届：{{truncated}}。</view>
-  </block>
 
-  <view class="watch-section-head"><view class="subtitle">最近观看</view><text wx:if="{{recentEvents.length}}" class="muted" bindtap="clearRecent">清除</text></view>
-  <view wx:if="{{!recentEvents.length}}" class="watch-panel"><view class="muted">打开主办方分享的赛事卡片后，会在本机记住，方便再次查看。主办方撤销公开后自动移除。</view></view>
-  <button wx:for="{{recentEvents}}" wx:key="publicEventId" class="watch-event" data-id="{{item.publicEventId}}" bindtap="openRecent">
-    <view class="watch-event-main"><view class="watch-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · 公开观赛</view></view>
-    <scb-icon name="chevron-right" tone="gray" size="16"/>
-  </button>
+    <block wx:else>
+    <view class="watch-hero">
+      <view class="watch-hero__copy">
+        <view class="figma-eyebrow">公开赛事</view>
+        <view class="watch-hero__title">城市篮球邀请赛</view>
+        <view class="watch-hero__subtitle">{{citySelection.label}} · 全国公开目录</view>
+      </view>
+      <image class="watch-hero__image" src="/assets/home/hero.jpg" mode="aspectFill"/>
+    </view>
 
- <view wx:if="{{linkOpen || value || error}}" id="watch-link-entry">  <view class="watch-panel"><view class="subtitle">其他方式：粘贴观赛链接</view><view class="field-label">主办方观赛链接或公开编号</view><input class="field" value="{{value}}" bindinput="input" placeholder="粘贴已获授权的观赛链接" maxlength="300"/><view wx:if="{{error}}" class="notice warning watch-error"><view class="watch-strong">请核对观赛入口</view><view class="small">{{error}}</view></view><view class="muted">仅展示明确公开、授权仍有效的赛事。主办方撤销授权后停止展示。</view><button class="secondary" bindtap="open">打开观赛入口</button></view>
+    <view class="watch-tabs" role="tablist">
+      <button wx:for="{{dirGroups}}" wx:key="value" class="watch-tab {{dir.group===item.value ? 'is-active' : ''}}" data-group="{{item.value}}" bindtap="pickDirGroup" disabled="{{dir.loading}}" role="tab" aria-selected="{{dir.group===item.value}}">{{item.label}}</button>
+    </view>
+
+    <view id="watch-directory" class="figma-section">
+      <view class="figma-section__title">{{dir.group==='LIVE' ? '正在进行' : dir.group==='UPCOMING' ? '即将开始' : '历史赛事'}}</view>
+      <figma-skeleton wx:if="{{dir.loading}}" rows="{{3}}"/>
+      <figma-feedback wx:elif="{{dir.error}}" type="error" title="公开赛事读取失败" body="{{dir.error}}" action-label="重新读取" bind:action="loadDirectory"/>
+      <view wx:elif="{{dir.loaded && !dir.items.length}}" class="watch-empty">
+        <figma-feedback type="empty" title="暂无公开赛事" body="当前条件下没有主办方公开的赛事，可调整地区或赛事阶段。" action-label="调整地区" bind:action="chooseCity"/>
+        <button wx:if="{{citySelection.mode!=='NATIONWIDE'}}" class="inline-action" bindtap="clearDirCity">浏览全国赛事</button>
+      </view>
+      <button wx:for="{{dir.items}}" wx:key="publicEventId" class="figma-row watch-event-row" data-id="{{item.publicEventId}}" bindtap="openDirectory">
+        <view class="figma-row__copy">
+          <view class="figma-row__title">{{item.name}}</view>
+          <view class="figma-row__subtitle">{{item.displayCity}} · {{item.dateLabel}}</view>
+        </view>
+        <view class="figma-status figma-status--orange">{{item.statusLabel}}</view>
+      </button>
+      <figma-feedback wx:if="{{dir.moreError}}" type="error" title="后续赛事读取失败" body="{{dir.moreError}}" action-label="重试" bind:action="loadMoreDirectory"/>
+      <button wx:if="{{dir.loaded && !dir.done}}" class="inline-action" bindtap="loadMoreDirectory" disabled="{{dir.loadingMore}}" loading="{{dir.loadingMore}}">加载更多赛事</button>
+    </view>
+
+    <view class="figma-section">
+      <view class="figma-section__title">赛事入口</view>
+      <view class="figma-grid">
+        <button class="figma-grid__item" bindtap="recruitment"><figma-icon name="event" size="{{20}}"/><view class="figma-row__title">公开招募</view><view class="figma-row__subtitle">参赛规程与邀请</view></button>
+        <button class="figma-grid__item" bindtap="scrollPrivate"><figma-icon name="event" size="{{20}}"/><view class="figma-row__title">我的赛事</view><view class="figma-row__subtitle">我有权访问的赛事</view></button>
+        <button class="figma-grid__item" bindtap="scrollRecent"><figma-icon name="workbench" size="{{20}}"/><view class="figma-row__title">最近观看</view><view class="figma-row__subtitle">返回上次赛事</view></button>
+      </view>
+    </view>
+
+    <view id="watch-link-entry" class="figma-section">
+      <view class="figma-section__title">使用观赛入口</view>
+      <view class="figma-field-group"><view class="figma-field-label">观赛链接或公开编号</view><input class="figma-field-control" value="{{value}}" bindinput="input" placeholder="粘贴主办方分享的入口"/></view>
+      <view class="figma-field-group"><view class="figma-field-label">浏览范围</view><button class="watch-field-action" bindtap="chooseCity"><text>{{citySelection.label}} · 可切换全国</text><text>选择</text></button></view>
+      <figma-feedback wx:if="{{error}}" type="error" title="链接无法打开" body="{{error}}"/>
+    </view>
+
+    <view wx:if="{{directoryFiltersOpen}}" class="figma-section">
+      <view class="figma-section__title">地区与目录设置</view>
+      <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{citySelection.label}}</view><view class="figma-row__subtitle">{{citySelection.source}} · 不自动读取当前位置</view></view><button class="heading-action" bindtap="chooseCity">选择</button></view>
+      <view class="figma-field-group"><view class="figma-field-label">历史城市精确筛选</view><input class="figma-field-control" value="{{dir.cityInput}}" bindinput="dirCityInput" bindconfirm="applyDirCity" maxlength="40" placeholder="填写城市名称"/></view>
+      <figma-feedback wx:if="{{dir.cityError}}" type="error" title="地区格式不正确" body="{{dir.cityError}}"/>
+      <figma-feedback wx:if="{{citySelection.warning}}" type="pending" title="地区资料待核对" body="{{citySelection.warning}}"/>
+      <view class="two-actions"><button class="inline-action" bindtap="clearDirCity">全国</button><button class="section-action" bindtap="applyDirCity" disabled="{{dir.loading}}">应用范围</button></view>
+    </view>
+
+    <view class="figma-section">
+      <view class="figma-section__title">相关服务</view>
+      <button class="figma-row" bindtap="scrollPrivate"><figma-icon name="event" size="{{19}}"/><view class="figma-row__copy"><view class="figma-row__title watch-related-title">我的赛事 · 有权赛事</view></view></button>
+    </view>
+
+    <view id="watch-private" class="figma-section">
+      <view class="section-heading"><view><view class="figma-section__title">我的赛事</view><view class="figma-section__hint">登录账号当前有权访问的赛事</view></view><view wx:if="{{signedIn && total}}" class="figma-status">{{total}} 届</view></view>
+      <figma-skeleton wx:if="{{loading && !sections.length}}" rows="{{2}}"/>
+      <figma-feedback wx:elif="{{!signedIn}}" type="empty" title="登录后查看你参与的赛事" body="未登录仍可浏览上方公开目录。" action-label="登录并继续" bind:action="login"/>
+      <figma-feedback wx:elif="{{eventsError}}" type="error" title="我的赛事读取失败" body="{{eventsError}}" action-label="重新读取" bind:action="load"/>
+      <figma-feedback wx:elif="{{!organizations.length}}" type="empty" title="当前账号没有机构赛事身份" body="球队领队授权与机构赛事身份分开，可从我的球队查看本届报名。" action-label="{{teamCount ? '进入我的球队（' + teamCount + '支）' : '进入我的球队'}}" bind:action="teams"/>
+      <block wx:else>
+        <block wx:for="{{sections}}" wx:key="key" wx:for-item="section">
+          <view class="group-label">{{section.label}} · {{section.events.length}}</view>
+          <button wx:for="{{section.events}}" wx:key="key" class="figma-row" data-org="{{item.orgId}}" data-id="{{item.id}}" bindtap="openEvent"><view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.dateLabel}} · {{item.venueName}}</view><view class="figma-row__subtitle">{{item.orgName}} · {{item.roleLabel}}</view></view><view class="figma-status">{{item.statusLabel}}</view></button>
+        </block>
+        <figma-feedback wx:for="{{failures}}" wx:key="orgId" type="error" title="{{item.orgName}}读取失败" body="{{item.message}}"/>
+        <button wx:for="{{creatable}}" wx:key="id" class="inline-action" data-org="{{item.id}}" bindtap="createEvent">在 {{item.name}} 创建赛事</button>
+      </block>
+    </view>
+
+    <view id="watch-recent" class="figma-section">
+      <view class="section-heading"><view class="figma-section__title">最近观看</view><button wx:if="{{recentEvents.length}}" class="heading-action" bindtap="clearRecent">清除</button></view>
+      <figma-feedback wx:if="{{!recentEvents.length}}" type="empty" title="暂无最近观看" body="打开有效公开赛事后会保存在本机，撤销公开后自动移除。"/>
+      <button wx:for="{{recentEvents}}" wx:key="publicEventId" class="figma-row" data-id="{{item.publicEventId}}" bindtap="openRecent"><view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.dateLabel}}</view></view><figma-icon name="event" size="{{20}}"/></button>
+    </view>
+
+    <view class="watch-actions"><button class="figma-action figma-action--ghost" bindtap="recruitment">查看公开招募</button><button class="figma-action figma-action--orange" bindtap="open" disabled="{{!value}}">查看赛事</button></view>
+    </block>
+  </view>
+  <view wx:if="{{figmaState==='watch-empty'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">查看全国赛事</button><button class="figma-action figma-action--orange">切换浏览城市</button></view>
 </view>
-</view>
-<scb-nav active="Events"/>
+<scb-nav wx:if="{{!figmaState}}" active="Events"/>

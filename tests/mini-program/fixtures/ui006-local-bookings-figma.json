@@ -1,0 +1,27 @@
+{
+  "name": "ui006-local-bookings-figma",
+  "route": "pages/local-bookings/index",
+  "state": "synthetic-figma-overview",
+  "figmaNode": "36:85",
+  "syntheticData": true,
+  "expectText": ["预约列表", "本次服务", "履约与资金", "合成文化体育中心篮球场"],
+  "data": {
+    "orderFilter": "ALL",
+    "serviceTab": "overview",
+    "filteredCount": 1,
+    "selected": null,
+    "loading": false,
+    "items": [
+      {
+        "id": "booking-fixture",
+        "title": "合成文化体育中心篮球场",
+        "timeText": "周六 19:00—21:00（北京时间）",
+        "address": "合成高州市体育中心东侧",
+        "status": "CONFIRMED",
+        "statusText": "已确认",
+        "roleText": "需求方",
+        "canActAs": "BUYER"
+      }
+    ]
+  }
+}

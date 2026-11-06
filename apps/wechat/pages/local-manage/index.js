@@ -27,6 +27,7 @@ Page({
     courts: [],
     kinds: Array.isArray(ls.KINDS) ? ls.KINDS.slice(1) : [],
     listings: [],
+    overviewSlots: [],
     selected: null,
     selection: { label: '全国' },
     ...fresh(),
@@ -98,6 +99,7 @@ Page({
       providers: [],
       courts: [],
       listings: [],
+      overviewSlots: [],
       selected: null,
       ...fresh(),
       reason: '',
@@ -122,6 +124,7 @@ Page({
       loading: true,
       error: '',
       listings: [],
+      overviewSlots: [],
       selected: null,
       providers: [],
       courts: [],
@@ -156,8 +159,19 @@ Page({
         canCreate ? repo.options(selected.id) : Promise.resolve({ providers: [], courts: [] }),
       ]);
       if (!ui.live(this, token)) return;
+      let overviewSlots = [];
+      if (listings.length) {
+        try {
+          const overview = await repo.detail(listings[0].id);
+          if (!ui.live(this, token)) return;
+          overviewSlots = (overview.slots || []).slice(0, 2);
+        } catch (error) {
+          overviewSlots = [];
+        }
+      }
       this.setData({
         listings,
+        overviewSlots,
         providers: options.providers,
         courts: options.courts,
         loading: false,

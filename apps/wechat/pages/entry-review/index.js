@@ -61,7 +61,14 @@ const privateDefaults = {
 };
 
 Page({
-  data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
+  data: {
+    loading: false,
+    busy: false,
+    error: '',
+    notice: '',
+    reviewTab: 'pending',
+    ...privateDefaults,
+  },
   onLoad(query) {
     this._alive = true;
     try {
@@ -94,6 +101,11 @@ Page({
         entryId: this.data.detail.id,
         mode: 'review',
       });
+  },
+  changeReviewTab(e) {
+    if (this.data.busy) return;
+    const reviewTab = e.currentTarget.dataset.tab;
+    if (['pending', 'changes', 'processed'].includes(reviewTab)) this.setData({ reviewTab });
   },
   base() {
     return '/v1/orgs/' + this.orgId;

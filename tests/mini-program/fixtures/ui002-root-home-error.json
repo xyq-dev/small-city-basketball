@@ -1,10 +1,10 @@
 {
-  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "designSource": "UI006 latest Figma 35:38 and error-state component 54:46; actual native template with synthetic API-shaped data",
   "static": true,
   "name": "ui002-root-home-error",
   "route": "pages/home/index",
   "state": "error",
-  "figmaNode": "4:16",
+  "figmaNode": "35:38",
   "data": {
     "publicError": "合成网络中断，请重新核对",
     "publicLoading": false,

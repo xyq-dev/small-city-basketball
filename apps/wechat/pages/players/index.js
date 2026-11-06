@@ -165,6 +165,10 @@ Page({
         const row = market.profileView(p, this._feeBps, stats[p.id], !!statisticsError);
         return {
           ...row,
+          availabilityText:
+            p.availability && p.availability.length
+              ? String(p.availability.length) + ' 个可约时段'
+              : '暂未公开档期',
           priceLabel: row.price.replace(/\.00$/, ''),
           totalLabel: row.total.replace(/\.00$/, ''),
         };

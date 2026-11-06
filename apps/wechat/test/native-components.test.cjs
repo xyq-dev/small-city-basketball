@@ -221,7 +221,10 @@ if (manifest.usingComponents?.['scb-nav']) {
     const navigation = result.components.find((component) => component.tag === 'scb-nav');
     assert.equal(navigation?.properties.active, 'Account');
     for (const label of ['首页', '赛事', '同城', '球队', '我的'])
-      assert.ok(result.phone.includes('>' + label + '</div>'), label);
-    assert.match(result.phone, /class="nav-item selected" data-key="Account"/);
+      assert.ok(
+        result.phone.includes('class="figma-nav__label">' + label + '</div>'),
+        label,
+      );
+    assert.match(result.phone, /class="figma-nav__item is-active" data-key="Account"/);
   });
 }

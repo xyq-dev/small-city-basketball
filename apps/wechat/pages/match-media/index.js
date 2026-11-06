@@ -101,7 +101,23 @@ const privateDefaults = {
 };
 
 Page({
-  data: { loading: false, busy: false, error: '', notice: '', ...privateDefaults },
+  data: {
+    loading: false,
+    busy: false,
+    error: '',
+    notice: '',
+    mediaTab: 'uploaded',
+    hideUploadSection: false,
+    hideFileCaption: false,
+    hideFileActions: false,
+    hideEmptyFilesState: false,
+    figmaShowDraft: false,
+    hideDraftFilePicker: false,
+    hideEmptyDraftState: false,
+    hidePublishedSection: false,
+    segmentHint: '',
+    ...privateDefaults,
+  },
   onLoad(query = {}) {
     this._alive = true;
     this._visible = true;
@@ -149,6 +165,16 @@ Page({
   },
   base() {
     return '/v1/orgs/' + this.orgId + '/matches/' + this.matchId;
+  },
+  changeMediaTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (!['uploaded', 'drafts', 'published'].includes(tab)) return;
+    this.setData({ mediaTab: tab });
+    if (typeof wx !== 'undefined' && typeof wx.pageScrollTo === 'function') {
+      const selector =
+        tab === 'uploaded' ? '#media-files' : tab === 'drafts' ? '#media-draft' : '#media-published';
+      wx.pageScrollTo({ selector, duration: 180 });
+    }
   },
   async load() {
     if (!this.orgId || this.data.loading || this.data.busy) return;

@@ -30,7 +30,8 @@ function assertOrderIdentity(data) {
   const html = buildPreview({ root, route: 'pages/booking-detail/index', data }).phone;
   assert.equal(html.split(teamName).length - 1, 1, 'team context appears once');
   assert.equal(html.split(eventName).length - 1, 1, 'event context appears once');
-  assert.ok(html.includes(teamName + ' · ' + eventName));
+  assert.ok(html.includes(teamName), 'team remains in the Figma summary');
+  assert.ok(html.includes('关联赛事：' + eventName), 'event remains in the secondary context');
   assert.ok(
     html.includes('第一场'),
     'the legal appearance label need not repeat team/event context',
@@ -76,7 +77,7 @@ test('current team and event remain identifiable in summary, status banner, comm
   const html = assertOrderIdentity(unknown.page.data);
   assert.deepEqual(clone(unknown.page.data.pending.payload), original);
   assert.ok(html.includes(original.commandId));
-  assert.ok(html.includes('用原编号核对原操作结果'));
+  assert.ok(html.includes('用原编号核对结果'));
 });
 
 test('all command form templates keep one order identity when the appearance has only a local label', () => {
@@ -216,7 +217,7 @@ test('all fulfillment visual fixtures use supported fields and meaningful, trace
       for (const asset of output.assets) {
         assert.match(
           asset.path,
-          /^(?:assets\/approved-ui\/(?:icon-[a-z-]+-(?:navy|orange|white|green)\.(?:svg|png)|player-placeholder\.png)|assets\/ui002\/[^/]+\.svg|pages\/bookings\/assets\/[^/]+\.svg)$/,
+          /^(?:assets\/approved-ui\/(?:icon-[a-z-]+-(?:navy|orange|white|green)\.(?:svg|png)|player-placeholder\.png)|assets\/figma\/[^/]+\.(?:svg|png)|assets\/ui002\/[^/]+\.svg|pages\/bookings\/assets\/[^/]+\.svg)$/,
           'only UI icons and neutral placeholders; no sample identities or entire UI screenshot',
         );
       }
@@ -230,9 +231,9 @@ test('new disclosure does not hide pending command recovery, and all unchecked e
   const pending = read('detail-recovery');
   const output = buildPreview({ root, route: pending.route, data: pending.data }).phone;
   assert.ok(output.includes(pending.data.pending.payload.commandId));
-  assert.ok(output.includes('用原编号核对原操作结果'));
+  assert.ok(output.includes('用原编号核对结果'));
   assert.ok(
-    output.includes('本场约定与费用'),
+    output.includes('本场约定与操作'),
     'a pending command forces details visible without a new UI action',
   );
   for (const name of [
@@ -252,7 +253,8 @@ test('new disclosure does not hide pending command recovery, and all unchecked e
     const html = buildPreview({ root, route: f.route, data: f.data }).phone;
     const submit = html.match(/<button\b[^>]*data-mini-bindtap="submit"[^>]*>/)?.[0];
     assert.ok(submit && /\sdisabled(?:\s|>)/.test(submit), name);
-    assert.ok(html.includes('资格与服务约定'), name);
+    assert.ok(html.includes('资金以独立交易记录及渠道核验为准'), name);
+    assert.ok(html.includes(f.data.selected.totalText), name);
     assert.equal(f.data.formConfirmed, false);
   }
 });
@@ -270,7 +272,8 @@ test('focused editors retain changed arrangements, original conditions, and serv
       selected.change.reason,
     ])
       assert.ok(html.includes(text), name + ': ' + text);
-    assert.ok(html.includes('同意前原约定保持'));
+    for (const text of [selected.startText, selected.endText, selected.venue])
+      assert.ok(html.includes(text), name + ': original ' + text);
     f.data.selected.scheduleChanged = true;
     assert.ok(
       buildPreview({ root, route: f.route, data: f.data }).phone.includes('不能按过期约定继续处理'),

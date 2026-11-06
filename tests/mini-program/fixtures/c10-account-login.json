@@ -2,9 +2,9 @@
   "name": "c10-account-login",
   "route": "pages/account/index",
   "state": "permission",
-  "figmaNode": "30:2288",
-  "referenceKind": "derived",
-  "expectText": ["登录你的已有账号", "账号或邮箱", "登录已有账号"],
+  "figmaNode": "36:116",
+  "referenceKind": "latest-ui006",
+  "expectText": ["邮箱登录", "账号或邮箱", "登录已有账号"],
   "primary": false,
   "data": {
     "loading": false,

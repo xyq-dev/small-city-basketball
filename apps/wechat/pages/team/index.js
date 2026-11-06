@@ -168,6 +168,21 @@ Page({
       membersDirty: true,
     });
   },
+  startAddMember() {
+    if (this.data.busy || this.data.uncertain || !this.data.team?.capabilities.canManage) return;
+    if (!this.data.editMode) this.setData({ editMode: true });
+    this.addMember();
+    const scroll = () => {
+      if (typeof wx.pageScrollTo === 'function')
+        wx.pageScrollTo({ selector: '.member-edit', duration: 200 });
+    };
+    if (typeof wx.nextTick === 'function') wx.nextTick(scroll);
+    else scroll();
+  },
+  scrollClaims() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '.claim-grid', duration: 200 });
+  },
   removeMember(e) {
     if (this.data.busy || !this.data.team?.capabilities.canManage) return;
     const index = Number(e.currentTarget.dataset.index);

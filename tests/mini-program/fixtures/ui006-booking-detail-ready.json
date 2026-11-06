@@ -1,0 +1,79 @@
+{
+  "name": "ui006-booking-detail-ready",
+  "route": "pages/booking-detail/index",
+  "state": "ready",
+  "figmaNode": "36:81",
+  "syntheticData": true,
+  "expectText": ["城北篮球队 × 陈一鸣 · 单场合作", "本场安排", "11月21日 18:30", "19:00—21:00", "提出改期", "查看本场资金订单"],
+  "data": {
+    "orderId": "90000000-0000-4000-8000-000000000300",
+    "order": {
+      "id": "90000000-0000-4000-8000-000000000300",
+      "teamName": "城北篮球队",
+      "eventName": "城市篮球邀请赛",
+      "playerSummary": "陈一鸣",
+      "scopeText": "单场合作",
+      "stateTitle": "双方约定已确认",
+      "stateHint": "时间地点以当前约定为准",
+      "playerCount": 1,
+      "confirmedCount": 1,
+      "conditionalCount": 0,
+      "confirmedText": "¥260",
+      "conditionalText": "¥0",
+      "paidText": "¥0",
+      "refundedText": "¥0",
+      "settledText": "¥0",
+      "eligibilityNotice": "预约不自动进入赛事名单；资格、规则及保险由主办方核验。",
+      "primaryAppearanceId": "90000000-0000-4000-8000-000000000401",
+      "changeAppearanceId": "90000000-0000-4000-8000-000000000401",
+      "appearances": [
+        {
+          "id": "90000000-0000-4000-8000-000000000401",
+          "playerName": "陈一鸣",
+          "positionText": "后卫",
+          "label": "城市篮球邀请赛第1场",
+          "status": "ACCEPTED",
+          "statusText": "已接单",
+          "reportDisplay": "11月21日 18:30",
+          "serviceDisplay": "19:00—21:00",
+          "venue": "城北体育馆一号场",
+          "serviceText": "¥200",
+          "platformFeeText": "¥20",
+          "travelText": "¥40",
+          "accommodationText": "¥0",
+          "totalText": "¥260",
+          "arrivedText": "",
+          "completedText": "",
+          "conditionText": "",
+          "scheduleChanged": false,
+          "change": null,
+          "progress": {
+            "acceptDone": true,
+            "acceptLabel": "已接单",
+            "arriveDone": false,
+            "arriveLabel": "待到场",
+            "completeDone": false,
+            "completeLabel": "待办理"
+          },
+          "actions": [
+            { "type": "PROPOSE_CHANGE", "label": "提议更改安排", "danger": false },
+            { "type": "CANCEL", "label": "取消这一项", "danger": true },
+            { "type": "DISPUTE", "label": "发起本场争议", "danger": true }
+          ]
+        }
+      ]
+    },
+    "activeTab": "arrangement",
+    "expandedId": "",
+    "loading": false,
+    "busy": false,
+    "loginRequired": false,
+    "error": "",
+    "message": "",
+    "form": null,
+    "formFields": null,
+    "selected": null,
+    "pending": null,
+    "pendingAcknowledged": false
+  }
+}

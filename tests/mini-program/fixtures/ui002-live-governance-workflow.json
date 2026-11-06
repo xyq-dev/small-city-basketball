@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "9:1155",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["本人事项与分派任务分别处理", "返回工单列表", "提交处理结论"],
+  "expectText": ["本人事项与分派任务", "返回列表", "提交处理结论"],
   "data": {
     "items": [],
     "nextCursor": null,

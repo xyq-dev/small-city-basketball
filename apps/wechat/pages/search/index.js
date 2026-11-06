@@ -12,6 +12,9 @@ Page({
       { key: 'PLAYER', label: '球员' },
     ],
     items: [],
+    eventItems: [],
+    teamItems: [],
+    playerItems: [],
     cursor: null,
     busy: false,
     searched: false,
@@ -42,6 +45,9 @@ Page({
       [field]: e.detail.value,
       busy: false,
       items: [],
+      eventItems: [],
+      teamItems: [],
+      playerItems: [],
       cursor: null,
       searched: false,
     });
@@ -50,7 +56,15 @@ Page({
     const kind = e.currentTarget.dataset.kind;
     if (!this.data.kinds.some((k) => k.key === kind)) return;
     this._gen = (this._gen || 0) + 1;
-    this.setData({ kind, busy: false, items: [], cursor: null });
+    this.setData({
+      kind,
+      busy: false,
+      items: [],
+      eventItems: [],
+      teamItems: [],
+      playerItems: [],
+      cursor: null,
+    });
     if (this.data.query.trim()) this.search();
   },
   async search() {
@@ -68,7 +82,13 @@ Page({
       city: this.data.city.trim(),
       cursor: more ? this.data.cursor : null,
     };
-    this.setData({ busy: true, error: '', ...(more ? {} : { items: [], cursor: null }) });
+    this.setData({
+      busy: true,
+      error: '',
+      ...(more
+        ? {}
+        : { items: [], eventItems: [], teamItems: [], playerItems: [], cursor: null }),
+    });
     try {
       const query = ['q=' + encodeURIComponent(captured.q), 'kind=' + captured.kind, 'limit=20'];
       if (captured.city) query.push('city=' + encodeURIComponent(captured.city));
@@ -92,6 +112,9 @@ Page({
       });
       this.setData({
         items: merged,
+        eventItems: merged.filter((item) => item.kind === 'EVENT'),
+        teamItems: merged.filter((item) => item.kind === 'TEAM'),
+        playerItems: merged.filter((item) => item.kind === 'PLAYER'),
         cursor: result.nextCursor,
         searched: true,
         notice: result.notice || '',

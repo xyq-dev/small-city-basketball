@@ -29,6 +29,12 @@ Page({
     message: '',
     subscriptions: [],
     loginRequired: false,
+    activeView: 'settings',
+    figmaNotificationPreview: false,
+    notificationTabs: [
+      { key: 'settings', label: '提醒设置' },
+      { key: 'history', label: '最近记录' },
+    ],
   },
   onShow() {
     this._closed = false;
@@ -86,6 +92,10 @@ Page({
     if (this.data.busy || this.data.pending) return;
     const kind = e.currentTarget.dataset.kind;
     if (labels[kind]) this.setData({ selected: kind, intent: null, message: '' });
+  },
+  changeView(e) {
+    const key = e.detail?.key;
+    if (!this.data.busy && ['settings', 'history'].includes(key)) this.setData({ activeView: key });
   },
   async prepare() {
     if (this.data.busy || this.data.pending || !this.data.enabled || !this._viewer) return;

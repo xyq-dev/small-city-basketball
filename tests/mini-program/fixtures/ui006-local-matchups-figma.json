@@ -1,0 +1,25 @@
+{
+  "name": "ui006-local-matchups-figma",
+  "route": "pages/local-matchups/index",
+  "state": "synthetic-figma-overview",
+  "figmaNode": "36:86",
+  "syntheticData": true,
+  "expectText": ["场地预约", "双方球队", "约赛进度", "合成石鼓青锋"],
+  "data": {
+    "matchupView": "list",
+    "selected": null,
+    "loading": false,
+    "teams": [{ "id": "team-fixture", "name": "合成石鼓青锋" }],
+    "items": [
+      {
+        "id": "matchup-fixture",
+        "address": "合成文化体育中心篮球场",
+        "timeText": "周六 19:00—21:00（北京时间）",
+        "homeTeamName": "合成石鼓青锋",
+        "awayTeamName": "合成高凉飞鹰",
+        "awayConfirmed": false,
+        "statusText": "待客队确认"
+      }
+    ]
+  }
+}

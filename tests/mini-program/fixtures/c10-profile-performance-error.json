@@ -3,7 +3,7 @@
   "route": "pages/performance/index",
   "state": "error",
   "figmaNode": "30:1938",
-  "expectText": ["合成数据授权读取失败", "重新读取数据授权"],
+  "expectText": ["合成数据授权读取失败", "重新读取"],
   "syntheticData": true,
   "data": {
     "authorized": false,

@@ -141,12 +141,12 @@ test('A01 exposes identity, four personal priorities and three resource work ent
       '更多服务与设置',
     ])
       assert.ok(html.includes(text), text);
-    assert.ok(html.indexOf('account-profile') < html.indexOf('account-primary'));
+    assert.ok(html.indexOf('account-summary') < html.indexOf('account-grid'));
     assert.doesNotMatch(
       html,
-      /我的球赛主场|class="hero account-hero"|data-page="team-request"|角色工作台|记分与赛果复核|直播与媒体/,
+      /data-page="team-request"|角色工作台|记分与赛果复核|直播与媒体/,
     );
-    assert.ok(output.assets.some((asset) => asset.path.endsWith('/avatar-user.svg')));
+    assert.ok(output.assets.some((asset) => asset.path === 'assets/figma/account.svg'));
     assert.equal(
       output.assets.some((asset) => /player-sample|portrait|placeholder\.png/.test(asset.path)),
       false,
@@ -154,9 +154,16 @@ test('A01 exposes identity, four personal priorities and three resource work ent
   }
   h.page.toggleMore();
   const more = render('account', h.page.data).body;
-  for (const text of ['本人报名与资料', '我的订单与预约', '关注赛事与消息', '公开档案与数据授权'])
+  for (const text of [
+    '本人服务',
+    '公开档案与数据授权',
+    '我的比赛数据授权',
+    '私有赛季授权',
+    '我的广告合同',
+  ])
     assert.ok(more.includes(text), text);
   assert.match(more, /data-page="team-request"/);
+  assert.match(more, /data-page="governance"/);
   assert.doesNotMatch(more, /记分与赛果复核|直播与媒体（先选赛事比赛）/);
   assert.equal(
     h.calls.some((call) => call.method !== 'GET'),
@@ -173,15 +180,13 @@ test('A01 order and more panels retain old destinations and current organization
   await h.flush();
   h.page.setData({ password: 'synthetic-password-draft', consent: true });
   assert.match(render('account', h.page.data).body, /角色工作台/);
-  assert.doesNotMatch(render('account', h.page.data).body, /直播与媒体（先选赛事比赛）/);
+  assert.match(render('account', h.page.data).body, /直播与媒体/);
   h.page.toggleWorkspace();
+  assert.equal(h.page.data.workspaceOpen, true);
   const desk = render('account', h.page.data).body;
-  assert.match(desk, /当前角色工作台/);
+  assert.match(desk, /赛事工作台/);
   assert.match(desk, /记分与赛果复核/);
-  assert.match(desk, /直播与媒体（先选赛事比赛）/);
-  const work = desk.slice(desk.indexOf('account-workspace'), desk.indexOf('account-service-list'));
-  assert.equal((work.match(/<button\b/g) || []).length, 4);
-  assert.equal((work.match(/<button\b[^>]*disabled/g) || []).length, 0);
+  assert.match(desk, /直播与媒体/);
   h.page.toggleOrders();
   assert.match(render('account', h.page.data).body, /data-page="local-bookings"/);
   h.page.go(tap({ page: 'bookings' }));
@@ -229,28 +234,31 @@ test('L01 prioritizes real court results and routes optional personnel filtering
   for (const width of [320, 390, 430]) {
     const output = render('local', h.page.data, width),
       html = output.body;
-    assert.ok(html.indexOf('local-top-tabs') < html.indexOf('local-brand'));
-    assert.ok(html.indexOf('local-brand') < html.indexOf('local-service-tabs'));
-    assert.ok(html.indexOf('local-service-tabs') < html.indexOf('listing-entry'));
+    assert.ok(html.indexOf('local-summary') < html.indexOf('local-tabs'));
+    assert.ok(html.indexOf('local-tabs') < html.indexOf('按需发现'));
+    assert.ok(html.indexOf('按需发现') < html.indexOf('球场与档期'));
+    assert.ok(html.indexOf('球场与档期') < html.indexOf('合成已审核供给'));
     assert.match(html, /合成已审核供给/);
-    assert.match(html, /查看场馆与可约时间/);
+    assert.match(html, /查看档期/);
     assert.doesNotMatch(
       html,
-      /data-mini-bindtap="locate"|data-mini-bindtap="searchPlaces"|data-mini-bindtap="expansion"/,
+      /data-mini-bindtap="locate"|data-mini-bindtap="searchPlaces"/,
     );
-    assert.ok(output.assets.some((asset) => asset.path.endsWith('/court-illustration.svg')));
-    assert.ok(output.assets.some((asset) => asset.path.endsWith('/node-4-43-0.svg')));
+    assert.match(html, /data-mini-bindtap="expansion"/);
+    assert.match(html, /data-mini-bindtap="manage"/);
+    assert.ok(output.assets.some((asset) => asset.path === 'assets/home/event-court.jpg'));
+    assert.ok(output.assets.some((asset) => asset.path === 'assets/figma/court.svg'));
   }
   const reads = h.calls.length;
   h.page.toggleFilters();
   assert.equal(h.calls.length, reads);
   const expanded = render('local', h.page.data).body;
-  for (const handler of ['locate', 'searchPlaces', 'search', 'expansion', 'manage'])
+  for (const handler of ['locate', 'searchPlaces', 'search'])
     assert.ok(expanded.includes('data-mini-bindtap="' + handler + '"'), handler);
   h.page.kind(tap({ value: 'REFEREE' }));
   await h.flush();
   assert.equal(h.calls.at(-1).body.kind, 'REFEREE');
-  assert.match(render('local', h.page.data).body, /查看人员与可约时间/);
+  assert.match(render('local', h.page.data).body, /查看档期/);
   h.page.kind(tap({ value: '' }));
   await h.flush();
   assert.equal(Object.hasOwn(h.calls.at(-1).body, 'kind'), false);
@@ -292,7 +300,8 @@ test('L01 navigation and optional tools keep unresolved operations and all origi
     nextCursor: 'synthetic-next',
     pending,
   }).body;
-  for (const handler of ['recover', 'retry', 'searchThisArea', 'cityList'])
+  assert.match(html, /查询原操作回执/);
+  for (const handler of ['retry', 'searchThisArea', 'cityList'])
     assert.ok(html.includes('data-mini-bindtap="' + handler + '"'), handler);
   assert.match(html, /data-mini-bindtap="searchThisArea"[^>]*disabled/);
   assert.match(html, /data-mini-bindtap="more"[^>]*disabled/);
@@ -314,7 +323,7 @@ test('A01 and L01 templates retain real handler implementations and account secu
     wechatState: 'closed',
   }).body;
   assert.match(login, /微信登录暂未开放/);
-  assert.match(login, /account-guest-links/);
+  assert.match(login, /account-guest-section/);
   assert.match(login, /邮箱登录/);
   assert.match(login, /找回账号/);
   assert.doesNotMatch(login, /data-mini-bindtap="login"/);
@@ -327,7 +336,8 @@ test('A01 and L01 templates retain real handler implementations and account secu
     wechatState: 'closed',
   }).body;
   assert.match(email, /data-mini-bindtap="login"/);
-  assert.match(email, /忘记密码／验证邮箱/);
+  assert.match(email, /找回账号/);
+  assert.match(email, /data-page="account-recovery"/);
   assert.match(email, /登录并返回刚才的操作/);
   assert.match(email, /成功后返回本次选择和原请求核对入口/);
   assert.match(
@@ -342,6 +352,6 @@ test('A01 and L01 templates retain real handler implementations and account secu
     consent: false,
   }).body;
   assert.match(security, /data-mini-bindtap="unbind"[^>]*disabled/);
-  assert.match(security, /data-page="governance"/);
+  assert.match(security, /data-page="account-closure"/);
   assert.match(security, /data-mini-bindtap="closeSecurity"/);
 });

@@ -1,117 +1,135 @@
-<scb-header title="比赛详情" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page">
-  <view wx:if="{{loading && !match}}" class="card state-panel">
-    <text class="state-label">机构比赛</text>
-    <view class="subtitle">正在读取比赛资料</view>
-    <view class="muted">核对当前身份可查看的比分、记录与确认状态。</view>
-    <view class="loading-lines"><view></view><view></view></view>
+<scb-header title="比赛管理" disabled="{{busy || !!pending}}"/>
+
+<view class="figma-page org-match-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view wx:if="{{loading && !match}}" class="figma-section"><figma-skeleton rows="5"/><view class="figma-caption">正在核对当前身份可查看的比分、记录与确认状态</view></view>
+    <figma-feedback
+      wx:elif="{{!match}}"
+      type="{{unavailable ? 'pending' : 'error'}}"
+      title="{{unavailable ? '无法查看该比赛' : '比赛资料读取失败'}}"
+      body="{{error || '请从赛事赛程重新进入。'}}"
+      action-label="{{unavailable ? '' : '重新读取'}}"
+      bind:action="refresh"
+    />
+
+    <block wx:else>
+      <figma-feedback wx:if="{{error && !pending}}" type="error" title="本页操作未完成" body="{{error}}"/>
+      <figma-feedback wx:if="{{notice}}" type="success" title="操作已完成" body="{{notice}}"/>
+      <figma-feedback wx:if="{{pending}}" type="pending" title="{{pending.label}} · 结果待核对" body="保留原操作编号。先核对服务端结果；只有确认未执行时才按原编号重发。"/>
+      <view wx:if="{{pending}}" class="org-match-pending-actions">
+        <button class="figma-action figma-action--navy" bindtap="checkPending" disabled="{{busy}}">核对结果</button>
+        <button class="figma-action figma-action--ghost" bindtap="resendPending" disabled="{{busy}}">按原编号重发</button>
+      </view>
+
+      <view class="figma-summary">
+        <view class="figma-summary__icon"><figma-icon name="scoreboard" size="25"/></view>
+        <view class="figma-summary__copy">
+          <view class="figma-eyebrow">赛事工作台{{match.eventName ? ' · ' + match.eventName : ''}}</view>
+          <view class="figma-title">比赛管理</view>
+          <view class="figma-subtitle">{{match.summarySubtitle || (match.round + ' · ' + match.time + ' · ' + match.court)}}</view>
+        </view>
+      </view>
+
+      <view class="org-match-tabs" role="tablist">
+        <button class="org-match-tab {{matchTab === 'score' ? 'is-active' : ''}}" data-tab="score" bindtap="changeMatchTab">比分</button>
+        <button class="org-match-tab {{matchTab === 'staff' ? 'is-active' : ''}}" data-tab="staff" bindtap="changeMatchTab">工作人员</button>
+        <button class="org-match-tab {{matchTab === 'confirmations' ? 'is-active' : ''}}" data-tab="confirmations" bindtap="changeMatchTab">确认记录</button>
+      </view>
+
+      <figma-feedback wx:if="{{match.adjudication}}" type="pending" title="{{match.statusLabel}}" body="本场不生成比赛比分或个人统计；请查看独立裁定记录。"/>
+
+      <view id="match-score" class="figma-section org-match-score-section">
+        <view class="org-match-section-head"><view class="figma-section__title">分节得分</view><view wx:if="{{!hideScoreStatus}}" class="figma-status {{match.status === 'LIVE' ? 'figma-status--error' : 'figma-status--orange'}}">{{match.statusLabel}}</view></view>
+        <view wx:if="{{board}}" class="org-match-score-grid">
+          <view class="org-match-score-card is-home">
+            <view class="org-match-team">{{board.home.name || match.home}}</view>
+            <view class="org-match-score">{{board.home.score}}</view>
+            <view class="org-match-periods"><text wx:for="{{board.periods}}" wx:key="key">{{index ? ' · ' : ''}}{{item.home}}</text></view>
+          </view>
+          <view class="org-match-score-card is-away">
+            <view class="org-match-team">{{board.away.name || match.away}}</view>
+            <view class="org-match-score">{{board.away.score}}</view>
+            <view class="org-match-periods"><text wx:for="{{board.periods}}" wx:key="key">{{index ? ' · ' : ''}}{{item.away}}</text></view>
+          </view>
+        </view>
+        <view wx:else class="org-match-score-grid">
+          <view class="org-match-score-card is-home"><view class="org-match-team">{{match.home}}</view><view class="org-match-score">–</view></view>
+          <view class="org-match-score-card is-away"><view class="org-match-team">{{match.away}}</view><view class="org-match-score">–</view></view>
+        </view>
+        <view wx:if="{{board && !hideBoardHint}}" class="figma-section__hint">{{board.periodLabel}} · {{board.clockLabel}} · 犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>
+        <view wx:elif="{{!board}}" class="figma-section__hint">{{match.rulesLabel}} · 比赛尚未准备，暂无比分。</view>
+      </view>
+
+      <view wx:if="{{caps.prepare}}" class="figma-section">
+        <view class="figma-section__title">准备比赛</view>
+        <view class="figma-section__hint">{{match.rulesLabel}}。准备后规则与采集方式锁定。</view>
+        <view class="org-match-mode-grid">
+          <button class="org-match-mode {{collectionMode === 'TEAM_ONLY' ? 'is-active' : ''}}" data-mode="TEAM_ONLY" bindtap="setMode"><view class="figma-row__title">只记球队</view><view class="figma-row__subtitle">比分、犯规与暂停</view></button>
+          <button class="org-match-mode {{collectionMode === 'PLAYER_BASIC' ? 'is-active' : ''}}" data-mode="PLAYER_BASIC" bindtap="setMode"><view class="figma-row__title">逐人记分</view><view class="figma-row__subtitle">球员得分与犯规</view></button>
+        </view>
+        <view wx:if="{{collectionMode === 'PLAYER_BASIC'}}" class="org-match-switch"><view><view class="figma-row__title">专业统计与阵容时间</view><view class="figma-row__subtitle">准备后锁定</view></view><switch checked="{{technicalCollection}}" bindchange="setTechnical"/></view>
+        <button class="figma-action figma-action--navy" bindtap="prepare" disabled="{{busy || !!pending}}">准备比赛</button>
+      </view>
+      <figma-feedback wx:elif="{{match.status === 'SCHEDULED'}}" type="empty" title="比赛尚未准备" body="{{match.rulesLabel}}。需由赛事负责人准备后才能记分。"/>
+
+      <view id="match-staff" class="figma-section">
+        <view class="figma-section__title">场次人员</view>
+        <view wx:if="{{!staff.length && !hideEmptyStaffHint}}" class="figma-section__hint">尚未分配记分员或赛果复核人。</view>
+        <view wx:for="{{staff}}" wx:key="key" class="figma-row">
+          <view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.role}}</view></view>
+          <button wx:if="{{caps.staff}}" class="org-match-inline-action" data-key="{{item.key}}" bindtap="disable" disabled="{{busy}}">停用</button>
+          <view wx:else class="figma-status figma-status--orange">已分配</view>
+        </view>
+        <block wx:if="{{caps.staff && members.length}}">
+          <view class="org-match-divider"></view>
+          <view class="figma-field-group"><view class="figma-field-label">选择机构成员</view><picker class="figma-field-control org-match-picker" range="{{members}}" range-key="label" value="{{memberIndex}}" bindchange="pickMember">{{members[memberIndex].label}}</picker></view>
+          <view class="figma-field-group"><view class="figma-field-label">本场角色</view><picker class="figma-field-control org-match-picker" range="{{roles}}" range-key="label" value="{{roleIndex}}" bindchange="pickRole">{{roles[roleIndex].label}}</picker></view>
+          <button class="figma-action figma-action--ghost" bindtap="assign" disabled="{{busy}}">分配人员</button>
+          <view class="figma-section__hint">记分员不能确认本场赛果；复核人与记分员应为不同人员。</view>
+        </block>
+        <view wx:elif="{{caps.staff && staffNote}}" class="figma-section__hint">{{staffNote}}</view>
+      </view>
+
+      <view id="match-confirmations" class="figma-section">
+        <view class="figma-section__title">赛果核对</view>
+        <view class="figma-row"><view class="org-match-step">1</view><view class="figma-row__copy"><view class="figma-row__title">现场记录</view><view class="figma-row__subtitle">查看事件、更正与原记录</view></view><view class="figma-status {{match.status === 'SCHEDULED' || match.status === 'READY' ? '' : 'figma-status--green'}}">{{match.status === 'SCHEDULED' || match.status === 'READY' ? '未开始' : '已记录'}}</view></view>
+        <view class="figma-row"><view class="org-match-step">2</view><view class="figma-row__copy"><view class="figma-row__title">独立确认</view><view class="figma-row__subtitle">由未参与记分的授权人核对</view></view><view class="figma-status {{confirmations.length ? 'figma-status--green' : 'figma-status--orange'}}">{{confirmations.length ? '已确认' : '待确认'}}</view></view>
+        <view class="figma-row"><view class="org-match-step">3</view><view class="figma-row__copy"><view class="figma-row__title">确认后归档</view><view class="figma-row__subtitle">保留赛果版本及更正记录</view></view><view class="figma-status {{match.status === 'CONFIRMED' ? 'figma-status--green' : ''}}">{{match.status === 'CONFIRMED' ? '已完成' : '待完成'}}</view></view>
+        <figma-feedback wx:if="{{match.status === 'PENDING_CONFIRMATION' && !caps.confirm}}" type="pending" title="等待独立确认" body="确认前赛果不计入正式积分。"/>
+      </view>
+
+      <view wx:if="{{confirmations.length}}" class="figma-section">
+        <view class="figma-section__title">确认记录</view>
+        <view wx:for="{{confirmations}}" wx:key="key" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.score}} · {{item.by}}</view><view class="figma-row__subtitle">{{item.time}}</view></view><view class="figma-status figma-status--green">有效</view></view>
+      </view>
+
+      <view wx:if="{{board}}" class="figma-section">
+        <view class="figma-section__title">比赛记录</view>
+        <figma-feedback wx:if="{{historyError}}" type="error" title="记录读取失败" body="{{historyError}}"/>
+        <view wx:elif="{{!history.length}}" class="figma-section__hint">尚无记录。</view>
+        <view wx:for="{{history}}" wx:key="key" class="figma-row org-match-history {{item.voided ? 'is-voided' : ''}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.text}}{{item.voided ? '（已撤销）' : ''}}</view><view class="figma-row__subtitle">{{item.periodLabel}} {{item.time}}{{item.reason ? ' · ' + item.reason : ''}}</view></view></view>
+      </view>
+
+      <view wx:if="{{caps.reopen}}" class="figma-section">
+        <view class="org-match-section-head"><view class="figma-section__title">赛果更正</view><button class="org-match-inline-action" bindtap="toggleReopen">{{reopenOpen ? '收起' : '需要更正'}}</button></view>
+        <view class="figma-section__hint">重开时保留原确认和原事件；更正后必须重新独立确认。</view>
+        <block wx:if="{{reopenOpen}}"><view class="figma-field-group"><view class="figma-field-label">重开原因（必填）</view><textarea class="figma-field-control" maxlength="500" value="{{reopenReason}}" bindinput="reopenInput" placeholder="说明需要更正的原记录"/></view><button class="figma-action org-match-danger" bindtap="reopen" disabled="{{busy || !!pending}}">重开赛果</button></block>
+      </view>
+
+      <view class="figma-section org-match-services">
+        <view class="figma-section__title">相关服务</view>
+        <button wx:if="{{caps.score && (match.status === 'READY' || match.status === 'LIVE' || match.status === 'PENDING_CONFIRMATION')}}" class="org-match-service" bindtap="openScorer" disabled="{{busy}}"><figma-icon name="scoreboard" size="19"/><text>进入本场记分台{{match.leaseHeld ? '（当前有人持有控制）' : ''}}</text></button>
+        <button wx:if="{{board && board.proMode && !board.adjudicated}}" class="org-match-service" bindtap="openProfessionalReport" disabled="{{busy}}"><figma-icon name="scoreboard" size="19"/><text>查看专业统计与上场时间</text></button>
+        <button wx:if="{{(caps.staff || caps.prepare || caps.confirm || caps.reopen) && (match.status === 'SCHEDULED' || match.status === 'READY')}}" class="org-match-service" bindtap="openReschedule" disabled="{{busy}}"><figma-icon name="workbench" size="19"/><text>正式改期</text></button>
+        <button class="org-match-service" bindtap="openExceptions" disabled="{{busy}}"><figma-icon name="workbench" size="19"/><text>比赛异常裁定</text></button>
+        <button wx:if="{{caps.live}}" class="org-match-service" bindtap="openLive" disabled="{{busy}}"><figma-icon name="live" size="19"/><text>直播工作台</text></button>
+      </view>
+    </block>
   </view>
-  <view wx:elif="{{!match}}" class="card state-panel">
-    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
-    <view class="subtitle">{{unavailable ? '无法查看该比赛' : '暂时无法读取比赛'}}</view>
-    <view class="notice warning">{{error || '请从赛事赛程重新进入。'}}</view>
-    <button wx:if="{{!unavailable}}" class="primary" bindtap="refresh">重新读取</button>
+
+  <view wx:if="{{match}}" class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="openMedia" disabled="{{busy}}">查看比赛媒体</button>
+    <button wx:if="{{caps.confirm && board}}" class="figma-action figma-action--orange" bindtap="confirmResult" disabled="{{busy || !!pending}}">独立确认赛果</button>
+    <button wx:else class="figma-action figma-action--orange" bindtap="refresh" disabled="{{loading || busy}}">刷新比赛</button>
   </view>
-  <block wx:else>
-    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
-    <view wx:if="{{pending}}" class="card">
-      <view class="subtitle">{{pending.label}} · 结果待核对</view>
-      <view class="muted">保留原操作编号。先核对服务端结果；只有确认未执行时才按原编号重发。</view>
-      <button class="primary" bindtap="checkPending" disabled="{{busy}}">核对结果</button>
-      <button class="secondary" bindtap="resendPending" disabled="{{busy}}">按原编号重发</button>
-    </view>
-
-    <button class="secondary" bindtap="openExceptions">弃权／取消及独立裁定</button>
-<view wx:if="{{match.adjudication}}" class="notice warning">{{match.statusLabel}}，不生成比赛比分或个人统计。详情请查看独立裁定记录。</view>
-<view class="board">
-      <view class="board-meta" bindtap="openEvent">{{match.eventName}} · {{match.round}}</view>
-      <view class="board-meta">{{match.time}} · {{match.court}}</view>
-      <view class="board-row">
-        <view class="board-team"><view class="board-name">{{match.home}}</view><view class="board-score">{{board ? board.home.score : '–'}}</view></view>
-        <view class="board-mid"><view class="board-status {{match.status === 'LIVE' ? 'live' : ''}}">{{match.statusLabel}}</view><view wx:if="{{board}}" class="board-clock">{{board.clockLabel}}</view><view wx:if="{{board}}" class="board-period">{{board.periodLabel}}</view></view>
-        <view class="board-team"><view class="board-name">{{match.away}}</view><view class="board-score">{{board ? board.away.score : '–'}}</view></view>
-      </view>
-      <view wx:if="{{board}}" class="board-sub">犯规 {{board.home.fouls}} : {{board.away.fouls}} · 暂停 {{board.home.timeouts}} : {{board.away.timeouts}}</view>
-      <view class="board-result {{board && board.final ? 'final' : ''}}">{{board ? board.resultLabel : '比赛尚未准备，暂无比分'}}</view>
-    </view>
-
-    <view wx:if="{{caps.prepare}}" class="card">
-      <view class="subtitle">准备比赛</view>
-      <view class="muted">{{match.rulesLabel}}。准备后本场进入记录台，可由已分配的记分员开始比赛。</view>
-      <view class="mode-choice">
-        <button class="{{collectionMode === 'TEAM_ONLY' ? 'selected' : ''}}" data-mode="TEAM_ONLY" bindtap="setMode">只记球队</button>
-        <button class="{{collectionMode === 'PLAYER_BASIC' ? 'selected' : ''}}" data-mode="PLAYER_BASIC" bindtap="setMode">逐人记分</button>
-      </view>
-      <view wx:if="{{collectionMode === 'PLAYER_BASIC'}}" class="row-between"><view>专业统计与阵容时间（准备后锁定）</view><switch checked="{{technicalCollection}}" bindchange="setTechnical"/></view>
-      <button class="primary" bindtap="prepare" disabled="{{busy || !!pending}}">准备比赛</button>
-    </view>
-    <view wx:elif="{{match.status === 'SCHEDULED'}}" class="notice small">{{match.rulesLabel}}。比赛由赛事负责人准备后才能记分。</view>
-
-    <button wx:if="{{caps.score && (match.status === 'READY' || match.status === 'LIVE' || match.status === 'PENDING_CONFIRMATION')}}" class="accent" bindtap="openScorer" disabled="{{busy}}">进入记分台{{match.leaseHeld ? '（当前有人持有控制）' : ''}}</button>
-
-    <button wx:if="{{board && board.proMode && !board.adjudicated}}" class="secondary" bindtap="openProfessionalReport" disabled="{{busy}}">查看本场专业统计与上场时间报表</button>
-
-    <view wx:if="{{caps.confirm}}" class="card">
-      <view class="subtitle">独立确认赛果</view>
-      <view class="muted">确认人不能是本场开始、记分、计时或更正的操作者，也不能是双方领队；由服务端核验。</view>
-      <button class="primary" bindtap="confirmResult" disabled="{{busy || !!pending}}">确认 {{board.home.score}} : {{board.away.score}} 为正式赛果</button>
-    </view>
-    <view wx:elif="{{match.status === 'PENDING_CONFIRMATION'}}" class="notice small">比赛已结束，等待赛果复核人或赛事负责人独立确认；确认前不计入正式积分。</view>
-
-    <view wx:if="{{caps.reopen}}" class="card">
-      <view class="row-between"><view class="subtitle">重开赛果</view><button class="quiet small-button" bindtap="toggleReopen">{{reopenOpen ? '收起' : '需要更正'}}</button></view>
-      <block wx:if="{{reopenOpen}}">
-        <text class="field-label">重开原因（必填）</text>
-        <textarea class="field" maxlength="500" value="{{reopenReason}}" bindinput="reopenInput" placeholder="例如：第三节一次得分记错球队"/>
-        <button class="danger" bindtap="reopen" disabled="{{busy || !!pending}}">重开赛果</button>
-      </block>
-    </view>
-
-    <view wx:if="{{board && board.periods.length}}" class="card">
-      <view class="subtitle">分节比分</view>
-      <view class="org-table">
-        <view class="org-table-row head"><text class="team-cell">节次</text><text class="num-cell">{{match.home}}</text><text class="num-cell">{{match.away}}</text></view>
-        <view wx:for="{{board.periods}}" wx:key="key" class="org-table-row"><text class="team-cell">{{item.label}}</text><text class="num-cell">{{item.home}}</text><text class="num-cell">{{item.away}}</text></view>
-      </view>
-    </view>
-
-    <view wx:if="{{confirmations.length}}" class="card">
-      <view class="subtitle">确认记录</view>
-      <view wx:for="{{confirmations}}" wx:key="key" class="row"><view>{{item.score}} · {{item.by}}</view><view class="muted">{{item.time}}</view></view>
-    </view>
-
-    <view wx:if="{{board}}" class="card">
-      <view class="subtitle">比赛记录</view>
-      <view wx:if="{{historyError}}" class="notice warning small">{{historyError}}</view>
-      <view wx:elif="{{!history.length}}" class="muted">尚无记录。</view>
-      <view wx:for="{{history}}" wx:key="key" class="row history-row {{item.voided ? 'voided' : ''}}"><view>{{item.text}}{{item.voided ? '（已撤销）' : ''}}</view><view class="muted">{{item.periodLabel}} {{item.time}}{{item.reason ? ' · ' + item.reason : ''}}</view></view>
-    </view>
-
-    <view wx:if="{{caps.staff || caps.prepare || caps.confirm || caps.reopen || caps.live}}" class="card">
-      <view class="subtitle">比赛管理</view>
-      <view class="muted">改期与媒体的权限、状态由服务端判定；进入后显示能否操作及原因。</view>
-      <view class="mode-choice">
-        <button wx:if="{{(caps.staff || caps.prepare || caps.confirm || caps.reopen) && (match.status === 'SCHEDULED' || match.status === 'READY')}}" class="secondary" bindtap="openReschedule" disabled="{{busy}}">正式改期</button>
-        <button wx:if="{{caps.staff || caps.prepare || caps.confirm || caps.reopen}}" class="secondary" bindtap="openMedia" disabled="{{busy}}">比赛媒体</button>
-        <button wx:if="{{caps.live}}" class="secondary" bindtap="openLive" disabled="{{busy}}">开播、分发与录像</button>
-      </view>
-    </view>
-
-    <view class="card">
-      <view class="subtitle">本场工作人员</view>
-      <view wx:if="{{!staff.length}}" class="muted">尚未分配记分员或赛果复核人。</view>
-      <view wx:for="{{staff}}" wx:key="key" class="row-between row"><view><view>{{item.name}}</view><view class="muted">{{item.role}}</view></view><button wx:if="{{caps.staff}}" class="quiet small-button" data-key="{{item.key}}" bindtap="disable" disabled="{{busy}}">停用</button></view>
-      <block wx:if="{{caps.staff && members.length}}">
-        <view class="section-label">分配人员（须为本机构有效成员）</view>
-        <picker class="field" range="{{members}}" range-key="label" value="{{memberIndex}}" bindchange="pickMember">{{members[memberIndex].label}}</picker>
-        <picker class="field" range="{{roles}}" range-key="label" value="{{roleIndex}}" bindchange="pickRole">{{roles[roleIndex].label}}</picker>
-        <button class="secondary" bindtap="assign" disabled="{{busy}}">分配</button>
-        <view class="muted">记分员不能确认本场赛果；复核人与记分员应为不同人员。</view>
-      </block>
-      <view wx:elif="{{caps.staff && staffNote}}" class="muted">{{staffNote}}</view>
-    </view>
-
-    <button class="quiet" bindtap="refresh" disabled="{{loading || busy}}" loading="{{loading}}">刷新比赛</button>
-  </block>
 </view>

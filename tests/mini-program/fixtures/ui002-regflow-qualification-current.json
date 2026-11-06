@@ -2,15 +2,14 @@
   "name": "ui002-regflow-qualification-current",
   "route": "pages/qualification-precheck/index",
   "state": "synthetic-populated",
-  "designSource": "UI001 R05 6:609 and actual qualification-precheck Page; explicit current subject consent only, no approval",
-  "figmaNode": "6:609",
+  "designSource": "UI006 36:110 qualification-precheck; explicit current subject consent only, no approval",
+  "figmaNode": "36:110",
   "expectText": [
     "当前资料版本 V2",
     "本人同意提交当前版本资料用于本届预审",
     "无需先买保险",
-    "已有外部保单",
-    "服务尚未正式开放",
-    "提交预审并看进度"
+    "提交当前版本资格预审",
+    "预审通过不等于最终报名或投保成功"
   ],
   "data": {
     "orgId": "00000000-0000-4000-8000-000000000001",
@@ -65,5 +64,5 @@
       }
     ]
   },
-  "expectDisabled": ["提交预审并看进度"]
+  "expectDisabled": ["提交当前版本资格预审"]
 }

@@ -1,0 +1,5 @@
+.figma-tabs { box-sizing:border-box; display:flex; width:100%; min-height:48px; gap:0; padding:2px; border-radius:14px; background:#ffffff; }
+.figma-tab { box-sizing:border-box; display:flex; min-width:0; min-height:44px; flex:1; align-items:center; justify-content:center; margin:0; padding:0 12px; border-radius:10px; background:transparent; color:#51657d; font-size:14px; font-weight:500; line-height:22px; }
+.figma-tab::after { border:0; }
+.figma-tab.is-active { background:#123c73; color:#ffffff; box-shadow:none; }
+.figma-tab[disabled] { background:transparent; color:#7c8ea5; opacity:1; }

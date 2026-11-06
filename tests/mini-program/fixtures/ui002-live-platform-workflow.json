@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "9:1376",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["核对当前可处理的预约与争议", "平台处理工作台"],
+  "expectText": ["先核对当前账号的独立处理范围", "平台运营工作台"],
   "data": {
     "loading": false,
     "busy": false,
