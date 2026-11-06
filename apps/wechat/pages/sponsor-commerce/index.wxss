@@ -1,4 +1,4 @@
-@import "../../styles/figma-pages.wxss";
+@import '../../styles/figma-pages.wxss';
 
 .sponsor-commerce-page button {
   margin: 0;
@@ -12,6 +12,11 @@
   padding: 0 14px;
   border-radius: 16px;
   background: #ffffff;
+}
+
+.commerce-org-picker .figma-row__subtitle {
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .commerce-tabs {

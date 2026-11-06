@@ -1,5 +1,13 @@
 # 当前状态
 
+## 2026-11-06 20:58 Asia/Shanghai CI220布局失败定位与最小字号修复
+
+本节为最新接续，未合并。共享候选d92af2c8/tree eb330e60的CI220中，account-security、production与Windows53全部成功；admin源码598/1374/1569＋1skip/CLI12通过，但浏览器1560通过、3失败，全部为新增int01-sponsor-refund-unverified三宽暴露机构picker内“当前机构”继承12px，低于14px门槛。不是业务断言失败，未改fixture、权限、金额、spec或skip。此前将进入归档步骤误判为浏览器通过已更正，以完成日志为准。
+
+只在sponsor-commerce本页WXSS为.commerce-org-picker .figma-row__subtitle增加14px/20px，固定三宽，保留55px控件和原布局。另一审查者核实唯一子标签、样式优先级与两行容纳，ORDER按钮和机构名已有14px。相关退款34项继续通过，既有完整源码1569＋1平台skip属于同一JS/WXML；CSS修复不新增镜像单测或更改既有测试。root仅提交本页WXSS与五份任务记录，普通推进PR46，再由最新head CI核验真实三宽。旧220的成功项不代替新head结果，API旧作业仍进行中。
+
+独立合并边界核验已完成：main b19c19a及四feature来源（另含UI006初始6fc）均为d92祖先、未包含提交数0；apps/api、contracts、admin、ops、CI/生产配置无diff，50项迁移树SHA256同0d0ce7261cffd17a367fed3da283768ad5276f0af05efde1860697f3659aaa7e。PR42/44实际仍open/draft且代码完整包含，待46merge后复读状态收口。未部署生产、执行生产Migration或操作真实资金/外部凭据。
+
 ## 2026-11-06 20:41 Asia/Shanghai 最终四项修复冻结（REVIEW / BRANCH_ONLY）
 
 本节为最新状态，下方各检查点仅为历史。root在共享候选f71210a之上收齐四项已复现问题：青年审核factory登录入口、performance首项独立canRevoke拒绝、裁定审核原因、广告订单列表未提供退款累计时的金额展示。四项只修改3份WXML与1份页面JS，沿原handler、capability、请求ID及版本；不改API/后端/001—050迁移或生产配置。财务来源list SQL只有o.*、trade_order_id、paid_fen，不能把未报告退款当0；缺失/非法/不一致金额显示“待核对”，合法显式0、已退金额及净0按原单位计算，正常SIGNED广告主仍保留原ORDER入口。
