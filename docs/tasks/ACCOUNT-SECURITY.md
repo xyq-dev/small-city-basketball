@@ -1,6 +1,6 @@
 # ACCOUNT-SECURITY：首次部署自行设置密码与本人改密
 
-- 状态：REVIEW / LOCAL_ONLY，2026-11-06 Asia/Shanghai。
+- 状态：REVIEW / BRANCH_ONLY，2026-11-06 Asia/Shanghai。
 - 集成人：本会话 Codex root；初始化 backend：bootstrap；改密 backend：password；Web：web；部署文档：deploy_docs。
 - 实际目录：`/workspace/scratch/1de45fa14969/small-city-basketball`。
 - 远端：`https://github.com/xyq-dev/small-city-basketball.git`。
@@ -42,3 +42,10 @@
 ### 提交前增量验证
 
 已修正本阶段发现的测试基础设施兼容问题，未改变产品门禁：浏览器测试启动增加受控synthetic owner初始化，7项脚本测试及真实PG注册前后验证通过；根npm test已包含此7项。训练夹具先建立首owner再并行建号，真实PG19/19；共享register夹具只有在持久完成后才允许竞争失败者走正常注册。c02维护/change-password/x22恢复夹具在beforeAll受控初始化，28/28重跑通过。runtime测试严格接受已知隔离角色基线，恢复原NOLOGIN/NULL-password migrator属性，按OID清除仅本次新建角色，3/3真实PG通过（含失败清理与拒绝未知角色基线）；没有读取或保存密码哈希。类型检查、完整格式检查、CLI/浏览器准备12项通过。测试配套代码已完成独立复核；准备提交及同步远端。
+
+### 提交与PR实际结果
+
+- 已提交并普通同步至`feat/self-service-owner-password`：代码SHA `6944170431a536a03122ec4573fa2ef9e3bb6da9`，tree `be8fe89eb842907be3eac76a3a1265cb8fbbe3d1`与本地逐文件暂存tree完全一致，56个任务文件，无无关UI改动。
+- 已创建 [Draft PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)，目标main仍为ef62cb1；不合并。
+- Application checks首个run203（42155972703）已排队，不能记为通过；随后文档接续提交的CI以最终头SHA为准。
+- 源码及必要隔离验证完成，本地HEAD已与远端代码提交对齐。后续只允许本PR必要CI修复与文档同步，无生产操作。

@@ -1,6 +1,6 @@
 # ACCOUNT-SECURITY 验收与交接
 
-状态：REVIEW / LOCAL_ONLY，2026-11-06 Asia/Shanghai。功能源码与相关隔离验证完成，未提交或整合main。
+状态：REVIEW / BRANCH_ONLY，2026-11-06 Asia/Shanghai。已提交任务分支并创建Draft PR #43，未整合main或上线。
 
 ## 实际上下文及权限
 
@@ -62,3 +62,11 @@ Web现有“个人 ID / 邀请”面板增加“账号安全 → 修改密码”
 提交前独立复核补齐：API浏览器fresh DB经真实bootstrapOwner建立随机合成首owner再启动测试；运行两次保留相同数据、无示例赛事，真实HTTP注册由拒绝变为允许。新准备脚本7项测试已接入根npm test，宿主CLI合计12项通过。R6训练夹具19项真实PG通过；账号维护、改密、恢复28项重跑通过。共享register竞争失败时只在持久初始化完成后走正常注册。runtime完整HTTP、故意失败后的角色还原、未知角色拒绝3项真实PG通过；原有migrator NOLOGIN/NULL密码恢复、只清理本次创建且OID匹配的角色，满足C22严格角色前置条件。
 
 本阶段产品功能代码未因测试配套而放宽。完整真实浏览器新表单、Docker/HTTPS及C22归档演练仍待独立环境验收。远端main执行前仍为ef62cb1，049编号无冲突；当前目标保持Draft PR，不合并和部署。
+
+## 远端交接恢复点
+
+- [Draft PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)，分支`feat/self-service-owner-password`，代码SHA `6944170431a536a03122ec4573fa2ef9e3bb6da9`，tree `be8fe89eb842907be3eac76a3a1265cb8fbbe3d1`。
+- 提交与普通远端同步成功，本地逐文件tree与远端完全一致；没有force push。HEAD已对齐，PR保持Draft且禁止merge/生产部署。
+- 代码后续只有文档接续提交时，以PR最终HEAD为准；核验树差异后可复用本次应用代码验证，不能把旧CI结果转称新CI通过。
+- 最终本地相关真实PG共123项（初始化12、改密/维护/恢复28、认证/报名/微信56、P07首owner5、runtime3、训练19），另有浏览器准备脚本真实PG/HTTP验证、实际PG进程重启。宿主CLI与浏览器准备12项Node测试通过。
+- 首次Application checks run203已排队，尚无通过结论。CI失败须读取对应日志、仅修复相关问题并重跑；通过后仍保留新表单真实浏览器、隔离HTTPS/Docker及旧库恢复专项范围的明确结论。
