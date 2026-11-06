@@ -10,15 +10,15 @@
 
 本轮49张新表，全链176表/117函数。001—042已冻结，后续DDL从043追加；冻结证据见[清单](tasks/EXPANSION8_FROZEN_MIGRATIONS.json)。以下以实际DDL清单为准。支付/退款/保单/停播外部事实与工作意图分开，不能用界面成功或过期令牌代替真实回执。
 
-| 迁移                        | 新表数 | 表                                                                                                                                                                                                                                                                                                              |
-| --------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 036_e01_streaming_media.sql | 8      | `live_channel_accounts`, `broadcast_sessions`, `live_relays`, `stream_command_receipts`, `stream_jobs`, `stream_usage_ledger`, `live_media_jobs`, `live_media_artifacts`                                                                                                                                        |
-| 037_e03_insurance.sql       | 11     | `insurance_configuration`, `insurance_products`, `insurance_quotes`, `insurance_orders`, `insurance_policy_facts`, `insurance_operations`, `insurance_receipts`, `insurance_provider_events`, `participant_qualification_requests`, `participant_qualification_prechecks`, `participant_qualification_receipts` |
-| 038_e04_trade.sql           | 10     | `trade_terms`, `trade_orders`, `trade_payment_attempts`, `trade_refunds`, `trade_deductions`, `trade_settlements`, `trade_provider_events`, `trade_operations`, `trade_reconciliations`, `trade_settlement_returns`                                                                                             |
-| 039_e05_notifications.sql   | 10     | `notification_configuration`, `notification_source_events`, `notification_messages`, `notification_subscription_intents`, `notification_subscription_grants`, `notification_deliveries`, `notification_fanout_state`, `notification_delivery_attempts`, `notification_commands`, `notification_start_scan`      |
-| 040_e07_account_closure.sql | 3      | `account_closure_requests`, `account_closure_operations`, `account_closure_tombstones`                                                                                                                                                                                                                          |
-| 041_e08_youth_guardians.sql | 6      | `youth_event_policies`, `youth_guardian_preconsents`, `youth_guardian_requests`, `youth_guardian_history`, `youth_guardian_commands`, `youth_preconsent_history`                                                                                                                                                |
-| 042_e08_adult_data_consent.sql | 1 | `youth_adult_data_consents` |
+| 迁移                           | 新表数 | 表                                                                                                                                                                                                                                                                                                              |
+| ------------------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 036_e01_streaming_media.sql    | 8      | `live_channel_accounts`, `broadcast_sessions`, `live_relays`, `stream_command_receipts`, `stream_jobs`, `stream_usage_ledger`, `live_media_jobs`, `live_media_artifacts`                                                                                                                                        |
+| 037_e03_insurance.sql          | 11     | `insurance_configuration`, `insurance_products`, `insurance_quotes`, `insurance_orders`, `insurance_policy_facts`, `insurance_operations`, `insurance_receipts`, `insurance_provider_events`, `participant_qualification_requests`, `participant_qualification_prechecks`, `participant_qualification_receipts` |
+| 038_e04_trade.sql              | 10     | `trade_terms`, `trade_orders`, `trade_payment_attempts`, `trade_refunds`, `trade_deductions`, `trade_settlements`, `trade_provider_events`, `trade_operations`, `trade_reconciliations`, `trade_settlement_returns`                                                                                             |
+| 039_e05_notifications.sql      | 10     | `notification_configuration`, `notification_source_events`, `notification_messages`, `notification_subscription_intents`, `notification_subscription_grants`, `notification_deliveries`, `notification_fanout_state`, `notification_delivery_attempts`, `notification_commands`, `notification_start_scan`      |
+| 040_e07_account_closure.sql    | 3      | `account_closure_requests`, `account_closure_operations`, `account_closure_tombstones`                                                                                                                                                                                                                          |
+| 041_e08_youth_guardians.sql    | 6      | `youth_event_policies`, `youth_guardian_preconsents`, `youth_guardian_requests`, `youth_guardian_history`, `youth_guardian_commands`, `youth_preconsent_history`                                                                                                                                                |
+| 042_e08_adult_data_consent.sql | 1      | `youth_adult_data_consents`                                                                                                                                                                                                                                                                                     |
 
 敏感保单/监护证明/通知目标单独加密，当前同意按来源/用途/版本读取；append-only事实及receipt不允许普通runtime UPDATE/DELETE。`trade_orders.money_version`在新实际账务事实同事务递增，对账精确pin后才可分账。审计表runtime仅INSERT及action/resource_type两列SELECT以检查永久恢复marker，不能读metadata/actor。MP4为独立媒体卷文件，artifact表只保留路径/大小/哈希与授权元数据；数据库备份不包含媒体字节。
 
@@ -60,7 +60,7 @@ E06不新建搜索身份库或长期索引，直接按当前有效event_director
 
 2026-10-23，PR10已合并main e5d4782，最终CI39919192641通过，尚未部署生产。008给原scoring_states/result_confirmations增加collection_mode与nullable player_stats，旧行缺省TEAM_ONLY/null；沿原准备事件锁模式、原事件派生个人投影、原确认保存快照，状态守卫禁止更换模式。名单来源复用published_matches固定的报名revision，不建第二套名单/比分/时钟。009给users增加nullable唯一login_name与ASCII规范约束，保留ID、邮箱、角色；两次迁移不增加业务表，仍为40表，001–007不改。
 
-runtime仅为scoring_states追加player_stats的UPDATE白名单；不给collection_mode UPDATE，也不给users.login_name/password_hash UPDATE。离线账号维护使用受控维护角色及不可登录系统审计主体，用户级advisory协议与原session→user锁序共同保证会话撤销和登录串行性，见[维护说明](ACCOUNT_MAINTENANCE.md)。未在正式库执行；真实隔离PG升级/约束/并发、40表重启及完整备份恢复已通过。旧schema升级夹具只含旧用户/凭据，不等于007已落库FINAL完整升级，部署前仍须核验真实旧库副本。
+C02当时仅为scoring_states追加player_stats的UPDATE白名单，不给collection_mode或users.login_name UPDATE；其时未给users.password_hash UPDATE。后续账号找回已增加受限凭据列权限，首次初始化/修改密码增量继续复用当前manifest，本轮不新增users.login_name或DDL权限。离线账号维护使用受控维护角色及不可登录系统审计主体，用户级advisory协议与原session→user锁序共同保证会话撤销和登录串行性，见[维护说明](ACCOUNT_MAINTENANCE.md)。未在正式库执行；真实隔离PG升级/约束/并发、40表重启及完整备份恢复已通过。旧schema升级夹具只含旧用户/凭据，不等于007已落库FINAL完整升级，部署前仍须核验真实旧库副本。
 
 设计版本：0.1；更新：2026-10-22；状态：P02至P06-A的已交付子卡已整合main，DONE / MAIN。001→006在隔离PG18.6执行／复跑checksum并通过39表实际重启；保险附件未建表，无生产执行。完整P05的可靠离线／专业统计、完整P06媒体／直播等仍为后续范围，原生OBS／CEF及备份恢复未验。
 
@@ -273,8 +273,7 @@ SE首轮比赛数n−nextPow2(n)/2，后轮只能精确同事务凭证追加全�
 
 原clientRequestId、请求patch指纹和旧revision永久保留为回执墓碑，私有密文仅在赛事归档/取消且结束超过90日、无legal_hold时由人工维护清除；没有自动任务。清除不得修改既有revision元数据或冻结参赛事实。冻结snapshot只新增材料revision引用，不包含证件/照片/保单。宣传撤回作用于head的独立权限事实，不撤销参赛审核。当前83表／24迁移，001–023未修改；运行权限、readiness、重启/恢复精确清单已同步，执行证据以任务卡为准。
 
-
-## COS01 私有对象存储（049已编写，生产未执行）
+## COS01 私有对象存储（050已编写，生产未执行）
 
 `media_cos_objects` 保存由服务端生成的随机Key、bucket、region、org、计划文件ID和创建/实际删除时间，身份不可变，不含云凭据或签名URL。登记不设组织FK，以允许已锁组织的上传事务通过独立连接提交登记；真正的 `media_files` 仍维持原组织/赛事/报名/比赛FK，新复合FK `(org_id,cos_object_id)` 绑定同机构登记，且 `cos_object_id=id`。旧文件保留数据库payload，新COS文件payload为空；两者不能并存或同时缺失，上传后不能切换存储源。
 
@@ -283,3 +282,11 @@ SE首轮比赛数n−nextPow2(n)/2，后轮只能精确同事务凭证追加全�
 ### E08 042 成年资料处理事实
 
 新增append-only `youth_adult_data_consents`，绑定actor及performed_by、org/event/team/entry/member/binding、当前material/revision、独立age_evidence_qualification、policy/terms与递增version；decision为CONSENT/WITHDRAW，cause为SELF/ACCOUNT_CLOSURE/RESTORE_QUARANTINE。不保存生日或身份明文，runtime仅SELECT/INSERT；本人同意必须performed_by=actor。注销与恢复隔离追加WITHDRAW，保留旧事实。年龄证据只授权处理资料，不代替当前参赛、保险、照片或公开资格。042已在隔离CI41184782485首次执行并冻结，036—041冻结校验保持；生产未执行。
+
+## 首次初始化与登录后修改密码
+
+新增`049_first_run_setup.sql`保存单行`first_run_setup`状态：令牌仅为SHA-256摘要，附持久到期/使用时间；`initialized_at`为不可重开的完成标记。迁移时已有真实账号或机构的实例写入关闭状态，仅排除现有代码精确识别的DISABLED、不可验证密码系统主体；普通禁用账号、开发示例owner仍算既有实例。历史Migration不修改。
+
+离线维护身份可在全新实例下签发/轮换15分钟令牌；runtime仅可读取并消费初始化所需状态，不能签发、清空或重开。完成后守卫禁止重开或删除完成状态。网页、兼容CLI、签发命令及公开注册共享状态行锁，创建用户、机构、`ORG_OWNER`关系、审计、消费令牌及完成标记原子提交；邮箱验证列保留原缺省值，不因初始化填写邮箱而设置已验证。
+
+修改密码沿用users既有password_hash/credential_reset_at及sessions、account_action_tokens、audit_logs，账号标识、机构和角色保持不变，不新增通用IAM结构。账号独占advisory锁、session→user锁序和候选hash复核与登录/找回/离线维护配合，原子更新密码和时间屏障、撤销全部旧会话及未消费恢复令牌并审计；失败全部回滚。runtime继续复用既有users列权限，本轮只增加初始化状态表必要授权，不新增login_name更新、建表或角色管理权限。Migration执行及隔离验证范围见当前任务交接，不代表生产已执行。

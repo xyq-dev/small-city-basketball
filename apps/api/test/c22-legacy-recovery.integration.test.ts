@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Pool } from 'pg';
 import { expect, test } from 'vitest';
 import { migrate } from '../src/database/migrate.js';
-import { bootstrapOwner } from '../src/bootstrap-owner.js';
+import { hashPassword } from '../src/security.js';
 import { applyRuntimePrivileges } from '../../../ops/db/privileges.mjs';
 import { restoreDatabase } from '../../../ops/recovery/restore.mjs';
 import { assertRuntimeReadiness } from '../src/readiness.js';
@@ -149,12 +149,37 @@ test('C20 archive is restored with its frozen package, quarantined, then upgrade
       client.release();
     }
     await oldPrivileges.applyRuntimePrivileges(sourcePool);
-    const owner = await bootstrapOwner(sourcePool, {
-      email: `c22-legacy-${suffix}@example.test`,
-      password: PASSWORD,
-      displayName: '合成旧包负责人',
-      organizationName: '合成旧包恢复机构',
-    });
+    // The archive must really retain its pre-049 schema. Current bootstrapOwner
+    // intentionally requires durable setup state, so seed this historical fixture
+    // explicitly instead of adding a product fallback for an unmigrated database.
+    const owner = { userId: randomUUID(), organizationId: randomUUID() };
+    const legacyOwnerHash = await hashPassword(PASSWORD);
+    const ownerClient = await sourcePool.connect();
+    try {
+      await ownerClient.query('BEGIN');
+      await ownerClient.query(
+        'INSERT INTO users(id,email,display_name,password_hash) VALUES($1,$2,$3,$4)',
+        [owner.userId, `c22-legacy-${suffix}@example.test`, '合成旧包负责人', legacyOwnerHash],
+      );
+      await ownerClient.query('INSERT INTO organizations(id,name) VALUES($1,$2)', [
+        owner.organizationId,
+        '合成旧包恢复机构',
+      ]);
+      await ownerClient.query(
+        "INSERT INTO organization_memberships(org_id,user_id,role) VALUES($1,$2,'ORG_OWNER')",
+        [owner.organizationId, owner.userId],
+      );
+      await ownerClient.query(
+        "INSERT INTO audit_logs(id,org_id,actor_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,'BOOTSTRAP_OWNER','organization',$2,'{}'::jsonb)",
+        [randomUUID(), owner.organizationId, owner.userId],
+      );
+      await ownerClient.query('COMMIT');
+    } catch (error) {
+      await ownerClient.query('ROLLBACK');
+      throw error;
+    } finally {
+      ownerClient.release();
+    }
     const archivePath = join(directory, 'legacy.dump');
     expect(
       await oldBackup.backupDatabase({ databaseUrl: urlFor('scb_backup', source), archivePath }),

@@ -16,6 +16,25 @@ afterEach(() => {
 });
 
 describe('central runtime configuration', () => {
+  it('keeps first deployment setup explicitly disabled unless the deployment enables it', () => {
+    expect(resolveApiOptions(options).firstRunSetupEnabled).toBe(false);
+    expect(resolveApiOptions({ ...options, firstRunSetupEnabled: true }).firstRunSetupEnabled).toBe(
+      true,
+    );
+    expect(() => resolveApiOptions({ ...options, firstRunSetupEnabled: 'true' as never })).toThrow(
+      'boolean',
+    );
+    vi.stubEnv('DATABASE_URL', url);
+    vi.stubEnv('DATABASE_URL_FILE', undefined);
+    vi.stubEnv('APP_ORIGIN', options.appOrigin);
+    vi.stubEnv('FIRST_RUN_SETUP_ENABLED', 'true');
+    expect(readRuntimeConfig().apiOptions.firstRunSetupEnabled).toBe(true);
+    vi.stubEnv('FIRST_RUN_SETUP_ENABLED', 'false');
+    expect(readRuntimeConfig().apiOptions.firstRunSetupEnabled).toBe(false);
+    vi.stubEnv('FIRST_RUN_SETUP_ENABLED', 'yes');
+    expect(() => readRuntimeConfig()).toThrow('Boolean runtime configuration');
+  });
+
   it('can quiesce background workers without changing business permissions', () => {
     expect(resolveApiOptions(options).backgroundWorkersEnabled).toBeUndefined();
     expect(resolveApiOptions({ ...options, backgroundWorkersEnabled: false })).toMatchObject({

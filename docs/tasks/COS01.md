@@ -1,6 +1,6 @@
 # COS01 腾讯云 COS 媒体存储
 
-- 状态：REVIEW（本地代码与有界验证完成，外部联调待验）；integration：LOCAL_ONLY。
+- 状态：REVIEW（分支候选等待原生CI，外部联调待验）；integration：BRANCH_ONLY。
 - 负责人/集成人：本轮 Codex root；日期：2026-11-06 Asia/Shanghai。
 - 工作目录：`/workspace/scratch/1385f4a4fde1/small-city-basketball`。
 - 远端：`https://github.com/xyq-dev/small-city-basketball.git`；基线：`ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`。
@@ -11,7 +11,7 @@
 
 保持现有页面和上传 API，服务端完成身份/机构/资源权限、格式、摘要和配额校验后，将新文件写入私有 COS。数据库存元数据和不可变对象引用；旧 PostgreSQL 文件保持兼容。所有读取仍经过原权限接口，支持 Range，不向前端暴露云凭据或可绕过撤销的长期地址。分片仍按原有有界协议处理，不将本轮包装成大视频直传或云点播。
 
-允许路径：媒体服务与 COS adapter/runtime/清理任务、追加049 Migration、相关本人资料共享配额查询、运行时权限清单、依赖锁、配置模板、针对性测试、API/数据设计说明及本任务记录。接续补充允许：COS合成恢复fixture及必要Docker打包清单，保证新增表非空重启/归档恢复验收；只在隔离CI验证镜像，不创建发布包或部署。禁止无关 UI、定位、支付、投保、记分规则改动；001—048 Migration 保持不变。
+允许路径：媒体服务与 COS adapter/runtime/清理任务、追加050 Migration、相关本人资料共享配额查询、运行时权限清单、依赖锁、配置模板、针对性测试、API/数据设计说明及本任务记录。接续补充允许：COS合成恢复fixture及必要Docker打包清单，保证新增表非空重启/归档恢复验收；只在隔离CI验证镜像，不创建发布包或部署。禁止无关 UI、定位、支付、投保、记分规则改动；001—049 Migration 保持不变，049账号安全沿用新main原文。
 
 ## 数据与失败处理设计
 
@@ -27,6 +27,8 @@
 
 ## 检查点
 
+- 2026-11-06基线更新：初始35文件已提交417076550fa4fc4aa7de636c3a86b7a81c6203a0并推送，创建[PR45](https://github.com/xyq-dev/small-city-basketball/pull/45)。发布期间main已前进到f7382c319c0e11b867b9f07c584ed135496f01ec（含PR43账号安全），通过普通merge保留新增功能，解决3份文档冲突；COS迁移顺延050、guard为c50_cos_object_guard、readiness为50。无force push、未改049_first_run_setup原文。新基线PGlite完整001—050、旧文件字节与21项约束已重跑通过，静态50迁移/223表/128函数一致；原生CI待整合候选。
+- 新基线本地复验：全仓格式与类型检查通过；API源码122文件、1372项全部通过（52.16s）。新增原生PG并发与完整隔离恢复尚等待PR精确候选CI。
 - 2026-11-06接续：核验分支、HEAD、全部本轮未提交文件和远端main仍为ef62cb1；无其它任务改动。准备补原生PG并发用例、提交独立分支并创建PR，后续CI结果另记，不提前把本地验证记为CI通过。
 - 2026-11-06提交前：补齐4项原生PG并发/SQL回滚测试（COS集成共8项）；修复新增表在现有全表恢复非空门禁中缺样本的确定CI阻断，新增metadata-only恢复fixture及capture/verify/freeze/quarantine接线与必要镜像清单。全仓格式/类型、针对性格式/类型、12项恢复/打包测试、49迁移静态清单通过；这些新增原生执行场景等待精确候选CI，不宣称已经通过。
 - 2026-11-06：已核验仓库、基线、工作区和现有权限/上传/恢复边界，读取CURRENT_STATUS、TASKS、COLLABORATION。现有媒体限额为8MiB/文件、128MiB/机构，本轮保留。
@@ -40,11 +42,11 @@
 | `npm test --workspace @small-city-basketball/api` | 最终120文件、1366项全部通过；包括COS adapter/config/持久化与CLI门禁回归 |
 | API `typecheck`、`build` | 通过；编译包含新增PG集成测试的类型检查；build仅本地编译，不是pack或部署 |
 | 受影响代码、JSON、YAML的Prettier；`git diff --check` | 通过 |
-| 完整001—049与旧媒体升级、21项SQL约束 | 在PostgreSQL 18.6/PGlite 0.5.15 WASM隔离库 `scb_test_cos_schema` 通过；048既有媒体字节/摘要保持不变；最终工作区049含组织索引也已重跑 |
-| 迁移/最小权限静态一致性 | 49项Migration、222表、127函数一致；001—048未改动 |
+| 完整001—050与旧媒体升级、21项SQL约束 | 在PostgreSQL 18.6/PGlite 0.5.15 WASM隔离库 `scb_test_cos_schema` 通过；049已有媒体字节/摘要在050后保持不变 |
+| 迁移/最小权限静态一致性 | 50项Migration、223表、128函数一致；001—049沿用main原文 |
 
 原生PG/TCP环境不可用（本容器无postgres/docker，原生安装受容器权限限制），不能把WASM SQL验证当成多连接并发验收。`apps/api/test/cos-media.integration.test.ts` 已编写并通过类型检查，尚未执行；涵盖旧DB读取、新COS无payload、跨机构拒绝、幂等/分片、发布/Range/撤销/清理和PUT失败登记。正式COS、CAM最小权限、微信真机、Docker镜像和生产部署均未执行。
 
 验证细节：[证据](../evidence/COS01/README.md)。下一步：在原生隔离 `scb_test_*` 库执行现有媒体/COS/本人资料相关PG集成及并发回归，再使用独立测试桶配置凭据做真实COS读写、删除和恢复验收；按正式部署授权决定何时迁移上线。
 
-Git结果：分支 `feat/tencent-cos-media`，HEAD仍为基线ef62cb1；本轮代码均为本地未提交改动，未commit、push、合并或打包。049已编写并仅在隔离WASM库执行，生产未执行。未改定位、UI或其它支付/投保/记分业务。
+Git结果：分支 `feat/tencent-cos-media` 初始提交4170765已共享至PR45；合并最新main后的候选等待后续同步及精确CI。050已编写并仅在隔离WASM库执行，生产未执行。未发布包、未部署；账号安全只保留main既有成果，未顺带修改定位、UI或支付/投保/记分业务。

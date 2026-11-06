@@ -46,9 +46,10 @@ APPLIED 045_r6_dispatch.sql
 APPLIED 046_r6_training.sql
 APPLIED 047_r6_sponsor_commerce.sql
 APPLIED 048_r6_shared_boundaries.sql
+APPLIED 049_first_run_setup.sql
 LEGACY_MEDIA_UPGRADE preserved bytes and digest
-APPLIED 049_cos_media_storage.sql
-SURFACE [ { tables: 222 } ]
+APPLIED 050_cos_media_storage.sql
+SURFACE [ { tables: 223 } ]
 ENGINE [
   {
     version: 'PostgreSQL 18.6 (PGlite 0.5.15) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.13 (e13ee988ce3d87a738dd8f3661d02223308c412a), 32-bit'

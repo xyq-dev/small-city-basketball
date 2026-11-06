@@ -1,4 +1,4 @@
--- COS01: keep the frozen 001--048 history and old database-backed files intact.
+-- COS01: keep the frozen 001--049 history and old database-backed files intact.
 -- A staging record is committed on a separate connection before writing an object. It has
 -- deliberately no organization FK: the authorized business transaction already holds the
 -- organization lock, and waiting for its own FK lock on another connection would deadlock.
@@ -63,7 +63,7 @@ ALTER TABLE media_files ADD CONSTRAINT media_files_content_storage CHECK (
 -- The row lock serializes final linking with cleanup. Deletion timestamps are receipts, not
 -- queue requests: the worker sets them only after COS confirms deletion. A fresh orphan is
 -- retained for a day to cover a request that has staged but not yet acquired its row lock.
-CREATE FUNCTION c49_cos_object_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION c50_cos_object_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_OP='DELETE' THEN
     RAISE EXCEPTION 'COS object receipts cannot be deleted' USING ERRCODE='23514';
@@ -90,7 +90,7 @@ BEGIN
 END;
 $$;
 CREATE TRIGGER media_cos_objects_guard BEFORE INSERT OR UPDATE OR DELETE ON media_cos_objects
-  FOR EACH ROW EXECUTE FUNCTION c49_cos_object_guard();
+  FOR EACH ROW EXECUTE FUNCTION c50_cos_object_guard();
 
 -- Both DB files and COS files consume quota until explicit purge. Retained participant
 -- ciphertext and open upload reservations continue to share that same organization limit.

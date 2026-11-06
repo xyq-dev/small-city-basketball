@@ -151,9 +151,10 @@ function configuration(secretDirectory, database = sourceDatabase) {
     POSTGRES_DB: database,
     COMMERCE_MODE: 'ENFORCED',
     SCB_BACKGROUND_WORKERS_ENABLED: 'false',
+    FIRST_RUN_SETUP_ENABLED: 'false',
   };
 }
-const sourceEnv = configuration(sourceSecrets);
+const sourceEnv = { ...configuration(sourceSecrets), FIRST_RUN_SETUP_ENABLED: 'true' };
 const targetEnv = configuration(targetSecrets, 'postgres');
 async function compose(project, env, args, options) {
   return run(
@@ -651,7 +652,7 @@ secrets:
         `${prefix}/api:local`,
         '--input-type=module',
         '-e',
-        `import crypto from 'node:crypto';const expected=${JSON.stringify(expectedMigrations)};import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.deepEqual(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).sort(),Object.keys(expected));for(const [name,hash] of Object.entries(expected))assert.equal(crypto.createHash('sha256').update(fs.readFileSync('apps/api/migrations/'+name)).digest('hex'),hash);assert.ok(await(await import('./apps/api/dist/poster-domain.js')).posterChineseFontsAvailable(),'Packaged API must render real Chinese glyphs');assert.ok(!fs.existsSync('apps/api/src'));assert.ok(!fs.existsSync('scripts'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}`,
+        `import crypto from 'node:crypto';const expected=${JSON.stringify(expectedMigrations)};import assert from 'node:assert/strict';import fs from 'node:fs';import('@small-city-basketball/contracts');assert.equal(process.getuid(),10001);for(const p of ['apps/api/dist/main.js','apps/api/dist/bootstrap-owner.js','apps/api/dist/initialization-link.js','apps/api/dist/database/migrate.js','packages/contracts/runtime-privileges.json'])assert.ok(fs.existsSync(p));assert.deepEqual(fs.readdirSync('apps/api/migrations').filter(x=>x.endsWith('.sql')).sort(),Object.keys(expected));for(const [name,hash] of Object.entries(expected))assert.equal(crypto.createHash('sha256').update(fs.readFileSync('apps/api/migrations/'+name)).digest('hex'),hash);assert.ok(await(await import('./apps/api/dist/poster-domain.js')).posterChineseFontsAvailable(),'Packaged API must render real Chinese glyphs');assert.ok(!fs.existsSync('apps/api/src'));assert.ok(!fs.existsSync('scripts'));for(const p of ['tsx','vite']){let found=false;try{import.meta.resolve(p);found=true}catch{}assert.ok(!found)}`,
       ]);
       await run('docker', [
         'run',

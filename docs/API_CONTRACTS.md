@@ -434,7 +434,7 @@ OverlayPreviewData逐层白名单完整为：eventName、home/away各`{teamName}
 
 scrypt保留既有参数及哈希格式，单进程内所有API服务实例共用1槽与最多16等待，超载/底层计算失败固定503 AUTH_UNAVAILABLE，错误释放槽位；不是跨进程的全局队列。限流每次独立自动提交清理最多100条超过1小时的旧key，再执行原窗口原子计数，不携带其它key锁进入upsert，不删除仍有效计数。
 
-首owner由独立compiled CLI输入私有JSON四字段email/password/displayName/organizationName，组织非空即拒绝、既有email不提升，用户/机构/OWNER/BOOTSTRAP_OWNER审计同事务；无HTTP bootstrap接口，不创建session或返回登录凭据。详见[P07-A任务](tasks/P07-A.md)及[运行说明](../ops/templates/README.md)。原公开/Overlay/管理/记分授权边界不变。
+首owner旧版CLI合同由下方“首次初始化及修改密码”增量收窄：新部署优先私密离线签发链接，由用户在HTTPS页面自行设置密码；受控`bootstrap-owner`保留，必须遵守相同的新实例检查与持久关闭规则。不会自动提升既有账号、重置已有密码或授予平台权限。原公开/Overlay/管理/记分授权边界不变。
 
 ## 12. P04-B正式单场改期合同（DONE / MAIN）
 
@@ -462,7 +462,6 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 
 保存使用原clientRequestId与expectedVersion；未知结果查原回执，不用新ID绕过。照片或保单分次保存，精确PUT mine路由共享12MiB/2并发上传lane，邻接命令仍100KiB。材料通过、队伍提交、独立队伍批准、冻结分别执行；后面三个入口重查当前资料/签署/审核/保障版本。拒绝宣传不影响参赛。在线保险、支付和自动实名核验未开放。
 
-
 ## COS01 媒体存储兼容扩展
 
 原报名/比赛 `media-files`、幂等 `media-file-requests`、分片 `media-upload-sessions`、发布/撤销和content接口形状不变。启用COS后，新文件仍由原服务端完整校验与授权；普通DTO不包含bucket、Key、cos_object_id、云凭据或签名地址，既有数据库文件保持兼容。单文件8MiB及机构共享128MiB不变，本轮不提供前端直传授权接口。
@@ -474,3 +473,18 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 `GET /v1/orgs/:orgId/events/:eventId/youth-adult-data-consent?entryId=UUID&memberId=UUID` 仅返回当前本人材料scope的最小操作能力；不返回年龄、生日或身份明文。`POST`同路径接受当前能力给出的精确scope、材料/政策/条款版本和独立年龄证据标识，以及独立幂等request ID；客户端声明年龄不能产生权限。CONSENT只恢复当前本人资料处理，仍须正常当前资格及最终独立审核；WITHDRAW无需重新解密年龄证据。公开档案、照片宣传与直播分别核验其原有独立用途授权，不因本次资料同意自动开放。
 
 成年本人处理许可经历WITHDRAW或当前政策更换后，公开用途还须新独立动作：档案来源同意不能早于当前政策撤回后的首个CONSENT，宣传照片还须当前材料的独立照片同意版本晚于该时点。普通换照片后的资料再同意沿用该轮起点，避免重新上传与处理同意互锁；LIVE继续独立核实际直播/录像内容权利，不由资料处理许可代替。
+
+## 首次初始化及修改密码
+
+| 入口                            | 请求体                                                                | 约束                                                                                                                |
+| ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `POST /v1/setup/initialize`     | `{token,email,password,confirmPassword,displayName,organizationName}` | 显式开启、真正未初始化实例及有效15分钟一次性令牌同时满足；只创建首位机构`ORG_OWNER`，成功后正常登录，不直接签发会话 |
+| `POST /v1/auth/change-password` | `{currentPassword,newPassword,confirmPassword}`                       | 当前有效会话及ACTIVE用户、当前密码正确、新旧不同、二次确认一致；只改当前用户，成功清除Cookie并重新登录              |
+
+两接口沿用严格JSON字段校验、12–128字符密码规则、scrypt及同源Origin/CSRF规则和限流，错误响应不包含密码、令牌或哈希。密码及确认值仅用于本次请求。没有匿名签发/补发初始化令牌的HTTP入口。
+
+首次设置令牌由受控`initialization-link`离线命令交付到私密交互终端，API只持runtime凭据；数据库仅保存摘要、持久到期和使用状态。初始化链接为`/setup#token=…`，页面读取后立即清fragment、仅存内存并由请求体提交；禁止query/Storage/遥测，页面`no-store`并限制第三方资源。重签失效旧令牌。用户、机构、成员关系、审计、令牌消费和完成标记同事务；网页与兼容CLI共享锁，成功一次后永久关闭，旧实例升级不会重建账号。
+
+修改密码不接受userId/email/loginName作为目标，不改变账号标识、机构或角色。密码、credential_reset_at、旧会话及未消费找回密码令牌撤销和审计同事务；错误当前密码、表单错误或事务失败均无凭据/会话变化。成功撤销包括当前在内的全部旧会话；前端清理登录态，引导正常登录。并发登录、找回密码及离线维护共用账号锁协议。已有找回密码入口保留；修改密码不依赖邮件、短信或微信。
+
+`/ready`仍只检查结构、Migration及最小权限，尚未初始化不是结构故障。部署操作见[账号安全](operations/account-security.md)及[安装说明](../ops/templates/README.md)。

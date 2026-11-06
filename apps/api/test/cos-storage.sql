@@ -1,5 +1,5 @@
 -- COS01 database invariants. Run ONLY in an isolated scb_test_* database after loading the
--- synthetic legacy-007.json fixture and applying migrations 001--049. This script rolls back
+-- synthetic legacy-007.json fixture and applying migrations 001--050. This script rolls back
 -- every test row. The fixture supplies real event/match/roster FK targets; no triggers are
 -- disabled for any assertion below. Cloud bytes and multi-connection races are tested elsewhere.
 BEGIN;

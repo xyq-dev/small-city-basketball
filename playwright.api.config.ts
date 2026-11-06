@@ -6,7 +6,8 @@ try {
   const database = new URL(process.env.DATABASE_URL ?? '');
   if (
     !['postgres:', 'postgresql:'].includes(database.protocol) ||
-    !/^scb_test_[A-Za-z0-9_]+$/.test(decodeURIComponent(database.pathname.slice(1)))
+    !/^scb_test_[A-Za-z0-9_]+$/.test(decodeURIComponent(database.pathname.slice(1))) ||
+    process.env.NODE_ENV === 'production'
   )
     throw new Error('Not an isolated test database');
 } catch {
@@ -36,7 +37,8 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'npm run db:migrate && npm run dev:api',
+      command:
+        'npm run db:migrate && node --import tsx scripts/prepare-api-browser-owner.mjs && npm run dev:api',
       url: 'http://127.0.0.1:3300/health',
       env: { PORT: '3300', APP_ORIGIN: 'http://127.0.0.1:4273' },
       reuseExistingServer: false,

@@ -1,6 +1,8 @@
 # COS01 接续记录
 
-2026-11-06 Asia/Shanghai，负责人 Codex root。状态 REVIEW / LOCAL_ONLY，基线与授权见[任务卡](../tasks/COS01.md)。
+2026-11-06 Asia/Shanghai，负责人 Codex root。状态 REVIEW / BRANCH_ONLY，基线与授权见[任务卡](../tasks/COS01.md)。
+
+最新检查点：初始提交4170765已推送[PR45](https://github.com/xyq-dev/small-city-basketball/pull/45)。main发布期间更新至f7382c3，已普通merge并保留PR43账号安全；049_first_run_setup保持原文，COS改为050_cos_media_storage.sql、guard c50，清单50迁移/223表/128函数。新基线PGlite完整001—050及21项约束通过，原生CI等待后续整合候选。下方旧049/LOCAL_ONLY记录仅表示初始本地检查点。
 
 接续授权更新：用户已同意独立分支提交/推送、PR、GitHub CI及验证审查通过后合并main。当前正在补并发验收并准备共享；下方“未提交/原生PG未验”为此前检查点，实际Git与CI完成后再更新。真实COS配置、付费资源和生产迁移/部署未由本轮启用。
 

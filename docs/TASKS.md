@@ -1,8 +1,16 @@
 # 任务看板
 
-## 2026-11-06 COS01 腾讯云对象存储（REVIEW / LOCAL_ONLY）
+## 2026-11-06 账号安全（DONE / MAIN：源码与隔离验收，生产未部署）
 
-本地 `feat/tencent-cos-media` 在基线ef62cb1上完成私有COS媒体接线、旧DB兼容、持久化清理和049/权限；尚未提交、推送、合入main或上线。API1366项、类型/构建/格式、PGlite完整升级及21项SQL约束通过；原生PG并发、真实COS和真机未验。详见[任务](tasks/COS01.md)、[接续](handoffs/COS01.md)、[证据](evidence/COS01/README.md)、[配置](operations/tencent-cos.md)。`CURRENT_STATUS.md`保持main已整合事实，不将本地结果写成生产状态。
+[PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)已合入main，合并SHA`becf8d38e3bc8e2c12059780ed57f52aa35f0bf0`，tree `505aaac19cf734e7c2623a4223242d726c503d60`与候选`89241947fb180ce8e857d1aee5cb94ca303a79c3`及CI测试merge-ref精确一致。首次部署自行设置OWNER密码、Web登录后本人改密及全部旧会话撤销已完成源码、独立安全复核与隔离验收。
+
+[CI207](https://github.com/xyq-dev/small-city-basketball/actions/runs/42168301902)的account-security/admin/api/production四作业全部SUCCESS，已读取四份完成日志。新增真实HTTPS浏览器桌面/手机各1完整密码流程通过；既有真实API浏览器24项、PG新域143/旧业务611、最小权限21、原生页面→真实API21、HTTPS4、实际PG重启与完整归档恢复通过。管理端598、API源码1345、原生1196通过/1平台跳过；兼容布局1349通过/1335配置跳过，1335份布局/PNG已核验，不代表微信真机。GitHub自动Code Review于同一候选完成且无finding；独立安全审查另行完成，未冒称自动Security Review执行。
+
+生产未由本轮部署，Migration049仅临时/CI执行。当前会话无直接Hermes/SSH执行通道；公开health/ready返回200只证明既有服务正常。服务器侧固定版本、备份恢复、升级和账号保留步骤已写入[交接](handoffs/ACCOUNT-SECURITY.md)。详见[任务](tasks/ACCOUNT-SECURITY.md)和[操作说明](operations/account-security.md)。
+
+## 2026-11-06 COS01 腾讯云对象存储（REVIEW / BRANCH_ONLY）
+
+`feat/tencent-cos-media` 初始提交4170765已创建[PR45](https://github.com/xyq-dev/small-city-basketball/pull/45)。发布期间main前进至f7382c3，已普通merge保留账号安全，COS迁移顺延050；静态50迁移/223表/128函数、PGlite完整升级和21项SQL约束通过，原生CI待整合候选。初始API1366项、类型/构建/格式通过，不代表新基线或真实COS已验。尚未合入main、未上线。详见[任务](tasks/COS01.md)、[接续](handoffs/COS01.md)、[证据](evidence/COS01/README.md)、[配置](operations/tencent-cos.md)。
 
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 
