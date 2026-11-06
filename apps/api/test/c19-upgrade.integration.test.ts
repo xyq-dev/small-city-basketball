@@ -528,6 +528,17 @@ describe(
       // Only migration-seeded configuration rows are allowed; no listing, follow, binding,
       // season grant, performance link, operator, WeChat identity or booking appears.
       expect(nonEmpty).toEqual(SEEDED_CONFIGURATION);
+      // Migration 049 closes an existing real instance without issuing a link
+      // or changing any legacy identity; restore must preserve this durable row.
+      expect(
+        (
+          await pool!.query(`SELECT singleton,initialized_at IS NOT NULL AS initialized,
+            token_hash IS NULL AS "noToken",token_expires_at IS NULL AS "noExpiry",
+            token_used_at IS NULL AS unused FROM first_run_setup`)
+        ).rows,
+      ).toEqual([
+        { singleton: true, initialized: true, noToken: true, noExpiry: true, unused: true },
+      ]);
       expect(
         (
           await pool!.query(
@@ -1266,6 +1277,8 @@ const SEEDED_CONFIGURATION: Record<string, number> = {
   region_catalog_nodes: 3212,
   region_legacy_aliases: 3151,
   booking_settings: 1,
+  // 049 permanently closes first-run initialization on this populated legacy instance.
+  first_run_setup: 1,
   event_commercial_activations: 1,
   // E05's only initial scheduling row has no recipient, grant, source or message.
   notification_start_scan: 1,

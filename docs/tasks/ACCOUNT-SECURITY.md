@@ -49,3 +49,11 @@
 - 已创建 [Draft PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)，目标main仍为ef62cb1；不合并。
 - Application checks首个run203（42155972703）已排队，不能记为通过；随后文档接续提交的CI以最终头SHA为准。
 - 源码及必要隔离验证完成，本地HEAD已与远端代码提交对齐。后续只允许本PR必要CI修复与文档同步，无生产操作。
+
+### CI204实际结果及旧库夹具修复
+
+[CI204](https://github.com/xyq-dev/small-city-basketball/actions/runs/42156137867)测试头a6e10fb（merge-ref a9c85cf，tree相同）：admin与隔离production作业SUCCESS；API的R6真实PG143通过，旧业务604通过/2失败/5跳过，另1个beforeAll失败，后续检查跳过。失败不得记为全部通过。
+
+已定位并只修复两份相关测试：C19升级精确新增表清单漏掉first_run_setup的1行，现同时明确断言旧实例已关闭且未签发令牌；C22真实001–022旧库的当前API注册受门禁拒绝，现显式事务构造合成历史用户/机构/OWNER/原注册审计后正常登录。没有扩展历史结构、改冻结校验或放宽产品门禁。两文件真实PG11/11通过；本地C19沿原模板恢复路径，不冒充完整归档恢复。
+
+CI204还实证完成管理端/源码测试、兼容Chromium1349通过/1335配置跳过、1335份布局，以及隔离HTTPS4、最小权限PG21、完整归档恢复与quarantine；API内新增初始化/改密/runtime与C22冻结归档恢复均通过。结果属于该失败run内明确已成功项，修复提交需重新运行CI。CI最终结论以PR检查及PR描述为准；不合并、不部署。
