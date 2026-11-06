@@ -29,6 +29,7 @@
 
 - 2026-11-06基线更新：初始35文件已提交417076550fa4fc4aa7de636c3a86b7a81c6203a0并推送，创建[PR45](https://github.com/xyq-dev/small-city-basketball/pull/45)。发布期间main已前进到f7382c319c0e11b867b9f07c584ed135496f01ec（含PR43账号安全），通过普通merge保留新增功能，解决3份文档冲突；COS迁移顺延050、guard为c50_cos_object_guard、readiness为50。无force push、未改049_first_run_setup原文。新基线PGlite完整001—050、旧文件字节与21项约束已重跑通过，静态50迁移/223表/128函数一致；原生CI待整合候选。
 - 新基线本地复验：全仓格式与类型检查通过；API源码122文件、1372项全部通过（52.16s）。新增原生PG并发与完整隔离恢复尚等待PR精确候选CI。
+- CI209启动后，复核移除恢复工具对完整Nest App的无关native图像依赖：API和工具共同使用纯`MediaObjectStorage.forRuntime`门禁，恢复时配置工厂也不执行。新增回归、定向15项、类型/构建/格式与打包检查通过，编译门禁实际加载未引入sharp。CI209已完成account-security，其它仍在运行；本补丁同步后以新的精确候选CI为准，不沿用旧候选成功。
 - 2026-11-06接续：核验分支、HEAD、全部本轮未提交文件和远端main仍为ef62cb1；无其它任务改动。准备补原生PG并发用例、提交独立分支并创建PR，后续CI结果另记，不提前把本地验证记为CI通过。
 - 2026-11-06提交前：补齐4项原生PG并发/SQL回滚测试（COS集成共8项）；修复新增表在现有全表恢复非空门禁中缺样本的确定CI阻断，新增metadata-only恢复fixture及capture/verify/freeze/quarantine接线与必要镜像清单。全仓格式/类型、针对性格式/类型、12项恢复/打包测试、49迁移静态清单通过；这些新增原生执行场景等待精确候选CI，不宣称已经通过。
 - 2026-11-06：已核验仓库、基线、工作区和现有权限/上传/恢复边界，读取CURRENT_STATUS、TASKS、COLLABORATION。现有媒体限额为8MiB/文件、128MiB/机构，本轮保留。

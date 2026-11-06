@@ -160,13 +160,7 @@ export async function verifyCosRecovery({ readPool, saved }) {
 }
 
 /** Restore quarantine must preserve receipts and discard even an injected cloud provider. */
-export async function verifyCosRecoveryQuarantine({
-  readPool,
-  saved,
-  databaseUrl,
-  appOrigin,
-  participantDataKey,
-}) {
+export async function verifyCosRecoveryQuarantine({ readPool, saved, databaseUrl }) {
   await verifyCosRecovery({ readPool, saved });
   assert.equal(
     (
@@ -181,25 +175,21 @@ export async function verifyCosRecoveryQuarantine({
     providerCalls++;
     throw new Error('Synthetic restore must never operate a cloud provider');
   };
-  const { createApi } = await import('../apps/api/dist/app.js');
-  const instance = await createApi({
-    databaseUrl,
-    appOrigin,
-    participantDataKey,
-    backgroundWorkersEnabled: true,
-    media: {
-      objectStore: {
-        bucket: 'synthetic-recovery-12345',
-        region: 'ap-guangzhou',
-        prefix: 'synthetic-cos-recovery/v1',
-        put: forbidden,
-        get: forbidden,
-        delete: forbidden,
-      },
-    },
+  // The Alpine db-tools image deliberately omits image-processing native addons. Import
+  // the same pure startup gate used by the API, rather than importing the entire Nest app.
+  const { MediaObjectStorage } = await import('../apps/api/dist/media-object-storage.js');
+  const storage = MediaObjectStorage.forRuntime(readPool, databaseUrl, true, () => {
+    providerCalls++;
+    return {
+      bucket: 'synthetic-recovery-12345',
+      region: 'ap-guangzhou',
+      prefix: 'synthetic-cos-recovery/v1',
+      put: forbidden,
+      get: forbidden,
+      delete: forbidden,
+    };
   });
   try {
-    const storage = instance.app.get('SCB_MEDIA_OBJECT_STORAGE');
     assert.equal(storage.store, undefined, 'Restore discards configured or injected COS adapters');
     assert.deepEqual(await storage.cleanup(), { deleted: 0, failed: 0 });
     await assert.rejects(
@@ -208,8 +198,7 @@ export async function verifyCosRecoveryQuarantine({
     );
     assert.equal(providerCalls, 0);
   } finally {
-    await instance.app.close();
-    await instance.pool.end();
+    await storage.onModuleDestroy();
   }
   await verifyCosRecovery({ readPool, saved });
 }

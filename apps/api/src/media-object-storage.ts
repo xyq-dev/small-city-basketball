@@ -20,6 +20,16 @@ export class MediaObjectStorage {
   private timer?: ReturnType<typeof setInterval>;
   private running?: Promise<unknown>;
 
+  /** Shared by API startup and packaged recovery checks; quarantined data never loads keys. */
+  static forRuntime(
+    pool: Pool,
+    databaseUrl: string,
+    quarantined: boolean,
+    resolveStore: () => CosObjectStore | undefined,
+  ): MediaObjectStorage {
+    return new MediaObjectStorage(pool, databaseUrl, quarantined ? undefined : resolveStore());
+  }
+
   constructor(
     private readonly pool: Pool,
     databaseUrl: string,

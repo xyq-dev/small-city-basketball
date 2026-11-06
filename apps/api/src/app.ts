@@ -571,10 +571,11 @@ export async function createApi(
     const playerPerformance = new PlayerPerformanceService(pool, options);
     const scheduling = new SchedulingService(pool, options);
     const knockout = new GroupKnockoutService(pool, options);
-    mediaStorage = new MediaObjectStorage(
+    mediaStorage = MediaObjectStorage.forRuntime(
       pool,
       options.databaseUrl,
-      restored ? undefined : (input.media?.objectStore ?? readCosObjectStore()),
+      restored,
+      () => input.media?.objectStore ?? readCosObjectStore(),
     );
     const mediaOptions = {
       trustedExternalHosts:

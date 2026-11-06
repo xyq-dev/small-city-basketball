@@ -63,6 +63,24 @@ afterEach(async () => {
 });
 
 describe('private COS persistence boundary', () => {
+  it('does not resolve credentials or an injected provider for a restored runtime', async () => {
+    const resolveStore = vi.fn(() => store);
+    const restored = MediaObjectStorage.forRuntime(
+      pool,
+      'postgresql://synthetic/scb_test_cos',
+      true,
+      resolveStore,
+    );
+    expect(resolveStore).not.toHaveBeenCalled();
+    expect(restored.store).toBeUndefined();
+    await expect(restored.cleanup()).resolves.toEqual({ deleted: 0, failed: 0 });
+    await expect(restored.read(client, file)).rejects.toMatchObject({
+      code: 'MEDIA_STORAGE_UNAVAILABLE',
+    });
+    expect(get).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+    await restored.onModuleDestroy();
+  });
   it('registers durable cleanup identity before uploading and stores no database payload', async () => {
     const result = await storage.save(client, orgId, fileId, body, 'image/png');
     expect(result).toEqual({ payload: null, cosObjectId: fileId });
