@@ -1,5 +1,40 @@
 # INT01 全分支整合验收
 
+## 2026-11-06 22:20 Asia/Shanghai 最终同候选验收与合并（DONE / MAIN）
+
+本节为最终事实，下方旧候选记录仅作历史。用户本轮授权测试并合并所有分支；唯一集成人 Codex root，最终接管目录 `/workspace/scratch/7ac4ead1fd7e/small-city-basketball`，起点候选1b982b0、main b19c19a，新 checkout 初始干净。原目录、未提交成果及来源分支均保留；接管本地文档检查点5090955保留，最终事实由本次文档同步发布。
+
+[PR #46](https://github.com/xyq-dev/small-city-basketball/pull/46) 于2026-11-06 22:19:19 Asia/Shanghai以 `merge` 合并，实际 SHA `2ab668e5361e71dbb138b45b704928692b15b174`，双亲为main `b19c19a118e63771c6451d93ed3e16de5416ce63` 和候选 `1b982b0c84784d7d542c7748118408c880184fd3`。实际tree `4ee408690515caf15b9fae176dca0f9819d3c320` 与候选及测试merge-ref `757695af5da690c48c809a58c5923ea6fd56fed3`完全一致。
+
+| 分支 | 固定来源head | 合并后事实 |
+| --- | --- | --- |
+| feat/self-service-owner-password | 89241947fb180ce8e857d1aee5cb94ca303a79c3 | main祖先；PR43原已merged |
+| feat/tencent-cos-media | a4dff06eedb5815e1cfedc48fe57361b1a527a1a | main祖先；PR45原已merged |
+| feat/ui005-figma-complete | 133ba3cd723fc40845c00f8ec0dcd9806c4217fe | 随PR46进入main；PR42现closed/merged |
+| feat/wechat-figma-rebuild | 3cc97e58be97485a8818072e0a75dfa39607a63e | 随PR46进入main；PR44现closed/merged |
+| integrate/all-branches-20261106 | 1b982b0c84784d7d542c7748118408c880184fd3 | PR46现closed/merged |
+
+[CI224](https://github.com/xyq-dev/small-city-basketball/actions/runs/42228188442) 的四作业 admin/api/account-security/production 和 [Windows57](https://github.com/xyq-dev/small-city-basketball/actions/runs/42228188481) 全部SUCCESS，完成日志已读，未以旧head绿色替代。独立边界审查确认全部来源提交被包含，API/admin/contracts/ops/.github子树与原main一致，最新预约筛选器仅12px→14px及文档。合并前再次读取最新head/main/check-runs/线程：版本未变、19/19 resolved、未解决P1/P2为0、PR clean。最终head的独立审查与历史自动建议的修复证据分别记录；最新自动审查仅60734369，未伪称自动批准1b982b0。
+
+| 层次 | 最终实际结果 |
+| --- | --- |
+| 源码与构建 | admin598、API1374、微信1620通过/0失败/1既有Windows桥平台skip、CLI12；格式、类型、构建成功 |
+| root独立复跑 | Node v24.22.1，候选1b982b0运行完整test:wechat：1621项，1620通过/0失败/1同类平台skip |
+| 浏览器兼容布局 | 1581通过、1567既有配置重复跳过；1566份布局JSON/PNG守卫成功，覆盖320/390/430 |
+| 真实隔离PG | 剩余模块143＋既有620项全部通过；001—050完整链预检成功 |
+| 原生页面→真实HTTP/API/PG | 21通过、0跳过 |
+| 真实API浏览器 | 桌面12＋手机12全部通过 |
+| 持久化与恢复 | 快照capture、实际PG重启、重启后报名/记分/公开身份核对成功；HTTPS包、完整归档恢复及隔离成功 |
+| 账号安全 | 桌面/手机各1真实HTTPS初始化与改密全流程成功，旧口令/会话拒绝，新口令接受且身份保留 |
+| 失败清理 | 保留子进程失败码，仅移除所属数据库，控制库保留；两套浏览器清理校验成功 |
+| Windows工具 | SDK/preparation契约SUCCESS，不代表微信runtime |
+
+兼容附件：[mini-program-layouts](https://github.com/xyq-dev/small-city-basketball/actions/runs/42228188442/artifacts/13508080626)。四份完成日志当前执行副本位于 `/workspace/scratch/7ac4ead1fd7e/ci-evidence/42228188442-{admin,api,account-security,production}.log`，本地复跑日志为 `/workspace/scratch/7ac4ead1fd7e/wechat-final.log`；可共享日志以GitHub run为准，临时路径不冒充长期附件。
+
+业务候选累计324新增回归、32新CJS、36新合成fixture继续保留；没有删除或跳过失败业务测试、放宽权限/CAS/同意/金额断言。本次合并及收口文档没有新增后端、API、数据或Migration变更，001—050与生产配置保持原文。未执行生产部署、生产Migration、真实资金、外部凭据或付费资源操作。微信真机/原生键盘、真实COS/外部服务、正式上传包体与生产仍待专项验收；源码/兼容浏览器成功不能替代这些结果。合并后主线自动复跑另行产生，不把运行中检查记为成功。
+
+下一步：在本main代码上继续微信真实业务与外部服务验收；若执行正式升级，使用既有备份/恢复交接，保留现有账号与密码。本轮到全分支测试及main整合收口，不提前声称线上更新。
+
 ## 2026-11-06 21:45 Asia/Shanghai CI223唯一筛选器字号修复
 
 当前共享84f0f958/tree a210740d，尚未合并。CI223 account-security、production与Windows56成功，admin源码598/1374/微信1620＋1平台skip/CLI12及构建成功；浏览器1578通过、3失败只属新增int01-booking-overview-status三宽：“更多”筛选picker继承.status-tab 12px，未达14px可读性要求。六页状态修复本身及其他场景无失败，验收spec/fixture/身份/数据保持。

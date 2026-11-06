@@ -1,5 +1,15 @@
 # INT01 全部分支测试与整合
 
+## 2026-11-06 22:20 Asia/Shanghai INT01 全分支整合完成（DONE / MAIN）
+
+[PR #46](https://github.com/xyq-dev/small-city-basketball/pull/46) 已用 merge 合入 main，合并提交 `2ab668e5361e71dbb138b45b704928692b15b174`。来源 PR #42、#44 已由 GitHub 标记 merged；账号安全 #43、腾讯 COS #45 原已合入。四个 feature head 与整合候选全部保留为 main 祖先，未强推、删除来源分支或覆盖旧 checkout。
+
+候选 `1b982b0c84784d7d542c7748118408c880184fd3`、CI 测试 merge-ref `757695af5da690c48c809a58c5923ea6fd56fed3` 与实际合并提交的 tree 均为 `4ee408690515caf15b9fae176dca0f9819d3c320`。[CI224](https://github.com/xyq-dev/small-city-basketball/actions/runs/42228188442) admin、api、account-security、production 四作业及 [Windows57 工具契约](https://github.com/xyq-dev/small-city-basketball/actions/runs/42228188481)全部 SUCCESS，已读取完成日志；19/19 审查线程 resolved，未解决 P1/P2 为0，独立合并边界审查通过。最新自动审查针对旧 60734369，不冒称最终 head 获得自动批准。
+
+微信源码1620通过、0失败、1既有平台skip；管理598、API源码1374、CLI12；兼容浏览器1581通过/1567既有配置跳过，1566份布局及PNG守卫通过。真实PG143＋620、原生页面→真实HTTP/API21、API浏览器桌面12＋手机12、PG实际重启、账号安全两端流程、HTTPS与完整隔离恢复及失败清理全部通过。详细日志与附件见[最终验收](../evidence/INT01/README.md)。
+
+本任务 DONE 指源码、隔离验收与 main 整合。本轮无后端/API/契约/001—050迁移/生产配置增量，无新增Migration；未执行生产部署、生产Migration或真实资金/凭据操作。微信真机、原生键盘、真实COS等外部联调仍待专项验收；合并后的主线自动复跑如在运行，不作为已成功证据。下方 REVIEW/BRANCH_ONLY、旧候选与旧CI记录均为历史。
+
 ## 2026-11-06 21:45 Asia/Shanghai CI223唯一筛选器字号修复
 
 当前共享84f0f958/tree a210740d，尚未合并。CI223 account-security、production与Windows56成功，admin源码598/1374/微信1620＋1平台skip/CLI12及构建成功；浏览器1578通过、3失败只属新增int01-booking-overview-status三宽：“更多”筛选picker继承.status-tab 12px，未达14px可读性要求。六页状态修复本身及其他场景无失败，验收spec/fixture/身份/数据保持。
