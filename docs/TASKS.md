@@ -1,8 +1,12 @@
 # 任务看板
 
-## 2026-11-07T02:07+08:00 COS02 后台对象存储（REVIEW / BRANCH_ONLY）
+## 2026-11-07T02:53+08:00 COS02 后台对象存储（DONE / MAIN，生产未部署）
 
-新增实际系统设置→对象存储、凭据加密与版本检测/启用；[PR47](https://github.com/xyq-dev/small-city-basketball/pull/47)已同步。CI226暴露的051清理时钟/旧升级种子已最小修复；CI227自动审查另两条并发地址锁P2也已收口并独立复核。root最终页面/路由37通过，类型/格式通过；新14服务PG＋4HTTP及完整CI待新精确head，未合并/部署、051未在生产执行。详见[任务](tasks/COS02-ADMIN-STORAGE.md)及[交接](handoffs/COS02-ADMIN-STORAGE.md)。下方INT01仍为已合并基线事实。
+[PR47](https://github.com/xyq-dev/small-city-basketball/pull/47)已merge至GitHub main：`f6ae8b75dc03040f51d2ad68d6439ef10e13934c`。候选4fe60ec、CI测试merge及实际merge的tree一致。入口「系统设置→对象存储」仅有效平台管理员可用，支持加密草稿、显式检测与启用，运行时使用已启用版本并保留历史数据库文件读取。
+
+[CI228](https://github.com/xyq-dev/small-city-basketball/actions/runs/42267904741)同head四作业全部SUCCESS；仅admin外部字体下载超时后单项重试。后台635/API单元1397、PG143＋638（含新服务14/HTTP4/C19六项）、原生HTTP21、PG重启及API浏览器12＋12、完整隔离HTTPS与非空恢复通过；兼容浏览器1581通过、1566布局PNG。精确head自动审查无新增finding，独立复核通过，历史P2线程2/2 resolved。
+
+051已编写并在隔离CI执行，001—050保持原文；未在生产执行、未部署正式站点或使用真实COS凭据，根密钥主机初始化/真实COS联调/微信真机仍未执行。完整证据与下一步见[任务](tasks/COS02-ADMIN-STORAGE.md)及[交接](handoffs/COS02-ADMIN-STORAGE.md)；main合并后的自动复跑若在运行，不混作已通过证据。
 
 ## 2026-11-06 22:20 Asia/Shanghai INT01 全分支整合完成（DONE / MAIN）
 

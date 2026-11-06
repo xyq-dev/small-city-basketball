@@ -1,5 +1,44 @@
 # COS02 后台对象存储配置
 
+## 2026-11-07T02:53+08:00 最终交付（DONE / MAIN；生产未部署）
+
+[PR47](https://github.com/xyq-dev/small-city-basketball/pull/47)已merge至GitHub main，代码合并提交 `f6ae8b75dc03040f51d2ad68d6439ef10e13934c`；源分支 `feat/admin-cos-settings` 最终head `4fe60ecca673568124d21639033e4b81e921ee4a` 已普通同步。root直接核对PR为closed/merged、main指向该merge；候选、CI测试merge-ref f820ace7及实际merge的tree均为 `82bc8eb21915ca0ee2a42c4048558f07a664c4ae`，父提交保留main7b451c5及全部feature历史，无强推或覆盖其他checkout。
+
+[CI228](https://github.com/xyq-dev/small-city-basketball/actions/runs/42267904741)同head attempt2整体SUCCESS，四作业admin/api/account-security/production全部SUCCESS。仅admin第一次因外部字体下载过慢触发25分钟时限取消；待run结束后专用工具仅重试此job，无代码、fixture、skip或门禁调整，其他三项同head已成功结果保留。root已读取新完成日志关键行，不能将旧226/227候选结果混入本次验收。
+
+| 实际检查 | 结果 |
+| --- | --- |
+| 类型、格式、两端构建 | 全部通过 |
+| 后台／API单元 | 635／1397通过 |
+| 微信源码、CLI、新运维脚本 | 1620通过＋1既有平台skip；12通过；11通过＋1宿主UID环境skip |
+| 真实PostgreSQL集成 | 143＋638通过；新存储服务14、HTTP4、C19升级6全通过 |
+| 原生页面→真实HTTP、PG实际重启 | 21通过、0skip；重启完整持久化通过 |
+| API浏览器与失败清理 | 桌面12＋手机12通过；保留失败码、只清所属库且保留控制库 |
+| 管理端兼容浏览器／布局 | 1581通过、1567既有配置skip；1566布局PNG，artifact13532376901 |
+| 账号安全／隔离生产包与恢复 | 两端账号安全；21检查＋4HTTPS浏览器、全表/非空新配置快照恢复、凭据隔离及控制卷保留通过 |
+| 本地页面特定验证 | 最终37页面/API/路由通过；实际页面桌面/390/320合成UI实检完成，320宽无横向溢出 |
+
+root复读自动审查summary：精确4fe60ec completed且无新finding；自动security_review未运行，不虚称自动安全批准。两条历史P2已由实现、定向/真实PG及独立代码复核验证后逐条resolve，root复读2/2 resolved，未解决P1/P2为0。Windows工具workflow因paths不覆盖本次改动未触发，非本次失败或成功证据。
+
+变化范围为46文件：App/RuntimeApp平台入口与/system/storage、新React页及测试；contracts与API接线、新加密配置服务/动态媒体resolver及相关测试；051、最小运行权限、根密钥准备/Compose模板、非空恢复检查及规范。既有001—050原文保持。051已编写并在隔离CI实际执行，全链清单51迁移/227表/132函数；**未在生产执行**。独立根密钥脚本未在正式主机执行，未部署正式环境，未访问真实COS、真实云凭据或付费资源；真实COS联调及微信真机仍未执行。
+
+下一位第一条操作：在实际接手checkout执行git fetch并核对origin/main包含f6ae8b7与当前文档记录，保留其他未提交改动。正式使用前按[运维说明](../operations/admin-object-storage.md)核验目标环境/备份恢复条件，部署新版、执行正式升级并一次性准备独立加密根密钥；之后由有效平台管理员在「系统设置→对象存储」填写资料、显式检测和启用。不要把代码DONE/隔离CI通过当作正式站点已上线。下方均为历史检查点。
+
+
+## 2026-11-07T02:42+08:00 CI228 API完整通过／仅admin基础设施重试
+
+精确4fe60ec的API完成日志已由root直接核对：新增服务14/14、HTTP4/4、C19升级6/6，真实PG143＋638全通过；原生页面真实HTTP21/21（0skip）、PostgreSQL实际重启和API浏览器桌面12＋手机12、失败保码及只清理所属库全部成功。production与account-security同head已成功，非复用227。
+
+admin attempt1在字体依赖安装阶段被25分钟上限取消；日志证实azure.archive.ubuntu.com下载极慢（61.2MB/145MB字体包），format/typecheck/npm test/build/E2E均未执行，不能标作源码失败或通过。root专用rerun_workflow_job首次因整run尚运行被GitHub403拒绝；待API完成后同head仅重试admin成功，run42267904741 attempt2新admin job128081987241已运行。没有代码/fixture/skip/CI门槛改动，不拼不同head；其他3项实际成功日志保留于ci-evidence，最终仍等admin完整完成后审查线程/main并发门禁。未合并/部署，051未在生产执行。
+
+
+## 2026-11-07T02:21+08:00 精确最终候选与CI228（REVIEW / BRANCH_ONLY）
+
+最新共享候选为 `4fe60ecca673568124d21639033e4b81e921ee4a`，tree `82bc8eb21915ca0ee2a42c4048558f07a664c4ae`；普通同步同PR47成功，root本地HEAD/tree与远端一致、无源代码未提交改动。[CI228](https://github.com/xyq-dev/small-city-basketball/actions/runs/42267904741)独立执行中：account-security、production已SUCCESS，API完整迁移/恢复边界/剩余模块PG已通过并进入既有PG；admin仍依赖字体安装。未把in_progress或227绿色当此head通过。
+
+root直接读取自动审查summary comment6691082767的状态JSON：code_review.commit_sha=4fe60ec、status=completed、has_any_findings=false/has_unresolved_findings=false；自动security_review未运行，不能混同为安全自动批准。原两条P2线程等待本head实际验证后处理；独立人工式代码复核已覆盖冻结修改。main近期仍为7b451c5，未合并/部署。所有新增PG14＋HTTP4、原生真实API、重启及API浏览器最终结果仍以本次完成日志为准。
+
+
 ## 2026-11-07T02:07+08:00 两条并发地址锁P2收口（等待新head完整CI）
 
 CI227精确165edc5的自动审查发现两条有效P2：active A无文件时可以保存B并遗留B探测；A随后首次注册业务对象，会导致testB清理前被A地址挡、saveA又被B探测挡，前端也误把probe锁归active A。root确认后按最小范围协调修复，不把227其他绿色作为最终放行；原线程待新候选实际验证后处理。
