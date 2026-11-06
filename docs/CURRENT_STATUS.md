@@ -4,7 +4,9 @@
 
 本节是当前最新整合状态；下方 UI005/UI006 的旧本地或草稿记录保留为历史。[PR #46](https://github.com/xyq-dev/small-city-basketball/pull/46) 保留所有来源提交，账号安全与 COS 已在 main；UI 两分支当前仍待本 PR 合并。旧候选 `cc3c944` 的 [Application checks #214](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398486) 四作业及 Windows 工具均成功，但自动审查发现撮合回复/转预约、教练本人确认、模板分组数四条真实遗漏，因此没有据此合并。
 
-后续跨页入口复核补充恢复撮合原预约查看/重开席位/返回、监护人本人显式查看证明及青年审核工作台规则配置。修复仅涉及五页 WXML、36 项新增回归和七份新增合成布局夹具；原 JS、后端、API、权限、Migration 与生产配置不变。root 已执行完整微信源码 1333 项：1332 通过、0 失败、1 既有平台跳过，全仓格式与类型通过；新增布局控件将由新 head 完整 CI 验证。本地 Chromium 下载返回损坏归档，未执行本轮浏览器几何；不能把旧 #214 或旧本地矩阵冒充修复后的结果。详见 [任务](tasks/INT01-ALL-BRANCHES.md)、[交接](handoffs/INT01-ALL-BRANCHES.md)及[证据](evidence/INT01/README.md)。本轮无生产部署、生产 Migration、真实 COS/微信真机联调。
+后续跨页入口复核补充恢复撮合原预约查看/重开席位/返回、监护人本人显式查看证明及青年审核工作台规则配置。五页 WXML、36 项控件回归和七份合成布局夹具已同步候选 `77cd8a8`。该候选独立复审又复现隐藏证明后的迟到下载仍预览，故仍未合并；现仅在共享监护页 JS 增加可撤销的私密读取代次与迟到文件清理，新增22项竞态回归，保持独立业务写 token。
+
+2026-11-06 18:46 Asia/Shanghai，root整合后完整微信1355项：1354通过、0失败、1既有平台skip；格式、类型和差异检查通过。竞态测试旧源码13失败/9通过、修复22全通过，独立相关复核43/43通过。后端、API、权限、Migration和生产配置不变；新精确head完整CI仍待执行，旧214/215与旧本地指纹不能替代。本地浏览器归档下载损坏，新三宽几何交最终CI。详见[任务](tasks/INT01-ALL-BRANCHES.md)、[交接](handoffs/INT01-ALL-BRANCHES.md)及[证据](evidence/INT01/README.md)。无生产部署、生产Migration、真实COS/微信真机联调。
 
 ## 2026-11-06 COS01 腾讯云对象存储（DONE / MAIN：源码与隔离验收）
 

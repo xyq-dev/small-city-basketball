@@ -100,6 +100,7 @@ function createPage(review = false) {
       this.setData({ loginRequired: true, error: '登录身份已变化，请重新读取当前监护资料。' });
     },
     clearPrivate() {
+      this._proofGeneration = (this._proofGeneration || 0) + 1;
       this._selected = null;
       this._adultSelected = null;
       this._chosen = null;
@@ -124,6 +125,7 @@ function createPage(review = false) {
       });
     },
     cleanup() {
+      this._proofGeneration = (this._proofGeneration || 0) + 1;
       for (const p of this._temps || []) files.releaseTemp(wx, p);
       this._temps = [];
     },
@@ -283,7 +285,8 @@ function createPage(review = false) {
     async chooseProof() {
       if (this.data.busy || this.data.pending || !this._selected?.capabilities.canConfirm) return;
       const token = ui.hold(this);
-      this.setData({ busy: true, error: '' });
+      this.cleanup();
+      this.setData({ busy: true, privateDetails: null, error: '' });
       try {
         if (!(await this.actor(token))) return;
         const chosen = await files.chooseFile(wx, 'insurance');
@@ -619,21 +622,33 @@ function createPage(review = false) {
     async reveal() {
       const r = this._selected;
       if (!r?.capabilities.canReadProof || this.data.busy || this.data.pending) return;
+      const generation = this._proofGeneration || 0;
       const op = await ui.confirmOp(
         this,
         '查看监护人的受保护证明',
         '仅用于本人核对或有权的独立关系审核。本次访问留有审计，请勿转发。',
       );
-      if (!op) return;
+      if (
+        !op ||
+        generation !== (this._proofGeneration || 0) ||
+        this._selected !== r ||
+        !this._visible
+      )
+        return;
       const token = ui.hold(this);
+      const current = () =>
+        ui.held(this, token) &&
+        op.valid() &&
+        this._visible &&
+        this._selected === r &&
+        generation === (this._proofGeneration || 0);
       this.setData({ busy: true, privateDetails: null, error: '' });
       try {
-        if (!(await this.actor(token)) || !op.valid()) return;
+        if (!(await this.actor(token)) || !current()) return;
         const p = await this.repo().private(r.id);
-        if (ui.held(this, token) && op.valid() && this._selected === r && this._visible)
-          this.setData({ privateDetails: p });
+        if (current()) this.setData({ privateDetails: p });
       } catch (e) {
-        if (ui.held(this, token)) this.setData({ error: ui.message(e) });
+        if (current()) this.setData({ error: ui.message(e) });
       } finally {
         if (ui.held(this, token)) this.setData({ busy: false });
       }
@@ -644,15 +659,30 @@ function createPage(review = false) {
     },
     async viewProof() {
       const r = this._selected,
-        p = this.data.privateDetails?.proof;
+        details = this.data.privateDetails,
+        p = details?.proof;
       if (!r?.capabilities.canReadProof || !p || this.data.busy || this.data.pending) return;
-      const token = ui.hold(this);
+      const token = ui.hold(this),
+        generation = this._proofGeneration || 0;
+      const current = () =>
+        ui.held(this, token) &&
+        this._visible &&
+        this._selected === r &&
+        this.data.privateDetails === details &&
+        generation === (this._proofGeneration || 0);
       this.setData({ busy: true, error: '' });
       let file;
+      const release = () => {
+        if (!file) return;
+        // Conceal may have removed the registration before a late write completed.
+        // Restore tracking so a failed deletion remains eligible for the next sweep.
+        files.trackTemp(wx, file);
+        files.releaseTemp(wx, file);
+      };
       try {
-        if (!(await this.actor(token))) return;
+        if (!(await this.actor(token)) || !current()) return;
         const d = await this.repo().download(r.id);
-        if (!ui.held(this, token) || !this._visible || this._selected !== r) return;
+        if (!current()) return;
         if (d.contentType !== p.contentType || d.data.byteLength !== p.byteLength)
           throw new Error('证明版本已变化，请重新读取');
         const suffix =
@@ -662,7 +692,7 @@ function createPage(review = false) {
               ? 'png'
               : 'jpg';
         const key = await ui.uuid();
-        if (!ui.held(this, token) || !this._visible) return;
+        if (!current()) return;
         file = wx.env.USER_DATA_PATH + '/scb-participant-' + key + '.' + suffix;
         if (!files.trackTemp(wx, file)) throw new Error('无法登记私有临时文件，已停止预览');
         this._temps.push(file);
@@ -671,17 +701,17 @@ function createPage(review = false) {
             .getFileSystemManager()
             .writeFile({ filePath: file, data: d.data, success: resolve, fail: reject }),
         );
-        if (!ui.held(this, token) || !this._visible || this._selected !== r) {
-          files.releaseTemp(wx, file);
+        if (!current()) {
+          release();
           return;
         }
-        const fail = () => files.releaseTemp(wx, file);
+        const fail = release;
         if (suffix === 'pdf')
           wx.openDocument({ filePath: file, fileType: 'pdf', showMenu: false, fail });
         else wx.previewImage({ current: file, urls: [file], showmenu: false, fail });
       } catch (e) {
-        if (file) files.releaseTemp(wx, file);
-        if (ui.held(this, token)) this.setData({ error: ui.message(e) });
+        release();
+        if (current()) this.setData({ error: ui.message(e) });
       } finally {
         if (ui.held(this, token)) this.setData({ busy: false });
       }

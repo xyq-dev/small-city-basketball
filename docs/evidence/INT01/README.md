@@ -1,5 +1,9 @@
 # INT01 全分支整合验收
 
+## 2026-11-06 18:46 Asia/Shanghai 竞态新候选
+
+候选77cd8a8的独立复审复现隐藏后迟到下载重新预览，未合并。修复仅共享监护页JS及一份22项新增竞态测试：原77cd精确JS为13失败/9通过，修复后22全通过；另一审查者实际相关43/43通过，root整合完整微信1355项中1354通过/1既有平台skip，format/typecheck/diff --check通过。覆盖actor/download/uuid/write的取消、迟到文件登记/删除失败后sweep、PNG/PDF正例、身份/页面/资源变化及独立写token保留。新候选完整CI/三宽仍待实际结果，不沿用214、215或下方旧指纹。累计恢复五页入口、58项新增回归、七份新布局夹具，后端/API/权限/Migration/生产不变。
+
 ## 2026-11-06 18:35 Asia/Shanghai 新候选边界
 
 旧候选 cc3c944 的 [CI214](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398486) 四作业全部 SUCCESS，root 已读取四份完成日志：管理端598、API源码1374、微信1296通过/1平台skip、初始化CLI12、兼容浏览器1473通过/1459配置重复skip、1458份布局/PNG；PG143+620、原生页面→真实HTTP21、真实API浏览器24、最小权限21、HTTPS4、PG重启/完整恢复和恢复隔离成功。[Windows工具47](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398495)17/17通过，包含Linux平台跳过的批处理桥。旧兼容附件为 [mini-program-layouts](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398486/artifacts/13494520692)。这些绿色结果没有覆盖四条已核实的入口遗漏，故未合并。

@@ -1,5 +1,13 @@
 # INT01 全部分支测试与整合
 
+## 2026-11-06 18:46 Asia/Shanghai 私有证明竞态修复
+
+77cd8a8已普通同步到原PR46并触发CI215，Windows工具48成功；独立复审在该精确源码复现conceal后迟到download仍writeFile并previewImage。旧新增证明测试仅覆盖/private元数据读取和完成后隐藏，未覆盖viewProof链，不能据其绿色放行。
+
+授权并完成最小范围扩展：仅`apps/wechat/utils/youth-guardians-page.js`和新增`int01-proof-conceal-race.test.cjs`。私密读取使用独立`_proofGeneration`，隐藏/清理、资源/身份/页面变化、新证明选择后均不能沿用旧结果；actor、download、uuid、write每个await后检查当前代次与资源，迟到写完成时重新登记自有文件再删除，失败保留TEMP_KEY供sweep。conceal保留旧busy直到finally退出，不调用ui.close破坏独立业务写token，不改participant-materials共用清理器或后端。
+
+新增22项竞态测试先按原77cd精确JS执行13失败/9通过，修复后22/22；独立复核实际相关43/43通过，覆盖正常PNG/PDF、旧请求取消后新读取、早期ENOENT/迟到写/删除失败的持久追踪。root已整合并运行完整微信1355项：1354通过、0失败、1既有Windows桥平台skip；全仓format/typecheck及diff --check通过。累计58项新增测试、七份新布局夹具。下一步以77cd为父普通推进同一PR，重新验证同一新head完整CI；215属于前一候选，不能作为本次验收。后端、权限契约、Migration和生产配置无变化，无生产操作。
+
 ## 2026-11-06 18:35 Asia/Shanghai 修复候选准备
 
 root 已将独立 worktree 最小修复整合到 `/workspace/scratch/7a5167ea2881/small-city-basketball`，本地分支改名 `integrate/all-branches-20261106`，基线仍为 `cc3c944`，尚未更新 main。五页 WXML 恢复撮合收方回复、转换核对、源预约查看、席位重开和返回、教练本人独立确认、分组模板组数、监护人显式证明查看和隐藏、青年审核工作台规则配置。接单授权卡标题同步校正为其实际操作；既有 JS/服务端能力与确认门槛不变。
