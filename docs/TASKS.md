@@ -1,16 +1,34 @@
 # 任务看板
 
-## 2026-11-05 UI006 微信原生前端 Figma 重建（REVIEW / LOCAL_ONLY）
+## 2026-11-06 UI006 微信原生 Figma 重建（REVIEW / BRANCH_ONLY，Draft PR #44）
 
 | 项 | 当前事实 |
 | --- | --- |
-| 负责人 | Codex 主 Agent；共享组件、导航、整合、微信工具和汇总文档单写 |
-| 分支与基线 | `feat/wechat-figma-rebuild`，基于 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` |
-| 目标 | Figma 定稿 → 全新原生 WXML/WXSS UI → 依据现有契约接通功能 → 分离视觉与功能验收 |
-| 计数 | 从零建立 73 路由＋17 条件状态清单；旧 UI005 数量不沿用 |
-| 当前切片 | 73 路由＋17 状态已完成新模板、功能接线与最终三宽隔离渲染；首页/我的有当前微信 390 逻辑宽真实状态证据；直接回归 242/242，全量 1237/1238，唯一失败为 Windows `symlinkSync EPERM` |
-| 权限 | 允许本地分支、前端重写、测试和截图；禁止 commit、push、merge、pack、上传、部署、Migration、后端/生产修改 |
-| 记录 | [任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)／[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)／[证据说明](evidence/ui006/README.md)／[73＋17 覆盖矩阵](evidence/ui006/COVERAGE.md) |
+| 集成负责人 | 本轮 Codex root；通过 GitHub 同步功能分支，不操作 Windows 未跟踪归档 |
+| 分支与原始候选 | `feat/wechat-figma-rebuild`；`6fc06983b9d0093268e25354cca89dace79d1dab`，批准的 545 个文件已提交推送 |
+| 同步 main | `b19c19a118e63771c6451d93ed3e16de5416ce63`；仅手工解决 `docs/CURRENT_STATUS.md` 与本文件冲突，main 已合入账号安全与 COS 成果原样保留 |
+| UI 证据 | 73 页面＋17 宿主状态：390 宽微信原生隔离样例通过；12 页＋3 状态已重采并记录源码 SHA256 |
+| Windows 回归 | 1256 项、1255 通过、1 个 `symlinkSync EPERM`、0 跳过；未跳过或放宽安全断言 |
+| Linux CI | 旧 head 未运行；同步后以 [PR #44 Checks](https://github.com/xyq-dev/small-city-basketball/pull/44/checks) 的最新 head 记录和 admin 软链测试日志为准，本节不预填结果 |
+| 权限与发布 | 已授权提交、普通推送、Draft PR 与隔离 CI；保持 Draft，不合并 PR、不更新 main、不 pack/上传/部署、不执行 Migration 或生产写入 |
+| 尚未验证 | 正式业务成功流程、320/430 微信实测、真机/键盘、官方 pack |
+| 记录 | [PR #44](https://github.com/xyq-dev/small-city-basketball/pull/44)／[任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)／[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)／[证据](evidence/ui006/README.md) |
+
+下方 UI006 LOCAL_ONLY 段落保留为 2026-11-05 的历史检查点，其当时权限与数量不代表本轮 Git 交付状态。
+
+## 2026-11-06 账号安全（DONE / MAIN：源码与隔离验收，生产未部署）
+
+[PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)已合入main，合并SHA`becf8d38e3bc8e2c12059780ed57f52aa35f0bf0`，tree `505aaac19cf734e7c2623a4223242d726c503d60`与候选`89241947fb180ce8e857d1aee5cb94ca303a79c3`及CI测试merge-ref精确一致。首次部署自行设置OWNER密码、Web登录后本人改密及全部旧会话撤销已完成源码、独立安全复核与隔离验收。
+
+[CI207](https://github.com/xyq-dev/small-city-basketball/actions/runs/42168301902)的account-security/admin/api/production四作业全部SUCCESS，已读取四份完成日志。新增真实HTTPS浏览器桌面/手机各1完整密码流程通过；既有真实API浏览器24项、PG新域143/旧业务611、最小权限21、原生页面→真实API21、HTTPS4、实际PG重启与完整归档恢复通过。管理端598、API源码1345、原生1196通过/1平台跳过；兼容布局1349通过/1335配置跳过，1335份布局/PNG已核验，不代表微信真机。GitHub自动Code Review于同一候选完成且无finding；独立安全审查另行完成，未冒称自动Security Review执行。
+
+生产未由本轮部署，Migration049仅临时/CI执行。当前会话无直接Hermes/SSH执行通道；公开health/ready返回200只证明既有服务正常。服务器侧固定版本、备份恢复、升级和账号保留步骤已写入[交接](handoffs/ACCOUNT-SECURITY.md)。详见[任务](tasks/ACCOUNT-SECURITY.md)和[操作说明](operations/account-security.md)。
+
+## 2026-11-06 COS01 腾讯云对象存储（DONE / MAIN：源码与隔离验收）
+
+[PR45](https://github.com/xyq-dev/small-city-basketball/pull/45)已合入main `98f171f6135b88f7a26ec49f8d63de9fe8dcba10`，tree `1d8e93fbf6cfac64dd88c3a93828f973ccca5eec`与最终候选a4dff06及测试merge-ref一致。[CI211](https://github.com/xyq-dev/small-city-basketball/actions/runs/42175621742)四作业全部SUCCESS，完整日志核验通过：API源码1374、原生PG143+620（含COS9）、页面→真实API21、真实API浏览器24，最小权限21、HTTPS4、实际PG重启/完整归档恢复及恢复隔离通过。清理队列饥饿P2已修复并解决，独立复审通过。
+
+50项Migration/223表/128函数；050仅隔离执行，001—049保留main原文。真实COS/CAM及生产未启用，8MiB/文件、128MiB/机构限额保留，云对象真实读写/删除/备份恢复与微信真机仍待专项验收。下一步准备私有测试桶和受限凭据联调。详见[任务](tasks/COS01.md)、[接续](handoffs/COS01.md)、[证据](evidence/COS01/README.md)、[配置](operations/tencent-cos.md)。
 
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 
@@ -246,3 +264,15 @@ C06/C07最终候选验收及PR14合并已完成，接续按实际环境补旧库
 C02/PR10、C03/PR11、C04/PR12与C05/PR13均已整合main。C05最终候选完整验收通过，合并后CI40003519494同范围全部SUCCESS（无重试）；自动CodeReview仍运行，不算通过，必要独立审查已完成。真实PG、源码/VM、Mock和浏览器证据分列见[当前状态](CURRENT_STATUS.md)及[C05验收](evidence/C05/README.md)。本轮无生产操作或正式账号变更。
 
 下一步先补旧001–007完整FINAL赛事的隔离升级演练，再按实际环境推进真实微信客户端及商户支付退款对账联调；依赖资质、凭据和服务器通道的工作须如实列为外部阻塞。长期球员/赛季/专业统计、可靠离线、观众关注提醒与云直播/大视频/转码仍另卡，原生OBS依用户要求暂缓。服务器旧1534216部署仅为用户回传报告，不代表C02至C05已上线。
+
+## 2026-11-05 UI006 微信原生前端 Figma 重建（历史检查点：当时 REVIEW / LOCAL_ONLY）
+
+| 项 | 当前事实 |
+| --- | --- |
+| 负责人 | Codex 主 Agent；共享组件、导航、整合、微信工具和汇总文档单写 |
+| 分支与基线 | `feat/wechat-figma-rebuild`，基于 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` |
+| 目标 | Figma 定稿 → 全新原生 WXML/WXSS UI → 依据现有契约接通功能 → 分离视觉与功能验收 |
+| 计数 | 从零建立 73 路由＋17 条件状态清单；旧 UI005 数量不沿用 |
+| 当前切片 | 73 路由＋17 状态已完成新模板、功能接线与最终三宽隔离渲染；首页/我的有当前微信 390 逻辑宽真实状态证据；直接回归 242/242，全量 1237/1238，唯一失败为 Windows `symlinkSync EPERM` |
+| 权限 | 允许本地分支、前端重写、测试和截图；禁止 commit、push、merge、pack、上传、部署、Migration、后端/生产修改 |
+| 记录 | [任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)／[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)／[证据说明](evidence/ui006/README.md)／[73＋17 覆盖矩阵](evidence/ui006/COVERAGE.md) |

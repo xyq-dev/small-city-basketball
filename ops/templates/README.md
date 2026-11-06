@@ -4,7 +4,7 @@
 
 ## 镜像与入口
 
-在仓库根目录运行所有Compose命令；示例使用项目名`scb`，更换后须保持一致。`--env-file`提供路径与非敏感设置，所有密码／DSN／owner输入均单独挂载文件。不要设置对应inline环境变量；同名`*_FILE`与inline并存会失败。
+在仓库根目录运行所有Compose命令；示例使用项目名`scb`，更换后须保持一致。`--env-file`提供路径与非敏感设置，数据库密码／DSN均单独挂载文件；首位owner由用户在HTTPS页面自行设置密码。不要设置对应inline环境变量；同名`*_FILE`与inline并存会失败。
 
 | target／镜像后缀              | 运行身份／工作目录  | 内容与默认入口                                                                           |
 | ----------------------------- | ------------------- | ---------------------------------------------------------------------------------------- |
@@ -27,7 +27,6 @@
 | `database_migrator_url`              | 同endpoint，用户scb_migrator、独立密码                        | 10001:10001／0400 |
 | `database_runtime_url`               | 同endpoint，用户scb_runtime、独立密码                         | 10001:10001／0400 |
 | `database_backup_url`                | 同endpoint，用户scb_backup、独立密码                          | 10001:10001／0400 |
-| `bootstrap_owner_input`              | [严格JSON模板](bootstrap-owner.example.json)，换成新私有值    | 10001:10001／0400 |
 | `tls_certificate`、`tls_private_key` | 有效PEM fullchain与匹配私钥                                   | 101:101／0400     |
 
 先在受控私有暂存目录准备这些文件，不经命令行传递秘密值，不提交仓库，不开启shell trace。以下命令只安装已有私有文件，不生成凭据；`SCB_PRIVATE_STAGE`须指向你准备的绝对目录：
@@ -36,7 +35,7 @@
 sudo install -d -m 0700 -o root -g root /srv/scb /srv/scb/secrets
 sudo install -d -m 0700 -o 10001 -g 10001 /srv/scb/archive
 sudo install -m 0400 -o root -g root "$SCB_PRIVATE_STAGE/postgres_admin_password" /srv/scb/secrets/postgres_admin_password
-for name in database_admin_url database_migrator_url database_runtime_url database_backup_url bootstrap_owner_input; do
+for name in database_admin_url database_migrator_url database_runtime_url database_backup_url; do
   sudo install -m 0400 -o 10001 -g 10001 "$SCB_PRIVATE_STAGE/$name" "/srv/scb/secrets/$name"
 done
 for name in tls_certificate tls_private_key; do
@@ -50,15 +49,44 @@ sudo install -m 0600 -o root -g root ops/templates/production.env.example /srv/s
 
 ## 首次启动与首位owner
 
+新部署的首选流程是“私密终端签发初始化链接 → 用户在HTTPS网页自行设置密码”。不生成默认管理员密码，不创建明文管理员密码文件，不需要SMTP、短信或微信。已有实例保持`FIRST_RUN_SETUP_ENABLED=false`，不能重跑初始化来修改既有账号。
+
+仅在确认是全新空实例后，在仓库外的`production.env`中显式设置`FIRST_RUN_SETUP_ENABLED=true`，再执行：
+
 ```sh
 docker compose --env-file /srv/scb/production.env -p scb -f compose.production.yaml config --quiet
 docker compose --env-file /srv/scb/production.env -p scb -f compose.production.yaml build
 docker compose --env-file /srv/scb/production.env -p scb -f compose.production.yaml up -d
 docker compose --env-file /srv/scb/production.env -p scb -f compose.production.yaml ps -a
+# 在私密交互终端执行；不要使用 -T、重定向、tee、CI或终端录制。
+node ops/setup/initialization-link.mjs /srv/scb/production.env
+```
+
+启动链为PG健康→provision建角色→migrate显式执行compiled迁移并应用权限→API `/ready`成功→Web。API启动本身不迁移／seed；结构及权限正常时，尚未完成首位owner设置不影响`/ready`。首次provision须使用新空PG卷；修改PG初始化密码文件不会重设已有卷密码。API始终只持`scb_runtime`凭据；离线签发命令独立使用`scb_migrator`，不把维护凭据挂给API。
+
+宿主入口在启动容器前检查stdin/stdout均为TTY并拒绝CI，子进程直接继承终端且不捕获输出；容器同步接收CI标记并关闭日志驱动。命令只在当前私密终端交付一次链接；不要把链接粘贴到聊天、Agent任务、工单、普通日志、截图或CI产物。用户通过可信的私密渠道接收链接，在15分钟内打开，填写机构名称、管理员邮箱、显示名称、密码和确认密码。令牌位于fragment，页面读取后立即清除地址栏；刷新后需重新打开原始链接。链接过期或遗失时，部署者在同一私密终端重跑签发命令，新链接使旧链接失效，不能从公网接口补发。
+
+提交成功原子创建首位机构`ORG_OWNER`及关联和审计，不赋予平台运营权限，不伪造邮箱已验证状态；页面引导正常登录。初始化完成标记持久保存：重启、重部署、重新签发或再次开启配置都不能重开。含既有真实账号、机构或完成记录的实例均拒绝初始化，不以“OWNER数量为0”判断可以重开。默认机构注册关闭、participant注册开启；首次初始化前，公开注册不能抢先创建账号或取得OWNER。
+
+成功后在`production.env`中将`FIRST_RUN_SETUP_ENABLED=false`，仅重建API容器使配置生效（不修改账号）：
+
+```sh
+docker compose --env-file /srv/scb/production.env -p scb -f compose.production.yaml up -d --no-deps --force-recreate api
+```
+
+已登录用户修改密码在Web管理端点击页头“个人 ID / 邀请”，进入“账号安全 → 修改密码”，填写当前密码、新密码及确认新密码。成功后全部旧会话（含当前会话）失效，按提示重新登录。邮箱、用户名、ID、机构及角色不变；未设置用户名的既有账号同样可用。详见[账号安全](../../docs/operations/account-security.md)。
+
+### 保留的受控bootstrap-owner兼容入口
+
+仅为既有自动化保留`bootstrap-owner`离线命令；它同样要求显式开启和全新实例，并与网页初始化共享一次完成限制。新部署优先使用上面的链接流程，无需创建以下兼容输入。
+
+确需兼容入口时，单独准备[严格JSON模板](bootstrap-owner.example.json)对应的私有`bootstrap_owner_input`文件，owner为10001:10001、mode为0400，按既有secret挂载约定安装；不要通过argv、inline变量或聊天传密码。然后在授权的新实例运行：
+
+```sh
 docker compose --env-file /srv/scb/production.env -p scb -f compose.production.yaml --profile ops run --rm --no-deps bootstrap-owner
 ```
 
-启动链为PG健康→provision建角色→migrate显式执行compiled迁移并应用权限→API `/ready`成功→Web。API启动本身不迁移／seed。首次provision须使用新空PG卷；修改初始化密码文件不会重设已有卷密码。默认机构注册关闭、participant注册开启；没有邮件投递／邮箱验证。owner CLI只允许全库零机构时原子创建首owner、机构、OWNER membership与审计；成功不返回session或token。已有机构／同邮箱不提升或重置密码。完成后将owner输入移出日常secret目录；它只被该手工job挂载，正常up不需要读取它。
+兼容命令不返回会话或密码；它不能提升既有账号、重建管理员或重置密码。本文不授权读取、删除或展示生产已有密码文件。
 
 使用受信证书访问`${APP_ORIGIN}/ready`，应返回成功。生产不要跳过TLS验证。`/health`仅表示连接；`/ready`还核验迁移checksum、扩展、runtime身份与ACL。`/overlay`、`/watch`和私有深链由SPA接管，`/v1`错误保留API状态。Web覆盖外来转发头，访问日志关闭以避免记录授权URL；API只持runtime secret。
 

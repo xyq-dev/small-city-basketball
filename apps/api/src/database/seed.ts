@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { hashPassword } from '../security.js';
 import { passwordInput } from '../validation.js';
+import { lockFirstRunSetup } from '../first-run-setup.js';
 
 const ids = {
   user: '00000000-0000-4000-8000-000000000101',
@@ -17,6 +18,8 @@ export async function seedDev(pool: Pool, explicitPassword: string): Promise<typ
   try {
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock($1)', [7240202602]);
+    // Explicit synthetic dev seeding serializes with all first-owner paths.
+    const setup = await lockFirstRunSetup(client);
     await client.query(
       `INSERT INTO users(id,email,display_name,password_hash) VALUES($1,'dev-owner@example.test','开发示例管理员',$2) ON CONFLICT(id) DO NOTHING`,
       [ids.user, passwordHash],
@@ -50,6 +53,10 @@ export async function seedDev(pool: Pool, explicitPassword: string): Promise<typ
       SELECT $1,$2,$3,'DEV_SEED','organization',$2,'{}'::jsonb WHERE NOT EXISTS (SELECT 1 FROM audit_logs WHERE org_id=$2 AND action='DEV_SEED')`,
       [randomUUID(), ids.org, ids.user],
     );
+    if (!setup.initialized_at)
+      await client.query(
+        'UPDATE first_run_setup SET initialized_at=clock_timestamp(),token_used_at=CASE WHEN token_hash IS NULL THEN NULL ELSE clock_timestamp() END WHERE singleton=true',
+      );
     await client.query('COMMIT');
     return ids;
   } catch (error) {

@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createC22LegacyRegistrationApi } from './fixtures/c22-legacy-registration-api.js';
 import { loadManifest } from '../../../ops/db/privileges.mjs';
 import { migrate } from '../src/database/migrate.js';
+import { hashPassword } from '../src/security.js';
 import {
   REGION_CATALOG_VERSION,
   REGION_NODE_COUNT,
@@ -13,8 +14,8 @@ import {
   REGION_NODES_SHA256,
   REGION_ALIASES_SHA256,
 } from '../src/region-catalog-data.js';
-import { ORIGIN, register, testDatabaseUrl } from './support.js';
-import type { Api } from './support.js';
+import { ORIGIN, PASSWORD, RUN_ID, login, testDatabaseUrl } from './support.js';
+import type { Api, User } from './support.js';
 import { team } from './p03-support.js';
 import { published, enable, savePublishRules } from './p05b-support.js';
 import type { Harness } from './p05b-support.js';
@@ -89,6 +90,47 @@ describe(
       return result;
     }
 
+    // Keep the genuine pre-049 schema intact. Current public registration
+    // correctly requires first_run_setup, so create these historical synthetic
+    // identities explicitly, then exercise the schema-compatible login route.
+    async function historicalOwner(label: string): Promise<User> {
+      const user: User = {
+        id: randomUUID(),
+        orgId: randomUUID(),
+        email: `${label}-${RUN_ID}@example.test`,
+        cookie: '',
+      };
+      const passwordHash = await hashPassword(PASSWORD);
+      const client = await upgraded.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          'INSERT INTO users(id,email,display_name,password_hash) VALUES($1,$2,$3,$4)',
+          [user.id, user.email, `测试 ${label}`, passwordHash],
+        );
+        await client.query('INSERT INTO organizations(id,name) VALUES($1,$2)', [
+          user.orgId,
+          `机构 ${label} ${RUN_ID.slice(0, 8)}`,
+        ]);
+        await client.query(
+          "INSERT INTO organization_memberships(org_id,user_id,role) VALUES($1,$2,'ORG_OWNER')",
+          [user.orgId, user.id],
+        );
+        await client.query(
+          "INSERT INTO audit_logs(id,org_id,actor_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,'AUTH_REGISTER','user',$3,'{}'::jsonb)",
+          [randomUUID(), user.orgId, user.id],
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+      user.cookie = await login(api!, user);
+      return user;
+    }
+
     beforeAll(async () => {
       control = new Pool({ connectionString: testDatabaseUrl(), connectionTimeoutMillis: 5000 });
       const empty = await createOwned('empty');
@@ -137,9 +179,9 @@ describe(
       // Fixed historical registration/scheduling/standings SQL is injected only by this fixture.
       // The genuine 001–022 schema is never extended before the upgrade baseline.
       api = await createC22LegacyRegistrationApi({ databaseUrl: old.url, appOrigin: ORIGIN });
-      const owner = await register(api, 'c22-old-owner');
-      const leader = await register(api, 'c22-old-leader');
-      const otherOwner = await register(api, 'c22-old-other');
+      const owner = await historicalOwner('c22-old-owner');
+      const leader = await historicalOwner('c22-old-leader');
+      const otherOwner = await historicalOwner('c22-old-other');
       const teams = [
         await team(api, owner, '升级甲队', leader, ['合成甲', '合成乙']),
         await team(api, owner, '升级乙队', leader, ['合成丙', '合成丁']),

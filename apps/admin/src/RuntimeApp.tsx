@@ -28,6 +28,8 @@ import './runtime.css';
 import { isBookingPath } from './booking/routes';
 import { OverlayEntry } from './overlay/Entry';
 import { useRegistrationCapabilities } from './auth/useRegistrationCapabilities';
+import { AccountSecurityForm } from './auth/AccountSecurityForm';
+import { SetupPage } from './auth/SetupPage';
 
 const BookingStandaloneApp = lazy(() =>
   import('./booking/BookingPages').then((m) => ({ default: m.BookingStandaloneApp })),
@@ -59,11 +61,13 @@ function AuthForm({
   client,
   onSession,
   pendingInvitation,
+  notice,
 }: {
   auth: AuthApi;
   client: ApiClient;
   onSession: (session: AuthSession) => void;
   pendingInvitation?: boolean;
+  notice?: string;
 }) {
   const [intent, setIntent] = useState<'login' | 'organization' | 'participant'>('login');
   const registration = useRegistrationCapabilities(client);
@@ -195,6 +199,11 @@ function AuthForm({
             <br />
             把热爱一步步办成好比赛。
           </p>
+          {notice && (
+            <p className="runtime-invitation-success" role="status">
+              {notice}
+            </p>
+          )}
         </div>
         <span className="runtime-auth-foot">机构赛事工作台 · 业务服务</span>
       </section>
@@ -400,6 +409,7 @@ function IdentityPanel({
   onClose,
   onRefresh,
   onConsumed,
+  onPasswordChanged,
 }: {
   session: AuthSession;
   client: ApiClient;
@@ -407,6 +417,7 @@ function IdentityPanel({
   onClose: () => void;
   onRefresh: () => Promise<void>;
   onConsumed: () => void;
+  onPasswordChanged: () => void;
 }) {
   const [invitationId, setInvitationId] = useState(initialInvitation?.id ?? '');
   const [token, setToken] = useState(initialInvitation?.token ?? '');
@@ -540,6 +551,13 @@ function IdentityPanel({
             </a>
           )}
         </div>
+        <AccountSecurityForm
+          client={client}
+          email={session.user.email}
+          disabled={busy}
+          onBusyChange={setBusy}
+          onPasswordChanged={onPasswordChanged}
+        />
         <h3>接受球队管理邀请</h3>
         <p className="runtime-profile-copy">
           由机构创建邀请后，将邀请 ID 与一次性令牌交给你。请核对当前登录账号。
@@ -643,6 +661,7 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
+  const [signOutNotice, setSignOutNotice] = useState('');
   useLayoutEffect(() => {
     function consumeFragment() {
       const fragment = new URLSearchParams(window.location.hash.slice(1));
@@ -688,6 +707,7 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
     );
     if (!next.organizations.length) setContextMode('team');
     setError('');
+    setSignOutNotice('');
     setPhase('ready');
   }, []);
   useEffect(() => {
@@ -789,6 +809,7 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
         client={client}
         onSession={accept}
         pendingInvitation={Boolean(pendingInvitation)}
+        notice={signOutNotice}
       />
     );
   const workspaceType = (
@@ -998,6 +1019,14 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
           onConsumed={() =>
             setPendingInvitation((current) => (current === pendingInvitation ? null : current))
           }
+          onPasswordChanged={() => {
+            unauthenticated();
+            setIdentityOpen(false);
+            setPendingInvitation(null);
+            setAccountView(null);
+            setSignOutNotice('密码已修改，所有旧会话已退出，请重新登录。');
+            window.history.replaceState(window.history.state, '', '/');
+          }}
         />
       )}
       {error && (
@@ -1020,6 +1049,7 @@ export default function RuntimeApp({
   publicFetcher?: typeof fetch;
   overlayFetcher?: typeof fetch;
 }) {
+  if (window.location.pathname === '/setup') return <SetupPage client={client} />;
   if (window.location.pathname === '/overlay' || window.location.pathname.startsWith('/overlay/'))
     return <OverlayEntry key={window.location.pathname} fetcher={overlayFetcher} />;
   if (window.location.pathname === '/watch' || window.location.pathname.startsWith('/watch/'))

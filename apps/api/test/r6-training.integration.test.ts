@@ -15,6 +15,7 @@ import { readRemainingSixClosureBlockers } from '../src/remaining-six-privacy.js
 import { readTrainingGuardianAuthorization } from '../src/training-guardian.js';
 import { migrate } from '../src/database/migrate.js';
 import { ApplicationService } from '../src/service.js';
+import { bootstrapOwner } from '../src/bootstrap-owner.js';
 import { TrainingService } from '../src/training-service.js';
 import { trainingCohortCompletionBlocker } from '../src/training-cohort-completion.js';
 import { trainingTradeIdentity } from '../src/training-trade-source.js';
@@ -42,17 +43,27 @@ const cmd = (action: string, expectedVersion: number, extra: Record<string, unkn
   ...extra,
 });
 async function user(name: string): Promise<User> {
-  const x = await auth.register(
-    {
-      email: `r6train-${name}-${RUN_ID}@example.test`,
-      password: PASSWORD,
-      displayName: name,
-      organizationName: `Training ${name}`,
-    },
-    `r6train-${RUN_ID}-${name}`,
-  );
+  const input = {
+    email: `r6train-${name}-${RUN_ID}@example.test`,
+    password: PASSWORD,
+    displayName: name,
+    organizationName: `Training ${name}`,
+  };
+  const initialized = (
+    await pool.query('SELECT initialized_at FROM first_run_setup WHERE singleton=true')
+  ).rows[0]?.initialized_at;
+  // The first synthetic fixture uses the controlled owner initializer. Public
+  // registration remains closed on a fresh deployment, including in this suite.
+  if (!initialized) await bootstrapOwner(pool, input);
+  const x = initialized
+    ? await auth.register(input, `r6train-${RUN_ID}-${name}`)
+    : await auth.login(
+        { email: input.email, password: input.password },
+        `r6train-${RUN_ID}-${name}`,
+      );
   return { id: x.data.user.id, org: x.data.organizations[0]!.id, cookie: `scb.sid=${x.token}` };
 }
+
 let sequence = 0;
 async function cohort(
   capacity = 2,
@@ -199,8 +210,8 @@ async function creatorBlocker(id: string) {
 
 beforeAll(async () => {
   await migrate(pool);
-  [owner, reviewer, coach, learner, other, operator] = await Promise.all([
-    user('owner'),
+  owner = await user('owner');
+  [reviewer, coach, learner, other, operator] = await Promise.all([
     user('reviewer'),
     user('coach'),
     user('learner'),

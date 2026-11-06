@@ -16,6 +16,7 @@ import { ApiError, forbidden, notFound } from './errors.js';
 import { invalid, objectInput, resourceId, text } from './validation.js';
 import { expectedVersion } from './registration-validation.js';
 import { confirmedPlayerStatistics } from './confirmed-player-statistics.js';
+import { MediaObjectStorage } from './media-object-storage.js';
 import {
   MAX_MEDIA_FILE_BYTES,
   MEDIA_ORG_LIMIT_BYTES,
@@ -34,6 +35,10 @@ export type MediaAccess = {
   scope: 'ENTRY' | 'MATCH';
 };
 type Access = MediaAccess;
+export type MediaServiceOptions = {
+  trustedExternalHosts?: string[];
+  storage?: MediaObjectStorage;
+};
 const iso = (v: Date) => v.toISOString();
 const active = (event: Row) => !['ARCHIVED', 'CANCELLED'].includes(event.status);
 const version = (actual: number, expected: unknown) => {
@@ -44,11 +49,8 @@ const FILE_SELECT =
   'id,purpose,roster_revision_id,file_name,content_type,byte_length,sha256,version,created_at,revoked_at,purged_at';
 export class MediaService extends StandingsService {
   readonly trustedExternalHosts: string[];
-  constructor(
-    pool: Pool,
-    options: ApiOptions,
-    mediaOptions: { trustedExternalHosts?: string[] } = {},
-  ) {
+  readonly objectStorage: MediaObjectStorage;
+  constructor(pool: Pool, options: ApiOptions, mediaOptions: MediaServiceOptions = {}) {
     super(pool, options);
     const hosts = mediaOptions.trustedExternalHosts ?? [];
     if (
@@ -62,6 +64,7 @@ export class MediaService extends StandingsService {
     )
       throw new Error('Invalid trusted media hosts');
     this.trustedExternalHosts = [...new Set(hosts)];
+    this.objectStorage = mediaOptions.storage ?? new MediaObjectStorage(pool, options.databaseUrl);
   }
   protected async fileContext(
     c: PoolClient,
@@ -167,7 +170,7 @@ export class MediaService extends StandingsService {
   protected async usage(c: PoolClient, org: string): Promise<MediaStorageUsage> {
     const used = (
       await c.query(
-        `SELECT (COALESCE((SELECT sum(byte_length) FROM media_files WHERE org_id=$1 AND payload IS NOT NULL),0) + COALESCE((SELECT sum(payload_byte_length) FROM participant_material_revisions WHERE org_id=$1 AND payload_ciphertext IS NOT NULL),0))::int AS used`,
+        `SELECT (COALESCE((SELECT sum(byte_length) FROM media_files WHERE org_id=$1 AND purged_at IS NULL),0) + COALESCE((SELECT sum(payload_byte_length) FROM participant_material_revisions WHERE org_id=$1 AND payload_ciphertext IS NOT NULL),0))::int AS used`,
         [org],
       )
     ).rows[0].used;
@@ -246,9 +249,17 @@ export class MediaService extends StandingsService {
         );
       await this.ensureFreshSession(c, a.ctx);
       const fileId = randomUUID();
+      const stored = await this.objectStorage.save(
+        c,
+        a.ctx.orgId,
+        fileId,
+        input.payload,
+        input.contentType,
+      );
+      await this.ensureFreshSession(c, a.ctx);
       const r = (
         await c.query(
-          `INSERT INTO media_files(id,org_id,event_id,entry_id,match_id,roster_revision_id,purpose,file_name,content_type,byte_length,sha256,payload,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING ${FILE_SELECT}`,
+          `INSERT INTO media_files(id,org_id,event_id,entry_id,match_id,roster_revision_id,purpose,file_name,content_type,byte_length,sha256,payload,created_by,cos_object_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING ${FILE_SELECT}`,
           [
             fileId,
             org,
@@ -261,8 +272,9 @@ export class MediaService extends StandingsService {
             input.contentType,
             input.payload.length,
             input.sha256,
-            input.payload,
+            stored.payload,
             a.ctx.user.id,
+            stored.cosObjectId,
           ],
         )
       ).rows[0];
@@ -658,7 +670,7 @@ export class MediaService extends StandingsService {
       const cf = await this.confirmation(c, org, a.event.id, a.match.id);
       const rows = (
         await c.query(
-          "SELECT mm.*,f.content_type FROM match_media mm LEFT JOIN media_files f ON f.org_id=mm.org_id AND f.match_id=mm.match_id AND f.id=mm.file_id WHERE mm.org_id=$1 AND mm.match_id=$2 AND mm.status='PUBLISHED' AND (mm.kind='EXTERNAL_LINK' OR (f.revoked_at IS NULL AND f.purged_at IS NULL AND f.payload IS NOT NULL AND f.purpose IN ('MATCH_IMAGE','MATCH_VIDEO'))) ORDER BY mm.created_at,mm.id LIMIT 50",
+          "SELECT mm.*,f.content_type FROM match_media mm LEFT JOIN media_files f ON f.org_id=mm.org_id AND f.match_id=mm.match_id AND f.id=mm.file_id WHERE mm.org_id=$1 AND mm.match_id=$2 AND mm.status='PUBLISHED' AND (mm.kind='EXTERNAL_LINK' OR (f.revoked_at IS NULL AND f.purged_at IS NULL AND (f.payload IS NOT NULL OR f.cos_object_id IS NOT NULL) AND f.purpose IN ('MATCH_IMAGE','MATCH_VIDEO'))) ORDER BY mm.created_at,mm.id LIMIT 50",
           [org, a.match.id],
         )
       ).rows;
@@ -696,11 +708,18 @@ export class MediaService extends StandingsService {
       return { publicEventId: eventKey, publicMatchId: matchKey, media };
     });
   }
-  private binary(r: Row, range: string | undefined, privateFile: boolean) {
-    if (r.revoked_at || r.purged_at || !Buffer.isBuffer(r.payload)) throw notFound();
-    const selected = mediaRange(range, r.payload.length);
+  private async binary(c: PoolClient, r: Row, range: string | undefined, privateFile: boolean) {
+    if (r.revoked_at || r.purged_at) throw notFound();
+    const selected = mediaRange(range, r.byte_length);
+    const payload = await this.objectStorage.read(c, {
+      org_id: r.org_id,
+      cos_object_id: r.cos_object_id,
+      payload: r.payload,
+      byte_length: r.byte_length,
+      sha256: r.sha256,
+    });
     return {
-      body: r.payload.subarray(selected.start, selected.end + 1) as Buffer,
+      body: payload.subarray(selected.start, selected.end + 1),
       contentType: r.content_type as string,
       fileName: privateFile
         ? (r.file_name as string)
@@ -708,9 +727,9 @@ export class MediaService extends StandingsService {
       attachment: privateFile,
       status: selected.partial ? 206 : 200,
       contentRange: selected.partial
-        ? `bytes ${selected.start}-${selected.end}/${r.payload.length}`
+        ? `bytes ${selected.start}-${selected.end}/${payload.length}`
         : null,
-      totalLength: r.payload.length as number,
+      totalLength: payload.length,
     };
   }
   async getPrivateContent(
@@ -725,13 +744,13 @@ export class MediaService extends StandingsService {
       const a = await this.access(c, await this.fileContext(c, cookie, org), id, scope);
       const r = (
         await c.query(
-          `SELECT file_name,content_type,payload,revoked_at,purged_at FROM media_files WHERE org_id=$1 AND ${scope === 'ENTRY' ? 'entry_id' : 'match_id'}=$2 AND id=$3 FOR SHARE`,
+          `SELECT org_id,file_name,content_type,payload,cos_object_id,byte_length,sha256,revoked_at,purged_at FROM media_files WHERE org_id=$1 AND ${scope === 'ENTRY' ? 'entry_id' : 'match_id'}=$2 AND id=$3 FOR SHARE`,
           [org, id, resourceId(fileId)],
         )
       ).rows[0];
       if (!r) throw notFound();
       await this.ensureFreshSession(c, a.ctx);
-      return this.binary(r, range, scope === 'ENTRY');
+      return this.binary(c, r, range, scope === 'ENTRY');
     });
   }
   async getPublicContent(eventKey: string, matchKey: string, mediaKey: string, range?: string) {
@@ -740,12 +759,12 @@ export class MediaService extends StandingsService {
       const a = await this.publicMatchAccess(c, eventKey, matchKey);
       const r = (
         await c.query(
-          "SELECT f.file_name,f.content_type,f.payload,f.revoked_at,f.purged_at FROM match_media mm JOIN media_files f ON f.org_id=mm.org_id AND f.match_id=mm.match_id AND f.id=mm.file_id WHERE mm.org_id=$1 AND mm.match_id=$2 AND mm.public_media_id=$3 AND mm.status='PUBLISHED' AND f.purpose IN ('MATCH_IMAGE','MATCH_VIDEO') FOR SHARE OF mm,f",
+          "SELECT f.org_id,f.file_name,f.content_type,f.payload,f.cos_object_id,f.byte_length,f.sha256,f.revoked_at,f.purged_at FROM match_media mm JOIN media_files f ON f.org_id=mm.org_id AND f.match_id=mm.match_id AND f.id=mm.file_id WHERE mm.org_id=$1 AND mm.match_id=$2 AND mm.public_media_id=$3 AND mm.status='PUBLISHED' AND f.purpose IN ('MATCH_IMAGE','MATCH_VIDEO') FOR SHARE OF mm,f",
           [a.event.org_id, a.match.id, mediaKey],
         )
       ).rows[0];
       if (!r) throw notFound();
-      return this.binary(r, range, false);
+      return this.binary(c, r, range, false);
     });
   }
 }

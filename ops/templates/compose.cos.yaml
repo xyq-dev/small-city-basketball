@@ -1,0 +1,24 @@
+# Optional COS01 override. Existing private bucket and least-privilege credentials only.
+# Does not create a bucket, publish ports, enable payments or alter the base deployment.
+services:
+  api:
+    environment:
+      SCB_MEDIA_STORAGE: COS
+      SCB_COS_BUCKET: ${SCB_COS_BUCKET:?Supply the existing private COS bucket}
+      SCB_COS_REGION: ${SCB_COS_REGION:?Supply its exact region}
+      SCB_COS_PREFIX: ${SCB_COS_PREFIX:-scb-media/v1}
+      SCB_COS_SECRET_ID_FILE: /run/secrets/cos_secret_id
+      SCB_COS_SECRET_KEY_FILE: /run/secrets/cos_secret_key
+    secrets:
+      - cos_secret_id
+      - cos_secret_key
+    networks: [frontend, backend, provider_egress]
+secrets:
+  cos_secret_id:
+    file: ${SCB_PROVIDER_SECRET_DIR:?Set the existing private provider secret directory}/cos_secret_id
+  cos_secret_key:
+    file: ${SCB_PROVIDER_SECRET_DIR:?Set the existing private provider secret directory}/cos_secret_key
+networks:
+  # Outbound HTTPS to COS; no API/database host ports are added.
+  provider_egress:
+    internal: false

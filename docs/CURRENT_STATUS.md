@@ -1,10 +1,28 @@
 # 当前状态
 
-## 2026-11-05 UI006 微信原生前端 Figma 重建（REVIEW / LOCAL_ONLY）
+## 2026-11-06 UI006 微信原生 Figma 重建（REVIEW / BRANCH_ONLY，Draft PR #44）
 
-用户已取消 UI005“保留旧模板并叠加样式”的路线，当前由 Codex 在本地分支 `feat/wechat-figma-rebuild` 从 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` 重新实现微信原生前端。视觉唯一依据是 Figma 文件 `QpKOskViUwHFVqSG3uYR9X` 的交接、73 页面＋17 状态索引、交互组件和首页三宽画板；业务行为仍以现有需求、API 和权限契约为准。旧 UI005 分支、Draft PR #42 及 47 个本地归档文件均保留，归档已另备份到 `D:\Projects\scb-backups\wechat-figma-rebuild-baseline-20261105-202715`。
+[Draft PR #44](https://github.com/xyq-dev/small-city-basketball/pull/44) 已提交并推送 UI006 原生前端候选 `6fc06983b9d0093268e25354cca89dace79d1dab`，包含经批准的 545 个文件。73 个注册页面与 17 个宿主状态已有 390 宽微信原生隔离样例对照；正式业务成功流程、320/430 微信实测与官方 pack 尚未验证。开发预览仅在显式 `uiPreview=figma` 且可信 `envVersion=develop` 时启用；体验版、正式版和异常环境关闭预览。定向 12 页与 3 状态已重新采集并记录源码 SHA256。详细证据与更正口径见 [任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)、[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)、[证据说明](evidence/ui006/README.md)。
 
-本任务从零重新计数，旧 UI005 的 73/73、17/17 或隔离矩阵结果未作为 UI006 证据。当前 73/73 注册路由已采用新原生模板和共享视觉组件并接回现有数据、导航、权限与提交语义，17/17 补充状态仍为原路由条件分支；最终源码的 73 路由与 17 状态均已在 320/390/430 逻辑宽隔离渲染，分别为 219 与 51 个视口，均无横向溢出，但这不等于逐像素微信签收。首页与“我的”已在当前微信工程取得逻辑 `390×844` 的真实状态截图，SDK 原始 PNG 为 `360×779`；其余 71 页尚未计为微信实测。最终直接回归 242/242；`npm run test:wechat` 为 1238 项、1237 通过，唯一失败是当前 Windows 权限下安全软链测试的 `symlinkSync EPERM`；`git diff --check` 通过。当前仍未 commit、push、pack、上传、部署、执行 Migration 或生产写入。详见 [UI006 任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)、[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)、[证据说明](evidence/ui006/README.md) 与 [覆盖矩阵](evidence/ui006/COVERAGE.md)。
+Windows 完整回归为 1256 项、1255 通过、1 个 `symlinkSync EPERM`、0 跳过；该环境失败未放宽断言。用户已授权本轮提交、普通推送、Draft PR 及 Linux CI。本次由 Codex root 通过 GitHub 维护功能分支，将最新 main `b19c19a118e63771c6451d93ed3e16de5416ce63` 同步到 `feat/wechat-figma-rebuild`；手工冲突解决仅涉及本文件与 `docs/TASKS.md`，保留 main 已合入的账号安全与 COS 记录及原始源码对象。同步后 Linux CI 以 PR #44 最新 head 的检查和 admin 日志为准；本节不预填结果，也不沿用旧候选 CI 或提前宣称软链测试通过。
+
+PR #44 保持 Draft、未合并；本轮不更新 main、不打包上传、不部署、不执行 Migration 或生产写入。下方 2026-11-05 的 UI006 LOCAL_ONLY 权限与数量为当时历史记录，当前交付状态以本节及任务最新检查点为准。
+
+## 2026-11-06 COS01 腾讯云对象存储（DONE / MAIN：源码与隔离验收）
+
+[PR #45](https://github.com/xyq-dev/small-city-basketball/pull/45)已于`2026-11-06T07:15:29Z`合入main，代码合并SHA`98f171f6135b88f7a26ec49f8d63de9fe8dcba10`，tree `1d8e93fbf6cfac64dd88c3a93828f973ccca5eec`与最终候选`a4dff06eedb5815e1cfedc48fe57361b1a527a1a`及CI测试merge-ref精确一致。私有COS可选配置、普通/幂等/分片上传、旧DB文件兼容读取、权限与Range、持久化登记和后台/CLI清理已完成。失败清理记录尝试时间并轮转，防止持续失败对象阻塞其他机构；唯一自动审查P2已修复并解决，独立复审通过。
+
+[CI211](https://github.com/xyq-dev/small-city-basketball/actions/runs/42175621742)的admin/api/production/account-security四作业全部SUCCESS，attempt 1，已核验四份完成日志。原生PG新域143/既有620（含COS9）、原生页面→真实API21、真实API浏览器24、最小权限21、HTTPS4、实际PG重启及完整备份恢复/隔离/自有资源清理通过。API源码1374、管理端598、微信源码1196通过/1既有平台跳过、初始化CLI12通过；兼容浏览器1349通过/1335配置跳过，1335份布局/PNG已核验，不代表微信真机。合并后自动重复CI另计，不替代也不冒充上述候选验收。
+
+当前50项Migration、223表、128函数；001—049保持main既有原文，050已编写并仅在隔离环境执行。真实COS/CAM未配置联调，生产未迁移或部署。现有8MiB/文件、128MiB/机构限额保留，直播大文件和加密本人材料不在本轮迁移范围；COS测试使用受控字节传输与合成恢复元数据，不等于云对象真实恢复。下一步按[运行手册](operations/tencent-cos.md)准备私有测试桶与受限凭据做真实联调，详见[任务](tasks/COS01.md)、[交接](handoffs/COS01.md)、[证据](evidence/COS01/README.md)。下方旧阶段数量与状态保留为历史记录。
+
+## 2026-11-06 账号安全（DONE / MAIN：源码与隔离验收，生产未部署）
+
+[PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)已合入main，合并SHA`becf8d38e3bc8e2c12059780ed57f52aa35f0bf0`，tree `505aaac19cf734e7c2623a4223242d726c503d60`与候选`89241947fb180ce8e857d1aee5cb94ca303a79c3`及CI测试merge-ref精确一致。首次部署自行设置OWNER密码、Web登录后本人改密及全部旧会话撤销已完成源码、独立安全复核与隔离验收。
+
+[CI207](https://github.com/xyq-dev/small-city-basketball/actions/runs/42168301902)的account-security/admin/api/production四作业全部SUCCESS，已读取四份完成日志。新增真实HTTPS浏览器桌面/手机各1完整密码流程通过；既有真实API浏览器24项、PG新域143/旧业务611、最小权限21、原生页面→真实API21、HTTPS4、实际PG重启与完整归档恢复通过。管理端598、API源码1345、原生1196通过/1平台跳过；兼容布局1349通过/1335配置跳过，1335份布局/PNG已核验，不代表微信真机。GitHub自动Code Review于同一候选完成且无finding；独立安全审查另行完成，未冒称自动Security Review执行。
+
+生产未由本轮部署，Migration049仅临时/CI执行。当前会话无直接Hermes/SSH执行通道；公开health/ready返回200只证明既有服务正常。服务器侧固定版本、备份恢复、升级和账号保留步骤已写入[交接](handoffs/ACCOUNT-SECURITY.md)。详见[任务](tasks/ACCOUNT-SECURITY.md)和[操作说明](operations/account-security.md)。
 
 ## 2026-11-03 四页导航与账号双态整合（待合入 main）
 
@@ -240,3 +258,9 @@ C05为DONE / MAIN，最终候选的三job完整验收通过；合并后[CI400035
 先核验实际目录/远端/分支/HEAD/dirty/进程，再读AGENTS、[看板](TASKS.md)、C07最终任务/交接与最新PR/CI。本轮集成目录`/workspace/scratch/608836f8d204/small-city-basketball`仍为`feat/player-reservations`；原`/workspace/scratch/dc6a786e1a31/small-city-basketball`的main工作树未被切换/reset。远端main业务已合并7d23203，最终文档HEAD另按Git读取。本地作者历史与远端聚合提交SHA不同，但各次同步tree精确核验一致；保留旧分支和工作树，无force或清理他人修改。开发/普通同步/PR/审查后合并授权已按本轮明确回复执行；生产尚未执行，未来操作仍核验实际通道、当时授权及恢复条件。文档不会在停止会话后无人值守更新。
 
 合并后[自动CI40095117969](https://github.com/xyq-dev/small-city-basketball/actions/runs/40095117969)在本次读取时仍为in_progress；候选CI通过与合并后重复运行分列，未冒称后者已通过。其后仅同步文档和这些原图/JSON，无应用代码变化。
+
+## 2026-11-05 UI006 微信原生前端 Figma 重建（历史检查点：当时 REVIEW / LOCAL_ONLY）
+
+用户已取消 UI005“保留旧模板并叠加样式”的路线，当前由 Codex 在本地分支 `feat/wechat-figma-rebuild` 从 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` 重新实现微信原生前端。视觉唯一依据是 Figma 文件 `QpKOskViUwHFVqSG3uYR9X` 的交接、73 页面＋17 状态索引、交互组件和首页三宽画板；业务行为仍以现有需求、API 和权限契约为准。旧 UI005 分支、Draft PR #42 及 47 个本地归档文件均保留，归档已另备份到 `D:\Projects\scb-backups\wechat-figma-rebuild-baseline-20261105-202715`。
+
+本任务从零重新计数，旧 UI005 的 73/73、17/17 或隔离矩阵结果未作为 UI006 证据。当前 73/73 注册路由已采用新原生模板和共享视觉组件并接回现有数据、导航、权限与提交语义，17/17 补充状态仍为原路由条件分支；最终源码的 73 路由与 17 状态均已在 320/390/430 逻辑宽隔离渲染，分别为 219 与 51 个视口，均无横向溢出，但这不等于逐像素微信签收。首页与“我的”已在当前微信工程取得逻辑 `390×844` 的真实状态截图，SDK 原始 PNG 为 `360×779`；其余 71 页尚未计为微信实测。最终直接回归 242/242；`npm run test:wechat` 为 1238 项、1237 通过，唯一失败是当前 Windows 权限下安全软链测试的 `symlinkSync EPERM`；`git diff --check` 通过。当前仍未 commit、push、pack、上传、部署、执行 Migration 或生产写入。详见 [UI006 任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)、[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)、[证据说明](evidence/ui006/README.md) 与 [覆盖矩阵](evidence/ui006/COVERAGE.md)。

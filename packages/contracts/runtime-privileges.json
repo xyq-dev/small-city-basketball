@@ -353,6 +353,10 @@
         "locked_standings_ruleset_id"
       ]
     },
+    "first_run_setup": {
+      "privileges": ["SELECT"],
+      "updateColumns": ["initialized_at", "token_used_at"]
+    },
     "governance_case_attachments": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
@@ -641,6 +645,10 @@
         "updated_at",
         "version"
       ]
+    },
+    "media_cos_objects": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["cleanup_attempted_at", "deleted_at"]
     },
     "media_files": {
       "privileges": ["SELECT", "INSERT"],
@@ -1409,6 +1417,7 @@
     "c19_upload_session_guard()": [],
     "c22_region_reference_guard()": [],
     "c23_protect_material_revision()": [],
+    "c50_cos_object_guard()": [],
     "e01_append_only()": [],
     "e01_session_guard()": [],
     "e02_job_identity_guard()": [],
@@ -1421,6 +1430,7 @@
     "e08_immutable_guardian_fact()": [],
     "e08_protect_guardian_source()": [],
     "e08_protect_preconsent_source()": [],
+    "first_run_setup_guard()": [],
     "p03_protect_locked_ruleset()": [],
     "p03_reject_history_mutation()": [],
     "p04_current_revision_guard()": [],
