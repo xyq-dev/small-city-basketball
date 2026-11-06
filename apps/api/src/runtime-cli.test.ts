@@ -14,6 +14,7 @@ describe('entrypoint failures do not disclose private configuration', () => {
     ['database/migrate.ts', 'Database migration failed'],
     ['database/migrate-cli.ts', 'Database migration failed'],
     ['bootstrap-owner.ts', 'First owner initialization failed'],
+    ['initialization-link.ts', 'Initialization link issuance failed'],
   ])('%s emits only a fixed failure for a credential-bearing malformed URL', (file, message) => {
     const path = fileURLToPath(new URL(file, import.meta.url));
     const result = spawnSync(process.execPath, ['--import', 'tsx', path], {
@@ -24,6 +25,7 @@ describe('entrypoint failures do not disclose private configuration', () => {
         ...process.env,
         NODE_NO_WARNINGS: '1',
         NODE_ENV: 'production',
+        FIRST_RUN_SETUP_ENABLED: 'true',
         APP_ORIGIN: 'https://example.test',
         PORT: '3000',
         HOST: '127.0.0.1',

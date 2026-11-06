@@ -29,6 +29,7 @@ import type { ParticipantMaterialGuards } from './participant-materials-guards.j
 import { lockTradeSourceCalendar } from './trade-source-hooks.js';
 import { captureNotification } from './notification-source.js';
 import { hashPassword, hashToken, newSessionToken } from './security.js';
+import { assertRegistrationAllowed } from './first-run-setup.js';
 import {
   calendarDate,
   emailInput,
@@ -160,6 +161,7 @@ export class RegistrationService extends ApplicationService {
     const passwordHash = await hashPassword(password);
     try {
       return await this.transaction(async (client) => {
+        await assertRegistrationAllowed(client);
         const userId = randomUUID();
         const result = await client.query(
           'INSERT INTO users(id,email,display_name,password_hash) VALUES($1,$2,$3,$4) RETURNING id,email,display_name,password_hash,status',

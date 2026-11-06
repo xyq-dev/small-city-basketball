@@ -12,6 +12,7 @@ export interface ResolvedApiOptions {
   secureCookies: boolean;
   organizationRegistrationEnabled: boolean;
   participantRegistrationEnabled: boolean;
+  firstRunSetupEnabled: boolean;
   participantDataKey?: string;
   notificationStartingLeadMinutes?: number;
   backgroundWorkersEnabled?: boolean;
@@ -57,6 +58,7 @@ export function readRuntimeConfig(): RuntimeConfig {
       registrationEnabled: booleanEnv('REGISTRATION_ENABLED'),
       organizationRegistrationEnabled: booleanEnv('ORGANIZATION_REGISTRATION_ENABLED'),
       participantRegistrationEnabled: booleanEnv('PARTICIPANT_REGISTRATION_ENABLED'),
+      firstRunSetupEnabled: booleanEnv('FIRST_RUN_SETUP_ENABLED'),
       participantDataKey:
         process.env.SCB_PARTICIPANT_DATA_KEY !== undefined ||
         process.env.SCB_PARTICIPANT_DATA_KEY_FILE !== undefined
@@ -127,6 +129,7 @@ export function resolveApiOptions(options: ApiOptions): ResolvedApiOptions {
     options.registrationEnabled,
     options.organizationRegistrationEnabled,
     options.participantRegistrationEnabled,
+    options.firstRunSetupEnabled,
     options.secureCookies,
     options.backgroundWorkersEnabled,
   ];
@@ -165,6 +168,7 @@ export function resolveApiOptions(options: ApiOptions): ResolvedApiOptions {
       options.organizationRegistrationEnabled ?? options.registrationEnabled ?? !production,
     participantRegistrationEnabled:
       options.participantRegistrationEnabled ?? options.registrationEnabled ?? !production,
+    firstRunSetupEnabled: options.firstRunSetupEnabled ?? false,
     trustProxyHops: hops,
     production,
     commerceMode,

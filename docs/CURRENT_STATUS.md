@@ -1,5 +1,11 @@
 # 当前状态
 
+## 2026-11-06 账号安全（REVIEW / BRANCH_ONLY，PR #43）
+
+[PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)实现首次部署自设OWNER密码及Web本人改密/撤销旧会话。应用候选`0cd86cb9d56503e9254ba683ffeca0bfb12fa45d`的CI205三作业成功（包括隔离HTTPS/Docker、最小权限和完整归档恢复），未合入main或上线。main执行前仍为`ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`。
+
+本轮补齐新增两表单的真实HTTPS浏览器专项，加入桌面/手机独有临时数据库、失败链接、双会话撤销和新密码登录验收；本地类型/格式/隔离清理及独立安全审查通过，浏览器实跑由新增CI作业完成，结果待精确候选检查。Migration049此前仅临时/CI数据库执行，生产未执行。详见[任务](tasks/ACCOUNT-SECURITY.md)、[交接](handoffs/ACCOUNT-SECURITY.md)及[操作说明](operations/account-security.md)。
+
 ## 2026-11-03 四页导航与账号双态整合（待合入 main）
 
 本地 `ui/v3-main-nav` 的未提交界面已放到 `integrate/ui-v4-consolidate`，基线是当时的 `origin/main` `ef25846857bb0431a4f71ad8dbe6fac87f945ae0`（该提交已包含首页还原 #39 和包体 #38）。合入的是账号未登录/已登录、赛事、同城、球队，以及 `components/v3-chrome`。首页产品文件没有用旧分支覆盖。`fix/ui002-ci` 的 `fc8c2eb` 已在 main 历史上，没有重复应用。设计说明在 `docs/design/ui-v4/`；参考截图包和未引用素材包不进入仓库。正式支付、投保、分账、推流和真机仍未验收。合并提交以 GitHub 上的最终 SHA 为准，本节在合并前只记录候选。

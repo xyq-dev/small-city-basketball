@@ -22,6 +22,10 @@ import type { Response, NextFunction } from 'express';
 import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
 import { ApplicationService } from './service.js';
+import { FirstRunSetupService } from './first-run-setup-service.js';
+import { FirstRunSetupController, SCB_FIRST_RUN_SETUP } from './first-run-setup-controller.js';
+import { ChangePasswordService } from './change-password-service.js';
+import { ChangePasswordController, SCB_CHANGE_PASSWORD } from './change-password-controller.js';
 import { PublicLedgerService } from './public-ledger-service.js';
 import {
   PublicLedgerController,
@@ -484,6 +488,8 @@ export async function createApi(
       expansion.trade,
       expansion.materialGuards,
     );
+    const firstRunSetup = new FirstRunSetupService(pool, options, options.firstRunSetupEnabled);
+    const changePassword = new ChangePasswordService(pool, options);
     const publicLedgers = new PublicLedgerService(pool, options);
     const publicArchives = new PublicArchivesService(pool, options);
     const unifiedSearch = new UnifiedSearchService(pool, options);
@@ -579,6 +585,8 @@ export async function createApi(
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
+        FirstRunSetupController,
+        ChangePasswordController,
         SponsorCommerceController,
         SponsorCommerceMeController,
         MatchingController,
@@ -652,6 +660,8 @@ export async function createApi(
         SeasonController,
       ],
       providers: [
+        { provide: SCB_FIRST_RUN_SETUP, useValue: firstRunSetup },
+        { provide: SCB_CHANGE_PASSWORD, useValue: changePassword },
         { provide: SCB_SPONSOR_COMMERCE_SERVICE, useValue: sponsorCommerce },
         { provide: SCB_MATCHING_SERVICE, useValue: matching },
         { provide: SCB_DISPATCH_SERVICE, useValue: dispatch },

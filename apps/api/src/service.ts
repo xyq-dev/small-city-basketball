@@ -9,6 +9,7 @@ import type {
   StaffRole,
 } from '@small-city-basketball/contracts';
 import { resolveApiOptions } from './runtime-config.js';
+import { assertRegistrationAllowed } from './first-run-setup.js';
 import type { WechatPayConfig } from './commerce/wechatpay.js';
 import type { ResolvedApiOptions } from './runtime-config.js';
 import { ApiError, forbidden, notFound, unauthenticated } from './errors.js';
@@ -43,6 +44,8 @@ export interface ApiOptions {
   registrationEnabled?: boolean;
   organizationRegistrationEnabled?: boolean;
   participantRegistrationEnabled?: boolean;
+  /** Explicit opt-in for token-authorized first deployment setup. */
+  firstRunSetupEnabled?: boolean;
   /** Dedicated canonical base64 AES-256 key; absent keeps new material workflows closed. */
   participantDataKey?: string;
   notificationStartingLeadMinutes?: number;
@@ -274,6 +277,7 @@ export class ApplicationService {
     const passwordHash = await hashPassword(password);
     try {
       return await this.transaction(async (client) => {
+        await assertRegistrationAllowed(client);
         const userId = randomUUID();
         const orgId = randomUUID();
         const result = await client.query<DbUser>(

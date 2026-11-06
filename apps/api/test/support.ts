@@ -5,6 +5,7 @@ import type { Response } from 'supertest';
 import type { Pool } from 'pg';
 import type { INestApplication } from '@nestjs/common';
 import { expect } from 'vitest';
+import { bootstrapOwner } from '../src/bootstrap-owner.js';
 
 export const ORIGIN = 'http://localhost:5173';
 export const RUN_ID = randomUUID().replaceAll('-', '');
@@ -101,18 +102,42 @@ export interface User {
 
 export async function register(api: Api, label: string, password = PASSWORD): Promise<User> {
   const email = `${label}-${RUN_ID}@example.test`;
-  const response = await call(api, 'post', '/v1/auth/register', {
-    body: {
-      email,
-      password,
-      displayName: `测试 ${label}`,
-      organizationName: `机构 ${label} ${RUN_ID.slice(0, 8)}`,
-    },
-  });
+  const body = {
+    email,
+    password,
+    displayName: `测试 ${label}`,
+    organizationName: `机构 ${label} ${RUN_ID.slice(0, 8)}`,
+  };
+  // The first synthetic fixture now uses the same controlled initialization as
+  // a deployment. Fresh public registration is intentionally closed by 049.
+  // Older-prefix migration tests do not yet have this table.
+  const hasSetup = (await api.pool.query("SELECT to_regclass('public.first_run_setup') AS name"))
+    .rows[0]?.name;
+  const needsSetup =
+    hasSetup &&
+    !(await api.pool.query('SELECT initialized_at FROM first_run_setup WHERE singleton=true'))
+      .rows[0]?.initialized_at;
+  let initializedByThisCall = false;
+  if (needsSetup) {
+    try {
+      await bootstrapOwner(api.pool, body);
+      initializedByThisCall = true;
+    } catch (cause) {
+      // Concurrent synthetic fixture creation may lose the real initializer's
+      // mutex. Fall back to ordinary registration only after durable completion.
+      const completed = (
+        await api.pool.query('SELECT initialized_at FROM first_run_setup WHERE singleton=true')
+      ).rows[0]?.initialized_at;
+      if ((cause as { code?: string }).code !== 'SETUP_CLOSED' || !completed) throw cause;
+    }
+  }
+  const response = initializedByThisCall
+    ? await call(api, 'post', '/v1/auth/login', { body: { email, password } })
+    : await call(api, 'post', '/v1/auth/register', { body });
   const session = data<{
     user: { id: string; email: string };
     organizations: { id: string; role: string }[];
-  }>(response, 201);
+  }>(response, initializedByThisCall ? 200 : 201);
   expect(session.user.email).toBe(email);
   expect(session.organizations).toHaveLength(1);
   expect(session.organizations[0]!.role).toBe('ORG_OWNER');

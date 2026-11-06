@@ -76,6 +76,7 @@ services:
       APP_ORIGIN: ${APP_ORIGIN:?Set an explicit canonical HTTPS APP_ORIGIN}
       ORGANIZATION_REGISTRATION_ENABLED: 'false'
       PARTICIPANT_REGISTRATION_ENABLED: 'true'
+      FIRST_RUN_SETUP_ENABLED: ${FIRST_RUN_SETUP_ENABLED:-false}
       TRUST_PROXY_HOPS: '1'
       COMMERCE_MODE: ${COMMERCE_MODE:-OFF}
       SCB_BACKGROUND_WORKERS_ENABLED: ${SCB_BACKGROUND_WORKERS_ENABLED:-true}
@@ -138,6 +139,24 @@ services:
       api:
         condition: service_healthy
 
+  # The initialization URL is a one-time private terminal delivery, not a log.
+  initialization-link:
+    <<: *db-tools
+    profiles: [ops]
+    command: [node, apps/api/dist/initialization-link.js]
+    tty: true
+    logging:
+      driver: none
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_migrator_url
+      FIRST_RUN_SETUP_ENABLED: ${FIRST_RUN_SETUP_ENABLED:-false}
+      APP_ORIGIN: ${APP_ORIGIN:?Set an explicit canonical HTTPS APP_ORIGIN}
+      CI: ${CI:-}
+    secrets:
+      - database_migrator_url
+    networks: [backend]
+    restart: 'no'
+
   bootstrap-owner:
     <<: *db-tools
     profiles: [ops]
@@ -145,6 +164,7 @@ services:
     environment:
       DATABASE_URL_FILE: /run/secrets/database_migrator_url
       BOOTSTRAP_OWNER_INPUT_FILE: /run/secrets/bootstrap_owner_input
+      FIRST_RUN_SETUP_ENABLED: ${FIRST_RUN_SETUP_ENABLED:-false}
     secrets:
       - database_migrator_url
       - bootstrap_owner_input

@@ -195,17 +195,19 @@ describe('P07 real PostgreSQL first-owner initialization', () => {
       let outcomes: PromiseSettledResult<Awaited<ReturnType<typeof bootstrapOwner>>>[] = [];
       try {
         await blocker.query('BEGIN');
-        await blocker.query('LOCK TABLE users,organizations IN ACCESS EXCLUSIVE MODE');
+        await blocker.query(
+          'SELECT singleton FROM first_run_setup WHERE singleton=true FOR UPDATE',
+        );
         attempts.push(bootstrapOwner(target.pool, input()), bootstrapOwner(target.pool, input()));
         // Observe real lock contention; a pair of promises alone can serialize
-        // during password calculation without ever exercising the table mutex.
+        // during password calculation without ever exercising the durable singleton mutex.
         await eventually(
           async () =>
             (
               await target.adminPool.query<{ n: number }>(
                 `SELECT count(*)::int AS n FROM pg_stat_activity
                  WHERE datname=$1 AND wait_event_type='Lock'
-                   AND query LIKE 'LOCK TABLE users,organizations IN SHARE ROW EXCLUSIVE MODE%'`,
+                   AND query LIKE 'SELECT initialized_at,token_hash,token_expires_at,token_used_at FROM first_run_setup%'`,
                 [target.ownership.databaseName],
               )
             ).rows[0]!.n,
@@ -220,7 +222,7 @@ describe('P07 real PostgreSQL first-owner initialization', () => {
       }
       expect(outcomes.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
       const rejected = outcomes.find((result) => result.status === 'rejected');
-      expect(rejected?.status === 'rejected' && rejected.reason.code).toBe('BOOTSTRAP_NOT_EMPTY');
+      expect(rejected?.status === 'rejected' && rejected.reason.code).toBe('SETUP_CLOSED');
       expect(await counts(target.pool)).toEqual({
         users: 1,
         organizations: 1,
@@ -246,7 +248,7 @@ describe('P07 real PostgreSQL first-owner initialization', () => {
         [randomUUID(), owner.email, '既有个人账号', existing],
       );
       await expect(bootstrapOwner(target.pool, owner)).rejects.toMatchObject({
-        code: 'EMAIL_ALREADY_EXISTS',
+        code: 'SETUP_CLOSED',
       });
       expect(await counts(target.pool)).toEqual({
         users: 1,

@@ -14,9 +14,9 @@
     "dev": "npm run dev --workspace @small-city-basketball/admin",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc --project tsconfig.tests.json",
-    "test": "npm run test --workspaces --if-present && npm run test:wechat",
+    "test": "npm run test --workspaces --if-present && npm run test:wechat && npm run test:setup-cli",
     "test:e2e": "playwright test",
-    "format:check": "prettier --check apps/admin/src apps/admin/index.html apps/admin/vite.config.ts apps/admin/tsconfig.json apps/admin/package.json apps/api/src apps/api/test apps/api/package.json apps/api/tsconfig.json apps/api/tsconfig.build.json apps/api/vitest.config.ts packages/contracts playwright.config.ts playwright.api.config.ts tests/e2e tests/api-e2e tests/wechat-api package.json .github/workflows/ci.yml compose.yaml compose.production.yaml ops scripts tsconfig.tests.json \"apps/wechat/**/*.js\" \"apps/wechat/**/*.cjs\" \"apps/wechat/**/*.json\"",
+    "format:check": "prettier --check apps/admin/src apps/admin/index.html apps/admin/vite.config.ts apps/admin/tsconfig.json apps/admin/package.json apps/api/src apps/api/test apps/api/package.json apps/api/tsconfig.json apps/api/tsconfig.build.json apps/api/vitest.config.ts packages/contracts playwright.config.ts playwright.api.config.ts playwright.account-security.config.ts tests/e2e tests/api-e2e tests/account-security-e2e tests/wechat-api package.json .github/workflows/ci.yml compose.yaml compose.production.yaml ops scripts tsconfig.tests.json \"apps/wechat/**/*.js\" \"apps/wechat/**/*.cjs\" \"apps/wechat/**/*.json\"",
     "dev:api": "npm run dev --workspace @small-city-basketball/api",
     "dev:admin": "npm run dev --workspace @small-city-basketball/admin",
     "test:integration": "npm run test:integration --workspace @small-city-basketball/api",
@@ -27,7 +27,9 @@
     "test:wechat": "node --test apps/wechat/test/*.test.cjs tests/wechat-tools/devtools-ui.test.mjs",
     "wechat:ui:prepare": "node scripts/wechat-devtools-ui.mjs prepare",
     "wechat:ui:capture": "node scripts/wechat-devtools-ui.mjs capture",
-    "test:wechat:api": "node --test --test-concurrency=1 \"tests/wechat-api/*.test.mjs\""
+    "test:wechat:api": "node --test --test-concurrency=1 \"tests/wechat-api/*.test.mjs\"",
+    "test:setup-cli": "node --test ops/setup/initialization-link.test.mjs scripts/prepare-api-browser-owner.test.mjs",
+    "test:account-security:e2e": "node scripts/run-api-browser-checks.mjs --suite=account-security"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
