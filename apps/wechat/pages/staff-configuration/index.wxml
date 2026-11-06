@@ -17,8 +17,8 @@
     </view>
 
     <view class="staff-tabs" role="tablist">
-      <button class="staff-tab {{type === 'MEMBER' ? 'is-active' : ''}}" data-type="MEMBER" bindtap="type" disabled="{{busy || pending || (workspace && !workspace.capabilities.canManageMembers)}}" role="tab" aria-selected="{{type === 'MEMBER'}}">机构成员</button>
-      <button class="staff-tab {{type === 'STAFF' ? 'is-active' : ''}}" data-type="STAFF" bindtap="type" disabled="{{busy || pending || (workspace && !workspace.capabilities.canManageStaff)}}" role="tab" aria-selected="{{type === 'STAFF'}}">赛事工作人员</button>
+      <button class="staff-tab {{type === 'MEMBER' ? 'is-active' : ''}}" data-type="MEMBER" bindtap="type" disabled="{{busy || pending}}" role="tab" aria-selected="{{type === 'MEMBER'}}">机构成员</button>
+      <button class="staff-tab {{type === 'STAFF' ? 'is-active' : ''}}" data-type="STAFF" bindtap="type" disabled="{{busy || pending}}" role="tab" aria-selected="{{type === 'STAFF'}}">赛事工作人员</button>
     </view>
 
     <view class="figma-section">
