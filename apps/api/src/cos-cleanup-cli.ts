@@ -1,8 +1,8 @@
 import { Pool } from 'pg';
 import { isDirectExecution, loadRootEnv } from './env.js';
 import { readDatabaseUrl } from './runtime-config.js';
-import { readCosObjectStore } from './cos-runtime.js';
 import { MediaObjectStorage } from './media-object-storage.js';
+import { createStorageSettingsResolver } from './storage-settings/runtime.js';
 
 /** Explicit bounded maintenance using the existing runtime identity; never applies DDL. */
 export async function runCosCleanup(): Promise<{ deleted: number; failed: number }> {
@@ -19,9 +19,12 @@ export async function runCosCleanup(): Promise<{ deleted: number; failed: number
     );
     if (quarantine.rows[0]?.quarantined !== false)
       throw new Error('COS cleanup is disabled in restore quarantine');
-    const store = readCosObjectStore();
-    if (!store) throw new Error('COS cleanup requires COS configuration');
-    storage = new MediaObjectStorage(pool, databaseUrl, store);
+    const resolveStore = createStorageSettingsResolver(pool);
+    storage = new MediaObjectStorage(pool, databaseUrl, undefined, async (client) => {
+      const store = await resolveStore(client);
+      if (!store) throw new Error('COS cleanup requires COS configuration');
+      return store;
+    });
     return await storage.cleanup();
   } finally {
     await storage?.onModuleDestroy();

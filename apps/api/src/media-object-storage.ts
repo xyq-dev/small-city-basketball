@@ -3,6 +3,10 @@ import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { ApiError } from './errors.js';
 import type { CosObjectLocation, CosObjectStore } from './cos-storage.js';
+import { STORAGE_CONFIGURATION_LOCK } from './storage-settings/locking.js';
+
+/** Called inside the caller's transaction after acquiring the configuration share lock. */
+export type MediaObjectStoreResolver = (client: PoolClient) => Promise<CosObjectStore | undefined>;
 
 type ObjectRow = {
   id: string;
@@ -26,24 +30,53 @@ export class MediaObjectStorage {
     databaseUrl: string,
     quarantined: boolean,
     resolveStore: () => CosObjectStore | undefined,
+    resolveCurrentStore?: MediaObjectStoreResolver,
   ): MediaObjectStorage {
-    return new MediaObjectStorage(pool, databaseUrl, quarantined ? undefined : resolveStore());
+    if (quarantined) return new MediaObjectStorage(pool, databaseUrl);
+    // A database-backed resolver owns legacy fallback. Do not eagerly read environment
+    // credentials, which might be obsolete or unavailable after a successful rotation.
+    return new MediaObjectStorage(
+      pool,
+      databaseUrl,
+      resolveCurrentStore ? undefined : resolveStore(),
+      resolveCurrentStore,
+    );
   }
 
   constructor(
     private readonly pool: Pool,
     databaseUrl: string,
     readonly store?: CosObjectStore,
+    private readonly resolveCurrentStore?: MediaObjectStoreResolver,
   ) {
     // Staging registrations must survive the caller's rollback. A separate small pool also
     // prevents all business connections waiting on a spare connection from their own pool.
-    if (store) {
+    if (store || resolveCurrentStore) {
       this.registrationPool = new Pool({
         connectionString: databaseUrl,
         max: 2,
         connectionTimeoutMillis: 5000,
       });
       this.registrationPool.on('error', () => console.error('Media staging connection error'));
+    }
+  }
+
+  private async currentStore(client: PoolClient): Promise<CosObjectStore | undefined> {
+    if (!this.resolveCurrentStore) return this.store;
+    try {
+      // Media callers already hold actor/organization locks. Never queue behind activation:
+      // an activation recheck can need the same actor while revocation waits for this caller.
+      // A successful try-lock stays held for the complete business transaction.
+      const lock = await client.query<{ acquired: boolean }>(
+        'SELECT pg_try_advisory_xact_lock_shared($1) AS acquired',
+        [STORAGE_CONFIGURATION_LOCK],
+      );
+      if (lock.rows[0]?.acquired !== true) throw unavailable();
+      return await this.resolveCurrentStore(client);
+    } catch {
+      // A resolver/database/decryption failure must not silently become DATABASE mode,
+      // and resolver errors may contain secret configuration or database connection data.
+      throw unavailable();
     }
   }
 
@@ -54,7 +87,8 @@ export class MediaObjectStorage {
     body: Buffer,
     contentType: string,
   ): Promise<{ payload: Buffer | null; cosObjectId: string | null }> {
-    if (!this.store) return { payload: body, cosObjectId: null };
+    const store = await this.currentStore(client);
+    if (!store) return { payload: body, cosObjectId: null };
     // Callers already hold the organization lock, so concurrent uploads cannot race this
     // bound. Failed cloud writes must not bypass the existing permanent-file identity cap.
     const capacity = await client.query<{ total: number; pending: number }>(
@@ -69,11 +103,11 @@ export class MediaObjectStorage {
         'MEDIA_STORAGE_LIMIT',
         '云存储待清理或历史登记数量已达上限，请联系管理员处理',
       );
-    const key = `${this.store.prefix}/${orgId}/${fileId}/${randomUUID()}`;
+    const key = `${store.prefix}/${orgId}/${fileId}/${randomUUID()}`;
     try {
       await this.registrationPool!.query(
         'INSERT INTO media_cos_objects(id,org_id,bucket,region,object_key) VALUES($1,$2,$3,$4,$5)',
-        [fileId, orgId, this.store.bucket, this.store.region, key],
+        [fileId, orgId, store.bucket, store.region, key],
       );
       // A cleaner takes the same lock and therefore cannot delete an in-flight upload,
       // including uploads whose business transaction has already passed the grace period.
@@ -82,7 +116,7 @@ export class MediaObjectStorage {
         [orgId, fileId],
       );
       if (locked.rowCount !== 1) throw unavailable();
-      await this.store.put(key, body, contentType);
+      await store.put(key, body, contentType);
       return { payload: null, cosObjectId: fileId };
     } catch {
       // A timed-out PUT may still have reached COS. Keep the durable registration for
@@ -105,15 +139,16 @@ export class MediaObjectStorage {
       if (!Buffer.isBuffer(file.payload)) throw unavailable();
       return file.payload;
     }
-    if (!this.store) throw unavailable();
     try {
+      const store = await this.currentStore(client);
+      if (!store) throw unavailable();
       const result = await client.query<ObjectRow>(
         'SELECT id,org_id,bucket,region,object_key FROM media_cos_objects WHERE org_id=$1 AND id=$2 AND deleted_at IS NULL FOR SHARE',
         [file.org_id, file.cos_object_id],
       );
       const object = result.rows[0];
       if (!object) throw unavailable();
-      const body = await this.store.get(this.location(object));
+      const body = await store.get(this.location(object));
       if (
         body.length !== file.byte_length ||
         createHash('sha256').update(body).digest('hex') !== file.sha256
@@ -131,7 +166,7 @@ export class MediaObjectStorage {
 
   /** Bounded, retryable deletion: authorization is already revoked by the committed purge. */
   async cleanup(limit = 20): Promise<{ deleted: number; failed: number }> {
-    if (!this.store) return { deleted: 0, failed: 0 };
+    if (!this.store && !this.resolveCurrentStore) return { deleted: 0, failed: 0 };
     if (!Number.isInteger(limit) || limit < 1 || limit > 100)
       throw new Error('Invalid cleanup limit');
     let deleted = 0,
@@ -139,6 +174,11 @@ export class MediaObjectStorage {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      const store = await this.currentStore(client);
+      if (!store) {
+        await client.query('COMMIT');
+        return { deleted: 0, failed: 0 };
+      }
       const candidates = await client.query<ObjectRow>(
         `SELECT o.id,o.org_id,o.bucket,o.region,o.object_key FROM media_cos_objects o
          WHERE o.deleted_at IS NULL AND (
@@ -158,7 +198,7 @@ export class MediaObjectStorage {
         );
         if (retained.rowCount) continue;
         try {
-          await this.store.delete(this.location(row));
+          await store.delete(this.location(row));
         } catch {
           // Persist rotation of failed items: an old inaccessible batch must not prevent
           // never-attempted files (including other organizations) from being reclaimed.
@@ -186,7 +226,7 @@ export class MediaObjectStorage {
   }
 
   startWorker(enabled: boolean) {
-    if (!enabled || !this.store || this.timer) return;
+    if (!enabled || (!this.store && !this.resolveCurrentStore) || this.timer) return;
     const run = () => {
       if (this.running) return;
       this.running = this.cleanup()

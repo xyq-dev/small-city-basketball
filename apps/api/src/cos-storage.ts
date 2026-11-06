@@ -13,6 +13,7 @@ export interface CosObjectStore {
   readonly bucket: string;
   readonly region: string;
   readonly prefix: string;
+  verifyConfiguration?(): Promise<void>;
   put(key: string, body: Buffer, contentType: string): Promise<void>;
   get(location: CosObjectLocation): Promise<Buffer>;
   delete(location: CosObjectLocation): Promise<void>;
@@ -24,6 +25,8 @@ export interface TencentCosOptions {
   secretId: string;
   secretKey: string;
   sessionToken?: string;
+  /** Server-only bounded probe timeout. This is never accepted from user configuration. */
+  timeoutMs?: number;
 }
 type CosClient = Pick<COS, 'putObject' | 'getObject' | 'deleteObject' | 'getBucketVersioning'>;
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
@@ -58,18 +61,24 @@ export class TencentCosObjectStore implements CosObjectStore {
   readonly region: string;
   readonly prefix: string;
   private readonly client: CosClient;
+  private readonly timeoutMs: number;
 
   constructor(options: TencentCosOptions, client?: CosClient) {
     if (
       !validCosDestination(options.bucket, options.region, options.prefix) ||
       !secret(options.secretId) ||
       !secret(options.secretKey) ||
-      (options.sessionToken !== undefined && !secret(options.sessionToken))
+      (options.sessionToken !== undefined && !secret(options.sessionToken)) ||
+      (options.timeoutMs !== undefined &&
+        (!Number.isInteger(options.timeoutMs) ||
+          options.timeoutMs < 1000 ||
+          options.timeoutMs > 30000))
     )
       throw new Error('Invalid COS configuration');
     this.bucket = options.bucket;
     this.region = options.region;
     this.prefix = options.prefix;
+    this.timeoutMs = options.timeoutMs ?? 30000;
     this.client =
       client ??
       new COS({
@@ -82,7 +91,7 @@ export class TencentCosObjectStore implements CosObjectStore {
         ForceSignHost: true,
         FollowRedirect: false,
         AutoSwitchHost: false,
-        Timeout: 30000,
+        Timeout: this.timeoutMs,
         ChunkRetryTimes: 0,
         UploadCheckContentMd5: true,
         KeepAlive: true,
@@ -116,6 +125,14 @@ export class TencentCosObjectStore implements CosObjectStore {
       configuration.Status !== undefined
     )
       throw unavailable();
+  }
+
+  async verifyConfiguration(): Promise<void> {
+    try {
+      await this.requireUnversionedBucket();
+    } catch {
+      throw unavailable();
+    }
   }
 
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
@@ -164,7 +181,7 @@ export class TencentCosObjectStore implements CosObjectStore {
         callback();
       },
     });
-    const deadline = setTimeout(() => output.destroy(unavailable()), 30000);
+    const deadline = setTimeout(() => output.destroy(unavailable()), this.timeoutMs);
     deadline.unref();
     try {
       const params = this.params(location);

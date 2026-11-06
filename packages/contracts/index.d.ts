@@ -1218,3 +1218,16 @@ export type * from './matching.js';
 export type * from './dispatch.js';
 export type * from './training.js';
 export type * from './sponsor-commerce.js';
+
+export type {
+  StorageDestination,
+  StorageSettingsDraft,
+  StorageTestCheckKey,
+  StorageTestCheck,
+  StorageSettingsTest,
+  StorageSettingsSnapshot,
+  StorageSaveInput,
+  StorageTestInput,
+  StorageActivationInput,
+  StorageCommandResult,
+} from './storage-settings.js';

@@ -18,6 +18,12 @@ export async function exactTableRows(client, table) {
       false,
     ],
     account_mail_jobs: ['envelope', 'stored_envelope_length', 'stored_envelope_sha256', false],
+    storage_config_revisions: [
+      'credentials_ciphertext',
+      'stored_credentials_length',
+      'stored_credentials_sha256',
+      false,
+    ],
   }[table];
   if (!binary)
     return (

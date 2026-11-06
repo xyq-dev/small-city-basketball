@@ -1095,6 +1095,28 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
     },
+    "storage_config_operations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "result", "test_result", "completed_at"]
+    },
+    "storage_config_probes": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["put_confirmed_at", "cleanup_attempted_at", "deleted_at"]
+    },
+    "storage_config_revisions": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "storage_config_state": {
+      "privileges": ["SELECT"],
+      "updateColumns": [
+        "version",
+        "draft_revision_id",
+        "active_revision_id",
+        "activated_at",
+        "activated_by"
+      ]
+    },
     "stream_command_receipts": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": []
@@ -1418,6 +1440,10 @@
     "c22_region_reference_guard()": [],
     "c23_protect_material_revision()": [],
     "c50_cos_object_guard()": [],
+    "c51_storage_immutable()": [],
+    "c51_storage_operation_guard()": [],
+    "c51_storage_probe_guard()": [],
+    "c51_storage_state_guard()": [],
     "e01_append_only()": [],
     "e01_session_guard()": [],
     "e02_job_identity_guard()": [],

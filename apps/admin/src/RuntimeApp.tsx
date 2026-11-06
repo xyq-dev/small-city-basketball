@@ -40,6 +40,11 @@ const WechatAccountPage = lazy(() =>
 const PlatformCommercePage = lazy(() =>
   import('./commerce/CommercePages').then((m) => ({ default: m.PlatformCommercePage })),
 );
+const StorageSettingsPage = lazy(() =>
+  import('./storage-settings/StorageSettingsPage').then((m) => ({
+    default: m.StorageSettingsPage,
+  })),
+);
 const PublicViewingApp = lazy(() =>
   import('./viewing/PublicPages').then((viewing) => ({ default: viewing.PublicViewingApp })),
 );
@@ -546,9 +551,14 @@ function IdentityPanel({
             微信账户
           </a>
           {session.platformOperator === true && (
-            <a className="button button-secondary" href="/platform/commerce">
-              平台计费运营
-            </a>
+            <>
+              <a className="button button-secondary" href="/platform/commerce">
+                平台计费运营
+              </a>
+              <a className="button button-secondary" href="/system/storage">
+                系统设置 · 对象存储
+              </a>
+            </>
           )}
         </div>
         <AccountSecurityForm
@@ -627,6 +637,9 @@ function IdentityPanel({
 
 export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
   const sessionEpoch = useRef(0);
+  const [storagePath, setStoragePath] = useState(
+    () => window.location.pathname === '/system/storage',
+  );
   const [accountView, setAccountView] = useState<'wechat' | 'platform' | 'booking' | null>(() =>
     isBookingPath(window.location.pathname)
       ? 'booking'
@@ -637,7 +650,8 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
           : null,
   );
   useEffect(() => {
-    const sync = () =>
+    const sync = () => {
+      setStoragePath(window.location.pathname === '/system/storage');
       setAccountView(
         isBookingPath(window.location.pathname)
           ? 'booking'
@@ -647,6 +661,7 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
               ? 'platform'
               : null,
       );
+    };
     window.addEventListener('popstate', sync);
     return () => window.removeEventListener('popstate', sync);
   }, []);
@@ -963,6 +978,12 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
             role: contextMode === 'organization' ? organization?.role : undefined,
             organizationSwitcher: switcher,
             headerActions,
+            storageSettings: {
+              client: guardedClient,
+              userId: session.user.id,
+              platformOperator: session.platformOperator === true,
+              identityKey: `${session.user.id}:${sessionEpoch.current}:${contextMode}:${organizationId}:${teamId}`,
+            },
             registration: {
               client: guardedClient,
               organizationId: contextMode === 'organization' ? organizationId : undefined,
@@ -972,6 +993,24 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
             },
           }}
         />
+      ) : storagePath ? (
+        <main className="runtime-account-tools">
+          <div className="runtime-account-actions">
+            <a className="button button-secondary" href="/">
+              返回工作台
+            </a>
+            {logoutButton}
+          </div>
+          <Suspense fallback={<p role="status">正在读取对象存储设置…</p>}>
+            <StorageSettingsPage
+              key={session.user.id}
+              client={guardedClient}
+              userId={session.user.id}
+              platformOperator={session.platformOperator === true}
+              identityKey={`${session.user.id}:${sessionEpoch.current}`}
+            />
+          </Suspense>
+        </main>
       ) : (
         <main className="runtime-state runtime-account-home">
           <Trophy size={34} />
@@ -997,6 +1036,11 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
               申请成为预约球员
             </a>
             {headerActions}
+            {session.platformOperator === true && (
+              <a className="button button-secondary" href="/system/storage">
+                对象存储设置
+              </a>
+            )}
             <button
               className="button button-secondary"
               onClick={() => {

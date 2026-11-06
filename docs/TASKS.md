@@ -1,5 +1,9 @@
 # 任务看板
 
+## 2026-11-07T01:00+08:00 COS02 后台对象存储（IN_PROGRESS / LOCAL_ONLY）
+
+新增实际系统设置→对象存储，平台全局权限、凭据加密、版本绑定检测与启用，保留已有媒体与恢复边界。当前仅独立worktree开发，尚未验证/合并/部署；详见[任务](tasks/COS02-ADMIN-STORAGE.md)及[交接](handoffs/COS02-ADMIN-STORAGE.md)。下方INT01仍为已合并基线事实。
+
 ## 2026-11-06 22:20 Asia/Shanghai INT01 全分支整合完成（DONE / MAIN）
 
 [PR #46](https://github.com/xyq-dev/small-city-basketball/pull/46) 已用 merge 合入 main，合并提交 `2ab668e5361e71dbb138b45b704928692b15b174`。来源 PR #42、#44 已由 GitHub 标记 merged；账号安全 #43、腾讯 COS #45 原已合入。四个 feature head 与整合候选全部保留为 main 祖先，未强推、删除来源分支或覆盖旧 checkout。

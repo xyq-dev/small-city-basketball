@@ -68,6 +68,13 @@ import { ScoringIndexPage, EventScoringPage, ScoringWorkbenchPage } from './scor
 import './scoring/scoring.css';
 import './viewing/viewing.css';
 import { isBookingPath } from './booking/routes';
+import type { ApiClient } from './api/client';
+
+const StorageSettingsPage = lazy(() =>
+  import('./storage-settings/StorageSettingsPage').then((m) => ({
+    default: m.StorageSettingsPage,
+  })),
+);
 
 const BookingPage = lazy(() =>
   import('./booking/BookingPages').then((m) => ({ default: m.BookingPage })),
@@ -135,6 +142,12 @@ export interface WorkspaceConfiguration {
   role?: OrgRole;
   organizationSwitcher?: ReactNode;
   headerActions?: ReactNode;
+  storageSettings?: {
+    client: ApiClient;
+    userId: string;
+    platformOperator: boolean;
+    identityKey: string;
+  };
   registration?: RegistrationWorkspace;
 }
 const defaultWorkspace: WorkspaceConfiguration = {
@@ -1670,55 +1683,59 @@ function WorkspaceLayout() {
   const closeRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const currentLabel =
-    location.pathname === '/commerce'
-      ? '套餐、订单与权益'
-      : location.pathname === '/dispatch'
-        ? '跨城调度'
-        : location.pathname === '/training'
-          ? '培训排课'
-          : location.pathname === '/insurance'
-            ? '保险运营'
-            : location.pathname === '/sponsor-commerce'
-              ? '广告结算'
-              : location.pathname.endsWith('/groups')
-                ? '分组积分与淘汰晋级'
-                : location.pathname.endsWith('/lifecycle')
-                  ? '赛事生命周期'
-                  : location.pathname.endsWith('/knockout')
-                    ? '淘汰赛签位与晋级'
-                    : location.pathname.endsWith('/player-statistics')
-                      ? '球员基础数据榜'
-                      : location.pathname === '/broadcast' || location.pathname.endsWith('/overlay')
-                        ? '直播与 OBS'
-                        : location.pathname === '/standings' ||
-                            location.pathname.endsWith('/standings')
-                          ? '排名与观赛'
-                          : location.pathname === '/scoring' || /\/scoring$/.test(location.pathname)
-                            ? '记分与赛果'
-                            : location.pathname === '/courts'
-                              ? '机构场地'
-                              : location.pathname === '/scheduling' ||
-                                  /\/scheduling(?:\/|$)/.test(location.pathname)
-                                ? '抽签排赛'
-                                : location.pathname.startsWith('/entries/')
-                                  ? '报名详情'
-                                  : location.pathname === '/my-team' || teamWorkspace
-                                    ? '我的球队'
-                                    : location.pathname.startsWith('/teams')
-                                      ? '球队与球员'
-                                      : location.pathname === '/registration' ||
-                                          location.pathname.endsWith('/registration')
-                                        ? '报名审核'
-                                        : location.pathname === '/'
-                                          ? '工作总览'
-                                          : location.pathname === '/events/new'
-                                            ? '创建赛事'
-                                            : location.pathname.startsWith('/events/')
-                                              ? '赛事详情'
-                                              : location.pathname === '/events'
-                                                ? '赛事管理'
-                                                : (roadmap[location.pathname.split('/')[2] ?? '']
-                                                    ?.title ?? '页面');
+    location.pathname === '/system/storage'
+      ? '系统设置 / 对象存储'
+      : location.pathname === '/commerce'
+        ? '套餐、订单与权益'
+        : location.pathname === '/dispatch'
+          ? '跨城调度'
+          : location.pathname === '/training'
+            ? '培训排课'
+            : location.pathname === '/insurance'
+              ? '保险运营'
+              : location.pathname === '/sponsor-commerce'
+                ? '广告结算'
+                : location.pathname.endsWith('/groups')
+                  ? '分组积分与淘汰晋级'
+                  : location.pathname.endsWith('/lifecycle')
+                    ? '赛事生命周期'
+                    : location.pathname.endsWith('/knockout')
+                      ? '淘汰赛签位与晋级'
+                      : location.pathname.endsWith('/player-statistics')
+                        ? '球员基础数据榜'
+                        : location.pathname === '/broadcast' ||
+                            location.pathname.endsWith('/overlay')
+                          ? '直播与 OBS'
+                          : location.pathname === '/standings' ||
+                              location.pathname.endsWith('/standings')
+                            ? '排名与观赛'
+                            : location.pathname === '/scoring' ||
+                                /\/scoring$/.test(location.pathname)
+                              ? '记分与赛果'
+                              : location.pathname === '/courts'
+                                ? '机构场地'
+                                : location.pathname === '/scheduling' ||
+                                    /\/scheduling(?:\/|$)/.test(location.pathname)
+                                  ? '抽签排赛'
+                                  : location.pathname.startsWith('/entries/')
+                                    ? '报名详情'
+                                    : location.pathname === '/my-team' || teamWorkspace
+                                      ? '我的球队'
+                                      : location.pathname.startsWith('/teams')
+                                        ? '球队与球员'
+                                        : location.pathname === '/registration' ||
+                                            location.pathname.endsWith('/registration')
+                                          ? '报名审核'
+                                          : location.pathname === '/'
+                                            ? '工作总览'
+                                            : location.pathname === '/events/new'
+                                              ? '创建赛事'
+                                              : location.pathname.startsWith('/events/')
+                                                ? '赛事详情'
+                                                : location.pathname === '/events'
+                                                  ? '赛事管理'
+                                                  : (roadmap[location.pathname.split('/')[2] ?? '']
+                                                      ?.title ?? '页面');
   useEffect(() => {
     setMenuOpen(false);
     document.title = `${currentLabel} · 小城市篮球`;
@@ -1914,6 +1931,15 @@ function WorkspaceLayout() {
             <Settings2 size={19} />
             <span>机构设置</span>
           </NavLink>
+          {workspace.storageSettings?.platformOperator === true && (
+            <>
+              <div className="nav-label">系统设置</div>
+              <NavLink className="nav-item" to="/system/storage" onClick={() => setMenuOpen(false)}>
+                <FolderOpen size={19} />
+                <span>对象存储</span>
+              </NavLink>
+            </>
+          )}
           <div className="sidebar-note">
             <span className="sidebar-note-dot" />
             <span>办赛工具，正在一步步完善</span>
@@ -1966,6 +1992,22 @@ function WorkspaceLayout() {
         </div>
         <main className="main-content" id="main-content" tabIndex={-1}>
           <Routes>
+            <Route
+              path="/system/storage"
+              element={
+                workspace.storageSettings ? (
+                  <Suspense fallback={<p role="status">正在读取对象存储设置…</p>}>
+                    <StorageSettingsPage {...workspace.storageSettings} />
+                  </Suspense>
+                ) : (
+                  <section className="panel empty-state">
+                    <ShieldCheck size={30} />
+                    <h1>当前身份无法管理平台存储</h1>
+                    <p>对象存储仅限平台管理员配置，请使用具备平台权限的业务账号。</p>
+                  </section>
+                )
+              }
+            />
             {registration && (
               <>
                 <Route
