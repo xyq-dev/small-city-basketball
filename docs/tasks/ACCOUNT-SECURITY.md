@@ -1,5 +1,13 @@
 # ACCOUNT-SECURITY：首次部署自行设置密码与本人改密
 
+## 当前事实（2026-11-06T13:59:19+08:00）
+
+状态：DONE / MAIN（源码与隔离验收）；生产未部署。PR43合并SHA`becf8d38e3bc8e2c12059780ed57f52aa35f0bf0`，候选8924194的CI207四作业全部SUCCESS，合并tree与测试tree精确相同。新增初始化/改密HTTPS浏览器桌面与手机视口完整验收均通过，GitHub自动Code Review无finding，独立安全复核无阻断。当前仅追加最终事实与生产交接文档，不改已验收应用代码。
+
+执行目录`/workspace/scratch/62df5b551299/small-city-basketball`；本轮独立分支`test/account-security-browser`，源码经`feat/self-service-owner-password`的PR43合入main。原工作区与用户Windows UI工作未动。Migration049已编写且仅隔离执行，生产未执行；当前无Hermes/SSH通道，生产发布仍待服务器侧执行。
+
+## 历史阶段记录（以下按发生顺序保留，当前结论以上节为准）
+
 - 状态：REVIEW / BRANCH_ONLY，2026-11-06 Asia/Shanghai。
 - 集成人：本会话 Codex root；初始化 backend：bootstrap；改密 backend：password；Web：web；部署文档：deploy_docs。
 - 实际目录：`/workspace/scratch/1de45fa14969/small-city-basketball`。
@@ -81,3 +89,24 @@ CI204还实证完成管理端/源码测试、兼容Chromium1349通过/1335配置
 候选`4b3e97bf3262ffde677221aace4d40ed2cdabe1f`的[CI206](https://github.com/xyq-dev/small-city-basketball/actions/runs/42167881702)专项已真正启动桌面Chromium：缺失/过期/轮换/初始化成功/重放、双会话登录、错误旧密与确认不匹配阶段通过；改密后阶段失败，不能记专项通过。源码核对发现AuthForm可同时出现成功notice与注册能力loading两个status，原测试全局单元素定位不正确；改为按成功文案定位并要求可见，保留旧Cookie重放401、第二会话401、PG全会话撤销及身份保持的全部断言，增加固定细分phase。另显式禁用Playwright自动ARIA页面快照；残余固定错误和静态源码上下文仍随测试输出清理。未放宽产品规则、未修改业务代码。
 
 本地提交的普通git push因无终端Git凭据失败；已通过连接的GitHub按原head快进同步，逐文件blob及完整tree与本地一致，无force。当前私有worktree已对齐远端；用户Windows与原工作区未改。修正后重新执行专项及原全部CI，以新候选结果为准。
+
+### CI207浏览器专项实际通过（2026-11-06 13:27 Asia/Shanghai）
+
+候选`89241947fb180ce8e857d1aee5cb94ca303a79c3`；CI实际merge-ref=`d0fefe45905c9fd9a9db7fdca509da783efca6bf`，两者完整tree同为`505aaac19cf734e7c2623a4223242d726c503d60`，base main仍为ef62cb1。已读取account-security作业原始日志：桌面1完整场景14.4秒、手机1完整场景12.6秒，全部通过。
+
+两视口都通过：缺失/过期/轮换/用后链接拒绝、初始化成功、再次签发拒绝、双浏览器正常登录、错误旧密码不改变会话、确认不同不发请求、改密成功并显示重新登录提示、原当前Cookie重放401、第二会话401且刷新回登录、数据库旧活跃会话0、旧密登录401、新密登录成功、身份与机构/角色保持、审计仅1次、无URL/Referer秘密泄露或页面错误。两个项目库清理完成；两套runner故意失败清理保留失败码和control库。完整回归其他作业尚在运行，最终结论见PR43检查。
+
+本轮第二次独立复核确认status精确定位修复未放宽任何安全断言，自动ARIA页面快照关闭依据锁定Playwright版本源码验证。PR43已转为Ready for review；等待所有检查后再合并，生产未部署。
+
+### 活跃检查点 2026-11-06T13:49:19+08:00
+
+CI207的account-security、admin、production均SUCCESS；API的新旧PostgreSQL和原生页面调用真实API阶段已通过，正在采集数据库重启前基线。候选8924194保持不变，未合并、未部署。已读取专项/admin/production完成日志；最终API日志在作业结束后核验。当前待同步改动仅本任务验收/生产交接Markdown，将随最终main事实收口。
+
+## 最终验收与合并（2026-11-06T13:59:19+08:00）
+
+- 候选89241947fb180ce8e857d1aee5cb94ca303a79c3；CI207测试合并视图d0fefe45905c9fd9a9db7fdca509da783efca6bf；最终合并becf8d38e3bc8e2c12059780ed57f52aa35f0bf0。三者tree精确同为505aaac19cf734e7c2623a4223242d726c503d60，base ef62cb1没有并发变化。
+- CI207四作业SUCCESS：账号专项2完整场景；管理端598/API单测1345/原生1196通过及1平台跳过；兼容浏览器1349通过及1335配置跳过，1335份布局与PNG核验；R6 PG143、旧业务PG611、原生真实API21、旧API浏览器24；最小权限PG21、HTTPS4、全manifest实际重启与完整备份恢复/quarantine均通过。两套runner失败后仅清理自有数据库并保留失败码，独立control资源保留。
+- 已读取四份作业完成日志；CI206失败仅记为历史失败，不转称通过。新增专项实际验证了成功链路与全部旧会话/旧密码失效，而非仅表单组件测试。
+- GitHub自动Code Review在8924194完成，has_any_findings=false且has_unresolved_findings=false。自动Security Review没有执行，不冒称通过；本轮独立源码安全审查和测试配套复核无阻断。
+- PR43已由Draft转Ready并以merge方式合入main，无force。合并后的自动重复CI不冒称已完成；本次证据来自相同tree的CI207。后续提交仅四份Markdown事实收口，与验收代码分开，不新增Migration或应用更改。
+- 未发布小程序包、未连接生产修改账号/密码/配置、未执行生产迁移或部署。公开health/ready 200为只读旧环境结果。下一位服务器Hermes先核验目标主机/目录/部署拓扑与备份恢复条件，再按本交接和operations文档发布固定合并SHA；既有实例保持初始化关闭，账号与密码保留。

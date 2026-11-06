@@ -1,10 +1,12 @@
 # 任务看板
 
-## 2026-11-06 账号安全（REVIEW / BRANCH_ONLY，PR #43）
+## 2026-11-06 账号安全（DONE / MAIN：源码与隔离验收，生产未部署）
 
-[PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)实现首次部署自设OWNER密码及Web本人改密/撤销旧会话。应用候选`0cd86cb9d56503e9254ba683ffeca0bfb12fa45d`的CI205三作业成功（包括隔离HTTPS/Docker、最小权限和完整归档恢复），未合入main或上线。main执行前仍为`ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`。
+[PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)已合入main，合并SHA`becf8d38e3bc8e2c12059780ed57f52aa35f0bf0`，tree `505aaac19cf734e7c2623a4223242d726c503d60`与候选`89241947fb180ce8e857d1aee5cb94ca303a79c3`及CI测试merge-ref精确一致。首次部署自行设置OWNER密码、Web登录后本人改密及全部旧会话撤销已完成源码、独立安全复核与隔离验收。
 
-本轮补齐新增两表单的真实HTTPS浏览器专项，加入桌面/手机独有临时数据库、失败链接、双会话撤销和新密码登录验收；本地类型/格式/隔离清理及独立安全审查通过，浏览器实跑由新增CI作业完成，结果待精确候选检查。Migration049此前仅临时/CI数据库执行，生产未执行。详见[任务](tasks/ACCOUNT-SECURITY.md)、[交接](handoffs/ACCOUNT-SECURITY.md)及[操作说明](operations/account-security.md)。
+[CI207](https://github.com/xyq-dev/small-city-basketball/actions/runs/42168301902)的account-security/admin/api/production四作业全部SUCCESS，已读取四份完成日志。新增真实HTTPS浏览器桌面/手机各1完整密码流程通过；既有真实API浏览器24项、PG新域143/旧业务611、最小权限21、原生页面→真实API21、HTTPS4、实际PG重启与完整归档恢复通过。管理端598、API源码1345、原生1196通过/1平台跳过；兼容布局1349通过/1335配置跳过，1335份布局/PNG已核验，不代表微信真机。GitHub自动Code Review于同一候选完成且无finding；独立安全审查另行完成，未冒称自动Security Review执行。
+
+生产未由本轮部署，Migration049仅临时/CI执行。当前会话无直接Hermes/SSH执行通道；公开health/ready返回200只证明既有服务正常。服务器侧固定版本、备份恢复、升级和账号保留步骤已写入[交接](handoffs/ACCOUNT-SECURITY.md)。详见[任务](tasks/ACCOUNT-SECURITY.md)和[操作说明](operations/account-security.md)。
 
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 
