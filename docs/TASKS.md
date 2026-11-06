@@ -1,5 +1,9 @@
 # 任务看板
 
+## 2026-11-06 COS01 腾讯云对象存储（REVIEW / LOCAL_ONLY）
+
+本地 `feat/tencent-cos-media` 在基线ef62cb1上完成私有COS媒体接线、旧DB兼容、持久化清理和049/权限；尚未提交、推送、合入main或上线。API1366项、类型/构建/格式、PGlite完整升级及21项SQL约束通过；原生PG并发、真实COS和真机未验。详见[任务](tasks/COS01.md)、[接续](handoffs/COS01.md)、[证据](evidence/COS01/README.md)、[配置](operations/tencent-cos.md)。`CURRENT_STATUS.md`保持main已整合事实，不将本地结果写成生产状态。
+
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 
 | 项 | 事实 |

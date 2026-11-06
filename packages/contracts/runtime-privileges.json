@@ -642,6 +642,10 @@
         "version"
       ]
     },
+    "media_cos_objects": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["deleted_at"]
+    },
     "media_files": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["version", "payload", "revoked_at", "revoked_by", "purged_at", "purged_by"]
@@ -1409,6 +1413,7 @@
     "c19_upload_session_guard()": [],
     "c22_region_reference_guard()": [],
     "c23_protect_material_revision()": [],
+    "c49_cos_object_guard()": [],
     "e01_append_only()": [],
     "e01_session_guard()": [],
     "e02_job_identity_guard()": [],

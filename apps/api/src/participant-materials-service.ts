@@ -744,7 +744,7 @@ export class ParticipantMaterialsService extends ApplicationService {
       const shared = (
         await c.query(
           `SELECT
-        (SELECT COALESCE(sum(byte_length),0)::bigint FROM media_files WHERE org_id=$1 AND payload IS NOT NULL) AS used,
+        (SELECT COALESCE(sum(byte_length),0)::bigint FROM media_files WHERE org_id=$1 AND purged_at IS NULL) AS used,
         (SELECT COALESCE(sum(byte_length),0)::bigint FROM media_upload_sessions WHERE org_id=$1 AND status='OPEN' AND expires_at>now()) AS reserved`,
           [a.ctx.orgId],
         )

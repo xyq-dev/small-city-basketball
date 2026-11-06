@@ -274,6 +274,12 @@ SE首轮比赛数n−nextPow2(n)/2，后轮只能精确同事务凭证追加全�
 原clientRequestId、请求patch指纹和旧revision永久保留为回执墓碑，私有密文仅在赛事归档/取消且结束超过90日、无legal_hold时由人工维护清除；没有自动任务。清除不得修改既有revision元数据或冻结参赛事实。冻结snapshot只新增材料revision引用，不包含证件/照片/保单。宣传撤回作用于head的独立权限事实，不撤销参赛审核。当前83表／24迁移，001–023未修改；运行权限、readiness、重启/恢复精确清单已同步，执行证据以任务卡为准。
 
 
+## COS01 私有对象存储（049已编写，生产未执行）
+
+`media_cos_objects` 保存由服务端生成的随机Key、bucket、region、org、计划文件ID和创建/实际删除时间，身份不可变，不含云凭据或签名URL。登记不设组织FK，以允许已锁组织的上传事务通过独立连接提交登记；真正的 `media_files` 仍维持原组织/赛事/报名/比赛FK，新复合FK `(org_id,cos_object_id)` 绑定同机构登记，且 `cos_object_id=id`。旧文件保留数据库payload，新COS文件payload为空；两者不能并存或同时缺失，上传后不能切换存储源。
+
+媒体与分片预留及本人材料继续共享128MiB配额，COS文件也计入未清除字节；撤销不释放额度，明确清除后才释放。云对象物理删除另有可重试回执；孤儿登记超过24小时且无文件引用才可清理，活跃引用禁止标删除。服务层另有32条未关联待清理、8192条总登记上限。参考[运行与恢复边界](operations/tencent-cos.md)和[任务验证](tasks/COS01.md)；数据库dump不包含COS字节。
+
 ### E08 042 成年资料处理事实
 
 新增append-only `youth_adult_data_consents`，绑定actor及performed_by、org/event/team/entry/member/binding、当前material/revision、独立age_evidence_qualification、policy/terms与递增version；decision为CONSENT/WITHDRAW，cause为SELF/ACCOUNT_CLOSURE/RESTORE_QUARANTINE。不保存生日或身份明文，runtime仅SELECT/INSERT；本人同意必须performed_by=actor。注销与恢复隔离追加WITHDRAW，保留旧事实。年龄证据只授权处理资料，不代替当前参赛、保险、照片或公开资格。042已在隔离CI41184782485首次执行并冻结，036—041冻结校验保持；生产未执行。

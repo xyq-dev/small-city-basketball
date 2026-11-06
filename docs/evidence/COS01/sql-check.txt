@@ -1,0 +1,85 @@
+APPLIED 001_p02_foundation.sql
+APPLIED 002_p03_registration.sql
+APPLIED 003_p04_scheduling.sql
+APPLIED 004_p05_scoring.sql
+APPLIED 005_p05_standings_public.sql
+APPLIED 006_p06_overlay.sql
+APPLIED 007_p04_match_rescheduling.sql
+APPLIED 008_p05_player_statistics.sql
+APPLIED 009_c02_login_names.sql
+APPLIED 010_c03_event_history.sql
+APPLIED 011_c04_knockout.sql
+APPLIED 012_c05_group_knockout.sql
+APPLIED 013_c05_commerce.sql
+APPLIED 014_c05_wechat.sql
+APPLIED 015_c05_media.sql
+APPLIED 016_c06_player_bookings.sql
+APPLIED 017_c07_player_performance.sql
+APPLIED 018_c18_public_event_directory.sql
+APPLIED 019_c19_media_requests.sql
+APPLIED 020_c19_team_membership.sql
+APPLIED 021_c19_event_follows.sql
+APPLIED 022_c19_private_seasons.sql
+APPLIED 023_c21_region_directory.sql
+APPLIED 024_c23_participant_materials.sql
+APPLIED 025_x01_third_place.sql
+APPLIED 026_x03_scheduling_templates.sql
+APPLIED 027_x05_recruitment_posters.sql
+APPLIED 028_x08_professional_statistics.sql
+APPLIED 029_x12_local_services.sql
+APPLIED 030_x18_governance.sql
+APPLIED 031_x22_account_recovery.sql
+APPLIED 032_x08_public_archives.sql
+APPLIED 033_x02_match_exceptions.sql
+APPLIED 034_x08_scoring_offline_intents.sql
+APPLIED 035_x17_staff_configuration.sql
+APPLIED 036_e01_streaming_media.sql
+APPLIED 037_e03_insurance.sql
+APPLIED 038_e04_trade.sql
+APPLIED 039_e05_notifications.sql
+APPLIED 040_e07_account_closure.sql
+APPLIED 041_e08_youth_guardians.sql
+APPLIED 042_e08_adult_data_consent.sql
+APPLIED 043_r6_insurance_readiness.sql
+APPLIED 044_r6_matching.sql
+APPLIED 045_r6_dispatch.sql
+APPLIED 046_r6_training.sql
+APPLIED 047_r6_sponsor_commerce.sql
+APPLIED 048_r6_shared_boundaries.sql
+LEGACY_MEDIA_UPGRADE preserved bytes and digest
+APPLIED 049_cos_media_storage.sql
+SURFACE [ { tables: 222 } ]
+ENGINE [
+  {
+    version: 'PostgreSQL 18.6 (PGlite 0.5.15) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.13 (e13ee988ce3d87a738dd8f3661d02223308c412a), 32-bit'
+  }
+]
+ASSERTIONS 21 [
+  { name: 'COS files persist metadata without database payload' },
+  {
+    name: 'COS-backed bytes and open session reservations share organization quota'
+  },
+  { name: 'active object cannot be marked deleted' },
+  { name: 'cross-organization object association is forbidden' },
+  { name: 'database payload and COS reference cannot coexist' },
+  { name: 'database upload cannot bypass full COS quota' },
+  { name: 'deleted object cannot be linked' },
+  { name: 'deleted object receipt cannot be revived' },
+  {
+    name: 'explicit purge releases logical quota for a database upload'
+  },
+  { name: 'file cannot switch storage reference' },
+  { name: 'file without either storage source is invalid' },
+  { name: 'fresh orphan observes upload grace period' },
+  { name: 'object identity cannot be changed' },
+  { name: 'object receipt cannot be deleted' },
+  { name: 'old database-backed content remains supported' },
+  { name: 'purge requires prior revoke' },
+  { name: 'revoked COS file continues consuming quota' },
+  { name: 'revoked but retained object still cannot be deleted' },
+  {
+    name: 'revoked then purged file retains reference and permits cleanup'
+  },
+  { name: 'stale orphan may record successful cleanup' },
+  { name: 'upload session reservation cannot bypass full COS quota' }
+]

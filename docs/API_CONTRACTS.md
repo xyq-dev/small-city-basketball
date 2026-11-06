@@ -463,6 +463,12 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 保存使用原clientRequestId与expectedVersion；未知结果查原回执，不用新ID绕过。照片或保单分次保存，精确PUT mine路由共享12MiB/2并发上传lane，邻接命令仍100KiB。材料通过、队伍提交、独立队伍批准、冻结分别执行；后面三个入口重查当前资料/签署/审核/保障版本。拒绝宣传不影响参赛。在线保险、支付和自动实名核验未开放。
 
 
+## COS01 媒体存储兼容扩展
+
+原报名/比赛 `media-files`、幂等 `media-file-requests`、分片 `media-upload-sessions`、发布/撤销和content接口形状不变。启用COS后，新文件仍由原服务端完整校验与授权；普通DTO不包含bucket、Key、cos_object_id、云凭据或签名地址，既有数据库文件保持兼容。单文件8MiB及机构共享128MiB不变，本轮不提供前端直传授权接口。
+
+云故障、对象摘要/长度不符或COS读取配置关闭返回503 `MEDIA_STORAGE_UNAVAILABLE`；配置不匹配不回退数据库。原配额及新登记限额返回409 `MEDIA_STORAGE_LIMIT`。content仍支持Range并在每次请求核验私有/公开访问；撤销后不提供云直链绕过限制。`PURGE` 表示关闭业务访问并释放业务额度，COS物理删除由有界后台任务重试，失败不会伪装成物理删除完成。恢复隔离禁止云端读写和清理，详见[运行说明](operations/tencent-cos.md)。
+
 ### E08 成年本人资料处理重新确认（042）
 
 `GET /v1/orgs/:orgId/events/:eventId/youth-adult-data-consent?entryId=UUID&memberId=UUID` 仅返回当前本人材料scope的最小操作能力；不返回年龄、生日或身份明文。`POST`同路径接受当前能力给出的精确scope、材料/政策/条款版本和独立年龄证据标识，以及独立幂等request ID；客户端声明年龄不能产生权限。CONSENT只恢复当前本人资料处理，仍须正常当前资格及最终独立审核；WITHDRAW无需重新解密年龄证据。公开档案、照片宣传与直播分别核验其原有独立用途授权，不因本次资料同意自动开放。

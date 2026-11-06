@@ -28,6 +28,7 @@ const expectedMigrations = Object.fromEntries(
 const checkScripts = [
   'check-database-restart',
   'c05-media-fixtures',
+  'cos-recovery-check',
   'c05-commerce-check',
   'c23-participant-material-check',
   'x02-adjudication-check',
