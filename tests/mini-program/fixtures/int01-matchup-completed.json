@@ -1,0 +1,55 @@
+{
+  "name": "int01-matchup-completed",
+  "route": "pages/local-matchups/index",
+  "state": "synthetic-first-matchup-completed",
+  "designSource": "isolated-synthetic:INT01-real-matchup-terminal-summary",
+  "static": true,
+  "expectText": [
+    "合成已完成主队",
+    "合成已完成客队",
+    "约赛进度",
+    "已完成",
+    "已确认",
+    "本次约赛已登记完成",
+    "全部约赛"
+  ],
+  "expectAbsentText": [
+    "待确认",
+    "待对方确认",
+    "待双方确认",
+    "待办理",
+    "待登记完成",
+    "邀请有效30分钟"
+  ],
+  "expectVisible": [
+    "button[data-mini-bindtap=\"select\"][data-id=\"10000000-0000-4000-8000-000000000001\"]"
+  ],
+  "data": {
+    "matchupView": "list",
+    "selected": null,
+    "loading": false,
+    "busy": false,
+    "loginRequired": false,
+    "pending": null,
+    "pendingError": "",
+    "error": "",
+    "message": "",
+    "teams": [],
+    "items": [
+      {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "homeTeamName": "合成已完成主队",
+        "awayTeamName": "合成已完成客队",
+        "address": "合成已完成约赛球场",
+        "timeText": "2028-06-01 19:00 — 21:00",
+        "terms": "合成双方已确认并完成登记的约赛约定",
+        "status": "COMPLETED",
+        "statusText": "已完成",
+        "version": 4,
+        "homeConfirmed": true,
+        "awayConfirmed": true,
+        "canConfirm": false
+      }
+    ]
+  }
+}

@@ -1,5 +1,13 @@
 # INT01 全部分支测试与整合
 
+## 2026-11-06 19:35 Asia/Shanghai 枚举收口与最后验收准备
+
+完整静态data-*键值差分43个消失项逐一联立JS分支与替代入口，最后补齐participant-materials既有外部保单、governance两路由原请求cancel=true、schedule全稿all模式；其余是替代/既有修复，无继续扩展。约赛摘要按实际OPEN/CONFIRMED/COMPLETED/DECLINED/CANCELLED与awayConfirmed，场地快照仅称预约来源，不冒充实时场地状态。外部保单入口复用原44px按钮且四tab保留，insurance编辑/上传按既有canSave禁用，无购买接口；默认入口及真实编辑态均纳入布局。治理取消仅原ID/actor明确确认，未生效操作建迟到墓碑，已完成仅解保护不回滚业务。schedule all/preserve使用原preview/确认/PUT的false/true与版本/locked保护，不编造pending操作号机制。
+
+新回归实际：保单6项、状态摘要8项、治理取消20项、赛程13项均先红后绿；相关组合43/56/55/124通过。独立复核前两组新14＋既有59、后两组新33＋既有51均通过，声明仅DOM与代码、未称浏览器几何。累计186新增测试（19新CJS），23新fixture。root完整微信1483项：1482通过/0失败/1平台skip，format/typecheck/diff通过；23新场景及一迁移场景×三宽72次DOM文案/按钮/字段契约通过。
+
+CI217 admin完成为1518通过/3失败，三失败是同一e03资格场景三宽：原data.canReview=true却期待申请人“资格核验进度/本人已提交”等。现不改任何原data/ID/amount/capability/consent，仅更新审核人投影和可用审批控件断言，data规范化SHA256仍3a0fe8f86ec1c5acf35ebe5606292c897c4dac663661f8b8e6150adb2545c92d；另增真实非审核申请人单成员场景维持原进度覆盖。未改spec、未skip或放宽安全断言。新head完整真实三宽/证据守卫/四作业CI待本次普通推进后执行；旧217、旧source指纹/数量均不冒充最终结果。无后端/API/权限契约/迁移/生产变更。
+
 ## 2026-11-06 19:14 Asia/Shanghai 最终冻结与发布准备
 
 已收齐本轮条件门禁修复：有效资格审核/成员与历史切换、后续约赛逐条选择、录制CANCEL_JOB、无机构身份授课理由、本人评价撤回理由、广告交付/争议理由、撤销招募后历史拒绝理由、标准地区搜索、所有公开档案及其来源管理。十三页WXML仅恢复既有业务，JS仅共享证明取消代次与公开档案同意适配/目标保护，后端与API契约不变。

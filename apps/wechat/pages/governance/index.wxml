@@ -8,6 +8,7 @@
     <figma-feedback wx:if="{{error}}" type="error" title="工单读取或操作失败" body="{{error}}" action-label="刷新当前状态" disabled="{{busy}}" bind:action="load"/>
     <figma-feedback wx:if="{{notice}}" type="success" title="工单状态已更新" body="{{notice}}"/>
     <figma-feedback wx:if="{{pending}}" type="warning" title="有原操作待核对" body="不能更换编号重发；先查询或明确放弃原操作。" action-label="查询原操作" disabled="{{busy}}" bind:action="recover"/>
+    <button wx:if="{{pending}}" class="figma-action figma-action--ghost" data-cancel="true" bindtap="recover" disabled="{{busy}}">明确放弃原请求</button>
 
     <block wx:if="{{selected}}">
       <view class="figma-section"><view class="governance-detail-head"><view><view class="figma-section__title">{{selected.title}}</view><view class="figma-section__hint">{{selected.statusLabel}} · 第 {{selected.version}} 版</view></view><button class="governance-text-action" bindtap="load" disabled="{{busy}}">返回列表</button></view><button wx:if="{{selected.messagesBefore}}" class="governance-text-action" bindtap="history" disabled="{{busy}}">读取更早记录</button><view wx:for="{{selected.messages}}" wx:key="id" class="governance-message"><view class="figma-caption">{{item.createdAt}} · {{item.visibility === 'INTERNAL' ? '内部记录' : '双方可见'}}</view><view>{{item.body}}</view></view><button wx:for="{{selected.attachments}}" wx:key="id" class="figma-action figma-action--ghost" data-id="{{item.id}}" bindtap="preview">查看私有附件：{{item.fileName}}</button></view>

@@ -7,6 +7,7 @@
     <figma-feedback wx:if="{{notice}}" type="success" title="评价状态已更新" body="{{notice}}"/>
     <figma-feedback wx:if="{{loginRequired}}" type="warning" title="登录查看本人评价" action-label="登录" bind:action="login"/>
     <figma-feedback wx:if="{{pending}}" type="warning" title="有原操作待核对" body="查询原操作后继续，不能更换编号重发。" action-label="查询原操作" disabled="{{busy}}" bind:action="recover"/>
+    <button wx:if="{{pending}}" class="figma-action figma-action--ghost" data-cancel="true" bindtap="recover" disabled="{{busy}}">明确放弃原请求</button>
 
     <view wx:if="{{publicReview}}" class="figma-section"><view class="review-score">{{publicReview.score}}<text>/5</text></view><view class="review-body">{{publicReview.body}}</view><view class="figma-caption">{{publicReview.authorLabel}} · {{publicReview.createdAt}}</view><figma-feedback type="warning" title="公开范围说明" body="{{publicReview.notice}}"/><button class="figma-action figma-action--ghost" open-type="share">分享当前评价</button></view>
 

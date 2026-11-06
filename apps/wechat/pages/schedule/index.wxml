@@ -38,6 +38,7 @@
         <view wx:for="{{fixtures}}" wx:key="key" class="schedule-fixture"><figma-icon name="schedule" size="18"/><view class="figma-row__copy"><view class="figma-row__title">{{item.home}} vs {{item.away}}</view><view class="figma-row__subtitle">{{item.summaryText || (item.round + ' · ' + item.time + (item.court ? ' · ' + item.court : ''))}}</view></view><view class="figma-status {{item.assigned ? 'figma-status--green' : 'figma-status--orange'}}">{{item.statusText || (item.assigned ? '草稿' : '未安排')}}</view></view>
         <view wx:if="{{byes}}" class="schedule-alert">首轮轮空直接晋级：{{byes}}。轮空不生成比赛。</view>
         <view wx:if="{{draftGroups.length}}" class="schedule-groups"><view wx:for="{{draftGroups}}" wx:key="key" class="schedule-readonly"><view><view class="figma-row__title">{{item.label}}</view><view class="figma-row__subtitle">{{item.teams}}</view></view></view></view>
+        <button wx:if="{{state === 'draft' && revision.canEdit}}" class="figma-action figma-action--ghost" data-mode="all" bindtap="autoAssign" disabled="{{busy || loading}}">全稿均衡优化</button>
       </view>
 
       <view class="figma-section">
@@ -57,5 +58,5 @@
     </block>
   </view>
 
-  <view wx:if="{{event}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost" data-mode="preserve" bindtap="autoAssign" disabled="{{busy || state !== 'draft' || !revision.canEdit}}">自动补充缺项</button><button class="figma-action figma-action--orange" bindtap="validate" disabled="{{busy || state !== 'draft' || !revision.canValidate}}">{{busy ? '正在校验…' : '校验冲突'}}</button></view>
+  <view wx:if="{{event}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost" data-mode="preserve" bindtap="autoAssign" disabled="{{busy || loading || state !== 'draft' || !revision.canEdit}}">自动补充缺项</button><button class="figma-action figma-action--orange" bindtap="validate" disabled="{{busy || state !== 'draft' || !revision.canValidate}}">{{busy ? '正在校验…' : '校验冲突'}}</button></view>
 </view>

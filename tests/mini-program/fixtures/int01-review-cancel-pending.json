@@ -1,0 +1,30 @@
+{
+  "name": "int01-review-cancel-pending",
+  "route": "pages/governance-reviews/index",
+  "state": "synthetic-review-original-request-pending",
+  "syntheticData": true,
+  "expectText": ["有原操作待核对", "查询原操作", "明确放弃原请求"],
+  "expectEnabled": ["查询原操作", "明确放弃原请求"],
+  "expectDisabled": ["提交评价"],
+  "expectVisible": ["button[data-cancel=\"true\"]"],
+  "data": {
+    "items": [],
+    "mode": "mine",
+    "isOperator": false,
+    "isPublic": false,
+    "publicReview": null,
+    "sourceReady": false,
+    "publicConsent": false,
+    "loginRequired": false,
+    "loading": false,
+    "busy": false,
+    "error": "尚未查到原结果，保护记录保留；可稍后再查或明确放弃。",
+    "notice": "",
+    "figmaReviewPreview": false,
+    "pending": {
+      "userId": "10000000-0000-4000-8000-000000000001",
+      "kind": "REVIEW",
+      "commandId": "20000000-0000-4000-8000-000000000002"
+    }
+  }
+}

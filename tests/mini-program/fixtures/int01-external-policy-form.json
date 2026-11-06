@@ -1,0 +1,66 @@
+{
+  "name": "int01-external-policy-form",
+  "route": "pages/participant-materials/index",
+  "state": "synthetic-reachable-existing-policy-form",
+  "figmaNode": "36:108",
+  "syntheticData": true,
+  "designSource": "Current participant material profile; existing external-policy panel reached through its restored independent navigation, synthetic data only",
+  "expectText": ["已有保单", "已有保单人工核验", "选择并私有保存保单文件"],
+  "expectEnabled": ["选择并私有保存保单文件"],
+  "expectVisible": [
+    "input[data-field=\"insurer\"]",
+    "input[data-field=\"policyNumber\"]",
+    "input[data-field=\"startDate\"]",
+    "input[data-field=\"endDate\"]",
+    "button[data-kind=\"insurance\"][data-mini-bindtap=\"upload\"]"
+  ],
+  "expectAbsentSelectors": [],
+  "data": {
+    "mode": "mine",
+    "materialPanel": "insurance",
+    "registrationStep": "insurance",
+    "workspace": {
+      "entryId": "00000000-0000-4000-8000-000000000002",
+      "memberId": "00000000-0000-4000-8000-000000000003",
+      "eventName": "合成本人报名杯",
+      "teamName": "合成青锋",
+      "startDate": "2028-05-01",
+      "endDate": "2028-05-03",
+      "rules": {
+        "requireInsurance": true,
+        "termsVersion": "registration-materials-v1"
+      },
+      "enabled": true,
+      "frozen": false,
+      "material": null,
+      "capabilities": {
+        "canSave": true,
+        "canSubmit": false,
+        "canWithdrawPublicity": false
+      }
+    },
+    "material": null,
+    "loading": false,
+    "busy": false,
+    "dirty": true,
+    "pending": false,
+    "loginRequired": false,
+    "form": {
+      "realName": "",
+      "identityNumber": "",
+      "insurer": "合成外部保障机构",
+      "policyNumber": "SCB-SYNTHETIC-POLICY-1",
+      "startDate": "2028-05-01",
+      "endDate": "2028-05-03",
+      "acceptedTerms": false,
+      "publicityConsent": false
+    },
+    "insuranceDirty": true
+  },
+  "expectValues": [
+    {
+      "selector": "input[data-field=\"policyNumber\"]",
+      "value": "SCB-SYNTHETIC-POLICY-1"
+    }
+  ]
+}

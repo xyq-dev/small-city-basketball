@@ -3,7 +3,7 @@
   "route": "pages/qualification-precheck/index",
   "state": "synthetic-populated",
   "designSource": "UI006 explicit selected current participant; same source records; synthetic data",
-  "expectText": ["资格核验进度", "本人已提交当前版本", "当前版本已受理", "已通过"],
+  "expectText": ["独立资格预审", "本次预审", "独立审核当前成员", "已通过"],
   "data": {
     "orgId": "00000000-0000-4000-8000-000000000001",
     "entryId": "00000000-0000-4000-8000-000000000002",
@@ -76,5 +76,7 @@
     },
     "selectedMemberId": "00000000-0000-4000-8000-000000000003"
   },
-  "expectEnabled": ["查看本人资料"]
+  "expectEnabled": ["查看本人资料与照片", "已逐项人工核对，通过预审", "退回补充"],
+  "expectVisible": ["button[data-decision=\"APPROVED\"]", "button[data-decision=\"REJECTED\"]"],
+  "expectAbsentText": ["资格核验进度", "本人已提交当前版本"]
 }
