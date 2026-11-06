@@ -1,5 +1,13 @@
 # 任务看板
 
+## 2026-11-06 21:45 Asia/Shanghai CI223唯一筛选器字号修复
+
+当前共享84f0f958/tree a210740d，尚未合并。CI223 account-security、production与Windows56成功，admin源码598/1374/微信1620＋1平台skip/CLI12及构建成功；浏览器1578通过、3失败只属新增int01-booking-overview-status三宽：“更多”筛选picker继承.status-tab 12px，未达14px可读性要求。六页状态修复本身及其他场景无失败，验收spec/fixture/身份/数据保持。
+
+root仅把bookings本页WXSS .status-tab的font-size12px改14px，保留原首行引号、不整文件formatter；状态按钮/更多保持44px高度、min-width72px及原横向滚动，WXML/JS/handler不变。三宽DOM计算全部5个筛选项均14px/44px（仅样式预检），完整微信1621项再次1620通过、0失败、1平台skip，diff通过；全仓类型/格式对同一JS/CJS不变，先前通过。局部样式/三宽DOM已由另一审查者独立复核通过，原筛选索引/ID/更多changeStatus与滚动保持，定向14/14通过。root仅本页WXSS与五任务记录普通推进PR46，重新核验精确最新head完整CI/三宽；不能将旧223其他成功项混作新head结果。
+
+累计324新回归/32新CJS/36新场景与六页独立审查继续保留，不新增无意义镜像单测或放宽旧检查。main b19c19a未更新，API旧作业仍在既有PG集成；无生产部署、Migration、真实资金或外部凭据操作。最终仍按既定门禁merge保留全部来源历史并收口42/44。
+
 ## 2026-11-06 21:29 Asia/Shanghai 状态摘要最终整合冻结（REVIEW / BRANCH_ONLY）
 
 本节为最新状态，下方历次记录均为历史。root在共享60734369之上已收齐六页、18份独立工作树冻结文件，逐字节核对一致。仅六份WXML及六份新CJS/六份新fixture：local-bookings使用真实statusText，中性到场进度，不推断核销历史，两个首条摘要随角色分类守卫；local-manage按slot原始OPEN/CLOSED与available严格布尔显示，避免混用约赛OPEN；training课次使用真实stateLabel；performance已有sourceText仅显式有效时绿色，缺失待核对；bookings无总体聚合数据则中性逐场核对，保留真实每条状态；org-event可读权限不再冒充办理进度，规程/报名/排程中性入口与真实reviewLabel/已排程正例保留。原handler、ID/版本、筛选、金额、权限与未知结果流程均保持，无JS/后端/API/共享样式或旧fixture/spec变化。

@@ -9,7 +9,7 @@
 .filter-panel { padding:8px; border-radius:12px; background:#fff; }
 .status-scroll { width:100%; white-space:nowrap; }
 .status-tabs { display:flex; gap:8px; }
-.status-tab { display:flex; min-width:72px; height:44px; align-items:center; justify-content:center; padding:0 12px; border-radius:10px; background:#f4f6fa; color:#51657d; font-size:12px; }
+.status-tab { display:flex; min-width:72px; height:44px; align-items:center; justify-content:center; padding:0 12px; border-radius:10px; background:#f4f6fa; color:#51657d; font-size:14px; }
 .status-tab.is-active { background:#123c73; color:#fff; }
 .booking-item { border-bottom:1px solid #e6ebf2; }
 .booking-item:last-child { border-bottom:0; }
