@@ -145,7 +145,7 @@ export class MediaObjectStorage {
            EXISTS(SELECT 1 FROM media_files f WHERE f.org_id=o.org_id AND f.cos_object_id=o.id AND f.purged_at IS NOT NULL)
            OR (o.created_at < clock_timestamp()-interval '24 hours' AND NOT EXISTS(
              SELECT 1 FROM media_files f WHERE f.org_id=o.org_id AND f.cos_object_id=o.id)))
-         ORDER BY o.created_at,o.id LIMIT $1 FOR UPDATE OF o SKIP LOCKED`,
+         ORDER BY o.cleanup_attempted_at NULLS FIRST,o.created_at,o.id LIMIT $1 FOR UPDATE OF o SKIP LOCKED`,
         [limit],
       );
       for (const row of candidates.rows) {
@@ -160,6 +160,12 @@ export class MediaObjectStorage {
         try {
           await this.store.delete(this.location(row));
         } catch {
+          // Persist rotation of failed items: an old inaccessible batch must not prevent
+          // never-attempted files (including other organizations) from being reclaimed.
+          await client.query(
+            'UPDATE media_cos_objects SET cleanup_attempted_at=clock_timestamp() WHERE id=$1',
+            [row.id],
+          );
           failed++;
           continue;
         }

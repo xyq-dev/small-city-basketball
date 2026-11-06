@@ -648,7 +648,7 @@
     },
     "media_cos_objects": {
       "privileges": ["SELECT", "INSERT"],
-      "updateColumns": ["deleted_at"]
+      "updateColumns": ["cleanup_attempted_at", "deleted_at"]
     },
     "media_files": {
       "privileges": ["SELECT", "INSERT"],

@@ -275,7 +275,7 @@ SE首轮比赛数n−nextPow2(n)/2，后轮只能精确同事务凭证追加全�
 
 ## COS01 私有对象存储（050已编写，生产未执行）
 
-`media_cos_objects` 保存由服务端生成的随机Key、bucket、region、org、计划文件ID和创建/实际删除时间，身份不可变，不含云凭据或签名URL。登记不设组织FK，以允许已锁组织的上传事务通过独立连接提交登记；真正的 `media_files` 仍维持原组织/赛事/报名/比赛FK，新复合FK `(org_id,cos_object_id)` 绑定同机构登记，且 `cos_object_id=id`。旧文件保留数据库payload，新COS文件payload为空；两者不能并存或同时缺失，上传后不能切换存储源。
+`media_cos_objects` 保存由服务端生成的随机Key、bucket、region、org、计划文件ID和创建/失败清理尝试/实际删除时间，身份不可变，不含云凭据或签名URL。`cleanup_attempted_at`仅在符合清理资格的失败尝试后单调推进，配合NULLS FIRST排序轮转失败对象；成功删除保留原尝试时间，失败不写deleted_at。登记不设组织FK，以允许已锁组织的上传事务通过独立连接提交登记；真正的 `media_files` 仍维持原组织/赛事/报名/比赛FK，新复合FK `(org_id,cos_object_id)` 绑定同机构登记，且 `cos_object_id=id`。旧文件保留数据库payload，新COS文件payload为空；两者不能并存或同时缺失，上传后不能切换存储源。
 
 媒体与分片预留及本人材料继续共享128MiB配额，COS文件也计入未清除字节；撤销不释放额度，明确清除后才释放。云对象物理删除另有可重试回执；孤儿登记超过24小时且无文件引用才可清理，活跃引用禁止标删除。服务层另有32条未关联待清理、8192条总登记上限。参考[运行与恢复边界](operations/tencent-cos.md)和[任务验证](tasks/COS01.md)；数据库dump不包含COS字节。
 

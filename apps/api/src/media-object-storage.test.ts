@@ -190,12 +190,28 @@ describe('retryable COS cleanup', () => {
     cleanupQueries();
     remove.mockRejectedValueOnce(new Error('temporary failure'));
     await expect(storage.cleanup()).resolves.toEqual({ deleted: 0, failed: 1 });
-    expect(query.mock.calls.some(([sql]) => sql.startsWith('UPDATE media_cos_objects'))).toBe(
-      false,
-    );
+    expect(query.mock.calls.some(([sql]) => sql.includes('SET deleted_at='))).toBe(false);
+    expect(query.mock.calls.some(([sql]) => sql.includes('SET cleanup_attempted_at='))).toBe(true);
     await expect(storage.cleanup()).resolves.toEqual({ deleted: 1, failed: 0 });
     expect(remove).toHaveBeenCalledTimes(2);
-    expect(query.mock.calls.some(([sql]) => sql.startsWith('UPDATE media_cos_objects'))).toBe(true);
+    expect(query.mock.calls.some(([sql]) => sql.includes('SET deleted_at='))).toBe(true);
+  });
+
+  it('does not acknowledge a failed batch when persisting retry rotation fails', async () => {
+    cleanupQueries();
+    remove.mockRejectedValueOnce(new Error('synthetic cloud denial'));
+    query.mockImplementation(async (sql: string) => {
+      if (sql.includes('SELECT o.id')) return { rows: [object] };
+      if (sql.startsWith('SELECT 1 FROM media_files')) return { rowCount: 0, rows: [] };
+      if (sql.includes('SET cleanup_attempted_at='))
+        throw new Error('synthetic retry metadata error');
+      return { rowCount: 1, rows: [] };
+    });
+    await expect(storage.cleanup()).rejects.toThrow('synthetic retry metadata error');
+    expect(query).toHaveBeenCalledWith('ROLLBACK');
+    expect(
+      query.mock.calls.some(([sql]) => sql === 'COMMIT' || sql.includes('SET deleted_at=')),
+    ).toBe(false);
   });
 
   it('rejects unbounded cleanup batches before opening a connection', async () => {

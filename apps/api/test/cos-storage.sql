@@ -39,6 +39,10 @@ DECLARE
   fresh_id uuid := 'c0490000-0000-4000-8000-000000000006';
   stale_id uuid := 'c0490000-0000-4000-8000-000000000007';
   dual_id uuid := 'c0490000-0000-4000-8000-000000000008';
+  untouched_id uuid := 'c0500000-0000-4000-8000-000000000001';
+  new_attempt_id uuid := 'c0500000-0000-4000-8000-000000000002';
+  attempted_at timestamptz;
+  head_id uuid;
   bytes bytea := convert_to('COS01 schema-only synthetic byte payload','UTF8');
   digest text;
   insert_file text;
@@ -62,6 +66,8 @@ BEGIN
 
   PERFORM pg_temp.cos_expect_error('active object cannot be marked deleted',
     format('UPDATE media_cos_objects SET deleted_at=clock_timestamp() WHERE id=%L',object_id),'23514');
+  PERFORM pg_temp.cos_expect_error('active object cannot record a cleanup attempt',
+    format('UPDATE media_cos_objects SET cleanup_attempted_at=clock_timestamp() WHERE id=%L',object_id),'23514');
   PERFORM pg_temp.cos_expect_error('object identity cannot be changed',
     format('UPDATE media_cos_objects SET region=''ap-shanghai'' WHERE id=%L',object_id),'23514');
   PERFORM pg_temp.cos_expect_error('object receipt cannot be deleted',
@@ -90,23 +96,60 @@ BEGIN
     format(insert_file,deleted_id,org,event,match,octet_length(bytes),digest,NULL,actor,deleted_id),'23514');
   PERFORM pg_temp.cos_expect_error('deleted object receipt cannot be revived',
     format('UPDATE media_cos_objects SET deleted_at=NULL WHERE id=%L',deleted_id),'23514');
+  PERFORM pg_temp.cos_expect_error('deleted object cannot record another cleanup attempt',
+    format('UPDATE media_cos_objects SET cleanup_attempted_at=clock_timestamp() WHERE id=%L',deleted_id),'23514');
+  PERFORM pg_temp.cos_expect_error('new object cannot start with a cleanup attempt receipt',
+    format('INSERT INTO media_cos_objects(id,org_id,bucket,region,object_key,created_at,cleanup_attempted_at) VALUES(%L,%L,''synthetic-1234567890'',''ap-guangzhou'',%L,clock_timestamp()-interval ''2 days'',clock_timestamp())',
+      new_attempt_id,org,'scb-media/v1/'||org||'/'||new_attempt_id||'/'||gen_random_uuid()),'23514');
 
   INSERT INTO media_cos_objects(id,org_id,bucket,region,object_key) VALUES
     (fresh_id,org,'synthetic-1234567890','ap-guangzhou','scb-media/v1/'||org||'/'||fresh_id||'/'||gen_random_uuid());
   PERFORM pg_temp.cos_expect_error('fresh orphan observes upload grace period',
     format('UPDATE media_cos_objects SET deleted_at=clock_timestamp() WHERE id=%L',fresh_id),'23514');
+  PERFORM pg_temp.cos_expect_error('fresh orphan cannot record a cleanup attempt during upload grace',
+    format('UPDATE media_cos_objects SET cleanup_attempted_at=clock_timestamp() WHERE id=%L',fresh_id),'23514');
   INSERT INTO media_cos_objects(id,org_id,bucket,region,object_key,created_at) VALUES
     (stale_id,org,'synthetic-1234567890','ap-guangzhou','scb-media/v1/'||org||'/'||stale_id||'/'||gen_random_uuid(),clock_timestamp()-interval '2 days');
+  INSERT INTO media_cos_objects(id,org_id,bucket,region,object_key,created_at) VALUES
+    (untouched_id,org,'synthetic-1234567890','ap-guangzhou','scb-media/v1/'||org||'/'||untouched_id||'/'||gen_random_uuid(),clock_timestamp()-interval '25 hours');
+  SELECT id INTO head_id FROM media_cos_objects WHERE id=ANY(ARRAY[stale_id,untouched_id])
+    ORDER BY cleanup_attempted_at NULLS FIRST,created_at,id LIMIT 1;
+  IF head_id<>stale_id THEN RAISE EXCEPTION 'Older unattempted cleanup must be selected first'; END IF;
+  PERFORM pg_temp.cos_expect_error('cleanup attempt cannot precede object creation',
+    format('UPDATE media_cos_objects SET cleanup_attempted_at=created_at-interval ''1 second'' WHERE id=%L',stale_id),'23514');
+  UPDATE media_cos_objects SET cleanup_attempted_at=clock_timestamp() WHERE id=stale_id
+    RETURNING cleanup_attempted_at INTO attempted_at;
+  IF attempted_at IS NULL THEN RAISE EXCEPTION 'Failed cleanup attempt was not durably recorded'; END IF;
+  INSERT INTO cos_schema_assertions VALUES('stale orphan can retain a failed cleanup attempt');
+  SELECT id INTO head_id FROM media_cos_objects WHERE id=ANY(ARRAY[stale_id,untouched_id])
+    ORDER BY cleanup_attempted_at NULLS FIRST,created_at,id LIMIT 1;
+  IF head_id<>untouched_id THEN RAISE EXCEPTION 'A failed cleanup must rotate behind untouched work'; END IF;
+  INSERT INTO cos_schema_assertions VALUES('durable failed attempts rotate behind unattempted objects');
+  PERFORM pg_temp.cos_expect_error('cleanup attempt cannot move backwards',
+    format('UPDATE media_cos_objects SET cleanup_attempted_at=cleanup_attempted_at-interval ''1 second'' WHERE id=%L',stale_id),'23514');
+  PERFORM pg_temp.cos_expect_error('cleanup attempt cannot be cleared',
+    format('UPDATE media_cos_objects SET cleanup_attempted_at=NULL WHERE id=%L',stale_id),'23514');
+  PERFORM pg_temp.cos_expect_error('cleanup attempt cannot be future dated',
+    format('UPDATE media_cos_objects SET cleanup_attempted_at=clock_timestamp()+interval ''1 hour'' WHERE id=%L',stale_id),'23514');
+  PERFORM pg_temp.cos_expect_error('successful cleanup cannot rewrite the failed attempt timestamp',
+    format('UPDATE media_cos_objects SET deleted_at=clock_timestamp(),cleanup_attempted_at=clock_timestamp() WHERE id=%L',stale_id),'23514');
   UPDATE media_cos_objects SET deleted_at=clock_timestamp() WHERE id=stale_id;
+  IF (SELECT cleanup_attempted_at FROM media_cos_objects WHERE id=stale_id) IS DISTINCT FROM attempted_at THEN
+    RAISE EXCEPTION 'Successful cleanup changed the last failed attempt';
+  END IF;
   INSERT INTO cos_schema_assertions VALUES('stale orphan may record successful cleanup');
 
   UPDATE media_files SET revoked_at=clock_timestamp(),revoked_by=actor,version=version+1 WHERE id=object_id;
   PERFORM pg_temp.cos_expect_error('revoked but retained object still cannot be deleted',
     format('UPDATE media_cos_objects SET deleted_at=clock_timestamp() WHERE id=%L',object_id),'23514');
+  PERFORM pg_temp.cos_expect_error('revoked but retained object cannot record a cleanup attempt',
+    format('UPDATE media_cos_objects SET cleanup_attempted_at=clock_timestamp() WHERE id=%L',object_id),'23514');
   UPDATE media_files SET purged_at=clock_timestamp(),purged_by=actor,version=version+1 WHERE id=object_id;
   IF NOT EXISTS(SELECT 1 FROM media_files WHERE id=object_id AND cos_object_id=object_id AND payload IS NULL AND purged_at IS NOT NULL) THEN
     RAISE EXCEPTION 'COS purge did not preserve the cleanup reference';
   END IF;
+  UPDATE media_cos_objects SET cleanup_attempted_at=clock_timestamp() WHERE id=object_id;
+  INSERT INTO cos_schema_assertions VALUES('purged linked file can record a failed cleanup without orphan grace');
   UPDATE media_cos_objects SET deleted_at=clock_timestamp() WHERE id=object_id;
   INSERT INTO cos_schema_assertions VALUES('revoked then purged file retains reference and permits cleanup');
 END;

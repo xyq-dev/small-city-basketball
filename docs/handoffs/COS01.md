@@ -1,5 +1,9 @@
 # COS01 接续记录
 
+最新修复检查点：自动Code Review对8237f49指出清理队列饥饿P2（PRRT_kwDOVTBG0860ZrAf），已在本地补持久化失败尝试轮转、单调时间/资格保护、最小列权限与第9项跨机构原生PG回归。API1374项、全仓类型、PGlite完整001—050和34项SQL约束、独立复审通过；新候选待同步并重新四job CI。旧CI210结果仅表示旧候选，不可据其合并新代码。审查线程在新补丁与验收通过后解决。
+
+当前执行检查点（2026-11-06）：PR45已转正式评审，最终代码候选8237f4961f6b80ea17edc97e42146d8b3be785d6，tree dc65ddeb0014d2b12ebd4298ccb0ee65ece08d72。[CI210](https://github.com/xyq-dev/small-city-basketball/actions/runs/42173048311)四job中admin/account-security/production已SUCCESS，已读取三个完成日志：管理端598、API源码1373、兼容浏览器1349通过/1335配置跳过；账号安全桌面/手机各1、owned DB清理通过；生产隔离最小权限21、HTTPS4、完整备份恢复/凭据隔离/owned清理通过。api job ID127745575220仍在Existing PostgreSQL integration checks；Remaining modules已通过。合并必须等这一精确候选api余下PG/重启/浏览器和最终四job全绿，不能把当前三项成功当成完成。最终复审无代码阻断；未部署、未真实COS。本文检查点暂留本地，避免仅写状态触发正在运行的CI重跑，结束后随文档收口同步。
+
 2026-11-06 Asia/Shanghai，负责人 Codex root。状态 REVIEW / BRANCH_ONLY，基线与授权见[任务卡](../tasks/COS01.md)。
 
 最新检查点：初始提交4170765已推送[PR45](https://github.com/xyq-dev/small-city-basketball/pull/45)。main发布期间更新至f7382c3，已普通merge并保留PR43账号安全；049_first_run_setup保持原文，COS改为050_cos_media_storage.sql、guard c50，清单50迁移/223表/128函数。新基线PGlite完整001—050及21项约束通过，原生CI等待后续整合候选。下方旧049/LOCAL_ONLY记录仅表示初始本地检查点。

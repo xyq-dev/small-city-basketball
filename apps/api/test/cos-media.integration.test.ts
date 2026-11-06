@@ -500,4 +500,90 @@ describe('COS media HTTP and transaction integration', { concurrent: false }, ()
     await storage().cleanup();
     expect(remove.mock.calls.filter(([location]) => location.key === key)).toHaveLength(deletes);
   });
+
+  test('rotates failed cleanup attempts so twenty old failures cannot starve another organization', async () => {
+    const staged = (orgId: string, ageHours: number) => {
+      const id = randomUUID();
+      return {
+        id,
+        orgId,
+        ageHours,
+        key: `${store.prefix}/${orgId}/${id}/${randomUUID()}`,
+      };
+    };
+    const blocked = Array.from({ length: 20 }, () => staged(h.owner.orgId, 48));
+    const target = staged(h.otherOwner.orgId, 25);
+    const records = [...blocked, target];
+    const blockedKeys = new Set(blocked.map((row) => row.key));
+    const ids = blocked.map((row) => row.id);
+    try {
+      await h.api.pool.query(
+        `INSERT INTO media_cos_objects(id,org_id,bucket,region,object_key,created_at)
+         SELECT v.id,v.org_id,$1,$2,v.object_key,
+           clock_timestamp()-(v.age_hours*interval '1 hour')
+         FROM unnest($3::uuid[],$4::uuid[],$5::text[],$6::integer[])
+           AS v(id,org_id,object_key,age_hours)`,
+        [
+          store.bucket,
+          store.region,
+          records.map((row) => row.id),
+          records.map((row) => row.orgId),
+          records.map((row) => row.key),
+          records.map((row) => row.ageHours),
+        ],
+      );
+      records.forEach((row) => objects.set(row.key, Buffer.from(syntheticPng)));
+      remove.mockImplementation(async (location) => {
+        if (blockedKeys.has(location.key)) throw new Error('synthetic persistent delete failure');
+        await removeBytes(location);
+      });
+
+      expect(await storage().cleanup(20)).toEqual({ deleted: 0, failed: 20 });
+      const attempted = await h.api.pool.query<{
+        id: string;
+        deleted_at: Date | null;
+        cleanup_attempted_at: Date | null;
+      }>(
+        'SELECT id,deleted_at,cleanup_attempted_at FROM media_cos_objects WHERE org_id=$1 AND id=ANY($2::uuid[])',
+        [h.owner.orgId, ids],
+      );
+      expect(attempted.rowCount).toBe(20);
+      for (const row of attempted.rows) {
+        expect(row.deleted_at).toBeNull();
+        expect(row.cleanup_attempted_at).toBeInstanceOf(Date);
+      }
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT deleted_at,cleanup_attempted_at FROM media_cos_objects WHERE org_id=$1 AND id=$2',
+            [target.orgId, target.id],
+          )
+        ).rows[0],
+      ).toEqual({ deleted_at: null, cleanup_attempted_at: null });
+      expect(remove.mock.calls.filter(([location]) => location.key === target.key)).toHaveLength(0);
+
+      const next = await storage().cleanup(20);
+      expect(next.deleted).toBe(1);
+      expect(remove.mock.calls.filter(([location]) => location.key === target.key)).toHaveLength(1);
+      expect(objects.has(target.key)).toBe(false);
+      expect(blocked.every((row) => objects.has(row.key))).toBe(true);
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT deleted_at FROM media_cos_objects WHERE org_id=$1 AND id=$2',
+            [target.orgId, target.id],
+          )
+        ).rows[0].deleted_at,
+      ).toBeInstanceOf(Date);
+      const retainedFailures = await h.api.pool.query(
+        `SELECT count(*)::int AS n FROM media_cos_objects WHERE org_id=$1 AND id=ANY($2::uuid[])
+         AND deleted_at IS NULL AND cleanup_attempted_at IS NOT NULL`,
+        [h.owner.orgId, ids],
+      );
+      expect(retainedFailures.rows[0].n).toBe(20);
+    } finally {
+      remove.mockReset().mockImplementation(removeBytes);
+      await storage().cleanup(100);
+    }
+  });
 });

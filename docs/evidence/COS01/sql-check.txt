@@ -55,32 +55,53 @@ ENGINE [
     version: 'PostgreSQL 18.6 (PGlite 0.5.15) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.13 (e13ee988ce3d87a738dd8f3661d02223308c412a), 32-bit'
   }
 ]
-ASSERTIONS 21 [
+ASSERTIONS 34 [
   { name: 'COS files persist metadata without database payload' },
   {
     name: 'COS-backed bytes and open session reservations share organization quota'
   },
   { name: 'active object cannot be marked deleted' },
+  { name: 'active object cannot record a cleanup attempt' },
+  { name: 'cleanup attempt cannot be cleared' },
+  { name: 'cleanup attempt cannot be future dated' },
+  { name: 'cleanup attempt cannot move backwards' },
+  { name: 'cleanup attempt cannot precede object creation' },
   { name: 'cross-organization object association is forbidden' },
   { name: 'database payload and COS reference cannot coexist' },
   { name: 'database upload cannot bypass full COS quota' },
   { name: 'deleted object cannot be linked' },
+  { name: 'deleted object cannot record another cleanup attempt' },
   { name: 'deleted object receipt cannot be revived' },
+  { name: 'durable failed attempts rotate behind unattempted objects' },
   {
     name: 'explicit purge releases logical quota for a database upload'
   },
   { name: 'file cannot switch storage reference' },
   { name: 'file without either storage source is invalid' },
+  {
+    name: 'fresh orphan cannot record a cleanup attempt during upload grace'
+  },
   { name: 'fresh orphan observes upload grace period' },
+  { name: 'new object cannot start with a cleanup attempt receipt' },
   { name: 'object identity cannot be changed' },
   { name: 'object receipt cannot be deleted' },
   { name: 'old database-backed content remains supported' },
   { name: 'purge requires prior revoke' },
+  {
+    name: 'purged linked file can record a failed cleanup without orphan grace'
+  },
   { name: 'revoked COS file continues consuming quota' },
+  {
+    name: 'revoked but retained object cannot record a cleanup attempt'
+  },
   { name: 'revoked but retained object still cannot be deleted' },
   {
     name: 'revoked then purged file retains reference and permits cleanup'
   },
+  { name: 'stale orphan can retain a failed cleanup attempt' },
   { name: 'stale orphan may record successful cleanup' },
+  {
+    name: 'successful cleanup cannot rewrite the failed attempt timestamp'
+  },
   { name: 'upload session reservation cannot bypass full COS quota' }
 ]

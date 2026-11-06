@@ -18,12 +18,14 @@ CREATE TABLE media_cos_objects (
       '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
   ),
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  cleanup_attempted_at timestamptz,
   deleted_at timestamptz,
   UNIQUE (org_id,id),
   UNIQUE (bucket,region,object_key),
-  CHECK (deleted_at IS NULL OR deleted_at >= created_at)
+  CHECK (deleted_at IS NULL OR deleted_at >= created_at),
+  CHECK (cleanup_attempted_at IS NULL OR cleanup_attempted_at >= created_at)
 );
-CREATE INDEX media_cos_objects_pending_cleanup ON media_cos_objects(created_at,id)
+CREATE INDEX media_cos_objects_pending_cleanup ON media_cos_objects(cleanup_attempted_at ASC NULLS FIRST,created_at,id)
   WHERE deleted_at IS NULL;
 CREATE INDEX media_cos_objects_by_org ON media_cos_objects(org_id,created_at,id);
 
@@ -61,26 +63,35 @@ ALTER TABLE media_files ADD CONSTRAINT media_files_content_storage CHECK (
 );
 
 -- The row lock serializes final linking with cleanup. Deletion timestamps are receipts, not
--- queue requests: the worker sets them only after COS confirms deletion. A fresh orphan is
--- retained for a day to cover a request that has staged but not yet acquired its row lock.
+-- queue requests: the worker sets them only after COS confirms deletion. Failed attempts
+-- advance a durable cursor so old failures cannot occupy every cleanup batch. A fresh orphan
+-- remains protected for a day while a request may still acquire its registration lock.
 CREATE FUNCTION c50_cos_object_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_OP='DELETE' THEN
     RAISE EXCEPTION 'COS object receipts cannot be deleted' USING ERRCODE='23514';
   END IF;
   IF TG_OP='INSERT' THEN
-    IF NEW.deleted_at IS NOT NULL THEN
+    IF NEW.deleted_at IS NOT NULL OR NEW.cleanup_attempted_at IS NOT NULL THEN
       RAISE EXCEPTION 'COS objects start staged' USING ERRCODE='23514';
     END IF;
     RETURN NEW;
   END IF;
-  IF (to_jsonb(NEW)-'deleted_at') IS DISTINCT FROM (to_jsonb(OLD)-'deleted_at') OR
-    OLD.deleted_at IS NOT NULL OR NEW.deleted_at IS NULL THEN
+  IF (to_jsonb(NEW)-ARRAY['deleted_at','cleanup_attempted_at']) IS DISTINCT FROM
+    (to_jsonb(OLD)-ARRAY['deleted_at','cleanup_attempted_at']) OR OLD.deleted_at IS NOT NULL THEN
     RAISE EXCEPTION 'COS object identity is immutable' USING ERRCODE='23514';
+  END IF;
+  IF NEW.deleted_at IS NOT NULL THEN
+    IF NEW.cleanup_attempted_at IS DISTINCT FROM OLD.cleanup_attempted_at THEN
+      RAISE EXCEPTION 'Successful COS deletion preserves the last failed attempt' USING ERRCODE='23514';
+    END IF;
+  ELSIF NEW.cleanup_attempted_at IS NULL OR NEW.cleanup_attempted_at>clock_timestamp() OR
+    (OLD.cleanup_attempted_at IS NOT NULL AND NEW.cleanup_attempted_at<=OLD.cleanup_attempted_at) THEN
+    RAISE EXCEPTION 'COS cleanup attempt timestamps must advance and cannot be future dated' USING ERRCODE='23514';
   END IF;
   IF EXISTS(SELECT 1 FROM media_files WHERE org_id=OLD.org_id AND cos_object_id=OLD.id
       AND purged_at IS NULL) THEN
-    RAISE EXCEPTION 'Active COS files cannot be deleted' USING ERRCODE='23514';
+    RAISE EXCEPTION 'Active COS files cannot be cleaned up' USING ERRCODE='23514';
   END IF;
   IF NOT EXISTS(SELECT 1 FROM media_files WHERE org_id=OLD.org_id AND cos_object_id=OLD.id)
     AND OLD.created_at>clock_timestamp()-interval '24 hours' THEN
