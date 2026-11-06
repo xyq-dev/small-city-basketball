@@ -1,191 +1,109 @@
-<scb-header title="赛事设置" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page setup-page">
-  <view class="page-intro"><view class="eyebrow">主办方工作台</view><view class="subtitle">{{creating ? '从模板开始办赛' : '按实际进度完成本届设置'}}</view><view class="muted">设置项仍受赛事阶段和当前权限限制。</view></view>
-  <view class="workflow-tabs"><button wx:for="{{setupSections}}" wx:key="key" class="{{setupSection === item.key ? 'selected' : ''}}" data-section="{{item.key}}" bindtap="jumpSetupSection" disabled="{{busy || loading || templatePending}}">{{item.label}}</button></view>
-  <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-  <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
-  <view wx:if="{{templatePending}}" class="card"><view class="subtitle">有模板请求待核对</view><view class="muted">原编号和内容已保存在当前账号、机构下。核对完成前不能创建另一个模板或赛事。</view><button class="primary" bindtap="resumeTemplate" disabled="{{busy}}">核对并重试原请求</button></view>
+<scb-header title="赛事设置" disabled="{{busy || loading || templatePending}}"/>
+<view class="figma-page event-setup-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary">
+      <view class="figma-summary__icon"><figma-icon name="event" size="25"/></view>
+      <view class="figma-summary__copy"><view class="figma-eyebrow">机构办赛</view><view class="figma-title">赛事设置</view><view class="figma-subtitle">在本届草稿内保存基本资料，规则按赛事阶段锁定。</view></view>
+    </view>
 
-  <block wx:if="{{creating}}">
-    <view class="intro-card"><view class="subtitle">创建赛事草稿</view><view class="muted">草稿只对本机构工作人员可见。之后设置报名规则、开放报名、审核并冻结名单，再排赛发布。</view></view>
-    <view id="setup-template" class="card">
-      <view class="subtitle">从模板开始</view>
-      <view wx:if="{{templateLoading}}" class="muted">正在读取机构模板</view>
-      <view wx:if="{{templateError}}" class="notice small">{{templateError}}</view>
-      <picker wx:if="{{templateCanManage}}" class="field" range="{{templateOptions}}" range-key="label" value="{{templateIndex}}" bindchange="pickTemplate" disabled="{{busy || templatePending}}">{{templateOptions[templateIndex].label}}</picker>
-      <view wx:if="{{templatePreview}}" class="notice small">
-        <view>{{templatePreview.formatLabel}} · {{templatePreview.teams}}</view><view>每队 {{templatePreview.players}}</view><view>{{templatePreview.schedule}}</view>
-        <view wx:if="{{templatePreview.groups}}">{{templatePreview.groups}}组，组内循环后固定交叉晋级{{templatePreview.bronze ? '，含季军赛' : ''}}</view>
-        <view wx:elif="{{templatePreview.bronze}}">半决赛负者参加季军赛</view>
-        <view>只复制配置，报名、球队与人员重新办理。8队2组且保留季军赛时为完整16场；冻结队数须符合模板。</view>
+    <view class="setup-tabs" role="tablist">
+      <button wx:for="{{setupSections}}" wx:key="key" class="setup-tab {{setupSection === item.key ? 'is-active' : ''}}" data-section="{{item.key}}" bindtap="jumpSetupSection" disabled="{{busy || loading || templatePending}}">{{item.label}}</button>
+    </view>
+
+    <figma-skeleton wx:if="{{loading && !event}}" rows="4"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="赛事设置未完成" body="{{error}}" action-label="重新读取" bind:action="load" disabled="{{busy || loading}}"/>
+    <figma-feedback wx:if="{{notice}}" type="success" title="操作已确认" body="{{notice}}"/>
+    <figma-feedback wx:if="{{templatePending}}" type="pending" title="有模板请求待核对" body="原编号和内容已保存在当前账号、机构下。核对完成前不能创建另一个模板或赛事。" action-label="核对并重试原请求" bind:action="resumeTemplate" disabled="{{busy}}"/>
+    <figma-feedback wx:if="{{!creating && !loading && !event}}" type="pending" title="{{unavailable ? '无法设置该赛事' : '暂时无法读取赛事'}}" body="{{error || '请从赛事详情重新进入。'}}"/>
+
+    <block wx:if="{{creating}}">
+      <view id="setup-template" class="figma-section">
+        <view class="figma-section__title">从模板开始</view>
+        <view class="figma-section__hint">模板只复制已保存的规则和排程配置，报名、球队、人员、日期、权限与公开状态均重新办理。</view>
+        <view wx:if="{{templateLoading}}" class="setup-loading">正在读取机构模板</view>
+        <view wx:if="{{templateError}}" class="setup-alert">{{templateError}}</view>
+        <picker wx:if="{{templateCanManage}}" class="figma-field-control setup-picker" range="{{templateOptions}}" range-key="label" value="{{templateIndex}}" bindchange="pickTemplate" disabled="{{busy || templatePending}}">{{templateOptions[templateIndex].label}}</picker>
+        <view wx:if="{{templatePreview}}" class="setup-preview"><view>{{templatePreview.formatLabel}} · {{templatePreview.teams}}</view><view>每队 {{templatePreview.players}}</view><view>{{templatePreview.schedule}}</view><view wx:if="{{templatePreview.groups}}">{{templatePreview.groups}} 组，组内循环后固定交叉晋级{{templatePreview.bronze ? '，含季军赛' : ''}}</view><view wx:elif="{{templatePreview.bronze}}">半决赛负者参加季军赛</view></view>
+        <button class="setup-link" bindtap="loadTemplates" disabled="{{busy || templateLoading}}">刷新模板</button>
+        <block wx:if="{{templateCanArchive}}"><label class="figma-field-group"><view class="figma-field-label">归档此模板的原因</view><textarea class="figma-field-control" value="{{templateArchiveReason}}" data-field="templateArchiveReason" bindinput="templateField" maxlength="500"/></label><button class="figma-action setup-danger" bindtap="archiveTemplate" disabled="{{busy || templatePending}}">归档所选模板</button></block>
       </view>
-      <button class="quiet" bindtap="loadTemplates" disabled="{{busy || templateLoading}}">刷新模板</button>
-      <block wx:if="{{templateCanArchive}}"><text class="field-label">归档此模板的原因</text><textarea class="field" value="{{templateArchiveReason}}" data-field="templateArchiveReason" bindinput="templateField" maxlength="500"/><button class="danger" bindtap="archiveTemplate" disabled="{{busy || templatePending}}">归档所选模板</button></block>
-    </view>
-    <view id="setup-basic" class="card">
-      <text class="field-label">赛事名称</text>
-      <input class="field" value="{{draft.name}}" data-section="draft" data-field="name" bindinput="field" maxlength="80" placeholder="例如 青锋杯·冬季赛"/>
-      <text class="field-label">开始日期</text>
-      <picker mode="date" class="field" value="{{draft.startDate}}" data-section="draft" data-field="startDate" bindchange="field">{{draft.startDate}}</picker>
-      <text class="field-label">结束日期</text>
-      <picker mode="date" class="field" value="{{draft.endDate}}" data-section="draft" data-field="endDate" bindchange="field">{{draft.endDate}}</picker>
-      <text class="field-label">场地（可选）</text>
-      <input class="field" value="{{draft.venueName}}" data-section="draft" data-field="venueName" bindinput="field" maxlength="100" placeholder="例如 石鼓公园篮球场"/>
-      <text class="field-label">赛制</text>
-      <picker wx:if="{{!templatePreview}}" class="field" range="{{formats}}" range-key="label" value="{{draft.formatIndex}}" data-section="draft" data-field="formatIndex" bindchange="field">{{formats[draft.formatIndex].label}}</picker>
-      <view wx:else class="field">{{templatePreview.formatLabel}}（使用所选模板）</view>
-      <button class="primary" bindtap="create" disabled="{{busy || templatePending}}">{{templatePreview ? '按模板创建草稿' : '创建草稿'}}</button>
-    </view>
-  </block>
+    </block>
 
-  <view wx:elif="{{loading && !event}}" class="card state-panel"><text class="state-label">赛事设置</text><view class="subtitle">正在读取</view><view class="loading-lines"><view></view><view></view></view></view>
-  <view wx:elif="{{!event}}" class="card state-panel">
-    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
-    <view class="subtitle">{{unavailable ? '无法设置该赛事' : '暂时无法读取赛事'}}</view>
-    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+    <view wx:if="{{draft}}" id="setup-basic" class="figma-section">
+      <view class="figma-section__title">基本信息</view>
+      <block wx:if="{{draft.summaryMode}}">
+        <view class="figma-field-group"><view class="figma-field-label">赛事名称</view><view class="setup-readonly"><text>{{draft.name}}</text></view></view>
+        <view class="figma-field-group"><view class="figma-field-label">日期范围</view><view class="setup-readonly"><text>{{draft.dateLabel}}</text></view></view>
+        <view class="figma-field-group"><view class="figma-field-label">场地与赛制</view><view class="setup-readonly"><text>{{draft.venueFormatLabel}}</text><view class="figma-status figma-status--orange">{{draft.statusText || '草稿'}}</view></view></view>
+      </block>
+      <block wx:else>
+        <label class="figma-field-group"><view class="figma-field-label">赛事名称 *</view><input class="figma-field-control" value="{{draft.name}}" data-section="draft" data-field="name" bindinput="field" maxlength="80" placeholder="填写真实赛事名称"/></label>
+        <view class="setup-pair"><label class="figma-field-group"><view class="figma-field-label">开始日期 *</view><picker mode="date" class="figma-field-control setup-picker" value="{{draft.startDate}}" data-section="draft" data-field="startDate" bindchange="field">{{draft.startDate}}</picker></label><label class="figma-field-group"><view class="figma-field-label">结束日期 *</view><picker mode="date" class="figma-field-control setup-picker" value="{{draft.endDate}}" data-section="draft" data-field="endDate" bindchange="field">{{draft.endDate}}</picker></label></view>
+        <label class="figma-field-group"><view class="figma-field-label">场地</view><input class="figma-field-control" value="{{draft.venueName}}" data-section="draft" data-field="venueName" bindinput="field" maxlength="100" placeholder="填写真实比赛场地"/></label>
+        <label class="figma-field-group"><view class="figma-field-label">赛制</view><picker wx:if="{{!creating || !templatePreview}}" class="figma-field-control setup-picker" range="{{formats}}" range-key="label" value="{{draft.formatIndex}}" data-section="draft" data-field="formatIndex" bindchange="field">{{formats[draft.formatIndex].label}}</picker><view wx:else class="setup-readonly"><text>{{templatePreview.formatLabel}}</text><view class="figma-status figma-status--orange">模板</view></view></label>
+        <view wx:if="{{!creating}}" class="setup-readonly"><text>{{event.statusLabel}} · {{event.dateLabel}} · {{event.venueName}}</text><view class="figma-status figma-status--orange">{{event.status === 'DRAFT' ? '草稿' : event.statusLabel}}</view></view>
+      </block>
+    </view>
+
+    <block wx:if="{{event}}">
+      <view wx:if="{{registration}}" id="setup-registration" class="figma-section">
+        <view class="setup-section-head"><view class="figma-section__title">报名规则</view><view class="figma-status {{registration.saved ? 'figma-status--green' : 'figma-status--orange'}}">{{registration.saved ? '已设置' : '未设置'}}</view></view>
+        <block wx:if="{{registration.summaryMode}}"><view class="setup-toggle is-static"><view><view class="figma-row__title">每队人数</view><view class="figma-row__subtitle">最少{{registration.minPlayers}}人，最多{{registration.maxPlayers}}人</view></view><view class="figma-status figma-status--orange">可设置</view></view><view class="setup-toggle is-static"><view><view class="figma-row__title">本人材料</view><view class="figma-row__subtitle">本人填写、必传清晰照片</view></view><view class="figma-status figma-status--orange">按规则</view></view></block>
+        <block wx:elif="{{registration.editable}}">
+          <view class="setup-pair"><label class="figma-field-group"><view class="figma-field-label">每队最少人数</view><input class="figma-field-control" type="number" value="{{registration.minPlayers}}" data-section="registration" data-field="minPlayers" bindinput="field"/></label><label class="figma-field-group"><view class="figma-field-label">每队最多人数</view><input class="figma-field-control" type="number" value="{{registration.maxPlayers}}" data-section="registration" data-field="maxPlayers" bindinput="field"/></label></view>
+          <button class="setup-toggle" data-section="registration" data-field="zeroDistinct" bindtap="toggle"><view><view class="figma-row__title">0 号与 00 号视为不同号码</view><view class="figma-row__subtitle">按报名名单规则校验号码</view></view><view class="figma-status {{registration.zeroDistinct ? 'figma-status--green' : ''}}">{{registration.zeroDistinct ? '是' : '否'}}</view></button>
+          <button class="setup-toggle" data-section="registration" data-field="requireIdentity" bindtap="toggle"><view><view class="figma-row__title">要求身份资料</view><view class="figma-row__subtitle">由本人提交并按权限核验</view></view><view class="figma-status {{registration.requireIdentity ? 'figma-status--orange' : ''}}">{{registration.requireIdentity ? '要求' : '不要求'}}</view></button>
+          <button class="setup-toggle" data-section="registration" data-field="requireInsurance" bindtap="toggle"><view><view class="figma-row__title">要求保险资料</view><view class="figma-row__subtitle">在线投保未开放时仍保留真实阻塞</view></view><view class="figma-status {{registration.requireInsurance ? 'figma-status--orange' : ''}}">{{registration.requireInsurance ? '要求' : '不要求'}}</view></button>
+          <button class="setup-toggle" data-section="registration" data-field="requireParticipantMaterials" bindtap="toggle"><view><view class="figma-row__title">本人材料</view><view class="figma-row__subtitle">本人填写、必传清晰照片与人工核验</view></view><view class="figma-status {{registration.requireParticipantMaterials ? 'figma-status--orange' : ''}}">{{registration.requireParticipantMaterials ? '按规则' : '未启用'}}</view></button>
+          <button class="figma-action figma-action--navy" bindtap="saveRegistration" disabled="{{busy}}">保存报名规则</button>
+        </block>
+        <view wx:else class="setup-readonly"><text>每队 {{registration.minPlayers}}–{{registration.maxPlayers}} 人，报名规则只能在草稿阶段修改。</text><view class="figma-status">只读</view></view>
+      </view>
+
+      <view wx:if="{{scoring}}" id="setup-scoring" class="figma-section">
+        <view class="setup-section-head"><view class="figma-section__title">记分规则</view><view class="figma-status {{scoring.locked ? '' : 'figma-status--orange'}}">{{scoring.locked ? '已锁定' : scoring.saved ? '已设置' : '未设置'}}</view></view>
+        <block wx:if="{{scoring.editable}}">
+          <view class="setup-trio"><label class="figma-field-group"><view class="figma-field-label">常规节数</view><input class="figma-field-control" type="number" value="{{scoring.periods}}" data-section="scoring" data-field="periods" bindinput="field"/></label><label class="figma-field-group"><view class="figma-field-label">每节分钟</view><input class="figma-field-control" type="number" value="{{scoring.minutes}}" data-section="scoring" data-field="minutes" bindinput="field"/></label><label class="figma-field-group"><view class="figma-field-label">每节秒</view><input class="figma-field-control" type="number" value="{{scoring.seconds}}" data-section="scoring" data-field="seconds" bindinput="field"/></label></view>
+          <view class="figma-field-label">允许的得分分值</view><view class="setup-chips"><button wx:for="{{scoring.scores}}" wx:key="value" class="{{item.on ? 'is-active' : ''}}" data-section="scoring" data-field="scores" data-index="{{index}}" bindtap="toggle">{{item.value}} 分</button></view>
+          <button class="setup-toggle" data-section="scoring" data-field="overtime" bindtap="toggle"><view><view class="figma-row__title">平分时进入加时</view><view class="figma-row__subtitle">比赛准备后记分规则永久锁定</view></view><view class="figma-status">{{scoring.overtime ? '加时' : '允许平局'}}</view></button>
+          <view wx:if="{{scoring.overtime}}" class="setup-pair"><label class="figma-field-group"><view class="figma-field-label">加时分钟</view><input class="figma-field-control" type="number" value="{{scoring.otMinutes}}" data-section="scoring" data-field="otMinutes" bindinput="field"/></label><label class="figma-field-group"><view class="figma-field-label">加时秒</view><input class="figma-field-control" type="number" value="{{scoring.otSeconds}}" data-section="scoring" data-field="otSeconds" bindinput="field"/></label></view>
+          <button class="figma-action figma-action--navy" bindtap="saveScoring" disabled="{{busy}}">保存记分规则</button>
+        </block>
+        <view wx:else class="setup-readonly"><text>{{scoring.periods}} 节 × {{scoring.durationLabel}} · {{scoring.overtime ? '平分加时 ' + scoring.otLabel : '允许平局'}}。{{scoring.locked ? '比赛已准备，规则已锁定。' : ''}}</text><view class="figma-status">只读</view></view>
+      </view>
+
+      <view wx:if="{{standings}}" id="setup-standings" class="figma-section">
+        <view class="setup-section-head"><view class="figma-section__title">{{event.groups ? '组内积分规则' : '积分规则'}}</view><view class="figma-status {{standings.locked ? '' : 'figma-status--orange'}}">{{standings.locked ? '已锁定' : standings.saved ? '草稿' : '未设置'}}</view></view>
+        <block wx:if="{{standings.editable}}">
+          <view class="setup-trio"><label class="figma-field-group"><view class="figma-field-label">胜</view><input class="figma-field-control" type="number" value="{{standings.win}}" data-section="standings" data-field="win" bindinput="field"/></label><label class="figma-field-group"><view class="figma-field-label">平</view><input class="figma-field-control" type="number" value="{{standings.draw}}" data-section="standings" data-field="draw" bindinput="field"/></label><label class="figma-field-group"><view class="figma-field-label">负</view><input class="figma-field-control" type="number" value="{{standings.loss}}" data-section="standings" data-field="loss" bindinput="field"/></label></view>
+          <view class="figma-field-label">同分依次比较：{{standings.orderLabel}}</view>
+          <view wx:for="{{standings.tiebreakers}}" wx:key="value" class="setup-order"><view class="setup-order__rank {{item.on ? 'is-active' : ''}}">{{item.rank || '–'}}</view><view class="figma-row__copy"><view class="figma-row__title">{{item.label}}</view></view><button wx:if="{{index > 0}}" data-index="{{index}}" bindtap="moveTiebreaker" disabled="{{busy}}">上移</button><button data-section="standings" data-field="tiebreakers" data-index="{{index}}" bindtap="toggle" disabled="{{busy}}">{{item.on ? '停用' : '启用'}}</button></view>
+          <button class="figma-action figma-action--ghost" bindtap="saveStandings" disabled="{{busy}}">保存积分规则草稿</button><button wx:if="{{standings.canPublish}}" class="figma-action figma-action--navy" bindtap="publishStandings" disabled="{{busy}}">锁定积分规则</button>
+        </block>
+        <view wx:else class="setup-readonly"><text>胜 {{standings.win}} · 平 {{standings.draw}} · 负 {{standings.loss}} · 同分依次比较：{{standings.orderLabel}}。正式积分只计入独立确认的赛果。</text><view class="figma-status">只读</view></view>
+      </view>
+
+      <view id="setup-viewing" class="figma-section">
+        <view class="figma-section__title">公开范围</view>
+        <block wx:if="{{viewing}}"><view class="setup-toggle is-static"><view><view class="figma-row__title">公开观赛</view><view class="figma-row__subtitle">按授权链接查看赛程与比分，不包含私密资料</view></view><view class="figma-status {{viewing.active ? 'figma-status--green' : 'figma-status--orange'}}">{{viewing.active ? '已开启' : '关闭'}}</view></view><view class="setup-command-row"><button wx:if="{{viewing.active}}" bindtap="openPublic">打开观赛页</button><button wx:if="{{viewing.canEnable && !viewing.history}}" data-type="ENABLE" bindtap="viewing" disabled="{{busy}}">开启公开观赛</button><button wx:if="{{viewing.canEnable && viewing.history}}" data-type="ENABLE_HISTORY" bindtap="viewing" disabled="{{busy}}">开启历史观赛</button><button wx:if="{{viewing.canDisable}}" class="is-danger" data-type="DISABLE" bindtap="viewing" disabled="{{busy}}">关闭公开观赛</button></view></block>
+        <block wx:if="{{directory}}"><view wx:if="{{!directory.summaryMode}}" class="figma-field-label">公开赛事目录</view><view class="setup-toggle is-static"><view><view class="figma-row__title">列入公开目录</view><view class="figma-row__subtitle">{{directory.summaryMode ? '单独发布后可被赛事页发现' : '开启公开观赛不会自动列入目录；发布后可被赛事页发现'}}</view></view><view class="figma-status {{directory.listed ? 'figma-status--green' : 'figma-status--orange'}}">{{directory.listed ? '已列入' : '关闭'}}</view></view><view wx:if="{{directory.listed}}" class="figma-section__hint">{{directory.currentRegionLabel}} · {{directory.group || '当前分组'}}</view><view wx:if="{{directory.lastNote}}" class="setup-alert">{{directory.lastNote}}</view><block wx:if="{{directory.canList || directory.canUnlist}}"><button wx:if="{{directory.catalogVersion && (directory.canList || directory.canReplaceRegion)}}" class="setup-link" bindtap="chooseDirectoryRegion" disabled="{{busy}}">选择标准地区</button><view wx:if="{{directory.selectedRegion}}" class="setup-preview">已选择：{{directory.selectedRegion.label}}</view><label wx:if="{{directory.canList && !directory.selectedRegion}}" class="figma-field-group"><view class="figma-field-label">历史城市文字（兼容入口，可选）</view><input class="figma-field-control" maxlength="40" value="{{directory.cityInput}}" bindinput="directoryCityInput" placeholder="例如 茂名"/></label><label class="figma-field-group"><view class="figma-field-label">原因（4–500 字，记入审计）</view><textarea class="figma-field-control" maxlength="500" value="{{directory.reason}}" bindinput="directoryReasonInput"/></label><view class="setup-command-row"><button wx:if="{{directory.canList}}" bindtap="listDirectory" disabled="{{busy}}">列入公开目录</button><button wx:if="{{directory.canReplaceRegion}}" bindtap="replaceDirectoryRegion" disabled="{{busy || !directory.selectedRegion}}">更正标准地区</button><button wx:if="{{directory.canUnlist}}" class="is-danger" bindtap="unlistDirectory" disabled="{{busy}}">撤出目录</button></view></block></block>
+      </view>
+
+      <view wx:if="{{setupGuide || guideError}}" id="setup-guide" class="figma-section">
+        <view class="figma-section__title">办赛向导</view><view wx:if="{{guideError}}" class="setup-alert">{{guideError}}。请刷新后核对当前步骤。</view><block wx:if="{{setupGuide}}"><view class="figma-section__hint">已批准 {{setupGuide.counts.approved}} 队 · 已冻结 {{setupGuide.counts.frozen}} 队 · 已排时 {{setupGuide.counts.assigned}} / {{setupGuide.counts.fixtures}} 场</view><view wx:for="{{setupGuide.steps}}" wx:key="code" class="setup-guide-row"><view class="setup-order__rank {{item.state === 'DONE' ? 'is-active' : ''}}">{{index + 1}}</view><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.stateLabel}}</view><view wx:for="{{item.blockers}}" wx:for-item="blocker" wx:key="*this" class="figma-row__subtitle">{{blocker}}</view></view><button wx:if="{{setupGuide.canManage && item.state !== 'WAITING'}}" data-index="{{index}}" bindtap="openGuideStep">查看</button></view></block>
+      </view>
+
+      <view wx:if="{{templateCanManage}}" id="setup-template" class="figma-section">
+        <view class="figma-section__title">保存为可复用办赛模板</view><view class="figma-section__hint">复制服务器上已保存的报名、记分和积分规则，不复制具体业务记录。</view><label class="figma-field-group"><view class="figma-field-label">模板名称</view><input class="figma-field-control" value="{{templateName}}" data-field="templateName" bindinput="templateField" maxlength="80"/></label><label class="figma-field-group"><view class="figma-field-label">预期冻结队数（留空按实际批准队数）</view><input class="figma-field-control" type="number" value="{{templateExpectedTeams}}" data-field="templateExpectedTeams" bindinput="templateField"/></label><view class="setup-pair"><label class="figma-field-group"><view class="figma-field-label">每日开始</view><picker mode="time" class="figma-field-control setup-picker" value="{{templateScheduling.dailyStart}}" data-field="dailyStart" bindchange="templateField">{{templateScheduling.dailyStart}}</picker></label><label class="figma-field-group"><view class="figma-field-label">每日结束</view><picker mode="time" class="figma-field-control setup-picker" value="{{templateScheduling.dailyEnd}}" data-field="dailyEnd" bindchange="templateField">{{templateScheduling.dailyEnd}}</picker></label></view><view class="setup-trio"><label class="figma-field-group"><view class="figma-field-label">每场分钟</view><input class="figma-field-control" type="number" value="{{templateScheduling.slotDurationMinutes}}" data-field="slotDurationMinutes" bindinput="templateField"/></label><label class="figma-field-group"><view class="figma-field-label">最短休息</view><input class="figma-field-control" type="number" value="{{templateScheduling.minRestMinutes}}" data-field="minRestMinutes" bindinput="templateField"/></label><label class="figma-field-group"><view class="figma-field-label">日期间隔</view><input class="figma-field-control" type="number" value="{{templateScheduling.minLocalDayGap}}" data-field="minLocalDayGap" bindinput="templateField"/></label></view><button wx:if="{{event.groups || event.knockout}}" class="setup-toggle" bindtap="toggleTemplateBronze"><view class="figma-row__title">安排季军赛</view><view class="figma-status">{{templateScheduling.thirdPlaceMatch ? '启用' : '不安排'}}</view></button><button class="figma-action figma-action--ghost" bindtap="saveAsTemplate" disabled="{{busy || templatePending}}">保存可复用模板</button>
+      </view>
+
+      <view class="figma-section setup-related"><view class="figma-section__title">相关服务</view><button class="setup-link-row" bindtap="openSchedule"><figma-icon name="court" size="19"/><text>排赛与场地</text></button><button wx:if="{{!compactRelated}}" class="setup-link-row" bindtap="openEvent"><figma-icon name="event" size="19"/><text>赛事详情</text></button><button wx:if="{{!compactRelated}}" class="setup-link-row" bindtap="load" disabled="{{loading || busy}}"><figma-icon name="workbench" size="19"/><text>刷新</text></button></view>
+    </block>
   </view>
 
-  <block wx:else>
-    <view class="board">
-      <view class="board-meta">{{event.statusLabel}} · {{event.formatLabel}}</view>
-      <view class="setup-name">{{event.name}}</view>
-      <view class="board-meta">{{event.dateLabel}} · {{event.venueName}}</view>
-    </view>
-    <view class="mode-choice setup-actions">
-      <button bindtap="openEvent">赛事详情</button>
-      <button bindtap="openReview">报名审核</button>
-      <button bindtap="openSchedule">排赛</button>
-    </view>
-    <view id="setup-guide" class="card">
-      <view class="subtitle">办赛向导</view>
-      <view wx:if="{{guideError}}" class="notice small">{{guideError}}。请刷新后核对当前步骤。</view>
-      <block wx:if="{{setupGuide}}">
-        <view class="muted">已批准 {{setupGuide.counts.approved}} 队 · 已冻结 {{setupGuide.counts.frozen}} 队 · 已排时 {{setupGuide.counts.assigned}} / {{setupGuide.counts.fixtures}} 场</view>
-        <view wx:if="{{setupGuide.template}}" class="notice small">使用已保存的模板版本；{{setupGuide.template.expectedTeams ? '预期冻结 ' + setupGuide.template.expectedTeams + ' 队。' : '按实际批准队数办赛。'}}配置变更仍需各自保存和确认。</view>
-        <view wx:for="{{setupGuide.steps}}" wx:key="code" class="setup-switch"><view><view>{{index + 1}}. {{item.title}} · {{item.stateLabel}}</view><view wx:for="{{item.blockers}}" wx:for-item="blocker" wx:key="*this" class="muted">{{blocker}}</view></view><button wx:if="{{setupGuide.canManage && item.state !== 'WAITING'}}" class="quiet small-button" data-index="{{index}}" bindtap="openGuideStep">查看</button></view>
-      </block>
-    </view>
-
-    <view wx:if="{{draft}}" id="setup-basic" class="card">
-      <view class="subtitle">基本信息（草稿可改）</view>
-      <text class="field-label">赛事名称</text>
-      <input class="field" value="{{draft.name}}" data-section="draft" data-field="name" bindinput="field" maxlength="80"/>
-      <text class="field-label">开始日期</text>
-      <picker mode="date" class="field" value="{{draft.startDate}}" data-section="draft" data-field="startDate" bindchange="field">{{draft.startDate}}</picker>
-      <text class="field-label">结束日期</text>
-      <picker mode="date" class="field" value="{{draft.endDate}}" data-section="draft" data-field="endDate" bindchange="field">{{draft.endDate}}</picker>
-      <text class="field-label">场地</text>
-      <input class="field" value="{{draft.venueName}}" data-section="draft" data-field="venueName" bindinput="field" maxlength="100"/>
-      <text class="field-label">赛制</text>
-      <picker class="field" range="{{formats}}" range-key="label" value="{{draft.formatIndex}}" data-section="draft" data-field="formatIndex" bindchange="field">{{formats[draft.formatIndex].label}}</picker>
-      <button class="primary" bindtap="saveEvent" disabled="{{busy}}">保存基本信息</button>
-    </view>
-
-    <view wx:if="{{registration}}" id="setup-registration" class="card">
-      <view class="row-between"><view class="subtitle">报名规则</view><text class="badge">{{registration.saved ? '已设置' : '未设置'}}</text></view>
-      <block wx:if="{{registration.editable}}">
-        <view class="setup-pair">
-          <view><text class="field-label">每队最少人数</text><input class="field" type="number" value="{{registration.minPlayers}}" data-section="registration" data-field="minPlayers" bindinput="field"/></view>
-          <view><text class="field-label">每队最多人数</text><input class="field" type="number" value="{{registration.maxPlayers}}" data-section="registration" data-field="maxPlayers" bindinput="field"/></view>
-        </view>
-        <view class="setup-switch" data-section="registration" data-field="zeroDistinct" bindtap="toggle"><text>0号与00号视为不同号码</text><text class="setup-flag {{registration.zeroDistinct ? 'on' : ''}}">{{registration.zeroDistinct ? '是' : '否'}}</text></view>
-        <view class="setup-switch" data-section="registration" data-field="requireIdentity" bindtap="toggle"><text>要求身份资料</text><text class="setup-flag {{registration.requireIdentity ? 'on' : ''}}">{{registration.requireIdentity ? '要求' : '不要求'}}</text></view>
-        <view class="setup-switch" data-section="registration" data-field="requireInsurance" bindtap="toggle"><text>要求保险资料</text><text class="setup-flag {{registration.requireInsurance ? 'on' : ''}}">{{registration.requireInsurance ? '要求' : '不要求'}}</text></view>
-        <view class="setup-switch" data-section="registration" data-field="requireParticipantMaterials" bindtap="toggle"><text>本人填写、必传照片与人工核验</text><text class="setup-flag {{registration.requireParticipantMaterials ? 'on' : ''}}">{{registration.requireParticipantMaterials ? '启用' : '未启用'}}</text></view>
-        <view class="muted">启用后需服务器安全配置就绪，并由本人提交资料与照片。未启用时，身份或保险要求仍阻止开放；在线投保未开放。</view>
-        <button class="primary" bindtap="saveRegistration" disabled="{{busy}}">保存报名规则</button>
-      </block>
-      <view wx:else class="muted">每队 {{registration.minPlayers}}–{{registration.maxPlayers}} 人。报名规则只能在草稿阶段修改。</view>
-    </view>
-
-    <view wx:if="{{scoring}}" id="setup-scoring" class="card">
-      <view class="row-between"><view class="subtitle">记分规则</view><text class="badge">{{scoring.locked ? '已锁定' : scoring.saved ? '已设置' : '未设置'}}</text></view>
-      <block wx:if="{{scoring.editable}}">
-        <view class="setup-trio">
-          <view><text class="field-label">常规节数</text><input class="field" type="number" value="{{scoring.periods}}" data-section="scoring" data-field="periods" bindinput="field"/></view>
-          <view><text class="field-label">每节分钟</text><input class="field" type="number" value="{{scoring.minutes}}" data-section="scoring" data-field="minutes" bindinput="field"/></view>
-          <view><text class="field-label">每节秒</text><input class="field" type="number" value="{{scoring.seconds}}" data-section="scoring" data-field="seconds" bindinput="field"/></view>
-        </view>
-        <text class="field-label">允许的得分分值</text>
-        <view class="mode-choice"><button wx:for="{{scoring.scores}}" wx:key="value" class="{{item.on ? 'selected' : ''}}" data-section="scoring" data-field="scores" data-index="{{index}}" bindtap="toggle">{{item.value}}分</button></view>
-        <view class="setup-switch" data-section="scoring" data-field="overtime" bindtap="toggle"><text>平分时进入加时</text><text class="setup-flag {{scoring.overtime ? 'on' : ''}}">{{scoring.overtime ? '加时' : '允许平局'}}</text></view>
-        <view wx:if="{{scoring.overtime}}" class="setup-pair">
-          <view><text class="field-label">加时分钟</text><input class="field" type="number" value="{{scoring.otMinutes}}" data-section="scoring" data-field="otMinutes" bindinput="field"/></view>
-          <view><text class="field-label">加时秒</text><input class="field" type="number" value="{{scoring.otSeconds}}" data-section="scoring" data-field="otSeconds" bindinput="field"/></view>
-        </view>
-        <view class="muted">首场比赛准备后规则永久锁定。</view>
-        <button class="primary" bindtap="saveScoring" disabled="{{busy}}">保存记分规则</button>
-      </block>
-      <view wx:else class="muted">{{scoring.periods}} 节 × {{scoring.durationLabel}} · {{scoring.overtime ? '平分加时 ' + scoring.otLabel : '允许平局'}}{{scoring.locked ? '。比赛已准备，规则已锁定。' : ''}}</view>
-    </view>
-
-    <view wx:if="{{standings}}" id="setup-standings" class="card">
-      <view class="row-between"><view class="subtitle">{{event.groups ? '组内积分规则' : '积分规则'}}</view><text class="badge">{{standings.locked ? '已锁定' : standings.saved ? '草稿' : '未设置'}}</text></view>
-      <block wx:if="{{standings.editable}}">
-        <view class="setup-trio">
-          <view><text class="field-label">胜</text><input class="field" type="number" value="{{standings.win}}" data-section="standings" data-field="win" bindinput="field"/></view>
-          <view><text class="field-label">平</text><input class="field" type="number" value="{{standings.draw}}" data-section="standings" data-field="draw" bindinput="field"/></view>
-          <view><text class="field-label">负</text><input class="field" type="number" value="{{standings.loss}}" data-section="standings" data-field="loss" bindinput="field"/></view>
-        </view>
-        <text class="field-label">同分时依次比较：{{standings.orderLabel}}</text>
-        <view wx:for="{{standings.tiebreakers}}" wx:key="value" class="setup-switch setup-order">
-          <text class="setup-rank {{item.on ? 'on' : ''}}">{{item.rank || '–'}}</text>
-          <text class="setup-order-name">{{item.label}}</text>
-          <button wx:if="{{index > 0}}" class="quiet small-button" data-index="{{index}}" bindtap="moveTiebreaker" disabled="{{busy}}">上移</button>
-          <button class="{{item.on ? 'secondary' : 'quiet'}} small-button" data-section="standings" data-field="tiebreakers" data-index="{{index}}" bindtap="toggle" disabled="{{busy}}">{{item.on ? '停用' : '启用'}}</button>
-        </view>
-        <button class="secondary" bindtap="saveStandings" disabled="{{busy}}">保存积分规则草稿</button>
-        <button wx:if="{{standings.canPublish}}" class="primary" bindtap="publishStandings" disabled="{{busy}}">锁定积分规则</button>
-      </block>
-      <view wx:else class="muted">胜 {{standings.win}} · 平 {{standings.draw}} · 负 {{standings.loss}} · 同分依次比较：{{standings.orderLabel}}。规则已锁定，正式积分只计入独立确认的赛果。</view>
-    </view>
-
-    <view wx:if="{{viewing}}" id="setup-viewing" class="card">
-      <view class="row-between"><view class="subtitle">公开观赛</view><text class="badge {{viewing.active ? 'success' : ''}}">{{viewing.active ? '已开启' : '未开启'}}</text></view>
-      <view class="muted">观众凭链接或分享卡片查看赛程、比分与排名，不含名单、联系方式等私密资料。关闭后旧链接立即失效。</view>
-      <button wx:if="{{viewing.active}}" class="secondary" bindtap="openPublic">打开公开观赛页（可分享）</button>
-      <button wx:if="{{viewing.canEnable && !viewing.history}}" class="primary" data-type="ENABLE" bindtap="viewing" disabled="{{busy}}">开启公开观赛</button>
-      <button wx:if="{{viewing.canEnable && viewing.history}}" class="primary" data-type="ENABLE_HISTORY" bindtap="viewing" disabled="{{busy}}">开启历史观赛</button>
-      <button wx:if="{{viewing.canDisable}}" class="danger" data-type="DISABLE" bindtap="viewing" disabled="{{busy}}">关闭公开观赛</button>
-      <view wx:if="{{!viewing.active && !viewing.canEnable}}" class="muted">{{event.knockout ? '需先发布正式赛程。' : '需先锁定积分规则并发布正式赛程。'}}{{event.roundRobin ? '' : '每次发布淘汰轮次都会撤销旧链接，需重新开启。'}}</view>
-    </view>
-    <view wx:if="{{directory}}" id="setup-directory" class="card">
-      <view class="row-between"><view class="subtitle">公开赛事目录</view><text class="badge {{directory.listed ? 'success' : ''}}">{{directory.listed ? '已列入' : '未列入'}}</text></view>
-      <view class="muted">开启公开观赛不会自动列入目录。列入后，所有观众都能在“赛事”页的公开赛事中发现本届赛事。</view>
-      <view wx:if="{{directory.listed}}" class="muted">当前分组：{{directory.group || '—'}}{{directory.city ? ' · 城市：' + directory.city : ''}}</view>
-      <view wx:if="{{directory.lastNote}}" class="notice small">{{directory.lastNote}}</view>
-      <view wx:if="{{!directory.publicActive && !directory.listed}}" class="muted">需先开启公开观赛（完赛后为历史观赛），才能列入目录。</view>
-      <view wx:elif="{{!directory.canList && !directory.listed && directory.publicActive}}" class="muted">当前赛事状态与公开观赛用途不符，或当前身份无权操作。</view>
-      <block wx:if="{{directory.canList || directory.canUnlist}}">
-        <view wx:if="{{directory.listed}}" class="muted small">{{directory.currentRegionLabel}}</view>
-        <block wx:if="{{directory.catalogVersion && (directory.canList || directory.canReplaceRegion)}}">
-          <button class="secondary" bindtap="chooseDirectoryRegion" disabled="{{busy}}">选择标准地区</button>
-          <view wx:if="{{directory.selectedRegion}}" class="notice small">已选择：{{directory.selectedRegion.label}}<view wx:if="{{directory.selectedRegion.level === 'PROVINCE'}}">仅按省级归类，不会进入具体市县筛选。</view></view>
-          <button wx:if="{{directory.selectedRegion && directory.canList}}" class="quiet" bindtap="clearDirectoryRegion" disabled="{{busy}}">改用历史城市文字</button>
-        </block>
-        <block wx:if="{{directory.canList && !directory.selectedRegion}}">
-          <text class="field-label">历史城市文字（兼容入口，可选，1–20字）</text>
-          <input class="field" maxlength="40" value="{{directory.cityInput}}" bindinput="directoryCityInput" placeholder="例如 茂名"/>
-        </block>
-        <text class="field-label">原因（4–500字，记入审计）</text>
-        <textarea class="field" maxlength="500" value="{{directory.reason}}" bindinput="directoryReasonInput" placeholder="{{directory.canList ? '例如：本届赛程已发布，欢迎观众关注' : '例如：赛事信息需更新后再列入'}}"/>
-        <button wx:if="{{directory.canList}}" class="primary" bindtap="listDirectory" disabled="{{busy}}">列入公开目录</button>
-        <button wx:if="{{directory.canReplaceRegion}}" class="secondary" bindtap="replaceDirectoryRegion" disabled="{{busy || !directory.selectedRegion}}">确认更正标准地区</button>
-        <button wx:if="{{directory.canUnlist}}" class="danger" bindtap="unlistDirectory" disabled="{{busy}}">撤出目录（保留分享链接）</button>
-      </block>
-    </view>
-    <view wx:if="{{templateCanManage}}" id="setup-template" class="card">
-      <view class="subtitle">保存为可复用办赛模板</view>
-      <view class="muted">复制服务器上已保存的报名、记分和积分规则。队伍、人员、场地编号、日期、权限与公开状态均不复制。</view>
-      <text class="field-label">模板名称</text><input class="field" value="{{templateName}}" data-field="templateName" bindinput="templateField" maxlength="80"/>
-      <text class="field-label">预期冻结队数（留空按实际批准队数）</text><input class="field" type="number" value="{{templateExpectedTeams}}" data-field="templateExpectedTeams" bindinput="templateField"/>
-      <view class="setup-pair"><view><text class="field-label">每日开始</text><picker mode="time" class="field" value="{{templateScheduling.dailyStart}}" data-field="dailyStart" bindchange="templateField">{{templateScheduling.dailyStart}}</picker></view><view><text class="field-label">每日结束</text><picker mode="time" class="field" value="{{templateScheduling.dailyEnd}}" data-field="dailyEnd" bindchange="templateField">{{templateScheduling.dailyEnd}}</picker></view></view>
-      <view class="setup-trio"><view><text class="field-label">每场分钟</text><input class="field" type="number" value="{{templateScheduling.slotDurationMinutes}}" data-field="slotDurationMinutes" bindinput="templateField"/></view><view><text class="field-label">最短休息</text><input class="field" type="number" value="{{templateScheduling.minRestMinutes}}" data-field="minRestMinutes" bindinput="templateField"/></view><view><text class="field-label">日期间隔</text><input class="field" type="number" value="{{templateScheduling.minLocalDayGap}}" data-field="minLocalDayGap" bindinput="templateField"/></view></view>
-      <block wx:if="{{event.groups}}"><text class="field-label">分组数（2、4或8组，每组至少2队）</text><input class="field" type="number" value="{{templateScheduling.groupCount}}" data-field="groupCount" bindinput="templateField"/></block>
-      <view wx:if="{{event.groups || event.knockout}}" class="setup-switch" bindtap="toggleTemplateBronze"><text>安排季军赛</text><text>{{templateScheduling.thirdPlaceMatch ? '启用' : '不安排'}}</text></view>
-      <button class="secondary" bindtap="saveAsTemplate" disabled="{{busy || templatePending}}">保存可复用模板</button>
-      <view wx:if="{{templateError}}" class="notice small">{{templateError}}</view>
-    </view>
-    <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
-  </block>
+  <view wx:if="{{creating || event}}" class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="openReview" disabled="{{creating || busy || loading}}">查看报名审核</button>
+    <button wx:if="{{creating}}" class="figma-action figma-action--orange" bindtap="create" disabled="{{busy || templatePending}}">{{busy ? '正在创建…' : templatePreview ? '按模板创建草稿' : '创建草稿'}}</button>
+    <button wx:else class="figma-action figma-action--orange" bindtap="saveEvent" disabled="{{busy || loading || !draft}}">{{busy ? '正在保存…' : '保存基本信息'}}</button>
+  </view>
 </view>

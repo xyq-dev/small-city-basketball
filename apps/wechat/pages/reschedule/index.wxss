@@ -1,0 +1,24 @@
+@import "../../styles/figma-pages.wxss";
+
+.reschedule-tabs { display: flex; width: 100%; min-height: 48px; padding: 2px 3px; border-radius: 12px; background: #fff; }
+.reschedule-tab { display: flex; min-width: 0; min-height: 44px; flex: 1; align-items: center; justify-content: center; margin: 0; padding: 0 8px; border: 0; border-radius: 10px; background: transparent; color: #51657d; font-size: 13px; line-height: 19px; }
+.reschedule-tab::after { border: 0; }
+.reschedule-tab.is-active { background: #123c73; color: #fff; font-weight: 700; }
+.reschedule-boundary, .reschedule-changed { padding: 12px 14px; border-radius: 14px; background: #eaf2fc; color: #51657d; font-size: 12px; line-height: 18px; }
+.reschedule-change-hero { display: flex; width: 100%; min-height: 112px; flex-direction: column; gap: 8px; padding: 16px; border-radius: 16px; background: #eaf2fc; }
+.reschedule-state-hero { display:flex; width:100%; min-height:112px; flex-direction:column; justify-content:center; gap:8px; padding:16px; border-radius:16px; background:#eaf2fc; }
+.reschedule-state-hero--warning { background:#fff1e2; }
+.reschedule-state-hero__body { color:#18283f; font-size:14px; line-height:22px; }
+.reschedule-state-row--plain { padding-right:0; padding-left:0; background:#fff; border-radius:0; }
+.reschedule-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.reschedule-picker, .reschedule-control { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px; border: 1px solid #7c8ea5; border-radius: 12px; background: #fff; color: #18283f; font-size: 14px; line-height: 22px; }
+.reschedule-notice { display: flex; width: 100%; min-height: 58px; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; background: #eaf2fc; }
+.reschedule-network-row { display: flex; width: 100%; min-height: 55px; align-items: center; gap: 8px; padding: 10px; border-radius: 8px; background: #eaf2fc; }
+.reschedule-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: #123c73; }
+.reschedule-compare { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.reschedule-compare__item { display: flex; min-width: 0; min-height: 104px; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px; border-radius: 10px; background: #eaf2fc; }
+.reschedule-conflict { padding: 8px 10px; border-radius: 8px; background: #fdecef; color: #c83f42; font-size: 12px; line-height: 18px; }
+.reschedule-history { display: grid; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr); gap: 4px 8px; padding: 10px 0; border-bottom: 1px solid #e6ebf2; }
+.reschedule-history .figma-row__subtitle { grid-column: 1 / -1; }
+.reschedule-arrow { color: #51657d; text-align: center; }
+@media (max-width: 360px) { .reschedule-tab { padding: 0 4px; font-size: 12px; } .reschedule-pair, .reschedule-compare { grid-template-columns: 1fr; } }

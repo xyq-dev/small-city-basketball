@@ -14,27 +14,6 @@ const SDK_VERSION = '0.13.0';
 const read = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const write = (file, value) => fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n');
-const probes = {
-  home: '按位置找球员',
-  players: '林越',
-  player: '林越',
-  compare: '同为',
-  'booking-create': '青锋杯',
-  bookings: '青锋杯',
-};
-const approvedRootSelectors = {
-  'pages/home/index': '.home-ui',
-  'pages/players/index': '.players-page',
-  'pages/player/index': '.player-page',
-  'pages/compare/index': '.compare-page',
-  'pages/booking-create/index': '.create-page',
-  'pages/bookings/index': '.bookings-page',
-};
-function approvedRootSelector(route) {
-  const selector = approvedRootSelectors[route];
-  if (!selector) throw new Error('缺少当前六页验收根节点：' + route);
-  return selector;
-}
 const escape = (s) =>
   String(s).replace(
     /[&<>"']/g,
@@ -150,7 +129,7 @@ function writeStub(project, route, original, data) {
   // styles, components and images remain byte-identical; this is UI evidence only.
   fs.writeFileSync(
     path.join(project, route + '.js'),
-    '// C12 disposable UI-only fixture; business and network lifecycle disabled.\nPage({data:' +
+    '// UI006 disposable UI-only fixture; business and network lifecycle disabled.\nPage({data:' +
       JSON.stringify(data) +
       (stub ? ',\n' + stub : '') +
       '});\n',
@@ -174,33 +153,38 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     throw new Error('输出必须是artifacts/wechat-ui下尚不存在的直接子目录');
   if (appId && !/^wx[0-9a-f]{16}$/i.test(appId))
     throw new Error('AppID格式无效；不要提供AppSecret');
-  const catalog = read(path.join(root, 'tests/mini-program/visual-catalog.json'));
-  const selected = catalog.pages.filter(
-    (page) => page.sourceKind === 'approved-image' || page.sourceKind === 'figma-design',
-  );
-  if (selected.length !== 6) throw new Error('需要当前六页明确来源映射');
+  const catalog = read(path.join(root, 'tests/mini-program/ui006-native-capture.json'));
+  const selected = catalog.pages;
+  if (
+    catalog.figmaFile !== 'QpKOskViUwHFVqSG3uYR9X' ||
+    !Array.isArray(selected) ||
+    selected.length !== 6
+  )
+    throw new Error('需要UI006当前六页明确来源映射');
   const fixtures = new Map(
     selected.map((page) => {
-      if (!/^pages\/[a-z-]+\/index$/.test(page.route) || !/^[a-z0-9-]+$/.test(page.primaryFixture))
-        throw new Error('无效fixture路径');
+      if (
+        !/^[a-z0-9-]+$/.test(page.name) ||
+        !/^pages\/[a-z-]+\/index$/.test(page.route) ||
+        !/^[a-z0-9-]+$/.test(page.primaryFixture) ||
+        !/^\.[a-z0-9-]+$/.test(page.selector) ||
+        typeof page.probe !== 'string' ||
+        !page.probe ||
+        !/^\d+:\d+$/.test(page.figmaNode) ||
+        !/^docs\/evidence\/ui006\/references\/[a-z0-9-]+\.png$/.test(page.referenceImage) ||
+        !/^[a-f0-9]{64}$/.test(page.referenceSha256)
+      )
+        throw new Error('无效UI006原生截图映射');
       const filename = path.join(
         root,
         'tests/mini-program/fixtures',
         page.primaryFixture + '.json',
       );
       const fixture = read(filename);
-      if (
-        fixture.route !== page.route ||
-        (page.route === 'pages/home/index'
-          ? page.sourceKind !== 'figma-design' ||
-            page.figmaFile !== 'BSQ64CrDTJ2P4tOIowOSFk' ||
-            page.figmaNode !== '4:16' ||
-            fixture.figmaNode !== '4:16' ||
-            fixture.designSource !== 'UI001:H01; supersedes historical C11 home'
-          : page.sourceKind !== 'approved-image' ||
-            (fixture.designSource || fixture.figmaNode) !== 'approved:C11')
-      )
-        throw new Error('fixture来源与确认稿不一致');
+      if (fixture.route !== page.route) throw new Error('UI006 fixture路由与截图映射不一致');
+      const reference = path.resolve(root, page.referenceImage);
+      if (!fs.existsSync(reference) || hash(fs.readFileSync(reference)) !== page.referenceSha256)
+        throw new Error('UI006 Figma参考图路径或哈希不一致');
       return [page.route, { page, fixture, fixtureSha256: hash(fs.readFileSync(filename)) }];
     }),
   );
@@ -222,7 +206,7 @@ export function prepare({ root = ROOT, out, appId } = {}) {
   }
   fs.writeFileSync(
     path.join(project, 'app.js'),
-    '// C12 disposable UI-only fixture.\nApp({ onLaunch() {}, onShow() {} });\n',
+    '// UI006 disposable UI-only fixture.\nApp({ onLaunch() {}, onShow() {} });\n',
   );
   const apiFile = path.join(project, 'utils/api.js');
   const apiSource = fs.readFileSync(apiFile, 'utf8');
@@ -315,7 +299,7 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     pages: [...sourceRoutes, ...platform.map((s) => s.route)],
   });
   const config = read(path.join(project, 'project.config.json'));
-  config.projectname = 'SCB-C12-UI-FIXTURES-ONLY';
+  config.projectname = 'SCB-UI006-FIXTURES-ONLY';
   if (appId) config.appid = appId;
   write(path.join(project, 'project.config.json'), config);
   const approved = selected.map((page) => ({
@@ -323,30 +307,20 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     baseRoute: page.route,
     name: fixtures.get(page.route).fixture.name,
     title: page.title,
-    probe: probes[page.route.split('/')[1]],
-    // Current UI001 roots. The old shared .premium-page remains only where a page still has it.
-    selector: approvedRootSelector(page.route),
+    probe: page.probe,
+    selector: page.selector,
+    figmaNode: page.figmaNode,
     fixtureSha256: fixtures.get(page.route).fixtureSha256,
-    reference: 'references/' + page.route.split('/')[1] + '.png',
+    reference: 'references/' + page.name + '.png',
     referenceSha256: hash(fs.readFileSync(path.resolve(root, page.referenceImage))),
   }));
   const scenarios = [...approved, ...platform];
   fs.mkdirSync(path.join(destination, 'references'));
   for (const page of selected) {
     const reference = path.resolve(root, page.referenceImage);
-    const expectedReference =
-      page.route === 'pages/home/index'
-        ? path.join(root, 'docs/design/UI002/home-figma.png')
-        : path.join(root, 'docs/design/C11', page.route.split('/')[1] + '.png');
-    if (
-      reference !== expectedReference ||
-      hash(fs.readFileSync(reference)) !== page.referenceSha256
-    )
-      throw new Error('参考图路径或哈希与当前明确来源不一致');
-    fs.copyFileSync(
-      reference,
-      path.join(destination, 'references', page.route.split('/')[1] + '.png'),
-    );
+    if (hash(fs.readFileSync(reference)) !== page.referenceSha256)
+      throw new Error('UI006参考图哈希与当前映射不一致');
+    fs.copyFileSync(reference, path.join(destination, 'references', page.name + '.png'));
   }
   const plan = {
     version: 1,

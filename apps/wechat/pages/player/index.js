@@ -6,7 +6,7 @@ Page({
   data: {
     profile: null,
     windows: [],
-    recordsOpen: false,
+    activeTab: 'SERVICE',
     informationOpen: false,
     loading: false,
     loginRequired: false,
@@ -139,8 +139,10 @@ Page({
   informationToggle() {
     this.setData({ informationOpen: !this.data.informationOpen });
   },
-  recordsToggle() {
-    this.setData({ recordsOpen: !this.data.recordsOpen });
+  changeTab(event) {
+    const activeTab = event.currentTarget.dataset.tab;
+    if (!['SERVICE', 'AVAILABILITY', 'RECORDS'].includes(activeTab)) return;
+    this.setData({ activeTab });
   },
   toggle() {
     if (!this._displayToken || !this._visible || !ui.live(this, this._displayToken)) return;

@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "9:1203",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["评价已完成且本人参与的服务", "评价当前订单服务", "待独立审核"],
+  "expectText": ["每位参与方对完成的订单可评价一次", "提交评价", "待独立审核"],
   "data": {
     "items": [
       {

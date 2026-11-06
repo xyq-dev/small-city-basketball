@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "8:1619",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["上传、片段、发布与撤回", "媒体"],
+  "expectText": ["从私有上传到独立授权公开", "已上传", "媒体草稿", "已发布"],
   "data": {
     "loading": false,
     "busy": false,

@@ -154,7 +154,8 @@ test('completing an initially missing name does not unmount the original party e
   assert.equal(p.data.editorOpen, false);
   assert.equal(p.data.detailsOpen, false);
   const summary = buildPreview({ root, route: 'pages/booking-create/index', data: p.data }).phone;
-  assert.ok(summary.includes('booking-form'));
+  assert.ok(summary.includes('booking-display-control'));
+  assert.ok(summary.includes('data-mini-bindtap="openEditor"'));
   assert.ok(!summary.includes('data-mini-bindchange="teamPick"'));
 });
 
@@ -263,7 +264,7 @@ test('approved booking fixtures render real controls and separate example portra
       for (const text of f.expectText) assert.ok(r.phone.includes(text), file + ': ' + text);
       assert.ok(
         r.assets.every((asset) =>
-          /^(assets\/approved-ui\/|pages\/bookings\/assets\/)/.test(
+          /^(assets\/approved-ui\/|assets\/figma\/|pages\/bookings\/assets\/)/.test(
             asset.path.replaceAll('\\', '/'),
           ),
         ),

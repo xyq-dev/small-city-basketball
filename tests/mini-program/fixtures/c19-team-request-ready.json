@@ -3,7 +3,7 @@
   "route": "pages/team-request/index",
   "state": "synthetic-populated",
   "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
-  "expectText": ["向 合成机构 申请建队", "我的建队申请", "合成青锋"],
+  "expectText": ["申请一支新球队", "当前申请机构 · 合成机构", "我的建队申请", "合成青锋"],
   "expectEnabled": ["提交申请", "撤回申请"],
   "data": {
     "hasLink": true,

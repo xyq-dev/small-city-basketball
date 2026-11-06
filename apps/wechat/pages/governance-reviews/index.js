@@ -21,6 +21,10 @@ const initial = () => ({
   notice: '',
   loginRequired: false,
   publicReview: null,
+  figmaReviewPreview: false,
+  figmaSummaryTitle: '',
+  figmaSourceOrderText: '',
+  figmaSourceProviderText: '',
 });
 Page({
   data: initial(),
@@ -69,6 +73,12 @@ Page({
       sourceReady: !!this._source,
       notice: '身份变化，已清空旧账号评价资料。',
     });
+  },
+  openSourceOrder() {
+    const source = this._source;
+    if (!source || this.data.busy) return;
+    if (source.sourceKind === 'PLAYER_BOOKING') ui.open('booking-detail', { id: source.sourceId });
+    else ui.open('local-bookings', { sourceId: source.sourceId });
   },
   login() {
     ui.login(PATH);

@@ -34,6 +34,8 @@ const initial = () => ({
   loginRequired: false,
   measurementNotice:
     '展示数仅为客户端按发布批次和操作编号去重的上报数，不代表独立人数、真实观看或结算凭证。',
+  figmaCompactSponsorship: false,
+  figmaSummaryTitle: '',
 });
 function publicCard(raw) {
   return sponsorship.card(raw);

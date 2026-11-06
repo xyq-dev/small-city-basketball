@@ -3,7 +3,7 @@
   "route": "pages/player-center/index",
   "state": "ready",
   "figmaNode": "30:1731",
-  "expectText": ["合成林越", "编辑资料与报价", "资金状态"],
+  "expectText": ["合成林越", "编辑资料与报价", "可约窗口"],
   "syntheticData": true,
   "data": {
     "authorized": true,

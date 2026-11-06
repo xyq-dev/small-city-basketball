@@ -2,15 +2,15 @@
   "name": "ui002-regflow-material-profile",
   "route": "pages/participant-materials/index",
   "state": "synthetic-populated",
-  "designSource": "UI001 R03 6:492 and actual participant-materials Page; synthetic form data, not identity or insurance acceptance",
-  "figmaNode": "6:492",
+  "designSource": "UI006 36:108 participant-materials; synthetic form data, not identity or insurance acceptance",
+  "figmaNode": "36:108",
   "expectText": [
-    "本人真实姓名（私有）",
-    "必要资料",
-    "本人照片 · 必传",
-    "本届规程签署",
-    "已生效在线保单将另行核验",
-    "去资格预审"
+    "仅限本届赛事使用的私有资料",
+    "本届身份",
+    "本人姓名 *",
+    "本人照片",
+    "必传",
+    "本届资格预审"
   ],
   "data": {
     "mode": "mine",

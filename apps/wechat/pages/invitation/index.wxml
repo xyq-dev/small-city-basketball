@@ -1,23 +1,21 @@
-<scb-header title="接受球队邀请" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page invitation-page">
-  <view wx:if="{{error}}" class="notice warning" role="alert"><view class="feedback-title">当前邀请无法接受</view><view class="small">{{error}}</view></view>
-  <view wx:if="{{message}}" class="notice">{{message}}</view>
-  <view wx:if="{{loginRequired}}" class="card invitation-panel state-panel"><view class="subtitle">请登录邀请的目标账号</view><view class="muted">打开此页或登录，都不代表接受球队授权。</view><button class="primary" bindtap="login">登录目标账号</button></view>
-  <view wx:if="{{loading}}" class="card invitation-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在核对当前账号</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
-  <view wx:if="{{user && !accepted}}" class="card invitation-panel invitation-summary"><view class="subtitle">球队管理邀请</view><view class="muted">请确认下方登录账号是邀请的目标账号。</view><view class="account-identity"><view class="account-avatar">{{user.displayName[0]}}</view><view><view>{{user.displayName}}</view><view class="small muted">{{user.email}}</view></view></view></view>
-  <view wx:if="{{!accepted}}" class="card invitation-panel invite-details">
-    <view class="detail-row"><text class="detail-dot">•</text><view><view>目标账号</view><view class="muted">仅邀请指定的账号可以接受。</view></view></view>
-    <view class="detail-row"><text class="detail-dot">•</text><view><view>邀请有效期</view><view class="muted">以服务端核验的实际截止为准。</view></view></view>
-    <view class="detail-row"><text class="detail-dot">•</text><view><view>授权可撤销</view><view class="muted">撤销后不能继续读取球队私有资料。</view></view></view>
+<scb-header title="接受球队邀请" disabled="{{busy || loading}}"/>
+<view class="figma-page invitation-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="join" size="{{28}}"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">定向球队管理授权</view><view class="figma-title">接受球队邀请</view><view class="figma-subtitle">请使用被邀请的目标账号核对本次授权。</view></view></view>
+    <view class="invitation-tabs"><button class="invitation-tab is-active">邀请内容</button><button class="invitation-tab" bindtap="checkAccount">本人确认</button></view>
+    <figma-feedback wx:if="{{error}}" type="error" title="当前邀请无法接受" body="{{error}}"/>
+    <figma-feedback wx:if="{{message}}" type="pending" title="邀请凭据提示" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="empty" title="请登录邀请的目标账号" body="登录不代表接受球队授权。" action-label="登录目标账号" bind:action="login"/>
+    <view wx:if="{{loading}}" class="figma-section"><figma-skeleton rows="{{3}}"/></view>
+    <block wx:if="{{!accepted}}">
+      <view class="figma-section"><view class="figma-section__title">邀请内容</view><view class="invitation-row"><view class="figma-row__copy"><view class="figma-row__title">球队</view><view class="figma-row__subtitle">{{invitationPreview.teamName || '接受后显示授权球队'}}</view></view><view class="figma-status">管理授权</view></view><view class="invitation-row"><view class="figma-row__copy"><view class="figma-row__title">目标账号</view><view class="figma-row__subtitle">{{invitationPreview.targetLabel || (user ? user.displayName : '请先登录指定账号')}}</view></view><view class="figma-status figma-status--orange">待核对</view></view><view class="invitation-row"><view class="figma-row__copy"><view class="figma-row__title">有效截止</view><view class="figma-row__subtitle">{{invitationPreview.expiresLabel || '由服务端在接受时核验'}}</view></view><view class="figma-status">以服务端为准</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">接受后可用</view><view class="invitation-notice"><view class="invitation-notice__mark"/><view class="figma-row__copy"><view class="figma-row__title">球队资料与名单</view><view class="figma-row__subtitle">仅限这支球队的已授范围</view></view><view class="figma-status figma-status--orange">定向授权</view></view><view class="invitation-notice"><view class="invitation-notice__mark"/><view class="figma-row__copy"><view class="figma-row__title">授权撤销后</view><view class="figma-row__subtitle">私有球队资料将停止开放</view></view><view class="figma-status figma-status--orange">可撤销</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">邀请凭据</view><view class="figma-field-group"><view class="figma-field-label">邀请编号</view><input class="figma-field-control" value="{{invitationId}}" maxlength="36" bindinput="invitation" disabled="{{busy}}" placeholder="请输入邀请编号"/></view><view class="figma-field-group"><view class="figma-field-label">邀请凭据</view><input wx:if="{{tokenVisible}}" class="figma-field-control" password="{{true}}" maxlength="43" bindinput="token" disabled="{{busy}}" placeholder="请输入43位邀请凭据"/></view><view class="figma-caption">凭据仅保留在当前页面内存；离开后清除，不保存或分享。</view></view>
+      <view id="invitation-consent" class="figma-section"><view class="figma-section__title">明确同意</view><view class="invitation-row"><view class="figma-row__mark {{user ? 'is-active' : ''}}"/><view class="figma-row__copy"><view class="figma-row__title">核对当前账号</view><view class="figma-row__subtitle">不是目标账号时请切换</view></view><view class="figma-status figma-status--orange">{{user ? '当前账号' : '待核对'}}</view></view><checkbox-group bindchange="consent"><label class="figma-check"><checkbox value="yes" checked="{{consent}}" disabled="{{busy || !user}}"/>我接受本次球队管理邀请</label></checkbox-group></view>
+      <figma-feedback type="pending" title="接受前请核对" body="邀请到期、已撤销、对象不符或发布者权限失效时不能接受；不会自动创建账号或合并身份。"/>
+    </block>
+    <view wx:if="{{accepted}}" class="figma-summary figma-summary--navy"><view class="figma-summary__icon"><figma-icon name="teams" size="{{28}}"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">已接受授权</view><view class="figma-title">{{accepted.teamName}}</view><view class="figma-subtitle">{{accepted.organizationName}}</view></view></view>
   </view>
-  <view wx:if="{{!accepted && !loading}}" class="invite-form">
-    <view class="field-label">邀请编号</view><input class="field" value="{{invitationId}}" maxlength="36" bindinput="invitation" disabled="{{busy}}" placeholder="请输入邀请编号"/>
-    <view class="field-label">邀请凭据</view><input wx:if="{{tokenVisible}}" class="field" password="{{true}}" maxlength="43" bindinput="token" disabled="{{busy}}" placeholder="请输入43位邀请凭据"/>
-    <view class="small muted secret-note">邀请凭据仅保留当前页面内存；离开后清除，不保存或分享。</view>
-    <checkbox-group bindchange="consent"><label class="consent"><checkbox value="yes" checked="{{consent}}" disabled="{{busy || !user}}"/>我确认以当前账号明确接受本次球队管理邀请</label></checkbox-group>
-    <button class="primary invite-action" bindtap="accept" disabled="{{busy || !consent || !user}}" loading="{{busy}}">接受球队授权</button>
-  </view>
-  <view wx:if="{{accepted}}" class="card invitation-panel state-panel"><view class="badge success">已接受授权</view><view class="subtitle">{{accepted.teamName}}</view><view class="muted">{{accepted.organizationName}}</view><button class="primary" bindtap="openTeam">进入已授权球队</button></view>
-  <view wx:if="{{!accepted}}" class="notice warning"><view class="feedback-title">接受前请核对</view><view class="small">邀请到期、已撤销、对象不符或发布者权限失效时不能接受；不会自动创建账号或合并身份。</view></view>
+  <view wx:if="{{!accepted}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="checkAccount" disabled="{{busy || loading}}">核对目标账号</button><button class="figma-action figma-action--orange" bindtap="accept" disabled="{{busy || loading || !consent || !user}}" loading="{{busy}}">接受球队授权</button></view>
+  <view wx:else class="figma-fixed-actions figma-fixed-actions--single"><button class="figma-action figma-action--orange" bindtap="openTeam">进入已授权球队</button></view>
 </view>
-<scb-nav active="Account" disabled="{{busy || loading}}"/>

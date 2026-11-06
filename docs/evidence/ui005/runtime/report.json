@@ -1,0 +1,345 @@
+{
+  "createdAt": "2026-11-05T08:49:50.495Z",
+  "endpoint": "local WeChat DevTools automation websocket",
+  "expectedProject": "apps/wechat",
+  "mode": "connected-wechat-devtools-read-only-navigation",
+  "disclaimer": "Screenshots are from the connected WeChat DevTools project. Route opening and scrolling are verified; no write action, synthetic setData, payment, scoring, review, or production mutation is performed.",
+  "systemInfo": {
+    "platform": "devtools",
+    "model": "iPhone 12/13 (Pro)",
+    "SDKVersion": "3.17.4",
+    "windowWidth": 390,
+    "windowHeight": 844,
+    "pixelRatio": 3,
+    "statusBarHeight": 47
+  },
+  "initialRoute": "pages/home/index",
+  "screenshots": [
+    {
+      "name": "home",
+      "requestedRoute": "pages/home/index",
+      "actualRoute": "pages/home/index",
+      "routeMatched": true,
+      "top": {
+        "path": "home-top.png",
+        "bytes": 131896,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "home-bottom.png",
+        "bytes": 49949,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "watch",
+      "requestedRoute": "pages/watch/index",
+      "actualRoute": "pages/watch/index",
+      "routeMatched": true,
+      "top": {
+        "path": "watch-top.png",
+        "bytes": 64469,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "watch-bottom.png",
+        "bytes": 47254,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "local",
+      "requestedRoute": "pages/local/index",
+      "actualRoute": "pages/local/index",
+      "routeMatched": true,
+      "top": {
+        "path": "local-top.png",
+        "bytes": 65969,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "local-bottom.png",
+        "bytes": 65969,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "teams",
+      "requestedRoute": "pages/teams/index",
+      "actualRoute": "pages/teams/index",
+      "routeMatched": true,
+      "top": {
+        "path": "teams-top.png",
+        "bytes": 48128,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "teams-bottom.png",
+        "bytes": 54882,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "account",
+      "requestedRoute": "pages/account/index",
+      "actualRoute": "pages/account/index",
+      "routeMatched": true,
+      "top": {
+        "path": "account-top.png",
+        "bytes": 49535,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "account-bottom.png",
+        "bytes": 54780,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "city-select",
+      "requestedRoute": "pages/city-select/index",
+      "actualRoute": "pages/city-select/index",
+      "routeMatched": true,
+      "top": {
+        "path": "city-select-top.png",
+        "bytes": 44403,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "city-select-bottom.png",
+        "bytes": 71951,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "search",
+      "requestedRoute": "pages/search/index",
+      "actualRoute": "pages/search/index",
+      "routeMatched": true,
+      "top": {
+        "path": "search-top.png",
+        "bytes": 28350,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "search-bottom.png",
+        "bytes": 28350,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "media",
+      "requestedRoute": "pages/media/index",
+      "actualRoute": "pages/media/index",
+      "routeMatched": true,
+      "top": {
+        "path": "media-top.png",
+        "bytes": 72567,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "media-bottom.png",
+        "bytes": 75506,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "event-detail",
+      "requestedRoute": "pages/event/index",
+      "actualRoute": "pages/event/index",
+      "routeMatched": true,
+      "top": {
+        "path": "event-detail-top.png",
+        "bytes": 48359,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "event-detail-bottom.png",
+        "bytes": 64455,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "match-detail",
+      "requestedRoute": "pages/match/index",
+      "actualRoute": "pages/match/index",
+      "routeMatched": true,
+      "top": {
+        "path": "match-detail-top.png",
+        "bytes": 26555,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "match-detail-bottom.png",
+        "bytes": 26555,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "registration-events",
+      "requestedRoute": "pages/registration-events/index",
+      "actualRoute": "pages/registration-events/index",
+      "routeMatched": true,
+      "top": {
+        "path": "registration-events-top.png",
+        "bytes": 67520,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "registration-events-bottom.png",
+        "bytes": 66197,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "entry-form",
+      "requestedRoute": "pages/entry/index",
+      "actualRoute": "pages/entry/index",
+      "routeMatched": true,
+      "top": {
+        "path": "entry-form-top.png",
+        "bytes": 29161,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "entry-form-bottom.png",
+        "bytes": 29161,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "booking-create",
+      "requestedRoute": "pages/booking-create/index",
+      "actualRoute": "pages/booking-create/index",
+      "routeMatched": true,
+      "top": {
+        "path": "booking-create-top.png",
+        "bytes": 35322,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "booking-create-bottom.png",
+        "bytes": 35322,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "booking-detail",
+      "requestedRoute": "pages/booking-detail/index",
+      "actualRoute": "pages/booking-detail/index",
+      "routeMatched": true,
+      "top": {
+        "path": "booking-detail-top.png",
+        "bytes": 26572,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "booking-detail-bottom.png",
+        "bytes": 26572,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "participant-materials",
+      "requestedRoute": "pages/participant-materials/index",
+      "actualRoute": "pages/participant-materials/index",
+      "routeMatched": true,
+      "top": {
+        "path": "participant-materials-top.png",
+        "bytes": 39503,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "participant-materials-bottom.png",
+        "bytes": 39503,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "qualification-precheck",
+      "requestedRoute": "pages/qualification-precheck/index",
+      "actualRoute": "pages/qualification-precheck/index",
+      "routeMatched": true,
+      "top": {
+        "path": "qualification-precheck-top.png",
+        "bytes": 50831,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "qualification-precheck-bottom.png",
+        "bytes": 54954,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "scorer",
+      "requestedRoute": "pages/scorer/index",
+      "actualRoute": "pages/scorer/index",
+      "routeMatched": true,
+      "top": {
+        "path": "scorer-top.png",
+        "bytes": 26075,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "scorer-bottom.png",
+        "bytes": 26075,
+        "width": 355,
+        "height": 768
+      }
+    },
+    {
+      "name": "org-event",
+      "requestedRoute": "pages/org-event/index",
+      "actualRoute": "pages/org-event/index",
+      "routeMatched": true,
+      "top": {
+        "path": "org-event-top.png",
+        "bytes": 35527,
+        "width": 355,
+        "height": 768
+      },
+      "bottom": {
+        "path": "org-event-bottom.png",
+        "bytes": 35527,
+        "width": 355,
+        "height": 768
+      }
+    }
+  ],
+  "failures": [],
+  "exceptions": []
+}

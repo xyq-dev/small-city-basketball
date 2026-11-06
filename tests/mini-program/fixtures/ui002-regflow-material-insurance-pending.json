@@ -2,9 +2,9 @@
   "name": "ui002-regflow-material-insurance-pending",
   "route": "pages/participant-materials/index",
   "state": "unknown-request",
-  "designSource": "UI001 R03 6:492 and actual participant-materials Page; synthetic form data, not identity or insurance acceptance",
-  "figmaNode": "6:492",
-  "expectText": ["原请求结果待核对", "暂停新保存与上传", "保存保单资料", "请先保存当前草稿再提交"],
+  "designSource": "UI006 36:108 participant-materials; synthetic form data, not identity or insurance acceptance",
+  "figmaNode": "36:108",
+  "expectText": ["原请求结果待核对", "暂停新保存与上传", "已有保单", "保存本人资料"],
   "data": {
     "mode": "mine",
     "registrationSteps": [
@@ -93,5 +93,5 @@
     "message": "",
     "loginRequired": false
   },
-  "expectDisabled": ["保存保单资料", "去资格预审"]
+  "expectDisabled": ["保存本人资料", "独立资格预审"]
 }

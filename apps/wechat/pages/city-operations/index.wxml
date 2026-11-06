@@ -1,5 +1,82 @@
-<scb-header title="城市运营权限" disabled="{{busy}}"/>
-<view class="page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">城市运营</view><view class="title">只处理当前授权范围内的事项</view></view><view wx:if="{{loginRequired}}"><button bindtap="login">登录</button></view><view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view><view wx:if="{{loading}}">正在读取当前授权…</view><view class="notice">权限按机构、地区范围、具体操作和有效期生效；不授予全城私有资料访问权。</view><view wx:if="{{pending}}" class="card">有原操作待核对<button bindtap="recover">查询原操作</button><button data-cancel="true" bindtap="recover">明确放弃未确认操作</button></view><view class="tabs"><button data-platform="false" bindtap="scope">我的授权</button><button wx:if="{{canManage}}" data-platform="true" bindtap="scope">平台授权维护</button></view>
-<view wx:if="{{platform && canManage}}" class="card"><view class="subtitle">授予有限权限</view><input data-field="orgQuery" value="{{orgQuery}}" bindinput="field" placeholder="按机构名称筛选"/><input data-field="userQuery" value="{{userQuery}}" bindinput="field" placeholder="按人员显示名筛选"/><button disabled="{{busy}}" bindtap="load">查询可选人员</button><view wx:if="{{directoryTruncated.people}}" class="notice">人员目录超过100项，请输入显示名缩小范围。</view><view wx:if="{{directoryTruncated.organizations}}" class="notice">本页机构目录最多200项；请输入机构名称缩小范围。</view><picker range="{{organizations}}" range-key="name" value="{{orgIndex}}" data-field="orgIndex" bindchange="picker"><view class="picker">机构：{{organizations[orgIndex].name || '请选择'}}</view></picker><picker range="{{people}}" range-key="displayName" value="{{userIndex}}" data-field="userIndex" bindchange="picker"><view class="picker">人员：{{people[userIndex].displayName || '请选择'}}</view></picker><picker range="{{regions}}" range-key="path" value="{{regionIndex}}" data-field="regionIndex" bindchange="picker"><view class="picker">地区：{{regions[regionIndex].path || '请选择'}}</view></picker><picker range="{{actionNames}}" value="{{actionIndex}}" data-field="actionIndex" bindchange="picker"><view class="picker">操作：{{actionNames[actionIndex]}}</view></picker><picker mode="date" data-field="date" value="{{date}}" bindchange="field"><view class="picker">到期日期：{{date || '请选择'}}</view></picker><picker mode="time" data-field="time" value="{{time}}" bindchange="field"><view class="picker">本机当地时间：{{time}}</view></picker><textarea data-field="reason" value="{{reason}}" bindinput="field" maxlength="500" placeholder="授权或撤销原因，至少4字"/><button disabled="{{busy || !!pending}}" bindtap="create">授予权限</button></view>
-<view wx:for="{{items}}" wx:key="id" class="card"><view class="subtitle">{{item.actionLabel}} · {{item.effective?'当前有效':'已失效'}}</view><view>{{item.organizationName}} ／ {{item.regionName}}</view><view>到期：{{item.expiresAt}}</view><view>{{item.reason}}</view><button wx:if="{{platform && canManage && item.status==='ACTIVE'}}" data-id="{{item.id}}" disabled="{{busy || !!pending}}" bindtap="revoke">永久撤销</button></view><view wx:if="{{!loading && !items.length}}" class="notice">当前没有可查看的授权。</view><button wx:if="{{nextCursor}}" disabled="{{busy}}" bindtap="more">读取更多</button><button bindtap="assigned">处理明确分派的工单</button><button disabled="{{busy}}" bindtap="load">刷新</button></view>
+<scb-header title="{{figmaCityPreview ? '城市运营授权' : '城市运营权限'}}" disabled="{{busy || loading}}"/>
+<view class="figma-page city-ops-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary {{figmaCityPreview ? 'city-summary--preview' : ''}}">
+      <view class="figma-summary__icon"><figma-icon name="governance" size="25"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">{{figmaCityPreview ? '平台与城市运营' : '城市运营'}}</view>
+        <view class="figma-title">{{figmaSummaryTitle || '有限范围运营授权'}}</view>
+        <view class="figma-subtitle">{{figmaCityPreview ? '按机构、地区、具体事项和有效期授权' : '只处理当前账号明确获授的事项'}}</view>
+      </view>
+    </view>
+
+    <block wx:if="{{figmaCityPreview}}">
+      <figma-tabs key1="mine" label1="我的授权" key2="platform" label2="平台维护" active="mine"/>
+      <view class="figma-section"><view class="figma-section__title">当前授权</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">示例篮球协会</view><view class="figma-row__subtitle">广东 · 高州</view></view><view class="figma-status figma-status--green">有效</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">操作范围</view><view class="figma-row__subtitle">明确分派的支持工单</view></view><view class="figma-status figma-status--orange">限定</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">有效期</view><view class="figma-row__subtitle">至 2026年12月31日</view></view><view class="figma-status">查看</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">授权维护</view><view class="figma-field-group"><view class="figma-field-label">机构与地区</view><view class="figma-field-control city-picker">选择授权主体和范围</view></view><view class="figma-field-group"><view class="figma-field-label">工作人员</view><view class="figma-field-control city-picker">选择明确账号</view></view><view class="figma-field-group"><view class="figma-field-label">权限与时限 *</view><view class="figma-field-control city-picker">逐项选择</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">已分派事项</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">11月08日 · 服务纠纷</view><view class="figma-row__subtitle">仅当前分派人可处理</view></view><view class="figma-status figma-status--orange">待跟进</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">授权变更</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">撤销会立即影响后续处理</view><view class="figma-row__subtitle">已有记录仍按原授权事实保留</view></view></view></view>
+    </block>
+
+    <figma-feedback wx:if="{{!figmaCityPreview}}" type="info" title="权限边界" body="授权按机构、地区、具体操作和有效期生效，不授予全城私有资料访问权。"/>
+    <figma-feedback wx:if="{{!figmaCityPreview && error}}" type="error" title="城市授权读取失败" body="{{error}}" action-label="重新读取" disabled="{{busy || loading}}" bindaction="load"/>
+    <figma-feedback wx:if="{{!figmaCityPreview && notice}}" type="info" title="当前提示" body="{{notice}}"/>
+    <view wx:if="{{!figmaCityPreview && loading}}" class="figma-section"><figma-skeleton rows="{{5}}"/></view>
+    <figma-feedback wx:if="{{!figmaCityPreview && !loading && loginRequired}}" type="info" title="登录后查看城市授权" body="当前范围按登录账号重新核对。" action-label="登录后继续" disabled="{{busy}}" bindaction="login"/>
+
+    <view wx:if="{{!figmaCityPreview && !loading && pending}}" class="figma-section city-pending">
+      <view class="city-state-icon"><figma-icon name="governance" size="27"/></view>
+      <view class="figma-section__title">原授权操作待核对</view>
+      <view class="figma-section__hint">先查询原操作结果，避免重复授予或撤销权限。</view>
+      <view class="city-inline-actions"><button class="city-secondary" bindtap="recover" disabled="{{busy}}">查询原操作</button><button class="city-secondary city-danger" data-cancel="true" bindtap="recover" disabled="{{busy}}">放弃未确认操作</button></view>
+    </view>
+
+    <block wx:if="{{!figmaCityPreview && !loading && !pending && !loginRequired}}">
+      <view class="city-tabs" role="tablist">
+        <button class="city-tab {{!platform?'is-active':''}}" data-platform="false" bindtap="scope" disabled="{{busy}}">我的授权</button>
+        <button wx:if="{{canManage}}" class="city-tab {{platform?'is-active':''}}" data-platform="true" bindtap="scope" disabled="{{busy}}">平台维护</button>
+      </view>
+
+      <view wx:if="{{platform && canManage}}" class="figma-section">
+        <view class="figma-section__title">授权维护</view>
+        <view class="figma-section__hint">人员、机构、地区、操作与到期时间必须同时明确。</view>
+
+        <view class="city-filter-grid">
+          <view class="figma-field-group"><view class="figma-field-label">机构筛选</view><input class="figma-field-control" data-field="orgQuery" value="{{orgQuery}}" bindinput="field" placeholder="按机构名称"/></view>
+          <view class="figma-field-group"><view class="figma-field-label">人员筛选</view><input class="figma-field-control" data-field="userQuery" value="{{userQuery}}" bindinput="field" placeholder="按显示名"/></view>
+        </view>
+        <button class="city-secondary city-full" bindtap="load" disabled="{{busy || loading}}">查询可选机构与人员</button>
+        <figma-feedback wx:if="{{directoryTruncated.people}}" type="info" title="人员候选超过100项" body="请填写更具体的显示名以缩小范围。"/>
+        <figma-feedback wx:if="{{directoryTruncated.organizations}}" type="info" title="机构候选超过200项" body="请填写机构名称以缩小范围。"/>
+
+        <view class="figma-field-group"><view class="figma-field-label">机构</view><picker range="{{organizations}}" range-key="name" value="{{orgIndex}}" data-field="orgIndex" bindchange="picker" disabled="{{busy}}"><view class="figma-field-control city-picker">{{organizations[orgIndex].name || '请选择机构'}}</view></picker></view>
+        <view class="figma-field-group"><view class="figma-field-label">人员</view><picker range="{{people}}" range-key="displayName" value="{{userIndex}}" data-field="userIndex" bindchange="picker" disabled="{{busy}}"><view class="figma-field-control city-picker">{{people[userIndex].displayName || '请选择人员'}}</view></picker></view>
+        <view class="figma-field-group"><view class="figma-field-label">地区范围</view><picker range="{{regions}}" range-key="path" value="{{regionIndex}}" data-field="regionIndex" bindchange="picker" disabled="{{busy}}"><view class="figma-field-control city-picker">{{regions[regionIndex].path || '请选择地区'}}</view></picker></view>
+        <view class="figma-field-group"><view class="figma-field-label">允许操作</view><picker range="{{actionNames}}" value="{{actionIndex}}" data-field="actionIndex" bindchange="picker" disabled="{{busy}}"><view class="figma-field-control city-picker">{{actionNames[actionIndex]}}</view></picker></view>
+        <view class="city-filter-grid">
+          <view class="figma-field-group"><view class="figma-field-label">到期日期</view><picker mode="date" data-field="date" value="{{date}}" bindchange="field" disabled="{{busy}}"><view class="figma-field-control city-picker">{{date || '请选择日期'}}</view></picker></view>
+          <view class="figma-field-group"><view class="figma-field-label">本机当地时间</view><picker mode="time" data-field="time" value="{{time}}" bindchange="field" disabled="{{busy}}"><view class="figma-field-control city-picker">{{time}}</view></picker></view>
+        </view>
+        <view class="figma-field-group"><view class="figma-field-label">授权原因</view><textarea class="figma-field-control" data-field="reason" value="{{reason}}" bindinput="field" maxlength="500" placeholder="至少4字"/></view>
+        <button class="city-primary" bindtap="create" disabled="{{busy}}">{{busy ? '提交中…' : '授予有限权限'}}</button>
+      </view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">{{platform ? '平台授权记录' : '我的有效授权'}}</view>
+        <figma-feedback wx:if="{{!items.length}}" type="empty" title="当前没有可查看的授权" body="明确授予的城市操作范围会显示在这里。"/>
+        <view wx:for="{{items}}" wx:key="id" class="city-grant">
+          <view class="city-grant__head"><view class="figma-row__copy"><view class="figma-row__title">{{item.actionLabel}}</view><view class="figma-row__subtitle">{{item.organizationName}} · {{item.regionName}}</view></view><view class="figma-status {{item.effective?'figma-status--green':''}}">{{item.effective ? '当前有效' : '已失效'}}</view></view>
+          <view class="figma-caption">到期：{{item.expiresAt}}</view>
+          <view class="city-reason">{{item.reason}}</view>
+          <button wx:if="{{platform && canManage && item.status==='ACTIVE'}}" class="city-secondary city-full" data-id="{{item.id}}" bindtap="revoke" disabled="{{busy}}">永久撤销本项授权</button>
+        </view>
+        <button wx:if="{{nextCursor}}" class="city-secondary city-full" disabled="{{busy}}" bindtap="more">读取更多授权</button>
+      </view>
+
+      <view class="figma-section"><view class="figma-section__title">已分派事项</view><button class="city-assigned" bindtap="assigned" disabled="{{busy}}"><view class="city-state-icon city-state-icon--small"><figma-icon name="governance" size="20"/></view><view class="figma-row__copy"><view class="figma-row__title">处理明确分派的工单</view><view class="figma-row__subtitle">仅进入当前账号获派的治理事项</view></view><view class="city-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button></view>
+    </block>
+  </view>
+
+  <view wx:if="{{figmaCityPreview}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">刷新授权</button><button class="figma-action figma-action--orange">查看已分派工单</button></view>
+  <view wx:else class="figma-fixed-actions figma-fixed-actions--single"><button class="figma-action figma-action--navy" bindtap="load" disabled="{{busy || loading}}">{{loading ? '读取中…' : '刷新城市授权'}}</button></view>
+</view>

@@ -1,0 +1,37 @@
+{
+  "name": "ui006-training-manage-figma",
+  "route": "pages/training-manage/index",
+  "state": "synthetic-figma-teaching",
+  "figmaNode": "36:90",
+  "syntheticData": true,
+  "expectText": ["本周课表", "本课签到", "需要处理", "成人周末篮球基础班"],
+  "data": {
+    "manageTab": "teaching",
+    "workspace": { "capabilities": { "enabled": true } },
+    "loading": false,
+    "teaching": [
+      {
+        "id": "session-fixture-one",
+        "title": "成人周末篮球基础班",
+        "time": "周六 09:00—10:30（北京时间）",
+        "stateLabel": "待上课"
+      }
+    ],
+    "attendancePreview": [
+      {
+        "id": "learner-fixture-one",
+        "displayName": "合成学员甲",
+        "note": "本课学员",
+        "checked": true,
+        "statusText": "已签到"
+      },
+      {
+        "id": "learner-fixture-two",
+        "displayName": "合成学员乙",
+        "note": "本课学员",
+        "checked": false,
+        "statusText": "待签到"
+      }
+    ]
+  }
+}

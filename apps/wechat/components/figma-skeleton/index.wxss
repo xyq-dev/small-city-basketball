@@ -1,0 +1,6 @@
+.figma-skeleton { box-sizing:border-box; display:flex; width:100%; min-height:112px; gap:12px; padding:16px; border-radius:16px; background:#ffffff; overflow:hidden; }
+.figma-skeleton__media { width:80px; height:80px; flex:none; border-radius:12px; background:#e6ebf2; animation:figma-pulse 1.4s ease-in-out infinite; }
+.figma-skeleton__copy { display:flex; min-width:0; flex:1; flex-direction:column; justify-content:center; gap:10px; }
+.figma-skeleton__line { width:100%; height:12px; border-radius:6px; background:#e6ebf2; animation:figma-pulse 1.4s ease-in-out infinite; }
+.figma-skeleton__line.is-short { width:60%; }
+@keyframes figma-pulse { 50% { opacity:.45; } }

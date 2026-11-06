@@ -1,28 +1,180 @@
-.trade .card {
-  margin: 24rpx 0;
-  padding: 24rpx;
-}
-.trade button {
-  margin-top: 16rpx;
-}
-.trade .field {
-  border: 1rpx solid #ccd3df;
-  padding: 16rpx;
-  margin: 16rpx 0;
-}
-.trade .small {
-  font-size: 22rpx;
-  word-break: break-all;
-}
-.trade .warning {
-  color: #9e4f00;
+@import "../../styles/figma-pages.wxss";
+
+.trade-manage-page button {
+  margin: 0;
 }
 
-.ui002-workspace { padding:16px 16px calc(104px + env(safe-area-inset-bottom)); background:#f4f6fa; color:#18283f; }
-.ui002-workspace .card { border-radius:16px; padding:16px; margin:0 0 16px; }
-.ui002-workspace input,.ui002-workspace textarea,.ui002-workspace button { font-size:16px; line-height:24px; min-height:44px; }
-.ui002-workspace .page-intro .title { color:#18283f; font-size:22px; line-height:32px; margin:0 0 8px; }
-.ui002-workspace .page-intro { margin-bottom:16px; }
-.ui002-workspace .tabs button { min-height:44px; }
+.manage-summary--preview {
+  background: #eaf2fc;
+}
 
-.ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+.manage-pending,
+.manage-reconcile {
+  align-items: center;
+  text-align: center;
+}
+
+.manage-state-icon {
+  display: flex;
+  width: 50px;
+  height: 50px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  background: #fff1e2;
+}
+
+.manage-request-id {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f4f6fa;
+  color: #123c73;
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.manage-inline-actions,
+.manage-action-stack {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.manage-kind-tabs {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: #e6ebf2;
+}
+
+.manage-kind-tabs button {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border-radius: 11px;
+  background: transparent;
+  color: #51657d;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.manage-kind-tabs button.is-active {
+  background: #ffffff;
+  color: #123c73;
+  font-weight: 700;
+}
+
+.trade-manage-page .manage-primary,
+.trade-manage-page .manage-secondary,
+.manage-action-stack button,
+.manage-text-action {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 13px;
+  border-radius: 22px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.trade-manage-page .manage-primary {
+  width: 100%;
+  background: #f28c28;
+  color: #18283f;
+  font-weight: 600;
+}
+
+.trade-manage-page .manage-secondary,
+.manage-action-stack button {
+  border: 1px solid #7c8ea5;
+  background: #ffffff;
+  color: #123c73;
+}
+
+.manage-text-action {
+  width: 100%;
+  background: transparent;
+  color: #51657d;
+  text-decoration: underline;
+}
+
+.manage-record {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #e6ebf2;
+}
+
+.manage-record:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.manage-record__head {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.manage-action-stack button {
+  width: 100%;
+}
+
+.manage-action-stack button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.manage-money {
+  flex: none;
+  color: #123c73;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.manage-chevron {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #123c73;
+  transform: rotate(-90deg);
+}
+
+.trade-manage-page button[disabled],
+.trade-manage-page .manage-text-action[disabled] {
+  border-color: #e6ebf2;
+  background: #e6ebf2;
+  color: #7c8ea5;
+}
+
+@media (max-width: 360px) {
+  .manage-inline-actions,
+  .manage-action-stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .manage-action-stack button:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+}

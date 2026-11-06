@@ -1,20 +1,17 @@
-<scb-header title="账号安全与找回" disabled="{{busy}}"/>
-<view class="page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">账号安全</view><view class="title">申请与使用操作码分别核对</view></view>
-  <view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view>
-  <view wx:if="{{!enabled}}" class="notice warning">邮件通道尚未配置，请联系主办方核对账号；当前不能发送验证或找回邮件。</view>
-  <view class="card"><view class="subtitle">申请账号操作码</view>
-    <view class="field-label">本人注册邮箱</view><input class="field" data-field="email" value="{{email}}" bindinput="input" disabled="{{busy}}" maxlength="254"/>
-    <button class="primary" data-kind="reset" bindtap="request" disabled="{{busy || !enabled}}">申请重置密码邮件</button>
-    <button wx:if="{{signedIn}}" class="secondary" data-kind="verify" bindtap="request" disabled="{{busy || !enabled || verified}}">{{verified ? '当前邮箱已验证' : '验证当前账号邮箱'}}</button>
-    <view class="small muted">新申请会使同用途旧码失效。重置码15分钟有效；验证邮箱码24小时有效。</view>
+<scb-header title="找回账号" disabled="{{busy}}"/>
+<view class="figma-page recovery-rebuild">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="shield" size="28"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">账号安全</view><view class="figma-title">恢复账号访问</view><view class="figma-subtitle">使用本人注册邮箱接收操作码</view></view></view>
+    <figma-tabs key1="request" label1="申请操作码" key2="consume" label2="使用操作码" active="{{activeMode}}" disabled="{{busy}}" bind:change="changeMode"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="账号操作未完成" body="{{error}}"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="账号操作已记录" body="{{message}}"/>
+    <figma-feedback wx:if="{{!enabled}}" type="closed" title="邮件通道尚未配置" body="当前不能发送验证或找回邮件，请联系主办方核对账号。"/>
+
+    <view class="figma-section"><view class="figma-section__title">本人邮箱</view><view class="figma-field-group"><view class="figma-field-label">注册邮箱 *</view><input class="figma-field-control" data-field="email" value="{{email}}" bindinput="input" disabled="{{busy}}" maxlength="254" placeholder="请输入注册时使用的邮箱"/></view><view class="figma-field-group"><view class="figma-field-label">操作用途</view><view class="figma-field-control recovery-readonly">重置密码</view></view><view class="figma-caption">新申请会使同用途旧码失效；邮件受理不代表已经送达。</view><button wx:if="{{signedIn}}" class="figma-action figma-action--ghost" data-kind="verify" bindtap="request" disabled="{{busy || !enabled || verified}}">{{verified ? '当前邮箱已验证' : '验证当前账号邮箱'}}</button></view>
+
+    <view class="figma-section"><view class="figma-section__title">使用邮件操作码</view><view class="figma-field-group"><view class="figma-field-label">操作码 *</view><input class="figma-field-control" data-field="token" value="{{token}}" bindinput="input" disabled="{{busy}}" maxlength="43" placeholder="输入邮件中的操作码"/></view><view class="figma-field-group"><view class="figma-field-label">新密码</view><view class="recovery-password"><input class="figma-field-control" data-field="newPassword" value="{{newPassword}}" bindinput="input" disabled="{{busy || pending}}" password maxlength="128" placeholder="仅在重置密码时填写"/><view class="figma-status">隐藏输入</view></view></view><button wx:if="{{activeMode === 'consume' && !pending}}" class="figma-action figma-action--orange" bindtap="consume" disabled="{{busy || !enabled}}">确认本次账号操作</button><block wx:if="{{activeMode === 'consume' && pending}}"><figma-feedback type="warning" title="原请求结果待核对" body="未知结果保留原编号；重新粘贴操作码核对，避免重复请求。"/><button class="figma-action figma-action--navy" data-kind="receipt" bindtap="resolve" disabled="{{busy}}">用操作码核对原请求结果</button><button class="figma-action figma-action--ghost" data-kind="cancel" bindtap="resolve" disabled="{{busy}}">明确取消原请求</button></block></view>
+
+    <view class="figma-section"><view class="figma-section__title">处理进度</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">申请邮件</view><view class="figma-row__subtitle">查看收件箱与垃圾邮件</view></view><view class="figma-status {{requestStatus === 'accepted' ? 'figma-status--green' : ''}}">{{requestStatus === 'accepted' ? '已申请' : '待申请'}}</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">核对原申请</view><view class="figma-row__subtitle">上次结果不明时查询回执</view></view><view class="figma-status {{receiptStatus === 'complete' ? 'figma-status--green' : 'figma-status--orange'}}">{{receiptStatus === 'complete' ? '已完成' : receiptStatus === 'cancelled' ? '已取消' : receiptStatus === 'pending' || pending ? '待核对' : '未开始'}}</view></view></view>
   </view>
-  <view class="card"><view class="subtitle">使用邮件中的操作码</view>
-    <view class="field-label">操作码</view><input class="field" data-field="token" value="{{token}}" bindinput="input" disabled="{{busy}}" maxlength="43"/>
-    <view class="field-label">重置密码填写新密码；验证邮箱留空</view><input class="field" data-field="newPassword" value="{{newPassword}}" bindinput="input" disabled="{{busy || pending}}" password maxlength="128"/>
-    <button wx:if="{{!pending}}" class="primary" bindtap="consume" disabled="{{busy || !enabled}}">确认本次账号操作</button>
-    <block wx:else><button class="primary" data-kind="receipt" bindtap="resolve" disabled="{{busy}}">用操作码核对原请求结果</button><button class="secondary" data-kind="cancel" bindtap="resolve" disabled="{{busy}}">明确取消原请求</button></block>
-    <view class="small muted">密码和操作码不写入设备恢复记录。关闭页面清除输入；未知结果保留原编号，回来后重新粘贴操作码核对。同一账号新申请的码也可核对或取消原请求。</view>
-  </view>
-  <button class="secondary" bindtap="login">返回账号登录</button>
+  <view class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="login">返回账号登录</button><button wx:if="{{activeMode === 'request'}}" class="figma-action figma-action--orange" data-kind="reset" bindtap="request" disabled="{{busy || !enabled}}">申请重置密码邮件</button><button wx:else class="figma-action figma-action--orange" bindtap="consume" disabled="{{busy || !enabled || pending}}">使用当前操作码</button></view>
 </view>

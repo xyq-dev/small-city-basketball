@@ -1,0 +1,161 @@
+@import "../../styles/figma-pages.wxss";
+
+.bracket-page {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bracket-summary {
+  background: #eaf2fc;
+}
+
+.bracket-tabs {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  padding: 2px 3px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.bracket-tab {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  margin: 0;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: transparent;
+  color: #51657d;
+  font-size: 13px;
+  line-height: 19px;
+  white-space: nowrap;
+}
+
+.bracket-tab.is-active {
+  background: #123c73;
+  color: #fff;
+  font-weight: 700;
+}
+
+.bracket-progress,
+.bracket-audit,
+.bracket-blocker {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff1e2;
+  color: #51657d;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.bracket-progress {
+  background: #fff;
+}
+
+.bracket-section-head,
+.bracket-rank-head {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bracket-rank-card {
+  min-height: 89px !important;
+  background: #eaf2fc !important;
+}
+
+.bracket-rank-team {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bracket-rank-number {
+  color: #123c73;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bracket-draw,
+.bracket-fixture {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e6ebf2;
+}
+
+.bracket-slot {
+  min-height: 55px;
+}
+
+.bracket-slot-icon,
+.bracket-step {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.bracket-step {
+  border-radius: 10px;
+  background: #eaf2fc;
+  color: #123c73;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bracket-place {
+  min-width: 64px;
+  color: #123c73;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bracket-text-action {
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 0;
+  background: transparent;
+  color: #123c73;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: left;
+}
+
+.bracket-picker {
+  display: flex;
+  align-items: center;
+  line-height: 48px;
+}
+
+.bracket-date-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 360px) {
+  .bracket-tab {
+    padding: 0 2px;
+    font-size: 12px;
+  }
+
+  .bracket-date-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

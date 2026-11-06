@@ -3,12 +3,13 @@ const ui = require('../../utils/ui');
 const training = require('../../utils/training');
 Page({
   data: {
-    manageTab: 'cohorts',
+    manageTab: 'teaching',
     organizations: [],
     orgIndex: 0,
     orgId: '',
     workspace: null,
     teaching: [],
+    attendancePreview: [],
     coachProfiles: [],
     roster: null,
     enrollment: null,
@@ -75,7 +76,7 @@ Page({
     this._writeToken = null;
     this.setData({
       workspace: null,
-      manageTab: 'cohorts',
+      manageTab: 'teaching',
       reason: '',
       providerName: '',
       providerEvidence: '',
@@ -103,6 +104,7 @@ Page({
       orgId: '',
       isOperator: false,
       teaching: [],
+      attendancePreview: [],
       coachProfiles: [],
       roster: null,
       enrollment: null,
@@ -380,6 +382,11 @@ Page({
     }
     if (action !== 'PUBLISH') body.reason = this.data.reason;
     return this.send('/v1/training/cohorts/' + x.id + '/commands', body);
+  },
+  openCheckin() {
+    const lesson = (this.data.teaching || [])[0];
+    if (!lesson || this.data.busy) return;
+    this.roster({ currentTarget: { dataset: { id: lesson.id } } });
   },
   roster(e) {
     this.showRoster(e.currentTarget.dataset.id);

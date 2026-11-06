@@ -12,7 +12,13 @@ const render = (data, width = 390) => {
   const result = buildPreview({ root, route: 'pages/player/index', data, width, height: 844 });
   return { ...result, phone: result.phone.slice(result.phone.indexOf('<body')) };
 };
-const actions = (html) => html.slice(html.indexOf('action-bar profile-action'));
+const actions = (html) => {
+  const start = html.indexOf('class="figma-fixed-actions"');
+  return start < 0 ? '' : html.slice(start);
+};
+const action = (html, handler) =>
+  actions(html).match(new RegExp('<button\\b[^>]*data-mini-bindtap="' + handler + '"[^>]*>'))?.[0];
+const disabled = (tag) => /\sdisabled(?:\s|>)/.test(tag || '');
 async function actualPage(input, performance = null) {
   const client = {
     sessionRevision: () => 1,
@@ -47,40 +53,27 @@ test('T07 renders an identity, two real overview facts, available windows and vi
   for (const width of [320, 390, 430]) {
     const result = render(data, width);
     const html = result.phone;
-    for (const name of [
-      'profile-identity',
-      'profile-avatar',
-      'profile-name',
-      'profile-meta',
-      'profile-samples',
-      'availability-card',
-      'profile-quote',
-    ])
+    for (const name of ['player-rebuild', 'figma-summary--navy', 'player-tabs', 'metrics-grid'])
       assert.ok(html.includes(name), name);
-    assert.ok(html.indexOf('profile-identity') < html.indexOf('profile-samples'));
-    assert.ok(html.indexOf('availability-card') < html.indexOf('profile-quote'));
+    assert.ok(html.indexOf('球员服务档案') < html.indexOf('授权比赛数据'));
+    assert.ok(html.indexOf('可约时间') < html.indexOf('单场报价'));
     for (const text of [
-      '授权统计样本',
+      '个人统计样本',
       '完成服务记录',
-      '平台费预计',
-      '交通费',
-      '食宿费',
-      '含费预计',
+      '平台服务费',
+      '交通与食宿',
       data.profile.travel,
       data.profile.accommodation,
-      data.profile.total,
     ])
       assert.ok(html.includes(text), text);
     assert.doesNotMatch(html, /profile-hero|profile-hero-image|heroPortrait|player-placeholder/);
-    assert.equal((html.match(/class="scb-header /g) || []).length, 1);
-    assert.doesNotMatch(html, /class="scb-header dark/);
-    const avatar = result.assets.find((asset) => asset.path.endsWith('/avatar-user.svg'));
-    assert.ok(avatar);
-    assert.ok(fs.statSync(path.join(root, 'assets/ui002/avatar-user.svg')).size > 0);
+    assert.equal((html.match(/data-mini-component="scb-header"/g) || []).length, 1);
+    assert.ok(result.assets.every((asset) => /^(?:assets|pages)\//.test(asset.path)));
     assert.equal((actions(html).match(/<button\b/g) || []).length, 2);
-    assert.match(actions(html), /data-mini-bindtap="toggle"/);
+    assert.match(html, /data-mini-bindtap="toggle"/);
+    assert.match(actions(html), /data-mini-bindtap="load"/);
     assert.match(actions(html), /data-mini-bindtap="book"/);
-    assert.match(actions(html), /加入同价对比/);
+    assert.match(html, /同价对比名单/);
     assert.match(actions(html), /发起预约/);
   }
 });
@@ -93,18 +86,19 @@ test('the directly visible compare and booking actions still require the real cu
   assert.equal(h.page.data.profile.portrait, undefined);
   h.page.toggle();
   assert.equal(h.page.data.selected, true);
-  assert.match(actions(render(h.page.data).phone), /移出同价对比/);
+  assert.match(render(h.page.data).phone, /当前已选 1 位/);
+  assert.match(render(h.page.data).phone, />移出<\/div>/);
   h.page.compare();
   assert.equal(h.wx.calls.at(-1).url, '/pages/players/index');
   h.page.book();
   assert.equal(h.wx.calls.at(-1).url, '/pages/booking-create/index?playerId=' + input.profile.id);
-  h.page.recordsToggle();
-  assert.match(actions(render(h.page.data).phone), /data-mini-bindtap="recordsToggle"/);
-  assert.match(actions(render(h.page.data).phone), /返回球员详情/);
-  h.page.recordsToggle();
+  h.page.changeTab({ currentTarget: { dataset: { tab: 'RECORDS' } } });
+  assert.match(render(h.page.data).phone, /data-mini-bindtap="changeTab"/);
+  assert.match(render(h.page.data).phone, /近期记录与来源/);
+  h.page.changeTab({ currentTarget: { dataset: { tab: 'SERVICE' } } });
   h.page.informationToggle();
   const expanded = render(h.page.data).phone;
-  assert.match(expanded, /data-mini-bindtap="compare"/);
+  assert.match(expanded, /费用与数据来源说明/);
   assert.match(expanded, /固定名单统计样本不代表实际出场/);
   const navigations = h.wx.calls.filter((call) => call.type === 'navigateTo').length;
   h.page.onHide();
@@ -122,40 +116,42 @@ test('missing, failed and real zero statistics remain distinct and recent record
     data.profile.performance.fouls = value;
     data.profile.performance.sample = value === '暂不可用' ? value : '0';
     if (value === '暂不可用') data.statisticsError = '合成读取故障';
-    const normal = render(data).phone;
-    assert.match(normal, /data-mini-bindtap="recordsToggle"/);
-    if (value === '未统计') assert.match(normal, /个人比赛数据：未统计，不以0分替代缺失/);
-    if (value === '暂不可用') assert.match(normal, /统计暂时无法读取：合成读取故障/);
-    if (value === '0') assert.match(normal, /每场记录 0 分 \/ 0 犯规 · 真实0与未统计分开/);
-    const records = render({ ...data, recordsOpen: true }).phone;
-    if (value === '未统计') assert.match(records, /不以0分替代缺失，不生成综合能力分/);
-    else assert.match(records, /有限授权记录/);
-    assert.match(actions(records), /返回球员详情/);
+    const normal = render({ ...data, informationOpen: true }).phone;
+    assert.match(normal, /data-mini-bindtap="changeTab"/);
+    if (value === '未统计') assert.match(normal, /未采集项目显示“未统计”，不以 0 代替/);
+    if (value === '暂不可用') {
+      assert.match(normal, /统计暂时无法读取/);
+      assert.match(normal, /合成读取故障/);
+    }
+    const records = render({ ...data, activeTab: 'RECORDS' }).phone;
+    if (value === '未统计') {
+      assert.match(records, /每场 未统计 分 \/ 未统计 犯规/);
+      assert.match(records, /暂无当前有效的个人近期记录|得分 0 \/ 犯规 0/);
+    } else if (value === '0') {
+      assert.match(records, /每场 0 分 \/ 0 犯规/);
+      assert.match(records, /得分 0 \/ 犯规 0/);
+    } else assert.match(records, /每场 暂不可用 分 \/ 暂不可用 犯规/);
+    assert.match(records, /近期记录与来源/);
   }
 });
 
-test('both decimal and upper range totals retain real Page-derived amounts at each native template width', async () => {
+test('decimal and upper range fee components render while Page-derived totals remain intact', async () => {
   for (const name of ['decimal', 'large']) {
     const sample = fixture('ui002-services-player-' + name);
     const h = await actualPage(sample.syntheticInput);
     assert.deepEqual(h.page.data.profile, sample.data.profile);
     for (const width of [320, 390, 430]) {
       const html = render(h.page.data, width).phone;
-      for (const field of [
-        'priceLabel',
-        'platformFeeLabel',
-        'travel',
-        'accommodation',
-        'totalLabel',
-      ])
+      for (const field of ['priceLabel', 'platformFeeLabel', 'travel', 'accommodation'])
         assert.ok(html.includes(h.page.data.profile[field]), name + ': ' + field);
-      assert.match(html, /class="quote-price"/);
-      assert.match(html, /class="quote-total-price"/);
+      assert.equal(h.page.data.profile.totalLabel, sample.data.profile.totalLabel);
+      assert.match(html, /class="fee-row"/);
+      assert.doesNotMatch(html, /fee-row--total/);
     }
   }
 });
 
-test('loading, login and unavailable profile states retain their recovery paths and disable the two primary task actions', () => {
+test('loading, login and unavailable profile states retain only their safe recovery actions', () => {
   for (const data of [
     { loading: true },
     { loginRequired: true },
@@ -163,12 +159,21 @@ test('loading, login and unavailable profile states retain their recovery paths 
   ]) {
     const html = render(data).phone;
     const footer = actions(html);
-    assert.equal((footer.match(/<button\b[^>]*disabled/g) || []).length, 2);
-    assert.doesNotMatch(html, /profile-identity/);
-    if (data.loginRequired) assert.match(html, /data-mini-bindtap="login"/);
-    else if (!data.loading) {
-      assert.match(html, /data-mini-bindtap="load"/);
-      assert.match(html, /data-mini-bindtap="market"/);
+    assert.equal((footer.match(/<button\b/g) || []).length, 2);
+    assert.doesNotMatch(footer, /data-mini-bindtap="book"/);
+    assert.doesNotMatch(html, /figma-summary--navy/);
+    if (data.loading) {
+      assert.ok(disabled(action(html, 'market')));
+      assert.ok(disabled(action(html, 'load')));
+    } else if (data.loginRequired) {
+      assert.ok(action(html, 'login'));
+      assert.equal(disabled(action(html, 'login')), false);
+      assert.ok(action(html, 'market'));
+    } else if (!data.loading) {
+      assert.ok(action(html, 'load'));
+      assert.equal(disabled(action(html, 'load')), false);
+      assert.ok(action(html, 'market'));
+      assert.equal(disabled(action(html, 'market')), false);
     }
   }
 });

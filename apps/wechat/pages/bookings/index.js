@@ -206,6 +206,11 @@ Page({
     this.setData({ statusIndex: index, status: STATUS_VALUES[index] });
     this.render();
   },
+  openCurrent() {
+    const row = (this.data.rows || [])[0];
+    if (!row || this.data.loading) return;
+    this.detail({ currentTarget: { dataset: { id: row.id } } });
+  },
   detail(event) {
     if (!this.loadedToken || !ui.live(this, this.loadedToken)) return;
     const id = event.currentTarget.dataset.id;

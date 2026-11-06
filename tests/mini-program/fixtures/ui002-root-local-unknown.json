@@ -1,10 +1,10 @@
 {
-  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "designSource": "UI006 36:54 local implementation plus retained command-result semantics; synthetic data, not real provider acceptance",
   "static": true,
   "name": "ui002-root-local-unknown",
   "route": "pages/local/index",
   "state": "unknown",
-  "figmaNode": "40:1288",
+  "figmaNode": "36:54",
   "data": {
     "selection": {
       "mode": "REGION",
@@ -35,6 +35,5 @@
     "pendingError": "合成原预约结果待核对",
     "busy": false
   },
-  "expectText": ["合成原预约结果待核对", "查询原操作回执", "重试原操作"],
-  "expectDisabled": ["收起查询与扩展服务"]
+  "expectText": ["合成原预约结果待核对", "查询原操作回执", "使用原编号重试"]
 }

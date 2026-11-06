@@ -4,9 +4,11 @@ const registration = require('../../utils/registration');
 Page({
   data: {
     teams: [],
+    primaryTeam: null,
     organizations: [],
     selectedOrg: '',
     orgIndex: 0,
+    teamLocationLabel: '',
     nextCursor: null,
     canCreateTeam: false,
     loading: false,
@@ -36,6 +38,7 @@ Page({
     if (this.data.busy) return;
     this.setData({
       teams: [],
+      primaryTeam: null,
       organizations: [],
       nextCursor: null,
       canCreateTeam: false,
@@ -74,16 +77,19 @@ Page({
     }
     try {
       const result = await registration.createRepository(selected.id).teams();
-      if (ui.live(this, token))
+      if (ui.live(this, token)) {
+        const teams = result.items.map((t) => ({
+          ...t,
+          canRegister: this._contexts.some((c) => c.orgId === t.orgId && c.teamId === t.id),
+        }));
         this.setData({
-          teams: result.items.map((t) => ({
-            ...t,
-            canRegister: this._contexts.some((c) => c.orgId === t.orgId && c.teamId === t.id),
-          })),
+          teams,
+          primaryTeam: teams[0] || null,
           nextCursor: result.nextCursor,
           canCreateTeam: result.canCreateTeam,
           loading: false,
         });
+      }
     } catch (error) {
       if (ui.live(this, token))
         this.setData({ teams: [], loading: false, error: ui.message(error) });

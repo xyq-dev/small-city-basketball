@@ -1,10 +1,10 @@
 {
-  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "designSource": "UI006 36:91 local map state with synthetic API-shaped data, not real map/provider acceptance",
   "static": true,
   "name": "ui002-root-local-map-closed",
   "route": "pages/local/index",
   "state": "closed",
-  "figmaNode": "40:1288",
+  "figmaNode": "36:91",
   "data": {
     "selection": {
       "mode": "REGION",
@@ -26,6 +26,5 @@
     },
     "markers": []
   },
-  "expectText": ["地图区域搜索暂未开放", "暂无符合条件的已审核供给"],
-  "expectAbsentText": ["搜索此区域"]
+  "expectText": ["地图找服务", "当前区域暂无已审核供给", "返回城市列表", "搜索此区域"]
 }

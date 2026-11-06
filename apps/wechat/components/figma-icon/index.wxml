@@ -1,0 +1,1 @@
+<image class="figma-icon" src="/assets/figma/{{name}}{{active ? '-active' : ''}}.svg" mode="aspectFit" style="width:{{size}}px;height:{{size}}px" aria-hidden="true"/>

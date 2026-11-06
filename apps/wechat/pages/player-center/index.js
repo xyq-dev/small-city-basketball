@@ -151,6 +151,7 @@ Page({
       statusText: model.statusLabels[profile.status],
       positionText: ui.position(profile.position),
       priceText: ui.money(profile.priceFen),
+      travelText: ui.money(profile.travelFen) + ' + ' + ui.money(profile.accommodationFen),
       windowCount: profile.availability.length,
     };
   },

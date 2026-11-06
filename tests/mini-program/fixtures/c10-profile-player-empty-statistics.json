@@ -3,7 +3,7 @@
   "route": "pages/player/index",
   "state": "empty",
   "figmaNode": "30:453",
-  "expectText": ["个人比赛数据：未统计", "不以0分替代缺失"],
+  "expectText": ["每场 未统计 分 / 未统计 犯规", "缺少统计不代表能力差"],
   "syntheticData": true,
   "data": {
     "profile": {
@@ -47,6 +47,7 @@
       }
     ],
     "recordsOpen": true,
+    "activeTab": "RECORDS",
     "loading": false,
     "loginRequired": false,
     "error": "",

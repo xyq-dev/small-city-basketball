@@ -327,14 +327,8 @@ test('native conditions require explicit braces and actually hide management and
     busy: false,
     pending: false,
   };
-  assert.doesNotMatch(
-    renderWxml(mediaControls, data),
-    /录像时间校准|独立审核并公开产物|按有效得分生成集锦/,
-  );
-  assert.match(
-    renderWxml(mediaControls, { ...data, canManage: true }),
-    /录像时间校准|独立审核并公开产物/,
-  );
+  assert.doesNotMatch(renderWxml(mediaControls, data), /录像校准|申请转码|生成集锦/);
+  assert.match(renderWxml(mediaControls, { ...data, canManage: true }), /录像校准/);
   h.page.onUnload();
 });
 

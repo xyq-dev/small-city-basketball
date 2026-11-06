@@ -1,0 +1,77 @@
+{
+  "name": "ui006-booking-create-ready",
+  "route": "pages/booking-create/index",
+  "state": "ready",
+  "figmaNode": "36:79",
+  "syntheticData": true,
+  "expectText": ["代表城北篮球队向所选球员发出合作", "时间与地点", "本场参与球员", "陈一鸣", "确定报价", "返回选人", "核对并提交预约"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "ready": true,
+    "loginRequired": false,
+    "error": "",
+    "notice": "",
+    "scope": "SINGLE",
+    "teamName": "城北篮球队",
+    "teamId": "90000000-0000-4000-8000-000000000100",
+    "eventName": "城市篮球邀请赛",
+    "players": [
+      {
+        "id": "90000000-0000-4000-8000-000000000001",
+        "label": "陈一鸣 · 后卫",
+        "name": "陈一鸣",
+        "position": "后卫",
+        "price": "¥200.00",
+        "total": "¥260.00",
+        "selected": true
+      }
+    ],
+    "selectedCount": 1,
+    "slots": [
+      {
+        "label": "城市篮球邀请赛第1场",
+        "venue": "城北体育馆一号场",
+        "profileIds": ["90000000-0000-4000-8000-000000000001"],
+        "conditional": false,
+        "conditionText": "",
+        "reportDate": "2026-11-21",
+        "reportTime": "18:30",
+        "startDate": "2026-11-21",
+        "startTime": "19:00",
+        "endDate": "2026-11-21",
+        "endTime": "21:00",
+        "number": 1,
+        "key": 0,
+        "playerChoices": []
+      }
+    ],
+    "quote": {
+      "service": "¥200",
+      "platform": "¥20",
+      "travel": "¥40",
+      "accommodation": "¥0",
+      "travelAccommodation": "¥40",
+      "confirmed": "¥260",
+      "conditional": "¥0",
+      "count": 1,
+      "fixedCount": 1,
+      "conditionalCount": 0,
+      "fixedPlayerCount": 1,
+      "fixedSlotCount": 1
+    },
+    "review": false,
+    "detailsOpen": false,
+    "editorOpen": false,
+    "consent": false,
+    "pending": false,
+    "invalidRecovery": false,
+    "storageUnavailable": false,
+    "storageReadBlocked": false,
+    "canRequote": false,
+    "success": false,
+    "noTeams": false,
+    "noPlayers": false,
+    "quoteInvalid": false
+  }
+}

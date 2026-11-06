@@ -57,7 +57,7 @@ test('every literal icon name/tone in templates resolves to a local asset', () =
   }
 });
 
-test('UI001 nationwide navigation keeps five destinations with navy selected and exact local vectors', () => {
+test('UI006 nationwide navigation keeps five destinations with exact Figma vectors', () => {
   for (const active of ['Home', 'Events', 'Local', 'Teams', 'Account']) {
     const nav = loadComponent({
       root,
@@ -66,30 +66,33 @@ test('UI001 nationwide navigation keeps five destinations with navy selected and
     });
     assert.deepEqual(
       nav.instance.data.items.map((item) => item.icon),
-      ['home', 'trophy', 'pin', 'users', 'user'],
+      ['home', 'event', 'local', 'teams', 'account'],
     );
   }
-  // The retained video page belongs to Events; the nationwide bar keeps five destinations.
-  const preview = buildPreview({ root, route: 'pages/media/index' });
-  const files = preview.assets.map((asset) => path.basename(asset.path));
-  for (const name of ['home.svg', 'trophy-active.svg', 'pin.svg', 'team.svg', 'profile.svg'])
-    assert.ok(files.includes(name), name);
+  // Each primary route renders the same five destinations and activates only itself.
+  for (const [route, active] of [
+    ['pages/home/index', 'home'],
+    ['pages/watch/index', 'event'],
+    ['pages/local/index', 'local'],
+    ['pages/teams/index', 'teams'],
+    ['pages/account/index', 'account'],
+  ]) {
+    const preview = buildPreview({ root, route });
+    const files = preview.assets.map((asset) => path.basename(asset.path));
+    for (const name of ['home', 'event', 'local', 'teams', 'account']) {
+      const file = name + (name === active ? '-active' : '') + '.svg';
+      assert.ok(files.includes(file), route + ': ' + file);
+    }
+  }
   const html = fs.readFileSync(path.join(root, 'components/navigation/index.wxml'), 'utf8');
-  assert.match(html, /\/assets\/home\/home-active\.svg/);
-  assert.match(html, /\/assets\/home\/profile\.svg/);
+  assert.match(html, /<figma-icon/);
+  assert.match(html, /active=/);
   assert.doesNotMatch(html, /nav-dot/);
 });
 
-test('home entries and positions use the mapped icons; positions keep labels and filters', () => {
+test('rebuilt home entries use mapped Figma icons; positions keep labels and filters', () => {
   const html = fs.readFileSync(path.join(root, 'pages/home/index.wxml'), 'utf8');
-  for (const name of [
-    'icon-trophy.png',
-    'icon-player.png',
-    'icon-team.png',
-    'icon-video.png',
-    'brandmark.svg',
-    'hero.jpg',
-  ])
+  for (const name of ['name="event"', 'name="player"', 'name="teams"', 'name="media"', 'hero.jpg'])
     assert.match(html, new RegExp(name.replace('.', '\\.')));
   assert.match(html, /data-position="\{\{item\.code\}\}"/);
   const h = loadPage({ root, route: 'pages/home/index' });

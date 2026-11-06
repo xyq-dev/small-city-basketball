@@ -119,6 +119,14 @@ Page({
     )
       this.setData({ [k]: e.detail.value, ...(k === 'bulk' ? { preview: null } : {}) });
   },
+  scrollApplications() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#recruitment-applications', duration: 200 });
+  },
+  scrollInvitations() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#recruitment-invitations', duration: 200 });
+  },
   base() {
     return repo.base(this.data.orgId, this.data.eventId);
   },
@@ -284,6 +292,18 @@ Page({
       expectedVersion: d.workspace.publication.version,
       reason: d.reason,
     });
+  },
+  showInvites() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#recruit-invites', duration: 200 });
+  },
+  showDetails() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#recruit-details', duration: 200 });
+  },
+  showApplications() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#recruit-self', duration: 200 });
   },
   apply() {
     const d = this.data;

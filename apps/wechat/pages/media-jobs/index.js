@@ -10,6 +10,8 @@ const blank = {
   expandedJobId: '',
   expandedArtifactId: '',
   calibrationOpen: false,
+  recordingCount: 0,
+  processingCount: 0,
 };
 const status = {
   QUEUED: '排队中',
@@ -29,6 +31,13 @@ Page({
     anchorAt: '',
     offsetMs: '0',
     reason: '已人工核对源PTS与赛事时间',
+    mediaTab: 'recording',
+    hidePreviewNotice: false,
+    hideEmptyMediaState: false,
+    figmaHasRecordingSource: false,
+    figmaShowProcessing: false,
+    hideProcessingIcons: false,
+    figmaDeliverySteps: false,
   },
   onLoad(q = {}) {
     this._alive = true;
@@ -89,6 +98,17 @@ Page({
     if (this.data.busy || this.data.pending || !this.data.canManage) return;
     this.setData({ calibrationOpen: !this.data.calibrationOpen });
   },
+  changeMediaTab(e) {
+    if (this.data.busy) return;
+    const mediaTab = e.currentTarget.dataset.tab;
+    if (['recording', 'jobs', 'artifacts'].includes(mediaTab))
+      this.setData({
+        mediaTab,
+        expandedJobId: '',
+        expandedArtifactId: '',
+        calibrationOpen: false,
+      });
+  },
   async load() {
     if (!this._alive || !this.org || this.data.busy || this.data.loading) return;
     const c = api.getClient(),
@@ -102,16 +122,19 @@ Page({
       if (!ui.live(this, token)) return;
       if (!v || !Array.isArray(v.jobs) || !Array.isArray(v.artifacts))
         throw Error('媒体作业返回无效');
+      const jobs = v.jobs.map((j) => ({
+        ...j,
+        statusText:
+          j.cancelRequested && j.status === 'RUNNING'
+            ? '等待实际处理进程退出'
+            : status[j.status] || j.status,
+        kindText: kinds[j.kind] || j.kind,
+      }));
       this.setData({
         session: stream.session(v.session),
-        jobs: v.jobs.map((j) => ({
-          ...j,
-          statusText:
-            j.cancelRequested && j.status === 'RUNNING'
-              ? '等待实际处理进程退出'
-              : status[j.status] || j.status,
-          kindText: kinds[j.kind] || j.kind,
-        })),
+        jobs,
+        recordingCount: jobs.filter((job) => job.kind === 'RECORDING').length,
+        processingCount: jobs.filter((job) => job.kind !== 'RECORDING').length,
         artifacts: v.artifacts.map((a) => ({
           ...a,
           durationText: (a.durationMs / 1000).toFixed(1) + '秒',

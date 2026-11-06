@@ -3,7 +3,7 @@
   "route": "pages/booking-detail/index",
   "state": "review",
   "figmaNode": "30:1196",
-  "expectText": ["拒绝本场预约", "资格与服务约定"],
+  "expectText": ["拒绝本场预约", "资金以独立交易记录及渠道核验为准"],
   "primary": false,
   "asOf": "2026-10-25T02:00:00.000Z",
   "data": {

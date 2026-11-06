@@ -1,539 +1,134 @@
-<template name="fees">
-  <view class="card">
-    <view class="subtitle">逐项费用快照</view>
-    <view class="quote-row"><text>确定参赛服务费</text><text>{{quote.service}}</text></view>
-    <view class="quote-row"><text>确定平台服务费</text><text>{{quote.platform}}</text></view>
-    <view class="quote-row"><text>交通费</text><text>{{quote.travel}}</text></view>
-    <view class="quote-row"><text>食宿费</text><text>{{quote.accommodation}}</text></view>
-    <view class="quote-row quote-total"
-      ><text>确定报价合计</text><text>{{quote.confirmed}}</text></view
-    >
-    <view wx:if="{{quote.conditionalCount}}" class="quote-row quote-conditional"
-      ><text>条件意向预计 · 另列</text><text>{{quote.conditional}}</text></view
-    >
-    <view class="small muted"
-      >确定{{quote.fixedCount}}项 ·
-      条件意向{{quote.conditionalCount}}项，共{{quote.count}}项球员场次。平台费只按参赛服务费计算；条件意向不占档，不计入确定合计。</view
-    >
+<template name="feeRows">
+  <view class="figma-section">
+    <view class="figma-section__title">确定报价</view>
+    <view class="booking-fee-row"><view><view class="figma-row__title">参赛服务费</view><view class="figma-row__subtitle">{{quote.fixedPlayerCount}}人 × {{quote.fixedSlotCount}}场</view></view><view class="booking-fee-value">{{quote.service}}</view></view>
+    <view class="booking-fee-row"><view><view class="figma-row__title">平台服务费</view><view class="figma-row__subtitle">按本单费率快照</view></view><view class="booking-fee-value">{{quote.platform}}</view></view>
+    <view class="booking-fee-row"><view><view class="figma-row__title">交通与食宿</view><view class="figma-row__subtitle">交通{{quote.travel}}＋食宿{{quote.accommodation}}</view></view><view class="booking-fee-value">{{quote.travelAccommodation}}</view></view>
+    <view class="booking-fee-row booking-fee-row--total"><view><view class="figma-row__title">确定合计</view><view class="figma-row__subtitle">条件意向另列</view></view><view class="booking-fee-value">{{quote.confirmed}}</view></view>
+    <view wx:if="{{quote.conditionalCount}}" class="figma-caption">另有 {{quote.conditionalCount}} 项条件意向预计 {{quote.conditional}}，不占档、不计入确定合计。</view>
   </view>
 </template>
 
-<scb-header title="发起球员邀约" disabled="{{busy || loading}}"/>
-<view class="page has-actions create-page">
-  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
-  <view wx:if="{{notice}}" class="notice">{{notice}}</view>
-  <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在读取当前身份、球队与球员资料…</view><view class="muted">完成读取后再核对本次安排，不自动提交请求。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
-  <view wx:if="{{loginRequired}}" class="card empty">
-    <view class="title">登录后继续预约</view>
-    <view class="muted"
-      >使用现有账号，登录后返回本次球员选择。不能使用新账号重放其他账号的原请求。</view
-    >
-    <button class="primary" bindtap="login">登录已有账号</button>
-    <button class="quiet" bindtap="players">返回球员广场</button>
-  </view>
-  <view wx:elif="{{!ready && !loading}}" class="card empty">
-    <view class="subtitle">暂时无法读取预约资料</view>
-    <button class="secondary" bindtap="load">重新读取</button>
-  </view>
-  <block wx:elif="{{ready}}">
-    <view wx:if="{{storageReadBlocked}}" class="card">
-      <view class="title">暂时无法读取原预约记录</view>
-      <view class="notice warning"
-        >本机记录无法读取，尚不能确认是否已有预约请求。已暂停新建，原记录不会被覆盖，也不会自动重发。</view
-      >
-      <view class="muted">请检查本机存储权限后安全重读；也可以先查看本人预约核对结果。</view>
-    </view>
-    <view wx:elif="{{invalidRecovery}}" class="card">
-      <view class="title">恢复记录损坏，先核对原预约</view>
-      <view class="notice warning"
-        >读取损坏不代表没有建单。已暂停直接创建新请求，避免重复预约。</view
-      >
-      <button class="secondary" bindtap="orders">先查看我的预约</button>
-      <checkbox-group bindchange="recoveryCheck"
-        ><label class="consent"
-          ><checkbox
-            value="checked"
-            checked="{{recoveryChecked}}"
-          />我已核对本人预约，并确认没有需要恢复的原请求</label
-        ></checkbox-group
-      >
-      <view wx:if="{{storageUnavailable}}" class="small error"
-        >本机无法保存或移除恢复标记，请先检查存储权限。</view
-      >
-    </view>
-    <view wx:elif="{{pending}}" class="recovery-view">
-      <view class="hero recovery-hero"><view class="title">{{originalResolvedId ? '原预约已创建' : originalRejected ? '原请求已明确拒绝' : '先核对原请求'}}</view><view class="muted">{{originalResolvedId ? '已核对原操作编号，可查看原预约' : originalRejected ? '已取得明确拒绝回执，核对后再重新填写' : '网络异常不代表预约没有创建'}}</view></view>
-      <view class="card"><view class="subtitle"
-        >{{originalResolvedId ? '原预约已创建' : originalRejected ? '原请求已明确拒绝' :
-        '原预约结果待核对'}}</view
-      >
-      <block wx:if="{{canRecover}}">
-        <view class="subtitle">{{recoveryEventName}}</view>
-        <view class="muted">{{recoveryScope}} · {{recoveryCount}}项球员服务</view>
-        <view class="small">原操作编号</view><view class="recovery-id">{{recoveryCommand}}</view>
-        <view wx:for="{{recoverySlots}}" wx:key="key" class="row">
-          <view>{{item.label}}</view><view class="small muted">{{item.schedule}}</view
-          ><view class="small muted">{{item.venue}}</view>
-        </view>
-        <view wx:if="{{originalRejected}}" class="notice warning"
-          >{{originalRejected}}。先移除已核对的恢复标记，再重新审阅安排和报价。</view
-        >
+<scb-header title="创建预约" disabled="{{busy || loading}}"/>
+<view class="scb-ui-page figma-page booking-create-rebuild">
+  <view class="figma-page__content {{ready ? 'figma-page__content--actions' : ''}}">
+    <figma-feedback wx:if="{{error}}" type="error" title="当前预约需要重新核对" body="{{error}}"/>
+    <figma-feedback wx:if="{{notice}}" type="info" title="操作提示" body="{{notice}}"/>
+    <figma-skeleton wx:if="{{loading}}" rows="4"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="permission" title="登录后继续预约" body="使用现有账号登录后返回本次选择；不会以新账号重放其他账号的请求。" action-label="登录已有账号" bind:action="login"/>
+    <figma-feedback wx:if="{{!ready && !loading && !loginRequired}}" type="error" title="暂时无法读取预约资料" body="请重新读取当前身份、球队和球员资料。" action-label="重新读取" bind:action="load"/>
+
+    <block wx:if="{{ready}}">
+      <block wx:if="{{storageReadBlocked}}">
+        <figma-feedback type="error" title="暂时无法读取原预约记录" body="本机记录无法读取，已暂停新建；原记录不会被覆盖或自动重发。"/>
       </block>
-      <view wx:else class="error"
-        >当前账号已无原球队授权，不能展示或重试原预约。请先核对当前球队权限。</view
-      >
-      </view>
-      <view class="notice warning"><view class="state-label">避免重复预约</view>{{originalResolvedId ? '已找到原预约，先查看记录，避免重复提交。' : originalRejected ? '原请求已明确拒绝。核对并移除原恢复标记后，再重新审阅安排和报价。' : '原请求可能已成功。保留原操作编号及完整安排，核对期间不重新报价、不换编号重复提交。'}}</view>
-      <view wx:if="{{storageUnavailable}}" class="notice warning"
-        >本机恢复资料无法可靠保存或移除；刷新可能丢失核对编号。请先核对原预约，不后台自动重发。</view
-      >
-      <button class="secondary" bindtap="orders">先查看我的预约</button>
-    </view>
-    <view wx:elif="{{success}}" class="card">
-      <view class="hero"
-        ><view class="title">预约已提交</view><view>等待每位球员、每一场分别确认</view></view
-      >
-      <view class="notice">本次只提交合作预约，未发生在线付款。</view>
-      <view class="muted"
-        >固定场次保留20分钟等待接单；条件意向不占档。当前通过主动刷新查看状态，不承诺微信通知已送达。</view
-      >
-    </view>
-    <view wx:elif="{{noTeams}}" class="card empty">
-      <view class="title">需要有效球队授权</view>
-      <view class="muted">请由球队有权管理的领队操作。个人球员可先维护自己的入驻资料。</view>
-      <button class="secondary" bindtap="playerCenter">进入本人球员中心</button>
-      <button class="quiet" bindtap="players">继续浏览球员</button>
-    </view>
-    <view wx:elif="{{noPlayers}}" class="card empty">
-      <view class="title">暂无可预约球员</view>
-      <view class="muted"
-        >仅展示当前已通过入驻资料审核的球员，不能预约本人。接口失败不会切换到合成数据。</view
-      >
-      <button class="secondary" bindtap="load">重新读取资料</button>
-    </view>
-    <block wx:else>
-      <view wx:if="{{storageUnavailable}}" class="notice warning"
-        >本机无法保存恢复编号。提交后请先完成原请求核对，再关闭或刷新页面；这里不提供离线提交。</view
-      >
-      <view wx:if="{{canRequote}}" class="notice warning"
-        >原请求已经明确拒绝。请主动读取最新资料并重新核对全部费用。</view
-      >
-      <view wx:if="{{quoteInvalid}}" class="notice danger"
-        >所选球员已不在当前可约资料中。请重新选择，不能沿用失效报价。</view
-      >
-        <view class="scope-picker">
-          <scroll-view scroll-x="true" enable-flex="true" class="scope-rail">
-            <view class="scope-grid"><button
-              wx:for="{{scopeOptions}}"
-              wx:key="value"
-              class="scope-option scope-{{item.value}} {{scope === item.value ? 'active' : ''}}"
-              data-scope="{{item.value}}"
-              bindtap="changeScope"
-              disabled="{{busy || review}}"
-            >{{item.value === 'SINGLE' ? '单场' : item.value === 'MULTI' ? '自选多场' : item.value === 'TOURNAMENT' ? '整届' : item.value === 'SEASON' ? '赛季' : '按时段'}}</button></view>
-          </scroll-view>
-          <view wx:if="{{editorOpen}}" class="small muted scope-caption">{{scopeOptions[scopeIndex].hint}} · 长期合作仍需逐场确认，不自动续费。</view>
-        </view>
-      <block wx:if="{{!review}}">
-        <view class="booking-form">
-          <button class="booking-field" bindtap="openEditor" disabled="{{busy}}">
-            <text class="booking-field-label">代表球队</text>
-            <text class="booking-field-value">{{teamName || '请选择授权球队'}}{{eventName ? ' · ' + eventName : ''}}</text>
-          </button>
-          <button class="booking-field" bindtap="openEditor" disabled="{{busy}}">
-            <text class="booking-field-label">时间与地点</text>
-            <text wx:if="{{slots.length && slots[0].venue}}" class="booking-field-value">{{slots.length > 1 ? '共' + slots.length + '场 · ' : ''}}{{slots[0].conditional ? '条件意向 · 不占档' : (slots[0].dayLabel ? slots[0].dayLabel + ' ' + slots[0].scheduleLabel : slots[0].startDate + ' ' + slots[0].startTime)}}｜{{slots[0].venue}}</text>
-            <text wx:else class="booking-field-value">请补齐本次合作的时间与具体地点</text>
-          </button>
-        </view>
-        <block wx:if="{{editorOpen}}">
-        <view class="card booking-context">
-          <view class="subtitle">赛事与球员</view>
-          <view wx:if="{{selectedCount && eventName && teamId}}" class="context-summary">
-            <view class="context-event">{{eventName}}</view>
-            <view class="muted">{{teamName}} · 已选{{selectedCount}}位球员</view>
-            <block wx:for="{{players}}" wx:for-item="player" wx:key="id"><view wx:if="{{player.selected}}" class="small muted">{{player.label}}</view></block>
-            <button class="secondary context-toggle" bindtap="toggleDetails" disabled="{{busy}}">{{detailsOpen ? '收起球队与球员' : '修改球队与球员'}}</button>
-          </view>
-          <block wx:if="{{detailsOpen || !selectedCount || !eventName || !teamId}}">
-          <view class="field-label">代表球队</view
-          ><picker
-            class="field"
-            range="{{teams}}"
-            range-key="name"
-            value="{{teamIndex}}"
-            bindchange="teamPick"
-            disabled="{{busy}}"
-            ><view>{{teamName || '请选择授权球队'}}</view></picker
-          >
-          <view class="field-label">关联已有赛事</view
-          ><picker
-            class="field"
-            range="{{events}}"
-            range-key="name"
-            value="{{eventIndex}}"
-            bindchange="eventPick"
-            disabled="{{busy}}"
-            ><view>{{events[eventIndex].name}}</view></picker
-          >
-          <view class="field-label">赛事或合作名称</view
-          ><input
-            class="field"
-            value="{{eventName}}"
-            maxlength="80"
-            placeholder="例如：青锋杯、周末篮球活动"
-            data-field="eventName"
-            bindinput="input"
-            disabled="{{busy || eventId !== ''}}"
-          />
-          <view class="field-help"
-            >预约不自动加入报名名单，资格、保险及赛事规则仍由主办方核验。</view
-          >
-          <view class="field-label">选择球员 · 已选{{selectedCount}}位</view>
-          <checkbox-group bindchange="playerPick"
-            ><label wx:for="{{players}}" wx:for-item="player" wx:key="id" class="player-choice"
-              ><checkbox
-                value="{{player.id}}"
-                checked="{{player.selected}}"
-                disabled="{{busy}}"
-              /><view class="choice-body"
-                ><text class="choice-name">{{player.label}}</text
-                ><view class="small muted">参赛服务费 {{player.price}} / 场</view
-                ><view class="small">含当前平台费与交通食宿预计 {{player.total}}</view></view
-              ></label
-            ></checkbox-group
-          >
-          <view class="small muted"
-            >当前只读取最新200份可约档案。最多3人只限制数据对比，预约可选择多位球员。</view
-          >
-          </block>
-        </view>
-        <view wx:if="{{scope === 'SEASON'}}" class="card">
-          <view class="subtitle">赛季合作周期</view>
-          <view class="datetime-grid"
-            ><picker
-              mode="date"
-              class="field"
-              value="{{periodStart}}"
-              data-field="periodStart"
-              bindchange="input"
-              disabled="{{busy}}"
-              ><view>{{periodStart}}</view></picker
-            ><picker
-              mode="date"
-              class="field"
-              value="{{periodEnd}}"
-              data-field="periodEnd"
-              bindchange="input"
-              disabled="{{busy}}"
-              ><view>{{periodEnd}}</view></picker
-            ></view
-          >
-          <view class="small muted"
-            >周期内仍逐场约定；未确定场次只能记录条件意向，不保证未来到场。</view
-          >
-        </view>
-        <view class="card arrangement-card">
-          <view class="subtitle">{{scope === 'SINGLE' ? '比赛安排' : scope === 'TIME_BLOCK' ? '服务安排' : '逐场安排'}}</view>
-          <view class="small muted"
-            >全部为北京时间。报到≤开始&lt;结束；单项服务最多12小时，场后留30分钟交通缓冲。</view
-          >
-          <block wx:if="{{matchChoices.length > 1}}"
-            ><view class="field-label">从本队正式赛程添加</view
-            ><picker
-              class="field"
-              range="{{matchChoices}}"
-              range-key="label"
-              value="{{matchIndex}}"
-              bindchange="matchPick"
-              disabled="{{busy}}"
-              ><view>选择本队正式比赛</view></picker
-            ></block
-          >
-          <view
-            wx:for="{{slots}}"
-            wx:for-item="slot"
-            wx:for-index="slotIndex"
-            wx:key="key"
-            class="slot-editor"
-          >
-            <view class="slot-head"
-              ><text class="subtitle">场次 {{slot.number}}</text
-              ><button
-                wx:if="{{slots.length > 1}}"
-                class="quiet small"
-                data-index="{{slotIndex}}"
-                bindtap="removeSlot"
-                disabled="{{busy}}"
-              >
-                删除本场
-              </button></view
-            >
-            <view
-              wx:if="{{scope !== 'SINGLE' && scope !== 'TIME_BLOCK'}}"
-              class="conditional-toggle"
-              ><text>待晋级 / 条件意向</text
-              ><switch
-                checked="{{slot.conditional}}"
-                data-index="{{slotIndex}}"
-                bindchange="conditional"
-                disabled="{{busy}}"
-                color="#132c49"
-            /></view>
-            <view class="field-label"
-              >{{scope === 'TIME_BLOCK' ? '服务范围与活动名称' : '场次名称'}}</view
-            ><input
-              class="field"
-              value="{{slot.label}}"
-              maxlength="80"
-              data-index="{{slotIndex}}"
-              data-field="label"
-              bindinput="slotInput"
-              placeholder="明确本场或本时段的服务内容"
-              disabled="{{busy}}"
-            />
-            <view class="field-label">比赛或服务地点</view
-            ><input
-              class="field"
-              value="{{slot.venue}}"
-              maxlength="120"
-              data-index="{{slotIndex}}"
-              data-field="venue"
-              bindinput="slotInput"
-              placeholder="球场名称与具体地点；意向可注明待确认"
-              disabled="{{busy}}"
-            />
-            <view wx:if="{{slot.conditional}}"
-              ><view class="field-label">触发条件</view
-              ><textarea
-                class="field"
-                value="{{slot.conditionText}}"
-                maxlength="200"
-                data-index="{{slotIndex}}"
-                data-field="conditionText"
-                bindinput="slotInput"
-                placeholder="例如：本队晋级后补齐半决赛实际安排"
-                disabled="{{busy}}"
-              /><view class="small muted"
-                >不预占具体档期。条件满足后补齐安排，沿用原单费用快照，并由球员重新接单。</view
-              ></view
-            >
-            <block wx:else>
-              <view class="field-label">报到日期与时间</view
-              ><view class="datetime-grid"
-                ><picker
-                  mode="date"
-                  class="field"
-                  value="{{slot.reportDate}}"
-                  data-index="{{slotIndex}}"
-                  data-field="reportDate"
-                  bindchange="slotInput"
-                  disabled="{{busy}}"
-                  ><view>{{slot.reportDate}}</view></picker
-                ><picker
-                  mode="time"
-                  class="field"
-                  value="{{slot.reportTime}}"
-                  data-index="{{slotIndex}}"
-                  data-field="reportTime"
-                  bindchange="slotInput"
-                  disabled="{{busy}}"
-                  ><view>{{slot.reportTime}}</view></picker
-                ></view
-              >
-              <view class="field-label">{{scope === 'TIME_BLOCK' ? '服务开始' : '比赛开始'}}</view
-              ><view class="datetime-grid"
-                ><picker
-                  mode="date"
-                  class="field"
-                  value="{{slot.startDate}}"
-                  data-index="{{slotIndex}}"
-                  data-field="startDate"
-                  bindchange="slotInput"
-                  disabled="{{busy}}"
-                  ><view>{{slot.startDate}}</view></picker
-                ><picker
-                  mode="time"
-                  class="field"
-                  value="{{slot.startTime}}"
-                  data-index="{{slotIndex}}"
-                  data-field="startTime"
-                  bindchange="slotInput"
-                  disabled="{{busy}}"
-                  ><view>{{slot.startTime}}</view></picker
-                ></view
-              >
-              <view class="field-label">{{scope === 'TIME_BLOCK' ? '服务结束' : '比赛结束'}}</view
-              ><view class="datetime-grid"
-                ><picker
-                  mode="date"
-                  class="field"
-                  value="{{slot.endDate}}"
-                  data-index="{{slotIndex}}"
-                  data-field="endDate"
-                  bindchange="slotInput"
-                  disabled="{{busy}}"
-                  ><view>{{slot.endDate}}</view></picker
-                ><picker
-                  mode="time"
-                  class="field"
-                  value="{{slot.endTime}}"
-                  data-index="{{slotIndex}}"
-                  data-field="endTime"
-                  bindchange="slotInput"
-                  disabled="{{busy}}"
-                  ><view>{{slot.endTime}}</view></picker
-                ></view
-              >
-            </block>
-            <view wx:if="{{slot.matchId}}" class="small muted"
-              >已关联本队正式比赛。手工更改时间地点会解除该关联，提交时仍须重新核验。</view
-            >
-            <view class="field-label">本场参与球员</view
-            ><checkbox-group data-index="{{slotIndex}}" bindchange="slotPlayers"
-              ><label
-                wx:for="{{slot.playerChoices}}"
-                wx:for-item="choice"
-                wx:key="id"
-                class="slot-choice"
-                ><checkbox
-                  value="{{choice.id}}"
-                  checked="{{choice.selected}}"
-                  disabled="{{busy}}"
-                /><text>{{choice.label}}</text></label
-              ></checkbox-group
-            >
-            <view wx:if="{{!slot.playerChoices.length}}" class="small muted"
-              >先在上方选择本次合作球员。</view
-            >
-          </view>
-          <button
-            wx:if="{{scope !== 'SINGLE' && scope !== 'TIME_BLOCK'}}"
-            class="secondary"
-            bindtap="addSlot"
-            disabled="{{busy}}"
-          >
-            添加一场安排
-          </button>
-        </view>
-        <button class="secondary close-editor" bindtap="closeEditor" disabled="{{busy}}">收起详细安排</button>
-        </block>
-        <view class="card booking-quote">
-          <view class="subtitle">确定场次报价</view>
-          <view class="quote-summary-copy"><view>参赛费 <text class="money-atom">{{quote.service}}</text> · 平台费 <text class="money-atom">{{quote.platform}}</text></view><view>交通 <text class="money-atom">{{quote.travel}}</text> · 食宿 <text class="money-atom">{{quote.accommodation}}</text> · 合计 <text class="money-atom">{{quote.confirmed}}</text></view></view>
-          <view wx:if="{{quote.conditionalCount}}" class="small muted">另有{{quote.conditionalCount}}项条件意向 <text class="money-atom">{{quote.conditional}}</text>，不占档、不计入确定合计。</view>
-        </view>
-        <view class="confirmation-preview">
-          <view class="confirmation-check"><checkbox disabled="{{true}}" checked="{{false}}"/></view>
-          <view>完成费用与条款核对后，再明确确认本次邀约。</view>
-        </view>
-        <view class="notice small">每位球员、每一场分别接单；仅提交预约，付款结果以原资金订单核实为准。</view>
+
+      <block wx:elif="{{invalidRecovery}}">
+        <figma-feedback type="error" title="恢复记录损坏" body="读取损坏不代表没有建单。先核对本人预约，避免重复预约。" action-label="查看我的预约" bind:action="orders"/>
+        <view class="figma-section"><checkbox-group bindchange="recoveryCheck"><label class="figma-check"><checkbox value="checked" checked="{{recoveryChecked}}"/>我已核对本人预约，并确认没有需要恢复的原请求</label></checkbox-group><view wx:if="{{storageUnavailable}}" class="form-error">本机无法保存或移除恢复标记，请先检查存储权限。</view></view>
       </block>
+
+      <block wx:elif="{{pending}}">
+        <view class="figma-summary pending-summary"><view class="figma-summary__copy"><view class="figma-eyebrow">提交结果待核对</view><view class="figma-title">{{originalResolvedId ? '原预约已创建' : originalRejected ? '原请求已明确拒绝' : '先核对原请求'}}</view><view class="figma-subtitle">{{originalResolvedId ? '已核对原操作编号，可查看原预约。' : originalRejected ? '取得明确拒绝回执后再重新填写。' : '网络异常不代表预约没有创建。'}}</view></view></view>
+        <view class="figma-section"><view class="figma-section__title">原操作回执</view><view wx:if="{{canRecover}}" class="recovery-copy"><view class="figma-row__title">{{recoveryEventName}}</view><view class="figma-caption">{{recoveryScope}} · {{recoveryCount}} 项球员服务</view><view class="command-id">{{recoveryCommand}}</view><view wx:for="{{recoverySlots}}" wx:key="key" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.label}}</view><view class="figma-row__subtitle">{{item.schedule}} · {{item.venue}}</view></view></view></view><view wx:else class="form-error">当前账号已无原球队授权，不能展示或重试原预约。</view></view>
+        <figma-feedback type="info" title="避免重复预约" body="核对期间不重新报价、不换编号重复提交，也不自动后台重发。"/>
+      </block>
+
+      <block wx:elif="{{success}}">
+        <view class="figma-summary figma-summary--navy"><view class="figma-summary__copy"><view class="figma-eyebrow">提交完成</view><view class="figma-title">预约已提交</view><view class="figma-subtitle">等待每位球员、每一场分别确认；本次未发生在线付款。</view></view></view>
+        <figma-feedback type="info" title="后续处理" body="固定场次保留 20 分钟等待接单；条件意向不占档，状态需主动刷新查看。"/>
+      </block>
+
+      <block wx:elif="{{noTeams}}"><figma-feedback type="permission" title="需要有效球队授权" body="请由有权管理球队的领队操作；个人球员可先维护本人资料。" action-label="进入本人球员中心" bind:action="playerCenter"/></block>
+      <block wx:elif="{{noPlayers}}"><figma-feedback type="empty" title="暂无可预约球员" body="仅展示当前通过入驻资料审核的球员，接口失败不会切换到合成数据。" action-label="重新读取" bind:action="load"/></block>
+
       <block wx:else>
-        <view class="booking-form review-fields">
-          <view class="booking-field"><view class="booking-field-label">代表球队</view><view class="booking-field-value">{{teamName}} · {{eventName}}</view></view>
-          <view class="booking-field"><view class="booking-field-label">时间与地点</view><view class="booking-field-value">{{slots.length > 1 ? '共' + slots.length + '场 · ' : ''}}{{slots[0].conditional ? '条件意向 · 不占档' : slots[0].dayLabel + ' ' + slots[0].scheduleLabel}}｜{{slots[0].venue}}</view></view>
+        <figma-feedback wx:if="{{storageUnavailable}}" type="info" title="本机无法保存恢复编号" body="提交后请先核对原请求，再关闭或刷新页面；这里不提供离线提交。"/>
+        <figma-feedback wx:if="{{canRequote}}" type="info" title="原请求已明确拒绝" body="主动读取最新资料并重新核对全部费用。"/>
+        <figma-feedback wx:if="{{quoteInvalid}}" type="error" title="当前报价已失效" body="所选球员不在当前可约资料中，请重新选择。"/>
+
+        <view class="figma-summary">
+          <view class="figma-summary__icon"><figma-icon name="booking" size="28"/></view>
+          <view class="figma-summary__copy"><view class="figma-eyebrow">球队领队</view><view class="figma-title">创建预约</view><view class="figma-subtitle">代表{{teamName || '有权管理的球队'}}向所选球员发出合作。</view></view>
         </view>
-        <template is="fees" data="{{quote: quote}}" /><view wx:if="{{feePreview.enabled}}" class="card"><view class="subtitle">服务器实际收费条款</view><view>实际收款方：{{feePreview.merchantName}}</view><view wx:for="{{feePreview.quotes}}" wx:key="profileId">每场固定金额 {{item.totalText}} · {{item.profileId}}</view><view>{{feePreview.terms}}</view></view><view wx:elif="{{feePreview}}" class="notice">当前机构未启用在线收费；此次创建不绑定收费，后续不追溯收取。</view>
-        <view wx:for="{{slots}}" wx:for-item="slot" wx:key="key" class="card review-slot"
-            ><view class="subtitle">{{slot.label}}</view
-            ><view wx:if="{{slot.conditional}}" class="notice warning"
-              >条件意向：{{slot.conditionText}} · 不占档</view
-            ><view wx:else class="muted"
-              ><view>报到 {{slot.reportDate}} {{slot.reportTime}}</view
-              ><view>开始 {{slot.startDate}} {{slot.startTime}}</view
-              ><view>结束 {{slot.endDate}} {{slot.endTime}}</view></view
-            ><view>{{slot.venue}}</view
-            ><block wx:for="{{slot.playerChoices}}" wx:for-item="choice" wx:key="id"
-              ><view wx:if="{{choice.selected}}" class="small muted"
-                >{{choice.label}} · 含费预计{{choice.total}}</view
-              ></block
-            ></view
-        >
 
-        <view class="card confirmation-items"
-          ><view class="subtitle">确认事项</view
-          ><view class="muted">我有权代表所选球队预约。</view
-          ><view class="muted"
-            >已核对参赛资格、保险及赛事报名限制；这些仍属本人声明，不等于平台核验。</view
-          ><view class="muted">已阅读每场时间地点、费用、条件意向和取消规则。</view
-          ></view
-        >
-        <checkbox-group bindchange="consent"
-          ><label class="consent review-consent"
-            ><checkbox
-              value="agree"
-              checked="{{consent}}"
-              disabled="{{busy}}"
-            />我已核对以上事项并明确同意本次预约规则</label
-          ></checkbox-group
-        >
+        <scroll-view scroll-x="true" enable-flex="true" class="scope-scroll">
+          <view class="scope-tabs">
+            <button wx:for="{{scopeOptions}}" wx:key="value" class="scope-tab {{scope === item.value ? 'is-active' : ''}}" data-scope="{{item.value}}" bindtap="changeScope" disabled="{{busy || review}}">{{item.value === 'SINGLE' ? '单场' : item.value === 'MULTI' ? '多场' : item.value === 'TOURNAMENT' ? '整届' : item.value === 'SEASON' ? '赛季' : '时段'}}</button>
+          </view>
+        </scroll-view>
+
+        <block wx:if="{{!review}}">
+          <view class="figma-section">
+            <view class="figma-section__title">时间与地点</view>
+            <view class="booking-display-group"><view class="figma-field-label">代表球队</view><button class="booking-display-control" bindtap="openEditor" disabled="{{busy}}"><view class="booking-display-value">{{teamName || '请选择授权球队'}}</view><view class="figma-status figma-status--orange">{{teamName ? '已授权' : '待选择'}}</view></button></view>
+            <view class="booking-display-group"><view class="figma-field-label">服务地点 *</view><button class="booking-display-control" bindtap="openEditor" disabled="{{busy}}"><view class="booking-display-value">{{slots.length && slots[0].venue ? slots[0].venue : '请补齐具体地点'}}</view></button></view>
+            <view class="booking-display-group"><view class="figma-field-label">报到、开始、结束</view><button class="booking-display-control" bindtap="openEditor" disabled="{{busy}}"><view class="booking-display-value">{{slots.length ? (slots[0].conditional ? '条件意向 · 不占档' : slots[0].reportTime + ' / ' + slots[0].startTime + ' / ' + slots[0].endTime) : '请补齐时间'}}</view><view class="figma-status figma-status--orange">北京时间</view></button></view>
+          </view>
+
+          <block wx:if="{{editorOpen}}">
+            <view class="figma-section">
+              <view class="section-heading"><view class="figma-section__title">赛事与球员</view><button class="section-link" bindtap="toggleDetails" disabled="{{busy}}">{{detailsOpen ? '收起选择' : '修改选择'}}</button></view>
+              <block wx:if="{{detailsOpen || !selectedCount || !eventName || !teamId}}">
+                <view class="figma-field-group"><view class="figma-field-label">代表球队</view><picker range="{{teams}}" range-key="name" value="{{teamIndex}}" bindchange="teamPick" disabled="{{busy}}"><view class="figma-field-control picker-control">{{teamName || '请选择授权球队'}}</view></picker></view>
+                <view class="figma-field-group"><view class="figma-field-label">关联已有赛事</view><picker range="{{events}}" range-key="name" value="{{eventIndex}}" bindchange="eventPick" disabled="{{busy}}"><view class="figma-field-control picker-control">{{events[eventIndex].name}}</view></picker></view>
+                <view class="figma-field-group"><view class="figma-field-label">赛事或合作名称</view><input class="figma-field-control" value="{{eventName}}" maxlength="80" placeholder="例如：青锋杯、周末篮球活动" data-field="eventName" bindinput="input" disabled="{{busy || eventId !== ''}}"/><view class="figma-caption">预约不自动加入报名名单，资格、保险及赛事规则仍由主办方核验。</view></view>
+                <view class="figma-field-label">选择球员 · 已选 {{selectedCount}} 位</view>
+                <checkbox-group bindchange="playerPick"><label wx:for="{{players}}" wx:for-item="player" wx:key="id" class="choice-row"><checkbox value="{{player.id}}" checked="{{player.selected}}" disabled="{{busy}}"/><view class="figma-row__copy"><view class="figma-row__title">{{player.label}}</view><view class="figma-row__subtitle">参赛 {{player.price}} / 场 · 含费预计 {{player.total}}</view></view></label></checkbox-group>
+              </block>
+            </view>
+
+            <view wx:if="{{scope === 'SEASON'}}" class="figma-section"><view class="figma-section__title">赛季合作周期</view><view class="datetime-grid"><picker mode="date" value="{{periodStart}}" data-field="periodStart" bindchange="input" disabled="{{busy}}"><view class="figma-field-control picker-control">{{periodStart}}</view></picker><picker mode="date" value="{{periodEnd}}" data-field="periodEnd" bindchange="input" disabled="{{busy}}"><view class="figma-field-control picker-control">{{periodEnd}}</view></picker></view><view class="figma-caption">周期内仍逐场约定；未确定场次只能记录条件意向。</view></view>
+
+            <view class="figma-section">
+              <view class="figma-section__title">{{scope === 'SINGLE' ? '比赛安排' : scope === 'TIME_BLOCK' ? '服务安排' : '逐场安排'}}</view>
+              <view class="figma-caption">全部为北京时间。报到≤开始&lt;结束；单项服务最多 12 小时，场后留 30 分钟交通缓冲。</view>
+              <view wx:if="{{matchChoices.length > 1}}" class="figma-field-group"><view class="figma-field-label">从本队正式赛程添加</view><picker range="{{matchChoices}}" range-key="label" value="{{matchIndex}}" bindchange="matchPick" disabled="{{busy}}"><view class="figma-field-control picker-control">选择本队正式比赛</view></picker></view>
+              <view wx:for="{{slots}}" wx:for-item="slot" wx:for-index="slotIndex" wx:key="key" class="slot-card">
+                <view class="section-heading"><view class="figma-row__title">场次 {{slot.number}}</view><button wx:if="{{slots.length > 1}}" class="section-link" data-index="{{slotIndex}}" bindtap="removeSlot" disabled="{{busy}}">删除</button></view>
+                <view wx:if="{{scope !== 'SINGLE' && scope !== 'TIME_BLOCK'}}" class="switch-row"><view>待晋级 / 条件意向</view><switch checked="{{slot.conditional}}" data-index="{{slotIndex}}" bindchange="conditional" disabled="{{busy}}" color="#123c73"/></view>
+                <view class="figma-field-group"><view class="figma-field-label">{{scope === 'TIME_BLOCK' ? '服务范围与活动名称' : '场次名称'}}</view><input class="figma-field-control" value="{{slot.label}}" maxlength="80" data-index="{{slotIndex}}" data-field="label" bindinput="slotInput" placeholder="明确本场或本时段的服务内容" disabled="{{busy}}"/></view>
+                <view class="figma-field-group"><view class="figma-field-label">比赛或服务地点</view><input class="figma-field-control" value="{{slot.venue}}" maxlength="120" data-index="{{slotIndex}}" data-field="venue" bindinput="slotInput" placeholder="球场名称与具体地点" disabled="{{busy}}"/></view>
+                <view wx:if="{{slot.conditional}}" class="figma-field-group"><view class="figma-field-label">触发条件</view><textarea class="figma-field-control" value="{{slot.conditionText}}" maxlength="200" data-index="{{slotIndex}}" data-field="conditionText" bindinput="slotInput" placeholder="例如：本队晋级后补齐半决赛实际安排" disabled="{{busy}}"/><view class="figma-caption">条件意向不预占具体档期，满足后由球员重新接单。</view></view>
+                <block wx:else>
+                  <view class="figma-field-label">报到日期与时间</view><view class="datetime-grid"><picker mode="date" value="{{slot.reportDate}}" data-index="{{slotIndex}}" data-field="reportDate" bindchange="slotInput" disabled="{{busy}}"><view class="figma-field-control picker-control">{{slot.reportDate}}</view></picker><picker mode="time" value="{{slot.reportTime}}" data-index="{{slotIndex}}" data-field="reportTime" bindchange="slotInput" disabled="{{busy}}"><view class="figma-field-control picker-control">{{slot.reportTime}}</view></picker></view>
+                  <view class="figma-field-label">开始日期与时间</view><view class="datetime-grid"><picker mode="date" value="{{slot.startDate}}" data-index="{{slotIndex}}" data-field="startDate" bindchange="slotInput" disabled="{{busy}}"><view class="figma-field-control picker-control">{{slot.startDate}}</view></picker><picker mode="time" value="{{slot.startTime}}" data-index="{{slotIndex}}" data-field="startTime" bindchange="slotInput" disabled="{{busy}}"><view class="figma-field-control picker-control">{{slot.startTime}}</view></picker></view>
+                  <view class="figma-field-label">结束日期与时间</view><view class="datetime-grid"><picker mode="date" value="{{slot.endDate}}" data-index="{{slotIndex}}" data-field="endDate" bindchange="slotInput" disabled="{{busy}}"><view class="figma-field-control picker-control">{{slot.endDate}}</view></picker><picker mode="time" value="{{slot.endTime}}" data-index="{{slotIndex}}" data-field="endTime" bindchange="slotInput" disabled="{{busy}}"><view class="figma-field-control picker-control">{{slot.endTime}}</view></picker></view>
+                </block>
+                <view class="figma-field-label">本场参与球员</view><checkbox-group data-index="{{slotIndex}}" bindchange="slotPlayers"><label wx:for="{{slot.playerChoices}}" wx:for-item="choice" wx:key="id" class="choice-row"><checkbox value="{{choice.id}}" checked="{{choice.selected}}" disabled="{{busy}}"/><view class="figma-row__title">{{choice.label}}</view></label></checkbox-group>
+              </view>
+              <button wx:if="{{scope !== 'SINGLE' && scope !== 'TIME_BLOCK'}}" class="figma-action figma-action--ghost" bindtap="addSlot" disabled="{{busy}}">添加一场安排</button>
+              <view class="figma-caption booking-rules-note">每位球员、每一场分别接单；付款结果以原资金订单核实为准。</view>
+              <button class="figma-action figma-action--ghost" bindtap="closeEditor" disabled="{{busy}}">收起详细安排</button>
+            </view>
+          </block>
+
+          <view class="figma-section">
+            <view class="figma-section__title">本场参与球员</view>
+            <block wx:for="{{players}}" wx:for-item="player" wx:key="id"><view wx:if="{{player.selected}}" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{player.name || player.label}}</view><view class="figma-row__subtitle">{{player.position || '位置待补充'}} · {{scope === 'SINGLE' ? '确定场次' : '按逐场安排'}}</view></view><view class="figma-status figma-status--orange">已选</view></view></block>
+            <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">晋级后的场次</view><view class="figma-row__subtitle">另列条件意向，不占档期</view></view><view class="figma-status">可选</view></view>
+          </view>
+          <template is="feeRows" data="{{quote: quote}}"/>
+        </block>
+
+        <block wx:else>
+          <view class="figma-section"><view class="figma-section__title">核对本次安排</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">代表球队</view><view class="figma-row__subtitle">{{teamName}} · {{eventName}}</view></view></view><view wx:for="{{slots}}" wx:for-item="slot" wx:key="key" class="review-slot"><view class="figma-row__title">{{slot.label}}</view><view class="figma-caption">{{slot.conditional ? '条件意向：' + slot.conditionText : '报到 ' + slot.reportDate + ' ' + slot.reportTime + ' · 开始 ' + slot.startDate + ' ' + slot.startTime + ' · 结束 ' + slot.endDate + ' ' + slot.endTime}}</view><view class="figma-caption">{{slot.venue}}</view></view></view>
+          <template is="feeRows" data="{{quote: quote}}"/>
+          <view wx:if="{{feePreview.enabled}}" class="figma-section"><view class="figma-section__title">服务器实际收费条款</view><view class="figma-caption">实际收款方：{{feePreview.merchantName}}</view><view wx:for="{{feePreview.quotes}}" wx:key="profileId" class="figma-row__subtitle">每场固定金额 {{item.totalText}} · {{item.profileId}}</view><view class="figma-caption">{{feePreview.terms}}</view></view>
+          <figma-feedback wx:elif="{{feePreview}}" type="info" title="当前未启用在线收费" body="此次创建不绑定收费，后续不追溯收取。"/>
+          <view class="figma-section"><view class="figma-section__title">确认事项</view><view class="figma-caption">我有权代表所选球队预约；已核对资格、保险、报名限制、逐场安排、费用、条件意向和取消规则。</view><checkbox-group bindchange="consent"><label class="figma-check"><checkbox value="agree" checked="{{consent}}" disabled="{{busy}}"/>我已核对以上事项并明确同意本次预约规则</label></checkbox-group></view>
+        </block>
       </block>
-      <view wx:if="{{review || editorOpen}}" class="booking-boundary small muted"
-        ><view class="boundary-title">当前仅提交合作预约</view
-        ><view
-          >提交不扣款、不自动加入报名名单；收费仅在明确同意服务器条款后绑定。球员接单后查看本场资金订单，渠道核实后才确认付款。</view
-        ></view
-      >
     </block>
-  </block>
-</view>
+  </view>
 
-<view wx:if="{{ready}}" class="action-bar create-actions {{!review && !pending && !success && !storageReadBlocked && !invalidRecovery && !noTeams && !noPlayers ? 'draft-actions' : ''}}">
-  <block wx:if="{{storageReadBlocked}}"
-    ><button class="primary" bindtap="load" disabled="{{busy || loading}}">
-      安全重读原预约记录</button
-    ><button class="quiet" bindtap="orders">先查看我的预约</button></block
-  >
-  <block wx:elif="{{invalidRecovery}}"
-    ><button class="primary" bindtap="acknowledgeInvalid" disabled="{{busy || !recoveryChecked}}">
-      核对后继续重新填写</button
-    ><button class="quiet" bindtap="orders">先查看我的预约</button></block
-  >
-  <block wx:elif="{{pending}}"
-    ><button wx:if="{{originalResolvedId}}" class="primary" bindtap="result" disabled="{{busy}}">
-      查看原预约结果</button
-    ><button
-      wx:else
-      class="primary"
-      bindtap="recover"
-      disabled="{{busy || !canRecover}}"
-      loading="{{busy}}"
-    >
-      {{originalRejected ? '移除已核对标记' : '恢复原请求结果'}}</button
-    ><button
-      wx:if="{{originalResolvedId}}"
-      class="secondary"
-      bindtap="recover"
-      disabled="{{busy || !canRecover}}"
-    >
-      核对后移除恢复标记</button
-    ><button wx:if="{{!originalResolvedId}}" class="quiet" bindtap="orders">
-      查看我的预约
-    </button></block
-  >
-  <block wx:elif="{{success}}"
-    ><button class="primary" bindtap="result">查看预约详情</button
-    ><button class="quiet" bindtap="players">继续找球员</button></block
-  >
-  <block wx:elif="{{noTeams || noPlayers}}"
-    ><button class="primary" bindtap="players">返回球员广场</button></block
-  >
-  <block wx:elif="{{review}}"
-    ><button
-      class="primary"
-      bindtap="submit"
-      disabled="{{busy || !consent || quoteInvalid}}"
-      loading="{{busy}}"
-    >
-      {{consent ? '提交 · ' + quote.confirmed + '确定报价' : '请先核对并勾选声明'}}</button
-    ><button class="quiet" bindtap="edit" disabled="{{busy}}">返回修改安排</button></block
-  >
-  <block wx:else
-    ><button wx:if="{{canRequote}}" class="primary" bindtap="requote" disabled="{{busy}}">
-      读取最新报价并重新核对</button
-    ><button wx:else class="primary" bindtap="review" disabled="{{busy || quoteInvalid}}">
-      下一步 · 核对费用</button
-    ><button wx:if="{{editorOpen}}" class="quiet" bindtap="players" disabled="{{busy}}">继续找球员</button></block
-  >
+  <view wx:if="{{ready}}" class="figma-fixed-actions">
+    <block wx:if="{{storageReadBlocked}}"><button class="figma-action figma-action--ghost" bindtap="orders">查看我的预约</button><button class="figma-action figma-action--orange" bindtap="load" disabled="{{busy || loading}}">安全重读</button></block>
+    <block wx:elif="{{invalidRecovery}}"><button class="figma-action figma-action--ghost" bindtap="orders">查看我的预约</button><button class="figma-action figma-action--orange" bindtap="acknowledgeInvalid" disabled="{{busy || !recoveryChecked}}">核对后继续</button></block>
+    <block wx:elif="{{pending}}"><button class="figma-action figma-action--ghost" bindtap="orders">查看我的预约</button><button wx:if="{{originalResolvedId}}" class="figma-action figma-action--orange" bindtap="result" disabled="{{busy}}">查看原结果</button><button wx:else class="figma-action figma-action--orange" bindtap="recover" disabled="{{busy || !canRecover}}">{{originalRejected ? '移除核对标记' : '核对原请求'}}</button></block>
+    <block wx:elif="{{success}}"><button class="figma-action figma-action--ghost" bindtap="players">继续找球员</button><button class="figma-action figma-action--orange" bindtap="result">查看预约详情</button></block>
+    <block wx:elif="{{noTeams || noPlayers}}"><button class="figma-action figma-action--ghost" bindtap="playerCenter">球员中心</button><button class="figma-action figma-action--orange" bindtap="players">返回球员目录</button></block>
+    <block wx:elif="{{review}}"><button class="figma-action figma-action--ghost" bindtap="edit" disabled="{{busy}}">返回修改</button><button class="figma-action figma-action--orange" bindtap="submit" disabled="{{busy || !consent || quoteInvalid}}">{{busy ? '正在提交…' : '核对并提交预约'}}</button></block>
+    <block wx:else><button class="figma-action figma-action--ghost" bindtap="players" disabled="{{busy}}">返回选人</button><button wx:if="{{canRequote}}" class="figma-action figma-action--orange" bindtap="requote" disabled="{{busy}}">读取最新报价</button><button wx:else class="figma-action figma-action--orange" bindtap="review" disabled="{{busy || quoteInvalid}}">核对并提交预约</button></block>
+  </view>
 </view>

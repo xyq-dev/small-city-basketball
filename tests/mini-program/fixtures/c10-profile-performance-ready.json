@@ -3,7 +3,7 @@
   "route": "pages/performance/index",
   "state": "ready",
   "figmaNode": "30:1938",
-  "expectText": ["合成青锋杯", "核对本人记录并同意", "刷新数据授权"],
+  "expectText": ["合成青锋杯", "核对本人记录并同意", "拒绝授权"],
   "syntheticData": true,
   "data": {
     "authorized": true,
@@ -11,7 +11,7 @@
     "loginRequired": false,
     "ownOnly": true,
     "ownProfileId": "c10-profile-one",
-    "filter": "ALL",
+    "filter": "PENDING",
     "links": [
       {
         "id": "c10-link-one",

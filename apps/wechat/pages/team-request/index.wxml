@@ -1,31 +1,15 @@
-<scb-header title="申请建队" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page c19-page">
-  <view wx:if="{{error}}" class="notice warning" role="alert"><view class="feedback-title">请核对后继续</view><view class="small">{{error}}</view></view>
-  <view wx:if="{{message}}" class="notice">{{message}}</view>
-  <view wx:if="{{loginRequired}}" class="card c19-panel state-panel"><view class="subtitle">登录后申请建队</view><view class="muted">申请以当前登录账号本人提交。</view><button class="primary" bindtap="login">登录</button></view>
-  <view wx:if="{{loading}}" class="card c19-panel state-panel"><view class="subtitle">正在读取申请资料</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
-  <view wx:if="{{pending}}" class="card c19-panel"><view class="badge">结果待核对</view><view class="subtitle">上次提交：{{pending.teamName}}</view><view class="muted">{{pending.orgName}} · 原请求编号已保存在本机，核对不会创建第二份申请。</view><button class="primary" bindtap="recover" disabled="{{busy}}" loading="{{busy}}">核对上次提交</button></view>
-  <view wx:if="{{link && !pending && !loading}}" class="card c19-panel">
-    <view class="subtitle">向 {{link.orgName}} 申请建队</view>
-    <view class="small muted">入口仅显示该机构名称；批准后你将成为新球队的领队，不会获得机构或赛事工作人员身份。</view>
-    <view class="field-label">球队名称</view><input class="field" maxlength="80" value="{{teamName}}" data-field="teamName" bindinput="input" disabled="{{busy}}" placeholder="1–80个字符"/>
-    <view class="field-label">补充说明（可选）</view><textarea class="field" maxlength="500" value="{{note}}" data-field="note" bindinput="input" disabled="{{busy}}" placeholder="例如：球队所在地区、联系人称呼"/>
-    <button class="primary invite-action" bindtap="submit" disabled="{{busy || !teamName}}" loading="{{busy}}">提交申请</button>
+<scb-header title="申请建队" disabled="{{busy || !!pending}}"/>
+<view class="figma-page request-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="registration" size="{{28}}"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">机构申请入口</view><view class="figma-title">申请一支新球队</view><view class="figma-subtitle">当前申请机构 · {{link ? link.orgName : '请从机构入口打开'}}</view></view></view>
+    <figma-feedback wx:if="{{error}}" type="error" title="请核对后继续" body="{{error}}" action-label="重新读取" bind:action="refresh"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="申请状态已更新" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="empty" title="登录后申请建队" body="申请以当前登录账号本人提交。" action-label="登录" bind:action="login"/>
+    <view wx:if="{{loading}}" class="figma-section"><figma-skeleton rows="{{4}}"/></view>
+    <figma-feedback wx:if="{{pending}}" type="pending" title="上次提交结果待核对" body="{{pending.orgName}} · {{pending.teamName}}，原请求编号已保存在本机。" action-label="核对上次提交" bind:action="recover"/>
+    <block wx:if="{{link && !pending && !loading}}"><view class="figma-section"><view class="figma-section__title">球队资料</view><view class="figma-field-group"><view class="figma-field-label">球队名称</view><input class="figma-field-control" maxlength="80" value="{{teamName}}" data-field="teamName" bindinput="input" disabled="{{busy}}" placeholder="填写球队名称"/></view><view class="figma-field-group"><view class="figma-field-label">补充说明（选填）</view><textarea class="figma-field-control request-note" maxlength="500" value="{{note}}" data-field="note" bindinput="input" disabled="{{busy}}" placeholder="写下建队需求"/></view></view><view class="figma-section"><view class="figma-section__title">申请进度</view><view class="process-list"><view><text>1</text><view><view class="figma-row__title">本人提交</view><view class="figma-row__subtitle">以当前账号发起申请</view></view></view><view><text>2</text><view><view class="figma-row__title">机构审核</view><view class="figma-row__subtitle">由获授权人员核对</view></view></view><view><text>3</text><view><view class="figma-row__title">查看结果</view><view class="figma-row__subtitle">通过后管理授权球队</view></view></view></view></view></block>
+    <figma-feedback wx:if="{{!hasLink && !loading && !loginRequired}}" type="empty" title="需要机构申请入口" body="请从机构分享的“申请建队”入口打开；本页不提供机构搜索。"/>
+    <view wx:if="{{!loginRequired}}" class="figma-section"><view class="figma-section__title">我的建队申请</view><figma-feedback wx:if="{{!requests.length && !loading}}" type="empty" title="暂无申请"/><view wx:for="{{requests}}" wx:key="id" class="request-row"><view class="request-head"><view><view class="figma-row__title">{{item.teamName}}</view><view class="figma-row__subtitle">{{item.orgName}} · {{item.created}}</view></view><view class="figma-status">{{item.stateText}}</view></view><view wx:if="{{item.reviewReason}}" class="figma-caption">审核说明：{{item.reviewReason}}</view><view class="request-actions"><button wx:if="{{item.capabilities.canWithdraw}}" class="row-action" data-id="{{item.id}}" bindtap="withdraw" disabled="{{busy}}">撤回申请</button><button wx:if="{{item.teamId}}" class="row-action row-action--primary" data-id="{{item.id}}" bindtap="openTeam" disabled="{{busy}}">管理球队</button></view></view></view>
   </view>
-  <view wx:if="{{!hasLink && !loading && !loginRequired}}" class="notice"><view class="feedback-title">需要机构发来的申请入口</view><view class="small">请向赛事机构索取“申请建队”分享入口后从入口打开；本页不提供机构搜索。</view></view>
-  <view wx:if="{{!loginRequired}}" class="card c19-panel">
-    <view class="subtitle">我的建队申请</view>
-    <view wx:if="{{!requests.length && !loading}}" class="muted">暂无申请。</view>
-    <view wx:for="{{requests}}" wx:key="id" class="item-row">
-      <view class="item-title">{{item.teamName}}</view>
-      <view class="small muted">{{item.orgName}} · {{item.stateText}} · {{item.created}}</view>
-      <view wx:if="{{item.reviewReason}}" class="small">审核说明：{{item.reviewReason}}</view>
-      <view class="row-actions">
-        <button wx:if="{{item.capabilities.canWithdraw}}" class="secondary" data-id="{{item.id}}" bindtap="withdraw" disabled="{{busy}}">撤回申请</button>
-        <button wx:if="{{item.teamId}}" class="primary" data-id="{{item.id}}" bindtap="openTeam" disabled="{{busy}}">管理我的球队</button>
-      </view>
-    </view>
-  </view>
-  <button class="quiet" bindtap="refresh" disabled="{{busy || loading}}">重新读取</button>
+  <view class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="scrollRequests" disabled="{{busy || loading}}">查看我的申请</button><button class="figma-action figma-action--orange" bindtap="submit" disabled="{{busy || loading || !!pending || !link || !teamName}}" loading="{{busy}}">提交申请</button></view>
 </view>
-<scb-nav active="Account" disabled="{{busy || loading}}"/>

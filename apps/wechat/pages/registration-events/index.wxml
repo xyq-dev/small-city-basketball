@@ -1,30 +1,19 @@
-<scb-header title="选择可报名赛事" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page registration-page">
-  <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">暂时无法读取可报名赛事</view><view class="small">{{error}}</view></view>
-  <view wx:if="{{message}}" class="notice warning">{{message}}</view>
-  <view wx:if="{{chargeDraft}}" class="card event-panel charge-panel">
-    <view class="subtitle">先核对本届收费条款</view><view>{{chargeDraft.eventName}}</view><view>为{{team.name}}创建本届报名草稿</view>
-    <view wx:for="{{chargeDraft.items}}" wx:key="kind" class="charge-item"><view class="subtitle">{{item.kindLabel}} · {{item.amountLabel}}（人民币）</view><view>收费主体：{{item.merchantName}}</view><view>{{item.title}}</view><text class="charge-terms" selectable="true">{{item.terms}}</text></view>
-    <view class="muted">创建草稿会绑定以上收费条款。支付和报名审核分别办理，创建不代表付款成功或审核通过。</view>
-    <checkbox-group bindchange="chargeAgree"><label class="consent"><checkbox value="yes" checked="{{chargeAccepted}}" disabled="{{busy}}"/><text>我已核对收费主体、金额及以上每项条款，明确同意本次报名收费与保证金约定。</text></label></checkbox-group>
-    <button class="primary" bindtap="confirmCharge" disabled="{{busy || !chargeAccepted}}" loading="{{busy}}">同意以上收费条款并创建报名草稿</button>
-    <button class="secondary" bindtap="cancelCharge" disabled="{{busy}}">暂不接受，返回赛事列表</button>
+<scb-header title="可报名赛事" disabled="{{busy || !!chargeDraft}}"/>
+<view class="figma-page registration-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="registration-hero"><view class="registration-hero__copy"><view class="figma-eyebrow">球队报名</view><view class="registration-hero__title">{{team ? team.name : '可报名赛事'}}</view><view class="registration-hero__subtitle">只显示当前账号可管理球队的报名范围</view></view><image src="/assets/home/event-court.jpg" mode="aspectFill"/></view>
+    <view class="registration-tabs"><button class="registration-tab is-active">可报名</button><button class="registration-tab" bindtap="openDraft">已有报名</button></view>
+    <figma-feedback wx:if="{{error}}" type="error" title="暂时无法读取可报名赛事" body="{{error}}" action-label="重新读取" bind:action="load"/>
+    <figma-feedback wx:if="{{message}}" type="pending" title="报名状态提示" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="empty" title="登录后继续本队报名" body="只展示当前账号可管理的报名范围。" action-label="登录并继续" bind:action="login"/>
+    <view wx:if="{{loading}}" class="figma-section"><figma-skeleton rows="{{5}}"/></view>
+
+    <view wx:if="{{chargeDraft}}" class="figma-section charge-section"><view class="figma-section__title">先核对本届收费条款</view><view class="figma-section__hint">{{chargeDraft.eventName}} · 为 {{team.name}} 创建报名草稿</view><view wx:for="{{chargeDraft.items}}" wx:key="kind" class="charge-row"><view class="profile-head"><view class="figma-row__title">{{item.kindLabel}}</view><view class="figma-status figma-status--orange">{{item.amountLabel}} 元</view></view><view class="figma-row__subtitle">收费主体：{{item.merchantName}}</view><view class="figma-row__title">{{item.title}}</view><text class="charge-terms" selectable="true">{{item.terms}}</text></view><figma-feedback type="pending" title="创建不等于付款或获批" body="创建草稿会绑定以上条款；支付和报名审核仍分别办理。"/><checkbox-group bindchange="chargeAgree"><label class="figma-check"><checkbox value="yes" checked="{{chargeAccepted}}" disabled="{{busy}}"/>我已核对收费主体、金额及每项条款，明确同意本次约定</label></checkbox-group><button class="section-primary" bindtap="confirmCharge" disabled="{{busy || !chargeAccepted}}" loading="{{busy}}">同意条款并创建报名草稿</button><button class="section-ghost" bindtap="cancelCharge" disabled="{{busy}}">暂不接受，返回赛事列表</button></view>
+
+    <view class="figma-section"><view class="figma-section__title">近期开放</view><block wx:for="{{events}}" wx:key="id"><button wx:if="{{!item.entry}}" class="registration-row" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy || !!chargeDraft || !item.capabilities.canCreateEntry}}"><figma-icon name="schedule" size="{{20}}"/><view class="figma-row__copy"><view class="figma-row__title">{{item.event.name}}</view><view class="figma-row__subtitle">{{item.event.startDate}} 截止 · {{item.event.venueName || '场馆以赛事公布为准'}}</view></view><view class="figma-status figma-status--orange">{{item.capabilities.canCreateEntry ? '报名中' : item.statusLabel}}</view></button></block><figma-feedback wx:if="{{!loading && !events.length && !loginRequired && !error}}" type="empty" title="暂无可报名赛事" body="请等待主办方开放报名，或刷新本队已有报名。"/></view>
+    <view id="registration-check" class="figma-section"><view class="figma-section__title">报名前核对</view><view class="registration-step"><view class="step-no">1</view><view class="figma-row__copy"><view class="figma-row__title">查看本届规程</view><view class="figma-row__subtitle">查阅人数与资格规则</view></view></view><view class="registration-step"><view class="step-no">2</view><view class="figma-row__copy"><view class="figma-row__title">核对收费条款</view><view class="figma-row__subtitle">按本届公布条款</view></view></view><view class="registration-step"><view class="step-no">3</view><view class="figma-row__copy"><view class="figma-row__title">创建本队草稿</view><view class="figma-row__subtitle">由领队保存本届名单</view></view></view></view>
+    <view class="figma-section"><view class="figma-section__title">已有报名</view><block wx:for="{{events}}" wx:key="id"><button wx:if="{{item.entry}}" class="registration-row" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.event.name}}</view><view class="figma-row__subtitle">{{team.name}} · 本届名单</view></view><view class="figma-status figma-status--orange">{{item.entryStatus}}</view></button></block><figma-feedback wx:if="{{!hasDraft && !loading}}" type="empty" title="暂无本队草稿" body="从可报名赛事创建后在这里继续填写。"/></view>
+    <button wx:if="{{nextCursor}}" class="section-ghost" bindtap="more" disabled="{{loading || busy}}">加载更多赛事</button>
   </view>
-  <view wx:if="{{loginRequired}}" class="card event-panel state-panel"><view class="subtitle">登录后继续本队报名</view><view class="muted">仅展示当前账号可管理的报名范围。</view><button class="primary" bindtap="login">登录并继续</button></view>
-  <view wx:if="{{loading}}" class="card event-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取可报名赛事</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
-  <view wx:for="{{events}}" wx:key="id" class="card event-panel event-card">
-    <view class="subtitle">可报名赛事</view><view class="event-name">{{item.event.name}}</view>
-    <view class="muted">{{item.event.startDate}} — {{item.event.endDate}}</view>
-    <view class="badge {{item.capabilities.canCreateEntry ? 'success' : ''}}">{{item.statusLabel}}</view>
-    <view wx:if="{{team}}" class="muted">为{{team.name}}管理本届独立报名。</view>
-    <view wx:if="{{item.rules}}" class="muted">{{item.rules.minPlayers}}–{{item.rules.maxPlayers}}人 · {{item.rules.zeroAndDoubleZeroDistinct ? '0与00不同号' : '0与00视为同号'}}</view>
-    <block wx:if="{{item.entry}}"><view class="notice entry-state">{{item.entryStatus}}</view><view wx:if="{{item.entry.latestReviewReason}}" class="notice warning">审核意见：{{item.entry.latestReviewReason}}</view><button class="primary" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy}}">查看本队报名</button></block>
-    <button wx:elif="{{item.capabilities.canCreateEntry}}" class="primary" data-id="{{item.event.id}}" bindtap="enter" disabled="{{busy || chargeDraft}}" loading="{{busy}}">查看本次要求并为本队报名</button>
-    <view wx:else class="small muted">当前不能新建本队报名。</view>
-  </view>
-  <view wx:if="{{!loading && !events.length && !loginRequired && !error}}" class="card event-panel state-panel"><view class="subtitle">暂无可报名赛事</view><view class="muted">请等待主办方开放报名，或刷新本队已有报名。</view></view>
-  <view class="card event-panel registration-guide"><view class="guide-row"><text class="guide-dot">•</text><view><view>报名要求</view><view class="muted">按赛事规则提交本届名单及私有资料。</view></view></view><view class="guide-row"><text class="guide-dot">•</text><view><view>审核</view><view class="muted">由独立人员复核，提交不等于获批。</view></view></view></view>
-  <button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loading || busy}}">加载更多赛事</button>
-  <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新本队报名状态</button>
+  <view class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="openDraft" disabled="{{loading || busy || !hasDraft}}">查看本队草稿</button><button class="figma-action figma-action--orange" bindtap="showRequirements" disabled="{{loading || busy}}">查看本届报名要求</button></view>
 </view>
-<scb-nav active="Account" disabled="{{busy || loading}}"/>

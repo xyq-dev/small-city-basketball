@@ -1,9 +1,216 @@
+@import "../../styles/figma-pages.wxss";
 
-.ui002-workspace { padding:16px 16px calc(104px + env(safe-area-inset-bottom)); background:#f4f6fa; color:#18283f; }
-.ui002-workspace .card { border-radius:16px; padding:16px; margin:0 0 16px; }
-.ui002-workspace input,.ui002-workspace textarea,.ui002-workspace button { font-size:16px; line-height:24px; min-height:44px; }
-.ui002-workspace .page-intro .title { color:#18283f; font-size:22px; line-height:32px; margin:0 0 8px; }
-.ui002-workspace .page-intro { margin-bottom:16px; }
-.ui002-workspace .tabs button { min-height:44px; }
+.match-media-summary {
+  display: flex;
+  width: 100%;
+  min-height: 108px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #eaf2fc;
+  overflow: hidden;
+}
 
-.ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+.match-media-summary-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.match-media-title {
+  margin-top: 3px;
+  color: #18283f;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 30px;
+  overflow-wrap: anywhere;
+}
+
+.match-media-summary-image {
+  width: 128px;
+  height: 80px;
+  flex: none;
+  border-radius: 10px;
+}
+
+.match-media-tabs {
+  display: flex;
+  width: 100%;
+  gap: 1px;
+  padding: 2px 3px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.match-media-tab {
+  width: 0;
+  min-width: 0;
+  flex: 1 1 0;
+  height: 44px;
+  margin: 0;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: transparent;
+  color: #51657d;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.match-media-tab.is-active {
+  background: #123c73;
+  color: #fff;
+  font-weight: 700;
+}
+
+.match-media-section-head,
+.match-media-two-actions,
+.match-media-two-fields,
+.match-media-mode,
+.match-media-file-actions,
+.match-media-item-actions,
+.match-media-request-actions {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.match-media-section-head {
+  justify-content: space-between;
+}
+
+.match-media-two-actions .figma-action,
+.match-media-two-fields .figma-field-group,
+.match-media-mode .match-media-choice {
+  min-width: 0;
+  flex: 1;
+}
+
+.match-media-request-actions,
+.match-media-file-actions,
+.match-media-item-actions {
+  flex-wrap: wrap;
+}
+
+.match-media-link {
+  min-width: 56px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 8px;
+  background: transparent;
+  color: #123c73;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.match-media-link.is-danger {
+  color: #c83f42;
+}
+
+.match-media-preview {
+  width: 100%;
+  height: 190px;
+  border-radius: 12px;
+  background: #18283f;
+}
+
+.match-media-file,
+.match-media-item,
+.match-media-form,
+.match-media-consent {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.match-media-file + .match-media-file,
+.match-media-item + .match-media-item {
+  padding-top: 8px;
+  border-top: 1px solid #e6ebf2;
+}
+
+.match-media-picker {
+  display: flex;
+  align-items: center;
+  line-height: 48px;
+}
+
+.match-media-choice {
+  min-height: 44px;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #f4f6fa;
+  color: #51657d;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.match-media-choice.is-active {
+  background: #123c73;
+  color: #fff;
+  font-weight: 700;
+}
+
+.match-media-optional {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #7c8ea5;
+  border-radius: 12px;
+  color: #51657d;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.match-media-step {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #eaf2fc;
+  color: #123c73;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.match-media-danger {
+  background: #c83f42;
+  color: #fff;
+}
+
+#media-files,
+#media-draft,
+#media-published {
+  scroll-margin-top: 12px;
+}
+
+@media (max-width: 360px) {
+  .match-media-summary-image {
+    width: 104px;
+    height: 72px;
+  }
+
+  .match-media-title {
+    font-size: 19px;
+    line-height: 27px;
+  }
+
+  .match-media-tab {
+    padding: 0 2px;
+    font-size: 12px;
+  }
+
+  .match-media-two-fields {
+    flex-direction: column;
+  }
+}

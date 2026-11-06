@@ -1,18 +1,88 @@
-<scb-header title="比赛异常裁定" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page">
- <view class="card"><text class="title">比赛异常裁定</text><text class="muted">只允许尚未开赛的比赛。弃权独立计积分，取消排除出积分表；不会生成投篮、上场时间或虚假比分。</text><text class="muted">提议与复核须由不同人员完成；参赛人员和本场实际记分人员不能复核。已被下一轮消费的裁定当前不可直接撤回。</text></view>
- <view wx:if="{{error}}" class="card error">{{error}}</view><view wx:if="{{notice}}" class="card">{{notice}}</view>
- <button bindtap="load" loading="{{loading}}" disabled="{{loading || busy}}">刷新核对状态</button>
- <button wx:if="{{uncertain}}" bindtap="retry" disabled="{{busy}}">使用原操作编号重试</button>
- <view wx:if="{{event}}" class="card">
-  <text class="title">已锁定规则</text><text wx:if="{{!rules}}">赛事发布前未配置异常规则，当前不能裁定。</text>
-  <text wx:else>弃权胜方 {{rules.forfeitWinPoints}} 分，负方 {{rules.forfeitLossPoints}} 分；取消不计积分。</text>
-  <block wx:if="{{canEdit}}"><text>弃权胜方积分</text><input class="field" type="number" value="{{winPoints}}" data-field="winPoints" bindinput="input" disabled="{{busy || uncertain}}"/><text>弃权负方积分</text><input class="field" type="number" value="{{lossPoints}}" data-field="lossPoints" bindinput="input" disabled="{{busy || uncertain}}"/><button bindtap="saveRules" disabled="{{busy || uncertain}}">保存草稿规则</button></block>
- </view>
- <view wx:if="{{active}}" class="card"><text class="title">当前生效：{{active.title}}</text><text>{{active.sideLabel}}</text><text>{{active.reason}}</text><button wx:if="{{canRevoke}}" data-operation="REVOKE" bindtap="propose" disabled="{{busy || uncertain}}">提议撤回当前裁定</button></view>
- <view wx:if="{{!rulesOnly && event}}" class="card"><text class="title">操作原因</text><textarea class="field" maxlength="500" value="{{reason}}" data-field="reason" bindinput="input" placeholder="填写4至500字原因，保存到审核记录" disabled="{{busy || uncertain}}"/>
-  <block wx:if="{{canPropose}}"><button class="{{kind === 'FORFEIT' ? 'selected-choice' : ''}}" data-field="kind" data-value="FORFEIT" bindtap="choose">单场弃权</button><button class="{{kind === 'CANCELLED' ? 'selected-choice' : ''}}" data-field="kind" data-value="CANCELLED" bindtap="choose">单场取消</button><view wx:if="{{kind === 'FORFEIT'}}"><button class="{{side === 'HOME' ? 'selected-choice' : ''}}" data-field="side" data-value="HOME" bindtap="choose">主队弃权</button><button class="{{side === 'AWAY' ? 'selected-choice' : ''}}" data-field="side" data-value="AWAY" bindtap="choose">客队弃权</button></view><button bindtap="propose" disabled="{{busy || uncertain}}">提交独立复核</button></block>
-  <block wx:if="{{pending && canReview}}"><text>待复核：{{pending.title}}／{{pending.sideLabel}}</text><text>{{pending.reason}}</text><button data-type="APPROVE" bindtap="review" disabled="{{busy || uncertain}}">批准提案</button><button data-type="REJECT" bindtap="review" disabled="{{busy || uncertain}}">驳回提案</button></block>
- </view>
- <view wx:for="{{requests}}" wx:key="id" class="card"><text>{{item.title}} · {{item.statusLabel}}</text><text>{{item.sideLabel}}</text><text>{{item.reason}}</text><text wx:if="{{item.reviewReason}}">复核：{{item.reviewReason}}</text></view>
+<view class="figma-page">
+  <scb-header title="比赛异常裁定" disabled="{{busy || pending || uncertain || dirty}}"/>
+  <view class="figma-page__content figma-page__content--actions">
+    <figma-skeleton wx:if="{{loading && !event}}" rows="3"/>
+    <figma-feedback wx:if="{{uncertain}}" type="pending" title="裁定结果待核对" body="{{error || notice || '原裁定请求结果未知，请先核对原编号。'}}" action-label="使用原操作编号重试" bind:action="retry" disabled="{{busy}}"/>
+    <figma-feedback wx:elif="{{error}}" type="error" title="裁定状态未完成" body="{{error}}" action-label="重新读取" bind:action="load" disabled="{{busy}}"/>
+    <figma-feedback wx:if="{{notice && !uncertain}}" type="success" title="操作已记录" body="{{notice}}"/>
+    <view wx:if="{{uncertain && pending}}" class="figma-row exception-uncertain-summary">
+      <view class="figma-row__copy">
+        <view class="figma-row__title">待复核：{{pending.title}}</view>
+        <view class="figma-row__subtitle">{{pending.sideLabel}} · {{pending.reason}}</view>
+      </view>
+      <view class="figma-status figma-status--orange">结果待核对</view>
+    </view>
+
+    <view class="figma-summary">
+      <view class="figma-summary__icon"><figma-icon name="whistle" size="24"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">赛事授权人员</view>
+        <view class="figma-title">{{match ? ((match.homeTeamName || match.home || '主队') + ' vs ' + (match.awayTeamName || match.away || '客队')) : '异常规则'}}</view>
+        <view class="figma-subtitle">提案与独立确认分开记录；弃权独立计积分。</view>
+      </view>
+    </view>
+
+    <view wx:if="{{!rulesOnly}}" class="exception-tabs" role="tablist">
+      <button class="exception-tab {{exceptionTab === 'proposal' ? 'is-active' : ''}}" data-tab="proposal" bindtap="changeExceptionTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{exceptionTab === 'proposal'}}">裁定提案</button>
+      <button class="exception-tab {{exceptionTab === 'review' ? 'is-active' : ''}}" data-tab="review" bindtap="changeExceptionTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{exceptionTab === 'review'}}">待复核</button>
+      <button class="exception-tab {{exceptionTab === 'history' ? 'is-active' : ''}}" data-tab="history" bindtap="changeExceptionTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{exceptionTab === 'history'}}">历史</button>
+    </view>
+
+    <view wx:if="{{event && rulesOnly}}" class="figma-section">
+      <view class="figma-section__title">已锁定规则</view>
+      <view wx:if="{{!rules}}" class="figma-section__hint">赛事发布前未配置异常规则，当前不能裁定。</view>
+      <view wx:else class="exception-rule">弃权胜方 {{rules.forfeitWinPoints}} 分，负方 {{rules.forfeitLossPoints}} 分；取消排除出积分表。</view>
+      <block wx:if="{{canEdit}}">
+        <view class="exception-two-fields">
+          <view class="figma-field-group"><view class="figma-field-label">弃权胜方积分</view><input class="figma-field-control" type="number" value="{{winPoints}}" data-field="winPoints" bindinput="input" disabled="{{busy || uncertain}}"/></view>
+          <view class="figma-field-group"><view class="figma-field-label">弃权负方积分</view><input class="figma-field-control" type="number" value="{{lossPoints}}" data-field="lossPoints" bindinput="input" disabled="{{busy || uncertain}}"/></view>
+        </view>
+        <button class="figma-action figma-action--navy" bindtap="saveRules" disabled="{{busy || uncertain}}">保存草稿规则</button>
+      </block>
+    </view>
+
+    <view wx:if="{{event && !rulesOnly && exceptionTab === 'proposal'}}" class="figma-section">
+      <view class="figma-section__title">异常提案</view>
+      <view wx:if="{{!hideLockedRuleHint}}" class="figma-section__hint">已锁定规则：弃权独立计积分；不会生成投篮、个人得分或技术统计。</view>
+      <button class="exception-choice" data-field="kind" data-value="FORFEIT" bindtap="choose" disabled="{{busy || uncertain}}"><view class="figma-row__mark {{kind === 'FORFEIT' ? 'is-active' : ''}}"/><view class="figma-row__copy"><view class="figma-row__title">单场弃权</view><view class="figma-row__subtitle">选择弃权方及已锁定的适用规则</view></view></button>
+      <button class="exception-choice" data-field="kind" data-value="CANCELLED" bindtap="choose" disabled="{{busy || uncertain}}"><view class="figma-row__mark {{kind === 'CANCELLED' ? 'is-active' : ''}}"/><view class="figma-row__copy"><view class="figma-row__title">单场取消</view><view class="figma-row__subtitle">确认影响的场次与晋级关系</view></view></button>
+      <view wx:if="{{kind === 'FORFEIT' && !hideSideChoice}}" class="exception-side-row">
+        <button class="exception-side {{side === 'HOME' ? 'is-active' : ''}}" data-field="side" data-value="HOME" bindtap="choose" disabled="{{busy || uncertain}}">主队弃权</button>
+        <button class="exception-side {{side === 'AWAY' ? 'is-active' : ''}}" data-field="side" data-value="AWAY" bindtap="choose" disabled="{{busy || uncertain}}">客队弃权</button>
+      </view>
+    </view>
+
+    <view wx:if="{{event && !rulesOnly && exceptionTab === 'proposal'}}" class="figma-section">
+      <view class="figma-section__title">事实说明</view>
+      <view class="figma-field-group"><view class="figma-field-label">操作原因</view><textarea class="figma-field-control" maxlength="500" value="{{reason}}" data-field="reason" bindinput="input" placeholder="填写可核验的事实和时间" disabled="{{busy || uncertain}}"/></view>
+      <view class="figma-field-group"><view class="figma-field-label">本次依据</view><view class="exception-readonly">查阅锁定规则与相关记录</view></view>
+      <view class="figma-field-group"><view class="figma-field-label">当前提案</view><view class="exception-readonly"><text>仍须其他有权人员复核</text><text class="figma-status figma-status--orange">草稿</text></view></view>
+      <view wx:if="{{active}}" class="exception-active"><view><view class="figma-row__title">当前生效：{{active.title}}</view><view class="figma-row__subtitle">{{active.sideLabel}} · {{active.reason}}</view></view><button wx:if="{{canRevoke}}" class="exception-link" data-operation="REVOKE" bindtap="propose" disabled="{{busy || uncertain}}">提议撤回</button></view>
+    </view>
+
+    <view wx:if="{{event && !rulesOnly && exceptionTab === 'review'}}" class="figma-section">
+      <view class="figma-section__title">待独立复核</view>
+      <figma-feedback wx:if="{{!pending}}" type="empty" title="暂无待复核提案" body="新的提案提交后会保留版本与原因。"/>
+      <block wx:if="{{pending}}"><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{pending.title}} · {{pending.sideLabel}}</view><view class="figma-row__subtitle">{{pending.reason}}</view></view><view class="figma-status figma-status--orange">待复核</view></view><view wx:if="{{canReview}}" class="exception-review-actions"><button class="figma-action figma-action--navy" data-type="APPROVE" bindtap="review" disabled="{{busy || uncertain}}">批准提案</button><button class="figma-action exception-danger" data-type="REJECT" bindtap="review" disabled="{{busy || uncertain}}">驳回提案</button></view><figma-feedback wx:else type="pending" title="当前账号不能复核" body="提案人与复核人必须独立，参赛人员和本场实际记分人员不能复核。"/></block>
+    </view>
+
+    <view wx:if="{{event && !rulesOnly && exceptionTab === 'history'}}" class="figma-section">
+      <view class="figma-section__title">裁定历史</view>
+      <figma-feedback wx:if="{{!requests.length}}" type="empty" title="暂无裁定记录" body="提案、复核和撤回均会保留原版本。"/>
+      <view wx:for="{{requests}}" wx:key="id" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}} · {{item.sideLabel}}</view><view class="figma-row__subtitle">{{item.reason}}{{item.reviewReason ? ' · 复核：' + item.reviewReason : ''}}</view></view><view class="figma-status {{item.status === 'APPROVED' ? 'figma-status--green' : item.status === 'REJECTED' ? 'figma-status--error' : 'figma-status--orange'}}">{{item.statusLabel}}</view></view>
+    </view>
+
+    <view wx:if="{{event && !rulesOnly}}" class="figma-section">
+      <view class="figma-section__title">后续影响</view>
+      <view class="exception-step"><view class="exception-step__number">1</view><view><view class="figma-row__title">提交提案</view><view class="figma-row__subtitle">保留原版本与原因</view></view></view>
+      <view class="exception-step"><view class="exception-step__number">2</view><view><view class="figma-row__title">独立复核</view><view class="figma-row__subtitle">批准或驳回并记录</view></view></view>
+      <view class="exception-step"><view class="exception-step__number">3</view><view><view class="figma-row__title">撤回裁定</view><view class="figma-row__subtitle">另行提交撤回提案</view></view></view>
+    </view>
+  </view>
+
+  <view class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="load" disabled="{{loading || busy}}">刷新裁定状态</button>
+    <button wx:if="{{!rulesOnly}}" class="figma-action figma-action--orange" bindtap="propose" disabled="{{busy || uncertain || !canPropose || exceptionTab !== 'proposal'}}">提交独立复核</button>
+    <button wx:else class="figma-action figma-action--orange" bindtap="saveRules" disabled="{{busy || uncertain || !canEdit}}">保存异常规则</button>
+  </view>
 </view>

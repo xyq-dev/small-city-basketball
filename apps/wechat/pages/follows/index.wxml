@@ -1,30 +1,18 @@
 <scb-header title="我的关注" disabled="{{busy}}"/>
-<view class="page follows-page ui002-workspace">
-  <view class="notice follows-reminder"><view class="feedback-title">关注与微信提醒分开</view><view class="small">关注成功只表示可在此处查看。{{reminderOff}}</view></view>
-  <view wx:if="{{notice}}" class="notice">{{notice}}</view>
-  <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">操作未完成</view><view class="small">{{error}}</view></view>
-  <view wx:if="{{loginRequired}}" class="card follows-panel state-panel"><view class="subtitle">登录后查看我的关注</view><view class="muted">关注只属于本人账号；切换账号后只显示新账号的关注。</view><button class="primary" bindtap="login">登录并继续</button></view>
-  <view wx:elif="{{loading}}" class="card follows-panel state-panel"><view class="badge">状态反馈</view><view class="subtitle">正在读取我的关注</view><view class="muted">读取完成前不显示旧资料。</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
-  <block wx:else>
-    <block wx:for="{{items}}" wx:key="followId">
-      <view class="card follows-panel follow-card">
-        <view class="follow-row"><view class="follow-state {{item.status==='ACTIVE' ? 'active' : 'invalid'}}">{{item.statusLabel}}</view><view wx:if="{{item.event}}" class="small muted">{{item.eventLabel}}</view></view>
-        <block wx:if="{{item.status==='ACTIVE'}}">
-          <view class="subtitle">{{item.event.name}}</view>
-          <view class="muted">{{item.dateLabel}} · {{item.event.purpose==='HISTORY' ? '历史赛事' : '实时观赛'}}</view>
-          <button class="secondary" data-id="{{item.publicEventId}}" bindtap="openEvent" disabled="{{busy}}">打开赛事</button>
-        </block>
-        <block wx:else>
-          <view class="subtitle">公开赛事已停止公开</view>
-          <view class="muted">主办方已撤销或暂停该公开发布，原赛事资料已收回，不再显示；重新公开会使用新的链接，不会继承这条关注。</view>
-        </block>
-        <button class="quiet" data-id="{{item.followId}}" bindtap="cancel" disabled="{{busy}}" loading="{{cancelling===item.followId}}">{{cancelling===item.followId ? '正在取消' : '取消关注'}}</button>
-      </view>
+<view class="figma-page follows-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="event" size="{{25}}"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">本人订阅</view><view class="figma-title">我关注的赛事</view><view class="figma-subtitle">关注过的公开赛事</view></view></view>
+    <figma-feedback wx:if="{{notice}}" type="success" title="关注已更新" body="{{notice}}"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="操作未完成" body="{{error}}" action-label="重新读取" bind:action="load"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="empty" title="登录后查看我的关注" body="切换账号后只显示新账号的关注。" action-label="登录并继续" bind:action="login"/>
+    <view wx:elif="{{loading}}" class="figma-section"><figma-skeleton rows="{{4}}"/></view>
+    <block wx:else>
+      <view class="figma-section"><view class="figma-section__title">关注赛事</view><figma-feedback wx:if="{{!activeItems.length && !error}}" type="empty" title="暂无关注" body="可在有效公开赛事页关注赛事。"/><view wx:for="{{activeItems}}" wx:key="followId" class="follow-row"><button class="follow-open" data-id="{{item.publicEventId}}" bindtap="openEvent" disabled="{{busy}}"><view class="figma-row__title">{{item.event.name}}</view><view class="figma-row__subtitle">{{item.dateLabel}}</view></button><button class="follow-cancel" aria-label="取消关注" data-id="{{item.followId}}" bindtap="cancel" disabled="{{busy}}"><text class="follow-a11y">关注中</text><view class="follow-cancel__pill">{{cancelling===item.followId ? '处理中' : '已关注'}}</view></button></view></view>
+      <view class="figma-section"><view class="figma-section__title">停止公开</view><view class="follows-notice"><view class="follows-notice__mark"/><view class="figma-row__copy"><view class="figma-row__title">原赛事已停止公开</view><view class="figma-row__subtitle">保留关注记录，隐藏旧资料</view></view></view><view class="follows-notice"><view class="follows-notice__mark"/><view class="figma-row__copy"><view class="figma-row__title">赛事恢复公开后</view><view class="figma-row__subtitle">刷新可核对最新状态</view></view></view><view wx:for="{{inactiveItems}}" wx:key="followId" class="follow-row"><view class="follow-open"><view class="figma-row__title">已停止公开的赛事</view><view class="figma-row__subtitle">原公开资料不再显示</view></view><view class="figma-status">已失效</view><button class="follow-cancel" data-id="{{item.followId}}" bindtap="cancel" disabled="{{busy}}">取消关注</button></view></view>
+      <view class="figma-section"><view class="figma-section__title">消息与提醒</view><view class="figma-row"><view class="figma-row__mark is-active"/><view class="figma-row__copy"><view class="figma-row__title">站内关注</view><view class="figma-row__subtitle">查看当前已关注的赛事</view></view></view><view class="figma-row"><view class="figma-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">微信订阅提醒</view><view class="figma-row__subtitle">按实际场景单独授权</view></view></view><view class="figma-caption">{{reminderOff}}</view></view>
+      <figma-feedback wx:if="{{moreError}}" type="error" title="后续关注读取失败" body="{{moreError}}" action-label="重试加载更多" bind:action="more"/>
+      <button wx:if="{{nextCursor}}" class="section-ghost" bindtap="more" disabled="{{loadingMore || busy}}" loading="{{loadingMore}}">加载更多关注</button>
     </block>
-    <view wx:if="{{!items.length && !error}}" class="card follows-panel state-panel"><view class="subtitle">暂无关注</view><view class="muted">在主办方分享的公开赛事页可关注赛事。</view></view>
-    <view wx:if="{{moreError}}" class="notice warning">{{moreError}}</view>
-    <button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loadingMore || busy}}" loading="{{loadingMore}}">{{moreError ? '重试加载更多' : '加载更多关注'}}</button>
-  </block>
-  <button class="quiet" bindtap="load" disabled="{{busy || loading}}">刷新我的关注</button>
+  </view>
+  <view class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="load" disabled="{{busy || loading}}">刷新我的关注</button><button class="figma-action figma-action--orange" bindtap="openFirst" disabled="{{!activeItems.length || busy}}">打开赛事</button></view>
 </view>
-<scb-nav active="Account" disabled="{{busy}}"/>

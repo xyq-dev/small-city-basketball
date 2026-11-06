@@ -5,22 +5,22 @@
       "name": "platform-home-events",
       "baseRoute": "pages/home/index",
       "title": "首页 · 我的赛事",
-      "selector": ".home-ui",
+      "selector": ".home-rebuild",
       "probe": "合成青锋杯"
     },
     {
       "name": "platform-home-lower",
       "baseRoute": "pages/home/index",
       "title": "首页 · 扩展服务（下滑）",
-      "selector": ".home-ui",
-      "probe": "扩展服务",
+      "selector": ".home-rebuild",
+      "probe": "按位置找球员",
       "scrollTop": 2000
     },
     {
       "name": "platform-home-signed-out",
       "baseRoute": "pages/home/index",
       "title": "首页 · 未登录",
-      "selector": ".home-ui",
+      "selector": ".home-rebuild",
       "probe": "登录后查看你参与的赛事"
     },
     {

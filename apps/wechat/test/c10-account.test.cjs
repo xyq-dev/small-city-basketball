@@ -38,9 +38,7 @@ test('signed-out account shows the five-tab navigation and keeps email login in 
   });
   assert.equal(signedIn.components.find((c) => c.tag === 'scb-nav').properties.active, 'Account');
   assert.doesNotMatch(signedIn.phone, /class="action-bar"/);
-  assert.ok(
-    signedIn.phone.indexOf('我的球队与本届报名') < signedIn.phone.indexOf('账号与微信绑定'),
-  );
+  assert.ok(signedIn.phone.indexOf('我的球队') < signedIn.phone.indexOf('隐私与账号'));
 });
 
 test('security view switching preserves the reviewed draft and cannot bypass an in-flight account action', () => {
@@ -116,9 +114,9 @@ test('blank credentials stay on the page and a failed wechat capability read sta
   assert.equal(h.page.data.enabled, false);
   assert.equal(h.page.data.message, '');
   const unknown = buildPreview({ root, route: 'pages/account/index', data: h.page.data });
-  assert.match(unknown.phone, /重新核对登录状态/);
+  assert.match(unknown.phone, /data-mini-bindtap="retryWechat"/);
   assert.match(unknown.phone, /暂时无法核对微信登录状态/);
-  assert.match(unknown.phone, /不代表服务已关闭/);
+  assert.match(unknown.phone, /请恢复连接后重试/);
   assert.doesNotMatch(unknown.phone, /微信登录暂未开放/);
   const closed = {
     hasSession: () => false,
@@ -195,7 +193,7 @@ test('wechat login keeps an unbound identity and a failed attempt signed out', a
   assert.equal(failed.h.page.data.loginNotice, 'failed');
   const failedView = buildPreview({ root, route: 'pages/account/index', data: failed.h.page.data });
   assert.match(failedView.phone, /本次登录尚未完成/);
-  assert.match(failedView.phone, /重新核对登录状态/);
+  assert.match(failedView.phone, /重新发起/);
   assert.doesNotMatch(failedView.phone, /当前微信尚未绑定应用账号/);
   const quiet = loadPage({ root, route: 'pages/account/index' });
   quiet.page.setData({ enabled: true, wechatState: 'open', consent: false });
@@ -229,7 +227,7 @@ test('failed account reads render the explicit error tone after clearing private
   assert.equal(h.page.data.messageTone, 'error');
   assert.match(h.page.data.message, /合成读取失败/);
   const preview = buildPreview({ root, route: 'pages/account/index', data: h.page.data });
-  assert.match(preview.phone, /account-feedback danger/);
+  assert.match(preview.phone, /figma-feedback--error/);
   assert.doesNotMatch(preview.phone, /合成参与者/);
 });
 
@@ -271,14 +269,12 @@ test('all account and planned visual fixtures expand real WXML and retain disabl
       });
       for (const text of fixture.expectText)
         assert.ok(result.phone.includes(text), name + ': ' + text);
-      // Shared bottom-bar icons plus the account header's existing brand mark.
-      // Court photos and other homepage pack files stay rejected on account fixtures.
+      // Shared Figma icons plus the account header's brand mark are allowed.
+      // Court photos and other homepage content stay rejected on account fixtures.
       const homepageContent = result.assets.filter(
         (asset) =>
           /^assets[\\/]home[\\/]/.test(asset.path) &&
-          !/^assets[\\/]home[\\/](?:brandmark|home|trophy|pin|team|profile)(?:-active)?\.svg$/.test(
-            asset.path,
-          ),
+          !/^assets[\\/]home[\\/]brandmark\.svg$/.test(asset.path),
       );
       assert.deepEqual(homepageContent, [], name + ': homepage pack content');
       assert.deepEqual(
@@ -286,9 +282,8 @@ test('all account and planned visual fixtures expand real WXML and retain disabl
           (asset) =>
             !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path) &&
             !/^assets[\\/]ui002[\\/][^\\/]+\.svg$/.test(asset.path) &&
-            !/^assets[\\/]home[\\/](?:brandmark|home|trophy|pin|team|profile)(?:-active)?\.svg$/.test(
-              asset.path,
-            ),
+            !/^assets[\\/]home[\\/]brandmark\.svg$/.test(asset.path) &&
+            !/^assets[\\/]figma[\\/][a-z-]+\.svg$/.test(asset.path),
         ),
         [],
         name,

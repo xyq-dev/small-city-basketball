@@ -5,9 +5,10 @@ const recent = require('../../utils/recent');
 // Media is only what organizers explicitly published under a still-valid public event.
 // This tab lists events opened on this device and goes straight to their video section.
 Page({
-  data: { recentEvents: [] },
+  data: { recentEvents: [], featuredEvent: null },
   onShow() {
-    this.setData({ recentEvents: recent.list() });
+    const recentEvents = recent.list();
+    this.setData({ recentEvents, featuredEvent: recentEvents[0] || null });
   },
   openRecent(e) {
     try {
@@ -18,5 +19,10 @@ Page({
   },
   open() {
     wx.redirectTo({ url: '/pages/watch/index' });
+  },
+  openFeatured() {
+    const event = this.data.featuredEvent;
+    if (!event) return this.open();
+    this.openRecent({ currentTarget: { dataset: { id: event.publicEventId } } });
   },
 });

@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "5:401",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["我的关注", "公开赛事已停止公开"],
+  "expectText": ["我的关注", "原赛事已停止公开"],
   "data": {
     "items": [
       {

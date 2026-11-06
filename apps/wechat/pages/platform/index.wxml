@@ -1,47 +1,142 @@
-<scb-header title="平台处理工作台" disabled="{{busy}}"/>
-<view class="page platform-page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">平台工作台</view><view class="title">核对当前可处理的预约与争议</view></view>
-  <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">平台资料需要重新核对</view><view class="small">{{error}}</view></view>
-  <button wx:if="{{error && !loading && !allowed && !loginRequired}}" class="secondary" bindtap="load" disabled="{{busy || reviewOpen || feeDirty}}">重新核对平台权限</button>
-  <view wx:if="{{loading}}" class="card state-card loading-card"><view class="state-title">正在核对平台权限</view><view class="skeleton"></view><view class="skeleton short"></view><view class="small muted">核对完成后显示当前可处理的资料…</view></view>
-  <view wx:elif="{{loginRequired}}" class="card state-card empty"><view class="subtitle">登录后继续平台处理</view><view class="muted">平台身份与独立处理权限由当前账号核对。</view><button class="primary" bindtap="login">登录后继续</button></view>
-  <view wx:elif="{{!allowed && !error}}" class="card state-card empty"><view class="subtitle">平台权限尚未就绪</view><view class="muted">核对当前账号后，才显示有权处理的资料与预约。</view><button class="secondary" bindtap="load">核对当前权限</button></view>
-  <block wx:if="{{allowed}}">
-<view class="card"><view class="subtitle">城市与服务治理</view><button class="secondary" data-page="city-operations" bindtap="operations">城市运营权限</button><button class="secondary" data-page="governance" bindtap="operations">平台工单与举报</button><button class="secondary" data-page="governance-reviews" bindtap="operations">平台评价处理</button></view>
-    <view class="notice warning platform-notice"><view class="notice-title">仅独立平台人员可操作</view><view class="small">拥有平台身份不代表可处理与本人或关联球队有关的订单。资料审核不等于实名、保险、参赛资格或实力认证。</view></view>
-    <view wx:if="{{!reviewOpen}}" class="card platform-orders">
-      <view class="subtitle">预约与争议</view>
-      <view wx:if="{{!orders.length}}" class="section-empty"><view class="muted">暂无可见预约</view><view class="small muted">当前可查看的合作将在这里列出。</view></view>
-      <view wx:for="{{orders}}" wx:key="id" class="platform-order">
-        <view class="appearance-status {{item.disputed ? 'danger' : ''}}">{{item.disputed ? '有可独立处理的争议项' : '当前可见合作'}}</view>
-        <view class="subtitle">{{item.eventName}}</view><view class="muted">{{item.teamName}}</view>
-        <view class="appearance-price">确定报价 {{item.total}} · 支付未开放</view>
-        <button class="secondary" data-id="{{item.id}}" bindtap="order">核对逐场记录与处理能力</button>
+<scb-header title="平台工作台" disabled="{{busy || loading}}"/>
+<view class="figma-page ops-platform">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary {{figmaPlatformPreview ? 'ops-summary--preview' : ''}}">
+      <view class="figma-summary__icon"><figma-icon name="workbench" size="25"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">平台运营</view>
+        <view class="figma-title">平台运营工作台</view>
+        <view class="figma-subtitle">先核对当前账号的独立处理范围</view>
       </view>
-      <view class="small muted">最多展示最新100份可见预约，不代表完整历史。</view>
     </view>
-    <view wx:if="{{!reviewOpen}}" class="card fee-card">
-      <view class="subtitle">新预约平台费率</view><view class="field-label">百分比，仅按参赛服务费计算</view>
-      <view class="fee-value"><input disabled="{{busy}}" class="field" type="digit" value="{{feePercent}}" bindinput="feeInput"/><text>%</text></view>
-      <view class="small muted">旧订单保留原费率与金额快照，交通食宿不计入基数。</view>
-      <button class="secondary" disabled="{{busy || !feeDirty}}" bindtap="saveFee">核对并更新新费率</button><button wx:if="{{feeDirty}}" class="quiet" bindtap="discardFee" disabled="{{busy}}">放弃当前费率编辑</button>
-    </view>
-    <view wx:if="{{!reviewOpen}}" class="card review-queue">
-      <view class="subtitle">服务资料审核</view><view wx:if="{{!reviewQueue.length}}" class="section-empty"><view class="muted">暂无可审核资料</view><view class="small muted">本人提交的服务资料可按审核范围处理。</view></view>
-      <view wx:for="{{reviewQueue}}" wx:key="id" class="review-row"><view class="appearance-status">{{item.stateLabel}}</view><view class="subtitle">{{item.displayName}} · {{item.positionLabel}}</view><view class="appearance-price">{{item.price}} / 场</view><button class="secondary" data-id="{{item.id}}" bindtap="review" disabled="{{busy || reviewOpen}}">核对并处理资料</button></view>
-      <view class="small muted">最多展示当前最新200份可见资料。</view>
-    </view>
-    <view wx:if="{{reviewOpen}}" class="review-editor">
-      <view class="card review-summary"><view class="subtitle">处理：{{reviewName}}</view>
-        <block wx:if="{{reviewSnapshot}}"><view class="muted">{{reviewSnapshot.city}} · {{reviewSnapshot.height}}cm</view><view>{{reviewSnapshot.bio}}</view><view class="small muted">参赛 {{reviewSnapshot.price}} · 交通 {{reviewSnapshot.travel}} · 食宿 {{reviewSnapshot.accommodation}}</view><view wx:for="{{reviewSnapshot.availability}}" wx:key="index" class="small muted">{{item}}</view></block>
+
+    <figma-feedback wx:if="{{!figmaPlatformPreview && error}}" type="error" title="平台资料需要重新核对" body="{{error}}" action-label="{{!loading && !reviewOpen && !feeDirty ? '重新核对' : ''}}" disabled="{{busy || loading || reviewOpen || feeDirty}}" bindaction="load"/>
+    <view wx:if="{{!figmaPlatformPreview && loading}}" class="figma-section"><figma-skeleton rows="{{4}}"/></view>
+    <figma-feedback wx:elif="{{!figmaPlatformPreview && loginRequired}}" type="info" title="登录后继续平台处理" body="平台身份与独立处理权限由当前账号核对。" action-label="登录后继续" disabled="{{busy}}" bindaction="login"/>
+    <figma-feedback wx:elif="{{!figmaPlatformPreview && !allowed && !error}}" type="empty" title="平台权限尚未就绪" body="核对当前账号后，才显示有权处理的资料与预约。" action-label="核对当前权限" disabled="{{busy}}" bindaction="load"/>
+
+    <block wx:if="{{allowed}}">
+      <view class="ops-tabs ops-tabs--three" role="tablist">
+        <view class="ops-tab is-active" role="tab" aria-selected="true">待处理</view>
+        <view class="ops-tab" role="tab" aria-selected="false">治理</view>
+        <view class="ops-tab" role="tab" aria-selected="false">费率</view>
       </view>
-      <view class="field-label">资料处理结果</view><picker disabled="{{busy}}" class="field" range="{{statuses}}" value="{{statusIndex}}" bindchange="status"><view>{{statuses[statusIndex]}}</view></picker>
-      <view class="field-label">处理依据与原因</view><textarea disabled="{{busy}}" class="field" maxlength="500" value="{{reviewReason}}" bindinput="reason" placeholder="至少2个字，保留核对依据"/>
-      <view class="notice small">审核只针对本次展示版本；资料更新后须关闭并重新核对，不沿用旧声明。</view>
-      <checkbox-group bindchange="agree"><label class="consent"><checkbox disabled="{{busy}}" value="yes" checked="{{consent}}"/><text>我确认按资料审核范围作出本次处理</text></label></checkbox-group>
-      <button class="primary" bindtap="submitReview" disabled="{{busy || !consent || reviewReason.length < 2}}">确认处理资料</button><button class="quiet" bindtap="closeReview" disabled="{{busy}}">关闭本次处理</button>
-    </view>
-    <view wx:if="{{paymentNotice}}" class="notice small">{{paymentNotice}}</view>
-    <button class="secondary" bindtap="load" disabled="{{busy || loading || reviewOpen || feeDirty}}">刷新平台资料</button>
-  </block>
+
+      <view wx:if="{{!reviewOpen}}" class="figma-section">
+        <view class="figma-section__title">服务治理</view>
+        <view class="figma-grid">
+          <button class="figma-grid__item" data-page="city-operations" bindtap="operations">
+            <figma-icon name="workbench" size="20"/>
+            <view class="figma-row__title">城市运营</view>
+            <view class="figma-row__subtitle">维护有限授权</view>
+          </button>
+          <button class="figma-grid__item" data-page="governance" bindtap="operations">
+            <figma-icon name="governance" size="20"/>
+            <view class="figma-row__title">工单与举报</view>
+            <view class="figma-row__subtitle">按分派处理</view>
+          </button>
+          <button class="figma-grid__item" data-page="governance-reviews" bindtap="operations">
+            <figma-icon name="workbench" size="20"/>
+            <view class="figma-row__title">服务评价</view>
+            <view class="figma-row__subtitle">独立审核</view>
+          </button>
+          <view class="figma-grid__item">
+            <figma-icon name="workbench" size="20"/>
+            <view class="figma-row__title">服务资料</view>
+            <view class="figma-row__subtitle">核对资料范围</view>
+          </view>
+        </view>
+      </view>
+
+      <figma-feedback wx:if="{{!figmaPlatformPreview && !reviewOpen}}" type="info" title="仅独立平台人员可操作" body="拥有平台身份不代表可处理与本人或关联球队有关的订单；资料审核不等于实名、保险、参赛资格或实力认证。"/>
+
+      <view wx:if="{{figmaPlatformPreview}}" class="figma-section">
+        <view class="figma-section__title">预约与争议</view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">预约履约争议</view><view class="figma-row__subtitle">城北球队 · 单场邀约</view></view><view class="figma-status figma-status--orange">待处理</view></view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">服务人员资料</view><view class="figma-row__subtitle">同城裁判 · 服务范围</view></view><view class="figma-status figma-status--orange">待审核</view></view>
+      </view>
+
+      <view wx:elif="{{!reviewOpen}}" class="figma-section">
+        <view class="figma-section__title">预约与争议</view>
+        <figma-feedback wx:if="{{!orders.length}}" type="empty" title="暂无可见预约" body="当前可查看的合作将在这里列出。"/>
+        <button wx:for="{{orders}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="order">
+          <view class="figma-row__copy">
+            <view class="figma-row__title">{{item.eventName}}</view>
+            <view class="figma-row__subtitle">{{item.teamName}} · 确定报价 {{item.total}}</view>
+          </view>
+          <view class="figma-status {{item.disputed ? 'figma-status--error' : 'figma-status--orange'}}">{{item.disputed ? '待处理' : '查看'}}</view>
+        </button>
+        <view class="figma-caption">最多展示最新100份可见预约，不代表完整历史。</view>
+      </view>
+
+      <view wx:if="{{figmaPlatformPreview}}" class="figma-section">
+        <view class="figma-section__title">新预约费率</view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">适用范围</view><view class="figma-row__subtitle">仅后续新增预约</view></view></view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">计费基数</view><view class="figma-row__subtitle">仅参赛服务费</view></view></view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">原预约</view><view class="figma-row__subtitle">保留已有报价快照</view></view></view>
+      </view>
+
+      <view wx:elif="{{!reviewOpen}}" class="figma-section">
+        <view class="figma-section__title">新预约费率</view>
+        <view class="figma-field-group">
+          <view class="figma-field-label">平台费率</view>
+          <view class="ops-field-inline">
+            <input class="figma-field-control" type="digit" value="{{feePercent}}" bindinput="feeInput" disabled="{{busy}}" placeholder="0–99.99"/>
+            <view class="ops-field-suffix">%</view>
+          </view>
+          <view class="figma-caption">仅影响后续新增预约；只按参赛服务费计算，旧订单保留原金额快照。</view>
+        </view>
+        <view class="ops-inline-actions">
+          <button class="ops-secondary" bindtap="discardFee" disabled="{{busy || !feeDirty}}">放弃编辑</button>
+          <button class="ops-primary" bindtap="saveFee" disabled="{{busy || !feeDirty}}">{{busy ? '保存中…' : '核对并更新费率'}}</button>
+        </view>
+      </view>
+
+      <view wx:if="{{!figmaPlatformPreview && !reviewOpen}}" class="figma-section">
+        <view class="figma-section__title">服务资料审核</view>
+        <figma-feedback wx:if="{{!reviewQueue.length}}" type="empty" title="暂无可审核资料" body="本人提交的服务资料按当前审核范围处理。"/>
+        <button wx:for="{{reviewQueue}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="review" disabled="{{busy || reviewOpen}}">
+          <view class="figma-row__copy">
+            <view class="figma-row__title">{{item.displayName}} · {{item.positionLabel}}</view>
+            <view class="figma-row__subtitle">{{item.price}} / 场</view>
+          </view>
+          <view class="figma-status figma-status--orange">{{item.stateLabel}}</view>
+        </button>
+        <view class="figma-caption">最多展示当前最新200份可见资料。</view>
+      </view>
+
+      <view wx:if="{{reviewOpen}}" class="figma-section ops-review-editor">
+        <view class="figma-section__title">处理：{{reviewName}}</view>
+        <view wx:if="{{reviewSnapshot}}" class="ops-review-snapshot">
+          <view class="figma-row__title">{{reviewSnapshot.city}} · {{reviewSnapshot.height}}cm</view>
+          <view class="figma-row__subtitle">{{reviewSnapshot.bio}}</view>
+          <view class="figma-caption">参赛 {{reviewSnapshot.price}} · 交通 {{reviewSnapshot.travel}} · 食宿 {{reviewSnapshot.accommodation}}</view>
+          <view wx:for="{{reviewSnapshot.availability}}" wx:key="index" class="figma-caption">{{item}}</view>
+        </view>
+        <view class="figma-field-group">
+          <view class="figma-field-label">资料处理结果</view>
+          <picker range="{{statuses}}" value="{{statusIndex}}" bindchange="status" disabled="{{busy}}"><view class="figma-field-control ops-picker">{{statuses[statusIndex]}}</view></picker>
+        </view>
+        <view class="figma-field-group">
+          <view class="figma-field-label">处理依据与原因</view>
+          <textarea class="figma-field-control" maxlength="500" value="{{reviewReason}}" bindinput="reason" disabled="{{busy}}" placeholder="至少2个字，保留核对依据"/>
+        </view>
+        <figma-feedback type="info" title="本次审核范围" body="仅针对当前展示版本；资料更新后必须重新读取和同意。"/>
+        <checkbox-group bindchange="agree"><label class="figma-check"><checkbox value="yes" checked="{{consent}}" disabled="{{busy}}"/><view>我确认按资料审核范围作出本次处理</view></label></checkbox-group>
+      </view>
+
+      <figma-feedback wx:if="{{paymentNotice}}" type="info" title="支付能力说明" body="{{paymentNotice}}"/>
+    </block>
+  </view>
+
+  <view wx:if="{{allowed}}" class="figma-fixed-actions">
+    <block wx:if="{{reviewOpen}}">
+      <button class="figma-action figma-action--ghost" bindtap="closeReview" disabled="{{busy}}">关闭本次处理</button>
+      <button class="figma-action figma-action--orange" bindtap="submitReview" disabled="{{busy || !consent || reviewReason.length < 2}}">{{busy ? '提交中…' : '确认处理资料'}}</button>
+    </block>
+    <block wx:else>
+      <button class="figma-action figma-action--ghost" bindtap="load" disabled="{{busy || loading || feeDirty}}">刷新平台资料</button>
+      <button class="figma-action figma-action--orange" bindtap="load" disabled="{{busy || loading || feeDirty}}">核对当前权限</button>
+    </block>
+  </view>
 </view>

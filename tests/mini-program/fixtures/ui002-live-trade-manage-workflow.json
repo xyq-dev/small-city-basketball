@@ -5,8 +5,9 @@
   "static": true,
   "figmaNode": "9:869",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["条款、原单与渠道日账分别处理", "渠道日账核对"],
+  "expectText": ["按原条款、来源订单和渠道日账核对", "渠道日账核对"],
   "data": {
+    "activeView": "reconcile",
     "orgId": "00000002-0000-4000-8000-000000000001",
     "orders": [
       {

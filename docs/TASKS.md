@@ -14,6 +14,29 @@
 
 50项Migration/223表/128函数；050仅隔离执行，001—049保留main原文。真实COS/CAM及生产未启用，8MiB/文件、128MiB/机构限额保留，云对象真实读写/删除/备份恢复与微信真机仍待专项验收。下一步准备私有测试桶和受限凭据联调。详见[任务](tasks/COS01.md)、[接续](handoffs/COS01.md)、[证据](evidence/COS01/README.md)、[配置](operations/tencent-cos.md)。
 
+## 2026-11-05 UI006 微信原生前端 Figma 重建（REVIEW / LOCAL_ONLY）
+
+| 项 | 当前事实 |
+| --- | --- |
+| 负责人 | Codex 主 Agent；共享组件、导航、整合、微信工具和汇总文档单写 |
+| 分支与基线 | `feat/wechat-figma-rebuild`，基于 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` |
+| 目标 | Figma 定稿 → 全新原生 WXML/WXSS UI → 依据现有契约接通功能 → 分离视觉与功能验收 |
+| 计数 | 从零建立 73 路由＋17 条件状态清单；旧 UI005 数量不沿用 |
+| 当前切片 | 73 路由＋17 状态已完成新模板、功能接线与最终三宽隔离渲染；首页/我的有当前微信 390 逻辑宽真实状态证据；直接回归 242/242，全量 1237/1238，唯一失败为 Windows `symlinkSync EPERM` |
+| 权限 | 允许本地分支、前端重写、测试和截图；禁止 commit、push、merge、pack、上传、部署、Migration、后端/生产修改 |
+| 记录 | [任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)／[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)／[证据说明](evidence/ui006/README.md)／[73＋17 覆盖矩阵](evidence/ui006/COVERAGE.md) |
+
+## 2026-11-05 UI005 小程序全量 Figma 还原（DRAFT PR 候选）
+
+| 项 | 当前事实 |
+| --- | --- |
+| 候选分支 | `feat/ui005-figma-complete`，[Draft PR #42](https://github.com/xyq-dev/small-city-basketball/pull/42)，基线 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` |
+| 实现与隔离核对 | 73/73 注册路由、17/17 条件状态；原 1386/1386 只作模板、三宽约束与夹具证据，不等于全量高保真复审 |
+| 微信运行 | 原 18/73 路由只读证据保留；本轮重新高保真复核首页与“我的”2页、390 首屏/底部。不是实际报名、预约、审核、支付或记分成功流程 |
+| 验证 | 两页直接回归 141/141、定向三宽 21/21；本地 `test:wechat` 1207/1208，唯一失败为 Windows `symlinkSync` EPERM。CI 只以 PR 最新 head 为准，旧 head 绿色不代替新 head |
+| 证据 | [任务](tasks/UI005-REDESIGN.md)／[交接](handoffs/UI005-REDESIGN.md)／[73+17 清单](evidence/ui005/README.md)／[首页与“我的”修复前后](evidence/ui005/home-account-fix/README.md) |
+| 边界 | Draft 未合入；地区/赛事目录 404、身份与业务数据、原生键盘仍是外部运行条件；未 pack、上传、部署、Migration 或修改生产 |
+
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 
 | 项 | 事实 |

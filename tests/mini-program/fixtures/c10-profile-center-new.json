@@ -3,7 +3,7 @@
   "route": "pages/player-center/index",
   "state": "empty",
   "figmaNode": "30:1766",
-  "expectText": ["成人与资料声明", "下一步填写服务报价", "管理可约时间"],
+  "expectText": ["本人服务资料", "本人已成年，并确认上述资料真实", "保存并提交资料"],
   "syntheticData": true,
   "data": {
     "authorized": true,

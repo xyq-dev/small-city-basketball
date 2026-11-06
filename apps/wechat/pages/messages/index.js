@@ -12,12 +12,29 @@ const labels = {
   CANCELLED: '已取消',
   EXPIRED: '已过期',
 };
+function today(value, now = new Date()) {
+  const date = new Date(value || '');
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
 function view(item) {
   return {
     ...item,
     deliveryLabel: labels[item.delivery] || '状态待核对',
     timeLabel: api.publicTime(item.time),
     createdLabel: api.publicTime(item.createdAt),
+    isToday: today(item.time || item.createdAt),
+  };
+}
+function visibleCounts(items, filter) {
+  const visible = filter === 'unread' ? items.filter((item) => !item.readAt) : items;
+  return {
+    todayCount: visible.filter((item) => item.isToday).length,
+    earlierCount: visible.filter((item) => !item.isToday).length,
   };
 }
 function removeIf(viewer, id) {
@@ -29,6 +46,8 @@ Page({
   data: {
     items: [],
     unreadCount: 0,
+    todayCount: 0,
+    earlierCount: 0,
     messageFilter: 'all',
     nextCursor: null,
     loading: false,
@@ -38,10 +57,15 @@ Page({
     message: '',
     pending: false,
     loginRequired: false,
+    messageTabs: [
+      { key: 'all', label: '全部' },
+      { key: 'unread', label: '未读' },
+    ],
+    figmaCompactMessages: false,
   },
   onShow() {
     this._closed = false;
-    this.setData({ items: [], unreadCount: 0, busy: false });
+    this.setData({ items: [], unreadCount: 0, todayCount: 0, earlierCount: 0, busy: false });
     this.load();
   },
   onHide() {
@@ -49,6 +73,8 @@ Page({
     this.setData({
       items: [],
       unreadCount: 0,
+      todayCount: 0,
+      earlierCount: 0,
       nextCursor: null,
       error: '',
       message: '',
@@ -65,6 +91,8 @@ Page({
     this.setData({
       items: [],
       unreadCount: 0,
+      todayCount: 0,
+      earlierCount: 0,
       nextCursor: null,
       busy: false,
       pending: false,
@@ -85,13 +113,16 @@ Page({
       if (!session || !ui.live(this, t)) return;
       this._viewer = session.user.id;
       const r = (await api.getClient().request(root)).data;
-      if (ui.live(this, t))
+      if (ui.live(this, t)) {
+        const items = r.items.map(view);
         this.setData({
-          items: r.items.map(view),
+          items,
           unreadCount: r.items.filter((x) => !x.readAt).length,
+          ...visibleCounts(items, this.data.messageFilter),
           nextCursor: r.nextCursor,
           pending: !!wx.getStorageSync(journal(this._viewer)),
         });
+      }
     } catch (e) {
       if (ui.live(this, t)) this.setData({ error: ui.message(e) });
     } finally {
@@ -106,12 +137,15 @@ Page({
     try {
       const r = (await api.getClient().request(root + '?cursor=' + encodeURIComponent(cursor)))
         .data;
-      if (ui.held(this, t))
+      if (ui.held(this, t)) {
+        const items = [...this.data.items, ...r.items.map(view)];
         this.setData({
-          items: [...this.data.items, ...r.items.map(view)],
-          unreadCount: [...this.data.items, ...r.items].filter((x) => !x.readAt).length,
+          items,
+          unreadCount: items.filter((x) => !x.readAt).length,
+          ...visibleCounts(items, this.data.messageFilter),
           nextCursor: r.nextCursor,
         });
+      }
     } catch (e) {
       if (ui.held(this, t)) this.setData({ error: ui.message(e) });
     } finally {
@@ -129,11 +163,14 @@ Page({
       await api.getClient().request(root + '/' + encodeURIComponent(id) + '/read', 'POST', {
         clientRequestId: requestId,
       });
-      if (ui.held(this, t))
+      if (ui.held(this, t)) {
+        const items = this.data.items.map((x) => (x.id === id ? { ...x, readAt: 'read' } : x));
         this.setData({
-          items: this.data.items.map((x) => (x.id === id ? { ...x, readAt: 'read' } : x)),
+          items,
           unreadCount: this.data.items.filter((x) => x.id !== id && !x.readAt).length,
+          ...visibleCounts(items, this.data.messageFilter),
         });
+      }
     } catch (err) {
       if (ui.held(this, t)) this.setData({ error: ui.message(err) });
     } finally {
@@ -197,9 +234,9 @@ Page({
       });
   },
   filterMessages(e) {
-    const value = e.currentTarget.dataset.filter;
+    const value = e.detail?.key || e.currentTarget?.dataset?.filter;
     if (!this.data.busy && ['all', 'unread'].includes(value))
-      this.setData({ messageFilter: value });
+      this.setData({ messageFilter: value, ...visibleCounts(this.data.items, value) });
   },
   follows() {
     ui.open('follows');

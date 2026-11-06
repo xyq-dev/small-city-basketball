@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "9:1099",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["先处理未结束事项，再确认注销", "申请与执行分开"],
+  "expectText": ["先核对未结束事项，再选择等待期", "注销申请与最终执行分开"],
   "data": {
     "loading": false,
     "busy": false,

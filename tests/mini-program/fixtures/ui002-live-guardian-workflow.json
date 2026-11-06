@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "6:807",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["青年报名与监护确认", "用途"],
+  "expectText": ["青年报名", "必要资料、监护关系与公开用途逐项授权", "用途"],
   "data": {
     "review": false,
     "hasMaterialScope": false,

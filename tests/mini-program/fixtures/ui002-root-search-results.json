@@ -55,6 +55,38 @@
         "city": null
       }
     ],
+    "eventItems": [
+      {
+        "kind": "EVENT",
+        "kindLabel": "赛事",
+        "publicKey": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+        "key": "EVENT:EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+        "displayName": "合成城市周末篮球邀请赛",
+        "city": "合成市",
+        "startsOn": "2028-06-01",
+        "endsOn": "2028-06-03"
+      }
+    ],
+    "teamItems": [
+      {
+        "kind": "TEAM",
+        "kindLabel": "球队",
+        "publicKey": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+        "key": "TEAM:TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+        "displayName": "合成青锋篮球俱乐部",
+        "city": null
+      }
+    ],
+    "playerItems": [
+      {
+        "kind": "PLAYER",
+        "kindLabel": "球员",
+        "publicKey": "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+        "key": "PLAYER:PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+        "displayName": "合成球员甲",
+        "city": null
+      }
+    ],
     "cursor": "synthetic-layout-search-cursor",
     "busy": false,
     "searched": true,

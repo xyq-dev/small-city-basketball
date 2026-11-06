@@ -7,6 +7,7 @@ Page({
   data: {
     city: '',
     label: '全国',
+    selectedScopeLabel: '',
     source: '',
     recent: [],
     recentChoices: [],
@@ -25,6 +26,7 @@ Page({
     parentLabel: '',
     versionNote: '',
     partial: false,
+    activeView: 'standard',
   },
   onLoad(query = {}) {
     this._alive = true;
@@ -103,6 +105,11 @@ Page({
       rows: matches.slice(0, this._visibleCount),
       hasMore: matches.length > this._visibleCount,
     });
+  },
+  openRegion(e) {
+    const node = this._catalog && this._catalog.index[e.currentTarget.dataset.id];
+    if (node && node.hasChildren) return this.browseRegion(e);
+    return this.selectRegion(e);
   },
   searchRegion(e) {
     this.setData({ search: String(e.detail.value || '').slice(0, 80) });
@@ -191,5 +198,21 @@ Page({
   },
   clearHistory() {
     if (!this._organizer && this.active()) this.setData(cities.clearRecent());
+  },
+  changeView(e) {
+    const value = e.currentTarget.dataset.view;
+    if (!this.data.catalogLoading && ['standard', 'recent'].includes(value))
+      this.setData({ activeView: value });
+  },
+  confirmCurrent() {
+    if (this.data.parentId) return this.chooseParent();
+    if (
+      this.data.mode === 'REGION' &&
+      this.data.regionId &&
+      this._catalog &&
+      this._catalog.index[this.data.regionId]
+    )
+      return this.selectRegion({ currentTarget: { dataset: { id: this.data.regionId } } });
+    if (!this._organizer && this.data.input.trim()) return this.apply();
   },
 });

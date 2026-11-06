@@ -71,8 +71,8 @@ test('first visit: anonymous events and dismissible city guide', async () => {
   assert.equal(h.requireLocal('utils/api.js').getClient().hasSession(), false);
   const html = buildPreview({ root, route: h.page.route, data: h.page.data }).phone;
   assert.match(html, /合成公开赛事a/);
-  assert.match(html, /选择城市/);
-  assert.match(html, /全国找赛事，同城一起上场/);
+  assert.match(html, /搜赛事、球队、球员/);
+  assert.match(html, /让热爱，有主场。/);
   assert.equal(
     d.wx.calls.some((call) => /getLocation|getFuzzyLocation/.test(call.type)),
     false,

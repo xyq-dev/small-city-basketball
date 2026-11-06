@@ -4,6 +4,12 @@ Page({
     selected: 'funds',
     optionsOpen: false,
     refundProgress: false,
+    planTabs: [
+      { key: 'funds', label: '费用规则' },
+      { key: 'payment', label: '支付核对' },
+      { key: 'refund', label: '取消退款' },
+      { key: 'settlement', label: '结算' },
+    ],
     options: [
       { key: 'funds', label: '当前费用与资金' },
       { key: 'payment', label: '支付确认' },
@@ -18,7 +24,7 @@ Page({
     if (this.data.options.some((v) => v.key === query.kind)) this.setData({ selected: query.kind });
   },
   select(e) {
-    const key = e.currentTarget.dataset.key;
+    const key = e.detail?.key || e.currentTarget?.dataset?.key;
     if (this.data.options.some((v) => v.key === key))
       this.setData({ selected: key, optionsOpen: false, refundProgress: false });
   },

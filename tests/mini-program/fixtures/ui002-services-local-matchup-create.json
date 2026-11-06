@@ -4,7 +4,7 @@
   "state": "synthetic-local-matchup-create",
   "figmaNode": "8:1239",
   "designSource": "UI001 current protected route and verified shared fields/cards; synthetic data only",
-  "expectText": ["双方独立确认", "发起等待对方确认的约赛", "真实球场预约"],
+  "expectText": ["双方独立确认", "发起等待对方确认的约赛", "本次球场预约"],
   "data": {
     "matchupView": "create",
     "teams": [

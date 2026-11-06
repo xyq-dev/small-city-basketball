@@ -11,6 +11,7 @@ const view = (m) => ({
 Page({
   data: {
     items: [],
+    selectedId: '',
     team: null,
     loading: false,
     busy: false,
@@ -45,8 +46,14 @@ Page({
     this._viewer = session.user.id;
     const token = ui.begin(this);
     try {
-      const items = await tm.createRepository().memberships();
-      if (ui.live(this, token)) this.setData({ loading: false, items: items.map(view) });
+      const items = (await tm.createRepository().memberships()).map(view);
+      if (ui.live(this, token)) {
+        const selected =
+          items.find(
+            (item) => item.bindingId === this.data.selectedId && item.status === 'ACTIVE',
+          ) || items.find((item) => item.status === 'ACTIVE');
+        this.setData({ loading: false, items, selectedId: selected ? selected.bindingId : '' });
+      }
     } catch (error) {
       if (ui.live(this, token)) this.setData({ loading: false, error: ui.message(error) });
     }
@@ -65,6 +72,19 @@ Page({
   },
   closeTeam() {
     this.setData({ team: null });
+  },
+  select(e) {
+    const item = this.data.items.find((value) => value.bindingId === e.currentTarget.dataset.id);
+    if (!this.data.busy && item && item.status === 'ACTIVE')
+      this.setData({ selectedId: item.bindingId, team: null });
+  },
+  openSelected() {
+    if (!this.data.selectedId) return;
+    return this.open({ currentTarget: { dataset: { id: this.data.selectedId } } });
+  },
+  leaveSelected() {
+    if (!this.data.selectedId) return;
+    return this.leave({ currentTarget: { dataset: { id: this.data.selectedId } } });
   },
   async leave(e) {
     const item = this.data.items.find((m) => m.bindingId === e.currentTarget.dataset.id);
@@ -87,15 +107,18 @@ Page({
             m.teamName === item.teamName,
         ),
       send: () => tm.createRepository().leave(item.bindingId),
-      done: async (updated) =>
+      done: async (updated) => {
+        const items = this.data.items.map((m) =>
+          m.bindingId === updated.bindingId ? view(updated) : m,
+        );
         this.setData({
-          items: this.data.items.map((m) =>
-            m.bindingId === updated.bindingId ? view(updated) : m,
-          ),
+          items,
+          selectedId: items.find((item) => item.status === 'ACTIVE')?.bindingId || '',
           team: null,
           uncertain: false,
           message: '已退出球队。',
-        }),
+        });
+      },
     });
   },
   openJoin() {

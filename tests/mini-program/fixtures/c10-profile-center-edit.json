@@ -3,7 +3,7 @@
   "route": "pages/player-center/index",
   "state": "review",
   "figmaNode": "30:1766",
-  "expectText": ["显示名称 / 位置", "成人与资料声明", "保存并提交资料审核"],
+  "expectText": ["显示名称", "本人已成年，并确认上述资料真实", "保存并提交资料"],
   "syntheticData": true,
   "data": {
     "authorized": true,

@@ -135,6 +135,7 @@
     "stale": false,
     "loading": false,
     "tab": "ranking",
+    "standingsView": "groups",
     "overview": false,
     "unavailable": false
   }

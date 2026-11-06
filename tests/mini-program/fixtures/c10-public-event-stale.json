@@ -3,7 +3,7 @@
   "route": "pages/event/index",
   "state": "error",
   "figmaNode": "11:36",
-  "expectText": ["现有资料已陈旧", "合成城市联赛2026"],
+  "expectText": ["赛事资料更新失败", "合成城市联赛2026"],
   "data": {
     "event": {
       "name": "合成城市联赛2026",

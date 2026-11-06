@@ -91,9 +91,10 @@ test('compact party summary keeps missing inputs reachable and fee review uses t
   const reviewed = render({ ...data, review: true, consent: false });
   assert.doesNotMatch(reviewed, /data-mini-bindchange="teamPick"/);
   assert.match(reviewed, /data-mini-bindchange="consent"/);
-  assert.match(reviewed, /确定报价合计/);
+  assert.match(reviewed, /确定报价/);
+  assert.match(reviewed, /确定合计/);
   assert.ok(reviewed.includes(data.quote.confirmed));
   assert.ok(reviewed.includes(data.quote.conditional));
   assert.equal(JSON.stringify(data.quote), originalQuote);
-  assert.match(reviewed, /disabled[^>]*>\s*请先核对并勾选声明/);
+  assert.match(reviewed, /disabled[^>]*>\s*核对并提交预约/);
 });

@@ -157,6 +157,11 @@ Page({
         this.setData({ mineLoading: false });
     }
   },
+  openCurrentCourse() {
+    const item = (this.data.items || [])[0];
+    if (!item || this.data.busy) return;
+    this.select({ currentTarget: { dataset: { id: item.id } } });
+  },
   select(e) {
     this.showDetail(training.id(e.currentTarget.dataset.id));
   },

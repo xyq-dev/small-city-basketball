@@ -204,7 +204,7 @@ test('C23 discovers own current entries through a distinct personal menu route',
   );
   assert.match(
     fs.readFileSync(path.join(root, 'pages/account/index.wxml'), 'utf8'),
-    /本人赛事报名与照片/,
+    /data-page="participant-materials"[\s\S]*?我的报名/,
   );
 });
 

@@ -3,7 +3,7 @@
   "route": "pages/player/index",
   "state": "ready",
   "figmaNode": "30:168",
-  "expectText": ["合成林越", "每场记录", "0 分 / 0 犯规"],
+  "expectText": ["合成林越", "授权比赛数据", "个人统计样本"],
   "syntheticData": true,
   "data": {
     "profile": {

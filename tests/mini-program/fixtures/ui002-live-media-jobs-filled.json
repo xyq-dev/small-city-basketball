@@ -4,8 +4,9 @@
   "state": "synthetic-ui002",
   "static": true,
   "designSource": "UI001 design + current native route; synthetic static compatibility only, not real channel acceptance",
-  "expectText": ["录制产物与任务", "录像与媒体作业", "授权下载与预览"],
+  "expectText": ["录像工作单", "录像与媒体作业", "授权下载与预览"],
   "data": {
+    "mediaTab": "artifacts",
     "session": {
       "id": "33333333-3333-4333-8333-333333333333",
       "matchId": "22222222-2222-4222-8222-222222222222",

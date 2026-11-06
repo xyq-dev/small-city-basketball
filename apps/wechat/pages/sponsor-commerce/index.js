@@ -3,6 +3,28 @@ const ui = require('../../utils/ui');
 const model = require('../../utils/sponsor-commerce');
 const client = require('../../utils/sponsor-commerce-client');
 const PATH = '/pages/sponsor-commerce/index';
+function summarizeContractOrder(contracts, orders) {
+  const contract = contracts[0];
+  if (!contract) return { paymentLabel: '待合同建立', poolLabel: '待核对' };
+  const order = orders.find((item) => (item.contract_id || item.contractId) === contract.id);
+  if (!order) return { paymentLabel: '尚未建立订单', poolLabel: '待核对' };
+  const paid = Number.isSafeInteger(order.paid_fen) ? order.paid_fen : order.paidFen;
+  const refunded = Number.isSafeInteger(order.refunded_fen)
+    ? order.refunded_fen
+    : Number.isSafeInteger(order.refundedFen)
+      ? order.refundedFen
+      : 0;
+  const fee = Number.isSafeInteger(order.verified_fee_fen)
+    ? order.verified_fee_fen
+    : order.verifiedFeeFen;
+  return {
+    paymentLabel: order.stateLabel,
+    poolLabel:
+      Number.isSafeInteger(paid) && paid > 0 && Number.isSafeInteger(fee)
+        ? '¥' + model.money(Math.max(0, paid - refunded - fee))
+        : '待实收与手续费核验',
+  };
+}
 Page({
   data: {
     organizations: [],
@@ -35,6 +57,10 @@ Page({
     mode: 'manage',
     workspaceView: 'contracts',
     detailView: 'delivery',
+    contractOverview: { paymentLabel: '待核对', poolLabel: '待核对' },
+    figmaCommercePreview: false,
+    figmaState: '',
+    figmaSummaryTitle: '',
   },
   onLoad(q = {}) {
     this._alive = true;
@@ -62,6 +88,7 @@ Page({
       beneficiaries: [],
       statements: [],
       busy: false,
+      contractOverview: { paymentLabel: '待核对', poolLabel: '待核对' },
     });
   },
   onUnload() {
@@ -100,6 +127,7 @@ Page({
       mode: 'manage',
       workspaceView: 'contracts',
       detailView: 'delivery',
+      contractOverview: { paymentLabel: '待核对', poolLabel: '待核对' },
       pending: null,
       busy: false,
       loading: false,
@@ -185,6 +213,7 @@ Page({
           orders: [],
           canManage: false,
           canFinance: false,
+          contractOverview: { paymentLabel: '待合同建立', poolLabel: '待核对' },
         });
         return;
       }
@@ -204,11 +233,14 @@ Page({
       }
       const data = (await api.getClient().request(this.base())).data;
       if (!ui.live(this, token)) return;
+      const contracts = model.decorate(data.contracts);
+      const orders = model.decorate(data.orders);
       this.setData({
         ...data,
         error: '',
-        contracts: model.decorate(data.contracts),
-        orders: model.decorate(data.orders),
+        contracts,
+        orders,
+        contractOverview: summarizeContractOrder(contracts, orders),
         beneficiaries: model.decorate(data.beneficiaries),
         shares: (data.receiverOptions || []).map((x) => ({ ...x, bps: '' })),
         loading: false,
@@ -399,6 +431,10 @@ Page({
     const d = this.data.detail;
     if (!d) return;
     ui.open('trade-order', { kind: 'SPONSOR_ORDER', sourceId: d.order.id });
+  },
+  openTradeManage() {
+    if (this.data.busy || !this._org || (!this.data.canManage && !this.data.canFinance)) return;
+    ui.open('trade-manage', { orgId: this._org });
   },
   async resolve(e) {
     if (this.data.busy) return;

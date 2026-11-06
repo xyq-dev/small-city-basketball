@@ -2,9 +2,9 @@
   "name": "c10-account-wechat-disabled",
   "route": "pages/account/index",
   "state": "permission",
-  "figmaNode": "9:476",
-  "referenceKind": "derived",
-  "expectText": ["微信登录待接入，可先使用已有账号", "微信登录暂未开放"],
+  "figmaNode": "36:116",
+  "referenceKind": "latest-ui006",
+  "expectText": ["当前能力状态", "微信登录暂未开放"],
   "primary": false,
   "data": {
     "loading": false,

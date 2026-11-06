@@ -44,6 +44,13 @@ Page({
     pending: false,
     error: '',
     message: '',
+    activeView: 'check',
+    figmaClosurePreview: false,
+    figmaOrderStatus: '',
+    closureTabs: [
+      { key: 'check', label: '检查结果' },
+      { key: 'request', label: '注销申请' },
+    ],
   },
   onShow() {
     this._closed = false;
@@ -82,6 +89,10 @@ Page({
   },
   confirmTerms(e) {
     if (!this.data.busy) this.setData({ confirmed: e.detail.value.includes('close') });
+  },
+  changeView(e) {
+    const key = e.detail?.key || e.currentTarget?.dataset?.key;
+    if (!this.data.busy && ['check', 'request'].includes(key)) this.setData({ activeView: key });
   },
   async load() {
     if (this.data.busy) return;

@@ -1,0 +1,48 @@
+{
+  "createdAt": "2026-11-05T11:34:49.219Z",
+  "endpoint": "ws://127.0.0.1:9420",
+  "mode": "read-only-interactions",
+  "checks": [
+    {
+      "action": ".home-city",
+      "route": "pages/city-select/index",
+      "expected": "pages/city-select/index",
+      "passed": true
+    },
+    {
+      "action": ".home-bell",
+      "route": "pages/messages/index",
+      "expected": "pages/messages/index",
+      "passed": true
+    },
+    {
+      "action": "邮箱登录",
+      "route": "pages/account/index",
+      "emailOpen": true,
+      "panelVisible": true,
+      "passed": true
+    },
+    {
+      "action": "找回账号",
+      "route": "pages/account-recovery/index",
+      "expected": "pages/account-recovery/index",
+      "passed": true
+    },
+    {
+      "action": "重新核对微信登录状态",
+      "route": "pages/account/index",
+      "before": {
+        "wechatState": "unknown",
+        "loginPhase": "",
+        "busy": false
+      },
+      "after": {
+        "wechatState": "unknown",
+        "loginPhase": "",
+        "busy": false
+      },
+      "passed": true
+    }
+  ],
+  "exceptions": []
+}

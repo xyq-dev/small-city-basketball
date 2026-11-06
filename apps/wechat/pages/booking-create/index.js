@@ -9,11 +9,14 @@ const EMPTY_QUOTES = {
   platform: '¥0.00',
   travel: '¥0.00',
   accommodation: '¥0.00',
+  travelAccommodation: '¥0.00',
   confirmed: '¥0.00',
   conditional: '¥0.00',
   count: 0,
   fixedCount: 0,
   conditionalCount: 0,
+  fixedPlayerCount: 0,
+  fixedSlotCount: 0,
 };
 const PLACEHOLDER_COMMAND = '00000000-0000-4000-8000-000000000001';
 function compactMoney(value) {
@@ -281,16 +284,22 @@ Page({
         (m.homeTeamId === team.id || m.awayTeamId === team.id),
     );
     const count = form.quoteDraft(draft, workspace);
+    const fixedSlots = draft.slots.filter((slot) => !slot.conditional);
+    const fixedPlayerIds = new Set();
+    fixedSlots.forEach((slot) => (slot.profileIds || []).forEach((id) => fixedPlayerIds.add(id)));
     const quote = {
       service: ui.money(count.serviceFen),
       platform: ui.money(count.platformFeeFen),
       travel: ui.money(count.travelFen),
       accommodation: ui.money(count.accommodationFen),
+      travelAccommodation: ui.money(count.travelFen + count.accommodationFen),
       confirmed: ui.money(count.confirmedTotalFen),
       conditional: ui.money(count.conditionalTotalFen),
       count: count.appearanceCount,
       fixedCount: count.fixedCount,
       conditionalCount: count.conditionalCount,
+      fixedPlayerCount: fixedPlayerIds.size,
+      fixedSlotCount: fixedSlots.length,
     };
     const slots = draft.slots.map((s, index) => ({
       ...s,

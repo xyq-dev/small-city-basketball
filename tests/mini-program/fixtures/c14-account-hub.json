@@ -4,7 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["当前角色工作台", "赛事工作台", "合成高州篮协 · 机构负责人", "记分与赛果复核"],
+  "expectText": ["角色工作台", "赛事工作台", "仅限当前机构授权", "记分与赛果复核", "直播与媒体"],
   "data": {
     "email": "",
     "password": "",

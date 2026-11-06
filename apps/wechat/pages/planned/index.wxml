@@ -1,63 +1,71 @@
-<scb-header title="服务与资金说明" disabled="{{busy}}"/>
-<view class="page has-actions planned-page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">服务规则说明</view><view class="title">实际订单与本页说明分别查看</view></view>
-  <block wx:if="{{selected==='funds'}}">
-    <view class="card plan-card"><view class="subtitle">确定场次报价</view><view>参赛服务费、平台费、交通和食宿逐项展示</view><view>条件意向另列，不计入确定合计、不占档</view></view>
-    <view class="notice warning plan-notice"><view class="plan-notice-title">本说明不发起在线支付</view><view class="small">本页仅说明规则，不发起付款；真实订单按当前收款渠道能力处理。</view></view>
-    <view class="card plan-card"><view class="subtitle">查看实际资金</view><view>本页不读取资金，不显示假定实收、退款或结算金额。</view><button class="secondary" data-page="trade-order" bindtap="go">查看本人真实资金订单</button><view>完成服务记录不会自动产生付款</view></view>
-    <view class="card plan-card"><view class="subtitle">费用规则</view><view>平台费仅按参赛服务费计算</view><view>条件意向预计与确定报价分开</view></view>
-  </block>
-  <block wx:elif="{{selected==='payment'}}">
-    <view class="notice warning plan-notice"><view class="plan-notice-title">付款请进入原订单</view><view class="small">真实付款入口按原订单、本人权限与当前渠道能力开放，本页只说明核对要点。</view></view>
-    <view class="card plan-card"><view class="subtitle">支付前核对</view><view>核对逐人逐场服务费、平台费与交通食宿</view><view>明确交易主体与取消退款规则</view><view>渠道未启用时，原订单保留明确关闭状态</view></view>
-    <view class="card plan-card"><view class="subtitle">确认内容</view><view>收款与分账按实际商户及原订单条件处理</view><view>实际付款以渠道和服务端核验为准</view></view>
-    <button class="secondary" data-key="unknown" bindtap="select">查看支付结果待核验状态</button>
-  </block>
-  <block wx:elif="{{selected==='unknown'}}">
-    <view class="hero plan-hero"><view class="title">先核对交易结果</view><view class="muted">未知结果不等于付款失败</view></view>
-    <view class="card plan-card"><view class="subtitle">原付款核对规则</view><view>以支付渠道与服务端核验结果为准</view><view>不凭客户端返回自行改为已支付</view></view>
-    <view class="notice warning plan-notice"><view class="plan-notice-title">核对期间避免重复付款</view><view class="small">原交易编号关联原订单；未核验时保留待确认状态。</view></view>
-    <view class="card plan-card"><view class="subtitle">当前项目状态</view><view>本页未读取原资金订单</view><view>本页不代表已发生或未发生资金，请到真实订单核对</view></view>
-  </block>
-  <block wx:elif="{{selected==='refund' && !refundProgress}}">
-    <view class="card plan-card"><view class="subtitle">逐场选择处理范围</view><view>按原订单选择本次要处理的球员与场次</view><view>不影响其他有效履约项</view></view>
-    <view class="card plan-card"><view class="subtitle">退款核对区</view><view>实付、可退金额、已结算部分分别核对</view><view>服务费与交通食宿按最终明确规则处理</view><view>规则及渠道未启用时不生成承诺金额</view></view>
-    <view class="notice warning plan-notice"><view class="plan-notice-title">取消和退款分别确认</view><view class="small">取消合作不等于退款到账，争议按独立流程处理。</view></view>
-    <button class="secondary" bindtap="showRefundProgress">查看退款进度规划</button>
-  </block>
-  <block wx:elif="{{selected==='refund' && refundProgress}}">
-    <view class="hero plan-hero"><view class="title">退款进度以核验结果为准</view><view class="muted">申请 → 审核 → 渠道处理 → 到账核验</view></view>
-    <view class="card plan-card"><view class="subtitle">状态设计</view><view>处理中：展示原交易与退款编号</view><view>失败：展示原因和可重试入口</view><view>到账：只在渠道与服务端核验后显示</view></view>
-    <view class="notice warning plan-notice"><view class="plan-notice-title">本页不读取真实退款</view><view class="small">请进入原资金订单，核对原退款及渠道记录；本说明不代表退款成功或没有退款。</view></view>
-    <button class="secondary" data-key="funds" bindtap="select">查看资金说明</button>
-  </block>
-  <block wx:elif="{{selected==='settlement'}}">
-    <view class="card plan-card"><view class="subtitle">结算应逐项核对</view><view>参赛服务收入、平台费用、交通食宿</view><view>退款、争议冻结、待结算与已结算分开</view></view>
-    <view class="plan-stat-grid"><view class="plan-stat"><view class="numeric">以原单为准</view><view class="small muted">实际收款</view></view><view class="plan-stat"><view class="numeric">以原单为准</view><view class="small muted">实际结算</view></view></view>
-    <view class="notice warning plan-notice"><view class="plan-notice-title">实际分账按商户能力开放</view><view class="small">不显示虚假可提现余额，不提供绕过渠道的手动结算按钮。</view></view>
-    <view class="card plan-card"><view class="subtitle">结算条件须逐单确认</view><view>收款主体、手续费、税费及周期需明确</view><view>到账以实际渠道对账结果为准</view></view>
-  </block>
-  <block wx:elif="{{selected==='messages'}}">
-    <view class="plan-categories"><text class="selected-category">预约动态</text><text>关注赛事</text><text>系统消息</text></view>
-    <view class="card plan-card"><view class="subtitle">预约与赛事动态</view><view>收到预约 / 对方变更提议 / 处理结果</view><view>点击后读取当前真实订单状态</view></view>
-    <view class="card plan-card"><view class="subtitle">订阅提醒</view><view>需用户明确选择微信允许的提醒类型</view><view>未接通或未授权时不能显示已送达</view></view>
-    <view class="notice warning plan-notice"><view class="plan-notice-title">站内消息可查看，微信提醒按能力开放</view><view class="small">通过“我的关注”查看赛事，在“我的消息”核对通知。收藏赛事不会自动授权微信订阅消息。</view></view>
-    <button class="secondary" data-page="follows" bindtap="go">查看我的关注</button><button class="secondary" data-page="messages" bindtap="go">查看本人消息</button>
-  </block>
-  <block wx:elif="{{selected==='profile'}}">
-    <view class="hero plan-hero"><view class="title">长期档案与本届数据</view><view class="muted">本人资料与已授权来源分别标示</view></view>
-    <view class="card plan-card"><view class="subtitle">当前私有赛季数据</view><view>本人同意后可查看机构内赛季来源与统计</view><view>公开长期档案仍在规划，私有授权不会自动公开</view></view>
-    <button class="secondary" data-page="season-grants" bindtap="go">我的私有赛季授权与数据</button>
-    <view class="card plan-card"><view class="subtitle">专业数据边界</view><view>篮板、助攻、上场时间与命中率仅展示已采集且当前有权读取的数据</view><view>未统计保持未统计，不编造生涯能力分</view></view>
-    <button class="secondary" data-page="public-archives" bindtap="go">查看本人公开档案授权</button>
-    <view class="notice plan-notice"><view class="plan-notice-title">档案与报名分别管理</view><view class="small">长期个人档案不替代每届冻结名单与资格审核。</view></view>
-  </block>
-  <button class="secondary plan-menu-toggle" bindtap="toggleOptions">{{optionsOpen ? '收起规则说明目录' : selected==='funds' ? '查看其他服务规则说明' : '切换其他规则说明'}}</button>
-  <view wx:if="{{optionsOpen}}" class="card plan-menu"><view class="subtitle">规则说明目录</view><view class="small muted">仅查看说明，不会触发资金或消息操作。</view><view class="plan-options"><button wx:for="{{options}}" wx:key="key" class="secondary {{selected===item.key ? 'option-selected' : ''}}" data-key="{{item.key}}" bindtap="select">{{item.label}}</button></view></view>
-</view>
-<view class="action-bar">
-  <button wx:if="{{selected==='funds' || selected==='messages'}}" class="primary" data-page="bookings" bindtap="go">查看我的预约</button>
-  <button wx:elif="{{selected==='profile'}}" class="primary" data-page="performance" bindtap="go">查看本人授权记录</button>
-  <button wx:else disabled>{{selected==='payment' ? '本说明不执行支付' : selected==='unknown' ? '查单请进入原订单' : selected==='refund' ? '退款请进入原订单' : '结算请进入原订单'}}</button>
-  <button class="quiet" data-page="account" bindtap="go">返回我的</button>
+<scb-header title="服务规则" disabled="{{busy}}"/>
+<view class="figma-page planned-rebuild">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary">
+      <view class="figma-summary__icon"><figma-icon name="receipt" size="28"/></view>
+      <view class="figma-summary__copy"><view class="figma-eyebrow">费用与履约</view><view class="figma-title">预约费用怎样计算</view><view class="figma-subtitle">逐项解释确定报价、原订单与处理进度</view></view>
+    </view>
+    <figma-tabs key1="funds" label1="费用规则" key2="payment" label2="支付核对" key3="refund" label3="取消退款" key4="settlement" label4="结算" active="{{selected === 'unknown' ? 'payment' : selected}}" bind:change="select"/>
+
+    <block wx:if="{{selected === 'funds'}}">
+      <view class="figma-section">
+        <view class="figma-section__title">确定场次报价</view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">参赛服务费</view><view class="figma-row__subtitle">按人、场次展示</view></view><view class="planned-value">按约定</view></view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">平台费</view><view class="figma-row__subtitle">仅按参赛服务费计算</view></view><view class="planned-value">按原条款</view></view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">交通与食宿</view><view class="figma-row__subtitle">单列协商金额</view></view><view class="planned-value">按确认</view></view>
+        <view class="figma-section__title">条件意向</view>
+        <view class="planned-callout"><view class="planned-dot"/><view><view class="figma-row__title">未确认的需求</view><view class="figma-row__subtitle">暂不占用球员档期</view></view></view>
+        <view class="planned-callout"><view class="planned-dot"/><view><view class="figma-row__title">条件报价</view><view class="figma-row__subtitle">和确定场次分别展示</view></view></view>
+      </view>
+      <view class="figma-section"><view class="figma-section__title">原单查询</view><button class="figma-row" data-page="trade-order" bindtap="go"><view class="figma-row__copy"><view class="figma-row__title">付款状态</view><view class="figma-row__subtitle">核对服务端原订单及渠道记录</view></view><view class="figma-status figma-status--orange">查看</view></button><button class="figma-row" data-page="trade-order" bindtap="go"><view class="figma-row__copy"><view class="figma-row__title">退款进度</view><view class="figma-row__subtitle">关闭合作后另查退款结果</view></view><view class="figma-status figma-status--orange">查看</view></button><view class="figma-section__hint">本页不读取资金，不显示假定实收、退款或结算金额。</view></view>
+    </block>
+
+    <block wx:elif="{{selected === 'payment'}}">
+      <view class="figma-section"><view class="figma-section__title">支付前核对</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">费用明细</view><view class="figma-row__subtitle">逐人逐场服务费、平台费与交通食宿</view></view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">交易主体</view><view class="figma-row__subtitle">核对收款主体与取消退款规则</view></view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">当前渠道</view><view class="figma-row__subtitle">未启用时原订单保留关闭状态</view></view></view></view>
+      <view class="planned-warning"><view class="figma-row__title">付款请进入原订单</view><view class="figma-row__subtitle">真实付款入口按本人权限与当前渠道能力开放；本说明不执行支付。</view></view>
+      <button class="figma-action figma-action--ghost" data-key="unknown" bindtap="select">查看支付结果待核验状态</button>
+    </block>
+
+    <block wx:elif="{{selected === 'unknown'}}">
+      <view class="figma-summary figma-summary--navy"><view class="figma-summary__copy"><view class="figma-title">先核对交易结果</view><view class="figma-subtitle">未知结果不等于付款失败</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">原付款核对规则</view><view class="figma-row__subtitle">以支付渠道与服务端核验结果为准，不凭客户端返回自行改为已支付。</view></view>
+      <view class="planned-warning"><view class="figma-row__title">核对期间避免重复付款</view><view class="figma-row__subtitle">原交易编号关联原订单；查单请进入原订单。</view></view>
+    </block>
+
+    <block wx:elif="{{selected === 'refund' && !refundProgress}}">
+      <view class="figma-section"><view class="figma-section__title">逐场选择处理范围</view><view class="figma-row__subtitle">按原订单选择要处理的球员与场次，不影响其他有效履约项。</view></view>
+      <view class="figma-section"><view class="figma-section__title">退款核对区</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">实付与可退</view><view class="figma-row__subtitle">已结算部分分别核对</view></view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">取消与退款</view><view class="figma-row__subtitle">取消合作不等于退款到账</view></view></view><button class="figma-action figma-action--ghost" bindtap="showRefundProgress">查看退款进度规划</button></view>
+    </block>
+
+    <block wx:elif="{{selected === 'refund' && refundProgress}}">
+      <view class="figma-summary figma-summary--navy"><view class="figma-summary__copy"><view class="figma-title">退款进度以核验结果为准</view><view class="figma-subtitle">申请 → 审核 → 渠道处理 → 到账核验</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">状态设计</view><view class="figma-row__subtitle">处理中展示原交易与退款编号；失败展示原因和可重试入口；到账只在渠道与服务端核验后显示。</view></view>
+      <view class="planned-warning"><view class="figma-row__title">本页不读取真实退款</view><view class="figma-row__subtitle">请进入原资金订单核对原退款及渠道记录。</view></view>
+    </block>
+
+    <block wx:elif="{{selected === 'settlement'}}">
+      <view class="figma-section"><view class="figma-section__title">结算应逐项核对</view><view class="figma-row__subtitle">参赛服务收入、平台费用、交通食宿、退款、争议冻结、待结算与已结算分开。</view><view class="planned-stat-grid"><view><view class="planned-value">以原单为准</view><view class="figma-caption">实际收款</view></view><view><view class="planned-value">以原单为准</view><view class="figma-caption">实际结算</view></view></view></view>
+      <view class="planned-warning"><view class="figma-row__title">实际分账按商户能力开放</view><view class="figma-row__subtitle">不显示虚假可提现余额；结算请进入原订单。</view></view>
+    </block>
+
+    <block wx:elif="{{selected === 'messages'}}">
+      <view class="figma-section"><view class="figma-section__title">预约与赛事动态</view><view class="figma-row__subtitle">收到预约、对方变更提议与处理结果；点击后读取当前真实订单状态。</view><button class="figma-action figma-action--ghost" data-page="follows" bindtap="go">查看我的关注</button><button class="figma-action figma-action--ghost" data-page="messages" bindtap="go">查看本人消息</button></view>
+      <view class="planned-warning"><view class="figma-row__title">站内消息可查看，微信提醒按能力开放</view><view class="figma-row__subtitle">收藏赛事不会自动授权微信订阅消息。</view></view>
+    </block>
+
+    <block wx:elif="{{selected === 'profile'}}">
+      <view class="figma-summary figma-summary--navy"><view class="figma-summary__copy"><view class="figma-title">长期档案与本届数据</view><view class="figma-subtitle">本人资料与已授权来源分别标示</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">专业数据边界</view><view class="figma-row__subtitle">篮板、助攻、上场时间与命中率仅展示已采集且当前有权读取的数据；未统计保持未统计。</view><button class="figma-action figma-action--ghost" data-page="performance" bindtap="go">查看本人授权记录</button></view>
+    </block>
+
+    <button class="figma-action figma-action--ghost" bindtap="toggleOptions">{{optionsOpen ? '收起规则说明目录' : '查看其他服务规则说明'}}</button>
+    <view wx:if="{{optionsOpen}}" class="figma-section"><view class="figma-section__title">规则说明目录</view><view class="figma-section__hint">仅查看说明，不会触发资金或消息操作。</view><view class="planned-directory"><button wx:for="{{options}}" wx:key="key" class="planned-option {{selected === item.key ? 'is-active' : ''}}" data-key="{{item.key}}" bindtap="select">{{item.label}}</button></view></view>
+  </view>
+
+  <view class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" data-key="refund" bindtap="select">查看退款规则</button>
+    <button wx:if="{{selected === 'funds' || selected === 'messages'}}" class="figma-action figma-action--orange" data-page="trade-order" bindtap="go">查看本人实际订单</button>
+    <button wx:elif="{{selected === 'profile'}}" class="figma-action figma-action--orange" data-page="performance" bindtap="go">查看本人授权记录</button>
+    <button wx:else class="figma-action figma-action--orange" disabled>{{selected === 'payment' ? '本说明不执行支付' : selected === 'unknown' ? '查单请进入原订单' : selected === 'refund' ? '退款请进入原订单' : '结算请进入原订单'}}</button>
+  </view>
 </view>

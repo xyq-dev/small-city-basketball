@@ -1,19 +1,58 @@
-<view class="page teams-page" style="padding-top:0">
- <v3-chrome tools="{{false}}"/>
- <view class="teams-tabs"><button class="selected" bindtap="load" disabled="{{busy || loading || uncertain || newName !== ''}}">我的球队</button><button data-page="public-archive" bindtap="openTeamEntry" disabled="{{busy || loading || uncertain || newName !== ''}}">球队广场</button><button class="teams-add" data-page="team-request" bindtap="openTeamEntry" aria-label="申请建队" disabled="{{busy || loading || uncertain || newName !== ''}}"><scb-icon name="plus" size="22" tone="navy"/></button></view>
- <view wx:if="{{error}}" class="notice danger" role="alert"><view class="feedback-title">暂时无法读取球队</view><view class="small">{{error}}</view></view>
- <view wx:if="{{message}}" class="notice warning">{{message}}</view>
- <view wx:if="{{loginRequired}}" class="card team-panel state-panel"><view class="subtitle">登录后查看我的球队</view><view class="muted">使用本人账号读取当前授权；登录不自动获得球队权限。</view><button class="primary" bindtap="login">登录并继续</button></view>
- <picker wx:if="{{organizations.length > 1}}" range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="selectOrg" disabled="{{busy}}"><view class="field">{{organizations[orgIndex].name}} ▾</view></picker>
- <view wx:if="{{loading}}" class="card team-panel state-panel"><view class="subtitle">正在读取当前授权</view><view class="muted">读取完成前，不显示过期球队资料。</view><view class="skeleton-line"></view><view class="skeleton-line short"></view></view>
- <block wx:for="{{teams}}" wx:key="id">
-  <view class="card team-profile"><image class="team-banner" src="/assets/home/event-court.jpg" mode="aspectFill"/><view class="team-banner-shade"></view><view class="team-person"><view class="team-avatar"><image src="/assets/home/brandmark.svg" mode="aspectFit" aria-hidden="true"/></view><view class="team-identity-copy"><view class="team-name">{{item.name}}</view><view class="team-meta">{{item.members ? item.members.length : 0}}名长期成员 · {{item.canRegister ? '领队报名授权' : '报名需独立领队授权'}}</view></view></view><view class="team-copy">长期成员与本届赛事报名名单分别保存。</view></view>
-  <view class="card team-transactions"><view class="subtitle">球队事务</view><button class="team-cell" data-id="{{item.id}}" bindtap="team" disabled="{{busy || loading || uncertain || newName !== ''}}"><scb-icon name="users" size="22"/><view class="team-cell-copy"><view>球队主页与成员</view><view class="muted">进入球队，管理本人当前授权内容</view></view><image class="team-chevron" src="/assets/ui002/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button><button wx:if="{{item.canRegister}}" class="team-cell" data-id="{{item.id}}" bindtap="events" disabled="{{busy || loading || uncertain || newName !== ''}}"><scb-icon name="trophy" size="22"/><view class="team-cell-copy"><view>本届赛事报名</view><view class="muted">选择可报名赛事</view></view><image class="team-chevron" src="/assets/ui002/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button><view wx:else class="team-copy">本届报名需由持本队领队授权的账号操作。</view><button class="team-cell" bindtap="invitation" disabled="{{busy || loading || uncertain || newName !== ''}}"><scb-icon name="plus" size="22"/><view class="team-cell-copy"><view>邀请与加入</view><view class="muted">接受发送给本账号的有效邀请</view></view><image class="team-chevron" src="/assets/ui002/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button></view>
- </block>
- <view wx:if="{{!loading && !teams.length && !loginRequired && !error}}" class="card team-panel state-panel"><view class="subtitle">暂无可管理球队</view><view class="muted">可向机构申请建队、输入加入码，或接受本账号的有效邀请。</view><button class="secondary" bindtap="invitation">接受球队邀请</button></view>
- <view class="teams-actions"><button class="secondary" data-page="team-request" bindtap="openTeamEntry" disabled="{{busy || loading || uncertain || newName !== ''}}">向机构申请建队</button><button class="secondary" data-page="team-join" bindtap="openTeamEntry" disabled="{{busy || loading || uncertain || newName !== ''}}">输入球队加入码</button></view>
- <button wx:if="{{nextCursor}}" class="secondary team-action" bindtap="more" disabled="{{loading || busy}}">加载更多球队</button>
- <view class="notice team-access"><view class="feedback-title">球队授权与机构工作人员分开</view><view class="small">球队广场展示已授权公开档案；不会授予球队成员或报名权限。</view></view>
- <view wx:if="{{canCreateTeam}}" class="card team-panel create-team"><view class="subtitle">创建球队</view><view class="muted">仅当前机构有权管理员可创建，不会自动代替球队领队报名。</view><view class="field-label">球队名称</view><input class="field" maxlength="80" value="{{newName}}" bindinput="input" placeholder="填写球队名称" disabled="{{busy || uncertain}}"/><button class="primary" bindtap="create" disabled="{{busy || uncertain || !newName}}" loading="{{busy}}">创建球队</button></view>
- <button wx:if="{{newName && !uncertain}}" class="quiet" bindtap="cancelDraft" disabled="{{busy}}">取消创建输入</button><button wx:if="{{uncertain}}" class="secondary team-action" bindtap="acknowledgeUnknown" disabled="{{busy || loading}}">先核对创建结果</button><button class="quiet" bindtap="load" disabled="{{busy || loading}}">刷新当前授权与球队</button>
-</view><scb-nav active="Teams" disabled="{{busy || loading || uncertain || newName !== ''}}"/>
+<scb-header mode="account" title="球队" back="{{false}}" disabled="{{busy || loading || uncertain || newName!==''}}"/>
+<view class="figma-page teams-page">
+  <view class="figma-page__content figma-page__content--nav">
+    <view class="figma-summary teams-summary">
+      <view class="figma-summary__icon"><figma-icon name="teams" size="{{25}}"/></view>
+      <view class="figma-summary__copy"><view class="figma-eyebrow">我的球队</view><view class="figma-title">{{primaryTeam ? primaryTeam.name : '球队与报名'}}</view><view class="figma-subtitle">{{primaryTeam ? '按当前账号的球队授权显示' : '长期成员、球队授权与本届报名分别管理'}}</view></view>
+    </view>
+
+    <view class="teams-tabs"><button class="teams-tab is-active" bindtap="load" disabled="{{busy || loading || uncertain || newName!==''}}">我的球队</button><button class="teams-tab" data-page="public-archive" bindtap="openTeamEntry" disabled="{{busy || loading || uncertain || newName!==''}}">球队广场</button></view>
+
+    <figma-feedback wx:if="{{error}}" type="error" title="暂时无法读取球队" body="{{error}}" action-label="重新读取" bind:action="load"/>
+    <figma-feedback wx:if="{{message}}" type="pending" title="操作结果待核对" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="empty" title="登录后查看我的球队" body="登录不会自动获得球队权限。" action-label="登录并继续" bind:action="login"/>
+    <view wx:if="{{loading}}" class="figma-section"><figma-skeleton rows="{{3}}"/></view>
+
+    <view wx:if="{{organizations.length>1}}" class="figma-section"><view class="figma-field-group"><view class="figma-field-label">当前机构</view><picker range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="selectOrg" disabled="{{busy}}"><view class="figma-field-control picker-control">{{organizations[orgIndex].name}}</view></picker></view></view>
+
+    <view wx:if="{{primaryTeam}}" class="figma-section">
+      <view class="figma-section__title">球队身份</view>
+      <view class="team-metrics">
+        <view><text>{{primaryTeam.canRegister ? '领队' : '成员'}}</text><view>我的角色</view></view>
+        <view><text>{{primaryTeam.members ? primaryTeam.members.length : 0}} 人</text><view>长期成员</view></view>
+        <view><text>{{teamLocationLabel || organizations[orgIndex].name}}</text><view>{{teamLocationLabel ? '所在城市' : '所属机构'}}</view></view>
+      </view>
+    </view>
+
+    <view class="figma-section">
+      <view class="figma-section__title">球队事务</view>
+      <view class="figma-grid">
+        <button class="figma-grid__item" data-id="{{primaryTeam.id}}" bindtap="team" disabled="{{busy || !primaryTeam}}"><figma-icon name="teams" size="{{20}}"/><view class="figma-row__title">球队主页与成员</view><view class="figma-row__subtitle">查看长期成员</view></button>
+        <button class="figma-grid__item" data-id="{{primaryTeam.id}}" bindtap="events" disabled="{{busy || !primaryTeam || !primaryTeam.canRegister}}"><figma-icon name="registration" size="{{20}}"/><view class="figma-row__title">本届赛事报名</view><view class="figma-row__subtitle">选择可报名赛事</view></button>
+        <button class="figma-grid__item" bindtap="invitation" disabled="{{busy}}"><figma-icon name="workbench" size="{{20}}"/><view class="figma-row__title">邀请与加入</view><view class="figma-row__subtitle">处理本账号邀请</view></button>
+        <button class="figma-grid__item" data-page="team-request" bindtap="openTeamEntry" disabled="{{busy || loading || uncertain || newName!==''}}"><figma-icon name="workbench" size="{{20}}"/><view class="figma-row__title">申请建队</view><view class="figma-row__subtitle">提交至选定机构</view></button>
+      </view>
+    </view>
+
+    <view class="figma-section">
+      <view class="figma-section__title">我的球队</view>
+      <button wx:for="{{teams}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="team" disabled="{{busy || loading || uncertain || newName!==''}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{organizations[orgIndex].name}} · {{item.canRegister ? '领队' : '已授权成员'}}</view></view><view class="figma-status figma-status--orange">已授权</view></button>
+      <figma-feedback wx:if="{{!loading && !teams.length && !loginRequired && !error}}" type="empty" title="暂无可管理球队" body="可申请建队、输入加入码或接受发给本账号的邀请。" action-label="接受球队邀请" bind:action="invitation"/>
+      <button wx:if="{{nextCursor}}" class="wide-ghost" bindtap="more" disabled="{{loading || busy}}" loading="{{loading}}">加载更多球队</button>
+    </view>
+
+    <view class="figma-section"><view class="figma-section__title">相关服务</view><button class="figma-row" data-page="team-join" bindtap="openTeamEntry" disabled="{{busy || loading || uncertain || newName!==''}}"><figma-icon name="join" size="{{20}}"/><view class="figma-row__copy"><view class="figma-row__title teams-related-title">输入球队加入码</view></view></button></view>
+
+    <view wx:if="{{canCreateTeam}}" class="figma-section">
+      <view class="figma-section__title">创建球队</view><view class="figma-section__hint">仅当前机构有权管理员可创建，不会自动代替球队领队报名。</view>
+      <view class="figma-field-group"><view class="figma-field-label">球队名称</view><input class="figma-field-control" maxlength="80" value="{{newName}}" bindinput="input" placeholder="填写球队名称" disabled="{{busy || uncertain}}"/></view>
+      <button class="wide-primary" bindtap="create" disabled="{{busy || uncertain || !newName}}" loading="{{busy}}">创建球队</button>
+      <button wx:if="{{newName && !uncertain}}" class="wide-ghost" bindtap="cancelDraft" disabled="{{busy}}">取消输入</button>
+    </view>
+    <button wx:if="{{uncertain}}" class="wide-primary" bindtap="acknowledgeUnknown" disabled="{{busy || loading}}">先核对创建结果</button>
+    <view class="figma-section"><view class="figma-row"><figma-icon name="shield" size="{{22}}"/><view class="figma-row__copy"><view class="figma-row__title">球队授权与机构身份分开</view><view class="figma-row__subtitle">球队广场只展示已授权公开档案，不授予成员或报名权限。</view></view></view></view>
+
+    <view class="teams-actions"><button class="figma-action figma-action--ghost" data-id="{{primaryTeam.id}}" bindtap="events" disabled="{{busy || !primaryTeam || !primaryTeam.canRegister}}">选择可报名赛事</button><button class="figma-action figma-action--orange" data-id="{{primaryTeam.id}}" bindtap="team" disabled="{{busy || !primaryTeam}}">进入球队</button></view>
+  </view>
+</view>
+<scb-nav active="Teams" disabled="{{busy}}"/>

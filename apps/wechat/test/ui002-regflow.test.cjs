@@ -174,18 +174,17 @@ for (const name of fs
       for (const text of f.expectText) assert.ok(html.includes(text), width + ': ' + text);
       assert.doesNotMatch(html, /src="https?:/);
       if (name.includes('material-profile')) {
-        assert.ok(html.indexOf('mini-component-scb-steps') < html.indexOf('material-profile'));
+        assert.ok(html.indexOf('figma-tabs') < html.indexOf('本届身份'));
         assert.match(html, /data-mini-bindtap="switchMaterialPanel"/);
         assert.doesNotMatch(html, /class="[^"]*(?:material-section-tabs|material-paths)/);
       }
       if (name.includes('insurance-pending'))
-        assert.match(html, /data-mini-bindtap="saveInsurance"[^>]*disabled/);
+        assert.match(html, /data-mini-bindtap="save"[^>]*disabled/);
       if (name.includes('qualification-current')) {
         assert.match(html, /type="checkbox"/);
         assert.match(html, /data-mini-bindtap="request"[^>]*disabled/);
-        const closed = html.match(/<div[^>]*class="precheck-cell closed"[^>]*>/);
-        assert.ok(closed);
-        assert.doesNotMatch(closed[0], /data-mini-bindtap/);
+        assert.match(html, /当前资料版本 V2/);
+        assert.match(html, /预审通过不等于最终报名或投保成功/);
       }
     }
   });

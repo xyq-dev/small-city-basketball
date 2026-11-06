@@ -4,7 +4,7 @@
   "state": "ready",
   "figmaNode": "30:78",
   "syntheticData": true,
-  "expectText": ["合成林越", "当前可查看的服务档案"],
+  "expectText": ["合成林越", "选择适合本场的球员"],
   "data": {
     "cards": [
       {

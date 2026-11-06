@@ -4,7 +4,7 @@
   "state": "ready",
   "figmaNode": "approved:C11",
   "syntheticData": true,
-  "expectText": ["石鼓青锋", "确定场次报价", "下一步 · 核对费用"],
+  "expectText": ["石鼓青锋", "确定报价", "核对并提交预约"],
   "data": {
     "loading": false,
     "busy": false,

@@ -1,48 +1,37 @@
-.order-identity { margin-bottom:16px; font-size:14px; line-height:24px; }
-.order-context,.appearance-summary { display:flex; flex-direction:column; gap:8px; }
-.order-context .subtitle,.appearance-summary .subtitle { margin:0; font-size:18px; line-height:28px; font-weight:500; }
-.order-context .muted { font-size:14px; line-height:24px; }
-.appearance-status { color:#123c73; font-size:14px; line-height:24px; font-weight:500; }
-.appearance-status.warning { color:#895500; background:transparent; }
-.appearance-status.danger { color:#b53333; }
-.appearance-status.success { color:#16734b; }
-.appearance-status.neutral { color:#63758b; }
-.appearance-price { color:#123c73; font-size:14px; line-height:24px; font-weight:500; }
-.appearance-toggle { margin-bottom:16px; }
-.appearance-detail > view { margin-bottom:8px; }
-.appearance-detail > view:last-child { margin-bottom:0; }
-.appearance-actions { display:flex; flex-direction:column; gap:8px; margin-top:16px; }
-.appearance-actions button { width:100%; margin:0; }
-.change-panel { padding:12px; border:1px solid #e1e7ef; border-radius:8px; margin:12px 0; }
-.change-panel .section-title { font-size:14px; line-height:24px; font-weight:500; }
-.change-panel > view { margin-bottom:4px; }
-.pending-panel { border:1px solid #e1e7ef; }
-.pending-panel button { margin-top:12px; }
-.command-id { word-break:break-all; }
-.date-row { display:flex; gap:8px; }
-.date-row picker { flex:1; min-width:0; }
-.schedule-form .field-label { margin-top:12px; }
-.reason-input { box-sizing:border-box; width:100%; min-height:96px; }
-.command-form { background:transparent; padding:0; }
-.command-form > .subtitle { font-size:18px; line-height:28px; scroll-margin-top:12px; }
-.command-form > button { margin-top:12px; }
-.selected-summary { display:flex; flex-direction:column; gap:8px; background:#fff; padding:16px; margin:16px 0; border-radius:16px; }
-.selected-summary .subtitle { margin:0; font-size:18px; line-height:28px; }
-.command-context { display:flex; flex-direction:column; gap:8px; }
-.command-context .subtitle { margin:0; font-size:18px; line-height:28px; }
-.order-finances { margin-top:16px; }
-.order-finances .row-between { gap:12px; margin:8px 0; }
-.order-finances .row-between > text:first-child { color:#63758b; }
-.order-finances .small { margin-top:8px; }
-.notice-title,.state-title { font-size:14px; line-height:24px; font-weight:500; }
-.state-card { display:flex; flex-direction:column; gap:8px; }
-.state-card .subtitle { margin:0; }
-.state-card button { margin:8px 0 0; }
-.skeleton { height:12px; width:88%; background:#eaf0f7; border-radius:6px; margin:6px 0; }
-.skeleton.short { width:56%; }
-.expiry-hero .title { margin-bottom:12px; }
-@media (max-width:360px) { .date-row { flex-direction:column; gap:0; } }
-.resolution-picker { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+@import "../../styles/figma-pages.wxss";
 
-/* UI001 shell: preserve the mature booking command and recovery layout. */
-.booking-detail-page{padding-left:16px;padding-right:16px;word-break:break-word}.card,.booking-order-card{border-radius:16px}input,textarea{font-size:16px}.service-progress{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.service-progress text{flex:1;min-width:70px;padding:8px;background:#eaf0f8;color:#63758b;border-radius:12px;text-align:center;font-size:12px;line-height:18px}.service-progress .active{background:#123c73;color:#fff}
+.detail-tabs { display:grid; width:100%; height:48px; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; padding:2px 3px; border-radius:12px; background:#fff; }
+.detail-tab { display:flex; min-width:0; height:44px; align-items:center; justify-content:center; border-radius:10px; background:transparent; color:#51657d; font-size:13px; }
+.detail-tab.is-active { background:#123c73; color:#fff; font-weight:700; }
+.booking-detail-rebuild .detail-tabs>button.detail-tab { width:100%; min-width:0; max-width:none; height:44px; min-height:44px; margin:0; padding:0 4px; border:0; justify-self:stretch; box-sizing:border-box; background:transparent; }
+.booking-detail-rebuild .detail-tabs>button.detail-tab.is-active { background:#123c73; color:#fff; }
+.detail-anchor { display:flex; flex-direction:column; gap:12px; }
+.pending-panel { background:#fff1e2; }
+.command-id { padding:10px; border-radius:10px; background:#fff; color:#123c73; font-family:monospace; font-size:12px; overflow-wrap:anywhere; }
+
+.progress-row { display:flex; width:100%; min-height:55px; align-items:center; gap:8px; }
+.step-index { display:flex; width:20px; height:20px; flex:none; align-items:center; justify-content:center; border-radius:10px; background:#eaf2fc; color:#123c73; font-size:11px; font-weight:700; }
+.finance-row { display:flex; min-height:55px; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid #e6ebf2; }
+.finance-row:last-of-type { border-bottom:0; }
+.fee-value { flex:none; color:#123c73; font-size:15px; font-weight:700; line-height:21px; }
+.funds-state { flex:none; color:#123c73; font-size:14px; font-weight:700; line-height:20px; }
+.finance-values { max-width:150px; color:#123c73; font-size:12px; font-weight:700; line-height:18px; text-align:right; overflow-wrap:anywhere; }
+
+.detail-secondary { margin-top:4px; }
+.secondary-heading { display:flex; min-height:44px; align-items:center; justify-content:space-between; gap:8px; }
+.card-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding-bottom:8px; border-bottom:1px solid #e6ebf2; }
+.card-actions:last-child { padding-bottom:0; border-bottom:0; }
+.card-actions button,.dynamic-actions button { display:flex; min-height:44px; align-items:center; justify-content:center; padding:0 10px; border-radius:12px; background:#f4f6fa; color:#123c73; font-size:12px; text-align:center; }
+.dynamic-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.dynamic-actions button.is-danger { background:#fdecef; color:#c83f42; }
+.change-card,.selected-card { display:flex; flex-direction:column; gap:6px; padding:10px; border-radius:10px; background:#eaf2fc; }
+.schedule-form,.command-form { gap:12px; }
+.date-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.picker-control { display:flex; align-items:center; }
+.form-error { color:#c83f42; font-size:12px; line-height:18px; }
+
+@media (max-width:360px) {
+  .card-actions,.dynamic-actions,.date-grid { grid-template-columns:1fr; }
+  .finance-row { gap:8px; }
+  .finance-values { max-width:118px; }
+}

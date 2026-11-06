@@ -16,6 +16,18 @@
 
 生产未由本轮部署，Migration049仅临时/CI执行。当前会话无直接Hermes/SSH执行通道；公开health/ready返回200只证明既有服务正常。服务器侧固定版本、备份恢复、升级和账号保留步骤已写入[交接](handoffs/ACCOUNT-SECURITY.md)。详见[任务](tasks/ACCOUNT-SECURITY.md)和[操作说明](operations/account-security.md)。
 
+## 2026-11-05 UI006 微信原生前端 Figma 重建（REVIEW / LOCAL_ONLY）
+
+用户已取消 UI005“保留旧模板并叠加样式”的路线，当前由 Codex 在本地分支 `feat/wechat-figma-rebuild` 从 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` 重新实现微信原生前端。视觉唯一依据是 Figma 文件 `QpKOskViUwHFVqSG3uYR9X` 的交接、73 页面＋17 状态索引、交互组件和首页三宽画板；业务行为仍以现有需求、API 和权限契约为准。旧 UI005 分支、Draft PR #42 及 47 个本地归档文件均保留，归档已另备份到 `D:\Projects\scb-backups\wechat-figma-rebuild-baseline-20261105-202715`。
+
+本任务从零重新计数，旧 UI005 的 73/73、17/17 或隔离矩阵结果未作为 UI006 证据。当前 73/73 注册路由已采用新原生模板和共享视觉组件并接回现有数据、导航、权限与提交语义，17/17 补充状态仍为原路由条件分支；最终源码的 73 路由与 17 状态均已在 320/390/430 逻辑宽隔离渲染，分别为 219 与 51 个视口，均无横向溢出，但这不等于逐像素微信签收。首页与“我的”已在当前微信工程取得逻辑 `390×844` 的真实状态截图，SDK 原始 PNG 为 `360×779`；其余 71 页尚未计为微信实测。最终直接回归 242/242；`npm run test:wechat` 为 1238 项、1237 通过，唯一失败是当前 Windows 权限下安全软链测试的 `symlinkSync EPERM`；`git diff --check` 通过。当前仍未 commit、push、pack、上传、部署、执行 Migration 或生产写入。详见 [UI006 任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)、[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)、[证据说明](evidence/ui006/README.md) 与 [覆盖矩阵](evidence/ui006/COVERAGE.md)。
+
+## 2026-11-05 UI005 最终整合审查（DRAFT PR 候选，未合入 main）
+
+UI005 候选分支为 `feat/ui005-figma-complete`，基线 `origin/main` / `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`，评审入口为 [Draft PR #42](https://github.com/xyq-dev/small-city-basketball/pull/42)。73/73 注册路由与 17/17 条件状态完成原生模板的 320/390/430 隔离矩阵，1386/1386 通过；该数字现明确只作模板、布局约束与夹具状态证据，不表示 73 页全部通过逐像素或本轮高保真复审。2026-11-05 的运行差异复核已定向修复首页与“我的”，两页重新取得 390 微信首屏/底部证据和 21/21 三宽隔离结果；未重审的 71 页不外推新增视觉结论。逐项范围和证据见 [UI005 任务](tasks/UI005-REDESIGN.md)、[交接](handoffs/UI005-REDESIGN.md)、[可共享证据](evidence/ui005/README.md)及[两页修复前后](evidence/ui005/home-account-fix/README.md)。
+
+定向修复后 Windows `npm run test:wechat` 为 1207/1208，唯一失败仍是测试搭建临时项目外 symlink 时的 `EPERM`；直接回归 141/141。旧实现 head `aa05715f41d148a872f2c82b48b8f2a79b9842a9` 的 [Application checks 42001388020](https://github.com/xyq-dev/small-city-basketball/actions/runs/42001388020) 曾三作业成功，但不能替代本次定向修复 head 的 CI；实际结果只以 PR 最新检查为准。生产地区目录与公开赛事目录 404、真实身份/业务记录、原生键盘画面继续阻塞相应运行成功态。此节只描述待评审候选，不表示已合入、可部署或生产验收；没有 pack、上传、部署、Migration 或生产写入。
+
 ## 2026-11-03 四页导航与账号双态整合（待合入 main）
 
 本地 `ui/v3-main-nav` 的未提交界面已放到 `integrate/ui-v4-consolidate`，基线是当时的 `origin/main` `ef25846857bb0431a4f71ad8dbe6fac87f945ae0`（该提交已包含首页还原 #39 和包体 #38）。合入的是账号未登录/已登录、赛事、同城、球队，以及 `components/v3-chrome`。首页产品文件没有用旧分支覆盖。`fix/ui002-ci` 的 `fc8c2eb` 已在 main 历史上，没有重复应用。设计说明在 `docs/design/ui-v4/`；参考截图包和未引用素材包不进入仓库。正式支付、投保、分账、推流和真机仍未验收。合并提交以 GitHub 上的最终 SHA 为准，本节在合并前只记录候选。

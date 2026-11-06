@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "5:360",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["每次订阅由本人明确选择", "正式微信模板或通道尚未配置"],
+  "expectText": ["每次订阅都由本人选择并确认", "微信提醒通道尚未配置"],
   "data": {
     "enabled": false,
     "kinds": [

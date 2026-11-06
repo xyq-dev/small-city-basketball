@@ -1,0 +1,2 @@
+:host { display:inline-flex; flex:none; align-items:center; justify-content:center; vertical-align:middle; }
+.figma-icon { display:block; flex:none; }

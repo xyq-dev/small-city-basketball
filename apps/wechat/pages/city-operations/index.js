@@ -30,6 +30,8 @@ const initial = () => ({
   notice: '',
   loginRequired: false,
   directoryTruncated: null,
+  figmaCityPreview: false,
+  figmaSummaryTitle: '',
 });
 Page({
   data: initial(),
@@ -125,6 +127,7 @@ Page({
       this.setData({ [field]: Number(e.detail.value) || 0 });
   },
   async create() {
+    if (this.data.busy || !this.data.platform || !this.data.canManage) return;
     const org = this.data.organizations[this.data.orgIndex],
       person = this.data.people[this.data.userIndex],
       region = this.data.regions[this.data.regionIndex];

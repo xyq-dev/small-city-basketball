@@ -1,0 +1,37 @@
+@import "../../styles/figma-pages.wxss";
+
+.schedule-summary { background:#eaf2fc; }
+.schedule-tabs { display:flex; width:100%; min-height:48px; padding:2px 3px; border-radius:12px; background:#fff; }
+.schedule-tab { display:flex; min-width:0; min-height:44px; flex:1; align-items:center; justify-content:center; margin:0; padding:0 5px; border-radius:10px; background:#fff; color:#51657d; font-size:13px; line-height:19px; }
+.schedule-tab::after { border:0; }
+.schedule-tab.is-active { background:#123c73; color:#fff; font-weight:700; }
+.schedule-readonly { display:flex; width:100%; min-height:72px; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; border:1px solid #7c8ea5; border-radius:12px; }
+.schedule-readonly > view:first-child { min-width:0; flex:1; }
+.schedule-readonly__value { margin-top:4px; color:#18283f; font-size:14px; line-height:20px; overflow-wrap:anywhere; }
+.schedule-choice { display:flex; width:100%; min-height:48px; align-items:center; justify-content:space-between; gap:8px; margin:0; padding:0; border-top:1px solid #e6ebf2; border-radius:0; background:#fff; color:#18283f; text-align:left; }
+.schedule-choice::after { border:0; }
+.schedule-pair { display:grid; width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.schedule-trio { display:grid; width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.schedule-picker { display:flex; align-items:center; padding-top:11px; }
+.schedule-section-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.schedule-fixture { display:flex; width:100%; min-height:55px; align-items:center; gap:8px; border-top:1px solid #e6ebf2; }
+.schedule-step { display:flex; width:100%; min-height:55px; align-items:center; gap:8px; }
+.schedule-step__mark { display:flex; width:20px; height:20px; flex:none; align-items:center; justify-content:center; border-radius:10px; background:#eaf2fc; color:#123c73; font-size:11px; font-weight:700; }
+.schedule-step__copy { min-width:0; flex:1; }
+.schedule-alert,.schedule-validation { width:100%; padding:10px 12px; border-radius:10px; background:#fff1e2; color:#18283f; font-size:12px; line-height:18px; }
+.schedule-validation { background:#f4f6fa; }
+.schedule-inline { width:auto; min-width:44px; min-height:44px; margin:0; padding:0 8px; background:#fff; color:#123c73; font-size:13px; }
+.schedule-inline::after { border:0; }
+.schedule-danger { border:1px solid #c83f42; background:#fff; color:#c83f42; }
+.schedule-court-admin { padding:8px 0; border-top:1px solid #e6ebf2; }
+.schedule-command-row { display:flex; gap:4px; }
+.schedule-command-row button { width:auto; min-width:44px; min-height:44px; margin:0; padding:0 8px; border-radius:10px; background:#f4f6fa; color:#123c73; font-size:12px; }
+.schedule-related { gap:4px; }
+.schedule-link { display:flex; width:100%; min-height:44px; align-items:center; gap:9px; margin:0; padding:0; background:#fff; color:#123c73; font-size:14px; font-weight:700; text-align:left; }
+.schedule-link::after { border:0; }
+.schedule-link text { min-width:0; flex:1; }
+
+@media (max-width:360px) {
+  .schedule-tab { padding:0 2px; font-size:12px; }
+  .schedule-pair,.schedule-trio { grid-template-columns:minmax(0,1fr); }
+}

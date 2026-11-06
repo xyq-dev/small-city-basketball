@@ -1,6 +1,7 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
+const figmaPreview = require('../../utils/figma-preview');
 function wxCode() {
   return new Promise((resolve, reject) =>
     wx.login({
@@ -30,6 +31,9 @@ function roleView(session) {
 }
 Page({
   data: {
+    uiPreview: false,
+    figmaState: '',
+    contentHeight: 672,
     email: '',
     password: '',
     displayName: '',
@@ -65,10 +69,48 @@ Page({
   },
   onLoad(query = {}) {
     this.returnTo = ui.safeReturn(query.returnTo || '');
-    this.setData({ hasReturn: !!this.returnTo });
+    this.uiPreview = figmaPreview.enabled(query, wx);
+    this.uiPreviewState = ['closed', 'unknown', 'open', 'loading', 'unbound', 'failed'].includes(
+      query.state,
+    )
+      ? query.state
+      : 'closed';
+    this.setData({ hasReturn: !!this.returnTo, uiPreview: this.uiPreview });
+    this.syncChrome();
   },
   onShow() {
     this.closed = false;
+    this.syncChrome();
+    if (this.uiPreview) {
+      const state = this.uiPreviewState;
+      const wechatState = ['unbound', 'failed'].includes(state) ? 'open' : state;
+      this.commandBusy = false;
+      this.setData({
+        busy: false,
+        loading: state === 'loading',
+        user: null,
+        binding: null,
+        connected: false,
+        enabled: wechatState === 'open',
+        wechatState,
+        loginPhase: '',
+        loginNotice: ['unbound', 'failed'].includes(state) ? state : '',
+        message: '',
+        messageTone: 'info',
+        emailOpen: false,
+        registerMode: false,
+        consentOpen: false,
+        agreement: '',
+        termsRead: false,
+        password: '',
+        consent: false,
+        roles: [],
+        managedOrgs: [],
+        roleSummary: '',
+        teamCount: 0,
+      });
+      return;
+    }
     this.setData({ busy: this.commandBusy === true, password: '', consent: false });
     if (!this.unsubscribe)
       this.unsubscribe = api.getClient().onSessionChange(() => {
@@ -93,6 +135,38 @@ Page({
           });
       });
     this.load();
+  },
+  onResize() {
+    this._headerHeight = 0;
+    this.syncChrome();
+  },
+  syncChrome() {
+    let contentHeight = this.data.contentHeight;
+    try {
+      const info =
+        typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      const statusBarHeight = Number.isFinite(info.statusBarHeight) ? info.statusBarHeight : 44;
+      const screenHeight = Number.isFinite(info.screenHeight)
+        ? info.screenHeight
+        : info.windowHeight;
+      const safeBottom =
+        info.safeArea && Number.isFinite(info.safeArea.bottom)
+          ? Math.max(0, screenHeight - info.safeArea.bottom)
+          : 0;
+      const headerHeight =
+        Number.isFinite(this._headerHeight) && this._headerHeight > 0
+          ? this._headerHeight
+          : statusBarHeight + 44;
+      if (Number.isFinite(info.windowHeight))
+        contentHeight = Math.max(320, info.windowHeight - headerHeight - 50 - safeBottom);
+    } catch {}
+    if (contentHeight !== this.data.contentHeight) this.setData({ contentHeight });
+  },
+  headerLayout(e) {
+    const height = Number(e && e.detail && e.detail.height);
+    if (!Number.isFinite(height) || height <= 0 || height === this._headerHeight) return;
+    this._headerHeight = height;
+    this.syncChrome();
   },
   onUnload() {
     this.closed = true;
@@ -119,6 +193,7 @@ Page({
       this.setData({ registerMode: !this.data.registerMode, password: '', message: '' });
   },
   async load() {
+    if (this.uiPreview) return;
     const seq = (this.seq || 0) + 1;
     this.seq = seq;
     this.setData({
@@ -201,6 +276,13 @@ Page({
     }
   },
   async task(action) {
+    if (this.uiPreview) {
+      this.setData({
+        message: 'Figma UI 预览不执行真实登录或业务提交',
+        messageTone: 'info',
+      });
+      return;
+    }
     if (this.commandBusy) return;
     this.commandBusy = true;
     this.setData({ busy: true, message: '', messageTone: 'info' });
@@ -282,6 +364,18 @@ Page({
     if (this.data.busy) return;
     this.setData({ emailOpen: true, registerMode: false, message: '', consentOpen: false });
   },
+  useEmailAfterWechat() {
+    if (this.data.busy || this.commandBusy) return;
+    this.setData({
+      loginPhase: '',
+      loginNotice: '',
+      emailOpen: true,
+      registerMode: false,
+      message: '',
+      consentOpen: false,
+      consent: false,
+    });
+  },
   closeEmail() {
     if (this.data.busy) return;
     this.setData({ emailOpen: false, registerMode: false, password: '', message: '' });
@@ -299,6 +393,10 @@ Page({
   },
   retryWechat() {
     if (this.data.busy || this.data.loading) return;
+    if (this.uiPreview) {
+      wx.showToast({ title: 'Figma UI 预览不发起认证请求', icon: 'none' });
+      return;
+    }
     if (this.data.loginNotice === 'failed' && this.data.wechatState === 'open') {
       this.setData({ loginNotice: '', message: '', consent: false, consentOpen: true });
       return;
@@ -454,6 +552,7 @@ Page({
     });
   },
   continue() {
+    if (this.uiPreview) return;
     if (this.data.user && this.returnTo) wx.redirectTo({ url: this.returnTo });
   },
   showSecurity() {
@@ -483,6 +582,7 @@ Page({
       this.setData({ workspaceOpen: !this.data.workspaceOpen });
   },
   copyMemberId() {
+    if (this.uiPreview) return;
     if (
       !this.closed &&
       !this.data.busy &&
@@ -493,6 +593,7 @@ Page({
       wx.setClipboardData({ data: this.data.user.id });
   },
   go(e) {
+    if (this.uiPreview) return;
     const key = e.currentTarget.dataset.page;
     if (this.data.busy) return;
     if (key === 'watch') {

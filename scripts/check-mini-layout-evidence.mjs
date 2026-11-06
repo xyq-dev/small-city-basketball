@@ -21,6 +21,20 @@ for (const file of fs.readdirSync(fixtures).filter((file) => file.endsWith('.jso
   scenarios.set(fixture.name, fixture.route);
   filledScenarios.add(fixture.name);
 }
+const aliasesPath = path.join(root, 'tests/mini-program/ui005-state-aliases.json');
+const aliases = JSON.parse(fs.readFileSync(aliasesPath, 'utf8'));
+assert.ok(Array.isArray(aliases), 'UI005 state aliases must be an array');
+for (const alias of aliases) {
+  assert.match(alias.name || '', /^[a-z0-9-]+$/, 'Invalid UI005 state alias name');
+  assert.ok(!scenarios.has(alias.name), 'Duplicate native layout scenario');
+  assert.ok(routes.includes(alias.route), 'Unregistered UI005 state alias route');
+  const sourcePath = path.join(fixtures, alias.sourceFixture || '');
+  assert.ok(fs.existsSync(sourcePath), 'Missing UI005 state alias source fixture');
+  const source = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
+  assert.equal(source.route, alias.route, 'UI005 state alias route mismatch');
+  scenarios.set(alias.name, alias.route);
+  filledScenarios.add(alias.name);
+}
 const widths = [320, 390, 430];
 const expected = new Set(
   widths.flatMap((width) => [...scenarios.keys()].map((s) => width + ':' + s)),
@@ -85,7 +99,10 @@ function inspect(directory) {
     }
   }
 }
-inspect(path.join(root, 'test-results'));
+const evidenceRoot = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.join(root, 'test-results');
+inspect(evidenceRoot);
 assert.deepEqual([...found].sort(), [...expected].sort(), 'Missing native PNG/JSON evidence');
 console.log(
   'Native compatibility evidence: ' + found.size + ' layouts and PNGs; not WeChat runtime.',
