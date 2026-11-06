@@ -193,6 +193,19 @@ export class StorageSettingsService extends ApplicationService {
     if (r.rows[0]?.blocked !== false)
       fail('STORAGE_DESTINATION_LOCKED', '存在云文件或待清理检测对象，仅可在原位置轮换凭据');
   }
+  /** Pending probes may need their own credentials even after active storage gains files.
+   * This permits only saving credentials and entering cleanup, never activation or a new PUT. */
+  private async assertDraftDestination(c: PoolClient, requested: StorageDestination) {
+    const r = await c.query(
+      `SELECT
+      EXISTS(SELECT 1 FROM storage_config_probes WHERE deleted_at IS NULL) AS pending,
+      EXISTS(SELECT 1 FROM storage_config_probes WHERE deleted_at IS NULL
+        AND (bucket<>$1 OR region<>$2 OR prefix<>$3)) AS different`,
+      [requested.bucket, requested.region, requested.prefix],
+    );
+    if (r.rows[0]?.pending === true && r.rows[0]?.different === false) return;
+    await this.assertDestination(c, requested);
+  }
   private receipt(row: Row): StorageCommandResult {
     return (
       row.result ?? {
@@ -399,7 +412,7 @@ export class StorageSettingsService extends ApplicationService {
       if (command.replay) return this.receipt(command.row);
       const s = await this.state(c);
       if (s.version !== input.expectedVersion) fail('VERSION_CONFLICT', '配置已更新，请刷新后核对');
-      await this.assertDestination(c, input);
+      await this.assertDraftDestination(c, input);
       const previous = await this.revision(c, s.draft_revision_id);
       const credentials =
         input.secretId && input.secretKey
@@ -608,7 +621,7 @@ export class StorageSettingsService extends ApplicationService {
           r = await this.revision(c, s.draft_revision_id);
         if (!r || r.version !== input.configVersion)
           fail('VERSION_CONFLICT', '请保存并检测当前草稿');
-        await this.assertDestination(c, destination(r));
+        await this.assertDraftDestination(c, destination(r));
         const last = (
           await c.query(
             "SELECT created_at>clock_timestamp()-interval '30 seconds' AS limited FROM storage_config_operations WHERE kind='TEST' ORDER BY created_at DESC LIMIT 1",
@@ -637,10 +650,12 @@ export class StorageSettingsService extends ApplicationService {
       store = storeForStorageRevision(revision, (options) =>
         this.factory({ ...options, timeoutMs: 5000 }),
       )!;
+      // Cleanup may use a pending probe's destination even if active storage has since
+      // gained files elsewhere. A fresh probe must pass the complete destination check.
+      await this.cleanupPrior(c, store, cookie, row.id);
+      await this.assertDestination(c, destination(revision));
       test.checks[0]!.status = 'PASSED';
       await this.persistTest(c, row, test);
-      // The command receipt and probe cleanup are durable before the first new PUT.
-      await this.cleanupPrior(c, store, cookie, row.id);
       const verifier = (store as CosObjectStore & { verifyConfiguration?: () => Promise<void> })
         .verifyConfiguration;
       if (!verifier) throw new Error('Missing bucket verification');

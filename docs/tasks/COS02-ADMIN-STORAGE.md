@@ -1,5 +1,14 @@
 # COS02 后台对象存储配置
 
+## 2026-11-07T02:07+08:00 两条并发地址锁P2收口（等待新head完整CI）
+
+CI227精确165edc5的自动审查发现两条有效P2：active A无文件时可以保存B并遗留B探测；A随后首次注册业务对象，会导致testB清理前被A地址挡、saveA又被B探测挡，前端也误把probe锁归active A。root确认后按最小范围协调修复，不把227其他绿色作为最终放行；原线程待新候选实际验证后处理。
+
+后端维护检查仅在存在pending且全部probe目标与请求一致时，允许SAVE/TEST起始维护原检测位置凭据/清理。ACTIVATE始终strict；cleanupPrior后、verify/新登记/PUT前再次strict，有A业务文件时诚实FAILED/STORAGE_DESTINATION_LOCKED且cleanupPending=false，无新B云写。前端cleanupPending期间保留B位置锁/密钥保存/显式清理、不恢复A；重新GET确证清理完成后才按业务锁恢复A，无自动SAVE/TEST/ACTIVATE。无需新增DTO/端点。设计及运维规范已同步。
+
+冻结SHA：service1b081f73、PG550305a6、页面99616a8a、组件测试4b1f18c4；root逐字节核对。独立安全复核两端通过、无新增P1/P2；作者5后端unit通过，审查者独立32前端/API通过，root含路由37/37、全仓typecheck、相关Prettier/diff通过。新增PG两例合计14服务＋4HTTP，真实PG仍需新head CI，不将本机未运行场景记通过。未知PUT24h、每次云前鉴权隔离、全局非阻塞锁、激活严格校验及原迁移001—050保持。无生产/真实云动作。
+
+
 ## 2026-11-07T01:55+08:00 CI226最小修复冻结（等待新head完整CI）
 
 root已复制并核对051=31e85e17、服务PG测试=dca5d1c5、c19升级测试=9fb413b8。仅6行新051守卫变化：只有cleanup_attempted_at实际改变时验证非空/递增/非未来；成功删除强制保留原失败时间。原身份不可变、PUT确认不可逆和未知PUT24小时保护原样保持。原轮换失败例加强原时间逐字保留，新第12例在未删除行验证清空/倒退/未来拒绝、确认/删除保留历史成功，避免终态守卫假阳性。独立安全复核冻结SHA通过，无新增P1/P2；旧001—050未改。

@@ -40,6 +40,29 @@ function replaceCredentials() {
   fireEvent.change(screen.getByLabelText('SecretKey'), { target: { value: 'SYNTHETIC_KEY' } });
 }
 const consent = () => screen.getByLabelText(/我已在腾讯云控制台确认/);
+function pendingProbeSnapshot() {
+  const state = passedSnapshot();
+  const old = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+  return {
+    ...state,
+    destinationLocked: true,
+    cleanupPending: true,
+    active: {
+      provider: 'COS' as const,
+      source: 'ADMIN' as const,
+      version: 1,
+      destination: { bucket: 'bound-1250000000', region: 'ap-shanghai', prefix: 'bound-media/v2' },
+      applied: true,
+    },
+    test: {
+      ...state.test!,
+      status: 'FAILED' as const,
+      cleanupPending: true,
+      completedAt: old,
+      expiresAt: old,
+    },
+  };
+}
 
 it('does not call the platform API for an organization administrator without operator rights', () => {
   const { client, request } = clientFor(() => storageSnapshot());
@@ -228,6 +251,148 @@ it('locks the destination while failed probe cleanup remains and permits only a 
   expect(consent()).toBeDisabled();
   expect(screen.getByRole('button', { name: '确认启用 COS' })).toBeDisabled();
   expect(screen.getByLabelText('更换密钥')).toBeEnabled();
+});
+
+it('keeps a pending probe at draft B ahead of active A recovery and saves B credentials before cleanup', async () => {
+  let state = pendingProbeSnapshot();
+  let submitted: Record<string, unknown> | undefined;
+  const { client, request } = clientFor((path, init) => {
+    if (path.endsWith('/draft')) {
+      submitted = body(init);
+      state = { ...state, version: 8, draft: { ...state.draft!, version: 4 } };
+      return storageReceipt(String(submitted.commandId), 'SAVE', { configVersion: 4 });
+    }
+    return state;
+  });
+  renderPage(client);
+  await ready();
+  expect(screen.getByLabelText('存储桶名称')).toHaveValue('scb-media-1250000000');
+  expect(screen.getByLabelText('存储桶名称')).toHaveAttribute('readonly');
+  expect(screen.getByLabelText('所属地域')).toBeDisabled();
+  expect(screen.getByLabelText('对象路径前缀')).toHaveAttribute('readonly');
+  expect(screen.queryByRole('button', { name: '恢复为当前实际存储位置' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '清理并重新检测' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: '确认启用 COS' })).toBeDisabled();
+  replaceCredentials();
+  expect(screen.getByRole('button', { name: '清理并重新检测' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+  expect(submitted).toMatchObject({
+    expectedVersion: 7,
+    bucket: 'scb-media-1250000000',
+    region: 'ap-guangzhou',
+    prefix: 'scb-media/v1',
+    secretId: 'SYNTHETIC_ID',
+    secretKey: 'SYNTHETIC_KEY',
+  });
+  expect(await screen.findByText(/草稿 v4 已保存/)).toBeInTheDocument();
+  expect(screen.queryByLabelText('SecretKey')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '恢复为当前实际存储位置' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '清理并重新检测' })).toBeEnabled();
+  expect(request.mock.calls.filter(([path]) => path.endsWith('/tests'))).toHaveLength(0);
+  fireEvent.click(screen.getByRole('button', { name: '清理并重新检测' }));
+  const dialog = screen.getByRole('dialog', { name: '检测 COS 连接' });
+  expect(within(dialog).getByText('scb-media-1250000000')).toBeInTheDocument();
+  expect(
+    within(dialog).getByText(/若当前业务位置受限，清理完成后需恢复当前实际存储地址，不继续新检测/),
+  ).toBeInTheDocument();
+  expect(request.mock.calls.filter(([path]) => path.endsWith('/tests'))).toHaveLength(0);
+});
+
+it('allows explicit cleanup retries for a failed or uncertain probe older than 24 hours', async () => {
+  const state = pendingProbeSnapshot();
+  const commands: string[] = [];
+  const { client, request } = clientFor((path, init) => {
+    if (path.endsWith('/tests')) {
+      const commandId = String(body(init).commandId);
+      commands.push(commandId);
+      return storageReceipt(commandId, 'TEST', {
+        status: 'FAILED',
+        error: {
+          code: 'STORAGE_PROBE_CLEANUP_FAILED',
+          message: '检测对象暂时无法确认已删除，请稍后重试',
+        },
+      });
+    }
+    return state;
+  });
+  renderPage(client);
+  await ready();
+  expect(screen.getByRole('button', { name: '清理并重新检测' })).toBeEnabled();
+  for (let count = 1; count <= 2; count++) {
+    fireEvent.click(screen.getByRole('button', { name: '清理并重新检测' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '开始检测' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('检测对象暂时无法确认已删除');
+    expect(screen.getByRole('button', { name: '清理并重新检测' })).toBeEnabled();
+    expect(screen.getByLabelText('存储桶名称')).toHaveValue('scb-media-1250000000');
+    expect(
+      screen.queryByRole('button', { name: '恢复为当前实际存储位置' }),
+    ).not.toBeInTheDocument();
+    expect(request.mock.calls.filter(([path]) => path.endsWith('/tests'))).toHaveLength(count);
+  }
+  expect(new Set(commands).size).toBe(2);
+  expect(
+    request.mock.calls.some(([path]) => path.endsWith('/draft') || path.endsWith('/activation')),
+  ).toBe(false);
+});
+
+it('offers active A recovery only after B cleanup is confirmed complete and preserves unknown-command guards', async () => {
+  let state = pendingProbeSnapshot();
+  let commandId = '';
+  let queries = 0;
+  const { client, request } = clientFor((path, init) => {
+    if (path.endsWith('/tests')) {
+      commandId = String(body(init).commandId);
+      throw new ApiError(0, 'NETWORK_ERROR', 'network');
+    }
+    if (path.includes('/operations/')) {
+      queries++;
+      if (queries === 1) throw new ApiError(404, 'NOT_FOUND', 'not found');
+      state = {
+        ...state,
+        cleanupPending: false,
+        test: {
+          ...state.test,
+          cleanupPending: false,
+          message: '检测对象已清理，已有业务文件绑定当前实际位置，请恢复地址后重试',
+        },
+      };
+      return storageReceipt(commandId, 'TEST', {
+        status: 'FAILED',
+        error: { code: 'STORAGE_DESTINATION_LOCKED', message: state.test.message! },
+      });
+    }
+    return state;
+  });
+  renderPage(client);
+  await ready();
+  fireEvent.click(screen.getByRole('button', { name: '清理并重新检测' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '开始检测' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('不要重复提交');
+  expect(screen.getByRole('button', { name: '清理并重新检测' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: '恢复为当前实际存储位置' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '查询操作结果' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('不能据此判断未执行');
+  expect(screen.getByRole('button', { name: '清理并重新检测' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: '查询操作结果' }));
+  expect(await screen.findByRole('button', { name: '恢复为当前实际存储位置' })).toBeEnabled();
+  expect(screen.getByLabelText('存储桶名称')).toHaveValue('scb-media-1250000000');
+  expect(screen.getByRole('button', { name: '检测连接' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: '查询操作结果' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '恢复为当前实际存储位置' }));
+  expect(screen.getByLabelText('存储桶名称')).toHaveValue('bound-1250000000');
+  expect(screen.getByRole('button', { name: '保存草稿' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: '检测连接' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '确认启用 COS' })).toBeDisabled();
+  expect(request.mock.calls.filter(([path]) => path.endsWith('/tests'))).toHaveLength(1);
+  expect(
+    request.mock.calls.filter(([path]) => path.includes('/operations/')).map(([path]) => path),
+  ).toEqual([
+    `/v1/platform/storage/operations/${commandId}`,
+    `/v1/platform/storage/operations/${commandId}`,
+  ]);
+  expect(
+    request.mock.calls.some(([path]) => path.endsWith('/draft') || path.endsWith('/activation')),
+  ).toBe(false);
 });
 
 it.each(['ENVIRONMENT', 'ADMIN'] as const)(

@@ -128,6 +128,8 @@ describe('platform storage settings PostgreSQL lifecycle', { concurrent: false }
       'TRUNCATE storage_config_probes,storage_config_operations,storage_config_state,storage_config_revisions',
     );
     await pool.query('INSERT INTO storage_config_state(singleton) VALUES(true)');
+    // Only this suite's explicitly owned schema is cleared, including registry fixtures.
+    await pool.query('TRUNCATE media_cos_objects CASCADE');
     objects.clear();
     unknownPut = false;
     denyDelete = false;
@@ -330,6 +332,188 @@ describe('platform storage settings PostgreSQL lifecycle', { concurrent: false }
     expect(
       (await pool.query('SELECT 1 FROM storage_config_probes WHERE deleted_at IS NULL')).rowCount,
     ).toBe(0);
+  });
+  test('pending B cleanup remains possible after active A gains its first business registration', async () => {
+    await save();
+    const testedA = await check(1);
+    await service.activate(cookie, {
+      commandId: randomUUID(),
+      expectedVersion: 1,
+      configVersion: 1,
+      testId: testedA.testId,
+      privatePolicyConfirmed: true,
+    });
+    const targetB = { ...destination, bucket: 'other-12345' };
+    await save(2, targetB);
+    denyDelete = true;
+    const testedB = await check(3);
+    expect(testedB.status).toBe('FAILED');
+    const pendingB = (
+      await pool.query(
+        'SELECT bucket,region,object_key FROM storage_config_probes WHERE deleted_at IS NULL',
+      )
+    ).rows[0];
+    expect(pendingB.bucket).toBe(targetB.bucket);
+    denyDelete = false;
+    const organizationId = randomUUID(),
+      businessId = randomUUID(),
+      businessKey = `${destination.prefix}/${organizationId}/${businessId}/${randomUUID()}`;
+    // A real durable business registry row exercises the first-upload address lock.
+    // This suite's owned schema is cleared in finally without relaxing the 050 guard.
+    await pool.query(
+      'INSERT INTO media_cos_objects(id,org_id,bucket,region,object_key) VALUES($1,$2,$3,$4,$5)',
+      [businessId, organizationId, destination.bucket, destination.region, businessKey],
+    );
+    try {
+      await expect(
+        service.activate(cookie, {
+          commandId: randomUUID(),
+          expectedVersion: 3,
+          configVersion: 3,
+          testId: testedB.testId,
+          privatePolicyConfirmed: true,
+        }),
+      ).rejects.toMatchObject({ code: 'STORAGE_DESTINATION_LOCKED' });
+      await expect(save(3)).rejects.toMatchObject({ code: 'STORAGE_DESTINATION_LOCKED' });
+      await expect(save(3, { ...targetB, bucket: 'third-12345' })).rejects.toMatchObject({
+        code: 'STORAGE_DESTINATION_LOCKED',
+      });
+      expect(
+        await save(3, { ...targetB, secretId: 'rotated-b-id', secretKey: 'rotated-b-key' }),
+      ).toMatchObject({ status: 'SUCCEEDED', configVersion: 4 });
+      const probeCount = (
+        await pool.query('SELECT count(*)::int AS count FROM storage_config_probes')
+      ).rows[0].count;
+      put.mockClear();
+      get.mockClear();
+      remove.mockClear();
+      verify.mockClear();
+      const cleaned = await check(4);
+      expect(cleaned).toMatchObject({
+        status: 'FAILED',
+        error: { code: 'STORAGE_DESTINATION_LOCKED' },
+      });
+      expect(remove).toHaveBeenCalledExactlyOnceWith({
+        bucket: pendingB.bucket,
+        region: pendingB.region,
+        key: pendingB.object_key,
+      });
+      expect(put).not.toHaveBeenCalled();
+      expect(get).not.toHaveBeenCalled();
+      expect(verify).not.toHaveBeenCalled();
+      expect(
+        (await pool.query('SELECT count(*)::int AS count FROM storage_config_probes')).rows[0]
+          .count,
+      ).toBe(probeCount);
+      expect(
+        (await pool.query('SELECT deleted_at FROM media_cos_objects WHERE id=$1', [businessId]))
+          .rows[0].deleted_at,
+      ).toBeNull();
+      expect(receivedOptions.at(-1)).toMatchObject({
+        bucket: targetB.bucket,
+        secretId: 'rotated-b-id',
+        secretKey: 'rotated-b-key',
+      });
+      expect(await service.snapshot(cookie)).toMatchObject({
+        cleanupPending: false,
+        active: { source: 'ADMIN', version: 1, destination, applied: true },
+        test: {
+          status: 'FAILED',
+          cleanupPending: false,
+          checks: [
+            { key: 'DESTINATION', status: 'FAILED' },
+            { key: 'VERSIONING', status: 'NOT_RUN' },
+            { key: 'ROUND_TRIP', status: 'NOT_RUN' },
+            { key: 'DELETE', status: 'NOT_RUN' },
+          ],
+        },
+      });
+      await expect(
+        service.activate(cookie, {
+          commandId: randomUUID(),
+          expectedVersion: 4,
+          configVersion: 4,
+          testId: cleaned.testId,
+          privatePolicyConfirmed: true,
+        }),
+      ).rejects.toMatchObject({ code: 'STORAGE_DESTINATION_LOCKED' });
+      await expect(save(4, targetB)).rejects.toMatchObject({ code: 'STORAGE_DESTINATION_LOCKED' });
+      await expect(check(4)).rejects.toMatchObject({ code: 'STORAGE_DESTINATION_LOCKED' });
+      expect(put).not.toHaveBeenCalled();
+      expect(remove).toHaveBeenCalledTimes(1);
+      expect(await save(4)).toMatchObject({ status: 'SUCCEEDED', configVersion: 5 });
+    } finally {
+      await pool.query('TRUNCATE media_cos_objects CASCADE');
+    }
+  });
+  test('active A business files do not bypass a pending B unknown PUT grace period', async () => {
+    await save();
+    const testedA = await check(1);
+    await service.activate(cookie, {
+      commandId: randomUUID(),
+      expectedVersion: 1,
+      configVersion: 1,
+      testId: testedA.testId,
+      privatePolicyConfirmed: true,
+    });
+    const targetB = { ...destination, bucket: 'other-12345' };
+    await save(2, targetB);
+    unknownPut = true;
+    const testedB = await check(3);
+    expect(testedB.status).toBe('FAILED');
+    unknownPut = false;
+    const organizationId = randomUUID(),
+      businessId = randomUUID();
+    await pool.query(
+      'INSERT INTO media_cos_objects(id,org_id,bucket,region,object_key) VALUES($1,$2,$3,$4,$5)',
+      [
+        businessId,
+        organizationId,
+        destination.bucket,
+        destination.region,
+        `${destination.prefix}/${organizationId}/${businessId}/${randomUUID()}`,
+      ],
+    );
+    try {
+      expect(
+        await save(3, { ...targetB, secretId: 'rotated-b-id', secretKey: 'rotated-b-key' }),
+      ).toMatchObject({ status: 'SUCCEEDED', configVersion: 4 });
+      put.mockClear();
+      get.mockClear();
+      remove.mockClear();
+      verify.mockClear();
+      expect(await check(4)).toMatchObject({
+        status: 'FAILED',
+        error: { code: 'STORAGE_CLEANUP_PENDING' },
+      });
+      expect(put).not.toHaveBeenCalled();
+      expect(get).not.toHaveBeenCalled();
+      expect(remove).not.toHaveBeenCalled();
+      expect(verify).not.toHaveBeenCalled();
+      expect(
+        (
+          await pool.query(
+            "SELECT put_confirmed_at,deleted_at,created_at>clock_timestamp()-interval '24 hours' AS within_grace FROM storage_config_probes WHERE deleted_at IS NULL",
+          )
+        ).rows[0],
+      ).toMatchObject({ put_confirmed_at: null, deleted_at: null, within_grace: true });
+      expect(await service.snapshot(cookie)).toMatchObject({
+        cleanupPending: true,
+        active: { source: 'ADMIN', version: 1, destination, applied: true },
+      });
+      await expect(save(4)).rejects.toMatchObject({ code: 'STORAGE_DESTINATION_LOCKED' });
+      await expect(
+        service.activate(cookie, {
+          commandId: randomUUID(),
+          expectedVersion: 4,
+          configVersion: 4,
+          testId: testedB.testId,
+          privatePolicyConfirmed: true,
+        }),
+      ).rejects.toMatchObject({ code: 'STORAGE_DESTINATION_LOCKED' });
+    } finally {
+      await pool.query('TRUNCATE media_cos_objects CASCADE');
+    }
   });
   test('probe transitions preserve failed cleanup time and reject changing its history', async () => {
     await save();

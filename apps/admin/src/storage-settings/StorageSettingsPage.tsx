@@ -231,6 +231,7 @@ function StorageDesk({ api }: { api: StorageSettingsApi }) {
   const locationLocked = !!snapshot && (snapshot.destinationLocked || snapshot.cleanupPending);
   const recoveryDestination =
     snapshot?.destinationLocked &&
+    !snapshot.cleanupPending &&
     draft &&
     snapshot.active.provider === 'COS' &&
     snapshot.active.destination &&
@@ -768,7 +769,7 @@ function StorageDesk({ api }: { api: StorageSettingsApi }) {
                   <p className="ss-edit-lock">
                     <LockKeyhole size={14} />
                     {snapshot.cleanupPending
-                      ? '存在待清理的检测文件：存储桶、地域和路径已锁定。重新检测将先清理已登记的检测文件。'
+                      ? '存在待清理的检测文件：草稿存储桶、地域和路径已锁定。请保留或更换此位置的配套密钥，先清理已登记的检测对象；若当前业务位置受限，清理后需恢复当前实际地址，不继续新检测。'
                       : '已有文件绑定此位置：存储桶、地域和路径已锁定；可在原位置更换访问密钥。'}
                   </p>
                 )}
@@ -945,7 +946,7 @@ function StorageDesk({ api }: { api: StorageSettingsApi }) {
           <p>
             {modal === 'test'
               ? snapshot.cleanupPending
-                ? '本次先重试清理上次登记的检测文件，再执行写入、回读校验与删除。只操作已登记的检测对象。'
+                ? '本次先清理草稿位置已登记的检测对象。若当前业务位置受限，清理完成后需恢复当前实际存储地址，不继续新检测；位置允许时，才执行新的写入、回读校验与删除。会产生少量 COS 请求费用。'
                 : '将向检测专用路径写入一个极小文件，回读并校验内容，然后删除。会产生少量 COS 请求费用。'
               : '确认将新上传文件存入以下位置。原数据库文件继续按原方式读取，不会自动迁移。'}
           </p>
