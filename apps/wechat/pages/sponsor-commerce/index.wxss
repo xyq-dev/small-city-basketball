@@ -1,4 +1,4 @@
-@import '../../styles/figma-pages.wxss';
+@import "../../styles/figma-pages.wxss";
 
 .sponsor-commerce-page button {
   margin: 0;
