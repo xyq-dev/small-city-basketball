@@ -299,15 +299,30 @@ describe('platform storage settings PostgreSQL lifecycle', { concurrent: false }
     await save();
     denyDelete = true;
     expect((await check(1)).status).toBe('FAILED');
-    expect(
-      (await pool.query('SELECT put_confirmed_at,deleted_at FROM storage_config_probes')).rows[0],
-    ).toMatchObject({ put_confirmed_at: expect.any(Date), deleted_at: null });
+    const prior = (
+      await pool.query(
+        'SELECT id,put_confirmed_at,deleted_at,cleanup_attempted_at::text AS attempted FROM storage_config_probes',
+      )
+    ).rows[0];
+    expect(prior).toMatchObject({
+      put_confirmed_at: expect.any(Date),
+      deleted_at: null,
+      attempted: expect.any(String),
+    });
     await save(1, { secretId: 'rotated-id', secretKey: 'rotated-key' });
     denyDelete = false;
     remove.mockClear();
     expect((await check(2)).status).toBe('SUCCEEDED');
     expect(remove).toHaveBeenCalledTimes(2);
     expect((await service.snapshot(cookie)).cleanupPending).toBe(false);
+    expect(
+      (
+        await pool.query(
+          'SELECT deleted_at,cleanup_attempted_at::text AS attempted FROM storage_config_probes WHERE id=$1',
+          [prior.id],
+        )
+      ).rows[0],
+    ).toMatchObject({ deleted_at: expect.any(Date), attempted: prior.attempted });
     expect(receivedOptions.at(-1)).toMatchObject({
       secretId: 'rotated-id',
       secretKey: 'rotated-key',
@@ -315,6 +330,94 @@ describe('platform storage settings PostgreSQL lifecycle', { concurrent: false }
     expect(
       (await pool.query('SELECT 1 FROM storage_config_probes WHERE deleted_at IS NULL')).rowCount,
     ).toBe(0);
+  });
+  test('probe transitions preserve failed cleanup time and reject changing its history', async () => {
+    await save();
+    const operationId = randomUUID(),
+      probeId = randomUUID(),
+      revisionId = (await pool.query('SELECT id FROM storage_config_revisions')).rows[0].id;
+    await pool.query(
+      `INSERT INTO storage_config_operations(id,actor_id,command_id,request_hash,kind,status,config_version) VALUES($1,$2,$3,$4,'TEST','PENDING',1)`,
+      [operationId, actor, randomUUID(), '0'.repeat(64)],
+    );
+    await pool.query(
+      'INSERT INTO storage_config_probes(id,operation_id,revision_id,bucket,region,prefix,object_key) VALUES($1,$2,$3,$4,$5,$6,$7)',
+      [
+        probeId,
+        operationId,
+        revisionId,
+        destination.bucket,
+        destination.region,
+        destination.prefix,
+        `${destination.prefix}/${randomUUID()}/${randomUUID()}/${probeId}`,
+      ],
+    );
+    await pool.query(
+      'UPDATE storage_config_probes SET cleanup_attempted_at=clock_timestamp() WHERE id=$1',
+      [probeId],
+    );
+    const attempted = (
+      await pool.query(
+        'SELECT cleanup_attempted_at::text AS attempted FROM storage_config_probes WHERE id=$1',
+        [probeId],
+      )
+    ).rows[0].attempted;
+    // Each negative case runs while the row is still undeleted, so the cleanup-clock
+    // guard itself must reject the mutation rather than the terminal-row guard.
+    for (const statement of [
+      'UPDATE storage_config_probes SET cleanup_attempted_at=NULL WHERE id=$1',
+      "UPDATE storage_config_probes SET cleanup_attempted_at=cleanup_attempted_at-interval '1 microsecond' WHERE id=$1",
+      "UPDATE storage_config_probes SET cleanup_attempted_at=clock_timestamp()+interval '1 day' WHERE id=$1",
+    ])
+      await expect(pool.query(statement, [probeId])).rejects.toMatchObject({
+        code: '23514',
+        message: 'Storage probe cleanup clock must advance',
+      });
+    await expect(
+      pool.query('UPDATE storage_config_probes SET deleted_at=clock_timestamp() WHERE id=$1', [
+        probeId,
+      ]),
+    ).rejects.toMatchObject({
+      code: '23514',
+      message: 'Unknown PUT outcomes retain a 24 hour cleanup grace period',
+    });
+    // A late acknowledgement changes only PUT confirmation and keeps the failed
+    // cleanup receipt; it does not manufacture another failed cleanup attempt.
+    await pool.query(
+      'UPDATE storage_config_probes SET put_confirmed_at=clock_timestamp() WHERE id=$1',
+      [probeId],
+    );
+    expect(
+      (
+        await pool.query(
+          'SELECT put_confirmed_at,deleted_at,cleanup_attempted_at::text AS attempted FROM storage_config_probes WHERE id=$1',
+          [probeId],
+        )
+      ).rows[0],
+    ).toMatchObject({ put_confirmed_at: expect.any(Date), deleted_at: null, attempted });
+    await expect(
+      pool.query('UPDATE storage_config_probes SET put_confirmed_at=NULL WHERE id=$1', [probeId]),
+    ).rejects.toMatchObject({ code: '23514', message: 'Probe PUT confirmation is immutable' });
+    await expect(
+      pool.query(
+        'UPDATE storage_config_probes SET deleted_at=clock_timestamp(),cleanup_attempted_at=clock_timestamp() WHERE id=$1',
+        [probeId],
+      ),
+    ).rejects.toMatchObject({
+      code: '23514',
+      message: 'Successful probe deletion preserves the last failed attempt',
+    });
+    await pool.query('UPDATE storage_config_probes SET deleted_at=clock_timestamp() WHERE id=$1', [
+      probeId,
+    ]);
+    expect(
+      (
+        await pool.query(
+          'SELECT deleted_at,cleanup_attempted_at::text AS attempted FROM storage_config_probes WHERE id=$1',
+          [probeId],
+        )
+      ).rows[0],
+    ).toMatchObject({ deleted_at: expect.any(Date), attempted });
   });
   test('aged unknown PUT is cleaned before a replacement probe is written', async () => {
     await save();

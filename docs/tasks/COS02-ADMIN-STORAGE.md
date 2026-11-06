@@ -1,5 +1,26 @@
 # COS02 后台对象存储配置
 
+## 2026-11-07T01:55+08:00 CI226最小修复冻结（等待新head完整CI）
+
+root已复制并核对051=31e85e17、服务PG测试=dca5d1c5、c19升级测试=9fb413b8。仅6行新051守卫变化：只有cleanup_attempted_at实际改变时验证非空/递增/非未来；成功删除强制保留原失败时间。原身份不可变、PUT确认不可逆和未知PUT24小时保护原样保持。原轮换失败例加强原时间逐字保留，新第12例在未删除行验证清空/倒退/未来拒绝、确认/删除保留历史成功，避免终态守卫假阳性。独立安全复核冻结SHA通过，无新增P1/P2；旧001—050未改。
+
+c19只补051精确inactive/version0种子断言，旧表行hash、checksum与备份恢复条件不放宽。root全仓typecheck、两份PG测试Prettier及diff通过；作者另5unit通过。环境无PG，本次服务12＋HTTP4及完整集成须由新精确head实际CI确认，不用旧三项成功拼接。当前未合并、未部署，051未在生产执行。
+
+
+## 2026-11-07T01:48+08:00 CI226失败定位（REVIEW / BRANCH_ONLY，未合并）
+
+精确候选a1014c7的CI226：admin、account-security、production成功；API既有PG集成632通过/3失败。新增HTTP4/4通过、服务10/11通过。真实PG暴露051探测守卫缺陷：失败清理已记录cleanup_attempted_at，随后只更新deleted_at时保留值被<=比较误拒，阻止凭据轮换后清理。backend修正只对实际改变的时间验证推进、同时禁止清空历史，独立安全复核进行；不能把旧审查无finding当作新修复验证。
+
+另两失败是c19升级种子清单缺051唯一storage_config_state行，导致后续基线未赋值级联；ops最小补精确allowlist与全部字段inactive/version0断言，不放宽旧数据、迁移checksum或恢复指纹。修改已复制root，类型/格式/diff通过，真实PG待新head实跑。API后续原生HTTP、重启及API E2E因前置失败被跳过，不计通过。完整日志位于本地ci-evidence/42261688932-api.log与[CI226](https://github.com/xyq-dev/small-city-basketball/actions/runs/42261688932)。
+
+
+## 2026-11-07T01:31+08:00 PR47与页面实检（CI运行中）
+
+已普通同步 `feat/admin-cos-settings`，提交 `a1014c7f648c8199e642cb2071df4949ded8cea0`；远端tree与本地暂存tree完全一致（90a0966b）。[PR47](https://github.com/xyq-dev/small-city-basketball/pull/47)以main7b451c5为基线。Application checks #226 / run42261688932在执行；账号安全已通过、admin格式/类型/单测/构建已通过、API完整迁移链/恢复边界/剩余模块PG已通过，最终套件仍待实际完成。自动Code Review此head无finding。Windows工具workflow的paths不覆盖本次改动，预期不触发。
+
+实际RuntimeApp与StorageSettingsPage编译产物在内部浏览器完成桌面/390/320宽实检；320 main实测clientWidth=scrollWidth=320。合成API走通保存草稿（密钥输入清空）、明确检测确认、私有策略勾选与二次启用确认，GET核对版本后显示生效。HTTP预检不具备secure-context randomUUID，仅临时合成harness提供确定性命令编号；未改产品代码。此结果只验证UI，不能冒称真实COS连通。临时harness已删除、preview已停止，git工作区此前干净。生产未部署、051未在生产执行。
+
+
 ## 2026-11-07T01:22+08:00 代码冻结与本地验收（REVIEW，等待隔离CI）
 
 已收齐后端、动态运行时、后台页面和运维恢复实现；独立安全复核已收口全部已知P1/P2，包括非阻塞shared锁、PUT前再次核验、中断检测回执、403清秘密与固定目标版本、后续已生效版本取代和异桶草稿修回实际位置。最终前端源码f33d4748/测试670dee05已与作者冻结版逐字节一致。

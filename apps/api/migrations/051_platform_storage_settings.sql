@@ -80,7 +80,11 @@ BEGIN
   IF NEW.deleted_at IS NOT NULL AND NEW.put_confirmed_at IS NULL AND OLD.created_at>clock_timestamp()-interval '24 hours' THEN
     RAISE EXCEPTION 'Unknown PUT outcomes retain a 24 hour cleanup grace period' USING ERRCODE='23514';
   END IF;
-  IF NEW.cleanup_attempted_at IS NOT NULL AND (NEW.cleanup_attempted_at>clock_timestamp() OR
+  IF NEW.deleted_at IS NOT NULL AND NEW.cleanup_attempted_at IS DISTINCT FROM OLD.cleanup_attempted_at THEN
+    RAISE EXCEPTION 'Successful probe deletion preserves the last failed attempt' USING ERRCODE='23514';
+  END IF;
+  IF NEW.cleanup_attempted_at IS DISTINCT FROM OLD.cleanup_attempted_at AND
+    (NEW.cleanup_attempted_at IS NULL OR NEW.cleanup_attempted_at>clock_timestamp() OR
     (OLD.cleanup_attempted_at IS NOT NULL AND NEW.cleanup_attempted_at<=OLD.cleanup_attempted_at)) THEN
     RAISE EXCEPTION 'Storage probe cleanup clock must advance' USING ERRCODE='23514';
   END IF;

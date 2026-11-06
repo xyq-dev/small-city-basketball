@@ -1,8 +1,8 @@
 # 任务看板
 
-## 2026-11-07T01:00+08:00 COS02 后台对象存储（IN_PROGRESS / LOCAL_ONLY）
+## 2026-11-07T01:48+08:00 COS02 后台对象存储（REVIEW / BRANCH_ONLY）
 
-新增实际系统设置→对象存储，平台全局权限、凭据加密、版本绑定检测与启用，保留已有媒体与恢复边界。当前仅独立worktree开发，尚未验证/合并/部署；详见[任务](tasks/COS02-ADMIN-STORAGE.md)及[交接](handoffs/COS02-ADMIN-STORAGE.md)。下方INT01仍为已合并基线事实。
+新增实际系统设置→对象存储、凭据加密与版本检测/启用；[PR47](https://github.com/xyq-dev/small-city-basketball/pull/47)已同步。CI226三项成功，API暴露051探测时钟守卫及旧升级种子清单问题，正最小修复并等待新head完整CI；未合并/部署，051未在生产执行。详见[任务](tasks/COS02-ADMIN-STORAGE.md)及[交接](handoffs/COS02-ADMIN-STORAGE.md)。下方INT01仍为已合并基线事实。
 
 ## 2026-11-06 22:20 Asia/Shanghai INT01 全分支整合完成（DONE / MAIN）
 
