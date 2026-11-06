@@ -1,5 +1,23 @@
 # INT01 全分支整合接续
 
+## 2026-11-06 21:29 Asia/Shanghai 状态摘要最终整合冻结（REVIEW / BRANCH_ONLY）
+
+本节为最新状态，下方历次记录均为历史。root在共享60734369之上已收齐六页、18份独立工作树冻结文件，逐字节核对一致。仅六份WXML及六份新CJS/六份新fixture：local-bookings使用真实statusText，中性到场进度，不推断核销历史，两个首条摘要随角色分类守卫；local-manage按slot原始OPEN/CLOSED与available严格布尔显示，避免混用约赛OPEN；training课次使用真实stateLabel；performance已有sourceText仅显式有效时绿色，缺失待核对；bookings无总体聚合数据则中性逐场核对，保留真实每条状态；org-event可读权限不再冒充办理进度，规程/报名/排程中性入口与真实reviewLabel/已排程正例保留。原handler、ID/版本、筛选、金额、权限与未知结果流程均保持，无JS/后端/API/共享样式或旧fixture/spec变化。
+
+本批新增51项有意义状态与真实handler回归。两同城页交叉59＋48通过，培训/履历/球员预约/赛事页另一个复核者独立162/162通过（40/40/49/33），均0失败，旧模板反例已取证。root完整微信1621项：1620通过、0失败、1既有Windows桥平台skip；全仓format/typecheck/diff通过。累计324项新增回归（32份新CJS）、36份新合成fixture；36新＋1既有审核投影场景×三宽111次DOM契约通过，受影响六页连同既有场景76×3=228次文案/按钮/字段契约通过。这是DOM与样式预检，不等于浏览器几何或微信真机。
+
+旧607的CI222 admin/账号安全/production及Windows55成功：源码598/1374/微信1569＋1skip/CLI12，浏览器1563通过，1548份布局/PNG守卫；API已通过新旧PG集成，当前原生真实HTTP步骤仍运行。其结果只属旧候选，不替代这六页修复。旧220的3失败已定位picker12px且以本页14px修好，221格式附带引号已恢复原文，均不修改验收规则。全部已知自动意见中，最新local-bookings线程待本次普通推送修复后关闭；最终merge仍须同一最新head完整CI、真实三宽、全部线程、来源包含及main并发核验。
+
+root下一步仅精确提交18份本批代码/测试/场景及五份任务记录，普通推进同PR46，保留原始提交历史，待验收后合并并按实际状态收口42/44。main仍b19c19a，后端/API/001—050与生产配置不变；未生产部署、生产Migration、真实微信/COS联调、身份/资金/凭据操作。
+
+## 2026-11-06 21:22 Asia/Shanghai 状态摘要集中修复检查点
+
+root当前共享HEAD60734369、tree47dd9f0f，CI222 admin已SUCCESS：管理598/API源码1374/微信1569＋1平台skip/CLI12，浏览器1563通过、1548份布局/PNG守卫；Windows55/账号安全/production成功，API既有PG仍运行。这些仅属当前旧候选，不覆盖接下来的WXML状态绑定修复，尚未merge。
+
+新自动P2 local-bookings首条摘要把真实ARRIVED/DELIVERED/COMPLETED及取消终态写未核销/待办理，作者新15旧13红2绿→15绿、相关57通过，独立复核已过；随后追加两个首条摘要的角色筛选守卫，避免列表筛到PROVIDER却仍显示BUYER状态。local-manage真实slot的OPEN复用约赛“待对方确认”，available=false又被写“待开放”，已冻结本页WXML/6新回归/1真实mapper场景，原5红1绿→6绿、相关48通过，交叉复审中。两批首版6文件已复制root，local-bookings追加后将重新复制。
+
+有界同根因扫描集中确认另外四页：training真实session.stateLabel不存在statusText且首课回退有名额；performance已有sourceText却不存在sourceStatusText回退绿已核对；bookings任意完成/取消记录固定进行中/待办理；org-event把manage.review可读标志误当进行中且固定待审核/规则已完成。分别由独立作者只WXML绑定真实文案或中性查看指引，加最小状态/handler回归与合成fixture；不新增JS聚合、不改后端/权限/旧fixture/spec。integration_review负责冻结后独立复核这四页，不扩大扫描。root收齐全部修复后一次性完整源码/类型/格式/DOM验证并普通推同PR，再核验同一新head全部CI。未部署生产、执行Migration或真实资金操作。
+
 ## 2026-11-06 21:06 Asia/Shanghai 保留样式导入原文
 
 最新候选5b166884的Windows54与账号安全成功，其余仍安装环境；自动审查新增一条实际问题：本次单文件prettier顺带把WXSS首行双引号改成等价单引号，而既有ui006-ops-trade精确匹配原双引号。root恢复首行原文，只保留局部picker 14px/20px，不改既有测试或放宽路径断言。该问题仅为新候选格式附带回归，旧d92源码通过不能替代当前检查。恢复后root完整微信1570项：1569通过、0失败、1既有平台skip（13.9秒）；diff通过。新head完整CI仍待普通推送后核验，未将旧候选绿色冒充新结果；尚未合并，无生产操作。

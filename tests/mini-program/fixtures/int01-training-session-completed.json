@@ -1,0 +1,50 @@
+{
+  "name": "int01-training-session-completed",
+  "route": "pages/training/index",
+  "state": "synthetic-completed-full-cohort-delivered-first-session",
+  "figmaNode": "36:89",
+  "syntheticData": true,
+  "designSource": "Existing public cohort detail and training.cohort state labels; synthetic completed class, no enrollment write",
+  "expectText": ["合成已结课成人篮球班", "固定课表", "已记录授课"],
+  "expectVisible": [".session-row .figma-status"],
+  "expectDisabled": ["查看课次与合同"],
+  "data": {
+    "enabled": true,
+    "signupStep": "course",
+    "detail": {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "title": "合成已结课成人篮球班",
+      "description": "合成固定短班历史课次。",
+      "address": "合成篮球场",
+      "state": "COMPLETED",
+      "capacity": 1,
+      "available": 0,
+      "totalFen": 0,
+      "termsText": "合成课程合同。",
+      "amount": "免费",
+      "stateLabel": "已完成",
+      "sessions": [
+        {
+          "id": "20000000-0000-4000-8000-000000000001",
+          "startsAt": "2026-10-30T01:00:00.000Z",
+          "endsAt": "2026-10-30T02:00:00.000Z",
+          "state": "DELIVERED",
+          "version": 2,
+          "coaches": [
+            {
+              "id": "10000000-0000-4000-8000-000000000002",
+              "name": "合成教练"
+            }
+          ],
+          "time": "2026-10-30 09:00（北京时间） — 2026-10-30 10:00（北京时间）",
+          "stateLabel": "已记录授课"
+        }
+      ],
+      "capabilities": {
+        "canEnroll": false,
+        "canManage": false,
+        "paidEnrollmentEnabled": false
+      }
+    }
+  }
+}

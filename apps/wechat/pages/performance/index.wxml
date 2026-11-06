@@ -24,7 +24,7 @@
           <view class="figma-section">
             <view class="figma-section__title">本次提名</view>
             <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{links[0].eventName}}</view><view class="figma-row__subtitle">{{links[0].teamName}} · {{links[0].memberName}}</view></view><view class="figma-status figma-status--orange">{{links[0].statusText || '待本人确认'}}</view></view>
-            <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">来源比赛</view><view class="figma-row__subtitle">{{links[0].profileName}} · {{links[0].sourceText}}</view></view><view class="figma-status figma-status--green">{{links[0].sourceStatusText || '已核对'}}</view></view>
+            <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">来源比赛</view><view class="figma-row__subtitle">{{links[0].profileName}} · {{links[0].sourceText}}</view></view><view class="figma-status {{links[0].sourceCurrentlyAvailable === true && links[0].sourceText ? 'figma-status--green' : ''}}">{{(links[0].sourceCurrentlyAvailable === true || links[0].sourceCurrentlyAvailable === false) && links[0].sourceText ? links[0].sourceText : '待核对'}}</view></view>
             <figma-feedback wx:if="{{!links[0].sourceCurrentlyAvailable}}" type="error" title="当前来源不再满足公开条件" body="个人统计不会回退到旧确认；仍可按当前权限处理拒绝。"/>
           </view>
           <view class="figma-section">

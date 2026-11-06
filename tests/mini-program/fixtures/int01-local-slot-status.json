@@ -1,0 +1,56 @@
+{
+  "name": "int01-local-slot-status",
+  "route": "pages/local-manage/index",
+  "state": "synthetic-open-slots-mixed-availability",
+  "syntheticData": true,
+  "expectText": ["合成已审核球场供给", "档期已开放", "可预约", "当前不可用"],
+  "expectAbsentText": ["待开放", "待对方确认"],
+  "data": {
+    "listings": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "title": "合成已审核球场供给",
+        "kind": "COURT",
+        "kindText": "球场",
+        "address": "合成球场地址",
+        "status": "APPROVED",
+        "statusText": "审核通过",
+        "providerConfirmed": true,
+        "published": true,
+        "version": 3
+      }
+    ],
+    "overviewSlots": [
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "listingId": "00000000-0000-4000-8000-000000000001",
+        "startsAt": "2028-05-01T01:00:00Z",
+        "endsAt": "2028-05-01T03:00:00Z",
+        "status": "OPEN",
+        "statusText": "待对方确认",
+        "version": 7,
+        "available": true,
+        "timeText": "2028-05-01 09:00 — 05-01 11:00"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000004",
+        "listingId": "00000000-0000-4000-8000-000000000001",
+        "startsAt": "2028-05-01T03:00:00Z",
+        "endsAt": "2028-05-01T05:00:00Z",
+        "status": "OPEN",
+        "statusText": "待对方确认",
+        "version": 2,
+        "available": false,
+        "timeText": "2028-05-01 11:00 — 05-01 13:00"
+      }
+    ],
+    "selected": null,
+    "loading": false,
+    "busy": false,
+    "creating": false,
+    "editing": false,
+    "loginRequired": false,
+    "pending": null,
+    "pendingError": ""
+  }
+}

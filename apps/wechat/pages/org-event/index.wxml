@@ -26,14 +26,14 @@
       <block wx:if="{{tab === 'manage'}}">
         <view class="figma-section">
           <view class="figma-section__title">办赛进度</view>
-          <view class="org-event-step"><view class="org-event-step__mark">1</view><view class="org-event-step__copy"><view class="figma-row__title">赛事规则</view><view class="figma-row__subtitle">资料保存后开放报名</view></view><view class="figma-status figma-status--green">已完成</view></view>
-          <view class="org-event-step"><view class="org-event-step__mark">2</view><view class="org-event-step__copy"><view class="figma-row__title">球队报名</view><view class="figma-row__subtitle">核对各队报名和本人资料</view></view><view class="figma-status figma-status--orange">{{manage && manage.review ? '进行中' : '待办理'}}</view></view>
-          <view class="org-event-step"><view class="org-event-step__mark">3</view><view class="org-event-step__copy"><view class="figma-row__title">冻结与排程</view><view class="figma-row__subtitle">名单冻结后生成赛程</view></view><view class="figma-status {{matches.length ? 'figma-status--green' : 'figma-status--orange'}}">{{matches.length ? '已排程' : '待办理'}}</view></view>
+          <view class="org-event-step"><view class="org-event-step__mark">1</view><view class="org-event-step__copy"><view class="figma-row__title">赛事规则</view><view class="figma-row__subtitle">资料保存后开放报名</view></view><view class="figma-status">查看规程</view></view>
+          <view class="org-event-step"><view class="org-event-step__mark">2</view><view class="org-event-step__copy"><view class="figma-row__title">球队报名</view><view class="figma-row__subtitle">核对各队报名和本人资料</view></view><view class="figma-status figma-status--orange">查看进度</view></view>
+          <view class="org-event-step"><view class="org-event-step__mark">3</view><view class="org-event-step__copy"><view class="figma-row__title">冻结与排程</view><view class="figma-row__subtitle">名单冻结后生成赛程</view></view><view class="figma-status {{matches.length ? 'figma-status--green' : 'figma-status--orange'}}">{{matches.length ? '已排程' : '查看排程'}}</view></view>
         </view>
 
         <view wx:if="{{manage}}" class="figma-section">
           <view class="figma-section__title">赛事待办</view>
-          <button wx:if="{{manage.review}}" class="figma-row" bindtap="openReview"><view class="figma-row__copy"><view class="figma-row__title">本届报名审核</view><view class="figma-row__subtitle">{{manage.reviewLabel}}</view></view><view class="figma-status figma-status--orange">待审核</view></button>
+          <button wx:if="{{manage.review}}" class="figma-row" bindtap="openReview"><view class="figma-row__copy"><view class="figma-row__title">本届报名审核</view><view class="figma-row__subtitle">{{manage.reviewLabel}}</view></view><view class="figma-status figma-status--orange">查看</view></button>
           <button class="figma-row" data-page="staff-configuration" bindtap="openFeature"><view class="figma-row__copy"><view class="figma-row__title">赛事工作人员</view><view class="figma-row__subtitle">核对赛事与单场人员范围</view></view><view class="figma-status figma-status--orange">查看</view></button>
         </view>
 
