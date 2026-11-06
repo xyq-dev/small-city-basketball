@@ -52,12 +52,14 @@
       </view>
     </view>
 
-    <view wx:if="{{event && !rulesOnly && exceptionTab === 'proposal'}}" class="figma-section">
+    <view wx:if="{{event && !rulesOnly && (exceptionTab === 'proposal' || exceptionTab === 'review' && pending && canReview)}}" class="figma-section">
       <view class="figma-section__title">事实说明</view>
-      <view class="figma-field-group"><view class="figma-field-label">操作原因</view><textarea class="figma-field-control" maxlength="500" value="{{reason}}" data-field="reason" bindinput="input" placeholder="填写可核验的事实和时间" disabled="{{busy || uncertain}}"/></view>
+      <view wx:if="{{exceptionTab === 'review' || canPropose || canRevoke}}" class="figma-field-group"><view class="figma-field-label">操作原因</view><textarea class="figma-field-control" maxlength="500" value="{{reason}}" data-field="reason" bindinput="input" placeholder="填写可核验的事实和时间" disabled="{{busy || uncertain}}"/></view>
+      <block wx:if="{{exceptionTab === 'proposal'}}">
       <view class="figma-field-group"><view class="figma-field-label">本次依据</view><view class="exception-readonly">查阅锁定规则与相关记录</view></view>
       <view class="figma-field-group"><view class="figma-field-label">当前提案</view><view class="exception-readonly"><text>仍须其他有权人员复核</text><text class="figma-status figma-status--orange">草稿</text></view></view>
       <view wx:if="{{active}}" class="exception-active"><view><view class="figma-row__title">当前生效：{{active.title}}</view><view class="figma-row__subtitle">{{active.sideLabel}} · {{active.reason}}</view></view><button wx:if="{{canRevoke}}" class="exception-link" data-operation="REVOKE" bindtap="propose" disabled="{{busy || uncertain}}">提议撤回</button></view>
+      </block>
     </view>
 
     <view wx:if="{{event && !rulesOnly && exceptionTab === 'review'}}" class="figma-section">

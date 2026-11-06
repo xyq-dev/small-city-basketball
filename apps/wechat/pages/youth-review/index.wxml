@@ -7,6 +7,7 @@
     </view>
     <figma-tabs key1="pending" label1="待核验" key2="history" label2="历史记录" active="{{activeView}}" disabled="{{busy || loading}}" bind:change="changeView"/>
     <figma-skeleton wx:if="{{loading && !requests.length}}" rows="4"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="locked" title="登录后继续监护审核" body="请登录当前账号后核对本届监护关系与审核权限。" action-label="登录并返回本届审核" disabled="{{busy || loading || pending}}" bind:action="login"/>
     <figma-feedback wx:if="{{error}}" type="error" title="审核队列读取失败" body="{{error}}" action-label="重新读取" disabled="{{busy || loading}}" bind:action="load"/>
     <figma-feedback wx:if="{{message}}" type="success" title="审核状态已更新" body="{{message}}"/>
     <figma-feedback wx:if="{{pending}}" type="warning" title="原请求结果待核对" body="核对回执前暂停新的关系审核，避免重复处理。" action-label="重新核对" disabled="{{busy || loading}}" bind:action="load"/>

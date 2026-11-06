@@ -1,0 +1,77 @@
+{
+  "name": "int01-sponsor-refund-unverified",
+  "route": "pages/sponsor-commerce/index",
+  "state": "synthetic-list-without-authoritative-refund-total",
+  "figmaNode": "36:125",
+  "syntheticData": true,
+  "designSource": "Actual sponsor order list fields after native decoration; no refund aggregate supplied, synthetic amounts and identities",
+  "expectText": ["合成退款待核合同", "可分配基数", "待核对", "¥100.00"],
+  "expectAbsentText": ["¥99.00"],
+  "expectVisible": [
+    "button[data-mini-bindtap=\"contractAction\"][data-action=\"ORDER\"][data-id=\"10000000-0000-4000-8000-000000000003\"]"
+  ],
+  "expectAbsentSelectors": [
+    "button[data-action=\"CLOSE_UNSTARTED\"]",
+    "button[data-action=\"APPROVE\"]",
+    "button[data-action=\"VERIFY_FEE\"]",
+    "button[data-mini-bindtap=\"orderAction\"]",
+    "button[data-mini-bindtap=\"createContract\"]"
+  ],
+  "data": {
+    "mode": "manage",
+    "workspaceView": "contracts",
+    "figmaCommercePreview": false,
+    "loading": false,
+    "busy": false,
+    "pending": null,
+    "enabled": false,
+    "canManage": false,
+    "canFinance": false,
+    "canAdvance": false,
+    "userId": "10000000-0000-4000-8000-000000000001",
+    "organizations": [
+      { "id": "10000000-0000-4000-8000-000000000002", "name": "合成合同机构", "role": "ADVERTISER" }
+    ],
+    "orgIndex": 0,
+    "contracts": [
+      {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "org_id": "10000000-0000-4000-8000-000000000002",
+        "payer_user_id": "10000000-0000-4000-8000-000000000001",
+        "title": "合成退款待核合同",
+        "total_fen": 10000,
+        "status": "SIGNED",
+        "version": 3,
+        "owner_signed_by": "10000000-0000-4000-8000-000000000006",
+        "starts_at": "2028-06-01T00:00:00Z",
+        "ends_at": "2028-06-02T00:00:00Z",
+        "terms": "合成原合同条款与金额保持不变",
+        "contractHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "stateLabel": "双方已签署",
+        "amountText": "100.00"
+      }
+    ],
+    "orders": [
+      {
+        "id": "10000000-0000-4000-8000-000000000004",
+        "org_id": "10000000-0000-4000-8000-000000000002",
+        "contract_id": "10000000-0000-4000-8000-000000000003",
+        "payer_user_id": "10000000-0000-4000-8000-000000000001",
+        "title": "合成原广告订单",
+        "total_fen": 10000,
+        "status": "DELIVERING",
+        "version": 4,
+        "verified_fee_fen": 100,
+        "trade_order_id": "10000000-0000-4000-8000-000000000005",
+        "paid_fen": 10000,
+        "stateLabel": "投放交付中",
+        "amountText": "100.00"
+      }
+    ],
+    "contractOverview": { "paymentLabel": "投放交付中", "poolLabel": "待核对" },
+    "campaignOptions": [],
+    "receiverOptions": [],
+    "beneficiaries": [],
+    "detail": null
+  }
+}

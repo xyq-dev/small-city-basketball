@@ -1,5 +1,13 @@
 # 任务看板
 
+## 2026-11-06 20:41 Asia/Shanghai 最终四项修复冻结（REVIEW / BRANCH_ONLY）
+
+本节为最新状态，下方各检查点仅为历史。root在共享候选f71210a之上收齐四项已复现问题：青年审核factory登录入口、performance首项独立canRevoke拒绝、裁定审核原因、广告订单列表未提供退款累计时的金额展示。四项只修改3份WXML与1份页面JS，沿原handler、capability、请求ID及版本；不改API/后端/001—050迁移或生产配置。财务来源list SQL只有o.*、trade_order_id、paid_fen，不能把未报告退款当0；缺失/非法/不一致金额显示“待核对”，合法显式0、已退金额及净0按原单位计算，正常SIGNED广告主仍保留原ORDER入口。
+
+四项均已独立复核：青年登录/履历/裁定新增33项与原35项通过；财务前端55项及金额域8项通过。作者相关27/46/130/72项通过。实际加载73/73 Page无错误，43个ui.session页面登录入口已检查。root完整微信1570项：1569通过、0失败、1既有Windows桥平台skip；格式、类型、diff检查成功。累计新增273项回归（26份新CJS）、30份新合成fixture。30新＋1既有审核投影场景×三宽93次DOM契约通过；受影响四页连同既有场景扩查51×3=153次文案/按钮/输入契约通过。上述本地DOM检查不等于浏览器几何或微信真机，最终三宽须由新精确head的CI提供。
+
+此前f71210a的CI219 admin/production/account-security及Windows52成功，API已通过PG与原生HTTP及重启，浏览器步骤仍运行；这些结果仅属旧候选，不替代四项新修复的验收。接下来只提交12份上述源码/测试/fixture与本任务五份文档，普通推进PR46，核对同一新head全部CI、实际三宽、17条审查线程及任何新反馈，成功后merge保留所有来源历史。main仍为b19c19a，未部署生产、执行生产Migration或真实外部/资金操作。
+
 ## 2026-11-06 INT01 全分支整合（REVIEW / BRANCH_ONLY）
 
 五个原始分支及整合分支历史保留，19页入口/状态/导航与证明取消/逐档案同意保护已独立复核。43个消失枚举、41页登录绑定及标签祖先条件核查已收口，全部已知问题已实现修复。最新累计206新增测试（22新CJS）、26新夹具，root完整微信1502通过/1平台skip、格式/类型成功；新＋迁移场景81次DOM、受影响三页扩展144次契约通过。0513211/CI218四作业全绿（1542浏览器、1527份证据、PG/真实API/恢复），但三处后续导航仅在新工作树修复，待最新head完整CI后合并。旧214—218不替代新候选；原数据权限不改，spec不变。后端/Migration/生产不变。详见[任务](tasks/INT01-ALL-BRANCHES.md)、[接续](handoffs/INT01-ALL-BRANCHES.md)、[证据](evidence/INT01/README.md)。下方旧记录以本节最新状态为准。
@@ -20,37 +28,37 @@
 
 ## 2026-11-05 UI006 微信原生前端 Figma 重建（REVIEW / LOCAL_ONLY）
 
-| 项 | 当前事实 |
-| --- | --- |
-| 负责人 | Codex 主 Agent；共享组件、导航、整合、微信工具和汇总文档单写 |
-| 分支与基线 | `feat/wechat-figma-rebuild`，基于 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` |
-| 目标 | Figma 定稿 → 全新原生 WXML/WXSS UI → 依据现有契约接通功能 → 分离视觉与功能验收 |
-| 计数 | 从零建立 73 路由＋17 条件状态清单；旧 UI005 数量不沿用 |
-| 当前切片 | 73 路由＋17 状态已完成新模板、功能接线与最终三宽隔离渲染；首页/我的有当前微信 390 逻辑宽真实状态证据；直接回归 242/242，全量 1237/1238，唯一失败为 Windows `symlinkSync EPERM` |
-| 权限 | 允许本地分支、前端重写、测试和截图；禁止 commit、push、merge、pack、上传、部署、Migration、后端/生产修改 |
-| 记录 | [任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)／[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)／[证据说明](evidence/ui006/README.md)／[73＋17 覆盖矩阵](evidence/ui006/COVERAGE.md) |
+| 项         | 当前事实                                                                                                                                                                         |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 负责人     | Codex 主 Agent；共享组件、导航、整合、微信工具和汇总文档单写                                                                                                                     |
+| 分支与基线 | `feat/wechat-figma-rebuild`，基于 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`                                                                                       |
+| 目标       | Figma 定稿 → 全新原生 WXML/WXSS UI → 依据现有契约接通功能 → 分离视觉与功能验收                                                                                                   |
+| 计数       | 从零建立 73 路由＋17 条件状态清单；旧 UI005 数量不沿用                                                                                                                           |
+| 当前切片   | 73 路由＋17 状态已完成新模板、功能接线与最终三宽隔离渲染；首页/我的有当前微信 390 逻辑宽真实状态证据；直接回归 242/242，全量 1237/1238，唯一失败为 Windows `symlinkSync EPERM`   |
+| 权限       | 允许本地分支、前端重写、测试和截图；禁止 commit、push、merge、pack、上传、部署、Migration、后端/生产修改                                                                         |
+| 记录       | [任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)／[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)／[证据说明](evidence/ui006/README.md)／[73＋17 覆盖矩阵](evidence/ui006/COVERAGE.md) |
 
 ## 2026-11-05 UI005 小程序全量 Figma 还原（DRAFT PR 候选）
 
-| 项 | 当前事实 |
-| --- | --- |
-| 候选分支 | `feat/ui005-figma-complete`，[Draft PR #42](https://github.com/xyq-dev/small-city-basketball/pull/42)，基线 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` |
-| 实现与隔离核对 | 73/73 注册路由、17/17 条件状态；原 1386/1386 只作模板、三宽约束与夹具证据，不等于全量高保真复审 |
-| 微信运行 | 原 18/73 路由只读证据保留；本轮重新高保真复核首页与“我的”2页、390 首屏/底部。不是实际报名、预约、审核、支付或记分成功流程 |
-| 验证 | 两页直接回归 141/141、定向三宽 21/21；本地 `test:wechat` 1207/1208，唯一失败为 Windows `symlinkSync` EPERM。CI 只以 PR 最新 head 为准，旧 head 绿色不代替新 head |
-| 证据 | [任务](tasks/UI005-REDESIGN.md)／[交接](handoffs/UI005-REDESIGN.md)／[73+17 清单](evidence/ui005/README.md)／[首页与“我的”修复前后](evidence/ui005/home-account-fix/README.md) |
-| 边界 | Draft 未合入；地区/赛事目录 404、身份与业务数据、原生键盘仍是外部运行条件；未 pack、上传、部署、Migration 或修改生产 |
+| 项             | 当前事实                                                                                                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 候选分支       | `feat/ui005-figma-complete`，[Draft PR #42](https://github.com/xyq-dev/small-city-basketball/pull/42)，基线 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`           |
+| 实现与隔离核对 | 73/73 注册路由、17/17 条件状态；原 1386/1386 只作模板、三宽约束与夹具证据，不等于全量高保真复审                                                                                |
+| 微信运行       | 原 18/73 路由只读证据保留；本轮重新高保真复核首页与“我的”2页、390 首屏/底部。不是实际报名、预约、审核、支付或记分成功流程                                                      |
+| 验证           | 两页直接回归 141/141、定向三宽 21/21；本地 `test:wechat` 1207/1208，唯一失败为 Windows `symlinkSync` EPERM。CI 只以 PR 最新 head 为准，旧 head 绿色不代替新 head               |
+| 证据           | [任务](tasks/UI005-REDESIGN.md)／[交接](handoffs/UI005-REDESIGN.md)／[73+17 清单](evidence/ui005/README.md)／[首页与“我的”修复前后](evidence/ui005/home-account-fix/README.md) |
+| 边界           | Draft 未合入；地区/赛事目录 404、身份与业务数据、原生键盘仍是外部运行条件；未 pack、上传、部署、Migration 或修改生产                                                           |
 
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 
-| 项 | 事实 |
-| --- | --- |
-| 日常目录 | `D:\Projects\small-city-basketball` |
-| 候选分支 | `integrate/ui-v4-consolidate` |
-| 基线 | `origin/main` `ef25846857bb0431a4f71ad8dbe6fac87f945ae0` |
-| 来源 | `D:\Projects\small-city-basketball-v3-nav` 未提交的账号、赛事、同城、球队和 `v3-chrome` |
-| 不纳入 | `ui002-ci` 已在 main；`docs/design/ui-v4/REFERENCE_V3`、`scb-homepage-assets-v1`、`scb_remaining_ui_v3` 只归档 |
-| 状态 | 本地验证后创建 PR。远端 CI 通过前不是 MAIN |
+| 项       | 事实                                                                                                           |
+| -------- | -------------------------------------------------------------------------------------------------------------- |
+| 日常目录 | `D:\Projects\small-city-basketball`                                                                            |
+| 候选分支 | `integrate/ui-v4-consolidate`                                                                                  |
+| 基线     | `origin/main` `ef25846857bb0431a4f71ad8dbe6fac87f945ae0`                                                       |
+| 来源     | `D:\Projects\small-city-basketball-v3-nav` 未提交的账号、赛事、同城、球队和 `v3-chrome`                        |
+| 不纳入   | `ui002-ci` 已在 main；`docs/design/ui-v4/REFERENCE_V3`、`scb-homepage-assets-v1`、`scb_remaining_ui_v3` 只归档 |
+| 状态     | 本地验证后创建 PR。远端 CI 通过前不是 MAIN                                                                     |
 
 详情见 [交接](handoffs/UI-V4-INTEGRATE.md)。下方 2026-11-03 文档节里“#39 仍为 Draft”是当时记录；当前 main 头已经是首页还原 #39。
 
@@ -58,12 +66,12 @@
 
 核验时间 `2026-11-03T03:51:16Z`。SHA、双亲提交和日志范围见 [当前状态](CURRENT_STATUS.md) 同日一节。下方 2026-11-01 两节的「Draft 待审」是合并前清单，原文保留。
 
-| 项 | 当前事实 | 依据 |
-| --- | --- | --- |
-| PR #37 `fix/ui002-ci` | 已合并进 main | `merged_at` `2026-11-01T23:39:25Z`，合并提交 `717a3a7a9fbb91aa93370d6dc594c10b58bdf4c9` |
-| PR #36 `feat/ui002-integration` | GitHub 标为已合并；头提交随 #37 进入 main | `merged_at` `2026-11-01T23:39:27Z`。`merge_commit_sha` 就是头提交 `813ed61f49cdf461afa9a659a365934c2308ec81`，没有另一条合并提交 |
-| PR #39 `fix/wechat-homepage` | 仍是开放 Draft | 头 `205ea41e761e89457d11d3930124a27a577fd1ff`。[Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/41570969693) 三作业 SUCCESS：admin `npm test` 通过（`test:wechat` 1193 通过、0 失败，1 项 Windows 批处理桥测试跳过），`npm run test:e2e` 1142 通过、1128 跳过。同作业的原生兼容证据为 1128 份布局和 PNG，并写明不是微信运行时；[工具合同](https://github.com/xyq-dev/small-city-basketball/actions/runs/41570970063) SUCCESS。空列表「同城篮球服务」碰底栏不记为已修复 |
-| PR #38 `fix/wechat-preview-size` | 已合并进 main | `merged_at` `2026-11-03T05:26:16Z`（2026-11-03 13:26:16 Asia/Shanghai），合并提交 `e770803b1197852f4da3a66b7382a3352f49b5c1`，合并时头 `69d19ffd4f288ab8f0a69e37ad82a74cfc203cc1`。合并前草稿头 `59c017cb7d417ad03fb2e4f6acdfef27ff1a1e33` 的 [Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/41379255659) 记录 admin、production 通过，api 在公开观赛重开步骤失败；[工具合同](https://github.com/xyq-dev/small-city-basketball/actions/runs/41379255669) SUCCESS。该检查属于该草稿提交 |
+| 项                               | 当前事实                                  | 依据                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PR #37 `fix/ui002-ci`            | 已合并进 main                             | `merged_at` `2026-11-01T23:39:25Z`，合并提交 `717a3a7a9fbb91aa93370d6dc594c10b58bdf4c9`                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| PR #36 `feat/ui002-integration`  | GitHub 标为已合并；头提交随 #37 进入 main | `merged_at` `2026-11-01T23:39:27Z`。`merge_commit_sha` 就是头提交 `813ed61f49cdf461afa9a659a365934c2308ec81`，没有另一条合并提交                                                                                                                                                                                                                                                                                                                                                                                           |
+| PR #39 `fix/wechat-homepage`     | 仍是开放 Draft                            | 头 `205ea41e761e89457d11d3930124a27a577fd1ff`。[Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/41570969693) 三作业 SUCCESS：admin `npm test` 通过（`test:wechat` 1193 通过、0 失败，1 项 Windows 批处理桥测试跳过），`npm run test:e2e` 1142 通过、1128 跳过。同作业的原生兼容证据为 1128 份布局和 PNG，并写明不是微信运行时；[工具合同](https://github.com/xyq-dev/small-city-basketball/actions/runs/41570970063) SUCCESS。空列表「同城篮球服务」碰底栏不记为已修复                   |
+| PR #38 `fix/wechat-preview-size` | 已合并进 main                             | `merged_at` `2026-11-03T05:26:16Z`（2026-11-03 13:26:16 Asia/Shanghai），合并提交 `e770803b1197852f4da3a66b7382a3352f49b5c1`，合并时头 `69d19ffd4f288ab8f0a69e37ad82a74cfc203cc1`。合并前草稿头 `59c017cb7d417ad03fb2e4f6acdfef27ff1a1e33` 的 [Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/41379255659) 记录 admin、production 通过，api 在公开观赛重开步骤失败；[工具合同](https://github.com/xyq-dev/small-city-basketball/actions/runs/41379255669) SUCCESS。该检查属于该草稿提交 |
 
 正式支付、投保、分账、推流和真机仍未由这次文档更正改为已验收。#39 仍未合并。
 
@@ -75,19 +83,19 @@
 
 工作树 `fix/ui002-ci` 在基线 `813ed61` 之上准备单独 Draft PR，目标是 `main`。不改 PR #36，不向 `feat/ui002-integration` 或 `main` 推送。下方 REMAINING6 仍是 main 已验收事实。本地管理端结果不能写成远端 CI、真机或生产验收。
 
-| 功能 | 依据 | 页面 / 接口 / 文件 | 状态 | 缺口或验证 |
-| --- | --- | --- | --- | --- |
-| 开发者工具合同根选择器 | UI002 检查点 14 | `scripts/wechat-devtools-ui.mjs` | 已实现且有本地验证 | 合同 16/16。随本 Draft 推送后才由远端 CI 覆盖 |
-| 旧展开文案断言改到现行披露 | UI002 检查点 15 | `apps/wechat/test`、`tests/mini-program/fixtures` | 已实现且有本地验证 | `test:wechat` 1181 通过 / 6 失败。失败是 Windows CRLF 哈希和符号链接 EPERM，不改固定哈希 |
-| 比赛媒体发布须先选草稿并勾选 | V07，`UI002-MEDIAFLOW` | `apps/wechat/pages/match-media` | 审查修复已有本地验证 | 确认框返回后再次核对同意、页面、身份、版本和权限。隐藏或版本变化后的迟到确认不发送。发布命令仍是 `{type:PUBLISH, expectedVersion}`。撤销未改。真机未验 |
-| 跨城调度机构工作台 | R6 派单状态机 | `/dispatch`，`GET /v1/dispatch`，`apps/admin/src/operations/DispatchPage.tsx` | 审查修复已有本地验证 | 预算和当前报价分开。同一资源写成功后读取新版本，并作废尚未返回的旧读取；另一条详情不被覆盖。接单偏好和建立需求不因打开详情失效。付款仍在原预约 |
-| 成人培训排课 | R6 培训命令 | `/training`，机构培训、教练、课次、报名、退费接口 | 审查修复已有本地验证 | 建班期提交所选教练和整数权重，并通过既有 `parseTrainingCohort`。签到后签退使用新版本；退费批准后不再显示旧审批。批准不表示到账。青少年入口保持关闭 |
-| 保险核对 | R6 保险，只查询和已有操作 | `/insurance`，`GET /v1/insurance` | 已实现且有本地验证 | 列表标明是当前账号保单。只刷新和申请退保。不报价、不投保 |
-| 广告结算 | R6 广告金额与状态 | `/sponsor-commerce`，机构广告接口与 `statements` | 审查修复已有本地验证 | 审核和签署前展示冻结合同条款、时段、费用和分成。未核对或版本变化不签署。签署携带正在查看的哈希。不发送分账、付款或退款 |
-| 学员请假、补课 | 培训权益命令只允许学员本人 | 小程序培训页已有 | 已实现于小程序 | 机构工作台不代发，避免管理员请求必然被拒绝 |
-| 消费异议的平台裁决、培训主体的平台审核 | 须平台运营身份 | 小程序在 `isOperator` 时提供 | 外部条件阻塞 | 管理端会话没有平台运营标记。不放一个机构管理员必然 403 的按钮 |
-| 微信支付、真实投保、订阅消息、地图 SDK、正式推流 | EXPANSION8 / REMAINING6 外部待办 | 既有受控驱动，开关默认关 | 外部条件阻塞 | 缺正式账号、证书、协议或产品参数。本轮不编造供应商接口，不打开开关 |
-| 分账发送、付款、收费退款出款 | 已有统一交易命令 | 原交易页 | 高风险待审，本轮不改 | 培训页批准退费后仍须到统一交易页审核并发送。不在广告页新增出款 |
+| 功能                                             | 依据                             | 页面 / 接口 / 文件                                                            | 状态                 | 缺口或验证                                                                                                                                             |
+| ------------------------------------------------ | -------------------------------- | ----------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 开发者工具合同根选择器                           | UI002 检查点 14                  | `scripts/wechat-devtools-ui.mjs`                                              | 已实现且有本地验证   | 合同 16/16。随本 Draft 推送后才由远端 CI 覆盖                                                                                                          |
+| 旧展开文案断言改到现行披露                       | UI002 检查点 15                  | `apps/wechat/test`、`tests/mini-program/fixtures`                             | 已实现且有本地验证   | `test:wechat` 1181 通过 / 6 失败。失败是 Windows CRLF 哈希和符号链接 EPERM，不改固定哈希                                                               |
+| 比赛媒体发布须先选草稿并勾选                     | V07，`UI002-MEDIAFLOW`           | `apps/wechat/pages/match-media`                                               | 审查修复已有本地验证 | 确认框返回后再次核对同意、页面、身份、版本和权限。隐藏或版本变化后的迟到确认不发送。发布命令仍是 `{type:PUBLISH, expectedVersion}`。撤销未改。真机未验 |
+| 跨城调度机构工作台                               | R6 派单状态机                    | `/dispatch`，`GET /v1/dispatch`，`apps/admin/src/operations/DispatchPage.tsx` | 审查修复已有本地验证 | 预算和当前报价分开。同一资源写成功后读取新版本，并作废尚未返回的旧读取；另一条详情不被覆盖。接单偏好和建立需求不因打开详情失效。付款仍在原预约         |
+| 成人培训排课                                     | R6 培训命令                      | `/training`，机构培训、教练、课次、报名、退费接口                             | 审查修复已有本地验证 | 建班期提交所选教练和整数权重，并通过既有 `parseTrainingCohort`。签到后签退使用新版本；退费批准后不再显示旧审批。批准不表示到账。青少年入口保持关闭     |
+| 保险核对                                         | R6 保险，只查询和已有操作        | `/insurance`，`GET /v1/insurance`                                             | 已实现且有本地验证   | 列表标明是当前账号保单。只刷新和申请退保。不报价、不投保                                                                                               |
+| 广告结算                                         | R6 广告金额与状态                | `/sponsor-commerce`，机构广告接口与 `statements`                              | 审查修复已有本地验证 | 审核和签署前展示冻结合同条款、时段、费用和分成。未核对或版本变化不签署。签署携带正在查看的哈希。不发送分账、付款或退款                                 |
+| 学员请假、补课                                   | 培训权益命令只允许学员本人       | 小程序培训页已有                                                              | 已实现于小程序       | 机构工作台不代发，避免管理员请求必然被拒绝                                                                                                             |
+| 消费异议的平台裁决、培训主体的平台审核           | 须平台运营身份                   | 小程序在 `isOperator` 时提供                                                  | 外部条件阻塞         | 管理端会话没有平台运营标记。不放一个机构管理员必然 403 的按钮                                                                                          |
+| 微信支付、真实投保、订阅消息、地图 SDK、正式推流 | EXPANSION8 / REMAINING6 外部待办 | 既有受控驱动，开关默认关                                                      | 外部条件阻塞         | 缺正式账号、证书、协议或产品参数。本轮不编造供应商接口，不打开开关                                                                                     |
+| 分账发送、付款、收费退款出款                     | 已有统一交易命令                 | 原交易页                                                                      | 高风险待审，本轮不改 | 培训页批准退费后仍须到统一交易页审核并发送。不在广告页新增出款                                                                                         |
 
 ## 2026-11-01 UI002 本地续作（当时记录：Draft 待审）
 

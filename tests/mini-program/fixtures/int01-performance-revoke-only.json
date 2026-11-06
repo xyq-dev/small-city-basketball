@@ -1,0 +1,123 @@
+{
+  "name": "int01-performance-revoke-only",
+  "route": "pages/performance/index",
+  "state": "ready",
+  "figmaNode": "30:1975",
+  "syntheticData": true,
+  "expectText": [
+    "合成本人失效来源",
+    "当前来源不再满足公开条件",
+    "合成管理方待处理记录",
+    "合成本人有效提名",
+    "拒绝授权"
+  ],
+  "expectVisible": [
+    ".figma-fixed-actions [data-mini-bindtap=\"checkLink\"][data-id=\"20000000-0000-4000-8000-000000000001\"][data-type=\"REVOKE\"]",
+    ".authorization-card [data-mini-bindtap=\"checkLink\"][data-id=\"20000000-0000-4000-8000-000000000002\"][data-type=\"REVOKE\"]",
+    ".authorization-card [data-mini-bindtap=\"checkLink\"][data-id=\"20000000-0000-4000-8000-000000000003\"][data-type=\"CONSENT\"]"
+  ],
+  "expectEnabled": ["拒绝授权", "核对本人记录并同意"],
+  "data": {
+    "authorized": true,
+    "loading": false,
+    "loginRequired": false,
+    "ownOnly": false,
+    "ownProfileId": "20000000-0000-4000-8000-000000000010",
+    "filter": "PENDING",
+    "links": [
+      {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "profileId": "20000000-0000-4000-8000-000000000010",
+        "profileName": "合成本人球员",
+        "orgId": "20000000-0000-4000-8000-000000000020",
+        "eventId": "20000000-0000-4000-8000-000000000030",
+        "eventName": "合成本人失效来源",
+        "teamId": "20000000-0000-4000-8000-000000000040",
+        "teamName": "合成青锋队",
+        "memberId": "20000000-0000-4000-8000-000000000051",
+        "memberName": "合成球员1",
+        "status": "PENDING",
+        "version": 4,
+        "nominatedByUserId": "20000000-0000-4000-8000-000000000080",
+        "consentedAt": null,
+        "revokedAt": null,
+        "reason": "合成主办方提名依据",
+        "sourceCurrentlyAvailable": false,
+        "createdAt": "2026-11-06T02:00:00Z",
+        "capabilities": {
+          "canConsent": false,
+          "canRevoke": true
+        },
+        "statusText": "等待本人确认",
+        "sourceText": "来源已失效或暂不可用",
+        "revokeText": "拒绝本次公开"
+      },
+      {
+        "id": "20000000-0000-4000-8000-000000000002",
+        "profileId": "20000000-0000-4000-8000-000000000011",
+        "profileName": "合成受管理球员",
+        "orgId": "20000000-0000-4000-8000-000000000020",
+        "eventId": "20000000-0000-4000-8000-000000000030",
+        "eventName": "合成管理方待处理记录",
+        "teamId": "20000000-0000-4000-8000-000000000040",
+        "teamName": "合成青锋队",
+        "memberId": "20000000-0000-4000-8000-000000000052",
+        "memberName": "合成球员2",
+        "status": "PENDING",
+        "version": 7,
+        "nominatedByUserId": "20000000-0000-4000-8000-000000000080",
+        "consentedAt": null,
+        "revokedAt": null,
+        "reason": "合成主办方提名依据",
+        "sourceCurrentlyAvailable": false,
+        "createdAt": "2026-11-06T02:00:00Z",
+        "capabilities": {
+          "canConsent": false,
+          "canRevoke": true
+        },
+        "statusText": "等待本人确认",
+        "sourceText": "来源已失效或暂不可用",
+        "revokeText": "拒绝本次公开"
+      },
+      {
+        "id": "20000000-0000-4000-8000-000000000003",
+        "profileId": "20000000-0000-4000-8000-000000000010",
+        "profileName": "合成本人球员",
+        "orgId": "20000000-0000-4000-8000-000000000020",
+        "eventId": "20000000-0000-4000-8000-000000000030",
+        "eventName": "合成本人有效提名",
+        "teamId": "20000000-0000-4000-8000-000000000040",
+        "teamName": "合成青锋队",
+        "memberId": "20000000-0000-4000-8000-000000000053",
+        "memberName": "合成球员3",
+        "status": "PENDING",
+        "version": 9,
+        "nominatedByUserId": "20000000-0000-4000-8000-000000000080",
+        "consentedAt": null,
+        "revokedAt": null,
+        "reason": "合成主办方提名依据",
+        "sourceCurrentlyAvailable": false,
+        "createdAt": "2026-11-06T02:00:00Z",
+        "capabilities": {
+          "canConsent": true,
+          "canRevoke": true
+        },
+        "statusText": "等待本人确认",
+        "sourceText": "来源已失效或暂不可用",
+        "revokeText": "拒绝本次公开"
+      }
+    ],
+    "linksHasMore": false,
+    "nextCursor": null,
+    "disclosureNotice": "合成示例：拒绝不代表同意公开；仅按当前记录权限处理。",
+    "manageableEvents": [
+      {
+        "id": "20000000-0000-4000-8000-000000000030",
+        "orgId": "20000000-0000-4000-8000-000000000020",
+        "name": "合成有权管理赛事",
+        "format": "ROUND_ROBIN"
+      }
+    ],
+    "pending": null
+  }
+}

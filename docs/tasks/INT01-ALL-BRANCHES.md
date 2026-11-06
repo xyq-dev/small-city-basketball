@@ -1,5 +1,21 @@
 # INT01 全部分支测试与整合
 
+## 2026-11-06 20:41 Asia/Shanghai 最终四项修复冻结（REVIEW / BRANCH_ONLY）
+
+本节为最新状态，下方各检查点仅为历史。root在共享候选f71210a之上收齐四项已复现问题：青年审核factory登录入口、performance首项独立canRevoke拒绝、裁定审核原因、广告订单列表未提供退款累计时的金额展示。四项只修改3份WXML与1份页面JS，沿原handler、capability、请求ID及版本；不改API/后端/001—050迁移或生产配置。财务来源list SQL只有o.*、trade_order_id、paid_fen，不能把未报告退款当0；缺失/非法/不一致金额显示“待核对”，合法显式0、已退金额及净0按原单位计算，正常SIGNED广告主仍保留原ORDER入口。
+
+四项均已独立复核：青年登录/履历/裁定新增33项与原35项通过；财务前端55项及金额域8项通过。作者相关27/46/130/72项通过。实际加载73/73 Page无错误，43个ui.session页面登录入口已检查。root完整微信1570项：1569通过、0失败、1既有Windows桥平台skip；格式、类型、diff检查成功。累计新增273项回归（26份新CJS）、30份新合成fixture。30新＋1既有审核投影场景×三宽93次DOM契约通过；受影响四页连同既有场景扩查51×3=153次文案/按钮/输入契约通过。上述本地DOM检查不等于浏览器几何或微信真机，最终三宽须由新精确head的CI提供。
+
+此前f71210a的CI219 admin/production/account-security及Windows52成功，API已通过PG与原生HTTP及重启，浏览器步骤仍运行；这些结果仅属旧候选，不替代四项新修复的验收。接下来只提交12份上述源码/测试/fixture与本任务五份文档，普通推进PR46，核对同一新head全部CI、实际三宽、17条审查线程及任何新反馈，成功后merge保留所有来源历史。main仍为b19c19a，未部署生产、执行生产Migration或真实外部/资金操作。
+
+## 2026-11-06 20:34 Asia/Shanghai 退款显示与独立动作检查点
+
+root共享head f71210a，CI219前三作业已成功（浏览器1551通过、1536份证据），API原生真实HTTP仍运行，main未更新。后续四条自动意见已核实并在新worktree收齐：factory青年审核登录、首项canRevoke独立拒绝、裁定review原因、sponsor列表未报告退款却按0计基数。四批仅3WXML/1页面JS与新测试/fixture；无后端/API/迁移变更。
+
+退款真实来源已由两人核实：list SQL只o.*+trade_order_id+paid_fen，DDL无退款累计，decorate不补；新摘要缺失/非法/不一致金额显示待核对，显式0/合法退款和扣净0才计算，不新增API或修改财务状态机。实际新34及旧组合72通过，独立前端55＋金额域8通过，新正常list证据为SIGNED+owner签署且无伪退款字段，保留普通广告主ORDER与原IDs/金额/caps。无旧fixture迁移。
+
+root整合完整微信1570项：1569通过、0失败、1平台skip，格式/类型/差异成功；累计273新测（26CJS）、30新场景，30新＋1迁移场景三宽93次DOM契约通过。青年登录73实际Page factory扫描43会话页已覆盖，余3页独立复核进行中；全部源码保持冻结，待最终复核后普通推进同PR、再核验同一新head完整CI和17条原自动线程。旧219不冒充新源码验收，无生产操作。
+
 ## 2026-11-06 20:06 Asia/Shanghai 导航冻结与新候选
 
 0513211/CI218最终四作业SUCCESS，Windows工具51亦成功：admin598/API源码1374/微信1482通过1skip/CLI12，浏览器1542通过与1527份证据守卫；PG143＋620、原生HTTP21、真实API浏览器24、重启/最小权限/HTTPS/恢复全通过。已读取admin与api完成日志，另安全/production完成日志已在该候选监控时读取。该绿色不覆盖后续三导航修复，未混用不同head结果合并。
@@ -78,13 +94,13 @@ root 已将独立 worktree 最小修复整合到 `/workspace/scratch/7a5167ea288
 
 ## 已核验的全部分支
 
-| 来源分支 | 固定head | 初始状态 |
-| --- | --- | --- |
-| main | b19c19a118e63771c6451d93ed3e16de5416ce63 | 含账号安全与COS；CI211精确代码验收后仅文档变化 |
-| feat/self-service-owner-password | 89241947fb180ce8e857d1aee5cb94ca303a79c3 | main祖先，无未合入提交；PR43已合并 |
-| feat/tencent-cos-media | a4dff06eedb5815e1cfedc48fe57361b1a527a1a | main祖先，无未合入提交；PR45已合并 |
-| feat/ui005-figma-complete | 133ba3cd723fc40845c00f8ec0dcd9806c4217fe | PR42；4项未合入提交 |
-| feat/wechat-figma-rebuild | 初始6fc06983b9d0093268e25354cca89dace79d1dab；最新3cc97e58be97485a8818072e0a75dfa39607a63e | PR44；代码提交及后续main同步均保留 |
+| 来源分支                         | 固定head                                                                                   | 初始状态                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| main                             | b19c19a118e63771c6451d93ed3e16de5416ce63                                                   | 含账号安全与COS；CI211精确代码验收后仅文档变化 |
+| feat/self-service-owner-password | 89241947fb180ce8e857d1aee5cb94ca303a79c3                                                   | main祖先，无未合入提交；PR43已合并             |
+| feat/tencent-cos-media           | a4dff06eedb5815e1cfedc48fe57361b1a527a1a                                                   | main祖先，无未合入提交；PR45已合并             |
+| feat/ui005-figma-complete        | 133ba3cd723fc40845c00f8ec0dcd9806c4217fe                                                   | PR42；4项未合入提交                            |
+| feat/wechat-figma-rebuild        | 初始6fc06983b9d0093268e25354cca89dace79d1dab；最新3cc97e58be97485a8818072e0a75dfa39607a63e | PR44；代码提交及后续main同步均保留             |
 
 另核验本地COS adapter/schema工作分支均停在ef62cb1且已是main祖先；其未提交实现/文档由此前COS01整合交付，不重复覆盖main或清除旧worktree。没有其它远端分支（完整5条列表）。
 

@@ -8,21 +8,17 @@ function summarizeContractOrder(contracts, orders) {
   if (!contract) return { paymentLabel: '待合同建立', poolLabel: '待核对' };
   const order = orders.find((item) => (item.contract_id || item.contractId) === contract.id);
   if (!order) return { paymentLabel: '尚未建立订单', poolLabel: '待核对' };
-  const paid = Number.isSafeInteger(order.paid_fen) ? order.paid_fen : order.paidFen;
-  const refunded = Number.isSafeInteger(order.refunded_fen)
-    ? order.refunded_fen
-    : Number.isSafeInteger(order.refundedFen)
-      ? order.refundedFen
-      : 0;
-  const fee = Number.isSafeInteger(order.verified_fee_fen)
-    ? order.verified_fee_fen
-    : order.verifiedFeeFen;
+  const paid = order.paid_fen === undefined ? order.paidFen : order.paid_fen;
+  const refunded = order.refunded_fen === undefined ? order.refundedFen : order.refunded_fen;
+  const fee = order.verified_fee_fen === undefined ? order.verifiedFeeFen : order.verified_fee_fen;
+  const verified = [paid, refunded, fee].every(
+    (value) => Number.isSafeInteger(value) && value >= 0,
+  );
+  const pool = verified ? paid - refunded - fee : null;
   return {
     paymentLabel: order.stateLabel,
     poolLabel:
-      Number.isSafeInteger(paid) && paid > 0 && Number.isSafeInteger(fee)
-        ? '¥' + model.money(Math.max(0, paid - refunded - fee))
-        : '待实收与手续费核验',
+      paid > 0 && Number.isSafeInteger(pool) && pool >= 0 ? '¥' + model.money(pool) : '待核对',
   };
 }
 Page({

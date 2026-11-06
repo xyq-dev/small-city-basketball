@@ -1,5 +1,19 @@
 # INT01 全分支整合接续
 
+## 2026-11-06 20:41 Asia/Shanghai 最终四项修复冻结（REVIEW / BRANCH_ONLY）
+
+本节为最新状态，下方各检查点仅为历史。root在共享候选f71210a之上收齐四项已复现问题：青年审核factory登录入口、performance首项独立canRevoke拒绝、裁定审核原因、广告订单列表未提供退款累计时的金额展示。四项只修改3份WXML与1份页面JS，沿原handler、capability、请求ID及版本；不改API/后端/001—050迁移或生产配置。财务来源list SQL只有o.*、trade_order_id、paid_fen，不能把未报告退款当0；缺失/非法/不一致金额显示“待核对”，合法显式0、已退金额及净0按原单位计算，正常SIGNED广告主仍保留原ORDER入口。
+
+四项均已独立复核：青年登录/履历/裁定新增33项与原35项通过；财务前端55项及金额域8项通过。作者相关27/46/130/72项通过。实际加载73/73 Page无错误，43个ui.session页面登录入口已检查。root完整微信1570项：1569通过、0失败、1既有Windows桥平台skip；格式、类型、diff检查成功。累计新增273项回归（26份新CJS）、30份新合成fixture。30新＋1既有审核投影场景×三宽93次DOM契约通过；受影响四页连同既有场景扩查51×3=153次文案/按钮/输入契约通过。上述本地DOM检查不等于浏览器几何或微信真机，最终三宽须由新精确head的CI提供。
+
+此前f71210a的CI219 admin/production/account-security及Windows52成功，API已通过PG与原生HTTP及重启，浏览器步骤仍运行；这些结果仅属旧候选，不替代四项新修复的验收。接下来只提交12份上述源码/测试/fixture与本任务五份文档，普通推进PR46，核对同一新head全部CI、实际三宽、17条审查线程及任何新反馈，成功后merge保留所有来源历史。main仍为b19c19a，未部署生产、执行生产Migration或真实外部/资金操作。
+
+## 2026-11-06 20:34 Asia/Shanghai 四修复冻结
+
+root在f71210a之上已复制青年审核登录、performance首项独立canRevoke、裁定review原因、sponsor退款待核四批（3WXML/1JS＋新CJS/JSON）。完整微信1569通过/1平台skip，类型/格式成功，30新＋1迁移场景93次DOM成功，财务独立55＋8通过。实际list未报告退款，不能归0；未知/非法短待核，原交易动作/ID/主体/金额不改，无额外请求。
+
+role_state_audit独立复核另外三页，作者源均冻结；root仅等该结论后更新汇总并普通推同PR。CI219当前前三作业成功、API原生HTTP仍跑，仅为旧head；main未更新。source、日志和旧worktree保留，无生产、Migration或真实资金操作。
+
 ## 2026-11-06 20:06 Asia/Shanghai 三导航冻结
 
 原0513211已取得CI218四作业/Windows工具成功、1542浏览器/1527证据与真实PG/API/恢复完成日志，main仍未合并。最后三页training/reschedule/event的9源/测试/fixture文件已root收齐并独立复核：游客原登录回training，历史/空历史可回改期编辑并保留输入，排名各子视图保留外层导航与显式public GET。只WXML，无新JS/后端；相关组合32/56及不同作者5＋24、15＋38成功。
