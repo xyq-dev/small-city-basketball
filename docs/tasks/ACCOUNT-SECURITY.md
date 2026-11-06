@@ -57,3 +57,21 @@
 已定位并只修复两份相关测试：C19升级精确新增表清单漏掉first_run_setup的1行，现同时明确断言旧实例已关闭且未签发令牌；C22真实001–022旧库的当前API注册受门禁拒绝，现显式事务构造合成历史用户/机构/OWNER/原注册审计后正常登录。没有扩展历史结构、改冻结校验或放宽产品门禁。两文件真实PG11/11通过；本地C19沿原模板恢复路径，不冒充完整归档恢复。
 
 CI204还实证完成管理端/源码测试、兼容Chromium1349通过/1335配置跳过、1335份布局，以及隔离HTTPS4、最小权限PG21、完整归档恢复与quarantine；API内新增初始化/改密/runtime与C22冻结归档恢复均通过。结果属于该失败run内明确已成功项，修复提交需重新运行CI。CI最终结论以PR检查及PR描述为准；不合并、不部署。
+
+## 2026-11-06 浏览器专项接续（IN_PROGRESS / BRANCH_ONLY）
+
+用户本轮在“浏览器验收→安全审查→合并→备份部署”的建议后明确要求继续完成任务。本阶段优先补齐新增表单的真实浏览器验收、必要测试配套、安全审查、普通提交推送及通过后的PR整合；生产执行仍须先核验可用通道、目标版本与备份恢复条件，不能把CI的production作业称为实际部署。
+
+- 唯一集成人：本轮 Codex root；browser_tests 负责独立专项配置/场景/runner；security_review 只读审查。
+- 执行目录：`/workspace/scratch/62df5b551299/small-city-basketball`，独立worktree；本地分支`test/account-security-browser`，同步目标为PR43原分支`feat/self-service-owner-password`。
+- 开工已核验远端与工作区：origin为本仓库；远端main=`ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`，PR43候选=`0cd86cb9d56503e9254ba683ffeca0bfb12fa45d`，原工作区干净，保留不切换。
+- 允许改动：新增浏览器专项测试/配置、仅loopback的临时HTTPS代理、既有隔离runner的固定套件选择、package/CI接线和本任务文档；发现产品缺陷后只做直接相关修复。不改微信UI、支付、历史迁移或生产数据。
+- 已重新读取PR43：CI205全成功，尚缺新增两表单真实浏览器成功链路。本轮采用独有随机临时数据库、合成身份、桌面/手机视口；TLS测试使用临时自签名证书，不能声称公共证书或真实手机验收。
+
+### 浏览器专项实现与本地验证
+
+新增固定account-security套件，桌面和手机项目分别使用runner新建的随机临时数据库；先迁移、不预建owner，通过HTTPS页面完成初始化与本人改密。链接缺失/过期/轮换/重放、确认不匹配、错误旧密码、双会话与原Cookie撤销、新密码重登、身份/机构/角色不变均纳入场景。TLS为自有临时证书的loopback代理，非生产nginx或受信公共证书验收。所有凭据为随机合成，仅内存保留；trace、截图、视频关闭，原始异常仅转为固定阶段信息。
+
+已执行：完整typecheck、专项测试TypeScript、完整format:check、git diff --check通过；既有私密CLI/浏览器准备12项通过；桌面/手机各1完整场景成功列出（仅发现测试，尚非运行通过）。真实PG18.6实测两套runner故意子进程失败后保留失败码、只删除自有库且保留control库；实际loopback TLS代理保留Origin/JSON/Secure Cookie并清理自有证书目录；4类不安全TLS启动环境在监听前拒绝。两轮独立安全复核（业务实现与新增配套）无阻断发现。
+
+本地浏览器安装仍因下载归档损坏失败，未声称本地浏览器通过。已接入独立GitHub account-security作业，与原admin/api/production完整检查并行；下一步普通同步PR43并以精确候选CI执行结果收口。未修改应用功能、微信UI或Migration。

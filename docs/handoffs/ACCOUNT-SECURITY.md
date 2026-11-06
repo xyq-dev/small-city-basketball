@@ -76,3 +76,21 @@ Web现有“个人 ID / 邀请”面板增加“账号安全 → 修改密码”
 CI204头a6e10fb、合并视图a9c85cf，tree一致。admin与隔离production通过；API在既有PG阶段失败，不能记全通过。已读取原始日志，失败为C19新增配置表精确清单缺1行及C22旧schema夹具仍调用新注册门禁。修复仅在c19-upgrade/c22-region-data测试文件，保留冻结历史结构/校验、旧数据指纹及恢复验证，新断言同时验证初始化永久关闭且没有令牌。C22历史身份事务写入后走正常登录，不给产品API加旧库旁路。两文件真实PG11项通过，本地C19为既有模板恢复路径；严格归档路径由CI重验。
 
 已成功项的精确日志：管理端598、API源码1345、原生1196通过/1平台跳过、CLI与浏览器准备12；兼容浏览器1349通过/1335配置跳过，1335份布局证据。隔离production有21最小权限PG、4HTTPS浏览器、Docker持久化与完整归档恢复/quarantine通过；不代表生产更新。API的新增初始化12、改密10、runtime3、维护8、恢复10及C22冻结归档恢复通过，但后续原生/重启/真实API浏览器因失败跳过。最新完整结果须读取[PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)的检查与验收描述。
+
+## 2026-11-06 浏览器专项接续（IN_PROGRESS / BRANCH_ONLY）
+
+用户本轮在“浏览器验收→安全审查→合并→备份部署”的建议后明确要求继续完成任务。本阶段优先补齐新增表单的真实浏览器验收、必要测试配套、安全审查、普通提交推送及通过后的PR整合；生产执行仍须先核验可用通道、目标版本与备份恢复条件，不能把CI的production作业称为实际部署。
+
+- 唯一集成人：本轮 Codex root；browser_tests 负责独立专项配置/场景/runner；security_review 只读审查。
+- 执行目录：`/workspace/scratch/62df5b551299/small-city-basketball`，独立worktree；本地分支`test/account-security-browser`，同步目标为PR43原分支`feat/self-service-owner-password`。
+- 开工已核验远端与工作区：origin为本仓库；远端main=`ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`，PR43候选=`0cd86cb9d56503e9254ba683ffeca0bfb12fa45d`，原工作区干净，保留不切换。
+- 允许改动：新增浏览器专项测试/配置、仅loopback的临时HTTPS代理、既有隔离runner的固定套件选择、package/CI接线和本任务文档；发现产品缺陷后只做直接相关修复。不改微信UI、支付、历史迁移或生产数据。
+- 已重新读取PR43：CI205全成功，尚缺新增两表单真实浏览器成功链路。本轮采用独有随机临时数据库、合成身份、桌面/手机视口；TLS测试使用临时自签名证书，不能声称公共证书或真实手机验收。
+
+### 浏览器专项实现与本地验证
+
+新增固定account-security套件，桌面和手机项目分别使用runner新建的随机临时数据库；先迁移、不预建owner，通过HTTPS页面完成初始化与本人改密。链接缺失/过期/轮换/重放、确认不匹配、错误旧密码、双会话与原Cookie撤销、新密码重登、身份/机构/角色不变均纳入场景。TLS为自有临时证书的loopback代理，非生产nginx或受信公共证书验收。所有凭据为随机合成，仅内存保留；trace、截图、视频关闭，原始异常仅转为固定阶段信息。
+
+已执行：完整typecheck、专项测试TypeScript、完整format:check、git diff --check通过；既有私密CLI/浏览器准备12项通过；桌面/手机各1完整场景成功列出（仅发现测试，尚非运行通过）。真实PG18.6实测两套runner故意子进程失败后保留失败码、只删除自有库且保留control库；实际loopback TLS代理保留Origin/JSON/Secure Cookie并清理自有证书目录；4类不安全TLS启动环境在监听前拒绝。两轮独立安全复核（业务实现与新增配套）无阻断发现。
+
+本地浏览器安装仍因下载归档损坏失败，未声称本地浏览器通过。已接入独立GitHub account-security作业，与原admin/api/production完整检查并行；下一步普通同步PR43并以精确候选CI执行结果收口。未修改应用功能、微信UI或Migration。

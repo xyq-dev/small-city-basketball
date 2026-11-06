@@ -1,9 +1,10 @@
 # 任务看板
 
-## 2026-11-06 账号安全（REVIEW / BRANCH_ONLY，Draft PR #43）
+## 2026-11-06 账号安全（REVIEW / BRANCH_ONLY，PR #43）
 
-独立云端任务分支 `feat/self-service-owner-password`，基线 `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`。已实现首次部署令牌链接由用户自行设置OWNER密码及Web本人改密、旧会话撤销。代码和Migration049仅在本地及隔离合成PostgreSQL18.6验证，已提交推送并创建[Draft PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)，代码提交`6944170431a536a03122ec4573fa2ef9e3bb6da9`；未合入main、未部署或执行生产Migration，不改变线上账号。本地真实浏览器与Docker/完整备份恢复未验；PR CI已排队，结果另记。详见 [任务](tasks/ACCOUNT-SECURITY.md)、[验收与交接](handoffs/ACCOUNT-SECURITY.md)及[操作说明](operations/account-security.md)。
+[PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)实现首次部署自设OWNER密码及Web本人改密/撤销旧会话。应用候选`0cd86cb9d56503e9254ba683ffeca0bfb12fa45d`的CI205三作业成功（包括隔离HTTPS/Docker、最小权限和完整归档恢复），未合入main或上线。main执行前仍为`ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`。
 
+本轮补齐新增两表单的真实HTTPS浏览器专项，加入桌面/手机独有临时数据库、失败链接、双会话撤销和新密码登录验收；本地类型/格式/隔离清理及独立安全审查通过，浏览器实跑由新增CI作业完成，结果待精确候选检查。Migration049此前仅临时/CI数据库执行，生产未执行。详见[任务](tasks/ACCOUNT-SECURITY.md)、[交接](handoffs/ACCOUNT-SECURITY.md)及[操作说明](operations/account-security.md)。
 
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 

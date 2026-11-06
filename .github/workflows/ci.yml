@@ -155,6 +155,40 @@ jobs:
         env:
           DATABASE_URL: postgresql://scb:ci-isolated-test-password@127.0.0.1:5432/scb_test_browser
 
+  account-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.6-alpine3.24
+        env:
+          POSTGRES_USER: scb
+          POSTGRES_PASSWORD: ci-isolated-test-password
+          POSTGRES_DB: scb_test_account_security
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scb -d scb_test_account_security"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://scb:ci-isolated-test-password@127.0.0.1:5432/scb_test_account_security
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: First-run setup and password change through real HTTPS browsers
+        run: npm run test:account-security:e2e
+      - name: Verify both browser suites clean only owned databases on failure
+        run: node scripts/check-browser-database-isolation.mjs
+
   production:
     runs-on: ubuntu-latest
     timeout-minutes: 55

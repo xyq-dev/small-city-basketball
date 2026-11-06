@@ -8,6 +8,7 @@ import pg from 'pg';
 const allProjects = ['desktop-api', 'mobile-api'];
 const selected = [];
 const forwarded = [];
+let suite = 'api';
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
   const value = args[i];
@@ -15,10 +16,23 @@ for (let i = 0; i < args.length; i++) {
     const project = value === '--project' ? args[++i] : value.slice('--project='.length);
     if (!allProjects.includes(project)) throw new Error('Use desktop-api or mobile-api');
     selected.push(project);
+  } else if (value === '--suite' || value.startsWith('--suite=')) {
+    suite = value === '--suite' ? args[++i] : value.slice('--suite='.length);
+    if (!['api', 'account-security'].includes(suite))
+      throw new Error('Use api or account-security browser suite');
   } else if (value === '--config' || value.startsWith('--config=') || value.startsWith('-c')) {
     throw new Error('API browser checks use the fixed isolated-test configuration');
   } else forwarded.push(value);
 }
+if (
+  suite === 'account-security' &&
+  forwarded.some((arg) => /^(--trace|--debug|--ui)(=|$)/.test(arg))
+)
+  throw new Error('Account-security browser checks cannot record credentials or setup links');
+const config =
+  suite === 'account-security'
+    ? 'playwright.account-security.config.ts'
+    : 'playwright.api.config.ts';
 const projects = allProjects.filter((project) => !selected.length || selected.includes(project));
 let base;
 let baseName;
@@ -32,6 +46,11 @@ try {
     process.env.NODE_ENV === 'production'
   )
     throw new Error('Invalid test target');
+  if (
+    suite === 'account-security' &&
+    (!['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname) || base.search || base.hash)
+  )
+    throw new Error('Account-security suite requires a canonical loopback test target');
 } catch {
   throw new Error('API browser checks require DATABASE_URL naming an isolated scb_test_* database');
 }
@@ -77,8 +96,16 @@ try {
       exitCode = await new Promise((resolve, reject) => {
         activeChild = spawn(
           process.execPath,
-          [cli, 'test', '--config', 'playwright.api.config.ts', ...forwarded, '--project', project],
-          { cwd: root, env: { ...process.env, DATABASE_URL: target.href }, stdio: 'inherit' },
+          [cli, 'test', '--config', config, ...forwarded, '--project', project],
+          {
+            cwd: root,
+            env: {
+              ...process.env,
+              DATABASE_URL: target.href,
+              ...(suite === 'account-security' ? { DEBUG: '', PWDEBUG: '0' } : {}),
+            },
+            stdio: 'inherit',
+          },
         );
         activeChild.once('error', reject);
         activeChild.once('exit', (code) => resolve(stopped ? 130 : (code ?? 1)));
