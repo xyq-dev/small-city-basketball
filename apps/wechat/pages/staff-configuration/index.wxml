@@ -1,17 +1,91 @@
-<scb-header title="成员与工作人员" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page">
+<view class="figma-page">
+  <scb-header title="成员与工作人员" disabled="{{busy || pending || uncertain || dirty}}"/>
 
-  <view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view>
-  <button wx:if="{{loginRequired}}" class="primary" bindtap="login">登录后查看权限</button>
-  <picker range="{{organizations}}" range-key="name" value="{{selectedOrg}}" bindchange="organization" disabled="{{busy || pending}}"><view class="card">机构：{{organizations[selectedOrg].name || '请选择有权机构'}}</view></picker>
-  <view class="card"><view class="subtitle">机构成员</view><view wx:for="{{members}}" wx:key="id" class="row" data-id="{{item.id}}" bindtap="select"><view>{{item.name}}</view><view class="small">{{item.role}} · {{item.status}}</view></view></view>
-  <view class="card"><view class="subtitle">赛事工作人员</view><input class="field" data-field="eventId" value="{{eventId}}" bindinput="input" disabled="{{busy || pending}}" placeholder="从赛事工作台进入，或填写本机构赛事编号"/><button class="secondary" bindtap="load" disabled="{{busy}}">读取当前赛事配置</button><view wx:for="{{staff}}" wx:key="id" data-id="{{item.id}}" bindtap="select">{{item.name}} · {{item.role}} · {{item.status}}</view></view>
-  <view wx:if="{{workspace}}" class="card"><view class="subtitle">明确修改一项授权</view>
-    <view class="row"><button class="secondary" data-type="MEMBER" bindtap="type" disabled="{{busy || pending || !workspace.capabilities.canManageMembers}}">机构成员</button><button class="secondary" data-type="STAFF" bindtap="type" disabled="{{busy || pending || !workspace.capabilities.canManageStaff}}">本赛事工作人员</button></view>
-    <view class="small">当前：{{type==='STAFF' ? '赛事授权' : '机构成员'}}；点击上方成员选择，新增成员需本人分享其用户编号。</view>
-    <input class="field" data-field="userId" value="{{userId}}" bindinput="input" disabled="{{busy || pending}}" placeholder="目标用户编号"/>
-    <picker range="{{roles}}" value="{{roleIndex}}" bindchange="role" disabled="{{busy || pending}}"><view class="field">角色：{{roles[roleIndex]}}</view></picker>
-    <label><switch checked="{{disabled}}" bindchange="status" disabled="{{busy || pending}}"/>停用此项授权</label>
-    <button wx:if="{{!pending}}" class="primary" bindtap="save" disabled="{{busy || (type === 'STAFF' ? !workspace.capabilities.canManageStaff : !workspace.capabilities.canManageMembers)}}">确认变更</button><button wx:else class="primary" bindtap="retry" disabled="{{busy}}">使用原编号核对权限操作</button>
+  <view class="figma-page__content figma-page__content--actions">
+    <figma-skeleton wx:if="{{busy && !workspace}}" rows="3"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="读取授权配置失败" body="{{error}}" action-label="重新读取" bind:action="load"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="操作结果" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="pending" title="登录后查看权限" body="登录只用于读取本人真实机构与赛事授权。" action-label="去登录" bind:action="login"/>
+
+    <view class="figma-summary staff-summary">
+      <view class="figma-summary__icon"><figma-icon name="workbench" size="24"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">授权管理</view>
+        <view class="figma-title">成员与工作人员</view>
+        <view class="figma-subtitle">在指定机构或赛事范围内一次调整一项授权。</view>
+      </view>
+    </view>
+
+    <view class="staff-tabs" role="tablist">
+      <button class="staff-tab {{type === 'MEMBER' ? 'is-active' : ''}}" data-type="MEMBER" bindtap="type" disabled="{{busy || pending}}" role="tab" aria-selected="{{type === 'MEMBER'}}">机构成员</button>
+      <button class="staff-tab {{type === 'STAFF' ? 'is-active' : ''}}" data-type="STAFF" bindtap="type" disabled="{{busy || pending}}" role="tab" aria-selected="{{type === 'STAFF'}}">赛事工作人员</button>
+    </view>
+
+    <view class="figma-section">
+      <view class="figma-section__title">授权范围</view>
+      <view class="figma-field-group">
+        <view class="figma-field-label">当前机构</view>
+        <picker range="{{organizations}}" range-key="name" value="{{selectedOrg}}" bindchange="organization" disabled="{{busy || pending}}">
+          <view class="staff-picker">
+            <text>{{organizations[selectedOrg].name || '请选择有权机构'}}</text>
+            <text class="figma-status figma-status--green">{{organizations.length ? '已选择' : '待选择'}}</text>
+          </view>
+        </picker>
+      </view>
+      <view class="figma-field-group">
+        <view class="figma-field-label">当前赛事</view>
+        <view wx:if="{{eventLabel}}" class="staff-picker"><text>{{eventLabel}}</text><text class="figma-status figma-status--green">已选择</text></view><input wx:else class="figma-field-control" data-field="eventId" value="{{eventId}}" bindinput="input" disabled="{{busy || pending}}" placeholder="从赛事工作台进入，或填写本机构赛事编号"/>
+      </view>
+    </view>
+
+    <view class="figma-section">
+      <view class="figma-section__title">本赛事工作人员</view>
+      <view wx:if="{{type === 'MEMBER' && !members.length}}" class="figma-section__hint">当前机构暂无可展示成员。</view>
+      <view wx:if="{{type === 'STAFF' && !staff.length}}" class="figma-section__hint">读取赛事配置后展示本赛事工作人员。</view>
+      <button wx:for="{{type === 'STAFF' ? staff : members}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="select" disabled="{{busy || pending}}">
+        <view class="figma-row__copy">
+          <view class="figma-row__title">{{item.name}}</view>
+          <view class="figma-row__subtitle">{{item.roleText || item.role}} · {{item.scopeText || (type === 'STAFF' ? '本届赛事' : '当前机构')}}</view>
+        </view>
+        <view class="figma-status {{item.status === 'ACTIVE' ? 'figma-status--green' : 'figma-status--orange'}}">{{item.statusText || item.status}}</view>
+      </button>
+    </view>
+
+    <view wx:if="{{workspace}}" class="figma-section">
+      <view class="figma-section__title">变更确认</view>
+      <view class="staff-step">
+        <view class="staff-step__number">1</view>
+        <view class="figma-row__copy">
+          <view class="figma-row__title">选择目标人员与角色</view>
+          <view class="figma-row__subtitle">核对具体机构或赛事</view>
+        </view>
+        <view class="figma-status figma-status--orange">{{userId ? '已选择' : '待选择'}}</view>
+      </view>
+      <view class="figma-field-group">
+        <view class="figma-field-label">目标用户编号</view>
+        <input class="figma-field-control" data-field="userId" value="{{userId}}" bindinput="input" disabled="{{busy || pending}}" placeholder="点击上方成员，或填写本人分享的用户编号"/>
+      </view>
+      <view class="figma-field-group">
+        <view class="figma-field-label">角色</view>
+        <picker range="{{roles}}" value="{{roleIndex}}" bindchange="role" disabled="{{busy || pending}}"><view class="staff-picker"><text>{{roles[roleIndex]}}</text><text class="figma-status figma-status--orange">可调整</text></view></picker>
+      </view>
+      <label class="staff-toggle">
+        <view><view class="figma-row__title">停用此项授权</view><view class="figma-row__subtitle">只影响本次明确选择的机构或赛事角色</view></view>
+        <switch checked="{{disabled}}" bindchange="status" disabled="{{busy || pending}}" color="#123c73"/>
+      </label>
+      <view class="staff-step">
+        <view class="staff-step__number">2</view>
+        <view class="figma-row__copy">
+          <view class="figma-row__title">明确操作</view>
+          <view class="figma-row__subtitle">{{disabled ? '停用' : '启用'}} {{roles[roleIndex]}}；提交前仍会再次确认</view>
+        </view>
+        <view class="figma-status figma-status--orange">{{userId ? '待确认' : '待选择'}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="figma-fixed-actions">
+    <button wx:if="{{previewReviewOnly}}" class="figma-action figma-action--ghost" bindtap="load" disabled="{{busy || loginRequired || !workspace}}">核对权限操作</button><button wx:elif="{{pending}}" class="figma-action figma-action--ghost" bindtap="retry" disabled="{{busy || loginRequired || !workspace}}">核对原权限操作</button><button wx:else class="figma-action figma-action--ghost" bindtap="save" disabled="{{busy || loginRequired || !workspace || !userId || (type === 'STAFF' ? !workspace.capabilities.canManageStaff : !workspace.capabilities.canManageMembers)}}">确认变更</button>
+    <button class="figma-action figma-action--orange" bindtap="load" disabled="{{busy || pending || loginRequired}}">读取当前赛事配置</button>
   </view>
 </view>

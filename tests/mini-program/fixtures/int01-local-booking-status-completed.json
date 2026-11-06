@@ -1,0 +1,47 @@
+{
+  "name": "int01-local-booking-status-completed",
+  "route": "pages/local-bookings/index",
+  "state": "completed",
+  "figmaNode": "36:85",
+  "syntheticData": true,
+  "expectText": ["履约与资金", "到场进度", "按当前订单状态核对", "已完成"],
+  "expectAbsentText": ["未核销", "待办理", "现场出示一次性码"],
+  "expectVisible": [".progress-section"],
+  "expectEnabled": ["查看预约详情"],
+  "data": {
+    "orderFilter": "ALL",
+    "serviceTab": "overview",
+    "filteredCount": 1,
+    "selected": null,
+    "loading": false,
+    "items": [
+      {
+        "id": "30000000-0000-4000-8000-000000000001",
+        "listingId": "30000000-0000-4000-8000-000000000002",
+        "slotId": "30000000-0000-4000-8000-000000000003",
+        "status": "COMPLETED",
+        "statusText": "已完成",
+        "version": 7,
+        "startsAt": "2026-11-06T01:00:00Z",
+        "endsAt": "2026-11-06T03:00:00Z",
+        "holdExpiresAt": null,
+        "holdText": "",
+        "title": "合成同城球场订单",
+        "kind": "COURT",
+        "kindText": "球场",
+        "address": "合成城市体育中心",
+        "location": null,
+        "terms": "合成双方合作约定",
+        "reason": "",
+        "change": null,
+        "paymentStatus": "NOT_ENABLED",
+        "canActAs": "BUYER",
+        "roleText": "我的需求",
+        "timeText": "2026-11-06 09:00 — 11-06 11:00",
+        "actions": [],
+        "canChange": false,
+        "canIssueCheckin": false
+      }
+    ]
+  }
+}

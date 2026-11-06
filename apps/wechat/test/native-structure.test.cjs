@@ -84,7 +84,7 @@ test('native manifest routes are unique, local and include loadable Page/templat
     'pages/local-manage/index',
   ]) {
     const css = fs.readFileSync(path.join(root, route + '.wxss'), 'utf8');
-    assert.match(css, /\.local-private \.status-banner\{[^}]*background:#eaf0f8/);
+    assert.match(css, /\.local-private \.status-banner\s*\{[^}]*background:\s*#eaf0f8/);
     assert.doesNotMatch(css, /@import/);
   }
   for (const route of ['pages/training/index', 'pages/training-manage/index']) {

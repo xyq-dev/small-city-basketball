@@ -1,78 +1,31 @@
-.page {
-  padding: 24rpx;
-}
-.card {
-  padding: 24rpx;
-  background: #fff;
-  border-radius: 20rpx;
-  margin: 20rpx 0;
-  overflow-wrap: anywhere;
-}
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-}
-.tabs button {
-  flex: 1;
-  min-width: 180rpx;
-}
-.title {
-  font-size: 38rpx;
-  font-weight: 700;
-}
-.subtitle {
-  font-weight: 600;
-}
-.notice {
-  padding: 18rpx;
-  background: #f1f4f8;
-}
-.warning {
-  color: #933;
-}
-.small {
-  font-size: 24rpx;
-}
-.muted {
-  color: #657184;
-}
-.picker,
-input {
-  padding: 18rpx;
-  background: #f5f7fa;
-  margin: 12rpx 0;
-}
-textarea {
-  width: 100%;
-  box-sizing: border-box;
-  background: #f5f7fa;
-  padding: 16rpx;
-  font-size: 16px;
-  line-height: 24px;
-  min-height: 96px;
-}
-input {
-  font-size: 16px;
-  line-height: 24px;
-  min-height: 44px;
-}
-button {
-  margin-top: 14rpx;
-  white-space: normal;
-}
-.ad-label {
-  display: inline-block;
-  padding: 8rpx 16rpx;
-  background: #edf1f5;
-  color: #566273;
-  border-radius: 10rpx;
-}
+@import "../../styles/figma-pages.wxss";
 
-.ui002-workspace { padding:16px 16px calc(104px + env(safe-area-inset-bottom)); background:#f4f6fa; color:#18283f; }
-.ui002-workspace .card { border-radius:16px; padding:16px; margin:0 0 16px; }
-.ui002-workspace input,.ui002-workspace textarea,.ui002-workspace button { font-size:16px; line-height:24px; min-height:44px; }
-.ui002-workspace .page-intro .title { color:#18283f; font-size:22px; line-height:32px; margin:0 0 8px; }
-.ui002-workspace .page-intro { margin-bottom:16px; }
-.ui002-workspace .tabs button { min-height:44px; }
+.sponsor-tabs { display:grid; width:100%; min-height:48px; grid-template-columns:repeat(3,minmax(0,1fr)); padding:2px 3px; border-radius:12px; background:#ffffff; }
+.sponsorship-page .sponsor-tab { display:flex; width:100%; min-width:0; min-height:44px; align-items:center; justify-content:center; padding:0 6px; border:0; border-radius:10px; background:transparent; color:#51657d; font-size:13px; line-height:19px; text-align:center; }
+.sponsorship-page .sponsor-tab::after { display:none; }
+.sponsorship-page .sponsor-tab.is-active { background:#123c73; color:#ffffff; font-weight:700; }
+.sponsor-picker { display:flex; align-items:center; color:#18283f; font-size:14px; line-height:20px; }
+.sponsor-date-grid { display:grid; width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 8px; }
+.sponsor-public-label { align-self:flex-start; padding:3px 7px; border-radius:7px; background:#fff1e2; color:#18283f; font-size:11px; line-height:16px; }
+.sponsor-body { color:#18283f; font-size:14px; line-height:22px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.sponsor-inline-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.sponsorship-page .sponsor-primary,
+.sponsorship-page .sponsor-secondary,
+.sponsorship-page .sponsor-danger-button { display:flex; width:100%; min-height:44px; align-items:center; justify-content:center; padding:8px 12px; border-radius:22px; font-size:14px; line-height:20px; text-align:center; }
+.sponsorship-page .sponsor-primary { background:#f28c28; color:#18283f; }
+.sponsorship-page .sponsor-secondary { border:1px solid #7c8ea5; background:#ffffff; color:#123c73; }
+.sponsorship-page .sponsor-danger-button { border:1px solid #c83f42; background:#ffffff; color:#c83f42; }
+.sponsorship-page .sponsor-primary[disabled],
+.sponsorship-page .sponsor-secondary[disabled],
+.sponsorship-page .sponsor-danger-button[disabled] { border-color:#e6ebf2; background:#e6ebf2; color:#7c8ea5; }
+.sponsorship-page textarea.figma-field-control { height:112px; }
+.sponsor-step { display:flex; min-height:55px; align-items:center; gap:8px; }
+.sponsor-step__mark { display:flex; width:20px; height:20px; flex:none; align-items:center; justify-content:center; border-radius:50%; background:#eaf2fc; color:#123c73; font-size:11px; font-weight:700; }
+.sponsor-summary--preview { background:#eaf2fc; }
+.sponsor-preview-control { display:flex; align-items:center; }
 
-.ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+@media (max-width:360px) {
+  .sponsor-date-grid,
+  .sponsor-inline-actions { grid-template-columns:minmax(0,1fr); }
+  .sponsorship-page .sponsor-tab { font-size:12px; }
+}

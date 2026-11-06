@@ -14,7 +14,10 @@ test('publication requires explicit independent consent and exact profile CAS', 
   await h.page.profileCommand({ currentTarget: { dataset: { id: id(1), type: 'PUBLISH' } } });
   assert.equal(sent.length, 0);
   assert.match(h.page.data.error, /独立公开授权/);
-  h.page.setData({ publicConsent: true });
+  h.page.consent({
+    currentTarget: { dataset: { field: 'publicConsent', id: id(1), version: '4' } },
+    detail: { value: ['yes'] },
+  });
   await h.page.profileCommand({ currentTarget: { dataset: { id: id(1), type: 'PUBLISH' } } });
   assert.equal(sent[0][1].expectedVersion, 4);
   assert.equal(sent[0][1].publicConsent, true);

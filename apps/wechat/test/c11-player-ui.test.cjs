@@ -27,11 +27,10 @@ test('current samples render real native data and local assets at all widths', (
           false,
           name + ': compact cards do not render a sample portrait',
         );
-      if (name === 'market')
-        assert.ok(
-          result.assets.some((asset) => /avatar-user\.svg$/.test(asset.path)),
-          name,
-        );
+      assert.ok(
+        result.assets.every((asset) => /^(?:assets|pages)\//.test(asset.path)),
+        name,
+      );
       assert.ok(
         result.assets.every((asset) => !/approved-six-screen|design\/C11/.test(asset.path)),
       );
@@ -82,29 +81,34 @@ test('current DTO never turns a real player name or untrusted portrait field int
   const f = fixture('detail');
   f.data.profile = view;
   const result = preview(f);
-  assert.ok(result.assets.some((asset) => asset.path === 'assets/ui002/avatar-user.svg'));
-  assert.match(result.phone, /class="profile-avatar-icon"[^>]*data-mini-image-mode="aspectFit"/);
+  assert.match(result.phone, /class="figma-title">林越<\/div>/);
+  assert.doesNotMatch(result.phone, /class="player-summary__image"/);
   assert.ok(result.assets.every((asset) => !/player-sample-/.test(asset.path)));
 });
 
-test('UI001 T07 compact facts keep the full authorized statistics behind the original record action', () => {
+test('UI001 T07 service facts keep full authorized statistics behind the Figma record tab', () => {
   const f = fixture('detail');
   const h = loadPage({ root, route: f.route });
   h.page.setData(f.data);
   const before = JSON.stringify(h.page.data.profile);
   const compact = preview({ ...f, data: h.page.data }).phone;
-  assert.match(compact, /授权统计样本/);
+  assert.match(compact, /个人统计样本/);
   assert.match(compact, /完成服务记录/);
   assert.doesNotMatch(compact, /class="profile-hero"|class="profile-hero-image"/);
   assert.match(compact, /data-mini-bindtap="toggle"/);
   assert.match(compact, /data-mini-bindtap="book"/);
-  h.page.recordsToggle();
+  h.page.changeTab({ currentTarget: { dataset: { tab: 'RECORDS' } } });
   const records = preview({ ...f, data: h.page.data }).phone;
-  for (const text of ['每场记录得分', '8.4', '每场记录犯规', '1.6', '得分 0 / 犯规 0'])
+  for (const text of [
+    '本人得分与犯规',
+    '每场 8.4 分 / 1.6 犯规',
+    '得分 0 / 犯规 0',
+    '仅球队数据，不计入个人均值分母',
+  ])
     assert.ok(records.includes(text), text);
   assert.equal(JSON.stringify(h.page.data.profile), before);
-  h.page.recordsToggle();
-  assert.equal(h.page.data.recordsOpen, false);
+  h.page.changeTab({ currentTarget: { dataset: { tab: 'SERVICE' } } });
+  assert.equal(h.page.data.activeTab, 'SERVICE');
   assert.equal(h.wx.calls.filter((call) => call.type === 'request').length, 0);
 });
 
@@ -114,9 +118,9 @@ test('expanded profile information retains exact costs, uncollected metrics and 
   h.page.setData(f.data);
   const before = JSON.stringify(h.page.data.profile);
   h.page.informationToggle();
+  h.page.setData({ selectedCount: 2 });
   const expanded = preview({ ...f, data: h.page.data }).phone;
-  assert.match(expanded, /交通 ¥0.00/);
-  assert.match(expanded, /篮板、助攻、上场时间和命中率：未统计/);
+  assert.match(expanded, /¥0.00 \+ ¥0.00/);
   assert.match(expanded, /固定名单统计样本不代表实际出场/);
   assert.match(expanded, /data-mini-bindtap="toggle"/);
   assert.match(expanded, /data-mini-bindtap="compare"/);
@@ -133,13 +137,18 @@ test('compact comparison keeps the third player, source status and removal behin
   const h = loadPage({ root, route: f.route });
   h.page.setData(f.data);
   const before = JSON.stringify(h.page.data.profiles);
-  assert.match(preview({ ...f, data: h.page.data }).phone, /左右滑动查看第3人/);
+  const compact = preview({ ...f, data: h.page.data }).phone;
+  assert.match(compact, /class="compare-scroll"/);
+  assert.match(compact, /合成周航/);
   h.page.informationToggle();
   const expanded = preview({ ...f, data: h.page.data }).phone;
-  assert.match(expanded, /移除合成周航/);
-  assert.match(expanded, /来源完整度|部分记录/);
-  assert.match(expanded, /暂无授权来源/);
-  assert.match(expanded, /食宿费/);
+  assert.match(expanded, /移出对比/);
+  for (const profile of h.page.data.profiles) {
+    assert.ok(expanded.includes(profile.performance.source), profile.name + ': source');
+    assert.ok(expanded.includes(profile.performance.completeness), profile.name + ': completeness');
+  }
+  assert.match(expanded, /暂无有效公开来源/);
+  assert.match(expanded, /食宿 ¥0.00/);
   assert.equal(JSON.stringify(h.page.data.profiles), before);
   h.page.onHide();
   const hidden = preview({ ...f, data: h.page.data }).phone;

@@ -4,7 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["基本信息（草稿可改）", "保存报名规则"],
+  "expectText": ["在本届草稿内保存基本资料", "保存报名规则"],
   "data": {
     "loading": false,
     "busy": false,

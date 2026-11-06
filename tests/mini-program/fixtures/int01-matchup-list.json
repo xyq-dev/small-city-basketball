@@ -1,0 +1,82 @@
+{
+  "name": "int01-matchup-list",
+  "route": "pages/local-matchups/index",
+  "state": "synthetic-three-accessible-matchups",
+  "designSource": "isolated-synthetic:INT01-multiple-matchup-entry-review",
+  "static": true,
+  "expectText": [
+    "场地预约",
+    "双方球队",
+    "约赛进度",
+    "全部约赛",
+    "合成主队甲 vs 合成客队甲",
+    "合成主队乙 vs 合成客队乙",
+    "合成主队丙 vs 合成客队丙",
+    "合成第二球场",
+    "合成第三球场"
+  ],
+  "expectVisible": [
+    "button[data-mini-bindtap=\"select\"][data-id=\"10000000-0000-4000-8000-000000000001\"]",
+    "button[data-mini-bindtap=\"select\"][data-id=\"10000000-0000-4000-8000-000000000002\"]",
+    "button[data-mini-bindtap=\"select\"][data-id=\"10000000-0000-4000-8000-000000000003\"]"
+  ],
+  "data": {
+    "matchupView": "list",
+    "selected": null,
+    "loading": false,
+    "busy": false,
+    "loginRequired": false,
+    "pending": null,
+    "pendingError": "",
+    "error": "",
+    "message": "",
+    "teams": [
+      {
+        "orgId": "10000000-0000-4000-8000-000000000020",
+        "teamId": "10000000-0000-4000-8000-000000000030",
+        "name": "合成球队管理身份"
+      }
+    ],
+    "items": [
+      {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "homeTeamName": "合成主队甲",
+        "awayTeamName": "合成客队甲",
+        "address": "合成第一球场",
+        "timeText": "2028-06-01 19:00 — 21:00",
+        "terms": "合成首场双方独立核对约定",
+        "status": "CONFIRMED",
+        "statusText": "已确认",
+        "version": 2,
+        "awayConfirmed": true,
+        "canConfirm": false
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000002",
+        "homeTeamName": "合成主队乙",
+        "awayTeamName": "合成客队乙",
+        "address": "合成第二球场",
+        "timeText": "2028-06-02 19:00 — 21:00",
+        "terms": "合成第二场需受邀方独立确认",
+        "status": "OPEN",
+        "statusText": "待对方确认",
+        "version": 3,
+        "awayConfirmed": false,
+        "canConfirm": true
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "homeTeamName": "合成主队丙",
+        "awayTeamName": "合成客队丙",
+        "address": "合成第三球场",
+        "timeText": "2028-06-03 19:00 — 21:00",
+        "terms": "合成第三场在结束后登记完成",
+        "status": "CONFIRMED",
+        "statusText": "已确认",
+        "version": 4,
+        "awayConfirmed": true,
+        "canConfirm": false
+      }
+    ]
+  }
+}

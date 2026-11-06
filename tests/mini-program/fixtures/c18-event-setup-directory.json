@@ -4,12 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": [
-    "公开赛事目录",
-    "已列入",
-    "当前分组：进行中 · 城市：高州",
-    "撤出目录（保留分享链接）"
-  ],
+  "expectText": ["公开赛事目录", "已列入", "当前分组：进行中 · 城市：高州", "撤出目录"],
   "data": {
     "loading": false,
     "busy": false,

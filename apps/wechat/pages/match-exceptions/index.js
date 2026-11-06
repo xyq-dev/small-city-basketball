@@ -27,6 +27,7 @@ Page({
     side: 'HOME',
     uncertain: false,
     rulesOnly: false,
+    exceptionTab: 'proposal',
   },
   onLoad(q = {}) {
     this._alive = true;
@@ -116,6 +117,11 @@ Page({
       (field === 'side' && ['HOME', 'AWAY'].includes(value))
     )
       this.setData({ [field]: value });
+  },
+  changeExceptionTab(e) {
+    if (this.data.busy || this.data.uncertain) return;
+    const exceptionTab = e.currentTarget.dataset.tab;
+    if (['proposal', 'review', 'history'].includes(exceptionTab)) this.setData({ exceptionTab });
   },
   async saveRules() {
     if (!this._raw?.canEdit || this.data.uncertain) return;

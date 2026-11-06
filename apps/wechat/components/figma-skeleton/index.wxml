@@ -1,0 +1,1 @@
+<view class="figma-skeleton" role="status" aria-label="正在加载"><view class="figma-skeleton__media"/><view class="figma-skeleton__copy"><view wx:for="{{rows}}" wx:key="*this" class="figma-skeleton__line {{index===rows-1 ? 'is-short' : ''}}"/></view></view>

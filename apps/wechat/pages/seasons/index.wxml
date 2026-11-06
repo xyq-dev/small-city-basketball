@@ -1,91 +1,80 @@
-<scb-header title="私有赛季" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page seasons-page">
-  <view class="hero"><view class="title">私有赛季</view><view class="muted">机构内部汇总：只计入经球员本人同意的私有赛季授权，不公开、不生成匿名球员榜。</view></view>
-  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
-  <view wx:if="{{message}}" class="notice">{{message}}</view>
-  <view wx:if="{{loginRequired}}" class="card state-panel"><view class="subtitle">登录后管理私有赛季</view><view class="muted">仅机构负责人/管理员可创建、编辑、激活和关闭赛季。</view><button class="primary" bindtap="login">登录并继续</button></view>
-  <view wx:if="{{loading}}" class="card state-panel"><view class="subtitle">正在读取</view><view class="loading-lines"><view></view><view></view></view></view>
+<view class="figma-page">
+  <scb-header title="私有赛季" disabled="{{busy || pending || uncertain || dirty}}"/>
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary">
+      <view class="figma-summary__icon"><figma-icon name="standings" size="24"/></view>
+      <view class="figma-summary__copy"><view class="figma-eyebrow">机构内部</view><view class="figma-title">私有赛季</view><view class="figma-subtitle">只汇总本人已授权、来源仍有效的比赛记录。</view></view>
+    </view>
 
-  <block wx:if="{{!seasonId && !loginRequired && !invalid}}">
-    <view class="card">
-      <view class="subtitle">赛季列表</view>
-      <view wx:if="{{!seasons.length && !loading}}" class="empty">暂无赛季</view>
-      <view wx:for="{{seasons}}" wx:key="id" class="row row-between">
-        <view><view>{{item.name}}</view><view class="muted">{{item.startDate}} 至 {{item.endDate}} · {{item.statusText}} · {{item.events.length}} 届赛事</view></view>
-        <button class="inline secondary" data-id="{{item.id}}" bindtap="openSeason" disabled="{{busy}}">管理</button>
-      </view>
-      <view wx:if="{{moreError}}" class="notice danger">{{moreError}}</view>
-      <button wx:if="{{nextCursor}}" class="secondary" bindtap="loadMore" disabled="{{busy || loading || loadingMore}}" loading="{{loadingMore}}">读取更多赛季</button>
-    </view>
-    <view class="card">
-      <view class="subtitle">创建赛季</view>
-      <view class="muted">赛季为机构级；赛事须明确归入，赛事日期须落在赛季范围内，不按日期自动归属。</view>
-      <view class="field-label">赛季名称</view>
-      <input class="field" maxlength="80" value="{{draft.name}}" data-section="draft" data-field="name" bindinput="input" disabled="{{busy || createPending}}" placeholder="例如 2028 春季"/>
-      <view class="field-label">开始日期（YYYY-MM-DD）</view>
-      <input class="field" maxlength="10" value="{{draft.startDate}}" data-section="draft" data-field="startDate" bindinput="input" disabled="{{busy || createPending}}"/>
-      <view class="field-label">结束日期（YYYY-MM-DD）</view>
-      <input class="field" maxlength="10" value="{{draft.endDate}}" data-section="draft" data-field="endDate" bindinput="input" disabled="{{busy || createPending}}"/>
-      <button class="primary" bindtap="create" disabled="{{busy || loading}}" loading="{{busy}}">{{createPending ? '核对并重试（沿用原请求编号）' : '创建赛季'}}</button>
-    </view>
-  </block>
+    <figma-feedback wx:if="{{error}}" type="error" title="私有赛季未完成" body="{{error}}" action-label="重新读取" bind:action="load" disabled="{{busy || invalid}}"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="操作已确认" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="pending" title="登录后管理私有赛季" body="仅机构负责人或管理员可创建、编辑、激活和关闭。" action-label="登录并继续" bind:action="login"/>
+    <figma-skeleton wx:if="{{loading}}" rows="3"/>
 
-  <block wx:if="{{season}}">
-    <view class="card">
-      <view class="badge">{{season.statusText}}</view>
-      <view class="subtitle">{{season.name}}</view>
-      <view class="muted">{{season.startDate}} 至 {{season.endDate}} · 版本 {{season.version}}</view>
-      <view wx:if="{{season.status === 'CLOSED'}}" class="notice warning">赛季已关闭：名称、日期和赛事归属已锁定。球员撤销授权与赛果变化仍按当前有效来源计算。</view>
-      <block wx:if="{{season.capabilities.canEdit}}">
-        <view class="field-label">赛季名称</view>
-        <input class="field" maxlength="80" value="{{edit.name}}" data-section="edit" data-field="name" bindinput="input" disabled="{{busy}}"/>
-        <view class="field-label">开始日期</view>
-        <input class="field" maxlength="10" value="{{edit.startDate}}" data-section="edit" data-field="startDate" bindinput="input" disabled="{{busy}}"/>
-        <view class="field-label">结束日期</view>
-        <input class="field" maxlength="10" value="{{edit.endDate}}" data-section="edit" data-field="endDate" bindinput="input" disabled="{{busy}}"/>
-        <button class="secondary" bindtap="save" disabled="{{busy || loading}}">保存赛季资料</button>
-      </block>
-      <button wx:if="{{season.capabilities.canActivate}}" class="primary" data-type="ACTIVATE" bindtap="command" disabled="{{busy || loading}}">激活赛季</button>
-      <button wx:if="{{season.capabilities.canClose}}" class="danger" data-type="CLOSE" bindtap="command" disabled="{{busy || loading}}">关闭赛季</button>
-    </view>
-    <view class="card">
-      <view class="subtitle">已归入的赛事</view>
-      <view wx:if="{{!season.events.length}}" class="empty">尚未归入赛事</view>
-      <view wx:for="{{season.events}}" wx:key="eventId" class="row">
-        <view>{{item.name}}</view><view class="muted">{{item.startDate}} 至 {{item.endDate}}</view>
-        <view class="inline">
-          <button class="inline secondary" data-id="{{item.eventId}}" bindtap="openGrants" disabled="{{busy}}">提名与授权</button>
-          <button wx:if="{{season.capabilities.canEdit}}" class="inline quiet" data-type="DETACH_EVENT" data-id="{{item.eventId}}" bindtap="command" disabled="{{busy || loading}}">移出</button>
-        </view>
+    <block wx:if="{{!seasonId && !loginRequired && !invalid}}">
+      <view class="figma-section">
+        <view class="figma-section__title">赛季列表</view>
+        <figma-feedback wx:if="{{!seasons.length && !loading}}" type="empty" title="暂无赛季" body="创建后赛事仍须逐一明确归入，不按日期自动归属。"/>
+        <button wx:for="{{seasons}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="openSeason" disabled="{{busy}}"><figma-icon name="season" size="20"/><view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.startDate}} 至 {{item.endDate}} · {{item.events.length}} 届赛事</view></view><view class="figma-status {{item.status === 'ACTIVE' ? 'figma-status--green' : 'figma-status--orange'}}">{{item.statusText}}</view></button>
+        <figma-feedback wx:if="{{moreError}}" type="error" title="更多赛季读取失败" body="{{moreError}}"/>
+        <button wx:if="{{nextCursor}}" class="seasons-link" bindtap="loadMore" disabled="{{busy || loading || loadingMore}}">{{loadingMore ? '正在读取…' : '读取更多赛季'}}</button>
       </view>
-    </view>
-    <view wx:if="{{season.capabilities.canEdit}}" class="card">
-      <view class="subtitle">可归入的赛事</view>
-      <view class="muted">仅列出本机构日期在赛季范围内、尚未归入任何赛季的赛事。</view>
-      <view wx:if="{{!season.candidates.length}}" class="empty">暂无可归入赛事</view>
-      <view wx:for="{{season.candidates}}" wx:key="eventId" class="row row-between">
-        <view><view>{{item.name}}</view><view class="muted">{{item.startDate}} 至 {{item.endDate}}</view></view>
-        <button class="inline secondary" data-type="ATTACH_EVENT" data-id="{{item.eventId}}" bindtap="command" disabled="{{busy || loading}}">归入</button>
+
+      <view class="figma-section">
+        <view class="figma-section__title">创建赛季</view>
+        <view class="figma-section__hint">赛季为机构级；赛事日期须落在赛季范围内，并由负责人逐一明确归入。</view>
+        <view class="figma-field-group"><view class="figma-field-label">赛季名称</view><input class="figma-field-control" maxlength="80" value="{{draft.name}}" data-section="draft" data-field="name" bindinput="input" disabled="{{busy || createPending}}" placeholder="例如 2028 春季"/></view>
+        <view class="seasons-date-grid"><view class="figma-field-group"><view class="figma-field-label">开始日期</view><input class="figma-field-control" maxlength="10" value="{{draft.startDate}}" data-section="draft" data-field="startDate" bindinput="input" disabled="{{busy || createPending}}" placeholder="YYYY-MM-DD"/></view><view class="figma-field-group"><view class="figma-field-label">结束日期</view><input class="figma-field-control" maxlength="10" value="{{draft.endDate}}" data-section="draft" data-field="endDate" bindinput="input" disabled="{{busy || createPending}}" placeholder="YYYY-MM-DD"/></view></view>
+        <figma-feedback wx:if="{{createPending}}" type="pending" title="创建结果待核对" body="再次操作将沿用原请求编号，不会重复创建。"/>
+        <button class="figma-action figma-action--orange" bindtap="create" disabled="{{busy || loading}}">{{createPending ? '核对并重试' : '创建赛季'}}</button>
       </view>
-      <view wx:if="{{candidateMoreError}}" class="notice danger">{{candidateMoreError}}</view>
-      <button wx:if="{{season.candidateNextCursor}}" class="secondary" bindtap="loadMoreCandidates" disabled="{{busy || loading || candidateLoadingMore}}" loading="{{candidateLoadingMore}}">读取更多可归入赛事</button>
-    </view>
-    <view class="card">
-      <view class="subtitle">机构私有榜单</view>
-      <view class="muted">读者仅限本机构负责人/管理员。只计入当前有效、经本人同意的授权和当前有效的逐人确认数据；“名单场次”不代表实际出场。</view>
-      <view wx:if="{{boardError}}" class="notice danger">{{boardError}}</view>
-      <block wx:if="{{board}}">
-        <view class="notice {{board.rankingComplete ? '' : 'warning'}}">{{board.note}}</view>
-        <view wx:for="{{board.coverage}}" wx:key="eventId" class="row"><view>{{item.name}} · {{item.state}}</view><view class="muted">{{item.text}}</view></view>
-        <view wx:for="{{board.rows}}" wx:key="userId" class="row">
-          <view class="row-between"><view>{{item.rankText}} · {{item.displayName}}</view><view class="numeric">{{item.score}} 分</view></view>
-          <view class="muted">犯规 {{item.fouls}} · 名单场次 {{item.samples}} · 赛事 {{item.events}} 届</view>
-          <view class="muted">篮板 {{item.rebounds}} · 助攻 {{item.assists}} · 出场时间 {{item.minutes}}</view>
-          <view wx:for="{{item.sources}}" wx:for-item="source" wx:key="key" class="small">{{source.text}}</view>
-        </view>
-        <view class="muted">统计时间 {{board.asOf}} · 来源摘要 {{board.sourceHash}}</view>
-      </block>
-    </view>
-  </block>
-  <button class="quiet" bindtap="load" disabled="{{busy || loading || invalid}}">刷新</button>
+    </block>
+
+    <block wx:if="{{season}}">
+      <view class="season-tabs" role="tablist"><button class="season-tab {{seasonTab === 'profile' ? 'is-active' : ''}}" data-tab="profile" bindtap="changeSeasonTab" disabled="{{busy}}">赛季资料</button><button class="season-tab {{seasonTab === 'events' ? 'is-active' : ''}}" data-tab="events" bindtap="changeSeasonTab" disabled="{{busy}}">归属赛事</button><button class="season-tab {{seasonTab === 'board' ? 'is-active' : ''}}" data-tab="board" bindtap="changeSeasonTab" disabled="{{busy}}">私有榜单</button></view>
+
+      <view id="season-profile" class="figma-section">
+        <view class="figma-section__title">{{season.name}}</view>
+        <view class="figma-field-group"><view class="figma-field-label">开始与结束</view><view class="seasons-control"><text>{{season.startDate}}—{{season.endDate}}</text><text class="figma-status {{season.statusClass || (season.status === 'ACTIVE' ? 'figma-status--green' : 'figma-status--orange')}}">{{season.statusText}}</text></view></view>
+        <view class="figma-field-group"><view class="figma-field-label">机构</view><view class="seasons-control"><text>{{season.organizationName || '当前授权机构'}}</text><text class="figma-status figma-status--orange">仅内部</text></view></view>
+        <figma-feedback wx:if="{{season.status === 'CLOSED'}}" type="pending" title="赛季已关闭" body="名称、日期和赛事归属已锁定；授权撤销与赛果变化仍按有效来源重算。"/>
+        <block wx:if="{{season.capabilities.canEdit}}">
+          <view class="figma-field-group"><view class="figma-field-label">赛季名称</view><input class="figma-field-control" maxlength="80" value="{{edit.name}}" data-section="edit" data-field="name" bindinput="input" disabled="{{busy}}"/></view>
+          <view class="seasons-date-grid"><view class="figma-field-group"><view class="figma-field-label">开始日期</view><input class="figma-field-control" maxlength="10" value="{{edit.startDate}}" data-section="edit" data-field="startDate" bindinput="input" disabled="{{busy}}"/></view><view class="figma-field-group"><view class="figma-field-label">结束日期</view><input class="figma-field-control" maxlength="10" value="{{edit.endDate}}" data-section="edit" data-field="endDate" bindinput="input" disabled="{{busy}}"/></view></view>
+          <button class="figma-action figma-action--navy" bindtap="save" disabled="{{busy || loading}}">保存赛季资料</button>
+        </block>
+        <button wx:if="{{season.capabilities.canActivate}}" class="figma-action figma-action--orange" data-type="ACTIVATE" bindtap="command" disabled="{{busy || loading}}">激活赛季</button>
+        <button wx:if="{{season.capabilities.canClose}}" class="figma-action seasons-danger" data-type="CLOSE" bindtap="command" disabled="{{busy || loading}}">关闭赛季</button>
+      </view>
+
+      <view id="season-events" class="figma-section">
+        <view class="figma-section__title">已归入赛事</view>
+        <figma-feedback wx:if="{{!season.events.length}}" type="empty" title="尚未归入赛事" body="赛事须逐一明确归入，日期不会自动建立归属。"/>
+        <view wx:for="{{season.events}}" wx:key="eventId" class="seasons-event"><button class="figma-row" data-id="{{item.eventId}}" bindtap="openGrants" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.dateLabel || (item.startDate + ' 至 ' + item.endDate)}}</view></view><view class="figma-status figma-status--orange">本赛季</view></button><button wx:if="{{season.capabilities.canEdit}}" class="seasons-link" data-type="DETACH_EVENT" data-id="{{item.eventId}}" bindtap="command" disabled="{{busy || loading}}">移出本赛季</button></view>
+      </view>
+
+      <view wx:if="{{season.capabilities.canEdit}}" class="figma-section">
+        <view class="figma-section__title">可归入赛事</view><view class="figma-section__hint">仅列出本机构日期在范围内、尚未归入任何赛季的赛事。</view>
+        <figma-feedback wx:if="{{!season.candidates.length}}" type="empty" title="暂无可归入赛事" body="可调整赛季日期或检查赛事归属。"/>
+        <button wx:for="{{season.candidates}}" wx:key="eventId" class="figma-row" data-type="ATTACH_EVENT" data-id="{{item.eventId}}" bindtap="command" disabled="{{busy || loading}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.startDate}} 至 {{item.endDate}}</view></view><view class="figma-status figma-status--orange">归入</view></button>
+        <figma-feedback wx:if="{{candidateMoreError}}" type="error" title="候选赛事读取失败" body="{{candidateMoreError}}"/>
+        <button wx:if="{{season.candidateNextCursor}}" class="seasons-link" bindtap="loadMoreCandidates" disabled="{{busy || loading || candidateLoadingMore}}">{{candidateLoadingMore ? '正在读取…' : '读取更多可归入赛事'}}</button>
+      </view>
+
+      <view id="season-board" class="figma-section">
+        <view class="figma-section__title">{{boardTitle || '机构私有榜单'}}</view>
+        <view class="figma-section__hint">{{boardHint || '私有统计口径；部分样本或未采集指标会明确显示“未统计”。'}}</view>
+        <view class="seasons-metrics"><view><view class="figma-row__title">得分</view><view class="figma-row__subtitle">本人已同意且已确认的逐人数据</view><view class="figma-status figma-status--green">已授权</view></view><view><view class="figma-row__title">犯规</view><view class="figma-row__subtitle">随来源更正重算</view><view class="figma-status figma-status--green">已授权</view></view><view><view class="figma-row__title">名单场次</view><view class="figma-row__subtitle">不等于实际上场时间</view><view class="figma-status">只读</view></view></view>
+        <figma-feedback wx:if="{{boardError}}" type="error" title="私有榜单读取失败" body="{{boardError}}"/>
+        <block wx:if="{{board}}"><figma-feedback type="{{board.rankingComplete ? 'success' : 'pending'}}" title="统计范围" body="{{board.note}}"/><view wx:for="{{board.coverage}}" wx:key="eventId" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.name}} · {{item.state}}</view><view class="figma-row__subtitle">{{item.text}}</view></view></view><view wx:for="{{board.rows}}" wx:key="userId" class="seasons-player"><view class="seasons-player__top"><view class="figma-row__title">{{item.rankText}} · {{item.displayName}}</view><view class="seasons-score">{{item.score}} 分</view></view><view class="figma-row__subtitle">犯规 {{item.fouls}} · 名单场次 {{item.samples}} · 赛事 {{item.events}} 届</view><view class="figma-row__subtitle">篮板 {{item.rebounds}} · 助攻 {{item.assists}} · 出场时间 {{item.minutes}}</view><view wx:for="{{item.sources}}" wx:for-item="source" wx:key="key" class="figma-caption">{{source.text}}</view></view><view class="figma-caption">统计时间 {{board.asOf}} · 来源摘要 {{board.sourceHash}}</view></block>
+      </view>
+    </block>
+  </view>
+
+  <view class="figma-fixed-actions">
+    <button wx:if="{{season}}" class="figma-action figma-action--ghost" bindtap="openFirstGrant" disabled="{{busy || !season.events.length}}">提名与授权</button>
+    <button wx:else class="figma-action figma-action--ghost" bindtap="load" disabled="{{busy || loading || invalid}}">刷新赛季</button>
+    <button wx:if="{{season}}" class="figma-action figma-action--orange" data-tab="events" bindtap="changeSeasonTab" disabled="{{busy}}">查看归属赛事</button>
+    <button wx:else class="figma-action figma-action--orange" bindtap="create" disabled="{{busy || loading || loginRequired || invalid}}">{{createPending ? '核对并重试' : '创建赛季'}}</button>
+  </view>
 </view>

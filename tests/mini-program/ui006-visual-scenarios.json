@@ -1,0 +1,1056 @@
+[
+  {
+    "name": "home",
+    "route": "pages/home/index",
+    "figmaNode": "35:38",
+    "fixture": "ui002-root-home-public.json",
+    "expectText": ["让热爱，有主场。", "城市篮球邀请赛", "精选赛事", "同城服务"],
+    "data": {
+      "citySelection": { "label": "高州", "city": "高州", "source": "本次隔离夹具", "guide": false, "warning": "", "mode": "REGION" },
+      "publicEvents": [
+        {
+          "publicEventId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "name": "城市篮球邀请赛",
+          "dateLabel": "11.08—11.22",
+          "venueName": "高州体育中心",
+          "displayCity": "广东 · 高州",
+          "statusLabel": "报名中"
+        }
+      ]
+    }
+  },
+  {
+    "name": "watch",
+    "route": "pages/watch/index",
+    "figmaNode": "36:53",
+    "fixture": "c18-watch-directory.json",
+    "expectText": ["城市篮球邀请赛", "滨江秋季联赛", "公开招募", "最近观看"],
+    "data": {
+      "citySelection": { "mode": "REGION", "label": "高州", "city": "高州", "source": "广东高州", "guide": false, "warning": "" },
+      "dir": {
+        "group": "LIVE",
+        "city": "高州",
+        "cityInput": "高州",
+        "cityError": "",
+        "items": [
+          { "publicEventId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "name": "城市篮球邀请赛", "dateLabel": "11.01—11.15", "venueName": "高州体育中心", "displayCity": "广东 · 高州", "statusLabel": "进行中", "group": "live" },
+          { "publicEventId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "name": "滨江秋季联赛", "dateLabel": "11.03—11.22", "venueName": "滨江体育馆", "displayCity": "广东 · 茂名", "statusLabel": "进行中", "group": "live" }
+        ],
+        "loading": false,
+        "loadingMore": false,
+        "loaded": true,
+        "done": true,
+        "error": "",
+        "moreError": ""
+      }
+    }
+  },
+  {
+    "name": "local",
+    "route": "pages/local/index",
+    "figmaNode": "36:54",
+    "fixture": "ui002-root-local-listed.json",
+    "expectText": ["高州篮球服务", "滨江体育馆 · 主场", "城北篮球公园", "地图找服务"],
+    "data": {
+      "selection": { "mode": "REGION", "label": "高州", "city": "高州", "source": "广东高州", "regionId": "00000000-0000-4000-8000-000000000003", "catalogVersion": "synthetic-figma-v1" },
+      "kind": "COURT",
+      "filtersOpen": false,
+      "mapVisible": false,
+      "loaded": true,
+      "loading": false,
+      "error": "",
+      "message": "",
+      "items": [
+        { "id": "00000000-0000-4000-8000-000000000004", "kind": "COURT", "title": "滨江体育馆 · 主场", "address": "高州", "distanceLabel": "室内木地板" },
+        { "id": "00000000-0000-4000-8000-000000000005", "kind": "COURT", "title": "城北篮球公园", "address": "高州", "distanceLabel": "室外灯光场" }
+      ]
+    }
+  },
+  {
+    "name": "teams",
+    "route": "pages/teams/index",
+    "figmaNode": "36:55",
+    "fixture": "c10-team-teams-ready.json",
+    "expectText": ["城北篮球队", "球队身份", "球队主页与成员", "本届赛事报名"],
+    "data": {
+      "organizations": [{ "id": "c1000000-0000-4000-8000-000000000002", "name": "示例篮球协会", "role": "ORG_ADMIN" }],
+      "orgIndex": 0,
+      "teamLocationLabel": "高州",
+      "primaryTeam": {
+        "id": "c1000000-0000-4000-8000-000000000001",
+        "orgId": "c1000000-0000-4000-8000-000000000002",
+        "name": "城北篮球队",
+        "canRegister": true,
+        "members": [{},{},{},{},{},{},{},{},{},{},{},{}]
+      },
+      "teams": [{ "id": "c1000000-0000-4000-8000-000000000001", "orgId": "c1000000-0000-4000-8000-000000000002", "name": "城北篮球队", "canRegister": true, "members": [{},{},{},{},{},{},{},{},{},{},{},{}] }],
+      "loading": false,
+      "error": ""
+    }
+  },
+  {
+    "name": "account-signed",
+    "route": "pages/account/index",
+    "figmaNode": "36:56",
+    "fixture": "c10-account-home.json",
+    "expectText": ["陈一鸣", "我的报名", "我的球队", "我的预约", "我的关注", "角色工作台"],
+    "data": {
+      "user": { "id": "11111111-1111-4111-8111-111111111111", "displayName": "陈一鸣", "email": "synthetic@example.test" },
+      "roles": [{ "id": "synthetic-role", "text": "示例篮球协会 · 赛事工作人员" }]
+    }
+  },
+  {
+    "name": "city-select",
+    "route": "pages/city-select/index",
+    "figmaNode": "36:57",
+    "fixture": "c20-city-picker.json",
+    "expectText": ["广东省 · 茂名市", "高州市", "广东省", "茂名市"],
+    "data": {
+      "activeView": "standard",
+      "mode": "REGION",
+      "label": "广东省 · 茂名市",
+      "selectedScopeLabel": "高州市",
+      "city": "高州",
+      "source": "广东高州",
+      "input": "广东省 · 茂名市 · 高州市",
+      "regionId": "synthetic-gaozhou",
+      "catalogLoading": false,
+      "catalogError": "",
+      "warning": "",
+      "versionNote": "",
+      "rows": [
+        { "id": "synthetic-guangdong", "name": "广东省", "path": "选择省级区域", "levelLabel": "选择省级区域", "hasChildren": true, "partial": false },
+        { "id": "synthetic-maoming", "name": "茂名市", "path": "选择市级区域", "levelLabel": "选择市级区域", "hasChildren": true, "partial": false },
+        { "id": "synthetic-gaozhou", "name": "高州市", "path": "选择区县", "levelLabel": "选择区县", "hasChildren": false, "partial": false }
+      ],
+      "hasMore": false
+    }
+  },
+  {
+    "name": "search",
+    "route": "pages/search/index",
+    "figmaNode": "36:58",
+    "fixture": "e06-search-ready.json",
+    "expectText": ["城市篮球邀请赛", "城市秋季联赛", "城市青年篮球队", "城市之星篮球队"],
+    "data": {
+      "query": "城市",
+      "city": "高州",
+      "notice": "",
+      "cursor": "synthetic-layout-search-cursor",
+      "items": [
+        { "kind": "EVENT", "kindLabel": "赛事", "publicKey": "event-one", "key": "EVENT:event-one", "displayName": "城市篮球邀请赛", "city": "高州", "startsOn": "11.01", "endsOn": "11.15" },
+        { "kind": "EVENT", "kindLabel": "赛事", "publicKey": "event-two", "key": "EVENT:event-two", "displayName": "城市秋季联赛", "city": "高州", "startsOn": "11.14", "endsOn": "11.29" },
+        { "kind": "TEAM", "kindLabel": "球队", "publicKey": "team-one", "key": "TEAM:team-one", "displayName": "城市青年篮球队", "city": "高州" },
+        { "kind": "TEAM", "kindLabel": "球队", "publicKey": "team-two", "key": "TEAM:team-two", "displayName": "城市之星篮球队", "city": "高州" }
+      ],
+      "eventItems": [
+        { "kind": "EVENT", "kindLabel": "赛事", "publicKey": "event-one", "key": "EVENT:event-one", "displayName": "城市篮球邀请赛", "city": "高州", "startsOn": "11.01", "endsOn": "11.15" },
+        { "kind": "EVENT", "kindLabel": "赛事", "publicKey": "event-two", "key": "EVENT:event-two", "displayName": "城市秋季联赛", "city": "高州", "startsOn": "11.14", "endsOn": "11.29" }
+      ],
+      "teamItems": [
+        { "kind": "TEAM", "kindLabel": "球队", "publicKey": "team-one", "key": "TEAM:team-one", "displayName": "城市青年篮球队", "city": "高州" },
+        { "kind": "TEAM", "kindLabel": "球队", "publicKey": "team-two", "key": "TEAM:team-two", "displayName": "城市之星篮球队", "city": "高州" }
+      ],
+      "playerItems": [],
+      "busy": false,
+      "searched": true,
+      "error": ""
+    }
+  },
+  {
+    "name": "media",
+    "route": "pages/media/index",
+    "figmaNode": "36:59",
+    "fixture": "c10-public-media-ready.json",
+    "expectText": ["城市篮球邀请赛", "滨江秋季联赛", "高州 · 已公开赛事", "茂名 · 已公开赛事"],
+    "data": {
+      "featuredEvent": { "publicEventId": "synthetic-media-event-a", "name": "城市篮球邀请赛", "dateLabel": "高州" },
+      "recentEvents": [
+        { "publicEventId": "synthetic-media-event-a", "name": "城市篮球邀请赛", "dateLabel": "高州" },
+        { "publicEventId": "synthetic-media-event-b", "name": "滨江秋季联赛", "dateLabel": "茂名" }
+      ]
+    }
+  },
+  {
+    "name": "event",
+    "route": "pages/event/index",
+    "figmaNode": "36:60",
+    "fixture": "ui006-event-detail-ready.json",
+    "data": {
+      "event": { "name": "城市篮球邀请赛", "dateLabel": "2026.11.01—11.15", "venueName": "高州" },
+      "matches": [
+        { "publicMatchId": "synthetic-event-match-a", "roundNo": 1, "startLabel": "11.07 19:00", "courtName": "主场", "home": { "teamKey": "home-a", "teamName": "城北队" }, "away": { "teamKey": "away-a", "teamName": "江南队" }, "status": "SCHEDULED", "statusLabel": "待开赛", "score": null, "resultLabel": "尚无正式赛果" },
+        { "publicMatchId": "synthetic-event-match-b", "roundNo": 1, "startLabel": "11.07 20:15", "courtName": "主场", "home": { "teamKey": "home-b", "teamName": "滨江队" }, "away": { "teamKey": "away-b", "teamName": "西城队" }, "status": "SCHEDULED", "statusLabel": "待开赛", "score": null, "resultLabel": "尚无正式赛果" }
+      ]
+    }
+  },
+  {
+    "name": "match",
+    "route": "pages/match/index",
+    "figmaNode": "36:61",
+    "fixture": "c10-public-match-ready.json",
+    "expectText": ["城市篮球邀请赛 · 小组赛 A 组", "城北队", "68", "江南队", "64", "02:18"],
+    "data": {
+      "snapshot": {
+        "eventName": "城市篮球邀请赛",
+        "roundLabel": "小组赛 A 组",
+        "roundNo": 1,
+        "home": { "teamKey": "home-a", "teamName": "城北队" },
+        "away": { "teamKey": "away-a", "teamName": "江南队" },
+        "score": { "home": 68, "away": 64 },
+        "status": "LIVE",
+        "statusLabel": "比赛进行中",
+        "resultStatus": "UNCONFIRMED",
+        "resultLabel": "比赛进行中，等待独立确认",
+        "clock": { "period": 3, "remainingMs": 138000, "running": true },
+        "periods": [
+          { "period": 1, "home": { "score": 22 }, "away": { "score": 20 } },
+          { "period": 2, "home": { "score": 25 }, "away": { "score": 24 } },
+          { "period": 3, "home": { "score": 21 }, "away": { "score": 20 } }
+        ],
+        "collected": { "teamScore": true, "teamFouls": false, "teamTimeouts": false, "playerStatistics": false }
+      },
+      "clock": "02:18"
+    }
+  },
+  {
+    "name": "public-archives",
+    "route": "pages/public-archives/index",
+    "figmaNode": "36:63",
+    "fixture": "ui002-registration-archives-consent.json",
+    "expectText": ["陈一鸣 · 球员档案", "对阵江南队", "对阵西城队", "待同意"],
+    "data": {
+      "profiles": [{ "id": "synthetic-archive-profile", "kind": "PLAYER", "displayName": "陈一鸣", "status": "DRAFT", "version": 1, "publicKey": "synthetic-archive-key", "sources": [
+        { "id": "synthetic-source-a", "displayName": "对阵江南队", "summaryLabel": "城市邀请赛 · 11.01", "status": "PENDING", "statusLabel": "待同意", "canConsent": true, "canRevoke": false },
+        { "id": "synthetic-source-b", "displayName": "对阵西城队", "summaryLabel": "滨江联赛 · 10.24", "status": "PENDING", "statusLabel": "待同意", "canConsent": true, "canRevoke": false }
+      ] }],
+      "primaryProfile": { "id": "synthetic-archive-profile", "kind": "PLAYER", "displayName": "陈一鸣", "status": "DRAFT", "version": 1, "publicKey": "synthetic-archive-key", "sources": [
+        { "id": "synthetic-source-a", "displayName": "对阵江南队", "summaryLabel": "城市邀请赛 · 11.01", "status": "PENDING", "statusLabel": "待同意", "canConsent": true, "canRevoke": false },
+        { "id": "synthetic-source-b", "displayName": "对阵西城队", "summaryLabel": "滨江联赛 · 10.24", "status": "PENDING", "statusLabel": "待同意", "canConsent": true, "canRevoke": false }
+      ] },
+      "displayName": "陈一鸣",
+      "publicConsent": false,
+      "secondaryProfiles": [],
+      "pendingSources": []
+    }
+  },
+  {
+    "name": "public-archive",
+    "route": "pages/public-archive/index",
+    "figmaNode": "36:64",
+    "fixture": "ui002-registration-archive-unknown-statistics.json",
+    "expectText": ["城北篮球队", "广东 · 高州", "2 场", "2 届", "城北队 68 : 64 江南队"],
+    "data": {
+      "archive": {
+        "displayName": "城北篮球队",
+        "kind": "TEAM",
+        "locationLabel": "广东 · 高州",
+        "confirmedMatchCount": 2,
+        "recordedMatchCount": 2,
+        "sourceEventCount": 2,
+        "points": null,
+        "pointsPerRecordedMatch": null,
+        "fouls": null,
+        "wins": 1,
+        "draws": 0,
+        "losses": 1,
+        "technical": null,
+        "recentRecords": [
+          { "recordKey": "synthetic-record-a", "displayName": "城北队 68 : 64 江南队", "summaryLabel": "城市篮球邀请赛 · 11.01", "eventName": "城市篮球邀请赛", "date": "11.01", "points": null, "fouls": null },
+          { "recordKey": "synthetic-record-b", "displayName": "城北队 59 : 62 西城队", "summaryLabel": "滨江秋季联赛 · 10.24", "eventName": "滨江秋季联赛", "date": "10.24", "points": null, "fouls": null }
+        ]
+      },
+      "notice": ""
+    }
+  },
+  {
+    "name": "follows",
+    "route": "pages/follows/index",
+    "figmaNode": "36:65",
+    "fixture": "c19-follows-active-invalid.json",
+    "expectText": ["城市篮球邀请赛", "高州 · 11.01—11.15", "滨江秋季联赛", "茂名 · 11.03—11.22"],
+    "data": {
+      "items": [
+        { "followId": "synthetic-follow-a", "publicEventId": "synthetic-event-a", "status": "ACTIVE", "event": { "name": "城市篮球邀请赛" }, "dateLabel": "高州 · 11.01—11.15" },
+        { "followId": "synthetic-follow-b", "publicEventId": "synthetic-event-b", "status": "ACTIVE", "event": { "name": "滨江秋季联赛" }, "dateLabel": "茂名 · 11.03—11.22" }
+      ],
+      "activeItems": [
+        { "followId": "synthetic-follow-a", "publicEventId": "synthetic-event-a", "status": "ACTIVE", "event": { "name": "城市篮球邀请赛" }, "dateLabel": "高州 · 11.01—11.15" },
+        { "followId": "synthetic-follow-b", "publicEventId": "synthetic-event-b", "status": "ACTIVE", "event": { "name": "滨江秋季联赛" }, "dateLabel": "茂名 · 11.03—11.22" }
+      ],
+      "inactiveItems": [],
+      "nextCursor": "",
+      "reminderOff": ""
+    }
+  },
+  {
+    "name": "recruitment",
+    "route": "pages/recruitment/index",
+    "figmaNode": "36:66",
+    "fixture": "ui002-registration-recruitment-public.json",
+    "expectText": ["城市邀请赛 · 球队招募", "11.14—11.29", "11.10 18:00 · 北京时间"],
+    "data": {
+      "public": { "title": "城市邀请赛 · 球队招募", "event": { "name": "城市邀请赛", "startDate": "11.14", "endDate": "11.29", "venueName": "高州" }, "description": "按本届正式规程提交申请。", "closesAt": "11.10 18:00", "requirements": { "minPlayers": 5, "maxPlayers": 15 }, "notice": "申请不等于报名通过。" }
+    }
+  },
+  {
+    "name": "poster",
+    "route": "pages/poster/index",
+    "figmaNode": "36:67",
+    "fixture": "ui002-live-poster-workflow.json",
+    "expectText": ["城市邀请赛 · 赛程海报", "城北队 vs 江南队", "11.07 19:00 · 滨江体育馆"],
+    "data": {
+      "workspace": { "event": { "name": "城市邀请赛" }, "posterDateLabel": "11.07 19:00 · 滨江体育馆", "notice": "以本届正式赛程与当前授权为准。", "participants": [], "matches": [{ "id": "synthetic-poster-match", "displayName": "城北队 vs 江南队" }], "capabilities": { "canGenerate": true }, "exports": [], "historyTruncated": false },
+      "kind": "MATCHUP",
+      "kindLabel": "赛程海报",
+      "matchId": "synthetic-poster-match",
+      "matchName": "城北队 vs 江南队",
+      "entryName": "",
+      "includePortraits": false
+    }
+  },
+  {
+    "name": "team",
+    "route": "pages/team/index",
+    "figmaNode": "36:68",
+    "fixture": "c10-team-team-ready.json",
+    "expectText": ["城北篮球队", "07  林子航", "11  周启帆", "23  陈一鸣"],
+    "data": {
+      "team": { "id": "synthetic-team", "orgId": "synthetic-org", "name": "城北篮球队", "organizationName": "示例篮球协会", "version": 3, "members": [
+        { "id": "synthetic-member-a", "name": "林子航", "jerseyNo": "07", "memberLabel": "后卫 · 本人已绑定", "statusLabel": "有效" },
+        { "id": "synthetic-member-b", "name": "周启帆", "jerseyNo": "11", "memberLabel": "前锋 · 待本人认领", "statusLabel": "有效" },
+        { "id": "synthetic-member-c", "name": "陈一鸣", "jerseyNo": "23", "memberLabel": "中锋 · 本人已绑定", "statusLabel": "有效" }
+      ], "grants": [], "capabilities": { "canManage": true, "canInvite": false } },
+      "name": "城北篮球队",
+      "members": [
+        { "id": "synthetic-member-a", "key": "synthetic-member-a", "name": "林子航", "jerseyNo": "07" },
+        { "id": "synthetic-member-b", "key": "synthetic-member-b", "name": "周启帆", "jerseyNo": "11" },
+        { "id": "synthetic-member-c", "key": "synthetic-member-c", "name": "陈一鸣", "jerseyNo": "23" }
+      ],
+      "canRegister": true,
+      "editMode": false
+    }
+  },
+  {
+    "name": "team-request",
+    "route": "pages/team-request/index",
+    "figmaNode": "36:69",
+    "fixture": "c19-team-request-ready.json",
+    "expectText": ["示例篮球协会", "滨江青年队", "待审核"],
+    "data": {
+      "link": { "linkId": "synthetic-team-request-link", "orgName": "示例篮球协会", "expiresAt": "2026-11-22T18:00:00+08:00" },
+      "teamName": "",
+      "note": "",
+      "requests": [{ "id": "synthetic-team-request", "orgName": "示例篮球协会", "teamName": "滨江青年队", "status": "PENDING", "stateText": "待审核", "created": "11月18日", "reviewReason": null, "teamId": null, "capabilities": { "canWithdraw": true } }]
+    }
+  },
+  {
+    "name": "team-requests",
+    "route": "pages/team-requests/index",
+    "figmaNode": "36:70",
+    "fixture": "c19-team-requests-review.json",
+    "expectText": ["城北青年队", "申请人 许航 · 11月18日", "江岸篮球队", "申请人 徐帆 · 11月17日"],
+    "data": {
+      "orgName": "示例篮球协会",
+      "requests": [
+        { "id": "synthetic-review-a", "teamName": "城北青年队", "requesterDisplayName": "许航", "created": "11月18日", "note": "在本机构建立长期球队", "status": "PENDING", "stateText": "待审核", "capabilities": { "canReview": true, "isOwnRequest": false } },
+        { "id": "synthetic-review-b", "teamName": "江岸篮球队", "requesterDisplayName": "徐帆", "created": "11月17日", "note": "在本机构建立长期球队", "status": "PENDING", "stateText": "待审核", "capabilities": { "canReview": true, "isOwnRequest": false } }
+      ],
+      "selectedId": "synthetic-review-a",
+      "reviewReason": "",
+      "links": [{ "id": "synthetic-request-link", "status": "ACTIVE", "stateText": "可使用", "useCount": 3, "maxUses": 20, "expires": "11月22日 18:00", "reason": "球队申请入口" }]
+    }
+  },
+  {
+    "name": "team-join",
+    "route": "pages/team-join/index",
+    "figmaNode": "36:71",
+    "fixture": "c19-team-join-claim.json",
+    "expectText": ["城北篮球队 · 陈一鸣", "领队发起本人定向认领", "待核对"],
+    "data": {
+      "code": "",
+      "displayName": "",
+      "claims": [{ "claimId": "synthetic-claim", "organizationName": "领队发起本人定向认领", "teamName": "城北篮球队", "memberName": "陈一鸣", "status": "PENDING", "stateText": "待核对", "expires": "11月22日 18:00" }]
+    }
+  },
+  {
+    "name": "memberships",
+    "route": "pages/memberships/index",
+    "figmaNode": "36:72",
+    "fixture": "c19-memberships-readonly.json",
+    "expectText": ["陈一鸣的球队", "城北篮球队", "陈一鸣 · 23号", "滨江青年队", "陈一鸣 · 07号"],
+    "data": {
+      "items": [
+        { "bindingId": "synthetic-binding-a", "teamId": "synthetic-team-a", "teamName": "城北篮球队", "memberName": "陈一鸣", "jerseyNo": "23", "status": "ACTIVE", "stateText": "长期成员" },
+        { "bindingId": "synthetic-binding-b", "teamId": "synthetic-team-b", "teamName": "滨江青年队", "memberName": "陈一鸣", "jerseyNo": "07", "status": "ACTIVE", "stateText": "长期成员" }
+      ],
+      "selectedId": "synthetic-binding-a",
+      "team": null
+    }
+  },
+  {
+    "name": "invitation",
+    "route": "pages/invitation/index",
+    "figmaNode": "36:73",
+    "fixture": "c10-team-invitation-ready.json",
+    "expectText": ["城北篮球队", "当前已登录的指定账号", "11月22日 18:00"],
+    "data": {
+      "user": { "id": "synthetic-target-account", "displayName": "当前已登录的指定账号", "email": "synthetic@example.test" },
+      "invitationPreview": { "teamName": "城北篮球队", "targetLabel": "当前已登录的指定账号", "expiresLabel": "11月22日 18:00" },
+      "consent": false,
+      "accepted": null,
+      "loading": false
+    }
+  },
+  {
+    "name": "registration-events",
+    "route": "pages/registration-events/index",
+    "figmaNode": "36:74",
+    "fixture": "c10-team-events-ready.json",
+    "expectText": ["城北篮球队", "城市邀请赛", "11月8日 截止", "周末社区联赛", "秋季社区联赛"],
+    "data": {
+      "team": { "id": "synthetic-team", "name": "城北篮球队", "capabilities": { "canManage": true } },
+      "events": [
+        { "id": "synthetic-event-a", "event": { "id": "synthetic-event-a", "name": "城市邀请赛", "startDate": "11月8日", "venueName": "体育中心" }, "statusLabel": "报名中", "entry": null, "capabilities": { "canCreateEntry": true } },
+        { "id": "synthetic-event-b", "event": { "id": "synthetic-event-b", "name": "周末社区联赛", "startDate": "11月15日", "venueName": "西区球场" }, "statusLabel": "报名中", "entry": null, "capabilities": { "canCreateEntry": true } },
+        { "id": "synthetic-event-c", "event": { "id": "synthetic-event-c", "name": "秋季社区联赛", "startDate": "10月24日", "venueName": "滨江体育馆" }, "statusLabel": "报名结束", "entry": { "id": "synthetic-entry" }, "entryStatus": "草稿", "capabilities": { "canCreateEntry": false } }
+      ],
+      "hasDraft": true
+    }
+  },
+  {
+    "name": "entry",
+    "route": "pages/entry/index",
+    "figmaNode": "36:75",
+    "fixture": "c10-team-entry-ready.json",
+    "expectText": ["城市邀请赛 · 城北篮球队", "07　林予安", "待核验", "12　陈一鸣", "待补交", "23　王映川", "草稿"],
+    "data": {
+      "entry": { "id": "synthetic-entry", "teamId": "synthetic-team", "teamName": "城北篮球队", "eventId": "synthetic-event", "eventName": "城市邀请赛", "status": "DRAFT", "statusLabel": "报名草稿", "version": 2, "rules": { "minPlayers": 3, "maxPlayers": 12, "zeroAndDoubleZeroDistinct": true, "requireIdentity": false, "requireInsurance": false, "requireParticipantMaterials": false }, "players": [
+        { "memberId": "synthetic-entry-member-a", "name": "林予安", "jerseyNo": "07", "materialLabel": "本人资料已提交", "statusLabel": "待核验" },
+        { "memberId": "synthetic-entry-member-b", "name": "陈一鸣", "jerseyNo": "12", "materialLabel": "本人照片需补充", "statusLabel": "待补交" },
+        { "memberId": "synthetic-entry-member-c", "name": "王映川", "jerseyNo": "23", "materialLabel": "资料已保存", "statusLabel": "草稿" }
+      ], "history": [], "capabilities": { "canEditRoster": true, "canSubmit": true, "canWithdraw": false, "canReview": false, "canApprove": false, "canRequestChanges": false, "canReject": false } },
+      "rows": [
+        { "memberId": "synthetic-entry-member-a", "name": "林予安", "jerseyNo": "07", "selected": true, "archived": false },
+        { "memberId": "synthetic-entry-member-b", "name": "陈一鸣", "jerseyNo": "12", "selected": true, "archived": false },
+        { "memberId": "synthetic-entry-member-c", "name": "王映川", "jerseyNo": "23", "selected": true, "archived": false }
+      ],
+      "selectedCount": 3,
+      "stage": "roster",
+      "files": [],
+      "dirty": false
+    }
+  },
+  {
+    "name": "players",
+    "route": "pages/players/index",
+    "figmaNode": "36:76",
+    "fixture": "c11-player-market-ready.json",
+    "expectText": ["陈一鸣", "林子航", "韩奕", "11月21日", "查看同价对比"],
+    "data": {
+      "filters": { "city": "高州", "position": "G", "date": "2026-11-21" },
+      "filterSummary": { "position": "后卫", "price": "同价 ¥200", "date": "11月21日" },
+      "cards": [
+        { "id": "figma-player-1", "name": "陈一鸣", "position": "后卫", "city": "高州", "availabilityText": "有可约窗口", "price": "¥200", "priceLabel": "¥200", "selected": true, "performance": { "sample": "3", "services": "2", "source": "有限授权记录" } },
+        { "id": "figma-player-2", "name": "林子航", "position": "后卫", "city": "茂名", "availabilityText": "有可约窗口", "price": "¥200", "priceLabel": "¥200", "selected": true, "performance": { "sample": "2", "services": "1", "source": "有限授权记录" } },
+        { "id": "figma-player-3", "name": "韩奕", "position": "中锋", "city": "高州", "availabilityText": "需核对时段", "price": "¥260", "priceLabel": "¥260", "selected": false, "performance": { "sample": "未统计", "services": "0", "source": "未采集" } }
+      ],
+      "selectedCount": 2,
+      "filteredCount": 3,
+      "showingCount": 3,
+      "informationOpen": false
+    }
+  },
+  {
+    "name": "player",
+    "route": "pages/player/index",
+    "figmaNode": "36:77",
+    "fixture": "c10-profile-player-ready.json",
+    "expectText": ["陈一鸣", "11月21日 周六", "¥200", "3", "未采集"],
+    "data": {
+      "profile": {
+        "name": "陈一鸣",
+        "city": "高州",
+        "position": "后卫",
+        "price": "¥200",
+        "priceLabel": "¥200",
+        "platformFee": "¥20",
+        "platformFeeLabel": "¥20",
+        "travel": "¥40",
+        "accommodation": "¥0",
+        "travelAccommodationLabel": "¥40",
+        "performance": { "sample": "3", "services": "2", "sourceCount": "1" }
+      },
+      "windows": [
+        { "id": "figma-window-1", "dateLabel": "11月21日 周六", "timeLabel": "18:00—22:00｜北京时间" },
+        { "id": "figma-window-2", "dateLabel": "11月22日 周日", "timeLabel": "15:00—19:00｜北京时间" }
+      ],
+      "informationOpen": false
+    }
+  },
+  {
+    "name": "compare",
+    "route": "pages/compare/index",
+    "figmaNode": "36:78",
+    "fixture": "c11-player-compare-ready.json",
+    "expectText": ["陈一鸣", "林子航", "¥200", "¥260", "11月21日 18:00—22:00"],
+    "data": {
+      "profiles": [
+        { "id": "figma-player-1", "name": "陈一鸣", "position": "后卫", "city": "高州", "price": "¥200", "priceLabel": "¥200", "pricePlain": "200", "platformFee": "¥20", "platformFeePlain": "20", "travel": "¥40", "travelPlain": "40", "accommodation": "¥0", "accommodationPlain": "0", "total": "¥260", "availabilityText": "11月21日 18:00—22:00", "performance": { "sample": "3", "points": "未统计", "fouls": "未统计", "services": "2", "source": "有限授权记录", "completeness": "有效样本" } },
+        { "id": "figma-player-2", "name": "林子航", "position": "后卫", "city": "茂名", "price": "¥200", "priceLabel": "¥200", "pricePlain": "200", "platformFee": "¥20", "platformFeePlain": "20", "travel": "¥60", "travelPlain": "60", "accommodation": "¥0", "accommodationPlain": "0", "total": "¥280", "availabilityText": "11月21日 17:30—21:30", "performance": { "sample": "2", "points": "未统计", "fouls": "未统计", "services": "1", "source": "有限授权记录", "completeness": "有效样本" } }
+      ],
+      "firstId": "figma-player-1",
+      "firstName": "陈一鸣",
+      "informationOpen": false
+    }
+  },
+  {
+    "name": "booking-create",
+    "route": "pages/booking-create/index",
+    "figmaNode": "36:79",
+    "fixture": "ui006-booking-create-ready.json"
+  },
+  {
+    "name": "bookings",
+    "route": "pages/bookings/index",
+    "figmaNode": "36:80",
+    "fixture": "c10-fulfill-bookings-ready.json",
+    "expectText": ["我的预约", "城北篮球队", "江南篮球队", "报价与资金"],
+    "data": {
+      "expandedAppearanceId": "",
+      "rows": [
+        { "id": "figma-order-1", "teamName": "城北篮球队", "eventName": "城市篮球邀请赛", "scopeText": "单场合作", "confirmedText": "¥260", "confirmedSummary": "1人 × 1场", "conditionalCount": 1, "conditionalText": "另列", "paidText": "¥0", "appearances": [ { "id": "figma-appearance-1", "playerName": "陈一鸣", "summaryStartText": "11月21日 19:00", "venue": "城北体育馆", "status": "REQUESTED", "statusText": "待接单", "totalText": "¥260", "reportText": "11月21日 18:30", "startText": "11月21日 19:00", "endText": "11月21日 21:00" } ] },
+        { "id": "figma-order-2", "teamName": "江南篮球队", "eventName": "周末社区联赛", "scopeText": "单场合作", "confirmedText": "¥280", "conditionalCount": 0, "paidText": "¥0", "appearances": [ { "id": "figma-appearance-2", "playerName": "韩奕", "summaryStartText": "11月22日 15:00", "venue": "江南球场", "status": "ACCEPTED", "statusText": "已接单", "totalText": "¥280", "reportText": "11月22日 14:30", "startText": "11月22日 15:00", "endText": "11月22日 17:00" } ] }
+      ]
+    }
+  },
+  { "name": "booking-detail", "route": "pages/booking-detail/index", "figmaNode": "36:81", "fixture": "ui006-booking-detail-ready.json" },
+  {
+    "name": "player-center",
+    "route": "pages/player-center/index",
+    "figmaNode": "36:82",
+    "fixture": "c10-profile-center-ready.json",
+    "expectText": ["陈一鸣", "广东 · 高州", "成人篮球比赛后卫服务", "¥200", "编辑资料与报价"],
+    "data": {
+      "profile": { "displayName": "陈一鸣", "positionText": "后卫", "city": "广东 · 高州", "bio": "成人篮球比赛后卫服务", "priceText": "¥200", "travelText": "¥40", "travelSummary": "交通40＋食宿0" },
+      "form": { "availability": [ { "key": "figma-window-1", "displayDate": "11月21日", "startDate": "2026-11-21", "startTime": "18:00", "endDate": "2026-11-21", "endTime": "22:00" }, { "key": "figma-window-2", "displayDate": "11月22日", "startDate": "2026-11-22", "startTime": "15:00", "endDate": "2026-11-22", "endTime": "19:00" } ] }
+    }
+  },
+  {
+    "name": "performance",
+    "route": "pages/performance/index",
+    "figmaNode": "36:83",
+    "fixture": "c10-profile-performance-ready.json",
+    "expectText": ["比赛数据授权", "城市篮球邀请赛", "有限公开的内容", "本人声明"],
+    "data": {
+      "links": [ { "id": "figma-link-1", "version": 1, "profileId": "figma-profile-1", "profileName": "小组赛第2轮", "eventName": "城市篮球邀请赛", "teamName": "城北篮球队", "memberName": "陈一鸣", "status": "PENDING", "statusText": "待确认", "sourceCurrentlyAvailable": true, "sourceText": "11月15日", "sourceStatusText": "已确认赛果", "revokeText": "拒绝本次公开", "capabilities": { "canConsent": true, "canRevoke": true } } ]
+    }
+  },
+  {
+    "name": "local-manage",
+    "route": "pages/local-manage/index",
+    "figmaNode": "36:84",
+    "fixture": "ui006-local-manage-figma.json",
+    "expectText": ["供给资料", "城北体育馆一号场", "周宸 · 裁判服务", "上架核验"],
+    "data": {
+      "listings": [
+        { "id": "figma-court", "title": "城北体育馆一号场", "kindText": "球场", "address": "高州", "statusText": "已发布", "published": true, "providerConfirmed": true, "reviewStatusText": "待核验", "publishStatusText": "未发布" },
+        { "id": "figma-referee", "title": "周宸 · 裁判服务", "kindText": "人员服务", "address": "高州、茂南", "statusText": "待本人确认", "published": false, "providerConfirmed": false }
+      ],
+      "overviewSlots": [
+        { "id": "figma-slot-open", "timeText": "11月21日 · 一号场", "statusText": "18:00—20:00", "available": true, "availabilityLabel": "开放" },
+        { "id": "figma-slot-pending", "timeText": "20:00—22:00", "statusText": "待开放", "available": false, "availabilityLabel": "待开放" }
+      ]
+    }
+  },
+  {
+    "name": "local-bookings",
+    "route": "pages/local-bookings/index",
+    "figmaNode": "36:85",
+    "fixture": "ui006-local-bookings-figma.json",
+    "expectText": ["预约列表", "城北体育馆 · 一号场", "人员服务 · 裁判", "履约与资金"],
+    "data": {
+      "filteredCount": 2,
+      "items": [
+        { "id": "figma-booking-court", "title": "城北体育馆 · 一号场", "timeText": "11月21日 18:00—20:00", "address": "城北体育馆一号场", "status": "CONFIRMED", "statusText": "已确认", "roleText": "需求方", "canActAs": "BUYER", "serviceLabel": "地点", "serviceValue": "城北体育馆一号场", "serviceActionLabel": "查看地址", "checkinStatusText": "未核销" },
+        { "id": "figma-booking-referee", "title": "人员服务 · 裁判", "timeText": "11月22日 19:00—21:00", "address": "高州市", "status": "REQUESTED", "statusText": "待接单", "roleText": "需求方", "canActAs": "BUYER" }
+      ]
+    }
+  },
+  {
+    "name": "local-matchups",
+    "route": "pages/local-matchups/index",
+    "figmaNode": "36:86",
+    "fixture": "ui006-local-matchups-figma.json",
+    "expectText": ["场地预约", "城北篮球队", "江南篮球队", "约赛进度"],
+    "data": {
+      "teams": [{ "id": "figma-team", "name": "城北篮球队" }],
+      "items": [{ "id": "figma-matchup", "venueName": "城北体育馆一号场", "address": "城北体育馆一号场", "timeText": "11月21日 18:00—20:00", "homeTeamName": "城北篮球队", "awayTeamName": "江南篮球队", "awayConfirmed": false, "statusText": "待确认" }]
+    }
+  },
+  {
+    "name": "matching",
+    "route": "pages/matching/index",
+    "figmaNode": "36:87",
+    "fixture": "ui002-services-matching-candidates.json",
+    "expectText": ["当前需求", "后卫 · 1席", "陈一鸣 · 后卫", "林子航 · 后卫"],
+    "data": {
+      "selected": {
+        "id": "figma-player-need", "title": "后卫合作需求", "kind": "ADULT_PLAYER", "kindText": "球员", "roleLabel": "后卫 · 1席", "status": "ACTIVE", "statusText": "进行中", "canManage": true, "quantity": 1,
+        "address": "高州", "timeLabel": "高州 · 11月21日 18:30—21:00", "timeStatusText": "确定", "roleStatusText": "成人球员", "budgetText": "¥300", "budgetLabel": "包含服务费与差旅", "budgetStatusText": "¥300",
+        "windows": [{ "label": "11月21日 18:30—21:00" }],
+        "slots": [{ "id": "figma-seat", "label": "后卫 · 1席", "generation": 1, "status": "OPEN" }],
+        "candidates": [
+          { "id": "figma-player-chen", "name": "陈一鸣 · 后卫", "priceText": "¥300", "summaryText": "地点、服务范围及档期匹配", "score": { "bandText": "可联系", "coverage": 100, "score": 90, "reasons": ["档期匹配"] } },
+          { "id": "figma-player-lin", "name": "林子航 · 后卫", "priceText": "待核验", "summaryText": "跨地区候选，差旅需另核验", "score": { "bandText": "查看", "coverage": 80, "score": 75, "reasons": ["差旅需另核验"] } }
+        ],
+        "intents": []
+      }
+    }
+  },
+  {
+    "name": "dispatch",
+    "route": "pages/dispatch/index",
+    "figmaNode": "36:88",
+    "fixture": "ui006-dispatch-figma.json",
+    "expectText": ["服务邀请", "比赛裁判 · 茂南区", "完整报价", "¥600"],
+    "data": {
+      "selectedOffer": {
+        "id": "figma-offer", "listingTitle": "比赛裁判 · 茂南区", "statusText": "待报价", "canQuote": true, "canAccept": false, "previewOnly": true, "serviceHint": "按已审核收费条款", "travelHint": "交通120＋住宿180", "travelLodgingText": "¥300", "platformHint": "本次不收额外平台费", "totalHint": "需客户明确确认",
+        "request": { "timeText": "11月21日 17:30 / 19:00—21:00", "serviceAddress": "北京时间", "budget": { "detailText": "服务费 ¥300 · 交通 ¥120 · 住宿 ¥180", "totalText": "¥600" } },
+        "quote": { "serviceText": "¥300", "travelText": "¥120", "lodgingText": "¥180", "platformText": "¥0", "totalText": "¥600", "detailText": "服务费 ¥300 + 交通 ¥120 + 住宿 ¥180", "routeText": "实际路线与返程待核验", "travelMethod": "交通120＋住宿180", "travelEvidence": "待独立审核", "terms": "客户确认当前完整报价后承接" }
+      }
+    }
+  },
+  {
+    "name": "training",
+    "route": "pages/training/index",
+    "figmaNode": "36:89",
+    "fixture": "ui006-training-figma.json",
+    "expectText": ["成人篮球基础班", "固定4课次", "周宸", "报名确认"],
+    "data": {
+      "detail": {
+        "id": "figma-course", "title": "成人篮球基础班", "description": "核对固定班期、课次、教练与课程合同。", "address": "高州 · 城北体育馆", "amount": "固定4课次", "scheduleLabel": "固定4课次", "locationLabel": "上课地点", "audienceLabel": "成人本人",
+        "sessions": [
+          { "id": "figma-lesson-1", "title": "第1课 · 控球与传球", "time": "11月21日 10:00—11:45", "statusText": "有名额", "coaches": [{ "id": "figma-coach", "name": "周宸" }] },
+          { "id": "figma-lesson-2", "title": "第2课 · 投篮动作", "time": "11月28日 10:00—11:45", "statusText": "", "coaches": [{ "id": "figma-coach", "name": "周宸" }] }
+        ],
+        "capabilities": { "canEnroll": true, "paidEnrollmentEnabled": true }
+      }
+    }
+  },
+  {
+    "name": "training-manage",
+    "route": "pages/training-manage/index",
+    "figmaNode": "36:90",
+    "fixture": "ui006-training-manage-figma.json",
+    "expectText": ["基础班 · 第1课", "提高班 · 第2课", "陈一鸣", "林子航"],
+    "data": {
+      "reviewCountText": "1项待核",
+      "teaching": [
+        { "id": "figma-teaching-1", "title": "基础班 · 第1课", "time": "11月21日 10:00—11:45", "stateLabel": "待授课" },
+        { "id": "figma-teaching-2", "title": "提高班 · 第2课", "time": "11月22日 15:00—16:45", "stateLabel": "" }
+      ],
+      "attendancePreview": [
+        { "id": "figma-attendance-1", "displayName": "陈一鸣", "note": "成人基础班 · 第1课", "checked": true, "statusText": "已签到" },
+        { "id": "figma-attendance-2", "displayName": "林子航", "note": "请假", "checked": false, "statusText": "需要处理" }
+      ]
+    }
+  },
+  {
+    "name": "org-event",
+    "route": "pages/org-event/index",
+    "figmaNode": "36:92",
+    "fixture": "platform-org-event-groups.json",
+    "expectText": ["办赛进度", "城市篮球邀请赛", "本届报名审核", "办赛工具"],
+    "data": {
+      "tab": "manage", "notice": "", "error": "", "matches": [],
+      "event": { "id": "figma-event", "name": "城市篮球邀请赛", "format": "GROUP_KNOCKOUT", "status": "REGISTRATION_OPEN", "statusLabel": "报名进行中", "formatLabel": "分组接淘汰", "dateLabel": "11月14日—11月29日", "venueName": "城北体育馆" },
+      "manage": { "review": true, "reviewLabel": "城北篮球队已提交名单", "seasonGrants": true, "progress": "", "ready": false, "blockers": [], "actions": [] }
+    }
+  },
+  {
+    "name": "event-setup",
+    "route": "pages/event-setup/index",
+    "figmaNode": "36:93",
+    "fixture": "c18-event-setup-directory.json",
+    "expectText": ["基本信息", "城市篮球邀请赛", "最少8人，最多12人", "公开范围"],
+    "data": {
+      "notice": "", "error": "", "setupSection": "basic", "setupGuide": null, "guideError": "", "compactRelated": true, "scoring": null, "standings": null,
+      "event": { "name": "城市篮球邀请赛", "status": "DRAFT", "statusLabel": "草稿", "formatLabel": "分组接淘汰", "dateLabel": "11月14日—11月29日", "venueName": "城北体育馆", "roundRobin": false, "knockout": true, "groups": true },
+      "draft": { "summaryMode": true, "name": "城市篮球邀请赛", "dateLabel": "11月14日—11月29日", "venueFormatLabel": "城北体育馆 · 分组接淘汰", "statusText": "草稿", "startDate": "2026-11-14", "endDate": "2026-11-29", "venueName": "城北体育馆", "formatIndex": 2 },
+      "registration": { "summaryMode": true, "minPlayers": "8", "maxPlayers": "12", "requireParticipantMaterials": true, "saved": true, "editable": false },
+      "viewing": { "active": false, "canEnable": false, "canDisable": false, "history": false },
+      "directory": { "summaryMode": true, "listed": false, "canList": false, "canUnlist": false, "lastNote": "" }
+    }
+  },
+  {
+    "name": "staff-configuration",
+    "route": "pages/staff-configuration/index",
+    "figmaNode": "36:94",
+    "fixture": "ui002-registration-staff-ready.json",
+    "expectText": ["示例篮球协会", "城市篮球邀请赛", "周宸", "林子航"],
+    "data": {
+      "type": "MEMBER", "eventLabel": "城市篮球邀请赛", "previewReviewOnly": true, "userId": "", "roleIndex": 0,
+      "organizations": [{ "id": "figma-org", "name": "示例篮球协会" }],
+      "workspace": { "capabilities": { "canManageMembers": true, "canManageStaff": true } },
+      "members": [
+        { "id": "figma-staff-zhou", "name": "周宸", "role": "EVENT_MANAGER", "roleText": "赛事管理员", "scopeText": "本届赛事", "status": "ACTIVE", "statusText": "启用" },
+        { "id": "figma-staff-lin", "name": "林子航", "role": "EVENT_STAFF", "roleText": "赛务工作人员", "scopeText": "本届赛事", "status": "ACTIVE", "statusText": "启用" }
+      ],
+      "staff": []
+    }
+  },
+  {
+    "name": "entry-review",
+    "route": "pages/entry-review/index",
+    "figmaNode": "36:95",
+    "fixture": "c14-entry-review-frozen.json",
+    "expectText": ["城北篮球队", "江南篮球队", "陈一鸣 · 7号", "审核处理"],
+    "data": {
+      "notice": "", "error": "", "reviewTab": "pending", "hideReviewMeta": true, "counts": [], "freeze": null, "rules": "",
+      "event": { "name": "城市篮球邀请赛", "status": "REGISTRATION_OPEN", "statusLabel": "报名进行中" },
+      "entries": [
+        { "key": "figma-entry-north", "id": "figma-entry-north", "teamName": "城北篮球队", "status": "SUBMITTED", "statusLabel": "待审核", "summaryText": "12人 · 版本2 · 已提交", "waiting": true, "previewVisible": true },
+        { "key": "figma-entry-south", "id": "figma-entry-south", "teamName": "江南篮球队", "status": "CHANGES_REQUESTED", "statusLabel": "已退回", "summaryText": "10人 · 版本1 · 需补充", "waiting": false, "previewVisible": true }
+      ],
+      "detail": { "id": "figma-entry-north", "version": 2, "teamName": "城北篮球队", "statusLabel": "待审核", "approve": true, "changes": true, "reject": true, "reviewBlocked": false,
+        "players": [
+          { "key": "figma-player-chen", "text": "陈一鸣 · 7号", "subtitle": "本人资料与照片", "statusText": "待核验" },
+          { "key": "figma-player-lin", "text": "林子航 · 23号", "subtitle": "外购保障凭证", "statusText": "待复核" }
+        ], "history": [] }
+    }
+  },
+  {
+    "name": "schedule",
+    "route": "pages/schedule/index",
+    "figmaNode": "36:96",
+    "fixture": "c15-schedule-groups-draft.json",
+    "expectText": ["8 支球队", "城北 vs 江南", "新城 vs 江岸", "发布检查"],
+    "data": {
+      "notice": "", "error": "", "scheduleTab": "groups", "state": "draft", "format": "GROUP_KNOCKOUT", "validated": false, "conflicts": [], "hideRevisionBadge": true, "hideSlotsSummary": true,
+      "event": { "name": "城市篮球邀请赛", "statusLabel": "报名已关闭", "dates": "11月14日—11月29日", "teams": 8, "teamsStatusText": "本届示例", "formatStatusText": "待核对" },
+      "groupCounts": [{ "value": 2, "label": "2 组" }], "groupIndex": 0,
+      "revision": { "id": "figma-revision", "status": "DRAFT", "rounds": 4, "count": 8, "canEdit": true, "canValidate": true, "canPublish": true, "canRedraw": false },
+      "fixtures": [
+        { "key": "figma-r1", "round": "第1轮", "home": "城北", "away": "江南", "time": "11月21日 19:00", "court": "一号场", "summaryText": "11月21日 19:00 · 一号场", "assigned": true, "statusText": "草稿" },
+        { "key": "figma-r2", "round": "第1轮", "home": "新城", "away": "江岸", "time": "11月21日 20:30", "court": "一号场", "summaryText": "11月21日 20:30 · 一号场", "assigned": true, "statusText": "草稿" }
+      ],
+      "draftGroups": [], "byes": ""
+    }
+  },
+  {
+    "name": "bracket",
+    "route": "pages/bracket/index",
+    "figmaNode": "36:97",
+    "fixture": "c15-bracket-complete.json",
+    "expectText": ["A组 · 积分", "城北篮球队", "半决赛一", "本轮发布条件"],
+    "data": {
+      "notice": "", "error": "", "bracketTab": "groups", "progress": "", "qualification": "", "kind": "GROUP_KNOCKOUT", "placements": [], "figmaPreviewCompact": true, "blocker": "来源赛果待核对", "next": { "round": 2 },
+      "event": { "name": "城市篮球邀请赛", "statusLabel": "", "formatLabel": "分组接淘汰" },
+      "groups": [{ "key": "A", "label": "A组", "qualified": "", "ties": "", "needsDraw": false, "draw": null, "rows": [
+        { "key": "figma-north", "rank": "1", "team": "城北篮球队", "record": "2胜", "diff": "+12", "points": "4", "summaryText": "2胜 · 本组成绩按锁定规则计算" },
+        { "key": "figma-south", "rank": "2", "team": "江南篮球队", "record": "1胜1负", "diff": "+2", "points": "3", "summaryText": "1胜1负 · 名次待最终核对" }
+      ] }],
+      "rounds": [{ "key": "semi", "label": "半决赛", "published": false, "slots": [
+        { "key": "semi-1", "label": "半决赛一", "matchId": "", "bye": false, "home": "A组第1", "away": "B组第2", "status": "PENDING", "statusLabel": "待定", "winner": null },
+        { "key": "semi-2", "label": "半决赛二", "matchId": "", "bye": false, "home": "B组第1", "away": "A组第2", "status": "PENDING", "statusLabel": "待定", "winner": null }
+      ] }]
+    }
+  },
+  {
+    "name": "reschedule",
+    "route": "pages/reschedule/index",
+    "figmaNode": "36:98",
+    "fixture": "c15-reschedule-history.json",
+    "expectText": ["城北 vs 江南", "城北体育馆一号场", "城北体育馆二号场", "检查并保存改期"],
+    "data": {
+      "notice": "", "error": "", "rescheduleTab": "original", "history": [], "hideBoundaryNote": true, "canReschedule": true, "conflicts": [], "date": "2026-11-22", "dateDisplay": "11月22日", "time": "19:00", "reason": "原场地维护，调整到次日晚场", "courtIndex": 0,
+      "match": { "eventName": "城市篮球邀请赛", "round": "小组赛", "home": "城北", "away": "江南", "status": "SCHEDULED", "statusLabel": "正式", "plan": "城北体育馆一号场 · 11月21日 19:00", "originalTime": "11月21日 19:00", "venueLabel": "场地", "venueName": "城北体育馆一号场", "venueStatusText": "正式", "duration": 60 },
+      "courts": [{ "id": "figma-court-2", "name": "城北体育馆二号场" }]
+    }
+  },
+  {
+    "name": "seasons",
+    "route": "pages/seasons/index",
+    "figmaNode": "36:99",
+    "fixture": "c19-season-detail-board.json",
+    "expectText": ["2026秋季赛季", "示例篮球协会", "城市篮球邀请赛", "私有统计口径"],
+    "data": {
+      "message": "", "error": "", "seasonTab": "profile", "board": null, "boardError": "", "boardTitle": "私有统计口径", "boardHint": "得分、犯规等指标仅来自本人授权后的有效赛果。",
+      "season": { "id": "figma-season", "orgId": "figma-org", "name": "2026秋季赛季", "organizationName": "示例篮球协会", "startDate": "2026.09.01", "endDate": "12.31", "status": "ACTIVE", "statusText": "已激活", "statusClass": "figma-status--orange", "version": 1,
+        "events": [
+          { "eventId": "figma-event-1", "name": "城市篮球邀请赛", "dateLabel": "11月14日—11月29日", "startDate": "11月14日", "endDate": "11月29日", "status": "RUNNING" },
+          { "eventId": "figma-event-2", "name": "秋季交流赛", "dateLabel": "10月10日—10月25日", "startDate": "10月10日", "endDate": "10月25日", "status": "COMPLETED" }
+        ], "candidates": [], "capabilities": { "canEdit": false, "canActivate": false, "canClose": false } }
+    }
+  },
+  {
+    "name": "scoring-tasks",
+    "route": "pages/scoring-tasks/index",
+    "figmaNode": "36:100",
+    "fixture": "c14-scoring-tasks.json",
+    "expectText": ["11月8日 · 体育中心", "19:00 城北对江南", "待核对赛果", "确认后才进入榜单"],
+    "data": {
+      "taskTab": "tasks", "scopeLabel": "", "sections": [
+        { "key": "pending", "label": "11月8日 · 体育中心", "items": [
+          { "key": "figma-task-1", "orgId": "figma-org", "matchId": "figma-match-1", "title": "19:00 城北对江南", "meta": "主馆 1号场 · 本场记分员", "score": "", "statusLabel": "待准备", "statusClass": "figma-status--orange", "live": false },
+          { "key": "figma-task-2", "orgId": "figma-org", "matchId": "figma-match-2", "title": "20:00 西城对河畔", "meta": "主馆 2号场 · 赛果复核人", "score": "", "statusLabel": "待开赛", "statusClass": "figma-status--orange", "live": false }
+        ] },
+        { "key": "review", "label": "待核对赛果", "items": [
+          { "key": "figma-review-1", "orgId": "figma-org", "matchId": "figma-match-3", "title": "新城 56 : 49 东岸", "meta": "11月7日 · 仅授权复核人操作", "score": "", "statusLabel": "待确认", "statusClass": "figma-status--orange", "hideIcon": true, "live": false },
+          { "key": "figma-review-2", "orgId": "figma-org", "matchId": "figma-match-4", "title": "城东 61 : 65 山海", "meta": "11月6日 · 查看独立确认记录", "score": "", "statusLabel": "已确认", "statusClass": "figma-status--green", "hideIcon": true, "live": false }
+        ] }
+      ], "orgErrors": [], "empty": false, "truncated": false
+    }
+  },
+  {
+    "name": "org-match",
+    "route": "pages/org-match/index",
+    "figmaNode": "36:101",
+    "fixture": "c14-org-match-ready.json",
+    "expectText": ["分节得分", "城北", "68", "场次人员", "陈一鸣", "独立确认赛果"],
+    "data": {
+      "notice": "", "error": "", "matchTab": "score", "hideScoreStatus": true, "hideBoardHint": true, "hideEmptyStaffHint": true,
+      "match": { "eventName": "", "summarySubtitle": "本场授权人员核对比分、人员与赛果", "round": "", "time": "", "court": "", "home": "城北", "away": "江南", "status": "ENDED", "statusLabel": "已结束", "rulesLabel": "", "leaseHeld": false },
+      "board": { "version": 4, "status": "ENDED", "statusLabel": "已结束", "final": true, "home": { "name": "城北", "score": 68, "fouls": 3, "timeouts": 1 }, "away": { "name": "江南", "score": 64, "fouls": 4, "timeouts": 1 }, "periodLabel": "第四节", "clockLabel": "0:00", "running": false, "periods": [{ "key": "1", "home": 18, "away": 15 }, { "key": "2", "home": 16, "away": 14 }, { "key": "3", "home": 17, "away": 18 }, { "key": "4", "home": 17, "away": 17 }] },
+      "staff": [{ "key": "figma-scorer", "name": "陈一鸣", "role": "记分员" }, { "key": "figma-reviewer", "name": "林予安", "role": "赛果复核人" }],
+      "caps": { "staff": false, "prepare": false, "score": true, "confirm": true, "reopen": false, "live": true }, "confirmations": [], "history": [], "historyError": ""
+    }
+  },
+  {
+    "name": "scorer",
+    "route": "pages/scorer/index",
+    "figmaNode": "36:102",
+    "fixture": "ui002-registration-scorer-console.json",
+    "expectText": ["第三节", "2:18", "城北", "68", "江南", "64", "暂停时钟"],
+    "data": {
+      "notice": "", "hideScoreStatus": true, "hideBoardHint": true,
+      "match": { "eventName": "", "home": "城北", "away": "江南", "status": "LIVE", "statusLabel": "" },
+      "board": {
+        "home": { "name": "城北", "score": 68, "periodScore": 17, "fouls": 3, "timeouts": 1 },
+        "away": { "name": "江南", "score": 64, "periodScore": 18, "fouls": 4, "timeouts": 1 },
+        "periodLabel": "第三节",
+        "clockLabel": "2:18",
+        "running": true
+      },
+      "history": [{ "key": "figma-score-1", "id": "figma-score-1", "seq": 2, "text": "12号 · 两分命中", "reason": "", "periodLabel": "已记录", "time": "", "voided": false, "canVoid": false }, { "key": "figma-score-2", "id": "figma-score-2", "seq": 1, "text": "8号 · 罚球命中", "reason": "", "periodLabel": "本节第一次", "time": "", "voided": false, "canVoid": false }]
+    }
+  },
+  {
+    "name": "match-exceptions", "route": "pages/match-exceptions/index", "figmaNode": "36:103", "fixture": "ui002-registration-exception-propose.json",
+    "expectText": ["城北 vs 江南", "单场弃权", "单场取消", "填写可核验的事实和时间", "提交独立复核"],
+    "data": { "notice": "", "error": "", "exceptionTab": "proposal", "hideLockedRuleHint": true, "hideSideChoice": true, "kind": "", "side": "", "reason": "", "match": { "homeTeamName": "城北", "awayTeamName": "江南" }, "event": { "id": "figma-event", "name": "城市邀请赛" }, "requests": [], "active": null }
+  },
+  {
+    "name": "season-grants", "route": "pages/season-grants/index", "figmaNode": "36:104", "fixture": "c19-season-organizer-nomination.json",
+    "expectText": ["2026 城市赛季", "示例篮球协会", "城市邀请赛 · 冻结名单", "陈一鸣 · 12号", "申请范围"],
+    "data": {
+      "mode": "player", "grantTab": "pending", "figmaPlayerPreview": true, "message": "", "error": "", "disclosure": null,
+      "season": { "id": "figma-season", "name": "2026 城市赛季", "status": "ACTIVE" },
+      "event": { "id": "figma-event", "name": "城市邀请赛" },
+      "figmaSource": { "orgName": "示例篮球协会", "eventName": "城市邀请赛 · 冻结名单", "playerName": "陈一鸣 · 12号" },
+      "figmaScopes": [{ "title": "得分与犯规", "subtitle": "以授权比赛记录为准" }, { "title": "名单场次", "subtitle": "区分名单场次与实际上场时间" }, { "title": "公开用途", "subtitle": "需要其他独立授权" }],
+      "grants": [{ "id": "figma-grant", "capabilities": { "canConsent": true, "canDecline": true, "canRevoke": false }, "effective": false, "statusText": "待本人确认" }]
+    }
+  },
+  {
+    "name": "match-media", "route": "pages/match-media/index", "figmaNode": "36:105", "fixture": "c16-match-media-marker.json",
+    "expectText": ["城市邀请赛 · 城北对江南", "小组赛全场录像", "比赛现场照片", "小组赛精彩回合", "创建媒体草稿"],
+    "data": {
+      "notice": "", "error": "", "upload": null, "hideUploadSection": true, "hideFileCaption": true, "hideFileActions": true, "hideEmptyFilesState": true, "figmaShowDraft": true, "hideDraftFilePicker": true, "hideEmptyDraftState": true, "hidePublishedSection": true, "segmentHint": "开始秒数 / 结束秒数",
+      "match": { "title": "城市邀请赛 · 城北对江南", "meta": "" },
+      "files": [{ "id": "figma-video", "name": "小组赛全场录像", "kind": "视频", "metaText": "视频 · 本场私有素材", "statusLabel": "本场私有素材", "canPreview": true, "canRevoke": false, "canPurge": false }, { "id": "figma-photo", "name": "比赛现场照片", "kind": "图片", "metaText": "图片 · 本场私有素材", "statusLabel": "本场私有素材", "canPreview": true, "canRevoke": false, "canPurge": false }],
+      "draftFiles": [{ "id": "figma-video", "name": "小组赛全场录像" }], "trustedHosts": [], "draftMode": "FILE", "draftIndex": 0, "title": "小组赛精彩回合", "rights": "填写来源与允许用途", "items": []
+    }
+  },
+  {
+    "name": "live-studio", "route": "pages/live-studio/index", "figmaNode": "36:106", "fixture": "e01-live-studio-ready.json",
+    "expectText": ["城北 vs 江南", "城市邀请赛 · 主馆", "直播频道 A", "正式目标账号待接入", "查看媒体作业"],
+    "data": {
+      "notice": "", "error": "", "session": null, "sessions": [], "figmaEnableMediaAction": true, "heroTitle": "城北 vs 江南", "eventSourceText": "城市邀请赛 · 主馆", "matchSummary": null,
+      "capabilities": { "canManage": false, "canExecute": false, "providerReady": true, "blockers": [] },
+      "channels": [{ "id": "figma-channel-a", "label": "直播频道 A", "platform": "", "subtitle": "正式同播权限待核验", "statusText": "未开放", "selected": false, "revoked": false }, { "id": "figma-channel-b", "label": "直播频道 B", "platform": "", "subtitle": "正式目标账号待接入", "statusText": "未开放", "selected": false, "revoked": false }]
+    }
+  },
+  {
+    "name": "media-jobs", "route": "pages/media-jobs/index", "figmaNode": "36:107", "fixture": "e02-media-jobs-ready.json",
+    "expectText": ["城市邀请赛 · 录像工作单", "录像校准", "全场转码", "得分集锦", "授权交付"],
+    "data": {
+      "notice": "", "error": "", "hidePreviewNotice": true, "hideEmptyMediaState": true, "figmaHasRecordingSource": true, "figmaShowProcessing": true, "hideProcessingIcons": true, "figmaDeliverySteps": true, "mediaTab": "recording", "anchorAt": "", "processingCount": 2, "artifacts": [],
+      "session": { "eventName": "城市邀请赛" },
+      "jobs": [{ "id": "figma-transcode", "kind": "TRANSCODE", "kindText": "全场转码", "subtitle": "城市邀请赛 · 青年组", "status": "RUNNING", "statusText": "处理中", "version": 1 }, { "id": "figma-highlights", "kind": "HIGHLIGHTS", "kindText": "得分集锦", "subtitle": "核对有效得分事件", "status": "QUEUED", "statusText": "待处理", "version": 1 }]
+    }
+  },
+  {
+    "name": "participant-materials",
+    "route": "pages/participant-materials/index",
+    "figmaNode": "36:108",
+    "fixture": "c23-materials-draft.json",
+    "expectText": ["本人报名资料", "城市邀请赛 · 12号", "本届身份", "清晰本人照片", "用途授权"],
+    "data": {
+      "figmaSummaryTitle": "城市邀请赛 · 12号",
+      "figmaJerseyNumber": "12",
+      "workspace": { "eventName": "城市邀请赛" },
+      "message": "",
+      "error": "",
+      "pending": false
+    }
+  },
+  {
+    "name": "insurance",
+    "route": "pages/insurance/index",
+    "figmaNode": "36:109",
+    "fixture": "e03-insurance-ready.json",
+    "expectText": ["保险与保障", "城市邀请赛 · 保障核对", "两种办理方式", "保障核对", "办理进度"],
+    "data": {
+      "activeSection": "options",
+      "workspace": { "eventName": "城市邀请赛", "enabled": false, "reason": "" },
+      "quote": null,
+      "message": "",
+      "pending": null,
+      "figmaHideClosedFeedback": true
+    }
+  },
+  {
+    "name": "qualification-precheck",
+    "route": "pages/qualification-precheck/index",
+    "figmaNode": "36:110",
+    "fixture": "e03-qualification-precheck-ready.json",
+    "expectText": ["独立资格预审", "城市邀请赛 · 本人资格", "本次预审", "独立核验", "后续办理", "已有外部保单", "在线保险"],
+    "data": {
+      "selectedMemberId": "00000000-0000-4000-8000-000000000014",
+      "figmaHidePrecheckOperations": true,
+      "figmaHideEmptyParticipants": true,
+      "selectedParticipant": {
+        "memberId": "00000000-0000-4000-8000-000000000014",
+        "canRequest": false,
+        "materialVersion": 2,
+        "requestId": "00000000-0000-4000-8000-000000000015",
+        "requestCurrent": false,
+        "materialRevisionId": "00000000-0000-4000-8000-000000000016",
+        "hasPortrait": true,
+        "hasIdentity": true,
+        "hasRealName": true,
+        "hasSignature": true,
+        "qualification": null
+      },
+      "workspace": {
+        "eventName": "城市邀请赛",
+        "canReview": true,
+        "participants": [{
+          "memberId": "00000000-0000-4000-8000-000000000014",
+          "canRequest": false,
+          "materialVersion": 2,
+          "requestCurrent": false,
+          "hasPortrait": true,
+          "hasIdentity": true,
+          "hasRealName": true,
+          "hasSignature": true,
+          "qualification": null
+        }]
+      },
+      "message": ""
+    }
+  },
+  {
+    "name": "guardian",
+    "route": "pages/guardian/index",
+    "figmaNode": "36:111",
+    "fixture": "e08-guardian-ready.json",
+    "expectText": ["城市邀请赛 · 青年报名", "必要资料处理", "本届别名 · 陈同学", "可选公开用途"],
+    "data": {
+      "hasMaterialScope": true,
+      "policy": { "eventName": "城市邀请赛", "canConfigure": false, "canInviteData": false },
+      "requests": [],
+      "preconsents": [],
+      "selected": null,
+      "adultDataScopes": [],
+      "adultSelected": null,
+      "form": { "subjectAlias": "本届别名 · 陈同学" },
+      "proofName": "",
+      "message": "",
+      "figmaHideSubjectStatus": true
+    }
+  },
+  {
+    "name": "youth-review",
+    "route": "pages/youth-review/index",
+    "figmaNode": "36:112",
+    "fixture": "e08-youth-review-ready.json",
+    "expectText": ["城市邀请赛 · 青年报名", "参与者", "监护关系", "授权版本", "独立核对"],
+    "data": {
+      "policy": { "eventName": "城市邀请赛" },
+      "requests": [{ "id": "figma-youth-review", "subjectName": "陈同学", "eventName": "城市邀请赛", "current": true, "statusLabel": "待独立关系审核" }],
+      "selected": { "subjectName": "陈同学", "eventName": "城市邀请赛", "current": true, "statusLabel": "待独立关系审核" },
+      "message": "",
+      "figmaCompactReview": true
+    }
+  },
+  {
+    "name": "planned",
+    "route": "pages/planned/index",
+    "figmaNode": "36:113",
+    "fixture": "c10-account-planned-payment.json",
+    "expectText": ["费用规则", "确定场次报价", "条件意向", "原单查询"],
+    "data": { "selected": "funds", "optionsOpen": false, "refundProgress": false }
+  },
+  {
+    "name": "account-recovery",
+    "route": "pages/account-recovery/index",
+    "figmaNode": "36:117",
+    "fixture": "ui002-live-account-recovery-workflow.json",
+    "expectText": ["申请操作码", "使用操作码", "本人邮箱", "使用邮件操作码", "处理进度"],
+    "data": {
+      "email": "",
+      "token": "",
+      "newPassword": "",
+      "enabled": true,
+      "busy": false,
+      "pending": false,
+      "message": "",
+      "error": "",
+      "activeMode": "request",
+      "requestStatus": "idle",
+      "receiptStatus": "idle"
+    }
+  },
+  {
+    "name": "messages",
+    "route": "pages/messages/index",
+    "figmaNode": "36:118",
+    "fixture": "e05-messages-ready.json",
+    "expectText": ["消息收件箱", "比赛时间已调整", "报名资料需要补充", "预约待确认", "报名审核意见", "消息工具"],
+    "data": {
+      "items": [
+        { "id": "figma-message-1", "title": "比赛时间已调整", "figmaSubtitle": "城市邀请赛 · 请查看最新赛程", "readAt": null, "isToday": true },
+        { "id": "figma-message-2", "title": "报名资料需要补充", "figmaSubtitle": "本届本人照片待更新", "readAt": null, "isToday": true },
+        { "id": "figma-message-3", "title": "预约待确认", "figmaSubtitle": "示例篮球馆 · 11月8日档期", "readAt": "2028-01-01T00:00:00Z", "isToday": false },
+        { "id": "figma-message-4", "title": "报名审核意见", "figmaSubtitle": "进入原报名查看具体原因", "readAt": "2028-01-01T00:00:00Z", "isToday": false }
+      ],
+      "todayCount": 2,
+      "earlierCount": 2,
+      "unreadCount": 2,
+      "nextCursor": null,
+      "messageFilter": "all",
+      "loading": false,
+      "busy": false,
+      "error": "",
+      "message": "",
+      "pending": false,
+      "loginRequired": false,
+      "figmaCompactMessages": true
+    }
+  },
+  { "name": "notification-settings", "route": "pages/notification-settings/index", "figmaNode": "36:119", "fixture": "e05-notification-settings-ready.json", "data": { "loading": false, "busy": false, "loginRequired": false, "enabled": true, "error": "", "message": "", "pending": null, "activeView": "settings", "selected": "", "intent": null, "subscriptions": [], "figmaNotificationPreview": true, "kinds": [{ "kind": "REGISTRATION_REVIEW", "label": "报名结果", "subtitle": "本届报名审核有新进度", "templateId": "figma-registration" }, { "kind": "MATCH_RESCHEDULED", "label": "赛程改期", "subtitle": "已关注或获准接收的赛程变化", "templateId": "figma-match" }, { "kind": "BOOKING_PROGRESS", "label": "预约进度", "subtitle": "本人预约的状态提醒", "templateId": "figma-booking" }] }, "expectText": ["微信订阅提醒", "每次订阅都由本人选择并确认", "微信弹窗确认", "报名结果"] },
+  { "name": "account-closure", "route": "pages/account-closure/index", "figmaNode": "36:120", "fixture": "e07-account-closure-ready.json", "data": { "loading": false, "busy": false, "loginRequired": false, "enabled": true, "request": null, "pending": false, "error": "", "message": "", "activeView": "check", "coolingOffDays": 0, "dayOptions": ["以24小时为一天计", "1天", "2天", "3天", "4天", "5天", "6天", "7天"], "figmaClosurePreview": true, "figmaOrderStatus": "待处理" }, "expectText": ["注销前安全检查", "当前待办", "未结束的服务订单", "刷新核对结果"] },
+  { "name": "governance", "route": "pages/governance/index", "figmaNode": "36:121", "fixture": "ui002-live-governance-workflow.json", "data": { "loading": false, "busy": false, "loginRequired": false, "error": "", "notice": "", "pending": null, "mode": "mine", "isOperator": true, "selected": null, "nextCursor": null, "items": [{ "id": "figma-case-1", "title": "预约时间有调整", "createdAt": "城北球队 · 周末约赛", "statusLabel": "处理中" }, { "id": "figma-case-2", "title": "报名资料补交", "createdAt": "城市邀请赛 · 本届报名", "statusLabel": "已回复" }], "figmaGovernancePreview": true }, "expectText": ["服务支持中心", "预约时间有调整", "报名资料补交", "提交支持事项"] },
+  { "name": "governance-reviews", "route": "pages/governance-reviews/index", "figmaNode": "36:122", "fixture": "ui002-live-governance-reviews-workflow.json", "data": { "loading": false, "busy": false, "loginRequired": false, "error": "", "notice": "", "pending": null, "mode": "mine", "isOperator": true, "sourceReady": true, "isPublic": false, "publicReview": null, "items": [], "nextCursor": null, "figmaReviewPreview": true, "figmaSummaryTitle": "示例篮球馆 · 场地预约", "figmaSourceOrderText": "城北篮球队 · 11月8日", "figmaSourceProviderText": "示例篮球馆" }, "expectText": ["服务评价", "示例篮球馆 · 场地预约", "城北篮球队 · 11月8日", "提交评价"] },
+  { "name": "platform", "route": "pages/platform/index", "figmaNode": "36:123", "fixture": "c10-fulfill-platform-ready.json", "data": { "loading": false, "busy": false, "loginRequired": false, "error": "", "allowed": true, "reviewQueue": [], "orders": [], "feePercent": "", "feeDirty": false, "reviewOpen": false, "paymentNotice": "", "figmaPlatformPreview": true }, "expectText": ["平台运营工作台", "预约与争议", "服务人员资料", "核对当前权限"] },
+  { "name": "sponsorships", "route": "pages/sponsorships/index", "figmaNode": "36:124", "fixture": "ui002-live-sponsorships-workflow.json", "data": { "mode": "manage", "organizations": [{ "id": "figma-org", "name": "示例篮球协会" }], "orgIndex": 0, "selected": { "id": "figma-sponsor", "brand": "城市邀请赛", "title": "场边广告", "status": "DRAFT", "statusLabel": "草稿" }, "items": [], "pending": null, "busy": false, "loading": false, "error": "", "notice": "", "loginRequired": false, "figmaCompactSponsorship": true, "figmaSummaryTitle": "城市邀请赛 · 场边广告" }, "expectText": ["城市邀请赛 · 场边广告", "投放内容", "发布流程", "提交独立审核"] },
+  { "name": "sponsor-commerce", "route": "pages/sponsor-commerce/index", "figmaNode": "36:125", "fixture": "ui002-services-sponsor-statements.json", "data": { "mode": "manage", "workspaceView": "contracts", "detail": null, "pending": null, "busy": false, "loading": false, "error": "", "notice": "", "enabled": false, "figmaCommercePreview": true, "figmaSummaryTitle": "城市邀请赛 · 场边赞助" }, "expectText": ["城市邀请赛 · 场边赞助", "固定价合同", "收款与交付", "查看合同条款"] },
+  { "name": "public-ledgers", "route": "pages/public-ledgers/index", "figmaNode": "36:126", "fixture": "ui002-live-public-ledgers-workflow.json", "data": { "isPublic": false, "selected": { "id": "figma-ledger", "title": "经费账本", "publicKey": "figma-public", "entries": [] }, "pending": null, "busy": false, "loading": false, "error": "", "notice": "", "loginRequired": false, "ledgerSection": "overview", "figmaLedgerPreview": true, "figmaSummaryTitle": "城市邀请赛 · 经费账本" }, "expectText": ["城市邀请赛 · 经费账本", "已审批线下账目", "账本条目", "查看当前公示"] },
+  { "name": "trade-order", "route": "pages/trade-order/index", "figmaNode": "36:127", "fixture": "e04-trade-order-figma-summary.json", "data": { "loading": false, "busy": false, "loginRequired": false, "error": "", "message": "", "pending": null, "noCharge": false, "activeSection": "summary", "order": { "title": "城市邀请赛 · 参赛服务", "serviceFeeLabel": "参赛服务费", "serviceFeeHint": "单场报价", "serviceFeeText": "¥200", "platformFeeHint": "按本单条款", "platformFeeText": "¥20", "totalText": "¥220", "orderSummary": "城北篮球队 · 11月8日", "merchantName": "示例篮球服务社", "terms": "按下单时约定查看", "paidFen": 0, "refunds": [], "balanceConflict": false, "status": "PENDING_PAYMENT" } }, "expectText": ["确定费用", "参赛服务费", "支付核对", "收款资料", "查看退款记录", "查询原支付"] },
+  { "name": "trade-manage", "route": "pages/trade-manage/index", "figmaNode": "36:128", "fixture": "e04-trade-manage-ready.json", "data": { "busy": false, "loading": false, "error": "", "message": "", "pending": null, "activeView": "terms", "figmaTradeManagePreview": true, "figmaSummaryTitle": "示例篮球协会 · 机构交易" }, "expectText": ["后续收费条款", "报名费", "原订单核对", "渠道日账", "读取本机构交易"] },
+  { "name": "city-operations", "route": "pages/city-operations/index", "figmaNode": "36:129", "fixture": "ui002-live-city-operations-workflow.json", "data": { "busy": false, "loading": false, "error": "", "notice": "", "pending": null, "loginRequired": false, "figmaCityPreview": true, "figmaSummaryTitle": "高州服务范围" }, "expectText": ["城市运营授权", "高州服务范围", "已分派事项", "查看已分派工单"] }
+]

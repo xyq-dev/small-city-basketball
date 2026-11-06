@@ -1,10 +1,10 @@
 {
-  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "designSource": "UI006 36:54 local implementation with synthetic API-shaped data, not real provider acceptance",
   "static": true,
   "name": "ui002-root-local-listed",
   "route": "pages/local/index",
   "state": "populated",
-  "figmaNode": "4:206",
+  "figmaNode": "36:54",
   "data": {
     "selection": {
       "mode": "REGION",
@@ -33,7 +33,8 @@
   },
   "expectText": [
     "合成文化体育中心东区篮球场长名称测试",
-    "查看场馆与可约时间",
-    "地图地点解析暂未开放"
+    "查看档期",
+    "地图地点",
+    "调整距离起点"
   ]
 }

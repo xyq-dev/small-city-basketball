@@ -3,7 +3,7 @@
   "route": "pages/performance/index",
   "state": "review",
   "figmaNode": "30:1975",
-  "expectText": ["请核对关联对象", "同意后公开什么", "核对并明确同意"],
+  "expectText": ["核对本人参赛记录", "有限公开的内容", "核对并同意"],
   "syntheticData": true,
   "data": {
     "authorized": true,

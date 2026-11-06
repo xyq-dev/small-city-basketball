@@ -4,7 +4,7 @@
   "state": "synthetic-ui002",
   "static": true,
   "designSource": "UI001 design + current native route; synthetic static compatibility only, not real channel acceptance",
-  "expectText": ["暂无当前可用媒体产物", "完成有权录制并核验产物后", "录像与频道状态分开"],
+  "expectText": ["暂无当前可用媒体产物", "完成有权录制并核验产物后", "处理边界", "授权预览"],
   "data": {
     "jobs": [],
     "artifacts": [],

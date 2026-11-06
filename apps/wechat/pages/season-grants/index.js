@@ -44,6 +44,8 @@ Page({
     loading: false,
     busy: false,
     error: '',
+    grantTab: 'pending',
+    figmaPlayerPreview: false,
     ...privateDefaults(),
   },
   onLoad(query) {
@@ -373,6 +375,11 @@ Page({
     const values = (event.detail && event.detail.value) || [];
     this.setData({ acknowledged: values.length ? id : '' });
   },
+  changeGrantTab(event) {
+    if (this.data.busy) return;
+    const grantTab = event.currentTarget.dataset.tab;
+    if (['pending', 'all', 'stats'].includes(grantTab)) this.setData({ grantTab });
+  },
   async answer(event) {
     const { id, type } = event.currentTarget.dataset;
     const grant = this.data.grants.find((g) => g.id === id);
@@ -437,7 +444,7 @@ Page({
       return;
     }
     const token = ui.begin(this);
-    this.setData({ loading: true, statsError: '' });
+    this.setData({ loading: true, statsError: '', grantTab: 'stats' });
     await this.loadStats(this._statsKey, token);
     if (ui.live(this, token)) this.setData({ loading: false });
   },

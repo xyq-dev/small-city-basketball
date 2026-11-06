@@ -3,6 +3,8 @@ const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const reset = {
   profiles: [],
+  primaryProfile: null,
+  secondaryProfiles: [],
   pendingSources: [],
   teams: [],
   events: [],
@@ -14,6 +16,8 @@ const reset = {
   kind: 'PLAYER',
   reason: '',
   publicConsent: false,
+  publicConsentProfileId: '',
+  publicConsentProfileVersion: null,
   publisherConsent: false,
   disclosureNotice: '',
   optionsTruncated: false,
@@ -30,9 +34,11 @@ Page({
   },
   onUnload() {
     this._alive = false;
+    this._publicConsentRevision = (this._publicConsentRevision || 0) + 1;
     ui.close(this);
   },
   onSessionReset() {
+    this._publicConsentRevision = (this._publicConsentRevision || 0) + 1;
     this._pending = null;
     this._viewer = null;
     this.setData({
@@ -45,6 +51,7 @@ Page({
   },
   async load() {
     if (this.data.busy) return;
+    this.clearPublicConsent();
     const token = ui.begin(this);
     this.setData({ loading: true, error: '' });
     try {
@@ -58,12 +65,15 @@ Page({
       this._viewer = session.user.id;
       const result = (await client.request('/v1/me/public-archives')).data;
       if (!ui.live(this, token)) return;
+      const profiles = result.profiles || [];
       this.setData({
         loading: false,
         loginRequired: false,
-        profiles: result.profiles,
+        profiles,
+        primaryProfile: profiles[0] || null,
+        secondaryProfiles: profiles.slice(1),
         pendingSources: result.pendingSources.filter(
-          (s) => !result.profiles.some((p) => p.sources.some((source) => source.id === s.id)),
+          (s) => !profiles.some((p) => p.sources.some((source) => source.id === s.id)),
         ),
         teams: result.manageableTeams,
         events: result.manageableEvents,
@@ -81,7 +91,42 @@ Page({
   },
   consent(e) {
     const f = e.currentTarget.dataset.field;
-    if (['publicConsent', 'publisherConsent'].includes(f)) this.setData({ [f]: !!e.detail.value });
+    if (['publicConsent', 'publisherConsent'].includes(f)) {
+      const value = e.detail.value;
+      const checked = Array.isArray(value) ? value.includes('yes') : value === true;
+      if (f === 'publisherConsent') {
+        this.setData({ publisherConsent: checked });
+        return;
+      }
+      if (!checked) {
+        this.clearPublicConsent();
+        return;
+      }
+      if (this.data.busy || this.data.pending || this.data.loading) return;
+      const profile = this.data.profiles.find((p) => p.id === e.currentTarget.dataset.id);
+      if (
+        !profile ||
+        profile.status === 'PUBLISHED' ||
+        profile.version !== Number(e.currentTarget.dataset.version)
+      ) {
+        this.clearPublicConsent();
+        return;
+      }
+      this._publicConsentRevision = (this._publicConsentRevision || 0) + 1;
+      this.setData({
+        publicConsent: true,
+        publicConsentProfileId: profile.id,
+        publicConsentProfileVersion: profile.version,
+      });
+    }
+  },
+  clearPublicConsent() {
+    this._publicConsentRevision = (this._publicConsentRevision || 0) + 1;
+    this.setData({
+      publicConsent: false,
+      publicConsentProfileId: '',
+      publicConsentProfileVersion: null,
+    });
   },
   kind(e) {
     this.setData({ kind: e.currentTarget.dataset.kind });
@@ -134,13 +179,19 @@ Page({
   selectOption(e) {
     this.setData({ optionIndex: Number(e.detail.value) });
   },
-  async write(path, body, label) {
+  async write(path, body, label, valid) {
     if (this.data.busy || this.data.pending) return;
+    if (valid && !valid()) return;
     const token = ui.hold(this);
     this.setData({ busy: true, error: '', notice: '' });
     try {
       body = { ...body, commandId: await ui.uuid() };
       if (!ui.held(this, token)) return;
+      if (valid && !valid()) {
+        this.clearPublicConsent();
+        this.setData({ busy: false, error: '当前档案或公开授权已变化，请重新核对并勾选。' });
+        return;
+      }
       this._pending = { path, body, label, actor: this._viewer };
       await this.submit(token);
     } catch (e) {
@@ -154,6 +205,7 @@ Page({
       await api.getClient().request(pending.path, 'POST', pending.body);
       if (!ui.held(this, token)) return;
       this._pending = null;
+      this.clearPublicConsent();
       this.setData({
         busy: false,
         pending: null,
@@ -213,29 +265,55 @@ Page({
       );
   },
   async profileCommand(e) {
+    if (this.data.busy || this.data.pending || this.data.loading) return;
     const p = this.data.profiles.find((p) => p.id === e.currentTarget.dataset.id),
       type = e.currentTarget.dataset.type;
     if (!p) return;
-    if (type === 'PUBLISH' && !this.data.publicConsent) {
+    const profileId = p.id,
+      version = p.version,
+      consentRevision = this._publicConsentRevision || 0;
+    const consentCurrent = () =>
+      this.data.publicConsent === true &&
+      this.data.publicConsentProfileId === profileId &&
+      this.data.publicConsentProfileVersion === version &&
+      consentRevision === (this._publicConsentRevision || 0) &&
+      this.data.profiles.some(
+        (current) =>
+          current.id === profileId && current.version === version && current.status !== 'PUBLISHED',
+      );
+    if (type === 'PUBLISH' && !consentCurrent()) {
+      this.clearPublicConsent();
       this.setData({ error: '请明确勾选独立公开授权。' });
       return;
     }
+    const target =
+      '档案：' +
+      p.displayName +
+      '\n主体类型：' +
+      (p.kind === 'PLAYER' ? '本人球员档案' : '本人有权管理的球队档案') +
+      '\n';
     const op = await ui.confirmOp(
       this,
       type === 'PUBLISH' ? '发布公开档案' : '撤销公开档案',
       type === 'PUBLISH'
-        ? this.data.disclosureNotice
-        : '撤销后旧分享链接永久失效，公开榜单即时移除。',
+        ? target + this.data.disclosureNotice
+        : target + '撤销后旧分享链接永久失效，公开榜单即时移除。',
     );
     if (!op || !op.valid()) return;
-    this.write(
-      '/v1/me/public-archives/' + api.uuid(p.id) + '/commands',
+    if (type === 'PUBLISH' && !consentCurrent()) {
+      this.clearPublicConsent();
+      this.setData({ error: '当前档案或公开授权已变化，请重新核对并勾选。' });
+      return;
+    }
+    return this.write(
+      '/v1/me/public-archives/' + api.uuid(profileId) + '/commands',
       {
-        expectedVersion: p.version,
+        expectedVersion: version,
         type,
         ...(type === 'PUBLISH' ? { publicConsent: true } : { reason: '本人或组织撤销公开授权' }),
       },
       type === 'PUBLISH' ? '发布档案' : '撤销档案',
+      type === 'PUBLISH' ? () => op.valid() && consentCurrent() : undefined,
     );
   },
   nominate() {

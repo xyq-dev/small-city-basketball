@@ -7,6 +7,8 @@ const follows = require('../../utils/follows');
 // late confirmation). INVALID rows show no withdrawn event details and cannot be opened.
 const EMPTY = Object.freeze({
   items: [],
+  activeItems: [],
+  inactiveItems: [],
   nextCursor: null,
   loading: false,
   loadingMore: false,
@@ -73,12 +75,16 @@ Page({
     this._viewer = session.user.id;
     try {
       const result = await follows.page(client, null);
-      if (ui.live(this, token) && gen === this._listGen)
+      if (ui.live(this, token) && gen === this._listGen) {
+        const items = result.items.map(follows.view);
         this.setData({
-          items: result.items.map(follows.view),
+          items,
+          activeItems: items.filter((item) => item.status === 'ACTIVE'),
+          inactiveItems: items.filter((item) => item.status !== 'ACTIVE'),
           nextCursor: result.nextCursor,
           loading: false,
         });
+      }
     } catch (error) {
       if (ui.live(this, token) && gen === this._listGen)
         this.setData({ items: [], nextCursor: null, loading: false, error: ui.message(error) });
@@ -93,8 +99,11 @@ Page({
     try {
       const result = await follows.page(api.getClient(), cursor);
       if (gen !== this._listGen || !ui.held(this, token)) return;
+      const items = follows.merge(this.data.items, result.items.map(follows.view));
       this.setData({
-        items: follows.merge(this.data.items, result.items.map(follows.view)),
+        items,
+        activeItems: items.filter((item) => item.status === 'ACTIVE'),
+        inactiveItems: items.filter((item) => item.status !== 'ACTIVE'),
         nextCursor: result.nextCursor,
         loadingMore: false,
       });
@@ -117,6 +126,11 @@ Page({
     // Only a currently readable follow opens; an INVALID row never links to the old key.
     if (!item || item.status !== 'ACTIVE') return;
     wx.navigateTo({ url: '/pages/event/index?event=' + api.publicId(id) });
+  },
+  openFirst() {
+    const item = this.data.activeItems[0];
+    if (!item) return;
+    this.openEvent({ currentTarget: { dataset: { id: item.publicEventId } } });
   },
   async cancel(e) {
     if (this.data.busy || this.data.loading) return;
@@ -142,10 +156,13 @@ Page({
     try {
       await follows.cancel(api.getClient(), followId);
       if (!still()) return this.abandon(gen);
+      const items = this.data.items.filter((v) => v.followId !== followId);
       this.setData({
         busy: false,
         cancelling: '',
-        items: this.data.items.filter((v) => v.followId !== followId),
+        items,
+        activeItems: items.filter((value) => value.status === 'ACTIVE'),
+        inactiveItems: items.filter((value) => value.status !== 'ACTIVE'),
         notice: '已取消关注。',
       });
     } catch (error) {

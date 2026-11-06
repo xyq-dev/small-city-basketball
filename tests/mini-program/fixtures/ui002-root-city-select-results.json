@@ -1,10 +1,10 @@
 {
-  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "designSource": "UI006 36:57 city-select implementation with synthetic API-shaped data, not real directory acceptance",
   "static": true,
   "name": "ui002-root-city-select-results",
   "route": "pages/city-select/index",
   "state": "populated",
-  "figmaNode": "5:162",
+  "figmaNode": "36:57",
   "data": {
     "mode": "REGION",
     "regionId": "00000000-0000-4000-8000-000000000003",
@@ -58,5 +58,5 @@
       }
     ]
   },
-  "expectText": ["选择浏览地区", "北京市 / 朝阳区", "吉林省 / 长春市 / 朝阳区", "高州（历史文字）"]
+  "expectText": ["选择地区", "最近选择", "北京市 / 朝阳区", "吉林省 / 长春市 / 朝阳区", "高州"]
 }

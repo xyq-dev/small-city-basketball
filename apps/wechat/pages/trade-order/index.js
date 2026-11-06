@@ -16,11 +16,13 @@ Page({
     reason: '',
     evidence: '',
     noCharge: false,
+    loginRequired: false,
+    figmaState: '',
     activeSection: 'summary',
     workflowSteps: [
-      { key: 'summary', label: '金额与收款方' },
-      { key: 'payments', label: '原付款核对' },
-      { key: 'resolution', label: '退款与扣减' },
+      { key: 'summary', label: '费用' },
+      { key: 'payments', label: '支付' },
+      { key: 'resolution', label: '退款' },
     ],
   },
   onLoad(q) {
@@ -124,6 +126,18 @@ Page({
   },
   fundingProgress() {
     this.changeSection({ detail: { key: 'resolution' } });
+  },
+  queryLatestPayment() {
+    if (this.data.busy || this.data.loading) return;
+    const attempts = this.data.order?.attempts || [];
+    const attempt = attempts[0];
+    if (!attempt) {
+      this.changeSection({ detail: { key: 'payments' } });
+      return;
+    }
+    return this.query({
+      currentTarget: { dataset: { type: 'payments', id: attempt.id } },
+    });
   },
   input(e) {
     if (!this.data.busy && ['amount', 'reason', 'evidence'].includes(e.currentTarget.dataset.field))
@@ -268,6 +282,11 @@ Page({
     const a = this.data.order.attempts.find((x) => x.id === e.currentTarget.dataset.id);
     if (a && a.checkout && a.checkout.mode === 'NATIVE')
       wx.setClipboardData({ data: a.checkout.codeUrl });
+  },
+  queryCurrent() {
+    const attempt = this.data.order && (this.data.order.attempts || [])[0];
+    if (!attempt || this.data.busy) return;
+    return this.query({ currentTarget: { dataset: { type: 'payments', id: attempt.id } } });
   },
   async query(e) {
     const o = this.data.order;

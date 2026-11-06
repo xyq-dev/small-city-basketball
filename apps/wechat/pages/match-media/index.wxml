@@ -1,146 +1,111 @@
-<scb-header title="比赛媒体与授权" disabled="{{busy}}"/>
-<view class="page mgmt-page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">本场媒体</view><view class="title">上传、片段、发布与撤回</view></view>
-  <view wx:if="{{loading && !match}}" class="card state-panel"><text class="state-label">比赛媒体</text><view class="subtitle">正在读取媒体资料</view><view class="loading-lines"><view></view><view></view></view></view>
-  <view wx:elif="{{!match}}" class="card state-panel">
-    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
-    <view class="subtitle">{{unavailable ? '无法管理本场媒体' : '暂时无法读取'}}</view>
-    <view class="notice warning">{{error || '请从比赛详情重新进入。'}}</view>
-    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+<scb-header title="本场媒体" disabled="{{busy || uncertain}}"/>
+
+<view class="figma-page match-media-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view wx:if="{{loading && !match}}" class="figma-section"><figma-skeleton rows="5"/><view class="figma-caption">正在读取本场私有文件、媒体草稿与发布状态</view></view>
+    <figma-feedback
+      wx:elif="{{!match}}"
+      type="{{unavailable ? 'pending' : 'error'}}"
+      title="{{unavailable ? '无法管理本场媒体' : '媒体资料读取失败'}}"
+      body="{{error || '请从比赛详情重新进入。'}}"
+      action-label="{{unavailable ? '' : '重新读取'}}"
+      bind:action="load"
+    />
+
+    <block wx:else>
+      <figma-feedback wx:if="{{error && !uncertain}}" type="error" title="媒体操作未完成" body="{{error}}"/>
+      <figma-feedback wx:if="{{notice}}" type="success" title="操作已确认" body="{{notice}}"/>
+      <figma-feedback wx:if="{{uncertain}}" type="pending" title="操作结果待核对" body="网络中断时服务端可能已经执行。请先重新读取核对；在此之前不能继续上传或发布。" action-label="重新读取核对" bind:action="load" disabled="{{loading || busy}}"/>
+      <figma-feedback wx:if="{{storageError}}" type="error" title="本机保护记录不可用" body="{{storageError}}"/>
+
+      <view wx:if="{{pending}}" class="figma-section match-media-pending">
+        <view class="figma-section__title">{{pending.title}}</view>
+        <view class="figma-section__hint">发起于 {{pending.at}}。旧接口没有请求编号，系统不能自动证明结果，也不会自动重试。</view>
+        <figma-feedback wx:if="{{!pending.candidates.length}}" type="pending" title="暂未发现候选结果" body="原请求可能仍在处理，可稍后重新读取。"/>
+        <view wx:for="{{pending.candidates}}" wx:key="id" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">可能对应的记录</view><view class="figma-row__subtitle">{{item.text}}</view></view><button class="match-media-link" data-id="{{item.id}}" bindtap="confirmPending" disabled="{{busy}}">是这一份</button></view>
+        <view class="match-media-two-actions"><button class="figma-action figma-action--navy" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button><button class="figma-action figma-action--ghost" bindtap="dismissPending" disabled="{{busy}}">结束此记录</button></view>
+      </view>
+
+      <view wx:if="{{request}}" class="figma-section">
+        <view class="figma-section__title">{{request.title}}</view>
+        <view class="figma-section__hint">请求编号 {{request.shortId}}… · {{request.at}}；编号与内容摘要已保存在本机。</view>
+        <figma-feedback type="{{request.state === 'conflict' || request.state === 'local' ? 'error' : 'pending'}}" title="请求状态" body="{{request.message}}"/>
+        <view class="match-media-request-actions"><button wx:if="{{request.canQuery}}" class="figma-action figma-action--ghost" bindtap="queryRequest" disabled="{{busy}}">查询回执</button><button wx:if="{{request.canContinue}}" class="figma-action figma-action--orange" bindtap="continueRequest" disabled="{{busy}}">继续上传</button><button wx:if="{{request.canResend}}" class="figma-action figma-action--orange" bindtap="resendRequest" disabled="{{busy}}">按原编号原样重发</button><button wx:if="{{request.canCancel}}" class="match-media-link" bindtap="cancelRequest" disabled="{{busy}}">取消上传会话</button><button wx:if="{{request.canEnd}}" class="match-media-link" bindtap="endRequest" disabled="{{busy}}">结束此记录</button></view>
+      </view>
+
+      <view wx:if="{{previewVideo}}" class="figma-section"><view class="match-media-section-head"><view class="figma-section__title">私有预览</view><button class="match-media-link" bindtap="closePreview">关闭</button></view><video class="match-media-preview" src="{{previewVideo}}" controls show-fullscreen-btn/><view class="figma-section__hint">仅本机临时文件，关闭或离开页面后删除；预览不代表已发布。</view></view>
+
+      <view class="match-media-summary">
+        <view class="match-media-summary-copy"><view class="figma-eyebrow">比赛媒体管理{{match.meta ? ' · ' + match.meta : ''}}</view><view class="match-media-title">{{match.title}}</view><view class="figma-subtitle">从私有上传到独立授权公开</view></view>
+        <image class="match-media-summary-image" src="/assets/home/event-court.jpg" mode="aspectFill"/>
+      </view>
+
+      <view class="match-media-tabs" role="tablist">
+        <button class="match-media-tab {{mediaTab === 'uploaded' ? 'is-active' : ''}}" data-tab="uploaded" bindtap="changeMediaTab">已上传</button>
+        <button class="match-media-tab {{mediaTab === 'drafts' ? 'is-active' : ''}}" data-tab="drafts" bindtap="changeMediaTab">媒体草稿</button>
+        <button class="match-media-tab {{mediaTab === 'published' ? 'is-active' : ''}}" data-tab="published" bindtap="changeMediaTab">已发布</button>
+      </view>
+
+      <view wx:if="{{!hideUploadSection}}" class="figma-section match-media-upload">
+        <view class="match-media-section-head"><view class="figma-section__title">选择私有素材</view><view class="figma-status">{{usage.label}}</view></view>
+        <view class="figma-section__hint">上传只保存为机构私有文件；图片支持 PNG、JPEG，视频支持 MP4，服务端复核格式、摘要与额度。</view>
+        <view wx:if="{{caps.upload}}" class="match-media-two-actions"><button class="figma-action figma-action--ghost" bindtap="uploadImage" disabled="{{busy || uncertain || !!pending || !!request || !!storageError}}">选择图片</button><button class="figma-action figma-action--ghost" bindtap="uploadVideo" disabled="{{busy || uncertain || !!pending || !!request || !!storageError}}">选择视频</button></view>
+        <figma-feedback wx:else type="pending" title="当前不能上传" body="权限、赛事状态和机构额度由服务端判定。"/>
+        <figma-feedback wx:if="{{upload}}" type="{{upload.stage === 'saved' ? 'success' : 'pending'}}" title="上传进度" body="{{upload.label}}"/>
+        <button wx:if="{{canRetry && !pending}}" class="figma-action figma-action--navy" bindtap="retryUpload" disabled="{{busy || uncertain}}">按原文件、原请求编号重试</button>
+      </view>
+
+      <view id="media-files" class="figma-section">
+        <view class="figma-section__title">素材文件</view>
+        <figma-feedback wx:if="{{!files.length && !hideEmptyFilesState}}" type="empty" title="尚无私有素材" body="选择图片或视频后，服务端确认完成的文件会显示在这里。"/>
+        <view wx:for="{{files}}" wx:key="id" class="match-media-file">
+          <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.metaText || (item.kind + ' · ' + item.size + ' · ' + item.time)}}</view></view><view class="figma-status {{item.canPreview ? 'figma-status--orange' : ''}}">{{item.canPreview ? '可预览' : item.statusLabel}}</view></view>
+          <view wx:if="{{!hideFileCaption}}" class="figma-caption">{{item.statusLabel}}</view>
+          <view wx:if="{{!hideFileActions}}" class="match-media-file-actions"><button wx:if="{{item.canPreview}}" class="match-media-link" data-id="{{item.id}}" bindtap="preview" disabled="{{busy}}">预览</button><button wx:if="{{item.canRevoke}}" class="match-media-link is-danger" data-id="{{item.id}}" bindtap="askRevokeFile" disabled="{{busy || uncertain}}">撤销</button><button wx:if="{{item.canPurge}}" class="match-media-link is-danger" data-id="{{item.id}}" bindtap="askPurgeFile" disabled="{{busy || uncertain}}">清除内容</button></view>
+          <view wx:if="{{revokeId === item.id}}" class="match-media-form"><view class="figma-field-group"><view class="figma-field-label">撤销原因（4–500字）</view><textarea class="figma-field-control" maxlength="500" value="{{revokeReason}}" bindinput="revokeReasonInput" placeholder="说明误传或权利变化"/></view><button class="figma-action match-media-danger" bindtap="revokeFile" disabled="{{busy || uncertain}}">确认撤销文件</button></view>
+          <view wx:if="{{purgeId === item.id}}" class="match-media-form"><figma-feedback type="error" title="永久清除内容" body="清除后文件正文不可恢复，记录与审计保留。"/><view class="figma-field-group"><view class="figma-field-label">清除原因（4–500字）</view><textarea class="figma-field-control" maxlength="500" value="{{purgeReason}}" bindinput="purgeReasonInput" placeholder="说明必须清除内容的依据"/></view><button class="figma-action match-media-danger" bindtap="purgeFile" disabled="{{busy || uncertain}}">永久清除内容</button></view>
+        </view>
+      </view>
+
+      <view id="media-draft" wx:if="{{figmaShowDraft || (caps.manage && (draftFiles.length || trustedHosts.length))}}" class="figma-section">
+        <view class="figma-section__title">媒体草稿</view>
+        <view wx:if="{{trustedHosts.length && !hideDraftFilePicker}}" class="match-media-mode"><button class="match-media-choice {{draftMode === 'FILE' ? 'is-active' : ''}}" data-mode="FILE" bindtap="setDraftMode">已上传文件</button><button class="match-media-choice {{draftMode === 'LINK' ? 'is-active' : ''}}" data-mode="LINK" bindtap="setDraftMode">外部链接</button></view>
+        <view wx:if="{{draftMode === 'LINK'}}" class="figma-field-group"><view class="figma-field-label">HTTPS 链接</view><input class="figma-field-control" maxlength="2048" value="{{externalUrl}}" bindinput="externalInput" placeholder="仅限服务端返回的受信主机"/><view class="figma-caption">受信主机：{{trustedHosts}}</view></view>
+        <view wx:elif="{{draftFiles.length && !hideDraftFilePicker}}" class="figma-field-group"><view class="figma-field-label">选择文件</view><picker class="figma-field-control match-media-picker" range="{{draftFiles}}" range-key="name" value="{{draftIndex}}" bindchange="pickDraft">{{draftFiles[draftIndex].name}}</picker></view>
+        <figma-feedback wx:elif="{{!draftFiles.length && !hideEmptyDraftState}}" type="empty" title="没有可关联的私有文件" body="请先完成上传。"/>
+        <view class="figma-field-group"><view class="figma-field-label">媒体标题</view><input class="figma-field-control" maxlength="120" value="{{title}}" bindinput="titleInput" placeholder="填写可识别的媒体标题"/></view>
+        <view class="figma-field-group"><view class="figma-field-label">权利声明 *</view><textarea class="figma-field-control" maxlength="500" value="{{rights}}" bindinput="rightsInput" placeholder="填写来源、拍摄者和允许用途"/></view>
+        <view class="figma-field-group"><view class="figma-field-label">有效片段</view><view class="match-media-optional">{{segmentHint || '创建草稿后，可基于已确认赛果添加开始/结束位置。'}}<view class="figma-status figma-status--orange">选填</view></view></view>
+        <button class="figma-action figma-action--orange" bindtap="createDraft" disabled="{{busy || uncertain || !!pending || !!request || !!storageError}}">创建媒体草稿</button>
+      </view>
+
+      <view wx:if="{{!hidePublishedSection}}" id="media-published" class="figma-section">
+        <view class="figma-section__title">本场媒体</view>
+        <figma-feedback wx:if="{{!items.length}}" type="empty" title="尚无媒体记录" body="上传文件不会自动公开；须创建草稿并明确发布。"/>
+        <view wx:for="{{items}}" wx:key="id" class="match-media-item">
+          <view class="match-media-section-head"><view class="figma-row__title">{{item.title}}</view><view class="figma-status {{item.status === 'PUBLISHED' ? 'figma-status--green' : item.status === 'REVOKED' ? 'figma-status--error' : 'figma-status--orange'}}">{{item.status === 'PUBLISHED' ? '已发布' : item.status === 'REVOKED' ? '已撤销' : '草稿'}}</view></view>
+          <view class="figma-row__subtitle">{{item.kind}} · {{item.statusLabel}}{{item.markers ? ' · ' + item.markers + '个时间标记' : ''}}{{item.stale ? ' · 标记待更新' : ''}}</view>
+          <view class="figma-caption">权利声明：{{item.rights}}</view>
+          <view wx:if="{{item.externalUrl}}" class="figma-caption">外部链接：{{item.externalUrl}}（第三方内容）</view>
+          <view wx:for="{{item.markerList}}" wx:for-item="mk" wx:key="key" class="figma-caption">{{mk.text}}{{mk.stale ? '（来源赛果已变化）' : ''}}</view>
+          <view wx:if="{{markerFor === item.id}}" class="match-media-form"><view class="figma-field-group"><view class="figma-field-label">对应比赛记录</view><picker class="figma-field-control match-media-picker" range="{{sources}}" range-key="label" value="{{marker.sourceIndex}}" bindchange="pickSource">{{sources[marker.sourceIndex].label || '选择记录'}}</picker></view><view class="figma-field-group"><view class="figma-field-label">标记名称</view><input class="figma-field-control" maxlength="120" value="{{marker.label}}" data-field="label" bindinput="markerInput" placeholder="描述片段内容"/></view><view class="match-media-two-fields"><view class="figma-field-group"><view class="figma-field-label">开始（秒）</view><input class="figma-field-control" type="digit" value="{{marker.start}}" data-field="start" bindinput="markerInput"/></view><view class="figma-field-group"><view class="figma-field-label">结束（秒）</view><input class="figma-field-control" type="digit" value="{{marker.end}}" data-field="end" bindinput="markerInput"/></view></view><button class="figma-action figma-action--navy" bindtap="addMarker" disabled="{{busy || uncertain || !sources.length}}">添加时间标记</button></view>
+          <view class="match-media-item-actions"><button wx:if="{{item.canMark}}" class="match-media-link" data-id="{{item.id}}" bindtap="openMarker" disabled="{{busy || uncertain}}">{{markerFor === item.id ? '收起标记' : '时间标记'}}</button><button wx:if="{{item.canPublish && publishTargetId !== item.id}}" class="match-media-link" data-id="{{item.id}}" bindtap="selectPublish" disabled="{{busy || uncertain}}">选择此草稿</button><button wx:if="{{item.canRevoke}}" class="match-media-link is-danger" data-id="{{item.id}}" bindtap="revoke" disabled="{{busy || uncertain}}">撤销</button></view>
+          <view wx:if="{{item.canPublish && publishTargetId === item.id}}" class="match-media-consent"><figma-feedback type="pending" title="发布当前版本" body="仅在本届公开观赛开启时，持有观赛链接的观众可见。"/><checkbox-group bindchange="publishConsentChange"><label class="figma-check"><checkbox value="publish" checked="{{publishConsent}}" disabled="{{busy || uncertain}}"/><text>我已核对权利声明，并明确申请发布当前版本</text></label></checkbox-group><button class="figma-action figma-action--orange" data-id="{{item.id}}" bindtap="publish" disabled="{{busy || uncertain || !publishConsent}}">发布当前版本</button></view>
+        </view>
+        <view wx:if="{{caps.manage && !caps.publish}}" class="figma-section__hint">发布须由机构负责人、管理员或本届赛事管理员操作。</view>
+      </view>
+
+      <view class="figma-section match-media-publish-scope">
+        <view class="figma-section__title">发布范围</view>
+        <view class="figma-row"><view class="match-media-step">1</view><view class="figma-row__copy"><view class="figma-row__title">关联本场素材</view><view class="figma-row__subtitle">先完成原文件上传</view></view><view class="figma-status {{files.length ? 'figma-status--green' : ''}}">{{files.length ? '已就绪' : '待上传'}}</view></view>
+        <view class="figma-row"><view class="match-media-step">2</view><view class="figma-row__copy"><view class="figma-row__title">检查权利与版本</view><view class="figma-row__subtitle">仅有权管理员可发布</view></view><view class="figma-status figma-status--orange">待核对</view></view>
+        <view class="figma-row"><view class="match-media-step">3</view><view class="figma-row__copy"><view class="figma-row__title">撤回公开</view><view class="figma-row__subtitle">原链接失效，记录与审计保留</view></view></view>
+      </view>
+    </block>
   </view>
-  <block wx:else>
-    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
-    <view wx:if="{{uncertain}}" class="card">
-      <view class="subtitle">操作结果待核对</view>
-      <view class="muted">网络中断时服务端可能已经执行。请先重新读取核对；在此之前不能继续上传或发布。</view>
-      <button class="primary" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button>
-    </view>
-    <view wx:if="{{storageError}}" class="notice warning">{{storageError}}</view>
-    <view wx:if="{{pending}}" class="card">
-      <view class="subtitle">{{pending.title}}</view>
-      <view class="muted">发起于 {{pending.at}}。网络中断时服务端可能已保存，也可能稍后才保存；现有接口没有请求编号，系统无法自动确认，也不会自动重试。核对前不能继续上传或创建草稿。</view>
-      <view wx:if="{{!pending.candidates.length}}" class="muted">暂未看到可能对应的{{pending.op === 'upload' ? '文件' : '草稿'}}。原请求可能仍在处理，可稍后重新读取。</view>
-      <view wx:else class="section-label">该次操作之后出现、可能对应的记录（请自行核对，系统不作证明）</view>
-      <view wx:for="{{pending.candidates}}" wx:key="id" class="row-between row"><view>{{item.text}}</view><button class="quiet small-button" data-id="{{item.id}}" bindtap="confirmPending" disabled="{{busy}}">是这一份</button></view>
-      <view class="mode-choice">
-        <button class="secondary" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button>
-        <button class="quiet" bindtap="dismissPending" disabled="{{busy}}">结束此记录</button>
-      </view>
-    </view>
-    <view wx:if="{{request}}" class="card">
-      <view class="subtitle">{{request.title}}</view>
-      <view class="muted">请求编号 {{request.shortId}}… · 发起于 {{request.at}}（编号与内容摘要已保存在本机）</view>
-      <view class="notice {{request.state === 'conflict' || request.state === 'local' ? 'warning' : 'small'}}">{{request.message}}</view>
-      <view class="mode-choice">
-        <button wx:if="{{request.canQuery}}" class="secondary" bindtap="queryRequest" disabled="{{busy}}">查询回执</button>
-        <button wx:if="{{request.canContinue}}" class="primary" bindtap="continueRequest" disabled="{{busy}}">继续上传</button>
-        <button wx:if="{{request.canResend}}" class="primary" bindtap="resendRequest" disabled="{{busy}}">按原编号原样重发</button>
-        <button wx:if="{{request.canCancel}}" class="quiet" bindtap="cancelRequest" disabled="{{busy}}">取消上传会话</button>
-        <button wx:if="{{request.canEnd}}" class="quiet" bindtap="endRequest" disabled="{{busy}}">结束此记录</button>
-      </view>
-    </view>
-    <view wx:if="{{previewVideo}}" class="card">
-      <view class="row-between"><view class="subtitle">私有预览</view><button class="quiet small-button" bindtap="closePreview">关闭</button></view>
-      <video class="media-preview" src="{{previewVideo}}" controls show-fullscreen-btn/>
-      <view class="muted">仅本机临时文件，关闭或离开页面后删除；删除失败会自动重试，并在下次进入时再次清理。预览不代表已发布。</view>
-    </view>
-    <view class="board">
-      <view class="board-meta" bindtap="openMatch">{{match.meta}}</view>
-      <view class="setup-name">{{match.title}}</view>
-      <view class="board-meta">{{usage.label}}</view>
-    </view>
-    <view class="notice small">上传只保存为本机构私有文件；须创建媒体并明确发布后，才会在本届公开观赛开启时对持有链接的观众显示。</view>
 
-    <view class="card">
-      <view class="subtitle">上传图片或视频</view>
-      <block wx:if="{{caps.upload}}">
-        <view class="muted">图片支持PNG、JPEG，视频支持MP4；单个文件不超过8MB，服务端复核格式与额度。超过512KB的文件分片上传，进度只显示服务端已确认的字节。</view>
-        <view class="mode-choice">
-          <button class="secondary" bindtap="uploadImage" disabled="{{busy || uncertain || !!pending || !!request || !!storageError}}">选择图片</button>
-          <button class="secondary" bindtap="uploadVideo" disabled="{{busy || uncertain || !!pending || !!request || !!storageError}}">选择视频</button>
-        </view>
-        <view wx:if="{{upload}}" class="upload-stage {{upload.stage}}">{{upload.label}}</view>
-        <button wx:if="{{canRetry && !pending}}" class="primary" bindtap="retryUpload" disabled="{{busy || uncertain}}">按原文件、原请求编号重试上传</button>
-      </block>
-      <view wx:else class="muted">当前身份不能上传本场媒体，或赛事已归档、取消（由服务端判定）。</view>
-    </view>
-
-    <view class="card">
-      <view class="subtitle">已上传文件</view>
-      <view wx:if="{{!files.length}}" class="muted">尚无文件。</view>
-      <view wx:for="{{files}}" wx:key="id" class="row">
-        <view class="row-between"><view>{{item.name}}</view><view class="file-actions"><button wx:if="{{item.canPreview}}" class="quiet small-button" data-id="{{item.id}}" bindtap="preview" disabled="{{busy}}">预览</button><button wx:if="{{item.canRevoke}}" class="quiet small-button" data-id="{{item.id}}" bindtap="askRevokeFile" disabled="{{busy || uncertain}}">撤销</button><button wx:if="{{item.canPurge}}" class="quiet small-button" data-id="{{item.id}}" bindtap="askPurgeFile" disabled="{{busy || uncertain}}">清除内容</button></view></view>
-        <view class="muted">{{item.kind}} · {{item.size}} · {{item.statusLabel}} · {{item.time}}</view>
-        <block wx:if="{{revokeId === item.id}}">
-          <text class="field-label">撤销原因（4–500字）</text>
-          <textarea class="field" maxlength="500" value="{{revokeReason}}" bindinput="revokeReasonInput" placeholder="例如：误传了其他比赛的照片"/>
-          <button class="danger" bindtap="revokeFile" disabled="{{busy || uncertain}}">确认撤销文件</button>
-        </block>
-        <block wx:if="{{purgeId === item.id}}">
-          <view class="notice warning small">清除后文件正文不可恢复；记录与审计保留。</view>
-          <text class="field-label">清除原因（4–500字）</text>
-          <textarea class="field" maxlength="500" value="{{purgeReason}}" bindinput="purgeReasonInput" placeholder="例如：含未授权人员肖像，按要求删除"/>
-          <button class="danger" bindtap="purgeFile" disabled="{{busy || uncertain}}">永久清除内容</button>
-        </block>
-      </view>
-    </view>
-
-    <view wx:if="{{caps.manage && (draftFiles.length || trustedHosts.length)}}" class="card">
-      <view class="subtitle">创建媒体草稿</view>
-      <view wx:if="{{trustedHosts.length}}" class="mode-choice">
-        <button class="{{draftMode === 'FILE' ? 'selected' : ''}}" data-mode="FILE" bindtap="setDraftMode">已上传文件</button>
-        <button class="{{draftMode === 'LINK' ? 'selected' : ''}}" data-mode="LINK" bindtap="setDraftMode">外部链接</button>
-      </view>
-      <block wx:if="{{draftMode === 'LINK'}}">
-        <text class="field-label">HTTPS链接（仅限受信主机：{{trustedHosts}}）</text>
-        <input class="field" maxlength="2048" value="{{externalUrl}}" bindinput="externalInput" placeholder="https://"/>
-      </block>
-      <block wx:elif="{{draftFiles.length}}">
-        <text class="field-label">选择文件</text>
-        <picker class="field" range="{{draftFiles}}" range-key="name" value="{{draftIndex}}" bindchange="pickDraft">{{draftFiles[draftIndex].name}}</picker>
-      </block>
-      <view wx:else class="muted">没有可关联的私有文件，请先上传。</view>
-      <text class="field-label">标题</text>
-      <input class="field" maxlength="120" value="{{title}}" bindinput="titleInput" placeholder="例如 决赛最后一攻"/>
-      <text class="field-label">权利声明（4–500字）</text>
-      <textarea class="field" maxlength="500" value="{{rights}}" bindinput="rightsInput" placeholder="拍摄者及授权范围，例如：主办方摄影组拍摄，仅限本届公开观赛使用"/>
-      <button class="primary" bindtap="createDraft" disabled="{{busy || uncertain || !!pending || !!request || !!storageError}}">创建草稿（不公开）</button>
-    </view>
-
-    <view class="card">
-      <view class="subtitle">本场媒体</view>
-      <view wx:if="{{!items.length}}" class="muted">尚无媒体记录。</view>
-      <view wx:for="{{items}}" wx:key="id" class="row">
-        <view class="row-between"><view>{{item.title}}</view><text class="badge {{item.status === 'PUBLISHED' ? 'success' : item.status === 'REVOKED' ? 'danger' : ''}}">{{item.status === 'PUBLISHED' ? '已发布' : item.status === 'REVOKED' ? '已撤销' : '草稿'}}</text></view>
-        <view class="muted">{{item.kind}} · {{item.statusLabel}}{{item.markers ? ' · ' + item.markers + '个时间标记' : ''}}{{item.stale ? '（赛果已重新确认，标记待更新）' : ''}}</view>
-        <view class="muted">权利声明：{{item.rights}}</view>
-        <view wx:if="{{item.externalUrl}}" class="muted">外部链接：{{item.externalUrl}}（第三方内容，观众在微信内可能无法直接播放）</view>
-        <view wx:for="{{item.markerList}}" wx:for-item="mk" wx:key="key" class="muted">· {{mk.text}}{{mk.stale ? '（来源赛果已变化，须重新建立）' : ''}}</view>
-        <block wx:if="{{markerFor === item.id}}">
-          <text class="field-label">对应的比赛记录（当前独立确认的赛果）</text>
-          <picker class="field" range="{{sources}}" range-key="label" value="{{marker.sourceIndex}}" bindchange="pickSource">{{sources[marker.sourceIndex].label || '选择记录'}}</picker>
-          <text class="field-label">标记名称</text>
-          <input class="field" maxlength="120" value="{{marker.label}}" data-field="label" bindinput="markerInput" placeholder="例如 第四节绝杀"/>
-          <view class="setup-pair">
-            <view><text class="field-label">视频开始（秒）</text><input class="field" type="digit" value="{{marker.start}}" data-field="start" bindinput="markerInput"/></view>
-            <view><text class="field-label">视频结束（秒）</text><input class="field" type="digit" value="{{marker.end}}" data-field="end" bindinput="markerInput"/></view>
-          </view>
-          <button class="primary" bindtap="addMarker" disabled="{{busy || uncertain || !sources.length}}">添加时间标记</button>
-        </block>
-        <view class="mode-choice">
-          <button wx:if="{{item.canMark}}" class="secondary" data-id="{{item.id}}" bindtap="openMarker" disabled="{{busy || uncertain}}">{{markerFor === item.id ? '收起标记' : '时间标记'}}</button>
-          <button wx:if="{{item.canPublish && publishTargetId !== item.id}}" class="secondary" data-id="{{item.id}}" bindtap="selectPublish" disabled="{{busy || uncertain}}">选择此草稿</button>
-          <block wx:if="{{item.canPublish && publishTargetId === item.id}}">
-            <view class="notice small">发布后仅在本届公开观赛开启时，持有观赛链接的观众可见。勾选只确认当前版本，不授予发布权限。</view>
-            <checkbox-group bindchange="publishConsentChange"><label class="consent"><checkbox value="publish" checked="{{publishConsent}}" disabled="{{busy || uncertain}}"/>我已核对本条权利声明，并明确申请发布当前版本</label></checkbox-group>
-            <button class="primary" data-id="{{item.id}}" bindtap="publish" disabled="{{busy || uncertain || !publishConsent}}">发布当前版本</button>
-          </block>
-          <button wx:if="{{item.canRevoke}}" class="quiet" data-id="{{item.id}}" bindtap="revoke" disabled="{{busy || uncertain}}">撤销</button>
-        </view>
-      </view>
-      <view wx:if="{{caps.manage && !caps.publish}}" class="muted">发布须由机构负责人、管理员或本届赛事管理员操作。</view>
-    </view>
-    <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
-  </block>
+  <view wx:if="{{match}}" class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="uploadImage" disabled="{{busy || uncertain || !caps.upload || !!pending || !!request || !!storageError}}">选择文件</button>
+    <button class="figma-action figma-action--orange" bindtap="createDraft" disabled="{{busy || uncertain || !caps.manage || !!pending || !!request || !!storageError}}">创建媒体草稿</button>
+  </view>
 </view>

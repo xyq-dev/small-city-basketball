@@ -127,27 +127,30 @@ test('UI001 T06 compact native list uses source icons and keeps real fees and un
   await h.page.onShow();
   for (const width of [320, 390, 430]) {
     const result = preview(h, 'players', width);
-    assert.match(result.phone, /当前可查看的服务档案/);
-    assert.match(result.phone, /market-form/);
+    assert.match(result.phone, /选择适合本场的球员/);
+    assert.match(result.phone, /players-rebuild/);
+    assert.match(result.phone, /player-row__main/);
     assert.match(result.phone, /data-mini-bindtap="detail"/);
     assert.match(result.phone, /data-mini-bindtap="toggle"/);
-    assert.ok(result.assets.some((asset) => asset.path.endsWith('ui002/avatar-user.svg')));
+    assert.ok(result.assets.every((asset) => /^(?:assets|pages)\//.test(asset.path)));
     assert.doesNotMatch(result.phone, /player-sample-|player-placeholder|player-metrics/);
     assert.match(result.phone, /data-mini-bindtap="compare"[^>]*disabled/);
   }
   const original = JSON.stringify(h.page.data.cards);
   h.page.informationToggle();
   const expanded = preview(h, 'players').phone;
-  for (const text of [
-    '平台服务费',
-    '交通费',
-    '食宿费',
-    '含费预计',
-    '未统计',
-    '暂无有效个人统计',
-    '缺少统计不代表能力差',
-  ])
-    assert.ok(expanded.includes(text), text);
+  assert.match(expanded, /费用、来源与数据说明/);
+  for (const card of h.page.data.cards) {
+    for (const value of [
+      card.price,
+      card.platformFee,
+      card.travel,
+      card.accommodation,
+      card.total,
+      card.performance.source,
+    ])
+      assert.ok(expanded.includes(value), card.name + ': ' + value);
+  }
   assert.equal(JSON.stringify(h.page.data.cards), original);
   h.page.informationToggle();
   noWrites(h);
@@ -161,29 +164,33 @@ test('UI001 T08 native compact table supports three actual profiles and preserve
   assert.equal(h.page.data.profiles.length, 3);
   for (const width of [320, 390, 430]) {
     const result = preview(h, 'compare', width);
-    assert.match(result.phone, /three-columns/);
-    assert.match(result.phone, /左右滑动查看第3人/);
-    assert.match(result.phone, /交通费/);
+    assert.match(result.phone, /compare-scroll/);
+    assert.match(result.phone, /compare-grid/);
+    assert.match(result.phone, /交通¥/);
     assert.match(result.phone, /合成球员3/);
     assert.match(result.phone, /继续选人/);
-    assert.match(result.phone, /预约合成球员1/);
+    assert.match(result.phone, /预约这位球员/);
     assert.doesNotMatch(result.phone, /compare-portrait|player-sample-|player-placeholder/);
   }
   const before = JSON.stringify(h.page.data.profiles);
   h.page.informationToggle();
   const expanded = preview(h, 'compare').phone;
-  for (const text of [
-    '参赛服务费',
-    '平台服务费',
-    '交通费',
-    '食宿费',
-    '含费预计',
-    '未统计',
-    '暂无有效个人统计',
-    '缺少统计不代表能力差',
-    '移除合成球员3',
-  ])
-    assert.ok(expanded.includes(text), text);
+  for (const profile of h.page.data.profiles) {
+    for (const value of [
+      profile.name,
+      profile.price,
+      profile.platformFee,
+      profile.travel,
+      profile.accommodation,
+      profile.total,
+    ])
+      assert.ok(expanded.includes(value), profile.name + ': ' + value);
+    assert.match(
+      expanded,
+      new RegExp('data-id="' + profile.id + '"[^>]*data-mini-bindtap="remove"'),
+    );
+  }
+  assert.match(expanded, /移出对比/);
   assert.match(expanded, /data-mini-bindtap="detail"/);
   assert.match(expanded, /data-mini-bindtap="book"/);
   assert.match(expanded, /data-mini-bindtap="remove"/);

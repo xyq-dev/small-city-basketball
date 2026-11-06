@@ -1,55 +1,222 @@
-<scb-header title="本人报名资料" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page materials-page">
-
-  <view wx:if="{{mode !== 'mine'}}" class="material-page-title"><view class="material-kicker">赛事报名 · 私有资料</view><view class="title">{{mode === 'list' ? '我的本人报名' : mode === 'review' ? '本人资料审核与进度' : '填写本人参赛资料'}}</view><view class="muted">本人资料、队伍报名与最终名单分别审核。</view></view>
-  <view wx:if="{{error}}" class="notice warning" role="alert">{{error}}</view>
-  <view wx:if="{{message}}" class="notice" role="status">{{message}}</view>
-  <view wx:if="{{storageError}}" class="notice warning">{{storageError}}</view>
-  <view wx:if="{{pending}}" class="notice warning"><view class="subtitle">原请求结果待核对</view><view>已保留请求编号。重新读取回执前，暂停新保存与上传，避免重复建档。</view></view>
-  <view wx:if="{{loginRequired}}" class="card material-panel"><view class="subtitle">登录后继续本人报名</view><view class="muted">仅本人和有权的独立审核人员可查看受保护资料。</view><button class="primary" bindtap="login">登录并继续</button></view>
-  <view wx:if="{{loading}}" class="card material-panel"><view class="subtitle">正在读取当前资料与权限</view><view class="skeleton-line"></view></view>
-  <block wx:if="{{mode === 'list' && !loginRequired && !loading}}">
-    <view wx:if="{{!entries.length}}" class="card material-panel"><view class="subtitle">暂无待填写的本人报名</view><view class="muted">先加入或认领本人球队成员，再由领队将你加入本届名单。加入球队本身不代表已报名。</view></view>
-    <view wx:for="{{entries}}" wx:key="entryId" class="card material-panel"><view class="subtitle">{{item.eventName}}</view><view class="muted">{{item.teamName}} · {{item.startDate}} 至 {{item.endDate}}</view><button class="primary" data-id="{{item.entryId}}" data-org="{{item.orgId}}" bindtap="openEntry">查看本人资料与授权</button></view>
-  </block>
-  <block wx:if="{{workspace}}">
-    <block wx:if="{{mode === 'mine'}}"><scb-steps items="{{registrationSteps}}" current="{{registrationStep}}" busy="{{busy || loading || pending}}" bind:change="registrationStepChange"/><view wx:if="{{dirty}}" class="notice small">当前草稿尚未保存。可在本页切换资料分区，离开本页办理预审或保险前请先保存。</view><button wx:if="{{materialPanel !== 'profile'}}" class="quiet material-back" data-panel="profile" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">返回本人资料</button></block>
-    <view wx:if="{{mode === 'review' || materialPanel === 'progress'}}" class="card material-panel"><view class="material-head"><view><view class="subtitle">{{workspace.eventName}}</view><view class="muted">{{workspace.teamName}}</view></view><text class="badge">{{workspace.frozen ? '名单已冻结' : '资料核验'}}</text></view><view wx:if="{{workspace.startDate}}" class="small muted">赛事期间 {{workspace.startDate}} 至 {{workspace.endDate}}</view></view>
-    <view wx:if="{{!workspace.enabled}}" class="notice warning">本届尚未开放本人资料流程，不能据此放宽身份或保险要求。</view>
-    <view wx:if="{{workspace.frozen}}" class="notice small">本届名单已冻结，当前资料保持冻结版本。</view>
-    <view wx:if="{{mode === 'mine' && workspace.dataProcessingConsent.required && !workspace.dataProcessingConsent.ready}}" class="notice warning"><view>请先取得当前监护人对本届私有资料处理的明确同意，再填写身份和照片。</view><button class="primary" bindtap="guardian" disabled="{{busy || pending}}">先完成监护人数据处理同意</button></view>
-    <button wx:if="{{mode === 'review'}}" class="secondary" bindtap="qualification" disabled="{{busy || pending}}">身份、照片和签署独立资格预审</button>
-    <block wx:if="{{mode === 'review'}}">
-      <view class="card material-panel"><view class="subtitle">逐人填写与审核进度</view><view class="muted small">领队只查看进度；私有照片、证件和保单须由当前有权的独立审核人查看。</view><view wx:if="{{!members.length}}" class="muted">本届名单尚无成员。</view><view wx:for="{{members}}" wx:key="memberId" class="material-row"><view class="subtitle">{{item.memberName}}</view><view class="badge">{{item.statusLabel}}</view><view class="small muted">{{item.blockerText}}</view><button class="secondary" data-id="{{item.memberId}}" bindtap="openMember" disabled="{{busy}}">{{item.capabilities.canReadPrivate ? '核对当前版本' : '查看进度详情'}}</button></view></view>
+<scb-header title="{{figmaState==='materials-returned' ? '报名资料待补充' : figmaState==='materials-list' ? '我的本人报名' : figmaState==='materials-review' ? '本人资料审核与进度' : mode === 'list' ? '我的本人报名' : mode === 'review' ? '本人资料审核与进度' : material && material.status === 'CHANGES_REQUESTED' ? '报名资料待补充' : '本人报名资料'}}" disabled="{{busy || pending || dirty}}"/>
+<view class="figma-page materials-rebuild">
+  <view class="figma-page__content {{figmaState || mode === 'mine' && workspace ? 'figma-page__content--actions' : ''}}">
+    <block wx:if="{{figmaState==='materials-returned'}}">
+      <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="registration" size="28"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">本人参赛资料</view><view class="figma-title">报名资料待补充</view><view class="figma-subtitle">按退回原因补交，已保存的其他资料可继续使用。</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">审核意见</view><view class="supplement-callout"><view class="supplement-dot"/><view class="figma-row__copy"><view class="figma-row__title">照片待补充</view><view class="figma-row__subtitle">面部不清晰，请重新上传正面清晰照。</view></view><view class="figma-status figma-status--orange">需处理</view></view><view class="supplement-callout"><view class="supplement-dot"/><view class="figma-row__copy"><view class="figma-row__title">本届报名</view><view class="figma-row__subtitle">重新提交后等待独立审核。</view></view><view class="figma-status figma-status--orange">待复核</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">补交项目</view><view class="figma-field-group"><view class="figma-field-label">本人照片 *</view><view class="figma-field-control material-state-control">选择或拍摄清晰本人照</view></view><view class="figma-field-group"><view class="figma-field-label">已填资料</view><view class="figma-field-control material-readonly"><text>陈一鸣 · 23号 · 已脱敏</text><view class="figma-status figma-status--orange">已保存</view></view></view></view>
+      <view class="figma-section"><view class="figma-section__title">宣传使用</view><view class="figma-row"><view class="material-state-check"/><view class="figma-row__copy"><view class="figma-row__title">同意使用照片制作宣传海报</view><view class="figma-row__subtitle">自愿选择，可独立撤回。</view></view><view class="figma-status">未勾选</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">参赛材料用途</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">私有照片供有权审核人核对。</view></view><view class="figma-status">仅审核</view></view></view>
     </block>
-    <view wx:if="{{material && (mode === 'review' || materialPanel === 'progress')}}" class="card material-panel"><view class="material-step">当前材料版本 V{{material.version}}</view><view class="subtitle">{{material.memberName}} · {{material.statusLabel}}</view><view wx:if="{{material.reviewReason}}" class="notice warning">审核说明：{{material.reviewReason}}</view><view wx:if="{{material.blockerText}}" class="muted material-note">待处理：{{material.blockerText}}</view><view wx:if="{{material.identityMasked}}" class="small">身份证 {{material.identityMasked}}</view><view wx:if="{{material.portrait}}" class="muted">{{material.portraitLabel}}</view><view wx:if="{{material.insurance}}" class="muted">{{material.insurance.insurer}} · {{material.insurance.policyNumberMasked}}<view>{{material.insurance.startDate}} 至 {{material.insurance.endDate}}</view></view><view wx:if="{{material.onlineInsurance.ready}}" class="notice small">当前在线保单已核实出单及覆盖赛期；最终资料审核与报名另行判断。</view><view class="small muted">{{material.publicityConsent ? '本人已选择允许本届照片宣传用途' : '未授权照片宣传，不影响参赛资格'}}</view><view wx:if="{{material.capabilities.canReadPrivate}}" class="material-actions"><button class="secondary" bindtap="revealPrivate" disabled="{{busy || pending}}">明确查看私有文字资料</button><button wx:if="{{material.portrait}}" class="secondary" data-kind="portrait" bindtap="viewFile" disabled="{{busy || pending}}">私有核对本人照片</button><button wx:if="{{material.insurance.document}}" class="secondary" data-kind="insurance" bindtap="viewFile" disabled="{{busy || pending}}">私有核对保单</button></view><view wx:if="{{privateDetails}}" class="material-private"><view>姓名：{{privateDetails.realName || '未填写'}}</view><view>身份证：{{privateDetails.identityNumber || '未填写'}}</view><view wx:if="{{privateDetails.insurance}}">保单号：{{privateDetails.insurance.policyNumber}}</view><button class="quiet" bindtap="concealPrivate">立即隐藏私有文字</button></view><button wx:if="{{mode === 'review'}}" class="quiet" bindtap="closeMember" disabled="{{busy}}">收起详情</button></view>
-    <view wx:if="{{mode === 'mine' && !workspace.capabilities.canSave}}" class="card material-panel"><view class="subtitle">本人资料当前不可编辑</view><view class="muted">按当前权限与冻结版本查看进度，不能由页面切换取得填写或审核权限。</view><button class="secondary" data-panel="progress" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">查看本人材料与授权进度</button></view>
-    <block wx:if="{{mode === 'mine' && workspace.capabilities.canSave}}">
-      <view wx:if="{{materialPanel === 'profile'}}" class="material-profile">
-        <view class="material-field"><view class="field-label">本届成员</view><view class="material-value">{{material.memberName || '本人'}} · {{workspace.teamName}}</view><view class="material-context">{{workspace.eventName}}</view></view>
-        <view class="material-field"><text class="field-label">本人真实姓名（私有）</text><input class="field" data-field="realName" value="{{form.realName}}" bindinput="field" maxlength="80" disabled="{{busy || pending}}" placeholder="请本人填写真实姓名"/></view>
-        <view class="material-field"><text class="field-label">身份证号码（私有）</text><input class="field" data-field="identityNumber" value="{{form.identityNumber}}" bindinput="field" maxlength="18" disabled="{{busy || pending}}" placeholder="{{material.identityMasked ? '已保存，留空保留原证件号' : '请本人填写18位身份证号'}}"/></view>
-      </view>
-      <view wx:if="{{materialPanel === 'profile'}}" class="card material-required"><view class="subtitle">必要资料</view>
-        <button class="material-cell" data-panel="portrait" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}"><image class="material-icon" src="/assets/ui002/account-camera.svg" mode="aspectFit" aria-hidden="true"/><view class="material-copy"><view class="material-cell-title">本人照片 · 必传</view><view class="material-cell-note">{{material ? material.portraitLabel : '仅本人及有权独立审核人可查看'}}</view></view><image class="material-chevron" src="/assets/ui002/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button>
-        <button class="material-cell" data-panel="consent" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}"><image class="material-icon" src="/assets/ui002/account-shield.svg" mode="aspectFit" aria-hidden="true"/><view class="material-copy"><view class="material-cell-title">本届规程签署</view><view class="material-cell-note">核对{{workspace.rules.termsVersion}}后明确同意</view></view><image class="material-chevron" src="/assets/ui002/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button>
-      </view>
-      <view wx:if="{{materialPanel === 'profile'}}" class="card material-confirm"><checkbox-group data-field="acceptedTerms" bindchange="checkbox"><label class="consent"><checkbox value="yes" checked="{{form.acceptedTerms}}" disabled="{{busy || pending}}"/><text>我本人已核对本届资料、用途和确认内容</text></label></checkbox-group><checkbox-group data-field="publicityConsent" bindchange="checkbox"><label class="consent"><checkbox value="yes" checked="{{form.publicityConsent}}" disabled="{{busy || pending}}"/><text>我自愿允许上述本届照片宣传用途（可选，默认不选）</text></label></checkbox-group></view>
-      <view wx:if="{{materialPanel === 'profile'}}" class="notice small">身份证格式检查不代表官方实名验证。资料私有核对；照片宣传单独自愿选择。已生效在线保单将另行核验，资格预审、保障与最终报名分别确认。</view>
-      <view wx:if="{{materialPanel === 'profile'}}" class="material-secondary-links"><button class="quiet" data-panel="insurance" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">外部保单与保障材料</button><button class="quiet" data-panel="progress" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">提交与审核进度</button></view>
-      <view wx:if="{{materialPanel === 'portrait'}}" class="card material-panel"><view class="material-step">02 本人照片 · 必传</view><view class="subtitle">清晰正面单人照片</view><view class="muted">{{material ? material.portraitLabel : '未上传本人照片。无照片只能保存草稿，不能提交。'}}</view><view class="small muted">支持 JPEG/PNG，每份不超过8MiB。照片用于私有资格与相貌人工核对；替换后须重新审核，并重新选择宣传用途。</view><button class="secondary" data-kind="portrait" bindtap="upload" disabled="{{busy || pending || storageError}}">{{material.portrait ? '选择并替换本人照片' : '拍摄或选择本人照片'}}</button></view>
-      <view wx:if="{{materialPanel === 'insurance'}}" class="card material-panel"><view class="material-step">03 外部保险</view><view class="subtitle">已有保单人工核验</view><view class="notice small">{{workspace.rules.requireInsurance ? '本届要求保障材料，须核对本人、篮球活动及完整赛事期间。' : '本届未强制保险材料；如提交仍须按实际保障核对。'}}已生效在线保单将另行核验，可在保险页查看在线投保是否开放。</view><text class="field-label">保险机构</text><input class="field" data-field="insurer" value="{{form.insurer}}" bindinput="field" maxlength="120" disabled="{{busy || pending}}" placeholder="填写实际保险机构"/><text class="field-label">保单号</text><input class="field" data-field="policyNumber" value="{{form.policyNumber}}" bindinput="field" maxlength="120" disabled="{{busy || pending}}" placeholder="{{material.insurance ? '已保存，留空保留原保单号' : '填写实际保单号'}}"/><view class="material-pair"><view><text class="field-label">保障开始日期</text><input class="field" data-field="startDate" value="{{form.startDate}}" bindinput="field" maxlength="10" disabled="{{busy || pending}}" placeholder="YYYY-MM-DD"/></view><view><text class="field-label">保障结束日期</text><input class="field" data-field="endDate" value="{{form.endDate}}" bindinput="field" maxlength="10" disabled="{{busy || pending}}" placeholder="YYYY-MM-DD"/></view></view><view class="muted">{{material ? material.insuranceLabel : '尚未上传外部保单'}}</view><view class="material-actions"><button class="secondary" bindtap="saveInsurance" disabled="{{busy || pending || storageError}}">保存保单文字资料</button><button class="secondary" data-kind="insurance" bindtap="upload" disabled="{{busy || pending || storageError}}">选择并私有保存保单文件</button></view><view class="small muted">支持 JPEG/PNG/PDF，每份不超过8MiB。上传不等于已投保、保障有效或审核通过；已有有效保单无需重复购买。</view></view>
-      <view wx:if="{{materialPanel === 'consent'}}" class="card material-panel"><view class="material-step">04 本人确认</view><view class="subtitle">资料用途与本届确认</view><view class="material-terms"><view>确认版本：{{workspace.rules.termsVersion}}</view><view>我本人提交真实资料和近期照片，供本届资格、相貌及保障人工核对；球队领队不能代替本人签署。本人材料审核通过后，仍需队伍提交、独立审核和名单冻结。</view><view>照片私有核对是报名要求。宣传用途另行自愿选择；不选择或撤回宣传不会单独导致参赛资格被拒。</view><view>宣传范围：本届赛事及球队阵容、赛前赛后宣传海报；渠道为主办方赛事展示与宣传。允许后仍须核验照片版本和权限，当前页面不直接发布照片。</view><view>可在本页撤回后续宣传许可。平台停止新的使用，已下载或第三方转发的图片无法保证全部追回。私有审核材料按赛事留存规则处理。</view></view><checkbox-group data-field="acceptedTerms" bindchange="checkbox"><label class="consent"><checkbox value="yes" checked="{{form.acceptedTerms}}" disabled="{{busy || pending}}"/><text>我本人已核对本届资料、用途和确认内容</text></label></checkbox-group><checkbox-group data-field="publicityConsent" bindchange="checkbox"><label class="consent"><checkbox value="yes" checked="{{form.publicityConsent}}" disabled="{{busy || pending}}"/><text>我自愿允许上述本届照片宣传用途（可选，默认不选）</text></label></checkbox-group><button class="secondary" bindtap="save" disabled="{{busy || pending || storageError}}" loading="{{busy}}">保存本人资料草稿</button></view>
+
+    <block wx:elif="{{figmaState==='materials-list'}}">
+      <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="registration" size="28"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">本人报名</view><view class="figma-title">我的本人报名</view><view class="figma-subtitle">选择本届赛事和本队报名，再查看资料与用途授权。</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">本人报名</view><view class="figma-row material-entry"><view class="figma-row__copy"><view class="figma-row__title">城市篮球邀请赛</view><view class="figma-row__subtitle">城北篮球队 · 11.01—11.15</view></view><view class="figma-status figma-status--orange">本人报名</view></view></view>
     </block>
-    <view wx:if="{{mode === 'mine' && (materialPanel === 'progress' || materialPanel === 'insurance')}}" class="card material-panel"><view class="subtitle">提交与授权</view><view wx:if="{{workspace.frozen}}" class="muted">本届名单已冻结，资料保持冻结版本；仍可撤回宣传许可。</view><view wx:if="{{dirty}}" class="notice warning small">表单尚未保存，请先保存当前草稿再提交。</view><button wx:if="{{workspace.capabilities.canSubmit}}" class="primary" data-action="submit" bindtap="command" disabled="{{busy || pending || dirty}}">提交本人资料审核</button><button wx:if="{{workspace.capabilities.canWithdrawPublicity}}" class="quiet" data-action="withdraw" bindtap="command" disabled="{{busy || pending}}">撤回照片宣传授权</button><view class="small muted">拒绝宣传不妨碍符合其他条件的参赛；材料通过不代表本队最终报名通过。</view></view>
-    <view wx:if="{{mode === 'review' && material.capabilities.canReview}}" class="card material-panel"><view class="subtitle">独立人工审核当前版本</view><view class="small muted">审核人不得为本人、本队领队、本队活跃成员或队伍最近提交人，服务端将再次核验。</view><checkbox-group data-field="identityChecked" bindchange="checkbox"><label class="consent"><checkbox value="yes" checked="{{identityChecked}}" disabled="{{busy}}"/><text>已人工核对身份文字资料</text></label></checkbox-group><checkbox-group data-field="portraitChecked" bindchange="checkbox"><label class="consent"><checkbox value="yes" checked="{{portraitChecked}}" disabled="{{busy}}"/><text>已核对清晰本人照片与参赛者相貌</text></label></checkbox-group><checkbox-group data-field="insuranceChecked" bindchange="checkbox"><label class="consent"><checkbox value="yes" checked="{{insuranceChecked}}" disabled="{{busy}}"/><text>要求保险时，已核对被保险人、篮球活动与完整赛事期间</text></label></checkbox-group><text class="field-label">审核说明（4–500字）</text><textarea class="field" bindinput="reasonInput" value="{{reason}}" maxlength="500" disabled="{{busy}}" placeholder="说明核对结果或需要补齐的材料"/><button class="primary" data-decision="APPROVE" bindtap="review" disabled="{{busy || !identityChecked || !portraitChecked}}">通过当前材料版本</button><button class="secondary" data-decision="REQUEST_CHANGES" bindtap="review" disabled="{{busy}}">退回本人补齐</button></view>
-  </block>
-  <view wx:if="{{mode === 'mine' && workspace && materialPanel !== 'profile'}}" class="material-secondary-links"><button class="quiet" bindtap="insurance" disabled="{{busy || pending}}">保险购买、查单与退保进度</button><button wx:if="{{workspace.dataProcessingConsent.required}}" class="quiet" bindtap="guardian" disabled="{{busy || pending}}">监护人确认与进度</button></view>
-  <button class="quiet" bindtap="load" disabled="{{busy || loading}}">{{pending ? '重新核对原请求回执' : '重新读取当前状态'}}</button>
-</view>
 
+    <block wx:elif="{{figmaState==='materials-review'}}">
+      <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="registration" size="28"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">城市篮球邀请赛 · 城北篮球队</view><view class="figma-title">本人资料审核与进度</view><view class="figma-subtitle">领队查看逐人进度。私有材料需独立审核权限。</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">逐人填写与审核进度</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">陈一鸣 · 7号</view><view class="figma-row__subtitle">当前版本 2 · 已提交资料</view></view><view class="figma-status figma-status--orange">待核验</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">林子航 · 23号</view><view class="figma-row__subtitle">当前版本 1 · 保障凭证待补充</view></view><view class="figma-status figma-status--orange">待补齐</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">材料访问</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">查看进度详情</view><view class="figma-row__subtitle">按当前账号与报名权限核对</view></view><view class="figma-status">仅进度</view></view></view>
+    </block>
 
-<view wx:if="{{mode === 'mine' && workspace}}" class="fixed-actions material-fixed-actions">
-  <block wx:if="{{workspace.capabilities.canSave}}"><button wx:if="{{materialPanel === 'insurance'}}" class="secondary" bindtap="saveInsurance" disabled="{{busy || loading || pending || storageError}}" loading="{{busy}}">保存保单资料</button><button wx:else class="secondary" bindtap="save" disabled="{{busy || loading || pending || storageError}}" loading="{{busy}}">保存草稿</button></block>
-  <button class="primary" bindtap="qualification" disabled="{{busy || loading || pending || dirty}}">去资格预审</button>
+    <block wx:else>
+    <view wx:if="{{mode === 'list'}}" class="figma-summary">
+      <view class="figma-summary__icon"><figma-icon name="registration" size="28"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">本人报名</view>
+        <view class="figma-title">我的本人报名</view>
+        <view class="figma-subtitle">选择本届赛事和本队报名，再查看资料与用途授权。</view>
+      </view>
+    </view>
+
+    <view wx:elif="{{workspace}}" class="figma-summary">
+      <view class="figma-summary__icon"><figma-icon name="registration" size="28"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">{{mode === 'review' ? '城市篮球邀请赛 · ' + workspace.teamName : material && material.status === 'CHANGES_REQUESTED' ? '本人参赛资料' : '仅本人和授权审核人'}}</view>
+        <view class="figma-title">{{mode === 'review' ? '本人资料审核与进度' : material && material.status === 'CHANGES_REQUESTED' ? '报名资料待补充' : figmaSummaryTitle || workspace.eventName + ' · ' + (material.memberName || '本人')}}</view>
+        <view class="figma-subtitle">{{mode === 'review' ? '领队查看逐人进度。私有材料需独立审核权限。' : material && material.status === 'CHANGES_REQUESTED' ? '按退回原因补交，已保存的其他资料可继续使用。' : '仅限本届赛事使用的私有资料'}}</view>
+      </view>
+    </view>
+
+    <figma-feedback wx:if="{{error}}" type="error" title="读取或处理未完成" body="{{error}}" action-label="重新读取" disabled="{{busy || loading}}" bind:action="load"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="当前操作已记录" body="{{message}}"/>
+    <figma-feedback wx:if="{{storageError}}" type="error" title="本机保护记录异常" body="{{storageError}}"/>
+    <figma-feedback wx:if="{{pending}}" type="warning" title="原请求结果待核对" body="已保留原请求编号；核对回执前暂停新保存与上传，避免重复建档。" action-label="重新核对原请求回执" disabled="{{busy || loading}}" bind:action="load"/>
+    <figma-skeleton wx:if="{{loading && !workspace}}" rows="4"/>
+
+    <view wx:if="{{loginRequired && !loading}}" class="figma-section">
+      <view class="figma-section__title">登录后继续本人报名</view>
+      <view class="figma-section__hint">仅本人和有权的独立审核人员可查看受保护资料。</view>
+      <button class="figma-action figma-action--orange" bindtap="login">登录并继续</button>
+    </view>
+
+    <block wx:if="{{mode === 'list' && !loginRequired && !loading}}">
+      <figma-feedback wx:if="{{!entries.length}}" type="empty" title="暂无待填写的本人报名" body="先加入或认领本人球队成员，再由领队将你加入本届名单。加入球队本身不代表已报名。"/>
+      <view wx:if="{{entries.length}}" class="figma-section">
+        <view class="figma-section__title">本人报名</view>
+        <button wx:for="{{entries}}" wx:key="entryId" class="figma-row material-entry" data-id="{{item.entryId}}" data-org="{{item.orgId}}" bindtap="openEntry">
+          <view class="figma-row__copy">
+            <view class="figma-row__title">{{item.eventName}}</view>
+            <view class="figma-row__subtitle">{{item.teamName}} · {{item.startDate}}—{{item.endDate}}</view>
+          </view>
+          <view class="figma-status figma-status--orange">本人报名</view>
+        </button>
+      </view>
+    </block>
+
+    <block wx:if="{{workspace && mode === 'review'}}">
+      <view class="figma-section">
+        <view class="figma-section__title">逐人填写与审核进度</view>
+        <view class="figma-section__hint">本届名单中的每位成员分别核对当前版本与授权。</view>
+        <figma-feedback wx:if="{{!members.length}}" type="empty" title="本届名单尚无成员"/>
+        <button wx:for="{{members}}" wx:key="memberId" class="figma-row" data-id="{{item.memberId}}" bindtap="openMember" disabled="{{busy}}">
+          <view class="figma-row__copy">
+            <view class="figma-row__title">{{item.memberName}}</view>
+            <view class="figma-row__subtitle">当前版本 {{item.version}} · {{item.blockerText || '已提交资料'}}</view>
+          </view>
+          <view class="figma-status figma-status--orange">{{item.statusLabel}}</view>
+        </button>
+      </view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">材料访问</view>
+        <view class="figma-row">
+          <view class="figma-row__copy">
+            <view class="figma-row__title">查看进度详情</view>
+            <view class="figma-row__subtitle">按当前账号与报名权限核对</view>
+          </view>
+          <view class="figma-status">仅进度</view>
+        </view>
+      </view>
+
+      <view wx:if="{{material}}" class="figma-section material-detail">
+        <view class="material-detail__head">
+          <view>
+            <view class="figma-section__title">{{material.memberName}} · {{material.statusLabel}}</view>
+            <view class="figma-section__hint">当前材料版本 V{{material.version}}</view>
+          </view>
+          <button class="material-close" bindtap="closeMember" disabled="{{busy}}">收起</button>
+        </view>
+        <figma-feedback wx:if="{{material.reviewReason}}" type="warning" title="审核说明" body="{{material.reviewReason}}"/>
+        <view wx:if="{{material.blockerText}}" class="material-note">待处理：{{material.blockerText}}</view>
+        <view wx:if="{{material.identityMasked}}" class="material-note">身份证 {{material.identityMasked}}</view>
+        <view wx:if="{{material.portrait}}" class="material-note">{{material.portraitLabel}}</view>
+        <view wx:if="{{material.insurance}}" class="material-note">{{material.insurance.insurer}} · {{material.insurance.policyNumberMasked}} · {{material.insurance.startDate}}—{{material.insurance.endDate}}</view>
+        <view class="material-note">{{material.publicityConsent ? '本人已选择允许本届照片宣传用途' : '未授权照片宣传，不影响参赛资格'}}</view>
+        <view class="material-actions" wx:if="{{material.capabilities.canReadPrivate}}">
+          <button class="figma-action figma-action--ghost" bindtap="revealPrivate" disabled="{{busy || pending}}">明确查看私有文字资料</button>
+          <button wx:if="{{material.portrait}}" class="figma-action figma-action--ghost" data-kind="portrait" bindtap="viewFile" disabled="{{busy || pending}}">私有核对本人照片</button>
+          <button wx:if="{{material.insurance.document}}" class="figma-action figma-action--ghost" data-kind="insurance" bindtap="viewFile" disabled="{{busy || pending}}">私有核对保单</button>
+        </view>
+        <view wx:if="{{privateDetails}}" class="material-private">
+          <view>姓名：{{privateDetails.realName || '未填写'}}</view>
+          <view>身份证：{{privateDetails.identityNumber || '未填写'}}</view>
+          <view wx:if="{{privateDetails.insurance}}">保单号：{{privateDetails.insurance.policyNumber}}</view>
+          <button class="material-text-action" bindtap="concealPrivate">立即隐藏私有文字</button>
+        </view>
+      </view>
+
+      <view wx:if="{{material && material.capabilities.canReview}}" class="figma-section">
+        <view class="figma-section__title">独立人工审核当前版本</view>
+        <view class="figma-section__hint">审核人不得为本人、本队领队、本队活跃成员或最近提交人。</view>
+        <checkbox-group data-field="identityChecked" bindchange="checkbox"><label class="figma-check"><checkbox value="yes" checked="{{identityChecked}}" disabled="{{busy}}"/><text>已人工核对身份文字资料</text></label></checkbox-group>
+        <checkbox-group data-field="portraitChecked" bindchange="checkbox"><label class="figma-check"><checkbox value="yes" checked="{{portraitChecked}}" disabled="{{busy}}"/><text>已核对清晰本人照片与参赛者相貌</text></label></checkbox-group>
+        <checkbox-group data-field="insuranceChecked" bindchange="checkbox"><label class="figma-check"><checkbox value="yes" checked="{{insuranceChecked}}" disabled="{{busy}}"/><text>适用时已核对保障材料</text></label></checkbox-group>
+        <view class="figma-field-group"><view class="figma-field-label">审核说明（4—500字）</view><textarea class="figma-field-control" bindinput="reasonInput" value="{{reason}}" maxlength="500" disabled="{{busy}}" placeholder="说明核对结果或需要补齐的材料"/></view>
+        <button class="figma-action figma-action--navy" data-decision="APPROVE" bindtap="review" disabled="{{busy || !identityChecked || !portraitChecked}}">通过当前材料版本</button>
+        <button class="figma-action figma-action--ghost" data-decision="REQUEST_CHANGES" bindtap="review" disabled="{{busy}}">退回本人补齐</button>
+      </view>
+    </block>
+
+    <block wx:if="{{workspace && mode === 'mine'}}">
+      <figma-tabs key1="profile" label1="身份" key2="portrait" label2="照片" key3="consent" label3="签署" key4="progress" label4="进度" active="{{materialPanel === 'insurance' ? 'progress' : materialPanel}}" disabled="{{busy || loading || pending}}" bind:change="switchMaterialPanel"/>
+      <button class="material-text-action" data-panel="insurance" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">已有外部保单</button>
+
+      <figma-feedback wx:if="{{!workspace.enabled}}" type="warning" title="本届尚未开放本人资料流程" body="不能据此放宽身份、照片或保障要求。"/>
+      <figma-feedback wx:if="{{workspace.frozen}}" type="warning" title="本届名单已冻结" body="当前资料保持冻结版本；仍可按权限查看进度或撤回宣传许可。"/>
+      <figma-feedback wx:if="{{workspace.dataProcessingConsent.required && !workspace.dataProcessingConsent.ready}}" type="warning" title="先完成监护人资料处理同意" body="取得本届必要同意后，才能继续填写身份和照片。" action-label="打开监护确认" disabled="{{busy || pending}}" bind:action="guardian"/>
+
+      <block wx:if="{{material && material.status === 'CHANGES_REQUESTED'}}">
+        <view class="figma-section">
+          <view class="figma-section__title">审核意见</view>
+          <view class="supplement-callout"><view class="supplement-dot"/><view class="figma-row__copy"><view class="figma-row__title">{{material.blockerText || '报名资料待补充'}}</view><view class="figma-row__subtitle">{{material.reviewReason || '请按审核说明更新当前版本。'}}</view></view><view class="figma-status figma-status--orange">需处理</view></view>
+          <view class="supplement-callout"><view class="supplement-dot"/><view class="figma-row__copy"><view class="figma-row__title">本届报名</view><view class="figma-row__subtitle">重新提交后等待独立审核。</view></view><view class="figma-status figma-status--orange">待复核</view></view>
+        </view>
+      </block>
+
+      <block wx:if="{{materialPanel === 'profile'}}">
+        <view class="figma-section">
+          <view class="figma-section__title">本届身份</view>
+          <view class="figma-field-group"><view class="figma-field-label">本人姓名 *</view><input class="figma-field-control" data-field="realName" value="{{form.realName}}" bindinput="field" maxlength="80" disabled="{{busy || pending || !workspace.capabilities.canSave}}" placeholder="请输入真实姓名"/></view>
+          <view class="figma-field-group"><view class="figma-field-label">证件号码 *</view><input class="figma-field-control" data-field="identityNumber" value="{{form.identityNumber}}" bindinput="field" maxlength="18" disabled="{{busy || pending || !workspace.capabilities.canSave}}" placeholder="{{material.identityMasked ? '已保存；留空保留原证件号' : '仅授权人员可见'}}"/></view>
+          <view class="figma-field-group"><view class="figma-field-label">球衣号码</view><view class="figma-field-control material-readonly"><text>{{figmaJerseyNumber || material.memberName || '本人'}}</text><text class="figma-status figma-status--orange">本届</text></view></view>
+        </view>
+        <view class="figma-section">
+          <view class="figma-section__title">本人照片</view>
+          <view class="figma-field-group"><view class="figma-field-label">清晰本人照片</view><button class="figma-field-control material-file" data-kind="portrait" bindtap="upload" disabled="{{busy || pending || storageError || !workspace.capabilities.canSave}}"><text>{{material.portrait ? '替换本人清晰正面照片' : '选择本人清晰正面照片'}}</text><view class="figma-status figma-status--orange">{{material.portrait ? '已保存' : '必传'}}</view></button></view>
+          <view class="figma-field-group"><view class="figma-field-label">上传进度</view><view class="figma-field-control material-readonly"><text>{{material ? material.portraitLabel : '等待选择文件'}}</text><view class="figma-status figma-status--orange">{{material && material.portrait ? '已保存' : '待补充'}}</view></view></view>
+        </view>
+        <view class="figma-section">
+          <view class="figma-section__title">用途授权</view>
+          <checkbox-group data-field="acceptedTerms" bindchange="checkbox"><label class="figma-check"><checkbox value="yes" checked="{{form.acceptedTerms}}" disabled="{{busy || pending || !workspace.capabilities.canSave}}"/><view class="figma-row__copy"><view class="figma-row__title">本届规程</view><view class="figma-row__subtitle">本人核对并签署</view></view><view class="figma-status {{form.acceptedTerms ? 'figma-status--green' : 'figma-status--orange'}}">{{form.acceptedTerms ? '已确认' : '待确认'}}</view></label></checkbox-group>
+          <checkbox-group data-field="publicityConsent" bindchange="checkbox"><label class="figma-check"><checkbox value="yes" checked="{{form.publicityConsent}}" disabled="{{busy || pending || !workspace.capabilities.canSave}}"/><view class="figma-row__copy"><view class="figma-row__title">允许照片宣传</view><view class="figma-row__subtitle">自愿选择，默认未勾选</view></view><view class="figma-status">{{form.publicityConsent ? '已选择' : '可选'}}</view></label></checkbox-group>
+        </view>
+      </block>
+
+      <view wx:if="{{materialPanel === 'portrait'}}" class="figma-section">
+        <view class="figma-section__title">本人照片</view>
+        <view class="figma-section__hint">清晰正面单人照片，仅本人及有权独立审核人可查看。支持 JPEG/PNG，不超过 8MiB。</view>
+        <view class="material-upload-box"><figma-icon name="camera" size="28"/><view>{{material ? material.portraitLabel : '尚未上传本人照片'}}</view></view>
+        <button class="figma-action figma-action--navy" data-kind="portrait" bindtap="upload" disabled="{{busy || pending || storageError || !workspace.capabilities.canSave}}">{{material.portrait ? '选择并替换本人照片' : '拍摄或选择本人照片'}}</button>
+      </view>
+
+      <view wx:if="{{materialPanel === 'consent'}}" class="figma-section">
+        <view class="figma-section__title">本届规程签署</view>
+        <view class="figma-section__hint">确认版本：{{workspace.rules.termsVersion}}</view>
+        <view class="material-terms">本人提交真实资料和近期照片，供本届资格、相貌及保障人工核对。球队领队不能代替本人签署。照片私有核对是报名要求，宣传用途另行自愿选择。</view>
+        <checkbox-group data-field="acceptedTerms" bindchange="checkbox"><label class="figma-check"><checkbox value="yes" checked="{{form.acceptedTerms}}" disabled="{{busy || pending || !workspace.capabilities.canSave}}"/><text>我本人已核对本届资料、用途和确认内容</text></label></checkbox-group>
+        <checkbox-group data-field="publicityConsent" bindchange="checkbox"><label class="figma-check"><checkbox value="yes" checked="{{form.publicityConsent}}" disabled="{{busy || pending || !workspace.capabilities.canSave}}"/><text>我自愿允许本届照片宣传用途（可选）</text></label></checkbox-group>
+      </view>
+
+      <view wx:if="{{materialPanel === 'insurance'}}" class="figma-section">
+        <view class="figma-section__title">已有保单</view>
+        <view class="figma-section__hint">已有保单人工核验；上传不等于已投保、保障有效或审核通过。</view>
+        <view class="figma-field-group"><view class="figma-field-label">保险机构</view><input class="figma-field-control" data-field="insurer" value="{{form.insurer}}" bindinput="field" maxlength="120" disabled="{{busy || pending || !workspace.capabilities.canSave}}" placeholder="填写实际保险机构"/></view>
+        <view class="figma-field-group"><view class="figma-field-label">保单号</view><input class="figma-field-control" data-field="policyNumber" value="{{form.policyNumber}}" bindinput="field" maxlength="120" disabled="{{busy || pending || !workspace.capabilities.canSave}}" placeholder="{{material.insurance ? '已保存；留空保留原保单号' : '填写实际保单号'}}"/></view>
+        <view class="material-date-grid"><view class="figma-field-group"><view class="figma-field-label">保障开始日期</view><input class="figma-field-control" data-field="startDate" value="{{form.startDate}}" bindinput="field" maxlength="10" disabled="{{busy || pending || !workspace.capabilities.canSave}}" placeholder="YYYY-MM-DD"/></view><view class="figma-field-group"><view class="figma-field-label">保障结束日期</view><input class="figma-field-control" data-field="endDate" value="{{form.endDate}}" bindinput="field" maxlength="10" disabled="{{busy || pending || !workspace.capabilities.canSave}}" placeholder="YYYY-MM-DD"/></view></view>
+        <button class="figma-action figma-action--ghost" data-kind="insurance" bindtap="upload" disabled="{{busy || pending || storageError || !workspace.capabilities.canSave}}">选择并私有保存保单文件</button>
+      </view>
+
+      <view wx:if="{{materialPanel === 'progress'}}" class="figma-section">
+        <view class="figma-section__title">提交与审核进度</view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">当前资料版本</view><view class="figma-row__subtitle">{{material ? 'V' + material.version : '尚未保存'}}</view></view><view class="figma-status figma-status--orange">{{material ? material.statusLabel : '待填写'}}</view></view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">本人照片</view><view class="figma-row__subtitle">{{material ? material.portraitLabel : '待上传'}}</view></view><view class="figma-status">{{material && material.portrait ? '已保存' : '待补充'}}</view></view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">本届签署</view><view class="figma-row__subtitle">当前规程版本 {{workspace.rules.termsVersion}}</view></view><view class="figma-status {{form.acceptedTerms ? 'figma-status--green' : 'figma-status--orange'}}">{{form.acceptedTerms ? '已签署' : '待签署'}}</view></view>
+        <button wx:if="{{workspace.capabilities.canWithdrawPublicity}}" class="material-text-action" data-action="withdraw" bindtap="command" disabled="{{busy || pending}}">撤回照片宣传授权</button>
+      </view>
+
+      <view wx:if="{{!workspace.capabilities.canSave}}" class="figma-section">
+        <view class="figma-section__title">本人资料当前不可编辑</view>
+        <view class="figma-section__hint">按当前权限与冻结版本查看进度，页面切换不会取得填写或审核权限。</view>
+      </view>
+
+      <view class="figma-section material-links">
+        <view class="figma-section__title">相关服务</view>
+        <button wx:if="{{workspace.dataProcessingConsent.required}}" class="figma-row" bindtap="guardian" disabled="{{busy || pending || dirty}}"><view class="figma-row__copy"><view class="figma-row__title">监护确认</view><view class="figma-row__subtitle">查看本届必要资料处理授权</view></view><view class="figma-status figma-status--orange">查看</view></button>
+        <button class="figma-row" bindtap="qualification" disabled="{{busy || pending || dirty}}"><view class="figma-row__copy"><view class="figma-row__title">本届资格预审</view><view class="figma-row__subtitle">按当前资料版本独立核验</view></view><view class="figma-status figma-status--orange">查看</view></button>
+        <button class="figma-row" bindtap="insurance" disabled="{{busy || pending || dirty}}"><view class="figma-row__copy"><view class="figma-row__title">本届保险保障</view><view class="figma-row__subtitle">购买、查单与退保进度</view></view><view class="figma-status figma-status--orange">查看</view></button>
+      </view>
+    </block>
+    </block>
+  </view>
+
+  <view wx:if="{{figmaState==='materials-returned'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">保存草稿</button><button class="figma-action figma-action--orange">重新提交本人资料</button></view>
+  <view wx:elif="{{figmaState==='materials-list'}}" class="figma-fixed-actions figma-fixed-actions--single"><button class="figma-action figma-action--orange">查看本人资料与授权</button></view>
+  <view wx:elif="{{figmaState==='materials-review'}}" class="figma-fixed-actions figma-fixed-actions--single"><button class="figma-action figma-action--orange">查看进度详情</button></view>
+  <view wx:elif="{{mode === 'mine' && workspace}}" class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" data-panel="progress" bindtap="switchMaterialPanel" disabled="{{busy || loading || pending}}">查看审核进度</button>
+    <button wx:if="{{!dirty && workspace.capabilities.canSubmit}}" class="figma-action figma-action--orange" data-action="submit" bindtap="command" disabled="{{busy || loading || pending}}">{{material && material.status === 'CHANGES_REQUESTED' ? '重新提交本人资料' : '提交本人资料审核'}}</button>
+    <button wx:else class="figma-action figma-action--orange" bindtap="save" disabled="{{busy || loading || pending || storageError || !workspace.capabilities.canSave}}">保存本人资料</button>
+  </view>
 </view>

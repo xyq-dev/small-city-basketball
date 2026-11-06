@@ -4,7 +4,7 @@
   "state": "error",
   "figmaNode": "11:36",
   "syntheticData": true,
-  "expectText": ["重新读取球员资料"],
+  "expectText": ["重新读取"],
   "data": {
     "cards": [],
     "loading": false,

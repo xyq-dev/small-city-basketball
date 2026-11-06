@@ -4,7 +4,12 @@
   "state": "synthetic-dispatch-quote",
   "figmaNode": "42:1454",
   "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
-  "expectText": ["当前报价待客户再次确认", "总额 ¥500.00", "确认当前报价并创建真实预约"],
+  "expectText": [
+    "报价待确认",
+    "确认当前报价并创建真实预约",
+    "总额 ¥500.00",
+    "确认当前报价并创建真实预约"
+  ],
   "data": {
     "capabilities": {
       "enabled": true

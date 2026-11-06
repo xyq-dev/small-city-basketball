@@ -1,121 +1,109 @@
 <scb-header title="球员合作详情" disabled="{{busy || loading}}"/>
-<view class="page has-actions booking-detail-page">
-  <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">当前合作需要重新核对</view><view class="small">{{error}}</view></view>
-  <view wx:if="{{message}}" class="notice small">{{message}}</view>
-  <view wx:if="{{loginRequired}}" class="card empty state-card"><view class="subtitle">登录后查看这份合作</view><view class="muted">仅当前有权身份可读取本单记录。</view><button class="primary" bindtap="login">登录并返回</button></view>
-  <view wx:if="{{loading}}" class="card state-card loading-card"><view class="state-title">正在核对最新合作记录</view><view class="skeleton"></view><view class="skeleton short"></view><view class="small muted">请等待当前场次与权限读取完成…</view></view>
-  <view wx:if="{{!order && !loading && !loginRequired && !error}}" class="card empty state-card"><view class="subtitle">暂未读取到合作记录</view><view class="muted">请从本人预约选择当前有权查看的合作。</view></view>
-  <block wx:if="{{order}}">
-    <view class="order-identity muted">{{order.teamName}} · {{order.eventName}}</view>
-    <view wx:if="{{!form && order.stateTitle}}" class="hero expiry-hero"><view class="title">{{order.stateTitle}}</view><view>{{order.stateHint}}</view></view>
-    <view wx:elif="{{!form}}" class="card order-context"><view class="subtitle">逐人逐场独立处理</view><view class="muted">{{order.playerCount}}位球员 · 已确定{{order.confirmedCount}}项 / 意向{{order.conditionalCount}}项</view></view>
-    <view wx:if="{{pending}}" class="card pending-panel">
-      <view class="subtitle">{{pending.kind === 'INVALID' ? '恢复记录损坏，先核对本场' : '原操作结果待核对'}}</view>
-      <view wx:if="{{pending.kind === 'PENDING'}}" class="small command-id">原操作编号：{{pending.payload.commandId}}</view>
-      <view class="muted">网络异常不代表操作没有保存。核对期间不换新编号重复执行，不自动后台重发。</view>
-      <view wx:if="{{pending.storageWarning}}" class="notice warning">{{pending.storageWarning}}</view>
-      <button wx:if="{{pending.kind === 'PENDING'}}" class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="recover">用原编号核对原操作结果</button>
-      <view class="divider"></view>
-      <checkbox-group bindchange="pendingConsent">
-        <label class="consent"><checkbox value="yes" checked="{{pendingAcknowledged}}" disabled="{{busy || pending.inFlight}}"/><text>我已核对当前本场记录，确认不再重试这条原操作</text></label>
-      </checkbox-group>
-      <view class="small muted">移除标记只影响本机，不取消服务端请求。仍不确定时请保留原编号继续核对。</view>
-      <button class="secondary" disabled="{{busy || !pendingAcknowledged || pending.inFlight}}" bindtap="clearPending">重新核对记录后移除本机标记</button>
-    </view>
-    <block wx:if="{{!form}}">
-    <block wx:for="{{order.appearances}}" wx:key="id">
-      <view class="card appearance-summary">
-        <view class="appearance-status {{item.tone}}">{{item.statusText}}{{item.status === 'EXPIRED' ? ' · 本项档期已释放' : ''}}</view>
-        <view class="service-progress"><text class="{{item.status==='REQUESTED' || item.status==='CONDITIONAL'?'active':''}}">预约确认</text><text class="{{item.status==='ACCEPTED' || item.status==='ARRIVED'?'active':''}}">到场与履约</text><text class="{{item.status==='COMPLETED'?'active':''}}">结果核对</text></view><view class="subtitle">{{item.playerName}} · {{item.label}}</view><button data-id="{{item.id}}" bindtap="trade" disabled="{{busy}}">查看本场付款与退款</button>
-<button class="quiet" data-id="{{item.id}}" data-kind="report" bindtap="governance" disabled="{{busy}}">本场服务举报或工单</button>
-<button wx:if="{{item.status === 'COMPLETED'}}" class="quiet" data-id="{{item.id}}" data-kind="review" bindtap="governance" disabled="{{busy}}">评价本场已完成服务</button>
-        <view wx:if="{{item.status === 'CONDITIONAL'}}" class="small">条件满足后补齐具体时间</view>
-        <view wx:elif="{{item.scheduleText}}" class="small">{{item.scheduleText}}</view>
-        <block wx:else><view class="small">{{item.startText}} — {{item.endText}}</view><view class="small muted">报到 {{item.reportText}}</view></block>
-        <view class="small muted">{{item.venue}}</view>
-        <view class="appearance-price">{{item.status === 'CONDITIONAL' ? '条件预计' : '报价'}} {{item.totalText}} · 资金见本场独立订单</view>
+<view class="scb-ui-page figma-page booking-detail-rebuild">
+  <view class="figma-page__content {{!form ? 'figma-page__content--actions' : ''}}">
+    <figma-feedback wx:if="{{error}}" type="error" title="当前合作需要重新核对" body="{{error}}"/>
+    <figma-feedback wx:if="{{message}}" type="info" title="处理结果" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="permission" title="登录后查看这份合作" body="仅当前有权身份可读取本单记录。" action-label="登录并返回" bind:action="login"/>
+    <figma-skeleton wx:if="{{loading}}" rows="4"/>
+    <figma-feedback wx:if="{{!order && !loading && !loginRequired && !error}}" type="empty" title="暂未读取到合作记录" body="请从本人预约选择当前有权查看的合作。" action-label="返回我的预约" bind:action="list"/>
+
+    <block wx:if="{{order}}">
+      <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="receipt" size="28"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">授权球队与本人</view><view class="figma-title">球员合作详情</view><view class="figma-subtitle">{{order.teamName}} × {{order.playerSummary}} · {{order.scopeText}}。</view></view></view>
+      <view class="detail-tabs" role="tablist"><button class="detail-tab {{activeTab==='arrangement' ? 'is-active' : ''}}" data-tab="arrangement" bindtap="changeTab" disabled="{{busy || form}}">安排</button><button class="detail-tab {{activeTab==='fulfillment' ? 'is-active' : ''}}" data-tab="fulfillment" bindtap="changeTab" disabled="{{busy || form}}">履约</button><button class="detail-tab {{activeTab==='fees' ? 'is-active' : ''}}" data-tab="fees" bindtap="changeTab" disabled="{{busy || form}}">费用</button></view>
+
+      <view wx:if="{{!form && order.appearances.length > 1}}" class="figma-section"><view class="figma-section__title">逐人逐场独立处理</view><view class="figma-caption">{{order.playerCount}} 位球员 · 已确定 {{order.confirmedCount}} 项 / 意向 {{order.conditionalCount}} 项</view></view>
+
+      <view wx:if="{{pending}}" class="figma-section pending-panel">
+        <view class="figma-section__title">{{pending.kind === 'INVALID' ? '恢复记录损坏，先核对本场' : '原操作结果待核对'}}</view>
+        <view wx:if="{{pending.kind === 'PENDING'}}" class="command-id">原操作编号：{{pending.payload.commandId}}</view>
+        <view class="figma-caption">网络异常不代表操作没有保存。核对期间不换新编号重复执行，也不自动后台重发。</view>
+        <figma-feedback wx:if="{{pending.storageWarning}}" type="error" title="本机记录提示" body="{{pending.storageWarning}}"/>
+        <button wx:if="{{pending.kind === 'PENDING'}}" class="figma-action figma-action--navy" disabled="{{busy}}" bindtap="recover">{{busy ? '正在核对…' : '用原编号核对结果'}}</button>
+        <checkbox-group bindchange="pendingConsent"><label class="figma-check"><checkbox value="yes" checked="{{pendingAcknowledged}}" disabled="{{busy || pending.inFlight}}"/>我已核对当前本场记录，确认不再重试这条原操作</label></checkbox-group>
+        <button class="figma-action figma-action--ghost" disabled="{{busy || !pendingAcknowledged || pending.inFlight}}" bindtap="clearPending">核对后移除本机标记</button>
       </view>
-      <button class="secondary appearance-toggle" disabled="{{busy || pending || form}}" data-id="{{item.id}}" bindtap="toggleAppearance">{{expandedId === item.id ? '收起本场约定与操作' : '核对本场约定与操作'}}</button>
-      <view wx:if="{{expandedId === item.id || pending}}" class="card appearance-detail">
-        <view class="subtitle">本场约定与费用</view>
-        <view wx:if="{{item.status === 'CONDITIONAL'}}" class="notice warning"><view class="notice-title">意向不占具体档期</view><view class="small">{{item.conditionText}} 条件满足后补齐实际时间地点，再由本人接单。</view></view>
-        <view class="small muted">{{item.positionText}} · 时间均为北京时间。</view>
-        <view class="small">{{order.eligibilityNotice}}</view>
-      <view wx:if="{{item.expiresText && item.status === 'REQUESTED'}}" class="small muted">等待接单至 {{item.expiresText}}，超时释放；未回复不代表已接单。</view>
-      <view wx:if="{{item.scheduleChanged}}" class="notice danger">关联正式比赛的时间、地点或状态已变化，请核对当前赛事安排，不能按过期约定继续处理。</view>
-      <view class="small muted">服务费 {{item.serviceText}} · 平台费 {{item.platformFeeText}}</view>
-      <view class="small muted">交通 {{item.travelText}} · 食宿 {{item.accommodationText}}</view>
-      <view class="small muted">资金以独立交易记录及渠道核验为准</view>
-      <view wx:if="{{item.change}}" class="change-panel">
-        <view class="section-title">待另一方确认的变更 · {{item.change.role}}</view>
-        <view class="small">新报到 {{item.change.reportText}}</view>
-        <view class="small">新开始 {{item.change.startText}}</view>
-        <view class="small">新结束 {{item.change.endText}}</view>
-        <view class="small">{{item.change.venue}}</view>
-        <view class="small">原因：{{item.change.reason}}</view>
-        <view class="small muted">同意前原约定保持；接受时再次检查档期。</view>
-      </view>
-      <view wx:if="{{item.arrivedText}}" class="small muted">本人声明到场 {{item.arrivedText}}（非GPS核验）</view>
-      <view wx:if="{{item.completedText}}" class="small muted">完成记录 {{item.completedText}}（不等于付款）</view>
-      <view wx:if="{{item.cancellationReason}}" class="small">处理原因：{{item.cancellationReason}}</view>
-      <view wx:if="{{item.status === 'DISPUTED'}}" class="notice warning">争议保留相关档期与记录并阻断结算。只有满足独立条件的平台人员可作裁定。</view>
-      <view wx:if="{{!item.actions.length}}" class="small muted">当前身份或本场状态没有可执行操作，请以刷新后的权限为准。</view>
-      <view class="appearance-actions">
-        <button wx:for="{{item.actions}}" wx:for-item="action" wx:key="type" class="{{action.danger ? 'danger' : 'secondary'}}" disabled="{{busy || pending}}" data-id="{{item.id}}" data-type="{{action.type}}" bindtap="chooseAction">{{action.label}}</button>
-      </view>
-      </view>
-    </block>
-    </block>
-    <view wx:if="{{form}}" id="command-form" class="card command-form">
-      <view class="subtitle">{{form.title}}</view>
-      <view class="selected-summary"><view class="appearance-status {{selected.tone}}">{{selected.statusText}}</view><view class="subtitle">{{selected.playerName}} · {{selected.label}}</view><view wx:if="{{selected.status === 'CONDITIONAL'}}" class="small">条件满足后补齐具体时间</view><block wx:else><view class="small">报到 {{selected.reportText}}</view><view class="small">{{selected.startText}} — {{selected.endText}}</view></block><view class="small muted">{{selected.venue}}</view><view class="appearance-price">{{selected.status === 'CONDITIONAL' ? '条件预计' : '本场报价'}} {{selected.totalText}} · 资金见本场独立订单</view></view>
-      <view wx:if="{{selected.status === 'CONDITIONAL'}}" class="notice warning"><view class="notice-title">意向不占具体档期</view><view class="small">{{selected.conditionText}} 条件满足后补齐实际时间地点，再由本人接单。</view></view>
-      <view wx:if="{{selected.expiresText && selected.status === 'REQUESTED'}}" class="notice small">等待接单至 {{selected.expiresText}}，超时释放；未回复不代表已接单。</view>
-      <view wx:if="{{selected.scheduleChanged}}" class="notice danger">关联正式比赛的时间、地点或状态已变化，请核对当前赛事安排，不能按过期约定继续处理。</view>
-      <view wx:if="{{selected.change}}" class="card command-context">
-        <view class="subtitle">待另一方确认的变更 · {{selected.change.role}}</view><view class="small">新报到 {{selected.change.reportText}}</view><view class="small">新开始 {{selected.change.startText}}</view><view class="small">新结束 {{selected.change.endText}}</view><view class="small">{{selected.change.venue}}</view><view class="small">原因：{{selected.change.reason}}</view><view class="small muted">同意前原约定保持；接受时再次检查档期。</view>
-      </view>
-      <view wx:if="{{selected.arrivedText || selected.completedText || selected.cancellationReason || selected.status === 'DISPUTED'}}" class="card command-context">
-        <view class="subtitle">本场处理记录</view><view wx:if="{{selected.arrivedText}}" class="small muted">本人声明到场 {{selected.arrivedText}}（非GPS核验）</view><view wx:if="{{selected.completedText}}" class="small muted">完成记录 {{selected.completedText}}（不等于付款）</view><view wx:if="{{selected.cancellationReason}}" class="small">处理原因：{{selected.cancellationReason}}</view><view wx:if="{{selected.status === 'DISPUTED'}}" class="small muted">争议保留相关档期与记录并阻断结算。只有满足独立条件的平台人员可作裁定。</view>
-      </view>
-      <view class="card agreement-card"><view class="subtitle">资格与服务约定</view><view class="muted">{{order.eligibilityNotice}}</view><view class="small muted">入驻资料审核不等于本场资格或保险已经核验。</view></view>
-      <view class="card quote-compact"><view class="subtitle">本场报价</view><view class="muted">服务费 {{selected.serviceText}} · 平台费 {{selected.platformFeeText}}</view><view class="muted">交通 {{selected.travelText}} · 食宿 {{selected.accommodationText}}</view><view class="appearance-price">总报价 {{selected.totalText}} · 资金见本场独立订单</view></view>
-      <view wx:if="{{form.type === 'ACTIVATE'}}" class="notice warning">激活只补齐时间地点，沿用原单金额和费率快照；如需另议价格，取消原项后重新预约。</view>
-      <view wx:if="{{form.type === 'PROPOSE_CHANGE'}}" class="notice">提交提议后等待交易另一方明确同意；同意前原约定不变。</view>
-      <view wx:if="{{form.type === 'ARRIVE'}}" class="notice">到场为球员本人声明，不等于现场、GPS或二维码核验。</view>
-      <view wx:if="{{form.type === 'COMPLETE'}}" class="notice">需已有本人到场记录且服务结束，由当前授权球队方确认。比赛输赢或得分不直接作为履约标准。</view>
-      <view wx:if="{{form.needsSchedule}}" class="schedule-form">
-        <view class="field-label">报到日期与时间 · 北京时间</view>
-        <view class="date-row"><picker mode="date" value="{{formFields.reportDate}}" data-field="reportDate" bindchange="input"><view class="field">{{formFields.reportDate}}</view></picker><picker mode="time" value="{{formFields.reportTime}}" data-field="reportTime" bindchange="input"><view class="field">{{formFields.reportTime}}</view></picker></view>
-        <view class="field-label">比赛开始日期与时间</view>
-        <view class="date-row"><picker mode="date" value="{{formFields.startDate}}" data-field="startDate" bindchange="input"><view class="field">{{formFields.startDate}}</view></picker><picker mode="time" value="{{formFields.startTime}}" data-field="startTime" bindchange="input"><view class="field">{{formFields.startTime}}</view></picker></view>
-        <view class="field-label">服务结束日期与时间</view>
-        <view class="date-row"><picker mode="date" value="{{formFields.endDate}}" data-field="endDate" bindchange="input"><view class="field">{{formFields.endDate}}</view></picker><picker mode="time" value="{{formFields.endTime}}" data-field="endTime" bindchange="input"><view class="field">{{formFields.endTime}}</view></picker></view>
-        <view class="small muted">报到≤开始&lt;结束，单次服务不超过12小时；场后保留30分钟交通缓冲。</view>
-        <view class="field-label">实际地点</view>
-        <input class="field" value="{{formFields.venue}}" maxlength="120" data-field="venue" bindinput="input" placeholder="请填写具体场地" disabled="{{busy}}"/>
-      </view>
-      <block wx:if="{{form.needsResolution}}">
-        <view class="field-label">独立处理结果</view>
-        <picker mode="selector" range="{{resolutionLabels}}" bindchange="resolution"><view class="field resolution-picker">{{form.resolutionLabel}}<scb-icon name="chevron-down" size="16"/></view></picker>
-        <view class="small muted">平台身份不覆盖利益冲突限制，最终仍由服务端核验。确认完成须有本人到场且服务时段已结束。</view>
+
+      <block wx:if="{{!form}}">
+        <view id="detail-arrangement" class="detail-anchor">
+          <view wx:for="{{order.appearances}}" wx:key="id" class="figma-section arrangement-card">
+            <view class="figma-section__title">{{order.appearances.length > 1 ? '本场安排 · ' + item.playerName : '本场安排'}}</view>
+            <view wx:if="{{order.appearances.length > 1}}" class="figma-section__hint">{{item.label}} · {{item.positionText}}</view>
+            <view class="figma-row"><figma-icon name="schedule" size="{{18}}"/><view class="figma-row__copy"><view class="figma-row__title">报到</view><view class="figma-row__subtitle">{{item.reportDisplay}}</view></view><view class="figma-status figma-status--orange">北京时间</view></view>
+            <view class="figma-row"><figma-icon name="schedule" size="{{18}}"/><view class="figma-row__copy"><view class="figma-row__title">服务时段</view><view class="figma-row__subtitle">{{item.serviceDisplay}}</view></view><view class="figma-status figma-status--orange">{{item.status === 'CONDITIONAL' ? '待补齐' : '已约定'}}</view></view>
+            <view class="figma-row"><figma-icon name="schedule" size="{{18}}"/><view class="figma-row__copy"><view class="figma-row__title">实际地点</view><view class="figma-row__subtitle">{{item.venue || '地点待补齐'}}</view></view><view class="figma-status figma-status--orange">查看</view></view>
+          </view>
+        </view>
+
+        <view id="detail-fulfillment" class="detail-anchor">
+          <view wx:for="{{order.appearances}}" wx:key="id" class="figma-section progress-card">
+            <view class="figma-section__title">{{order.appearances.length > 1 ? '逐场合作进度 · ' + item.playerName : '逐场合作进度'}}</view>
+            <view wx:if="{{order.appearances.length > 1}}" class="figma-section__hint">{{item.label}}</view>
+            <view class="progress-row"><view class="step-index">1</view><view class="figma-row__copy"><view class="figma-row__title">接受本场安排</view><view class="figma-row__subtitle">{{item.playerName}}本人确认</view></view><view class="figma-status {{item.progress.acceptDone ? 'figma-status--green' : 'figma-status--orange'}}">{{item.progress.acceptLabel}}</view></view>
+            <view class="progress-row"><view class="step-index">2</view><view class="figma-row__copy"><view class="figma-row__title">本人声明到场</view><view class="figma-row__subtitle">按实际报到记录</view></view><view class="figma-status {{item.progress.arriveDone ? 'figma-status--green' : 'figma-status--orange'}}">{{item.progress.arriveLabel}}</view></view>
+            <view class="progress-row"><view class="step-index">3</view><view class="figma-row__copy"><view class="figma-row__title">确认完成</view><view class="figma-row__subtitle">时段结束并有本人到场记录</view></view><view class="figma-status {{item.progress.completeDone ? 'figma-status--green' : 'figma-status--orange'}}">{{item.progress.completeLabel}}</view></view>
+          </view>
+        </view>
+
+        <view id="detail-fees" class="detail-anchor">
+          <view class="figma-section">
+            <view class="figma-section__title">本场费用</view>
+            <view wx:for="{{order.appearances}}" wx:key="id" class="finance-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.status === 'CONDITIONAL' ? '条件预计' : '确定报价'}} · {{item.playerName}}</view><view class="figma-row__subtitle">参赛{{item.serviceText}}＋平台{{item.platformFeeText}}＋交通{{item.travelText}}＋食宿{{item.accommodationText}}</view></view><view class="fee-value">{{item.totalText}}</view></view>
+            <view class="finance-row"><view class="figma-row__copy"><view class="figma-row__title">实际资金</view><view class="figma-row__subtitle">查询原资金订单</view></view><view class="funds-state">逐场查看</view></view>
+          </view>
+        </view>
+
+        <view class="figma-section detail-secondary">
+          <view class="figma-section__title">更多本场操作</view>
+          <figma-feedback wx:if="{{order.stateTitle}}" type="info" title="{{order.stateTitle}}" body="{{order.stateHint}}"/>
+          <block wx:for="{{order.appearances}}" wx:key="id">
+            <view class="secondary-heading"><view><view class="figma-row__title">{{item.playerName}} · {{item.label}}</view><view class="figma-row__subtitle">{{item.statusText}}</view></view></view>
+            <view class="card-actions"><button data-id="{{item.id}}" bindtap="trade" disabled="{{busy}}">查看资金订单</button><button data-id="{{item.id}}" data-kind="report" bindtap="governance" disabled="{{busy}}">举报或工单</button><button wx:if="{{item.status === 'COMPLETED'}}" data-id="{{item.id}}" data-kind="review" bindtap="governance" disabled="{{busy}}">评价服务</button><button data-id="{{item.id}}" bindtap="toggleAppearance" disabled="{{busy || pending || form}}">{{expandedId === item.id ? '收起核对' : '核对与操作'}}</button></view>
+          </block>
+        </view>
+
+        <block wx:for="{{order.appearances}}" wx:key="id">
+          <view wx:if="{{expandedId === item.id || pending}}" class="figma-section appearance-detail">
+            <view class="figma-section__title">本场约定与操作</view>
+            <figma-feedback wx:if="{{item.status === 'CONDITIONAL'}}" type="info" title="意向不占具体档期" body="{{item.conditionText}}；条件满足后补齐实际时间地点，再由本人接单。"/>
+            <view class="figma-caption">{{order.eligibilityNotice}} · 入驻审核不等于本场资格或保险已经核验。</view>
+            <figma-feedback wx:if="{{item.scheduleChanged}}" type="error" title="正式比赛安排已变化" body="不能按过期约定继续处理，请核对当前赛事安排。"/>
+            <view class="figma-caption">服务费 {{item.serviceText}} · 平台费 {{item.platformFeeText}} · 交通 {{item.travelText}} · 食宿 {{item.accommodationText}}</view>
+            <view wx:if="{{item.change}}" class="change-card"><view class="figma-row__title">待另一方确认的变更 · {{item.change.role}}</view><view class="figma-caption">新报到 {{item.change.reportText}} · 新开始 {{item.change.startText}} · 新结束 {{item.change.endText}}</view><view class="figma-caption">{{item.change.venue}} · 原因：{{item.change.reason}}</view></view>
+            <view wx:if="{{item.arrivedText}}" class="figma-caption">本人声明到场 {{item.arrivedText}}（非 GPS 核验）</view><view wx:if="{{item.completedText}}" class="figma-caption">完成记录 {{item.completedText}}（不等于付款）</view><view wx:if="{{item.cancellationReason}}" class="figma-caption">处理原因：{{item.cancellationReason}}</view>
+            <figma-feedback wx:if="{{item.status === 'DISPUTED'}}" type="info" title="争议处理中" body="争议保留相关档期与记录并阻断结算，仅满足独立条件的平台人员可裁定。"/>
+            <view wx:if="{{!item.actions.length}}" class="figma-caption">当前身份或本场状态没有可执行操作，请以刷新后的权限为准。</view>
+            <view class="dynamic-actions"><button wx:for="{{item.actions}}" wx:for-item="action" wx:key="type" class="{{action.danger ? 'is-danger' : ''}}" disabled="{{busy || pending}}" data-id="{{item.id}}" data-type="{{action.type}}" bindtap="chooseAction">{{action.label}}</button></view>
+          </view>
+        </block>
       </block>
-      <block wx:if="{{form.needsReason}}">
-        <view class="field-label">实际原因</view>
-        <textarea class="field reason-input" value="{{formFields.reason}}" maxlength="500" data-field="reason" bindinput="input" placeholder="填写2至500字原因，不填写证件、联系方式或保单" disabled="{{busy}}"/>
-      </block>
-      <checkbox-group bindchange="confirm"><label class="consent"><checkbox value="yes" checked="{{formConfirmed}}" disabled="{{busy}}"/><text>{{form.consentLabel}}</text></label></checkbox-group>
-      <view wx:if="{{validation}}" class="error">{{validation}}</view>
-      <button class="primary" loading="{{busy}}" disabled="{{busy || !canSubmit}}" bindtap="submit">{{form.title}}</button>
-      <button class="quiet" disabled="{{busy}}" bindtap="closeForm">暂不执行，保留原记录</button>
-    </view>
-    <view class="card order-finances">
-      <view class="subtitle">费用与资金分开看</view>
-      <view class="row-between"><text>确定报价</text><text class="money">{{order.confirmedText}}</text></view>
-      <view class="row-between"><text>条件意向预计</text><text>{{order.conditionalText}}</text></view>
-      <view class="row-between"><text>实收 / 退款到账 / 已结算</text><text>{{order.paidText}} / {{order.refundedText}} / {{order.settledText}}</text></view>
-      <view class="small muted">{{order.statusText}} · {{order.scopeText}} · {{order.createdText}}</view><view class="small muted">总单状态由全部子项汇总；单人单场的拒绝或取消不自动终止其他合法安排。</view><view class="small muted">在线支付和个人分账未开放；服务完成不会自动产生付款、退款或到账。</view>
-    </view>
-  </block>
-  <view class="action-bar"><button class="primary" loading="{{loading}}" disabled="{{loading || busy || !orderId}}" bindtap="load">刷新本单状态</button><button class="quiet" disabled="{{busy}}" bindtap="list">返回我的预约</button></view>
+
+      <view wx:if="{{form}}" id="command-form" class="figma-section command-form">
+        <view class="figma-section__title">{{form.title}}</view>
+        <view class="selected-card"><view class="secondary-heading"><view><view class="figma-row__title">{{selected.playerName}} · {{selected.label}}</view><view class="figma-row__subtitle">{{selected.status === 'CONDITIONAL' ? '条件满足后补齐具体时间' : selected.startText + ' — ' + selected.endText}}</view></view><view class="figma-status figma-status--orange">{{selected.statusText}}</view></view><view class="figma-caption">{{selected.venue}} · 本场报价 {{selected.totalText}}</view></view>
+        <view wx:if="{{order.eventName}}" class="figma-caption">关联赛事：{{order.eventName}}</view>
+        <view wx:if="{{selected.change}}" class="change-card"><view class="figma-row__title">待确认的新安排 · {{selected.change.role}}</view><view class="figma-caption">新报到 {{selected.change.reportText}} · 新开始 {{selected.change.startText}} · 新结束 {{selected.change.endText}}</view><view class="figma-caption">{{selected.change.venue}} · 原因：{{selected.change.reason}}</view><view class="figma-caption">确认前仍以本页上方原安排为当前约定。</view></view>
+        <figma-feedback wx:if="{{selected.conditionText}}" type="info" title="条件意向说明" body="{{selected.conditionText}}"/>
+        <view wx:if="{{selected.arrivedText}}" class="figma-caption">本人声明到场 {{selected.arrivedText}}（非 GPS 核验）</view>
+        <view wx:if="{{selected.completedText}}" class="figma-caption">完成记录 {{selected.completedText}}（不等于付款）</view>
+        <figma-feedback wx:if="{{selected.scheduleChanged}}" type="error" title="正式比赛安排已变化" body="不能按过期约定继续处理。"/>
+        <view class="figma-caption">{{order.eligibilityNotice}} · 资金以独立交易记录及渠道核验为准。</view>
+        <view wx:if="{{form.needsSchedule}}" class="schedule-form">
+          <view class="figma-field-label">报到日期与时间 · 北京时间</view><view class="date-grid"><picker mode="date" value="{{formFields.reportDate}}" data-field="reportDate" bindchange="input"><view class="figma-field-control picker-control">{{formFields.reportDate}}</view></picker><picker mode="time" value="{{formFields.reportTime}}" data-field="reportTime" bindchange="input"><view class="figma-field-control picker-control">{{formFields.reportTime}}</view></picker></view>
+          <view class="figma-field-label">比赛开始日期与时间</view><view class="date-grid"><picker mode="date" value="{{formFields.startDate}}" data-field="startDate" bindchange="input"><view class="figma-field-control picker-control">{{formFields.startDate}}</view></picker><picker mode="time" value="{{formFields.startTime}}" data-field="startTime" bindchange="input"><view class="figma-field-control picker-control">{{formFields.startTime}}</view></picker></view>
+          <view class="figma-field-label">服务结束日期与时间</view><view class="date-grid"><picker mode="date" value="{{formFields.endDate}}" data-field="endDate" bindchange="input"><view class="figma-field-control picker-control">{{formFields.endDate}}</view></picker><picker mode="time" value="{{formFields.endTime}}" data-field="endTime" bindchange="input"><view class="figma-field-control picker-control">{{formFields.endTime}}</view></picker></view>
+          <view class="figma-field-group"><view class="figma-field-label">实际地点</view><input class="figma-field-control" value="{{formFields.venue}}" maxlength="120" data-field="venue" bindinput="input" placeholder="请填写具体场地" disabled="{{busy}}"/></view>
+        </view>
+        <view wx:if="{{form.needsResolution}}" class="figma-field-group"><view class="figma-field-label">独立处理结果</view><picker mode="selector" range="{{resolutionLabels}}" bindchange="resolution"><view class="figma-field-control picker-control">{{form.resolutionLabel}}</view></picker><view class="figma-caption">平台身份不覆盖利益冲突限制，最终仍由服务端核验。</view></view>
+        <view wx:if="{{form.needsReason}}" class="figma-field-group"><view class="figma-field-label">实际原因</view><textarea class="figma-field-control" value="{{formFields.reason}}" maxlength="500" data-field="reason" bindinput="input" placeholder="填写 2 至 500 字原因" disabled="{{busy}}"/></view>
+        <checkbox-group bindchange="confirm"><label class="figma-check"><checkbox value="yes" checked="{{formConfirmed}}" disabled="{{busy}}"/>{{form.consentLabel}}</label></checkbox-group>
+        <view wx:if="{{validation}}" class="form-error">{{validation}}</view>
+        <button class="figma-action figma-action--orange" disabled="{{busy || !canSubmit}}" bindtap="submit">{{busy ? '正在处理…' : form.title}}</button><button class="figma-action figma-action--ghost" disabled="{{busy}}" bindtap="closeForm">暂不执行，保留原记录</button>
+      </view>
+
+      <view wx:if="{{!form}}" class="figma-section detail-secondary"><view class="figma-section__title">更多合作操作</view><view wx:if="{{order.eventName}}" class="figma-caption">关联赛事：{{order.eventName}}</view><button class="figma-row" bindtap="list" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">返回我的预约</view><view class="figma-row__subtitle">查看其他已发出或收到的合作</view></view></button><button class="figma-row" bindtap="load" disabled="{{loading || busy}}"><view class="figma-row__copy"><view class="figma-row__title">刷新本场合作</view><view class="figma-row__subtitle">重新读取当前权限、安排和资金状态</view></view></button></view>
+    </block>
+  </view>
+
+  <view wx:if="{{order && !form}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost" disabled="{{busy || pending || !order.changeAppearanceId}}" bindtap="requestChange">提出改期</button><button class="figma-action figma-action--orange" disabled="{{busy || !order.primaryAppearanceId}}" bindtap="primaryTrade">查看本场资金订单</button></view>
+  <view wx:elif="{{!order}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost" disabled="{{busy}}" bindtap="list">返回我的预约</button><button class="figma-action figma-action--orange" disabled="{{loading || busy || !orderId}}" bindtap="load">{{loading ? '正在读取…' : '重新读取'}}</button></view>
 </view>

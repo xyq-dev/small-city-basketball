@@ -1,5 +1,63 @@
 # 当前状态
 
+## 2026-11-06 21:45 Asia/Shanghai CI223唯一筛选器字号修复
+
+当前共享84f0f958/tree a210740d，尚未合并。CI223 account-security、production与Windows56成功，admin源码598/1374/微信1620＋1平台skip/CLI12及构建成功；浏览器1578通过、3失败只属新增int01-booking-overview-status三宽：“更多”筛选picker继承.status-tab 12px，未达14px可读性要求。六页状态修复本身及其他场景无失败，验收spec/fixture/身份/数据保持。
+
+root仅把bookings本页WXSS .status-tab的font-size12px改14px，保留原首行引号、不整文件formatter；状态按钮/更多保持44px高度、min-width72px及原横向滚动，WXML/JS/handler不变。三宽DOM计算全部5个筛选项均14px/44px（仅样式预检），完整微信1621项再次1620通过、0失败、1平台skip，diff通过；全仓类型/格式对同一JS/CJS不变，先前通过。局部样式/三宽DOM已由另一审查者独立复核通过，原筛选索引/ID/更多changeStatus与滚动保持，定向14/14通过。root仅本页WXSS与五任务记录普通推进PR46，重新核验精确最新head完整CI/三宽；不能将旧223其他成功项混作新head结果。
+
+累计324新回归/32新CJS/36新场景与六页独立审查继续保留，不新增无意义镜像单测或放宽旧检查。main b19c19a未更新，API旧作业仍在既有PG集成；无生产部署、Migration、真实资金或外部凭据操作。最终仍按既定门禁merge保留全部来源历史并收口42/44。
+
+## 2026-11-06 21:29 Asia/Shanghai 状态摘要最终整合冻结（REVIEW / BRANCH_ONLY）
+
+本节为最新状态，下方历次记录均为历史。root在共享60734369之上已收齐六页、18份独立工作树冻结文件，逐字节核对一致。仅六份WXML及六份新CJS/六份新fixture：local-bookings使用真实statusText，中性到场进度，不推断核销历史，两个首条摘要随角色分类守卫；local-manage按slot原始OPEN/CLOSED与available严格布尔显示，避免混用约赛OPEN；training课次使用真实stateLabel；performance已有sourceText仅显式有效时绿色，缺失待核对；bookings无总体聚合数据则中性逐场核对，保留真实每条状态；org-event可读权限不再冒充办理进度，规程/报名/排程中性入口与真实reviewLabel/已排程正例保留。原handler、ID/版本、筛选、金额、权限与未知结果流程均保持，无JS/后端/API/共享样式或旧fixture/spec变化。
+
+本批新增51项有意义状态与真实handler回归。两同城页交叉59＋48通过，培训/履历/球员预约/赛事页另一个复核者独立162/162通过（40/40/49/33），均0失败，旧模板反例已取证。root完整微信1621项：1620通过、0失败、1既有Windows桥平台skip；全仓format/typecheck/diff通过。累计324项新增回归（32份新CJS）、36份新合成fixture；36新＋1既有审核投影场景×三宽111次DOM契约通过，受影响六页连同既有场景76×3=228次文案/按钮/字段契约通过。这是DOM与样式预检，不等于浏览器几何或微信真机。
+
+旧607的CI222 admin/账号安全/production及Windows55成功：源码598/1374/微信1569＋1skip/CLI12，浏览器1563通过，1548份布局/PNG守卫；API已通过新旧PG集成，当前原生真实HTTP步骤仍运行。其结果只属旧候选，不替代这六页修复。旧220的3失败已定位picker12px且以本页14px修好，221格式附带引号已恢复原文，均不修改验收规则。全部已知自动意见中，最新local-bookings线程待本次普通推送修复后关闭；最终merge仍须同一最新head完整CI、真实三宽、全部线程、来源包含及main并发核验。
+
+root下一步仅精确提交18份本批代码/测试/场景及五份任务记录，普通推进同PR46，保留原始提交历史，待验收后合并并按实际状态收口42/44。main仍b19c19a，后端/API/001—050与生产配置不变；未生产部署、生产Migration、真实微信/COS联调、身份/资金/凭据操作。
+
+## 2026-11-06 21:06 Asia/Shanghai 保留样式导入原文
+
+最新候选5b166884的Windows54与账号安全成功，其余仍安装环境；自动审查新增一条实际问题：本次单文件prettier顺带把WXSS首行双引号改成等价单引号，而既有ui006-ops-trade精确匹配原双引号。root恢复首行原文，只保留局部picker 14px/20px，不改既有测试或放宽路径断言。该问题仅为新候选格式附带回归，旧d92源码通过不能替代当前检查。恢复后root完整微信1570项：1569通过、0失败、1既有平台skip（13.9秒）；diff通过。新head完整CI仍待普通推送后核验，未将旧候选绿色冒充新结果；尚未合并，无生产操作。
+
+## 2026-11-06 20:58 Asia/Shanghai CI220布局失败定位与最小字号修复
+
+本节为最新接续，未合并。共享候选d92af2c8/tree eb330e60的CI220中，account-security、production与Windows53全部成功；admin源码598/1374/1569＋1skip/CLI12通过，但浏览器1560通过、3失败，全部为新增int01-sponsor-refund-unverified三宽暴露机构picker内“当前机构”继承12px，低于14px门槛。不是业务断言失败，未改fixture、权限、金额、spec或skip。此前将进入归档步骤误判为浏览器通过已更正，以完成日志为准。
+
+只在sponsor-commerce本页WXSS为.commerce-org-picker .figma-row__subtitle增加14px/20px，固定三宽，保留55px控件和原布局。另一审查者核实唯一子标签、样式优先级与两行容纳，ORDER按钮和机构名已有14px。相关退款34项继续通过，既有完整源码1569＋1平台skip属于同一JS/WXML；CSS修复不新增镜像单测或更改既有测试。root仅提交本页WXSS与五份任务记录，普通推进PR46，再由最新head CI核验真实三宽。旧220的成功项不代替新head结果，API旧作业仍进行中。
+
+独立合并边界核验已完成：main b19c19a及四feature来源（另含UI006初始6fc）均为d92祖先、未包含提交数0；apps/api、contracts、admin、ops、CI/生产配置无diff，50项迁移树SHA256同0d0ce7261cffd17a367fed3da283768ad5276f0af05efde1860697f3659aaa7e。PR42/44实际仍open/draft且代码完整包含，待46merge后复读状态收口。未部署生产、执行生产Migration或操作真实资金/外部凭据。
+
+## 2026-11-06 20:41 Asia/Shanghai 最终四项修复冻结（REVIEW / BRANCH_ONLY）
+
+本节为最新状态，下方各检查点仅为历史。root在共享候选f71210a之上收齐四项已复现问题：青年审核factory登录入口、performance首项独立canRevoke拒绝、裁定审核原因、广告订单列表未提供退款累计时的金额展示。四项只修改3份WXML与1份页面JS，沿原handler、capability、请求ID及版本；不改API/后端/001—050迁移或生产配置。财务来源list SQL只有o.*、trade_order_id、paid_fen，不能把未报告退款当0；缺失/非法/不一致金额显示“待核对”，合法显式0、已退金额及净0按原单位计算，正常SIGNED广告主仍保留原ORDER入口。
+
+四项均已独立复核：青年登录/履历/裁定新增33项与原35项通过；财务前端55项及金额域8项通过。作者相关27/46/130/72项通过。实际加载73/73 Page无错误，43个ui.session页面登录入口已检查。root完整微信1570项：1569通过、0失败、1既有Windows桥平台skip；格式、类型、diff检查成功。累计新增273项回归（26份新CJS）、30份新合成fixture。30新＋1既有审核投影场景×三宽93次DOM契约通过；受影响四页连同既有场景扩查51×3=153次文案/按钮/输入契约通过。上述本地DOM检查不等于浏览器几何或微信真机，最终三宽须由新精确head的CI提供。
+
+此前f71210a的CI219 admin/production/account-security及Windows52成功，API已通过PG与原生HTTP及重启，浏览器步骤仍运行；这些结果仅属旧候选，不替代四项新修复的验收。接下来只提交12份上述源码/测试/fixture与本任务五份文档，普通推进PR46，核对同一新head全部CI、实际三宽、17条审查线程及任何新反馈，成功后merge保留所有来源历史。main仍为b19c19a，未部署生产、执行生产Migration或真实外部/资金操作。
+
+## 2026-11-06 INT01 最终入口复核（REVIEW / BRANCH_ONLY，尚未合并）
+
+2026-11-06 20:06 Asia/Shanghai：0513211的CI218四作业均SUCCESS，实际浏览器1542通过、1527份JSON/PNG守卫通过，PG143＋620、原生HTTP21、真实API浏览器24、重启与隔离恢复成功。未立即合并：后续三处导航回归（培训游客登录、改期历史回表单、赛事排名回外层）已仅WXML恢复并独立复核。最新工作树累计新增206项（22份CJS）与26新fixture，完整微信1503项：1502通过、0失败、1平台skip，格式/类型/差异通过；26新＋1迁移场景81次DOM契约及受影响三页原场景扩展144次文案/按钮/字段检查通过。
+
+三处导航均沿原handler/身份/API，保留未保存改期字段，公共赛事仅public GET，无新增JS/后端/迁移语义。赛事两个不同层级“赛程”同名，新增fixture用精确CSS可见性与单测逐按钮enabled覆盖，避免全局名称严格定位歧义，不改spec。全部实现/复核已冻结，待同一最新head完整CI及实际三宽后合并；旧218不替代新候选，main和生产未更新。
+
+2026-11-06 19:35 Asia/Shanghai：最后静态枚举全量差分核实43个消失项，恢复已有外部保单导航、两治理页明确放弃原请求、赛程全稿优化（保留补缺），约赛摘要改用真实状态/确认记录。至此16页业务恢复与两处私密/同意JS保护已独立复核；其余消失项为替代入口或已知修复。累计新增186项（19份CJS）、23份合成布局夹具，root完整微信1483项：1482通过、0失败、1平台skip，格式/类型/差异成功。
+
+23新场景＋1角色投影迁移场景×三宽共72次DOM文案/按钮/字段契约通过。CI217 admin三项失败仅同一既有资格场景仍期待申请人文案，而其原数据canReview=true；现完整保留data/ID/capability/consent，仅按审核人视图迁移断言，另增独立申请人场景防止丢失进度。真实三宽和完整CI仍待最新head，旧214—217不替代；后端/API/权限契约/001—050与生产配置不变，main未更新，无生产部署/Migration/真实外部联调。
+
+2026-11-06 19:14 Asia/Shanghai 最新检查点：后续角色/状态审查恢复有效资格审核、所有约赛、录制取消、授课/评价撤回/广告交付/历史招募审核的原因输入、地区搜索及所有公开档案管理。公开同意现绑定档案ID/版本/同意代次，确认和UUID后重查；真实撤选事件即使在等待期间也会取消尚未发送的发布，正确首/次档案仍能发布。确认框展示实际名称与主体类型；内部ID/版本留在校验与请求中。共享证明隐私读取取消保护继续保留。累计新增139项原生回归、16份合成布局场景；唯一旧x08首例迁移为真实目标勾选事件，原CAS/版本/同意断言未降。
+
+root整合完整微信1436项：1435通过、0失败、1既有平台skip；格式/类型成功，16场景×三宽48次DOM契约检查成功。独立角色/条件及隐私复审通过，实际浏览器几何仍待新head完整CI。CI216 admin六项失败来自两份新fixture误将CSS作按钮名称，现按原spec契约修正，不改spec。后端/API/权限契约/001—050迁移与生产配置不变，本轮无生产操作。下方检查点均保留为历史，不将旧CI214—216、旧布局数量或指纹作为最新候选验收。
+
+本节是当前最新整合状态；下方 UI005/UI006 的旧本地或草稿记录保留为历史。[PR #46](https://github.com/xyq-dev/small-city-basketball/pull/46) 保留所有来源提交，账号安全与 COS 已在 main；UI 两分支当前仍待本 PR 合并。旧候选 `cc3c944` 的 [Application checks #214](https://github.com/xyq-dev/small-city-basketball/actions/runs/42199398486) 四作业及 Windows 工具均成功，但自动审查发现撮合回复/转预约、教练本人确认、模板分组数四条真实遗漏，因此没有据此合并。
+
+后续跨页入口复核补充恢复撮合原预约查看/重开席位/返回、监护人本人显式查看证明及青年审核工作台规则配置。五页 WXML、36 项控件回归和七份合成布局夹具已同步候选 `77cd8a8`。该候选独立复审又复现隐藏证明后的迟到下载仍预览，故仍未合并；现仅在共享监护页 JS 增加可撤销的私密读取代次与迟到文件清理，新增22项竞态回归，保持独立业务写 token。
+
+2026-11-06 18:46 Asia/Shanghai，root整合后完整微信1355项：1354通过、0失败、1既有平台skip；格式、类型和差异检查通过。竞态测试旧源码13失败/9通过、修复22全通过，独立相关复核43/43通过。后端、API、权限、Migration和生产配置不变；新精确head完整CI仍待执行，旧214/215与旧本地指纹不能替代。本地浏览器归档下载损坏，新三宽几何交最终CI。详见[任务](tasks/INT01-ALL-BRANCHES.md)、[交接](handoffs/INT01-ALL-BRANCHES.md)及[证据](evidence/INT01/README.md)。无生产部署、生产Migration、真实COS/微信真机联调。
+
 ## 2026-11-06 COS01 腾讯云对象存储（DONE / MAIN：源码与隔离验收）
 
 [PR #45](https://github.com/xyq-dev/small-city-basketball/pull/45)已于`2026-11-06T07:15:29Z`合入main，代码合并SHA`98f171f6135b88f7a26ec49f8d63de9fe8dcba10`，tree `1d8e93fbf6cfac64dd88c3a93828f973ccca5eec`与最终候选`a4dff06eedb5815e1cfedc48fe57361b1a527a1a`及CI测试merge-ref精确一致。私有COS可选配置、普通/幂等/分片上传、旧DB文件兼容读取、权限与Range、持久化登记和后台/CLI清理已完成。失败清理记录尝试时间并轮转，防止持续失败对象阻塞其他机构；唯一自动审查P2已修复并解决，独立复审通过。
@@ -15,6 +73,18 @@
 [CI207](https://github.com/xyq-dev/small-city-basketball/actions/runs/42168301902)的account-security/admin/api/production四作业全部SUCCESS，已读取四份完成日志。新增真实HTTPS浏览器桌面/手机各1完整密码流程通过；既有真实API浏览器24项、PG新域143/旧业务611、最小权限21、原生页面→真实API21、HTTPS4、实际PG重启与完整归档恢复通过。管理端598、API源码1345、原生1196通过/1平台跳过；兼容布局1349通过/1335配置跳过，1335份布局/PNG已核验，不代表微信真机。GitHub自动Code Review于同一候选完成且无finding；独立安全审查另行完成，未冒称自动Security Review执行。
 
 生产未由本轮部署，Migration049仅临时/CI执行。当前会话无直接Hermes/SSH执行通道；公开health/ready返回200只证明既有服务正常。服务器侧固定版本、备份恢复、升级和账号保留步骤已写入[交接](handoffs/ACCOUNT-SECURITY.md)。详见[任务](tasks/ACCOUNT-SECURITY.md)和[操作说明](operations/account-security.md)。
+
+## 2026-11-05 UI006 微信原生前端 Figma 重建（REVIEW / LOCAL_ONLY）
+
+用户已取消 UI005“保留旧模板并叠加样式”的路线，当前由 Codex 在本地分支 `feat/wechat-figma-rebuild` 从 `origin/main` `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52` 重新实现微信原生前端。视觉唯一依据是 Figma 文件 `QpKOskViUwHFVqSG3uYR9X` 的交接、73 页面＋17 状态索引、交互组件和首页三宽画板；业务行为仍以现有需求、API 和权限契约为准。旧 UI005 分支、Draft PR #42 及 47 个本地归档文件均保留，归档已另备份到 `D:\Projects\scb-backups\wechat-figma-rebuild-baseline-20261105-202715`。
+
+本任务从零重新计数，旧 UI005 的 73/73、17/17 或隔离矩阵结果未作为 UI006 证据。当前 73/73 注册路由已采用新原生模板和共享视觉组件并接回现有数据、导航、权限与提交语义，17/17 补充状态仍为原路由条件分支；最终源码的 73 路由与 17 状态均已在 320/390/430 逻辑宽隔离渲染，分别为 219 与 51 个视口，均无横向溢出，但这不等于逐像素微信签收。首页与“我的”已在当前微信工程取得逻辑 `390×844` 的真实状态截图，SDK 原始 PNG 为 `360×779`；其余 71 页尚未计为微信实测。最终直接回归 242/242；`npm run test:wechat` 为 1238 项、1237 通过，唯一失败是当前 Windows 权限下安全软链测试的 `symlinkSync EPERM`；`git diff --check` 通过。当前仍未 commit、push、pack、上传、部署、执行 Migration 或生产写入。详见 [UI006 任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md)、[交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)、[证据说明](evidence/ui006/README.md) 与 [覆盖矩阵](evidence/ui006/COVERAGE.md)。
+
+## 2026-11-05 UI005 最终整合审查（DRAFT PR 候选，未合入 main）
+
+UI005 候选分支为 `feat/ui005-figma-complete`，基线 `origin/main` / `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`，评审入口为 [Draft PR #42](https://github.com/xyq-dev/small-city-basketball/pull/42)。73/73 注册路由与 17/17 条件状态完成原生模板的 320/390/430 隔离矩阵，1386/1386 通过；该数字现明确只作模板、布局约束与夹具状态证据，不表示 73 页全部通过逐像素或本轮高保真复审。2026-11-05 的运行差异复核已定向修复首页与“我的”，两页重新取得 390 微信首屏/底部证据和 21/21 三宽隔离结果；未重审的 71 页不外推新增视觉结论。逐项范围和证据见 [UI005 任务](tasks/UI005-REDESIGN.md)、[交接](handoffs/UI005-REDESIGN.md)、[可共享证据](evidence/ui005/README.md)及[两页修复前后](evidence/ui005/home-account-fix/README.md)。
+
+定向修复后 Windows `npm run test:wechat` 为 1207/1208，唯一失败仍是测试搭建临时项目外 symlink 时的 `EPERM`；直接回归 141/141。旧实现 head `aa05715f41d148a872f2c82b48b8f2a79b9842a9` 的 [Application checks 42001388020](https://github.com/xyq-dev/small-city-basketball/actions/runs/42001388020) 曾三作业成功，但不能替代本次定向修复 head 的 CI；实际结果只以 PR 最新检查为准。生产地区目录与公开赛事目录 404、真实身份/业务记录、原生键盘画面继续阻塞相应运行成功态。此节只描述待评审候选，不表示已合入、可部署或生产验收；没有 pack、上传、部署、Migration 或生产写入。
 
 ## 2026-11-03 四页导航与账号双态整合（待合入 main）
 

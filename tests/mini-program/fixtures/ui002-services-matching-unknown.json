@@ -4,8 +4,8 @@
   "state": "unknown-original-operation",
   "figmaNode": "42:1285",
   "designSource": "Original matching command remains unresolved; synthetic identity only",
-  "expectText": ["上次操作结果待核对", "查询原操作回执", "用原编号重试"],
-  "expectDisabled": ["发布需求", "管理发现与联系授权"],
+  "expectText": ["原操作结果待核对", "查询回执", "用原编号重试"],
+  "expectDisabled": ["发布新需求", "管理发现授权"],
   "data": {
     "enabled": true,
     "pending": {

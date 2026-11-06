@@ -2,10 +2,10 @@
   "name": "c11-home-ready",
   "route": "pages/home/index",
   "state": "ready",
-  "figmaNode": "4:16",
-  "designSource": "UI001:H01; supersedes historical C11 home",
+  "figmaNode": "35:38",
+  "designSource": "UI006 latest Figma 35:38 and 59:54; synthetic API-shaped success data",
   "static": true,
-  "expectText": ["每一场", "都值得被看见", "发现赛事", "按位置找球员", "合成青锋杯篮球邀请赛"],
+  "expectText": ["让热爱，有主场。", "精选赛事", "同城服务", "按位置找球员", "合成青锋杯篮球邀请赛"],
   "data": {
     "citySelection": {
       "mode": "NATIONWIDE",

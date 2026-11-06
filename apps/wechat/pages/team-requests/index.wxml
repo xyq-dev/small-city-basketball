@@ -1,49 +1,18 @@
-<scb-header title="建队申请审核" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page c19-page">
-  <view wx:if="{{error}}" class="notice warning" role="alert"><view class="feedback-title">请核对后继续</view><view class="small">{{error}}</view></view>
-  <view wx:if="{{message}}" class="notice">{{message}}</view>
-  <view wx:if="{{loginRequired}}" class="card c19-panel state-panel"><view class="subtitle">登录机构管理账号</view><button class="primary" bindtap="login">登录</button></view>
-  <view wx:if="{{loading}}" class="card c19-panel state-panel"><view class="subtitle">正在读取</view><view class="skeleton-line"></view></view>
-  <view wx:if="{{!allowed && !loading && !loginRequired && orgId}}" class="notice"><view class="feedback-title">仅机构负责人或管理员可用</view><view class="small">当前账号不是该机构的负责人或管理员。</view></view>
-  <block wx:if="{{allowed}}">
-    <view class="card c19-panel">
-      <view class="subtitle">{{orgName}} · 申请建队入口</view>
-      <view class="small muted">入口令牌只在生成时显示一次；服务器只保存摘要。持有入口的已登录用户只能看到本机构名称。</view>
-      <view class="field-label">有效期（小时，1–168）</view><input class="field" type="number" value="{{hours}}" data-field="hours" bindinput="input" disabled="{{busy}}"/>
-      <view class="field-label">最多申请份数（1–200）</view><input class="field" type="number" value="{{maxUses}}" data-field="maxUses" bindinput="input" disabled="{{busy}}"/>
-      <view class="field-label">生成原因（4–500字）</view><input class="field" maxlength="500" value="{{linkReason}}" data-field="linkReason" bindinput="input" disabled="{{busy}}" placeholder="例如：春季联赛新队报名"/>
-      <button class="primary invite-action" bindtap="createLink" disabled="{{busy}}" loading="{{busy}}">生成入口</button>
-      <view wx:if="{{issued}}"><view class="feedback-title">本次入口（仅显示一次）</view><view class="secret-box">{{issued.path}}</view><view class="row-actions"><button class="secondary" bindtap="copyLink">复制入口</button><button class="primary" open-type="share">分享给申请人</button></view></view>
-      <view class="field-label">撤销原因（4–500字）</view><input class="field" maxlength="500" value="{{revokeReason}}" data-field="revokeReason" bindinput="input" disabled="{{busy}}"/>
-      <view wx:for="{{links}}" wx:key="id" class="item-row">
-        <view class="item-title">{{item.stateText}} · 已用 {{item.useCount}} / {{item.maxUses}}</view>
-        <view class="small muted">截止 {{item.expires}} · {{item.reason}}</view>
-        <view class="row-actions"><button wx:if="{{item.status !== 'REVOKED'}}" class="secondary" data-id="{{item.id}}" bindtap="revokeLink" disabled="{{busy || !revokeReason}}">撤销入口</button></view>
-      </view>
-    </view>
-    <view class="card c19-panel">
-      <view class="subtitle">建队申请</view>
-      <view class="row-actions">
-        <button class="{{filter === 'PENDING' ? 'primary' : 'quiet'}}" data-value="PENDING" bindtap="filter" disabled="{{busy}}">待审核</button>
-        <button class="{{filter === 'APPROVED' ? 'primary' : 'quiet'}}" data-value="APPROVED" bindtap="filter" disabled="{{busy}}">已批准</button>
-        <button class="{{filter === 'REJECTED' ? 'primary' : 'quiet'}}" data-value="REJECTED" bindtap="filter" disabled="{{busy}}">未通过</button>
-        <button class="{{filter === 'WITHDRAWN' ? 'primary' : 'quiet'}}" data-value="WITHDRAWN" bindtap="filter" disabled="{{busy}}">已撤回</button>
-      </view>
-      <view wx:if="{{!requests.length && !loading}}" class="muted">暂无申请。</view>
-      <view wx:for="{{requests}}" wx:key="id" class="item-row">
-        <view class="item-title">{{item.teamName}}</view>
-        <view class="small muted">申请人 {{item.requesterDisplayName}} · {{item.stateText}} · {{item.created}}</view>
-        <view wx:if="{{item.note}}" class="small">说明：{{item.note}}</view>
-        <view wx:if="{{item.reviewReason}}" class="small">审核说明：{{item.reviewReason}}</view>
-        <view wx:if="{{item.capabilities.isOwnRequest}}" class="small muted">这是你本人提交的申请，需由其他管理员审核。</view>
-        <button wx:if="{{item.capabilities.canReview && selectedId !== item.id}}" class="secondary" data-id="{{item.id}}" bindtap="select" disabled="{{busy}}">审核</button>
-        <view wx:if="{{selectedId === item.id}}">
-          <view class="field-label">审核原因（4–500字）</view><input class="field" maxlength="500" value="{{reviewReason}}" data-field="reviewReason" bindinput="input" disabled="{{busy}}"/>
-          <view class="row-actions"><button class="secondary" data-decision="REJECT" bindtap="review" disabled="{{busy || !reviewReason}}">拒绝</button><button class="primary" data-decision="APPROVE" bindtap="review" disabled="{{busy || !reviewReason}}">批准并建队</button></view>
-        </view>
-      </view>
-    </view>
-  </block>
-  <button class="quiet" bindtap="refresh" disabled="{{busy || loading}}">重新读取</button>
+<scb-header title="建队申请审核" disabled="{{busy}}"/>
+<view class="figma-page requests-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="teams" size="{{28}}"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">机构管理</view><view class="figma-title">建队申请审核</view><view class="figma-subtitle">在指定机构审核建队申请，同时维护邀请入口。</view></view></view>
+    <figma-feedback wx:if="{{error}}" type="error" title="请核对后继续" body="{{error}}" action-label="重新读取" bind:action="refresh"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="状态已更新" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="empty" title="登录机构管理账号" action-label="登录" bind:action="login"/>
+    <view wx:if="{{loading}}" class="figma-section"><figma-skeleton rows="{{4}}"/></view>
+    <figma-feedback wx:if="{{!allowed && !loading && !loginRequired && orgId}}" type="error" title="当前账号无权审核" body="仅机构负责人或管理员可使用本页。"/>
+    <block wx:if="{{allowed}}">
+      <view class="request-tabs"><button class="request-tab {{filter==='PENDING' ? 'is-active' : ''}}" data-value="PENDING" bindtap="filter" disabled="{{busy}}">待审核</button><button class="request-tab {{filter==='APPROVED' ? 'is-active' : ''}}" data-value="APPROVED" bindtap="filter" disabled="{{busy}}">已批准</button><button class="request-tab {{filter==='REJECTED' ? 'is-active' : ''}}" data-value="REJECTED" bindtap="filter" disabled="{{busy}}">未通过</button><button class="request-tab {{filter==='WITHDRAWN' ? 'is-active' : ''}}" data-value="WITHDRAWN" bindtap="filter" disabled="{{busy}}">已撤回</button></view>
+      <view class="figma-section"><view class="figma-section__title">申请队伍</view><figma-feedback wx:if="{{!requests.length && !loading}}" type="empty" title="当前分类暂无申请"/><view wx:for="{{requests}}" wx:key="id" class="request-row"><button class="request-select" data-id="{{item.id}}" bindtap="select" disabled="{{busy || !item.capabilities.canReview}}"><view class="request-head"><view class="figma-row__copy"><view class="figma-row__title">{{item.teamName}}</view><view class="figma-row__subtitle">申请人 {{item.requesterDisplayName}} · {{item.created}}</view></view><view class="figma-status figma-status--orange">{{item.stateText}}</view></view></button><figma-feedback wx:if="{{item.capabilities.isOwnRequest}}" type="pending" title="需由其他管理员审核" body="这是你本人提交的申请。"/></view></view>
+      <view id="team-review" class="figma-section"><view class="figma-section__title">审核记录</view><figma-feedback wx:if="{{!selectedId}}" type="empty" title="请选择待审核申请" body="从上方申请队伍选择后填写审核原因。"/><block wx:for="{{requests}}" wx:key="id"><block wx:if="{{item.id===selectedId}}"><view class="figma-field-group"><view class="figma-field-label">申请说明</view><view class="figma-field-control request-readonly">{{item.note || '在本机构建立长期球队'}}</view></view><view class="figma-field-group"><view class="figma-field-label">审核原因</view><input class="figma-field-control" maxlength="500" value="{{reviewReason}}" data-field="reviewReason" bindinput="input" disabled="{{busy}}" placeholder="核对资质与球队归属后填写"/></view><view class="two-actions"><button class="section-danger" data-decision="REJECT" bindtap="review" disabled="{{busy || !reviewReason}}">拒绝</button><button class="section-primary" data-decision="APPROVE" bindtap="review" disabled="{{busy || !reviewReason}}">批准并建队</button></view></block></block></view>
+      <view id="team-link" class="figma-section"><view class="figma-section__title">建队入口</view><view class="figma-section__hint">入口令牌仅在生成时显示一次；持有入口的登录用户只看到机构名称。</view><view class="two-fields"><view class="figma-field-group"><view class="figma-field-label">有效期限</view><input class="figma-field-control" type="number" value="{{hours}}" data-field="hours" bindinput="input" disabled="{{busy}}"/><view class="figma-caption">按小时设置（1—168）</view></view><view class="figma-field-group"><view class="figma-field-label">最多申请份数</view><input class="figma-field-control" type="number" value="{{maxUses}}" data-field="maxUses" bindinput="input" disabled="{{busy}}"/><view class="figma-caption">1—200份</view></view></view><view class="figma-field-group"><view class="figma-field-label">生成原因</view><input class="figma-field-control" maxlength="500" value="{{linkReason}}" data-field="linkReason" bindinput="input" disabled="{{busy}}" placeholder="4–500字"/></view><button class="section-primary" bindtap="createLink" disabled="{{busy || !linkReason}}" loading="{{busy}}">生成申请入口</button><view wx:if="{{issued}}" class="issued-box"><view class="figma-row__title">本次入口（仅显示一次）</view><view class="secret-box">{{issued.path}}</view><view class="two-actions"><button class="section-ghost" bindtap="copyLink">复制入口</button><button class="section-primary" open-type="share">分享给申请人</button></view></view><view class="figma-field-group"><view class="figma-field-label">撤销原因</view><input class="figma-field-control" maxlength="500" value="{{revokeReason}}" data-field="revokeReason" bindinput="input" disabled="{{busy}}" placeholder="4–500字"/></view><view wx:for="{{links}}" wx:key="id" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.stateText}} · 已用 {{item.useCount}}/{{item.maxUses}}</view><view class="figma-row__subtitle">截止 {{item.expires}} · {{item.reason}}</view></view><button wx:if="{{item.status!=='REVOKED'}}" class="row-action" data-id="{{item.id}}" bindtap="revokeLink" disabled="{{busy || !revokeReason}}">撤销</button></view></view>
+    </block>
+  </view>
+  <view wx:if="{{allowed}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="scrollLink" disabled="{{busy || loading}}">生成建队入口</button><button class="figma-action figma-action--orange" bindtap="scrollReview" disabled="{{busy || loading || !selectedId}}">审核当前申请</button></view>
 </view>
-<scb-nav active="Account" disabled="{{busy || loading}}"/>

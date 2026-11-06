@@ -3,7 +3,7 @@
   "route": "pages/platform/index",
   "state": "error",
   "figmaNode": "30:1535",
-  "expectText": ["重新核对平台权限"],
+  "expectText": ["平台资料需要重新核对", "重新核对"],
   "primary": false,
   "asOf": "2026-10-25T02:00:00.000Z",
   "data": {

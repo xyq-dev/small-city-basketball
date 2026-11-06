@@ -1,53 +1,47 @@
-<scb-header title="我的球员预约" disabled="{{loading}}"/>
-<view class="page bookings-page">
-  <view class="booking-view-tabs">
-    <button class="booking-view-tab {{view === 'sent' ? 'active' : ''}}" data-view="sent" bindtap="changeView" disabled="{{loading}}">我发出的</button>
-    <button class="booking-view-tab {{view === 'received' ? 'active' : ''}}" data-view="received" bindtap="changeView" disabled="{{loading}}">我收到的</button>
-    <button class="booking-view-tab filter-toggle {{filtersOpen || statusIndex > 0 ? 'filter-active' : ''}}" bindtap="toggleFilters" disabled="{{loading}}">筛选</button>
-  </view>
-  <block wx:if="{{filtersOpen || statusIndex > 0}}">
-    <scroll-view scroll-x="true" enable-flex="true" class="status-rail"><view class="status-tabs"><button wx:for="{{quickStatuses}}" wx:key="value" class="status-tab {{status === item.value ? 'selected' : ''}}" data-index="{{item.index}}" bindtap="statusTab" disabled="{{loading}}">{{item.label}}</button><picker mode="selector" range="{{statusLabels}}" value="{{statusIndex}}" bindchange="changeStatus" disabled="{{loading}}"><view class="status-more">更多<scb-icon name="chevron-down" size="14"/></view></picker></view></scroll-view>
-    <view wx:if="{{statusIndex > 0}}" class="active-filter small muted">当前筛选：{{statusLabels[statusIndex]}}</view>
-  </block>
-  <view wx:if="{{error}}" class="notice danger state-card" role="alert"><view class="state-title">预约读取失败</view><view class="small">{{error}}</view><view class="small">保留当前筛选，可刷新后重试。</view></view>
-  <view wx:if="{{loginRequired}}" class="card empty state-card"><view class="subtitle">登录后查看本人合作</view><view class="muted">当前身份核对后，才可读取有权查看的预约。</view><button class="primary" bindtap="login">登录并返回预约</button></view>
-  <view wx:elif="{{loading}}" class="card state-card loading-card"><view class="state-title">正在读取最新预约</view><view class="skeleton"></view><view class="skeleton short"></view><view class="small muted">正在核对当前身份与逐场状态…</view></view>
-  <view wx:elif="{{!rows.length && !error}}" class="card empty state-card"><view class="subtitle">暂无符合条件的合作记录</view><view class="muted">可切换发出/收到或调整状态筛选。</view></view>
-  <view wx:if="{{rows.length}}" class="card booking-progress-card">
-    <view class="progress-heading">逐场合作进度</view>
-    <block wx:for="{{rows}}" wx:for-item="order" wx:key="id">
-      <view wx:for="{{order.appearances}}" wx:for-item="appearance" wx:key="id" class="cooperation-record">
-        <view class="cooperation-cell">
-          <button class="cooperation-main" data-id="{{order.id}}" bindtap="detail" disabled="{{loading}}">
-            <image wx:if="{{order.scope === 'SINGLE'}}" class="cooperation-icon" src="./assets/user.svg" mode="aspectFit"/>
-            <image wx:else class="cooperation-icon" src="./assets/calendar.svg" mode="aspectFit"/>
-            <view class="cooperation-copy">
-              <view class="cooperation-title">{{appearance.playerName}} · {{order.scopeText}}</view>
-              <view class="cooperation-subtitle">{{appearance.summaryStartText || appearance.startText}} · {{appearance.statusText}}</view>
-            </view>
-          </button>
-          <button class="cooperation-expand" data-id="{{appearance.id}}" bindtap="toggleInfo" disabled="{{loading}}" aria-label="{{expandedAppearanceId === appearance.id ? '收起预约明细' : '展开预约明细'}}"><image class="cooperation-chevron {{expandedAppearanceId === appearance.id ? 'expanded' : ''}}" src="./assets/chevron.svg" mode="aspectFit"/></button>
+<scb-header title="我的预约" disabled="{{loading}}"/>
+<view class="scb-ui-page figma-page bookings-rebuild">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="booking" size="28"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">本人合作</view><view class="figma-title">我的预约</view><view class="figma-subtitle">每位球员、每场安排分别确认并跟进。</view></view></view>
+
+    <view class="booking-tabs" role="tablist"><button class="booking-tab {{view === 'sent' ? 'is-active' : ''}}" data-view="sent" bindtap="changeView" disabled="{{loading}}">我发出的</button><button class="booking-tab {{view === 'received' ? 'is-active' : ''}}" data-view="received" bindtap="changeView" disabled="{{loading}}">我收到的</button></view>
+
+    <figma-skeleton wx:if="{{loading}}" rows="4"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="预约读取失败" body="{{error}}；保留当前筛选，可刷新后重试。" action-label="重新读取" bind:action="load"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="permission" title="登录后查看本人合作" body="当前身份核对后，才可读取有权查看的预约。" action-label="登录并返回" bind:action="login"/>
+    <figma-feedback wx:if="{{!loading && !rows.length && !error && !loginRequired}}" type="empty" title="暂无符合条件的合作记录" body="可切换发出/收到或调整状态筛选。"/>
+
+    <view wx:if="{{rows.length}}" class="figma-section">
+      <view class="figma-section__title">当前合作</view>
+      <block wx:for="{{rows}}" wx:for-item="order" wx:key="id">
+        <view wx:for="{{order.appearances}}" wx:for-item="appearance" wx:key="id" class="booking-item">
+          <view class="booking-item__row">
+            <button class="figma-row booking-item__main" data-id="{{order.id}}" bindtap="detail" disabled="{{loading}}"><view class="figma-row__copy"><view class="figma-row__title">{{order.teamName}} × {{appearance.playerName}}</view><view class="figma-row__subtitle">{{appearance.summaryStartText || appearance.startText}} · {{appearance.venue}}</view></view></button>
+            <button class="booking-item__toggle {{appearance.status === 'ACCEPTED' || appearance.status === 'COMPLETED' ? 'is-green' : ''}}" data-id="{{appearance.id}}" bindtap="toggleInfo" disabled="{{loading}}">{{appearance.statusText}}</button>
+          </view>
+          <view wx:if="{{expandedAppearanceId === appearance.id}}" class="booking-item__detail">
+            <view class="figma-caption">{{order.eventName}} · {{appearance.label}} · {{order.scopeText}}</view>
+            <view class="figma-caption">{{appearance.scheduleText || appearance.startText + ' — ' + appearance.endText}} · 报到 {{appearance.reportText}}</view>
+            <view class="figma-caption">本项{{appearance.status === 'CONDITIONAL' ? '条件预计' : '报价'}} {{appearance.totalText}} · 总单确定报价 {{order.confirmedText}} · 实收 {{order.paidText}}</view>
+            <view wx:if="{{appearance.conditionText}}" class="figma-caption">条件：{{appearance.conditionText}}</view>
+            <view class="item-actions"><button data-id="{{appearance.id}}" bindtap="trade">查看本场资金订单</button><button data-id="{{order.id}}" bindtap="detail">查看完整合作</button></view>
+          </view>
         </view>
-        <view wx:if="{{expandedAppearanceId === appearance.id}}" class="cooperation-details">
-          <view class="appearance-status {{appearance.tone}}">{{appearance.statusText}}</view>
-          <view>{{order.eventName}} · {{order.teamName}}</view>
-          <view>{{appearance.label}} · {{order.scopeText}}</view>
-          <view class="small">{{appearance.scheduleText || appearance.startText + ' — ' + appearance.endText}}</view>
-          <view class="small muted">报到 {{appearance.reportText}}</view>
-          <view class="small muted">地点 {{appearance.venue}}</view>
-          <view class="small muted">{{order.playerCount}}位球员 · {{order.itemCount}}场安排</view>
-          <view class="small">本项{{appearance.status === 'CONDITIONAL' ? '条件预计' : '报价'}} <text class="money-atom">{{appearance.totalText}}</text> · {{paymentNotice || '付款与退款以本场资金订单为准'}}</view>
-          <view class="small muted">总单确定报价 <text class="money-atom">{{order.confirmedText}}</text> · 条件预计 <text class="money-atom">{{order.conditionalText}}</text> · 实收 <text class="money-atom">{{order.paidText}}</text></view>
-          <view wx:if="{{appearance.conditionText}}" class="small muted">条件：{{appearance.conditionText}}</view>
-          <button class="secondary" data-id="{{appearance.id}}" bindtap="trade" disabled="{{loading}}">查看本场资金订单</button>
-          <button class="quiet" data-id="{{order.id}}" bindtap="detail" disabled="{{loading}}">查看完整逐场合作</button>
-        </view>
-      </view>
-    </block>
+      </block>
+    </view>
+
+    <view wx:if="{{rows.length}}" class="figma-section">
+      <view class="figma-section__title">报价与资金</view>
+      <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">确定场次</view><view class="figma-row__subtitle">{{rows[0].confirmedSummary || '逐人逐场的确定报价'}}</view></view><view class="figma-status figma-status--orange">{{rows[0].confirmedText || '逐项核对'}}</view></view>
+      <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">条件意向</view><view class="figma-row__subtitle">尚未确定，不占档期</view></view><view class="figma-status">{{rows[0].conditionalCount ? rows[0].conditionalText : '暂无'}}</view></view>
+      <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">本场资金</view><view class="figma-row__subtitle">{{paymentNotice || '到原资金订单核对'}}</view></view><view class="figma-status">查看</view></view>
+    </view>
+
+    <view wx:if="{{rows.length}}" class="figma-section"><view class="figma-section__title">合作进度</view><view class="step-row"><view class="step-index">1</view><view class="figma-row__copy"><view class="figma-row__title">接单确认</view><view class="figma-row__subtitle">以每场当前记录为准</view></view><view class="figma-status figma-status--orange">逐场查看</view></view><view class="step-row"><view class="step-index">2</view><view class="figma-row__copy"><view class="figma-row__title">到场与履约</view><view class="figma-row__subtitle">按当前记录核对</view></view><view class="figma-status">逐场核对</view></view></view>
+    <button class="filter-toggle" bindtap="toggleFilters" disabled="{{loading}}"><view><view class="figma-row__title">更多筛选</view><view class="figma-row__subtitle">{{statusLabels[statusIndex]}}</view></view><view class="figma-status">{{filtersOpen ? '收起' : '展开'}}</view></button>
+    <view wx:if="{{filtersOpen || statusIndex > 0}}" class="filter-panel"><scroll-view scroll-x="true" enable-flex="true" class="status-scroll"><view class="status-tabs"><button wx:for="{{quickStatuses}}" wx:key="value" class="status-tab {{status === item.value ? 'is-active' : ''}}" data-index="{{item.index}}" bindtap="statusTab" disabled="{{loading}}">{{item.label}}</button><picker mode="selector" range="{{statusLabels}}" value="{{statusIndex}}" bindchange="changeStatus" disabled="{{loading}}"><view class="status-tab">更多</view></picker></view></scroll-view></view>
+    <figma-feedback wx:if="{{view === 'received'}}" type="info" title="以本人球员身份处理" body="只能接受或拒绝自己的逐场安排，不代其他球员确认。"/>
+    <figma-feedback wx:if="{{hasMore}}" type="info" title="当前列表只显示最新 100 份" body="更早记录未计入当前列表，可用已知订单入口读取具体合作。"/>
   </view>
-  <view wx:if="{{view === 'received'}}" class="notice role-notice"><view class="notice-title">以本人球员身份处理</view><view class="small">只能接受或拒绝自己的逐场安排，不代其他球员确认。</view></view>
-  <view wx:if="{{hasMore}}" class="notice warning">这里只显示最新100份可见预约，更早记录未计入当前列表；可用已知订单入口读取具体合作。</view>
-  <view wx:if="{{paymentNotice}}" class="notice small">{{paymentNotice}}</view>
-  <view class="time-caption">按场确认时间、地点与履约状态 · 北京时间</view>
-  <view class="booking-tools"><button class="quiet" bindtap="load" loading="{{loading}}" disabled="{{loading}}">刷新预约状态</button><button class="secondary" bindtap="players" disabled="{{loading}}">继续找球员</button></view>
+
+  <view class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="players" disabled="{{loading}}">继续找球员</button><button class="figma-action figma-action--orange" data-id="{{rows[0].id}}" bindtap="detail" disabled="{{loading || !rows.length}}">查看本场合作</button></view>
 </view>

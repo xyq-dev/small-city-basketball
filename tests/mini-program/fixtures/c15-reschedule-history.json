@@ -4,7 +4,6 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["改期记录", "球队申请延后", "检查并保存改期", "不是排赛草稿"],
   "data": {
     "loading": false,
     "busy": false,
@@ -45,5 +44,6 @@
     "conflicts": [],
     "uncertain": false,
     "unavailable": false
-  }
+  },
+  "expectText": ["改期记录", "检查并保存改期", "不是排赛草稿"]
 }

@@ -6,7 +6,7 @@
   "figmaNode": "9:1242",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
   "expectText": [
-    "只处理当前授权范围内的事项",
+    "只处理当前账号明确获授的事项",
     "合成石鼓篮球赛事运营机构长名称",
     "处理明确分派的工单"
   ],

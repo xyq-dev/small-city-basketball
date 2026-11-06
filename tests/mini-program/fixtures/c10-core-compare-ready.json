@@ -4,10 +4,7 @@
   "state": "ready",
   "figmaNode": "30:333",
   "syntheticData": true,
-  "expectText": [
-    "合成林越",
-    "左右滑动查看第3人"
-  ],
+  "expectText": ["合成林越", "合成周航"],
   "data": {
     "profiles": [
       {
@@ -287,5 +284,6 @@
     "notice": "",
     "statisticsError": ""
   },
-  "primary": true
+  "primary": true,
+  "expectVisible": [".compare-scroll"]
 }

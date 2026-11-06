@@ -4,7 +4,11 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["记分与赛果确认", "已准备 · 待开赛"],
+  "expectText": [
+    "记分与复核任务",
+    "本场复核人独立核对赛果及更正记录，确认后才进入榜单",
+    "已准备 · 待开赛"
+  ],
   "data": {
     "loading": false,
     "loginRequired": false,

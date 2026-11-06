@@ -301,7 +301,10 @@ function cohortCommandHarness(capabilities, state = 'RUNNING', resultState = 'CO
       enrollments: [],
     };
   });
-  h.page.setData({ orgId: O });
+  // Cohort lifecycle controls live under the Figma "班期管理" tab.
+  // Keep the command assertions on the real page while rendering the state
+  // a manager reaches after opening that tab.
+  h.page.setData({ orgId: O, manageTab: 'cohorts' });
   h.render = () =>
     renderWxml(
       fs.readFileSync(path.join(root, 'pages/training-manage/index.wxml'), 'utf8'),

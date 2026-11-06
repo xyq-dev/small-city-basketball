@@ -3,7 +3,7 @@
   "route": "pages/public-archives/index",
   "state": "synthetic-populated",
   "designSource": "UI001 actual native route and capability states; synthetic data only",
-  "expectText": ["合成公开昵称", "独立公开授权", "PUBLIC_ARCHIVE", "创建长期档案"],
+  "expectText": ["合成公开昵称", "本人明确同意公开", "PUBLIC_ARCHIVE", "创建长期档案"],
   "data": {
     "profiles": [
       {
@@ -16,6 +16,16 @@
         "sources": []
       }
     ],
+    "primaryProfile": {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "kind": "PLAYER",
+      "displayName": "合成公开昵称",
+      "status": "DRAFT",
+      "version": 1,
+      "publicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "sources": []
+    },
+    "secondaryProfiles": [],
     "pendingSources": [],
     "teams": [],
     "events": [],

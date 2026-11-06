@@ -1,0 +1,6 @@
+.figma-card { box-sizing:border-box; width:100%; padding:16px; border-radius:16px; background:#ffffff; color:#18283f; overflow:hidden; }
+.figma-card.is-compact { padding:12px; }
+.figma-card--navy { background:#123c73; color:#ffffff; }
+.figma-card--orange { background:#fff1e2; }
+.figma-card--green { background:#e5f7ee; }
+.figma-card--muted { background:#f4f6fa; }

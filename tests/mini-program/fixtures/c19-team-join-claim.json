@@ -4,7 +4,7 @@
   "state": "synthetic-populated",
   "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
   "expectText": ["输入加入码", "历史成员认领", "合成历史球员"],
-  "expectEnabled": ["加入球队", "是我本人，接受", "不是我"],
+  "expectEnabled": ["加入球队", "本人接受", "不是我"],
   "data": {
     "code": "ABCD EFGH IJKL MNOP QRST UVWX YZ",
     "displayName": "合成甲",

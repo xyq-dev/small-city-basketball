@@ -1,23 +1,40 @@
 <scb-header title="我的消息" disabled="{{busy}}"/>
-<view class="page ui002-workspace">
-  <view class="page-intro"><view class="eyebrow">本人消息</view><view class="title">查看当前仍有权读取的通知</view></view>
-  <view wx:if="{{loginRequired}}" class="card"><view>登录后查看本人的消息</view><button class="primary" bindtap="login">登录并继续</button></view>
-  <view class="notice">仅显示当前仍有权读取的业务通知。撤回的公开内容、已失去的角色或过时赛程不会继续展示。</view>
-  <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-  <view wx:if="{{message}}" class="notice">{{message}}</view>
-  <view class="workflow-tabs message-tabs"><button class="{{messageFilter==='all' ? 'primary' : 'secondary'}}" data-filter="all" bindtap="filterMessages" disabled="{{busy}}">全部</button><button class="{{messageFilter==='unread' ? 'primary' : 'secondary'}}" data-filter="unread" bindtap="filterMessages" disabled="{{busy}}">未读</button></view>
-  <view wx:if="{{messageFilter==='unread'}}" class="small muted">仅筛选已读取的消息；继续加载可查看更多未读条目。</view>
-  <button class="secondary" bindtap="settings">管理微信订阅提醒</button><button class="secondary" bindtap="follows">查看我的关注</button>
-  <view wx:if="{{pending}}" class="card"><view class="subtitle">有重试请求待核对</view><view>保留原编号，核对完成前不会另发第二个请求。</view><button class="primary" bindtap="resume" disabled="{{busy}}">用原编号核对并继续</button></view>
-  <view wx:if="{{loading}}" class="card">正在读取消息</view>
-  <view wx:elif="{{messageFilter==='unread' && !unreadCount}}" class="card"><view class="subtitle">已读取范围内暂无未读消息</view><view class="muted">仍可继续加载，或切回全部查看历史消息。</view></view><view wx:elif="{{!items.length}}" class="card">暂无当前可读消息</view>
-  <view wx:for="{{items}}" wx:key="id" wx:if="{{messageFilter==='all' || !item.readAt}}" class="card message-card">
-    <view class="subtitle">{{item.title}}</view><view>{{item.eventName}}</view><view>{{item.detail}}</view>
-    <view>{{item.timeLabel}}</view><view wx:if="{{item.location}}">场地：{{item.location}}</view>
-    <view class="small muted">{{item.deliveryLabel}}</view>
-    <button wx:if="{{!item.readAt}}" class="secondary" data-id="{{item.id}}" bindtap="read" disabled="{{busy}}">标记已读</button>
-    <button wx:if="{{item.canRetry}}" class="secondary" data-id="{{item.id}}" bindtap="retry" disabled="{{busy || pending}}">使用新订阅明确重试</button>
+<view class="figma-page messages-rebuild">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="bell" size="28"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">本人账号</view><view class="figma-title">消息收件箱</view><view class="figma-subtitle">只显示当前仍有权读取的通知</view></view></view>
+    <figma-tabs key1="all" label1="全部" key2="unread" label2="未读" active="{{messageFilter}}" disabled="{{busy}}" bind:change="filterMessages"/>
+    <figma-skeleton wx:if="{{loading && !items.length}}" rows="4"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="warning" title="登录后查看本人消息" action-label="登录并继续" bind:action="login"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="消息读取失败" body="{{error}}" action-label="刷新消息" disabled="{{busy || loading}}" bind:action="load"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="消息状态已更新" body="{{message}}"/>
+    <figma-feedback wx:if="{{pending}}" type="warning" title="有重试请求待核对" body="保留原编号，核对完成前不会另发第二个请求。" action-label="用原编号核对并继续" disabled="{{busy}}" bind:action="resume"/>
+    <figma-feedback wx:if="{{!figmaCompactMessages && !loading && messageFilter === 'unread' && !unreadCount}}" type="empty" title="已读取范围内暂无未读消息" body="仍可继续加载，或切回全部查看历史消息。"/>
+    <figma-feedback wx:if="{{!figmaCompactMessages && !loading && messageFilter === 'all' && !items.length}}" type="empty" title="暂无当前可读消息"/>
+
+    <view wx:if="{{todayCount}}" class="figma-section">
+      <view class="figma-section__title">今天</view>
+      <block wx:for="{{items}}" wx:key="id">
+        <view wx:if="{{item.isToday && (messageFilter === 'all' || !item.readAt)}}" class="message-row">
+          <view class="message-row__head"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{figmaCompactMessages ? item.figmaSubtitle : item.eventName}}<text wx:if="{{!figmaCompactMessages && item.location}}"> · {{item.location}}</text></view></view><view class="figma-status {{item.readAt ? 'figma-status--green' : 'figma-status--orange'}}">{{item.readAt ? '已读' : '未读'}}</view></view>
+          <view wx:if="{{!figmaCompactMessages}}" class="message-detail">{{item.detail}}</view>
+          <view wx:if="{{!figmaCompactMessages}}" class="figma-caption">{{item.timeLabel}} · {{item.deliveryLabel}}</view>
+          <view wx:if="{{!figmaCompactMessages}}" class="message-actions"><button wx:if="{{!item.readAt}}" class="message-text-action" data-id="{{item.id}}" bindtap="read" disabled="{{busy}}">标记已读</button><button wx:if="{{item.canRetry}}" class="message-text-action" data-id="{{item.id}}" bindtap="retry" disabled="{{busy || pending}}">使用新订阅明确重试</button></view>
+        </view>
+      </block>
+    </view>
+    <view wx:if="{{earlierCount}}" class="figma-section">
+      <view class="figma-section__title">更早消息</view>
+      <block wx:for="{{items}}" wx:key="id">
+        <view wx:if="{{!item.isToday && (messageFilter === 'all' || !item.readAt)}}" class="message-row">
+          <view class="message-row__head"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{figmaCompactMessages ? item.figmaSubtitle : item.eventName}}<text wx:if="{{!figmaCompactMessages && item.location}}"> · {{item.location}}</text></view></view><view class="figma-status {{item.readAt ? 'figma-status--green' : 'figma-status--orange'}}">{{item.readAt ? '已读' : '未读'}}</view></view>
+          <view wx:if="{{!figmaCompactMessages}}" class="message-detail">{{item.detail}}</view>
+          <view wx:if="{{!figmaCompactMessages}}" class="figma-caption">{{item.timeLabel}} · {{item.deliveryLabel}}</view>
+          <view wx:if="{{!figmaCompactMessages}}" class="message-actions"><button wx:if="{{!item.readAt}}" class="message-text-action" data-id="{{item.id}}" bindtap="read" disabled="{{busy}}">标记已读</button><button wx:if="{{item.canRetry}}" class="message-text-action" data-id="{{item.id}}" bindtap="retry" disabled="{{busy || pending}}">使用新订阅明确重试</button></view>
+        </view>
+      </block>
+    </view>
+    <button wx:if="{{nextCursor}}" class="figma-action figma-action--ghost" bindtap="more" disabled="{{loadingMore || busy}}">{{loadingMore ? '正在读取' : '读取更多'}}</button>
+    <view class="figma-section"><view class="figma-section__title">消息工具</view><button class="figma-row" bindtap="settings"><view class="figma-row__copy"><view class="figma-row__title">微信订阅提醒</view><view class="figma-row__subtitle">按本次选择取得许可</view></view><view class="figma-status figma-status--orange">管理</view></button><button class="figma-row" bindtap="follows"><view class="figma-row__copy"><view class="figma-row__title">我的关注</view><view class="figma-row__subtitle">查看当前有效赛事</view></view><view class="figma-status figma-status--orange">查看</view></button></view>
   </view>
-  <button wx:if="{{nextCursor}}" class="secondary" bindtap="more" disabled="{{loadingMore || busy}}">{{loadingMore ? '正在读取' : '读取更多'}}</button>
-  <button class="secondary" bindtap="load" disabled="{{loading || busy}}">刷新消息</button>
+  <view class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="settings" disabled="{{busy}}">管理微信订阅提醒</button><button class="figma-action figma-action--orange" bindtap="load" disabled="{{loading || busy}}">刷新消息</button></view>
 </view>

@@ -1,3 +1,10 @@
-.task-row { border:1px solid transparent; }
-.task-title { color:#123c73; font-size:16px; line-height:24px; font-weight:600; }
-.task-score { color:#123c73; font-family:Inter,Arial,sans-serif; font-size:16px; font-weight:700; }
+@import "../../styles/figma-pages.wxss";
+
+.task-tabs { display: flex; width: 100%; min-height: 48px; padding: 2px 3px; border-radius: 12px; background: #fff; }
+.task-tab { display: flex; min-width: 0; min-height: 44px; flex: 1; align-items: center; justify-content: center; margin: 0; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: #51657d; font-size: 13px; line-height: 19px; }
+.task-tab::after { border: 0; }
+.task-tab.is-active { background: #123c73; color: #fff; font-weight: 700; }
+.task-score { flex: none; color: #123c73; font-size: 15px; font-weight: 700; line-height: 22px; white-space: nowrap; }
+.task-notice { display: flex; width: 100%; min-height: 58px; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; background: #eaf2fc; }
+.task-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: #123c73; }
+@media (max-width: 360px) { .task-tab { font-size: 12px; } .task-score { font-size: 13px; } }

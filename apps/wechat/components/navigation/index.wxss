@@ -1,10 +1,9 @@
-:host,.mobile-nav,.nav-item { box-sizing:border-box; }
-.mobile-nav { position:fixed; z-index:20; bottom:0; left:0; right:0; height:calc(59px + env(safe-area-inset-bottom)); display:flex; align-items:center; justify-content:space-between; background:#fff; border-top:1px solid #e1e7ef; padding:4px 0 env(safe-area-inset-bottom); }
-.nav-item { flex:1; min-width:0; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:0; margin:0; border-radius:0; font-size:12px; line-height:20px; font-weight:400; color:#63758b; background:#fff; }
-.nav-item::after { border:0; }
-.nav-item.selected { color:#f28c28; }
-.nav-item[disabled] { background:#fff; color:#a3b2c1; opacity:.65; }
-
-.premium-nav { height:calc(56px + env(safe-area-inset-bottom)); padding-top:4px; padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -4px 16px rgba(18,60,115,.04); } .premium-nav .nav-item { font-size:12px; line-height:16px; gap:2px; } .premium-nav .nav-item.selected { color:#f28c28; font-weight:600; }
-
-.nav-asset { display:block; width:24px; height:24px; flex:none; }
+:host, .figma-nav, .figma-nav__item, .figma-nav__icon { box-sizing:border-box; }
+.figma-nav { position:fixed; z-index:40; right:0; bottom:0; left:0; display:flex; align-items:flex-start; border-top:1px solid #e6ebf2; background:#ffffff; }
+.figma-nav__item { display:flex; height:50px; min-width:0; min-height:50px; flex:1; flex-direction:column; align-items:center; justify-content:center; gap:0; margin:0; padding:0; border:0; border-radius:0; background:#ffffff; color:#51657d; font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif; font-size:11px; font-weight:400; line-height:16px; text-align:center; }
+.figma-nav__item::after { border:0; }
+.figma-nav__item[disabled] { background:#ffffff; color:#7c8ea5; opacity:.6; }
+.figma-nav__icon { display:flex; width:46px; height:28px; flex:none; align-items:center; justify-content:center; border-radius:14px; }
+.figma-nav__item.is-active { color:#123c73; font-weight:700; }
+.figma-nav__item.is-active .figma-nav__icon { background:#fff1e2; }
+.figma-nav__label { height:16px; }

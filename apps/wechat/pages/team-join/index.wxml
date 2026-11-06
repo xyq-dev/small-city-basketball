@@ -1,26 +1,15 @@
-<scb-header title="加入球队" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page c19-page">
-  <view wx:if="{{error}}" class="notice warning" role="alert"><view class="feedback-title">请核对后继续</view><view class="small">{{error}}</view></view>
-  <view wx:if="{{message}}" class="notice">{{message}}</view>
-  <view wx:if="{{loginRequired}}" class="card c19-panel state-panel"><view class="subtitle">登录后加入球队</view><button class="primary" bindtap="login">登录</button></view>
-  <view wx:if="{{!loginRequired}}" class="card c19-panel">
-    <view class="subtitle">输入加入码</view>
-    <view class="small muted">加入码由球队领队签发，26位，不区分大小写，可含空格。加入后你会作为新成员出现在长期名单，不会自动认领同名旧成员。</view>
-    <view class="field-label">加入码</view><input class="field" maxlength="40" value="{{code}}" data-field="code" bindinput="input" disabled="{{busy}}" placeholder="例如 ABCD EFGH …"/>
-    <view class="field-label">队内显示名</view><input class="field" maxlength="80" value="{{displayName}}" data-field="displayName" bindinput="input" disabled="{{busy}}"/>
-    <button class="primary invite-action" bindtap="join" disabled="{{busy || !code}}" loading="{{busy}}">{{uncertain ? '核对上次加入' : '加入球队'}}</button>
+<scb-header title="加入球队" disabled="{{busy}}"/>
+<view class="figma-page join-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary"><view class="figma-summary__icon"><figma-icon name="join" size="{{28}}"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">球员本人</view><view class="figma-title">加入一支球队</view><view class="figma-subtitle">用领队签发的加入码登记长期成员身份</view></view></view>
+    <figma-feedback wx:if="{{error}}" type="error" title="请核对后继续" body="{{error}}" action-label="重新读取" bind:action="load"/>
+    <figma-feedback wx:if="{{message}}" type="{{uncertain ? 'pending' : 'success'}}" title="{{uncertain ? '加入结果待核对' : '成员关系已更新'}}" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="empty" title="登录后加入球队" action-label="登录" bind:action="login"/>
+    <view wx:if="{{loading}}" class="figma-section"><figma-skeleton rows="{{3}}"/></view>
+    <view wx:if="{{!loginRequired}}" class="figma-section"><view class="figma-section__title">输入加入码</view><view class="figma-field-group"><view class="figma-field-label">加入码</view><input class="figma-field-control join-code" maxlength="40" value="{{code}}" data-field="code" bindinput="input" disabled="{{busy}}" placeholder="输入 26 位有效加入码"/></view><view class="figma-field-group"><view class="figma-field-label">队内显示名</view><input class="figma-field-control" maxlength="80" value="{{displayName}}" data-field="displayName" bindinput="input" disabled="{{busy}}" placeholder="填写用于队内识别的姓名"/></view></view>
+    <view wx:if="{{joined}}" class="figma-summary figma-summary--navy"><view class="figma-summary__icon"><figma-icon name="teams" size="{{28}}"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">成员关系</view><view class="figma-title">{{joined.teamName}}</view><view class="figma-subtitle">{{joined.organizationName}} · {{joined.memberName}}</view></view></view>
+    <view wx:if="{{!loginRequired}}" class="figma-section"><view class="figma-section__title">历史成员认领</view><view class="figma-section__hint">只有本人核对并接受后才会绑定，拒绝不会删除原长期成员。</view><figma-feedback wx:if="{{!claims.length && !loading}}" type="empty" title="暂无认领"/><view wx:for="{{claims}}" wx:key="claimId" class="claim-row"><view class="claim-head"><view><view class="figma-row__title">{{item.teamName}} · {{item.memberName}}</view><view class="figma-row__subtitle">{{item.organizationName}} · 截止 {{item.expires}}</view></view><view class="figma-status figma-status--orange">{{item.stateText}}</view></view><view wx:if="{{item.status==='PENDING'}}" class="two-actions"><button class="section-ghost" data-id="{{item.claimId}}" data-decision="decline" bindtap="decide" disabled="{{busy}}">不是我</button><button class="section-primary" data-id="{{item.claimId}}" data-decision="accept" bindtap="decide" disabled="{{busy}}">本人接受</button></view></view></view>
+    <view class="figma-section"><view class="figma-section__title">成员关系</view><view class="join-notice"><view class="join-notice__mark"/><view class="figma-row__copy"><view class="figma-row__title">加入码</view><view class="figma-row__subtitle">作为新成员加入长期名单</view></view></view><view class="join-notice"><view class="join-notice__mark"/><view class="figma-row__copy"><view class="figma-row__title">历史成员关系</view><view class="figma-row__subtitle">可到我的成员关系查看与退出</view></view></view></view>
   </view>
-  <view wx:if="{{joined}}" class="card c19-panel"><view class="badge success">成员关系</view><view class="subtitle">{{joined.teamName}}</view><view class="muted">{{joined.organizationName}} · {{joined.memberName}}</view><button class="secondary" bindtap="openMemberships">查看我的成员关系</button></view>
-  <view wx:if="{{!loginRequired}}" class="card c19-panel">
-    <view class="subtitle">历史成员认领</view>
-    <view class="small muted">领队可把长期名单中的某位历史成员定向发给你的账号；只有你本人核对并接受后才会绑定。</view>
-    <view wx:if="{{!claims.length && !loading}}" class="muted">暂无认领。</view>
-    <view wx:for="{{claims}}" wx:key="claimId" class="item-row">
-      <view class="item-title">{{item.teamName}} · {{item.memberName}}</view>
-      <view class="small muted">{{item.organizationName}} · {{item.stateText}} · 截止 {{item.expires}}</view>
-      <view wx:if="{{item.status === 'PENDING'}}" class="row-actions"><button class="secondary" data-id="{{item.claimId}}" data-decision="decline" bindtap="decide" disabled="{{busy}}">不是我</button><button class="primary" data-id="{{item.claimId}}" data-decision="accept" bindtap="decide" disabled="{{busy}}">是我本人，接受</button></view>
-    </view>
-  </view>
-  <button class="quiet" bindtap="openMemberships" disabled="{{busy}}">我的成员关系</button>
+  <view class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="openMemberships" disabled="{{busy}}">查看我的成员关系</button><button class="figma-action figma-action--orange" bindtap="join" disabled="{{busy || !code || !displayName}}" loading="{{busy}}">{{uncertain ? '核对上次加入' : '加入球队'}}</button></view>
 </view>
-<scb-nav active="Account" disabled="{{busy || loading}}"/>

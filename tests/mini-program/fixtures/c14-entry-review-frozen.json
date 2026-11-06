@@ -4,7 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["名单已冻结", "本届名单（报名快照）", "审核记录"],
+  "expectText": ["名单已冻结", "本届名单以冻结快照为准", "审核记录"],
   "data": {
     "loading": false,
     "busy": false,

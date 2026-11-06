@@ -212,6 +212,7 @@ test('exhausted unknown insurance resumes only a REFRESH of the original order a
   const h = setup();
   h.page.setData({
     quote: null,
+    activeSection: 'records',
     workspace: {
       enabled: true,
       products: [],
@@ -230,14 +231,14 @@ test('exhausted unknown insurance resumes only a REFRESH of the original order a
       ],
     },
   });
-  const fs = require('node:fs');
-  const { renderWxml } = require('./helpers/native-preview.cjs');
-  const html = renderWxml(
-    fs
-      .readFileSync(path.join(root, 'pages/insurance/index.wxml'), 'utf8')
-      .replace(/<scb-(?:header|steps|state)\b[^>]*\/>/g, ''),
-    h.page.data,
-  );
+  const { buildPreview } = require('./helpers/native-preview.cjs');
+  const html = buildPreview({
+    root,
+    route: 'pages/insurance/index',
+    data: h.page.data,
+    width: 390,
+    height: 844,
+  }).html;
   assert.ok(html.includes('自动核对已暂停'));
   assert.ok(html.includes('不会重复投保或退保'));
   await h.page.command(tap({ id: id(8), type: 'REFRESH' }));

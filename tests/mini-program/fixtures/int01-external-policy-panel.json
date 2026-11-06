@@ -1,0 +1,46 @@
+{
+  "name": "int01-external-policy-panel",
+  "route": "pages/participant-materials/index",
+  "state": "synthetic-default-material-profile-with-external-policy-navigation",
+  "figmaNode": "36:108",
+  "syntheticData": true,
+  "designSource": "Current participant material profile; existing external-policy panel reached through its restored independent navigation, synthetic data only",
+  "expectText": ["合成本人报名杯", "已有外部保单", "本人姓名 *", "仅限本届赛事使用的私有资料"],
+  "expectEnabled": ["已有外部保单"],
+  "expectVisible": ["button[data-panel=\"insurance\"][data-mini-bindtap=\"switchMaterialPanel\"]"],
+  "expectAbsentSelectors": ["input[data-field=\"policyNumber\"]"],
+  "data": {
+    "mode": "mine",
+    "materialPanel": "profile",
+    "registrationStep": "profile",
+    "workspace": {
+      "entryId": "00000000-0000-4000-8000-000000000002",
+      "memberId": "00000000-0000-4000-8000-000000000003",
+      "eventName": "合成本人报名杯",
+      "teamName": "合成青锋",
+      "startDate": "2028-05-01",
+      "endDate": "2028-05-03",
+      "rules": { "requireInsurance": true, "termsVersion": "registration-materials-v1" },
+      "enabled": true,
+      "frozen": false,
+      "material": null,
+      "capabilities": { "canSave": true, "canSubmit": false, "canWithdrawPublicity": false }
+    },
+    "material": null,
+    "loading": false,
+    "busy": false,
+    "dirty": false,
+    "pending": false,
+    "loginRequired": false,
+    "form": {
+      "realName": "",
+      "identityNumber": "",
+      "insurer": "",
+      "policyNumber": "",
+      "startDate": "",
+      "endDate": "",
+      "acceptedTerms": false,
+      "publicityConsent": false
+    }
+  }
+}

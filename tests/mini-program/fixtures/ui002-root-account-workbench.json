@@ -1,10 +1,10 @@
 {
-  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "designSource": "UI006 36:56 account implementation with synthetic API-shaped data, not real account/provider acceptance",
   "static": true,
   "name": "ui002-root-account-workbench",
   "route": "pages/account/index",
   "state": "populated",
-  "figmaNode": "4:378",
+  "figmaNode": "36:56",
   "data": {
     "loading": false,
     "busy": false,
@@ -43,5 +43,5 @@
     "workspaceTab": "work",
     "navigationMoreOpen": true
   },
-  "expectText": ["角色与机构配置", "机构管理", "建队申请审批", "私有赛季管理"]
+  "expectText": ["角色工作台", "成员与工作人员权限", "机构管理", "建队申请审批", "私有赛季管理"]
 }

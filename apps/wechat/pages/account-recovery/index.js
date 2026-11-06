@@ -18,6 +18,13 @@ Page({
     pending: false,
     message: '',
     error: '',
+    activeMode: 'request',
+    requestStatus: 'idle',
+    receiptStatus: 'idle',
+    recoveryTabs: [
+      { key: 'request', label: '申请操作码' },
+      { key: 'consume', label: '使用操作码' },
+    ],
   },
   onShow() {
     this._closed = false;
@@ -44,6 +51,8 @@ Page({
       newPassword: '',
       signedIn: false,
       verified: false,
+      requestStatus: 'idle',
+      receiptStatus: 'idle',
     });
   },
   input(e) {
@@ -52,6 +61,10 @@ Page({
       ['email', 'token', 'newPassword'].includes(e.currentTarget.dataset.field)
     )
       this.setData({ [e.currentTarget.dataset.field]: e.detail.value });
+  },
+  changeMode(e) {
+    const key = e.detail?.key;
+    if (!this.data.busy && ['request', 'consume'].includes(key)) this.setData({ activeMode: key });
   },
   async load() {
     const t = ui.begin(this);
@@ -88,6 +101,7 @@ Page({
       if (ui.held(this, t))
         this.setData({
           message: '申请已受理；若账号存在且通道可用，请查收邮件。通道受理不代表已经送达。',
+          requestStatus: 'accepted',
         });
     } catch (err) {
       if (ui.held(this, t)) this.setData({ error: ui.message(err) });
@@ -105,7 +119,7 @@ Page({
       if (!ui.held(this, t)) return;
       operationId = id;
       wx.setStorageSync(pendingKey, { id });
-      this.setData({ pending: true });
+      this.setData({ pending: true, receiptStatus: 'pending' });
       await api.getClient().request(
         root + '/consume',
         'POST',
@@ -123,6 +137,7 @@ Page({
           token: '',
           newPassword: '',
           message: '操作已完成。重置密码后，原账号所有旧登录需重新登录。',
+          receiptStatus: 'complete',
         });
     } catch (err) {
       if (err.status >= 400 && err.status < 500 && ![408, 429].includes(err.status))
@@ -130,6 +145,7 @@ Page({
       if (ui.held(this, t))
         this.setData({
           pending: !!wx.getStorageSync(pendingKey),
+          receiptStatus: wx.getStorageSync(pendingKey) ? 'pending' : 'idle',
           error: ui.message(err),
           newPassword: '',
         });
@@ -167,6 +183,7 @@ Page({
             : result.cancelled
               ? '原请求已取消，迟到请求也不会执行。可以重新确认后操作。'
               : '原操作尚未确认；保留编号继续核对，或明确取消原请求后重新操作。',
+          receiptStatus: result.completed ? 'complete' : result.cancelled ? 'cancelled' : 'pending',
         });
     } catch (err) {
       if (ui.held(this, t)) this.setData({ error: ui.message(err) });

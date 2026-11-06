@@ -4,7 +4,7 @@
   "state": "ready",
   "figmaNode": "5:1195",
   "syntheticData": true,
-  "expectText": ["石鼓青锋", "青锋杯", "合成", "下一步 · 核对费用", "确定场次报价"],
+  "expectText": ["石鼓青锋", "核对并提交预约", "确定报价", "赛事或合作名称"],
   "data": {
     "loading": false,
     "busy": false,
@@ -141,7 +141,10 @@
       "conditional": "¥0.00",
       "count": 1,
       "fixedCount": 1,
-      "conditionalCount": 0
+      "conditionalCount": 0,
+      "fixedSlotCount": 1,
+      "fixedPlayerCount": 1,
+      "travelAccommodation": "¥0.00"
     },
     "pending": false,
     "invalidRecovery": false,
@@ -161,8 +164,8 @@
     "noTeams": false,
     "noPlayers": false,
     "quoteInvalid": false,
-    "detailsOpen": false,
-    "editorOpen": false,
+    "detailsOpen": true,
+    "editorOpen": true,
     "compactQuote": {
       "service": "¥300",
       "platform": "¥30",
@@ -177,5 +180,11 @@
   },
   "referenceImage": "docs/design/C11/booking-create.png",
   "visualPrimary": true,
-  "designSource": "Current mature C11 protected booking consumer with UI001 shell; existing synthetic data"
+  "designSource": "Current mature C11 protected booking consumer with UI001 shell; existing synthetic data",
+  "expectValues": [
+    {
+      "selector": "input[data-field=\"eventName\"]",
+      "value": "青锋杯 · 合成"
+    }
+  ]
 }

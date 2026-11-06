@@ -3,6 +3,18 @@ const ui = require('../../utils/ui');
 const gov = require('../../utils/governance');
 const ledger = require('../../utils/public-ledger');
 const PATH = '/pages/public-ledgers/index';
+function withMetrics(row) {
+  const approved = row.entries.filter((entry) => entry.status === 'APPROVED');
+  const incomeFen = approved.reduce(
+    (sum, entry) => sum + (entry.amountFen > 0 ? entry.amountFen : 0),
+    0,
+  );
+  const expenseFen = approved.reduce(
+    (sum, entry) => sum + (entry.amountFen < 0 ? Math.abs(entry.amountFen) : 0),
+    0,
+  );
+  return { ...row, incomeLabel: ledger.money(incomeFen), expenseLabel: ledger.money(expenseFen) };
+}
 const initial = () => ({
   organizations: [],
   orgIndex: 0,
@@ -31,6 +43,9 @@ const initial = () => ({
   error: '',
   notice: '',
   loginRequired: false,
+  ledgerSection: 'overview',
+  figmaLedgerPreview: false,
+  figmaSummaryTitle: '',
 });
 Page({
   data: initial(),
@@ -160,8 +175,12 @@ Page({
   },
   consent(e) {
     const f = e.currentTarget.dataset.field;
-    if (['authorizationConfirmed', 'publicConsent'].includes(f) && !this.data.busy)
-      this.setData({ [f]: !!e.detail.value });
+    if (['authorizationConfirmed', 'publicConsent'].includes(f) && !this.data.busy) {
+      const value = Array.isArray(e.detail.value)
+        ? e.detail.value.includes('yes')
+        : !!e.detail.value;
+      this.setData({ [f]: value });
+    }
   },
   select(e) {
     return this.selectId(e.currentTarget.dataset.id);
@@ -171,12 +190,17 @@ Page({
     const t = ui.begin(this);
     this.setData({ loading: true, selected: null, error: '', publicConsent: false });
     try {
-      const row = ledger.account(
-        await gov.request(api.getClient(), this.base() + '/' + gov.id(id)),
+      const row = withMetrics(
+        ledger.account(await gov.request(api.getClient(), this.base() + '/' + gov.id(id))),
       );
       if (ui.live(this, t)) {
         this._accountId = row.id;
-        this.setData({ selected: row, loading: false, reversalIndex: 0 });
+        this.setData({
+          selected: row,
+          loading: false,
+          reversalIndex: 0,
+          ledgerSection: 'overview',
+        });
       }
     } catch (error) {
       if (ui.live(this, t)) this.setData({ loading: false, error: ui.message(error) });
@@ -191,7 +215,14 @@ Page({
       description: '',
       authorizationConfirmed: false,
       publicConsent: false,
+      ledgerSection: 'overview',
     });
+  },
+  jump(e) {
+    const selector = e.currentTarget.dataset.selector;
+    this.setData({ ledgerSection: selector === '#ledger-entries' ? 'entries' : 'overview' });
+    if (selector && typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector, duration: 180 });
   },
   async searchTeams() {
     if (this.data.busy) return;

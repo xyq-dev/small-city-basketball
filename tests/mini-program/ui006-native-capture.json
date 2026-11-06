@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "figmaFile": "QpKOskViUwHFVqSG3uYR9X",
+  "purpose": "Current UI006 native WeChat capture subset. References are direct exports of the latest mapped Figma nodes; fixture data is synthetic and never enters the runtime project.",
+  "pages": [
+    {
+      "name": "home",
+      "route": "pages/home/index",
+      "title": "首页",
+      "primaryFixture": "ui002-root-home-public",
+      "figmaNode": "35:38",
+      "selector": ".home-rebuild",
+      "probe": "合成超长名称篮球邀请赛",
+      "referenceImage": "docs/evidence/ui006/references/home-35-38.png",
+      "referenceSha256": "a9a3d4b00d43d42962afaedbad541c0f51b9ebc231a2a66760f9c2549dd63771"
+    },
+    {
+      "name": "players",
+      "route": "pages/players/index",
+      "title": "找球员",
+      "primaryFixture": "c11-player-market-ready",
+      "figmaNode": "36:76",
+      "selector": ".players-rebuild",
+      "probe": "林越",
+      "referenceImage": "docs/evidence/ui006/references/players-36-76.png",
+      "referenceSha256": "62189d96ed90cdcd06738296226e3c30dcf3b73baff0f05700f0d23076fe4bbd"
+    },
+    {
+      "name": "player",
+      "route": "pages/player/index",
+      "title": "球员详情",
+      "primaryFixture": "c10-profile-player-ready",
+      "figmaNode": "36:77",
+      "selector": ".player-rebuild",
+      "probe": "合成林越",
+      "referenceImage": "docs/evidence/ui006/references/player-36-77.png",
+      "referenceSha256": "1db9bd46a33f8ebab1f6a4ba93a95ccd3f6ba18dac2bfa13b3b596f0e076dffd"
+    },
+    {
+      "name": "compare",
+      "route": "pages/compare/index",
+      "title": "球员对比",
+      "primaryFixture": "c11-player-compare-ready",
+      "figmaNode": "36:78",
+      "selector": ".compare-rebuild",
+      "probe": "参赛服务费相同",
+      "referenceImage": "docs/evidence/ui006/references/compare-36-78.png",
+      "referenceSha256": "77297594b0d7fe0acc7d37b1bb936c7808433d93e942c0cab99d44efaabf208e"
+    },
+    {
+      "name": "booking-create",
+      "route": "pages/booking-create/index",
+      "title": "创建预约",
+      "primaryFixture": "c10-core-booking-ready-single",
+      "figmaNode": "36:79",
+      "selector": ".booking-create-rebuild",
+      "probe": "核对并提交预约",
+      "referenceImage": "docs/evidence/ui006/references/booking-create-36-79.png",
+      "referenceSha256": "73ca5aa55b3816f8e5eacf5d3b7d4a23d172b8f153111c721dbee304bd5686c9"
+    },
+    {
+      "name": "bookings",
+      "route": "pages/bookings/index",
+      "title": "预约列表",
+      "primaryFixture": "c10-fulfill-bookings-ready",
+      "figmaNode": "36:80",
+      "selector": ".bookings-rebuild",
+      "probe": "合成青锋杯",
+      "referenceImage": "docs/evidence/ui006/references/bookings-36-80.png",
+      "referenceSha256": "de6b717b64483290869581f422d856354e84ba3ac199c697b57d95b0e3ae9490"
+    }
+  ]
+}

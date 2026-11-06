@@ -1,0 +1,135 @@
+{
+  "name": "int01-event-ranking-nav",
+  "route": "pages/event/index",
+  "state": "public-ranking-with-persistent-outer-navigation",
+  "designSource": "isolated-synthetic:INT01-event-ranking-navigation-review",
+  "static": true,
+  "expectText": [
+    "合成公开分组杯赛",
+    "概览",
+    "排名与晋级",
+    "视频与图片",
+    "周末赛程",
+    "A组 · 本组排名"
+  ],
+  "expectVisible": [
+    "button[data-mini-bindtap=\"backToOverview\"]",
+    "button[data-mini-bindtap=\"tab\"][data-tab=\"schedule\"]",
+    "button[data-mini-bindtap=\"tab\"][data-tab=\"ranking\"]",
+    "button[data-mini-bindtap=\"tab\"][data-tab=\"media\"]",
+    "button[data-mini-bindtap=\"standingsTab\"][data-view=\"schedule\"]",
+    "button[data-mini-bindtap=\"standingsTab\"][data-view=\"points\"]",
+    "button[data-mini-bindtap=\"standingsTab\"][data-view=\"groups\"]"
+  ],
+  "expectEnabled": ["概览", "排名与晋级", "视频与图片", "积分", "分组"],
+  "data": {
+    "event": {
+      "name": "合成公开分组杯赛",
+      "startDate": "2026-11-06",
+      "endDate": "2026-11-15",
+      "dateLabel": "11/06–11/15",
+      "venueName": "合成城市体育馆",
+      "status": "RUNNING",
+      "statusLabel": "比赛进行中",
+      "format": "GROUP_KNOCKOUT",
+      "formatLabel": "分组循环接淘汰"
+    },
+    "matches": [
+      {
+        "publicMatchId": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+        "roundNo": 1,
+        "positionNo": 1,
+        "home": {
+          "teamKey": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+          "teamName": "合成城北队"
+        },
+        "away": {
+          "teamKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "teamName": "合成江南队"
+        },
+        "courtName": "合成一号场",
+        "startsAt": "2026-11-07T11:00:00Z",
+        "endsAt": "2026-11-07T12:30:00Z",
+        "startLabel": "11月07日 19:00",
+        "status": "SCHEDULED",
+        "statusLabel": "尚未开赛",
+        "score": null,
+        "resultStatus": "UNCONFIRMED",
+        "resultLabel": "尚无正式赛果"
+      }
+    ],
+    "overviewPoints": [],
+    "standings": null,
+    "groups": {
+      "qualificationStatus": "WAITING",
+      "groupCount": 2,
+      "groups": [
+        {
+          "groupKey": "A",
+          "label": "A组",
+          "confirmedMatchCount": 0,
+          "totalMatchCount": 1,
+          "tieBreakRequired": false,
+          "rows": [
+            {
+              "teamKey": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+              "teamName": "合成城北队",
+              "wins": 0,
+              "losses": 0,
+              "leaguePoints": 0
+            },
+            {
+              "teamKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "teamName": "合成江南队",
+              "wins": 0,
+              "losses": 0,
+              "leaguePoints": 0
+            }
+          ]
+        },
+        {
+          "groupKey": "B",
+          "label": "B组",
+          "confirmedMatchCount": 0,
+          "totalMatchCount": 1,
+          "tieBreakRequired": false,
+          "rows": [
+            {
+              "teamKey": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "teamName": "合成滨江队",
+              "wins": 0,
+              "losses": 0,
+              "leaguePoints": 0
+            },
+            {
+              "teamKey": "ccccccccccccccccccccccccccccccccccccccccccc",
+              "teamName": "合成西城队",
+              "wins": 0,
+              "losses": 0,
+              "leaguePoints": 0
+            }
+          ]
+        }
+      ],
+      "bracket": null
+    },
+    "bracket": null,
+    "error": "",
+    "stale": false,
+    "loading": false,
+    "overview": false,
+    "tab": "ranking",
+    "standingsView": "groups",
+    "figmaState": "",
+    "unavailable": false,
+    "sponsorEventPublicId": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "sponsorVisible": false,
+    "follow": {
+      "state": "signedOut",
+      "followId": "",
+      "busy": false,
+      "error": "",
+      "notice": ""
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "int01-training-coach-consent",
+  "route": "pages/training-manage/index",
+  "state": "synthetic-own-coach-consent-without-workspace",
+  "figmaNode": "36:90",
+  "designSource": "Current UI006 teaching workspace; restore the existing independent own-coach confirmation contract with synthetic data",
+  "syntheticData": true,
+  "expectText": ["我的教练资料", "合成本人教练", "本人确认 未完成", "本人确认承担本机构教练职责"],
+  "expectEnabled": ["本人确认承担本机构教练职责"],
+  "expectVisible": [
+    "button[data-mini-bindtap=\"coachAction\"][data-action=\"CONSENT\"][data-id=\"20000000-0000-4000-8000-000000000001\"]"
+  ],
+  "expectAbsentSelectors": [
+    "button[data-mini-bindtap=\"addCoach\"]",
+    "button[data-mini-bindtap=\"providerAction\"]"
+  ],
+  "data": {
+    "manageTab": "teaching",
+    "workspace": null,
+    "organizations": [],
+    "loading": false,
+    "busy": false,
+    "pending": null,
+    "loginRequired": false,
+    "teaching": [],
+    "coachProfiles": [
+      {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "org_id": "30000000-0000-4000-8000-000000000001",
+        "display_name": "合成本人教练",
+        "status": "PENDING_REVIEW",
+        "consented": false,
+        "version": 3
+      }
+    ]
+  }
+}

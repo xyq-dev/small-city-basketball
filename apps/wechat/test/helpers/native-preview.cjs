@@ -361,7 +361,9 @@ function renderWxml(source, data, options = {}) {
           'name',
           'min',
           'max',
+          'role',
         ].includes(key) ||
+        /^aria-[a-z][a-z-]*$/.test(key) ||
         key.startsWith('data-')
       ) {
         if (value != null) result.push(key + '="' + escape(value) + '"');

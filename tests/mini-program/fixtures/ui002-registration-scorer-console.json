@@ -2,9 +2,9 @@
   "name": "ui002-registration-scorer-console",
   "route": "pages/scorer/index",
   "state": "synthetic-populated",
-  "designSource": "UI001 S02—S06; existing native scoring and original event history",
+  "designSource": "UI006 36:102 scorer; existing native scoring and original event history",
   "static": true,
-  "expectText": ["首发与换人", "离线草稿", "记录与更正", "启动计时", "最近记录"],
+  "expectText": ["现场记分", "场上操作", "球队犯规", "球队暂停", "最近事件", "启动时钟"],
   "data": {
     "loading": false,
     "busy": false,
@@ -157,5 +157,5 @@
       "reason": ""
     }
   },
-  "figmaNode": "8:567"
+  "figmaNode": "36:102"
 }

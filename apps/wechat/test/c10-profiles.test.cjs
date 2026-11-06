@@ -25,22 +25,27 @@ test('profile visual states render expected current content from real templates 
 });
 
 test('detail and records views keep real zero distinct from empty personal statistics', () => {
-  const ready = preview(read('player-ready'));
-  assert.match(ready, /0 分 \/ 0 犯规/);
+  const readyFixture = read('player-ready');
+  const ready = preview({ ...readyFixture, data: { ...readyFixture.data, activeTab: 'RECORDS' } });
+  assert.match(ready, /每场 0 分 \/ 0 犯规/);
+  assert.match(ready, /得分 0 \/ 犯规 0/);
   const records = preview(read('player-records'));
+  assert.match(records, /每场 0 分 \/ 0 犯规/);
   assert.match(records, /得分 0 \/ 犯规 0/);
   assert.match(records, /仅球队数据，不计入个人均值分母/);
   const missing = preview(read('player-empty-statistics'));
-  assert.match(missing, /个人比赛数据：未统计/);
-  assert.match(missing, /不以0分替代缺失/);
+  assert.match(missing, /每场 未统计 分 \/ 未统计 犯规/);
+  assert.match(missing, /缺少统计不代表能力差/);
   assert.doesNotMatch(missing, /得分 0 \/ 犯规 0/);
 });
 
 test('profile review states never advertise an unapproved archive as currently bookable', () => {
-  assert.match(preview(read('center-ready')), /当前可预约/);
+  assert.match(preview(read('center-ready')), />北京时间</);
   for (const name of ['center-pending', 'center-changes', 'center-disabled'])
-    assert.doesNotMatch(preview(read(name)), /当前可预约/);
-  assert.match(preview(read('center-disabled')), /停用档案不自动取消已有约定/);
+    assert.doesNotMatch(preview(read(name)), />北京时间</);
+  for (const name of ['center-pending', 'center-changes', 'center-disabled'])
+    assert.match(preview(read(name)), />未公开</);
+  assert.match(preview(read('center-disabled')), /已有合作仍按实际状态与权限处理/);
 });
 
 test('paired profile fields retain explicit declaration and unknown submission locks', () => {
@@ -49,7 +54,7 @@ test('paired profile fields retain explicit declaration and unknown submission l
   assert.ok(disabled(action(html, 'save')));
   assert.equal((html.match(/data-mini-bindchange="consent"/g) || []).length, 1);
   const unknown = preview(read('center-unknown'));
-  assert.match(unknown, /核对原资料提交/);
+  assert.match(unknown, /重新读取核对/);
   for (const tag of unknown.match(/<input[^>]*data-mini-bindinput="input"[^>]*>/g) || [])
     assert.ok(disabled(tag));
 });

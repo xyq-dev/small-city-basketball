@@ -4,7 +4,7 @@
   "state": "ready",
   "figmaNode": "30:638",
   "syntheticData": true,
-  "expectText": ["合成青锋杯", "下一步 · 核对费用"],
+  "expectText": ["核对并提交预约", "赛事或合作名称"],
   "data": {
     "loading": false,
     "busy": false,
@@ -166,7 +166,10 @@
       "conditional": "¥330.00",
       "count": 3,
       "fixedCount": 2,
-      "conditionalCount": 1
+      "conditionalCount": 1,
+      "fixedSlotCount": 1,
+      "fixedPlayerCount": 2,
+      "travelAccommodation": "¥80.00"
     },
     "pending": false,
     "invalidRecovery": false,
@@ -186,6 +189,13 @@
     "noTeams": false,
     "noPlayers": false,
     "quoteInvalid": false,
-    "detailsOpen": false
-  }
+    "detailsOpen": true,
+    "editorOpen": true
+  },
+  "expectValues": [
+    {
+      "selector": "input[data-field=\"eventName\"]",
+      "value": "合成青锋杯 · 小组赛与晋级意向"
+    }
+  ]
 }

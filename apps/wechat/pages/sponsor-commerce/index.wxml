@@ -1,49 +1,279 @@
-<scb-header title="{{mode==='statements'?'我的广告收入对账':detail?'广告订单与资金核对':'广告商业合作'}}" disabled="{{busy}}"/>
-<view class="commerce page">
- <view class="hero"><text class="eyebrow">广告商业合作</text><text class="heading">合同、交付与分账</text><text class="muted">每笔收入以已核验的实际收款为准。展示数据不参与收款与分成。</text></view>
- <picker wx:if="{{organizations.length}}" range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="chooseOrg"><view class="selector">{{organizations[orgIndex].name}} · 切换机构</view></picker>
- <view wx:if="{{!detail}}" class="workflow-tabs actions"><button class="{{mode==='manage' && workspaceView==='contracts'?'active':''}}" data-key="contracts" bindtap="workspace" disabled="{{busy || pending}}">我的合同</button><button class="{{mode==='manage' && workspaceView==='orders'?'active':''}}" data-key="orders" bindtap="workspace" disabled="{{busy || pending}}">订单与交付</button><button wx:if="{{canManage}}" class="{{mode==='statements'?'active':''}}" data-mode="statements" bindtap="chooseMode" disabled="{{busy || pending}}">本机构收益明细</button><button wx:if="{{canManage || canFinance}}" class="{{workspaceView==='setup' && mode==='manage'?'active':''}}" data-key="setup" bindtap="workspace" disabled="{{busy || pending}}">管理配置</button></view>
- <button wx:if="{{detail}}" bindtap="closeOrder" disabled="{{busy}}">返回订单列表</button>
- <view wx:if="{{error}}" class="alert">{{error}}</view><view wx:if="{{notice}}" class="notice">{{notice}}</view>
- <view wx:if="{{pending}}" class="card"><text class="title">上一笔操作等待核对</text><text class="muted">不要新建相同资金请求。查询回执后再继续。</text><button bindtap="resolve" disabled="{{busy}}">查询原操作</button><button bindtap="resolve" data-cancel="yes" disabled="{{busy}}">取消尚未提交的请求</button></view>
- <view wx:if="{{loading}}" class="empty">正在读取合同与资金记录…</view>
- <block wx:if="{{mode === 'statements'}}"><view class="notice"><text class="title">本方可见范围</text><text>仅展示当前机构受益记录；分账回退与广告主退款分别核对，未知结果不记作到账。</text></view><view wx:for="{{statements}}" wx:key="id" class="card"><text class="title">{{item.display_name}} · ¥{{item.amountText}}</text><text>{{item.stateLabel}}</text><text class="muted">已回退 {{item.returned_fen}} 分 · 仅展示本机构受益记录</text></view><view wx:if="{{!statements.length && !loading}}" class="empty">暂无本机构分成记录</view></block>
- <block wx:else>
- <view wx:if="{{!enabled}}" class="notice">商业收款尚未开通。历史合同与渠道结果仍可查看；真实商户审核完成后开放新业务。</view>
- <block wx:if="{{workspaceView==='setup' && !detail && (canManage || canFinance)}}"><view class="notice">管理配置仅向已有服务端授权的商务或财务人员开放，合同签署、独立审核与金额冻结规则保持不变。</view><view wx:if="{{canFinance}}" class="card"><text class="title">受益主体审核</text><text class="muted">先确认商户主体、分账协议与回退授权，再由另一位财务管理员独立审核。</text><input class="field" placeholder="审核凭据或授权记录说明" value="{{evidence}}" data-field="evidence" bindinput="input" maxlength="2000"/>
-  <view wx:for="{{receiverOptions}}" wx:key="beneficiaryOrgId" class="row"><text>{{item.displayName}}</text><button size="mini" data-action="PROPOSE" data-id="{{item.beneficiaryOrgId}}" bindtap="beneficiaryAction" disabled="{{busy || pending}}">提交主体审核</button></view>
-  <view wx:for="{{beneficiaries}}" wx:key="id" class="record"><text>{{item.display_name}} · {{item.stateLabel}}</text><view wx:if="{{item.status === 'IN_REVIEW' && item.created_by !== userId}}" class="actions"><button size="mini" data-action="APPROVE" data-id="{{item.id}}" bindtap="beneficiaryAction" disabled="{{busy || pending}}">审核通过</button><button size="mini" data-action="REJECT" data-id="{{item.id}}" bindtap="beneficiaryAction" disabled="{{busy || pending}}">退回</button></view><button wx:if="{{item.status === 'APPROVED' && item.created_by !== userId}}" size="mini" data-action="DISABLE" data-id="{{item.id}}" bindtap="beneficiaryAction" disabled="{{busy || pending}}">停用授权</button></view>
- </view>
- <view wx:if="{{canManage && enabled}}" class="card"><text class="title">建立固定价合同</text>
-  <picker range="{{campaignOptions}}" range-key="title" value="{{campaignIndex}}" bindchange="chooseCampaign"><view class="field">{{campaignOptions[campaignIndex].title || '选择已建立的广告投放'}}</view></picker>
-  <text class="muted">合同采用所选投放的起止时间；签署后金额、商户、比例和条款全部冻结。</text>
-  <input class="field" placeholder="合同名称" value="{{title}}" data-field="title" bindinput="input" maxlength="120"/>
-  <input class="field" placeholder="广告主已注册的邮箱" value="{{payerEmail}}" data-field="payerEmail" bindinput="input" maxlength="254"/>
-  <view class="columns"><input class="field" type="digit" placeholder="合同金额（元）" value="{{total}}" data-field="total" bindinput="input"/><input class="field" type="digit" placeholder="手续费上限（元）" value="{{fee}}" data-field="fee" bindinput="input"/></view>
-  <textarea class="field terms" placeholder="交付范围、验收标准、退款条件及各方责任" value="{{terms}}" data-field="terms" bindinput="input" maxlength="4000"/>
-  <text class="muted">外部分成以基点填写：100 基点 = 1%。未分配比例由合同所属商户留存。</text>
-  <view wx:for="{{shares}}" wx:key="beneficiaryOrgId" class="row"><text>{{item.displayName}}</text><input class="field basis" type="number" placeholder="分成基点" value="{{item.bps}}" data-index="{{index}}" bindinput="shareInput"/></view>
-  <button class="primary" bindtap="createContract" disabled="{{busy || pending}}">建立合同草稿</button>
- </view>
-</block><block wx:if="{{workspaceView==='contracts' && !detail}}"><text class="section">商业合同</text><view wx:if="{{!contracts.length && !loading}}" class="empty">暂无合同</view>
- <view wx:for="{{contracts}}" wx:key="id" class="card"><view class="row"><text class="title">{{item.title}}</text><text class="money">¥{{item.amountText}}</text></view><text class="state">{{item.stateLabel}}</text><text class="terms-text">{{item.terms}}</text><text class="muted">{{item.starts_at}} 至 {{item.ends_at}}</text>
-  <view wx:for="{{item.shares}}" wx:for-item="share" wx:key="id" class="split"><text>{{share.displayName}}</text><text>{{share.basisPoints}} 基点</text></view>
-  <view class="actions"><button wx:if="{{canManage && item.status === 'DRAFT'}}" data-action="SUBMIT" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy || pending}}">送交独立审核</button><button wx:if="{{canFinance && item.status === 'IN_REVIEW' && item.created_by !== userId && item.payer_user_id !== userId}}" data-action="APPROVE" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy || pending}}">审核合同</button><button wx:if="{{canFinance && item.status === 'IN_REVIEW'}}" data-action="REJECT" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy || pending}}">退回合同</button><button wx:if="{{canManage && item.status === 'APPROVED' && !item.owner_signed_by && item.reviewed_by !== userId && item.payer_user_id !== userId}}" data-action="OWNER_SIGN" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy || pending}}">机构确认签署</button><button wx:if="{{item.payer_user_id === userId && item.status === 'APPROVED' && item.owner_signed_by}}" data-action="ADVERTISER_SIGN" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy || pending}}">同意条款并签署</button><button wx:if="{{item.payer_user_id === userId && item.status === 'SIGNED'}}" data-action="ORDER" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy || pending}}">同意按此合同收费并建立订单</button><button wx:if="{{canFinance && item.status === 'SIGNED'}}" data-action="CLOSE_UNSTARTED" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy || pending}}">核验未建单并关闭合同</button></view>
- </view>
-</block><block wx:if="{{workspaceView==='orders' && !detail}}"><text class="section">订单与交付</text><scb-state wx:if="{{!orders.length && !loading}}" kind="empty" title="暂无本人可见的广告订单" description="合同签署、真实收款与交付验收分别推进。"/><view wx:for="{{orders}}" wx:key="id" class="card clickable" data-id="{{item.id}}" bindtap="selectOrder"><view class="row"><text class="title">{{item.title}}</text><text>¥{{item.amountText}}</text></view><text>{{item.stateLabel}}</text><text class="muted">实收 {{item.paid_fen}} 分 · 查看验收、分账与退款 →</text></view>
- </block><view wx:if="{{detail}}" class="card detail"><text class="title">{{detail.order.title}} · ¥{{detail.order.amountText}}</text><text class="state">{{detail.order.stateLabel}}</text><button wx:if="{{detail.order.payer_user_id === userId}}" bindtap="pay">查看统一支付与退款记录</button>
-  <view class="workflow-tabs actions"><button class="{{detailView==='delivery'?'active':''}}" data-key="delivery" bindtap="detailTab" disabled="{{busy}}">收款与交付</button><button class="{{detailView==='settlement'?'active':''}}" data-key="settlement" bindtap="detailTab" disabled="{{busy}}">分账与独立审核</button><button class="{{detailView==='refunds'?'active':''}}" data-key="refunds" bindtap="detailTab" disabled="{{busy}}">退款与追回</button></view><textarea class="field" placeholder="交付证据、手续费核验依据或追偿凭据" value="{{evidence}}" data-field="evidence" bindinput="input" maxlength="2000"/><textarea class="field" placeholder="退款或争议原因（至少4字）" value="{{reason}}" data-field="reason" bindinput="input" maxlength="1000"/><input class="field" type="digit" placeholder="手续费或退款金额（元）" value="{{amount}}" data-field="amount" bindinput="input"/>
-  <block wx:if="{{detailView==='delivery'}}"><button wx:if="{{canManage && (detail.order.status === 'WAITING_PAYMENT' || detail.order.status === 'DELIVERING')}}" data-action="DELIVERY" bindtap="orderAction" disabled="{{busy || pending}}">提交交付证据</button>
-  <button wx:if="{{canFinance && detail.order.verified_fee_fen === null}}" data-action="VERIFY_FEE" bindtap="orderAction" disabled="{{busy || pending}}">核验实际手续费并冻结凭据</button>
-  <view wx:for="{{detail.deliveries}}" wx:key="id" class="record"><text>{{item.evidence}}</text><text class="muted">{{item.stateLabel}}</text><view wx:if="{{detail.order.payer_user_id === userId}}" class="actions"><button wx:if="{{item.status === 'PROPOSED' || item.status === 'DISPUTED'}}" data-action="ACCEPT" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">广告主验收通过</button><button wx:if="{{item.status !== 'DISPUTED'}}" data-action="DISPUTE" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">提出交付争议</button></view></view>
-  </block><block wx:if="{{detailView==='settlement'}}"><button wx:if="{{canManage && detail.order.status === 'ACCEPTED'}}" data-action="PROPOSE_SETTLEMENT" bindtap="orderAction" disabled="{{busy || pending}}">按实收生成分配计划</button>
-  <view wx:for="{{detail.batches}}" wx:key="id" class="record"><text class="title">多方分账 · {{item.stateLabel}}</text><text class="muted">分配池 {{item.pool_fen}} 分 · 已有 {{item.approvals.length}} / {{item.approval_required}} 位独立审核人</text><view wx:if="{{canFinance}}" class="actions"><button wx:if="{{item.status === 'IN_REVIEW'}}" data-action="APPROVE_SETTLEMENT" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">独立审核通过</button><button wx:if="{{item.status === 'IN_REVIEW'}}" data-action="REJECT_SETTLEMENT" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">退回重建</button><button wx:if="{{item.status === 'APPROVED'}}" data-action="SEND_SPLIT" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">发送已批准分账</button><button wx:if="{{item.status === 'UNKNOWN' || item.status === 'SENDING' || item.status === 'PROCESSING' || item.status === 'PARTIAL'}}" data-action="QUERY_SPLIT" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">逐项查询原分账</button><button wx:if="{{item.status === 'SUCCEEDED' && item.finish_status === 'PENDING'}}" data-action="FINISH" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">结束分账并解冻留存</button><button wx:if="{{item.finish_status === 'UNKNOWN' || item.finish_status === 'SENDING'}}" data-action="QUERY_FINISH" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">查询原解冻请求</button></view><view wx:for="{{item.items}}" wx:for-item="splitItem" wx:key="id" class="split"><text>{{splitItem.display_name}} · {{splitItem.stateLabel}}</text><text>¥{{splitItem.amountText}}</text></view></view>
-  <button wx:if="{{canFinance && detail.order.status !== 'CLOSED'}}" data-action="CLOSE_ORDER" bindtap="orderAction" disabled="{{busy || pending}}">核对全部义务后关闭合同</button>
-  </block><block wx:if="{{detailView==='refunds'}}"><view class="notice">退款与分账回退分别核对。UNKNOWN只查询原编号；追回或核销不表示广告主已经收到退款。</view><button data-action="PROPOSE_REFUND" bindtap="orderAction" disabled="{{busy || pending}}">按填写金额申请退款分配</button>
-  <view wx:for="{{detail.refunds}}" wx:key="id" class="record"><text class="title">退款 ¥{{item.amountText}} · {{item.stateLabel}}</text><text>{{item.reason}}</text><text wx:if="{{item.trade_refund_id}}" class="muted">已进入统一退款流程，实际到账以支付渠道确认结果为准。</text><view wx:if="{{canFinance}}" class="actions"><button wx:if="{{item.canRetry}}" data-action="PROPOSE_RETRY" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">提交明确失败退款的恢复凭据</button><button wx:if="{{item.status === 'IN_REVIEW'}}" data-action="APPROVE_REFUND" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">独立审核退款</button><button wx:if="{{item.status === 'IN_REVIEW'}}" data-action="REJECT_REFUND" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">退回申请</button><button wx:if="{{canAdvance && item.status === 'RECOVERY_REQUIRED' && !item.advance_proposed_by}}" data-action="ADVANCE_PROPOSE" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">提交原订单自有资金退款申请</button><button wx:if="{{canAdvance && item.status === 'RECOVERY_REQUIRED' && item.advance_proposed_by && item.advance_proposed_by !== userId && !item.advance_coverage}}" data-action="ADVANCE_APPROVE" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">独立审核并核验锁定资金</button><button wx:if="{{item.needsUnfreeze && (item.status === 'READY_FOR_REFUND' || item.funding_mode === 'PLATFORM_ADVANCE' && item.status === 'RECOVERY_REQUIRED')}}" data-action="REFUND_UNFREEZE" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">先解冻原批次退款资金</button><button wx:if="{{!item.needsUnfreeze && (item.status === 'READY_FOR_REFUND' || item.funding_mode === 'PLATFORM_ADVANCE' && item.status === 'RECOVERY_REQUIRED')}}" data-action="CLAIM_REFUND" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">提交统一退款审核</button></view></view>
-  <view wx:for="{{detail.refundRetries}}" wx:key="id" class="record"><text class="title">原退款恢复 · {{item.stateLabel}}</text><text>{{item.evidence}}</text><text class="muted">保留原收款人回退证据；仍须统一退款独立审核。</text><view wx:if="{{canFinance}}" class="actions"><button wx:if="{{item.status === 'IN_REVIEW' && item.proposed_by !== userId}}" data-action="APPROVE_RETRY" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">独立审核恢复</button><button wx:if="{{(item.status === 'IN_REVIEW' || item.status === 'APPROVED') && item.proposed_by !== userId}}" data-action="REJECT_RETRY" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">拒绝本次恢复</button><button wx:if="{{item.status === 'APPROVED'}}" data-action="CLAIM_RETRY" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">提交替代退款独立审核</button></view></view>
-  <view wx:for="{{detail.returns}}" wx:key="id" class="record"><text>分账回退 ¥{{item.amountText}} · {{item.stateLabel}}</text><view wx:if="{{canFinance}}" class="actions"><button wx:if="{{item.status === 'PENDING'}}" data-action="SEND_RETURN" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">发送原收款人回退</button><button wx:if="{{item.status === 'UNKNOWN' || item.status === 'SENDING' || item.status === 'PROCESSING' || item.status === 'FAILED'}}" data-action="QUERY_RETURN" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">查询原回退</button></view></view>
-  <view wx:for="{{detail.recovery}}" wx:key="id" class="record"><text class="title">追偿 ¥{{item.amountText}} · {{item.stateLabel}}</text><text class="muted">追偿记录独立于广告主退款，不表示退款已经到账。</text><view wx:if="{{canFinance && item.status === 'OPEN'}}" class="actions"><button wx:if="{{!item.proposed_by}}" data-action="RECOVERY_PROPOSE" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">提交追偿处置证据</button><button wx:if="{{item.proposed_by && item.proposed_by !== userId}}" data-action="RECOVERY_APPROVE" data-outcome="RECOVERED" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">独立确认追回</button><button wx:if="{{item.proposed_by && item.proposed_by !== userId}}" data-action="RECOVERY_APPROVE" data-outcome="WRITTEN_OFF" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy || pending}}">独立批准核销</button></view></view>
- </block></view>
- </block>
+<scb-header title="{{figmaState==='settlement-check' ? '分账核对' : figmaCommercePreview ? '广告合同与分账' : mode==='statements'?'我的广告收入对账':detail?(detailView==='settlement'?'分账核对':'广告订单详情'):'广告商业合作'}}" disabled="{{busy || loading}}"/>
+<view class="figma-page sponsor-commerce-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <block wx:if="{{figmaState==='settlement-check'}}">
+      <view class="figma-summary commerce-summary--preview"><view class="figma-summary__icon"><figma-icon name="receipt" size="25"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">广告合同 · 机构财务</view><view class="figma-title">分账核对</view><view class="figma-subtitle">以合同实收、扣减与冻结版本核对本批次分配。</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">本批次明细</view><view class="commerce-state-row"><view class="figma-row__copy"><view class="figma-row__title">合同实收</view><view class="figma-row__subtitle">已对账的合同收款</view></view><view class="commerce-money">¥10,000.00</view></view><view class="commerce-state-row"><view class="figma-row__copy"><view class="figma-row__title">合规扣减</view><view class="figma-row__subtitle">合同列明的履约成本</view></view><view class="commerce-money">¥1,000.00</view></view><view class="commerce-state-row"><view class="figma-row__copy"><view class="figma-row__title">可分配金额</view><view class="figma-row__subtitle">实收减扣减</view></view><view class="commerce-money">¥9,000.00</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">应分明细</view><view class="commerce-state-grid"><view><view class="figma-row__title">示例主办方</view><view class="figma-row__subtitle">合同占比70%</view><view class="figma-status figma-status--orange">¥6,300.00</view></view><view><view class="figma-row__title">示例合作方</view><view class="figma-row__subtitle">合同占比30%</view><view class="figma-status figma-status--orange">¥2,700.00</view></view></view></view>
+      <view class="figma-section"><view class="figma-section__title">外部渠道</view><view class="commerce-state-notice"><view class="commerce-state-dot"/><view class="figma-row__copy"><view class="figma-row__title">批次状态</view><view class="figma-row__subtitle">请核对原批次回执。</view></view><view class="figma-status figma-status--orange">待核对</view></view><view class="commerce-state-notice"><view class="commerce-state-dot"/><view class="figma-row__copy"><view class="figma-row__title">正式发送</view><view class="figma-row__subtitle">以渠道准入和财务权限为准。</view></view><view class="figma-status">未开放</view></view></view>
+    </block>
+
+    <block wx:else>
+    <view class="figma-summary {{figmaCommercePreview ? 'commerce-summary--preview' : ''}}">
+      <view class="figma-summary__icon"><figma-icon name="sponsor" size="25"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">机构商业合作</view>
+        <view class="figma-title">{{figmaSummaryTitle || (detail ? detail.order.title : mode==='statements' ? '本机构收益明细' : contracts.length ? contracts[0].title : '广告合同与分账')}}</view>
+        <view class="figma-subtitle">以合同实收、交付证据与独立审核结算</view>
+      </view>
+    </view>
+
+    <picker wx:if="{{!figmaCommercePreview && organizations.length && !detail}}" range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="chooseOrg" disabled="{{busy || pending}}">
+      <view class="commerce-org-picker">
+        <view class="figma-row__copy">
+          <view class="figma-row__subtitle">当前机构</view>
+          <view class="figma-row__title">{{organizations[orgIndex].name}}</view>
+        </view>
+        <view class="commerce-chevron"><figma-icon name="chevron-down-white" size="12"/></view>
+      </view>
+    </picker>
+
+    <figma-feedback wx:if="{{!figmaCommercePreview && error}}" type="error" title="商业合作资料读取失败" body="{{error}}" action-label="重新读取" disabled="{{busy || loading}}" bindaction="load"/>
+    <figma-feedback wx:if="{{!figmaCommercePreview && notice}}" type="info" title="当前提示" body="{{notice}}"/>
+    <view wx:if="{{!figmaCommercePreview && loading}}" class="figma-section"><figma-skeleton rows="{{5}}"/></view>
+
+    <view wx:if="{{!figmaCommercePreview && pending}}" class="figma-section commerce-pending">
+      <view class="commerce-state-icon"><figma-icon name="transaction" size="26"/></view>
+      <view class="figma-section__title">上一笔操作等待核对</view>
+      <view class="figma-section__hint">不要重新发起相同资金请求。先查询原操作结果，再决定是否继续。</view>
+      <view class="commerce-inline-actions">
+        <button class="commerce-secondary" bindtap="resolve" disabled="{{busy}}">查询原操作</button>
+        <button class="commerce-secondary commerce-secondary--danger" bindtap="resolve" data-cancel="yes" disabled="{{busy}}">取消未提交请求</button>
+      </view>
+    </view>
+
+    <block wx:if="{{figmaCommercePreview}}">
+      <view class="commerce-tabs" role="tablist"><button class="commerce-tab is-active">我的合同</button><button class="commerce-tab">订单与交付</button><button class="commerce-tab">收益明细</button></view>
+      <view class="figma-section"><view class="figma-section__title">固定价合同</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">双方主体</view><view class="figma-row__subtitle">示例篮球协会 / 城北体育社</view></view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">合同版本</view><view class="figma-row__subtitle">V2 · 场边广告展示</view></view><view class="figma-status figma-status--orange">待签署</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">具体时段</view><view class="figma-row__subtitle">11月8日至11月22日</view></view><view class="figma-status figma-status--orange">约定中</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">收款与交付</view><view class="commerce-process-row"><view class="commerce-process-mark">1</view><view class="figma-row__copy"><view class="figma-row__title">签署冻结条款</view><view class="figma-row__subtitle">双方核对同一版本</view></view></view><view class="commerce-process-row"><view class="commerce-process-mark">2</view><view class="figma-row__copy"><view class="figma-row__title">核验实际收款</view><view class="figma-row__subtitle">读取统一支付原单</view></view><view class="figma-status figma-status--orange">待核对</view></view><view class="commerce-process-row"><view class="commerce-process-mark">3</view><view class="figma-row__copy"><view class="figma-row__title">提交交付证据</view><view class="figma-row__subtitle">由广告主确认交付范围</view></view></view></view>
+      <view class="figma-section"><view class="figma-section__title">分配核对</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">可分配基数</view><view class="figma-row__subtitle">按核验实收与合同扣项</view></view><view class="figma-status figma-status--orange">待核对</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">渠道分账</view><view class="figma-row__subtitle">独立审核后由正式能力执行</view></view><view class="figma-status">未开放</view></view></view>
+      <view class="figma-section commerce-services"><view class="figma-section__title">相关服务</view><view class="figma-row commerce-service"><figma-icon name="transaction" size="19"/><view class="figma-row__copy"><view class="figma-row__title">查看统一资金订单</view></view><view class="commerce-chevron"><figma-icon name="chevron-down-white" size="12"/></view></view></view>
+    </block>
+
+    <block wx:elif="{{!loading && !pending}}">
+      <view wx:if="{{!detail}}" class="commerce-tabs" role="tablist">
+        <button class="commerce-tab {{mode==='manage' && workspaceView==='contracts'?'is-active':''}}" data-key="contracts" bindtap="workspace" disabled="{{busy}}">我的合同</button>
+        <button class="commerce-tab {{mode==='manage' && workspaceView==='orders'?'is-active':''}}" data-key="orders" bindtap="workspace" disabled="{{busy}}">订单与交付</button>
+        <button class="commerce-tab {{mode==='statements'?'is-active':''}}" data-mode="statements" bindtap="chooseMode" disabled="{{busy || !canManage}}">收益明细</button>
+      </view>
+
+      <figma-feedback wx:if="{{!enabled && mode!=='statements'}}" type="info" title="商业收款尚未开通" body="历史合同与渠道结果仍可查看；真实商户审核完成后开放新业务。"/>
+
+      <block wx:if="{{mode==='statements'}}">
+        <figma-feedback type="info" title="本方可见范围" body="仅展示当前机构受益记录。分账回退与广告主退款分别核对，未知结果不记作到账。"/>
+        <view class="figma-section">
+          <view class="figma-section__title">收益记录</view>
+          <figma-feedback wx:if="{{!statements.length}}" type="empty" title="暂无本机构分成记录" body="完成并核验的分账记录会显示在这里。"/>
+          <view wx:for="{{statements}}" wx:key="id" class="figma-row commerce-record-row">
+            <view class="figma-row__copy">
+              <view class="figma-row__title">{{item.display_name}}</view>
+              <view class="figma-row__subtitle">已回退 {{item.returned_fen}} 分 · 仅本机构可见</view>
+            </view>
+            <view class="commerce-money">¥{{item.amountText}}</view>
+            <view class="figma-status">{{item.stateLabel}}</view>
+          </view>
+        </view>
+      </block>
+
+      <block wx:elif="{{!detail && workspaceView==='setup' && (canManage || canFinance)}}">
+        <figma-feedback type="info" title="授权与独立审核" body="管理配置只向已有服务端授权的商务或财务人员开放；合同签署、独立审核与金额冻结规则保持不变。"/>
+
+        <view wx:if="{{canFinance}}" class="figma-section">
+          <view class="figma-section__title">受益主体审核</view>
+          <view class="figma-section__hint">先确认商户主体、分账协议与回退授权，再由另一位财务管理员独立审核。</view>
+          <view class="figma-field-group">
+            <view class="figma-field-label">审核依据</view>
+            <textarea class="figma-field-control" placeholder="凭据或授权记录说明" value="{{evidence}}" data-field="evidence" bindinput="input" maxlength="2000"/>
+          </view>
+          <view wx:for="{{receiverOptions}}" wx:key="beneficiaryOrgId" class="figma-row">
+            <view class="figma-row__copy"><view class="figma-row__title">{{item.displayName}}</view><view class="figma-row__subtitle">待提交主体审核</view></view>
+            <button class="commerce-row-action" data-action="PROPOSE" data-id="{{item.beneficiaryOrgId}}" bindtap="beneficiaryAction" disabled="{{busy}}">提交审核</button>
+          </view>
+          <figma-feedback wx:if="{{!receiverOptions.length && !beneficiaries.length}}" type="empty" title="暂无受益主体" body="可审核主体由服务端授权范围决定。"/>
+          <view wx:for="{{beneficiaries}}" wx:key="id" class="commerce-record">
+            <view class="commerce-record__head"><view class="figma-row__title">{{item.display_name}}</view><view class="figma-status">{{item.stateLabel}}</view></view>
+            <view wx:if="{{item.status==='IN_REVIEW' && item.created_by!==userId}}" class="commerce-inline-actions">
+              <button class="commerce-secondary" data-action="APPROVE" data-id="{{item.id}}" bindtap="beneficiaryAction" disabled="{{busy}}">审核通过</button>
+              <button class="commerce-secondary" data-action="REJECT" data-id="{{item.id}}" bindtap="beneficiaryAction" disabled="{{busy}}">退回</button>
+            </view>
+            <button wx:if="{{item.status==='APPROVED' && item.created_by!==userId}}" class="commerce-secondary commerce-full" data-action="DISABLE" data-id="{{item.id}}" bindtap="beneficiaryAction" disabled="{{busy}}">停用授权</button>
+          </view>
+        </view>
+
+        <view wx:if="{{canManage && enabled}}" class="figma-section">
+          <view class="figma-section__title">建立固定价合同</view>
+          <view class="figma-field-group">
+            <view class="figma-field-label">广告投放</view>
+            <picker range="{{campaignOptions}}" range-key="title" value="{{campaignIndex}}" bindchange="chooseCampaign" disabled="{{busy}}"><view class="figma-field-control commerce-picker">{{campaignOptions[campaignIndex].title || '选择已建立的广告投放'}}</view></picker>
+            <view class="figma-caption">合同沿用所选投放的起止时间；签署后金额、商户、比例和条款全部冻结。</view>
+          </view>
+          <view class="figma-field-group"><view class="figma-field-label">合同名称</view><input class="figma-field-control" placeholder="填写合同名称" value="{{title}}" data-field="title" bindinput="input" maxlength="120"/></view>
+          <view class="figma-field-group"><view class="figma-field-label">广告主邮箱</view><input class="figma-field-control" placeholder="已注册的邮箱" value="{{payerEmail}}" data-field="payerEmail" bindinput="input" maxlength="254"/></view>
+          <view class="commerce-two-fields">
+            <view class="figma-field-group"><view class="figma-field-label">合同金额（元）</view><input class="figma-field-control" type="digit" placeholder="0.00" value="{{total}}" data-field="total" bindinput="input"/></view>
+            <view class="figma-field-group"><view class="figma-field-label">手续费上限（元）</view><input class="figma-field-control" type="digit" placeholder="0.00" value="{{fee}}" data-field="fee" bindinput="input"/></view>
+          </view>
+          <view class="figma-field-group"><view class="figma-field-label">合同条款</view><textarea class="figma-field-control" placeholder="交付范围、验收标准、退款条件及各方责任" value="{{terms}}" data-field="terms" bindinput="input" maxlength="4000"/></view>
+          <view class="figma-field-group">
+            <view class="figma-field-label">外部分成</view>
+            <view class="figma-caption">100 基点 = 1%；未分配比例由合同所属商户留存。</view>
+            <view wx:for="{{shares}}" wx:key="beneficiaryOrgId" class="commerce-share-row"><view class="figma-row__title">{{item.displayName}}</view><input class="figma-field-control commerce-basis" type="number" placeholder="基点" value="{{item.bps}}" data-index="{{index}}" bindinput="shareInput"/></view>
+          </view>
+          <button class="commerce-primary" bindtap="createContract" disabled="{{busy}}">{{busy ? '提交中…' : '建立合同草稿'}}</button>
+        </view>
+      </block>
+
+      <block wx:elif="{{!detail && workspaceView==='contracts'}}">
+        <view class="figma-section">
+          <view class="figma-section__title">固定价合同</view>
+          <figma-feedback wx:if="{{!contracts.length}}" type="empty" title="暂无合同" body="有权查看的合同会显示在这里。"/>
+          <view wx:for="{{contracts}}" wx:key="id" class="commerce-contract">
+            <view class="commerce-record__head"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.starts_at}} 至 {{item.ends_at}}</view></view><view class="commerce-money">¥{{item.amountText}}</view></view>
+            <view class="figma-status">{{item.stateLabel}}</view>
+            <view class="commerce-terms">{{item.terms}}</view>
+            <view wx:for="{{item.shares}}" wx:for-item="share" wx:key="id" class="commerce-split"><text>{{share.displayName}}</text><text>{{share.basisPoints}} 基点</text></view>
+            <view class="commerce-action-stack">
+              <button wx:if="{{canManage && item.status==='DRAFT'}}" data-action="SUBMIT" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy}}">送交独立审核</button>
+              <button wx:if="{{canFinance && item.status==='IN_REVIEW' && item.created_by!==userId && item.payer_user_id!==userId}}" data-action="APPROVE" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy}}">审核合同</button>
+              <button wx:if="{{canFinance && item.status==='IN_REVIEW'}}" data-action="REJECT" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy}}">退回合同</button>
+              <button wx:if="{{canManage && item.status==='APPROVED' && !item.owner_signed_by && item.reviewed_by!==userId && item.payer_user_id!==userId}}" data-action="OWNER_SIGN" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy}}">机构确认签署</button>
+              <button wx:if="{{item.payer_user_id===userId && item.status==='APPROVED' && item.owner_signed_by}}" data-action="ADVERTISER_SIGN" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy}}">同意条款并签署</button>
+              <button wx:if="{{item.payer_user_id===userId && item.status==='SIGNED'}}" data-action="ORDER" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy}}">同意收费并建立订单</button>
+              <button wx:if="{{canFinance && item.status==='SIGNED'}}" data-action="CLOSE_UNSTARTED" data-id="{{item.id}}" bindtap="contractAction" disabled="{{busy}}">核验未建单并关闭</button>
+            </view>
+          </view>
+        </view>
+
+        <view class="figma-section">
+          <view class="figma-section__title">收款与交付</view>
+          <view class="commerce-process-row"><view class="commerce-process-mark">1</view><view class="figma-row__copy"><view class="figma-row__title">签署冻结条款</view><view class="figma-row__subtitle">双方核对同一合同版本</view></view></view>
+          <view class="commerce-process-row"><view class="commerce-process-mark">2</view><view class="figma-row__copy"><view class="figma-row__title">核验实际收款</view><view class="figma-row__subtitle">读取当前合同关联的统一支付原单</view></view><view class="figma-status">{{contractOverview.paymentLabel}}</view></view>
+          <view class="commerce-process-row"><view class="commerce-process-mark">3</view><view class="figma-row__copy"><view class="figma-row__title">提交交付证据</view><view class="figma-row__subtitle">由广告主确认交付范围</view></view></view>
+        </view>
+
+        <view class="figma-section">
+          <view class="figma-section__title">分配核对</view>
+          <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">可分配基数</view><view class="figma-row__subtitle">按当前合同关联订单的核验实收、退款与手续费计算</view></view><view class="commerce-money">{{contractOverview.poolLabel}}</view></view>
+          <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">渠道分账</view><view class="figma-row__subtitle">独立审核后由正式能力执行</view></view><view class="commerce-money">{{enabled ? '按订单核对' : '未开放'}}</view></view>
+        </view>
+
+        <view class="figma-section commerce-services">
+          <view class="figma-section__title">相关服务</view>
+          <button wx:if="{{canManage || canFinance}}" class="figma-row commerce-service" data-key="setup" bindtap="workspace" disabled="{{busy}}"><figma-icon name="sponsor" size="19"/><view class="figma-row__copy"><view class="figma-row__title">合同设置与独立审核</view></view><view class="commerce-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button>
+          <button wx:if="{{canManage || canFinance}}" class="figma-row commerce-service" bindtap="openTradeManage" disabled="{{busy}}"><figma-icon name="transaction" size="19"/><view class="figma-row__copy"><view class="figma-row__title">查看统一资金订单</view></view><view class="commerce-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button>
+        </view>
+      </block>
+
+      <block wx:elif="{{!detail && workspaceView==='orders'}}">
+        <view class="figma-section">
+          <view class="figma-section__title">订单与交付</view>
+          <figma-feedback wx:if="{{!orders.length}}" type="empty" title="暂无本人可见的广告订单" body="合同签署、真实收款与交付验收分别推进。"/>
+          <button wx:for="{{orders}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="selectOrder" disabled="{{busy}}">
+            <view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">实收 {{item.paid_fen}} 分 · {{item.stateLabel}}</view></view>
+            <view class="commerce-money">¥{{item.amountText}}</view><view class="commerce-chevron"><figma-icon name="chevron-down-white" size="12"/></view>
+          </button>
+        </view>
+      </block>
+
+      <block wx:if="{{detail}}">
+        <view class="figma-section commerce-order-summary">
+          <view class="commerce-record__head"><view class="figma-row__copy"><view class="figma-section__title">{{detail.order.title}}</view><view class="figma-section__hint">订单金额</view></view><view class="commerce-total">¥{{detail.order.amountText}}</view></view>
+          <view class="figma-status figma-status--orange">{{detail.order.stateLabel}}</view>
+          <button wx:if="{{detail.order.payer_user_id===userId}}" class="commerce-secondary commerce-full" bindtap="pay" disabled="{{busy}}">查看统一支付与退款记录</button>
+        </view>
+
+        <view class="commerce-tabs commerce-tabs--three" role="tablist">
+          <button class="commerce-tab {{detailView==='delivery'?'is-active':''}}" data-key="delivery" bindtap="detailTab" disabled="{{busy}}">交付</button>
+          <button class="commerce-tab {{detailView==='settlement'?'is-active':''}}" data-key="settlement" bindtap="detailTab" disabled="{{busy}}">分账</button>
+          <button class="commerce-tab {{detailView==='refunds'?'is-active':''}}" data-key="refunds" bindtap="detailTab" disabled="{{busy}}">退款</button>
+        </view>
+
+        <view class="figma-section commerce-evidence">
+          <view class="figma-section__title">处理依据</view>
+          <textarea class="figma-field-control" placeholder="交付证据、手续费核验依据或追偿凭据" value="{{evidence}}" data-field="evidence" bindinput="input" maxlength="2000"/>
+          <textarea wx:if="{{detailView==='delivery' || detailView==='refunds'}}" class="figma-field-control" placeholder="交付核对、争议或退款原因（至少4字）" value="{{reason}}" data-field="reason" bindinput="input" maxlength="1000" disabled="{{busy || pending}}"/>
+          <input wx:if="{{detailView==='delivery' || detailView==='refunds'}}" class="figma-field-control" type="digit" placeholder="手续费或退款金额（元）" value="{{amount}}" data-field="amount" bindinput="input"/>
+        </view>
+
+        <block wx:if="{{detailView==='delivery'}}">
+          <view class="figma-section">
+            <view class="figma-section__title">收款与交付</view>
+            <view class="commerce-action-stack">
+              <button wx:if="{{canManage && (detail.order.status==='WAITING_PAYMENT' || detail.order.status==='DELIVERING')}}" data-action="DELIVERY" bindtap="orderAction" disabled="{{busy}}">提交交付证据</button>
+              <button wx:if="{{canFinance && detail.order.verified_fee_fen===null}}" data-action="VERIFY_FEE" bindtap="orderAction" disabled="{{busy}}">核验实际手续费并冻结凭据</button>
+            </view>
+            <figma-feedback wx:if="{{!detail.deliveries.length}}" type="empty" title="暂无交付记录" body="交付资料提交后在此核对。"/>
+            <view wx:for="{{detail.deliveries}}" wx:key="id" class="commerce-record">
+              <view class="commerce-record__head"><view class="figma-row__title">交付凭据</view><view class="figma-status">{{item.stateLabel}}</view></view><view class="figma-row__subtitle">{{item.evidence}}</view>
+              <view wx:if="{{detail.order.payer_user_id===userId}}" class="commerce-inline-actions"><button wx:if="{{item.status==='PROPOSED' || item.status==='DISPUTED'}}" class="commerce-secondary" data-action="ACCEPT" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">验收通过</button><button wx:if="{{item.status!=='DISPUTED'}}" class="commerce-secondary" data-action="DISPUTE" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">提出争议</button></view>
+            </view>
+          </view>
+        </block>
+
+        <block wx:elif="{{detailView==='settlement'}}">
+          <view class="figma-section commerce-settlement-head">
+            <view class="commerce-state-icon"><figma-icon name="transaction" size="26"/></view>
+            <view class="figma-section__title">分账核对</view>
+            <view class="figma-section__hint">逐笔核对分配池、独立审核和渠道结果。UNKNOWN 只查询原编号，不重复发送。</view>
+            <button wx:if="{{canManage && detail.order.status==='ACCEPTED'}}" class="commerce-primary" data-action="PROPOSE_SETTLEMENT" bindtap="orderAction" disabled="{{busy}}">按实收生成分配计划</button>
+          </view>
+          <figma-feedback wx:if="{{!detail.batches.length}}" type="empty" title="暂无分账批次" body="交付验收完成后，按真实收款生成分配计划。"/>
+          <view wx:for="{{detail.batches}}" wx:key="id" class="figma-section commerce-batch">
+            <view class="commerce-record__head"><view class="figma-row__copy"><view class="figma-section__title">多方分账</view><view class="figma-section__hint">分配池 {{item.pool_fen}} 分 · 审核 {{item.approvals.length}} / {{item.approval_required}}</view></view><view class="figma-status figma-status--orange">{{item.stateLabel}}</view></view>
+            <view wx:for="{{item.items}}" wx:for-item="splitItem" wx:key="id" class="commerce-split commerce-split--item"><view><view class="figma-row__title">{{splitItem.display_name}}</view><view class="figma-row__subtitle">{{splitItem.stateLabel}}</view></view><view class="commerce-money">¥{{splitItem.amountText}}</view></view>
+            <view wx:if="{{canFinance}}" class="commerce-action-stack">
+              <button wx:if="{{item.status==='IN_REVIEW'}}" data-action="APPROVE_SETTLEMENT" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">独立审核通过</button>
+              <button wx:if="{{item.status==='IN_REVIEW'}}" data-action="REJECT_SETTLEMENT" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">退回重建</button>
+              <button wx:if="{{item.status==='APPROVED'}}" data-action="SEND_SPLIT" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">发送已批准分账</button>
+              <button wx:if="{{item.status==='UNKNOWN' || item.status==='SENDING' || item.status==='PROCESSING' || item.status==='PARTIAL'}}" data-action="QUERY_SPLIT" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">逐项查询原分账</button>
+              <button wx:if="{{item.status==='SUCCEEDED' && item.finish_status==='PENDING'}}" data-action="FINISH" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">结束分账并解冻留存</button>
+              <button wx:if="{{item.finish_status==='UNKNOWN' || item.finish_status==='SENDING'}}" data-action="QUERY_FINISH" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">查询原解冻请求</button>
+            </view>
+          </view>
+          <button wx:if="{{canFinance && detail.order.status!=='CLOSED'}}" class="commerce-secondary commerce-full" data-action="CLOSE_ORDER" bindtap="orderAction" disabled="{{busy}}">核对全部义务后关闭合同</button>
+        </block>
+
+        <block wx:elif="{{detailView==='refunds'}}">
+          <figma-feedback type="info" title="退款与回退分别核对" body="UNKNOWN 只查询原编号；追回或核销不表示广告主已经收到退款。"/>
+          <view class="figma-section">
+            <view class="figma-section__title">退款申请</view>
+            <button class="commerce-primary" data-action="PROPOSE_REFUND" bindtap="orderAction" disabled="{{busy}}">按填写金额申请退款分配</button>
+          </view>
+          <figma-feedback wx:if="{{!detail.refunds.length && !detail.refundRetries.length && !detail.returns.length && !detail.recovery.length}}" type="empty" title="暂无退款或追回记录" body="需要处理的资金记录会分别列出。"/>
+          <view wx:for="{{detail.refunds}}" wx:key="id" class="figma-section commerce-record">
+            <view class="commerce-record__head"><view><view class="figma-section__title">退款 ¥{{item.amountText}}</view><view class="figma-section__hint">{{item.reason}}</view></view><view class="figma-status">{{item.stateLabel}}</view></view>
+            <view wx:if="{{item.trade_refund_id}}" class="figma-caption">已进入统一退款流程，实际到账以支付渠道确认结果为准。</view>
+            <view wx:if="{{canFinance}}" class="commerce-action-stack">
+              <button wx:if="{{item.canRetry}}" data-action="PROPOSE_RETRY" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">提交明确失败退款的恢复凭据</button>
+              <button wx:if="{{item.status==='IN_REVIEW'}}" data-action="APPROVE_REFUND" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">独立审核退款</button>
+              <button wx:if="{{item.status==='IN_REVIEW'}}" data-action="REJECT_REFUND" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">退回申请</button>
+              <button wx:if="{{canAdvance && item.status==='RECOVERY_REQUIRED' && !item.advance_proposed_by}}" data-action="ADVANCE_PROPOSE" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">提交自有资金退款申请</button>
+              <button wx:if="{{canAdvance && item.status==='RECOVERY_REQUIRED' && item.advance_proposed_by && item.advance_proposed_by!==userId && !item.advance_coverage}}" data-action="ADVANCE_APPROVE" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">独立审核并核验锁定资金</button>
+              <button wx:if="{{item.needsUnfreeze && (item.status==='READY_FOR_REFUND' || item.funding_mode==='PLATFORM_ADVANCE' && item.status==='RECOVERY_REQUIRED')}}" data-action="REFUND_UNFREEZE" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">先解冻原批次退款资金</button>
+              <button wx:if="{{!item.needsUnfreeze && (item.status==='READY_FOR_REFUND' || item.funding_mode==='PLATFORM_ADVANCE' && item.status==='RECOVERY_REQUIRED')}}" data-action="CLAIM_REFUND" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">提交统一退款审核</button>
+            </view>
+          </view>
+          <view wx:for="{{detail.refundRetries}}" wx:key="id" class="figma-section commerce-record">
+            <view class="commerce-record__head"><view><view class="figma-section__title">原退款恢复</view><view class="figma-section__hint">{{item.evidence}}</view></view><view class="figma-status">{{item.stateLabel}}</view></view>
+            <view class="figma-caption">保留原收款人回退证据；仍须统一退款独立审核。</view>
+            <view wx:if="{{canFinance}}" class="commerce-action-stack"><button wx:if="{{item.status==='IN_REVIEW' && item.proposed_by!==userId}}" data-action="APPROVE_RETRY" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">独立审核恢复</button><button wx:if="{{(item.status==='IN_REVIEW' || item.status==='APPROVED') && item.proposed_by!==userId}}" data-action="REJECT_RETRY" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">拒绝本次恢复</button><button wx:if="{{item.status==='APPROVED'}}" data-action="CLAIM_RETRY" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">提交替代退款独立审核</button></view>
+          </view>
+          <view wx:for="{{detail.returns}}" wx:key="id" class="figma-section commerce-record"><view class="commerce-record__head"><view class="figma-section__title">分账回退 ¥{{item.amountText}}</view><view class="figma-status">{{item.stateLabel}}</view></view><view wx:if="{{canFinance}}" class="commerce-action-stack"><button wx:if="{{item.status==='PENDING'}}" data-action="SEND_RETURN" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">发送原收款人回退</button><button wx:if="{{item.status==='UNKNOWN' || item.status==='SENDING' || item.status==='PROCESSING' || item.status==='FAILED'}}" data-action="QUERY_RETURN" data-channel="yes" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">查询原回退</button></view></view>
+          <view wx:for="{{detail.recovery}}" wx:key="id" class="figma-section commerce-record"><view class="commerce-record__head"><view><view class="figma-section__title">追偿 ¥{{item.amountText}}</view><view class="figma-section__hint">追偿独立于广告主退款，不表示退款已经到账。</view></view><view class="figma-status">{{item.stateLabel}}</view></view><view wx:if="{{canFinance && item.status==='OPEN'}}" class="commerce-action-stack"><button wx:if="{{!item.proposed_by}}" data-action="RECOVERY_PROPOSE" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">提交追偿处置证据</button><button wx:if="{{item.proposed_by && item.proposed_by!==userId}}" data-action="RECOVERY_APPROVE" data-outcome="RECOVERED" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">独立确认追回</button><button wx:if="{{item.proposed_by && item.proposed_by!==userId}}" data-action="RECOVERY_APPROVE" data-outcome="WRITTEN_OFF" data-id="{{item.id}}" bindtap="orderAction" disabled="{{busy}}">独立批准核销</button></view></view>
+        </block>
+      </block>
+    </block>
+    </block>
+  </view>
+
+  <view wx:if="{{figmaState==='settlement-check'}}" class="figma-fixed-actions commerce-state-actions"><button class="figma-action figma-action--ghost">查看统一交易记录</button><button class="figma-action figma-action--orange">查询原分账批次</button></view>
+  <view wx:elif="{{detail && !pending}}" class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="closeOrder" disabled="{{busy}}">返回订单</button>
+    <button wx:if="{{detail.order.payer_user_id===userId}}" class="figma-action figma-action--orange" bindtap="pay" disabled="{{busy}}">支付与退款记录</button>
+    <button wx:else class="figma-action figma-action--navy" bindtap="load" disabled="{{busy || loading}}">刷新订单</button>
+  </view>
+  <view wx:elif="{{!detail && !pending}}" class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="resolve" disabled="{{busy || loading}}">查询原操作</button>
+    <button class="figma-action figma-action--orange" data-key="contracts" bindtap="workspace" disabled="{{busy || loading}}">查看合同条款</button>
+  </view>
 </view>

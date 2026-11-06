@@ -291,7 +291,7 @@ test('account exposes real destinations and copies only the current visible acco
   h.page.toggleMore();
   const html = buildPreview({ root, route: 'pages/account/index', data: h.page.data }).phone;
   for (const text of [
-    '我的消息',
+    '消息与提醒',
     '微信订阅提醒',
     '本人保险订单',
     '青少年与监护确认',

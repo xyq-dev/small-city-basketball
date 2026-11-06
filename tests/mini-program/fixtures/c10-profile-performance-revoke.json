@@ -3,7 +3,7 @@
   "route": "pages/performance/index",
   "state": "review",
   "figmaNode": "30:2041",
-  "expectText": ["当前有效授权", "需要重新公开时", "确认拒绝或撤销"],
+  "expectText": ["撤销当前授权", "撤销原因", "确认拒绝或撤销"],
   "syntheticData": true,
   "data": {
     "authorized": true,

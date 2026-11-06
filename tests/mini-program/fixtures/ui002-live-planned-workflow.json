@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "9:1431",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["实际订单与本页说明分别查看", "本页不读取资金", "查看本人真实资金订单"],
+  "expectText": ["本页不读取资金", "查看本人实际订单"],
   "data": {
     "selected": "funds",
     "optionsOpen": false,

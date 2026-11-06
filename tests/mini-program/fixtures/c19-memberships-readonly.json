@@ -3,8 +3,8 @@
   "route": "pages/memberships/index",
   "state": "synthetic-populated",
   "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
-  "expectText": ["只读：长期成员名称", "合成队友", "本人已退出", "球员身份不等于球队管理权限"],
-  "expectEnabled": ["查看球队", "退出球队"],
+  "expectText": ["只读长期成员名称", "合成队友", "本人已退出", "本人绑定"],
+  "expectEnabled": ["查看球队", "退出球队 明确确认后结束该关系"],
   "expectAbsentText": ["保存成员", "管理球队"],
   "data": {
     "items": [
@@ -77,6 +77,7 @@
     "uncertain": false,
     "error": "",
     "message": "",
-    "loginRequired": false
+    "loginRequired": false,
+    "selectedId": "77777777-7777-4777-8777-777777777777"
   }
 }

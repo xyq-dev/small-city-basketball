@@ -1,57 +1,78 @@
-<scb-header title="报名审核" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page">
-  <view wx:if="{{loading && !event}}" class="card state-panel">
-    <text class="state-label">报名审核</text>
-    <view class="subtitle">正在读取本届报名</view>
-    <view class="loading-lines"><view></view><view></view></view>
+<view class="figma-page">
+  <scb-header title="报名审核" disabled="{{busy || pending || uncertain || dirty}}"/>
+
+  <view class="figma-page__content figma-page__content--actions">
+    <figma-skeleton wx:if="{{loading && !event}}" rows="3"/>
+    <figma-feedback wx:elif="{{!event}}" type="{{unavailable ? 'pending' : 'error'}}" title="{{unavailable ? '无法处理本届报名' : '报名读取未完成'}}" body="{{error || '请从赛事详情重新进入。'}}" action-label="{{unavailable ? '' : '重新读取'}}" bind:action="load"/>
+
+    <block wx:if="{{event}}">
+      <figma-feedback wx:if="{{error}}" type="error" title="报名操作未完成" body="{{error}}" action-label="重新读取" bind:action="load"/>
+      <figma-feedback wx:if="{{notice}}" type="success" title="报名操作已确认" body="{{notice}}"/>
+
+      <view class="figma-summary">
+        <view class="figma-summary__icon"><figma-icon name="registration" size="24"/></view>
+        <view class="figma-summary__copy">
+          <view class="figma-eyebrow">独立审核</view>
+          <view class="figma-title">报名审核</view>
+          <view class="figma-subtitle">核对本届名单快照、逐人材料与提交版本。</view>
+        </view>
+      </view>
+
+      <view class="review-tabs" role="tablist">
+        <button class="review-tab {{reviewTab === 'pending' ? 'is-active' : ''}}" data-tab="pending" bindtap="changeReviewTab" disabled="{{busy}}" role="tab" aria-selected="{{reviewTab === 'pending'}}">待审核</button>
+        <button class="review-tab {{reviewTab === 'changes' ? 'is-active' : ''}}" data-tab="changes" bindtap="changeReviewTab" disabled="{{busy}}" role="tab" aria-selected="{{reviewTab === 'changes'}}">待补齐</button>
+        <button class="review-tab {{reviewTab === 'processed' ? 'is-active' : ''}}" data-tab="processed" bindtap="changeReviewTab" disabled="{{busy}}" role="tab" aria-selected="{{reviewTab === 'processed'}}">已处理</button>
+      </view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">本届报名</view>
+        <view wx:if="{{!hideReviewMeta}}" class="review-rules">{{event.name}} · {{event.statusLabel}}</view><view wx:if="{{!hideReviewMeta}}" class="figma-section__hint">{{rules}}</view><view wx:if="{{!hideReviewMeta}}" class="review-counts"><view wx:for="{{counts}}" wx:key="key" class="figma-status {{item.key === 'SUBMITTED' ? 'figma-status--orange' : item.key === 'APPROVED' ? 'figma-status--green' : ''}}">{{item.label}} {{item.count}}</view></view><view wx:if="{{freeze && !hideReviewMeta}}" class="review-freeze">名单已冻结：{{freeze.teams}} 支球队 · {{freeze.time}}。本届名单以冻结快照为准，不随长期成员变化。</view>
+        <view wx:if="{{!entries.length}}" class="figma-section__hint">暂无报名；开放报名后，领队提交的本届快照会出现在这里。</view>
+        <block wx:for="{{entries}}" wx:key="key">
+          <button wx:if="{{item.previewVisible || (reviewTab === 'pending' && item.status === 'SUBMITTED') || (reviewTab === 'changes' && item.status === 'CHANGES_REQUESTED') || (reviewTab === 'processed' && item.status !== 'SUBMITTED' && item.status !== 'CHANGES_REQUESTED')}}" class="figma-row" data-id="{{item.id}}" bindtap="openEntry" disabled="{{busy}}">
+            <view class="figma-row__copy">
+              <view class="figma-row__title">{{item.teamName}}</view>
+              <view class="figma-row__subtitle">{{item.summaryText || item.reason || (item.waiting ? '名单已提交，等待独立审核' : '查看本届报名版本与审核记录')}}</view>
+            </view>
+            <view class="figma-status {{item.waiting ? 'figma-status--orange' : item.status === 'REJECTED' ? 'figma-status--error' : 'figma-status--green'}}">{{item.statusLabel}}</view>
+          </button>
+        </block>
+      </view>
+
+      <view wx:if="{{detail}}" class="figma-section">
+        <view class="review-section-head"><view><view class="figma-section__title">名单与材料</view><view class="figma-section__hint">{{detail.teamName}} · {{detail.statusLabel}}</view></view><button class="review-close" bindtap="closeEntry" disabled="{{busy}}">收起</button></view>
+        <view wx:if="{{!detail.players.length}}" class="figma-section__hint">尚未填写名单。</view>
+        <view wx:for="{{detail.players}}" wx:key="key" class="figma-row">
+          <view class="figma-row__copy"><view class="figma-row__title">{{item.text}}</view><view class="figma-row__subtitle">{{item.subtitle || '本人资料与照片、保障材料按规则逐项核验'}}</view></view><view class="figma-status figma-status--orange">{{item.statusText || '待核验'}}</view>
+        </view>
+        <view wx:if="{{detail.history.length}}" class="review-subhead">审核记录</view>
+        <view wx:for="{{detail.history}}" wx:key="key" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.text}}</view><view class="figma-row__subtitle">{{item.time}}</view></view></view>
+      </view>
+
+      <view wx:if="{{detail}}" class="figma-section">
+        <view class="figma-section__title">审核处理</view>
+        <figma-feedback wx:if="{{detail.reviewBlocked}}" type="pending" title="当前账号不能审核本单" body="你是该队领队或最近提交人，请由其他审核人员处理。"/>
+        <block wx:if="{{detail.approve || detail.changes || detail.reject}}">
+          <view class="figma-field-group"><view class="figma-field-label">审核说明</view><textarea class="figma-field-control" maxlength="500" value="{{reason}}" bindinput="reasonInput" disabled="{{busy}}" placeholder="退回或拒绝时填写具体原因"/></view>
+          <view class="review-independence"><view><view class="figma-row__title">独立性</view><view class="figma-row__subtitle">领队与最近提交人不能审本单</view></view><view class="figma-status figma-status--orange">须核验</view></view>
+          <view class="review-actions">
+            <button wx:if="{{detail.approve}}" class="figma-action figma-action--navy" data-type="APPROVE" bindtap="review" disabled="{{busy}}">通过</button>
+            <button wx:if="{{detail.changes}}" class="figma-action figma-action--ghost" data-type="REQUEST_CHANGES" bindtap="review" disabled="{{busy}}">退回补齐</button>
+            <button wx:if="{{detail.reject}}" class="figma-action review-danger" data-type="REJECT" bindtap="review" disabled="{{busy}}">拒绝</button>
+          </view>
+        </block>
+      </view>
+
+      <view wx:if="{{stages.length}}" class="figma-section">
+        <view class="figma-section__title">报名阶段</view>
+        <button wx:for="{{stages}}" wx:key="type" class="figma-row" data-type="{{item.type}}" bindtap="stage" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.label}}</view><view class="figma-row__subtitle">{{item.note}}</view></view><view class="figma-status figma-status--orange">可操作</view></button>
+      </view>
+    </block>
   </view>
-  <view wx:elif="{{!event}}" class="card state-panel">
-    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
-    <view class="subtitle">{{unavailable ? '无法处理本届报名' : '暂时无法读取报名'}}</view>
-    <view class="notice warning">{{error || '请从赛事详情重新进入。'}}</view>
-    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+
+  <view wx:if="{{event}}" class="figma-fixed-actions">
+    <button wx:if="{{detail && detail.changes}}" class="figma-action figma-action--ghost" data-type="REQUEST_CHANGES" bindtap="review" disabled="{{loading || busy}}">退回补齐</button>
+    <button wx:else class="figma-action figma-action--ghost" bindtap="load" disabled="{{loading || busy}}">刷新报名</button>
+    <button class="figma-action figma-action--orange" bindtap="participantProgress" disabled="{{busy || !detail}}">查看逐人资料</button>
   </view>
-  <block wx:else>
-    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
-    <view class="intro-card">
-      <view class="row-between"><view class="subtitle">{{event.name}}</view><text class="badge">{{event.statusLabel}}</text></view>
-      <view class="muted">{{rules}}</view>
-      <view class="count-row"><text wx:for="{{counts}}" wx:key="key" class="count-chip">{{item.label}} {{item.count}}</text></view>
-      <view wx:if="{{freeze}}" class="notice small freeze-note">名单已冻结：{{freeze.teams}} 支球队 · {{freeze.time}}。本届名单以冻结快照为准，不随球队长期成员变化。</view>
-    </view>
-
-    <view wx:for="{{stages}}" wx:key="type" class="card">
-      <view class="subtitle">{{item.label}}</view>
-      <view class="muted">{{item.note}}</view>
-      <button class="primary" data-type="{{item.type}}" bindtap="stage" disabled="{{busy}}">{{item.label}}</button>
-    </view>
-
-    <view wx:if="{{detail}}" class="card">
-      <view class="row-between"><view class="subtitle">{{detail.teamName}}</view><button class="quiet small-button" bindtap="closeEntry">收起</button></view>
-      <view class="badge">{{detail.statusLabel}}</view>
-      <button class="secondary" bindtap="participantProgress" disabled="{{busy}}">查看逐人本人资料与独立审核</button>
-      <view class="section-label">本届名单（报名快照）</view>
-      <view wx:if="{{!detail.players.length}}" class="muted">尚未填写名单。</view>
-      <view wx:for="{{detail.players}}" wx:key="key" class="row">{{item.text}}</view>
-      <view wx:if="{{detail.history.length}}" class="section-label">审核记录</view>
-      <view wx:for="{{detail.history}}" wx:key="key" class="row"><view>{{item.text}}</view><view class="muted">{{item.time}}</view></view>
-      <view wx:if="{{detail.reviewBlocked}}" class="notice warning small">你是该队领队或最近提交人，不能审核本报名；请由其他审核人员处理。</view>
-      <block wx:if="{{detail.approve || detail.changes || detail.reject}}">
-        <text class="field-label">审核说明（退回或拒绝必填）</text>
-        <textarea class="field" maxlength="500" value="{{reason}}" bindinput="reasonInput" placeholder="例如：5号球员缺少身份资料"/>
-        <button wx:if="{{detail.approve}}" class="primary" data-type="APPROVE" bindtap="review" disabled="{{busy}}">通过</button>
-        <button wx:if="{{detail.changes}}" class="secondary" data-type="REQUEST_CHANGES" bindtap="review" disabled="{{busy}}">退回补齐</button>
-        <button wx:if="{{detail.reject}}" class="danger" data-type="REJECT" bindtap="review" disabled="{{busy}}">拒绝</button>
-      </block>
-    </view>
-
-    <view class="section-label">参赛球队 · {{entries.length}}</view>
-    <view wx:if="{{!entries.length}}" class="card empty"><view class="subtitle">暂无报名</view><view class="muted">开放报名后，球队领队提交的报名会出现在这里。</view></view>
-    <view wx:for="{{entries}}" wx:key="key" class="org-match entry-row" data-id="{{item.id}}" bindtap="openEntry">
-      <view class="row-between"><view class="task-title">{{item.teamName}}</view><text class="org-match-status {{item.waiting ? 'live' : ''}}">{{item.statusLabel}}</text></view>
-      <view wx:if="{{item.reason}}" class="muted">{{item.reason}}</view>
-    </view>
-    <button class="quiet" bindtap="load" disabled="{{loading || busy}}" loading="{{loading}}">刷新报名</button>
-  </block>
 </view>

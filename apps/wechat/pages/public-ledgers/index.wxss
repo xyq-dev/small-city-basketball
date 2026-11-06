@@ -1,68 +1,298 @@
-.page {
-  padding: 24rpx;
+@import "../../styles/figma-pages.wxss";
+
+.ledger-page button {
+  margin: 0;
 }
-.card {
-  padding: 24rpx;
-  background: #fff;
-  margin: 20rpx 0;
-  border-radius: 20rpx;
-  overflow-wrap: anywhere;
+
+.ledger-tabs {
+  display: grid;
+  width: 100%;
+  min-height: 48px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 2px 3px;
+  border-radius: 12px;
+  background: #ffffff;
 }
-.title {
-  font-size: 38rpx;
+
+.ledger-tabs button {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #51657d;
+  font-size: 13px;
+}
+
+.ledger-tabs button::after {
+  display: none;
+}
+
+.ledger-tabs button.is-active {
+  background: #123c73;
+  color: #ffffff;
   font-weight: 700;
 }
-.subtitle {
-  font-weight: 600;
-  margin: 18rpx 0;
-}
-.notice {
-  padding: 18rpx;
-  background: #f1f4f8;
-}
-.warning {
-  color: #933;
-}
-.small {
-  font-size: 24rpx;
-}
-.muted {
-  color: #657184;
-}
-.entry {
-  padding: 18rpx 0;
-  border-bottom: 1px solid #e3e8ef;
-}
-.picker,
-input {
-  padding: 18rpx;
-  background: #f5f7fa;
-  margin: 12rpx 0;
-}
-textarea {
+
+.ledger-metrics {
+  display: grid;
   width: 100%;
-  box-sizing: border-box;
-  background: #f5f7fa;
-  padding: 16rpx;
-  font-size: 16px;
-  line-height: 24px;
-  min-height: 96px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
-input {
-  font-size: 16px;
-  line-height: 24px;
+
+.ledger-metrics > view {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f4f6fa;
+}
+
+.ledger-metric__value {
+  margin-bottom: 4px;
+  color: #123c73;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+  overflow-wrap: anywhere;
+}
+
+.ledger-public-card,
+.ledger-pending {
+  align-items: center;
+  text-align: center;
+}
+
+.ledger-public-mark {
+  display: flex;
+  width: 50px;
+  height: 50px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  background: #fff1e2;
+}
+
+.ledger-balance {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f4f6fa;
+  text-align: center;
+}
+
+.ledger-balance__value {
+  margin-top: 3px;
+  color: #123c73;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 36px;
+}
+
+.ledger-balance__value text {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ledger-org-picker {
+  display: flex;
+  width: 100%;
+  min-height: 55px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.ledger-entry {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 0;
+  border-top: 1px solid #e6ebf2;
+}
+
+.ledger-entry:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ledger-entry__head {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ledger-entry__amount {
+  flex: none;
+  color: #123c73;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.ledger-inline-actions {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ledger-page .ledger-secondary,
+.ledger-page .ledger-primary,
+.ledger-action-stack button,
+.ledger-search button {
+  display: flex;
+  min-width: 0;
   min-height: 44px;
-}
-button {
-  margin-top: 14rpx;
-  white-space: normal;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 13px;
+  border-radius: 22px;
+  font-size: 14px;
+  line-height: 20px;
 }
 
-.ui002-workspace { padding:16px 16px calc(104px + env(safe-area-inset-bottom)); background:#f4f6fa; color:#18283f; }
-.ui002-workspace .card { border-radius:16px; padding:16px; margin:0 0 16px; }
-.ui002-workspace input,.ui002-workspace textarea,.ui002-workspace button { font-size:16px; line-height:24px; min-height:44px; }
-.ui002-workspace .page-intro .title { color:#18283f; font-size:22px; line-height:32px; margin:0 0 8px; }
-.ui002-workspace .page-intro { margin-bottom:16px; }
-.ui002-workspace .tabs button { min-height:44px; }
+.ledger-page .ledger-secondary,
+.ledger-action-stack button,
+.ledger-search button {
+  border: 1px solid #7c8ea5;
+  background: #ffffff;
+  color: #123c73;
+}
 
-.ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+.ledger-page .ledger-primary {
+  width: 100%;
+  background: #f28c28;
+  color: #18283f;
+  font-weight: 600;
+}
+
+.ledger-page .ledger-danger {
+  color: #c83f42;
+}
+
+.ledger-full {
+  width: 100%;
+}
+
+.ledger-picker {
+  display: flex;
+  align-items: center;
+}
+
+.ledger-chevron {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #123c73;
+  transform: rotate(-90deg);
+}
+
+.ledger-action-stack {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ledger-action-stack button {
+  width: 100%;
+}
+
+.ledger-action-stack button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  color: #c83f42;
+}
+
+.ledger-search {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  gap: 8px;
+}
+
+.ledger-page button[disabled] {
+  border-color: #e6ebf2;
+  background: #e6ebf2;
+  color: #7c8ea5;
+}
+
+.ledger-summary--preview {
+  background: #eaf2fc;
+}
+
+.ledger-preview-metric__title {
+  color: #123c73;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.ledger-preview-amount {
+  align-self: flex-start;
+  margin-top: 5px;
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: #fff1e2;
+  color: #18283f;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.ledger-page .commerce-process-row {
+  display: flex;
+  width: 100%;
+  min-height: 55px;
+  align-items: center;
+  gap: 8px;
+}
+
+.ledger-page .commerce-process-mark {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #eaf2fc;
+  color: #123c73;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+@media (max-width: 360px) {
+  .ledger-inline-actions,
+  .ledger-action-stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ledger-action-stack button:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .ledger-tabs button {
+    font-size: 11px;
+  }
+
+  .ledger-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

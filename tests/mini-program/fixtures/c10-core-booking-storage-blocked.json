@@ -4,7 +4,7 @@
   "state": "recovery",
   "figmaNode": "34:3106",
   "syntheticData": true,
-  "expectText": ["暂时无法读取原预约记录", "安全重读原预约记录"],
+  "expectText": ["暂时无法读取原预约记录", "安全重读"],
   "data": {
     "loading": false,
     "busy": false,
@@ -166,7 +166,10 @@
       "conditional": "¥330.00",
       "count": 3,
       "fixedCount": 2,
-      "conditionalCount": 1
+      "conditionalCount": 1,
+      "fixedSlotCount": 1,
+      "fixedPlayerCount": 2,
+      "travelAccommodation": "¥80.00"
     },
     "pending": false,
     "invalidRecovery": false,

@@ -1,45 +1,93 @@
-<scb-header title="选择浏览地区" back="{{true}}"/>
-<view class="page city-page">
-  <view class="title">{{organizer ? '选择赛事标准地区' : '选择浏览地区'}}</view>
-  <view class="muted">{{organizer ? '只用于本次目录设置，不改变首页浏览地区、赛事场馆或订单地点。' : '当前：' + label + ' · ' + source + '。仅筛选公开赛事，不修改个人资料或订单地点。'}}</view>
-  <view wx:if="{{warning && !organizer}}" class="notice warning">{{warning}}</view>
-  <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-  <view wx:if="{{versionNote}}" class="notice">{{versionNote}}</view>
-  <button wx:if="{{!organizer}}" class="secondary" bindtap="nationwide">浏览全国</button>
-  <view class="card">
-    <view class="subtitle">按标准地区选择</view>
-    <view class="muted small">选择本地区包含其下辖地区；只确定到上级的赛事不会自动进入具体市县。本页手动选城，附近定位请进入同城。</view>
-    <view wx:if="{{catalogLoading}}" class="muted">正在读取地区目录…</view>
-    <view wx:elif="{{catalogError}}" class="notice warning">{{catalogError}}<button class="secondary" bindtap="loadCatalog">重试读取地区目录</button></view>
+<scb-header title="{{organizer ? '选择赛事地区' : '选择地区'}}" back="{{true}}" disabled="{{catalogLoading}}"/>
+<view class="scb-ui-page figma-page city-rebuild">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary">
+      <view class="figma-summary__icon"><figma-icon name="local" size="25"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">{{organizer ? '赛事标准地区' : '浏览范围'}}</view>
+        <view class="figma-title">{{label || '全国内容'}}</view>
+        <view class="figma-subtitle">{{organizer ? '只用于本次赛事目录设置' : '当前浏览 · ' + (source || '全国浏览')}}</view>
+      </view>
+    </view>
+
+    <view class="city-tabs" role="tablist">
+      <button class="city-tab {{activeView==='standard' ? 'is-active' : ''}}" data-view="standard" bindtap="changeView" disabled="{{catalogLoading}}">标准地区</button>
+      <button class="city-tab {{activeView==='recent' ? 'is-active' : ''}}" data-view="recent" bindtap="changeView" disabled="{{catalogLoading || organizer}}">最近选择</button>
+    </view>
+
+    <figma-feedback wx:if="{{warning && !organizer}}" type="pending" title="本机选择未能保存" body="{{warning}}"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="地区尚未更改" body="{{error}}"/>
+    <figma-feedback wx:if="{{versionNote}}" type="pending" title="需要重新核对地区" body="{{versionNote}}"/>
+
+    <block wx:if="{{activeView==='standard'}}">
+      <view class="figma-section">
+        <view class="figma-section__title">浏览范围</view>
+        <button wx:if="{{!organizer}}" class="figma-row" bindtap="nationwide" disabled="{{catalogLoading}}">
+          <view class="figma-row__mark {{mode==='NATIONWIDE' ? 'is-active' : ''}}"/>
+          <view class="figma-row__copy"><view class="figma-row__title">全国内容</view><view class="figma-row__subtitle">查看全部已公开赛事</view></view>
+          <view wx:if="{{mode==='NATIONWIDE'}}" class="figma-status figma-status--orange">当前</view>
+        </button>
+        <view wx:if="{{mode==='REGION'}}" class="figma-row">
+          <view class="figma-row__mark is-active"/>
+          <view class="figma-row__copy"><view class="figma-row__title">{{selectedScopeLabel || label}}</view><view class="figma-row__subtitle">使用本地区及下辖地区</view></view>
+          <view class="figma-status figma-status--orange">当前</view>
+        </view>
+      </view>
+
+      <figma-skeleton wx:if="{{catalogLoading}}" rows="3"/>
+      <figma-feedback wx:elif="{{catalogError}}" type="error" title="地区目录暂不可用" body="{{catalogError}}" action-label="重新读取" bind:action="loadCatalog"/>
+      <block wx:else>
+        <view wx:if="{{parentId}}" class="figma-section">
+          <view class="figma-section__title">当前地区层级</view>
+          <view class="figma-row__title">{{parentLabel}}</view>
+          <view wx:if="{{partial}}" class="figma-section__hint">此地区尚未收录下级，可按当前范围查看，不代表当地服务已开放。</view>
+          <view class="city-inline-actions"><button class="city-inline-action is-primary" bindtap="chooseParent">选择本地区及下辖地区</button><button class="city-inline-action" bindtap="rootRegions">返回全国地区列表</button></view>
+        </view>
+
+        <view class="figma-section">
+          <view class="figma-section__title">按地区选择</view>
+          <view wx:if="{{dataDate}}" class="figma-section__hint">地区数据截至 {{dataDate}}；港澳台目前只收录省级。</view>
+          <view class="figma-field-group"><view class="figma-field-label">搜索标准地区</view><input class="figma-field-control" value="{{search}}" bindinput="searchRegion" placeholder="搜索省、市或区县" maxlength="80"/></view>
+          <figma-feedback wx:if="{{!rows.length}}" type="empty" title="{{parentId ? '没有已收录的下级地区' : '没有匹配地区'}}" body="{{parentId ? '可选择当前地区范围。' : '请更换名称后重试。'}}"/>
+          <button wx:for="{{rows}}" wx:key="id" class="city-region-row" data-id="{{item.id}}" bindtap="openRegion">
+            <view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.levelLabel || item.path}}{{item.partial ? ' · 目前仅收录省级' : ''}}</view></view>
+          </button>
+          <button wx:if="{{hasMore}}" class="city-more" bindtap="moreRegions">显示更多地区</button>
+        </view>
+
+        <view wx:if="{{!organizer}}" class="figma-section">
+          <view class="figma-section__title">其他选择方式</view>
+          <view class="figma-field-group">
+            <view class="figma-field-label">最近选择</view>
+            <button class="city-readonly-field city-readonly-field--action" data-view="recent" bindtap="changeView">{{recentChoices.length ? recentChoices[0].label : '暂无最近选择'}}</button>
+          </view>
+          <view class="figma-field-group"><view class="figma-field-label">定位当前城市</view><view class="city-readonly-field">只在主动申请后读取</view></view>
+          <view class="figma-field-group"><view class="figma-field-label">历史城市文字</view><input class="figma-field-control" value="{{input}}" bindinput="inputCity" bindconfirm="apply" placeholder="输入原有城市标签" maxlength="40"/></view>
+        </view>
+      </block>
+    </block>
+
     <block wx:else>
-      <view class="muted small" wx:if="{{dataDate}}">地区数据截至 {{dataDate}}；港澳台目前只收录省级。</view>
-      <input class="field" value="{{search}}" bindinput="searchRegion" placeholder="搜索省、市或区县，核对完整路径" maxlength="80"/>
-      <view wx:if="{{parentId}}" class="region-parent">
-        <view class="watch-strong">{{parentLabel}}</view>
-        <view wx:if="{{partial}}" class="notice small">此地区尚未收录下级，可按省级范围查看，不代表当地服务已开放。</view>
-        <button class="primary" bindtap="chooseParent">选择本地区及下辖地区</button>
-        <button class="quiet" bindtap="rootRegions">返回全国地区列表</button>
+      <view class="figma-section">
+        <view class="figma-section__title">最近选择</view>
+        <figma-feedback wx:if="{{!recentChoices.length}}" type="empty" title="暂无最近选择" body="选择标准地区后会保存在本机。"/>
+        <button wx:for="{{recentChoices}}" wx:key="key" class="figma-row" data-key="{{item.key}}" bindtap="pickRecent">
+          <view class="figma-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">{{item.label}}</view><view class="figma-row__subtitle">{{item.mode === 'LEGACY_CITY' ? '历史城市文字' : '标准地区范围'}}</view></view>
+        </button>
+        <button wx:if="{{recentChoices.length}}" class="city-more" bindtap="clearHistory">清除最近选择</button>
       </view>
-      <view wx:if="{{!rows.length}}" class="muted">{{parentId ? '此地区没有已收录的下级，可直接选择本地区。' : '没有匹配地区，请换个名称搜索。'}}</view>
-      <view wx:for="{{rows}}" wx:key="id" class="region-row">
-        <view class="region-name">{{item.name}}</view>
-        <view class="muted small">{{item.path}}</view>
-        <view wx:if="{{item.partial}}" class="muted small">目前仅收录省级</view>
-        <view class="region-actions"><button class="secondary" data-id="{{item.id}}" bindtap="selectRegion">选择{{item.hasChildren ? '本地区及下辖地区' : '本地区'}}</button><button wx:if="{{item.hasChildren}}" class="quiet" data-id="{{item.id}}" bindtap="browseRegion">查看下级</button></view>
+      <view class="figma-section">
+        <view class="figma-section__title">其他选择方式</view>
+        <view class="figma-field-group"><view class="figma-field-label">历史城市文字</view><input class="figma-field-control" value="{{input}}" bindinput="inputCity" bindconfirm="apply" placeholder="输入原有城市标签" maxlength="40"/></view>
+        <view class="figma-section__hint">文字模式精确匹配原标签；不会自动合并近似城市名。</view>
+        <button class="city-inline-action is-primary" bindtap="apply">使用此城市文字</button>
+        <view class="figma-field-group"><view class="figma-field-label">定位当前城市</view><view class="city-readonly-field">只在同城页主动申请后读取</view></view>
       </view>
-      <button wx:if="{{hasMore}}" class="quiet" bindtap="moreRegions">显示更多地区</button>
     </block>
   </view>
-  <block wx:if="{{!organizer}}">
-    <view class="city-recent-head"><view class="subtitle">最近选择</view><button wx:if="{{recentChoices.length}}" class="quiet city-clear" bindtap="clearHistory">清除记录</button></view>
-    <view wx:if="{{!recentChoices.length}}" class="muted">暂无最近选择。</view>
-    <view class="city-history"><button wx:for="{{recentChoices}}" wx:key="key" class="secondary" data-key="{{item.key}}" bindtap="pickRecent">{{item.label}}{{item.mode === 'LEGACY_CITY' ? '（历史文字）' : ''}}</button></view>
-    <view class="card">
-      <view class="field-label">按历史城市文字筛选</view>
-      <input class="field" value="{{input}}" bindinput="inputCity" bindconfirm="apply" placeholder="输入主办方原标签，如高州" maxlength="40"/>
-      <view class="muted small">此入口仍精确匹配原城市文字。“高州”和“高州市”在文字模式下不自动合并；选择上方标准地区可查看本地区及下辖赛事。</view>
-      <button class="secondary" bindtap="apply">使用此城市文字</button>
-    </view>
-  </block>
-  <view class="card city-location"><view class="subtitle">定位当前城市</view><view class="muted">本页手动选城，附近定位请进入同城，请手动选城或浏览全国。这里不会读取你的当前位置。</view></view>
+
+  <view class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="nationwide" disabled="{{organizer || catalogLoading}}">浏览全国</button>
+    <button class="figma-action figma-action--orange" bindtap="confirmCurrent" disabled="{{catalogLoading || !!catalogError || (organizer && !parentId)}}">选择本地区及下辖地区</button>
+  </view>
 </view>

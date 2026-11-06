@@ -1,5 +1,37 @@
-.scb-header { width:100%; background:#fff; color:#123c73; position:relative; z-index:8; box-sizing:border-box; } .header-row { height:56px; width:100%; display:flex; align-items:center; padding:0 12px; position:relative; box-sizing:border-box; } .header-title { position:absolute; left:76px; right:76px; text-align:center; font-size:18px; line-height:28px; font-weight:700; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; pointer-events:none; } .header-location { display:flex; align-items:center; gap:3px; font-size:12px; line-height:20px; } .header-back,.header-search { width:44px; height:44px; min-height:44px; display:flex; align-items:center; justify-content:center; background:transparent; padding:0; margin:0; border:0; border-radius:0; } .header-search { margin-left:auto; } .header-back::after,.header-search::after { border:0; } .dark { color:#fff; background:transparent; } .dark .header-title { font-size:17px; } .header-back[disabled],.header-search[disabled] { background:transparent; opacity:.45; }
-.header-row .header-back,.header-row .header-search { width:44px; margin:0; }
-.header-row .header-search { margin-left:auto; }
-
-.header-brand { display:flex; align-items:center; justify-content:center; width:44px; height:44px; } .header-brand image { width:24px; height:24px; } .home-header .header-title { left:60px; right:96px; text-align:left; font-size:18px; color:#18283f; }
+:host, .figma-header, .figma-header view, .figma-header button, .figma-header image { box-sizing:border-box; }
+.figma-header { position:relative; z-index:10; width:100%; background:#ffffff; color:#123c73; font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif; }
+.figma-header--home { background:#123c73; color:#ffffff; }
+.figma-header__capsule-row { display:none; width:100%; }
+.figma-header__home-row, .figma-header__account-row, .figma-header__detail-row { position:relative; display:flex; width:100%; height:44px; align-items:center; padding-left:16px; }
+.figma-header__home-row { gap:8px; }
+.figma-header__brand { display:flex; min-width:0; flex:none; align-items:center; gap:8px; color:#ffffff; font-size:20px; font-weight:700; line-height:27px; white-space:nowrap; }
+.figma-header__brand image { display:block; width:28px; height:28px; flex:none; }
+.figma-header__city { display:flex; width:70px; min-width:70px; max-width:70px; height:44px; min-height:44px; flex:none; align-items:center; justify-content:center; gap:3px; margin:0; padding:0; border:0; border-radius:0; background:transparent; color:#ffffff; font-size:14px; font-weight:700; line-height:19px; white-space:nowrap; }
+.figma-header__city::after, .figma-header__message::after, .figma-header__search::after, .figma-header__back::after { border:0; }
+.figma-header__city view { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.figma-header__city image { width:13px; height:13px; flex:none; }
+.figma-header__message { display:flex; width:44px; min-width:44px; height:44px; min-height:44px; flex:none; align-items:center; justify-content:center; margin:0; padding:0; border:0; border-radius:0; background:transparent; }
+.figma-header__message image { width:22px; height:22px; }
+button.figma-header__search { display:flex; width:calc(100% - 32px); height:44px; min-height:44px; align-items:center; justify-content:flex-start; gap:8px; margin:8px 16px 0; padding:0 14px 0 15px; border:0; border-radius:22px; background-color:#ffffff !important; color:#51657d !important; font-size:14px; font-weight:400; line-height:19px; text-align:left; }
+.figma-header__search image { width:18px; height:18px; flex:none; }
+.figma-header__home-row button[disabled], button.figma-header__search[disabled] { background:transparent; color:inherit; opacity:.55; }
+button.figma-header__search[disabled] { background-color:#ffffff !important; color:#7c8ea5 !important; }
+.figma-header--account { background:#ffffff; }
+.figma-header__account-row { gap:8px; color:#123c73; font-size:16px; font-weight:500; line-height:24px; }
+.figma-header__account-mark { display:flex; width:44px; height:44px; flex:none; align-items:center; justify-content:center; }
+.figma-header__account-mark image { width:28px; height:28px; flex:none; }
+.figma-header__account-title { min-width:0; flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.figma-header__detail-row { padding-left:8px; }
+button.figma-header__back { display:flex; width:44px; min-width:44px; max-width:44px; height:44px; min-height:44px; flex:none; align-items:center; justify-content:center; margin:0; padding:0; border:0; border-radius:0; background:transparent; }
+.figma-header__back image { width:22px; height:22px; }
+.figma-header__title { min-width:0; flex:1; overflow:hidden; padding:0 8px; color:#123c73; font-size:18px; font-weight:700; line-height:26px; text-align:left; white-space:nowrap; text-overflow:ellipsis; pointer-events:none; }
+.figma-header--dark { background:#123c73; color:#ffffff; }
+.figma-header--dark .figma-header__title { color:#ffffff; }
+.figma-header__back[disabled] { background:transparent; opacity:.45; }
+@media (max-width:360px) {
+  .figma-header__capsule-row { display:block; }
+  .figma-header--home .figma-header__home-row { padding-right:12px !important; padding-left:12px; }
+  .figma-header__brand { flex:1; }
+  .figma-header__city { width:58px; min-width:58px; max-width:58px; }
+  .figma-header__search { width:calc(100% - 24px); margin-right:12px; margin-left:12px; }
+}

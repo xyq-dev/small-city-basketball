@@ -1,0 +1,62 @@
+{
+  "name": "int01-matching-incoming",
+  "route": "pages/matching/index",
+  "state": "synthetic-incoming",
+  "figmaNode": "36:87",
+  "designSource": "INT01 matching capability reachability regression; current native template; synthetic data only",
+  "expectText": ["双方意向", "合成球员甲"],
+  "expectEnabled": ["有意合作", "婉拒"],
+  "expectDisabled": [],
+  "expectAbsentText": ["重新匹配", "向候选发送意向", "核对条款并转预约", "原单结束后重开"],
+  "data": {
+    "enabled": true,
+    "conversionEnabled": true,
+    "selected": {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "title": "合成周末成人队补位需求",
+      "kind": "ADULT_PLAYER",
+      "kindText": "成人球员",
+      "status": "ACTIVE",
+      "statusText": "进行中",
+      "canManage": false,
+      "quantity": 1,
+      "budgetText": "¥680.00",
+      "address": "合成体育中心东侧二号篮球场",
+      "windows": [
+        {
+          "reportAt": "2028-01-01T10:00:00Z",
+          "label": "合成日期 18:00 报到 · 18:15—20:00"
+        }
+      ],
+      "slots": [],
+      "candidates": [],
+      "intents": [
+        {
+          "id": "10000000-0000-4000-8000-000000000002",
+          "version": 4,
+          "status": "PENDING",
+          "statusText": "待确认",
+          "canAccept": true,
+          "canWithdraw": false,
+          "canConvert": false,
+          "sourceId": null,
+          "sourceKind": null,
+          "candidate": {
+            "id": "10000000-0000-4000-8000-000000000004",
+            "name": "合成球员甲",
+            "priceText": "¥380.00",
+            "score": {
+              "bandText": "资料有依据",
+              "coverage": 80,
+              "score": 82,
+              "reasons": ["时段已声明空闲", "相关资质已核验，预约前再次检查"]
+            },
+            "sourceId": "10000000-0000-4000-8000-000000000005",
+            "settingsVersion": 3
+          }
+        }
+      ],
+      "version": 7
+    }
+  }
+}

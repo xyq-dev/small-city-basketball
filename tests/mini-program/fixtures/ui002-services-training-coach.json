@@ -4,7 +4,7 @@
   "state": "synthetic-training-coach",
   "figmaNode": "44:1680",
   "designSource": "UI001 high fidelity fields/cards with current adult-only API semantics; no production data",
-  "expectText": ["合成教练本人周末篮球课", "本课签到与授课"],
+  "expectText": ["合成教练本人周末篮球课", "实际授课记录", "退费申请", "收费退款进展"],
   "data": {
     "manageTab": "teaching",
     "teaching": [

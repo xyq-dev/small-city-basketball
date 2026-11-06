@@ -3,7 +3,7 @@
   "route": "pages/player-center/index",
   "state": "locked",
   "figmaNode": "30:2234",
-  "expectText": ["原资料提交结果待核对", "核对原资料提交"],
+  "expectText": ["提交结果待核对", "重新读取核对"],
   "syntheticData": true,
   "data": {
     "authorized": true,

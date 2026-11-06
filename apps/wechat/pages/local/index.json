@@ -2,8 +2,5 @@
   "navigationBarTitleText": "同城篮球",
   "enablePullDownRefresh": false,
   "navigationStyle": "custom",
-  "navigationBarTextStyle": "black",
-  "usingComponents": {
-    "v3-chrome": "/components/v3-chrome/index"
-  }
+  "navigationBarTextStyle": "black"
 }

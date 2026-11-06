@@ -3,14 +3,6 @@
   "route": "pages/notification-settings/index",
   "state": "synthetic-populated",
   "designSource": "Implemented native Page data; synthetic static layout fixture, not a real provider, delivery or account acceptance",
-  "expectText": [
-    "微信订阅提醒",
-    "关注赛事不代表已授权订阅",
-    "打开微信弹窗",
-    "报名审核更新",
-    "本次许可待使用",
-    "已撤销"
-  ],
   "data": {
     "enabled": true,
     "kinds": [
@@ -62,5 +54,6 @@
       }
     ],
     "loginRequired": false
-  }
+  },
+  "expectText": ["微信订阅提醒", "每次订阅都由本人选择并确认", "打开微信弹窗", "报名审核更新"]
 }

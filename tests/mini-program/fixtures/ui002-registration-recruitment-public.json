@@ -3,7 +3,7 @@
   "route": "pages/recruitment/index",
   "state": "synthetic-populated",
   "designSource": "UI001 actual native route and capability states; synthetic data only",
-  "expectText": ["合成第三届公开招募", "合成城市邀请赛", "申请不等于报名通过", "提交本届参赛申请"],
+  "expectText": ["合成第三届公开招募", "合成城市邀请赛", "申请流程", "提交本届参赛申请"],
   "data": {
     "mode": "public",
     "userId": "00000000-0000-4000-8000-000000000003",

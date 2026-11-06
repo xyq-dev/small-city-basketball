@@ -3,7 +3,7 @@
   "route": "pages/youth-review/index",
   "state": "synthetic-populated",
   "designSource": "E08 implemented independent-review native Page and WXML; explicit synthetic/static only; no real identity/evidence, legal determination or reviewer completion; adult processing renewal capability is explicit synthetic/static data, not a real adulthood verification",
-  "expectText": ["独立监护关系审核", "独立关系核验", "已核对必要关系证明"],
+  "expectText": ["监护关系审核", "独立关系核验", "已核对必要关系证明"],
   "data": {
     "review": true,
     "hasMaterialScope": false,

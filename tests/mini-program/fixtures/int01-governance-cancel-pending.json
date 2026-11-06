@@ -1,0 +1,27 @@
+{
+  "name": "int01-governance-cancel-pending",
+  "route": "pages/governance/index",
+  "state": "synthetic-case-original-request-pending",
+  "syntheticData": true,
+  "expectText": ["有原操作待核对", "查询原操作", "明确放弃原请求"],
+  "expectEnabled": ["查询原操作", "明确放弃原请求"],
+  "expectDisabled": ["提交支持事项"],
+  "expectVisible": ["button[data-cancel=\"true\"]"],
+  "data": {
+    "items": [],
+    "selected": null,
+    "mode": "mine",
+    "isOperator": false,
+    "loginRequired": false,
+    "loading": false,
+    "busy": false,
+    "error": "尚未查到原结果，保护记录保留；可稍后再查或明确放弃。",
+    "notice": "",
+    "figmaGovernancePreview": false,
+    "pending": {
+      "userId": "10000000-0000-4000-8000-000000000001",
+      "kind": "CASE",
+      "commandId": "20000000-0000-4000-8000-000000000001"
+    }
+  }
+}

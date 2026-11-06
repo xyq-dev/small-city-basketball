@@ -1,66 +1,60 @@
-<view class="page home-page home-ui" style="padding-top:{{statusBarHeight}}px">
- <view class="home-brand" style="padding-right:{{capsuleGap}}px">
-  <image class="home-brand-mark" src="/assets/home/brandmark.svg" mode="aspectFit"/>
-  <view class="home-brand-name">小城市篮球</view>
- </view>
- <view class="home-tools">
-  <button class="home-city" bindtap="chooseCity" aria-label="选择城市"><view>{{citySelection.mode==='NATIONWIDE' ? '全国' : citySelection.label}}</view><image src="/assets/home/chevron-down.svg" mode="aspectFit"/></button>
-  <button class="home-search" bindtap="openSearch" aria-label="搜索"><image src="/assets/home/search.svg" mode="aspectFit"/><view>搜赛事、球队、球员</view></button>
-  <button class="home-bell" data-page="messages" bindtap="go" aria-label="消息"><image src="/assets/home/bell.svg" mode="aspectFit"/></button>
- </view>
- <view wx:if="{{citySelection.warning}}" class="notice warning">{{citySelection.warning}}</view>
- <view class="home-hero">
-  <image class="home-hero-photo" src="/assets/home/hero.jpg" mode="aspectFill"/>
-  <view class="home-hero-shade"></view>
-  <view class="home-hero-copy">
-   <view class="home-eyebrow">SMALL CITY · BIG GAME</view>
-   <view class="home-headline"><view>每一场</view><view>都值得被看见</view></view>
-   <view class="home-tagline">全国找赛事，同城一起上场。</view>
-   <button class="home-primary" bindtap="openEvents"><view>发现赛事</view><image src="/assets/home/chevron-right.svg" mode="aspectFit"/></button>
+<view class="scb-ui-page home-rebuild">
+  <scb-header mode="home" city-label="{{citySelection.mode==='NATIONWIDE' ? '全国' : citySelection.label}}" bind:city="chooseCity" bind:search="openSearch" bind:message="openMessages" bind:layoutchange="headerLayout" disabled="{{uiPreview}}"/>
+
+  <scroll-view class="home-scroll" scroll-y enhanced show-scrollbar="{{false}}" style="height:{{contentHeight}}px">
+  <view class="home-hero">
+    <image class="home-hero__image" src="/assets/home/hero.jpg" mode="aspectFill"/>
+    <view class="home-hero__copy"><view class="home-hero__title">让热爱，有主场。</view><view class="home-hero__subtitle">小城市篮球赛事与同城服务</view></view>
   </view>
- </view>
- <view class="home-quick">
-  <button data-page="recruitment" bindtap="go"><image src="/assets/home/icon-trophy.png" mode="aspectFit"/><view>赛事招募</view></button>
-  <button bindtap="openPlayers"><image src="/assets/home/icon-player.png" mode="aspectFit"/><view>找球员</view></button>
-  <button bindtap="openTeamData"><image src="/assets/home/icon-team.png" mode="aspectFit"/><view>球队数据</view></button>
-  <button data-page="media" bindtap="go"><image src="/assets/home/icon-video.png" mode="aspectFit"/><view>比赛视频</view></button>
- </view>
- <view class="home-section-head"><view class="home-section-title">热门赛事</view><button bindtap="openEvents">全部赛事<image src="/assets/home/chevron-right.svg" mode="aspectFit"/></button></view>
- <scb-state wx:if="{{publicLoading}}" kind="loading" title="正在读取公开赛事" description="按当前浏览地区核对主办方已公开的赛事。"/>
- <scb-state wx:elif="{{publicError}}" kind="error" title="公开赛事暂时无法读取" description="{{publicError}}" action-text="重新读取" bind:action="loadPublicEvents"/>
- <scb-state wx:elif="{{publicLoaded && !publicEvents.length}}" kind="empty" title="{{citySelection.label}}暂无进行中赛事" description="可查看其他阶段，或选择其他城市。" action-text="查看全部赛事" secondary-text="切换城市" bind:action="openEvents" bind:secondary="chooseCity"/>
- <button wx:for="{{publicEvents}}" wx:key="publicEventId" class="home-hot" data-id="{{item.publicEventId}}" bindtap="openPublicEvent">
-  <view class="home-hot-photo"><image src="/assets/home/event-court.jpg" mode="aspectFill"/><view>示意图</view></view>
-  <view class="home-hot-body">
-   <view class="home-hot-status">{{item.statusLabel}}</view>
-   <view class="home-hot-name">{{item.name}}</view>
-   <view class="home-hot-meta"><image src="/assets/home/pin.svg" mode="aspectFit"/><view>{{item.displayCity || item.venueName}}</view></view>
-   <view class="home-hot-meta"><image src="/assets/home/calendar.svg" mode="aspectFit"/><view>{{item.dateLabel}}</view></view>
-   <view class="home-hot-more">查看赛事<image src="/assets/home/chevron-right.svg" mode="aspectFit"/></view>
+
+  <view class="home-quick" aria-label="快捷入口">
+    <button class="home-quick__item" bindtap="openEvents" disabled="{{uiPreview}}"><view class="home-quick__icon is-orange"><figma-icon name="event" size="26"/></view><view>看赛事</view></button>
+    <button class="home-quick__item" data-page="recruitment" bindtap="go" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="recruitment" size="26"/></view><view>赛事招募</view></button>
+    <button class="home-quick__item" bindtap="openTeamData" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="team-archive" size="26"/></view><view>球队档案</view></button>
+    <button class="home-quick__item" data-page="media" bindtap="go" disabled="{{uiPreview}}"><view class="home-quick__icon is-orange"><figma-icon name="media" size="26"/></view><view>图片视频</view></button>
+    <button class="home-quick__item" bindtap="openPlayers" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="player" size="26"/></view><view>找球员</view></button>
+    <button class="home-quick__item" data-page="teams" bindtap="go" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="teams" size="26"/></view><view>我的球队</view></button>
+    <button class="home-quick__item" bindtap="openCourt" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="court" size="26"/></view><view>找球场</view></button>
+    <button class="home-quick__item" bindtap="openLocal" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="local" size="26"/></view><view>同城服务</view></button>
   </view>
- </button>
- <view class="home-section-head"><view class="home-section-title">同城篮球服务</view><button bindtap="chooseCity">选择城市<image src="/assets/home/chevron-right.svg" mode="aspectFit"/></button></view>
- <view class="home-local">
-  <button class="home-local-court" bindtap="openCourt"><view class="home-local-copy"><view>找球场</view><view>查看本地场馆</view></view><image src="/assets/home/service-court.png" mode="aspectFit"/></button>
-  <button class="home-local-referee" bindtap="openReferee"><view class="home-local-copy"><view>约裁判</view><view>查看人员与档期</view></view><image src="/assets/home/service-referee.png" mode="aspectFit"/></button>
- </view>
- <view class="home-local-note">效果示意 · 赛事内容为合成示例</view>
- <sponsorship-slot region-id="{{citySelection.regionId || ''}}" catalog-version="{{citySelection.catalogVersion || ''}}" visible="{{sponsorVisible}}"/>
- <view class="home-private">
-  <view class="home-section-head"><view class="home-section-title">我的赛事</view><button bindtap="openEvents">全部赛事</button></view>
-  <scb-state wx:if="{{eventsLoading && !featured.length}}" kind="loading" title="正在读取你的赛事"/>
-  <button wx:for="{{featured}}" wx:key="key" class="home-event" data-org="{{item.orgId}}" data-id="{{item.id}}" bindtap="openEvent"><view class="home-event-status">{{item.statusLabel}}</view><view class="home-event-name">{{item.name}}</view><view class="home-event-meta">{{item.dateLabel}} · {{item.orgName}}</view></button>
-  <scb-state wx:if="{{!eventsLoading && !signedIn}}" kind="permission" title="登录后查看你参与的赛事" description="浏览全国公开赛事无需登录。" action-text="登录并继续" bind:action="login"/>
-  <scb-state wx:elif="{{eventsError}}" kind="error" title="我的赛事暂时无法读取" description="{{eventsError}}" action-text="重新读取" bind:action="loadEvents"/>
-  <view wx:elif="{{!eventsLoading && !featured.length}}" class="home-event-meta">{{hasOrganizations ? '暂无进行中或即将开赛的赛事，可查看全部赛事。' : '当前账号没有机构赛事身份。'}}</view>
- </view>
- <view class="home-services">
-  <view class="eyebrow">扩展服务</view>
-  <view class="home-section-title">按位置找球员</view>
-  <view class="home-shortcuts"><button data-page="teams" bindtap="go">我的球队</button><button data-page="bookings" bindtap="go">查看我的预约</button><button data-page="player-center" bindtap="go">进入本人球员中心</button></view>
-  <button class="secondary" bindtap="openPlayers">找球员</button>
-  <view class="position-grid"><button wx:for="{{positions}}" wx:key="code" data-position="{{item.code}}" bindtap="position">{{item.name}}</button></view>
-  <view class="home-event-meta">合作预约不自动加入赛事报名名单。</view>
- </view>
+
+  <view class="home-content">
+    <figma-feedback wx:if="{{citySelection.warning}}" type="pending" title="地区目录暂不可用" body="{{citySelection.warning}}" action-label="重新选择" bind:action="chooseCity" disabled="{{uiPreview}}"/>
+
+    <view class="home-section__head"><view class="home-section__title">精选赛事</view><button class="home-section__more" bindtap="openEvents" disabled="{{uiPreview}}">更多赛事<image src="/assets/home/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button></view>
+    <figma-skeleton wx:if="{{publicLoading}}" rows="3"/>
+    <figma-feedback wx:elif="{{publicError}}" type="error" title="公开赛事暂时无法读取" body="{{publicError}}" action-label="重新读取" bind:action="loadPublicEvents" disabled="{{uiPreview}}"/>
+    <figma-feedback wx:elif="{{publicLoaded && !publicEvents.length}}" type="empty" title="{{citySelection.label}}暂无进行中赛事" body="可查看其他阶段，或选择其他城市。" action-label="查看全部赛事" bind:action="openEvents" disabled="{{uiPreview}}"/>
+    <button wx:for="{{publicEvents}}" wx:key="publicEventId" class="home-event-card" data-id="{{item.publicEventId}}" bindtap="openPublicEvent" disabled="{{uiPreview}}">
+      <image class="home-event-card__image" src="/assets/home/event-court.jpg" mode="aspectFill"/>
+      <view class="home-event-card__copy"><view class="home-event-card__name">{{item.name}}</view><view class="home-event-card__meta"><text class="home-event-card__location">{{item.displayCity || item.venueName}}</text><text wx:if="{{item.dateLabel}}" class="home-event-card__date">{{item.dateLabel}}</text></view><view class="home-event-card__status">{{item.statusLabel}}</view></view>
+    </button>
+
+    <view class="home-section__head home-section__head--local"><view class="home-section__title">同城服务</view><button class="home-section__more" bindtap="openLocal" disabled="{{uiPreview}}">查看全部<image src="/assets/home/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button></view>
+    <view class="home-local-grid">
+      <button class="home-local-card home-local-card--court" bindtap="openCourt" disabled="{{uiPreview}}"><image src="/assets/home/service-court.png" mode="aspectFit"/><view class="home-local-card__title">找球场</view></button>
+      <button class="home-local-card home-local-card--referee" bindtap="openReferee" disabled="{{uiPreview}}"><image src="/assets/home/service-referee.png" mode="aspectFit"/><view class="home-local-card__title">约裁判</view></button>
+    </view>
+
+    <block wx:if="{{!uiPreview}}">
+      <sponsorship-slot region-id="{{citySelection.regionId || ''}}" catalog-version="{{citySelection.catalogVersion || ''}}" visible="{{sponsorVisible}}"/>
+
+      <view class="home-extra">
+      <view class="home-section__head"><view class="home-section__title">我的赛事</view><button class="home-section__more" bindtap="openEvents" disabled="{{uiPreview}}">全部赛事<image src="/assets/home/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button></view>
+      <figma-skeleton wx:if="{{eventsLoading && !featured.length}}" rows="2"/>
+      <button wx:for="{{featured}}" wx:key="key" class="home-private-event" data-org="{{item.orgId}}" data-id="{{item.id}}" bindtap="openEvent" disabled="{{uiPreview}}"><view class="home-private-event__status">{{item.statusLabel}}</view><view class="home-private-event__name">{{item.name}}</view><view class="home-private-event__meta">{{item.dateLabel}} · {{item.orgName}}</view></button>
+      <figma-feedback wx:if="{{!eventsLoading && !signedIn}}" type="empty" title="登录后查看你参与的赛事" body="浏览全国公开赛事无需登录。" action-label="登录并继续" bind:action="login" disabled="{{uiPreview}}"/>
+      <figma-feedback wx:elif="{{eventsError}}" type="error" title="我的赛事暂时无法读取" body="{{eventsError}}" action-label="重新读取" bind:action="loadEvents" disabled="{{uiPreview}}"/>
+      <figma-feedback wx:elif="{{!eventsLoading && !featured.length}}" type="empty" title="{{hasOrganizations ? '暂无进行中或即将开赛的赛事' : '当前账号没有机构赛事身份'}}" body="可从赛事页查看全部可访问内容。" disabled="{{uiPreview}}"/>
+      </view>
+
+      <view class="home-extra">
+      <view class="home-section__title">按位置找球员</view><view class="scb-ui-caption home-extra__caption">合作预约不会自动加入赛事报名名单。</view>
+      <view class="home-position-grid"><button wx:for="{{positions}}" wx:key="code" data-position="{{item.code}}" bindtap="position" disabled="{{uiPreview}}">{{item.name}}</button></view>
+      <view class="home-extra__links"><button data-page="bookings" bindtap="go" disabled="{{uiPreview}}">查看我的预约</button><button data-page="player-center" bindtap="go" disabled="{{uiPreview}}">进入本人球员中心</button></view>
+      </view>
+    </block>
+  </view>
+  </scroll-view>
+  <scb-nav active="Home" disabled="{{uiPreview}}"/>
 </view>
-<scb-nav active="Home"/>

@@ -1,84 +1,154 @@
-<scb-header title="分组与淘汰晋级" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page">
-  <view wx:if="{{loading && !event}}" class="card state-panel"><text class="state-label">晋级</text><view class="subtitle">正在读取分组与淘汰资料</view><view class="loading-lines"><view></view><view></view></view></view>
-  <view wx:elif="{{!event}}" class="card state-panel">
-    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
-    <view class="subtitle">{{unavailable ? '无法查看晋级' : '暂时无法读取'}}</view>
-    <view class="notice warning">{{error || '请从赛事详情重新进入。'}}</view>
-    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
-  </view>
-  <block wx:else>
-    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
-    <view wx:if="{{uncertain}}" class="card">
-      <view class="subtitle">操作结果待核对</view>
-      <view class="muted">网络中断时服务端可能已经执行。请先重新读取核对；不会自动重发。</view>
-      <button class="primary" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button>
-    </view>
-    <view class="board">
-      <view class="board-meta">{{event.statusLabel}} · {{event.formatLabel}}</view>
-      <view class="setup-name">{{event.name}}</view>
-      <view wx:if="{{progress}}" class="board-meta">{{progress}}</view>
-      <view wx:if="{{qualification}}" class="board-result">{{qualification}}</view>
+<scb-header title="分组与淘汰晋级" disabled="{{busy || uncertain}}"/>
+
+<view class="figma-page bracket-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view wx:if="{{loading && !event}}" class="figma-section bracket-state">
+      <figma-skeleton rows="5"/>
+      <view class="figma-caption">正在读取分组、签位与晋级资料</view>
     </view>
 
-    <view wx:if="{{blocker}}" class="notice small">{{blocker}}</view>
-    <view class="notice small">已被后续轮次引用的赛果不能直接重开更正；请先核对来源与已发布比赛，当前不提供撤销已发布子轮。</view>
+    <figma-feedback
+      wx:elif="{{!event}}"
+      type="{{unavailable ? 'pending' : 'error'}}"
+      title="{{unavailable ? '无法查看晋级' : '晋级资料读取失败'}}"
+      body="{{error || '请从赛事详情重新进入。'}}"
+      action-label="{{unavailable ? '' : '重新读取'}}"
+      bind:action="load"
+    />
 
-    <view wx:for="{{groups}}" wx:key="key" class="card">
-      <view class="row-between"><view class="subtitle">{{item.label}} · 组内积分</view><text wx:if="{{item.qualified}}" class="badge success">已定出线</text></view>
-      <view class="org-table">
-        <view class="org-table-row head"><text class="rank-cell">名次</text><text class="team-cell">球队</text><text class="num-cell record">胜-负</text><text class="num-cell">积分</text><text class="num-cell">净胜</text></view>
-        <view wx:for="{{item.rows}}" wx:for-item="row" wx:key="key" class="org-table-row"><text class="rank-cell">{{row.rank}}</text><text class="team-cell">{{row.team}}</text><text class="num-cell record">{{row.record}}</text><text class="num-cell">{{row.points}}</text><text class="num-cell">{{row.diff}}</text></view>
-      </view>
-      <view wx:if="{{item.qualified}}" class="muted">出线顺序：{{item.qualified}}</view>
-      <view wx:elif="{{item.ties}}" class="muted">同分待抽签：{{item.ties}}</view>
-      <view wx:else class="muted">等待本组全部比赛有效独立确认。</view>
-      <view wx:if="{{item.draw}}" class="muted">已保存抽签：{{item.draw.order}} · {{item.draw.reason}} · {{item.draw.time}}</view>
-      <block wx:if="{{item.needsDraw && canDraw && !next && !uncertain}}">
-        <text class="field-label">{{item.label}}抽签原因（4–500字）</text>
-        <textarea class="field" maxlength="500" value="{{tieReasons[item.key]}}" data-key="{{item.key}}" bindinput="tieInput" placeholder="例如：积分与净胜分完全相同，按规则抽签"/>
-        <button class="secondary" data-key="{{item.key}}" bindtap="drawTie" disabled="{{busy}}">保存{{item.label}}同分抽签</button>
-      </block>
-    </view>
+    <block wx:else>
+      <figma-feedback wx:if="{{error && !uncertain}}" type="error" title="本页操作未完成" body="{{error}}"/>
+      <figma-feedback wx:if="{{notice}}" type="success" title="已完成" body="{{notice}}"/>
+      <figma-feedback
+        wx:if="{{uncertain}}"
+        type="pending"
+        title="操作结果待核对"
+        body="网络中断时服务端可能已经执行。请先重新读取核对，不会自动重发。"
+        action-label="重新读取核对"
+        bind:action="load"
+      />
 
-    <view wx:for="{{rounds}}" wx:key="key" class="card">
-      <view class="row-between"><view class="subtitle">{{item.label}}</view><text class="badge {{item.published ? 'success' : ''}}">{{item.published ? '已发布' : '未发布'}}</text></view>
-      <view wx:for="{{item.slots}}" wx:for-item="slot" wx:key="key" class="org-match" data-id="{{slot.matchId}}" bindtap="openMatch">
-        <view wx:if="{{slot.label}}" class="small muted">{{slot.label}}</view>
-        <view class="org-match-teams"><text>{{slot.home}}</text><text class="org-match-vs">{{slot.bye ? '' : 'VS'}}</text><text>{{slot.away}}</text></view>
-        <view class="row-between"><text class="org-match-status {{slot.status === 'LIVE' ? 'live' : ''}}">{{slot.statusLabel}}</text><text wx:if="{{slot.winner}}" class="org-match-more">{{slot.winnerLabel || '晋级'}}：{{slot.winner}}</text></view>
-      </view>
-    </view>
-
-    <view wx:if="{{placements.length}}" class="card">
-      <view class="subtitle">最终名次</view>
-      <view wx:for="{{placements}}" wx:key="key" class="row-between row"><text>{{item.rank}}</text><text>{{item.team}}</text></view>
-    </view>
-
-    <view wx:if="{{next}}" class="card">
-      <view class="subtitle">发布{{next.title}}</view>
-      <view class="muted">{{next.note}}时间为北京时间；场地、球队占用与休息间隔由服务端复检。</view>
-      <view wx:if="{{!courts.length}}" class="notice warning small">机构没有可用场地，请先在排赛中添加场地。</view>
-      <button class="secondary" bindtap="optimizeNext" disabled="{{busy || uncertain || !courts.length}}">自动建议本轮时间与场地</button>
-      <view wx:for="{{fixtures}}" wx:key="key" class="setup-block">
-        <view class="section-label">{{item.label}}</view>
-        <picker class="field" range="{{courts}}" range-key="name" value="{{item.courtIndex}}" data-index="{{index}}" bindchange="pickCourt">{{courts[item.courtIndex].name || '选择场地'}}</picker>
-        <view class="setup-pair">
-          <picker mode="date" class="field" value="{{item.date}}" data-index="{{index}}" bindchange="pickDate">{{item.date || '选择日期'}}</picker>
-          <picker mode="time" class="field" value="{{item.time}}" data-index="{{index}}" bindchange="pickTime">{{item.time || '开始时间'}}</picker>
+      <view class="figma-summary bracket-summary">
+        <view class="figma-summary__icon"><figma-icon name="bracket" size="25"/></view>
+        <view class="figma-summary__copy">
+          <view class="figma-eyebrow">赛程管理{{event.statusLabel ? ' · ' + event.statusLabel : ''}}</view>
+          <view class="figma-title">分组与淘汰晋级</view>
+          <view class="figma-subtitle">按组内已确认结果确定名次，逐轮发布淘汰赛。</view>
         </view>
       </view>
-      <text class="field-label">发布原因（4–500字）</text>
-      <textarea class="field" maxlength="500" value="{{reason}}" bindinput="reasonInput" placeholder="例如：上一轮赛果已全部独立确认"/>
-      <view wx:for="{{conflicts}}" wx:key="key" class="muted">· {{item.label}}{{item.external ? '（与本机构其他赛事）' : ''}}</view>
-      <button class="primary" bindtap="publish" disabled="{{busy || uncertain || !courts.length}}">核对并正式发布</button>
-    </view>
 
-    <view class="mode-choice setup-actions">
-      <button class="secondary" bindtap="openSchedule">排赛与场地</button>
-      <button class="secondary" bindtap="openSetup">规则与公开观赛</button>
-    </view>
-    <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新晋级资料</button>
-  </block>
+      <view class="bracket-tabs" role="tablist">
+        <button class="bracket-tab {{bracketTab === 'groups' ? 'is-active' : ''}}" data-tab="groups" bindtap="changeBracketTab">小组排名</button>
+        <button class="bracket-tab {{bracketTab === 'bracket' ? 'is-active' : ''}}" data-tab="bracket" bindtap="changeBracketTab">淘汰签位</button>
+        <button class="bracket-tab {{bracketTab === 'placements' ? 'is-active' : ''}}" data-tab="placements" bindtap="changeBracketTab">最终名次</button>
+      </view>
+
+      <view wx:if="{{progress || qualification}}" class="bracket-progress">
+        <view wx:if="{{progress}}">{{progress}}</view>
+        <view wx:if="{{qualification}}">{{qualification}}</view>
+      </view>
+
+      <view id="bracket-groups" wx:for="{{groups}}" wx:key="key" class="figma-section bracket-group">
+        <view class="bracket-section-head">
+          <view class="figma-section__title">{{item.label}} · 积分</view>
+          <view wx:if="{{item.qualified}}" class="figma-status figma-status--green">已定出线</view>
+        </view>
+        <view class="figma-grid bracket-ranking-grid">
+          <view wx:for="{{item.rows}}" wx:for-item="row" wx:key="key" class="figma-grid__item bracket-rank-card">
+            <view class="bracket-rank-head"><text class="bracket-rank-team">{{row.team}}</text><text wx:if="{{!figmaPreviewCompact}}" class="bracket-rank-number">{{row.rank}}</text></view>
+            <view class="figma-row__subtitle">{{row.summaryText || (row.record + ' · 净胜 ' + row.diff)}}</view>
+            <view class="figma-status figma-status--orange">{{row.points}}分</view>
+          </view>
+        </view>
+        <view wx:if="{{item.qualified}}" class="figma-section__hint">出线顺序：{{item.qualified}}</view>
+        <view wx:elif="{{item.ties}}" class="figma-section__hint">同分待抽签：{{item.ties}}</view>
+        <view wx:elif="{{!figmaPreviewCompact}}" class="figma-section__hint">等待本组全部比赛有效独立确认。</view>
+        <view wx:if="{{item.draw}}" class="bracket-audit">已保存抽签：{{item.draw.order}}<br/>{{item.draw.reason}} · {{item.draw.time}}</view>
+        <view wx:if="{{item.needsDraw && canDraw && !next && !uncertain}}" class="bracket-draw">
+          <view class="figma-field-group">
+            <view class="figma-field-label">{{item.label}}抽签原因（4–500字）</view>
+            <textarea class="figma-field-control" maxlength="500" value="{{tieReasons[item.key]}}" data-key="{{item.key}}" bindinput="tieInput" placeholder="说明积分与净胜分相同后的抽签依据"/>
+          </view>
+          <button class="figma-action figma-action--navy" data-key="{{item.key}}" bindtap="drawTie" disabled="{{busy}}">保存{{item.label}}同分抽签</button>
+        </view>
+      </view>
+
+      <view wx:if="{{!groups.length}}" id="bracket-groups" class="figma-section">
+        <view class="figma-section__title">小组排名</view>
+        <view class="figma-section__hint">当前赛制没有小组积分，淘汰签位由已确认赛果产生。</view>
+      </view>
+
+      <view id="bracket-rounds" wx:for="{{rounds}}" wx:key="key" class="figma-section bracket-round">
+        <view class="bracket-section-head">
+          <view class="figma-section__title">{{item.label}}签位</view>
+          <view wx:if="{{!figmaPreviewCompact}}" class="figma-status {{item.published ? 'figma-status--green' : 'figma-status--orange'}}">{{item.published ? '已发布' : '待发布'}}</view>
+        </view>
+        <button wx:for="{{item.slots}}" wx:for-item="slot" wx:key="key" class="figma-row bracket-slot" data-id="{{slot.matchId}}" bindtap="openMatch" disabled="{{!slot.matchId}}">
+          <view class="bracket-slot-icon"><figma-icon name="schedule" size="18"/></view>
+          <view class="figma-row__copy">
+            <view class="figma-row__title">{{slot.label || item.label}}</view>
+            <view class="figma-row__subtitle">{{slot.home}}{{slot.bye ? ' · 轮空' : ' vs ' + slot.away}}</view>
+            <view wx:if="{{slot.winner}}" class="figma-row__subtitle">{{slot.winnerLabel || '晋级'}}：{{slot.winner}}</view>
+          </view>
+          <view class="figma-status {{slot.status === 'LIVE' ? 'figma-status--error' : 'figma-status--orange'}}">{{slot.statusLabel}}</view>
+        </button>
+      </view>
+
+      <view wx:if="{{!rounds.length}}" id="bracket-rounds" class="figma-section">
+        <view class="figma-section__title">淘汰签位</view>
+        <view class="figma-section__hint">尚未发布淘汰轮次；来源赛果确认后才能生成签位。</view>
+      </view>
+
+      <view wx:if="{{!figmaPreviewCompact}}" id="bracket-placements" class="figma-section">
+        <view class="figma-section__title">最终名次</view>
+        <view wx:if="{{placements.length}}">
+          <view wx:for="{{placements}}" wx:key="key" class="figma-row bracket-placement">
+            <view class="bracket-place">{{item.rank}}</view>
+            <view class="figma-row__copy"><view class="figma-row__title">{{item.team}}</view></view>
+          </view>
+        </view>
+        <view wx:else class="figma-section__hint">赛事完成并确认赛果后显示最终名次。</view>
+      </view>
+
+      <view class="figma-section bracket-conditions">
+        <view class="figma-section__title">本轮发布条件</view>
+        <view class="figma-row">
+          <view class="bracket-step">1</view>
+          <view class="figma-row__copy"><view class="figma-row__title">核验来源赛果</view><view class="figma-row__subtitle">须全部有效独立确认</view></view>
+          <view class="figma-status {{blocker ? 'figma-status--orange' : 'figma-status--green'}}">{{blocker ? '核对中' : '已满足'}}</view>
+        </view>
+        <view class="figma-row">
+          <view class="bracket-step">2</view>
+          <view class="figma-row__copy"><view class="figma-row__title">安排时间与场地</view><view class="figma-row__subtitle">核对场地、球队占用和休息间隔</view></view>
+          <view class="figma-status {{next ? 'figma-status--orange' : ''}}">{{next ? '待准备' : '未开放'}}</view>
+        </view>
+        <view wx:if="{{blocker}}" class="bracket-blocker">{{blocker}}</view>
+        <view class="figma-section__hint">已被后续轮次引用的赛果不能直接重开更正；发布后需重新开启公开观赛。</view>
+        <button class="bracket-text-action" bindtap="openSetup">查看规则与公开观赛设置</button>
+      </view>
+
+      <view wx:if="{{next}}" class="figma-section bracket-publish">
+        <view class="figma-section__title">发布{{next.title}}</view>
+        <view class="figma-section__hint">{{next.note}}时间为北京时间；服务端会再次复检场地、球队和休息间隔。</view>
+        <figma-feedback wx:if="{{!courts.length}}" type="pending" title="暂无可用场地" body="请先在排赛中添加场地。"/>
+        <button class="figma-action figma-action--ghost" bindtap="optimizeNext" disabled="{{busy || uncertain || !courts.length}}">自动建议时间与场地</button>
+        <view wx:for="{{fixtures}}" wx:key="key" class="bracket-fixture">
+          <view class="figma-field-label">{{item.label}}</view>
+          <picker class="figma-field-control bracket-picker" range="{{courts}}" range-key="name" value="{{item.courtIndex}}" data-index="{{index}}" bindchange="pickCourt">{{courts[item.courtIndex].name || '选择场地'}}</picker>
+          <view class="bracket-date-grid">
+            <picker mode="date" class="figma-field-control bracket-picker" value="{{item.date}}" data-index="{{index}}" bindchange="pickDate">{{item.date || '选择日期'}}</picker>
+            <picker mode="time" class="figma-field-control bracket-picker" value="{{item.time}}" data-index="{{index}}" bindchange="pickTime">{{item.time || '开始时间'}}</picker>
+          </view>
+        </view>
+        <view class="figma-field-group"><view class="figma-field-label">发布原因（4–500字）</view><textarea class="figma-field-control" maxlength="500" value="{{reason}}" bindinput="reasonInput" placeholder="说明本轮来源赛果与发布依据"/></view>
+        <view wx:for="{{conflicts}}" wx:key="key" class="bracket-blocker">{{item.label}}{{item.external ? '（与本机构其他赛事）' : ''}}</view>
+        <button class="figma-action figma-action--navy" bindtap="publish" disabled="{{busy || uncertain || !courts.length}}">核对并正式发布</button>
+      </view>
+    </block>
+  </view>
+
+  <view wx:if="{{event}}" class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="openSchedule" disabled="{{busy}}">排赛与场地</button>
+    <button class="figma-action figma-action--orange" bindtap="load" disabled="{{loading || busy}}">{{loading ? '正在刷新' : '刷新晋级资料'}}</button>
+  </view>
 </view>

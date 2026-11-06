@@ -3,7 +3,7 @@
   "route": "pages/performance/index",
   "state": "review",
   "figmaNode": "30:2172",
-  "expectText": ["合成城市联赛2025", "重试加载同一页历史"],
+  "expectText": ["合成城市联赛2025", "重试同一页"],
   "syntheticData": true,
   "data": {
     "authorized": true,

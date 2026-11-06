@@ -4,7 +4,7 @@
   "state": "ready",
   "figmaNode": "30:2471",
   "referenceKind": "derived",
-  "expectText": ["确定场次报价", "查看实际资金", "本页不读取资金"],
+  "expectText": ["确定场次报价", "原单查询", "本页不读取资金"],
   "static": true,
   "primary": true,
   "data": {

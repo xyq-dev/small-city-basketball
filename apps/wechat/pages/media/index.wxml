@@ -1,17 +1,14 @@
-<scb-header title="比赛影像" disabled="{{busy}}"/>
-<view class="page media-entry ui002-workspace">
-  <view class="media-intro"><view class="title">留住球场上的每一刻</view><view class="media-copy">只查看主办方明确发布的比赛图片与小视频。</view></view>
-  <view class="media-head"><view class="subtitle">最近观看的赛事</view></view>
-  <view wx:if="{{!recentEvents.length}}" class="media-panel">
-    <view class="media-strong">还没有可查看的赛事</view>
-    <view class="muted">打开主办方分享的赛事卡片后，可在这里直接进入该届的比赛视频与图片。</view>
-    <button class="primary" bindtap="open">去赛事页</button>
+<scb-header title="赛事图片与视频" back="{{true}}"/>
+<view class="figma-page media-page">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="media-hero"><view class="media-hero__copy"><view class="figma-eyebrow">比赛影像</view><view class="media-hero__title">{{featuredEvent ? featuredEvent.name + ' · 比赛影像' : '城市邀请赛 · 比赛影像'}}</view><view class="media-hero__subtitle">从已公开赛事进入媒体内容</view></view><image src="/assets/home/event-court.jpg" mode="aspectFill"/></view>
+    <view class="figma-section">
+      <view class="figma-section__title">最近观看的赛事</view>
+      <figma-feedback wx:if="{{!recentEvents.length}}" type="empty" title="还没有可查看的赛事" body="打开有效公开赛事后，可从这里进入已发布媒体。" action-label="去赛事页" bind:action="open"/>
+      <button wx:for="{{recentEvents}}" wx:key="publicEventId" class="figma-row" data-id="{{item.publicEventId}}" bindtap="openRecent"><view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.dateLabel}} · 已公开赛事</view></view><view class="figma-status figma-status--orange">查看影像</view></button>
+    </view>
+    <view class="figma-section"><view class="figma-section__title">赛事媒体</view><view class="figma-row"><view class="figma-row__mark is-active"/><view class="figma-row__copy"><view class="figma-row__title">已发布回放</view><view class="figma-row__subtitle">以主办方实际发布为准</view></view></view><view class="figma-row"><view class="figma-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">图片与视频</view><view class="figma-row__subtitle">按公开赛事查看</view></view></view></view>
+    <view class="figma-section"><view class="figma-section__title">播放与分享</view><view class="media-notice"><view class="media-notice__mark"/><view class="figma-row__copy"><view class="figma-row__title">媒体来源</view><view class="figma-row__subtitle">仅呈现当前有效发布</view></view></view><view class="media-notice"><view class="media-notice__mark"/><view class="figma-row__copy"><view class="figma-row__title">外部播放地址</view><view class="figma-row__subtitle">仅提供复制，不保证在微信内播放</view></view></view></view>
   </view>
-  <button wx:for="{{recentEvents}}" wx:key="publicEventId" class="media-event" data-id="{{item.publicEventId}}" bindtap="openRecent">
-    <scb-icon name="play" size="20"/>
-    <view class="media-event-main"><view class="media-event-name">{{item.name}}</view><view class="muted">{{item.dateLabel}} · 查看已发布媒体</view></view>
-    <scb-icon name="chevron-right" tone="gray" size="16"/>
-  </button>
-  <view class="notice media-note"><view class="media-strong">以当前有效发布为准</view><view class="small">未发布、已撤销或已到期的媒体不显示；没有已发布媒体时不会用示例视频替代。外部链接仅提供复制，不保证微信内播放。直播、云回放与转码按当前频道、授权和正式接入条件开放；未核验时不显示可用。</view></view>
+  <view class="figma-fixed-actions"><button class="figma-action figma-action--ghost" bindtap="open">去赛事页</button><button class="figma-action figma-action--orange" bindtap="openFeatured" disabled="{{!featuredEvent}}">查看赛事影像</button></view>
 </view>
-<scb-nav active="Video"/>

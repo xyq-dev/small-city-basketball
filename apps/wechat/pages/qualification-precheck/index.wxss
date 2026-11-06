@@ -1,21 +1,72 @@
-page { background:#f4f6fa; color:#18283f; }
-.precheck-page { padding:16px; padding-bottom:calc(124px + env(safe-area-inset-bottom)); }
-.precheck-page .card { padding:16px; border-radius:16px; margin-bottom:12px; }
-.precheck-page .subtitle { color:#18283f; font-size:18px; line-height:28px; font-weight:700; }
-.precheck-summary { font-size:14px; line-height:22px; }
-.precheck-summary > view + view { margin-top:8px; }
-.precheck-confirm .consent { padding:0; margin:0; color:#18283f; background:transparent; min-height:44px; font-size:14px; line-height:22px; }
-.precheck-confirm checkbox { flex:0 0 44px; min-height:44px; transform:none; }
-.precheck-notice { padding:16px; margin-bottom:12px; font-size:12px; line-height:18px; color:#63758b; background:#eaf0f8; }
-.precheck-member + .precheck-member { margin-top:12px; padding-top:12px; border-top:1px solid #e1e7ef; }
-.precheck-cell { display:flex; align-items:center; gap:12px; min-height:58px; margin:0; padding:8px 0; border-radius:0; background:transparent; text-align:left; font-weight:400; }
-.precheck-cell + .precheck-cell { margin-top:8px; }
-.precheck-cell::after { border:0; }
-.precheck-icon { flex:0 0 22px; width:22px; height:22px; }
-.precheck-chevron { flex:0 0 16px; width:16px; height:16px; }
-.precheck-copy { flex:1; min-width:0; }
-.precheck-cell-title { color:#18283f; font-size:14px; line-height:22px; font-weight:500; }
-.precheck-cell-note { color:#63758b; font-size:12px; line-height:18px; margin-top:2px; overflow-wrap:anywhere; }
-.precheck-fixed { padding:12px 16px calc(28px + env(safe-area-inset-bottom)); border-top:0; }
-.precheck-fixed .primary { min-height:48px; margin:0; padding:12px; border-radius:12px; font-size:14px; line-height:22px; }
-.small { overflow-wrap:anywhere; }
+@import "../../styles/figma-pages.wxss";
+
+.precheck-step {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  gap: 10px;
+}
+
+.precheck-step__mark {
+  display: flex;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eaf2fc;
+  color: #123c73;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.precheck-step > view:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+
+.precheck-progress-row {
+  display: flex;
+  width: 100%;
+  min-height: 68px;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #e6ebf2;
+}
+
+.precheck-progress-row:last-child {
+  border-bottom: 0;
+}
+
+.precheck-progress-mark {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eaf2fc;
+  color: #123c73;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.precheck-choice {
+  display: flex;
+  width: 100%;
+  min-height: 55px;
+  margin: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  color: #18283f;
+  text-align: left;
+}
+
+.precheck-choice + .precheck-choice {
+  border-top: 1px solid #e6ebf2;
+}

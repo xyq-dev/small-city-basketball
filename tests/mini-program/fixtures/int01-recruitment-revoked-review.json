@@ -1,0 +1,59 @@
+{
+  "name": "int01-recruitment-revoked-review",
+  "route": "pages/recruitment/index",
+  "state": "synthetic-authorized-manager-reviews-revoked-recruitment",
+  "figmaNode": "6:1124",
+  "syntheticData": true,
+  "designSource": "Existing recruitment manager DTO and independent pending-application review after publication revocation; synthetic only",
+  "expectText": ["合成城市邀请赛", "合成待审球队", "处理或撤销理由", "拒绝"],
+  "expectVisible": [
+    "textarea[data-field=\"reason\"][data-mini-bindinput=\"input\"]",
+    "button[data-mini-bindtap=\"review\"][data-decision=\"REJECT\"]"
+  ],
+  "expectEnabled": ["拒绝"],
+  "expectAbsentSelectors": ["button[data-mini-bindtap=\"revoke\"]"],
+  "expectValues": [{ "selector": "textarea[data-field=\"reason\"]", "value": "" }],
+  "data": {
+    "mode": "manage",
+    "userId": "10000000-0000-4000-8000-000000000001",
+    "orgId": "20000000-0000-4000-8000-000000000001",
+    "eventId": "30000000-0000-4000-8000-000000000001",
+    "busy": false,
+    "loading": false,
+    "pending": null,
+    "reason": "",
+    "workspace": {
+      "event": {
+        "id": "30000000-0000-4000-8000-000000000001",
+        "name": "合成城市邀请赛",
+        "status": "REGISTRATION_CLOSED",
+        "version": 3
+      },
+      "publication": {
+        "id": "50000000-0000-4000-8000-000000000001",
+        "status": "REVOKED",
+        "version": 2
+      },
+      "capabilities": {
+        "canPublish": false,
+        "canRevoke": false,
+        "canImport": false,
+        "canInvite": false
+      }
+    },
+    "applications": [
+      {
+        "id": "40000000-0000-4000-8000-000000000001",
+        "orgId": "20000000-0000-4000-8000-000000000001",
+        "eventId": "30000000-0000-4000-8000-000000000001",
+        "publicationId": "50000000-0000-4000-8000-000000000001",
+        "applicantId": "10000000-0000-4000-8000-000000000002",
+        "teamName": "合成待审球队",
+        "status": "PENDING",
+        "version": 7,
+        "reviewReason": null
+      }
+    ],
+    "invitations": []
+  }
+}

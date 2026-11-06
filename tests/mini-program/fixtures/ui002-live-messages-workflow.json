@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "5:306",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["查看当前仍有权读取的通知", "仅筛选已读取的消息", "查看我的关注"],
+  "expectText": ["只显示当前仍有权读取的通知", "全部", "未读", "我的关注"],
   "data": {
     "items": [
       {

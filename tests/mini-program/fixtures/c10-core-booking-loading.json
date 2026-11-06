@@ -4,9 +4,11 @@
   "state": "loading",
   "figmaNode": "11:36",
   "syntheticData": true,
-  "expectText": ["正在读取当前身份、球队与球员资料"],
+  "expectText": ["创建预约"],
   "data": {
     "loading": true,
     "ready": false
-  }
+  },
+  "expectVisible": ["[role=\"status\"][aria-label=\"正在加载\"]"],
+  "expectAbsentText": ["核对并提交预约"]
 }

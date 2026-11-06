@@ -1,0 +1,58 @@
+{
+  "name": "e04-trade-order-figma-summary",
+  "route": "pages/trade-order/index",
+  "state": "figma-summary",
+  "referenceKind": "direct",
+  "evidenceKind": "synthetic-static",
+  "synthetic": true,
+  "primary": true,
+  "expectText": ["确定费用", "参赛服务费", "支付核对", "收款资料", "查看退款记录", "查询原支付"],
+  "data": {
+    "loading": false,
+    "busy": false,
+    "error": "",
+    "message": "",
+    "activeSection": "summary",
+    "orders": [],
+    "pending": null,
+    "noCharge": false,
+    "order": {
+      "id": "00000001-0000-4000-8000-000000000101",
+      "kind": "ENTRY_FEE",
+      "kindText": "参赛服务",
+      "status": "PENDING_PAYMENT",
+      "title": "城市邀请赛 · 参赛服务",
+      "serviceFeeLabel": "参赛服务费",
+      "serviceFeeHint": "单场报价",
+      "serviceFeeText": "¥200.00",
+      "platformFeeHint": "平台服务",
+      "platformFeeText": "¥20.00",
+      "totalText": "¥220.00",
+      "paidFen": 0,
+      "merchantName": "合成赛事收款主体（仅布局夹具）",
+      "terms": "合成静态条款：仅用于核对费用、支付和退款区域的排版，不构成真实收费或付款承诺。",
+      "orderSummary": "城市邀请赛参赛服务订单",
+      "balanceConflict": false,
+      "attempts": [
+        {
+          "id": "00000004-0000-4000-8000-000000000101",
+          "channel": "JSAPI",
+          "status": "PENDING",
+          "checkout": null
+        }
+      ],
+      "refunds": [],
+      "deductions": [],
+      "settlements": [],
+      "capabilities": {
+        "canPay": false,
+        "native": false,
+        "jsapi": false,
+        "canManage": false,
+        "canRequestRefund": false,
+        "settlementAvailable": false
+      }
+    }
+  },
+  "figmaNode": "36:127"
+}

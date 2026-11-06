@@ -1,25 +1,96 @@
-<scb-header title="保险与保障" disabled="{{busy}}"/>
+<scb-header title="保险与保障" disabled="{{busy || pending}}"/>
 <web-view wx:if="{{checkoutUrl}}" src="{{checkoutUrl}}" bindmessage="returnFromCheckout"/>
-<view wx:else class="page has-actions insurance-workspace ui002-workspace">
- <view class="page-intro"><view class="eyebrow">赛事保障</view><view class="title">两种办理方式</view><view class="muted">购买保险与参赛资格分别审核。已持有效保单，无需重复购买。</view></view>
- <scb-steps items="{{workflowSteps}}" current="{{activeSection}}" busy="{{busy}}" bindchange="changeSection"/>
- <scb-state wx:if="{{loading}}" kind="loading" title="正在读取本人保障记录" description="付款、承保与本届资格分别核对。"/>
- <view id="insurance-options"/>
- <view wx:if="{{error}}" class="notice warning">{{error}}</view><view wx:if="{{message}}" class="notice">{{message}}</view>
- <view class="notice">保费由实际保险服务方收取。付款、出单、保障有效与报名通过分别判断；已有有效外部保险无需重复购买。</view>
- <view wx:if="{{pending}}" class="card"><view class="subtitle">原请求结果待核对</view><view class="small">保留原编号与原内容，不重新创建投保或退保。</view><button class="primary" bindtap="recover" disabled="{{busy}}">核对并恢复原请求</button></view>
- <scb-state wx:if="{{workspace && !workspace.enabled}}" kind="closed" title="在线投保暂未开放" description="服务主体与销售模式确认后开放。未成年人在线投保尚未开放；已有保单仍可提交赛事审核。"/>
- <view wx:if="{{workspace && !workspace.enabled && workspace.reason}}" class="small muted">{{workspace.reason}}</view>
- <button wx:if="{{workspace.providerEntryUrl}}" class="primary" bindtap="providerEntry" disabled="{{busy || pending}}">前往已审核保险服务方办理</button>
- <button wx:if="{{orgId && entryId}}" class="secondary" bindtap="externalPolicy" disabled="{{busy}}">提交已有外部保单审核</button>
- <button wx:if="{{orgId && entryId}}" class="secondary" bindtap="qualification" disabled="{{busy}}">身份、照片与签署独立资格预审</button>
- <view id="insurance-quote" class="section-label">产品与本次报价</view>
- <view wx:for="{{workspace.products}}" wx:key="id" class="card"><view class="subtitle">{{item.name}}</view><view>{{item.insurer}}</view><view class="small">条款版本：{{item.termsVersion}} · {{item.basketballCovered ? '仅适用于已审核赛事、年龄与保障范围' : '不满足篮球保障要求'}}</view><view class="small">产品条款：{{item.termsUrl}}</view><button class="secondary" data-id="{{item.id}}" bindtap="terms" disabled="{{busy || pending}}">阅读服务方产品条款</button><button class="secondary" data-id="{{item.id}}" bindtap="select" disabled="{{busy || pending || !item.basketballCovered}}">{{selectedProduct===item.id ? '已选产品' : '选择此产品'}}</button></view>
- <button wx:if="{{workspace.enabled && entryId && memberId}}" class="primary" bindtap="quote" disabled="{{busy || pending || !selectedProduct}}">按本人当前资料与赛事日期申请报价</button>
- <view wx:if="{{quote}}" class="card"><view class="subtitle">服务方当前报价</view><view>保费 {{quote.premiumFen}} 分 CNY</view><view>{{quote.coverageStartDate}} 至 {{quote.coverageEndDate}}</view><view class="small">到期：{{quote.expiresAt}}</view><view class="notice small">真正投保前须独立资格预审及必要监护确认通过。</view><button class="secondary" bindtap="consent" disabled="{{busy || pending}}">{{consent ? '已明确同意投保条款和本次资料用途' : '阅读产品条款后，明确同意本次投保'}}</button><button class="primary" bindtap="purchase" disabled="{{busy || pending || !consent || !workspace.enabled}}">确认本次报价并创建投保申请</button></view>
- <view id="insurance-records" class="section-label">本届投保与原单进度</view>
- <scb-state wx:if="{{workspace && !workspace.orders.length && !loading}}" kind="empty" title="本届暂无在线投保记录" description="已有外部保单可从上方入口提交；没有记录不等于参赛资格已通过。"/>
- <view wx:for="{{workspace.orders}}" wx:key="id" class="card"><view class="subtitle">本届投保记录</view><view class="status-banner">支付：{{paymentLabels[item.paymentStatus] || item.paymentStatus}} · 保单：{{policyLabels[item.policyStatus] || item.policyStatus}}</view><view>保费 {{item.premiumFen}} 分 · {{item.coverageStartDate}} 至 {{item.coverageEndDate}}</view><view wx:if="{{item.maskedPolicyNumber}}">保单号 {{item.maskedPolicyNumber}}</view><view class="small">最近服务方核实：{{item.verifiedAt || '尚未核实'}}</view><view wx:if="{{!item.currentMaterial}}" class="notice warning">本人资料版本已改变，旧保单不能自动通过当前资格。</view><view wx:if="{{item.reconciliationRequired}}" class="notice warning">自动核对次数已用完，原单结果仍未知。请查询原单或联系平台核对，勿重复购买。</view><view wx:if="{{item.pendingOperation}}" class="small">原操作结果尚未确认。<text wx:if="{{item.canRefresh}}">自动核对已暂停，可点击查询原单继续核对；不会重复投保或退保。</text><text wx:else>请等待核对。</text></view><button class="secondary" data-id="{{item.id}}" data-type="REFRESH" bindtap="command" disabled="{{busy || pending || !item.canRefresh}}">向服务方查询原单</button><button wx:if="{{item.paymentStatus==='UNPAID' || item.paymentStatus==='PENDING'}}" class="primary" data-id="{{item.id}}" bindtap="checkout" disabled="{{busy || pending || !workspace.enabled}}">在保险服务方付款</button><button wx:if="{{item.canDownloadDocument}}" class="secondary" data-id="{{item.id}}" bindtap="document" disabled="{{busy || pending}}">查看私有保单 PDF</button><view wx:if="{{item.canDownloadDocument}}" class="small">历史保单文件仅供记录，当前保障以最新查单结果为准。</view><button class="secondary" data-id="{{item.id}}" data-type="REQUEST_CANCELLATION" bindtap="command" disabled="{{busy || pending || !item.canRequestCancellation}}">明确申请退保</button></view>
- <button class="secondary" bindtap="load" disabled="{{busy || loading}}">重新读取</button>
- <view wx:if="{{workspace}}" class="fixed-actions"><button class="primary" bindtap="showRecords" disabled="{{busy}}">查看已有保单办理</button></view>
+<view wx:else class="figma-page insurance-rebuild">
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary">
+      <view class="figma-summary__icon"><figma-icon name="insurance" size="28"/></view>
+      <view class="figma-summary__copy">
+        <view class="figma-eyebrow">本人赛事保障</view>
+        <view class="figma-title">{{workspace && workspace.eventName ? workspace.eventName + ' · 保障核对' : '保障核对'}}</view>
+        <view class="figma-subtitle">已有保单与在线办理使用不同流程</view>
+      </view>
+    </view>
+
+    <figma-tabs key1="options" label1="办理方式" key2="records" label2="原单进度" active="{{activeSection === 'records' ? 'records' : 'options'}}" disabled="{{busy || loading}}" bind:change="changeSection"/>
+    <figma-skeleton wx:if="{{loading && !workspace}}" rows="4"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="保障记录读取失败" body="{{error}}" action-label="重新读取" disabled="{{busy || loading}}" bind:action="load"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="当前操作已记录" body="{{message}}"/>
+    <figma-feedback wx:if="{{pending}}" type="warning" title="原请求结果待核对" body="保留原编号和原内容，不重新创建投保或退保。" action-label="核对原请求" disabled="{{busy}}" bind:action="recover"/>
+
+    <block wx:if="{{workspace && activeSection !== 'records'}}">
+      <view class="figma-section" id="insurance-options">
+        <view class="figma-section__title">两种办理方式</view>
+        <button class="figma-row insurance-choice" bindtap="externalPolicy" disabled="{{busy || !orgId || !entryId}}">
+          <view class="figma-row__mark"/>
+          <view class="figma-row__copy"><view class="figma-row__title">使用已有保单</view><view class="figma-row__subtitle">上传本届有效的外部凭证</view></view>
+          <view class="figma-status figma-status--orange">可办理</view>
+        </button>
+        <button class="figma-row insurance-choice" bindtap="providerEntry" disabled="{{busy || pending || !workspace.enabled || !workspace.providerEntryUrl}}">
+          <view class="figma-row__mark"/>
+          <view class="figma-row__copy"><view class="figma-row__title">在线办理保险</view><view class="figma-row__subtitle">依赖已准入的真实服务方</view></view>
+          <view class="figma-status">{{workspace.enabled ? '按服务方开放' : '暂未开放'}}</view>
+        </button>
+      </view>
+
+      <figma-feedback wx:if="{{!workspace.enabled && !figmaHideClosedFeedback}}" type="closed" title="在线投保暂未开放" body="{{workspace.reason || '服务主体与销售模式确认后开放。已有保单仍可提交赛事审核。'}}"/>
+
+      <view class="figma-section">
+        <view class="figma-section__title">保障核对</view>
+        <view class="figma-field-group"><view class="figma-field-label">参赛对象</view><view class="figma-field-control insurance-readonly">核对本人及本届赛事</view></view>
+        <view class="figma-field-group"><view class="figma-field-label">保障期间</view><view class="figma-field-control insurance-readonly">须覆盖赛事实际日期</view></view>
+        <view class="figma-field-group"><view class="figma-field-label">已有保单凭证</view><button class="figma-field-control insurance-field-button" bindtap="externalPolicy" disabled="{{busy || !orgId || !entryId}}"><text>通过私有资料入口提交</text><view class="figma-status figma-status--orange">待上传</view></button></view>
+      </view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">办理进度</view>
+        <view class="insurance-step"><view class="insurance-step__mark">1</view><view class="figma-row__copy"><view class="figma-row__title">提交凭证</view><view class="figma-row__subtitle">仅保存供独立人员核验</view></view><view class="figma-status {{workspace.orders.length || quote ? 'figma-status--green' : 'figma-status--orange'}}">{{workspace.orders.length ? '已提交' : quote ? '报价已生成' : '待提交'}}</view></view>
+        <view class="insurance-step"><view class="insurance-step__mark">2</view><view class="figma-row__copy"><view class="figma-row__title">保障审核</view><view class="figma-row__subtitle">核验覆盖范围和有效期</view></view><view class="figma-status {{workspace.orders.length && workspace.orders[0].policyStatus === 'ISSUED' ? 'figma-status--green' : 'figma-status--orange'}}">{{workspace.orders.length ? (policyLabels[workspace.orders[0].policyStatus] || workspace.orders[0].policyStatus) : '待审核'}}</view></view>
+        <view class="insurance-step"><view class="insurance-step__mark">3</view><view class="figma-row__copy"><view class="figma-row__title">参赛资格</view><view class="figma-row__subtitle">另行判断本届报名条件</view></view><view class="figma-status figma-status--orange">{{workspace.orders.length && workspace.orders[0].policyStatus === 'ISSUED' ? '等待资格复核' : '待复核'}}</view></view>
+      </view>
+
+      <view wx:if="{{workspace.enabled && workspace.products.length}}" class="figma-section" id="insurance-quote">
+        <view class="figma-section__title">在线产品与本次报价</view>
+        <view class="figma-section__hint">产品、付款、出单和参赛资格分别核对。</view>
+        <view wx:for="{{workspace.products}}" wx:key="id" class="insurance-product">
+          <button class="figma-row" data-id="{{item.id}}" bindtap="select" disabled="{{busy || pending || !item.basketballCovered}}">
+            <view class="figma-row__mark {{selectedProduct === item.id ? 'is-active' : ''}}"/>
+            <view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.insurer}} · 条款 {{item.termsVersion}}</view></view>
+            <view class="figma-status {{item.basketballCovered ? 'figma-status--green' : 'figma-status--error'}}">{{item.basketballCovered ? '可选择' : '不适用'}}</view>
+          </button>
+          <button class="insurance-terms" data-id="{{item.id}}" bindtap="terms" disabled="{{busy || pending}}">阅读服务方产品条款</button>
+        </view>
+        <button class="figma-action figma-action--navy" bindtap="quote" disabled="{{busy || pending || !selectedProduct || !entryId || !memberId}}">按当前资料申请报价</button>
+      </view>
+
+      <view wx:if="{{quote}}" class="figma-section">
+        <view class="figma-section__title">服务方当前报价</view>
+        <view class="insurance-price">{{quote.premiumFen}} 分 <text>CNY</text></view>
+        <view class="figma-section__hint">{{quote.coverageStartDate}}—{{quote.coverageEndDate}} · 报价到期 {{quote.expiresAt}}</view>
+        <button class="figma-action figma-action--ghost" bindtap="consent" disabled="{{busy || pending}}">{{consent ? '已明确同意投保条款和本次资料用途' : '阅读条款后明确同意本次投保'}}</button>
+        <button class="figma-action figma-action--orange" bindtap="purchase" disabled="{{busy || pending || !consent || !workspace.enabled}}">确认报价并创建投保申请</button>
+      </view>
+
+      <view class="insurance-disclaimer">保费由实际保险服务方收取。付款、出单、保障有效与报名通过分别判断；已有有效外部保险无需重复购买。</view>
+    </block>
+
+    <block wx:if="{{workspace && activeSection === 'records'}}">
+      <figma-feedback wx:if="{{!workspace.orders.length && !loading}}" type="empty" title="本届暂无在线投保记录" body="已有外部保单可从办理方式提交；没有记录不等于参赛资格已通过。"/>
+      <view wx:for="{{workspace.orders}}" wx:key="id" class="figma-section insurance-order">
+        <view class="insurance-order__head"><view><view class="figma-section__title">本届投保记录</view><view class="figma-section__hint">{{item.coverageStartDate}}—{{item.coverageEndDate}}</view></view><view class="figma-status figma-status--orange">{{policyLabels[item.policyStatus] || item.policyStatus}}</view></view>
+        <view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">付款状态</view><view class="figma-row__subtitle">保费 {{item.premiumFen}} 分</view></view><view class="figma-status">{{paymentLabels[item.paymentStatus] || item.paymentStatus}}</view></view>
+        <view wx:if="{{item.maskedPolicyNumber}}" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">保单号</view><view class="figma-row__subtitle">{{item.maskedPolicyNumber}}</view></view></view>
+        <figma-feedback wx:if="{{!item.currentMaterial}}" type="warning" title="本人资料版本已改变" body="旧保单不能自动通过当前资格。"/>
+        <view wx:if="{{item.reconciliationRequired || item.pendingOperation}}" class="insurance-warning"><view class="figma-row__title">原单结果仍待核对</view><view class="figma-row__subtitle">{{item.reconciliationRequired || item.canRefresh ? '自动核对已暂停，可点击查询原单继续核对；不会重复投保或退保。' : '保留原操作并等待核对；不会重复投保或退保。'}}</view></view>
+        <button class="figma-action figma-action--ghost" data-id="{{item.id}}" data-type="REFRESH" bindtap="command" disabled="{{busy || pending || !item.canRefresh}}">向服务方查询原单</button>
+        <button wx:if="{{item.paymentStatus === 'UNPAID' || item.paymentStatus === 'PENDING'}}" class="figma-action figma-action--orange" data-id="{{item.id}}" bindtap="checkout" disabled="{{busy || pending || !workspace.enabled}}">在保险服务方付款</button>
+        <button wx:if="{{item.canDownloadDocument}}" class="figma-action figma-action--ghost" data-id="{{item.id}}" bindtap="document" disabled="{{busy || pending}}">查看私有保单 PDF</button>
+        <button class="insurance-danger" data-id="{{item.id}}" data-type="REQUEST_CANCELLATION" bindtap="command" disabled="{{busy || pending || !item.canRequestCancellation}}">明确申请退保</button>
+      </view>
+    </block>
+  </view>
+
+  <view class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="qualification" disabled="{{busy || !orgId || !entryId}}">查看资格预审</button>
+    <button class="figma-action figma-action--orange" bindtap="externalPolicy" disabled="{{busy || !orgId || !entryId}}">提交已有保单审核</button>
+  </view>
 </view>

@@ -34,6 +34,7 @@ const initial = () => ({
   pending: null,
   loginRequired: false,
   chosenFile: '',
+  figmaGovernancePreview: false,
 });
 Page({
   data: initial(),

@@ -1,30 +1,64 @@
 <scb-header title="同价球员对比" disabled="{{loading}}"/>
-<view class="page has-actions compare-page">
-  <view wx:if="{{loading}}" class="card state-panel"><view class="state-label">状态反馈</view><view class="subtitle">正在核对球员资料与授权统计…</view><view class="muted">完成读取后再比较当前可见的报价和记录。</view><view class="loading-lines" aria-hidden="true"><view></view><view></view></view></view>
-  <view wx:if="{{loginRequired}}" class="card empty"><view class="subtitle">登录后继续比较</view><button class="primary" bindtap="login">登录并返回对比</button></view>
-  <view wx:if="{{error}}" class="card state-panel" role="alert"><view class="state-label">读取失败</view><view class="subtitle">暂时无法读取比较资料</view><view class="notice danger">{{error}}</view><button class="primary" bindtap="load" disabled="{{loading}}">重新读取比较资料</button><button class="quiet" bindtap="market">返回球员广场</button></view>
-  <view wx:if="{{notice}}" class="notice warning">{{notice}}</view><view wx:if="{{statisticsError}}" class="notice warning">统计读取失败：{{statisticsError}}。已停止展示旧统计，可刷新重试；不会用0或演示数据填补。</view>
-  <block wx:if="{{columns.length >= 2}}">
-    <view class="card comparison-card">
-      <view class="comparison-intro"><block wx:if="{{sameServicePrice}}">参赛服务费相同 · <text class="money">{{comparisonPrice}}</text> / 场</block><block wx:else>参赛服务费与含费比较</block></view>
-      <scroll-view scroll-x="true" class="comparison-scroll"><view class="comparison-table {{selectedCount === 3 ? 'three-columns' : ''}}">
-        <view class="comparison-row comparison-header"><view class="label-cell">项目</view><view wx:for="{{columns}}" wx:for-item="column" wx:key="id" class="comparison-value compare-name">{{column.name}}</view></view>
-        <view class="comparison-row"><view class="label-cell">位置</view><view wx:for="{{profiles}}" wx:for-item="profile" wx:key="id" class="comparison-value">{{profile.position}}</view></view>
-        <view class="comparison-row"><view class="label-cell">交通费</view><view wx:for="{{profiles}}" wx:for-item="profile" wx:key="id" class="comparison-value money">{{profile.travel}}</view></view>
-        <view class="comparison-row"><view class="label-cell">含费预计</view><view wx:for="{{profiles}}" wx:for-item="profile" wx:key="id" class="comparison-value money">{{profile.total}}</view></view>
-        <view class="comparison-row"><view class="label-cell">统计样本</view><view wx:for="{{profiles}}" wx:for-item="profile" wx:key="id" class="comparison-value">{{profile.performance.sample}}{{profile.performance.sample === '未统计' || profile.performance.sample === '暂不可用' ? '' : '场'}}</view></view>
-      </view></scroll-view>
-      <view class="comparison-footnote">仅展示真实业务字段与有限记录，不生成战力分或虚构命中率。完整费用与来源可展开核对。</view>
-    </view>
-    <view class="notice comparison-hint">{{selectedCount === 3 ? '左右滑动查看第3人；最多选择3人。' : '最多选择3人，继续选人可调整比较对象。'}}样本有限，含费报价仍需逐场核对。</view>
-    <button class="quiet comparison-more" bindtap="informationToggle">{{informationOpen ? '收起完整费用与来源' : '完整费用、来源与选择管理'}}</button>
-    <block wx:if="{{informationOpen}}">
-      <button wx:if="{{selectedCount === 3}}" class="secondary" data-id="{{columns[2].id}}" bindtap="remove">移除{{columns[2].name}} · 返回2人对比</button>
-      <view class="card comparison-notes"><view class="subtitle">有限记录与未统计项目</view><view class="muted">样本数、赛制和完整度不同，不直接作为实力排名。统计样本不代表实际出场，完成服务不代表付费成交。</view><view class="muted">只使用当前有效的本人授权与独立确认记录。篮板、助攻、时间、命中率未采集，不生成综合战力分、胜率或准时率。</view></view>
-      <view wx:for="{{profiles}}" wx:for-item="profile" wx:key="id" class="card fee-breakdown"><view class="subtitle">{{profile.name}} · 费用与来源</view><view class="muted profile-position">{{profile.position}} · {{profile.height}}cm · {{profile.city}}</view><view class="fee-row"><text>参赛服务费</text><text class="money">{{profile.price}}</text></view><view class="fee-row"><text>平台服务费</text><text class="money">{{profile.platformFee}}</text></view><view class="fee-row"><text>交通费</text><text class="money">{{profile.travel}}</text></view><view class="fee-row"><text>食宿费</text><text class="money">{{profile.accommodation}}</text></view><view class="fee-row fee-total"><text>含费预计</text><text class="money">{{profile.total}}</text></view><view class="muted source-detail">统计样本 {{profile.performance.sample}} 场 · 每场记录 {{profile.performance.points}} 分 / {{profile.performance.fouls}} 犯规</view><view class="muted">完成服务 {{profile.performance.services}} 次 · 授权来源 {{profile.performance.sourceCount}} · {{profile.performance.source}}</view><view class="muted">{{profile.performance.status}} · {{profile.performance.completeness}}</view><view class="profile-actions"><button class="quiet" data-id="{{profile.id}}" bindtap="detail">查看详情</button><button class="secondary" data-id="{{profile.id}}" bindtap="book">预约这位</button><button class="quiet" data-id="{{profile.id}}" bindtap="remove">移出对比</button></view></view>
-      <button class="secondary" bindtap="load" disabled="{{loading}}">刷新对比资料与统计</button>
+<view class="scb-ui-page figma-page compare-rebuild">
+  <view class="figma-page__content figma-page__content--actions">
+    <figma-skeleton wx:if="{{loading}}" rows="4"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="permission" title="登录后继续比较" body="使用当前账号读取可见球员资料。" action-label="登录并返回" bind:action="login"/>
+    <figma-feedback wx:if="{{error && !loginRequired}}" type="error" title="暂时无法读取比较资料" body="{{error}}" action-label="重新读取" bind:action="load"/>
+    <figma-feedback wx:if="{{notice}}" type="info" title="对比名单已更新" body="{{notice}}"/>
+    <figma-feedback wx:if="{{statisticsError}}" type="error" title="统计读取失败" body="{{statisticsError}}；旧统计已清除，不以 0 或演示数据填补。"/>
+
+    <block wx:if="{{columns.length >= 2}}">
+      <view class="figma-summary">
+        <view class="figma-summary__icon"><figma-icon name="stats" size="28"/></view>
+        <view class="figma-summary__copy"><view class="figma-eyebrow">选人参考</view><view class="figma-title">同价球员对比</view><view class="figma-subtitle">两名球员参赛服务费相同，交通、食宿和档期分别比较。</view></view>
+      </view>
+
+      <view class="compare-tabs" role="tablist"><button class="compare-tab is-active">费用</button><button class="compare-tab" bindtap="informationToggle">档期</button><button class="compare-tab" bindtap="informationToggle">样本</button></view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">对比球员</view>
+        <scroll-view scroll-x="true" enable-flex="true" class="compare-scroll">
+          <view class="compare-grid">
+            <view wx:for="{{profiles}}" wx:key="id" class="compare-person">
+              <view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.position}} · {{item.city}}</view><view class="figma-status figma-status--orange">{{item.priceLabel || item.price}}/场</view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">含费预计</view>
+        <view wx:for="{{profiles}}" wx:key="id" class="compare-fee-row">
+          <view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">参赛{{item.pricePlain || item.price}}＋平台{{item.platformFeePlain || item.platformFee}}＋交通{{item.travelPlain || item.travel}}＋食宿{{item.accommodationPlain || item.accommodation}}</view></view><view class="compare-total">{{item.total}}</view>
+        </view>
+      </view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">样本与可约时间</view>
+        <view wx:for="{{profiles}}" wx:key="id" class="figma-row"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">{{item.name}}</view><view class="figma-row__subtitle">{{item.availabilityText}}</view></view><view class="figma-status figma-status--orange">{{item.performance.sample}}场样本</view></view>
+        <view class="figma-row"><figma-icon name="stats" size="20"/><view class="figma-row__copy"><view class="figma-row__title">专业统计</view><view class="figma-row__subtitle">未采集篮板、助攻和上场时间</view></view><view class="figma-status">未统计</view></view>
+      </view>
+
+      <view class="figma-section">
+        <button class="figma-row" bindtap="informationToggle"><view class="figma-row__copy"><view class="figma-row__title">完整费用、来源与选择管理</view><view class="figma-row__subtitle">{{informationOpen ? '收起详情' : '展开逐人明细'}}</view></view><view class="figma-status">{{informationOpen ? '收起' : '展开'}}</view></button>
+        <block wx:if="{{informationOpen}}">
+          <view wx:for="{{profiles}}" wx:key="id" class="compare-detail">
+            <view class="figma-row__title">{{item.name}} · {{item.position}}</view>
+            <view class="figma-caption">参赛 {{item.price}} · 平台 {{item.platformFee}} · 交通 {{item.travel}} · 食宿 {{item.accommodation}} · 含费 {{item.total}}</view>
+            <view class="figma-caption">每场记录 {{item.performance.points}} 分 / {{item.performance.fouls}} 犯规 · 完成服务 {{item.performance.services}} 次</view>
+            <view class="figma-caption">来源 {{item.performance.source}} · {{item.performance.completeness}}</view>
+            <view class="compare-detail__actions"><button data-id="{{item.id}}" bindtap="detail">查看详情</button><button data-id="{{item.id}}" bindtap="book">预约这位</button><button data-id="{{item.id}}" bindtap="remove">移出对比</button></view>
+          </view>
+          <view class="figma-caption">样本数、赛制和完整度不同，不直接作为实力排名；不会生成战力分或虚构命中率。</view>
+        </block>
+      </view>
     </block>
-  </block>
-  <view wx:if="{{!loading && columns.length < 2 && !loginRequired && !error}}" class="card empty"><view class="subtitle">继续选择合适的球员</view><view class="muted">停用或不可查看的档案不能继续比较。当前目录最多最新200位已审核球员。</view><button class="secondary" bindtap="market">返回球员广场</button></view>
+
+    <figma-feedback wx:if="{{!loading && columns.length < 2 && !loginRequired && !error}}" type="empty" title="继续选择合适的球员" body="至少选择 2 位、最多 3 位不同球员进行比较。" action-label="返回球员目录" bind:action="market"/>
+  </view>
+
+  <view class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="market">继续选人</button>
+    <button class="figma-action figma-action--orange" data-id="{{firstId}}" bindtap="book" disabled="{{loading || !firstId || columns.length < 2}}">{{firstId ? '预约这位球员' : '至少选择2位'}}</button>
+  </view>
 </view>
-<view class="action-bar compare-action"><view class="comparison-actions"><button class="secondary" bindtap="market">继续选人</button><button class="primary" data-id="{{firstId}}" bindtap="book" disabled="{{loading || !firstId || columns.length < 2}}" aria-label="{{firstId ? '预约' + firstName : '请选择至少2位球员'}}"><text class="book-label">{{firstId ? '预约' + firstName : '请选择至少2位球员'}}</text></button></view></view>

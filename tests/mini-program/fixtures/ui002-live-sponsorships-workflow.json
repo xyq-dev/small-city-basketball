@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "9:1288",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["投放、独立审核与公开展示分开", "合成石鼓公益篮球品牌", "分享此投放"],
+  "expectText": ["投放内容、独立审核与发布批次分别保存", "合成石鼓公益篮球品牌", "分享此投放"],
   "data": {
     "mode": "public",
     "organizations": [],

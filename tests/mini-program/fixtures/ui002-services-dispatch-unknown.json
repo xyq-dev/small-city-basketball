@@ -4,7 +4,7 @@
   "state": "synthetic-dispatch-unknown",
   "figmaNode": "42:1519",
   "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
-  "expectText": ["原操作结果尚未核对", "保持原编号重试"],
+  "expectText": ["原操作结果待核对", "保持原编号重试"],
   "data": {
     "capabilities": {
       "enabled": true

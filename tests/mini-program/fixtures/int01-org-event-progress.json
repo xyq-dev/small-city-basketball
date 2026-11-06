@@ -1,0 +1,39 @@
+{
+  "name": "int01-org-event-progress",
+  "route": "pages/org-event/index",
+  "state": "synthetic-completed-no-pending-registrations",
+  "syntheticData": true,
+  "expectText": [
+    "合成已完赛工作台",
+    "查看规程",
+    "查看进度",
+    "查看排程",
+    "已提交 0 · 已通过 2 · 名单已冻结"
+  ],
+  "expectAbsentText": ["进行中", "待审核", "待办理"],
+  "expectEnabled": ["查看赛事设置", "进入报名审核"],
+  "expectVisible": ["button.figma-row[data-mini-bindtap=\"openReview\"]"],
+  "data": {
+    "tab": "manage",
+    "loading": false,
+    "error": "",
+    "unavailable": false,
+    "event": {
+      "id": "20000000-0000-4000-8000-000000000001",
+      "name": "合成已完赛工作台",
+      "format": "ROUND_ROBIN",
+      "status": "COMPLETED",
+      "statusLabel": "已完赛"
+    },
+    "matches": [],
+    "manage": {
+      "review": true,
+      "seasonGrants": false,
+      "reviewLabel": "已提交 0 · 已通过 2 · 名单已冻结",
+      "progress": "",
+      "ready": false,
+      "blockers": [],
+      "actions": []
+    }
+  }
+}

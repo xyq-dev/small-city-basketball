@@ -4,8 +4,8 @@
   "state": "review",
   "figmaNode": "42:772",
   "syntheticData": true,
-  "expectText": ["确认事项", "我已核对以上事项并明确同意本次预约规则"],
-  "expectDisabled": ["请先核对并勾选声明"],
+  "expectText": ["确认事项", "我已核对以上事项并明确同意本次预约规则", "确定合计", "¥740.00"],
+  "expectDisabled": ["核对并提交预约"],
   "data": {
     "loading": false,
     "busy": false,
@@ -135,7 +135,10 @@
       "conditional": "¥0.00",
       "count": 2,
       "fixedCount": 2,
-      "conditionalCount": 0
+      "conditionalCount": 0,
+      "fixedSlotCount": 1,
+      "fixedPlayerCount": 2,
+      "travelAccommodation": "¥80.00"
     },
     "pending": false,
     "invalidRecovery": false,

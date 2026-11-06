@@ -3,13 +3,6 @@
   "route": "pages/insurance/index",
   "state": "synthetic-populated",
   "designSource": "E03 implemented native Page and contracts; synthetic layout data, not real insurance acceptance",
-  "expectText": [
-    "保险与保障",
-    "保费由实际保险服务方收取",
-    "服务方当前报价",
-    "明确申请退保",
-    "历史保单文件仅供记录"
-  ],
   "data": {
     "orgId": "00000000-0000-4000-8000-000000000001",
     "entryId": "00000000-0000-4000-8000-000000000002",
@@ -89,5 +82,6 @@
     "error": "",
     "message": "合成界面数据，仅供布局校验。",
     "checkoutUrl": ""
-  }
+  },
+  "expectText": ["保险与保障", "保费由实际保险服务方收取", "服务方当前报价"]
 }

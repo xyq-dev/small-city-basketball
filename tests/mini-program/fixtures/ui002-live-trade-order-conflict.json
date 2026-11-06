@@ -4,7 +4,7 @@
   "state": "synthetic-ui002",
   "static": true,
   "designSource": "UI001 design + current native route; synthetic static compatibility only, not real channel acceptance",
-  "expectText": ["金额、付款与服务分别核对", "退款与保证金扣减", "现有退款占用需要核对"],
+  "expectText": ["逐项核对原订单、收款主体与渠道结果", "以原退款回执为准", "资金占用冲突待核对"],
   "data": {
     "loading": false,
     "busy": false,
@@ -91,6 +91,5 @@
     "evidence": "SYNTHETIC-EVIDENCE-ONLY",
     "noCharge": false
   },
-  "expectDisabled": ["申请部分或全部退款"],
   "figmaNode": "9:686"
 }

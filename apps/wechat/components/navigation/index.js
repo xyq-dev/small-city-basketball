@@ -13,28 +13,42 @@ Component({
     disabled: { type: Boolean, value: false },
   },
   data: {
-    safeBottom: 24,
+    safeBottom: 0,
     items: [
       { key: 'Home', label: '首页', icon: 'home' },
-      { key: 'Events', label: '赛事', icon: 'trophy' },
-      { key: 'Local', label: '同城', icon: 'pin' },
-      { key: 'Teams', label: '球队', icon: 'users' },
-      { key: 'Account', label: '我的', icon: 'user' },
+      { key: 'Events', label: '赛事', icon: 'event' },
+      { key: 'Local', label: '同城', icon: 'local' },
+      { key: 'Teams', label: '球队', icon: 'teams' },
+      { key: 'Account', label: '我的', icon: 'account' },
     ],
   },
   lifetimes: {
     attached() {
+      this.syncSafeArea();
+    },
+  },
+  pageLifetimes: {
+    show() {
+      this.syncSafeArea();
+    },
+    resize() {
+      this.syncSafeArea();
+    },
+  },
+  methods: {
+    syncSafeArea() {
       try {
         const info =
           typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : wx.getSystemInfoSync();
         const height = Number.isFinite(info.screenHeight) ? info.screenHeight : info.windowHeight;
-        const bottom = height - info.safeArea.bottom;
+        const bottom =
+          info.safeArea && Number.isFinite(info.safeArea.bottom)
+            ? height - info.safeArea.bottom
+            : 0;
         if (Number.isFinite(bottom) && bottom >= 0 && bottom <= 80)
           this.setData({ safeBottom: bottom });
       } catch {}
     },
-  },
-  methods: {
     go(e) {
       if (this.properties.disabled) return;
       const key = e.currentTarget.dataset.key;

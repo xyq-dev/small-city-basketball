@@ -24,7 +24,14 @@
     "scb-icon": "/components/icon/index",
     "sponsorship-slot": "/components/sponsorship-slot/index",
     "scb-state": "/components/state/index",
-    "scb-steps": "/components/steps/index"
+    "scb-steps": "/components/steps/index",
+    "figma-icon": "/components/figma-icon/index",
+    "figma-button": "/components/figma-button/index",
+    "figma-card": "/components/figma-card/index",
+    "figma-field": "/components/figma-field/index",
+    "figma-tabs": "/components/figma-tabs/index",
+    "figma-feedback": "/components/figma-feedback/index",
+    "figma-skeleton": "/components/figma-skeleton/index"
   },
   "permission": {
     "scope.userLocation": {

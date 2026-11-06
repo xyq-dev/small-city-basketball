@@ -3,7 +3,7 @@
   "route": "pages/match/index",
   "state": "error",
   "figmaNode": "11:36",
-  "expectText": ["现有资料已陈旧", "合成青锋"],
+  "expectText": ["比赛资料更新失败", "合成青锋"],
   "data": {
     "snapshot": {
       "publicMatchId": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",

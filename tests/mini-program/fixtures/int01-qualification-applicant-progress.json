@@ -1,0 +1,67 @@
+{
+  "name": "int01-qualification-applicant-progress",
+  "route": "pages/qualification-precheck/index",
+  "state": "synthetic-own-current-request-progress-without-review-permission",
+  "designSource": "Actual applicant projection; separate from the unchanged reviewer data in the original scenario",
+  "expectText": ["资格核验进度", "本人已提交当前版本", "当前版本已受理", "已通过"],
+  "data": {
+    "orgId": "00000000-0000-4000-8000-000000000001",
+    "entryId": "00000000-0000-4000-8000-000000000002",
+    "userId": "00000000-0000-4000-8000-000000000010",
+    "workspace": {
+      "entryId": "00000000-0000-4000-8000-000000000002",
+      "canReview": false,
+      "participants": [
+        {
+          "memberId": "00000000-0000-4000-8000-000000000003",
+          "canRequest": false,
+          "materialVersion": 1,
+          "requestId": "00000000-0000-4000-8000-000000000011",
+          "requestCurrent": true,
+          "materialRevisionId": "00000000-0000-4000-8000-000000000012",
+          "hasPortrait": true,
+          "hasIdentity": true,
+          "hasRealName": true,
+          "hasSignature": true,
+          "qualification": {
+            "id": "00000000-0000-4000-8000-000000000013",
+            "status": "APPROVED",
+            "current": true,
+            "reason": "合成身份、照片及本人签署已独立人工核对"
+          }
+        }
+      ]
+    },
+    "pending": null,
+    "consent": false,
+    "busy": false,
+    "loading": false,
+    "error": "",
+    "message": "合成界面状态，仅供布局校验；预审不等于最终参赛或投保成功。",
+    "selectedParticipant": {
+      "memberId": "00000000-0000-4000-8000-000000000003",
+      "canRequest": false,
+      "materialVersion": 1,
+      "requestId": "00000000-0000-4000-8000-000000000011",
+      "requestCurrent": true,
+      "materialRevisionId": "00000000-0000-4000-8000-000000000012",
+      "hasPortrait": true,
+      "hasIdentity": true,
+      "hasRealName": true,
+      "hasSignature": true,
+      "qualification": {
+        "id": "00000000-0000-4000-8000-000000000013",
+        "status": "APPROVED",
+        "current": true,
+        "reason": "合成身份、照片及本人签署已独立人工核对"
+      }
+    },
+    "selectedMemberId": "00000000-0000-4000-8000-000000000003"
+  },
+  "expectEnabled": ["查看本人资料", "查看保障凭证"],
+  "syntheticData": true,
+  "expectAbsentSelectors": [
+    "button[data-decision=\"APPROVED\"]",
+    "button[data-decision=\"REJECTED\"]"
+  ]
+}

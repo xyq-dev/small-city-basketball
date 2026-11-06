@@ -1,10 +1,48 @@
-.youth-page{padding-bottom:calc(100px + env(safe-area-inset-bottom));overflow-wrap:anywhere}.youth-panel{border:1px solid #e4eaf1;border-radius:12px;padding:20px;margin:16px 0}.youth-kicker,.youth-step{color:#45617f;font-size:12px;margin:8px 0}.youth-step{padding-top:12px}.youth-row{border-bottom:1px solid #e4eaf1;padding:14px 0}.youth-row:last-child{border:0}.youth-row .badge{margin:8px 0}.youth-terms{background:#f4f7fa;border-radius:8px;padding:14px;margin:12px 0;font-size:13px;line-height:22px}.youth-private{border:1px solid #e5bd80;background:#fff8ec;padding:14px;margin:12px 0;border-radius:8px}.youth-page .consent{display:flex;align-items:flex-start;gap:8px;margin:14px 0;font-size:14px;line-height:22px}.youth-page .consent checkbox,.youth-page .consent radio{flex-shrink:0}.youth-page button{white-space:normal;height:auto;min-height:44px;overflow-wrap:anywhere}.youth-page .title{margin-bottom:10px}.youth-page .field{box-sizing:border-box}@media(max-width:360px){.youth-panel{padding:16px}}
+@import "../../styles/figma-pages.wxss";
 
-.ui002-workspace { padding:16px 16px calc(104px + env(safe-area-inset-bottom)); background:#f4f6fa; color:#18283f; }
-.ui002-workspace .card { border-radius:16px; padding:16px; margin:0 0 16px; }
-.ui002-workspace input,.ui002-workspace textarea,.ui002-workspace button { font-size:16px; line-height:24px; min-height:44px; }
-.ui002-workspace .page-intro .title { color:#18283f; font-size:22px; line-height:32px; margin:0 0 8px; }
-.ui002-workspace .page-intro { margin-bottom:16px; }
-.ui002-workspace .tabs button { min-height:44px; }
+.youth-review-step {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 10px;
+}
 
-.ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+.youth-review-step__mark {
+  display: flex;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eaf2fc;
+  color: #123c73;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.youth-review-step > view:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+
+.youth-purpose,
+.youth-private {
+  padding: 12px;
+  border-radius: 10px;
+  background: #eaf2fc;
+  color: #51657d;
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.youth-review-rebuild .youth-text-action {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #123c73;
+  font-size: 13px;
+}

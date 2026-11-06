@@ -1,0 +1,1 @@
+<button class="figma-button figma-button--{{variant}} {{block ? 'is-block' : ''}} {{loading ? 'is-loading' : ''}}" disabled="{{disabled || loading}}" open-type="{{openType}}" aria-label="{{ariaLabel}}" bindtap="action"><view wx:if="{{loading}}" class="figma-button__spinner" aria-hidden="true"/><view class="figma-button__label"><slot/></view></button>

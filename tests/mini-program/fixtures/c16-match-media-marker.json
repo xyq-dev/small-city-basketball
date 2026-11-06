@@ -4,7 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["时间标记", "视频开始（秒）", "添加时间标记", "对应的比赛记录"],
+  "expectText": ["时间标记", "开始（秒）", "添加时间标记", "对应比赛记录"],
   "data": {
     "loading": false,
     "busy": false,

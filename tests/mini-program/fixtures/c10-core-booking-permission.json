@@ -118,11 +118,14 @@
       "platform": "¥0",
       "travel": "¥0",
       "accommodation": "¥0",
+      "travelAccommodation": "¥0",
       "confirmed": "¥0",
       "conditional": "¥0",
       "count": 0,
       "fixedCount": 0,
-      "conditionalCount": 0
+      "conditionalCount": 0,
+      "fixedPlayerCount": 0,
+      "fixedSlotCount": 1
     },
     "consent": false,
     "quote": {
@@ -130,11 +133,14 @@
       "platform": "¥0.00",
       "travel": "¥0.00",
       "accommodation": "¥0.00",
+      "travelAccommodation": "¥0.00",
       "confirmed": "¥0.00",
       "conditional": "¥0.00",
       "count": 0,
       "fixedCount": 0,
-      "conditionalCount": 0
+      "conditionalCount": 0,
+      "fixedPlayerCount": 0,
+      "fixedSlotCount": 1
     },
     "pending": false,
     "invalidRecovery": false,
@@ -181,6 +187,6 @@
     "合成石鼓篮球队"
   ],
   "expectDisabled": [],
-  "expectEnabled": ["进入本人球员中心", "继续浏览球员", "返回球员广场"],
+  "expectEnabled": ["进入本人球员中心", "球员中心", "返回球员目录"],
   "designSource": "approved:C11"
 }

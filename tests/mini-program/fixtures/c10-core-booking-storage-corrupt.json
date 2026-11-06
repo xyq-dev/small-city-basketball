@@ -4,8 +4,8 @@
   "state": "recovery",
   "figmaNode": "34:3081",
   "syntheticData": true,
-  "expectText": ["恢复记录损坏", "核对后继续重新填写"],
-  "expectDisabled": ["核对后继续重新填写"],
+  "expectText": ["恢复记录损坏", "核对后继续"],
+  "expectDisabled": ["核对后继续"],
   "data": {
     "loading": false,
     "busy": false,
@@ -167,7 +167,10 @@
       "conditional": "¥330.00",
       "count": 3,
       "fixedCount": 2,
-      "conditionalCount": 1
+      "conditionalCount": 1,
+      "fixedSlotCount": 1,
+      "fixedPlayerCount": 2,
+      "travelAccommodation": "¥80.00"
     },
     "pending": false,
     "invalidRecovery": true,

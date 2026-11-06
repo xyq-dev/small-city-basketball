@@ -19,6 +19,11 @@ Page({
     message: '',
     checkoutUrl: '',
     activeSection: 'options',
+    figmaHideClosedFeedback: false,
+    visualSections: [
+      { key: 'options', label: '办理方式' },
+      { key: 'records', label: '原单进度' },
+    ],
     workflowSteps: [
       { key: 'options', label: '办理方式' },
       { key: 'quote', label: '报价与确认' },
@@ -99,7 +104,7 @@ Page({
     }
   },
   changeSection(e) {
-    const key = e.detail.key;
+    const key = e.detail?.key || e.currentTarget?.dataset?.key;
     if (this.data.busy || !this.data.workflowSteps.some((item) => item.key === key)) return;
     this.setData({ activeSection: key });
     if (typeof wx.pageScrollTo === 'function')

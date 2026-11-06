@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "6:1224",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["独立监护关系审核", "独立关系核验"],
+  "expectText": ["监护关系审核", "独立关系核验"],
   "data": {
     "review": true,
     "hasMaterialScope": false,

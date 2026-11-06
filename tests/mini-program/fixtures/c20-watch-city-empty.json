@@ -26,11 +26,8 @@
       "moreError": ""
     }
   },
-  "expectText": [
-    "合成二十字超长城市名称仅供界面测试使用",
-    "浏览全国赛事",
-    "最近观看",
-    "地区与目录设置"
-  ],
-  "expectAbsentText": ["本地区及下辖地区"]
+  "expectText": ["合成二十字超长城市名称仅供界面测试使用", "浏览全国赛事", "最近观看", "浏览范围"],
+  "expectAbsentText": ["本地区及下辖地区"],
+  "expectVisible": ["button[data-mini-bindtap=\"chooseCity\"]"],
+  "expectEnabled": ["浏览全国赛事"]
 }

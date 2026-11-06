@@ -4,7 +4,7 @@
   "state": "synthetic-dispatch-closed",
   "figmaNode": "42:1573",
   "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
-  "expectText": ["跨城派单尚未开放", "尚无需求"],
+  "expectText": ["跨城派单尚未开放", "尚无跨城需求"],
   "data": {
     "capabilities": {
       "enabled": false

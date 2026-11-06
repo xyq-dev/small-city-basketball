@@ -1,0 +1,1 @@
+<view class="figma-card figma-card--{{tone}} {{compact ? 'is-compact' : ''}}"><slot/></view>

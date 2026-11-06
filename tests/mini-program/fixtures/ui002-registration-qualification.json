@@ -3,12 +3,13 @@
   "route": "pages/qualification-precheck/index",
   "state": "synthetic-populated",
   "designSource": "UI001 R05; actual qualification-precheck Page, synthetic data only",
-  "expectText": ["先核身份，再核保障", "再明确申请本届资格预审", "当前版本已明确申请", "请选择本次申请的成员"],
+  "expectText": ["资格核验进度", "本人材料", "当前版本已受理，等待独立审核", "最终参赛资格"],
   "data": {
     "orgId": "00000000-0000-4000-8000-000000000001",
     "entryId": "00000000-0000-4000-8000-000000000002",
     "userId": "00000000-0000-4000-8000-000000000003",
     "workspace": {
+      "eventName": "合成本人资格杯",
       "canReview": false,
       "participants": [
         {
@@ -26,6 +27,24 @@
           }
         }
       ]
+    },
+    "selectedMemberId": "00000000-0000-4000-8000-000000000004",
+    "selectedParticipant": {
+      "memberId": "00000000-0000-4000-8000-000000000004",
+      "memberName": "合成本人",
+      "materialVersion": 2,
+      "hasRealName": true,
+      "hasIdentity": true,
+      "hasPortrait": true,
+      "hasSignature": true,
+      "hasInsurance": false,
+      "requestCurrent": true,
+      "canRequest": true,
+      "qualification": {
+        "status": "PENDING",
+        "current": true,
+        "reason": ""
+      }
     },
     "consent": true,
     "busy": false,

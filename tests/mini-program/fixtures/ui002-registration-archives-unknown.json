@@ -3,7 +3,7 @@
   "route": "pages/public-archives/index",
   "state": "synthetic-populated",
   "designSource": "UI001 actual native route and capability states; synthetic data only",
-  "expectText": ["撤销公开结果待核对", "按原编号重试", "撤销公开并使旧链接失效"],
+  "expectText": ["撤销公开结果待核对", "使用原请求编号查询，不要重复创建。", "按原编号重试"],
   "data": {
     "profiles": [
       {
@@ -30,6 +30,6 @@
     "loading": false,
     "loginRequired": false
   },
-  "expectDisabled": ["撤销公开并使旧链接失效", "创建档案草稿"],
+  "expectDisabled": ["创建档案草稿"],
   "figmaNode": "5:1458"
 }

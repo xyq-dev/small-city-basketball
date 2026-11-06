@@ -4,11 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": [
-    "分组结果（服务端回放，发布前核对）",
-    "发布前锁定组内积分规则",
-    "设置组内积分规则"
-  ],
+  "expectText": ["分组设置", "A组", "B组", "锁定本届积分规则", "赛事设置与积分规则"],
   "data": {
     "loading": false,
     "busy": false,

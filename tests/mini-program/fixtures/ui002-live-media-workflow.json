@@ -5,7 +5,7 @@
   "static": true,
   "figmaNode": "5:744",
   "designSource": "UI001 route mapping and existing API fields; static synthetic template validation, not external-channel acceptance",
-  "expectText": ["合成石鼓城市篮球邀请赛", "以当前有效发布为准"],
+  "expectText": ["合成石鼓城市篮球邀请赛", "仅呈现当前有效发布"],
   "data": {
     "recentEvents": [
       {

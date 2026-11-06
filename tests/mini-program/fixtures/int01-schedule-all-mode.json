@@ -1,0 +1,56 @@
+{
+  "name": "int01-schedule-all-mode",
+  "route": "pages/schedule/index",
+  "state": "synthetic-editable-draft-with-partial-allocations",
+  "figmaNode": "36:96",
+  "syntheticData": true,
+  "designSource": "Existing revision optimization modes restored within the native draft body",
+  "expectText": ["排赛与发布", "全稿均衡优化", "自动补充缺项", "合成一队", "合成二队"],
+  "expectVisible": [
+    "button[data-mini-bindtap=\"autoAssign\"][data-mode=\"all\"]",
+    "button[data-mini-bindtap=\"autoAssign\"][data-mode=\"preserve\"]"
+  ],
+  "data": {
+    "state": "draft",
+    "event": {
+      "name": "合成排程杯",
+      "statusLabel": "报名已关闭",
+      "teams": 2
+    },
+    "revision": {
+      "id": "10000000-0000-4000-8000-000000000003",
+      "status": "DRAFT",
+      "rounds": 2,
+      "count": 2,
+      "canEdit": true,
+      "canValidate": true,
+      "canPublish": false,
+      "canRedraw": false
+    },
+    "fixtures": [
+      {
+        "key": "R1-P1",
+        "round": "第1轮",
+        "home": "合成一队",
+        "away": "合成二队",
+        "time": "03-01 09:00",
+        "court": "合成一号场",
+        "assigned": true
+      },
+      {
+        "key": "R2-P1",
+        "round": "第2轮",
+        "home": "合成二队",
+        "away": "合成一队",
+        "time": "未安排",
+        "court": "",
+        "assigned": false
+      }
+    ],
+    "form": { "dayStart": "09:00", "dayEnd": "21:00", "slot": "60", "rest": "0", "gap": "0" },
+    "busy": false,
+    "loading": false,
+    "validated": false,
+    "format": "DOUBLE_ROUND_ROBIN"
+  }
+}

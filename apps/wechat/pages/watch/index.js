@@ -18,6 +18,7 @@ const privateDefaults = {
 };
 Page({
   data: {
+    figmaState: '',
     value: '',
     error: '',
     directoryFiltersOpen: false,
@@ -63,6 +64,14 @@ Page({
   scrollDirectory() {
     if (typeof wx.pageScrollTo === 'function')
       wx.pageScrollTo({ selector: '#watch-directory', duration: 200, fail() {} });
+  },
+  scrollPrivate() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#watch-private', duration: 200, fail() {} });
+  },
+  scrollRecent() {
+    if (typeof wx.pageScrollTo === 'function')
+      wx.pageScrollTo({ selector: '#watch-recent', duration: 200, fail() {} });
   },
   toggleDirectoryFilters() {
     this.setData({ directoryFiltersOpen: !this.data.directoryFiltersOpen });

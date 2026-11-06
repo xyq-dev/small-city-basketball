@@ -1,0 +1,75 @@
+{
+  "name": "int01-adjudication-review-reason",
+  "route": "pages/match-exceptions/index",
+  "state": "synthetic-independent-pending-reviewer",
+  "designSource": "isolated-synthetic:INT01-adjudication-review-shared-reason",
+  "static": true,
+  "expectText": [
+    "比赛异常裁定",
+    "事实说明",
+    "操作原因",
+    "待独立复核",
+    "合成提案事实：客队未按约到场",
+    "批准提案",
+    "驳回提案"
+  ],
+  "expectVisible": [
+    "textarea[data-field=\"reason\"][data-mini-bindinput=\"input\"]",
+    "button[data-mini-bindtap=\"review\"][data-type=\"APPROVE\"]",
+    "button[data-mini-bindtap=\"review\"][data-type=\"REJECT\"]"
+  ],
+  "expectEnabled": ["批准提案", "驳回提案"],
+  "expectValues": [{ "selector": "textarea[data-field=\"reason\"]", "value": "" }],
+  "data": {
+    "event": { "id": "10000000-0000-4000-8000-000000000002", "version": 9, "status": "SCHEDULED" },
+    "match": { "id": "10000000-0000-4000-8000-000000000003", "version": 11, "status": "SCHEDULED" },
+    "rules": {
+      "id": "10000000-0000-4000-8000-000000000007",
+      "version": 2,
+      "forfeitWinPoints": 2,
+      "forfeitLossPoints": 0,
+      "cancellationPolicy": "EXCLUDE_FROM_TABLE"
+    },
+    "active": null,
+    "requests": [
+      {
+        "id": "10000000-0000-4000-8000-000000000004",
+        "version": 7,
+        "operation": "DECLARE",
+        "kind": "FORFEIT",
+        "forfeitingSide": "AWAY",
+        "status": "PENDING",
+        "title": "单场弃权",
+        "sideLabel": "客队弃权",
+        "statusLabel": "待另一人审核",
+        "proposedBy": "10000000-0000-4000-8000-000000000006",
+        "reason": "合成提案事实：客队未按约到场"
+      }
+    ],
+    "pending": {
+      "id": "10000000-0000-4000-8000-000000000004",
+      "version": 7,
+      "operation": "DECLARE",
+      "kind": "FORFEIT",
+      "forfeitingSide": "AWAY",
+      "status": "PENDING",
+      "title": "单场弃权",
+      "sideLabel": "客队弃权",
+      "statusLabel": "待另一人审核",
+      "proposedBy": "10000000-0000-4000-8000-000000000006",
+      "reason": "合成提案事实：客队未按约到场"
+    },
+    "canEdit": false,
+    "canPropose": false,
+    "canRevoke": false,
+    "canReview": true,
+    "busy": false,
+    "loading": false,
+    "uncertain": false,
+    "rulesOnly": false,
+    "exceptionTab": "review",
+    "reason": "",
+    "error": "",
+    "notice": ""
+  }
+}

@@ -1,101 +1,119 @@
-<scb-header title="赛事详情" back="{{true}}"/>
-<view class="page event-page">
-  <view wx:if="{{loading && !event}}" class="public-panel public-state">
-    <view class="state-tag">赛事观赛</view>
-    <view class="title">正在读取最新赛事</view>
-    <view class="notice"><view class="state-strong">核对公开赛事与正式赛程</view><view class="small">读取完成前不将旧资料标为最新，请稍候。</view></view>
-    <view class="public-skeleton"></view><view class="public-skeleton short"></view>
-    <button class="primary" disabled>正在读取…</button>
-  </view>
-  <view wx:elif="{{!event}}" class="public-panel public-state">
-    <view class="state-tag warning">{{unavailable ? '请核对' : error ? '读取未完成' : '赛事观赛'}}</view>
-    <view class="title">{{unavailable ? '该内容已停止公开' : error ? '暂时无法读取赛事' : '打开主办方公开赛事'}}</view>
-    <view class="notice {{error ? 'warning' : ''}}"><view>{{error || '从主办方提供的有效观赛入口进入，查看已发布的赛程、比分与媒体。'}}</view><view wx:if="{{unavailable}}" class="small">旧画面已清空，不回显已撤销或不可访问的赛事资料。</view></view>
-    <button wx:if="{{error && !unavailable}}" class="primary" bindtap="load">重新读取</button>
-    <button class="{{error && !unavailable ? 'secondary' : 'primary'}}" bindtap="watch">返回观赛入口</button>
-    <button wx:if="{{unavailable && follow.state!=='signedOut'}}" class="quiet" bindtap="openFollows">查看我的关注</button>
-  </view>
-  <block wx:else>
-<sponsorship-slot region-id="{{sponsorRegionId}}" catalog-version="{{sponsorCatalogVersion}}" event-public-id="{{sponsorEventPublicId}}" visible="{{sponsorVisible && !!event}}"/>
-    <view wx:if="{{error}}" class="notice warning">{{error}}<view wx:if="{{stale}}" class="small">现有资料已陈旧，请恢复连接后刷新。</view></view>
-    <view wx:if="{{overview}}" class="public-panel event-summary">
-      <view class="subtitle">{{event.name}}</view>
-      <view class="muted">{{event.dateLabel || event.startDate + '—' + event.endDate}} · {{event.venueName || '场地待说明'}}</view>
-      <view class="event-status {{event.status==='RUNNING' ? 'running' : ''}}">{{event.statusLabel}}</view>
-      <view class="title">{{event.formatLabel}}</view>
-      <view class="event-progress">{{event.progressLabel}}</view>
-      <image class="event-court" src="/assets/court.png" mode="widthFix"/>
-    </view>
-    <view wx:if="{{overview}}" class="event-menu">
-<button class="quiet" bindtap="report">赛事问题与举报</button>
-      <button class="primary" data-tab="schedule" bindtap="tab" disabled="{{loading}}">查看赛程</button>
-      <button class="secondary" data-tab="ranking" bindtap="tab" disabled="{{loading}}">分组排名与晋级</button>
-      <button class="secondary" data-tab="media" bindtap="tab" disabled="{{loading}}">比赛视频与图片</button>
-    </view>
+<scb-header title="{{figmaState==='event-access' ? '访问受限' : figmaState==='event-standings' || (!overview && tab==='ranking') ? '赛程与积分' : '赛事详情'}}" disabled="{{loading || follow.busy}}"/>
+<view class="figma-page event-page">
+  <view class="figma-page__content {{event || figmaState ? 'figma-page__content--actions' : ''}}">
+    <block wx:if="{{figmaState==='event-standings'}}">
+      <view class="figma-summary standings-summary"><view class="figma-summary__icon"><figma-icon name="standings" size="25"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">城市篮球邀请赛</view><view class="figma-title">赛程与积分</view><view class="figma-subtitle">按已发布赛程观赛，积分仅汇总已确认赛果。</view></view></view>
+      <view class="standings-tabs" role="tablist"><button class="standings-tab is-active">赛程</button><button class="standings-tab">积分</button><button class="standings-tab">分组</button></view>
+      <view class="figma-section"><view class="figma-section__title">周末赛程</view><view class="figma-row standings-schedule-row"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">11月08日 19:00</view><view class="figma-row__subtitle">城北队 vs 江南队 · 主场</view></view><view class="figma-status figma-status--green">已确认</view></view><view class="figma-row standings-schedule-row"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">11月10日 19:00</view><view class="figma-row__subtitle">滨江队 vs 东城队 · 主场</view></view><view class="figma-status figma-status--orange">待开赛</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">小组积分</view><view class="event-points standings-points"><view class="event-point"><view class="figma-row__title">城北队</view><view class="figma-row__subtitle">1胜0负 · 已确认1场</view><view class="figma-status figma-status--orange">2分</view></view><view class="event-point"><view class="figma-row__title">江南队</view><view class="figma-row__subtitle">0胜1负 · 已确认1场</view><view class="figma-status figma-status--orange">1分</view></view></view></view>
+    </block>
+
+    <block wx:elif="{{figmaState==='event-access'}}">
+      <view class="event-state-hero event-state-hero--error"><view class="figma-section__title">当前账号无法查看</view><view class="event-state-hero__body">请切换有权限的账号，或返回公开页面继续浏览。</view></view>
+      <view class="figma-section"><view class="figma-section__title">公开分享</view><view class="event-state-row"><view class="event-state-dot"/><view class="figma-row__copy"><view class="figma-row__title">分享已失效</view><view class="figma-row__subtitle">主办方可能已撤回公开内容。</view></view><view class="figma-status figma-status--orange">不可查看</view></view><view class="event-state-row"><view class="event-state-dot"/><view class="figma-row__copy"><view class="figma-row__title">公开赛事目录</view><view class="figma-row__subtitle">重新选择可访问的赛事。</view></view><view class="figma-status figma-status--orange">可进入</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">私有工作台</view><view class="event-state-row"><view class="event-state-dot"/><view class="figma-row__copy"><view class="figma-row__title">暂无操作权限</view><view class="figma-row__subtitle">须有该赛事、比赛的实际授权。</view></view><view class="figma-status figma-status--orange">无权限</view></view><view class="event-state-row"><view class="event-state-dot"/><view class="figma-row__copy"><view class="figma-row__title">我的任务</view><view class="figma-row__subtitle">查看当前账号获授权的任务。</view></view><view class="figma-status figma-status--orange">可返回</view></view></view>
+    </block>
+
     <block wx:else>
-      <view class="public-section-title">{{tab==='ranking' ? '排名与晋级' : tab==='media' ? '比赛视频与图片' : '赛事赛程'}}</view>
-      <view class="event-tabs">
-        <button class="{{tab==='schedule' ? 'selected' : ''}}" data-tab="schedule" bindtap="tab" disabled="{{loading}}">赛程</button>
-        <button class="{{tab==='ranking' ? 'selected' : ''}}" data-tab="ranking" bindtap="tab" disabled="{{loading}}">排名与晋级</button>
-        <button class="{{tab==='media' ? 'selected' : ''}}" data-tab="media" bindtap="tab" disabled="{{loading}}">视频与图片</button>
+    <view wx:if="{{loading && !event}}" class="figma-section"><figma-skeleton rows="{{5}}"/></view>
+    <block wx:elif="{{!event && unavailable}}">
+      <figma-feedback type="error" title="该赛事已停止公开" body="旧画面已清空，不回显已撤销或不可访问的赛事资料。"/>
+      <view class="figma-section"><view class="figma-row"><figma-icon name="share" size="{{22}}"/><view class="figma-row__copy"><view class="figma-row__title">公开分享入口已失效</view><view class="figma-row__subtitle">撤销公开后，旧赛事链接、比赛与媒体不再展示。</view></view></view><view class="figma-row"><figma-icon name="workbench" size="{{22}}"/><view class="figma-row__copy"><view class="figma-row__title">私有工作台另行授权</view><view class="figma-row__subtitle">机构或赛事工作人员仍须从本人工作台按当前权限进入。</view></view></view></view>
+      <button class="section-action" bindtap="watch">返回观赛入口</button><button wx:if="{{follow.state!=='signedOut'}}" class="section-ghost" bindtap="openFollows">查看我的关注</button>
+    </block>
+    <figma-feedback wx:elif="{{!event && error}}" type="error" title="暂时无法读取赛事" body="{{error}}" action-label="重新读取" bind:action="load"/>
+    <figma-feedback wx:elif="{{!event}}" type="empty" title="打开主办方公开赛事" body="请从当前有效的公开观赛入口进入。" action-label="返回观赛入口" bind:action="watch"/>
+
+    <block wx:if="{{event}}">
+      <figma-feedback wx:if="{{error}}" type="error" title="赛事资料更新失败" body="{{stale ? '当前画面为上次读取结果：' : ''}}{{error}}" action-label="刷新" bind:action="load"/>
+      <view wx:if="{{!overview && tab==='ranking'}}" class="figma-summary standings-summary"><view class="figma-summary__icon"><figma-icon name="standings" size="{{25}}"/></view><view class="figma-summary__copy"><view class="figma-eyebrow">{{event.name}}</view><view class="figma-title">赛程与积分</view><view class="figma-subtitle">按已发布赛程观赛，积分仅汇总已确认赛果。</view></view></view>
+
+      <view wx:if="{{overview || tab!=='ranking'}}" class="event-hero">
+        <view class="event-hero__copy"><view class="event-hero__eyebrow">公开观赛</view><view class="event-hero__title">{{event.name}}</view><view class="event-hero__subtitle">{{event.venueName || '场地待公布'}} · {{event.dateLabel}}</view></view>
+        <image src="/assets/home/hero.jpg" mode="aspectFill"/>
       </view>
-    </block>
-    <block wx:if="{{tab==='schedule' || tab==='media'}}">
-      <view wx:if="{{!overview}}" class="notice schedule-note"><view class="state-strong">{{tab==='media' ? '选择比赛查看已发布媒体' : '比赛时间以当前正式安排为准'}}</view><view class="small">{{tab==='media' ? '仅展示主办方明确发布且授权有效的图片、小视频与片段定位。' : '全部时间为中国标准时间 UTC+8。'}} </view></view>
-      <view wx:if="{{overview}}" class="public-section-title">已发布的比赛</view>
-      <view wx:if="{{!matches.length}}" class="public-panel public-state compact-state"><view class="subtitle">暂无已发布赛程</view><view class="muted">主办方正式发布后，这里显示比赛时间、场地和对阵。</view></view>
-      <block wx:for="{{matches}}" wx:key="publicMatchId">
-        <view class="public-match-card">
-          <view class="muted">第{{item.roundNo}}轮 · {{item.startLabel}} · {{item.courtName}}</view>
-          <view class="match-teams">{{item.home.teamName}} vs {{item.away.teamName}}</view>
-          <view class="match-score">{{item.score ? item.score.home + ' : ' + item.score.away : '— : —'}}</view>
-          <view class="match-status">{{item.statusLabel}} · {{item.resultLabel}}</view>
-          <view wx:if="{{!item.score}}" class="muted small">尚未准备比分，不显示示例分数。</view>
+
+      <view class="event-tabs" role="tablist">
+        <button class="event-tab {{overview ? 'is-active' : ''}}" bindtap="backToOverview" disabled="{{loading}}">概览</button>
+        <button class="event-tab {{!overview && tab==='schedule' ? 'is-active' : ''}}" data-tab="schedule" bindtap="tab" disabled="{{loading}}">赛程</button>
+        <button class="event-tab {{!overview && tab==='ranking' ? 'is-active' : ''}}" data-tab="ranking" bindtap="tab" disabled="{{loading}}">排名与晋级</button>
+        <button class="event-tab {{!overview && tab==='media' ? 'is-active' : ''}}" data-tab="media" bindtap="tab" disabled="{{loading}}">视频与图片</button>
+      </view>
+
+      <view wx:if="{{!overview && tab==='ranking'}}" class="standings-tabs" role="tablist">
+        <button class="standings-tab {{standingsView==='schedule' ? 'is-active' : ''}}" data-view="schedule" bindtap="standingsTab" disabled="{{loading}}">赛程</button>
+        <button class="standings-tab {{standingsView==='points' ? 'is-active' : ''}}" data-view="points" bindtap="standingsTab" disabled="{{loading}}">积分</button>
+        <button class="standings-tab {{standingsView==='groups' ? 'is-active' : ''}}" data-view="groups" bindtap="standingsTab" disabled="{{loading}}">分组</button>
+      </view>
+
+      <figma-feedback wx:if="{{follow.error}}" type="error" title="关注状态读取失败" body="{{follow.error}}"/>
+      <figma-feedback wx:if="{{follow.notice}}" type="success" title="关注状态已更新" body="{{follow.notice}}"/>
+
+      <block wx:if="{{overview}}">
+        <view class="figma-section">
+          <view class="figma-section__title">本周赛程</view>
+          <figma-feedback wx:if="{{matches.length === 0}}" type="empty" title="暂无已发布赛程" body="主办方正式发布后，这里显示比赛时间、场地和对阵。"/>
+          <button wx:for="{{matches}}" wx:key="publicMatchId" wx:if="{{index < 2}}" class="figma-row event-schedule-row" data-id="{{item.publicMatchId}}" bindtap="match">
+            <figma-icon name="schedule" size="{{20}}"/>
+            <view class="figma-row__copy"><view class="figma-row__title">{{item.startLabel}}</view><view class="figma-row__subtitle">{{item.home.teamName}} · {{item.away.teamName}}</view></view>
+            <view class="figma-status figma-status--orange">{{item.statusLabel}}</view>
+          </button>
         </view>
-        <button class="{{tab==='media' ? 'secondary' : 'primary'}}" data-id="{{item.publicMatchId}}" bindtap="match">{{tab==='media' ? '查看本场图片与视频' : '查看比赛详情'}}</button>
-      </block>
-    </block>
-    <block wx:if="{{tab==='ranking'}}">
-      <view wx:if="{{groups}}" class="notice schedule-note"><view class="state-strong">分组循环与晋级</view><view class="small">{{qualificationLabel || '以主办方发布的当前有效资格为准'}}。组内截线同分需明确抽签，不生成跨组总排名。</view></view>
-      <block wx:if="{{groups}}" wx:for="{{groups.groups}}" wx:key="groupKey" wx:for-item="group">
-        <view class="public-panel standings-panel">
-          <view class="subtitle">{{group.label}} · 本组排名</view><view class="muted">{{group.progressLabel}}</view>
-          <view wx:if="{{group.tieBreakRequired}}" class="notice warning small">同分待抽签，资格尚未确定</view>
-          <view class="standings-table"><view class="standings-row table-head"><text class="team-cell">球队</text><text class="games-cell">胜/负</text><text class="points-cell">积分</text></view>
-            <view wx:for="{{group.rows}}" wx:key="teamKey" class="standings-row"><view class="team-cell">{{item.teamName}}<text wx:if="{{item.tied}}" class="small muted"> · 并列</text></view><text class="games-cell">{{item.wins}}/{{item.losses}}</text><text class="points-cell">{{item.leaguePoints}}</text></view>
+
+        <view class="figma-section">
+          <view class="figma-section__title">小组积分</view>
+          <figma-feedback wx:if="{{overviewPoints.length === 0}}" type="empty" title="积分待发布" body="正式赛果确认后显示当前排名。"/>
+          <view wx:else class="event-points">
+            <view wx:for="{{overviewPoints}}" wx:key="teamKey" wx:if="{{index < 2}}" class="event-point"><view class="event-point__name">{{item.teamName}}</view><view class="figma-row__subtitle">{{item.wins}} 胜 {{item.losses}} 负 · {{item.leaguePoints}} 分</view></view>
+          </view>
+        </view>
+
+        <view class="figma-section">
+          <view class="figma-section__title">赛事服务</view>
+          <view class="event-services">
+            <button class="event-service" bindtap="followPrimary" disabled="{{follow.busy || follow.state==='checking'}}"><figma-icon name="event" size="{{20}}"/><view class="figma-row__title">关注赛事</view><view class="figma-row__subtitle">{{follow.state==='active' ? '已关注，查看站内更新' : follow.state==='signedOut' ? '登录后接收站内更新' : follow.state==='checking' ? '正在核对关注状态' : '接收站内更新'}}</view></button>
+            <button class="event-service" bindtap="openMedia"><figma-icon name="media" size="{{20}}"/><view class="figma-row__title">比赛媒体</view><view class="figma-row__subtitle">已发布影像</view></button>
+            <button class="event-service" bindtap="report"><figma-icon name="event" size="{{20}}"/><view class="figma-row__title">赛事问题与举报</view><view class="figma-row__subtitle">反馈公开内容</view></button>
           </view>
         </view>
       </block>
-      <view wx:if="{{standings}}" class="public-panel standings-panel"><view class="subtitle">正式积分</view><view class="muted">仅纳入当前独立确认的正式赛果。</view><view class="standings-table"><view class="standings-row table-head"><text class="team-cell">球队</text><text class="games-cell">胜/负</text><text class="points-cell">积分</text></view><view wx:for="{{standings.rows}}" wx:key="teamKey" class="standings-row"><view class="team-cell">{{item.rank || '暂列'}} · {{item.teamName}}</view><text class="games-cell">{{item.wins}}/{{item.losses}}</text><text class="points-cell">{{item.leaguePoints}}</text></view></view></view>
-      <block wx:if="{{bracket}}">
-        <view class="notice schedule-note"><view class="state-strong">淘汰签位</view><view class="small">晋级依据有效独立确认或弃权裁定；取消场次不产生晋级者，轮空不计作比赛。</view></view>
-        <block wx:for="{{bracket.rounds}}" wx:key="roundNo" wx:for-item="round"><view wx:for="{{round.slots}}" wx:key="positionNo" class="public-panel bracket-card"><view class="subtitle">{{item.label || round.label}} · {{item.positionNo}}</view><view class="muted bracket-teams"><block wx:if="{{item.bye}}">{{item.bye.teamName}} · 轮空</block><block wx:else>{{item.homeLabel}} / {{item.awayLabel}}</block></view><view class="event-status">{{item.statusLabel || '以正式赛程为准'}}</view><view wx:if="{{item.winner}}" class="match-status">{{item.winnerLabel || '晋级'}}：{{item.winner.teamName}}</view><view wx:elif="{{!round.published}}" class="muted">时间与场地待负责人明确发布</view></view></block>
-        <view wx:if="{{bracket.isComplete}}" class="public-panel placements-panel"><view class="subtitle">最终名次</view><view wx:for="{{bracket.placements}}" wx:key="index" class="placement-row"><text class="placement-rank">{{item.rank}}</text><view>{{item.team.teamName}}<view wx:if="{{item.tied}}" class="small muted">并列名次</view></view></view></view>
+
+      <block wx:if="{{!overview && (tab==='schedule' || tab==='media')}}">
+        <view class="figma-section">
+          <view class="figma-section__title">{{tab==='media' ? '选择比赛查看媒体' : '赛事赛程'}}</view><view class="figma-section__hint">{{tab==='media' ? '仅展示主办方明确发布且授权有效的内容。' : '全部时间为中国标准时间 UTC+8，以当前正式安排为准。'}}</view>
+          <figma-feedback wx:if="{{matches.length === 0}}" type="empty" title="暂无已发布赛程" body="主办方正式发布后，这里显示比赛时间、场地和对阵。"/>
+          <button wx:for="{{matches}}" wx:key="publicMatchId" class="match-row" data-id="{{item.publicMatchId}}" bindtap="match">
+            <view class="match-row__meta">第{{item.roundNo}}轮 · {{item.startLabel}} · {{item.courtName}}</view>
+            <view class="match-row__body"><view class="match-row__teams">{{item.home.teamName}}<text>vs</text>{{item.away.teamName}}</view><view class="match-row__score">{{item.score ? item.score.home + ' : ' + item.score.away : '— : —'}}</view></view>
+            <view class="match-row__status">{{item.statusLabel}} · {{item.resultLabel}}</view>
+          </button>
+        </view>
       </block>
-      <view wx:if="{{!groups && !standings && !bracket}}" class="public-panel public-state compact-state"><view class="subtitle">排名资料待发布</view><view class="muted">当前没有可公开展示的积分或晋级资料。</view></view>
+
+      <block wx:if="{{!overview && tab==='ranking'}}">
+        <view id="standings-schedule" class="figma-section"><view class="figma-section__title">周末赛程</view><figma-feedback wx:if="{{matches.length === 0}}" type="empty" title="暂无已发布赛程" body="主办方发布后显示比赛时间与对阵。"/><button wx:for="{{matches}}" wx:key="publicMatchId" wx:if="{{index < 2}}" class="figma-row standings-schedule-row" data-id="{{item.publicMatchId}}" bindtap="match"><figma-icon name="schedule" size="{{20}}"/><view class="figma-row__copy"><view class="figma-row__title">{{item.startLabel}}</view><view class="figma-row__subtitle">{{item.home.teamName}} vs {{item.away.teamName}} · {{item.locationLabel || item.courtName || '主场'}}</view></view><view class="figma-status {{item.status==='FINISHED' || item.resultStatus==='CONFIRMED' ? 'figma-status--green' : 'figma-status--orange'}}">{{item.standingsStatusLabel || item.statusLabel}}</view></button></view>
+        <view id="standings-points" class="figma-section"><view class="figma-section__title">小组积分</view><figma-feedback wx:if="{{overviewPoints.length === 0}}" type="empty" title="积分待发布" body="正式赛果确认后显示当前排名。"/><view wx:else class="event-points standings-points"><view wx:for="{{overviewPoints}}" wx:key="teamKey" wx:if="{{index < 2}}" class="event-point"><view class="event-point__name">{{item.teamName}}</view><view class="figma-row__subtitle">{{item.wins}}胜{{item.losses}}负 · 已确认{{item.confirmedMatchCount===undefined ? item.wins + item.losses : item.confirmedMatchCount}}场</view><view class="figma-status figma-status--orange">{{item.leaguePoints}}分</view></view></view></view>
+        <view id="standings-groups" wx:if="{{standingsView==='groups' && (groups || standings || bracket)}}" class="figma-section"><view class="figma-section__title">分组与晋级</view><view class="figma-section__hint">{{qualificationLabel || '以主办方发布的当前有效资格为准'}}</view><block wx:if="{{groups}}" wx:for="{{groups.groups}}" wx:key="groupKey" wx:for-item="group"><view class="ranking-title">{{group.label}} · {{group.progressLabel || '本组排名'}}</view><figma-feedback wx:if="{{group.tieBreakRequired}}" type="pending" title="同分待抽签" body="晋级资格尚未确定。"/><view class="ranking-row ranking-row--head"><text>球队</text><text>胜/负</text><text>积分</text></view><view wx:for="{{group.rows}}" wx:key="teamKey" class="ranking-row"><text>{{item.teamName}}{{item.tied ? ' · 并列' : ''}}</text><text>{{item.wins}}/{{item.losses}}</text><text>{{item.leaguePoints}}</text></view></block><block wx:if="{{standings}}"><view class="ranking-row ranking-row--head"><text>球队</text><text>胜/负</text><text>积分</text></view><view wx:for="{{standings.rows}}" wx:key="teamKey" class="ranking-row"><text>{{item.rank || '暂列'}} · {{item.teamName}}</text><text>{{item.wins}}/{{item.losses}}</text><text>{{item.leaguePoints}}</text></view></block><block wx:if="{{bracket}}"><view class="ranking-title">淘汰签位</view><block wx:for="{{bracket.rounds}}" wx:key="roundNo" wx:for-item="round"><view wx:for="{{round.slots}}" wx:key="positionNo" class="bracket-row"><view class="figma-row__title">{{item.label || round.label}} · {{item.positionNo}}</view><view class="figma-row__subtitle">{{item.bye ? item.bye.teamName + ' · 轮空' : item.homeLabel + ' / ' + item.awayLabel}}</view><view class="figma-status">{{item.winner ? (item.winnerLabel || '晋级') + ' · ' + item.winner.teamName : (item.statusLabel || '待发布')}}</view></view></block><block wx:if="{{bracket.placements && bracket.placements.length}}"><view class="ranking-title">最终名次</view><view class="ranking-row ranking-row--head"><text>球队</text><text>状态</text><text>名次</text></view><view wx:for="{{bracket.placements}}" wx:key="rank" class="ranking-row"><text>{{item.team.teamName}}</text><text>{{item.tied ? '并列' : '已确认'}}</text><text>{{item.rank}}</text></view></block></block></view>
+      </block>
+
+      <sponsorship-slot region-id="{{sponsorRegionId}}" catalog-version="{{sponsorCatalogVersion}}" event-public-id="{{sponsorEventPublicId}}" visible="{{sponsorVisible && !!event}}"/>
+      <view wx:if="{{overview}}" class="figma-section event-secondary">
+        <view class="figma-section__title">更多赛事操作</view>
+        <view wx:if="{{event.formatLabel}}" class="figma-caption">{{event.formatLabel}} · {{event.statusLabel}}</view>
+        <button class="figma-row" bindtap="watch"><figma-icon name="schedule" size="{{20}}"/><view class="figma-row__copy"><view class="figma-row__title">公开赛事列表</view><view class="figma-row__subtitle">浏览其他当前可见赛事</view></view></button>
+        <button class="figma-row" open-type="share"><figma-icon name="share" size="{{20}}"/><view class="figma-row__copy"><view class="figma-row__title">分享赛事</view><view class="figma-row__subtitle">使用当前有效公开链接</view></view></button>
+        <button wx:if="{{follow.state==='active' || follow.state==='invalid'}}" class="figma-row" bindtap="openFollows"><figma-icon name="event" size="{{20}}"/><view class="figma-row__copy"><view class="figma-row__title">我的关注</view><view class="figma-row__subtitle">查看或取消已保存赛事</view></view></button>
+      </view>
     </block>
-    <button wx:if="{{!overview}}" class="secondary" bindtap="backToOverview" disabled="{{loading}}">返回赛事概览</button>
-    <view class="public-panel follow-panel">
-      <view class="follow-head"><view class="subtitle">关注赛事</view><view wx:if="{{follow.state==='active'}}" class="follow-tag">已关注</view></view>
-      <view wx:if="{{follow.state==='signedOut'}}" class="muted">登录后可关注此公开赛事，并在「我的关注」查看。未登录也可以继续观赛。</view>
-      <view wx:elif="{{follow.state==='checking'}}" class="muted">正在核对本账号的关注状态…</view>
-      <view wx:elif="{{follow.state==='none'}}" class="muted">关注后可在「我的关注」快速回到此赛事。</view>
-      <view wx:elif="{{follow.state==='active'}}" class="muted">本账号已关注此公开赛事。</view>
-      <view wx:elif="{{follow.state==='invalid'}}" class="muted">这条关注已失效，可在「我的关注」取消。</view>
-      <view wx:if="{{follow.notice}}" class="notice follow-notice">{{follow.notice}}</view>
-      <view wx:if="{{follow.error}}" class="notice warning follow-notice">{{follow.error}}</view>
-      <view class="small muted follow-reminder">{{reminderOff}}</view>
-      <button wx:if="{{follow.state==='signedOut'}}" class="secondary" bindtap="followLogin">登录后关注</button>
-      <button wx:elif="{{follow.state==='checking'}}" class="secondary" disabled>正在核对关注状态</button>
-      <button wx:elif="{{follow.state==='none'}}" class="secondary" bindtap="followEvent" disabled="{{follow.busy}}" loading="{{follow.busy}}">{{follow.busy ? '正在关注' : '关注此赛事'}}</button>
-      <button wx:elif="{{follow.state==='unknown'}}" class="secondary" bindtap="checkFollow">重新核对关注状态</button>
-      <block wx:elif="{{follow.state==='active' || follow.state==='invalid'}}">
-        <button class="secondary" bindtap="openFollows" disabled="{{follow.busy}}">查看我的关注</button>
-        <button class="quiet" bindtap="cancelFollow" disabled="{{follow.busy}}" loading="{{follow.busy}}">{{follow.busy ? '正在取消' : '取消关注'}}</button>
-      </block>
-    </view>
-    <button class="secondary" open-type="share">分享此公开赛事</button>
-    <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">{{loading ? '正在核对最新赛事资料' : '刷新赛事资料'}}</button>
-  </block>
+    </block>
+  </view>
+
+  <view wx:if="{{figmaState==='event-standings'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">查看排名规则</button><button class="figma-action figma-action--orange">查看比赛</button></view>
+  <view wx:elif="{{figmaState==='event-access'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">返回我的任务</button><button class="figma-action figma-action--orange" bindtap="watch">返回公开赛事</button></view>
+  <view wx:elif="{{event}}" class="figma-fixed-actions">
+    <button wx:if="{{!overview && tab==='ranking'}}" class="figma-action figma-action--ghost" bindtap="rankingRules" disabled="{{loading}}">查看排名规则</button>
+    <button wx:if="{{!overview && tab==='ranking'}}" class="figma-action figma-action--orange" bindtap="openFirstMatch" disabled="{{loading || matches.length === 0}}">查看比赛</button>
+    <button wx:if="{{overview || tab!=='ranking'}}" class="figma-action figma-action--ghost" bindtap="followPrimary" disabled="{{follow.busy || follow.state==='checking'}}">{{follow.busy ? '正在处理…' : follow.state==='active' || follow.state==='invalid' ? '我的关注' : follow.state==='signedOut' ? '登录后关注' : follow.state==='unknown' ? '重新核对' : '关注赛事'}}</button>
+    <button wx:if="{{overview || tab!=='ranking'}}" class="figma-action figma-action--orange" bindtap="openSchedule" disabled="{{loading}}">查看赛程</button>
+  </view>
 </view>
-<scb-nav active="Events"/>

@@ -1,0 +1,60 @@
+{
+  "name": "int01-performance-source-unavailable",
+  "route": "pages/performance/index",
+  "state": "synthetic-pending-source-not-currently-available",
+  "figmaNode": "30:1975",
+  "syntheticData": true,
+  "designSource": "Actual pending link DTO through updateLinks; unavailable source remains neutral and rejection remains independent",
+  "expectText": [
+    "合成来源状态核对",
+    "来源已失效或暂不可用",
+    "当前来源不再满足公开条件",
+    "拒绝授权"
+  ],
+  "expectAbsentText": ["已核对"],
+  "expectVisible": [
+    ".figma-fixed-actions button[data-mini-bindtap=\"checkLink\"][data-id=\"20000000-0000-4000-8000-000000000001\"][data-type=\"REVOKE\"]"
+  ],
+  "expectAbsentSelectors": [
+    ".figma-status--green",
+    "button[data-mini-bindtap=\"checkLink\"][data-type=\"CONSENT\"]"
+  ],
+  "data": {
+    "authorized": true,
+    "loading": false,
+    "loginRequired": false,
+    "ownOnly": false,
+    "ownProfileId": "20000000-0000-4000-8000-000000000010",
+    "filter": "PENDING",
+    "links": [
+      {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "profileId": "20000000-0000-4000-8000-000000000010",
+        "profileName": "合成本人球员",
+        "orgId": "20000000-0000-4000-8000-000000000020",
+        "eventId": "20000000-0000-4000-8000-000000000030",
+        "eventName": "合成来源状态核对",
+        "teamId": "20000000-0000-4000-8000-000000000040",
+        "teamName": "合成青锋队",
+        "memberId": "20000000-0000-4000-8000-000000000051",
+        "memberName": "合成本人",
+        "status": "PENDING",
+        "version": 4,
+        "nominatedByUserId": "20000000-0000-4000-8000-000000000080",
+        "consentedAt": null,
+        "revokedAt": null,
+        "reason": "合成主办方提名依据",
+        "sourceCurrentlyAvailable": false,
+        "createdAt": "2026-11-06T02:00:00Z",
+        "capabilities": { "canConsent": false, "canRevoke": true },
+        "statusText": "等待本人确认",
+        "sourceText": "来源已失效或暂不可用",
+        "revokeText": "拒绝本次公开"
+      }
+    ],
+    "linksHasMore": false,
+    "nextCursor": null,
+    "manageableEvents": [],
+    "pending": null
+  }
+}

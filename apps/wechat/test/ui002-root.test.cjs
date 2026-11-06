@@ -59,7 +59,8 @@ test('UI002 refreshing the same account after organization revocation returns to
   assert.deepEqual(h.page.data.roles, []);
   assert.deepEqual(h.page.data.managedOrgs, []);
   const closed = buildPreview({ root, route: 'pages/account/index', data: h.page.data });
-  assert.match(closed.phone, /本人报名与资料/);
+  assert.match(closed.phone, /我的报名/);
+  assert.match(closed.phone, /本人资料与授权/);
   assert.doesNotMatch(closed.phone, /旧机构管理员|建队申请审批|机构管理/);
   h.page.toggleMore();
   const result = buildPreview({ root, route: 'pages/account/index', data: h.page.data });

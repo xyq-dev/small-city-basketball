@@ -4,7 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["赛果已独立确认", "确认记录", "（已撤销）"],
+  "expectText": ["赛果独立确认已完成", "确认记录", "（已撤销）"],
   "data": {
     "loading": false,
     "busy": false,

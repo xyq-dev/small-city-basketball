@@ -1,0 +1,40 @@
+{
+  "name": "ui006-local-manage-figma",
+  "route": "pages/local-manage/index",
+  "state": "synthetic-figma-overview",
+  "figmaNode": "36:84",
+  "syntheticData": true,
+  "expectText": ["供给资料", "开放档期", "上架核验", "合成文化体育中心篮球场"],
+  "data": {
+    "canCreate": true,
+    "creating": false,
+    "selected": null,
+    "loading": false,
+    "organizations": [{ "id": "org-fixture", "name": "合成机构" }],
+    "listings": [
+      {
+        "id": "listing-fixture",
+        "title": "合成文化体育中心篮球场",
+        "kindText": "球场",
+        "address": "合成高州市体育中心东侧",
+        "statusText": "已审核",
+        "published": true,
+        "providerConfirmed": true
+      }
+    ],
+    "overviewSlots": [
+      {
+        "id": "slot-fixture-one",
+        "timeText": "周六 19:00—21:00",
+        "statusText": "本周可约",
+        "available": true
+      },
+      {
+        "id": "slot-fixture-two",
+        "timeText": "周日 15:00—17:00",
+        "statusText": "已被预约",
+        "available": false
+      }
+    ]
+  }
+}

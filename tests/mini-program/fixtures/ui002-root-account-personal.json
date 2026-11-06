@@ -1,10 +1,10 @@
 {
-  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "designSource": "UI006 36:56 account implementation with synthetic API-shaped data, not real account/provider acceptance",
   "static": true,
   "name": "ui002-root-account-personal",
   "route": "pages/account/index",
   "state": "populated",
-  "figmaNode": "4:378",
+  "figmaNode": "36:56",
   "data": {
     "loading": false,
     "busy": false,
@@ -31,6 +31,6 @@
     "teamCount": 0,
     "navigationMoreOpen": true
   },
-  "expectText": ["我的成员关系", "加入球队与成员认领", "私有赛季授权与本人数据", "我的关注"],
+  "expectText": ["我的成员关系", "加入球队与成员认领", "我的比赛数据授权", "私有赛季授权", "我的广告合同", "我的关注"],
   "expectAbsentText": ["机构管理", "建队申请审批"]
 }

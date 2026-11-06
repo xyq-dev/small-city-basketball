@@ -203,7 +203,7 @@ test('signed-out viewers can browse; empty groups and city filters say so', asyn
   assert.equal(p.page.data.dir.loaded, true);
   assert.deepEqual(p.page.data.dir.items, []);
   let preview = buildPreview({ root, route: 'pages/watch/index', data: p.page.data });
-  assert.match(preview.phone, /暂无主办方公开的进行中赛事/);
+  assert.match(preview.phone, /暂无公开赛事/);
   p.page.dirCityInput(tap({}, { value: '茂名!' }));
   p.page.applyDirCity();
   assert.match(p.page.data.dir.cityError, /城市仅支持/);
@@ -251,7 +251,8 @@ test('a failed later page keeps the rows already read and retries the same curso
   );
   assert.match(p.page.data.dir.moreError, /已显示的 2 届保留/);
   let preview = buildPreview({ root, route: 'pages/watch/index', data: p.page.data });
-  assert.match(preview.phone, /重试加载更多/);
+  assert.match(preview.phone, /后续赛事读取失败/);
+  assert.match(preview.phone, />重试</);
   failMore = false;
   await p.page.loadMoreDirectory();
   assert.deepEqual(
@@ -405,7 +406,7 @@ test('a refresh clears old rows first and a failed refresh never shows them as c
   assert.match(p.page.data.dir.error, /合成错误 503/);
   const preview = buildPreview({ root, route: 'pages/watch/index', data: p.page.data });
   assert.doesNotMatch(preview.phone, /已撤出的赛事/);
-  assert.match(preview.phone, /公开赛事暂时无法读取/);
+  assert.match(preview.phone, /公开赛事读取失败/);
   assert.match(preview.phone, /重新读取/);
 });
 
@@ -515,7 +516,7 @@ test('event-setup shows the directory card and never lists on its own', async ()
   const { d, p } = await setup({}, { lastListing: { revokeSource: 'PUBLICATION_REVOKED' } });
   const preview = buildPreview({ root, route: 'pages/event-setup/index', data: p.page.data });
   assert.match(preview.phone, /公开赛事目录/);
-  assert.match(preview.phone, /未列入/);
+  assert.match(preview.phone, /关闭/);
   assert.match(preview.phone, /开启公开观赛不会自动列入目录/);
   assert.match(preview.phone, /目录已自动撤出/);
   assert.match(preview.phone, /列入公开目录/);

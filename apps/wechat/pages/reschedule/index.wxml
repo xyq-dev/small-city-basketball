@@ -1,56 +1,129 @@
-<scb-header title="正式改期" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page">
-  <view wx:if="{{loading && !match}}" class="card state-panel"><text class="state-label">改期</text><view class="subtitle">正在读取正式安排</view><view class="loading-lines"><view></view><view></view></view></view>
-  <view wx:elif="{{!match}}" class="card state-panel">
-    <text class="state-label">{{unavailable ? '请核对' : '读取未完成'}}</text>
-    <view class="subtitle">{{unavailable ? '无法查看改期' : '暂时无法读取'}}</view>
-    <view class="notice warning">{{error || '请从比赛详情重新进入。'}}</view>
-    <button wx:if="{{!unavailable}}" class="primary" bindtap="load">重新读取</button>
+<view class="figma-page">
+  <scb-header title="{{figmaState==='reschedule-network' ? '提交结果待核对' : figmaState==='reschedule-changed' ? '服务与赛程变更' : uncertain ? '提交结果待核对' : rescheduleTab === 'history' && history.length ? '服务与赛程变更' : '正式改期'}}" disabled="{{busy || pending || dirty}}"/>
+  <view class="figma-page__content figma-page__content--actions">
+    <block wx:if="{{figmaState==='reschedule-network'}}">
+      <view class="reschedule-state-hero reschedule-state-hero--warning"><view class="figma-section__title">提交结果待核对</view><view class="reschedule-state-hero__body">遇到断网或版本冲突，先查询原操作和当前赛程。</view></view>
+      <view class="figma-section"><view class="figma-section__title">网络连接</view><view class="reschedule-network-row"><view class="reschedule-dot"/><view class="figma-row__copy"><view class="figma-row__title">连接中断</view><view class="figma-row__subtitle">暂停新的提交。</view></view><view class="figma-status figma-status--orange">待恢复</view></view><view class="reschedule-network-row"><view class="reschedule-dot"/><view class="figma-row__copy"><view class="figma-row__title">原操作回执</view><view class="figma-row__subtitle">恢复连接后查原请求。</view></view><view class="figma-status figma-status--orange">待核对</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">本地与服务器</view><view class="reschedule-compare"><view class="reschedule-compare__item"><view class="figma-row__title">本地草稿</view><view class="figma-row__subtitle">11月10日 19:00 · 主场</view><view class="figma-status figma-status--orange">版本2</view></view><view class="reschedule-compare__item"><view class="figma-row__title">最新计划</view><view class="figma-row__subtitle">场地或开球时间可能已调整。</view><view class="figma-status figma-status--orange">需重读</view></view></view></view>
+    </block>
+
+    <block wx:elif="{{figmaState==='reschedule-changed'}}">
+      <view class="reschedule-state-hero"><view class="figma-section__title">服务与赛程已更新</view><view class="reschedule-state-hero__body">请先查看最新时间、场地与处理进度，再继续操作。</view></view>
+      <view class="figma-section"><view class="figma-section__title">正式改期</view><view class="reschedule-network-row reschedule-state-row--plain"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">原开球时间</view><view class="figma-row__subtitle">11月08日 19:00 · 主场</view></view><view class="figma-status">原安排</view></view><view class="reschedule-network-row reschedule-state-row--plain"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">新开球时间</view><view class="figma-row__subtitle">11月10日 19:00 · 主场</view></view><view class="figma-status figma-status--orange">已发布</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">服务下架</view><view class="reschedule-network-row"><view class="reschedule-dot"/><view class="figma-row__copy"><view class="figma-row__title">预约服务已下架</view><view class="figma-row__subtitle">停止接受新的预约。</view></view><view class="figma-status figma-status--error">已下架</view></view><view class="reschedule-network-row"><view class="reschedule-dot"/><view class="figma-row__copy"><view class="figma-row__title">历史订单</view><view class="figma-row__subtitle">按下单时保存的服务信息核对。</view></view><view class="figma-status figma-status--orange">仍可查</view></view></view>
+    </block>
+
+    <block wx:else>
+    <figma-skeleton wx:if="{{loading && !match}}" rows="3"/>
+    <figma-feedback wx:elif="{{!match}}" type="{{unavailable ? 'pending' : 'error'}}" title="{{unavailable ? '无法查看改期' : '正式安排读取未完成'}}" body="{{error || '请从比赛详情重新进入。'}}" action-label="{{unavailable ? '' : '重新读取'}}" bind:action="load"/>
+
+    <block wx:if="{{match && uncertain}}">
+      <figma-feedback type="pending" title="提交结果待核对" body="遇到断网或版本冲突，先查询原操作和当前赛程。"/>
+
+      <view class="figma-section">
+        <view class="figma-section__title">网络连接</view>
+        <view class="reschedule-network-row">
+          <view class="reschedule-dot"/>
+          <view class="figma-row__copy"><view class="figma-row__title">连接中断</view><view class="figma-row__subtitle">暂停新的提交。</view></view>
+          <view class="figma-status figma-status--orange">待恢复</view>
+        </view>
+        <view class="reschedule-network-row">
+          <view class="reschedule-dot"/>
+          <view class="figma-row__copy"><view class="figma-row__title">原操作回执</view><view class="figma-row__subtitle">恢复连接后查原请求。</view></view>
+          <view class="figma-status figma-status--orange">待核对</view>
+        </view>
+      </view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">本地与服务器</view>
+        <view class="reschedule-compare">
+          <view class="reschedule-compare__item"><view class="figma-row__title">本地草稿</view><view class="figma-row__subtitle">{{date || match.plan}} · {{courts[courtIndex].name || '原场地'}}</view><view class="figma-status figma-status--orange">待核对</view></view>
+          <view class="reschedule-compare__item"><view class="figma-row__title">最新计划</view><view class="figma-row__subtitle">场地或开球时间可能已调整。</view><view class="figma-status figma-status--orange">需重读</view></view>
+        </view>
+      </view>
+    </block>
+
+    <block wx:if="{{match && !uncertain}}">
+      <block wx:if="{{rescheduleTab !== 'history'}}">
+      <figma-feedback wx:if="{{error}}" type="error" title="改期未完成" body="{{error}}" action-label="重新读取核对" bind:action="load" disabled="{{busy}}"/>
+      <figma-feedback wx:if="{{notice}}" type="success" title="改期已确认" body="{{notice}}"/>
+
+      <view class="figma-summary">
+        <view class="figma-summary__icon"><figma-icon name="schedule" size="24"/></view>
+        <view class="figma-summary__copy"><view class="figma-eyebrow">单场管理</view><view class="figma-title">正式改期</view><view class="figma-subtitle">保留原公布安排，记录本次变更与原因。</view></view>
+      </view>
+      </block>
+
+      <view class="reschedule-tabs" role="tablist">
+        <button class="reschedule-tab {{rescheduleTab === 'original' ? 'is-active' : ''}}" data-tab="original" bindtap="changeRescheduleTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{rescheduleTab === 'original'}}">原安排</button>
+        <button class="reschedule-tab {{rescheduleTab === 'new' ? 'is-active' : ''}}" data-tab="new" bindtap="changeRescheduleTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{rescheduleTab === 'new'}}">新安排</button>
+        <button class="reschedule-tab {{rescheduleTab === 'history' ? 'is-active' : ''}}" data-tab="history" bindtap="changeRescheduleTab" disabled="{{busy || uncertain}}" role="tab" aria-selected="{{rescheduleTab === 'history'}}">改期记录</button>
+      </view>
+    </block>
+
+    <block wx:if="{{match && !uncertain && rescheduleTab === 'history' && history.length}}">
+      <view class="reschedule-change-hero"><view class="figma-section__title">服务与赛程已更新</view><view class="figma-section__hint">请先查看最新时间、场地与处理进度，再继续操作。</view></view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">正式改期</view>
+        <view class="figma-section__hint">最新安排：{{match.plan}}</view>
+        <view class="reschedule-network-row"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">原开球时间</view><view class="figma-row__subtitle">{{history[0].from}}</view></view><view class="figma-status">原安排</view></view>
+        <view class="reschedule-network-row"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">新开球时间</view><view class="figma-row__subtitle">{{history[0].to}}</view></view><view class="figma-status figma-status--orange">已发布</view></view>
+      </view>
+
+      <view class="figma-section">
+        <view class="figma-section__title">关联服务与历史订单</view>
+        <view class="reschedule-network-row"><view class="reschedule-dot"/><view class="figma-row__copy"><view class="figma-row__title">最新服务状态</view><view class="figma-row__subtitle">按当前服务与权限重新读取。</view></view><view class="figma-status figma-status--orange">需核对</view></view>
+        <view class="reschedule-network-row"><view class="reschedule-dot"/><view class="figma-row__copy"><view class="figma-row__title">历史订单</view><view class="figma-row__subtitle">按下单时保存的信息核对。</view></view><view class="figma-status">仍可查</view></view>
+      </view>
+    </block>
+
+    <block wx:if="{{match && !uncertain && rescheduleTab !== 'history'}}">
+      <view id="reschedule-original" class="figma-section">
+        <view class="figma-section__title">原公布安排</view>
+        <button class="figma-row" bindtap="openMatch"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">{{match.home}} vs {{match.away}}</view><view class="figma-row__subtitle">{{match.originalTime || match.plan}}</view></view><view class="figma-status figma-status--orange">已发布</view></button><view class="figma-row"><figma-icon name="court" size="20"/><view class="figma-row__copy"><view class="figma-row__title">{{match.venueLabel || '赛事与轮次'}}</view><view class="figma-row__subtitle">{{match.venueName || (match.eventName + ' · ' + match.round)}}</view></view><view class="figma-status">{{match.venueStatusText || match.statusLabel}}</view></view>
+        <view wx:if="{{!hideBoundaryNote}}" class="reschedule-boundary">这是已发布比赛的正式改期，不是排赛草稿；原快照保持不变，每次改期单独留存。</view>
+      </view>
+
+      <view wx:if="{{canReschedule}}" id="reschedule-new" class="figma-section">
+        <view class="figma-section__title">新的场地与时间</view>
+        <figma-feedback wx:if="{{!courts.length}}" type="error" title="没有可用场地" body="请先在机构场地配置中启用场地。"/>
+        <view class="figma-field-group"><view class="figma-field-label">日期与开始时间</view><view wx:if="{{dateDisplay}}" class="reschedule-control"><text>{{dateDisplay}} {{time}}</text><text class="figma-status figma-status--orange">北京时间</text></view><view wx:else class="reschedule-pair"><picker mode="date" value="{{date}}" bindchange="pickDate" disabled="{{busy || uncertain}}"><view class="reschedule-picker">{{date || '选择日期'}}</view></picker><picker mode="time" value="{{time}}" bindchange="pickTime" disabled="{{busy || uncertain}}"><view class="reschedule-picker">{{time || '选择时间'}}</view></picker></view><view wx:if="{{!dateDisplay}}" class="figma-caption">北京时间 · 结束时间按原每场 {{match.duration}} 分钟由服务端计算</view></view>
+        <view class="figma-field-group"><view class="figma-field-label">场地</view><picker range="{{courts}}" range-key="name" value="{{courtIndex}}" bindchange="pickCourt" disabled="{{busy || uncertain || !courts.length}}"><view class="reschedule-control"><text>{{courts[courtIndex].name || '选择场地'}}</text><text class="figma-status figma-status--orange">{{courts.length ? '已选' : '待选择'}}</text></view></picker></view>
+        <view class="figma-field-group"><view class="figma-field-label">改期原因</view><textarea class="figma-field-control" maxlength="500" value="{{reason}}" bindinput="reasonInput" disabled="{{busy || uncertain}}" placeholder="例如：原场地维护，调整到次日晚场"/></view>
+      </view>
+      <figma-feedback wx:if="{{!canReschedule}}" type="pending" title="当前不能改期" body="{{blocker}}"/>
+
+      <view class="figma-section">
+        <view class="figma-section__title">提交前检查</view>
+        <view class="reschedule-notice"><view class="reschedule-dot"/><view class="figma-row__copy"><view class="figma-row__title">场地及队伍占用</view><view class="figma-row__subtitle">按服务端当前安排再次核对</view></view><view class="figma-status figma-status--orange">{{conflicts.length ? '有冲突' : '待检查'}}</view></view>
+        <view class="reschedule-notice"><view class="reschedule-dot"/><view class="figma-row__copy"><view class="figma-row__title">历史与通知</view><view class="figma-row__subtitle">更改原因对有关球队及工作人员可见</view></view><view class="figma-status figma-status--green">已说明</view></view>
+        <view wx:for="{{conflicts}}" wx:key="key" class="reschedule-conflict">{{item.label}}（{{item.scope}}{{item.external ? '，已有资源安排' : ''}}）</view>
+      </view>
+
+    </block>
+
+      <view wx:if="{{match && !uncertain && rescheduleTab === 'history'}}" id="reschedule-history" class="figma-section">
+        <view class="figma-section__title">改期记录</view>
+        <figma-feedback wx:if="{{!history.length}}" type="empty" title="尚无改期" body="当前安排即原发布安排。"/>
+        <view wx:for="{{history}}" wx:key="key" class="reschedule-history"><view class="figma-row__title">{{item.from}}</view><view class="reschedule-arrow">→</view><view class="figma-row__title">{{item.to}}</view><view class="figma-row__subtitle">{{item.reason}} · {{item.time}}</view></view>
+        <view wx:if="{{truncated}}" class="figma-section__hint">仅显示最近 20 条改期记录。</view>
+      </view>
+
+    </block>
   </view>
-  <block wx:else>
-    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-    <view wx:if="{{notice}}" class="notice success-notice">{{notice}}</view>
-    <view wx:if="{{uncertain}}" class="card">
-      <view class="subtitle">改期结果待核对</view>
-      <view class="muted">网络中断时服务端可能已经保存。请先重新读取核对当前安排与历史；不会自动重发。</view>
-      <button class="primary" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button>
-    </view>
-    <view class="board">
-      <view class="board-meta" bindtap="openMatch">{{match.eventName}} · {{match.round}} · {{match.statusLabel}}</view>
-      <view class="org-match-teams"><text>{{match.home}}</text><text class="org-match-vs">VS</text><text>{{match.away}}</text></view>
-      <view class="board-result">当前正式安排：{{match.plan}}</view>
-    </view>
-    <view class="notice small">这是对已发布比赛的正式改期，不是排赛草稿。原发布快照保持不变，每次改期单独留存记录；结束时间按原排赛每场 {{match.duration}} 分钟由服务端计算。</view>
 
-    <view wx:if="{{canReschedule}}" class="card">
-      <view class="subtitle">新的场地与时间</view>
-      <view wx:if="{{!courts.length}}" class="notice warning small">机构没有可用场地。</view>
-      <text class="field-label">场地</text>
-      <picker class="field" range="{{courts}}" range-key="name" value="{{courtIndex}}" bindchange="pickCourt">{{courts[courtIndex].name || '选择场地'}}</picker>
-      <view class="setup-pair">
-        <view><text class="field-label">日期</text><picker mode="date" class="field" value="{{date}}" bindchange="pickDate">{{date || '选择日期'}}</picker></view>
-        <view><text class="field-label">开始时间（北京时间）</text><picker mode="time" class="field" value="{{time}}" bindchange="pickTime">{{time || '选择时间'}}</picker></view>
-      </view>
-      <text class="field-label">改期原因（必填，球队与工作人员可见于记录）</text>
-      <textarea class="field" maxlength="500" value="{{reason}}" bindinput="reasonInput" placeholder="例如：原场地灯光检修"/>
-      <view wx:if="{{conflicts.length}}" class="setup-block">
-        <view class="section-label">服务端检查发现冲突</view>
-        <view wx:for="{{conflicts}}" wx:key="key" class="muted">· {{item.label}}（{{item.scope}}{{item.external ? '，已有资源安排' : ''}}）</view>
-      </view>
-      <button class="primary" bindtap="submit" disabled="{{busy || uncertain || !courts.length}}">检查并保存改期</button>
-    </view>
-    <view wx:else class="notice small">{{blocker}}</view>
-
-    <view class="card">
-      <view class="subtitle">改期记录</view>
-      <view wx:if="{{!history.length}}" class="muted">尚无改期；当前安排即原发布安排。</view>
-      <view wx:for="{{history}}" wx:key="key" class="row">
-        <view>{{item.from}}</view>
-        <view>→ {{item.to}}</view>
-        <view class="muted">{{item.reason}} · {{item.time}}</view>
-      </view>
-      <view wx:if="{{truncated}}" class="muted">仅显示最近20条改期记录。</view>
-    </view>
-    <button class="quiet" bindtap="load" disabled="{{loading || busy}}">刷新</button>
-  </block>
+  <view wx:if="{{figmaState==='reschedule-network'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">返回当前计划</button><button class="figma-action figma-action--orange">重新读取核对</button></view>
+  <view wx:elif="{{figmaState==='reschedule-changed'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">查看原订单</button><button class="figma-action figma-action--orange">查看最新赛程</button></view>
+  <view wx:elif="{{match && uncertain}}" class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="openMatch" disabled="{{busy}}">返回当前计划</button>
+    <button class="figma-action figma-action--orange" bindtap="load" disabled="{{loading || busy}}">重新读取核对</button>
+  </view>
+  <view wx:if="{{match && !uncertain && rescheduleTab === 'history' && history.length}}" class="figma-fixed-actions figma-fixed-actions--single">
+    <button class="figma-action figma-action--orange" bindtap="openMatch" disabled="{{busy}}">查看最新赛程</button>
+  </view>
+  <view wx:if="{{match && !uncertain && rescheduleTab !== 'history'}}" class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" data-tab="history" bindtap="changeRescheduleTab" disabled="{{busy}}">查看改期记录</button>
+    <button class="figma-action figma-action--orange" bindtap="submit" disabled="{{busy || uncertain || !canReschedule || !courts.length}}">检查并保存改期</button>
+  </view>
 </view>

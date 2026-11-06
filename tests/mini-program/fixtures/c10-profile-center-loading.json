@@ -3,7 +3,7 @@
   "route": "pages/player-center/index",
   "state": "loading",
   "figmaNode": "30:1731",
-  "expectText": ["正在核对当前账号与本人资料"],
+  "expectText": ["我的球员中心"],
   "syntheticData": true,
   "data": {
     "loading": true,

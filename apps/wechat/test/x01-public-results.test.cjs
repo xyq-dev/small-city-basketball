@@ -138,7 +138,7 @@ test('X02 public cancelled match never displays a fabricated zero score or prepa
   assert.equal(h.page.data.snapshot.clock, null);
   assert.match(h.page.data.clock, /无实际计时记录/);
   const preview = buildPreview({ root, route: 'pages/match/index', data: h.page.data });
-  assert.match(preview.phone, /行政裁定/);
+  assert.match(preview.phone, /本场取消/);
   assert.match(preview.phone, /不产生胜负/);
   assert.doesNotMatch(preview.phone, /0 : 0|尚未准备/);
   for (const c of h.wx.calls.filter((c) => c.type === 'request' && c.url.includes('/v1/public/')))

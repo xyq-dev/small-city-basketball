@@ -1,0 +1,26 @@
+{
+  "name": "int01-training-login-required",
+  "route": "pages/training/index",
+  "state": "synthetic-signed-out-training-enrollment-login-recovery",
+  "figmaNode": "36:89",
+  "syntheticData": true,
+  "designSource": "Existing guest My enrollments request and explicit account login return path; synthetic state, no enrollment submitted",
+  "expectText": ["登录后查看我的报名", "登录并继续", "合成尚未登录，请登录后继续。"],
+  "expectEnabled": ["登录并继续"],
+  "expectVisible": [".figma-feedback--locked .figma-feedback__action"],
+  "data": {
+    "viewTab": "mine",
+    "loginRequired": true,
+    "enabled": true,
+    "loading": false,
+    "mineLoading": false,
+    "mineLoaded": false,
+    "busy": false,
+    "pending": null,
+    "items": [],
+    "mine": [],
+    "detail": null,
+    "enrollment": null,
+    "error": "合成尚未登录，请登录后继续。"
+  }
+}

@@ -27,5 +27,7 @@
       "moreError": ""
     }
   },
-  "expectText": ["广东省 / 茂名市 / 高州市", "暂无主办方公开的进行中赛事", "浏览全国赛事"]
+  "expectText": ["广东省 / 茂名市 / 高州市", "暂无公开赛事", "浏览全国赛事", "正在进行"],
+  "expectVisible": ["button[data-mini-bindtap=\"chooseCity\"]"],
+  "expectEnabled": ["浏览全国赛事"]
 }

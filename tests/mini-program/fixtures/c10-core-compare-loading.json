@@ -4,7 +4,7 @@
   "state": "loading",
   "figmaNode": "11:36",
   "syntheticData": true,
-  "expectText": ["正在核对球员资料与授权统计"],
+  "expectText": ["同价球员对比"],
   "data": {
     "profiles": [],
     "labels": [],
@@ -19,5 +19,7 @@
     "error": "",
     "notice": "",
     "statisticsError": ""
-  }
+  },
+  "expectVisible": ["[role=\"status\"][aria-label=\"正在加载\"]"],
+  "expectDisabled": ["至少选择2位"]
 }

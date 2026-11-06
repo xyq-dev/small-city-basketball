@@ -1,90 +1,81 @@
-<scb-header title="私有赛季授权" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page grants-page">
-  <view class="hero"><view class="title">{{mode === 'organizer' ? '私有赛季提名' : '我的私有赛季授权'}}</view><view class="muted">用途仅为本机构私有赛季统计（PRIVATE_SEASON）；与“公开到预约档案”的授权互相独立，账号绑定本身不产生授权。</view></view>
-  <view wx:if="{{error}}" class="notice danger" role="alert">{{error}}</view>
-  <view wx:if="{{message}}" class="notice">{{message}}</view>
-  <view wx:if="{{loginRequired}}" class="card state-panel"><view class="subtitle">登录后继续</view><view class="muted">授权只属于本人账号；换账号后需重新读取。</view><button class="primary" bindtap="login">登录并继续</button></view>
-  <view wx:if="{{loading}}" class="card state-panel"><view class="subtitle">正在读取</view><view class="loading-lines"><view></view><view></view></view></view>
-
-  <view wx:if="{{disclosure}}" class="card disclosure">
-    <view class="subtitle">授权说明</view>
-    <view class="small">{{disclosure.purpose}}</view>
-    <view class="small">{{disclosure.scope}}</view>
-    <view class="small">{{disclosure.readers}}</view>
-    <view class="small">{{disclosure.metrics}}</view>
-    <view class="small">{{disclosure.revocation}}</view>
-    <view class="small">{{disclosure.independence}}</view>
-  </view>
-
-  <block wx:if="{{mode === 'organizer' && event}}">
-    <view class="card">
-      <view class="subtitle">{{event.name}}</view>
-      <view class="muted">{{event.startDate}} 至 {{event.endDate}} · {{season ? '已归入赛季：' + season.name : '尚未归入赛季（同意后也不会进入任何赛季统计）'}}</view>
-      <view wx:if="{{!frozen}}" class="notice warning">报名名单尚未冻结，暂不能提名。</view>
-      <block wx:if="{{frozen}}">
-        <view class="field-label">球队（冻结名单）</view>
-        <picker range="{{teamLabels}}" value="{{teamIndex}}" bindchange="pickTeam" disabled="{{busy || nominationPending}}"><view class="field">{{teamIndex >= 0 ? teamLabels[teamIndex] : '选择球队'}} ▾</view></picker>
-        <view class="field-label">成员</view>
-        <picker range="{{memberLabels}}" value="{{memberIndex}}" bindchange="pickMember" disabled="{{busy || nominationPending || teamIndex < 0}}"><view class="field">{{memberIndex >= 0 ? memberLabels[memberIndex] : '选择成员'}} ▾</view></picker>
-        <view class="field-label">提名原因（4–500字）</view>
-        <textarea class="field" maxlength="500" value="{{reason}}" data-field="reason" bindinput="input" disabled="{{busy || nominationPending}}"/>
-        <button class="primary" bindtap="nominate" disabled="{{busy || loading}}" loading="{{busy}}">{{nominationPending ? '核对并重试（沿用原请求编号）' : '提名，等待本人同意'}}</button>
-      </block>
+<view class="figma-page">
+  <scb-header title="私有赛季授权" disabled="{{busy || pending || uncertain || dirty}}"/>
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary figma-summary--navy">
+      <view class="figma-summary__icon"><figma-icon name="stats" size="24"/></view>
+      <view class="figma-summary__copy"><view class="figma-eyebrow">{{mode === 'organizer' ? '机构提名' : '本人数据授权'}}</view><view class="figma-title">{{season ? season.name : event ? event.name : '私有赛季授权'}}</view><view class="figma-subtitle">按具体机构、赛季和赛事逐项确认。</view></view>
     </view>
-  </block>
 
-  <view wx:if="{{!loginRequired && !invalid}}" class="card">
-    <view class="subtitle">{{mode === 'organizer' ? '本届授权记录' : '收到的提名与授权'}}</view>
-    <view wx:if="{{!grants.length && !loading}}" class="empty">暂无授权记录</view>
-    <view wx:if="{{truncated}}" class="notice warning">还有更早的授权记录，可继续读取并处理。</view>
-    <view wx:for="{{grants}}" wx:key="id" class="row">
-      <view class="row-between"><view>{{item.eventName}} · {{item.teamName}} · {{item.memberName}}</view><view class="badge {{item.effective ? 'success' : ''}}">{{item.statusText}}</view></view>
-      <view class="muted">{{mode === 'organizer' ? '目标账号：' + item.targetDisplayName : '机构：' + item.orgName + ' · 提名人：' + item.nominatedByDisplayName}}</view>
-      <view class="muted">提名原因：{{item.nominateReason}}</view>
-      <view class="muted">赛季：{{item.seasonText}}</view>
-      <view wx:if="{{item.effective}}" class="small">当前计入私有赛季统计。</view>
-      <view wx:if="{{!item.effective && item.reasonsText}}" class="small">当前不计入：{{item.reasonsText}}</view>
-      <block wx:if="{{mode === 'player'}}">
-        <checkbox-group wx:if="{{item.capabilities.canConsent}}" data-id="{{item.id}}" bindchange="acknowledge"><label class="inline"><checkbox value="yes" checked="{{acknowledged === item.id}}" disabled="{{busy}}"/>我已阅读上方范围、读者、统计口径与撤销方式</label></checkbox-group>
-        <view class="inline">
-          <button wx:if="{{item.capabilities.canConsent}}" class="inline primary" data-id="{{item.id}}" data-type="CONSENT" bindtap="answer" disabled="{{busy || loading || acknowledged !== item.id}}">同意</button>
-          <button wx:if="{{item.capabilities.canDecline}}" class="inline secondary" data-id="{{item.id}}" data-type="DECLINE" bindtap="answer" disabled="{{busy || loading}}">拒绝</button>
-          <button wx:if="{{item.capabilities.canRevoke}}" class="inline danger" data-id="{{item.id}}" data-type="REVOKE" bindtap="answer" disabled="{{busy || loading}}">撤销授权</button>
-          <button wx:if="{{item.season}}" class="inline quiet" data-org="{{item.orgId}}" data-season="{{item.season.id}}" bindtap="showStats" disabled="{{busy || loading}}">查看本人统计</button>
+    <view class="grant-tabs" role="tablist"><button class="grant-tab {{grantTab === 'pending' ? 'is-active' : ''}}" data-tab="pending" bindtap="changeGrantTab" disabled="{{busy}}">{{mode === 'organizer' ? '提名' : '待确认'}}</button><button class="grant-tab {{grantTab === 'all' ? 'is-active' : ''}}" data-tab="all" bindtap="changeGrantTab" disabled="{{busy}}">{{mode === 'organizer' ? '授权记录' : '我的授权'}}</button><button class="grant-tab {{grantTab === 'stats' ? 'is-active' : ''}}" data-tab="stats" bindtap="changeGrantTab" disabled="{{busy || mode === 'organizer'}}">本人统计</button></view>
+
+    <figma-feedback wx:if="{{error}}" type="error" title="授权操作未完成" body="{{error}}" action-label="重新读取" bind:action="load" disabled="{{busy || invalid}}"/>
+    <figma-feedback wx:if="{{message}}" type="success" title="授权操作已确认" body="{{message}}"/>
+    <figma-feedback wx:if="{{loginRequired}}" type="pending" title="登录后继续" body="授权只属于本人账号；换账号后需重新读取。" action-label="登录并继续" bind:action="login"/>
+    <figma-skeleton wx:if="{{loading}}" rows="3"/>
+
+    <view wx:if="{{figmaPlayerPreview && grantTab === 'pending'}}" class="figma-section">
+      <view class="figma-section__title">授权来源</view>
+      <view class="grant-disclosure"><view class="figma-row__title">提名机构</view><view class="figma-row__subtitle">{{figmaSource.orgName}}</view></view>
+      <view class="grant-disclosure"><view class="figma-row__title">来源赛事</view><view class="figma-row__subtitle">{{figmaSource.eventName}}</view></view>
+      <view class="grant-disclosure"><view class="figma-row__title">本人球员</view><view class="figma-row__subtitle">{{figmaSource.playerName}}</view></view>
+    </view>
+
+    <view wx:if="{{figmaPlayerPreview && grantTab === 'pending'}}" class="figma-section">
+      <view class="figma-section__title">申请范围</view>
+      <view wx:for="{{figmaScopes}}" wx:key="title" class="grant-scope"><view class="figma-row__mark"/><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.subtitle}}</view></view></view>
+    </view>
+
+    <view wx:if="{{!figmaPlayerPreview && disclosure && grantTab === 'pending'}}" class="figma-section">
+      <view class="figma-section__title">授权来源与范围</view>
+      <view class="grant-disclosure"><view class="figma-row__title">提名用途</view><view class="figma-row__subtitle">{{disclosure.purpose}}</view></view>
+      <view class="grant-disclosure"><view class="figma-row__title">读取范围</view><view class="figma-row__subtitle">{{disclosure.scope}}</view></view>
+      <view class="grant-disclosure"><view class="figma-row__title">可见人员</view><view class="figma-row__subtitle">{{disclosure.readers}}</view></view>
+      <view class="grant-disclosure"><view class="figma-row__title">统计口径</view><view class="figma-row__subtitle">{{disclosure.metrics}}</view></view>
+      <view class="grant-disclosure"><view class="figma-row__title">撤销与独立性</view><view class="figma-row__subtitle">{{disclosure.revocation}} · {{disclosure.independence}}</view></view>
+    </view>
+
+    <view wx:if="{{mode === 'organizer' && event && grantTab === 'pending'}}" class="figma-section">
+      <view class="figma-section__title">提名本人授权</view>
+      <view class="figma-section__hint">{{event.name}} · {{event.startDate}} 至 {{event.endDate}} · {{season ? '已归入 ' + season.name : '尚未归入赛季'}}</view>
+      <figma-feedback wx:if="{{!frozen}}" type="pending" title="报名名单尚未冻结" body="冻结本届名单后才可提名；同意前不会进入任何赛季统计。"/>
+      <block wx:if="{{frozen}}"><view class="figma-field-group"><view class="figma-field-label">球队（冻结名单）</view><picker range="{{teamLabels}}" value="{{teamIndex}}" bindchange="pickTeam" disabled="{{busy || nominationPending}}"><view class="grant-control">{{teamIndex >= 0 ? teamLabels[teamIndex] : '选择球队'}}</view></picker></view><view class="figma-field-group"><view class="figma-field-label">成员</view><picker range="{{memberLabels}}" value="{{memberIndex}}" bindchange="pickMember" disabled="{{busy || nominationPending || teamIndex < 0}}"><view class="grant-control">{{memberIndex >= 0 ? memberLabels[memberIndex] : '选择成员'}}</view></picker></view><view class="figma-field-group"><view class="figma-field-label">提名原因（4–500字）</view><textarea class="figma-field-control" maxlength="500" value="{{reason}}" data-field="reason" bindinput="input" disabled="{{busy || nominationPending}}" placeholder="说明本届数据进入私有赛季的具体用途"/></view><figma-feedback wx:if="{{nominationPending}}" type="pending" title="提名结果待核对" body="再次操作沿用原请求编号，不会重复提名。"/><button class="figma-action figma-action--orange" bindtap="nominate" disabled="{{busy || loading}}">{{nominationPending ? '核对并重试' : '提名，等待本人同意'}}</button></block>
+    </view>
+
+    <view wx:if="{{!figmaPlayerPreview && !loginRequired && !invalid && grantTab !== 'stats'}}" class="figma-section">
+      <view class="figma-section__title">{{mode === 'organizer' ? '本届授权记录' : '申请范围'}}</view>
+      <figma-feedback wx:if="{{!grants.length && !loading}}" type="empty" title="暂无授权记录" body="提名、同意、拒绝和撤销都会保留独立记录。"/>
+      <figma-feedback wx:if="{{truncated}}" type="pending" title="仍有更早记录" body="可继续读取并处理。"/>
+      <block wx:for="{{grants}}" wx:key="id">
+        <view wx:if="{{grantTab === 'all' || item.capabilities.canConsent || item.capabilities.canDecline}}" class="grant-card">
+          <view class="grant-card__top"><view><view class="figma-row__title">{{item.eventName}} · {{item.teamName}}</view><view class="figma-row__subtitle">{{item.memberName}}</view></view><view class="figma-status {{item.effective ? 'figma-status--green' : 'figma-status--orange'}}">{{item.statusText}}</view></view>
+          <view class="figma-row__subtitle">{{mode === 'organizer' ? '目标账号：' + item.targetDisplayName : '机构：' + item.orgName + ' · 提名人：' + item.nominatedByDisplayName}}</view>
+          <view class="figma-row__subtitle">提名原因：{{item.nominateReason}}</view><view class="figma-row__subtitle">赛季：{{item.seasonText}}</view>
+          <view wx:if="{{item.effective}}" class="grant-effective">当前计入私有赛季统计。</view><view wx:if="{{!item.effective && item.reasonsText}}" class="grant-inactive">当前不计入：{{item.reasonsText}}</view>
+          <block wx:if="{{mode === 'player'}}"><checkbox-group wx:if="{{item.capabilities.canConsent}}" data-id="{{item.id}}" bindchange="acknowledge"><label class="figma-check"><checkbox value="yes" checked="{{acknowledged === item.id}}" disabled="{{busy}}" color="#123c73"/><text>我已阅读范围、读者、统计口径与撤销方式</text></label></checkbox-group><view class="grant-actions"><button wx:if="{{item.capabilities.canConsent}}" class="figma-action figma-action--navy" data-id="{{item.id}}" data-type="CONSENT" bindtap="answer" disabled="{{busy || loading || acknowledged !== item.id}}">同意</button><button wx:if="{{item.capabilities.canDecline}}" class="figma-action figma-action--ghost" data-id="{{item.id}}" data-type="DECLINE" bindtap="answer" disabled="{{busy || loading}}">拒绝</button><button wx:if="{{item.capabilities.canRevoke}}" class="figma-action grant-danger" data-id="{{item.id}}" data-type="REVOKE" bindtap="answer" disabled="{{busy || loading}}">撤销授权</button><button wx:if="{{item.season}}" class="figma-action figma-action--ghost" data-org="{{item.orgId}}" data-season="{{item.season.id}}" bindtap="showStats" disabled="{{busy || loading}}">查看本人统计</button></view></block>
+          <block wx:if="{{mode === 'organizer' && item.capabilities.canWithdraw}}"><button wx:if="{{withdrawId !== item.id}}" class="grant-link" data-id="{{item.id}}" bindtap="askWithdraw" disabled="{{busy}}">撤回提名</button><view wx:if="{{withdrawId === item.id}}" class="grant-withdraw"><view class="figma-field-group"><view class="figma-field-label">撤回原因（4–500字）</view><textarea class="figma-field-control" maxlength="500" value="{{withdrawReason}}" data-field="withdrawReason" bindinput="input" disabled="{{busy}}"/></view><view class="grant-actions"><button class="figma-action grant-danger" bindtap="withdraw" disabled="{{busy || loading}}">确认撤回</button><button class="figma-action figma-action--ghost" bindtap="cancelWithdraw" disabled="{{busy}}">取消</button></view></view></block>
         </view>
       </block>
-      <block wx:if="{{mode === 'organizer' && item.capabilities.canWithdraw}}">
-        <button wx:if="{{withdrawId !== item.id}}" class="inline quiet" data-id="{{item.id}}" bindtap="askWithdraw" disabled="{{busy}}">撤回</button>
-        <block wx:if="{{withdrawId === item.id}}">
-          <view class="field-label">撤回原因（4–500字）</view>
-          <textarea class="field" maxlength="500" value="{{withdrawReason}}" data-field="withdrawReason" bindinput="input" disabled="{{busy}}"/>
-          <button class="danger" bindtap="withdraw" disabled="{{busy || loading}}">确认撤回</button>
-          <button class="quiet" bindtap="cancelWithdraw" disabled="{{busy}}">取消</button>
-        </block>
-      </block>
+      <figma-feedback wx:if="{{moreError}}" type="error" title="更多授权记录读取失败" body="{{moreError}}"/>
+      <button wx:if="{{nextCursor}}" class="grant-link" bindtap="loadMore" disabled="{{busy || loading || loadingMore}}">{{loadingMore ? '正在读取…' : '读取更早的授权记录'}}</button>
+    </view>
+
+    <view wx:if="{{mode === 'player' && grantTab === 'pending'}}" class="figma-section">
+      <view class="figma-section__title">本人选择</view>
+      <view class="grant-step"><view class="grant-step__number">1</view><view><view class="figma-row__title">核对提名及用途</view><view class="figma-row__subtitle">仅限具体机构私有赛季</view></view></view>
+      <view class="grant-step"><view class="grant-step__number">2</view><view><view class="figma-row__title">同意或拒绝</view><view class="figma-row__subtitle">由本人明确选择</view></view><view class="figma-status figma-status--orange">待确认</view></view>
+      <view class="grant-step"><view class="grant-step__number">3</view><view><view class="figma-row__title">撤销授权</view><view class="figma-row__subtitle">已授权后可撤销</view></view></view>
+    </view>
+
+    <view wx:if="{{mode === 'player' && grantTab === 'stats'}}" class="figma-section">
+      <view class="figma-section__title">本人统计</view><view class="figma-section__hint">只显示您本人的数据；机构不能查看其他未获授权的个人数据。</view><figma-feedback wx:if="{{statsError}}" type="error" title="本人统计读取失败" body="{{statsError}}"/><figma-feedback wx:if="{{!stats && !statsError}}" type="empty" title="尚未选择统计来源" body="从“我的授权”中选择有赛季归属的授权查看。"/>
+      <block wx:if="{{stats}}"><view class="figma-section__hint">{{stats.seasonName}} · {{stats.orgName}} · {{stats.statusText}}</view><figma-feedback wx:if="{{!stats.row}}" type="empty" title="当前没有生效授权数据" body="授权或来源失效后不会继续计入。"/><view wx:if="{{stats.row}}" class="grant-stats"><view><text>得分</text><view class="grant-stat-value">{{stats.row.score}}</view></view><view><text>犯规</text><view class="grant-stat-value">{{stats.row.fouls}}</view></view><view><text>名单场次（非实际出场）</text><view class="grant-stat-value">{{stats.row.samples}}</view></view><view><text>赛事</text><view class="grant-stat-value">{{stats.row.events}}</view></view></view><view wx:if="{{stats.row}}" class="figma-caption">篮板 {{stats.row.rebounds}} · 助攻 {{stats.row.assists}} · 出场时间 {{stats.row.minutes}}</view><view wx:for="{{stats.coverage}}" wx:key="eventId" class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">{{item.name}} · {{item.state}}</view><view class="figma-row__subtitle">{{item.text}}</view></view></view><view class="figma-caption">统计时间 {{stats.asOf}} · 来源摘要 {{stats.sourceHash}}</view></block>
     </view>
   </view>
 
-  <view wx:if="{{moreError}}" class="notice danger">{{moreError}}</view>
-  <button wx:if="{{nextCursor}}" class="secondary" bindtap="loadMore" disabled="{{busy || loading || loadingMore}}" loading="{{loadingMore}}">读取更早的授权记录</button>
-
-  <view wx:if="{{statsError}}" class="notice danger">{{statsError}}</view>
-  <view wx:if="{{stats}}" class="card">
-    <view class="subtitle">本人统计 · {{stats.seasonName}}</view>
-    <view class="muted">{{stats.orgName}} · {{stats.statusText}} · 只显示您本人的数据</view>
-    <view wx:if="{{!stats.row}}" class="empty">当前没有生效的授权数据。</view>
-    <block wx:if="{{stats.row}}">
-      <view class="stat-grid">
-        <view class="stat"><view class="muted">得分</view><view class="numeric">{{stats.row.score}}</view></view>
-        <view class="stat"><view class="muted">犯规</view><view class="numeric">{{stats.row.fouls}}</view></view>
-        <view class="stat"><view class="muted">名单场次（非实际出场）</view><view class="numeric">{{stats.row.samples}}</view></view>
-        <view class="stat"><view class="muted">赛事</view><view class="numeric">{{stats.row.events}}</view></view>
-      </view>
-      <view class="muted">篮板 {{stats.row.rebounds}} · 助攻 {{stats.row.assists}} · 出场时间 {{stats.row.minutes}}</view>
-      <view wx:for="{{stats.row.sources}}" wx:for-item="source" wx:key="key" class="small">{{source.text}}</view>
-    </block>
-    <view wx:for="{{stats.coverage}}" wx:key="eventId" class="row"><view>{{item.name}} · {{item.state}}</view><view class="muted">{{item.text}}</view></view>
-    <view class="muted">统计时间 {{stats.asOf}} · 来源摘要 {{stats.sourceHash}}</view>
+  <view class="figma-fixed-actions">
+    <button wx:if="{{mode === 'player' && grants.length && grants[0].capabilities.canDecline}}" class="figma-action figma-action--ghost" data-id="{{grants[0].id}}" data-type="DECLINE" bindtap="answer" disabled="{{busy || loading}}">拒绝本次授权</button>
+    <button wx:else class="figma-action figma-action--ghost" bindtap="load" disabled="{{busy || loading || invalid}}">刷新授权</button>
+    <button wx:if="{{mode === 'player'}}" class="figma-action figma-action--orange" data-tab="all" bindtap="changeGrantTab" disabled="{{busy}}">查看本人授权</button>
+    <button wx:else class="figma-action figma-action--orange" bindtap="nominate" disabled="{{busy || loading || !frozen}}">{{nominationPending ? '核对并重试' : '提名并等待同意'}}</button>
   </view>
-  <button class="quiet" bindtap="load" disabled="{{busy || loading || invalid}}">刷新</button>
 </view>

@@ -1,0 +1,27 @@
+{
+  "name": "int01-youth-login-required",
+  "route": "pages/youth-review/index",
+  "state": "synthetic-valid-youth-review-context-with-expired-session",
+  "figmaNode": "36:112",
+  "syntheticData": true,
+  "designSource": "Shared youth review Page factory with valid organization/event context and a failed session read; explicit login preserves the original scoped return path",
+  "expectText": ["登录后继续监护审核", "登录并返回本届审核", "合成审核登录已失效，请重新登录。"],
+  "expectEnabled": ["登录并返回本届审核"],
+  "expectVisible": [".figma-feedback--locked .figma-feedback__action"],
+  "expectAbsentSelectors": [
+    "button[data-mini-bindtap=\"configure\"]",
+    "button[data-mini-bindtap=\"review\"]"
+  ],
+  "data": {
+    "review": true,
+    "activeView": "pending",
+    "loginRequired": true,
+    "busy": false,
+    "loading": false,
+    "pending": false,
+    "requests": [],
+    "selected": null,
+    "policy": null,
+    "error": "合成审核登录已失效，请重新登录。"
+  }
+}

@@ -348,6 +348,14 @@ Page({
           (s) =>
             s.available && s.startsAt === row.request.startsAt && s.endsAt === row.request.endsAt,
         );
+      if (row.quote)
+        row.quote = {
+          ...row.quote,
+          serviceText: ui.money(row.quote.serviceMinor),
+          travelText: ui.money(row.quote.travelMinor),
+          lodgingText: ui.money(row.quote.lodgingMinor),
+          platformText: ui.money(row.quote.platformMinor),
+        };
       if (ui.live(this, token)) this.setData({ selectedOffer: row, slots, dispatchView: 'offers' });
     } catch (e) {
       if (ui.live(this, token)) this.setData({ error: ui.message(e) });
@@ -403,6 +411,15 @@ Page({
     } catch (e) {
       this.setData({ error: ui.message(e) });
     }
+  },
+  submitOwnQuote() {
+    if (this.data.busy || this.data.pending || this.data.pendingError) return;
+    if (this.data.selectedOffer && this.data.selectedOffer.canQuote) {
+      return this.offerCommand({ currentTarget: { dataset: { type: 'SUBMIT_QUOTE' } } });
+    }
+    const offer = (this.data.offers || [])[0];
+    if (!offer) return;
+    this.selectOffer({ currentTarget: { dataset: { id: offer.id } } });
   },
   async offerCommand(e) {
     const row = this.data.selectedOffer;

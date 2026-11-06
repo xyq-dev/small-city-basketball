@@ -3,7 +3,13 @@
   "route": "pages/team/index",
   "state": "ready",
   "figmaNode": "5:787",
-  "expectText": ["管理者邀请签发暂未在小程序开放", "由有权机构人员在网页后台办理"],
+  "expectText": [
+    "管理者邀请",
+    "小程序暂未开放",
+    "由有权机构人员在网页后台办理",
+    "管理者邀请",
+    "小程序暂未开放，请由有权机构人员在网页后台办理"
+  ],
   "data": {
     "team": {
       "id": "c1000000-0000-4000-8000-000000000001",
@@ -52,5 +58,5 @@
   },
   "primary": true,
   "designSource": "UI001 T02; manager invitation issuing remains Web-only by the existing transport contract",
-  "expectDisabled": ["邀请球队管理者 · 小程序未开放"]
+  "expectAbsentSelectors": ["button[data-mini-bindtap=\"invite\"]"]
 }

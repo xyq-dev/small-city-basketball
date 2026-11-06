@@ -1,0 +1,14 @@
+<view class="figma-tabs" role="tablist">
+  <button
+    wx:if="{{label1}}"
+    class="figma-tab {{active === key1 ? 'is-active' : ''}}"
+    data-key="{{key1}}"
+    disabled="{{disabled}}"
+    role="tab"
+    aria-selected="{{active === key1}}"
+    bindtap="change"
+  >{{label1}}</button>
+  <button wx:if="{{label2}}" class="figma-tab {{active === key2 ? 'is-active' : ''}}" data-key="{{key2}}" disabled="{{disabled}}" role="tab" aria-selected="{{active === key2}}" bindtap="change">{{label2}}</button>
+  <button wx:if="{{label3}}" class="figma-tab {{active === key3 ? 'is-active' : ''}}" data-key="{{key3}}" disabled="{{disabled}}" role="tab" aria-selected="{{active === key3}}" bindtap="change">{{label3}}</button>
+  <button wx:if="{{label4}}" class="figma-tab {{active === key4 ? 'is-active' : ''}}" data-key="{{key4}}" disabled="{{disabled}}" role="tab" aria-selected="{{active === key4}}" bindtap="change">{{label4}}</button>
+</view>

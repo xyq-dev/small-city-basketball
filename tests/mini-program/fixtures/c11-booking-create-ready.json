@@ -4,7 +4,7 @@
   "state": "ready",
   "figmaNode": "approved:C11",
   "syntheticData": true,
-  "expectText": ["石鼓青锋", "确定场次报价", "下一步 · 核对费用"],
+  "expectText": ["石鼓青锋", "确定报价", "核对并提交预约"],
   "data": {
     "loading": false,
     "busy": false,
@@ -45,11 +45,11 @@
       {
         "id": "90000000-0000-4000-8000-000000000100",
         "orgId": "90000000-0000-4000-8000-000000000200",
-        "name": "石鼓青锋"
+        "name": "合成石鼓青锋"
       }
     ],
     "teamIndex": 0,
-    "teamName": "石鼓青锋",
+    "teamName": "合成石鼓青锋",
     "teamId": "90000000-0000-4000-8000-000000000100",
     "events": [
       {

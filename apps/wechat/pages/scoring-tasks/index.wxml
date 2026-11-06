@@ -1,29 +1,46 @@
-<scb-header title="记分任务" disabled="{{busy || pending || uncertain || dirty}}"/>
-<view class="page mgmt-page">
-  <view class="intro-card">
-    <view class="subtitle">记分与赛果确认</view>
-    <view class="muted">只列出你被分配或有权管理的比赛。记分、确认的权限每次由服务端核验。</view>
-    <view wx:if="{{scopeLabel}}" class="badge">{{scopeLabel}}</view>
-  </view>
-  <view wx:if="{{loginRequired}}" class="card state-panel">
-    <text class="state-label">未登录</text>
-    <view class="subtitle">登录后查看记分任务</view>
-    <button class="primary" bindtap="login">登录</button>
-  </view>
-  <block wx:else>
-    <view wx:if="{{error}}" class="notice warning">{{error}}</view>
-    <view wx:if="{{loading && !sections.length}}" class="card"><view class="loading-lines"><view></view><view></view></view></view>
-    <view wx:for="{{orgErrors}}" wx:key="key" class="notice warning small">{{item.text}}</view>
-    <view wx:if="{{empty}}" class="card empty"><view class="subtitle">暂无记分任务</view><view class="muted">赛事负责人分配你为记分员或复核人后，比赛会出现在这里。</view></view>
+<view class="figma-page">
+  <scb-header title="记分与复核任务" disabled="{{loading}}"/>
+  <view class="figma-page__content figma-page__content--actions">
+    <view class="figma-summary">
+      <view class="figma-summary__icon"><figma-icon name="workbench" size="24"/></view>
+      <view class="figma-summary__copy"><view class="figma-eyebrow">工作人员</view><view class="figma-title">今天的比赛</view><view class="figma-subtitle">只展示本人被分配或有权管理的场次。</view></view>
+    </view>
+
+    <view class="task-tabs" role="tablist">
+      <button class="task-tab {{taskTab === 'tasks' ? 'is-active' : ''}}" data-tab="tasks" bindtap="changeTaskTab" disabled="{{loading}}" role="tab" aria-selected="{{taskTab === 'tasks'}}">记分任务</button>
+      <button class="task-tab {{taskTab === 'review' ? 'is-active' : ''}}" data-tab="review" bindtap="changeTaskTab" disabled="{{loading}}" role="tab" aria-selected="{{taskTab === 'review'}}">待复核</button>
+    </view>
+
+    <figma-feedback wx:if="{{loginRequired}}" type="pending" title="登录后查看记分任务" body="权限与场次范围每次由服务端核验。" action-label="去登录" bind:action="login"/>
+    <figma-feedback wx:if="{{error}}" type="error" title="任务读取失败" body="{{error}}" action-label="重新读取" bind:action="load"/>
+    <figma-skeleton wx:if="{{loading && !sections.length}}" rows="3"/>
+    <figma-feedback wx:for="{{orgErrors}}" wx:key="key" type="error" title="部分机构任务读取失败" body="{{item.text}}"/>
+    <figma-feedback wx:if="{{empty}}" type="empty" title="暂无记分任务" body="赛事负责人分配你为记分员或复核人后，比赛会出现在这里。"/>
+
     <block wx:for="{{sections}}" wx:key="key" wx:for-item="section">
-      <view class="section-label">{{section.label}} · {{section.items.length}}</view>
-      <view wx:for="{{section.items}}" wx:key="key" class="org-match task-row" data-org="{{item.orgId}}" data-match="{{item.matchId}}" bindtap="open">
-        <view class="org-match-meta">{{item.meta}}</view>
-        <view class="row-between"><view class="task-title">{{item.title}}</view><text wx:if="{{item.score}}" class="task-score">{{item.score}}</text></view>
-        <view class="org-match-status {{item.live ? 'live' : ''}}">{{item.statusLabel}}</view>
+      <view class="figma-section">
+        <view class="figma-section__title">{{section.label}}</view>
+        <button wx:for="{{section.items}}" wx:key="key" class="figma-row" data-org="{{item.orgId}}" data-match="{{item.matchId}}" bindtap="open" disabled="{{loading}}">
+          <figma-icon wx:if="{{!item.hideIcon}}" name="schedule" size="20"/>
+          <view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.meta}}</view></view>
+          <view wx:if="{{item.score}}" class="task-score">{{item.score}}</view>
+          <view class="figma-status {{item.statusClass || (item.live ? 'figma-status--green' : section.key === 'pending' ? 'figma-status--orange' : section.key === 'final' ? 'figma-status--green' : '')}}">{{item.statusLabel}}</view>
+        </button>
       </view>
     </block>
-    <view wx:if="{{truncated}}" class="muted">比赛较多，仅显示前1000场。</view>
-    <button class="quiet" bindtap="load" disabled="{{loading}}" loading="{{loading}}">刷新</button>
-  </block>
+
+    <view class="figma-section">
+      <view class="figma-section__title">任务范围</view>
+      <view class="task-notice"><view class="task-dot"/><view><view class="figma-row__title">本场记分员</view><view class="figma-row__subtitle">在有效控制权下登记比赛；更正保留原事件。</view></view></view>
+      <view class="task-notice"><view class="task-dot"/><view><view class="figma-row__title">本场复核人</view><view class="figma-row__subtitle">独立核对赛果及更正记录，确认后才进入榜单。</view></view></view>
+      <view class="figma-section__hint">行政弃权或取消的比赛不计个人统计，也不显示准备比分。</view>
+      <view wx:if="{{scopeLabel}}" class="figma-section__hint">{{scopeLabel}}</view>
+      <view wx:if="{{truncated}}" class="figma-section__hint">比赛较多，仅显示前 1000 场。</view>
+    </view>
+  </view>
+
+  <view class="figma-fixed-actions">
+    <button class="figma-action figma-action--ghost" bindtap="load" disabled="{{loading || loginRequired}}">刷新任务</button>
+    <button class="figma-action figma-action--orange" bindtap="openFirstTask" disabled="{{loading || loginRequired || empty}}">查看授权比赛</button>
+  </view>
 </view>

@@ -19,5 +19,29 @@
       { "type": "file", "value": "assets/approved-ui/player-sample-a-hero.jpg" },
       { "type": "file", "value": "assets/approved-ui/player-sample-b-hero.jpg" }
     ]
+  },
+  "condition": {
+    "miniprogram": {
+      "list": [
+        {
+          "name": "Figma UI预览 · 首页",
+          "pathName": "pages/home/index",
+          "query": "uiPreview=figma",
+          "scene": null
+        },
+        {
+          "name": "Figma UI预览 · 我的游客",
+          "pathName": "pages/account/index",
+          "query": "uiPreview=figma&state=closed",
+          "scene": null
+        },
+        {
+          "name": "Figma UI预览 · 微信读取失败",
+          "pathName": "pages/account/index",
+          "query": "uiPreview=figma&state=unknown",
+          "scene": null
+        }
+      ]
+    }
   }
 }

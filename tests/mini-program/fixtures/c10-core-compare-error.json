@@ -4,7 +4,7 @@
   "state": "error",
   "figmaNode": "11:36",
   "syntheticData": true,
-  "expectText": ["重新读取比较资料"],
+  "expectText": ["重新读取"],
   "expectAbsentText": ["继续选择合适的球员"],
   "data": {
     "profiles": [],

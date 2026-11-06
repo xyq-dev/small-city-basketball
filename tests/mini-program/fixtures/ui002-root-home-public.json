@@ -1,10 +1,10 @@
 {
-  "designSource": "UI001 root integration; actual native templates with synthetic API-shaped data, not real account/provider acceptance",
+  "designSource": "UI006 latest Figma 35:38 and 59:54; actual native template with synthetic API-shaped data, not real account/provider acceptance",
   "static": true,
   "name": "ui002-root-home-public",
   "route": "pages/home/index",
   "state": "populated",
-  "figmaNode": "4:16",
+  "figmaNode": "35:38",
   "data": {
     "citySelection": {
       "label": "合成二十字超长城市名称仅供界面测试使用",
@@ -14,6 +14,8 @@
       "warning": "",
       "mode": "REGION"
     },
+    "publicLoading": false,
+    "publicError": "",
     "publicLoaded": true,
     "publicEvents": [
       {
@@ -26,5 +28,5 @@
       }
     ]
   },
-  "expectText": ["合成超长名称篮球邀请赛", "每一场", "都值得被看见", "发现赛事"]
+  "expectText": ["让热爱，有主场。", "合成超长名称篮球邀请赛", "精选赛事", "同城服务"]
 }

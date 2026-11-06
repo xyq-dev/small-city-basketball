@@ -3,7 +3,7 @@ const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const publicResults = require('../../utils/public-results');
 
-const TABS = ['schedule', 'ranking', 'stats'];
+const TABS = ['manage', 'schedule', 'ranking', 'stats'];
 const MAX_MATCH_PAGES = 10;
 
 function shortDate(value) {
@@ -99,7 +99,7 @@ const lifecycleCommands = {
 };
 
 Page({
-  data: { tab: 'schedule', loading: false, error: '', ...privateDefaults },
+  data: { tab: 'manage', loading: false, error: '', ...privateDefaults },
   onLoad(query) {
     this._alive = true;
     try {

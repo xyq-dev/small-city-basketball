@@ -1,1 +1,188 @@
-.history-row.voided { color:#7c91a9; text-decoration:line-through; }
+@import "../../styles/figma-pages.wxss";
+
+.org-match-tabs {
+  display: flex;
+  width: 100%;
+  gap: 1px;
+  padding: 2px 3px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.org-match-tab {
+  width: 0;
+  min-width: 0;
+  flex: 1 1 0;
+  height: 44px;
+  margin: 0;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: transparent;
+  color: #51657d;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.org-match-tab.is-active {
+  background: #123c73;
+  color: #fff;
+  font-weight: 700;
+}
+
+.org-match-pending-actions,
+.org-match-mode-grid,
+.org-match-score-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.org-match-section-head,
+.org-match-switch {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.org-match-score-card {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 11px;
+}
+
+.org-match-score-card.is-home {
+  background: #eaf2fc;
+}
+
+.org-match-score-card.is-away {
+  background: #fff1e2;
+}
+
+.org-match-team {
+  width: 100%;
+  overflow: hidden;
+  color: #18283f;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 21px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.org-match-score {
+  color: #123c73;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 51px;
+}
+
+.org-match-periods {
+  min-height: 17px;
+  color: #51657d;
+  font-size: 12px;
+  line-height: 17px;
+  overflow-wrap: anywhere;
+}
+
+.org-match-mode {
+  display: flex;
+  min-height: 74px;
+  margin: 0;
+  padding: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  border: 1px solid #e6ebf2;
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+}
+
+.org-match-mode.is-active {
+  border-color: #123c73;
+  background: #eaf2fc;
+}
+
+.org-match-inline-action {
+  min-width: 52px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 8px;
+  background: transparent;
+  color: #123c73;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.org-match-divider {
+  width: 100%;
+  height: 1px;
+  background: #e6ebf2;
+}
+
+.org-match-picker {
+  display: flex;
+  align-items: center;
+  line-height: 48px;
+}
+
+.org-match-step {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #eaf2fc;
+  color: #123c73;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.org-match-history.is-voided .figma-row__title {
+  color: #7c8ea5;
+  text-decoration: line-through;
+}
+
+.org-match-danger {
+  background: #c83f42;
+  color: #fff;
+}
+
+.org-match-service {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  align-items: center;
+  gap: 9px;
+  padding: 0;
+  background: transparent;
+  color: #123c73;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: left;
+}
+
+.org-match-service text {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 360px) {
+  .org-match-tab {
+    padding: 0 2px;
+    font-size: 12px;
+  }
+
+  .org-match-pending-actions,
+  .org-match-mode-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

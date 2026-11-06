@@ -1,0 +1,46 @@
+{
+  "name": "ui006-training-figma",
+  "route": "pages/training/index",
+  "state": "synthetic-figma-course",
+  "figmaNode": "36:89",
+  "syntheticData": true,
+  "expectText": ["成人篮球短课", "课程信息", "固定课表", "报名确认"],
+  "data": {
+    "enabled": true,
+    "viewTab": "catalog",
+    "signupStep": "course",
+    "detail": {
+      "id": "course-fixture",
+      "title": "成人周末篮球基础班",
+      "description": "运球、脚步与半场配合，适合成年篮球爱好者。",
+      "address": "合成文化体育中心篮球场",
+      "amount": "¥960.00",
+      "sessions": [
+        {
+          "id": "session-fixture-one",
+          "time": "周六 09:00—10:30（北京时间）",
+          "coaches": [
+            {
+              "id": "coach-fixture",
+              "name": "合成陈教练"
+            }
+          ]
+        },
+        {
+          "id": "session-fixture-two",
+          "time": "周日 09:00—10:30（北京时间）",
+          "coaches": [
+            {
+              "id": "coach-fixture",
+              "name": "合成陈教练"
+            }
+          ]
+        }
+      ],
+      "capabilities": {
+        "canEnroll": true,
+        "paidEnrollmentEnabled": true
+      }
+    }
+  }
+}

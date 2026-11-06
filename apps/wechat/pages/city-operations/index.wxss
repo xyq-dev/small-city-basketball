@@ -1,60 +1,176 @@
-.page {
-  padding: 24rpx;
+@import "../../styles/figma-pages.wxss";
+
+.city-ops-page button {
+  margin: 0;
 }
-.card {
-  margin: 20rpx 0;
-  padding: 24rpx;
-  background: #fff;
-  border-radius: 20rpx;
+
+.city-summary--preview {
+  background: #eaf2fc;
 }
-.subtitle {
+
+.city-pending {
+  align-items: center;
+  text-align: center;
+}
+
+.city-state-icon {
+  display: flex;
+  width: 50px;
+  height: 50px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  background: #fff1e2;
+}
+
+.city-state-icon--small {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.city-chevron {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #123c73;
+  transform: rotate(-90deg);
+}
+
+.city-inline-actions,
+.city-filter-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.city-tabs {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 4px;
+  border-radius: 14px;
+  background: #e6ebf2;
+}
+
+.city-ops-page .city-tab {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 11px;
+  background: transparent;
+  color: #51657d;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.city-ops-page .city-tab.is-active {
+  background: #ffffff;
+  color: #123c73;
+  font-weight: 700;
+}
+
+.city-picker {
+  display: flex;
+  align-items: center;
+}
+
+.city-ops-page .city-primary,
+.city-ops-page .city-secondary {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 13px;
+  border-radius: 22px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.city-ops-page .city-primary {
+  width: 100%;
+  background: #f28c28;
+  color: #18283f;
   font-weight: 600;
 }
-.notice {
-  padding: 16rpx;
-  background: #f1f4f8;
+
+.city-ops-page .city-secondary {
+  border: 1px solid #7c8ea5;
+  background: #ffffff;
+  color: #123c73;
+}
+
+.city-ops-page .city-danger {
+  color: #c83f42;
+}
+
+.city-full {
+  width: 100%;
+}
+
+.city-grant {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 11px;
+  border-top: 1px solid #e6ebf2;
+}
+
+.city-grant:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.city-grant__head {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.city-reason {
+  color: #51657d;
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.warning {
-  color: #933;
-}
-.tabs {
+
+.city-assigned {
   display: flex;
-  flex-wrap: wrap;
-}
-.tabs button {
-  flex: 1;
-  min-width: 220rpx;
-}
-.picker,
-input {
-  padding: 18rpx;
-  background: #f5f7fa;
-  margin: 12rpx 0;
-}
-textarea {
-  box-sizing: border-box;
   width: 100%;
-  background: #f5f7fa;
-  font-size: 16px;
-  line-height: 24px;
-  min-height: 96px;
-}
-input {
-  font-size: 16px;
-  line-height: 24px;
-  min-height: 44px;
-}
-button {
-  margin-top: 14rpx;
-  white-space: normal;
+  min-height: 64px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #18283f;
+  text-align: left;
 }
 
-.ui002-workspace { padding:16px 16px calc(104px + env(safe-area-inset-bottom)); background:#f4f6fa; color:#18283f; }
-.ui002-workspace .card { border-radius:16px; padding:16px; margin:0 0 16px; }
-.ui002-workspace input,.ui002-workspace textarea,.ui002-workspace button { font-size:16px; line-height:24px; min-height:44px; }
-.ui002-workspace .page-intro .title { color:#18283f; font-size:22px; line-height:32px; margin:0 0 8px; }
-.ui002-workspace .page-intro { margin-bottom:16px; }
-.ui002-workspace .tabs button { min-height:44px; }
+.city-ops-page button[disabled] {
+  border-color: #e6ebf2;
+  background: #e6ebf2;
+  color: #7c8ea5;
+}
 
-.ui002-workspace .notice { font-size:14px; line-height:22px; border-radius:12px; padding:12px; }
+@media (max-width: 360px) {
+  .city-inline-actions,
+  .city-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

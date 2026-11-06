@@ -1,27 +1,3 @@
-@import "../../components/v3-chrome/visual.wxss";
-.teams-page { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
-.teams-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
-.teams-tabs button { width:auto; min-width:80px; min-height:44px; margin:0; padding:11px 12px; font-size:14px; line-height:22px; font-weight:500; background:#fff; }
-.teams-tabs button.selected { color:#fff; background:#123c73; }
-.team-panel,.team-profile,.team-transactions { padding:16px; border-radius:16px; margin-bottom:12px; }
-.team-profile { display:flex; flex-direction:column; gap:8px; min-height:126px; }
-.team-person { display:flex; align-items:flex-start; gap:16px; }
-.team-avatar { display:flex; align-items:flex-start; justify-content:center; flex:0 0 64px; width:64px; height:64px; padding:8px; border-radius:12px; background:#eaf0f8; }
-.team-avatar image { width:28px; height:28px; }
-.team-identity-copy { flex:1; min-width:0; }
-.team-name { color:#18283f; font-size:24px; line-height:34px; font-weight:700; overflow-wrap:anywhere; }
-.team-meta { color:#63758b; font-size:12px; line-height:18px; margin-top:4px; }
-.team-copy { color:#18283f; font-size:14px; line-height:22px; overflow-wrap:anywhere; }
-.team-transactions .subtitle { color:#18283f; font-size:18px; line-height:28px; font-weight:700; margin:0 0 8px; }
-.team-cell { display:flex; align-items:center; gap:12px; min-height:58px; text-align:left; padding:8px 0; margin:0 0 8px; border-radius:0; background:transparent; }
-.team-cell::after { border:0; }
-.team-cell-copy { flex:1; min-width:0; color:#18283f; font-size:14px; line-height:22px; font-weight:500; }
-.team-cell .muted { margin-top:2px; font-size:12px; line-height:18px; font-weight:400; }
-.team-chevron { width:16px; height:16px; flex:0 0 16px; }
-.teams-actions { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
-.teams-actions button { margin:0; min-height:48px; padding:12px; font-size:14px; line-height:22px; font-weight:500; background:#eaf0f8; }
-.feedback-title { font-size:14px; line-height:22px; font-weight:500; margin-bottom:4px; }
-.skeleton-line { height:12px; border-radius:4px; background:#eaf0f7; margin-top:8px; }
-.skeleton-line.short { width:78%; }
-.create-team .field-label { margin-top:16px; }
-.team-action { margin-bottom:12px; }
+@import "../../styles/figma-pages.wxss";
+
+.teams-summary{background:#eaf2fc}.teams-summary .figma-summary__icon{background:#eaf2fc}.teams-tabs{display:grid;height:48px;padding:2px 3px;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;border-radius:12px;background:#fff}.teams-tab{display:flex;min-height:44px;align-items:center;justify-content:center;margin:0;padding:0 12px;border:0;border-radius:10px;background:transparent;color:#51657d;font-size:13px;line-height:19px}.teams-tab::after,.wide-primary::after,.wide-ghost::after{border:0}.teams-tab.is-active{background:#123c73;color:#fff;font-weight:700}.teams-tab[disabled]{background:#e6ebf2;color:#7c8ea5}.picker-control{display:flex;align-items:center;justify-content:space-between}.team-metrics{display:grid;width:100%;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.team-metrics>view{display:flex;min-width:0;padding:10px;flex-direction:column;gap:4px;border-radius:10px;background:#f4f6fa}.team-metrics text{overflow:hidden;color:#123c73;font-size:21px;font-weight:700;line-height:30px;text-overflow:ellipsis;white-space:nowrap}.team-metrics view view{color:#51657d;font-size:12px;line-height:17px}.teams-related-title{color:#123c73}.wide-primary,.wide-ghost{display:flex;width:100%;min-height:48px;align-items:center;justify-content:center;margin:0;padding:0 16px;border-radius:24px;font-size:16px}.wide-primary{border:0;background:#123c73;color:#fff}.wide-ghost{border:1px solid #7c8ea5;background:#fff;color:#123c73}.wide-primary[disabled],.wide-ghost[disabled]{border-color:#e6ebf2;background:#e6ebf2;color:#7c8ea5}.teams-actions{display:grid;width:100%;height:56px;align-items:center;grid-template-columns:140px minmax(0,1fr);gap:8px}@media(max-width:360px){.team-metrics{gap:6px}.team-metrics>view{padding:8px}.team-metrics text{font-size:18px}.teams-actions{grid-template-columns:128px minmax(0,1fr)}.teams-actions .figma-action{font-size:14px}}

@@ -73,16 +73,24 @@ test('E01 public rows precede tools and T01 renders real team identity, transact
     ]) {
       const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, name + '.json'), 'utf8'));
       const html = buildPreview({ root, route, data: fixture.data, width, height: 844 }).phone;
-      assert.ok(html.includes('小城市篮球'), title);
+      assert.ok(html.includes(route.includes('watch') ? '公开赛事' : '球队与报名'), title);
       if (route.includes('watch')) {
-        assert.ok(html.indexOf('watch-public-card') < html.indexOf('watch-main-actions'));
-        assert.ok(html.indexOf('watch-public-card') < html.indexOf('watch-discovery-settings'));
-        assert.ok(html.includes('查看公开报名招募'));
-        assert.ok(html.includes('用观赛链接打开'));
+        assert.ok(html.indexOf('watch-directory') < html.indexOf('赛事入口'));
+        assert.ok(html.indexOf('合成青锋杯') < html.indexOf('赛事入口'));
+        assert.ok(html.includes('公开招募'));
+        assert.ok(html.includes('使用观赛入口'));
+        assert.ok(html.includes('观赛链接或公开编号'));
       } else {
-        for (const text of ['球队事务', '球队主页与成员', '向机构申请建队', '输入球队加入码'])
+        for (const text of [
+          '球队事务',
+          '球队主页与成员',
+          '申请建队',
+          '提交至选定机构',
+          '输入球队加入码',
+        ])
           assert.ok(html.includes(text), text);
-        assert.ok(html.includes('team-profile'));
+        assert.ok(html.includes('合成超长名称球队用于验证领队管理与报名入口换行'));
+        assert.match(html, /data-mini-bindtap="team"/);
       }
     }
   }
