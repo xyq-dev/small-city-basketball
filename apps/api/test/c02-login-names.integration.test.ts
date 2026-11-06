@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createApi } from '../src/app.js';
+import { bootstrapOwner } from '../src/bootstrap-owner.js';
 import { maintainAccount } from '../src/account-maintenance.js';
 import { migrate } from '../src/database/migrate.js';
 import { hashPassword } from '../src/security.js';
@@ -38,6 +39,16 @@ describe(
       const pool = new Pool({ connectionString: databaseUrl });
       try {
         await migrate(pool);
+        const setup = await pool.query(
+          'SELECT initialized_at FROM first_run_setup WHERE singleton=true',
+        );
+        if (!setup.rows[0]?.initialized_at)
+          await bootstrapOwner(pool, {
+            email: `c02-bootstrap-${randomUUID()}@example.test`,
+            password: PASSWORD,
+            displayName: '合成账号维护验收初始化负责人',
+            organizationName: '合成账号维护验收初始化机构',
+          });
       } finally {
         await pool.end();
       }

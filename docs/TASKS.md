@@ -1,5 +1,10 @@
 # 任务看板
 
+## 2026-11-06 账号安全（REVIEW / LOCAL_ONLY，未提交）
+
+独立云端任务分支 `feat/self-service-owner-password`，基线 `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`。已实现首次部署令牌链接由用户自行设置OWNER密码及Web本人改密、旧会话撤销。代码和Migration049仅在本地及隔离合成PostgreSQL18.6验证，未合入main、未提交推送、未部署或执行生产Migration，不改变线上账号。真实浏览器与Docker/完整备份恢复未验。详见 [任务](tasks/ACCOUNT-SECURITY.md)、[验收与交接](handoffs/ACCOUNT-SECURITY.md)及[操作说明](operations/account-security.md)。
+
+
 ## 2026-11-03 四页导航与账号双态（REVIEW / BRANCH_ONLY）
 
 | 项 | 事实 |

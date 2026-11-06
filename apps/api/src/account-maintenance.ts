@@ -94,13 +94,17 @@ export async function maintainAccount(
     )
       throw new ApiError(409, 'ACCOUNT_CHANGED', '账号已变化，请重新核对后维护');
     await client.query(
-      'UPDATE users SET login_name=$1,password_hash=$2,updated_at=clock_timestamp() WHERE id=$3',
+      'UPDATE users SET login_name=$1,password_hash=$2,credential_reset_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=$3',
       [input.loginName, passwordHash, current.id],
     );
     // A login that completed while the initial sessions were being drained is
     // included here too; no later login can pass the locked old-password check.
     const revoked = await client.query(
       'UPDATE sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL',
+      [current.id],
+    );
+    await client.query(
+      'UPDATE account_action_tokens SET revoked_at=clock_timestamp() WHERE user_id=$1 AND used_at IS NULL AND revoked_at IS NULL',
       [current.id],
     );
     const maintenanceActorId = randomUUID();

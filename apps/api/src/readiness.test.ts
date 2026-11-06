@@ -208,7 +208,7 @@ describe('complete expansion migration and least-privilege surface', () => {
   }
   it('matches every checked-in table, function signature and granted update column across the full contiguous sequence', async () => {
     const v = await checkedIn();
-    expect(v.names).toHaveLength(48);
+    expect(v.names).toHaveLength(49);
     expect(assertMigrationManifestSurface(v.manifest, v.sources)).toEqual({
       tables: Object.keys(v.manifest.tables).length,
       functions: Object.keys(v.manifest.functions).length,
@@ -289,7 +289,7 @@ describe('complete expansion migration and least-privilege surface', () => {
 
 it('loads the exact runtime manifest including versioned digit-bearing table names before connecting', async () => {
   const v = await readRuntimeExpectations();
-  expect(v.expected.size).toBe(48);
+  expect(v.expected.size).toBe(49);
   expect(v.manifest.tables.r6_trade_refund_bindings).toEqual({
     privileges: ['SELECT', 'INSERT'],
     updateColumns: [],

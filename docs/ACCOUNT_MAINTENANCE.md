@@ -2,6 +2,10 @@
 
 2026-10-23（Asia/Shanghai）。C02已由PR10整合main，真实PG及最终隔离CI验收通过；不表示已更新正式服务或修改正式账号。
 
+## 已登录用户自行修改密码
+
+已登录用户在Web管理端页头“个人 ID / 邀请 → 账号安全 → 修改密码”自行填写当前密码和两次新密码，无需向维护者提供密码。成功后全部旧会话失效并重新登录，不改变用户名、邮箱、ID、机构或角色；没有`login_name`的账号也可使用。新实例优先使用私密初始化链接设置首位owner，详见[账号安全](operations/account-security.md)。本页以下离线维护入口用于明确授权的账号恢复或用户名维护，不能用来重开初始化。
+
 ## 登录与身份
 
 009新增可空唯一 `users.login_name`；原邮箱、User ID、机构关系不变。用户名为小写ASCII字母开头、3–32位字母/数字/下划线；登录原JSON字段仍为 `email`，可输入邮箱或已设置用户名。别名和邮箱共用同一用户/IP尝试额度；注册仍要求邮箱。
@@ -14,19 +18,19 @@ C02真实隔离PG/浏览器验收已通过；正式操作仍需核验生产更�
 
 入口为编译后的 `node apps/api/dist/account-maintenance.js`，在实际可连接目标库的受控一次性db-tools运行环境执行。只接受显式文件环境变量，不从argv或inline变量接收密码：
 
-| 变量 | 含义 |
-| --- | --- |
-| `ACCOUNT_MAINTENANCE_INPUT_FILE` | 严格JSON输入的绝对路径 |
-| `DATABASE_URL_FILE` | 已授权维护身份的PostgreSQL URL私有文件 |
-| `NODE_ENV` | 正式维护使用production；本轮测试不连接正式库 |
+| 变量                             | 含义                                         |
+| -------------------------------- | -------------------------------------------- |
+| `ACCOUNT_MAINTENANCE_INPUT_FILE` | 严格JSON输入的绝对路径                       |
+| `DATABASE_URL_FILE`              | 已授权维护身份的PostgreSQL URL私有文件       |
+| `NODE_ENV`                       | 正式维护使用production；本轮测试不连接正式库 |
 
-两个文件必须为运行进程UID所有的普通文件，0400或0600，无符号链接且在读取长度上限内；容器与宿主机UID映射先核验。数据库角色须为scb_migrator、scb_admin或经授权的数据库superuser；scb_runtime被拒绝，不扩大日常API凭据更新权限。
+两个文件必须为运行进程UID所有的普通文件，0400或0600，无符号链接且在读取长度上限内；容器与宿主机UID映射先核验。数据库角色须为scb_migrator、scb_admin或经授权的数据库superuser；此离线维护命令拒绝scb_runtime；Web自行修改密码沿用已受限的runtime列权限与当前用户认证，不给API挂载维护凭据。
 
 输入字段恰为 `email/loginName/password/reason`。操作者在受控终端或私有编辑器填写至少12位的新密码，理由不得包含密码；不写入仓库、聊天、命令历史、日志、截图或审计metadata。
 
 ## 原子性与结果
 
-维护先取目标用户独占advisory事务锁，按session→user锁序处理，核对状态及候选旧hash/用户名，更新凭据、撤销目标全部旧会话、追加审计。冲突、超时或审计失败整体回滚。登录在用户锁之前取同key共享advisory锁，防止维护期间漏入新会话。
+维护先取目标用户独占advisory事务锁，按session→user锁序处理，核对状态及候选旧hash/用户名，更新凭据及credential_reset_at、撤销目标全部旧会话及未消费密码恢复令牌、追加审计。冲突、超时或审计失败整体回滚。登录在用户锁之前取同key共享advisory锁，防止维护期间漏入新会话。
 
 审计主体为本次新建DISABLED、无机构权限且无可验证密码的系统用户，不冒充目标用户。成功仅输出状态、目标/系统主体ID与撤销数量；失败受控输出，不打印数据库DETAIL、密码或hash。
 

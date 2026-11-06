@@ -51,6 +51,10 @@ P07-A已由[PR8](https://github.com/xyq-dev/small-city-basketball/pull/8)合并`
 
 OBS 负责采集、导播和推流。平台提供只读的赛事比分包装页面，通过 OBS 浏览器源接入；比分、节次和计时以记分系统为准。自动切场、远程控制及云直播分发后续实施，OBS 断开不能阻断比赛记录。
 
+## 自托管账号设置
+
+全新实例按[安装说明](ops/templates/README.md)由部署者在私密终端签发15分钟初始化链接，用户通过HTTPS自行设置机构及首位owner密码。已有用户在管理端页头“个人 ID / 邀请 → 账号安全 → 修改密码”自行修改，成功后重新登录。流程不生成默认管理员密码，也不需要把密码发给部署人员或Agent；[账号安全说明](docs/operations/account-security.md)。
+
 ## 设计与开发入口
 
 - **[项目开发总文档](docs/PROJECT_DEVELOPMENT.md)**：产品、架构、数据、API、实施计划与协作的统一入口。

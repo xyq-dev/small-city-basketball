@@ -1,5 +1,10 @@
 # 当前状态
 
+## 2026-11-06 账号安全（REVIEW / LOCAL_ONLY，未提交）
+
+独立云端任务分支 `feat/self-service-owner-password`，基线 `ef62cb1d47b3b63d9c854043f07cb5f8d6503b52`。已实现首次部署令牌链接由用户自行设置OWNER密码及Web本人改密、旧会话撤销。代码和Migration049仅在本地及隔离合成PostgreSQL18.6验证，未合入main、未提交推送、未部署或执行生产Migration，不改变线上账号。真实浏览器与Docker/完整备份恢复未验。详见 [任务](tasks/ACCOUNT-SECURITY.md)、[验收与交接](handoffs/ACCOUNT-SECURITY.md)及[操作说明](operations/account-security.md)。
+
+
 ## 2026-11-03 四页导航与账号双态整合（待合入 main）
 
 本地 `ui/v3-main-nav` 的未提交界面已放到 `integrate/ui-v4-consolidate`，基线是当时的 `origin/main` `ef25846857bb0431a4f71ad8dbe6fac87f945ae0`（该提交已包含首页还原 #39 和包体 #38）。合入的是账号未登录/已登录、赛事、同城、球队，以及 `components/v3-chrome`。首页产品文件没有用旧分支覆盖。`fix/ui002-ci` 的 `fc8c2eb` 已在 main 历史上，没有重复应用。设计说明在 `docs/design/ui-v4/`；参考截图包和未引用素材包不进入仓库。正式支付、投保、分账、推流和真机仍未验收。合并提交以 GitHub 上的最终 SHA 为准，本节在合并前只记录候选。
