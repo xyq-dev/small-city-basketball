@@ -94,3 +94,9 @@ CI204头a6e10fb、合并视图a9c85cf，tree一致。admin与隔离production通
 已执行：完整typecheck、专项测试TypeScript、完整format:check、git diff --check通过；既有私密CLI/浏览器准备12项通过；桌面/手机各1完整场景成功列出（仅发现测试，尚非运行通过）。真实PG18.6实测两套runner故意子进程失败后保留失败码、只删除自有库且保留control库；实际loopback TLS代理保留Origin/JSON/Secure Cookie并清理自有证书目录；4类不安全TLS启动环境在监听前拒绝。两轮独立安全复核（业务实现与新增配套）无阻断发现。
 
 本地浏览器安装仍因下载归档损坏失败，未声称本地浏览器通过。已接入独立GitHub account-security作业，与原admin/api/production完整检查并行；下一步普通同步PR43并以精确候选CI执行结果收口。未修改应用功能、微信UI或Migration。
+
+### CI206首轮结果与测试定位修正
+
+候选`4b3e97bf3262ffde677221aace4d40ed2cdabe1f`的[CI206](https://github.com/xyq-dev/small-city-basketball/actions/runs/42167881702)专项已真正启动桌面Chromium：缺失/过期/轮换/初始化成功/重放、双会话登录、错误旧密与确认不匹配阶段通过；改密后阶段失败，不能记专项通过。源码核对发现AuthForm可同时出现成功notice与注册能力loading两个status，原测试全局单元素定位不正确；改为按成功文案定位并要求可见，保留旧Cookie重放401、第二会话401、PG全会话撤销及身份保持的全部断言，增加固定细分phase。另显式禁用Playwright自动ARIA页面快照；残余固定错误和静态源码上下文仍随测试输出清理。未放宽产品规则、未修改业务代码。
+
+本地提交的普通git push因无终端Git凭据失败；已通过连接的GitHub按原head快进同步，逐文件blob及完整tree与本地一致，无force。当前私有worktree已对齐远端；用户Windows与原工作区未改。修正后重新执行专项及原全部CI，以新候选结果为准。

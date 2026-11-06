@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Playwright 1.62 also captures ARIA page snapshots independently of screenshots.
+// Disable that recorder before workers start; preserveOutput removes any residual
+// error context containing only our fixed phase and static test source.
+process.env.PLAYWRIGHT_NO_COPY_PROMPT = '1';
+
 // This suite must start from a fresh database: it exercises the public first-run
 // form instead of silently creating a maintenance owner before the browser opens.
 try {
@@ -32,7 +37,7 @@ export default defineConfig({
   timeout: 180000,
   reporter: 'list',
   // Setup fragments and passwords must never be persisted in traces, screenshots,
-  // videos or automatic failure context. Only fixed, non-sensitive phases print.
+  // videos or ARIA page snapshots. Only fixed, non-sensitive phases print.
   preserveOutput: 'never',
   use: {
     baseURL: origin,

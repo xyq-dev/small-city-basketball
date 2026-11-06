@@ -235,24 +235,33 @@ test('首次初始化链接与本人改密通过真实 HTTPS 页面和数据库�
     expect(passwordPosts).toBe(postsBeforeMismatch);
     expect(await session(page)).toEqual(originalSession);
 
-    progress('password change revokes every old session');
+    progress('password change accepted by real API');
     await page.getByLabel('确认新密码', { exact: true }).fill(newPassword);
     const changed = page.waitForResponse(
       (response) => response.url() === `${origin}/v1/auth/change-password`,
     );
     await page.getByRole('button', { name: '修改密码并重新登录', exact: true }).click();
     expect((await changed).status()).toBe(200);
-    await expect(page.getByRole('status')).toContainText('所有旧会话已退出，请重新登录');
+    progress('password change success notice and login form visible');
+    // Registration capabilities can be loading concurrently in a second status.
+    // Match the exact success notice instead of assuming one status on the page.
+    await expect(
+      page.getByRole('status').filter({ hasText: '密码已修改，所有旧会话已退出，请重新登录。' }),
+    ).toBeVisible();
     await expect(page.getByRole('button', { name: '登录工作台', exact: true })).toBeVisible();
     // Replay the old current-session cookie explicitly. A cleared cookie alone
     // would not prove that the server revoked that session.
+    progress('old current-session cookie replay rejected');
     const currentRevoked = await page.request.get(`${origin}/v1/auth/session`, {
       headers: { Cookie: `scb.sid=${originalCookie!.value}` },
     });
     expect(currentRevoked.status()).toBe(401);
+    progress('second browser session rejected');
     expect((await second.request.get(`${origin}/v1/auth/session`)).status()).toBe(401);
+    progress('second browser reload returns to login');
     await second.reload();
     await expect(second.getByRole('button', { name: '登录工作台', exact: true })).toBeVisible();
+    progress('database confirms all old sessions revoked and identity intact');
     expect(
       (await pool.query('SELECT count(*)::int AS count FROM sessions WHERE revoked_at IS NULL'))
         .rows[0].count,
@@ -279,6 +288,8 @@ test('首次初始化链接与本人改密通过真实 HTTPS 页面和数据库�
     // rethrow it, attach it, or capture page state in this credential scenario.
     throw new Error(`Account-security browser acceptance failed during: ${phase}`);
   } finally {
+    // Remove the credential form before fixture teardown as a second defense.
+    await page.close().catch(() => {});
     await secondContext?.close();
     await pool.end();
   }
