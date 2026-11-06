@@ -1,0 +1,18 @@
+# Optional COS02 override. Prepare storage_config_key once with
+# sudo node ops/setup/storage-config-key.mjs /absolute/private/provider-secret-directory
+# Keep this independent encryption root key outside database archives; retain it securely
+# for disaster recovery. Bucket, region and cloud credentials are entered in the admin UI.
+services:
+  api:
+    environment:
+      SCB_STORAGE_CONFIG_KEY_FILE: /run/secrets/storage_config_key
+    secrets:
+      - storage_config_key
+    networks: [frontend, backend, provider_egress]
+secrets:
+  storage_config_key:
+    file: ${SCB_PROVIDER_SECRET_DIR:?Set the existing private provider secret directory}/storage_config_key
+networks:
+  # Outbound HTTPS to COS; the API/database receive no new host ports.
+  provider_egress:
+    internal: false

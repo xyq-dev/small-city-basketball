@@ -539,6 +539,22 @@ describe(
       ).toEqual([
         { singleton: true, initialized: true, noToken: true, noExpiry: true, unused: true },
       ]);
+      // 051 seeds only the empty configuration pointer; upgrading never activates COS.
+      expect(
+        (
+          await pool!.query(`SELECT singleton,version,draft_revision_id,active_revision_id,
+            activated_at,activated_by FROM storage_config_state`)
+        ).rows,
+      ).toEqual([
+        {
+          singleton: true,
+          version: 0,
+          draft_revision_id: null,
+          active_revision_id: null,
+          activated_at: null,
+          activated_by: null,
+        },
+      ]);
       expect(
         (
           await pool!.query(
@@ -1279,6 +1295,8 @@ const SEEDED_CONFIGURATION: Record<string, number> = {
   booking_settings: 1,
   // 049 permanently closes first-run initialization on this populated legacy instance.
   first_run_setup: 1,
+  // 051 adds one inactive configuration pointer, without revisions, operations or probes.
+  storage_config_state: 1,
   event_commercial_activations: 1,
   // E05's only initial scheduling row has no recipient, grant, source or message.
   notification_start_scan: 1,

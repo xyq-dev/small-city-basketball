@@ -18,6 +18,13 @@ import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
+import { StorageSettingsService } from './storage-settings/service.js';
+import type { StorageSettingsOptions } from './storage-settings/service.js';
+import {
+  PlatformStorageSettingsController,
+  STORAGE_SETTINGS_SERVICE,
+} from './storage-settings/controller.js';
+import { createStorageSettingsResolver } from './storage-settings/runtime.js';
 import type { Response, NextFunction } from 'express';
 import { ApiError, ApiExceptionFilter } from './errors.js';
 import type { ApiRequest } from './errors.js';
@@ -418,6 +425,7 @@ export async function createApi(
       matching?: { enabled?: boolean; sourceHooks?: MatchingSourceHooks };
       dispatch?: DispatchOptions;
       training?: TrainingOptions;
+      storageSettings?: StorageSettingsOptions;
     },
 ): Promise<{ app: INestApplication; pool: Pool }> {
   let options = resolveApiOptions(input);
@@ -571,11 +579,17 @@ export async function createApi(
     const playerPerformance = new PlayerPerformanceService(pool, options);
     const scheduling = new SchedulingService(pool, options);
     const knockout = new GroupKnockoutService(pool, options);
+    const fallbackStore = () => input.media?.objectStore ?? readCosObjectStore();
+    const storageSettings = new StorageSettingsService(pool, options, {
+      ...input.storageSettings,
+      fallbackStore,
+    });
     mediaStorage = MediaObjectStorage.forRuntime(
       pool,
       options.databaseUrl,
       restored,
-      () => input.media?.objectStore ?? readCosObjectStore(),
+      fallbackStore,
+      createStorageSettingsResolver(pool, fallbackStore, input.storageSettings?.storeFactory),
     );
     const mediaOptions = {
       trustedExternalHosts:
@@ -598,6 +612,7 @@ export async function createApi(
     const playerStatistics = new EventPlayerStatisticsService(pool, options);
     @Module({
       controllers: [
+        PlatformStorageSettingsController,
         FirstRunSetupController,
         ChangePasswordController,
         SponsorCommerceController,
@@ -673,6 +688,7 @@ export async function createApi(
         SeasonController,
       ],
       providers: [
+        { provide: STORAGE_SETTINGS_SERVICE, useValue: storageSettings },
         { provide: SCB_FIRST_RUN_SETUP, useValue: firstRunSetup },
         { provide: SCB_CHANGE_PASSWORD, useValue: changePassword },
         { provide: SCB_SPONSOR_COMMERCE_SERVICE, useValue: sponsorCommerce },

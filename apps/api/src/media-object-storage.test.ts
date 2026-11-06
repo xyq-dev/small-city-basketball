@@ -11,6 +11,8 @@ vi.mock('pg', () => ({
   },
 }));
 import { MediaObjectStorage } from './media-object-storage.js';
+import { STORAGE_CONFIGURATION_LOCK } from './storage-settings/locking.js';
+import type { MediaObjectStoreResolver } from './media-object-storage.js';
 
 const orgId = '11111111-1111-4111-8111-111111111111';
 const fileId = '22222222-2222-4222-8222-222222222222';
@@ -51,7 +53,11 @@ beforeEach(() => {
   registration.end.mockResolvedValue(undefined);
   query.mockImplementation(async (sql: string) => ({
     rowCount: 1,
-    rows: sql.includes('count(*)') ? [{ total: 0, pending: 0 }] : [object],
+    rows: sql.includes('pg_try_advisory_xact_lock_shared')
+      ? [{ acquired: true }]
+      : sql.includes('count(*)')
+        ? [{ total: 0, pending: 0 }]
+        : [object],
   }));
   put.mockResolvedValue(undefined);
   get.mockResolvedValue(body);
@@ -231,5 +237,236 @@ describe('retryable COS cleanup', () => {
     await expect(storage.cleanup()).rejects.toThrow('synthetic database timeout');
     expect(remove).not.toHaveBeenCalled();
     expect(query).toHaveBeenCalledWith('ROLLBACK');
+  });
+});
+
+describe('database-backed COS configuration boundary', () => {
+  async function dynamic(resolveStore: MediaObjectStoreResolver) {
+    await storage.onModuleDestroy();
+    storage = new MediaObjectStorage(
+      pool,
+      'postgresql://synthetic/scb_test_cos',
+      undefined,
+      resolveStore,
+    );
+  }
+
+  it('defers all credentials to the transaction resolver and locks before resolving', async () => {
+    const legacy = vi.fn(() => {
+      throw new Error('obsolete environment credentials');
+    });
+    const resolve = vi.fn(async () => store);
+    await storage.onModuleDestroy();
+    storage = MediaObjectStorage.forRuntime(
+      pool,
+      'postgresql://synthetic/scb_test_cos',
+      false,
+      legacy,
+      resolve,
+    );
+    expect(legacy).not.toHaveBeenCalled();
+    expect(resolve).not.toHaveBeenCalled();
+    await expect(storage.save(client, orgId, fileId, body, 'image/png')).resolves.toEqual({
+      payload: null,
+      cosObjectId: fileId,
+    });
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      'SELECT pg_try_advisory_xact_lock_shared($1) AS acquired',
+      [STORAGE_CONFIGURATION_LOCK],
+    );
+    expect(resolve).toHaveBeenCalledExactlyOnceWith(client);
+    expect(query.mock.invocationCallOrder[0]).toBeLessThan(resolve.mock.invocationCallOrder[0]!);
+    expect(resolve.mock.invocationCallOrder[0]).toBeLessThan(
+      registration.query.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('never keeps either credential factory for a restored runtime', async () => {
+    const legacy = vi.fn(() => store);
+    const resolve = vi.fn(async () => store);
+    const restored = MediaObjectStorage.forRuntime(
+      pool,
+      'postgresql://synthetic/scb_test_cos',
+      true,
+      legacy,
+      resolve,
+    );
+    await expect(restored.cleanup()).resolves.toEqual({ deleted: 0, failed: 0 });
+    await expect(restored.save(client, orgId, fileId, body, 'image/png')).resolves.toEqual({
+      payload: body,
+      cosObjectId: null,
+    });
+    await expect(restored.read(client, file)).rejects.toMatchObject({
+      code: 'MEDIA_STORAGE_UNAVAILABLE',
+    });
+    expect(legacy).not.toHaveBeenCalled();
+    expect(resolve).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+    await restored.onModuleDestroy();
+  });
+
+  it('keeps one resolved provider across staging and PUT despite a newly activated revision', async () => {
+    const nextPut = vi.fn().mockResolvedValue(undefined);
+    const next = { ...store, bucket: 'next-test-12345', prefix: 'next/v1', put: nextPut };
+    let selected: CosObjectStore = store;
+    const resolve = vi.fn(async () => selected);
+    await dynamic(resolve);
+    registration.query.mockImplementation(async () => {
+      selected = next;
+      return { rowCount: 1 };
+    });
+    await storage.save(client, orgId, fileId, body, 'image/png');
+    expect(resolve).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(nextPut).not.toHaveBeenCalled();
+    expect(registration.query.mock.calls[0]![1].slice(2, 4)).toEqual([store.bucket, store.region]);
+    expect(put.mock.calls[0]![0]).toMatch(/^scb-media\/v1\//);
+
+    await storage.save(client, orgId, fileId, body, 'image/png');
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(nextPut).toHaveBeenCalledTimes(1);
+    expect(nextPut.mock.calls[0]![0]).toMatch(/^next\/v1\//);
+  });
+
+  it('never falls back to database payload after a resolver or lock failure', async () => {
+    const resolve = vi.fn().mockRejectedValue(new Error('synthetic-sensitive-key-details'));
+    await dynamic(resolve);
+    await expect(storage.save(client, orgId, fileId, body, 'image/png')).rejects.toMatchObject({
+      status: 503,
+      message: '媒体存储暂不可用，请稍后重试',
+    });
+    expect(registration.query).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
+    resolve.mockResolvedValue(store);
+    query.mockRejectedValueOnce(new Error('synthetic-private-database-connection'));
+    const rejected = await storage
+      .save(client, orgId, fileId, body, 'image/png')
+      .catch((error: unknown) => error);
+    expect(String(rejected)).not.toContain('synthetic-private');
+    expect(rejected).toMatchObject({ code: 'MEDIA_STORAGE_UNAVAILABLE' });
+    expect(resolve).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails immediately without resolving credentials when the shared try-lock is busy or unverified', async () => {
+    const resolve = vi.fn(async () => store);
+    await dynamic(resolve);
+    for (const rows of [[{ acquired: false }], [], [{ acquired: null }], [{ acquired: 'true' }]]) {
+      query.mockResolvedValueOnce({ rows });
+      await expect(storage.save(client, orgId, fileId, body, 'image/png')).rejects.toMatchObject({
+        status: 503,
+        code: 'MEDIA_STORAGE_UNAVAILABLE',
+      });
+    }
+    expect(resolve).not.toHaveBeenCalled();
+    expect(registration.query).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
+    expect(query).toHaveBeenCalledTimes(4);
+    expect(
+      query.mock.calls.every(([sql]) => sql.includes('pg_try_advisory_xact_lock_shared')),
+    ).toBe(true);
+  });
+
+  it('writes DATABASE only when the resolver explicitly confirms no active COS store', async () => {
+    const resolve = vi.fn(async () => undefined);
+    await dynamic(resolve);
+    await expect(storage.save(client, orgId, fileId, body, 'image/png')).resolves.toEqual({
+      payload: body,
+      cosObjectId: null,
+    });
+    expect(resolve).toHaveBeenCalledExactlyOnceWith(client);
+    expect(registration.query).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it('does not read configuration, lock or decrypt credentials for legacy database files', async () => {
+    const resolve = vi.fn().mockRejectedValue(new Error('missing encryption key'));
+    await dynamic(resolve);
+    await expect(
+      storage.read(client, { ...file, cos_object_id: null, payload: body }),
+    ).resolves.toEqual(body);
+    expect(resolve).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('pins the resolved provider for COS reads and retains digest validation', async () => {
+    const resolve = vi.fn(async () => store);
+    await dynamic(resolve);
+    await expect(storage.read(client, file)).resolves.toEqual(body);
+    expect(resolve).toHaveBeenCalledExactlyOnceWith(client);
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      'SELECT pg_try_advisory_xact_lock_shared($1) AS acquired',
+      [STORAGE_CONFIGURATION_LOCK],
+    );
+    get.mockResolvedValueOnce(Buffer.alloc(body.length));
+    await expect(storage.read(client, file)).rejects.toMatchObject({
+      code: 'MEDIA_STORAGE_UNAVAILABLE',
+    });
+  });
+
+  it('closes the cleanup transaction when the resolver explicitly selects DATABASE', async () => {
+    const resolve = vi.fn(async () => undefined);
+    await dynamic(resolve);
+    await expect(storage.cleanup()).resolves.toEqual({ deleted: 0, failed: 0 });
+    expect(query.mock.calls.map(([sql]) => sql)).toEqual([
+      'BEGIN',
+      'SELECT pg_try_advisory_xact_lock_shared($1) AS acquired',
+      'COMMIT',
+    ]);
+    expect(release).toHaveBeenCalledOnce();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('rolls back cleanup on a failed resolver without deleting or claiming success', async () => {
+    const resolve = vi.fn().mockRejectedValue(new Error('synthetic-secret-decryption-error'));
+    await dynamic(resolve);
+    await expect(storage.cleanup()).rejects.toMatchObject({
+      code: 'MEDIA_STORAGE_UNAVAILABLE',
+      message: '媒体存储暂不可用，请稍后重试',
+    });
+    expect(query).toHaveBeenCalledWith('ROLLBACK');
+    expect(query.mock.calls.some(([sql]) => sql === 'COMMIT')).toBe(false);
+    expect(release).toHaveBeenCalledOnce();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('pins one resolved provider across all deletes in a cleanup batch', async () => {
+    const nextRemove = vi.fn();
+    let selected: CosObjectStore = store;
+    const resolve = vi.fn(async () => selected);
+    await dynamic(resolve);
+    query.mockImplementation(async (sql: string) => {
+      if (sql.includes('pg_try_advisory_xact_lock_shared'))
+        return { rows: [{ acquired: true }], rowCount: 1 };
+      if (sql.includes('SELECT o.id')) return { rows: [object, { ...object, id: orgId }] };
+      if (sql.startsWith('SELECT 1 FROM media_files')) return { rowCount: 0, rows: [] };
+      return { rowCount: 1, rows: [] };
+    });
+    remove.mockImplementation(async () => {
+      selected = { ...store, delete: nextRemove };
+    });
+    await expect(storage.cleanup()).resolves.toEqual({ deleted: 2, failed: 0 });
+    expect(resolve).toHaveBeenCalledExactlyOnceWith(client);
+    expect(remove).toHaveBeenCalledTimes(2);
+    expect(nextRemove).not.toHaveBeenCalled();
+  });
+
+  it('runs the cleanup worker for a dynamic resolver even when startup has no fixed COS store', async () => {
+    vi.useFakeTimers();
+    try {
+      await dynamic(vi.fn(async () => undefined));
+      const cleanup = vi.spyOn(storage, 'cleanup').mockResolvedValue({ deleted: 0, failed: 0 });
+      storage.startWorker(true);
+      expect(cleanup).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(cleanup).toHaveBeenCalledTimes(2);
+      await storage.onModuleDestroy();
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(cleanup).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

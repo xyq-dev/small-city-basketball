@@ -78,6 +78,59 @@ describe('private Tencent COS object adapter', () => {
       },
     });
   });
+  it('checks versioning without creating objects and redacts SDK verification errors', async () => {
+    const { store, client } = fixture();
+    await expect(store.verifyConfiguration()).resolves.toBeUndefined();
+    expect(client.getBucketVersioning).toHaveBeenCalledExactlyOnceWith({
+      Bucket: options.bucket,
+      Region: options.region,
+    });
+    expect(client.putObject).not.toHaveBeenCalled();
+    expect(client.getObject).not.toHaveBeenCalled();
+    expect(client.deleteObject).not.toHaveBeenCalled();
+    for (const status of ['Enabled', 'Suspended', null, '']) {
+      client.getBucketVersioning.mockResolvedValue({ VersioningConfiguration: { Status: status } });
+      await expect(store.verifyConfiguration()).rejects.toMatchObject({
+        code: 'MEDIA_STORAGE_UNAVAILABLE',
+      });
+    }
+    client.getBucketVersioning.mockRejectedValue(new Error('synthetic-signed-secret-header'));
+    const error: unknown = await store.verifyConfiguration().catch((value: unknown) => value);
+    expect(String(error)).not.toContain('synthetic-signed-secret-header');
+    expect(error).not.toHaveProperty('cause');
+  });
+  it('uses a bounded server-selected probe timeout without weakening endpoint protections', () => {
+    new TencentCosObjectStore({ ...options, timeoutMs: 5000 });
+    expect(sdkOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ Timeout: 5000, StrictSsl: true, FollowRedirect: false }),
+    );
+    for (const timeoutMs of [0, 999, 30001, 1.5, NaN, Infinity])
+      expect(() => new TencentCosObjectStore({ ...options, timeoutMs })).toThrow(
+        'Invalid COS configuration',
+      );
+  });
+  it('applies the same probe timeout to the overall download stream deadline', async () => {
+    vi.useFakeTimers();
+    try {
+      const { client } = fixture();
+      const store = new TencentCosObjectStore(
+        { ...options, timeoutMs: 5000 },
+        client as unknown as COS,
+      );
+      let settled = false;
+      const pending = expect(store.get(location)).rejects.toMatchObject({ status: 503 });
+      void pending.then(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await pending;
+      expect(settled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('rejects invalid destinations and credentials before constructing the SDK', () => {
     for (const patch of [
       { bucket: 'x.evil.test-1250000000' },
