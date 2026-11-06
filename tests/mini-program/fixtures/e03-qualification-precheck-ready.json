@@ -3,7 +3,13 @@
   "route": "pages/qualification-precheck/index",
   "state": "synthetic-populated",
   "designSource": "E03 independent precheck implemented Page; synthetic layout data, not identity or policy acceptance",
-  "expectText": ["独立资格预审", "无需先买保险", "当前版本已明确申请", "通过预审", "退回补充"],
+  "expectText": [
+    "独立资格预审",
+    "在线保险",
+    "不影响当前资料与资格预审",
+    "已逐项人工核对，通过预审",
+    "退回补充"
+  ],
   "data": {
     "orgId": "00000000-0000-4000-8000-000000000001",
     "entryId": "00000000-0000-4000-8000-000000000002",
@@ -55,6 +61,25 @@
     "busy": false,
     "loading": false,
     "error": "",
-    "message": "合成界面状态，仅供布局校验；预审不等于最终参赛或投保成功。"
+    "message": "合成界面状态，仅供布局校验；预审不等于最终参赛或投保成功。",
+    "selectedParticipant": {
+      "memberId": "00000000-0000-4000-8000-000000000014",
+      "canRequest": false,
+      "materialVersion": 2,
+      "requestId": "00000000-0000-4000-8000-000000000015",
+      "requestCurrent": false,
+      "materialRevisionId": "00000000-0000-4000-8000-000000000016",
+      "hasPortrait": true,
+      "hasIdentity": true,
+      "hasRealName": true,
+      "hasSignature": true,
+      "qualification": {
+        "id": "00000000-0000-4000-8000-000000000017",
+        "status": "REJECTED",
+        "current": false,
+        "reason": "合成资料需补充当前清晰本人照片并重新明确提交"
+      }
+    },
+    "selectedMemberId": "00000000-0000-4000-8000-000000000014"
   }
 }

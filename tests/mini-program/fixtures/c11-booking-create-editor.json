@@ -4,7 +4,7 @@
   "state": "editing",
   "figmaNode": "approved:C11",
   "syntheticData": true,
-  "expectText": ["比赛安排", "报到日期与时间", "收起详细安排", "林越", "青锋杯"],
+  "expectText": ["比赛安排", "报到日期与时间", "收起详细安排", "林越", "赛事或合作名称"],
   "data": {
     "loading": false,
     "busy": false,
@@ -141,7 +141,10 @@
       "conditional": "¥0.00",
       "count": 1,
       "fixedCount": 1,
-      "conditionalCount": 0
+      "conditionalCount": 0,
+      "fixedSlotCount": 1,
+      "fixedPlayerCount": 1,
+      "travelAccommodation": "¥0.00"
     },
     "pending": false,
     "invalidRecovery": false,
@@ -176,5 +179,11 @@
     }
   },
   "referenceImage": "docs/design/C11/booking-create.png",
-  "visualPrimary": false
+  "visualPrimary": false,
+  "expectValues": [
+    {
+      "selector": "input[data-field=\"eventName\"]",
+      "value": "青锋杯 · 合成"
+    }
+  ]
 }

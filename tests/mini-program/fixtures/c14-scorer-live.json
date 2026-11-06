@@ -4,7 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["启动计时", "最近记录", "撤销"],
+  "expectText": ["启动时钟", "最近事件", "撤销"],
   "data": {
     "loading": false,
     "busy": false,
@@ -155,6 +155,7 @@
       "value": 2,
       "period": 1,
       "reason": ""
-    }
+    },
+    "moreControlsOpen": true
   }
 }

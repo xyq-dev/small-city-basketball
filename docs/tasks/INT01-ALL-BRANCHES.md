@@ -1,6 +1,6 @@
 # INT01 全部分支测试与整合
 
-- 状态：IN_PROGRESS；integration：BRANCH_ONLY；日期：2026-11-06（Asia/Shanghai）。
+- 状态：REVIEW（精确候选完整CI与最终矩阵待验）；integration：BRANCH_ONLY；日期：2026-11-06（Asia/Shanghai）。
 - 唯一集成人：Codex root；UI005、UI006分别由独立Agent审查，隔离worktree执行测试。
 - 工作目录：`/workspace/scratch/1385f4a4fde1/all-branches-integrate`；分支：`integrate/all-branches-20261106`。
 - 仓库：`xyq-dev/small-city-basketball`；起点main：`b19c19a118e63771c6451d93ed3e16de5416ce63`，原工作区干净。
@@ -14,7 +14,7 @@
 | feat/self-service-owner-password | 89241947fb180ce8e857d1aee5cb94ca303a79c3 | main祖先，无未合入提交；PR43已合并 |
 | feat/tencent-cos-media | a4dff06eedb5815e1cfedc48fe57361b1a527a1a | main祖先，无未合入提交；PR45已合并 |
 | feat/ui005-figma-complete | 133ba3cd723fc40845c00f8ec0dcd9806c4217fe | PR42；4项未合入提交 |
-| feat/wechat-figma-rebuild | 6fc06983b9d0093268e25354cca89dace79d1dab | PR44；1项未合入提交 |
+| feat/wechat-figma-rebuild | 初始6fc06983b9d0093268e25354cca89dace79d1dab；最新3cc97e58be97485a8818072e0a75dfa39607a63e | PR44；代码提交及后续main同步均保留 |
 
 另核验本地COS adapter/schema工作分支均停在ef62cb1且已是main祖先；其未提交实现/文档由此前COS01整合交付，不重复覆盖main或清除旧worktree。没有其它远端分支（完整5条列表）。
 
@@ -39,3 +39,10 @@
 
 - Git检查点已普通同步到远端`integrate/all-branches-20261106`：7984dbdfe41a2203686f775b0379c021e94ee9d3，三个父提交分别为main b19c19a、UI005 133ba3c及UI006 6fc0698，全部原始分支head均为祖先。没有重写来源分支或更新main。
 - 第二代码切片：恢复工作人员只读名单切换、报名最新审核理由；测试渲染器安全保留ARIA以验证可访问加载态。整合微信1297项：1296通过、0失败、1既有平台跳过；格式通过。核心/几何局部浏览器验证分别103/103及15/15，不等于全矩阵。还在恢复审核收起按钮触控、公开目录地区、既有收费说明和完整改期历史；真实后端及生产均未变。
+
+- 最终共享候选准备：稳定远端检查点为0e8bd553df141319c023ef83ca9bf472036a1885。已完成全部已知源码修复，包括材料按钮44px、目录城市/收费说明/改期全历史恢复、16px球衣输入、三类赛事表真实横滚、未知报价原说明；未改变排序算法/API/计分/授权。运行源码668文件最终SHA256为86d8c73935d6f805250807c0e00822b0b2d4aae950aebee2c728422110451cb5。
+- 测试迁移独立审查通过：110JSON的金额/主体/ID/cap/consent/unknown/frozen及12状态标识保持；14个互斥view仅拆显示分栏。匹配说明覆盖已恢复；4份样本仅加可见“合成”展示前缀，IDs/价格不变，相关拼接期望已同步。几何门禁按UI006的88px次页页头/共享token迁移，仍验证44px触控、16px输入、14px主选择文本、金额边界和成员行数，不恢复旧DOM。
+- 最终快速验证：微信1297项，1296通过/0失败/1既有Windows桥平台跳过；全仓类型/格式通过，后续仅补该页头来源断言及已验证夹具字符串。首轮1459矩阵1438通过/21失败均已定位修复；同86d8源复验仅有“合成”前缀的旧拼接期望未同步，已用1804单句补丁修正，最终1459复验与1458证据守卫仍待完成。首轮完整日志及source hash保留，失败PNG被后续运行清理，未冒称保留原图。最终GitHub四job CI尚待此精确共享候选启动；不能将历史局部/原分支绿色冒充最终通过。
+
+- 最终本地验收完成：1459/1459通过（1458布局＋1真实DOM可访问性/CSP/惰性事件控制），6.7m，1458份PNG/JSON证据守卫通过；前后runtime86d8c739、helper69729089、403测试文件5c35bf7e不变，root逐文件核验403用例文件与验收副本一致。Chromium153为本地兼容测试，非微信真机；GitHub完整四job尚待最终共享候选。
+- 发布前并发核验：UI006远端新增3cc97e58be97485a8818072e0a75dfa39607a63e，双亲为6fc0698与main b19c19a。完整2767树条目核验，2559个非冲突文件与旧UI006/main正常合并完全一致，仅两个汇总文档冲突处理；无运行时代码变化、不使86d8验收失效。最终整合提交将保留该最新head为父提交，文档冲突保留本任务及全部已整合main/UI历史。未覆盖来源分支。

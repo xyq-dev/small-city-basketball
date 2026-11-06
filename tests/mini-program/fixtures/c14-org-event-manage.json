@@ -4,7 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["赛事管理", "确认本届完赛", "赛事设置与排赛"],
+  "expectText": ["赛事管理", "确认本届完赛", "查看赛事设置"],
   "data": {
     "tab": "schedule",
     "loading": false,

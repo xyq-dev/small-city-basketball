@@ -4,7 +4,7 @@
   "state": "synthetic-sponsor-advertiser",
   "figmaNode": "44:1277",
   "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
-  "expectText": ["合成篮球赛事广告合作合同", "同意按此合同收费并建立订单"],
+  "expectText": ["合成篮球赛事广告合作合同", "同意收费并建立订单"],
   "data": {
     "enabled": true,
     "userId": "payer",

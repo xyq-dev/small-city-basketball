@@ -39,6 +39,8 @@
     "value": "",
     "error": ""
   },
-  "expectText": ["暂无公开赛事", "当前条件", "查看全国赛事", "切换浏览城市"],
-  "expectAbsentText": ["正在读取公开赛事"]
+  "expectText": ["暂无公开赛事", "当前条件", "浏览全国赛事", "全国选择"],
+  "expectAbsentText": ["正在读取公开赛事"],
+  "expectVisible": ["button[data-mini-bindtap=\"chooseCity\"]"],
+  "expectEnabled": ["浏览全国赛事"]
 }

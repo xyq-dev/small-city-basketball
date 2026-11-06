@@ -4,7 +4,7 @@
   "state": "synthetic-figma-course",
   "figmaNode": "36:89",
   "syntheticData": true,
-  "expectText": ["成人篮球短课", "课程信息", "固定课次", "报名确认"],
+  "expectText": ["成人篮球短课", "课程信息", "固定课表", "报名确认"],
   "data": {
     "enabled": true,
     "viewTab": "catalog",
@@ -19,15 +19,28 @@
         {
           "id": "session-fixture-one",
           "time": "周六 09:00—10:30（北京时间）",
-          "coaches": [{ "id": "coach-fixture", "name": "合成陈教练" }]
+          "coaches": [
+            {
+              "id": "coach-fixture",
+              "name": "合成陈教练"
+            }
+          ]
         },
         {
           "id": "session-fixture-two",
           "time": "周日 09:00—10:30（北京时间）",
-          "coaches": [{ "id": "coach-fixture", "name": "合成陈教练" }]
+          "coaches": [
+            {
+              "id": "coach-fixture",
+              "name": "合成陈教练"
+            }
+          ]
         }
       ],
-      "capabilities": { "canEnroll": true, "paidEnrollmentEnabled": true }
+      "capabilities": {
+        "canEnroll": true,
+        "paidEnrollmentEnabled": true
+      }
     }
   }
 }

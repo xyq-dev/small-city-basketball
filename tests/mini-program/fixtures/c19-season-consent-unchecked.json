@@ -3,7 +3,7 @@
   "route": "pages/season-grants/index",
   "state": "synthetic-populated",
   "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
-  "expectText": ["授权说明", "与预约档案授权互相独立", "已阅读上方范围"],
+  "expectText": ["申请范围", "与预约档案授权互相独立", "我已阅读范围、读者、统计口径与撤销方式"],
   "expectDisabled": ["同意"],
   "expectEnabled": ["拒绝", "查看本人统计"],
   "data": {

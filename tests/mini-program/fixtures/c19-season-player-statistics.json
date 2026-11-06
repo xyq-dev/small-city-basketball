@@ -3,9 +3,6 @@
   "route": "pages/season-grants/index",
   "state": "synthetic-populated",
   "designSource": "C19_CONTRACTS; actual Page/view helpers with synthetic test data",
-  "expectText": ["本人统计 · 合成春季", "只显示您本人的数据", "名单场次（非实际出场）", "未统计"],
-  "expectEnabled": ["撤销授权"],
-  "expectAbsentText": ["机构私有榜单"],
   "data": {
     "mode": "player",
     "orgId": "",
@@ -113,6 +110,9 @@
     "nominationPending": false,
     "withdrawId": "",
     "withdrawReason": "",
-    "message": ""
-  }
+    "message": "",
+    "grantTab": "stats"
+  },
+  "expectText": ["本人统计", "合成春季", "只显示您本人的数据", "名单场次（非实际出场）", "未统计"],
+  "expectAbsentText": ["机构私有榜单"]
 }

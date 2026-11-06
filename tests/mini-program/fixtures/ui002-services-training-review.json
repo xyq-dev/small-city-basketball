@@ -6,7 +6,7 @@
   "designSource": "UI001 high fidelity fields/cards with current adult-only API semantics; no production data",
   "expectText": [
     "首期仅支持成年学员本人报名",
-    "班次与合同金额",
+    "班次与金额",
     "付款人（不填为本人）",
     "确认报名并暂留名额"
   ],

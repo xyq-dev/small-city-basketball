@@ -4,7 +4,7 @@
   "state": "real-api",
   "designSource": "real-api:isolated-synthetic",
   "static": true,
-  "expectText": ["每节秒", "同分时依次比较：胜场 → 净胜分 → 总得分", "上移", "保存积分规则草稿"],
+  "expectText": ["每节秒", "同分依次比较：胜场 → 净胜分 → 总得分", "上移", "保存积分规则草稿"],
   "data": {
     "loading": false,
     "busy": false,

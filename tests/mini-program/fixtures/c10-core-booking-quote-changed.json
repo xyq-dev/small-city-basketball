@@ -4,7 +4,7 @@
   "state": "review",
   "figmaNode": "30:884",
   "syntheticData": true,
-  "expectText": ["读取最新报价并重新核对"],
+  "expectText": ["读取最新报价"],
   "data": {
     "loading": false,
     "busy": false,
@@ -166,7 +166,10 @@
       "conditional": "¥330.00",
       "count": 3,
       "fixedCount": 2,
-      "conditionalCount": 1
+      "conditionalCount": 1,
+      "fixedSlotCount": 1,
+      "fixedPlayerCount": 2,
+      "travelAccommodation": "¥80.00"
     },
     "pending": false,
     "invalidRecovery": false,

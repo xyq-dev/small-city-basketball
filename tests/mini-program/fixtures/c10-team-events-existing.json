@@ -3,7 +3,7 @@
   "route": "pages/registration-events/index",
   "state": "review",
   "figmaNode": "9:982",
-  "expectText": ["合成城市联赛2026", "查看本队报名", "请补充合成报名资料"],
+  "expectText": ["合成城市联赛2026", "查看本队草稿", "请补充合成报名资料"],
   "data": {
     "team": {
       "id": "c1000000-0000-4000-8000-000000000001",
@@ -107,6 +107,7 @@
         },
         "entryStatus": "需要修改后重新提交"
       }
-    ]
+    ],
+    "hasDraft": true
   }
 }

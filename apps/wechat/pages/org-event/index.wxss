@@ -25,7 +25,7 @@
 .org-data-switch button::after { border:0; }
 .org-data-switch button.is-active { background:#fff; color:#123c73; font-weight:700; }
 .org-section-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
-.org-table { width:100%; overflow-x:auto; }
+.org-table { width:100%; min-width:0; max-width:100%; overflow-x:auto; }
 .org-table-row { display:grid; min-width:330px; min-height:44px; grid-template-columns:40px minmax(100px,1fr) 48px 42px 42px; align-items:center; gap:4px; border-top:1px solid #e6ebf2; color:#18283f; font-size:12px; line-height:18px; text-align:center; }
 .org-table-row.is-head { min-height:36px; border-top:0; color:#51657d; font-size:11px; }
 .org-table-row .team-cell { text-align:left; overflow-wrap:anywhere; }

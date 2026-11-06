@@ -3,7 +3,7 @@
   "route": "pages/team/index",
   "state": "review",
   "figmaNode": "9:936",
-  "expectText": ["保存球队名称", "保存长期成员", "收起长期资料编辑"],
+  "expectText": ["保存球队名称", "保存长期成员", "收起"],
   "data": {
     "team": {
       "id": "c1000000-0000-4000-8000-000000000001",

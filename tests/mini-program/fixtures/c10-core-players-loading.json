@@ -4,7 +4,7 @@
   "state": "loading",
   "figmaNode": "11:36",
   "syntheticData": true,
-  "expectText": ["正在读取球员与授权统计"],
+  "expectText": ["找球员"],
   "data": {
     "cards": [],
     "loading": true,
@@ -36,5 +36,7 @@
       "price": "同价 ¥300",
       "date": "10月28日"
     }
-  }
+  },
+  "expectVisible": ["[role=\"status\"][aria-label=\"正在加载\"]"],
+  "expectDisabled": ["综合", "同价", "档期", "我的预约", "至少选择2位"]
 }

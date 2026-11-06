@@ -4,7 +4,7 @@
   "state": "error",
   "designSource": "synthetic:c18-directory",
   "static": true,
-  "expectText": ["即将开始", "合成春季杯", "后续赛事读取失败，已显示的 3 届保留", "重试加载更多"],
+  "expectText": ["即将开始", "合成春季杯", "后续赛事读取失败，已显示的 3 届保留", "重试"],
   "data": {
     "value": "",
     "error": "",

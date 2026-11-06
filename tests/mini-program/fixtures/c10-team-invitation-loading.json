@@ -3,8 +3,9 @@
   "route": "pages/invitation/index",
   "state": "loading",
   "figmaNode": "11:36",
-  "expectText": ["正在核对当前账号"],
+  "expectText": [],
   "data": {
     "loading": true
-  }
+  },
+  "expectVisible": ["[role=\"status\"][aria-label=\"正在加载\"]"]
 }

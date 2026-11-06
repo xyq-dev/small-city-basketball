@@ -1,5 +1,9 @@
 # 任务看板
 
+## 2026-11-06 INT01 全分支整合（REVIEW / BRANCH_ONLY）
+
+已完整核验5个原始远端分支：账号安全/COS在main，UI005与UI006统一整合于`integrate/all-branches-20261106`；保留后续UI006同步head3cc97e5的历史，来源分支不强推。代码与业务展示回归已修复，Linux微信1296通过/1平台skip、本地三宽1459/1459及1458份证据守卫通过；精确最终GitHub四job CI与main合并仍待执行，生产未更新。详见[任务](tasks/INT01-ALL-BRANCHES.md)、[接续](handoffs/INT01-ALL-BRANCHES.md)、[证据](evidence/INT01/README.md)。
+
 ## 2026-11-06 账号安全（DONE / MAIN：源码与隔离验收，生产未部署）
 
 [PR #43](https://github.com/xyq-dev/small-city-basketball/pull/43)已合入main，合并SHA`becf8d38e3bc8e2c12059780ed57f52aa35f0bf0`，tree `505aaac19cf734e7c2623a4223242d726c503d60`与候选`89241947fb180ce8e857d1aee5cb94ca303a79c3`及CI测试merge-ref精确一致。首次部署自行设置OWNER密码、Web登录后本人改密及全部旧会话撤销已完成源码、独立安全复核与隔离验收。

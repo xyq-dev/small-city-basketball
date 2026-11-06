@@ -28,7 +28,8 @@
       "sideLabel": "全场",
       "reason": "合成场地封闭待独立核对"
     },
-    "notice": "原裁定请求结果未知，请核对原编号。"
+    "notice": "原裁定请求结果未知，请核对原编号。",
+    "exceptionTab": "review"
   },
   "expectDisabled": ["批准提案", "驳回提案"],
   "figmaNode": "6:1454"

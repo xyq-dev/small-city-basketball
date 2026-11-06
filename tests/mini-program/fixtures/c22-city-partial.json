@@ -20,5 +20,5 @@
     "rows": [],
     "recentChoices": []
   },
-  "expectText": ["尚未收录下级", "此地区没有已收录的下级"]
+  "expectText": ["尚未收录下级", "没有已收录的下级地区"]
 }

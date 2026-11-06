@@ -16,8 +16,19 @@ type Scenario = {
   expectAbsentText?: string[];
   expectDisabled?: string[];
   expectEnabled?: string[];
+  expectVisible?: string[];
+  expectAbsentSelectors?: string[];
+  expectValues?: Array<{ selector: string; value: string }>;
 };
 type Preview = { html: string; route: string; width: number; height: number };
+type StateAlias = Partial<Scenario> & {
+  name: string;
+  sourceFixture: string;
+  route: string;
+  state: string;
+  figmaNode: string;
+  data?: Record<string, unknown>;
+};
 const root = path.resolve(__dirname, '../../apps/wechat');
 const { buildPreview } = require('../../apps/wechat/test/helpers/native-preview.cjs') as {
   buildPreview(options: {
@@ -40,6 +51,25 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')
 };
 const routes = registeredRoutes(manifest);
 const fixtureDirectory = path.resolve(__dirname, '../mini-program/fixtures');
+const deepMerge = (
+  base: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, unknown> => {
+  const result = structuredClone(base);
+  for (const [key, value] of Object.entries(patch)) {
+    const prior = result[key];
+    result[key] =
+      value &&
+      prior &&
+      typeof value === 'object' &&
+      typeof prior === 'object' &&
+      !Array.isArray(value) &&
+      !Array.isArray(prior)
+        ? deepMerge(prior as Record<string, unknown>, value as Record<string, unknown>)
+        : structuredClone(value);
+  }
+  return result;
+};
 const scenarios: Scenario[] = [
   ...routes.map((route) => ({
     name: 'initial-' + route.split('/')[1],
@@ -68,6 +98,8 @@ const scenarios: Scenario[] = [
         'expectAbsentText',
         'expectDisabled',
         'expectEnabled',
+        'expectVisible',
+        'expectAbsentSelectors',
       ] as const) {
         if (
           fixture[field] !== undefined &&
@@ -76,11 +108,87 @@ const scenarios: Scenario[] = [
         )
           throw new Error('Invalid native state expectations: ' + file);
       }
+      if (
+        fixture.expectValues !== undefined &&
+        (!Array.isArray(fixture.expectValues) ||
+          fixture.expectValues.some(
+            (field) =>
+              !field ||
+              typeof field.selector !== 'string' ||
+              !field.selector ||
+              typeof field.value !== 'string',
+          ))
+      )
+        throw new Error('Invalid native field value expectations: ' + file);
       if (fixture.name.startsWith('c10-') && (!fixture.state || !fixture.figmaNode))
         throw new Error('C10 fixture needs its state and Figma reference: ' + file);
       return { ...fixture, filled: true };
     }),
 ];
+// Keep the supplemental states contributed by UI005 in the current templates.
+// The evidence guard expects these states as well as the direct fixture files.
+const stateAliases = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../mini-program/ui005-state-aliases.json'), 'utf8'),
+) as StateAlias[];
+if (!Array.isArray(stateAliases)) throw new Error('Invalid UI005 state alias list');
+const scenarioNames = new Set(scenarios.map((scenario) => scenario.name));
+if (scenarioNames.size !== scenarios.length) throw new Error('Duplicate native fixture scenario');
+for (const alias of stateAliases) {
+  if (
+    !/^[a-z0-9-]+$/.test(alias.name) ||
+    scenarioNames.has(alias.name) ||
+    !/^[a-z0-9-]+\.json$/.test(alias.sourceFixture) ||
+    !routes.includes(alias.route) ||
+    !alias.state ||
+    !alias.figmaNode ||
+    (alias.data !== undefined &&
+      (!alias.data || typeof alias.data !== 'object' || Array.isArray(alias.data)))
+  )
+    throw new Error('Invalid UI005 state alias: ' + alias.name);
+  const sourcePath = path.join(fixtureDirectory, alias.sourceFixture);
+  if (!fs.existsSync(sourcePath)) throw new Error('Missing UI005 alias source: ' + alias.name);
+  const source = JSON.parse(fs.readFileSync(sourcePath, 'utf8')) as Scenario;
+  if (source.route !== alias.route)
+    throw new Error(`UI005 state alias route mismatch: ${alias.name} -> ${source.route}`);
+  for (const field of [
+    'expectText',
+    'expectAbsentText',
+    'expectDisabled',
+    'expectEnabled',
+    'expectVisible',
+    'expectAbsentSelectors',
+  ] as const) {
+    if (
+      alias[field] !== undefined &&
+      (!Array.isArray(alias[field]) ||
+        alias[field]!.some((value) => typeof value !== 'string' || !value))
+    )
+      throw new Error('Invalid UI005 alias expectations: ' + alias.name);
+  }
+  if (
+    alias.expectValues !== undefined &&
+    (!Array.isArray(alias.expectValues) ||
+      alias.expectValues.some(
+        (field) =>
+          !field ||
+          typeof field.selector !== 'string' ||
+          !field.selector ||
+          typeof field.value !== 'string',
+      ))
+  )
+    throw new Error('Invalid UI005 alias field values: ' + alias.name);
+  scenarios.push({
+    ...source,
+    ...alias,
+    data: deepMerge(source.data, alias.data || {}),
+    designSource:
+      alias.designSource ||
+      `UI005 state ${alias.figmaNode}; current UI006 template; synthetic isolated state`,
+    static: true,
+    filled: true,
+  });
+  scenarioNames.add(alias.name);
+}
 
 async function nativeFrame(page: Page): Promise<Frame> {
   const iframe = page.locator('iframe.preview-frame');
@@ -169,11 +277,24 @@ async function measureLayout(frame: Frame) {
           });
       } else {
         const walker = document.createTreeWalker(field, NodeFilter.SHOW_TEXT);
+        let primaryLabels = 0;
         while (walker.nextNode()) {
           const text = walker.currentNode;
           const parent = text.parentElement;
           if (!text.textContent?.trim() || !parent || !visible(parent)) continue;
           const font = Number.parseFloat(getComputedStyle(parent).fontSize);
+          // UI006 gives picker values a readable field style, with a separate
+          // 11px status badge. A badge is metadata, never the selection label.
+          if (parent.closest('.figma-status')) {
+            if (font < 10.9)
+              unreadableFields.push({
+                element: describe(parent),
+                problem: 'picker status annotation below 11px',
+                value: font,
+              });
+            continue;
+          }
+          primaryLabels += 1;
           if (font < 13.9)
             unreadableFields.push({
               element: describe(parent),
@@ -181,6 +302,12 @@ async function measureLayout(frame: Frame) {
               value: font,
             });
         }
+        if (!primaryLabels)
+          unreadableFields.push({
+            element: describe(field),
+            problem: 'picker has no visible selection label',
+            value: 0,
+          });
       }
     }
     const horizontalScrollers = Array.from(
@@ -227,6 +354,9 @@ async function measureLayout(frame: Frame) {
       '.profile-quote .quote-total-price',
       '.profile-quote .quote-price',
       '.profile-quote .fee-amount',
+      '.fee-row .fee-value',
+      '.compare-fee-row .compare-total',
+      '.booking-fee-row .booking-fee-value',
     ]) {
       for (const element of Array.from(document.querySelectorAll(selector)).filter(visible)) {
         const range = document.createRange();
@@ -254,7 +384,9 @@ async function measureLayout(frame: Frame) {
         const lines = new Set(amountRects.map((rect) => Math.round(rect.top * 100) / 100)).size;
         if (lines !== 1) wrappedQuoteAmounts.push({ selector, text, lines });
         const column = element.closest(
-          element.classList.contains('quote-total-price') ? '.quote-total' : '.quote-service',
+          element.classList.contains('quote-total-price')
+            ? '.quote-total'
+            : '.quote-service,.fee-row,.compare-fee-row,.booking-fee-row',
         );
         if (column) {
           const bounds = column.getBoundingClientRect();
@@ -321,10 +453,9 @@ async function attachScreen(page: Page, testInfo: TestInfo, name: string) {
   await testInfo.attach(name, { path: target, contentType: 'image/png' });
 }
 
-// Keep exact geometry assertions beside the generic overflow/touch/readability
-// matrix. Home now follows the latest UI006 Figma frames; the other groups keep
-// their established page-specific references until they are rebuilt.
-async function checkDesignGeometry(frame: Frame, scenario: string, width: number) {
+// Check the rebuilt UI006 screens against their shared visual tokens. The
+// historical C11 fixtures still exercise the same data, not the retired DOM.
+async function checkDesignGeometry(frame: Frame, scenario: Scenario, width: number) {
   const groups: Record<string, string> = {
     'initial-home': 'home',
     'c10-core-home-ready': 'home',
@@ -341,7 +472,7 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     'c11-booking-create-ready': 'booking-create',
     'c11-booking-orders-ready': 'bookings',
   };
-  const group = groups[scenario];
+  const group = groups[scenario.name];
   if (!group) return null;
   const metrics = await frame.evaluate(() => {
     const measure = (selector: string) => {
@@ -360,117 +491,54 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
         padding: parseFloat(style.paddingLeft),
         background: style.backgroundColor,
         color: style.color,
+        disabled: element instanceof HTMLButtonElement && element.disabled,
       };
     };
+    const images = Array.from(
+      document.querySelectorAll<HTMLImageElement>('img[src^="data:image/jpeg"]'),
+    ).filter(
+      (image) =>
+        image.getBoundingClientRect().width > 0 && image.getBoundingClientRect().height > 0,
+    );
     return {
       fontFamily: getComputedStyle(document.body).fontFamily,
-      header: measure('.figma-header--home,.scb-header'),
+      header: measure('.figma-header,.scb-header'),
       duplicateNativeHeader: document.querySelectorAll('.mini-native-bar').length,
       statusBars: document.querySelectorAll('.mini-custom-status').length,
       hero: measure('.home-hero'),
       homeSearch: measure('.figma-header__search'),
       homeQuick: measure('.home-quick'),
-      homeAction: measure('.home-primary'),
-      homeFilters: measure('.home-filters'),
-      homeBall: measure('.home-brand-ball'),
       homeNav: measure('.figma-nav'),
       homeSelectedNav: measure('.figma-nav__item.is-active'),
       homeMark: measure('.figma-header__brand img,.figma-header__brand image'),
-      homeVectors: Array.from(
-        document.querySelectorAll<HTMLImageElement>('.home-brand-ball,.header-brand img'),
-      ).map((image) => ({
+      content: measure('.figma-page__content'),
+      summary: measure('.figma-summary'),
+      section: measure('.figma-section'),
+      sectionTitle: measure('.figma-section__title'),
+      footer: measure('.figma-fixed-actions'),
+      secondary: measure('.figma-fixed-actions > .figma-action--ghost'),
+      action: measure('.figma-fixed-actions > .figma-action--orange'),
+      tabs: measure('.players-tabs,.compare-tabs,.player-tabs,.scope-tabs,.booking-tabs'),
+      comparePeople: document.querySelectorAll('.compare-person').length,
+      playerRows: document.querySelectorAll('.player-result').length,
+      bookingRows: document.querySelectorAll('.booking-item').length,
+      photographs: images.map((image) => ({
         loaded: image.complete && image.naturalWidth > 0,
-        width: image.width,
-        height: image.height,
-      })),
-      search: measure('.market-search'),
-      playerCard: measure('.player-card'),
-      portrait: measure('.player-portrait'),
-      metricColumn: measure('.metric-labels'),
-      playerColumn: measure('.compare-column'),
-      tableHead: measure('.comparison-head'),
-      tableCell: measure('.comparison-cell'),
-      columns: document.querySelectorAll('.compare-column').length,
-      profileHero: measure('.profile-hero'),
-      profilePortrait: measure('.profile-portrait'),
-      profileIdentity: measure('.profile-identity'),
-      profileAvatar: measure('.profile-avatar'),
-      profileAvatarIcon: measure('.profile-avatar-icon'),
-      profileName: measure('.profile-name'),
-      profileMeta: measure('.profile-meta'),
-      profileSamples: measure('.profile-samples'),
-      profileMetric: measure('.profile-metrics .metric-value'),
-      profileFactCount: document.querySelectorAll('.profile-metric').length,
-      profileAvailability: measure('.availability-card'),
-      profileQuotePrice: measure('.profile-quote .quote-price'),
-      profileQuoteTotal: measure('.profile-quote .quote-total-price'),
-      profileFooter: measure('.profile-action'),
-      profileSecondary: measure('.profile-action > .secondary'),
-      wrappedMetricLabels: Array.from(document.querySelectorAll('.label-cell'))
-        .filter((cell) => {
-          const range = document.createRange();
-          range.selectNodeContents(cell);
-          return range.getClientRects().length > 1;
-        })
-        .map((cell) => cell.textContent),
-      profileQuote: measure('.profile-quote'),
-      scopeRail: measure('.scope-rail'),
-      selectedPlayer: measure('.selected-player'),
-      arrangement: measure('.arrangement-summary'),
-      orderCard: measure('.booking-progress-card'),
-      orderTabs: measure('.booking-view-tabs'),
-      orderMore: Array.from(document.querySelectorAll('.cooperation-expand')).map((button) => {
-        const rect = button.getBoundingClientRect();
-        return {
-          text: button.textContent?.trim(),
-          icons: button.querySelectorAll('img').length,
-          width: rect.width,
-          height: rect.height,
-        };
-      }),
-      action: measure('.action-bar .primary'),
-      compareSecondary: measure('.action-bar .secondary'),
-      filterChip: measure('.filter-chip'),
-      bookingField: measure('.booking-field'),
-      photographs: Array.from(
-        document.querySelectorAll<HTMLImageElement>('img[src^="data:image/jpeg"]'),
-      ).map((image) => ({
-        loaded: image.complete && image.naturalWidth > 0,
-        width: image.width,
-        height: image.height,
         objectFit: getComputedStyle(image).objectFit,
         mode: image.getAttribute('data-mini-image-mode'),
         naturalRatio: image.naturalWidth / image.naturalHeight,
+        ratio: image.width / image.height,
       })),
     };
   });
   expect(metrics.fontFamily).toContain('Noto Sans CJK SC');
-  // Other measured screens keep the previous shared header until their own rebuild slice lands.
-  if (group !== 'home') expect(metrics.header?.height).toBe(84);
   expect(metrics.duplicateNativeHeader).toBe(0);
   expect(metrics.statusBars).toBe(1);
-  if (scenario.startsWith('c11-')) {
-    const minimumPhotos: Record<string, number> = {
-      home: 0,
-      // UI002 draws these screens with vector icons. The player profile still uses one photograph.
-      players: 0,
-      player: 1,
-      compare: 0,
-      'booking-create': 0,
-      bookings: 0,
-    };
-    expect(metrics.photographs.length).toBeGreaterThanOrEqual(minimumPhotos[group]);
-    expect(
-      metrics.photographs.every(
-        (photo) =>
-          photo.loaded &&
-          photo.width > 0 &&
-          photo.height > 0 &&
-          (photo.mode === 'widthFix'
-            ? Math.abs(photo.width / photo.height - photo.naturalRatio) < 0.01
-            : photo.objectFit === 'cover'),
-      ),
-    ).toBe(true);
+  for (const photo of metrics.photographs) {
+    expect(photo.loaded).toBe(true);
+    if (photo.mode === 'widthFix')
+      expect(Math.abs(photo.ratio - photo.naturalRatio)).toBeLessThan(0.01);
+    else expect(photo.objectFit).toBe('cover');
   }
   if (group === 'home') {
     expect(metrics.header?.height).toBe(width <= 360 ? 196 : 152);
@@ -489,104 +557,52 @@ async function checkDesignGeometry(frame: Frame, scenario: string, width: number
     expect(metrics.homeNav?.height).toBe(50);
     expect(metrics.homeSelectedNav?.color).toBe('rgb(18, 60, 115)');
   } else {
-    if (!['player', 'booking-create', 'bookings', 'players', 'compare'].includes(group)) {
-      expect(metrics.action?.x).toBe(12);
-      expect(metrics.action?.width).toBe(width - 24);
+    const pagePadding = width <= 360 ? 12 : 16;
+    const cardPadding = width <= 360 ? 12 : 14;
+    // Header component defaults to the Figma 44px status inset + 44px navigation row.
+    expect(metrics.header?.height).toBe(88);
+    expect(metrics.content?.padding).toBe(pagePadding);
+    expect(metrics.summary?.x).toBe(pagePadding);
+    expect(metrics.summary?.width).toBe(width - pagePadding * 2);
+    expect(metrics.summary?.height).toBeGreaterThanOrEqual(92);
+    expect(metrics.summary?.radius).toBe(16);
+    expect(metrics.summary?.padding).toBe(cardPadding);
+    expect(metrics.section?.padding).toBe(cardPadding);
+    expect(metrics.section?.radius).toBe(16);
+    expect(metrics.sectionTitle?.fontSize).toBe(17);
+    expect(metrics.sectionTitle?.lineHeight).toBe(24);
+    expect(metrics.tabs?.height).toBe(48);
+    expect(metrics.footer?.x).toBe(0);
+    expect(metrics.footer?.width).toBe(width);
+    const secondaryWidth = (width - pagePadding * 2 - 8) * 0.4;
+    expect(metrics.secondary?.x).toBe(pagePadding);
+    expect(metrics.secondary?.width).toBeCloseTo(secondaryWidth, 1);
+    expect(metrics.action?.x).toBeCloseTo(pagePadding + secondaryWidth + 8, 1);
+    expect(metrics.action?.width).toBeCloseTo((width - pagePadding * 2 - 8) * 0.6, 1);
+    for (const button of [metrics.secondary, metrics.action]) {
+      expect(button?.height).toBe(48);
+      expect(button?.radius).toBe(24);
+      expect(button?.fontSize).toBe(16);
+      expect(button?.lineHeight).toBe(24);
     }
-    if (group !== 'bookings') expect(metrics.action?.height).toBeGreaterThanOrEqual(48);
-    if (group === 'players') {
-      expect(metrics.action?.x).toBe(16);
-      expect(metrics.action?.width).toBe(width - 32);
-      expect(metrics.action?.radius).toBe(12);
-      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
-      expect(metrics.filterChip?.x).toBe(16);
-      expect(metrics.filterChip?.height).toBe(44);
-      expect(metrics.portrait?.width).toBe(22);
-      expect(metrics.portrait?.height).toBe(22);
-    } else if (group === 'compare') {
-      const buttonWidth = (width - 32 - 12) / 2;
-      expect(metrics.compareSecondary?.x).toBe(16);
-      expect(metrics.compareSecondary?.width).toBeCloseTo(buttonWidth, 1);
-      expect(metrics.action?.x).toBeCloseTo(16 + buttonWidth + 12, 1);
-      expect(metrics.action?.width).toBeCloseTo(buttonWidth, 1);
-      expect(metrics.compareSecondary?.height).toBeGreaterThanOrEqual(48);
-      expect(metrics.wrappedMetricLabels).toEqual([]);
-    } else if (group === 'player') {
-      // UI001 T07 replaces the C11 photograph hero with a compact identity card.
-      expect(metrics.profileHero).toBeNull();
-      expect(metrics.header?.background).toBe('rgb(255, 255, 255)');
-      for (const card of [
-        metrics.profileIdentity,
-        metrics.profileSamples,
-        metrics.profileAvailability,
-        metrics.profileQuote,
-      ]) {
-        expect(card?.x).toBe(16);
-        expect(card?.width).toBe(width - 32);
-        expect(card?.radius).toBe(16);
-        expect(card?.padding).toBe(16);
-      }
-      expect(metrics.profileIdentity?.height).toBeGreaterThanOrEqual(126);
-      if (width >= 390) expect(metrics.profileIdentity?.height).toBe(126);
-      expect(metrics.profileAvatar?.width).toBe(64);
-      expect(metrics.profileAvatar?.height).toBe(64);
-      expect(metrics.profilePortrait?.width).toBe(64);
-      expect(metrics.profilePortrait?.height).toBe(64);
-      expect(metrics.profileName?.fontSize).toBe(24);
-      expect(metrics.profileName?.lineHeight).toBe(34);
-      expect(metrics.profileMeta?.fontSize).toBe(12);
-      expect(metrics.profileMeta?.lineHeight).toBe(18);
-      expect(metrics.profileSamples?.height).toBe(86);
-      expect(metrics.profileFactCount).toBe(2);
-      expect(metrics.profileMetric?.fontSize).toBe(24);
-      expect(metrics.profileMetric?.lineHeight).toBe(32);
-      expect(metrics.profileAvailability?.height).toBeGreaterThanOrEqual(112);
-      for (const amount of [metrics.profileQuotePrice, metrics.profileQuoteTotal]) {
-        expect(amount?.fontSize).toBe(14);
-        expect(amount?.lineHeight).toBe(22);
-      }
-      expect(metrics.profileFooter?.height).toBe(88);
-      expect(metrics.profileFooter?.background).toBe('rgb(255, 255, 255)');
-      expect(metrics.profileSecondary?.x).toBe(16);
-      expect(metrics.action?.x).toBe(width / 2 + 6);
-      for (const button of [metrics.profileSecondary, metrics.action]) {
-        expect(button?.width).toBe((width - 44) / 2);
-        expect(button?.height).toBe(48);
-        expect(button?.radius).toBe(12);
-      }
-      expect(metrics.profileSecondary?.background).toBe('rgb(234, 240, 248)');
-      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
-    } else if (group === 'booking-create') {
-      expect(metrics.scopeRail?.height).toBe(44);
-      expect(metrics.bookingField?.height).toBeGreaterThanOrEqual(74);
-      expect(metrics.bookingField?.x).toBe(16);
-      expect(metrics.bookingField?.width).toBe(width - 32);
-      expect(metrics.action?.x).toBe(16);
-      expect(metrics.action?.width).toBe(width - 32);
-      expect(metrics.action?.radius).toBe(12);
-      expect(metrics.action?.background).toBe('rgb(18, 60, 115)');
-    } else if (group === 'bookings') {
-      expect(metrics.orderTabs?.height).toBeGreaterThanOrEqual(44);
-      expect(metrics.orderCard?.x).toBe(16);
-      expect(metrics.orderCard?.width).toBe(width - 32);
-      expect(metrics.orderCard?.radius).toBe(16);
-      expect(metrics.orderMore.length).toBe(2);
-      // An icon, not a text glyph, with a 44px target.
-      expect(
-        metrics.orderMore.every(
-          (button) =>
-            button.text === '' && button.icons === 1 && button.width >= 44 && button.height >= 44,
-        ),
-      ).toBe(true);
-    }
+    expect(metrics.action?.background).toBe(
+      metrics.action?.disabled ? 'rgb(230, 235, 242)' : 'rgb(242, 140, 40)',
+    );
+    expect(metrics.action?.color).toBe(
+      metrics.action?.disabled ? 'rgb(124, 142, 165)' : 'rgb(24, 40, 63)',
+    );
+    if (group === 'compare' && Array.isArray(scenario.data.columns))
+      expect(metrics.comparePeople).toBe(scenario.data.columns.length);
+    if (group === 'player') expect(metrics.photographs.length).toBe(width <= 360 ? 0 : 1);
   }
+  const map = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, '../mini-program/ui006-route-map.json'), 'utf8'),
+  ) as Array<{ route: string; figmaNode: string }>;
   return {
     source:
       group === 'home'
         ? 'latest:UI006:35:38/59:54'
-        : group === 'player'
-          ? 'UI001:T07'
-          : 'approved:C11',
+        : `latest:UI006:${map.find((entry) => entry.route === scenario.route)?.figmaNode || 'unmapped'}`,
     group,
     ...metrics,
   };
@@ -597,6 +613,30 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
   // still run; repeating these same native-source previews adds no coverage.
   test.skip(({ isMobile }) => Boolean(isMobile), 'Explicit three-width desktop matrix');
   test.use({ deviceScaleFactor: 1 });
+
+  test('保留可访问加载状态与惰性事件语义', async ({ page, context }) => {
+    const attemptedNetwork: string[] = [];
+    page.on('request', (request) => {
+      if (/^https?:/i.test(request.url())) attemptedNetwork.push(request.url());
+    });
+    await context.setOffline(true);
+    await page.route('**/*', (route) => route.abort('blockedbyclient'));
+    const preview = buildPreview({
+      root,
+      route: 'pages/players/index',
+      data: { loading: true },
+      width: 390,
+      height: 844,
+    });
+    await page.setContent(preview.html, { waitUntil: 'load' });
+    const frame = await nativeFrame(page);
+    await expect(frame.getByRole('status', { name: '正在加载', exact: true })).toHaveCount(1);
+    await expect(frame.getByRole('status', { name: '正在加载', exact: true })).toBeVisible();
+    await expect(page.locator('iframe')).toHaveAttribute('sandbox', '');
+    await expect(frame.locator('script,[onclick],[onerror]')).toHaveCount(0);
+    expect(await frame.locator('[data-mini-bindtap]').count()).toBeGreaterThan(0);
+    expect(attemptedNetwork).toEqual([]);
+  });
 
   for (const width of [320, 390, 430]) {
     for (const scenario of scenarios) {
@@ -619,22 +659,69 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
         await page.setContent(preview.html, { waitUntil: 'load' });
         await expect(page.getByText(/非微信运行时\/开发工具\/真机/)).toBeVisible();
         const frame = await nativeFrame(page);
-        if (scenario.filled && !scenario.static && (!scenario.state || scenario.state === 'ready'))
-          await expect(frame.locator('body')).toContainText('合成');
+        if (
+          scenario.filled &&
+          !scenario.static &&
+          (!scenario.state || scenario.state === 'ready')
+        ) {
+          const visibleContent = await frame.evaluate(() => {
+            const values = Array.from(
+              document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+                'input:not([type="password"]):not([type="hidden"]),textarea',
+              ),
+            )
+              .filter((field) => {
+                const style = getComputedStyle(field);
+                const rect = field.getBoundingClientRect();
+                return (
+                  !field.closest('[hidden]') &&
+                  style.display !== 'none' &&
+                  style.visibility !== 'hidden' &&
+                  rect.width > 0 &&
+                  rect.height > 0
+                );
+              })
+              .map((field) => field.value);
+            return [document.body.textContent || '', ...values].join(' ');
+          });
+          expect(
+            visibleContent,
+            'filled fixtures must expose a synthetic marker in content or a visible input value',
+          ).toContain('合成');
+        }
         for (const text of scenario.expectText || [])
           await expect(frame.locator('body')).toContainText(text);
         for (const text of scenario.expectAbsentText || [])
           await expect(frame.locator('body')).not.toContainText(text);
+        const namedAction = (name: string) =>
+          frame
+            .getByRole('button', { name, exact: true })
+            .or(frame.getByRole('tab', { name, exact: true }).and(frame.locator('button')))
+            .first();
         for (const name of scenario.expectDisabled || [])
-          await expect(frame.getByRole('button', { name, exact: true }).first()).toBeDisabled();
+          await expect(namedAction(name)).toBeDisabled();
         for (const name of scenario.expectEnabled || [])
-          await expect(frame.getByRole('button', { name, exact: true }).first()).toBeEnabled();
+          await expect(namedAction(name)).toBeEnabled();
+        for (const selector of scenario.expectVisible || []) {
+          const element = frame.locator(selector);
+          await expect(element).toHaveCount(1);
+          await expect(element).toBeVisible();
+        }
+        for (const selector of scenario.expectAbsentSelectors || [])
+          await expect(frame.locator(selector)).toHaveCount(0);
+        for (const field of scenario.expectValues || []) {
+          const element = frame.locator(field.selector);
+          await expect(element).toHaveCount(1);
+          await expect(element).toBeVisible();
+          await expect(element).toHaveValue(field.value);
+        }
         if (scenario.name === 'ui002-services-player-large' && width === 390) {
-          const service = frame.locator('.profile-quote .quote-service');
+          const service = frame.locator('.fee-row').first();
+          await expect(service.locator('.fee-value')).toHaveCount(1);
           const previousStyle = await service.evaluate((element) => {
             const prior = element.getAttribute('style');
-            // The new T07 uses 14px fee rows. Force an insufficient column,
-            // rather than relying on the superseded C11 140px/big-price layout.
+            // UI006 presents each amount in a separate fee row. Force that
+            // row too narrow to prove the amount boundary guard is active.
             (element as HTMLElement).style.flex = '0 0 24px';
             (element as HTMLElement).style.width = '24px';
             return prior;
@@ -667,31 +754,32 @@ test.describe('原生 WXML/WXSS 静态兼容布局（非微信运行时或真机
           'custom scb-header and native navigation must not coexist',
         ).toBe(false);
         if (scenario.name === 'c10-team-team-ready') {
-          await expect(frame.locator('.member-table-row')).toHaveCount(3);
-          const clippedLabels = await frame.locator('.member-table-row').evaluateAll((rows) =>
-            rows.flatMap((row) =>
-              Array.from(row.children)
-                .filter((cell) => ['本届设置', '已保存'].includes(cell.textContent?.trim() || ''))
-                .filter((cell) => {
-                  const style = getComputedStyle(cell);
-                  const range = document.createRange();
-                  range.selectNodeContents(cell);
-                  const available =
-                    cell.clientWidth -
-                    parseFloat(style.paddingLeft) -
-                    parseFloat(style.paddingRight);
-                  return (
-                    range.getClientRects().length !== 1 ||
-                    range.getBoundingClientRect().width > available + 1
-                  );
-                })
-                .map((cell) => cell.textContent),
-            ),
+          const roster = frame
+            .locator('.figma-section')
+            .filter({ has: frame.getByText('球队名册', { exact: true }) });
+          const members = roster.locator('.figma-row');
+          await expect(members).toHaveCount(3);
+          const clippedLabels = await members.locator('.figma-status').evaluateAll((labels) =>
+            labels
+              .filter((label) => {
+                const style = getComputedStyle(label);
+                const range = document.createRange();
+                range.selectNodeContents(label);
+                const available =
+                  label.clientWidth -
+                  parseFloat(style.paddingLeft) -
+                  parseFloat(style.paddingRight);
+                return (
+                  range.getClientRects().length !== 1 ||
+                  range.getBoundingClientRect().width > available + 1
+                );
+              })
+              .map((label) => label.textContent),
           );
           expect(clippedLabels, 'member status labels must fit on one line').toEqual([]);
         }
         await attachScreen(page, testInfo, 'native-top.png');
-        const designGeometry = await checkDesignGeometry(frame, scenario.name, width);
+        const designGeometry = await checkDesignGeometry(frame, scenario, width);
         const diagnosticPath = testInfo.outputPath('native-layout.json');
         fs.mkdirSync(path.dirname(diagnosticPath), { recursive: true });
         fs.writeFileSync(

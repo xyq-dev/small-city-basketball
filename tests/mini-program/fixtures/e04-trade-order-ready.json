@@ -6,7 +6,6 @@
   "evidenceKind": "synthetic-static",
   "synthetic": true,
   "primary": true,
-  "expectText": ["实际收款方", "查询此原支付", "独立同意退款", "查询原分账"],
   "data": {
     "loading": false,
     "busy": false,
@@ -91,5 +90,6 @@
     "reason": "合成静态独立审核理由",
     "evidence": "SYNTHETIC-EVIDENCE-ONLY",
     "noCharge": false
-  }
+  },
+  "expectText": ["收款主体", "合成赛事收款主体（仅布局夹具）", "¥1,000.00"]
 }

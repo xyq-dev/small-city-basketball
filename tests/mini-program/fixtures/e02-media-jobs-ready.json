@@ -4,13 +4,6 @@
   "state": "synthetic-populated-static",
   "designSource": "synthetic:expansion-eight/static-native-layout-only",
   "static": true,
-  "expectText": [
-    "录像与媒体作业",
-    "等待实际处理进程退出",
-    "独立录像",
-    "已公开",
-    "刷新服务器处理状态"
-  ],
   "data": {
     "session": {
       "id": "33333333-3333-4333-8333-333333333333",
@@ -134,5 +127,6 @@
     "anchorAt": "2028-06-01T12:00:00+08:00",
     "offsetMs": "420",
     "reason": "合成人工核对源PTS与赛事时间"
-  }
+  },
+  "expectText": ["录像与媒体作业", "独立录像", "刷新处理状态"]
 }

@@ -4,7 +4,7 @@
   "state": "synthetic-local-booking",
   "figmaNode": "8:1115",
   "designSource": "UI001 current protected route and verified shared fields/cards; synthetic data only",
-  "expectText": ["等待经营方确认", "订单概览", "履约与改期", "核对本预约付款、退款与结算"],
+  "expectText": ["等待经营方确认", "预约信息", "履约与改期", "核对付款、退款与结算"],
   "data": {
     "selected": {
       "id": "00000000-0000-4000-8000-000000000031",

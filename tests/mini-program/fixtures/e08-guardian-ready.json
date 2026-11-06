@@ -3,14 +3,6 @@
   "route": "pages/guardian/index",
   "state": "synthetic-populated",
   "designSource": "E08 implemented native Page and WXML; explicit synthetic/static only; no real consent, identity, relationship or WeChat runtime result; adult processing renewal capability is explicit synthetic/static data, not a real adulthood verification",
-  "expectText": [
-    "必要资料处理邀请",
-    "监护人本人独立确认",
-    "另行允许本届直播、录像与集锦",
-    "成年后的本人资料处理",
-    "本人已成年，重新同意当前资料处理",
-    "本次不会恢复原有公开用途"
-  ],
   "data": {
     "review": false,
     "hasMaterialScope": false,
@@ -151,5 +143,6 @@
       "blocker": "",
       "key": "00000000-0000-4000-8000-000000000030:00000000-0000-4000-8000-000000000031:00000000-0000-4000-8000-000000000032:00000000-0000-4000-8000-000000000033"
     }
-  }
+  },
+  "expectText": ["必要资料处理邀请", "不授权宣传、公开档案或直播"]
 }

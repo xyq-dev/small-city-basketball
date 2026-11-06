@@ -4,7 +4,7 @@
   "state": "synthetic-sponsor-refund-unknown",
   "figmaNode": "44:1465",
   "designSource": "UI001 high fidelity card and original protected service workflow; synthetic samples only",
-  "expectText": ["UNKNOWN只查询原编号", "结果未知", "实际到账以支付渠道确认结果为准"],
+  "expectText": ["UNKNOWN 只查询原编号", "结果未知", "实际到账以支付渠道确认结果为准"],
   "data": {
     "enabled": true,
     "detailView": "refunds",

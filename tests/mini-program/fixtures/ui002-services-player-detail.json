@@ -3,7 +3,7 @@
   "route": "pages/booking-detail/index",
   "state": "pending",
   "figmaNode": "5:1290",
-  "expectText": ["待球员接单", "预约确认", "到场与履约", "结果核对"],
+  "expectText": ["待球员接单", "接受本场安排", "本人声明到场", "确认完成时段"],
   "primary": false,
   "asOf": "2026-10-25T02:00:00.000Z",
   "data": {

@@ -27,12 +27,15 @@
     "loginPhase": "wechat",
     "platformOperator": false
   },
-  "expectText": ["微信登录状态", "正在核对微信登录", "登录过程", "正在登录…", "使用邮箱登录"],
+  "expectText": ["正在登录"],
   "expectAbsentText": [
     "我的球队与本届报名",
     "微信登录暂未开放",
     "暂时无法核对微信登录状态",
     "当前微信尚未绑定应用账号",
-    "微信登录失败"
-  ]
+    "微信登录失败",
+    "使用邮箱登录",
+    "登录过程"
+  ],
+  "expectDisabled": ["正在登录"]
 }

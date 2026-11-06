@@ -46,7 +46,7 @@
 
         <view id="trade-terms" class="figma-section">
           <view class="figma-section__title">后续收费条款</view>
-          <view class="figma-section__hint">条款须独立审核，只影响明确同意后的新订单；既有免费来源不会追溯收费。</view>
+          <view class="figma-section__hint">条款须独立审核，只影响明确同意后的新订单；既有免费来源不会追溯收费。实际收款主体与分账接收方由服务端配置。</view>
           <view class="manage-kind-tabs">
             <button class="{{kind==='LOCAL_BOOKING'?'is-active':''}}" data-kind="LOCAL_BOOKING" bindtap="kind" disabled="{{busy}}">同城供给费</button>
             <button class="{{kind==='ENTRY_FEE'?'is-active':''}}" data-kind="ENTRY_FEE" bindtap="kind" disabled="{{busy}}">报名费</button>

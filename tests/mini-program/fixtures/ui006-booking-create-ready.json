@@ -4,7 +4,15 @@
   "state": "ready",
   "figmaNode": "36:79",
   "syntheticData": true,
-  "expectText": ["代表城北篮球队向所选球员发出合作", "时间与地点", "本场参与球员", "陈一鸣", "确定报价", "返回选人", "核对并提交预约"],
+  "expectText": [
+    "代表合成城北篮球队向所选球员发出合作",
+    "时间与地点",
+    "本场参与球员",
+    "陈一鸣",
+    "确定报价",
+    "返回选人",
+    "核对并提交预约"
+  ],
   "data": {
     "loading": false,
     "busy": false,
@@ -13,7 +21,7 @@
     "error": "",
     "notice": "",
     "scope": "SINGLE",
-    "teamName": "城北篮球队",
+    "teamName": "合成城北篮球队",
     "teamId": "90000000-0000-4000-8000-000000000100",
     "eventName": "城市篮球邀请赛",
     "players": [

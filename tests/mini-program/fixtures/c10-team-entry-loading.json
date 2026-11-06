@@ -3,8 +3,9 @@
   "route": "pages/entry/index",
   "state": "loading",
   "figmaNode": "11:36",
-  "expectText": ["正在读取"],
+  "expectText": [],
   "data": {
     "loading": true
-  }
+  },
+  "expectVisible": ["[role=\"status\"][aria-label=\"正在加载\"]"]
 }

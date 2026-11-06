@@ -7,7 +7,7 @@
   "expectText": ["城市篮球邀请赛", "本周赛程", "小组积分", "赛事服务", "关注赛事", "查看赛程"],
   "data": {
     "event": {
-      "name": "城市篮球邀请赛",
+      "name": "合成城市篮球邀请赛",
       "dateLabel": "11/01–11/15",
       "venueName": "高州",
       "status": "RUNNING",
@@ -22,8 +22,14 @@
         "roundNo": 1,
         "startLabel": "11.07 19:00",
         "courtName": "城北体育馆一号场",
-        "home": { "teamKey": "home-1", "teamName": "城北队" },
-        "away": { "teamKey": "away-1", "teamName": "江南队" },
+        "home": {
+          "teamKey": "home-1",
+          "teamName": "城北队"
+        },
+        "away": {
+          "teamKey": "away-1",
+          "teamName": "江南队"
+        },
         "status": "SCHEDULED",
         "statusLabel": "待开赛",
         "score": null,
@@ -34,8 +40,14 @@
         "roundNo": 1,
         "startLabel": "11.07 20:15",
         "courtName": "滨江体育馆二号场",
-        "home": { "teamKey": "home-2", "teamName": "滨江队" },
-        "away": { "teamKey": "away-2", "teamName": "西城队" },
+        "home": {
+          "teamKey": "home-2",
+          "teamName": "滨江队"
+        },
+        "away": {
+          "teamKey": "away-2",
+          "teamName": "西城队"
+        },
         "status": "SCHEDULED",
         "statusLabel": "待开赛",
         "score": null,
@@ -43,8 +55,20 @@
       }
     ],
     "overviewPoints": [
-      { "teamKey": "home-1", "teamName": "城北队", "wins": 1, "losses": 0, "leaguePoints": 2 },
-      { "teamKey": "away-1", "teamName": "江南队", "wins": 0, "losses": 1, "leaguePoints": 1 }
+      {
+        "teamKey": "home-1",
+        "teamName": "城北队",
+        "wins": 1,
+        "losses": 0,
+        "leaguePoints": 2
+      },
+      {
+        "teamKey": "away-1",
+        "teamName": "江南队",
+        "wins": 0,
+        "losses": 1,
+        "leaguePoints": 1
+      }
     ],
     "standings": null,
     "groups": null,
@@ -56,6 +80,12 @@
     "overview": true,
     "unavailable": false,
     "sponsorVisible": false,
-    "follow": { "state": "none", "followId": "", "busy": false, "error": "", "notice": "" }
+    "follow": {
+      "state": "none",
+      "followId": "",
+      "busy": false,
+      "error": "",
+      "notice": ""
+    }
   }
 }

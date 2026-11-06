@@ -3,7 +3,7 @@
   "route": "pages/registration-events/index",
   "state": "ready",
   "figmaNode": "9:982",
-  "expectText": ["合成城市联赛2026", "为本队报名", "查看要求并创建报名草稿"],
+  "expectText": ["合成城市联赛2026", "报名中", "查看本届规程", "创建本队草稿"],
   "data": {
     "hasDraft": false,
     "hasCreatableEvent": true,

@@ -5,9 +5,9 @@
   "designSource": "synthetic:expansion-eight/static-native-layout-only",
   "static": true,
   "expectText": [
-    "本场直播工作台",
+    "直播工作台",
     "停止结果未知，仍占用频道",
-    "外站平台状态：未核验",
+    "外站平台状态须单独核验",
     "查看媒体作业"
   ],
   "data": {

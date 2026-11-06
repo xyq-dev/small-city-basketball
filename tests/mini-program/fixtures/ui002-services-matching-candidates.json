@@ -4,7 +4,14 @@
   "state": "synthetic-populated",
   "figmaNode": "42:1186",
   "designSource": "UI001 NM03 high fidelity context, adapted to current matching API; synthetic examples only",
-  "expectText": ["2 位候选 · 仅作推荐", "总价未知时不按低总价排序", "合成裁判甲", "交通费待报价"],
+  "expectText": [
+    "候选球员",
+    "合成裁判乙",
+    "总价未知",
+    "合成裁判甲",
+    "交通费待报价",
+    "总价未知时不按低总价排序"
+  ],
   "data": {
     "enabled": true,
     "selected": {

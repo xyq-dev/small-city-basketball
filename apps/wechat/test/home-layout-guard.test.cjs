@@ -74,5 +74,6 @@ test('layout checks register fixture routes from the main package and subpackage
   assert.match(spec, /expect\(metrics\.hero\?\.x\)\.toBe\(0\)/);
   assert.match(spec, /expect\(metrics\.hero\?\.height\)\.toBe\(204\)/);
   assert.match(spec, /latest:UI006:35:38\/59:54/);
-  assert.match(spec, /if \(group !== 'home'\) expect\(metrics\.header\?\.height\)\.toBe\(84\)/);
+  // UI006 uses a 44px status inset plus a 44px navigation row on rebuilt secondary pages.
+  assert.match(spec, /expect\(metrics\.header\?\.height\)\.toBe\(88\)/);
 });

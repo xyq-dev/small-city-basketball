@@ -4,12 +4,19 @@
   "state": "ready",
   "figmaNode": "36:81",
   "syntheticData": true,
-  "expectText": ["城北篮球队 × 陈一鸣 · 单场合作", "本场安排", "11月21日 18:30", "19:00—21:00", "提出改期", "查看本场资金订单"],
+  "expectText": [
+    "城北篮球队 × 陈一鸣 · 单场合作",
+    "本场安排",
+    "11月21日 18:30",
+    "19:00—21:00",
+    "提出改期",
+    "查看本场资金订单"
+  ],
   "data": {
     "orderId": "90000000-0000-4000-8000-000000000300",
     "order": {
       "id": "90000000-0000-4000-8000-000000000300",
-      "teamName": "城北篮球队",
+      "teamName": "合成城北篮球队",
       "eventName": "城市篮球邀请赛",
       "playerSummary": "陈一鸣",
       "scopeText": "单场合作",
@@ -56,9 +63,21 @@
             "completeLabel": "待办理"
           },
           "actions": [
-            { "type": "PROPOSE_CHANGE", "label": "提议更改安排", "danger": false },
-            { "type": "CANCEL", "label": "取消这一项", "danger": true },
-            { "type": "DISPUTE", "label": "发起本场争议", "danger": true }
+            {
+              "type": "PROPOSE_CHANGE",
+              "label": "提议更改安排",
+              "danger": false
+            },
+            {
+              "type": "CANCEL",
+              "label": "取消这一项",
+              "danger": true
+            },
+            {
+              "type": "DISPUTE",
+              "label": "发起本场争议",
+              "danger": true
+            }
           ]
         }
       ]

@@ -48,6 +48,7 @@
 
       <view class="figma-section">
         <view class="figma-section__title">正式改期</view>
+        <view class="figma-section__hint">最新安排：{{match.plan}}</view>
         <view class="reschedule-network-row"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">原开球时间</view><view class="figma-row__subtitle">{{history[0].from}}</view></view><view class="figma-status">原安排</view></view>
         <view class="reschedule-network-row"><figma-icon name="schedule" size="20"/><view class="figma-row__copy"><view class="figma-row__title">新开球时间</view><view class="figma-row__subtitle">{{history[0].to}}</view></view><view class="figma-status figma-status--orange">已发布</view></view>
       </view>
@@ -96,14 +97,15 @@
         <view wx:for="{{conflicts}}" wx:key="key" class="reschedule-conflict">{{item.label}}（{{item.scope}}{{item.external ? '，已有资源安排' : ''}}）</view>
       </view>
 
-      <view wx:if="{{rescheduleTab === 'history'}}" id="reschedule-history" class="figma-section">
+    </block>
+
+      <view wx:if="{{match && !uncertain && rescheduleTab === 'history'}}" id="reschedule-history" class="figma-section">
         <view class="figma-section__title">改期记录</view>
         <figma-feedback wx:if="{{!history.length}}" type="empty" title="尚无改期" body="当前安排即原发布安排。"/>
         <view wx:for="{{history}}" wx:key="key" class="reschedule-history"><view class="figma-row__title">{{item.from}}</view><view class="reschedule-arrow">→</view><view class="figma-row__title">{{item.to}}</view><view class="figma-row__subtitle">{{item.reason}} · {{item.time}}</view></view>
         <view wx:if="{{truncated}}" class="figma-section__hint">仅显示最近 20 条改期记录。</view>
       </view>
 
-    </block>
     </block>
   </view>
 

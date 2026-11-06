@@ -4,7 +4,7 @@
   "state": "recovery",
   "figmaNode": "30:940",
   "syntheticData": true,
-  "expectText": ["先核对原请求", "恢复原请求结果"],
+  "expectText": ["先核对原请求", "核对原请求"],
   "expectAbsentText": ["预约已提交"],
   "data": {
     "loading": false,
@@ -167,7 +167,10 @@
       "conditional": "¥330.00",
       "count": 3,
       "fixedCount": 2,
-      "conditionalCount": 1
+      "conditionalCount": 1,
+      "fixedSlotCount": 1,
+      "fixedPlayerCount": 2,
+      "travelAccommodation": "¥80.00"
     },
     "pending": true,
     "invalidRecovery": false,

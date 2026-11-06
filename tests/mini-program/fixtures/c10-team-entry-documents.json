@@ -3,7 +3,7 @@
   "route": "pages/entry/index",
   "state": "review",
   "figmaNode": "9:1095",
-  "expectText": ["合成保险凭证.pdf", "上传不等于投保", "选择一份PDF"],
+  "expectText": ["合成保险凭证.pdf", "上传不等于投保", "选择一份 PDF / PNG / JPEG 并上传"],
   "data": {
     "entry": {
       "id": "c1000000-0000-4000-8000-000000000005",
