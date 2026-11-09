@@ -644,9 +644,7 @@ test('event-setup clears the cached directory state when the account changes', a
 });
 
 test('an empty directory is empty, a failure stays a failure, and rows are not a selected event', async () => {
-  const empty = device((key) =>
-    key.startsWith('GET /v1/public/directory?') ? page([]) : null,
-  );
+  const empty = device((key) => (key.startsWith('GET /v1/public/directory?') ? page([]) : null));
   const emptyPage = await empty.open('pages/watch/index', {});
   assert.equal(emptyPage.page.data.directoryEmpty, true);
   assert.equal(emptyPage.page.data.dir.loaded, true);
