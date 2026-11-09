@@ -8,11 +8,11 @@
     </block>
 
     <block wx:else>
-    <view class="watch-hero">
+    <view wx:if="{{!directoryEmpty && dir.loaded && dir.items.length}}" class="watch-hero">
       <view class="watch-hero__copy">
         <view class="figma-eyebrow">公开赛事</view>
-        <view class="watch-hero__title">城市篮球邀请赛</view>
-        <view class="watch-hero__subtitle">{{citySelection.label}} · 全国公开目录</view>
+        <view class="watch-hero__title">{{citySelection.label}}公开赛事</view>
+        <view class="watch-hero__subtitle">{{dir.group==='LIVE' ? '进行中' : dir.group==='UPCOMING' ? '即将开始' : '历史赛事'}} · 公开目录</view>
       </view>
       <image class="watch-hero__image" src="/assets/home/hero.jpg" mode="aspectFill"/>
     </view>
@@ -21,6 +21,13 @@
       <button wx:for="{{dirGroups}}" wx:key="value" class="watch-tab {{dir.group===item.value ? 'is-active' : ''}}" data-group="{{item.value}}" bindtap="pickDirGroup" disabled="{{dir.loading}}" role="tab" aria-selected="{{dir.group===item.value}}">{{item.label}}</button>
     </view>
 
+    <block wx:if="{{directoryEmpty}}">
+      <view class="watch-state-intro"><view class="figma-section__title">暂无公开赛事</view><view class="watch-state-intro__body">目前所选条件下没有已发布赛事，可切换地区或清除筛选。</view></view>
+      <view class="figma-section"><view class="figma-section__title">当前条件</view><view class="watch-state-row"><view class="watch-state-dot"/><view class="figma-row__copy"><view class="figma-row__title">浏览地区</view><view class="figma-row__subtitle">{{citySelection.label}}</view></view><view class="figma-status figma-status--orange">已选</view></view><view class="watch-state-row"><view class="watch-state-dot"/><view class="figma-row__copy"><view class="figma-row__title">赛事阶段</view><view class="figma-row__subtitle">{{dir.group==='LIVE' ? '进行中' : dir.group==='UPCOMING' ? '即将开始' : '历史赛事'}}</view></view><view class="figma-status figma-status--orange">已选</view></view></view>
+      <view class="figma-section"><view class="figma-section__title">调整范围</view><button class="figma-row" bindtap="resetDirGroup"><view class="figma-row__copy"><view class="figma-row__title">清除阶段筛选</view><view class="figma-row__subtitle">回到进行中阶段，仍按当前地区读取。</view></view><view class="figma-status figma-status--orange">可操作</view></button><button class="figma-row" bindtap="clearDirCity"><view class="figma-row__copy"><view class="figma-row__title">查看全国</view><view class="figma-row__subtitle">保留手动选择城市的入口。</view></view><view class="figma-status figma-status--orange">可操作</view></button></view>
+      <view class="watch-actions"><button class="figma-action figma-action--ghost" bindtap="clearDirCity">查看全国赛事</button><button class="figma-action figma-action--orange" bindtap="chooseCity">切换浏览城市</button></view>
+    </block>
+    <block wx:else>
     <view id="watch-directory" class="figma-section">
       <view class="figma-section__title">{{dir.group==='LIVE' ? '正在进行' : dir.group==='UPCOMING' ? '即将开始' : '历史赛事'}}</view>
       <figma-skeleton wx:if="{{dir.loading}}" rows="{{3}}"/>
@@ -93,6 +100,7 @@
     </view>
 
     <view class="watch-actions"><button class="figma-action figma-action--ghost" bindtap="recruitment">查看公开招募</button><button class="figma-action figma-action--orange" bindtap="open" disabled="{{!value}}">查看赛事</button></view>
+    </block>
     </block>
   </view>
   <view wx:if="{{figmaState==='watch-empty'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">查看全国赛事</button><button class="figma-action figma-action--orange">切换浏览城市</button></view>

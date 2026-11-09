@@ -28,6 +28,7 @@ Page({
     ...privateDefaults,
     // Public directory: anonymous and independent of the signed-in account's private list.
     dir: directory.initialState(),
+    directoryEmpty: false,
     dirGroups: directory.GROUPS,
     citySelection: { label: '全国', source: '全国浏览', guide: true, warning: '' },
   },
@@ -104,6 +105,7 @@ Page({
     // ends the previous generation's pending "load more": that reply is dropped by generation,
     // so leaving loadingMore set would block every later page of the new generation.
     this.setData({
+      directoryEmpty: false,
       'dir.items': [],
       'dir.loading': true,
       'dir.loadingMore': false,
@@ -116,15 +118,26 @@ Page({
       const page = await directory.fetchPage(api.getClient(), { group, ...this._dirSelection });
       if (gen !== this._dirGen || this._alive === false) return;
       this._dirCursor = page.nextCursor;
+      const items = directory.merge([], page.items);
       this.setData({
-        'dir.items': directory.merge([], page.items),
+        'dir.items': items,
         'dir.loading': false,
         'dir.loaded': true,
         'dir.done': !page.nextCursor,
+        directoryEmpty: directory.successfulEmpty({
+          loaded: true,
+          loading: false,
+          error: '',
+          items,
+        }),
       });
     } catch (error) {
       if (gen !== this._dirGen || this._alive === false) return;
-      this.setData({ 'dir.loading': false, 'dir.error': directory.failure(error) });
+      this.setData({
+        directoryEmpty: false,
+        'dir.loading': false,
+        'dir.error': directory.failure(error),
+      });
     }
   },
   async loadMoreDirectory() {
@@ -165,6 +178,10 @@ Page({
           directory.failure(error),
       });
     }
+  },
+  resetDirGroup() {
+    if (this.data.dir.group !== 'LIVE') this.setData({ 'dir.group': 'LIVE' });
+    this.loadDirectory();
   },
   pickDirGroup(e) {
     const group = e.currentTarget.dataset.group;

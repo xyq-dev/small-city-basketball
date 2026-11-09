@@ -110,4 +110,25 @@ function failure(error) {
   return ui.message(error);
 }
 
-module.exports = { GROUPS, PAGE_SIZE, initialState, normalizeCity, fetchPage, merge, failure };
+/** A successful empty page is not loading and is not a failed read. */
+function successfulEmpty(dir) {
+  return !!(
+    dir &&
+    dir.loaded === true &&
+    dir.loading !== true &&
+    !dir.error &&
+    Array.isArray(dir.items) &&
+    dir.items.length === 0
+  );
+}
+
+module.exports = {
+  GROUPS,
+  PAGE_SIZE,
+  initialState,
+  normalizeCity,
+  fetchPage,
+  merge,
+  failure,
+  successfulEmpty,
+};
