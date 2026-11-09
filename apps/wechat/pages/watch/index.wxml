@@ -46,6 +46,7 @@
       <figma-feedback wx:if="{{dir.moreError}}" type="error" title="后续赛事读取失败" body="{{dir.moreError}}" action-label="重试" bind:action="loadMoreDirectory"/>
       <button wx:if="{{dir.loaded && !dir.done}}" class="inline-action" bindtap="loadMoreDirectory" disabled="{{dir.loadingMore}}" loading="{{dir.loadingMore}}">加载更多赛事</button>
     </view>
+    </block>
 
     <view class="figma-section">
       <view class="figma-section__title">赛事入口</view>
@@ -100,7 +101,6 @@
     </view>
 
     <view class="watch-actions"><button class="figma-action figma-action--ghost" bindtap="recruitment">查看公开招募</button><button class="figma-action figma-action--orange" bindtap="open" disabled="{{!value}}">查看赛事</button></view>
-    </block>
     </block>
   </view>
   <view wx:if="{{figmaState==='watch-empty'}}" class="figma-fixed-actions"><button class="figma-action figma-action--ghost">查看全国赛事</button><button class="figma-action figma-action--orange">切换浏览城市</button></view>

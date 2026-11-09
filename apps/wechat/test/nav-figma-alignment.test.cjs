@@ -47,6 +47,13 @@ test('the events page binds the live hero and empty state without a sample event
   assert.match(script, /resetDirGroup\(\)/);
   assert.doesNotMatch(script, /items\[0\]/);
   assert.match(
+    page,
+    /<block wx:else>\s*<view id="watch-directory"[\s\S]*?<\/view>\s*<\/block>\s*<view class="figma-section">\s*<view class="figma-section__title">赛事入口/s,
+  );
+  assert.match(page, /id="watch-private"/);
+  assert.match(page, /id="watch-recent"/);
+  assert.match(page, /id="watch-link-entry"/);
+  assert.match(
     style,
     /\.watch-page \.watch-tabs > \.watch-tab[^}]*width:100%[^}]*max-width:100%[^}]*min-width:0[^}]*height:44px[^}]*min-height:44px[^}]*margin:0[^}]*padding:0 4px[^}]*box-sizing:border-box/s,
   );
