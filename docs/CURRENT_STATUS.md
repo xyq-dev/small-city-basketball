@@ -1,5 +1,13 @@
 # 当前状态
 
+## 2026-11-09 20:40 Asia/Shanghai 四主导航定向修复已合入 main
+
+[PR #49](https://github.com/xyq-dev/small-city-basketball/pull/49) 已用 merge 合入 main，合并提交 `9838625f04159b31ff5850012bc5020068fd843d`，修复头 `01d128bc1b073273981f53bfc0a917d7ff34435e`。当时 `origin/main` 仍是 `9480386cc37eaabaa42f3f3e872468227a636410`，没有并发覆盖。[Application checks #42614540474](https://github.com/xyq-dev/small-city-basketball/actions/runs/42614540474) 的 admin、api、account-security、production 四作业均为 SUCCESS。admin 日志里的微信套件为 1629 项、1628 通过、0 失败、1 项 Linux 上跳过的 Windows 桥测试；“component templates, styles and modules cannot follow symlinks outside the project”已在该日志通过。更早的 886f1f8、5d53c22、67ec081 运行已取消，不能当作这次通过。
+
+本轮只改赛事页签、同城选中态和本页 21/30 标题、白底页头 `3:39` 素材、成功空目录去掉固定示例赛名。空目录不再藏起私人赛事、最近观看、观赛入口和招募。首页海军蓝品牌、球衣入口和底栏盾牌未改。赛事空态不宣称与 `36:132` 整页一致。像素测量失败：内存不足导致裁切失败，557无效。缺少真实数据的赛事、供给、球队及账号成功态仍待验证。本机截图只在 `D:\Projects\scb-ui-review\nav-figma-fix\20261109-1814`，不是已上传附件。
+
+远端 `fix/nav-figma-alignment` 在完整合入且没有新增提交后已删除。原日常目录已快进到上述 main。未做官方 pack、上传发布、生产部署、生产 Migration 或生产数据操作。下方旧 UI006 `LOCAL_ONLY` 记录保留为历史。
+
 ## 2026-11-06 22:20 Asia/Shanghai INT01 全分支整合完成（DONE / MAIN）
 
 [PR #46](https://github.com/xyq-dev/small-city-basketball/pull/46) 已用 merge 合入 main，合并提交 `2ab668e5361e71dbb138b45b704928692b15b174`。来源 PR #42、#44 已由 GitHub 标记 merged；账号安全 #43、腾讯 COS #45 原已合入。四个 feature head 与整合候选全部保留为 main 祖先，未强推、删除来源分支或覆盖旧 checkout。

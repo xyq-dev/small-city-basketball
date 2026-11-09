@@ -74,6 +74,10 @@ root下一步仅精确提交18份本批代码/测试/场景及五份任务记录
 
 50项Migration/223表/128函数；050仅隔离执行，001—049保留main原文。真实COS/CAM及生产未启用，8MiB/文件、128MiB/机构限额保留，云对象真实读写/删除/备份恢复与微信真机仍待专项验收。下一步准备私有测试桶和受限凭据联调。详见[任务](tasks/COS01.md)、[接续](handoffs/COS01.md)、[证据](evidence/COS01/README.md)、[配置](operations/tencent-cos.md)。
 
+## 2026-11-09 四主导航定向修复（MAIN：源码已合入，未上线）
+
+[PR #49](https://github.com/xyq-dev/small-city-basketball/pull/49) 已合入 main `9838625f04159b31ff5850012bc5020068fd843d`。修复头 `01d128bc1b073273981f53bfc0a917d7ff34435e` 的 [Application checks](https://github.com/xyq-dev/small-city-basketball/actions/runs/42614540474) 四作业 SUCCESS。定向项已通过微信复验；空态只确认示例赛名已移除，并保留私人赛事和观赛入口。557 无效。成功态名单仍缺真实数据。详见 [任务](tasks/UI006-WECHAT-FIGMA-REBUILD.md) 与 [交接](handoffs/UI006-WECHAT-FIGMA-REBUILD.md)。下方 2026-11-05 的 `LOCAL_ONLY` 是更早切片，不是这次合并状态。
+
 ## 2026-11-05 UI006 微信原生前端 Figma 重建（REVIEW / LOCAL_ONLY）
 
 | 项         | 当前事实                                                                                                                                                                         |
