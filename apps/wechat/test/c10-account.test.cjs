@@ -271,10 +271,9 @@ test('all account and planned visual fixtures expand real WXML and retain disabl
         assert.ok(result.phone.includes(text), name + ': ' + text);
       // Shared Figma icons plus the account header's brand mark are allowed.
       // Court photos and other homepage content stay rejected on account fixtures.
+      const accountBrand = /^assets[\\/]home[\\/](?:brandmark|header-brandmark-3-39)\.svg$/;
       const homepageContent = result.assets.filter(
-        (asset) =>
-          /^assets[\\/]home[\\/]/.test(asset.path) &&
-          !/^assets[\\/]home[\\/]brandmark\.svg$/.test(asset.path),
+        (asset) => /^assets[\\/]home[\\/]/.test(asset.path) && !accountBrand.test(asset.path),
       );
       assert.deepEqual(homepageContent, [], name + ': homepage pack content');
       assert.deepEqual(
@@ -282,7 +281,7 @@ test('all account and planned visual fixtures expand real WXML and retain disabl
           (asset) =>
             !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path) &&
             !/^assets[\\/]ui002[\\/][^\\/]+\.svg$/.test(asset.path) &&
-            !/^assets[\\/]home[\\/]brandmark\.svg$/.test(asset.path) &&
+            !accountBrand.test(asset.path) &&
             !/^assets[\\/]figma[\\/][a-z-]+\.svg$/.test(asset.path),
         ),
         [],
