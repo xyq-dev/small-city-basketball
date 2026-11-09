@@ -13,7 +13,7 @@
     <button class="home-quick__item" bindtap="openTeamData" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="team-archive" size="26"/></view><view>球队档案</view></button>
     <button class="home-quick__item" data-page="media" bindtap="go" disabled="{{uiPreview}}"><view class="home-quick__icon is-orange"><figma-icon name="media" size="26"/></view><view>图片视频</view></button>
     <button class="home-quick__item" bindtap="openPlayers" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="player" size="26"/></view><view>找球员</view></button>
-    <button class="home-quick__item" data-page="teams" bindtap="go" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="teams" size="26"/></view><view>我的球队</view></button>
+    <button class="home-quick__item" data-page="teams" bindtap="go" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="jersey" size="26"/></view><view>我的球队</view></button>
     <button class="home-quick__item" bindtap="openCourt" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="court" size="26"/></view><view>找球场</view></button>
     <button class="home-quick__item" bindtap="openLocal" disabled="{{uiPreview}}"><view class="home-quick__icon is-blue"><figma-icon name="local" size="26"/></view><view>同城服务</view></button>
   </view>

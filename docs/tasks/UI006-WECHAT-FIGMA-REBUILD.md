@@ -139,3 +139,20 @@
 - 每项指纹覆盖页面 WXML/WXSS/JS/JSON、实际共享组件、全局样式、预览门禁、场景模型/夹具、素材、配置和采集工具。采集前后文件 SHA256 对比为 0 项变化；开发工具最后恢复到 `pages/home/index?uiPreview=figma`，并确认开发版门禁生效。采集器在路由加载前阻断 `wx.request`，没有请求到达生产；同城唯一 POST 是公开搜索查询且同样被阻断，不是业务写入。
 - 更正此前 `1250/1249` 只有摘要、缺少完整原始 stdout/stderr 的证据限制：历史记录保留，不追写为完整日志。此次稳定源码仅执行一次 `npm run test:wechat`，实际为 1256 项、1255 通过、1 失败、0 跳过；唯一失败仍是 `native-components.test.cjs` 的 Windows `symlinkSync EPERM`。完整 stdout、stderr 和退出码分别保存在上述证据根的 `test-wechat.stdout.log`、`test-wechat.stderr.log`、`test-wechat.exit-code.txt`；stdout SHA256 为 `BE5011C62660FA9B612E41D8E056283EFD2A7A00DC0EFF29DAC5D724990B62AA`，stderr 为空文件。
 - 本检查点没有调整已验收布局、样式或素材，也未触发真实登录或业务写入；真实业务成功流程、320/430 微信实测和官方 pack 继续保持未验证。所有成果仍未暂存、未提交、未推送。
+
+## 2026-11-07 首页图标与精选赛事卡最小修复（LOCAL_ONLY）
+
+- 本轮没有在旧 `6fc0698` 工作树继续叠加修改。先 fetch 得到最新 `origin/main` `b8ee284adb9714793f8b98dc995a7db530879413`，再建立独立工作树 `D:\Projects\scb-worktrees\home-figma-icons` 与分支 `fix/home-figma-icons`；原 `feat/wechat-figma-rebuild` 工作树及其 47 个未跟踪归档未被切换、清理或覆盖。
+- 重新读取 Figma 首页 `35:38` 及 `35:41`、`35:53`、`35:56`、`35:60`、`35:102`、`35:107`、`35:108`。首页“我的球队”只把快捷入口从 `teams` 改为 `jersey`，底栏 Teams 仍为 `teams`；页头四槽位改用首页专用透明 SVG，未覆盖账号页仍使用的旧品牌素材。
+- 精选赛事卡只校正已确认的规格：外圆角 14px、封面圆角 8px、标题 17/23px、状态标签最小 58×20px、圆角 5px、11/15px；标签保留自适应宽度，没有把真实长状态强制裁成固定 58px。
+- 新增资产节点/导出方法/SHA-256 清单和定向测试；直接相关回归 34/34。完整 `npm run test:wechat` 实际 1624 项、1623 通过、1 失败、0 跳过；唯一失败仍是 Windows 创建安全测试软链时的 `symlinkSync EPERM`，没有跳过或放宽断言。`git diff --check` 通过。
+- 微信开发者工具由官方 CLI 指向本次工作树 `apps/wechat`，但当前登录会话失效；私有 AppID 与仓库 `touristappid` 两次均在项目初始化阶段返回 `APPID_ERROR: 需要重新登录`，自动化端口未建立，因此本轮没有当前源码的微信原生截图。兼容预览 390px 仅作为辅助源码布局证据，不能计作微信复验；解除条件是在现有开发者工具重新登录后，按正常首页无参数及开发版 `uiPreview=figma` 两个入口重采。
+- 外部证据：`D:\Projects\scb-ui-review\home-figma-fix\20261107-092154`。本轮仍未暂存、commit、push、pack、上传、部署、执行 Migration 或生产写入。
+
+## 2026-11-09 微信复验（当前源码）
+
+- 现场仍是 `D:\Projects\scb-worktrees\home-figma-icons` / `fix/home-figma-icons`。fetch 后 `origin/main` 仍是 `b8ee284adb9714793f8b98dc995a7db530879413`，本分支当时没有独立提交。原工作树 `D:\Projects\small-city-basketball` 仍是 `feat/wechat-figma-rebuild@6fc06983b9d0093268e25354cca89dace79d1dab`，未切换、清理或覆盖。
+- 官方微信开发者工具已登录，HTTP 服务 `127.0.0.1:12993`，自动化端口 `9420`。打开的工程是 `D:\Projects\scb-worktrees\home-figma-icons\apps\wechat`。跟踪的 `project.config.json` 仍是 `touristappid` 且 `urlCheck` 为 true；本地已忽略的 `project.private.config.json` 只复用既有登录工程，不进入提交。
+- 正常首页 `pages/home/index` 无参数，`uiPreview=false`，`envVersion=develop`，机型 iPhone 12/13 (Pro)，逻辑视口 390×844。公开赛事为真实空态（0 条），已保留。开发版 `?uiPreview=figma` 单独验证赛事卡，标注为微信原生隔离样例，不是真实业务成功态。
+- 五处图标与 Figma 导出对照通过：品牌 35:41、城市箭头 13px、消息铃铛含白色通知圆点、搜索 18px 且描边为 #63758B、我的球队为 26px jersey；底栏球队仍是 teams 盾形。赛事卡实测约 358×96，封面约 101×76，标题 17/23、`#18283F`，状态标签约 58×20、11/15、背景 `#FFF1E2`。
+- 截图只在本机：`D:\Projects\scb-ui-review\home-figma-fix\20261109-1649`。原图未拉伸。定向测试 25/25，导航 2/2，`git diff --check` 通过。完整回归留给本次提交的 Linux CI。未做官方 pack、上传、发布、生产部署或生产 Migration。

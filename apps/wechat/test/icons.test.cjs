@@ -92,7 +92,7 @@ test('UI006 nationwide navigation keeps five destinations with exact Figma vecto
 
 test('rebuilt home entries use mapped Figma icons; positions keep labels and filters', () => {
   const html = fs.readFileSync(path.join(root, 'pages/home/index.wxml'), 'utf8');
-  for (const name of ['name="event"', 'name="player"', 'name="teams"', 'name="media"', 'hero.jpg'])
+  for (const name of ['name="event"', 'name="player"', 'name="jersey"', 'name="media"', 'hero.jpg'])
     assert.match(html, new RegExp(name.replace('.', '\\.')));
   assert.match(html, /data-position="\{\{item\.code\}\}"/);
   const h = loadPage({ root, route: 'pages/home/index' });

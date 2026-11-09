@@ -1,0 +1,50 @@
+{
+  "fileKey": "QpKOskViUwHFVqSG3uYR9X",
+  "frameNodeId": "35:38",
+  "exportMethod": "2026-11-09 Framelink download_figma_images whole-node SVG. Brand 35:41 bytes are that export; sha256 is the authoritative fingerprint.",
+  "assets": [
+    {
+      "slot": "brandmark",
+      "nodeId": "35:41",
+      "path": "assets/home/header-brandmark-35-41.svg",
+      "width": 28,
+      "height": 28,
+      "sha256": "E2A306048EF03031DADA3B37B29F818C003605735B197D88166A7FD63D49B521",
+      "wholeNodeExportSha256": "E2A306048EF03031DADA3B37B29F818C003605735B197D88166A7FD63D49B521",
+      "transparentLayerSha256": [
+        "5DF065992C2FC3DCC731BDBE178FA77D01F88A65FC251424DA869165586F7459",
+        "A8D48044D83173105151FD5D0450CCE3DB05A6DB12F0BFFB0669A80E35949084"
+      ]
+    },
+    {
+      "slot": "city-chevron",
+      "nodeId": "35:53",
+      "path": "assets/home/header-city-chevron-35-53.svg",
+      "width": 13,
+      "height": 13,
+      "sha256": "61448DF418E209FCBBA1D0322EAB793AB4768A9208750A8D052B3E61AABD0220",
+      "wholeNodeExportSha256": "44883F720CB51BC19AEEF25925352DC21F34578A7E7A5F1516BC386CF7629EEB",
+      "transparentLayerSha256": ["75C16BF8BA52AA05CBF1811074DA0EC1C8B94030ED3402C88325CB6169AD1842"]
+    },
+    {
+      "slot": "message",
+      "nodeId": "35:56",
+      "path": "assets/home/header-message-35-56.svg",
+      "width": 22,
+      "height": 22,
+      "sha256": "3250B0F323376C46FA03AE2FE35781D48EC8CA30BD8C9BC6EB9C1CDAD1989A49",
+      "wholeNodeExportSha256": "50AA11B69C7DF689049F0B79CA6470529D5F15A526ED1C2485ECE1789C57F184",
+      "transparentLayerSha256": ["1CC4625A73CBBEE7E3183D6116C0D682BBE665EE09E820E67D3DE6BBF2191CCA"]
+    },
+    {
+      "slot": "search",
+      "nodeId": "35:60",
+      "path": "assets/home/header-search-35-60.svg",
+      "width": 18,
+      "height": 18,
+      "sha256": "4CAEA7CF120A184506E3D051D6B885E55CF20CA9DE861588D32398F71A5FD8EC",
+      "wholeNodeExportSha256": "998423E19E23ECE25B92B65EE37481C23B84BF2B5FD32D919FCFEB972954AAFA",
+      "transparentLayerSha256": ["BBF48B8A3EA0A10F51126A353F1034A46E958B99C14DBBC5BF643734F0B005B0"]
+    }
+  ]
+}
