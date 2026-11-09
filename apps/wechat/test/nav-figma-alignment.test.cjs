@@ -7,6 +7,22 @@ const directory = require('../utils/directory');
 
 const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+const brandPath = path.join(root, 'assets/home/header-brandmark-3-39.svg');
+const brandExpected = 'AA0CEC08D2FD1AB0262674FFC5EAAAE65E20E373322689DD68CAEA8E18C33EC7';
+
+const crlfToLf = (bytes) => {
+  const parts = [];
+  for (let i = 0; i < bytes.length; i += 1) {
+    if (bytes[i] === 0x0d && bytes[i + 1] === 0x0a) {
+      parts.push(0x0a);
+      i += 1;
+    } else parts.push(bytes[i]);
+  }
+  return Buffer.from(parts);
+};
+
+const brandIdentity = (bytes) =>
+  createHash('sha256').update(crlfToLf(bytes)).digest('hex').toUpperCase();
 
 test('a successful empty directory is distinct from loading, failure and rows', () => {
   assert.equal(
@@ -78,9 +94,8 @@ test('the local active tab wins its own rule and only the local title is 21/30',
 
 test('the white header uses the Figma 3:39 export and the home header stays separate', () => {
   const header = read('components/header/index.wxml');
-  const asset = fs.readFileSync(path.join(root, 'assets/home/header-brandmark-3-39.svg'));
-  const hash = createHash('sha256').update(asset).digest('hex').toUpperCase();
-  assert.equal(hash, 'AA0CEC08D2FD1AB0262674FFC5EAAAE65E20E373322689DD68CAEA8E18C33EC7');
+  const asset = fs.readFileSync(brandPath);
+  assert.equal(brandIdentity(asset), brandExpected);
   assert.match(asset.toString('utf8'), /mask0_3_39/);
   assert.match(header, /mode==='home'[\s\S]*header-brandmark-35-41\.svg/);
   assert.match(header, /mode==='account'[\s\S]*header-brandmark-3-39\.svg/);
@@ -88,4 +103,35 @@ test('the white header uses the Figma 3:39 export and the home header stays sepa
   assert.match(read('pages/home/index.wxml'), /name="jersey"/);
   assert.match(read('components/navigation/index.wxml'), /name="\{\{item\.icon\}\}"/);
   assert.match(read('components/navigation/index.js'), /icon: 'teams'/);
+});
+
+test('brand identity treats CRLF as LF and still rejects other asset changes', () => {
+  const lf = crlfToLf(fs.readFileSync(brandPath));
+  const crlf = Buffer.from(
+    Array.from(lf, (byte) => (byte === 0x0a ? [0x0d, 0x0a] : [byte])).flat(),
+  );
+  assert.equal(brandIdentity(lf), brandExpected);
+  assert.equal(brandIdentity(crlf), brandExpected);
+  assert.notEqual(
+    createHash('sha256').update(lf).digest('hex'),
+    createHash('sha256').update(crlf).digest('hex'),
+  );
+  const changed = Buffer.from(lf);
+  const at = changed.indexOf('mask0_3_39');
+  assert.notEqual(at, -1);
+  changed[at + 'mask0_3_39'.length - 1] = '8'.charCodeAt(0);
+  assert.notEqual(brandIdentity(changed), brandExpected);
+});
+
+test('the teams registration action stays on one line inside the 140px button', () => {
+  const page = read('pages/teams/index.wxml');
+  const style = read('pages/teams/index.wxss');
+  assert.match(page, /class="teams-actions"[\s\S]*选择可报名赛事[\s\S]*进入球队/);
+  assert.match(page, /bindtap="events"/);
+  assert.match(page, /bindtap="team"/);
+  assert.match(style, /\.teams-actions\{[^}]*grid-template-columns:140px/);
+  assert.match(
+    style,
+    /\.teams-page \.teams-actions \.figma-action\{[^}]*padding:0 12px[^}]*white-space:nowrap/,
+  );
 });
