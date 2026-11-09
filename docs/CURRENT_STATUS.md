@@ -1,5 +1,11 @@
 # 当前状态
 
+## 2026-11-09 21:45 Asia/Shanghai 球队报名按钮与品牌行尾校验已合入 main
+
+[PR #50](https://github.com/xyq-dev/small-city-basketball/pull/50) 已用 merge 合入 main，合并提交 `a8c94de55915d24e8f670e801bbdf01c6834fe41`，修复头 `baa775845da8297a1d710310717b6b51f3b33fb4`。合并前 `origin/main` 仍是 `0e23575cf3417ee82096cf509a950b5eae53517f`。[Application checks #42622629475](https://github.com/xyq-dev/small-city-basketball/actions/runs/42622629475) 的 admin、api、account-security、production 四作业均为 SUCCESS。admin 日志里品牌身份两条断言通过；“component templates, styles and modules cannot follow symlinks outside the project”已通过。微信套件 1631 项、1630 通过、0 失败、1 项跳过，跳过的是 Linux 上的 Windows batch bridge。Codex 对 `baa7758` 的审查没有发现项。
+
+页面只改球队底栏「选择可报名赛事」为单行。四页隔离成功态 UI 通过。真实账号、真实 API 和真实业务成功流程未验证。本机截图只在 `D:\Projects\scb-ui-review\nav-success-ui\20261109-2055`，不是已上传附件。远端 `fix/nav-success-ui` 在完整合入且没有新增提交后已删除。未做官方 pack、上传发布、生产部署、生产 Migration 或生产数据操作。
+
 ## 2026-11-09 20:40 Asia/Shanghai 四主导航定向修复已合入 main
 
 [PR #49](https://github.com/xyq-dev/small-city-basketball/pull/49) 已用 merge 合入 main，合并提交 `9838625f04159b31ff5850012bc5020068fd843d`，修复头 `01d128bc1b073273981f53bfc0a917d7ff34435e`。当时 `origin/main` 仍是 `9480386cc37eaabaa42f3f3e872468227a636410`，没有并发覆盖。[Application checks #42614540474](https://github.com/xyq-dev/small-city-basketball/actions/runs/42614540474) 的 admin、api、account-security、production 四作业均为 SUCCESS。admin 日志里的微信套件为 1629 项、1628 通过、0 失败、1 项 Linux 上跳过的 Windows 桥测试；“component templates, styles and modules cannot follow symlinks outside the project”已在该日志通过。更早的 886f1f8、5d53c22、67ec081 运行已取消，不能当作这次通过。

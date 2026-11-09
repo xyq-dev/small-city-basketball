@@ -1,5 +1,9 @@
 # 任务看板
 
+## 2026-11-09 21:45 Asia/Shanghai 成功态按钮修复（DONE / MAIN，生产未部署）
+
+[PR #50](https://github.com/xyq-dev/small-city-basketball/pull/50) 已 merge 至 main `a8c94de55915d24e8f670e801bbdf01c6834fe41`。修复头 `baa775845da8297a1d710310717b6b51f3b33fb4`。[CI #42622629475](https://github.com/xyq-dev/small-city-basketball/actions/runs/42622629475) 四作业 SUCCESS。品牌身份与 Linux 软链测试通过。四页隔离成功态 UI 通过；真实账号、真实 API 和真实业务成功流程未验证。未 pack、上传、部署或执行生产 Migration。
+
 ## 2026-11-07T02:53+08:00 COS02 后台对象存储（DONE / MAIN，生产未部署）
 
 [PR47](https://github.com/xyq-dev/small-city-basketball/pull/47)已merge至GitHub main：`f6ae8b75dc03040f51d2ad68d6439ef10e13934c`。候选4fe60ec、CI测试merge及实际merge的tree一致。入口「系统设置→对象存储」仅有效平台管理员可用，支持加密草稿、显式检测与启用，运行时使用已启用版本并保留历史数据库文件读取。
