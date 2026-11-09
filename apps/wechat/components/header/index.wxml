@@ -9,7 +9,7 @@
 </view>
 
 <view wx:elif="{{mode==='account'}}" class="figma-header figma-header--account" style="padding-top:{{statusBarHeight}}px">
-  <view class="figma-header__account-row" style="padding-right:{{capsuleReserve}}px"><view class="figma-header__account-mark"><image src="/assets/home/brandmark.svg" mode="aspectFit" aria-hidden="true"/></view><view class="figma-header__account-title">{{title || '我的'}}</view></view>
+  <view class="figma-header__account-row" style="padding-right:{{capsuleReserve}}px"><view class="figma-header__account-mark"><image src="/assets/home/header-brandmark-3-39.svg" mode="aspectFit" aria-hidden="true"/></view><view class="figma-header__account-title">{{title || '我的'}}</view></view>
 </view>
 
 <view wx:else class="figma-header {{dark ? 'figma-header--dark' : ''}}" style="padding-top:{{statusBarHeight}}px">

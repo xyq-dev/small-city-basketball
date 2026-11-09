@@ -642,3 +642,52 @@ test('event-setup clears the cached directory state when the account changes', a
   assert.equal(d.state.modal, null);
   assert.deepEqual(d.state.writes, []);
 });
+
+test('an empty directory is empty, a failure stays a failure, and rows are not a selected event', async () => {
+  const empty = device((key) => (key.startsWith('GET /v1/public/directory?') ? page([]) : null));
+  const emptyPage = await empty.open('pages/watch/index', {});
+  assert.equal(emptyPage.page.data.directoryEmpty, true);
+  assert.equal(emptyPage.page.data.dir.loaded, true);
+  assert.equal(emptyPage.page.data.dir.error, '');
+  assert.deepEqual(emptyPage.page.data.dir.items, []);
+  assert.equal(Object.hasOwn(emptyPage.page.data, 'heroEvent'), false);
+  assert.equal(JSON.stringify(emptyPage.page.data).includes('城市篮球邀请赛'), false);
+
+  const failed = device((key) =>
+    key.startsWith('GET /v1/public/directory?') ? fail(503, 'UPSTREAM') : null,
+  );
+  const failedPage = await failed.open('pages/watch/index', {});
+  assert.equal(failedPage.page.data.directoryEmpty, false);
+  assert.equal(failedPage.page.data.dir.loaded, false);
+  assert.match(failedPage.page.data.dir.error, /503|读取|失败|错误/);
+
+  const listed = device((key) => {
+    if (key === 'GET /v1/public/directory?status=LIVE&limit=20')
+      return page([row('a', '合成冬季杯'), row('b', '合成夏季杯')]);
+    if (key === 'GET /v1/public/directory?status=UPCOMING&limit=20') return page([]);
+    return null;
+  });
+  const listedPage = await listed.open('pages/watch/index', {});
+  assert.equal(listedPage.page.data.directoryEmpty, false);
+  assert.deepEqual(
+    listedPage.page.data.dir.items.map((item) => item.name),
+    ['合成冬季杯', '合成夏季杯'],
+  );
+  assert.equal(listedPage.page.data.dir.items[0].publicEventId, pid('a'));
+  listedPage.page.pickDirGroup(tap({ group: 'UPCOMING' }));
+  await listedPage.flush();
+  assert.equal(listedPage.page.data.dir.group, 'UPCOMING');
+  assert.equal(listedPage.page.data.directoryEmpty, true);
+  assert.equal(
+    listed.state.publicCalls.some((call) => call.url.includes('status=UPCOMING')),
+    true,
+  );
+  listedPage.page.resetDirGroup();
+  await listedPage.flush();
+  assert.equal(listedPage.page.data.dir.group, 'LIVE');
+  assert.equal(
+    listed.state.publicCalls.some((call) => call.url.includes('status=LIVE')),
+    true,
+  );
+  assert.equal(listed.state.writes.length, 0);
+});
