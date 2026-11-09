@@ -11,7 +11,9 @@ test('UI006 home expands the new Figma header, exact assets and no second native
   assert.match(preview.phone, /<header class="mini-custom-status"/);
   assert.doesNotMatch(preview.phone, /<header class="mini-native-bar"/);
   assert.match(preview.phone, /搜赛事、球队、球员/);
-  assert.ok(preview.assets.some((asset) => asset.path === 'assets/home/brandmark.svg'));
+  assert.ok(
+    preview.assets.some((asset) => asset.path === 'assets/home/header-brandmark-35-41.svg'),
+  );
   assert.ok(preview.assets.some((asset) => asset.path === 'assets/home/hero.jpg'));
   assert.equal(
     preview.assets.some((asset) => /court-night|home-slogan|homepage-reference/.test(asset.path)),

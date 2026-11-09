@@ -1,11 +1,11 @@
 <view wx:if="{{mode==='home' || home}}" class="figma-header figma-header--home {{narrow ? 'is-narrow' : ''}}" style="padding-top:{{statusBarHeight}}px;padding-bottom:{{homeBottomSpace}}px">
   <view class="figma-header__capsule-row" style="height:{{capsuleRowHeight}}px"/>
   <view class="figma-header__home-row" style="padding-right:{{narrow ? 16 : capsuleReserve}}px">
-    <view class="figma-header__brand"><image src="/assets/home/brandmark.svg" mode="aspectFit" aria-hidden="true"/><view>小城市篮球</view></view>
-    <button class="figma-header__city" bindtap="city" disabled="{{disabled}}" aria-label="选择城市：{{cityLabel}}"><view>{{cityLabel}}</view><image src="/assets/figma/chevron-down-white.svg" mode="aspectFit" aria-hidden="true"/></button>
-    <button wx:if="{{message}}" class="figma-header__message" bindtap="openMessages" disabled="{{disabled}}" aria-label="消息"><image src="/assets/figma/bell-on-navy.svg" mode="aspectFit" aria-hidden="true"/></button>
+    <view class="figma-header__brand"><image src="/assets/home/header-brandmark-35-41.svg" mode="aspectFit" aria-hidden="true"/><view>小城市篮球</view></view>
+    <button class="figma-header__city" bindtap="city" disabled="{{disabled}}" aria-label="选择城市：{{cityLabel}}"><view>{{cityLabel}}</view><image src="/assets/home/header-city-chevron-35-53.svg" mode="aspectFit" aria-hidden="true"/></button>
+    <button wx:if="{{message}}" class="figma-header__message" bindtap="openMessages" disabled="{{disabled}}" aria-label="消息"><image src="/assets/home/header-message-35-56.svg" mode="aspectFit" aria-hidden="true"/></button>
   </view>
-  <button class="figma-header__search" bindtap="search" disabled="{{disabled}}" aria-label="搜索赛事、球队、球员"><image src="/assets/figma/search.svg" mode="aspectFit" aria-hidden="true"/><view>搜赛事、球队、球员</view></button>
+  <button class="figma-header__search" bindtap="search" disabled="{{disabled}}" aria-label="搜索赛事、球队、球员"><image src="/assets/home/header-search-35-60.svg" mode="aspectFit" aria-hidden="true"/><view>搜赛事、球队、球员</view></button>
 </view>
 
 <view wx:elif="{{mode==='account'}}" class="figma-header figma-header--account" style="padding-top:{{statusBarHeight}}px">

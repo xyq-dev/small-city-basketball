@@ -113,3 +113,18 @@
 - 本轮未改任何已验收页面 WXML/WXSS、共享视觉组件或素材。真实业务成功态、320/430 微信实际截图和官方 pack 仍未执行，不得由本轮隔离证据推导为通过。
 
 下一条操作：依据证据根中的最新候选文件清单与 SHA256 做暂存前复核；本轮明确保持未暂存、未提交、未推送。
+
+## 2026-11-07T09:21:54+08:00 首页图标与赛事卡修复交接
+
+- 当前修复现场为 `D:\Projects\scb-worktrees\home-figma-icons` / `fix/home-figma-icons` / `b8ee284adb9714793f8b98dc995a7db530879413`，基于本轮 fetch 后的最新 `origin/main`。原目录 `D:\Projects\small-city-basketball` 仍为 `feat/wechat-figma-rebuild@6fc06983b9d0093268e25354cca89dace79d1dab`，48 个状态项（其中 47 个未跟踪归档）保持原状。
+- 已完成最小代码修复：首页“我的球队”使用 Figma `jersey`，底栏球队保持 `teams`；首页模式页头使用节点 `35:41/35:53/35:56/35:60` 的 28/13/22/18px 专用透明矢量；赛事卡节点 `35:102` 校正 14/8 圆角、17/23 标题和 `35:107/35:108` 的 58×20、5px、11/15 状态规格。账号页品牌素材、底栏行为、API、权限和预览门禁未改。
+- 资产溯源与最终 SHA-256 写在 `apps/wechat/test/fixtures/home-figma-icons.json`；`home-figma-icons.test.cjs` 同时核对调用槽位、字节指纹、透明背景、jersey/teams 边界和赛事卡规格，旧 `icons.test.cjs` 的错误 `teams` 预期已按本次 Figma 节点修正。直接回归 34/34。
+- 完整微信测试为 1624 项、1623 通过、1 个 Windows `symlinkSync EPERM`、0 跳过；原始 stdout/stderr 与退出码位于 `D:\Projects\scb-ui-review\home-figma-fix\20261107-092154`。`git diff --check` 通过。
+- 当前微信开发者工具 HTTP 服务端口为 12993。官方 CLI 已明确接收本次工作树工程路径，但项目初始化对私有 AppID和 `touristappid` 都返回 `APPID_ERROR: 需要重新登录`，所以未产生自动化端口和当前源码微信截图。该项必须在开发者工具重新登录后继续；现有 `auxiliary-preview` 是浏览器兼容辅助证据，不得改写为微信实测。
+- 下一条操作：开发者工具恢复登录后，打开 `D:\Projects\scb-worktrees\home-figma-icons\apps\wechat`，先采 `pages/home/index` 无参数、`uiPreview=false` 的 390 正常首页，再采开发版 `?uiPreview=figma` 赛事卡；核对五个图标和赛事卡计算值后仍保持本分支未提交，除非获得新的 Git 授权。
+
+## 2026-11-09T16:57:00+08:00 微信复验交接
+
+- 登录已恢复。开发者工具打开 `D:\Projects\scb-worktrees\home-figma-icons\apps\wechat`，不是旧工作树的 `6fc0698`。正常首页无参数、`uiPreview=false`；隔离赛事卡使用开发版 `uiPreview=figma`，并标明微信原生隔离样例。
+- 品牌素材改为节点 `35:41` 的整节点 SVG，球衣改为节点 `40:6784` 的 26×26 SVG。页头箭头、消息、搜索与赛事卡规格沿用本次最小修复。账号页旧品牌素材未替换。
+- 本机证据目录 `D:\Projects\scb-ui-review\home-figma-fix\20261109-1649` 只在本机可访问，不是已上传附件。正常首页公开赛事保持真实空态。真机、320/430、真实业务成功态和官方 pack 仍未验证。
