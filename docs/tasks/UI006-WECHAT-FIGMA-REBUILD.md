@@ -175,3 +175,15 @@
 - 球队底栏报名按钮由折行改为单行。四页隔离成功态 UI 通过。真实账号、真实 API 和真实业务成功流程未验证。
 - 品牌素材工作区原始 SHA256 `896BD83385C44CCDCD0D3CCD9E79486C663994A1E64962189DD38E9F693913F8`。只把 10 处 CRLF 换成 LF 后为既有预期 `AA0CEC08D2FD1AB0262674FFC5EAAAE65E20E373322689DD68CAEA8E18C33EC7`，与 HEAD 逐字节相同。身份校验只做这一处规范化。本段随修复提交，提交不是合并，也不是线上发布。
 - 2026-11-09T21:45+08:00：PR #50 已 merge 合入 main `a8c94de55915d24e8f670e801bbdf01c6834fe41`。CI 42622629475 四作业 SUCCESS。这是源码合入，不是线上发布。
+
+## 2026-11-10 本轮主导航 UI 收口
+
+状态：本轮主导航390宽定向UI修复及隔离成功态视觉验收完成。
+
+这不是 73 页或 17 状态的最终视觉验收，不是真机通过，不是真实账号、真实 API 或真实业务成功，也不是部署或发布。赛事空态与 `36:132` 的已知差异保留。像素测量失败：内存不足导致裁切失败，557无效。
+
+补记 [PR #48](https://github.com/xyq-dev/small-city-basketball/pull/48)：修复头 `b04dd6c5f8f5bac53a447627bf4deda7056c7f10`，[Application checks #42590131727](https://github.com/xyq-dev/small-city-basketball/actions/runs/42590131727) 四作业 SUCCESS，merge `9480386cc37eaabaa42f3f3e872468227a636410`。范围是首页图标与赛事卡。不是线上发布。
+
+日常目录现为 main `c480781aa7c85c499d5596190c3affabdb6e9520`，其中的代码合并是 `a8c94de55915d24e8f670e801bbdf01c6834fe41`。47 个未跟踪归档仍在。证据只在本机，不是公开附件：首页 `35:38` 在 `D:\Projects\scb-ui-review\home-figma-fix\20261109-1649`；四导航定向及空态 `36:132` 在 `D:\Projects\scb-ui-review\nav-figma-fix\20261109-1814`；成功态 `36:53`–`36:56` 在 `D:\Projects\scb-ui-review\nav-success-ui\20261109-2055`，指纹见同目录 `fingerprints.json`。
+
+独立待验证，本轮不执行：真机、原生键盘及 320/430 微信实际显示；真实账号、真实 API 和真实业务成功流程；官方 pack、上传、生产部署及发布。

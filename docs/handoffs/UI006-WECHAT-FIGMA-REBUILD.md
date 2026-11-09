@@ -147,3 +147,10 @@
 - 唯一页面修复：球队底栏「选择可报名赛事」在 140×48 按钮内折行，现仅该页改为单行。四页隔离成功态 UI 通过。真实账号、真实 API 和真实业务成功流程未验证。
 - 品牌身份：工作区 `header-brandmark-3-39.svg` 原始 SHA256 是 `896BD83385C44CCDCD0D3CCD9E79486C663994A1E64962189DD38E9F693913F8`（1670 字节）。HEAD 与既有预期是 `AA0CEC08D2FD1AB0262674FFC5EAAAE65E20E373322689DD68CAEA8E18C33EC7`（1660 字节）。逐字节比较只有 10 处 CRLF 对 LF，规范化后与 HEAD 相同。校验只把 CRLF 换成 LF，不改 SVG，也不把规范化值当作原始字节哈希。正例是 LF 与 CRLF 得到同一身份；反例是改动 `mask0_3_39` 后被拒绝。
 - 2026-11-09T21:45+08:00：PR #50 已 merge 合入 main `a8c94de55915d24e8f670e801bbdf01c6834fe41`。修复头 `baa775845da8297a1d710310717b6b51f3b33fb4` 的 Application checks 42622629475 四作业 SUCCESS。这是源码合入，不是线上发布。远端修复分支已删除。
+
+## 2026-11-10T00:18+08:00 本轮主导航 UI 收口
+
+- 状态：本轮主导航390宽定向UI修复及隔离成功态视觉验收完成。不把 73 页、17 状态、真机、真实账号、真实 API、真实业务成功或发布写成已通过。赛事空态与 `36:132` 的已知差异保留。像素测量失败：内存不足导致裁切失败，557无效。
+- 补记 [PR #48](https://github.com/xyq-dev/small-city-basketball/pull/48)：头 `b04dd6c5f8f5bac53a447627bf4deda7056c7f10`，[CI #42590131727](https://github.com/xyq-dev/small-city-basketball/actions/runs/42590131727) 四作业 SUCCESS，merge `9480386cc37eaabaa42f3f3e872468227a636410`。首页图标与赛事卡已合入，不是线上发布。
+- 日常目录现为 main `c480781aa7c85c499d5596190c3affabdb6e9520`，代码合并为 `a8c94de`。47 个未跟踪归档和其他工作树未动。本机证据不重采、不入库：`D:\Projects\scb-ui-review\home-figma-fix\20261109-1649`（首页 `35:38`）、`D:\Projects\scb-ui-review\nav-figma-fix\20261109-1814`（定向复验，空态对照 `36:132`）、`D:\Projects\scb-ui-review\nav-success-ui\20261109-2055`（`36:53`–`36:56`，`fingerprints.json`）。都不是公开附件。
+- 独立待验证，本轮不执行：真机、原生键盘及 320/430；真实账号、真实 API 和真实业务成功流程；官方 pack、上传、生产部署及发布。
