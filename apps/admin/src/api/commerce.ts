@@ -94,6 +94,8 @@ function order(v: unknown): v is CommerceOrderData {
     (v.paymentReview === null || object(v.paymentReview)) &&
     (v.refund === null || object(v.refund)) &&
     object(v.capabilities) &&
+    (v.capabilities.canCloseNative === undefined ||
+      typeof v.capabilities.canCloseNative === 'boolean') &&
     [
       'canCancel',
       'canRequestRefund',

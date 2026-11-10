@@ -62,13 +62,17 @@ export function parsePlan(raw: unknown): CreateCommercePlanInput {
 }
 export function parseBuyerCommand(raw: unknown): CommerceOrderCommandInput {
   const v = objectInput(raw, ['commandId', 'type', 'expectedOrderVersion', 'reason']);
-  if (!['CANCEL', 'REQUEST_REFUND', 'CREATE_NATIVE', 'QUERY_PAYMENT'].includes(v.type as string))
+  if (
+    !['CANCEL', 'REQUEST_REFUND', 'CREATE_NATIVE', 'QUERY_PAYMENT', 'CLOSE_NATIVE'].includes(
+      v.type as string,
+    )
+  )
     invalid('不支持的订单操作');
   return {
     commandId: commandId(v.commandId),
     type: v.type as CommerceOrderCommandInput['type'],
     expectedOrderVersion: expectedVersion(v.expectedOrderVersion),
-    ...(['CANCEL', 'REQUEST_REFUND'].includes(v.type as string)
+    ...(['CANCEL', 'REQUEST_REFUND', 'CLOSE_NATIVE'].includes(v.type as string)
       ? { reason: reason(v.reason) }
       : v.reason === undefined
         ? {}

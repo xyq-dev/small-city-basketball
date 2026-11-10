@@ -108,6 +108,50 @@ beforeEach(() => {
   transport = vi.fn();
 });
 describe('WechatPay v3 real protocol with synthetic cryptography and controlled transport', () => {
+  test('closes only the fixed original Native trade with a signed 204 acknowledgement', async () => {
+    transport.mockResolvedValueOnce(
+      new Response(null, { status: 204, headers: signed(Buffer.alloc(0)) }),
+    );
+    await expect(client().closeOrder('SCB_ORDER_1')).resolves.toBeUndefined();
+    const [url, init] = transport.mock.calls[0]!;
+    expect(url).toBe(
+      'https://api.mch.weixin.qq.com/v3/pay/transactions/out-trade-no/SCB_ORDER_1/close',
+    );
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({ mchid: config.merchantId });
+    const signature = /signature="([^"]+)"/.exec(init.headers.Authorization)![1]!;
+    expect(
+      verify(
+        'RSA-SHA256',
+        Buffer.from(
+          `POST\n/v3/pay/transactions/out-trade-no/SCB_ORDER_1/close\n${Math.floor(clock / 1000)}\nmerchant-nonce\n${init.body}\n`,
+        ),
+        merchant.publicKey,
+        Buffer.from(signature, 'base64'),
+      ),
+    ).toBe(true);
+  });
+  test('unsigned close acknowledgements, wrong success status and unknown transport cannot release admission', async () => {
+    transport.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(client().closeOrder('SCB_ORDER_1')).rejects.toMatchObject({
+      code: 'PAYMENT_SIGNATURE_INVALID',
+    });
+    transport.mockResolvedValueOnce(response({}, 200));
+    await expect(client().closeOrder('SCB_ORDER_1')).rejects.toMatchObject({
+      code: 'PAYMENT_PROVIDER_INVALID_RESPONSE',
+    });
+    transport.mockRejectedValueOnce(new Error('controlled network unknown'));
+    await expect(client().closeOrder('SCB_ORDER_1')).rejects.toMatchObject({
+      code: 'PAYMENT_PROVIDER_RESULT_UNKNOWN',
+    });
+    transport.mockResolvedValueOnce(
+      new Response(null, { status: 204, headers: signed(Buffer.alloc(0)) }),
+    );
+    await expect(client().queryOrder('SCB_ORDER_1')).rejects.toMatchObject({
+      code: 'PAYMENT_PROVIDER_INVALID_RESPONSE',
+    });
+  });
+
   test('is disabled by default and never sends a request without full enablement', async () => {
     const disabled = new WechatPayClient(undefined, { fetch: transport as typeof fetch });
     await expect(

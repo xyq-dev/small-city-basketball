@@ -1231,3 +1231,5 @@ export type {
   StorageActivationInput,
   StorageCommandResult,
 } from './storage-settings.js';
+
+export type * from './membership.js';

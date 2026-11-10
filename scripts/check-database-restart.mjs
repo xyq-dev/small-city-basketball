@@ -61,6 +61,7 @@ import {
   captureCommerceEnd,
   verifyCommerce,
 } from './c05-commerce-check.mjs';
+import { captureMembershipEnd, verifyMembership } from './member02-membership-check.mjs';
 
 // The production package runs this same synthetic business chain against its real TLS API.
 // SQL fixture writes are confined to guarded synthetic recovery helpers; the separately scoped
@@ -528,12 +529,16 @@ async function captureScheduling(orgId, cookie, registration) {
   ).data;
   assert.equal(validation.valid, true);
   assert.deepEqual(validation.conflicts, []);
-  const unpaid = await fetch(baseUrl + `${revisionPath}/publish`, {
-    method: 'POST',
-    headers: { Origin: origin, 'Content-Type': 'application/json', Cookie: cookie },
-    body: JSON.stringify(versions),
-  });
-  assert.equal(unpaid.status, 402, 'Unpaid publication must fail before all schedule effects');
+  if (!commerceSetup.membership) {
+    // The first publication is genuinely unpaid. Once a paid membership exists,
+    // a successful publication is correct even without a per-event purchase.
+    const unpaid = await fetch(baseUrl + `${revisionPath}/publish`, {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify(versions),
+    });
+    assert.equal(unpaid.status, 402, 'Unpaid publication must fail before all schedule effects');
+  }
   assert.equal((await call(`${path}/matches`, { cookie })).data.length, 0);
   await ensureCommercialEntitlement({ call, cookie, orgId, eventId, setup: commerceSetup });
   const publication = (
@@ -1823,6 +1828,8 @@ try {
     const orgId = registration.data.organizations[0].id;
     commerceSetup = await captureCommerceSetup({
       call,
+      cookie,
+      orgId,
       databaseUrl,
       maintenanceUrl: (await privateValue('SCB_CHECK_MAINTENANCE_URL')) ?? databaseUrl,
     });
@@ -2025,6 +2032,12 @@ try {
       setup: commerceSetup,
       organizationReviewerId: commerceSetup.operators[0].userId,
     });
+    const softwareMembership = await captureMembershipEnd({
+      call,
+      cookie,
+      orgId,
+      setup: commerceSetup.membership,
+    });
     // Every byte-producing fixture is complete now. Media DTO usage is org-wide and
     // therefore includes the later C23 ciphertext; retain its exact final baseline.
     const previousMediaUsedBytes = media.matchWorkspace.usage.usedBytes;
@@ -2074,6 +2087,7 @@ try {
     );
     const state = {
       cookie,
+      softwareMembership,
       userId: registration.data.user.id,
       orgId,
       event: created.data,
@@ -2282,6 +2296,12 @@ try {
     await verifyGroups(state.groups, state.cookie, state.orgId);
     await verifyMedia(state.media, state.cookie, state.registration.leaderCookie);
     await verifyCommerce({ call, saved: state.commerce, cookie: state.cookie, orgId: state.orgId });
+    await verifyMembership({
+      call,
+      saved: state.softwareMembership,
+      cookie: state.cookie,
+      orgId: state.orgId,
+    });
     assert.equal(await fingerprint(), state.fingerprint);
     await verifyExpansion({ readPool, saved: state.expansion });
     await verifyR6({ readPool, saved: state.r6 });

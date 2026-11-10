@@ -18,8 +18,8 @@ for (let i = 0; i < args.length; i++) {
     selected.push(project);
   } else if (value === '--suite' || value.startsWith('--suite=')) {
     suite = value === '--suite' ? args[++i] : value.slice('--suite='.length);
-    if (!['api', 'account-security'].includes(suite))
-      throw new Error('Use api or account-security browser suite');
+    if (!['api', 'account-security', 'membership'].includes(suite))
+      throw new Error('Use api, account-security or membership browser suite');
   } else if (value === '--config' || value.startsWith('--config=') || value.startsWith('-c')) {
     throw new Error('API browser checks use the fixed isolated-test configuration');
   } else forwarded.push(value);
@@ -32,7 +32,9 @@ if (
 const config =
   suite === 'account-security'
     ? 'playwright.account-security.config.ts'
-    : 'playwright.api.config.ts';
+    : suite === 'membership'
+      ? 'playwright.membership.config.ts'
+      : 'playwright.api.config.ts';
 const projects = allProjects.filter((project) => !selected.length || selected.includes(project));
 let base;
 let baseName;
@@ -47,10 +49,10 @@ try {
   )
     throw new Error('Invalid test target');
   if (
-    suite === 'account-security' &&
+    suite !== 'api' &&
     (!['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname) || base.search || base.hash)
   )
-    throw new Error('Account-security suite requires a canonical loopback test target');
+    throw new Error('Sensitive browser suites require a canonical loopback test target');
 } catch {
   throw new Error('API browser checks require DATABASE_URL naming an isolated scb_test_* database');
 }

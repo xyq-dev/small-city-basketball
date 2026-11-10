@@ -1,5 +1,23 @@
 # 数据模型与状态
 
+## MEMBER02：052机构软件会员增量（已编写并隔离执行，生产未执行）
+
+唯一新增表`software_membership_periods`；原比赛、计时、赛事状态和付款/退款账本复用。001—051原文保持，052执行与验收按[任务卡](tasks/MEMBER02.md)区分代码、隔离及生产事实。
+
+| 持久事实 | 扩展及来源 | 不变约束 |
+|---|---|---|
+| `billing_plan_versions` | EVENT默认，或ORG_MEMBERSHIP+PRO/BUSINESS+固定30/365天额度 | 不可变价格版本；旧EVENT报价/hash保持原形 |
+| `billing_orders` | 会员event_id=NULL，org显式FK，target_kind及可选previous_period来源 | 原订单/支付/独立核验/退款；同机构一个未决会员单、一个有效下期 |
+| `software_membership_periods` | 原已核验订单唯一购买期：org/order/等级/固定秒数窗口/全期届数/每届限制 | 原报价派生、精确付款窗口、同org未撤销期不得重叠；来源与期限/额度不可改 |
+| `event_commercial_activations` | 新MEMBERSHIP来源及membership_period_id | 原event主键与不可变账本即唯一消费记录；不另建余额或分配事实表 |
+| `payment_notifications` | 原单验签CLOSED的不可变通知proof | 同order/kind/固定original trade ID；没有可信证明不能将Native订单取消 |
+
+激活时在原事务使用机构SHARE→会员mutex→原订单→购买期锁，赛事保留原event/schedule锁且会员路径不反向取赛事锁。mutex UUID统一小写；用量是原激活表全期COUNT，不使用有界DTO数目。发布失败全部回滚；同event重放不再扣；草稿/预演不扣。未决按届款阻止隐式会员扣减；已核验按届先使用。
+
+Native首次period开始为SQL GREATEST(原paid_at,原created_at)，原支付证明不改；manual仍paid_at，renewal精确parent.ends_at，SQL保微秒、固定86400秒天。只有未使用且无有效后续期才能经原独立核对全额退款；period仅允许一次撤销及4—500字非空审计原因。runtime新表SELECT/INSERT，UPDATE仅revoked_at/revoke_reason，无DELETE；新trigger函数无运行时直接EXECUTE，manifest/readiness/完整恢复必须覆盖。
+
+注销的PAID履约判断按目标分流：EVENT保持原权益激活，会员只认本org本单购买期的真实MEMBERSHIP消费；未用下一期/他单/他机构不代替，退款与其他未决款/负责人责任继续阻断。历史恢复原样保留购买期/激活/付款证明；C22旧库夹具仅冻结原历史activation，不能给生产加探表降级或篡改旧schema。
+
 ## DOC006：六项数据增量设计入口（未执行DDL）
 
 2026-11-01：[六项设计](design/REMAINING_SIX_FEATURES.md)包含保险准入与核对、撮合需求/席位、派单与差旅暂占、培训课程/权益/消费、广告合同/结算/追偿的候选模型。地图首期复用公开服务点，不强制新增业务表。

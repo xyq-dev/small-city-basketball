@@ -17,7 +17,7 @@ export const C22_LEGACY_SCHEDULING_SOURCE = {
   path: 'apps/api/src/scheduling-service.ts',
   blob: 'ff4cbcd44097848af7c577f0459543356e57a6a5',
   originalSha256: '9da9ea02e30dd27d2977ff4e845da164b5b9d1f4e057d84683c1b04305183954',
-  fixtureSha256: '6234ebd716636a57993763fee3e2fe68b3c03d866908ad789bc07c4543f9dd61',
+  fixtureSha256: '4a6872945b7ce34f394daffa1ef7110dc723db84875e5d356a60c7adcd72c9f5',
 } as const;
 export const C22_LEGACY_STANDINGS_SOURCE = {
   commit: '83ae15a64bce2a29566d22e3885ebb44a0772bdd',
@@ -26,6 +26,13 @@ export const C22_LEGACY_STANDINGS_SOURCE = {
   originalSha256: '9c528277ef4c1c80f22bc676ee1215cc3f06ea2caf70ca3621fb3124f5933cdf',
   fixtureSha256: 'd38672dbaf745544b403d8e9e73f3e3eac93dde5729364aaa21d1f31ff33a759',
 } as const;
+export const C22_LEGACY_COMMERCE_ACTIVATION_SOURCE = {
+  commit: '83ae15a64bce2a29566d22e3885ebb44a0772bdd',
+  path: 'apps/api/src/commerce/activation.ts',
+  blob: '3204ef950d71be26ee4827b8380fcf6c9bf3e944',
+  originalSha256: '41fd448f246fefa9a6e9b8446c11848684b5f8cc04af3e5459bf22ba50a12c35',
+  fixtureSha256: 'cb377584b248c7a70c7e0fdb92f4b2590c5d1492e34e7a3e18479d086eac273d',
+} as const;
 
 /** The sole permitted derivation is relocating relative imports; no SQL or method changes. */
 async function verifyFixedSource(
@@ -33,11 +40,24 @@ async function verifyFixedSource(
   expected: { originalSha256: string; fixtureSha256: string; blob: string },
 ) {
   const source = await readFile(
-    new URL(`./c22-legacy-${name}-service.ts`, import.meta.url),
+    new URL(
+      name === 'commerce-activation'
+        ? './c22-legacy-commerce-activation.ts'
+        : `./c22-legacy-${name}-service.ts`,
+      import.meta.url,
+    ),
     'utf8',
   );
   const digest = (value: string) => createHash('sha256').update(value).digest('hex');
-  const original = source.replaceAll("from '../../src/", "from './");
+  const original =
+    name === 'commerce-activation'
+      ? source.replaceAll("from '../../src/commerce/", "from './")
+      : source
+          .replaceAll("from '../../src/", "from './")
+          .replaceAll(
+            "from './c22-legacy-commerce-activation.js'",
+            "from './commerce/activation.js'",
+          );
   const originalBlob = createHash('sha1')
     .update(`blob ${Buffer.byteLength(original)}\0`)
     .update(original)
@@ -55,11 +75,13 @@ export const verifyC22LegacySchedulingSource = () =>
   verifyFixedSource('scheduling', C22_LEGACY_SCHEDULING_SOURCE);
 export const verifyC22LegacyStandingsSource = () =>
   verifyFixedSource('standings', C22_LEGACY_STANDINGS_SOURCE);
+export const verifyC22LegacyCommerceActivationSource = () =>
+  verifyFixedSource('commerce-activation', C22_LEGACY_COMMERCE_ACTIVATION_SOURCE);
 
 /**
  * Test-only compatibility factory, not a reproduction of the entire historical app.
  * Controllers and schema-independent support services stay current. Only this one
- * API's registration, scheduling and standings providers get frozen historical methods. No global
+ * API's registration, scheduling/activation and standings use frozen historical methods. No global
  * prototype, production provider, migration runner or database schema is changed.
  */
 export async function createC22LegacyRegistrationApi(input: {
@@ -72,6 +94,7 @@ export async function createC22LegacyRegistrationApi(input: {
     verifyC22LegacyRegistrationSource(),
     verifyC22LegacySchedulingSource(),
     verifyC22LegacyStandingsSource(),
+    verifyC22LegacyCommerceActivationSource(),
   ]);
   const api = await createApi(input);
   try {

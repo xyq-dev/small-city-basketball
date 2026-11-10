@@ -345,6 +345,187 @@ describe(
           .sort((a, b) => a.id.localeCompare(b.id)),
       );
     }, 30000);
+    test('membership consumption resolves only its own paid order; unused renewals and unrelated pending money still block closure', async () => {
+      const buyer = await register(api, 'e07-member-buyer'),
+        other = await register(api, 'e07-member-other'),
+        submitter = await user('member-submitter'),
+        reviewer = await user('member-reviewer');
+      const commerce = new CommerceService(api.pool, {
+        databaseUrl,
+        appOrigin: ORIGIN,
+        commerceMode: 'ENFORCED',
+      });
+      const reason = '合成注销会员订单精确履约核对';
+      for (const actor of [submitter, reviewer])
+        await maintainPlatformOperator(api.pool, {
+          email: actor.email,
+          status: 'ACTIVE',
+          reason,
+        });
+      const plan = (
+        await commerce.createMembershipPlan(submitter.cookie, {
+          commandId: randomUUID(),
+          code: 'e07_member_' + RUN_ID.slice(0, 12),
+          name: '合成注销会员月期',
+          currency: 'CNY',
+          amountFen: 100,
+          tier: 'PRO',
+          durationDays: 30,
+          reason,
+        })
+      ).plan;
+      async function paidMembership(actor: User) {
+        const current = await commerce.membershipWorkspace(actor.cookie, actor.orgId);
+        const created = (
+          await commerce.createMembershipOrder(actor.cookie, actor.orgId, {
+            commandId: randomUUID(),
+            planId: plan.id,
+            expectedMembershipVersion: current.membershipVersion,
+          })
+        ).order;
+        const submitted = await commerce.membershipPlatformCommand(submitter.cookie, created.id, {
+          commandId: randomUUID(),
+          type: 'SUBMIT_PAYMENT',
+          expectedOrderVersion: created.version,
+          externalReference: 'e07-member-paid-' + randomUUID(),
+          reason,
+        });
+        const paid = await commerce.membershipPlatformCommand(reviewer.cookie, created.id, {
+          commandId: randomUUID(),
+          type: 'CONFIRM_PAYMENT',
+          expectedOrderVersion: submitted.order.version,
+          reason,
+        });
+        expect(paid.order.status).toBe('PAID');
+        expect(paid.order.activated).toBe(false);
+        const period = (await commerce.membershipWorkspace(actor.cookie, actor.orgId)).periods.find(
+          (p) => p.orderId === created.id,
+        )!;
+        expect(period).toBeDefined();
+        return { order: paid.order, period };
+      }
+      async function consume(actor: User, periodId: string) {
+        const event = await createEvent(api, actor, '合成注销会员消费赛事');
+        const c = await api.pool.connect();
+        try {
+          await c.query('BEGIN');
+          await c.query('SELECT id FROM organizations WHERE id=$1 FOR SHARE', [actor.orgId]);
+          await c.query('SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR UPDATE', [
+            actor.orgId,
+            event.id,
+          ]);
+          await activateEventCommerce(c, {
+            orgId: actor.orgId,
+            eventId: event.id,
+            participantCount: 2,
+            expectedMatchCount: 1,
+            mode: 'ENFORCED',
+            actorId: actor.id,
+          });
+          await c.query('COMMIT');
+        } catch (error) {
+          await c.query('ROLLBACK');
+          throw error;
+        } finally {
+          c.release();
+        }
+        expect(
+          (
+            await api.pool.query(
+              'SELECT source,membership_period_id FROM event_commercial_activations WHERE org_id=$1 AND event_id=$2',
+              [actor.orgId, event.id],
+            )
+          ).rows[0],
+        ).toEqual({ source: 'MEMBERSHIP', membership_period_id: periodId });
+      }
+      const own = await paidMembership(buyer),
+        unrelated = await paidMembership(other);
+      await consume(other, unrelated.period.id);
+      const service = make(),
+        request = await service.request(buyer.cookie, requestInput());
+      async function blockers(expectedMoney: boolean) {
+        expect(await service.processOne(request.id)).toBe('BLOCKED');
+        expect((await service.workspace(buyer.cookie)).request?.blockers).toEqual([
+          'OWNER_TRANSFER_REQUIRED',
+          ...(expectedMoney ? ['SOFTWARE_MONEY_UNRESOLVED'] : []),
+        ]);
+      }
+      // An activation belonging to another institution/order cannot settle this unused period.
+      await blockers(true);
+      await consume(buyer, own.period.id);
+      await blockers(false);
+      // The same institution's consumed parent cannot settle an unused paid next-period order.
+      const next = await paidMembership(buyer);
+      expect(next.period.state).toBe('SCHEDULED');
+      expect(next.period.previousPeriodId).toBe(own.period.id);
+      await blockers(true);
+      const refund = await commerce.membershipBuyerCommand(
+        buyer.cookie,
+        buyer.orgId,
+        next.order.id,
+        {
+          commandId: randomUUID(),
+          type: 'REQUEST_REFUND',
+          expectedOrderVersion: next.order.version,
+          reason,
+        },
+      );
+      expect(refund.order.status).toBe('REFUND_PENDING');
+      await blockers(true);
+      const refundSubmitted = await commerce.membershipPlatformCommand(
+        submitter.cookie,
+        next.order.id,
+        {
+          commandId: randomUUID(),
+          type: 'SUBMIT_REFUND',
+          expectedOrderVersion: refund.order.version,
+          externalReference: 'e07-member-refund-' + randomUUID(),
+          reason,
+        },
+      );
+      const refunded = await commerce.membershipPlatformCommand(reviewer.cookie, next.order.id, {
+        commandId: randomUUID(),
+        type: 'CONFIRM_REFUND',
+        expectedOrderVersion: refundSubmitted.order.version,
+        reason,
+      });
+      expect(refunded.order.status).toBe('REFUNDED');
+      await blockers(false);
+      const eventPlan = (
+        await commerce.createPlan(submitter.cookie, {
+          commandId: randomUUID(),
+          code: 'e07_member_event_' + RUN_ID.slice(0, 12),
+          name: '合成其他待核对软件订单',
+          currency: 'CNY',
+          amountFen: 100,
+          maxTeams: 2,
+          maxMatches: 1,
+          validDays: 30,
+          reason,
+        })
+      ).plan;
+      const event = await createEvent(api, buyer, '合成其他未决按届订单');
+      const pending = (
+        (await commerce.createOrder(buyer.cookie, buyer.orgId, {
+          commandId: randomUUID(),
+          eventId: event.id,
+          planId: eventPlan.id,
+          expectedEventVersion: event.version,
+        })) as CommerceCommandResult
+      ).order;
+      await blockers(true);
+      const cancelled = await commerce.buyerCommand(buyer.cookie, buyer.orgId, pending.id, {
+        commandId: randomUUID(),
+        type: 'CANCEL',
+        expectedOrderVersion: pending.version,
+        reason,
+      });
+      expect(cancelled.order.status).toBe('CANCELLED');
+      await blockers(false);
+      expect(
+        (await api.pool.query('SELECT status FROM users WHERE id=$1', [buyer.id])).rows[0].status,
+      ).toBe('ACTIVE');
+    }, 30000);
     test('an unresolved manual payment claim blocks after quote expiry and replacement; independent rejection clears only that claim', async () => {
       const buyer = await register(api, 'e07-review-buyer'),
         submitter = await user('review-submitter'),

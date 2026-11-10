@@ -55,7 +55,8 @@ export interface CommerceRefundData {
 export interface CommerceOrderData {
   id: string;
   orgId: string;
-  eventId: string;
+  /** EVENT orders bind a real event; organization software memberships bind no virtual event. */
+  eventId: string | null;
   eventName: string;
   quote: CommerceQuote;
   status: CommerceOrderStatus;
@@ -73,6 +74,8 @@ export interface CommerceOrderData {
     canRequestRefund: boolean;
     canCreateNative: boolean;
     canQueryPayment: boolean;
+    /** Additive MEMBER02: resolve only the original unpaid Native trade through verified close/query. */
+    canCloseNative?: boolean;
     canSubmitPayment: boolean;
     canConfirmPayment: boolean;
     canRejectPayment: boolean;
@@ -99,8 +102,9 @@ export interface EventEntitlementData {
 }
 export interface EventCommercialActivationData {
   eventId: string;
-  source: 'LEGACY' | 'UNMETERED' | 'PAID';
+  source: 'LEGACY' | 'UNMETERED' | 'PAID' | 'MEMBERSHIP';
   entitlementId: string | null;
+  membershipPeriodId?: string | null;
   activatedAt: string;
 }
 export interface CommerceWorkspaceData {
@@ -151,7 +155,7 @@ export interface CreateCommerceOrderInput {
 }
 export interface CommerceOrderCommandInput {
   commandId: string;
-  type: 'CANCEL' | 'REQUEST_REFUND' | 'CREATE_NATIVE' | 'QUERY_PAYMENT';
+  type: 'CANCEL' | 'REQUEST_REFUND' | 'CREATE_NATIVE' | 'QUERY_PAYMENT' | 'CLOSE_NATIVE';
   expectedOrderVersion: number;
   reason?: string;
 }

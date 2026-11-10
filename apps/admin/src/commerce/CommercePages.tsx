@@ -193,7 +193,9 @@ function CommercePage({
                   commandId: selected.commandId,
                   type: selected.type as CommerceOrderCommandInput['type'],
                   expectedOrderVersion: selected.order.version,
-                  ...(['CANCEL', 'REQUEST_REFUND'].includes(selected.type) ? { reason: why } : {}),
+                  ...(['CANCEL', 'REQUEST_REFUND', 'CLOSE_NATIVE'].includes(selected.type)
+                    ? { reason: why }
+                    : {}),
                 })
               : await api.platformCommand(selected.order.id, {
                   commandId: selected.commandId,
@@ -508,6 +510,15 @@ function CommercePage({
                             查询付款结果
                           </button>
                         )}
+                        {order.capabilities.canCloseNative === true && (
+                          <button
+                            className="button button-secondary"
+                            disabled={action.busy}
+                            onClick={() => open(order, 'CLOSE_NATIVE', '关闭微信付款')}
+                          >
+                            关闭微信付款
+                          </button>
+                        )}
                       </>
                     ) : (
                       <>
@@ -757,6 +768,12 @@ function CommercePage({
               {pending.kind === 'ORDER' && pending.type === 'CONFIRM_REFUND' && (
                 <p>
                   确认仅用于未激活订单的全额退款；微信渠道可能真实发起资金退回，请核对原订单与金额。
+                </p>
+              )}
+              {pending.kind === 'ORDER' && pending.type === 'CLOSE_NATIVE' && (
+                <p>
+                  将核查并关闭原微信未付款交易，关闭后需重新下单才能付款。若已付款则核对原付款，
+                  不执行退款；关单结果须由服务端重新查单确认，结果未明时保留原单待查。
                 </p>
               )}
             </>
