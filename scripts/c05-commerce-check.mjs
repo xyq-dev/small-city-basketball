@@ -249,11 +249,15 @@ function manualRows(orders) {
   return byDate;
 }
 const factualOrder = ({ capabilities: _capabilities, ...facts }) => facts;
-function facts(value) {
+export function facts(value) {
   return {
     plans: [...value.plans].sort((a, b) => a.id.localeCompare(b.id)),
     orders: value.orders.map(factualOrder).sort((a, b) => a.id.localeCompare(b.id)),
-    entitlements: [...value.entitlements].sort((a, b) => a.id.localeCompare(b.id)),
+    // The database check time is a read projection, not persisted commercial history.
+    // Keep activationStatus and every stored fact in the exact recovery comparison.
+    entitlements: value.entitlements
+      .map(({ statusCheckedAt: _statusCheckedAt, ...entitlement }) => entitlement)
+      .sort((a, b) => a.id.localeCompare(b.id)),
     activations: [...value.activations].sort((a, b) => a.eventId.localeCompare(b.eventId)),
     reconciliations: [...value.reconciliations].sort((a, b) => a.id.localeCompare(b.id)),
   };

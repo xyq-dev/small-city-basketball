@@ -5,6 +5,7 @@ import type {
   CommerceCommandResult,
   CommercePlanData,
   CommerceWorkspaceData,
+  EventEntitlementData,
   EventSchedulingData,
 } from '@small-city-basketball/contracts';
 import { createApi } from '../src/app.js';
@@ -100,6 +101,43 @@ describe(
     }
     async function fresh(id: string) {
       return (await workspace(h.otherOwner, true)).orders.find((o) => o.id === id)!;
+    }
+    async function commercialFacts(orderId: string) {
+      return (
+        await h.api.pool.query(
+          `SELECT jsonb_build_object(
+            'order',to_jsonb(o),
+            'entitlements',(SELECT COALESCE(jsonb_agg(to_jsonb(n) ORDER BY n.id),'[]'::jsonb) FROM event_entitlements n WHERE n.order_id=o.id),
+            'activation',(SELECT to_jsonb(a) FROM event_commercial_activations a WHERE a.event_id=o.event_id),
+            'refund',(SELECT to_jsonb(f) FROM billing_refunds f WHERE f.order_id=o.id),
+            'audits',(SELECT COALESCE(jsonb_agg(to_jsonb(a) ORDER BY a.id),'[]'::jsonb) FROM audit_logs a WHERE a.resource_id IN(o.id,o.event_id)),
+            'operations',(SELECT count(*) FROM billing_operations)
+          ) AS facts FROM billing_orders o WHERE o.id=$1`,
+          [orderId],
+        )
+      ).rows[0]!.facts;
+    }
+    async function assertEntitlementStatus(
+      orderId: string,
+      activationStatus: NonNullable<EventEntitlementData['activationStatus']>,
+    ) {
+      const beforeFacts = await commercialFacts(orderId);
+      const beforeClock = (await h.api.pool.query('SELECT clock_timestamp() AS time')).rows[0]!
+        .time as Date;
+      const response = await workspace();
+      const afterClock = (await h.api.pool.query('SELECT clock_timestamp() AS time')).rows[0]!
+        .time as Date;
+      const entitlement = response.entitlements.filter((e) => e.orderId === orderId);
+      expect(entitlement).toHaveLength(1);
+      expect(entitlement[0]).toMatchObject({
+        activationStatus,
+        statusCheckedAt: expect.any(String),
+      });
+      const checkedAt = Date.parse(entitlement[0]!.statusCheckedAt!);
+      expect(checkedAt).toBeGreaterThanOrEqual(beforeClock.getTime());
+      expect(checkedAt).toBeLessThanOrEqual(afterClock.getTime());
+      // The projection reads canonical rows; it must not expire orders, grant, revoke or audit.
+      expect(await commercialFacts(orderId)).toEqual(beforeFacts);
     }
     test('offline operator grants persist a real disabled non-login audit actor without granting it application permissions', async () => {
       for (const user of [h.otherOwner, reviewer]) {
@@ -254,6 +292,7 @@ describe(
         quote: { amountFen: 9900, currency: 'CNY' },
         channel: 'MANUAL',
       });
+      await assertEntitlementStatus(o.id, 'READY');
       data(
         await call(h.api, 'post', `${root}/orders/${o.id}/commands`, {
           cookie: reviewer.cookie,
@@ -356,6 +395,7 @@ describe(
         participant_count: 2,
         expected_match_count: 1,
       });
+      await assertEntitlementStatus(o.id, 'ACTIVATED');
       // Existing activation is authoritative for later rounds even if no current sale is available.
       const c = await h.api.pool.connect();
       try {
@@ -393,6 +433,7 @@ describe(
     });
     test('full unused manual refund requires independent review and revokes only its unactivated entitlement', async () => {
       const o = await paid();
+      await assertEntitlementStatus(o.id, 'READY');
       data(
         await call(h.api, 'post', `${org(h.owner.orgId)}/orders/${o.id}/commands`, {
           cookie: h.owner.cookie,
@@ -404,6 +445,7 @@ describe(
           },
         }),
       );
+      await assertEntitlementStatus(o.id, 'REFUND_PENDING');
       data(
         await platform(o.id, 'SUBMIT_REFUND', h.otherOwner, {
           externalReference: `bank-refund-${randomUUID()}`,
@@ -415,6 +457,7 @@ describe(
         status: 'REFUNDED',
         refund: { status: 'SUCCEEDED', amountFen: 9900 },
       });
+      await assertEntitlementStatus(o.id, 'REVOKED');
       expect(
         (
           await h.api.pool.query('SELECT revoked_at FROM event_entitlements WHERE order_id=$1', [

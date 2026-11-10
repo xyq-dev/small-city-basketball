@@ -1,5 +1,10 @@
 # API 契约
 
+## MEMBER01：按届权益的只读状态投影（分支候选，非订阅）
+
+原GET `/v1/orgs/:orgId/commerce` 和平台commerce工作空间的每个entitlement新增可选成对 `activationStatus`、`statusCheckedAt`；值READY/EXPIRED/ACTIVATED/REVOKED/REFUND_PENDING/UNAVAILABLE，来自同一查询的原订单/激活/撤销事实及DB clock。相等截止即过期；已激活赛事不因截止过期停用。字段是读快照，不是授权令牌，首次发布仍走原锁定激活guard。旧API缺少两字段时客户端不推断READY；未知/不成对或与READY/EXPIRED/ACTIVATED事实矛盾则拒绝响应。模板草稿无需新端点，发布与采购仍走原不可变套餐/订单。没有新增月年会员API或Migration。[规则](design/MEMBERSHIP_SYSTEM.md)、[交接](handoffs/MEMBER01.md)。
+
+
 ## DOC006：六项API增量设计入口（提案，不是已实现合同）
 
 2026-11-01：[六项设计](design/REMAINING_SIX_FEATURES.md)列出各功能现有路由复用和拟议增量；其中地图需扩展POST搜索视野及DTO，保险复用`/v1/insurance`编排接真实驱动，撮合/派单增加需求与原子转单，培训/广告增加独立交易来源及相应消费者。

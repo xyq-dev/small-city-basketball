@@ -10,6 +10,7 @@ import type {
   CommerceReconciliationInput,
   CommercePlanData,
   CommerceReconciliationData,
+  EventEntitlementData,
 } from '@small-city-basketball/contracts';
 import { ApiError } from './client';
 import type { ApiClient } from './client';
@@ -22,6 +23,33 @@ const time = (v: unknown) => typeof v === 'string' && Number.isFinite(Date.parse
 const invalid = (): never => {
   throw new ApiError(200, 'INVALID_RESPONSE', '服务返回的商业资料不完整，请刷新后重试');
 };
+function entitlementProjection(v: Obj): boolean {
+  const state = v.activationStatus;
+  const checkedAt = v.statusCheckedAt;
+  if (state === undefined && checkedAt === undefined) return true;
+  if (!time(checkedAt)) return false;
+  const revoked = v.revokedAt !== null;
+  const active = v.activated === true;
+  switch (state as EventEntitlementData['activationStatus']) {
+    case 'REVOKED':
+      return revoked;
+    case 'ACTIVATED':
+      return active && !revoked;
+    case 'READY':
+      return (
+        !active && !revoked && Date.parse(String(v.validUntil)) > Date.parse(String(checkedAt))
+      );
+    case 'EXPIRED':
+      return (
+        !active && !revoked && Date.parse(String(v.validUntil)) <= Date.parse(String(checkedAt))
+      );
+    case 'REFUND_PENDING':
+    case 'UNAVAILABLE':
+      return !active && !revoked;
+    default:
+      return false;
+  }
+}
 function plan(v: unknown): v is CommercePlanData {
   return (
     object(v) &&
@@ -108,7 +136,8 @@ export function checkedCommerceWorkspace(v: unknown, orgId: string | null): Comm
         count(e.maxTeams, 2, 32) &&
         count(e.maxMatches, 1, 1024) &&
         typeof e.activated === 'boolean' &&
-        (e.revokedAt === null || time(e.revokedAt)),
+        (e.revokedAt === null || time(e.revokedAt)) &&
+        entitlementProjection(e),
     ) ||
     !Array.isArray(v.activations) ||
     !v.activations.every(

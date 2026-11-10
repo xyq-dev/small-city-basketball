@@ -7,6 +7,70 @@ const client = (value: unknown) =>
     request: vi.fn().mockResolvedValue({ data: value, meta: { requestId: 'unit' } }),
   }) as unknown as ApiClient;
 describe('commercial same-origin DTO boundary', () => {
+  const entitlement = {
+    id: 'right-a',
+    eventId: 'event-a',
+    eventName: '合成权益',
+    orderId: 'order-a',
+    validUntil: '2026-11-11T00:00:00Z',
+    revokedAt: null,
+    maxTeams: 8,
+    maxMatches: 32,
+    activated: false,
+  };
+  test('accepts an older API without status and never invents a membership grant', async () => {
+    const data = await createCommerceApi(
+      client({ ...workspace, entitlements: [entitlement] }),
+      'org-a',
+    ).workspace();
+    expect(data.entitlements[0]).not.toHaveProperty('activationStatus');
+    expect(data.canPurchase).toBe(workspace.canPurchase);
+  });
+  test.each([
+    { activationStatus: 'READY', statusCheckedAt: '2026-11-10T00:00:00Z' },
+    { activationStatus: 'EXPIRED', statusCheckedAt: '2026-11-11T00:00:00Z' },
+    { activationStatus: 'ACTIVATED', activated: true, statusCheckedAt: '2027-11-11T00:00:00Z' },
+    {
+      activationStatus: 'REVOKED',
+      revokedAt: '2026-11-10T00:00:00Z',
+      statusCheckedAt: '2026-11-11T00:00:00Z',
+    },
+    { activationStatus: 'REFUND_PENDING', statusCheckedAt: '2026-11-10T00:00:00Z' },
+    { activationStatus: 'UNAVAILABLE', statusCheckedAt: '2026-11-10T00:00:00Z' },
+  ])(
+    'preserves coherent server projection %j without a client-clock freshness decision',
+    async (projection) => {
+      const value = { ...entitlement, ...projection };
+      const data = await createCommerceApi(
+        client({ ...workspace, entitlements: [value] }),
+        'org-a',
+      ).workspace();
+      expect(data.entitlements).toEqual([value]);
+    },
+  );
+  test.each([
+    { activationStatus: 'READY' },
+    { statusCheckedAt: '2026-11-10T00:00:00Z' },
+    { activationStatus: 'VIP', statusCheckedAt: '2026-11-10T00:00:00Z' },
+    { activationStatus: 'READY', statusCheckedAt: 'bad-time' },
+    { activationStatus: 'READY', statusCheckedAt: '2026-11-11T00:00:00Z' },
+    { activationStatus: 'EXPIRED', statusCheckedAt: '2026-11-10T00:00:00Z' },
+    { activationStatus: 'READY', activated: true, statusCheckedAt: '2026-11-10T00:00:00Z' },
+    { activationStatus: 'ACTIVATED', statusCheckedAt: '2026-11-10T00:00:00Z' },
+    { activationStatus: 'REVOKED', statusCheckedAt: '2026-11-10T00:00:00Z' },
+    {
+      activationStatus: 'REFUND_PENDING',
+      revokedAt: '2026-11-10T00:00:00Z',
+      statusCheckedAt: '2026-11-11T00:00:00Z',
+    },
+  ])('rejects partial, unknown or contradictory entitlement projection %j', async (projection) => {
+    await expect(
+      createCommerceApi(
+        client({ ...workspace, entitlements: [{ ...entitlement, ...projection }] }),
+        'org-a',
+      ).workspace(),
+    ).rejects.toMatchObject({ apiCode: 'INVALID_RESPONSE' });
+  });
   test('uses encoded tenant paths and rejects another organization before render', async () => {
     const c = client(workspace);
     await createCommerceApi(c, 'org-a').workspace();

@@ -1,5 +1,10 @@
 # 当前状态
 
+## MEMBER01（2026-11-10 Asia/Shanghai，IN_PROGRESS / BRANCH_ONLY）
+
+基线main770534b；feat/MEMBER01-membership-foundation完成小球迷助手公开会员研究、[本项目建议定价与完整规则](design/MEMBERSHIP_SYSTEM.md)，用户已确认新会员界面方向，[Figma原生可编辑V1](design/MEMBERSHIP_UI.md)已完成，3屏/13态。代码补三档99/299/599按届本地模板（确认后填表、不自动发布）和数据库时钟权益六态只读投影，原商业支付/激活/退款/权限守卫不变。直接43、API源码作者1425、完整类型/构建通过；首轮PR53隔离CI的恢复比较被新读取时间影响，已作精准helper修复待新head完整重验；旧成功项不替代最终结果。月年会员199/1699和399/3399为建议规划，跨届扣额、会员新页尚未实现，不表示可售；[MEMBER02](tasks/MEMBER02.md) TODO。无新Migration，无生产部署或正式价格修改。[任务](tasks/MEMBER01.md)、[接续](handoffs/MEMBER01.md)。
+
+
 ## TMX01（2026-11-10 14:06 Asia/Shanghai，DONE / MAIN：研究与首批接入）
 
 [PR52](https://github.com/xyq-dev/small-city-basketball/pull/52)已普通merge至main `b8dca5b3053f660b5cbce4ebac60edf0c11a8bf4`。源b11848a、CI测试merge717dbb2及实际merge tree同为36c8160；完整保留PR51/53ac926的39项首页改动。[组合CI42760884290](https://github.com/xyq-dev/small-city-basketball/actions/runs/42760884290)四作业SUCCESS，仅admin外部字体安装超时后同head单项重试。后台678/API源码1397，微信1638+1平台skip；R6 PG147、旧PG组638（含4静态夹具源测试）、原生HTTP21、API浏览器桌面12+手机12、HTTPS与完整恢复通过；1566兼容布局PNG非微信真机，新预演截图目标区已实际复核。
