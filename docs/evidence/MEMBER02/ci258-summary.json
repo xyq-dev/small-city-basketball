@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "repository": "xyq-dev/small-city-basketball",
+  "pullRequest": 54,
+  "integration": {
+    "state": "MERGED",
+    "mainCodeCommit": "fee705bae05c1b987f80777d196c39eb2cf4c58b",
+    "headSha": "04415dc02af097c568bd7d7897228364bfb45361",
+    "testedMergeSha": "7714fdb887cfee91f77218e58065d89423250c3e",
+    "testedTree": "da8f6dabdfe572fbf47c3f491a9fad63f96f277c",
+    "mainCodeTree": "da8f6dabdfe572fbf47c3f491a9fad63f96f277c",
+    "localSourceCommit": "6113bb22c4f72aa4b9810fea3ed9cb6170f731af",
+    "baseSha": "843085c6bf22e6a15aa57ad8979f3908444a80b1"
+  },
+  "ci": {
+    "runId": 42799254368,
+    "runNumber": 258,
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "admin",
+        "id": 129772355702,
+        "conclusion": "success",
+        "excerpts": [
+          "2026-11-10T10:27:25.6589343Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7714fdb887cfee91f77218e58065d89423250c3e:refs/remotes/pull/54/merge",
+          "2026-11-10T10:27:27.6479048Z  * [new ref]         7714fdb887cfee91f77218e58065d89423250c3e -> pull/54/merge",
+          "2026-11-10T10:27:27.9927507Z HEAD is now at 7714fdb Merge 04415dc02af097c568bd7d7897228364bfb45361 into 843085c6bf22e6a15aa57ad8979f3908444a80b1",
+          "2026-11-10T10:27:28.0032315Z 7714fdb887cfee91f77218e58065d89423250c3e",
+          "2026-11-10T10:29:16.0755660Z  Test Files  72 passed (72)",
+          "2026-11-10T10:29:16.0761189Z       Tests  789 passed (789)",
+          "2026-11-10T10:30:14.0767142Z  Test Files  126 passed (126)",
+          "2026-11-10T10:30:14.0776012Z       Tests  1457 passed (1457)",
+          "2026-11-10T10:30:46.4078138Z ℹ tests 1639",
+          "2026-11-10T10:30:46.4079105Z ℹ pass 1638",
+          "2026-11-10T10:30:46.4079884Z ℹ fail 0",
+          "2026-11-10T10:30:46.4080796Z ℹ skipped 1",
+          "2026-11-10T10:30:46.8033283Z ℹ tests 12",
+          "2026-11-10T10:30:46.8034163Z ℹ pass 12",
+          "2026-11-10T10:30:46.8034519Z ℹ fail 0",
+          "2026-11-10T10:30:46.8035284Z ℹ skipped 0",
+          "2026-11-10T10:30:47.1618130Z ℹ tests 12",
+          "2026-11-10T10:30:47.1618647Z ℹ pass 11",
+          "2026-11-10T10:30:47.1618917Z ℹ fail 0",
+          "2026-11-10T10:30:47.1619453Z ℹ skipped 1",
+          "2026-11-10T10:39:48.0580758Z   1567 skipped",
+          "2026-11-10T10:39:48.0583962Z   1581 passed (8.7m)",
+          "2026-11-10T10:39:48.3468697Z Native compatibility evidence: 1566 layouts and PNGs; not WeChat runtime."
+        ]
+      },
+      {
+        "name": "api",
+        "id": 129772356211,
+        "conclusion": "success",
+        "excerpts": [
+          "2026-11-10T10:27:36.5522901Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7714fdb887cfee91f77218e58065d89423250c3e:refs/remotes/pull/54/merge",
+          "2026-11-10T10:27:38.6346176Z  * [new ref]         7714fdb887cfee91f77218e58065d89423250c3e -> pull/54/merge",
+          "2026-11-10T10:27:38.8930025Z HEAD is now at 7714fdb Merge 04415dc02af097c568bd7d7897228364bfb45361 into 843085c6bf22e6a15aa57ad8979f3908444a80b1",
+          "2026-11-10T10:27:38.9032966Z 7714fdb887cfee91f77218e58065d89423250c3e",
+          "2026-11-10T10:28:04.2020217Z ℹ tests 3",
+          "2026-11-10T10:28:04.2020718Z ℹ pass 3",
+          "2026-11-10T10:28:04.2020927Z ℹ fail 0",
+          "2026-11-10T10:28:04.2021351Z ℹ skipped 0",
+          "2026-11-10T10:28:13.0694413Z ℹ tests 26",
+          "2026-11-10T10:28:13.0694693Z ℹ pass 26",
+          "2026-11-10T10:28:13.0694825Z ℹ fail 0",
+          "2026-11-10T10:28:13.0695077Z ℹ skipped 0",
+          "2026-11-10T10:30:30.5677962Z  Test Files  12 passed (12)",
+          "2026-11-10T10:30:30.5687834Z       Tests  147 passed (147)",
+          "2026-11-10T10:30:30.7665289Z [membership-pg] Dedicated database created and connected identity verified.",
+          "2026-11-10T10:30:56.7955196Z      ✓ only a safely expired unstarted renewal can be replaced; reads do not mutate and Native or manual-review claims remain blocked 10848ms",
+          "2026-11-10T10:31:02.0709064Z  Test Files  2 passed (2)",
+          "2026-11-10T10:31:02.0709795Z       Tests  26 passed (26)",
+          "2026-11-10T10:31:02.2853416Z [membership-pg] Owned database removed; control billing/setup fingerprint unchanged.",
+          "2026-11-10T10:31:02.4101762Z [membership-pg] Dedicated database created and connected identity verified.",
+          "2026-11-10T10:31:02.4485554Z [membership-pg] Fixed child exit 23; owned cleanup and unchanged control billing/setup verified.",
+          "2026-11-10T10:31:33.6652774Z [membership:desktop-api] complete: paid period, original activation ledger and refresh retain the same quota",
+          "2026-11-10T10:31:34.0176408Z   1 passed (17.4s)",
+          "2026-11-10T10:31:50.7625312Z [membership:mobile-api] complete: paid period, original activation ledger and refresh retain the same quota",
+          "2026-11-10T10:31:51.1361933Z   1 passed (16.7s)",
+          "2026-11-10T10:35:04.1518219Z      ✓ membership consumption resolves only its own paid order; unused renewals and unrelated pending money still block closure 3877ms",
+          "2026-11-10T10:37:16.8178854Z stderr | test/c22-region-data.integration.test.ts > C22 fixed region data and 001–022 upgrade on owned PostgreSQL",
+          "2026-11-10T10:37:24.2213619Z  ✓ test/c22-region-data.integration.test.ts (5 tests) 8270ms",
+          "2026-11-10T10:41:28.5888278Z  Test Files  72 passed (72)",
+          "2026-11-10T10:41:28.5902860Z       Tests  641 passed (641)",
+          "2026-11-10T10:47:06.7302110Z ℹ tests 21",
+          "2026-11-10T10:47:06.7302618Z ℹ pass 21",
+          "2026-11-10T10:47:06.7302809Z ℹ fail 0",
+          "2026-11-10T10:47:06.7303214Z ℹ skipped 0",
+          "2026-11-10T10:48:54.7949614Z PostgreSQL restart retained sessions, grants, frozen rosters, schedule/reservations, scoring rules/events/receipts/results including TEAM_ONLY and PLAYER_BASIC attribution and confirmation history, raw clock and monotonic fence, standings/source hashes, public identities, independent overlay grants/read sessions/revocation and exact expiry, closed/archived event history with permanent old-key revocation, private player summary/sourceHash and independent OBS grant, audit and migration checksums across every manifest table.",
+          "2026-11-10T10:52:07.5053263Z   12 passed (3.2m)",
+          "2026-11-10T10:55:23.3457742Z   12 passed (3.3m)",
+          "2026-11-10T10:55:27.3366226Z All three browser suites retained failure codes, removed only owned databases, and retained the control database."
+        ]
+      },
+      {
+        "name": "account-security",
+        "id": 129772356250,
+        "conclusion": "success",
+        "excerpts": [
+          "2026-11-10T10:27:38.0722997Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7714fdb887cfee91f77218e58065d89423250c3e:refs/remotes/pull/54/merge",
+          "2026-11-10T10:27:40.1688822Z  * [new ref]         7714fdb887cfee91f77218e58065d89423250c3e -> pull/54/merge",
+          "2026-11-10T10:27:40.4493133Z HEAD is now at 7714fdb Merge 04415dc02af097c568bd7d7897228364bfb45361 into 843085c6bf22e6a15aa57ad8979f3908444a80b1",
+          "2026-11-10T10:27:40.4587355Z 7714fdb887cfee91f77218e58065d89423250c3e",
+          "2026-11-10T10:28:25.5815150Z [account-security:desktop-api] complete: identity preserved, no URL or referrer leakage",
+          "2026-11-10T10:28:25.7256340Z   1 passed (16.2s)",
+          "2026-11-10T10:28:40.6941123Z [account-security:mobile-api] complete: identity preserved, no URL or referrer leakage",
+          "2026-11-10T10:28:40.8295807Z   1 passed (14.6s)",
+          "2026-11-10T10:28:42.8218353Z All three browser suites retained failure codes, removed only owned databases, and retained the control database."
+        ]
+      },
+      {
+        "name": "production",
+        "id": 129772356218,
+        "conclusion": "success",
+        "excerpts": [
+          "2026-11-10T10:27:24.9653801Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7714fdb887cfee91f77218e58065d89423250c3e:refs/remotes/pull/54/merge",
+          "2026-11-10T10:27:26.4859651Z  * [new ref]         7714fdb887cfee91f77218e58065d89423250c3e -> pull/54/merge",
+          "2026-11-10T10:27:26.7292409Z HEAD is now at 7714fdb Merge 04415dc02af097c568bd7d7897228364bfb45361 into 843085c6bf22e6a15aa57ad8979f3908444a80b1",
+          "2026-11-10T10:27:26.7398585Z 7714fdb887cfee91f77218e58065d89423250c3e",
+          "2026-11-10T10:29:53.5240891Z  Test Files  3 passed (3)",
+          "2026-11-10T10:29:53.5241398Z       Tests  21 passed (21)",
+          "2026-11-10T10:31:58.1763180Z P07 HTTPS browser desktop private-login-capabilities: passed",
+          "2026-11-10T10:31:58.1763729Z P07 HTTPS browser desktop anonymous-watch-overlay: passed",
+          "2026-11-10T10:31:58.1764212Z P07 HTTPS browser mobile private-login-capabilities: passed",
+          "2026-11-10T10:31:58.1764923Z P07 HTTPS browser mobile anonymous-watch-overlay: passed",
+          "2026-11-10T10:31:58.1765296Z P07 HTTPS browser suite: passed (4 executed)",
+          "2026-11-10T10:32:01.9211335Z [production] API address changed; the unchanged Web resolved it and preserved the private session.",
+          "2026-11-10T10:32:15.5851068Z [production] Full restore matched all exact manifest tables, business snapshots and backup-point fencing.",
+          "2026-11-10T10:32:20.6935529Z [production] Production package, TLS, role, persistence, full restore and quarantine checks passed.",
+          "2026-11-10T10:32:22.1266268Z [production] Cleanup removed only owned projects; the independent control volume remains."
+        ]
+      }
+    ]
+  },
+  "evidenceBoundaries": {
+    "sourceUnit": {
+      "adminPassed": 789,
+      "apiPassed": 1457,
+      "wechatPassed": 1638,
+      "wechatPlatformSkipped": 1,
+      "cliPassed": 12,
+      "storagePassed": 11,
+      "storageEnvironmentSkipped": 1
+    },
+    "membershipPostgres": {
+      "passed": 26,
+      "ordinary": 17,
+      "syntheticSignedNative": 9,
+      "usesRealPostgres": true,
+      "usesRealMerchant": false
+    },
+    "r6PostgresPassed": 147,
+    "existingGroup": {
+      "passed": 641,
+      "includesStaticHistoricalSourceGuards": 6
+    },
+    "productionMinimalRolePostgresPassed": 21,
+    "nativePagesToRealHttpPassed": 21,
+    "membershipRealApiBrowser": {
+      "desktop": 1,
+      "mobileChromium": 1,
+      "mode": "ENFORCED",
+      "server": "test mode real API and isolated PostgreSQL; not mocked"
+    },
+    "originalRealApiBrowser": {
+      "desktop": 12,
+      "mobileChromium": 12
+    },
+    "compatibilityBrowser": {
+      "passed": 1581,
+      "expectedConfigurationSkipped": 1567,
+      "staticNativeLayoutsAndPngs": 1566,
+      "actualWechatRuntime": false
+    },
+    "isolatedProduction": {
+      "tls": true,
+      "browserChecks": 4,
+      "sourceIpChange": true,
+      "exactManifestTablesRestored": 228,
+      "secondPostgres": true,
+      "authorizationQuarantine": true
+    },
+    "ownedCleanup": {
+      "postgresFixedChildExit": 23,
+      "originalControlBillingAndSetupUnchanged": true,
+      "threeBrowserSuites": true
+    }
+  },
+  "reviews": {
+    "independentFinal": "PASS",
+    "automaticCodeReview": {
+      "commit": "04415dc02af097c568bd7d7897228364bfb45361",
+      "status": "completed",
+      "hasAnyFindings": false,
+      "hasUnresolvedFindings": false
+    },
+    "separateAutomaticSecurityReview": null,
+    "resolvedThreads": [
+      "PRRT_kwDOVTBG0861nuvA",
+      "PRRT_kwDOVTBG0861oYCz"
+    ]
+  },
+  "migration": {
+    "new": "052_software_memberships.sql",
+    "previous001To051Unchanged": true,
+    "written": true,
+    "executedInIsolatedPostgres": true,
+    "executedInProduction": false
+  },
+  "screenshots": {
+    "manifest": "screenshots.json",
+    "visualReview": "VISUAL_REVIEW.md",
+    "realApiSyntheticData": true
+  },
+  "notExecuted": [
+    "production deployment or database/account change",
+    "production catalog publication",
+    "real WeChat merchant transactions",
+    "new native WeChat membership pages (Figma only)",
+    "Safari/WeChat real-device and actual OBS client tests",
+    "nonempty old-007 production-database upgrade rehearsal"
+  ]
+}

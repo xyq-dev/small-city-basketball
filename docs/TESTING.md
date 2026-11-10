@@ -4,6 +4,8 @@
 
 当前执行证据以[MEMBER02任务](tasks/MEMBER02.md)与[交接](handoffs/MEMBER02.md)的精确head/CI为准。源码组件Mock、隔离PG、实际HTTP浏览器、可信HTTPS恢复、真实商户和生产分别记录；前一候选成功不能替代新条件的最终候选。
 
+
+MEMBER02已合入main fee705bae；source044、测试merge7714与实际merge同tree da8f6dab，CI258四作业全部成功，root与独立审查均读完成日志。分层计数/失败历史/未执行范围见[最终证据](evidence/MEMBER02/README.md)，四图不是微信或商户实付验证。052已隔离执行、生产未执行；主线自动复跑与PR验收分开记录。
 - 源码：沿用format/typecheck/test/build；会员API严格边界与Web组件在各workspace原测试中，响应Mock只证明该层行为。
 - 真实PG：`apps/api/test/member02-membership.integration.test.ts`与`member02-native.integration.test.ts`是17+9项；另`account-closure.integration.test.ts`新增本单履约/未决对照，C22旧库升级保留固定83ae历史源。只使用经guard验证的`scb_test_*`隔离库，不能指向正式库。
 - CI隔离顺序：原R6先完成控制库初始化，run-membership-postgres-checks.mjs为会员组创建随机专库，两DB环境均指该库，26项结束后普通DROP且核对控制库OID/全账本/firstRun指纹不变；--verify-cleanup保留固定失败码23且CI必须显式要求23。旧组精确exclude会员文件防重复，生产全账本对账不加fixture过滤。

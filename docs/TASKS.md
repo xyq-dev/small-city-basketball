@@ -1,16 +1,20 @@
 # 任务看板
 
-## MEMBER02（2026-11-10 Asia/Shanghai，REVIEW / BRANCH_ONLY；生产未更新）
+## MEMBER02（2026-11-10 Asia/Shanghai，DONE / MAIN；Web首版，生产未部署）
 
 在原商业账本上已实现机构30/365天购买期、全期跨届额度、受控手动续费、原单付款/退款及独立复核、首次正式发布原子激活和已激活赛事到期继续；没有另建比赛状态、钱包或支付系统。专业建议199/1699元对应3/36届（每届16队128场），商业399/3399元对应10/120届（每届32队512场）；年费额度按全期统计、不每月重置。新增响应式Web `/membership` 和独立平台 `/platform/membership`，月年切换、不可变报价核对、订单/用量与错误恢复；用户已确认的[Figma稿](design/MEMBERSHIP_UI.md)保持。原生微信新会员页仍为设计，未实现；球迷基础观赛免费。
 
-[PR54](https://github.com/xyq-dev/small-city-basketball/pull/54)已正常整合main843的M1文档祖先并完整保留旧事实。CI257/source094fcf0/tree f845fc2：会员真实专库26、清理失败23且原库账本/初始化保全、新会员真实桌面1/手机1、admin/账号安全/隔离生产模式HTTPS与完整第二PG恢复通过，旧PG及后续仍运行。四张原始截图已校验并由root/Web作者独立查看；发现卡片等级顺序与确认稿不同，正作局部稳定排序及真实浏览器断言，下一head仍须完整复验。原金融守卫、全账本严格对账和001–051不改；052已隔离执行、生产未执行。PR54未合并、正式价格未发布。原生新会员页/真实商户/生产另验。[任务](tasks/MEMBER02.md)、[交接](handoffs/MEMBER02.md)、[证据分层](evidence/MEMBER02/README.md)。
+[PR54](https://github.com/xyq-dev/small-city-basketball/pull/54)已正常merge至main `fee705bae05c1b987f80777d196c39eb2cf4c58b`。source04415dc、测试merge7714fdb、本地源6113bb2与实际合并tree均da8f6dab，已分别实际读取核对；main843祖先及四份M1文档事实完整保留，无force。[CI258](https://github.com/xyq-dev/small-city-basketball/actions/runs/42799254368)同source四作业全部SUCCESS，root与独立审查均读取完成日志：源码789/1457、微信1638+1平台skip、CLI12/storage11+1环境skip；PG R6147、会员17+合成签名Native9、旧组641（含6历史源守卫）、runtime21；原生页面真实HTTP21、新会员桌面1/手机1、原API桌面12/手机12、实际PG重启、可信HTTPS与228表精确第二PG完整恢复、三suite故障owned清理通过。1581兼容/1566布局PNG不是微信运行时。两旧P2已核实修复并resolve，最终044自动代码审查无finding，独立金融/锁序/隔离/legacy及最终delta复审通过。
+
+四张最终真实API合成业务原图已验hash并由root/Web作者独立查看，专业卡顺序偏差已修；[视觉记录](evidence/MEMBER02/VISUAL_REVIEW.md)保留既有Web壳、较长手机顶部和标签内部横滑差异，不称微信原生像素一致或全部13态截图通过。052已编写并隔离执行，001–051保持，生产未执行；本轮未生产部署/修改正式账号或数据库/发布正式价格/使用真实资金。原生新会员页、真实商户、微信/Safari真机、OBS客户端、旧007生产库非空升级演练另验。主线merge后的自动复跑不替代本次PR同source验收。[任务](tasks/MEMBER02.md)、[交接](handoffs/MEMBER02.md)、[完整证据](evidence/MEMBER02/README.md)。
+
+最终文档归档时本地运行环境连接中断，源码合并和CI已先完成；远端文档与原始证据通过已核验Git对象接续归档。本地最后可核验HEAD为6113bb2，本轮docs/证据有未提交修改，断线后不能声称本地工作区干净。恢复后先保留这些修改，再核验最新main。
 
 ## MEMBER01（2026-11-10 17:09 Asia/Shanghai，DONE / MAIN；生产未更新）
 
 [PR53](https://github.com/xyq-dev/small-city-basketball/pull/53)已普通merge至main cd8ed1f8e1b1335b49cf8bbe9270d24c8e89a0e5。source1c2eac2、测试merge84a448f及实际合并tree均145bf061，已分别实际读取核对；保留既有工作与作者分支，无force。[CI250](https://github.com/xyq-dev/small-city-basketball/actions/runs/42782617688)同head四作业SUCCESS，仅admin因外部字体/Chromium安装触job限时后单项重试。最终日志已核对：admin712/API1425，微信1638+1平台skip、PG147+638（旧组含4源码夹具测试）、原生HTTP21、真实API桌面12+手机12、可信HTTPS及精确第二PG恢复/隔离/owned清理；兼容1581、1566布局PNG非微信真机。两张定价草稿截图已下载验hash并由root实际看图，零POST/原目录不变。
 
-已实现99/299/599按届本地价格模板和服务端核对权益六态，未改变原支付/权限/激活守卫；小球迷公开研究、用户已确认的[Figma可编辑稿](design/MEMBERSHIP_UI.md)完成。该卡不包含月年实现，正在独立MEMBER02验收；真实商户/原生微信/生产未由本轮验证。两轮代码失败与一轮外部耗时取消均保留，不拼接旧head成功项。[任务](tasks/MEMBER01.md)、[交接](handoffs/MEMBER01.md)。
+已实现99/299/599按届本地价格模板和服务端核对权益六态，未改变原支付/权限/激活守卫；小球迷公开研究、用户已确认的[Figma可编辑稿](design/MEMBERSHIP_UI.md)完成。该卡不包含月年实现；月年Web已由独立MEMBER02交付main；真实商户/原生微信/生产未由本轮验证。两轮代码失败与一轮外部耗时取消均保留，不拼接旧head成功项。[任务](tasks/MEMBER01.md)、[交接](handoffs/MEMBER01.md)。
 
 ## TMX01（2026-11-10 14:06 Asia/Shanghai，DONE / MAIN：研究与首批接入）
 

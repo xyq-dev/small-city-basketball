@@ -1,0 +1,64 @@
+{
+  "run_id": 42799254368,
+  "job_id": 129772356211,
+  "head_sha": "04415dc02af097c568bd7d7897228364bfb45361",
+  "tested_merge_sha": "7714fdb887cfee91f77218e58065d89423250c3e",
+  "tested_tree": "da8f6dabdfe572fbf47c3f491a9fad63f96f277c",
+  "artifact_id": 13755024682,
+  "artifact_sha256": "ad286b13dc9f6e0c1b618a13f461b12f0c2a0abfa1cc5cf78b20c3278c307fb9",
+  "viewports": {
+    "desktop-api": {
+      "width": 1440,
+      "height": 1040,
+      "deviceScaleFactor": 1
+    },
+    "mobile-api": {
+      "width": 390,
+      "height": 844,
+      "deviceScaleFactor": 3
+    }
+  },
+  "capture": "Original unmodified fullPage PNGs; taller than viewport. Real API with synthetic identities and manual receipts; no merchant transaction. Independently viewed by root and Web author before local environment disconnected.",
+  "files": [
+    {
+      "file": "desktop-api-plans.png",
+      "pixels": [
+        1440,
+        1387
+      ],
+      "bytes": 299287,
+      "sha256": "4f8e683521fe301eef794cae3c8a42855f563cd0f1c7453a4275194b85923f8c",
+      "synthetic": true
+    },
+    {
+      "file": "desktop-api-usage.png",
+      "pixels": [
+        1440,
+        1367
+      ],
+      "bytes": 274643,
+      "sha256": "ee5a7150eea80b47706e5b8ce7ef36607cbf7bfc434255c6dfca57338c0f9767",
+      "synthetic": true
+    },
+    {
+      "file": "mobile-api-plans.png",
+      "pixels": [
+        1170,
+        5796
+      ],
+      "bytes": 584131,
+      "sha256": "6a3d132f2f613bc1e176fd26a6c713ac90dbc99cff26220057936d6cb319afd9",
+      "synthetic": true
+    },
+    {
+      "file": "mobile-api-usage.png",
+      "pixels": [
+        1170,
+        4989
+      ],
+      "bytes": 568700,
+      "sha256": "7e77657d17808b60d16ba338dc7c59ef64949b55b3b531c074096a688a80bc91",
+      "synthetic": true
+    }
+  ]
+}

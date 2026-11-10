@@ -1,6 +1,9 @@
 # MEMBER02 · 机构月/年会员与跨届额度
 
-REVIEW / BRANCH_ONLY；2026-11-10 Asia/Shanghai。依赖[会员规则与建议定价V1](../design/MEMBERSHIP_SYSTEM.md)、用户已确认的视觉方向及MEMBER01现有按届基础。新Figma交接以MEMBER01记录的真实链接为准，不能猜节点。
+当前结论：**DONE / MAIN（源码及隔离验收，生产未部署）**。PR54已普通merge至main `fee705bae05c1b987f80777d196c39eb2cf4c58b`；最终source044、测试merge7714与实际合并同tree da8f6dab。[最终证据](../evidence/MEMBER02/README.md)。下列旧REVIEW/失败/未执行检查点均为带日期历史，不覆盖本段最终状态。
+
+
+DONE / MAIN；2026-11-10 Asia/Shanghai。本卡为机构会员后端与响应式Web首版；原生新页、真实商户和生产未包含。依赖[会员规则与建议定价V1](../design/MEMBERSHIP_SYSTEM.md)、用户已确认的视觉方向及MEMBER01现有按届基础。新Figma交接以MEMBER01记录的真实链接为准，不能猜节点。
 
 目标：专业199元/30天3届、1699元/365天36届（16队128场）；商业399元/30天10届、3399元/365天120届（32队512场），买机构软件服务，手动续费，无自动扣费。
 
@@ -106,3 +109,18 @@ CI257/source094fcf0、测试merge66f5b009、treef845fc2已实际核对同树：�
 实际发现专业/商业排序与稿不同，交原Web作者仅按等级做稳定展示排序，金额/真实ID/可售资格/API顺序不改；root补真实浏览器顺序断言，新候选须重新完整CI并下载新截图。手机沿用既有Web壳、顶部信息较长且标签内部横向滚动，不能称原生小程序像素还原；四图只覆盖方案和生效用量，不外推13态/支付弹窗截图。没有用重画稿掩盖差异。
 
 main843085c仅四份M1交接文档，独立复核证实本候选所有旧M1/TMX/历史逐字节保留；root正常merge main为ab80c90（与前f845完全同tree），只解决两个summary相邻段冲突，未覆盖其他3份本轮doc WIP或任何他人工作。新同步保留main843祖先，继续普通PR流程，无force。052隔离执行、生产未执行；新原生会员/真实商户与生产价格发布仍未完成。
+
+
+## 2026-11-10 Asia/Shanghai 最终合并、证据与接续
+
+PR54以标准merge合入main `fee705bae05c1b987f80777d196c39eb2cf4c58b`，父节点[843085c,04415dc]，tree da8f6dab；本地源6113bb2、CI checkout7714fdb及实际合并逐一同树。feature与作者工作保留，无reset/clean/force。CI258四作业同source全部SUCCESS，root和独立审查者分别读取完成日志；[完整计数与原始片段](../evidence/MEMBER02/ci258-summary.json)、[四图来源/hash](../evidence/MEMBER02/screenshots.json)、[截图对照边界](../evidence/MEMBER02/VISUAL_REVIEW.md)。
+
+实际通过：最终直接API/UI76、完整type/Webbuild/格式；CI admin789/API1457，微信1638+1Linux平台skip，CLI12/storage11+1环境skip；真实PG R6147、会员17+合成签名Native9=26、原组641（含6历史源码守卫）、runtime21。C22原22schema升级5、本单会员履约注销14含新case通过。Native页面真实HTTP21、会员桌面1/手机1含正确顺序/双人收款/原发布扣额/刷新、原API桌面12/手机12、PG实际重启、HTTPS4浏览器/同卷换IP、228表完整dump→第二PG精确恢复/授权隔离/仅owned清理，固定child23/原control全账本与firstRun指纹保全及三suite故障清理全部成功。641不能全部称实际PG；兼容1581和1566PNG不是微信运行时；Native签名/transport合成，不是真实资金。
+
+CI257最终归档确认会员26、R6147、新会员各1与旧组完整641通过，然后因修正Figma等级顺序的新候选被concurrency取消；其后原生HTTP/重启/原浏览器未继续，不能称257全绿。最终258同044重新完整通过。原两P2由真实安全续单替换、本org本单消费注销回归核实并resolve；自动code_review精确044 completed、无finding，未另跑security_review；独立高风险和最终小delta复审通过。原四张旧257图不追认为修正后图，258四原图已逐字节校验且root/Web作者分别实际看图。
+
+052已编写并在真实隔离PG执行，001–051字节保持，生产Migration0。未生产部署、未改正式数据库/账号/价格、未使用真实资金、付费资源、新外部凭据或公网端口。原生新增软件会员页仍为已确认Figma；本机JSAPI会员付款、真实商户、微信/Safari/OBS真机、发票/合同、旧007生产库非空升级演练不在本卡完成范围。已激活赛事到期继续、普通看球免费、年费全期36/120届不每月重置、媒体人工另计。
+
+收尾时本地运行环境连接中断：源码和CI已先完成、原图已创建并校验远端Git blob，故仅通过GitHub接续文档/证据归档，不重建项目或修改应用代码。本地最后可核验工作树为/workspace/scratch/dc6a786e1a31/scb-membership、分支feat/MEMBER02-integration、HEAD6113bb2；有本轮docs/证据未提交修改，断线后未能复核最终本地状态，不能报干净或已同步本地HEAD。远端main的后续docs提交为正式交接依据。
+
+下一位先核验最新main、当前分支和未提交工作，保留旧修改；再读CURRENT_STATUS/TASKS/本卡最终证据。继续会员开发时优先按已确认Figma新增原生软件会员独立入口与状态，复用已有后端、角色、报价和原支付，不挪用球队pages/memberships。生产升级/真实资金仍按本轮禁止边界另专项核验，不能从已merge推定生产权限或上线完成。

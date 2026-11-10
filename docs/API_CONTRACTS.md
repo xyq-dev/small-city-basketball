@@ -1,6 +1,6 @@
 # API 契约
 
-## MEMBER02：机构软件会员（候选实现；生产未更新）
+## MEMBER02：机构软件会员（已合入main；生产未更新）
 
 实际源码合同：[membership.d.ts](../packages/contracts/membership.d.ts)。复用原CommerceService、付款/退款账本、幂等与权限，不从会员身份派生平台、机构管理、记分或确认角色。
 
@@ -19,9 +19,9 @@
 
 购买期为固定秒数半开窗口，年费全期36/120届不月重置；仅同档同周期末30天内预购一个连续下期。首次Native起点SQL取原paid_at与原created_at较晚者以处理秒精度，原付款证明不改；线下为原付款，续费精确接parent.end（保PG微秒）。已激活届不随会员到期停赛；首次发布扣一次，原按届先使用，未决原款先解决。详见[规则](design/MEMBERSHIP_SYSTEM.md)及[实际验收](tasks/MEMBER02.md)。
 
-## MEMBER01：按届权益的只读状态投影（分支候选，非订阅）
+## MEMBER01：按届权益的只读状态投影（已合入main，非订阅）
 
-原GET `/v1/orgs/:orgId/commerce` 和平台commerce工作空间的每个entitlement新增可选成对 `activationStatus`、`statusCheckedAt`；值READY/EXPIRED/ACTIVATED/REVOKED/REFUND_PENDING/UNAVAILABLE，来自同一查询的原订单/激活/撤销事实及DB clock。相等截止即过期；已激活赛事不因截止过期停用。字段是读快照，不是授权令牌，首次发布仍走原锁定激活guard。旧API缺少两字段时客户端不推断READY；未知/不成对或与READY/EXPIRED/ACTIVATED事实矛盾则拒绝响应。模板草稿无需新端点，发布与采购仍走原不可变套餐/订单。没有新增月年会员API或Migration。[规则](design/MEMBERSHIP_SYSTEM.md)、[交接](handoffs/MEMBER01.md)。
+原GET `/v1/orgs/:orgId/commerce` 和平台commerce工作空间的每个entitlement新增可选成对 `activationStatus`、`statusCheckedAt`；值READY/EXPIRED/ACTIVATED/REVOKED/REFUND_PENDING/UNAVAILABLE，来自同一查询的原订单/激活/撤销事实及DB clock。相等截止即过期；已激活赛事不因截止过期停用。字段是读快照，不是授权令牌，首次发布仍走原锁定激活guard。旧API缺少两字段时客户端不推断READY；未知/不成对或与READY/EXPIRED/ACTIVATED事实矛盾则拒绝响应。模板草稿无需新端点，发布与采购仍走原不可变套餐/订单。MEMBER01本卡没有新增月年会员API或Migration；后续增量见上方MEMBER02。[规则](design/MEMBERSHIP_SYSTEM.md)、[交接](handoffs/MEMBER01.md)。
 
 
 ## DOC006：六项API增量设计入口（提案，不是已实现合同）
