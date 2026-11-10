@@ -474,7 +474,7 @@ describe(
         t = await trainingDraft(w.start, w.end);
       await publishTraining(t);
       const draft = await trainingSchedule(t);
-      let detail = await training.detail(t.id);
+      const detail = await training.detail(t.id);
       await training.cohortCommand(
         h.owner.cookie,
         t.id,
@@ -482,11 +482,18 @@ describe(
       );
       expect((await validate(h.api, h.owner, draft)).valid).toBe(false);
       expect((await previewTrainingSchedule(draft, true)).status).toBe(422);
-      detail = await training.detail(t.id);
+      await expect(training.detail(t.id)).rejects.toMatchObject({
+        status: 404,
+        code: 'RESOURCE_NOT_FOUND',
+      });
+      const suspended = (await training.workspace(h.owner.cookie, h.owner.orgId)).cohorts.find(
+        (cohort) => cohort.id === t.id,
+      );
+      expect(suspended).toMatchObject({ state: 'SUSPENDED', version: detail.version + 1 });
       await training.cohortCommand(
         h.owner.cookie,
         t.id,
-        command('CANCEL', detail.version, { reason: '合成取消课次并释放其预约' }),
+        command('CANCEL', suspended!.version, { reason: '合成取消课次并释放其预约' }),
       );
       const history = await trainingReservations(t);
       expect(history.length).toBeGreaterThan(0);

@@ -15,6 +15,15 @@
 
 ## 代码检查点（2026-11-10 Asia/Shanghai）
 
-研究已按GitHub API普通同步08b4e655，tree与本地c113完全一致；CLI push无凭据，不曾force。后端516c200已cherry-pick为1438cc6，admin312bf78已cherry-pick为4fc40ec；两来源作者工作树保留。根持有新增真实HTTP浏览器步骤与文档。root全类型、全格式、两端build、admin678/API1397源码通过；初轮格式失败已修，不拼接成首轮成功。后端作者类型/build/121直接回归是子集；其4条PG仅定义，缺连接实际beforeAll失败/旧11skip，不算通过。静态后端无确认P1/P2，前端独立静态审查通过。
+研究已按GitHub API普通同步08b4e655，tree与本地c113完全一致；CLI push无凭据，不曾force。后端516c200已cherry-pick为1438cc6，admin312bf78已cherry-pick为4fc40ec；两来源作者工作树保留。根持有新增真实HTTP浏览器步骤与文档。root全类型、全格式、两端build、admin678/API1397源码通过；初轮格式失败已修，不拼接成首轮成功。后端作者类型/build/121直接回归是子集；其4条PG仅定义，缺连接实际beforeAll失败/11项skip，不算通过。静态后端无确认P1/P2，前端独立静态审查通过。
 
 下一条：提交本批root浏览器/文档并同步同一候选PR，核验真实隔离PG新增4项及旧回归、桌面/手机预演/采用零写截图、可信HTTPS/完整恢复及所有CI。只有精确候选通过和独立审查收口才可合并。没有新增Migration或生产操作。大UI网格/逐场锁/持久多方案/现场与裁判板仍未实现，需后续效果确认及独立切片。
+
+
+## 首轮隔离CI与测试夹具修复
+
+PR52，候选`d3f097b8d91c48213230b472e54631cb3f2fe648`、tree`851d7fd9c52fbe8a8ccfcb34620ced855722defa`，CI42754463456。API job129625502028的Remaining PG实际147项中146通过/1失败，失败仅新暂停→取消用例：暂停后调用公开TrainingService.detail被正确404，不是投影越权。其他3项新PG已执行通过，但本轮整体FAILURE且后续旧PG/真实浏览器未执行，不拼接为最终验收。
+
+修复来源f2b7e7d→根293b7df：仅新测试改用现有私有workspace读取暂停后的真实版本；新增公开仍404、私有确为SUSPENDED和版本递增断言。服务/权限/公开规则未改。根tsconfig.tests类型及该文件格式检查通过；新精确候选须重跑完整CI。
+
+本机Chromium实际启动因sandbox Unix socket EPERM失败；共享浏览器访问本机loopback返回ERR_CONNECTION_REFUSED，未做浏览器通过声明。临时Vite已由root停止，没有公网端口或安全设置变更；浏览器与截图依项目隔离CI完成后另记。
