@@ -1,5 +1,10 @@
 # 任务看板
 
+## TMX01（2026-11-10，IN_PROGRESS / BRANCH_ONLY）
+
+用户要求全面研究TMX后将有价值功能加入本项目。[研究与差异](design/TMX_RESEARCH.md)、[任务](tasks/TMX01.md)、[接续](handoffs/TMX01.md)。基线main e8c8d735；本节仅任务分支进度，不改变下方main已整合事实。固定TMX8.52.0/72ba511的源码与测试定义审阅已完成，未独立运行TMX。首批接现有admin权威优化预演，保留本地未保存输入及显式保存/校验/发布；补查培训占用投影。尚未完成业务验收、合并或部署。网格/逐场锁/持久多方案/裁判板/现场聚合后续单列，不引入第二套比赛引擎。
+
+
 ## 2026-11-09 21:45 Asia/Shanghai 成功态按钮修复（DONE / MAIN，生产未部署）
 
 [PR #50](https://github.com/xyq-dev/small-city-basketball/pull/50) 已 merge 至 main `a8c94de55915d24e8f670e801bbdf01c6834fe41`。修复头 `baa775845da8297a1d710310717b6b51f3b33fb4`。[CI #42622629475](https://github.com/xyq-dev/small-city-basketball/actions/runs/42622629475) 四作业 SUCCESS。品牌身份与 Linux 软链测试通过。四页隔离成功态 UI 通过；真实账号、真实 API 和真实业务成功流程未验证。未 pack、上传、部署或执行生产 Migration。
