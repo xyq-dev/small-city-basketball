@@ -1,6 +1,6 @@
 # TMX01：TMX研究与权威排程预演接线
 
-2026-11-10（Asia/Shanghai）；root唯一集成人；IN_PROGRESS / LOCAL_ONLY。
+2026-11-10（Asia/Shanghai）；root唯一集成人；REVIEW / BRANCH_ONLY。
 
 ## 现场与授权
 
@@ -29,3 +29,10 @@ root：研究、任务/交接/状态、必要契约说明、集成及验收。�
 - 必要独立审查及同一精确候选CI后方可合并；每一可验证切片代码与文档一起同步，不混入PR51。当前无新增Migration编写/执行。
 
 接续见[交接](../handoffs/TMX01.md)、[TMX研究](../design/TMX_RESEARCH.md)。
+
+
+## 本地实现检查点
+
+首批源码已整合：后端1438cc6（原516c200）、admin4fc40ec（原312bf78），root扩展`tests/api-e2e/scheduling.spec.ts`。使用指南及API说明同步。root全类型/全格式/两端build通过；admin678+API1397源码通过。首轮format仅根新增浏览器文件未格式，已修并完整重跑。43项新增admin与4项新增PG定义；作者65/121及基线22是上述检查的子集。原本地补排仍在，不把预演sourceHash当预约锁。
+
+真实PG当前缺测试连接，实际beforeAll失败，未算通过；桌面/手机真实HTTP、隔离HTTPS/恢复和完整CI待精确候选执行。后端独立静态通过，admin独立静态审查通过。没有新增Migration、旧001—051不改。初次普通Git push缺凭据，研究检查点已用GitHub API按同tree/expected_sha普通同步至08b4e65；本地c113作者历史保留，后续代码同步以实际远端为准。

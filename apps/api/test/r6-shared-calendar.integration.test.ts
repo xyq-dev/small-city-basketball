@@ -5,7 +5,12 @@ import { LocalServicesService } from '../src/local-services-service.js';
 import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
 import { REGION_CATALOG_VERSION } from '../src/region-catalog-data.js';
 import { parseDispatchQuote } from '../src/dispatch-domain.js';
-import { ORIGIN } from './support.js';
+import type {
+  ScheduledMatchData,
+  ScheduleOptimizationPreview,
+  ScheduleRevisionData,
+} from '@small-city-basketball/contracts';
+import { call, data, ORIGIN } from './support.js';
 import type { User } from './support.js';
 import {
   allocate,
@@ -14,10 +19,21 @@ import {
   createHarness,
   frozen,
   fullAllocations,
+  matchesPath,
   publish,
   revision,
+  revisionPath,
+  validate,
+  versions,
 } from './p04-support.js';
 import type { Harness } from './p04-support.js';
+import {
+  currentFacts,
+  originalFacts,
+  reschedule,
+  rescheduling,
+  rows,
+} from './p04-rescheduling-support.js';
 /** Real migrated PostgreSQL + production services. Only legacy/expired history fixtures use explicit SQL. */
 describe(
   'R6 shared calendar has one authoritative person/court owner across every source',
@@ -334,6 +350,221 @@ describe(
         expect(await calendarOwners('court:' + t.court.id, w.start, w.end)).toBe(1);
       }
     }, 90000);
+    async function trainingSchedule(
+      t: Awaited<ReturnType<typeof trainingDraft>>,
+      startsAt = t.start,
+      windowStart = t.start,
+    ) {
+      const f = await frozen(h, h.owner, h.teams, {
+        startDate: new Date(Date.parse(windowStart) - 86400000).toISOString().slice(0, 10),
+        endDate: new Date(Date.parse(t.end) + 86400000).toISOString().slice(0, 10),
+      });
+      let draft = await revision(h.api, h.owner, f, [t.court], {
+        courtWindows: [
+          {
+            courtId: t.court.id,
+            startsAt: windowStart,
+            endsAt: new Date(Date.parse(t.end) + 3 * 3600000).toISOString(),
+          },
+        ],
+      });
+      draft = await allocate(h.api, h.owner, draft, fullAllocations(draft, t.court, startsAt));
+      return draft;
+    }
+    async function trainingReservations(t: { id: string }) {
+      return rows(
+        h,
+        'SELECT r.* FROM training_resource_reservations r JOIN training_sessions s ON s.id=r.session_id WHERE s.cohort_id=$1',
+        [t.id],
+      );
+    }
+    async function previewTrainingSchedule(draft: ScheduleRevisionData, preserveAssigned: boolean) {
+      return call(h.api, 'post', `${revisionPath(h.owner.orgId, draft.id)}/optimization-preview`, {
+        cookie: h.owner.cookie,
+        body: { ...versions(draft), preserveAssigned },
+      });
+    }
+    it('training occupancy is visible before publication and optimization stays read-only and private', async () => {
+      const w = window(),
+        t = await trainingDraft(w.start, w.end);
+      await publishTraining(t);
+      const draft = await trainingSchedule(t);
+      const detail = await training.detail(t.id);
+      const enrollmentId = (
+        await training.enroll(h.leader.cookie, t.id, {
+          commandId: randomUUID(),
+          payerUserId: h.leader.id,
+          learnerUserId: h.leader.id,
+          adultConfirmed: true,
+          acceptedTermsId: detail.termsId,
+        })
+      ).enrollmentId;
+      // The existing expired-history fixture changes only the deadline. A read
+      // must not run the canonical cleanup or release any learner reservation.
+      await h.api.pool.query(
+        "UPDATE training_enrollments SET hold_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+        [enrollmentId],
+      );
+      const enrollmentBefore = await rows(h, 'SELECT * FROM training_enrollments WHERE id=$1', [
+        enrollmentId,
+      ]);
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT active FROM training_resource_reservations WHERE enrollment_id=$1',
+            [enrollmentId],
+          )
+        ).rows,
+      ).toEqual([expect.objectContaining({ active: true })]);
+      const trainingBefore = await trainingReservations(t);
+      const before = await originalFacts(h, draft.eventId);
+      const eventBefore = await rows(h, 'SELECT * FROM events WHERE id=$1', [draft.eventId]);
+      const occupied = (
+        await h.api.pool.query<{ starts_at: Date; ends_at: Date }>(
+          'SELECT r.starts_at,r.ends_at FROM training_resource_reservations r JOIN training_sessions s ON s.id=r.session_id WHERE s.cohort_id=$1 AND r.resource_key=$2 AND r.active',
+          [t.id, 'court:' + t.court.id],
+        )
+      ).rows[0]!;
+      const validation = await validate(h.api, h.owner, draft);
+      expect(validation.valid).toBe(false);
+      expect(validation.conflicts).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'COURT_OVERLAP',
+            external: true,
+            resourceId: t.court.id,
+            fixtureKeys: [draft.fixtures[0]!.fixtureKey],
+          }),
+        ]),
+      );
+      const preserved = await previewTrainingSchedule(draft, true);
+      expect(preserved.status).toBe(422);
+      expect(preserved.body.error.code).toBe('SCHEDULE_FIXED_ALLOCATION_CONFLICT');
+      const preview = data<ScheduleOptimizationPreview>(
+        await previewTrainingSchedule(draft, false),
+      );
+      expect(preview.status).toBe('COMPLETE');
+      expect(preview.allocations).toHaveLength(draft.fixtures.length);
+      for (const allocation of preview.allocations) {
+        expect(allocation.courtId).toBe(t.court.id);
+        expect(Date.parse(allocation.startsAt!)).toBeGreaterThanOrEqual(occupied.ends_at.getTime());
+      }
+      for (const response of [validation, preview])
+        for (const privateId of [t.id, coachId, courseId, enrollmentId, h.owner.id, h.leader.id])
+          expect(JSON.stringify(response)).not.toContain(privateId);
+      expect(await originalFacts(h, draft.eventId)).toEqual(before);
+      expect(await rows(h, 'SELECT * FROM events WHERE id=$1', [draft.eventId])).toEqual(
+        eventBefore,
+      );
+      expect(await trainingReservations(t)).toEqual(trainingBefore);
+      expect(
+        await rows(h, 'SELECT * FROM training_enrollments WHERE id=$1', [enrollmentId]),
+      ).toEqual(enrollmentBefore);
+      expect(
+        (
+          await h.api.pool.query(
+            'SELECT count(*)::int AS n FROM court_reservations WHERE match_id IN(SELECT id FROM published_matches WHERE event_id=$1)',
+            [draft.eventId],
+          )
+        ).rows[0].n,
+      ).toBe(0);
+    }, 60000);
+    it('suspended training still blocks a draft; canonical cancellation releases only inactive history', async () => {
+      const w = window(),
+        t = await trainingDraft(w.start, w.end);
+      await publishTraining(t);
+      const draft = await trainingSchedule(t);
+      let detail = await training.detail(t.id);
+      await training.cohortCommand(
+        h.owner.cookie,
+        t.id,
+        command('SUSPEND', detail.version, { reason: '合成暂停保留原课次与场地' }),
+      );
+      expect((await validate(h.api, h.owner, draft)).valid).toBe(false);
+      expect((await previewTrainingSchedule(draft, true)).status).toBe(422);
+      detail = await training.detail(t.id);
+      await training.cohortCommand(
+        h.owner.cookie,
+        t.id,
+        command('CANCEL', detail.version, { reason: '合成取消课次并释放其预约' }),
+      );
+      const history = await trainingReservations(t);
+      expect(history.length).toBeGreaterThan(0);
+      expect(history.every((r) => (r as { active: boolean }).active === false)).toBe(true);
+      expect((await validate(h.api, h.owner, draft)).valid).toBe(true);
+      expect(
+        data<ScheduleOptimizationPreview>(await previewTrainingSchedule(draft, true)),
+      ).toMatchObject({
+        status: 'COMPLETE',
+        preservedCount: draft.fixtures.length,
+      });
+      expect(await trainingReservations(t)).toEqual(history);
+    }, 60000);
+    it('training calendar validation includes persisted buffers and keeps interval ends exclusive', async () => {
+      const w = window(),
+        t = await trainingDraft(w.start, w.end);
+      await publishTraining(t);
+      const occupied = (
+        await h.api.pool.query<{ starts_at: Date; ends_at: Date }>(
+          'SELECT r.starts_at,r.ends_at FROM training_resource_reservations r JOIN training_sessions s ON s.id=r.session_id WHERE s.cohort_id=$1 AND r.resource_key=$2 AND r.active',
+          [t.id, 'court:' + t.court.id],
+        )
+      ).rows[0]!;
+      expect(occupied.starts_at.getTime()).toBe(Date.parse(w.start) - 15 * 60000);
+      expect(occupied.ends_at.getTime()).toBe(Date.parse(w.end) + 15 * 60000);
+      const beforeTraining = new Date(Date.parse(w.start) - 2 * 3600000).toISOString();
+      let draft = await trainingSchedule(t, beforeTraining, beforeTraining);
+      for (const [start, valid] of [
+        [new Date(Date.parse(w.start) - 3600000).toISOString(), false],
+        [new Date(Date.parse(w.end) + 60000).toISOString(), false],
+        [new Date(occupied.starts_at.getTime() - 3600000).toISOString(), true],
+        [occupied.ends_at.toISOString(), true],
+      ] as const) {
+        draft = await allocate(h.api, h.owner, draft, fullAllocations(draft, t.court, start));
+        const result = await validate(h.api, h.owner, draft);
+        expect(result.valid, start).toBe(valid);
+        if (!valid)
+          expect(result.conflicts).toEqual(
+            expect.arrayContaining([
+              expect.objectContaining({ code: 'COURT_OVERLAP', external: true }),
+            ]),
+          );
+      }
+    }, 60000);
+    it('formal rescheduling reports a locatable training conflict before any canonical fact changes', async () => {
+      const w = window(),
+        t = await trainingDraft(w.start, w.end);
+      const originalStart = new Date(Date.parse(w.start) - 2 * 3600000).toISOString();
+      const draft = await trainingSchedule(t, originalStart, originalStart);
+      data(await publish(h.api, h.owner, draft));
+      await publishTraining(t);
+      const matches = data<ScheduledMatchData[]>(
+        await call(h.api, 'get', matchesPath(h.owner.orgId, draft.eventId), {
+          cookie: h.owner.cookie,
+        }),
+      );
+      const current = await rescheduling(h, matches[0]!.id);
+      const before = await currentFacts(h, draft.eventId, current.match.id);
+      const trainingBefore = await trainingReservations(t);
+      const rejected = await reschedule(h, current, {
+        courtId: t.court.id,
+        startsAt: w.start,
+      });
+      expect(rejected.status).toBe(409);
+      expect(rejected.body.error.code).toBe('SCHEDULE_CONFLICT');
+      expect(rejected.body.error.details.conflicts).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'COURT_OVERLAP',
+            external: true,
+            resourceId: t.court.id,
+            fixtureKeys: [current.match.fixtureKey],
+          }),
+        ]),
+      );
+      expect(await currentFacts(h, draft.eventId, current.match.id)).toEqual(before);
+      expect(await trainingReservations(t)).toEqual(trainingBefore);
+    }, 60000);
     it('a legacy player insert releases an expired learner hold without reviving or rewriting its history', async () => {
       const w = window(),
         t = await trainingDraft(w.start, w.end);

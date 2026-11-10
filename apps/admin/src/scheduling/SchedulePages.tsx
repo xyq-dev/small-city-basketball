@@ -506,6 +506,7 @@ function EventSchedulingContent({
                 </section>
               )}
               <ScheduleEditor
+                ownerKey={`${context.organizationId}:${context.userId}`}
                 key={`${revision.id}:${revision.version}:${revision.eventVersion}`}
                 revision={revision}
                 courts={data.courts}
