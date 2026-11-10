@@ -60,3 +60,9 @@ root扩大唯一作者范围以修PR54自动审查P2：AccountClosureService原P
 ## 2026-11-11 真实PG参数类型失败的最小修复
 
 root取得CI42785649875 api129726178241归档：PostgreSQL实报`inconsistent types deduced for parameter $5 at character 160`共16次，对应12个人工及4个Native失败。原因已实证：period INSERT同一$5既由duration_days整数目标推断又显式double precision。仅该SQL改为存储和计算两处均显式$5::integer，再与86400::double precision相乘，统一原始参数类型而保留固定秒数及bd7d4d5精确start规则。现有真实PG正向付费/回调/续费会直接回归本路径，不新增镜像实现的字符串测试。diff通过；真实PG及HTTPS500消除仍须root新headCI实证，未提前声称通过。旧C22 suite beforeAll500由另一owner独立诊断，本提交不改C22。
+
+## 2026-11-11 安全过期续单替换的资格修复
+
+root回报source33fcc/CI254 api129736786828真实隔离会员16+Native9已25/25通过，证明先前$5、精度、退款/并发/闭单修复的该范围实测成功；完整恢复与新CI另待。之后自动审查发现P2：membershipAdmission虽已把无渠道、无待审且DB截止的PENDING续单分类为expirable，children重查却又当live child，导致永远到不了create安全过期旧单步骤。只在children SQL的LIMIT前排除本次同mutex下expirable ID集合；不放宽Native/人工待审、DBguard、CAS、唯一索引或原create插前EXPIRED路径。
+
+新增第17项会员PG：真实API双人付款父期，只seed合法未付短截止续单，按DBclock真实等待3秒截止；GET必须不改订单/审计，安全单可再次下单，POST仅把旧status/version改EXPIRED并创建唯一新PENDING，重放不另建、旧报价/parent/渠道/审查事实不变。Native启动标记对照为合成未付admission夹具（不冒充真实商户/SDK），人工待审对照走原SUBMIT_PAYMENT；两者截止后仍拒替换且原事实不变。新增PG未本机执行，待root新headCI；本机24/24会员领域源码测试、API typecheck、格式/diff通过。无需Migration，不动root共享文件。

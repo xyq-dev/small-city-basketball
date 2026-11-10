@@ -21,7 +21,18 @@ import { createApi } from '../src/app.js';
 import { hashPassword } from '../src/security.js';
 import { activateEventCommerce } from '../src/commerce/activation.js';
 import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
-import { ORIGIN, PASSWORD, RUN_ID, call, createEvent, data, error, login } from './support.js';
+import { makeMembershipQuote } from '../src/commerce/membership-domain.js';
+import {
+  ORIGIN,
+  PASSWORD,
+  RUN_ID,
+  call,
+  createEvent,
+  data,
+  error,
+  eventually,
+  login,
+} from './support.js';
 import type { User } from './support.js';
 import {
   allocate,
@@ -912,6 +923,144 @@ describe(
         remainingEvents: 3,
       });
     });
+
+    test('only a safely expired unstarted renewal can be replaced; reads do not mutate and Native or manual-review claims remain blocked', async () => {
+      const plan = (
+        await h.api.pool.query('SELECT * FROM billing_plan_versions WHERE id=$1', [plans[0]!.id])
+      ).rows[0];
+      for (const claim of ['UNSTARTED', 'NATIVE', 'MANUAL_REVIEW'] as const) {
+        const actor = await owner(`expiry-${claim.toLowerCase()}`);
+        const paid = await pay(actor);
+        const parent = await period(actor, paid.id);
+        const id = randomUUID();
+        // Only a legitimate initial unpaid quote with a short lifetime is seeded.
+        // Its parent payment is real HTTP/independent review; no paid time is rewritten.
+        await h.api.pool.query(
+          `INSERT INTO billing_orders(id,org_id,event_id,plan_id,quote,amount_fen,currency,out_trade_no,created_by,created_at,expires_at,target_kind,membership_previous_period_id)
+           VALUES($1,$2,NULL,$3,$4::jsonb,$5,'CNY',$6,$7,statement_timestamp(),statement_timestamp()+interval '3 seconds','ORG_MEMBERSHIP',$8)`,
+          [
+            id,
+            actor.orgId,
+            plans[0]!.id,
+            JSON.stringify(makeMembershipQuote(plan, parent.id)),
+            plans[0]!.amountFen,
+            id.replaceAll('-', ''),
+            actor.id,
+            parent.id,
+          ],
+        );
+        if (claim === 'NATIVE') {
+          // An unresolved original Native initiation is an admission fixture, not a merchant call.
+          await h.api.pool.query(
+            "UPDATE billing_orders SET channel='WECHAT_NATIVE',provider_started_at=clock_timestamp(),version=version+1 WHERE id=$1",
+            [id],
+          );
+        } else if (claim === 'MANUAL_REVIEW') {
+          data(
+            await operatorCommand(id, 'SUBMIT_PAYMENT', h.otherOwner, {
+              externalReference: `m02-expiry-review-${randomUUID()}`,
+            }),
+          );
+        }
+        await eventually(
+          async () =>
+            (
+              await h.api.pool.query(
+                'SELECT expires_at<=clock_timestamp() AS expired FROM billing_orders WHERE id=$1',
+                [id],
+              )
+            ).rows[0].expired as boolean,
+          (expired) => expired,
+          'Synthetic renewal quote must really expire under the database clock',
+          15000,
+        );
+        const original = (await h.api.pool.query('SELECT * FROM billing_orders WHERE id=$1', [id]))
+          .rows[0];
+        const reviews = (
+          await h.api.pool.query('SELECT * FROM billing_payment_reviews WHERE order_id=$1', [id])
+        ).rows;
+        const audits = (
+          await h.api.pool.query(
+            'SELECT count(*)::integer AS count FROM audit_logs WHERE org_id=$1',
+            [actor.orgId],
+          )
+        ).rows[0].count;
+        const visible = await workspace(actor);
+        expect(visible.canPurchase).toBe(claim === 'UNSTARTED');
+        expect(
+          (await h.api.pool.query('SELECT * FROM billing_orders WHERE id=$1', [id])).rows[0],
+        ).toEqual(original);
+        expect(
+          (
+            await h.api.pool.query(
+              'SELECT count(*)::integer AS count FROM audit_logs WHERE org_id=$1',
+              [actor.orgId],
+            )
+          ).rows[0].count,
+        ).toBe(audits);
+        const input = {
+          commandId: randomUUID(),
+          planId: plans[0]!.id,
+          expectedMembershipVersion: visible.membershipVersion,
+        };
+        const response = await call(h.api, 'post', `${memberPath(actor.orgId)}/orders`, {
+          cookie: actor.cookie,
+          body: input,
+        });
+        if (claim === 'UNSTARTED') {
+          const replacement = data<SoftwareMembershipCommandResult>(response).order;
+          expect(replacement.id).not.toBe(id);
+          expect(replacement.status).toBe('PENDING_PAYMENT');
+          expect(replacement.quote.previousPeriodId).toBe(parent.id);
+          const replay = data<SoftwareMembershipCommandResult>(
+            await call(h.api, 'post', `${memberPath(actor.orgId)}/orders`, {
+              cookie: actor.cookie,
+              body: input,
+            }),
+          );
+          expect(replay.order.id).toBe(replacement.id);
+          expect(
+            (await h.api.pool.query('SELECT * FROM billing_orders WHERE id=$1', [id])).rows[0],
+          ).toEqual({
+            ...original,
+            status: 'EXPIRED',
+            version: original.version + 1,
+          });
+          expect(
+            (
+              await h.api.pool.query(
+                'SELECT id,status FROM billing_orders WHERE membership_previous_period_id=$1 ORDER BY id',
+                [parent.id],
+              )
+            ).rows,
+          ).toEqual(
+            [
+              { id, status: 'EXPIRED' },
+              { id: replacement.id, status: 'PENDING_PAYMENT' },
+            ].sort((a, b) => a.id.localeCompare(b.id)),
+          );
+        } else {
+          error(response, 409);
+          expect(response.body.error.code).toBe('MEMBERSHIP_PURCHASE_BLOCKED');
+          expect(
+            (await h.api.pool.query('SELECT * FROM billing_orders WHERE id=$1', [id])).rows[0],
+          ).toEqual(original);
+          expect(
+            (
+              await h.api.pool.query(
+                'SELECT id FROM billing_orders WHERE membership_previous_period_id=$1',
+                [parent.id],
+              )
+            ).rows,
+          ).toEqual([{ id }]);
+        }
+        expect(
+          (await h.api.pool.query('SELECT * FROM billing_payment_reviews WHERE order_id=$1', [id]))
+            .rows,
+        ).toEqual(reviews);
+        expect((await period(actor, paid.id)).state).toBe('ACTIVE');
+      }
+    }, 30000);
 
     test('the real revocation CHECK rejects null, short and overlong reasons inside an otherwise valid guarded refund window', async () => {
       const actor = await owner('revoke-check');

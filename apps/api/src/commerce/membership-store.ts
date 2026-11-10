@@ -106,9 +106,9 @@ export async function membershipAdmission(c: PoolClient, orgId: string) {
     } else {
       const children = (
         await c.query<Row>(
-          `SELECT id FROM billing_orders WHERE membership_previous_period_id=$1 AND
+          `SELECT id FROM billing_orders WHERE membership_previous_period_id=$1 AND NOT(id=ANY($2::uuid[])) AND
          (status IN('PENDING_PAYMENT','PAID','REFUND_PENDING') OR (status='EXPIRED' AND (channel IS NOT NULL OR EXISTS(SELECT 1 FROM billing_payment_reviews r WHERE r.order_id=billing_orders.id AND r.status='PENDING_REVIEW')))) LIMIT 1`,
-          [active.id],
+          [active.id, expirable.map((o) => o.id)],
         )
       ).rows;
       if (children.length) {

@@ -55,3 +55,10 @@ MEMBER01最新1c2eac2：CI250原API/production/account成功，admin外部字体
 source33fcc573/tree50880f0，CI254/run42788738030/api129736786828已真实执行并通过会员16+合成签名Native9共25项；原16个付款500未再出现，同秒相邻期/微秒续费/关闭证明/退款/并发扣额覆盖已实测。该结果仍非真实商户资金。之后R6培训19项beforeAll因SETUP_CLOSED被跳过，整个API仍失败：root将新会员组前置到R6前，改变了原空库首次初始化顺序。不是应用业务回归或可以忽略的测试；现把新会员组放回原R6完成后、旧大组前，保留所有验证/精确exclude且不重复跑；不修改生产初始化或R6测试以迁就顺序。此单一workflow修复需要新head完整CI，旧254其他成功项不冒充新head通过。052已隔离执行；生产仍未执行。
 
 最后源码787/1457、微信1638+1平台skip、CLI12、storage11+1UID限制skip全部通过；完整format/type/build/pure6通过。legacy独立复核再次按真实83ae四文件逆变换逐字节相同，所有商业核心修复无未解决源码P1/P2。C22真实升级、注销新增PG、真实HTTPS付款/完整恢复与新会员桌面手机尚待新head。root普通merge M1 ancestry25b0298与前树0a051ac内容零diff，只解决两处本轮文档append末尾冲突且逐字节保持自身完整文档；代码没有丢失或改变。
+
+
+## 2026-11-10T17:27:57+08:00 续费过期报价P2最小修复
+
+自动审查r4523119657指出已分类expirable的安全未启动PENDING续单仍被children当有效后续期，导致POST在安全expire步骤前被拒。core8e46a77已整合d501b60：同mutex下children LIMIT前仅排除本次expirable IDs；Native/待审仍严格阻断，GET不清单，POST仍旧单先EXPIRED后建唯一新单、全部原报价/parent/审计保持。新增第17会员PG，连同Native9为26项，另有注销1；3秒合法初始pending DB真截止/读取零写/替换及重放与未决对照已编写。作者24领域/type/format通过，独立精确delta审查无P1/P2允许新head完整CI；新PG17还未执行，不冒称成功。
+
+旧sourceb6d8/treeae0ee5a/CI255/run42789367210已通过会员25/R6147、账号安全，以及production129738666697的21runtimePG、真实HTTPS收款/原RR激活/同卷换IP重建、精确第二PG228表完整恢复/旧授权隔离/owned清理；root已读完成日志，原confirm500已实测消除。旧大PG组和新Web浏览器在该轮尚未结束；旧成功不能代替含续费新条件的最终head。补全中央API_CONTRACTS与DATA_MODEL中的真实软件会员入口/来源、秒/微秒规则与隔离/生产边界，不只放单卡。

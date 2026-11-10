@@ -116,3 +116,6 @@ Migration052已编写，runtime table仅SELECT/INSERT及两撤销审计列UPDATE
 ### Native秒级证明与精确购买期起点
 
 MEMBER02精度修正：微信成功时间只有秒精度，原paid_at必须保留验签后的原始证明。首次Native购买期在SQL取GREATEST(paid_at,created_at)，避免新单在旧期结束同秒时因向下取整重叠；最多归一化不到一秒，不改原付款时间或旧购买期。线下仍paid_at；续费严格接parent.ends_at。SQL读取/传递保留PostgreSQL微秒，30/365天仍固定86400秒；不能经浏览器或JS Date毫秒截断后授权。原单/period及其相邻性在真实PG验收中比较，源码已编写不表示真实商户验收。
+
+
+续费报价恢复：无渠道、无待审且DB确认截止的未启动续单可安全替换；GET仅投影不写，POST同锁先把原单标EXPIRED再创建同父期唯一新单，保留原报价/parent/历史。进入Native或独立收款核对的原续单不得自动替换，必须处理原单。

@@ -4,7 +4,7 @@
 
 在原商业账本上已实现机构30/365天购买期、全期跨届额度、受控手动续费、原单付款/退款及独立复核、首次正式发布原子激活和已激活赛事到期继续；没有另建比赛状态、钱包或支付系统。专业建议199/1699元对应3/36届（每届16队128场），商业399/3399元对应10/120届（每届32队512场）；年费额度按全期统计、不每月重置。新增响应式Web `/membership` 和独立平台 `/platform/membership`，月年切换、不可变报价核对、订单/用量与错误恢复；用户已确认的[Figma稿](design/MEMBERSHIP_UI.md)保持。原生微信新会员页仍为设计，未实现；球迷基础观赛免费。
 
-root集成分支feat/MEMBER02-integration；已整合冻结后端abe7629、24项新增真实PG测试源码、Web补丁cec4803（含平台独立无Router/显式Native原单关闭）。052仅已编写，001–051原文保持；最小ACL/readiness/完整恢复驱动及真实API桌面手机ENFORCED验收已接入。完整源码、隔离PG/浏览器/第二PG恢复与最终高风险复核正在验收，不把源码测试当真实资金或生产可用。当前尚未创建最终PR或合并；远端早期检查点df90e4b不含root最终接线。详见[任务](tasks/MEMBER02.md)、[交接](handoffs/MEMBER02.md)。
+[PR54](https://github.com/xyq-dev/small-city-basketball/pull/54)集成分支feat/MEMBER02-integration已同步并保留main已验M1祖先。会员核心、响应式Web、原Native闭单、52迁移最小ACL与完整恢复已实现；旧候选b6d8的会员25/R6147/账号安全/生产模式HTTPS完整第二PG恢复通过。新安全过期续单替换P2已复审并新增真实PG第17，会员组将为26项，另注销1；需新head完整CI，未把旧成功冒充最终验收。052已隔离执行、生产未执行；001–051保持。当前未合并PR54、未在正式目录发布价格、未做真实商户或原生微信新会员页验收。详见[任务](tasks/MEMBER02.md)、[交接](handoffs/MEMBER02.md)。
 
 ## MEMBER01（2026-11-10 17:09 Asia/Shanghai，DONE / MAIN；生产未更新）
 

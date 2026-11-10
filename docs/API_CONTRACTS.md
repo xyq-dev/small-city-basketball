@@ -1,5 +1,24 @@
 # API 契约
 
+## MEMBER02：机构软件会员（候选实现；生产未更新）
+
+实际源码合同：[membership.d.ts](../packages/contracts/membership.d.ts)。复用原CommerceService、付款/退款账本、幂等与权限，不从会员身份派生平台、机构管理、记分或确认角色。
+
+| 方法与路径 | 身份及最小输入 | 返回/约束 |
+|---|---|---|
+| GET `/v1/orgs/:orgId/software-membership` | 当前机构读取权 | 机构计划、原订单、购买期、原激活分配；跨机构404，无会话401 |
+| GET `/v1/platform/software-membership` | 原有效平台运营身份 | 平台范围；不借机构owner提升平台权限 |
+| POST 机构路径`/orders` | 机构owner；commandId/planId/expectedMembershipVersion | 只依据可售版本与全量资格创建原订单，eventId=null；不收前端金额/额度/有效期 |
+| POST 机构或平台路径`/orders/:orderId/commands` | 原买方/独立平台操作员规则；commandId/type/expectedOrderVersion及操作所需原因/引用 | 复用原收款/独立确认/原单查单/原退款，未知不制造成功 |
+| POST 平台路径`/plans` | 平台运营；commandId/code/name/CNY amountFen/tier/durationDays/reason | PRO或BUSINESS、30或365天，固定服务端额度；不可变版本 |
+| POST 平台路径`/plans/:planId/commands` | 平台运营；原SET_AVAILABILITY及catalog版本CAS | 下架不停止已付款购买期 |
+
+`serverTime`是DB核对时间；`membershipVersion`为全量准入事实的确定性CAS摘要，不是授权。`purchasablePlanIds`仅为当前服务端允许的版本，写入仍加锁重核。`historyTruncated`分别标plans/orders/periods/allocations；用量/资格不从返回的有限列表推算。会员订单`activated`表示至少一届实际消费，不表示“已付款/已到购买期”。所有金额为整数分，客户端建议模板不会发布正式价格。
+
+买方新增显式`CLOSE_NATIVE`（原因4—500字）及可选`canCloseNative`能力；可选字段缺失视为无此动作。先验签查原单，SUCCESS正常结算；NOTPAY才对原单发关单，再验签查CLOSED才取消。204ACK/超时/未知/PAYERROR/REVOKED不释放；取消终态不能被后来矛盾SUCCESS重开。Native QR需另一设备微信扫一扫，未提供小程序本机JSAPI会员付款。原EVENT报价JSON/hash形状不加会员默认字段，旧commerce工作空间按目标分流。
+
+购买期为固定秒数半开窗口，年费全期36/120届不月重置；仅同档同周期末30天内预购一个连续下期。首次Native起点SQL取原paid_at与原created_at较晚者以处理秒精度，原付款证明不改；线下为原付款，续费精确接parent.end（保PG微秒）。已激活届不随会员到期停赛；首次发布扣一次，原按届先使用，未决原款先解决。详见[规则](design/MEMBERSHIP_SYSTEM.md)及[实际验收](tasks/MEMBER02.md)。
+
 ## MEMBER01：按届权益的只读状态投影（分支候选，非订阅）
 
 原GET `/v1/orgs/:orgId/commerce` 和平台commerce工作空间的每个entitlement新增可选成对 `activationStatus`、`statusCheckedAt`；值READY/EXPIRED/ACTIVATED/REVOKED/REFUND_PENDING/UNAVAILABLE，来自同一查询的原订单/激活/撤销事实及DB clock。相等截止即过期；已激活赛事不因截止过期停用。字段是读快照，不是授权令牌，首次发布仍走原锁定激活guard。旧API缺少两字段时客户端不推断READY；未知/不成对或与READY/EXPIRED/ACTIVATED事实矛盾则拒绝响应。模板草稿无需新端点，发布与采购仍走原不可变套餐/订单。没有新增月年会员API或Migration。[规则](design/MEMBERSHIP_SYSTEM.md)、[交接](handoffs/MEMBER01.md)。
