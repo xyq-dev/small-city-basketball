@@ -189,6 +189,8 @@ import {
   CommerceCapabilitiesController,
   OrgCommerceController,
   PlatformCommerceController,
+  OrgSoftwareMembershipController,
+  PlatformSoftwareMembershipController,
   WechatPayNotificationController,
   SCB_COMMERCE_SERVICE,
 } from './commerce/controller.js';
@@ -663,6 +665,8 @@ export async function createApi(
         CommerceCapabilitiesController,
         OrgCommerceController,
         PlatformCommerceController,
+        OrgSoftwareMembershipController,
+        PlatformSoftwareMembershipController,
         WechatPayNotificationController,
         OrganizationController,
         HealthController,

@@ -74,6 +74,8 @@ export interface CommerceOrderData {
     canRequestRefund: boolean;
     canCreateNative: boolean;
     canQueryPayment: boolean;
+    /** Additive MEMBER02: resolve only the original unpaid Native trade through verified close/query. */
+    canCloseNative?: boolean;
     canSubmitPayment: boolean;
     canConfirmPayment: boolean;
     canRejectPayment: boolean;
@@ -153,7 +155,7 @@ export interface CreateCommerceOrderInput {
 }
 export interface CommerceOrderCommandInput {
   commandId: string;
-  type: 'CANCEL' | 'REQUEST_REFUND' | 'CREATE_NATIVE' | 'QUERY_PAYMENT';
+  type: 'CANCEL' | 'REQUEST_REFUND' | 'CREATE_NATIVE' | 'QUERY_PAYMENT' | 'CLOSE_NATIVE';
   expectedOrderVersion: number;
   reason?: string;
 }

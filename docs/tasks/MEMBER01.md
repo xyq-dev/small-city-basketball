@@ -31,3 +31,10 @@ backend作者b25c081、admin作者b3dea11已精确cherry-pick至root38d3bd1/f0f8
 PR53 source e4efe958、tree913585f与测试merge bb84ed5 tree相同。首轮CI42776355191 account-security成功，production完成HTTPS/浏览器4项及同卷重建后在第二PG恢复比较失败：新增statusCheckedAt每次读取变化，被原commerce facts当持久字段比较。不是随机网络失败，也不是已通过恢复。root仅在原scripts/c05-commerce-check.mjs的entitlements比较剔除此读取时刻，activationStatus、金额/报价、来源、额度、撤销/激活与对账仍精确比较；新增3回归+既有打包1共4通过，12种业务事实改变仍被识别。独立delta审查无P1/P2，同意新head全量CI，不用旧head成功项替代。未修改应用guard/原Migration/Dockerfile/依赖。
 
 完整admin712与API1425由root在冻结e4本地独立执行通过；format/type/build通过。新Figma原生可编辑交付已完成，root独立看过桌面/两手机/状态PNG，见design/MEMBERSHIP_UI.md；4族23变体、13状态。月年代码仍未实现，未可售。下一步同步恢复修复与Figma文档，按新head完整隔离CI；不部署生产。
+
+
+## 2026-11-10 16:25 Asia/Shanghai 浏览器可访问标签修复
+
+第二轮source ac6f700/treee542fe9、CI42777587768：admin/account-security/production成功，包含完整HTTPS与第二PG恢复；API新旧PG及原生HTTP、真实重启通过，最终桌面commerce新增模板步骤在Playwright getByLabel精确查找隐式select标签时超时，桌面11通过/1失败，手机尚未运行，不能报告API浏览器全通过。缺陷是新select没有明确aria-label，真实浏览器名称不能按预期匹配；root添加明确“按届建议模板”可访问名，既有组件流程改用同名combobox语义定位，保持选择/覆盖确认/零POST与原发布所有断言。无支付/权限/迁移变化。第三轮需要同新head完整CI；旧head成功只保留为历史，不当最终证据。
+
+用户本轮继续要求完整月年会员，MEMBER02已在独立scb-membership开发并同步合同检查点，所有新迁移/交易/新UI验证与本卡分开，不从第一卡成功推定第二卡通过。

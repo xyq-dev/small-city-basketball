@@ -289,7 +289,12 @@ export class WechatPayClient {
     const message = Buffer.concat([Buffer.from(`${ts}\n${nonce}\n`), body, Buffer.from('\n')]);
     if (!verify('RSA-SHA256', message, key, signatureBytes)) throw signatureError();
   }
-  private async request(method: 'GET' | 'POST', path: string, payload?: unknown): Promise<Json> {
+  private async request(
+    method: 'GET' | 'POST',
+    path: string,
+    payload?: unknown,
+    closeNoContent = false,
+  ): Promise<Json> {
     const body = payload === undefined ? '' : JSON.stringify(payload);
     const headers = this.signedHeaders(method, path, body);
     let response: Response, raw: Buffer;
@@ -311,6 +316,10 @@ export class WechatPayClient {
       );
     }
     this.verifyBody(raw, response.headers);
+    if (closeNoContent && response.ok) {
+      if (response.status !== 204 || raw.length !== 0) throw resultError();
+      return {};
+    }
     const result = jsonBody(raw);
     if (!response.ok)
       throw new ApiError(502, 'PAYMENT_PROVIDER_REJECTED', '支付服务未接受请求，请核查原订单', {
@@ -472,6 +481,16 @@ export class WechatPayClient {
       currency: 'CNY',
       successTime,
     };
+  }
+  /** A signed 204 acknowledges close dispatch; callers must query CLOSED before releasing admission. */
+  async closeOrder(no: string): Promise<void> {
+    no = outTradeNo(no);
+    await this.request(
+      'POST',
+      `/v3/pay/transactions/out-trade-no/${encodeURIComponent(no)}/close`,
+      { mchid: this.config.merchantId },
+      true,
+    );
   }
   async queryOrder(no: string): Promise<WechatPayOrder> {
     no = outTradeNo(no);

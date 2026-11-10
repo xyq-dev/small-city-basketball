@@ -23,3 +23,21 @@ root唯一集成人；工作树`/workspace/scratch/dc6a786e1a31/scb-membership`�
 root持contracts/index、app.ts/App.tsx接线、runtime manifest、恢复/CI与汇总。backend独立scb-member02-core：commerce contracts/newmembership contract、commerce backend、新052、直接PG/源码测试及自己handoff。Web实现先读已确认Figma并冻结契约，独立路径/工作树，禁止同写shared文件。现阶段先交付网页后台及手机响应式真正机构会员采购/管理；原生小程序稿已设计，原生新路由另卡接续，不冒称原生实现。
 
 沿用已核验开发/测试/commit/普通同步/PR/审查后merge与隔离Migration授权。禁止生产部署/生产Migration/真实资金或账号、付费/新外部凭据/公网端口/force/改001–051；新增Migration必须单列编写/隔离执行状态。先审模型和锁序再写高风险代码，最终同head必要CI及独立审查。
+
+
+## 2026-11-10 16:10 Asia/Shanghai 契约/设计冻结及root接线检查点
+
+独立设计预审已通过68157b4；合同及元数据c8e0693已整合为6447f81/e54b566，index出口9c266fa。远端任务分支feat/MEMBER02-integration已同步合同检查点e0de988/tree4c61f4e（与本地9c树一致），不是main或完整应用实现。新模型仅一张software_membership_periods，消费直接用原不可变event_commercial_activations扩MEMBERSHIP+period来源，不另建重复账本。原EVENT报价/hash保持原形；会员eventId=null诚实类型，旧workspace按目标分流；history四域截断明确，资格/CAS/余量查全量事实。锁序与NULL唯一/周期重叠/退款及续费约束已审，实际代码与PG待验。
+
+root已本地编写app.ts两新controller复用原service接线、App.tsx会员入口、RuntimeApp独立平台会员入口和原发布确认扣额提示（新增这些共享允许路径及其直接测试）；前后端实现者文件尚待整合，不提前声称完整编译。新增member02-membership-check HTTP恢复driver：原双人收款产生真实购买期，停售版本后由核心RR首次发布自然消耗1届，原订单与周期/余量/激活来源在实际PG重启/完整恢复后精确比对；原对账将member订单一并计入CSV，不改变全量总账。新helper打包白名单、三suite owned隔离runner、独立ENFORCED浏览器config已编写，测试文件与实际流程尚待完成。无生产变更。
+
+直接恢复/包装pure6项已通过；新tree首次运行旧c05 pure测试因新工作树尚无编译dist而导入失败，已将仅capture才用的编译平台权限helper延后到安全目标验证后的动态导入，未改权限业务；相同6项重验通过。没有用其他tree编译产物冒充新源码。root/作者均使用各自node_modules链接目录，contracts明确指本树，未改共享依赖或包锁。052由core开发中，仅编写、未执行。
+
+MEMBER01 PR53 ac6f700 CI42777587768已account/admin/production成功，api仍原生真实HTTP步骤；不拿其成功当MEMBER02新迁移已验收。下一步整合core/Web、精确ACL和真实E2E、完整检查及新PR隔离CI。
+
+
+## 2026-11-10 16:17 Asia/Shanghai 核心首批已整合、审查修复中
+
+root已整合core a08750f→e156e3f、SQL括号修复5aba1a9→4fabb62、撤销reason NULL约束6096470→9f70b87。052新增1个period表、两个trigger函数，已补真实最小runtime manifest（SELECT/INSERT，UPDATE仅revoked_at/revoke_reason；trigger EXECUTE[]）、app.ts同CommerceService controller接线、readiness完整52期望及新表/函数断言。root API类型/构建通过；实际完整API源码126文件1452项通过，不是PG验收。原先51计数/缺manifest两失败已按新增实际schema修正，没有放宽集合/权限比较。
+
+独立高风险审查仍进行中：已发现并修真实SQL括号P1与NULL审计reason P2；仍有会员付款精度/人工确认跨到期窗口P2交唯一core作者修复，未批准新候选。052仅编写，未在本机或生产执行；作者独立真实PG文件和合成回调仍在写。root Web路由/发布确认提示、恢复driver/打包/新ENFORCED浏览器suite在本地未提交，依赖Web作者整合后才完整类型/构建。不要误报完整可用。

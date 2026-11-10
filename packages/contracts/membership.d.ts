@@ -73,6 +73,7 @@ export interface SoftwareMembershipAllocationData {
 }
 export interface SoftwareMembershipWorkspaceData {
   orgId: string | null;
+  organizationName: string | null;
   mode: CommerceMode;
   platformOperator: boolean;
   realPaymentEnabled: boolean;
@@ -88,7 +89,7 @@ export interface SoftwareMembershipWorkspaceData {
   periods: SoftwareMembershipPeriodData[];
   allocations: SoftwareMembershipAllocationData[];
   /** Quotas above are whole-period SQL counts, never calculated from these bounded history lists. */
-  historyTruncated: { orders: boolean; periods: boolean; allocations: boolean };
+  historyTruncated: { plans: boolean; orders: boolean; periods: boolean; allocations: boolean };
 }
 export interface CreateSoftwareMembershipPlanInput {
   commandId: string;

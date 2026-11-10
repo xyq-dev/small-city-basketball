@@ -384,6 +384,7 @@ describe(
         ).rows[0]!.n,
       ).toBe(0);
       const o = await paid(registration.event.id);
+      if (o.eventId === null) throw new Error('Per-event checkout must retain its real event');
       data<EventSchedulingData>(await publish(h.api, h.owner, draft));
       const activation = (
         await h.api.pool.query('SELECT * FROM event_commercial_activations WHERE event_id=$1', [

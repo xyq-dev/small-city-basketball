@@ -60,6 +60,18 @@ describe('commercial quotes and strict fixed-point commands', () => {
     expect(
       parseBuyerCommand({ commandId: id, type: 'CREATE_NATIVE', expectedOrderVersion: 2 }),
     ).toMatchObject({ type: 'CREATE_NATIVE' });
+    expect(
+      parseBuyerCommand({
+        commandId: id,
+        type: 'CLOSE_NATIVE',
+        expectedOrderVersion: 2,
+        reason: '核对关闭原扫码订单',
+      }),
+    ).toMatchObject({ type: 'CLOSE_NATIVE' });
+    expect(() =>
+      parseBuyerCommand({ commandId: id, type: 'CLOSE_NATIVE', expectedOrderVersion: 2 }),
+    ).toThrow();
+
     for (const body of [
       { commandId: id, type: 'REQUEST_REFUND', expectedOrderVersion: 2 },
       { commandId: id, type: 'CANCEL', expectedOrderVersion: 0, reason: '合成取消原因' },

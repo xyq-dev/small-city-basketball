@@ -182,7 +182,9 @@ describe('commercial workflow UI (unit responses, no payment gateway)', () => {
         .getByRole('heading', { name: '按届基础版 v1' })
         .closest('article')!;
       expect(originalCard).toHaveTextContent('99.00');
-      fireEvent.change(screen.getByLabelText('按届建议模板'), { target: { value: code } });
+      fireEvent.change(screen.getByRole('combobox', { name: '按届建议模板' }), {
+        target: { value: code },
+      });
       fireEvent.click(screen.getByRole('button', { name: '载入建议模板' }));
       let dialog = screen.getByRole('dialog', { name: '确认覆盖本地套餐草稿' });
       expect(within(dialog).getByText(/不会发布套餐、扣费或开通权益/)).toBeVisible();

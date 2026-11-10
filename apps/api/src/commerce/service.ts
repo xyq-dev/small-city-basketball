@@ -35,6 +35,25 @@ import type {
 import { checkPayment } from './domain.js';
 import { createCommerceSystemActor } from './system-actor.js';
 import { entitlementActivationStatus } from './entitlement-status.js';
+import type {
+  SoftwareMembershipWorkspaceData,
+  SoftwareMembershipOrderData,
+  SoftwareMembershipCommandResult,
+} from '../../../../packages/contracts/membership.js';
+import {
+  parseMembershipPlan,
+  parseMembershipOrder,
+  membershipLimits,
+  makeMembershipQuote,
+  membershipPeriodState,
+  membershipPaymentIsTimely,
+} from './membership-domain.js';
+import {
+  membershipMutex,
+  membershipPlanDto,
+  membershipAdmission,
+  membershipUsage,
+} from './membership-store.js';
 type Row = Record<string, any>;
 interface Context {
   actor: Actor;
@@ -72,19 +91,23 @@ export class CommerceService extends ApplicationService {
   }
   private async order(c: PoolClient, id: string, ctx: Context | null, write = true): Promise<Row> {
     const ref = (
-      await c.query<Row>('SELECT org_id,event_id FROM billing_orders WHERE id=$1', [resourceId(id)])
+      await c.query<Row>('SELECT org_id,event_id,target_kind FROM billing_orders WHERE id=$1', [
+        resourceId(id),
+      ])
     ).rows[0];
     if (!ref || (ctx?.org && ref.org_id !== ctx.org.orgId)) throw notFound();
     if (
       !(
         await c.query(
-          `SELECT id FROM organizations WHERE id=$1 AND status='ACTIVE' FOR ${ctx && !ctx.org ? 'UPDATE' : 'SHARE'}`,
+          `SELECT id FROM organizations WHERE id=$1 AND status='ACTIVE' FOR ${ref.target_kind === 'ORG_MEMBERSHIP' ? 'SHARE' : ctx && !ctx.org ? 'UPDATE' : 'SHARE'}`,
           [ref.org_id],
         )
       ).rowCount
     )
       throw notFound();
+    if (ref.target_kind === 'ORG_MEMBERSHIP') await membershipMutex(c, ref.org_id);
     if (
+      ref.target_kind === 'EVENT' &&
       !(
         await c.query(
           `SELECT id FROM events WHERE org_id=$1 AND id=$2 FOR ${write ? 'UPDATE' : 'SHARE'}`,
@@ -95,7 +118,7 @@ export class CommerceService extends ApplicationService {
       throw notFound();
     const o = (
       await c.query<Row>(
-        `SELECT o.*,e.name AS event_name FROM billing_orders o JOIN events e ON e.org_id=o.org_id AND e.id=o.event_id WHERE o.id=$1 FOR ${write ? 'UPDATE' : 'SHARE'} OF o`,
+        `SELECT o.*,COALESCE(e.name,o.quote->>'name') AS event_name FROM billing_orders o LEFT JOIN events e ON e.org_id=o.org_id AND e.id=o.event_id WHERE o.id=$1 FOR ${write ? 'UPDATE' : 'SHARE'} OF o`,
         [id],
       )
     ).rows[0];
@@ -183,15 +206,18 @@ export class CommerceService extends ApplicationService {
     const refund =
       (await c.query<Row>('SELECT * FROM billing_refunds WHERE order_id=$1', [o.id])).rows[0] ??
       null;
-    const activated = !!(
-      await c.query('SELECT event_id FROM event_commercial_activations WHERE event_id=$1', [
-        o.event_id,
-      ])
-    ).rowCount;
-    return { review, refund, activated };
+    const membership = o.target_kind === 'ORG_MEMBERSHIP' ? await membershipUsage(c, o.id) : null;
+    const activated = membership
+      ? membership.used > 0
+      : !!(
+          await c.query('SELECT event_id FROM event_commercial_activations WHERE event_id=$1', [
+            o.event_id,
+          ])
+        ).rowCount;
+    return { review, refund, activated, membership };
   }
   private async orderDto(c: PoolClient, o: Row, ctx: Context): Promise<CommerceOrderData> {
-    const { review: r, refund: f, activated } = await this.latest(c, o);
+    const { review: r, refund: f, activated, membership } = await this.latest(c, o);
     const buyer = ctx.org?.role === 'ORG_OWNER' && ctx.org.orgId === o.org_id;
     const independent = await this.independent(c, ctx, o, r?.submitted_by ?? null);
     const refundIndependent = await this.independent(c, ctx, o, f?.submitted_by ?? null);
@@ -240,7 +266,8 @@ export class CommerceService extends ApplicationService {
       capabilities: {
         canCancel:
           !!buyer && o.status === 'PENDING_PAYMENT' && !o.channel && r?.status !== 'PENDING_REVIEW',
-        canRequestRefund: !!buyer && o.status === 'PAID' && !activated && !f,
+        canRequestRefund:
+          !!buyer && o.status === 'PAID' && !activated && !f && !membership?.liveSuccessor,
         canCreateNative:
           !!buyer &&
           pending &&
@@ -250,15 +277,28 @@ export class CommerceService extends ApplicationService {
           this.mode === 'ENFORCED' &&
           this.payments.enabled,
         canQueryPayment: !!buyer && o.channel === 'WECHAT_NATIVE' && this.payments.enabled,
+        canCloseNative:
+          !!buyer &&
+          o.channel === 'WECHAT_NATIVE' &&
+          !o.paid_at &&
+          !activated &&
+          ['PENDING_PAYMENT', 'EXPIRED'].includes(o.status) &&
+          r?.status !== 'PENDING_REVIEW' &&
+          this.payments.enabled,
         canSubmitPayment: ctx.operator && pending && !o.channel && r?.status !== 'PENDING_REVIEW',
         canConfirmPayment: independent && pending && r?.status === 'PENDING_REVIEW',
         canRejectPayment: independent && r?.status === 'PENDING_REVIEW',
         canSubmitRefund:
           ctx.operator &&
           !activated &&
+          !membership?.liveSuccessor &&
           ['PAID', 'REFUND_PENDING'].includes(o.status) &&
           (!f || f.status === 'REQUESTED'),
-        canConfirmRefund: refundIndependent && !activated && f?.status === 'PENDING_REVIEW',
+        canConfirmRefund:
+          refundIndependent &&
+          !activated &&
+          !membership?.liveSuccessor &&
+          f?.status === 'PENDING_REVIEW',
         canRejectRefund: refundIndependent && !activated && f?.status === 'PENDING_REVIEW',
       },
     };
@@ -284,13 +324,13 @@ export class CommerceService extends ApplicationService {
       const ctx = await this.context(c, cookie, orgId, platform);
       const plans = (
         await c.query<Row>(
-          'SELECT * FROM billing_plan_versions WHERE ($1::boolean OR available) ORDER BY code,version DESC LIMIT 100',
+          "SELECT * FROM billing_plan_versions WHERE target_kind='EVENT' AND ($1::boolean OR available) ORDER BY code,version DESC LIMIT 100",
           [platform],
         )
       ).rows.map((p) => this.planDto(p));
       const orders = (
         await c.query<Row>(
-          'SELECT o.*,e.name AS event_name FROM billing_orders o JOIN events e ON e.org_id=o.org_id AND e.id=o.event_id WHERE ($1::uuid IS NULL OR o.org_id=$1) ORDER BY o.created_at DESC,o.id DESC LIMIT 100',
+          "SELECT o.*,e.name AS event_name FROM billing_orders o JOIN events e ON e.org_id=o.org_id AND e.id=o.event_id WHERE o.target_kind='EVENT' AND ($1::uuid IS NULL OR o.org_id=$1) ORDER BY o.created_at DESC,o.id DESC LIMIT 100",
           [ctx.org?.orgId ?? null],
         )
       ).rows;
@@ -302,14 +342,14 @@ export class CommerceService extends ApplicationService {
       ).rows;
       const activations = (
         await c.query<Row>(
-          'SELECT * FROM event_commercial_activations WHERE ($1::uuid IS NULL OR org_id=$1) ORDER BY activated_at DESC LIMIT 100',
+          "SELECT * FROM event_commercial_activations WHERE source<>'MEMBERSHIP' AND ($1::uuid IS NULL OR org_id=$1) ORDER BY activated_at DESC LIMIT 100",
           [ctx.org?.orgId ?? null],
         )
       ).rows;
       const events = ctx.org
         ? (
             await c.query<Row>(
-              'SELECT id,name,version,status FROM events WHERE org_id=$1 ORDER BY created_at DESC,id DESC LIMIT 100',
+              "SELECT id,name,version,status FROM events e WHERE org_id=$1 AND NOT EXISTS(SELECT 1 FROM event_commercial_activations a WHERE a.event_id=e.id AND a.source='MEMBERSHIP') ORDER BY created_at DESC,id DESC LIMIT 100",
               [ctx.org.orgId],
             )
           ).rows
@@ -365,6 +405,300 @@ export class CommerceService extends ApplicationService {
       };
     });
   }
+  private async membershipOrderDto(
+    c: PoolClient,
+    o: Row,
+    ctx: Context,
+  ): Promise<SoftwareMembershipOrderData> {
+    if (o.target_kind !== 'ORG_MEMBERSHIP' || o.event_id !== null) throw notFound();
+    const dto = await this.orderDto(c, o, ctx);
+    return { ...dto, eventId: null, quote: o.quote as SoftwareMembershipOrderData['quote'] };
+  }
+  private membershipResult(result: CommerceCommandResult): SoftwareMembershipCommandResult {
+    if (
+      result.order.eventId !== null ||
+      (result.order.quote as Record<string, any>).scope !== 'ORG_MEMBERSHIP'
+    )
+      fail('MEMBERSHIP_SOURCE_INVALID', '会员订单类型不一致，请核对原订单');
+    return {
+      ...result,
+      order: {
+        ...result.order,
+        eventId: null,
+        quote: result.order.quote as SoftwareMembershipOrderData['quote'],
+      },
+    };
+  }
+  async membershipWorkspace(
+    cookie: string | undefined,
+    orgId?: string,
+    platform = false,
+  ): Promise<SoftwareMembershipWorkspaceData> {
+    return this.transaction(async (c) => {
+      if (!orgId && !platform) throw forbidden();
+      const ctx = await this.context(c, cookie, orgId, platform);
+      if (ctx.org) await membershipMutex(c, ctx.org.orgId);
+      const admission = ctx.org ? await membershipAdmission(c, ctx.org.orgId) : null;
+      const now =
+        admission?.now ??
+        (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!.now;
+      const planRows = (
+        await c.query<Row>(
+          "SELECT * FROM billing_plan_versions WHERE target_kind='ORG_MEMBERSHIP' AND ($1::boolean OR available) ORDER BY created_at DESC,id DESC LIMIT 101",
+          [platform],
+        )
+      ).rows;
+      const plans = planRows.slice(0, 100).map(membershipPlanDto);
+      const orderRows = (
+        await c.query<Row>(
+          `SELECT o.*,o.quote->>'name' AS event_name FROM billing_orders o WHERE o.target_kind='ORG_MEMBERSHIP' AND ($1::uuid IS NULL OR o.org_id=$1) ORDER BY o.created_at DESC,o.id DESC LIMIT 101`,
+          [ctx.org?.orgId ?? null],
+        )
+      ).rows;
+      const periodRows = (
+        await c.query<Row>(
+          `SELECT p.*,o.status AS order_status,o.quote->>'name' AS plan_name,o.membership_previous_period_id,
+         (SELECT count(*)::integer FROM event_commercial_activations a WHERE a.membership_period_id=p.id) AS used_events
+         FROM software_membership_periods p JOIN billing_orders o ON o.org_id=p.org_id AND o.id=p.order_id
+         WHERE ($1::uuid IS NULL OR p.org_id=$1) ORDER BY p.starts_at DESC,p.id DESC LIMIT 101`,
+          [ctx.org?.orgId ?? null],
+        )
+      ).rows;
+      const allocationRows = (
+        await c.query<Row>(
+          `SELECT a.*,e.name AS event_name FROM event_commercial_activations a JOIN events e ON e.org_id=a.org_id AND e.id=a.event_id
+         WHERE a.source='MEMBERSHIP' AND ($1::uuid IS NULL OR a.org_id=$1) ORDER BY a.activated_at DESC,a.event_id DESC LIMIT 101`,
+          [ctx.org?.orgId ?? null],
+        )
+      ).rows;
+      const purchasablePlanIds =
+        ctx.org?.role === 'ORG_OWNER' && this.mode === 'ENFORCED' && admission?.allowed
+          ? plans
+              .filter(
+                (p) =>
+                  p.available &&
+                  (!admission.previous ||
+                    (p.tier === admission.previous.tier &&
+                      p.durationDays === admission.previous.duration_days)),
+              )
+              .map((p) => p.id)
+          : [];
+      const name = ctx.org
+        ? (
+            await c.query<{ name: string }>('SELECT name FROM organizations WHERE id=$1', [
+              ctx.org.orgId,
+            ])
+          ).rows[0]!.name
+        : null;
+      await this.ensureFreshSession(c, ctx.actor);
+      return {
+        orgId: ctx.org?.orgId ?? null,
+        organizationName: name,
+        mode: this.mode,
+        platformOperator: ctx.operator,
+        realPaymentEnabled: this.mode === 'ENFORCED' && this.payments.enabled,
+        canPurchase: purchasablePlanIds.length > 0,
+        serverTime: iso(now),
+        membershipVersion:
+          admission?.membershipVersion ??
+          digest({ purpose: 'PLATFORM_READ', orders: orderRows.map((o) => [o.id, o.version]) }),
+        purchaseNotice:
+          this.mode !== 'ENFORCED'
+            ? '当前未启用软件收费，不创建会员订单。'
+            : ctx.org?.role !== 'ORG_OWNER'
+              ? '仅机构负责人可采购；会员不会提升管理或记分权限。'
+              : (admission?.notice ?? '平台查看不包含机构采购权限。'),
+        purchasablePlanIds,
+        plans,
+        orders: await Promise.all(
+          orderRows.slice(0, 100).map((o) => this.membershipOrderDto(c, o, ctx)),
+        ),
+        periods: periodRows.slice(0, 100).map((p) => ({
+          id: p.id,
+          orgId: p.org_id,
+          orderId: p.order_id,
+          planName: p.plan_name,
+          tier: p.tier,
+          durationDays: p.duration_days,
+          eventLimit: p.event_limit,
+          usedEvents: p.used_events,
+          remainingEvents: p.event_limit - p.used_events,
+          maxTeams: p.max_teams,
+          maxMatches: p.max_matches,
+          startsAt: iso(p.starts_at),
+          endsAt: iso(p.ends_at),
+          previousPeriodId: p.membership_previous_period_id,
+          revokedAt: p.revoked_at ? iso(p.revoked_at) : null,
+          state: membershipPeriodState({
+            revokedAt: p.revoked_at,
+            orderStatus: p.order_status,
+            startsAt: p.starts_at,
+            endsAt: p.ends_at,
+            now,
+            usedEvents: p.used_events,
+            eventLimit: p.event_limit,
+          }),
+        })),
+        allocations: allocationRows.slice(0, 100).map((a) => ({
+          eventId: a.event_id,
+          eventName: a.event_name,
+          orgId: a.org_id,
+          periodId: a.membership_period_id,
+          source: 'MEMBERSHIP',
+          participantCount: a.participant_count,
+          expectedMatchCount: a.expected_match_count,
+          activatedAt: iso(a.activated_at),
+        })),
+        historyTruncated: {
+          plans: planRows.length > 100,
+          orders: orderRows.length > 100,
+          periods: periodRows.length > 100,
+          allocations: allocationRows.length > 100,
+        },
+      };
+    });
+  }
+  async createMembershipPlan(cookie: string | undefined, raw: unknown) {
+    const input = parseMembershipPlan(raw);
+    return this.transaction(async (c) => {
+      const ctx = await this.context(c, cookie, undefined, true);
+      const previous = await this.begin(c, ctx.actor, input.commandId, {
+        action: 'CREATE_MEMBERSHIP_PLAN',
+        ...input,
+      });
+      if (previous) return previous;
+      await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `scb-plan:${input.code}`,
+      ]);
+      const limits = membershipLimits(input.tier, input.durationDays);
+      const p = (
+        await c.query<Row>(
+          `INSERT INTO billing_plan_versions(id,code,version,name,currency,amount_fen,max_teams,max_matches,valid_days,created_by,target_kind,membership_tier,membership_events)
+         SELECT $1,$2,COALESCE(MAX(version),0)+1,$3,'CNY',$4,$5,$6,$7,$8,'ORG_MEMBERSHIP',$9,$10 FROM billing_plan_versions WHERE code=$2 RETURNING *`,
+          [
+            randomUUID(),
+            input.code,
+            input.name,
+            input.amountFen,
+            limits.maxTeams,
+            limits.maxMatches,
+            input.durationDays,
+            ctx.actor.user.id,
+            input.tier,
+            limits.eventLimit,
+          ],
+        )
+      ).rows[0]!;
+      await this.audit(
+        c,
+        ctx.actor.user.id,
+        null,
+        'commerce.membership_plan.created',
+        'billing_plan',
+        p.id,
+        { code: p.code, version: p.version, reason: input.reason },
+      );
+      const result = { plan: membershipPlanDto(p) };
+      await this.ensureFreshSession(c, ctx.actor);
+      await this.finish(c, ctx.actor, input.commandId, result);
+      return result;
+    });
+  }
+  async membershipPlanCommand(cookie: string | undefined, id: string, raw: unknown) {
+    return this.planCommand(cookie, id, raw, true);
+  }
+  async createMembershipOrder(
+    cookie: string | undefined,
+    orgId: string,
+    raw: unknown,
+  ): Promise<SoftwareMembershipCommandResult> {
+    const input = parseMembershipOrder(raw);
+    return this.transaction(async (c) => {
+      const ctx = await this.context(c, cookie, orgId);
+      if (ctx.org?.role !== 'ORG_OWNER') throw forbidden();
+      if (this.mode !== 'ENFORCED') fail('COMMERCE_DISABLED', '当前未启用软件收费', 409);
+      const previous = await this.begin(c, ctx.actor, input.commandId, {
+        action: 'CREATE_MEMBERSHIP_ORDER',
+        orgId,
+        ...input,
+      });
+      if (previous) return this.membershipResult(previous as unknown as CommerceCommandResult);
+      await membershipMutex(c, orgId);
+      const admission = await membershipAdmission(c, orgId);
+      if (admission.membershipVersion !== input.expectedMembershipVersion)
+        fail('VERSION_CONFLICT', '会员资料已变化，请重新读取后核对');
+      if (!admission.allowed) fail('MEMBERSHIP_PURCHASE_BLOCKED', admission.notice);
+      const plans = (
+        await c.query<Row>(
+          "SELECT * FROM billing_plan_versions WHERE target_kind='ORG_MEMBERSHIP' AND available ORDER BY created_at DESC,id DESC LIMIT 100",
+        )
+      ).rows;
+      const p = plans.find((p) => p.id === input.planId);
+      if (!p) throw notFound();
+      // Take the immutable selected catalog row after resolving real organization admission.
+      const lockedPlan = (
+        await c.query<Row>(
+          "SELECT * FROM billing_plan_versions WHERE id=$1 AND target_kind='ORG_MEMBERSHIP' AND available FOR SHARE",
+          [p.id],
+        )
+      ).rows[0];
+      if (!lockedPlan) throw notFound();
+      if (
+        admission.previous &&
+        (lockedPlan.membership_tier !== admission.previous.tier ||
+          lockedPlan.valid_days !== admission.previous.duration_days)
+      )
+        fail('MEMBERSHIP_RENEWAL_MISMATCH', '有效期内仅可同等级、同周期续费下一期');
+      for (const old of admission.expirable)
+        await c.query(
+          "UPDATE billing_orders SET status='EXPIRED',version=version+1 WHERE id=$1 AND status='PENDING_PAYMENT'",
+          [old.id],
+        );
+      const id = randomUUID(),
+        quote = makeMembershipQuote(lockedPlan, admission.previous?.id ?? null);
+      const o = (
+        await c.query<Row>(
+          `INSERT INTO billing_orders(id,org_id,event_id,plan_id,quote,amount_fen,currency,out_trade_no,created_by,expires_at,target_kind,membership_previous_period_id)
+         VALUES($1,$2,NULL,$3,$4::jsonb,$5,'CNY',$6,$7,clock_timestamp()+interval '24 hours','ORG_MEMBERSHIP',$8) RETURNING *`,
+          [
+            id,
+            orgId,
+            lockedPlan.id,
+            JSON.stringify(quote),
+            lockedPlan.amount_fen,
+            id.replaceAll('-', ''),
+            ctx.actor.user.id,
+            admission.previous?.id ?? null,
+          ],
+        )
+      ).rows[0]!;
+      o.event_name = quote.name;
+      await this.audit(
+        c,
+        ctx.actor.user.id,
+        orgId,
+        'commerce.membership_order.created',
+        'billing_order',
+        id,
+        { quoteHash: quote.hash, previousPeriodId: quote.previousPeriodId },
+      );
+      const result = { order: await this.membershipOrderDto(c, o, ctx), nativePayment: null };
+      await this.ensureFreshSession(c, ctx.actor);
+      await this.finish(c, ctx.actor, input.commandId, result);
+      return result;
+    });
+  }
+  async membershipBuyerCommand(
+    cookie: string | undefined,
+    orgId: string,
+    id: string,
+    raw: unknown,
+  ) {
+    return this.membershipResult(await this.buyerCommand(cookie, orgId, id, raw, 'ORG_MEMBERSHIP'));
+  }
+  async membershipPlatformCommand(cookie: string | undefined, id: string, raw: unknown) {
+    return this.membershipResult(await this.platformCommand(cookie, id, raw, 'ORG_MEMBERSHIP'));
+  }
   async createPlan(cookie: string | undefined, raw: unknown) {
     const input = parsePlan(raw);
     return this.transaction(async (c) => {
@@ -408,7 +742,7 @@ export class CommerceService extends ApplicationService {
       return result;
     });
   }
-  async planCommand(cookie: string | undefined, id: string, raw: unknown) {
+  async planCommand(cookie: string | undefined, id: string, raw: unknown, membership = false) {
     const input = objectInput(raw, [
       'commandId',
       'type',
@@ -423,14 +757,18 @@ export class CommerceService extends ApplicationService {
       expected = expectedVersion(input.expectedCatalogVersion);
     return this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, undefined, true);
-      const previous = await this.begin(c, ctx.actor, command, { action: 'PLAN', id, ...input });
+      const previous = await this.begin(c, ctx.actor, command, {
+        action: membership ? 'MEMBERSHIP_PLAN' : 'PLAN',
+        id,
+        ...input,
+      });
       if (previous) return previous;
       const p = (
         await c.query<Row>('SELECT * FROM billing_plan_versions WHERE id=$1 FOR UPDATE', [
           resourceId(id),
         ])
       ).rows[0];
-      if (!p) throw notFound();
+      if (!p || p.target_kind !== (membership ? 'ORG_MEMBERSHIP' : 'EVENT')) throw notFound();
       version(p.catalog_version, expected);
       const updated = (
         await c.query<Row>(
@@ -447,7 +785,7 @@ export class CommerceService extends ApplicationService {
         id,
         { available: input.available, reason: why },
       );
-      const result = { plan: this.planDto(updated) };
+      const result = { plan: membership ? membershipPlanDto(updated) : this.planDto(updated) };
       await this.ensureFreshSession(c, ctx.actor);
       await this.finish(c, ctx.actor, command, result);
       return result;
@@ -509,7 +847,7 @@ export class CommerceService extends ApplicationService {
       }
       const p = (
         await c.query<Row>(
-          'SELECT * FROM billing_plan_versions WHERE id=$1 AND available FOR SHARE',
+          "SELECT * FROM billing_plan_versions WHERE id=$1 AND available AND target_kind='EVENT' FOR SHARE",
           [input.planId],
         )
       ).rows[0];
@@ -583,19 +921,58 @@ export class CommerceService extends ApplicationService {
         [o.id, channel, paidAt, transactionId],
       )
     ).rows[0]!;
-    await c.query(
-      "INSERT INTO event_entitlements(id,org_id,event_id,order_id,max_teams,max_matches,valid_until) VALUES($1,$2,$3,$4,$5,$6,$7::timestamptz+($8::integer*interval '1 day'))",
-      [
-        randomUUID(),
-        o.org_id,
-        o.event_id,
-        o.id,
-        o.quote.maxTeams,
-        o.quote.maxMatches,
-        paidAt,
-        o.quote.validDays,
-      ],
-    );
+    if (o.target_kind === 'ORG_MEMBERSHIP') {
+      const databaseNow = (await c.query<{ now: Date }>('SELECT clock_timestamp() AS now')).rows[0]!
+        .now;
+      // Native success_time has second precision; a payment in the creation second is valid.
+      if (
+        !membershipPaymentIsTimely({
+          paidAt,
+          createdAt: new Date(o.created_at),
+          expiresAt: new Date(o.expires_at),
+          now: databaseNow,
+          channel,
+        })
+      )
+        fail('PAYMENT_PROOF_MISMATCH', '会员支付时间不属于原订单有效支付窗口');
+      const startsAt = o.membership_previous_period_id
+        ? (
+            await c.query<Row>(
+              'SELECT ends_at FROM software_membership_periods WHERE org_id=$1 AND id=$2 FOR UPDATE',
+              [o.org_id, o.membership_previous_period_id],
+            )
+          ).rows[0]?.ends_at
+        : paidAt;
+      if (!startsAt) fail('MEMBERSHIP_SOURCE_INVALID', '会员续费来源无效，请核对原单');
+      await c.query(
+        `INSERT INTO software_membership_periods(id,org_id,order_id,tier,duration_days,event_limit,max_teams,max_matches,starts_at,ends_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::timestamptz,$9::timestamptz+($5::double precision*86400)*interval '1 second')`,
+        [
+          randomUUID(),
+          o.org_id,
+          o.id,
+          o.quote.tier,
+          o.quote.durationDays,
+          o.quote.eventLimit,
+          o.quote.maxTeams,
+          o.quote.maxMatches,
+          startsAt,
+        ],
+      );
+    } else
+      await c.query(
+        "INSERT INTO event_entitlements(id,org_id,event_id,order_id,max_teams,max_matches,valid_until) VALUES($1,$2,$3,$4,$5,$6,$7::timestamptz+($8::integer*interval '1 day'))",
+        [
+          randomUUID(),
+          o.org_id,
+          o.event_id,
+          o.id,
+          o.quote.maxTeams,
+          o.quote.maxMatches,
+          paidAt,
+          o.quote.validDays,
+        ],
+      );
     await this.systemAudit(c, o, 'commerce.order.paid', {
       channel,
       amountFen: o.amount_fen,
@@ -635,7 +1012,9 @@ export class CommerceService extends ApplicationService {
   }
   private async requestRefund(c: PoolClient, o: Row, ctx: Context, why: string): Promise<Row> {
     if (o.status !== 'PAID') fail('INVALID_ORDER_STATE', '仅已付款且未退款订单可申请全额退款');
-    const { refund, activated } = await this.latest(c, o);
+    const { refund, activated, membership } = await this.latest(c, o);
+    if (membership?.liveSuccessor)
+      fail('MEMBERSHIP_SUCCESSOR_EXISTS', '本期已有有效续期订单，请先核对下一期，不能级联退款');
     if (activated) fail('EVENT_ALREADY_ACTIVATED', '已激活赛事不自动退款，请联系平台处理履约争议');
     if (refund) fail('REFUND_ALREADY_EXISTS', '原订单已有退款记录，请核对原退款');
     const id = randomUUID();
@@ -668,19 +1047,21 @@ export class CommerceService extends ApplicationService {
     orgId: string,
     id: string,
     raw: unknown,
+    target: 'EVENT' | 'ORG_MEMBERSHIP' = 'EVENT',
   ): Promise<CommerceCommandResult> {
     const input = parseBuyerCommand(raw);
     const prepared = await this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, orgId);
       if (ctx.org?.role !== 'ORG_OWNER') throw forbidden();
       const previous = await this.begin(c, ctx.actor, input.commandId, {
-        action: 'BUYER_ORDER',
+        action: target === 'EVENT' ? 'BUYER_ORDER' : 'MEMBERSHIP_BUYER_ORDER',
         orgId,
         id,
         ...input,
       });
       if (previous) return { result: previous as unknown as CommerceCommandResult };
       let o = await this.order(c, id, ctx);
+      if (o.target_kind !== target) throw notFound();
       version(o.version, input.expectedOrderVersion);
       const state = await this.latest(c, o);
       if (input.type === 'CANCEL') {
@@ -749,8 +1130,18 @@ export class CommerceService extends ApplicationService {
             ).rows[0]!,
             event_name: o.event_name,
           };
-        } else if (o.channel !== 'WECHAT_NATIVE')
-          fail('INVALID_ORDER_STATE', '该订单没有微信交易可查询');
+        } else {
+          if (o.channel !== 'WECHAT_NATIVE')
+            fail('INVALID_ORDER_STATE', '该订单没有微信交易可查询');
+          if (
+            input.type === 'CLOSE_NATIVE' &&
+            (o.paid_at ||
+              state.activated ||
+              !['PENDING_PAYMENT', 'EXPIRED'].includes(o.status) ||
+              state.review?.status === 'PENDING_REVIEW')
+          )
+            fail('INVALID_ORDER_STATE', '仅原未付款扫码订单可核对并关闭，请查询原订单');
+        }
         await this.audit(
           c,
           ctx.actor.user.id,
@@ -782,8 +1173,32 @@ export class CommerceService extends ApplicationService {
             expiresAt: iso(o.expires_at),
           })
         : null;
-    const payment =
-      network === 'QUERY_PAYMENT' ? await this.payments.queryOrder(o.out_trade_no) : null;
+    let payment =
+      network === 'QUERY_PAYMENT' || network === 'CLOSE_NATIVE'
+        ? await this.payments.queryOrder(o.out_trade_no)
+        : null;
+    if (network === 'CLOSE_NATIVE') {
+      if (!payment) fail('PAYMENT_PROVIDER_RESULT_UNKNOWN', '原扫码订单待核对');
+      checkPayment(o, payment);
+      if (payment.state === 'NOTPAY') {
+        await this.payments.closeOrder(o.out_trade_no);
+        payment = await this.payments.queryOrder(o.out_trade_no);
+        checkPayment(o, payment);
+      }
+      if (payment.state !== 'CLOSED' && payment.state !== 'SUCCESS')
+        fail(
+          'PAYMENT_PROVIDER_RESULT_UNKNOWN',
+          '尚未核实原扫码订单已关闭，请查询原订单，不要重复发起付款',
+        );
+    }
+    const closeNotice = (current: Row) =>
+      network !== 'CLOSE_NATIVE'
+        ? undefined
+        : current.paid_at
+          ? '原扫码订单已核实付款，未关闭或重复扣费，请核对当前服务权益。'
+          : current.status === 'CANCELLED'
+            ? '原扫码订单已由支付平台核实关闭，可以重新核对购买。'
+            : '原扫码订单状态待核对，请查询原订单。';
     await this.transaction(async (c) => {
       let current = await this.order(c, id, null);
       if (native) {
@@ -806,35 +1221,55 @@ export class CommerceService extends ApplicationService {
           payment,
           `query-payment:${payment.transactionId ?? current.out_trade_no}`,
         );
-        if (['CLOSED', 'REVOKED', 'PAYERROR'].includes(payment.state) && !current.paid_at)
+        if (payment.state === 'CLOSED' && !current.paid_at) {
+          // Only the signed original provider query can close Native admission. A local
+          // timeout, transport error, PAYERROR or client cancellation is not this proof.
+          await this.notificationRecord(
+            c,
+            `query-payment-closed:${current.out_trade_no}:CLOSED`,
+            'PAYMENT',
+            current,
+            payment,
+          );
+          if (current.status !== 'CANCELLED') current = await this.bump(c, current, 'CANCELLED');
+        } else if (['REVOKED', 'PAYERROR'].includes(payment.state) && !current.paid_at)
           current = await this.bump(c, current, 'EXPIRED');
       }
-      await this.finish(c, ctx.actor, input.commandId, await this.result(c, current, ctx, native));
+      await this.finish(
+        c,
+        ctx.actor,
+        input.commandId,
+        await this.result(c, current, ctx, native, closeNotice(current)),
+      );
     });
     return this.transaction(async (c) => {
       const fresh = await this.context(c, cookie, orgId);
       const current = await this.order(c, id, fresh, false);
       await this.ensureFreshSession(c, fresh.actor);
-      return this.result(c, current, fresh, native);
+      return this.result(c, current, fresh, native, closeNotice(current));
     });
   }
   async platformCommand(
     cookie: string | undefined,
     id: string,
     raw: unknown,
+    target: 'EVENT' | 'ORG_MEMBERSHIP' = 'EVENT',
   ): Promise<CommerceCommandResult> {
     const input = parsePlatformCommand(raw);
     const prepared = await this.transaction(async (c) => {
       const ctx = await this.context(c, cookie, undefined, true);
       const previous = await this.begin(c, ctx.actor, input.commandId, {
-        action: 'PLATFORM_ORDER',
+        action: target === 'EVENT' ? 'PLATFORM_ORDER' : 'MEMBERSHIP_PLATFORM_ORDER',
         id,
         ...input,
       });
       if (previous) return { result: previous as unknown as CommerceCommandResult };
       let o = await this.order(c, id, ctx);
+      if (o.target_kind !== target) throw notFound();
       version(o.version, input.expectedOrderVersion);
-      let { review, refund, activated } = await this.latest(c, o);
+      let { review, refund, activated, membership } = await this.latest(c, o);
+      if (['SUBMIT_REFUND', 'CONFIRM_REFUND'].includes(input.type) && membership?.liveSuccessor)
+        fail('MEMBERSHIP_SUCCESSOR_EXISTS', '本期已有有效续期来源，请先核对下一期');
       if (input.type === 'SUBMIT_PAYMENT') {
         if (
           o.status !== 'PENDING_PAYMENT' ||
@@ -1038,7 +1473,9 @@ export class CommerceService extends ApplicationService {
   private async refundSettled(c: PoolClient, o: Row, why: string): Promise<Row> {
     if (o.status === 'REFUNDED') return o;
     await c.query(
-      'UPDATE event_entitlements SET revoked_at=clock_timestamp(),revoke_reason=$2 WHERE order_id=$1 AND revoked_at IS NULL',
+      o.target_kind === 'ORG_MEMBERSHIP'
+        ? 'UPDATE software_membership_periods SET revoked_at=clock_timestamp(),revoke_reason=$2 WHERE order_id=$1 AND revoked_at IS NULL'
+        : 'UPDATE event_entitlements SET revoked_at=clock_timestamp(),revoke_reason=$2 WHERE order_id=$1 AND revoked_at IS NULL',
       [o.id, why],
     );
     const updated = await this.bump(c, o, 'REFUNDED');

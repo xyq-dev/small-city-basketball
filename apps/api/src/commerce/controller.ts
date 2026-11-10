@@ -69,3 +69,51 @@ export class WechatPayNotificationController {
     await this.service.notification(r.rawBody, r.headers);
   }
 }
+
+@Controller('v1/orgs/:orgId/software-membership')
+export class OrgSoftwareMembershipController {
+  constructor(@Inject(SCB_COMMERCE_SERVICE) private readonly service: CommerceService) {}
+  @Get() async workspace(@Req() r: ApiRequest, @Param('orgId') org: string) {
+    return envelope(r, await this.service.membershipWorkspace(r.headers.cookie, org));
+  }
+  @Post('orders') @HttpCode(200) async create(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Body() body: unknown,
+  ) {
+    return envelope(r, await this.service.createMembershipOrder(r.headers.cookie, org, body));
+  }
+  @Post('orders/:orderId/commands') @HttpCode(200) async command(
+    @Req() r: ApiRequest,
+    @Param('orgId') org: string,
+    @Param('orderId') id: string,
+    @Body() body: unknown,
+  ) {
+    return envelope(r, await this.service.membershipBuyerCommand(r.headers.cookie, org, id, body));
+  }
+}
+
+@Controller('v1/platform/software-membership')
+export class PlatformSoftwareMembershipController {
+  constructor(@Inject(SCB_COMMERCE_SERVICE) private readonly service: CommerceService) {}
+  @Get() async workspace(@Req() r: ApiRequest) {
+    return envelope(r, await this.service.membershipWorkspace(r.headers.cookie, undefined, true));
+  }
+  @Post('plans') @HttpCode(200) async plan(@Req() r: ApiRequest, @Body() body: unknown) {
+    return envelope(r, await this.service.createMembershipPlan(r.headers.cookie, body));
+  }
+  @Post('plans/:planId/commands') @HttpCode(200) async planCommand(
+    @Req() r: ApiRequest,
+    @Param('planId') id: string,
+    @Body() body: unknown,
+  ) {
+    return envelope(r, await this.service.membershipPlanCommand(r.headers.cookie, id, body));
+  }
+  @Post('orders/:orderId/commands') @HttpCode(200) async command(
+    @Req() r: ApiRequest,
+    @Param('orderId') id: string,
+    @Body() body: unknown,
+  ) {
+    return envelope(r, await this.service.membershipPlatformCommand(r.headers.cookie, id, body));
+  }
+}
