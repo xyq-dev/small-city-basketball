@@ -40,6 +40,9 @@ const WechatAccountPage = lazy(() =>
 const PlatformCommercePage = lazy(() =>
   import('./commerce/CommercePages').then((m) => ({ default: m.PlatformCommercePage })),
 );
+const PlatformMembershipPage = lazy(() =>
+  import('./membership/MembershipPages').then((m) => ({ default: m.PlatformMembershipPage })),
+);
 const StorageSettingsPage = lazy(() =>
   import('./storage-settings/StorageSettingsPage').then((m) => ({
     default: m.StorageSettingsPage,
@@ -555,6 +558,9 @@ function IdentityPanel({
               <a className="button button-secondary" href="/platform/commerce">
                 平台计费运营
               </a>
+              <a className="button button-secondary" href="/platform/membership">
+                平台会员运营
+              </a>
               <a className="button button-secondary" href="/system/storage">
                 系统设置 · 对象存储
               </a>
@@ -640,14 +646,18 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
   const [storagePath, setStoragePath] = useState(
     () => window.location.pathname === '/system/storage',
   );
-  const [accountView, setAccountView] = useState<'wechat' | 'platform' | 'booking' | null>(() =>
+  const [accountView, setAccountView] = useState<
+    'wechat' | 'platform' | 'platform-membership' | 'booking' | null
+  >(() =>
     isBookingPath(window.location.pathname)
       ? 'booking'
       : window.location.pathname === '/account/wechat'
         ? 'wechat'
         : window.location.pathname === '/platform/commerce'
           ? 'platform'
-          : null,
+          : window.location.pathname === '/platform/membership'
+            ? 'platform-membership'
+            : null,
   );
   useEffect(() => {
     const sync = () => {
@@ -659,7 +669,9 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
             ? 'wechat'
             : window.location.pathname === '/platform/commerce'
               ? 'platform'
-              : null,
+              : window.location.pathname === '/platform/membership'
+                ? 'platform-membership'
+                : null,
       );
     };
     window.addEventListener('popstate', sync);
@@ -958,7 +970,11 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
             ) : accountView === 'wechat' ? (
               <WechatAccountPage client={guardedClient} onSignedOut={unauthenticated} />
             ) : session.platformOperator === true ? (
-              <PlatformCommercePage client={guardedClient} userId={session.user.id} />
+              accountView === 'platform-membership' ? (
+                <PlatformMembershipPage client={guardedClient} userId={session.user.id} />
+              ) : (
+                <PlatformCommercePage client={guardedClient} userId={session.user.id} />
+              )
             ) : (
               <p role="alert">当前账号没有平台运营权限。</p>
             )}

@@ -29,6 +29,7 @@ scripts/*
 !scripts/c05-media-fixtures.mjs
 !scripts/cos-recovery-check.mjs
 !scripts/c05-commerce-check.mjs
+!scripts/member02-membership-check.mjs
 !scripts/c23-participant-material-check.mjs
 !scripts/x02-adjudication-check.mjs
 !scripts/x03-template-check.mjs

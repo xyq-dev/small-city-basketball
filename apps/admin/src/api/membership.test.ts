@@ -14,6 +14,27 @@ const client = (value: unknown) =>
     request: vi.fn().mockResolvedValue({ data: value, meta: { requestId: 'unit' } }),
   }) as unknown as ApiClient;
 describe('software membership authoritative API boundary (unit responses)', () => {
+  test('the optional Native close capability is false by absence and does not alter the original command facts', async () => {
+    const old = checkedMembershipWorkspace({ ...workspace, orders: [order] }, 'org-a');
+    expect(old.orders[0].capabilities.canCloseNative).toBeUndefined();
+    const close = { ...order, capabilities: { ...order.capabilities, canCloseNative: true } };
+    expect(
+      checkedMembershipWorkspace({ ...workspace, orders: [close] }, 'org-a').orders[0].capabilities
+        .canCloseNative,
+    ).toBe(true);
+    const c = client({ order: close, nativePayment: null });
+    const command = {
+      commandId: 'stable-close',
+      type: 'CLOSE_NATIVE' as const,
+      expectedOrderVersion: 2,
+      reason: '核对未付原单',
+    };
+    await createMembershipApi(c, 'org-a').buyerCommand(order.id, command);
+    const sent = (c.request as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(sent[0]).toBe('/v1/orgs/org-a/software-membership/orders/member-order-a/commands');
+    expect(JSON.parse(sent[1].body)).toEqual(command);
+  });
+
   test('reads the encoded institution path and does not calculate quota from bounded history', async () => {
     const c = client({
       ...workspace,
@@ -44,6 +65,7 @@ describe('software membership authoritative API boundary (unit responses)', () =
     { serverTime: '2026-02-30T00:00:00Z' },
     { plans: [plan, plan] },
     { orders: [order, order] },
+    { orders: [{ ...order, capabilities: { ...order.capabilities, canCloseNative: 'yes' } }] },
     { periods: [period, period] },
     { mode: 'FREE_PREMIUM' },
     { canPurchase: 'yes' },

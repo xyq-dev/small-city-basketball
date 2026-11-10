@@ -154,6 +154,49 @@ describe('commercial workflow UI (unit responses, no payment gateway)', () => {
     expect(screen.queryByText('按届基础版')).not.toBeInTheDocument();
   });
 
+  test('closing an unpaid Native order needs server capability, explicit reason and the original order command', async () => {
+    const current = {
+      ...order,
+      channel: 'WECHAT_NATIVE' as const,
+      capabilities: { ...order.capabilities, canCancel: false, canCloseNative: true },
+    };
+    let closed = false;
+    const closedOrder = {
+      ...current,
+      status: 'CANCELLED' as const,
+      capabilities: { ...current.capabilities, canCloseNative: false },
+    };
+    const request = vi.fn().mockImplementation(async (_path: string, init?: RequestInit) => {
+      if (init?.method === 'POST') closed = true;
+      return {
+        data:
+          init?.method === 'POST'
+            ? { order: closedOrder, nativePayment: null, notice: '原微信付款已核实关闭' }
+            : { ...workspace, realPaymentEnabled: true, orders: [closed ? closedOrder : current] },
+        meta: { requestId: 'unit' },
+      };
+    });
+    render(<OrgCommercePage context={context({ request } as ApiClient)} />);
+    fireEvent.click(await screen.findByRole('button', { name: '关闭微信付款' }));
+    const dialog = screen.getByRole('dialog', { name: '关闭微信付款' });
+    expect(within(dialog).getByText(/关闭后需重新下单/)).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: '确认操作' })).toBeDisabled();
+    expect(request.mock.calls.some((call) => call[1]?.method === 'POST')).toBe(false);
+    fireEvent.change(within(dialog).getByLabelText('操作原因'), {
+      target: { value: '确认关闭原未付款交易' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: '确认操作' }));
+    await screen.findByText('已取消');
+    const writes = request.mock.calls.filter((call) => call[1]?.method === 'POST');
+    expect(writes).toHaveLength(1);
+    expect(writes[0][0]).toBe('/v1/orgs/org-a/commerce/orders/order-a/commands');
+    expect(JSON.parse(writes[0][1].body)).toMatchObject({
+      type: 'CLOSE_NATIVE',
+      expectedOrderVersion: 1,
+      reason: '确认关闭原未付款交易',
+    });
+    expect(writes[0][1].body).not.toMatch(/amountFen|PAID|REFUNDED/);
+  });
   test.each([
     ['scb_event_basic', '小城市·基础赛事包', '99', '8', '32', '90'],
     ['scb_event_standard', '小城市·专业赛事包', '299', '16', '128', '180'],

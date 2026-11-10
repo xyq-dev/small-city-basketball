@@ -27,7 +27,7 @@ const pool = new pg.Pool({
 try {
   const connected = await pool.query('SELECT current_database() AS name');
   assert.equal(connected.rows[0].name, baseName);
-  for (const suite of ['api', 'account-security']) {
+  for (const suite of ['api', 'account-security', 'membership']) {
     const outcome = await new Promise((resolve, reject) => {
       let output = '';
       const child = spawn(
@@ -67,7 +67,7 @@ try {
     );
   }
   console.log(
-    'Both browser suites retained failure codes, removed only owned databases, and retained the control database.',
+    'All three browser suites retained failure codes, removed only owned databases, and retained the control database.',
   );
 } finally {
   await pool.end();

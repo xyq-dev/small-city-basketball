@@ -114,7 +114,7 @@ jobs:
         id: schema_preflight
         run: node --import tsx scripts/check-migrations.mjs
       - name: Verify recovery inventory and immutable boundaries
-        run: node --test scripts/r6-recovery-check.test.mjs scripts/expansion-recovery-check.test.mjs scripts/check-recovery-packaging.test.mjs scripts/c05-commerce-check.test.mjs
+        run: node --test scripts/r6-recovery-check.test.mjs scripts/expansion-recovery-check.test.mjs scripts/check-recovery-packaging.test.mjs scripts/c05-commerce-check.test.mjs scripts/member02-membership-check.test.mjs
       - name: Remaining modules PostgreSQL integration checks
         working-directory: apps/api
         run: npx vitest run test/r6-*.integration.test.ts
@@ -150,6 +150,18 @@ jobs:
       - run: npm run test:api:e2e
         env:
           DATABASE_URL: postgresql://scb:ci-isolated-test-password@127.0.0.1:5432/scb_test_browser
+      - name: Enforced organization membership through real desktop and mobile browsers
+        run: npm run test:membership:e2e
+        env:
+          DATABASE_URL: postgresql://scb:ci-isolated-test-password@127.0.0.1:5432/scb_test_browser
+      - name: Preserve synthetic membership workflow screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: member02-workflows
+          path: artifacts/member02/*.png
+          if-no-files-found: warn
+          retention-days: 7
       - name: Preserve synthetic scheduling preview screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -202,7 +214,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: First-run setup and password change through real HTTPS browsers
         run: npm run test:account-security:e2e
-      - name: Verify both browser suites clean only owned databases on failure
+      - name: Verify all isolated browser suites clean only owned databases on failure
         run: node scripts/check-browser-database-isolation.mjs
 
   production:

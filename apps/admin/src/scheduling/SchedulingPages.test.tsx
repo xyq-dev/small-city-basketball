@@ -364,6 +364,9 @@ describe('场地与排赛业务界面', () => {
     await screen.findByText('当前版本检查通过');
     await user.click(screen.getByRole('button', { name: '发布正式赛程' }));
     expect(screen.getByRole('region', { name: '正式发布确认' })).toHaveTextContent('3场正式比赛');
+    expect(screen.getByRole('region', { name: '正式发布确认' })).toHaveTextContent(
+      '否则会消耗本机构会员1届额度',
+    );
     await user.click(screen.getByRole('button', { name: '取消' }));
     expect(fetcher.mock.calls.some(([path]) => String(path).endsWith('/publish'))).toBe(false);
     await user.click(screen.getByRole('button', { name: '发布正式赛程' }));

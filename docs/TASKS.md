@@ -1,5 +1,11 @@
 # 任务看板
 
+## MEMBER02（2026-11-10 Asia/Shanghai，REVIEW / BRANCH_ONLY；生产未更新）
+
+在原商业账本上已实现机构30/365天购买期、全期跨届额度、受控手动续费、原单付款/退款及独立复核、首次正式发布原子激活和已激活赛事到期继续；没有另建比赛状态、钱包或支付系统。专业建议199/1699元对应3/36届（每届16队128场），商业399/3399元对应10/120届（每届32队512场）；年费额度按全期统计、不每月重置。新增响应式Web `/membership` 和独立平台 `/platform/membership`，月年切换、不可变报价核对、订单/用量与错误恢复；用户已确认的[Figma稿](design/MEMBERSHIP_UI.md)保持。原生微信新会员页仍为设计，未实现；球迷基础观赛免费。
+
+root集成分支feat/MEMBER02-integration；已整合冻结后端abe7629、24项新增真实PG测试源码、Web补丁cec4803（含平台独立无Router/显式Native原单关闭）。052仅已编写，001–051原文保持；最小ACL/readiness/完整恢复驱动及真实API桌面手机ENFORCED验收已接入。完整源码、隔离PG/浏览器/第二PG恢复与最终高风险复核正在验收，不把源码测试当真实资金或生产可用。当前尚未创建最终PR或合并；远端早期检查点df90e4b不含root最终接线。详见[任务](tasks/MEMBER02.md)、[交接](handoffs/MEMBER02.md)。
+
 ## MEMBER01（2026-11-10 Asia/Shanghai，IN_PROGRESS / BRANCH_ONLY）
 
 基线main770534b；feat/MEMBER01-membership-foundation完成小球迷助手公开会员研究、[本项目建议定价与完整规则](design/MEMBERSHIP_SYSTEM.md)，用户已确认新会员界面方向，[Figma原生可编辑V1](design/MEMBERSHIP_UI.md)已完成，3屏/13态。代码补三档99/299/599按届本地模板（确认后填表、不自动发布）和数据库时钟权益六态只读投影，原商业支付/激活/退款/权限守卫不变。直接43、API源码作者1425、完整类型/构建通过；首轮PR53隔离CI的恢复比较被新读取时间影响，已作精准helper修复待新head完整重验；旧成功项不替代最终结果。月年会员199/1699和399/3399为建议规划，跨届扣额、会员新页尚未实现，不表示可售；[MEMBER02](tasks/MEMBER02.md) TODO。无新Migration，无生产部署或正式价格修改。[任务](tasks/MEMBER01.md)、[接续](handoffs/MEMBER01.md)。

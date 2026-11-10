@@ -523,6 +523,10 @@ export function ScheduleEditor({
       {confirming && valid && (
         <section className="sc-confirm" aria-label="正式发布确认">
           <h2>确认发布这份赛程？</h2>
+          <p>
+            收费模式下，首次正式发布优先使用本届已购软件权益；否则会消耗本机构会员1届额度。
+            后续轮次不重复扣额，已激活赛事不因会员到期中断。最终资格与额度由服务端在发布时核对。
+          </p>
           <div className="sc-confirm-summary">
             <span>
               <strong>{revision.participants.length}</strong>支冻结球队

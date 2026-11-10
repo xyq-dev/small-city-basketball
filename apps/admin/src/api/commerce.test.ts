@@ -90,6 +90,7 @@ describe('commercial same-origin DTO boundary', () => {
       { ...order, quote: { ...order.quote, amountFen: 1.5 } },
       { ...order, status: 'FREE_GRANTED' },
       { ...order, capabilities: { canCancel: 'yes' } },
+      { ...order, capabilities: { ...order.capabilities, canCloseNative: 'yes' } },
     ])
       await expect(
         createCommerceApi(client({ ...workspace, orders: [o] }), 'org-a').workspace(),

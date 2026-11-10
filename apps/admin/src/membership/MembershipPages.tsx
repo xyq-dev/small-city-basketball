@@ -113,6 +113,7 @@ function OrderButtons({
         ['canRequestRefund', 'REQUEST_REFUND', '申请全额退款'],
         ['canCreateNative', 'CREATE_NATIVE', '微信付款'],
         ['canQueryPayment', 'QUERY_PAYMENT', '查询付款结果'],
+        ['canCloseNative', 'CLOSE_NATIVE', '关闭微信付款'],
       ] as const);
   return (
     <div className="membership-actions">
@@ -124,7 +125,9 @@ function OrderButtons({
               className={`button ${type === 'CREATE_NATIVE' ? 'button-primary' : 'button-secondary'}`}
               disabled={busy}
               key={type}
-              onClick={() => onAction(order, type, label)}
+              onClick={() =>
+                onAction(order, type, type === 'CLOSE_NATIVE' ? '核对并关闭原扫码订单' : label)
+              }
             >
               {label}
             </button>
@@ -369,7 +372,7 @@ function MembershipPage({
                     commandId: selected.commandId,
                     type: selected.type as SoftwareMembershipOrderCommandInput['type'],
                     expectedOrderVersion: selected.order.version,
-                    ...(['CANCEL', 'REQUEST_REFUND'].includes(selected.type)
+                    ...(['CANCEL', 'REQUEST_REFUND', 'CLOSE_NATIVE'].includes(selected.type)
                       ? { reason: why }
                       : {}),
                   })
@@ -386,6 +389,7 @@ function MembershipPage({
           if (result.order.paidAt || result.order.status !== 'PENDING_PAYMENT')
             setNative(undefined);
           if (result.notice) setNotice(result.notice);
+          if (selected.kind === 'ORDER' && selected.type === 'CLOSE_NATIVE') setNative(undefined);
           setView('ORDERS');
         }
         if (action.isActive()) {
@@ -499,6 +503,10 @@ function MembershipPage({
                 >
                   重新登录
                 </a>
+              ) : platform ? (
+                <a className="button button-secondary" href="/">
+                  返回工作台
+                </a>
               ) : (
                 <Link className="button button-secondary" to="/">
                   返回工作台
@@ -545,12 +553,15 @@ function MembershipPage({
             >
               {platform ? '会员套餐' : '机构会员'}
             </button>
-            <Link
-              className="button button-secondary"
-              to={platform ? '/platform/commerce' : '/commerce'}
-            >
-              按届套餐
-            </Link>
+            {platform ? (
+              <a className="button button-secondary" href="/platform/commerce">
+                按届套餐
+              </a>
+            ) : (
+              <Link className="button button-secondary" to="/commerce">
+                按届套餐
+              </Link>
+            )}
             <button
               type="button"
               className="button button-secondary"
@@ -710,7 +721,11 @@ function MembershipPage({
                   <form className="membership-form" onSubmit={preparePlan}>
                     <label>
                       建议会员模板
-                      <select value={presetCode} onChange={(e) => setPresetCode(e.target.value)}>
+                      <select
+                        aria-label="建议会员模板"
+                        value={presetCode}
+                        onChange={(e) => setPresetCode(e.target.value)}
+                      >
                         <option value="">请选择本地建议</option>
                         {softwareMembershipPresets.map((p) => (
                           <option key={p.code} value={p.code}>
@@ -761,6 +776,7 @@ function MembershipPage({
                     <label>
                       会员等级
                       <select
+                        aria-label="会员等级"
                         value={form.tier}
                         onChange={(e) =>
                           setForm((v) => ({
@@ -776,6 +792,7 @@ function MembershipPage({
                     <label>
                       购买期
                       <select
+                        aria-label="购买期"
                         value={form.durationDays}
                         onChange={(e) =>
                           setForm((v) => ({
@@ -892,7 +909,10 @@ function MembershipPage({
                     原订单付款链接
                     <textarea value={native.codeUrl} readOnly />
                   </label>
-                  <p>请用微信扫码。付款后查询原订单结果；本页不会因扫码或页面跳转自动开通会员。</p>
+                  <p>
+                    请在另一台设备上使用微信“扫一扫”扫描此二维码；不支持本机长按或从相册识别。同设备操作可联系平台登记线下付款并独立核验。
+                  </p>
+                  <p>付款后查询原订单结果；本页不会因扫码或页面跳转自动开通会员。</p>
                 </section>
               )}
             </section>
@@ -921,9 +941,13 @@ function MembershipPage({
                 {data.allocations.map((item) => (
                   <article className="membership-usage-row" key={item.eventId}>
                     <h3>
-                      <Link to={`/events/${encodeURIComponent(item.eventId)}`}>
-                        {item.eventName}
-                      </Link>
+                      {platform ? (
+                        item.eventName
+                      ) : (
+                        <Link to={`/events/${encodeURIComponent(item.eventId)}`}>
+                          {item.eventName}
+                        </Link>
+                      )}
                     </h3>
                     <p>
                       {item.participantCount}队 / 整届预计{item.expectedMatchCount}场 · 消耗1届
@@ -1077,6 +1101,11 @@ function MembershipPage({
               {pending.kind === 'ORDER' && pending.type === 'CONFIRM_REFUND' && (
                 <p>
                   仅未消耗的完整购买期可全额退款；请核对原订单、资金渠道与金额。微信渠道可能实际发起原路退款。
+                </p>
+              )}
+              {pending.kind === 'ORDER' && pending.type === 'CLOSE_NATIVE' && (
+                <p>
+                  仅处理当前原扫码订单的未付交易。服务端会先查单并核验关闭结果；已付款则核对原付款事实。确认关闭后需重新下单，原单保留。若关闭结果未知，请查询原单，不要重复付款或新建订单。
                 </p>
               )}
             </>

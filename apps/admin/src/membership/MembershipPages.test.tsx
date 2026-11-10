@@ -30,15 +30,189 @@ function org(request: ReturnType<typeof vi.fn>) {
   );
 }
 function platform(request: ReturnType<typeof vi.fn>, userId = 'operator-a') {
-  return render(
-    <MemoryRouter>
-      <PlatformMembershipPage client={{ request } as ApiClient} userId={userId} />
-    </MemoryRouter>,
-  );
+  return render(<PlatformMembershipPage client={{ request } as ApiClient} userId={userId} />);
 }
 const postCalls = (request: ReturnType<typeof vi.fn>) =>
   request.mock.calls.filter((c) => c[1]?.method === 'POST');
 describe('software membership responsive web (unit responses, no payment gateway)', () => {
+  test('the independent platform route works without a Router and uses a full navigation anchor', async () => {
+    const allocation = {
+      eventId: 'event-a',
+      eventName: '合成已激活赛事',
+      orgId: 'org-a',
+      periodId: period.id,
+      source: 'MEMBERSHIP',
+      participantCount: 8,
+      expectedMatchCount: 32,
+      activatedAt: workspace.serverTime,
+    };
+    const request = vi
+      .fn()
+      .mockResolvedValue(
+        envelope({ ...platformWorkspace, periods: [period], allocations: [allocation] }),
+      );
+    platform(request);
+    expect(await screen.findByRole('heading', { name: '平台会员运营' })).toBeVisible();
+    expect(screen.getByRole('link', { name: '按届套餐' })).toHaveAttribute(
+      'href',
+      '/platform/commerce',
+    );
+    fireEvent.click(screen.getByRole('tab', { name: '购买期与用量' }));
+    expect(screen.getByText('合成已激活赛事')).toBeVisible();
+    expect(screen.queryByRole('link', { name: '合成已激活赛事' })).not.toBeInTheDocument();
+    expect(screen.getByRole('article', { name: `${period.planName}购买期` })).toHaveTextContent(
+      'org-a',
+    );
+  });
+  test.each([401, 403, 503])(
+    'the independent platform error %s renders without a Router',
+    async (status) => {
+      const request = vi
+        .fn()
+        .mockRejectedValue(
+          new ApiError(status, status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', '合成读取失败'),
+        );
+      platform(request);
+      expect(await screen.findByText('合成读取失败')).toBeVisible();
+      const destination = screen.getByRole('link', {
+        name: status === 401 ? '重新登录' : '返回工作台',
+      });
+      expect(destination).toHaveAttribute('href', status === 401 ? '/platform/membership' : '/');
+    },
+  );
+  test('member form selectors have explicit accessible names independent of option text', async () => {
+    const request = vi.fn().mockResolvedValue(envelope(platformWorkspace));
+    platform(request);
+    for (const label of ['建议会员模板', '会员等级', '购买期']) {
+      expect(await screen.findByRole('combobox', { name: label })).toHaveAttribute(
+        'aria-label',
+        label,
+      );
+    }
+  });
+  test('older membership responses without a close capability do not offer a Native close action', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValue(
+        envelope({ ...workspace, orders: [{ ...order, channel: 'WECHAT_NATIVE' }] }),
+      );
+    org(request);
+    fireEvent.click(await screen.findByRole('tab', { name: '会员订单' }));
+    expect(screen.queryByRole('button', { name: '关闭微信付款' })).not.toBeInTheDocument();
+  });
+  test('the platform never offers the owner-only Native close action even if an unrelated capability is true', async () => {
+    const request = vi.fn().mockResolvedValue(
+      envelope({
+        ...platformWorkspace,
+        orders: [
+          {
+            ...order,
+            channel: 'WECHAT_NATIVE',
+            capabilities: { ...order.capabilities, canCloseNative: true },
+          },
+        ],
+      }),
+    );
+    platform(request);
+    fireEvent.click(await screen.findByRole('tab', { name: '会员订单' }));
+    expect(screen.queryByRole('button', { name: '关闭微信付款' })).not.toBeInTheDocument();
+  });
+  test.each(['PENDING_PAYMENT', 'CANCELLED', 'PAID'] as const)(
+    'Native close displays only the verified original order result %s',
+    async (status) => {
+      const original = {
+        ...order,
+        channel: 'WECHAT_NATIVE' as const,
+        capabilities: {
+          ...order.capabilities,
+          canCancel: false,
+          canQueryPayment: true,
+          canCloseNative: true,
+        },
+      };
+      let resolved = false;
+      const resultOrder = {
+        ...original,
+        status,
+        paidAt: status === 'PAID' ? workspace.serverTime : null,
+        version: 2,
+        capabilities: { ...original.capabilities, canCloseNative: false },
+      };
+      const request = vi.fn().mockImplementation(async (_path: string, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          resolved = true;
+          return envelope({
+            order: resultOrder,
+            nativePayment: null,
+            notice:
+              status === 'PENDING_PAYMENT'
+                ? '关闭结果未知，请查询原订单，不要新下单'
+                : '原订单结果已核对',
+          });
+        }
+        return envelope({
+          ...workspace,
+          canPurchase: false,
+          purchasablePlanIds: [],
+          orders: [resolved ? resultOrder : original],
+        });
+      });
+      org(request);
+      fireEvent.click(await screen.findByRole('tab', { name: '会员订单' }));
+      fireEvent.click(screen.getByRole('button', { name: '关闭微信付款' }));
+      const dialog = screen.getByRole('dialog', { name: '核对并关闭原扫码订单' });
+      expect(within(dialog).getByText(/若关闭结果未知，请查询原单/)).toBeVisible();
+      const confirm = within(dialog).getByRole('button', { name: '确认操作' });
+      expect(confirm).toBeDisabled();
+      fireEvent.change(within(dialog).getByLabelText('操作原因'), {
+        target: { value: '核对原未付扫码订单' },
+      });
+      fireEvent.click(confirm);
+      const label =
+        status === 'PENDING_PAYMENT' ? '待付款' : status === 'CANCELLED' ? '已取消' : '付款已核验';
+      expect(await screen.findByText(label)).toBeVisible();
+      expect(postCalls(request)).toHaveLength(1);
+      expect(postCalls(request)[0][0]).toBe(
+        '/v1/orgs/org-a/software-membership/orders/member-order-a/commands',
+      );
+      expect(JSON.parse(postCalls(request)[0][1].body)).toEqual({
+        commandId: expect.any(String),
+        type: 'CLOSE_NATIVE',
+        expectedOrderVersion: 1,
+        reason: '核对原未付扫码订单',
+      });
+      if (status === 'PENDING_PAYMENT') {
+        expect(screen.getByText('关闭结果未知，请查询原订单，不要新下单')).toBeVisible();
+        expect(screen.getByRole('button', { name: '查询付款结果' })).toBeVisible();
+        expect(screen.queryByText('已取消')).not.toBeInTheDocument();
+      }
+    },
+  );
+  test('an empty close response is unknown and cannot become a locally cancelled order', async () => {
+    const original = {
+      ...order,
+      channel: 'WECHAT_NATIVE',
+      capabilities: { ...order.capabilities, canCancel: false, canCloseNative: true },
+    };
+    const request = vi
+      .fn()
+      .mockImplementation(async (_path: string, init?: RequestInit) =>
+        envelope(init?.method === 'POST' ? undefined : { ...workspace, orders: [original] }),
+      );
+    org(request);
+    fireEvent.click(await screen.findByRole('tab', { name: '会员订单' }));
+    fireEvent.click(screen.getByRole('button', { name: '关闭微信付款' }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('操作原因'), {
+      target: { value: '核对未付原单' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: '确认操作' }));
+    await screen.findByText('操作结果待核对');
+    expect(within(dialog).getByRole('button', { name: '确认操作' })).toBeDisabled();
+    expect(screen.queryByText('已取消')).not.toBeInTheDocument();
+    expect(postCalls(request)).toHaveLength(1);
+  });
+
   test('checkout uses the published server price and requires explicit institution and quote confirmation before one request', async () => {
     const custom = { ...plan, amountFen: 123450 };
     const pendingOrder = { ...order, quote: { ...order.quote, amountFen: custom.amountFen } };
@@ -360,6 +534,8 @@ describe('software membership responsive web (unit responses, no payment gateway
       'src',
       'data:image/png;base64,c3ludGhldGlj',
     );
+    expect(screen.getByText(/另一台设备上使用微信“扫一扫”/)).toBeVisible();
+    expect(screen.getByText(/不支持本机长按或从相册识别/)).toBeVisible();
     expect(screen.getByText('待付款')).toBeVisible();
     expect(screen.queryByText('付款已核验')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '查询付款结果' }));

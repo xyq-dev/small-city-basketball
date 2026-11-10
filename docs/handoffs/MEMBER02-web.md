@@ -33,3 +33,16 @@
 未执行：新模块真实PG/HTTP、桌面/手机浏览器、运行截图与Figma像素对照、微信真机/Safari、真实支付、生产。root正在编写独立ENFORCED真实API浏览器suite，全部由整合候选CI取得证据。设计参考覆盖1440×1040与390×844；应用金额使用既有CNY两位小数/千分位，真实套餐名称替代示例文本，不声称像素一致。原生微信会员页面仅Figma，本切片只Web响应式。
 
 Migration：本作者未编写或执行。Git：仅精确提交上述新增9路径，不push；共享契约来自68157b4、root出口9c266fa、补充c8e0693，本作者不自行改合同。下一步root只cherry-pick本切片最终提交，接App与后端，核对真实状态和数据，跑同head必要CI与截图，独立审查后再决定整合。
+
+
+## 2026-11-10 16:41 Asia/Shanghai 独占修复增量
+
+root只读整合发现平台独立账户页没有Router。第一版平台单测统一MemoryRouter包装，与真实挂载环境不一致，掩盖了Link/useHref依赖；现平台跨页入口均用原生a完整导航，平台赛事用量名只读文字，不暗授机构赛事管理入口。机构分支仍使用原SPA Link和机构上下文。没有添加BrowserRouter或仅pushState的假导航。平台unit helper改成完全无Router真实挂载，新增有数据、用量和401/403/503错误回归。
+
+已按core独立合同9d13fca补CLOSE_NATIVE：仅机构buyer且服务端canCloseNative严格true才有“关闭微信付款”，旧API缺字段视为不可用，异常非布尔字段拒绝。原单核对Modal需不少于4字原因，提交原commandId/expectedOrderVersion与reason，不提交价格或伪状态；只有后端返回的PENDING/CANCELLED/PAID决定展示。未知保留原单和明确查询提示，不造新单或假称关闭；空响应被判未知并阻止重发。关闭命令后隐藏旧二维码展示，不将隐藏视为交易已关闭。平台不提供此owner命令。
+
+按root已核实的Native通道说明，在原QR区明确另一设备微信“扫一扫”，不支持本机长按/相册识别；同设备可联系平台线下登记后独立核验。没有承诺JSAPI/H5同机支付，未改支付默认关闭或发生真实商户操作。
+
+建议模板/会员等级/购买期3个select新增与可见标签一致的明确aria-label，按role=combobox/name回归，避免依赖option文本的模糊标签定位；真实交易引用此前已有明确aria-label。
+
+实际：直接2文件74/74（API41/UI33）、完整admin72文件786/786、admin typecheck、四源码格式及diff通过。ByRole测试初用了Testing Library不支持的exact参数，类型检查发现后删除（name字符串本身精确匹配），不是放宽元素断言。真实PG/HTTP浏览器、运行截图和真实支付仍由root隔离整合验收，未执行不标通过；本增量无CSS重设计/后端/生产/Migration。

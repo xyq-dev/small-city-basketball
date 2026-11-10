@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import { maintainPlatformOperator } from '../apps/api/dist/commerce/platform-operator.js';
+import { captureMembershipSetup } from './member02-membership-check.mjs';
 
 const reason = 'Synthetic isolated CI software-service acceptance; no real funds';
 const orgPath = (orgId) => `/v1/orgs/${orgId}/commerce`;
@@ -88,8 +88,10 @@ async function platformCommand(call, operator, order, type, extra = {}) {
 }
 
 /** The only SQL writer used here is the official, audited offline platform-role helper. */
-export async function captureCommerceSetup({ call, databaseUrl, maintenanceUrl }) {
+export async function captureCommerceSetup({ call, databaseUrl, maintenanceUrl, cookie, orgId }) {
   const database = isolatedCluster(databaseUrl, maintenanceUrl);
+  const { maintainPlatformOperator } =
+    await import('../apps/api/dist/commerce/platform-operator.js');
   const operators = [];
   const pool = new pg.Pool({
     connectionString: maintenanceUrl,
@@ -155,12 +157,32 @@ export async function captureCommerceSetup({ call, databaseUrl, maintenanceUrl }
     [100, 32, 1024, 730],
   );
   assert.equal(plan.available, true);
-  return { version: 1, database, operators, plan, orderIds: [] };
+  // Buy membership only after the first original publication has proved its
+  // unpaid 402 boundary. Later publications legitimately have a paid period.
+  return { version: 1, database, operators, plan, orderIds: [], membership: null };
 }
 
 /** Buy one event using original CAS plus independent manual review, before the original publication. */
 export async function ensureCommercialEntitlement({ call, cookie, orgId, eventId, setup }) {
   assert.ok(setup?.operators?.length === 2 && setup.plan?.id);
+  if (!setup.membership)
+    setup.membership = await captureMembershipSetup({
+      call,
+      cookie,
+      orgId,
+      operators: setup.operators,
+    });
+  if (
+    setup.membership &&
+    (!setup.membership.activationEventId || setup.membership.activationEventId === eventId)
+  ) {
+    const current = (await call(`/v1/orgs/${orgId}/software-membership`, { cookie })).data;
+    const period = current.periods.find((item) => item.id === setup.membership.periodId);
+    assert.ok(period && period.state === 'ACTIVE');
+    assert.ok(period.remainingEvents > 0);
+    setup.membership.activationEventId = eventId;
+    return { membership: true };
+  }
   const existing = workspace((await call(orgPath(orgId), { cookie })).data);
   assert.equal(existing.canPurchase, true);
   let order = existing.orders.find(
@@ -310,7 +332,12 @@ export async function captureCommerceEnd({
     true,
   );
   const reconciliationIds = [];
-  for (const [date, rows] of [...manualRows(all.orders)].sort(([a], [b]) => a.localeCompare(b))) {
+  const memberOrders = (
+    await call('/v1/platform/software-membership', { cookie: setup.operators[0].cookie })
+  ).data.orders;
+  for (const [date, rows] of [...manualRows([...all.orders, ...memberOrders])].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
     const csv = [
       'order_id,transaction_reference,amount,currency,status',
       ...rows.map((row) => row.join(',')),

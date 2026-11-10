@@ -158,6 +158,8 @@ function order(v: unknown): v is SoftwareMembershipOrderData {
       'canConfirmRefund',
       'canRejectRefund',
     ].every((key) => typeof (v.capabilities as Obj)[key] === 'boolean') &&
+    (v.capabilities.canCloseNative === undefined ||
+      typeof v.capabilities.canCloseNative === 'boolean') &&
     (v.refund === null || (v.refund as Obj).amountFen === v.quote.amountFen)
   );
 }
