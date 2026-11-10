@@ -253,6 +253,91 @@ describe('software membership responsive web (unit responses, no payment gateway
     expect(screen.queryByText('付款已核验')).not.toBeInTheDocument();
     expect(screen.queryByText('生效中')).not.toBeInTheDocument();
   });
+  test.each([30, 365] as const)(
+    '%i-day cards show PRO before BUSINESS while retaining server version order and the selected real plan ID',
+    async (durationDays) => {
+      const pro = {
+        ...plan,
+        id: `pro-original-${durationDays}`,
+        name: durationDays === 365 ? plan.name : '合成专业机构月费',
+        durationDays,
+        eventLimit: durationDays === 365 ? 36 : 3,
+      };
+      const business = {
+        ...businessPlan,
+        id: `business-original-${durationDays}`,
+        name: durationDays === 365 ? businessPlan.name : '合成商业机构月费',
+        durationDays,
+        eventLimit: durationDays === 365 ? 120 : 10,
+      };
+      const proNew = {
+        ...pro,
+        id: `pro-new-${durationDays}`,
+        version: 2,
+        name: '合成专业新报价',
+        amountFen: 1234500,
+      };
+      const businessNew = {
+        ...business,
+        id: `business-new-${durationDays}`,
+        version: 2,
+        name: '合成商业新报价',
+        amountFen: 10000,
+      };
+      const serverPlans = [businessNew, pro, business, proNew];
+      const originalIds = serverPlans.map((item) => item.id);
+      const pendingOrder = {
+        ...order,
+        quote: {
+          ...order.quote,
+          planId: proNew.id,
+          version: proNew.version,
+          name: proNew.name,
+          amountFen: proNew.amountFen,
+          durationDays,
+          validDays: durationDays,
+          eventLimit: proNew.eventLimit,
+        },
+      };
+      let submitted = false;
+      const request = vi.fn().mockImplementation(async (_path: string, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          submitted = true;
+          return envelope({ order: pendingOrder, nativePayment: null });
+        }
+        return envelope({
+          ...workspace,
+          plans: serverPlans,
+          purchasablePlanIds: originalIds,
+          orders: submitted ? [pendingOrder] : [],
+        });
+      });
+      org(request);
+      await screen.findByRole('heading', { name: '会员与权益' });
+      if (durationDays === 30) fireEvent.click(screen.getByRole('button', { name: '月付' }));
+      const cards = screen.getAllByRole('article');
+      expect(
+        cards.map((card) => within(card).getByRole('heading', { level: 3 }).textContent),
+      ).toEqual(['球迷基础版', pro.name, proNew.name, businessNew.name, business.name]);
+      expect(serverPlans.map((item) => item.id)).toEqual(originalIds);
+      fireEvent.click(within(cards[2]).getByRole('button', { name: '核对购买专业机构会员' }));
+      const dialog = screen.getByRole('dialog', { name: '会员订单核对' });
+      expect(within(dialog).getByText('合成专业新报价 v2')).toBeVisible();
+      expect(within(dialog).getByText('¥12,345.00')).toBeVisible();
+      fireEvent.click(
+        within(dialog).getByRole('checkbox', { name: '我已核对付费机构、金额、购买期和额度' }),
+      );
+      fireEvent.click(within(dialog).getByRole('button', { name: '确认操作' }));
+      expect(await screen.findByText('待付款')).toBeVisible();
+      expect(postCalls(request)).toHaveLength(1);
+      expect(JSON.parse(postCalls(request)[0][1].body)).toEqual({
+        commandId: expect.any(String),
+        planId: proNew.id,
+        expectedMembershipVersion: workspace.membershipVersion,
+      });
+      expect(serverPlans.map((item) => item.id)).toEqual(originalIds);
+    },
+  );
   test('changing the display period is local and only the server-authorized plan can be ordered', async () => {
     const request = vi
       .fn()

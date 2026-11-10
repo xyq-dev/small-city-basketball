@@ -4,7 +4,7 @@
 
 在原商业账本上已实现机构30/365天购买期、全期跨届额度、受控手动续费、原单付款/退款及独立复核、首次正式发布原子激活和已激活赛事到期继续；没有另建比赛状态、钱包或支付系统。专业建议199/1699元对应3/36届（每届16队128场），商业399/3399元对应10/120届（每届32队512场）；年费额度按全期统计、不每月重置。新增响应式Web `/membership` 和独立平台 `/platform/membership`，月年切换、不可变报价核对、订单/用量与错误恢复；用户已确认的[Figma稿](design/MEMBERSHIP_UI.md)保持。原生微信新会员页仍为设计，未实现；球迷基础观赛免费。
 
-[PR54](https://github.com/xyq-dev/small-city-basketball/pull/54)集成分支feat/MEMBER02-integration保留main M1祖先。会员核心与Web、52迁移最小ACL/完整恢复已实现；2332f9fb候选会员26/R6147/账号安全/admin及生产模式HTTPS完整第二PG恢复通过，旧组640/1失败因测试组共用Native账本产生7个正确LOCAL_ONLY。已补严格owned专库runner、失败23/control指纹保全及浏览器连接前canonical guard；真实collect先发现并修CLI模块CJS导入，下一head仍须完整重验。没有放宽原账本/旧测试断言；所有新源码/delta独立复审无未解决P1/P2。052已隔离执行、001–051保持、生产未执行；PR54未合并、正式价格未发布。原生新会员页/真实商户/生产另验。[任务](tasks/MEMBER02.md)、[交接](handoffs/MEMBER02.md)、[证据分层](evidence/MEMBER02/README.md)。
+[PR54](https://github.com/xyq-dev/small-city-basketball/pull/54)已正常整合main843的M1文档祖先并完整保留旧事实。CI257/source094fcf0/tree f845fc2：会员真实专库26、清理失败23且原库账本/初始化保全、新会员真实桌面1/手机1、admin/账号安全/隔离生产模式HTTPS与完整第二PG恢复通过，旧PG及后续仍运行。四张原始截图已校验并由root/Web作者独立查看；发现卡片等级顺序与确认稿不同，正作局部稳定排序及真实浏览器断言，下一head仍须完整复验。原金融守卫、全账本严格对账和001–051不改；052已隔离执行、生产未执行。PR54未合并、正式价格未发布。原生新会员页/真实商户/生产另验。[任务](tasks/MEMBER02.md)、[交接](handoffs/MEMBER02.md)、[证据分层](evidence/MEMBER02/README.md)。
 
 ## MEMBER01（2026-11-10 17:09 Asia/Shanghai，DONE / MAIN；生产未更新）
 

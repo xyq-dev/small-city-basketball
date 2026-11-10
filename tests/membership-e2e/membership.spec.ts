@@ -158,6 +158,13 @@ test('机构会员真实报价、独立付款复核、首次发布扣额与用�
     await expect(
       page.getByRole('heading', { name: '小城市·商业机构年费', exact: true }),
     ).toBeVisible();
+    const paidPlanNames = await page
+      .locator('.membership-plan-card:not(.is-free) h3')
+      .allTextContents();
+    expect(paidPlanNames.indexOf('小城市·专业机构年费')).toBeGreaterThanOrEqual(0);
+    expect(paidPlanNames.indexOf('小城市·专业机构年费')).toBeLessThan(
+      paidPlanNames.indexOf('小城市·商业机构年费'),
+    );
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );

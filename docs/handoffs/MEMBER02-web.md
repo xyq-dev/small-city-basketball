@@ -46,3 +46,13 @@ root只读整合发现平台独立账户页没有Router。第一版平台单测�
 建议模板/会员等级/购买期3个select新增与可见标签一致的明确aria-label，按role=combobox/name回归，避免依赖option文本的模糊标签定位；真实交易引用此前已有明确aria-label。
 
 实际：直接2文件74/74（API41/UI33）、完整admin72文件786/786、admin typecheck、四源码格式及diff通过。ByRole测试初用了Testing Library不支持的exact参数，类型检查发现后删除（name字符串本身精确匹配），不是放宽元素断言。真实PG/HTTP浏览器、运行截图和真实支付仍由root隔离整合验收，未执行不标通过；本增量无CSS重设计/后端/生产/Migration。
+
+## 2026-11-10 18:23 Asia/Shanghai 方案展示顺序修正
+
+独立工作树仍为`scb-member02-web`/`feat/MEMBER02-web`，开始HEAD`cec4803a8794d36b1004cbc113ec1d5c4f0c43b5`、工作区干净，远端仍为原仓库。root请求本作者只修会员方案排序，本次仅写MembershipPages.tsx、对应组件测试和本记录；不改root工作树、API数组、合同、可购资格、报价或权益。
+
+此前只读复核root提供的CI257桌面/手机方案与生效用量四张PNG，未见遮挡、金额/额度错误或整页横向溢出；发现商业方案先于专业方案，与确认Figma顺序不符。本增量在按周期过滤后的新数组上稳定排序，PRO先于BUSINESS，同等级保留服务端版本顺序，不按价格或版本号重新排列，也不修改原API数组。手机顶部沿用原Web外壳、标签内部横向滚动为已知差异，本次不改布局。字体/金额格式/真实状态等仍沿现有Web规则，四张图不能替代弹窗、平台页和13态的完整视觉验收。
+
+新增真实组件的月/年两组排序回归（使用合成API响应，不是真实HTTP）：混合反序的两个等级/四个版本，刻意设置交错价格和不同版本顺序，验证DOM中PRO在前、同等级稳定、原数组不变，并实际点击第二个专业卡、核对真实报价后确认，验证只向服务端提交对应planId与membershipVersion。修改前两组均在DOM顺序断言失败，修复后直接API/UI两文件76/76通过（API41/UI35）；admin typecheck通过。首次格式检查发现新增测试需换行，已局部prettier修正；最终局部prettier与git diff检查均通过。只精确提交三文件给root，不push。
+
+本排序增量未重跑完整admin、build、真实PG/HTTP、浏览器或新head截图；root负责整合后同一head CI与必要真实浏览器验收。旧CI257截图仅为修复前证据，不标为新排序视觉通过。无新Migration，未执行生产或真实资金操作。下一步root精确cherry-pick本增量，重新截图确认桌面与手机均专业先于商业。

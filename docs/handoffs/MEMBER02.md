@@ -71,3 +71,12 @@ CI256/source2332f9fb/treeb2057f0的会员26/R6147、admin787/API1457及1581兼�
 独立审查另发现browser会员runner在构造Pool前仅account-security校验loopback，已把同一canonical guard覆盖membership，旧api suite行为不变。新CLI固定--list正例实际抓到spec静态导入官方CLI源的import.meta/TLA被Playwright CJS转换错误；现strict目标guard之后native fileURL动态导入本树编译的原官方maintainPlatformOperator，无第二套授权SQL。真实test collection、全仓type、API build与native ESM模块加载（CLI未触发）通过；不把collection当真实浏览器操作。
 
 CI仍R6 first；随后独立PG26及实际失败清理；单次browser控制库/Chromium安装与新会员两端流程前移，之后原oldPG→NativeHTTP→capture/restart/verify→旧API浏览器相对顺序不变、无少跑/重复。新真实UI如有错误会先发现，避免等整套旧检查才collect。所有runner/workflow/guard/spec增量独立复审无P1/P2，可进入最终新候选；Migration/业务源码未因此改变。新原生会员页、商户资金及生产仍未执行。
+
+
+## 2026-11-10T18:24:08+08:00 真实截图复核与展示顺序修正
+
+CI257/source094fcf0、测试merge66f5b009、treef845fc2已实际核对同树：会员owned PG26、故意失败23且control保全、新会员真实桌面1/手机1成功，admin787/API1457及兼容1581、账号安全与隔离生产模式完整HTTPS/第二PG恢复成功；旧PG组及其后步骤尚在执行，不能称完整CI通过。root已下载校验artifact13754751292并逐张看4张原图，Web作者也独立对照已确认Figma，无阻断遮挡/全页溢出或价格额度错误。
+
+实际发现专业/商业排序与稿不同，交原Web作者仅按等级做稳定展示排序，金额/真实ID/可售资格/API顺序不改；root补真实浏览器顺序断言，新候选须重新完整CI并下载新截图。手机沿用既有Web壳、顶部信息较长且标签内部横向滚动，不能称原生小程序像素还原；四图只覆盖方案和生效用量，不外推13态/支付弹窗截图。没有用重画稿掩盖差异。
+
+main843085c仅四份M1交接文档，独立复核证实本候选所有旧M1/TMX/历史逐字节保留；root正常merge main为ab80c90（与前f845完全同tree），只解决两个summary相邻段冲突，未覆盖其他3份本轮doc WIP或任何他人工作。新同步保留main843祖先，继续普通PR流程，无force。052隔离执行、生产未执行；新原生会员/真实商户与生产价格发布仍未完成。

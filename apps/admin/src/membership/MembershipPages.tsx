@@ -617,6 +617,7 @@ function MembershipPage({
                         p.durationDays === (periodView === 'YEAR' ? 365 : 30) &&
                         (platform || p.available),
                     )
+                    .sort((a, b) => Number(a.tier === 'BUSINESS') - Number(b.tier === 'BUSINESS'))
                     .map((plan) => (
                       <article
                         key={plan.id}

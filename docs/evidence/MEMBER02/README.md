@@ -1,22 +1,24 @@
 # MEMBER02 验收证据
 
-当前为REVIEW候选，不是生产发布记录。主源码：[PR54](https://github.com/xyq-dev/small-city-basketball/pull/54)，远端2332f9fb6b1c46dadc86a943f23803df7d134eb2，tree b2057f0e57571f3d7baa7e520a4f93f2420e1254；root本地fb2dec5相同tree。测试merge6d461790a8a3ffdbbc3ff9f71194e6aa72eb86df已实际读取相同tree，保留M1 main cd8ed1f祖先。
+当前为REVIEW / BRANCH_ONLY，不是生产发布记录。[PR54](https://github.com/xyq-dev/small-city-basketball/pull/54)最终候选将包含截图复核后的等级展示顺序修正；新的同head CI仍待执行。旧source094fcf066d7a08501f6ecd642453feaccb64c63e、测试merge66f5b00926d9732143144e2e3b6ebdae239923e5与本地576a351的tree均f845fc2ead04e8d89f61a13fd4d9dde05712faba，已实际读取核对。
 
-[当前CI256](https://github.com/xyq-dev/small-city-basketball/actions/runs/42791070234)结果为FAIL：会员26与三组作业通过，旧组因测试账本污染失败；新专库runner/前置guard/collect修复尚待下一head完整CI，禁止把下方局部成功拼成全绿。完整失败历史及源提交见[任务](../../tasks/MEMBER02.md)和[交接](../../handoffs/MEMBER02.md)。
+[CI257](https://github.com/xyq-dev/small-city-basketball/actions/runs/42796446777)的admin、account-security、production三作业SUCCESS，完成日志已读；api会员PG与真实新会员两端浏览器成功，原旧组尚在执行。不得把局部成功称全绿，或拿该结果替代后续排序新head。
 
-| 证据层 | 精确环境与范围 | 当前候选结果 |
+| 证据层 | 精确环境与范围 | CI257已核验事实 |
 |---|---|---|
-| 本地源码 | format/type/build；admin787/API1457；微信1638+1平台skip；CLI12；storage11+1UID环境skip；恢复pure6；最新领域24 | 通过，不是PG/商户证据 |
-| CI真实会员PG | member17+Native9，合成RSA/AES、受控transport；真实SQL/HTTP/锁/全期额度/退款/关闭证明/微秒/安全续单 | 26/26通过，已读完成归档日志 |
-| CI原R6 | 原共享空库首次初始化后147项 | 147/147通过，已读归档 |
-| CI旧组/旧库升级 | 旧组含冻结历史source guard、C22原22schema与全升级、注销本单消费回归 | 旧组640通过/1失败；C22升级及注销新增通过，唯一Native完整账单因共享fixture污染报7个LOCAL_ONLY |
-| 真实API浏览器 | 原API桌面12/手机12；新增会员桌面1440×1040、手机390×844采购/独立收款/发布扣额/用量刷新 | 待完成 |
-| 隔离生产模式HTTPS | 实际非root镜像/最小身份、原HTTP收款年期、停售后原RR消费1/剩35、228表完整dump→第二PG精确恢复/旧授权隔离/owned清理 | 当前candidate production129744487179已成功，完成日志已读 |
-| 账号安全 | 原两端可信HTTPS身份流程与三suite故意失败owned清理 | 当前candidate account-security129744487043已成功 |
-| 源码/兼容浏览器 | 全仓必要检查、原兼容布局/PNG守卫 | 成功：787/1457源码、1581兼容浏览器、1566布局PNG守卫 |
-| 代码审查 | 各核心/delta及C22原Git逆变换独立复核 | 无未解决源码P1/P2；两自动线程待相关PG实证收口 |
-| 真实外部/生产 | 微信商户实付、微信/Safari真机、原生新会员页、OBS、正式部署/数据库/价格发布 | 未执行；原生会员仅Figma设计 |
+| 本地源码 | format/type/build；admin787/API1457；微信1638+1平台skip；CLI12；storage11+1UID限制skip；pure恢复6 | 已通过，不是PG/商户证据；排序后直接API/UI76、完整type、Web build/格式另通过 |
+| CI真实会员PG | 新owned随机专库，member17+Native9 | 26通过；RSA/AES及transport合成，不是真实商户 |
+| 真实失败清理 | 固定失败child退出23，owned DB/OID核验与原控制库全账本/firstRun指纹保全 | 成功，不放宽旧完整账单断言 |
+| CI原R6 | 原共享空库先执行首次初始化147项 | 成功 |
+| 旧PG/升级/注销 | 原组含6份历史源守卫、C22原22schema升级、会员本单履约注销 | 运行中，待完成日志 |
+| 新会员真实API浏览器 | 桌面1440×1040及手机Web390×844，真实采购/独立收款/发布扣额/用量刷新 | 1+1成功，四图已下载验hash且root/Web作者独立查看；排序偏差已发现并修，待新图 |
+| 原生真实HTTP/原API浏览器 | 原生页面21；原API桌面12+手机12，PG实际重启 | 待执行，不冒称已过 |
+| 隔离生产模式HTTPS | 非root镜像/最小身份21PG、年期付款/停售后原RR用1剩35、全228表dump到第二PG精确恢复/旧授权隔离/owned清理 | production129762735644成功，原IP变化后Web仍解析并保留session |
+| 账号安全 | 实际两端HTTPS初始化/密码变更、三suite故意失败owned清理 | account129762734956成功，1+1及全部清理验证 |
+| 源码/兼容浏览器 | 全仓格式/类型/构建/源码与原兼容布局 | admin129762735466成功：787/1457、1581通过/1567原配置skip，1566布局PNG守卫 |
+| 代码审查 | 金融/锁序/精度/闭单/续费/隔离/C22历史Git逆变换 | 无未解决源码P1/P2；两自动线程待最终同head回归收口 |
+| 真实外部/生产 | 微信实付、微信/Safari真机、原生新会员页、OBS、正式部署/数据库/价格发布 | 未执行；原生新会员仅Figma设计 |
 
-Migration052已在隔离测试库执行；001—051原文未改，生产执行0。Native续单的一个未决渠道负向使用显式SQL admission夹具，其余签名Native回归不等于真实微信商户。浏览器为模拟设备，不是原生小程序。
+原CI256/source2332f9fb/treeb2057f0为失败历史：会员26与其余三作业成功，旧组640通过/1失败（总641含6历史源码守卫），因共用Native测试账本留下7个正确LOCAL_ONLY。新专库runner正确隔离；未按机构过滤生产账本或删除旧测试断言。更早语法/类型/初始化顺序失败详见[任务](../../tasks/MEMBER02.md)和[交接](../../handoffs/MEMBER02.md)，不能拼接成功项。
 
-新增测试隔离与浏览器preflight：owned PG脚本保留原全账本严格断言，负向失败必须23且control OID/指纹不变；会员外层canonical guard在Pool前执行。官方维护模块本树编译后native动态导入，避免测试CJS重写import.meta。真实collect/9项guard与type/build通过，仅证明该层，下一候选真实流程尚待。
+052已隔离执行，001—051原文保持，生产执行0。一个Native未决续单负向使用显式SQL admission夹具，另9项真实PG中签名及网关均合成；HTTP浏览器模拟设备不是微信真机。截图只涵盖方案与生效用量，不外推弹窗/二维码/平台页/全部13态截图验收。
