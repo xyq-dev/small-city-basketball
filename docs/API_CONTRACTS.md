@@ -492,7 +492,7 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 
 ## TMX01既有排程预演与资源投影增量
 
-2026-11-10；任务分支实现，合并/验收状态见[TMX01](tasks/TMX01.md)。无新增端点或契约结构，无新增Migration。
+2026-11-10；PR52已合入main，精确合并/验收状态见[TMX01](tasks/TMX01.md)。无新增端点或契约结构，无新增Migration。
 
 `POST /v1/orgs/:orgId/schedule-revisions/:id/optimization-preview`继续只接受赛事/修订双expected版本及可选`preserveAssigned`；仅当前未发布且可管理草稿，拒绝客户端伪造fixtures。响应继续`ScheduleOptimizationPreview`，包括完整场次分配/null未排、sourceHash、两版本、有界搜索结果与指标。sourceHash不是预留或并发锁，正式保存/校验/发布仍重验；COMPLETE可与limitReached=true共存。
 

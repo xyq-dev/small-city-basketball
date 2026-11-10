@@ -1,5 +1,26 @@
 # TMX01 验收证据
 
+## 最终组合证据（b118，同head四作业SUCCESS）
+
+源b11848a9c3f02684ed823b92c03adb7a41929384；测试merge717dbb2362f0bf501a4ac133763735b90567c6d4；实际main merge b8dca5b3053f660b5cbce4ebac60edf0c11a8bf4；tree均36c81609527402521ce51759c2635874d7f6d750。CI42760884290，原main53ac926/首页39路径完整保留。以下原179/42755597945为历史证据，不拼接为本轮通过。
+
+| 实际执行的作业 | 同候选结果 |
+| --- | --- |
+| admin attempt2，129658282093 | 全格式/类型/构建；后台678、API源码1397、微信1638通过/1平台skip；setup12；storage11通过/1宿主限制skip；兼容浏览器1581通过/1567既定配置skip，1566布局PNG |
+| API attempt1，129646021582 | R6 12文件147项，shared-calendar11含新增4；旧PG组72文件638（内含4静态夹具源检查）；原生真实HTTP21；PG实际重启；桌面12/手机12真实API浏览器及owned清理/失败码/control库边界 |
+| production attempt1，129646021927 | 真实PG21、可信HTTPS浏览器4；TLS/来源/权限/会话持久、第二PG/卷完整归档恢复与旧授权隔离、仅自有清理 |
+| account-security attempt1，129646021883 | 桌面1/手机1完整真实HTTPS账号流程；过期/轮换/复用初始化拒绝、本人改密全旧会话撤销、身份保留及清理 |
+
+admin首次129646021984只在外部apt字体安装等待25分钟后cancelled，未进入应用检查。API仍运行时单job重试被GitHub“本轮仍运行”403拒绝，不是权限或自动审批拒绝；待API成功后重试该job完成。attempt2中的其它成功check ID为复制/继承，未当它们重新执行。root及独立审查者已读上述真实完成日志，未靠CI状态替代日志。
+
+新截图[artifact13738912800](https://github.com/xyq-dev/small-city-basketball/actions/runs/42760884290/artifacts/13738912800)，7天。ZIP SHA256 `349044efcdcddfa179c30c1ea6c10f5b2337c78c791842311ce538513a0615e5`。桌面1440×3982，PNG `2975e0728fe46112527b042cad3c4d53d175b4bc29c7b640fb25ced9b756197c`；手机逻辑390/DSF3，PNG1170×15027，SHA256 `99758cb7955e5f4c52ab8dc1de3c3cb137b2acf0edcbee58d4e6d1fbe7a8939b`。原始两张均下载核SHA/尺寸，root实际查看新增预演区裁切（手机还原逻辑宽）；按钮、原→建议、长合成名称和采用说明可读，无新区域裁切/重叠。不是全站像素签收或新时间轴设计还原。
+
+主线合并前最新head、main、四个success check、reviews/comments均复读；后两者为空，不冒称自动Code Review/Security Review批准。前后端及main整合边界已有项目内独立静态复核。无新增Migration/生产操作。日志审计与C19夹具限制沿下述记录保留；未新增“所有警告已解释”的声明。
+
+用户确认后的Figma时间轴V1见[设计交接](../../design/TMX_TIMELINE_UI.md)：原生可编辑层、无整图栅格、两端/11状态/全稿确认均经结构与截图复核，原21页保留。该稿不算新网格应用实现或真实浏览器证据。
+
+## 历史与详细检查记录
+
 2026-11-10（Asia/Shanghai）。原候选179已完成隔离验收；main并发合入PR51后，组合候选尚待重新验收。未完成项目不计通过。源码与隔离验收、公开演示、独立审查及生产分别列出。
 
 ## 精确对象

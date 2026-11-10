@@ -1,5 +1,21 @@
 # TMX01 接续记录
 
+## 最终交付（2026-11-10 14:06 Asia/Shanghai，DONE / MAIN）
+
+[PR52](https://github.com/xyq-dev/small-city-basketball/pull/52)已普通merge至main `b8dca5b3053f660b5cbce4ebac60edf0c11a8bf4`。精确源候选`b11848a9c3f02684ed823b92c03adb7a41929384`、CI测试merge`717dbb2362f0bf501a4ac133763735b90567c6d4`及实际merge的tree均`36c81609527402521ce51759c2635874d7f6d750`，已复读Git Data核对。main53ac926/PR51的39项首页改动完整保留，双祖先及逐字节边界独立复核通过；源179及全部本地作者分支/旧checkout保留，无reset、清理或force。
+
+首批代码：网页服务端补排/全稿只读预演、原与建议/未排原因对照、取消、失效与显式本地采用；保留原本地补排及未保存手工输入。培训场地有效占用进入优化/校验/正式改期，保留buffer、半开边界、暂停仍占用、正式取消释放及零业务写读取。不引入TMX引擎、不复制比赛状态。无新增依赖、端点或Migration，旧001—051未改；既有迁移只在隔离CI执行。
+
+[组合CI42760884290](https://github.com/xyq-dev/small-city-basketball/actions/runs/42760884290)同head四作业SUCCESS。admin首轮仅外部字体安装卡25分钟超时取消，未进入应用检查；等本轮结束后仅该job重试（129658282093）成功，API/production/account实际成功来自attempt1，不将attempt2复制状态冒称重跑。后台678/API源码1397；微信1638通过/1Windows平台skip；CLI12、storage11通过/1宿主uid限制skip；兼容浏览器1581通过/1567既定配置skip，1566布局PNG守卫。R6真实PG147（shared-calendar11含新增4）、旧PG集成组638（含4静态夹具源测试）、原生页面→真实HTTP21、桌面12+手机12、PG重启、HTTPS4+账号2及完整隔离恢复通过。新预演两张PNG已核SHA并查看目标区域；[完整证据](../evidence/TMX01/README.md)区分本地受阻、CI、截图、静态审查和生产。
+
+TMX8.52.0/72ba511及另固定factory7.33.0/c104a5d的源码研究完成，未独立执行上游测试。原生时间轴/手机列表V1已获用户确认，并已整理到原Figma新增122:2页；可编辑文字/组件/矢量、两端及11类状态和全稿确认已截图复核。见[设计交接](../design/TMX_TIMELINE_UI.md)。新网格代码、匿名资源日历端点、逐场锁、多方案持久化、裁判台/Now尚未实现，下一项[TMX02](../tasks/TMX02.md)为TODO。
+
+本轮未部署正式站点、修改正式账号/数据、执行生产Migration或配置外部新凭据。未做真实OBS、微信/Safari真机或新时间轴浏览器还原。PR2四历史意见确认已有修复，不重复改；3项high依赖审计涉及两条解析器公告及上游链，当前代码有静态确认的缓解条件，升级仍待后续，非安全扫描全通过。未解释的既有日志观察和C19夹具checksum适配限制均留证。main合并后若自动CI仍运行，不把它算作已通过证据。
+
+任务工作树`/workspace/scratch/dc6a786e1a31/scb-tmx`；源码分支`feat/tmx-research-scheduling`保留b118，业务合并b8dca5b，最终纯文档另普通同步main，不重写应用源码。下一条：按TMX02先审查并冻结最小匿名只读投影，再实现已确认的新视图，保持当前权限/计时/保存发布规则。
+
+## 历史过程记录（以下以最终交付为准）
+
 2026-11-10（Asia/Shanghai）；root；REVIEW / BRANCH_ONLY。研究和本项目差异审计已完成首轮，原候选隔离验收已完成，最新main并发整合待组合复验。
 
 基线main`e8c8d735d09f1a35dd4a4cebbb97a6e7de8ba69b`；独立工作树`/workspace/scratch/dc6a786e1a31/scb-tmx`，分支`feat/tmx-research-scheduling`。保留旧main/COS所有checkout与历史；远端PR51为另一个首页任务，不接管。实际权限、允许路径及验收见[任务卡](../tasks/TMX01.md)。
@@ -49,3 +65,15 @@ PR52当前候选`179327701d993cb25d68abe15d29ea952b3f45a6`，tree`a5538a5f1ee050
 ## 并发main保护（2026-11-10 13:13 Asia/Shanghai，REVIEW）
 
 原候选179/CI42755597945四作业全部SUCCESS，API R6 PG147（shared-calendar11，新增4）、旧PG集成组638（含4夹具源检查）、原生HTTP21、PG重启和真实浏览器12+12已完成；两张预演PNG由root下载核哈希并查看。详细平台skip、日志观察和截图见[证据](../evidence/TMX01/README.md)。main在最终合并前变为PR51 merge53ac926，root检查已拦住旧基线merge，保留该39路径全部变更并按普通merge整合。接续必须检查新组合精确CI，不能用原179结果代替；本卡仍未合并/部署。无新Migration。后续时间轴V1效果已生成但未获确认、未做Figma/代码；外部占用块还需新增最小匿名只读投影。
+
+
+## 组合候选检查点（2026-11-10 13:17 Asia/Shanghai）
+
+普通GitHub API合并提交`b11848a9c3f02684ed823b92c03adb7a41929384`，父17932770与main53ac926，tree`36c81609527402521ce51759c2635874d7f6d750`与本地268c9e4一致；原本地文档/合并作者历史保留在local/tmx01-main-integration-268c9e4。PR52新[CI42760884290](https://github.com/xyq-dev/small-city-basketball/actions/runs/42760884290)运行中，仍未合并或部署。独立逐文件核验main39路径完整相同，TMX前后端/测试/CI/依赖/部署文件相对179零diff、双祖先均保留。root组合本地全类型与微信1639项（1638通过/1Windows平台skip）通过。后续必须读新CI结果和新截图，旧179证据不替代组合检查。
+
+
+## 组合验收与已确认UI（2026-11-10 13:43 Asia/Shanghai）
+
+组合b118/CI42760884290的production与account-security已成功，API已过新旧PG及原生HTTP，正在后续恢复/浏览器；admin129646021984在apt字体安装耗尽25分钟并cancelled，未进应用检查。已读取完整该日志；单job重试请求被GitHub以“本轮仍运行”403拒绝（不是权限缺失或自动审批拒绝），待API结束再只重试此job，保留精确head，不跳过字体或放宽检查。
+
+用户通过结构化问题明确确认最终时间轴效果方向；Figma沿用原文件QpKOskViUwHFVqSG3uYR9X，session9507ad34-7de2-4dd1-b73e-ca70864c7807，新独立页122:2。专属Web变量与12个场次/列表/选择/导航变体及项目矢量已建，桌面124:34/手机124:360为可编辑组件层（无整图raster、字体Noto Sans SC）。首截图发现次级按钮白色paint fallback及选择器固定宽度，已做定向修正，仍待后截图及状态/说明收口；不能当已完成设计或网格实现。运行ledger在/tmp/design-system-state-tmx01-20261110.json，root脚本/tmp/tmx-figma-families.js与/tmp/tmx-figma-screens.js；原有21页保留。

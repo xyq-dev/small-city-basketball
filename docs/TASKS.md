@@ -1,8 +1,14 @@
 # 任务看板
 
-## TMX01（2026-11-10，REVIEW / BRANCH_ONLY）
+## TMX01（2026-11-10 14:06 Asia/Shanghai，DONE / MAIN：研究与首批接入）
 
-用户要求全面研究TMX后将有价值功能加入本项目。[研究与差异](design/TMX_RESEARCH.md)、[任务](tasks/TMX01.md)、[接续](handoffs/TMX01.md)、[证据](evidence/TMX01/README.md)。原候选17932770的CI42755597945四作业SUCCESS：后台678/API源码1397、R6 PG147/旧PG组638、原生真实HTTP21、桌面12+手机12、HTTPS与完整恢复及两张预演PNG实际复核通过。首批为权威预演/显式采用与培训占用一致性，保留原架构、未保存输入及保存/校验/发布。无新依赖、端点或Migration，未部署。合并前main并发合入PR51/53ac926，现保留完整首页改动普通整合并重跑组合候选；未合并本卡，不借旧绿色冒充新组合。TMX/factory源码研究和时间轴V1效果提案已做，未执行上游测试；新网格/逐场锁/持久多方案/裁判台待独立切片。PR2四历史意见已核实最新代码有修；现有解析器依赖audit告警已静态分类、升级后续处理。
+[PR52](https://github.com/xyq-dev/small-city-basketball/pull/52)已普通merge至main `b8dca5b3053f660b5cbce4ebac60edf0c11a8bf4`。源b11848a、CI测试merge717dbb2及实际merge tree同为36c8160；完整保留PR51/53ac926的39项首页改动。[组合CI42760884290](https://github.com/xyq-dev/small-city-basketball/actions/runs/42760884290)四作业SUCCESS，仅admin外部字体安装超时后同head单项重试。后台678/API源码1397，微信1638+1平台skip；R6 PG147、旧PG组638（含4静态夹具源测试）、原生HTTP21、API浏览器桌面12+手机12、HTTPS与完整恢复通过；1566兼容布局PNG非微信真机，新预演截图目标区已实际复核。
+
+本卡DONE仅指研究、权威预演与培训占用一致性首批源码及隔离验收；无新依赖/端点/Migration，未部署生产。TMX/factory固定源码研究未冒称上游测试通过。时间轴方向已获用户确认，原生可编辑[Figma V1与交接](design/TMX_TIMELINE_UI.md)已完成；新网格/匿名占用端点及逐场锁/持久多方案/裁判台等代码尚未实现。PR2四意见最新代码均有修复，未重复改；既有解析器audit告警已静态分类，依赖升级后续处理。[任务](tasks/TMX01.md)、[接续](handoffs/TMX01.md)、[完整证据](evidence/TMX01/README.md)、[研究](design/TMX_RESEARCH.md)。正式站点、真实OBS/微信/Safari真机不由本轮验收。
+
+## TMX02（TODO，设计已确认，代码未开始）
+
+按[任务卡](tasks/TMX02.md)先审查并冻结匿名资源只读投影，再实现现有DRAFT上的时间轴与手机列表，复用原状态和权限。当前没有新资源日历端点、网格拖放、逐场锁或多方案实现；不扩为生产任务。
 
 
 ## 2026-11-09 21:45 Asia/Shanghai 成功态按钮修复（DONE / MAIN，生产未部署）
