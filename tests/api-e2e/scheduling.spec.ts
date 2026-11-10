@@ -165,7 +165,12 @@ test('冻结名单排赛发布、单场改期与版本冲突恢复使用真实�
     });
     await expect(serverPreview).toBeVisible();
     expect(await read<ScheduleRevisionData>(page.request, revisionPath)).toEqual(generated);
-    await page.screenshot({ path: testInfo.outputPath('tmx-server-preview.png'), fullPage: true });
+    // The driver runs each project separately and clears test-results between
+    // them; keep only this synthetic UI capture outside that transient folder.
+    await page.screenshot({
+      path: `artifacts/tmx01/${testInfo.project.name}-server-preview.png`,
+      fullPage: true,
+    });
     await serverPreview.getByRole('button', { name: '采用服务端建议到本地', exact: true }).click();
     for (const fixture of generated.fixtures) {
       const label = `第${fixture.roundNo}轮第${fixture.positionNo}场`;

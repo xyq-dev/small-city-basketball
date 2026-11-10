@@ -150,6 +150,14 @@ jobs:
       - run: npm run test:api:e2e
         env:
           DATABASE_URL: postgresql://scb:ci-isolated-test-password@127.0.0.1:5432/scb_test_browser
+      - name: Preserve synthetic scheduling preview screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tmx-scheduling-previews
+          path: artifacts/tmx01/*-server-preview.png
+          if-no-files-found: warn
+          retention-days: 7
       - name: Verify owned browser database cleanup on child failure
         run: node scripts/check-browser-database-isolation.mjs
         env:
