@@ -59,7 +59,7 @@
       </view>
 
       <picker wx:if="{{organizations.length && !pending}}" range="{{organizations}}" range-key="name" value="{{orgIndex}}" bindchange="org" disabled="{{busy}}">
-        <view class="ledger-org-picker"><view class="figma-row__copy"><view class="figma-row__subtitle">授权机构</view><view class="figma-row__title">{{organizations[orgIndex].name}}</view></view><view class="ledger-chevron"><figma-icon name="chevron-down-white" size="12"/></view></view>
+        <view class="ledger-org-picker"><view class="figma-row__copy"><view class="figma-row__subtitle">授权机构</view><view class="figma-row__title">{{organizations[orgIndex].name}}</view></view></view>
       </picker>
 
       <block wx:if="{{selected && !pending}}">
@@ -111,7 +111,7 @@
         <view class="figma-section">
           <view class="figma-section__title">授权账本</view>
           <figma-feedback wx:if="{{!items.length}}" type="empty" title="当前机构暂无账本" body="确认已有线下记账授权后，可创建账本。"/>
-          <button wx:for="{{items}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="select" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">已审批账面差额 {{item.netLabel}} 元</view></view><view class="figma-status">{{item.statusLabel}}</view><view class="ledger-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button>
+          <button wx:for="{{items}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="select" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">已审批账面差额 {{item.netLabel}} 元</view></view><view class="figma-status">{{item.statusLabel}}</view></button>
           <button wx:if="{{nextCursor}}" class="ledger-secondary ledger-full" disabled="{{busy}}" bindtap="more">读取更多账本</button>
         </view>
 

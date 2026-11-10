@@ -10,7 +10,12 @@ const repo = path.resolve(root, '../..');
 test('restored homepage keeps 44px targets on the bell and section actions', () => {
   const css = fs.readFileSync(path.join(root, 'pages/home/index.wxss'), 'utf8');
   const header = fs.readFileSync(path.join(root, 'components/header/index.wxss'), 'utf8');
-  assert.match(header, /\.figma-header__message\s*\{[^}]*\bwidth:44px/);
+  assert.match(
+    header,
+    /button\.figma-header__message\s*\{[^}]*\bwidth:44px[^}]*\bmax-width:44px[^}]*\bflex:0 0 44px[^}]*\bmargin:0 !important/,
+  );
+  assert.match(header, /button\.figma-header__city\s*\{[^}]*\bmargin:0 !important/);
+  assert.match(header, /\.figma-header__home-row\s*\{[^}]*\bjustify-content:flex-start/);
   assert.match(css, /\.home-rebuild \.home-section__more\s*\{[^}]*\bmin-height:44px/);
 });
 
@@ -18,9 +23,12 @@ test('rebuilt homepage scopes native button resets before grid and text-link siz
   const css = fs.readFileSync(path.join(root, 'pages/home/index.wxss'), 'utf8');
   assert.match(
     css,
-    /\.home-rebuild button\s*\{[^}]*\bwidth:auto;[^}]*\bmargin:0;[^}]*\bbackground:transparent;/,
+    /\.home-rebuild \.home-quick__item,[\s\S]*\.home-rebuild \.home-extra__links button\s*\{[^}]*\bwidth:auto;[^}]*\bmargin:0;[^}]*\bbackground:transparent;/,
   );
-  assert.match(css, /\.home-rebuild button::after\s*\{[^}]*\bborder:0;/);
+  assert.match(css, /\.home-rebuild \.home-extra__links button::after\s*\{[^}]*\bborder:0;/);
+  assert.doesNotMatch(css, /\.home-rebuild button\s*\{/);
+  assert.doesNotMatch(css, /\.home-rebuild button::after/);
+  assert.match(css, /\.home-rebuild \.home-section__more\s*\{[^}]*\bline-height:17px;/);
   assert.match(
     css,
     /\.home-rebuild \.home-section__more\s*\{[^}]*\bwidth:auto;[^}]*\bbackground:transparent;/,
@@ -30,6 +38,25 @@ test('rebuilt homepage scopes native button resets before grid and text-link siz
     css,
     /\.home-rebuild \.home-extra__links button\s*\{[^}]*\bwidth:auto;[^}]*\bbackground:#ffffff;/,
   );
+});
+
+test('homepage empty state uses the plain feedback layout only', () => {
+  const page = fs.readFileSync(path.join(root, 'pages/home/index.wxml'), 'utf8');
+  const feedback = fs.readFileSync(path.join(root, 'components/figma-feedback/index.wxss'), 'utf8');
+  assert.match(
+    page,
+    /plain="\{\{true\}\}" type="empty" title="\{\{citySelection\.label\}\}暂无进行中赛事"/,
+  );
+  assert.doesNotMatch(page, /暂无进行中赛事[\s\S]{0,180}action-label="查看全部赛事"/);
+  assert.match(page, /class="home-section__more" bindtap="openEvents"/);
+  assert.match(feedback, /\.figma-feedback--plain\s*\{[^}]*height:112px[^}]*background:#f4f6fa/);
+  assert.match(
+    feedback,
+    /\.figma-feedback--plain \.figma-feedback__body\s*\{[^}]*font-size:14px[^}]*line-height:22px/,
+  );
+  assert.match(feedback, /\.figma-feedback--error\s*\{[^}]*background:#fdecef/);
+  assert.match(feedback, /\.figma-feedback--pending\s*\{[^}]*background:#fff1e2/);
+  assert.match(feedback, /\.figma-feedback--success\s*\{[^}]*background:#e5f7ee/);
 });
 
 test('layout checks register fixture routes from the main package and subpackages', () => {

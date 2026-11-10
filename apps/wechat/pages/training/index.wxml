@@ -13,7 +13,7 @@
     <button wx:if="{{pending}}" class="figma-action figma-action--ghost" bindtap="retry" disabled="{{busy}}">使用原请求编号重试</button>
     <figma-feedback wx:if="{{!enabled && !loading}}" type="closed" title="培训招生尚未开放" body="已有报名与退款记录仍可查看；首期仅成人固定短班。"/>
     <figma-skeleton wx:if="{{loading || mineLoading}}" rows="4"/>
-    <button wx:if="{{enrollment}}" class="back-action" bindtap="backToList" disabled="{{busy}}"><image class="back-action__icon" src="/assets/approved-ui/icon-chevron-left-navy.png" mode="aspectFit" aria-hidden="true"/>返回我的报名</button>
+    <button wx:if="{{enrollment}}" class="back-action" bindtap="backToList" disabled="{{busy}}"><image class="back-action__icon" src="/assets/figma/chevron-left.svg" mode="aspectFit" aria-hidden="true"/>返回我的报名</button>
 
     <block wx:if="{{!detail && !enrollment}}">
       <view class="training-tabs"><button class="training-tab {{viewTab==='catalog' ? 'is-active' : ''}}" bindtap="showCatalog" disabled="{{busy}}">发现课程</button><button class="training-tab {{viewTab==='mine' ? 'is-active' : ''}}" bindtap="loadMine" disabled="{{busy || mineLoading}}">我的报名</button></view>

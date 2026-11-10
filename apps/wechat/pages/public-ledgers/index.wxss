@@ -192,18 +192,6 @@
   align-items: center;
 }
 
-.ledger-chevron {
-  display: flex;
-  width: 24px;
-  height: 24px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #123c73;
-  transform: rotate(-90deg);
-}
-
 .ledger-action-stack {
   display: grid;
   width: 100%;

@@ -24,7 +24,6 @@
           <view class="figma-row__subtitle">当前机构</view>
           <view class="figma-row__title">{{organizations[orgIndex].name}}</view>
         </view>
-        <view class="commerce-chevron"><figma-icon name="chevron-down-white" size="12"/></view>
       </view>
     </picker>
 
@@ -47,7 +46,7 @@
       <view class="figma-section"><view class="figma-section__title">固定价合同</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">双方主体</view><view class="figma-row__subtitle">示例篮球协会 / 城北体育社</view></view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">合同版本</view><view class="figma-row__subtitle">V2 · 场边广告展示</view></view><view class="figma-status figma-status--orange">待签署</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">具体时段</view><view class="figma-row__subtitle">11月8日至11月22日</view></view><view class="figma-status figma-status--orange">约定中</view></view></view>
       <view class="figma-section"><view class="figma-section__title">收款与交付</view><view class="commerce-process-row"><view class="commerce-process-mark">1</view><view class="figma-row__copy"><view class="figma-row__title">签署冻结条款</view><view class="figma-row__subtitle">双方核对同一版本</view></view></view><view class="commerce-process-row"><view class="commerce-process-mark">2</view><view class="figma-row__copy"><view class="figma-row__title">核验实际收款</view><view class="figma-row__subtitle">读取统一支付原单</view></view><view class="figma-status figma-status--orange">待核对</view></view><view class="commerce-process-row"><view class="commerce-process-mark">3</view><view class="figma-row__copy"><view class="figma-row__title">提交交付证据</view><view class="figma-row__subtitle">由广告主确认交付范围</view></view></view></view>
       <view class="figma-section"><view class="figma-section__title">分配核对</view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">可分配基数</view><view class="figma-row__subtitle">按核验实收与合同扣项</view></view><view class="figma-status figma-status--orange">待核对</view></view><view class="figma-row"><view class="figma-row__copy"><view class="figma-row__title">渠道分账</view><view class="figma-row__subtitle">独立审核后由正式能力执行</view></view><view class="figma-status">未开放</view></view></view>
-      <view class="figma-section commerce-services"><view class="figma-section__title">相关服务</view><view class="figma-row commerce-service"><figma-icon name="transaction" size="19"/><view class="figma-row__copy"><view class="figma-row__title">查看统一资金订单</view></view><view class="commerce-chevron"><figma-icon name="chevron-down-white" size="12"/></view></view></view>
+      <view class="figma-section commerce-services"><view class="figma-section__title">相关服务</view><view class="figma-row commerce-service"><figma-icon name="transaction" size="19"/><view class="figma-row__copy"><view class="figma-row__title">查看统一资金订单</view></view></view></view>
     </block>
 
     <block wx:elif="{{!loading && !pending}}">
@@ -159,8 +158,8 @@
 
         <view class="figma-section commerce-services">
           <view class="figma-section__title">相关服务</view>
-          <button wx:if="{{canManage || canFinance}}" class="figma-row commerce-service" data-key="setup" bindtap="workspace" disabled="{{busy}}"><figma-icon name="sponsor" size="19"/><view class="figma-row__copy"><view class="figma-row__title">合同设置与独立审核</view></view><view class="commerce-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button>
-          <button wx:if="{{canManage || canFinance}}" class="figma-row commerce-service" bindtap="openTradeManage" disabled="{{busy}}"><figma-icon name="transaction" size="19"/><view class="figma-row__copy"><view class="figma-row__title">查看统一资金订单</view></view><view class="commerce-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button>
+          <button wx:if="{{canManage || canFinance}}" class="figma-row commerce-service" data-key="setup" bindtap="workspace" disabled="{{busy}}"><figma-icon name="sponsor" size="19"/><view class="figma-row__copy"><view class="figma-row__title">合同设置与独立审核</view></view></button>
+          <button wx:if="{{canManage || canFinance}}" class="figma-row commerce-service" bindtap="openTradeManage" disabled="{{busy}}"><figma-icon name="transaction" size="19"/><view class="figma-row__copy"><view class="figma-row__title">查看统一资金订单</view></view></button>
         </view>
       </block>
 
@@ -170,7 +169,7 @@
           <figma-feedback wx:if="{{!orders.length}}" type="empty" title="暂无本人可见的广告订单" body="合同签署、真实收款与交付验收分别推进。"/>
           <button wx:for="{{orders}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="selectOrder" disabled="{{busy}}">
             <view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">实收 {{item.paid_fen}} 分 · {{item.stateLabel}}</view></view>
-            <view class="commerce-money">¥{{item.amountText}}</view><view class="commerce-chevron"><figma-icon name="chevron-down-white" size="12"/></view>
+            <view class="commerce-money">¥{{item.amountText}}</view>
           </button>
         </view>
       </block>

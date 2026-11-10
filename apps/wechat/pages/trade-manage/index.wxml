@@ -71,7 +71,7 @@
       <view id="trade-orders" class="figma-section">
         <view class="figma-section__title">原单查询</view>
         <figma-feedback wx:if="{{!orders.length}}" type="empty" title="暂无可读订单" body="当前机构有权读取的订单会显示在这里。"/>
-        <button wx:for="{{orders}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="open" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.status}}</view></view><view class="manage-money">{{item.totalText}}</view><view class="manage-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button>
+        <button wx:for="{{orders}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="open" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.status}}</view></view><view class="manage-money">{{item.totalText}}</view></button>
       </view>
 
       <view id="trade-reconcile" class="figma-section manage-reconcile">
