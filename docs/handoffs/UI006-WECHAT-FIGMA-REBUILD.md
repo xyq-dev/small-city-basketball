@@ -183,3 +183,8 @@
 
 - `ba92d790` 的 admin `npm test` 失败在 `c10-public.test.cjs`：撤回态仍渲染共享页头返回键 `assets/figma/chevron-left.svg`，旧断言没有登记它。
 - 测试改为精确集合：只允许 `chevron-left.svg`、`share.svg`、`workbench.svg`。撤回前合成赛事和 `hero.jpg` 可见；撤回后旧标题、对阵和 `hero.jpg` 消失，返回键保留。没有放宽清空断言，也没有改页面或素材。
+
+## 2026-11-10T12:15+08:00 首页空态夹具
+
+- `874d5b0` 的 admin e2e 在 320/390/430 失败，因为 `c20-home-empty` 与 `c22-home-region` 仍期望空态里的「查看全部赛事」。
+- 两份夹具改为期望标题行「更多赛事 ›」，并要求旧按钮文案不出现、该按钮可操作。定向回归确认它调用 `openEvents` 进入 `/pages/watch/index`，不是同城「查看全部 ›」。页面和夹具 data 未改。

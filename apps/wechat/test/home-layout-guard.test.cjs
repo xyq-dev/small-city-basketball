@@ -2,7 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { registeredRoutes } = require('./helpers/native-preview.cjs');
+const { loadPage, createWx } = require('./helpers/native-page.cjs');
+const { buildPreview, registeredRoutes } = require('./helpers/native-preview.cjs');
 
 const root = path.resolve(__dirname, '..');
 const repo = path.resolve(root, '../..');
@@ -96,6 +97,7 @@ test('layout checks register fixture routes from the main package and subpackage
   assert.equal(joined.includes('undefined/index'), false);
   assert.ok(routes.includes('pages/city-select/index'));
   assert.ok(routes.length > manifest.pages.length);
+  assert.ok(routes.includes('pages/watch/index'));
   // UI006 keeps the rebuilt homepage in the same matrix with exact latest-Figma geometry.
   assert.match(spec, /expect\(metrics\.header\?\.height\)\.toBe\(width <= 360 \? 196 : 152\)/);
   assert.match(spec, /expect\(metrics\.hero\?\.x\)\.toBe\(0\)/);
@@ -103,4 +105,47 @@ test('layout checks register fixture routes from the main package and subpackage
   assert.match(spec, /latest:UI006:35:38\/59:54/);
   // UI006 uses a 44px status inset plus a 44px navigation row on rebuilt secondary pages.
   assert.match(spec, /expect\(metrics\.header\?\.height\)\.toBe\(88\)/);
+});
+
+test('featured more-events link stays enabled and opens the events page', () => {
+  const source = fs.readFileSync(path.join(root, 'pages/home/index.wxml'), 'utf8');
+  const more = source.match(
+    /<button class="home-section__more" bindtap="openEvents" disabled="\{\{uiPreview\}\}">更多赛事 ›<\/button>/,
+  );
+  const local = source.match(
+    /<button class="home-section__more" bindtap="openLocal" disabled="\{\{uiPreview\}\}">查看全部 ›<\/button>/,
+  );
+  assert.ok(more);
+  assert.ok(local);
+  assert.doesNotMatch(more[0], /openLocal|查看全部赛事/);
+  const wx = createWx();
+  const h = loadPage({ root, route: 'pages/home/index', wx });
+  h.page.onLoad({});
+  assert.equal(h.page.uiPreview, false);
+  h.page.openEvents();
+  assert.deepEqual(
+    wx.calls.filter((call) => call.type === 'navigateTo').map((call) => call.url),
+    ['/pages/watch/index'],
+  );
+  for (const file of ['c20-home-empty.json', 'c22-home-region.json']) {
+    const fixture = JSON.parse(
+      fs.readFileSync(path.join(repo, 'tests/mini-program/fixtures', file), 'utf8'),
+    );
+    assert.deepEqual(fixture.data.publicEvents, []);
+    assert.equal(fixture.data.publicLoaded, true);
+    for (const width of [320, 390, 430]) {
+      const preview = buildPreview({
+        root,
+        route: fixture.route,
+        data: fixture.data,
+        width,
+        height: 844,
+      });
+      const button = preview.phone.match(
+        /<button\b(?=[^>]*data-mini-bindtap="openEvents")(?![^>]*\sdisabled(?:\s|>|=))[^>]*>更多赛事 ›<\/button>/,
+      );
+      assert.ok(button, file + ' ' + width);
+      assert.equal(preview.phone.includes('查看全部赛事'), false, file + ' ' + width);
+    }
+  }
 });
