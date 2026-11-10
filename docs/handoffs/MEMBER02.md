@@ -48,3 +48,10 @@ MEMBER01最新1c2eac2：CI250原API/production/account成功，admin外部字体
 
 
 2026-11-10 17:13 Asia/Shanghai：C22独立历史修复d12ae64已整合c9d8528（仅7个测试/自己交接路径），旧freeze从current helper解耦，原历史source blob/hash与逆变换保持，原activation/audit/22checksum不变；052新列必须先证实旧行NULL才从旧快照比较剔除。作者6项源守卫/type/format通过，真实旧库升级待新CI。源码主体a2373d1已独立复审允许新headCI；legacy delta另送复核。root最终全仓源码在跑，type/build/pure6已通过，未报告当前旧CI252全部成功。M1已按精确source/tree合入main cd8ed1f，后续普通整合其祖先关系，不更换测试代码或覆盖并行工作。
+
+
+## 2026-11-10T17:16:25+08:00 新会员真实PG25通过、CI初始化顺序修复
+
+source33fcc573/tree50880f0，CI254/run42788738030/api129736786828已真实执行并通过会员16+合成签名Native9共25项；原16个付款500未再出现，同秒相邻期/微秒续费/关闭证明/退款/并发扣额覆盖已实测。该结果仍非真实商户资金。之后R6培训19项beforeAll因SETUP_CLOSED被跳过，整个API仍失败：root将新会员组前置到R6前，改变了原空库首次初始化顺序。不是应用业务回归或可以忽略的测试；现把新会员组放回原R6完成后、旧大组前，保留所有验证/精确exclude且不重复跑；不修改生产初始化或R6测试以迁就顺序。此单一workflow修复需要新head完整CI，旧254其他成功项不冒充新head通过。052已隔离执行；生产仍未执行。
+
+最后源码787/1457、微信1638+1平台skip、CLI12、storage11+1UID限制skip全部通过；完整format/type/build/pure6通过。legacy独立复核再次按真实83ae四文件逆变换逐字节相同，所有商业核心修复无未解决源码P1/P2。C22真实升级、注销新增PG、真实HTTPS付款/完整恢复与新会员桌面手机尚待新head。root普通merge M1 ancestry25b0298与前树0a051ac内容零diff，只解决两处本轮文档append末尾冲突且逐字节保持自身完整文档；代码没有丢失或改变。
