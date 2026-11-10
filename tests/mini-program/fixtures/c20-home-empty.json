@@ -13,5 +13,7 @@
     "publicLoaded": true,
     "publicEvents": []
   },
-  "expectText": ["暂无进行中赛事", "查看全部赛事", "同城服务"]
+  "expectText": ["暂无进行中赛事", "更多赛事 ›", "同城服务"],
+  "expectAbsentText": ["查看全部赛事"],
+  "expectEnabled": ["更多赛事 ›"]
 }

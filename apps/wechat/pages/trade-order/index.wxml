@@ -46,7 +46,7 @@
       <view wx:if="{{!order}}" class="figma-section">
         <view class="figma-section__title">可读资金订单</view>
         <figma-feedback wx:if="{{!orders.length && !noCharge && !error}}" type="empty" title="暂无当前可读资金订单" body="从本人报名或预约进入后，可核对对应原订单。"/>
-        <button wx:for="{{orders}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="open" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.status}}</view></view><view class="trade-money">{{item.totalText}}</view><view class="trade-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button>
+        <button wx:for="{{orders}}" wx:key="id" class="figma-row" data-id="{{item.id}}" bindtap="open" disabled="{{busy}}"><view class="figma-row__copy"><view class="figma-row__title">{{item.title}}</view><view class="figma-row__subtitle">{{item.status}}</view></view><view class="trade-money">{{item.totalText}}</view></button>
       </view>
 
       <block wx:if="{{order}}">

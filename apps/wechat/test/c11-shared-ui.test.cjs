@@ -164,5 +164,13 @@ test('the five audited Figma corrections stay scoped to their intended surfaces'
   assert.match(navigation, /<figma-icon[^>]*size="23"\/>/);
   assert.match(navigationStyles, /\.figma-nav__item[^}]*font-size:11px[^}]*line-height:16px/s);
   assert.match(navigationStyles, /\.figma-nav__label\s*\{[^}]*height:16px/s);
+  assert.match(
+    navigationStyles,
+    /\.figma-nav__label\s*\{[^}]*font-size:11px[^}]*font-weight:400[^}]*line-height:16px/s,
+  );
+  assert.match(
+    navigationStyles,
+    /\.figma-nav__item\.is-active \.figma-nav__label\s*\{[^}]*font-weight:700/s,
+  );
   assert.match(home, /\.home-section__title[^}]*font-size:20px[^}]*line-height:27px/s);
 });

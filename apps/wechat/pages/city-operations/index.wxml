@@ -73,7 +73,7 @@
         <button wx:if="{{nextCursor}}" class="city-secondary city-full" disabled="{{busy}}" bindtap="more">读取更多授权</button>
       </view>
 
-      <view class="figma-section"><view class="figma-section__title">已分派事项</view><button class="city-assigned" bindtap="assigned" disabled="{{busy}}"><view class="city-state-icon city-state-icon--small"><figma-icon name="governance" size="20"/></view><view class="figma-row__copy"><view class="figma-row__title">处理明确分派的工单</view><view class="figma-row__subtitle">仅进入当前账号获派的治理事项</view></view><view class="city-chevron"><figma-icon name="chevron-down-white" size="12"/></view></button></view>
+      <view class="figma-section"><view class="figma-section__title">已分派事项</view><button class="city-assigned" bindtap="assigned" disabled="{{busy}}"><view class="city-state-icon city-state-icon--small"><figma-icon name="governance" size="20"/></view><view class="figma-row__copy"><view class="figma-row__title">处理明确分派的工单</view><view class="figma-row__subtitle">仅进入当前账号获派的治理事项</view></view></button></view>
     </block>
   </view>
 

@@ -199,6 +199,16 @@ test('V01/V06 actual templates retain closed, pending and local icon slots at th
       width,
     });
     for (const icon of ['play.svg', 'clock.svg', 'bars.svg', 'chevron.svg'])
-      assert.ok(preview.assets.some((asset) => asset.path.endsWith('/' + icon) && asset.bytes > 0));
+      assert.equal(
+        preview.assets.some((asset) => asset.path.endsWith('/' + icon)),
+        false,
+        icon,
+      );
+    assert.match(preview.phone, /class="media-step__number">1</);
+    assert.match(preview.phone, /class="media-step__number">2</);
+    assert.match(preview.phone, /class="media-step__number">3</);
+    assert.match(preview.phone, /确认产物/);
+    assert.match(preview.phone, /授权预览/);
+    assert.match(preview.phone, /独立审核发布/);
   }
 });

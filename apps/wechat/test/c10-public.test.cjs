@@ -86,27 +86,51 @@ test('revoked event clears old content before the new unavailable state is rende
     throw { status: 404 };
   });
   h.page.id = publicId;
-  h.page.setData({ event: { name: 'old-hidden-title' }, matches: [{ publicMatchId: 'old' }] });
+  h.page.setData({
+    unavailable: false,
+    event: {
+      name: 'old-hidden-title',
+      venueName: '合成球场',
+      dateLabel: '10/24–11/08',
+    },
+    matches: [
+      {
+        publicMatchId: 'old',
+        startLabel: '10/24 19:00',
+        statusLabel: '已确认',
+        home: { teamName: '合成主队' },
+        away: { teamName: '合成客队' },
+      },
+    ],
+  });
+  const before = buildPreview({ root, route: 'pages/event/index', data: h.page.data });
+  assert.equal(h.page.data.unavailable, false);
+  assert.match(before.phone, /old-hidden-title/);
+  assert.match(before.phone, /合成主队/);
+  assert.ok(
+    before.assets.some((asset) => asset.path === 'assets/home/hero.jpg' && asset.bytes > 0),
+  );
   await h.page.load();
   const preview = buildPreview({ root, route: 'pages/event/index', data: h.page.data });
   assert.equal(h.page.data.unavailable, true);
   assert.equal(h.page.data.event, null);
   assert.deepEqual(h.page.data.matches, []);
   assert.match(preview.phone, /该赛事已停止公开/);
+  assert.match(preview.phone, /aria-label="返回"/);
   assert.doesNotMatch(preview.phone, /old-hidden-title/);
-  // Only the shared bottom-bar UI icons may load; no event imagery survives revocation.
-  assert.deepEqual(
-    preview.assets.filter(
-      (asset) =>
-        !/^assets[\\/]approved-ui[\\/]icon-[a-z-]+\.png$/.test(asset.path) &&
-        !/^assets[\\/]ui002[\\/]nav-(?:home-active|local|account)\.svg$/.test(asset.path) &&
-        !/^assets[\\/]home[\\/](?:home|trophy|pin|team|profile)(?:-active)?\.svg$/.test(
-          asset.path,
-        ) &&
-        !/^assets[\\/]figma[\\/](?:share|workbench)\.svg$/.test(asset.path),
-    ),
-    [],
+  assert.doesNotMatch(preview.phone, /合成主队/);
+  assert.equal(
+    preview.assets.some((asset) => asset.path === 'assets/home/hero.jpg'),
+    false,
   );
+  // The revoked state may keep the shared header back control and the two static
+  // unavailable-state icons. It must not keep event imagery or any other SVG.
+  for (const asset of preview.assets) assert.ok(asset.bytes > 0, asset.path);
+  assert.deepEqual(preview.assets.map((asset) => asset.path).sort(), [
+    'assets/figma/chevron-left.svg',
+    'assets/figma/share.svg',
+    'assets/figma/workbench.svg',
+  ]);
 });
 
 test('all public UI fixtures render actual templates at three widths with valid local assets', () => {
