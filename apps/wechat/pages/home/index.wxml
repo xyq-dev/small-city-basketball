@@ -21,16 +21,16 @@
   <view class="home-content">
     <figma-feedback wx:if="{{citySelection.warning}}" type="pending" title="地区目录暂不可用" body="{{citySelection.warning}}" action-label="重新选择" bind:action="chooseCity" disabled="{{uiPreview}}"/>
 
-    <view class="home-section__head"><view class="home-section__title">精选赛事</view><button class="home-section__more" bindtap="openEvents" disabled="{{uiPreview}}">更多赛事<image src="/assets/home/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button></view>
+    <view class="home-section__head"><view class="home-section__title">精选赛事</view><button class="home-section__more" bindtap="openEvents" disabled="{{uiPreview}}">更多赛事 ›</button></view>
     <figma-skeleton wx:if="{{publicLoading}}" rows="3"/>
     <figma-feedback wx:elif="{{publicError}}" type="error" title="公开赛事暂时无法读取" body="{{publicError}}" action-label="重新读取" bind:action="loadPublicEvents" disabled="{{uiPreview}}"/>
-    <figma-feedback wx:elif="{{publicLoaded && !publicEvents.length}}" type="empty" title="{{citySelection.label}}暂无进行中赛事" body="可查看其他阶段，或选择其他城市。" action-label="查看全部赛事" bind:action="openEvents" disabled="{{uiPreview}}"/>
+    <figma-feedback wx:elif="{{publicLoaded && !publicEvents.length}}" plain="{{true}}" type="empty" title="{{citySelection.label}}暂无进行中赛事" body="可查看其他阶段，或选择其他城市。" disabled="{{uiPreview}}"/>
     <button wx:for="{{publicEvents}}" wx:key="publicEventId" class="home-event-card" data-id="{{item.publicEventId}}" bindtap="openPublicEvent" disabled="{{uiPreview}}">
       <image class="home-event-card__image" src="/assets/home/event-court.jpg" mode="aspectFill"/>
       <view class="home-event-card__copy"><view class="home-event-card__name">{{item.name}}</view><view class="home-event-card__meta"><text class="home-event-card__location">{{item.displayCity || item.venueName}}</text><text wx:if="{{item.dateLabel}}" class="home-event-card__date">{{item.dateLabel}}</text></view><view class="home-event-card__status">{{item.statusLabel}}</view></view>
     </button>
 
-    <view class="home-section__head home-section__head--local"><view class="home-section__title">同城服务</view><button class="home-section__more" bindtap="openLocal" disabled="{{uiPreview}}">查看全部<image src="/assets/home/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button></view>
+    <view class="home-section__head home-section__head--local"><view class="home-section__title">同城服务</view><button class="home-section__more" bindtap="openLocal" disabled="{{uiPreview}}">查看全部 ›</button></view>
     <view class="home-local-grid">
       <button class="home-local-card home-local-card--court" bindtap="openCourt" disabled="{{uiPreview}}"><image src="/assets/home/service-court.png" mode="aspectFit"/><view class="home-local-card__title">找球场</view></button>
       <button class="home-local-card home-local-card--referee" bindtap="openReferee" disabled="{{uiPreview}}"><image src="/assets/home/service-referee.png" mode="aspectFit"/><view class="home-local-card__title">约裁判</view></button>
@@ -40,7 +40,7 @@
       <sponsorship-slot region-id="{{citySelection.regionId || ''}}" catalog-version="{{citySelection.catalogVersion || ''}}" visible="{{sponsorVisible}}"/>
 
       <view class="home-extra">
-      <view class="home-section__head"><view class="home-section__title">我的赛事</view><button class="home-section__more" bindtap="openEvents" disabled="{{uiPreview}}">全部赛事<image src="/assets/home/chevron-right.svg" mode="aspectFit" aria-hidden="true"/></button></view>
+      <view class="home-section__head"><view class="home-section__title">我的赛事</view><button class="home-section__more" bindtap="openEvents" disabled="{{uiPreview}}">全部赛事 ›</button></view>
       <figma-skeleton wx:if="{{eventsLoading && !featured.length}}" rows="2"/>
       <button wx:for="{{featured}}" wx:key="key" class="home-private-event" data-org="{{item.orgId}}" data-id="{{item.id}}" bindtap="openEvent" disabled="{{uiPreview}}"><view class="home-private-event__status">{{item.statusLabel}}</view><view class="home-private-event__name">{{item.name}}</view><view class="home-private-event__meta">{{item.dateLabel}} · {{item.orgName}}</view></button>
       <figma-feedback wx:if="{{!eventsLoading && !signedIn}}" type="empty" title="登录后查看你参与的赛事" body="浏览全国公开赛事无需登录。" action-label="登录并继续" bind:action="login" disabled="{{uiPreview}}"/>

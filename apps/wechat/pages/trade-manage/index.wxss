@@ -149,18 +149,6 @@
   white-space: nowrap;
 }
 
-.manage-chevron {
-  display: flex;
-  width: 24px;
-  height: 24px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #123c73;
-  transform: rotate(-90deg);
-}
-
 .trade-manage-page button[disabled],
 .trade-manage-page .manage-text-action[disabled] {
   border-color: #e6ebf2;

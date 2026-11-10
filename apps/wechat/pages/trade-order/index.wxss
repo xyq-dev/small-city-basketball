@@ -44,18 +44,6 @@
   line-height: 18px;
 }
 
-.trade-chevron {
-  display: flex;
-  width: 24px;
-  height: 24px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #123c73;
-  transform: rotate(-90deg);
-}
-
 .trade-page-check,
 .trade-check-group {
   width: 100%;

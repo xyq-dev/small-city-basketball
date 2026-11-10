@@ -6,12 +6,18 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
-const hash = (file) =>
-  crypto
-    .createHash('sha256')
-    .update(fs.readFileSync(path.join(root, file)))
-    .digest('hex')
-    .toUpperCase();
+const crlfToLf = (bytes) => {
+  const parts = [];
+  for (let index = 0; index < bytes.length; index += 1) {
+    if (bytes[index] === 0x0d && bytes[index + 1] === 0x0a) {
+      parts.push(0x0a);
+      index += 1;
+    } else parts.push(bytes[index]);
+  }
+  return Buffer.from(parts);
+};
+const assetIdentity = (bytes) =>
+  crypto.createHash('sha256').update(crlfToLf(bytes)).digest('hex').toUpperCase();
 
 test('home binds the Figma jersey while the bottom Teams destination keeps its teams icon', () => {
   const home = read('pages/home/index.wxml');
@@ -40,8 +46,9 @@ test('home header slots use the exact transparent Figma exports and recorded fin
 
   for (const asset of manifest.assets) {
     const source = read(asset.path);
+    const bytes = fs.readFileSync(path.join(root, asset.path));
     assert.equal(
-      hash(asset.path),
+      assetIdentity(bytes),
       asset.sha256,
       `${asset.slot} bytes changed without a Figma export review`,
     );
@@ -64,6 +71,35 @@ test('home header slots use the exact transparent Figma exports and recorded fin
   assert.match(read(manifest.assets[2].path), /fill="white"[^>]*stroke="white"/);
   assert.match(read(manifest.assets[3].path), /stroke="#63758B"/);
   assert.doesNotMatch(header, /https:\/\/www\.figma\.com\/api\/mcp\/asset\//);
+});
+
+test('home header identity treats CRLF as LF and still rejects path or color changes', () => {
+  const manifest = JSON.parse(read('test/fixtures/home-figma-icons.json'));
+  const brand = manifest.assets[0];
+  const lf = crlfToLf(fs.readFileSync(path.join(root, brand.path)));
+  const crlf = Buffer.from(
+    Array.from(lf, (byte) => (byte === 0x0a ? [0x0d, 0x0a] : [byte])).flat(),
+  );
+  assert.equal(assetIdentity(lf), brand.sha256);
+  assert.equal(assetIdentity(crlf), brand.sha256);
+  assert.notEqual(
+    crypto.createHash('sha256').update(lf).digest('hex'),
+    crypto.createHash('sha256').update(crlf).digest('hex'),
+  );
+
+  const pathChanged = Buffer.from(lf);
+  const pathMarker = Buffer.from('M14 26.6');
+  const pathAt = pathChanged.indexOf(pathMarker);
+  assert.notEqual(pathAt, -1);
+  pathChanged[pathAt + 1] = '5'.charCodeAt(0);
+  assert.notEqual(assetIdentity(pathChanged), brand.sha256);
+
+  const colorChanged = Buffer.from(lf);
+  const colorMarker = Buffer.from('stroke="white"');
+  const colorAt = colorChanged.indexOf(colorMarker);
+  assert.notEqual(colorAt, -1);
+  colorChanged[colorAt + 'stroke="'.length] = 'x'.charCodeAt(0);
+  assert.notEqual(assetIdentity(colorChanged), brand.sha256);
 });
 
 test('featured event card keeps node 35:102 geometry without truncating longer status text', () => {

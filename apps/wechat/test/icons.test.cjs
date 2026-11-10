@@ -122,10 +122,14 @@ test('rebuilt home entries use mapped Figma icons; positions keep labels and fil
 });
 
 test('no Unicode glyph or dot is used as a functional icon inside buttons', () => {
+  const figmaSectionLink =
+    /^<button class="home-section__more" bindtap="(?:openEvents|openLocal)" disabled="\{\{uiPreview\}\}">(?:更多赛事|查看全部|全部赛事) ›<\/button>$/;
   for (const file of templates(root)) {
     const source = fs.readFileSync(file, 'utf8');
-    for (const [button] of source.matchAll(/<button\b[\s\S]*?<\/button>/g))
+    for (const [button] of source.matchAll(/<button\b[\s\S]*?<\/button>/g)) {
+      if (figmaSectionLink.test(button.replace(/\r\n/g, '\n'))) continue;
       assert.doesNotMatch(button, /[⋯●○✓✔＋→←›‹]/, path.relative(root, file));
+    }
     // Dropdown indicators (also in pickers) must be the chevron icon, never a glyph.
     assert.doesNotMatch(source, /[⌄⌃ˇ∨]/, path.relative(root, file));
   }

@@ -48,3 +48,22 @@ PR52，候选`d3f097b8d91c48213230b472e54631cb3f2fe648`、tree`851d7fd9c52fbe8a8
 
 
 截图证据补充：API浏览器驱动分别启动desktop-api/mobile-api并清理test-results，现有API job不保留PNG。root将本场合成预演截图输出到独立`artifacts/tmx01/`，精确PNG glob由现有固定版本upload-artifact保留7天；不上传trace、JSON、Cookie、setup或密码页面，路径已gitignore。该3文件delta及私有workspace测试修复均经独立只读复核通过，类型/相关格式检查通过。d4b71c7/CI42755284088在此证据补充前启动，若被新候选取消，不记为通过；最终仍须同一精确head完整CI及两张图片实际复核。
+
+
+## 精确候选检查点（2026-11-10 12:35 Asia/Shanghai）
+
+PR52当前候选`179327701d993cb25d68abe15d29ea952b3f45a6`，tree`a5538a5f1ee0502059e08dd1e68f2ac30018f261`；远端main仍e8c8d735。CI[42755597945](https://github.com/xyq-dev/small-city-basketball/actions/runs/42755597945)中production、account-security已完成SUCCESS，admin/API仍运行；不将部分绿色记为最终通过。旧d4b71c7的42755284088被新候选取代，不作最终证据。普通GitHub API同步使用父提交/expected_sha及force=false；各本地作者分支保留，未覆盖旧checkout。
+
+公开演示`https://courthive.github.io/TMX/`已用真实共享浏览器生成全合成“Scheduling Lab — Garman + Pro”本地示例并进入Schedule：看到按赛事分组的44未排场次目录、Inspector、四个场地列/1—10出场顺序行、日期/可用性/Profile、Bulk mode、Lock和独立发布。只核对这些实际入口，未拖放/发布，也未运行TMX源码或测试；在线演示浮动版本不替代固定72ba511源码证据，更不算本项目浏览器验收。
+
+
+## 后续研究与设计检查点（2026-11-10 12:50 Asia/Shanghai）
+
+同候选admin也已SUCCESS（678/1397源码、1630微信+1平台skip、CLI12、storage11+1宿主权限skip；兼容浏览器1581/1567配置skip，1566布局PNG），API旧PG步骤仍运行，未宣布整轮通过。四项PR2历史意见按最新代码及直接回归定义确认均已修，无重复改动；详情见[证据](../evidence/TMX01/README.md)。
+
+已补查factory固定v7.33.0/c104a5d源码：TMX overrides实际link本地factory，不能仅由package声称实装版本；该release的basedOnHash仅提示、apply不强制拦漂移、rebase不合并placement、SUCCESS可含跳过，不能替代本项目版本/事务/权限。见研究新节。另生成下一批时间轴桌面/手机V1效果提案，已修正已保存/dirty按钮与手机列表选中状态；未获视觉确认，不做Figma或新网格代码，不能当当前实现截图。
+
+
+## 并发main保护（2026-11-10 13:13 Asia/Shanghai，REVIEW）
+
+原候选179/CI42755597945四作业全部SUCCESS，API R6 PG147（shared-calendar11，新增4）、旧PG集成组638（含4夹具源检查）、原生HTTP21、PG重启和真实浏览器12+12已完成；两张预演PNG由root下载核哈希并查看。详细平台skip、日志观察和截图见[证据](../evidence/TMX01/README.md)。main在最终合并前变为PR51 merge53ac926，root检查已拦住旧基线merge，保留该39路径全部变更并按普通merge整合。接续必须检查新组合精确CI，不能用原179结果代替；本卡仍未合并/部署。无新Migration。后续时间轴V1效果已生成但未获确认、未做Figma/代码；外部占用块还需新增最小匿名只读投影。

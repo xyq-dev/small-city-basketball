@@ -1,6 +1,7 @@
 Component({
   properties: {
     type: { type: String, value: 'empty' },
+    plain: { type: Boolean, value: false },
     title: { type: String, value: '' },
     body: { type: String, value: '' },
     actionLabel: { type: String, value: '' },

@@ -3,17 +3,20 @@
 .figma-header--home { background:#123c73; color:#ffffff; }
 .figma-header__capsule-row { display:none; width:100%; }
 .figma-header__home-row, .figma-header__account-row, .figma-header__detail-row { position:relative; display:flex; width:100%; height:44px; align-items:center; padding-left:16px; }
-.figma-header__home-row { gap:8px; }
+.figma-header__home-row { justify-content:flex-start; gap:8px; }
 .figma-header__brand { display:flex; min-width:0; flex:none; align-items:center; gap:8px; color:#ffffff; font-size:20px; font-weight:700; line-height:27px; white-space:nowrap; }
 .figma-header__brand image { display:block; width:28px; height:28px; flex:none; }
-.figma-header__city { display:flex; width:70px; min-width:70px; max-width:70px; height:44px; min-height:44px; flex:none; align-items:center; justify-content:center; gap:3px; margin:0; padding:0; border:0; border-radius:0; background:transparent; color:#ffffff; font-size:14px; font-weight:700; line-height:19px; white-space:nowrap; }
+.figma-header__brand-name { color:#ffffff; font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif; font-size:20px; font-weight:700; line-height:27px; }
+button.figma-header__city { display:flex; width:70px; min-width:70px; max-width:70px; height:44px; min-height:44px; flex:none; align-items:center; justify-content:center; gap:3px; margin:0 !important; padding:0; border:0; border-radius:0; background:transparent; color:#ffffff; font-size:14px; font-weight:700; line-height:19px; white-space:nowrap; }
 .figma-header__city::after, .figma-header__message::after, .figma-header__search::after, .figma-header__back::after { border:0; }
 .figma-header__city view { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.figma-header__city-name { color:#ffffff; font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif; font-size:14px; font-weight:700; line-height:19px; }
 .figma-header__city image { width:13px; height:13px; flex:none; }
-.figma-header__message { display:flex; width:44px; min-width:44px; height:44px; min-height:44px; flex:none; align-items:center; justify-content:center; margin:0; padding:0; border:0; border-radius:0; background:transparent; }
-.figma-header__message image { width:22px; height:22px; }
+button.figma-header__message { display:flex; width:44px; min-width:44px; max-width:44px; height:44px; min-height:44px; flex:0 0 44px; align-items:center; justify-content:center; margin:0 !important; padding:0; border:0; border-radius:0; background:transparent; overflow:hidden; }
+.figma-header__message image { display:block; width:22px; height:22px; flex:none; }
 button.figma-header__search { display:flex; width:calc(100% - 32px); height:44px; min-height:44px; align-items:center; justify-content:flex-start; gap:8px; margin:8px 16px 0; padding:0 14px 0 15px; border:0; border-radius:22px; background-color:#ffffff !important; color:#51657d !important; font-size:14px; font-weight:400; line-height:19px; text-align:left; }
 .figma-header__search image { width:18px; height:18px; flex:none; }
+.figma-header__search-text { color:#51657d; font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif; font-size:14px; font-weight:400; line-height:19px; }
 .figma-header__home-row button[disabled], button.figma-header__search[disabled] { background:transparent; color:inherit; opacity:.55; }
 button.figma-header__search[disabled] { background-color:#ffffff !important; color:#7c8ea5 !important; }
 .figma-header--account { background:#ffffff; }
@@ -23,7 +26,7 @@ button.figma-header__search[disabled] { background-color:#ffffff !important; col
 .figma-header__account-title { min-width:0; flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .figma-header__detail-row { padding-left:8px; }
 button.figma-header__back { display:flex; width:44px; min-width:44px; max-width:44px; height:44px; min-height:44px; flex:none; align-items:center; justify-content:center; margin:0; padding:0; border:0; border-radius:0; background:transparent; }
-.figma-header__back image { width:22px; height:22px; }
+.figma-header__back image { width:24px; height:24px; }
 .figma-header__title { min-width:0; flex:1; overflow:hidden; padding:0 8px; color:#123c73; font-size:18px; font-weight:700; line-height:26px; text-align:left; white-space:nowrap; text-overflow:ellipsis; pointer-events:none; }
 .figma-header--dark { background:#123c73; color:#ffffff; }
 .figma-header--dark .figma-header__title { color:#ffffff; }

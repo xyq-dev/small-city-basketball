@@ -1,8 +1,6 @@
 @import "../../styles/figma-pages.wxss";
 
-.media-icon { width:20px; height:20px; flex:none; }
 .media-summary-icon { width:25px; height:25px; flex:none; }
-.media-chevron { width:16px; height:16px; flex:none; }
 .media-step__copy { min-width:0; flex:1; }
 .media-empty { padding:12px; border-radius:10px; background:#f4f6fa; }
 

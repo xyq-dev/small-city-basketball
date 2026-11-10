@@ -30,18 +30,6 @@
   border-radius: 12px;
 }
 
-.city-chevron {
-  display: flex;
-  width: 24px;
-  height: 24px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #123c73;
-  transform: rotate(-90deg);
-}
-
 .city-inline-actions,
 .city-filter-grid {
   display: grid;

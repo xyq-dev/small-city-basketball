@@ -6,4 +6,5 @@
 .figma-nav__icon { display:flex; width:46px; height:28px; flex:none; align-items:center; justify-content:center; border-radius:14px; }
 .figma-nav__item.is-active { color:#123c73; font-weight:700; }
 .figma-nav__item.is-active .figma-nav__icon { background:#fff1e2; }
-.figma-nav__label { height:16px; }
+.figma-nav__label { height:16px; color:#51657d; font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif; font-size:11px; font-weight:400; line-height:16px; }
+.figma-nav__item.is-active .figma-nav__label { color:#123c73; font-weight:700; }
