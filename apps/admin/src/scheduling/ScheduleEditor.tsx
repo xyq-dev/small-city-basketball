@@ -14,6 +14,7 @@ import type { useAction } from '../registration/shared';
 import { fixtureLabel, localInput, offsetTime, timeLabel } from './shared';
 import { PolicySummary } from './PolicyForm';
 import { AutoScheduleSuggestions } from './AutoScheduleSuggestions';
+import { ServerOptimizationPreview } from './ServerOptimizationPreview';
 
 type Allocation = { fixtureKey: string; courtId: string; localStart: string };
 export const conflictTitles: Record<ScheduleConflictCode, string> = {
@@ -40,6 +41,7 @@ export function ScheduleEditor({
   published,
   historical,
   eventDates,
+  ownerKey,
 }: {
   revision: ScheduleRevisionData;
   courts: CourtData[];
@@ -49,6 +51,7 @@ export function ScheduleEditor({
   published: boolean;
   historical: boolean;
   eventDates: { startDate: string; endDate: string };
+  ownerKey: string;
 }) {
   const original = useMemo(
     () =>
@@ -66,7 +69,8 @@ export function ScheduleEditor({
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
   const [suggesting, setSuggesting] = useState(false);
-  const busy = action.busy || suggesting;
+  const [serverPreviewing, setServerPreviewing] = useState(false);
+  const busy = action.busy || suggesting || serverPreviewing;
   const cards = useRef<Record<string, HTMLElement | null>>({});
   const dirty = snapshot(allocations) !== snapshot(original);
   const editable = revision.isCurrent && revision.status === 'DRAFT' && !published && !historical;
@@ -235,7 +239,7 @@ export function ScheduleEditor({
             courts={courts}
             allocations={allocations}
             eventDates={eventDates}
-            disabled={action.busy}
+            disabled={action.busy || serverPreviewing}
             onBusyChange={setSuggesting}
             onAdopt={(suggestions) => {
               const proposed = new Map(suggestions.map((item) => [item.fixtureKey, item]));
@@ -249,6 +253,38 @@ export function ScheduleEditor({
                         localStart: localInput(suggestion.startsAt),
                       }
                     : item;
+                }),
+              );
+              setValidation(undefined);
+              setPublishConflicts([]);
+              setConfirming(false);
+              setError('');
+              action.clear();
+            }}
+          />
+        )}
+        {canEdit && (
+          <ServerOptimizationPreview
+            revision={revision}
+            courts={courts}
+            allocations={allocations}
+            eventDates={eventDates}
+            api={api}
+            ownerKey={ownerKey}
+            dirty={dirty}
+            disabled={action.busy || suggesting || action.conflict}
+            onBusyChange={setServerPreviewing}
+            onReload={onReload}
+            onAdopt={(suggestions) => {
+              const proposed = new Map(suggestions.map((item) => [item.fixtureKey, item]));
+              setAllocations((previous) =>
+                previous.map((item) => {
+                  const suggestion = proposed.get(item.fixtureKey)!;
+                  return {
+                    fixtureKey: item.fixtureKey,
+                    courtId: suggestion.courtId ?? '',
+                    localStart: localInput(suggestion.startsAt),
+                  };
                 }),
               );
               setValidation(undefined);
@@ -405,7 +441,7 @@ export function ScheduleEditor({
           <div className="section-heading">
             <div>
               <h2>赛程冲突检查</h2>
-              <p>检查已保存的安排，同时核对机构内其他正式赛程的场地和球队占用。</p>
+              <p>检查已保存的安排，同时核对其他已占用的场地和球队时段。</p>
             </div>
             {canValidate && (
               <button
@@ -440,7 +476,7 @@ export function ScheduleEditor({
                   <AlertTriangle size={19} />
                   <div>
                     <strong>{conflictTitles[conflict.code]}</strong>
-                    {conflict.external && <p>与机构内其他已发布比赛的占用冲突，请调整本方安排。</p>}
+                    {conflict.external && <p>与其他已占用的场地或球队时段冲突，请调整本方安排。</p>}
                     <div className="sc-conflict-links">
                       {conflict.fixtureKeys.map((key) => {
                         const fixture = revision.fixtures.find((item) => item.fixtureKey === key);

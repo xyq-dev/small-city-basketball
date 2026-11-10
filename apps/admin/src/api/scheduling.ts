@@ -12,10 +12,12 @@ import type {
   ScheduleConflict,
   MatchReschedulingData,
   RescheduleMatchInput,
+  ScheduleOptimizationPreview,
 } from '@small-city-basketball/contracts';
 import { EVENT_FORMATS, EVENT_STATUSES, MATCH_STATUSES } from '@small-city-basketball/contracts';
 import { ApiError } from './client';
 import type { ApiClient } from './client';
+import { parseOptimizationPreview } from '../scheduling/optimization-preview';
 
 type JsonObject = Record<string, unknown>;
 const object = (value: unknown): value is JsonObject =>
@@ -362,6 +364,34 @@ export function createSchedulingApi(client: ApiClient, organizationId: string) {
         input,
         validation,
       ),
+    optimizationPreview: async (
+      saved: ScheduleRevisionData,
+      courts: CourtData[],
+      preserveAssigned: boolean,
+      signal?: AbortSignal,
+    ): Promise<ScheduleOptimizationPreview> => {
+      const result = await client.request<unknown>(
+        `${base}/schedule-revisions/${encodeURIComponent(saved.id)}/optimization-preview`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            expectedEventVersion: saved.eventVersion,
+            expectedRevisionVersion: saved.version,
+            preserveAssigned,
+          }),
+          ...(signal ? { signal } : {}),
+        },
+      );
+      try {
+        return parseOptimizationPreview(result.data, saved, courts, preserveAssigned);
+      } catch {
+        throw new ApiError(
+          200,
+          'INVALID_RESPONSE',
+          '服务端预演与当前草稿不一致，请重新读取后再生成',
+        );
+      }
+    },
     publish: (id: string, input: ScheduleVersionInput) =>
       write<EventSchedulingData>(
         `/schedule-revisions/${encodeURIComponent(id)}/publish`,

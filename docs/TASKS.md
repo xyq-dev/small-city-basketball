@@ -1,5 +1,10 @@
 # 任务看板
 
+## TMX01（2026-11-10，REVIEW / BRANCH_ONLY）
+
+用户要求全面研究TMX后将有价值功能加入本项目。[研究与差异](design/TMX_RESEARCH.md)、[任务](tasks/TMX01.md)、[接续](handoffs/TMX01.md)、[证据](evidence/TMX01/README.md)。原候选17932770的CI42755597945四作业SUCCESS：后台678/API源码1397、R6 PG147/旧PG组638、原生真实HTTP21、桌面12+手机12、HTTPS与完整恢复及两张预演PNG实际复核通过。首批为权威预演/显式采用与培训占用一致性，保留原架构、未保存输入及保存/校验/发布。无新依赖、端点或Migration，未部署。合并前main并发合入PR51/53ac926，现保留完整首页改动普通整合并重跑组合候选；未合并本卡，不借旧绿色冒充新组合。TMX/factory源码研究和时间轴V1效果提案已做，未执行上游测试；新网格/逐场锁/持久多方案/裁判台待独立切片。PR2四历史意见已核实最新代码有修；现有解析器依赖audit告警已静态分类、升级后续处理。
+
+
 ## 2026-11-09 21:45 Asia/Shanghai 成功态按钮修复（DONE / MAIN，生产未部署）
 
 [PR #50](https://github.com/xyq-dev/small-city-basketball/pull/50) 已 merge 至 main `a8c94de55915d24e8f670e801bbdf01c6834fe41`。修复头 `baa775845da8297a1d710310717b6b51f3b33fb4`。[CI #42622629475](https://github.com/xyq-dev/small-city-basketball/actions/runs/42622629475) 四作业 SUCCESS。品牌身份与 Linux 软链测试通过。四页隔离成功态 UI 通过；真实账号、真实 API 和真实业务成功流程未验证。未 pack、上传、部署或执行生产 Migration。

@@ -156,12 +156,58 @@ test('冻结名单排赛发布、单场改期与版本冲突恢复使用真实�
     expect(generated.source).toEqual(frozen);
     progress('round robin generated');
 
+    // TMX01: the authoritative preview goes through the real HTTP API and PG,
+    // but preview/adoption must leave the stored draft and publication alone.
+    await page.getByRole('button', { name: '服务端补排预演', exact: true }).click();
+    const serverPreview = page.getByRole('region', {
+      name: '服务端排程预演结果',
+      exact: true,
+    });
+    await expect(serverPreview).toBeVisible();
+    expect(await read<ScheduleRevisionData>(page.request, revisionPath)).toEqual(generated);
+    // The driver runs each project separately and clears test-results between
+    // them; keep only this synthetic UI capture outside that transient folder.
+    await page.screenshot({
+      path: `artifacts/tmx01/${testInfo.project.name}-server-preview.png`,
+      fullPage: true,
+    });
+    await serverPreview.getByRole('button', { name: '采用服务端建议到本地', exact: true }).click();
+    for (const fixture of generated.fixtures) {
+      const label = `第${fixture.roundNo}轮第${fixture.positionNo}场`;
+      await expect(page.getByLabel(`${label} 场地`, { exact: true })).toHaveValue(court.id);
+      await expect(page.getByLabel(`${label} 开始时间`, { exact: true })).not.toHaveValue('');
+    }
+    await expect(page.getByRole('button', { name: '服务端补排预演', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: '全稿均衡预演', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: '检查赛程冲突', exact: true })).toBeDisabled();
+    expect(await read<ScheduleRevisionData>(page.request, revisionPath)).toEqual(generated);
+    expect(
+      (await read<EventSchedulingData>(page.request, `${eventPath}/scheduling`)).publication,
+    ).toBeNull();
+    await page.getByRole('button', { name: '取消本地修改', exact: true }).click();
+    await expect(serverPreview).not.toBeVisible();
+
+    await page.getByRole('button', { name: '全稿均衡预演', exact: true }).click();
+    await expect(serverPreview).toBeVisible();
+    await serverPreview.getByRole('button', { name: '采用服务端建议到本地', exact: true }).click();
+    await expect(page.getByRole('group', { name: '确认全稿替换', exact: true })).toBeVisible();
+    for (const fixture of generated.fixtures) {
+      const label = `第${fixture.roundNo}轮第${fixture.positionNo}场`;
+      await expect(page.getByLabel(`${label} 场地`, { exact: true })).toHaveValue('');
+    }
+    await page.getByRole('button', { name: '确认替换本地草稿安排', exact: true }).click();
+    expect(await read<ScheduleRevisionData>(page.request, revisionPath)).toEqual(generated);
+    await page.getByRole('button', { name: '取消本地修改', exact: true }).click();
+    progress('server preview and explicit adoption left PG unchanged; full replacement confirmed');
+
     // Suggestions preserve dirty inputs, and neither preview nor adoption may
     // publish or persist allocations before the explicit existing save action.
     const firstFixture = generated.fixtures[0]!;
     const firstLabel = `第${firstFixture.roundNo}轮第${firstFixture.positionNo}场`;
     await page.getByLabel(`${firstLabel} 场地`, { exact: true }).selectOption(court.id);
     await page.getByLabel(`${firstLabel} 开始时间`, { exact: true }).fill('2026-12-01T09:00');
+    await expect(page.getByRole('button', { name: '服务端补排预演', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: '全稿均衡预演', exact: true })).toBeDisabled();
     await page.getByRole('button', { name: '生成排时建议', exact: true }).click();
     const suggestions = page.getByRole('region', { name: '排时建议预览', exact: true });
     await expect(suggestions).toBeVisible();

@@ -537,7 +537,7 @@ export class SchedulingService extends ApplicationService {
       return this.revisionDto(client, event, revision);
     });
   }
-  /** Only authoritative court/team keys enter this private, read-only local-calendar projection. */
+  /** Authoritative resource keys project local/training occupancy without private source identities. */
   protected async localReservations(
     client: PoolClient,
     resourceKeys: string[],
@@ -545,17 +545,27 @@ export class SchedulingService extends ApplicationService {
     to: string,
     padding: number,
   ) {
+    // Match 048's expiry rule without running its mutating cleanup. Training
+    // timestamps already include buffers; suspended cohorts keep active holds.
     const rows = await client.query<{
       kind: 'COURT' | 'TEAM';
       resource_id: string;
       starts_at: Date;
       ends_at: Date;
     }>(
-      `SELECT CASE WHEN r.resource_key LIKE 'court:%' THEN 'COURT' ELSE 'TEAM' END AS kind,split_part(r.resource_key,':',2) AS resource_id,r.starts_at,r.ends_at
-       FROM local_resource_reservations r LEFT JOIN local_bookings b ON b.id=r.booking_id LEFT JOIN local_matchups lm ON lm.id=r.matchup_id
-       WHERE r.resource_key=ANY($1::text[]) AND ${liveLocalReservation}
-       AND r.starts_at<$3::timestamptz+$4::double precision*interval '1 millisecond' AND r.ends_at>$2::timestamptz-$4::double precision*interval '1 millisecond'
-       ORDER BY r.resource_key,r.starts_at,r.ends_at LIMIT 10001`,
+      `SELECT occupied.kind,split_part(occupied.resource_key,':',2) AS resource_id,occupied.starts_at,occupied.ends_at
+       FROM (
+        SELECT CASE WHEN r.resource_key LIKE 'court:%' THEN 'COURT' ELSE 'TEAM' END AS kind,r.resource_key,r.starts_at,r.ends_at
+        FROM local_resource_reservations r LEFT JOIN local_bookings b ON b.id=r.booking_id LEFT JOIN local_matchups lm ON lm.id=r.matchup_id
+        WHERE r.resource_key=ANY($1::text[]) AND ${liveLocalReservation}
+        AND r.starts_at<$3::timestamptz+$4::double precision*interval '1 millisecond' AND r.ends_at>$2::timestamptz-$4::double precision*interval '1 millisecond'
+        UNION ALL
+        SELECT 'COURT' AS kind,r.resource_key,r.starts_at,r.ends_at
+        FROM training_resource_reservations r LEFT JOIN training_enrollments n ON n.id=r.enrollment_id AND n.org_id=r.org_id
+        WHERE r.active AND r.resource_key LIKE 'court:%' AND r.resource_key=ANY($1::text[])
+        AND NOT COALESCE(n.state='HOLDING' AND n.hold_expires_at<=clock_timestamp(),false)
+        AND r.starts_at<$3::timestamptz+$4::double precision*interval '1 millisecond' AND r.ends_at>$2::timestamptz-$4::double precision*interval '1 millisecond'
+       ) occupied ORDER BY occupied.resource_key,occupied.starts_at,occupied.ends_at LIMIT 10001`,
       [[...new Set(resourceKeys)].sort(), from, to, padding],
     );
     if (rows.rows.length > 10000)

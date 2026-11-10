@@ -488,3 +488,14 @@ data为MatchReschedulingData：event、当前ScheduledMatchData、原policy、hi
 修改密码不接受userId/email/loginName作为目标，不改变账号标识、机构或角色。密码、credential_reset_at、旧会话及未消费找回密码令牌撤销和审计同事务；错误当前密码、表单错误或事务失败均无凭据/会话变化。成功撤销包括当前在内的全部旧会话；前端清理登录态，引导正常登录。并发登录、找回密码及离线维护共用账号锁协议。已有找回密码入口保留；修改密码不依赖邮件、短信或微信。
 
 `/ready`仍只检查结构、Migration及最小权限，尚未初始化不是结构故障。部署操作见[账号安全](operations/account-security.md)及[安装说明](../ops/templates/README.md)。
+
+
+## TMX01既有排程预演与资源投影增量
+
+2026-11-10；任务分支实现，合并/验收状态见[TMX01](tasks/TMX01.md)。无新增端点或契约结构，无新增Migration。
+
+`POST /v1/orgs/:orgId/schedule-revisions/:id/optimization-preview`继续只接受赛事/修订双expected版本及可选`preserveAssigned`；仅当前未发布且可管理草稿，拒绝客户端伪造fixtures。响应继续`ScheduleOptimizationPreview`，包括完整场次分配/null未排、sourceHash、两版本、有界搜索结果与指标。sourceHash不是预留或并发锁，正式保存/校验/发布仍重验；COMPLETE可与limitReached=true共存。
+
+培训场地投影加入原同城资源只读查询：仅以服务端已授权court资源键读取active培训预约，保留已持久buffer和半开区间；忽略与048一致的到期HOLDING预约，但不调用任何清理/释放函数。暂停不释放，正式取消产生inactive历史后不阻塞。总集合统一10001读取/10000拒绝上限，输出仅COURT资源与时间，不包含班期、教练、学员或订单身份。该共享投影覆盖初稿优化/校验/发布、正式改期及逐轮发布调用路径；调用覆盖的源码审计不替代每条业务路径的真实PG执行。
+
+网页采用预演仅修改本地分配，再显式走原allocations/validate/publish。旧本地补缺与服务器预演分开标明，未保存输入不可暗中提交或被服务器旧稿覆盖。真实PG与浏览器结果在任务交接单列。
