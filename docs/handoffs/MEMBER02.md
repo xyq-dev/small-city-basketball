@@ -31,3 +31,6 @@ root补完真实入口/权限菜单、旧按届明确Native关闭、发布扣额
 
 
 最终本地源码：format/typecheck/build通过，admin787/API1457/微信1638+1平台skip/CLI12/storage11+1 UID限制skip，纯恢复6通过。core复核恢复驱动后先验证首个确实未付发布402，再原API购买会员；后续活跃购买期下不再误期待402，所有原子扣额/余量/来源比较保持。尚无真实PG或浏览器通过。同步以实际Git读取的新HEAD/tree为准。
+
+
+CI251第一候选f4eb4a5/tree4e83662d实际失败（run42785246811）：api迁移预检在052、42601、position9090；account-security同一迁移失败并已移除owned数据库，尚未执行PG24/真实浏览器。core最小修复35a54e1用括号包裹PLpgSQL IF中的CASE表达式，避免内部THEN被当外部语句分隔；只改052及自己交接，001–051不动。该候选不能称通过，修复后需新head完整真实CI。

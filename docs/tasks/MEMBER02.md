@@ -57,3 +57,6 @@ root补完真实入口/权限菜单、旧按届明确Native关闭、发布扣额
 root完整最终源检查：format/typecheck/build全部通过；npm test实测admin787、API1457、微信1638通过+1既有Linux平台skip、CLI12、storage11通过+1主机UID限制skip。6项恢复/打包pure再验通过。该结果不含真实PG/浏览器/微信实付。
 
 core只读恢复复核发现旧captureScheduling在已购买会员后仍预期402会错误，已修为首次真正未付款发布先验证402/无副作用，再通过原HTTP购买会员；后续有已付购买期不再错误要求“没有按届单就失败”，同时原每届付款优先与全期仅消耗1届仍严格断言。未改业务守卫或放宽真实账本比较。新E2E三个真实浏览器上下文显式同源baseURL，平台页直挂无Router已补真实源码回归。下一步同步并以新PR真实隔离执行。
+
+
+CI251第一候选f4eb4a5/tree4e83662d实际失败（run42785246811）：api迁移预检在052、42601、position9090；account-security同一迁移失败并已移除owned数据库，尚未执行PG24/真实浏览器。core最小修复35a54e1用括号包裹PLpgSQL IF中的CASE表达式，避免内部THEN被当外部语句分隔；只改052及自己交接，001–051不动。该候选不能称通过，修复后需新head完整真实CI。

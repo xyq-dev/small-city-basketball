@@ -120,9 +120,9 @@ BEGIN
  PERFORM pg_advisory_xact_lock(hashtextextended('scb-software-membership:'||NEW.org_id::text,0));
  SELECT * INTO o FROM billing_orders WHERE org_id=NEW.org_id AND id=NEW.order_id FOR UPDATE;
  ts:=clock_timestamp();
- IF NOT CASE WHEN o.channel='MANUAL' THEN o.paid_at>=o.created_at AND o.paid_at<o.expires_at AND ts<o.expires_at
+ IF NOT (CASE WHEN o.channel='MANUAL' THEN o.paid_at>=o.created_at AND o.paid_at<o.expires_at AND ts<o.expires_at
    WHEN o.channel='WECHAT_NATIVE' THEN o.paid_at>=date_trunc('second',o.created_at) AND o.paid_at<=o.expires_at AND o.paid_at<=ts
-   ELSE false END THEN
+   ELSE false END) THEN
   RAISE EXCEPTION 'Membership period payment must belong to its authoritative quoted window' USING ERRCODE='23514'; END IF;
  IF o.membership_previous_period_id IS NULL THEN expected_start:=o.paid_at;
  ELSE

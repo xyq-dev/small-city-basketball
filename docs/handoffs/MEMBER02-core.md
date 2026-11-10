@@ -40,3 +40,7 @@ root及独立MEMBER02审查者已确认本模型可进入实现，不代表代�
 经root批准新增CLOSE_NATIVE（合同9d13fca），复用原buyer command、支付SDK与操作回执。先查原单SUCCESS走原settle且不关；只有NOTPAY才发固定原交易关单，再查已验签CLOSED才保存原payment_notifications证明并将原单CANCELLED，保留Native channel；204仅确认请求、UNKNOWN/PAYERROR/REVOKED不释放。该明确已验签CLOSED路径同时覆盖EVENT/MEMBER，防旧按届关闭后转会员永久阻塞。DB订单guard要求Native新转CANCELLED具有同order/kind/固定closed ID的原不可变proof；原终态/报价/已付款守卫不变，不新增任何闭单字段/表/ACL。未接入自动扣费或真实商户。
 
 依据本轮读取微信官方Native文档https://pay.wechatpay.cn/doc/v3/partner/4012759714，CLOSED为已关闭，REVOKED/PAYERROR仅付款码返回；因此不把后两者当Native可重购证明。SDK只对close验签204空body给ack，其余方法仍严格JSON，不把HTTP204当关闭成功。97/97直接commerce源码/合成RSA协议测试通过，API tsc、相关格式/diff通过；初次SDK中间态closeNoContent参数未同步导致源码失败，修正后同4文件全部97通过。真实PG16例由独立作者e0ea277提供，未在本机运行，新增关单/会员Native callback真实PG加签名fixture另在编写；不存在真实支付验收或052已执行主张。
+
+## 2026-11-10 隔离PG preflight失败后的最小语法修复
+
+root回报PR54 f4eb、CI42785246811的api129724709734及account门禁均在052编译失败：42601、position9090、syntax error at end of input，未成功执行052。精确位置落在m02_period_guard支付窗口的IF内CASE；改为`IF NOT (CASE ... END) THEN`，明确CASE表达式边界，防PLpgSQL将内部THEN当IF结束。仅改052这两行及本交接，不动001–051或shared文件；本机仅完成diff/结构核查，真实PG重跑待root新headCI，不能把97项源码测试当Migration通过。
