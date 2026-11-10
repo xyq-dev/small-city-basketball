@@ -178,3 +178,8 @@
 - 深色返回使用 `115:237` 导出的 `assets/figma/chevron-left-inverse.svg`，24×24，父按钮 44×44。当前没有页面传入 `dark`，截图时临时打开搜索页深色页头，截完已撤回。这是隔离样例。
 - 图标守卫只精确放行上述三条 Figma 文字链接。品牌 CRLF→LF 校验及路径、颜色反例未放宽。相关测试 38 项通过，`git diff --check` 无空白错误。
 - 390×844 证据在 `D:\Projects\scb-ui-review\icons\remaining`。首页两帧是当前源码真实空态。媒体作业是未登录读取失败，不是业务成功。资金订单、城市运营、培训工作台用隔离样例撑开被登录挡住的行。广告合同、交易管理、经费公示只做了源码断言，没有单独截图。不把本轮写成全站 UI 通过。
+
+## 2026-11-10T11:30+08:00 撤回态静态页头图标
+
+- `ba92d790` 的 admin `npm test` 失败在 `c10-public.test.cjs`：撤回态仍渲染共享页头返回键 `assets/figma/chevron-left.svg`，旧断言没有登记它。
+- 测试改为精确集合：只允许 `chevron-left.svg`、`share.svg`、`workbench.svg`。撤回前合成赛事和 `hero.jpg` 可见；撤回后旧标题、对阵和 `hero.jpg` 消失，返回键保留。没有放宽清空断言，也没有改页面或素材。
