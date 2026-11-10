@@ -8,6 +8,7 @@ import type {
   PlatformCommerceOrderCommandInput,
   CreateCommercePlanInput,
   CreateCommerceOrderInput,
+  EventEntitlementData,
 } from '@small-city-basketball/contracts';
 import type { ApiClient } from '../api/client';
 import { createCommerceApi } from '../api/commerce';
@@ -20,9 +21,32 @@ import {
 } from '../registration/shared';
 import type { RegistrationWorkspace } from '../registration/shared';
 import { Modal } from '../scoring/Dialogs';
+import { applyMembershipPreset, membershipPresets } from './membership-presets';
+import type { MembershipPlanDraft } from './membership-presets';
 import './commerce.css';
 const money = (fen: number) =>
   new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(fen / 100);
+const snapshotTime = (value: string) =>
+  new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+function entitlementLabel(entitlement: EventEntitlementData) {
+  if (entitlement.revokedAt || entitlement.activationStatus === 'REVOKED') return '退款后已撤销';
+  if (entitlement.activated || entitlement.activationStatus === 'ACTIVATED')
+    return '已激活，赛事继续使用';
+  if (!entitlement.statusCheckedAt || !Number.isFinite(Date.parse(entitlement.statusCheckedAt)))
+    return '激活状态待核对';
+  switch (entitlement.activationStatus) {
+    case 'READY':
+      return '截至核对时间可激活';
+    case 'EXPIRED':
+      return '已过激活期';
+    case 'REFUND_PENDING':
+      return '退款核验中，暂停新激活';
+    case 'UNAVAILABLE':
+      return '当前不可新激活';
+    default:
+      return '激活状态待核对';
+  }
+}
 const labels: Record<string, string> = {
   PENDING_PAYMENT: '待付款',
   PAID: '付款已核验',
@@ -48,6 +72,7 @@ type Pending =
     }
   | { kind: 'BUY'; input: CreateCommerceOrderInput; plan: CommercePlanData; eventName: string }
   | { kind: 'PLAN'; input: CreateCommercePlanInput }
+  | { kind: 'PRESET'; preset: (typeof membershipPresets)[number] }
   | { kind: 'AVAILABILITY'; plan: CommercePlanData; commandId: string };
 export function OrgCommercePage({ context }: { context: RegistrationWorkspace }) {
   if (!context.organizationId)
@@ -89,7 +114,8 @@ function CommercePage({
   const [notice, setNotice] = useState('');
   const [eventId, setEventId] = useState('');
   const [planId, setPlanId] = useState('');
-  const [planForm, setPlanForm] = useState({
+  const [presetCode, setPresetCode] = useState('');
+  const [planForm, setPlanForm] = useState<MembershipPlanDraft>({
     code: '',
     name: '',
     price: '',
@@ -139,6 +165,13 @@ function CommercePage({
   };
   async function execute() {
     if (!pending || action.busy) return;
+    if (pending.kind === 'PRESET') {
+      const preset = pending.preset;
+      setPlanForm((current) => applyMembershipPreset(current, preset));
+      setPending(undefined);
+      setNotice('建议模板已载入本地草稿，尚未发布、扣费或开通权益。请继续核对后再发布套餐版本。');
+      return;
+    }
     const selected = pending;
     await action.run(async () => {
       setNotice('');
@@ -345,6 +378,31 @@ function CommercePage({
                 版本报价发布后不能改价；调整服务范围请新建版本。机构负责人不能自行开通平台权限。
               </p>
               <form className="commerce-form" onSubmit={preparePlan}>
+                <label>
+                  按届建议模板
+                  <select value={presetCode} onChange={(e) => setPresetCode(e.target.value)}>
+                    <option value="">请选择本地定价建议</option>
+                    {membershipPresets.map((preset) => (
+                      <option key={preset.code} value={preset.code}>
+                        {preset.name} · {preset.price}元/届
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  disabled={action.busy || !presetCode}
+                  onClick={() => {
+                    const preset = membershipPresets.find((p) => p.code === presetCode);
+                    if (preset) setPending({ kind: 'PRESET', preset });
+                  }}
+                >
+                  载入建议模板
+                </button>
+                <p className="commerce-wide">
+                  模板仅填入本地草稿；真实售价以服务端已发布套餐版本为准，不自动覆盖现有报价。
+                </p>
                 {(
                   [
                     ['code', '套餐代码'],
@@ -514,16 +572,17 @@ function CommercePage({
             <section className="panel commerce-panel">
               <h2>本届软件权益</h2>
               <p>首次发布赛程时激活，已激活赛事不会因到期突然停止记分、晋级或读取。</p>
+              <p>
+                以下为服务端核对快照，并非实时预留；首次发布时仍须由服务端重新校验。购买不授予管理角色。
+              </p>
               {data.entitlements.map((e) => (
                 <article key={e.id} className="commerce-card">
                   <h3>{e.eventName}</h3>
-                  <p>
-                    {e.revokedAt
-                      ? '退款后已撤销'
-                      : e.activated
-                        ? '已激活，赛事继续使用'
-                        : `待激活，有效至 ${new Date(e.validUntil).toLocaleString('zh-CN')}`}
-                  </p>
+                  <p>{entitlementLabel(e)}</p>
+                  <p>激活截止：{snapshotTime(e.validUntil)}（北京时间；非赛事停用时间）</p>
+                  {e.statusCheckedAt && Number.isFinite(Date.parse(e.statusCheckedAt)) && (
+                    <p>服务端核对时间：{snapshotTime(e.statusCheckedAt)}（北京时间）</p>
+                  )}
                   <p>
                     {e.maxTeams}队 / {e.maxMatches}场
                   </p>
@@ -621,12 +680,26 @@ function CommercePage({
                 ? '确认本届软件订单'
                 : pending.kind === 'PLAN'
                   ? '发布不可变套餐版本'
-                  : '确认套餐上下架'
+                  : pending.kind === 'PRESET'
+                    ? '确认覆盖本地套餐草稿'
+                    : '确认套餐上下架'
           }
           busy={action.busy}
           onClose={() => setPending(undefined)}
         >
-          {pending.kind === 'BUY' ? (
+          {pending.kind === 'PRESET' ? (
+            <>
+              <p>
+                {pending.preset.name} · {pending.preset.price}元/届
+              </p>
+              <p>
+                最多{pending.preset.maxTeams}队 / {pending.preset.maxMatches}场 /{' '}
+                {pending.preset.validDays}天激活有效期。
+              </p>
+              <p>确认后覆盖本地套餐代码、名称、价格及额度，保留发布原因；取消保留全部原输入。</p>
+              <p>此操作不会发布套餐、扣费或开通权益。载入后仍须独立核对并发布套餐版本。</p>
+            </>
+          ) : pending.kind === 'BUY' ? (
             <>
               <p>
                 {pending.eventName} · {pending.plan.name} v{pending.plan.version}

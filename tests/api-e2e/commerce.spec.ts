@@ -1,5 +1,6 @@
 import { expect, test, devices } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { mkdir } from 'node:fs/promises';
 import pg from 'pg';
 import type {
   CommerceWorkspaceData,
@@ -82,6 +83,55 @@ test('独立平台账号套餐运营、关闭计费及未配置微信状态使�
       page.getByRole('heading', { level: 1, name: '平台商业运营', exact: true }),
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: '创建套餐新版本', exact: true })).toBeVisible();
+    progress('pricing suggestion is confirmed locally without creating a plan or payment');
+    const catalogBeforePreset = await read<CommerceWorkspaceData>(
+      page.request,
+      '/v1/platform/commerce',
+    );
+    const templateWrites: string[] = [];
+    const recordTemplateWrite = (request: import('@playwright/test').Request) => {
+      if (request.method() === 'POST' && new URL(request.url()).pathname.startsWith('/v1/'))
+        templateWrites.push(new URL(request.url()).pathname);
+    };
+    page.on('request', recordTemplateWrite);
+    await page.getByLabel('套餐名称', { exact: true }).fill('保留原始合成草稿');
+    await page.getByLabel('发布原因', { exact: true }).fill('保留本地模板发布说明');
+    await page.getByLabel('按届建议模板', { exact: true }).selectOption('scb_event_standard');
+    await page.getByRole('button', { name: '载入建议模板', exact: true }).click();
+    let presetDialog = page.getByRole('dialog', { name: '确认覆盖本地套餐草稿', exact: true });
+    await expect(presetDialog.getByText(/不会发布套餐、扣费或开通权益/)).toBeVisible();
+    await presetDialog.getByRole('button', { name: '取消', exact: true }).click();
+    await expect(page.getByLabel('套餐名称', { exact: true })).toHaveValue('保留原始合成草稿');
+    await page.getByRole('button', { name: '载入建议模板', exact: true }).click();
+    presetDialog = page.getByRole('dialog', { name: '确认覆盖本地套餐草稿', exact: true });
+    await presetDialog.getByRole('button', { name: '确认操作', exact: true }).click();
+    await expect(presetDialog).toHaveCount(0);
+    await expect(page.getByLabel('套餐代码', { exact: true })).toHaveValue('scb_event_standard');
+    await expect(page.getByLabel('套餐名称', { exact: true })).toHaveValue('小城市·专业赛事包');
+    await expect(page.getByLabel('价格（元）', { exact: true })).toHaveValue('299');
+    await expect(page.getByLabel('最多球队', { exact: true })).toHaveValue('16');
+    await expect(page.getByLabel('最多比赛', { exact: true })).toHaveValue('128');
+    await expect(page.getByLabel('激活有效天数', { exact: true })).toHaveValue('180');
+    await expect(page.getByLabel('发布原因', { exact: true })).toHaveValue('保留本地模板发布说明');
+    expect(templateWrites).toEqual([]);
+    page.off('request', recordTemplateWrite);
+    const catalogAfterPreset = await read<CommerceWorkspaceData>(
+      page.request,
+      '/v1/platform/commerce',
+    );
+    expect(catalogAfterPreset.plans).toEqual(catalogBeforePreset.plans);
+    expect(catalogAfterPreset.orders).toEqual(catalogBeforePreset.orders);
+    expect(catalogAfterPreset.entitlements).toEqual(catalogBeforePreset.entitlements);
+    const presetSection = page.locator('section').filter({
+      has: page.getByRole('heading', { name: '创建套餐新版本', exact: true }),
+    });
+    await mkdir('artifacts/member01', { recursive: true });
+    await presetSection.screenshot({
+      path: `artifacts/member01/${testInfo.project.name}-pricing-draft.png`,
+    });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
     const suffix = randomUUID().slice(0, 8);
     const code = `browser_${suffix}`;
     const name = `合成浏览器套餐-${suffix}`;

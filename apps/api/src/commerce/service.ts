@@ -34,6 +34,7 @@ import type {
 } from './wechatpay.js';
 import { checkPayment } from './domain.js';
 import { createCommerceSystemActor } from './system-actor.js';
+import { entitlementActivationStatus } from './entitlement-status.js';
 type Row = Record<string, any>;
 interface Context {
   actor: Actor;
@@ -295,7 +296,7 @@ export class CommerceService extends ApplicationService {
       ).rows;
       const entitlements = (
         await c.query<Row>(
-          'SELECT n.*,e.name AS event_name,EXISTS(SELECT 1 FROM event_commercial_activations a WHERE a.entitlement_id=n.id) AS activated FROM event_entitlements n JOIN events e ON e.org_id=n.org_id AND e.id=n.event_id WHERE ($1::uuid IS NULL OR n.org_id=$1) ORDER BY n.created_at DESC LIMIT 100',
+          'SELECT n.*,e.name AS event_name,o.status AS order_status,clock_timestamp() AS status_checked_at,EXISTS(SELECT 1 FROM event_commercial_activations a WHERE a.entitlement_id=n.id) AS activated FROM event_entitlements n JOIN events e ON e.org_id=n.org_id AND e.id=n.event_id JOIN billing_orders o ON o.id=n.order_id AND o.org_id=n.org_id AND o.event_id=n.event_id WHERE ($1::uuid IS NULL OR n.org_id=$1) ORDER BY n.created_at DESC LIMIT 100',
           [ctx.org?.orgId ?? null],
         )
       ).rows;
@@ -339,6 +340,14 @@ export class CommerceService extends ApplicationService {
           maxTeams: n.max_teams,
           maxMatches: n.max_matches,
           activated: n.activated,
+          activationStatus: entitlementActivationStatus({
+            revokedAt: n.revoked_at,
+            activated: n.activated,
+            orderStatus: n.order_status,
+            validUntil: n.valid_until,
+            statusCheckedAt: n.status_checked_at,
+          }),
+          statusCheckedAt: iso(n.status_checked_at),
         })),
         activations: activations.map((a) => ({
           eventId: a.event_id,

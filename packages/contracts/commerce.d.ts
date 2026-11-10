@@ -93,12 +93,7 @@ export interface EventEntitlementData {
   activated: boolean;
   /** MEMBER01: read-only projection using the server database clock; never an activation grant. */
   activationStatus?:
-    | 'READY'
-    | 'EXPIRED'
-    | 'ACTIVATED'
-    | 'REVOKED'
-    | 'REFUND_PENDING'
-    | 'UNAVAILABLE';
+    'READY' | 'EXPIRED' | 'ACTIVATED' | 'REVOKED' | 'REFUND_PENDING' | 'UNAVAILABLE';
   /** Older APIs omit both projection fields. The client must not infer READY from its own clock. */
   statusCheckedAt?: string;
 }
