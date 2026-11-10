@@ -1,6 +1,6 @@
 # MEMBER02 · 机构月/年会员与跨届额度
 
-TODO / 未实现；2026-11-10 Asia/Shanghai。依赖[会员规则与建议定价V1](../design/MEMBERSHIP_SYSTEM.md)、用户已确认的视觉方向及MEMBER01现有按届基础。新Figma交接以MEMBER01记录的真实链接为准，不能猜节点。
+IN_PROGRESS / LOCAL_ONLY；2026-11-10 Asia/Shanghai。依赖[会员规则与建议定价V1](../design/MEMBERSHIP_SYSTEM.md)、用户已确认的视觉方向及MEMBER01现有按届基础。新Figma交接以MEMBER01记录的真实链接为准，不能猜节点。
 
 目标：专业199元/30天3届、1699元/365天36届（16队128场）；商业399元/30天10届、3399元/365天120届（32队512场），买机构软件服务，手动续费，无自动扣费。
 
@@ -14,3 +14,12 @@ TODO / 未实现；2026-11-10 Asia/Shanghai。依赖[会员规则与建议定价
 6. 验证同机构/跨机构、未登录/无权/买会员不升权限、支付关闭/金额伪造/重复通知/未知查单、退款与最后一额度并发、精确到期/续费/无自动扣费、完整赛事闭环和桌面手机真实API。真实商户/微信真机仍另列，不拿fixture签名代替。
 
 完成门槛：必要源码/类型/构建、真实隔离PG、两端真实API浏览器、恢复/旧库兼容、独立高风险审查、同一head CI，按本轮核验授权提交/普通同步/PR及合并；禁止生产部署/生产Migration/真实资金、新凭据、付费资源或公网端口。报告Migration已编写/已隔离执行/未生产执行分别列明。
+
+
+## 实施认领
+
+root唯一集成人；工作树`/workspace/scratch/dc6a786e1a31/scb-membership`，分支feat/MEMBER02-integration，基线ac6f700（前置MEMBER01 PR53正在隔离CI，不冒称main已合并）。开工干净，origin原仓库；所有旧工作保留。用户本轮明确要求完善会员系统，当前继续真实月/年核心实现，不以第一卡设计/按届修复代替。
+
+root持contracts/index、app.ts/App.tsx接线、runtime manifest、恢复/CI与汇总。backend独立scb-member02-core：commerce contracts/newmembership contract、commerce backend、新052、直接PG/源码测试及自己handoff。Web实现先读已确认Figma并冻结契约，独立路径/工作树，禁止同写shared文件。现阶段先交付网页后台及手机响应式真正机构会员采购/管理；原生小程序稿已设计，原生新路由另卡接续，不冒称原生实现。
+
+沿用已核验开发/测试/commit/普通同步/PR/审查后merge与隔离Migration授权。禁止生产部署/生产Migration/真实资金或账号、付费/新外部凭据/公网端口/force/改001–051；新增Migration必须单列编写/隔离执行状态。先审模型和锁序再写高风险代码，最终同head必要CI及独立审查。

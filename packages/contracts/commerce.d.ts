@@ -55,7 +55,8 @@ export interface CommerceRefundData {
 export interface CommerceOrderData {
   id: string;
   orgId: string;
-  eventId: string;
+  /** EVENT orders bind a real event; organization software memberships bind no virtual event. */
+  eventId: string | null;
   eventName: string;
   quote: CommerceQuote;
   status: CommerceOrderStatus;
@@ -99,8 +100,9 @@ export interface EventEntitlementData {
 }
 export interface EventCommercialActivationData {
   eventId: string;
-  source: 'LEGACY' | 'UNMETERED' | 'PAID';
+  source: 'LEGACY' | 'UNMETERED' | 'PAID' | 'MEMBERSHIP';
   entitlementId: string | null;
+  membershipPeriodId?: string | null;
   activatedAt: string;
 }
 export interface CommerceWorkspaceData {
