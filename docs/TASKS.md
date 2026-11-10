@@ -2,7 +2,7 @@
 
 ## MEMBER01（2026-11-10 Asia/Shanghai，IN_PROGRESS / BRANCH_ONLY）
 
-基线main770534b；feat/MEMBER01-membership-foundation完成小球迷助手公开会员研究、[本项目建议定价与完整规则](design/MEMBERSHIP_SYSTEM.md)，用户已确认新会员界面方向，Figma原生可编辑整理中。代码补三档99/299/599按届本地模板（确认后填表、不自动发布）和数据库时钟权益六态只读投影，原商业支付/激活/退款/权限守卫不变。直接43、API源码作者1425、完整类型/构建通过；PG/真实浏览器/HTTPS与恢复尚待本轮隔离CI。月年会员199/1699和399/3399为建议规划，跨届扣额、会员新页尚未实现，不表示可售；[MEMBER02](tasks/MEMBER02.md) TODO。无新Migration，无生产部署或正式价格修改。[任务](tasks/MEMBER01.md)、[接续](handoffs/MEMBER01.md)。
+基线main770534b；feat/MEMBER01-membership-foundation完成小球迷助手公开会员研究、[本项目建议定价与完整规则](design/MEMBERSHIP_SYSTEM.md)，用户已确认新会员界面方向，[Figma原生可编辑V1](design/MEMBERSHIP_UI.md)已完成，3屏/13态。代码补三档99/299/599按届本地模板（确认后填表、不自动发布）和数据库时钟权益六态只读投影，原商业支付/激活/退款/权限守卫不变。直接43、API源码作者1425、完整类型/构建通过；首轮PR53隔离CI的恢复比较被新读取时间影响，已作精准helper修复待新head完整重验；旧成功项不替代最终结果。月年会员199/1699和399/3399为建议规划，跨届扣额、会员新页尚未实现，不表示可售；[MEMBER02](tasks/MEMBER02.md) TODO。无新Migration，无生产部署或正式价格修改。[任务](tasks/MEMBER01.md)、[接续](handoffs/MEMBER01.md)。
 
 
 ## TMX01（2026-11-10 14:06 Asia/Shanghai，DONE / MAIN：研究与首批接入）

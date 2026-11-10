@@ -114,7 +114,7 @@ jobs:
         id: schema_preflight
         run: node --import tsx scripts/check-migrations.mjs
       - name: Verify recovery inventory and immutable boundaries
-        run: node --test scripts/r6-recovery-check.test.mjs scripts/expansion-recovery-check.test.mjs scripts/check-recovery-packaging.test.mjs
+        run: node --test scripts/r6-recovery-check.test.mjs scripts/expansion-recovery-check.test.mjs scripts/check-recovery-packaging.test.mjs scripts/c05-commerce-check.test.mjs
       - name: Remaining modules PostgreSQL integration checks
         working-directory: apps/api
         run: npx vitest run test/r6-*.integration.test.ts
