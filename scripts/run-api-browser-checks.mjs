@@ -49,10 +49,10 @@ try {
   )
     throw new Error('Invalid test target');
   if (
-    suite === 'account-security' &&
+    suite !== 'api' &&
     (!['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname) || base.search || base.hash)
   )
-    throw new Error('Account-security suite requires a canonical loopback test target');
+    throw new Error('Sensitive browser suites require a canonical loopback test target');
 } catch {
   throw new Error('API browser checks require DATABASE_URL naming an isolated scb_test_* database');
 }

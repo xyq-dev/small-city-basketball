@@ -2,6 +2,8 @@ import { test, expect, devices } from '@playwright/test';
 import type { BrowserContext, Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import type {
   SessionData,
@@ -11,7 +13,6 @@ import type {
   CourtData,
   ScheduleRevisionData,
 } from '@small-city-basketball/contracts';
-import { maintainPlatformOperator } from '../../apps/api/src/commerce/platform-operator.js';
 import {
   origin,
   read,
@@ -31,6 +32,12 @@ async function operatorFixture(identities: Awaited<ReturnType<typeof syntheticId
     process.env.NODE_ENV === 'production'
   )
     throw new Error('Membership identities require an owned loopback test database');
+  // This official maintenance entry point is ESM with a guarded top-level await.
+  // Load this checkout's compiled module natively, after the target guard;
+  // Playwright's CommonJS test transform must not rewrite its import.meta.
+  const { maintainPlatformOperator } = (await import(
+    pathToFileURL(resolve('apps/api/dist/commerce/platform-operator.js')).href
+  )) as typeof import('../../apps/api/src/commerce/platform-operator.js');
   const pool = new pg.Pool({ connectionString: database.href, max: 1 });
   try {
     for (const user of identities.users.slice(1))

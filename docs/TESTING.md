@@ -1,5 +1,18 @@
 # 测试与验收
 
+## MEMBER02：机构软件会员验收入口
+
+当前执行证据以[MEMBER02任务](tasks/MEMBER02.md)与[交接](handoffs/MEMBER02.md)的精确head/CI为准。源码组件Mock、隔离PG、实际HTTP浏览器、可信HTTPS恢复、真实商户和生产分别记录；前一候选成功不能替代新条件的最终候选。
+
+- 源码：沿用format/typecheck/test/build；会员API严格边界与Web组件在各workspace原测试中，响应Mock只证明该层行为。
+- 真实PG：`apps/api/test/member02-membership.integration.test.ts`与`member02-native.integration.test.ts`是17+9项；另`account-closure.integration.test.ts`新增本单履约/未决对照，C22旧库升级保留固定83ae历史源。只使用经guard验证的`scb_test_*`隔离库，不能指向正式库。
+- CI隔离顺序：原R6先完成控制库初始化，run-membership-postgres-checks.mjs为会员组创建随机专库，两DB环境均指该库，26项结束后普通DROP且核对控制库OID/全账本/firstRun指纹不变；--verify-cleanup保留固定失败码23且CI必须显式要求23。旧组精确exclude会员文件防重复，生产全账本对账不加fixture过滤。
+- 真实Web：`npm run test:membership:e2e`固定`playwright.membership.config.ts`，1440×1040桌面及390×844手机模拟；外层在连接前验证canonical loopback目标，每个项目由owned runner创建/删除独立数据库，ENFORCED、真实API与实际DOM操作，不使用响应Mock。新会员浏览器和单次控制库创建/安装先于旧PG，原oldPG→NativeHTTP→capture/restart→旧API浏览器原顺序保持。覆盖真实平台建议确认/不可变发布、机构核对、两账号收款、原赛事报名/冻结/正式发布扣额、用量/刷新/旧采购分流。`artifacts/member02/*-plans.png`和`*-usage.png`是合成业务截图，7天CI附件；trace/video关闭。
+- 灾备：原production隔离作业复用相同编译应用，经真实TLS/Cookie/最小runtime PG身份，原HTTP收款产生年期、停售后原RR首次发布消费1/剩35；在同卷重建及完整dump→第二PG后精确比较原付款/period/激活来源/额度，最后验证旧授权隔离和仅owned清理。它不是正式部署或正式数据库操作。
+- Native：9项真实PG使用合成RSA/AES及受控transport；新增安全续单用例中的未决Native仅为显式admission SQL夹具。两者均不表示真实商户/真实扣款或微信真机。新原生会员页仍只有Figma，不能用手机浏览器冒称WXML或微信开发工具已验收。
+
+真实OBS/CEF、微信/Safari真机、正式商户、生产启用和旧007正式库升级演练仍按各专项证据处理；本任务不自动扩展外部凭据、预算或发布权限。
+
 2026-10-31 最新验收入口：[EXPANSION8总任务](tasks/EXPANSION8.md)和[当前状态](CURRENT_STATUS.md)。本轮区分源码/原生页面→真实HTTP、真实PG、兼容浏览器、非空重启与第二数据库完整恢复；官方微信/真机和真实外部服务单独待验。下面C05/P阶段是各自历史证据，不作为当前总数。
 
 更新：2026-10-24（Asia/Shanghai）。本文区分当前C05及各阶段历史验收；已编写用例、静态审查、本地检查、真实CI及生产验证分别记录，计划不等于已经执行。

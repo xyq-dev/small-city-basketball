@@ -62,3 +62,12 @@ source33fcc573/tree50880f0，CI254/run42788738030/api129736786828已真实执行
 自动审查r4523119657指出已分类expirable的安全未启动PENDING续单仍被children当有效后续期，导致POST在安全expire步骤前被拒。core8e46a77已整合d501b60：同mutex下children LIMIT前仅排除本次expirable IDs；Native/待审仍严格阻断，GET不清单，POST仍旧单先EXPIRED后建唯一新单、全部原报价/parent/审计保持。新增第17会员PG，连同Native9为26项，另有注销1；3秒合法初始pending DB真截止/读取零写/替换及重放与未决对照已编写。作者24领域/type/format通过，独立精确delta审查无P1/P2允许新head完整CI；新PG17还未执行，不冒称成功。
 
 旧sourceb6d8/treeae0ee5a/CI255/run42789367210已通过会员25/R6147、账号安全，以及production129738666697的21runtimePG、真实HTTPS收款/原RR激活/同卷换IP重建、精确第二PG228表完整恢复/旧授权隔离/owned清理；root已读完成日志，原confirm500已实测消除。旧大PG组和新Web浏览器在该轮尚未结束；旧成功不能代替含续费新条件的最终head。补全中央API_CONTRACTS与DATA_MODEL中的真实软件会员入口/来源、秒/微秒规则与隔离/生产边界，不只放单卡。
+
+
+## 2026-11-10T18:06:51+08:00 共享测试账本隔离修复与浏览器前置检查
+
+CI256/source2332f9fb/treeb2057f0的会员26/R6147、admin787/API1457及1581兼容、account安全、production完整HTTPS/第二PG恢复全部通过；api原旧组640通过/1失败（641含6历史源码守卫）。唯一失败C05 Native对账完整账单只含自己fixture，新增会员Native组在同库留下7条应被检测的LOCAL_ONLY；生产全账本判断正确，不能删这些事实或按租户过滤来使测试变绿。新增owned PG runner fdc2efd→rootc0d1035：严格loopback非生产scb_test控制库，随机新库/真实OID与双DB环境，固定只跑会员两文件；CREATE成功才清本库，无FORCE，原控制库/全账本及firstRun前后只读指纹不变。--verify-cleanup固定失败child返回23，CI显式要求23；清理/保全异常为1。作者5项guard通过，root实际9项隔离guard（含新browser4）通过；真实专库26/负向清理仍需新headCI。旧C05测试/业务账本未修改。
+
+独立审查另发现browser会员runner在构造Pool前仅account-security校验loopback，已把同一canonical guard覆盖membership，旧api suite行为不变。新CLI固定--list正例实际抓到spec静态导入官方CLI源的import.meta/TLA被Playwright CJS转换错误；现strict目标guard之后native fileURL动态导入本树编译的原官方maintainPlatformOperator，无第二套授权SQL。真实test collection、全仓type、API build与native ESM模块加载（CLI未触发）通过；不把collection当真实浏览器操作。
+
+CI仍R6 first；随后独立PG26及实际失败清理；单次browser控制库/Chromium安装与新会员两端流程前移，之后原oldPG→NativeHTTP→capture/restart/verify→旧API浏览器相对顺序不变、无少跑/重复。新真实UI如有错误会先发现，避免等整套旧检查才collect。所有runner/workflow/guard/spec增量独立复审无P1/P2，可进入最终新候选；Migration/业务源码未因此改变。新原生会员页、商户资金及生产仍未执行。
