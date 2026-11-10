@@ -60,3 +60,17 @@ core只读恢复复核发现旧captureScheduling在已购买会员后仍预期40
 
 
 CI251第一候选f4eb4a5/tree4e83662d实际失败（run42785246811）：api迁移预检在052、42601、position9090；account-security同一迁移失败并已移除owned数据库，尚未执行PG24/真实浏览器。core最小修复35a54e1用括号包裹PLpgSQL IF中的CASE表达式，避免内部THEN被当外部语句分隔；只改052及自己交接，001–051不动。该候选不能称通过，修复后需新head完整真实CI。
+
+
+## 2026-11-10 17:08 Asia/Shanghai 真实失败定位与精确修复
+
+CI252 source dc2919de/tree99f79317（run42785649875）：052完整真实Migration预检通过；account-security及三suite owned失败清理SUCCESS。production21最小身份PG通过，但原HTTPS会员收款command500；API旧PG组3文件失败/641通过/16失败/5因C22前置失败跳过（662），不能称会员闭环或恢复通过。归档PG明确16次`inconsistent types deduced for parameter $5`：period INSERT同参integer/double类型冲突，core独立最小修复d978290→roota2373d1统一显式integer，不改额度秒数/业务guard；真实消除仍需新head复验。
+
+已整合account closure真实P2修复e0ea31d→5aa6d96：会员PAID只有本org本单period真实消费才算履约，未用/下一期/别单不串清，退款/其他未决单及owner责任仍挡；新增1连续真实PG回归已编写，18项相关源码实测通过。已整合同秒相邻期P2修复bd7d4d5→7ff3f17：首次Native购买期起点SQL取GREATEST(原付款、原建单)，原付款证明不改，manual仍原付款，续费仍parent.end；源与052guard一致保6位微秒。新增第9项Native PG回归，MEMBER独立PG现25项另注销1；作者97commerce/type通过，root完整type/build/pure在重验。独立审查已复核这些源码delta，可进入新head完整CI，尚不构成merge或真实支付批准。
+
+C22另一个真实历史升级失败已证实：冻结Scheduling仍导入current activation，导致001–022缺membership_period_id时500；其历史快照还需严格确认新列NULL后只排除此新增列。授权audit作者在独立树冻结83ae15a原activation完整旧函数、反向source hash/身份与最小projection，只修改测试fixture/对应source guard和自己的handoff；禁止生产探表兼容、补旧schema字段、改001–051或跳过原激活/audit。root新增CI把member25前置，旧组精确exclude防重复，所有旧PG仍执行。
+
+MEMBER01最新1c2eac2：CI250原API/production/account成功，admin外部字体/Chromium下载后触25分钟job限时取消，没有把它算通过；相同head仅重试admin（现129730268249）。真实API桌面12/手机12通过，root已下载并实际查看两张定价草稿截图，原目录零POST断言保持；最终M1尚未merge。所有源码/隔离/真实商户/生产证据仍分列。root工作树/作者提交保持，不reset/clean/force。
+
+
+2026-11-10 17:13 Asia/Shanghai：C22独立历史修复d12ae64已整合c9d8528（仅7个测试/自己交接路径），旧freeze从current helper解耦，原历史source blob/hash与逆变换保持，原activation/audit/22checksum不变；052新列必须先证实旧行NULL才从旧快照比较剔除。作者6项源守卫/type/format通过，真实旧库升级待新CI。源码主体a2373d1已独立复审允许新headCI；legacy delta另送复核。root最终全仓源码在跑，type/build/pure6已通过，未报告当前旧CI252全部成功。M1已按精确source/tree合入main cd8ed1f，后续普通整合其祖先关系，不更换测试代码或覆盖并行工作。

@@ -354,9 +354,12 @@ export class AccountClosureService extends ApplicationService {
              WHERE other.org_id=m.org_id AND other.user_id<>$1 AND other.role='ORG_OWNER' AND other.status='ACTIVE' AND u.status='ACTIVE')) AS owner,
          EXISTS(SELECT 1 FROM billing_orders o WHERE o.created_by=$1 AND
            (o.status='REFUND_PENDING' OR (o.status='PENDING_PAYMENT' AND (o.expires_at>clock_timestamp() OR o.provider_started_at IS NOT NULL))
-            OR (o.status='PAID' AND NOT EXISTS(SELECT 1 FROM event_commercial_activations a
+            OR (o.status='PAID' AND ((o.target_kind='EVENT' AND NOT EXISTS(SELECT 1 FROM event_commercial_activations a
               JOIN event_entitlements entitlement ON entitlement.org_id=a.org_id AND entitlement.event_id=a.event_id AND entitlement.id=a.entitlement_id
               WHERE a.org_id=o.org_id AND a.event_id=o.event_id AND a.source='PAID' AND entitlement.order_id=o.id))
+              OR (o.target_kind='ORG_MEMBERSHIP' AND NOT EXISTS(SELECT 1 FROM software_membership_periods p
+                JOIN event_commercial_activations a ON a.org_id=p.org_id AND a.membership_period_id=p.id AND a.source='MEMBERSHIP'
+                WHERE p.org_id=o.org_id AND p.order_id=o.id))))
             OR EXISTS(SELECT 1 FROM billing_payment_reviews review WHERE review.order_id=o.id AND review.status='PENDING_REVIEW')
             OR EXISTS(SELECT 1 FROM billing_refunds f WHERE f.order_id=o.id AND f.status IN('REQUESTED','PENDING_REVIEW','PROCESSING','UNKNOWN')))) AS money,
          EXISTS(SELECT 1 FROM booking_appearances a JOIN booking_orders o ON o.id=a.order_id

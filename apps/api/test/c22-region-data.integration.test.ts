@@ -174,6 +174,19 @@ describe(
             )
           ).rowCount,
         ).toBe(0);
+        expect(
+          (
+            await upgraded.query(
+              `SELECT column_name FROM information_schema.columns WHERE table_schema='public'
+              AND ((table_name='event_commercial_activations' AND column_name='membership_period_id')
+              OR (table_name IN('billing_orders','billing_plan_versions') AND column_name='target_kind'))`,
+            )
+          ).rowCount,
+        ).toBe(0);
+        expect(
+          (await upgraded.query("SELECT to_regclass('public.software_membership_periods') AS name"))
+            .rows[0].name,
+        ).toBeNull();
       };
       await assertOldRegistrationSchema();
       // Fixed historical registration/scheduling/standings SQL is injected only by this fixture.
@@ -198,6 +211,39 @@ describe(
       };
       const fixture = await published(h, teams);
       legacyEventId = fixture.event.event.id;
+      expect(
+        (
+          await upgraded.query(
+            'SELECT source,entitlement_id,participant_count,expected_match_count,activated_by FROM event_commercial_activations WHERE event_id=$1',
+            [legacyEventId],
+          )
+        ).rows,
+      ).toEqual([
+        {
+          source: 'UNMETERED',
+          entitlement_id: null,
+          participant_count: 2,
+          expected_match_count: 1,
+          activated_by: owner.id,
+        },
+      ]);
+      expect(
+        (
+          await upgraded.query(
+            "SELECT metadata FROM audit_logs WHERE resource_id=$1 AND action='commerce.event.activated'",
+            [legacyEventId],
+          )
+        ).rows,
+      ).toEqual([
+        {
+          metadata: {
+            source: 'UNMETERED',
+            entitlementId: null,
+            participantCount: 2,
+            expectedMatchCount: 1,
+          },
+        },
+      ]);
       await savePublishRules(h, legacyEventId);
       await enable(h, legacyEventId);
       legacyListingId = randomUUID();
@@ -314,6 +360,18 @@ describe(
         .sort();
       expect(await migrate(upgraded)).toEqual(added);
       const after = await snapshot(upgraded, Object.keys(baseline));
+      // 052 adds a nullable source for new memberships. Every actual old activation
+      // must keep it NULL; only that newly added field is projected from old rows.
+      const legacyActivationEvents = new Set(
+        baseline.event_commercial_activations!.map((row: any) => row.event_id),
+      );
+      expect(legacyActivationEvents.has(legacyEventId)).toBe(true);
+      after.event_commercial_activations = after.event_commercial_activations!.map((row: any) => {
+        if (!legacyActivationEvents.has(row.event_id)) return row;
+        expect(row).toHaveProperty('membership_period_id', null);
+        const { membership_period_id: _membershipPeriodId, ...legacyRow } = row;
+        return legacyRow;
+      });
       expect(
         (
           await upgraded.query(

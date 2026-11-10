@@ -44,3 +44,19 @@ root及独立MEMBER02审查者已确认本模型可进入实现，不代表代�
 ## 2026-11-10 隔离PG preflight失败后的最小语法修复
 
 root回报PR54 f4eb、CI42785246811的api129724709734及account门禁均在052编译失败：42601、position9090、syntax error at end of input，未成功执行052。精确位置落在m02_period_guard支付窗口的IF内CASE；改为`IF NOT (CASE ... END) THEN`，明确CASE表达式边界，防PLpgSQL将内部THEN当IF结束。仅改052这两行及本交接，不动001–051或shared文件；本机仅完成diff/结构核查，真实PG重跑待root新headCI，不能把97项源码测试当Migration通过。
+
+## 2026-11-11 注销资金阻断的会员目标分流
+
+root扩大唯一作者范围以修PR54自动审查P2：AccountClosureService原PAID阻断只识别按届entitlement，已消费会员因event_id=NULL被永久当成未履约。只对该PAID子表达式按数据库target_kind分流；EVENT原同org/event/entitlement/order匹配不变，MEMBER须原activation.source=MEMBERSHIP且同org period.order_id精确等于本单，并有至少1届消费。未消费会员、退款中、待付款、待复核、负责人移交等原阻断均保留，无Migration。
+
+既有account-closure.integration真实PG新增1项连续正反回归：他机构/他订单已消费不能解除本单；自身消费只解除money而保留owner；同org下一期已付未用不能借父期履约事实解除；退款pending继续阻断、双人确认退款后才清；其他待付EVENT继续阻断、明确取消后清。均通过原业务service/原事务activation，无伪造已消费或退款结果。本机API typecheck、18/18注销源码单测与diff/格式通过；新增PG回归已编写未本机执行，交root隔离CI，052真实执行据root回报dc2919de/CI42785649875预检已通过，但完整PG/恢复尚不能认定通过。
+
+## 2026-11-11 Native秒精度相邻期与续费微秒修复
+
+独立审查发现另一个P2：已接受的同秒Native付款证明可能比原新单创建早不到1秒；若旧期在该秒中途结束，新期直接从秒级paid_at开始会与旧期重叠。root冻结规则：首次Native会员start取数据库真实`GREATEST(paid_at,created_at)`，保留原支付证明paid_at及旧期不变；人工首次仍paid_at，续费仍parent.ends_at。service从已锁原行以SQL计算并返回text，续费同样以ends_at::text避免pg Date截掉微秒；052源guard使用相同精确规则。
+
+新增Native第9项PG回归是“合成历史初始pending数据+真实隔离PG/HTTP/合成签名”，不声称等待30天实测：只构造合法未付原始时间，原HTTP验签settle生成两期；直接PG断言paid_at<旧end<新created、start严格等于原6位微秒created、区间不重叠、旧期已过期且拒新消费、重复回调仅1新期。再经真实会员API创建同档续费，PG严格断言child.start=parent.end及固定秒差、微秒仍在。原same-second期待相应改为新period.startsAt=createdAt，另断言paidAt仍原proof。97/97直接commerce源码测试、API typecheck、格式/diff通过；新增PG未本机执行。此修复独立于root真实HTTPS付款500，不能用它解释尚无SQLSTATE证据的500。
+
+## 2026-11-11 真实PG参数类型失败的最小修复
+
+root取得CI42785649875 api129726178241归档：PostgreSQL实报`inconsistent types deduced for parameter $5 at character 160`共16次，对应12个人工及4个Native失败。原因已实证：period INSERT同一$5既由duration_days整数目标推断又显式double precision。仅该SQL改为存储和计算两处均显式$5::integer，再与86400::double precision相乘，统一原始参数类型而保留固定秒数及bd7d4d5精确start规则。现有真实PG正向付费/回调/续费会直接回归本路径，不新增镜像实现的字符串测试。diff通过；真实PG及HTTPS500消除仍须root新headCI实证，未提前声称通过。旧C22 suite beforeAll500由另一owner独立诊断，本提交不改C22。

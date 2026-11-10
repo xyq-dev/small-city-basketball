@@ -18,7 +18,7 @@ import type {
   GroupKnockoutConfig,
 } from '@small-city-basketball/contracts';
 import { generateGroupPairings, parseGroupConfig } from '../../src/group-knockout-domain.js';
-import { activateEventCommerce } from '../../src/commerce/activation.js';
+import { activateEventCommerce } from './c22-legacy-commerce-activation.js';
 import { generateKnockoutPairings } from '../../src/knockout-domain.js';
 import { ApplicationService, EVENT_SELECT, isAdministrator } from '../../src/service.js';
 import type { EventRow, OrgActor } from '../../src/service.js';

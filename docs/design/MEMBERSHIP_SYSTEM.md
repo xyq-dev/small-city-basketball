@@ -111,3 +111,8 @@ OBS比分叠层是软件只读入口，不能等同云直播流量。云直播�
 - Web `/membership`只给实际机构上下文，平台 `/platform/membership`仍需原platform operator身份；新会员不增加角色。原生小程序pages/memberships仍是球队成员，本卡未改；微信Native QR需另一设备扫码，不能冒称JSAPI/H5本机支付已实现。
 
 Migration052已编写，runtime table仅SELECT/INSERT及两撤销审计列UPDATE，trigger函数无运行时直接EXECUTE；001–051未改。隔离执行/完整恢复和生产执行分别记录，最终结果看MEMBER02任务/交接；当前未在生产执行。
+
+
+### Native秒级证明与精确购买期起点
+
+MEMBER02精度修正：微信成功时间只有秒精度，原paid_at必须保留验签后的原始证明。首次Native购买期在SQL取GREATEST(paid_at,created_at)，避免新单在旧期结束同秒时因向下取整重叠；最多归一化不到一秒，不改原付款时间或旧购买期。线下仍paid_at；续费严格接parent.ends_at。SQL读取/传递保留PostgreSQL微秒，30/365天仍固定86400秒；不能经浏览器或JS Date毫秒截断后授权。原单/period及其相邻性在真实PG验收中比较，源码已编写不表示真实商户验收。

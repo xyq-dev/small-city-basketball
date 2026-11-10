@@ -124,7 +124,8 @@ BEGIN
    WHEN o.channel='WECHAT_NATIVE' THEN o.paid_at>=date_trunc('second',o.created_at) AND o.paid_at<=o.expires_at AND o.paid_at<=ts
    ELSE false END) THEN
   RAISE EXCEPTION 'Membership period payment must belong to its authoritative quoted window' USING ERRCODE='23514'; END IF;
- IF o.membership_previous_period_id IS NULL THEN expected_start:=o.paid_at;
+ IF o.membership_previous_period_id IS NULL THEN
+  expected_start:=(CASE WHEN o.channel='WECHAT_NATIVE' THEN GREATEST(o.paid_at,o.created_at) ELSE o.paid_at END);
  ELSE
   SELECT * INTO previous FROM software_membership_periods WHERE org_id=NEW.org_id AND id=o.membership_previous_period_id FOR UPDATE;
   expected_start:=previous.ends_at;

@@ -938,15 +938,22 @@ export class CommerceService extends ApplicationService {
       const startsAt = o.membership_previous_period_id
         ? (
             await c.query<Row>(
-              'SELECT ends_at FROM software_membership_periods WHERE org_id=$1 AND id=$2 FOR UPDATE',
+              'SELECT ends_at::text AS starts_at FROM software_membership_periods WHERE org_id=$1 AND id=$2 FOR UPDATE',
               [o.org_id, o.membership_previous_period_id],
             )
-          ).rows[0]?.ends_at
-        : paidAt;
+          ).rows[0]?.starts_at
+        : channel === 'WECHAT_NATIVE'
+          ? (
+              await c.query<Row>(
+                'SELECT GREATEST(paid_at,created_at)::text AS starts_at FROM billing_orders WHERE id=$1',
+                [o.id],
+              )
+            ).rows[0]?.starts_at
+          : paidAt;
       if (!startsAt) fail('MEMBERSHIP_SOURCE_INVALID', '会员续费来源无效，请核对原单');
       await c.query(
         `INSERT INTO software_membership_periods(id,org_id,order_id,tier,duration_days,event_limit,max_teams,max_matches,starts_at,ends_at)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::timestamptz,$9::timestamptz+($5::double precision*86400)*interval '1 second')`,
+         VALUES($1,$2,$3,$4,$5::integer,$6,$7,$8,$9::timestamptz,$9::timestamptz+($5::integer*86400::double precision)*interval '1 second')`,
         [
           randomUUID(),
           o.org_id,

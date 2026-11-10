@@ -19,6 +19,7 @@ import { migrate } from '../src/database/migrate.js';
 import { hashPassword } from '../src/security.js';
 import { activateEventCommerce } from '../src/commerce/activation.js';
 import { maintainPlatformOperator } from '../src/commerce/platform-operator.js';
+import { makeMembershipQuote } from '../src/commerce/membership-domain.js';
 import { WechatPayClient } from '../src/commerce/wechatpay.js';
 import {
   ORIGIN,
@@ -467,7 +468,8 @@ describe(
       const state = await memberWorkspace(actor);
       const periods = state.periods.filter((p) => p.orderId === f.order.id);
       expect(periods).toHaveLength(1);
-      expect(periods[0]!.startsAt).toBe(new Date(String(valid.success_time)).toISOString());
+      expect(periods[0]!.startsAt).toBe(f.order.createdAt);
+      expect((await fresh(f)).paidAt).toBe(new Date(String(valid.success_time)).toISOString());
       expect(Date.parse(periods[0]!.endsAt) - Date.parse(periods[0]!.startsAt)).toBe(
         30 * 86400_000,
       );
@@ -489,6 +491,129 @@ describe(
           )
         ).rowCount,
       ).toBe(1);
+    });
+
+    test('adjacent historical Native purchases and renewals preserve database microseconds without overlapping periods or rewriting payment proof', async () => {
+      const actor = await owner('adjacent-microseconds');
+      const plan = (
+        await api.pool.query('SELECT * FROM billing_plan_versions WHERE id=$1', [memberPlan.id])
+      ).rows[0];
+      // Only initial unpaid historical sources are synthesized. HTTP signature verification
+      // and the original settlement/period guards create both paid periods below.
+      async function historicalPending(createdAt: string): Promise<Fixture> {
+        const id = randomUUID();
+        await api.pool.query(
+          `INSERT INTO billing_orders(id,org_id,event_id,plan_id,quote,amount_fen,currency,out_trade_no,created_by,created_at,expires_at,target_kind)
+           VALUES($1,$2,NULL,$3,$4::jsonb,$5,'CNY',$6,$7,$8::timestamptz,$8::timestamptz+interval '24 hours','ORG_MEMBERSHIP')`,
+          [
+            id,
+            actor.orgId,
+            memberPlan.id,
+            JSON.stringify(makeMembershipQuote(plan, null)),
+            memberPlan.amountFen,
+            id.replaceAll('-', ''),
+            actor.id,
+            createdAt,
+          ],
+        );
+        const order = (await memberWorkspace(actor)).orders.find((o) => o.id === id)!;
+        expect(order).toBeDefined();
+        return { actor, kind: 'MEMBER', order };
+      }
+      const historicalStart = (
+        await api.pool.query(
+          "SELECT (date_trunc('second',clock_timestamp())-2592002::double precision*interval '1 second'+interval '0.500123 seconds')::text AS value",
+        )
+      ).rows[0].value as string;
+      const previous = await historicalPending(historicalStart);
+      // Reconstruct only the original pre-payment Native initiation; no paid fact is seeded.
+      await api.pool.query(
+        "UPDATE billing_orders SET channel='WECHAT_NATIVE',provider_started_at=created_at,native_code_url=$2,version=version+1 WHERE id=$1",
+        [previous.order.id, `weixin://wxpay/bizpayurl?pr=${tradeNo(previous)}`],
+      );
+      await fresh(previous);
+      const previousPayment = providerPayment(previous, 'SUCCESS');
+      expect((await notify(notification(previousPayment))).status).toBe(204);
+      const previousState = await memberWorkspace(actor);
+      const previousPeriod = previousState.periods.find((p) => p.orderId === previous.order.id)!;
+      expect(previousPeriod.state).toBe('EXPIRED');
+      expect(previousPeriod.usedEvents).toBe(0);
+      const event = await createEvent(api, actor, '合成历史过期会员不能消费');
+      await expect(activate(actor, event.id)).rejects.toMatchObject({ status: 402 });
+      const nextCreatedAt = (
+        await api.pool.query(
+          "SELECT (ends_at+interval '0.2 seconds')::text AS value FROM software_membership_periods WHERE id=$1",
+          [previousPeriod.id],
+        )
+      ).rows[0].value as string;
+      const next = await native(await historicalPending(nextCreatedAt));
+      const payment = providerPayment(next, 'SUCCESS');
+      const callback = notification(payment);
+      expect((await notify(callback)).status).toBe(204);
+      expect((await notify(callback)).status).toBe(204);
+      scenarios.get(tradeNo(next))!.value = payment;
+      expect(
+        data<SoftwareMembershipCommandResult>(await buyer(next, 'QUERY_PAYMENT')).order.status,
+      ).toBe('PAID');
+      const boundaries = (
+        await api.pool.query(
+          `SELECT n.starts_at=o.created_at AS exact_start,
+            n.starts_at=GREATEST(o.paid_at,o.created_at) AS canonical_start,
+            o.paid_at<old.ends_at AND old.ends_at<o.created_at AS adjacent,
+            NOT(tstzrange(old.starts_at,old.ends_at,'[)') && tstzrange(n.starts_at,n.ends_at,'[)')) AS no_overlap,
+            mod(extract(microseconds FROM o.created_at)::bigint,1000)>0 AS has_submillisecond,
+            old.ends_at<clock_timestamp() AS previous_expired,
+            n.ends_at=n.starts_at+2592000::double precision*interval '1 second' AS exact_duration,
+            o.paid_at::text AS paid_at
+           FROM software_membership_periods n JOIN billing_orders o ON o.id=n.order_id
+           JOIN software_membership_periods old ON old.id=$2 WHERE n.order_id=$1`,
+          [next.order.id, previousPeriod.id],
+        )
+      ).rows;
+      expect(boundaries).toHaveLength(1);
+      expect(boundaries[0]).toMatchObject({
+        exact_start: true,
+        canonical_start: true,
+        adjacent: true,
+        no_overlap: true,
+        has_submillisecond: true,
+        previous_expired: true,
+        exact_duration: true,
+      });
+      expect(new Date(boundaries[0].paid_at).toISOString()).toBe(
+        new Date(String(payment.success_time)).toISOString(),
+      );
+      expect(
+        (await memberWorkspace(actor)).periods.filter((p) => p.orderId === next.order.id),
+      ).toHaveLength(1);
+      expect(
+        (
+          await api.pool.query(
+            'SELECT count(*)::integer AS count FROM event_commercial_activations WHERE org_id=$1',
+            [actor.orgId],
+          )
+        ).rows[0].count,
+      ).toBe(0);
+      // A real same-tier renewal must also retain the predecessor's full PostgreSQL precision.
+      const renewal = await native(await purchase(actor));
+      const renewalPayment = providerPayment(renewal, 'SUCCESS');
+      expect((await notify(notification(renewalPayment))).status).toBe(204);
+      const renewalPeriod = (await memberWorkspace(actor)).periods.find(
+        (p) => p.orderId === renewal.order.id,
+      )!;
+      expect(renewalPeriod.state).toBe('SCHEDULED');
+      expect(
+        (
+          await api.pool.query(
+            `SELECT child.starts_at=parent.ends_at AS exact_start,
+              child.ends_at=child.starts_at+2592000::double precision*interval '1 second' AS exact_duration,
+              mod(extract(microseconds FROM child.starts_at)::bigint,1000)>0 AS has_submillisecond
+             FROM software_membership_periods child JOIN billing_orders o ON o.id=child.order_id
+             JOIN software_membership_periods parent ON parent.id=o.membership_previous_period_id WHERE child.id=$1`,
+            [renewalPeriod.id],
+          )
+        ).rows[0],
+      ).toEqual({ exact_start: true, exact_duration: true, has_submillisecond: true });
     });
 
     test('unknown, PAYERROR and REVOKED remain blocked until a signed original CLOSED query, with idempotent proof and no terminal revival', async () => {
