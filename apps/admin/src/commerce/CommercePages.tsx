@@ -380,7 +380,11 @@ function CommercePage({
               <form className="commerce-form" onSubmit={preparePlan}>
                 <label>
                   按届建议模板
-                  <select value={presetCode} onChange={(e) => setPresetCode(e.target.value)}>
+                  <select
+                    aria-label="按届建议模板"
+                    value={presetCode}
+                    onChange={(e) => setPresetCode(e.target.value)}
+                  >
                     <option value="">请选择本地定价建议</option>
                     {membershipPresets.map((preset) => (
                       <option key={preset.code} value={preset.code}>
