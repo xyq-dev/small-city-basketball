@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { StrictMode } from 'react';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionData } from '@small-city-basketball/contracts';
@@ -77,6 +77,33 @@ describe('API模式登录与机构边界', () => {
       email: 'admin_26',
       password: 'strong-test-password',
     });
+  });
+
+  it('登录沿用1–128原文，空值和超长不发送', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      if (url === '/v1/auth/session') return failed(401, '未登录');
+      if (url === '/v1/auth/capabilities') return ok(openRegistration);
+      if (url === '/v1/auth/login') return ok(session);
+      return ok([]);
+    });
+    render(<RuntimeApp mode="api" client={createApiClient({ fetcher })} />);
+    const user = userEvent.setup();
+    const identity = await screen.findByLabelText('邮箱或用户名');
+    const password = screen.getByLabelText('密码');
+    fireEvent.change(identity, { target: { value: 'owner@example.test' } });
+    fireEvent.change(password, { target: { value: '' } });
+    await user.click(screen.getByRole('button', { name: '登录工作台' }));
+    expect(screen.getByText('密码需为1–128个字符')).toBeVisible();
+    fireEvent.change(password, { target: { value: 'x'.repeat(129) } });
+    await user.click(screen.getByRole('button', { name: '登录工作台' }));
+    expect(screen.getByText('密码需为1–128个字符')).toBeVisible();
+    expect(fetcher.mock.calls.some(([url]) => url === '/v1/auth/login')).toBe(false);
+    const exact = ' Ab 密🔒';
+    fireEvent.change(password, { target: { value: exact } });
+    await user.click(screen.getByRole('button', { name: '登录工作台' }));
+    expect(await screen.findByText('业务服务 · 数据持久保存')).toBeVisible();
+    const request = fetcher.mock.calls.find(([url]) => url === '/v1/auth/login');
+    expect(JSON.parse(String(request?.[1]?.body)).password).toBe(exact);
   });
 
   it('登录失败显示错误且不渲染Mock，成功后显示真实机构与资料', async () => {

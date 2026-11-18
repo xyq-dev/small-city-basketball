@@ -153,7 +153,7 @@ describe('account security password change', () => {
     );
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '修改密码并重新登录' }));
-    expect(screen.getByText('请输入当前密码')).toBeVisible();
+    expect(screen.getByText('当前密码需为1–128个字符')).toBeVisible();
     await user.type(screen.getByLabelText('当前密码'), 'synthetic-old-pass');
     await user.type(screen.getByLabelText('新密码', { exact: true }), 'synthetic-old-pass');
     await user.type(screen.getByLabelText('确认新密码'), 'synthetic-old-pass');
@@ -168,6 +168,38 @@ describe('account security password change', () => {
     expect(screen.getByLabelText('当前密码')).toHaveAttribute('type', 'text');
     expect(fetcher).not.toHaveBeenCalled();
     expect(changed).not.toHaveBeenCalled();
+  });
+
+  it('sends a short current password unchanged and still requires a 12 character replacement', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response({ changed: true }));
+    render(
+      <AccountSecurityForm
+        client={createApiClient({ fetcher })}
+        email="owner@example.test"
+        onBusyChange={vi.fn()}
+        onPasswordChanged={vi.fn()}
+      />,
+    );
+    const current = ' Ab 密🔒 ';
+    fireEvent.change(screen.getByLabelText('当前密码'), { target: { value: 'x'.repeat(129) } });
+    fireEvent.click(screen.getByRole('button', { name: '修改密码并重新登录' }));
+    expect(screen.getByText('当前密码需为1–128个字符')).toBeVisible();
+    fireEvent.change(screen.getByLabelText('当前密码'), { target: { value: current } });
+    fireEvent.change(screen.getByLabelText('新密码', { exact: true }), {
+      target: { value: 'short-pass1' },
+    });
+    fireEvent.change(screen.getByLabelText('确认新密码'), { target: { value: 'short-pass1' } });
+    fireEvent.click(screen.getByRole('button', { name: '修改密码并重新登录' }));
+    expect(screen.getByText('新密码需为12–128个字符')).toBeVisible();
+    expect(fetcher).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('新密码', { exact: true }), {
+      target: { value: 'Synthetic new password 2026' },
+    });
+    fireEvent.change(screen.getByLabelText('确认新密码'), {
+      target: { value: 'Synthetic new password 2026' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '修改密码并重新登录' }));
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body)).currentPassword).toBe(current);
   });
 
   it('locks duplicate submissions, keeps the session on failure and never renders arbitrary error details', async () => {

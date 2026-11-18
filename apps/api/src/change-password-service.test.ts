@@ -9,6 +9,10 @@ describe('change-password input boundary', () => {
   };
   test('preserves whitespace and password-manager supplied Unicode', () => {
     expect(parseChangePasswordInput(valid)).toEqual(valid);
+    const currentPassword = ' Ab 密🔒 ';
+    expect(parseChangePasswordInput({ ...valid, currentPassword }).currentPassword).toBe(
+      currentPassword,
+    );
     expect(
       parseChangePasswordInput({
         ...valid,
@@ -21,6 +25,8 @@ describe('change-password input boundary', () => {
     for (const input of [
       { ...valid, confirmPassword: 'Synthetic different confirmation' },
       { ...valid, currentPassword: '' },
+      { ...valid, currentPassword: 'x'.repeat(129) },
+      { ...valid, newPassword: 'short-pass1', confirmPassword: 'short-pass1' },
       { ...valid, newPassword: 'x'.repeat(129) },
       { ...valid, userId: 'cannot-target-another-user' },
       { ...valid, loginName: 'cannot-change-login' },

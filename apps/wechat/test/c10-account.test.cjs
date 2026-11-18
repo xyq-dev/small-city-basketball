@@ -83,9 +83,11 @@ test('revoked registration capability still leaves a path back to existing-accou
 
 test('blank credentials stay on the page and a failed wechat capability read stays unknown', async () => {
   let loginBody = null;
+  const urls = [];
   const client = {
     hasSession: () => false,
     request: async (url, method, payload) => {
+      urls.push(url);
       if (url === '/v1/auth/login') loginBody = payload;
       if (String(url).includes('/v1/auth/wechat/capabilities')) throw new Error('network');
       return { data: { canRegisterParticipant: false, enabled: false } };
@@ -109,6 +111,34 @@ test('blank credentials stay on the page and a failed wechat capability read sta
   h.page.login();
   await h.flush();
   assert.equal(loginBody.password, '  secret  ');
+  h.page.setData({ password: 'x'.repeat(129), message: '' });
+  loginBody = null;
+  h.page.login();
+  await h.flush();
+  assert.equal(loginBody, null);
+  assert.match(h.page.data.message, /密码需为1–128个字符/);
+  h.page.setData({
+    canRegister: true,
+    email: 'a@example.test',
+    displayName: '合成用户',
+    password: 'short-pass1',
+    message: '',
+  });
+  h.page.register();
+  await h.flush();
+  assert.equal(urls.includes('/v1/auth/register-participant'), false);
+  assert.match(h.page.data.message, /密码需为12–128个字符/);
+  h.page.setData({
+    user: { id: '10000000-0000-4000-8000-000000000001' },
+    enabled: true,
+    consent: true,
+    password: 'x'.repeat(129),
+    message: '',
+  });
+  h.page.bind();
+  await h.flush();
+  assert.equal(urls.includes('/v1/auth/wechat/challenges'), false);
+  assert.match(h.page.data.message, /密码需为1–128个字符/);
   await h.page.load();
   assert.equal(h.page.data.wechatState, 'unknown');
   assert.equal(h.page.data.enabled, false);

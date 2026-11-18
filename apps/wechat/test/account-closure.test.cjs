@@ -176,6 +176,16 @@ test('E07 storage failure prevents the mutation from becoming unrecoverable', as
   assert.equal(h.page.data.busy, false);
   h.page.onUnload();
 });
+test('E07 rejects an overlong current password before the closure request', async () => {
+  const h = setup();
+  await ready(h);
+  h.page.setData({ password: 'x'.repeat(129) });
+  await h.page.requestClosure();
+  assert.equal(h.calls.filter((x) => x.method === 'POST').length, 0);
+  assert.equal(h.page.data.error, '密码需为1–128个字符');
+  assert.equal(h.page.data.password, 'x'.repeat(129));
+  h.page.onUnload();
+});
 test('E07 safety cancellation remains available while new requests are disabled', async () => {
   const h = setup({ enabled: false, current: dto() });
   await ready(h);

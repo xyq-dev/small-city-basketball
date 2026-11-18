@@ -10,7 +10,7 @@
 
 - `users.login_name` 可空，小写ASCII，首字母为字母、总长3–32，只允许字母数字下划线，唯一。旧用户默认NULL，邮箱保持。
 - `/v1/auth/login` 请求继续使用 `email` 字段，值可为邮箱或用户名；会话DTO不变。别名和邮箱共用同一用户/IP限流键，未知/停用账号继续恒定认证错误与dummy scrypt。
-- UI登录输入为“邮箱或用户名”；注册仍只收邮箱，不降低密码12–128字符规则。
+- UI登录输入为“邮箱或用户名”；注册仍只收邮箱，设置新密码仍为12–128字符。登录验证已有凭据的1–128规则见 [LOGIN-PASSWORD-COMPAT](../tasks/LOGIN-PASSWORD-COMPAT.md)，不降低新密码策略。
 - CLI仅从 `ACCOUNT_MAINTENANCE_INPUT_FILE` 读取0400/0600、当前UID所有、非符号链接的有限普通文件，strictJSON为 `email/loginName/password/reason`。拒绝argv及inline输入；使用已有密码hash实现。
 - 登录事务在锁用户前取该用户共享advisory事务锁；维护事务先取同key独占advisory锁，确保所有先行登录结束、新登录被阻挡后，才枚举并锁该用户全部现有会话，再锁用户。核对ACTIVE及读取候选的旧hash/login_name未变化，更新仅目标账号、撤销全部旧会话、写审计；审计失败整体回滚。此协议防止“维护漏枚举的新会话请求先锁session后等user”的三方死锁。
 - 审计actor使用本次创建的DISABLED不可登录系统主体，hash为不可验证哨兵，无机构权限，不冒充目标用户。root已批准此方案。metadata仅维护来源、原因和撤销数量，不含密码、hash或会话令牌。维护要求新密码与当前密码不同，确保成功后旧密码确实失效。

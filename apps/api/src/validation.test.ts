@@ -8,6 +8,7 @@ import {
   loginNameInput,
   membershipInput,
   objectInput,
+  loginPasswordInput,
   passwordInput,
   text,
 } from './validation.js';
@@ -85,6 +86,27 @@ describe('真实API输入边界', () => {
     expect(() => passwordInput('x'.repeat(129))).toThrow(ApiError);
     expect(passwordInput('🔒'.repeat(12))).toBe('🔒'.repeat(12));
     expect(passwordInput('  valid-password  ')).toBe('  valid-password  ');
+  });
+
+  it('登录校验接受1–128个原文码点，新密码策略仍拒绝短密码', () => {
+    const exact = ' Ab 密🔒';
+    expect(loginPasswordInput(exact)).toBe(exact);
+    expect(loginPasswordInput('x')).toBe('x');
+    expect(loginPasswordInput('🔒'.repeat(128))).toBe('🔒'.repeat(128));
+    expect(loginPasswordInput('CaseKept')).toBe('CaseKept');
+    for (const value of ['', 'x'.repeat(129), null, 12, undefined]) {
+      expect(() => loginPasswordInput(value)).toThrow(ApiError);
+    }
+    expect(() => passwordInput('short-pass1')).toThrow(ApiError);
+    try {
+      loginPasswordInput('');
+    } catch (error) {
+      expect(error).toMatchObject({
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        details: { fieldErrors: { password: '密码需为1–128个字符' } },
+      });
+    }
   });
 
   it('登录支持规范化用户名和邮箱，注册仍只接受邮箱', () => {

@@ -126,8 +126,10 @@ function AuthForm({
       (!emailValid && (register || !loginNameValid))
     )
       errors.email = register ? '请填写有效邮箱' : '请输入有效邮箱或用户名';
-    if (!password) errors.password = '请输入密码';
-    if (register && (Array.from(password).length < 12 || Array.from(password).length > 128))
+    const passwordLength = Array.from(password).length;
+    if (!register && (passwordLength < 1 || passwordLength > 128))
+      errors.password = '密码需为1–128个字符';
+    if (register && (passwordLength < 12 || passwordLength > 128))
       errors.password = '密码需为12–128个字符';
     if (register && !displayName.trim()) errors.displayName = '请输入称呼';
     if (intent === 'organization' && !organizationName.trim())

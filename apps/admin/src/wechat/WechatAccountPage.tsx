@@ -54,6 +54,11 @@ export function WechatAccountPage({
   }, [api, revision]);
   async function unlink() {
     if (!binding?.connected || !binding.version || !consent || busy) return;
+    const passwordLength = Array.from(password).length;
+    if (passwordLength < 1 || passwordLength > 128) {
+      setError('重新验证应用密码需为1–128个字符');
+      return;
+    }
     const seenGeneration = generation.current;
     setBusy(true);
     setError('');
