@@ -123,7 +123,13 @@ import {
 } from './local-services-controller.js';
 import { TencentLocationProvider } from './location-provider.js';
 import type { LocationProvider } from './location-provider.js';
-import { readRequiredSecret } from './env.js';
+import { RoutingLocationProvider } from './location-settings/runtime.js';
+import { LocationSettingsService } from './location-settings/service.js';
+import type { LocationSettingsOptions } from './location-settings/service.js';
+import {
+  PlatformLocationSettingsController,
+  LOCATION_SETTINGS_SERVICE,
+} from './location-settings/controller.js';
 import { SponsorshipService } from './sponsorship-service.js';
 import {
   SponsorshipController,
@@ -428,6 +434,7 @@ export async function createApi(
       dispatch?: DispatchOptions;
       training?: TrainingOptions;
       storageSettings?: StorageSettingsOptions;
+      locationSettings?: LocationSettingsOptions;
     },
 ): Promise<{ app: INestApplication; pool: Pool }> {
   let options = resolveApiOptions(input);
@@ -518,12 +525,8 @@ export async function createApi(
     });
     const locationProvider =
       input.locationProvider ??
-      new TencentLocationProvider(
-        process.env.SCB_TENCENT_MAP_KEY !== undefined ||
-          process.env.SCB_TENCENT_MAP_KEY_FILE !== undefined
-          ? readRequiredSecret('SCB_TENCENT_MAP_KEY')
-          : undefined,
-      );
+      new RoutingLocationProvider(pool, input.locationSettings?.transport ?? fetch);
+    const locationSettings = new LocationSettingsService(pool, options, input.locationSettings);
     const localServices = new LocalServicesService(
       pool,
       options,
@@ -615,6 +618,7 @@ export async function createApi(
     @Module({
       controllers: [
         PlatformStorageSettingsController,
+        PlatformLocationSettingsController,
         FirstRunSetupController,
         ChangePasswordController,
         SponsorCommerceController,
@@ -693,6 +697,7 @@ export async function createApi(
       ],
       providers: [
         { provide: STORAGE_SETTINGS_SERVICE, useValue: storageSettings },
+        { provide: LOCATION_SETTINGS_SERVICE, useValue: locationSettings },
         { provide: SCB_FIRST_RUN_SETUP, useValue: firstRunSetup },
         { provide: SCB_CHANGE_PASSWORD, useValue: changePassword },
         { provide: SCB_SPONSOR_COMMERCE_SERVICE, useValue: sponsorCommerce },

@@ -363,7 +363,7 @@ function candidate(raw) {
     'regionLevel',
   ]);
   if (
-    r.source !== 'TENCENT' ||
+    (r.source !== 'AMAP' && r.source !== 'TENCENT') ||
     !['PLACE', 'REVERSE'].includes(r.kind) ||
     (r.region && !['PROVINCE', 'PREFECTURE', 'COUNTY'].includes(r.regionLevel))
   )

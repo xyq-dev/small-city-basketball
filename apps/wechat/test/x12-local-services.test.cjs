@@ -273,6 +273,34 @@ test('location timeout settles once and ignores late success', async () => {
   assert.equal(h.storage.size, 0);
 });
 
+test('AMAP and TENCENT candidates are accepted and unknown sources are rejected', () => {
+  const ls = harness().requireLocal('utils/local-services.js');
+  const base = {
+    title: '高州篮球场',
+    address: '公开参考地址',
+    point,
+    sourceCode: '440981',
+    kind: 'PLACE',
+  };
+  assert.equal(ls.candidate({ ...base, source: 'AMAP' }).source, 'AMAP');
+  assert.equal(ls.candidate({ ...base, source: 'TENCENT' }).source, 'TENCENT');
+  assert.throws(() => ls.candidate({ ...base, source: 'OTHER' }), /地图候选资料无效/);
+});
+
+test('denied location keeps the current city choice available for manual selection', async () => {
+  const h = harness('local', { request: () => envelope(searchData()) });
+  h.page.onShow();
+  await h.flush();
+  const before = h.page.data.selection;
+  h.page.setData({ locationEnabled: true });
+  h.wx.getLocation = (o) => o.fail({ errMsg: 'auth deny' });
+  await h.page.locate();
+  assert.match(h.page.data.locationError, /手动选城/);
+  equal(h.page.data.selection, before);
+  assert.equal(h.page.data.locationBusy, false);
+  assert.equal(h.storage.size, 0);
+});
+
 test('POI candidates cannot be interpreted as stock or silently change the selected region', async () => {
   const h = harness('local', {
     request: ({ url }) =>

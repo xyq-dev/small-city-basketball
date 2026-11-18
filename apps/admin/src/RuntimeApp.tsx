@@ -48,6 +48,11 @@ const StorageSettingsPage = lazy(() =>
     default: m.StorageSettingsPage,
   })),
 );
+const LocationSettingsPage = lazy(() =>
+  import('./location-settings/LocationSettingsPage').then((m) => ({
+    default: m.LocationSettingsPage,
+  })),
+);
 const PublicViewingApp = lazy(() =>
   import('./viewing/PublicPages').then((viewing) => ({ default: viewing.PublicViewingApp })),
 );
@@ -566,6 +571,9 @@ function IdentityPanel({
               <a className="button button-secondary" href="/system/storage">
                 系统设置 · 对象存储
               </a>
+              <a className="button button-secondary" href="/system/location">
+                系统设置 · 定位与地图
+              </a>
             </>
           )}
         </div>
@@ -648,6 +656,9 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
   const [storagePath, setStoragePath] = useState(
     () => window.location.pathname === '/system/storage',
   );
+  const [locationPath, setLocationPath] = useState(
+    () => window.location.pathname === '/system/location',
+  );
   const [accountView, setAccountView] = useState<
     'wechat' | 'platform' | 'platform-membership' | 'booking' | null
   >(() =>
@@ -664,6 +675,7 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
   useEffect(() => {
     const sync = () => {
       setStoragePath(window.location.pathname === '/system/storage');
+      setLocationPath(window.location.pathname === '/system/location');
       setAccountView(
         isBookingPath(window.location.pathname)
           ? 'booking'
@@ -1011,6 +1023,24 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
             },
           }}
         />
+      ) : locationPath ? (
+        <main className="runtime-account-tools">
+          <div className="runtime-account-actions">
+            <a className="button button-secondary" href="/">
+              返回工作台
+            </a>
+            {logoutButton}
+          </div>
+          <Suspense fallback={<p role="status">正在读取定位与地图设置…</p>}>
+            <LocationSettingsPage
+              key={session.user.id}
+              client={guardedClient}
+              userId={session.user.id}
+              platformOperator={session.platformOperator === true}
+              identityKey={`${session.user.id}:${sessionEpoch.current}`}
+            />
+          </Suspense>
+        </main>
       ) : storagePath ? (
         <main className="runtime-account-tools">
           <div className="runtime-account-actions">
@@ -1055,9 +1085,14 @@ export function ApiRuntime({ client: providedClient }: { client?: ApiClient }) {
             </a>
             {headerActions}
             {session.platformOperator === true && (
-              <a className="button button-secondary" href="/system/storage">
-                对象存储设置
-              </a>
+              <>
+                <a className="button button-secondary" href="/system/storage">
+                  对象存储设置
+                </a>
+                <a className="button button-secondary" href="/system/location">
+                  定位与地图
+                </a>
+              </>
             )}
             <button
               className="button button-secondary"

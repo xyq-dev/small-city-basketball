@@ -113,7 +113,7 @@ export interface LocalLocationCandidate {
   address: string;
   point: LocalPoint;
   sourceCode: string | null;
-  source: 'TENCENT';
+  source: 'AMAP' | 'TENCENT';
   kind: 'PLACE' | 'REVERSE';
   region?: LocalRegion;
   regionLabel?: string;

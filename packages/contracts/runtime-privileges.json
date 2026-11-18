@@ -550,6 +550,27 @@
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["status", "reason", "version"]
     },
+    "location_config_operations": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": ["status", "result", "test_result", "completed_at"]
+    },
+    "location_config_revisions": {
+      "privileges": ["SELECT", "INSERT"],
+      "updateColumns": []
+    },
+    "location_config_state": {
+      "privileges": ["SELECT"],
+      "updateColumns": [
+        "version",
+        "draft_revision_id",
+        "active_revision_id",
+        "external_mode",
+        "activated_at",
+        "activated_by",
+        "disabled_at",
+        "disabled_by"
+      ]
+    },
     "match_exception_heads": {
       "privileges": ["SELECT", "INSERT"],
       "updateColumns": ["version", "active_request_id"]
@@ -1448,6 +1469,9 @@
     "c51_storage_operation_guard()": [],
     "c51_storage_probe_guard()": [],
     "c51_storage_state_guard()": [],
+    "c53_location_immutable()": [],
+    "c53_location_operation_guard()": [],
+    "c53_location_state_guard()": [],
     "e01_append_only()": [],
     "e01_session_guard()": [],
     "e02_job_identity_guard()": [],
