@@ -173,6 +173,30 @@ async function fingerprint() {
   }
   return hash.digest('hex');
 }
+async function captureLocationConfiguration(pool, actorId) {
+  const revisionId = randomUUID();
+  const operationId = randomUUID();
+  await pool.query(
+    `INSERT INTO location_config_revisions(id,version,provider,signature_enabled,credentials_ciphertext,credentials_nonce,credentials_tag,created_by)
+     VALUES($1,1,'AMAP',false,$2,$3,$4,$5)`,
+    [revisionId, Buffer.from('synthetic-location'), randomBytes(12), randomBytes(16), actorId],
+  );
+  await pool.query(
+    `UPDATE location_config_state SET version=version+1,draft_revision_id=$1 WHERE singleton=true AND version=0`,
+    [revisionId],
+  );
+  await pool.query(
+    `INSERT INTO location_config_operations(id,actor_id,command_id,request_hash,kind,status,config_version,result,completed_at)
+     VALUES($1,$2,$3,$4,'SAVE','FAILED',1,$5::jsonb,clock_timestamp())`,
+    [
+      operationId,
+      actorId,
+      randomUUID(),
+      createHash('sha256').update(randomBytes(32)).digest('hex'),
+      JSON.stringify({ code: 'SYNTHETIC_LOCATION_DRAFT', revisionId }),
+    ],
+  );
+}
 async function completionTableCounts() {
   const directory = new URL('../apps/api/migrations/', import.meta.url),
     manifest = await loadManifest(),
@@ -2115,7 +2139,10 @@ try {
       participantKeyFixtureDatabase,
       expansion,
       r6,
-      completionTableCounts: await completionTableCounts(),
+      completionTableCounts: await (async () => {
+        await captureLocationConfiguration(instance.pool, registration.data.user.id);
+        return completionTableCounts();
+      })(),
       fingerprint: await fingerprint(),
     };
     await writeFile(stateFile, JSON.stringify(state), { mode: 0o600 });
