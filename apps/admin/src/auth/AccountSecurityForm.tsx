@@ -30,7 +30,8 @@ export function AccountSecurityForm({
     event.preventDefault();
     if (locked.current || disabled) return;
     const next: Record<string, string> = {};
-    if (!currentPassword) next.currentPassword = '请输入当前密码';
+    const currentLength = Array.from(currentPassword).length;
+    if (currentLength < 1 || currentLength > 128) next.currentPassword = '当前密码需为1–128个字符';
     if (!validNewPassword(newPassword)) next.newPassword = '新密码需为12–128个字符';
     else if (newPassword === currentPassword) next.newPassword = '新密码不能与当前密码相同';
     if (!confirmPassword || confirmPassword !== newPassword)

@@ -27,6 +27,7 @@ import {
   eventQuery,
   invalid,
   loginIdentifierInput,
+  loginPasswordInput,
   membershipInput,
   objectInput,
   passwordInput,
@@ -306,7 +307,7 @@ export class ApplicationService {
   async login(body: unknown, ip: string): Promise<{ data: SessionData; token: string }> {
     const input = objectInput(body, ['email', 'password']);
     const identifier = loginIdentifierInput(input.email);
-    const password = passwordInput(input.password);
+    const password = loginPasswordInput(input.password);
     await this.rateLimit(`login-ip:${hashToken(ip)}`, 100, 900);
     const lookup = await this.pool.query<DbUser & { login_name: string | null }>(
       identifier.includes('@')

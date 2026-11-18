@@ -50,6 +50,15 @@ export function passwordInput(value: unknown): string {
   return value;
 }
 
+/** Checks a password presented for an existing account. New passwords stay on passwordInput. */
+export function loginPasswordInput(value: unknown, field = 'password'): string {
+  if (typeof value !== 'string' || Array.from(value).length < 1 || Array.from(value).length > 128) {
+    const label = field === 'currentPassword' ? '当前密码' : '密码';
+    invalid('请检查填写的资料', { [field]: `${label}需为1–128个字符` });
+  }
+  return value;
+}
+
 export function emailInput(value: unknown): string {
   const email = text(value, 'email', 3, 254).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))

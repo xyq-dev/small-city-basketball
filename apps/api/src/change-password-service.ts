@@ -2,7 +2,7 @@ import { ApplicationService } from './service.js';
 import type { DbUser } from './service.js';
 import { ApiError, unauthenticated } from './errors.js';
 import { hashPassword, hashToken, verifyPassword } from './security.js';
-import { invalid, objectInput, passwordInput } from './validation.js';
+import { invalid, loginPasswordInput, objectInput, passwordInput } from './validation.js';
 
 export interface ChangePasswordInput {
   currentPassword: string;
@@ -12,7 +12,7 @@ export interface ChangePasswordInput {
 
 export function parseChangePasswordInput(raw: unknown): ChangePasswordInput {
   const input = objectInput(raw, ['currentPassword', 'newPassword', 'confirmPassword']);
-  const currentPassword = passwordInput(input.currentPassword);
+  const currentPassword = loginPasswordInput(input.currentPassword, 'currentPassword');
   const newPassword = passwordInput(input.newPassword);
   const confirmPassword = passwordInput(input.confirmPassword);
   if (newPassword !== confirmPassword)

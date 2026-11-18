@@ -2,6 +2,9 @@ const api = require('../../utils/api');
 const ui = require('../../utils/ui');
 const events = require('../../utils/events');
 const figmaPreview = require('../../utils/figma-preview');
+function codePoints(value) {
+  return typeof value === 'string' ? Array.from(value).length : 0;
+}
 function wxCode() {
   return new Promise((resolve, reject) =>
     wx.login({
@@ -315,17 +318,21 @@ Page({
       typeof email !== 'string' ||
       email.length === 0 ||
       typeof password !== 'string' ||
-      password.length === 0
+      codePoints(password) < 1
     ) {
       this.setData({
         message:
-          email.length === 0 && password.length === 0
+          email.length === 0 && codePoints(password) < 1
             ? '请填写账号和密码'
             : email.length === 0
               ? '请填写账号或邮箱'
-              : '请填写密码',
+              : '密码需为1–128个字符',
         messageTone: 'error',
       });
+      return;
+    }
+    if (codePoints(password) > 128) {
+      this.setData({ message: '密码需为1–128个字符', messageTone: 'error' });
       return;
     }
     this.setData({ password: '' });
@@ -344,11 +351,15 @@ Page({
       typeof email !== 'string' ||
       email.length === 0 ||
       typeof password !== 'string' ||
-      password.length === 0 ||
+      codePoints(password) < 1 ||
       typeof displayName !== 'string' ||
       displayName.length === 0
     ) {
       this.setData({ message: '请填写注册邮箱、显示名称和密码', messageTone: 'error' });
+      return;
+    }
+    if (codePoints(password) < 12 || codePoints(password) > 128) {
+      this.setData({ message: '密码需为12–128个字符', messageTone: 'error' });
       return;
     }
     this.setData({ password: '' });
@@ -466,8 +477,12 @@ Page({
   },
   bind() {
     if (!this.data.user || !this.data.enabled || !this.data.consent) return;
-    const password = this.data.password,
-      viewer = this.data.user.id,
+    const password = this.data.password;
+    if (codePoints(password) < 1 || codePoints(password) > 128) {
+      this.setData({ message: '密码需为1–128个字符', messageTone: 'error' });
+      return;
+    }
+    const viewer = this.data.user.id,
       revision = api.getClient().sessionRevision();
     this.setData({ password: '' });
     this.task(async () => {
@@ -495,8 +510,12 @@ Page({
   },
   async unbind() {
     if (!this.data.connected || !this.data.consent || this.commandBusy) return;
-    const password = this.data.password,
-      expectedVersion = this.data.binding.version,
+    const password = this.data.password;
+    if (codePoints(password) < 1 || codePoints(password) > 128) {
+      this.setData({ message: '密码需为1–128个字符', messageTone: 'error' });
+      return;
+    }
+    const expectedVersion = this.data.binding.version,
       revision = api.getClient().sessionRevision();
     this.setData({ password: '' });
     return this.task(async () => {

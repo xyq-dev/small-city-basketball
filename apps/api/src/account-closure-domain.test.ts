@@ -26,6 +26,39 @@ describe('explicit self-service closure choices and authorization', () => {
       ).toThrow();
     },
   );
+  test('checks an existing short password unchanged and rejects empty or overlong values', () => {
+    const shortPassword = ' Ab 密🔒 ';
+    expect(closureRequestInput({ clientRequestId: id, password: shortPassword }).password).toBe(
+      shortPassword,
+    );
+    expect(
+      closureCancelInput({
+        clientRequestId: id,
+        requestId: id,
+        expectedVersion: 1,
+        password: shortPassword,
+      }).password,
+    ).toBe(shortPassword);
+    for (const value of ['', 'x'.repeat(129), null, 12]) {
+      expect(() => closureRequestInput({ clientRequestId: id, password: value })).toThrow(
+        expect.objectContaining({
+          details: { fieldErrors: { password: '密码需为1–128个字符' } },
+        }),
+      );
+      expect(() =>
+        closureCancelInput({
+          clientRequestId: id,
+          requestId: id,
+          expectedVersion: 1,
+          password: value,
+        }),
+      ).toThrow(
+        expect.objectContaining({
+          details: { fieldErrors: { password: '密码需为1–128个字符' } },
+        }),
+      );
+    }
+  });
   test('rejects client user/roles and requires password for cancellation', () => {
     expect(() => closureRequestInput({ clientRequestId: id, password, userId: id })).toThrow();
     expect(() =>

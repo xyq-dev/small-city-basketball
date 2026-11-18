@@ -204,7 +204,7 @@ P02状态DONE / MAIN，范围已通过真实数据库和API浏览器验收；CI�
 
 会话Cookie `scb.sid` 为随机256bit，HttpOnly/SameSite=Lax，生产Secure；服务端仅存SHA-256。每请求重查用户、会话、机构、成员和赛事分配，前端不保存令牌。所有POST/PUT/PATCH/DELETE（含登录注册）要求Origin精确匹配APP_ORIGIN；配置必须是HTTP(S) origin，生产必须HTTPS。P02使用同源代理，无前端直传角色或用户身份授权。
 
-密码12–128 Unicode码点，不截断；scrypt N131072/r8/p1、16字节随机盐、64字节派生键，存参数与哈希而非密码。注册和登录有数据库时间窗限流，429附Retry-After。字段失败为 `error.details.fieldErrors`，保留requestId；畸形JSON400，超限413，已知编码/媒体错误415使用固定文案，不回显请求或堆栈。未知/跨范围资源 `RESOURCE_NOT_FOUND` 404；401 `UNAUTHENTICATED/INVALID_CREDENTIALS`；其他关键码沿通用契约。
+设置新密码为12–128 Unicode码点，适用于注册、初始化、重置、修改密码中的新密码和离线维护。验证已有密码接受1–128 Unicode码点，适用于登录、修改密码中的当前密码、微信绑定和解绑，以及账号注销申请和取消时核对已有账号密码。两种输入都保留原文，不trim、不截断、不改变大小写、不做Unicode归一化；空串、非字符串或超过128字符返回对应字段的校验错误。两者都不会先截断再存储。scrypt N131072/r8/p1、16字节随机盐、64字节派生键，存参数与哈希而非密码。已有密码校验通过不表示该密码符合新密码策略，也不表示账号必然有效。注册和登录有数据库时间窗限流，429附Retry-After。字段失败为 `error.details.fieldErrors`，保留requestId；畸形JSON400，超限413，已知编码/媒体错误415使用固定文案，不回显请求或堆栈。未知/跨范围资源 `RESOURCE_NOT_FOUND` 404；401 `UNAUTHENTICATED/INVALID_CREDENTIALS`；其他关键码沿通用契约。
 
 P02没有删除、任意改赛事status、邮件验证、密码重置、工作人员邀请或平台管理接口。第3节的 `/v1/me*` 是后续目标入口；P02以 `/v1/auth/session` 提供当前上下文，不同时伪造两套已实现路由。
 

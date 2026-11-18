@@ -11,7 +11,7 @@ import type { Actor, ApiOptions, DbUser } from './service.js';
 import { ApiError, unauthenticated } from './errors.js';
 import { revokeNotificationGrants } from './notification-service.js';
 import { hashToken, newSessionToken, readSessionToken, verifyPassword } from './security.js';
-import { invalid, objectInput, passwordInput, resourceId } from './validation.js';
+import { invalid, loginPasswordInput, objectInput, resourceId } from './validation.js';
 import {
   OfficialWechatExchange,
   readWechatConfiguration,
@@ -127,7 +127,9 @@ export class WechatService extends ApplicationService {
     if (body.purpose === 'LOGIN' && body.password !== undefined) invalid('微信登录不接收应用密码');
     await this.rateLimit(`wechat-challenge:${hashToken(ip)}`, 30, 900);
     const candidate =
-      body.purpose === 'BIND' ? await this.candidate(cookie, passwordInput(body.password)) : null;
+      body.purpose === 'BIND'
+        ? await this.candidate(cookie, loginPasswordInput(body.password))
+        : null;
     await this.pool.query(
       `WITH expired AS (SELECT id FROM wechat_auth_attempts WHERE expires_at<clock_timestamp()-interval '10 minutes' ORDER BY expires_at LIMIT 100 FOR UPDATE SKIP LOCKED) DELETE FROM wechat_auth_attempts a USING expired WHERE a.id=expired.id`,
     );
@@ -344,7 +346,7 @@ export class WechatService extends ApplicationService {
     if (!this.configuration.appId)
       throw new ApiError(503, 'WECHAT_DISABLED', '微信登录尚未配置启用');
     await this.rateLimit(`wechat-unbind:${hashToken(ip)}`, 10, 900);
-    const candidate = await this.candidate(cookie, passwordInput(body.password));
+    const candidate = await this.candidate(cookie, loginPasswordInput(body.password));
     return this.transaction(async (c) => {
       const actor = await this.current(c, cookie, candidate, true);
       const identity = (

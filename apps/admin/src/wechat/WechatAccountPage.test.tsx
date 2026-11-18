@@ -44,6 +44,32 @@ it('requires password and explicit consent, submits seen version once, then repo
   expect(await screen.findByText(/已解除微信绑定并退出全部会话/)).toBeInTheDocument();
   expect(client.unbind).toHaveBeenCalledTimes(1);
 });
+it('rejects an overlong reauthentication password and sends a short one unchanged', async () => {
+  const client = api();
+  client.binding.mockResolvedValue({
+    enabled: true,
+    connected: true,
+    version: 2,
+    linkedAt: '2026-10-23T00:00:00Z',
+  });
+  render(<WechatAccountPage api={client} />);
+  const field = await screen.findByLabelText('重新验证应用密码');
+  fireEvent.change(field, { target: { value: 'x'.repeat(129) } });
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: '解绑并退出所有会话' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('重新验证应用密码需为1–128个字符');
+  expect(client.unbind).not.toHaveBeenCalled();
+  const exact = ' Ab 密🔒 ';
+  fireEvent.change(field, { target: { value: exact } });
+  fireEvent.click(screen.getByRole('button', { name: '解绑并退出所有会话' }));
+  await waitFor(() =>
+    expect(client.unbind).toHaveBeenCalledWith({
+      password: exact,
+      expectedVersion: 2,
+      consent: true,
+    }),
+  );
+});
 it('on conflict does not replay and clears the entered password', async () => {
   const client = api();
   client.binding.mockResolvedValue({

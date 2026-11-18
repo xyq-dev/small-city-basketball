@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { ApiError } from './errors.js';
-import { objectInput, passwordInput, resourceId } from './validation.js';
+import { loginPasswordInput, objectInput, resourceId } from './validation.js';
 import type { AccountClosureStatus } from '../../../packages/contracts/account-closure.js';
 
 export const ACCOUNT_CLOSURE_DOMAINS = Object.freeze([
@@ -32,7 +32,7 @@ export function closureRequestInput(raw: unknown) {
     closureFail('INVALID_CLOSURE_INPUT', '冷静期应为0至7天', 422);
   return {
     clientRequestId: closureId(b.clientRequestId),
-    password: passwordInput(b.password),
+    password: loginPasswordInput(b.password),
     coolingOffDays: days as number,
   };
 }
@@ -44,7 +44,7 @@ export function closureCancelInput(raw: unknown) {
     clientRequestId: closureId(b.clientRequestId),
     requestId: closureId(b.requestId),
     expectedVersion: Number(b.expectedVersion),
-    password: passwordInput(b.password),
+    password: loginPasswordInput(b.password),
   };
 }
 export const closureHash = (value: unknown) =>

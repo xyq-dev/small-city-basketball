@@ -1,5 +1,8 @@
 const api = require('../../utils/api');
 const ui = require('../../utils/ui');
+function codePoints(value) {
+  return typeof value === 'string' ? Array.from(value).length : 0;
+}
 const root = '/v1/account-closure';
 const statuses = {
   PENDING: '等待注销检查',
@@ -147,8 +150,8 @@ Page({
       this.setData({ error: '请确认注销影响及当前检查能力。' });
       return;
     }
-    if (!this.data.password) {
-      this.setData({ error: '请填写当前密码以核验本人。' });
+    if (codePoints(this.data.password) < 1 || codePoints(this.data.password) > 128) {
+      this.setData({ error: '密码需为1–128个字符' });
       return;
     }
     const t = ui.hold(this);
