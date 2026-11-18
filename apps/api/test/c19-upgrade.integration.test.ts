@@ -557,6 +557,23 @@ describe(
       ]);
       expect(
         (
+          await pool!
+            .query(`SELECT singleton,version,external_mode,draft_revision_id,active_revision_id,
+            activated_at,disabled_at FROM location_config_state`)
+        ).rows,
+      ).toEqual([
+        {
+          singleton: true,
+          version: 0,
+          external_mode: 'UNCONFIGURED',
+          draft_revision_id: null,
+          active_revision_id: null,
+          activated_at: null,
+          disabled_at: null,
+        },
+      ]);
+      expect(
+        (
           await pool!.query(
             'SELECT event_id,org_id,source,participant_count,expected_match_count FROM event_commercial_activations',
           )
@@ -1297,6 +1314,8 @@ const SEEDED_CONFIGURATION: Record<string, number> = {
   first_run_setup: 1,
   // 051 adds one inactive configuration pointer, without revisions, operations or probes.
   storage_config_state: 1,
+  // 053 adds one unconfigured map pointer. It does not enable Amap or Tencent.
+  location_config_state: 1,
   event_commercial_activations: 1,
   // E05's only initial scheduling row has no recipient, grant, source or message.
   notification_start_scan: 1,

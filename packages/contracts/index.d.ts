@@ -1231,5 +1231,19 @@ export type {
   StorageActivationInput,
   StorageCommandResult,
 } from './storage-settings.js';
+export type {
+  LocationProviderName,
+  LocationSecretAction,
+  LocationSettingsDraft,
+  LocationTestCheckKey,
+  LocationTestCheck,
+  LocationSettingsTest,
+  LocationSettingsSnapshot,
+  LocationSaveInput,
+  LocationTestInput,
+  LocationActivationInput,
+  LocationDisableInput,
+  LocationCommandResult,
+} from './location-settings.js';
 
 export type * from './membership.js';

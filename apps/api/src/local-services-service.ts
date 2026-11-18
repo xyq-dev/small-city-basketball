@@ -304,7 +304,11 @@ export class LocalServicesService extends ApplicationService {
     )
       localFail('LOCAL_SUPPLY_UNAVAILABLE', '供给或实际球场未开放、或资格有效期不足，请重新核对');
   }
+  private async locationReady() {
+    await this.locationProvider.prepare?.();
+  }
   async publicList(raw: unknown, ip: string) {
+    await this.locationReady();
     const q = parseLocalQuery(raw, this.searchOptions.cursorKey, this.searchOptions.maxSpanMeters);
     if (q.viewport && !this.searchOptions.enabled)
       localFail('VIEWPORT_SEARCH_DISABLED', '地图区域搜索暂未开放，请使用城市列表', 503);
@@ -461,6 +465,7 @@ export class LocalServicesService extends ApplicationService {
     });
   }
   async workspace(cookie: string | undefined, orgId?: string) {
+    await this.locationReady();
     return this.transaction(async (c) => {
       const actor = await this.lockActor(c, cookie);
       const listings = (
@@ -1420,6 +1425,7 @@ export class LocalServicesService extends ApplicationService {
     });
   }
   async location(raw: unknown, ip: string) {
+    await this.locationReady();
     const x = objectInput(raw, ['type', 'point', 'keyword', 'region']);
     await this.rateLimit(`local-map:${hashToken(ip)}`, 20, 60);
     if (x.type === 'REVERSE') {

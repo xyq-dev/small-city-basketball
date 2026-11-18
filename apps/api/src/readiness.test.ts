@@ -208,8 +208,8 @@ describe('complete expansion migration and least-privilege surface', () => {
   }
   it('matches every checked-in table, function signature and granted update column across the full contiguous sequence', async () => {
     const v = await checkedIn();
-    expect(v.names).toHaveLength(52);
-    expect(v.names.at(-1)).toBe('052_software_memberships.sql');
+    expect(v.names).toHaveLength(53);
+    expect(v.names.at(-1)).toBe('053_platform_location_settings.sql');
     expect(assertMigrationManifestSurface(v.manifest, v.sources)).toEqual({
       tables: Object.keys(v.manifest.tables).length,
       functions: Object.keys(v.manifest.functions).length,
@@ -290,7 +290,7 @@ describe('complete expansion migration and least-privilege surface', () => {
 
 it('loads the exact runtime manifest including versioned digit-bearing table names before connecting', async () => {
   const v = await readRuntimeExpectations();
-  expect(v.expected.size).toBe(52);
+  expect(v.expected.size).toBe(53);
   expect(v.manifest.tables.software_membership_periods).toEqual({
     privileges: ['SELECT', 'INSERT'],
     updateColumns: ['revoked_at', 'revoke_reason'],
