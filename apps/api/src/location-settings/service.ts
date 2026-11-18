@@ -480,12 +480,17 @@ export class LocationSettingsService extends ApplicationService {
         throw new ApiError(422, 'LOCATION_KEY_INVALID', '草稿没有可用的 Web 服务 Key');
       }
       mark('CREDENTIALS', 'PASSED', '密钥已配置。未查询剩余额度，也未核验微信后台权限。');
-      await provider.reverse(LOCATION_PROBE);
+      const probePoint = {
+        latitude: LOCATION_PROBE.latitude,
+        longitude: LOCATION_PROBE.longitude,
+        coordinateSystem: LOCATION_PROBE.coordinateSystem,
+      };
+      await provider.reverse(probePoint);
       mark('REVERSE', 'PASSED', `逆地理使用公开参考点：${LOCATION_PROBE.label}`);
       const places = await provider.search(
         LOCATION_PROBE.keyword,
         LOCATION_PROBE.sourceCode,
-        LOCATION_PROBE,
+        probePoint,
       );
       mark(
         'PLACE_SEARCH',
