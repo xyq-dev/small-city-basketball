@@ -37,6 +37,7 @@ describe('platform location settings', { concurrent: false }, () => {
               status: '1',
               info: 'OK',
               regeocode: {
+                formatted_address: '合成高州市地址',
                 addressComponent: { city: '茂名市', district: '高州市', adcode: '440981' },
               },
             }
