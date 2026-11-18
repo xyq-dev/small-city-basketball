@@ -23,14 +23,26 @@ const SCALE_ROWS = [
   { id: 'quota', cells: [cell('正式赛事额度'), cell('草稿'), cell('1届'), cell('1届')] },
   { id: 'teams', cells: [cell('球队上限'), cell('16队'), cell('8队'), cell('16队')] },
   { id: 'matches', cells: [cell('比赛上限'), cell('128场'), cell('32场'), cell('128场')] },
-  { id: 'publish', cells: [cell('正式发布'), cell('—'), check('std-publish'), check('pro-publish')] },
+  {
+    id: 'publish',
+    cells: [cell('正式发布'), cell('—'), check('std-publish'), check('pro-publish')],
+  },
   { id: 'window', cells: [cell('激活期限'), cell('—'), cell('90天'), cell('180天')] },
 ];
 const TOOL_ROWS = [
   { id: 'edit', cells: [cell('编排与调整'), cell('支持'), check('std-edit'), check('pro-edit')] },
-  { id: 'score', cells: [cell('记分与排名'), cell('模拟体验'), check('std-score'), check('pro-score')] },
-  { id: 'ops', cells: [cell('正式赛务协作'), cell('按原权限'), check('std-ops'), check('pro-ops')] },
-  { id: 'public', cells: [cell('公开赛事页面'), cell('仅预览'), check('std-public'), check('pro-public')] },
+  {
+    id: 'score',
+    cells: [cell('记分与排名'), cell('模拟体验'), check('std-score'), check('pro-score')],
+  },
+  {
+    id: 'ops',
+    cells: [cell('正式赛务协作'), cell('按原权限'), check('std-ops'), check('pro-ops')],
+  },
+  {
+    id: 'public',
+    cells: [cell('公开赛事页面'), cell('仅预览'), check('std-public'), check('pro-public')],
+  },
 ];
 const GUARD_ROWS = [
   { id: 'cover', cells: [cell('一次开通覆盖整届'), cell('支持'), cell('支持')] },

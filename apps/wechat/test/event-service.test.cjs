@@ -38,7 +38,11 @@ test('trial schedule keeps the circle pairings and reports hard slot conflicts',
   assert.equal(new Set(ready.placed.map((game) => game.home + '|' + game.away)).size, 28);
   const shared = require('../utils/circle-pairing').circlePairings(['甲', '乙', '丙']);
   assert.deepEqual(
-    shared.fixtures.map((fixture) => [fixture.fixtureKey, fixture.homeEntryId, fixture.awayEntryId]),
+    shared.fixtures.map((fixture) => [
+      fixture.fixtureKey,
+      fixture.homeEntryId,
+      fixture.awayEntryId,
+    ]),
     [
       ['R1-P2', '乙', '丙'],
       ['R2-P1', '甲', '丙'],
@@ -278,5 +282,8 @@ test('a user without an organization keeps the trial and uses an existing invita
   const urls = wx.calls.filter((call) => call.type === 'navigateTo').map((call) => call.url);
   assert.ok(urls.some((url) => url.includes('/pages/invitation/')));
   assert.ok(urls.some((url) => url.includes('/pages/team-request/')));
-  assert.equal(seen.some((url) => url.includes('/auth/register')), false);
+  assert.equal(
+    seen.some((url) => url.includes('/auth/register')),
+    false,
+  );
 });
