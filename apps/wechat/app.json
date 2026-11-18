@@ -307,6 +307,10 @@
     {
       "root": "pages/sponsor-commerce",
       "pages": ["index"]
+    },
+    {
+      "root": "pages/event-service",
+      "pages": ["index"]
     }
   ]
 }

@@ -11,10 +11,10 @@ const repository = path.resolve(root, '../..');
 const fixtures = path.join(repository, 'tests/mini-program/fixtures');
 const read = (filename) => JSON.parse(fs.readFileSync(filename, 'utf8'));
 
-test('UI005 final matrix keeps all 73 registered routes backed by an isolated fixture', () => {
+test('UI005 final matrix keeps all 74 registered routes backed by an isolated fixture', () => {
   const routes = registeredRoutes(read(path.join(root, 'app.json')));
-  assert.equal(routes.length, 73);
-  assert.equal(new Set(routes).size, 73);
+  assert.equal(routes.length, 74);
+  assert.equal(new Set(routes).size, 74);
   const covered = new Set(
     fs
       .readdirSync(fixtures)

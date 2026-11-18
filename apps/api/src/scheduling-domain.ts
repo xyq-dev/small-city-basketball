@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type {
   RegistrationFreezeData,
   ScheduleConflict,
@@ -9,6 +12,15 @@ import type {
 import { ApiError } from './errors.js';
 import { calendarDate, invalid, objectInput } from './validation.js';
 
+const require = createRequire(import.meta.url);
+const { circlePairings } = require(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), '../../wechat/utils/circle-pairing.js'),
+) as {
+  circlePairings: (orderedEntryIds: string[]) => {
+    rounds: ScheduleRoundData[];
+    fixtures: ScheduleFixtureData[];
+  };
+};
 const ALGORITHM = 'RR_CIRCLE_V1' as const;
 const MINUTE = 60_000;
 const DAY = 86_400_000;
@@ -203,33 +215,7 @@ export function generatePairings(
     }))
     .sort((a, b) => ascii(a.rank, b.rank) || ascii(a.id, b.id))
     .map((item) => item.id);
-  let rotation: (string | null)[] = [...orderedEntryIds];
-  if (rotation.length % 2) rotation.push(null);
-  const rounds: ScheduleRoundData[] = [];
-  const fixtures: ScheduleFixtureData[] = [];
-  for (let roundNo = 1; roundNo < rotation.length; roundNo++) {
-    let byeEntryId: string | null = null;
-    for (let positionNo = 1; positionNo <= rotation.length / 2; positionNo++) {
-      const homeEntryId = rotation[positionNo - 1]!;
-      const awayEntryId = rotation[rotation.length - positionNo]!;
-      if (homeEntryId === null || awayEntryId === null) {
-        byeEntryId = homeEntryId ?? awayEntryId;
-        continue;
-      }
-      fixtures.push({
-        fixtureKey: `R${roundNo}-P${positionNo}`,
-        roundNo,
-        positionNo,
-        homeEntryId,
-        awayEntryId,
-        courtId: null,
-        startsAt: null,
-        endsAt: null,
-      });
-    }
-    rounds.push({ roundNo, byeEntryId });
-    rotation = [rotation[0]!, rotation[rotation.length - 1]!, ...rotation.slice(1, -1)];
-  }
+  const { rounds, fixtures } = circlePairings(orderedEntryIds);
   const inputHash = hash({ freeze: source, policy: normalizedPolicy });
   const pairingHash = hash({
     algorithmVersion: ALGORITHM,

@@ -52,7 +52,11 @@ export function windowsLaunchSpec(cliPath, projectPath, port) {
 
 export function spawnWindowsCli(cliPath, projectPath, port) {
   const spec = windowsLaunchSpec(cliPath, projectPath, port);
-  return spawn(spec.command, spec.args, { shell: false, stdio: 'ignore', windowsHide: true });
+  return spawn(spec.command, spec.args, {
+    shell: false,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
 }
 
 async function unusedLoopbackPort() {
@@ -78,10 +82,19 @@ async function launchWeChat(sdk, options) {
     if (code !== 0) failure = new Error('微信CLI启动失败；请检查登录和服务端口设置');
   });
   child.unref();
+  let output = '';
+  const keep = (chunk) => {
+    if (output.length < 2000) output = (output + String(chunk)).slice(0, 2000);
+  };
+  child.stdout?.on('data', keep);
+  child.stderr?.on('data', keep);
   const start = Date.now();
+  const detail = () => (output.trim() ? '；' + output.trim() : '');
   try {
     while (Date.now() - start < options.timeout) {
-      if (failure) throw failure;
+      if (failure) throw new Error(failure.message + detail());
+      if (output.includes('APPID_ERROR') || output.includes('不存在此 AppID'))
+        throw new Error('微信CLI拒绝当前AppID' + detail());
       const ready = await new Promise((resolve) => {
         const socket = net.createConnection({ host: '127.0.0.1', port });
         const finish = (value) => {
@@ -95,7 +108,7 @@ async function launchWeChat(sdk, options) {
       if (ready) return await sdk.connect({ wsEndpoint: 'ws://127.0.0.1:' + port });
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
-    throw new Error('等待微信自动化端口超时');
+    throw new Error('等待微信自动化端口超时' + detail());
   } catch (error) {
     if (child.exitCode === null) child.kill();
     throw error;
@@ -158,9 +171,9 @@ export function prepare({ root = ROOT, out, appId } = {}) {
   if (
     catalog.figmaFile !== 'QpKOskViUwHFVqSG3uYR9X' ||
     !Array.isArray(selected) ||
-    selected.length !== 6
+    selected.length !== 7
   )
-    throw new Error('需要UI006当前六页明确来源映射');
+    throw new Error('需要当前七页明确来源映射');
   const fixtures = new Map(
     selected.map((page) => {
       if (
@@ -313,6 +326,9 @@ export function prepare({ root = ROOT, out, appId } = {}) {
     fixtureSha256: fixtures.get(page.route).fixtureSha256,
     reference: 'references/' + page.name + '.png',
     referenceSha256: hash(fs.readFileSync(path.resolve(root, page.referenceImage))),
+    ...(Array.isArray(fixtures.get(page.route).fixture.captureStates)
+      ? { states: fixtures.get(page.route).fixture.captureStates }
+      : {}),
   }));
   const scenarios = [...approved, ...platform];
   fs.mkdirSync(path.join(destination, 'references'));
@@ -391,7 +407,7 @@ export async function capture(
     mini = await deadline(
       () => launchProject({ cliPath, projectPath: project, timeout, trustProject: true }),
       '启动微信开发工具',
-      timeout,
+      timeout + 5000,
     );
     mini.on('exception', (error) =>
       report.exceptions.push(String(error?.message || 'AppService exception').slice(0, 1500)),
@@ -486,6 +502,46 @@ export async function capture(
         width: bytes.readUInt32BE(16),
         height: bytes.readUInt32BE(20),
       });
+      for (const state of scenario.states || []) {
+        if (!/^[a-z0-9-]+$/.test(state.name) || typeof state.probe !== 'string' || !state.probe)
+          throw new Error('无效验收状态：' + scenario.name);
+        await deadline(
+          () => page.setData({ ...state.data, captureProbe: state.probe }),
+          '切换' + state.name,
+          timeout,
+        );
+        await deadline(() => page.waitFor(300), '等待状态渲染', timeout);
+        const stateBody = await deadline(
+          () => page.$(scenario.selector),
+          '检查状态根节点',
+          timeout,
+        );
+        const stateText = stateBody
+          ? await deadline(() => stateBody.text(), '检查状态文字', timeout)
+          : '';
+        if (!stateBody || !stateText.includes(state.probe))
+          throw new Error('缺少预期原生页面内容：' + state.name);
+        const stateFile = 'screenshots/' + scenario.name + '-' + state.name + '.png';
+        await deadline(
+          () => mini.screenshot({ path: path.join(destination, stateFile) }),
+          '截图' + state.name,
+          timeout,
+        );
+        const stateBytes = fs.readFileSync(path.join(destination, stateFile));
+        if (
+          !stateBytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
+          stateBytes.length < 100
+        )
+          throw new Error('SDK未生成有效PNG');
+        report.screenshots.push({
+          scenario: scenario.name + '-' + state.name,
+          path: stateFile,
+          bytes: stateBytes.length,
+          sha256: hash(stateBytes),
+          width: stateBytes.readUInt32BE(16),
+          height: stateBytes.readUInt32BE(20),
+        });
+      }
     }
     if (report.exceptions.length) throw new Error('原生AppService报告异常；请查看report.json');
     report.nativeScreenshotsCaptured = true;
@@ -508,6 +564,22 @@ export async function capture(
     const rows = plan.scenarios
       .map((s) => {
         const shot = report.screenshots.find((image) => image.scenario === s.name);
+        const states = (s.states || [])
+          .map((state) => {
+            const extra = report.screenshots.find(
+              (image) => image.scenario === s.name + '-' + state.name,
+            );
+            return (
+              '<section><h2>' +
+              escape(s.title + ' · ' + state.title) +
+              '</h2><div><figure><figcaption>同一确认稿的页面状态</figcaption>' +
+              (s.reference ? '<img src="' + s.reference + '">' : '<p>无用户确认稿</p>') +
+              '</figure><figure><figcaption>微信开发工具 · 合成模板（人工待验）</figcaption>' +
+              (extra ? '<img src="' + extra.path + '">' : '<p>未采集</p>') +
+              '</figure></div></section>'
+            );
+          })
+          .join('');
         return (
           '<section><h2>' +
           escape(s.title) +
@@ -517,7 +589,8 @@ export async function capture(
             : '<p>无用户确认稿：平台定位修正新增状态，设计待签收</p>') +
           '</figure><figure><figcaption>微信开发工具 · 合成模板（人工待验）</figcaption>' +
           (shot ? '<img src="' + shot.path + '">' : '<p>未采集</p>') +
-          '</figure></div></section>'
+          '</figure></div></section>' +
+          states
         );
       })
       .join('');

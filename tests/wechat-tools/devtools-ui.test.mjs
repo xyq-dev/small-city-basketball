@@ -38,6 +38,12 @@ function prepared() {
   return prepare({ out });
 }
 const png = () => fs.readFileSync(path.join(ROOT, 'docs/design/C11/home.png'));
+function shotCount(run) {
+  return run.plan.scenarios.reduce(
+    (count, scenario) => count + 1 + (scenario.states?.length || 0),
+    0,
+  );
+}
 function captureFake(run, options) {
   return capture(run, {
     ...options,
@@ -68,6 +74,7 @@ function fakeSdk(
   mini.reLaunch = async (url) => {
     index++;
     const s = run.plan.scenarios[index];
+    let probe = s.probe;
     return {
       path: badRoute ? 'pages/account/index' : url.slice(1),
       data: async () => ({
@@ -77,8 +84,11 @@ function fakeSdk(
         businessDisabled: true,
       }),
       waitFor: async () => {},
+      setData: async (data) => {
+        if (data && data.captureProbe) probe = data.captureProbe;
+      },
       $: async (selector) =>
-        hasClassSelector(s.baseRoute, selector) ? { text: async () => s.probe } : null,
+        hasClassSelector(s.baseRoute, selector) ? { text: async () => probe } : null,
     };
   };
   mini.screenshot = async ({ path: filename }) => {
@@ -109,8 +119,8 @@ test('prepare preserves all source templates/assets and never mutates the runtim
   const catalog = JSON.parse(
     fs.readFileSync(path.join(ROOT, 'tests/mini-program/platform-catalog.json'), 'utf8'),
   );
-  assert.equal(run.plan.scenarios.filter((s) => s.reference).length, 6);
-  assert.equal(run.plan.scenarios.length, 6 + catalog.scenarios.length);
+  assert.equal(run.plan.scenarios.filter((s) => s.reference).length, 7);
+  assert.equal(run.plan.scenarios.length, 7 + catalog.scenarios.length);
   assert.equal(run.plan.nativeScreenshotsCaptured, false);
   assert.equal(run.plan.businessFlowVerified, false);
   for (const scenario of run.plan.scenarios)
@@ -162,9 +172,9 @@ test('overridden file list includes rewritten subpackage pages and leaves the so
   const manifest = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'app.json'), 'utf8'));
   const routes = registeredRoutes(manifest);
   assert.equal(manifest.pages.length, 6);
-  assert.equal(manifest.subpackages.length, 67);
-  assert.equal(routes.length, 73);
-  assert.equal(new Set(routes).size, 73);
+  assert.equal(manifest.subpackages.length, 68);
+  assert.equal(routes.length, 74);
+  assert.equal(new Set(routes).size, 74);
   const before = new Map(
     routes.map((route) => [route, fs.readFileSync(path.join(sourceRoot, route + '.js'))]),
   );
@@ -240,7 +250,7 @@ test('successful SDK fixture capture records every original PNG hash without cla
     { sdk, mini } = fakeSdk(run);
   const report = await captureFake(run, { sdk, cliPath: 'test-cli' });
   assert.equal(report.nativeScreenshotsCaptured, true);
-  assert.equal(report.screenshots.length, run.plan.scenarios.length);
+  assert.equal(report.screenshots.length, shotCount(run));
   assert.deepEqual(
     mini.scrolls,
     run.plan.scenarios.filter((s) => s.scrollTop).map((s) => [s.name, s.scrollTop]),
@@ -303,7 +313,7 @@ test('recapture writes a separate width directory from the open copy and checks 
   assert.equal(mini.endpoint, 'ws://127.0.0.1:9420');
   assert.equal(report.nativeScreenshotsCaptured, true);
   assert.equal(report.simulator.windowWidth, 320);
-  assert.equal(report.screenshots.length, run.plan.scenarios.length);
+  assert.equal(report.screenshots.length, shotCount(run));
   for (const file of ['report.json', 'index.html', 'references/home.png'])
     assert.equal(fs.existsSync(path.join(run.destination, 'w320', file)), true, file);
   await assert.rejects(
@@ -360,7 +370,7 @@ test('invalid screenshot and AppService exceptions remain failures', async () =>
     assert.equal(report.nativeScreenshotsCaptured, false);
     assert.ok(report.error);
     assert.equal(mini.disconnected, 1);
-    if (flags.exception) assert.equal(report.exceptions.length, run.plan.scenarios.length);
+    if (flags.exception) assert.equal(report.exceptions.length, shotCount(run));
   }
 });
 

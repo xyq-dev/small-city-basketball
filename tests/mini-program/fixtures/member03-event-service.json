@@ -1,0 +1,95 @@
+{
+  "name": "member03-event-service",
+  "route": "pages/event-service/index",
+  "state": "design-preview",
+  "designSource": "Figma 174:650。99/149 只属于隔离视觉夹具，不是已发布报价，也不能触发交易。",
+  "expectText": ["先排好赛程", "免费试排，满意再开通", "标准办赛", "专业办赛"],
+    "data": {
+    "designPreview": true,
+    "view": "home",
+    "offer": "standard",
+    "cards": [
+      {
+        "key": "standard",
+        "title": "标准办赛",
+        "digits": "99",
+        "quota": "最多8队 · 32场",
+        "planId": "",
+        "amountFen": null,
+        "selected": true
+      },
+      {
+        "key": "pro",
+        "title": "专业办赛",
+        "digits": "149",
+        "quota": "最多16队 · 128场",
+        "planId": "",
+        "amountFen": null,
+        "selected": false
+      }
+    ]
+  },
+  "captureStates": [
+    {
+      "name": "pro",
+      "title": "专业档",
+      "probe": "专业办赛",
+      "data": {
+        "view": "home",
+        "offer": "pro",
+        "cards": [
+          {
+            "key": "standard",
+            "title": "标准办赛",
+            "digits": "99",
+            "quota": "最多8队 · 32场",
+            "planId": "",
+            "selected": false
+          },
+          {
+            "key": "pro",
+            "title": "专业办赛",
+            "digits": "149",
+            "quota": "最多16队 · 128场",
+            "planId": "",
+            "selected": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "trial",
+      "title": "试排",
+      "probe": "生成并预览赛程",
+      "data": { "view": "trial", "teamText": "青锋一队\n青锋二队" }
+    },
+    {
+      "name": "convert",
+      "title": "转正式",
+      "probe": "当前账号没有办赛空间",
+      "data": { "view": "convert", "orgId": "" }
+    },
+    {
+      "name": "review",
+      "title": "核对",
+      "probe": "确认方案",
+      "data": {
+        "view": "review",
+        "quoteTitle": "专业办赛",
+        "quoteAmount": "¥299",
+        "quoteLimit": "最多16队 · 128场",
+        "termsAccepted": false,
+        "canPurchase": false
+      }
+    },
+    {
+      "name": "orders",
+      "title": "订单",
+      "probe": "我的订单",
+      "data": {
+        "view": "orders",
+        "orders": [{ "id": "synthetic", "eventName": "合成杯", "statusText": "待支付", "amount": "¥299" }]
+      }
+    }
+  ]
+}

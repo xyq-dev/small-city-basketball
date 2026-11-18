@@ -631,8 +631,9 @@ Page({
         'trade-manage',
         'training-manage',
         'sponsor-commerce',
+        'event-service',
       ].includes(key) &&
-      (key !== 'sponsor-commerce' || e.currentTarget.dataset.org)
+      ((key !== 'sponsor-commerce' && key !== 'event-service') || e.currentTarget.dataset.org)
         ? { orgId: api.uuid(e.currentTarget.dataset.org) }
         : key === 'bookings'
           ? { view: 'sent' }

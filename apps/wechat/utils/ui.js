@@ -69,6 +69,7 @@ for (const key of [
   'planned',
   'platform',
   'memberships',
+  'event-service',
   'team-join',
   'team-requests',
   'team-request',

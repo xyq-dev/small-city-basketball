@@ -1,6 +1,7 @@
 // Fixed build-time origin. Shared links and QR payloads never select a server.
 const API_ORIGIN = 'https://basketball.playhubs.cn';
 const { expansionPathAllowed } = require('./expansion-api');
+const { eventServicePathAllowed } = require('./event-service-paths');
 const opaque = /^[A-Za-z0-9_-]{43}$/;
 const uuidPattern = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const uuidRegex = new RegExp('^' + uuidPattern + '$', 'i');
@@ -55,6 +56,7 @@ function pathAllowed(path, method = 'GET') {
   if (!query) return false;
   const noQuery = Object.keys(query).length === 0;
   if (expansionPathAllowed(base, method, query, uuidPattern)) return true;
+  if (eventServicePathAllowed(base, method, query, uuidPattern)) return true;
   const matches = (value) => new RegExp('^' + value + '$', 'i').test(base);
   const auth = {
     '/v1/auth/capabilities': 'GET',

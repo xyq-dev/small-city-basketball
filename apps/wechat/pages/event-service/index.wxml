@@ -1,0 +1,131 @@
+<scb-header title="{{navTitle}}" bind:layoutchange="syncChrome" />
+<view class="figma-page gold-page {{compact ? 'is-compact' : ''}}">
+  <scroll-view scroll-y style="height: {{scrollHeight}}px;">
+    <block wx:if="{{view === 'home'}}">
+      <view class="gold-hero">
+        <view class="gold-tabs">
+          <button class="gold-tab is-on" bindtap="openHome">办赛套餐</button>
+          <button class="gold-tab" bindtap="openOrders">我的订单</button>
+        </view>
+        <view class="gold-headline">先排好赛程</view>
+        <view class="gold-headline">满意再开通</view>
+        <view class="gold-sub">免费试排 · 正式办赛99元起</view>
+        <view class="gold-org" wx:if="{{orgName}}">{{orgName}}</view>
+        <image class="gold-crown" src="/assets/membership-gold/member-crown.png" mode="aspectFit" />
+      </view>
+      <view class="gold-sheet">
+        <view class="gold-banner">
+          <view class="gold-banner__title">用自己的球队，先试排</view>
+          <view class="gold-banner__body">完整预览 · 调整 · 保存草稿</view>
+          <button class="gold-link" bindtap="openTrial">免费试排</button>
+          <image class="gold-ticket" src="/assets/membership-gold/member-ticket.png" mode="aspectFit" />
+        </view>
+        <view class="gold-section">按本届规模选择方案<text class="gold-aside">按届付费</text></view>
+        <view class="gold-cards">
+          <button wx:for="{{cards}}" wx:key="key" class="gold-card {{item.selected ? 'is-selected' : ''}}" data-offer="{{item.key}}" bindtap="selectOffer">
+            <view class="gold-card__title">{{item.title}}</view>
+            <view class="gold-card__price {{item.digits.length > 3 ? 'is-wide' : ''}}">{{item.digits}}</view>
+            <view class="gold-card__unit">/ 届</view>
+            <view class="gold-card__quota">{{item.quota}}</view>
+          </button>
+        </view>
+        <view class="gold-note">一次开通，覆盖整届赛事；改期不重复扣费。</view>
+        <view class="gold-note">看比分、赛程、排名，基础查看免费。</view>
+        <view class="gold-note">{{notice}}</view>
+        <view class="gold-note" wx:if="{{periodNote}}">{{periodNote}}</view>
+        <view class="gold-note" wx:if="{{error}}">{{error}}</view>
+        <view class="gold-divider">专业办赛，权益一目了然</view>
+        <view class="gold-table" wx:for="{{scaleRows}}" wx:for-item="row" wx:key="id">
+          <view wx:for="{{row.cells}}" wx:for-item="cell" wx:key="key" class="gold-cell {{index === 0 ? 'is-label' : ''}} {{(offer === 'standard' && index === 2) || (offer === 'pro' && index === 3) ? 'is-hot' : ''}}">
+            <image wx:if="{{cell.check}}" class="gold-check" src="/assets/membership-gold/member-check.svg" mode="aspectFit" />
+            <block wx:else>{{cell.text}}</block>
+          </view>
+        </view>
+        <view class="gold-note">90/180天为付款后首次激活期限，激活后覆盖整届。</view>
+        <view class="gold-table" wx:for="{{toolRows}}" wx:for-item="row" wx:key="id">
+          <view wx:for="{{row.cells}}" wx:for-item="cell" wx:key="key" class="gold-cell {{index === 0 ? 'is-label' : ''}} {{(offer === 'standard' && index === 2) || (offer === 'pro' && index === 3) ? 'is-hot' : ''}}">
+            <image wx:if="{{cell.check}}" class="gold-check" src="/assets/membership-gold/member-check.svg" mode="aspectFit" />
+            <block wx:else>{{cell.text}}</block>
+          </view>
+        </view>
+        <view class="gold-note">购买不提升角色；报名准备沿现有免费流程。</view>
+        <view class="gold-table" wx:for="{{guardRows}}" wx:for-item="row" wx:key="id">
+          <view wx:for="{{row.cells}}" wx:for-item="cell" wx:key="key" class="gold-cell {{index === 0 ? 'is-label' : ''}} {{(offer === 'standard' && index === 1) || (offer === 'pro' && index === 2) ? 'is-hot' : ''}}">{{cell.text}}</view>
+        </view>
+        <view class="gold-note">直播流量、存储、AI与现场人工另计。</view>
+        <view class="gold-note">首次正式发布扣1届；失败不扣，后续调整不重复扣。</view>
+        <view class="gold-note" wx:if="{{designPreview}}">设计预览 · 价格以后台发布方案为准</view>
+        <view wx:if="{{orgs.length > 1}}">
+          <button wx:for="{{orgs}}" wx:key="id" class="gold-link" data-id="{{item.id}}" bindtap="switchOrg">{{item.name}}</button>
+        </view>
+      </view>
+    </block>
+
+    <view wx:if="{{view === 'trial' || view === 'result'}}" class="gold-sheet">
+      <button class="gold-link" bindtap="back">返回办赛服务</button>
+      <view class="gold-section">免费试排</view>
+      <view class="gold-note">示例队名不会成为正式报名。当前设备保存，不宣称云同步。</view>
+      <button class="gold-link" bindtap="loadSample">载入8队示例</button>
+      <textarea class="gold-input" value="{{teamText}}" bindinput="onTeams" placeholder="每行一支队名" />
+      <input class="gold-input" value="{{datesText}}" bindinput="onDates" placeholder="比赛日，用空格分隔" />
+      <input class="gold-input" value="{{courtsText}}" bindinput="onCourts" placeholder="场地，用空格分隔" />
+      <button class="gold-link" bindtap="generate" disabled="{{busy}}">生成并预览赛程</button>
+      <view class="gold-note" wx:if="{{hard}}">{{hard}}</view>
+      <view class="gold-note" wx:if="{{soft}}">{{soft}}</view>
+      <view wx:for="{{trialRows}}" wx:key="key" class="gold-row">{{item.text}}<text class="gold-demo">演示</text></view>
+      <button class="gold-link" bindtap="saveCurrent">保存到当前设备</button>
+      <button class="gold-link" bindtap="restore">恢复当前设备草稿</button>
+      <view class="gold-note" wx:if="{{savedLabel}}">{{savedLabel}}</view>
+      <view class="gold-note" wx:if="{{error}}">{{error}}</view>
+      <button wx:if="{{view === 'result'}}" class="gold-link" bindtap="openConvert">继续正式建赛</button>
+    </view>
+
+    <view wx:if="{{view === 'convert'}}" class="gold-sheet">
+      <button class="gold-link" bindtap="back">返回办赛服务</button>
+      <view class="gold-section">转正式前核对</view>
+      <view class="gold-note">以下队名只来自试排，还不是真实球队、报名或冻结名单。</view>
+      <view wx:for="{{trialRows}}" wx:key="key" class="gold-row">{{item.text}}</view>
+      <view class="gold-note">正式排赛仍要关闭报名并冻结名单。付款不能跳过这些步骤，也不能保证草稿原样发布。</view>
+      <button wx:if="{{orgId}}" class="gold-link" bindtap="openSetup">进入正式赛事设置</button>
+      <view wx:else class="gold-note">当前账号没有办赛空间。试排留在这台设备。已有机构可以发球队邀请或建队入口。这里不能创建机构，也不能把当前账号变成负责人。</view>
+      <button wx:if="{{!orgId}}" class="gold-link" data-page="invitation" bindtap="openExisting">接受已有机构的球队邀请</button>
+      <button wx:if="{{!orgId}}" class="gold-link" data-page="team-request" bindtap="openExisting">使用机构分享的建队入口</button>
+      <view class="gold-note" wx:if="{{error}}">{{error}}</view>
+    </view>
+
+    <view wx:if="{{view === 'review'}}" class="gold-sheet">
+      <button class="gold-link" bindtap="back">返回办赛服务</button>
+      <view class="gold-section">核对所选方案</view>
+      <view class="gold-price">{{quoteAmount}}</view>
+      <view class="gold-note">{{quoteTitle}} · {{quoteLimit}}</view>
+      <view class="gold-note" wx:if="{{orgName}}">办赛空间 {{orgName}}</view>
+      <view class="gold-note">真实支付渠道和操作能力由后端返回。</view>
+      <view class="gold-note" wx:if="{{!realPaymentEnabled}}">真实微信收款未开启。有二维码时需另一台设备扫码，本页不调用微信支付。</view>
+      <button wx:for="{{events}}" wx:key="id" class="gold-link {{selectedEventId === item.id ? 'is-on' : ''}}" data-id="{{item.id}}" bindtap="selectEvent">{{item.name}}</button>
+      <button class="gold-link" bindtap="toggleTerms">{{termsAccepted ? '已阅读并同意条款' : '阅读并同意服务条款'}}</button>
+      <view class="gold-note" wx:if="{{purchaseNotice}}">{{purchaseNotice}}</view>
+      <view class="gold-note" wx:if="{{error}}">{{error}}</view>
+    </view>
+
+    <view wx:if="{{view === 'orders' || view === 'order'}}" class="gold-sheet">
+      <button class="gold-link" bindtap="back">返回办赛服务</button>
+      <view class="gold-section">我的订单</view>
+      <view class="gold-note">仅显示当前办赛空间有权限查看的订单。</view>
+      <button wx:for="{{orders}}" wx:key="id" class="gold-link" data-id="{{item.id}}" bindtap="openOrder">{{item.eventName}} {{item.statusText}} {{item.amount}}</button>
+      <view wx:if="{{!orders.length}}" class="gold-note">暂无订单</view>
+      <view wx:if="{{order}}" class="gold-note">{{order.eventName}} {{order.status}}</view>
+      <view class="gold-note" wx:if="{{unknown}}">操作结果待核对，请读取原单，不要另下新单。</view>
+      <button class="gold-link" bindtap="reread">重新读取</button>
+      <view class="gold-note" wx:if="{{error}}">{{error}}</view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{view === 'home'}}" class="gold-dock" style="padding-bottom: {{safeBottom}}px;">
+    <view class="gold-note">先试排，满意后再购买</view>
+    <button class="gold-action" bindtap="openTrial">免费试排，满意再开通</button>
+    <button class="gold-link" bindtap="openReview">核对所选方案</button>
+  </view>
+  <view wx:if="{{view === 'review'}}" class="gold-dock" style="padding-bottom: {{safeBottom}}px;">
+    <button class="gold-action" bindtap="submit" disabled="{{busy || !termsAccepted || !canPurchase}}">确认方案</button>
+  </view>
+</view>
