@@ -47,19 +47,19 @@ function scenarioData(scenario) {
   return merge(data, scenario.data || {});
 }
 
-test('UI006 route map matches exactly 73 registered native pages', () => {
+test('UI006 route map matches exactly 74 registered native pages', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
   const actual = registeredRoutes(manifest);
   const expected = routeMap.map((entry) => entry.route);
-  assert.equal(actual.length, 73);
-  assert.equal(new Set(actual).size, 73);
-  assert.equal(routeMap.length, 73);
-  assert.equal(new Set(expected).size, 73);
-  assert.equal(new Set(routeMap.map((entry) => entry.figmaNode)).size, 73);
+  assert.equal(actual.length, 74);
+  assert.equal(new Set(actual).size, 74);
+  assert.equal(routeMap.length, 74);
+  assert.equal(new Set(expected).size, 74);
+  assert.equal(new Set(routeMap.map((entry) => entry.figmaNode)).size, 74);
   assert.deepEqual([...actual].sort(), [...expected].sort());
 });
 
-test('all 73 routes use native rebuilt templates and render at 320/390/430', () => {
+test('all 74 routes use native rebuilt templates and render at 320/390/430', () => {
   for (const { route, figmaNode } of routeMap) {
     const base = path.join(root, route);
     for (const extension of ['js', 'json', 'wxml', 'wxss']) {
@@ -82,12 +82,12 @@ test('all 73 routes use native rebuilt templates and render at 320/390/430', () 
   }
 });
 
-test('73 primary visual fixtures cover every route and retain their business assertions', () => {
+test('74 primary visual fixtures cover every route and retain their business assertions', () => {
   const expectedRoutes = routeMap.map((entry) => entry.route).sort();
   const scenarioRoutes = visualScenarios.map((entry) => entry.route).sort();
-  assert.equal(visualScenarios.length, 73);
-  assert.equal(new Set(visualScenarios.map((entry) => entry.name)).size, 73);
-  assert.equal(new Set(scenarioRoutes).size, 73);
+  assert.equal(visualScenarios.length, 74);
+  assert.equal(new Set(visualScenarios.map((entry) => entry.name)).size, 74);
+  assert.equal(new Set(scenarioRoutes).size, 74);
   assert.deepEqual(scenarioRoutes, expectedRoutes);
 
   for (const scenario of visualScenarios) {

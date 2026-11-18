@@ -22,8 +22,8 @@ test('native manifest routes are unique, local and include loadable Page/templat
   assert.deepEqual(manifest.pages.slice(0, mainTabs.length), mainTabs);
   assert.ok(manifest.pages.includes('pages/trade-order/index'));
   assert.equal(manifest.pages.length, 6);
-  assert.equal(manifest.subpackages.length, 67);
-  assert.equal(routes.length, 73);
+  assert.equal(manifest.subpackages.length, 68);
+  assert.equal(routes.length, 74);
   assert.equal(new Set(routes).size, routes.length);
   assert.ok(Array.isArray(manifest.subpackages) && manifest.subpackages.length > 0);
   for (const pack of manifest.subpackages) {

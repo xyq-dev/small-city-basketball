@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createRequire } from 'node:module';
 import type {
   RegistrationFreezeData,
   ScheduleFixtureData,
@@ -110,6 +111,11 @@ describe('RR_CIRCLE_V1规范化与独立不变量', () => {
     expect(result.pairingHash).toBe(
       '92741a54ec9031c7830d1471fb6e16368d1319a3c6297fb59ddb789d422c2c6b',
     );
+    const shared = createRequire(import.meta.url)(
+      '../../wechat/utils/circle-pairing.js',
+    ).circlePairings(result.orderedEntryIds);
+    expect(shared.rounds).toEqual(result.rounds);
+    expect(shared.fixtures).toEqual(result.fixtures);
     expect(
       publicationHash({ algorithmVersion: 'RR_CIRCLE_V1', seed, ...result }, result.fixtures),
     ).toBe('6300a1574dfba04260df98f8930109630a72c9de859422b5f4c05bab6244c1f6');

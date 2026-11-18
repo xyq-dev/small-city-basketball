@@ -73,6 +73,7 @@
             <button class="account-list-row" data-page="recruitment" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">赛事招募与本届邀请</view><view class="account-row__subtitle">公开招募、申请和邀请</view></view></button>
             <button class="account-list-row" data-page="invitation" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">接受球队邀请</view><view class="account-row__subtitle">使用发给本人的邀请</view></view></button>
             <button class="account-list-row" data-page="memberships" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">我的成员关系</view><view class="account-row__subtitle">查看已加入球队或退出</view></view></button>
+            <button class="account-list-row" data-page="event-service" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">办赛服务</view><view class="account-row__subtitle">免费试排，满意后再按届开通</view></view></button>
             <button class="account-list-row" data-page="team-join" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">加入球队与成员认领</view><view class="account-row__subtitle">使用加入码或接受认领</view></view></button>
             <button class="account-list-row" data-page="team-request" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">申请建队</view><view class="account-row__subtitle">使用机构分享的申请入口</view></view></button>
             <button class="account-list-row" data-page="matching" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">全国撮合与合作意向</view><view class="account-row__subtitle">双方确认后转预约</view></view></button>
@@ -92,6 +93,7 @@
               <button class="account-list-row" data-page="local-manage" data-org="{{item.id}}" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">球场与同城服务管理</view><view class="account-row__subtitle">{{item.name}}</view></view></button>
               <button class="account-list-row" data-page="team-requests" data-org="{{item.id}}" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">建队申请审批</view><view class="account-row__subtitle">{{item.name}}</view></view></button>
               <button class="account-list-row" data-page="seasons" data-org="{{item.id}}" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">私有赛季管理</view><view class="account-row__subtitle">{{item.name}}</view></view></button>
+              <button class="account-list-row" data-page="event-service" data-org="{{item.id}}" bindtap="go" disabled="{{uiPreview}}"><view><view class="account-row__title">本机构办赛服务</view><view class="account-row__subtitle">{{item.name}} · 按届方案与订单</view></view></button>
             </block>
           </view>
 

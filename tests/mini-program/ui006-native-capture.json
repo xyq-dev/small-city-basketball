@@ -68,6 +68,17 @@
       "probe": "合成青锋杯",
       "referenceImage": "docs/evidence/ui006/references/bookings-36-80.png",
       "referenceSha256": "de6b717b64483290869581f422d856354e84ba3ac199c697b57d95b0e3ae9490"
+    },
+    {
+      "name": "event-service",
+      "route": "pages/event-service/index",
+      "title": "办赛服务",
+      "primaryFixture": "member03-event-service",
+      "figmaNode": "174:650",
+      "selector": ".gold-page",
+      "probe": "先排好赛程",
+      "referenceImage": "docs/evidence/ui006/references/event-service-174-650.png",
+      "referenceSha256": "9d19fbaace1fc44f1eeb1068cd2b8e986a06a654d5c8963ef28d9031294a01fd"
     }
   ]
 }

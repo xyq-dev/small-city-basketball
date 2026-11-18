@@ -9,6 +9,7 @@ RUN npm ci
 COPY apps/api ./apps/api
 COPY apps/admin ./apps/admin
 COPY packages/contracts ./packages/contracts
+COPY apps/wechat/utils/circle-pairing.js ./apps/wechat/utils/circle-pairing.js
 COPY ops/db ./ops/db
 COPY ops/recovery ./ops/recovery
 # The shipped static client always talks to the same-origin API.
@@ -35,6 +36,7 @@ COPY --from=api-deps /app/node_modules ./node_modules
 COPY apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY apps/api/migrations ./apps/api/migrations
+COPY apps/wechat/utils/circle-pairing.js ./apps/wechat/utils/circle-pairing.js
 COPY packages/contracts/package.json packages/contracts/index.js packages/contracts/runtime-privileges.json ./packages/contracts/
 COPY ops/db/privileges.mjs ops/db/common.mjs ./ops/db/
 USER 10001:10001
@@ -62,6 +64,7 @@ COPY --from=api-deps /app/node_modules ./node_modules
 COPY apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY apps/api/migrations ./apps/api/migrations
+COPY apps/wechat/utils/circle-pairing.js ./apps/wechat/utils/circle-pairing.js
 COPY packages/contracts/package.json packages/contracts/index.js packages/contracts/runtime-privileges.json ./packages/contracts/
 COPY ops/db ./ops/db
 COPY ops/recovery ./ops/recovery

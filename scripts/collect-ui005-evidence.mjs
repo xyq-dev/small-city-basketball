@@ -91,6 +91,7 @@ const routeNodes = {
   'pages/trade-order/index': '36:127',
   'pages/trade-manage/index': '36:128',
   'pages/city-operations/index': '36:129',
+  'pages/event-service/index': '174:650',
 };
 
 const stateNodes = [
@@ -120,7 +121,7 @@ const routes = [
     (pkg.pages || []).map((page) => `${pkg.root}/${page}`),
   ),
 ];
-if (routes.length !== 73 || Object.keys(routeNodes).length !== 73)
+if (routes.length !== 74 || Object.keys(routeNodes).length !== 74)
   throw new Error(
     `UI005 route mapping mismatch: manifest=${routes.length}, mapping=${Object.keys(routeNodes).length}`,
   );

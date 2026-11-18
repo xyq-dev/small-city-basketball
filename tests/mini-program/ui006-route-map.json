@@ -71,5 +71,6 @@
   { "route": "pages/public-ledgers/index", "figmaNode": "36:126" },
   { "route": "pages/trade-order/index", "figmaNode": "36:127" },
   { "route": "pages/trade-manage/index", "figmaNode": "36:128" },
-  { "route": "pages/city-operations/index", "figmaNode": "36:129" }
+  { "route": "pages/city-operations/index", "figmaNode": "36:129" },
+  { "route": "pages/event-service/index", "figmaNode": "174:650" }
 ]
