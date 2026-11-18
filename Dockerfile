@@ -9,6 +9,7 @@ RUN npm ci
 COPY apps/api ./apps/api
 COPY apps/admin ./apps/admin
 COPY packages/contracts ./packages/contracts
+COPY apps/wechat/utils/circle-pairing.js ./apps/wechat/utils/circle-pairing.js
 COPY ops/db ./ops/db
 COPY ops/recovery ./ops/recovery
 # The shipped static client always talks to the same-origin API.
